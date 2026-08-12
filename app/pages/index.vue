@@ -19,7 +19,7 @@ const fields = computed(() => [
   { key: 'primary', label: t('home.fields.primary'), value: config.primaryColor as string },
 ])
 
-const chartOption = ref<EChartsOption>({
+const chartOption = shallowRef<EChartsOption>({
   tooltip: { trigger: 'axis' },
   legend: { data: ['Requests', 'Errors'] },
   grid: { left: 40, right: 20, top: 40, bottom: 30 },
@@ -97,13 +97,10 @@ const serverFields = computed(() => {
       :md="16"
     >
       <a-card :title="t('home.chart')">
-        <ClientOnly>
-          <VChart
-            class="h-80 w-full"
-            :option="chartOption"
-            autoresize
-          />
-        </ClientOnly>
+        <AppChart
+          class="h-80 w-full"
+          :option="chartOption"
+        />
       </a-card>
     </a-col>
 
