@@ -1,0 +1,54 @@
+# ============================================================
+# AgentWorkShop 运行配置 —— 单一事实来源（Single Source of Truth）
+# ------------------------------------------------------------
+# 本文件由 nuxt.config.ts（构建/开发期）与 scripts/start.mjs（生产启动期）
+# 读取并解析，驱动整个运行时。修改后重启对应模式即可生效：
+#   开发：pnpm dev     -> 读取 server.dev
+#   生产：pnpm start   -> 读取 server.prod
+# ============================================================
+
+app:
+  name: AgentWorkShop
+  title: AgentWorkShop 软件开发系统
+  version: 0.1.0
+  description: 基于 Nuxt 4 的配置驱动运行范式
+
+# 运行模式（dev/prod 实际由启动命令决定，此处仅作运行时展示）
+mode: dev
+
+# ------------------------------------------------------------
+# 服务端口：dev 与 prod 可分别自定义
+# ------------------------------------------------------------
+server:
+  host: 0.0.0.0
+  dev:
+    port: 3000
+  prod:
+    port: 3001
+
+# 后端 API（前端 axios 基址 + 服务端行为均由本段驱动）
+api:
+  baseURL: /api
+  timeout: 15000
+  pageSize: 20      # 服务端默认分页大小
+  maxPageSize: 100  # 服务端分页大小上限
+
+# 国际化
+i18n:
+  defaultLocale: zh-CN
+  locales:
+    - code: zh-CN
+      name: 简体中文
+    - code: en
+      name: English
+
+# 主题
+theme:
+  primaryColor: "#1677ff"
+  mode: light # light | dark
+
+# 安全配置
+security:
+  # Session cookie 加密密钥（nuxt-auth-utils 使用）
+  # 生产环境必须修改为强随机值；可用环境变量 NUXT_SESSION_PASSWORD 覆盖
+  sessionPassword: "awshop-dev-secret-change-me-0123456789"
