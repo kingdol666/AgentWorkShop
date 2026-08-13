@@ -15,6 +15,7 @@ export default {
   menu: {
     system: 'AgentWorkShop',
     dashboard: 'Dashboard',
+    game: 'Game',
     users: 'Users',
     settings: 'Settings',
   },

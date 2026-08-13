@@ -9,7 +9,7 @@ export default defineEventHandler((event) => {
     return
   }
   const start = Date.now()
-  event.node.res.once('close', () => {
+  event.node?.res?.once('close', () => {
     console.log(`[api] ${event.method} ${event.path} - ${Date.now() - start}ms`)
   })
 })

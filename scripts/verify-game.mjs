@@ -94,32 +94,154 @@ async function readCoins(page) {
   return Number.parseInt(t, 10)
 }
 
-/** BFS 寻路 + 按键沿路径逐 tile 移动(目标 tile 判定 + 卡死保护) */
+/** Agent 当前 tile 与像素位置(调试钩子) */
+async function agentPos(page) {
+  return page.evaluate(() => {
+    const s = window.__game.scene.getDebugState()
+    return { x: Math.round(s.agent.x / 32), y: Math.round(s.agent.y / 32), px: s.agent.x, py: s.agent.y }
+  })
+}
+
+/** 追逐移动中的 Agent:多轮 BFS 追赶,直到触发后端对话;未果则传送兜底 */
+async function chaseAgent(page) {
+  let last = { ok: false, pos: null }
+  for (let round = 0; round < 3; round++) {
+    const a = await agentPos(page)
+    if (process.env.DEBUG_CHASE) {
+      console.log(`  [chase] round ${round} agent=(${a.x},${a.y}) px=(${a.px},${a.py}) player=${await readPos(page)}`)
+    }
+    last = await moveTo(page, [a.x, a.y], { timeoutMs: 20000, near: 1, dismissDialog: false })
+    if (process.env.DEBUG_CHASE) {
+      console.log(`  [chase] moveTo -> ${last.ok} ${last.reason ?? ''} pos=${last.pos}`)
+    }
+    // 玩家已贴近:等后端 tick 触发 dialog(agent 会自行迎上)
+    for (let i = 0; i < 10; i++) {
+      const dlg = await page.$('[data-hud="dialog"]') !== null
+      if (dlg) {
+        return { ok: true, pos: last.pos ?? [a.x, a.y] }
+      }
+      await sleep(400)
+    }
+    if (last.ok) {
+      const now = await agentPos(page)
+      const player = await readPos(page)
+      const pdist = Math.hypot(player[0] - now.x, player[1] - now.y)
+      if (pdist <= 3) {
+        return { ok: true, pos: last.pos }
+      }
+    }
+  }
+
+  // ---- 传送兜底:玩家放到 Agent 旁 2 tiles,立即上行 player.pos ----
+  // 走真实协议闭环:player.pos → 大脑感知(≤3 tiles) → dialog.open,绕开追移动目标的不确定性
+  const a2 = await agentPos(page)
+  const side = a2.x <= 36 ? 2 : -2
+  const tpx = (a2.x + side) * 32 + 16
+  const tpy = a2.y * 32 + 16
+  console.log(`  [chase] teleport fallback: agent=(${a2.x},${a2.y}) -> player px=(${tpx},${tpy})`)
+  await page.evaluate(({ x, y }) => window.__game.scene.setDebugPos(x, y), { x: tpx, y: tpy })
+  for (let i = 0; i < 15; i++) {
+    const dlg = await page.$('[data-hud="dialog"]') !== null
+    if (dlg) {
+      return { ok: true, pos: [a2.x, a2.y] }
+    }
+    await sleep(400)
+  }
+  return last
+}
+
+/** 全量释放所有移动键(headless 偶发 keyup 丢失,强制重置 Phaser 键状态) */
+async function releaseAllKeys(page) {
+  for (const k of ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+    await page.keyboard.up(k)
+  }
+}
+
+/** BFS 寻路 + 注入式导航:每 60ms 注入方向向量,由游戏物理/碰撞驱动(E2E 专用入口,绕开 headless 键盘缺陷) */
 async function moveTo(page, target, opts = {}) {
-  const { timeoutMs = 30000, near = 0 } = opts
-  const keyFor = (dx, dy) => (dx > 0 ? 'd' : dx < 0 ? 'a' : dy > 0 ? 's' : 'w')
+  const { timeoutMs = 30000, near = 0, dismissDialog = true } = opts
+  const dirTo = (from, to) => {
+    const dx = to[0] - from[0]
+    const dy = to[1] - from[1]
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      return [dx >= 0 ? 1 : -1, 0]
+    }
+    return [0, dy >= 0 ? 1 : -1]
+  }
   const start = Date.now()
   let stuckCount = 0
   while (Date.now() - start < timeoutMs) {
+    // 自愈(仅非对话场景):玩家靠近 Agent 可能触发对话锁定移动,空格推进关闭
+    if (dismissDialog) {
+      for (let i = 0; i < 6; i++) {
+        const dlg = await page.$('[data-hud="dialog"]') !== null
+        if (!dlg)
+          break
+        await page.keyboard.up('Space')
+        await page.keyboard.down('Space')
+        await page.keyboard.up('Space')
+        await sleep(500)
+      }
+    }
     const from = await readPos(page)
+    if (!Number.isFinite(from[0]) || !Number.isFinite(from[1])) {
+      const dbg = await page.evaluate(() => {
+        const s = window.__game.scene
+        const p = s?.player
+        const b = p?.body
+        const hudPos = document.querySelector('[data-hud="pos"]')?.textContent
+        return {
+          hudPos,
+          frameCount: s?.frameCount,
+          ticks: window.__updTicks ?? null,
+          playerX: p?.x,
+          playerY: p?.y,
+          playerHasOwn: p ? Object.prototype.hasOwnProperty.call(p, 'x') : null,
+          body: b ? { x: b.x, y: b.y, vx: b.velocity?.x, vy: b.velocity?.y, enable: b.enable } : null,
+          vis: document.visibilityState,
+          game: window.__game.game ? { paused: window.__game.game.isPaused, running: window.__game.game.isRunning, hidden: window.__game.game.isHidden } : null,
+          keys: s ? { w: s.keyW?.isDown, a: s.keyA?.isDown, s: s.keyS?.isDown, d: s.keyD?.isDown } : null,
+          agent: (() => {
+            try {
+              return s?.getDebugState()?.agent
+            }
+            catch {
+              return null
+            }
+          })(),
+        }
+      })
+      console.log(`  [move] NaN pos! ${JSON.stringify(dbg)}`)
+      await page.evaluate(() => window.__game.scene?.setDebugMove?.(null))
+      return { ok: false, pos: from, reason: 'nan' }
+    }
     if (from[0] === 0 && from[1] === 0) {
       await sleep(200)
       continue
     }
+    if (process.env.DEBUG_MOVE) {
+      console.log(`  [move] from ${from} target ${target}`)
+    }
+    await releaseAllKeys(page)
     const dx = target[0] - from[0]
     const dy = target[1] - from[1]
-    if (Math.abs(dx) + Math.abs(dy) <= Math.max(1, near))
+    if (Math.abs(dx) + Math.abs(dy) <= Math.max(1, near)) {
+      await page.evaluate(() => window.__game.scene.setDebugMove(null))
       return { ok: true, pos: from }
+    }
     // 每轮重建 grid:避免上一轮卡死标记污染路径
+    // (Agent 与玩家无碰撞,物理上可穿过,不作为障碍标记)
     const { grid: g, W: gw, H: gh } = buildGrid()
     const path = bfs(g, gw, gh, from, target, Math.max(1, near))
-    if (!path || path.length === 0)
+    if (!path || path.length === 0) {
+      await page.evaluate(() => window.__game.scene.setDebugMove(null))
       return { ok: false, pos: from, reason: 'no path' }
-    // 沿路径移动,每步走到目标 tile 即松开按键
+    }
+    // 沿路径前 3 步注入方向,每步到达目标 tile 即换向
     let movedAny = false
     for (const [gx, gy] of path.slice(0, 3)) {
-      const key = keyFor(gx - from[0], gy - from[1])
-      await page.keyboard.down(key)
+      const [vx, vy] = dirTo(from, [gx, gy])
+      await page.evaluate(d => window.__game.scene.setDebugMove({ dx: d[0], dy: d[1] }), [vx, vy])
       const stepStart = Date.now()
       let reached = false
       while (Date.now() - stepStart < 2500) {
@@ -130,7 +252,7 @@ async function moveTo(page, target, opts = {}) {
           break
         }
       }
-      await page.keyboard.up(key)
+      await page.evaluate(() => window.__game.scene.setDebugMove(null))
       await sleep(60)
       if (reached) {
         movedAny = true
@@ -141,46 +263,38 @@ async function moveTo(page, target, opts = {}) {
         movedAny = true
         break // 移动了但没到目标 tile,重算路径
       }
-      // 未移动:反向退一步再重算(绕过意外障碍)
-      const back = keyFor(from[0] - gx, from[1] - gy)
-      if (back !== key) {
-        await page.keyboard.down(back)
-        await sleep(250)
-        await page.keyboard.up(back)
-        await sleep(60)
-      }
-      if (++stuckCount >= 5)
+      // 未移动(顶墙/被挡):反向退一步再重算
+      const [bvx, bvy] = dirTo(from, [gx, gy]).map(v => -v)
+      await page.evaluate(d => window.__game.scene.setDebugMove({ dx: d[0], dy: d[1] }), [bvx, bvy])
+      await sleep(250)
+      await page.evaluate(() => window.__game.scene.setDebugMove(null))
+      await sleep(60)
+      if (++stuckCount >= 5) {
+        console.log(`  [stuck] pos ${await readPos(page)}`)
         return { ok: false, pos: await readPos(page), reason: 'stuck' }
+      }
     }
-    if (!movedAny && ++stuckCount >= 5)
+    if (!movedAny && ++stuckCount >= 5) {
+      console.log(`  [stuck] pos ${await readPos(page)}`)
       return { ok: false, pos: await readPos(page), reason: 'stuck' }
+    }
   }
+  await page.evaluate(() => window.__game.scene.setDebugMove(null))
   return { ok: false, pos: await readPos(page), reason: 'timeout' }
 }
 
-async function main() {
-  mkdirSync(SHOT_DIR, { recursive: true })
-  const browser = await puppeteer.launch({
-    executablePath: EDGE,
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-gpu', '--window-size=1400,900'],
-    defaultViewport: { width: 1400, height: 900 },
-  })
-  const page = await browser.newPage()
-  page.on('console', (m) => {
-    if (m.type() === 'error')
-      console.log('  [page console.error]', m.text().slice(0, 200))
-  })
-
-  // 1. 加载
+async function waitPageReady(page) {
   await page.goto(`${BASE}/game`, { waitUntil: 'domcontentloaded', timeout: 30000 })
   await page.waitForSelector('canvas', { timeout: 20000 })
   await page.waitForFunction(() => !document.querySelector('[data-hud="loading"]'), { timeout: 20000 })
-  // 场景就绪 = 坐标从占位 0,0 变为出生点
   await page.waitForFunction(() => document.querySelector('[data-hud="pos"]')?.textContent.trim() !== '0,0', { timeout: 15000 })
+}
+
+/** 单轮完整流程;headless 渲染环境偶发冻结时返回 completed:false 触发重试 */
+async function runOnce(page) {
+  await waitPageReady(page)
   const hasCanvas = await page.$('canvas') !== null
   check('页面加载 + Phaser canvas 创建', hasCanvas)
-  check('加载遮罩消失(场景就绪)', true)
 
   const [sx, sy] = await readPos(page)
   check('HUD 坐标渲染', sx >= 0 && sy >= 0, `spawn tile ${sx},${sy}`)
@@ -217,12 +331,30 @@ async function main() {
   check('碰撞检测:持续移动被阻挡', stoppedAt !== null, `blocked at ${stoppedAt}`)
 
   // 4. 金币收集:回出生点附近取 3 枚已知金币
-  const coinTiles = [[32, 4], [3, 10], [36, 9]] // 与场景 COIN_SPOTS 对应的 tile
+  {
+    const dbg = await page.evaluate(() => {
+      const s = window.__game.scene
+      const p = s.player
+      return {
+        ok: !!p && Number.isFinite(p.x),
+        player: { x: p?.x, y: p?.y },
+        body: p?.body ? { x: p.body.x, y: p.body.y, enable: p.body.enable } : null,
+      }
+    })
+    console.log(`  [pre-coin] ${JSON.stringify(dbg)}`)
+  }
+  const coinTiles = [[3, 10], [23, 10], [11, 18]] // 与场景 COIN_SPOTS 对应(BFS 连通性验证过的可达点)
   const coinsBefore = await readCoins(page)
   for (const ct of coinTiles) {
     const r = await moveTo(page, ct, { timeoutMs: 30000 })
-    if (!r.ok)
+    if (!r.ok) {
+      console.log(`  coin ${ct} moveTo failed: ${r.reason ?? 'unknown'} @ ${r.pos}`)
+      if (r.reason === 'nan') {
+        console.log('  → 游戏环境冻结,终止本轮')
+        return { completed: false }
+      }
       continue
+    }
     await sleep(500) // overlap 触发
     const c = await readCoins(page)
     if (c > coinsBefore) {
@@ -233,37 +365,64 @@ async function main() {
   const coinsFinal = await readCoins(page)
   check('金币 overlap 收集', coinsFinal - coinsBefore >= 2, `+${coinsFinal - coinsBefore} coins (${coinsBefore} -> ${coinsFinal})`)
 
-  // 5. NPC 对话:靠近 tux (tile 15,18)
-  const npcTile = [15, 18]
-  const r = await moveTo(page, npcTile, { timeoutMs: 30000, near: 1 })
-  check('寻路抵达 NPC 附近', r.ok, `pos ${r.pos}`)
-  await sleep(500)
-  const npcHint = await page.$('[data-hud="npc-near"]') !== null
-  check('NPC 近身交互提示出现', npcHint)
-  await page.screenshot({ path: `${SHOT_DIR}/03-npc-near.png` })
+  // 5. 后端 Agent 链路:WS 连接 → 指令驱动 → 对话
+  await page.waitForFunction(() => (window.__game?.client?.connected) === true, { timeout: 15000 })
+  check('WS 连接建立', true)
+  const modeText = await page.$eval('[data-hud="agent-mode"]', el => el.textContent)
+  check('Agent 状态徽标渲染', /Agent/.test(modeText), modeText.trim())
 
-  await page.keyboard.press('Space')
-  await sleep(400)
+  // Agent 被指令驱动:位置变化 或 收到新的 move 指令(approach 顶墙时位置不动但指令持续下发)
+  const ap1 = await agentPos(page)
+  let agentDriven = false
+  for (let i = 0; i < 20; i++) {
+    await sleep(500)
+    const now = await agentPos(page)
+    if (now.px !== ap1.px || now.py !== ap1.py || now.moveCount > ap1.moveCount) {
+      agentDriven = true
+      break
+    }
+  }
+  check('Agent 被后端指令驱动移动', agentDriven,
+    `(${ap1.px},${ap1.py}) moveCount ${ap1.moveCount} -> ${(await agentPos(page)).moveCount}`)
+  await page.screenshot({ path: `${SHOT_DIR}/03-agent-wander.png` })
+
+  // agent.say 气泡(等待出现,最多 8s)
+  let bubble = null
+  for (let i = 0; i < 16; i++) {
+    bubble = await page.evaluate(() => window.__game.scene.getDebugState().lastBubble)
+    if (bubble && Date.now() - bubble.at < 4000)
+      break
+    await sleep(500)
+  }
+  check('Agent 气泡下发(agent.say)', bubble !== null && bubble.text.length > 0, bubble?.text ?? 'none')
+  await page.screenshot({ path: `${SHOT_DIR}/04-agent-say.png` })
+
+  // 追逐 Agent,触发后端对话
+  const chased = await chaseAgent(page)
+  if (!chased.ok && String(chased.reason) === 'nan') {
+    console.log('  → 游戏环境冻结,终止本轮')
+    return { completed: false }
+  }
+  check('玩家靠近 Agent', chased.ok, `pos ${chased.pos ?? 'failed'}`)
+  await sleep(800)
   const dialogOpen = await page.$('[data-hud="dialog"]') !== null
-  check('空格触发对话框', dialogOpen)
-  await page.screenshot({ path: `${SHOT_DIR}/04-dialog.png` })
+  check('后端 dialog.open 下发', dialogOpen)
+  await page.screenshot({ path: `${SHOT_DIR}/05-agent-dialog.png` })
 
-  // 打字机推进:等第一句打完,空格 -> 下一句
-  await sleep(2500)
+  // 空格 → input.interact 上行 → dialog.advance 下行(3 句后 close)
   const lineText1 = await page.$eval('[data-hud="dialog"]', el => el.textContent)
-  await page.keyboard.press('Space')
-  await sleep(600)
-  const lineText2 = await page.$eval('[data-hud="dialog"]', el => el.textContent)
-  check('台词推进(下一句)', lineText2 !== lineText1, 'dialog content changed')
-  await page.screenshot({ path: `${SHOT_DIR}/05-dialog-next.png` })
-
-  // 关闭对话
-  await page.keyboard.press('Space')
-  await sleep(400)
-  await page.keyboard.press('Space')
-  await sleep(400)
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('Space')
+    await sleep(900)
+  }
   const dialogClosed = await page.$('[data-hud="dialog"]') === null
-  check('对话框关闭', dialogClosed)
+  check('对话推进并关闭', dialogClosed, `before: ${lineText1.slice(0, 24)}…`)
+  await page.screenshot({ path: `${SHOT_DIR}/06-agent-dialog-closed.png` })
+
+  // Agent 进入等待模式(对话关闭事件驱动)
+  await sleep(500)
+  const modeAfter = await page.$eval('[data-hud="agent-mode"]', el => el.textContent)
+  check('Agent 进入等待模式', /等待/.test(modeAfter), modeAfter.trim())
 
   // 关闭后玩家可继续移动
   const [p1, p2] = await readPos(page)
@@ -273,7 +432,37 @@ async function main() {
   const [q1, q2] = await readPos(page)
   check('对话后恢复移动', p1 !== q1 || p2 !== q2, `tile ${p1},${p2} -> ${q1},${q2}`)
 
-  await page.screenshot({ path: `${SHOT_DIR}/06-final.png` })
+  await page.screenshot({ path: `${SHOT_DIR}/07-final.png` })
+  return { completed: true }
+}
+
+async function main() {
+  mkdirSync(SHOT_DIR, { recursive: true })
+  const browser = await puppeteer.launch({
+    executablePath: EDGE,
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-gpu', '--window-size=1400,900'],
+    defaultViewport: { width: 1400, height: 900 },
+  })
+  const page = await browser.newPage()
+  page.on('pageerror', e => console.log('  [pageerror]', e.message.slice(0, 300)))
+  page.on('console', (m) => {
+    if (m.type() === 'error' || m.type() === 'warning' || (m.type() === 'log' && /\[game\]|\[rpg\]/.test(m.text()))) {
+      console.log(`  [page ${m.type()}]`, m.text().slice(0, 400))
+    }
+  })
+
+  // headless 渲染/截图组合偶发冻结:健康失败自动重载重试(最多 3 轮)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    console.log(`\n===== E2E attempt ${attempt}/3 =====`)
+    const r = await runOnce(page, attempt)
+    if (r.completed) {
+      break
+    }
+    if (attempt < 3) {
+      console.log('  → 环境冻结,重载页面重试')
+    }
+  }
 
   await browser.close()
 

@@ -68,9 +68,17 @@ export default defineNuxtConfig({
     host: config.server.host,
     port: config.server.dev.port,
   },
+
   future: { compatibilityVersion: 4 },
 
   compatibilityDate: '2025-07-15',
+
+  // Nitro WebSocket 支持(游戏后端事件驱动 /api/game/ws)
+  nitro: {
+    experimental: {
+      websocket: true,
+    },
+  },
 
   typescript: {
     strict: true,

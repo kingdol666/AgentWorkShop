@@ -1,12 +1,16 @@
 <script setup lang="ts">
 /**
- * /game — Tuxemon Town 2D 自由探索 RPG demo
+ * /game — Tuxemon Town 2D 自由探索 RPG demo(后端事件驱动)
  *
- * Phaser 4 场景在客户端动态加载(SSR 安全);Vue 只负责壳与 HUD。
- * 场景 -> Vue 单向事件流:pos / fps / coins / npcNear / dialog / ready
+ * Phaser 渲染层在客户端动态加载(SSR 安全);Vue 负责壳、HUD 与 WS 连接。
+ * 数据流:
+ *   后端 Agent 决策 → WS 下行指令 → scene.handleCommand → 精灵驱动 + bus → HUD
+ *   键盘 → scene 采样 → 本地即时移动 + WS 上行(input.move/player.pos/interact)
  */
 import type Phaser from 'phaser'
+import { GameClient } from '~/game/client'
 import type { RpgScene } from '~/game/rpg-scene'
+import type { AgentMode } from '~/game/protocol'
 
 definePageMeta({
   title: 'Tuxemon Town · RPG Demo',
@@ -15,14 +19,16 @@ definePageMeta({
 const hostRef = ref<HTMLDivElement | null>(null)
 const sceneRef = shallowRef<RpgScene | null>(null)
 const gameRef = shallowRef<Phaser.Game | null>(null)
+const clientRef = shallowRef<GameClient | null>(null)
 
 // ---------- HUD 状态 ----------
 const ready = ref(false)
+const connected = ref(false)
 const pos = ref({ x: 0, y: 0, tileX: 0, tileY: 0 })
 const fps = ref(0)
 const coins = ref(0)
-const npcNear = ref<{ id: number, name: string } | null>(null)
-const dialog = ref<{ npcId: number, npcName: string, lines: string[] } | null>(null)
+const agentMode = ref<AgentMode>('idle')
+const dialog = ref<{ agentName: string, lines: string[] } | null>(null)
 const dialogText = ref('')
 const lineIndex = ref(0)
 const typing = ref(false)
@@ -30,6 +36,13 @@ const TOTAL_COINS = 14
 
 const fpsColor = computed(() => (fps.value >= 50 ? 'text-emerald-400' : fps.value >= 30 ? 'text-amber-400' : 'text-red-400'))
 const dialogVisible = computed(() => dialog.value !== null)
+const agentModeLabel = computed(() => ({
+  idle: '待机',
+  wander: '游荡',
+  approach: '靠近',
+  talk: '对话',
+  wait: '等待',
+})[agentMode.value])
 
 let typingTimer: ReturnType<typeof setInterval> | null = null
 let advanceLocked = false
@@ -62,11 +75,9 @@ function stopTyping() {
   }
 }
 
-/** 空格推进:打字中 -> 显全文;末句 -> 关闭;否则下一句 */
+/** 后端 dialog.advance:打字中 -> 显示全文;否则切下一句 */
 function advanceDialog() {
-  if (!dialog.value)
-    return
-  if (advanceLocked)
+  if (!dialog.value || advanceLocked)
     return
   if (typing.value) {
     dialogText.value = dialog.value.lines[lineIndex.value] ?? ''
@@ -81,20 +92,21 @@ function advanceDialog() {
   if (lineIndex.value < dialog.value.lines.length - 1) {
     startTyping(dialog.value.lines, lineIndex.value + 1)
   }
-  else {
-    closeDialog()
-  }
+  // 已到末句:等待后端 dialog.close
 }
 
+/** 后端 dialog.close */
 function closeDialog() {
   stopTyping()
   dialog.value = null
-  sceneRef.value?.closeDialog()
 }
 
 async function boot() {
-  if (gameRef.value || !hostRef.value)
+  console.log('[game] boot() called')
+  if (gameRef.value || !hostRef.value) {
+    console.log('[game] boot skipped', { hasGame: !!gameRef.value, hasHost: !!hostRef.value })
     return
+  }
   const [{ default: Phaser }, { RpgScene }] = await Promise.all([
     import('phaser'),
     import('~/game/rpg-scene'),
@@ -125,6 +137,18 @@ async function boot() {
   })
   gameRef.value = game
 
+  // ---------- WS 客户端:下行指令 -> 场景执行 ----------
+  const client = new GameClient({
+    onCommand: cmd => scene.handleCommand(cmd),
+    onStatus: (ok) => {
+      connected.value = ok
+    },
+  })
+  clientRef.value = client
+  // 上行传输注入:场景键盘/位置采样 -> WS
+  scene.setTransport(msg => client.send(msg))
+  client.connect()
+
   // ---------- 场景事件 -> HUD ----------
   scene.on('ready', () => {
     ready.value = true
@@ -138,18 +162,29 @@ async function boot() {
   scene.on('coins', (v) => {
     coins.value = v
   })
-  scene.on('npcNear', (v) => {
-    npcNear.value = v
+  scene.on('agentState', (e) => {
+    agentMode.value = e.mode
   })
   scene.on('dialog', (e) => {
     if (e) {
-      dialog.value = { npcId: e.npcId, npcName: e.npcName, lines: e.lines }
+      dialog.value = { agentName: e.agentName, lines: e.lines }
       startTyping(e.lines, 0)
     }
-    else {
-      advanceDialog()
-    }
   })
+  scene.on('dialogAdvance', () => advanceDialog())
+  scene.on('dialogClose', () => closeDialog())
+  scene.on('gameError', (e) => {
+    console.warn('[game] server error:', e)
+  })
+
+  // E2E 调试钩子
+  if (import.meta.client) {
+    ;(window as unknown as Record<string, unknown>).__game = {
+      get scene() { return sceneRef.value },
+      get game() { return gameRef.value },
+      get client() { return clientRef.value },
+    }
+  }
 }
 
 onMounted(() => {
@@ -157,7 +192,10 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  console.log('[game] component unmount')
   stopTyping()
+  clientRef.value?.dispose()
+  clientRef.value = null
   gameRef.value?.destroy(true)
   gameRef.value = null
   sceneRef.value = null
@@ -184,23 +222,36 @@ onBeforeUnmount(() => {
                 TUXEMON TOWN
               </div>
               <div class="text-[10px] leading-tight tracking-widest text-white/50 uppercase">
-                2D RPG · Free Explore
+                2D RPG · Agent Driven
               </div>
             </div>
           </div>
 
-          <div class="flex items-center gap-2 rounded-lg bg-black/45 px-3.5 py-2 font-mono text-xs backdrop-blur-sm">
-            <span class="text-white/50">📍</span>
-            <span
-              data-hud="pos"
-              class="text-white/90"
-            >{{ pos.tileX }},{{ pos.tileY }}</span>
-            <span class="mx-1 h-3 w-px bg-white/20" />
-            <span
-              data-hud="fps"
-              class="tabular-nums"
-              :class="fpsColor"
-            >{{ fps }} FPS</span>
+          <div class="flex flex-col items-end gap-2">
+            <!-- 连接 + Agent 状态 -->
+            <div class="flex items-center gap-2 rounded-lg bg-black/45 px-3.5 py-2 text-xs backdrop-blur-sm">
+              <span
+                class="h-2 w-2 rounded-full transition-colors"
+                :class="connected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]' : 'bg-red-400 animate-pulse'"
+              />
+              <span
+                data-hud="agent-mode"
+                class="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white/90"
+              >Agent · {{ agentModeLabel }}</span>
+            </div>
+            <div class="flex items-center gap-2 rounded-lg bg-black/45 px-3.5 py-2 font-mono text-xs backdrop-blur-sm">
+              <span class="text-white/50">📍</span>
+              <span
+                data-hud="pos"
+                class="text-white/90"
+              >{{ pos.tileX }},{{ pos.tileY }}</span>
+              <span class="mx-1 h-3 w-px bg-white/20" />
+              <span
+                data-hud="fps"
+                class="tabular-nums"
+                :class="fpsColor"
+              >{{ fps }} FPS</span>
+            </div>
           </div>
         </div>
 
@@ -226,34 +277,13 @@ onBeforeUnmount(() => {
             <span>移动</span>
           </div>
           <div class="mt-1.5 flex items-center gap-1.5">
-            <kbd class="kbd">空格</kbd><span>对话</span>
+            <kbd class="kbd">空格</kbd><span>对话推进</span>
             <span class="mx-1 text-white/40">·</span>
             <kbd class="kbd">R</kbd><span>重置金币</span>
           </div>
         </div>
 
-        <!-- 底部中央:互动提示 -->
-        <Transition
-          enter-active-class="transition duration-200"
-          enter-from-class="translate-y-3 opacity-0"
-          leave-active-class="transition duration-150"
-          leave-to-class="translate-y-3 opacity-0"
-        >
-          <div
-            v-if="npcNear && !dialogVisible"
-            data-hud="npc-near"
-            class="absolute bottom-16 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/60 px-4 py-2 text-xs text-white/90 shadow-lg backdrop-blur-sm"
-          >
-            <span class="relative flex h-2 w-2">
-              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-              <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-            </span>
-            <kbd class="kbd">空格</kbd>
-            <span>与 <b class="text-white">{{ npcNear.name }}</b> 对话</span>
-          </div>
-        </Transition>
-
-        <!-- 对话框 -->
+        <!-- 对话框(后端 dialog.* 指令驱动) -->
         <Transition
           enter-active-class="transition duration-200"
           enter-from-class="translate-y-6 opacity-0"
@@ -268,7 +298,7 @@ onBeforeUnmount(() => {
             <div class="mx-auto max-w-2xl overflow-hidden rounded-xl border border-white/15 bg-black/70 shadow-2xl backdrop-blur-md">
               <div class="flex items-center gap-2 border-b border-white/10 bg-white/5 px-4 py-2">
                 <span class="h-2 w-2 rounded-full bg-[var(--color-primary)]" />
-                <span class="text-xs font-bold tracking-wider text-white">{{ dialog?.npcName }}</span>
+                <span class="text-xs font-bold tracking-wider text-white">{{ dialog?.agentName }}</span>
                 <span class="text-[10px] text-white/40">{{ lineIndex + 1 }}/{{ dialog?.lines.length }}</span>
                 <span class="ml-auto flex items-center gap-1 text-[10px] text-white/40">
                   <kbd class="kbd">空格</kbd> 继续
@@ -310,7 +340,7 @@ onBeforeUnmount(() => {
     </div>
 
     <p class="mt-3 text-center text-xs text-white/40">
-      Phaser 4 · Arcade Physics · Tiled Tilemap · 相机跟随 · 碰撞检测 — 素材: Tuxemon (开源) / Kenney
+      Phaser 4 渲染层 · Nitro WebSocket 事件流 · 后端 Agent 驱动(模拟 Agent) — 素材: Tuxemon (开源) / Kenney
     </p>
   </div>
 </template>

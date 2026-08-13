@@ -15,6 +15,7 @@ export default {
   menu: {
     system: 'AgentWorkShop',
     dashboard: '仪表盘',
+    game: 'RPG 演练场',
     users: '用户管理',
     settings: '系统设置',
   },

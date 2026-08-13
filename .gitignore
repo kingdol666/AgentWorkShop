@@ -38,4 +38,6 @@ Thumbs.db
 # Misc
 .cache
 .temp
-*.local
+
+# 游戏渲染验证截图(脚本生成)
+.game-verify
