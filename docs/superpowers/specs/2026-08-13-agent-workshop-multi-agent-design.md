@@ -239,7 +239,7 @@ impl 依据 `x-aw-task-kind` 区分消息类型,并用 `x-aw-task-id` 作为自�
 
 - `run()` 返回 `AsyncIterable<AgentEvent>` —— 标准流式返回;事件逐条产出即被平台广播与持久化(真流式)
 - harness 差异全部隔离在 impl + adapters;平台对 mock/omp/claude 零感知
-- `ctx.workspace` 与 MCP 工具同一实现(见 §7),Agent 执行中自主调用,无需额外通路
+- `ctx.workspace` 与 MCP 工具同一实现(见 §6.1),Agent 执行中自主调用,无需额外通路
 
 ### 4.2 AgentEvent — 统一事件(对齐 A2A StreamResponse)
 
@@ -257,7 +257,7 @@ export type AgentEvent =
 
 ### 4.3 A2A 语义对象(server/services/workshop/types/a2a.ts)
 
-从 A2A 1.0 proto 提取平台所需子集(snake_case 字段与规范一致):
+从 A2A 1.0 proto 提取平台所需子集。JSON 字段采用 **camelCase**(protojson 序列化约定,与 A2A 官方 JS/TS SDK 一致;proto 定义是 snake_case,线上 JSON 是 camelCase):
 
 ```typescript
 export type Part =
@@ -297,6 +297,8 @@ export class AgentRuntime {
 
   enqueue(message: A2AMessage): void     // 投递;idle 立即唤醒消费
   getState(): 'idle' | 'busy' | 'stopped'
+  /** 中止当前 run()(任务取消/Agent 移除时);空闲时无操作 */
+  abortCurrent(): void
   stop(): Promise<void>
 }
 ```
@@ -325,6 +327,7 @@ while (state === 'idle') {
 
 - 消息(含任务)在 idle 时自动消费;busy 时只入队——"空闲接取、繁忙排队、结束续消费"
 - 同一 Agent 串行、跨 Agent 并行;事件驱动唤醒,无忙轮询
+- **挂起唤醒原语**: 每个 AgentRuntime 持有一个 promise 门闩(`wakeGate`);dequeue 无消息时 `await gate.promise`,enqueue/消费完成时 `resolve + 重建门闩`。单进程单线程(node:sqlite 同步)下无竞态
 
 ### 5.2 Mailbox — 持久化 FIFO
 
@@ -348,7 +351,7 @@ export class ChannelRuntime {
 1. `metadata['x-aw-target-agent'] = agentId` → 点对点,直投目标 mailbox(同 channel 校验)
 2. 任务消息(`x-aw-task-kind` 存在)→ 直投 assignee mailbox
 3. 无 target 的普通消息 → 广播给订阅了发送者/频道的 Agent
-4. 用户向 channel 发送 → 任务类投 lead,普通消息广播全 channel
+4. 用户向 channel 发送 → 任务类投 lead(channel 无主理人时报 `NO_LEAD_AGENT`,提示先创建 lead),普通消息广播全 channel
 
 **订阅**: `subscriptions` 表(经 MCP `a2a.subscribe`);订阅关系只在本 channel 内生效。
 
@@ -421,6 +424,7 @@ export class AgentChannelManager {
 | `workshop.task.get` | `{taskId}` | Agent: 同 channel | 看同事作业内容与成果 |
 | `workshop.task.report` | `{taskId, progress?, artifact?, message?}` | **仅 assignee** | 上报进度/成果 |
 | `workshop.task.complete` | `{taskId, artifacts?}` | **仅 assignee** | 完成任务 |
+| `workshop.task.cancel` | `{taskId}` | **仅 lead/creator** | 取消任务(卡死回收;向 assignee 投递 `x-aw-task-kind: cancel`) |
 | `workshop.a2a.send` | `{toAgentId, parts, metadata?}` | Agent: 同 channel | 与同事点对点通信 |
 | `workshop.a2a.poll` | `{limit?}` | Agent: 自己 | 拉取自己的消息 |
 | `workshop.a2a.subscribe` | `{agentIds?}` | Agent: 同 channel | 订阅同事产出 |
@@ -446,12 +450,14 @@ MCP 请求必须携带 `Authorization: Bearer <token>`;平台按 token 解析 ca
 | `POST /api/workshop/channels/:id/tasks` | **向 channel 发任务** → 自动路由 lead |
 | `GET /api/workshop/channels/:id/tasks` | 任务列表(含进度) |
 | `GET /api/workshop/tasks/:id` | 任务详情(含成果) |
+| `POST /api/workshop/tasks/:id/cancel` | 取消任务(用户手动回收卡死任务) |
 
 与现有 `server/api/**` 约定一致(defineApiHandler + zod schema + repository/service 分层)。
 ### 6.3 A2A 对外标准端点
 
 - `GET /api/workshop/a2a/:agentId/card` — AgentCard(由 AgentConfig 动态生成;capabilities.streaming=true;skills 由 config 声明)
-- `POST /api/workshop/a2a/:agentId/rpc` — JSON-RPC 2.0: `tasks/send`(同步阻塞至终态)、`tasks/sendSubscribe`(SSE: task → status-update/artifact-update → 终态关闭)、`tasks/get`、`tasks/list`、`tasks/cancel`、`message/send`、`message/stream`、`agent/getCard`
+- `POST /api/workshop/a2a/:agentId/rpc` — JSON-RPC 2.0: `tasks/send`(同步阻塞至终态)、`tasks/sendSubscribe`、`tasks/get`、`tasks/list`、`tasks/cancel`、`message/send`、`message/stream`、`agent/getCard`
+- **SSE 事件集**(规范 §9 约定,`event: <type>\ndata: <json>\n\n`): `task`(初始 Task 对象)→ `status-update` / `artifact-update` / `message` → 任务达终态即关闭流
 - 外部 A2A 客户端向某 Agent 发任务 → 转成任务消息投递其 mailbox → 事件流映射回 A2A 任务生命周期
 
 ### 6.4 WS Hub — 前端观察
@@ -546,7 +552,9 @@ CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
 Nitro plugin(`server/plugins/workshop.ts`):
 
 1. 打开 sqlite,执行 schema
-2. `manager.restore()`: `enabled=1` channels → `enabled=1` agents(按 harness 工厂装配 impl)→ 建 ChannelRuntime/AgentRuntime;messages 中 `consuming` 重置 `pending`
+2. `manager.restore()`: `enabled=1` channels → `enabled=1` agents(按 harness 工厂装配 impl)→ 建 ChannelRuntime/AgentRuntime
+   - messages: `consuming` 重置 `pending`(重新投递)
+   - **tasks: 所有非终态(SUBMITTED/ASSIGNED/WORKING/WAITING)统一重置为 `ASSIGNED`**——与消息重新投递对齐,保证消费循环的 `ASSIGNED→WORKING` 接取联动不触发非法迁移;WAITING 的父任务同时重置(其未完成子任务也一并回 ASSIGNED)
 3. 注册 WS hub、MCP server、A2A 路由,注入 manager 单例
 4. 关机: 停止消费循环(优雅等待当前 run 事件流结束或超时中止)
 
@@ -555,7 +563,7 @@ Nitro plugin(`server/plugins/workshop.ts`):
 - **harness 不可用**: impl 首事件 `{kind:'error'}` 后结束流;消息置 consumed 不重试;错误广播到 channel
 - **run() 抛异常**: 捕获 → 回 idle → 消息 consumed(带错误)→ 继续下一条(单条失败不阻塞管道)
 - **非法状态迁移/越权调用**(非 lead dispatch、非 assignee complete、跨 channel 访问): MCP 返回明确错误码(`FORBIDDEN`/`SCOPE_VIOLATION`/`INVALID_TRANSITION`);Agent 的 workspace 直调同样校验
-- **取消**: `signal.abort()` → impl 流终止 → 任务置 CANCELED(或由 lead 显式取消)
+- **取消**: `task.cancel` → 任务置 CANCELED + 向 assignee 投递 `x-aw-task-kind: cancel` 消息;若 assignee 正在执行该任务(run 中),平台对其运行中的 `run()` 发起 `signal.abort()` 终止事件流;父任务若在 WAITING 则一并转 CANCELED(其子任务级联取消)
 - **A2A 端点错误**: 按规范 §3.3.2 返回 JSON-RPC error 对象
 
 ## 10. 测试策略
@@ -567,13 +575,15 @@ Nitro plugin(`server/plugins/workshop.ts`):
 | `test-task-engine.ts` | 状态机全迁移路径 + 非法迁移拒绝;进度联动(artifact 分块);子任务完成通知 lead |
 | `test-channel-routing.ts` | 点对点直投;广播订阅过滤;任务消息直投 assignee;**跨 channel 不可达** |
 | `test-manager-persistence.ts` | 创建→重启 restore→enabled=0 不加载;consuming 重置 pending |
-| `test-mcp-tools.ts` | 15 工具参数校验 + token 身份解析 + **作用域隔离**(channel A 的 Agent 查不到 channel B) |
+| `test-mcp-tools.ts` | 16 工具参数校验 + token 身份解析 + **作用域隔离**(channel A 的 Agent 查不到 channel B) |
 | `test-rest-api.ts` | HTTP REST 端点: 建 channel/agent、发任务→lead、查任务进度 |
 | `test-a2a-server.ts` | tasks/send、tasks/sendSubscribe SSE 事件序列、tasks/get |
 | `test-ws-hub.ts` | snapshot/agent.status/task.progress 事件推送 |
 | `test-orchestration.ts` | 端到端: 用户发任务 → mock lead 分解 2 子任务 → mock worker 执行上报 → 汇总交付(主任务 COMPLETED + 成果可见) |
 
 mock impl 提供**编排剧本**(lead: 接任务→`listAgents` 找下属→拆 2 子任务→等 `child-completed`→汇总;worker: 接任务→`reportTask` 进度→`completeTask`),每步可配置演示延迟(默认 300ms,让 WS 前端可观看到进度流转),`test-orchestration` 端到端证明"自动接取、完成下发、获取同事进度"。
+
+**测试隔离**: 全部测试用独立 sqlite 实例(`:memory:` 或 `data/workshop-test.sqlite`),运行时与测试库互不污染;Manager/Engine 以依赖注入方式接收 repository,测试可替换。
 
 ## 11. 实施阶段(依赖顺序)
 
@@ -584,7 +594,7 @@ mock impl 提供**编排剧本**(lead: 接任务→`listAgents` 找下属→拆 
 | 3 | Mailbox + AgentRuntime 消费循环 + ChannelRuntime 隔离路由 + Manager + 恢复 | `test-agent-runtime`/`test-channel-routing` 绿 |
 | 4 | TaskEngine(状态机/进度/父子/完成通知) | `test-task-engine` 绿 |
 | 5 | Mock impl(lead/worker 剧本)+ 工厂(harness 装配) | mock 全链路跑通 |
-| 6 | MCP server(15 工具 + token 身份 + 作用域隔离) | `test-mcp-tools` 绿 |
+| 6 | MCP server(16 工具 + token 身份 + 作用域隔离) | `test-mcp-tools` 绿 |
 | 7 | HTTP REST 用户入口 + A2A 对外端点 + WS hub + Nitro plugin | `test-rest-api`/`test-a2a-server`/`test-ws-hub` 绿 |
 | 8 | 端到端编排测试 + claude/omp impl 骨架(transport 抽象,端点信息待填) | `test-orchestration` 绿;未配置时优雅报错 |
 
