@@ -6,7 +6,7 @@
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
   "packageManager": "pnpm@11.9.0",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=23.4.0"
   },
   "scripts": {
     "dev": "nuxt dev",
@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@pinia/nuxt": "^0.11.0",
     "@vueuse/core": "^13.0.0",
     "@vueuse/nuxt": "^13.0.0",
