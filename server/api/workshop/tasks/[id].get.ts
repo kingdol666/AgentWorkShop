@@ -1,11 +1,13 @@
 /**
- * GET /api/workshop/tasks/:id —— 任务详情(含成果 artifacts/history)(设计文档 §6.2)。
- * 任务不存在 → 404 NOT_FOUND。
+ * GET /api/workshop/tasks/:id —— 任务详情(含成果 artifacts/history)。
+ * - 无 token:管理面路径(用户手动查看)
+ * - 带 Bearer token:Agent 路径,经 manager.getTask 做同 channel 作用域校验(跨 channel → 403)
  */
 import { getRouterParam } from 'h3'
 import { AppError } from '../../../utils/errors'
 import { defineApiHandler } from '../../../utils/response'
 import { getWorkshopManager } from '../../../plugins/workshop'
+import { resolveCallerOrNull } from '../caller'
 import type { AgentChannelManager } from '../../../services/workshop/runtime/manager'
 import type { TaskEngine } from '../../../services/workshop/runtime/agent-runtime'
 
@@ -16,7 +18,13 @@ function taskEngineOf(manager: AgentChannelManager): TaskEngine {
 
 export default defineApiHandler(async (event) => {
   const taskId = getRouterParam(event, 'id')!
-  const task = taskEngineOf(getWorkshopManager()).get(taskId)
+  const manager = getWorkshopManager()
+  const caller = resolveCallerOrNull(event)
+  if (caller) {
+    // Agent 路径:作用域校验(同 channel 可见,跨 channel 抛 SCOPE_VIOLATION)
+    return manager.getTask(caller.id, taskId)
+  }
+  const task = taskEngineOf(manager).get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
   return task
 })
