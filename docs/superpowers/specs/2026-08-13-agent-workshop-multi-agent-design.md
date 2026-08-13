@@ -1,6 +1,6 @@
 # AgentWorkShop 多 Agent 协同作业系统设计
 
-> 状态: 待审阅(v2,任务驱动模型) | 日期: 2026-08-13 | 范围: `server/services/workshop/**` + 平台 MCP/A2A/WS 三入口
+> 状态: 待审阅(v3,任务驱动模型 + 四入口) | 日期: 2026-08-13 | 范围: `server/services/workshop/**` + 平台 MCP/A2A/WS/REST 四入口
 
 ## 1. 背景与目标
 
@@ -11,7 +11,7 @@
 - **任务对象化**: 任务是独立对象(状态机/归属/进度/成果/父子关系);Agent 作为独立对象驱动任务;可查看同事任务进度与作业内容
 - **harness 无关**: 每个 Agent 声明自己的 harness(mock/claude/omp);任何 harness 经 impl 适配层转成统一数据接口与事件流;平台零感知
 - **自动作业**: 任务消息投递 mailbox → Agent 空闲即自动接取执行 → 完成/失败后继续消费队列
-- 平台仅提供 WS + 框架;Channel/Agent 管理当前手动(后续上位机 AgentBrain 自动化)
+- 平台提供 WS/MCP/A2A/REST 四入口 + 框架;Channel/Agent 管理当前手动(后续上位机 AgentBrain 自动化)
 
 ### 已确认决策
 
@@ -119,10 +119,11 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-  subgraph L3["L3 绑定层(入口)"]
+  subgraph L3["L3 绑定层(四入口)"]
     WS["WS Hub /ws/workshop/:channelId"]
     MCP["MCP Server(JSON-RPC + SSE)"]
     A2A["A2A Server(JSON-RPC + SSE + AgentCard)"]
+    REST["HTTP REST(用户手动管理/发任务)"]
   end
 
   subgraph L2["L2 编排层(运行时)"]
@@ -145,6 +146,7 @@ graph TB
   WS --> MGR
   MCP --> MGR
   A2A --> MGR
+  REST --> MGR
   CH --> DB
 
   subgraph IMPL["Agent 实现层(harness 无关)"]
@@ -202,6 +204,8 @@ export interface AgentInterface {
 
 ```typescript
 export interface AgentWorkspace {
+  /** 列出本 Channel 同事(lead 分解任务前必须知道有哪些下属) */
+  listAgents(): Promise<AgentInfo[]>
   /** 任务分发(仅 lead;创建子任务并指派) */
   dispatchTask(input: { parentTaskId?, assigneeId, title, description?, parts? }): Promise<WorkspaceTask>
   /** 查看同 Channel 任务列表(含同事) */
@@ -221,6 +225,16 @@ export interface AgentWorkspace {
 }
 ```
 
+**任务消息约定(平台投递消息的 metadata)**:
+
+| `metadata` 键 | 值 | 含义 |
+|---|---|---|
+| `x-aw-task-kind` | `'assign' \| 'child-completed' \| 'cancel'` | 消息的任务语义类型 |
+| `x-aw-task-id` | taskId | 关联任务(assign=被指派任务;child-completed=**父任务** id) |
+| `x-aw-child-task-id` | taskId | child-completed 时的子任务 id |
+
+impl 依据 `x-aw-task-kind` 区分消息类型,并用 `x-aw-task-id` 作为自身会话状态的键(无状态 impl 按 taskId 恢复"我正在统筹哪个任务")。
+
 设计要点:
 
 - `run()` 返回 `AsyncIterable<AgentEvent>` —— 标准流式返回;事件逐条产出即被平台广播与持久化(真流式)
@@ -233,12 +247,13 @@ export interface AgentWorkspace {
 export type AgentEvent =
   | { kind: 'status', status: A2ATaskStatus }                                  // → status-update
   | { kind: 'message', message: A2AMessage }                                   // → message
-  | { kind: 'artifact', artifact: A2AArtifact, append?: boolean, lastChunk?: boolean }  // → artifact-update
+  | { kind: 'artifact', artifact: A2AArtifact, append?: boolean, lastChunk?: boolean, totalChunks?: number }  // → artifact-update
   | { kind: 'error', error: A2AError }
   | { kind: 'done', final?: { task?: A2ATask } }
 ```
 
-平台对 `artifact`/`status` 事件做**任务进度联动**: 事件携带 taskId 时自动更新 `tasks.progress/artifacts/state` 并广播进度(见 §5.5)。
+平台对 `artifact`/`status` 事件做**任务成果联动**: 事件关联 taskId 时自动追加 `tasks.artifacts/history` 并广播。
+**任务进度(0-100)只由 `reportTask({progress})` 显式上报**(impl 自行掌握完成度),artifact 事件可选携带 `totalChunks` 时平台按 `已收分块/总数` 折算——两个来源取最近一次更新,避免依赖流式中不可知的总数。
 
 ### 4.3 A2A 语义对象(server/services/workshop/types/a2a.ts)
 
@@ -294,8 +309,12 @@ while (state === 'idle') {
   if (!msg) return
   state = 'busy'
   try {
+    // 任务消息联动: assign → ASSIGNED→WORKING(接取); child-completed → 父任务已在 WAITING(由 TaskEngine 恢复 WORKING)
+    if (msg.metadata?.['x-aw-task-kind'] === 'assign') {
+      await taskEngine.transition(msg.metadata['x-aw-task-id'], 'WORKING', agentId)
+    }
     for await (const event of impl.run(toRequest(msg), ctx)) {
-      channelBus.emit(event, msg)  // 逐事件广播 + 持久化 + 任务进度联动
+      channelBus.emit(event, msg)  // 逐事件广播 + 持久化 + 任务成果联动
     }
   } finally {
     state = 'idle'
@@ -303,7 +322,6 @@ while (state === 'idle') {
     mailbox.wake()                 // 继续消费积压
   }
 }
-```
 
 - 消息(含任务)在 idle 时自动消费;busy 时只入队——"空闲接取、繁忙排队、结束续消费"
 - 同一 Agent 串行、跨 Agent 并行;事件驱动唤醒,无忙轮询
@@ -383,7 +401,7 @@ export class AgentChannelManager {
 
 **对象化管理**: Channel/Agent/Task 全部是对象(ChannelRuntime/AgentRuntime/WorkspaceTask);Manager 只持有 `Map<channelId, ChannelRuntime>`,所有操作走对象方法,无散落的全局状态。
 
-## 6. 三个入口(L3 绑定)
+## 6. 四个入口(L3 绑定)
 
 ### 6.1 MCP Server — Agent 自主作业面
 
@@ -407,15 +425,36 @@ export class AgentChannelManager {
 | `workshop.a2a.poll` | `{limit?}` | Agent: 自己 | 拉取自己的消息 |
 | `workshop.a2a.subscribe` | `{agentIds?}` | Agent: 同 channel | 订阅同事产出 |
 
-**作用域隔离铁律**: 每个 Agent 调用工具时,`x-aw-agent-id` 头解析出 caller;所有查询/通信按 caller 的 channelId 过滤——Agent 只能看见自己 Channel 的同事、任务与消息,跨 Channel 查询一律空/拒绝。
+**身份凭证与防冒用**: 每个 Agent 创建时生成 `token`(UUIDv4,存 `agents.token`)。
+MCP 请求必须携带 `Authorization: Bearer <token>`;平台按 token 解析 caller——
+无 token 或无效 token 一律拒绝(`UNAUTHORIZED`)。`workshop.a2a.send/poll/subscribe` 的
+`fromAgentId` 由 token 决定,不接受请求体自报(防伪造)。
 
-### 6.2 A2A 对外标准端点
+### 6.2 HTTP REST — 用户手动作业入口(管理阶段)
+
+`server/api/workshop/`:用户(人)经 HTTP 管理 Channel/Agent 并向 Channel 发任务——
+这是"手动管理"阶段的落地点,后续由上位机 AgentBrain 经同一 Manager 接口自动化。
+
+| 端点 | 说明 |
+|------|------|
+| `POST /api/workshop/channels` | 创建 channel(可带 leadAgent 定义) |
+| `GET /api/workshop/channels` | 列表 |
+| `DELETE /api/workshop/channels/:id` | 删除 |
+| `POST /api/workshop/channels/:id/agents` | 创建 Agent(harness/role/config) |
+| `GET /api/workshop/channels/:id/agents` | 列 Agent |
+| `DELETE /api/workshop/agents/:id` | 删除 Agent |
+| `POST /api/workshop/channels/:id/tasks` | **向 channel 发任务** → 自动路由 lead |
+| `GET /api/workshop/channels/:id/tasks` | 任务列表(含进度) |
+| `GET /api/workshop/tasks/:id` | 任务详情(含成果) |
+
+与现有 `server/api/**` 约定一致(defineApiHandler + zod schema + repository/service 分层)。
+### 6.3 A2A 对外标准端点
 
 - `GET /api/workshop/a2a/:agentId/card` — AgentCard(由 AgentConfig 动态生成;capabilities.streaming=true;skills 由 config 声明)
 - `POST /api/workshop/a2a/:agentId/rpc` — JSON-RPC 2.0: `tasks/send`(同步阻塞至终态)、`tasks/sendSubscribe`(SSE: task → status-update/artifact-update → 终态关闭)、`tasks/get`、`tasks/list`、`tasks/cancel`、`message/send`、`message/stream`、`agent/getCard`
 - 外部 A2A 客户端向某 Agent 发任务 → 转成任务消息投递其 mailbox → 事件流映射回 A2A 任务生命周期
 
-### 6.3 WS Hub — 前端观察
+### 6.4 WS Hub — 前端观察
 
 `server/api/workshop/ws.ts`,`/ws/workshop/:channelId`。
 
@@ -454,6 +493,7 @@ CREATE TABLE IF NOT EXISTS agents (
   name        TEXT NOT NULL,
   harness     TEXT NOT NULL,                  -- 'mock' | 'claude' | 'omp'
   role        TEXT NOT NULL DEFAULT 'worker', -- 'lead' | 'worker'
+  token       TEXT NOT NULL,                  -- MCP 身份凭证(UUIDv4,创建时生成)
   config_json TEXT NOT NULL DEFAULT '{}',
   enabled     INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL,
@@ -527,12 +567,13 @@ Nitro plugin(`server/plugins/workshop.ts`):
 | `test-task-engine.ts` | 状态机全迁移路径 + 非法迁移拒绝;进度联动(artifact 分块);子任务完成通知 lead |
 | `test-channel-routing.ts` | 点对点直投;广播订阅过滤;任务消息直投 assignee;**跨 channel 不可达** |
 | `test-manager-persistence.ts` | 创建→重启 restore→enabled=0 不加载;consuming 重置 pending |
-| `test-mcp-tools.ts` | 15 工具参数校验 + 身份防冒用 + **作用域隔离**(channel A 的 Agent 查不到 channel B) |
+| `test-mcp-tools.ts` | 15 工具参数校验 + token 身份解析 + **作用域隔离**(channel A 的 Agent 查不到 channel B) |
+| `test-rest-api.ts` | HTTP REST 端点: 建 channel/agent、发任务→lead、查任务进度 |
 | `test-a2a-server.ts` | tasks/send、tasks/sendSubscribe SSE 事件序列、tasks/get |
 | `test-ws-hub.ts` | snapshot/agent.status/task.progress 事件推送 |
 | `test-orchestration.ts` | 端到端: 用户发任务 → mock lead 分解 2 子任务 → mock worker 执行上报 → 汇总交付(主任务 COMPLETED + 成果可见) |
 
-mock impl 提供**编排剧本**(lead: 接任务→拆 2 子任务→等完成→汇总;worker: 接任务→report 进度→complete),`test-orchestration` 端到端证明"自动接取、完成下发、获取同事进度"。
+mock impl 提供**编排剧本**(lead: 接任务→`listAgents` 找下属→拆 2 子任务→等 `child-completed`→汇总;worker: 接任务→`reportTask` 进度→`completeTask`),每步可配置演示延迟(默认 300ms,让 WS 前端可观看到进度流转),`test-orchestration` 端到端证明"自动接取、完成下发、获取同事进度"。
 
 ## 11. 实施阶段(依赖顺序)
 
@@ -543,8 +584,8 @@ mock impl 提供**编排剧本**(lead: 接任务→拆 2 子任务→等完成�
 | 3 | Mailbox + AgentRuntime 消费循环 + ChannelRuntime 隔离路由 + Manager + 恢复 | `test-agent-runtime`/`test-channel-routing` 绿 |
 | 4 | TaskEngine(状态机/进度/父子/完成通知) | `test-task-engine` 绿 |
 | 5 | Mock impl(lead/worker 剧本)+ 工厂(harness 装配) | mock 全链路跑通 |
-| 6 | MCP server(15 工具 + 作用域隔离) | `test-mcp-tools` 绿 |
-| 7 | A2A 对外端点 + WS hub + Nitro plugin | `test-a2a-server`/`test-ws-hub` 绿 |
+| 6 | MCP server(15 工具 + token 身份 + 作用域隔离) | `test-mcp-tools` 绿 |
+| 7 | HTTP REST 用户入口 + A2A 对外端点 + WS hub + Nitro plugin | `test-rest-api`/`test-a2a-server`/`test-ws-hub` 绿 |
 | 8 | 端到端编排测试 + claude/omp impl 骨架(transport 抽象,端点信息待填) | `test-orchestration` 绿;未配置时优雅报错 |
 
 ## 12. 非目标(YAGNI)
@@ -552,6 +593,7 @@ mock impl 提供**编排剧本**(lead: 接任务→拆 2 子任务→等完成�
 - 不做 AgentBrain 上位机(后续)
 - 不做多进程/分布式(单进程单实例)
 - 不做消息重试(retry)/TTL 清理(仅 at-least-once + consuming 重置)
+- 不做任务超时/自动失败(卡死任务由用户或 lead 手动取消)
 - 不做 A2A extensions 与 pushNotification 完整实现(端点接受但不扩展语义)
 - 不做前端管理 UI(平台仅 WS + 框架;验证用测试 + 现有 /game 页面模式)
 - 不做动态重新指派(任务可取消重建;后续按需)
