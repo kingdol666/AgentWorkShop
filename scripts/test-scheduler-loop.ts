@@ -174,7 +174,7 @@ function setup(opts: SetupOptions = {}): Setup {
   const workerInfo = rowToAgentInfo(workerRow)
 
   const cr = new ChannelRuntime(channel.id, { taskEngine: engine, subscriptionRepo: subscriptions })
-  const bus: ChannelBus = { emit: () => {}, onTaskEvent: () => {}, wakeScheduler: () => {} }
+  const bus: ChannelBus = { emit: () => {}, onEvent: () => () => {}, notifyTask: () => {}, notifyAgent: () => {}, onAgentStatus: () => {}, onTaskEvent: () => {}, wakeScheduler: () => {} }
 
   const lead = new AgentRuntime(leadInfo, opts.leadImpl ?? new MockAgentImpl(leadInfo.config), {
     mailbox: new Mailbox(messages, leadInfo.id, () => cr.wakeScheduler()),

@@ -1,8 +1,8 @@
 /**
  * AgentRuntime — Agent 独立运行时对象。
  * 状态机 idle/busy/stopped + 消费循环(自动接取/自动作业)+ run/supervise 互斥 + abort。
- * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块 T3。
  */
+import { randomUUID } from 'node:crypto'
 import type {
   AgentEvent,
   AgentInfo,
@@ -17,10 +17,18 @@ import type { A2AMessage, A2AArtifact, Part } from '../types/a2a'
 import type { TaskState, WorkspaceTask } from '../types/task'
 import type { Mailbox } from './mailbox'
 
-/** ChannelBus:运行时事件总线(逐事件广播 + 任务事件通知 + 调度唤醒) */
+/** ChannelBus:运行时事件总线(逐事件广播 + 任务/成员事件通知 + 调度唤醒) */
 export interface ChannelBus {
+  /** AgentEvent 流式广播:所有 harness 的统一事件出口(自定义协议流) */
   emit(event: AgentEvent, source: A2AMessage): void
+  /** 订阅 AgentEvent 流(monitor/WS 消费);返回退订函数 */
+  onEvent(fn: (event: AgentEvent, source: A2AMessage) => void): () => void
+  /** 任务事件通知(状态迁移/进度变化;由 TaskEngine hooks 统一触发) */
+  notifyTask(e: { taskId: string, state?: TaskState, progress?: number, agentId?: string }): void
   onTaskEvent(fn: (e: { taskId: string, state?: TaskState, progress?: number }) => void): void
+  /** 成员状态通知(idle/busy/stopped;AgentRuntime 转换处触发,事件驱动无轮询) */
+  notifyAgent(e: { agentId: string, state: 'idle' | 'busy' | 'stopped' }): void
+  onAgentStatus(fn: (e: { agentId: string, state: 'idle' | 'busy' | 'stopped' }) => void): void
   wakeScheduler(): void
 }
 
@@ -53,8 +61,7 @@ export interface TaskEngine {
 }
 
 /**
- * AgentRuntime 结构契约(ChannelRuntime 视角)。
- * 以接口声明依赖,便于路由测试注入 fake 与集成装配真实 AgentRuntime。
+ * AgentRuntime 的结构契约(ChannelRuntime/SchedulerLoop 消费的最小接口)。
  */
 export interface AgentRuntimeLike {
   readonly agentId: string
@@ -66,6 +73,8 @@ export interface AgentRuntimeLike {
   abortCurrent(): void
   wakeMailbox(): void
   stop(): Promise<void>
+  /** 平台侧合成事件出口(如 SchedulerLoop 汇总成果);转发 ChannelBus.emit 走统一事件流 */
+  emitExternal(event: AgentEvent, fromAgentId?: string): void
 }
 
 export class AgentRuntime {
@@ -108,6 +117,18 @@ export class AgentRuntime {
   /** 中止当前 run(任务取消/Agent 移除时);空闲时无操作 */
   abortCurrent(): void {
     this.abortController?.abort()
+  }
+
+  emitExternal(event: AgentEvent, fromAgentId?: string): void {
+    // 合成 source(monitor 依 metadata 归属 agent);平台侧产出与 harness 事件同流
+    const source: A2AMessage = {
+      messageId: randomUUID(),
+      contextId: this.channelId,
+      role: 'ROLE_AGENT',
+      parts: [],
+      metadata: { 'x-aw-from-agent': fromAgentId ?? this.agentId },
+    }
+    this.deps.bus.emit(event, source)
   }
 
   /** 启动消费循环 */
@@ -188,11 +209,14 @@ export class AgentRuntime {
 
   private async processMessage(msg: A2AMessage): Promise<void> {
     this.state = 'busy'
+    this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'busy' })
     try {
-      // 任务消息联动:assign → WORKING(自动接取)
+      // 任务消息联动:assign → WORKING(自动接取;状态事件由 TaskEngine transition hooks 广播)
       if (msg.metadata?.['x-aw-task-kind'] === 'assign') {
         const taskId = msg.metadata?.['x-aw-task-id'] as string | undefined
-        if (taskId) await this.deps.taskEngine.transition(taskId, 'WORKING', this.agentId)
+        if (taskId) {
+          await this.deps.taskEngine.transition(taskId, 'WORKING', this.agentId)
+        }
       }
       // 每次 run 新建 AbortController;abort 后事件流终止
       this.abortController = new AbortController()
@@ -212,7 +236,10 @@ export class AgentRuntime {
     }
     finally {
       this.abortController = null
-      if (this.state === 'busy') this.state = 'idle'
+      if (this.state === 'busy') {
+        this.state = 'idle'
+        this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'idle' })
+      }
       this.deps.mailbox.markConsumed(msg.messageId)
     }
   }

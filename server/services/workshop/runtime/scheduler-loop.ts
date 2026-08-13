@@ -253,6 +253,10 @@ export class SchedulerLoop {
       }
       case 'complete': {
         const completed = this.lead.taskEngine.complete(decision.taskId, decision.artifacts)
+        // 汇总成果走统一事件流(与 harness 事件同构,monitor/WS 可见)
+        for (const artifact of decision.artifacts ?? []) {
+          this.lead.emitExternal({ kind: 'artifact', artifact }, this.lead.agentId)
+        }
         if (completed.parentId) {
           this.lead.taskEngine.onChildCompleted(completed)
           const parent = this.lead.taskEngine.get(completed.parentId)

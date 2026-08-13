@@ -162,6 +162,10 @@ function setup(): Setup {
   const busEvents: { event: AgentEvent, source: A2AMessage }[] = []
   const bus: ChannelBus = {
     emit: (event, source) => busEvents.push({ event, source }),
+    onEvent: () => () => {},
+    notifyTask: () => {},
+    notifyAgent: () => {},
+    onAgentStatus: () => {},
     onTaskEvent: () => {},
     wakeScheduler: () => {},
   }

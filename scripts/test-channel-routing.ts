@@ -89,6 +89,8 @@ class FakeAgentRuntime implements AgentRuntimeLike {
   }
 
   async stop(): Promise<void> {}
+
+  emitExternal(): void {}
 }
 
 function main(): void {

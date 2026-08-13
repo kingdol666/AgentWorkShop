@@ -46,7 +46,16 @@ function rowToTask(row: TaskRow): WorkspaceTask {
 }
 
 export class TaskEngine {
-  constructor(private readonly repos: { tasks: TaskRepo, messages: MessageRepo }) {}
+  /**
+   * hooks.onTaskChange:任务状态迁移的统一通知点(monitor/WS 消费)。
+   * 所有迁移必经 transition(),故状态事件不漏发;create/dispatch 的初始态直接落库,单独补发。
+   */
+  constructor(
+    private readonly repos: { tasks: TaskRepo, messages: MessageRepo },
+    private readonly hooks?: {
+      onTaskChange?(e: { taskId: string, channelId: string, state: TaskState, agentId?: string }): void
+    },
+  ) {}
 
   /** 任务投递消息的文本 parts:title + 可选 description */
   private taskParts(title: string, description?: string): Part[] {
@@ -115,7 +124,9 @@ export class TaskEngine {
         this.transition(parent.id, 'WAITING', input.creatorId)
       }
     }
-    return rowToTask(row)
+    const created = rowToTask(row)
+    this.hooks?.onTaskChange?.({ taskId: created.id, channelId: created.channelId, state: 'SUBMITTED', agentId: input.assigneeId })
+    return created
   }
 
   /** 主理人分解:创建子任务(ASSIGNED)+ 向 assignee 投递 assign 消息 + 父任务转 WAITING */
@@ -148,10 +159,12 @@ export class TaskEngine {
     if (freshParent && freshParent.state !== 'WAITING') {
       this.transition(parent.id, 'WAITING', parent.assigneeId)
     }
-    return rowToTask(child)
+    const created = rowToTask(child)
+    this.hooks?.onTaskChange?.({ taskId: created.id, channelId: created.channelId, state: 'ASSIGNED', agentId: input.assigneeId })
+    return created
   }
 
-  /** 状态机校验迁移;非法迁移抛 AppError('INVALID_TRANSITION', 400) */
+  /** 状态机校验迁移;非法迁移抛 AppError('INVALID_TRANSITION', 400);成功后广播任务事件 */
   transition(taskId: string, state: TaskState, by: string): WorkspaceTask {
     const row = this.repos.tasks.findById(taskId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
@@ -163,6 +176,7 @@ export class TaskEngine {
     const updated = this.repos.tasks.update(taskId, { state })
     if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
     void by // 操作者预留(历史/审计);当前行模型无独立字段,暂不持久化
+    this.hooks?.onTaskChange?.({ taskId, channelId: updated.channelId, state, agentId: by || undefined })
     return rowToTask(updated)
   }
 

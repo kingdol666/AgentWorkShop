@@ -8,7 +8,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { AppError } from '../../../utils/errors'
 import type { A2AMessage, A2AArtifact, Part } from '../types/a2a'
 import type { TaskState, WorkspaceTask } from '../types/task'
-import type { AgentInfo, AgentInterface, AgentWorkspace } from '../agents/agent-interface'
+import type { AgentInfo, AgentInterface, AgentWorkspace, AgentEvent } from '../agents/agent-interface'
 import type { ChannelRepo } from '../db/channel.repo'
 import type { AgentRepo } from '../db/agent.repo'
 import type { MessageRepo } from '../db/message.repo'
@@ -94,7 +94,12 @@ export class AgentChannelManager {
 
   private getTaskEngine(): TaskEngine {
     if (!this.taskEngine) {
-      const factory = this.deps.taskEngineFactory ?? (r => new TaskEngineImpl(r))
+      const factory = this.deps.taskEngineFactory ?? (r => new TaskEngineImpl(r, {
+        // 状态迁移统一广播:transition/create/dispatch 的状态事件经 hooks → channel bus
+        onTaskChange: (e) => {
+          this.buses.get(e.channelId)?.notifyTask({ taskId: e.taskId, state: e.state, agentId: e.agentId })
+        },
+      }))
       this.taskEngine = factory({ tasks: this.deps.repos.tasks, messages: this.deps.repos.messages })
     }
     return this.taskEngine
@@ -114,19 +119,85 @@ export class AgentChannelManager {
   }
 
   private buildBus(cr: ChannelRuntime): ChannelBus {
-    const listeners: Array<(e: { taskId: string, state?: TaskState, progress?: number }) => void> = []
+    const eventListeners = new Set<(event: AgentEvent, source: A2AMessage) => void>()
+    const taskListeners = new Set<(e: { taskId: string, state?: TaskState, progress?: number }) => void>()
+    const agentListeners = new Set<(e: { agentId: string, state: 'idle' | 'busy' | 'stopped' }) => void>()
     return {
-      // 事件广播由集成阶段(WS hub)监听 onTaskEvent;T3 仅做调度唤醒
-      emit: () => {
+      // AgentEvent 流式广播:harness 统一事件出口(monitor/WS 订阅)+ 调度唤醒
+      emit: (event, source) => {
+        for (const fn of eventListeners) {
+          try {
+            fn(event, source)
+          }
+          catch (err) {
+            console.error('[ChannelBus] event listener error:', err)
+          }
+        }
         cr.wakeScheduler()
       },
+      onEvent: (fn) => {
+        eventListeners.add(fn)
+        return () => eventListeners.delete(fn)
+      },
+      notifyTask: (e) => {
+        for (const fn of taskListeners) {
+          try {
+            fn(e)
+          }
+          catch (err) {
+            console.error('[ChannelBus] task listener error:', err)
+          }
+        }
+      },
       onTaskEvent: (fn) => {
-        listeners.push(fn)
+        taskListeners.add(fn)
+      },
+      notifyAgent: (e) => {
+        for (const fn of agentListeners) {
+          try {
+            fn(e)
+          }
+          catch (err) {
+            console.error('[ChannelBus] agent listener error:', err)
+          }
+        }
+      },
+      onAgentStatus: (fn) => {
+        agentListeners.add(fn)
       },
       wakeScheduler: () => {
         cr.wakeScheduler()
       },
     }
+  }
+
+  /** 订阅 channel 的成员状态事件(idle/busy/stopped);返回退订函数 */
+  subscribeAgentStatus(channelId: string, fn: (e: { agentId: string, state: 'idle' | 'busy' | 'stopped' }) => void): () => void {
+    const bus = this.buses.get(channelId)
+    if (!bus) return () => {}
+    bus.onAgentStatus(fn)
+    return () => {}
+  }
+
+  /** 订阅 channel 的 AgentEvent 流(monitor/WS 消费);返回退订函数 */
+  subscribeChannelEvents(channelId: string, fn: (event: AgentEvent, source: A2AMessage) => void): () => void {
+    return this.buses.get(channelId)?.onEvent(fn) ?? (() => {})
+  }
+
+  /** 订阅 channel 的任务事件(状态/进度);返回退订函数 */
+  subscribeTaskEvents(channelId: string, fn: (e: { taskId: string, state?: TaskState, progress?: number, agentId?: string }) => void): () => void {
+    const bus = this.buses.get(channelId)
+    if (!bus) return () => {}
+    bus.onTaskEvent(fn)
+    return () => {}
+  }
+
+  /** 任务事件广播:任务生命周期方法(dispatch/report/complete/submit/接取)处触发 */
+  private notifyTask(
+    channelId: string,
+    e: { taskId: string, state?: TaskState, progress?: number, agentId?: string },
+  ): void {
+    this.buses.get(channelId)?.notifyTask(e)
   }
 
   private wireAgent(row: AgentRow): AgentRuntime {
@@ -311,7 +382,7 @@ export class AgentChannelManager {
         description: input.description,
         parts: input.parts,
       })
-      // dispatch 直接落库投递 assign 消息 → 唤醒 assignee 消费
+      // dispatch 直接落库投递 assign 消息 → 唤醒 assignee 消费(状态事件由 TaskEngine hooks 发)
       this.wakeAgent(input.assigneeId)
     }
     else {
@@ -332,6 +403,7 @@ export class AgentChannelManager {
       })
       message.taskId = task.id
       this.route(caller.channelId, message)
+      // 状态事件由 TaskEngine hooks(transition/create)统一广播
     }
     return task
   }
@@ -354,7 +426,10 @@ export class AgentChannelManager {
       ]
     }
     const updated = this.deps.repos.tasks.update(input.taskId, patch)
-    return rowToTask(updated!)
+    const next = rowToTask(updated!)
+    // 进度事件(reportTask 不走 transition,单独广播;状态事件由 TaskEngine hooks 统一发)
+    this.notifyTask(task.channelId, { taskId: task.id, progress: next.progress, agentId: callerAgentId })
+    return next
   }
 
   async completeTask(
@@ -367,7 +442,7 @@ export class AgentChannelManager {
     }
     const completed = this.getTaskEngine().complete(input.taskId, input.artifacts)
     if (completed.parentId) {
-      // 子任务完成 → 投递 child-completed 给父 assignee + 父任务 WAITING→WORKING 判定
+      // 子任务完成 → 投递 child-completed 给父 assignee + 父任务 WAITING→WORKING 判定(状态事件由 transition hooks 发)
       this.getTaskEngine().onChildCompleted(completed)
       const parent = this.getTaskEngine().get(completed.parentId)
       if (parent) this.wakeAgent(parent.assigneeId)
