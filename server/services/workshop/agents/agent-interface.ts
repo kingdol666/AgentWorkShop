@@ -1,0 +1,102 @@
+/**
+ * Agent 接口层 — harness 无关统一契约。
+ * 定义 Agent 元信息、运行请求/上下文、事件流、调度快照与决策、以及所有 harness impl 必须实现的 AgentInterface。
+ * 仅类型定义,无运行时逻辑;供运行时层(runtime)、调度层(scheduler)与 impl 层共同消费。
+ * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块。
+ */
+import type { A2AMessage, A2AArtifact, A2AError, Part } from '../types/a2a'
+import type { WorkspaceTask } from '../types/task'
+
+/** Agent 元信息:Channel 内成员声明(hook harness 类型与配置) */
+export interface AgentInfo {
+  id: string
+  channelId: string
+  name: string
+  harness: string
+  role: 'lead' | 'worker'
+  config: Record<string, unknown>
+  token?: string
+}
+
+/** 运行请求:平台向 Agent 投递的一次消息输入 */
+export interface AgentRunRequest {
+  /** A2A 消息;任务类消息携带 taskId + metadata['x-aw-task-kind'] */
+  message: A2AMessage
+  taskId?: string
+  /** = channelId */
+  contextId: string
+  fromAgentId: string | null
+  toAgentId: string | null
+}
+
+/** Agent 自主作业能力面(MCP 工具子集,进程内直调) */
+export interface AgentWorkspace {
+  /** 列出本 Channel 同事 */
+  listAgents(): Promise<AgentInfo[]>
+  /** 任务分发(仅 lead;创建子任务并指派) */
+  dispatchTask(input: { parentTaskId?: string, assigneeId: string, title: string, description?: string, parts?: Part[] }): Promise<WorkspaceTask>
+  /** 查看同 Channel 任务列表(含同事) */
+  listTasks(): Promise<WorkspaceTask[]>
+  /** 查看指定任务详情 */
+  getTask(taskId: string): Promise<WorkspaceTask>
+  /** 上报进度/成果 */
+  reportTask(input: { taskId: string, progress?: number, artifact?: A2AArtifact, message?: string }): Promise<WorkspaceTask>
+  /** 完成任务 */
+  completeTask(taskId: string, artifacts?: A2AArtifact[]): Promise<WorkspaceTask>
+  /** 取消任务 */
+  cancelTask(taskId: string): Promise<WorkspaceTask>
+  /** 点对点发消息给同事 */
+  sendMessage(input: { toAgentId: string, parts: Part[], metadata?: Record<string, unknown> }): Promise<A2AMessage>
+  /** 拉取自己 mailbox 未消费消息 */
+  pollMailbox(limit?: number): Promise<A2AMessage[]>
+  /** 订阅同事产出 */
+  subscribe(input: { agentIds?: string[] }): Promise<void>
+}
+
+/** 执行上下文:平台注入的只读能力(Agent 的"手脚") */
+export interface AgentRunContext {
+  agentId: string
+  channelId: string
+  /** Agent 在 Channel 内的角色(lead 可 dispatch) */
+  role: 'lead' | 'worker'
+  workspace: AgentWorkspace
+  signal: AbortSignal
+}
+
+/** 统一事件流(对齐 A2A StreamResponse):run() 逐条产出的五变体 */
+export type AgentEvent
+  = | { kind: 'status', status: { state: string, message?: A2AMessage, timestamp: string } }
+    | { kind: 'message', message: A2AMessage }
+    | { kind: 'artifact', artifact: A2AArtifact, append?: boolean, lastChunk?: boolean, totalChunks?: number }
+    | { kind: 'error', error: A2AError }
+    | { kind: 'done', final?: { taskId?: string } }
+
+/** 调度快照:SchedulerLoop 每次 tick 喂给 lead 的团队观察 */
+export interface SupervisionSnapshot {
+  tick: number
+  now: number
+  /** 全 channel 任务摘要 */
+  tasks: WorkspaceTask[]
+  /** 成员状态 */
+  members: { agentId: string, name: string, role: 'lead' | 'worker', state: 'idle' | 'busy' | 'stopped' }[]
+  /** 每个父任务未完成的子任务数 */
+  pendingChildren: Record<string, number>
+}
+
+/** 调度决策:lead 对快照的回应(空数组 = 本轮无动作) */
+export type SupervisionDecision
+  = | { kind: 'dispatch', parentTaskId?: string, assigneeId: string, title: string, description?: string, parts?: Part[] }
+    | { kind: 'reassign', taskId: string, toAgentId: string }
+    | { kind: 'cancel', taskId: string }
+    | { kind: 'complete', taskId: string, artifacts?: A2AArtifact[] }
+    | { kind: 'notify', toAgentId: string, parts: Part[] }
+
+/** AgentInterface:所有 harness impl 的唯一契约 */
+export interface AgentInterface {
+  /** 标准流式返回:输入一次,产出统一事件流 */
+  run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent>
+  /** lead 调度决策(可选,仅 role='lead' 时被 SchedulerLoop 调用) */
+  supervise?(snapshot: SupervisionSnapshot, ctx: AgentRunContext): Promise<SupervisionDecision[]>
+  init?(config: { agent: AgentInfo, channelId: string }): Promise<void>
+  dispose?(): Promise<void>
+}
