@@ -229,8 +229,10 @@ export class AgentRuntime {
         signal: this.abortController.signal,
       }
       const taskId = this.taskIdOf(msg)
+      // 补入产出者 agentId(monitor 据此归属事件;不改原 msg,用浅拷贝)
+      const enrichedSource = { ...msg, metadata: { ...msg.metadata, 'x-aw-producing-agent': this.agentId } }
       for await (const event of this.impl.run(request, ctx)) {
-        this.deps.bus.emit(event, msg)
+        this.deps.bus.emit(event, enrichedSource)
         if (taskId) await this.deps.taskEngine.applyEvent(taskId, event)
       }
     }

@@ -51,10 +51,12 @@ export interface WorkshopMonitor {
   stop(): void
 }
 
-/** 从事件源消息推断归属 agent(目标优先,其次发送者) */
+/** 从事件源消息推断产出 agent(产出者优先,其次目标,再次发送者) */
 function agentIdOf(source: A2AMessage): string | null {
+  const producing = source.metadata?.['x-aw-producing-agent']
   const to = source.metadata?.['x-aw-target-agent']
   const from = source.metadata?.['x-aw-from-agent']
+  if (typeof producing === 'string') return producing
   if (typeof to === 'string') return to
   if (typeof from === 'string') return from
   return null
