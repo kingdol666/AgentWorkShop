@@ -322,6 +322,7 @@ async function main() {
   const a2aHistory = await api('GET', `/api/workshop/channels/${ids.channel}/messages?limit=50`)
   const a2aMsg = (a2aHistory.data ?? []).find(m => JSON.stringify(m.parts).includes(`hello-lead-${tag}`))
   check('a2a 消息持久化到 channel 历史(from/to 正确)', Boolean(a2aMsg && a2aMsg.fromAgentId === ids.worker && a2aMsg.toAgentId === ids.lead), `from=${a2aMsg?.fromAgentId?.slice(0, 8)} to=${a2aMsg?.toAgentId?.slice(0, 8)}`)
+  check('API messageId == 历史 id(可关联)', a2aMsg?.id === a2a.data.messageId, `api=${a2a.data.messageId?.slice(0, 8)} hist=${a2aMsg?.id?.slice(0, 8)}`)
 
   const badA2a = await api('POST', '/api/workshop/a2a/send', {
     token: ids.workerToken,

@@ -10,6 +10,8 @@ const COLS
   = 'id, channel_id AS channelId, task_id AS taskId, from_agent_id AS fromAgentId, to_agent_id AS toAgentId, role, parts_json AS partsJson, metadata_json AS metadataJson, state, created_at AS createdAt, consumed_at AS consumedAt'
 
 export interface MessageCreateInput {
+  /** 落库 id;缺省生成。A2A 入队时传发送方 messageId,保证 API 返回 id 与历史 id 一致 */
+  id?: string
   channelId: string
   taskId?: string | null
   fromAgentId?: string | null
@@ -51,7 +53,7 @@ export function createMessageRepo(db: DatabaseSync) {
     create(input: MessageCreateInput): MessageRow {
       const now = new Date().toISOString()
       const row: MessageRow = {
-        id: randomUUID(),
+        id: input.id ?? randomUUID(),
         channelId: input.channelId,
         taskId: input.taskId ?? null,
         fromAgentId: input.fromAgentId ?? null,

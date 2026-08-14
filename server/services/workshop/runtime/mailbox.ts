@@ -58,6 +58,8 @@ export class Mailbox {
   enqueue(message: A2AMessage): void {
     if (this.closed) return
     this.messageRepo.create({
+      // 保留发送方 messageId 作为落库 id:API 返回的 messageId 才能与历史/状态一致关联
+      id: message.messageId,
       channelId: message.contextId,
       taskId: message.taskId ?? null,
       fromAgentId: (message.metadata?.['x-aw-from-agent'] as string | undefined) ?? null,
