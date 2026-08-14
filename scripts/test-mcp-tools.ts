@@ -74,6 +74,8 @@ const EXPECTED_TOOLS = [
   'workshop.channel.list',
   'workshop.channel.remove',
   'workshop.agent.create',
+  'workshop.agent.add',
+  'workshop.agent.definitions',
   'workshop.agent.list',
   'workshop.agent.remove',
   'workshop.task.submit',
@@ -122,7 +124,15 @@ function makeFakeManager() {
     listChannels: record('listChannels', []),
     removeChannel: record('removeChannel', undefined),
     createAgent: record('createAgent', {
-      id: 'agent-new',
+      id: 'agent-tpl',
+      name: 'New',
+      harness: 'mock',
+      config: {},
+      enabled: 1,
+      instances: [],
+    }),
+    addAgentToChannel: record('addAgentToChannel', {
+      id: 'agent-inst',
       channelId: 'ch-1',
       name: 'New',
       harness: 'mock',
@@ -130,7 +140,7 @@ function makeFakeManager() {
       config: {},
     }),
     listAgents: record('listAgents', []),
-    removeAgent: record('removeAgent', undefined),
+    listChannelAgents: record('listChannelAgents', []),
     submitChannelTask: record('submitChannelTask', { id: 'task-1' }),
     dispatchTask: record('dispatchTask', { id: 'task-2' }),
     reportTask: record('reportTask', { id: 'task-1' }),
@@ -166,11 +176,11 @@ async function main(): Promise<void> {
   await server.connect(serverTransport)
   await client.connect(clientTransport)
 
-  // ===== 1. tools/list:16 个工具,名逐字一致 =====
+  // ===== 1. tools/list:18 个工具,名逐字一致 =====
   const { tools } = await client.listTools()
   const actualNames = tools.map(t => t.name).sort()
   const expectedNames = [...EXPECTED_TOOLS].sort()
-  check('tools/list 返回 16 个工具', tools.length === 16, `got ${tools.length}`)
+  check('tools/list 返回 18 个工具', tools.length === 18, `got ${tools.length}`)
   check(
     '工具名与 §6.1 逐字一致',
     JSON.stringify(actualNames) === JSON.stringify(expectedNames),
@@ -191,11 +201,11 @@ async function main(): Promise<void> {
   )
 
   const badRole = await client.callTool({
-    name: 'workshop.agent.create',
-    arguments: { channelId: 'ch-1', name: 'X', harness: 'mock', role: 'admin' },
+    name: 'workshop.agent.add',
+    arguments: { channelId: 'ch-1', agentId: 'agent-tpl', role: 'admin' },
   })
   check(
-    '参数校验:agent.create role 非法枚举 → 工具错误',
+    '参数校验:agent.add role 非法枚举 → 工具错误',
     (badRole as { isError?: boolean }).isError === true,
     toolErrorText(badRole),
   )
@@ -228,8 +238,8 @@ async function main(): Promise<void> {
   check('a2a.send(有效 token)→ 成功', (sendResult as { isError?: boolean }).isError !== true, toolErrorText(sendResult))
 
   const sendCall = fake.calls.find(c => c.method === 'sendA2A')
-  const callerAgentId = sendCall?.args[0]
-  const sendInput = sendCall?.args[1] as { toAgentId?: string, fromAgentId?: string } | undefined
+  const callerAgentId = sendCall?.args[1]
+  const sendInput = sendCall?.args[2] as { toAgentId?: string, fromAgentId?: string } | undefined
   check(
     'a2a.send callerAgentId 由 token 决定(agent-lead-1)',
     callerAgentId === 'agent-lead-1',
@@ -249,8 +259,8 @@ async function main(): Promise<void> {
   const headerCall = fake.calls.filter(c => c.method === 'sendA2A').at(-1)
   check(
     'Authorization 头路径 callerAgentId = agent-worker-2',
-    headerCall?.args[0] === 'agent-worker-2',
-    `got ${String(headerCall?.args[0])}`,
+    headerCall?.args[1] === 'agent-worker-2',
+    `got ${String(headerCall?.args[1])}`,
   )
 
   await client.close()

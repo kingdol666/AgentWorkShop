@@ -9,5 +9,5 @@ import { resolveCaller } from './caller'
 
 export default defineApiHandler(async (event) => {
   const caller = resolveCaller(event)
-  return getWorkshopManager().listTasks(caller.id)
+  return getWorkshopManager().listTasks(caller.channelId, caller.id)
 })

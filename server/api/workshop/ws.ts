@@ -82,13 +82,13 @@ function buildSnapshot(manager: AgentChannelManager, channelId: string): { data:
   const channel = internal.deps.repos.channels.findById(channelId)
   if (!channel) return null
 
-  const agentRows = internal.deps.repos.agents.listByChannel(channelId)
-  const agents = agentRows.map(row => ({
-    agentId: row.id,
-    name: row.name,
-    role: row.role,
-    harness: row.harness,
-    state: internal.agentIndex.get(row.id)?.getState() ?? 'stopped',
+  const memberRows = internal.deps.repos.channelAgents.listByChannel(channelId)
+  const agents = memberRows.map(m => ({
+    agentId: m.id,
+    name: m.name,
+    role: m.role,
+    harness: m.harness,
+    state: internal.agentIndex.get(`${channelId}\u0000${m.id}`)?.getState() ?? 'stopped',
   }))
   const tasks = internal.getTaskEngine().list(channelId)
   const recentMessages = internal.deps.repos.messages.listRecentByChannel(channelId, 50).map(rowToMessage)

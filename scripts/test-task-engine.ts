@@ -37,14 +37,14 @@ function setup() {
   const messages = createMessageRepo(db)
   const engine = new TaskEngine({ tasks, messages })
   const channel = channels.create({ name: 'test-channel' })
-  const lead = agents.create({ channelId: channel.id, name: 'lead', harness: 'mock', role: 'lead' })
-  const worker = agents.create({ channelId: channel.id, name: 'worker', harness: 'mock', role: 'worker' })
+  const lead = agents.create({ name: 'lead', harness: 'mock' })
+  const worker = agents.create({ name: 'worker', harness: 'mock' })
   return { db, engine, messages, channel, lead, worker, agents }
 }
 
 /** 拉取某 agent 未消费消息并解析 parts/metadata */
-function pendingMessages(messages: ReturnType<typeof createMessageRepo>, agentId: string) {
-  return messages.listPendingByAgent(agentId).map(row => ({
+function pendingMessages(messages: ReturnType<typeof createMessageRepo>, channelId: string, agentId: string) {
+  return messages.listPendingByChannelAgent(channelId, agentId).map(row => ({
     row,
     parts: JSON.parse(row.partsJson) as Part[],
     metadata: JSON.parse(row.metadataJson) as Record<string, unknown>,
@@ -109,7 +109,7 @@ function testDispatchAssignMessage(): void {
     description: '实现功能 A',
   })
 
-  const msgs = pendingMessages(messages, worker.id)
+  const msgs = pendingMessages(messages, channel.id, worker.id)
   check('dispatch 投递 1 条 assign 消息', msgs.length === 1, `count=${msgs.length}`)
   const m = msgs[0]
   check('assign 消息 title part', m.parts[0]?.text === '子任务1', JSON.stringify(m.parts))
@@ -254,7 +254,7 @@ function testComplete(): void {
 
 function testReassign(): void {
   const { engine, lead, worker, messages, agents, channel } = setup()
-  const other = agents.create({ channelId: channel.id, name: 'worker2', harness: 'mock', role: 'worker' })
+  const other = agents.create({ name: 'worker2', harness: 'mock' })
   const t = engine.create({ channelId: channel.id, creatorId: lead.id, assigneeId: worker.id, title: '失败任务' })
   engine.transition(t.id, 'WORKING', worker.id)
   engine.transition(t.id, 'FAILED', worker.id)
@@ -264,7 +264,7 @@ function testReassign(): void {
   check('reassign 换 assignee', r.assigneeId === other.id)
   check('reassign retryCount+1', r.retryCount === 1, `retry=${r.retryCount}`)
 
-  const msgs = pendingMessages(messages, other.id)
+  const msgs = pendingMessages(messages, channel.id, other.id)
   check('reassign 投递 assign 消息', msgs.length === 1, `count=${msgs.length}`)
   check('reassign 消息 kind=assign', msgs[0]?.metadata['x-aw-task-kind'] === 'assign')
   check('reassign 消息 task-id', msgs[0]?.metadata['x-aw-task-id'] === t.id)
@@ -278,7 +278,7 @@ function testCancel(): void {
   const c = engine.cancel(t.id, lead.id)
   check('cancel 置 CANCELED', c.state === 'CANCELED', `state=${c.state}`)
 
-  const msgs = pendingMessages(messages, worker.id)
+  const msgs = pendingMessages(messages, channel.id, worker.id)
   check('cancel 投递 cancel 消息', msgs.length === 1, `count=${msgs.length}`)
   check('cancel 消息 kind=cancel', msgs[0]?.metadata['x-aw-task-kind'] === 'cancel')
   check('cancel 消息 task-id', msgs[0]?.metadata['x-aw-task-id'] === t.id)
@@ -306,7 +306,7 @@ function testOnChildCompleted(): void {
   check('最后一个子任务完成后父恢复 WORKING', engine.get(parent.id)?.state === 'WORKING')
 
   // child-completed 消息:metadata 断言(x-aw-task-id=父 id,x-aw-child-task-id=子 id)
-  const leadMsgs = pendingMessages(messages, lead.id)
+  const leadMsgs = pendingMessages(messages, channel.id, lead.id)
   check('投递 2 条 child-completed 消息', leadMsgs.length === 2, `count=${leadMsgs.length}`)
   const last = leadMsgs[leadMsgs.length - 1]
   check('child-completed kind', last?.metadata['x-aw-task-kind'] === 'child-completed')

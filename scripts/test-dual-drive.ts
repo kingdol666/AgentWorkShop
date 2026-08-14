@@ -19,6 +19,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
+import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
@@ -79,6 +80,7 @@ function setup(): Harness {
   const repos = {
     channels: createChannelRepo(db),
     agents: createAgentRepo(db),
+    channelAgents: createChannelAgentRepo(db),
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
@@ -145,7 +147,7 @@ async function main(): Promise<void> {
   const worker1 = JSON.parse((w1.content as { text: string }[])[0].text)
   check('MCP agent.create 返回 token', typeof worker1.token === 'string' && worker1.token.length > 0)
 
-  const lead = (await h.manager.listAgents(channelId)).find(a => a.role === 'lead')!
+  const lead = (await h.manager.listChannelAgents(channelId)).find(a => a.role === 'lead')!
   // 带 lead token 的 client(task.list/a2a.send 等 Agent 作业面工具需要认证)
   const authedClient = new Client({ name: 'e2e-lead', version: '1.0.0' })
   await authedClient.connect(new StreamableHTTPClientTransport(new URL('http://localhost/api/mcp/workshop'), {
@@ -173,17 +175,17 @@ async function main(): Promise<void> {
   check('MCP 无 token → UNAUTHORIZED', anonRes.isError === true && anonText.includes('UNAUTHORIZED'), anonText.slice(0, 120))
 
   console.log('\n=== 2. REST API 驱动 ===')
-  const w1Agent = (await h.manager.listAgents(channelId)).find(a => a.name === 'w1')!
+  const w1Agent = (await h.manager.listChannelAgents(channelId)).find(a => a.name === 'w1')!
   const token = w1Agent.token!
   check('REST 作业面 token 有效(findByToken)', h.manager.findByToken(token)?.id === w1Agent.id)
 
   // 跨 channel 作用域:另一 channel 的 agent 查任务 → SCOPE_VIOLATION
   const chB = await h.manager.createChannel({ name: 'b-channel' })
   h.channels.push(chB.channelId)
-  const leadB = await h.manager.createAgent({ channelId: chB.channelId, name: 'leadB', harness: 'mock', role: 'lead', config: { delayMs: 0 } })
+  const leadB = await h.manager.addAgentToChannel({ channelId: chB.channelId, agentId: (await h.manager.createAgent({ name: 'leadB', harness: 'mock', config: { delayMs: 0 } })).id, role: 'lead' })
   let scopeCode = ''
   try {
-    await h.manager.getTask(leadB.id, mainTask.id)
+    await h.manager.getTask(chB.channelId, leadB.id, mainTask.id)
   }
   catch (e) {
     scopeCode = (e as { code?: string }).code ?? ''
@@ -191,7 +193,7 @@ async function main(): Promise<void> {
   check('REST 跨 channel 访问 → SCOPE_VIOLATION', scopeCode === 'SCOPE_VIOLATION', scopeCode)
 
   // a2a.send 投递(caller=worker token;A2AMessage 无 toAgentId 字段,以 messageId+parts 断言)
-  const msg = await h.manager.sendA2A(w1Agent.id, { toAgentId: lead.id, parts: [{ text: 'REST 消息' }] })
+  const msg = await h.manager.sendA2A(channelId, w1Agent.id, { toAgentId: lead.id, parts: [{ text: 'REST 消息' }] })
   check('REST 作业面 a2a.send 投递', msg.messageId.length > 0 && msg.parts.length === 1 && msg.metadata?.['x-aw-target-agent'] === lead.id, JSON.stringify(msg.metadata))
 
   for (const loop of h.loops) loop.stop()

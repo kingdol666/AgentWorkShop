@@ -75,6 +75,8 @@ export interface AgentRuntimeLike {
   stop(): Promise<void>
   /** 平台侧合成事件出口(如 SchedulerLoop 汇总成果);转发 ChannelBus.emit 走统一事件流 */
   emitExternal(event: AgentEvent, fromAgentId?: string): void
+  /** 实时消息注入:busy 时通过 impl.steer 注入 omp 会话;idle 时入 mailbox 队列 */
+  injectSteer(message: A2AMessage): void
 }
 
 export class AgentRuntime {
@@ -131,6 +133,28 @@ export class AgentRuntime {
     this.deps.bus.emit(event, source)
   }
 
+  /** 实时消息注入:busy 时通过 impl.steer 注入 omp 会话;idle 时入 mailbox 队列 */
+  injectSteer(message: A2AMessage): void {
+    if (this.state === 'busy' && this.impl.steer) {
+      // 从消息 parts 提取文本 → steer 注入运行中的 omp 会话
+      const text = message.parts
+        .map((p) => {
+          if ('text' in p) return p.text
+          if ('data' in p) return JSON.stringify(p.data)
+          return ''
+        })
+        .join('\n')
+      const fromName = message.metadata?.['x-aw-from-agent'] ?? 'system'
+      this.impl.steer(`[实时消息 from ${fromName}]: ${text}`).catch((err) => {
+        console.error(`[AgentRuntime:${this.agentId}] steer 失败:`, err)
+      })
+    }
+    else {
+      // idle/stopped 或 impl 不支持 steer → 落入 mailbox 作为任务消息
+      this.enqueue(message)
+    }
+  }
+
   /** 启动消费循环 */
   start(): void {
     if (this.started) return
@@ -139,12 +163,19 @@ export class AgentRuntime {
     this.loopPromise = this.consumeLoop()
   }
 
-  /** 停止:中断当前 run + 等当前事件流结束 */
+  /** 停止:中断当前 run + 等当前事件流结束 + dispose impl(杀子进程等) */
   async stop(): Promise<void> {
     this.state = 'stopped'
     this.abortController?.abort()
     this.deps.mailbox.close()
     await this.loopPromise
+    // 清理 impl 持有的资源(omp 子进程等);容错:impl.dispose 可能不存在
+    try {
+      await this.impl.dispose?.()
+    }
+    catch (err) {
+      console.error(`[AgentRuntime:${this.agentId}] dispose 失败:`, err)
+    }
   }
 
   /** 唤醒 mailbox(供 manager 在 taskEngine 直接落库投递后唤醒消费) */

@@ -18,6 +18,7 @@ import { H3 } from 'h3'
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
+import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
@@ -66,6 +67,7 @@ const db = openWorkshopDb(':memory:')
 const repos: AllRepos = {
   channels: createChannelRepo(db),
   agents: createAgentRepo(db),
+  channelAgents: createChannelAgentRepo(db),
   messages: createMessageRepo(db),
   subscriptions: createSubscriptionRepo(db),
   tasks: createTaskRepo(db),

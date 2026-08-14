@@ -20,7 +20,7 @@ export default defineApiHandler(async (event) => {
   const parentTaskId = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, zValidator(dispatchSchema))
   const caller = resolveCaller(event)
-  return getWorkshopManager().dispatchTask(caller.id, {
+  return getWorkshopManager().dispatchTask(caller.channelId, caller.id, {
     parentTaskId,
     assigneeId: body.assigneeId,
     title: body.title,

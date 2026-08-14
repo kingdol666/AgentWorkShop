@@ -10,5 +10,5 @@ export default defineApiHandler(async (event) => {
   const caller = resolveCaller(event)
   const url = new URL(event.path, 'http://localhost')
   const limit = Number.parseInt(url.searchParams.get('limit') ?? '50', 10)
-  return getWorkshopManager().pollMailbox(caller.id, Number.isFinite(limit) && limit > 0 ? limit : 50)
+  return getWorkshopManager().pollMailbox(caller.channelId, caller.id, Number.isFinite(limit) && limit > 0 ? limit : 50)
 })

@@ -2,6 +2,7 @@
  * POST /api/workshop/channels/:id/tasks —— 向 channel 发任务 → 自动路由 lead(设计文档 §6.2)。
  * - channel 不存在 → 404 NOT_FOUND
  * - channel 无 lead → 400 NO_LEAD_AGENT(manager 校验)
+ * 支持 mode 参数:goal / loop / pipeline
  */
 import { z } from 'zod'
 import { getRouterParam, readValidatedBody } from 'h3'
@@ -41,6 +42,17 @@ const submitTaskSchema = z.object({
   title: z.string().min(1, 'title 必填'),
   description: z.string().optional(),
   parts: z.array(partSchema).optional(),
+  mode: z.enum(['goal', 'loop', 'pipeline']).optional(),
+  modeConfig: z.object({
+    intervalMs: z.number().optional(),
+    maxIterations: z.number().optional(),
+    goalCriteria: z.string().optional(),
+    stages: z.array(z.object({
+      name: z.string(),
+      description: z.string(),
+      assigneeId: z.string().optional(),
+    })).optional(),
+  }).optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -54,5 +66,7 @@ export default defineApiHandler(async (event) => {
     title: body.title,
     description: body.description,
     parts: body.parts,
+    mode: body.mode,
+    modeConfig: body.modeConfig,
   })
 })

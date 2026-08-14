@@ -16,6 +16,7 @@ import { openWorkshopDb } from '../server/services/workshop/db/database'
 import type { AgentRow } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
+import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
 import type { TaskPatch } from '../server/services/workshop/db/task.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
@@ -27,6 +28,7 @@ import type { ChannelBus } from '../server/services/workshop/runtime/agent-runti
 import { Mailbox, rowToMessage } from '../server/services/workshop/runtime/mailbox'
 import { SchedulerLoop } from '../server/services/workshop/runtime/scheduler-loop'
 import { MockAgentImpl } from '../server/services/workshop/agents/mock-agent'
+import { ClaudeSdkAgentImpl } from '../server/services/workshop/agents/claude-agent'
 import { createAgentImpl } from '../server/services/workshop/agents/factory'
 import type {
   AgentEvent,
@@ -57,15 +59,14 @@ async function waitUntil(cond: () => boolean, timeoutMs = 5000): Promise<boolean
   }
 }
 
-function rowToAgentInfo(row: AgentRow): AgentInfo {
+function rowToAgentInfo(row: AgentRow, channelId: string, role: 'lead' | 'worker'): AgentInfo {
   return {
     id: row.id,
-    channelId: row.channelId,
+    channelId,
     name: row.name,
     harness: row.harness,
-    role: row.role as 'lead' | 'worker',
+    role,
     config: JSON.parse(row.configJson) as Record<string, unknown>,
-    token: row.token,
   }
 }
 
@@ -127,7 +128,7 @@ function buildWorkspace(agent: AgentInfo, deps: WorkspaceDeps): AgentWorkspace {
       return message
     },
     pollMailbox: async (limit = 100) =>
-      messages.listPendingByAgent(agent.id).slice(0, limit).map(rowToMessage),
+      messages.listPendingByChannelAgent(agent.channelId, agent.id).slice(0, limit).map(rowToMessage),
     subscribe: async () => {},
   }
 }
@@ -156,34 +157,25 @@ function setup(opts: SetupOptions = {}): Setup {
   const engine = new TaskEngine({ tasks, messages })
   const channel = channels.create({ name: 'test-channel' })
 
-  const leadRow = agents.create({
-    channelId: channel.id,
-    name: 'lead',
-    harness: 'mock',
-    role: 'lead',
-    config: { delayMs: 0 },
-  })
-  const workerRow = agents.create({
-    channelId: channel.id,
-    name: 'worker',
-    harness: 'mock',
-    role: 'worker',
-    config: { delayMs: 0 },
-  })
-  const leadInfo = rowToAgentInfo(leadRow)
-  const workerInfo = rowToAgentInfo(workerRow)
+  const channelAgents = createChannelAgentRepo(db)
+  const leadRow = agents.create({ name: 'lead', harness: 'mock', config: { delayMs: 0 } })
+  const workerRow = agents.create({ name: 'worker', harness: 'mock', config: { delayMs: 0 } })
+  channelAgents.add({ channelId: channel.id, agentId: leadRow.id, role: 'lead' })
+  channelAgents.add({ channelId: channel.id, agentId: workerRow.id, role: 'worker' })
+  const leadInfo = rowToAgentInfo(leadRow, channel.id, 'lead')
+  const workerInfo = rowToAgentInfo(workerRow, channel.id, 'worker')
 
-  const cr = new ChannelRuntime(channel.id, { taskEngine: engine, subscriptionRepo: subscriptions })
+  const cr = new ChannelRuntime(channel.id, { taskEngine: engine, subscriptionRepo: subscriptions, channelAgents })
   const bus: ChannelBus = { emit: () => {}, onEvent: () => () => {}, notifyTask: () => {}, notifyAgent: () => {}, onAgentStatus: () => {}, onTaskEvent: () => {}, wakeScheduler: () => {} }
 
   const lead = new AgentRuntime(leadInfo, opts.leadImpl ?? new MockAgentImpl(leadInfo.config), {
-    mailbox: new Mailbox(messages, leadInfo.id, () => cr.wakeScheduler()),
+    mailbox: new Mailbox(messages, leadInfo.channelId, leadInfo.id, () => cr.wakeScheduler()),
     taskEngine: engine,
     bus,
     workspace: buildWorkspace(leadInfo, { engine, cr, tasks, messages }),
   })
   const worker = new AgentRuntime(workerInfo, new MockAgentImpl(workerInfo.config), {
-    mailbox: new Mailbox(messages, workerInfo.id, () => cr.wakeScheduler()),
+    mailbox: new Mailbox(messages, workerInfo.channelId, workerInfo.id, () => cr.wakeScheduler()),
     taskEngine: engine,
     bus,
     workspace: buildWorkspace(workerInfo, { engine, cr, tasks, messages }),
@@ -309,18 +301,7 @@ function testFactory(): void {
 
   check('mock → MockAgentImpl 实例', createAgentImpl(mk('mock')) instanceof MockAgentImpl)
 
-  try {
-    createAgentImpl(mk('claude'))
-    check('claude 抛 HARNESS_NOT_IMPLEMENTED', false, '未抛异常')
-  }
-  catch (e) {
-    const err = e as AppError
-    check(
-      'claude 抛 HARNESS_NOT_IMPLEMENTED',
-      err instanceof AppError && err.code === 'HARNESS_NOT_IMPLEMENTED' && err.status === 501,
-      `code=${err?.code} status=${err?.status}`,
-    )
-  }
+  check('claude → ClaudeSdkAgentImpl 实例', createAgentImpl(mk('claude')) instanceof ClaudeSdkAgentImpl)
 
   try {
     createAgentImpl(mk('unknown'))

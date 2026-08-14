@@ -22,7 +22,7 @@ export default defineApiHandler(async (event) => {
   const caller = resolveCallerOrNull(event)
   if (caller) {
     // Agent 路径:作用域校验(同 channel 可见,跨 channel 抛 SCOPE_VIOLATION)
-    return manager.getTask(caller.id, taskId)
+    return manager.getTask(caller.channelId, caller.id, taskId)
   }
   const task = taskEngineOf(manager).get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)

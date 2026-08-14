@@ -37,6 +37,7 @@ export function rowToMessage(row: MessageRow): A2AMessage {
 
 export class Mailbox {
   readonly agentId: string
+  readonly channelId: string
   private gate: Gate = newGate()
   private closed = false
   /** 外部通知回调(如唤醒调度循环);由 AgentRuntime/Manager 注入 */
@@ -44,9 +45,11 @@ export class Mailbox {
 
   constructor(
     private messageRepo: MessageRepo,
+    channelId: string,
     agentId: string,
     wake: () => void,
   ) {
+    this.channelId = channelId
     this.agentId = agentId
     this.onWake = wake
   }
@@ -71,7 +74,7 @@ export class Mailbox {
   async dequeue(): Promise<A2AMessage | null> {
     for (;;) {
       if (this.closed) return null
-      const rows = this.messageRepo.listPendingByAgent(this.agentId)
+      const rows = this.messageRepo.listPendingByChannelAgent(this.channelId, this.agentId)
       const row = rows[0]
       if (row) {
         this.messageRepo.markConsuming(row.id)
@@ -83,7 +86,7 @@ export class Mailbox {
 
   /** 只读查看未消费消息(不改变状态) */
   async peek(limit: number): Promise<A2AMessage[]> {
-    const rows = this.messageRepo.listPendingByAgent(this.agentId).slice(0, limit)
+    const rows = this.messageRepo.listPendingByChannelAgent(this.channelId, this.agentId).slice(0, limit)
     return rows.map(rowToMessage)
   }
 

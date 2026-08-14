@@ -15,6 +15,7 @@
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
+import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
@@ -47,6 +48,8 @@ function setup(): { manager: AgentChannelManager, db: ReturnType<typeof openWork
   const repos = {
     channels: createChannelRepo(db),
     agents: createAgentRepo(db),
+
+    channelAgents: createChannelAgentRepo(db),
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
@@ -94,22 +97,10 @@ async function main(): Promise<void> {
     })
     channelIds.push(ch.channelId)
 
-    const workerA = await manager.createAgent({
-      channelId: ch.channelId,
-      name: 'worker-前端',
-      harness: 'mock',
-      role: 'worker',
-      config: { delayMs: 200 },
-    })
-    const workerB = await manager.createAgent({
-      channelId: ch.channelId,
-      name: 'worker-后端',
-      harness: 'mock',
-      role: 'worker',
-      config: { delayMs: 200 },
-    })
+    const workerA = await manager.addAgentToChannel({ channelId: ch.channelId, agentId: (await manager.createAgent({ name: 'worker-前端', harness: 'mock', config: { delayMs: 200 } })).id, role: 'worker' })
+    const workerB = await manager.addAgentToChannel({ channelId: ch.channelId, agentId: (await manager.createAgent({ name: 'worker-后端', harness: 'mock', config: { delayMs: 200 } })).id, role: 'worker' })
 
-    const agents = await manager.listAgents(ch.channelId)
+    const agents = await manager.listChannelAgents(ch.channelId)
     console.log(`  Channel: ${ch.channelId.slice(0, 8)}… (${ch.data?.name ?? '系统功能开发组'})`)
     console.log(`  Lead:    ${agents.find(a => a.role === 'lead')?.name} (harness=${agents.find(a => a.role === 'lead')?.harness})`)
     console.log(`  Worker1: ${workerA.name} (harness=${workerA.harness})`)
@@ -195,16 +186,16 @@ async function main(): Promise<void> {
     console.log('\n━━━ Step 6: worker 订阅与进度互见验证 ━━━')
 
     // worker 可以订阅其他同事(含 lead 的产出)
-    await manager.subscribe(workerA.id, { agentIds: [workerB.id] })
+    await manager.subscribe(ch.channelId, workerA.id, { agentIds: [workerB.id] })
     check('worker 订阅同事产出(subscribe 成功)', true)
 
     // worker 可以查看全 channel 任务(含同事的)
-    const tasksFromWorker = await manager.listTasks(workerA.id)
+    const tasksFromWorker = await manager.listTasks(ch.channelId, workerA.id)
     check('worker 可见全 channel 任务(进度互见)', tasksFromWorker.length === allTasks.length, `可见=${tasksFromWorker.length}/总=${allTasks.length}`)
 
     // worker 可查同事具体任务详情(作业内容互见)
     if (children.length >= 2) {
-      const detail = await manager.getTask(workerA.id, children[1]!.id)
+      const detail = await manager.getTask(ch.channelId, workerA.id, children[1]!.id)
       check('worker 可查同事任务详情(含成果)', detail.id === children[1]!.id && detail.artifacts.length > 0)
     }
 

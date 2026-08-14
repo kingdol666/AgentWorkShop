@@ -173,7 +173,7 @@ function setup(): Setup {
 }
 
 function makeRuntime(s: Setup, agent: AgentInfo, impl: AgentInterface): AgentRuntime {
-  const mailbox = new Mailbox(s.messages, agent.id, () => {})
+  const mailbox = new Mailbox(s.messages, agent.channelId, agent.id, () => {})
   const workspace = {} as AgentWorkspace
   return new AgentRuntime(agent, impl, { mailbox, taskEngine: s.engine.engine, bus: s.bus, workspace })
 }
@@ -193,7 +193,7 @@ async function testAutoConsume(): Promise<void> {
   await waitUntil(() => rt.getState() === 'idle')
   check('enqueue 后自动消费:run 被调用', impl.calls.length === 1)
   check('自动消费:事件逐条广播', s.busEvents.length === 2, `收到 ${s.busEvents.length} 个事件`)
-  check('自动消费:消息标记已消费', s.messages.listPendingByAgent('a1').length === 0)
+  check('自动消费:消息标记已消费', s.messages.listPendingByChannelAgent('ch1', 'a1').length === 0)
   await rt.stop()
 }
 
@@ -223,7 +223,7 @@ async function testBusyQueue(): Promise<void> {
   await waitUntil(() => impl.calls.length === 2)
   await waitUntil(() => rt.getState() === 'idle')
   check('结束后续消费积压:B 被消费', impl.calls.length === 2)
-  check('积压消费:两条消息均已消费', s.messages.listPendingByAgent('a1').length === 0)
+  check('积压消费:两条消息均已消费', s.messages.listPendingByChannelAgent('ch1', 'a1').length === 0)
   await rt.stop()
 }
 
@@ -268,7 +268,7 @@ async function testErrorDoesNotBlock(): Promise<void> {
   await waitUntil(() => impl.calls.length === 2)
   await waitUntil(() => rt.getState() === 'idle')
   check('单条抛错不阻塞下一条:两条均被处理', impl.calls.length === 2)
-  check('抛错后消息仍标记消费', s.messages.listPendingByAgent('a1').length === 0)
+  check('抛错后消息仍标记消费', s.messages.listPendingByChannelAgent('ch1', 'a1').length === 0)
   await rt.stop()
 }
 

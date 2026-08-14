@@ -254,13 +254,13 @@ async function cancelTaskWithCaller(
 ): Promise<WorkspaceTask> {
   const token = bearerTokenOf(event)
   const caller = token ? manager.findByToken(token) : undefined
-  if (caller) return manager.cancelTask(caller.id, { taskId })
+  if (caller) return manager.cancelTask(caller.channelId, caller.id, { taskId })
   const task = internalsOf(manager).getTaskEngine().get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
-  const agents = await manager.listAgents(task.channelId)
+  const agents = await manager.listChannelAgents(task.channelId)
   const lead = agents.find(a => a.role === 'lead')
   if (!lead) throw new AppError(400, 'NO_LEAD_AGENT', `channel ${task.channelId} 无 lead,无法以系统身份取消`)
-  return manager.cancelTask(lead.id, { taskId })
+  return manager.cancelTask(lead.channelId, lead.id, { taskId })
 }
 
 // ===== SSE(tasks/sendSubscribe) =====
@@ -357,14 +357,14 @@ async function dispatch(
     }
     case 'tasks/get': {
       const p = parseParams(taskIdParamsSchema, params)
-      if (!findAgent(manager, agentId)) fail(-32001, `Agent not found: ${agentId}`)
-      const task = await manager.getTask(agentId, p.taskId)
+      const agent = findAgent(manager, agentId) ?? fail(-32001, `Agent not found: ${agentId}`)
+      const task = await manager.getTask(agent.channelId, agent.id, p.taskId)
       return ok(id, toA2ATask(task))
     }
     case 'tasks/list': {
       parseParams(noopParamsSchema, params)
-      if (!findAgent(manager, agentId)) fail(-32001, `Agent not found: ${agentId}`)
-      const tasks = await manager.listTasks(agentId)
+      const agent = findAgent(manager, agentId) ?? fail(-32001, `Agent not found: ${agentId}`)
+      const tasks = await manager.listTasks(agent.channelId, agent.id)
       return ok(id, tasks.map(toA2ATask))
     }
     case 'tasks/cancel': {
@@ -379,7 +379,7 @@ async function dispatch(
       const token = bearerTokenOf(event)
       const caller = token ? manager.findByToken(token) : undefined
       if (!caller) fail(-32005, 'Agent not authorized: message/send 需要有效 token 确定发送方')
-      const message = await manager.sendA2A(caller.id, {
+      const message = await manager.sendA2A(caller.channelId, caller.id, {
         toAgentId: agentId,
         parts: p.message.parts,
         metadata: p.message.metadata,

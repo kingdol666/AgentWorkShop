@@ -20,7 +20,7 @@ const sendSchema = z.object({
 export default defineApiHandler(async (event) => {
   const body = await readValidatedBody(event, zValidator(sendSchema))
   const caller = resolveCaller(event)
-  return getWorkshopManager().sendA2A(caller.id, {
+  return getWorkshopManager().sendA2A(caller.channelId, caller.id, {
     toAgentId: body.toAgentId,
     parts: body.parts,
     metadata: body.metadata,

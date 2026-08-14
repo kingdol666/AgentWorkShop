@@ -29,7 +29,7 @@ export default defineApiHandler(async (event) => {
   const taskId = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, zValidator(reportSchema))
   const caller = resolveCaller(event)
-  return getWorkshopManager().reportTask(caller.id, {
+  return getWorkshopManager().reportTask(caller.channelId, caller.id, {
     taskId,
     progress: body.progress,
     artifact: body.artifact,

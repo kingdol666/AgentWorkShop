@@ -1,20 +1,21 @@
 /**
- * POST /api/workshop/channels/:id/agents —— 创建 Agent(role=lead/worker)(设计文档 §6.2)。
- * - channel 不存在 → 404 NOT_FOUND
- * - 重复创建 lead → 409 LEAD_EXISTS(manager 校验)
- * - 创建 lead 后同步启动其 SchedulerLoop
+ * POST /api/workshop/channels/:id/agents —— 在 channel 内放置 Agent 实例。
+ * - 提供 agentId:把该 Agent 模板克隆为独立身份 id 的新实例
+ * - 否则:一步创建 Agent 模板并克隆进 channel
+ * - role=lead 且已有 lead → 409 LEAD_EXISTS
  */
 import { z } from 'zod'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
-import { AppError } from '../../../../../utils/errors'
 import { defineApiHandler } from '../../../../../utils/response'
+import { AppError } from '../../../../../utils/errors'
 import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../../../../plugins/workshop'
 
 const createAgentSchema = z.object({
-  name: z.string().min(1, 'name 必填'),
-  harness: z.string().min(1, 'harness 必填'),
-  role: z.enum(['lead', 'worker']),
+  agentId: z.string().min(1).optional(),
+  name: z.string().min(1).optional(),
+  harness: z.string().min(1).optional(),
+  role: z.enum(['lead', 'worker']).default('worker'),
   config: z.record(z.string(), z.unknown()).optional(),
 })
 
@@ -24,14 +25,19 @@ export default defineApiHandler(async (event) => {
   const manager = getWorkshopManager()
   const channel = (await manager.listChannels()).find(c => c.id === channelId)
   if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
-  const agent = await manager.createAgent({
-    channelId,
-    name: body.name,
-    harness: body.harness,
-    role: body.role,
-    config: body.config,
-  })
-  if (agent.role === 'lead') {
+
+  const role = body.role ?? 'worker'
+  const agent = body.agentId
+    ? await manager.addAgentToChannel({ channelId, agentId: body.agentId, role })
+    : await (async () => {
+        if (!body.name || !body.harness) {
+          throw new AppError(400, 'BAD_REQUEST', '需提供 name+harness(新建模板)或 agentId(克隆已有模板)')
+        }
+        const tpl = await manager.createAgent({ name: body.name, harness: body.harness, config: body.config })
+        return manager.addAgentToChannel({ channelId, agentId: tpl.id, role })
+      })()
+
+  if (role === 'lead') {
     ensureLeadSchedulerLoop(manager, channelId)
   }
   return agent

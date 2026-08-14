@@ -49,8 +49,11 @@ export class MockAgentImpl implements AgentInterface {
     const idleWorkers = snapshot.members.filter(m => m.role === 'worker' && m.state === 'idle')
 
     for (const task of snapshot.tasks) {
-      // SUBMITTED 且 assignee 自己 → dispatch 给最久空闲 worker
-      if (task.state === 'SUBMITTED' && task.assigneeId === ctx.agentId) {
+      // SUBMITTED or WORKING 且 assignee 自己 且无子任务 → dispatch 给最久空闲 worker
+      const hasChildren = snapshot.tasks.some(t2 => t2.parentId === task.id)
+      if ((task.state === 'SUBMITTED' || task.state === 'WORKING')
+        && task.assigneeId === ctx.agentId
+        && !hasChildren) {
         const worker = this.pickIdleWorker(idleWorkers, now)
         if (worker) {
           decisions.push({

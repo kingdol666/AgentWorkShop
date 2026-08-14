@@ -18,6 +18,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { openWorkshopDb, parseJson } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
+import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
@@ -161,6 +162,7 @@ function setup(): Harness {
   const repos: AllRepos = {
     channels: createChannelRepo(db),
     agents: createAgentRepo(db),
+    channelAgents: createChannelAgentRepo(db),
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
@@ -202,7 +204,8 @@ async function createTeamChannel(
   if (!leadAgentId) throw new AppError(500, 'INTERNAL_ERROR', `channel ${channelId} 创建后无 lead`)
   const workers: AgentInfo[] = []
   for (const wn of workerNames) {
-    workers.push(await manager.createAgent({ channelId, name: wn, harness: 'mock', role: 'worker', config: { delayMs: 0 } }))
+    const tpl = await manager.createAgent({ name: wn, harness: 'mock', config: { delayMs: 0 } })
+    workers.push(await manager.addAgentToChannel({ channelId, agentId: tpl.id, role: 'worker' }))
   }
   return { channelId, leadAgentId, workers }
 }
@@ -374,6 +377,7 @@ async function main(): Promise<void> {
         repos: {
           channels: createChannelRepo(db2),
           agents: createAgentRepo(db2),
+          channelAgents: createChannelAgentRepo(db2),
           messages: createMessageRepo(db2),
           subscriptions: createSubscriptionRepo(db2),
           tasks: createTaskRepo(db2),

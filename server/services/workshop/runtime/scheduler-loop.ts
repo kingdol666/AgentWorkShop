@@ -2,14 +2,22 @@
  * SchedulerLoop — lead 常驻调度循环(统一调度核心)。
  * 定时 tick + 事件唤醒(wake 去抖合并);每轮在 lead.execLock 串行化下:
  * 收集快照 → lead.supervise 决策(未实现/抛错回退内置规则引擎)→ 逐条执行决策。
+ * 支持三种执行模式:goal(满意度判断)/ loop(循环重放)/ pipeline(流水线)。
  * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块 T5。
  */
 import { randomUUID } from 'node:crypto'
 import type { A2AMessage } from '../types/a2a'
-import type { SupervisionDecision, SupervisionSnapshot } from '../agents/agent-interface'
+import type { SupervisionDecision, SupervisionSnapshot, ExecutionMode } from '../agents/agent-interface'
 import { AppError } from '../../../utils/errors'
 import type { ChannelRuntime } from './channel-runtime'
 import type { AgentRuntime } from './agent-runtime'
+import {
+  extractTaskMode,
+  buildModeAwarePrompt,
+  findModeTask,
+  LoopController,
+  type ModeConfig,
+} from './execution-mode'
 
 /** 成员摘要(快照内) */
 interface MemberView {
@@ -38,6 +46,13 @@ export class SchedulerLoop {
   private readonly lastProgress = new Map<string, { progress: number, at: number }>()
   /** 成员空闲起始时间(最久空闲 worker 排序) */
   private readonly idleSince = new Map<string, number>()
+  /** 当前活跃的执行模式(null = 默认无模式) */
+  private activeMode: ExecutionMode | null = null
+  private activeModeConfig: ModeConfig = {}
+  /** loop 模式控制器 */
+  private loopController: LoopController | null = null
+  /** loop 模式下重新提交任务的回调 */
+  private onLoopResubmit: ((title: string, description: string) => void) | null = null
 
   constructor(
     private readonly channelRuntime: ChannelRuntime,
@@ -71,6 +86,15 @@ export class SchedulerLoop {
       clearInterval(this.timer)
       this.timer = null
     }
+    if (this.loopController) {
+      this.loopController.stop()
+      this.loopController = null
+    }
+  }
+
+  /** 设置 loop 模式重新提交回调(manager 注入 submitChannelTask) */
+  setLoopResubmitCallback(fn: (title: string, description: string) => void): void {
+    this.onLoopResubmit = fn
   }
 
   // ===== 内部 =====
@@ -95,6 +119,17 @@ export class SchedulerLoop {
   private async tickRound(): Promise<void> {
     this.tick += 1
     const snapshot = this.collectSnapshot()
+
+    // 检测当前活跃的执行模式
+    const modeTask = findModeTask(snapshot.tasks, this.lead.agentId)
+    if (modeTask) {
+      this.activeMode = modeTask.mode
+      this.activeModeConfig = modeTask.config
+    }
+
+    // loop 模式:检测主任务完成 → 触发循环控制器
+    this.checkLoopCompletion(snapshot)
+
     const decisions = await this.decide(snapshot)
     for (const decision of decisions) {
       try {
@@ -119,16 +154,17 @@ export class SchedulerLoop {
     }
   }
 
-  /** 收集快照:全 channel 任务 + 成员状态 + pendingChildren(非终态子任务数) */
+  /** 收集快照:全 channel 任务 + 成员状态(含未装配成员,标 idle)+ pendingChildren */
   private collectSnapshot(): SupervisionSnapshot {
     const now = Date.now()
     const tasks = this.lead.taskEngine.list(this.channelRuntime.channelId)
-    const members: MemberView[] = this.channelRuntime.getAgents().map(a => ({
-      agentId: a.agentId,
-      name: a.name,
-      role: a.role,
-      state: a.getState(),
-    }))
+    // 已装配成员的实时状态
+    const wired = new Map(this.channelRuntime.getAgents().map(a => [a.agentId, a.getState()]))
+    // channel 全部 enabled 成员(含未装配懒加载成员 → idle,lead 可据此 dispatch)
+    const members: MemberView[] = this.channelRuntime.listChannelAgents().map((m) => {
+      const state = wired.get(m.agentId)
+      return { agentId: m.agentId, name: m.name, role: m.role, state: state ?? 'idle' }
+    })
     const pendingChildren: Record<string, number> = {}
     for (const task of tasks) {
       if (!task.parentId) continue
@@ -146,8 +182,11 @@ export class SchedulerLoop {
     const idleWorkers = members.filter(m => m.role === 'worker' && m.state === 'idle')
 
     for (const task of tasks) {
-      // SUBMITTED 且 assignee=lead 且有空闲 worker → dispatch 给最久空闲 worker
-      if (task.state === 'SUBMITTED' && task.assigneeId === this.lead.agentId) {
+      // SUBMITTED or WORKING 且 assignee=lead 且有空闲 worker 且无子任务 → dispatch 给最久空闲 worker
+      const hasChildren = tasks.some(t2 => t2.parentId === task.id)
+      if ((task.state === 'SUBMITTED' || task.state === 'WORKING')
+        && task.assigneeId === this.lead.agentId
+        && !hasChildren) {
         const worker = this.pickIdleWorker(idleWorkers, now)
         if (worker) {
           decisions.push({
@@ -282,7 +321,7 @@ export class SchedulerLoop {
   }
 
   private wakeAgent(agentId: string): void {
-    this.channelRuntime.getAgents().find(a => a.agentId === agentId)?.wakeMailbox()
+    this.channelRuntime.wakeAgent(agentId)
   }
 
   private refreshIdle(members: MemberView[], now: number): void {
@@ -302,5 +341,39 @@ export class SchedulerLoop {
     return [...pool].sort(
       (a, b) => (this.idleSince.get(a.agentId) ?? now) - (this.idleSince.get(b.agentId) ?? now),
     )[0]
+  }
+
+  /** loop 模式:检测主任务完成 → 启动循环控制器重放 */
+  private checkLoopCompletion(snapshot: SupervisionSnapshot): void {
+    if (this.activeMode !== 'loop') return
+    // 查找已完成的 loop 模式主任务
+    for (const task of snapshot.tasks) {
+      if (task.assigneeId !== this.lead.agentId) continue
+      if (task.state !== 'COMPLETED') continue
+      const modeInfo = extractTaskMode(task)
+      if (!modeInfo || modeInfo.mode !== 'loop') continue
+      // 已有 loopController 在跑 → 跳过
+      if (this.loopController) continue
+      // 创建 loop 控制器 → 在 intervalMs 后重新提交相同任务
+      const intervalMs = modeInfo.config.intervalMs ?? 60_000
+      const maxIterations = modeInfo.config.maxIterations ?? Number.POSITIVE_INFINITY
+      if (this.onLoopResubmit) {
+        this.loopController = new LoopController(
+          this.channelRuntime.channelId,
+          task.title,
+          task.description ?? '',
+          intervalMs,
+          maxIterations,
+          this.onLoopResubmit,
+        )
+        this.loopController.onTaskCompleted()
+      }
+    }
+  }
+
+  /** 获取当前模式的额外 prompt(注入 lead 的 supervise 上下文) */
+  getModePrompt(snapshot: SupervisionSnapshot): string {
+    if (!this.activeMode) return ''
+    return buildModeAwarePrompt(this.activeMode, this.activeModeConfig, snapshot, this.lead.agentId)
   }
 }

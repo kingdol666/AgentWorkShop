@@ -25,18 +25,19 @@ export interface AgentCard {
   skills: unknown[]
 }
 
-/** 按 agentId 查找 Agent(公开 API 无 findAgent;经 deps.repos 只读查询) */
+/** 按实例 id 查找 Channel 实例(公开 API 无 findAgent;经 deps.repos 只读查询) */
 export function findAgent(manager: AgentChannelManager, agentId: string): AgentInfo | undefined {
   const repos = (manager as unknown as { deps: ManagerDeps }).deps.repos
-  const row = repos.agents.findById(agentId)
-  if (!row) return undefined
+  const m = repos.channelAgents.findById(agentId)
+  if (!m) return undefined
   return {
-    id: row.id,
-    channelId: row.channelId,
-    name: row.name,
-    harness: row.harness,
-    role: row.role as 'lead' | 'worker',
-    config: parseJson<Record<string, unknown>>(row.configJson, {}),
+    id: m.id,
+    channelId: m.channelId,
+    name: m.name,
+    harness: m.harness,
+    role: m.role as 'lead' | 'worker',
+    config: parseJson<Record<string, unknown>>(m.configJson, {}),
+    token: m.token,
   }
 }
 

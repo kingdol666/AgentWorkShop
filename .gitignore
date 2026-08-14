@@ -44,3 +44,6 @@ Thumbs.db
 
 # 运行时数据库(data/ 为程序生成的 sqlite 文件)
 data/
+
+# 测试临时产物(workspace / sqlite 等)
+.tmp-*

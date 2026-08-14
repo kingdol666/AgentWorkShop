@@ -17,6 +17,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
+import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
@@ -41,6 +42,7 @@ function setup(): { db: DatabaseSync, manager: AgentChannelManager } {
   const repos = {
     channels: createChannelRepo(db),
     agents: createAgentRepo(db),
+    channelAgents: createChannelAgentRepo(db),
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
@@ -87,9 +89,9 @@ async function main(): Promise<void> {
       leadAgent: { name: 'lead-m', harness: 'mock', config: { delayMs: 60 } },
     })
     channels.push(ch.channelId)
-    const w1 = await manager.createAgent({ channelId: ch.channelId, name: 'worker-a', harness: 'mock', role: 'worker', config: { delayMs: 60 } })
-    const w2 = await manager.createAgent({ channelId: ch.channelId, name: 'worker-b', harness: 'mock', role: 'worker', config: { delayMs: 60 } })
-    const agents = await manager.listAgents(ch.channelId)
+    const w1 = await manager.addAgentToChannel({ channelId: ch.channelId, agentId: (await manager.createAgent({ name: 'worker-a', harness: 'mock', config: { delayMs: 60 } })).id, role: 'worker' })
+    const w2 = await manager.addAgentToChannel({ channelId: ch.channelId, agentId: (await manager.createAgent({ name: 'worker-b', harness: 'mock', config: { delayMs: 60 } })).id, role: 'worker' })
+    const agents = await manager.listChannelAgents(ch.channelId)
     check('Channel/Agent 管理: 1 lead + 2 workers', agents.length === 3 && agents.some(a => a.role === 'lead'), `n=${agents.length}`)
     void w1
     void w2

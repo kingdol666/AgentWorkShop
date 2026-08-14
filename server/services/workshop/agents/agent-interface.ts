@@ -90,6 +90,11 @@ export type SupervisionDecision
     | { kind: 'cancel', taskId: string }
     | { kind: 'complete', taskId: string, artifacts?: A2AArtifact[] }
     | { kind: 'notify', toAgentId: string, parts: Part[] }
+/** 执行模式:channel 任务提交时选择 */
+export type ExecutionMode = 'goal' | 'loop' | 'pipeline'
+
+/** 消息优先级:immediate 实时注入(steer);task 任务队列(等当前任务结束消费) */
+export type MessagePriority = 'immediate' | 'task'
 
 /** AgentInterface:所有 harness impl 的唯一契约 */
 export interface AgentInterface {
@@ -97,6 +102,11 @@ export interface AgentInterface {
   run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent>
   /** lead 调度决策(可选,仅 role='lead' 时被 SchedulerLoop 调用) */
   supervise?(snapshot: SupervisionSnapshot, ctx: AgentRunContext): Promise<SupervisionDecision[]>
+  /**
+   * 实时消息注入:将文本作为 steer 注入正在运行的 omp 会话。
+   * agent 空闲时无操作;agent 忙碌时注入为 steering message(agent 在当前轮看到)。
+   */
+  steer?(text: string): Promise<void>
   init?(config: { agent: AgentInfo, channelId: string }): Promise<void>
   dispose?(): Promise<void>
 }

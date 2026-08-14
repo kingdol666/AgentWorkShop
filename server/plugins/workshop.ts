@@ -17,6 +17,7 @@ import { resolve } from 'node:path'
 import { openWorkshopDb, initWorkshopDb } from '../services/workshop/db/database'
 import { createChannelRepo } from '../services/workshop/db/channel.repo'
 import { createAgentRepo } from '../services/workshop/db/agent.repo'
+import { createChannelAgentRepo } from '../services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../services/workshop/db/task.repo'
 import { createMessageRepo } from '../services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../services/workshop/db/subscription.repo'
@@ -27,24 +28,11 @@ import {
   type AllRepos,
   type ManagerDeps,
 } from '../services/workshop/runtime/manager'
-import { SchedulerLoop } from '../services/workshop/runtime/scheduler-loop'
-import type { ChannelRuntime } from '../services/workshop/runtime/channel-runtime'
-import type { AgentRuntime } from '../services/workshop/runtime/agent-runtime'
 import { AppError } from '../utils/errors'
 
 declare global {
 
   var __workshopManager: AgentChannelManager | undefined
-}
-
-/** manager 内部结构(类型收窄:公开 API 未暴露 channel 运行时映射) */
-interface ManagerInternals {
-  channels: Map<string, ChannelRuntime>
-  agentIndex: Map<string, AgentRuntime>
-}
-
-function internalsOf(manager: AgentChannelManager): ManagerInternals {
-  return manager as unknown as ManagerInternals
 }
 
 /** 读取进程级 manager 单例(先检查已设置;未初始化抛 503) */
@@ -58,23 +46,14 @@ export function getWorkshopManager(): AgentChannelManager {
 
 /**
  * 为 channel 装配并启动 lead 的 SchedulerLoop(幂等)。
- * 无 lead / 已装配 / channel 未加载时跳过;新任命 lead(createChannel 带 leadAgent
- * 或 createAgent role=lead)后由 REST 入口调用,与 plugin 启动恢复同路径。
+ * 委托 manager.ensureChannelActive(懒加载:装配 lead + 调度循环)。
  */
 export function ensureLeadSchedulerLoop(
   manager: AgentChannelManager,
   channelId: string,
   options?: { tickMs?: number, stallMs?: number },
 ): void {
-  const internal = internalsOf(manager)
-  const cr = internal.channels.get(channelId)
-  if (!cr || cr.scheduler) return
-  const lead = cr.getAgents().find(a => a.role === 'lead')
-  if (!lead) return
-  const runtime = internal.agentIndex.get(lead.agentId)
-  if (!runtime) return
-  cr.scheduler = new SchedulerLoop(cr, runtime, options)
-  cr.scheduler.start()
+  manager.ensureChannelActive(channelId, options)
 }
 
 /**
@@ -101,6 +80,7 @@ export default function workshopPlugin(nitroApp: {
   const repos: AllRepos = {
     channels: createChannelRepo(db),
     agents: createAgentRepo(db),
+    channelAgents: createChannelAgentRepo(db),
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
@@ -111,19 +91,16 @@ export default function workshopPlugin(nitroApp: {
   const manager = createAgentChannelManager(deps)
   globalThis.__workshopManager = manager
 
-  // 启动恢复:consuming 重置 + 非终态任务回 ASSIGNED + enabled 的 channel/agent 重建运行时
+  // 懒加载恢复:仅激活有待办任务的 channel(装配 lead + 调度循环);其余纯持久化
   manager.restore()
 
-  // lead 恢复后启动其 SchedulerLoop(调度循环随 lead 生命周期运行)
-  for (const channel of repos.channels.list()) {
-    if (channel.enabled === 1) ensureLeadSchedulerLoop(manager, channel.id)
-  }
+  // idle sweeper:空闲 agent 超时自动卸载(释放 omp 子进程与内存)
+  const stopSweeper = manager.startIdleSweeper({ intervalMs: 30_000, graceMs: 120_000 })
 
-  // 关机:停止全部 SchedulerLoop 与 Agent 消费循环(优雅等待当前 run/supervise 结束),关闭数据库
+  // 关机:完整关闭 manager(sweeper + 调度循环 + agent 运行时),关闭数据库
   nitroApp.hooks.hook('close', async () => {
-    const internal = internalsOf(manager)
-    for (const cr of internal.channels.values()) cr.scheduler?.stop()
-    await Promise.all([...internal.agentIndex.values()].map(a => a.stop()))
+    stopSweeper()
+    await manager.shutdown()
     db.close()
   })
 }

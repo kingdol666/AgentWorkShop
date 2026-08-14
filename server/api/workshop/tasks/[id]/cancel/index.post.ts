@@ -23,8 +23,8 @@ export default defineApiHandler(async (event) => {
   const task = taskEngineOf(manager).get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
   // 系统身份:任务所在 channel 的 lead
-  const agents = await manager.listAgents(task.channelId)
+  const agents = await manager.listChannelAgents(task.channelId)
   const lead = agents.find(a => a.role === 'lead')
   if (!lead) throw new AppError(400, 'NO_LEAD_AGENT', `channel ${task.channelId} 无 lead,无法以系统身份取消`)
-  return manager.cancelTask(lead.id, { taskId })
+  return manager.cancelTask(lead.channelId, lead.id, { taskId })
 })

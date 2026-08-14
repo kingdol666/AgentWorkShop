@@ -27,7 +27,7 @@ export function createMessageRepo(db: DatabaseSync) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectPending = db.prepare(
-    `SELECT ${COLS} FROM messages WHERE to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC`,
+    `SELECT ${COLS} FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC`,
   )
   const markConsumingStmt = db.prepare(
     `UPDATE messages SET state = 'consuming' WHERE id = ? AND state = 'pending'`,
@@ -65,9 +65,9 @@ export function createMessageRepo(db: DatabaseSync) {
       return row
     },
 
-    /** 拉取某 Agent 的未消费消息(FIFO) */
-    listPendingByAgent(toAgentId: string): MessageRow[] {
-      return selectPending.all(toAgentId) as unknown as MessageRow[]
+    /** 拉取某 channel 内某 Agent 的未消费消息(FIFO) */
+    listPendingByChannelAgent(channelId: string, toAgentId: string): MessageRow[] {
+      return selectPending.all(channelId, toAgentId) as unknown as MessageRow[]
     },
 
     /** pending → consuming(消费中,防重复投递) */

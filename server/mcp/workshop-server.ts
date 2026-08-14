@@ -1,14 +1,14 @@
 /**
  * MCP Server — Agent 自主作业面(L3 绑定,四入口之一)。
- * 用 @modelcontextprotocol/sdk 注册 16 个工具,Agent 经 token 认证后自主调用。
+ * 用 @modelcontextprotocol/sdk 注册工具,Agent 经 token 认证后自主调用。
  * 权威契约见 docs/superpowers/specs/2026-08-13-agent-workshop-multi-agent-design.md §6.1。
  *
- * 身份凭证:每个 Agent 创建时生成 token(UUIDv4,存 agents.token)。
+ * 身份凭证:每个 Channel 成员(agent × channel)创建时生成 token(UUIDv4,存 channel_agents.token)。
  * 工具 handler 从请求 extra 解析 caller token:
  *   1. `Authorization: Bearer <token>` 头(extra.requestInfo.headers)
  *   2. auth 中间件注入的 token(extra.authInfo.token)
  * 无 token 或无效 token → throw new Error('UNAUTHORIZED')(SDK 转为工具错误)。
- * 管理面工具(channel.create/remove、agent.create/remove、channel.list、task.submit)不要求 token。
+ * 管理面工具(channel.create/remove、agent.create/add/remove、channel.list、task.submit)不要求 token。
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
@@ -84,7 +84,7 @@ function jsonResult(data: unknown) {
 }
 
 /**
- * 创建 Workshop MCP Server:注册 §6.1 表中的 16 个工具。
+ * 创建 Workshop MCP Server:注册 §6.1 表中的工具。
  * 名/参数/说明与设计文档 §6.1 逐字一致。
  */
 export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer {
@@ -149,21 +149,17 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
   server.registerTool(
     'workshop.agent.create',
     {
-      description: '创建 Agent(role=lead/worker)',
+      description: '创建 Agent 模板(可复用数据结构;放入 channel 用 agent.add 克隆)',
       inputSchema: {
-        channelId: z.string(),
         name: z.string(),
         harness: z.string(),
-        role: z.enum(['lead', 'worker']),
         config: z.record(z.string(), z.unknown()).optional(),
       },
     },
     async (args) => {
       const result = await manager.createAgent({
-        channelId: args.channelId,
         name: args.name,
         harness: args.harness,
-        role: args.role,
         config: args.config,
       })
       return jsonResult(result)
@@ -171,21 +167,52 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
   )
 
   server.registerTool(
+    'workshop.agent.add',
+    {
+      description: '把 Agent 模板放入 channel → 克隆出独立身份 id 的新实例(role=lead/worker)',
+      inputSchema: {
+        channelId: z.string(),
+        agentId: z.string(),
+        role: z.enum(['lead', 'worker']),
+      },
+    },
+    async (args) => {
+      const result = await manager.addAgentToChannel({
+        channelId: args.channelId,
+        agentId: args.agentId,
+        role: args.role,
+      })
+      return jsonResult(result)
+    },
+  )
+
+  server.registerTool(
+    'workshop.agent.definitions',
+    {
+      description: '列出全部 Agent 模板(全局可复用)',
+      inputSchema: {},
+    },
+    async () => {
+      return jsonResult(await manager.listAgents())
+    },
+  )
+
+  server.registerTool(
     'workshop.agent.list',
     {
-      description: '列同事(Agent 只能看到自己 channel)',
+      description: '列同事(channel 内实例;Agent 只能看到自己 channel)',
       inputSchema: {},
     },
     async (_args, extra) => {
       const caller = requireCaller(manager, extra)
-      return jsonResult(await manager.listAgents(caller.channelId))
+      return jsonResult(await manager.listChannelAgents(caller.channelId))
     },
   )
 
   server.registerTool(
     'workshop.agent.remove',
     {
-      description: '删除 Agent',
+      description: '删除 Agent 模板(已克隆实例保留)',
       inputSchema: { agentId: z.string() },
     },
     async (args) => {
@@ -232,7 +259,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       const caller = requireCaller(manager, extra)
-      const result = await manager.dispatchTask(caller.id, {
+      const result = await manager.dispatchTask(caller.channelId, caller.id, {
         parentTaskId: args.parentTaskId,
         assigneeId: args.assigneeId,
         title: args.title,
@@ -251,7 +278,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (_args, extra) => {
       const caller = requireCaller(manager, extra)
-      return jsonResult(await manager.listTasks(caller.id))
+      return jsonResult(await manager.listTasks(caller.channelId, caller.id))
     },
   )
 
@@ -263,7 +290,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       const caller = requireCaller(manager, extra)
-      return jsonResult(await manager.getTask(caller.id, args.taskId))
+      return jsonResult(await manager.getTask(caller.channelId, caller.id, args.taskId))
     },
   )
 
@@ -280,7 +307,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       const caller = requireCaller(manager, extra)
-      const result = await manager.reportTask(caller.id, {
+      const result = await manager.reportTask(caller.channelId, caller.id, {
         taskId: args.taskId,
         progress: args.progress,
         artifact: args.artifact,
@@ -301,7 +328,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       const caller = requireCaller(manager, extra)
-      const result = await manager.completeTask(caller.id, {
+      const result = await manager.completeTask(caller.channelId, caller.id, {
         taskId: args.taskId,
         artifacts: args.artifacts,
       })
@@ -317,7 +344,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       const caller = requireCaller(manager, extra)
-      const result = await manager.cancelTask(caller.id, { taskId: args.taskId })
+      const result = await manager.cancelTask(caller.channelId, caller.id, { taskId: args.taskId })
       return jsonResult(result)
     },
   )
@@ -337,7 +364,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     async (args, extra) => {
       // fromAgentId 由 token 决定(caller.id),不接受请求体自报
       const caller = requireCaller(manager, extra)
-      const result = await manager.sendA2A(caller.id, {
+      const result = await manager.sendA2A(caller.channelId, caller.id, {
         toAgentId: args.toAgentId,
         parts: args.parts,
         metadata: args.metadata,
@@ -354,7 +381,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       const caller = requireCaller(manager, extra)
-      return jsonResult(await manager.pollMailbox(caller.id, args.limit))
+      return jsonResult(await manager.pollMailbox(caller.channelId, caller.id, args.limit))
     },
   )
 
@@ -366,7 +393,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       const caller = requireCaller(manager, extra)
-      await manager.subscribe(caller.id, { agentIds: args.agentIds })
+      await manager.subscribe(caller.channelId, caller.id, { agentIds: args.agentIds })
       return jsonResult({ ok: true })
     },
   )

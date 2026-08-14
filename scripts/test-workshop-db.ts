@@ -1,18 +1,20 @@
 /**
  * workshop 持久化层测试(node + tsx 直跑,无浏览器)
  *
- * 覆盖:
- *  1. 建表:5 张表 + 3 个索引
+ * 覆盖(v2:Agent 与 Channel 分离):
+ *  1. 建表:6 张表 + 4 个索引
  *  2. channel CRUD
- *  3. agent CRUD + findByToken
- *  4. message 状态机(pending→consuming→consumed + resetConsuming)+ JSON 序列化
- *  5. subscription 复合主键去重
- *  6. task CRUD + listNonTerminal
+ *  3. agent 定义 CRUD(全局,无 channel 绑定)
+ *  4. channel_agents 成员 CRUD + findByToken(成员级 token)
+ *  5. message 状态机(pending→consuming→consumed + resetConsuming)+ channel 作用域
+ *  6. subscription 复合主键去重(channel 隔离)
+ *  7. task CRUD + listNonTerminal
  */
 import type { DatabaseSync } from 'node:sqlite'
 import { openWorkshopDb, parseJson } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
+import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
@@ -29,18 +31,18 @@ function testSchema(db: DatabaseSync): void {
   console.log('\n--- 1. 建表与索引 ---')
   const tables = db
     .prepare(
-      `SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('channels','agents','messages','subscriptions','tasks') ORDER BY name`,
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('channels','agents','channel_agents','messages','subscriptions','tasks') ORDER BY name`,
     )
     .all() as { name: string }[]
   const names = tables.map(t => t.name)
-  check('5 张表全部创建', names.length === 5, names.join(','))
+  check('6 张表全部创建', names.length === 6, names.join(','))
 
   const indexes = db
     .prepare(
-      `SELECT name FROM sqlite_master WHERE type = 'index' AND name IN ('idx_messages_queue','idx_tasks_channel','idx_tasks_assignee')`,
+      `SELECT name FROM sqlite_master WHERE type = 'index' AND name IN ('idx_channel_agents_token','idx_channel_agents_channel','idx_messages_queue','idx_tasks_channel','idx_tasks_assignee')`,
     )
     .all()
-  check('3 个索引全部创建', indexes.length === 3)
+  check('5 个索引全部创建', indexes.length === 5)
 }
 
 function testChannelCrud(db: DatabaseSync): void {
@@ -66,34 +68,62 @@ function testChannelCrud(db: DatabaseSync): void {
 }
 
 function testAgentCrud(db: DatabaseSync): void {
-  console.log('\n--- 3. agent CRUD + findByToken ---')
-  const channels = createChannelRepo(db)
-  const ch = channels.create({ name: '主频道' })
+  console.log('\n--- 3. agent 定义 CRUD(全局) ---')
   const repo = createAgentRepo(db)
 
-  const lead = repo.create({ channelId: ch.id, name: '主理人', harness: 'mock', role: 'lead' })
-  check('create 自动生成 token', lead.token.length > 0)
+  const lead = repo.create({ name: '主理人', harness: 'mock' })
+  check('create 生成 id', lead.id.length > 0)
   check('create 默认 configJson {}', lead.configJson === '{}')
 
-  const worker = repo.create({ channelId: ch.id, name: '工人', harness: 'claude', role: 'worker', token: 'tok-1', config: { model: 'x' } })
-  check('create 接受显式 token', worker.token === 'tok-1')
+  const worker = repo.create({ name: '工人', harness: 'claude', config: { model: 'x' } })
   check('create config 序列化为 JSON', worker.configJson === JSON.stringify({ model: 'x' }))
 
-  check('listByChannel 返回 2 条', repo.listByChannel(ch.id).length === 2)
+  check('list 返回 2 条', repo.list().length === 2)
   check('findById 命中', repo.findById(lead.id)?.name === '主理人')
-  check('findByToken 命中', repo.findByToken('tok-1')?.id === worker.id)
-  check('findByToken 未命中返回 undefined', repo.findByToken('nope') === undefined)
 
   const updated = repo.update(worker.id, { name: '工人改', config: { model: 'y' } })
   check('update 修改 name/config', updated?.name === '工人改' && updated?.configJson === JSON.stringify({ model: 'y' }))
 
   repo.remove(worker.id)
+  check('remove 后 list 长度 1', repo.list().length === 1)
+}
+
+function testChannelAgentCrud(db: DatabaseSync): void {
+  console.log('\n--- 4. channel_agents 实例 CRUD(克隆)+ findByToken ---')
+  const channels = createChannelRepo(db)
+  const ch = channels.create({ name: '主频道' })
+  const agents = createAgentRepo(db)
+  const a = agents.create({ name: '主理人', harness: 'mock', config: { k: 'v' } })
+  const b = agents.create({ name: '工人', harness: 'claude' })
+
+  const repo = createChannelAgentRepo(db)
+  const mA = repo.create({ channelId: ch.id, templateId: a.id, name: a.name, harness: a.harness, config: { k: 'v' }, role: 'lead' })
+  check('create 生成独立身份 id', mA.id.length > 0 && mA.id !== a.id)
+  check('create 自动生成实例 token', mA.token.length > 0)
+  check('create 复制模板 name/harness/config', mA.name === '主理人' && mA.harness === 'mock' && mA.configJson === JSON.stringify({ k: 'v' }))
+  check('create 记录 template_id', mA.templateId === a.id)
+
+  const mB = repo.create({ channelId: ch.id, templateId: b.id, name: b.name, harness: b.harness, role: 'worker', token: 'tok-1' })
+  check('create 接受显式 token', mB.token === 'tok-1')
+  check('同模板可克隆多实例且 id 不同', mB.id !== mA.id)
+
+  check('listByChannel 返回 2 条', repo.listByChannel(ch.id).length === 2)
+  check('findById 命中实例', repo.findById(mA.id)?.role === 'lead')
+  check('findByChannelAgent 命中', repo.findByChannelAgent(ch.id, mA.id)?.role === 'lead')
+  check('findByToken 命中(实例级)', repo.findByToken('tok-1')?.id === mB.id)
+  check('findByToken 未命中返回 undefined', repo.findByToken('nope') === undefined)
+  check('listByTemplate 返回该模板全部实例', repo.listByTemplate(a.id).length === 1)
+
+  const updated = repo.update(mB.id, { role: 'lead', name: '工人改' })
+  check('update 修改 role/name', updated?.role === 'lead' && updated?.name === '工人改')
+
+  repo.remove(ch.id, mB.id)
   check('remove 后 listByChannel 长度 1', repo.listByChannel(ch.id).length === 1)
   check('remove 后 findByToken 未命中', repo.findByToken('tok-1') === undefined)
 }
 
 function testMessageStateMachine(db: DatabaseSync): void {
-  console.log('\n--- 4. message 状态机 + JSON 序列化 ---')
+  console.log('\n--- 5. message 状态机 + channel 作用域 ---')
   const channels = createChannelRepo(db)
   const ch = channels.create({ name: '消息频道' })
   const repo = createMessageRepo(db)
@@ -102,13 +132,13 @@ function testMessageStateMachine(db: DatabaseSync): void {
   const m2 = repo.create({ channelId: ch.id, toAgentId: 'agent-a', role: 'ROLE_AGENT', parts: [{ text: 'yo' }] })
   repo.create({ channelId: ch.id, toAgentId: 'agent-b', role: 'ROLE_USER', parts: [{ text: 'other' }], metadata: { k: 1 } })
 
-  check('listPendingByAgent 初始 2 条', repo.listPendingByAgent('agent-a').length === 2)
+  check('listPendingByChannelAgent 初始 2 条', repo.listPendingByChannelAgent(ch.id, 'agent-a').length === 2)
   check('partsJson 存 JSON.stringify', m1.partsJson === JSON.stringify([{ text: 'hi' }]))
   check('parseJson 读回 parts', parseJson<{ text: string }[]>(m1.partsJson, []).length === 1)
   check('parseJson 解析失败返回默认值', parseJson('{broken', []).length === 0)
 
   repo.markConsuming(m1.id)
-  check('markConsuming 后 pending 减为 1', repo.listPendingByAgent('agent-a').length === 1)
+  check('markConsuming 后 pending 减为 1', repo.listPendingByChannelAgent(ch.id, 'agent-a').length === 1)
   const consuming = db.prepare(`SELECT state FROM messages WHERE id = ?`).get(m1.id) as { state: string }
   check('m1 state 变为 consuming', consuming.state === 'consuming')
 
@@ -120,42 +150,46 @@ function testMessageStateMachine(db: DatabaseSync): void {
   repo.resetConsuming()
   const m2After = db.prepare(`SELECT state FROM messages WHERE id = ?`).get(m2.id) as { state: string }
   check('resetConsuming 将 consuming 重置为 pending', m2After.state === 'pending')
-  check('resetConsuming 后 pending 恢复为 1', repo.listPendingByAgent('agent-a').length === 1)
+  check('resetConsuming 后 pending 恢复为 1', repo.listPendingByChannelAgent(ch.id, 'agent-a').length === 1)
 
   check('listRecentByChannel 返回 3 条', repo.listRecentByChannel(ch.id, 10).length === 3)
   check('listRecentByChannel 尊重 limit', repo.listRecentByChannel(ch.id, 2).length === 2)
 }
 
 function testSubscriptionDedup(db: DatabaseSync): void {
-  console.log('\n--- 5. subscription 复合主键去重 ---')
+  console.log('\n--- 6. subscription 复合主键去重(channel 隔离) ---')
   const channels = createChannelRepo(db)
   const ch = channels.create({ name: '订阅频道' })
   const agents = createAgentRepo(db)
-  const a = agents.create({ channelId: ch.id, name: 'A', harness: 'mock', role: 'lead' })
-  const b = agents.create({ channelId: ch.id, name: 'B', harness: 'mock', role: 'worker' })
-  const c = agents.create({ channelId: ch.id, name: 'C', harness: 'mock', role: 'worker' })
+  const channelAgents = createChannelAgentRepo(db)
+  const tplA = agents.create({ name: 'A', harness: 'mock' })
+  const tplB = agents.create({ name: 'B', harness: 'mock' })
+  const tplC = agents.create({ name: 'C', harness: 'mock' })
+  const a = channelAgents.create({ channelId: ch.id, templateId: tplA.id, name: tplA.name, harness: tplA.harness, role: 'worker' })
+  const b = channelAgents.create({ channelId: ch.id, templateId: tplB.id, name: tplB.name, harness: tplB.harness, role: 'worker' })
+  const c = channelAgents.create({ channelId: ch.id, templateId: tplC.id, name: tplC.name, harness: tplC.harness, role: 'worker' })
 
   const repo = createSubscriptionRepo(db)
-  repo.add(a.id, b.id)
-  repo.add(a.id, b.id)
-  check('重复 add 同一对自动去重', repo.listByAgent(a.id).length === 1)
+  repo.add(ch.id, a.id, b.id)
+  repo.add(ch.id, a.id, b.id)
+  check('重复 add 同一对自动去重', repo.listByAgent(ch.id, a.id).length === 1)
 
-  repo.add(a.id, c.id)
-  check('listByAgent 返回 2 个目标', repo.listByAgent(a.id).length === 2)
-  check('listByTarget(b) 返回 1 个订阅者', repo.listByTarget(b.id).length === 1)
+  repo.add(ch.id, a.id, c.id)
+  check('listByAgent 返回 2 个目标', repo.listByAgent(ch.id, a.id).length === 2)
+  check('listByTarget(b) 返回 1 个订阅者', repo.listByTarget(ch.id, b.id).length === 1)
 
-  repo.remove(a.id, b.id)
-  check('remove 后 listByAgent 长度 1', repo.listByAgent(a.id).length === 1)
-  check('remove 后 listByTarget(b) 为空', repo.listByTarget(b.id).length === 0)
+  repo.remove(ch.id, a.id, b.id)
+  check('remove 后 listByAgent 长度 1', repo.listByAgent(ch.id, a.id).length === 1)
+  check('remove 后 listByTarget(b) 为空', repo.listByTarget(ch.id, b.id).length === 0)
 }
 
 function testTaskCrud(db: DatabaseSync): void {
-  console.log('\n--- 6. task CRUD + listNonTerminal ---')
+  console.log('\n--- 7. task CRUD + listNonTerminal ---')
   const channels = createChannelRepo(db)
   const ch = channels.create({ name: '任务频道' })
   const agents = createAgentRepo(db)
-  const lead = agents.create({ channelId: ch.id, name: '主理人', harness: 'mock', role: 'lead' })
-  const worker = agents.create({ channelId: ch.id, name: '工人', harness: 'mock', role: 'worker' })
+  const lead = agents.create({ name: '主理人', harness: 'mock' })
+  const worker = agents.create({ name: '工人', harness: 'mock' })
 
   const repo = createTaskRepo(db)
   const parent = repo.create({ channelId: ch.id, assigneeId: lead.id, creatorId: 'user-1', title: '主任务' })
@@ -184,6 +218,7 @@ function main(): void {
     testSchema(db)
     testChannelCrud(db)
     testAgentCrud(db)
+    testChannelAgentCrud(db)
     testMessageStateMachine(db)
     testSubscriptionDedup(db)
     testTaskCrud(db)

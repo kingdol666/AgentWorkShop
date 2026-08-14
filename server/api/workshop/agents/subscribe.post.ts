@@ -16,6 +16,6 @@ const subscribeSchema = z.object({
 export default defineApiHandler(async (event) => {
   const body = await readValidatedBody(event, zValidator(subscribeSchema))
   const caller = resolveCaller(event)
-  await getWorkshopManager().subscribe(caller.id, { agentIds: body.agentIds })
+  await getWorkshopManager().subscribe(caller.channelId, caller.id, { agentIds: body.agentIds })
   return { subscribed: true, agentId: caller.id }
 })
