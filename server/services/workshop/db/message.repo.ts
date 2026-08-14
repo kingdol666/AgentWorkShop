@@ -41,6 +41,10 @@ export function createMessageRepo(db: DatabaseSync) {
   const selectRecent = db.prepare(
     `SELECT ${COLS} FROM messages WHERE channel_id = ? ORDER BY createdAt DESC LIMIT ?`,
   )
+  const selectPendingTargets = db.prepare(
+    `SELECT DISTINCT channel_id AS channelId, to_agent_id AS toAgentId
+     FROM messages WHERE to_agent_id IS NOT NULL AND state = 'pending'`,
+  )
 
   return {
     /** 创建消息(state=pending,parts/metadata 序列化存储) */
@@ -88,6 +92,11 @@ export function createMessageRepo(db: DatabaseSync) {
     /** 按 channel 倒序列出最近消息 */
     listRecentByChannel(channelId: string, limit: number): MessageRow[] {
       return selectRecent.all(channelId, limit) as unknown as MessageRow[]
+    },
+
+    /** 启动恢复:全部未消费消息的目标 agent(供 restore 唤醒,重投的 assign 才能被消费) */
+    listPendingTargets(): Array<{ channelId: string, toAgentId: string }> {
+      return selectPendingTargets.all() as unknown as Array<{ channelId: string, toAgentId: string }>
     },
   }
 }

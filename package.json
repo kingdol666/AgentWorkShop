@@ -20,6 +20,7 @@
     "typecheck": "nuxt typecheck",
     "prepare": "husky",
     "game:test": "tsx scripts/test-agent-brain.ts && tsx scripts/test-game-session.ts",
+    "test:api-live": "node scripts/api-live-e2e.mjs",
     "game:verify": "node scripts/verify-game.mjs",
     "game:build-assets": "node scripts/build-player-sheet.mjs"
   },

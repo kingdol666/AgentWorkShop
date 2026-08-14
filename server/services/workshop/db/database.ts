@@ -185,6 +185,71 @@ export function initWorkshopDb(db: DatabaseSync): void {
   db.exec('PRAGMA foreign_keys = ON;')
   db.exec(SCHEMA_SQL)
   migrateLegacySchema(db)
+  migrateMissingForeignKeys(db)
+}
+
+/** 检测表上是否存在 指向某表的列级外键 */
+function hasForeignKey(db: DatabaseSync, table: string, from: string, refTable: string): boolean {
+  const rows = db.prepare(`PRAGMA foreign_key_list(${table})`).all() as Array<{ from: string, table: string }>
+  return rows.some(r => r.from === from && r.table === refTable)
+}
+
+/**
+ * v3 → v4 迁移:补齐 tasks/subscriptions 缺失的外键。
+ * 早期版本(v1→v3 迁移产物、旧建表脚本)的这两张表没有 REFERENCES ... ON DELETE CASCADE,
+ * 而 CREATE TABLE IF NOT EXISTS 不会升级既有表 → channel 删除时 tasks/subscriptions 成孤儿数据。
+ * 重建前先清除孤儿行(其 channel 已不存在,不可达;新外键会使 INSERT 失败)。
+ */
+function migrateMissingForeignKeys(db: DatabaseSync): void {
+  const needTasks = !hasForeignKey(db, 'tasks', 'channel_id', 'channels')
+  const needSubs = !hasForeignKey(db, 'subscriptions', 'channel_id', 'channels')
+  if (!needTasks && !needSubs) return
+
+  db.exec('PRAGMA foreign_keys = OFF;')
+  try {
+    if (needTasks) {
+      db.exec(`DELETE FROM tasks WHERE channel_id NOT IN (SELECT id FROM channels);
+      CREATE TABLE tasks_new (
+        id             TEXT PRIMARY KEY,
+        channel_id     TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+        parent_id      TEXT,
+        assignee_id    TEXT NOT NULL,
+        creator_id     TEXT,
+        title          TEXT NOT NULL,
+        description    TEXT,
+        state          TEXT NOT NULL,
+        progress       INTEGER NOT NULL DEFAULT 0,
+        retry_count    INTEGER NOT NULL DEFAULT 0,
+        artifacts_json TEXT NOT NULL DEFAULT '[]',
+        history_json   TEXT NOT NULL DEFAULT '[]',
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL
+      );
+      INSERT INTO tasks_new SELECT id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, created_at, updated_at FROM tasks;
+      DROP TABLE tasks;
+      ALTER TABLE tasks_new RENAME TO tasks;
+      CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);
+      CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);`)
+    }
+    if (needSubs) {
+      db.exec(`DELETE FROM subscriptions
+        WHERE channel_id NOT IN (SELECT id FROM channels)
+           OR agent_id NOT IN (SELECT id FROM channel_agents);
+      CREATE TABLE subscriptions_new (
+        channel_id      TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+        agent_id        TEXT NOT NULL REFERENCES channel_agents(id) ON DELETE CASCADE,
+        target_agent_id TEXT NOT NULL,
+        created_at      TEXT NOT NULL,
+        PRIMARY KEY (channel_id, agent_id, target_agent_id)
+      );
+      INSERT INTO subscriptions_new SELECT channel_id, agent_id, target_agent_id, created_at FROM subscriptions;
+      DROP TABLE subscriptions;
+      ALTER TABLE subscriptions_new RENAME TO subscriptions;`)
+    }
+  }
+  finally {
+    db.exec('PRAGMA foreign_keys = ON;')
+  }
 }
 
 /**

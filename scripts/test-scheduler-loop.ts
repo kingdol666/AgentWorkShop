@@ -13,7 +13,6 @@
  */
 import { randomUUID } from 'node:crypto'
 import { openWorkshopDb } from '../server/services/workshop/db/database'
-import type { AgentRow } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
@@ -59,7 +58,10 @@ async function waitUntil(cond: () => boolean, timeoutMs = 5000): Promise<boolean
   }
 }
 
-function rowToAgentInfo(row: AgentRow, channelId: string, role: 'lead' | 'worker'): AgentInfo {
+/** AgentRow(模板)与 ChannelAgentRow(实例)共有字段;实例 id 才是运行时身份 */
+type RowWithConfig = { id: string, name: string, harness: string, configJson: string }
+
+function rowToAgentInfo(row: RowWithConfig, channelId: string, role: 'lead' | 'worker'): AgentInfo {
   return {
     id: row.id,
     channelId,
@@ -160,10 +162,11 @@ function setup(opts: SetupOptions = {}): Setup {
   const channelAgents = createChannelAgentRepo(db)
   const leadRow = agents.create({ name: 'lead', harness: 'mock', config: { delayMs: 0 } })
   const workerRow = agents.create({ name: 'worker', harness: 'mock', config: { delayMs: 0 } })
-  channelAgents.add({ channelId: channel.id, agentId: leadRow.id, role: 'lead' })
-  channelAgents.add({ channelId: channel.id, agentId: workerRow.id, role: 'worker' })
-  const leadInfo = rowToAgentInfo(leadRow, channel.id, 'lead')
-  const workerInfo = rowToAgentInfo(workerRow, channel.id, 'worker')
+  // 实例行(独立身份 id)才是运行时身份:lead 派发时 assignee 用的是实例 id
+  const leadInst = channelAgents.create({ channelId: channel.id, templateId: leadRow.id, name: leadRow.name, harness: leadRow.harness, config: { delayMs: 0 }, role: 'lead' })
+  const workerInst = channelAgents.create({ channelId: channel.id, templateId: workerRow.id, name: workerRow.name, harness: workerRow.harness, config: { delayMs: 0 }, role: 'worker' })
+  const leadInfo = rowToAgentInfo(leadInst, channel.id, 'lead')
+  const workerInfo = rowToAgentInfo(workerInst, channel.id, 'worker')
 
   const cr = new ChannelRuntime(channel.id, { taskEngine: engine, subscriptionRepo: subscriptions, channelAgents })
   const bus: ChannelBus = { emit: () => {}, onEvent: () => () => {}, notifyTask: () => {}, notifyAgent: () => {}, onAgentStatus: () => {}, onTaskEvent: () => {}, wakeScheduler: () => {} }

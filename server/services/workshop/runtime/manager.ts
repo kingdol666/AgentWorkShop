@@ -846,14 +846,18 @@ export class AgentChannelManager {
   async restore(): Promise<void> {
     this.deps.repos.messages.resetConsuming()
     const nonTerminal = this.deps.repos.tasks.listNonTerminal()
-    for (const row of nonTerminal) {
-      this.deps.repos.tasks.update(row.id, { state: 'ASSIGNED' })
-    }
     const activeChannelIds = new Set(nonTerminal.map(t => t.channelId))
     for (const channelId of activeChannelIds) {
       const channel = this.deps.repos.channels.findById(channelId)
       if (!channel || channel.enabled !== 1) continue
       this.ensureChannelActive(channelId)
+    }
+    // 唤醒有未消费消息的 agent:重启前 consuming 的 assign 消息已被 resetConsuming 重投为 pending,
+    // 若无人唤醒,worker 的运行时(懒加载)不会装配,重投消息滞留 pending,任务永远无法恢复。
+    // 任务状态保持原样(不重置为 ASSIGNED):调度循环按 SUBMITTED/WORKING 重新驱动 lead 任务,
+    // worker 经消息重放从 ASSIGNED/WORKING 恢复执行;WAITING 父任务等子任务完成后正常汇总。
+    for (const { channelId, toAgentId } of this.deps.repos.messages.listPendingTargets()) {
+      this.wakeAgent(channelId, toAgentId)
     }
   }
 

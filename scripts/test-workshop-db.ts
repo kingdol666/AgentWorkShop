@@ -10,8 +10,8 @@
  *  6. subscription 复合主键去重(channel 隔离)
  *  7. task CRUD + listNonTerminal
  */
-import type { DatabaseSync } from 'node:sqlite'
-import { openWorkshopDb, parseJson } from '../server/services/workshop/db/database'
+import { DatabaseSync } from 'node:sqlite'
+import { openWorkshopDb, initWorkshopDb, parseJson } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
@@ -212,6 +212,47 @@ function testTaskCrud(db: DatabaseSync): void {
   check('findById 未命中返回 undefined', repo.findById('nope') === undefined)
 }
 
+/** 旧库(v3 前)FK 缺失迁移:重建 tasks/subscriptions 外键 + 清除孤儿行 */
+function testFkMigration(): void {
+  console.log('\n--- 8. 旧库 FK 缺失迁移 ---')
+  // 手工构造无外键的旧版 tasks/subscriptions + 孤儿行
+  const db = new DatabaseSync(':memory:')
+  db.exec(`PRAGMA foreign_keys = ON;
+  CREATE TABLE channels (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', lead_agent_id TEXT, workspace TEXT NOT NULL DEFAULT '', enabled INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+  CREATE TABLE agents (id TEXT PRIMARY KEY, name TEXT NOT NULL, harness TEXT NOT NULL, config_json TEXT NOT NULL DEFAULT '{}', enabled INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+  CREATE TABLE channel_agents (id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, template_id TEXT, name TEXT NOT NULL, harness TEXT NOT NULL, config_json TEXT NOT NULL DEFAULT '{}', role TEXT NOT NULL DEFAULT 'worker', token TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+  CREATE TABLE messages (id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, task_id TEXT, from_agent_id TEXT, to_agent_id TEXT, role TEXT NOT NULL, parts_json TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', state TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, consumed_at TEXT);
+  CREATE TABLE subscriptions (channel_id TEXT NOT NULL, agent_id TEXT NOT NULL, target_agent_id TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (channel_id, agent_id, target_agent_id));
+  CREATE TABLE tasks (id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, parent_id TEXT, assignee_id TEXT NOT NULL, creator_id TEXT, title TEXT NOT NULL, description TEXT, state TEXT NOT NULL, progress INTEGER NOT NULL DEFAULT 0, retry_count INTEGER NOT NULL DEFAULT 0, artifacts_json TEXT NOT NULL DEFAULT '[]', history_json TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);`)
+  const now = new Date().toISOString()
+  db.prepare(`INSERT INTO channels (id, name, created_at, updated_at) VALUES ('ch1', '正常频道', ?, ?)`).run(now, now)
+  db.prepare(`INSERT INTO channel_agents (id, channel_id, name, harness, role, token, created_at, updated_at) VALUES ('ag1', 'ch1', 'a', 'mock', 'lead', 'tok1', ?, ?)`).run(now, now)
+  db.prepare(`INSERT INTO tasks (id, channel_id, assignee_id, title, state, created_at, updated_at) VALUES ('t1', 'ch1', 'ag1', '正常任务', 'COMPLETED', ?, ?)`).run(now, now)
+  // 孤儿:channel 已删,任务/订阅残留
+  db.prepare(`INSERT INTO tasks (id, channel_id, assignee_id, title, state, created_at, updated_at) VALUES ('t2', 'ghost-ch', 'ag1', '孤儿任务', 'COMPLETED', ?, ?)`).run(now, now)
+  db.prepare(`INSERT INTO subscriptions (channel_id, agent_id, target_agent_id, created_at) VALUES ('ghost-ch', 'ag1', 'ag1', ?)`).run(now)
+
+  try {
+    initWorkshopDb(db)
+    const fkTasks = db.prepare('PRAGMA foreign_key_list(tasks)').all() as Array<{ from: string, table: string, on_delete: string }>
+    const fkSubs = db.prepare('PRAGMA foreign_key_list(subscriptions)').all() as Array<{ from: string, table: string, on_delete: string }>
+    check('迁移后 tasks 带 channel 级联外键', fkTasks.some(f => f.from === 'channel_id' && f.table === 'channels' && f.on_delete === 'CASCADE'))
+    check('迁移后 subscriptions 带双级联外键', fkSubs.some(f => f.from === 'channel_id' && f.table === 'channels' && f.on_delete === 'CASCADE') && fkSubs.some(f => f.from === 'agent_id' && f.table === 'channel_agents' && f.on_delete === 'CASCADE'))
+    const t2 = db.prepare(`SELECT COUNT(*) c FROM tasks WHERE id = 't2'`).get() as { c: number }
+    const s2 = db.prepare(`SELECT COUNT(*) c FROM subscriptions WHERE channel_id = 'ghost-ch'`).get() as { c: number }
+    check('孤儿任务/订阅已清除', t2.c === 0 && s2.c === 0)
+    const t1 = db.prepare(`SELECT COUNT(*) c FROM tasks WHERE id = 't1'`).get() as { c: number }
+    check('正常数据保留', t1.c === 1)
+    // 级联删除验证
+    db.prepare(`DELETE FROM channels WHERE id = 'ch1'`).run()
+    const cascade = db.prepare(`SELECT COUNT(*) c FROM tasks WHERE channel_id = 'ch1'`).get() as { c: number }
+    check('删除 channel 级联删任务', cascade.c === 0)
+  }
+  finally {
+    db.close()
+  }
+}
+
 function main(): void {
   const db = openWorkshopDb(':memory:')
   try {
@@ -226,6 +267,7 @@ function main(): void {
   finally {
     db.close()
   }
+  testFkMigration()
 
   console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILED`}`)
   process.exit(failures === 0 ? 0 : 1)

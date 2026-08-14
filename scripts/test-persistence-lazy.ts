@@ -121,7 +121,8 @@ async function testPersistenceAndLazy(): Promise<void> {
     check('卸载后 channel DB 行保留', chAfter.id === channelId)
   }
   finally {
-    await manager1.unloadIdleAgents()
+    // 完整关闭:busy 的 agent 仍在跑 consumeLoop,直接 close db 会用到已 finalize 的语句
+    await manager1.shutdown()
     db1.close()
   }
 
@@ -136,6 +137,7 @@ async function testPersistenceAndLazy(): Promise<void> {
     check('重启后不自动装配(无待办任务)', manager2.runtimeStatus().wiredAgents.length === 0)
   }
   finally {
+    await manager2.shutdown()
     db2.close()
     rmSync(dbPath, { force: true })
     rmSync(`${dbPath}-wal`, { force: true })
@@ -168,19 +170,27 @@ async function testRestoreWithPending(): Promise<void> {
     check('关闭前有未完成任务', getEngine(manager1).get(task.id)?.state !== 'COMPLETED')
   }
   finally {
-    await manager1.unloadIdleAgents()
+    // 完整关闭:busy 的 agent 仍在跑 consumeLoop,直接 close db 会用到已 finalize 的语句
+    await manager1.shutdown()
     db1.close()
   }
 
-  // 重启:restore 应激活该 channel(有待办任务)
+  // 重启:restore 应激活该 channel(有待办任务),且任务恢复执行至完成
   const db2 = openWorkshopDb(dbPath)
   const manager2 = makeManager(db2)
   try {
     manager2.restore()
     const st = manager2.runtimeStatus()
     check('restore 激活有待办任务的 channel', st.activeChannels.includes(channelId), `active=[${st.activeChannels.map(c => c.slice(0, 6)).join(',')}]`)
+    // 非终态任务经 restore 后必须恢复执行:调度循环重派 + worker 消费重投的 assign 消息
+    const done = await waitUntil(async () => {
+      const tasks = getEngine(manager2).list(channelId)
+      return tasks.some(t => t.state === 'COMPLETED')
+    }, 10_000)
+    check('restore 后任务恢复执行至 COMPLETED', done, '中途崩溃的任务不应滞留 ASSIGNED/WORKING')
   }
   finally {
+    await manager2.shutdown()
     db2.close()
     rmSync(dbPath, { force: true })
     rmSync(`${dbPath}-wal`, { force: true })

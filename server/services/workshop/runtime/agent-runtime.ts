@@ -243,10 +243,16 @@ export class AgentRuntime {
     this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'busy' })
     try {
       // 任务消息联动:assign → WORKING(自动接取;状态事件由 TaskEngine transition hooks 广播)
+      // 仅 SUBMITTED/ASSIGNED 自动接取:WAITING(已有子任务)的任务由 SchedulerLoop/子任务汇总推进,
+      // 此处不得把父任务从 WAITING 翻回 WORKING(否则父任务在子任务执行期间虚挂 WORKING,
+      // 会被 stall 检测误判为停滞而 cancel)。
       if (msg.metadata?.['x-aw-task-kind'] === 'assign') {
         const taskId = msg.metadata?.['x-aw-task-id'] as string | undefined
         if (taskId) {
-          await this.deps.taskEngine.transition(taskId, 'WORKING', this.agentId)
+          const task = this.deps.taskEngine.get(taskId)
+          if (task && (task.state === 'SUBMITTED' || task.state === 'ASSIGNED')) {
+            await this.deps.taskEngine.transition(taskId, 'WORKING', this.agentId)
+          }
         }
       }
       // 每次 run 新建 AbortController;abort 后事件流终止
