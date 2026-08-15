@@ -5,6 +5,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createMemoryRepo, TEAM_AGENT_ID } from '../server/services/workshop/db/memory.repo'
+import { AgentMemory, buildMatchQuery, estimateTokens, segmentCJK } from '../server/services/workshop/runtime/memory'
 
 let failures = 0
 function check(name: string, ok: boolean, detail = ''): void {
@@ -47,6 +48,36 @@ const teamDel = repo.findByAgentDedup(TEAM_AGENT_ID, 'style:ts')!
 check('team 行去重键独立', teamDel !== null)
 check('delete 返回 true 且 FTS 同步清理', repo.delete(dedup!.id) === true && repo.search('a1', 'jwt', 5).length === 0)
 check('listMemoryAgentIds 排除 team', repo.listMemoryAgentIds().includes(TEAM_AGENT_ID) === false)
+
+// ═══════════ 模块:AgentMemory ═══════════
+console.log('\n--- AgentMemory 模块 ---')
+
+check('segmentCJK 汉字间加空格', segmentCJK('登录oauth') === ' 登 录 oauth')
+check('buildMatchQuery OR 连接 + 剔除操作符/保留词', buildMatchQuery('登录 (页面) AND not') === '登 OR 录 OR 页 OR 面')
+check('buildMatchQuery 空查询 null', buildMatchQuery('   ') === null)
+check('buildMatchQuery ASCII 单字词过滤', buildMatchQuery('a b oauth') === 'oauth')
+check('estimateTokens 中英混合', estimateTokens('登录ab') === 3)
+// 前段 delete 了 task:t1 行,重新播种供模块段使用(fresh insert,access_count=0)
+repo.upsert({ channelId: 'ch1', agentId: 'a1', kind: 'episodic-task', title: '实现登录页面', titleFts: seg('实现登录页面'), content: seg('用OAuth2方案完成了登录鉴权'), importance: 0.8, taskId: 't1', dedupKey: 'task:t1' })
+
+const memA = new AgentMemory(repo, { channelId: 'ch1', agentId: 'a1' })
+await memA.recall('数据库', { touch: false })
+check('touch:false 不改 access_count', repo.listByAgent('a1', 10).find(r => r.title === '数据库调研')!.accessCount === 0)
+
+// 查询同时含本人记忆与 team 记忆的词(两者都经 FTS 命中;listRecent 兜底不含 team)
+const block = await memA.recall('登录页面 代码风格')
+check('recall 含本人相关记忆', block !== null && block.includes('实现登录页面'))
+check('recall 含 team 共享记忆', block !== null && block.includes('channel 代码风格'), block?.slice(0, 100))
+check('recall 不含他人私有记忆', block !== null && !block.includes('他人记忆'))
+const t1row = repo.listByAgent('a1', 10).find(r => r.title === '实现登录页面')
+check('recall 默认 touch', t1row !== undefined && t1row.accessCount >= 1)
+
+const memTiny = new AgentMemory(repo, { channelId: 'ch1', agentId: 'a1', budgetTokens: 5 })
+const tiny = await memTiny.recall('登录 数据库')
+check('极小预算整行取舍', tiny === null || tiny.split('\n').length <= 3)
+
+const memEmpty = new AgentMemory(repo, { channelId: 'ch1', agentId: 'nobody' })
+check('无记忆 recall 返回 null', (await memEmpty.recall('任意')) === null)
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)
