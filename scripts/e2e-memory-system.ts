@@ -139,6 +139,11 @@ const implFactory = (agent: AgentInfo): AgentInterface => {
   echoByAgent.set(agent.id, impl)
   return impl
 }
+// C1:env 向量 provider 接线验证(127.0.0.1:1 立即拒连 → 熔断 → 全链 FTS 降级不崩)
+const savedEmbedBase = process.env.AW_MEMORY_EMBED_BASE_URL
+const savedEmbedModel = process.env.AW_MEMORY_EMBED_MODEL
+process.env.AW_MEMORY_EMBED_BASE_URL = 'http://127.0.0.1:1'
+process.env.AW_MEMORY_EMBED_MODEL = 'e2e-unreachable'
 const manager = createAgentChannelManager({ repos, implFactory, db })
 // REST 路由 handler 经 getWorkshopManager() 读进程级单例 → 指向测试 manager
 globalThis.__workshopManager = manager
@@ -210,6 +215,17 @@ async function main(): Promise<void> {
     executorReq !== undefined && executorReq.memory!.includes('登录页面') && executorReq.memory!.includes('pnpm'),
     executorReq?.memory?.slice(0, 100))
 
+  // ── ④b env provider 接线:embed 全失败(拒连)→ 熔断 → FTS 降级不裸奔 ──
+  console.log('\n=== ④b env provider 接线降级(C1)===')
+  await submit('登录错误提示规范', '登录错误提示统一红字展示并联动表单校验')
+  check('embedder 不可达不阻任务闭环', await waitDone('登录错误提示规范'))
+  const degradedReq = [w1, w2]
+    .flatMap(w => (echoByAgent.get(w.id) as EchoWorkerImpl).captured)
+    .reverse()
+    .find(r => partsText(r.message.parts).includes('登录错误提示规范') && r.memory !== undefined)
+  check('熔断后召回仍注入记忆(纯 FTS 降级)', degradedReq !== undefined && degradedReq.memory!.includes('登录'),
+    degradedReq?.memory?.slice(0, 80))
+
   // ── ⑤ worker 间 peer 消息(require_reply)→ 双方 peer 记忆落库 ──
   console.log('\n=== ⑤ peer 消息双向记忆 ===')
   await manager.sendA2A(channelId, w1.id, {
@@ -263,8 +279,7 @@ async function main(): Promise<void> {
   const postAgent = await rest('POST', `/channels/${channelId}/agents/${w1.id}/memories`, leadToken,
     { title: 'REST 代写规范', content: '提交信息用中文', dedupKey: 'agent:rest' })
   check('POST agent memory(lead 代写)→ 200', postAgent.status === 200 && postAgent.code === 0, `status=${postAgent.status}`)
-  const restTeamRow = repos.memories.listByAgentChannel(channelId, TEAM_AGENT_ID, 50).find(r => r.dedupKey === undefined ? r.title === 'REST 策展行' : false)
-    ?? manager.listTeamMemories(channelId, 50).find(r => r.title === 'REST 策展行')
+  const restTeamRow = manager.listTeamMemories(channelId, 50).find(r => r.title === 'REST 策展行')
   const delTeam = await rest('DELETE', `/channels/${channelId}/memories/${restTeamRow!.id}`, leadToken)
   check('DELETE team memory(lead)→ 200', delTeam.status === 200 && manager.listTeamMemories(channelId, 50).every(r => r.id !== restTeamRow!.id),
     `status=${delTeam.status}`)
@@ -289,6 +304,12 @@ async function main(): Promise<void> {
   const status8 = manager.runtimeStatus()
   check('shutdown 后 runtime 全卸载', status8.wiredAgents.length === 0 && status8.activeChannels.length === 0)
   globalThis.__workshopManager = undefined // 还原 REST 单例,不泄漏测试 manager
+  const restoreEmbedEnv = (name: string, value: string | undefined): void => {
+    if (value === undefined) Reflect.deleteProperty(process.env, name)
+    else process.env[name] = value
+  }
+  restoreEmbedEnv('AW_MEMORY_EMBED_BASE_URL', savedEmbedBase)
+  restoreEmbedEnv('AW_MEMORY_EMBED_MODEL', savedEmbedModel)
 
   rmSync(tmpWorkspace, { recursive: true, force: true })
   db.close()

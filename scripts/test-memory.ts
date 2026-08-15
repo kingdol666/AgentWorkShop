@@ -379,5 +379,53 @@ const plainLead = mkLeadRt('w-lead-plain', false)
 const plainDecisions = await plainLead.rt.supervise(supSnapshot)
 check('无 memory deps 的 runtime supervise 正常(不注入不抛错)', Array.isArray(plainDecisions) && plainLead.echo.capturedMemory === undefined)
 
+// ═══════════ 最终审查修复:env 守卫(I2)+ 策展向量化静默降级(M2)═══════════
+console.log('\n--- 最终审查修复(I2/M2)---')
+
+const restoreEnv = (name: string, value: string | undefined): void => {
+  if (value === undefined) Reflect.deleteProperty(process.env, name)
+  else process.env[name] = value
+}
+
+// I2:AW_MEMORY_BUDGET_TOKENS 非法/非正 → envNum 回退 800,recall 正常(不抛/不清空)
+const savedBudget = process.env.AW_MEMORY_BUDGET_TOKENS
+process.env.AW_MEMORY_BUDGET_TOKENS = 'garbage'
+const garbageBudget = await new AgentMemory(repo, { channelId: 'ch-mem', agentId: 'w-mem' }).recall('登录')
+check('AW_MEMORY_BUDGET_TOKENS 非法回退 800(recall 正常返回)', typeof garbageBudget === 'string' && garbageBudget.length > 0,
+  garbageBudget?.slice(0, 60))
+process.env.AW_MEMORY_BUDGET_TOKENS = '0'
+const zeroBudget = await new AgentMemory(repo, { channelId: 'ch-mem', agentId: 'w-mem' }).recall('登录')
+check('AW_MEMORY_BUDGET_TOKENS=0 拒绝并回退(recall 正常返回)', typeof zeroBudget === 'string' && zeroBudget.length > 0)
+restoreEnv('AW_MEMORY_BUDGET_TOKENS', savedBudget)
+
+// I2 + M2:MAINTENANCE_MS=0(非法定时器间隔)+ 不可达 env provider → 构造/策展/shutdown 全干净
+const savedMs = process.env.AW_MEMORY_MAINTENANCE_MS
+const savedUrl = process.env.AW_MEMORY_EMBED_BASE_URL
+const savedModel = process.env.AW_MEMORY_EMBED_MODEL
+process.env.AW_MEMORY_MAINTENANCE_MS = '0'
+process.env.AW_MEMORY_EMBED_BASE_URL = 'http://127.0.0.1:1' // 立即拒连,零等待
+process.env.AW_MEMORY_EMBED_MODEL = 'fix-wave'
+const fixManager = createAgentChannelManager({ repos: tmRepos, implFactory: stubImpl, db })
+const fixCh = tmRepos.channels.create({ name: 'ch-fix' })
+const fixLead = tmRepos.channelAgents.create({ channelId: fixCh.id, templateId: null, name: 'fixlead', harness: 'mock', role: 'lead' })
+let curatedCrash = ''
+try {
+  fixManager.addTeamMemory(fixCh.id, fixLead.id, { title: '修复波团队规范', content: '修复波内容统一水印', dedupKey: 'team:fix' })
+  fixManager.addAgentMemory(fixCh.id, fixLead.id, fixLead.id, { title: '修复波私有笔记', content: '修复波私有内容', dedupKey: 'self:fix' })
+}
+catch (e) {
+  curatedCrash = String(e)
+}
+check('dummy env 下策展写不崩(向量化 fire-and-forget 静默失败)',
+  curatedCrash === '' && repo.listByAgentChannel(fixCh.id, TEAM_AGENT_ID, 10).some(r => r.title === '修复波团队规范'),
+  curatedCrash)
+await new Promise<void>(r => setTimeout(r, 300)) // 等 fire-and-forget 向量化失败落定
+const shutdownStart = Date.now()
+await fixManager.shutdown()
+check('AW_MEMORY_MAINTENANCE_MS=0 构造 + shutdown 干净快速(<2s)', Date.now() - shutdownStart < 2000,
+  `${Date.now() - shutdownStart}ms`)
+restoreEnv('AW_MEMORY_MAINTENANCE_MS', savedMs)
+restoreEnv('AW_MEMORY_EMBED_BASE_URL', savedUrl)
+restoreEnv('AW_MEMORY_EMBED_MODEL', savedModel)
 console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)

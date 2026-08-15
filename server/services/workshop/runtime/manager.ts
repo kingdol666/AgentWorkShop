@@ -35,7 +35,8 @@ import type { ChannelBus, TaskEngine } from './agent-runtime'
 import { ChannelRuntime } from './channel-runtime'
 import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
-import { AgentMemory, runMemoryMaintenance, segmentCJK, type MaintenanceResult } from './memory'
+import { AgentMemory, envNum, runMemoryMaintenance, segmentCJK, vectorizeMemory, type MaintenanceResult } from './memory'
+import { createEnvEmbeddingProvider } from './embedding-provider'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 
 /** 全部仓储(依赖注入) */
@@ -143,19 +144,21 @@ export class AgentChannelManager {
   private agentIndex = new Map<string, AgentRuntime>()
   private buses = new Map<string, ChannelBus>()
   private taskEngine: TaskEngine | null = null
-  private idleSweeperTimer: ReturnType<typeof setInterval> | null = null
-  private memoryTimer: ReturnType<typeof setInterval> | null = null
+  private idleSweeperTimer: NodeJS.Timeout | null = null
+  private memoryTimer: NodeJS.Timeout | null = null
+  /** 全 manager 共享的 env 向量 provider(未配置 → null 纯 FTS;熔断/维度全体实例共享) */
+  private readonly memoryEmbedder = createEnvEmbeddingProvider()
 
   constructor(private deps: ManagerDeps) {
-    // 记忆衰减清理定时器(失败只记日志,绝不抛出;unref 不阻进程退出)
+    // 记忆衰减清理定时器(失败只记日志,绝不抛出;unref 不阻进程退出;非法/非正 env 回退默认)
     this.memoryTimer = setInterval(() => {
       try {
         runMemoryMaintenance(this.deps.repos.memories)
       }
       catch (err) {
-        console.error('[memory] 维护失败:', err)
+        console.error('[memory] 维护任务异常', err)
       }
-    }, Number(process.env.AW_MEMORY_MAINTENANCE_MS ?? 6 * 3600_000))
+    }, envNum('AW_MEMORY_MAINTENANCE_MS', 6 * 3600_000))
     this.memoryTimer.unref?.()
   }
 
@@ -278,7 +281,7 @@ export class AgentChannelManager {
     const agentWithCwd: AgentInfo = chWorkspace.length > 0
       ? { ...agent, config: { cwd: chWorkspace, ...agent.config } }
       : agent
-    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id })
+    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, embedder: this.memoryEmbedder ?? undefined })
     const runtime = new AgentRuntime(agent, this.deps.implFactory(agentWithCwd), {
       mailbox,
       taskEngine: this.getTaskEngine(),
@@ -650,10 +653,11 @@ export class AgentChannelManager {
     return this.deps.repos.memories.listByAgentChannel(channelId, TEAM_AGENT_ID, limit)
   }
 
-  /** 写/更新团队记忆(仅 lead;稳定 dedupKey 幂等刷新) */
+  /** 写/更新团队记忆(仅 lead;稳定 dedupKey 幂等刷新;成功后 fire-and-forget 向量化) */
   addTeamMemory(channelId: string, callerAgentId: string, input: { title: string, content: string, importance?: number, dedupKey?: string }): MemoryRow[] {
     const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
     if (!caller || caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可写团队记忆')
+    const dedupKey = input.dedupKey ?? `manual:${randomUUID()}`
     this.deps.repos.memories.upsert({
       channelId,
       agentId: TEAM_AGENT_ID,
@@ -663,8 +667,10 @@ export class AgentChannelManager {
       content: segmentCJK(input.content).slice(0, 800),
       importance: input.importance ?? 0.9,
       taskId: null,
-      dedupKey: input.dedupKey ?? `manual:${randomUUID()}`,
+      dedupKey,
     })
+    // 策展行同样入向量域(未切分原文;provider 未配置/失败 → 静默留 FTS)
+    void vectorizeMemory(this.deps.repos.memories, this.memoryEmbedder, channelId, TEAM_AGENT_ID, dedupKey, input.content).catch(() => {})
     return this.listTeamMemories(channelId)
   }
 
@@ -693,6 +699,7 @@ export class AgentChannelManager {
     if (!this.deps.repos.channelAgents.findByChannelAgent(channelId, targetAgentId)) {
       throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${targetAgentId}`)
     }
+    const dedupKey = input.dedupKey ?? `manual:${randomUUID()}`
     this.deps.repos.memories.upsert({
       channelId,
       agentId: targetAgentId,
@@ -702,8 +709,10 @@ export class AgentChannelManager {
       content: segmentCJK(input.content).slice(0, 800),
       importance: input.importance ?? 0.9,
       taskId: null,
-      dedupKey: input.dedupKey ?? `manual:${randomUUID()}`,
+      dedupKey,
     })
+    // 策展行同样入向量域(未切分原文;provider 未配置/失败 → 静默留 FTS)
+    void vectorizeMemory(this.deps.repos.memories, this.memoryEmbedder, channelId, targetAgentId, dedupKey, input.content).catch(() => {})
   }
 
   /** 删 Agent 私有记忆(caller 须为本人或 lead;行须属该 agent) */

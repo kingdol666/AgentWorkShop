@@ -7,8 +7,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createMemoryRepo, TEAM_AGENT_ID } from '../server/services/workshop/db/memory.repo'
-import { AgentMemory, segmentCJK } from '../server/services/workshop/runtime/memory'
-import type { WorkspaceTask } from '../server/services/workshop/types/task'
+import { AgentMemory, segmentCJK, vectorizeMemory } from '../server/services/workshop/runtime/memory'
 import {
   createEnvEmbeddingProvider,
   createHashEmbeddingProvider,
@@ -124,6 +123,32 @@ await mem.recordTaskOutcome(fakeTask)
 const vat = repo.findByAgentDedup('ch1', 'a1', 'task:tv1')!
 const vhit = repo.vecSearch('a1', (await embedder.embed(['记忆写入后应自动向量化']))[0], 3)
 check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.rowid))
+
+// ---- M2:模块级 vectorizeMemory(策展行向量化;manager addTeamMemory/addAgentMemory 直调)----
+console.log('--- vectorizeMemory 模块导出(M2)---')
+repo.upsert({ channelId: 'ch1', agentId: TEAM_AGENT_ID, kind: 'semantic', title: '策展团队规范', titleFts: segmentCJK('策展团队规范'), content: segmentCJK('团队统一使用pnpm管理依赖'), importance: 0.9, taskId: null, dedupKey: 'team:vec1' })
+await vectorizeMemory(repo, embedder, 'ch1', TEAM_AGENT_ID, 'team:vec1', '团队统一使用pnpm管理依赖')
+const curatedAt = repo.findByAgentDedup('ch1', TEAM_AGENT_ID, 'team:vec1')
+const curatedHits = curatedAt ? repo.vecSearch(TEAM_AGENT_ID, await embed('团队统一使用pnpm管理依赖'), 5) : []
+check('vectorizeMemory 为策展行建向量(vecSearch 命中)', curatedAt !== null && curatedHits.some(h => h.memRowid === curatedAt.rowid),
+  `hits=${JSON.stringify(curatedHits)}`)
+await vectorizeMemory(repo, null, 'ch1', TEAM_AGENT_ID, 'team:vec1', 'x')
+check('vectorizeMemory null embedder 静默 no-op(不抛)', true)
+
+// ---- I1:向量融合所有权守卫(a1 分区混入他人 rowid → 反查主表后必须过滤)----
+console.log('--- 融合所有权守卫(I1)---')
+const ownPlain = '所有权守卫独占水印内容'
+repo.upsert({ channelId: 'ch1', agentId: 'a1', kind: 'episodic-task', title: '本人守卫行', titleFts: segmentCJK('本人守卫行'), content: segmentCJK(ownPlain), importance: 0.8, taskId: 'own1', dedupKey: 'task:own1' })
+const ownAt = repo.findByAgentDedup('ch1', 'a1', 'task:own1')!
+repo.vecSet(ownAt.rowid, 'a1', await embed(ownPlain))
+repo.upsert({ channelId: 'ch1', agentId: 'intruder', kind: 'episodic-task', title: '入侵者守卫行', titleFts: segmentCJK('入侵者守卫行'), content: segmentCJK(ownPlain), importance: 0.8, taskId: 'intr1', dedupKey: 'task:intr1' })
+const intrAt = repo.findByAgentDedup('ch1', 'intruder', 'task:intr1')!
+repo.vecSet(intrAt.rowid, 'a1', await embed(ownPlain)) // 脏数据:他人 rowid 被写进 a1 向量分区
+const dirtyHits = repo.vecSearch('a1', await embed(ownPlain), 10)
+check('前置:a1 向量域确有脏 rowid(无守卫则泄漏)', dirtyHits.some(h => h.memRowid === intrAt.rowid), `hits=${JSON.stringify(dirtyHits)}`)
+const guardBlock = await new AgentMemory(repo, { channelId: 'ch1', agentId: 'a1', embedder }).recall(ownPlain)
+check('recall 融合过滤他人行(只见本人行)', guardBlock !== null && guardBlock.includes('本人守卫行') && !guardBlock.includes('入侵者守卫行'),
+  guardBlock?.slice(0, 100))
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)

@@ -19,6 +19,12 @@ const WEAK_HIT_KEEP = 3
 const MAX_TERMS = 12
 const CONTENT_STORE_LIMIT = 800
 
+/** 环境变量安全数值(非有限/非正数 → fallback;防 NaN/0 破坏预算与定时器) */
+export function envNum(name: string, fallback: number): number {
+  const n = Number(process.env[name])
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
 export interface AgentMemoryOptions {
   channelId: string
   agentId: string
@@ -86,7 +92,7 @@ export class AgentMemory {
   /** run/supervise 前:混合检索+排序+预算装配 → 记忆块(null=无记忆不注入) */
   async recall(query: string, recallOpts: RecallOptions = {}): Promise<string | null> {
     const doTouch = recallOpts.touch !== false
-    const budget = this.opts.budgetTokens ?? Number(process.env.AW_MEMORY_BUDGET_TOKENS ?? 800)
+    const budget = this.opts.budgetTokens ?? envNum('AW_MEMORY_BUDGET_TOKENS', 800)
     const hits = new Map<string, { row: MemoryRow, relevance: number }>()
 
     const match = buildMatchQuery(query)
@@ -120,6 +126,8 @@ export class AgentMemory {
           for (const row of this.repo.listByRowids([...distByRowid.keys()])) {
             // team 行按 channel 隔离(kNN 反查主表后同 FTS 分支口径)
             if (row.agentId === TEAM_AGENT_ID && row.channelId !== this.opts.channelId) continue
+            // 所有权守卫:仅本人/team 域行可入融合(脏 rowid/rowid 复用反查到他人行一律丢弃)
+            if (row.agentId !== this.opts.agentId && row.agentId !== TEAM_AGENT_ID) continue
             const sim = Math.min(1, Math.max(0, 1 - (distByRowid.get(row.rowid) ?? 1)))
             const prev = hits.get(row.id)
             hits.set(row.id, { row, relevance: prev ? Math.max(prev.relevance, sim) : sim })
@@ -196,17 +204,9 @@ export class AgentMemory {
     await this.vectorize(content, `peer:${msg.messageId}`)
   }
 
-  /** 写入后向量化(未切分原文,语义质量优先;失败静默留 FTS) */
+  /** 写入后向量化(委托模块级 vectorizeMemory;未切分原文,失败静默留 FTS) */
   private async vectorize(plainContent: string, dedupKey: string): Promise<void> {
-    if (!this.embedder) return
-    try {
-      const [vec] = await this.embedder.embed([plainContent])
-      this.ensureVec()
-      if (!vec) return
-      const at = this.repo.findByAgentDedup(this.opts.channelId, this.opts.agentId, dedupKey)
-      if (at) this.repo.vecSet(at.rowid, this.opts.agentId, vec)
-    }
-    catch { /* 向量化失败留 FTS */ }
+    await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, this.opts.agentId, dedupKey, plainContent)
   }
 
   private score(row: MemoryRow, relevance: number): number {
@@ -227,17 +227,34 @@ export class AgentMemory {
   }
 }
 
+/** 写入后向量化(模块级;任务路径经 AgentMemory.vectorize,策展路径由 manager 直调)。
+ *  ensure-vec → 定位行(dedupKey)→ embed(未切分原文,语义质量优先)→ vecSet;失败静默留 FTS。 */
+export async function vectorizeMemory(
+  repo: MemoryRepo,
+  embedder: EmbeddingProvider | null,
+  channelId: string,
+  agentId: string,
+  dedupKey: string,
+  plainContent: string,
+): Promise<void> {
+  if (!embedder) return
+  try {
+    const [vec] = await embedder.embed([plainContent])
+    if (!vec) return
+    const dims = embedder.dims()
+    if (dims && !repo.vecInit(dims)) return // 维度冲突:一次性放弃本次写入(留 FTS)
+    const at = repo.findByAgentDedup(channelId, agentId, dedupKey)
+    if (at) repo.vecSet(at.rowid, agentId, vec)
+  }
+  catch { /* 向量化失败留 FTS */ }
+}
+
 // ===== 衰减清理(文件级维护函数;定时器/REST 共用)=====
 
 export interface MaintenanceResult {
   deletedExpired: number
   evicted: number
   cleanedVec: number
-}
-
-function envNum(name: string, fallback: number): number {
-  const n = Number(process.env[name])
-  return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
 /**
