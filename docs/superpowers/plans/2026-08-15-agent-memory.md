@@ -83,7 +83,7 @@
 **Interfaces:**
 - Produces: `TEAM_AGENT_ID = '__team__'`;`createMemoryRepo(db)` 返回:`upsert(input: MemoryUpsertInput): void`、`search(agentId, matchQuery, limit): Array<MemoryRow & { bm25: number }>`(FTS 查询恒含 team 行:`m.agent_id IN (?, '__team__')`)、`listRecent(agentId, limit)`(严格本人)、`listByAgent(agentId, limit)`、`findByAgentDedup(agentId, dedupKey): { id: string, rowid: number } | null`(供向量写回)、`touch(id)`、`delete(id): boolean`(FTS 触发器自动清理;vec 由上层先 `vecDelete`)、`listMemoryAgentIds(): string[]`(维护任务迭代,排除 team);`MemoryRow`(database.ts 导出)
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 创建 `scripts/test-memory.ts`:
 
@@ -142,12 +142,12 @@ console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `npx tsx scripts/test-memory.ts`
 Expected: FAIL —— `Cannot find module '../server/services/workshop/db/memory.repo'`
 
-- [ ] **Step 3: schema 两处同步**
+- [x] **Step 3: schema 两处同步**
 
 `schema.sql` 尾部追加(同时原样追加到 `database.ts` 的 `SCHEMA_SQL` 尾部):
 
@@ -213,7 +213,7 @@ export interface MemoryRow {
 }
 ```
 
-- [ ] **Step 4: 写 memory.repo.ts**
+- [x] **Step 4: 写 memory.repo.ts**
 
 ```ts
 /**
@@ -329,12 +329,12 @@ export function createMemoryRepo(db: DatabaseSync) {
 
 注意:`listRecentStmt` 的 COLS 复用拼接以可读为先——若模板串拼接出错,直接写完整列名(实现时以实际列别名对齐 MemoryRow 为准,tsc 会兜底)。
 
-- [ ] **Step 5: 跑测试确认通过**
+- [x] **Step 5: 跑测试确认通过**
 
 Run: `npx tsx scripts/test-memory.ts`
 Expected: `ALL PASS`(13 项)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/services/workshop/db/schema.sql server/services/workshop/db/database.ts server/services/workshop/db/memory.repo.ts scripts/test-memory.ts
@@ -353,7 +353,7 @@ git commit -m "feat(workshop): v6 agent_memories 表与 FTS5 仓储(预埋 team 
 - Consumes: Task 1 `MemoryRepo`、`TEAM_AGENT_ID`
 - Produces: `new AgentMemory(repo, { channelId, agentId, budgetTokens?, embedder? })`;`recall(query: string, opts?: { touch?: boolean }): Promise<string | null>`;`recordTaskOutcome(task: WorkspaceTask): Promise<void>`;`recordPeerExchange(msg: A2AMessage, replyText: string): Promise<void>`;导出 `buildMatchQuery/estimateTokens/segmentCJK`(P1 再扩 `EmbeddingProvider` 注入位,P0 embedder 参数预留但默认无)
 
-- [ ] **Step 1: 写失败测试(模块段,插在汇总块前)**
+- [x] **Step 1: 写失败测试(模块段,插在汇总块前)**
 
 ```ts
 // ═══════════ 模块:AgentMemory ═══════════
@@ -387,11 +387,11 @@ check('无记忆 recall 返回 null', (await memEmpty.recall('任意')) === null
 
 (汇总 `console.log/exit` 块移到最后;`process.exit` 前需 `await` 已完成的 Promise——recall 均已 await,无需改动进程退出。)
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `npx tsx scripts/test-memory.ts` → FAIL: `Cannot find module '../server/services/workshop/runtime/memory'`
 
-- [ ] **Step 3: 写 memory.ts**
+- [x] **Step 3: 写 memory.ts**
 
 ```ts
 /**
@@ -560,7 +560,7 @@ export class AgentMemory {
 }
 ```
 
-- [ ] **Step 4: 跑测试通过 → Step 5: Commit**
+- [x] **Step 4: 跑测试通过 → Step 5: Commit**
 
 ```bash
 git add server/services/workshop/runtime/memory.ts scripts/test-memory.ts
@@ -578,7 +578,7 @@ git commit -m "feat(workshop): agentmemory 模块(排序/预算/装配,async 签
 
 **Interfaces:**
 - Produces: `AgentRunRequest.memory?: string`;`AgentRuntimeDeps.memory?: AgentMemory`(可选,零记忆向后兼容)
-- [ ] **Step 1: 写失败测试(运行时段;照抄 test-agent-runtime.ts 惯例,V10/V11)**
+- [x] **Step 1: 写失败测试(运行时段;照抄 test-agent-runtime.ts 惯例,V10/V11)**
 
 `scripts/test-memory.ts` 追加(汇总块前)。关键点:先 `seedChannel`(messages 外键,V10);`AgentInfo` 用 `id` 字段;fake engine 照抄 `makeFakeEngine`(test-agent-runtime.ts:88-146);**workspace 不能是 `{}`**——EchoImpl 会调 `ctx.workspace.completeTask`,用 stub 经 fake engine `transition` 驱动 COMPLETED:
 
@@ -689,9 +689,9 @@ await rtO.stop()
 (TaskEngine 接口若与上面 stub 有签名出入,以 `agent-runtime.ts` 的 `TaskEngine` interface 为准补齐成员;断言不变。)
 
 
-- [ ] **Step 2: 跑测试确认失败** → `AgentRuntimeDeps` 无 `memory`
+- [x] **Step 2: 跑测试确认失败** → `AgentRuntimeDeps` 无 `memory`
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `agent-interface.ts` AgentRunRequest 尾部:
 
@@ -756,9 +756,9 @@ await rtO.stop()
 
 6. `toRequest(msg, memory?)` 实现带 `memory` 字段(v1 plan 原文)。
 
-- [ ] **Step 4: `npx tsx scripts/test-memory.ts` → ALL PASS**
-- [ ] **Step 5: `npx tsx scripts/test-agent-runtime.ts` → ALL PASS(回归)**
-- [ ] **Step 6: Commit**
+- [x] **Step 4: `npx tsx scripts/test-memory.ts` → ALL PASS**
+- [x] **Step 5: `npx tsx scripts/test-agent-runtime.ts` → ALL PASS(回归)**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/services/workshop/agents/agent-interface.ts server/services/workshop/runtime/agent-runtime.ts scripts/test-memory.ts
@@ -771,10 +771,10 @@ git commit -m "feat(workshop): 运行时记忆召回注入与终态沉淀(reques
 
 **Files:** Modify: `server/services/workshop/agents/omp-agent.ts`
 
-- [ ] **Step 1:** `workerRun` 传 `request.memory` → `buildWorkerPrompt(taskId, taskText, memory)`;prompt 构造在 prefix 后插 `if (memory) parts.push(memory)`(v1 plan Task 4 原文)
-- [ ] **Step 2:** `peerMessageRun` 的 `lines` 中 roleLine 后插 `...(request.memory ? ['', request.memory] : [])`
-- [ ] **Step 3:** 验证:`npx tsc --noEmit -p .nuxt/tsconfig.server.json` 0 error;`npx tsx scripts/test-agent-runtime.ts` ALL PASS
-- [ ] **Step 4: Commit** `feat(workshop): omp harness run 路径注入记忆块`
+- [x] **Step 1:** `workerRun` 传 `request.memory` → `buildWorkerPrompt(taskId, taskText, memory)`;prompt 构造在 prefix 后插 `if (memory) parts.push(memory)`(v1 plan Task 4 原文)
+- [x] **Step 2:** `peerMessageRun` 的 `lines` 中 roleLine 后插 `...(request.memory ? ['', request.memory] : [])`
+- [x] **Step 3:** 验证:`npx tsc --noEmit -p .nuxt/tsconfig.server.json` 0 error;`npx tsx scripts/test-agent-runtime.ts` ALL PASS
+- [x] **Step 4: Commit** `feat(workshop): omp harness run 路径注入记忆块`
 
 ---
 
@@ -825,7 +825,7 @@ git commit -m "feat(workshop): 运行时记忆召回注入与终态沉淀(reques
 - 刷新 = `SELECT rowid FROM vec WHERE mem_rowid = ?` → DELETE → 重插
 - kNN = `SELECT mem_rowid, distance FROM vec WHERE agent_id = ? AND embedding MATCH ? AND k = ?`
 
-- [ ] **Step 1: 安装依赖 + 写失败测试**
+- [x] **Step 1: 安装依赖 + 写失败测试**
 
 ```bash
 pnpm add sqlite-vec
@@ -907,9 +907,9 @@ process.exit(failures === 0 ? 0 : 1)
 
 (hash provider 说明:按词 hash 到定长向量,相同词集 → 相近向量;`鉴权 auth` 与 `鉴权` 共享"鉴权"维度 → 命中。设计为**词袋 hash**:每个词 hash 到一维 +1,归一化。)
 
-- [ ] **Step 2: 跑测试确认失败** → `vecInit is not a function`
+- [x] **Step 2: 跑测试确认失败** → `vecInit is not a function`
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `database.ts` `openWorkshopDb`:
 
@@ -1059,8 +1059,8 @@ export function createHashEmbeddingProvider(dims: number): EmbeddingProvider {
 }
 ```
 
-- [ ] **Step 4: 跑测试确认通过** → ALL PASS
-- [ ] **Step 5: Commit**
+- [x] **Step 4: 跑测试确认通过** → ALL PASS
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json pnpm-lock.yaml server/services/workshop/db/database.ts server/services/workshop/db/memory.repo.ts server/services/workshop/runtime/embedding-provider.ts scripts/test-memory-vector.ts
@@ -1079,7 +1079,7 @@ git commit -m "feat(workshop): sqlite-vec 向量层与 embedding provider(分区
 - Consumes: Task 7 `EmbeddingProvider`、repo vec* 方法
 - Produces: `AgentMemoryOptions.embedder?: EmbeddingProvider`;recall 升级 `max(rel_fts, sim_vec)` 融合;record* 成功后异步向量化(vecSet;失败静默留 FTS)
 
-- [ ] **Step 1: 失败测试(追加)**
+- [x] **Step 1: 失败测试(追加)**
 
 ```ts
 // 融合语义:FTS 词面 miss 但向量 hit(hash provider 构造:内容词与查询词部分重叠但 FTS 被切词规则过滤)
@@ -1105,7 +1105,7 @@ check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.row
 
 (fakeTask 字段以 `WorkspaceTask` 真实类型修正——先读 `types/task.ts`;断言不变。)
 
-- [ ] **Step 2: 实现**
+- [x] **Step 2: 实现**
 
 `memory.ts` 改造:
 1. `import type { EmbeddingProvider } from './embedding-provider'`;options 加 `embedder?: EmbeddingProvider`
@@ -1162,8 +1162,8 @@ check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.row
 
 (`plainContent` = 切分前 content 变量;dedupKey 各自方法的字面量。)
 
-- [ ] **Step 3:** `npx tsx scripts/test-memory-vector.ts` → ALL PASS;`npx tsx scripts/test-memory.ts` → ALL PASS(P0 无 embedder 不受影响)
-- [ ] **Step 4: Commit** `feat(workshop): 混合召回融合与写入自动向量化`
+- [x] **Step 3:** `npx tsx scripts/test-memory-vector.ts` → ALL PASS;`npx tsx scripts/test-memory.ts` → ALL PASS(P0 无 embedder 不受影响)
+- [x] **Step 4: Commit** `feat(workshop): 混合召回融合与写入自动向量化`
 
 ---
 
@@ -1180,7 +1180,7 @@ check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.row
 
 **语义:** 团队行 = `agent_id='__team__'`,channel 级全员可读(recall 已预埋);写/删仅 lead;读任意本 channel 成员 token。dedupKey 由调用方给(`style:ts` 这类稳定键 = 天然幂等更新)或缺省 `manual:<uuid>`。
 
-- [ ] **Step 1: manager 方法(先写,测试直打 manager 层)**
+- [x] **Step 1: manager 方法(先写,测试直打 manager 层)**
 
 ```ts
   /** 团队共享记忆列表(channel 级;任意成员可读) */
@@ -1224,14 +1224,14 @@ check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.row
 
 (manager import 增 `TEAM_AGENT_ID`/`segmentCJK`/`randomUUID` 按需;删除时 vec 行残留无害——vecSearch 反查主表 miss 即跳过,Task 11 维护统一清理孤儿 vec 行:`DELETE FROM vec WHERE mem_rowid NOT IN (SELECT rowid FROM agent_memories)`,加进维护函数。)
 
-- [ ] **Step 2: REST 三端点**
+- [x] **Step 2: REST 三端点**
 
 `GET /channels/:id/memories`:`resolveCaller` → caller.channelId 校验 → `manager.listTeamMemories(channelId)`。
 `POST /channels/:id/memories`:zod `{ title: z.string().min(1), content: z.string().min(1), importance: z.number().min(0).max(1).optional(), dedupKey: z.string().optional() }` → `resolveCaller` + `manager.addTeamMemory(channelId, caller.agentId, body)`。
 `DELETE /channels/:id/memories/:memoryId`:`resolveCaller` + `manager.deleteTeamMemory(...)`。
 (import 深度参照 `channels/[id]/queue.get.ts` 同层文件;zValidator 用法照 `tasks/index.post.ts`。)
 
-- [ ] **Step 3: 测试(test-memory.ts 追加 team 段)**
+- [x] **Step 3: 测试(test-memory.ts 追加 team 段)**
 
 最小 manager 构造(照 `scripts/test-dual-drive.ts` 的 manager 装配,`:memory:` db):lead+worker 两实例;断言:
 1. `addTeamMemory` lead 写入成功,worker 调用抛 `SCOPE_VIOLATION`
@@ -1239,8 +1239,8 @@ check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.row
 3. `deleteTeamMemory` lead 成功;不存在 id 抛 404
 4. worker 的 AgentMemory.recall 能看到团队行(借 Task 3 已有断言模式)
 
-- [ ] **Step 4:** `npx tsx scripts/test-memory.ts` ALL PASS + server tsc 0 error
-- [ ] **Step 5: Commit** `feat(workshop): 团队共享记忆域(lead 策展,全员召回)`
+- [x] **Step 4:** `npx tsx scripts/test-memory.ts` ALL PASS + server tsc 0 error
+- [x] **Step 5: Commit** `feat(workshop): 团队共享记忆域(lead 策展,全员召回)`
 
 ---
 
@@ -1306,7 +1306,7 @@ check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.row
 - 孤儿 vec 清理:`DELETE FROM agent_memories_vec WHERE mem_rowid NOT IN (SELECT rowid FROM agent_memories)`(vecReady 时)
 - 返回 `{ deletedExpired, evicted, cleanedVec }`
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 `scripts/test-memory-maintenance.ts`(`:memory:` db;老数据用 repo 直插 + raw UPDATE created_at/last_accessed_at 伪造):
 
@@ -1316,7 +1316,7 @@ check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.row
 3. 删除后 FTS 检索不再命中
 4. 维护幂等(跑两遍第二遍 deletedExpired=0)
 
-- [ ] **Step 2: 实现**
+- [x] **Step 2: 实现**
 
 `memory.ts` 文件级导出:
 
@@ -1368,8 +1368,8 @@ export function runMemoryMaintenance(repo: MemoryRepo, opts: { expireDays?: numb
 
 REST `POST /api/workshop/memories/maintenance`(注意路径在 `workshop/memories/` 顶层):`resolveCaller` → caller 为任一 channel 的 lead 才放行(遍历 `findByChannelAgent`?简化:`repos.channelAgents` 加 `findLeadByAgent(agentId)` 或用 caller.role——caller 自身即 AgentInfo 有 role;`if (caller.role !== 'lead') throw 403`)→ 返回 `manager.runMemoryMaintenanceNow()`。
 
-- [ ] **Step 3:** `npx tsx scripts/test-memory-maintenance.ts` ALL PASS;`npx tsx scripts/test-persistence-lazy.ts` ALL PASS(shutdown 清 timer 不炸)
-- [ ] **Step 4: Commit** `feat(workshop): 记忆衰减清理(episodic 过期/容量淘汰/孤儿向量)`
+- [x] **Step 3:** `npx tsx scripts/test-memory-maintenance.ts` ALL PASS;`npx tsx scripts/test-persistence-lazy.ts` ALL PASS(shutdown 清 timer 不炸)
+- [x] **Step 4: Commit** `feat(workshop): 记忆衰减清理(episodic 过期/容量淘汰/孤儿向量)`
 
 ---
 
@@ -1384,7 +1384,7 @@ REST `POST /api/workshop/memories/maintenance`(注意路径在 `workshop/memorie
 **Interfaces:**
 - Produces: `AgentRunContext.memory?: string`(注释:**supervise 专用**;run 路径用 `AgentRunRequest.memory`)
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 test-memory.ts 追加:构造带 memory 的 runtime + 一个实现了 `supervise` 的 echo impl,捕获传入的 `ctx.memory`:
 1. 预置 w-lead 一条记忆(标题含"调度"),快照含 SUBMITTED 任务(标题相关)
@@ -1392,7 +1392,7 @@ test-memory.ts 追加:构造带 memory 的 runtime + 一个实现了 `supervise`
 3. 召回后该记忆 `accessCount` 不变(`touch: false` 生效)
 4. 无 memory deps 的 runtime supervise 正常(向后兼容)
 
-- [ ] **Step 2: 实现**
+- [x] **Step 2: 实现**
 
 `agent-interface.ts` AgentRunContext 尾:
 
@@ -1421,8 +1421,8 @@ test-memory.ts 追加:构造带 memory 的 runtime + 一个实现了 `supervise`
 
 `omp-agent.ts` `supervise()`:prompt 构造处(`this.buildSupervisePrompt(snapshot)`)改为 `this.buildSupervisePrompt(snapshot, ctx.memory)`;buildSupervisePrompt 签名加 `memory?: string`,prefix 后 `if (memory) parts.push(memory)`。
 
-- [ ] **Step 3:** `npx tsx scripts/test-memory.ts` ALL PASS;`npx tsx scripts/test-scheduler-loop.ts` ALL PASS(调度循环回归)
-- [ ] **Step 4: Commit** `feat(workshop): lead supervise 记忆注入(快照驱动召回)`
+- [x] **Step 3:** `npx tsx scripts/test-memory.ts` ALL PASS;`npx tsx scripts/test-scheduler-loop.ts` ALL PASS(调度循环回归)
+- [x] **Step 4: Commit** `feat(workshop): lead supervise 记忆注入(快照驱动召回)`
 
 ---
 
@@ -1442,7 +1442,7 @@ test-memory.ts 追加:构造带 memory 的 runtime + 一个实现了 `supervise`
 7. `runMemoryMaintenanceNow()` → 伪造老数据被清
 8. `await manager.shutdown()` → 进程干净退出(timer 已清)
 
-- [ ] **Step 1: 写 E2E(上述 8 断言组)→ Step 2: 全量回归**
+- [x] **Step 1: 写 E2E(上述 8 断言组)→ Step 2: 全量回归**
 
 ```bash
 npx tsx scripts/e2e-memory-system.ts && npx tsx scripts/test-memory.ts && npx tsx scripts/test-memory-vector.ts && npx tsx scripts/test-memory-maintenance.ts && npx tsx scripts/test-full-system.ts && npx tsx scripts/test-orchestration.ts
@@ -1450,8 +1450,8 @@ npx tsx scripts/e2e-memory-system.ts && npx tsx scripts/test-memory.ts && npx ts
 
 Expected: 全部 ALL PASS
 
-- [ ] **Step 3:** 可选真实冒烟 `npx tsx scripts/e2e-omp-workspace.ts`(配置了 `AW_MEMORY_EMBED_*` 时验证真实向量链)
-- [ ] **Step 4: Commit** `test(workshop): 记忆系统端到端验证(全链路回归)`
+- [x] **Step 3:** 可选真实冒烟 `npx tsx scripts/e2e-omp-workspace.ts`(配置了 `AW_MEMORY_EMBED_*` 时验证真实向量链)
+- [x] **Step 4: Commit** `test(workshop): 记忆系统端到端验证(全链路回归)`
 
 ---
 
