@@ -393,7 +393,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
     await this.ensureClient(ctx)
     if (!this.client) return []
 
-    const prompt = this.buildSupervisePrompt(snapshot)
+    const prompt = this.buildSupervisePrompt(snapshot, ctx.memory)
     const timeoutMs = this.config.superviseTimeoutMs ?? 60_000
 
     return new Promise<SupervisionDecision[]>((resolve) => {
@@ -774,11 +774,12 @@ export class OmpRpcAgentImpl implements AgentInterface {
     return parts.join('\n')
   }
 
-  private buildSupervisePrompt(snapshot: SupervisionSnapshot): string {
+  private buildSupervisePrompt(snapshot: SupervisionSnapshot, memory?: string): string {
     const prefix = this.config.systemPromptPrefix ?? ''
     const parts: string[] = []
 
     if (prefix) parts.push(prefix)
+    if (memory) parts.push(memory)
     // 格式化成员(含队列上下文:执行中任务/待执行队列长度/已完成数 —— 最优调配的依据)
     const members = snapshot.members.map(m =>
       `  - ${m.agentId} (${m.name}, role=${m.role}, state=${m.state}, executing=${m.currentTaskId ?? '-'}, queued=${m.queued ?? 0}, completed=${m.completedCount ?? 0})`,

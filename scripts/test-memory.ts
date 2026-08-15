@@ -26,6 +26,8 @@ import type {
   AgentInfo,
   AgentRunContext,
   AgentRunRequest,
+  SupervisionDecision,
+  SupervisionSnapshot,
   AgentWorkspace,
 } from '../server/services/workshop/agents/agent-interface'
 import type { WorkspaceTask, TaskState, AgentTaskQueueView } from '../server/services/workshop/types/task'
@@ -320,6 +322,62 @@ check('本人删自己的记忆成功', !repo.listByAgent(workerInst.id, 50).som
 
 const agentErrTargetMiss = captureCode(() => teamManager.addAgentMemory(chTeam.id, leadInst.id, 'no-such-agent', { title: 'x', content: 'y' }))
 check('目标实例不存在抛 NOT_FOUND', agentErrTargetMiss === 'NOT_FOUND', `code=${agentErrTargetMiss}`)
+
+// ═══════════ supervise 路径记忆注入(ctx.memory;快照驱动召回)═══════════
+console.log('\n--- supervise 记忆注入 ---')
+
+/** lead echo:捕获 supervise 收到的 ctx.memory */
+class MemoryEchoSuperviseImpl implements AgentInterface {
+  capturedMemory: string | undefined
+  async* run(): AsyncGenerator<AgentEvent, void, unknown> {}
+  async supervise(_snapshot: SupervisionSnapshot, ctx: AgentRunContext): Promise<SupervisionDecision[]> {
+    this.capturedMemory = ctx.memory
+    return []
+  }
+}
+
+/** lead runtime(supervise 由测试直调;withMemory=false 验证向后兼容) */
+const mkLeadRt = (id: string, withMemory: boolean): { rt: AgentRuntime, echo: MemoryEchoSuperviseImpl } => {
+  const echo = new MemoryEchoSuperviseImpl()
+  const rt = new AgentRuntime(
+    { id, channelId: 'ch-mem', name: id, harness: 'mock', role: 'lead', config: {} },
+    echo,
+    {
+      mailbox: new Mailbox(createMessageRepo(db), 'ch-mem', id, () => {}),
+      taskEngine: fakeEngine,
+      bus: memBus,
+      workspace: wsStub(id),
+      ...(withMemory ? { memory: new AgentMemory(repo, { channelId: 'ch-mem', agentId: id }) } : {}),
+    },
+  )
+  return { rt, echo }
+}
+
+// 预置 w-lead-sup 一条记忆(标题含"调度");快照含同标题 SUBMITTED 任务
+repo.upsert({ channelId: 'ch-mem', agentId: 'w-lead-sup', kind: 'episodic-task', title: '调度优化登录任务', titleFts: seg('调度优化登录任务'), content: seg('上次把登录类任务优先派给空闲worker'), importance: 0.8, taskId: 'sup-t1', dedupKey: 'task:sup-t1' })
+const supTask = fakeEngine.create({ channelId: 'ch-mem', creatorId: 'boss', assigneeId: 'w-mem', title: '调度优化登录任务' })
+const supSnapshot: SupervisionSnapshot = {
+  tick: 1,
+  now: Date.now(),
+  tasks: [fakeEngine.get(supTask.id)!],
+  members: [
+    { agentId: 'w-lead-sup', name: 'w-lead-sup', role: 'lead', state: 'idle' },
+    { agentId: 'w-mem', name: 'w-mem', role: 'worker', state: 'idle' },
+  ],
+  pendingChildren: {},
+}
+
+const supBefore = repo.listByAgent('w-lead-sup', 10).find(r => r.title === '调度优化登录任务')!
+const supLead = mkLeadRt('w-lead-sup', true)
+const supDecisions = await supLead.rt.supervise(supSnapshot)
+check('supervise 返回 echo 决策(空数组)', Array.isArray(supDecisions) && supDecisions.length === 0)
+check('supervise 注入记忆块(## 相关记忆 + 预置标题)', supLead.echo.capturedMemory !== undefined && supLead.echo.capturedMemory.includes('## 相关记忆') && supLead.echo.capturedMemory.includes('调度优化登录任务'), supLead.echo.capturedMemory?.slice(0, 80))
+const supAfter = repo.listByAgent('w-lead-sup', 10).find(r => r.title === '调度优化登录任务')!
+check('supervise 召回 touch:false 不增 access_count', supAfter.accessCount === supBefore.accessCount, `before=${supBefore.accessCount} after=${supAfter.accessCount}`)
+
+const plainLead = mkLeadRt('w-lead-plain', false)
+const plainDecisions = await plainLead.rt.supervise(supSnapshot)
+check('无 memory deps 的 runtime supervise 正常(不注入不抛错)', Array.isArray(plainDecisions) && plainLead.echo.capturedMemory === undefined)
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)

@@ -71,6 +71,8 @@ export interface AgentRunContext {
   role: 'lead' | 'worker'
   workspace: AgentWorkspace
   signal: AbortSignal
+  /** 平台记忆块(supervise 路径注入;run 路径用 AgentRunRequest.memory) */
+  memory?: string
 }
 
 /** 统一事件流(对齐 A2A StreamResponse):run() 逐条产出的五变体 */

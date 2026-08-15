@@ -265,12 +265,25 @@ export class AgentRuntime {
    */
   async supervise(snapshot: SupervisionSnapshot): Promise<SupervisionDecision[] | null> {
     if (!this.impl.supervise) return null
+    // lead 调度记忆:非终态/失败任务标题 + 成员名构造查询;touch:false 防 tick 通胀
+    let memoryBlock: string | undefined
+    try {
+      const query = [
+        ...snapshot.tasks.filter(t => t.state === 'SUBMITTED' || t.state === 'FAILED' || t.state === 'WAITING').map(t => t.title),
+        ...snapshot.members.map(m => m.name),
+      ].join(' ')
+      memoryBlock = (await this.deps.memory?.recall(query, { touch: false })) ?? undefined
+    }
+    catch (err) {
+      console.error(`[AgentRuntime:${this.agentId}] supervise 记忆召回失败:`, err)
+    }
     const ctx: AgentRunContext = {
       agentId: this.agentId,
       channelId: this.channelId,
       role: this.role,
       workspace: this.deps.workspace,
       signal: new AbortController().signal,
+      memory: memoryBlock,
     }
     return this.impl.supervise(snapshot, ctx)
   }
