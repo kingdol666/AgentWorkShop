@@ -6,6 +6,21 @@ import type { DatabaseSync } from 'node:sqlite'
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createMemoryRepo, TEAM_AGENT_ID } from '../server/services/workshop/db/memory.repo'
 import { AgentMemory, buildMatchQuery, estimateTokens, segmentCJK } from '../server/services/workshop/runtime/memory'
+import { randomUUID } from 'node:crypto'
+import { createMessageRepo } from '../server/services/workshop/db/message.repo'
+import { Mailbox } from '../server/services/workshop/runtime/mailbox'
+import { AgentRuntime } from '../server/services/workshop/runtime/agent-runtime'
+import type { ChannelBus, TaskEngine } from '../server/services/workshop/runtime/agent-runtime'
+import type {
+  AgentEvent,
+  AgentInterface,
+  AgentInfo,
+  AgentRunContext,
+  AgentRunRequest,
+  AgentWorkspace,
+} from '../server/services/workshop/agents/agent-interface'
+import type { WorkspaceTask, TaskState, AgentTaskQueueView } from '../server/services/workshop/types/task'
+import type { Part } from '../server/services/workshop/types/a2a'
 
 let failures = 0
 function check(name: string, ok: boolean, detail = ''): void {
@@ -78,6 +93,123 @@ check('极小预算整行取舍', tiny === null || tiny.split('\n').length <= 3)
 
 const memEmpty = new AgentMemory(repo, { channelId: 'ch1', agentId: 'nobody' })
 check('无记忆 recall 返回 null', (await memEmpty.recall('任意')) === null)
+
+// ═══════════ 运行时集成:召回注入 + 结束沉淀 ═══════════
+console.log('\n--- AgentRuntime 记忆集成 ---')
+
+/** 落库一个 channel(messages.channel_id 外键依赖;照抄 test-agent-runtime.ts) */
+function seedChannel(database: DatabaseSync, id: string): void {
+  const now = new Date().toISOString()
+  database.prepare(
+    `INSERT INTO channels (id, name, description, lead_agent_id, enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, id, '', null, 1, now, now)
+}
+
+seedChannel(db, 'ch-mem')
+
+const memBus: ChannelBus = {
+  emit: () => {}, onEvent: () => () => {}, notifyTask: () => {}, onTaskEvent: () => () => {},
+  notifyAgent: () => {}, onAgentStatus: () => () => {}, wakeScheduler: () => {},
+}
+// fake engine(签名对齐 agent-runtime.ts 的 TaskEngine 契约;完成态经 transition 驱动)
+const memTasks = new Map<string, WorkspaceTask>()
+const fakeEngine: TaskEngine = {
+  create: (input: { channelId: string, creatorId: string, assigneeId: string, title: string }) => {
+    const t: WorkspaceTask = { id: randomUUID(), channelId: input.channelId, assigneeId: input.assigneeId, creatorId: input.creatorId, title: input.title, state: 'SUBMITTED', progress: 0, retryCount: 0, artifacts: [], history: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    memTasks.set(t.id, t)
+    return t
+  },
+  dispatch: () => { throw new Error('unused') },
+  transition: (taskId: string, state: TaskState, _by: string) => {
+    const t = memTasks.get(taskId)
+    if (t) t.state = state
+    return t!
+  },
+  // 对齐真实 TaskEngine.applyEvent:非 append artifact 落 task.artifacts(终态 harvest 数据源)
+  applyEvent: (taskId: string, event: AgentEvent) => {
+    const t = memTasks.get(taskId)
+    if (t && event.kind === 'artifact') t.artifacts = [...t.artifacts, event.artifact]
+  },
+  list: () => [...memTasks.values()],
+  get: (id: string) => memTasks.get(id),
+  complete: () => { throw new Error('unused') },
+  reassign: () => { throw new Error('unused') },
+  updateTask: () => { throw new Error('unused') },
+  cancel: () => { throw new Error('unused') },
+  onChildCompleted: () => {},
+  redeliverAssign: () => { throw new Error('unused') },
+  queueViewOf: (channelId: string, agentId: string): AgentTaskQueueView => ({ agentId, channelId, queued: [], completed: [] }),
+}
+// workspace stub:EchoImpl 的 completeTask 经 transition 落 COMPLETED(终态判定依赖)
+const wsStub = (agentId: string): AgentWorkspace => ({
+  completeTask: async (taskId: string, artifacts) => {
+    const t = memTasks.get(taskId)
+    if (t) {
+      t.artifacts = [...t.artifacts, ...artifacts]
+      t.progress = 100
+      fakeEngine.transition(taskId, 'COMPLETED', agentId)
+    }
+    return t!
+  },
+}) as AgentWorkspace
+void wsStub
+
+class MemoryEchoImpl implements AgentInterface {
+  readonly captured: AgentRunRequest[] = []
+  async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+    this.captured.push(request)
+    const taskId = request.taskId ?? (request.message.metadata?.['x-aw-task-id'] as string | undefined)
+    if (taskId && ctx.role === 'worker') {
+      yield { kind: 'status', status: { state: 'WORKING', timestamp: new Date().toISOString() } }
+      await (ctx.workspace as { completeTask: (id: string, arts: unknown[]) => Promise<unknown> }).completeTask(taskId, [])
+      yield { kind: 'artifact', artifact: { artifactId: randomUUID(), name: 'deliverable', parts: [{ text: `memory-seen:${request.memory ?? 'NONE'}` }] }, lastChunk: true, totalChunks: 1 }
+      yield { kind: 'done', final: { taskId } }
+    }
+  }
+}
+
+const mkRt = (id: string): { rt: AgentRuntime, echo: MemoryEchoImpl } => {
+  const info: AgentInfo = { id, channelId: 'ch-mem', name: id, harness: 'mock', role: 'worker', config: {} }
+  const echo = new MemoryEchoImpl()
+  const rt = new AgentRuntime(info, echo, {
+    mailbox: new Mailbox(createMessageRepo(db), 'ch-mem', id, () => {}),
+    taskEngine: fakeEngine,
+    bus: memBus,
+    workspace: wsStub(id),
+    memory: new AgentMemory(repo, { channelId: 'ch-mem', agentId: id }),
+  })
+  rt.start()
+  return { rt, echo }
+}
+const mkAssign = (task: WorkspaceTask): Part[] => [{ text: task.title }]
+const enqueueAssign = (rt: AgentRuntime, task: WorkspaceTask): void => {
+  rt.enqueue({ messageId: randomUUID(), contextId: 'ch-mem', role: 'ROLE_AGENT', taskId: task.id, parts: mkAssign(task), metadata: { 'x-aw-from-agent': 'lead', 'x-aw-task-kind': 'assign', 'x-aw-task-id': task.id } })
+}
+
+const { rt: rtA, echo: echoA } = mkRt('w-mem')
+const taskA = fakeEngine.create({ channelId: 'ch-mem', creatorId: 'lead', assigneeId: 'w-mem', title: '实现登录页面' })
+enqueueAssign(rtA, taskA)
+await new Promise<void>(r => setTimeout(r, 300))
+check('任务 A 首跑无记忆注入', echoA.captured.at(-1)?.memory === undefined)
+const aRow = repo.listByAgent('w-mem', 10).find(r => r.taskId === taskA.id)
+check('任务 A 完成后沉淀记忆(含 deliverable)', aRow !== undefined && aRow.content.includes('memory-seen:NONE'), aRow?.content.slice(0, 60))
+check('任务 A 记忆 importance=0.8(COMPLETED)', aRow?.importance === 0.8)
+
+const taskB = fakeEngine.create({ channelId: 'ch-mem', creatorId: 'lead', assigneeId: 'w-mem', title: '登录模块优化' })
+enqueueAssign(rtA, taskB)
+await new Promise<void>(r => setTimeout(r, 300))
+const secondReq = echoA.captured.at(-1)
+check('任务 B 召回注入 A 的记忆(经 title_fts 相关命中)', secondReq?.memory !== undefined && secondReq.memory.includes('实现登录页面'), secondReq?.memory?.slice(0, 80))
+check('记忆块带 prompt 标题头', (secondReq?.memory ?? '').startsWith('## 相关记忆'))
+
+const { rt: rtO, echo: echoO } = mkRt('w-other')
+const taskC = fakeEngine.create({ channelId: 'ch-mem', creatorId: 'lead', assigneeId: 'w-other', title: '登录鉴权怎么做' })
+enqueueAssign(rtO, taskC)
+await new Promise<void>(r => setTimeout(r, 300))
+check('跨 agent 记忆隔离(w-other 召回不到 w-mem)', echoO.captured.at(-1)?.memory === undefined)
+
+await rtA.stop()
+await rtO.stop()
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)

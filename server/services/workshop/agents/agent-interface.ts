@@ -27,6 +27,8 @@ export interface AgentRunRequest {
   contextId: string
   fromAgentId: string | null
   toAgentId: string | null
+  /** 平台记忆系统装配的历史上下文块(可选;harness 自主决定是否注入 prompt) */
+  memory?: string
 }
 
 /** Agent 自主作业能力面(MCP 工具子集,进程内直调) */

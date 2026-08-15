@@ -18,7 +18,7 @@ import type {
 import type { A2AMessage, A2AArtifact, Part } from '../types/a2a'
 import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
 import { TERMINAL_TASK_STATES } from '../types/task'
-import type { Mailbox } from './mailbox'
+import type { AgentMemory } from './memory'
 
 /** ChannelBus:运行时事件总线(逐事件广播 + 任务/成员事件通知 + 调度唤醒) */
 export interface ChannelBus {
@@ -48,6 +48,11 @@ export interface ChannelBus {
     completedCount?: number
   }) => void): () => void
   wakeScheduler(): void
+}
+
+/** Parts → 纯文本(text 片段拼接;记忆召回查询与回复收集共用) */
+function partsToText(parts: Part[]): string {
+  return parts.map(p => ('text' in p ? p.text : '')).filter(Boolean).join('\n')
 }
 
 /**
@@ -129,6 +134,7 @@ export class AgentRuntime {
       taskEngine: TaskEngine
       bus: ChannelBus
       workspace: AgentWorkspace
+      memory?: AgentMemory
     },
   ) {
     this.agentId = agent.id
@@ -328,7 +334,15 @@ export class AgentRuntime {
       }
       // 每次 run 新建 AbortController;abort 后事件流终止
       this.abortController = new AbortController()
-      const request: AgentRunRequest = this.toRequest(msg)
+      // 记忆召回(异常不阻塞)
+      let memoryBlock: string | undefined
+      try {
+        memoryBlock = (await this.deps.memory?.recall(partsToText(msg.parts))) ?? undefined
+      }
+      catch (err) {
+        console.error(`[AgentRuntime:${this.agentId}] 记忆召回失败:`, err)
+      }
+      const request: AgentRunRequest = this.toRequest(msg, memoryBlock)
       const ctx: AgentRunContext = {
         agentId: this.agentId,
         channelId: msg.contextId,
@@ -338,9 +352,17 @@ export class AgentRuntime {
       }
       // 补入产出者 agentId(monitor 据此归属事件;不改原 msg,用浅拷贝)
       const enrichedSource = { ...msg, metadata: { ...msg.metadata, 'x-aw-producing-agent': this.agentId } }
+      // 回复文本收集(V9:omp 不产 message 事件,聚合三类源——message 事件 / status.message / 终态 artifact 'output')
+      let replyText = ''
+      const cap = (text: string): void => {
+        if (replyText.length < 400) replyText += text.slice(0, 400 - replyText.length)
+      }
       for await (const event of this.impl.run(request, ctx)) {
         this.deps.bus.emit(event, enrichedSource)
         if (taskId) await this.deps.taskEngine.applyEvent(taskId, event)
+        if (event.kind === 'message') cap(partsToText(event.message.parts))
+        else if (event.kind === 'status' && event.status.message) cap(partsToText(event.status.message.parts))
+        else if (event.kind === 'artifact' && event.artifact.name === 'output') cap(partsToText(event.artifact.parts))
       }
       // 交付兜底(harness 回合结束 ≠ 任务完成):
       //  - 回合产出过实质 artifact(LLM 完成了工作但跳过 complete_task 工具)→ 隐式完成,
@@ -385,6 +407,23 @@ export class AgentRuntime {
           }
         }
       }
+
+      // 记忆沉淀:终态任务 harvest;无 taskId 的点对点消息记协作(异常不阻塞)
+      if (this.deps.memory) {
+        try {
+          const task = taskId ? this.deps.taskEngine.get(taskId) : undefined
+          if (task && TERMINAL_TASK_STATES[task.state]) {
+            await this.deps.memory.recordTaskOutcome(task)
+          }
+          else if (!taskId) {
+            const fromAgentId = (msg.metadata?.['x-aw-from-agent'] as string | undefined) ?? null
+            if (fromAgentId) await this.deps.memory.recordPeerExchange(msg, replyText)
+          }
+        }
+        catch (err) {
+          console.error(`[AgentRuntime:${this.agentId}] 记忆写入失败:`, err)
+        }
+      }
     }
     finally {
       this.abortController = null
@@ -407,13 +446,14 @@ export class AgentRuntime {
     }
   }
 
-  private toRequest(msg: A2AMessage): AgentRunRequest {
+  private toRequest(msg: A2AMessage, memory?: string): AgentRunRequest {
     return {
       message: msg,
       taskId: msg.taskId,
       contextId: msg.contextId,
       fromAgentId: (msg.metadata?.['x-aw-from-agent'] as string | undefined) ?? null,
       toAgentId: this.agentId,
+      memory,
     }
   }
 
