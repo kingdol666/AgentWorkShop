@@ -19,6 +19,7 @@ import type { A2AMessage, A2AArtifact, Part } from '../types/a2a'
 import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
 import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentMemory } from './memory'
+import type { Mailbox } from './mailbox'
 
 /** ChannelBus:运行时事件总线(逐事件广播 + 任务/成员事件通知 + 调度唤醒) */
 export interface ChannelBus {

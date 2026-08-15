@@ -77,7 +77,8 @@ export class AgentMemory {
     const match = buildMatchQuery(query)
     if (match) {
       const found = this.repo.search(this.opts.agentId, match, MAX_TERMS)
-      const best = found.length > 0 ? Math.max(-found[0].bm25, 0.001) : 1
+      const first = found[0]
+      const best = first ? Math.max(-first.bm25, 0.001) : 1
       found.forEach((row, i) => {
         const rel = Math.min(1, -row.bm25 / best)
         if (rel >= 0.1 || i < WEAK_HIT_KEEP) hits.set(row.id, { row, relevance: rel })
