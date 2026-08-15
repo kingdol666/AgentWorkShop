@@ -12,7 +12,11 @@
  * - subscriptions:  订阅按 (channel, 实例, target) 隔离
  * - agent_memories: Agent 持久记忆(FTS5 索引,per-agent 域 + team 共享)
  */
+import { createRequire } from 'node:module'
 import { DatabaseSync } from 'node:sqlite'
+import type * as sqliteVec from 'sqlite-vec'
+
+const require = createRequire(import.meta.url)
 
 /**
  * 建表 SQL(与 schema.sql 保持同步;内联字符串而非运行时读文件,
@@ -263,7 +267,15 @@ export interface TaskRow {
  * path 传 ':memory:' 即为内存库(测试用);落盘库由上层决定路径。
  */
 export function openWorkshopDb(path: string): DatabaseSync {
-  const db = new DatabaseSync(path)
+  // allowExtension + 尝试加载 sqlite-vec(向量检索);失败静默降级纯 FTS(受控环境可能禁扩展)
+  const db = new DatabaseSync(path, { allowExtension: true })
+  try {
+    const { getLoadablePath } = require('sqlite-vec') as typeof sqliteVec
+    db.loadExtension(getLoadablePath())
+  }
+  catch {
+    // 扩展不可用:记忆系统自动退化为 FTS-only(vecInit 将失败并禁用向量)
+  }
   initWorkshopDb(db)
   return db
 }
