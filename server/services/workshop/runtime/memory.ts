@@ -34,14 +34,15 @@ export function segmentCJK(text: string): string {
 }
 
 export function buildMatchQuery(text: string): string | null {
-  const cleaned = text.replace(/["'*():+-]/g, ' ').toLowerCase()
+  const cleaned = text.replace(/["'*().:+-]/g, ' ').toLowerCase()
   const terms = segmentCJK(cleaned)
     .split(/\s+/)
     .filter(Boolean)
     .filter(t => /[\u4e00-\u9fff]/.test(t) || t.length >= 2)
     .filter(t => !['and', 'or', 'not', 'near'].includes(t))
     .slice(0, MAX_TERMS)
-  return terms.length > 0 ? terms.join(' OR ') : null
+  // 词项一律引号包裹:残留特殊字符(FTS5 列过滤/短语语法)全部惰性化
+  return terms.length > 0 ? terms.map(t => `"${t}"`).join(' OR ') : null
 }
 
 export function estimateTokens(text: string): number {

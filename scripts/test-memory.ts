@@ -68,10 +68,15 @@ check('listMemoryAgentIds 排除 team', repo.listMemoryAgentIds().includes(TEAM_
 console.log('\n--- AgentMemory 模块 ---')
 
 check('segmentCJK 汉字间加空格', segmentCJK('登录oauth') === ' 登 录 oauth')
-check('buildMatchQuery OR 连接 + 剔除操作符/保留词', buildMatchQuery('登录 (页面) AND not') === '登 OR 录 OR 页 OR 面')
+check('buildMatchQuery OR 连接 + 剔除操作符/保留词(引号包裹)', buildMatchQuery('登录 (页面) AND not') === '"登" OR "录" OR "页" OR "面"')
 check('buildMatchQuery 空查询 null', buildMatchQuery('   ') === null)
-check('buildMatchQuery ASCII 单字词过滤', buildMatchQuery('a b oauth') === 'oauth')
+check('buildMatchQuery ASCII 单字词过滤', buildMatchQuery('a b oauth') === '"oauth"')
 check('estimateTokens 中英混合', estimateTokens('登录ab') === 3)
+check('buildMatchQuery 剥除路径标点', buildMatchQuery('读取 D:/codes/x/.tmp-a/input.txt 内容') !== null && !buildMatchQuery('读取 D:/codes/x/.tmp-a/input.txt 内容')!.includes('.'))
+check('buildMatchQuery 词项全部引号包裹', (() => {
+  const q = buildMatchQuery('登录 oauth 页面')
+  return q === null || q.split(' OR ').every(t => t.startsWith('"') && t.endsWith('"'))
+})())
 // 前段 delete 了 task:t1 行,重新播种供模块段使用(fresh insert,access_count=0)
 repo.upsert({ channelId: 'ch1', agentId: 'a1', kind: 'episodic-task', title: '实现登录页面', titleFts: seg('实现登录页面'), content: seg('用OAuth2方案完成了登录鉴权'), importance: 0.8, taskId: 't1', dedupKey: 'task:t1' })
 
@@ -93,6 +98,11 @@ check('极小预算整行取舍', tiny === null || tiny.split('\n').length <= 3)
 
 const memEmpty = new AgentMemory(repo, { channelId: 'ch1', agentId: 'nobody' })
 check('无记忆 recall 返回 null', (await memEmpty.recall('任意')) === null)
+
+const pathResult = await new AgentMemory(repo, { channelId: 'ch1', agentId: 'a1' })
+  .recall('配置在 D:/codes/.tmp-x/config.json 怎么改')
+  .then(v => v ?? null, () => '__THROWN__')
+check('路径文本 recall 不炸', pathResult !== '__THROWN__')
 
 // ═══════════ 运行时集成:召回注入 + 结束沉淀 ═══════════
 console.log('\n--- AgentRuntime 记忆集成 ---')
