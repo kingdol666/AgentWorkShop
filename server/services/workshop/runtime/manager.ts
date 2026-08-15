@@ -28,13 +28,15 @@ import type { MessageRepo } from '../db/message.repo'
 import type { SubscriptionRepo } from '../db/subscription.repo'
 import type { TaskRepo, TaskPatch } from '../db/task.repo'
 import { parseJson } from '../db/database'
-import type { AgentRow, ChannelAgentRow, ChannelRow, TaskRow, TeamRow } from '../db/database'
+import type { AgentRow, ChannelAgentRow, ChannelRow, MemoryRow, TaskRow, TeamRow } from '../db/database'
 import { Mailbox, rowToMessage } from './mailbox'
 import { AgentRuntime } from './agent-runtime'
 import type { ChannelBus, TaskEngine } from './agent-runtime'
 import { ChannelRuntime } from './channel-runtime'
 import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
+import { AgentMemory } from './memory'
+import type { MemoryRepo } from '../db/memory.repo'
 
 /** 全部仓储(依赖注入) */
 export interface AllRepos {
@@ -46,6 +48,7 @@ export interface AllRepos {
   messages: MessageRepo
   subscriptions: SubscriptionRepo
   tasks: TaskRepo
+  memories: MemoryRepo
 }
 
 /** Manager 依赖 */
@@ -263,11 +266,13 @@ export class AgentChannelManager {
     const agentWithCwd: AgentInfo = chWorkspace.length > 0
       ? { ...agent, config: { cwd: chWorkspace, ...agent.config } }
       : agent
+    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id })
     const runtime = new AgentRuntime(agent, this.deps.implFactory(agentWithCwd), {
       mailbox,
       taskEngine: this.getTaskEngine(),
       bus,
       workspace,
+      memory,
     })
     cr.addAgent(runtime)
     this.agentIndex.set(runtimeKey(m.channelId, agent.id), runtime)
@@ -612,6 +617,13 @@ export class AgentChannelManager {
   /** channel 实例列表 */
   async listChannelAgents(channelId: string): Promise<AgentInfo[]> {
     return this.deps.repos.channelAgents.listByChannel(channelId).map(instanceToAgentInfo)
+  }
+
+  /** Agent 记忆列表(私有观察面):实例须存在于本 channel */
+  listMemories(channelId: string, agentId: string, limit = 50): MemoryRow[] {
+    const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+    if (!m) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${agentId}`)
+    return this.deps.repos.memories.listByAgent(agentId, limit)
   }
 
   /** 实例详情(含运行时装配状态) */

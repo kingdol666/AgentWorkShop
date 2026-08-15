@@ -16,6 +16,7 @@ import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
+import { createMemoryRepo } from '../server/services/workshop/db/memory.repo'
 import { createTeamRepo } from '../server/services/workshop/db/team.repo'
 import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
@@ -58,6 +59,7 @@ function buildRepos(db: ReturnType<typeof openWorkshopDb>) {
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
+    memories: createMemoryRepo(db),
 
     teams: createTeamRepo(db),
 

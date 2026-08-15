@@ -23,6 +23,7 @@ import { createTeamMemberRepo } from '../services/workshop/db/team-member.repo'
 import { createTaskRepo } from '../services/workshop/db/task.repo'
 import { createMessageRepo } from '../services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../services/workshop/db/subscription.repo'
+import { createMemoryRepo } from '../services/workshop/db/memory.repo'
 import { createAgentImpl } from '../services/workshop/agents/factory'
 import {
   createAgentChannelManager,
@@ -88,6 +89,7 @@ export default function workshopPlugin(nitroApp: {
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
+    memories: createMemoryRepo(db),
   }
   const deps: ManagerDeps = { repos, implFactory: createAgentImpl, db }
 

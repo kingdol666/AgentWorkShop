@@ -22,6 +22,7 @@ import { createChannelAgentRepo } from '../server/services/workshop/db/channel-a
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
+import { createMemoryRepo } from '../server/services/workshop/db/memory.repo'
 import { createTeamRepo } from '../server/services/workshop/db/team.repo'
 import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
 import {
@@ -168,6 +169,7 @@ function setup(): Harness {
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
+    memories: createMemoryRepo(db),
 
     teams: createTeamRepo(db),
 
@@ -390,6 +392,7 @@ async function main(): Promise<void> {
           messages: createMessageRepo(db2),
           subscriptions: createSubscriptionRepo(db2),
           tasks: createTaskRepo(db2),
+          memories: createMemoryRepo(db2),
 
           teams: createTeamRepo(db2),
 
