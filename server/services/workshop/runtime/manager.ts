@@ -35,8 +35,8 @@ import type { ChannelBus, TaskEngine } from './agent-runtime'
 import { ChannelRuntime } from './channel-runtime'
 import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
-import { AgentMemory } from './memory'
-import type { MemoryRepo } from '../db/memory.repo'
+import { AgentMemory, segmentCJK } from './memory'
+import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 
 /** 全部仓储(依赖注入) */
 export interface AllRepos {
@@ -624,6 +624,42 @@ export class AgentChannelManager {
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
     if (!m) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${agentId}`)
     return this.deps.repos.memories.listByAgent(agentId, limit)
+  }
+
+  // ===== 团队共享记忆域(agent_id='__team__' 哨兵;lead 策展,channel 内全员 recall 可见)=====
+
+  /** 团队共享记忆列表(channel 级;任意本 channel 成员可读) */
+  listTeamMemories(channelId: string, limit = 50): MemoryRow[] {
+    if (!this.deps.repos.channels.findById(channelId)) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+    return this.deps.repos.memories.listByAgent(TEAM_AGENT_ID, limit)
+      .filter(r => r.channelId === channelId)
+  }
+
+  /** 写/更新团队记忆(仅 lead;稳定 dedupKey 幂等刷新) */
+  addTeamMemory(channelId: string, callerAgentId: string, input: { title: string, content: string, importance?: number, dedupKey?: string }): MemoryRow[] {
+    const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
+    if (!caller || caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可写团队记忆')
+    this.deps.repos.memories.upsert({
+      channelId,
+      agentId: TEAM_AGENT_ID,
+      kind: 'semantic',
+      title: input.title,
+      titleFts: segmentCJK(input.title),
+      content: segmentCJK(input.content).slice(0, 800),
+      importance: input.importance ?? 0.9,
+      taskId: null,
+      dedupKey: input.dedupKey ?? `manual:${randomUUID()}`,
+    })
+    return this.listTeamMemories(channelId)
+  }
+
+  /** 删团队记忆(仅 lead;vec 行残留由维护任务统一清理) */
+  deleteTeamMemory(channelId: string, callerAgentId: string, memoryId: string): void {
+    const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
+    if (!caller || caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可删团队记忆')
+    const row = this.deps.repos.memories.listByAgent(TEAM_AGENT_ID, 1000).find(r => r.id === memoryId && r.channelId === channelId)
+    if (!row) throw new AppError(404, 'NOT_FOUND', `团队记忆不存在: ${memoryId}`)
+    this.deps.repos.memories.delete(memoryId)
   }
 
   /** 实例详情(含运行时装配状态) */

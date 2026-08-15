@@ -9,6 +9,15 @@ import { AgentMemory, buildMatchQuery, estimateTokens, segmentCJK } from '../ser
 import { randomUUID } from 'node:crypto'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { Mailbox } from '../server/services/workshop/runtime/mailbox'
+import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
+import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
+import { createTeamRepo } from '../server/services/workshop/db/team.repo'
+import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
+import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
+import { createTaskRepo } from '../server/services/workshop/db/task.repo'
+import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
+import { createAgentChannelManager } from '../server/services/workshop/runtime/manager'
+import type { AppError } from '../server/utils/errors'
 import { AgentRuntime } from '../server/services/workshop/runtime/agent-runtime'
 import type { ChannelBus, TaskEngine } from '../server/services/workshop/runtime/agent-runtime'
 import type {
@@ -220,6 +229,66 @@ check('跨 agent 记忆隔离(w-other 召回不到 w-mem)', echoO.captured.at(-1
 
 await rtA.stop()
 await rtO.stop()
+
+// ═══════════ 团队共享记忆域(manager 策展 + recall 通道隔离)═══════════
+console.log('\n--- Team 共享记忆域 ---')
+
+// 最小 manager 装配(照 test-dual-drive.ts;:memory: db;impl 仅占位)
+const stubImpl = (_agent: AgentInfo): AgentInterface => {
+  throw new Error('impl unused')
+}
+/** 捕获 AppError code(未抛返回空串) */
+function captureCode(fn: () => unknown): string {
+  try {
+    fn()
+  }
+  catch (e) {
+    return (e as AppError).code
+  }
+  return ''
+}
+const tmRepos = {
+  channels: createChannelRepo(db),
+  agents: createAgentRepo(db),
+  teams: createTeamRepo(db),
+  teamMembers: createTeamMemberRepo(db),
+  channelAgents: createChannelAgentRepo(db),
+  messages: createMessageRepo(db),
+  subscriptions: createSubscriptionRepo(db),
+  tasks: createTaskRepo(db),
+  memories: repo,
+}
+const teamManager = createAgentChannelManager({ repos: tmRepos, implFactory: stubImpl, db })
+const chTeam = tmRepos.channels.create({ name: 'ch-team' })
+const leadInst = tmRepos.channelAgents.create({ channelId: chTeam.id, templateId: null, name: 'lead', harness: 'mock', role: 'lead' })
+const workerInst = tmRepos.channelAgents.create({ channelId: chTeam.id, templateId: null, name: 'worker', harness: 'mock', role: 'worker' })
+
+const teamList = teamManager.addTeamMemory(chTeam.id, leadInst.id, { title: '部署规范', content: '全部使用pnpm并开启strict', dedupKey: 'deploy:pnpm' })
+check('lead 写团队记忆成功入列', teamList.length === 1 && teamList[0].agentId === TEAM_AGENT_ID && teamList[0].channelId === chTeam.id)
+const teamErrWrite = captureCode(() => teamManager.addTeamMemory(chTeam.id, workerInst.id, { title: 'x', content: 'y' }))
+check('worker 写团队记忆抛 SCOPE_VIOLATION', teamErrWrite === 'SCOPE_VIOLATION', `code=${teamErrWrite}`)
+
+teamManager.addTeamMemory(chTeam.id, leadInst.id, { title: '部署规范', content: '改用bun并保留strict', dedupKey: 'deploy:pnpm' })
+const refreshed = teamManager.listTeamMemories(chTeam.id)
+check('同 dedupKey 二次写幂等刷新(仍 1 条)', refreshed.length === 1 && refreshed[0].content.includes('bun') && !refreshed[0].content.includes('pnpm'))
+
+const workerBlock = await new AgentMemory(repo, { channelId: chTeam.id, agentId: workerInst.id }).recall('部署规范')
+check('worker recall 可见团队行', workerBlock !== null && workerBlock.includes('部署规范'))
+
+const teamErrDelWorker = captureCode(() => teamManager.deleteTeamMemory(chTeam.id, workerInst.id, refreshed[0].id))
+check('worker 删团队记忆抛 SCOPE_VIOLATION', teamErrDelWorker === 'SCOPE_VIOLATION', `code=${teamErrDelWorker}`)
+
+teamManager.deleteTeamMemory(chTeam.id, leadInst.id, refreshed[0].id)
+check('lead 删团队记忆成功', teamManager.listTeamMemories(chTeam.id).length === 0)
+const teamErrDelMiss = captureCode(() => teamManager.deleteTeamMemory(chTeam.id, leadInst.id, 'no-such-id'))
+check('删不存在团队记忆抛 NOT_FOUND', teamErrDelMiss === 'NOT_FOUND', `code=${teamErrDelMiss}`)
+
+// ---- recall 通道隔离:team 行(FTS 来源)按本 channel 过滤 ----
+repo.upsert({ channelId: 'ch-other', agentId: TEAM_AGENT_ID, kind: 'semantic', title: '他通道金丝雀', titleFts: seg('他通道金丝雀'), content: seg('跨通道独占水印金丝雀'), importance: 0.9, taskId: null, dedupKey: 'iso:other' })
+repo.upsert({ channelId: 'ch1', agentId: TEAM_AGENT_ID, kind: 'semantic', title: '本通道金丝雀', titleFts: seg('本通道金丝雀'), content: seg('本通道共享金丝雀约定'), importance: 0.9, taskId: null, dedupKey: 'iso:ch1' })
+const isoBlock = await new AgentMemory(repo, { channelId: 'ch1', agentId: 'a1' }).recall('金丝雀')
+check('recall 不泄漏他通道团队记忆', isoBlock === null || !isoBlock.includes('他通道金丝雀'), isoBlock?.slice(0, 80))
+check('recall 可见本通道团队记忆', isoBlock !== null && isoBlock.includes('本通道金丝雀'), isoBlock?.slice(0, 80))
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)

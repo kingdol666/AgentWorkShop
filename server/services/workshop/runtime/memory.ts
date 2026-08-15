@@ -95,6 +95,8 @@ export class AgentMemory {
       const first = found[0]
       const best = first ? Math.max(-first.bm25, 0.001) : 1
       found.forEach((row, i) => {
+        // team 行按 channel 隔离(FTS 域恒含 '__team__',须滤掉他 channel 的策展行)
+        if (row.agentId === TEAM_AGENT_ID && row.channelId !== this.opts.channelId) return
         const rel = Math.min(1, -row.bm25 / best)
         if (rel >= 0.1 || i < WEAK_HIT_KEEP) hits.set(row.id, { row, relevance: rel })
       })
@@ -116,6 +118,8 @@ export class AgentMemory {
             if (prev === undefined || distance < prev) distByRowid.set(memRowid, distance)
           }
           for (const row of this.repo.listByRowids([...distByRowid.keys()])) {
+            // team 行按 channel 隔离(kNN 反查主表后同 FTS 分支口径)
+            if (row.agentId === TEAM_AGENT_ID && row.channelId !== this.opts.channelId) continue
             const sim = Math.min(1, Math.max(0, 1 - (distByRowid.get(row.rowid) ?? 1)))
             const prev = hits.get(row.id)
             hits.set(row.id, { row, relevance: prev ? Math.max(prev.relevance, sim) : sim })
