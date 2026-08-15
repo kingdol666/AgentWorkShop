@@ -39,3 +39,41 @@ export interface WorkspaceTask {
   createdAt: string
   updatedAt: string
 }
+
+/** 终态判定(COMPLETED / FAILED / CANCELED);membership:TERMINAL_TASK_STATES[state] */
+export const TERMINAL_TASK_STATES: Partial<Record<TaskState, true>> = {
+  COMPLETED: true,
+  FAILED: true,
+  CANCELED: true,
+}
+
+/**
+ * 单 Agent 任务队列视图(每个 AgentRuntime 自己的任务管理系统)。
+ * DB tasks 表是唯一事实源;本视图为派生只读投影,不持有第二份状态:
+ *  - queued:待执行队列(FIFO,createdAt ASC;含 SUBMITTED/ASSIGNED)
+ *  - current:执行中任务(WORKING;空闲时 undefined)
+ *  - completed:已完成任务(COMPLETED)
+ *  WAITING(已分解等待子任务)不计入 queued——它由子任务推进,不由本 agent 主动执行。
+ */
+export interface AgentTaskQueueView {
+  agentId: string
+  channelId: string
+  queued: WorkspaceTask[]
+  current?: WorkspaceTask
+  completed: WorkspaceTask[]
+}
+
+/** Agent 实时状态视图(状态管理机制:idle/busy/stopped + 队列上下文) */
+export interface AgentStatusView {
+  agentId: string
+  channelId: string
+  role: 'lead' | 'worker'
+  name: string
+  state: 'idle' | 'busy' | 'stopped'
+  /** 执行中的任务 id(空闲时 null) */
+  currentTaskId: string | null
+  /** 待执行队列长度(实时) */
+  queuedCount: number
+  /** 已完成任务数 */
+  completedCount: number
+}

@@ -15,18 +15,20 @@ import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { AppError } from '../../../utils/errors'
 import type { A2AMessage, A2AArtifact, Part } from '../types/a2a'
-import type { TaskState, WorkspaceTask } from '../types/task'
+import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
 import type { AgentInfo, AgentInterface, AgentWorkspace, AgentEvent, ExecutionMode } from '../agents/agent-interface'
 import type { ModeConfig } from './execution-mode'
 import { encodeTaskMode } from './execution-mode'
 import type { ChannelRepo } from '../db/channel.repo'
 import type { AgentRepo } from '../db/agent.repo'
+import type { TeamRepo } from '../db/team.repo'
+import type { TeamMemberRepo } from '../db/team-member.repo'
 import type { ChannelAgentRepo } from '../db/channel-agent.repo'
 import type { MessageRepo } from '../db/message.repo'
 import type { SubscriptionRepo } from '../db/subscription.repo'
 import type { TaskRepo, TaskPatch } from '../db/task.repo'
 import { parseJson } from '../db/database'
-import type { AgentRow, ChannelAgentRow, ChannelRow, TaskRow } from '../db/database'
+import type { AgentRow, ChannelAgentRow, ChannelRow, TaskRow, TeamRow } from '../db/database'
 import { Mailbox, rowToMessage } from './mailbox'
 import { AgentRuntime } from './agent-runtime'
 import type { ChannelBus, TaskEngine } from './agent-runtime'
@@ -38,6 +40,8 @@ import { TaskEngine as TaskEngineImpl } from './task-engine'
 export interface AllRepos {
   channels: ChannelRepo
   agents: AgentRepo
+  teams: TeamRepo
+  teamMembers: TeamMemberRepo
   channelAgents: ChannelAgentRepo
   messages: MessageRepo
   subscriptions: SubscriptionRepo
@@ -61,6 +65,23 @@ export interface AgentTemplateDetail {
   enabled: number
   /** 该模板克隆出的全部实例(跨 channel) */
   instances: Array<{ id: string, channelId: string, role: 'lead' | 'worker', token: string }>
+  createdAt: string
+  updatedAt: string
+}
+
+/** AgentTeam 详情(含成员模板快照) */
+export interface AgentTeamDetail {
+  id: string
+  name: string
+  description: string
+  /** 成员(按加入顺序;快照含模板当前 name/harness,便于前端展示) */
+  members: Array<{
+    templateId: string
+    name: string
+    harness: string
+    role: 'lead' | 'worker'
+    addedAt: string
+  }>
   createdAt: string
   updatedAt: string
 }
@@ -184,6 +205,7 @@ export class AgentChannelManager {
       },
       onTaskEvent: (fn) => {
         taskListeners.add(fn)
+        return () => taskListeners.delete(fn)
       },
       notifyAgent: (e) => {
         for (const fn of agentListeners) {
@@ -197,6 +219,7 @@ export class AgentChannelManager {
       },
       onAgentStatus: (fn) => {
         agentListeners.add(fn)
+        return () => agentListeners.delete(fn)
       },
       wakeScheduler: () => {
         cr.wakeScheduler()
@@ -204,7 +227,7 @@ export class AgentChannelManager {
     }
   }
 
-  subscribeAgentStatus(channelId: string, fn: (e: { agentId: string, state: 'idle' | 'busy' | 'stopped' }) => void): () => void {
+  subscribeAgentStatus(channelId: string, fn: (e: Parameters<ChannelBus['notifyAgent']>[0]) => void): () => void {
     const bus = this.buses.get(channelId)
     if (!bus) return () => {}
     bus.onAgentStatus(fn)
@@ -387,6 +410,10 @@ export class AgentChannelManager {
       reportTask: input => this.reportTask(channelId, agent.id, input),
       completeTask: (taskId, artifacts) => this.completeTask(channelId, agent.id, { taskId, artifacts }),
       cancelTask: taskId => this.cancelTask(channelId, agent.id, { taskId }),
+      myQueue: () => this.myQueue(channelId, agent.id),
+      queueOverview: () => this.queueOverview(channelId, agent.id),
+      updateTask: (taskId, patch) => this.updateTask(channelId, agent.id, taskId, patch),
+      reassignTask: (taskId, toAgentId) => this.reassignTask(channelId, agent.id, taskId, toAgentId),
       sendMessage: input => this.sendA2A(channelId, agent.id, input),
       pollMailbox: limit => this.pollMailbox(channelId, agent.id, limit),
       subscribe: input => this.subscribe(channelId, agent.id, input),
@@ -621,6 +648,116 @@ export class AgentChannelManager {
     this.deps.repos.channelAgents.remove(channelId, instanceId)
   }
 
+  // ===== AgentTeam 管理面(模板编组 + 批量部署) =====
+
+  /** 创建 AgentTeam */
+  async createTeam(input: { name: string, description?: string }): Promise<AgentTeamDetail> {
+    const row = this.deps.repos.teams.create({ name: input.name, description: input.description })
+    return this.teamDetailOf(row)
+  }
+
+  /** 全部 AgentTeam */
+  async listTeams(): Promise<AgentTeamDetail[]> {
+    return this.deps.repos.teams.list().map(row => this.teamDetailOf(row))
+  }
+
+  /** AgentTeam 详情(含成员模板快照);不存在返回 undefined */
+  getTeam(teamId: string): AgentTeamDetail | undefined {
+    const row = this.deps.repos.teams.findById(teamId)
+    if (!row) return undefined
+    return this.teamDetailOf(row)
+  }
+
+  /** 更新 AgentTeam(name/description) */
+  async updateTeam(teamId: string, patch: { name?: string, description?: string }): Promise<AgentTeamDetail> {
+    const updated = this.deps.repos.teams.update(teamId, patch)
+    if (!updated) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
+    return this.teamDetailOf(updated)
+  }
+
+  /** 删除 AgentTeam(仅删编组关系,不动模板与其已部署实例) */
+  async removeTeam(teamId: string): Promise<void> {
+    this.deps.repos.teams.remove(teamId)
+  }
+
+  /** 把 Agent 模板加入 AgentTeam(同 team 内模板唯一;至多一个 lead) */
+  async addTemplateToTeam(input: { teamId: string, templateId: string, role?: 'lead' | 'worker' }): Promise<AgentTeamDetail> {
+    const team = this.deps.repos.teams.findById(input.teamId)
+    if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${input.teamId}`)
+    const tpl = this.deps.repos.agents.findById(input.templateId)
+    if (!tpl) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${input.templateId}`)
+    const role = input.role ?? 'worker'
+    if (this.deps.repos.teamMembers.findByTeamTemplate(input.teamId, input.templateId)) {
+      throw new AppError(409, 'ALREADY_MEMBER', `模板 ${input.templateId} 已在 team ${input.teamId} 中`)
+    }
+    if (role === 'lead' && this.deps.repos.teamMembers.countLead(input.teamId) > 0) {
+      throw new AppError(409, 'LEAD_EXISTS', `team ${input.teamId} 已存在 lead`)
+    }
+    this.deps.repos.teamMembers.add({ teamId: input.teamId, templateId: input.templateId, role })
+    return this.teamDetailOf(team)
+  }
+
+  /** 从 AgentTeam 移除 Agent 模板(仅删编组关系) */
+  async removeTemplateFromTeam(teamId: string, templateId: string): Promise<AgentTeamDetail> {
+    const team = this.deps.repos.teams.findById(teamId)
+    if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
+    const member = this.deps.repos.teamMembers.findByTeamTemplate(teamId, templateId)
+    if (!member) throw new AppError(404, 'NOT_FOUND', `模板 ${templateId} 不在 team ${teamId} 中`)
+    this.deps.repos.teamMembers.remove(teamId, templateId)
+    return this.teamDetailOf(team)
+  }
+
+  /**
+   * 批量部署 AgentTeam → Channel:对每个成员模板调用 addAgentToChannel 克隆出独立实例。
+   * - channel 已有 lead 且 team 成员含 lead → 该成员 409 LEAD_EXISTS,默认整体失败(事务性语义)。
+   *   实际上为简化:逐个克隆,失败时抛错(已克隆实例保留,调用方可 remove 重试)。
+   * - 返回每个成员的部署结果(实例 AgentInfo)。
+   */
+  async deployTeamToChannel(input: {
+    channelId: string
+    teamId: string
+  }): Promise<{ channelId: string, teamId: string, agents: AgentInfo[] }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${input.channelId}`)
+    const team = this.deps.repos.teams.findById(input.teamId)
+    if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${input.teamId}`)
+    const members = this.deps.repos.teamMembers.listByTeam(input.teamId)
+    if (members.length === 0) {
+      throw new AppError(400, 'TEAM_EMPTY', `team ${input.teamId} 无成员,先添加 Agent 模板`)
+    }
+    const agents: AgentInfo[] = []
+    for (const m of members) {
+      const inst = await this.addAgentToChannel({
+        channelId: input.channelId,
+        agentId: m.templateId,
+        role: m.role === 'lead' ? 'lead' : 'worker',
+      })
+      agents.push(inst)
+    }
+    return { channelId: input.channelId, teamId: input.teamId, agents }
+  }
+
+  private teamDetailOf(row: TeamRow): AgentTeamDetail {
+    const members = this.deps.repos.teamMembers.listByTeam(row.id)
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      members: members.map((m) => {
+        const tpl = this.deps.repos.agents.findById(m.templateId)
+        return {
+          templateId: m.templateId,
+          name: tpl?.name ?? '(deleted)',
+          harness: tpl?.harness ?? '',
+          role: m.role === 'lead' ? 'lead' : 'worker',
+          addedAt: m.createdAt,
+        }
+      }),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }
+  }
+
   // ===== 任务作业面 =====
 
   async submitChannelTask(input: {
@@ -784,6 +921,75 @@ export class AgentChannelManager {
     return this.requireTaskInScope(channelId, callerAgentId, taskId)
   }
 
+  /** 自己的任务队列视图(待执行 FIFO / 执行中 / 已完成)——每个 agent 的任务管理系统入口 */
+  async myQueue(channelId: string, callerAgentId: string): Promise<AgentTaskQueueView> {
+    this.requireMember(channelId, callerAgentId)
+    return this.getTaskEngine().queueViewOf(channelId, callerAgentId)
+  }
+
+  /** 全员实时状态 + 队列总览(lead 统一调度/最优调配的观察面) */
+  async queueOverview(channelId: string, callerAgentId: string): Promise<AgentStatusView[]> {
+    this.requireMember(channelId, callerAgentId)
+    const cr = this.channels.get(channelId)
+    const wired = new Map((cr?.getAgents() ?? []).map(a => [a.agentId, a]))
+    return this.deps.repos.channelAgents.listByChannel(channelId)
+      .filter(m => m.enabled === 1)
+      .map((m) => {
+        const runtime = wired.get(m.id)
+        if (runtime) return runtime.getStatus()
+        // 未装配(懒加载)成员:状态按 idle,队列视图仍来自 tasks 表
+        const view = this.getTaskEngine().queueViewOf(channelId, m.id)
+        return {
+          agentId: m.id,
+          channelId,
+          role: m.role as 'lead' | 'worker',
+          name: m.name,
+          state: 'idle' as const,
+          currentTaskId: view.current?.id ?? null,
+          queuedCount: view.queued.length,
+          completedCount: view.completed.length,
+        }
+      })
+  }
+
+  /** 修改待执行任务(lead 对 worker 队列的"改";仅待执行态可改)+ 唤醒 assignee 消费新投递 */
+  async updateTask(
+    channelId: string,
+    callerAgentId: string,
+    taskId: string,
+    patch: { title?: string, description?: string },
+  ): Promise<WorkspaceTask> {
+    const task = this.requireTaskInScope(channelId, callerAgentId, taskId)
+    const caller = this.requireMember(channelId, callerAgentId)
+    if (caller.role !== 'lead' && task.creatorId !== callerAgentId) {
+      throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead/创建者可修改任务')
+    }
+    const updated = this.getTaskEngine().updateTask(taskId, patch, callerAgentId)
+    this.wakeAgent(channelId, updated.assigneeId)
+    return updated
+  }
+
+  /** 重新指派(lead 的"调配":待执行/失败任务迁移到其他 worker)+ 唤醒新 assignee */
+  async reassignTask(
+    channelId: string,
+    callerAgentId: string,
+    taskId: string,
+    toAgentId: string,
+  ): Promise<WorkspaceTask> {
+    this.requireTaskInScope(channelId, callerAgentId, taskId) // 校验任务在调用方作用域内
+    const caller = this.requireMember(channelId, callerAgentId)
+    if (caller.role !== 'lead') {
+      throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可调配任务')
+    }
+    const target = this.deps.repos.channelAgents.findByChannelAgent(channelId, toAgentId)
+    if (!target || target.enabled !== 1) {
+      throw new AppError(403, 'SCOPE_VIOLATION', '目标 Agent 不在本 channel 或已禁用')
+    }
+    const updated = this.getTaskEngine().reassign(taskId, toAgentId)
+    this.wakeAgent(channelId, toAgentId)
+    return updated
+  }
+
   async sendA2A(
     channelId: string,
     callerAgentId: string,
@@ -803,17 +1009,24 @@ export class AgentChannelManager {
     return message
   }
 
+  /**
+   * 实时消息(外部/系统注入):priority=immediate → busy 时 steer 注入运行中的 omp 会话。
+   * 触发器 requireReply=true → 接收方须回执(执行结果+所需内容,in_reply_to 关联)。
+   */
   async sendImmediateMessage(input: {
     channelId: string
     fromAgentId?: string
     toAgentId: string
     parts: Part[]
+    requireReply?: boolean
   }): Promise<A2AMessage> {
-    const message = buildMessage(input.channelId, 'ROLE_AGENT', input.parts, {
+    const metadata: Record<string, unknown> = {
       'x-aw-target-agent': input.toAgentId,
       'x-aw-from-agent': input.fromAgentId ?? '',
       'x-aw-msg-priority': 'immediate',
-    })
+    }
+    if (input.requireReply) metadata['x-aw-require-reply'] = 'true'
+    const message = buildMessage(input.channelId, 'ROLE_AGENT', input.parts, metadata)
     this.route(input.channelId, message)
     return message
   }
@@ -851,6 +1064,25 @@ export class AgentChannelManager {
       const channel = this.deps.repos.channels.findById(channelId)
       if (!channel || channel.enabled !== 1) continue
       this.ensureChannelActive(channelId)
+    }
+    // 断线重连:ASSIGNED/WORKING 的叶子任务(无子任务)若无 pending assign 投递
+    // (消息已被消费但任务未完成——进程内 run 抛错、或崩溃落在消费后),
+    // 无人会重新驱动它(调度循环只 dispatch lead 名下任务;停滞检测要 stallMs×2 才 cancel)。
+    // 重投 assign + 唤醒 assignee,由 processMessage 的终态检查保证幂等(执行从头重放)。
+    // 父任务(WAITING/有子任务)不重投:由调度循环按子任务进度汇总推进。
+    // 父任务集合按 channel 全量任务计算(含已完成子任务):
+    // 「子任务全部完成、父任务 WAITING 待汇总」的父任务不能误判为叶子而重投。
+    const parentIds = new Set<string>()
+    for (const channelId of activeChannelIds) {
+      for (const t of this.deps.repos.tasks.listByChannel(channelId)) {
+        if (t.parentId) parentIds.add(t.parentId)
+      }
+    }
+    for (const task of nonTerminal) {
+      if (task.state !== 'ASSIGNED' && task.state !== 'WORKING') continue
+      if (parentIds.has(task.id)) continue
+      if (this.deps.repos.messages.hasPendingAssign(task.id)) continue
+      this.getTaskEngine().redeliverAssign(task.id)
     }
     // 唤醒有未消费消息的 agent:重启前 consuming 的 assign 消息已被 resetConsuming 重投为 pending,
     // 若无人唤醒,worker 的运行时(懒加载)不会装配,重投消息滞留 pending,任务永远无法恢复。

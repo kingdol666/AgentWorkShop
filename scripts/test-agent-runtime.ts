@@ -21,7 +21,7 @@ import { Mailbox } from '../server/services/workshop/runtime/mailbox'
 import { AgentRuntime } from '../server/services/workshop/runtime/agent-runtime'
 import type { ChannelBus, TaskEngine } from '../server/services/workshop/runtime/agent-runtime'
 import type { A2AMessage, Part } from '../server/services/workshop/types/a2a'
-import type { TaskState, WorkspaceTask } from '../server/services/workshop/types/task'
+import type { AgentTaskQueueView, TaskState, WorkspaceTask } from '../server/services/workshop/types/task'
 import type {
   AgentEvent,
   AgentInfo,
@@ -131,6 +131,16 @@ function makeFakeEngine() {
       throw new Error('cancel 未在测试中使用')
     },
     onChildCompleted(): void {},
+    queueViewOf(channelId: string, agentId: string): AgentTaskQueueView {
+      const mine = [...tasks.values()].filter(t => t.channelId === channelId && t.assigneeId === agentId)
+      return {
+        agentId,
+        channelId,
+        queued: mine.filter(t => t.state === 'SUBMITTED' || t.state === 'ASSIGNED'),
+        current: mine.find(t => t.state === 'WORKING'),
+        completed: mine.filter(t => t.state === 'COMPLETED'),
+      }
+    },
   }
   return { engine: engine as TaskEngine, transitions, applied, tasks }
 }

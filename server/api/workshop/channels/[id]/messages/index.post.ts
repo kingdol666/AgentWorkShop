@@ -17,6 +17,8 @@ const sendMessageSchema = z.object({
   text: z.string().min(1, 'text 必填'),
   fromAgentId: z.string().optional(),
   priority: z.enum(['immediate', 'task']).default('task'),
+  /** 触发器:要求接收方回执(执行结果 + 所需内容,in_reply_to 关联) */
+  requireReply: z.boolean().optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -37,6 +39,7 @@ export default defineApiHandler(async (event) => {
       fromAgentId: body.fromAgentId,
       toAgentId: body.toAgentId,
       parts: [{ text: body.text }],
+      requireReply: body.requireReply,
     })
   }
   // task 优先级:经 fromAgentId 身份走 sendA2A;无 fromAgentId 时用 immediate 通道(空闲即入队)
@@ -44,7 +47,10 @@ export default defineApiHandler(async (event) => {
     return manager.sendA2A(channelId, body.fromAgentId, {
       toAgentId: body.toAgentId,
       parts: [{ text: body.text }],
-      metadata: { 'x-aw-msg-priority': 'task' },
+      metadata: {
+        'x-aw-msg-priority': 'task',
+        ...(body.requireReply ? { 'x-aw-require-reply': 'true' } : {}),
+      },
     })
   }
   return manager.sendImmediateMessage({
@@ -52,5 +58,6 @@ export default defineApiHandler(async (event) => {
     fromAgentId: '',
     toAgentId: body.toAgentId,
     parts: [{ text: body.text }],
+    requireReply: body.requireReply,
   })
 })

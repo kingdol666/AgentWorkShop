@@ -27,7 +27,7 @@ export type MonitorEvent
   = | { kind: 'agent.event', seq: number, at: string, channelId: string, agentId: string | null, event: AgentEvent }
     | { kind: 'task.status', seq: number, at: string, channelId: string, taskId: string, agentId?: string, state: TaskState }
     | { kind: 'task.progress', seq: number, at: string, channelId: string, taskId: string, agentId?: string, progress: number }
-    | { kind: 'agent.status', seq: number, at: string, channelId: string, agentId: string, state: 'idle' | 'busy' | 'stopped' }
+    | { kind: 'agent.status', seq: number, at: string, channelId: string, agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, queuedCount?: number, completedCount?: number }
     | { kind: 'lifecycle', seq: number, at: string, channelId: string, message: string }
 
 export interface MonitorOptions {
@@ -110,9 +110,17 @@ export function monitorChannel(manager: AgentChannelManager, channelId: string, 
       push({ kind: 'task.progress', channelId, taskId: e.taskId, agentId: e.agentId, progress: e.progress })
     }
   })
-  // 源 3:成员状态(idle/busy/stopped;AgentRuntime 转换处主动通知,事件驱动无轮询)
+  // 源 3:成员状态(idle/busy/stopped + 队列上下文;AgentRuntime 转换处主动通知,事件驱动无轮询)
   manager.subscribeAgentStatus(channelId, (e) => {
-    push({ kind: 'agent.status', channelId, agentId: e.agentId, state: e.state })
+    push({
+      kind: 'agent.status',
+      channelId,
+      agentId: e.agentId,
+      state: e.state,
+      currentTaskId: e.currentTaskId ?? null,
+      queuedCount: e.queuedCount,
+      completedCount: e.completedCount,
+    })
   })
 
   push({ kind: 'lifecycle', channelId, message: `monitor started(channel=${channelId.slice(0, 8)}…)` })
@@ -159,7 +167,7 @@ export function monitorChannel(manager: AgentChannelManager, channelId: string, 
             lines.push(`  [${t}] #${e.seq} task.progress ${e.taskId.slice(0, 8)} = ${e.progress}%`)
             break
           case 'agent.status':
-            lines.push(`  [${t}] #${e.seq} agent.status ${e.agentId.slice(0, 8)} → ${e.state}`)
+            lines.push(`  [${t}] #${e.seq} agent.status ${e.agentId.slice(0, 8)} → ${e.state}${e.currentTaskId ? ` (task=${e.currentTaskId.slice(0, 8)})` : ''} queued=${e.queuedCount ?? 0} done=${e.completedCount ?? 0}`)
             break
           case 'lifecycle':
             lines.push(`  [${t}] #${e.seq} lifecycle ${e.message}`)

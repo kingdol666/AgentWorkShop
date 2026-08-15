@@ -5,7 +5,7 @@
  * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块。
  */
 import type { A2AMessage, A2AArtifact, A2AError, Part } from '../types/a2a'
-import type { WorkspaceTask } from '../types/task'
+import type { WorkspaceTask, AgentTaskQueueView, AgentStatusView } from '../types/task'
 
 /** Agent 元信息:Channel 内成员声明(hook harness 类型与配置) */
 export interface AgentInfo {
@@ -43,6 +43,14 @@ export interface AgentWorkspace {
   reportTask(input: { taskId: string, progress?: number, artifact?: A2AArtifact, message?: string }): Promise<WorkspaceTask>
   /** 完成任务 */
   completeTask(taskId: string, artifacts?: A2AArtifact[]): Promise<WorkspaceTask>
+  /** 查看自己的任务队列(待执行 FIFO / 执行中 / 已完成)——每个 agent 自己的任务管理系统 */
+  myQueue(): Promise<AgentTaskQueueView>
+  /** (lead)全员状态 + 队列总览:统一调度与最优调配的观察面 */
+  queueOverview(): Promise<AgentStatusView[]>
+  /** (lead/creator)修改待执行任务(title/description;执行中/终态拒绝) */
+  updateTask(taskId: string, patch: { title?: string, description?: string }): Promise<WorkspaceTask>
+  /** (lead)重新指派任务:待执行(SUBMITTED/ASSIGNED)或 FAILED 可调配到其他 worker */
+  reassignTask(taskId: string, toAgentId: string): Promise<WorkspaceTask>
   /** 取消任务 */
   cancelTask(taskId: string): Promise<WorkspaceTask>
   /** 点对点发消息给同事 */
@@ -77,8 +85,19 @@ export interface SupervisionSnapshot {
   now: number
   /** 全 channel 任务摘要 */
   tasks: WorkspaceTask[]
-  /** 成员状态 */
-  members: { agentId: string, name: string, role: 'lead' | 'worker', state: 'idle' | 'busy' | 'stopped' }[]
+  /** 成员状态(含队列上下文:待执行数/执行中任务,供 lead 做最优调配) */
+  members: {
+    agentId: string
+    name: string
+    role: 'lead' | 'worker'
+    state: 'idle' | 'busy' | 'stopped'
+    /** 待执行队列长度(快照时刻) */
+    queued?: number
+    /** 执行中任务 id(空闲时 null) */
+    currentTaskId?: string | null
+    /** 已完成任务数 */
+    completedCount?: number
+  }[]
   /** 每个父任务未完成的子任务数 */
   pendingChildren: Record<string, number>
 }

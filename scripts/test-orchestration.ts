@@ -22,6 +22,8 @@ import { createChannelAgentRepo } from '../server/services/workshop/db/channel-a
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
+import { createTeamRepo } from '../server/services/workshop/db/team.repo'
+import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
 import {
   createAgentChannelManager,
   type AgentChannelManager,
@@ -166,6 +168,10 @@ function setup(): Harness {
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
+
+    teams: createTeamRepo(db),
+
+    teamMembers: createTeamMemberRepo(db),
   }
   const manager = createAgentChannelManager({ repos, implFactory: buildImplFactory(), db })
   return { db, manager, repos }
@@ -181,7 +187,10 @@ function channelRuntimeOf(manager: AgentChannelManager, channelId: string): Chan
 
 /** 给 channel 挂载真实 SchedulerLoop 并启动(真实 Manager + 真实 SchedulerLoop 装配) */
 function attachScheduler(manager: AgentChannelManager, channelId: string, tickMs: number): SchedulerLoop {
+  // 懒加载时代:先激活 channel(装配 lead 运行时与默认循环),再换成测试配置的循环
+  manager.ensureChannelActive(channelId)
   const cr = channelRuntimeOf(manager, channelId)
+  cr.scheduler?.stop()
   // cr.lead 运行时即 manager 装配的真实 AgentRuntime(接口类型为 AgentRuntimeLike,此处收窄)
   const lead = cr.lead as unknown as AgentRuntime
   const loop = new SchedulerLoop(cr, lead, { tickMs })
@@ -231,7 +240,7 @@ async function testOrchestrationFlow(h: Harness, loops: SchedulerLoop[], channel
   // 轮询等待主任务 COMPLETED(上限 10s);期间记录子任务出现过的中间状态
   const seenStates = new Map<string, Set<string>>()
   const mainDone = await waitUntil(async () => {
-    const tasks = await manager.listTasks(team.leadAgentId)
+    const tasks = await manager.listTasks(team.channelId, team.leadAgentId)
     for (const t of tasks) {
       if (t.parentId !== main.id) continue
       const states = seenStates.get(t.id) ?? new Set<string>()
@@ -242,7 +251,7 @@ async function testOrchestrationFlow(h: Harness, loops: SchedulerLoop[], channel
   }, 10_000)
   check('主任务在 10s 内 COMPLETED', mainDone, `state=${mainDone ? 'COMPLETED' : '超时'}`)
 
-  const tasks = await manager.listTasks(team.leadAgentId)
+  const tasks = await manager.listTasks(team.channelId, team.leadAgentId)
   const children = tasks.filter(t => t.parentId === main.id)
 
   // ① 生成了 2 个子任务,且均 COMPLETED、进度 100
@@ -272,7 +281,7 @@ async function testOrchestrationFlow(h: Harness, loops: SchedulerLoop[], channel
 
   // ③ 子任务成果 artifact 存在 + 成员进度互见(同 channel 同事 getTask 可见成果)
   const [child1, child2] = children
-  const viewByAssignee = await manager.getTask(child1.assigneeId, child1.id)
+  const viewByAssignee = await manager.getTask(team.channelId, child1.assigneeId, child1.id)
   const hasMockArtifact = (t: WorkspaceTask): boolean =>
     t.artifacts.some(a => a.parts.some(p => 'text' in p && p.text.includes('mock 成果')))
   check(
@@ -280,14 +289,14 @@ async function testOrchestrationFlow(h: Harness, loops: SchedulerLoop[], channel
     viewByAssignee.artifacts.length >= 1 && hasMockArtifact(viewByAssignee),
     `artifacts=${viewByAssignee.artifacts.length}`,
   )
-  const viewByPeer = await manager.getTask(child2.assigneeId, child1.id)
+  const viewByPeer = await manager.getTask(team.channelId, child2.assigneeId, child1.id)
   check(
     '同事 getTask(他人子任务) 进度成果互见',
     viewByPeer.id === child1.id && viewByPeer.artifacts.length >= 1 && hasMockArtifact(viewByPeer),
   )
 
   // ④ lead 完成时父任务含子任务成果汇总
-  const mainTask = await manager.getTask(team.leadAgentId, main.id)
+  const mainTask = await manager.getTask(team.channelId, team.leadAgentId, main.id)
   const summary = mainTask.artifacts.find(a => a.name === '汇总')
   check(
     '父任务 COMPLETED 且含子任务成果汇总 artifact',
@@ -310,7 +319,7 @@ async function testScopeIsolation(h: Harness, channels: string[]): Promise<void>
   // B 频道不挂 SchedulerLoop:仅验证作用域,不发起任务流转
 
   const mainA = await manager.submitChannelTask({ channelId: teamA.channelId, title: 'A频道任务' })
-  const tasksFromB = await manager.listTasks(teamB.workers[0].id)
+  const tasksFromB = await manager.listTasks(teamB.channelId, teamB.workers[0].id)
   check(
     'B 频道 agent listTasks 不含 A 频道任务',
     !tasksFromB.some(t => t.id === mainA.id || t.channelId === teamA.channelId),
@@ -319,7 +328,7 @@ async function testScopeIsolation(h: Harness, channels: string[]): Promise<void>
 
   let scopeError: AppError | null = null
   try {
-    await manager.getTask(teamB.workers[0].id, mainA.id)
+    await manager.getTask(teamB.channelId, teamB.workers[0].id, mainA.id)
   }
   catch (err) {
     if (isAppError(err)) scopeError = err
@@ -346,12 +355,12 @@ async function testRealMockLeadFlow(h: Harness, loops: SchedulerLoop[], channels
   })
 
   const done = await waitUntil(async () => {
-    const tasks = await manager.listTasks(team.leadAgentId)
+    const tasks = await manager.listTasks(team.channelId, team.leadAgentId)
     return tasks.some(t => t.id === main.id && t.state === 'COMPLETED')
   }, 10_000)
   check('真实 mock lead:主任务 10s 内 COMPLETED', done, done ? '' : '超时')
 
-  const tasks = await manager.listTasks(team.leadAgentId)
+  const tasks = await manager.listTasks(team.channelId, team.leadAgentId)
   const children = tasks.filter(t => t.parentId === main.id)
   check('真实 mock lead:生成子任务且全部完成', children.length >= 1 && children.every(c => c.state === 'COMPLETED'), `count=${children.length}`)
 
@@ -381,6 +390,10 @@ async function main(): Promise<void> {
           messages: createMessageRepo(db2),
           subscriptions: createSubscriptionRepo(db2),
           tasks: createTaskRepo(db2),
+
+          teams: createTeamRepo(db2),
+
+          teamMembers: createTeamMemberRepo(db2),
         },
         implFactory: buildRealMockFactory(),
         db: db2,

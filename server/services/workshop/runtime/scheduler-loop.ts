@@ -6,6 +6,7 @@
  * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块 T5。
  */
 import { randomUUID } from 'node:crypto'
+import { TERMINAL_TASK_STATES } from '../types/task'
 import type { A2AMessage } from '../types/a2a'
 import type { SupervisionDecision, SupervisionSnapshot, ExecutionMode } from '../agents/agent-interface'
 import { AppError } from '../../../utils/errors'
@@ -19,12 +20,18 @@ import {
   type ModeConfig,
 } from './execution-mode'
 
-/** 成员摘要(快照内) */
+/** 成员摘要(快照内;含队列上下文,供 lead 最优调配) */
 interface MemberView {
   agentId: string
   name: string
   role: 'lead' | 'worker'
   state: 'idle' | 'busy' | 'stopped'
+  /** 待执行队列长度(SUBMITTED/ASSIGNED;FIFO) */
+  queued: number
+  /** 执行中任务 id(空闲为 null) */
+  currentTaskId: string | null
+  /** 已完成任务数 */
+  completedCount: number
 }
 
 export interface SchedulerLoopOptions {
@@ -141,12 +148,22 @@ export class SchedulerLoop {
     }
   }
 
-  /** 决策:lead.supervise 优先;未实现/抛错 → 内置规则引擎 */
+  /**
+   * 决策:lead.supervise 优先(真实 harness 的 LLM 调度);
+   * supervise 未实现/抛错 → 内置规则引擎;
+   * supervise 返回空但有可调度任务且无任何进展(如 LLM 拒绝/漏看)→ 规则引擎兜底补齐,
+   * 保证系统不因单轮 LLM 决策失败而停滞(harness 无关的安全网)。
+   */
   private async decide(snapshot: SupervisionSnapshot): Promise<SupervisionDecision[]> {
     try {
       const decisions = await this.lead.supervise(snapshot)
       if (decisions === null) return this.ruleEngine(snapshot)
-      return decisions
+      if (decisions.length > 0) return decisions
+      // 空决策 + 规则引擎发现可行动作 → 兜底(LLM 优先,规则保底推进)
+      const fallback = this.ruleEngine(snapshot)
+      return fallback.length > 0
+        ? fallback
+        : decisions
     }
     catch (err) {
       console.error(`[SchedulerLoop:${this.lead.agentId}] lead supervise 抛错,回退规则引擎:`, err)
@@ -154,21 +171,30 @@ export class SchedulerLoop {
     }
   }
 
-  /** 收集快照:全 channel 任务 + 成员状态(含未装配成员,标 idle)+ pendingChildren */
+  /** 收集快照:全 channel 任务 + 成员状态与队列视图(含未装配成员,标 idle)+ pendingChildren */
   private collectSnapshot(): SupervisionSnapshot {
     const now = Date.now()
     const tasks = this.lead.taskEngine.list(this.channelRuntime.channelId)
     // 已装配成员的实时状态
     const wired = new Map(this.channelRuntime.getAgents().map(a => [a.agentId, a.getState()]))
-    // channel 全部 enabled 成员(含未装配懒加载成员 → idle,lead 可据此 dispatch)
+    // channel 全部 enabled 成员(含未装配懒加载成员 → idle,lead 可据此 dispatch);
+    // 队列视图来自 tasks 表(未装配成员的排队任务同样可见)
     const members: MemberView[] = this.channelRuntime.listChannelAgents().map((m) => {
-      const state = wired.get(m.agentId)
-      return { agentId: m.agentId, name: m.name, role: m.role, state: state ?? 'idle' }
+      const view = this.lead.taskEngine.queueViewOf(this.channelRuntime.channelId, m.agentId)
+      return {
+        agentId: m.agentId,
+        name: m.name,
+        role: m.role,
+        state: wired.get(m.agentId) ?? 'idle',
+        queued: view.queued.length,
+        currentTaskId: view.current?.id ?? null,
+        completedCount: view.completed.length,
+      }
     })
     const pendingChildren: Record<string, number> = {}
     for (const task of tasks) {
       if (!task.parentId) continue
-      if (task.state === 'COMPLETED' || task.state === 'FAILED' || task.state === 'CANCELED') continue
+      if (TERMINAL_TASK_STATES[task.state]) continue
       pendingChildren[task.parentId] = (pendingChildren[task.parentId] ?? 0) + 1
     }
     return { tick: this.tick, now, tasks, members, pendingChildren }
@@ -179,15 +205,18 @@ export class SchedulerLoop {
     const decisions: SupervisionDecision[] = []
     const { tasks, members, now } = snapshot
     this.refreshIdle(members, now)
-    const idleWorkers = members.filter(m => m.role === 'worker' && m.state === 'idle')
+    // 本轮可用空闲 worker 池:dispatch/reassign 消费后即从池中移除,
+    // 保证一轮内不会把多个任务重复分给同一个"看似空闲"的 worker(其状态尚未翻 busy)。
+    const pool = members.filter(m => m.role === 'worker' && m.state === 'idle')
 
+    // 任务按 createdAt ASC 迭代(list 顺序)= 外部提交 FIFO:先提交先分解先分发。
     for (const task of tasks) {
-      // SUBMITTED or WORKING 且 assignee=lead 且有空闲 worker 且无子任务 → dispatch 给最久空闲 worker
+      // SUBMITTED or WORKING 且 assignee=lead 且无子任务 → dispatch 给最优空闲 worker
       const hasChildren = tasks.some(t2 => t2.parentId === task.id)
       if ((task.state === 'SUBMITTED' || task.state === 'WORKING')
         && task.assigneeId === this.lead.agentId
         && !hasChildren) {
-        const worker = this.pickIdleWorker(idleWorkers, now)
+        const worker = this.pickWorker(pool, now)
         if (worker) {
           decisions.push({
             kind: 'dispatch',
@@ -198,15 +227,22 @@ export class SchedulerLoop {
           })
         }
       }
-      // FAILED 且 retryCount<3 且空闲 worker → reassign;否则 cancel
+      // FAILED 且 retryCount<3:优先换人重试;仅剩原 assignee 空闲(如单 worker channel)
+      // → 由原 assignee 重试(reassign 到自己,走 FAILED→ASSIGNED 恢复);无人可用 → cancel(允许终结)
       if (task.state === 'FAILED') {
         if (task.retryCount < 3) {
-          const worker = this.pickIdleWorker(idleWorkers, now, task.assigneeId)
-          if (worker) {
-            decisions.push({ kind: 'reassign', taskId: task.id, toAgentId: worker.agentId })
+          const other = this.pickWorker(pool, now, task.assigneeId)
+          if (other) {
+            decisions.push({ kind: 'reassign', taskId: task.id, toAgentId: other.agentId })
           }
           else {
-            decisions.push({ kind: 'cancel', taskId: task.id })
+            const same = this.pickWorker(pool, now)
+            if (same && same.agentId === task.assigneeId) {
+              decisions.push({ kind: 'reassign', taskId: task.id, toAgentId: same.agentId })
+            }
+            else {
+              decisions.push({ kind: 'cancel', taskId: task.id })
+            }
           }
         }
         else {
@@ -248,6 +284,19 @@ export class SchedulerLoop {
       const allDone = children.every(c => c.state === 'COMPLETED')
       if (allDone && (task.state === 'WAITING' || task.state === 'WORKING')) {
         decisions.push({ kind: 'complete', taskId: task.id })
+      }
+    }
+
+    // 父任务终结:子任务全部终态但存在 FAILED/CANCELED(即非全部 COMPLETED)
+    // → 父任务无法交付 → cancel 父任务(避免 WAITING 永挂;lead 可重新提交)
+    for (const task of tasks) {
+      const children = tasks.filter(t => t.parentId === task.id)
+      if (children.length === 0) continue
+      if (task.state !== 'WAITING' && task.state !== 'WORKING') continue
+      const allTerminal = children.every(c => TERMINAL_TASK_STATES[c.state] === true)
+      const anyUnsuccessful = children.some(c => c.state !== 'COMPLETED')
+      if (allTerminal && anyUnsuccessful) {
+        decisions.push({ kind: 'cancel', taskId: task.id })
       }
     }
 
@@ -324,7 +373,7 @@ export class SchedulerLoop {
     this.channelRuntime.wakeAgent(agentId)
   }
 
-  private refreshIdle(members: MemberView[], now: number): void {
+  private refreshIdle(members: SupervisionSnapshot['members'], now: number): void {
     for (const m of members) {
       if (m.state === 'idle') {
         if (!this.idleSince.has(m.agentId)) this.idleSince.set(m.agentId, now)
@@ -335,12 +384,22 @@ export class SchedulerLoop {
     }
   }
 
-  private pickIdleWorker(idleWorkers: MemberView[], now: number, exclude?: string): MemberView | undefined {
-    const pool = exclude ? idleWorkers.filter(w => w.agentId !== exclude) : idleWorkers
-    if (pool.length === 0) return undefined
-    return [...pool].sort(
-      (a, b) => (this.idleSince.get(a.agentId) ?? now) - (this.idleSince.get(b.agentId) ?? now),
-    )[0]
+  /**
+   * 从本轮空闲池选最优 worker 并消费(选中即移出,一轮不重复用):
+   * 队列最短优先(负载均衡),空闲最久次之(FIFO 兜底)。
+   */
+  private pickWorker(pool: SupervisionSnapshot['members'], now: number, exclude?: string) {
+    const idx = pool.findIndex(w => w.agentId !== exclude)
+    if (idx < 0) return undefined
+    let best = idx
+    for (let i = idx + 1; i < pool.length; i++) {
+      const a = pool[i]!
+      const b = pool[best]!
+      const byQueue = (a.queued ?? 0) - (b.queued ?? 0)
+      const byIdle = (this.idleSince.get(a.agentId) ?? now) - (this.idleSince.get(b.agentId) ?? now)
+      if (byQueue < 0 || (byQueue === 0 && byIdle < 0)) best = i
+    }
+    return pool.splice(best, 1)[0]
   }
 
   /** loop 模式:检测主任务完成 → 启动循环控制器重放 */

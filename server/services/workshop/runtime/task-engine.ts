@@ -10,7 +10,8 @@ import type { MessageRepo } from '../db/message.repo'
 import { parseJson } from '../db/database'
 import type { TaskRow } from '../db/database'
 import type { A2AArtifact, A2AMessage, Part } from '../types/a2a'
-import type { TaskState, WorkspaceTask } from '../types/task'
+import type { AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
+import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentEvent } from '../agents/agent-interface'
 import { AppError } from '../../../utils/errors'
 
@@ -20,7 +21,7 @@ const TRANSITIONS: Record<TaskState, TaskState[]> = {
   ASSIGNED: ['WORKING', 'CANCELED'],
   WORKING: ['WAITING', 'COMPLETED', 'FAILED', 'CANCELED'],
   WAITING: ['WORKING', 'CANCELED'],
-  FAILED: ['ASSIGNED'],
+  FAILED: ['ASSIGNED', 'CANCELED'],
   COMPLETED: [],
   CANCELED: [],
 }
@@ -56,6 +57,80 @@ export class TaskEngine {
       onTaskChange?(e: { taskId: string, channelId: string, state: TaskState, agentId?: string }): void
     },
   ) {}
+
+  /** 单 agent 任务队列视图(queued FIFO / current / completed;派生只读投影,无第二份状态) */
+  queueViewOf(channelId: string, agentId: string): AgentTaskQueueView {
+    const rows = this.repos.tasks.listByChannelAssignee(channelId, agentId)
+    const queued: WorkspaceTask[] = []
+    let current: WorkspaceTask | undefined
+    const completed: WorkspaceTask[] = []
+    for (const row of rows) {
+      const task = rowToTask(row)
+      if (task.state === 'SUBMITTED' || task.state === 'ASSIGNED') queued.push(task)
+      else if (task.state === 'WORKING') current = task
+      else if (task.state === 'COMPLETED') completed.push(task)
+      // WAITING(等子任务)/FAILED/CANCELED 不计入队列
+    }
+    return { agentId, channelId, queued, current, completed }
+  }
+
+  /**
+   * 修改待执行任务(title/description;lead 对 worker 队列的"改")。
+   * 仅 SUBMITTED/ASSIGNED 可改(执行中/终态拒绝);
+   * 作废旧 pending 投递并重发 assign,保证 assignee 队列里的任务内容与 DB 一致。
+   */
+  updateTask(
+    taskId: string,
+    patch: { title?: string, description?: string },
+    by: string,
+  ): WorkspaceTask {
+    const task = this.requireTask(taskId)
+    if (task.state !== 'SUBMITTED' && task.state !== 'ASSIGNED') {
+      throw new AppError(400, 'INVALID_STATE', `仅待执行任务可修改(${task.state} 不可改)`)
+    }
+    if (patch.title === undefined && patch.description === undefined) {
+      return task
+    }
+    const updated = this.repos.tasks.update(taskId, {
+      title: patch.title ?? task.title,
+      description: patch.description !== undefined ? patch.description : task.description,
+    })
+    if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
+    // 作废旧投递 + 重发 assign(队列中的任务内容随之为新内容)
+    this.repos.messages.consumePendingByTask(taskId)
+    this.deliverTaskMessage({
+      channelId: task.channelId,
+      taskId,
+      fromAgentId: by || null,
+      toAgentId: task.assigneeId,
+      title: updated.title,
+      description: updated.description ?? undefined,
+      kind: 'assign',
+    })
+    return rowToTask(updated)
+  }
+
+  /**
+   * 断线重连重投:非终态任务若无 pending assign 投递(消息已被消费但任务未完成,
+   * 如崩溃/异常路径),作废残留投递后向 assignee 重发 assign,由消费方终态检查保证幂等。
+   */
+  redeliverAssign(taskId: string): WorkspaceTask {
+    const task = this.requireTask(taskId)
+    if (TERMINAL_TASK_STATES[task.state]) {
+      throw new AppError(400, 'INVALID_STATE', `终态任务不可重投(${task.state})`)
+    }
+    this.repos.messages.consumePendingByTask(taskId)
+    this.deliverTaskMessage({
+      channelId: task.channelId,
+      taskId: task.id,
+      fromAgentId: task.creatorId || null,
+      toAgentId: task.assigneeId,
+      title: task.title,
+      description: task.description ?? undefined,
+      kind: 'assign',
+    })
+    return this.requireTask(taskId)
+  }
 
   /** 任务投递消息的文本 parts:title + 可选 description */
   private taskParts(title: string, description?: string): Part[] {
@@ -257,14 +332,30 @@ export class TaskEngine {
     return this.requireTask(taskId)
   }
 
-  /** 重新指派:FAILED → ASSIGNED + retryCount +1 + 向新 assignee 投递 assign 消息 */
+  /**
+   * 重新指派(lead 对 worker 队列的"调配"):
+   *  - SUBMITTED/ASSIGNED(排队中)→ 直接换 assignee(retryCount 不变;排队调配非重试)
+   *  - WORKING/WAITING → 拒绝(执行中的任务须先 cancel)
+   *  - COMPLETED/CANCELED → 拒绝(真终态)
+   * 旧 assignee 队列中的 pending 投递一并作废,只向新 assignee 投递 assign。
+   */
   reassign(taskId: string, toAgentId: string): WorkspaceTask {
     const task = this.requireTask(taskId)
-    this.transition(taskId, 'ASSIGNED', task.assigneeId)
+    if (task.state === 'COMPLETED' || task.state === 'CANCELED') {
+      throw new AppError(400, 'INVALID_STATE', `终态任务不可重新指派(${task.state})`)
+    }
+    if (task.state === 'WORKING' || task.state === 'WAITING') {
+      throw new AppError(400, 'INVALID_STATE', `任务 ${task.state} 执行/等待中,须先取消再调配`)
+    }
+    const isRetry = task.state === 'FAILED'
+    if (isRetry) this.transition(taskId, 'ASSIGNED', task.assigneeId)
     const updated = this.repos.tasks.update(taskId, {
       assigneeId: toAgentId,
-      retryCount: task.retryCount + 1,
-    })!
+      retryCount: isRetry ? task.retryCount + 1 : task.retryCount,
+    })
+    if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
+    // 旧 assignee 队列中的 assign 投递已过期:作废后仅向新 assignee 投递
+    this.repos.messages.consumePendingByTask(taskId)
     this.deliverTaskMessage({
       channelId: task.channelId,
       taskId: task.id,
@@ -277,10 +368,12 @@ export class TaskEngine {
     return rowToTask(updated)
   }
 
-  /** 取消任务:CANCELED(终态)+ 向 assignee 投递 cancel 消息 */
+  /** 取消任务:CANCELED(终态)+ 作废队列中的过期投递(assignee 不再消费)+ 投递 cancel 通知 */
   cancel(taskId: string, by: string): WorkspaceTask {
     const task = this.requireTask(taskId)
     this.transition(taskId, 'CANCELED', by)
+    // 队列中可能仍有该任务的 assign 投递:作废,避免 assignee 消费到已取消任务
+    this.repos.messages.consumePendingByTask(taskId)
     this.deliverTaskMessage({
       channelId: task.channelId,
       taskId: task.id,

@@ -3,8 +3,10 @@
  * - openWorkshopDb: 打开(或创建)数据库 → PRAGMA(WAL/foreign_keys)→ 建表 + 增量迁移
  * - 行类型:repo 返回的原始 sqlite 行(JSON 列以字符串存储,由上层按需 parseJson)
  *
- * 数据模型(v3:Agent 模板 + Channel 实例分离):
+ * 数据模型(v5:Agent 模板 + AgentTeam 编组 + Channel 实例分离):
  * - agents:         全局可复用 Agent 模板(仅 name/harness/config/enabled,无 channel 绑定)
+ * - teams:          AgentTeam(Agent 模板编组,可整体批量部署到 channel)
+ * - team_members:   team × agent 模板 成员关系(role 标记部署时采用 lead/worker 角色)
  * - channel_agents: Channel 中的 Agent 实例(每次放入 channel 都克隆出新身份 id,
  *                   name/harness/config 从模板复制,另含独立 role + token)
  * - subscriptions:  订阅按 (channel, 实例, target) 隔离
@@ -87,7 +89,22 @@ CREATE TABLE IF NOT EXISTS tasks (
   updated_at     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);
-CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);`
+CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
+CREATE TABLE IF NOT EXISTS teams (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS team_members (
+  team_id     TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  template_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  role        TEXT NOT NULL DEFAULT 'worker',  -- 'lead' | 'worker'(部署到 channel 时采用的实例角色)
+  created_at  TEXT NOT NULL,
+  PRIMARY KEY (team_id, template_id)
+);
+CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);`
 
 /** channels 表行 */
 export interface ChannelRow {
@@ -111,6 +128,23 @@ export interface AgentRow {
   enabled: number
   createdAt: string
   updatedAt: string
+}
+
+/** teams 表行(AgentTeam:Agent 模板的编组,可整体部署到 channel) */
+export interface TeamRow {
+  id: string
+  name: string
+  description: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** team_members 表行(team × agent 模板 成员关系;role 为部署时采用的实例角色) */
+export interface TeamMemberRow {
+  teamId: string
+  templateId: string
+  role: string
+  createdAt: string
 }
 
 /** channel_agents 表行(Channel 中的 Agent 实例:独立身份 id + 复制自模板的字段) */

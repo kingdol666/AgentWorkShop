@@ -21,6 +21,8 @@ import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
+import { createTeamRepo } from '../server/services/workshop/db/team.repo'
+import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { createAgentChannelManager } from '../server/services/workshop/runtime/manager'
@@ -55,7 +57,10 @@ function channelRuntimeOf(manager: AgentChannelManager, channelId: string): Chan
 }
 
 function attachScheduler(manager: AgentChannelManager, channelId: string, tickMs: number): SchedulerLoop {
+  // 懒加载时代:先激活 channel(装配 lead 运行时与默认循环),再换成测试配置的循环
+  manager.ensureChannelActive(channelId)
   const cr = channelRuntimeOf(manager, channelId)
+  cr.scheduler?.stop()
   const lead = cr.getAgents().find(a => a.role === 'lead')
   if (!lead) throw new Error('无 lead')
   const internals = manager as unknown as { agentIndex: Map<string, unknown> }
@@ -84,6 +89,10 @@ function setup(): Harness {
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
+
+    teams: createTeamRepo(db),
+
+    teamMembers: createTeamMemberRepo(db),
   }
   const manager = createAgentChannelManager({ repos, implFactory: createAgentImpl, db })
 
@@ -135,7 +144,7 @@ async function main(): Promise<void> {
   await client.connect(new StreamableHTTPClientTransport(new URL('http://localhost/api/mcp/workshop'), { fetch: mcpFetch }))
 
   const tools = await client.listTools()
-  check('tools/list 返回 16 工具', tools.tools.length === 16, `got=${tools.tools.length}`)
+  check('tools/list 返回 18 工具', tools.tools.length === 18, `got=${tools.tools.length}`)
 
   // channel.create + agent.create(lead/worker)→ 拿 token
   const ch = await client.callTool({ name: 'workshop.channel.create', arguments: { name: 'mcp-channel', leadAgent: { name: 'lead', harness: 'mock', config: { delayMs: 0 } } } })
@@ -143,9 +152,12 @@ async function main(): Promise<void> {
   h.channels.push(channelId)
   check('MCP channel.create 返回 channelId', typeof channelId === 'string' && channelId.length > 0)
 
-  const w1 = await client.callTool({ name: 'workshop.agent.create', arguments: { channelId, name: 'w1', harness: 'mock', role: 'worker', config: { delayMs: 0 } } })
+  const w1Tpl = await client.callTool({ name: 'workshop.agent.create', arguments: { name: 'w1', harness: 'mock', config: { delayMs: 0 } } })
+  const tpl = JSON.parse((w1Tpl.content as { text: string }[])[0].text)
+  check('MCP agent.create 返回模板', typeof tpl.id === 'string' && tpl.id.length > 0)
+  const w1 = await client.callTool({ name: 'workshop.agent.add', arguments: { channelId, agentId: tpl.id, role: 'worker' } })
   const worker1 = JSON.parse((w1.content as { text: string }[])[0].text)
-  check('MCP agent.create 返回 token', typeof worker1.token === 'string' && worker1.token.length > 0)
+  check('MCP agent.add 返回实例 token', typeof worker1.token === 'string' && worker1.token.length > 0)
 
   const lead = (await h.manager.listChannelAgents(channelId)).find(a => a.role === 'lead')!
   // 带 lead token 的 client(task.list/a2a.send 等 Agent 作业面工具需要认证)

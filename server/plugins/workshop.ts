@@ -18,6 +18,8 @@ import { openWorkshopDb, initWorkshopDb } from '../services/workshop/db/database
 import { createChannelRepo } from '../services/workshop/db/channel.repo'
 import { createAgentRepo } from '../services/workshop/db/agent.repo'
 import { createChannelAgentRepo } from '../services/workshop/db/channel-agent.repo'
+import { createTeamRepo } from '../services/workshop/db/team.repo'
+import { createTeamMemberRepo } from '../services/workshop/db/team-member.repo'
 import { createTaskRepo } from '../services/workshop/db/task.repo'
 import { createMessageRepo } from '../services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../services/workshop/db/subscription.repo'
@@ -80,6 +82,8 @@ export default function workshopPlugin(nitroApp: {
   const repos: AllRepos = {
     channels: createChannelRepo(db),
     agents: createAgentRepo(db),
+    teams: createTeamRepo(db),
+    teamMembers: createTeamMemberRepo(db),
     channelAgents: createChannelAgentRepo(db),
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),

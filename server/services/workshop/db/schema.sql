@@ -1,6 +1,7 @@
 -- AgentWorkShop 持久化层建表脚本(node:sqlite)
 -- v3:Agent 模板(agents)+ Channel 实例(channel_agents)分离。
 -- 每次把模板放入 channel 都克隆出独立身份 id 的实例。
+-- v5:AgentTeam(teams)编组 Agent 模板,可整体批量部署(克隆)到 channel。
 
 CREATE TABLE IF NOT EXISTS channels (
   id             TEXT PRIMARY KEY,
@@ -80,3 +81,23 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
+
+-- v5:AgentTeam(teams)+ 成员编组(team_members)。
+-- 把多个 Agent 模板编成一队,可整体批量部署(克隆)到 channel,免逐个放置。
+
+CREATE TABLE IF NOT EXISTS teams (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS team_members (
+  team_id     TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  template_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  role        TEXT NOT NULL DEFAULT 'worker',  -- 'lead' | 'worker'(部署到 channel 时采用的实例角色)
+  created_at  TEXT NOT NULL,
+  PRIMARY KEY (team_id, template_id)
+);
+CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);

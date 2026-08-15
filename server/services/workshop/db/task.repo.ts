@@ -48,6 +48,9 @@ export function createTaskRepo(db: DatabaseSync) {
   const selectById = db.prepare(`SELECT ${COLS} FROM tasks WHERE id = ?`)
   const selectByChannel = db.prepare(`SELECT ${COLS} FROM tasks WHERE channel_id = ? ORDER BY createdAt ASC`)
   const selectByAssignee = db.prepare(`SELECT ${COLS} FROM tasks WHERE assignee_id = ? ORDER BY createdAt ASC`)
+  const selectByChannelAssignee = db.prepare(
+    `SELECT ${COLS} FROM tasks WHERE channel_id = ? AND assignee_id = ? ORDER BY createdAt ASC`,
+  )
   const selectNonTerminal = db.prepare(
     `SELECT ${COLS} FROM tasks WHERE state IN (${NON_TERMINAL_STATES}) ORDER BY createdAt ASC`,
   )
@@ -115,6 +118,11 @@ export function createTaskRepo(db: DatabaseSync) {
 
     listByAssignee(agentId: string): TaskRow[] {
       return selectByAssignee.all(agentId) as unknown as TaskRow[]
+    },
+
+    /** channel 内指定 assignee 的任务(FIFO:createdAt ASC;单 agent 任务队列视图的数据源) */
+    listByChannelAssignee(channelId: string, assigneeId: string): TaskRow[] {
+      return selectByChannelAssignee.all(channelId, assigneeId) as unknown as TaskRow[]
     },
 
     /** 非终态任务(SUBMITTED/ASSIGNED/WORKING/WAITING) */

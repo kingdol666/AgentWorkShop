@@ -22,7 +22,7 @@ import { Mailbox } from '../server/services/workshop/runtime/mailbox'
 import { ChannelRuntime } from '../server/services/workshop/runtime/channel-runtime'
 import type { AgentRuntimeLike, TaskEngine } from '../server/services/workshop/runtime/agent-runtime'
 import type { A2AMessage } from '../server/services/workshop/types/a2a'
-import type { WorkspaceTask } from '../server/services/workshop/types/task'
+import type { AgentStatusView, AgentTaskQueueView } from '../server/services/workshop/types/task'
 
 let failures = 0
 function check(name: string, ok: boolean, detail = ''): void {
@@ -89,6 +89,29 @@ class FakeAgentRuntime implements AgentRuntimeLike {
     return 'idle'
   }
 
+  wakeMailbox(): void {}
+
+  injectSteer(message: A2AMessage): void {
+    this.enqueue(message)
+  }
+
+  getStatus(): AgentStatusView {
+    return {
+      agentId: this.agentId,
+      channelId: this.channelId,
+      role: this.role,
+      name: this.agentId,
+      state: 'idle',
+      currentTaskId: null,
+      queuedCount: 0,
+      completedCount: 0,
+    }
+  }
+
+  getQueueView(): AgentTaskQueueView {
+    return { agentId: this.agentId, channelId: this.channelId, queued: [], completed: [] }
+  }
+
   async stop(): Promise<void> {}
 
   emitExternal(): void {}
@@ -128,6 +151,7 @@ function main(): void {
       throw new Error('未使用')
     },
     onChildCompleted: () => {},
+    queueViewOf: () => ({ queued: [], completed: [] }),
   } as TaskEngine
 
   const channelId = 'ch1'

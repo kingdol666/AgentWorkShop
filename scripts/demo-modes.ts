@@ -13,6 +13,8 @@ import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
+import { createTeamRepo } from '../server/services/workshop/db/team.repo'
+import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { createAgentChannelManager } from '../server/services/workshop/runtime/manager'
@@ -52,6 +54,10 @@ function setup(): SetupResult {
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
+
+    teams: createTeamRepo(db),
+
+    teamMembers: createTeamMemberRepo(db),
   }
   const manager = createAgentChannelManager({ repos, implFactory: createAgentImpl, db })
   return { manager, db }

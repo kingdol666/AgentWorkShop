@@ -118,6 +118,10 @@ function buildWorkspace(agent: AgentInfo, deps: WorkspaceDeps): AgentWorkspace {
       return completed
     },
     cancelTask: async taskId => engine.cancel(taskId, agent.id),
+    myQueue: async () => engine.queueViewOf(agent.channelId, agent.id),
+    queueOverview: async () => [],
+    updateTask: async (taskId, patch) => engine.updateTask(taskId, patch, agent.id),
+    reassignTask: async (taskId, toAgentId) => engine.reassign(taskId, toAgentId),
     sendMessage: async ({ toAgentId, parts, metadata }) => {
       const message: A2AMessage = {
         messageId: randomUUID(),

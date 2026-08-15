@@ -38,6 +38,11 @@ export class MockAgentImpl implements AgentInterface {
       yield* this.workerScript(request, ctx)
       return
     }
+    // worker/lead: 同事点对点消息 → 按触发器语义回复(实时通信驱动)
+    if (!kind && request.fromAgentId) {
+      yield* this.peerScript(request, ctx)
+      return
+    }
     // child-completed 及其它消息:no-op(父任务汇总由调度循环完成)
   }
 
@@ -46,15 +51,16 @@ export class MockAgentImpl implements AgentInterface {
     const decisions: SupervisionDecision[] = []
     const now = snapshot.now
     this.refreshIdle(snapshot, now)
-    const idleWorkers = snapshot.members.filter(m => m.role === 'worker' && m.state === 'idle')
+    // 本轮空闲池:选中即移出,防止一轮内把多个任务分给同一个 worker
+    const pool = snapshot.members.filter(m => m.role === 'worker' && m.state === 'idle')
 
     for (const task of snapshot.tasks) {
-      // SUBMITTED or WORKING 且 assignee 自己 且无子任务 → dispatch 给最久空闲 worker
+      // SUBMITTED or WORKING 且 assignee 自己 且无子任务 → dispatch 给最优空闲 worker
       const hasChildren = snapshot.tasks.some(t2 => t2.parentId === task.id)
       if ((task.state === 'SUBMITTED' || task.state === 'WORKING')
         && task.assigneeId === ctx.agentId
         && !hasChildren) {
-        const worker = this.pickIdleWorker(idleWorkers, now)
+        const worker = this.pickWorker(pool, now)
         if (worker) {
           decisions.push({
             kind: 'dispatch',
@@ -67,7 +73,7 @@ export class MockAgentImpl implements AgentInterface {
       }
       // FAILED 且重试次数 < 3 → reassign 给空闲 worker
       if (task.state === 'FAILED' && task.retryCount < 3) {
-        const worker = this.pickIdleWorker(idleWorkers, now, task.assigneeId)
+        const worker = this.pickWorker(pool, now, task.assigneeId)
         if (worker) {
           decisions.push({ kind: 'reassign', taskId: task.id, toAgentId: worker.agentId })
         }
@@ -116,6 +122,33 @@ export class MockAgentImpl implements AgentInterface {
     yield { kind: 'done', final: { taskId } }
   }
 
+  /**
+   * 点对点消息剧本(lead 与 worker 通用):
+   * 触发器 metadata['x-aw-require-reply']='true' → 必须回执:
+   * 回复含执行结果 + 对方所需内容,in_reply_to 关联原消息,require-reply='false'(不再需要响应)。
+   * 无触发器 → 不回复(信息性消息)。
+   */
+  private async* peerScript(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+    const fromId = request.fromAgentId
+    if (!fromId) return
+    const requireReply = request.message.metadata?.['x-aw-require-reply'] === 'true'
+    yield { kind: 'status', status: { state: 'WORKING', timestamp: new Date().toISOString() } }
+    if (requireReply) {
+      const text = request.message.parts
+        .map(p => ('text' in p ? p.text : 'data' in p ? JSON.stringify(p.data) : ''))
+        .join('\n')
+      await ctx.workspace.sendMessage({
+        toAgentId: fromId,
+        parts: [{ text: `mock 回复(${ctx.agentId}):已处理「${text.slice(0, 60)}」。执行结果:完成;你所需的内容已包含在本回复中。本回复不需要再响应。` }],
+        metadata: {
+          'x-aw-in-reply-to': request.message.messageId,
+          'x-aw-require-reply': 'false',
+        },
+      })
+    }
+    yield { kind: 'done' }
+  }
+
   private refreshIdle(snapshot: SupervisionSnapshot, now: number): void {
     for (const m of snapshot.members) {
       if (m.state === 'idle') {
@@ -127,15 +160,22 @@ export class MockAgentImpl implements AgentInterface {
     }
   }
 
-  private pickIdleWorker(
-    idleWorkers: SupervisionSnapshot['members'],
+  /** 从本轮空闲池选最优 worker 并消费(队列最短优先,空闲最久次之) */
+  private pickWorker(
+    pool: SupervisionSnapshot['members'],
     now: number,
     exclude?: string,
   ): SupervisionSnapshot['members'][number] | undefined {
-    const pool = exclude ? idleWorkers.filter(w => w.agentId !== exclude) : idleWorkers
-    if (pool.length === 0) return undefined
-    return [...pool].sort(
-      (a, b) => (this.idleSince.get(a.agentId) ?? now) - (this.idleSince.get(b.agentId) ?? now),
-    )[0]
+    const idx = pool.findIndex(w => w.agentId !== exclude)
+    if (idx < 0) return undefined
+    let best = idx
+    for (let i = idx + 1; i < pool.length; i++) {
+      const a = pool[i]!
+      const b = pool[best]!
+      const byQueue = (a.queued ?? 0) - (b.queued ?? 0)
+      const byIdle = (this.idleSince.get(a.agentId) ?? now) - (this.idleSince.get(b.agentId) ?? now)
+      if (byQueue < 0 || (byQueue === 0 && byIdle < 0)) best = i
+    }
+    return pool.splice(best, 1)[0]
   }
 }

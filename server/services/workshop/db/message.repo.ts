@@ -40,12 +40,20 @@ export function createMessageRepo(db: DatabaseSync) {
   const resetConsumingStmt = db.prepare(
     `UPDATE messages SET state = 'pending' WHERE state = 'consuming'`,
   )
+  const consumePendingByTaskStmt = db.prepare(
+    `UPDATE messages SET state = 'consumed', consumed_at = ? WHERE task_id = ? AND state = 'pending'`,
+  )
   const selectRecent = db.prepare(
     `SELECT ${COLS} FROM messages WHERE channel_id = ? ORDER BY createdAt DESC LIMIT ?`,
   )
   const selectPendingTargets = db.prepare(
     `SELECT DISTINCT channel_id AS channelId, to_agent_id AS toAgentId
      FROM messages WHERE to_agent_id IS NOT NULL AND state = 'pending'`,
+  )
+  const existsPendingAssignStmt = db.prepare(
+    `SELECT 1 AS hit FROM messages
+     WHERE task_id = ? AND state = 'pending' AND metadata_json LIKE '%"x-aw-task-kind":"assign"%'
+     LIMIT 1`,
   )
 
   return {
@@ -99,6 +107,16 @@ export function createMessageRepo(db: DatabaseSync) {
     /** 启动恢复:全部未消费消息的目标 agent(供 restore 唤醒,重投的 assign 才能被消费) */
     listPendingTargets(): Array<{ channelId: string, toAgentId: string }> {
       return selectPendingTargets.all() as unknown as Array<{ channelId: string, toAgentId: string }>
+    },
+
+    /** 作废某任务的全部 pending 消息(cancel/reassign/update 后清理旧 assignee 队列中的过期投递) */
+    consumePendingByTask(taskId: string): void {
+      consumePendingByTaskStmt.run(new Date().toISOString(), taskId)
+    },
+
+    /** 某任务是否存在未消费的 assign 投递(restore 断线重连判定:无则需重投) */
+    hasPendingAssign(taskId: string): boolean {
+      return existsPendingAssignStmt.get(taskId) !== undefined
     },
   }
 }

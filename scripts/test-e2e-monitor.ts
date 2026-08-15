@@ -19,6 +19,8 @@ import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createAgentRepo } from '../server/services/workshop/db/agent.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
+import { createTeamRepo } from '../server/services/workshop/db/team.repo'
+import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { createAgentChannelManager } from '../server/services/workshop/runtime/manager'
@@ -46,15 +48,22 @@ function setup(): { db: DatabaseSync, manager: AgentChannelManager } {
     messages: createMessageRepo(db),
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
+
+    teams: createTeamRepo(db),
+
+    teamMembers: createTeamMemberRepo(db),
   }
   const manager = createAgentChannelManager({ repos, implFactory: createAgentImpl, db })
   return { db, manager }
 }
 
 function attachScheduler(manager: AgentChannelManager, channelId: string, tickMs: number): SchedulerLoop {
+  // 懒加载时代:先激活 channel(装配 lead 运行时与默认循环),再换成测试配置的循环
+  manager.ensureChannelActive(channelId)
   const internals = manager as unknown as { channels: Map<string, ChannelRuntime> }
   const cr = internals.channels.get(channelId)
   if (!cr) throw new Error(`channel runtime 不存在: ${channelId}`)
+  cr.scheduler?.stop()
   const lead = cr.getAgents().find(a => a.role === 'lead')
   if (!lead) throw new Error('无 lead')
   const loop = new SchedulerLoop(cr, lead as never, { tickMs })
@@ -96,7 +105,8 @@ async function main(): Promise<void> {
     void w1
     void w2
 
-    // ---- 2. monitor 启动 ----
+    // ---- 2. monitor 启动(先激活 channel 装配 bus,订阅才有效)----
+    manager.ensureChannelActive(ch.channelId)
     const mon = monitorChannel(manager, ch.channelId, { pollMs: 50 })
     const live: string[] = []
     mon.subscribe(e => live.push(e.kind))

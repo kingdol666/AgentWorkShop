@@ -67,7 +67,7 @@ export interface OmpAgentConfig {
 
 // ===== host tool 定义(注册到 omp,agent 原生调用) =====
 
-const HOST_TOOLS: RpcHostToolDefinition[] = [
+export const HOST_TOOLS: RpcHostToolDefinition[] = [
   {
     name: 'report_progress',
     label: 'Report Progress',
@@ -113,13 +113,15 @@ const HOST_TOOLS: RpcHostToolDefinition[] = [
   {
     name: 'send_message_to_agent',
     label: 'Send Message',
-    description: 'Send a message to another agent (lead or worker) in the same channel. Use priority "immediate" for urgent real-time messages that the recipient sees instantly during work; use "task" (default) for messages that queue until the recipient finishes their current task.',
+    description: 'Send a message to another agent (lead or worker) in the same channel. Use priority "immediate" for urgent real-time messages that the recipient sees instantly during work; use "task" (default) for messages that queue until the recipient finishes their current task. Set require_reply=true to demand a response: the recipient must reply with their result via this same tool (honoring in_reply_to). When replying to a message, pass its message_id as in_reply_to and set require_reply only if you need further response.',
     parameters: {
       type: 'object',
       properties: {
         to_agent_id: { type: 'string', description: 'Recipient agent ID' },
-        message: { type: 'string', description: 'Message content' },
+        message: { type: 'string', description: 'Message content (when replying: your execution result + the content they asked for)' },
         priority: { type: 'string', enum: ['immediate', 'task'], description: 'Message priority: "immediate" = inject into recipient\'s running session instantly; "task" = queue for later consumption (default)' },
+        require_reply: { type: 'boolean', description: 'Trigger: true = recipient MUST reply with result/content (default false)' },
+        in_reply_to: { type: 'string', description: 'Message ID this reply refers to (set when replying to a trigger message)' },
       },
       required: ['to_agent_id', 'message'],
     },
@@ -127,7 +129,7 @@ const HOST_TOOLS: RpcHostToolDefinition[] = [
   {
     name: 'poll_messages',
     label: 'Poll Inbox',
-    description: 'Check your inbox for unread messages from other agents. Returns messages that haven\'t been consumed yet.',
+    description: 'Check your inbox for unread messages from other agents. Returns messages that haven\'t been consumed yet. Replies to your trigger messages will appear here (and in-session if you are busy).',
     parameters: {
       type: 'object',
       properties: {
@@ -168,6 +170,57 @@ const HOST_TOOLS: RpcHostToolDefinition[] = [
       type: 'object',
       properties: {
         task_id: { type: 'string', description: 'Task ID' },
+      },
+      required: ['task_id'],
+    },
+  },
+  {
+    name: 'get_my_task_queue',
+    label: 'My Queue',
+    description: 'View your own task queue: pending tasks (FIFO order), the task you are currently executing, and completed tasks. Use this to check if you have unfinished work.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_queue_overview',
+    label: 'Queue Overview',
+    description: '(Lead only) Real-time overview of every team member: status (idle/busy), current task, pending queue length, completed count. Use this to make optimal scheduling and rebalancing decisions.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'reassign_task',
+    label: 'Reassign Task',
+    description: '(Lead only) Move a pending (not yet started) or failed task from one worker to another. Use for load rebalancing or when a worker is stuck. The old worker\'s queued delivery is revoked automatically.',
+    parameters: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', description: 'Task ID to move' },
+        to_agent_id: { type: 'string', description: 'Worker agent ID to receive the task' },
+      },
+      required: ['task_id', 'to_agent_id'],
+    },
+  },
+  {
+    name: 'update_task',
+    label: 'Update Task',
+    description: '(Lead only) Modify the title/description of a pending (queued, not started) task. The assignee\'s queued delivery is refreshed with the new content automatically.',
+    parameters: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', description: 'Task ID to update' },
+        title: { type: 'string', description: 'New title (optional)' },
+        description: { type: 'string', description: 'New description (optional)' },
+      },
+      required: ['task_id'],
+    },
+  },
+  {
+    name: 'cancel_task',
+    label: 'Cancel Task',
+    description: 'Cancel a task and remove it from the assignee\'s queue (lead can cancel any; assignee can cancel own). Pending queued deliveries are revoked automatically.',
+    parameters: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', description: 'Task ID to cancel' },
       },
       required: ['task_id'],
     },
@@ -226,11 +279,27 @@ export class OmpRpcAgentImpl implements AgentInterface {
   private hostToolsRegistered = false
   /** 当前 run() 的 taskId(worker 完成任务时用) */
   private currentTaskId: string | null = null
-  /** agent 身份信息(init 时缓存) */
+  /**
+   * 会话回合状态(steer 可靠注入的依据):
+   * omp 的 steer 仅在回合 streaming 中生效——prompt 已入列但尚未开始输出时,
+   * steer 会"成功"返回但被静默丢弃。因此注入方轮询直到回合输出开始(streamingStarted)
+   * 才发送;若回合在等待期间结束,改走 follow_up(prompt 通道)兜底投递。
+   */
+  private streaming = false
+  private turnActive = false
+  /** 当前回合产生的 assistant 文本(供诊断) */
+  private turnText = ''
+  /** agent 身份信息(factory 注入;无需等待 init()) */
   private selfAgentId = ''
   private agentName = 'agent'
   private agentRole: 'lead' | 'worker' = 'worker'
   private channelId = ''
+  /**
+   * 当前待回执的触发上下文(自动关联兜底):
+   * LLM 偶发省略 in_reply_to 参数 → 平台在 send_message_to_agent 时按上下文自动盖章,
+   * 保证触发器回执关联契约不依赖模型传参纪律。
+   */
+  private replyContext: { fromId: string, messageId: string } | null = null
 
   constructor(config: Record<string, unknown> = {}) {
     this.config = config as OmpAgentConfig
@@ -258,14 +327,45 @@ export class OmpRpcAgentImpl implements AgentInterface {
     this.hostToolsRegistered = false
   }
 
-  /** 实时消息注入:向正在运行的 omp 会话发送 steer 命令 */
+  /**
+   * 实时消息注入(可靠):
+   *  - 回合 streaming 中 → 立即 steer(同轮可见)
+   *  - 回合活跃但尚未 streaming(prompt 排队窗口)→ 短轮询等待输出开始后再 steer
+   *  - 回合已结束/空闲 → follow_up 作为新输入投递(仍会被模型处理并回复)
+   * 兜底链保证:注入文本不会因为命中 omp 的静默丢弃窗口而丢失。
+   */
   async steer(text: string): Promise<void> {
-    if (!this.client) return
-    try {
-      await this.client.send({ type: 'steer', message: text })
+    // 从确定性触发横幅提取回执上下文(AgentRuntime.injectSteer 生成,格式固定):
+    // "[实时消息 from <id>]: ..." + "[系统触发器] 本消息要求回复(reply_to=<messageId>)。"
+    const banner = text.match(/\[实时消息 from ([^\]]+)]:[\s\S]*?要求回复\(reply_to=([0-9a-f-]{36})\)/)
+    if (banner) {
+      this.replyContext = { fromId: banner[1]!, messageId: banner[2]! }
     }
-    catch {
-      // 会话未在 streaming 时 steer 可能失败;静默忽略
+    const client = this.client
+    if (!client) return
+    try {
+      if (this.streaming) {
+        await client.send({ type: 'steer', message: text })
+        return
+      }
+      if (this.turnActive) {
+        // prompt 排队窗口:等 streaming 开始(上限 20s),期间回合结束则走 follow_up
+        const deadline = Date.now() + 20_000
+        while (Date.now() < deadline && this.turnActive && !this.streaming) {
+          const { promise, resolve } = Promise.withResolvers()
+          setTimeout(resolve, 150)
+          await promise
+        }
+        if (this.streaming && this.turnActive) {
+          await client.send({ type: 'steer', message: text })
+          return
+        }
+      }
+      // 空闲或回合已结束:follow_up 开新输入(模型仍会处理;不再是"注入运行中会话"但内容不丢)
+      await client.send({ type: 'follow_up', message: text })
+    }
+    catch (err) {
+      console.error(`[OmpRpcAgent:${this.selfAgentId}] steer 注入失败:`, err instanceof Error ? err.message : err)
     }
   }
 
@@ -278,13 +378,13 @@ export class OmpRpcAgentImpl implements AgentInterface {
       return
     }
 
-    // worker: 收到同事/lead 的非任务点对点消息 → 读取并简短回复
-    if (!kind && ctx.role === 'worker' && request.fromAgentId) {
-      yield* this.workerHandleMessage(request, ctx)
+    // worker/lead: 同事点对点消息(含实时通信触发器)→ 按触发器语义处理并回复
+    if (!kind && request.fromAgentId) {
+      yield* this.peerMessageRun(request, ctx)
       return
     }
 
-    // lead / 其他消息:no-op(调度由 supervise() 处理)
+    // 其余消息(lead 的 assign/child-completed 等):no-op(调度由 supervise() 处理)
   }
 
   // ===== supervise() =====
@@ -370,8 +470,12 @@ export class OmpRpcAgentImpl implements AgentInterface {
     yield* this.promptAndStream(prompt, taskId, ctx.signal)
   }
 
-  /** worker 处理非任务消息:读取同事消息并简短回复 */
-  private async* workerHandleMessage(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+  /**
+   * 点对点消息处理(实时通信驱动;lead 与 worker 通用)。
+   * 触发器语义:metadata['x-aw-require-reply']='true' → 必须经 send_message_to_agent
+   * 回给发送者:执行结果 + 对方所需内容,in_reply_to 关联原消息,并声明是否需再响应。
+   */
+  private async* peerMessageRun(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
     try {
       await this.ensureClient(ctx)
     }
@@ -380,19 +484,68 @@ export class OmpRpcAgentImpl implements AgentInterface {
     }
     if (!this.client) return
 
-    const fromName = request.fromAgentId ?? 'unknown'
-    const msgText = partsToText(request.message.parts)
-    const prompt = [
-      `You are "${this.agentName}", a worker agent in a multi-agent team.`,
+    const fromId = request.fromAgentId ?? 'unknown'
+    const msg = request.message
+    const msgText = partsToText(msg.parts)
+    const requireReply = msg.metadata?.['x-aw-require-reply'] === 'true'
+    const isReply = typeof msg.metadata?.['x-aw-in-reply-to'] === 'string'
+    this.replyContext = requireReply && fromId !== 'unknown'
+      ? { fromId, messageId: msg.messageId }
+      : null
+
+    const roleLine = this.agentRole === 'lead'
+      ? `You are "${this.agentName}", the LEAD coordinator of a multi-agent team (Channel: ${this.channelId}). A team member sent you a direct message.`
+      : `You are "${this.agentName}", a worker agent in a multi-agent team (Channel: ${this.channelId}).`
+
+    const lines: string[] = [
+      roleLine,
       ``,
-      `You received a message from agent ${fromName}:`,
+      `## Incoming Message`,
+      `from: ${fromId}`,
+      `message_id: ${msg.messageId}`,
+      `requires_reply: ${requireReply}`,
+      isReply ? `in_reply_to: ${String(msg.metadata?.['x-aw-in-reply-to'])}` : ``,
+      ``,
+      `Content:`,
       `"${msgText}"`,
       ``,
-      `Respond briefly and helpfully. If this is a question, answer it concisely.`,
-      `If this is information, acknowledge it briefly.`,
-    ].join('\n')
+      `## How to Respond`,
+    ]
 
-    yield* this.promptAndStream(prompt, undefined, ctx.signal)
+    if (requireReply) {
+      lines.push(
+        `This message REQUIRES a reply (trigger). You must call send_message_to_agent with:`,
+        `- to_agent_id: ${fromId}`,
+        `- message: the result of handling this request + the content they asked for`,
+        `- in_reply_to: ${msg.messageId}`,
+        `- require_reply: set true ONLY if you need further response from them`,
+        ``,
+        `Do the requested work first (you may use your native tools), then send the reply.`,
+      )
+    }
+    else {
+      lines.push(
+        `This message does not require a reply. Reply via send_message_to_agent only if genuinely useful`,
+        `(e.g. they asked a question); otherwise a brief acknowledgment or no action is fine.`,
+      )
+    }
+
+    if (this.agentRole === 'lead') {
+      lines.push(
+        ``,
+        `As lead you may also take coordination action if the message reveals work needs`,
+        `(dispatch_task / list_channel_tasks / get_queue_overview are available).`,
+      )
+    }
+
+    yield* this.promptAndStream(lines.join('\n'), undefined, ctx.signal)
+  }
+
+  /** 消费待回执上下文(自动关联兜底):取走即清,避免跨消息污染 */
+  private takeReplyContext(): { fromId: string, messageId: string } | null {
+    const ctx = this.replyContext
+    this.replyContext = null
+    return ctx
   }
 
   // ===== 内部:prompt 发送 + 事件流桥接 =====
@@ -409,6 +562,29 @@ export class OmpRpcAgentImpl implements AgentInterface {
     const queue: AgentEvent[] = []
     let resolveWait: (() => void) | null = null
     let isDone = false
+    // 回合生命周期:prompt 已发出 → turnActive;首条 message_update → streaming;message_end/turn_end → 结束
+    this.turnActive = true
+    this.streaming = false
+    this.turnText = ''
+    const unsubState = client.onEvent((event) => {
+      if (event.type === 'message_update') {
+        if (event.assistantMessageEvent?.type === 'text_delta') {
+          this.streaming = true
+          this.turnText += event.assistantMessageEvent.delta ?? ''
+        }
+      }
+      if (event.type === 'message_end' || event.type === 'turn_end') {
+        this.streaming = false
+      }
+      if (event.type === 'agent_end' && event.isTerminal !== false) {
+        this.turnActive = false
+        this.streaming = false
+      }
+      if (event.type === '__process_exit__' || event.type === '__error__') {
+        this.turnActive = false
+        this.streaming = false
+      }
+    })
 
     const enqueue = (event: AgentEvent): void => {
       queue.push(event)
@@ -469,8 +645,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
       }
     }
     finally {
-      unsub()
-      signal.removeEventListener('abort', onAbort)
+      unsubState()
+      this.turnActive = false
+      this.streaming = false
       this.currentTaskId = null
     }
   }
@@ -484,7 +661,6 @@ export class OmpRpcAgentImpl implements AgentInterface {
           kind: 'status',
           status: { state: 'WORKING', timestamp: new Date().toISOString() },
         }]
-
       case 'message_end': {
         // 消息完成:如果有 message 内容,产出为 status 事件(任务历史追踪)
         const msg = event.message
@@ -588,7 +764,8 @@ export class OmpRpcAgentImpl implements AgentInterface {
       `2. Call report_progress whenever you make meaningful progress.`,
       `3. Call complete_task when you are done, providing a summary and deliverable of your work.`,
       `4. You may call list_team_agents to see your teammates, and send_message_to_agent to communicate.`,
-      `5. Stay focused on the task. Be concise and effective.`,
+      `5. Realtime messages from teammates may arrive mid-task (marked "[实时消息 from ...]"). If one carries the reply trigger (系统触发器), handle the request and reply via send_message_to_agent with in_reply_to=<its message_id>; your reply message should contain the execution result and the content they asked for, with require_reply set only if you need further response.`,
+      `6. Stay focused on the task. Be concise and effective.`,
       ``,
       `Begin working on the task now.`,
     )
@@ -601,13 +778,12 @@ export class OmpRpcAgentImpl implements AgentInterface {
     const parts: string[] = []
 
     if (prefix) parts.push(prefix)
-
-    // 格式化成员
+    // 格式化成员(含队列上下文:执行中任务/待执行队列长度/已完成数 —— 最优调配的依据)
     const members = snapshot.members.map(m =>
-      `  - ${m.agentId} (${m.name}, role=${m.role}, state=${m.state})`,
+      `  - ${m.agentId} (${m.name}, role=${m.role}, state=${m.state}, executing=${m.currentTaskId ?? '-'}, queued=${m.queued ?? 0}, completed=${m.completedCount ?? 0})`,
     ).join('\n')
 
-    // 格式化任务
+    // 格式化任务(createdAt ASC = FIFO 顺序)
     const tasks = snapshot.tasks.map((t) => {
       const artifacts = t.artifacts.length > 0 ? `, artifacts=${t.artifacts.length}` : ''
       return `  - ${t.id} [${t.state}] "${t.title}" (assignee=${t.assigneeId}, progress=${t.progress}%${artifacts})`
@@ -629,10 +805,10 @@ export class OmpRpcAgentImpl implements AgentInterface {
       `You are "${this.agentName}", the lead coordinator of a multi-agent team (Channel: ${this.channelId}).`,
       `Tick #${snapshot.tick}`,
       ``,
-      `## Team Members`,
+      `## Team Members (state + task queues)`,
       members || '  (none)',
       ``,
-      `## All Tasks`,
+      `## All Tasks (FIFO order)`,
       tasks || '  (none)',
       ``,
       `## Pending Children Count`,
@@ -649,10 +825,11 @@ export class OmpRpcAgentImpl implements AgentInterface {
         `## Your Job`,
         `You are a COORDINATOR. You do NOT do the work yourself. You ONLY delegate and track.`,
         `Analyze the team state and take action:`,
-        `- For each task assigned to you that is SUBMITTED or WORKING and has NO children yet: it needs delegation. Call dispatch_task to delegate it to an idle worker. Always pass parent_task_id (the task's ID), assignee_id (the worker's ID), title, and description.`,
+        `- Tasks are processed FIFO (oldest first). For each task assigned to you that is SUBMITTED or WORKING and has NO children yet: it needs delegation. Call dispatch_task to delegate it. Prefer workers with the SHORTEST queue (see member queued counts). Always pass parent_task_id (the task's ID), assignee_id (the worker's ID), title, and description.`,
         `- Do NOT use read/write/edit/bash or any work tools yourself. You are a coordinator, not a worker.`,
         `- Do NOT call complete_task on a task that has unfinished children.`,
         `- If all children of a parent task are COMPLETED: call complete_task for the parent with a summary.`,
+        `- Rebalance when needed: use reassign_task to move a pending task from a loaded worker to an idle one, update_task to revise a pending task, cancel_task to remove obsolete work. Use get_queue_overview for the live picture.`,
         `- Use list_team_agents and list_channel_tasks to get current IDs if needed.`,
       )
     }
@@ -832,8 +1009,21 @@ export class OmpRpcAgentImpl implements AgentInterface {
           const metadata: Record<string, unknown> = {
             'x-aw-msg-priority': priority,
           }
-          await ws.sendMessage({ toAgentId, parts: [{ text: message }], metadata })
-          return { text: `消息已发送给 ${toAgentId}(priority=${priority})` }
+          // 触发器:要求对方回复 / 标记本消息是对某消息的回复(回执关联)
+          if (req.arguments.require_reply === true) metadata['x-aw-require-reply'] = 'true'
+          let inReplyTo = req.arguments.in_reply_to as string | undefined
+          // 自动关联兜底:LLM 省略 in_reply_to 时,按待回执上下文盖章
+          // (触发消息要求回复 → 本次发送即回执;发给原发送者且无显式 in_reply_to)
+          const replyCtx = this.takeReplyContext()
+          if (!inReplyTo && replyCtx && replyCtx.fromId === toAgentId) {
+            inReplyTo = replyCtx.messageId
+            metadata['x-aw-in-reply-to'] = inReplyTo
+          }
+          const sent = await ws.sendMessage({ toAgentId, parts: [{ text: message }], metadata })
+          const triggerNote = inReplyTo
+            ? `(回复 ${inReplyTo.slice(0, 8)}…)`
+            : metadata['x-aw-require-reply'] === 'true' ? '(已要求对方回复)' : ''
+          return { text: `消息 ${sent.messageId.slice(0, 8)}… 已发送给 ${toAgentId}(priority=${priority})${triggerNote}` }
         }
 
         case 'poll_messages': {
@@ -869,6 +1059,51 @@ export class OmpRpcAgentImpl implements AgentInterface {
             `  ${t.id} [${t.state}] "${t.title}" assignee=${t.assigneeId} progress=${t.progress}%`,
           ).join('\n')
           return { text: `Channel 任务(${tasks.length}):\n${text || '(空)'}` }
+        }
+
+        case 'get_my_task_queue': {
+          const queue = await ws.myQueue()
+          const fmt = (t: WorkspaceTask): string =>
+            `  ${t.id} [${t.state}] "${t.title}" progress=${t.progress}%`
+          return {
+            text: [
+              `我的任务队列(${this.agentRole}):`,
+              `执行中: ${queue.current ? `${queue.current.id} "${queue.current.title}" (${queue.current.progress}%)` : '(无)'}`,
+              `待执行(${queue.queued.length},FIFO):`,
+              ...queue.queued.map(fmt),
+              `已完成(${queue.completed.length}):`,
+              ...queue.completed.map(fmt),
+            ].join('\n'),
+          }
+        }
+
+        case 'get_queue_overview': {
+          const overview = await ws.queueOverview()
+          const lines = overview.map(s =>
+            `  ${s.agentId} (${s.name}, role=${s.role}, state=${s.state}, current=${s.currentTaskId ?? '-'}, queued=${s.queuedCount}, completed=${s.completedCount})`,
+          )
+          return { text: `团队队列总览(${overview.length}):\n${lines.join('\n') || '(空)'}` }
+        }
+
+        case 'reassign_task': {
+          const taskId = req.arguments.task_id as string
+          const toAgentId = req.arguments.to_agent_id as string
+          const task = await ws.reassignTask(taskId, toAgentId)
+          return { text: `任务 ${taskId}("${task.title}")已调配 → ${toAgentId}(state=${task.state})` }
+        }
+
+        case 'update_task': {
+          const taskId = req.arguments.task_id as string
+          const title = req.arguments.title as string | undefined
+          const description = req.arguments.description as string | undefined
+          const task = await ws.updateTask(taskId, { title, description })
+          return { text: `任务 ${taskId} 已更新: "${task.title}"` }
+        }
+
+        case 'cancel_task': {
+          const taskId = req.arguments.task_id as string
+          await ws.cancelTask(taskId)
+          return { text: `任务 ${taskId} 已取消并移出 assignee 队列` }
         }
 
         case 'list_team_agents': {
