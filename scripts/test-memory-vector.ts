@@ -68,7 +68,7 @@ check('vecReady 状态只读', repo.vecReady === true)
 const rowAgent = new Map<number, string>()
 const seed = async (agentId: string, title: string, content: string, key: string): Promise<void> => {
   repo.upsert({ channelId: 'ch1', agentId, kind: 'episodic-task', title, titleFts: segmentCJK(title), content: segmentCJK(content), importance: 0.8, taskId: key, dedupKey: `task:${key}` })
-  const at = repo.findByAgentDedup(agentId, `task:${key}`)!
+  const at = repo.findByAgentDedup('ch1', agentId, `task:${key}`)!
   rowAgent.set(at.rowid, agentId)
   repo.vecSet(at.rowid, agentId, await embed(segmentCJK(content)))
 }
@@ -80,14 +80,14 @@ await seed(TEAM_AGENT_ID, '团队规范', '本团队代码必须写测试', 'g1'
 // ---- 域隔离 kNN(agent_id 分区;本人/team 各自命中,不串他人)----
 const a1hits = repo.vecSearch('a1', await embed(segmentCJK('登录鉴权')), 5)
 check('a1 向量命中本人记忆', a1hits.length >= 1 && a1hits.every(h => rowAgent.get(h.memRowid) === 'a1'), `hits=${JSON.stringify(a1hits)}`)
-check('a1 top1 为登录鉴权记忆', a1hits[0]?.memRowid === repo.findByAgentDedup('a1', 'task:t1')?.rowid)
+check('a1 top1 为登录鉴权记忆', a1hits[0]?.memRowid === repo.findByAgentDedup('ch1', 'a1', 'task:t1')?.rowid)
 check('kNN 距离非负', a1hits.every(h => h.distance >= 0))
 const teamHits = repo.vecSearch(TEAM_AGENT_ID, await embed(segmentCJK('团队规范') + ' 测试'), 5)
 check('team 向量域命中(恒不串私有域)', teamHits.length >= 1 && teamHits.every(h => rowAgent.get(h.memRowid) === TEAM_AGENT_ID))
 
 // ---- 刷新语义:重写 t1 内容后 vecSet 覆盖旧向量 ----
 repo.upsert({ channelId: 'ch1', agentId: 'a1', kind: 'episodic-task', title: '登录鉴权', titleFts: segmentCJK('登录鉴权'), content: segmentCJK('重写为JWT方案'), importance: 0.8, taskId: 't1', dedupKey: 'task:t1' })
-const t1at = repo.findByAgentDedup('a1', 'task:t1')!
+const t1at = repo.findByAgentDedup('ch1', 'a1', 'task:t1')!
 repo.vecSet(t1at.rowid, 'a1', await embed(segmentCJK('重写为JWT方案')))
 const refreshed = repo.vecSearch('a1', await embed(segmentCJK('JWT方案')), 5)
 check('vecSet 刷新后新向量命中', refreshed.length >= 1 && refreshed[0]!.memRowid === t1at.rowid && refreshed[0]!.distance < 1.0, `top=${JSON.stringify(refreshed[0])}`)
@@ -95,7 +95,7 @@ const oldQ = repo.vecSearch('a1', await embed(segmentCJK('OAuth2登录鉴权组�
 check('旧向量不再零距命中(已替换)', oldQ.every(h => h.distance > 0.5), `hits=${JSON.stringify(oldQ)}`)
 
 // ---- vecDelete(删除记忆联动;不炸未向量化的 rowid)----
-const t2at = repo.findByAgentDedup('a1', 'task:t2')!
+const t2at = repo.findByAgentDedup('ch1', 'a1', 'task:t2')!
 repo.vecDelete(t2at.rowid)
 check('vecDelete 后不命中', repo.vecSearch('a1', await embed(segmentCJK('SQLite存储')), 5).every(h => h.memRowid !== t2at.rowid))
 repo.vecDelete(999_999) // 不存在的 rowid:静默
@@ -107,7 +107,7 @@ const mem = new AgentMemory(repo, { channelId: 'ch1', agentId: 'a1', embedder })
 
 // 融合语义:FTS 词面 miss(英文词不进 CJK 切分索引)但向量补足
 repo.upsert({ channelId: 'ch1', agentId: 'a1', kind: 'episodic-task', title: '登陆', titleFts: segmentCJK('登陆'), content: segmentCJK('用户登陆入口跳转处理'), importance: 0.8, taskId: 'tf1', dedupKey: 'task:tf1' })
-const fusedAt = repo.findByAgentDedup('a1', 'task:tf1')!
+const fusedAt = repo.findByAgentDedup('ch1', 'a1', 'task:tf1')!
 repo.vecSet(fusedAt.rowid, 'a1', (await embedder.embed(['用户登陆入口跳转处理']))[0])
 const fused = await mem.recall('entry login 用户')
 check('向量兜底语义召回(FTS 弱命中时 vector 补足)', fused !== null && fused.includes('登陆'))
@@ -121,7 +121,7 @@ const fakeTask: WorkspaceTask = {
   createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
 }
 await mem.recordTaskOutcome(fakeTask)
-const vat = repo.findByAgentDedup('a1', 'task:tv1')!
+const vat = repo.findByAgentDedup('ch1', 'a1', 'task:tv1')!
 const vhit = repo.vecSearch('a1', (await embedder.embed(['记忆写入后应自动向量化']))[0], 3)
 check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.rowid))
 

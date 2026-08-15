@@ -113,7 +113,7 @@ CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);
 
 -- v6:Agent 持久记忆(agent_memories)+ FTS5 全文索引。
 -- per-agent 记忆域(agent_id 过滤隔离);团队共享行 agent_id='__team__'(常量 TEAM_AGENT_ID)。
--- dedup_key 唯一约束去重:任务 'task:<id>' / 协作 'peer:<msgId>' / 策展 'manual:<uuid>' / 团队任意。
+-- dedup_key 唯一约束去重(含 channel_id:team 哨兵行跨 channel 各自独立):任务 'task:<id>' / 协作 'peer:<msgId>' / 策展 'manual:<uuid>' / 团队任意。
 -- kind:episodic-task/episodic-peer(harvest)/semantic(REST 人工策展,衰减豁免)。
 -- vec0 向量表不在此建:需 sqlite-vec 扩展且维度运行时才知(P1 Task 7 延迟建)。
 
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS agent_memories (
   access_count     INTEGER NOT NULL DEFAULT 0,
   last_accessed_at TEXT,
   created_at       TEXT NOT NULL,
-  UNIQUE(agent_id, dedup_key)
+  UNIQUE(agent_id, dedup_key, channel_id)
 );
 CREATE INDEX IF NOT EXISTS idx_memories_agent ON agent_memories(agent_id, created_at DESC);
 

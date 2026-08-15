@@ -36,9 +36,9 @@ export function createMemoryRepo(db: DatabaseSync) {
     `INSERT INTO agent_memories
        (id, channel_id, agent_id, kind, title, title_fts, content, importance, task_id, dedup_key, access_count, last_accessed_at, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?)
-     ON CONFLICT(agent_id, dedup_key) DO UPDATE SET
-       kind = excluded.kind, title = excluded.title, title_fts = excluded.title_fts,
-       content = excluded.content, importance = excluded.importance, created_at = excluded.created_at`,
+    ON CONFLICT(agent_id, dedup_key, channel_id) DO UPDATE SET
+      channel_id = excluded.channel_id, kind = excluded.kind, title = excluded.title, title_fts = excluded.title_fts,
+      content = excluded.content, importance = excluded.importance, created_at = excluded.created_at`,
   )
   const searchStmt = db.prepare(
     `SELECT ${COLS}, f.rank AS bm25
@@ -54,7 +54,19 @@ export function createMemoryRepo(db: DatabaseSync) {
      FROM agent_memories WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?`,
   )
   const findByDedupStmt = db.prepare(
-    `SELECT id, rowid FROM agent_memories WHERE agent_id = ? AND dedup_key = ?`,
+    `SELECT id, rowid FROM agent_memories WHERE channel_id = ? AND agent_id = ? AND dedup_key = ?`,
+  )
+  const listByAgentChannelStmt = db.prepare(
+    `SELECT id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
+       importance, task_id AS taskId, access_count AS accessCount,
+       last_accessed_at AS lastAccessedAt, created_at AS createdAt
+     FROM agent_memories WHERE channel_id = ? AND agent_id = ? ORDER BY created_at DESC LIMIT ?`,
+  )
+  const listByAgentRowidStmt = db.prepare(
+    `SELECT rowid, id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
+       importance, task_id AS taskId, access_count AS accessCount,
+       last_accessed_at AS lastAccessedAt, created_at AS createdAt
+     FROM agent_memories WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?`,
   )
   const touchStmt = db.prepare(
     `UPDATE agent_memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`,
@@ -131,9 +143,19 @@ export function createMemoryRepo(db: DatabaseSync) {
       ).all(...rowids.map(BigInt)) as unknown as Array<MemoryRow & { rowid: number }>
     },
 
-    /** upsert 后取定位置(供向量写回 rowid) */
-    findByAgentDedup(agentId: string, dedupKey: string): { id: string, rowid: number } | null {
-      return (findByDedupStmt.get(agentId, dedupKey) as { id: string, rowid: number } | undefined) ?? null
+    /** upsert 后取定位置(供向量写回 rowid;按 channel 作用域——team 哨兵行跨 channel 各自独立) */
+    findByAgentDedup(channelId: string, agentId: string, dedupKey: string): { id: string, rowid: number } | null {
+      return (findByDedupStmt.get(channelId, agentId, dedupKey) as { id: string, rowid: number } | undefined) ?? null
+    },
+
+    /** channel × agent 双键列表(team 行按 channel 隔离的正确口径;listByAgent 为全局 agent 域) */
+    listByAgentChannel(channelId: string, agentId: string, limit: number): MemoryRow[] {
+      return listByAgentChannelStmt.all(channelId, agentId, limit) as unknown as MemoryRow[]
+    },
+
+    /** listByAgent + rowid(维护专用:过期/淘汰删除需联动 vec 行) */
+    listByAgentWithRowid(agentId: string, limit: number): Array<MemoryRow & { rowid: number }> {
+      return listByAgentRowidStmt.all(agentId, limit) as unknown as Array<MemoryRow & { rowid: number }>
     },
 
     touch(id: string): void {
@@ -195,6 +217,17 @@ export function createMemoryRepo(db: DatabaseSync) {
         return rows.map(r => ({ memRowid: Number(r.mem_rowid), distance: r.distance }))
       }
       catch { return [] }
+    },
+
+    /** 清孤儿 vec 行(mem_rowid 已不在主表;维护任务统一收口;vec 未启用/失败 → 0) */
+    vecCleanOrphans(): number {
+      if (vecDims === null) return 0
+      try {
+        return Number(db.prepare(
+          `DELETE FROM agent_memories_vec WHERE mem_rowid NOT IN (SELECT rowid FROM agent_memories)`,
+        ).run().changes)
+      }
+      catch { return 0 }
     },
   }
 }

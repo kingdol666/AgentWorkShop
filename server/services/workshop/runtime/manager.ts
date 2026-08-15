@@ -35,7 +35,7 @@ import type { ChannelBus, TaskEngine } from './agent-runtime'
 import { ChannelRuntime } from './channel-runtime'
 import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
-import { AgentMemory, segmentCJK } from './memory'
+import { AgentMemory, runMemoryMaintenance, segmentCJK, type MaintenanceResult } from './memory'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 
 /** 全部仓储(依赖注入) */
@@ -144,8 +144,20 @@ export class AgentChannelManager {
   private buses = new Map<string, ChannelBus>()
   private taskEngine: TaskEngine | null = null
   private idleSweeperTimer: ReturnType<typeof setInterval> | null = null
+  private memoryTimer: ReturnType<typeof setInterval> | null = null
 
-  constructor(private deps: ManagerDeps) {}
+  constructor(private deps: ManagerDeps) {
+    // 记忆衰减清理定时器(失败只记日志,绝不抛出;unref 不阻进程退出)
+    this.memoryTimer = setInterval(() => {
+      try {
+        runMemoryMaintenance(this.deps.repos.memories)
+      }
+      catch (err) {
+        console.error('[memory] 维护失败:', err)
+      }
+    }, Number(process.env.AW_MEMORY_MAINTENANCE_MS ?? 6 * 3600_000))
+    this.memoryTimer.unref?.()
+  }
 
   // ===== 运行时装配 =====
 
@@ -394,6 +406,10 @@ export class AgentChannelManager {
       clearInterval(this.idleSweeperTimer)
       this.idleSweeperTimer = null
     }
+    if (this.memoryTimer) {
+      clearInterval(this.memoryTimer)
+      this.memoryTimer = null
+    }
     for (const cr of this.channels.values()) {
       cr.scheduler?.stop()
       cr.scheduler = null
@@ -631,8 +647,7 @@ export class AgentChannelManager {
   /** 团队共享记忆列表(channel 级;任意本 channel 成员可读) */
   listTeamMemories(channelId: string, limit = 50): MemoryRow[] {
     if (!this.deps.repos.channels.findById(channelId)) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
-    return this.deps.repos.memories.listByAgent(TEAM_AGENT_ID, limit)
-      .filter(r => r.channelId === channelId)
+    return this.deps.repos.memories.listByAgentChannel(channelId, TEAM_AGENT_ID, limit)
   }
 
   /** 写/更新团队记忆(仅 lead;稳定 dedupKey 幂等刷新) */
@@ -657,9 +672,14 @@ export class AgentChannelManager {
   deleteTeamMemory(channelId: string, callerAgentId: string, memoryId: string): void {
     const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
     if (!caller || caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可删团队记忆')
-    const row = this.deps.repos.memories.listByAgent(TEAM_AGENT_ID, 1000).find(r => r.id === memoryId && r.channelId === channelId)
+    const row = this.deps.repos.memories.listByAgentChannel(channelId, TEAM_AGENT_ID, 1_000_000).find(r => r.id === memoryId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `团队记忆不存在: ${memoryId}`)
     this.deps.repos.memories.delete(memoryId)
+  }
+
+  /** 手动触发记忆衰减清理(REST 透传;策略与定时器同一函数) */
+  runMemoryMaintenanceNow(): MaintenanceResult {
+    return runMemoryMaintenance(this.deps.repos.memories)
   }
 
   // ===== Agent 私有记忆策展(本人或 lead 写/删;kind='semantic' 人工策展)=====

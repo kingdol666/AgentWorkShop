@@ -203,7 +203,7 @@ export class AgentMemory {
       const [vec] = await this.embedder.embed([plainContent])
       this.ensureVec()
       if (!vec) return
-      const at = this.repo.findByAgentDedup(this.opts.agentId, dedupKey)
+      const at = this.repo.findByAgentDedup(this.opts.channelId, this.opts.agentId, dedupKey)
       if (at) this.repo.vecSet(at.rowid, this.opts.agentId, vec)
     }
     catch { /* 向量化失败留 FTS */ }
@@ -225,4 +225,67 @@ export class AgentMemory {
     const content = row.content.length > 240 ? `${row.content.slice(0, 240)}…` : row.content
     return `- [${humanAgo(row.createdAt)}·${tag}] ${row.title}:${content}`
   }
+}
+
+// ===== 衰减清理(文件级维护函数;定时器/REST 共用)=====
+
+export interface MaintenanceResult {
+  deletedExpired: number
+  evicted: number
+  cleanedVec: number
+}
+
+function envNum(name: string, fallback: number): number {
+  const n = Number(process.env[name])
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+/**
+ * 记忆维护:① episodic 过期删除(now - (lastAccessedAt ?? createdAt) > expireDays)
+ * ② 每 agent 容量淘汰(仅 episodic;effectiveScore = importance + accessCount×0.05 降序保留)
+ * ③ 孤儿 vec 清理。semantic 与 team 哨兵行(人工策展)全程豁免。
+ */
+export function runMemoryMaintenance(
+  repo: MemoryRepo,
+  opts: { expireDays?: number, cap?: number } = {},
+): MaintenanceResult {
+  const expireDays = opts.expireDays ?? envNum('AW_MEMORY_EXPIRE_DAYS', 180)
+  const cap = opts.cap ?? envNum('AW_MEMORY_CAP', 500)
+  const expireMs = expireDays * 86_400_000
+  const now = Date.now()
+  let deletedExpired = 0
+  let evicted = 0
+
+  for (const agentId of repo.listMemoryAgentIds()) {
+    if (agentId === TEAM_AGENT_ID) continue // 双保险:team 行人工策展,永不衰减
+    const rows = repo.listByAgentWithRowid(agentId, 1_000_000)
+    // ① 过期删除(仅 episodic)
+    for (const r of rows) {
+      if (!r.kind.startsWith('episodic')) continue
+      if (now - Date.parse(r.lastAccessedAt ?? r.createdAt) > expireMs) {
+        repo.vecDelete(r.rowid)
+        repo.delete(r.id)
+        deletedExpired++
+      }
+    }
+    // ② 容量淘汰(仅 episodic;vec 已在上面过期路径删,此处剩余重查)
+    const remaining = repo.listByAgentWithRowid(agentId, 1_000_000)
+      .filter(r => r.kind.startsWith('episodic'))
+    if (remaining.length > cap) {
+      const sorted = remaining
+        .map(r => ({ r, s: r.importance + r.accessCount * 0.05 }))
+        .sort((a, b) => b.s - a.s)
+      for (const { r } of sorted.slice(cap)) {
+        repo.vecDelete(r.rowid)
+        repo.delete(r.id)
+        evicted++
+      }
+    }
+  }
+  let cleanedVec = 0
+  try {
+    cleanedVec = repo.vecCleanOrphans()
+  }
+  catch { /* vec 未启用 */ }
+  return { deletedExpired, evicted, cleanedVec }
 }

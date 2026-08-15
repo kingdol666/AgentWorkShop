@@ -62,13 +62,13 @@ check('listRecent 严格本人(不含 team)', !repo.listRecent('a1', 10).some(r 
 repo.upsert({ channelId: 'ch1', agentId: 'a1', kind: 'episodic-task', title: '实现登录页面', titleFts: seg('实现登录页面'), content: seg('重跑后改用JWT方案'), importance: 0.8, taskId: 't1', dedupKey: 'task:t1' })
 check('同 dedupKey 去重', repo.listByAgent('a1', 10).length === 2)
 check('upsert 刷新后 FTS 同步', repo.search('a1', 'jwt', 5).length === 1)
-const dedup = repo.findByAgentDedup('a1', 'task:t1')
+const dedup = repo.findByAgentDedup('ch1', 'a1', 'task:t1')
 check('findByAgentDedup 返回 id+rowid', dedup !== null && typeof dedup.rowid === 'number')
 
 // ---- repo:touch + delete ----
 repo.touch(dedup!.id)
 check('touch 递增 access_count', repo.listByAgent('a1', 10).find(r => r.id === dedup!.id)!.accessCount >= 1)
-const teamDel = repo.findByAgentDedup(TEAM_AGENT_ID, 'style:ts')!
+const teamDel = repo.findByAgentDedup('ch1', TEAM_AGENT_ID, 'style:ts')!
 check('team 行去重键独立', teamDel !== null)
 check('delete 返回 true 且 FTS 同步清理', repo.delete(dedup!.id) === true && repo.search('a1', 'jwt', 5).length === 0)
 check('listMemoryAgentIds 排除 team', repo.listMemoryAgentIds().includes(TEAM_AGENT_ID) === false)
