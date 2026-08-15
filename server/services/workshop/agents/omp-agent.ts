@@ -464,7 +464,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
     // 构建 prompt
     const taskText = partsToText(request.message.parts)
-    const prompt = this.buildWorkerPrompt(taskId, taskText)
+    const prompt = this.buildWorkerPrompt(taskId, taskText, request.memory)
 
     // 流式执行 + 事件映射
     yield* this.promptAndStream(prompt, taskId, ctx.signal)
@@ -499,6 +499,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
     const lines: string[] = [
       roleLine,
+      ...(request.memory ? [``, request.memory] : []),
       ``,
       `## Incoming Message`,
       `from: ${fromId}`,
@@ -746,12 +747,12 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
   // ===== 内部:prompt 构建 =====
 
-  private buildWorkerPrompt(taskId: string, taskText: string): string {
+  private buildWorkerPrompt(taskId: string, taskText: string, memory?: string): string {
     const prefix = this.config.systemPromptPrefix ?? ''
     const parts: string[] = []
 
     if (prefix) parts.push(prefix)
-
+    if (memory) parts.push(memory)
     parts.push(
       `You are "${this.agentName}", a worker agent in a multi-agent team (Channel: ${this.channelId}).`,
       ``,
