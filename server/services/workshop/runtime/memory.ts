@@ -4,10 +4,11 @@
  * agent-memory 排序装配(0.5×相关性+0.3×时近性+0.2×重要性,贪心预算)。
  * P1 注入 embedder 后 recall 升级混合检索;P0 纯 FTS。全部方法 async(async 签名 P0 定型)。
  */
-import type { MemoryRepo } from '../db/memory.repo'
+import { type MemoryRepo, TEAM_AGENT_ID } from '../db/memory.repo'
 import type { MemoryRow } from '../db/database'
 import type { WorkspaceTask } from '../types/task'
 import type { A2AMessage, Part } from '../types/a2a'
+import type { EmbeddingProvider } from './embedding-provider'
 
 const W_RELEVANCE = 0.5
 const W_RECENCY = 0.3
@@ -22,6 +23,8 @@ export interface AgentMemoryOptions {
   channelId: string
   agentId: string
   budgetTokens?: number
+  /** 注入后 recall 混合检索 + record* 自动向量化;未注入纯 FTS */
+  embedder?: EmbeddingProvider
 }
 
 export interface RecallOptions {
@@ -64,10 +67,21 @@ function humanAgo(iso: string): string {
 }
 
 export class AgentMemory {
+  private embedder: EmbeddingProvider | null
+
   constructor(
     private repo: MemoryRepo,
     private opts: AgentMemoryOptions,
-  ) {}
+  ) {
+    this.embedder = opts.embedder ?? null
+  }
+
+  /** 向量层惰性初始化(vecReady 后 no-op;建表失败一次性禁用 embedder) */
+  private ensureVec(): void {
+    if (this.repo.vecReady) return
+    const dims = this.embedder?.dims()
+    if (dims && !this.repo.vecInit(dims)) this.embedder = null
+  }
 
   /** run/supervise 前:混合检索+排序+预算装配 → 记忆块(null=无记忆不注入) */
   async recall(query: string, recallOpts: RecallOptions = {}): Promise<string | null> {
@@ -84,6 +98,31 @@ export class AgentMemory {
         const rel = Math.min(1, -row.bm25 / best)
         if (rel >= 0.1 || i < WEAK_HIT_KEEP) hits.set(row.id, { row, relevance: rel })
       })
+    }
+    // 向量分支:查询向量 + 本人/team 双域 kNN,与 FTS 按 id 融合(rel 取 max;失败退化纯 FTS)
+    if (this.embedder) {
+      try {
+        const [qv] = await this.embedder.embed([query])
+        if (qv) {
+          this.ensureVec()
+          const vAll = [
+            ...this.repo.vecSearch(this.opts.agentId, qv, 10),
+            ...this.repo.vecSearch(TEAM_AGENT_ID, qv, 5),
+          ]
+          // rowid → 最小距离(agent/team 分区不相交;防御性取 min)
+          const distByRowid = new Map<number, number>()
+          for (const { memRowid, distance } of vAll) {
+            const prev = distByRowid.get(memRowid)
+            if (prev === undefined || distance < prev) distByRowid.set(memRowid, distance)
+          }
+          for (const row of this.repo.listByRowids([...distByRowid.keys()])) {
+            const sim = Math.min(1, Math.max(0, 1 - (distByRowid.get(row.rowid) ?? 1)))
+            const prev = hits.get(row.id)
+            hits.set(row.id, { row, relevance: prev ? Math.max(prev.relevance, sim) : sim })
+          }
+        }
+      }
+      catch { /* 向量不可用退化为 FTS */ }
     }
     for (const row of this.repo.listRecent(this.opts.agentId, RECENT_FALLBACK)) {
       if (!hits.has(row.id)) hits.set(row.id, { row, relevance: 0.15 })
@@ -130,6 +169,7 @@ export class AgentMemory {
       taskId: task.id,
       dedupKey: `task:${task.id}`,
     })
+    await this.vectorize(content, `task:${task.id}`)
   }
 
   /** run 后(点对点路径):请求 + 我方回复摘要 */
@@ -149,6 +189,20 @@ export class AgentMemory {
       taskId: msg.taskId ?? null,
       dedupKey: `peer:${msg.messageId}`,
     })
+    await this.vectorize(content, `peer:${msg.messageId}`)
+  }
+
+  /** 写入后向量化(未切分原文,语义质量优先;失败静默留 FTS) */
+  private async vectorize(plainContent: string, dedupKey: string): Promise<void> {
+    if (!this.embedder) return
+    try {
+      const [vec] = await this.embedder.embed([plainContent])
+      this.ensureVec()
+      if (!vec) return
+      const at = this.repo.findByAgentDedup(this.opts.agentId, dedupKey)
+      if (at) this.repo.vecSet(at.rowid, this.opts.agentId, vec)
+    }
+    catch { /* 向量化失败留 FTS */ }
   }
 
   private score(row: MemoryRow, relevance: number): number {

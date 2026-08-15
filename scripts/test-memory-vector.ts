@@ -7,7 +7,8 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createMemoryRepo, TEAM_AGENT_ID } from '../server/services/workshop/db/memory.repo'
-import { segmentCJK } from '../server/services/workshop/runtime/memory'
+import { AgentMemory, segmentCJK } from '../server/services/workshop/runtime/memory'
+import type { WorkspaceTask } from '../server/services/workshop/types/task'
 import {
   createEnvEmbeddingProvider,
   createHashEmbeddingProvider,
@@ -99,6 +100,30 @@ repo.vecDelete(t2at.rowid)
 check('vecDelete 后不命中', repo.vecSearch('a1', await embed(segmentCJK('SQLite存储')), 5).every(h => h.memRowid !== t2at.rowid))
 repo.vecDelete(999_999) // 不存在的 rowid:静默
 check('vecDelete 不存在的 rowid 静默', true)
+
+// ---- AgentMemory 混合召回融合 + 写入自动向量化(T8)----
+console.log('--- AgentMemory 混合召回 ---')
+const mem = new AgentMemory(repo, { channelId: 'ch1', agentId: 'a1', embedder })
+
+// 融合语义:FTS 词面 miss(英文词不进 CJK 切分索引)但向量补足
+repo.upsert({ channelId: 'ch1', agentId: 'a1', kind: 'episodic-task', title: '登陆', titleFts: segmentCJK('登陆'), content: segmentCJK('用户登陆入口跳转处理'), importance: 0.8, taskId: 'tf1', dedupKey: 'task:tf1' })
+const fusedAt = repo.findByAgentDedup('a1', 'task:tf1')!
+repo.vecSet(fusedAt.rowid, 'a1', (await embedder.embed(['用户登陆入口跳转处理']))[0])
+const fused = await mem.recall('entry login 用户')
+check('向量兜底语义召回(FTS 弱命中时 vector 补足)', fused !== null && fused.includes('登陆'))
+
+// 写入向量化:recordTaskOutcome 后向量自动就位(fakeTask 按 WorkspaceTask 全字段)
+const fakeTask: WorkspaceTask = {
+  id: 'tv1', channelId: 'ch1', assigneeId: 'a1', creatorId: 'lead',
+  title: '向量写入验证', state: 'COMPLETED', progress: 100, retryCount: 0,
+  artifacts: [{ artifactId: 'x', name: 'deliverable', parts: [{ text: '记忆写入后应自动向量化' }] }],
+  history: [],
+  createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+}
+await mem.recordTaskOutcome(fakeTask)
+const vat = repo.findByAgentDedup('a1', 'task:tv1')!
+const vhit = repo.vecSearch('a1', (await embedder.embed(['记忆写入后应自动向量化']))[0], 3)
+check('recordTaskOutcome 自动向量化', vhit.some(h => h.memRowid === vat.rowid))
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)

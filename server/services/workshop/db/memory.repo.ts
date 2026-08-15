@@ -119,6 +119,18 @@ export function createMemoryRepo(db: DatabaseSync) {
       return listRecentStmt.all(agentId, limit) as unknown as MemoryRow[]
     },
 
+    /** 按 rowid 批量取主表行(向量 kNN 命中 → 主表;空数组返回 []) */
+    listByRowids(rowids: number[]): Array<MemoryRow & { rowid: number }> {
+      if (rowids.length === 0) return []
+      const placeholders = rowids.map(() => '?').join(', ')
+      return db.prepare(
+        `SELECT rowid, id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
+           importance, task_id AS taskId, access_count AS accessCount,
+           last_accessed_at AS lastAccessedAt, created_at AS createdAt
+         FROM agent_memories WHERE rowid IN (${placeholders})`,
+      ).all(...rowids.map(BigInt)) as unknown as Array<MemoryRow & { rowid: number }>
+    },
+
     /** upsert 后取定位置(供向量写回 rowid) */
     findByAgentDedup(agentId: string, dedupKey: string): { id: string, rowid: number } | null {
       return (findByDedupStmt.get(agentId, dedupKey) as { id: string, rowid: number } | undefined) ?? null
