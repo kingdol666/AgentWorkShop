@@ -662,6 +662,42 @@ export class AgentChannelManager {
     this.deps.repos.memories.delete(memoryId)
   }
 
+  // ===== Agent 私有记忆策展(本人或 lead 写/删;kind='semantic' 人工策展)=====
+
+  /** 写/更新 Agent 私有记忆(caller 须为本人或 lead;稳定 dedupKey 幂等刷新) */
+  addAgentMemory(channelId: string, callerAgentId: string, targetAgentId: string, input: { title: string, content: string, importance?: number, dedupKey?: string }): void {
+    const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
+    if (!caller || (callerAgentId !== targetAgentId && caller.role !== 'lead')) {
+      throw new AppError(403, 'SCOPE_VIOLATION', '仅本人或 lead 可策展 Agent 记忆')
+    }
+    if (!this.deps.repos.channelAgents.findByChannelAgent(channelId, targetAgentId)) {
+      throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${targetAgentId}`)
+    }
+    this.deps.repos.memories.upsert({
+      channelId,
+      agentId: targetAgentId,
+      kind: 'semantic',
+      title: input.title,
+      titleFts: segmentCJK(input.title),
+      content: segmentCJK(input.content).slice(0, 800),
+      importance: input.importance ?? 0.9,
+      taskId: null,
+      dedupKey: input.dedupKey ?? `manual:${randomUUID()}`,
+    })
+  }
+
+  /** 删 Agent 私有记忆(caller 须为本人或 lead;行须属该 agent) */
+  deleteAgentMemory(channelId: string, callerAgentId: string, targetAgentId: string, memoryId: string): void {
+    const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
+    if (!caller || (callerAgentId !== targetAgentId && caller.role !== 'lead')) {
+      throw new AppError(403, 'SCOPE_VIOLATION', '仅本人或 lead 可删除 Agent 记忆')
+    }
+    const row = this.deps.repos.memories.listByAgent(targetAgentId, 10_000)
+      .find(r => r.id === memoryId && r.channelId === channelId && r.agentId === targetAgentId)
+    if (!row) throw new AppError(404, 'NOT_FOUND', `记忆不存在: ${memoryId}`)
+    this.deps.repos.memories.delete(memoryId)
+  }
+
   /** 实例详情(含运行时装配状态) */
   getChannelAgent(instanceId: string): (AgentInfo & { wired: boolean, runtimeState: 'idle' | 'busy' | 'stopped' | null }) | undefined {
     const m = this.deps.repos.channelAgents.findById(instanceId)

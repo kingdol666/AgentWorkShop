@@ -290,5 +290,36 @@ const isoBlock = await new AgentMemory(repo, { channelId: 'ch1', agentId: 'a1' }
 check('recall 不泄漏他通道团队记忆', isoBlock === null || !isoBlock.includes('他通道金丝雀'), isoBlock?.slice(0, 80))
 check('recall 可见本通道团队记忆', isoBlock !== null && isoBlock.includes('本通道金丝雀'), isoBlock?.slice(0, 80))
 
+// ═══════════ Agent 私有记忆策展(本人或 lead 写/删)═══════════
+console.log('\n--- Agent 私有记忆策展 ---')
+
+const otherInst = tmRepos.channelAgents.create({ channelId: chTeam.id, templateId: null, name: 'other', harness: 'mock', role: 'worker' })
+
+teamManager.addAgentMemory(chTeam.id, workerInst.id, workerInst.id, { title: 'worker 私有笔记', content: '部署前必须跑全量测试', dedupKey: 'self:note' })
+const selfRow = repo.listByAgent(workerInst.id, 50).find(r => r.title === 'worker 私有笔记')
+check('本人写私有记忆成功入列', selfRow !== undefined && selfRow.agentId === workerInst.id && selfRow.channelId === chTeam.id && selfRow.kind === 'semantic' && selfRow.importance === 0.9)
+
+const selfBlock = await new AgentMemory(repo, { channelId: chTeam.id, agentId: workerInst.id }).recall('私有笔记')
+check('本人 recall 命中策展记忆', selfBlock !== null && selfBlock.includes('worker 私有笔记'), selfBlock?.slice(0, 80))
+
+const agentErrOther = captureCode(() => teamManager.addAgentMemory(chTeam.id, otherInst.id, workerInst.id, { title: 'x', content: 'y' }))
+check('非 lead 他人写抛 SCOPE_VIOLATION', agentErrOther === 'SCOPE_VIOLATION', `code=${agentErrOther}`)
+check('他人写被拒后未落库', !repo.listByAgent(workerInst.id, 50).some(r => r.title === 'x'))
+
+teamManager.addAgentMemory(chTeam.id, leadInst.id, workerInst.id, { title: 'lead 代写规范', content: '提交信息用中文', dedupKey: 'lead:note' })
+check('lead 代写 worker 记忆成功', repo.listByAgent(workerInst.id, 50).some(r => r.title === 'lead 代写规范' && r.agentId === workerInst.id))
+
+const agentErrDelOther = captureCode(() => teamManager.deleteAgentMemory(chTeam.id, otherInst.id, workerInst.id, selfRow!.id))
+check('非 lead 他人删抛 SCOPE_VIOLATION', agentErrDelOther === 'SCOPE_VIOLATION', `code=${agentErrDelOther}`)
+
+const agentErrDelMiss = captureCode(() => teamManager.deleteAgentMemory(chTeam.id, workerInst.id, workerInst.id, 'no-such-id'))
+check('删不存在记忆抛 NOT_FOUND', agentErrDelMiss === 'NOT_FOUND', `code=${agentErrDelMiss}`)
+
+teamManager.deleteAgentMemory(chTeam.id, workerInst.id, workerInst.id, selfRow!.id)
+check('本人删自己的记忆成功', !repo.listByAgent(workerInst.id, 50).some(r => r.id === selfRow!.id))
+
+const agentErrTargetMiss = captureCode(() => teamManager.addAgentMemory(chTeam.id, leadInst.id, 'no-such-agent', { title: 'x', content: 'y' }))
+check('目标实例不存在抛 NOT_FOUND', agentErrTargetMiss === 'NOT_FOUND', `code=${agentErrTargetMiss}`)
+
 console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
 process.exit(failures === 0 ? 0 : 1)
