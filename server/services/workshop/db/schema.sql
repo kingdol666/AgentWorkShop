@@ -101,3 +101,43 @@ CREATE TABLE IF NOT EXISTS team_members (
   PRIMARY KEY (team_id, template_id)
 );
 CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);
+
+-- v6:Agent 持久记忆(agent_memories)+ FTS5 全文索引。
+-- per-agent 记忆域(agent_id 过滤隔离);团队共享行 agent_id='__team__'(常量 TEAM_AGENT_ID)。
+-- dedup_key 唯一约束去重:任务 'task:<id>' / 协作 'peer:<msgId>' / 策展 'manual:<uuid>' / 团队任意。
+-- kind:episodic-task/episodic-peer(harvest)/semantic(REST 人工策展,衰减豁免)。
+-- vec0 向量表不在此建:需 sqlite-vec 扩展且维度运行时才知(P1 Task 7 延迟建)。
+
+CREATE TABLE IF NOT EXISTS agent_memories (
+  id               TEXT PRIMARY KEY,
+  channel_id       TEXT NOT NULL,
+  agent_id         TEXT NOT NULL,
+  kind             TEXT NOT NULL,
+  title            TEXT NOT NULL,               -- 原文,供展示
+  title_fts        TEXT NOT NULL DEFAULT '',    -- CJK 切分副本,FTS 索引用(V8)
+  content          TEXT NOT NULL,               -- 已 CJK 切分的存储文本
+  importance       REAL NOT NULL DEFAULT 0.5,
+  task_id          TEXT,
+  dedup_key        TEXT NOT NULL,
+  access_count     INTEGER NOT NULL DEFAULT 0,
+  last_accessed_at TEXT,
+  created_at       TEXT NOT NULL,
+  UNIQUE(agent_id, dedup_key)
+);
+CREATE INDEX IF NOT EXISTS idx_memories_agent ON agent_memories(agent_id, created_at DESC);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS agent_memories_fts USING fts5(
+  title, content, agent_id UNINDEXED, memory_rowid UNINDEXED
+);
+CREATE TRIGGER IF NOT EXISTS trg_agent_memories_ai AFTER INSERT ON agent_memories BEGIN
+  INSERT INTO agent_memories_fts(title, content, agent_id, memory_rowid)
+  VALUES (new.title_fts, new.content, new.agent_id, new.rowid);
+END;
+CREATE TRIGGER IF NOT EXISTS trg_agent_memories_ad AFTER DELETE ON agent_memories BEGIN
+  DELETE FROM agent_memories_fts WHERE memory_rowid = old.rowid;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_agent_memories_au AFTER UPDATE ON agent_memories BEGIN
+  DELETE FROM agent_memories_fts WHERE memory_rowid = old.rowid;
+  INSERT INTO agent_memories_fts(title, content, agent_id, memory_rowid)
+  VALUES (new.title_fts, new.content, new.agent_id, new.rowid);
+END;
