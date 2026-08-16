@@ -258,11 +258,19 @@ REST(快照对齐) ────────────────────�
 3. Transcript 渲染:快照对齐 + status/message/artifact/task 五类卡片;任务提交→闭环全流程实时可见。
 4. **验收**:mock harness 三 agent channel,提交 3 任务,时间线完整呈现 dispatch→working→artifact→completed;杀 WS 重连,事件续传无缺口。
 
-### P1 —— Harness 完全体
-1. Agent lanes / 任务板视图;Agent 抽屉(独立 transcript + 队列 + 记忆);Task 抽屉(时间线/树/artifacts/cancel)。
-2. 记忆面板全功能(分域/搜索/写入/维护);模板库 + 编组库页(deploy 到 channel)。
-3. `agent.delta` 流式打字机 + 工具折叠块(omp 真实链路);触发器消息回执连线。
-4. **验收**:真实 omp channel,聚焦任一 worker 看到独立流式输出与工具块;shared 记忆写入即时出现在其他成员检索。
+### P1 —— Harness 完全体 ✅(2026-08-16 完成,浏览器实测通过)
+1. Agent lanes / 任务板视图;Agent 抽屉(独立 transcript + 队列 + 记忆);Task 抽屉(时间线/树/artifacts/cancel)。✅
+2. 记忆面板全功能(分域/搜索/写入/维护);模板库 + 编组库页(deploy 到 channel)。✅
+3. `agent.delta` 流式打字机 + 工具折叠块(omp 真实链路);触发器消息回执连线。(留 P2:依赖 omp delta 透出;协议已容忍缺省)
+4. **验收**:真实 omp channel,聚焦任一 worker 看到独立流式输出与工具块;shared 记忆写入即时出现在其他成员检索。(mock 链路浏览器实测通过;omp 流式部分随 3 留 P2)
+
+**P1 实施增补**:
+- 三视图切换(时间线/Agent lanes/任务板看板五列);任务卡/成员行点击 → Task/Agent 双抽屉;
+- 实体归一化 store 增加节流 REST 任务对齐(refreshTasks:订阅后新建任务从事件构建时补全标题/父子关系);
+- WS hub 死连接加固(sendEnvelope/sendControl 逐 peer try-catch + 即时移除,防 TCP 硬断残连接中断广播);
+- WS 会话重连携带 per-channel lastSeq 游标(updateCursor 持续推进,重连走重放而非全量快照);
+- WorkshopWsSession/ChannelSessionList SSR 守卫(location/window/axios 相对 URL);
+- 模板库页(CRUD/启用开关/实例去向展开行);编组库页(编组 CRUD/成员管理/一键 deploy)。
 
 ### P2 —— 专业打磨
 1. 多 channel 同屏(sub/unsub 单连接多路);A2A RPC/SSE 调试器;⌘K 命令面板;虚拟滚动与万级事件压测。

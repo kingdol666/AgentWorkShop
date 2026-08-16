@@ -69,11 +69,25 @@ function resolveChannelIdFromUrl(peer: WsPeer): string | undefined {
   return url.searchParams.get('channelId') ?? url.searchParams.get('channel_id') ?? undefined
 }
 
-function sendEnvelope(stream: ChannelStream, peer: WsPeer, e: AepEnvelope): void {
-  peer.send(JSON.stringify(e))
+/** 安全发送控制帧(error/pong;死连接静默丢弃) */
+function sendControl(peer: WsPeer, obj: unknown): void {
+  try {
+    sendControl(peer, obj)
+  }
+  catch { /* 死连接 */ }
 }
 
-/** 发布事件:seq 递增 → 入环形缓冲 → 广播全部 peer */
+function sendEnvelope(stream: ChannelStream, peer: WsPeer, e: AepEnvelope): void {
+  try {
+    peer.send(JSON.stringify(e))
+  }
+  catch {
+    // 死连接(TCP 硬断未走 close 回调):移除防后续广播中断
+    stream.peers.delete(peer)
+  }
+}
+
+/** 发布事件:seq 递增 → 入环形缓冲 → 广播全部 peer(逐 peer 容错,死连接即时清理) */
 function publish(
   stream: ChannelStream,
   type: string,
@@ -196,7 +210,7 @@ function ensureStream(manager: AgentChannelManager, channelId: string): ChannelS
 function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: string, lastSeq?: number): void {
   const stream = ensureStream(manager, channelId)
   if (!stream) {
-    peer.send(JSON.stringify({ v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'NOT_FOUND', message: `channel 不存在: ${channelId}` } }))
+    sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'NOT_FOUND', message: `channel 不存在: ${channelId}` } })
     return
   }
   stream.peers.add(peer)
@@ -216,14 +230,14 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
   if (lastSeq === undefined || lastSeq >= stream.seq || lastSeq + 1 < oldest) {
     const snapshot = buildSnapshot(manager, channelId)
     if (snapshot) {
-      peer.send(JSON.stringify({
+      sendControl(peer, {
         v: AEP_VERSION,
         type: 'channel.snapshot',
         seq: stream.seq,
         at: new Date().toISOString(),
         channelId,
         payload: snapshot,
-      }))
+      })
     }
     if (lastSeq !== undefined && lastSeq > stream.seq) {
       // 客户端游标超前(服务端重启 seq 归零):快照即对齐,无需重放
@@ -274,7 +288,7 @@ export default defineWebSocketHandler({
       manager = getWorkshopManager()
     }
     catch (error) {
-      peer.send(JSON.stringify({ v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'WORKSHOP_NOT_READY', message: error instanceof Error ? error.message : 'workshop 未初始化' } }))
+      sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'WORKSHOP_NOT_READY', message: error instanceof Error ? error.message : 'workshop 未初始化' } })
       peer.close(1011, 'workshop not ready')
       return
     }
@@ -292,11 +306,11 @@ export default defineWebSocketHandler({
       parsed = JSON.parse(raw)
     }
     catch {
-      peer.send(JSON.stringify({ v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'BAD_MESSAGE', message: '上行消息必须是 JSON' } }))
+      sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'BAD_MESSAGE', message: '上行消息必须是 JSON' } })
       return
     }
     if (parsed.type === 'ping') {
-      peer.send(JSON.stringify({ v: AEP_VERSION, type: 'pong', seq: 0, at: new Date().toISOString(), channelId: '', payload: { t: Date.now() } }))
+      sendControl(peer, { v: AEP_VERSION, type: 'pong', seq: 0, at: new Date().toISOString(), channelId: '', payload: { t: Date.now() } })
       return
     }
     if (parsed.type === 'sub' && typeof parsed.channelId === 'string') {
@@ -305,7 +319,7 @@ export default defineWebSocketHandler({
         manager = getWorkshopManager()
       }
       catch (error) {
-        peer.send(JSON.stringify({ v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: parsed.channelId, payload: { code: 'WORKSHOP_NOT_READY', message: error instanceof Error ? error.message : 'workshop 未初始化' } }))
+        sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: parsed.channelId, payload: { code: 'WORKSHOP_NOT_READY', message: error instanceof Error ? error.message : 'workshop 未初始化' } })
         return
       }
       subscribePeer(manager, peer, parsed.channelId, typeof parsed.lastSeq === 'number' ? parsed.lastSeq : undefined)
@@ -315,7 +329,7 @@ export default defineWebSocketHandler({
       unsubscribePeer(peer, parsed.channelId)
       return
     }
-    peer.send(JSON.stringify({ v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'UNSUPPORTED_UPLINK', message: `不支持的上行消息: ${String(parsed.type)}` } }))
+    sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'UNSUPPORTED_UPLINK', message: `不支持的上行消息: ${String(parsed.type)}` } })
   },
 
   close(peer) {

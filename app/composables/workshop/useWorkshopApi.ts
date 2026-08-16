@@ -93,10 +93,47 @@ export function useWorkshopApi() {
     // queue / runtime
     queueOverview: (id: string) => http.get<{ data: Array<{ agentId: string, name: string, state: string, currentTaskId: string | null, queuedCount: number, completedCount: number }> }>(`/workshop/channels/${id}/queue`),
     runtimeStatus: () => http.get<{ data: { wiredAgents: string[], activeChannels: string[] } }>('/workshop/runtime'),
-    // teams(P1 页面用;先备好)
-    listTeams: () => http.get<{ data: Array<{ id: string, name: string, description?: string, members: Array<{ templateId: string, name: string, harness: string, role: string }> }> }>('/workshop/teams'),
+    // tasks detail / lifecycle(P1 抽屉)
+    getTask: (taskId: string) => http.get<{ data: TaskDto }>(`/workshop/tasks/${taskId}`),
+    cancelTask: (taskId: string) => http.post<{ data: TaskDto }>(`/workshop/tasks/${taskId}/cancel`, {}),
+    // agent 模板库(P1)
+    listTemplates: () => http.get<{ data: AgentTemplateDto[] }>('/workshop/agents'),
+    createTemplate: (body: { name: string, harness: string, config?: Record<string, unknown> }) =>
+      http.post<{ data: AgentTemplateDto }>('/workshop/agents', body),
+    updateTemplate: (id: string, body: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number }) =>
+      http.request<{ data: AgentTemplateDto }>({ method: 'PATCH', url: `/workshop/agents/${id}`, data: body }),
+    deleteTemplate: (id: string) => http.delete<{ data: unknown }>(`/workshop/agents/${id}`),
+    // teams(P1 编组库)
+    listTeams: () => http.get<{ data: TeamDto[] }>('/workshop/teams'),
+    createTeam: (body: { name: string, description?: string }) => http.post<{ data: TeamDto }>('/workshop/teams', body),
+    deleteTeam: (id: string) => http.delete<{ data: unknown }>(`/workshop/teams/${id}`),
+    addTeamMember: (id: string, body: { agentId: string, role?: 'lead' | 'worker' }) =>
+      http.post<{ data: TeamDto }>(`/workshop/teams/${id}/members`, body),
+    removeTeamMember: (id: string, templateId: string) => http.delete<{ data: TeamDto }>(`/workshop/teams/${id}/members/${templateId}`),
     deployTeam: (teamId: string, channelId: string) => http.post<{ data: unknown }>(`/workshop/teams/${teamId}/deploy`, { channelId }),
   }
+}
+
+/** Agent 模板详情(全局;instances = 已克隆实例去向) */
+export interface AgentTemplateDto {
+  id: string
+  name: string
+  harness: string
+  config: Record<string, unknown>
+  enabled: number
+  instances: Array<{ id: string, channelId: string, role: 'lead' | 'worker', token: string }>
+  createdAt: string
+  updatedAt: string
+}
+
+/** AgentTeam 详情 */
+export interface TeamDto {
+  id: string
+  name: string
+  description?: string
+  members: Array<{ templateId: string, name: string, harness: string, role: 'lead' | 'worker', addedAt: string }>
+  createdAt: string
+  updatedAt: string
 }
 
 /** AepSnapshot 的轻量 REST 对齐(WS 未连时兜底刷新;实际从 WS channel.snapshot 取) */

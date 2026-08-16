@@ -17,7 +17,7 @@ export function useWorkshopWs() {
   // 模块级单例:多组件共享一条连接
   let session: WorkshopWsSession | null = (globalThis as { __workshopWs?: WorkshopWsSession }).__workshopWs ?? null
   if (!session) {
-    session = new WorkshopWsSession(
+    const s = new WorkshopWsSession(
       (e: AepEnvelope) => {
         events.ingest(e)
         entities.applyEvent(e)
@@ -26,6 +26,7 @@ export function useWorkshopWs() {
         }
         if (typeof e.seq === 'number' && e.seq > 0 && e.channelId) {
           conn.cursors[e.channelId] = e.seq
+          s.updateCursor(e.channelId, e.seq) // 推进重连续传游标
         }
       },
       (state, retry) => {
@@ -33,6 +34,7 @@ export function useWorkshopWs() {
         conn.retryCount = retry
       },
     )
+    session = s
     ;(globalThis as { __workshopWs?: WorkshopWsSession }).__workshopWs = session
   }
 

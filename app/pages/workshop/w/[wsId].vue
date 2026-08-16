@@ -1,7 +1,9 @@
 <script setup lang="ts">
 /**
  * Workspace 主控台(Zcode 风格 Harness):
- * 顶栏(WS 状态 + seq)+ 左栏 Channel 会话 + 中部 Transcript + 右侧 Inspector + 底部 Composer。
+ * 顶栏(WS 状态 + seq + 视图切换)+ 左栏 Channel 会话 + 中部三视图
+ * (时间线 / Agent lanes / 任务板)+ 右侧 Inspector + 底部 Composer +
+ * Agent/Task 双抽屉(执行详情)。
  * 挂载 workspace 全部 channel 的 WS 订阅;聚焦 channel 驱动中部/右侧上下文。
  */
 import { useWorkspacesStore } from '../../../stores/workshop/workspaces'
@@ -47,6 +49,29 @@ const stateColor = computed(() =>
 )
 const lastSeq = computed(() => (channelId.value ? conn.cursors[channelId.value] ?? 0 : 0))
 
+// 三视图切换(P1):timeline / lanes / board
+type CenterView = 'timeline' | 'lanes' | 'board'
+const view = ref<CenterView>('timeline')
+const viewOptions = [
+  { value: 'timeline', label: '时间线' },
+  { value: 'lanes', label: 'Agent lanes' },
+  { value: 'board', label: '任务板' },
+]
+
+// 抽屉状态(P1)
+const agentDrawerOpen = ref(false)
+const agentDrawerId = ref<string | null>(null)
+const openAgent = (id: string): void => {
+  agentDrawerId.value = id
+  agentDrawerOpen.value = true
+}
+const taskDrawerOpen = ref(false)
+const taskDrawerId = ref<string | null>(null)
+const openTask = (id: string): void => {
+  taskDrawerId.value = id
+  taskDrawerOpen.value = true
+}
+
 useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness` })
 </script>
 
@@ -63,6 +88,13 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         >
           {{ entities.channels[channelId]?.name ?? channelId.slice(0, 8) }}
         </a-tag>
+        <a-segmented
+          v-if="channelId"
+          v-model:value="view"
+          size="small"
+          :options="viewOptions"
+          class="view-switch"
+        />
       </div>
       <div class="right">
         <span
@@ -81,7 +113,19 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
       </div>
       <div class="center-pane">
         <template v-if="channelId">
-          <workshop-transcript-timeline :channel-id="channelId" />
+          <workshop-transcript-timeline
+            v-if="view === 'timeline'"
+            :channel-id="channelId"
+          />
+          <workshop-agent-lanes-view
+            v-else-if="view === 'lanes'"
+            :channel-id="channelId"
+          />
+          <workshop-task-board-view
+            v-else
+            :channel-id="channelId"
+            @open-task="openTask"
+          />
         </template>
         <div
           v-else
@@ -97,6 +141,8 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         <workshop-inspector-panel
           v-if="channelId"
           :channel-id="channelId"
+          @open-agent="openAgent"
+          @open-task="openTask"
         />
       </div>
     </div>
@@ -108,6 +154,18 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
     >
       <workshop-composer :channel-id="channelId" />
     </div>
+
+    <!-- 抽屉 -->
+    <workshop-agent-inspector-drawer
+      v-model:open="agentDrawerOpen"
+      :channel-id="channelId ?? ''"
+      :agent-id="agentDrawerId"
+    />
+    <workshop-task-inspector-drawer
+      v-model:open="taskDrawerOpen"
+      :channel-id="channelId ?? ''"
+      :task-id="taskDrawerId"
+    />
   </div>
 </template>
 
@@ -134,6 +192,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   align-items: center;
 }
 .ws-name { font-weight: 700; }
+.view-switch { margin-left: 8px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
 .ws-state { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
 .seq { font-family: ui-monospace, Consolas, monospace; font-size: 11px; opacity: 0.5; }

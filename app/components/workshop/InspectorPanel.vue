@@ -1,15 +1,16 @@
 <script setup lang="ts">
 /**
  * 右侧 Inspector:成员/任务/记忆 三 Tab。
- * 成员:实时状态 + 队列;点击 → 时间线聚焦该 agent(独立流)。
- * 任务:根任务列表 + 子任务计数 + 状态;点击 → 聚焦任务过滤。
+ * 成员:实时状态 + 队列;点击 → 打开 Agent 抽屉(独立流/队列/记忆)。
+ * 任务:根任务列表;点击 → 打开 Task 抽屉(状态时间线/交付物/取消)。
  */
 import { useEntitiesStore } from '../../stores/workshop/entities'
-import { useEventsStore } from '../../stores/workshop/events'
 
 const props = defineProps<{ channelId: string }>()
+const emit = defineEmits<{
+  (e: 'openAgent' | 'openTask', id: string): void
+}>()
 const entities = useEntitiesStore()
-const events = useEventsStore()
 
 const tab = ref<'members' | 'tasks' | 'memory'>('members')
 
@@ -17,11 +18,6 @@ const agents = computed(() => entities.agents[props.channelId] ?? [])
 const tasks = computed(() => entities.tasks[props.channelId] ?? [])
 const rootTasks = computed(() => tasks.value.filter(t => !t.parentId))
 const childCount = (id: string): number => tasks.value.filter(t => t.parentId === id).length
-
-const focusAgent = computed(() => events.focusAgents[props.channelId] ?? null)
-const setFocus = (agentId: string | null): void => {
-  events.setFocusAgent(props.channelId, agentId)
-}
 
 const stateDot: Record<string, string> = {
   idle: '#52c41a',
@@ -54,8 +50,7 @@ const taskStateColor: Record<string, string> = {
           v-for="a in agents"
           :key="a.agentId"
           class="member"
-          :class="{ focused: focusAgent === a.agentId }"
-          @click="setFocus(focusAgent === a.agentId ? null : a.agentId)"
+          @click="emit('openAgent', a.agentId)"
         >
           <span
             class="dot"
@@ -80,13 +75,6 @@ const taskStateColor: Record<string, string> = {
             </div>
           </div>
         </div>
-        <div
-          v-if="focusAgent"
-          class="focus-tip"
-          @click="setFocus(null)"
-        >
-          时间线聚焦中({{ focusAgent.slice(0, 8) }})· 点击取消
-        </div>
       </a-tab-pane>
 
       <a-tab-pane
@@ -97,6 +85,7 @@ const taskStateColor: Record<string, string> = {
           v-for="t in rootTasks"
           :key="t.id"
           class="task"
+          @click="emit('openTask', t.id)"
         >
           <div class="task-head">
             <a-tag
@@ -160,7 +149,6 @@ const taskStateColor: Record<string, string> = {
   border-radius: 6px;
 }
 .member:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
-.member.focused { background: color-mix(in srgb, var(--color-primary) 18%, transparent); }
 .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .member-info { flex: 1 1 auto; min-width: 0; }
 .member-name {
@@ -172,15 +160,6 @@ const taskStateColor: Record<string, string> = {
 .role { margin-inline-start: 0; font-size: 10px; line-height: 14px; }
 .member-meta { font-size: 11px; font-family: ui-monospace, Consolas, monospace; opacity: 0.55; }
 .ct { opacity: 0.8; }
-.focus-tip {
-  padding: 8px;
-  margin-top: 6px;
-  font-size: 11px;
-  color: var(--color-primary);
-  cursor: pointer;
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border-radius: 6px;
-}
 .task { padding: 6px 8px; margin: 2px 0; border-radius: 6px; }
 .task:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
 .task-head { display: flex; gap: 6px; align-items: center; }

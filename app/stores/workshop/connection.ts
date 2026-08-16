@@ -25,26 +25,36 @@ export class WorkshopWsSession {
   private retry = 0
   private closedByUser = false
   private subscribed = new Set<string>()
+  /** 每 channel 最近 seq(重连续传游标;由事件回调 updateCursor 持续推进) */
+  private lastSeqByChannel = new Map<string, number>()
 
   constructor(
     private readonly onEvent: (e: AepEnvelope) => void,
     private readonly onStateChange: (s: WsState, retry: number) => void,
   ) {}
 
+  /** 事件消费方推进游标(供重连 lastSeq 续传) */
+  updateCursor(channelId: string, seq: number): void {
+    if (Number.isFinite(seq)) this.lastSeqByChannel.set(channelId, seq)
+  }
+
   private url(): string {
+    // SSR 守卫:服务端无 location;仅在浏览器连接
+    if (typeof location === 'undefined') return 'ws://localhost/api/workshop/ws'
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     return `${proto}://${location.host}/api/workshop/ws`
   }
 
   private connect(): void {
+    if (typeof window === 'undefined') return // SSR 不建连(客户端水合后订阅触发)
     this.onStateChange('connecting', this.retry)
     const ws = new WebSocket(this.url())
     this.ws = ws
     ws.onopen = () => {
       this.retry = 0
       this.onStateChange('open', 0)
-      // 重连后恢复全部订阅(带 lastSeq 续传)
-      for (const channelId of this.subscribed) this.sendSub(channelId)
+      // 重连后恢复全部订阅(带 lastSeq 续传,缓冲窗外由服务端 snapshot 对齐)
+      for (const channelId of this.subscribed) this.sendSub(channelId, this.lastSeqByChannel.get(channelId))
     }
     ws.onmessage = (ev) => {
       try {
@@ -77,7 +87,8 @@ export class WorkshopWsSession {
 
   subscribe(channelId: string, lastSeq?: number): void {
     this.subscribed.add(channelId)
-    if (this.ws?.readyState === WebSocket.OPEN) this.sendSub(channelId, lastSeq)
+    if (typeof lastSeq === 'number') this.lastSeqByChannel.set(channelId, lastSeq)
+    if (this.ws?.readyState === WebSocket.OPEN) this.sendSub(channelId, this.lastSeqByChannel.get(channelId))
     else if (!this.ws) this.connect()
   }
 

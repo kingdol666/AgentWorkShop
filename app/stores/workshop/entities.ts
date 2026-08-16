@@ -32,6 +32,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
     channels: {} as Record<string, AepSnapshot['channel'] & { loadedAt: number }>,
     agents: {} as Record<string, AgentView[]>,
     tasks: {} as Record<string, TaskView[]>,
+    /** refreshTasks 进行中标志(节流) */
+    refreshing: {} as Record<string, boolean>,
   }),
   getters: {
     agentById(state) {
@@ -66,7 +68,20 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           const p = e.payload as { agentId: string, state: AgentView['state'], currentTaskId?: string | null, queued?: number, completed?: number }
           const idx = list.findIndex(a => a.agentId === p.agentId)
           if (idx >= 0) list[idx] = { ...list[idx], ...p }
-          else list.push({ agentId: p.agentId, name: p.agentId.slice(0, 8), role: 'worker', harness: '-', ...p })
+          else {
+            // 新 agent 只能从事件构建(无快照)→ 补默认名/角色/harness;显式构造避免 spread 覆盖
+            const fresh: AgentView = {
+              agentId: p.agentId,
+              state: p.state,
+              currentTaskId: p.currentTaskId ?? null,
+              queued: p.queued,
+              completed: p.completed,
+              name: p.agentId.slice(0, 8),
+              role: 'worker',
+              harness: '-',
+            }
+            list.push(fresh)
+          }
           this.agents[cid] = [...list]
           break
         }
@@ -75,7 +90,11 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           const list = this.tasks[cid] ?? []
           const idx = list.findIndex(t => t.id === p.taskId)
           if (idx >= 0) list[idx] = { ...list[idx], state: p.state, assigneeId: p.assigneeId ?? list[idx].assigneeId }
-          else list.push({ id: p.taskId, title: p.taskId.slice(0, 8), state: p.state, progress: 0, assigneeId: p.assigneeId ?? '', artifacts: 0 })
+          else {
+            // 订阅后新建的任务只能从事件构建(无标题)→ 触发节流 REST 对齐补全
+            list.push({ id: p.taskId, title: p.taskId.slice(0, 8), state: p.state, progress: 0, assigneeId: p.assigneeId ?? '', artifacts: 0 })
+            this.refreshTasks(cid)
+          }
           this.tasks[cid] = [...list]
           break
         }
@@ -113,6 +132,32 @@ export const useEntitiesStore = defineStore('workshop.entities', {
     /** WS 断连后的 REST 兜底刷新(命令后立即对齐用) */
     refreshChannel(channelId: string, snapshot: AepSnapshot): void {
       this.applySnapshot(snapshot)
+    },
+    /**
+     * 节流 REST 任务对齐:订阅后新建任务从事件构建时缺标题/父子关系,
+     * 拉一次任务列表 upsert(以 REST 为准;事件流继续增量更新)。
+     */
+    refreshTasks(channelId: string): void {
+      if (this.refreshing[channelId]) return
+      this.refreshing[channelId] = true
+      $fetch<{ data?: AepSnapshot['tasks'] }>(`/api/workshop/channels/${channelId}/tasks`)
+        .then((res) => {
+          const fresh = res.data ?? []
+          const current = this.tasks[channelId] ?? []
+          const byId = new Map(current.map(t => [t.id, t]))
+          this.tasks[channelId] = fresh.map((t) => {
+            const prev = byId.get(t.id)
+            const next = this.toTaskView(t)
+            // 事件流可能已推进到更新的 state/progress:保留较新值
+            return prev && (prev.state !== next.state || prev.progress > next.progress)
+              ? { ...next, state: prev.state, progress: Math.max(prev.progress, next.progress) }
+              : next
+          })
+        })
+        .catch(() => {})
+        .finally(() => {
+          this.refreshing[channelId] = false
+        })
     },
   },
 })

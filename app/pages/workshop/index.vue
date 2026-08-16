@@ -68,13 +68,23 @@ useHead({ title: 'Workshop · Agent Harness' })
           Workspace = 会话隔离层;每个 Workspace 挂载自己的 Channel,互不干扰。
         </p>
       </div>
-      <a-button
-        type="primary"
-        @click="createOpen = true"
-      >
-        <span class="i-tabler-plus" />
-        新建 Workspace
-      </a-button>
+      <a-space>
+        <a-button @click="navigateTo('/workshop/agents')">
+          <span class="i-tabler-users" />
+          模板库
+        </a-button>
+        <a-button @click="navigateTo('/workshop/teams')">
+          <span class="i-tabler-users-group" />
+          编组库
+        </a-button>
+        <a-button
+          type="primary"
+          @click="createOpen = true"
+        >
+          <span class="i-tabler-plus" />
+          新建 Workspace
+        </a-button>
+      </a-space>
     </div>
 
     <div class="grid">

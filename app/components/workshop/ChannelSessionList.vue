@@ -17,6 +17,8 @@ const workspace = computed(() => wsStore.workspaces.find(w => w.id === props.wsI
 
 const channels = ref<Array<{ id: string, name: string }>>([])
 const refreshChannels = async (): Promise<void> => {
+  // SSR 守卫:axios 相对 baseURL 仅客户端有效(服务端拉取会 Invalid URL)
+  if (typeof window === 'undefined') return
   const res = await api.listChannels()
   channels.value = ((res as unknown as { data: ChannelListResp })?.data ?? [])
 }
