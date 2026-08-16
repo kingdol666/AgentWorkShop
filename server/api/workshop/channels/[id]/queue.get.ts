@@ -4,6 +4,7 @@
  * lead 统一调度与最优调配的观察面;channel 不存在 → 404,无 lead → 400 NO_LEAD_AGENT。
  */
 import { getRouterParam } from 'h3'
+import { resolveUser } from '../../caller'
 import { AppError } from '../../../../utils/errors'
 import { defineApiHandler } from '../../../../utils/response'
 import { getWorkshopManager } from '../../../../plugins/workshop'
@@ -12,6 +13,8 @@ import type { AgentStatusView } from '../../../../services/workshop/types/task'
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const manager = getWorkshopManager()
+  const user = resolveUser(event)
+  manager.getChannelForUser(channelId, user.id)
   const channel = (await manager.listChannels()).find(c => c.id === channelId)
   if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
   if (!channel.leadAgentId) throw new AppError(400, 'NO_LEAD_AGENT', `channel ${channelId} 无 lead`)

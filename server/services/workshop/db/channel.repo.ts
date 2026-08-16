@@ -7,12 +7,14 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { ChannelRow } from './database'
 
 /** 查询列(蛇形列名 → 驼峰行字段) */
-const COLS = 'id, name, description, lead_agent_id AS leadAgentId, workspace, enabled, created_at AS createdAt, updated_at AS updatedAt'
+const COLS = 'id, name, description, lead_agent_id AS leadAgentId, workspace, enabled, owner_user_id AS ownerUserId, created_at AS createdAt, updated_at AS updatedAt'
 
 export interface ChannelCreateInput {
   name: string
   description?: string
   workspace?: string
+  /** 归属用户(null = 遗留公共) */
+  ownerUserId?: string | null
 }
 
 export interface ChannelPatch {
@@ -27,10 +29,11 @@ export type ChannelRepo = ReturnType<typeof createChannelRepo>
 
 export function createChannelRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO channels (id, name, description, lead_agent_id, workspace, enabled, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO channels (id, name, description, lead_agent_id, workspace, enabled, owner_user_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectAll = db.prepare(`SELECT ${COLS} FROM channels ORDER BY createdAt ASC`)
+  const selectByOwner = db.prepare(`SELECT ${COLS} FROM channels WHERE owner_user_id = ? OR owner_user_id IS NULL ORDER BY createdAt ASC`)
   const selectById = db.prepare(`SELECT ${COLS} FROM channels WHERE id = ?`)
   const updateStmt = db.prepare(
     `UPDATE channels SET name = ?, description = ?, lead_agent_id = ?, workspace = ?, enabled = ?, updated_at = ? WHERE id = ?`,
@@ -48,15 +51,21 @@ export function createChannelRepo(db: DatabaseSync) {
         leadAgentId: null,
         workspace: input.workspace ?? '',
         enabled: 1,
+        ownerUserId: input.ownerUserId ?? null,
         createdAt: now,
         updatedAt: now,
       }
-      insert.run(row.id, row.name, row.description, row.leadAgentId, row.workspace, row.enabled, row.createdAt, row.updatedAt)
+      insert.run(row.id, row.name, row.description, row.leadAgentId, row.workspace, row.enabled, row.ownerUserId, row.createdAt, row.updatedAt)
       return row
     },
 
     list(): ChannelRow[] {
       return selectAll.all() as unknown as ChannelRow[]
+    },
+
+    /** 按 owner 过滤(含 NULL 遗留公共行;用户视角列表) */
+    listForOwner(ownerUserId: string): ChannelRow[] {
+      return selectByOwner.all(ownerUserId) as unknown as ChannelRow[]
     },
 
     findById(id: string): ChannelRow | undefined {

@@ -4,13 +4,11 @@
  * - channel 无 lead → 400 NO_LEAD_AGENT(manager 校验)
  * 支持 mode 参数:goal / loop / pipeline
  */
-import { z } from 'zod'
+import { z } from 'zod'
+import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
-import { zValidator } from '../../../../../utils/validate'
-import { AppError } from '../../../../../utils/errors'
-import { defineApiHandler } from '../../../../../utils/response'
-import { getWorkshopManager } from '../../../../../plugins/workshop'
-import type { Part } from '../../../../../services/workshop/types/a2a'
+import { zValidator } from '../../../../../utils/validate'import { defineApiHandler } from '../../../../../utils/response'
+import { getWorkshopManager } from '../../../../../plugins/workshop'import type { Part } from '../../../../../services/workshop/types/a2a'
 
 /** A2A 消息片段(Part):四种变体(text/data/url/raw) */
 const partSchema = z.union([
@@ -59,8 +57,9 @@ export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, zValidator(submitTaskSchema))
   const manager = getWorkshopManager()
-  const channel = (await manager.listChannels()).find(c => c.id === channelId)
-  if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+  const user = resolveUser(event)
+  const channel = manager.getChannelForUser(channelId, user.id)
+  manager.requireOwned(channel.ownerUserId, user.id, 'channel')
   return manager.submitChannelTask({
     channelId,
     title: body.title,

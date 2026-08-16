@@ -9,12 +9,22 @@
 import { useWorkspacesStore } from '../../../stores/workshop/workspaces'
 import { useEntitiesStore } from '../../../stores/workshop/entities'
 import { useWorkshopWs } from '../../../composables/workshop/useWorkshopWs'
+import { useUserStore } from '../../../stores/workshop/user'
 
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
 const wsId = computed(() => String(route.params.wsId))
+const userStore = useUserStore()
 const wsStore = useWorkspacesStore()
+
+// 用户守卫 + workspace 服务端加载
+if (!userStore.isLoggedIn) {
+  navigateTo('/workshop')
+}
+if (userStore.isLoggedIn && !wsStore.loaded) {
+  wsStore.load().catch(() => {})
+}
 const entities = useEntitiesStore()
 const { subscribe, unsubscribe, conn } = useWorkshopWs()
 

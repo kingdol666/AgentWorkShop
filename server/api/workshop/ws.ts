@@ -62,11 +62,14 @@ function internalsOf(manager: AgentChannelManager): ManagerInternals {
   return manager as unknown as ManagerInternals
 }
 
-function resolveChannelIdFromUrl(peer: WsPeer): string | undefined {
+function resolveQueryParam(peer: WsPeer, name: string): string | undefined {
   const req = (peer as unknown as { request?: Request }).request
   if (!req) return undefined
-  const url = new URL(req.url)
-  return url.searchParams.get('channelId') ?? url.searchParams.get('channel_id') ?? undefined
+  return new URL(req.url).searchParams.get(name) ?? undefined
+}
+
+function resolveChannelIdFromUrl(peer: WsPeer): string | undefined {
+  return resolveQueryParam(peer, 'channelId') ?? resolveQueryParam(peer, 'channel_id')
 }
 
 /** 安全发送控制帧(error/pong/snapshot;死连接静默丢弃) */
@@ -209,8 +212,26 @@ function ensureStream(manager: AgentChannelManager, channelId: string): ChannelS
   return stream
 }
 
-/** 订阅:快照对齐或 lastSeq 重放 */
-function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: string, lastSeq?: number): void {
+/** 订阅:用户鉴权(channel 可见性)+ 快照对齐或 lastSeq 重放 */
+function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: string, lastSeq?: number, userToken?: string): void {
+  // 用户隔离:管理 API 同口径(sub 帧 token 字段或连接 ?token=;本人 channel + 遗留公共只读观察)
+  if (!userToken) {
+    sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: 'WS 订阅需要用户 token(sub 帧携带 token 字段或连接 ?token= 查询参数)' } })
+    return
+  }
+  const user = manager.getUserByToken(userToken)
+  if (!user) {
+    sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: '用户 token 无效' } })
+    return
+  }
+  try {
+    manager.getChannelForUser(channelId, user.id)
+  }
+  catch (err) {
+    const e = err as { code?: string, message?: string }
+    sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: e.code ?? 'FORBIDDEN', message: e.message ?? 'channel 不可见' } })
+    return
+  }
   const stream = ensureStream(manager, channelId)
   if (!stream) {
     sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'NOT_FOUND', message: `channel 不存在: ${channelId}` } })
@@ -298,13 +319,13 @@ export default defineWebSocketHandler({
     // 兼容旧路径:?channelId= 连接即订阅(无 lastSeq → 快照对齐)
     const channelId = resolveChannelIdFromUrl(peer)
     if (!channelId) return // 纯上行 sub 模式(多 channel 复用一条连接)
-    subscribePeer(manager, peer, channelId)
+    subscribePeer(manager, peer, channelId, undefined, resolveQueryParam(peer, 'token'))
   },
 
   message(peer, message) {
     const raw = message.text()
     if (!raw) return
-    let parsed: { type?: unknown, channelId?: unknown, lastSeq?: unknown }
+    let parsed: { type?: unknown, channelId?: unknown, lastSeq?: unknown, token?: unknown }
     try {
       parsed = JSON.parse(raw)
     }
@@ -325,7 +346,7 @@ export default defineWebSocketHandler({
         sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: parsed.channelId, payload: { code: 'WORKSHOP_NOT_READY', message: error instanceof Error ? error.message : 'workshop 未初始化' } })
         return
       }
-      subscribePeer(manager, peer, parsed.channelId, typeof parsed.lastSeq === 'number' ? parsed.lastSeq : undefined)
+      subscribePeer(manager, peer, parsed.channelId, typeof parsed.lastSeq === 'number' ? parsed.lastSeq : undefined, typeof parsed.token === 'string' ? parsed.token : undefined)
       return
     }
     if (parsed.type === 'unsub' && typeof parsed.channelId === 'string') {

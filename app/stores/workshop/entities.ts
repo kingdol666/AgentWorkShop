@@ -3,6 +3,7 @@
  * REST 命令后的状态以 WS 事件回流为准(REST 返回值不直接写状态,避免双源)。
  */
 import { defineStore } from 'pinia'
+import { useUserStore } from './user'
 import type { AepEnvelope, AepSnapshot } from '#shared/workshop-protocol'
 
 export interface AgentView {
@@ -144,7 +145,9 @@ export const useEntitiesStore = defineStore('workshop.entities', {
     refreshTasks(channelId: string): void {
       if (this.refreshing[channelId]) return
       this.refreshing[channelId] = true
-      $fetch<{ data?: AepSnapshot['tasks'] }>(`/api/workshop/channels/${channelId}/tasks`)
+      $fetch<{ data?: AepSnapshot['tasks'] }>(`/api/workshop/channels/${channelId}/tasks`, {
+        headers: { authorization: `Bearer ${useUserStore().token}` },
+      })
         .then((res) => {
           const fresh = res.data ?? []
           const current = this.tasks[channelId] ?? []

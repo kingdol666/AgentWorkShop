@@ -4,7 +4,7 @@
  * channel 不存在 → 404 NOT_FOUND。
  */
 import { getRouterParam } from 'h3'
-import { AppError } from '../../../../../utils/errors'
+import { resolveUser } from '../../../caller'
 import { defineApiHandler } from '../../../../../utils/response'
 import { getWorkshopManager } from '../../../../../plugins/workshop'
 import type { AgentChannelManager } from '../../../../../services/workshop/runtime/manager'
@@ -18,7 +18,7 @@ function taskEngineOf(manager: AgentChannelManager): TaskEngine {
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const manager = getWorkshopManager()
-  const channel = (await manager.listChannels()).find(c => c.id === channelId)
-  if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+  const user = resolveUser(event)
+  manager.getChannelForUser(channelId, user.id)
   return taskEngineOf(manager).list(channelId)
 })

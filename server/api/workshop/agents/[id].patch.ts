@@ -3,7 +3,8 @@
  * - agent 不存在 → 404 NOT_FOUND
  * - 变更后卸载已装配运行时,下次任务触发按新配置 spawn
  */
-import { z } from 'zod'
+import { z } from 'zod'
+import { resolveUser } from '../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../utils/validate'
 import { defineApiHandler } from '../../../utils/response'
@@ -19,5 +20,10 @@ const patchAgentSchema = z.object({
 export default defineApiHandler(async (event) => {
   const agentId = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, zValidator(patchAgentSchema))
-  return getWorkshopManager().updateAgent(agentId, body)
+  const manager = getWorkshopManager()
+  const user = resolveUser(event)
+  const agent = manager.getAgent(agentId)
+  if (!agent) throw new AppError(404, 'NOT_FOUND', `Agent 不存在: ${agentId}`)
+  manager.requireOwned(agent.ownerUserId, user.id, 'Agent 模板')
+  return manager.updateAgent(agentId, body)
 })

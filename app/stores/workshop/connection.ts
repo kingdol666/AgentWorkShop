@@ -32,6 +32,8 @@ export class WorkshopWsSession {
   private lastSeqByChannel = new Map<string, number>()
   /** 最近收帧时间(半死连接检测基准) */
   private lastFrameAt = 0
+  /** 用户 token(用户级隔离:sub 帧鉴权;由消费方注入) */
+  userToken = ''
 
   constructor(
     private readonly onEvent: (e: AepEnvelope) => void,
@@ -47,7 +49,7 @@ export class WorkshopWsSession {
     // SSR 守卫:服务端无 location;仅在浏览器连接
     if (typeof location === 'undefined') return 'ws://localhost/api/workshop/ws'
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-    return `${proto}://${location.host}/api/workshop/ws`
+    return `${proto}://${location.host}/api/workshop/ws${this.userToken ? `?token=${encodeURIComponent(this.userToken)}` : ''}`
   }
 
   private connect(): void {
@@ -94,7 +96,7 @@ export class WorkshopWsSession {
   }
 
   private sendSub(channelId: string, lastSeq?: number): void {
-    const frame: Record<string, unknown> = { type: 'sub', channelId }
+    const frame: Record<string, unknown> = { type: 'sub', channelId, token: this.userToken }
     if (typeof lastSeq === 'number') frame.lastSeq = lastSeq
     this.ws?.send(JSON.stringify(frame))
   }

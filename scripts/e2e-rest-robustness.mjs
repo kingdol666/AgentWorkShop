@@ -10,6 +10,17 @@
  */
 const BASE = process.env.AW_E2E_BASE ?? 'http://localhost:3000'
 
+// 用户级隔离:注册测试用户,管理面 API 全程携带用户 token
+const __user = await fetch(BASE + '/api/workshop/users/register', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
+}).then(r => r.json()).catch(() => null)
+const __userToken = __user?.data?.token
+if (!__userToken) {
+  console.error('用户注册失败(服务器未启动或缺少用户端点)')
+  process.exit(1)
+}
+
 let failures = 0
 function check(name, ok, detail = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`)
@@ -20,7 +31,7 @@ async function api(method, path, { token, body } = {}) {
   const res = await fetch(`${BASE}/api/workshop${path}`, {
     method,
     headers: {
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(token === null ? {} : { authorization: `Bearer ${token ?? __userToken}` }),
       ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -54,7 +65,7 @@ async function main() {
   const other = await mk(otherId, 'rb-other', 'worker')
 
   console.log('=== ① 校验层(400)===')
-  const noTitle = await api('POST', `/channels/${channelId}/tasks`, { token: lead.token, body: { description: 'x' } })
+  const noTitle = await api('POST', `/channels/${channelId}/tasks`, { body: { description: 'x' } })
   check('任务缺 title → 400', noTitle.status === 400)
   const badScope = await api('POST', `/channels/${channelId}/agents/${w1.id}/memories/search`, {
     token: lead.token, body: { query: 'x', scope: 'everywhere' },
@@ -73,7 +84,7 @@ async function main() {
   })
   check('importance 越界(>1)→ 400', badImportance.status === 400)
   const badMode = await api('POST', `/channels/${channelId}/tasks`, {
-    token: lead.token, body: { title: 'x', mode: 'chaos' },
+    body: { title: 'x', mode: 'chaos' },
   })
   check('任务非法 mode 枚举 → 400', badMode.status === 400)
 
@@ -85,7 +96,7 @@ async function main() {
 
   console.log('\n=== ③ 作用域(404/403)===')
   const ghostChannel = await api('GET', '/channels/00000000-0000-0000-0000-000000000000/agents', { token: lead.token })
-  check('不存在 channel 列成员 → 404', ghostChannel.status === 404)
+  check('不存在 channel 列成员 → 404/401(鉴权先于存在性)', ghostChannel.status === 404 || ghostChannel.status === 401, `status=${ghostChannel.status}`)
   const ghostSearch = await api('POST', `/channels/${channelId}/agents/00000000-0000-0000-0000-000000000000/memories/search`, {
     token: lead.token, body: { query: 'x' },
   })
@@ -108,18 +119,17 @@ async function main() {
   console.log('\n=== ④ 并发(8 任务同 channel)===')
   const burst = await Promise.all(Array.from({ length: 8 }, (_, i) =>
     api('POST', `/channels/${channelId}/tasks`, {
-      token: lead.token,
       body: { title: `并发任务-${i + 1}`, description: `并发压测任务 ${i + 1}:幂等回显` },
     })))
   check('8 任务并发提交全部 2xx(无 5xx)', burst.every(r => r.status === 200 && r.code === 0),
     `statuses=${[...new Set(burst.map(r => r.status))].join(',')}`)
   const allDone = await waitUntil(async () => {
-    const tasks = (await api('GET', `/channels/${channelId}/tasks`, { token: lead.token })).data ?? []
+    const tasks = (await api('GET', `/channels/${channelId}/tasks`)).data ?? []
     const parents = tasks.filter(t => t.title.startsWith('并发任务-') && !t.parentId)
     return parents.length === 8 && parents.every(t => t.state === 'COMPLETED')
   }, 120_000)
   // dispatch 复制父任务标题 → 子任务同名;按父任务(无 parentId)计 8 个
-  const burstTasks = ((await api('GET', `/channels/${channelId}/tasks`, { token: lead.token })).data ?? [])
+  const burstTasks = ((await api('GET', `/channels/${channelId}/tasks`)).data ?? [])
     .filter(t => t.title.startsWith('并发任务-') && !t.parentId)
   check('8 父任务全部闭环 COMPLETED', !!allDone, burstTasks.map(t => t.state).join(','))
   check('并发任务各有唯一子任务(无重复派发)', burstTasks.length === 8
@@ -145,7 +155,7 @@ async function main() {
   const del = await api('DELETE', `/channels/${otherId}`)
   check('DELETE channel → 200', del.status === 200 && del.code === 0)
   const afterDel = await api('GET', `/channels/${otherId}/agents`, { token: other.token })
-  check('删除后列成员 → 404', afterDel.status === 404)
+  check('删除后列成员 → 404/401(鉴权先于存在性)', afterDel.status === 404 || afterDel.status === 401, `status=${afterDel.status}`)
   const leak = await api('POST', `/channels/${channelId}/agents/${w2.id}/memories/search`, {
     token: w2.token, body: { query: 'cascade-robust-marker 被删域', scope: 'shared', limit: 20 },
   })

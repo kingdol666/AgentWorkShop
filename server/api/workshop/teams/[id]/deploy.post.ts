@@ -6,6 +6,7 @@
  * - 部署含 lead 的 team 后自动启动该 channel 的 SchedulerLoop(与单独放置 lead 同路径)
  */
 import { z } from 'zod'
+import { resolveUser } from '../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../utils/validate'
 import { defineApiHandler } from '../../../../utils/response'
@@ -19,6 +20,12 @@ export default defineApiHandler(async (event) => {
   const teamId = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, zValidator(deploySchema))
   const manager = getWorkshopManager()
+  const user = resolveUser(event)
+  const team = manager.getTeam(teamId)
+  if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
+  manager.requireOwned(team.ownerUserId, user.id, 'AgentTeam')
+  const ch = manager.getChannelForUser(body.channelId, user.id)
+  manager.requireOwned(ch.ownerUserId, user.id, 'channel')
   const result = await manager.deployTeamToChannel({ teamId, channelId: body.channelId })
   // 部署后:若 channel 尚无调度循环(新 lead 就位)→ 启动
   ensureLeadSchedulerLoop(manager, body.channelId)

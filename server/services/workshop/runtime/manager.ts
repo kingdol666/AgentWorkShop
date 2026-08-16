@@ -28,7 +28,7 @@ import type { MessageRepo } from '../db/message.repo'
 import type { SubscriptionRepo } from '../db/subscription.repo'
 import type { TaskRepo, TaskPatch } from '../db/task.repo'
 import { parseJson } from '../db/database'
-import type { AgentRow, ChannelAgentRow, ChannelRow, MemoryRow, TaskRow, TeamRow } from '../db/database'
+import type { AgentRow, ChannelAgentRow, ChannelRow, MemoryRow, TaskRow, TeamRow, UserRow, WorkspaceRow } from '../db/database'
 import { Mailbox, rowToMessage } from './mailbox'
 import { AgentRuntime } from './agent-runtime'
 import type { ChannelBus, TaskEngine } from './agent-runtime'
@@ -38,9 +38,11 @@ import { TaskEngine as TaskEngineImpl } from './task-engine'
 import { AgentMemory, envNum, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeMemory, type MaintenanceResult, type MemorySnippet } from './memory'
 import { createEnvEmbeddingProvider } from './embedding-provider'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
+import type { UserRepo } from '../db/user.repo'
 
 /** 全部仓储(依赖注入) */
 export interface AllRepos {
+  users: UserRepo
   channels: ChannelRepo
   agents: AgentRepo
   teams: TeamRepo
@@ -67,6 +69,8 @@ export interface AgentTemplateDetail {
   harness: string
   config: Record<string, unknown>
   enabled: number
+  /** 归属用户(null = 遗留公共) */
+  ownerUserId: string | null
   /** 该模板克隆出的全部实例(跨 channel) */
   instances: Array<{ id: string, channelId: string, role: 'lead' | 'worker', token: string }>
   createdAt: string
@@ -78,6 +82,8 @@ export interface AgentTeamDetail {
   id: string
   name: string
   description: string
+  /** 归属用户(null = 遗留公共) */
+  ownerUserId: string | null
   /** 成员(按加入顺序;快照含模板当前 name/harness,便于前端展示) */
   members: Array<{
     templateId: string
@@ -501,6 +507,92 @@ export class AgentChannelManager {
     }
   }
 
+  // ===== 用户面(用户级隔离;管理 API 凭证 = 用户 token)=====
+
+  /** 注册用户(name 唯一 → 409;token 仅此一次返回) */
+  registerUser(name: string): UserRow {
+    const trimmed = name.trim()
+    if (!trimmed) throw new AppError(400, 'BAD_REQUEST', '用户名不能为空')
+    if (this.deps.repos.users.getByName(trimmed)) {
+      throw new AppError(409, 'USER_EXISTS', `用户名已存在: ${trimmed}`)
+    }
+    return this.deps.repos.users.create(trimmed)
+  }
+
+  /** 用户 token → 用户(无效 → 401;REST resolveUser / WS sub 共用) */
+  getUserByToken(token: string): UserRow | null {
+    return this.deps.repos.users.getByToken(token)
+  }
+
+  /**
+   * 资源 owner 守卫:owner 匹配放行;NULL owner(遗留公共数据)只读——
+   * 写操作一律拒绝(FORBIDDEN_LEGACY,提示归属缺失);他人资源 → 403。
+   */
+  requireOwned(ownerUserId: string | null | undefined, userId: string, what: string): void {
+    if (ownerUserId === null || ownerUserId === undefined) {
+      throw new AppError(403, 'FORBIDDEN_LEGACY', `${what} 为遗留公共数据(无归属),禁止变更`)
+    }
+    if (ownerUserId !== userId) {
+      throw new AppError(403, 'SCOPE_VIOLATION', `${what} 不属于当前用户`)
+    }
+  }
+
+  /** channel 读取(已认证用户可见本人 + 遗留公共;不存在 → 404) */
+  getChannelForUser(channelId: string, userId: string): ChannelRow {
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+    if (channel.ownerUserId !== null && channel.ownerUserId !== userId) {
+      throw new AppError(403, 'SCOPE_VIOLATION', 'channel 不属于当前用户')
+    }
+    return channel
+  }
+
+  /** 用户视角 channel 列表(本人 + 遗留公共) */
+  listChannelsForUser(userId: string): ChannelRow[] {
+    return this.deps.repos.channels.listForOwner(userId)
+  }
+
+  // ===== Workspace(服务端持久化;按 owner 隔离)=====
+
+  listWorkspaces(userId: string): Array<WorkspaceRow & { channelIds: string[] }> {
+    return this.deps.repos.users.listWorkspaces(userId).map(ws => ({
+      ...ws,
+      channelIds: this.deps.repos.users.listMountedChannels(ws.id),
+    }))
+  }
+
+  createWorkspace(userId: string, name: string): WorkspaceRow & { channelIds: string[] } {
+    const trimmed = name.trim()
+    if (!trimmed) throw new AppError(400, 'BAD_REQUEST', 'Workspace 名称不能为空')
+    const ws = this.deps.repos.users.createWorkspace(userId, trimmed)
+    return { ...ws, channelIds: [] }
+  }
+
+  deleteWorkspace(userId: string, workspaceId: string): void {
+    const ws = this.deps.repos.users.getWorkspace(workspaceId)
+    if (!ws) throw new AppError(404, 'NOT_FOUND', `workspace 不存在: ${workspaceId}`)
+    this.requireOwned(ws.ownerUserId, userId, 'workspace')
+    this.deps.repos.users.deleteWorkspace(workspaceId)
+  }
+
+  /** 挂载 channel(须为本人的 channel;遗留公共不可挂载) */
+  mountChannelToWorkspace(userId: string, workspaceId: string, channelId: string): void {
+    const ws = this.deps.repos.users.getWorkspace(workspaceId)
+    if (!ws) throw new AppError(404, 'NOT_FOUND', `workspace 不存在: ${workspaceId}`)
+    this.requireOwned(ws.ownerUserId, userId, 'workspace')
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+    this.requireOwned(channel.ownerUserId, userId, 'channel')
+    this.deps.repos.users.mountChannel(workspaceId, channelId)
+  }
+
+  unmountChannelFromWorkspace(userId: string, workspaceId: string, channelId: string): void {
+    const ws = this.deps.repos.users.getWorkspace(workspaceId)
+    if (!ws) throw new AppError(404, 'NOT_FOUND', `workspace 不存在: ${workspaceId}`)
+    this.requireOwned(ws.ownerUserId, userId, 'workspace')
+    this.deps.repos.users.unmountChannel(workspaceId, channelId)
+  }
+
   // ===== Channel 管理面 =====
 
   async createChannel(input: {
@@ -508,8 +600,9 @@ export class AgentChannelManager {
     description?: string
     workspace?: string
     leadAgent?: { name: string, harness: string, config?: Record<string, unknown> }
+    ownerUserId?: string | null
   }): Promise<{ channelId: string, leadAgentId?: string, workspace: string }> {
-    const channel = this.deps.repos.channels.create({ name: input.name, description: input.description })
+    const channel = this.deps.repos.channels.create({ name: input.name, description: input.description, ownerUserId: input.ownerUserId ?? null })
     const workspace = input.workspace && input.workspace.length > 0
       ? input.workspace
       : resolve(process.cwd(), 'data', 'workspaces', channel.id)
@@ -616,14 +709,20 @@ export class AgentChannelManager {
     name: string
     harness: string
     config?: Record<string, unknown>
+    ownerUserId?: string | null
   }): Promise<AgentTemplateDetail> {
-    const row = this.deps.repos.agents.create({ name: input.name, harness: input.harness, config: input.config })
+    const row = this.deps.repos.agents.create({ name: input.name, harness: input.harness, config: input.config, ownerUserId: input.ownerUserId ?? null })
     return this.templateDetailOf(row)
   }
 
   /** 列出全部 Agent 模板(全局) */
   async listAgents(): Promise<AgentTemplateDetail[]> {
     return this.deps.repos.agents.list().map(row => this.templateDetailOf(row))
+  }
+
+  /** 用户视角模板列表(本人 + 遗留公共) */
+  async listAgentsForUser(userId: string): Promise<AgentTemplateDetail[]> {
+    return this.deps.repos.agents.listForOwner(userId).map(row => this.templateDetailOf(row))
   }
 
   /** Agent 模板详情(含其克隆出的全部实例) */
@@ -656,6 +755,7 @@ export class AgentChannelManager {
       harness: row.harness,
       config: parseJson<Record<string, unknown>>(row.configJson, {}),
       enabled: row.enabled,
+      ownerUserId: row.ownerUserId ?? null,
       instances: instances.map(i => ({ id: i.id, channelId: i.channelId, role: i.role as 'lead' | 'worker', token: i.token })),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -860,14 +960,19 @@ export class AgentChannelManager {
   // ===== AgentTeam 管理面(模板编组 + 批量部署) =====
 
   /** 创建 AgentTeam */
-  async createTeam(input: { name: string, description?: string }): Promise<AgentTeamDetail> {
-    const row = this.deps.repos.teams.create({ name: input.name, description: input.description })
+  async createTeam(input: { name: string, description?: string, ownerUserId?: string | null }): Promise<AgentTeamDetail> {
+    const row = this.deps.repos.teams.create({ name: input.name, description: input.description, ownerUserId: input.ownerUserId ?? null })
     return this.teamDetailOf(row)
   }
 
   /** 全部 AgentTeam */
   async listTeams(): Promise<AgentTeamDetail[]> {
     return this.deps.repos.teams.list().map(row => this.teamDetailOf(row))
+  }
+
+  /** 用户视角编组列表(本人 + 遗留公共) */
+  async listTeamsForUser(userId: string): Promise<AgentTeamDetail[]> {
+    return this.deps.repos.teams.listForOwner(userId).map(row => this.teamDetailOf(row))
   }
 
   /** AgentTeam 详情(含成员模板快照);不存在返回 undefined */
@@ -952,6 +1057,7 @@ export class AgentChannelManager {
       id: row.id,
       name: row.name,
       description: row.description,
+      ownerUserId: row.ownerUserId ?? null,
       members: members.map((m) => {
         const tpl = this.deps.repos.agents.findById(m.templateId)
         return {

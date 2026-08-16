@@ -4,13 +4,13 @@
  * - 否则:一步创建 Agent 模板并克隆进 channel
  * - role=lead 且已有 lead → 409 LEAD_EXISTS
  */
-import { z } from 'zod'
+import { z } from 'zod'
+import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
 import { AppError } from '../../../../../utils/errors'
-import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../../../../plugins/workshop'
-
+import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../../../../plugins/workshop'
 const createAgentSchema = z.object({
   agentId: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
@@ -26,7 +26,17 @@ export default defineApiHandler(async (event) => {
   const channel = (await manager.listChannels()).find(c => c.id === channelId)
   if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
 
+  const user = resolveUser(event)
+  const ch = manager.getChannelForUser(channelId, user.id)
+  manager.requireOwned(ch.ownerUserId, user.id, 'channel')
   const role = body.role ?? 'worker'
+  // 克隆模板时校验模板可读(本人或遗留公共;他人模板 → 403)
+  if (body.agentId) {
+    const tpl = manager.getAgent(body.agentId)
+    if (tpl && tpl.config && (tpl as { ownerUserId?: string | null }).ownerUserId !== null && (tpl as { ownerUserId?: string | null }).ownerUserId !== user.id) {
+      throw new (await import('../../../../../utils/errors')).AppError(403, 'SCOPE_VIOLATION', 'Agent 模板不属于当前用户')
+    }
+  }
   const agent = body.agentId
     ? await manager.addAgentToChannel({ channelId, agentId: body.agentId, role })
     : await (async () => {

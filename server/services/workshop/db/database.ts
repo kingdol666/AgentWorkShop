@@ -149,7 +149,29 @@ CREATE TRIGGER IF NOT EXISTS trg_agent_memories_au AFTER UPDATE ON agent_memorie
   DELETE FROM agent_memories_fts WHERE memory_rowid = old.rowid;
   INSERT INTO agent_memories_fts(title, content, agent_id, memory_rowid)
   VALUES (new.title_fts, new.content, new.agent_id, new.rowid);
-END;`
+END;
+
+-- v7:用户级隔离(users + workspaces + 资源 owner 列)。
+-- owner_user_id 为 NULL 的资源 = 遗留数据(对所有已认证用户只读可见,变更需 owner 匹配)。
+CREATE TABLE IF NOT EXISTS users (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL UNIQUE,
+  token       TEXT NOT NULL UNIQUE,
+  created_at  TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS workspaces (
+  id           TEXT PRIMARY KEY,
+  owner_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  created_at   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_user_id);
+CREATE TABLE IF NOT EXISTS workspace_channels (
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  channel_id   TEXT NOT NULL,
+  created_at   TEXT NOT NULL,
+  PRIMARY KEY (workspace_id, channel_id)
+);`
 
 /** channels 表行 */
 export interface ChannelRow {
@@ -160,8 +182,27 @@ export interface ChannelRow {
   /** channel 独立工作目录(omp 子进程 cwd;空串表示未设置) */
   workspace: string
   enabled: number
+  /** 归属用户(null = 遗留公共数据) */
+  ownerUserId: string | null
   createdAt: string
   updatedAt: string
+}
+
+/** users 表行(用户级隔离身份) */
+export interface UserRow {
+  id: string
+  name: string
+  /** 用户管理 token(Bearer;区别于 agent 实例 token) */
+  token: string
+  createdAt: string
+}
+
+/** workspaces 表行(服务端持久化 Workspace;按 owner 隔离) */
+export interface WorkspaceRow {
+  id: string
+  ownerUserId: string
+  name: string
+  createdAt: string
 }
 
 /** agents 表行(全局 Agent 模板,无 channel 绑定) */
@@ -171,6 +212,8 @@ export interface AgentRow {
   harness: string
   configJson: string
   enabled: number
+  /** 归属用户(null = 遗留公共) */
+  ownerUserId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -180,6 +223,8 @@ export interface TeamRow {
   id: string
   name: string
   description: string
+  /** 归属用户(null = 遗留公共) */
+  ownerUserId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -362,6 +407,18 @@ function migrateLegacySchema(db: DatabaseSync): void {
   const channelsCols = db.prepare(`PRAGMA table_info(channels)`).all() as Array<{ name: string }>
   if (!channelsCols.some(c => c.name === 'workspace')) {
     db.exec(`ALTER TABLE channels ADD COLUMN workspace TEXT NOT NULL DEFAULT ''`)
+  }
+  // v7:用户隔离 owner 列(幂等;默认 NULL = 遗留公共数据)
+  if (!channelsCols.some(c => c.name === 'owner_user_id')) {
+    db.exec(`ALTER TABLE channels ADD COLUMN owner_user_id TEXT REFERENCES users(id)`)
+  }
+  const agentsColsV7 = db.prepare(`PRAGMA table_info(agents)`).all() as Array<{ name: string }>
+  if (!agentsColsV7.some(c => c.name === 'owner_user_id')) {
+    db.exec(`ALTER TABLE agents ADD COLUMN owner_user_id TEXT REFERENCES users(id)`)
+  }
+  const teamsColsV7 = db.prepare(`PRAGMA table_info(teams)`).all() as Array<{ name: string }>
+  if (!teamsColsV7.some(c => c.name === 'owner_user_id')) {
+    db.exec(`ALTER TABLE teams ADD COLUMN owner_user_id TEXT REFERENCES users(id)`)
   }
 
   const agentCols = db.prepare(`PRAGMA table_info(agents)`).all() as Array<{ name: string }>

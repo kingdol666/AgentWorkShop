@@ -5,13 +5,13 @@
  *  - task(默认):进入目标 agent 的 mailbox 队列,等当前任务结束消费
  * - 可带 fromAgentId(模拟某个 agent 发送);缺省为系统消息
  */
-import { z } from 'zod'
+import { z } from 'zod'
+import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
 import { AppError } from '../../../../../utils/errors'
-import { getWorkshopManager } from '../../../../../plugins/workshop'
-
+import { getWorkshopManager } from '../../../../../plugins/workshop'
 const sendMessageSchema = z.object({
   toAgentId: z.string().min(1, 'toAgentId 必填'),
   text: z.string().min(1, 'text 必填'),
@@ -25,8 +25,9 @@ export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, zValidator(sendMessageSchema))
   const manager = getWorkshopManager()
-  const channel = (await manager.listChannels()).find(c => c.id === channelId)
-  if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+  const user = resolveUser(event)
+  const channel = manager.getChannelForUser(channelId, user.id)
+  manager.requireOwned(channel.ownerUserId, user.id, 'channel')
 
   // 目标 agent 必须在本 channel
   const agents = await manager.listChannelAgents(channelId)

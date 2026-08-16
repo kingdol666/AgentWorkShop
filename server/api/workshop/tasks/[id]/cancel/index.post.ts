@@ -5,11 +5,11 @@
  * - 任务不存在 → 404 NOT_FOUND
  * - channel 无 lead → 400 NO_LEAD_AGENT(无法以系统身份取消)
  */
-import { getRouterParam } from 'h3'
+import { getRouterParam } from 'h3'
+import { resolveUser } from '../../../caller'
 import { AppError } from '../../../../../utils/errors'
 import { defineApiHandler } from '../../../../../utils/response'
-import { getWorkshopManager } from '../../../../../plugins/workshop'
-import type { AgentChannelManager } from '../../../../../services/workshop/runtime/manager'
+import { getWorkshopManager } from '../../../../../plugins/workshop'import type { AgentChannelManager } from '../../../../../services/workshop/runtime/manager'
 import type { TaskEngine } from '../../../../../services/workshop/runtime/agent-runtime'
 
 /** manager 未公开 TaskEngine 访问;经内部方法只读获取(类型收窄) */
@@ -22,6 +22,10 @@ export default defineApiHandler(async (event) => {
   const manager = getWorkshopManager()
   const task = taskEngineOf(manager).get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
+  // 用户 owner 守卫:取消 = 写操作
+  const user = resolveUser(event)
+  const ch = manager.getChannelForUser(task.channelId, user.id)
+  manager.requireOwned(ch.ownerUserId, user.id, 'channel')
   // 系统身份:任务所在 channel 的 lead
   const agents = await manager.listChannelAgents(task.channelId)
   const lead = agents.find(a => a.role === 'lead')

@@ -19,13 +19,26 @@ function check(name, ok, detail = '') {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+// 用户级隔离:注册测试用户;管理面 API 全程携带用户 token
+const __user = await fetch(BASE + '/api/workshop/users/register', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
+}).then(r => r.json()).catch(() => null)
+const __userToken = __user?.data?.token
+if (!__userToken) {
+  console.error('用户注册失败')
+  process.exit(1)
+}
 
 async function api(method, path, arg) {
   // 调用侧统一 { body: {...} } 包装;无 body 的 GET 直传 path 后无第三参
   const body = arg && typeof arg === 'object' && 'body' in arg ? arg.body : arg
   const res = await fetch(`${BASE}/api/workshop${path}`, {
     method,
-    headers: body !== undefined ? { 'content-type': 'application/json' } : {},
+    headers: {
+      authorization: `Bearer ${__userToken}`,
+      ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+    },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   const json = await res.json().catch(() => null)
@@ -65,7 +78,7 @@ async function main() {
   await mk('aep-w2', 'worker')
 
   console.log('=== ① 信封与快照 ===')
-  const c1 = openWs(`${WS_BASE}/api/workshop/ws?channelId=${channelId}`)
+  const c1 = openWs(`${WS_BASE}/api/workshop/ws?channelId=${channelId}&token=${encodeURIComponent(__userToken)}`)
   await c1.opened
   const snap = await (async () => {
     const deadline = Date.now() + 5000
@@ -121,7 +134,7 @@ async function main() {
   check('断线期间任务完成(事件入缓冲)', t2done)
   const c2 = openWs()
   await c2.opened
-  c2.ws.send(JSON.stringify({ type: 'sub', channelId, lastSeq }))
+  c2.ws.send(JSON.stringify({ type: 'sub', channelId, lastSeq, token: __userToken }))
   await sleep(500)
   const replay = c2.frames.filter(f => f.type !== 'pong' && f.type !== 'channel.snapshot')
   const replaySeqs = seqsOf(replay)
@@ -133,13 +146,13 @@ async function main() {
   console.log('\n=== ⑤ 全量对齐兜底(lastSeq 缺失) ===')
   const c3 = openWs()
   await c3.opened
-  c3.ws.send(JSON.stringify({ type: 'sub', channelId })) // 无 lastSeq → snapshot
+  c3.ws.send(JSON.stringify({ type: 'sub', channelId, token: __userToken })) // 无 lastSeq → snapshot
   await sleep(500)
   check('无 lastSeq → channel.snapshot 对齐', c3.frames.some(f => f.type === 'channel.snapshot'))
 
   console.log('\n=== ⑥ 多 channel 单连接(sub/unsub) ===')
   const ch2 = await api('POST', '/channels', { body: { name: `aep2-${Date.now()}` } })
-  c3.ws.send(JSON.stringify({ type: 'sub', channelId: ch2.data.channelId }))
+  c3.ws.send(JSON.stringify({ type: 'sub', channelId: ch2.data.channelId, token: __userToken }))
   await sleep(300)
   await api('POST', `/channels/${ch2.data.channelId}/agents`, { body: { name: 'solo-lead', harness: 'mock', role: 'lead' } })
   await api('POST', `/channels/${ch2.data.channelId}/tasks`, { body: { title: '第二通道任务' } })

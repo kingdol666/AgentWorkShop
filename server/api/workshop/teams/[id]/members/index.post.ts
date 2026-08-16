@@ -5,6 +5,7 @@
  * - 重复加入 → 409 ALREADY_MEMBER
  */
 import { z } from 'zod'
+import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
@@ -18,7 +19,12 @@ const addMemberSchema = z.object({
 export default defineApiHandler(async (event) => {
   const teamId = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, zValidator(addMemberSchema))
-  return getWorkshopManager().addTemplateToTeam({
+  const manager = getWorkshopManager()
+  const user = resolveUser(event)
+  const team = manager.getTeam(teamId)
+  if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
+  manager.requireOwned(team.ownerUserId, user.id, 'AgentTeam')
+  return manager.addTemplateToTeam({
     teamId,
     templateId: body.agentId,
     role: body.role,

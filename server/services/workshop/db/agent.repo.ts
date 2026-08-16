@@ -7,12 +7,14 @@ import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { AgentRow } from './database'
 
-const COLS = 'id, name, harness, config_json AS configJson, enabled, created_at AS createdAt, updated_at AS updatedAt'
+const COLS = 'id, name, harness, config_json AS configJson, enabled, owner_user_id AS ownerUserId, created_at AS createdAt, updated_at AS updatedAt'
 
 export interface AgentCreateInput {
   name: string
   harness: string
   config?: Record<string, unknown>
+  /** 归属用户(null = 遗留公共) */
+  ownerUserId?: string | null
 }
 
 export interface AgentPatch {
@@ -26,10 +28,11 @@ export type AgentRepo = ReturnType<typeof createAgentRepo>
 
 export function createAgentRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO agents (id, name, harness, config_json, enabled, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO agents (id, name, harness, config_json, enabled, owner_user_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectAll = db.prepare(`SELECT ${COLS} FROM agents ORDER BY createdAt ASC`)
+  const selectByOwner = db.prepare(`SELECT ${COLS} FROM agents WHERE owner_user_id = ? OR owner_user_id IS NULL ORDER BY createdAt ASC`)
   const selectById = db.prepare(`SELECT ${COLS} FROM agents WHERE id = ?`)
   const updateStmt = db.prepare(
     `UPDATE agents SET name = ?, harness = ?, config_json = ?, enabled = ?, updated_at = ? WHERE id = ?`,
@@ -46,15 +49,21 @@ export function createAgentRepo(db: DatabaseSync) {
         harness: input.harness,
         configJson: JSON.stringify(input.config ?? {}),
         enabled: 1,
+        ownerUserId: input.ownerUserId ?? null,
         createdAt: now,
         updatedAt: now,
       }
-      insert.run(row.id, row.name, row.harness, row.configJson, row.enabled, row.createdAt, row.updatedAt)
+      insert.run(row.id, row.name, row.harness, row.configJson, row.enabled, row.ownerUserId, row.createdAt, row.updatedAt)
       return row
     },
 
     list(): AgentRow[] {
       return selectAll.all() as unknown as AgentRow[]
+    },
+
+    /** 按 owner 过滤(含 NULL 遗留公共行) */
+    listForOwner(ownerUserId: string): AgentRow[] {
+      return selectByOwner.all(ownerUserId) as unknown as AgentRow[]
     },
 
     findById(id: string): AgentRow | undefined {

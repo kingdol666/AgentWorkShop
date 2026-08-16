@@ -61,7 +61,7 @@ const createAndMount = async (): Promise<void> => {
     for (let i = 0; i < mountForm.workerCount; i++) {
       await api.addChannelAgent(channelId, { name: `w${i + 1}`, harness: 'mock', role: 'worker' })
     }
-    wsStore.mountChannel(props.wsId, channelId)
+    await wsStore.mountChannel(props.wsId, channelId)
     mountModal.value = false
     mountForm.name = ''
     mountForm.description = ''
@@ -79,11 +79,13 @@ const existingMountId = ref<string | undefined>()
 const mountExisting = (): void => {
   if (!existingMountId.value) return
   wsStore.mountChannel(props.wsId, existingMountId.value)
+    .catch((e: { data?: { message?: string }, message?: string }) => { message.error(e?.data?.message ?? e?.message ?? '挂载失败') })
   existingMountId.value = undefined
 }
 
 const unmount = (channelId: string): void => {
   wsStore.unmountChannel(props.wsId, channelId)
+    .catch((e: { data?: { message?: string }, message?: string }) => { message.error(e?.data?.message ?? e?.message ?? '移出失败') })
 }
 </script>
 

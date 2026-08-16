@@ -35,9 +35,20 @@ function section(title) {
   console.log(`\n━━━ ${step}. ${title} ━━━`)
 }
 
+// 用户级隔离:注册测试用户;管理面 API 全程携带用户 token
+const __user = await fetch(BASE + '/api/workshop/users/register', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
+}).then(r => r.json()).catch(() => null)
+const __userToken = __user?.data?.token
+if (!__userToken) {
+  console.error('用户注册失败')
+  process.exit(1)
+}
+
 async function api(method, path, { body, token } = {}) {
   const headers = { 'content-type': 'application/json' }
-  if (token) headers.authorization = `Bearer ${token}`
+  headers.authorization = `Bearer ${token ?? __userToken}`
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers,

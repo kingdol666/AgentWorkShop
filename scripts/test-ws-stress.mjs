@@ -17,13 +17,26 @@ function check(name, ok, detail = '') {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+// 用户级隔离:注册测试用户;管理面 API 全程携带用户 token
+const __user = await fetch(BASE + '/api/workshop/users/register', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
+}).then(r => r.json()).catch(() => null)
+const __userToken = __user?.data?.token
+if (!__userToken) {
+  console.error('用户注册失败')
+  process.exit(1)
+}
 
 async function api(method, path, arg) {
   // 调用侧统一 { body: {...} } 包装;无 body 的 GET 无第三参
   const body = arg && typeof arg === 'object' && 'body' in arg ? arg.body : arg
   const res = await fetch(`${BASE}/api/workshop${path}`, {
     method,
-    headers: body !== undefined ? { 'content-type': 'application/json' } : {},
+    headers: {
+      authorization: `Bearer ${__userToken}`,
+      ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+    },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   const json = await res.json().catch(() => null)
@@ -53,7 +66,7 @@ async function main() {
     await api('POST', `/channels/${channelId}/agents`, { body: { name: 'r-w1', harness: 'mock' } })
     const c = openWs()
     await c.opened
-    c.ws.send(JSON.stringify({ type: 'sub', channelId, lastSeq: 999_999 })) // 游标超前(模拟重启前状态)
+    c.ws.send(JSON.stringify({ type: 'sub', channelId, lastSeq: 999_999, token: __userToken })) // 游标超前(模拟重启前状态)
     await sleep(800)
     const snap = c.frames.find(f => f.type === 'channel.snapshot')
     check('游标超前 → snapshot 全量对齐', !!snap && snap.channelId === channelId)
@@ -93,8 +106,8 @@ async function main() {
   console.log('=== ② 双 channel 并行不串扰 ===')
   const c1 = openWs()
   await c1.opened
-  c1.ws.send(JSON.stringify({ type: 'sub', channelId: A }))
-  c1.ws.send(JSON.stringify({ type: 'sub', channelId: B }))
+  c1.ws.send(JSON.stringify({ type: 'sub', channelId: A, token: __userToken }))
+  c1.ws.send(JSON.stringify({ type: 'sub', channelId: B, token: __userToken }))
   await sleep(600)
   // 并发提交
   await Promise.all([
@@ -160,7 +173,7 @@ async function main() {
   const staleSeq = 5 // 早已被挤出 ring 的游标
   const c2 = openWs()
   await c2.opened
-  c2.ws.send(JSON.stringify({ type: 'sub', channelId: A, lastSeq: staleSeq }))
+  c2.ws.send(JSON.stringify({ type: 'sub', channelId: A, lastSeq: staleSeq, token: __userToken }))
   await sleep(1000)
   const snap2 = c2.frames.find(f => f.type === 'channel.snapshot')
   check('缓冲窗外 lastSeq → snapshot 对齐兜底', !!snap2)
@@ -175,7 +188,7 @@ async function main() {
   for (let i = 0; i < 50; i++) await api('POST', `/channels/${A}/messages`, { body: { toAgentId: leadA, text: `gap-${i}` } })
   const c3 = openWs()
   await c3.opened
-  c3.ws.send(JSON.stringify({ type: 'sub', channelId: A, lastSeq }))
+  c3.ws.send(JSON.stringify({ type: 'sub', channelId: A, lastSeq, token: __userToken }))
   await sleep(1500)
   const replay = c3.frames.filter(f => f.type !== 'channel.snapshot' && f.type !== 'pong')
   const rSeqs = replay.map(f => f.seq)

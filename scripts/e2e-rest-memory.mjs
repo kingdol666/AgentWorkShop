@@ -12,6 +12,17 @@
  */
 const BASE = process.env.AW_E2E_BASE ?? 'http://localhost:3100'
 
+// 用户级隔离:注册测试用户,管理面 API 全程携带用户 token
+const __user = await fetch(BASE + '/api/workshop/users/register', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
+}).then(r => r.json()).catch(() => null)
+const __userToken = __user?.data?.token
+if (!__userToken) {
+  console.error('用户注册失败(服务器未启动或缺少用户端点)')
+  process.exit(1)
+}
+
 let failures = 0
 function check(name, ok, detail = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`)
@@ -22,7 +33,7 @@ async function api(method, path, { token, body } = {}) {
   const res = await fetch(`${BASE}/api/workshop${path}`, {
     method,
     headers: {
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(token === null ? {} : { authorization: `Bearer ${token ?? __userToken}` }),
       ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,

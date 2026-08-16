@@ -2,6 +2,7 @@
  * POST /api/workshop/teams —— 创建 AgentTeam(Agent 模板编组容器)。
  */
 import { z } from 'zod'
+import { resolveUser } from '../caller'
 import { readValidatedBody } from 'h3'
 import { zValidator } from '../../../utils/validate'
 import { defineApiHandler } from '../../../utils/response'
@@ -14,8 +15,10 @@ const createTeamSchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const body = await readValidatedBody(event, zValidator(createTeamSchema))
+  const user = resolveUser(event)
   return getWorkshopManager().createTeam({
     name: body.name,
     description: body.description,
+    ownerUserId: user.id,
   })
 })

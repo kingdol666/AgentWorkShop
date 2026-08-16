@@ -2,13 +2,13 @@
  * GET /api/workshop/channels/:id/messages —— channel 消息历史(倒序,limit 默认 50)。
  * - channel 不存在 → 404 NOT_FOUND
  */
-import { z } from 'zod'
+import { z } from 'zod'
+import { resolveUser } from '../../../caller'
 import { getRouterParam, getQuery } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
 import { AppError } from '../../../../../utils/errors'
-import { getWorkshopManager } from '../../../../../plugins/workshop'
-
+import { getWorkshopManager } from '../../../../../plugins/workshop'
 const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(50),
 })
@@ -17,6 +17,8 @@ export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const query = await zValidator(querySchema)(getQuery(event))
   const manager = getWorkshopManager()
+  const user = resolveUser(event)
+  manager.getChannelForUser(channelId, user.id)
   const channel = (await manager.listChannels()).find(c => c.id === channelId)
   if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
 
