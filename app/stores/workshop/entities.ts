@@ -67,7 +67,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           const list = this.agents[cid] ?? []
           const p = e.payload as { agentId: string, state: AgentView['state'], currentTaskId?: string | null, queued?: number, completed?: number }
           const idx = list.findIndex(a => a.agentId === p.agentId)
-          if (idx >= 0) list[idx] = { ...list[idx], ...p }
+          const prev = idx >= 0 ? list[idx] : undefined
+          if (prev) list[idx] = { ...prev, ...p }
           else {
             // 新 agent 只能从事件构建(无快照)→ 补默认名/角色/harness;显式构造避免 spread 覆盖
             const fresh: AgentView = {
@@ -89,7 +90,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           const p = e.payload as { taskId: string, state: string, assigneeId?: string }
           const list = this.tasks[cid] ?? []
           const idx = list.findIndex(t => t.id === p.taskId)
-          if (idx >= 0) list[idx] = { ...list[idx], state: p.state, assigneeId: p.assigneeId ?? list[idx].assigneeId }
+          const prev = idx >= 0 ? list[idx] : undefined
+          if (prev) list[idx] = { ...prev, state: p.state, assigneeId: p.assigneeId ?? prev.assigneeId }
           else {
             // 订阅后新建的任务只能从事件构建(无标题)→ 触发节流 REST 对齐补全
             list.push({ id: p.taskId, title: p.taskId.slice(0, 8), state: p.state, progress: 0, assigneeId: p.assigneeId ?? '', artifacts: 0 })
@@ -102,7 +104,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           const p = e.payload as { taskId: string, progress: number }
           const list = this.tasks[cid] ?? []
           const idx = list.findIndex(t => t.id === p.taskId)
-          if (idx >= 0) list[idx] = { ...list[idx], progress: p.progress }
+          const prev = idx >= 0 ? list[idx] : undefined
+          if (prev) list[idx] = { ...prev, progress: p.progress }
           this.tasks[cid] = [...list]
           break
         }
@@ -111,7 +114,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           if (!p.taskId) break
           const list = this.tasks[cid] ?? []
           const idx = list.findIndex(t => t.id === p.taskId)
-          if (idx >= 0) list[idx] = { ...list[idx], artifacts: list[idx].artifacts + 1 }
+          const prev = idx >= 0 ? list[idx] : undefined
+          if (prev) list[idx] = { ...prev, artifacts: prev.artifacts + 1 }
           this.tasks[cid] = [...list]
           break
         }

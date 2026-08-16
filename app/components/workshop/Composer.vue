@@ -22,7 +22,7 @@ const agents = computed(() => entities.agents[props.channelId] ?? [])
 const workersAndLead = computed(() => agents.value)
 const toAgentId = ref<string>('')
 watch(agents, (list) => {
-  if (!toAgentId.value && list.length > 0) toAgentId.value = list[0].agentId
+  if (!toAgentId.value && list.length > 0) toAgentId.value = list[0]?.agentId ?? ''
 }, { immediate: true })
 const priority = ref<'task' | 'immediate'>('immediate')
 const requireReply = ref(false)

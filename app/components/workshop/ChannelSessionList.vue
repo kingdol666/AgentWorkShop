@@ -20,9 +20,8 @@ const refreshChannels = async (): Promise<void> => {
   // SSR 守卫:axios 相对 baseURL 仅客户端有效(服务端拉取会 Invalid URL)
   if (typeof window === 'undefined') return
   const res = await api.listChannels()
-  channels.value = ((res as unknown as { data: ChannelListResp })?.data ?? [])
+  channels.value = (res as unknown as { data?: Array<{ id: string, name: string }> })?.data ?? []
 }
-interface ChannelListResp { data?: Array<{ id: string, name: string }> }
 void refreshChannels()
 
 const mountedChannels = computed(() =>

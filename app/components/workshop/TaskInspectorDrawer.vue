@@ -80,8 +80,6 @@ const stateColor: Record<string, string> = {
   FAILED: 'error',
   CANCELED: 'default',
 }
-const artifactText = (a: TaskDto['artifacts'][number]): string =>
-  a.parts.map(p => p.text ?? '').join('\n')
 </script>
 
 <template>
@@ -199,7 +197,7 @@ const artifactText = (a: TaskDto['artifacts'][number]): string =>
             </div>
           </a-tab-pane>
 
-          <a-tab-pane :tab="`原始内容(${artifactText ? '' : ''}${detail?.artifacts.reduce((n, a) => n + a.parts.length, 0) ?? 0} parts)`">
+          <a-tab-pane :tab="`原始内容(${detail?.artifacts.reduce((n, a) => n + a.parts.length, 0) ?? 0} parts)`">
             <pre class="raw">{{ JSON.stringify(detail?.artifacts, null, 2)?.slice(0, 4000) }}</pre>
           </a-tab-pane>
         </a-tabs>

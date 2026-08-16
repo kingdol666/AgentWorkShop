@@ -35,9 +35,8 @@ const stream = computed(() => {
 })
 
 const assignedTasks = computed(() => {
-  if (!props.agentId) return []
   const tasks = entities.tasks[props.channelId] ?? []
-  const own = tasks.filter(t => t.assigneeId === props.agentId)
+  const own = props.agentId ? tasks.filter(t => t.assigneeId === props.agentId) : []
   return {
     working: own.filter(t => ['WORKING', 'ASSIGNED'].includes(t.state)),
     queued: own.filter(t => t.state === 'SUBMITTED'),

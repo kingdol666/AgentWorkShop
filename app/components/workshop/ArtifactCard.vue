@@ -55,7 +55,7 @@ const copy = async (): Promise<void> => {
       <span class="tag">📦</span>
       <span class="name">{{ artifact.name ?? 'artifact' }}</span>
       <a-button
-        size="tiny"
+        size="small"
         type="text"
         class="op"
         @click="expanded = !expanded"
@@ -63,7 +63,7 @@ const copy = async (): Promise<void> => {
         {{ expanded ? '收起' : '展开' }}
       </a-button>
       <a-button
-        size="tiny"
+        size="small"
         type="text"
         class="op"
         @click="copy"
