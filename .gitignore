@@ -47,3 +47,6 @@ data/
 
 # 测试临时产物(workspace / sqlite 等)
 .tmp-*
+
+# SDD 工作流草稿(task briefs/reports/ledger/diffs,会话级 scratch)
+.superpowers/
