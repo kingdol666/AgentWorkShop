@@ -49,13 +49,14 @@ const stateColor = computed(() =>
 )
 const lastSeq = computed(() => (channelId.value ? conn.cursors[channelId.value] ?? 0 : 0))
 
-// 三视图切换(P1):timeline / lanes / board
-type CenterView = 'timeline' | 'lanes' | 'board'
+// 视图切换(P1 三视图 + P2 多通道同屏)
+type CenterView = 'timeline' | 'lanes' | 'board' | 'split'
 const view = ref<CenterView>('timeline')
 const viewOptions = [
   { value: 'timeline', label: '时间线' },
   { value: 'lanes', label: 'Agent lanes' },
   { value: 'board', label: '任务板' },
+  { value: 'split', label: '同屏' },
 ]
 
 // 抽屉状态(P1)
@@ -70,6 +71,14 @@ const taskDrawerId = ref<string | null>(null)
 const openTask = (id: string): void => {
   taskDrawerId.value = id
   taskDrawerOpen.value = true
+}
+
+// ⌘K 命令面板 + A2A 调试器(P2)
+const paletteOpen = ref(false)
+const a2aDebugOpen = ref(false)
+const composerBox = ref<HTMLElement | null>(null)
+const focusComposer = (): void => {
+  composerBox.value?.querySelector('textarea')?.focus()
 }
 
 useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness` })
@@ -97,6 +106,22 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         />
       </div>
       <div class="right">
+        <a-button
+          size="small"
+          type="text"
+          title="A2A RPC/SSE 调试器"
+          @click="a2aDebugOpen = true"
+        >
+          <span class="i-tabler-terminal-2" />
+        </a-button>
+        <a-button
+          size="small"
+          type="text"
+          title="命令面板(⌘K)"
+          @click="paletteOpen = true"
+        >
+          <span class="i-tabler-command" />
+        </a-button>
         <span
           class="dot"
           :style="{ background: stateColor }"
@@ -122,8 +147,13 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
             :channel-id="channelId"
           />
           <workshop-task-board-view
-            v-else
+            v-else-if="view === 'board'"
             :channel-id="channelId"
+            @open-task="openTask"
+          />
+          <workshop-multi-channel-view
+            v-else
+            :ws-id="wsId"
             @open-task="openTask"
           />
         </template>
@@ -152,20 +182,40 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
       v-if="channelId"
       class="composer-pane"
     >
-      <workshop-composer :channel-id="channelId" />
-    </div>
+      <!-- Composer -->
+      <div
+        v-if="channelId"
+        ref="composerBox"
+        class="composer-pane"
+      >
+        <workshop-composer :channel-id="channelId" />
+      </div>
 
-    <!-- 抽屉 -->
-    <workshop-agent-inspector-drawer
-      v-model:open="agentDrawerOpen"
-      :channel-id="channelId ?? ''"
-      :agent-id="agentDrawerId"
-    />
-    <workshop-task-inspector-drawer
-      v-model:open="taskDrawerOpen"
-      :channel-id="channelId ?? ''"
-      :task-id="taskDrawerId"
-    />
+      <!-- 抽屉 -->
+      <workshop-agent-inspector-drawer
+        v-model:open="agentDrawerOpen"
+        :channel-id="channelId ?? ''"
+        :agent-id="agentDrawerId"
+      />
+      <workshop-task-inspector-drawer
+        v-model:open="taskDrawerOpen"
+        :channel-id="channelId ?? ''"
+        :task-id="taskDrawerId"
+      />
+      <workshop-a2a-rpc-debugger
+        v-model:open="a2aDebugOpen"
+        :channel-id="channelId ?? ''"
+      />
+
+      <!-- ⌘K 命令面板 -->
+      <workshop-command-palette
+        v-model:open="paletteOpen"
+        :ws-id="wsId"
+        @set-view="view = $event"
+        @open-a2a-debug="a2aDebugOpen = true"
+        @compose="focusComposer"
+      />
+    </div>
   </div>
 </template>
 

@@ -272,11 +272,27 @@ REST(快照对齐) ────────────────────�
 - WorkshopWsSession/ChannelSessionList SSR 守卫(location/window/axios 相对 URL);
 - 模板库页(CRUD/启用开关/实例去向展开行);编组库页(编组 CRUD/成员管理/一键 deploy)。
 
-### P2 —— 专业打磨
-1. 多 channel 同屏(sub/unsub 单连接多路);A2A RPC/SSE 调试器;⌘K 命令面板;虚拟滚动与万级事件压测。
-2. steering 增强:忙时注入(immediate)实时送达 omp 会话的可视确认;人工审批门(human-in-the-loop,后续 hook)。
-3. 可观测:事件密度/吞吐小图表(ECharts 复用 AppChart)。
-4. **验收**:双 channel 并行任务互不串扰;断电恢复(重启服务)后 workspace 重进,历史与续传一致。
+### P2 —— 专业打磨 ✅(2026-08-16 完成,协议压测 + 浏览器实测通过)
+1. 多 channel 同屏(sub/unsub 单连接多路);A2A RPC/SSE 调试器;⌘K 命令面板;虚拟滚动与万级事件压测。✅
+2. steering 增强:忙时注入(immediate)实时送达 omp 会话的可视确认(⚡ 实时注入徽标);人工审批门(human-in-the-loop,后续 hook,按计划推迟)。✅(审批门除外)
+3. 可观测:事件密度/吞吐小图表(ECharts 复用 AppChart)。✅
+4. **验收**:双 channel 并行任务互不串扰;断电恢复(重启服务)后 workspace 重进,历史与续传一致。✅(test-ws-stress.mjs 五段全过)
+
+**P2 实施增补**:
+- `agent.delta` 全链路:AgentEvent 新增 delta 变体(不进 taskEngine)→ omp text_delta 50ms 批量透出 →
+  hub `agent.delta` 帧 → 前端 store 连续增量聚合 + 打字机气泡(绿色光标);mock 增加 `streamDemo`
+  演示开关供链路验证
+- ⌘K/Ctrl+K 命令面板(teleport 自绘:导航/视图/Channel 切换/时间线过滤/动作,↑↓+Enter)
+- 多通道同屏视图(第四视图 split:全部挂载 channel 并排 mini 时间线,任务行可点开抽屉)
+- A2A RPC/SSE 调试器抽屉(agent/method/params 模板/可选 token;sendSubscribe 经 fetch
+  ReadableStream 逐帧消费渲染)
+- 统计面板(Inspector 第四 Tab:KPI + AppChart 每秒事件吞吐折线 60s 窗口 + 类型分布条)
+- 虚拟化:EventCard `content-visibility: auto`(万级事件渲染关键)
+- 修复预存 bug:A2A `tasks/sendSubscribe` SSE 从未生效(h3 EventStream 缺 `.send()` 激活,
+  被当普通对象 JSON 序列化)
+- WS 会话半死连接加固:45s 无帧(pong/事件)心跳窗口检测 → 主动断开重连(HMR/网络半开场景)
+- 压测脚本 `scripts/test-ws-stress.mjs`:双 channel 并行隔离 / 6000 消息高压推送(seq 连续)/
+  环形缓冲溢出 snapshot 对齐 / 断线续传重放连续 / `--phase=recover` 服务重启恢复
 
 ---
 

@@ -101,6 +101,8 @@ export type AgentEvent
     | { kind: 'artifact', artifact: A2AArtifact, append?: boolean, lastChunk?: boolean, totalChunks?: number }
     | { kind: 'error', error: A2AError }
     | { kind: 'done', final?: { taskId?: string } }
+    /** LLM 流式增量(P2:omp text_delta 透出;AEP agent.delta 事件源;不进 taskEngine) */
+    | { kind: 'delta', delta: { text: string } }
 
 /** 调度快照:SchedulerLoop 每次 tick 喂给 lead 的团队观察 */
 export interface SupervisionSnapshot {

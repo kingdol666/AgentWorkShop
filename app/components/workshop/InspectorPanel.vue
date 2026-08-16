@@ -12,7 +12,7 @@ const emit = defineEmits<{
 }>()
 const entities = useEntitiesStore()
 
-const tab = ref<'members' | 'tasks' | 'memory'>('members')
+const tab = ref<'members' | 'tasks' | 'memory' | 'stats'>('members')
 
 const agents = computed(() => entities.agents[props.channelId] ?? [])
 const tasks = computed(() => entities.tasks[props.channelId] ?? [])
@@ -121,6 +121,13 @@ const taskStateColor: Record<string, string> = {
         tab="记忆"
       >
         <workshop-memory-panel :channel-id="channelId" />
+      </a-tab-pane>
+
+      <a-tab-pane
+        key="stats"
+        tab="统计"
+      >
+        <workshop-stats-panel :channel-id="channelId" />
       </a-tab-pane>
     </a-tabs>
   </div>

@@ -353,7 +353,8 @@ async function dispatch(
       const agent = findAgent(manager, agentId) ?? fail(-32001, `Agent not found: ${agentId}`)
       const stream = createEventStream(event)
       void runSubscribe(stream, manager, agent, p)
-      return stream
+      // h3 EventStream 必须经 send() 激活(否则被当普通对象 JSON 序列化,SSE 从未生效)
+      return stream.send()
     }
     case 'tasks/get': {
       const p = parseParams(taskIdParamsSchema, params)

@@ -31,6 +31,12 @@ const msgText = computed(() => {
   return ''
 })
 
+/** steering 可视确认:immediate 消息(busy 时 steer 注入运行中会话) */
+const isImmediate = computed(() =>
+  props.event.type === 'a2a.message'
+  && (props.event.payload as { metadata?: Record<string, unknown> }).metadata?.['x-aw-msg-priority'] === 'immediate',
+)
+
 const stateColor: Record<string, string> = {
   SUBMITTED: 'default',
   ASSIGNED: 'processing',
@@ -53,20 +59,36 @@ const stateColor: Record<string, string> = {
       :style="{ background: agentColor }"
     >{{ agentLabel }}</span>
 
+    <!-- LLM 流式增量(打字机气泡;store 已聚合连续 delta) -->
+    <div
+      v-if="event.type === 'agent.delta'"
+      class="body bubble streaming"
+    >
+      <pre class="msg-text">{{ (event.payload as { delta: string }).delta }}<span class="cursor">▋</span></pre>
+    </div>
+
     <!-- harness 消息气泡 -->
     <div
-      v-if="event.type === 'agent.message'"
+      v-else-if="event.type === 'agent.message'"
       class="body bubble"
     >
       <pre class="msg-text">{{ msgText }}</pre>
     </div>
 
-    <!-- channel 消息投递(assign/peer/inject) -->
+    <!-- channel 消息投递(assign/peer/inject;immediate 为实时注入 steer) -->
     <div
       v-else-if="event.type === 'a2a.message'"
       class="body route"
     >
-      <span class="tag">📨</span>
+      <span v-if="isImmediate">⚡</span>
+      <span
+        v-else
+        class="tag"
+      >📨</span>
+      <span
+        v-if="isImmediate"
+        class="immediate-badge"
+      >实时注入</span>
       <span class="route-text">{{ msgText.slice(0, 120) }}{{ msgText.length > 120 ? '…' : '' }}</span>
     </div>
 
@@ -152,6 +174,9 @@ const stateColor: Record<string, string> = {
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   line-height: 1.55;
   border-bottom: 1px solid color-mix(in srgb, currentColor 6%, transparent);
+  /* 轻量虚拟化:视口外卡片跳过渲染(万级事件压测关键) */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 28px;
 }
 .time { flex: 0 0 auto; opacity: 0.45; }
 .agent-chip {
@@ -167,6 +192,23 @@ const stateColor: Record<string, string> = {
   background: color-mix(in srgb, var(--color-primary) 8%, transparent);
   border-left: 2px solid var(--color-primary);
   border-radius: 4px;
+}
+.bubble.streaming { border-left-color: #52c41a; }
+.cursor {
+  font-size: 11px;
+  color: #52c41a;
+  animation: blink 0.9s step-end infinite;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+.immediate-badge {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  font-size: 10px;
+  color: #fa8c16;
+  background: color-mix(in srgb, #fa8c16 15%, transparent);
+  border-radius: 3px;
 }
 .msg-text {
   margin: 0;

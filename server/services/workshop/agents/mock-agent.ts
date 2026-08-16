@@ -27,8 +27,12 @@ export class MockAgentImpl implements AgentInterface {
   /** 成员空闲起始时间(最久空闲 worker 排序) */
   private readonly idleSince = new Map<string, number>()
 
+  /** 流式演示开关:worker 剧本分片 yield delta(验证 AEP agent.delta 打字机链路) */
+  private readonly streamDemo: boolean
+
   constructor(config: Record<string, unknown> = {}) {
     this.delayMs = typeof config.delayMs === 'number' ? config.delayMs : 300
+    this.streamDemo = config.streamDemo === true
   }
 
   async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
@@ -111,6 +115,13 @@ export class MockAgentImpl implements AgentInterface {
     for (const p of [25, 50, 75]) {
       await sleep(this.delayMs)
       await ctx.workspace.reportTask({ taskId, progress: p })
+    }
+    if (this.streamDemo) {
+      // 分片流式增量(打字机链路演示;每片 40ms)
+      for (const piece of ['正在分析任务…', '检索上下文并规划步骤…', '执行核心改动…', '自检验证…', '完成。']) {
+        yield { kind: 'delta', delta: { text: piece } }
+        await sleep(40)
+      }
     }
     const artifact: A2AArtifact = {
       artifactId: randomUUID(),

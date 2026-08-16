@@ -7,6 +7,9 @@ import type { AepEnvelope } from '#shared/workshop-protocol'
 
 export type WsState = 'connecting' | 'open' | 'closed'
 
+/** 半死连接阈值:超过该时长无任何帧(pong/事件)→ 主动断开重连 */
+const STALE_MS = 45_000
+
 export const useWsConnectionStore = defineStore('workshop.connection', {
   state: () => ({
     state: 'closed' as WsState,
@@ -27,6 +30,8 @@ export class WorkshopWsSession {
   private subscribed = new Set<string>()
   /** 每 channel 最近 seq(重连续传游标;由事件回调 updateCursor 持续推进) */
   private lastSeqByChannel = new Map<string, number>()
+  /** 最近收帧时间(半死连接检测基准) */
+  private lastFrameAt = 0
 
   constructor(
     private readonly onEvent: (e: AepEnvelope) => void,
@@ -50,6 +55,7 @@ export class WorkshopWsSession {
     this.onStateChange('connecting', this.retry)
     const ws = new WebSocket(this.url())
     this.ws = ws
+    this.lastFrameAt = Date.now()
     ws.onopen = () => {
       this.retry = 0
       this.onStateChange('open', 0)
@@ -57,6 +63,7 @@ export class WorkshopWsSession {
       for (const channelId of this.subscribed) this.sendSub(channelId, this.lastSeqByChannel.get(channelId))
     }
     ws.onmessage = (ev) => {
+      this.lastFrameAt = Date.now()
       try {
         this.onEvent(JSON.parse(ev.data as string) as AepEnvelope)
       }
@@ -77,6 +84,13 @@ export class WorkshopWsSession {
       }, delay)
     }
     ws.onerror = () => { /* onclose 兜底重连 */ }
+  }
+
+  /** 半死连接检测(心跳窗口):超过阈值无任何帧(pong/事件)→ 主动断开触发重连 */
+  checkStale(): void {
+    const ws = this.ws
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    if (Date.now() - this.lastFrameAt > STALE_MS) ws.close()
   }
 
   private sendSub(channelId: string, lastSeq?: number): void {

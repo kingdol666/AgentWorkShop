@@ -12,7 +12,7 @@ export type EventFilter = 'all' | 'messages' | 'tasks' | 'errors'
 /** 过滤器 → 允许的事件类型集合 */
 const FILTER_TYPES: Record<EventFilter, string[] | null> = {
   all: null,
-  messages: ['agent.message', 'agent.status.message', 'a2a.message'],
+  messages: ['agent.message', 'agent.delta', 'agent.status.message', 'a2a.message'],
   tasks: ['task.status', 'task.progress', 'a2a.artifact'],
   errors: ['error'],
 }
@@ -65,6 +65,17 @@ export const useEventsStore = defineStore('workshop.events', {
         return
       }
       if (typeof e.seq === 'number' && e.seq > ring.lastSeq) {
+        // delta 聚合:同 agent 连续增量合并进前一条(delta 帧高频,合并后打字机渲染)
+        if (e.type === 'agent.delta') {
+          const last = ring.items[ring.items.length - 1]
+          if (last && last.type === 'agent.delta' && last.agentId === e.agentId) {
+            const prev = (last.payload as { delta: string }).delta
+            ;(last.payload as { delta: string }).delta = prev + (e.payload as { delta: string }).delta
+            ring.lastSeq = e.seq
+            this.rings[e.channelId] = ring
+            return
+          }
+        }
         ring.items.push(e)
         if (ring.items.length > RING_CAP) ring.items.splice(0, ring.items.length - RING_CAP)
         ring.lastSeq = e.seq

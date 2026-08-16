@@ -9,7 +9,8 @@
  * 事件目录:
  *  channel.snapshot    初始对齐{ channel, agents, tasks, queue, messages[50] }
  *  agent.status        { agentId, state, currentTaskId?, queued?, completed? }
- *  agent.message       A2AMessage(harness message 事件;LLM 产出气泡)
+*  agent.message       A2AMessage(harness message 事件;LLM 产出气泡)
+ *  agent.delta         { delta }(LLM 流式增量;text_delta 50ms 批量,前端打字机)
  *  agent.status.message{ text }(工具标记 🔧 / 中间状态文本)
  *  task.status         { taskId, state, assigneeId?, agentId? }
  *  task.progress       { taskId, progress, agentId? }
@@ -64,6 +65,7 @@ export type AepEvent
   = | { type: 'channel.snapshot', payload: AepSnapshot }
     | { type: 'agent.status', payload: { agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, queued?: number, completed?: number } }
     | { type: 'agent.message', payload: A2AMessage }
+    | { type: 'agent.delta', payload: { delta: string } }
     | { type: 'agent.status.message', payload: { text: string } }
     | { type: 'task.status', payload: { taskId: string, state: string, assigneeId?: string, agentId?: string } }
     | { type: 'task.progress', payload: { taskId: string, progress: number, agentId?: string } }

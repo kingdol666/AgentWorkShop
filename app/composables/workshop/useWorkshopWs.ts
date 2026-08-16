@@ -48,7 +48,10 @@ export function useWorkshopWs() {
 
   let heartbeat: ReturnType<typeof setInterval> | null = null
   onMounted(() => {
-    heartbeat = setInterval(() => session?.ping(), 30_000)
+    heartbeat = setInterval(() => {
+      session?.ping()
+      session?.checkStale()
+    }, 30_000)
   })
   onBeforeUnmount(() => {
     if (heartbeat) clearInterval(heartbeat)

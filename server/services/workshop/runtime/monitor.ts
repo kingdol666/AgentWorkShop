@@ -69,6 +69,7 @@ function brief(event: AgentEvent): string {
     case 'artifact': return `artifact(${event.artifact.name ?? event.artifact.artifactId.slice(0, 8)}${event.append ? ' +' : ''}${event.lastChunk ? ' last' : ''})`
     case 'error': return `error(${event.error.code})`
     case 'done': return 'done'
+    case 'delta': return `delta(${event.delta.text.length})`
   }
 }
 /** 分布式 Omit:对判别联合逐成员省略键(保持判别能力) */

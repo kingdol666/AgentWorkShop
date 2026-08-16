@@ -602,14 +602,19 @@ export class OmpRpcAgentImpl implements AgentInterface {
         if (event.assistantMessageEvent?.type === 'text_delta') {
           this.streaming = true
           this.turnText += event.assistantMessageEvent.delta ?? ''
+          // LLM 流式增量透出(AEP agent.delta 事件源;P2):仅 worker/peer 转本走生成器
+          const text = event.assistantMessageEvent.delta ?? ''
+          if (text) enqueueDelta(text)
         }
       }
       if (event.type === 'message_end' || event.type === 'turn_end') {
         this.streaming = false
+        flushDelta()
       }
       if (event.type === 'agent_end' && event.isTerminal !== false) {
         this.turnActive = false
         this.streaming = false
+        flushDelta()
       }
       if (event.type === '__process_exit__' || event.type === '__error__') {
         this.turnActive = false
@@ -622,6 +627,27 @@ export class OmpRpcAgentImpl implements AgentInterface {
       if (event.kind === 'done' || event.kind === 'error') isDone = true
       resolveWait?.()
       resolveWait = null
+    }
+
+    // LLM 流式增量缓冲:50ms 批量合并为一帧 delta(防高频 text_delta 洪泛 WS)
+    let deltaBuf = ''
+    let deltaTimer: ReturnType<typeof setTimeout> | null = null
+    const flushDelta = (): void => {
+      if (deltaTimer) {
+        clearTimeout(deltaTimer)
+        deltaTimer = null
+      }
+      if (!deltaBuf) return
+      const text = deltaBuf
+      deltaBuf = ''
+      enqueue({ kind: 'delta', delta: { text } })
+    }
+    const enqueueDelta = (text: string): void => {
+      deltaBuf += text
+      deltaTimer ??= setTimeout(() => {
+        deltaTimer = null
+        flushDelta()
+      }, 50)
     }
 
     // 订阅 omp 事件流

@@ -388,6 +388,8 @@ export class AgentRuntime {
       }
       for await (const event of this.impl.run(request, ctx)) {
         this.deps.bus.emit(event, enrichedSource)
+        // LLM 流式增量:只走事件流(AEP agent.delta),不进任务引擎/交付兜底管道
+        if (event.kind === 'delta') continue
         if (taskId) await this.deps.taskEngine.applyEvent(taskId, event)
         if (event.kind === 'message') cap(partsToText(event.message.parts))
         else if (event.kind === 'status' && event.status.message) cap(partsToText(event.status.message.parts))

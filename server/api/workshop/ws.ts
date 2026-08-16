@@ -69,10 +69,10 @@ function resolveChannelIdFromUrl(peer: WsPeer): string | undefined {
   return url.searchParams.get('channelId') ?? url.searchParams.get('channel_id') ?? undefined
 }
 
-/** 安全发送控制帧(error/pong;死连接静默丢弃) */
+/** 安全发送控制帧(error/pong/snapshot;死连接静默丢弃) */
 function sendControl(peer: WsPeer, obj: unknown): void {
   try {
-    sendControl(peer, obj)
+    peer.send(JSON.stringify(obj))
   }
   catch { /* 死连接 */ }
 }
@@ -154,6 +154,9 @@ function mapAgentEvent(stream: ChannelStream, event: AgentEvent, source: A2AMess
   switch (event.kind) {
     case 'message':
       publish(stream, 'agent.message', event.message, { agentId, taskId: event.message.taskId ?? taskId })
+      break
+    case 'delta':
+      publish(stream, 'agent.delta', { delta: event.delta.text }, { agentId, taskId })
       break
     case 'status':
       if (event.status.message) {
