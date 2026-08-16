@@ -35,7 +35,7 @@ import type { ChannelBus, TaskEngine } from './agent-runtime'
 import { ChannelRuntime } from './channel-runtime'
 import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
-import { AgentMemory, envNum, runMemoryMaintenance, segmentCJK, vectorizeMemory, type MaintenanceResult } from './memory'
+import { AgentMemory, envNum, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeMemory, type MaintenanceResult, type MemorySnippet } from './memory'
 import { createEnvEmbeddingProvider } from './embedding-provider'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 
@@ -246,6 +246,8 @@ export class AgentChannelManager {
   }
 
   subscribeAgentStatus(channelId: string, fn: (e: Parameters<ChannelBus['notifyAgent']>[0]) => void): () => void {
+    // 先确保 bus 存在:channel 尚未激活时订阅会被静默丢弃(monitor 先订阅后提交任务的场景)
+    this.ensureChannelRuntime(channelId)
     const bus = this.buses.get(channelId)
     if (!bus) return () => {}
     bus.onAgentStatus(fn)
@@ -253,10 +255,12 @@ export class AgentChannelManager {
   }
 
   subscribeChannelEvents(channelId: string, fn: (event: AgentEvent, source: A2AMessage) => void): () => void {
+    this.ensureChannelRuntime(channelId)
     return this.buses.get(channelId)?.onEvent(fn) ?? (() => {})
   }
 
   subscribeTaskEvents(channelId: string, fn: (e: { taskId: string, state?: TaskState, progress?: number, agentId?: string }) => void): () => void {
+    this.ensureChannelRuntime(channelId)
     const bus = this.buses.get(channelId)
     if (!bus) return () => {}
     bus.onTaskEvent(fn)
@@ -276,12 +280,12 @@ export class AgentChannelManager {
     const cr = this.ensureChannelRuntime(m.channelId)
     const bus = this.buses.get(m.channelId)!
     const mailbox = new Mailbox(this.deps.repos.messages, m.channelId, agent.id, () => cr.wakeScheduler())
-    const workspace = this.buildWorkspace(agent)
+    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, embedder: this.memoryEmbedder ?? undefined })
+    const workspace = this.buildWorkspace(agent, memory)
     const chWorkspace = this.channelWorkspace(m.channelId)
     const agentWithCwd: AgentInfo = chWorkspace.length > 0
       ? { ...agent, config: { cwd: chWorkspace, ...agent.config } }
       : agent
-    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, embedder: this.memoryEmbedder ?? undefined })
     const runtime = new AgentRuntime(agent, this.deps.implFactory(agentWithCwd), {
       mailbox,
       taskEngine: this.getTaskEngine(),
@@ -424,7 +428,7 @@ export class AgentChannelManager {
   }
 
   /** Agent 自主作业能力面(绑定本实例身份与 channel,委托 manager 作业方法) */
-  private buildWorkspace(agent: AgentInfo): AgentWorkspace {
+  private buildWorkspace(agent: AgentInfo, memory: AgentMemory): AgentWorkspace {
     const channelId = agent.channelId
     return {
       listAgents: () => this.listChannelAgents(channelId),
@@ -441,6 +445,15 @@ export class AgentChannelManager {
       sendMessage: input => this.sendA2A(channelId, agent.id, input),
       pollMailbox: limit => this.pollMailbox(channelId, agent.id, limit),
       subscribe: input => this.subscribe(channelId, agent.id, input),
+      // 记忆按需抓取/主动沉淀(成员校验 + 委托本实例 AgentMemory;shared 写入即 Channel 公共域)
+      recallMemory: async (input) => {
+        this.requireMember(channelId, agent.id)
+        return memory.recallRows(input.query, { scope: input.scope, limit: input.limit })
+      },
+      saveMemory: async (input) => {
+        this.requireMember(channelId, agent.id)
+        return memory.save(input)
+      },
     }
   }
 
@@ -547,6 +560,8 @@ export class AgentChannelManager {
       this.channels.delete(channelId)
       this.buses.delete(channelId)
     }
+    // 记忆级联清理:成员私有行 + team 公共行(防残留行污染他 channel 的 FTS/team 检索域)
+    this.deps.repos.memories.deleteByChannel(channelId)
     this.deps.repos.channels.remove(channelId)
   }
 
@@ -638,19 +653,40 @@ export class AgentChannelManager {
     return this.deps.repos.channelAgents.listByChannel(channelId).map(instanceToAgentInfo)
   }
 
-  /** Agent 记忆列表(私有观察面):实例须存在于本 channel */
+  /** Agent 记忆列表(私有观察面;content 还原为未切分原文,客户端可读):实例须存在于本 channel */
   listMemories(channelId: string, agentId: string, limit = 50): MemoryRow[] {
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
     if (!m) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${agentId}`)
     return this.deps.repos.memories.listByAgent(agentId, limit)
+      .map(r => ({ ...r, content: unsegmentCJK(r.content) }))
+  }
+
+  /**
+   * 记忆混合检索(REST/客户端观察面;与 agent 运行时 search_memory 工具同源算法):
+   * 以 targetAgent 视角召回(私有域 + 本 channel 公共域),scope 过滤同 recallRows。
+   * caller 须为本 channel 成员;返回结构化片段(综合分排序,content 未切分原文)。
+   */
+  async searchAgentMemories(
+    channelId: string,
+    callerAgentId: string,
+    targetAgentId: string,
+    input: { query: string, scope?: 'auto' | 'private' | 'shared', limit?: number },
+  ): Promise<MemorySnippet[]> {
+    this.requireMember(channelId, callerAgentId)
+    if (!this.deps.repos.channelAgents.findByChannelAgent(channelId, targetAgentId)) {
+      throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${targetAgentId}`)
+    }
+    const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: targetAgentId, embedder: this.memoryEmbedder ?? undefined })
+    return mem.recallRows(input.query, { scope: input.scope, limit: input.limit })
   }
 
   // ===== 团队共享记忆域(agent_id='__team__' 哨兵;lead 策展,channel 内全员 recall 可见)=====
 
-  /** 团队共享记忆列表(channel 级;任意本 channel 成员可读) */
+  /** 团队共享记忆列表(channel 级;任意本 channel 成员可读;content 还原为未切分原文) */
   listTeamMemories(channelId: string, limit = 50): MemoryRow[] {
     if (!this.deps.repos.channels.findById(channelId)) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
     return this.deps.repos.memories.listByAgentChannel(channelId, TEAM_AGENT_ID, limit)
+      .map(r => ({ ...r, content: unsegmentCJK(r.content) }))
   }
 
   /** 写/更新团队记忆(仅 lead;稳定 dedupKey 幂等刷新;成功后 fire-and-forget 向量化) */
@@ -690,10 +726,24 @@ export class AgentChannelManager {
 
   // ===== Agent 私有记忆策展(本人或 lead 写/删;kind='semantic' 人工策展)=====
 
-  /** 写/更新 Agent 私有记忆(caller 须为本人或 lead;稳定 dedupKey 幂等刷新) */
-  addAgentMemory(channelId: string, callerAgentId: string, targetAgentId: string, input: { title: string, content: string, importance?: number, dedupKey?: string }): void {
+  /** 写/更新 Agent 私有记忆(caller 须为本人或 lead;稳定 dedupKey 幂等刷新)。
+   *  scope='shared'(caller 任意成员)→ 落 Channel 公共域(agent:<caller>:<key> 命名空间,全员可检索)。 */
+  addAgentMemory(channelId: string, callerAgentId: string, targetAgentId: string, input: { title: string, content: string, importance?: number, dedupKey?: string, scope?: 'private' | 'shared' }): void {
     const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
-    if (!caller || (callerAgentId !== targetAgentId && caller.role !== 'lead')) {
+    if (!caller) throw new AppError(403, 'SCOPE_VIOLATION', '调用方 Agent 不在本 channel')
+    if (input.scope === 'shared') {
+      // 共享域:走 AgentMemory.save 同源路径(命名空间 dedup + 自动向量化)
+      const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: callerAgentId, embedder: this.memoryEmbedder ?? undefined })
+      void mem.save({
+        title: input.title,
+        content: input.content,
+        importance: input.importance,
+        scope: 'shared',
+        dedupKey: input.dedupKey,
+      }).catch(() => {})
+      return
+    }
+    if (callerAgentId !== targetAgentId && caller.role !== 'lead') {
       throw new AppError(403, 'SCOPE_VIOLATION', '仅本人或 lead 可策展 Agent 记忆')
     }
     if (!this.deps.repos.channelAgents.findByChannelAgent(channelId, targetAgentId)) {

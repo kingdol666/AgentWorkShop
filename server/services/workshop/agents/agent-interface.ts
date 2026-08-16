@@ -59,6 +59,25 @@ export interface AgentWorkspace {
   sendMessage(input: { toAgentId: string, parts: Part[], metadata?: Record<string, unknown> }): Promise<A2AMessage>
   /** 拉取自己 mailbox 未消费消息 */
   pollMailbox(limit?: number): Promise<A2AMessage[]>
+  /**
+   * 记忆按需抓取(search_memory 工具桥):混合检索(FTS+向量)本人私有域 + Channel 公共域。
+   * scope: auto=私有+公共(默认) / private / shared;返回结构化片段(综合分排序)。
+   */
+  recallMemory(input: { query: string, scope?: 'auto' | 'private' | 'shared', limit?: number }): Promise<Array<{
+    id: string
+    kind: string
+    title: string
+    content: string
+    importance: number
+    createdAt: string
+    score: number
+    source: 'private' | 'shared'
+  }>>
+  /**
+   * 记忆主动沉淀(save_memory 工具桥):Agent 作业中总结的可复用经验/结论。
+   * scope='private' → 本人记忆库;scope='shared' → Channel 公共记忆域(全员可检索)。
+   */
+  saveMemory(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string }): Promise<{ scope: 'private' | 'shared', dedupKey: string }>
   /** 订阅同事产出 */
   subscribe(input: { agentIds?: string[] }): Promise<void>
 }

@@ -225,6 +225,36 @@ export const HOST_TOOLS: RpcHostToolDefinition[] = [
       required: ['task_id'],
     },
   },
+  {
+    name: 'search_memory',
+    label: 'Search Memory',
+    description: 'Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel\'s shared team memories). Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints mention something you need details on. Pass a focused query describing what you want to remember.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'What you want to recall, e.g. "数据库连接池配置结论" or "previous deployment checklist"' },
+        scope: { type: 'string', enum: ['auto', 'private', 'shared'], description: 'Which memory domain to search: "auto" = your private + channel shared (default), "private" = only your own, "shared" = only channel-wide shared memories' },
+        limit: { type: 'number', description: 'Max results (default 5, max 20)' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'save_memory',
+    label: 'Save Memory',
+    description: 'Persist a distilled, reusable insight into memory for future tasks. scope="private" saves to YOUR personal memory (only you recall it); scope="shared" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating.',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Short topic title, e.g. "API 网关限流方案结论"' },
+        content: { type: 'string', description: 'The distilled reusable knowledge/conclusion (plain text)' },
+        importance: { type: 'number', description: '0-1 importance (default 0.7 private / 0.85 shared)' },
+        scope: { type: 'string', enum: ['private', 'shared'], description: '"private" = your memory only; "shared" = channel-wide shared memory for all teammates' },
+        dedup_key: { type: 'string', description: 'Stable key for idempotent update (same key overwrites instead of duplicating)' },
+      },
+      required: ['title', 'content', 'scope'],
+    },
+  },
 ]
 
 // ===== 辅助函数 =====
@@ -765,8 +795,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
       `2. Call report_progress whenever you make meaningful progress.`,
       `3. Call complete_task when you are done, providing a summary and deliverable of your work.`,
       `4. You may call list_team_agents to see your teammates, and send_message_to_agent to communicate.`,
-      `5. Realtime messages from teammates may arrive mid-task (marked "[实时消息 from ...]"). If one carries the reply trigger (系统触发器), handle the request and reply via send_message_to_agent with in_reply_to=<its message_id>; your reply message should contain the execution result and the content they asked for, with require_reply set only if you need further response.`,
-      `6. Stay focused on the task. Be concise and effective.`,
+      `5. Memory: the "相关记忆" block above is only a small auto-recalled primer. Whenever you need prior context (past task conclusions, team conventions, channel-wide knowledge), call search_memory with a focused query — it searches both your private memory and the channel's shared memory. When you discover a reusable insight or a conclusion teammates would benefit from, call save_memory: scope="private" for personal notes, scope="shared" to publish it to the channel's shared memory for everyone.`,
+      `6. Realtime messages from teammates may arrive mid-task (marked "[实时消息 from ...]"). If one carries the reply trigger (系统触发器), handle the request and reply via send_message_to_agent with in_reply_to=<its message_id>; your reply message should contain the execution result and the content they asked for, with require_reply set only if you need further response.`,
+      `7. Stay focused on the task. Be concise and effective.`,
       ``,
       `Begin working on the task now.`,
     )
@@ -833,6 +864,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
         `- If all children of a parent task are COMPLETED: call complete_task for the parent with a summary.`,
         `- Rebalance when needed: use reassign_task to move a pending task from a loaded worker to an idle one, update_task to revise a pending task, cancel_task to remove obsolete work. Use get_queue_overview for the live picture.`,
         `- Use list_team_agents and list_channel_tasks to get current IDs if needed.`,
+        `- Memory: search_memory retrieves prior task outcomes and channel shared knowledge (e.g. why a previous dispatch failed, worker strengths observed before) — consult it when scheduling recurring or previously-failed work. Distill durable scheduling/team insights via save_memory (scope="shared" publishes to all teammates).`,
       )
     }
 
@@ -1125,6 +1157,34 @@ export class OmpRpcAgentImpl implements AgentInterface {
           return {
             text: `任务 ${task.id}\n  状态: ${task.state}\n  标题: ${task.title}\n  描述: ${task.description ?? '-'}\n  指派: ${task.assigneeId}\n  进度: ${task.progress}%\n  成果:\n${artifactText || '  (无)'}`,
           }
+        }
+
+        case 'search_memory': {
+          const query = req.arguments.query as string
+          const scope = (req.arguments.scope as 'auto' | 'private' | 'shared' | undefined) ?? 'auto'
+          const snippets = await ws.recallMemory({ query, scope, limit: req.arguments.limit as number | undefined })
+          if (snippets.length === 0) {
+            return { text: `记忆检索无命中(query="${query}", scope=${scope})。可尝试更换关键词或放宽 scope。` }
+          }
+          const lines = snippets.map(s =>
+            `  [${s.source}·${s.kind}·score=${s.score}] ${s.title}\n    ${s.content}`,
+          )
+          return { text: `记忆检索结果(${snippets.length} 条, scope=${scope}):\n${lines.join('\n')}` }
+        }
+
+        case 'save_memory': {
+          const title = req.arguments.title as string
+          const content = req.arguments.content as string
+          const scope = req.arguments.scope as 'private' | 'shared'
+          const saved = await ws.saveMemory({
+            title,
+            content,
+            importance: req.arguments.importance as number | undefined,
+            scope,
+            dedupKey: req.arguments.dedup_key as string | undefined,
+          })
+          const where = scope === 'shared' ? 'Channel 公共记忆(全员可检索)' : '本人私有记忆'
+          return { text: `已沉淀到${where}: "${title}"(dedupKey=${saved.dedupKey})` }
         }
 
         default:

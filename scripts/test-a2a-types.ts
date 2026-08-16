@@ -242,6 +242,8 @@ async function testAgentInterface(): Promise<void> {
     sendMessage: async () => { throw new Error('not implemented') },
     pollMailbox: async () => [],
     subscribe: async () => {},
+    recallMemory: async () => [],
+    saveMemory: async () => { throw new Error('not implemented') },
   }
   const ctx: AgentRunContext = { agentId: 'agent-a', channelId: 'ch-1', role: 'worker', workspace, signal: new AbortController().signal }
 

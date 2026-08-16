@@ -1,7 +1,8 @@
 /**
- * POST /api/workshop/channels/:id/agents/:agentId/memories —— 写/更新 Agent 私有记忆(agent 本人或 lead 策展)。
+ * POST /api/workshop/channels/:id/agents/:agentId/memories —— 写/更新 Agent 记忆(agent 本人或 lead 策展)。
  * - 需要 Bearer token;caller 须为本 channel 成员(跨 channel → 403 SCOPE_VIOLATION)
- * - 仅本人或 lead 可写(manager 校验 → 403 SCOPE_VIOLATION);稳定 dedupKey 幂等刷新
+ * - 仅本人或 lead 可写私有域(manager 校验 → 403 SCOPE_VIOLATION);稳定 dedupKey 幂等刷新
+ * - scope='shared'(可选):落 Channel 公共记忆域(agent:<caller>:<key> 命名空间,全员可检索)
  */
 import { z } from 'zod'
 import { getRouterParam, readValidatedBody } from 'h3'
@@ -16,6 +17,7 @@ const agentMemorySchema = z.object({
   content: z.string().min(1, 'content 必填'),
   importance: z.number().min(0).max(1).optional(),
   dedupKey: z.string().optional(),
+  scope: z.enum(['private', 'shared']).optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -29,6 +31,7 @@ export default defineApiHandler(async (event) => {
     content: body.content,
     importance: body.importance,
     dedupKey: body.dedupKey,
+    scope: body.scope,
   })
-  return { ok: true, agentId }
+  return { ok: true, agentId, scope: body.scope ?? 'private' }
 })

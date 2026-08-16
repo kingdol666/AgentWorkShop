@@ -288,6 +288,15 @@ export class AgentRuntime {
     return this.impl.supervise(snapshot, ctx)
   }
 
+  /**
+   * 平台侧任务记忆沉淀(调度器直接执行决策的收口路径):
+   * lead 经 supervise 决策 complete/cancel 任务时不经过 processMessage,
+   * 由 SchedulerLoop 调用此方法补齐终态 harvest(与 worker 路径同源)。
+   */
+  async recordTaskMemory(task: WorkspaceTask): Promise<void> {
+    await this.deps.memory?.recordTaskOutcome(task)
+  }
+
   /** run/supervise 互斥执行(promise 链;供消费循环与 SchedulerLoop 串行化) */
   withExecLock<T>(fn: () => Promise<T>): Promise<T> {
     const prev = this.execLock

@@ -50,7 +50,11 @@
 
 **兜底召回**:FTS+vec 之外并取该 agent 最近 5 条(rel=0.15),冷启动也有上下文;按 id 去重。
 
-**token 预算**:默认 800(`AW_MEMORY_BUDGET_TOKENS`);`estimateTokens = ceil(ascii/4) + cjk`;贪心整行取舍不截半句;命中行 touch()。
+**token 预算(记忆引子 primer)**:默认 300(`AW_MEMORY_PRIMER_TOKENS`;`budgetTokens` 构造参数覆盖,`AW_MEMORY_BUDGET_TOKENS` 保留兼容旧 env 引用);`estimateTokens = ceil(ascii/4) + cjk`;贪心整行取舍不截半句;命中行 touch()。
+
+**动态按需抓取(2026-08-16 增补)**:静态注入降级为小预算"引子"(少量高相关/最近摘要 + `search_memory` 工具提示行);完整内容由 Agent 运行时经 omp host tool `search_memory` 按需混合检索(`recallRows`:FTS+向量、scope=auto/private/shared、limit≤20、返回未切分原文的结构化片段并 touch)。Agent 可经 `save_memory` 主动沉淀:`scope=private` 落本人 semantic 域,`scope=shared` 落 Channel 公共域(dedupKey 按 `agent:<来源>:<rawKey>` 命名空间隔离,多 Agent 同 key 互不覆盖,写入即全员可检索),写入后自动向量化。工作台契约见 `AgentWorkspace.recallMemory/saveMemory`(agent-interface.ts)。
+
+**REST 观察面(2026-08-16 增补)**:`POST /channels/:id/agents/:agentId/memories/search`(query/scope/limit;与 search_memory 同源算法,caller 须本 channel 成员);`POST .../memories` 支持 `scope=shared` 落公共域;`GET .../memories` 与 `GET /channels/:id/memories` 的 content 返回未切分原文。lead 经调度器决策 complete 的任务由 SchedulerLoop 调 `AgentRuntime.recordTaskMemory` 补齐终态 harvest(调度路径不经过 processMessage);channel 删除级联清理记忆(`MemoryRepo.deleteByChannel`)。
 
 **注入格式**:
 ```

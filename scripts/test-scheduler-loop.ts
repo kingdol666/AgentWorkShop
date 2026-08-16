@@ -136,6 +136,8 @@ function buildWorkspace(agent: AgentInfo, deps: WorkspaceDeps): AgentWorkspace {
     pollMailbox: async (limit = 100) =>
       messages.listPendingByChannelAgent(agent.channelId, agent.id).slice(0, limit).map(rowToMessage),
     subscribe: async () => {},
+    recallMemory: async () => [],
+    saveMemory: async () => { throw new Error('unused') },
   }
 }
 

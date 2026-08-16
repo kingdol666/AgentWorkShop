@@ -2,9 +2,13 @@
  * AgentMemory — AgentRuntime 的持久记忆模块(harness 无关)。
  * MemGPT 分层(长期记忆落库+预算召回)/ Mem0 harvest(complete_task 自产摘要零 LLM 成本)/
  * agent-memory 排序装配(0.5×相关性+0.3×时近性+0.2×重要性,贪心预算)。
- * P1 注入 embedder 后 recall 升级混合检索;P0 纯 FTS。全部方法 async(async 签名 P0 定型)。
+ * 动态感知(2026-08-16):静态注入降级为小预算"引子"(recall;AW_MEMORY_PRIMER_TOKENS 默认 300),
+ * 完整内容由 Agent 运行时经 search_memory 工具按需抓取(recallRows:scope 过滤+原文还原);
+ * Agent 经 save_memory 主动沉淀并自动分流私有域/Channel 公共域(save)。
+ * P1 注入 embedder 后 recall/recallRows 升级混合检索;P0 纯 FTS。全部方法 async(async 签名 P0 定型)。
  */
 import { type MemoryRepo, TEAM_AGENT_ID } from '../db/memory.repo'
+import { randomUUID } from 'node:crypto'
 import type { MemoryRow } from '../db/database'
 import type { WorkspaceTask } from '../types/task'
 import type { A2AMessage, Part } from '../types/a2a'
@@ -28,6 +32,7 @@ export function envNum(name: string, fallback: number): number {
 export interface AgentMemoryOptions {
   channelId: string
   agentId: string
+  /** 记忆引子(静态注入)预算覆盖;默认 AW_MEMORY_PRIMER_TOKENS(300)。完整内容经 search_memory 工具按需抓取 */
   budgetTokens?: number
   /** 注入后 recall 混合检索 + record* 自动向量化;未注入纯 FTS */
   embedder?: EmbeddingProvider
@@ -36,6 +41,25 @@ export interface AgentMemoryOptions {
 export interface RecallOptions {
   /** 默认 true;supervise 每 tick 调用应传 false 防 access_count 通胀 */
   touch?: boolean
+  /** 本次召回预算覆盖(默认 AW_MEMORY_BUDGET_TOKENS) */
+  budgetTokens?: number
+  /** 检索域:auto=私有+公共(默认) / private=仅私有 / shared=仅 Channel 公共 */
+  scope?: MemoryScope
+}
+
+export type MemoryScope = 'auto' | 'private' | 'shared'
+
+/** 结构化记忆片段(工具按需抓取的返回体;content 已还原为未切分原文) */
+export interface MemorySnippet {
+  id: string
+  kind: string
+  title: string
+  content: string
+  importance: number
+  createdAt: string
+  /** 综合得分(0.5×相关性+0.3×时近性+0.2×重要性) */
+  score: number
+  source: 'private' | 'shared'
 }
 
 export function segmentCJK(text: string): string {
@@ -57,6 +81,19 @@ export function buildMatchQuery(text: string): string | null {
 export function estimateTokens(text: string): number {
   const cjk = (text.match(/[\u4e00-\u9fff]/g) ?? []).length
   return Math.ceil((text.length - cjk) / 4) + cjk
+}
+
+/** 切分还原(segmentCJK 的逆变换;工具返回/注入展示用可读原文)。
+ *  ascii↔CJK 边界的多空格收敛为单空格(segmentCJK 会给 CJK run 两侧补空格,
+ *  与原文空格叠加成双空格;无法区分原意,统一收敛)。 */
+export function unsegmentCJK(text: string): string {
+  return text
+    .replace(/(?<=[\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])/g, '')
+    .replace(/(?<=[\u4e00-\u9fff])\s+([,.;:!?，。；：！？])/g, '$1')
+    .replace(/([,.;:!?，。；：！？])\s+(?=[\u4e00-\u9fff])/g, '$1')
+    .replace(/([A-Za-z0-9])\s+(?=[\u4e00-\u9fff])/g, '$1 ')
+    .replace(/(?<=[\u4e00-\u9fff])\s+(?=[A-Za-z0-9])/g, ' ')
+    .trim()
 }
 
 function partsText(parts: Part[]): string {
@@ -89,23 +126,36 @@ export class AgentMemory {
     if (dims && !this.repo.vecInit(dims)) this.embedder = null
   }
 
-  /** run/supervise 前:混合检索+排序+预算装配 → 记忆块(null=无记忆不注入) */
-  async recall(query: string, recallOpts: RecallOptions = {}): Promise<string | null> {
-    const doTouch = recallOpts.touch !== false
-    const budget = this.opts.budgetTokens ?? envNum('AW_MEMORY_BUDGET_TOKENS', 800)
-    const hits = new Map<string, { row: MemoryRow, relevance: number }>()
+  /** scope 过滤:private 仅本人行;shared 仅本 channel 的 team 行;auto 双域 */
+  private inScope(row: MemoryRow, scope: MemoryScope): boolean {
+    const isTeam = row.agentId === TEAM_AGENT_ID
+    if (isTeam && row.channelId !== this.opts.channelId) return false
+    return scope === 'auto'
+      ? (isTeam || row.agentId === this.opts.agentId)
+      : scope === 'shared'
+        ? isTeam
+        : row.agentId === this.opts.agentId
+  }
 
+  /** 混合检索原始命中(FTS+向量融合;不排序不 touch) */
+  private async collectHits(query: string, scope: MemoryScope): Promise<Map<string, { row: MemoryRow, relevance: number }>> {
+    const hits = new Map<string, { row: MemoryRow, relevance: number }>()
     const match = buildMatchQuery(query)
     if (match) {
       const found = this.repo.search(this.opts.agentId, match, MAX_TERMS)
       const first = found[0]
       const best = first ? Math.max(-first.bm25, 0.001) : 1
-      found.forEach((row, i) => {
-        // team 行按 channel 隔离(FTS 域恒含 '__team__',须滤掉他 channel 的策展行)
-        if (row.agentId === TEAM_AGENT_ID && row.channelId !== this.opts.channelId) return
+      // 弱命中保留按"过滤后保留数"计数(非原始下标):
+      // 跨 channel 的 team 残留行会占据排序下标,若按下标保留会把本 channel 有效弱命中挤出门外
+      let kept = 0
+      for (const row of found) {
+        if (!this.inScope(row, scope)) continue
         const rel = Math.min(1, -row.bm25 / best)
-        if (rel >= 0.1 || i < WEAK_HIT_KEEP) hits.set(row.id, { row, relevance: rel })
-      })
+        if (rel >= 0.1 || kept < WEAK_HIT_KEEP) {
+          hits.set(row.id, { row, relevance: rel })
+          kept += 1
+        }
+      }
     }
     // 向量分支:查询向量 + 本人/team 双域 kNN,与 FTS 按 id 融合(rel 取 max;失败退化纯 FTS)
     if (this.embedder) {
@@ -113,10 +163,14 @@ export class AgentMemory {
         const [qv] = await this.embedder.embed([query])
         if (qv) {
           this.ensureVec()
-          const vAll = [
-            ...this.repo.vecSearch(this.opts.agentId, qv, 10),
-            ...this.repo.vecSearch(TEAM_AGENT_ID, qv, 5),
-          ]
+          const ownDomains: string[]
+            = scope === 'shared'
+              ? [TEAM_AGENT_ID]
+              : scope === 'private'
+                ? [this.opts.agentId]
+                : [this.opts.agentId, TEAM_AGENT_ID]
+          const vAll = ownDomains.flatMap(d =>
+            this.repo.vecSearch(d, qv, d === TEAM_AGENT_ID ? 5 : 10))
           // rowid → 最小距离(agent/team 分区不相交;防御性取 min)
           const distByRowid = new Map<number, number>()
           for (const { memRowid, distance } of vAll) {
@@ -124,9 +178,8 @@ export class AgentMemory {
             if (prev === undefined || distance < prev) distByRowid.set(memRowid, distance)
           }
           for (const row of this.repo.listByRowids([...distByRowid.keys()])) {
-            // team 行按 channel 隔离(kNN 反查主表后同 FTS 分支口径)
-            if (row.agentId === TEAM_AGENT_ID && row.channelId !== this.opts.channelId) continue
-            // 所有权守卫:仅本人/team 域行可入融合(脏 rowid/rowid 复用反查到他人行一律丢弃)
+            // 所有权守卫 + channel 隔离 + scope 过滤(脏 rowid/rowid 复用反查到他人行一律丢弃)
+            if (!this.inScope(row, scope)) continue
             if (row.agentId !== this.opts.agentId && row.agentId !== TEAM_AGENT_ID) continue
             const sim = Math.min(1, Math.max(0, 1 - (distByRowid.get(row.rowid) ?? 1)))
             const prev = hits.get(row.id)
@@ -136,14 +189,34 @@ export class AgentMemory {
       }
       catch { /* 向量不可用退化为 FTS */ }
     }
-    for (const row of this.repo.listRecent(this.opts.agentId, RECENT_FALLBACK)) {
-      if (!hits.has(row.id)) hits.set(row.id, { row, relevance: 0.15 })
+    // 时近兜底仅对含私有域的 scope 生效(shared 域无"本人最近"语义)
+    if (scope !== 'shared') {
+      for (const row of this.repo.listRecent(this.opts.agentId, RECENT_FALLBACK)) {
+        if (!hits.has(row.id)) hits.set(row.id, { row, relevance: 0.15 })
+      }
     }
-    if (hits.size === 0) return null
+    return hits
+  }
 
-    const scored = [...hits.values()]
+  /** 排序(综合分降序;不含预算/touch 副作用) */
+  private async rank(query: string, scope: MemoryScope): Promise<Array<{ row: MemoryRow, relevance: number, score: number }>> {
+    const hits = await this.collectHits(query, scope)
+    return [...hits.values()]
       .map(h => ({ ...h, score: this.score(h.row, h.relevance) }))
       .sort((a, b) => b.score - a.score)
+  }
+
+  /**
+   * run/supervise 前的"记忆引子"注入:混合检索+排序+小预算装配 → 记忆块。
+   * 默认 AW_MEMORY_PRIMER_TOKENS(300)小预算,只给最相关的少量线索;
+   * 完整内容由 Agent 运行时经 search_memory 工具按需抓取(防全量注入污染上下文)。
+   */
+  async recall(query: string, recallOpts: RecallOptions = {}): Promise<string | null> {
+    const doTouch = recallOpts.touch !== false
+    const budget = recallOpts.budgetTokens ?? this.opts.budgetTokens ?? envNum('AW_MEMORY_PRIMER_TOKENS', 300)
+    const scope = recallOpts.scope ?? 'auto'
+    const scored = await this.rank(query, scope)
+    if (scored.length === 0) return null
 
     const lines: string[] = []
     const touched: string[] = []
@@ -158,13 +231,66 @@ export class AgentMemory {
     }
     if (lines.length === 0) return null
     for (const id of touched) this.repo.touch(id)
-    return [`## 相关记忆(本 Agent 历史作业沉淀;与当前任务冲突时,以当前任务为准)`, ...lines].join('\n')
+    return [
+      `## 相关记忆(自动召回的高相关/最近线索摘要;与当前任务冲突时,以当前任务为准)`,
+      ...lines,
+      `以上仅为摘要线索;完整细节与更多历史记忆可用 search_memory 工具按需检索(支持 private/shared 域过滤)。`,
+    ].join('\n')
+  }
+
+  /**
+   * 工具按需抓取(search_memory):结构化片段返回,content 还原为未切分原文。
+   * 触发 touch(access_count 强化后续召回排序);limit 上限防御。
+   */
+  async recallRows(query: string, opts: { scope?: MemoryScope, limit?: number } = {}): Promise<MemorySnippet[]> {
+    const scope = opts.scope ?? 'auto'
+    const limit = Math.min(Math.max(opts.limit ?? 5, 1), 20)
+    const scored = (await this.rank(query, scope)).slice(0, limit)
+    for (const s of scored) this.repo.touch(s.row.id)
+    return scored.map(s => ({
+      id: s.row.id,
+      kind: s.row.kind,
+      title: s.row.title,
+      content: unsegmentCJK(s.row.content).slice(0, 500),
+      importance: s.row.importance,
+      createdAt: s.row.createdAt,
+      score: Math.round(s.score * 1000) / 1000,
+      source: s.row.agentId === TEAM_AGENT_ID ? 'shared' : 'private',
+    }))
+  }
+
+  /**
+   * Agent 主动沉淀(save_memory 工具):把作业过程中的可复用结论/经验写入记忆库。
+   * scope='private' → 本人 semantic 域;scope='shared' → Channel 公共域(全员可检索;
+   * dedupKey 按来源 Agent 命名空间隔离,避免多 Agent 同 key 互相覆盖)。写入后自动向量化。
+   */
+  async save(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string }): Promise<{ scope: 'private' | 'shared', dedupKey: string }> {
+    const shared = input.scope === 'shared'
+    const rawKey = input.dedupKey?.trim() || `agent-save:${randomUUID().slice(0, 8)}`
+    // 共享域命名空间:同 channel 多 agent 各自的沉淀互不覆盖
+    const dedupKey = shared ? `agent:${this.opts.agentId}:${rawKey}` : rawKey
+    const owner = shared ? TEAM_AGENT_ID : this.opts.agentId
+    this.repo.upsert({
+      channelId: this.opts.channelId,
+      agentId: owner,
+      kind: 'semantic',
+      title: input.title,
+      titleFts: segmentCJK(input.title),
+      content: segmentCJK(input.content).slice(0, CONTENT_STORE_LIMIT),
+      importance: input.importance ?? (shared ? 0.85 : 0.7),
+      taskId: null,
+      dedupKey,
+    })
+    await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, owner, dedupKey, input.content)
+    return { scope: input.scope, dedupKey }
   }
 
   /** run 后(任务路径;仅终态调用):harvest TaskEngine 终态 + deliverable */
   async recordTaskOutcome(task: WorkspaceTask): Promise<void> {
-    const deliverable = task.artifacts
-      .filter(a => a.name === 'deliverable' || a.name === 'summary')
+    // 优先 deliverable/summary 命名成果;harness 任意命名(如 mock 的 result)兜底取全部成果
+    const preferred = task.artifacts.filter(a => a.name === 'deliverable' || a.name === 'summary')
+    const source = preferred.length > 0 ? preferred : task.artifacts
+    const deliverable = source
       .flatMap(a => a.parts)
       .map(p => ('text' in p ? p.text : ''))
       .join(' ')
@@ -222,8 +348,9 @@ export class AgentMemory {
       : row.kind === 'episodic-peer'
         ? '协作'
         : '共享'
-    const content = row.content.length > 240 ? `${row.content.slice(0, 240)}…` : row.content
-    return `- [${humanAgo(row.createdAt)}·${tag}] ${row.title}:${content}`
+    const content = unsegmentCJK(row.content)
+    const short = content.length > 240 ? `${content.slice(0, 240)}…` : content
+    return `- [${humanAgo(row.createdAt)}·${tag}] ${row.title}:${short}`
   }
 }
 

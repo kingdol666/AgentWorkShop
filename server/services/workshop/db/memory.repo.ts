@@ -167,6 +167,20 @@ export function createMemoryRepo(db: DatabaseSync) {
       return deleteStmt.run(id).changes > 0
     },
 
+    /** 删除某 channel 全部记忆(channel 级联删除:成员私有行 + team 公共行;vec 残留由维护任务清理);返回删除数 */
+    deleteByChannel(channelId: string): number {
+      const rows = db.prepare(
+        `SELECT rowid FROM agent_memories WHERE channel_id = ?`,
+      ).all(channelId) as Array<{ rowid: number | bigint }>
+      for (const r of rows) {
+        try {
+          vecDeleteStmt?.run(BigInt(r.rowid))
+        }
+        catch { /* vec 未启用 */ }
+      }
+      return db.prepare(`DELETE FROM agent_memories WHERE channel_id = ?`).run(channelId).changes
+    },
+
     /** 有记忆的 agent 清单(维护任务迭代;排除 team) */
     listMemoryAgentIds(): string[] {
       return (agentIdsStmt.all(TEAM_AGENT_ID) as Array<{ agent_id: string }>).map(r => r.agent_id)

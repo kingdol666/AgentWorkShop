@@ -345,6 +345,8 @@ export class SchedulerLoop {
         for (const artifact of decision.artifacts ?? []) {
           this.lead.emitExternal({ kind: 'artifact', artifact }, this.lead.agentId)
         }
+        // lead 终态记忆沉淀:调度器直接收口不经过 processMessage,此处补齐 harvest(异常不阻塞调度)
+        void this.lead.recordTaskMemory(completed).catch(() => {})
         if (completed.parentId) {
           this.lead.taskEngine.onChildCompleted(completed)
           const parent = this.lead.taskEngine.get(completed.parentId)
