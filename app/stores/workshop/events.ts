@@ -3,6 +3,7 @@
  * 全部渲染组件从本 store 派生,不直接持有事件。
  */
 import { defineStore } from 'pinia'
+import { useUserStore } from './user'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 
 const RING_CAP = 2000
@@ -84,6 +85,31 @@ export const useEventsStore = defineStore('workshop.events', {
     },
     setFilter(channelId: string, filter: EventFilter): void {
       this.filters[channelId] = filter
+    },
+    /**
+     * 持久化历史拉取(server 驱动):刷新后从 DB 拉最近事件并填充 ring。
+     * 与 WS 增量无缝衔接:仅接受 seq > 当前游标的帧(快照后游标=hub 最新,
+     * 历史帧 seq ≤ 游标直接按序插入 items 不动游标;WS 后续增量正常追加)。
+     */
+    async loadHistory(channelId: string, limit = 200): Promise<void> {
+      if (typeof window === 'undefined') return
+      try {
+        const res = await $fetch<{ code: number | string, data?: { items: AepEnvelope[] } }>(
+          `/api/workshop/channels/${channelId}/events`,
+          { params: { limit }, headers: { authorization: `Bearer ${useUserStore().token}` } },
+        )
+        if (res.code !== 0 || !res.data?.items?.length) return
+        const ring = this.rings[channelId] ?? { lastSeq: 0, items: [] }
+        // 历史帧按 seq 升序补入(items 头部),不回退游标
+        for (const e of res.data.items) {
+          if (typeof e.seq !== 'number' || e.seq > ring.lastSeq) continue // 增量路径由 ingest 处理
+          if (!ring.items.some(x => x.seq === e.seq)) ring.items.push(e)
+        }
+        ring.items.sort((a, b) => a.seq - b.seq)
+        if (ring.items.length > RING_CAP) ring.items.splice(0, ring.items.length - RING_CAP)
+        this.rings[channelId] = ring
+      }
+      catch { /* 历史拉取失败不阻塞实时流 */ }
     },
     setFocusAgent(channelId: string, agentId: string | null): void {
       this.focusAgents[channelId] = agentId

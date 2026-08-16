@@ -166,6 +166,20 @@ CREATE TABLE IF NOT EXISTS workspaces (
   created_at   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_user_id);
+-- v8:AEP 事件持久化(hub publish 同步落库;时间线历史由 server 驱动,与 client 无关)
+CREATE TABLE IF NOT EXISTS channel_events (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel_id   TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  seq          INTEGER NOT NULL,
+  type         TEXT NOT NULL,
+  at           TEXT NOT NULL,
+  agent_id     TEXT,
+  task_id      TEXT,
+  payload_json TEXT NOT NULL,
+  UNIQUE(channel_id, seq)
+);
+CREATE INDEX IF NOT EXISTS idx_channel_events_channel ON channel_events(channel_id, seq DESC);
+
 CREATE TABLE IF NOT EXISTS workspace_channels (
   workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   channel_id   TEXT NOT NULL,
@@ -195,6 +209,18 @@ export interface UserRow {
   /** 用户管理 token(Bearer;区别于 agent 实例 token) */
   token: string
   createdAt: string
+}
+
+/** channel_events 表行(AEP 事件持久化) */
+export interface ChannelEventRow {
+  id: number
+  channelId: string
+  seq: number
+  type: string
+  at: string
+  agentId: string | null
+  taskId: string | null
+  payloadJson: string
 }
 
 /** workspaces 表行(服务端持久化 Workspace;按 owner 隔离) */

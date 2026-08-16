@@ -10,7 +10,8 @@
  * ⑧ await manager.shutdown() → 干净退出
  * 向量链(hash embedder)已由 test-memory-vector.ts 覆盖;本 E2E 走纯 FTS 路径。
  */
-import { randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
+import { createChannelEventRepo } from '../server/services/workshop/db/channel-event.repo'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -127,8 +128,10 @@ const repos = {
   channelAgents: createChannelAgentRepo(db),
   messages: createMessageRepo(db),
   subscriptions: createSubscriptionRepo(db),
-  tasks: createTaskRepo(db),
+  tasks: createTaskRepo(db),
   memories: createMemoryRepo(db),
+
+  channelEvents: createChannelEventRepo(db),
   teams: createTeamRepo(db),
   teamMembers: createTeamMemberRepo(db),
 }

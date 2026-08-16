@@ -23,6 +23,7 @@ import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { createTaskRepo } from '../server/services/workshop/db/task.repo'
 import { createMemoryRepo } from '../server/services/workshop/db/memory.repo'
+import { createChannelEventRepo } from '../server/services/workshop/db/channel-event.repo'
 import { createTeamRepo } from '../server/services/workshop/db/team.repo'
 import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
 import {
@@ -170,6 +171,8 @@ function setup(): Harness {
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
     memories: createMemoryRepo(db),
+
+    channelEvents: createChannelEventRepo(db),
 
     teams: createTeamRepo(db),
 

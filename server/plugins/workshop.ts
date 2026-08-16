@@ -25,6 +25,7 @@ import { createMessageRepo } from '../services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../services/workshop/db/subscription.repo'
 import { createMemoryRepo } from '../services/workshop/db/memory.repo'
 import { createUserRepo } from '../services/workshop/db/user.repo'
+import { createChannelEventRepo } from '../services/workshop/db/channel-event.repo'
 import { createAgentImpl } from '../services/workshop/agents/factory'
 import {
   createAgentChannelManager,
@@ -83,6 +84,7 @@ export default function workshopPlugin(nitroApp: {
   // 装配 repos + Agent impl 工厂
   const repos: AllRepos = {
     users: createUserRepo(db),
+    channelEvents: createChannelEventRepo(db),
     channels: createChannelRepo(db),
     agents: createAgentRepo(db),
     teams: createTeamRepo(db),

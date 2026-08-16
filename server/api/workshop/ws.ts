@@ -55,7 +55,6 @@ interface ManagerInternals {
   deps: ManagerDeps
   agentIndex: Map<string, AgentRuntime>
   getTaskEngine(): TaskEngine
-  queueOverview(channelId: string, callerAgentId: string): Promise<import('../../services/workshop/types/task').AgentStatusView[]>
 }
 
 function internalsOf(manager: AgentChannelManager): ManagerInternals {
@@ -92,6 +91,7 @@ function sendEnvelope(stream: ChannelStream, peer: WsPeer, e: AepEnvelope): void
 
 /** 发布事件:seq 递增 → 入环形缓冲 → 广播全部 peer(逐 peer 容错,死连接即时清理) */
 function publish(
+  manager: AgentChannelManager,
   stream: ChannelStream,
   type: string,
   payload: unknown,
@@ -109,6 +109,15 @@ function publish(
   }
   stream.ring.push(e)
   if (stream.ring.length > RING_CAP) stream.ring.splice(0, stream.ring.length - RING_CAP)
+  // 持久化(server 驱动;与 client 无关):落库失败仅记日志,不影响实时推送
+  try {
+    internalsOf(manager).deps.repos.channelEvents.insert(stream.channelId, {
+      seq: e.seq, type: e.type, at: e.at, agentId: e.agentId ?? null, taskId: e.taskId ?? null, payload: e.payload,
+    })
+  }
+  catch (err) {
+    console.error('[workshop-ws] 事件落库失败:', err)
+  }
   for (const peer of stream.peers) sendEnvelope(stream, peer, e)
   return e
 }
@@ -149,29 +158,29 @@ function buildSnapshot(manager: AgentChannelManager, channelId: string): Record<
 }
 
 /** AgentEvent 五变体 → AEP 事件 */
-function mapAgentEvent(stream: ChannelStream, event: AgentEvent, source: A2AMessage): void {
+function mapAgentEvent(manager: AgentChannelManager, stream: ChannelStream, event: AgentEvent, source: A2AMessage): void {
   const agentId = (source.metadata?.['x-aw-producing-agent'] as string | undefined)
     ?? (source.metadata?.['x-aw-from-agent'] as string | undefined)
     ?? undefined
   const taskId = source.taskId ?? (source.metadata?.['x-aw-task-id'] as string | undefined) ?? undefined
   switch (event.kind) {
     case 'message':
-      publish(stream, 'agent.message', event.message, { agentId, taskId: event.message.taskId ?? taskId })
+      publish(manager, stream, 'agent.message', event.message, { agentId, taskId: event.message.taskId ?? taskId })
       break
     case 'delta':
-      publish(stream, 'agent.delta', { delta: event.delta.text }, { agentId, taskId })
+      publish(manager, stream, 'agent.delta', { delta: event.delta.text }, { agentId, taskId })
       break
     case 'status':
       if (event.status.message) {
         const text = event.status.message.parts.map(p => ('text' in p ? p.text : '')).join(' ')
-        if (text) publish(stream, 'agent.status.message', { text }, { agentId, taskId })
+        if (text) publish(manager, stream, 'agent.status.message', { text }, { agentId, taskId })
       }
       break
     case 'artifact':
-      publish(stream, 'a2a.artifact', { taskId, artifact: event.artifact }, { agentId, taskId })
+      publish(manager, stream, 'a2a.artifact', { taskId, artifact: event.artifact }, { agentId, taskId })
       break
     case 'error':
-      publish(stream, 'error', { code: event.error.code, message: event.error.message }, { agentId, taskId })
+      publish(manager, stream, 'error', { code: event.error.code, message: event.error.message }, { agentId, taskId })
       break
     case 'done':
       // 终态由 notifyAgent/notifyTask 驱动,done 不单独成帧
@@ -190,24 +199,24 @@ function ensureStream(manager: AgentChannelManager, channelId: string): ChannelS
   stream.unsubs.push(manager.subscribeTaskEvents(channelId, (e) => {
     if (e.state !== undefined) {
       const assigneeId = internalsOf(manager).getTaskEngine().get(e.taskId)?.assigneeId
-      publish(stream, 'task.status', { taskId: e.taskId, state: e.state, assigneeId, agentId: e.agentId }, { taskId: e.taskId, agentId: e.agentId ?? assigneeId })
+      publish(manager, stream, 'task.status', { taskId: e.taskId, state: e.state, assigneeId, agentId: e.agentId }, { taskId: e.taskId, agentId: e.agentId ?? assigneeId })
     }
     if (e.progress !== undefined) {
-      publish(stream, 'task.progress', { taskId: e.taskId, progress: e.progress, agentId: e.agentId }, { taskId: e.taskId })
+      publish(manager, stream, 'task.progress', { taskId: e.taskId, progress: e.progress, agentId: e.agentId }, { taskId: e.taskId })
     }
   }))
   // 成员状态(idle/busy + 队列上下文)
-  stream.unsubs.push(manager.subscribeAgentStatus(channelId, e => publish(stream, 'agent.status', e, { agentId: e.agentId })))
+  stream.unsubs.push(manager.subscribeAgentStatus(channelId, e => publish(manager, stream, 'agent.status', e, { agentId: e.agentId })))
   // harness 事件流(message/artifact/status.message/error)
-  stream.unsubs.push(manager.subscribeChannelEvents(channelId, (event, source) => mapAgentEvent(stream, event, source)))
+  stream.unsubs.push(manager.subscribeChannelEvents(channelId, (event, source) => mapAgentEvent(manager, stream, event, source)))
   // 消息投递(route 汇流点)
   stream.unsubs.push(manager.subscribeChannelMessages(channelId, (message) => {
     const agentId = (message.metadata?.['x-aw-from-agent'] as string | undefined)
       ?? (message.metadata?.['x-aw-target-agent'] as string | undefined)
-    publish(stream, 'a2a.message', message, { agentId, taskId: message.taskId ?? undefined })
+    publish(manager, stream, 'a2a.message', message, { agentId, taskId: message.taskId ?? undefined })
   }))
   // 记忆写入
-  stream.unsubs.push(manager.subscribeMemoryEvents(channelId, e => publish(stream, 'memory.saved', e, { agentId: e.agentId })))
+  stream.unsubs.push(manager.subscribeMemoryEvents(channelId, e => publish(manager, stream, 'memory.saved', e, { agentId: e.agentId })))
   streams.set(channelId, stream)
   return stream
 }

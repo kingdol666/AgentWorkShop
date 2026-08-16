@@ -25,6 +25,8 @@ export function useWorkshopWs() {
         entities.applyEvent(e)
         if (e.type === 'channel.snapshot') {
           entities.applySnapshot(e.payload as AepSnapshot)
+          // 持久化历史(server 驱动):快照后从 DB 拉历史填充时间线
+          void events.loadHistory(e.channelId)
         }
         if (typeof e.seq === 'number' && e.seq > 0 && e.channelId) {
           conn.cursors[e.channelId] = e.seq

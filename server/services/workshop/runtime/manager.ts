@@ -39,10 +39,12 @@ import { AgentMemory, envNum, runMemoryMaintenance, segmentCJK, unsegmentCJK, ve
 import { createEnvEmbeddingProvider } from './embedding-provider'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 import type { UserRepo } from '../db/user.repo'
+import type { ChannelEventRepo } from '../db/channel-event.repo'
 
 /** 全部仓储(依赖注入) */
 export interface AllRepos {
   users: UserRepo
+  channelEvents: ChannelEventRepo
   channels: ChannelRepo
   agents: AgentRepo
   teams: TeamRepo
