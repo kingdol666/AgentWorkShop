@@ -195,6 +195,8 @@ export class AgentChannelManager {
     const eventListeners = new Set<(event: AgentEvent, source: A2AMessage) => void>()
     const taskListeners = new Set<(e: { taskId: string, state?: TaskState, progress?: number }) => void>()
     const agentListeners = new Set<(e: { agentId: string, state: 'idle' | 'busy' | 'stopped' }) => void>()
+    const messageListeners = new Set<(message: A2AMessage) => void>()
+    const memoryListeners = new Set<(e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }) => void>()
     return {
       emit: (event, source) => {
         for (const fn of eventListeners) {
@@ -239,6 +241,34 @@ export class AgentChannelManager {
         agentListeners.add(fn)
         return () => agentListeners.delete(fn)
       },
+      notifyMessage: (message) => {
+        for (const fn of messageListeners) {
+          try {
+            fn(message)
+          }
+          catch (err) {
+            console.error('[ChannelBus] message listener error:', err)
+          }
+        }
+      },
+      onMessage: (fn) => {
+        messageListeners.add(fn)
+        return () => messageListeners.delete(fn)
+      },
+      notifyMemory: (e) => {
+        for (const fn of memoryListeners) {
+          try {
+            fn(e)
+          }
+          catch (err) {
+            console.error('[ChannelBus] memory listener error:', err)
+          }
+        }
+      },
+      onMemoryEvent: (fn) => {
+        memoryListeners.add(fn)
+        return () => memoryListeners.delete(fn)
+      },
       wakeScheduler: () => {
         cr.wakeScheduler()
       },
@@ -265,6 +295,18 @@ export class AgentChannelManager {
     if (!bus) return () => {}
     bus.onTaskEvent(fn)
     return () => {}
+  }
+
+  /** 订阅 channel 内消息投递(AEP a2a.message 事件源;route 汇流点触发) */
+  subscribeChannelMessages(channelId: string, fn: (message: A2AMessage) => void): () => void {
+    this.ensureChannelRuntime(channelId)
+    return this.buses.get(channelId)?.onMessage(fn) ?? (() => {})
+  }
+
+  /** 订阅 channel 内记忆写入(AEP memory.saved 事件源) */
+  subscribeMemoryEvents(channelId: string, fn: (e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }) => void): () => void {
+    this.ensureChannelRuntime(channelId)
+    return this.buses.get(channelId)?.onMemoryEvent(fn) ?? (() => {})
   }
 
   private notifyTask(
@@ -452,7 +494,9 @@ export class AgentChannelManager {
       },
       saveMemory: async (input) => {
         this.requireMember(channelId, agent.id)
-        return memory.save(input)
+        const saved = await memory.save(input)
+        this.buses.get(channelId)?.notifyMemory({ agentId: agent.id, scope: input.scope, title: input.title, dedupKey: saved.dedupKey })
+        return saved
       },
     }
   }
@@ -707,6 +751,7 @@ export class AgentChannelManager {
     })
     // 策展行同样入向量域(未切分原文;provider 未配置/失败 → 静默留 FTS)
     void vectorizeMemory(this.deps.repos.memories, this.memoryEmbedder, channelId, TEAM_AGENT_ID, dedupKey, input.content).catch(() => {})
+    this.buses.get(channelId)?.notifyMemory({ agentId: callerAgentId, scope: 'shared', title: input.title, dedupKey })
     return this.listTeamMemories(channelId)
   }
 
@@ -740,7 +785,7 @@ export class AgentChannelManager {
         importance: input.importance,
         scope: 'shared',
         dedupKey: input.dedupKey,
-      }).catch(() => {})
+      }).then(saved => this.buses.get(channelId)?.notifyMemory({ agentId: callerAgentId, scope: 'shared', title: input.title, dedupKey: saved.dedupKey })).catch(() => {})
       return
     }
     if (callerAgentId !== targetAgentId && caller.role !== 'lead') {
@@ -763,6 +808,7 @@ export class AgentChannelManager {
     })
     // 策展行同样入向量域(未切分原文;provider 未配置/失败 → 静默留 FTS)
     void vectorizeMemory(this.deps.repos.memories, this.memoryEmbedder, channelId, targetAgentId, dedupKey, input.content).catch(() => {})
+    this.buses.get(channelId)?.notifyMemory({ agentId: targetAgentId, scope: 'private', title: input.title, dedupKey })
   }
 
   /** 删 Agent 私有记忆(caller 须为本人或 lead;行须属该 agent) */
@@ -1260,6 +1306,8 @@ export class AgentChannelManager {
 
   private route(channelId: string, message: A2AMessage): void {
     this.ensureChannelRuntime(channelId).route(message)
+    // 消息投递通知(AEP a2a.message;route 是 sendA2A/assign/inject 的统一汇流点)
+    this.buses.get(channelId)?.notifyMessage(message)
   }
 
   private wakeAgent(channelId: string, agentId: string): void {

@@ -1,0 +1,56 @@
+/**
+ * Workshop WS 会话 hook:绑定 WorkshopWsSession ↔ stores。
+ * ingest 派发:events.ingest + entities.applyEvent + connection 游标;
+ * 订阅引用计数(多组件安全挂载/卸载),30s 心跳。
+ */
+import { onBeforeUnmount, onMounted } from 'vue'
+import { WorkshopWsSession, useWsConnectionStore } from '../../stores/workshop/connection'
+import { useEventsStore } from '../../stores/workshop/events'
+import { useEntitiesStore } from '../../stores/workshop/entities'
+import type { AepEnvelope, AepSnapshot } from '#shared/workshop-protocol'
+
+export function useWorkshopWs() {
+  const conn = useWsConnectionStore()
+  const events = useEventsStore()
+  const entities = useEntitiesStore()
+
+  // 模块级单例:多组件共享一条连接
+  let session: WorkshopWsSession | null = (globalThis as { __workshopWs?: WorkshopWsSession }).__workshopWs ?? null
+  if (!session) {
+    session = new WorkshopWsSession(
+      (e: AepEnvelope) => {
+        events.ingest(e)
+        entities.applyEvent(e)
+        if (e.type === 'channel.snapshot') {
+          entities.applySnapshot(e.payload as AepSnapshot)
+        }
+        if (typeof e.seq === 'number' && e.seq > 0 && e.channelId) {
+          conn.cursors[e.channelId] = e.seq
+        }
+      },
+      (state, retry) => {
+        conn.state = state
+        conn.retryCount = retry
+      },
+    )
+    ;(globalThis as { __workshopWs?: WorkshopWsSession }).__workshopWs = session
+  }
+
+  const subscribe = (channelId: string): void => {
+    session?.subscribe(channelId, events.lastSeq(channelId))
+  }
+  const unsubscribe = (channelId: string): void => {
+    session?.unsubscribe(channelId)
+    events.clear(channelId)
+  }
+
+  let heartbeat: ReturnType<typeof setInterval> | null = null
+  onMounted(() => {
+    heartbeat = setInterval(() => session?.ping(), 30_000)
+  })
+  onBeforeUnmount(() => {
+    if (heartbeat) clearInterval(heartbeat)
+  })
+
+  return { subscribe, unsubscribe, conn }
+}

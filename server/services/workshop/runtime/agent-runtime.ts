@@ -48,6 +48,12 @@ export interface ChannelBus {
     queuedCount?: number
     completedCount?: number
   }) => void): () => void
+  /** channel 内消息投递通知(route 汇流点触发;AEP a2a.message 事件源) */
+  notifyMessage(message: A2AMessage): void
+  onMessage(fn: (message: A2AMessage) => void): () => void
+  /** 记忆写入通知(策展/主动沉淀;AEP memory.saved 事件源) */
+  notifyMemory(e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }): void
+  onMemoryEvent(fn: (e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }) => void): () => void
   wakeScheduler(): void
 }
 

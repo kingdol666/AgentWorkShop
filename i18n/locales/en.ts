@@ -15,6 +15,7 @@ export default {
   menu: {
     system: 'AgentWorkShop',
     dashboard: 'Dashboard',
+    workshop: 'Agent Harness',
     game: 'Game',
     users: 'Users',
     settings: 'Settings',

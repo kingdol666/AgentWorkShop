@@ -14,6 +14,7 @@ interface MenuItem {
 
 const menuItems = computed<MenuItem[]>(() => [
   { key: '/', icon: 'i-tabler-layout-dashboard', label: t('menu.dashboard') },
+  { key: '/workshop', icon: 'i-tabler-box', label: t('menu.workshop') },
   { key: '/game', icon: 'i-tabler-device-gamepad-2', label: t('menu.game') },
   { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users') },
   { key: '/settings', icon: 'i-tabler-settings', label: t('menu.settings') },

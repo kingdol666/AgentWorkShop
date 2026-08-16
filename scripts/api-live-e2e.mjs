@@ -371,7 +371,10 @@ async function main() {
     return wsEvents.some(e => (e.type === 'task.status' || e.type === 'task.progress') && JSON.stringify(e.payload).includes(wsTask.data.id)) ? true : null
   }, 15_000)
   const hasTaskEvents = wsEvents.some(e => (e.type === 'task.status' || e.type === 'task.progress'))
-  const hasA2aEvents = wsEvents.some(e => (e.type === 'a2a.artifact' || e.type === 'a2a.message'))
+  // a2a 事件与 task.status 几乎同时到达但顺序不定(事件驱动直推),带短窗口等待消除竞态
+  const hasA2aEvents = await waitUntil('WS a2a 事件', async () => {
+    return wsEvents.some(e => (e.type === 'a2a.artifact' || e.type === 'a2a.message')) ? true : null
+  }, 5000).then(() => true, () => false)
   const hasAgentEvents = wsEvents.some(e => e.type === 'agent.status')
   check('WS 广播 task.status/task.progress', hasTaskEvents, `events=${wsEvents.map(e => e.type).join(',')}`)
   check('WS 广播 a2a.artifact/a2a.message', hasA2aEvents)
