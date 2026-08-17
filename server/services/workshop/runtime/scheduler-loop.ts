@@ -58,6 +58,8 @@ export class SchedulerLoop {
   private activeModeConfig: ModeConfig = {}
   /** loop 模式控制器 */
   private loopController: LoopController | null = null
+  /** 已通知 loop 控制器的完成任务,避免每轮 tick 重复计数 */
+  private readonly loopCompletedTaskIds = new Set<string>()
   /** loop 模式下重新提交任务的回调 */
   private onLoopResubmit: ((title: string, description: string) => void) | null = null
 
@@ -97,6 +99,7 @@ export class SchedulerLoop {
       this.loopController.stop()
       this.loopController = null
     }
+    this.loopCompletedTaskIds.clear()
   }
 
   /** 设置 loop 模式重新提交回调(manager 注入 submitChannelTask) */
@@ -442,28 +445,46 @@ export class SchedulerLoop {
   /** loop 模式:检测主任务完成 → 启动循环控制器重放 */
   private checkLoopCompletion(snapshot: SupervisionSnapshot): void {
     if (this.activeMode !== 'loop') return
-    // 查找已完成的 loop 模式主任务
-    for (const task of snapshot.tasks) {
-      if (task.assigneeId !== this.lead.agentId) continue
-      if (task.state !== 'COMPLETED') continue
-      const modeInfo = extractTaskMode(task)
-      if (!modeInfo || modeInfo.mode !== 'loop') continue
-      // 已有 loopController 在跑 → 跳过
-      if (this.loopController) continue
-      // 创建 loop 控制器 → 在 intervalMs 后重新提交相同任务
-      const intervalMs = modeInfo.config.intervalMs ?? 60_000
-      const maxIterations = modeInfo.config.maxIterations ?? Number.POSITIVE_INFINITY
-      if (this.onLoopResubmit) {
-        this.loopController = new LoopController(
-          this.channelRuntime.channelId,
-          task.title,
-          task.description ?? '',
-          intervalMs,
-          maxIterations,
-          this.onLoopResubmit,
-        )
-        this.loopController.onTaskCompleted()
+
+    // 找到当前循环新完成的 COMPLETED 主任务(尚未通知过控制器)
+    const current = snapshot.tasks.find((t) => {
+      if (t.assigneeId !== this.lead.agentId) return false
+      if (t.state !== 'COMPLETED') return false
+      if (this.loopCompletedTaskIds.has(t.id)) return false
+      const modeInfo = extractTaskMode(t)
+      return !!modeInfo && modeInfo.mode === 'loop'
+    })
+    if (!current) {
+      // 无新的完成事件,但控制器可能已达到最大次数:清空以允许后续新 loop 任务重新开始
+      if (this.loopController?.exhausted) {
+        this.loopController = null
       }
+      return
+    }
+
+    // 同一主任务只通知一次(防每轮 tick 重复计数)
+    this.loopCompletedTaskIds.add(current.id)
+
+    // 已有控制器 → 让控制器推进下一轮
+    if (this.loopController) {
+      this.loopController.onTaskCompleted()
+      return
+    }
+
+    // 创建 loop 控制器 → 每次主任务完成后等待 intervalMs 再重新提交相同任务
+    const modeInfo = extractTaskMode(current)!
+    const intervalMs = Math.min(86_400_000, Math.max(100, Math.floor(modeInfo.config.intervalMs ?? 60_000)))
+    const maxIterations = modeInfo.config.maxIterations ?? Number.POSITIVE_INFINITY
+    if (this.onLoopResubmit) {
+      this.loopController = new LoopController(
+        this.channelRuntime.channelId,
+        current.title,
+        current.description ?? '',
+        intervalMs,
+        maxIterations,
+        this.onLoopResubmit,
+      )
+      this.loopController.onTaskCompleted()
     }
   }
 

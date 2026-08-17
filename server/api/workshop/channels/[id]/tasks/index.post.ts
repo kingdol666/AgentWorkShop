@@ -4,11 +4,13 @@
  * - channel 无 lead → 400 NO_LEAD_AGENT(manager 校验)
  * 支持 mode 参数:goal / loop / pipeline
  */
-import { z } from 'zod'
+import { z } from 'zod'
 import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
-import { zValidator } from '../../../../../utils/validate'import { defineApiHandler } from '../../../../../utils/response'
-import { getWorkshopManager } from '../../../../../plugins/workshop'import type { Part } from '../../../../../services/workshop/types/a2a'
+import { zValidator } from '../../../../../utils/validate'
+import { defineApiHandler } from '../../../../../utils/response'
+import { getWorkshopManager } from '../../../../../plugins/workshop'
+import type { Part } from '../../../../../services/workshop/types/a2a'
 
 /** A2A 消息片段(Part):四种变体(text/data/url/raw) */
 const partSchema = z.union([
@@ -42,8 +44,8 @@ const submitTaskSchema = z.object({
   parts: z.array(partSchema).optional(),
   mode: z.enum(['goal', 'loop', 'pipeline']).optional(),
   modeConfig: z.object({
-    intervalMs: z.number().optional(),
-    maxIterations: z.number().optional(),
+    intervalMs: z.number().int().min(100).max(86_400_000).optional(),
+    maxIterations: z.number().int().min(1).max(10_000).optional(),
     goalCriteria: z.string().optional(),
     stages: z.array(z.object({
       name: z.string(),

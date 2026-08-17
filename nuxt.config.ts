@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { loadConfig } from './app/config'
 
 // 构建期一次性读取 config.yml，作为整个运行时的单一事实来源
@@ -77,6 +79,37 @@ export default defineNuxtConfig({
   nitro: {
     experimental: {
       websocket: true,
+    },
+    hooks: {
+      /**
+       * 修复 nitropack 2.13.4 的 import-meta 插件缺陷:非入口 chunk 的
+       * `globalThis._importMeta_` 兜底 stub 把 import.meta.url 硬编码为
+       * "file:///_entry.js"(虚拟入口名,运行时不存在的路径),而 ESM 求值顺序下
+       * 该 stub 先于入口执行,导致 createRequire/资产路径解析拿到错误基址,
+       * 生产启动抛 ERR_INVALID_ARG_VALUE。补丁把兜底 URL 改为真正的
+       * import.meta.url(仅构建产物,dev 不受影响)。
+       */
+      compiled: () => {
+        const outputDir = join(process.cwd(), '.output', 'server', 'chunks')
+        const targets = [
+          join(outputDir, '_', 'nitro.mjs'),
+          join(outputDir, 'virtual', 'entry.mjs'),
+        ]
+        for (const file of targets) {
+          let src
+          try {
+            src = readFileSync(file, 'utf8')
+          }
+          catch {
+            continue // 该 chunk 本次构建未生成
+          }
+          const fixed = src.replaceAll(
+            'globalThis._importMeta_||{url:"file:///_entry.js",env:process.env}',
+            'globalThis._importMeta_||{url:import.meta.url,env:process.env}',
+          )
+          if (fixed !== src) writeFileSync(file, fixed)
+        }
+      },
     },
   },
 

@@ -272,6 +272,12 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.center-pane > * {
+  min-width: 0;
+  max-width: 100%;
 }
 .no-channel {
   flex: 1 1 auto;

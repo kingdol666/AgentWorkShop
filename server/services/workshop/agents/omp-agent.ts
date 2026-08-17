@@ -830,6 +830,20 @@ export class OmpRpcAgentImpl implements AgentInterface {
           .filter(m => m.role === 'assistant')
           .flatMap(m => m.content.filter(c => c.type === 'text').map(c => c.text ?? ''))
           .join('')
+        // 回合内的 provider/API 失败(限额 429、鉴权、上游 5xx 等):omp 把错误挂在最后一条
+        // assistant 消息上(stopReason='error' + errorStatus/errorMessage)而非 __error__ 帧。
+        // 不映射出来,上层只能看到「回合结束无产出」,真实原因彻底丢失(且照常重试到耗尽)。
+        const failure = [...messages].reverse().find((m) => {
+          const mm = m as { role?: string, stopReason?: string, errorMessage?: string }
+          return mm.role === 'assistant' && (mm.stopReason === 'error' || typeof mm.errorMessage === 'string')
+        }) as { errorStatus?: number, errorMessage?: string } | undefined
+        if (failure) {
+          const code = failure.errorStatus != null ? `OMP_LLM_${failure.errorStatus}` : 'OMP_LLM_ERROR'
+          const detail = failure.errorMessage ?? 'harness 回合以错误结束(无错误详情)'
+          console.error(`[OmpRpcAgent:${this.selfAgentId}] harness 回合失败 ${code}: ${detail}`)
+          // error 事件即回合终点(队列侧据此收口),不再追加 done
+          return [{ kind: 'error', error: { code, message: detail } }]
+        }
         if (assistantText) {
           events.push({
             kind: 'artifact',

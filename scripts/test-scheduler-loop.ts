@@ -21,6 +21,7 @@ import type { TaskPatch } from '../server/services/workshop/db/task.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { TaskEngine } from '../server/services/workshop/runtime/task-engine'
+import type { WorkspaceTask } from '../server/services/workshop/types/task'
 import { ChannelRuntime } from '../server/services/workshop/runtime/channel-runtime'
 import { AgentRuntime } from '../server/services/workshop/runtime/agent-runtime'
 import type { ChannelBus } from '../server/services/workshop/runtime/agent-runtime'
@@ -29,6 +30,7 @@ import { SchedulerLoop } from '../server/services/workshop/runtime/scheduler-loo
 import { MockAgentImpl } from '../server/services/workshop/agents/mock-agent'
 import { ClaudeSdkAgentImpl } from '../server/services/workshop/agents/claude-agent'
 import { createAgentImpl } from '../server/services/workshop/agents/factory'
+import { encodeTaskMode, type ModeConfig } from '../server/services/workshop/runtime/execution-mode'
 import type {
   AgentEvent,
   AgentInfo,
@@ -217,6 +219,30 @@ function submitTask(s: Setup, title: string) {
   })
 }
 
+/** 提交 loop 模式主任务(描述按 [mode:loop][interval:..][max:..] 编码,与 manager.submitChannelTask 同构) */
+function submitLoopTask(s: Setup, title: string, config: ModeConfig) {
+  return s.engine.create({
+    channelId: s.channelId,
+    creatorId: '',
+    assigneeId: s.lead.agentId,
+    title,
+    description: encodeTaskMode('loop', config, '循环测试任务'),
+  })
+}
+
+/** 模拟 manager 的 loop 重提交回调:原样创建新一轮主任务(经调度循环 dispatch 给 worker) */
+function wireLoopResubmit(s: Setup): void {
+  s.loop.setLoopResubmitCallback((title, description) => {
+    s.engine.create({
+      channelId: s.channelId,
+      creatorId: '',
+      assigneeId: s.lead.agentId,
+      title,
+      description,
+    })
+  })
+}
+
 // ===== 场景 =====
 
 async function testAutoDispatchAndComplete(): Promise<void> {
@@ -336,6 +362,46 @@ async function testStopStopsScheduling(): Promise<void> {
   await teardown(s)
 }
 
+async function testLoopIntervalAndMaxIterations(): Promise<void> {
+  console.log('\n--- 6. loop 模式:间隔生效 + maxIterations 后停止 ---')
+  const s = setup({ tickMs: 10 })
+  wireLoopResubmit(s)
+  s.loop.start()
+
+  const title = '循环任务'
+  const intervalMs = 300
+  const maxIterations = 2
+  const first = submitLoopTask(s, title, { intervalMs, maxIterations })
+  // mock lead dispatch 的子任务会继承父任务标题,统计主任务需排除子任务(parentId 存在)
+  const parents = (): WorkspaceTask[] =>
+    s.engine.list(s.channelId).filter(t => t.title === title && !t.parentId)
+
+  // 首轮执行完成(此时才开始等待间隔)
+  await waitUntil(() => s.engine.get(first.id)?.state === 'COMPLETED')
+  check('loop 首轮执行完成', s.engine.get(first.id)?.state === 'COMPLETED')
+
+  // 间隔后重提交:出现第 2 轮主任务,且间隔 ≥ intervalMs(从首轮完成时刻起算)
+  const firstDoneAt = Date.now()
+  const resubmitted = await waitUntil(() => {
+    const same = parents()
+    return same.length >= 2 && same[1]!.state === 'COMPLETED'
+  }, 5000)
+  const waitMs = Date.now() - firstDoneAt
+  check('间隔后重提交并完成第 2 轮', resubmitted, `主任务数=${parents().length}`)
+  check('等待时长 ≥ 配置间隔', waitMs >= intervalMs, `wait=${waitMs}ms interval=${intervalMs}ms`)
+
+  // 达到 maxIterations=2 后不再重提交:再等数个间隔,主任务数仍为 2
+  await sleep(intervalMs * 3)
+  const finalCount = parents().length
+  check('达到 maxIterations 后停止重提交', finalCount === maxIterations, `主任务数=${finalCount}(期望 ${maxIterations})`)
+
+  // 全部主任务均完成(无残留半截循环)
+  const loopTasks = parents()
+  check('所有轮次主任务均完成', loopTasks.every(t => t.state === 'COMPLETED'), loopTasks.map(t => t.state).join(','))
+
+  await teardown(s)
+}
+
 function testFactory(): void {
   console.log('\n--- 6. createAgentImpl 工厂 ---')
   const mk = (harness: string): AgentInfo => ({
@@ -371,6 +437,7 @@ async function main(): Promise<void> {
   await testSuperviseThrowFallsBackToRules()
   await testRetryKeepsParentAlive()
   await testStopStopsScheduling()
+  await testLoopIntervalAndMaxIterations()
   testFactory()
 
   console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILED`}`)

@@ -17,7 +17,7 @@ import type { WorkspaceTask } from '../types/task'
 
 /** 模式配置(存储在任务 metadata['x-aw-mode-config']) */
 export interface ModeConfig {
-  /** loop: 循环间隔 ms(默认 60000) */
+  /** loop: 循环间隔 ms(默认 60000;前端秒输入 ×1000,zod 下限 100) */
   intervalMs?: number
   /** loop: 最大循环次数(默认 Infinity) */
   maxIterations?: number
@@ -78,9 +78,11 @@ function parseModeConfig(desc: string, mode: ExecutionMode): ModeConfig {
 export function encodeTaskMode(mode: ExecutionMode, config: ModeConfig, description: string): string {
   const parts: string[] = [`[mode:${mode}]`]
   if (mode === 'loop') {
-    parts.push(`[interval:${config.intervalMs ?? 60_000}]`)
+    const intervalMs = Math.min(86_400_000, Math.max(100, Math.floor(config.intervalMs ?? 60_000)))
+    parts.push(`[interval:${intervalMs}]`)
     if (config.maxIterations !== undefined && config.maxIterations !== Number.POSITIVE_INFINITY) {
-      parts.push(`[max:${config.maxIterations}]`)
+      const maxIterations = Math.min(10_000, Math.max(1, Math.floor(config.maxIterations)))
+      parts.push(`[max:${maxIterations}]`)
     }
   }
   if (mode === 'goal' && config.goalCriteria) {
@@ -226,6 +228,11 @@ export class LoopController {
       clearTimeout(this.timer)
       this.timer = null
     }
+  }
+
+  /** 是否已达到最大迭代次数或已停止 */
+  get exhausted(): boolean {
+    return !this.active || this.iterations >= this.maxIterations
   }
 
   get currentIteration(): number {

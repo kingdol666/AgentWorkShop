@@ -336,30 +336,44 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
 <style scoped>
 .lanes-wrap {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 .toolbar {
   display: flex;
+  flex: 0 0 auto;
   gap: 10px;
+  min-width: 0;
   align-items: center;
   justify-content: flex-end;
   padding: 6px 12px 0;
 }
 .team-count {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
   font-size: 11px;
   font-family: ui-monospace, Consolas, monospace;
   opacity: 0.55;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .lanes {
   display: flex;
   flex: 1 1 auto;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   padding: 8px;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 .lane {
   display: flex;
@@ -372,13 +386,20 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
 .lane-head {
   display: flex;
   gap: 6px;
+  min-width: 0;
   align-items: center;
   padding: 8px 10px;
   font-size: 13px;
   border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
 }
 .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
-.lane-name { font-weight: 700; }
+.lane-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .role { margin-inline-end: 0; font-size: 10px; line-height: 14px; }
 .lane-meta {
   flex: 1 1 auto;
