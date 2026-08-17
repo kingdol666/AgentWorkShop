@@ -37,6 +37,30 @@ const isImmediate = computed(() =>
   && (props.event.payload as { metadata?: Record<string, unknown> }).metadata?.['x-aw-msg-priority'] === 'immediate',
 )
 
+/** agent.member 文案:团队成员增/改/删(lead 自主管理或用户操作) */
+const memberText = computed(() => {
+  if (props.event.type !== 'agent.member') return ''
+  const p = props.event.payload as {
+    op: 'added' | 'updated' | 'removed'
+    agentId: string
+    name: string
+    role: string
+    harness: string
+    enabled?: number
+    by: string
+    reason?: string
+  }
+  const who = p.by === 'user' ? '用户' : `lead ${p.by.replace(/^lead:/, '').slice(0, 8)}`
+  const member = `${p.name}(${p.agentId.slice(0, 8)}, ${p.role}/${p.harness})`
+  const verbs: Record<typeof p.op, string> = {
+    added: `新增成员 ${member}`,
+    updated: p.enabled === 0 ? `禁用成员 ${member}` : `更新成员 ${member}`,
+    removed: `移除成员 ${member}`,
+  }
+  const reason = p.reason ? `,理由:${p.reason}` : ''
+  return `${who}${verbs[p.op]}${reason}`
+})
+
 const stateColor: Record<string, string> = {
   SUBMITTED: 'default',
   ASSIGNED: 'processing',
@@ -137,6 +161,15 @@ const stateColor: Record<string, string> = {
       :artifact="(event.payload as { taskId?: string, artifact: { artifactId: string, name?: string, parts: Array<{ text?: string }> } }).artifact"
     />
 
+    <!-- 团队成员增/改/删(lead 自主管理或用户 REST) -->
+    <div
+      v-else-if="event.type === 'agent.member'"
+      class="body member-line"
+    >
+      <span class="tag">👤</span>
+      <span class="member-text">{{ memberText }}</span>
+    </div>
+
     <!-- 记忆写入 -->
     <div
       v-else-if="event.type === 'memory.saved'"
@@ -219,10 +252,13 @@ const stateColor: Record<string, string> = {
   word-break: break-word;
 }
 .route,
-.memory-line { opacity: 0.8; }
+.memory-line,
+.member-line { opacity: 0.85; }
+.member-line { color: #9254de; }
 .tag { margin-right: 4px; }
 .route-text,
 .mem-text,
+.member-text,
 .err-text { word-break: break-all; }
 .status-line { opacity: 0.65; }
 .task-line { display: flex; gap: 6px; align-items: center; }

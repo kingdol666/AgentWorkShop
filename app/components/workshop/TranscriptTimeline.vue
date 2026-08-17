@@ -34,6 +34,7 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
   { value: 'all', label: '全部' },
   { value: 'messages', label: '消息' },
   { value: 'tasks', label: '任务' },
+  { value: 'team', label: '团队' },
   { value: 'errors', label: '错误' },
 ]
 </script>

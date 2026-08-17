@@ -8,7 +8,7 @@
 import { randomUUID } from 'node:crypto'
 import { TERMINAL_TASK_STATES } from '../types/task'
 import type { A2AMessage } from '../types/a2a'
-import type { SupervisionDecision, SupervisionSnapshot, ExecutionMode } from '../agents/agent-interface'
+import type { SupervisionDecision, SupervisionSnapshot, ExecutionMode, AgentWorkspace } from '../agents/agent-interface'
 import { AppError } from '../../../utils/errors'
 import type { ChannelRuntime } from './channel-runtime'
 import type { AgentRuntime } from './agent-runtime'
@@ -366,6 +366,40 @@ export class SchedulerLoop {
           },
         }
         this.channelRuntime.route(message)
+        break
+      }
+      // 团队成员管理决策(lead 自主扩容/调参/裁撤;经 AgentWorkspace 与工具桥同源路径)。
+      // fire-and-forget:成员落库即刻对下一轮快照可见,dispatch 在后续 tick 自然衔接。
+      case 'spawn_agent': {
+        const ws: AgentWorkspace = this.lead.workspace
+        void ws.createTeamMember({
+          name: decision.name,
+          harness: decision.harness,
+          config: decision.config,
+          templateId: decision.templateId,
+          reason: decision.reason,
+        }).catch((err) => {
+          console.error(`[SchedulerLoop:${this.lead.agentId}] spawn_agent 决策执行失败:`, err)
+        })
+        break
+      }
+      case 'update_agent': {
+        const ws: AgentWorkspace = this.lead.workspace
+        void ws.updateTeamMember(decision.agentId, {
+          name: decision.name,
+          config: decision.config,
+          enabled: decision.enabled === undefined ? undefined : (decision.enabled ? 1 : 0),
+          reason: decision.reason,
+        }).catch((err) => {
+          console.error(`[SchedulerLoop:${this.lead.agentId}] update_agent 决策执行失败:`, err)
+        })
+        break
+      }
+      case 'remove_agent': {
+        const ws: AgentWorkspace = this.lead.workspace
+        void ws.removeTeamMember(decision.agentId, decision.reason).catch((err) => {
+          console.error(`[SchedulerLoop:${this.lead.agentId}] remove_agent 决策执行失败:`, err)
+        })
         break
       }
     }

@@ -80,6 +80,23 @@ export interface AgentWorkspace {
   saveMemory(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string }): Promise<{ scope: 'private' | 'shared', dedupKey: string }>
   /** 订阅同事产出 */
   subscribe(input: { agentIds?: string[] }): Promise<void>
+  /** (lead)在本 channel 内新建团队成员(worker):按需建模板并克隆为独立实例 */
+  createTeamMember(input: {
+    name: string
+    harness?: string
+    config?: Record<string, unknown>
+    templateId?: string
+    reason?: string
+  }): Promise<AgentInfo>
+  /** (lead)更新团队成员(改名/改配置/启停;不能改 lead 自己);变更后运行时重载 */
+  updateTeamMember(agentId: string, patch: {
+    name?: string
+    config?: Record<string, unknown>
+    enabled?: number
+    reason?: string
+  }): Promise<AgentInfo>
+  /** (lead)移除团队成员(worker;不能移除自己);其未终态任务回收集成为 FAILED 待重派 */
+  removeTeamMember(agentId: string, reason?: string): Promise<{ recycledTasks: string[] }>
 }
 
 /** 执行上下文:平台注入的只读能力(Agent 的"手脚") */
@@ -134,6 +151,9 @@ export type SupervisionDecision
     | { kind: 'cancel', taskId: string }
     | { kind: 'complete', taskId: string, artifacts?: A2AArtifact[] }
     | { kind: 'notify', toAgentId: string, parts: Part[] }
+    | { kind: 'spawn_agent', name: string, harness?: string, config?: Record<string, unknown>, templateId?: string, reason?: string }
+    | { kind: 'update_agent', agentId: string, name?: string, config?: Record<string, unknown>, enabled?: boolean, reason?: string }
+    | { kind: 'remove_agent', agentId: string, reason?: string }
 /** 执行模式:channel 任务提交时选择 */
 export type ExecutionMode = 'goal' | 'loop' | 'pipeline'
 

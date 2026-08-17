@@ -70,9 +70,11 @@ function setup(): { manager: AgentChannelManager, db: ReturnType<typeof openWork
 }
 
 function attachScheduler(manager: AgentChannelManager, channelId: string, tickMs: number): SchedulerLoop {
-  const internals = manager as unknown as { channels: Map<string, { getAgents(): { role: string }[], scheduler: unknown }> }
+  const internals = manager as unknown as { channels: Map<string, { getAgents(): { role: string }[], scheduler: unknown & { stop?(): void } }> }
   const cr = internals.channels.get(channelId)
   if (!cr) throw new Error('channel 不存在')
+  // 懒装配:先提交任务触发 ensureChannelActive(装配 lead + 默认循环),此处替换为快速 tick 循环
+  ;(cr.scheduler as { stop?: () => void } | null)?.stop?.()
   const lead = cr.getAgents().find(a => a.role === 'lead')
   if (!lead) throw new Error('无 lead')
   const loop = new SchedulerLoop(cr as never, lead as never, { tickMs })
@@ -153,13 +155,12 @@ async function main(): Promise<void> {
     // ================================================================
     console.log('\n━━━ Step 3: lead 提交主任务 + SchedulerLoop 启动 ━━━')
 
-    loops.push(attachScheduler(manager, ch.channelId, 10))
-
     const main = await manager.submitChannelTask({
       channelId: ch.channelId,
       title: '系统功能开发',
       description: '统筹前后端开发交付',
     })
+    loops.push(attachScheduler(manager, ch.channelId, 10))
     console.log(`  主任务已提交: ${main.id.slice(0, 8)}… (state=${main.state}, assignee=lead)`)
 
     // ================================================================

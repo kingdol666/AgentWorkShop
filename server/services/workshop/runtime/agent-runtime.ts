@@ -51,10 +51,26 @@ export interface ChannelBus {
   /** channel 内消息投递通知(route 汇流点触发;AEP a2a.message 事件源) */
   notifyMessage(message: A2AMessage): void
   onMessage(fn: (message: A2AMessage) => void): () => void
+  /** 团队成员增/改/删通知(lead 自主管理或用户 REST;AEP agent.member 事件源) */
+  notifyMember(e: MemberChangeEvent): void
+  onMemberEvent(fn: (e: MemberChangeEvent) => void): () => void
   /** 记忆写入通知(策展/主动沉淀;AEP memory.saved 事件源) */
   notifyMemory(e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }): void
   onMemoryEvent(fn: (e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }) => void): () => void
   wakeScheduler(): void
+}
+
+/** 团队成员变更事件(lead 执行中自主管理成员或用户 REST 操作;AEP agent.member 载荷) */
+export interface MemberChangeEvent {
+  op: 'added' | 'updated' | 'removed'
+  agentId: string
+  name: string
+  role: 'lead' | 'worker'
+  harness: string
+  enabled?: number
+  /** 操作发起方:'lead:<agentId>' 或 'user' */
+  by: string
+  reason?: string
 }
 
 /** Parts → 纯文本(text 片段拼接;记忆召回查询与回复收集共用) */
@@ -117,6 +133,8 @@ export interface AgentRuntimeLike {
   emitExternal(event: AgentEvent, fromAgentId?: string): void
   /** 实时消息注入:busy 时通过 impl.steer 注入 omp 会话;idle 时入 mailbox 队列 */
   injectSteer(message: A2AMessage): void
+  /** Agent 能力面(调度器执行成员管理决策用;AgentRuntime 始终提供) */
+  readonly workspace?: AgentWorkspace
 }
 
 export class AgentRuntime {
@@ -262,6 +280,11 @@ export class AgentRuntime {
   /** 暴露 TaskEngine(供 SchedulerLoop 收集快照与执行调度决策) */
   get taskEngine(): TaskEngine {
     return this.deps.taskEngine
+  }
+
+  /** 暴露 AgentWorkspace(供 SchedulerLoop 执行 lead 成员管理决策) */
+  get workspace(): AgentWorkspace {
+    return this.deps.workspace
   }
 
   /**

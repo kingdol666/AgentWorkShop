@@ -75,6 +75,8 @@ export function useWorkshopApi() {
     listChannelAgents: (id: string) => http.get<{ data: AgentInfoDto[] }>(`/workshop/channels/${id}/agents`),
     addChannelAgent: (id: string, body: { agentId?: string, name?: string, harness?: string, role?: 'lead' | 'worker', config?: Record<string, unknown> }) =>
       http.post<{ data: AgentInfoDto }>(`/workshop/channels/${id}/agents`, body),
+    updateChannelAgent: (id: string, agentId: string, body: { name?: string, config?: Record<string, unknown>, enabled?: 0 | 1, reason?: string }) =>
+      http.request<{ data: { agentId: string, name: string } }>({ method: 'PATCH', url: `/workshop/channels/${id}/agents/${agentId}`, data: body }),
     removeChannelAgent: (id: string, agentId: string) => http.delete<{ data: unknown }>(`/workshop/channels/${id}/agents/${agentId}`),
     // tasks
     listTasks: (id: string) => http.get<{ data: TaskDto[] }>(`/workshop/channels/${id}/tasks`),

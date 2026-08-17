@@ -16,6 +16,7 @@
  *  task.progress       { taskId, progress, agentId? }
  *  a2a.artifact        { taskId?, artifact }(任务交付物/工件)
  *  a2a.message         A2AMessage(channel 内新消息投递:assign/peer/inject)
+ *  agent.member        { op: added/updated/removed, agent, by, reason? }(团队成员增改删;lead 或用户操作)
  *  memory.saved        { agentId, scope, title, dedupKey }
  *  error               { code, message }
  *  pong                { t }
@@ -61,6 +62,20 @@ export interface AepSnapshot {
   messages: A2AMessage[]
 }
 
+/** agent.member payload:团队成员增/改/删(lead 执行中自主管理或用户 REST 操作;扁平结构与 ChannelBus 事件透传一致) */
+export interface AepMemberEvent {
+  op: 'added' | 'updated' | 'removed'
+  agentId: string
+  name: string
+  role: 'lead' | 'worker'
+  harness: string
+  /** updated/remove 时:实例禁用状态 */
+  enabled?: number
+  /** 操作发起方:'lead:<agentId>'(agent 自主)或 'user'(REST 用户操作) */
+  by: string
+  reason?: string
+}
+
 export type AepEvent
   = | { type: 'channel.snapshot', payload: AepSnapshot }
     | { type: 'agent.status', payload: { agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, queued?: number, completed?: number } }
@@ -71,6 +86,7 @@ export type AepEvent
     | { type: 'task.progress', payload: { taskId: string, progress: number, agentId?: string } }
     | { type: 'a2a.artifact', payload: { taskId?: string, artifact: A2AArtifact } }
     | { type: 'a2a.message', payload: A2AMessage }
+    | { type: 'agent.member', payload: AepMemberEvent }
     | { type: 'memory.saved', payload: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string } }
     | { type: 'error', payload: { code: string, message: string } }
     | { type: 'pong', payload: { t: number } }
@@ -99,5 +115,6 @@ export const AEP_GROUPS: Record<string, string[]> = {
   messages: ['agent.message', 'agent.status.message', 'a2a.message'],
   tools: ['agent.status.message'],
   tasks: ['task.status', 'task.progress', 'a2a.artifact'],
+  team: ['agent.member'],
   errors: ['error'],
 }

@@ -8,13 +8,14 @@ import type { AepEnvelope } from '#shared/workshop-protocol'
 
 const RING_CAP = 2000
 
-export type EventFilter = 'all' | 'messages' | 'tasks' | 'errors'
+export type EventFilter = 'all' | 'messages' | 'tasks' | 'team' | 'errors'
 
 /** 过滤器 → 允许的事件类型集合 */
 const FILTER_TYPES: Record<EventFilter, string[] | null> = {
   all: null,
   messages: ['agent.message', 'agent.delta', 'agent.status.message', 'a2a.message'],
   tasks: ['task.status', 'task.progress', 'a2a.artifact'],
+  team: ['agent.member', 'task.status'],
   errors: ['error'],
 }
 

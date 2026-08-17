@@ -18,6 +18,9 @@ import type { A2AArtifact } from '../types/a2a'
 /** 终态(§2.2):COMPLETED / FAILED / CANCELED */
 const TERMINAL = new Set(['COMPLETED', 'FAILED', 'CANCELED'])
 
+/** 成员管理决策(spawn/update/remove;mock lead 经 teamOps 配置在首个 supervise tick 发出) */
+type MemberOp = Extract<SupervisionDecision, { kind: 'spawn_agent' | 'update_agent' | 'remove_agent' }>
+
 function sleep(ms: number): Promise<void> {
   return new Promise(r => setTimeout(r, ms))
 }
@@ -30,9 +33,13 @@ export class MockAgentImpl implements AgentInterface {
   /** 流式演示开关:worker 剧本分片 yield delta(验证 AEP agent.delta 打字机链路) */
   private readonly streamDemo: boolean
 
+  /** lead 首个 supervise tick 要发出的成员管理决策(测 SchedulerLoop 决策路径) */
+  private readonly teamOps: MemberOp[]
+
   constructor(config: Record<string, unknown> = {}) {
     this.delayMs = typeof config.delayMs === 'number' ? config.delayMs : 300
     this.streamDemo = config.streamDemo === true
+    this.teamOps = Array.isArray(config.teamOps) ? config.teamOps as MemberOp[] : []
   }
 
   async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
@@ -55,6 +62,10 @@ export class MockAgentImpl implements AgentInterface {
     const decisions: SupervisionDecision[] = []
     const now = snapshot.now
     this.refreshIdle(snapshot, now)
+    // 团队管理剧本:首个 tick 发出 teamOps 决策(spawn/update/remove;发完即清)
+    if (this.teamOps.length > 0) {
+      decisions.push(...this.teamOps.splice(0))
+    }
     // 本轮空闲池:选中即移出,防止一轮内把多个任务分给同一个 worker
     const pool = snapshot.members.filter(m => m.role === 'worker' && m.state === 'idle')
 

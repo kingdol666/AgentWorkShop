@@ -40,6 +40,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
     case 'a2a.message': return `📨 ${String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 30)}`
     case 'a2a.artifact': return `📦 ${String((p.artifact as { name?: string } | undefined)?.name ?? '')}`
     case 'memory.saved': return `🧠 ${String(p.title ?? '')}`
+    case 'agent.member': return `👤 ${String(p.op ?? '')} ${String(p.name ?? '')}`
     case 'agent.status': return `${String(p.state)}`
     case 'error': return `✖ ${String(p.code ?? '')}`
     default: return e.type

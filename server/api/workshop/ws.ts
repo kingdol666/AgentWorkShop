@@ -217,6 +217,10 @@ function ensureStream(manager: AgentChannelManager, channelId: string): ChannelS
   }))
   // 记忆写入
   stream.unsubs.push(manager.subscribeMemoryEvents(channelId, e => publish(manager, stream, 'memory.saved', e, { agentId: e.agentId })))
+  // 团队成员增/改/删(lead 自主管理或用户 REST;agent.member)
+  stream.unsubs.push(manager.subscribeMemberEvents(channelId, (e) => {
+    publish(manager, stream, 'agent.member', e, { agentId: e.agentId })
+  }))
   streams.set(channelId, stream)
   return stream
 }

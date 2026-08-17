@@ -255,7 +255,68 @@ export const HOST_TOOLS: RpcHostToolDefinition[] = [
       required: ['title', 'content', 'scope'],
     },
   },
+  {
+    name: 'create_team_agent',
+    label: 'Create Team Agent',
+    description: '(Lead only) Create a NEW worker agent and add it to your channel\'s team, on the fly. Use ONLY when all workers stay busy with a persistent backlog, or when a task clearly needs a specialist that doesn\'t exist yet — not for routine tasks the current team can handle. The new member starts idle, appears in list_team_agents immediately, and can receive dispatch_task assignments right away. Give it a clear name and a system_prompt describing its specialty.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Short, descriptive member name, e.g. "db-migrator" or "test-writer"' },
+        harness: { type: 'string', enum: ['omp', 'mock', 'claude'], description: 'Agent harness: "omp" = full LLM agent with native work tools (default, use this for real work), "mock" = scripted test agent, "claude" = claude harness' },
+        system_prompt: { type: 'string', description: 'System prompt prefix defining this member\'s specialty, working style, and conventions (maps to its systemPromptPrefix config)' },
+        reason: { type: 'string', description: 'Why this member is being added (shown to the user in the team event timeline)' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'update_team_agent',
+    label: 'Update Team Agent',
+    description: '(Lead only) Update an existing team member (worker): rename it, revise its system prompt (e.g. to specialize or correct its behavior), or enable/disable it. The member\'s runtime reloads with the new config on its next assignment. You cannot update yourself.',
+    parameters: {
+      type: 'object',
+      properties: {
+        agent_id: { type: 'string', description: 'ID of the worker agent to update (from list_team_agents)' },
+        name: { type: 'string', description: 'New name (optional)' },
+        system_prompt: { type: 'string', description: 'New system prompt prefix defining its specialty/conventions (optional)' },
+        enabled: { type: 'boolean', description: 'true = activate member, false = disable member (disabled members receive no new tasks; default true)' },
+        reason: { type: 'string', description: 'Why this change is made (shown in the team event timeline)' },
+      },
+      required: ['agent_id'],
+    },
+  },
+  {
+    name: 'remove_team_agent',
+    label: 'Remove Team Agent',
+    description: '(Lead only) Remove a worker from your channel\'s team. Its queued tasks are automatically re-dispatched to the remaining worker with the shortest queue (or failed for retry if it was mid-execution), so no work is lost — but the member\'s context is. Use ONLY for sustained idle surplus or persistent underperformance; never as an experiment, and avoid removing members with active work. You cannot remove yourself.',
+    parameters: {
+      type: 'object',
+      properties: {
+        agent_id: { type: 'string', description: 'ID of the worker agent to remove' },
+        reason: { type: 'string', description: 'Why this member is removed (shown in the team event timeline)' },
+      },
+      required: ['agent_id'],
+    },
+  },
 ]
+
+/** 仅 lead 可见的工具名(dispatch/调度/团队管理面;worker 注册时剔除,压缩工具上下文) */
+const LEAD_ONLY_TOOL_NAMES = new Set([
+  'dispatch_task',
+  'get_queue_overview',
+  'reassign_task',
+  'update_task',
+  'create_team_agent',
+  'update_team_agent',
+  'remove_team_agent',
+])
+
+/** 按角色装配 host tools:lead = 全量;worker = 剔除 lead 专属(执行面 + 通信面 + 记忆面) */
+export function hostToolsForRole(role: 'lead' | 'worker'): RpcHostToolDefinition[] {
+  if (role === 'lead') return HOST_TOOLS
+  return HOST_TOOLS.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
+}
 
 // ===== 辅助函数 =====
 
@@ -564,8 +625,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
     if (this.agentRole === 'lead') {
       lines.push(
         ``,
-        `As lead you may also take coordination action if the message reveals work needs`,
-        `(dispatch_task / list_channel_tasks / get_queue_overview are available).`,
+        `As lead you own this channel's coordination AND team roster: if the message reveals work needs,`,
+        `take action via dispatch_task / reassign_task (scheduling) or create_team_agent / update_team_agent /`,
+        `remove_team_agent (roster); get_queue_overview and list_channel_tasks give you the live picture.`,
       )
     }
 
@@ -810,20 +872,18 @@ export class OmpRpcAgentImpl implements AgentInterface {
     if (prefix) parts.push(prefix)
     if (memory) parts.push(memory)
     parts.push(
-      `You are "${this.agentName}", a worker agent in a multi-agent team (Channel: ${this.channelId}).`,
+      `You are "${this.agentName}", a worker agent in a multi-agent team led by a lead coordinator (Channel: ${this.channelId}).`,
       ``,
       `## Your Assignment`,
       `Task ID: ${taskId}`,
       taskText,
       ``,
-      `## Instructions`,
-      `1. Use your native tools (read, write, edit, bash, grep, glob, etc.) to accomplish the task.`,
-      `2. Call report_progress whenever you make meaningful progress.`,
-      `3. Call complete_task when you are done, providing a summary and deliverable of your work.`,
-      `4. You may call list_team_agents to see your teammates, and send_message_to_agent to communicate.`,
-      `5. Memory: the "相关记忆" block above is only a small auto-recalled primer. Whenever you need prior context (past task conclusions, team conventions, channel-wide knowledge), call search_memory with a focused query — it searches both your private memory and the channel's shared memory. When you discover a reusable insight or a conclusion teammates would benefit from, call save_memory: scope="private" for personal notes, scope="shared" to publish it to the channel's shared memory for everyone.`,
-      `6. Realtime messages from teammates may arrive mid-task (marked "[实时消息 from ...]"). If one carries the reply trigger (系统触发器), handle the request and reply via send_message_to_agent with in_reply_to=<its message_id>; your reply message should contain the execution result and the content they asked for, with require_reply set only if you need further response.`,
-      `7. Stay focused on the task. Be concise and effective.`,
+      `## Working Workflow`,
+      `1. RECALL FIRST: the "相关记忆" block above is only an auto-recalled primer of hints. Before writing anything, call search_memory with focused queries about the task domain (past conclusions, team conventions, similar task outcomes — it searches both your private memory and the channel's shared memory). Reuse proven approaches instead of rediscovering them.`,
+      `2. EXECUTE: use your native tools (read, write, edit, bash, grep, glob, etc.) to accomplish the task. Call report_progress whenever you make meaningful progress.`,
+      `3. COLLABORATE: call list_team_agents to see teammates; send_message_to_agent to ask the lead or a teammate for help/clarification (they can reply in real time). Realtime messages marked "[实时消息 from ...]" may arrive mid-task — if one carries the reply trigger (系统触发器), handle it and reply via send_message_to_agent with in_reply_to=<its message_id>; your reply must contain the execution result and the content they asked for.`,
+      `4. DISTILL: whenever you discover a reusable insight — a working solution, a project convention, a pitfall to avoid — call save_memory IMMEDIATELY (don't wait for task end): scope="private" for personal notes, scope="shared" to publish to the channel's shared memory so teammates benefit. Title = short topic; content = the distilled conclusion. Same dedup_key overwrites instead of duplicating.`,
+      `5. DELIVER: call complete_task when done, providing a summary and the deliverable of your work. Keep it focused and effective.`,
       ``,
       `Begin working on the task now.`,
     )
@@ -882,15 +942,26 @@ export class OmpRpcAgentImpl implements AgentInterface {
       parts.push(
         ``,
         `## Your Job`,
-        `You are a COORDINATOR. You do NOT do the work yourself. You ONLY delegate and track.`,
-        `Analyze the team state and take action:`,
+        `You are a COORDINATOR. You do NOT do the work yourself. You ONLY delegate, track, and shape the team to maximize throughput.`,
+        ``,
+        `### Task Scheduling`,
         `- Tasks are processed FIFO (oldest first). For each task assigned to you that is SUBMITTED or WORKING and has NO children yet: it needs delegation. Call dispatch_task to delegate it. Prefer workers with the SHORTEST queue (see member queued counts). Always pass parent_task_id (the task's ID), assignee_id (the worker's ID), title, and description.`,
-        `- Do NOT use read/write/edit/bash or any work tools yourself. You are a coordinator, not a worker.`,
-        `- Do NOT call complete_task on a task that has unfinished children.`,
-        `- If all children of a parent task are COMPLETED: call complete_task for the parent with a summary.`,
-        `- Rebalance when needed: use reassign_task to move a pending task from a loaded worker to an idle one, update_task to revise a pending task, cancel_task to remove obsolete work. Use get_queue_overview for the live picture.`,
+        `- Rebalance when needed: reassign_task to move a pending task from a loaded worker to an idle one, update_task to revise a pending task, cancel_task to remove obsolete work. Use get_queue_overview for the live picture.`,
+        `- Do NOT call complete_task on a task that has unfinished children. When all children of a parent are COMPLETED: call complete_task for the parent with a summary.`,
         `- Use list_team_agents and list_channel_tasks to get current IDs if needed.`,
-        `- Memory: search_memory retrieves prior task outcomes and channel shared knowledge (e.g. why a previous dispatch failed, worker strengths observed before) — consult it when scheduling recurring or previously-failed work. Distill durable scheduling/team insights via save_memory (scope="shared" publishes to all teammates).`,
+        ``,
+        `### Team Management (you own the team roster)`,
+        `You can grow, tune, and shrink your team at runtime — the roster is yours to manage for maximum task completion.`,
+        `However, roster changes are HIGH-IMPACT and visible to the user: treat them as deliberate decisions, not experiments.`,
+        `- create_team_agent: add a new worker ONLY when (a) ALL workers stay busy and the backlog persists across multiple ticks, or (b) upcoming work needs a specialist that clearly doesn't exist. Give a clear name + system_prompt describing the specialty.`,
+        `- update_team_agent: rename a member, revise its system_prompt to correct/specialize its behavior, or disable it (enabled=false stops new assignments without removing its history). Takes effect on its next task.`,
+        `- remove_team_agent: retire a member ONLY for sustained idle surplus or persistent underperformance. NEVER remove a member that still has queued or in-progress work unless it is truly stuck; its tasks are re-dispatched but context is lost.`,
+        `Defaults: for routine tasks keep the existing team unchanged. Prefer specializing an idle member (update) over creating duplicates; prefer reassignment (reassign_task) over removal when the issue is load, not capability. Always pass a honest reason. You cannot remove or update yourself.`,
+        ``,
+        `### Memory (your institutional knowledge)`,
+        `- BEFORE scheduling recurring or previously-failed work, call search_memory: prior task outcomes, worker strengths, and channel conventions live there (e.g. "worker X excels at refactors", "approach Y failed before").`,
+        `- AFTER observing durable team facts (a member's strength/weakness, an effective task-split pattern, a recurring pitfall), call save_memory with scope="shared" so every teammate can recall it. Use stable dedup_keys to refresh rather than duplicate.`,
+        `- Do NOT use read/write/edit/bash or any work tools yourself. You are a coordinator, not a worker.`,
       )
     }
 
@@ -934,7 +1005,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
         `## Your Job`,
         `1. Dispatch the task to a worker if it has no children yet.`,
         `2. When all children are COMPLETED: examine the artifacts and decide if the goal is met.`,
-        `3. If NOT met: dispatch NEW subtasks to address the gaps.`,
+        `3. If NOT met: dispatch NEW subtasks to address the gaps; if no existing worker fits a gap, create_team_agent a specialist first.`,
         `4. If met: call complete_task on the parent task.`,
         `- Do NOT use work tools yourself. You are a coordinator.`,
       )
@@ -999,9 +1070,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
         }
       }
 
-      // 注册 host tools
+      // 注册 host tools(按角色差异化:lead 全量,worker 剔除调度/团队管理专属工具)
       client.onHostToolCall(req => this.handleHostTool(req))
-      await client.send({ type: 'set_host_tools', tools: HOST_TOOLS })
+      await client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole) })
 
       this.client = client
       this.hostToolsRegistered = true
@@ -1211,6 +1282,54 @@ export class OmpRpcAgentImpl implements AgentInterface {
           })
           const where = scope === 'shared' ? 'Channel 公共记忆(全员可检索)' : '本人私有记忆'
           return { text: `已沉淀到${where}: "${title}"(dedupKey=${saved.dedupKey})` }
+        }
+
+        case 'create_team_agent': {
+          const name = req.arguments.name as string
+          const harness = req.arguments.harness as string | undefined
+          const systemPrompt = req.arguments.system_prompt as string | undefined
+          const reason = req.arguments.reason as string | undefined
+          const agent = await ws.createTeamMember({
+            name,
+            harness,
+            config: systemPrompt ? { systemPromptPrefix: systemPrompt } : undefined,
+            reason,
+          })
+          return {
+            text: [
+              `团队成员已创建并加入 channel:`,
+              `  id: ${agent.id}`,
+              `  name: ${agent.name}(role=worker, harness=${agent.harness})`,
+              `新成员当前空闲,可立即 dispatch_task 指派任务;list_team_agents 可随时查看团队名册。`,
+            ].join('\n'),
+          }
+        }
+
+        case 'update_team_agent': {
+          const agentId = req.arguments.agent_id as string
+          const name = req.arguments.name as string | undefined
+          const systemPrompt = req.arguments.system_prompt as string | undefined
+          const enabled = req.arguments.enabled as boolean | undefined
+          const reason = req.arguments.reason as string | undefined
+          const agent = await ws.updateTeamMember(agentId, {
+            name,
+            config: systemPrompt !== undefined ? { systemPromptPrefix: systemPrompt } : undefined,
+            enabled: enabled === undefined ? undefined : (enabled ? 1 : 0),
+            reason,
+          })
+          return {
+            text: `团队成员 ${agentId} 已更新:name="${agent.name}"${enabled !== undefined ? `, enabled=${enabled ? 1 : 0}` : ''};运行时将按新配置重载(下次任务生效)。`,
+          }
+        }
+
+        case 'remove_team_agent': {
+          const agentId = req.arguments.agent_id as string
+          const reason = req.arguments.reason as string | undefined
+          const result = await ws.removeTeamMember(agentId, reason)
+          const recycleNote = result.recycledTasks.length > 0
+            ? `其 ${result.recycledTasks.length} 个在途任务已回收(排队任务重派给剩余最短队列成员;执行中任务转 FAILED 待调度重试)。`
+            : `该成员无在途任务。`
+          return { text: `团队成员 ${agentId} 已移除。${recycleNote}` }
         }
 
         default:

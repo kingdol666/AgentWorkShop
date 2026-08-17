@@ -87,6 +87,51 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           this.agents[cid] = [...list]
           break
         }
+        case 'agent.member': {
+          // 团队成员增/改/删(lead 执行中自主管理或用户 REST):实体列表实时增删改
+          const p = e.payload as {
+            op: 'added' | 'updated' | 'removed'
+            agentId: string
+            name: string
+            role: 'lead' | 'worker'
+            harness: string
+            enabled?: number
+            by: string
+            reason?: string
+          }
+          const list = this.agents[cid] ?? []
+          const idx = list.findIndex(a => a.agentId === p.agentId)
+          if (p.op === 'added') {
+            if (idx < 0) {
+              list.push({
+                agentId: p.agentId,
+                name: p.name,
+                role: p.role,
+                harness: p.harness,
+                state: 'idle',
+                currentTaskId: null,
+                queued: 0,
+                completed: 0,
+              })
+            }
+          }
+          else if (p.op === 'updated') {
+            if (idx >= 0) {
+              list[idx] = {
+                ...list[idx]!,
+                name: p.name,
+                harness: p.harness,
+                // 禁用成员置 stopped(不再接新任务);重新启用回 idle
+                state: p.enabled === 0 ? 'stopped' : (list[idx]!.state === 'stopped' ? 'idle' : list[idx]!.state),
+              }
+            }
+          }
+          else if (p.op === 'removed') {
+            if (idx >= 0) list.splice(idx, 1)
+          }
+          this.agents[cid] = [...list]
+          break
+        }
         case 'task.status': {
           const p = e.payload as { taskId: string, state: string, assigneeId?: string }
           const list = this.tasks[cid] ?? []

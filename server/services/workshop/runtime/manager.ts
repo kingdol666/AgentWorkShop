@@ -16,6 +16,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { AppError } from '../../../utils/errors'
 import type { A2AMessage, A2AArtifact, Part } from '../types/a2a'
 import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
+import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentInfo, AgentInterface, AgentWorkspace, AgentEvent, ExecutionMode } from '../agents/agent-interface'
 import type { ModeConfig } from './execution-mode'
 import { encodeTaskMode } from './execution-mode'
@@ -31,7 +32,7 @@ import { parseJson } from '../db/database'
 import type { AgentRow, ChannelAgentRow, ChannelRow, MemoryRow, TaskRow, TeamRow, UserRow, WorkspaceRow } from '../db/database'
 import { Mailbox, rowToMessage } from './mailbox'
 import { AgentRuntime } from './agent-runtime'
-import type { ChannelBus, TaskEngine } from './agent-runtime'
+import type { ChannelBus, MemberChangeEvent, TaskEngine } from './agent-runtime'
 import { ChannelRuntime } from './channel-runtime'
 import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
@@ -146,6 +147,9 @@ function runtimeKey(channelId: string, agentId: string): string {
   return `${channelId}\u0000${agentId}`
 }
 
+/** factory 支持的 harness 集(lead 建成员时校验;与 agents/factory.ts 对齐) */
+const KNOWN_HARNESSES = new Set(['mock', 'omp', 'claude'])
+
 export class AgentChannelManager {
   private channels = new Map<string, ChannelRuntime>()
   /** 键 = runtimeKey(channelId, 实例 id);每个实例一个独立运行时 */
@@ -205,6 +209,7 @@ export class AgentChannelManager {
     const agentListeners = new Set<(e: { agentId: string, state: 'idle' | 'busy' | 'stopped' }) => void>()
     const messageListeners = new Set<(message: A2AMessage) => void>()
     const memoryListeners = new Set<(e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }) => void>()
+    const memberListeners = new Set<(e: MemberChangeEvent) => void>()
     return {
       emit: (event, source) => {
         for (const fn of eventListeners) {
@@ -277,6 +282,20 @@ export class AgentChannelManager {
         memoryListeners.add(fn)
         return () => memoryListeners.delete(fn)
       },
+      notifyMember: (e) => {
+        for (const fn of memberListeners) {
+          try {
+            fn(e)
+          }
+          catch (err) {
+            console.error('[ChannelBus] member listener error:', err)
+          }
+        }
+      },
+      onMemberEvent: (fn) => {
+        memberListeners.add(fn)
+        return () => memberListeners.delete(fn)
+      },
       wakeScheduler: () => {
         cr.wakeScheduler()
       },
@@ -317,11 +336,22 @@ export class AgentChannelManager {
     return this.buses.get(channelId)?.onMemoryEvent(fn) ?? (() => {})
   }
 
+  /** 订阅 channel 内团队成员增/改/删(AEP agent.member 事件源;lead 工具桥与 REST 入口共用汇流点) */
+  subscribeMemberEvents(channelId: string, fn: (e: MemberChangeEvent) => void): () => void {
+    this.ensureChannelRuntime(channelId)
+    return this.buses.get(channelId)?.onMemberEvent(fn) ?? (() => {})
+  }
+
   private notifyTask(
     channelId: string,
     e: { taskId: string, state?: TaskState, progress?: number, agentId?: string },
   ): void {
     this.buses.get(channelId)?.notifyTask(e)
+  }
+
+  /** 团队成员变更广播(AEP agent.member 事件源;lead 工具桥与 REST 入口共用) */
+  private notifyMember(channelId: string, e: MemberChangeEvent): void {
+    this.buses.get(channelId)?.notifyMember(e)
   }
 
   /** 按实例装配 AgentRuntime(每个实例一个独立运行时) */
@@ -506,6 +536,10 @@ export class AgentChannelManager {
         this.buses.get(channelId)?.notifyMemory({ agentId: agent.id, scope: input.scope, title: input.title, dedupKey: saved.dedupKey })
         return saved
       },
+      // 团队成员管理(仅 lead;manager 内二次校验角色,工具面与决策面共用)
+      createTeamMember: input => this.createTeamMember(channelId, agent.id, input),
+      updateTeamMember: (agentId, patch) => this.updateTeamMember(channelId, agent.id, agentId, patch),
+      removeTeamMember: (agentId, reason) => this.removeTeamMember(channelId, agent.id, agentId, reason),
     }
   }
 
@@ -771,6 +805,9 @@ export class AgentChannelManager {
     channelId: string
     agentId: string
     role: 'lead' | 'worker'
+    /** 操作发起方(AEP agent.member 的 by;缺省 'user') */
+    by?: string
+    reason?: string
   }): Promise<AgentInfo> {
     const tpl = this.deps.repos.agents.findById(input.agentId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${input.agentId}`)
@@ -791,6 +828,16 @@ export class AgentChannelManager {
     if (input.role === 'lead') {
       this.deps.repos.channels.update(input.channelId, { leadAgentId: inst.id })
     }
+    this.notifyMember(input.channelId, {
+      op: 'added',
+      agentId: inst.id,
+      name: inst.name,
+      role: inst.role as 'lead' | 'worker',
+      harness: inst.harness,
+      enabled: inst.enabled,
+      by: input.by ?? 'user',
+      reason: input.reason,
+    })
     return instanceToAgentInfo(inst)
   }
 
@@ -938,17 +985,31 @@ export class AgentChannelManager {
   }
 
   /** 更新实例(name/harness/config/enabled);变更后卸载已装配运行时以重载 */
-  async updateChannelAgent(instanceId: string, patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number }): Promise<AgentInfo> {
+  async updateChannelAgent(
+    instanceId: string,
+    patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number },
+    meta?: { channelId?: string, by?: string, reason?: string },
+  ): Promise<AgentInfo> {
     const m = this.deps.repos.channelAgents.findById(instanceId)
     if (!m) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
     const updated = this.deps.repos.channelAgents.update(instanceId, patch)
     if (!updated) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
     await this.unloadAgent(updated.channelId, instanceId)
+    this.notifyMember(updated.channelId, {
+      op: 'updated',
+      agentId: instanceId,
+      name: updated.name,
+      role: updated.role as 'lead' | 'worker',
+      harness: updated.harness,
+      enabled: updated.enabled,
+      by: meta?.by ?? 'user',
+      reason: meta?.reason,
+    })
     return instanceToAgentInfo(updated)
   }
 
   /** 从 channel 移除实例(仅删实例,不删模板) */
-  async removeAgentFromChannel(channelId: string, instanceId: string): Promise<void> {
+  async removeAgentFromChannel(channelId: string, instanceId: string, meta?: { by?: string, reason?: string }): Promise<void> {
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, instanceId)
     if (!m) return
     await this.stopAndDetach(channelId, instanceId)
@@ -957,6 +1018,144 @@ export class AgentChannelManager {
     }
     this.deps.repos.subscriptions.removeByAgent(channelId, instanceId)
     this.deps.repos.channelAgents.remove(channelId, instanceId)
+    this.notifyMember(channelId, {
+      op: 'removed',
+      agentId: instanceId,
+      name: m.name,
+      role: m.role as 'lead' | 'worker',
+      harness: m.harness,
+      enabled: m.enabled,
+      by: meta?.by ?? 'user',
+      reason: meta?.reason,
+    })
+  }
+
+  // ===== Lead 自主团队管理面(执行中扩容/调参/裁撤;工具桥 + 调度决策共用) =====
+
+  /** lead 在本 channel 新建团队成员(worker):按需落模板(owner=channel 属主)并克隆为独立实例 */
+  async createTeamMember(
+    channelId: string,
+    callerAgentId: string,
+    input: { name: string, harness?: string, config?: Record<string, unknown>, templateId?: string, reason?: string },
+  ): Promise<AgentInfo> {
+    const caller = this.requireMember(channelId, callerAgentId)
+    if (caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可管理团队成员')
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+    const name = input.name.trim()
+    if (!name) throw new AppError(400, 'BAD_REQUEST', '成员名不能为空')
+    let templateId = input.templateId
+    if (templateId) {
+      if (!this.deps.repos.agents.findById(templateId)) {
+        throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${templateId}`)
+      }
+    }
+    else {
+      const harness = input.harness ?? 'omp'
+      if (!KNOWN_HARNESSES.has(harness)) {
+        throw new AppError(400, 'UNKNOWN_HARNESS', `未知 harness: ${harness}(可选 ${[...KNOWN_HARNESSES].join('/')})`)
+      }
+      const tpl = this.deps.repos.agents.create({
+        name,
+        harness,
+        config: input.config,
+        ownerUserId: channel.ownerUserId ?? null,
+      })
+      templateId = tpl.id
+    }
+    // 新成员懒装配:首次收到任务投递时按需 wire(与 REST 添加成员同语义)
+    return this.addAgentToChannel({
+      channelId,
+      agentId: templateId,
+      role: 'worker',
+      by: `lead:${callerAgentId}`,
+      reason: input.reason,
+    })
+  }
+
+  /** lead 更新团队成员(改名/改配置/启停;不能改自己);变更后卸载运行时,下次消费按新配置重载 */
+  async updateTeamMember(
+    channelId: string,
+    callerAgentId: string,
+    agentId: string,
+    patch: { name?: string, config?: Record<string, unknown>, enabled?: number, reason?: string },
+  ): Promise<AgentInfo> {
+    const caller = this.requireMember(channelId, callerAgentId)
+    if (caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可管理团队成员')
+    if (agentId === callerAgentId) {
+      throw new AppError(400, 'BAD_REQUEST', 'lead 不能在执行中更新自己(避免自毁调度循环)')
+    }
+    const target = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+    if (!target) throw new AppError(404, 'NOT_FOUND', `团队成员不存在: ${agentId}`)
+    return this.updateChannelAgent(agentId, patch, { channelId, by: `lead:${callerAgentId}`, reason: patch.reason })
+  }
+
+  /**
+   * lead 移除团队成员(worker;不能移除自己)。
+   * 孤儿任务回收(成员移除后其任务不能悬死):
+   *  - SUBMITTED/ASSIGNED(排队中)→ 重派给剩余队列最短的 worker;无接收者 → 取消
+   *  - WORKING/WAITING(执行中)→ 中止运行时并置 FAILED,交调度循环按重试策略重派
+   */
+  async removeTeamMember(
+    channelId: string,
+    callerAgentId: string,
+    agentId: string,
+    reason?: string,
+  ): Promise<{ recycledTasks: string[] }> {
+    const caller = this.requireMember(channelId, callerAgentId)
+    if (caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可管理团队成员')
+    if (agentId === callerAgentId) {
+      throw new AppError(400, 'BAD_REQUEST', 'lead 不能移除自己(移除 lead 请用 REST 删除)')
+    }
+    const target = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+    if (!target) throw new AppError(404, 'NOT_FOUND', `团队成员不存在: ${agentId}`)
+
+    const recycledTasks: string[] = []
+    const orphans = this.deps.repos.tasks
+      .listByChannelAssignee(channelId, agentId)
+      .map(rowToTask)
+      .filter(t => !TERMINAL_TASK_STATES[t.state])
+    for (const task of orphans) {
+      if (task.state === 'SUBMITTED' || task.state === 'ASSIGNED') {
+        const receiver = this.pickReceiverWorker(channelId, agentId)
+        if (receiver) {
+          this.getTaskEngine().reassign(task.id, receiver)
+          this.wakeAgent(channelId, receiver)
+        }
+        else {
+          this.getTaskEngine().cancel(task.id, callerAgentId)
+        }
+      }
+      else {
+        // WORKING/WAITING:先中止在跑回合,再走 FAILED(调度循环 retry/reassign 兜底)
+        this.runtimeOf(channelId, agentId)?.abortCurrent()
+        if (task.state === 'WAITING') {
+          this.getTaskEngine().transition(task.id, 'WORKING', callerAgentId)
+        }
+        this.getTaskEngine().transition(task.id, 'FAILED', callerAgentId)
+      }
+      recycledTasks.push(task.id)
+    }
+
+    await this.removeAgentFromChannel(channelId, agentId, { by: `lead:${callerAgentId}`, reason })
+    return { recycledTasks }
+  }
+
+  /** 剩余可用 worker 里选队列最短者(成员移除重派接收者) */
+  private pickReceiverWorker(channelId: string, excludeAgentId: string): string | null {
+    const candidates = this.deps.repos.channelAgents
+      .listByChannel(channelId)
+      .filter(m => m.enabled === 1 && m.role === 'worker' && m.id !== excludeAgentId)
+    let best: string | null = null
+    let bestLen = Number.POSITIVE_INFINITY
+    for (const m of candidates) {
+      const len = this.getTaskEngine().queueViewOf(channelId, m.id).queued.length
+      if (len < bestLen) {
+        best = m.id
+        bestLen = len
+      }
+    }
+    return best
   }
 
   // ===== AgentTeam 管理面(模板编组 + 批量部署) =====

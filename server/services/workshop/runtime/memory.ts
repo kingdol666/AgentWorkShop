@@ -234,7 +234,11 @@ export class AgentMemory {
     return [
       `## 相关记忆(自动召回的高相关/最近线索摘要;与当前任务冲突时,以当前任务为准)`,
       ...lines,
-      `以上仅为摘要线索;完整细节与更多历史记忆可用 search_memory 工具按需检索(支持 private/shared 域过滤)。`,
+      [
+        `记忆使用提示:`,
+        `- 以上只是线索级摘要。开工前先判断是否需要更多上下文:历史结论/团队约定/相似任务经验 → 调 search_memory(query, scope) 主动检索(覆盖私有+共享域)。`,
+        `- 作业中发现可复用的结论、约定、教训 → 立即 save_memory 沉淀:scope=private 存个人经验,scope=shared 发布到 Channel 公共记忆供全员复用。`,
+      ].join('\n'),
     ].join('\n')
   }
 
