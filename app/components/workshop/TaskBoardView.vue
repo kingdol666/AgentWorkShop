@@ -12,11 +12,11 @@ const entities = useEntitiesStore()
 const tasks = computed(() => entities.tasks[props.channelId] ?? [])
 
 const columns = computed(() => [
-  { key: 'todo', title: '待启动', states: ['SUBMITTED', 'ASSIGNED'], color: '#8c8c8c' },
-  { key: 'doing', title: '执行中', states: ['WORKING'], color: '#1677ff' },
-  { key: 'waiting', title: '等待汇总', states: ['WAITING'], color: '#faad14' },
-  { key: 'done', title: '已完成', states: ['COMPLETED'], color: '#52c41a' },
-  { key: 'bad', title: '异常/取消', states: ['FAILED', 'CANCELED'], color: '#ff4d4f' },
+  { key: 'todo', title: '待启动', states: ['SUBMITTED', 'ASSIGNED'], color: 'var(--ink-faint)' },
+  { key: 'doing', title: '执行中', states: ['WORKING'], color: 'var(--accent-cobalt)' },
+  { key: 'waiting', title: '等待汇总', states: ['WAITING'], color: 'var(--accent-amber)' },
+  { key: 'done', title: '已完成', states: ['COMPLETED'], color: 'var(--accent-moss)' },
+  { key: 'bad', title: '异常/取消', states: ['FAILED', 'CANCELED'], color: 'var(--accent-vermilion)' },
 ].map(col => ({
   ...col,
   items: tasks.value.filter(t => col.states.includes(t.state)),
@@ -96,15 +96,17 @@ const childCount = (id: string): number =>
   gap: 6px;
   align-items: center;
   padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 6px;
-  background: color-mix(in srgb, currentColor 5%, transparent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  border-radius: 0;
 }
-.bar { width: 8px; height: 8px; border-radius: 2px; }
+.bar { width: 8px; height: 8px; border-radius: 1px; }
 .col-count {
   margin-left: auto;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   opacity: 0.5;
 }
 .col-body {
@@ -117,10 +119,16 @@ const childCount = (id: string): number =>
   padding: 8px 10px;
   margin-bottom: 6px;
   cursor: pointer;
-  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-  border-radius: 8px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
-.card:hover { border-color: var(--color-primary); }
+.card:hover {
+  border-color: var(--accent-cobalt);
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--accent-cobalt) 16%, transparent);
+  transform: translate(-1px, -1px);
+}
 .card-title {
   overflow: hidden;
   font-size: 13px;
@@ -131,7 +139,7 @@ const childCount = (id: string): number =>
 .card-meta {
   margin-top: 2px;
   font-size: 11px;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   opacity: 0.55;
 }
 .col-empty {

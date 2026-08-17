@@ -37,7 +37,16 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/main.css'],
+  css: [
+    '~/assets/css/main.css',
+    // 制图台设计系统字体:展示衬线 + 正文 + 等宽数据字体(全部本地打包,离线可用)
+    '@fontsource-variable/fraunces/index.css',
+    '@fontsource/ibm-plex-sans/400.css',
+    '@fontsource/ibm-plex-sans/500.css',
+    '@fontsource/ibm-plex-sans/600.css',
+    '@fontsource/ibm-plex-mono/400.css',
+    '@fontsource/ibm-plex-mono/500.css',
+  ],
 
   // 配置驱动注入：app 运行时通过 useRuntimeConfig().public 读取，无需在运行时读 fs
   runtimeConfig: {

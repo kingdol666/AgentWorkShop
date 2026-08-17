@@ -1,5 +1,65 @@
+/* ============================================================
+ * AgentWorkShop 设计系统 — 「制图台 The Draftsman's Bench」
+ * ------------------------------------------------------------
+ * 概念:工程师的绘图桌。温暖的牛皮纸 + 普鲁士墨水 + 钴蓝 + 朱红。
+ * 排版:Fraunces(展示衬线)/ IBM Plex Sans(正文)/ IBM Plex Mono(数据与标签)。
+ * 质素:2px 直角、硬边偏移投影、蓝图网格、角标刻度、颗粒噪点。
+ * 所有颜色走 CSS 变量;暗色变体经 html.dark 覆盖。
+ * ============================================================ */
+
 :root {
-  --color-primary: #1677ff;
+  /* 主色(与 config.yml -> --color-primary 一致,antd 由 ConfigProvider 驱动) */
+  --color-primary: #2e51c8;
+
+  /* 油墨与纸张(亮:牛皮纸) */
+  --ink: #1b2733;
+  --ink-soft: rgb(27 39 51 / 72%);
+  --ink-faint: rgb(27 39 51 / 48%);
+  --paper: #ece8dc;
+  --paper-raised: #f8f6ee;
+  --paper-deep: #e3dcca;
+  --line: #d3ccb8;
+  --line-strong: #b9b096;
+  --grid-line: rgb(27 39 51 / 5.5%);
+
+  /* 强调色 */
+  --accent-cobalt: #2e51c8;
+  --accent-vermilion: #c23b2e;
+  --accent-moss: #3e7a47;
+  --accent-amber: #b45f1a;
+  --accent-violet: #6b4e9e;
+
+  /* 字体 */
+  --font-display: 'Fraunces Variable', Georgia, 'Songti SC', 'Noto Serif SC', serif;
+  --font-body: 'IBM Plex Sans', 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Cascadia Mono', ui-monospace, consolas, monospace;
+
+  /* 语义变量(供全局覆盖使用,antd 侧另有 useToken) */
+  --shadow-offset: 3px 3px 0 rgb(27 39 51 / 10%);
+  --shadow-card: 0 1px 0 rgb(27 39 51 / 6%), 0 6px 18px -10px rgb(27 39 51 / 18%);
+
+  --sider-bg: #131a23;
+  --sider-ink: #c9d4d2;
+  --sider-ink-faint: rgb(201 212 210 / 45%);
+}
+
+html.dark {
+  --ink: #e6e1d3;
+  --ink-soft: rgb(230 225 211 / 70%);
+  --ink-faint: rgb(230 225 211 / 48%);
+  --paper: #0f151b;
+  --paper-raised: #1a222c;
+  --paper-deep: #141c24;
+  --line: #2a3644;
+  --line-strong: #39495a;
+  --grid-line: rgb(126 166 255 / 7%);
+
+  --shadow-offset: 3px 3px 0 rgb(0 0 0 / 32%);
+  --shadow-card: 0 1px 0 rgb(0 0 0 / 35%), 0 10px 26px -12px rgb(0 0 0 / 55%);
+
+  --sider-bg: #0b1117;
+  --sider-ink: #c7d0cb;
+  --sider-ink-faint: rgb(199 208 203 / 42%);
 }
 
 * {
@@ -15,8 +75,371 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--font-body);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* 制图纸:底纸 + 蓝图网格 + 暖色晕染 */
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgb(46 81 200 / 5%), transparent 60%),
+    radial-gradient(900px 420px at -10% 110%, rgb(194 59 46 / 4.5%), transparent 55%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px, 24px 24px;
+  background-attachment: fixed;
+}
+
+/* 颗粒噪点叠层(纯 CSS data-URI,不加载外部资源) */
+#__nuxt::after {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* ---------- 标题层级:展示衬线 ---------- */
+h1,
+h2,
+.ant-card .ant-card-head-title,
+.ant-modal-title,
+.ant-drawer .ant-drawer-title {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+h1,
+h2 {
+  color: var(--ink);
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--paper-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 2px solid var(--paper-deep);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
+}
+
+::selection {
+  color: var(--paper-raised);
+  background: var(--accent-cobalt);
+}
+
+/* ============================================================
+ * 通用"制图件"工具类
+ * ============================================================ */
+
+/* 角标刻度面板:四角 L 形刻度线(蓝图套印记号) */
+.aw-panel {
+  position: relative;
+}
+
+.aw-panel::before,
+.aw-panel::after {
+  position: absolute;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  pointer-events: none;
+  content: '';
+  border-color: var(--ink-faint);
+  border-style: solid;
+}
+
+.aw-panel::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1.5px 0 0 1.5px;
+}
+
+.aw-panel::after {
+  right: -1px;
+  bottom: -1px;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+/* 等宽眉题:小号大写、宽字距标签 */
+.aw-kicker {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* 展示字体(标题/数字) */
+.aw-display {
+  font-family: var(--font-display);
+}
+
+/* 等宽数据 */
+.aw-mono {
+  font-family: var(--font-mono);
+}
+
+/* 页面标题组 */
+.aw-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.aw-page-head h1 {
+  margin: 2px 0 0;
+  font-size: 30px;
+  font-weight: 590;
+  line-height: 1.1;
+}
+
+/* 版本印章(标题右侧) */
+.aw-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  border: 1px dashed var(--line-strong);
+  transform: rotate(-0.5deg);
+}
+
+.aw-stamp::before {
+  width: 6px;
+  height: 6px;
+  content: '';
+  background: var(--accent-vermilion);
+}
+
+/* 载入时的阶梯显现(首屏节奏) */
+@media (prefers-reduced-motion: no-preference) {
+  .aw-stagger > * {
+    animation: aw-rise 0.5s cubic-bezier(0.22, 0.68, 0.36, 1) backwards;
+  }
+
+  .aw-stagger > :nth-child(2) { animation-delay: 0.05s; }
+  .aw-stagger > :nth-child(3) { animation-delay: 0.1s; }
+  .aw-stagger > :nth-child(4) { animation-delay: 0.15s; }
+  .aw-stagger > :nth-child(5) { animation-delay: 0.2s; }
+  .aw-stagger > :nth-child(6) { animation-delay: 0.25s; }
+
+  @keyframes aw-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ============================================================
+ * Ant Design Vue 全局覆盖:去"AI 模板味",落进制图语言
+ * ============================================================ */
+
+.ant-layout {
+  background: transparent;
+}
+
+/* 卡片:直角 + 硬边偏移投影 */
+.ant-card {
+  background: var(--paper-raised);
+  border-color: var(--line) !important;
+  border-radius: 2px !important;
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.ant-card:hover {
+  border-color: var(--line-strong) !important;
+}
+
+.ant-card-hoverable:hover {
+  box-shadow: var(--shadow-offset);
+  transform: translate(-1px, -1px);
+}
+
+/* 按钮:方角;主按钮硬投影由 antd primaryShadow token 驱动,按压时落印(印章感) */
+.ant-btn {
+  border-radius: 2px !important;
+  font-weight: 500;
+  box-shadow: none;
+  transition: all 0.16s ease;
+}
+
+.ant-btn-primary:not(:disabled):active {
+  box-shadow: 0 0 0 transparent !important;
+  transform: translate(2px, 2px);
+}
+
+.ant-btn-default:not(:disabled):hover {
+  border-color: var(--accent-cobalt);
+  color: var(--accent-cobalt);
+}
+
+.ant-radio-button-wrapper {
+  border-radius: 0 !important;
+}
+
+/* 表单控件:方角 + 钴蓝聚焦 */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-select-selector,
+.ant-picker,
+.ant-input-search .ant-input,
+.ant-input-group-addon {
+  border-radius: 2px !important;
+}
+
+.ant-select-dropdown,
+.ant-picker-dropdown,
+.ant-dropdown-menu {
+  border-radius: 2px !important;
+}
+
+/* 标签:等宽小标签,像打孔标签纸 */
+.ant-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  border-radius: 2px;
+}
+
+/* 表格:表头等宽大写(蓝图图例风格),行线如淡铅笔线 */
+.ant-table {
+  background: transparent;
+}
+
+.ant-table .ant-table-thead > tr > th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--paper-deep) !important;
+  border-bottom: 1px solid var(--line-strong) !important;
+}
+
+.ant-table .ant-table-tbody > tr > td {
+  border-bottom-color: var(--grid-line);
+}
+
+.ant-table .ant-table-tbody > tr:hover > td {
+  background: color-mix(in srgb, var(--accent-cobalt) 5%, transparent) !important;
+}
+
+/* 描述列表:标签等宽、值等宽 */
+.ant-descriptions .ant-descriptions-item-label {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  background: var(--paper-deep) !important;
+}
+
+.ant-descriptions.ant-descriptions-bordered .ant-descriptions-item-content {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+/* 页签:下划线式 + 等宽 */
+.ant-tabs .ant-tabs-tab {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.ant-tabs .ant-tabs-ink-bar {
+  height: 2px;
+}
+
+/* 弹层(弹窗/抽屉):直角,标题展示衬线 */
+.ant-modal-content,
+.ant-drawer-content {
+  border-radius: 2px !important;
+}
+
+.ant-modal-header,
+.ant-drawer-header {
+  border-bottom: 1px solid var(--line) !important;
+}
+
+/* 工具提示与消息 */
+.ant-tooltip .ant-tooltip-inner,
+.ant-message-notice-content {
+  border-radius: 2px !important;
+}
+
+/* 徽标:方角 */
+.ant-badge-count,
+.ant-badge .ant-badge-count {
+  font-family: var(--font-mono);
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+/* 折叠面板 / 空态 / 骨架 */
+.ant-collapse {
+  background: transparent;
+  border-color: var(--line);
+  border-radius: 2px;
+}
+
+.ant-empty .ant-empty-description {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.ant-skeleton {
+  opacity: 0.7;
+}
+
+/* 进度条:方角、钴蓝轨道(仪表式) */
+.ant-progress-bg {
+  border-radius: 0 !important;
+}
+
+.ant-progress-inner {
+  border-radius: 0 !important;
+  background: var(--paper-deep);
+}
+
+/* 菜单(抽屉/下拉内的非侧栏菜单) */
+.ant-menu-light {
+  background: transparent;
+}
+
+/* 分割线 */
+.ant-divider {
+  border-block-start-color: var(--line);
+}
+
+/* 上传 / 头像列表等次要组件 */
+.ant-list {
+  background: transparent;
 }

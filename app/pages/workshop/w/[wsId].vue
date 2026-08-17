@@ -69,6 +69,10 @@ const viewOptions = [
   { value: 'split', label: '同屏' },
 ]
 
+// 侧栏折叠(现代 harness 布局:左会话栏 / 右检查器可按需收起)
+const leftOpen = ref(true)
+const rightOpen = ref(true)
+
 // 抽屉状态(P1)
 const agentDrawerOpen = ref(false)
 const agentDrawerId = ref<string | null>(null)
@@ -116,6 +120,22 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         />
       </div>
       <div class="right">
+        <button
+          class="pane-toggle"
+          :class="{ off: !leftOpen }"
+          title="收起/展开 会话栏"
+          @click="leftOpen = !leftOpen"
+        >
+          <span class="i-tabler-layout-sidebar-left-collapse" />
+        </button>
+        <button
+          class="pane-toggle"
+          :class="{ off: !rightOpen }"
+          title="收起/展开 检查器"
+          @click="rightOpen = !rightOpen"
+        >
+          <span class="i-tabler-layout-sidebar-right-collapse" />
+        </button>
         <a-button
           size="small"
           type="text"
@@ -136,14 +156,20 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
           class="dot"
           :style="{ background: stateColor }"
         />
-        <span class="ws-state">{{ conn.state }}</span>
+        <span
+          class="ws-state"
+          :data-state="conn.state"
+        >{{ conn.state }}</span>
         <span class="seq">seq {{ lastSeq }}</span>
       </div>
     </div>
 
-    <!-- 主体三栏 -->
+    <!-- 主体三栏(左/右侧栏可折叠) -->
     <div class="main">
-      <div class="left-pane">
+      <div
+        v-if="leftOpen"
+        class="left-pane"
+      >
         <workshop-channel-session-list :ws-id="wsId" />
       </div>
       <div class="center-pane">
@@ -175,6 +201,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         </div>
       </div>
       <div
+        v-if="rightOpen"
         class="right-pane"
         :class="{ empty: !channelId }"
       >
@@ -233,17 +260,23 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
 .harness {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px - 48px);
+  height: calc(100dvh - var(--app-header-h, 60px) - var(--app-footer-h, 46px) - 16px);
   min-height: 0;
-  margin: -16px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-card);
 }
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 6px 12px;
   font-size: 13px;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+  background: color-mix(in srgb, var(--accent-cobalt) 4%, var(--paper-raised));
+  border-bottom: 1px solid var(--line);
 }
 .left,
 .right {
@@ -251,11 +284,52 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   gap: 8px;
   align-items: center;
 }
-.ws-name { font-weight: 700; }
+.ws-name {
+  font-family: var(--font-display);
+  font-weight: 590;
+  font-size: 15px;
+}
 .view-switch { margin-left: 8px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
-.ws-state { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
-.seq { font-family: ui-monospace, Consolas, monospace; font-size: 11px; opacity: 0.5; }
+.ws-state {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+.ws-state[data-state='open'] { color: var(--accent-moss); border-color: color-mix(in srgb, var(--accent-moss) 45%, transparent); }
+.ws-state[data-state='connecting'] { color: var(--accent-amber); border-color: color-mix(in srgb, var(--accent-amber) 45%, transparent); }
+.ws-state[data-state='closed'] { color: var(--accent-vermilion); border-color: color-mix(in srgb, var(--accent-vermilion) 45%, transparent); }
+.seq { font-family: var(--font-mono); font-size: 10px; opacity: 0.5; }
+
+/* 侧栏折叠开关(制图工具钮) */
+.pane-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  transition: all 0.15s ease;
+}
+.pane-toggle:hover {
+  color: var(--accent-cobalt);
+  border-color: var(--accent-cobalt);
+}
+.pane-toggle.off {
+  opacity: 0.4;
+}
+.pane-toggle.off:hover {
+  opacity: 1;
+}
 .main {
   display: flex;
   flex: 1 1 auto;

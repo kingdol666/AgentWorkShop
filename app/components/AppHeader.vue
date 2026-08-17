@@ -18,7 +18,7 @@ const switchLocale: SelectProps['onChange'] = (value) => {
   }
 }
 
-// 面包屑：根据路由匹配标题
+// 面包屑:路由 → 标题(等宽大写铭牌)
 const breadcrumbItems = computed(() => {
   const map: Record<string, string> = {
     '/': t('menu.dashboard'),
@@ -59,21 +59,18 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   <a-layout-header
     class="app-header"
     :style="{
-      background: 'var(--app-bg-container, #fff)',
-      borderBottomColor: 'var(--app-border, #f0f0f0)',
+      background: 'var(--app-bg-layout, transparent)',
+      borderBottomColor: 'var(--app-border, #d3ccb8)',
     }"
   >
-    <!-- 左侧：折叠按钮 + 面包屑 -->
+    <!-- 左侧:折叠 + 面包屑铭牌 -->
     <div class="header-left">
       <button
         class="collapse-btn"
         :aria-label="store.sidebarCollapsed ? t('header.expand') : t('header.collapse')"
         @click="store.toggleSidebar()"
       >
-        <span
-          class="i-tabler-menu-2"
-          :class="{ 'i-tabler-menu-2': !store.sidebarCollapsed, 'rotate-icon': store.sidebarCollapsed }"
-        />
+        <span class="i-tabler-menu-2" />
       </button>
 
       <a-breadcrumb class="breadcrumb">
@@ -86,7 +83,7 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
       </a-breadcrumb>
     </div>
 
-    <!-- 右侧：功能集群 -->
+    <!-- 右侧:功能集群 -->
     <div class="header-right">
       <a-tooltip :title="t('header.fullscreen')">
         <button
@@ -130,14 +127,11 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 
       <a-dropdown>
         <div class="user-chip">
-          <a-avatar
-            :size="32"
-            style="background-color: var(--color-primary)"
-          >
-            A
-          </a-avatar>
-          <span class="user-name">Admin</span>
-          <span class="i-tabler-chevron-down text-xs opacity-50" />
+          <span class="user-initial">A</span>
+          <span class="user-meta">
+            <span class="user-name">Admin</span>
+            <span class="user-role">operator</span>
+          </span>
         </div>
         <template #overlay>
           <a-menu @click="onAvatarMenu">
@@ -166,11 +160,10 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
-  padding: 0 20px 0 12px;
+  height: 60px;
+  padding: 0 24px 0 10px;
   border-bottom: 1px solid;
-  box-shadow: 0 1px 4px rgb(0 21 41 / 8%);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
@@ -178,63 +171,110 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
+/* 方角描边按钮(制图工具感),悬停显钴蓝 */
 .collapse-btn,
 .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  font-size: 18px;
-  color: var(--app-text, #333);
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+  color: var(--app-text, var(--ink));
   cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  background: var(--app-bg-container, transparent);
+  border: 1px solid var(--app-border, var(--line));
+  border-radius: 2px;
+  box-shadow: 2px 2px 0 var(--app-bg-layout, transparent);
+  transition: all 0.16s ease;
 }
 
 .collapse-btn:hover,
 .icon-btn:hover {
-  color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--accent-cobalt);
+  border-color: var(--accent-cobalt);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--accent-cobalt) 14%, transparent);
 }
 
-.rotate-icon {
-  transform: rotate(90deg);
-  transition: transform 0.3s ease;
+.collapse-btn:active,
+.icon-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 transparent;
 }
 
 .breadcrumb {
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+:deep(.breadcrumb .ant-breadcrumb-separator) {
+  font-family: var(--font-mono);
+  color: var(--ink-faint);
 }
 
 .lang-select {
-  width: 130px;
+  width: 120px;
 }
 
+/* 操作者徽记:方印 + 双行铭牌 */
 .user-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 10px 0 6px;
+  gap: 10px;
+  height: 42px;
+  margin-left: 4px;
+  padding: 0 12px 0 8px;
   cursor: pointer;
-  border-radius: 20px;
-  transition: background 0.2s ease;
+  border: 1px solid transparent;
+  transition: all 0.16s ease;
 }
 
 .user-chip:hover {
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-color: var(--app-border, var(--line));
+  background: var(--app-bg-container, transparent);
+}
+
+.user-initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--paper);
+  background: var(--accent-cobalt);
+  border-radius: 2px;
+  box-shadow: 1.5px 1.5px 0 rgb(27 39 51 / 30%);
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
 }
 
 .user-name {
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 500;
-  color: var(--app-text, #333);
+  color: var(--app-text, var(--ink));
+  letter-spacing: 0.03em;
+}
+
+.user-role {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--app-text-secondary, var(--ink-faint));
 }
 
 .hidden {

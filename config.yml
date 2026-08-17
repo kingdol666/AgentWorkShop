@@ -44,7 +44,8 @@ i18n:
 
 # 主题
 theme:
-  primaryColor: "#1677ff"
+  # 制图台色板:钴蓝墨水(antd 主色由本行驱动;夜间蓝图模式 index 由 app.vue 派生)
+  primaryColor: "#2E51C8"
   mode: light # light | dark
 
 # 安全配置

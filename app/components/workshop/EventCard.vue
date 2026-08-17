@@ -1,15 +1,16 @@
 <script setup lang="ts">
 /**
- * AEP 事件卡(时间线渲染单元,ZCode/Codex harness 风格):
+ * AEP 事件卡(时间线单行渲染单元,密集视图用):
  *  - 工具调用行(agent.status.message 的 🔧 标记):图标 + 工具名,分原生作业工具/harness 协作工具两色
  *  - agent 生命周期行(agent.status):状态点 + 队列/当前任务上下文
- *  - 消息路由行(a2a.message):from → to 名字解析 + 消息类型徽章(派发/取消/子任务完成/实时注入/协作)
- *  - 任务行(task.status/task.progress):状态迁移显示标题与 assignee 名
- *  - 气泡(agent.message)/ 流式打字机(agent.delta)/ 工件(a2a.artifact)
+ *  - 消息路由行(a2a.message):from → to 名字解析 + 消息类型徽章
+ *  - 任务行(task.status/task.progress)、气泡(agent.message)、流式打字机(agent.delta)、工件(a2a.artifact)
  *  - 团队成员变更(agent.member)/ 记忆沉淀(memory.saved)/ 错误(error)
  * 紧凑行、等宽时间、agent 徽标按 id 稳定取色。
+ * 聚合渲染(turn block)见 EventBlock.vue。
  */
 import { useEntitiesStore } from '../../stores/workshop/entities'
+import { TOOL_META } from '../../composables/workshop/useEventBlocks'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 
 const props = defineProps<{ event: AepEnvelope }>()
@@ -44,36 +45,7 @@ const msgText = computed(() => {
   return ''
 })
 
-// ===== 工具调用行(agent.status.message 的 🔧 前缀) =====
-
-/** 工具图标与分类:native = omp 原生作业工具;host = harness 协作工具(任务/通信/记忆/团队) */
-const TOOL_META: Record<string, { icon: string, kind: 'native' | 'host' }> = {
-  read: { icon: '📖', kind: 'native' },
-  write: { icon: '📝', kind: 'native' },
-  edit: { icon: '✏️', kind: 'native' },
-  bash: { icon: '💻', kind: 'native' },
-  grep: { icon: '🔍', kind: 'native' },
-  glob: { icon: '📁', kind: 'native' },
-  dispatch_task: { icon: '📋', kind: 'host' },
-  reassign_task: { icon: '🔁', kind: 'host' },
-  update_task: { icon: '🖊', kind: 'host' },
-  cancel_task: { icon: '🚫', kind: 'host' },
-  complete_task: { icon: '🏁', kind: 'host' },
-  report_progress: { icon: '📈', kind: 'host' },
-  send_message_to_agent: { icon: '💬', kind: 'host' },
-  poll_messages: { icon: '📥', kind: 'host' },
-  broadcast_message: { icon: '📢', kind: 'host' },
-  list_team_agents: { icon: '👥', kind: 'host' },
-  list_channel_tasks: { icon: '🗂', kind: 'host' },
-  get_task_details: { icon: '🔎', kind: 'host' },
-  get_my_task_queue: { icon: '📜', kind: 'host' },
-  get_queue_overview: { icon: '📊', kind: 'host' },
-  search_memory: { icon: '🧭', kind: 'host' },
-  save_memory: { icon: '🧠', kind: 'host' },
-  create_team_agent: { icon: '➕', kind: 'host' },
-  update_team_agent: { icon: '🛠', kind: 'host' },
-  remove_team_agent: { icon: '➖', kind: 'host' },
-}
+// ===== 工具调用行(agent.status.message 的 🔧 前缀;TOOL_META 见 useEventBlocks) =====
 
 const toolCall = computed(() => {
   if (props.event.type !== 'agent.status.message') return null
@@ -188,7 +160,10 @@ const stateColor: Record<string, string> = {
       class="body tool-line"
       :class="toolCall.meta.kind"
     >
-      <span class="tool-icon">{{ toolCall.meta.icon }}</span>
+      <span
+        class="tool-icon"
+        :class="toolCall.meta.icon"
+      />
       <span class="tool-name">{{ toolCall.name }}</span>
       <span
         v-if="toolCall.meta.kind === 'host'"

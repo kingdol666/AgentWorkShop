@@ -324,36 +324,67 @@ useHead({ title: 'Workshop · Agent Harness' })
 
 <style scoped>
 .page { padding: 4px; }
+
 .auth-gate {
   display: flex;
   justify-content: center;
   padding-top: 8vh;
 }
+
 .auth-card { width: 460px; max-width: 92vw; }
-.auth-card h2 { margin: 0 0 8px; }
+.auth-card h2 { margin: 0 0 8px; font-family: var(--font-display); }
 .sub { margin: 0 0 12px; font-size: 12px; opacity: 0.6; }
 .hint { margin: 8px 0 0; font-size: 11px; opacity: 0.5; }
+
 .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
 }
-h2 { margin: 0 0 4px; }
+
+h2 { margin: 0 0 4px; font-family: var(--font-display); }
+
 .user-tag { display: inline-flex; gap: 4px; align-items: center; padding: 3px 10px; }
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
+
+/* 工作台卡片:图纸面板 + 硬边投影,悬停时"浮起" */
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-  border-radius: 12px;
+  padding: 16px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
+
+.card::after {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+  content: '';
+  border-right: 1.5px solid var(--ink-faint);
+  border-bottom: 1.5px solid var(--ink-faint);
+}
+
+.card:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-offset);
+  transform: translate(-1px, -1px);
+}
+
 .card.placeholder {
   align-items: center;
   justify-content: center;
@@ -363,37 +394,67 @@ h2 { margin: 0 0 4px; }
   cursor: pointer;
   border-style: dashed;
 }
+
 .big { font-size: 28px; }
+
 .card-head {
   display: flex;
   gap: 8px;
   align-items: center;
   font-size: 15px;
 }
-.name { flex: 1 1 auto; font-weight: 700; }
+
+.card-head > :first-child { color: var(--accent-cobalt); }
+
+.name {
+  flex: 1 1 auto;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 590;
+}
+
 .op { cursor: pointer; opacity: 0.4; }
 .op:hover { opacity: 1; }
+
 .card-body { flex: 1 1 auto; min-height: 40px; }
+
 .ch-row {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 4px 6px;
+  padding: 5px 7px;
   margin: 2px 0;
   font-size: 12px;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 2px;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
-.ch-row:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+
+.ch-row:hover {
+  background: color-mix(in srgb, var(--accent-cobalt) 7%, transparent);
+  transform: translateX(2px);
+}
+
 .dot {
   flex: 0 0 auto;
   width: 7px;
   height: 7px;
-  background: #52c41a66;
+  background: var(--line-strong);
   border-radius: 50%;
 }
-.dot.live { background: #52c41a; box-shadow: 0 0 6px #52c41a; }
+
+.dot.live { background: var(--accent-moss); box-shadow: 0 0 6px var(--accent-moss); }
+
 .ch-name { flex: 0 0 auto; font-weight: 600; }
-.ch-meta { flex: 1 1 auto; overflow: hidden; font-family: ui-monospace, Consolas, monospace; font-size: 11px; opacity: 0.5; text-overflow: ellipsis; white-space: nowrap; }
+.ch-meta {
+  flex: 1 1 auto;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .empty { padding: 12px 6px; font-size: 12px; opacity: 0.4; }
 </style>

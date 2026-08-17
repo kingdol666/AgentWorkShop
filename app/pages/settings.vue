@@ -14,9 +14,9 @@ const basicForm = reactive({
 })
 
 // 主题设置
-const colorPresets = ['#1677ff', '#722ed1', '#52c41a', '#fa8c16', '#eb2f96', '#13c2c2']
+const colorPresets = ['#2e51c8', '#c23b2e', '#3e7a47', '#b45f1a', '#6b4e9e', '#0e7490']
 const themeForm = reactive({
-  primaryColor: '#1677ff',
+  primaryColor: '#2e51c8',
 })
 
 function pickColor(c: string) {

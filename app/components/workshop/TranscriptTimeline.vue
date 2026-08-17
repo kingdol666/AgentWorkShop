@@ -1,9 +1,11 @@
 <script setup lang="ts">
 /**
  * Transcript 时间线:过滤条(全部/消息/任务/错误)+ 事件流 + 自动吸底。
- * (P0 直渲染;万级事件虚拟滚动在 P2)
+ * 事件按"同 agent + 同类连续"聚合为 turn block 渲染(Codex/OpenHands 风格),
+ * 相同来源连续内容不断裂;虚拟滚动在 P2。
  */
 import { useEventsStore, type EventFilter } from '../../stores/workshop/events'
+import { aggregateEvents } from '../../composables/workshop/useEventBlocks'
 
 const props = defineProps<{ channelId: string }>()
 const events = useEventsStore()
@@ -16,6 +18,8 @@ const filter = computed({
 })
 
 const timeline = computed(() => events.timeline(props.channelId))
+/** 聚合块视图:过滤后事件 → turn blocks */
+const blocks = computed(() => aggregateEvents(timeline.value))
 
 const onScroll = (): void => {
   const el = scroller.value
@@ -47,7 +51,7 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
         size="small"
         :options="filterOptions"
       />
-      <span class="count">{{ timeline.length }} 事件</span>
+      <span class="count">{{ timeline.length }} 事件 / {{ blocks.length }} 块</span>
     </div>
     <div
       ref="scroller"
@@ -60,10 +64,10 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
       >
         等待事件…(提交任务后此处实时渲染 Agent 执行过程)
       </div>
-      <workshop-event-card
-        v-for="e in timeline"
-        :key="`${e.seq}-${e.type}`"
-        :event="e"
+      <workshop-event-block
+        v-for="b in blocks"
+        :key="b.id"
+        :block="b"
       />
     </div>
   </div>
@@ -83,7 +87,11 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
   padding: 6px 12px;
   border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent);
 }
-.count { font-size: 11px; font-family: ui-monospace, Consolas, monospace; opacity: 0.45; }
+.count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  opacity: 0.45;
+}
 .scroller {
   flex: 1 1 auto;
   min-height: 0;
