@@ -153,6 +153,7 @@ interface Setup {
 interface SetupOptions {
   tickMs?: number
   leadImpl?: AgentInterface
+  workerImpl?: AgentInterface
 }
 
 function setup(opts: SetupOptions = {}): Setup {
@@ -183,7 +184,7 @@ function setup(opts: SetupOptions = {}): Setup {
     bus,
     workspace: buildWorkspace(leadInfo, { engine, cr, tasks, messages }),
   })
-  const worker = new AgentRuntime(workerInfo, new MockAgentImpl(workerInfo.config), {
+  const worker = new AgentRuntime(workerInfo, opts.workerImpl ?? new MockAgentImpl(workerInfo.config), {
     mailbox: new Mailbox(messages, workerInfo.channelId, workerInfo.id, () => cr.wakeScheduler()),
     taskEngine: engine,
     bus,
@@ -278,8 +279,46 @@ async function testSuperviseThrowFallsBackToRules(): Promise<void> {
   await teardown(s)
 }
 
+class FlakyWorkerImpl implements AgentInterface {
+  private attempts = 0
+  private readonly fallback = new MockAgentImpl({ delayMs: 100 })
+
+  async* run(request: Parameters<NonNullable<AgentInterface['run']>>[0], ctx: Parameters<NonNullable<AgentInterface['run']>>[1]): AsyncIterable<AgentEvent> {
+    if (request.message.metadata?.['x-aw-task-kind'] === 'assign' && ctx.role === 'worker' && this.attempts++ === 0) {
+      yield { kind: 'error', error: { code: 'TEST_TRANSIENT', message: 'transient test failure' } }
+      return
+    }
+    yield* this.fallback.run(request, ctx)
+  }
+}
+
+async function testRetryKeepsParentAlive(): Promise<void> {
+  console.log('\n--- 4. 可重试子任务失败时不提前取消父任务 ---')
+  const s = setup({ tickMs: 10, workerImpl: new FlakyWorkerImpl() })
+  s.loop.start()
+  const parent = submitTask(s, '可重试主任务')
+
+  const retried = await waitUntil(() => {
+    const child = s.engine.list(s.channelId).find(t => t.parentId === parent.id)
+    return child?.retryCount === 1
+  })
+  const retriedChild = s.engine.list(s.channelId).find(t => t.parentId === parent.id)
+  check('失败子任务被重派', retried, `parent=${s.engine.get(parent.id)?.state}`)
+  check(
+    '重试期间父任务保持 WAITING',
+    s.engine.get(parent.id)?.state === 'WAITING'
+    && (retriedChild?.state === 'ASSIGNED' || retriedChild?.state === 'WORKING'),
+    `parent=${s.engine.get(parent.id)?.state} child=${retriedChild?.state}`,
+  )
+
+  const completed = await waitUntil(() => s.engine.get(parent.id)?.state === 'COMPLETED')
+  check('重试成功后父任务完成', completed, `state=${s.engine.get(parent.id)?.state}`)
+
+  await teardown(s)
+}
+
 async function testStopStopsScheduling(): Promise<void> {
-  console.log('\n--- 4. stop 后不再调度 ---')
+  console.log('\n--- 5. stop 后不再调度 ---')
   const s = setup({ tickMs: 10 })
   s.loop.start()
   const first = submitTask(s, '任务一')
@@ -298,7 +337,7 @@ async function testStopStopsScheduling(): Promise<void> {
 }
 
 function testFactory(): void {
-  console.log('\n--- 5. createAgentImpl 工厂 ---')
+  console.log('\n--- 6. createAgentImpl 工厂 ---')
   const mk = (harness: string): AgentInfo => ({
     id: randomUUID(),
     channelId: 'ch',
@@ -330,6 +369,7 @@ async function main(): Promise<void> {
   await testAutoDispatchAndComplete()
   await testWakeTriggersRound()
   await testSuperviseThrowFallsBackToRules()
+  await testRetryKeepsParentAlive()
   await testStopStopsScheduling()
   testFactory()
 

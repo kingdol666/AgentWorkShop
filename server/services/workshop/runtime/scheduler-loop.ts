@@ -287,7 +287,7 @@ export class SchedulerLoop {
       }
     }
 
-    // 父任务终结:子任务全部终态但存在 FAILED/CANCELED(即非全部 COMPLETED)
+    // 父任务终结:子任务全部终态且存在不可重试的 FAILED/CANCELED
     // → 父任务无法交付 → cancel 父任务(避免 WAITING 永挂;lead 可重新提交)
     for (const task of tasks) {
       const children = tasks.filter(t => t.parentId === task.id)
@@ -295,7 +295,8 @@ export class SchedulerLoop {
       if (task.state !== 'WAITING' && task.state !== 'WORKING') continue
       const allTerminal = children.every(c => TERMINAL_TASK_STATES[c.state] === true)
       const anyUnsuccessful = children.some(c => c.state !== 'COMPLETED')
-      if (allTerminal && anyUnsuccessful) {
+      const hasRetryableFailure = children.some(c => c.state === 'FAILED' && c.retryCount < 3)
+      if (allTerminal && anyUnsuccessful && !hasRetryableFailure) {
         decisions.push({ kind: 'cancel', taskId: task.id })
       }
     }
