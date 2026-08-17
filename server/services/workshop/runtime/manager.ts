@@ -109,6 +109,7 @@ function instanceToAgentInfo(m: ChannelAgentRow): AgentInfo {
     role: m.role as 'lead' | 'worker',
     config: parseJson<Record<string, unknown>>(m.configJson, {}),
     token: m.token,
+    enabled: m.enabled,
   }
 }
 

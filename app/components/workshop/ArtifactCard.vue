@@ -27,6 +27,18 @@ const isDeliverable = computed(() =>
   props.artifact.name === 'deliverable' || props.artifact.name === 'summary' || props.artifact.name === 'result',
 )
 
+/** 工件语义图标(交付物/汇总/输出/输入) */
+const artifactIcon = computed(() => {
+  switch (props.artifact.name) {
+    case 'deliverable': return '📦'
+    case 'summary': return '📋'
+    case 'result': return '✅'
+    case 'output': return '📄'
+    case 'input': return '📥'
+    default: return '🧾'
+  }
+})
+
 const expanded = ref(false)
 const shortText = computed(() => {
   const t = text.value
@@ -52,7 +64,7 @@ const copy = async (): Promise<void> => {
     :class="{ deliverable: isDeliverable }"
   >
     <div class="artifact-head">
-      <span class="tag">📦</span>
+      <span class="tag">{{ artifactIcon }}</span>
       <span class="name">{{ artifact.name ?? 'artifact' }}</span>
       <a-button
         size="small"

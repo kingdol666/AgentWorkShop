@@ -11,6 +11,8 @@ export interface AgentView {
   name: string
   role: 'lead' | 'worker'
   harness: string
+  /** 实例启停(1 启用 / 0 禁用;缺省视为启用) */
+  enabled?: number
   state: 'idle' | 'busy' | 'stopped'
   currentTaskId?: string | null
   queued?: number
@@ -35,11 +37,29 @@ export const useEntitiesStore = defineStore('workshop.entities', {
     tasks: {} as Record<string, TaskView[]>,
     /** refreshTasks 进行中标志(节流) */
     refreshing: {} as Record<string, boolean>,
+    /** refreshAgents 进行中标志(节流) */
+    refreshingAgents: {} as Record<string, boolean>,
   }),
   getters: {
     agentById(state) {
       return (channelId: string, agentId: string): AgentView | undefined =>
         state.agents[channelId]?.find(a => a.agentId === agentId)
+    },
+    /** agent 名字解析(事件渲染用):已知成员取名字,否则 id 前 8 位 */
+    agentName(state) {
+      return (channelId: string, agentId?: string | null): string => {
+        if (!agentId) return 'system'
+        const a = state.agents[channelId]?.find(x => x.agentId === agentId)
+        return a?.name ?? agentId.slice(0, 8)
+      }
+    },
+    /** 任务标题解析(事件渲染用):已知任务取标题,否则 id 前 8 位 */
+    taskTitle(state) {
+      return (channelId: string, taskId?: string | null): string => {
+        if (!taskId) return ''
+        const t = state.tasks[channelId]?.find(x => x.id === taskId)
+        return t?.title ?? taskId.slice(0, 8)
+      }
     },
     rootTasks(state) {
       return (channelId: string): TaskView[] =>
@@ -60,8 +80,7 @@ export const useEntitiesStore = defineStore('workshop.entities', {
       this.channels[channelId] = { ...payload.channel, loadedAt: Date.now() }
       this.agents[channelId] = payload.agents.map(a => ({ ...a }))
       this.tasks[channelId] = payload.tasks.map(t => this.toTaskView(t))
-    },
-    applyEvent(e: AepEnvelope): void {
+    }, applyEvent(e: AepEnvelope): void {
       const cid = e.channelId
       switch (e.type) {
         case 'agent.status': {
@@ -83,6 +102,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
               harness: '-',
             }
             list.push(fresh)
+            // 事件缺名字/角色等元信息 → 节流 REST 对齐补全(与任务同策略)
+            this.refreshAgents(cid)
           }
           this.agents[cid] = [...list]
           break
@@ -108,6 +129,7 @@ export const useEntitiesStore = defineStore('workshop.entities', {
                 name: p.name,
                 role: p.role,
                 harness: p.harness,
+                enabled: p.enabled,
                 state: 'idle',
                 currentTaskId: null,
                 queued: 0,
@@ -121,6 +143,7 @@ export const useEntitiesStore = defineStore('workshop.entities', {
                 ...list[idx]!,
                 name: p.name,
                 harness: p.harness,
+                enabled: p.enabled,
                 // 禁用成员置 stopped(不再接新任务);重新启用回 idle
                 state: p.enabled === 0 ? 'stopped' : (list[idx]!.state === 'stopped' ? 'idle' : list[idx]!.state),
               }
@@ -182,6 +205,32 @@ export const useEntitiesStore = defineStore('workshop.entities', {
     /** WS 断连后的 REST 兜底刷新(命令后立即对齐用) */
     refreshChannel(channelId: string, snapshot: AepSnapshot): void {
       this.applySnapshot(snapshot)
+    },
+    /**
+     * 节流 REST 成员对齐:事件流里冒出的未知 agent 缺 name/role/harness 元信息,
+     * 拉一次成员列表 upsert(以 REST 为准;事件流继续增量更新 state)。
+     */
+    refreshAgents(channelId: string): void {
+      if (this.refreshingAgents[channelId]) return
+      this.refreshingAgents[channelId] = true
+      $fetch<{ data?: Array<{ id: string, name: string, role: 'lead' | 'worker', harness: string }> }>(
+        `/api/workshop/channels/${channelId}/agents`,
+        { headers: { authorization: `Bearer ${useUserStore().token}` } },
+      )
+        .then((res) => {
+          const fresh = res.data ?? []
+          const merged = [...(this.agents[channelId] ?? [])]
+          for (const m of fresh) {
+            const idx = merged.findIndex(a => a.agentId === m.id)
+            if (idx >= 0) merged[idx] = { ...merged[idx]!, name: m.name, role: m.role, harness: m.harness }
+            else merged.push({ agentId: m.id, name: m.name, role: m.role, harness: m.harness, state: 'idle', currentTaskId: null, queued: 0, completed: 0 })
+          }
+          this.agents[channelId] = merged
+        })
+        .catch(() => {})
+        .finally(() => {
+          this.refreshingAgents[channelId] = false
+        })
     },
     /**
      * 节流 REST 任务对齐:订阅后新建任务从事件构建时缺标题/父子关系,

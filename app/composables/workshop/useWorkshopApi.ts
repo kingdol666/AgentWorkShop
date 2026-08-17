@@ -23,6 +23,8 @@ export interface AgentInfoDto {
   role: 'lead' | 'worker'
   config: Record<string, unknown>
   token?: string
+  /** 实例启停(1 启用 / 0 禁用) */
+  enabled?: number
 }
 
 export interface TaskDto {

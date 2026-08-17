@@ -39,16 +39,72 @@ interface ChannelStream {
   ring: AepEnvelope[]
   peers: Set<WsPeer>
   unsubs: Array<() => void>
-  /** 最后一个 peer 离开后的销毁定时器(保留期内事件继续入缓冲,支持断线续传) */
-  teardown: ReturnType<typeof setTimeout> | null
 }
 
-/** 最后 peer 离开后 stream 保留时长(断线重连窗口;期内事件继续入环形缓冲) */
-const TEARDOWN_GRACE_MS = 60_000
+/**
+ * HMR 存活:nitro dev 热重载重建模块图(模块级 Map 随之蒸发),但 crossws peer 连接仍存活——
+ * hub 状态挂 globalThis 跨模块实例存活;manager 更替(plugin 重新 init)时由 ensureHubBound
+ * 自愈式重建订阅(peers 平移),存活连接在下一帧(最长一个 ping 周期)自动恢复事件流。
+ */
+interface HubState {
+  streams: Map<string, ChannelStream>
+  peerChannels: Map<WsPeer, Set<string>>
+  boundManager: AgentChannelManager | null
+}
+const hubGlobal = globalThis as typeof globalThis & { __workshopWsHub?: HubState }
+const hub: HubState = hubGlobal.__workshopWsHub
+  ?? (hubGlobal.__workshopWsHub = { streams: new Map(), peerChannels: new Map(), boundManager: null })
+const streams = hub.streams
+const peerChannels = hub.peerChannels
 
-const streams = new Map<string, ChannelStream>()
-/** peer → 已订阅 channel(断连时批量退订) */
-const peerChannels = new Map<WsPeer, Set<string>>()
+/**
+ * hub ↔ manager 绑定校验(消息入口调用):manager 更替(HMR 后 plugin 重新 init)时,
+ * 退订旧 manager 总线上的全部 stream 并按新 manager 重建订阅;已注册 peers 平移,
+ * ring/seq 延续,客户端无需重连即恢复事件流。
+ */
+function ensureHubBound(manager: AgentChannelManager): void {
+  if (hub.boundManager === manager) return
+  hub.boundManager = manager
+  for (const stream of [...streams.values()]) {
+    const channelId = stream.channelId
+    // seq/ring 延续:客户端游标(已收到的 lastSeq)不变,重建流必须接续原 seq 递增,
+    // 否则新事件 seq 从 1 重来会被客户端 ingest 的 seq>lastSeq 判重逻辑整段丢弃。
+    const seq = stream.seq
+    const ring = stream.ring
+    const peers = [...stream.peers]
+    for (const unsub of stream.unsubs) {
+      try {
+        unsub()
+      }
+      catch { /* 尽力清理 */ }
+    }
+    streams.delete(channelId)
+    // 有 peer 的 channel 立即按新 manager 重建(peers 平移 + seq/ring 延续);无 peer 的任其自然重建
+    if (peers.length > 0) {
+      const fresh = ensureStream(manager, channelId)
+      if (fresh) {
+        fresh.peers = new Set(peers)
+        fresh.seq = seq
+        fresh.ring = ring
+      }
+    }
+  }
+}
+
+// 模块加载自愈(HMR):nitro reload 后新模块消息入口触达不了旧 socket(旧 handler 继续应答),
+// 加载时主动把 hub 换绑到当前 manager(peers 平移,存活连接即刻恢复推送)。
+// manager 可能尚未重新 init(plugin 时序)→ 有限重试等待就绪。
+if (hub.streams.size > 0) {
+  const rebindWhenReady = (attempt: number): void => {
+    try {
+      ensureHubBound(getWorkshopManager())
+    }
+    catch {
+      if (attempt < 50) setTimeout(() => rebindWhenReady(attempt + 1), 200) // ≤10s
+    }
+  }
+  setTimeout(() => rebindWhenReady(0), 50)
+}
 
 /** manager 内部结构(类型收窄:公开 API 未暴露 repos/运行时映射) */
 interface ManagerInternals {
@@ -136,6 +192,7 @@ function buildSnapshot(manager: AgentChannelManager, channelId: string): Record<
       name: m.name,
       role: m.role,
       harness: m.harness,
+      enabled: m.enabled,
       state: rt ? rt.getState() : 'idle',
       currentTaskId: view.current?.id ?? null,
       queued: view.queued.length,
@@ -188,13 +245,18 @@ function mapAgentEvent(manager: AgentChannelManager, stream: ChannelStream, even
   }
 }
 
-/** 建立(或复用)channel 事件流:订阅 ChannelBus,事件直推 */
-function ensureStream(manager: AgentChannelManager, channelId: string): ChannelStream | null {
+/**
+ * 建立(或复用)channel 事件流:订阅 ChannelBus,事件直推 + 全时落库。
+ * 流生命周期 = 进程生命周期(与订阅者无关;无 peer 时事件仍持久化,DB 为事实源)。
+ */
+export function ensureStream(manager: AgentChannelManager, channelId: string): ChannelStream | null {
   const existing = streams.get(channelId)
   if (existing) return existing
   const channel = internalsOf(manager).deps.repos.channels.findById(channelId)
   if (!channel) return null
-  const stream: ChannelStream = { channelId, seq: 0, ring: [], peers: new Set(), unsubs: [], teardown: null }
+  // seq 从持久层续接(重启后继续递增;INSERT OR IGNORE 幂等兜底)
+  const initSeq = internalsOf(manager).deps.repos.channelEvents.maxSeq(channelId)
+  const stream: ChannelStream = { channelId, seq: initSeq, ring: [], peers: new Set(), unsubs: [] }
   // 任务事件:状态迁移(assignee 补全)/ 进度
   stream.unsubs.push(manager.subscribeTaskEvents(channelId, (e) => {
     if (e.state !== undefined) {
@@ -251,11 +313,6 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
     return
   }
   stream.peers.add(peer)
-  // 新 peer 加入即取消待销毁(保留期内重连,seq 连续)
-  if (stream.teardown) {
-    clearTimeout(stream.teardown)
-    stream.teardown = null
-  }
   let channels = peerChannels.get(peer)
   if (!channels) {
     channels = new Set()
@@ -287,35 +344,23 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
   }
 }
 
-/** 销毁 stream:退订全部事件源并移除 */
-function teardownStream(stream: ChannelStream): void {
-  for (const unsub of stream.unsubs) {
-    try {
-      unsub()
-    }
-    catch { /* 尽力清理 */ }
-  }
-  streams.delete(stream.channelId)
-}
-
-/** 退订 peer;channel 无 peer 时进入保留窗口(到期内无重连才销毁) */
+/** 退订 peer(仅移除 peer;流与订阅常驻——全时录制,无订阅者事件仍落库) */
 function unsubscribePeer(peer: WsPeer, channelId?: string): void {
   const channels = peerChannels.get(peer)
   if (!channels) return
   const targets = channelId ? [channelId] : [...channels]
   for (const id of targets) {
     channels.delete(id)
-    const stream = streams.get(id)
-    if (stream && stream.peers.delete(peer) && stream.peers.size === 0) {
-      stream.teardown ??= setTimeout(() => {
-        stream.teardown = null
-        // 到期仍无 peer → 销毁(seq 将随下次订阅重置,客户端经 snapshot 对齐)
-        if (stream.peers.size === 0) teardownStream(stream)
-      }, TEARDOWN_GRACE_MS)
-      stream.teardown.unref?.()
-    }
+    streams.get(id)?.peers.delete(peer)
   }
   if (channels.size === 0) peerChannels.delete(peer)
+}
+
+/** 插件启动钩子:为全部存量 channel 建立常驻录制流(新 channel 由 ensureStream 即时建) */
+export async function ensureAllEventRecorders(manager: AgentChannelManager): Promise<void> {
+  for (const ch of await manager.listChannels()) {
+    ensureStream(manager, ch.id)
+  }
 }
 
 export default defineWebSocketHandler({
@@ -329,6 +374,7 @@ export default defineWebSocketHandler({
       peer.close(1011, 'workshop not ready')
       return
     }
+    ensureHubBound(manager)
     // 兼容旧路径:?channelId= 连接即订阅(无 lastSeq → 快照对齐)
     const channelId = resolveChannelIdFromUrl(peer)
     if (!channelId) return // 纯上行 sub 模式(多 channel 复用一条连接)
@@ -347,6 +393,11 @@ export default defineWebSocketHandler({
       return
     }
     if (parsed.type === 'ping') {
+      // HMR 自愈入口:manager 更替(nitro reload)后首个 ping 触发订阅重建,pong 正常应答
+      try {
+        ensureHubBound(getWorkshopManager())
+      }
+      catch { /* manager 未就绪:pong 照常,下次 ping 再自愈 */ }
       sendControl(peer, { v: AEP_VERSION, type: 'pong', seq: 0, at: new Date().toISOString(), channelId: '', payload: { t: Date.now() } })
       return
     }
@@ -359,6 +410,7 @@ export default defineWebSocketHandler({
         sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: parsed.channelId, payload: { code: 'WORKSHOP_NOT_READY', message: error instanceof Error ? error.message : 'workshop 未初始化' } })
         return
       }
+      ensureHubBound(manager)
       subscribePeer(manager, peer, parsed.channelId, typeof parsed.lastSeq === 'number' ? parsed.lastSeq : undefined, typeof parsed.token === 'string' ? parsed.token : undefined)
       return
     }

@@ -26,6 +26,7 @@ import { createSubscriptionRepo } from '../services/workshop/db/subscription.rep
 import { createMemoryRepo } from '../services/workshop/db/memory.repo'
 import { createUserRepo } from '../services/workshop/db/user.repo'
 import { createChannelEventRepo } from '../services/workshop/db/channel-event.repo'
+import { ensureAllEventRecorders } from '../api/workshop/ws'
 import { createAgentImpl } from '../services/workshop/agents/factory'
 import {
   createAgentChannelManager,
@@ -103,6 +104,9 @@ export default function workshopPlugin(nitroApp: {
 
   // 懒加载恢复:仅激活有待办任务的 channel(装配 lead + 调度循环);其余纯持久化
   manager.restore()
+
+  // 全时事件录制:为全部存量 channel 建立常驻流(事件 server 驱动落库,与 client 无关)
+  void ensureAllEventRecorders(manager).catch(err => console.error('[workshop] 事件录制器初始化失败:', err))
 
   // idle sweeper:空闲 agent 超时自动卸载(释放 omp 子进程与内存)
   const stopSweeper = manager.startIdleSweeper({ intervalMs: 30_000, graceMs: 120_000 })

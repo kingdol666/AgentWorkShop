@@ -44,6 +44,8 @@ export interface AepSnapshot {
     name: string
     role: 'lead' | 'worker'
     harness: string
+    /** 实例启停(1 启用 / 0 禁用) */
+    enabled?: number
     state: 'idle' | 'busy' | 'stopped'
     currentTaskId?: string | null
     queued?: number

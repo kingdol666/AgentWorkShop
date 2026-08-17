@@ -34,6 +34,9 @@ export default defineApiHandler(async (event) => {
     leadAgent: body.leadAgent,
     ownerUserId: user.id,
   })
+  // 全时事件录制:新 channel 即时建立常驻流(server 驱动落库,与订阅者无关)
+  const { ensureStream } = await import('./ws')
+  ensureStream(manager, result.channelId)
   if (result.leadAgentId) {
     ensureLeadSchedulerLoop(manager, result.channelId)
   }

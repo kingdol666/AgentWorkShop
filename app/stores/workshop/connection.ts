@@ -10,6 +10,9 @@ export type WsState = 'connecting' | 'open' | 'closed'
 /** 半死连接阈值:超过该时长无任何帧(pong/事件)→ 主动断开重连 */
 const STALE_MS = 45_000
 
+/** 数据级失联阈值:pong 仍应答但长期无数据帧(服务端 HMR 后 hub 失联等)→ 主动重连恢复订阅 */
+const DATA_STALE_MS = 180_000
+
 export const useWsConnectionStore = defineStore('workshop.connection', {
   state: () => ({
     state: 'closed' as WsState,
@@ -32,6 +35,8 @@ export class WorkshopWsSession {
   private lastSeqByChannel = new Map<string, number>()
   /** 最近收帧时间(半死连接检测基准) */
   private lastFrameAt = 0
+  /** 最近收数据帧时间(pong 除外;数据级失联检测基准) */
+  private lastDataAt = 0
   /** 用户 token(用户级隔离:sub 帧鉴权;由消费方注入) */
   userToken = ''
 
@@ -58,6 +63,7 @@ export class WorkshopWsSession {
     const ws = new WebSocket(this.url())
     this.ws = ws
     this.lastFrameAt = Date.now()
+    this.lastDataAt = Date.now()
     ws.onopen = () => {
       this.retry = 0
       this.onStateChange('open', 0)
@@ -67,7 +73,9 @@ export class WorkshopWsSession {
     ws.onmessage = (ev) => {
       this.lastFrameAt = Date.now()
       try {
-        this.onEvent(JSON.parse(ev.data as string) as AepEnvelope)
+        const e = JSON.parse(ev.data as string) as AepEnvelope
+        if (e.type !== 'pong') this.lastDataAt = Date.now()
+        this.onEvent(e)
       }
       catch { /* 非 JSON 帧忽略 */ }
     }
@@ -88,11 +96,12 @@ export class WorkshopWsSession {
     ws.onerror = () => { /* onclose 兜底重连 */ }
   }
 
-  /** 半死连接检测(心跳窗口):超过阈值无任何帧(pong/事件)→ 主动断开触发重连 */
+  /** 半死连接检测(心跳窗口):无任何帧超阈值 → 主动断开;pong-only 无数据帧超阈值(HMR 后 hub 失联)→ 主动断开重连恢复订阅 */
   checkStale(): void {
     const ws = this.ws
     if (!ws || ws.readyState !== WebSocket.OPEN) return
     if (Date.now() - this.lastFrameAt > STALE_MS) ws.close()
+    else if (Date.now() - this.lastDataAt > DATA_STALE_MS) ws.close()
   }
 
   private sendSub(channelId: string, lastSeq?: number): void {

@@ -16,6 +16,8 @@ export interface AgentInfo {
   role: 'lead' | 'worker'
   config: Record<string, unknown>
   token?: string
+  /** 实例启停(1 启用 / 0 禁用;模板视图无此字段) */
+  enabled?: number
 }
 
 /** 运行请求:平台向 Agent 投递的一次消息输入 */

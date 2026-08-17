@@ -1,13 +1,22 @@
 <script setup lang="ts">
 /**
- * AEP 事件卡(时间线渲染单元):按 type 分发为
- * 消息气泡(agent.message)/ 状态行(agent.status.message/agent.status)/
- * 任务行(task.status/task.progress)/ 消息投递(a2a.message)/ 记忆行(memory.saved)/ 错误卡。
- * Zcode 风格:紧凑行、等宽时间、agent 徽标着色(按 id 稳定取色)。
+ * AEP 事件卡(时间线渲染单元,ZCode/Codex harness 风格):
+ *  - 工具调用行(agent.status.message 的 🔧 标记):图标 + 工具名,分原生作业工具/harness 协作工具两色
+ *  - agent 生命周期行(agent.status):状态点 + 队列/当前任务上下文
+ *  - 消息路由行(a2a.message):from → to 名字解析 + 消息类型徽章(派发/取消/子任务完成/实时注入/协作)
+ *  - 任务行(task.status/task.progress):状态迁移显示标题与 assignee 名
+ *  - 气泡(agent.message)/ 流式打字机(agent.delta)/ 工件(a2a.artifact)
+ *  - 团队成员变更(agent.member)/ 记忆沉淀(memory.saved)/ 错误(error)
+ * 紧凑行、等宽时间、agent 徽标按 id 稳定取色。
  */
+import { useEntitiesStore } from '../../stores/workshop/entities'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 
 const props = defineProps<{ event: AepEnvelope }>()
+
+const entities = useEntitiesStore()
+/** 名字/标题解析用的 channelId(信封恒携带) */
+const cid = computed(() => props.event.channelId)
 
 const time = computed(() => props.event.at.slice(11, 19))
 
@@ -20,7 +29,11 @@ const agentColor = computed(() => {
   return `hsl(${h}, 65%, 55%)`
 })
 
-const agentLabel = computed(() => props.event.agentId?.slice(0, 8) ?? 'system')
+const agentLabel = computed(() => {
+  const id = props.event.agentId
+  if (!id) return 'system'
+  return entities.agentName(cid.value, id)
+})
 
 const partsText = (parts: Array<{ text?: string }> | undefined): string =>
   (parts ?? []).map(p => p.text ?? '').join('\n').trim()
@@ -31,13 +44,99 @@ const msgText = computed(() => {
   return ''
 })
 
-/** steering 可视确认:immediate 消息(busy 时 steer 注入运行中会话) */
-const isImmediate = computed(() =>
-  props.event.type === 'a2a.message'
-  && (props.event.payload as { metadata?: Record<string, unknown> }).metadata?.['x-aw-msg-priority'] === 'immediate',
-)
+// ===== 工具调用行(agent.status.message 的 🔧 前缀) =====
 
-/** agent.member 文案:团队成员增/改/删(lead 自主管理或用户操作) */
+/** 工具图标与分类:native = omp 原生作业工具;host = harness 协作工具(任务/通信/记忆/团队) */
+const TOOL_META: Record<string, { icon: string, kind: 'native' | 'host' }> = {
+  read: { icon: '📖', kind: 'native' },
+  write: { icon: '📝', kind: 'native' },
+  edit: { icon: '✏️', kind: 'native' },
+  bash: { icon: '💻', kind: 'native' },
+  grep: { icon: '🔍', kind: 'native' },
+  glob: { icon: '📁', kind: 'native' },
+  dispatch_task: { icon: '📋', kind: 'host' },
+  reassign_task: { icon: '🔁', kind: 'host' },
+  update_task: { icon: '🖊', kind: 'host' },
+  cancel_task: { icon: '🚫', kind: 'host' },
+  complete_task: { icon: '🏁', kind: 'host' },
+  report_progress: { icon: '📈', kind: 'host' },
+  send_message_to_agent: { icon: '💬', kind: 'host' },
+  poll_messages: { icon: '📥', kind: 'host' },
+  broadcast_message: { icon: '📢', kind: 'host' },
+  list_team_agents: { icon: '👥', kind: 'host' },
+  list_channel_tasks: { icon: '🗂', kind: 'host' },
+  get_task_details: { icon: '🔎', kind: 'host' },
+  get_my_task_queue: { icon: '📜', kind: 'host' },
+  get_queue_overview: { icon: '📊', kind: 'host' },
+  search_memory: { icon: '🧭', kind: 'host' },
+  save_memory: { icon: '🧠', kind: 'host' },
+  create_team_agent: { icon: '➕', kind: 'host' },
+  update_team_agent: { icon: '🛠', kind: 'host' },
+  remove_team_agent: { icon: '➖', kind: 'host' },
+}
+
+const toolCall = computed(() => {
+  if (props.event.type !== 'agent.status.message') return null
+  const text = String((props.event.payload as { text?: string }).text ?? '')
+  const m = text.match(/^🔧\s*(\S+)/)
+  if (!m) return null
+  const name = m[1]!
+  return { name, meta: TOOL_META[name] ?? { icon: '⚙', kind: 'native' as const } }
+})
+
+// ===== 消息路由行(a2a.message) =====
+
+const route = computed(() => {
+  if (props.event.type !== 'a2a.message') return null
+  const meta = (props.event.payload as { metadata?: Record<string, unknown> }).metadata ?? {}
+  const fromId = typeof meta['x-aw-from-agent'] === 'string' ? meta['x-aw-from-agent'] as string : ''
+  const toId = typeof meta['x-aw-target-agent'] === 'string' ? meta['x-aw-target-agent'] as string : ''
+  const priority = meta['x-aw-msg-priority'] === 'immediate' ? 'immediate' : 'task'
+  const taskKind = typeof meta['x-aw-task-kind'] === 'string' ? meta['x-aw-task-kind'] as string : ''
+  const kind: { icon: string, label: string, tone: 'assign' | 'immediate' | 'peer' | 'notice' }
+    = taskKind === 'assign'
+      ? { icon: '📋', label: '任务派发', tone: 'assign' }
+      : taskKind === 'cancel'
+        ? { icon: '🚫', label: '取消通知', tone: 'notice' }
+        : taskKind === 'child-completed'
+          ? { icon: '✅', label: '子任务完成', tone: 'notice' }
+          : priority === 'immediate'
+            ? { icon: '⚡', label: '实时注入', tone: 'immediate' }
+            : { icon: '📨', label: '协作消息', tone: 'peer' }
+  return {
+    kind,
+    from: fromId ? entities.agentName(cid.value, fromId) : 'system',
+    to: toId ? entities.agentName(cid.value, toId) : '(广播)',
+  }
+})
+
+// ===== agent 生命周期行(agent.status) =====
+
+const lifeState = computed(() => {
+  if (props.event.type !== 'agent.status') return null
+  const p = props.event.payload as { agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, queued?: number, completed?: number }
+  return {
+    state: p.state,
+    currentTitle: p.currentTaskId ? entities.taskTitle(cid.value, p.currentTaskId) : '',
+    queued: p.queued ?? 0,
+    completed: p.completed ?? 0,
+  }
+})
+
+// ===== 任务行(task.status) =====
+
+const taskLine = computed(() => {
+  if (props.event.type !== 'task.status') return null
+  const p = props.event.payload as { taskId: string, state: string, assigneeId?: string }
+  return {
+    state: p.state,
+    title: entities.taskTitle(cid.value, p.taskId),
+    assignee: p.assigneeId ? entities.agentName(cid.value, p.assigneeId) : '',
+  }
+})
+
+// ===== 成员变更(agent.member) =====
+
 const memberText = computed(() => {
   if (props.event.type !== 'agent.member') return ''
   const p = props.event.payload as {
@@ -50,8 +149,8 @@ const memberText = computed(() => {
     by: string
     reason?: string
   }
-  const who = p.by === 'user' ? '用户' : `lead ${p.by.replace(/^lead:/, '').slice(0, 8)}`
-  const member = `${p.name}(${p.agentId.slice(0, 8)}, ${p.role}/${p.harness})`
+  const who = p.by === 'user' ? '用户' : `lead ${entities.agentName(cid.value, p.by.replace(/^lead:/, ''))}`
+  const member = `${p.name}(${p.role}/${p.harness})`
   const verbs: Record<typeof p.op, string> = {
     added: `新增成员 ${member}`,
     updated: p.enabled === 0 ? `禁用成员 ${member}` : `更新成员 ${member}`,
@@ -83,9 +182,51 @@ const stateColor: Record<string, string> = {
       :style="{ background: agentColor }"
     >{{ agentLabel }}</span>
 
+    <!-- 工具调用(ZCode 风格:图标 + 工具名;harness 协作工具紫色标记) -->
+    <div
+      v-if="toolCall"
+      class="body tool-line"
+      :class="toolCall.meta.kind"
+    >
+      <span class="tool-icon">{{ toolCall.meta.icon }}</span>
+      <span class="tool-name">{{ toolCall.name }}</span>
+      <span
+        v-if="toolCall.meta.kind === 'host'"
+        class="tool-kind"
+      >harness</span>
+    </div>
+
+    <!-- agent 生命周期(idle/busy/stopped + 队列上下文) -->
+    <div
+      v-else-if="lifeState"
+      class="body life-line"
+      :data-state="lifeState.state"
+    >
+      <span class="life-dot" />
+      <span class="life-state">{{ lifeState.state }}</span>
+      <span
+        v-if="lifeState.currentTitle"
+        class="life-task"
+      >「{{ lifeState.currentTitle.slice(0, 24) }}」</span>
+      <span class="life-meta">Q{{ lifeState.queued }} · ✓{{ lifeState.completed }}</span>
+    </div>
+
+    <!-- 消息路由(from → to + 类型徽章) -->
+    <div
+      v-else-if="route"
+      class="body route"
+    >
+      <span
+        class="route-badge"
+        :data-tone="route.kind.tone"
+      >{{ route.kind.icon }} {{ route.kind.label }}</span>
+      <span class="route-path">{{ route.from }} → {{ route.to }}</span>
+      <span class="route-text">{{ msgText.slice(0, 100) }}{{ msgText.length > 100 ? '…' : '' }}</span>
+    </div>
+
     <!-- LLM 流式增量(打字机气泡;store 已聚合连续 delta) -->
     <div
-      v-if="event.type === 'agent.delta'"
+      v-else-if="event.type === 'agent.delta'"
       class="body bubble streaming"
     >
       <pre class="msg-text">{{ (event.payload as { delta: string }).delta }}<span class="cursor">▋</span></pre>
@@ -99,24 +240,7 @@ const stateColor: Record<string, string> = {
       <pre class="msg-text">{{ msgText }}</pre>
     </div>
 
-    <!-- channel 消息投递(assign/peer/inject;immediate 为实时注入 steer) -->
-    <div
-      v-else-if="event.type === 'a2a.message'"
-      class="body route"
-    >
-      <span v-if="isImmediate">⚡</span>
-      <span
-        v-else
-        class="tag"
-      >📨</span>
-      <span
-        v-if="isImmediate"
-        class="immediate-badge"
-      >实时注入</span>
-      <span class="route-text">{{ msgText.slice(0, 120) }}{{ msgText.length > 120 ? '…' : '' }}</span>
-    </div>
-
-    <!-- 工具/中间状态行 -->
+    <!-- 中间状态文本(非工具标记) -->
     <div
       v-else-if="event.type === 'agent.status.message'"
       class="body status-line"
@@ -124,22 +248,22 @@ const stateColor: Record<string, string> = {
       <span class="status-text">{{ (event.payload as { text: string }).text }}</span>
     </div>
 
-    <!-- 任务状态迁移 -->
+    <!-- 任务状态迁移(标题 + assignee 名) -->
     <div
-      v-else-if="event.type === 'task.status'"
+      v-else-if="taskLine"
       class="body task-line"
     >
       <a-tag
-        :color="stateColor[(event.payload as { state: string }).state] ?? 'default'"
+        :color="stateColor[taskLine.state] ?? 'default'"
         class="state-tag"
       >
-        {{ (event.payload as { state: string }).state }}
+        {{ taskLine.state }}
       </a-tag>
-      <span class="task-id">{{ (event.payload as { taskId: string }).taskId.slice(0, 8) }}</span>
+      <span class="task-title">{{ taskLine.title }}</span>
       <span
-        v-if="(event.payload as { assigneeId?: string }).assigneeId"
+        v-if="taskLine.assignee"
         class="assignee"
-      >→ {{ (event.payload as { assigneeId?: string }).assigneeId!.slice(0, 8) }}</span>
+      >→ {{ taskLine.assignee }}</span>
     </div>
 
     <!-- 任务进度 -->
@@ -176,7 +300,11 @@ const stateColor: Record<string, string> = {
       class="body memory-line"
     >
       <span class="tag">🧠</span>
-      <span class="mem-text">记忆沉淀[{{ (event.payload as { scope: string }).scope }}]:{{ (event.payload as { title: string }).title }}</span>
+      <span
+        class="mem-scope"
+        :data-scope="(event.payload as { scope: string }).scope"
+      >{{ (event.payload as { scope: string }).scope }}</span>
+      <span class="mem-text">{{ (event.payload as { title: string }).title }}</span>
     </div>
 
     <!-- 错误 -->
@@ -214,12 +342,78 @@ const stateColor: Record<string, string> = {
 .time { flex: 0 0 auto; opacity: 0.45; }
 .agent-chip {
   flex: 0 0 auto;
+  max-width: 120px;
+  overflow: hidden;
   padding: 0 5px;
   font-size: 10px;
   color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border-radius: 4px;
 }
 .body { flex: 1 1 auto; min-width: 0; }
+
+/* 工具调用行:harness 协作工具紫标,原生作业工具中性 */
+.tool-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 0 2px;
+  opacity: 0.75;
+}
+.tool-line.host { opacity: 0.95; }
+.tool-line.host .tool-name { color: #9254de; }
+.tool-icon { flex: 0 0 auto; font-size: 11px; }
+.tool-name { font-weight: 600; }
+.tool-kind {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  font-size: 9px;
+  color: #9254de;
+  background: color-mix(in srgb, #9254de 15%, transparent);
+  border-radius: 3px;
+}
+
+/* agent 生命周期行 */
+.life-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  opacity: 0.55;
+}
+.life-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8c8c8c;
+}
+.life-line[data-state='busy'] .life-dot { background: #1677ff; }
+.life-line[data-state='busy'] { opacity: 0.8; }
+.life-line[data-state='idle'] .life-dot { background: #52c41a; }
+.life-state { font-weight: 600; }
+.life-task { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.life-meta { flex: 0 0 auto; font-size: 10px; opacity: 0.7; }
+
+/* 消息路由行 */
+.route {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.route-badge {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  font-size: 10px;
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.route-badge[data-tone='assign'] { color: #1677ff; background: color-mix(in srgb, #1677ff 12%, transparent); }
+.route-badge[data-tone='immediate'] { color: #fa8c16; background: color-mix(in srgb, #fa8c16 15%, transparent); }
+.route-badge[data-tone='notice'] { color: #52c41a; background: color-mix(in srgb, #52c41a 12%, transparent); }
+.route-path { flex: 0 0 auto; font-size: 11px; opacity: 0.7; }
+.route-text { overflow: hidden; color: inherit; text-overflow: ellipsis; white-space: nowrap; opacity: 0.85; }
+
 .bubble {
   padding: 4px 8px;
   background: color-mix(in srgb, var(--color-primary) 8%, transparent);
@@ -235,14 +429,6 @@ const stateColor: Record<string, string> = {
 @keyframes blink {
   50% { opacity: 0; }
 }
-.immediate-badge {
-  flex: 0 0 auto;
-  padding: 0 4px;
-  font-size: 10px;
-  color: #fa8c16;
-  background: color-mix(in srgb, #fa8c16 15%, transparent);
-  border-radius: 3px;
-}
 .msg-text {
   margin: 0;
   padding: 0;
@@ -251,20 +437,31 @@ const stateColor: Record<string, string> = {
   white-space: pre-wrap;
   word-break: break-word;
 }
-.route,
 .memory-line,
 .member-line { opacity: 0.85; }
 .member-line { color: #9254de; }
 .tag { margin-right: 4px; }
+.mem-scope {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  font-size: 9px;
+  border-radius: 3px;
+}
+.mem-scope[data-scope='shared'] { color: #9254de; background: color-mix(in srgb, #9254de 15%, transparent); }
+.mem-scope[data-scope='private'] { color: #1677ff; background: color-mix(in srgb, #1677ff 12%, transparent); }
+.member-text,
 .route-text,
 .mem-text,
-.member-text,
 .err-text { word-break: break-all; }
 .status-line { opacity: 0.65; }
 .task-line { display: flex; gap: 6px; align-items: center; }
 .state-tag { margin-inline-end: 0; font-family: inherit; }
-.task-id,
-.assignee { opacity: 0.7; }
+.task-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.assignee { flex: 0 0 auto; opacity: 0.7; }
 .progress { max-width: 240px; margin: 0; }
 .error { color: #ff7875; }
 </style>
