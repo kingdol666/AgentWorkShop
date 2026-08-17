@@ -152,6 +152,22 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
     removing.value = null
   }
 }
+
+// ===== HITL:独立中断成员运行时(worker/lead 均可;成员保留,下次任务自动重装配) =====
+const stopping = ref<string | null>(null)
+const stopMember = async (agentId: string, name: string): Promise<void> => {
+  stopping.value = agentId
+  try {
+    await api.stopChannelAgent(props.channelId, agentId)
+    message.success(`已中断成员 ${name} 的运行时`)
+  }
+  catch (err) {
+    message.error(`中断失败: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  finally {
+    stopping.value = null
+  }
+}
 </script>
 
 <template>
@@ -192,6 +208,22 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
             {{ a.role }}
           </a-tag>
           <span class="lane-meta">{{ a.state }} · Q{{ a.queued ?? 0 }}</span>
+          <a-popconfirm
+            :title="`中断成员 ${a.name} 的运行时?执行中任务将中止,成员保留`"
+            ok-text="停止"
+            cancel-text="取消"
+            @confirm="stopMember(a.agentId, a.name)"
+          >
+            <a-button
+              size="small"
+              type="text"
+              class="lane-stop"
+              :loading="stopping === a.agentId"
+              title="HITL 停止该 Agent 运行时"
+            >
+              ⏹
+            </a-button>
+          </a-popconfirm>
           <a-popconfirm
             :title="`移除成员 ${a.name}?其排队任务将自动回收`"
             ok-text="移除"

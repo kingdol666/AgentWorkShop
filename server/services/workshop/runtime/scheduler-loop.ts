@@ -318,6 +318,14 @@ export class SchedulerLoop {
         if (!decision.parentTaskId) {
           throw new AppError(400, 'INVALID_DECISION', 'dispatch 决策缺少 parentTaskId')
         }
+        // HITL 竞态守卫:快照后成员可能已被用户/lead 移除,目标不存在则跳过本轮
+        // (任务保持 SUBMITTED/WORKING,下一轮快照重新决策;避免派发给幽灵成员)
+        // listChannelAgents 仅返回 enabled=1 成员,存在即可用
+        const target = this.channelRuntime.listChannelAgents().find(a => a.agentId === decision.assigneeId)
+        if (!target) {
+          console.warn(`[SchedulerLoop:${this.lead.agentId}] dispatch 目标成员已不存在/禁用,跳过: ${decision.assigneeId}`)
+          break
+        }
         const parent = this.lead.taskEngine.get(decision.parentTaskId)
         if (!parent) throw new AppError(404, 'NOT_FOUND', `父任务不存在: ${decision.parentTaskId}`)
         // lead 自动接取:SUBMITTED → WORKING(§2.2 状态机,dispatch 需父任务处于 WORKING/WAITING)
@@ -334,6 +342,13 @@ export class SchedulerLoop {
         break
       }
       case 'reassign': {
+        // HITL 竞态守卫:目标成员被移除/禁用时跳过重派(任务保持 FAILED,留待 lead/用户重试)
+        // listChannelAgents 仅返回 enabled=1 成员,存在即可用
+        const target = this.channelRuntime.listChannelAgents().find(a => a.agentId === decision.toAgentId)
+        if (!target) {
+          console.warn(`[SchedulerLoop:${this.lead.agentId}] reassign 目标成员已不存在/禁用,跳过: ${decision.toAgentId}`)
+          break
+        }
         this.lead.taskEngine.reassign(decision.taskId, decision.toAgentId)
         this.wakeAgent(decision.toAgentId)
         break

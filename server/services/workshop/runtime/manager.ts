@@ -1064,14 +1064,17 @@ export class AgentChannelManager {
       })
       templateId = tpl.id
     }
-    // 新成员懒装配:首次收到任务投递时按需 wire(与 REST 添加成员同语义)
-    return this.addAgentToChannel({
+    // 新成员立即装配:lead 建员即进入 channel 运行时(前端/调度立即可见,
+    // 无需等首次任务投递的懒加载;DB 已由 addAgentToChannel 同步落库)
+    const member = await this.addAgentToChannel({
       channelId,
       agentId: templateId,
       role: 'worker',
       by: `lead:${callerAgentId}`,
       reason: input.reason,
     })
+    this.ensureAgentRuntime(channelId, member.id)
+    return member
   }
 
   /** lead 更新团队成员(改名/改配置/启停;不能改自己);变更后卸载运行时,下次消费按新配置重载 */
@@ -1139,6 +1142,15 @@ export class AgentChannelManager {
     }
 
     await this.removeAgentFromChannel(channelId, agentId, { by: `lead:${callerAgentId}`, reason })
+    // lead 现场创建的一次性模板:无任何 channel 实例、未被编组引用 → 连模板一并删除
+    // (数据库信息彻底清理;有外部引用则保留模板,仅删实例行)
+    if (target.templateId) {
+      const instances = this.deps.repos.channelAgents.listByTemplate(target.templateId)
+      const teamRefs = this.deps.repos.teamMembers.listByTemplate(target.templateId)
+      if (instances.length === 0 && teamRefs.length === 0) {
+        this.deps.repos.agents.remove(target.templateId)
+      }
+    }
     return { recycledTasks }
   }
 
@@ -1427,6 +1439,52 @@ export class AgentChannelManager {
     this.runtimeOf(channelId, canceled.assigneeId)?.abortCurrent()
     this.wakeAgent(channelId, canceled.assigneeId)
     return canceled
+  }
+
+  /**
+   * HITL:前端独立中断指定成员运行时(worker 或 lead)。
+   *  - worker:强制 stop + detach(中断当前 run/杀子进程),成员行保留 enabled=1,
+   *    后续任务投递按需重新装配(interrupt 语义,不删成员)。
+   *  - lead:stopAndDetach 内部同时停 SchedulerLoop;channel 恢复活跃由
+   *    下次任务提交(ensureChannelActive)自动重装配 lead + 调度器。
+   * 变更经 AEP agent.member(op=updated) 广播回流前端。
+   */
+  async stopAgentRuntime(channelId: string, agentId: string, by = 'user'): Promise<{ agentId: string, stopped: boolean }> {
+    const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+    if (!m) throw new AppError(404, 'NOT_FOUND', `成员不存在: ${agentId}`)
+    await this.stopAndDetach(channelId, agentId)
+    this.notifyMember(channelId, {
+      op: 'updated',
+      agentId,
+      name: m.name,
+      role: m.role as 'lead' | 'worker',
+      harness: m.harness,
+      enabled: m.enabled,
+      by,
+      reason: 'HITL stop',
+    })
+    return { agentId, stopped: true }
+  }
+
+  /**
+   * HITL:用户重试 FAILED 任务(lead/worker 任务均可)。
+   * 优先原 assignee(仍在本 channel 且启用),否则选队列最短的空闲 worker;
+   * 无可用承接者 → 400 NO_WORKER。重试后经调度循环重新投递执行。
+   */
+  async retryTask(channelId: string, callerAgentId: string, taskId: string): Promise<WorkspaceTask> {
+    const task = this.requireTaskInScope(channelId, callerAgentId, taskId)
+    if (task.state !== 'FAILED') {
+      throw new AppError(400, 'INVALID_STATE', `仅 FAILED 任务可重试(当前 ${task.state})`)
+    }
+    let target = this.deps.repos.channelAgents.findByChannelAgent(channelId, task.assigneeId)
+    if (!target || target.enabled !== 1) {
+      const receiver = this.pickReceiverWorker(channelId, '')
+      if (!receiver) throw new AppError(400, 'NO_WORKER', '无可用 worker 承接重试任务')
+      target = this.deps.repos.channelAgents.findByChannelAgent(channelId, receiver)!
+    }
+    const updated = this.getTaskEngine().reassign(taskId, target.id)
+    this.wakeAgent(channelId, target.id)
+    return updated
   }
 
   async listTasks(channelId: string, callerAgentId: string): Promise<WorkspaceTask[]> {

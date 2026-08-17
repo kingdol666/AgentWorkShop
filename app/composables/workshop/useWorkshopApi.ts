@@ -80,6 +80,9 @@ export function useWorkshopApi() {
     updateChannelAgent: (id: string, agentId: string, body: { name?: string, config?: Record<string, unknown>, enabled?: 0 | 1, reason?: string }) =>
       http.request<{ data: { agentId: string, name: string } }>({ method: 'PATCH', url: `/workshop/channels/${id}/agents/${agentId}`, data: body }),
     removeChannelAgent: (id: string, agentId: string) => http.delete<{ data: unknown }>(`/workshop/channels/${id}/agents/${agentId}`),
+    /** HITL:独立中断指定成员运行时(worker/lead 均可;lead 停止同时停调度,下次任务提交自动重激活) */
+    stopChannelAgent: (id: string, agentId: string) =>
+      http.post<{ data: { agentId: string, stopped: boolean } }>(`/workshop/channels/${id}/agents/${agentId}/stop`, {}),
     // tasks
     listTasks: (id: string) => http.get<{ data: TaskDto[] }>(`/workshop/channels/${id}/tasks`),
     submitTask: (id: string, body: { title: string, description?: string, mode?: 'goal' | 'loop' | 'pipeline', modeConfig?: Record<string, unknown> }) =>
@@ -100,6 +103,8 @@ export function useWorkshopApi() {
     // tasks detail / lifecycle(P1 抽屉)
     getTask: (taskId: string) => http.get<{ data: TaskDto }>(`/workshop/tasks/${taskId}`),
     cancelTask: (taskId: string) => http.post<{ data: TaskDto }>(`/workshop/tasks/${taskId}/cancel`, {}),
+    /** HITL:重试 FAILED 任务(优先原 assignee,否则队列最短空闲 worker) */
+    retryTask: (taskId: string) => http.post<{ data: TaskDto }>(`/workshop/tasks/${taskId}/retry`, {}),
     // agent 模板库(P1)
     listTemplates: () => http.get<{ data: AgentTemplateDto[] }>('/workshop/agents'),
     createTemplate: (body: { name: string, harness: string, config?: Record<string, unknown> }) =>

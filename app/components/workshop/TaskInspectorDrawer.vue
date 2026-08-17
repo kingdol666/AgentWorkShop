@@ -68,6 +68,24 @@ const cancel = async (): Promise<void> => {
   }
 }
 
+/** HITL:重试 FAILED 任务(lead/worker 任务均可;优先原 assignee,否则最短队列 worker) */
+const retrying = ref(false)
+const retry = async (): Promise<void> => {
+  if (!props.taskId) return
+  retrying.value = true
+  try {
+    await api.retryTask(props.taskId)
+    message.success('已重新投递执行')
+    void load()
+  }
+  catch (e) {
+    message.error(e instanceof Error ? e.message : String(e))
+  }
+  finally {
+    retrying.value = false
+  }
+}
+
 const agentName = (id: string): string =>
   entities.agentById(props.channelId, id)?.name ?? id.slice(0, 8)
 
@@ -100,6 +118,18 @@ const stateColor: Record<string, string> = {
           <span class="meta">指派:{{ agentName(taskView?.assigneeId ?? detail?.assigneeId ?? '') }}</span>
           <span class="meta">{{ taskView?.progress ?? detail?.progress ?? 0 }}%</span>
           <div class="spacer" />
+          <a-popconfirm
+            v-if="(taskView?.state ?? detail?.state) === 'FAILED'"
+            title="确认重试该任务?"
+            @confirm="retry"
+          >
+            <a-button
+              size="small"
+              :loading="retrying"
+            >
+              重试任务
+            </a-button>
+          </a-popconfirm>
           <a-popconfirm
             title="确认取消该任务?"
             @confirm="cancel"

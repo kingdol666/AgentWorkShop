@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { loadConfig } from './app/config'
 
@@ -72,6 +73,12 @@ export default defineNuxtConfig({
       prodPort: config.server.prod.port,
       defaultLocale: config.i18n.defaultLocale,
     },
+  },
+
+  // 路径别名:@ → 项目根目录(server/api 等深路径代码免算相对层数;
+  // 覆盖 Nuxt 默认 @ → srcDir(app/) 的指向,仓库现有代码无 @/ 引用,切换安全)
+  alias: {
+    '@': fileURLToPath(new URL('.', import.meta.url)),
   },
 
   // 由 config.yml -> server.dev 驱动开发端口（`pnpm dev` 生效）
