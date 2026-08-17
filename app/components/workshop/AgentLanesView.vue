@@ -29,42 +29,109 @@ const stateDot: Record<string, string> = {
 // ===== 成员管理(用户侧 REST;状态回流以 WS agent.member 事件为准) =====
 const memberModalOpen = ref(false)
 const memberSubmitting = ref(false)
+/** 添加模式:从零创建 / 从模板克隆 / 部署编组(批量) */
+const addMode = ref<'create' | 'template' | 'team'>('create')
 const memberForm = reactive({
   name: '',
   harness: 'omp' as 'omp' | 'mock' | 'claude',
   role: 'worker' as 'lead' | 'worker',
   systemPrompt: '',
 })
+/** 模板克隆 / 编组部署选项(弹窗打开时懒加载) */
+const templates = ref<Array<{ id: string, name: string, harness: string, enabled: number }>>([])
+const teams = ref<Array<{ id: string, name: string, memberCount: number, hasLead: boolean }>>([])
+const selectedTemplateId = ref<string>('')
+const selectedTeamId = ref<string>('')
+
+const loadCatalog = async (): Promise<void> => {
+  try {
+    const [tplRes, teamRes] = await Promise.all([api.listTemplates(), api.listTeams()])
+    templates.value = (tplRes.data ?? []).map(t => ({ id: t.id, name: t.name, harness: t.harness, enabled: t.enabled }))
+    teams.value = (teamRes.data ?? []).map(t => ({
+      id: t.id,
+      name: t.name,
+      memberCount: t.members.length,
+      hasLead: t.members.some(m => m.role === 'lead'),
+    }))
+  }
+  catch { /* 目录拉取失败:对应模式显示空并提示刷新 */ }
+}
 
 const openMemberModal = (): void => {
   memberForm.name = ''
   memberForm.harness = 'omp'
   memberForm.role = 'worker'
   memberForm.systemPrompt = ''
+  addMode.value = 'create'
+  selectedTemplateId.value = ''
+  selectedTeamId.value = ''
   memberModalOpen.value = true
+  void loadCatalog()
 }
 
 const submitMember = async (): Promise<void> => {
-  const name = memberForm.name.trim()
-  if (!name) {
-    message.warning('成员名不能为空')
+  if (addMode.value === 'create') {
+    const name = memberForm.name.trim()
+    if (!name) {
+      message.warning('成员名不能为空')
+      return
+    }
+    memberSubmitting.value = true
+    try {
+      await api.addChannelAgent(props.channelId, {
+        name,
+        harness: memberForm.harness,
+        role: memberForm.role,
+        config: memberForm.systemPrompt.trim()
+          ? { systemPromptPrefix: memberForm.systemPrompt.trim() }
+          : undefined,
+      })
+      message.success(`成员 ${name} 已添加(等待 agent.member 事件回流对齐)`)
+      memberModalOpen.value = false
+    }
+    catch (err) {
+      message.error(`添加成员失败: ${err instanceof Error ? err.message : String(err)}`)
+    }
+    finally {
+      memberSubmitting.value = false
+    }
+    return
+  }
+  if (addMode.value === 'template') {
+    if (!selectedTemplateId.value) {
+      message.warning('请选择要克隆的 Agent 模板')
+      return
+    }
+    memberSubmitting.value = true
+    try {
+      const tpl = templates.value.find(t => t.id === selectedTemplateId.value)
+      await api.addChannelAgent(props.channelId, { agentId: selectedTemplateId.value, role: 'worker' })
+      message.success(`已从模板克隆成员 ${tpl?.name ?? ''}(等待事件回流对齐)`)
+      memberModalOpen.value = false
+    }
+    catch (err) {
+      message.error(`模板克隆失败: ${err instanceof Error ? err.message : String(err)}`)
+    }
+    finally {
+      memberSubmitting.value = false
+    }
+    return
+  }
+  // 部署编组:批量克隆全部成员模板(lead 冲突由服务端 409 拒绝)
+  if (!selectedTeamId.value) {
+    message.warning('请选择要部署的 AgentTeam')
     return
   }
   memberSubmitting.value = true
   try {
-    await api.addChannelAgent(props.channelId, {
-      name,
-      harness: memberForm.harness,
-      role: memberForm.role,
-      config: memberForm.systemPrompt.trim()
-        ? { systemPromptPrefix: memberForm.systemPrompt.trim() }
-        : undefined,
-    })
-    message.success(`成员 ${name} 已添加(等待 agent.member 事件回流对齐)`)
+    const team = teams.value.find(t => t.id === selectedTeamId.value)
+    await api.deployTeam(selectedTeamId.value, props.channelId)
+    message.success(`编组 ${team?.name ?? ''} 已部署(${team?.memberCount ?? 0} 名成员,等待事件回流对齐)`)
     memberModalOpen.value = false
   }
   catch (err) {
-    message.error(`添加成员失败: ${err instanceof Error ? err.message : String(err)}`)
+    const text = err instanceof Error ? err.message : String(err)
+    message.error(`编组部署失败${text.includes('LEAD_EXISTS') ? '(channel 已有 lead,编组内 lead 成员冲突;请先移除现有 lead 或选用无 lead 编组)' : `: ${text}`}`)
   }
   finally {
     memberSubmitting.value = false
@@ -158,7 +225,7 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
       </div>
     </div>
 
-    <!-- 添加成员弹窗 -->
+    <!-- 添加成员弹窗(三模式:从零创建 / 模板克隆 / 编组部署) -->
     <a-modal
       v-model:open="memberModalOpen"
       title="添加团队成员"
@@ -167,7 +234,24 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
       cancel-text="取消"
       @ok="submitMember"
     >
+      <a-radio-group
+        v-model:value="addMode"
+        class="mode-switch"
+      >
+        <a-radio-button value="create">
+          🆕 从零创建
+        </a-radio-button>
+        <a-radio-button value="template">
+          📋 从模板克隆
+        </a-radio-button>
+        <a-radio-button value="team">
+          👥 部署编组
+        </a-radio-button>
+      </a-radio-group>
+
+      <!-- 模式一:从零创建 -->
       <a-form
+        v-if="addMode === 'create'"
         layout="vertical"
         class="member-form"
       >
@@ -208,6 +292,42 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
             placeholder="如:你是数据库迁移专家,专注 schema 变更与数据回填…"
           />
         </a-form-item>
+      </a-form>
+
+      <!-- 模式二:从已有模板克隆 -->
+      <a-form
+        v-else-if="addMode === 'template'"
+        layout="vertical"
+        class="member-form"
+      >
+        <a-form-item label="选择 Agent 模板(克隆 name/harness/config 为独立实例)">
+          <a-select
+            v-model:value="selectedTemplateId"
+            placeholder="选择模板…"
+            :options="templates.map(t => ({ value: t.id, label: `${t.name}(${t.harness})${t.enabled === 0 ? ' · 已停用' : ''}` }))"
+          />
+        </a-form-item>
+        <div class="mode-hint">
+          模板库为空?到「模板库」页面先创建可复用的 Agent 模板(omp/mock/claude + 系统提示词)。
+        </div>
+      </a-form>
+
+      <!-- 模式三:部署 AgentTeam(批量) -->
+      <a-form
+        v-else
+        layout="vertical"
+        class="member-form"
+      >
+        <a-form-item label="选择 AgentTeam(批量克隆全部成员)">
+          <a-select
+            v-model:value="selectedTeamId"
+            placeholder="选择编组…"
+            :options="teams.map(t => ({ value: t.id, label: `${t.name}(${t.memberCount} 名成员${t.hasLead ? ',含 lead' : ''})` }))"
+          />
+        </a-form-item>
+        <div class="mode-hint">
+          编组内每名成员模板都会克隆为独立实例;若编组含 lead 而本 channel 已有 lead,部署将被拒绝(409)。
+        </div>
       </a-form>
     </a-modal>
   </div>
@@ -281,4 +401,12 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
   text-align: center;
 }
 .member-form { margin-top: 8px; }
+.mode-switch { margin-top: 4px; }
+.mode-hint {
+  padding: 6px 8px;
+  font-size: 11px;
+  opacity: 0.6;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border-radius: 4px;
+}
 </style>

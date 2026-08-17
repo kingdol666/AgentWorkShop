@@ -70,7 +70,7 @@ export function useWorkshopApi() {
   return {
     // channels
     listChannels: () => http.get<{ data: ChannelDto[] }>('/workshop/channels'),
-    createChannel: (body: { name: string, description?: string, leadAgent?: { name: string, harness: string, config?: Record<string, unknown> } }) =>
+    createChannel: (body: { name: string, description?: string, workspace?: string, leadAgent?: { name: string, harness: string, config?: Record<string, unknown> } }) =>
       http.post<{ data: { channelId: string, leadAgentId?: string, workspace: string } }>('/workshop/channels', body),
     deleteChannel: (id: string) => http.delete<{ data: unknown }>(`/workshop/channels/${id}`),
     // channel agents

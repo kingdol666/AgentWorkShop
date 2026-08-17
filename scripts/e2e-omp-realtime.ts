@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 /**
  * 真实 omp harness 实时通信端到端:
  *  A. 独立进程验证:每个 agent 一个 omp 子进程,PID 互不相同
@@ -19,6 +21,7 @@ import { createTeamRepo } from '../server/services/workshop/db/team.repo'
 import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
+import { createUserRepo } from '../server/services/workshop/db/user.repo'
 import { createAgentChannelManager } from '../server/services/workshop/runtime/manager'
 import type { AgentChannelManager } from '../server/services/workshop/runtime/manager'
 import { createAgentImpl } from '../server/services/workshop/agents/factory'
@@ -43,6 +46,7 @@ function makeManager(db: DatabaseSync): AgentChannelManager {
       subscriptions: createSubscriptionRepo(db),
       tasks: createTaskRepo(db),
       memories: createMemoryRepo(db),
+      users: createUserRepo(db),
 
       channelEvents: createChannelEventRepo(db),
       teams: createTeamRepo(db),
@@ -101,7 +105,7 @@ function ompPidOf(manager: AgentChannelManager, channelId: string, agentId: stri
   return runtime?.impl?.client?.child?.pid ?? null
 }
 
-async function waitRuntime(manager: AgentChannelManager, channelId: string, agentId: string, timeoutMs: number): Promise<void> {
+async function waitRuntime(manager: AgentChannelManager, agentId: string, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     if (manager.getChannelAgent(agentId)?.wired) return
@@ -136,7 +140,7 @@ async function main(): Promise<void> {
     })
     // 等 lead/worker 装配(懒加载由调度触发)
     for (const m of members) {
-      await waitRuntime(manager, ch.channelId, m.id, TIMING.spawn)
+      await waitRuntime(manager, m.id, TIMING.spawn)
     }
     // 懒 spawn 时机随 LLM 推进而定:轮询直到至少 2 个成员持有子进程(上限 60s)
     const spawnDeadline = Date.now() + 60_000

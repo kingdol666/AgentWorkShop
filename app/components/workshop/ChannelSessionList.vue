@@ -15,12 +15,12 @@ const api = useWorkshopApi()
 
 const workspace = computed(() => wsStore.workspaces.find(w => w.id === props.wsId))
 
-const channels = ref<Array<{ id: string, name: string }>>([])
+const channels = ref<Array<{ id: string, name: string, workspace?: string }>>([])
 const refreshChannels = async (): Promise<void> => {
   // SSR 守卫:axios 相对 baseURL 仅客户端有效(服务端拉取会 Invalid URL)
   if (typeof window === 'undefined') return
   const res = await api.listChannels()
-  channels.value = (res as unknown as { data?: Array<{ id: string, name: string }> })?.data ?? []
+  channels.value = (res as unknown as { data?: Array<{ id: string, name: string, workspace?: string }> })?.data ?? []
 }
 void refreshChannels()
 
@@ -33,6 +33,7 @@ const mountedChannels = computed(() =>
       busy: entities.busyCount(id),
       agents: entities.agents[id]?.length ?? 0,
       activeTasks: (entities.tasks[id] ?? []).filter(t => !['COMPLETED', 'CANCELED', 'FAILED'].includes(t.state)).length,
+      workspace: meta?.workspace ?? '',
     })),
 )
 
@@ -41,8 +42,10 @@ const select = (channelId: string): void => {
 }
 
 const mountModal = ref(false)
-const mountForm = reactive({ name: '', description: '', leadName: 'lead', leadHarness: 'mock', workerCount: 1 })
+const mountForm = reactive({ name: '', description: '', workspace: '', leadName: 'lead', leadHarness: 'mock', workerCount: 1 })
 const mountSubmitting = ref(false)
+/** FileSelector 弹窗(选择服务器目录作为 workspace) */
+const fileSelectorOpen = ref(false)
 const createAndMount = async (): Promise<void> => {
   if (!mountForm.name.trim()) {
     message.warning('Channel 名称必填')
@@ -53,6 +56,8 @@ const createAndMount = async (): Promise<void> => {
     const res = await api.createChannel({
       name: mountForm.name.trim(),
       description: mountForm.description || undefined,
+      // 工作目录:留空 → 服务端默认 data/workspaces/<channelId>;自定义(绝对/相对)不存在时自动创建
+      workspace: mountForm.workspace.trim() || undefined,
       leadAgent: { name: mountForm.leadName || 'lead', harness: mountForm.leadHarness },
     })
     const created = (res as unknown as { data?: { channelId?: string } })?.data
@@ -65,6 +70,8 @@ const createAndMount = async (): Promise<void> => {
     mountModal.value = false
     mountForm.name = ''
     mountForm.description = ''
+    mountForm.workspace = ''
+    void refreshChannels()
     message.success('Channel 已创建并挂载')
   }
   catch (e) {
@@ -131,6 +138,13 @@ const unmount = (channelId: string): void => {
       <div class="row2">
         <span class="meta">{{ ch.agents }} agent · {{ ch.busy }} 忙 · {{ ch.activeTasks }} 活跃任务</span>
       </div>
+      <div
+        v-if="ch.workspace"
+        class="row2 ws"
+        :title="`工作目录:${ch.workspace}(Agent 作业 cwd)`"
+      >
+        📂 {{ ch.workspace }}
+      </div>
     </div>
 
     <div class="mount-existing">
@@ -159,6 +173,26 @@ const unmount = (channelId: string): void => {
         <a-form-item label="描述">
           <a-input v-model:value="mountForm.description" />
         </a-form-item>
+        <a-form-item label="工作目录(团队作业挂载点)">
+          <a-input-group compact>
+            <a-input
+              v-model:value="mountForm.workspace"
+              style="width: 70%"
+              placeholder="留空 = data/workspaces/<channelId>"
+              allow-clear
+              @press-enter="createAndMount"
+            />
+            <a-button
+              style="width: 30%"
+              @click="fileSelectorOpen = true"
+            >
+              📂 浏览…
+            </a-button>
+          </a-input-group>
+          <template #extra>
+            <span class="ws-hint">执行任务时该目录注入各 Agent harness 的作业 cwd(omp 子进程工作目录);不存在自动创建</span>
+          </template>
+        </a-form-item>
         <a-form-item label="Lead 名称 / harness">
           <a-input-group compact>
             <a-input
@@ -181,6 +215,14 @@ const unmount = (channelId: string): void => {
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <!-- FileSelector:服务器目录选择 -> 回填工作目录 -->
+    <workshop-file-selector-modal
+      v-model:open="fileSelectorOpen"
+      title="选择团队工作目录"
+      :initial-path="mountForm.workspace || undefined"
+      @select="(p) => { mountForm.workspace = p }"
+    />
   </div>
 </template>
 
@@ -239,6 +281,15 @@ const unmount = (channelId: string): void => {
 .op { flex: 0 0 auto; font-size: 13px; opacity: 0.4; }
 .op:hover { opacity: 1; }
 .row2 { padding-left: 13px; font-size: 11px; opacity: 0.5; }
+.row2.ws {
+  overflow: hidden;
+  max-width: 100%;
+  font-family: ui-monospace, Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.4;
+}
 .mount-existing { padding: 10px 6px 4px; }
 .select { width: 100%; }
+.ws-hint { font-size: 11px; opacity: 0.55; }
 </style>
