@@ -71,6 +71,17 @@ function parseModeConfig(desc: string, mode: ExecutionMode): ModeConfig {
     const criteriaMatch = desc.match(/\[criteria:([^\]]+)\]/)
     config.goalCriteria = criteriaMatch?.[1]?.trim()
   }
+  if (mode === 'pipeline') {
+    // 阶段名从 [stages:name1->name2] 提取(与 encodeTaskMode 编码格式对称)
+    const stagesMatch = desc.match(/\[stages:([^\]]+)\]/)
+    if (stagesMatch) {
+      config.stages = stagesMatch[1]!
+        .split('->')
+        .map(r => r.trim())
+        .filter(Boolean)
+        .map(name => ({ name, description: '' }))
+    }
+  }
   return config
 }
 

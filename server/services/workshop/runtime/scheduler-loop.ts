@@ -286,6 +286,10 @@ export class SchedulerLoop {
       if (task.state === 'COMPLETED' || task.state === 'FAILED' || task.state === 'CANCELED') continue
       const allDone = children.every(c => c.state === 'COMPLETED')
       if (allDone && (task.state === 'WAITING' || task.state === 'WORKING')) {
+        // goal/pipeline 父任务的完成判定属于 lead 模式剧本(goal 需满意度判定、
+        // pipeline 需全部阶段收敛),规则引擎不越权提前收口;loop 与无模式照旧兜底
+        const modeInfo = extractTaskMode(task)
+        if (modeInfo && (modeInfo.mode === 'goal' || modeInfo.mode === 'pipeline')) continue
         decisions.push({ kind: 'complete', taskId: task.id })
       }
     }
