@@ -356,6 +356,8 @@ export class SchedulerLoop {
       case 'cancel': {
         const task = this.lead.taskEngine.get(decision.taskId)
         this.lead.taskEngine.cancel(decision.taskId, this.lead.agentId)
+        // lead 终态同步:经调度器判定取消同样不经 processMessage,重广播队列上下文
+        this.lead.refreshStatus()
         if (task) {
           const assignee = this.channelRuntime.getAgents().find(a => a.agentId === task.assigneeId)
           if (assignee && assignee.getState() === 'busy') assignee.abortCurrent()
@@ -364,6 +366,9 @@ export class SchedulerLoop {
       }
       case 'complete': {
         const completed = this.lead.taskEngine.complete(decision.taskId, decision.artifacts)
+        // lead 状态同步:complete 由调度器直接收口(不经 processMessage),终态迁移后
+        // 重广播 lead 队列上下文(current→null/completed+1),前端实时反映 lead 判定完成
+        this.lead.refreshStatus()
         // 汇总成果走统一事件流(与 harness 事件同构,monitor/WS 可见)
         for (const artifact of decision.artifacts ?? []) {
           this.lead.emitExternal({ kind: 'artifact', artifact }, this.lead.agentId)

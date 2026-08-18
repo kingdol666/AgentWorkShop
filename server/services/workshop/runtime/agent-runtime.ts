@@ -281,6 +281,15 @@ export class AgentRuntime {
     this.deps.mailbox.wake()
   }
 
+  /**
+   * 状态重广播:调度器收口(complete/cancel 等不经 processMessage 的终态迁移)
+   * 直接改动了本 agent 的队列上下文(current/completed),重新广播 agent.status,
+   * 前端实时反映 lead 判定完成后的最新状态(不刷新即可见)。
+   */
+  refreshStatus(): void {
+    this.deps.bus.notifyAgent({ agentId: this.agentId, state: this.state, ...this.queueContext() })
+  }
+
   /** harness 进程资源信息(运行时资源监控;进程内 harness 无外部进程 → null) */
   getProcessInfo(): { pid: number, alive: boolean, command: string } | null {
     return this.impl.getProcessInfo?.() ?? null
