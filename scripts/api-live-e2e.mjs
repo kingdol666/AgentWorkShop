@@ -358,7 +358,7 @@ async function main() {
   // ═══════════ 10. WebSocket Hub 增量广播 ═══════════
   section('WebSocket Hub — 前端观察入口')
   const wsEvents = []
-  const ws = new WebSocket(`${WS_BASE}/api/workshop/ws?channelId=${ids.channel}`)
+  const ws = new WebSocket(`${WS_BASE}/api/workshop/ws?channelId=${ids.channel}&token=${encodeURIComponent(__userToken)}`)
   const wsReady = new Promise((resolve, reject) => {
     ws.onopen = () => resolve(true)
     ws.onerror = e => reject(new Error(`ws error: ${JSON.stringify(e.message ?? e)}`))

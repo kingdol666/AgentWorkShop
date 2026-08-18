@@ -386,6 +386,36 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
   )
 
   server.registerTool(
+    'workshop.mail.list',
+    {
+      description: '(仅 lead)Channel 邮件全览:查看全部 agent 间点对点通信记录(含已消费/任务投递),按时间倒序。派发任务前先查此处,判断"该结果是否已被某 worker 经 mail 产出",避免重复派发浪费资源。',
+      inputSchema: {
+        limit: z.number().int().min(1).max(500).optional(),
+        agentId: z.string().optional(),
+      },
+    },
+    async (args, extra) => {
+      const caller = requireCaller(manager, extra)
+      return jsonResult(await manager.listChannelMail(caller.channelId, caller.id, {
+        limit: args.limit,
+        agentId: args.agentId,
+      }))
+    },
+  )
+
+  server.registerTool(
+    'workshop.queue.overview',
+    {
+      description: '全员实时状态与任务队列总览(每个成员 idle/busy/stopped + 执行中任务 + 待执行数 + 已完成数),lead 做最优调配的依据',
+      inputSchema: {},
+    },
+    async (_args, extra) => {
+      const caller = requireCaller(manager, extra)
+      return jsonResult(await manager.queueOverview(caller.channelId, caller.id))
+    },
+  )
+
+  server.registerTool(
     'workshop.a2a.subscribe',
     {
       description: '订阅同事产出',

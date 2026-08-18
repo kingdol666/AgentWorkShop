@@ -4,7 +4,7 @@
  * 仅类型定义,无运行时逻辑;供运行时层(runtime)、调度层(scheduler)与 impl 层共同消费。
  * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块。
  */
-import type { A2AMessage, A2AArtifact, A2AError, Part } from '../types/a2a'
+import type { A2AMessage, A2AArtifact, A2AError, ChannelMail, Part } from '../types/a2a'
 import type { WorkspaceTask, AgentTaskQueueView, AgentStatusView } from '../types/task'
 
 /** Agent 元信息:Channel 内成员声明(hook harness 类型与配置) */
@@ -61,6 +61,8 @@ export interface AgentWorkspace {
   sendMessage(input: { toAgentId: string, parts: Part[], metadata?: Record<string, unknown> }): Promise<A2AMessage>
   /** 拉取自己 mailbox 未消费消息 */
   pollMailbox(limit?: number): Promise<A2AMessage[]>
+  /** (lead)Channel 邮件全览:全部 agent 间消息(含已消费),按时间倒序;可选按参与方过滤 */
+  listMail(opts?: { limit?: number, agentId?: string }): Promise<ChannelMail[]>
   /**
    * 记忆按需抓取(search_memory 工具桥):混合检索(FTS+向量)本人私有域 + Channel 公共域。
    * scope: auto=私有+公共(默认) / private / shared;返回结构化片段(综合分排序)。
@@ -144,6 +146,12 @@ export interface SupervisionSnapshot {
   }[]
   /** 每个父任务未完成的子任务数 */
   pendingChildren: Record<string, number>
+  /**
+   * 最近 Channel 邮件(倒序,最新在前;调度循环注入,默认截取最近 20 条)。
+   * 含 worker 间点对点通信/回执——lead 据此判断"结果是否已被某 worker 产出",
+   * 避免把已完成工作重新派发造成浪费。
+   */
+  mail?: ChannelMail[]
 }
 
 /** 调度决策:lead 对快照的回应(空数组 = 本轮无动作) */

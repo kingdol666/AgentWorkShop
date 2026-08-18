@@ -7,7 +7,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import { TERMINAL_TASK_STATES } from '../types/task'
-import type { A2AMessage } from '../types/a2a'
+import type { A2AMessage, ChannelMail } from '../types/a2a'
 import type { SupervisionDecision, SupervisionSnapshot, ExecutionMode, AgentWorkspace } from '../agents/agent-interface'
 import { AppError } from '../../../utils/errors'
 import type { ChannelRuntime } from './channel-runtime'
@@ -19,6 +19,9 @@ import {
   LoopController,
   type ModeConfig,
 } from './execution-mode'
+
+/** 调度快照注入的最近邮件条数(倒序;控制 supervise prompt 体量) */
+const MAIL_SNAPSHOT_LIMIT = 20
 
 /** 成员摘要(快照内;含队列上下文,供 lead 最优调配) */
 interface MemberView {
@@ -37,11 +40,14 @@ interface MemberView {
 export interface SchedulerLoopOptions {
   tickMs?: number
   stallMs?: number
+  /** 调度快照邮件提供者(manager 注入;返回最新在前);未注入则快照 mail 为空 */
+  supervisionMail?: (limit: number) => ChannelMail[]
 }
 
 export class SchedulerLoop {
   private readonly tickMs: number
   private readonly stallMs: number
+  private readonly supervisionMail: ((limit: number) => ChannelMail[]) | null
   private timer: ReturnType<typeof setInterval> | null = null
   private started = false
   private running = false
@@ -70,6 +76,7 @@ export class SchedulerLoop {
   ) {
     this.tickMs = options.tickMs ?? 1000
     this.stallMs = options.stallMs ?? 300000
+    this.supervisionMail = options.supervisionMail ?? null
   }
 
   /** 启动定时 tick */
@@ -200,7 +207,15 @@ export class SchedulerLoop {
       if (TERMINAL_TASK_STATES[task.state]) continue
       pendingChildren[task.parentId] = (pendingChildren[task.parentId] ?? 0) + 1
     }
-    return { tick: this.tick, now, tasks, members, pendingChildren }
+    return {
+      tick: this.tick,
+      now,
+      tasks,
+      members,
+      pendingChildren,
+      // 最近邮件(最新在前):lead 观察 worker 间通信/回执,判断结果是否已产出
+      mail: this.supervisionMail ? this.supervisionMail(MAIL_SNAPSHOT_LIMIT) : [],
+    }
   }
 
   /** 内置规则引擎兜底(harness 无关) */

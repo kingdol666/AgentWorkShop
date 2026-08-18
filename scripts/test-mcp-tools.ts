@@ -88,6 +88,8 @@ const EXPECTED_TOOLS = [
   'workshop.a2a.send',
   'workshop.a2a.poll',
   'workshop.a2a.subscribe',
+  'workshop.mail.list',
+  'workshop.queue.overview',
 ]
 
 /** fake manager stub:记录调用 + 返回预设值(与 AgentChannelManager 相同方法签名) */
@@ -155,6 +157,8 @@ function makeFakeManager() {
       parts: [{ text: 'hi' }],
     }),
     pollMailbox: record('pollMailbox', []),
+    listChannelMail: record('listChannelMail', []),
+    queueOverview: record('queueOverview', []),
     subscribe: record('subscribe', undefined),
     findByToken: (token: string) => agentsByToken.get(token),
     restore: record('restore', undefined),
@@ -176,11 +180,11 @@ async function main(): Promise<void> {
   await server.connect(serverTransport)
   await client.connect(clientTransport)
 
-  // ===== 1. tools/list:18 个工具,名逐字一致 =====
+  // ===== 1. tools/list:20 个工具,名逐字一致 =====
   const { tools } = await client.listTools()
   const actualNames = tools.map(t => t.name).sort()
   const expectedNames = [...EXPECTED_TOOLS].sort()
-  check('tools/list 返回 18 个工具', tools.length === 18, `got ${tools.length}`)
+  check('tools/list 返回 20 个工具', tools.length === 20, `got ${tools.length}`)
   check(
     '工具名与 §6.1 逐字一致',
     JSON.stringify(actualNames) === JSON.stringify(expectedNames),

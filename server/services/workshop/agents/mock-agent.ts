@@ -168,7 +168,9 @@ export class MockAgentImpl implements AgentInterface {
       return
     }
     this.goalJudged.delete(task.id)
-    decisions.push({ kind: 'complete', taskId: task.id, artifacts: [this.summarize(task, children)] })
+    // 目标满足判定后必须产出总结性输出(goal-summary),lead 的"收口"交付物
+    const criteria = extractTaskMode(task)?.config.goalCriteria ?? '任务描述中的需求'
+    decisions.push({ kind: 'complete', taskId: task.id, artifacts: [this.goalSummary(task, children, criteria)] })
   }
 
   /**
@@ -285,6 +287,34 @@ export class MockAgentImpl implements AgentInterface {
       parts: [
         ...children.flatMap(c => c.artifacts.flatMap(a => a.parts)),
         { text: `汇总:${children.map(c => c.title).join(' + ')}` },
+      ],
+    }
+  }
+
+  /**
+   * goal 模式收口:lead 判定目标满足后的「总结性输出」——以结论化最终描述作为父任务交付物。
+   * 与 omp lead 的 goal prompt 约束同构(mock 是确定性替身):目标/判定标准/完成过程/最终成果/结论。
+   */
+  private goalSummary(task: WorkspaceTask, children: WorkspaceTask[], criteria: string): A2AArtifact {
+    const results = children
+      .flatMap(c => c.artifacts.flatMap(a => a.parts))
+      .filter((p): p is { text: string } => 'text' in p)
+      .map(p => p.text)
+    const conclusion = [
+      `【目标完成总结】`,
+      `目标: ${task.title}`,
+      `判定标准: ${criteria}`,
+      `完成过程: ${children.map(c => `「${c.title}」`).join(' → ')} 全部完成`,
+      `最终成果: ${results.length > 0 ? results.join('; ') : '(无)'}`,
+      `结论: 目标已达成,全部任务完成。`,
+    ].join('\n')
+    return {
+      artifactId: randomUUID(),
+      name: 'goal-summary',
+      parts: [
+        { text: conclusion },
+        { text: `标准:${criteria}` },
+        { text: `子任务:${children.map(c => c.title).join(' + ')}` },
       ],
     }
   }

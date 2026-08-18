@@ -24,6 +24,26 @@ export interface A2AMessage {
   referenceTaskIds?: string[]
 }
 
+/**
+ * 渠道邮件视图:带路由/投递元信息的 A2A 消息。
+ * messages 表行的公开投影;lead 全览、调度快照与 REST/MCP 出口共用,
+ * 携带 from/to/state/time(纯 A2AMessage 只承载 parts,路由信息在 metadata,不适合作观察面)。
+ */
+export interface ChannelMail {
+  messageId: string
+  /** 关联任务(assign/cancel 等任务消息才有) */
+  taskId: string | null
+  fromAgentId: string | null
+  toAgentId: string | null
+  role: 'ROLE_USER' | 'ROLE_AGENT'
+  parts: Part[]
+  metadata: Record<string, unknown>
+  /** 投递状态:pending=未消费 / consuming=消费中 / consumed=已消费 */
+  state: 'pending' | 'consuming' | 'consumed'
+  createdAt: string
+  consumedAt: string | null
+}
+
 /** A2A 成果:任务作业产出的内容集合 */
 export interface A2AArtifact {
   artifactId: string

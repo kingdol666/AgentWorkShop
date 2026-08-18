@@ -241,6 +241,7 @@ async function testAgentInterface(): Promise<void> {
     reassignTask: async () => { throw new Error('not implemented') },
     sendMessage: async () => { throw new Error('not implemented') },
     pollMailbox: async () => [],
+    listMail: async () => [],
     subscribe: async () => {},
     recallMemory: async () => [],
     saveMemory: async () => { throw new Error('not implemented') },

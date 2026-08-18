@@ -103,8 +103,11 @@ async function main() {
     items.some(e => e.type === 'task.status' && e.payload?.state === st))
   check('全生命周期状态帧落库', hasLifecycle)
   check('artifact 帧落库', items.some(e => e.type === 'a2a.artifact'))
+  // 同源比较以 sub 时刻的快照 seq 为界:快照前(建 channel/加成员)的帧已落库但
+  // 订阅者经快照对齐而非逐帧重放,不参与 WS 帧集比对
+  const subSeq = c1.frames.find(f => f.type === 'channel.snapshot')?.seq ?? 0
   const wsSeqs = c1.frames.filter(f => f.type !== 'pong' && f.type !== 'channel.snapshot').map(f => f.seq)
-  const dbSeqs = items.map(e => e.seq)
+  const dbSeqs = items.filter(e => e.seq > subSeq).map(e => e.seq)
   check('DB 帧与 WS 帧集合一致(同源)', JSON.stringify(wsSeqs) === JSON.stringify(dbSeqs),
     `ws=${wsSeqs.length} db=${dbSeqs.length}`)
   c1.ws.close()

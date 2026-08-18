@@ -130,6 +130,11 @@ async function testGoalMode(): Promise<void> {
     check('补充分发为顺序判定(上一轮完成才判下一轮)', ordered)
     check('父任务在最终轮完成后才收口', ms(root!.updatedAt) >= ms(children[2]!.updatedAt))
     check('goal criteria 编码进 description', root?.description?.includes('[criteria:设计文档需覆盖 3 项要点]') ?? false)
+    // 目标满足判定后的总结性输出约束:lead 必须产出 goal-summary(结论化最终描述)
+    const goalSummary = root!.artifacts.find(a => a.name === 'goal-summary')
+    const summaryText = goalSummary ? goalSummary.parts.map(p => ('text' in p ? p.text : '')).join('\n') : ''
+    check('目标满足后产出 goal-summary 总结 artifact', !!goalSummary)
+    check('goal-summary 含结论化最终描述(标题+结论)', summaryText.includes('【目标完成总结】') && summaryText.includes('结论: 目标已达成'))
 
     // 对照:goalRejectRounds=0 → lead 一次判定即满足,仅 1 个子任务(不无谓补发)
     const ch2 = await h.manager.createChannel({

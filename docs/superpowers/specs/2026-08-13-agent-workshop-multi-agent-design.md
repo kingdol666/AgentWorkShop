@@ -529,6 +529,8 @@ export class SchedulerLoop {
 | `workshop.a2a.send` | `{toAgentId, parts, metadata?}` | Agent: 同 channel | 与同事点对点通信 |
 | `workshop.a2a.poll` | `{limit?}` | Agent: 自己 | 拉取自己的消息 |
 | `workshop.a2a.subscribe` | `{agentIds?}` | Agent: 同 channel | 订阅同事产出 |
+| `workshop.mail.list` | `{limit?, agentId?}` | **仅 lead** | Channel 邮件全览(全部 agent 间消息/回执,倒序;派发前判断结果是否已被产出,避免重复派发) |
+| `workshop.queue.overview` | `{}` | Agent: 同 channel | 全员实时状态与任务队列总览(最优调配依据) |
 
 **身份凭证与防冒用**: 每个 Agent 创建时生成 `token`(UUIDv4,存 `agents.token`)。
 MCP 请求必须携带 `Authorization: Bearer <token>`;平台按 token 解析 caller——

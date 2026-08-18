@@ -144,6 +144,18 @@ export const HOST_TOOLS: RpcHostToolDefinition[] = [
     },
   },
   {
+    name: 'read_channel_mail',
+    label: 'Read Channel Mail',
+    description: '(Lead only) Read the FULL channel mail log: every message exchanged between any agents (peer messages, replies, and task deliveries), newest first. Use this BEFORE dispatching a task whose result may already exist — if a worker already computed/delivered the value via mail, do NOT re-dispatch it; reference the concrete result from the mail instead.',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Max mails to return (default 50, max 500)' },
+        agent_id: { type: 'string', description: 'Optional: only show mails involving this agent (as sender or recipient)' },
+      },
+    },
+  },
+  {
     name: 'broadcast_message',
     label: 'Broadcast',
     description: 'Broadcast a message to ALL agents in the channel (lead + all workers). Useful for announcements.',
@@ -311,6 +323,7 @@ export const HOST_TOOLS: RpcHostToolDefinition[] = [
 const LEAD_ONLY_TOOL_NAMES = new Set([
   'dispatch_task',
   'get_queue_overview',
+  'read_channel_mail',
   'reassign_task',
   'update_task',
   'create_team_agent',
@@ -952,6 +965,17 @@ export class OmpRpcAgentImpl implements AgentInterface {
       .map(([parentId, count]) => `  ${parentId}: ${count} pending`)
       .join('\n')
 
+    // 最近邮件(最新在前):worker 间点对点通信/回执 —— 判断"结果是否已被产出"的依据
+    const mail = (snapshot.mail ?? []).map((m) => {
+      const from = m.fromAgentId ?? '(system)'
+      const to = m.toAgentId ?? '(broadcast)'
+      const body = m.parts.map(p => 'text' in p ? p.text : JSON.stringify('data' in p ? p.data : p)).join(' ').trim().slice(0, 140)
+      const label = m.metadata?.['x-aw-task-kind'] === 'assign'
+        ? 'task-assign'
+        : m.metadata?.['x-aw-msg-priority'] === 'immediate' ? 'immediate' : 'peer'
+      return `  - [${m.createdAt.slice(11, 19)}] ${from} → ${to} (${label}): ${body || '(empty)'}`
+    }).join('\n')
+
     // 检测执行模式(从 lead 自己的任务 description 前缀)
     const leadTask = snapshot.tasks.find(t =>
       t.assigneeId === snapshot.members.find(m => m.role === 'lead')?.agentId
@@ -971,6 +995,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
       ``,
       `## Pending Children Count`,
       pending || '  (none)',
+      ``,
+      `## Recent Team Mail (newest first)`,
+      mail || '  (none)',
     )
 
     // 模式特定指令
@@ -985,6 +1012,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
         ``,
         `### Task Scheduling`,
         `- Tasks are processed FIFO (oldest first). For each task assigned to you that is SUBMITTED or WORKING and has NO children yet: it needs delegation. Call dispatch_task to delegate it. Prefer workers with the SHORTEST queue (see member queued counts). Always pass parent_task_id (the task's ID), assignee_id (the worker's ID), title, and description.`,
+        `- BEFORE dispatching a task whose result may already exist, read the Recent Team Mail section above (or call read_channel_mail for the full log). If a worker has already computed/delivered that value via mail (e.g. a peer reply containing the result), do NOT re-dispatch it — reference the concrete result from the mail and avoid duplicate work.`,
         `- Rebalance when needed: reassign_task to move a pending task from a loaded worker to an idle one, update_task to revise a pending task, cancel_task to remove obsolete work. Use get_queue_overview for the live picture.`,
         `- Do NOT call complete_task on a task that has unfinished children. When all children of a parent are COMPLETED: call complete_task for the parent with a summary.`,
         `- Use list_team_agents and list_channel_tasks to get current IDs if needed.`,
@@ -1045,7 +1073,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
         `1. Dispatch the task to a worker if it has no children yet.`,
         `2. When all children are COMPLETED: examine the artifacts and decide if the goal is met.`,
         `3. If NOT met: dispatch NEW subtasks to address the gaps; if no existing worker fits a gap, create_team_agent a specialist first.`,
-        `4. If met: call complete_task on the parent task.`,
+        `4. If met: BEFORE completing, produce a FINAL CONCLUSION summarizing the end result. Call complete_task on the parent task with the deliverable set to a structured concluding summary that states: (a) the goal, (b) the judgment criteria, (c) what was completed (the child tasks), (d) the final outcome/result. Do NOT call complete_task without this concluding summary — the goal-mode close-out is incomplete without it.`,
         `- Do NOT use work tools yourself. You are a coordinator.`,
       )
     }
@@ -1227,6 +1255,23 @@ export class OmpRpcAgentImpl implements AgentInterface {
             return `  [from ${from}] ${body.slice(0, 100)}`
           }).join('\n')
           return { text: `未消费消息(${msgs.length}):\n${text}` }
+        }
+
+        case 'read_channel_mail': {
+          const limit = (req.arguments.limit as number | undefined) ?? 50
+          const agentId = req.arguments.agent_id as string | undefined
+          const mails = await ws.listMail({ limit, agentId })
+          if (mails.length === 0) return { text: 'Channel 无邮件记录(或该成员无往来)' }
+          const text = mails.map((m) => {
+            const from = m.fromAgentId ?? '(系统)'
+            const to = m.toAgentId ?? '(广播)'
+            const body = partsToText(m.parts).trim().slice(0, 120)
+            const label = m.metadata?.['x-aw-task-kind'] === 'assign'
+              ? '[任务指派]'
+              : m.metadata?.['x-aw-msg-priority'] === 'immediate' ? '[实时]' : '[协作]'
+            return `  ${m.createdAt.slice(11, 19)} ${label} ${from} → ${to} (${m.state}): ${body || '(空)'}`
+          }).join('\n')
+          return { text: `Channel 邮件(${mails.length},倒序):\n${text}` }
         }
 
         case 'broadcast_message': {

@@ -38,7 +38,7 @@ import type {
   AgentWorkspace,
   SupervisionDecision,
 } from '../server/services/workshop/agents/agent-interface'
-import type { A2AMessage } from '../server/services/workshop/types/a2a'
+import type { A2AMessage, ChannelMail } from '../server/services/workshop/types/a2a'
 import { AppError } from '../server/utils/errors'
 
 let failures = 0
@@ -137,6 +137,25 @@ function buildWorkspace(agent: AgentInfo, deps: WorkspaceDeps): AgentWorkspace {
     },
     pollMailbox: async (limit = 100) =>
       messages.listPendingByChannelAgent(agent.channelId, agent.id).slice(0, limit).map(rowToMessage),
+    listMail: async (opts) => {
+      const limit = Math.max(1, Math.min(500, opts?.limit ?? 200))
+      const rows = messages.listRecentByChannel(agent.channelId, limit)
+      const mails: ChannelMail[] = rows.map(r => ({
+        messageId: r.id,
+        taskId: r.taskId,
+        fromAgentId: r.fromAgentId,
+        toAgentId: r.toAgentId,
+        role: r.role as 'ROLE_USER' | 'ROLE_AGENT',
+        parts: (JSON.parse(r.partsJson) ?? []) as ChannelMail['parts'],
+        metadata: (JSON.parse(r.metadataJson) ?? {}) as Record<string, unknown>,
+        state: r.state,
+        createdAt: r.createdAt,
+        consumedAt: r.consumedAt,
+      }))
+      return opts?.agentId
+        ? mails.filter(m => m.fromAgentId === opts.agentId || m.toAgentId === opts.agentId)
+        : mails
+    },
     subscribe: async () => {},
     recallMemory: async () => [],
     saveMemory: async () => { throw new Error('unused') },

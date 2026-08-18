@@ -139,7 +139,7 @@ function buildGoalPrompt(config: ModeConfig, snapshot: SupervisionSnapshot, _lea
     `1. If there are tasks assigned to you with no children yet: dispatch them to idle workers.`,
     `2. If all child tasks are COMPLETED: evaluate whether the goal criteria are met by examining the artifacts.`,
     `3. If the goal is NOT met: dispatch NEW tasks to address the gaps. Use the task description and artifacts to identify what's missing.`,
-    `4. If the goal IS met: call complete_task on the parent task with a summary of what was achieved.`,
+    `4. If the goal IS met: call complete_task on the parent task. MANDATORY — the completion MUST be accompanied by a FINAL CONCLUSION summarizing the end result: (a) the goal, (b) the judgment criteria, (c) what was completed, (d) the final outcome. Never complete the parent without this concluding summary; it is the goal-mode close-out deliverable.`,
     ``,
     `## Current State`,
     formatSnapshotForPrompt(snapshot),

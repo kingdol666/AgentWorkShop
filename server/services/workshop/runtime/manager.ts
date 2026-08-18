@@ -14,7 +14,7 @@ import { resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { AppError } from '../../../utils/errors'
-import type { A2AMessage, A2AArtifact, Part } from '../types/a2a'
+import type { A2AMessage, A2AArtifact, ChannelMail, Part } from '../types/a2a'
 import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
 import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentInfo, AgentInterface, AgentWorkspace, AgentEvent, ExecutionMode } from '../agents/agent-interface'
@@ -29,7 +29,7 @@ import type { MessageRepo } from '../db/message.repo'
 import type { SubscriptionRepo } from '../db/subscription.repo'
 import type { TaskRepo, TaskPatch } from '../db/task.repo'
 import { parseJson } from '../db/database'
-import type { AgentRow, ChannelAgentRow, ChannelRow, MemoryRow, TaskRow, TeamRow, UserRow, WorkspaceRow } from '../db/database'
+import type { AgentRow, ChannelAgentRow, ChannelRow, MemoryRow, MessageRow, TaskRow, TeamRow, UserRow, WorkspaceRow } from '../db/database'
 import { Mailbox, rowToMessage } from './mailbox'
 import { AgentRuntime } from './agent-runtime'
 import type { ChannelBus, MemberChangeEvent, TaskEngine } from './agent-runtime'
@@ -131,6 +131,22 @@ function rowToTask(row: TaskRow): WorkspaceTask {
     history: parseJson<A2AMessage[]>(row.historyJson, []),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  }
+}
+
+/** MessageRow → ChannelMail(parts/metadata 反序列化;渠道邮件公开投影) */
+function rowToChannelMail(row: MessageRow): ChannelMail {
+  return {
+    messageId: row.id,
+    taskId: row.taskId,
+    fromAgentId: row.fromAgentId,
+    toAgentId: row.toAgentId,
+    role: row.role as 'ROLE_USER' | 'ROLE_AGENT',
+    parts: parseJson<Part[]>(row.partsJson, []),
+    metadata: parseJson<Record<string, unknown>>(row.metadataJson, {}),
+    state: row.state,
+    createdAt: row.createdAt,
+    consumedAt: row.consumedAt,
   }
 }
 
@@ -465,7 +481,13 @@ export class AgentChannelManager {
     if (cr.scheduler) return
     const lead = this.ensureAgentRuntime(channelId, channel.leadAgentId)
     if (!lead) return
-    const loop = new SchedulerLoop(cr, lead, options)
+    const loop = new SchedulerLoop(cr, lead, {
+      ...options,
+      // 调度快照的邮件上下文(lead 观察 worker 间通信的唯一来源;DB 为事实源)
+      supervisionMail: limit => this.deps.repos.messages
+        .listRecentByChannel(channelId, limit)
+        .map(rowToChannelMail),
+    })
     loop.setLoopResubmitCallback((title, description) => {
       this.submitChannelTask({ channelId, title, description }).catch((err) => {
         console.error(`[AgentChannelManager:${channelId}] loop 重新提交失败:`, err)
@@ -685,6 +707,7 @@ export class AgentChannelManager {
       reassignTask: (taskId, toAgentId) => this.reassignTask(channelId, agent.id, taskId, toAgentId),
       sendMessage: input => this.sendA2A(channelId, agent.id, input),
       pollMailbox: limit => this.pollMailbox(channelId, agent.id, limit),
+      listMail: opts => this.listChannelMail(channelId, agent.id, opts),
       subscribe: input => this.subscribe(channelId, agent.id, input),
       // 记忆按需抓取/主动沉淀(成员校验 + 委托本实例 AgentMemory;shared 写入即 Channel 公共域)
       recallMemory: async (input) => {
@@ -1775,6 +1798,31 @@ export class AgentChannelManager {
       .listPendingByChannelAgent(channelId, callerAgentId)
       .slice(0, limit)
       .map(rowToMessage)
+  }
+
+  /**
+   * (仅 lead)Channel 邮件全览:全部 agent 间消息(含已消费/任务投递),按时间倒序。
+   * lead 调度观察面——worker 间的点对点通信(含结果回执)对 lead 可见,
+   * 供派发前判断"该结果是否已由某 worker 经 mail 产出",避免重复派发浪费资源。
+   * 可选 agentId 过滤参与方(from 或 to)。
+   */
+  async listChannelMail(
+    channelId: string,
+    callerAgentId: string,
+    opts: { limit?: number, agentId?: string } = {},
+  ): Promise<ChannelMail[]> {
+    const caller = this.requireMember(channelId, callerAgentId)
+    if (caller.role !== 'lead') {
+      throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可查看 Channel 全部邮件')
+    }
+    const limit = Math.max(1, Math.min(500, opts.limit ?? 200))
+    const mails = this.deps.repos.messages
+      .listRecentByChannel(channelId, limit)
+      .map(rowToChannelMail)
+    if (opts.agentId) {
+      return mails.filter(m => m.fromAgentId === opts.agentId || m.toAgentId === opts.agentId)
+    }
+    return mails
   }
 
   async subscribe(channelId: string, callerAgentId: string, input: { agentIds?: string[] }): Promise<void> {
