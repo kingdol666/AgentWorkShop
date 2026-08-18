@@ -1,7 +1,7 @@
 import type { z } from 'zod'
 import type { userCreateSchema, userListQuerySchema } from '../schemas/user.schema'
 
-/** 用户实体（存储层领域模型） */
+/** 用户实体（存储层领域模型，不含密码哈希——密码只进不出） */
 export interface User extends z.infer<typeof userCreateSchema> {
   id: string
   createdAt: string
@@ -23,6 +23,27 @@ export interface UserListQuery {
   page: number
   pageSize: number
   keyword?: string
+}
+
+/** API Token（每用户多个；仅存哈希，明文只在创建时返回一次） */
+export interface UserToken {
+  id: string
+  userId: string
+  label: string
+  createdAt: string
+  lastUsedAt: string | null
+}
+
+/** 登录/注册成功载荷（token 明文仅此处一次性返回） */
+export interface AuthResult {
+  user: {
+    id: string
+    name: string
+    email: string
+    role: string
+    createdAt: string
+  }
+  token: string
 }
 
 export type { UserCreate } from '../schemas/user.schema'
