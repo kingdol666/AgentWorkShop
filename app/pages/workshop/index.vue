@@ -17,17 +17,34 @@ const wsStore = useWorkspacesStore()
 const entities = useEntitiesStore()
 const { subscribe } = useWorkshopWs()
 
-// ===== 登录门 =====
-const authTab = ref<'register' | 'login'>('register')
+// ===== 登录门（全局用户系统）=====
+const authTab = ref<'register' | 'login' | 'token'>('login')
 const authName = ref('')
+const authEmail = ref('')
+const authPassword = ref('')
 const authTokenInput = ref('')
 const authLoading = ref(false)
+
 const doRegister = async (): Promise<void> => {
+  if (!authName.value.trim()) {
+    message.warning('请填写用户名')
+    return
+  }
+  if (!authEmail.value.trim()) {
+    message.warning('请填写邮箱')
+    return
+  }
+  if (authPassword.value.length < 6) {
+    message.warning('密码至少 6 位 (需含字母和数字)')
+    return
+  }
   authLoading.value = true
   try {
-    const user = await userStore.register(authName.value)
-    message.success(`注册成功:${user.name};token 已保存`)
+    const user = await userStore.register(authName.value, authEmail.value, authPassword.value)
+    message.success(`注册成功:${user.name};登录 token 已保存`)
     authName.value = ''
+    authEmail.value = ''
+    authPassword.value = ''
   }
   catch (e) {
     message.error(e instanceof Error ? e.message : String(e))
@@ -37,6 +54,24 @@ const doRegister = async (): Promise<void> => {
   }
 }
 const doLogin = async (): Promise<void> => {
+  if (!authEmail.value.trim()) {
+    message.warning('请填写邮箱')
+    return
+  }
+  authLoading.value = true
+  try {
+    const user = await userStore.login(authEmail.value, authPassword.value)
+    message.success(`已登录:${user.name}`)
+    authPassword.value = ''
+  }
+  catch (e) {
+    message.error(e instanceof Error ? e.message : String(e))
+  }
+  finally {
+    authLoading.value = false
+  }
+}
+const doLoginWithToken = async (): Promise<void> => {
   authLoading.value = true
   try {
     const user = await userStore.loginWithToken(authTokenInput.value)
@@ -140,10 +175,42 @@ useHead({ title: 'Workshop · Agent Harness' })
       <a-card class="auth-card">
         <h2>AgentWorkShop 用户登录</h2>
         <p class="sub">
-          用户级隔离:每个用户拥有自己的 Agent 模板 / Channel / Workspace;
+          全局用户系统统管身份;每个用户可管理多个 API Token,
           管理 API 需用户 token(Authorization: Bearer)。
         </p>
         <a-tabs v-model:active-key="authTab">
+          <a-tab-pane
+            key="login"
+            tab="账号登录"
+          >
+            <a-space
+              direction="vertical"
+              style="width: 100%"
+            >
+              <a-input
+                v-model:value="authEmail"
+                type="email"
+                placeholder="邮箱"
+                @keydown.enter="doLogin"
+              />
+              <a-input-password
+                v-model:value="authPassword"
+                placeholder="密码"
+                @keydown.enter="doLogin"
+              />
+              <a-button
+                type="primary"
+                block
+                :loading="authLoading"
+                @click="doLogin"
+              >
+                登录
+              </a-button>
+              <p class="hint">
+                每次登录签发一个会话 token,可在 Token 管理页单独吊销。
+              </p>
+            </a-space>
+          </a-tab-pane>
           <a-tab-pane
             key="register"
             tab="注册新用户"
@@ -155,6 +222,15 @@ useHead({ title: 'Workshop · Agent Harness' })
               <a-input
                 v-model:value="authName"
                 placeholder="用户名(唯一)"
+              />
+              <a-input
+                v-model:value="authEmail"
+                type="email"
+                placeholder="邮箱(唯一)"
+              />
+              <a-input-password
+                v-model:value="authPassword"
+                placeholder="密码(≥6 位,含字母和数字)"
                 @keydown.enter="doRegister"
               />
               <a-button
@@ -163,16 +239,16 @@ useHead({ title: 'Workshop · Agent Harness' })
                 :loading="authLoading"
                 @click="doRegister"
               >
-                注册并获取 token
+                注册并登录
               </a-button>
               <p class="hint">
-                token 仅注册时返回一次;登录后自动保存到本机。
+                注册成功后自动登录;可再自行签发多个 token。
               </p>
             </a-space>
           </a-tab-pane>
           <a-tab-pane
-            key="login"
-            tab="token 登录"
+            key="token"
+            tab="Token 登录"
           >
             <a-space
               direction="vertical"
@@ -181,13 +257,13 @@ useHead({ title: 'Workshop · Agent Harness' })
               <a-input-password
                 v-model:value="authTokenInput"
                 placeholder="粘贴用户 token"
-                @keydown.enter="doLogin"
+                @keydown.enter="doLoginWithToken"
               />
               <a-button
                 type="primary"
                 block
                 :loading="authLoading"
-                @click="doLogin"
+                @click="doLoginWithToken"
               >
                 登录
               </a-button>
@@ -216,6 +292,10 @@ useHead({ title: 'Workshop · Agent Harness' })
           </a-tag>
           <a-button @click="doLogout">
             退出
+          </a-button>
+          <a-button @click="navigateTo('/tokens')">
+            <span class="i-tabler-key" />
+            API Token
           </a-button>
           <a-button @click="navigateTo('/workshop/agents')">
             <span class="i-tabler-users" />

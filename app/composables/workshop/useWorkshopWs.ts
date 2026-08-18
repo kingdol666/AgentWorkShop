@@ -48,7 +48,11 @@ export function useWorkshopWs() {
   }, { immediate: true })
 
   const subscribe = (channelId: string): void => {
-    session?.subscribe(channelId, events.lastSeq(channelId))
+    // 游标未建立(lastSeq=0/无 ring)时不携带 lastSeq:服务端对其下发
+    // channel.snapshot 全量(agents/tasks/queue/messages 实体基线),否则走纯事件
+    // 重放路径,空闲成员/历史任务永远不会出现在前端(实体基线缺失)。
+    const lastSeq = events.lastSeq(channelId)
+    session?.subscribe(channelId, lastSeq > 0 ? lastSeq : undefined)
   }
   const unsubscribe = (channelId: string): void => {
     session?.unsubscribe(channelId)

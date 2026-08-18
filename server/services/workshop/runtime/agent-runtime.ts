@@ -68,6 +68,8 @@ export interface MemberChangeEvent {
   role: 'lead' | 'worker'
   harness: string
   enabled?: number
+  /** 实例 config(含 systemPromptPrefix 场景提示词;added/updated 时携带,removed 可空) */
+  config?: Record<string, unknown>
   /** 操作发起方:'lead:<agentId>' 或 'user' */
   by: string
   reason?: string
@@ -262,6 +264,8 @@ export class AgentRuntime {
     this.state = 'stopped'
     this.abortController?.abort()
     this.deps.mailbox.close()
+    // 状态广播:前端经 WS agent.status 实时反映 stopped
+    this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'stopped', ...this.queueContext() })
     await this.loopPromise
     // 清理 impl 持有的资源(omp 子进程等);容错:impl.dispose 可能不存在
     try {
@@ -275,6 +279,19 @@ export class AgentRuntime {
   /** 唤醒 mailbox(供 manager 在 taskEngine 直接落库投递后唤醒消费) */
   wakeMailbox(): void {
     this.deps.mailbox.wake()
+  }
+
+  /** harness 进程资源信息(运行时资源监控;进程内 harness 无外部进程 → null) */
+  getProcessInfo(): { pid: number, alive: boolean, command: string } | null {
+    return this.impl.getProcessInfo?.() ?? null
+  }
+
+  /**
+   * 强制终止 harness 进程(不等优雅退出)。
+   * 调用方(manager terminateRuntimeProcess)终止后随即 stop 本运行时。
+   */
+  killProcess(): void {
+    this.impl.killProcess?.()
   }
 
   /** 暴露 TaskEngine(供 SchedulerLoop 收集快照与执行调度决策) */

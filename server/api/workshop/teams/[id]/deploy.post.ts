@@ -23,11 +23,15 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const team = manager.getTeam(teamId)
   if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
-  manager.requireOwned(team.ownerUserId, user.id, 'AgentTeam')
+  // 部署 = 克隆成员模板到本人 channel(不修改编组本身):公共编组(NULL owner)允许任何人使用;
+  // 私有编组仅属主可用(他人可见模板但无权批量部署)
+  if (team.ownerUserId !== null && team.ownerUserId !== user.id) {
+    throw new AppError(403, 'SCOPE_VIOLATION', 'AgentTeam 不属于当前用户')
+  }
   const ch = manager.getChannelForUser(body.channelId, user.id)
   manager.requireOwned(ch.ownerUserId, user.id, 'channel')
-  const result = await manager.deployTeamToChannel({ teamId, channelId: body.channelId })
   // 部署后:若 channel 尚无调度循环(新 lead 就位)→ 启动
+  const result = await manager.deployTeamToChannel({ teamId, channelId: body.channelId })
   ensureLeadSchedulerLoop(manager, body.channelId)
   return result
 })

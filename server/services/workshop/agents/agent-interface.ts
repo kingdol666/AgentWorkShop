@@ -175,4 +175,14 @@ export interface AgentInterface {
   steer?(text: string): Promise<void>
   init?(config: { agent: AgentInfo, channelId: string }): Promise<void>
   dispose?(): Promise<void>
+  /**
+   * 可选:harness 进程资源信息(运行时资源监控用)。
+   * 进程内 harness(mock/claude)无外部进程 → 不实现返回 null。
+   */
+  getProcessInfo?(): { pid: number, alive: boolean, command: string } | null
+  /**
+   * 可选:强制终止 harness 进程(不等优雅退出)。
+   * 终止后调用方(manager)应随之 stop 对应的 AgentRuntime。
+   */
+  killProcess?(): void
 }

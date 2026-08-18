@@ -84,7 +84,7 @@ export type AepEvent
     | { type: 'agent.message', payload: A2AMessage }
     | { type: 'agent.delta', payload: { delta: string } }
     | { type: 'agent.status.message', payload: { text: string } }
-    | { type: 'task.status', payload: { taskId: string, state: string, assigneeId?: string, agentId?: string } }
+    | { type: 'task.status', payload: { taskId: string, state: string, assigneeId?: string, agentId?: string, title?: string, parentId?: string, progress?: number, artifacts?: number } }
     | { type: 'task.progress', payload: { taskId: string, progress: number, agentId?: string } }
     | { type: 'a2a.artifact', payload: { taskId?: string, artifact: A2AArtifact } }
     | { type: 'a2a.message', payload: A2AMessage }

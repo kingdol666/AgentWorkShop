@@ -57,6 +57,46 @@ const loadCatalog = async (): Promise<void> => {
   catch { /* 目录拉取失败:对应模式显示空并提示刷新 */ }
 }
 
+// ===== 编辑成员(改名 / 改场景提示词 / 启停)=====
+const editModalOpen = ref(false)
+const editSubmitting = ref(false)
+const editForm = reactive({ agentId: '', name: '', role: 'worker' as 'lead' | 'worker', harness: '', systemPrompt: '' })
+const openEditMember = (a: { agentId: string, name: string, role: string, harness: string, config?: Record<string, unknown> }): void => {
+  editForm.agentId = a.agentId
+  editForm.name = a.name
+  editForm.role = a.role === 'lead' ? 'lead' : 'worker'
+  editForm.harness = a.harness
+  editForm.systemPrompt = typeof a.config?.systemPromptPrefix === 'string' ? a.config.systemPromptPrefix : ''
+  editModalOpen.value = true
+}
+const submitEditMember = async (): Promise<void> => {
+  const name = editForm.name.trim()
+  if (!name) {
+    message.warning('成员名不能为空')
+    return
+  }
+  editSubmitting.value = true
+  try {
+    await api.updateChannelAgent(props.channelId, editForm.agentId, {
+      name,
+      config: {
+        // 保留既有 config,仅更新 systemPromptPrefix(编辑弹窗只暴露该字段)
+        ...(entities.agents[props.channelId]?.find(a => a.agentId === editForm.agentId)?.config ?? {}),
+        systemPromptPrefix: editForm.systemPrompt.trim(),
+      },
+      reason: 'user 编辑成员信息/场景提示词',
+    })
+    message.success(`成员 ${name} 已更新(运行时将按新提示词重载)`)
+    editModalOpen.value = false
+  }
+  catch (err) {
+    message.error(`更新失败: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  finally {
+    editSubmitting.value = false
+  }
+}
+
 const openMemberModal = (): void => {
   memberForm.name = ''
   memberForm.harness = 'omp'
@@ -105,12 +145,19 @@ const submitMember = async (): Promise<void> => {
     memberSubmitting.value = true
     try {
       const tpl = templates.value.find(t => t.id === selectedTemplateId.value)
-      await api.addChannelAgent(props.channelId, { agentId: selectedTemplateId.value, role: 'worker' })
-      message.success(`已从模板克隆成员 ${tpl?.name ?? ''}(等待事件回流对齐)`)
+      await api.addChannelAgent(props.channelId, {
+        agentId: selectedTemplateId.value,
+        role: memberForm.role,
+        config: memberForm.systemPrompt.trim()
+          ? { systemPromptPrefix: memberForm.systemPrompt.trim() }
+          : undefined,
+      })
+      message.success(`已克隆模板添加 ${memberForm.role} 成员 ${tpl?.name ?? ''}(等待事件回流对齐)`)
       memberModalOpen.value = false
     }
     catch (err) {
-      message.error(`模板克隆失败: ${err instanceof Error ? err.message : String(err)}`)
+      const text = err instanceof Error ? err.message : String(err)
+      message.error(`模板克隆失败${text.includes('LEAD_EXISTS') ? '(已有 lead,不能再添加 lead)' : `: ${text}`}`)
     }
     finally {
       memberSubmitting.value = false
@@ -202,12 +249,29 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
           />
           <span class="lane-name">{{ a.name }}</span>
           <a-tag
+            v-if="a.config?.systemPromptPrefix"
+            color="gold"
+            title="已注入场景系统提示词"
+            class="scenario-tag"
+          >
+            场景
+          </a-tag>
+          <a-tag
             :color="a.role === 'lead' ? 'purple' : 'blue'"
             class="role"
           >
             {{ a.role }}
           </a-tag>
           <span class="lane-meta">{{ a.state }} · Q{{ a.queued ?? 0 }}</span>
+          <a-button
+            size="small"
+            type="text"
+            class="lane-edit"
+            title="编辑成员信息 / 场景提示词"
+            @click="openEditMember(a)"
+          >
+            ✎
+          </a-button>
           <a-popconfirm
             :title="`中断成员 ${a.name} 的运行时?执行中任务将中止,成员保留`"
             ok-text="停止"
@@ -339,6 +403,23 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
             :options="templates.map(t => ({ value: t.id, label: `${t.name}(${t.harness})${t.enabled === 0 ? ' · 已停用' : ''}` }))"
           />
         </a-form-item>
+        <a-form-item label="克隆角色">
+          <a-radio-group v-model:value="memberForm.role">
+            <a-radio value="worker">
+              worker
+            </a-radio>
+            <a-radio value="lead">
+              lead(至多一个,已有 lead 会被拒绝)
+            </a-radio>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item label="系统提示词覆盖(可选,留空沿用模板预设)">
+          <a-textarea
+            v-model:value="memberForm.systemPrompt"
+            :rows="3"
+            placeholder="留空 = 使用模板自带 config.systemPromptPrefix;填写则覆盖为该场景提示词"
+          />
+        </a-form-item>
         <div class="mode-hint">
           模板库为空?到「模板库」页面先创建可复用的 Agent 模板(omp/mock/claude + 系统提示词)。
         </div>
@@ -360,6 +441,43 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
         <div class="mode-hint">
           编组内每名成员模板都会克隆为独立实例;若编组含 lead 而本 channel 已有 lead,部署将被拒绝(409)。
         </div>
+      </a-form>
+    </a-modal>
+
+    <!-- 编辑成员(名 / 场景提示词) -->
+    <a-modal
+      v-model:open="editModalOpen"
+      :title="`编辑成员 ${editForm.name || ''}`"
+      :confirm-loading="editSubmitting"
+      ok-text="保存"
+      cancel-text="取消"
+      @ok="submitEditMember"
+    >
+      <a-form
+        layout="vertical"
+        class="member-form"
+      >
+        <a-form-item label="成员名">
+          <a-input v-model:value="editForm.name" />
+        </a-form-item>
+        <a-form-item label="角色 / harness">
+          <a-space>
+            <a-tag :color="editForm.role === 'lead' ? 'purple' : 'blue'">
+              {{ editForm.role }}
+            </a-tag>
+            <a-tag>{{ editForm.harness }}</a-tag>
+          </a-space>
+        </a-form-item>
+        <a-form-item label="场景系统提示词(systemPromptPrefix)">
+          <a-textarea
+            v-model:value="editForm.systemPrompt"
+            :rows="6"
+            placeholder="该内容作为系统提示词前缀,注入该成员 harness 每轮 prompt(omp)或状态消息(mock)。留空 = 无场景提示"
+          />
+          <template #extra>
+            <span class="ws-hint">保存后成员运行时重载,下次任务/调度使用新提示词</span>
+          </template>
+        </a-form-item>
       </a-form>
     </a-modal>
   </div>
@@ -441,6 +559,8 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
   text-align: right;
 }
 .lane-remove { flex: 0 0 auto; font-size: 11px; }
+.lane-edit { flex: 0 0 auto; font-size: 11px; padding-inline: 4px; }
+.scenario-tag { flex: 0 0 auto; font-size: 10px; line-height: 14px; }
 .lane-body {
   flex: 1 1 auto;
   min-height: 0;

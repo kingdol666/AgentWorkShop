@@ -52,6 +52,9 @@ export class MockAgentImpl implements AgentInterface {
   /** goal 模式:父任务已完成的不满足判定轮次(lead 判断状态记忆) */
   private readonly goalJudged = new Map<string, number>()
 
+  /** 场景系统提示词前缀(由 config.systemPromptPrefix 注入;mock 以状态消息透出以便验证链路) */
+  private readonly systemPromptPrefix: string
+
   constructor(config: Record<string, unknown> = {}) {
     this.delayMs = typeof config.delayMs === 'number' ? config.delayMs : 300
     this.streamDemo = config.streamDemo === true
@@ -59,6 +62,7 @@ export class MockAgentImpl implements AgentInterface {
     this.goalRejectRounds = typeof config.goalRejectRounds === 'number' && config.goalRejectRounds >= 0
       ? Math.floor(config.goalRejectRounds)
       : 0
+    this.systemPromptPrefix = typeof config.systemPromptPrefix === 'string' ? config.systemPromptPrefix : ''
   }
 
   async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
@@ -289,6 +293,22 @@ export class MockAgentImpl implements AgentInterface {
   private async* workerScript(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
     const taskId = request.taskId ?? (request.message.metadata?.['x-aw-task-id'] as string | undefined)
     if (!taskId) return
+    // 场景系统提示注入:mock 无 LLM,prompt 以首条状态消息透出(验证 config.systemPromptPrefix 已到达 harness)
+    if (this.systemPromptPrefix) {
+      yield {
+        kind: 'status',
+        status: {
+          state: 'WORKING',
+          message: {
+            messageId: `scenario-${randomUUID()}`,
+            contextId: ctx.channelId,
+            role: 'ROLE_AGENT',
+            parts: [{ text: `[场景系统提示已注入]\n${this.systemPromptPrefix}` }],
+          },
+          timestamp: new Date().toISOString(),
+        },
+      }
+    }
     yield { kind: 'status', status: { state: 'WORKING', timestamp: new Date().toISOString() } }
     for (const p of [25, 50, 75]) {
       await sleep(this.delayMs)

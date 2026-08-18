@@ -14,6 +14,8 @@ export interface AgentView {
   /** 实例启停(1 启用 / 0 禁用;缺省视为启用) */
   enabled?: number
   state: 'idle' | 'busy' | 'stopped'
+  /** 场景配置(含 systemPromptPrefix 等;由 WS 快照下发) */
+  config?: Record<string, unknown>
   currentTaskId?: string | null
   queued?: number
   completed?: number
@@ -85,10 +87,27 @@ export const useEntitiesStore = defineStore('workshop.entities', {
       switch (e.type) {
         case 'agent.status': {
           const list = this.agents[cid] ?? []
-          const p = e.payload as { agentId: string, state: AgentView['state'], currentTaskId?: string | null, queued?: number, completed?: number }
+          // 协议字段 queued/completed 为准;兼容旧帧(queuedCount/completedCount),避免 undefined 覆写实体
+          const raw = e.payload as {
+            agentId: string
+            state: AgentView['state']
+            currentTaskId?: string | null
+            queued?: number
+            completed?: number
+            queuedCount?: number
+            completedCount?: number
+          }
+          const p = {
+            agentId: raw.agentId,
+            state: raw.state,
+            currentTaskId: raw.currentTaskId ?? null,
+            queued: raw.queued ?? raw.queuedCount ?? 0,
+            completed: raw.completed ?? raw.completedCount ?? 0,
+          }
           const idx = list.findIndex(a => a.agentId === p.agentId)
-          const prev = idx >= 0 ? list[idx] : undefined
-          if (prev) list[idx] = { ...prev, ...p }
+          if (idx >= 0) {
+            list[idx] = { ...list[idx]!, ...p }
+          }
           else {
             // 新 agent 只能从事件构建(无快照)→ 补默认名/角色/harness;显式构造避免 spread 覆盖
             const fresh: AgentView = {
@@ -117,6 +136,7 @@ export const useEntitiesStore = defineStore('workshop.entities', {
             role: 'lead' | 'worker'
             harness: string
             enabled?: number
+            config?: Record<string, unknown>
             by: string
             reason?: string
           }
@@ -130,6 +150,7 @@ export const useEntitiesStore = defineStore('workshop.entities', {
                 role: p.role,
                 harness: p.harness,
                 enabled: p.enabled,
+                config: p.config,
                 state: 'idle',
                 currentTaskId: null,
                 queued: 0,
@@ -139,13 +160,14 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           }
           else if (p.op === 'updated') {
             if (idx >= 0) {
+              const prev = list[idx]!
               list[idx] = {
-                ...list[idx]!,
-                name: p.name,
-                harness: p.harness,
-                enabled: p.enabled,
-                // 禁用成员置 stopped(不再接新任务);重新启用回 idle
-                state: p.enabled === 0 ? 'stopped' : (list[idx]!.state === 'stopped' ? 'idle' : list[idx]!.state),
+                ...prev,
+                name: p.name ?? prev.name,
+                role: p.role ?? prev.role,
+                harness: p.harness ?? prev.harness,
+                enabled: p.enabled ?? prev.enabled,
+                config: p.config ?? prev.config,
               }
             }
           }
@@ -156,15 +178,43 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           break
         }
         case 'task.status': {
-          const p = e.payload as { taskId: string, state: string, assigneeId?: string }
+          // 事件正文携带标题/父级/进度/交付数(ws.ts 随任务行直推)→ 事件即实体,任务无需 REST 即可全量渲染
+          const p = e.payload as {
+            taskId: string
+            state: string
+            assigneeId?: string
+            title?: string
+            parentId?: string
+            progress?: number
+            artifacts?: number
+          }
           const list = this.tasks[cid] ?? []
           const idx = list.findIndex(t => t.id === p.taskId)
-          const prev = idx >= 0 ? list[idx] : undefined
-          if (prev) list[idx] = { ...prev, state: p.state, assigneeId: p.assigneeId ?? prev.assigneeId }
+          if (idx >= 0) {
+            const prev = list[idx]!
+            list[idx] = {
+              ...prev,
+              state: p.state,
+              assigneeId: p.assigneeId ?? prev.assigneeId,
+              title: p.title ?? prev.title,
+              parentId: p.parentId ?? prev.parentId,
+              progress: Math.max(prev.progress, p.progress ?? 0),
+              artifacts: Math.max(prev.artifacts, p.artifacts ?? 0),
+            }
+          }
           else {
-            // 订阅后新建的任务只能从事件构建(无标题)→ 触发节流 REST 对齐补全
-            list.push({ id: p.taskId, title: p.taskId.slice(0, 8), state: p.state, progress: 0, assigneeId: p.assigneeId ?? '', artifacts: 0 })
-            this.refreshTasks(cid)
+            const fresh: TaskView = {
+              id: p.taskId,
+              title: p.title ?? p.taskId.slice(0, 8),
+              state: p.state,
+              progress: p.progress ?? 0,
+              assigneeId: p.assigneeId ?? '',
+              artifacts: p.artifacts ?? 0,
+            }
+            if (p.parentId) fresh.parentId = p.parentId
+            list.push(fresh)
+            // 旧服务端帧不含正文(title 缺失)→ 兜底节流 REST 补全(新帧已自足,此路径不再触发)
+            if (p.title === undefined) this.refreshTasks(cid)
           }
           this.tasks[cid] = [...list]
           break
@@ -213,7 +263,7 @@ export const useEntitiesStore = defineStore('workshop.entities', {
     refreshAgents(channelId: string): void {
       if (this.refreshingAgents[channelId]) return
       this.refreshingAgents[channelId] = true
-      $fetch<{ data?: Array<{ id: string, name: string, role: 'lead' | 'worker', harness: string }> }>(
+      $fetch<{ data?: Array<{ id: string, name: string, role: 'lead' | 'worker', harness: string, config?: Record<string, unknown> }> }>(
         `/api/workshop/channels/${channelId}/agents`,
         { headers: { authorization: `Bearer ${useUserStore().token}` } },
       )
@@ -222,8 +272,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           const merged = [...(this.agents[channelId] ?? [])]
           for (const m of fresh) {
             const idx = merged.findIndex(a => a.agentId === m.id)
-            if (idx >= 0) merged[idx] = { ...merged[idx]!, name: m.name, role: m.role, harness: m.harness }
-            else merged.push({ agentId: m.id, name: m.name, role: m.role, harness: m.harness, state: 'idle', currentTaskId: null, queued: 0, completed: 0 })
+            if (idx >= 0) merged[idx] = { ...merged[idx]!, name: m.name, role: m.role, harness: m.harness, config: m.config }
+            else merged.push({ agentId: m.id, name: m.name, role: m.role, harness: m.harness, config: m.config, state: 'idle', currentTaskId: null, queued: 0, completed: 0 })
           }
           this.agents[channelId] = merged
         })
@@ -246,14 +296,21 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           const fresh = res.data ?? []
           const current = this.tasks[channelId] ?? []
           const byId = new Map(current.map(t => [t.id, t]))
-          this.tasks[channelId] = fresh.map((t) => {
+          // upsert 合并(不整表替换):REST 为准补全已知任务;WS 已知但 REST 尚未
+          // 返回的极新任务保留(防丢失);重叠任务 progress 取两侧较大(state/title 以 REST 为准,
+          // 避免旧事件帧状态黏附——REST 与 WS 同源于 DB,REST 至少不旧于已消费事件)
+          const freshIds = new Set(fresh.map(t => t.id))
+          const merged = fresh.map((t) => {
             const prev = byId.get(t.id)
             const next = this.toTaskView(t)
-            // 事件流可能已推进到更新的 state/progress:保留较新值
-            return prev && (prev.state !== next.state || prev.progress > next.progress)
-              ? { ...next, state: prev.state, progress: Math.max(prev.progress, next.progress) }
+            return prev && prev.progress > next.progress
+              ? { ...next, progress: prev.progress }
               : next
           })
+          for (const t of current) {
+            if (!freshIds.has(t.id)) merged.push(t)
+          }
+          this.tasks[channelId] = merged
         })
         .catch(() => {})
         .finally(() => {

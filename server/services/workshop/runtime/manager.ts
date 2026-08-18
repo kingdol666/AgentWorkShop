@@ -38,6 +38,7 @@ import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
 import { AgentMemory, envNum, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeMemory, type MaintenanceResult, type MemorySnippet } from './memory'
 import { createEnvEmbeddingProvider } from './embedding-provider'
+import { listHarnessProcesses, listAliveHarnessProcessesByAgent, sweepHarnessProcesses, killHarnessProcess } from '../agents/harness-process'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 import type { UserRepo } from '../db/user.repo'
 import type { ChannelEventRepo } from '../db/channel-event.repo'
@@ -150,6 +151,68 @@ function runtimeKey(channelId: string, agentId: string): string {
 
 /** factory 支持的 harness 集(lead 建成员时校验;与 agents/factory.ts 对齐) */
 const KNOWN_HARNESSES = new Set(['mock', 'omp', 'claude'])
+
+/** 运行时资源监控:单个 ChannelRuntime 视图 */
+export interface RuntimeChannelView {
+  channelId: string
+  /** 已装配(wired)的 AgentRuntime 数 */
+  wiredAgentCount: number
+  /** channel 内成员总数(含未装配;来自 DB) */
+  memberCount: number
+  /** 是否为 lead 装配并启动了 SchedulerLoop */
+  hasScheduler: boolean
+  leadAgentId: string | null
+}
+
+/** 运行时资源监控:单个 AgentRuntime 视图 */
+export interface RuntimeAgentView {
+  channelId: string
+  agentId: string
+  name: string
+  role: 'lead' | 'worker'
+  harness: string
+  state: 'idle' | 'busy' | 'stopped'
+  currentTaskId: string | null
+  queuedCount: number
+  completedCount: number
+  /** harness 进程(进程内 harness 为 null) */
+  process: { pid: number, alive: boolean, command: string } | null
+}
+
+/** 运行时资源监控:harnest 进程视图(注册表,含孤儿) */
+export interface RuntimeProcessView {
+  pid: number
+  harness: string
+  command: string
+  args: string[]
+  agentId: string | null
+  channelId: string | null
+  name: string | null
+  role: 'lead' | 'worker' | null
+  startedAt: number
+  alive: boolean
+  exitCode: number | null
+  /** 是否被某个已装配 runtime 引用(否则为孤儿进程) */
+  bound: boolean
+}
+
+/** 运行时资源监控:全量快照 */
+export interface RuntimeMonitorSnapshot {
+  generatedAt: string
+  /** 服务端(宿主)进程 pid */
+  serverPid: number
+  uptimeMs: number
+  channels: RuntimeChannelView[]
+  agents: RuntimeAgentView[]
+  processes: RuntimeProcessView[]
+  counts: {
+    channels: number
+    agents: number
+    processes: number
+    aliveProcesses: number
+    orphanProcesses: number
+  }
+}
 
 export class AgentChannelManager {
   private channels = new Map<string, ChannelRuntime>()
@@ -489,6 +552,103 @@ export class AgentChannelManager {
     }
   }
 
+  /**
+   * 运行时资源监控快照:已装配的 ChannelRuntime / AgentRuntime
+   * + 全部已启动的 harness 进程(注册表,含已脱离 runtimes 的孤儿进程)。
+   */
+  monitorRuntime(): RuntimeMonitorSnapshot {
+    sweepHarnessProcesses()
+    const channels: RuntimeChannelView[] = [...this.channels.values()].map((cr) => {
+      const channel = this.deps.repos.channels.findById(cr.channelId)
+      return {
+        channelId: cr.channelId,
+        wiredAgentCount: cr.getAgents().length,
+        memberCount: this.deps.repos.channelAgents.listByChannel(cr.channelId).length,
+        hasScheduler: cr.scheduler !== null,
+        leadAgentId: channel?.leadAgentId ?? null,
+      }
+    })
+    const agents: RuntimeAgentView[] = [...this.agentIndex.values()].map((rt) => {
+      const status = rt.getStatus()
+      const row = this.deps.repos.channelAgents.findByChannelAgent(rt.channelId, rt.agentId)
+      return {
+        channelId: rt.channelId,
+        agentId: rt.agentId,
+        name: rt.name,
+        role: rt.role,
+        harness: row?.harness ?? '?',
+        state: status.state,
+        currentTaskId: status.currentTaskId,
+        queuedCount: status.queuedCount,
+        completedCount: status.completedCount,
+        process: rt.getProcessInfo(),
+      }
+    })
+    const boundPids = new Set(
+      agents.map(a => a.process?.pid).filter((p): p is number => typeof p === 'number'),
+    )
+    const processes: RuntimeProcessView[] = listHarnessProcesses().map(p => ({
+      pid: p.pid,
+      harness: p.harness,
+      command: p.command,
+      args: p.args,
+      agentId: p.agentId,
+      channelId: p.channelId,
+      name: p.name,
+      role: p.role,
+      startedAt: p.startedAt,
+      alive: p.alive,
+      exitCode: p.exitCode,
+      bound: boundPids.has(p.pid),
+    }))
+    return {
+      generatedAt: new Date().toISOString(),
+      serverPid: process.pid,
+      uptimeMs: Math.round(process.uptime() * 1000),
+      channels,
+      agents,
+      processes,
+      counts: {
+        channels: channels.length,
+        agents: agents.length,
+        processes: processes.length,
+        aliveProcesses: processes.filter(p => p.alive).length,
+        orphanProcesses: processes.filter(p => p.alive && !p.bound).length,
+      },
+    }
+  }
+
+  /**
+   * 终止指定 runtime 的 harness 进程 → 对应 AgentRuntime 随之 stop 并卸载。
+   * 语义比 HITL stopAgentRuntime 更强:先强杀进程(进程树),再走 stopAndDetach
+   * (停 SchedulerLoop / 中断当前 run / dispose impl / 移出索引)。成员行保留,
+   * 后续任务投递按需重新装配。
+   * runtime 未装配(如已被空闲卸载)但进程残留 → 按 agentId 兜底强杀进程,防资源浪费。
+   */
+  async terminateRuntimeProcess(channelId: string, agentId: string): Promise<{ agentId: string, stopped: boolean }> {
+    const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+    if (!m) throw new AppError(404, 'NOT_FOUND', `成员不存在: ${agentId}`)
+    const runtime = this.runtimeOf(channelId, agentId)
+    if (runtime) {
+      try {
+        runtime.killProcess()
+      }
+      catch (err) {
+        console.error(`[AgentChannelManager] 终止进程失败 ${channelId}/${agentId}:`, err)
+      }
+      await this.stopAndDetach(channelId, agentId)
+      return { agentId, stopped: true }
+    }
+    const leftover = listAliveHarnessProcessesByAgent(agentId)
+    for (const p of leftover) killHarnessProcess(p.pid)
+    return { agentId, stopped: leftover.length > 0 }
+  }
+
+  /** 按 PID 终止 harness 进程(孤儿进程专用;已绑定 runtime 的请走 terminateRuntimeProcess) */
+  killHarnessProcessByPid(pid: number): { pid: number, killed: boolean } {
+    return { pid, killed: killHarnessProcess(pid) }
+  }
+
   async shutdown(): Promise<void> {
     if (this.idleSweeperTimer) {
       clearInterval(this.idleSweeperTimer)
@@ -806,6 +966,8 @@ export class AgentChannelManager {
     channelId: string
     agentId: string
     role: 'lead' | 'worker'
+    /** 模板 config 覆盖项(浅合并;用于注入/覆盖 systemPromptPrefix 等场景配置) */
+    configOverride?: Record<string, unknown>
     /** 操作发起方(AEP agent.member 的 by;缺省 'user') */
     by?: string
     reason?: string
@@ -823,7 +985,7 @@ export class AgentChannelManager {
       templateId: tpl.id,
       name: tpl.name,
       harness: tpl.harness,
-      config: parseJson<Record<string, unknown>>(tpl.configJson, {}),
+      config: { ...parseJson<Record<string, unknown>>(tpl.configJson, {}), ...input.configOverride },
       role: input.role,
     })
     if (input.role === 'lead') {
@@ -836,13 +998,13 @@ export class AgentChannelManager {
       role: inst.role as 'lead' | 'worker',
       harness: inst.harness,
       enabled: inst.enabled,
+      config: parseJson<Record<string, unknown>>(inst.configJson, {}),
       by: input.by ?? 'user',
       reason: input.reason,
     })
     return instanceToAgentInfo(inst)
   }
 
-  /** channel 实例列表 */
   async listChannelAgents(channelId: string): Promise<AgentInfo[]> {
     return this.deps.repos.channelAgents.listByChannel(channelId).map(instanceToAgentInfo)
   }
@@ -1003,6 +1165,7 @@ export class AgentChannelManager {
       role: updated.role as 'lead' | 'worker',
       harness: updated.harness,
       enabled: updated.enabled,
+      config: parseJson<Record<string, unknown>>(updated.configJson, {}),
       by: meta?.by ?? 'user',
       reason: meta?.reason,
     })

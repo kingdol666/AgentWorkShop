@@ -16,12 +16,14 @@
  */
 import { defineWebSocketHandler } from 'h3'
 import { getWorkshopManager } from '../../plugins/workshop'
+import { resolveUserByToken } from '../../services/user.service'
 import type { AgentChannelManager, ManagerDeps } from '../../services/workshop/runtime/manager'
 import type { AgentRuntime, TaskEngine } from '../../services/workshop/runtime/agent-runtime'
 import { rowToMessage } from '../../services/workshop/runtime/mailbox'
 import type { AgentEvent } from '../../services/workshop/agents/agent-interface'
 import type { A2AMessage } from '../../services/workshop/types/a2a'
 import type { AepEnvelope } from '../../../shared/workshop-protocol'
+import { parseJson } from '../../services/workshop/db/database'
 
 const AEP_VERSION = 1
 const RING_CAP = 5000
@@ -39,6 +41,8 @@ interface ChannelStream {
   ring: AepEnvelope[]
   peers: Set<WsPeer>
   unsubs: Array<() => void>
+  /** 当前已订阅的 channel 总线对象(总线生命期短于 stream:空闲卸载会重建 bus → 需重订) */
+  busRef: object | null
 }
 
 /**
@@ -110,6 +114,8 @@ if (hub.streams.size > 0) {
 interface ManagerInternals {
   deps: ManagerDeps
   agentIndex: Map<string, AgentRuntime>
+  /** channel → 事件总线(生命期与管理器同源;空闲卸载后 channel 重激活会重建) */
+  buses: Map<string, object>
   getTaskEngine(): TaskEngine
 }
 
@@ -193,6 +199,7 @@ function buildSnapshot(manager: AgentChannelManager, channelId: string): Record<
       role: m.role,
       harness: m.harness,
       enabled: m.enabled,
+      config: parseJson<Record<string, unknown>>(m.configJson, {}),
       state: rt ? rt.getState() : 'idle',
       currentTaskId: view.current?.id ?? null,
       queued: view.queued.length,
@@ -246,29 +253,42 @@ function mapAgentEvent(manager: AgentChannelManager, stream: ChannelStream, even
 }
 
 /**
- * 建立(或复用)channel 事件流:订阅 ChannelBus,事件直推 + 全时落库。
- * 流生命周期 = 进程生命周期(与订阅者无关;无 peer 时事件仍持久化,DB 为事实源)。
+ * stream 的 ChannelBus 订阅装配(六类事件 → AEP 帧)。
+ * 订阅解析的是"订阅时刻"的总线对象;channel 空闲卸载后总线被管理器销毁,
+ * 重激活时新建总线——同一 stream 必须重订到当前总线,否则事件不再产生 WS 帧。
  */
-export function ensureStream(manager: AgentChannelManager, channelId: string): ChannelStream | null {
-  const existing = streams.get(channelId)
-  if (existing) return existing
-  const channel = internalsOf(manager).deps.repos.channels.findById(channelId)
-  if (!channel) return null
-  // seq 从持久层续接(重启后继续递增;INSERT OR IGNORE 幂等兜底)
-  const initSeq = internalsOf(manager).deps.repos.channelEvents.maxSeq(channelId)
-  const stream: ChannelStream = { channelId, seq: initSeq, ring: [], peers: new Set(), unsubs: [] }
-  // 任务事件:状态迁移(assignee 补全)/ 进度
+function bindStreamSubscriptions(manager: AgentChannelManager, stream: ChannelStream): void {
+  const channelId = stream.channelId
+  // 任务事件:状态迁移(assignee + 标题/父级/进度/交付数正文随事件直推——
+  // 客户端事件即实体,免 REST 补全;协议字段见 shared/workshop-protocol)
   stream.unsubs.push(manager.subscribeTaskEvents(channelId, (e) => {
     if (e.state !== undefined) {
-      const assigneeId = internalsOf(manager).getTaskEngine().get(e.taskId)?.assigneeId
-      publish(manager, stream, 'task.status', { taskId: e.taskId, state: e.state, assigneeId, agentId: e.agentId }, { taskId: e.taskId, agentId: e.agentId ?? assigneeId })
+      const task = internalsOf(manager).getTaskEngine().get(e.taskId)
+      const assigneeId = task?.assigneeId
+      publish(manager, stream, 'task.status', {
+        taskId: e.taskId,
+        state: e.state,
+        assigneeId,
+        agentId: e.agentId,
+        title: task?.title,
+        parentId: task?.parentId,
+        progress: task?.progress,
+        artifacts: task?.artifacts.length,
+      }, { taskId: e.taskId, agentId: e.agentId ?? assigneeId })
     }
     if (e.progress !== undefined) {
       publish(manager, stream, 'task.progress', { taskId: e.taskId, progress: e.progress, agentId: e.agentId }, { taskId: e.taskId })
     }
   }))
-  // 成员状态(idle/busy + 队列上下文)
-  stream.unsubs.push(manager.subscribeAgentStatus(channelId, e => publish(manager, stream, 'agent.status', e, { agentId: e.agentId })))
+  // 成员状态(idle/busy/stopped + 队列上下文):总线载荷为 queuedCount/completedCount,
+  // 归一化为 AEP 协议字段 queued/completed(与 channel.snapshot agents 同构,客户端单键消费)
+  stream.unsubs.push(manager.subscribeAgentStatus(channelId, e => publish(manager, stream, 'agent.status', {
+    agentId: e.agentId,
+    state: e.state,
+    currentTaskId: e.currentTaskId ?? null,
+    queued: e.queuedCount ?? 0,
+    completed: e.completedCount ?? 0,
+  }, { agentId: e.agentId })))
   // harness 事件流(message/artifact/status.message/error)
   stream.unsubs.push(manager.subscribeChannelEvents(channelId, (event, source) => mapAgentEvent(manager, stream, event, source)))
   // 消息投递(route 汇流点)
@@ -283,6 +303,68 @@ export function ensureStream(manager: AgentChannelManager, channelId: string): C
   stream.unsubs.push(manager.subscribeMemberEvents(channelId, (e) => {
     publish(manager, stream, 'agent.member', e, { agentId: e.agentId })
   }))
+}
+
+/** 自愈:stream 已订阅的总线 ≠ 管理器当前总线(空闲卸载销毁/重建)或 manager 更替 → 重订 */
+function rebindStreamIfStale(manager: AgentChannelManager, stream: ChannelStream): void {
+  const currentBus = internalsOf(manager).buses.get(stream.channelId) ?? null
+  if (stream.busRef === currentBus) return
+  for (const unsub of stream.unsubs) {
+    try {
+      unsub()
+    }
+    catch { /* 尽力清理 */ }
+  }
+  stream.unsubs = []
+  stream.busRef = currentBus
+  if (currentBus) bindStreamSubscriptions(manager, stream)
+}
+
+/** 常驻自愈 sweep:channel 总线生命期短于 stream(空闲卸载 → 重激活重建总线)时,
+ * 周期性把 stream 重订到当前总线,保证事件流在 channel 重激活后自动恢复(≤3s 收敛)。
+ * 定时器挂 globalThis:防 nitro HMR 重建模块产生重复 sweep。 */
+const BUS_REBIND_MS = 3000
+const REBIND_TIMER_KEY = '__workshopWsRebindTimer'
+let rebindTimer = (hubGlobal as Record<string, unknown>)[REBIND_TIMER_KEY] as NodeJS.Timeout | undefined
+if (!rebindTimer) {
+  rebindTimer = setInterval(() => {
+    if (hub.boundManager) {
+      for (const stream of streams.values()) {
+        try {
+          rebindStreamIfStale(hub.boundManager, stream)
+        }
+        catch { /* 单个 stream 自愈失败不影响其他 */ }
+      }
+    }
+  }, BUS_REBIND_MS)
+  rebindTimer.unref?.()
+  ;(hubGlobal as Record<string, unknown>)[REBIND_TIMER_KEY] = rebindTimer
+}
+
+/**
+ * 建立(或复用)channel 事件流:订阅 ChannelBus,事件直推 + 全时落库。
+ * 流生命周期 = 进程生命周期(与订阅者无关;无 peer 时事件仍持久化,DB 为事实源)。
+ */
+export function ensureStream(manager: AgentChannelManager, channelId: string): ChannelStream | null {
+  const channel = internalsOf(manager).deps.repos.channels.findById(channelId)
+  if (!channel) return null
+  const existing = streams.get(channelId)
+  if (existing) {
+    // 订阅入口处即时自愈(不等 sweep):bus 已重建 → 立即重订到当前总线
+    rebindStreamIfStale(manager, existing)
+    return existing
+  }
+  // seq 从持久层续接(重启后继续递增;INSERT OR IGNORE 幂等兜底)
+  const initSeq = internalsOf(manager).deps.repos.channelEvents.maxSeq(channelId)
+  const stream: ChannelStream = {
+    channelId,
+    seq: initSeq,
+    ring: [],
+    peers: new Set(),
+    unsubs: [],
+    busRef: internalsOf(manager).buses.get(channelId) ?? null,
+  }
+  bindStreamSubscriptions(manager, stream)
   streams.set(channelId, stream)
   return stream
 }
@@ -294,7 +376,7 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
     sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: 'WS 订阅需要用户 token(sub 帧携带 token 字段或连接 ?token= 查询参数)' } })
     return
   }
-  const user = manager.getUserByToken(userToken)
+  const user = resolveUserByToken(userToken)
   if (!user) {
     sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: '用户 token 无效' } })
     return
@@ -319,9 +401,13 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
     peerChannels.set(peer, channels)
   }
   channels.add(channelId)
-  // 对齐策略:无 lastSeq / seq 倒退(服务重启) / 缓冲窗外 → channel.snapshot 全量;否则重放缺失段
+  // 对齐策略:无游标(lastSeq 缺省/为 0)/ seq 倒退(服务重启)/ 缓冲窗外 →
+  // channel.snapshot 全量(agents/tasks/queue/messages 基线,客户端事件即实体);
+  // 否则重放缺失段。lastSeq=0 视为"新订阅者"(游标未建立),同样走快照路径——
+  // 仅重放事件会让客户端丢失实体基线(空闲成员/历史任务永远不出现)。
+  const cursor: number | undefined = (lastSeq !== undefined && lastSeq > 0) ? lastSeq : undefined
   const oldest = stream.ring[0]?.seq ?? stream.seq + 1
-  if (lastSeq === undefined || lastSeq >= stream.seq || lastSeq + 1 < oldest) {
+  if (cursor === undefined || cursor >= stream.seq || cursor + 1 < oldest) {
     const snapshot = buildSnapshot(manager, channelId)
     if (snapshot) {
       sendControl(peer, {
@@ -333,13 +419,11 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
         payload: snapshot,
       })
     }
-    if (lastSeq !== undefined && lastSeq > stream.seq) {
-      // 客户端游标超前(服务端重启 seq 归零):快照即对齐,无需重放
-    }
   }
   else {
+    // 已建立游标且缺口在缓冲窗内 → 重放缺失段(快照无需重发)
     for (const e of stream.ring) {
-      if (e.seq > lastSeq) sendEnvelope(stream, peer, e)
+      if (e.seq > cursor) sendEnvelope(stream, peer, e)
     }
   }
 }

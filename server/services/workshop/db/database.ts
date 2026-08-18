@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE TABLE IF NOT EXISTS workspaces (
   id           TEXT PRIMARY KEY,
-  owner_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  owner_user_id TEXT NOT NULL,  -- 归属用户(全局用户系统 id;原 FK 已随全局用户集成移除)
   name         TEXT NOT NULL,
   created_at   TEXT NOT NULL
 );
@@ -186,6 +186,90 @@ CREATE TABLE IF NOT EXISTS workspace_channels (
   created_at   TEXT NOT NULL,
   PRIMARY KEY (workspace_id, channel_id)
 );`
+
+// ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
+
+/** 默认 Agent 模板(id 固定,幂等) */
+const DEFAULT_AGENT_TEMPLATES: Array<{ id: string, name: string, harness: string, config: Record<string, unknown> }> = [
+  { id: 'tpl-default-lead', name: '开发主管', harness: 'mock', config: { role: 'lead', intro: '统筹任务拆解与进度调度,分配 worker 执行' } },
+  { id: 'tpl-default-backend', name: '后端工程师', harness: 'mock', config: { role: 'worker', intro: '负责服务端接口、数据与集成逻辑' } },
+  { id: 'tpl-default-frontend', name: '前端工程师', harness: 'mock', config: { role: 'worker', intro: '负责页面、交互与前端工程' } },
+  { id: 'tpl-default-qa', name: '测试工程师', harness: 'mock', config: { role: 'worker', intro: '负责用例设计与质量验证' } },
+  { id: 'tpl-default-docs', name: '文档撰写', harness: 'mock', config: { role: 'worker', intro: '负责说明、报告与文档沉淀' } },
+  // 特定场景 lead 模板:带 systemPromptPrefix 预设,用户添加为 lead 时场景提示词自动注入 harness
+  {
+    id: 'tpl-scenario-payment-lead',
+    name: '支付网关交付主管(场景:高并发支付)',
+    harness: 'omp',
+    config: {
+      role: 'lead',
+      intro: '支付网关专项交付 lead;已预设高并发支付场景系统提示',
+      systemPromptPrefix: [
+        '你是支付网关专项交付组的 Lead 主管,负责拆解并推进支付网关的端到端交付。',
+        '## 场景背景',
+        '本团队聚焦高并发支付网关:订单支付、退款、对账、风控与降级预案。',
+        '## 你的调度原则',
+        '1. 每次只拆解当前最有价值的一个子任务,交给最空闲的 worker,不要并行铺开。',
+        '2. 子任务须包含明确的验收标准(接口契约/性能指标/失败路径)。',
+        '3. 支付类需求默认考虑:幂等、超时兜底、对账一致与限流降级。',
+        '4. worker 完成一个任务后要复核其成果是否满足验收标准,不满足则补充分发。',
+        '## 交付红线',
+        '涉及资金与订单状态的变更,必须以 artifact 显式标注幂等键与回滚方案;任何不确定项先 ask 用户确认。',
+      ].join('\n'),
+    },
+  },
+]
+
+/** 默认 AgentTeam(成员引用上述模板 id) */
+const DEFAULT_TEAMS: Array<{ id: string, name: string, description: string, members: Array<{ templateId: string, role: 'lead' | 'worker' }> }> = [
+  {
+    id: 'team-default-fullstack',
+    name: '全栈交付组',
+    description: '默认编组:主管 + 后端 + 前端 + 测试,开箱即可部署到 Channel',
+    members: [
+      { templateId: 'tpl-default-lead', role: 'lead' },
+      { templateId: 'tpl-default-backend', role: 'worker' },
+      { templateId: 'tpl-default-frontend', role: 'worker' },
+      { templateId: 'tpl-default-qa', role: 'worker' },
+    ],
+  },
+  {
+    id: 'team-default-docs',
+    name: '文档维护组',
+    description: '默认编组:文档撰写(lead)+ 测试复核,适合文档与发布场景',
+    members: [
+      { templateId: 'tpl-default-docs', role: 'lead' },
+      { templateId: 'tpl-default-qa', role: 'worker' },
+    ],
+  },
+]
+
+/**
+ * 默认模板与编组注入:
+ * - 固定 id + INSERT OR IGNORE,每次初始化幂等执行(重启安全;已有库补种,新库直接种)
+ * - owner_user_id = NULL:公共资源,对所有登录用户只读可见(写操作走 FORBIDDEN_LEGACY 守卫)
+ */
+function seedDefaultWorkshopData(db: DatabaseSync): void {
+  const now = new Date().toISOString()
+  const insertAgent = db.prepare(
+    'INSERT OR IGNORE INTO agents (id, name, harness, config_json, enabled, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, 1, NULL, ?, ?)',
+  )
+  for (const t of DEFAULT_AGENT_TEMPLATES) {
+    insertAgent.run(t.id, t.name, t.harness, JSON.stringify(t.config), now, now)
+  }
+  const insertTeam = db.prepare(
+    'INSERT OR IGNORE INTO teams (id, name, description, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?)',
+  )
+  const insertMember = db.prepare(
+    'INSERT OR IGNORE INTO team_members (team_id, template_id, role, created_at) VALUES (?, ?, ?, ?)',
+  )
+  for (const team of DEFAULT_TEAMS) {
+    insertTeam.run(team.id, team.name, team.description, now, now)
+    for (const m of team.members) {
+      insertMember.run(team.id, m.templateId, m.role, now)
+    }
+  }
+}
 
 /** channels 表行 */
 export interface ChannelRow {
@@ -358,6 +442,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   db.exec(SCHEMA_SQL)
   migrateLegacySchema(db)
   migrateMissingForeignKeys(db)
+  migrateDropOwnerFks(db)
+  seedDefaultWorkshopData(db)
 }
 
 /** 检测表上是否存在 指向某表的列级外键 */
@@ -425,6 +511,89 @@ function migrateMissingForeignKeys(db: DatabaseSync): void {
 }
 
 /**
+ * v9(全局用户集成)迁移:剥离 owner_user_id 对本地 users 表的 FK。
+ * 身份与 token 已迁移至全局用户系统(data/users.sqlite),owner 列仅存用户 id 引用,
+ * 保留 FK 会使新全局用户 id 在本地 users 表无行而写入失败。
+ * 表重建期间临时关闭外键,避免 DROP 触发级联;重建后以原名重新命名,引用方 FK 依旧有效。
+ */
+function migrateDropOwnerFks(db: DatabaseSync): void {
+  const rebuilds: Array<{ table: string, ddl: string }> = []
+  if (hasForeignKey(db, 'workspaces', 'owner_user_id', 'users')) {
+    rebuilds.push({
+      table: 'workspaces',
+      ddl: `CREATE TABLE workspaces_new (
+          id            TEXT PRIMARY KEY,
+          owner_user_id TEXT NOT NULL,
+          name          TEXT NOT NULL,
+          created_at    TEXT NOT NULL
+        );
+        INSERT INTO workspaces_new SELECT id, owner_user_id, name, created_at FROM workspaces;`,
+    })
+  }
+  if (hasForeignKey(db, 'channels', 'owner_user_id', 'users')) {
+    rebuilds.push({
+      table: 'channels',
+      ddl: `CREATE TABLE channels_new (
+          id             TEXT PRIMARY KEY,
+          name           TEXT NOT NULL,
+          description    TEXT NOT NULL DEFAULT '',
+          lead_agent_id  TEXT,
+          workspace      TEXT NOT NULL DEFAULT '',
+          enabled        INTEGER NOT NULL DEFAULT 1,
+          owner_user_id  TEXT,
+          created_at     TEXT NOT NULL,
+          updated_at     TEXT NOT NULL
+        );
+        INSERT INTO channels_new SELECT id, name, description, lead_agent_id, workspace, enabled, owner_user_id, created_at, updated_at FROM channels;`,
+    })
+  }
+  if (hasForeignKey(db, 'agents', 'owner_user_id', 'users')) {
+    rebuilds.push({
+      table: 'agents',
+      ddl: `CREATE TABLE agents_new (
+          id           TEXT PRIMARY KEY,
+          name         TEXT NOT NULL,
+          harness      TEXT NOT NULL,
+          config_json  TEXT NOT NULL DEFAULT '{}',
+          enabled      INTEGER NOT NULL DEFAULT 1,
+          owner_user_id TEXT,
+          created_at   TEXT NOT NULL,
+          updated_at   TEXT NOT NULL
+        );
+        INSERT INTO agents_new SELECT id, name, harness, config_json, enabled, owner_user_id, created_at, updated_at FROM agents;`,
+    })
+  }
+  if (hasForeignKey(db, 'teams', 'owner_user_id', 'users')) {
+    rebuilds.push({
+      table: 'teams',
+      ddl: `CREATE TABLE teams_new (
+          id            TEXT PRIMARY KEY,
+          name          TEXT NOT NULL,
+          description   TEXT NOT NULL DEFAULT '',
+          owner_user_id TEXT,
+          created_at    TEXT NOT NULL,
+          updated_at    TEXT NOT NULL
+        );
+        INSERT INTO teams_new SELECT id, name, description, owner_user_id, created_at, updated_at FROM teams;`,
+    })
+  }
+  if (rebuilds.length === 0) return
+
+  db.exec('PRAGMA foreign_keys = OFF;')
+  try {
+    for (const { table, ddl } of rebuilds) {
+      db.exec(`${ddl}
+        DROP TABLE ${table};
+        ALTER TABLE ${table}_new RENAME TO ${table};`)
+    }
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_user_id);`)
+  }
+  finally {
+    db.exec('PRAGMA foreign_keys = ON;')
+  }
+}
+
+/**
  * 旧库迁移到 v3。仅当 agents 仍含 channel_id 列(v1:agents 内嵌 channel_id/role/token)时执行。
  * 迁移过程临时关闭外键,避免 DROP TABLE 触发级联;v1 的 agent id 保留为实例 id,
  * 使 messages/tasks/subscriptions 对 agent 的既有引用继续有效。
@@ -434,17 +603,20 @@ function migrateLegacySchema(db: DatabaseSync): void {
   if (!channelsCols.some(c => c.name === 'workspace')) {
     db.exec(`ALTER TABLE channels ADD COLUMN workspace TEXT NOT NULL DEFAULT ''`)
   }
-  // v7:用户隔离 owner 列(幂等;默认 NULL = 遗留公共数据)
+  // v7:用户隔离 owner 列(幂等;默认 NULL = 遗留公共数据)。
+  // v9(全局用户集成):owner 引用改为全局用户系统 id,不再加 REFERENCES(避免跨库 FK)。
   if (!channelsCols.some(c => c.name === 'owner_user_id')) {
-    db.exec(`ALTER TABLE channels ADD COLUMN owner_user_id TEXT REFERENCES users(id)`)
+    db.exec(`ALTER TABLE channels ADD COLUMN owner_user_id TEXT`)
   }
+  // v7:用户隔离 owner 列(幂等;默认 NULL = 遗留公共数据)。
+  // v9(全局用户集成):owner 引用改为全局用户系统 id,不再加 REFERENCES(避免跨库 FK)。
   const agentsColsV7 = db.prepare(`PRAGMA table_info(agents)`).all() as Array<{ name: string }>
   if (!agentsColsV7.some(c => c.name === 'owner_user_id')) {
-    db.exec(`ALTER TABLE agents ADD COLUMN owner_user_id TEXT REFERENCES users(id)`)
+    db.exec(`ALTER TABLE agents ADD COLUMN owner_user_id TEXT`)
   }
   const teamsColsV7 = db.prepare(`PRAGMA table_info(teams)`).all() as Array<{ name: string }>
   if (!teamsColsV7.some(c => c.name === 'owner_user_id')) {
-    db.exec(`ALTER TABLE teams ADD COLUMN owner_user_id TEXT REFERENCES users(id)`)
+    db.exec(`ALTER TABLE teams ADD COLUMN owner_user_id TEXT`)
   }
 
   const agentCols = db.prepare(`PRAGMA table_info(agents)`).all() as Array<{ name: string }>

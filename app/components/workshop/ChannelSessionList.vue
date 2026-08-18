@@ -42,7 +42,7 @@ const select = (channelId: string): void => {
 }
 
 const mountModal = ref(false)
-const mountForm = reactive({ name: '', description: '', workspace: '', leadName: 'lead', leadHarness: 'mock', workerCount: 1 })
+const mountForm = reactive({ name: '', description: '', workspace: '' })
 const mountSubmitting = ref(false)
 /** FileSelector 弹窗(选择服务器目录作为 workspace) */
 const fileSelectorOpen = ref(false)
@@ -58,21 +58,17 @@ const createAndMount = async (): Promise<void> => {
       description: mountForm.description || undefined,
       // 工作目录:留空 → 服务端默认 data/workspaces/<channelId>;自定义(绝对/相对)不存在时自动创建
       workspace: mountForm.workspace.trim() || undefined,
-      leadAgent: { name: mountForm.leadName || 'lead', harness: mountForm.leadHarness },
     })
     const created = (res as unknown as { data?: { channelId?: string } })?.data
     const channelId = created?.channelId
     if (!channelId) throw new Error('创建失败')
-    for (let i = 0; i < mountForm.workerCount; i++) {
-      await api.addChannelAgent(channelId, { name: `w${i + 1}`, harness: 'mock', role: 'worker' })
-    }
     await wsStore.mountChannel(props.wsId, channelId)
     mountModal.value = false
     mountForm.name = ''
     mountForm.description = ''
     mountForm.workspace = ''
     void refreshChannels()
-    message.success('Channel 已创建并挂载')
+    message.success('Channel 已创建(空团队;进入后通过「添加成员」装配 lead / worker)')
   }
   catch (e) {
     message.error(`创建失败:${e instanceof Error ? e.message : String(e)}`)
@@ -193,25 +189,8 @@ const unmount = (channelId: string): void => {
             <span class="ws-hint">执行任务时该目录注入各 Agent harness 的作业 cwd(omp 子进程工作目录);不存在自动创建</span>
           </template>
         </a-form-item>
-        <a-form-item label="Lead 名称 / harness">
-          <a-input-group compact>
-            <a-input
-              v-model:value="mountForm.leadName"
-              style="width: 50%"
-            />
-            <a-select
-              v-model:value="mountForm.leadHarness"
-              style="width: 50%"
-              :options="[{ value: 'mock', label: 'mock' }, { value: 'omp', label: 'omp' }]"
-            />
-          </a-input-group>
-        </a-form-item>
-        <a-form-item label="Worker 数量(mock)">
-          <a-input-number
-            v-model:value="mountForm.workerCount"
-            :min="0"
-            :max="8"
-          />
+        <a-form-item>
+          <span class="ws-hint">Channel 创建后为空团队,无任何 Agent;进入后通过「添加成员」选择角色(lead/worker)与场景提示词完成装配</span>
         </a-form-item>
       </a-form>
     </a-modal>

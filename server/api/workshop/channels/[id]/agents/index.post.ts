@@ -4,13 +4,15 @@
  * - 否则:一步创建 Agent 模板并克隆进 channel
  * - role=lead 且已有 lead → 409 LEAD_EXISTS
  */
-import { z } from 'zod'
+import { z } from 'zod'
+
 import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
 import { AppError } from '../../../../../utils/errors'
-import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../../../../plugins/workshop'
+import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../../../../plugins/workshop'
+
 const createAgentSchema = z.object({
   agentId: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
@@ -38,7 +40,13 @@ export default defineApiHandler(async (event) => {
     }
   }
   const agent = body.agentId
-    ? await manager.addAgentToChannel({ channelId, agentId: body.agentId, role })
+    ? await manager.addAgentToChannel({
+        channelId,
+        agentId: body.agentId,
+        role,
+        // 克隆模板时允许覆盖 config(如注入/覆盖 systemPromptPrefix 场景提示词)
+        configOverride: body.config && Object.keys(body.config).length > 0 ? body.config : undefined,
+      })
     : await (async () => {
         if (!body.name || !body.harness) {
           throw new AppError(400, 'BAD_REQUEST', '需提供 name+harness(新建模板)或 agentId(克隆已有模板)')

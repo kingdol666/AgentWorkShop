@@ -34,6 +34,12 @@ import {
   type RpcHostToolDefinition,
   type HostToolCallRequest,
 } from './adapters/omp-rpc-client'
+import {
+  registerHarnessProcess,
+  bindHarnessProcess,
+  markHarnessProcessExit,
+  killHarnessProcess,
+} from './harness-process'
 
 // ===== 配置 =====
 
@@ -416,6 +422,25 @@ export class OmpRpcAgentImpl implements AgentInterface {
       this.client = null
     }
     this.hostToolsRegistered = false
+  }
+
+  /** harness 进程资源信息(运行时资源监控;进程未 spawn/已回收 → null) */
+  getProcessInfo(): { pid: number, alive: boolean, command: string } | null {
+    const client = this.client
+    const pid = client?.pid
+    if (!pid || !client) return null
+    return { pid, alive: client.alive, command: 'omp --mode rpc' }
+  }
+
+  /** 强制终止 harness 进程(进程树;终止后由调用方停止对应 AgentRuntime) */
+  killProcess(): void {
+    const pid = this.client?.pid
+    if (pid) {
+      killHarnessProcess(pid)
+    }
+    else {
+      this.client?.kill()
+    }
   }
 
   /**
@@ -1067,12 +1092,33 @@ export class OmpRpcAgentImpl implements AgentInterface {
     }
 
     if (!this.client) {
+      const command = this.config.command ?? 'omp'
       const client = new OmpRpcClient({
-        command: this.config.command ?? 'omp',
+        command,
         args: this.config.args,
         cwd: this.config.cwd ?? process.cwd(),
+        // 进程退出 → 注册表标记(供运行时资源监控);pid=-1 表示无法取得,忽略
+        onExit: (pid, code) => {
+          if (pid > 0) markHarnessProcessExit(pid, code)
+        },
       })
       await client.start()
+
+      // 登记 + 绑定 agent 身份(harness 进程监控的事实源)
+      const pid = client.pid
+      if (pid) {
+        registerHarnessProcess(pid, {
+          harness: 'omp',
+          command,
+          args: ['--mode', 'rpc', ...(this.config.args ?? [])],
+        })
+        bindHarnessProcess(pid, {
+          agentId: this.selfAgentId,
+          channelId: this.channelId,
+          name: this.agentName,
+          role: this.agentRole,
+        })
+      }
 
       // 设置模型(如果配置了)
       if (this.config.provider && this.config.model) {

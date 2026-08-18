@@ -89,6 +89,8 @@ export interface OmpRpcClientOptions {
   cwd?: string
   /** 环境变量 */
   env?: Record<string, string>
+  /** 进程退出回调(运行时资源监控登记/标记用;pid 为 -1 表示无法取得) */
+  onExit?: (pid: number, code: number | null) => void
 }
 
 interface PendingRequest {
@@ -115,6 +117,9 @@ export class OmpRpcClient {
   private stderrBuf = ''
   private ready = false
   private disposed = false
+  /** 子进程是否已退出(资源监控/优雅 dispose 用) */
+  private exited = false
+  private exitCode: number | null = null
 
   private readonly pending = new Map<string, PendingRequest>()
   private seq = 0
@@ -126,6 +131,21 @@ export class OmpRpcClient {
   private readonly chunkBuffers = new Map<string, { count: number, parts: Map<number, string> }>()
 
   constructor(private readonly options: OmpRpcClientOptions = {}) {}
+
+  /** 子进程 pid(spawn 前/失败为 undefined;已退出仍保留) */
+  get pid(): number | undefined {
+    return this.child?.pid
+  }
+
+  /** 子进程是否存活(spawn 前或已退出 → false) */
+  get alive(): boolean {
+    return !!this.child && !this.exited
+  }
+
+  /** 强制终止子进程(不等优雅退出;进程树终止由监控层 killHarnessProcess 负责) */
+  kill(): void {
+    this.child?.kill('SIGKILL')
+  }
 
   /** spawn omp 子进程,等待 ready frame */
   async start(): Promise<void> {
@@ -235,7 +255,7 @@ export class OmpRpcClient {
 
     // 等待退出,最多 3s
     await new Promise<void>((resolve) => {
-      if (!this.child || this.child.killed) return resolve()
+      if (!this.child || this.child.killed || this.exited) return resolve()
       const timer = setTimeout(() => {
         this.child?.kill('SIGKILL')
         resolve()
@@ -386,6 +406,9 @@ export class OmpRpcClient {
 
   /** 子进程退出处理 */
   private handleExit(code: number | null): void {
+    this.exited = true
+    this.exitCode = code
+    this.options.onExit?.(this.child?.pid ?? -1, code)
     // 拒绝所有 pending
     for (const [, p] of this.pending) {
       clearTimeout(p.timer)
