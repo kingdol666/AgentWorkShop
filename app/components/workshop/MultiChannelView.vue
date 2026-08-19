@@ -3,9 +3,9 @@
  * 多 channel 同屏视图(P2):workspace 挂载的全部 channel 并排 mini 时间线。
  * 单条 WS 连接多路 sub 的 UI 呈现面;每列独立事件流 + 状态头(seq/事件数/活跃任务)。
  */
-import { useWorkspacesStore } from '../../stores/workshop/workspaces'
-import { useEntitiesStore } from '../../stores/workshop/entities'
-import { useEventsStore } from '../../stores/workshop/events'
+import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { useEventsStore } from '@/app/stores/workshop/events'
 
 const props = defineProps<{ wsId: string }>()
 const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()

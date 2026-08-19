@@ -4,7 +4,7 @@
  * 成员:实时状态 + 队列;点击 → 打开 Agent 抽屉(独立流/队列/记忆)。
  * 任务:根任务列表;点击 → 打开 Task 抽屉(状态时间线/交付物/取消)。
  */
-import { useEntitiesStore } from '../../stores/workshop/entities'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
 
 const props = defineProps<{ channelId: string }>()
 const emit = defineEmits<{

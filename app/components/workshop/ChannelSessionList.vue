@@ -4,9 +4,9 @@
  * 实时状态徽标(忙碌成员数/活跃任务数),点击聚焦;挂载/移出操作。
  */
 import { message } from 'ant-design-vue'
-import { useWorkspacesStore } from '../../stores/workshop/workspaces'
-import { useEntitiesStore } from '../../stores/workshop/entities'
-import { useWorkshopApi } from '../../composables/workshop/useWorkshopApi'
+import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
 
 const props = defineProps<{ wsId: string }>()
 const wsStore = useWorkspacesStore()

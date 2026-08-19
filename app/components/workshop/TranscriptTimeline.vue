@@ -1,11 +1,11 @@
 <script setup lang="ts">
 /**
- * Transcript 时间线:过滤条(全部/消息/任务/错误)+ 事件流 + 自动吸底。
- * 事件按"同 agent + 同类连续"聚合为 turn block 渲染(Codex/OpenHands 风格),
- * 相同来源连续内容不断裂;虚拟滚动在 P2。
+ * Transcript 时间线:过滤条(全部/消息/任务/错误)+ cluster 块流 + 自动吸底。
+ * 事件经 useClusteredBlocks 增量聚类(turn block,内容智能去重),
+ * 流式更新只命中变化的块组件;新帧到达保持吸底。
  */
-import { useEventsStore, type EventFilter } from '../../stores/workshop/events'
-import { aggregateEvents } from '../../composables/workshop/useEventBlocks'
+import { useEventsStore, type EventFilter } from '@/app/stores/workshop/events'
+import { useClusteredBlocks } from '@/app/composables/workshop/useClusteredBlocks'
 
 const props = defineProps<{ channelId: string }>()
 const events = useEventsStore()
@@ -17,9 +17,7 @@ const filter = computed({
   set: (v: EventFilter) => events.setFilter(props.channelId, v),
 })
 
-const timeline = computed(() => events.timeline(props.channelId))
-/** 聚合块视图:过滤后事件 → turn blocks */
-const blocks = computed(() => aggregateEvents(timeline.value))
+const { blocks, totalEvents } = useClusteredBlocks(() => props.channelId)
 
 const onScroll = (): void => {
   const el = scroller.value
@@ -27,11 +25,18 @@ const onScroll = (): void => {
   stickBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 60
 }
 
-watch(() => timeline.value.length, async () => {
+/** 吸底:新块出现 / seq 增长 / 块内容尺寸变化(可能高增)后滚到底 */
+const scrollToBottom = async (): Promise<void> => {
   if (!stickBottom.value) return
   await nextTick()
   const el = scroller.value
   if (el) el.scrollTop = el.scrollHeight
+}
+watch(() => blocks.value.length, () => {
+  void scrollToBottom()
+})
+watch(() => events.lastSeq(props.channelId), () => {
+  void scrollToBottom()
 })
 
 const filterOptions: Array<{ value: EventFilter, label: string }> = [
@@ -51,7 +56,7 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
         size="small"
         :options="filterOptions"
       />
-      <span class="count">{{ timeline.length }} 事件 / {{ blocks.length }} 块</span>
+      <span class="count">{{ totalEvents }} 事件 / {{ blocks.length }} 块</span>
     </div>
     <div
       ref="scroller"
@@ -59,7 +64,7 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
       @scroll="onScroll"
     >
       <div
-        v-if="timeline.length === 0"
+        v-if="blocks.length === 0"
         class="empty"
       >
         等待事件…(提交任务后此处实时渲染 Agent 执行过程)

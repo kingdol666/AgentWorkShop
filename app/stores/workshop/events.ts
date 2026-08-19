@@ -67,10 +67,14 @@ export const useEventsStore = defineStore('workshop.events', {
         return
       }
       if (typeof e.seq === 'number' && e.seq > ring.lastSeq) {
-        // delta 聚合:同 agent 连续增量合并进前一条(delta 帧高频,合并后打字机渲染)
+        // delta 聚合:同 agent(+同任务)连续增量合并进前一条;跨任务增量绝不粘连
         if (e.type === 'agent.delta') {
           const last = ring.items[ring.items.length - 1]
-          if (last && last.type === 'agent.delta' && last.agentId === e.agentId) {
+          const sameOrigin = last
+            && last.type === 'agent.delta'
+            && last.agentId === e.agentId
+            && (last.taskId ?? null) === (e.taskId ?? null)
+          if (sameOrigin && last) {
             const prev = (last.payload as { delta: string }).delta
             ;(last.payload as { delta: string }).delta = prev + (e.payload as { delta: string }).delta
             ring.lastSeq = e.seq

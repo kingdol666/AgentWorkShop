@@ -6,9 +6,9 @@
  *  - 子任务树;操作:取消任务
  */
 import { message } from 'ant-design-vue'
-import { useEntitiesStore } from '../../stores/workshop/entities'
-import { useEventsStore } from '../../stores/workshop/events'
-import { useWorkshopApi, type TaskDto } from '../../composables/workshop/useWorkshopApi'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { useEventsStore } from '@/app/stores/workshop/events'
+import { useWorkshopApi, type TaskDto } from '@/app/composables/workshop/useWorkshopApi'
 
 const props = defineProps<{
   channelId: string

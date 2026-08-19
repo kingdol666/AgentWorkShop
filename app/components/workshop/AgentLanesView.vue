@@ -6,9 +6,10 @@
  * 成员变更(agent.member 事件)同样在此实时呈现——实体列表是唯一状态源。
  */
 import { message } from 'ant-design-vue'
-import { useEntitiesStore } from '../../stores/workshop/entities'
-import { useEventsStore } from '../../stores/workshop/events'
-import { useWorkshopApi } from '../../composables/workshop/useWorkshopApi'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { useEventsStore } from '@/app/stores/workshop/events'
+import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
+import { foldStreamDuplicates } from '@/app/composables/workshop/useEventBlocks'
 
 const props = defineProps<{ channelId: string }>()
 const entities = useEntitiesStore()
@@ -17,8 +18,9 @@ const api = useWorkshopApi()
 
 const agents = computed(() => entities.agents[props.channelId] ?? [])
 
+/** 每 lane 事件行:内容智能去重(delta 累计与全文落定重复的行摘除) */
 const laneEvents = (agentId: string) =>
-  events.ring(props.channelId).items.filter(e => e.agentId === agentId)
+  foldStreamDuplicates(events.ring(props.channelId).items.filter(e => e.agentId === agentId))
 
 const stateDot: Record<string, string> = {
   idle: '#52c41a',

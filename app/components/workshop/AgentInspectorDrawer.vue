@@ -8,9 +8,11 @@
  * lead 成员不提供启停与移除(移除 lead 会使 channel 失去调度,须走 channel 删除)。
  */
 import { message } from 'ant-design-vue'
-import { useEntitiesStore } from '../../stores/workshop/entities'
-import { useEventsStore } from '../../stores/workshop/events'
-import { useWorkshopApi } from '../../composables/workshop/useWorkshopApi'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { useEventsStore } from '@/app/stores/workshop/events'
+import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
+import { useClusteredBlocks } from '@/app/composables/workshop/useClusteredBlocks'
+import type { AepEnvelope } from '@/shared/workshop-protocol'
 
 const props = defineProps<{
   channelId: string
@@ -68,11 +70,10 @@ const removeMember = async (): Promise<void> => {
   }
 }
 
-/** 该 agent 的独立事件流(忽略全局过滤,只按 agentId + 显式过滤) */
-const stream = computed(() => {
-  if (!props.agentId) return []
-  const ring = events.ring(props.channelId)
-  return ring.items.filter(e => e.agentId === props.agentId)
+/** 该 agent 的独立事件流:聚类块视图(忽略全局过滤,只按 agentId;重复内容折合) */
+const { blocks: stream } = useClusteredBlocks(() => props.channelId, {
+  predicate: () => (e: AepEnvelope) => e.agentId === props.agentId,
+  resetKey: () => props.agentId,
 })
 
 const assignedTasks = computed(() => {
@@ -187,10 +188,10 @@ const stateColor: Record<string, string> = {
             >
               该 agent 暂无事件(连接后产生)
             </div>
-            <workshop-event-card
-              v-for="e in stream"
-              :key="`${e.seq}-${e.type}`"
-              :event="e"
+            <workshop-event-block
+              v-for="b in stream"
+              :key="b.id"
+              :block="b"
             />
           </div>
         </a-tab-pane>

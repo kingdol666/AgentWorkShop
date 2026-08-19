@@ -5,8 +5,8 @@
  *  - 消息模式:POST /channels/:id/messages(toAgentId/priority/requireReply)
  */
 import { message } from 'ant-design-vue'
-import { useWorkshopApi } from '../../composables/workshop/useWorkshopApi'
-import { useEntitiesStore } from '../../stores/workshop/entities'
+import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
 
 const props = defineProps<{ channelId: string }>()
 const emit = defineEmits<{ (e: 'submitted'): void }>()

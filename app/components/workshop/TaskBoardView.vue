@@ -3,7 +3,7 @@
  * 任务板看板视图(P1):按状态分列(待启动/执行中/等待汇总/已完成/异常)。
  * 任务卡:标题 + assignee + 进度 + 子任务数;点击 → Task 抽屉(emit)。
  */
-import { useEntitiesStore } from '../../stores/workshop/entities'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
 
 const props = defineProps<{ channelId: string }>()
 const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()

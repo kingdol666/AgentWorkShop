@@ -6,7 +6,7 @@
  * - message/send 需 Bearer token(可选填)
  */
 import { message } from 'ant-design-vue'
-import { useEntitiesStore } from '../../stores/workshop/entities'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
 
 const props = defineProps<{ channelId: string }>()
 const open = defineModel<boolean>('open', { default: false })

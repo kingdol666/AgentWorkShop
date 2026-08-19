@@ -15,12 +15,14 @@ import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentEvent } from '../agents/agent-interface'
 import { AppError } from '../../../utils/errors'
 
-/** 状态机合法迁移表(§2.2);终态(COMPLETED/FAILED/CANCELED)不在表中 → 不可迁移 */
+/** 状态机合法迁移表(§2.2);终态(COMPLETED/FAILED/CANCELED)不在表中 → 不可迁移
+ *  例外:WAITING(父任务等待子任务合并)→ COMPLETED 属于正常闭环
+ *  (触发条件=全部子任务终态;由 complete() 的 done-check 闸门兜底校验) */
 const TRANSITIONS: Record<TaskState, TaskState[]> = {
   SUBMITTED: ['WORKING', 'ASSIGNED', 'CANCELED'],
   ASSIGNED: ['WORKING', 'CANCELED'],
   WORKING: ['WAITING', 'COMPLETED', 'FAILED', 'CANCELED'],
-  WAITING: ['WORKING', 'CANCELED'],
+  WAITING: ['WORKING', 'COMPLETED', 'CANCELED'],
   FAILED: ['ASSIGNED', 'CANCELED'],
   COMPLETED: [],
   CANCELED: [],
@@ -321,9 +323,20 @@ export class TaskEngine {
     return row ? rowToTask(row) : undefined
   }
 
-  /** 完成任务:WORKING → COMPLETED(终态)+ 进度置 100(广播由上层 ChannelBus 监听 onTaskEvent 承担) */
+  /** 完成任务:WORKING → COMPLETED(终态)+ 进度置 100(广播由上层 ChannelBus 监听 onTaskEvent 承担);
+   *  WAITING → COMPLETED 仅子任务全部完成后允许(所有子任务 COMPLETED 或 CANCELED)。 */
   complete(taskId: string, artifacts?: A2AArtifact[]): WorkspaceTask {
     const task = this.requireTask(taskId)
+    if (task.state === 'WAITING') {
+      // 子任务合并闸门:存在未完成的子任务时拒绝完成(避免父与子状态矛盾)
+      const children = this.repos.tasks
+        .listByChannel(task.channelId)
+        .filter(t => t.parentId === task.id)
+      const pending = children.filter(t => t.state !== 'COMPLETED' && t.state !== 'CANCELED')
+      if (pending.length > 0) {
+        throw new AppError(400, 'INVALID_STATE', `父任务存在 ${pending.length} 个未完成子任务,不能直接完成(先取消/完成子任务)`)
+      }
+    }
     if (artifacts && artifacts.length > 0) {
       this.repos.tasks.update(taskId, { artifacts: [...task.artifacts, ...artifacts] })
     }

@@ -1,17 +1,11 @@
 <script setup lang="ts">
 /**
- * AEP 事件卡(时间线单行渲染单元,密集视图用):
- *  - 工具调用行(agent.status.message 的 🔧 标记):图标 + 工具名,分原生作业工具/harness 协作工具两色
- *  - agent 生命周期行(agent.status):状态点 + 队列/当前任务上下文
- *  - 消息路由行(a2a.message):from → to 名字解析 + 消息类型徽章
- *  - 任务行(task.status/task.progress)、气泡(agent.message)、流式打字机(agent.delta)、工件(a2a.artifact)
- *  - 团队成员变更(agent.member)/ 记忆沉淀(memory.saved)/ 错误(error)
- * 紧凑行、等宽时间、agent 徽标按 id 稳定取色。
- * 聚合渲染(turn block)见 EventBlock.vue。
+ * 事件卡(密集行视图,单渲染单元)— 保留给 lanes 等紧凑列。
+ * 注意:本卡不自去重;重复内容由调用侧 foldStreamDuplicates 先行摘除。
  */
-import { useEntitiesStore } from '../../stores/workshop/entities'
-import { TOOL_META } from '../../composables/workshop/useEventBlocks'
-import type { AepEnvelope } from '#shared/workshop-protocol'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { TOOL_META } from '@/app/composables/workshop/useEventBlocks'
+import type { AepEnvelope } from '@/shared/workshop-protocol'
 
 const props = defineProps<{ event: AepEnvelope }>()
 
@@ -58,25 +52,27 @@ const toolCall = computed(() => {
 
 // ===== 消息路由行(a2a.message) =====
 
+function routeKindOf(meta: Record<string, unknown>): { icon: string, label: string, tone: 'assign' | 'immediate' | 'peer' | 'notice' } {
+  const priority = meta['x-aw-msg-priority'] === 'immediate' ? 'immediate' : 'task'
+  const taskKind = typeof meta['x-aw-task-kind'] === 'string' ? meta['x-aw-task-kind'] as string : ''
+  return taskKind === 'assign'
+    ? { icon: '📋', label: '任务派发', tone: 'assign' }
+    : taskKind === 'cancel'
+      ? { icon: '🚫', label: '取消通知', tone: 'notice' }
+      : taskKind === 'child-completed'
+        ? { icon: '✅', label: '子任务完成', tone: 'notice' }
+        : priority === 'immediate'
+          ? { icon: '⚡', label: '实时注入', tone: 'immediate' }
+          : { icon: '📨', label: '协作消息', tone: 'peer' }
+}
+
 const route = computed(() => {
   if (props.event.type !== 'a2a.message') return null
   const meta = (props.event.payload as { metadata?: Record<string, unknown> }).metadata ?? {}
   const fromId = typeof meta['x-aw-from-agent'] === 'string' ? meta['x-aw-from-agent'] as string : ''
   const toId = typeof meta['x-aw-target-agent'] === 'string' ? meta['x-aw-target-agent'] as string : ''
-  const priority = meta['x-aw-msg-priority'] === 'immediate' ? 'immediate' : 'task'
-  const taskKind = typeof meta['x-aw-task-kind'] === 'string' ? meta['x-aw-task-kind'] as string : ''
-  const kind: { icon: string, label: string, tone: 'assign' | 'immediate' | 'peer' | 'notice' }
-    = taskKind === 'assign'
-      ? { icon: '📋', label: '任务派发', tone: 'assign' }
-      : taskKind === 'cancel'
-        ? { icon: '🚫', label: '取消通知', tone: 'notice' }
-        : taskKind === 'child-completed'
-          ? { icon: '✅', label: '子任务完成', tone: 'notice' }
-          : priority === 'immediate'
-            ? { icon: '⚡', label: '实时注入', tone: 'immediate' }
-            : { icon: '📨', label: '协作消息', tone: 'peer' }
   return {
-    kind,
+    kind: routeKindOf(meta),
     from: fromId ? entities.agentName(cid.value, fromId) : 'system',
     to: toId ? entities.agentName(cid.value, toId) : '(广播)',
   }
@@ -193,13 +189,13 @@ const stateColor: Record<string, string> = {
     >
       <span
         class="route-badge"
-        :data-tone="route.kind.tone"
-      >{{ route.kind.icon }} {{ route.kind.label }}</span>
-      <span class="route-path">{{ route.from }} → {{ route.to }}</span>
+        :data-tone="route && route.kind ? route.kind.tone : 'peer'"
+      >{{ route ? route.kind.icon : '📨' }} {{ route ? route.kind.label : '' }}</span>
+      <span class="route-path">{{ route?.from }} → {{ route?.to }}</span>
       <span class="route-text">{{ msgText.slice(0, 100) }}{{ msgText.length > 100 ? '…' : '' }}</span>
     </div>
 
-    <!-- LLM 流式增量(打字机气泡;store 已聚合连续 delta) -->
+    <!-- LLM 流式增量(打字机气泡;store 已聚合连续 delta;落定去重见聚类器) -->
     <div
       v-else-if="event.type === 'agent.delta'"
       class="body bubble streaming"

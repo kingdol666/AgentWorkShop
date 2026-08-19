@@ -7,8 +7,8 @@
  * 传入 agentId(Agent 抽屉场景)时锁定身份,隐藏身份选择。
  */
 import { message } from 'ant-design-vue'
-import { useEntitiesStore } from '../../stores/workshop/entities'
-import { useWorkshopApi } from '../../composables/workshop/useWorkshopApi'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
 
 const props = defineProps<{ channelId: string, agentId?: string }>()
 const entities = useEntitiesStore()

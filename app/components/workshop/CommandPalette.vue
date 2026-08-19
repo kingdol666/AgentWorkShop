@@ -3,9 +3,9 @@
  * ⌘K/Ctrl+K 命令面板(P2):模糊搜索命令——导航/视图切换/Channel 切换/快捷动作。
  * 轻量自绘(不入全局 modal 队列);Esc 关闭,↑↓ 选择,Enter 执行。
  */
-import { useWorkspacesStore } from '../../stores/workshop/workspaces'
-import { useEntitiesStore } from '../../stores/workshop/entities'
-import { useEventsStore } from '../../stores/workshop/events'
+import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { useEventsStore } from '@/app/stores/workshop/events'
 
 const props = defineProps<{ wsId: string }>()
 const open = defineModel<boolean>('open', { default: false })

@@ -3,8 +3,8 @@
  * 可观测统计面板(P2):事件吞吐(每秒事件数,60s 滚动窗口)+
  * 类型分布 + seq/连接概览。AppChart(ECharts)折线渲染,客户端 only。
  */
-import { useEventsStore } from '../../stores/workshop/events'
-import { useWsConnectionStore } from '../../stores/workshop/connection'
+import { useEventsStore } from '@/app/stores/workshop/events'
+import { useWsConnectionStore } from '@/app/stores/workshop/connection'
 
 const props = defineProps<{ channelId: string }>()
 const events = useEventsStore()

@@ -117,7 +117,9 @@ async function boot() {
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
-    parent: hostRef.value,
+    // 传挂载点 DOM 元素 id(Phaser 4 内部走 getElementById)+ 元素引用兜底,
+    // 以避开跨 DOM 类型签名冲突(Phaser 4 自带 DOM typedef 与 lib.dom 的索引签名不同)
+    parent: hostRef.value?.id || 'game-host',
     width: 960,
     height: 540,
     backgroundColor: '#0b1020',
@@ -207,6 +209,7 @@ onBeforeUnmount(() => {
     <div class="game-frame">
       <!-- Phaser 挂载点 -->
       <div
+        id="game-host"
         ref="hostRef"
         class="game-host"
       />

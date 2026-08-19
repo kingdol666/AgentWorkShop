@@ -5,7 +5,7 @@
  * 确定 -> emit('select', 绝对路径);浏览器自身无法读服务器路径,故走后端目录浏览。
  */
 import { message } from 'ant-design-vue'
-import { useUserStore } from '../../stores/workshop/user'
+import { useUserStore } from '@/app/stores/workshop/user'
 
 const props = defineProps<{
   /** 受控 open(v-model:open) */
