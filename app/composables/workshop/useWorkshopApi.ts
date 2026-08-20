@@ -70,7 +70,7 @@ export function useWorkshopApi() {
   return {
     // channels
     listChannels: () => http.get<{ data: ChannelDto[] }>('/workshop/channels'),
-    createChannel: (body: { name: string, description?: string, workspace?: string, leadAgent?: { name: string, harness: string, config?: Record<string, unknown> } }) =>
+    createChannel: (body: { name: string, description?: string, scenarioPrompt?: string, workspace?: string, leadAgent?: { name: string, harness: string, config?: Record<string, unknown> } }) =>
       http.post<{ data: { channelId: string, leadAgentId?: string, workspace: string } }>('/workshop/channels', body),
     deleteChannel: (id: string) => http.delete<{ data: unknown }>(`/workshop/channels/${id}`),
     // channel agents
@@ -120,7 +120,23 @@ export function useWorkshopApi() {
       http.post<{ data: TeamDto }>(`/workshop/teams/${id}/members`, body),
     removeTeamMember: (id: string, templateId: string) => http.delete<{ data: TeamDto }>(`/workshop/teams/${id}/members/${templateId}`),
     deployTeam: (teamId: string, channelId: string) => http.post<{ data: unknown }>(`/workshop/teams/${teamId}/deploy`, { channelId }),
+    // channel 成员的 harness 终端会话(rpc-ui 镜像;lanes 控制面板数据源)
+    listChannelTerminals: (id: string) => http.get<{ data: TerminalSessionDto[] }>(`/workshop/channels/${id}/terminals`),
   }
+}
+
+/** harness 终端会话视图(GET /workshop/channels/:id/terminals) */
+export interface TerminalSessionDto {
+  pid: number
+  agentId: string | null
+  channelId: string | null
+  name: string | null
+  role: 'lead' | 'worker' | null
+  harness: string
+  alive: boolean
+  running: boolean
+  streaming: boolean
+  startedAt: number
 }
 
 /** Agent 模板详情(全局;instances = 已克隆实例去向) */

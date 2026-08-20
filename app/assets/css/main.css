@@ -44,22 +44,38 @@
 }
 
 html.dark {
-  --ink: #e6e1d3;
-  --ink-soft: rgb(230 225 211 / 70%);
-  --ink-faint: rgb(230 225 211 / 48%);
-  --paper: #0f151b;
-  --paper-raised: #1a222c;
-  --paper-deep: #141c24;
-  --line: #2a3644;
-  --line-strong: #39495a;
-  --grid-line: rgb(126 166 255 / 7%);
+  --ink: #e8edf2;
+  --ink-soft: rgb(232 237 242 / 72%);
+  --ink-faint: rgb(232 237 242 / 46%);
+  --paper: #0c1117;
+  --paper-raised: #141b24;
+  --paper-deep: #10161d;
+  --line: #263140;
+  --line-strong: #36455a;
+  --grid-line: rgb(126 166 255 / 4%);
+
+  /* 夜班模式:暗底上的钴蓝提亮(边框/文本兼顾可读) */
+  --accent-cobalt: #6f8ef0;
 
   --shadow-offset: 3px 3px 0 rgb(0 0 0 / 32%);
   --shadow-card: 0 1px 0 rgb(0 0 0 / 35%), 0 10px 26px -12px rgb(0 0 0 / 55%);
 
-  --sider-bg: #0b1117;
+  --sider-bg: #0a0f14;
   --sider-ink: #c7d0cb;
   --sider-ink-faint: rgb(199 208 203 / 42%);
+}
+
+/* 夜班模式:暗底下蓝图网格与噪点收敛(深色工作台的干净底) */
+html.dark body {
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgb(111 142 240 / 4%), transparent 60%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: auto, 28px 28px, 28px 28px;
+}
+
+html.dark #__nuxt::after {
+  opacity: 0.3;
 }
 
 * {
@@ -442,4 +458,26 @@ h2 {
 /* 上传 / 头像列表等次要组件 */
 .ant-list {
   background: transparent;
+}
+
+/* ============================================================
+ * 交互基线:focus-visible / 动效收敛
+ * ============================================================ */
+
+/* 键盘焦点:钴蓝描边(仅键盘导航时出现,不干扰鼠标点击) */
+:focus-visible {
+  outline: 2px solid var(--accent-cobalt);
+  outline-offset: 1px;
+  border-radius: 1px;
+}
+
+/* 动效敏感用户:全局收敛(进场/打字机动画退化为即时呈现) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

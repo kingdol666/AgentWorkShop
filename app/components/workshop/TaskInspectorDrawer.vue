@@ -190,7 +190,10 @@ const stateColor: Record<string, string> = {
             </div>
           </a-tab-pane>
 
-          <a-tab-pane :tab="`交付物(${detail?.artifacts.length ?? 0})`">
+          <a-tab-pane
+            key="artifacts"
+            :tab="`交付物(${detail?.artifacts.length ?? 0})`"
+          >
             <div
               v-if="!detail?.artifacts.length"
               class="empty"
@@ -204,7 +207,10 @@ const stateColor: Record<string, string> = {
             />
           </a-tab-pane>
 
-          <a-tab-pane :tab="`子任务(${children.length})`">
+          <a-tab-pane
+            key="children"
+            :tab="`子任务(${children.length})`"
+          >
             <div
               v-if="children.length === 0"
               class="empty"
@@ -227,7 +233,10 @@ const stateColor: Record<string, string> = {
             </div>
           </a-tab-pane>
 
-          <a-tab-pane :tab="`原始内容(${detail?.artifacts.reduce((n, a) => n + a.parts.length, 0) ?? 0} parts)`">
+          <a-tab-pane
+            key="raw"
+            :tab="`原始内容(${detail?.artifacts.reduce((n, a) => n + a.parts.length, 0) ?? 0} parts)`"
+          >
             <pre class="raw">{{ JSON.stringify(detail?.artifacts, null, 2)?.slice(0, 4000) }}</pre>
           </a-tab-pane>
         </a-tabs>

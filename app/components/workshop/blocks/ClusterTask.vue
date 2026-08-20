@@ -57,14 +57,21 @@ const stateColor: Record<string, string> = {
 
 <template>
   <div class="task-cluster">
-    <a-tag
-      v-for="s in states"
+    <template
+      v-for="(s, i) in states"
       :key="s"
-      :color="stateColor[s] ?? 'default'"
-      class="task-tag"
     >
-      {{ s }}
-    </a-tag>
+      <span
+        v-if="i > 0"
+        class="chain-arrow"
+      >→</span>
+      <a-tag
+        :color="stateColor[s] ?? 'default'"
+        class="task-tag"
+      >
+        {{ s }}
+      </a-tag>
+    </template>
     <span class="task-title">{{ title }}</span>
     <span
       v-if="assignee"
@@ -86,10 +93,11 @@ const stateColor: Record<string, string> = {
   gap: 7px;
   align-items: center;
   flex-wrap: wrap;
-  padding: 2px 0 2px 66px;
+  padding: 2px 0 2px 20px;
   font-size: 12px;
 }
 .task-tag { margin: 0 !important; }
+.chain-arrow { font-size: 10px; opacity: 0.4; }
 .task-title { font-weight: 600; }
 .task-assignee { font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; opacity: 0.6; }
 .progress { flex: 0 0 180px; margin: 0 !important; }

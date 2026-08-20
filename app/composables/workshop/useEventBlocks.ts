@@ -9,6 +9,7 @@
  *    最后一段流块;先前流片段标记 coveredBy 折叠为一行提示(OpenHands 风格)
  *  - 纯函数供密集行视图复用:classifyEvent / foldStreamDuplicates / buildStreamText
  */
+import { reactive } from 'vue'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 
 export type BlockKind
@@ -186,6 +187,8 @@ export class BlockClusterer {
   private trail: Record<string, string> = Object.create(null)
   private idSeq = 0
   private processed = 0
+  /** 上次同步时列表头部事件的 seq(头部变化 = 历史回填插入/ring 裁剪/过滤切换 → 必须全量重建,否则索引错位重复聚类) */
+  private headSeq: number | undefined = undefined
 
   get blocks(): EventBlock[] {
     return this.arr
@@ -201,13 +204,20 @@ export class BlockClusterer {
     this.tracks.clear()
     this.trail = Object.create(null)
     this.processed = 0
+    this.headSeq = undefined
   }
 
-  /** 序列同步:只处理新增帧;序列缩短(ring 重建/过滤变化)全量重建 */
+  /**
+   * 序列同步:只处理新增帧。列表头部 seq 变化(loadHistory 头部插入历史帧并整体
+   * 排序 / ring 容量裁剪 / 过滤切换)时,已处理事件整体右移——按索引继续会把已
+   * 聚类事件重复成块,故检测到头部变化即全量重建(一次重建,确定性无重复)。
+   */
   sync(events: AepEnvelope[]): void {
-    if (events.length < this.processed) this.reset()
+    const head = events.length > 0 ? events[0]?.seq : undefined
+    if (events.length < this.processed || head !== this.headSeq) this.reset()
     for (let i = this.processed; i < events.length; i++) this.push(events[i]!)
     this.processed = events.length
+    this.headSeq = events.length > 0 ? events[0]?.seq : undefined
   }
 
   push(e: AepEnvelope): EventBlock | null {
@@ -297,8 +307,9 @@ export class BlockClusterer {
       return b
     }
 
-    // ④ 新块
-    const block: EventBlock = {
+    // ④ 新块(reactive 化:块内 events.push / settled / overrideText 等原地变更
+    //    能触发消费方(EventBlock/ClusterStream)的 computed 实时更新)
+    const block: EventBlock = reactive({
       id: `b${++this.idSeq}`,
       kind,
       agentId,
@@ -311,7 +322,7 @@ export class BlockClusterer {
       overrideText: null,
       coveredBy: null,
       dupStream: false,
-    }
+    })
     this.arr.push(block)
     this.last = block
 
@@ -411,6 +422,45 @@ export function buildStreamText(block: EventBlock): string {
     // 任务落定 / 交付物不自成为流文本
   }
   return acc
+}
+
+/**
+ * 打字光标可见性(空光标闪烁修复的权威语义):
+ * 仅当"已有文本 &&(流式未落定 || 揭示未追平)"时显示;空文本块绝不显示光标。
+ */
+export function streamCursorVisible(fullLen: number, visibleLen: number, streaming: boolean): boolean {
+  return fullLen > 0 && (streaming || visibleLen < fullLen)
+}
+
+// ===== markdown-lite 渲染(流式安全:先转义后标记,输出可信 HTML) =====
+
+export function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' })[c] ?? c)
+}
+
+function inlineMd(s: string): string {
+  return s
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|\s)\*([^*\n]+)\*(?=\s|$)/g, '$1<i>$2</i>')
+}
+
+/** 散文渲染:段落 / # 标题 / - 列表 / > 引用 / 行内代码与加粗(对部分流式文本安全) */
+export function mdLite(src: string): string {
+  const esc = escapeHtml(src)
+  return esc.split(/\n{2,}/).map((para) => {
+    const lines = para.split('\n')
+    if (/^### /.test(para)) return `<h5>${inlineMd(para.slice(4))}</h5>`
+    if (/^## /.test(para)) return `<h4>${inlineMd(para.slice(3))}</h4>`
+    if (/^# /.test(para)) return `<h4>${inlineMd(para.slice(2))}</h4>`
+    if (lines.every(l => /^\s*[-*] /.test(l))) {
+      return `<ul>${lines.map(l => `<li>${inlineMd(l.replace(/^\s*[-*] /, ''))}</li>`).join('')}</ul>`
+    }
+    if (lines.every(l => /^&gt;\s?/.test(l))) {
+      return `<blockquote>${lines.map(l => inlineMd(l.replace(/^&gt;\s?/, ''))).join('<br>')}</blockquote>`
+    }
+    return `<p>${lines.map(l => inlineMd(l)).join('<br>')}</p>`
+  }).join('')
 }
 
 /**

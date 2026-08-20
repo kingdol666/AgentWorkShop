@@ -78,7 +78,7 @@
 
 | 🚪 四入口 | 🔑 Token 认证 + 监控 |
 |:---:|:---:|
-| **WS / MCP / A2A / REST** —— 同一个 Manager 坐在四扇门后:AEP 事件流、20 个进程内 MCP 工具、A2A JSON-RPC 2.0(含 `AgentCard`)、完整 REST。 | **用户账号 + API token** 管理界面,以及 `/monitor` 页面:全部存活 runtime、每个 harness 子进程(含孤儿)、一键进程树强杀。 |
+| **WS / MCP / A2A / REST** —— 同一个 Manager 坐在四扇门后:AEP 事件流、20 个进程内 MCP 工具、A2A JSON-RPC 2.0(含 `AgentCard`)、完整 REST。 | **用户账号 + API token** 管理界面,以及 `/monitor` 页面:全部存活 runtime、每个 harness 子进程(含孤儿)、一键进程树强杀,以及 **harness 原生终端** —— xterm 实时 TUI 渲染 omp 会话流,支持 Human-in-the-loop 控制(steer/follow_up 注入、中止、`ask` 对话框应答)。 |
 
 </div>
 
@@ -192,7 +192,7 @@ pnpm start            # node scripts/start.mjs → 端口取自 config.yml → s
 | **记忆** | 每 agent + channel 记忆:list / create / delete / `search`,以及 `POST /api/workshop/memories/maintenance` |
 | **A2A** | `GET /api/workshop/a2a/:agentId/card`(AgentCard)、`POST /api/workshop/a2a/:agentId/rpc`(JSON-RPC 2.0)、`POST /api/workshop/a2a/send`(点对点消息) |
 | **邮件** | `GET /api/workshop/mailbox`(自己的收件箱)、`GET /api/workshop/mailbox/all`(仅 lead:Channel 邮件全览) |
-| **系统** | `GET /api/system/config`、`GET /api/system/monitor`、`POST /api/system/monitor/terminate` |
+| **系统** | `GET /api/system/config`、`GET /api/system/monitor`、`POST /api/system/monitor/terminate`、`WS /api/system/monitor/terminal/ws?pid&token`(harness 终端:实时 TUI 镜像 + HITL 输入)|
 | **游戏 demo** | `/api/game/ws`(WS)、`/api/game/brain`、`/api/game/cmd` |
 
 **A2A JSON-RPC 方法**:`tasks/send`(阻塞,30s 超时)、`tasks/sendSubscribe`(SSE 流式)、`tasks/get`、`tasks/list`、`tasks/cancel`、`message/send`、`agent/getCard`。
@@ -278,6 +278,8 @@ AgentInterface(契约:info · run · supervise · workspace 工具面 · dispose
 ```
 
 每个 harness 子进程都会在进程注册表(`harness-process.ts`)中登记 —— 这是 `/monitor` 页面的事实源,支持孤儿进程检测与进程树强杀(Windows `taskkill /T /F`,POSIX 进程组 `SIGKILL`)。
+
+**harness 原生终端(HITL)** —— omp harness 以 `--mode rpc-ui` 运行:全部 JSONL 帧(消息增量、工具执行、host tool 调用、`extension_ui_request` 对话框)由 `harness-terminal.ts` 按 pid 镜像(净化环形缓冲 + 微批广播)。`/monitor` 页与 channel 控制台的 **Agent lanes** 视图均可为每个成员打开 xterm.js 终端抽屉:直接打字即可注入运行中的会话(流式中 `steer` 同轮注入 / 空闲 `follow_up` 新回合),`Ctrl+C` 中止回合,并通过 `extension_ui_response` 应答 agent 的 `ask` 对话框(select/confirm/input/editor)。lanes 以 `agentId` 寻址终端(进程重启自动跟随新会话),并经 `GET /api/workshop/channels/:id/terminals` 驱动实时会话徽标(`streaming`/`turn`/`idle`)。无人接入时对话框自动取消(Esc 语义)。
 
 ---
 

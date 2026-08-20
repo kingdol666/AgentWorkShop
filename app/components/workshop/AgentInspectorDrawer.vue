@@ -70,10 +70,11 @@ const removeMember = async (): Promise<void> => {
   }
 }
 
-/** 该 agent 的独立事件流:聚类块视图(忽略全局过滤,只按 agentId;重复内容折合) */
+/** 该 agent 的独立事件流:聚类块视图(raw 源忽略全局 filter/focus,只按 agentId;重复内容折合) */
 const { blocks: stream } = useClusteredBlocks(() => props.channelId, {
-  predicate: () => (e: AepEnvelope) => e.agentId === props.agentId,
+  predicate: (e: AepEnvelope) => e.agentId === props.agentId,
   resetKey: () => props.agentId,
+  raw: true,
 })
 
 const assignedTasks = computed(() => {

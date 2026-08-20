@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 事件聚合块 — 壳层分发器。
- * 头部(时间 + agent 徽标 + 类别 + 合并粒度)统一由本壳渲染;
+ * 事件聚合块 — Codex 式壳层分发器。
+ * 头部:agent 色点 + 名字 + 类别小标居左;合并粒度/去重/时间右对齐(暗色)。
  * 各行渲染按 kind 分发到隔离组件(stream/tool/status/life/route/task/artifact/…)——
  * 不同事件块互不耦合,流式更新只触发命中 kind 的组件。
  */
@@ -32,6 +32,7 @@ const agentLabel = computed(() => {
   if (!id) return 'system'
   return entities.agentName(cid.value, id)
 })
+const agentColor = computed(() => agentHueColor(props.block.agentId))
 
 const meta = computed(() => KIND_META[props.block.kind])
 
@@ -59,21 +60,25 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
     :data-covered="block.coveredBy ? 'true' : 'false'"
   >
     <header class="block-head">
-      <span class="time">{{ time }}</span>
       <span
-        class="agent-chip"
-        :style="{ background: agentHueColor(block.agentId) }"
-      >{{ agentLabel }}</span>
+        class="agent-dot"
+        :style="{ background: agentColor }"
+        :title="block.agentId ?? 'system'"
+      />
+      <span class="agent-name">{{ agentLabel }}</span>
       <span class="kind">{{ meta.label }}</span>
-      <span
-        v-if="block.events.length > 1"
-        class="merged"
-      >×{{ block.events.length }}</span>
-      <span
-        v-if="block.folded > 0"
-        class="folded"
-        title="与 delta 增量重复的内容已合并为一段"
-      >去重 {{ block.folded }}</span>
+      <span class="head-right">
+        <span
+          v-if="block.folded > 0"
+          class="folded"
+          title="与 delta 增量重复的内容已合并为一段"
+        >去重 {{ block.folded }}</span>
+        <span
+          v-if="block.events.length > 1"
+          class="merged"
+        >×{{ block.events.length }}</span>
+        <span class="time">{{ time }}</span>
+      </span>
     </header>
 
     <component
@@ -86,14 +91,25 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
 <style scoped>
 .event-block {
   position: relative;
-  padding: 5px 8px 5px 0;
-  margin: 0 8px 2px 6px;
+  padding: 4px 8px 4px 0;
+  margin: 0 8px 3px 6px;
   border-left: 2px solid color-mix(in srgb, var(--ink) 9%, transparent);
   transition: border-color 0.15s ease, background 0.15s ease;
+  animation: block-in 0.22s cubic-bezier(0.2, 0.6, 0.3, 1);
+}
+@keyframes block-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .event-block:hover {
-  border-left-color: color-mix(in srgb, var(--accent-cobalt) 45%, transparent);
-  background: color-mix(in srgb, var(--accent-cobalt) 2.5%, transparent);
+  border-left-color: color-mix(in srgb, var(--accent-cobalt) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-cobalt) 3%, transparent);
 }
 .event-block[data-kind='stream']:not([data-settled='true']) {
   border-left-color: color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
@@ -103,49 +119,52 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
 
 .block-head {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  min-height: 20px;
+  min-height: 18px;
   padding-bottom: 1px;
-}
-.time {
-  flex: 0 0 auto;
-  width: 58px;
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--ink-faint);
 }
-.agent-chip {
+.agent-dot {
   flex: 0 0 auto;
-  padding: 1px 7px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  color: #fff;
-  border-radius: 2px;
-  letter-spacing: 0.02em;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 6%, transparent);
+}
+.agent-name {
+  overflow: hidden;
+  max-width: 160px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .kind {
-  font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--ink-faint);
 }
-.merged {
-  padding: 0 5px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--accent-vermilion);
-  border: 1px solid color-mix(in srgb, var(--accent-vermilion) 40%, transparent);
-  border-radius: 2px;
+.head-right {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 9.5px;
+  color: var(--ink-faint);
 }
 .folded {
-  padding: 0 5px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--accent-moss, #52c41a);
-  border: 1px solid color-mix(in srgb, var(--accent-moss, #52c41a) 40%, transparent);
+  padding: 0 4px;
+  color: var(--accent-moss);
+  background: color-mix(in srgb, var(--accent-moss) 12%, transparent);
   border-radius: 2px;
 }
+.merged {
+  padding: 0 4px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  border-radius: 2px;
+}
+.time { flex: 0 0 auto; width: 50px; text-align: right; }
 </style>

@@ -45,7 +45,7 @@ const expanded = ref(props.block.dupStream)
 
 <style scoped>
 .artifact-cluster {
-  padding: 2px 0 6px 66px;
+  padding: 2px 0 6px 20px;
 }
 .dup-note {
   display: flex;

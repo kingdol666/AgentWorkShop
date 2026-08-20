@@ -1,17 +1,28 @@
 <script setup lang="ts">
 /**
- * 生命周期块(合并后显示最新状态 + 过渡次数)
+ * 生命周期块(合并后显示最新状态 + 过渡次数);
+ * 当前任务以标题呈现(entities.taskTitle),无实体时回退短 ID。
  */
 import { computed } from 'vue'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
 
 const props = defineProps<{ block: EventBlock }>()
+const entities = useEntitiesStore()
 
 const life = computed(() => {
   const last = props.block.events[props.block.events.length - 1]
   if (!last || last.type !== 'agent.status') return null
   const p = last.payload as { state: string, currentTaskId?: string | null, queued?: number, completed?: number }
-  return { state: p.state, currentTaskId: p.currentTaskId ?? null, queued: p.queued ?? 0, completed: p.completed ?? 0, transitions: props.block.events.length }
+  return { state: p.state, currentTaskId: p.currentTaskId ?? null, queued: p.queued ?? 0, completed: p.completed ?? 0, transitions: props.block.events.length, channelId: last.channelId }
+})
+
+const currentTitle = computed(() => {
+  const l = life.value
+  if (!l?.currentTaskId) return ''
+  const title = entities.taskTitle(l.channelId, l.currentTaskId)
+  if (title && title !== l.currentTaskId) return title
+  return l.currentTaskId.slice(0, 12)
 })
 </script>
 
@@ -28,9 +39,10 @@ const life = computed(() => {
     >
       <span class="life-state">{{ life.state }}</span>
       <span
-        v-if="life.currentTaskId"
+        v-if="currentTitle"
         class="life-task"
-      >「{{ life.currentTaskId.slice(0, 24) }}」</span>
+        :title="life.currentTaskId ?? ''"
+      >「{{ currentTitle }}」</span>
       <span class="life-meta">Q{{ life.queued }} · ✓{{ life.completed }}</span>
       <span
         v-if="life.transitions > 1"
@@ -49,7 +61,7 @@ const life = computed(() => {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 1px 0 1px 66px;
+  padding: 1px 0 1px 20px;
   font-family: var(--font-mono);
   font-size: 11px;
   opacity: 0.88;

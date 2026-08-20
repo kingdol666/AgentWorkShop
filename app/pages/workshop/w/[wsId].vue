@@ -217,16 +217,10 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
     <!-- Composer -->
     <div
       v-if="channelId"
+      ref="composerBox"
       class="composer-pane"
     >
-      <!-- Composer -->
-      <div
-        v-if="channelId"
-        ref="composerBox"
-        class="composer-pane"
-      >
-        <workshop-composer :channel-id="channelId" />
-      </div>
+      <workshop-composer :channel-id="channelId" />
 
       <!-- 抽屉 -->
       <workshop-agent-inspector-drawer

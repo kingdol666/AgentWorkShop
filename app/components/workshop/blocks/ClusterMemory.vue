@@ -45,7 +45,7 @@ const hasMore = computed(() => lines.value.length > MAX)
 </template>
 
 <style scoped>
-.memory-cluster { padding: 1px 0 4px 66px; }
+.memory-cluster { padding: 1px 0 4px 20px; }
 .memory-line {
   display: flex;
   gap: 7px;

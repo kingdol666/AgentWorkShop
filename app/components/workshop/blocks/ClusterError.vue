@@ -46,7 +46,7 @@ const hasMore = computed(() => lines.value.length > MAX)
 
 <style scoped>
 .error-cluster {
-  padding: 1px 0 4px 66px;
+  padding: 1px 0 4px 20px;
 }
 .error-line {
   display: flex;

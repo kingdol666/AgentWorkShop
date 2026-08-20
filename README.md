@@ -78,7 +78,7 @@
 
 | 🚪 Four entry points | 🔑 Token auth + monitor |
 |:---:|:---:|
-| **WS / MCP / A2A / REST** — one manager behind every door: AEP event stream, 20 in-process MCP tools, A2A JSON-RPC 2.0 with `AgentCard`, full REST. | **Accounts + API tokens** with a management UI, plus a `/monitor` page: live runtimes, every harness process (incl. orphans), one-click process-tree kill. |
+| **WS / MCP / A2A / REST** — one manager behind every door: AEP event stream, 20 in-process MCP tools, A2A JSON-RPC 2.0 with `AgentCard`, full REST. | **Accounts + API tokens** with a management UI, plus a `/monitor` page: live runtimes, every harness process (incl. orphans), one-click process-tree kill, and a **native harness terminal** — live xterm TUI rendering of the omp session stream with Human-in-the-loop control (steer/follow-up injection, abort, `ask`-dialog answers). |
 
 </div>
 
@@ -192,7 +192,7 @@ All routes return a uniform envelope and validate bodies with `zod`.
 | **Memory** | per-agent + channel memory: list / create / delete / `search`, plus `POST /api/workshop/memories/maintenance` |
 | **A2A** | `GET /api/workshop/a2a/:agentId/card` (AgentCard), `POST /api/workshop/a2a/:agentId/rpc` (JSON-RPC 2.0), `POST /api/workshop/a2a/send` (peer message) |
 | **Mail** | `GET /api/workshop/mailbox` (own inbox), `GET /api/workshop/mailbox/all` (lead: full channel mail log) |
-| **System** | `GET /api/system/config`, `GET /api/system/monitor`, `POST /api/system/monitor/terminate` |
+| **System** | `GET /api/system/config`, `GET /api/system/monitor`, `POST /api/system/monitor/terminate`, `WS /api/system/monitor/terminal/ws?pid&token` (harness terminal: live TUI mirror + HITL input) |
 | **Game demo** | `/api/game/ws` (WS), `/api/game/brain`, `/api/game/cmd` |
 
 **A2A JSON-RPC methods**: `tasks/send` (blocking, 30 s), `tasks/sendSubscribe` (SSE stream), `tasks/get`, `tasks/list`, `tasks/cancel`, `message/send`, `agent/getCard`.
@@ -278,6 +278,8 @@ AgentInterface (contract: info · run · supervise · workspace tools · dispose
 ```
 
 Each spawned harness process is registered in a process registry (`harness-process.ts`) — the source of truth for the `/monitor` page, including orphan detection and process-tree kill (Windows `taskkill /T /F`, POSIX process-group `SIGKILL`).
+
+**Native harness terminal (HITL)** — omp harnesses run in `--mode rpc-ui`: every JSONL frame (message deltas, tool executions, host-tool calls, `extension_ui_request` dialogs) is mirrored per-pid by `harness-terminal.ts` (sanitized ring buffer + micro-batched broadcast). The `/monitor` page and every **Agent lane** in the channel console open an xterm.js drawer per member: type to inject into the live session (`steer` while streaming / `follow_up` when idle), `Ctrl+C` to abort, and answer the agent's `ask` dialogs (select/confirm/input/editor) via `extension_ui_response`. Lanes address terminals by `agentId` (auto-follows process restarts) and show a live session badge (`streaming`/`turn`/`idle`) fed by `GET /api/workshop/channels/:id/terminals`. Dialogs auto-cancel when no human is attached (Esc semantics).
 
 ---
 

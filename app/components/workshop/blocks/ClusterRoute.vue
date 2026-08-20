@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
  * 消息路由块 — 从→到 + 类型徽章 + 文本预览;每行独立。
+ * 短消息单行预览;长消息(>120 字符)折叠预览 + 点击展开全文。
  */
 import { computed, ref } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
@@ -8,6 +9,8 @@ import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
 
 const props = defineProps<{ block: EventBlock }>()
 const entities = useEntitiesStore()
+
+const PREVIEW_MAX = 120
 
 const lines = computed(() =>
   props.block.events.map((_e, i) => {
@@ -30,9 +33,18 @@ const lines = computed(() =>
     const text = parts.map(p => p.text ?? '').join('\n').trim()
     const seq = e.seq
     const channelId = e.channelId
-    return { seq, kind, channelId, from: fromId, to: toId, text, i }
+    const long = text.length > PREVIEW_MAX
+    return { seq, kind, channelId, from: fromId, to: toId, text, long, preview: long ? `${text.slice(0, PREVIEW_MAX)}…` : text, i }
   }),
 )
+const expandedRows = ref(new Set<number>())
+const toggle = (i: number): void => {
+  const s = new Set(expandedRows.value)
+  if (s.has(i)) s.delete(i)
+  else s.add(i)
+  expandedRows.value = s
+}
+
 const expanded = ref(false)
 const MAX = 4
 const shown = computed(() => (expanded.value ? lines.value : lines.value.slice(0, MAX)))
@@ -51,10 +63,29 @@ const hasMore = computed(() => lines.value.length > MAX)
         :data-tone="r.kind.tone"
       ><span :class="r.kind.icon" /> {{ r.kind.label }}</span>
       <span class="route-path">{{ r.from ? entities.agentName(r.channelId, r.from) : 'system' }} → {{ r.to ? entities.agentName(r.channelId, r.to) : '(广播)' }}</span>
-      <span
-        v-if="r.text"
-        class="route-text"
-      >{{ r.text.slice(0, 100) }}{{ r.text.length > 100 ? '…' : '' }}</span>
+      <template v-if="r.long && expandedRows.has(r.i)">
+        <span class="route-full">
+          <pre class="route-full-text">{{ r.text }}</pre>
+          <button
+            class="expand-btn"
+            @click="toggle(r.i)"
+          >收起</button>
+        </span>
+      </template>
+      <template v-else>
+        <span
+          v-if="r.text"
+          class="route-text"
+        >{{ r.preview }}</span>
+        <button
+          v-if="r.long"
+          class="expand-btn"
+          title="展开全文"
+          @click="toggle(r.i)"
+        >
+          展开
+        </button>
+      </template>
     </div>
     <button
       v-if="hasMore"
@@ -67,7 +98,7 @@ const hasMore = computed(() => lines.value.length > MAX)
 </template>
 
 <style scoped>
-.route-cluster { padding: 1px 0 4px 66px; }
+.route-cluster { padding: 1px 0 4px 20px; }
 .route-row {
   display: flex;
   gap: 8px;
@@ -92,6 +123,36 @@ const hasMore = computed(() => lines.value.length > MAX)
 .route-badge[data-tone='peer'] { color: var(--accent-violet); background: color-mix(in srgb, var(--accent-violet) 14%, transparent); }
 .route-path { flex: 0 0 auto; opacity: 0.6; }
 .route-text { overflow-wrap: anywhere; word-break: break-word; opacity: 0.85; }
+.route-full {
+  flex: 1 1 100%;
+  margin: 2px 0 1px;
+}
+.route-full-text {
+  max-height: 260px;
+  margin: 0 0 2px;
+  overflow-y: auto;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: color-mix(in srgb, var(--ink) 3.5%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  border-radius: 0 3px 3px 0;
+}
+.expand-btn {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--accent-cobalt);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
+  border-radius: 2px;
+}
+.expand-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
 .more-btn {
   margin: 2px 0 0;
   padding: 0 6px;
