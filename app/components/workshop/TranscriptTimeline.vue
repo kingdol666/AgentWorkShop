@@ -7,9 +7,12 @@
  */
 import { useEventsStore, type EventFilter } from '@/app/stores/workshop/events'
 import { useClusteredBlocks } from '@/app/composables/workshop/useClusteredBlocks'
+import { useCodeCopy } from '@/app/composables/useCodeCopy'
 
 const props = defineProps<{ channelId: string }>()
 const events = useEventsStore()
+// 代码块复制事件委托(文档级单例;时间线内所有 .code-copy 通用)
+useCodeCopy()
 const scroller = ref<HTMLElement | null>(null)
 const stickBottom = ref(true)
 
@@ -51,6 +54,14 @@ const onScroll = (): void => {
   stickBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 60
 }
 
+/** 跳回最新:滚底并恢复吸底(用户离开底部后新内容不再自动跟随) */
+const jumpToLatest = async (): Promise<void> => {
+  stickBottom.value = true
+  await nextTick()
+  const el = scroller.value
+  if (el) el.scrollTop = el.scrollHeight
+}
+
 /** 吸底:新块出现 / seq 增长 / 块内容尺寸变化(可能高增)后滚到底 */
 const scrollToBottom = async (): Promise<void> => {
   if (!stickBottom.value) return
@@ -89,6 +100,16 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
       class="scroller"
       @scroll="onScroll"
     >
+      <!-- 离底时的跳转最新悬浮按钮(流式新内容到达不强制跟随,点击回底) -->
+      <button
+        v-if="!stickBottom"
+        class="jump-latest"
+        title="跳转到最新"
+        @click="jumpToLatest"
+      >
+        <span class="i-tabler-arrow-down" />
+        最新
+      </button>
       <div class="column">
         <button
           v-if="maybeMore"
@@ -139,6 +160,29 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
   font-family: var(--font-mono);
   opacity: 0.45;
 }
+.jump-latest {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  float: right;
+  margin-right: 14px;
+  padding: 5px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--paper-raised);
+  cursor: pointer;
+  background: var(--accent-cobalt);
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgb(16 16 16 / 18%);
+  transition: opacity var(--transition-fast, 0.12s ease);
+}
+
+.jump-latest:hover { opacity: 0.88; }
+
 .scroller {
   flex: 1 1 auto;
   min-height: 0;

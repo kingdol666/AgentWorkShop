@@ -92,6 +92,19 @@ const showCursor = computed(() =>
 )
 
 const rendered = computed(() => mdLite(full.value.slice(0, visible.value)))
+
+/** 悬停复制全文(落定后可用;流式中复制揭示进度无意义) */
+const copied = ref(false)
+const copyAll = async (): Promise<void> => {
+  try {
+    await navigator.clipboard.writeText(full.value)
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 1400)
+  }
+  catch { /* 剪贴板不可用(权限/非安全上下文)时静默 */ }
+}
 </script>
 
 <template>
@@ -114,6 +127,14 @@ const rendered = computed(() => mdLite(full.value.slice(0, visible.value)))
         class="cursor"
       >▋</span>
     </div>
+    <button
+      v-if="block.settled"
+      class="copy-btn"
+      :title="copied ? '已复制' : '复制全文'"
+      @click="copyAll"
+    >
+      <span :class="copied ? 'i-tabler-check' : 'i-tabler-copy'" />
+    </button>
   </div>
   <div
     v-else-if="streaming"
@@ -125,7 +146,36 @@ const rendered = computed(() => mdLite(full.value.slice(0, visible.value)))
 
 <style scoped>
 .stream-bubble {
+  position: relative;
   padding: 2px 0 6px 20px;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip, 8px);
+  opacity: 0;
+  transition: opacity var(--transition-fast, 0.12s ease), color var(--transition-fast, 0.12s ease);
+}
+
+.stream-bubble:hover .copy-btn {
+  opacity: 1;
+}
+
+.copy-btn:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
 }
 .stream-text {
   padding: 8px 12px;
@@ -174,6 +224,61 @@ const rendered = computed(() => mdLite(full.value.slice(0, visible.value)))
   border-left: 2px solid color-mix(in srgb, var(--ink) 18%, transparent);
 }
 .prose :deep(b) { font-weight: 650; }
+
+/* 围栏代码块:头栏(语言 + 复制)+ 等宽正文(现代 harness 标配) */
+.prose :deep(.code-block) {
+  margin: 6px 0;
+  overflow: hidden;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip, 8px);
+}
+
+.prose :deep(.code-head) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 4px 10px;
+  border-bottom: 1px solid var(--divider-hair);
+}
+
+.prose :deep(.code-lang) {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.prose :deep(.code-copy) {
+  padding: 1px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-soft, inherit);
+  cursor: pointer;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip, 8px);
+}
+
+.prose :deep(.code-copy:hover) {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.prose :deep(.code-block pre) {
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+}
+
+.prose :deep(.code-block code) {
+  padding: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  background: transparent;
+  border-radius: 0;
+}
 
 .cursor {
   display: inline-block;

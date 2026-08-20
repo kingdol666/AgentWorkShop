@@ -445,10 +445,22 @@ function inlineMd(s: string): string {
     .replace(/(^|\s)\*([^*\n]+)\*(?=\s|$)/g, '$1<i>$2</i>')
 }
 
-/** 散文渲染:段落 / # 标题 / - 列表 / > 引用 / 行内代码与加粗(对部分流式文本安全) */
+/** 散文渲染:围栏代码块 / 段落 / # 标题 / - 列表 / > 引用 / 行内代码与加粗(对部分流式文本安全) */
 export function mdLite(src: string): string {
-  const esc = escapeHtml(src)
-  return esc.split(/\n{2,}/).map((para) => {
+  // ① 围栏代码块先行抽离(```lang … ```):抽成占位符,正文段落流不受影响;
+  //    代码块 = 头栏(语言标签 + 复制按钮,事件委托见 useCodeCopy) + 等宽正文
+  const codeBlocks: string[] = []
+  const fenced = escapeHtml(src).replace(/```([\w+-]*)\n?([\s\S]*?)(?:```|$)/g, (_m, lang: string, body: string) => {
+    const idx = codeBlocks.length
+    codeBlocks.push(
+      `<div class="code-block" data-lang="${lang || 'text'}">`
+      + `<div class="code-head"><span class="code-lang">${lang || 'text'}</span>`
+      + `<button type="button" class="code-copy">复制</button></div>`
+      + `<pre><code>${body.replace(/\n$/, '')}</code></pre></div>`,
+    )
+    return `@@AWCODE${idx}@@`
+  })
+  const html = fenced.split(/\n{2,}/).map((para) => {
     const lines = para.split('\n')
     if (/^### /.test(para)) return `<h5>${inlineMd(para.slice(4))}</h5>`
     if (/^## /.test(para)) return `<h4>${inlineMd(para.slice(3))}</h4>`
@@ -459,8 +471,11 @@ export function mdLite(src: string): string {
     if (lines.every(l => /^&gt;\s?/.test(l))) {
       return `<blockquote>${lines.map(l => inlineMd(l.replace(/^&gt;\s?/, ''))).join('<br>')}</blockquote>`
     }
+    // 占位符独占段落 → 原样还原(不包 <p>)
+    if (lines.length === 1 && /^@@AWCODE\d+@@$/.test(para)) return para
     return `<p>${lines.map(l => inlineMd(l)).join('<br>')}</p>`
   }).join('')
+  return html.replace(/@@AWCODE(\d+)@@/g, (_m, i: string) => codeBlocks[Number(i)] ?? '')
 }
 
 /**
