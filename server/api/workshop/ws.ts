@@ -273,6 +273,8 @@ function bindStreamSubscriptions(manager: AgentChannelManager, stream: ChannelSt
         title: task?.title,
         parentId: task?.parentId,
         progress: task?.progress,
+        routeReason: task?.routeReason,
+        createdAt: task?.createdAt,
         artifacts: task?.artifacts.length,
       }, { taskId: e.taskId, agentId: e.agentId ?? assigneeId })
     }

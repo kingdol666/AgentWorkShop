@@ -48,7 +48,7 @@
   {
     "name": "dispatch_task",
     "label": "Dispatch Task",
-    "description": "(Lead only) Create a subtask under a submitted parent task and assign it to a worker. Always provide parent_task_id so the parent task tracks completion.",
+    "description": "(Lead only) Create a subtask under a submitted parent task and assign it to a worker. Always provide parent_task_id so the parent task tracks completion. Always state route_reason: why THIS agent (specialty fit / shortest queue / past success evidence from the member capability table) — it is kept on the task as an auditable routing decision.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -59,6 +59,10 @@
         "title": {
           "type": "string",
           "description": "Short task title"
+        },
+        "route_reason": {
+          "type": "string",
+          "description": "Why this agent was chosen (specialty fit / load / past success evidence) — one short line, kept as the auditable routing decision"
         },
         "description": {
           "type": "string",

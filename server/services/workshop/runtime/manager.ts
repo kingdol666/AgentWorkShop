@@ -130,6 +130,7 @@ function rowToTask(row: TaskRow): WorkspaceTask {
     retryCount: row.retryCount,
     artifacts: parseJson<A2AArtifact[]>(row.artifactsJson, []),
     history: parseJson<A2AMessage[]>(row.historyJson, []),
+    routeReason: row.routeReason || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -1540,6 +1541,7 @@ export class AgentChannelManager {
       title: string
       description?: string
       parts?: Part[]
+      routeReason?: string
     },
   ): Promise<WorkspaceTask> {
     const caller = this.requireMember(channelId, callerAgentId)
@@ -1582,6 +1584,7 @@ export class AgentChannelManager {
         title: input.title,
         description: input.description,
         parts: input.parts,
+        routeReason: input.routeReason,
       })
       this.wakeAgent(channelId, input.assigneeId)
     }

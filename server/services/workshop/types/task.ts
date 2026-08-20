@@ -36,6 +36,8 @@ export interface WorkspaceTask {
   artifacts: A2AArtifact[]
   /** 执行过程(消息/上报) */
   history: A2AMessage[]
+  /** 派发路由理由(koda RouteDecision 借鉴):lead 留痕"为什么派给他" */
+  routeReason?: string
   createdAt: string
   updatedAt: string
 }

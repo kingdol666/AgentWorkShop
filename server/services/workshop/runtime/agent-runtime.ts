@@ -96,7 +96,7 @@ export interface TaskEngine {
   }): WorkspaceTask
   dispatch(
     parent: WorkspaceTask,
-    input: { assigneeId: string, title: string, description?: string, parts?: Part[] },
+    input: { assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string },
   ): WorkspaceTask
   transition(taskId: string, state: TaskState, by: string): WorkspaceTask
   applyEvent(taskId: string, event: AgentEvent): void

@@ -38,7 +38,7 @@ export interface AgentWorkspace {
   /** 列出本 Channel 同事 */
   listAgents(): Promise<AgentInfo[]>
   /** 任务分发(仅 lead;创建子任务并指派) */
-  dispatchTask(input: { parentTaskId?: string, assigneeId: string, title: string, description?: string, parts?: Part[] }): Promise<WorkspaceTask>
+  dispatchTask(input: { parentTaskId?: string, assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string }): Promise<WorkspaceTask>
   /** 查看同 Channel 任务列表(含同事) */
   listTasks(): Promise<WorkspaceTask[]>
   /** 查看指定任务详情 */

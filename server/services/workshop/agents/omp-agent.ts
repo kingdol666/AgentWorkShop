@@ -824,6 +824,39 @@ export class OmpRpcAgentImpl implements AgentInterface {
     return parts.join('\n')
   }
 
+  /**
+   * 成员能力画像(koda 运营信号借鉴):按任务历史计算
+   * total/completed/failed/successRate/avgDurationMs(仅统计已终态任务)。
+   * 数据源即 supervise 快照内的任务列表——零额外查询,证据随历史自然累积。
+   */
+  private capabilityProfiles(snapshot: SupervisionSnapshot): Map<string, { total: number, completed: number, failed: number, successRate: number, avgDurationMs: number }> {
+    const byAgent = new Map<string, { total: number, completed: number, failed: number, durationSum: number }>()
+    for (const t of snapshot.tasks) {
+      if (!['COMPLETED', 'FAILED'].includes(t.state)) continue
+      const agg = byAgent.get(t.assigneeId) ?? { total: 0, completed: 0, failed: 0, durationSum: 0 }
+      agg.total += 1
+      if (t.state === 'COMPLETED') {
+        agg.completed += 1
+        agg.durationSum += Math.max(0, new Date(t.updatedAt).getTime() - new Date(t.createdAt).getTime())
+      }
+      else {
+        agg.failed += 1
+      }
+      byAgent.set(t.assigneeId, agg)
+    }
+    const out = new Map<string, { total: number, completed: number, failed: number, successRate: number, avgDurationMs: number }>()
+    for (const [agentId, agg] of byAgent) {
+      out.set(agentId, {
+        total: agg.total,
+        completed: agg.completed,
+        failed: agg.failed,
+        successRate: agg.total > 0 ? agg.completed / agg.total : 0,
+        avgDurationMs: agg.completed > 0 ? agg.durationSum / agg.completed : 0,
+      })
+    }
+    return out
+  }
+
   private async buildSupervisePrompt(snapshot: SupervisionSnapshot, memory?: string): Promise<string> {
     const parts: string[] = []
 
@@ -831,10 +864,16 @@ export class OmpRpcAgentImpl implements AgentInterface {
     if (ctx) parts.push(ctx)
     if (memory) parts.push(memory)
     parts.push(this.systemManual())
-    // 格式化成员(含队列上下文:执行中任务/待执行队列长度/已完成数 —— 最优调配的依据)
-    const members = snapshot.members.map(m =>
-      `  - ${m.agentId} (${m.name}, role=${m.role}, state=${m.state}, executing=${m.currentTaskId ?? '-'}, queued=${m.queued ?? 0}, completed=${m.completedCount ?? 0})`,
-    ).join('\n')
+    // 格式化成员(含队列上下文 + 能力画像:koda 运营信号借鉴——按任务历史算
+    // 成功率/平均耗时/失败数,lead 按证据而非直觉选人)
+    const capability = this.capabilityProfiles(snapshot)
+    const members = snapshot.members.map((m) => {
+      const cap = capability.get(m.agentId)
+      const capLine = cap && cap.total > 0
+        ? `, 成功率=${Math.round(cap.successRate * 100)}%, 均耗时=${Math.round(cap.avgDurationMs / 1000)}s, 失败=${cap.failed}`
+        : ', 暂无历史'
+      return `  - ${m.agentId} (${m.name}, role=${m.role}, state=${m.state}, executing=${m.currentTaskId ?? '-'}, queued=${m.queued ?? 0}, completed=${m.completedCount ?? 0}${capLine})`
+    }).join('\n')
 
     // 格式化任务(createdAt ASC = FIFO 顺序);COMPLETED 附交付预览(lead 直接看到 worker 成果)
     const tasks = snapshot.tasks.map((t) => {
@@ -1057,8 +1096,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
           const title = req.arguments.title as string
           const description = req.arguments.description as string | undefined
           const parentTaskId = req.arguments.parent_task_id as string | undefined
-          const task = await ws.dispatchTask({ assigneeId, title, description, parentTaskId })
-          return { text: `子任务 ${task.id} 已创建并指派 → ${assigneeId}(父任务 ${parentTaskId ?? '无'},标题: ${title})` }
+          const routeReason = req.arguments.route_reason as string | undefined
+          const task = await ws.dispatchTask({ assigneeId, title, description, parentTaskId, routeReason })
+          return { text: `子任务 ${task.id} 已创建并指派 → ${assigneeId}(父任务 ${parentTaskId ?? '无'},标题: ${title}${routeReason ? `,路由理由: ${routeReason}` : ''})` }
         }
 
         case 'send_message_to_agent': {

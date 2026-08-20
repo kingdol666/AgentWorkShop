@@ -416,6 +416,7 @@ export interface TaskRow {
   retryCount: number
   artifactsJson: string
   historyJson: string
+  routeReason: string
   createdAt: string
   updatedAt: string
 }
@@ -445,6 +446,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   db.exec(SCHEMA_SQL)
   migrateLegacySchema(db)
   migrateAddColumn(db, 'channels', 'scenario_prompt', 'TEXT NOT NULL DEFAULT \'\'')
+  // 派发路由理由(koda RouteDecision 借鉴):lead 派发留痕"为什么派给他",供审计与前端呈现
+  migrateAddColumn(db, 'tasks', 'route_reason', 'TEXT NOT NULL DEFAULT \'\'')
   migrateMissingForeignKeys(db)
   migrateDropOwnerFks(db)
   seedDefaultWorkshopData(db)

@@ -45,6 +45,8 @@ check('system-manual 含平台机制', renderPrompt('system-manual').includes('T
 check('system-manual 含信箱 FIFO/实时模型', renderPrompt('system-manual').includes('FIFO') && renderPrompt('system-manual').includes('wait_seconds'))
 check('lead-supervise 含协调纪律', renderPrompt('lead-supervise').includes('COORDINATOR'))
 check('lead-supervise 含委托质量契约', renderPrompt('lead-supervise').includes('Delegation Quality') && renderPrompt('lead-supervise').includes('Boundaries'))
+check('lead-supervise 含路由纪律(route_reason + 证据选人)', renderPrompt('lead-supervise').includes('route_reason') && renderPrompt('lead-supervise').includes('capability profile'))
+check('dispatch_task 含 route_reason 参数', loadHostToolDefs().some(t => t.name === 'dispatch_task' && JSON.stringify(t.parameters).includes('route_reason')))
 check('worker-workflow 含协作等待规范', renderPrompt('worker-workflow', { agentName: 'w', channelId: 'c', taskId: 't', taskText: 'x' }).includes('wait_seconds'))
 check('team-roster 名册含通信规范', renderPrompt('team-roster', { rosterLines: '- id: a1 | w1 | role=worker' }).includes('role=worker') && renderPrompt('team-roster', { rosterLines: 'x' }).includes('wait_seconds'))
 check('mode-goal 含结语要求', renderPrompt('mode-goal', { criteria: 'X' }).includes('FINAL CONCLUSION') && renderPrompt('mode-goal', { criteria: 'X' }).includes('X'))

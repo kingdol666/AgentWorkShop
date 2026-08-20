@@ -156,6 +156,14 @@ const stateColor: Record<string, string> = {
           </a-descriptions-item>
         </a-descriptions>
 
+        <div
+          v-if="detail?.routeReason"
+          class="route-reason"
+        >
+          <span class="route-label">路由理由</span>
+          <span class="route-text">{{ detail.routeReason }}</span>
+        </div>
+
         <a-tabs
           size="small"
           default-active-key="timeline"
@@ -256,6 +264,26 @@ const stateColor: Record<string, string> = {
 .meta { font-size: 12px; font-family: ui-monospace, Consolas, monospace; opacity: 0.6; }
 .spacer { flex: 1 1 auto; }
 .desc { margin-top: 8px; }
+.route-reason {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-top: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip, 8px);
+}
+.route-label {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.route-text { color: var(--ink-soft); }
 .tl-row {
   display: flex;
   gap: 8px;

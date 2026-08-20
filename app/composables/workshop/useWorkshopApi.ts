@@ -36,6 +36,8 @@ export interface TaskDto {
   description?: string
   state: string
   progress: number
+  /** 派发路由理由(lead 留痕的审计决策) */
+  routeReason?: string
   artifacts: Array<{ artifactId: string, name?: string, parts: Array<{ text?: string }> }>
   createdAt: string
   updatedAt: string

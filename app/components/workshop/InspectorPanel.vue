@@ -17,6 +17,34 @@ const tab = ref<'members' | 'tasks' | 'memory' | 'stats'>('members')
 const agents = computed(() => entities.agents[props.channelId] ?? [])
 const tasks = computed(() => entities.tasks[props.channelId] ?? [])
 const rootTasks = computed(() => tasks.value.filter(t => !t.parentId))
+
+// 成员能力画像(koda 运营信号):按任务历史算成功率/均耗时
+const capability = computed(() => {
+  const map = new Map<string, { total: number, completed: number, failed: number, durationSum: number }>()
+  for (const t of tasks.value) {
+    if (t.state !== 'COMPLETED' && t.state !== 'FAILED') continue
+    const agg = map.get(t.assigneeId) ?? { total: 0, completed: 0, failed: 0, durationSum: 0 }
+    agg.total += 1
+    if (t.state === 'COMPLETED') {
+      agg.completed += 1
+      if (t.updatedAt && t.createdAt) {
+        agg.durationSum += Math.max(0, new Date(t.updatedAt).getTime() - new Date(t.createdAt).getTime())
+      }
+    }
+    else {
+      agg.failed += 1
+    }
+    map.set(t.assigneeId, agg)
+  }
+  return map
+})
+const capLine = (agentId: string): string => {
+  const agg = capability.value.get(agentId)
+  if (!agg || agg.total === 0) return '暂无历史'
+  const rate = Math.round((agg.completed / agg.total) * 100)
+  const avg = agg.completed > 0 ? Math.round(agg.durationSum / agg.completed / 1000) : 0
+  return `成功率 ${rate}% · 均耗 ${avg}s · 失败 ${agg.failed}`
+}
 const childCount = (id: string): number => tasks.value.filter(t => t.parentId === id).length
 
 const stateDot: Record<string, string> = {
@@ -72,6 +100,9 @@ const taskStateColor: Record<string, string> = {
                 v-if="a.currentTaskId"
                 class="ct"
               >· 执行 {{ a.currentTaskId.slice(0, 6) }}</span>
+            </div>
+            <div class="member-cap">
+              {{ capLine(a.agentId) }}
             </div>
           </div>
         </div>
@@ -166,6 +197,14 @@ const taskStateColor: Record<string, string> = {
 }
 .role { margin-inline-start: 0; font-size: 10px; line-height: 14px; }
 .member-meta { font-size: 11px; font-family: ui-monospace, Consolas, monospace; opacity: 0.55; }
+
+.member-cap {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
 .ct { opacity: 0.8; }
 .task { padding: 6px 8px; margin: 2px 0; border-radius: 6px; }
 .task:hover { background: color-mix(in srgb, currentColor 8%, transparent); }

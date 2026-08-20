@@ -58,6 +58,13 @@ const childCount = (id: string): number =>
             <span v-if="childCount(t.id)">· 子 {{ childCount(t.id) }}</span>
             <span v-if="t.artifacts">· 📦{{ t.artifacts }}</span>
           </div>
+          <div
+            v-if="t.routeReason"
+            class="card-route"
+            :title="`路由理由:${t.routeReason}`"
+          >
+            ↳ {{ t.routeReason }}
+          </div>
           <a-progress
             v-if="t.state === 'WORKING' && t.progress > 0"
             :percent="t.progress"
@@ -135,6 +142,15 @@ const childCount = (id: string): number =>
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.card-route {
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card-meta {
   margin-top: 2px;
   font-size: 11px;

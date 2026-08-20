@@ -43,6 +43,7 @@ function rowToTask(row: TaskRow): WorkspaceTask {
     retryCount: row.retryCount,
     artifacts: parseJson<A2AArtifact[]>(row.artifactsJson, []),
     history: parseJson<A2AMessage[]>(row.historyJson, []),
+    routeReason: row.routeReason || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -209,7 +210,7 @@ export class TaskEngine {
   /** 主理人分解:创建子任务(ASSIGNED)+ 向 assignee 投递 assign 消息 + 父任务转 WAITING */
   dispatch(
     parent: WorkspaceTask,
-    input: { assigneeId: string, title: string, description?: string, parts?: Part[] },
+    input: { assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string },
   ): WorkspaceTask {
     const child = this.repos.tasks.create({
       channelId: parent.channelId,
@@ -221,6 +222,7 @@ export class TaskEngine {
       state: 'ASSIGNED',
       artifacts: this.initialArtifacts(input.parts),
       history: [],
+      routeReason: input.routeReason ?? '',
     })
     this.deliverTaskMessage({
       channelId: parent.channelId,

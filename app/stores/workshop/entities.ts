@@ -29,6 +29,9 @@ export interface TaskView {
   progress: number
   assigneeId: string
   artifacts: number
+  /** 派发路由理由(lead 审计决策) */
+  routeReason?: string
+  createdAt?: string
   updatedAt?: string
 }
 
@@ -186,6 +189,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
             title?: string
             parentId?: string
             progress?: number
+            routeReason?: string
+            createdAt?: string
             artifacts?: number
           }
           const list = this.tasks[cid] ?? []
@@ -199,6 +204,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
               title: p.title ?? prev.title,
               parentId: p.parentId ?? prev.parentId,
               progress: Math.max(prev.progress, p.progress ?? 0),
+              routeReason: p.routeReason ?? prev.routeReason,
+              createdAt: p.createdAt ?? prev.createdAt,
               artifacts: Math.max(prev.artifacts, p.artifacts ?? 0),
             }
           }
@@ -212,6 +219,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
               artifacts: p.artifacts ?? 0,
             }
             if (p.parentId) fresh.parentId = p.parentId
+            if (p.routeReason) fresh.routeReason = p.routeReason
+            if (p.createdAt) fresh.createdAt = p.createdAt
             list.push(fresh)
             // 旧服务端帧不含正文(title 缺失)→ 兜底节流 REST 补全(新帧已自足,此路径不再触发)
             if (p.title === undefined) this.refreshTasks(cid)

@@ -255,6 +255,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
         title: z.string(),
         description: z.string().optional(),
         parts: z.array(partSchema).optional(),
+        routeReason: z.string().optional(),
       },
     },
     async (args, extra) => {
@@ -265,6 +266,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
         title: args.title,
         description: args.description,
         parts: args.parts,
+        routeReason: args.routeReason,
       })
       return jsonResult(result)
     },
