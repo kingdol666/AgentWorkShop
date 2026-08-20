@@ -4,23 +4,24 @@
  * 列头:状态徽标 + 队列上下文;列内:该 agent 的事件卡片(独立滚动)。
  * 团队成员管理(P3):添加成员(name/harness/role)/ 移除成员;lead 执行中自主管理的
  * 成员变更(agent.member 事件)同样在此实时呈现——实体列表是唯一状态源。
+ *
+ * harness 终端控制(rpc-ui HITL):每个 omp 成员 lane 可打开原生终端抽屉
+ * (xterm 实时 TUI 渲染 + steer/follow_up 注入 + ask 对话框应答)。
+ * 团队编排(任务指派/调度)仍由 channel 系统负责,终端是 harness 层的直接
+ * 人类控制通道,二者互不干扰。omp lazy spawn:进程随首个任务启动,未启动时
+ * 终端按钮仍可用(抽屉内等待 + 自动接入)。
  */
 import { message } from 'ant-design-vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
-import { useEventsStore } from '@/app/stores/workshop/events'
-import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
-import { foldStreamDuplicates } from '@/app/composables/workshop/useEventBlocks'
+import { useWorkshopApi, type TerminalSessionDto } from '@/app/composables/workshop/useWorkshopApi'
+import LaneBlocks from '@/app/components/workshop/lanes/LaneBlocks.vue'
+import OmpTerminalPanel from '@/app/components/workshop/terminal/OmpTerminalPanel.vue'
 
 const props = defineProps<{ channelId: string }>()
 const entities = useEntitiesStore()
-const events = useEventsStore()
 const api = useWorkshopApi()
 
 const agents = computed(() => entities.agents[props.channelId] ?? [])
-
-/** 每 lane 事件行:内容智能去重(delta 累计与全文落定重复的行摘除) */
-const laneEvents = (agentId: string) =>
-  foldStreamDuplicates(events.ring(props.channelId).items.filter(e => e.agentId === agentId))
 
 const stateDot: Record<string, string> = {
   idle: '#52c41a',
@@ -217,6 +218,50 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
     stopping.value = null
   }
 }
+
+// ===== harness 终端控制(rpc-ui HITL;每成员独立 omp 会话) =====
+const terminals = ref<TerminalSessionDto[]>([])
+/** agentId → 存活终端会话(lane 头徽标 + 终端按钮态) */
+const terminalOf = computed(() => {
+  const map = new Map<string, TerminalSessionDto>()
+  for (const t of terminals.value) {
+    if (!t.alive || !t.agentId) continue
+    map.set(t.agentId, t)
+  }
+  return map
+})
+const termBadge = (t: TerminalSessionDto | undefined): { text: string, color: string } | null => {
+  if (!t) return null
+  if (t.streaming) return { text: 'streaming', color: 'processing' }
+  if (t.running) return { text: 'turn', color: 'warning' }
+  return { text: 'idle', color: 'success' }
+}
+
+let terminalsTimer: ReturnType<typeof setInterval> | null = null
+const loadTerminals = async (): Promise<void> => {
+  try {
+    const res = await api.listChannelTerminals(props.channelId)
+    terminals.value = res.data ?? []
+  }
+  catch { /* 轮询失败静默(下次恢复) */ }
+}
+
+const terminalOpen = ref(false)
+const terminalAgentId = ref<string | null>(null)
+const terminalSubtitle = ref('')
+const openTerminal = (a: { agentId: string, name: string, role: string }): void => {
+  terminalAgentId.value = a.agentId
+  terminalSubtitle.value = `${a.name} · ${a.role}`
+  terminalOpen.value = true
+}
+
+onMounted(() => {
+  void loadTerminals()
+  terminalsTimer = setInterval(() => void loadTerminals(), 5000)
+})
+onBeforeUnmount(() => {
+  if (terminalsTimer) clearInterval(terminalsTimer)
+})
 </script>
 
 <template>
@@ -265,6 +310,26 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
             {{ a.role }}
           </a-tag>
           <span class="lane-meta">{{ a.state }} · Q{{ a.queued ?? 0 }}</span>
+          <!-- harness 会话徽标(rpc-ui 终端实时状态) -->
+          <a-tag
+            v-if="termBadge(terminalOf.get(a.agentId))"
+            :color="termBadge(terminalOf.get(a.agentId))!.color"
+            class="term-badge"
+            :title="`omp 进程 PID ${terminalOf.get(a.agentId)?.pid} · harness 会话状态`"
+          >
+            {{ termBadge(terminalOf.get(a.agentId))!.text }}
+          </a-tag>
+          <a-button
+            v-if="a.harness === 'omp'"
+            size="small"
+            type="primary"
+            ghost
+            class="lane-term"
+            title="打开该成员的 omp 原生终端(实时 TUI + HITL 控制:注入对话 / 中止 / 应答 ask)"
+            @click="openTerminal(a)"
+          >
+            <span class="i-tabler-terminal-2" />
+          </a-button>
           <a-button
             size="small"
             type="text"
@@ -308,16 +373,10 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
           </a-popconfirm>
         </div>
         <div class="lane-body">
-          <div
-            v-if="laneEvents(a.agentId).length === 0"
-            class="lane-empty"
-          >
-            暂无事件
-          </div>
-          <workshop-event-card
-            v-for="e in laneEvents(a.agentId)"
-            :key="`${e.seq}-${e.type}`"
-            :event="e"
+          <!-- 列体:同类型连续事件聚合为块组件(实时/历史同一路径,无重复消费) -->
+          <LaneBlocks
+            :channel-id="channelId"
+            :agent-id="a.agentId"
           />
         </div>
       </div>
@@ -482,6 +541,14 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
         </a-form-item>
       </a-form>
     </a-modal>
+    <!-- harness 原生终端(omp rpc-ui 镜像 · 每成员独立会话 · HITL 控制) -->
+    <OmpTerminalPanel
+      v-model:open="terminalOpen"
+      :agent-id="terminalAgentId"
+      :channel-id="channelId"
+      :pid="null"
+      :subtitle="terminalSubtitle"
+    />
   </div>
 </template>
 
@@ -562,13 +629,14 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
 }
 .lane-remove { flex: 0 0 auto; font-size: 11px; }
 .lane-edit { flex: 0 0 auto; font-size: 11px; padding-inline: 4px; }
+.lane-term { flex: 0 0 auto; padding-inline: 5px; }
+.term-badge { flex: 0 0 auto; margin-inline-end: 0; font-family: ui-monospace, Consolas, monospace; font-size: 10px; line-height: 14px; }
 .scenario-tag { flex: 0 0 auto; font-size: 10px; line-height: 14px; }
 .lane-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
 }
-.lane-empty,
 .empty {
   padding: 20px 8px;
   font-size: 12px;

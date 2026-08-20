@@ -83,6 +83,11 @@ export type HostToolHandler = (req: HostToolCallRequest) => Promise<{ text: stri
 export interface OmpRpcClientOptions {
   /** omp 可执行文件路径(默认 'omp') */
   command?: string
+  /**
+   * 输出模式:'rpc' = 纯协议(无 UI);'rpc-ui' = 协议 + UI 上下文
+   * (ask 工具 / extension_ui_request 对话框可用 —— HITL 通道;强制 noPty)。默认 'rpc'。
+   */
+  mode?: 'rpc' | 'rpc-ui'
   /** 额外 CLI 参数 */
   args?: string[]
   /** 工作目录 */
@@ -125,6 +130,8 @@ export class OmpRpcClient {
   private seq = 0
 
   private readonly eventListeners = new Set<(event: AgentSessionEvent) => void>()
+  /** 原始帧 tap(chunk 重组后的每一帧,含 response/host_tool_call/extension_ui_request) */
+  private readonly rawFrameListeners = new Set<(frame: Record<string, unknown>) => void>()
   private hostToolHandler: HostToolHandler | null = null
 
   /** v2 chunk 重组缓冲 */
@@ -150,7 +157,8 @@ export class OmpRpcClient {
   /** spawn omp 子进程,等待 ready frame */
   async start(): Promise<void> {
     const command = this.options.command ?? 'omp'
-    const args = ['--mode', 'rpc', ...(this.options.args ?? [])]
+    const mode = this.options.mode ?? 'rpc'
+    const args = ['--mode', mode, ...(this.options.args ?? [])]
 
     this.child = spawn(command, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -161,6 +169,12 @@ export class OmpRpcClient {
 
     this.child.stdout?.setEncoding('utf-8')
     this.child.stderr?.setEncoding('utf-8')
+    // stdio 流级 error 兜底监听:进程被强杀(terminate/进程树 kill)后写 stdin 会
+    // 触发流 'error'(EPIPE);无监听者会升级为 uncaughtException。真实失败语义
+    // 由 send 回调 / exit 事件传导,这里仅吞流级噪声。
+    this.child.stdin?.on('error', () => {})
+    this.child.stdout?.on('error', () => {})
+    this.child.stderr?.on('error', () => {})
 
     return new Promise<void>((resolve, reject) => {
       const onReady = (frame: AgentSessionEvent): void => {
@@ -233,6 +247,26 @@ export class OmpRpcClient {
     }
   }
 
+  /**
+   * 订阅原始帧流(chunk 重组后的每一帧,含 response / host_tool_call /
+   * extension_ui_request / 全部会话事件)。终端镜像(harness-terminal)的事实源。
+   */
+  onRawFrame(fn: (frame: Record<string, unknown>) => void): () => void {
+    this.rawFrameListeners.add(fn)
+    return () => {
+      this.rawFrameListeners.delete(fn)
+    }
+  }
+
+  /**
+   * 写入原始 stdin 帧(不走命令/响应关联)——用于 side-channel 帧
+   * (extension_ui_response 等)。
+   */
+  writeRaw(frame: Record<string, unknown>): void {
+    if (!this.child?.stdin?.writable) throw new Error('omp 子进程未就绪或已关闭')
+    this.child.stdin.write(JSON.stringify(frame) + '\n')
+  }
+
   /** 注册 host 工具 handler(omp 调用宿主工具时回调) */
   onHostToolCall(handler: HostToolHandler): void {
     this.hostToolHandler = handler
@@ -273,6 +307,7 @@ export class OmpRpcClient {
     }
     this.pending.clear()
     this.eventListeners.clear()
+    this.rawFrameListeners.clear()
   }
 
   // ===== 内部 =====
@@ -299,6 +334,16 @@ export class OmpRpcClient {
   /** 分发单个 JSON 帧 */
   private dispatchFrame(frame: Record<string, unknown>): void {
     const type = frame.type as string
+
+    // 原始帧镜像(终端 hub;listener 异常不影响协议处理)
+    for (const fn of this.rawFrameListeners) {
+      try {
+        fn(frame)
+      }
+      catch {
+        /* ignore */
+      }
+    }
 
     // v2 chunk 重组
     if (type === 'rpc_chunk') {

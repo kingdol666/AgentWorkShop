@@ -7,6 +7,7 @@
  */
 import { message } from 'ant-design-vue'
 import { useUserStore } from '../stores/workshop/user'
+import OmpTerminalPanel from '../components/workshop/terminal/OmpTerminalPanel.vue'
 
 definePageMeta({ layout: 'default' })
 
@@ -44,6 +45,8 @@ interface ProcessView {
   alive: boolean
   exitCode: number | null
   bound: boolean
+  /** 终端镜像可接入(harness-terminal tap 已挂载) */
+  terminal: boolean
 }
 interface MonitorSnapshot {
   generatedAt: string
@@ -148,6 +151,16 @@ const doTerminatePid = async (p: ProcessView): Promise<void> => {
   }
 }
 
+// ===== 终端(harness 原生 TUI 镜像 + HITL) =====
+const terminalOpen = ref(false)
+const terminalPid = ref<number | null>(null)
+const terminalSubtitle = ref('')
+const openTerminal = (pid: number, name: string | null, role: string | null): void => {
+  terminalPid.value = pid
+  terminalSubtitle.value = [name, role].filter(Boolean).join(' · ') || 'omp harness'
+  terminalOpen.value = true
+}
+
 // ===== 展示辅助 =====
 const shortId = (id: string | null | undefined): string => (id && id.length > 8 ? `${id.slice(0, 8)}…` : (id ?? '-'))
 const stateColor: Record<string, string> = { idle: 'success', busy: 'processing', stopped: 'error' }
@@ -182,7 +195,7 @@ const agentColumns = [
   { title: t('monitor.queue'), dataIndex: 'queuedCount', key: 'queuedCount', width: 90 },
   { title: 'PID', dataIndex: 'process', key: 'pid', width: 130 },
   { title: t('monitor.channel'), dataIndex: 'channelId', key: 'channelId', width: 130 },
-  { title: t('monitor.actions'), key: 'actions', width: 130, fixed: 'right' as const },
+  { title: t('monitor.actions'), key: 'actions', width: 190, fixed: 'right' as const },
 ]
 const processColumns = [
   { title: 'PID', dataIndex: 'pid', key: 'pid', width: 100 },
@@ -192,7 +205,7 @@ const processColumns = [
   { title: t('monitor.command'), dataIndex: 'command', key: 'command' },
   { title: t('monitor.startedAt'), dataIndex: 'startedAt', key: 'startedAt', width: 110 },
   { title: t('monitor.state'), dataIndex: 'alive', key: 'alive', width: 100 },
-  { title: t('monitor.actions'), key: 'actions', width: 110, fixed: 'right' as const },
+  { title: t('monitor.actions'), key: 'actions', width: 170, fixed: 'right' as const },
 ]
 </script>
 
@@ -401,23 +414,38 @@ const processColumns = [
               >in-proc</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-popconfirm
-                :title="`${t('monitor.terminateConfirm')}(${record.name})`"
-                :ok-text="t('common.confirm')"
-                :cancel-text="t('common.cancel')"
-                @confirm="doTerminateAgent(record as AgentView)"
-              >
+              <a-space :size="4">
                 <a-button
+                  v-if="record.process?.alive"
                   size="small"
-                  danger
-                  :disabled="terminating"
+                  type="primary"
+                  ghost
+                  :title="t('monitor.openTerminalHint')"
+                  @click="openTerminal(record.process.pid, record.name, record.role)"
                 >
                   <template #icon>
-                    <span class="i-tabler-square-x" />
+                    <span class="i-tabler-terminal-2" />
                   </template>
-                  {{ t('monitor.terminate') }}
+                  {{ t('monitor.openTerminal') }}
                 </a-button>
-              </a-popconfirm>
+                <a-popconfirm
+                  :title="`${t('monitor.terminateConfirm')}(${record.name})`"
+                  :ok-text="t('common.confirm')"
+                  :cancel-text="t('common.cancel')"
+                  @confirm="doTerminateAgent(record as AgentView)"
+                >
+                  <a-button
+                    size="small"
+                    danger
+                    :disabled="terminating"
+                  >
+                    <template #icon>
+                      <span class="i-tabler-square-x" />
+                    </template>
+                    {{ t('monitor.terminate') }}
+                  </a-button>
+                </a-popconfirm>
+              </a-space>
             </template>
           </template>
         </a-table>
@@ -479,27 +507,49 @@ const processColumns = [
               </a-tag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-popconfirm
-                :title="t('monitor.terminatePidConfirm')"
-                :ok-text="t('common.confirm')"
-                :cancel-text="t('common.cancel')"
-                @confirm="doTerminatePid(record as ProcessView)"
-              >
+              <a-space :size="4">
                 <a-button
+                  v-if="record.terminal"
                   size="small"
-                  danger
-                  :disabled="terminating || !record.alive"
+                  type="primary"
+                  ghost
+                  :title="t('monitor.openTerminalHint')"
+                  @click="openTerminal(record.pid, record.name, record.role)"
                 >
                   <template #icon>
-                    <span class="i-tabler-square-x" />
+                    <span class="i-tabler-terminal-2" />
                   </template>
-                  {{ t('monitor.terminate') }}
+                  {{ t('monitor.openTerminal') }}
                 </a-button>
-              </a-popconfirm>
+                <a-popconfirm
+                  :title="t('monitor.terminatePidConfirm')"
+                  :ok-text="t('common.confirm')"
+                  :cancel-text="t('common.cancel')"
+                  @confirm="doTerminatePid(record as ProcessView)"
+                >
+                  <a-button
+                    size="small"
+                    danger
+                    :disabled="terminating || !record.alive"
+                  >
+                    <template #icon>
+                      <span class="i-tabler-square-x" />
+                    </template>
+                    {{ t('monitor.terminate') }}
+                  </a-button>
+                </a-popconfirm>
+              </a-space>
             </template>
           </template>
         </a-table>
       </a-card>
+
+      <!-- harness 原生终端(omp rpc-ui 镜像 · 实时 TUI 渲染 + HITL 控制) -->
+      <OmpTerminalPanel
+        v-model:open="terminalOpen"
+        :pid="terminalPid"
+        :subtitle="terminalSubtitle"
+      />
     </template>
   </div>
 </template>
