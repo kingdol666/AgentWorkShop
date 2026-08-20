@@ -18,7 +18,7 @@ const check = (name: string, ok: boolean, detail = ''): void => {
 const REQUIRED = [
   'scenario-default', 'system-manual', 'worker-workflow', 'lead-supervise',
   'peer-message', 'peer-reply-required', 'peer-reply-optional', 'peer-lead-roster',
-  'mode-goal', 'mode-loop', 'mode-pipeline',
+  'team-roster', 'mode-goal', 'mode-loop', 'mode-pipeline',
 ]
 
 console.log('R1. 文件完整性')
@@ -43,6 +43,7 @@ console.log('R4. 关键内容标记')
 check('scenario-default 含通用作业规范', renderPrompt('scenario-default').includes('General operating rules'))
 check('system-manual 含平台机制', renderPrompt('system-manual').includes('Task lifecycle') && renderPrompt('system-manual').includes('Anti-duplicate'))
 check('lead-supervise 含协调纪律', renderPrompt('lead-supervise').includes('COORDINATOR'))
+check('team-roster 名册含通信规范', renderPrompt('team-roster', { rosterLines: '- id: a1 | w1 | role=worker' }).includes('role=worker') && renderPrompt('team-roster', { rosterLines: 'x' }).includes('wait_seconds'))
 check('mode-goal 含结语要求', renderPrompt('mode-goal', { criteria: 'X' }).includes('FINAL CONCLUSION') && renderPrompt('mode-goal', { criteria: 'X' }).includes('X'))
 check('mode-loop 间隔注入', renderPrompt('mode-loop', { interval: 5 }).includes('every 5s'))
 

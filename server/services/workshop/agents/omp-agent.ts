@@ -228,6 +228,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
     this.channelId = input.channelId
     this.agentName = input.agent.name
     this.agentRole = input.agent.role
+    this.selfAgentId = input.agent.id
   }
 
   async dispose(): Promise<void> {
@@ -275,7 +276,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
    * 场景的规范要求,全体成员共享;未设定时注入通用默认场景(prompts/scenario-default.md)。
    * 实例 systemPromptPrefix 定义成员专长(可选,无默认)。
    */
-  private contextPrefix(): string {
+  private contextPrefix(roster?: string): string {
     const scenario = typeof this.config.scenarioPrompt === 'string' ? this.config.scenarioPrompt.trim() : ''
     const identity = this.config.systemPromptPrefix ?? ''
     const parts: string[] = []
@@ -291,6 +292,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
         ``,
       )
     }
+    if (roster) {
+      parts.push(roster, ``)
+    }
     return parts.join('\n')
   }
 
@@ -299,6 +303,43 @@ export class OmpRpcAgentImpl implements AgentInterface {
    */
   private systemManual(): string {
     return renderPrompt('system-manual')
+  }
+
+  // ===== 团队名册(roster):全成员名单 + 专长,注入每个回合 =====
+
+  /** 名册缓存(null = 待刷新);30s TTL——任何成员的增删改都会及时反映到名单 */
+  private rosterCache: string | null = null
+  private rosterAt = 0
+
+  /**
+   * 构建团队名册(prompts/team-roster.md):
+   * 每位成员一行 — id(寻址键)/名字/角色/harness/专长(systemPromptPrefix 压缩);
+   * 自己的条目带 ← 你 标记。所有回合(worker/supervise/peer)统一注入,
+   * 保证任何 Agent 都知道找谁、怎么发信、怎么等回执。
+   */
+  private async teamRoster(): Promise<string> {
+    if (this.rosterCache !== null && Date.now() - this.rosterAt < 30_000) return this.rosterCache
+    if (!this.workspace) return ''
+    try {
+      const agents = await this.workspace.listAgents()
+      const condense = (s: unknown): string =>
+        String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, 110)
+      const lines = agents
+        .filter(a => a.enabled !== 0)
+        .map((a) => {
+          const specialty = condense(a.config?.systemPromptPrefix)
+          const self = a.id === this.selfAgentId ? ' ← 你' : ''
+          return `- id: ${a.id} | ${a.name}${self} | role=${a.role} | harness=${a.harness}${specialty ? ` | 擅长: ${specialty}` : ''}`
+        })
+        .join('\n')
+      this.rosterCache = renderPrompt('team-roster', { rosterLines: lines })
+      this.rosterAt = Date.now()
+    }
+    catch {
+      this.rosterCache = this.rosterCache ?? ''
+      this.rosterAt = Date.now()
+    }
+    return this.rosterCache
   }
 
   /**
@@ -367,7 +408,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
     await this.ensureClient(ctx)
     if (!this.client) return []
 
-    const prompt = this.buildSupervisePrompt(snapshot, ctx.memory)
+    const prompt = await this.buildSupervisePrompt(snapshot, ctx.memory)
     const timeoutMs = this.config.superviseTimeoutMs ?? 60_000
 
     return new Promise<SupervisionDecision[]>((resolve) => {
@@ -438,7 +479,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
     // 构建 prompt
     const taskText = partsToText(request.message.parts)
-    const prompt = this.buildWorkerPrompt(taskId, taskText, request.memory)
+    const prompt = await this.buildWorkerPrompt(taskId, taskText, request.memory)
 
     // 流式执行 + 事件映射
     yield* this.promptAndStream(prompt, taskId, ctx.signal)
@@ -486,7 +527,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
     })
     const lines: string[] = [
       roleLine,
-      ``, this.contextPrefix(),
+      ``, this.contextPrefix(await this.teamRoster()),
       ``, this.systemManual(),
       ``,
       ...(request.memory ? [``, request.memory] : []),
@@ -766,10 +807,10 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
   // ===== 内部:prompt 构建 =====
 
-  private buildWorkerPrompt(taskId: string, taskText: string, memory?: string): string {
+  private async buildWorkerPrompt(taskId: string, taskText: string, memory?: string): Promise<string> {
     const parts: string[] = []
 
-    const ctx = this.contextPrefix()
+    const ctx = this.contextPrefix(await this.teamRoster())
     if (ctx) parts.push(ctx)
     if (memory) parts.push(memory)
     parts.push(this.systemManual())
@@ -783,10 +824,10 @@ export class OmpRpcAgentImpl implements AgentInterface {
     return parts.join('\n')
   }
 
-  private buildSupervisePrompt(snapshot: SupervisionSnapshot, memory?: string): string {
+  private async buildSupervisePrompt(snapshot: SupervisionSnapshot, memory?: string): Promise<string> {
     const parts: string[] = []
 
-    const ctx = this.contextPrefix()
+    const ctx = this.contextPrefix(await this.teamRoster())
     if (ctx) parts.push(ctx)
     if (memory) parts.push(memory)
     parts.push(this.systemManual())
@@ -1023,10 +1064,10 @@ export class OmpRpcAgentImpl implements AgentInterface {
         case 'send_message_to_agent': {
           const toAgentId = req.arguments.to_agent_id as string
           const message = req.arguments.message as string
-          const priority = (req.arguments.priority as string | undefined) ?? 'task'
-          const metadata: Record<string, unknown> = {
-            'x-aw-msg-priority': priority,
-          }
+          // 回执自动实时:回复(in_reply_to)默认提升为 immediate——
+          // 接收方正等待该结果,realtime 路由会把回复直接注入其运行中的会话
+          let priority = (req.arguments.priority as string | undefined) ?? 'task'
+          const metadata: Record<string, unknown> = {}
           // 触发器:要求对方回复 / 标记本消息是对某消息的回复(回执关联)
           if (req.arguments.require_reply === true) metadata['x-aw-require-reply'] = 'true'
           let inReplyTo = req.arguments.in_reply_to as string | undefined
@@ -1035,25 +1076,52 @@ export class OmpRpcAgentImpl implements AgentInterface {
           const replyCtx = this.takeReplyContext()
           if (!inReplyTo && replyCtx && replyCtx.fromId === toAgentId) {
             inReplyTo = replyCtx.messageId
-            metadata['x-aw-in-reply-to'] = inReplyTo
           }
+          if (inReplyTo) {
+            metadata['x-aw-in-reply-to'] = inReplyTo
+            if (priority === 'task') priority = 'immediate'
+          }
+          metadata['x-aw-msg-priority'] = priority
           const sent = await ws.sendMessage({ toAgentId, parts: [{ text: message }], metadata })
           const triggerNote = inReplyTo
-            ? `(回复 ${inReplyTo.slice(0, 8)}…)`
+            ? `(回复 ${inReplyTo.slice(0, 8)}…,已实时推送给对方)`
             : metadata['x-aw-require-reply'] === 'true' ? '(已要求对方回复)' : ''
           return { text: `消息 ${sent.messageId.slice(0, 8)}… 已发送给 ${toAgentId}(priority=${priority})${triggerNote}` }
         }
 
         case 'poll_messages': {
           const limit = (req.arguments.limit as number | undefined) ?? 10
-          const msgs = await ws.pollMailbox(limit)
-          if (msgs.length === 0) return { text: '收件箱为空(无未消费消息)' }
+          // 阻塞等待:wait_seconds 内每秒检查一次,消息一到即返(取代模型侧空轮询)
+          const waitSec = Math.min(180, Math.max(0, Number(req.arguments.wait_seconds ?? 0) || 0))
+          const deadline = Date.now() + waitSec * 1000
+          let msgs = await ws.pollMailbox(limit)
+          while (msgs.length === 0 && Date.now() < deadline) {
+            await new Promise(r => setTimeout(r, 1000))
+            msgs = await ws.pollMailbox(limit)
+          }
+          if (msgs.length === 0) {
+            return {
+              text: waitSec > 0
+                ? `等待 ${waitSec}s 后收件箱仍为空。若此前已有"[实时消息 from X]"注入你的会话,那就是回复本身(无需再轮询);否则可继续处理其他工作,对方回复会以新回合送达。`
+                : '收件箱为空(无未消费消息)。等待回复请用 wait_seconds 参数阻塞等待,不要反复空轮询。',
+            }
+          }
+          // 读即取:协作消息(非任务投递)取出即确认——防止消费循环稍后把同一消息再跑一遍回合;
+          // 任务指派(assign)不确认,仍由执行循环处理
+          const ackIds = msgs
+            .filter(m => !m.metadata?.['x-aw-task-kind'])
+            .map(m => m.messageId)
+          if (ackIds.length > 0) await ws.ackMailbox(ackIds)
           const text = msgs.map((m) => {
             const from = m.metadata?.['x-aw-from-agent'] ?? '?'
+            const reply = m.metadata?.['x-aw-in-reply-to']
+              ? ` (回复 ${String(m.metadata['x-aw-in-reply-to']).slice(0, 8)}…)`
+              : ''
+            const needReply = m.metadata?.['x-aw-require-reply'] === 'true' ? ' [需回复]' : ''
             const body = m.parts.map(p => 'text' in p ? p.text : '').join(' ')
-            return `  [from ${from}] ${body.slice(0, 100)}`
+            return `  [from ${from}]${needReply}${reply} ${body.slice(0, 100)}`
           }).join('\n')
-          return { text: `未消费消息(${msgs.length}):\n${text}` }
+          return { text: `未消费消息(${msgs.length},已读即取):\n${text}` }
         }
 
         case 'read_channel_mail': {
@@ -1065,12 +1133,16 @@ export class OmpRpcAgentImpl implements AgentInterface {
             const from = m.fromAgentId ?? '(系统)'
             const to = m.toAgentId ?? '(广播)'
             const body = partsToText(m.parts).trim().slice(0, 120)
+            const reply = m.metadata?.['x-aw-in-reply-to']
+              ? ` [回复 ${String(m.metadata['x-aw-in-reply-to']).slice(0, 8)}…]`
+              : ''
             const label = m.metadata?.['x-aw-task-kind'] === 'assign'
               ? '[任务指派]'
               : m.metadata?.['x-aw-msg-priority'] === 'immediate' ? '[实时]' : '[协作]'
-            return `  ${m.createdAt.slice(11, 19)} ${label} ${from} → ${to} (${m.state}): ${body || '(空)'}`
+            const state = m.state === 'pending' ? '未读' : m.state === 'consuming' ? '处理中' : '已读'
+            return `  ${m.createdAt.slice(11, 19)} ${label} ${from} → ${to} (${state})${reply}: ${body || '(空)'}`
           }).join('\n')
-          return { text: `Channel 邮件(${mails.length},倒序):\n${text}` }
+          return { text: `Channel 邮件(${mails.length},倒序;可传 agent_id 查看指定成员信箱):\n${text}` }
         }
 
         case 'broadcast_message': {

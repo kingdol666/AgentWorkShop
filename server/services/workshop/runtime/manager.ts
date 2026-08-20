@@ -719,6 +719,7 @@ export class AgentChannelManager {
       reassignTask: (taskId, toAgentId) => this.reassignTask(channelId, agent.id, taskId, toAgentId),
       sendMessage: input => this.sendA2A(channelId, agent.id, input),
       pollMailbox: limit => this.pollMailbox(channelId, agent.id, limit),
+      ackMailbox: ids => Promise.resolve(this.ackMailbox(channelId, agent.id, ids)),
       listMail: opts => this.listChannelMail(channelId, agent.id, opts),
       subscribe: input => this.subscribe(channelId, agent.id, input),
       // 记忆按需抓取/主动沉淀(成员校验 + 委托本实例 AgentMemory;shared 写入即 Channel 公共域)
@@ -1840,6 +1841,19 @@ export class AgentChannelManager {
       .listPendingByChannelAgent(channelId, callerAgentId)
       .slice(0, limit)
       .map(rowToMessage)
+  }
+
+  /** 确认消费自己 mailbox 的协作消息(读即取;id 须属于 caller 的 pending 集) */
+  ackMailbox(channelId: string, callerAgentId: string, messageIds: string[]): void {
+    this.requireMember(channelId, callerAgentId)
+    const pending = new Set(
+      this.deps.repos.messages
+        .listPendingByChannelAgent(channelId, callerAgentId)
+        .map(r => r.id),
+    )
+    for (const id of messageIds) {
+      if (pending.has(id)) this.deps.repos.messages.markConsumed(id)
+    }
   }
 
   /**

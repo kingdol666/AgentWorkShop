@@ -79,7 +79,7 @@
   {
     "name": "send_message_to_agent",
     "label": "Send Message",
-    "description": "Send a message to another agent (lead or worker) in the same channel. Use priority \"immediate\" for urgent real-time messages that the recipient sees instantly during work; use \"task\" (default) for messages that queue until the recipient finishes their current task. Set require_reply=true to demand a response: the recipient must reply with their result via this same tool (honoring in_reply_to). When replying to a message, pass its message_id as in_reply_to and set require_reply only if you need further response.",
+    "description": "Send a message to another agent (lead or worker) in the same channel via the channel mailbox (routed to the recipient's own mailbox). Use priority \"immediate\" for urgent real-time messages that the recipient sees instantly during work; use \"task\" (default) for messages that queue until the recipient finishes their current task. Set require_reply=true to demand a response: the recipient must reply with their result via this same tool. When replying to a message, pass its message_id as in_reply_to — replies are auto-upgraded to real-time delivery and pushed straight into the recipient's running session, so the answer reaches a waiting sender instantly.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -117,13 +117,17 @@
   {
     "name": "poll_messages",
     "label": "Poll Inbox",
-    "description": "Check your inbox for unread messages from other agents. Returns messages that haven't been consumed yet. Replies to your trigger messages will appear here (and in-session if you are busy).",
+    "description": "Check your own mailbox for unread messages from other agents. When waiting for a reply, pass wait_seconds (e.g. 90) to block until it arrives or the wait expires — one blocking call replaces repeated empty polling. Returned collaboration messages are acknowledged on read (removed from the queue); task assignments are left for execution. Replies to your trigger messages are also pushed into your running session in real time — if you already saw an injected \"[实时消息 from X]\", that IS the reply, no need to poll again.",
     "parameters": {
       "type": "object",
       "properties": {
         "limit": {
           "type": "number",
           "description": "Max messages to return (default 10)"
+        },
+        "wait_seconds": {
+          "type": "number",
+          "description": "Block up to N seconds (0-180) waiting for a message before returning empty (default 0 = immediate check)"
         }
       }
     }
@@ -131,7 +135,7 @@
   {
     "name": "read_channel_mail",
     "label": "Read Channel Mail",
-    "description": "(Lead only) Read the FULL channel mail log: every message exchanged between any agents (peer messages, replies, and task deliveries), newest first. Use this BEFORE dispatching a task whose result may already exist — if a worker already computed/delivered the value via mail, do NOT re-dispatch it; reference the concrete result from the mail instead.",
+    "description": "(Lead only) Read the FULL channel mail log: every message routed through the channel mailbox (peer messages, real-time replies with in_reply_to chains, and task deliveries), newest first, with read/unread state. Pass agent_id to inspect a specific member's mailbox. Use this BEFORE dispatching a task whose result may already exist — if a worker already computed/delivered the value via mail, do NOT re-dispatch it; reference the concrete result from the mail instead.",
     "parameters": {
       "type": "object",
       "properties": {

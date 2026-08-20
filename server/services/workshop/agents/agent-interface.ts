@@ -61,6 +61,8 @@ export interface AgentWorkspace {
   sendMessage(input: { toAgentId: string, parts: Part[], metadata?: Record<string, unknown> }): Promise<A2AMessage>
   /** 拉取自己 mailbox 未消费消息 */
   pollMailbox(limit?: number): Promise<A2AMessage[]>
+  /** 确认消费自己 mailbox 的协作消息(读即取;任务指派不经此确认,由执行循环处理) */
+  ackMailbox(messageIds: string[]): Promise<void>
   /** (lead)Channel 邮件全览:全部 agent 间消息(含已消费),按时间倒序;可选按参与方过滤 */
   listMail(opts?: { limit?: number, agentId?: string }): Promise<ChannelMail[]>
   /**

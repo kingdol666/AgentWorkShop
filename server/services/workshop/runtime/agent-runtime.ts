@@ -217,38 +217,42 @@ export class AgentRuntime {
   }
 
   /**
-   * 实时消息注入:busy 时通过 impl.steer 注入 omp 会话;idle 时入 mailbox 队列。
+   * 实时消息注入(仅 busy 收件人;消息已由 route 统一 enqueue 落库):
+   *  - busy 且 impl 支持 steer → 注入运行中的 omp 会话(同轮可见),送达即消费
+   *    (消费循环不再对该消息起第二个回合,防重复处理)
+   *  - idle/stopped/不支持 steer → no-op:消息已在 mailbox pending,
+   *    由消费循环按 FIFO 起回合处理
    * 触发器语义:metadata['x-aw-require-reply']='true' 时,注入文本携带回执指令——
    * 接收方须把执行结果与对方所需内容经 send_message_to_agent 回给发送者,
    * 并以 x-aw-in-reply-to 关联原消息、自带 x-aw-require-reply 声明是否需再响应。
    */
   injectSteer(message: A2AMessage): void {
-    if (this.state === 'busy' && this.impl.steer) {
-      const text = message.parts
-        .map((p) => {
-          if ('text' in p) return p.text
-          if ('data' in p) return JSON.stringify(p.data)
-          return ''
-        })
-        .join('\n')
-      const fromId = (message.metadata?.['x-aw-from-agent'] as string | undefined) ?? 'system'
-      const lines = [`[实时消息 from ${fromId}]: ${text}`]
-      if (message.metadata?.['x-aw-require-reply'] === 'true') {
-        lines.push(
-          `[系统触发器] 本消息要求回复(reply_to=${message.messageId})。`,
-          `请处理消息中的需求,随后用 send_message_to_agent 回复发送者 ${fromId}:`,
-          `参数 message=执行结果+对方所需内容, in_reply_to=${message.messageId},`,
-          `require_reply=仅当你还需要对方进一步响应时才设 true。`,
-        )
-      }
-      this.impl.steer(lines.join('\n')).catch((err) => {
-        console.error(`[AgentRuntime:${this.agentId}] steer 失败:`, err)
+    if (this.state !== 'busy' || !this.impl.steer) return
+    const text = message.parts
+      .map((p) => {
+        if ('text' in p) return p.text
+        if ('data' in p) return JSON.stringify(p.data)
+        return ''
       })
+      .join('\n')
+    const fromId = (message.metadata?.['x-aw-from-agent'] as string | undefined) ?? 'system'
+    const lines = [`[实时消息 from ${fromId}]: ${text}`]
+    if (message.metadata?.['x-aw-require-reply'] === 'true') {
+      lines.push(
+        `[系统触发器] 本消息要求回复(reply_to=${message.messageId})。`,
+        `请处理消息中的需求,随后用 send_message_to_agent 回复发送者 ${fromId}:`,
+        `参数 message=执行结果+对方所需内容, in_reply_to=${message.messageId},`,
+        `require_reply=仅当你还需要对方进一步响应时才设 true。`,
+      )
     }
-    else {
-      // idle/stopped 或 impl 不支持 steer → 落入 mailbox 作为消息(FIFO 消费)
-      this.enqueue(message)
-    }
+    this.impl.steer(lines.join('\n'))
+      .then(() => {
+        // 送达即消费:会话内已可见,消费循环跳过(防同消息二次起回合)
+        this.deps.mailbox.markConsumed(message.messageId)
+      })
+      .catch((err) => {
+        console.error(`[AgentRuntime:${this.agentId}] steer 失败(消息保持 pending 待循环处理):`, err)
+      })
   }
 
   /** 启动消费循环 */

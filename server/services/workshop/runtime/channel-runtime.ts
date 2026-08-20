@@ -47,17 +47,23 @@ export class ChannelRuntime {
   }
 
   /** 核心路由:解析收件人 → 按需装配 → 按优先级投递(immediate → injectSteer;task → mailbox) */
+  /**
+   * Channel 信箱路由(本 channel 内):每条消息统一落库到收件人 mailbox
+   * (pending;lead 全览/断线重投/空闲回合作业都以此为准),
+   * 实时类消息(immediate 优先级,或带 in_reply_to 的回执)额外注入收件人
+   * 运行中的会话(steer 推送,送达即消费)——收件人忙则同轮可见,空闲则由
+   * 消费循环按 FIFO 起回合处理。
+   */
   route(message: A2AMessage): void {
-    const priority = message.metadata?.['x-aw-msg-priority']
+    const meta = message.metadata ?? {}
+    const realtime
+      = meta['x-aw-msg-priority'] === 'immediate'
+        || typeof meta['x-aw-in-reply-to'] === 'string'
     for (const agentId of this.resolveRecipients(message)) {
       const agent = this.ensureAgent(agentId)
       if (!agent) continue
-      if (priority === 'immediate') {
-        agent.injectSteer(message)
-      }
-      else {
-        agent.enqueue(message)
-      }
+      agent.enqueue(message)
+      if (realtime) agent.injectSteer(message)
     }
   }
 
