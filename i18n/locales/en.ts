@@ -31,6 +31,8 @@ export default {
     notifications: 'Notifications',
     profile: 'Profile',
     logout: 'Log out',
+    trail: 'Route trail (click to return)',
+    workspace: 'Workspace',
   },
   home: {
     title: 'Dashboard',

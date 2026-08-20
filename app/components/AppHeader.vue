@@ -4,6 +4,8 @@ import type { MenuProps, SelectProps } from 'ant-design-vue'
 const { t, locale, locales, setLocale } = useI18n()
 const store = useAppStore()
 const route = useRoute()
+const trail = useRouteTrailStore()
+const { metaFor } = useRouteMeta()
 
 const localeOptions = computed(() =>
   (locales.value as Array<{ code: string, name: string }>).map(l => ({
@@ -18,15 +20,39 @@ const switchLocale: SelectProps['onChange'] = (value) => {
   }
 }
 
-// 面包屑:路由 → 标题(等宽大写铭牌)
-const breadcrumbItems = computed(() => {
-  const map: Record<string, string> = {
-    '/': t('menu.dashboard'),
-    '/users': t('menu.users'),
-    '/settings': t('menu.settings'),
-  }
-  return [t('menu.system'), map[route.path] ?? '']
+// ── 航迹导航:路由变化 → 记录航点;切换时绘图仪进度线扫过 ──
+const hydrated = ref(false)
+const plotting = ref(false)
+let plotTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(() => route.path, (path) => {
+  trail.visit(path)
+  plotting.value = false
+  requestAnimationFrame(() => {
+    plotting.value = true
+    if (plotTimer) clearTimeout(plotTimer)
+    plotTimer = setTimeout(() => {
+      plotting.value = false
+    }, 620)
+  })
+}, { immediate: false })
+
+onMounted(() => {
+  hydrated.value = true
+  trail.visit(route.path)
 })
+
+onBeforeUnmount(() => {
+  if (plotTimer) clearTimeout(plotTimer)
+})
+
+const go = (path: string) => {
+  if (path !== route.path) {
+    navigateTo(path)
+  }
+}
+
+const waypointIndex = (i: number) => String(i + 1).padStart(2, '0')
 
 const isFullscreen = ref(false)
 
@@ -63,7 +89,7 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
       borderBottomColor: 'var(--app-border, #d3ccb8)',
     }"
   >
-    <!-- 左侧:折叠 + 面包屑铭牌 -->
+    <!-- 左侧:折叠 + 航迹标绘轨 -->
     <div class="header-left">
       <button
         class="collapse-btn"
@@ -73,14 +99,50 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
         <span class="i-tabler-menu-2" />
       </button>
 
-      <a-breadcrumb class="breadcrumb">
-        <a-breadcrumb-item
-          v-for="item in breadcrumbItems"
-          :key="item"
+      <span class="rail-mark i-tabler-route" />
+
+      <nav
+        class="trail"
+        :aria-label="t('header.trail')"
+      >
+        <transition-group
+          name="stamp"
+          tag="div"
+          class="trail-row"
         >
-          {{ item }}
-        </a-breadcrumb-item>
-      </a-breadcrumb>
+          <template v-if="hydrated">
+            <template
+              v-for="(w, i) in trail.waypoints"
+              :key="w.path"
+            >
+              <span
+                v-if="i > 0"
+                :key="`link-${w.path}`"
+                class="trail-link"
+                aria-hidden="true"
+              />
+              <button
+                class="trail-node"
+                :class="{ active: w.path === route.path }"
+                :title="`${waypointIndex(i)} · ${metaFor(w.path).title}`"
+                @click="go(w.path)"
+              >
+                <span class="node-index">{{ waypointIndex(i) }}</span>
+                <span
+                  class="node-icon"
+                  :class="metaFor(w.path).icon"
+                />
+                <span class="node-title">{{ metaFor(w.path).title }}</span>
+                <span
+                  v-if="w.path === route.path"
+                  class="node-here"
+                  aria-hidden="true"
+                />
+              </button>
+            </template>
+          </template>
+        </transition-group>
+      </nav>
     </div>
 
     <!-- 右侧:功能集群 -->
@@ -152,16 +214,25 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
         </template>
       </a-dropdown>
     </div>
+
+    <!-- 绘图仪进度线:路由切换时自左向右扫过 -->
+    <span
+      class="plotter-line"
+      :class="{ run: plotting }"
+      aria-hidden="true"
+    />
   </a-layout-header>
 </template>
 
 <style scoped>
 .app-header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 60px;
-  padding: 0 24px 0 10px;
+  height: var(--app-header-h, 64px);
+  padding: 0 20px 0 10px;
+  overflow: hidden;
   border-bottom: 1px solid;
   backdrop-filter: blur(6px);
   transition: background 0.3s ease, border-color 0.3s ease;
@@ -172,12 +243,183 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+/* ── 航迹标绘轨 ── */
+.rail-mark {
+  flex: 0 0 auto;
+  font-size: 15px;
+  color: var(--accent-vermilion);
+  opacity: 0.85;
+}
+
+.trail {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, black 8px, black calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, black 8px, black calc(100% - 18px), transparent 100%);
+}
+
+.trail::-webkit-scrollbar {
+  display: none;
+}
+
+.trail-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 3px 4px;
+  white-space: nowrap;
+}
+
+/* 航点间点线:图纸坐标连线 */
+.trail-link {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 0;
+  border-top: 1px dashed var(--line-strong, var(--line));
+}
+
+/* 航点票券:方角描边,悬停抬升,当前页钴蓝填充 + 朱红"在此"角标 */
+.trail-node {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px 0 8px;
+  font-family: var(--font-mono);
+  color: var(--app-text, var(--ink-soft));
+  cursor: pointer;
+  background: var(--app-bg-container, transparent);
+  border: 1px solid var(--app-border, var(--line));
+  border-radius: 2px;
+  transition: all 0.16s ease;
+}
+
+.trail-node:hover {
+  color: var(--accent-cobalt);
+  border-color: var(--accent-cobalt);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--accent-cobalt) 16%, transparent);
+}
+
+.trail-node:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.trail-node:focus-visible {
+  outline: 2px solid var(--accent-cobalt);
+  outline-offset: 2px;
+}
+
+.trail-node.active {
+  color: var(--paper);
+  background: var(--accent-cobalt);
+  border-color: var(--accent-cobalt);
+  box-shadow: 2px 2px 0 rgb(27 39 51 / 22%);
+}
+
+.node-index {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+}
+
+.node-icon {
+  font-size: 13px;
+}
+
+.node-title {
+  max-width: 132px;
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+/* 当前页右上角朱红三角:图纸"you are here"记号(内嵌定位,避免被轨 clip) */
+.node-here {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-top: 8px solid var(--accent-vermilion);
+  border-bottom: 8px solid transparent;
+  border-left: 8px solid transparent;
+  border-start-end-radius: 1px;
+}
+
+/* 盖章进场:微缩放 + 轻微落章偏转 */
+.stamp-enter-active {
+  transition: all 0.22s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.stamp-enter-from {
+  opacity: 0;
+  transform: scale(0.82) rotate(-2deg);
+}
+
+.stamp-leave-active {
+  position: absolute;
+  transition: all 0.14s ease;
+}
+
+.stamp-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.stamp-move {
+  transition: transform 0.22s ease;
+}
+
+/* 绘图仪进度线 */
+.plotter-line {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-cobalt) 30%, var(--accent-vermilion));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.plotter-line.run {
+  animation: plot-sweep 0.6s cubic-bezier(0.3, 0.8, 0.4, 1) forwards;
+}
+
+@keyframes plot-sweep {
+  0% {
+    width: 0;
+    opacity: 0.9;
+  }
+
+  70% {
+    opacity: 0.9;
+  }
+
+  100% {
+    width: 100%;
+    opacity: 0;
+  }
 }
 
 /* 方角描边按钮(制图工具感),悬停显钴蓝 */
 .collapse-btn,
 .icon-btn {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 34px;
@@ -206,20 +448,8 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   box-shadow: 0 0 0 transparent;
 }
 
-.breadcrumb {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-:deep(.breadcrumb .ant-breadcrumb-separator) {
-  font-family: var(--font-mono);
-  color: var(--ink-faint);
-}
-
 .lang-select {
-  width: 120px;
+  width: 118px;
 }
 
 /* 操作者徽记:方印 + 双行铭牌 */
@@ -279,5 +509,18 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 
 .hidden {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plotter-line.run {
+    animation: none;
+    opacity: 0;
+  }
+
+  .stamp-enter-active,
+  .stamp-leave-active,
+  .stamp-move {
+    transition: none;
+  }
 }
 </style>

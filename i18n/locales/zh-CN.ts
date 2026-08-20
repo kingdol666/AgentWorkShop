@@ -31,6 +31,8 @@ export default {
     notifications: '通知',
     profile: '个人中心',
     logout: '退出登录',
+    trail: '航迹导航(点击返回对应页面)',
+    workspace: '工作台',
   },
   home: {
     title: '系统概览',
