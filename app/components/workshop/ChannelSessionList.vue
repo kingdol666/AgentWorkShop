@@ -42,7 +42,7 @@ const select = (channelId: string): void => {
 }
 
 const mountModal = ref(false)
-const mountForm = reactive({ name: '', description: '', workspace: '' })
+const mountForm = reactive({ name: '', description: '', workspace: '', scenarioPrompt: '' })
 const mountSubmitting = ref(false)
 /** FileSelector 弹窗(选择服务器目录作为 workspace) */
 const fileSelectorOpen = ref(false)
@@ -56,6 +56,7 @@ const createAndMount = async (): Promise<void> => {
     const res = await api.createChannel({
       name: mountForm.name.trim(),
       description: mountForm.description || undefined,
+      scenarioPrompt: mountForm.scenarioPrompt.trim() || undefined,
       // 工作目录:留空 → 服务端默认 data/workspaces/<channelId>;自定义(绝对/相对)不存在时自动创建
       workspace: mountForm.workspace.trim() || undefined,
     })
@@ -67,6 +68,7 @@ const createAndMount = async (): Promise<void> => {
     mountForm.name = ''
     mountForm.description = ''
     mountForm.workspace = ''
+    mountForm.scenarioPrompt = ''
     void refreshChannels()
     message.success('Channel 已创建(空团队;进入后通过「添加成员」装配 lead / worker)')
   }
@@ -168,6 +170,16 @@ const unmount = (channelId: string): void => {
         </a-form-item>
         <a-form-item label="描述">
           <a-input v-model:value="mountForm.description" />
+        </a-form-item>
+        <a-form-item label="作业场景 Prompt(全员注入)">
+          <a-textarea
+            v-model:value="mountForm.scenarioPrompt"
+            :rows="4"
+            placeholder="该 channel 全部 Agent 共享的作业场景规范,与系统设计手册组合注入每个 harness……例如:所有产出必须附中文摘要;代码修改需先列计划再动手;回复末尾附 [DONE] 标记"
+          />
+          <template #extra>
+            <span class="ws-hint">注入顺序:场景规范 → 成员专长 → 记忆 → 系统手册 → 任务;PATCH channel 可热更新(成员运行时自动回收重装配)</span>
+          </template>
         </a-form-item>
         <a-form-item label="工作目录(团队作业挂载点)">
           <a-input-group compact>

@@ -3,15 +3,18 @@
  * - workspace 缺省 → data/workspaces/<channelId>(自动创建目录)
  * - 创建 lead 后同步启动其 SchedulerLoop(与 plugin 启动恢复同路径)
  */
-import { z } from 'zod'
+import { z } from 'zod'
 import { resolveUser } from './caller'
 import { readValidatedBody } from 'h3'
 import { zValidator } from '../../utils/validate'
 import { defineApiHandler } from '../../utils/response'
-import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../plugins/workshop'
+import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../plugins/workshop'
+
 const createChannelSchema = z.object({
   name: z.string().min(1, 'name 必填'),
   description: z.string().optional(),
+  /** channel 级作业场景 prompt(注入全部成员 harness;用户场景 × 系统设计组合) */
+  scenarioPrompt: z.string().optional(),
   /** channel 独立工作目录(omp 子进程 cwd);缺省 data/workspaces/<channelId> */
   workspace: z.string().optional(),
   leadAgent: z
@@ -30,6 +33,7 @@ export default defineApiHandler(async (event) => {
   const result = await manager.createChannel({
     name: body.name,
     description: body.description,
+    scenarioPrompt: body.scenarioPrompt,
     workspace: body.workspace,
     leadAgent: body.leadAgent,
     ownerUserId: user.id,

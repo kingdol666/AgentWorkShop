@@ -40,6 +40,14 @@ import {
   markHarnessProcessExit,
   killHarnessProcess,
 } from './harness-process'
+import {
+  attachTerminalTap,
+  markTerminalSessionExit,
+} from './harness-terminal'
+import {
+  loadHostToolDefs,
+  renderPrompt,
+} from '../prompts/loader'
 
 // ===== 配置 =====
 
@@ -64,6 +72,14 @@ export interface OmpAgentConfig {
   promptTimeoutMs?: number
   /** supervise 轮超时(ms,默认 60000) */
   superviseTimeoutMs?: number
+  /**
+   * omp 输出模式:'rpc-ui'(默认)= RPC 协议 + UI 上下文 —— ask 工具与
+   * extension_ui_request 对话框可用(监控终端 HITL 通道,强制 noPty);
+   * 'rpc' = 纯协议(无 UI,ask 不可用)。
+   */
+  rpcMode?: 'rpc' | 'rpc-ui'
+  /** channel 级作业场景 prompt(manager 装配时注入;用户场景规范,全员共享) */
+  scenarioPrompt?: string
   /** agent 身份(由 factory 从 AgentInfo 注入) */
   agentId?: string
   name?: string
@@ -73,251 +89,9 @@ export interface OmpAgentConfig {
 
 // ===== host tool 定义(注册到 omp,agent 原生调用) =====
 
-export const HOST_TOOLS: RpcHostToolDefinition[] = [
-  {
-    name: 'report_progress',
-    label: 'Report Progress',
-    description: 'Report your current task progress as a percentage (0-100). Call this whenever you make meaningful progress on your task.',
-    parameters: {
-      type: 'object',
-      properties: {
-        progress: { type: 'number', description: 'Progress percentage 0-100' },
-        message: { type: 'string', description: 'Brief status message describing what you are doing' },
-      },
-      required: ['progress'],
-    },
-  },
-  {
-    name: 'complete_task',
-    label: 'Complete Task',
-    description: 'Mark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done.',
-    parameters: {
-      type: 'object',
-      properties: {
-        summary: { type: 'string', description: 'Summary of what was accomplished' },
-        deliverable: { type: 'string', description: 'Final deliverable: code, analysis result, document content, etc.' },
-        task_id: { type: 'string', description: 'Task ID to complete. If omitted, completes your current assigned task.' },
-      },
-      required: ['summary'],
-    },
-  },
-  {
-    name: 'dispatch_task',
-    label: 'Dispatch Task',
-    description: '(Lead only) Create a subtask under a submitted parent task and assign it to a worker. Always provide parent_task_id so the parent task tracks completion.',
-    parameters: {
-      type: 'object',
-      properties: {
-        assignee_id: { type: 'string', description: 'ID of the worker agent to assign this task to' },
-        title: { type: 'string', description: 'Short task title' },
-        description: { type: 'string', description: 'Detailed task description with requirements' },
-        parent_task_id: { type: 'string', description: 'The ID of the submitted parent task this subtask belongs to (from the task list)' },
-      },
-      required: ['assignee_id', 'title', 'parent_task_id'],
-    },
-  },
-  {
-    name: 'send_message_to_agent',
-    label: 'Send Message',
-    description: 'Send a message to another agent (lead or worker) in the same channel. Use priority "immediate" for urgent real-time messages that the recipient sees instantly during work; use "task" (default) for messages that queue until the recipient finishes their current task. Set require_reply=true to demand a response: the recipient must reply with their result via this same tool (honoring in_reply_to). When replying to a message, pass its message_id as in_reply_to and set require_reply only if you need further response.',
-    parameters: {
-      type: 'object',
-      properties: {
-        to_agent_id: { type: 'string', description: 'Recipient agent ID' },
-        message: { type: 'string', description: 'Message content (when replying: your execution result + the content they asked for)' },
-        priority: { type: 'string', enum: ['immediate', 'task'], description: 'Message priority: "immediate" = inject into recipient\'s running session instantly; "task" = queue for later consumption (default)' },
-        require_reply: { type: 'boolean', description: 'Trigger: true = recipient MUST reply with result/content (default false)' },
-        in_reply_to: { type: 'string', description: 'Message ID this reply refers to (set when replying to a trigger message)' },
-      },
-      required: ['to_agent_id', 'message'],
-    },
-  },
-  {
-    name: 'poll_messages',
-    label: 'Poll Inbox',
-    description: 'Check your inbox for unread messages from other agents. Returns messages that haven\'t been consumed yet. Replies to your trigger messages will appear here (and in-session if you are busy).',
-    parameters: {
-      type: 'object',
-      properties: {
-        limit: { type: 'number', description: 'Max messages to return (default 10)' },
-      },
-    },
-  },
-  {
-    name: 'read_channel_mail',
-    label: 'Read Channel Mail',
-    description: '(Lead only) Read the FULL channel mail log: every message exchanged between any agents (peer messages, replies, and task deliveries), newest first. Use this BEFORE dispatching a task whose result may already exist — if a worker already computed/delivered the value via mail, do NOT re-dispatch it; reference the concrete result from the mail instead.',
-    parameters: {
-      type: 'object',
-      properties: {
-        limit: { type: 'number', description: 'Max mails to return (default 50, max 500)' },
-        agent_id: { type: 'string', description: 'Optional: only show mails involving this agent (as sender or recipient)' },
-      },
-    },
-  },
-  {
-    name: 'broadcast_message',
-    label: 'Broadcast',
-    description: 'Broadcast a message to ALL agents in the channel (lead + all workers). Useful for announcements.',
-    parameters: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', description: 'Message content to broadcast' },
-        priority: { type: 'string', enum: ['immediate', 'task'], description: 'Message priority (default "task")' },
-      },
-      required: ['message'],
-    },
-  },
-  {
-    name: 'list_channel_tasks',
-    label: 'List Tasks',
-    description: 'List all tasks in the current channel, including their status, progress, and assignee.',
-    parameters: { type: 'object', properties: {} },
-  },
-  {
-    name: 'list_team_agents',
-    label: 'List Team',
-    description: 'List all agents in the current channel (lead + workers) with their roles and names.',
-    parameters: { type: 'object', properties: {} },
-  },
-  {
-    name: 'get_task_details',
-    label: 'Get Task',
-    description: 'Get detailed information about a specific task, including artifacts and history.',
-    parameters: {
-      type: 'object',
-      properties: {
-        task_id: { type: 'string', description: 'Task ID' },
-      },
-      required: ['task_id'],
-    },
-  },
-  {
-    name: 'get_my_task_queue',
-    label: 'My Queue',
-    description: 'View your own task queue: pending tasks (FIFO order), the task you are currently executing, and completed tasks. Use this to check if you have unfinished work.',
-    parameters: { type: 'object', properties: {} },
-  },
-  {
-    name: 'get_queue_overview',
-    label: 'Queue Overview',
-    description: '(Lead only) Real-time overview of every team member: status (idle/busy), current task, pending queue length, completed count. Use this to make optimal scheduling and rebalancing decisions.',
-    parameters: { type: 'object', properties: {} },
-  },
-  {
-    name: 'reassign_task',
-    label: 'Reassign Task',
-    description: '(Lead only) Move a pending (not yet started) or failed task from one worker to another. Use for load rebalancing or when a worker is stuck. The old worker\'s queued delivery is revoked automatically.',
-    parameters: {
-      type: 'object',
-      properties: {
-        task_id: { type: 'string', description: 'Task ID to move' },
-        to_agent_id: { type: 'string', description: 'Worker agent ID to receive the task' },
-      },
-      required: ['task_id', 'to_agent_id'],
-    },
-  },
-  {
-    name: 'update_task',
-    label: 'Update Task',
-    description: '(Lead only) Modify the title/description of a pending (queued, not started) task. The assignee\'s queued delivery is refreshed with the new content automatically.',
-    parameters: {
-      type: 'object',
-      properties: {
-        task_id: { type: 'string', description: 'Task ID to update' },
-        title: { type: 'string', description: 'New title (optional)' },
-        description: { type: 'string', description: 'New description (optional)' },
-      },
-      required: ['task_id'],
-    },
-  },
-  {
-    name: 'cancel_task',
-    label: 'Cancel Task',
-    description: 'Cancel a task and remove it from the assignee\'s queue (lead can cancel any; assignee can cancel own). Pending queued deliveries are revoked automatically.',
-    parameters: {
-      type: 'object',
-      properties: {
-        task_id: { type: 'string', description: 'Task ID to cancel' },
-      },
-      required: ['task_id'],
-    },
-  },
-  {
-    name: 'search_memory',
-    label: 'Search Memory',
-    description: 'Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel\'s shared team memories). Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints mention something you need details on. Pass a focused query describing what you want to remember.',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'What you want to recall, e.g. "数据库连接池配置结论" or "previous deployment checklist"' },
-        scope: { type: 'string', enum: ['auto', 'private', 'shared'], description: 'Which memory domain to search: "auto" = your private + channel shared (default), "private" = only your own, "shared" = only channel-wide shared memories' },
-        limit: { type: 'number', description: 'Max results (default 5, max 20)' },
-      },
-      required: ['query'],
-    },
-  },
-  {
-    name: 'save_memory',
-    label: 'Save Memory',
-    description: 'Persist a distilled, reusable insight into memory for future tasks. scope="private" saves to YOUR personal memory (only you recall it); scope="shared" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating.',
-    parameters: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', description: 'Short topic title, e.g. "API 网关限流方案结论"' },
-        content: { type: 'string', description: 'The distilled reusable knowledge/conclusion (plain text)' },
-        importance: { type: 'number', description: '0-1 importance (default 0.7 private / 0.85 shared)' },
-        scope: { type: 'string', enum: ['private', 'shared'], description: '"private" = your memory only; "shared" = channel-wide shared memory for all teammates' },
-        dedup_key: { type: 'string', description: 'Stable key for idempotent update (same key overwrites instead of duplicating)' },
-      },
-      required: ['title', 'content', 'scope'],
-    },
-  },
-  {
-    name: 'create_team_agent',
-    label: 'Create Team Agent',
-    description: '(Lead only) Create a NEW worker agent and add it to your channel\'s team, on the fly. Use ONLY when all workers stay busy with a persistent backlog, or when a task clearly needs a specialist that doesn\'t exist yet — not for routine tasks the current team can handle. The new member starts idle, appears in list_team_agents immediately, and can receive dispatch_task assignments right away. Give it a clear name and a system_prompt describing its specialty.',
-    parameters: {
-      type: 'object',
-      properties: {
-        name: { type: 'string', description: 'Short, descriptive member name, e.g. "db-migrator" or "test-writer"' },
-        harness: { type: 'string', enum: ['omp', 'mock', 'claude'], description: 'Agent harness: "omp" = full LLM agent with native work tools (default, use this for real work), "mock" = scripted test agent, "claude" = claude harness' },
-        system_prompt: { type: 'string', description: 'System prompt prefix defining this member\'s specialty, working style, and conventions (maps to its systemPromptPrefix config)' },
-        reason: { type: 'string', description: 'Why this member is being added (shown to the user in the team event timeline)' },
-      },
-      required: ['name'],
-    },
-  },
-  {
-    name: 'update_team_agent',
-    label: 'Update Team Agent',
-    description: '(Lead only) Update an existing team member (worker): rename it, revise its system prompt (e.g. to specialize or correct its behavior), or enable/disable it. The member\'s runtime reloads with the new config on its next assignment. You cannot update yourself.',
-    parameters: {
-      type: 'object',
-      properties: {
-        agent_id: { type: 'string', description: 'ID of the worker agent to update (from list_team_agents)' },
-        name: { type: 'string', description: 'New name (optional)' },
-        system_prompt: { type: 'string', description: 'New system prompt prefix defining its specialty/conventions (optional)' },
-        enabled: { type: 'boolean', description: 'true = activate member, false = disable member (disabled members receive no new tasks; default true)' },
-        reason: { type: 'string', description: 'Why this change is made (shown in the team event timeline)' },
-      },
-      required: ['agent_id'],
-    },
-  },
-  {
-    name: 'remove_team_agent',
-    label: 'Remove Team Agent',
-    description: '(Lead only) Remove a worker from your channel\'s team. Its queued tasks are automatically re-dispatched to the remaining worker with the shortest queue (or failed for retry if it was mid-execution), so no work is lost — but the member\'s context is. Use ONLY for sustained idle surplus or persistent underperformance; never as an experiment, and avoid removing members with active work. You cannot remove yourself.',
-    parameters: {
-      type: 'object',
-      properties: {
-        agent_id: { type: 'string', description: 'ID of the worker agent to remove' },
-        reason: { type: 'string', description: 'Why this member is removed (shown in the team event timeline)' },
-      },
-      required: ['agent_id'],
-    },
-  },
-]
+// ===== host tool 定义(外置 .AgentWorkShop/prompts/host-tools.json;加载器缓存)=====
+
+export const HOST_TOOLS: RpcHostToolDefinition[] = loadHostToolDefs()
 
 /** 仅 lead 可见的工具名(dispatch/调度/团队管理面;worker 注册时剔除,压缩工具上下文) */
 const LEAD_ONLY_TOOL_NAMES = new Set([
@@ -350,6 +124,32 @@ function partsToText(parts: Part[]): string {
       return ''
     })
     .join('\n')
+}
+
+/**
+ * 工具参数预览(Codex 式紧凑工具行):`name(path)` / `name(a=1, b=2)`。
+ * 首选 path/file/command/cmd 等单值字段,否则取前两个标量字段;截断 64 字符。
+ */
+function toolArgsPreview(args: unknown): string {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return ''
+  const a = args as Record<string, unknown>
+  const single = ['path', 'file', 'filename', 'command', 'cmd', 'query', 'pattern', 'url', 'taskId', 'task_id', 'id', 'name', 'toolName']
+  const pick = single.find(k => typeof a[k] === 'string' && (a[k] as string).length > 0)
+  let preview: string
+  if (pick) {
+    preview = (a[pick] as string)
+  }
+  else {
+    const scalars = Object.entries(a)
+      .filter(([, v]) => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')
+      .slice(0, 2)
+      .map(([k, v]) => `${k}=${String(v)}`)
+    if (scalars.length === 0) return ''
+    preview = scalars.join(', ')
+  }
+  const flat = preview.replace(/\s+/g, ' ').trim()
+  if (!flat) return ''
+  return `(${flat.length > 64 ? `${flat.slice(0, 64)}…` : flat})`
 }
 
 /** 安全 JSON 解析(容错:提取第一个 JSON 数组/对象) */
@@ -431,8 +231,13 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
   async dispose(): Promise<void> {
     if (this.client) {
+      const pid = this.client.pid
       await this.client.dispose()
       this.client = null
+      if (pid) {
+        markHarnessProcessExit(pid, null)
+        markTerminalSessionExit(pid, null)
+      }
     }
     this.hostToolsRegistered = false
   }
@@ -442,18 +247,57 @@ export class OmpRpcAgentImpl implements AgentInterface {
     const client = this.client
     const pid = client?.pid
     if (!pid || !client) return null
-    return { pid, alive: client.alive, command: 'omp --mode rpc' }
+    return { pid, alive: client.alive, command: `omp --mode ${this.rpcMode}` }
   }
 
   /** 强制终止 harness 进程(进程树;终止后由调用方停止对应 AgentRuntime) */
   killProcess(): void {
     const pid = this.client?.pid
     if (pid) {
+      markTerminalSessionExit(pid, null)
       killHarnessProcess(pid)
     }
     else {
       this.client?.kill()
     }
+  }
+
+  /** omp 输出模式(rpc-ui = 默认,启用 HITL 对话框) */
+  private get rpcMode(): 'rpc' | 'rpc-ui' {
+    return this.config.rpcMode === 'rpc' ? 'rpc' : 'rpc-ui'
+  }
+
+  // ===== prompt 组合:场景 × 身份 × 记忆 × 系统设计 =====
+
+  /**
+   * 前置上下文段(channel 场景 + 实例身份):场景优先级最高——用户对整个作业
+   * 场景的规范要求,全体成员共享;未设定时注入通用默认场景(prompts/scenario-default.md)。
+   * 实例 systemPromptPrefix 定义成员专长(可选,无默认)。
+   */
+  private contextPrefix(): string {
+    const scenario = typeof this.config.scenarioPrompt === 'string' ? this.config.scenarioPrompt.trim() : ''
+    const identity = this.config.systemPromptPrefix ?? ''
+    const parts: string[] = []
+    parts.push(
+      scenario
+        ? `## Scenario Brief (channel-wide, highest priority — user-defined operating rules)\n${scenario}`
+        : renderPrompt('scenario-default'),
+      ``,
+    )
+    if (identity) {
+      parts.push(
+        `## Your Profile (agent-specific)\n${identity}`,
+        ``,
+      )
+    }
+    return parts.join('\n')
+  }
+
+  /**
+   * 系统设计手册(prompts/system-manual.md):让 agent 真正理解其运行环境。
+   */
+  private systemManual(): string {
+    return renderPrompt('system-manual')
   }
 
   /**
@@ -626,47 +470,31 @@ export class OmpRpcAgentImpl implements AgentInterface {
       ? `You are "${this.agentName}", the LEAD coordinator of a multi-agent team (Channel: ${this.channelId}). A team member sent you a direct message.`
       : `You are "${this.agentName}", a worker agent in a multi-agent team (Channel: ${this.channelId}).`
 
+    // 消息应答指令:必复/可选两态 + lead 名册提示(全部外置 prompts/)
+    const respondBlock = renderPrompt(requireReply ? 'peer-reply-required' : 'peer-reply-optional', {
+      fromId,
+      messageId: msg.messageId,
+    })
+    const peerBody = renderPrompt('peer-message', {
+      fromId,
+      messageId: msg.messageId,
+      requireReply,
+      isReplyTo: isReply ? `in_reply_to: ${String(msg.metadata?.['x-aw-in-reply-to'])}` : '',
+      msgText,
+      respondBlock,
+    })
     const lines: string[] = [
       roleLine,
+      ``, this.contextPrefix(),
+      ``, this.systemManual(),
+      ``,
       ...(request.memory ? [``, request.memory] : []),
       ``,
-      `## Incoming Message`,
-      `from: ${fromId}`,
-      `message_id: ${msg.messageId}`,
-      `requires_reply: ${requireReply}`,
-      isReply ? `in_reply_to: ${String(msg.metadata?.['x-aw-in-reply-to'])}` : ``,
-      ``,
-      `Content:`,
-      `"${msgText}"`,
-      ``,
-      `## How to Respond`,
+      peerBody,
     ]
 
-    if (requireReply) {
-      lines.push(
-        `This message REQUIRES a reply (trigger). You must call send_message_to_agent with:`,
-        `- to_agent_id: ${fromId}`,
-        `- message: the result of handling this request + the content they asked for`,
-        `- in_reply_to: ${msg.messageId}`,
-        `- require_reply: set true ONLY if you need further response from them`,
-        ``,
-        `Do the requested work first (you may use your native tools), then send the reply.`,
-      )
-    }
-    else {
-      lines.push(
-        `This message does not require a reply. Reply via send_message_to_agent only if genuinely useful`,
-        `(e.g. they asked a question); otherwise a brief acknowledgment or no action is fine.`,
-      )
-    }
-
     if (this.agentRole === 'lead') {
-      lines.push(
-        ``,
-        `As lead you own this channel's coordination AND team roster: if the message reveals work needs,`,
-        `take action via dispatch_task / reassign_task (scheduling) or create_team_agent / update_team_agent /`,
-        `remove_team_agent (roster); get_queue_overview and list_channel_tasks give you the live picture.`,
-      )
+      lines.push(``, renderPrompt('peer-lead-roster'))
     }
 
     yield* this.promptAndStream(lines.join('\n'), undefined, ctx.signal)
@@ -697,14 +525,34 @@ export class OmpRpcAgentImpl implements AgentInterface {
     this.turnActive = true
     this.streaming = false
     this.turnText = ''
+    // 正文流式差额账本:contentIndex → 已流出长度。部分 provider(reasoning 模型/
+    // openai-completions)的 text 块不走 text_delta(只有换行),全文在 text_end.content
+    // 落定 —— 差额兜底把未流出部分补发为 delta,保证前端流式不缺正文。
+    const textSent = new Map<number, number>()
     const unsubState = client.onEvent((event) => {
       if (event.type === 'message_update') {
-        if (event.assistantMessageEvent?.type === 'text_delta') {
+        const ev = event.assistantMessageEvent as
+          | { type?: string, delta?: string, content?: string, contentIndex?: number }
+          | undefined
+        if (ev?.type === 'text_delta') {
           this.streaming = true
-          this.turnText += event.assistantMessageEvent.delta ?? ''
+          const text = ev.delta ?? ''
+          const ci = typeof ev.contentIndex === 'number' ? ev.contentIndex : 0
+          textSent.set(ci, (textSent.get(ci) ?? 0) + text.length)
+          this.turnText += text
           // LLM 流式增量透出(AEP agent.delta 事件源;P2):仅 worker/peer 转本走生成器
-          const text = event.assistantMessageEvent.delta ?? ''
           if (text) enqueueDelta(text)
+        }
+        else if (ev?.type === 'text_end' && typeof ev.content === 'string') {
+          const ci = typeof ev.contentIndex === 'number' ? ev.contentIndex : 0
+          const sent = textSent.get(ci) ?? 0
+          if (ev.content.length > sent) {
+            const chunk = ev.content.slice(sent)
+            textSent.set(ci, ev.content.length)
+            this.streaming = true
+            this.turnText += chunk
+            enqueueDelta(chunk)
+          }
         }
       }
       if (event.type === 'message_end' || event.type === 'turn_end') {
@@ -852,7 +700,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
               messageId: randomUUID(),
               contextId: this.channelId,
               role: 'ROLE_AGENT',
-              parts: [{ text: `🔧 ${toolName}` }],
+              parts: [{ text: `🔧 ${toolName}${toolArgsPreview(event.args)}` }],
             },
             timestamp: new Date().toISOString(),
           },
@@ -918,46 +766,41 @@ export class OmpRpcAgentImpl implements AgentInterface {
   // ===== 内部:prompt 构建 =====
 
   private buildWorkerPrompt(taskId: string, taskText: string, memory?: string): string {
-    const prefix = this.config.systemPromptPrefix ?? ''
     const parts: string[] = []
 
-    if (prefix) parts.push(prefix)
+    const ctx = this.contextPrefix()
+    if (ctx) parts.push(ctx)
     if (memory) parts.push(memory)
-    parts.push(
-      `You are "${this.agentName}", a worker agent in a multi-agent team led by a lead coordinator (Channel: ${this.channelId}).`,
-      ``,
-      `## Your Assignment`,
-      `Task ID: ${taskId}`,
+    parts.push(this.systemManual())
+    parts.push(renderPrompt('worker-workflow', {
+      agentName: this.agentName,
+      channelId: this.channelId,
+      taskId,
       taskText,
-      ``,
-      `## Working Workflow`,
-      `1. RECALL FIRST: the "相关记忆" block above is only an auto-recalled primer of hints. Before writing anything, call search_memory with focused queries about the task domain (past conclusions, team conventions, similar task outcomes — it searches both your private memory and the channel's shared memory). Reuse proven approaches instead of rediscovering them.`,
-      `2. EXECUTE: use your native tools (read, write, edit, bash, grep, glob, etc.) to accomplish the task. Call report_progress whenever you make meaningful progress.`,
-      `3. COLLABORATE: call list_team_agents to see teammates; send_message_to_agent to ask the lead or a teammate for help/clarification (they can reply in real time). Realtime messages marked "[实时消息 from ...]" may arrive mid-task — if one carries the reply trigger (系统触发器), handle it and reply via send_message_to_agent with in_reply_to=<its message_id>; your reply must contain the execution result and the content they asked for.`,
-      `4. DISTILL: whenever you discover a reusable insight — a working solution, a project convention, a pitfall to avoid — call save_memory IMMEDIATELY (don't wait for task end): scope="private" for personal notes, scope="shared" to publish to the channel's shared memory so teammates benefit. Title = short topic; content = the distilled conclusion. Same dedup_key overwrites instead of duplicating.`,
-      `5. DELIVER: call complete_task when done, providing a summary and the deliverable of your work. Keep it focused and effective.`,
-      ``,
-      `Begin working on the task now.`,
-    )
+    }))
 
     return parts.join('\n')
   }
 
   private buildSupervisePrompt(snapshot: SupervisionSnapshot, memory?: string): string {
-    const prefix = this.config.systemPromptPrefix ?? ''
     const parts: string[] = []
 
-    if (prefix) parts.push(prefix)
+    const ctx = this.contextPrefix()
+    if (ctx) parts.push(ctx)
     if (memory) parts.push(memory)
+    parts.push(this.systemManual())
     // 格式化成员(含队列上下文:执行中任务/待执行队列长度/已完成数 —— 最优调配的依据)
     const members = snapshot.members.map(m =>
       `  - ${m.agentId} (${m.name}, role=${m.role}, state=${m.state}, executing=${m.currentTaskId ?? '-'}, queued=${m.queued ?? 0}, completed=${m.completedCount ?? 0})`,
     ).join('\n')
 
-    // 格式化任务(createdAt ASC = FIFO 顺序)
+    // 格式化任务(createdAt ASC = FIFO 顺序);COMPLETED 附交付预览(lead 直接看到 worker 成果)
     const tasks = snapshot.tasks.map((t) => {
+      const deliverable = t.state === 'COMPLETED' && t.artifacts.length > 0
+        ? ` — 交付:${t.artifacts.map(a => a.parts.map(p => 'text' in p ? p.text : '').join(' ').replace(/\s+/g, ' ').trim().slice(0, 200)).filter(Boolean).join(' / ').slice(0, 400) || '(空)'}`
+        : ''
       const artifacts = t.artifacts.length > 0 ? `, artifacts=${t.artifacts.length}` : ''
-      return `  - ${t.id} [${t.state}] "${t.title}" (assignee=${t.assigneeId}, progress=${t.progress}%${artifacts})`
+      return `  - ${t.id} [${t.state}] "${t.title}" (assignee=${t.assigneeId}, progress=${t.progress}%${artifacts})${deliverable}`
     }).join('\n')
 
     // 未完成子任务数
@@ -1000,42 +843,13 @@ export class OmpRpcAgentImpl implements AgentInterface {
       mail || '  (none)',
     )
 
-    // 模式特定指令
+    // 模式特定指令(外置 mode-*.md)/ 默认协调指令(外置 lead-supervise.md)
     if (modeInfo) {
       parts.push('', ...this.buildModeInstructions(modeInfo))
     }
     else {
-      parts.push(
-        ``,
-        `## Your Job`,
-        `You are a COORDINATOR. You do NOT do the work yourself. You ONLY delegate, track, and shape the team to maximize throughput.`,
-        ``,
-        `### Task Scheduling`,
-        `- Tasks are processed FIFO (oldest first). For each task assigned to you that is SUBMITTED or WORKING and has NO children yet: it needs delegation. Call dispatch_task to delegate it. Prefer workers with the SHORTEST queue (see member queued counts). Always pass parent_task_id (the task's ID), assignee_id (the worker's ID), title, and description.`,
-        `- BEFORE dispatching a task whose result may already exist, read the Recent Team Mail section above (or call read_channel_mail for the full log). If a worker has already computed/delivered that value via mail (e.g. a peer reply containing the result), do NOT re-dispatch it — reference the concrete result from the mail and avoid duplicate work.`,
-        `- Rebalance when needed: reassign_task to move a pending task from a loaded worker to an idle one, update_task to revise a pending task, cancel_task to remove obsolete work. Use get_queue_overview for the live picture.`,
-        `- Do NOT call complete_task on a task that has unfinished children. When all children of a parent are COMPLETED: call complete_task for the parent with a summary.`,
-        `- Use list_team_agents and list_channel_tasks to get current IDs if needed.`,
-        ``,
-        `### Team Management (you own the team roster)`,
-        `You can grow, tune, and shrink your team at runtime — the roster is yours to manage for maximum task completion.`,
-        `However, roster changes are HIGH-IMPACT and visible to the user: treat them as deliberate decisions, not experiments.`,
-        `- create_team_agent: add a new worker ONLY when (a) ALL workers stay busy and the backlog persists across multiple ticks, or (b) upcoming work needs a specialist that clearly doesn't exist. Give a clear name + system_prompt describing the specialty.`,
-        `- update_team_agent: rename a member, revise its system_prompt to correct/specialize its behavior, or disable it (enabled=false stops new assignments without removing its history). Takes effect on its next task.`,
-        `- remove_team_agent: retire a member ONLY for sustained idle surplus or persistent underperformance. NEVER remove a member that still has queued or in-progress work unless it is truly stuck; its tasks are re-dispatched but context is lost.`,
-        `Defaults: for routine tasks keep the existing team unchanged. Prefer specializing an idle member (update) over creating duplicates; prefer reassignment (reassign_task) over removal when the issue is load, not capability. Always pass a honest reason. You cannot remove or update yourself.`,
-        ``,
-        `### Memory (your institutional knowledge)`,
-        `- BEFORE scheduling recurring or previously-failed work, call search_memory: prior task outcomes, worker strengths, and channel conventions live there (e.g. "worker X excels at refactors", "approach Y failed before").`,
-        `- AFTER observing durable team facts (a member's strength/weakness, an effective task-split pattern, a recurring pitfall), call save_memory with scope="shared" so every teammate can recall it. Use stable dedup_keys to refresh rather than duplicate.`,
-        `- Do NOT use read/write/edit/bash or any work tools yourself. You are a coordinator, not a worker.`,
-      )
+      parts.push('', renderPrompt('lead-supervise'))
     }
-
-    parts.push(
-      ``,
-      `Take action now using your tools. If no action is needed, simply reply "No action needed".`,
-    )
 
     return parts.join('\n')
   }
@@ -1061,50 +875,21 @@ export class OmpRpcAgentImpl implements AgentInterface {
     return result
   }
 
-  /** 构建模式特定指令 */
+  /** 构建模式特定指令(外置 mode-goal/loop/pipeline.md) */
   private buildModeInstructions(modeInfo: { mode: string, criteria?: string, stages?: string[], interval?: number }): string[] {
-    const lines: string[] = [`## Execution Mode: ${modeInfo.mode.toUpperCase()}`]
     if (modeInfo.mode === 'goal') {
-      lines.push(
-        `You are working in GOAL mode. The goal must be fully satisfied before completing.`,
-        modeInfo.criteria ? `**Goal Criteria**: ${modeInfo.criteria}` : '',
-        ``,
-        `## Your Job`,
-        `1. Dispatch the task to a worker if it has no children yet.`,
-        `2. When all children are COMPLETED: examine the artifacts and decide if the goal is met.`,
-        `3. If NOT met: dispatch NEW subtasks to address the gaps; if no existing worker fits a gap, create_team_agent a specialist first.`,
-        `4. If met: BEFORE completing, produce a FINAL CONCLUSION summarizing the end result. Call complete_task on the parent task with the deliverable set to a structured concluding summary that states: (a) the goal, (b) the judgment criteria, (c) what was completed (the child tasks), (d) the final outcome/result. Do NOT call complete_task without this concluding summary — the goal-mode close-out is incomplete without it.`,
-        `- Do NOT use work tools yourself. You are a coordinator.`,
-      )
+      return [renderPrompt('mode-goal', { criteria: modeInfo.criteria ?? '任务描述中的需求已全部完成' })]
     }
-    else if (modeInfo.mode === 'loop') {
-      lines.push(
-        `You are working in LOOP mode. The task repeats every ${(modeInfo.interval ?? 60000) / 1000}s.`,
-        ``,
-        `## Your Job`,
-        `1. Dispatch the task to a worker if it has no children yet.`,
-        `2. When the child is COMPLETED: complete the parent task. The system will re-submit it automatically.`,
-        `- Do NOT use work tools yourself. You are a coordinator.`,
-      )
+    if (modeInfo.mode === 'loop') {
+      return [renderPrompt('mode-loop', { interval: (modeInfo.interval ?? 60000) / 1000 })]
     }
-    else if (modeInfo.mode === 'pipeline') {
+    if (modeInfo.mode === 'pipeline') {
       const stageList = modeInfo.stages?.length
         ? modeInfo.stages.map((s, i) => `  Stage ${i + 1}: ${s}`).join('\n')
         : '  Decompose the task into sequential stages yourself.'
-      lines.push(
-        `You are working in PIPELINE mode. Execute stages sequentially.`,
-        `## Pipeline Stages`,
-        stageList,
-        ``,
-        `## Your Job`,
-        `1. For the first incomplete stage: dispatch a child task to a worker.`,
-        `2. Include the previous stage's output (from artifacts) in the description.`,
-        `3. Do NOT start stage N+1 until stage N is COMPLETED.`,
-        `4. When all stages are done: complete the parent task with the final deliverable.`,
-        `- Do NOT use work tools yourself. You are a coordinator.`,
-      )
+      return [renderPrompt('mode-pipeline', { stageList })]
     }
-    return lines.filter(l => l !== '')
+    return []
   }
 
   // ===== 内部:omp 客户端管理 =====
@@ -1123,11 +908,15 @@ export class OmpRpcAgentImpl implements AgentInterface {
       const command = this.config.command ?? 'omp'
       const client = new OmpRpcClient({
         command,
+        mode: this.rpcMode,
         args: this.config.args,
         cwd: this.config.cwd ?? process.cwd(),
         // 进程退出 → 注册表标记(供运行时资源监控);pid=-1 表示无法取得,忽略
         onExit: (pid, code) => {
-          if (pid > 0) markHarnessProcessExit(pid, code)
+          if (pid > 0) {
+            markHarnessProcessExit(pid, code)
+            markTerminalSessionExit(pid, code)
+          }
         },
       })
       await client.start()
@@ -1138,9 +927,18 @@ export class OmpRpcAgentImpl implements AgentInterface {
         registerHarnessProcess(pid, {
           harness: 'omp',
           command,
-          args: ['--mode', 'rpc', ...(this.config.args ?? [])],
+          args: ['--mode', this.rpcMode, ...(this.config.args ?? [])],
         })
         bindHarnessProcess(pid, {
+          agentId: this.selfAgentId,
+          channelId: this.channelId,
+          name: this.agentName,
+          role: this.agentRole,
+        })
+        // 终端镜像 tap:全部 RPC 帧 → /monitor 终端(实时 TUI 渲染 + HITL)
+        attachTerminalTap(client, {
+          pid,
+          harness: 'omp',
           agentId: this.selfAgentId,
           channelId: this.channelId,
           name: this.agentName,

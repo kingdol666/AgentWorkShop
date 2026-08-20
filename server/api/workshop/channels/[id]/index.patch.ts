@@ -4,15 +4,17 @@
  * - workspace 变更确保目录存在并卸载已装配成员(cwd 重载)
  * - enabled=0 停调度器并卸载全部成员
  */
-import { z } from 'zod'
+import { z } from 'zod'
 import { resolveUser } from '../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../utils/validate'
 import { defineApiHandler } from '../../../../utils/response'
-import { getWorkshopManager } from '../../../../plugins/workshop'
+import { getWorkshopManager } from '../../../../plugins/workshop'
+
 const patchChannelSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
+  scenarioPrompt: z.string().optional(),
   workspace: z.string().min(1).optional(),
   enabled: z.number().int().min(0).max(1).optional(),
 })

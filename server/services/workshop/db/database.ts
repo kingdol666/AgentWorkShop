@@ -26,6 +26,7 @@ const SCHEMA_SQL = `CREATE TABLE IF NOT EXISTS channels (
   id             TEXT PRIMARY KEY,
   name           TEXT NOT NULL,
   description    TEXT NOT NULL DEFAULT '',
+  scenario_prompt TEXT NOT NULL DEFAULT '',  -- v6:channel 级作业场景 prompt(全员注入)
   lead_agent_id  TEXT,
   workspace      TEXT NOT NULL DEFAULT '',
   enabled        INTEGER NOT NULL DEFAULT 1,
@@ -276,11 +277,13 @@ export interface ChannelRow {
   id: string
   name: string
   description: string
+  /** channel 级作业场景 prompt(注入全部成员 harness;空串 = 无场景) */
+  scenarioPrompt: string
   leadAgentId: string | null
   /** channel 独立工作目录(omp 子进程 cwd;空串表示未设置) */
   workspace: string
   enabled: number
-  /** 归属用户(null = 遗留公共数据) */
+  /** 归属用户(null = 遗留数据) */
   ownerUserId: string | null
   createdAt: string
   updatedAt: string
@@ -441,9 +444,18 @@ export function initWorkshopDb(db: DatabaseSync): void {
   db.exec('PRAGMA foreign_keys = ON;')
   db.exec(SCHEMA_SQL)
   migrateLegacySchema(db)
+  migrateAddColumn(db, 'channels', 'scenario_prompt', 'TEXT NOT NULL DEFAULT \'\'')
   migrateMissingForeignKeys(db)
   migrateDropOwnerFks(db)
   seedDefaultWorkshopData(db)
+}
+
+/** 通用加列迁移:列不存在时 ALTER TABLE ADD COLUMN(CREATE IF NOT EXISTS 不升级既有表) */
+function migrateAddColumn(db: DatabaseSync, table: string, column: string, ddl: string): void {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+  if (!cols.some(c => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`)
+  }
 }
 
 /** 检测表上是否存在 指向某表的列级外键 */

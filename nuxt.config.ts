@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, cpSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { loadConfig } from './app/config'
@@ -47,6 +47,8 @@ export default defineNuxtConfig({
     '@fontsource/ibm-plex-sans/600.css',
     '@fontsource/ibm-plex-mono/400.css',
     '@fontsource/ibm-plex-mono/500.css',
+    // harness 终端(/monitor)xterm 渲染样式(组件内动态加载 xterm,样式全局注入)
+    '@xterm/xterm/css/xterm.css',
   ],
 
   // 配置驱动注入：app 运行时通过 useRuntimeConfig().public 读取，无需在运行时读 fs
@@ -124,6 +126,17 @@ export default defineNuxtConfig({
             'globalThis._importMeta_||{url:import.meta.url,env:process.env}',
           )
           if (fixed !== src) writeFileSync(file, fixed)
+        }
+        // 外置 prompt 目录随产物分发(.AgentWorkShop/prompts → .output/.AgentWorkShop/prompts;
+        // 加载器优先解析 cwd 相对路径,生产脚本从项目根启动时双保险)
+        try {
+          const promptsSrc = join(process.cwd(), '.AgentWorkShop', 'prompts')
+          const promptsOut = join(process.cwd(), '.output', '.AgentWorkShop', 'prompts')
+          cpSync(promptsSrc, promptsOut, { recursive: true })
+          console.log('[build] prompts copied →', promptsOut)
+        }
+        catch (err) {
+          console.error('[build] prompts copy failed:', err)
         }
       },
     },
