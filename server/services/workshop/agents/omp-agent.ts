@@ -48,6 +48,7 @@ import {
   loadHostToolDefs,
   renderPrompt,
 } from '../prompts/loader'
+import { extractTaskMode } from '../runtime/execution-mode'
 
 // ===== 配置 =====
 
@@ -1136,6 +1137,15 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
         case 'cancel_task': {
           const taskId = req.arguments.task_id as string
+          // 守卫:goal/loop/pipeline 的 mode 父任务是用户的作业主任务,Agent 不得经工具取消
+          // (模型偶发误判会毁掉整个目标;终止主任务只能由用户在界面/REST 操作)。
+          // 目标未达成时的正确动作:dispatch_task 补派子任务;确认无法达成:complete_task 附结论说明。
+          const target = await ws.getTask(taskId).catch(() => null)
+          if (target && extractTaskMode(target)) {
+            return {
+              text: `拒绝:任务 ${taskId} 是 mode 父任务(${target.title}),不能用 cancel_task 取消。若目标未达成 → dispatch_task 派发子任务补齐差距;若确认无法达成 → complete_task 并在交付中说明未达成原因。终止整个作业请由用户操作。`,
+            }
+          }
           await ws.cancelTask(taskId)
           return { text: `任务 ${taskId} 已取消并移出 assignee 队列` }
         }
