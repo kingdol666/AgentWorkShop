@@ -44,15 +44,17 @@ const hasProgress = computed(() => {
   }
   return pct >= 0
 })
-const stateColor: Record<string, string> = {
-  SUBMITTED: 'default',
-  ASSIGNED: 'processing',
-  WORKING: 'processing',
-  WAITING: 'warning',
-  COMPLETED: 'success',
-  FAILED: 'error',
-  CANCELED: 'default',
+/** 状态 → koda tone(bg + dot) */
+const STATE_TONE: Record<string, { bg: string, dot: string }> = {
+  SUBMITTED: { bg: 'var(--tone-neutral-dot)', dot: 'var(--tone-neutral-dot)' },
+  ASSIGNED: { bg: 'var(--tone-info-bg)', dot: 'var(--tone-info-dot)' },
+  WORKING: { bg: 'var(--tone-info-bg)', dot: 'var(--tone-info-dot)' },
+  WAITING: { bg: 'var(--tone-warning-bg)', dot: 'var(--tone-warning-dot)' },
+  COMPLETED: { bg: 'var(--tone-success-bg)', dot: 'var(--tone-success-dot)' },
+  FAILED: { bg: 'var(--tone-danger-bg)', dot: 'var(--tone-danger-dot)' },
+  CANCELED: { bg: 'var(--tone-neutral-dot)', dot: 'var(--tone-neutral-dot)' },
 }
+const toneOf = (state: string) => STATE_TONE[state] ?? STATE_TONE.SUBMITTED!
 </script>
 
 <template>
@@ -65,12 +67,16 @@ const stateColor: Record<string, string> = {
         v-if="i > 0"
         class="chain-arrow"
       >→</span>
-      <a-tag
-        :color="stateColor[s] ?? 'default'"
-        class="task-tag"
+      <span
+        class="state-chip"
+        :style="{ background: toneOf(s).bg }"
+        :data-state="s"
       >
-        {{ s }}
-      </a-tag>
+        <span
+          class="state-dot"
+          :style="{ background: toneOf(s).dot }"
+        />{{ s }}
+      </span>
     </template>
     <span class="task-title">{{ title }}</span>
     <span
@@ -95,6 +101,23 @@ const stateColor: Record<string, string> = {
   flex-wrap: wrap;
   padding: 2px 0 2px 20px;
   font-size: 12px;
+}
+.state-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 1px 7px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  border-radius: 999px;
+}
+
+.state-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
 }
 .task-tag { margin: 0 !important; }
 .chain-arrow { font-size: 10px; opacity: 0.4; }

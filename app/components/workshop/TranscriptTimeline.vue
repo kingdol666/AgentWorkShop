@@ -132,9 +132,10 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
           等待事件…(提交任务后此处实时渲染 Agent 执行过程)
         </div>
         <workshop-event-block
-          v-for="b in blocks"
+          v-for="(b, i) in blocks"
           :key="b.id"
           :block="b"
+          :turn-start="i > 0 && blocks[i - 1]!.agentId !== b.agentId"
         />
       </div>
     </div>

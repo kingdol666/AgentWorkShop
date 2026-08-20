@@ -21,7 +21,7 @@ import ClusterMemory from '@/app/components/workshop/blocks/ClusterMemory.vue'
 import ClusterError from '@/app/components/workshop/blocks/ClusterError.vue'
 import ClusterOther from '@/app/components/workshop/blocks/ClusterOther.vue'
 
-const props = defineProps<{ block: EventBlock }>()
+const props = defineProps<{ block: EventBlock, turnStart?: boolean }>()
 
 const entities = useEntitiesStore()
 const cid = computed(() => props.block.events[0]?.channelId ?? '')
@@ -33,8 +33,34 @@ const agentLabel = computed(() => {
   return entities.agentName(cid.value, id)
 })
 const agentColor = computed(() => agentHueColor(props.block.agentId))
+/** 头像章首字母(名字或 id 首字符;system 用 ✳) */
+const agentInitial = computed(() => {
+  const id = props.block.agentId
+  if (!id) return '✳'
+  const name = entities.agentName(cid.value, id)
+  return (name || id).charAt(0).toUpperCase()
+})
 
 const meta = computed(() => KIND_META[props.block.kind])
+
+/** kind → tone 色点(koda tone 系统) */
+const KIND_TONE: Record<string, string> = {
+  stream: 'var(--tone-info-dot)',
+  tool: 'var(--tone-neutral-dot)',
+  status: 'var(--tone-neutral-dot)',
+  life: 'var(--tone-success-dot)',
+  route: 'var(--tone-info-dot)',
+  task: 'var(--tone-info-dot)',
+  artifact: 'var(--tone-success-dot)',
+  member: 'var(--tone-retry-dot)',
+  memory: 'var(--tone-warning-dot)',
+  error: 'var(--tone-danger-dot)',
+  other: 'var(--tone-neutral-dot)',
+}
+const kindTone = computed(() => KIND_TONE[props.block.kind] ?? 'var(--tone-neutral-dot)')
+
+/** 消费完整性观测:块首事件 seq + 块内事件数(浏览器测试对账用) */
+const firstSeq = computed(() => props.block.events[0]?.seq ?? 0)
 
 const KIND_COMPONENT: Record<string, Component> = {
   stream: ClusterStream,
@@ -55,18 +81,27 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
 <template>
   <section
     class="event-block"
+    :class="{ 'turn-start': turnStart }"
     :data-kind="block.kind"
     :data-settled="block.settled ? 'true' : 'false'"
     :data-covered="block.coveredBy ? 'true' : 'false'"
+    :data-seq="firstSeq"
+    :data-events="block.events.length"
+    :data-folded="block.folded"
   >
     <header class="block-head">
       <span
-        class="agent-dot"
+        class="agent-avatar"
         :style="{ background: agentColor }"
-        :title="block.agentId ?? 'system'"
-      />
+        :title="agentLabel"
+      >{{ agentInitial }}</span>
       <span class="agent-name">{{ agentLabel }}</span>
-      <span class="kind">{{ meta.label }}</span>
+      <span class="kind">
+        <span
+          class="kind-dot"
+          :style="{ background: kindTone }"
+        />{{ meta.label }}
+      </span>
       <span class="head-right">
         <span
           v-if="block.folded > 0"
@@ -97,6 +132,13 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   transition: border-color 0.15s ease, background 0.15s ease;
   animation: block-in 0.22s cubic-bezier(0.2, 0.6, 0.3, 1);
 }
+
+/* turn 边界:不同 agent 的新回合开始 → 加大间距 + 顶部 hairline(现代 harness 会话分节感) */
+.event-block.turn-start {
+  margin-top: 12px;
+  border-top: 1px solid var(--divider-hair);
+  padding-top: 7px;
+}
 @keyframes block-in {
   from {
     opacity: 0;
@@ -125,13 +167,28 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   padding-bottom: 1px;
   font-family: var(--font-mono);
 }
-.agent-dot {
+.agent-avatar {
+  display: flex;
   flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  margin-left: 6px;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 5px;
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 650;
+  color: var(--paper-raised);
   border-radius: 50%;
-  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.kind-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 4px;
+  vertical-align: 1px;
+  border-radius: 50%;
 }
 .agent-name {
   overflow: hidden;
