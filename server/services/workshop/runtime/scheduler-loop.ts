@@ -185,7 +185,30 @@ export class SchedulerLoop {
   private shouldSupervise(snapshot: SupervisionSnapshot): boolean {
     if (this.lead.supervise === null) return false // 无 LLM 决策能力,规则引擎自走
     if (this.lastSuperviseAt === 0) return true // 首轮
+    // 收尾挂起例外:父任务 WAITING 且子任务全部终态(有完成交付)——指纹虽稳定,
+    // lead 也必须获得监督回合做目标判定收尾(否则作废尝试会永久阻塞 goal 闭环)。
+    // 30s 冷却:LLM 反复不收尾时不会每 tick 消耗回合
+    if (this.hasCloseableParent(snapshot)) {
+      if (Date.now() - this.lastCloseOutAt >= 30_000) {
+        this.lastCloseOutAt = Date.now()
+        return true
+      }
+      return false
+    }
     return this.superviseFingerprint(snapshot) !== this.lastFingerprint
+  }
+
+  private lastCloseOutAt = 0
+
+  /** 存在"子任务全部终态且至少一个完成交付"的 WAITING 父任务(待 lead 判定收尾) */
+  private hasCloseableParent(snapshot: SupervisionSnapshot): boolean {
+    return snapshot.tasks.some((t) => {
+      if (t.state !== 'WAITING') return false
+      const children = snapshot.tasks.filter(c => c.parentId === t.id)
+      if (children.length === 0) return false
+      return children.every(c => TERMINAL_TASK_STATES[c.state] === true)
+        && children.some(c => c.state === 'COMPLETED')
+    })
   }
 
   /**
@@ -344,7 +367,9 @@ export class SchedulerLoop {
     }
 
     // 父任务终结:子任务全部终态且存在不可重试的 FAILED/CANCELED
-    // → 父任务无法交付 → cancel 父任务(避免 WAITING 永挂;lead 可重新提交)
+    // → 父任务无法交付 → cancel 父任务(避免 WAITING 永挂;lead 可重新提交)。
+    // 已有 COMPLETED 交付的父任务不自动取消——作废尝试(FAILED/CANCELED)不阻塞,
+    // 收尾判定属于 lead(goal 模式按目标达成度而非子任务簿记收尾)
     for (const task of tasks) {
       const children = tasks.filter(t => t.parentId === task.id)
       if (children.length === 0) continue
@@ -352,7 +377,8 @@ export class SchedulerLoop {
       const allTerminal = children.every(c => TERMINAL_TASK_STATES[c.state] === true)
       const anyUnsuccessful = children.some(c => c.state !== 'COMPLETED')
       const hasRetryableFailure = children.some(c => c.state === 'FAILED' && c.retryCount < 3)
-      if (allTerminal && anyUnsuccessful && !hasRetryableFailure) {
+      const hasCompletedDeliverable = children.some(c => c.state === 'COMPLETED')
+      if (allTerminal && anyUnsuccessful && !hasRetryableFailure && !hasCompletedDeliverable) {
         decisions.push({ kind: 'cancel', taskId: task.id })
       }
     }
