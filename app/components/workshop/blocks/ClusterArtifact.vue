@@ -62,7 +62,7 @@ const expanded = ref(props.block.dupStream)
   cursor: pointer;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 .mini-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
 .artifact-cluster > :deep(.artifact-card) {

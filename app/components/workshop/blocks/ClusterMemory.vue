@@ -58,7 +58,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   padding: 0 5px;
   font-size: 8.5px;
   letter-spacing: 0.08em;
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 .mem-scope[data-scope='shared'] { color: var(--accent-violet); background: color-mix(in srgb, var(--accent-violet) 14%, transparent); }
 .mem-scope[data-scope='private'] { color: var(--accent-cobalt); background: color-mix(in srgb, var(--accent-cobalt) 12%, transparent); }
@@ -70,7 +70,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   cursor: pointer;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 .more-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
 </style>

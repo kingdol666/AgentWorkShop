@@ -115,7 +115,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   align-items: center;
   padding: 0 6px;
   font-size: 9.5px;
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 .route-badge[data-tone='assign'] { color: var(--accent-cobalt); background: color-mix(in srgb, var(--accent-cobalt) 12%, transparent); }
 .route-badge[data-tone='immediate'] { color: var(--accent-amber); background: color-mix(in srgb, var(--accent-amber) 15%, transparent); }
@@ -150,7 +150,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   cursor: pointer;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 .expand-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
 .more-btn {
@@ -161,7 +161,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   cursor: pointer;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 .more-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
 </style>

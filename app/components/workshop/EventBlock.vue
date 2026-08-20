@@ -159,12 +159,12 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   padding: 0 4px;
   color: var(--accent-moss);
   background: color-mix(in srgb, var(--accent-moss) 12%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 .merged {
   padding: 0 4px;
   background: color-mix(in srgb, var(--ink) 7%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 .time { flex: 0 0 auto; width: 50px; text-align: right; }
 </style>

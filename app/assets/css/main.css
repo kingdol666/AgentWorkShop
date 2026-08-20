@@ -1,82 +1,115 @@
 /* ============================================================
- * AgentWorkShop 设计系统 — 「制图台 The Draftsman's Bench」
+ * AgentWorkShop 设计系统 — 「Warm Paper / Koda 风格重塑」
  * ------------------------------------------------------------
- * 概念:工程师的绘图桌。温暖的牛皮纸 + 普鲁士墨水 + 钴蓝 + 朱红。
- * 排版:Fraunces(展示衬线)/ IBM Plex Sans(正文)/ IBM Plex Mono(数据与标签)。
- * 质素:2px 直角、硬边偏移投影、蓝图网格、角标刻度、颗粒噪点。
- * 所有颜色走 CSS 变量;暗色变体经 html.dark 覆盖。
+ * 概念:暖纸中性底 + 纯黑主色 + 无阴影分层(hairline 边框 + surface 阶梯)。
+ * 排版:Fraunces(展示衬线)/ IBM Plex Sans(正文)/ IBM Plex Mono(标签,大写字距)。
+ * 质素:圆角面板(14/12/10/8)、tone 状态系统(neutral/success/info/warning/danger/retry)、
+ *       56px 顶栏 hairline、克制动效(120-320ms ease-out-quart)。
+ * 所有颜色走 CSS 变量;暗色变体经 html.dark 覆盖(真中性灰阶)。
  * ============================================================ */
 
 :root {
-  /* 主色(与 config.yml -> --color-primary 一致,antd 由 ConfigProvider 驱动) */
-  --color-primary: #2e51c8;
+  /* 主色:纯黑 interactive active(antd 由 ConfigProvider 驱动) */
+  --color-primary: #000000;
 
-  /* 油墨与纸张(亮:牛皮纸) */
-  --ink: #1b2733;
-  --ink-soft: rgb(27 39 51 / 72%);
-  --ink-faint: rgb(27 39 51 / 48%);
-  --paper: #ece8dc;
-  --paper-raised: #f8f6ee;
-  --paper-deep: #e3dcca;
-  --line: #d3ccb8;
-  --line-strong: #b9b096;
-  --grid-line: rgb(27 39 51 / 5.5%);
+  /* 油墨与纸张(亮:暖纸中性 — koda warm paper) */
+  --ink: #101010;
+  --ink-soft: #45403b;
+  --ink-faint: #615b54;
+  --ink-fainter: #7a736c;
+  --paper: #f9f7f3;
+  --paper-raised: #fffdf9;
+  --paper-deep: #f5f3eb;
+  --paper-tint: #eceae3;
+  --line: #e5e2da;
+  --line-strong: #c5c0b1;
+  --divider-hair: rgb(16 16 16 / 6%);
+  --hover-tint: rgb(16 16 16 / 4%);
 
-  /* 强调色 */
-  --accent-cobalt: #2e51c8;
-  --accent-vermilion: #c23b2e;
-  --accent-moss: #3e7a47;
-  --accent-amber: #b45f1a;
-  --accent-violet: #6b4e9e;
+  /* 强调色(黑主色 + tone 点色系统) */
+  --accent-cobalt: #000000;
+  --accent-vermilion: #c05b6c;
+  --accent-moss: #4f8a61;
+  --accent-amber: #e4b454;
+  --accent-violet: #8f6ccf;
+
+  /* tone 状态系统(koda tones:每态 bg/strong/border/dot) */
+  --tone-neutral-dot: #939084;
+  --tone-success-bg: #e5f0e9;
+  --tone-success-dot: #4f8a61;
+  --tone-info-bg: #dfeafe;
+  --tone-info-dot: #0a59d2;
+  --tone-warning-bg: #f7ead6;
+  --tone-warning-dot: #e4b454;
+  --tone-danger-bg: #f9e5e6;
+  --tone-danger-dot: #c05b6c;
+  --tone-retry-bg: #ece4f8;
+  --tone-retry-dot: #8f6ccf;
+
+  /* 圆角体系 */
+  --radius-shell: 14px;
+  --radius-panel: 12px;
+  --radius-panel-sm: 10px;
+  --radius-chip: 8px;
+
+  /* 动效 */
+  --ease-out-quart: cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-fast: 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-base: 200ms cubic-bezier(0.22, 1, 0.36, 1);
 
   /* 字体 */
   --font-display: 'Fraunces Variable', Georgia, 'Songti SC', 'Noto Serif SC', serif;
   --font-body: 'IBM Plex Sans', 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', 'Cascadia Mono', ui-monospace, consolas, monospace;
 
-  /* 语义变量(供全局覆盖使用,antd 侧另有 useToken) */
-  --shadow-offset: 3px 3px 0 rgb(27 39 51 / 10%);
-  --shadow-card: 0 1px 0 rgb(27 39 51 / 6%), 0 6px 18px -10px rgb(27 39 51 / 18%);
+  /* 无阴影分层:深度靠 surface 阶梯 + hairline */
+  --shadow-offset: none;
+  --shadow-card: none;
 
-  --sider-bg: #131a23;
-  --sider-ink: #c9d4d2;
-  --sider-ink-faint: rgb(201 212 210 / 45%);
+  --sider-bg: #f7f3ec;
+  --sider-ink: #45403b;
+  --sider-ink-faint: #7a736c;
 }
 
 html.dark {
-  --ink: #e8edf2;
-  --ink-soft: rgb(232 237 242 / 72%);
-  --ink-faint: rgb(232 237 242 / 46%);
-  --paper: #0c1117;
-  --paper-raised: #141b24;
-  --paper-deep: #10161d;
-  --line: #263140;
-  --line-strong: #36455a;
-  --grid-line: rgb(126 166 255 / 4%);
+  /* 真中性灰阶(koda true neutral dark) */
+  --ink: #f5f5f5;
+  --ink-soft: #b8b8b8;
+  --ink-faint: #9a9a9a;
+  --ink-fainter: #6a6a6a;
+  --paper: #0c0c0c;
+  --paper-raised: #161616;
+  --paper-deep: #141414;
+  --paper-tint: #1c1c1c;
+  --line: #1f1f1f;
+  --line-strong: #2a2a2a;
+  --divider-hair: rgb(255 255 255 / 4%);
+  --hover-tint: rgb(255 255 255 / 3%);
 
-  /* 夜班模式:暗底上的钴蓝提亮(边框/文本兼顾可读) */
-  --accent-cobalt: #6f8ef0;
+  /* 主色:纯白 interactive active */
+  --accent-cobalt: #ffffff;
 
-  --shadow-offset: 3px 3px 0 rgb(0 0 0 / 32%);
-  --shadow-card: 0 1px 0 rgb(0 0 0 / 35%), 0 10px 26px -12px rgb(0 0 0 / 55%);
+  --tone-neutral-dot: #6a6a6a;
+  --tone-success-bg: rgb(79 138 97 / 14%);
+  --tone-success-dot: #6dba83;
+  --tone-info-bg: rgb(10 89 210 / 16%);
+  --tone-info-dot: #6f9df2;
+  --tone-warning-bg: rgb(228 180 84 / 12%);
+  --tone-warning-dot: #e4b454;
+  --tone-danger-bg: rgb(192 91 108 / 14%);
+  --tone-danger-dot: #d97f8f;
+  --tone-retry-bg: rgb(143 108 207 / 14%);
+  --tone-retry-dot: #a98ce0;
 
-  --sider-bg: #0a0f14;
-  --sider-ink: #c7d0cb;
-  --sider-ink-faint: rgb(199 208 203 / 42%);
+  --shadow-offset: none;
+  --shadow-card: none;
+
+  --sider-bg: #0f0f0f;
+  --sider-ink: #b8b8b8;
+  --sider-ink-faint: #6a6a6a;
 }
 
-/* 夜班模式:暗底下蓝图网格与噪点收敛(深色工作台的干净底) */
-html.dark body {
-  background-image:
-    radial-gradient(1100px 500px at 85% -10%, rgb(111 142 240 / 4%), transparent 60%),
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: auto, 28px 28px, 28px 28px;
-}
-
-html.dark #__nuxt::after {
-  opacity: 0.3;
-}
+/* 暗色同样为纯 canvas(真中性) */
 
 * {
   box-sizing: border-box;
@@ -92,29 +125,15 @@ body,
 
 body {
   font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  letter-spacing: -0.014em;
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* 制图纸:底纸 + 蓝图网格 + 暖色晕染 */
+  text-rendering: optimizeLegibility;
+  /* 纯暖纸 canvas:无网格/无噪点,层次交给 surface 阶梯与 hairline */
   background-color: var(--paper);
-  background-image:
-    radial-gradient(1100px 500px at 85% -10%, rgb(46 81 200 / 5%), transparent 60%),
-    radial-gradient(900px 420px at -10% 110%, rgb(194 59 46 / 4.5%), transparent 55%),
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: auto, auto, 24px 24px, 24px 24px;
-  background-attachment: fixed;
-}
-
-/* 颗粒噪点叠层(纯 CSS data-URI,不加载外部资源) */
-#__nuxt::after {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  content: '';
-  opacity: 0.5;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
 }
 
 /* ---------- 标题层级:展示衬线 ---------- */
@@ -124,7 +143,8 @@ h2,
 .ant-modal-title,
 .ant-drawer .ant-drawer-title {
   font-family: var(--font-display);
-  letter-spacing: 0.01em;
+  font-optical-sizing: auto;
+  letter-spacing: -0.025em;
 }
 
 h1,
@@ -279,47 +299,33 @@ h2 {
   background: transparent;
 }
 
-/* 卡片:直角 + 硬边偏移投影 */
+/* 卡片:panel 底 + hairline + 面板圆角(koda shadowless) */
 .ant-card {
   background: var(--paper-raised);
   border-color: var(--line) !important;
-  border-radius: 2px !important;
-  box-shadow: var(--shadow-card);
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+  border-radius: var(--radius-panel, 12px) !important;
+  transition: border-color var(--transition-base, 0.2s ease);
 }
 
 .ant-card:hover {
   border-color: var(--line-strong) !important;
 }
 
-.ant-card-hoverable:hover {
-  box-shadow: var(--shadow-offset);
-  transform: translate(-1px, -1px);
-}
-
-/* 按钮:方角;主按钮硬投影由 antd primaryShadow token 驱动,按压时落印(印章感) */
+/* 按钮:panel-sm 圆角,黑主色由 antd token 驱动 */
 .ant-btn {
-  border-radius: 2px !important;
+  border-radius: var(--radius-panel-sm, 10px) !important;
   font-weight: 500;
   box-shadow: none;
-  transition: all 0.16s ease;
-}
-
-.ant-btn-primary:not(:disabled):active {
-  box-shadow: 0 0 0 transparent !important;
-  transform: translate(2px, 2px);
+  transition: all var(--transition-fast, 0.12s ease);
 }
 
 .ant-btn-default:not(:disabled):hover {
-  border-color: var(--accent-cobalt);
-  color: var(--accent-cobalt);
+  border-color: var(--line-strong);
+  color: var(--ink);
 }
 
 .ant-radio-button-wrapper {
-  border-radius: 0 !important;
+  border-radius: var(--radius-chip, 8px) !important;
 }
 
 /* 表单控件:方角 + 钴蓝聚焦 */
@@ -330,21 +336,21 @@ h2 {
 .ant-picker,
 .ant-input-search .ant-input,
 .ant-input-group-addon {
-  border-radius: 2px !important;
+  border-radius: var(--radius-panel-sm, 10px) !important;
 }
 
 .ant-select-dropdown,
 .ant-picker-dropdown,
 .ant-dropdown-menu {
-  border-radius: 2px !important;
+  border-radius: var(--radius-panel-sm, 10px) !important;
 }
 
-/* 标签:等宽小标签,像打孔标签纸 */
+/* 标签:mono 小标签 chip(koda chip 质感) */
 .ant-tag {
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.02em;
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 
 /* 表格:表头等宽大写(蓝图图例风格),行线如淡铅笔线 */
@@ -363,7 +369,7 @@ h2 {
 }
 
 .ant-table .ant-table-tbody > tr > td {
-  border-bottom-color: var(--grid-line);
+  border-bottom-color: var(--divider-hair);
 }
 
 .ant-table .ant-table-tbody > tr:hover > td {
@@ -393,10 +399,10 @@ h2 {
   height: 2px;
 }
 
-/* 弹层(弹窗/抽屉):直角,标题展示衬线 */
+/* 弹层(弹窗/抽屉):panel 圆角 */
 .ant-modal-content,
 .ant-drawer-content {
-  border-radius: 2px !important;
+  border-radius: var(--radius-panel, 12px) !important;
 }
 
 .ant-modal-header,
@@ -407,14 +413,14 @@ h2 {
 /* 工具提示与消息 */
 .ant-tooltip .ant-tooltip-inner,
 .ant-message-notice-content {
-  border-radius: 2px !important;
+  border-radius: var(--radius-chip, 8px) !important;
 }
 
-/* 徽标:方角 */
+/* 徽标:pill */
 .ant-badge-count,
 .ant-badge .ant-badge-count {
   font-family: var(--font-mono);
-  border-radius: 2px;
+  border-radius: 999px;
   box-shadow: none;
 }
 
@@ -422,7 +428,7 @@ h2 {
 .ant-collapse {
   background: transparent;
   border-color: var(--line);
-  border-radius: 2px;
+  border-radius: var(--radius-panel-sm, 10px);
 }
 
 .ant-empty .ant-empty-description {
@@ -435,13 +441,13 @@ h2 {
   opacity: 0.7;
 }
 
-/* 进度条:方角、钴蓝轨道(仪表式) */
+/* 进度条:圆角轨道 */
 .ant-progress-bg {
-  border-radius: 0 !important;
+  border-radius: 999px !important;
 }
 
 .ant-progress-inner {
-  border-radius: 0 !important;
+  border-radius: 999px !important;
   background: var(--paper-deep);
 }
 

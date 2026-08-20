@@ -20,7 +20,7 @@ const site = useSiteConfig()
         '--app-text-secondary': token?.colorTextSecondary,
         '--app-border': token?.colorBorderSecondary,
         '--app-fill': token?.colorFillQuaternary,
-        '--app-header-h': '64px',
+        '--app-header-h': '56px',
         '--app-footer-h': '46px',
       }"
     >

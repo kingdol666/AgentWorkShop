@@ -254,11 +254,11 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
 .harness {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - var(--app-header-h, 60px) - var(--app-footer-h, 46px) - 16px);
+  height: calc(100dvh - var(--app-header-h, 56px) - var(--app-footer-h, 46px) - 16px);
   min-height: 0;
   margin: 0;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: var(--radius-shell, 14px);
   overflow: hidden;
   background: var(--paper-raised);
   box-shadow: var(--shadow-card);
@@ -292,7 +292,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   text-transform: uppercase;
   padding: 1px 6px;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: var(--radius-shell, 14px);
 }
 .ws-state[data-state='open'] { color: var(--accent-moss); border-color: color-mix(in srgb, var(--accent-moss) 45%, transparent); }
 .ws-state[data-state='connecting'] { color: var(--accent-amber); border-color: color-mix(in srgb, var(--accent-amber) 45%, transparent); }
@@ -311,7 +311,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   cursor: pointer;
   background: transparent;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: var(--radius-shell, 14px);
   transition: all 0.15s ease;
 }
 .pane-toggle:hover {

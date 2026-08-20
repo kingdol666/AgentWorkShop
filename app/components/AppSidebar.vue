@@ -69,7 +69,7 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
     </div>
 
     <a-menu
-      theme="dark"
+      theme="light"
       mode="inline"
       :selected-keys="selectedKeys"
       class="app-menu"
@@ -114,11 +114,8 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
   top: 0;
   height: 100vh;
   overflow: hidden auto;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 2.5%), transparent 220px),
-    var(--sider-bg);
-  border-right: 1px solid rgb(255 255 255 / 5%);
-  box-shadow: 2px 0 12px rgb(0 0 0 / 18%);
+  background: var(--sider-bg);
+  border-right: 1px solid var(--divider-hair);
   z-index: 20;
 }
 
@@ -130,37 +127,36 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 64px;
-  padding: 0 18px;
+  height: 56px;
+  padding: 0 16px;
   overflow: hidden;
-  border-bottom: 1px solid rgb(255 255 255 / 7%);
+  border-bottom: 1px solid var(--divider-hair);
 }
 
-/* 铭牌:图纸白方印 + 衬线大写 A 与朱红句点 */
+/* 铭牌:黑方印 + 白衬线 A(koda 黑主色标识) */
 .logo-mark {
   display: flex;
   flex: 0 0 auto;
   align-items: baseline;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding-top: 7px;
+  width: 30px;
+  height: 30px;
+  padding-top: 6px;
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   font-style: italic;
   line-height: 1;
-  color: var(--ink);
-  background: #f4efe0;
-  border: 1px solid rgb(255 255 255 / 14%);
-  border-radius: 2px;
-  box-shadow: 2px 2px 0 rgb(0 0 0 / 35%);
+  color: var(--paper-raised);
+  background: var(--accent-cobalt);
+  border-radius: var(--radius-chip, 8px);
 }
 
 .logo-mark i {
   font-size: 11px;
   font-style: normal;
-  color: var(--accent-vermilion);
+  color: var(--paper-raised);
+  opacity: 0.55;
 }
 
 .logo-text {
@@ -172,16 +168,16 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
 
 .logo-title {
   font-family: var(--font-display);
-  font-size: 15.5px;
+  font-size: 15px;
   font-weight: 590;
-  letter-spacing: 0.01em;
-  color: #f0ebdd;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
 .logo-sub {
   font-family: var(--font-mono);
   font-size: 8.5px;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--sider-ink-faint);
 }
@@ -190,7 +186,7 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
   padding: 18px 22px 6px;
   font-family: var(--font-mono);
   font-size: 9.5px;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--sider-ink-faint);
 }
@@ -205,10 +201,11 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
   display: flex;
   align-items: center;
   width: 100%;
-  height: 42px;
-  margin: 2px 0;
-  line-height: 42px;
+  min-height: 34px;
+  margin: 1px 0;
+  line-height: 34px;
   border-inline-end: none !important;
+  border-radius: var(--radius-panel-sm, 10px);
 }
 
 :deep(.app-menu .ant-menu-item .ant-menu-title-content) {
@@ -220,14 +217,13 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
 
 .menu-icon {
   font-size: 16px;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .menu-label {
-  font-family: var(--font-mono);
   font-size: 12.5px;
   font-weight: 500;
-  letter-spacing: 0.03em;
+  letter-spacing: -0.02em;
 }
 
 .menu-index {
@@ -237,19 +233,18 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
   opacity: 0.38;
 }
 
-/* 选中项:左缘朱红标尺棱(inset shadow 保证压过 antd 默认选中色) */
+/* 选中项:panel-strong 圆角块 + 黑图标(koda is-active) */
 :deep(.app-menu .ant-menu-item-selected) {
-  position: relative;
-  background: rgb(255 255 255 / 8%) !important;
-  box-shadow: inset 3px 0 0 var(--accent-vermilion) !important;
+  background: var(--paper-tint) !important;
+  box-shadow: none !important;
 }
 
 :deep(.app-menu .ant-menu-item-selected .menu-icon) {
-  color: var(--accent-vermilion);
+  color: var(--ink);
 }
 
 :deep(.app-menu .ant-menu-item:hover) {
-  transform: translateX(2px);
+  background: var(--hover-tint) !important;
 }
 
 .sider-footer {
@@ -263,7 +258,7 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
 .footer-rule {
   height: 1px;
   margin-bottom: 10px;
-  background: linear-gradient(90deg, rgb(255 255 255 / 18%), transparent);
+  background: var(--divider-hair);
 }
 
 .footer-line {
@@ -279,14 +274,15 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
 .footer-dot {
   width: 4px;
   height: 4px;
-  background: var(--accent-moss);
+  border-radius: 999px;
+  background: var(--tone-success-dot);
 }
 
 .footer-note {
   margin-top: 5px;
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--sider-ink-faint);
   opacity: 0.7;
@@ -294,7 +290,7 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
 
 .slide-fade-enter-active,
 .slide-fade-leave-active {
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .slide-fade-enter-from,

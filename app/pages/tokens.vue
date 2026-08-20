@@ -321,7 +321,7 @@ h2 { margin: 0 0 4px; font-family: var(--font-display); }
   word-break: break-all;
   background: var(--app-fill);
   border: 1px solid var(--app-border);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
   cursor: pointer;
 }
 

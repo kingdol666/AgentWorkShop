@@ -121,12 +121,11 @@ const childCount = (id: string): number =>
   cursor: pointer;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .card:hover {
   border-color: var(--accent-cobalt);
-  box-shadow: 2px 2px 0 color-mix(in srgb, var(--accent-cobalt) 16%, transparent);
   transform: translate(-1px, -1px);
 }
 .card-title {

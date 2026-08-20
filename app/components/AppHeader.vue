@@ -230,11 +230,10 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: var(--app-header-h, 64px);
+  height: var(--app-header-h, 56px);
   padding: 0 20px 0 10px;
   overflow: hidden;
-  border-bottom: 1px solid;
-  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--divider-hair);
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
@@ -250,8 +249,7 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 .rail-mark {
   flex: 0 0 auto;
   font-size: 15px;
-  color: var(--accent-vermilion);
-  opacity: 0.85;
+  color: var(--ink-faint);
 }
 
 .trail {
@@ -281,7 +279,7 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   flex: 0 0 auto;
   width: 16px;
   height: 0;
-  border-top: 1px dashed var(--line-strong, var(--line));
+  border-top: 1px dashed var(--line-strong);
 }
 
 /* 航点票券:方角描边,悬停抬升,当前页钴蓝填充 + 朱红"在此"角标 */
@@ -296,22 +294,19 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   font-family: var(--font-mono);
   color: var(--app-text, var(--ink-soft));
   cursor: pointer;
-  background: var(--app-bg-container, transparent);
-  border: 1px solid var(--app-border, var(--line));
-  border-radius: 2px;
-  transition: all 0.16s ease;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip, 8px);
+  transition: background var(--transition-fast, 0.12s ease), color var(--transition-fast, 0.12s ease);
 }
 
 .trail-node:hover {
-  color: var(--accent-cobalt);
-  border-color: var(--accent-cobalt);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--accent-cobalt) 16%, transparent);
+  color: var(--ink);
+  background: var(--paper-tint);
 }
 
 .trail-node:active {
-  transform: translateY(0);
-  box-shadow: none;
+  background: var(--paper-tint);
 }
 
 .trail-node:focus-visible {
@@ -323,7 +318,6 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   color: var(--paper);
   background: var(--accent-cobalt);
   border-color: var(--accent-cobalt);
-  box-shadow: 2px 2px 0 rgb(27 39 51 / 22%);
 }
 
 .node-index {
@@ -353,10 +347,10 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   right: 0;
   width: 0;
   height: 0;
-  border-top: 8px solid var(--accent-vermilion);
-  border-bottom: 8px solid transparent;
-  border-left: 8px solid transparent;
-  border-start-end-radius: 1px;
+  border-top: 7px solid var(--paper-raised);
+  border-bottom: 7px solid transparent;
+  border-left: 7px solid transparent;
+  opacity: 0.85;
 }
 
 /* 盖章进场:微缩放 + 轻微落章偏转 */
@@ -390,7 +384,7 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   left: 0;
   width: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent-cobalt) 30%, var(--accent-vermilion));
+  background: linear-gradient(90deg, transparent, var(--accent-cobalt) 30%, var(--accent-cobalt));
   opacity: 0;
   pointer-events: none;
 }
@@ -425,13 +419,12 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   width: 34px;
   height: 34px;
   font-size: 16px;
-  color: var(--app-text, var(--ink));
+  color: var(--app-text, var(--ink-soft));
   cursor: pointer;
-  background: var(--app-bg-container, transparent);
-  border: 1px solid var(--app-border, var(--line));
-  border-radius: 2px;
-  box-shadow: 2px 2px 0 var(--app-bg-layout, transparent);
-  transition: all 0.16s ease;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel-sm, 10px);
+  transition: background var(--transition-fast, 0.12s ease), color var(--transition-fast, 0.12s ease);
 }
 
 .collapse-btn:hover,
@@ -439,7 +432,6 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   color: var(--accent-cobalt);
   border-color: var(--accent-cobalt);
   transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 color-mix(in srgb, var(--accent-cobalt) 14%, transparent);
 }
 
 .collapse-btn:active,
@@ -466,8 +458,8 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 }
 
 .user-chip:hover {
-  border-color: var(--app-border, var(--line));
-  background: var(--app-bg-container, transparent);
+  border-color: var(--line);
+  background: var(--hover-tint);
 }
 
 .user-initial {
@@ -481,7 +473,7 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   font-style: italic;
   color: var(--paper);
   background: var(--accent-cobalt);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
   box-shadow: 1.5px 1.5px 0 rgb(27 39 51 / 30%);
 }
 

@@ -10,40 +10,41 @@ const config = useRuntimeConfig().public
 const antdLocale = computed(() => (locale.value.startsWith('en') ? enUS : zhCN))
 
 /**
- * 制图台主题:亮 = 牛皮纸制图室;暗 = 夜间蓝图。
+ * 暖纸主题(koda 风格):亮 = 暖纸中性 + 纯黑主色;暗 = 真中性灰阶 + 纯白主色。
  * antd 全组件 token 由此驱动,细节覆盖见 main.css。
  */
 const themeConfig = computed(() => {
   const dark = store.isDark
-  const paper = dark ? '#0f151b' : '#ece8dc' // colorBgLayout
-  const raised = dark ? '#1a222c' : '#f8f6ee' // colorBgContainer
-  const elevated = dark ? '#1e2833' : '#fcfaf3' // 弹层
-  const inkText = dark ? '#e6e1d3' : '#1b2733'
-  const inkSoft = dark ? 'rgba(230, 225, 211, 0.66)' : 'rgba(27, 39, 51, 0.68)'
-  const borderLine = dark ? '#2a3644' : '#d3ccb8'
-  const borderSoft = dark ? '#1f2934' : '#e2dccb'
-  const fillDeep = dark ? '#141c24' : '#e3dcca'
-  const fillFaint = dark ? 'rgba(126, 166, 255, 0.06)' : 'rgba(27, 39, 51, 0.045)'
+  const accent = dark ? '#ffffff' : '#000000'
+  const paper = dark ? '#0c0c0c' : '#f9f7f3' // colorBgLayout(canvas)
+  const raised = dark ? '#161616' : '#fffdf9' // colorBgContainer(panel)
+  const elevated = dark ? '#1c1c1c' : '#fffdf9' // 弹层
+  const inkText = dark ? '#f5f5f5' : '#101010'
+  const inkSoft = dark ? 'rgba(184, 184, 184, 0.9)' : '#45403b'
+  const borderLine = dark ? '#2a2a2a' : '#c5c0b1'
+  const borderSoft = dark ? '#1f1f1f' : '#e5e2da'
+  const fillDeep = dark ? '#141414' : '#f5f3eb'
+  const fillFaint = dark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(16, 16, 16, 0.04)'
 
   return {
     algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
-      colorPrimary: config.primaryColor as string,
-      colorInfo: config.primaryColor as string,
-      colorLink: config.primaryColor as string,
-      borderRadius: 2,
+      colorPrimary: accent,
+      colorInfo: dark ? '#6f9df2' : '#0a59d2',
+      colorLink: accent,
+      borderRadius: 10,
       fontFamily: '\'IBM Plex Sans\', \'PingFang SC\', \'Microsoft YaHei\', \'Segoe UI\', sans-serif',
       colorBgLayout: paper,
       colorBgContainer: raised,
       colorBgElevated: elevated,
       colorText: inkText,
       colorTextSecondary: inkSoft,
-      colorTextPlaceholder: dark ? 'rgba(230, 225, 211, 0.3)' : 'rgba(27, 39, 51, 0.35)',
+      colorTextPlaceholder: dark ? 'rgba(154, 154, 154, 0.5)' : 'rgba(97, 91, 84, 0.55)',
       colorBorder: borderLine,
       colorBorderSecondary: borderSoft,
       colorFillQuaternary: fillFaint,
-      colorSplit: borderLine,
-      controlOutline: 'rgba(46, 81, 200, 0.15)',
+      colorSplit: borderSoft,
+      controlOutline: dark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.12)',
       lineWidth: 1,
     },
     components: {
@@ -52,14 +53,16 @@ const themeConfig = computed(() => {
         headerFontSize: 15,
       },
       Button: {
-        primaryShadow: dark ? '2px 2px 0 rgba(0, 0, 0, 0.45)' : '2px 2px 0 rgba(27, 39, 51, 0.35)',
+        primaryShadow: 'none',
+        defaultShadow: 'none',
+        dangerShadow: 'none',
         fontWeight: 500,
       },
       Table: {
         headerBg: fillDeep,
         headerColor: inkText,
         headerSplitColor: 'transparent',
-        rowHoverBg: dark ? 'rgba(59, 98, 226, 0.1)' : 'rgba(46, 81, 200, 0.05)',
+        rowHoverBg: dark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(16, 16, 16, 0.035)',
       },
       Descriptions: {
         labelBg: fillFaint,

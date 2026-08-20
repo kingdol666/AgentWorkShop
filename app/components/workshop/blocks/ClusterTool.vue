@@ -98,7 +98,7 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   line-height: 14px;
   color: var(--accent-violet);
   background: color-mix(in srgb, var(--accent-violet) 14%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
   align-self: center;
 }
 .tool-line:hover .tool-args { opacity: 1; }
@@ -111,7 +111,7 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   cursor: pointer;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 .more-btn:hover {
   background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent);

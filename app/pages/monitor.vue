@@ -606,7 +606,7 @@ const processColumns = [
   font-size: 11px;
   color: #fa8c16;
   background: rgb(250 140 22 / 12%);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
 }
 
 .agent-sub {

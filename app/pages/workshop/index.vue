@@ -442,7 +442,7 @@ h2 { margin: 0 0 4px; font-family: var(--font-display); }
   padding: 16px;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
   box-shadow: var(--shadow-card);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
@@ -506,7 +506,7 @@ h2 { margin: 0 0 4px; font-family: var(--font-display); }
   margin: 2px 0;
   font-size: 12px;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius-chip, 8px);
   transition: background 0.15s ease, transform 0.15s ease;
 }
 
