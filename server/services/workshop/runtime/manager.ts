@@ -39,6 +39,7 @@ import { TaskEngine as TaskEngineImpl } from './task-engine'
 import { AgentMemory, envNum, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeMemory, type MaintenanceResult, type MemorySnippet } from './memory'
 import { createEnvEmbeddingProvider } from './embedding-provider'
 import { listHarnessProcesses, listAliveHarnessProcessesByAgent, sweepHarnessProcesses, killHarnessProcess } from '../agents/harness-process'
+import { hasTerminalSession, sweepTerminalSessions } from '../agents/harness-terminal'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 import type { UserRepo } from '../db/user.repo'
 import type { ChannelEventRepo } from '../db/channel-event.repo'
@@ -210,6 +211,8 @@ export interface RuntimeProcessView {
   exitCode: number | null
   /** 是否被某个已装配 runtime 引用(否则为孤儿进程) */
   bound: boolean
+  /** 终端镜像是否可接入(harness-terminal tap 已挂载;/monitor 终端按钮依据) */
+  terminal: boolean
 }
 
 /** 运行时资源监控:全量快照 */
@@ -443,10 +446,14 @@ export class AgentChannelManager {
     const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, embedder: this.memoryEmbedder ?? undefined })
     const workspace = this.buildWorkspace(agent, memory)
     const chWorkspace = this.channelWorkspace(m.channelId)
-    const agentWithCwd: AgentInfo = chWorkspace.length > 0
-      ? { ...agent, config: { cwd: chWorkspace, ...agent.config } }
-      : agent
-    const runtime = new AgentRuntime(agent, this.deps.implFactory(agentWithCwd), {
+    // channel 级作业场景 prompt 注入 harness config(用户场景 × 系统设计组合的入口;
+    // 变更经 updateChannel 回收成员运行时,下次装配拿到新场景)
+    const scenarioPrompt = this.deps.repos.channels.findById(m.channelId)?.scenarioPrompt ?? ''
+    const configWithCtx: Record<string, unknown> = { ...agent.config }
+    if (scenarioPrompt) configWithCtx.scenarioPrompt = scenarioPrompt
+    if (chWorkspace.length > 0) configWithCtx.cwd = chWorkspace
+    const agentWithCtx: AgentInfo = { ...agent, config: configWithCtx }
+    const runtime = new AgentRuntime(agent, this.deps.implFactory(agentWithCtx), {
       mailbox,
       taskEngine: this.getTaskEngine(),
       bus,
@@ -490,6 +497,9 @@ export class AgentChannelManager {
     })
     loop.setLoopResubmitCallback((title, description) => {
       this.submitChannelTask({ channelId, title, description }).catch((err) => {
+        // 清理竞态:channel 已删除/lead 已卸载时的到期重放 → 静默(NOT_FOUND 为预期)
+        const code = (err as { code?: string }).code
+        if (code === 'NOT_FOUND' || code === 'NO_LEAD_AGENT') return
         console.error(`[AgentChannelManager:${channelId}] loop 重新提交失败:`, err)
       })
     })
@@ -580,6 +590,7 @@ export class AgentChannelManager {
    */
   monitorRuntime(): RuntimeMonitorSnapshot {
     sweepHarnessProcesses()
+    sweepTerminalSessions()
     const channels: RuntimeChannelView[] = [...this.channels.values()].map((cr) => {
       const channel = this.deps.repos.channels.findById(cr.channelId)
       return {
@@ -622,6 +633,7 @@ export class AgentChannelManager {
       alive: p.alive,
       exitCode: p.exitCode,
       bound: boundPids.has(p.pid),
+      terminal: hasTerminalSession(p.pid),
     }))
     return {
       generatedAt: new Date().toISOString(),
@@ -818,11 +830,12 @@ export class AgentChannelManager {
   async createChannel(input: {
     name: string
     description?: string
+    scenarioPrompt?: string
     workspace?: string
     leadAgent?: { name: string, harness: string, config?: Record<string, unknown> }
     ownerUserId?: string | null
   }): Promise<{ channelId: string, leadAgentId?: string, workspace: string }> {
-    const channel = this.deps.repos.channels.create({ name: input.name, description: input.description, ownerUserId: input.ownerUserId ?? null })
+    const channel = this.deps.repos.channels.create({ name: input.name, description: input.description, scenarioPrompt: input.scenarioPrompt, ownerUserId: input.ownerUserId ?? null })
     const workspace = input.workspace && input.workspace.length > 0
       ? input.workspace
       : resolve(process.cwd(), 'data', 'workspaces', channel.id)
@@ -858,7 +871,7 @@ export class AgentChannelManager {
     return { ...channel, agents }
   }
 
-  async updateChannel(channelId: string, patch: { name?: string, description?: string, workspace?: string, enabled?: number }): Promise<ChannelRow> {
+  async updateChannel(channelId: string, patch: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number }): Promise<ChannelRow> {
     const channel = this.deps.repos.channels.findById(channelId)
     if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
     if (patch.workspace !== undefined && patch.workspace !== channel.workspace) {
@@ -868,7 +881,16 @@ export class AgentChannelManager {
     if (patch.enabled === 0 && channel.enabled !== 0) {
       await this.unloadChannelAgents(channelId)
     }
+    // 场景 prompt 变更 → 回收成员运行时(下次装配注入新场景;进度任务不受影响,
+    // 排队任务在成员重新装配后按需恢复)
+    if (patch.scenarioPrompt !== undefined && patch.scenarioPrompt !== channel.scenarioPrompt) {
+      await this.unloadChannelAgents(channelId)
+    }
     const updated = this.deps.repos.channels.update(channelId, patch)
+    // 卸载后 channel 需重新激活(懒装配 lead + 恢复调度驱动)
+    if (updated && updated.leadAgentId && (patch.scenarioPrompt !== undefined || patch.workspace !== undefined)) {
+      this.ensureChannelActive(channelId)
+    }
     return updated!
   }
 
@@ -1537,6 +1559,26 @@ export class AgentChannelManager {
       if (!parent) throw new AppError(404, 'NOT_FOUND', `父任务不存在: ${input.parentTaskId}`)
       if (parent.channelId !== channelId) {
         throw new AppError(403, 'SCOPE_VIOLATION', '父任务不在本 channel')
+      }
+      // 防重复派发守卫(确定性,不依赖 LLM 纪律):同父任务下同标题子任务
+      //  - 在途(非终态)→ 拒绝,告知等待现有执行(省 token 不重跑)
+      //  - 已完成且有交付 → 拒绝,直接附上既有成果预览(lead 可引用,不必重做)
+      const norm = (s: string): string => s.replace(/\s+/g, ' ').trim().toLowerCase()
+      const siblings = this.getTaskEngine().list(channelId).filter(t => t.parentId === input.parentTaskId)
+      const dupTitle = (t: WorkspaceTask): boolean => norm(t.title) === norm(input.title)
+      const inFlight = siblings.find(t => dupTitle(t) && !['COMPLETED', 'CANCELED', 'FAILED'].includes(t.state))
+      if (inFlight) {
+        throw new AppError(409, 'DUPLICATE_DISPATCH', `子任务 "${input.title}" 已在执行中(状态 ${inFlight.state},指派 ${inFlight.assigneeId?.slice(0, 8) ?? '?'})。不要重复派发——等待其完成;若内容有差异请换一个能区分意图的标题。`)
+      }
+      const done = siblings.find(t => dupTitle(t) && t.state === 'COMPLETED' && t.artifacts.length > 0)
+      if (done) {
+        const preview = done.artifacts[0]?.parts
+          ?.map(p => ('text' in p ? p.text : ''))
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 300) ?? ''
+        throw new AppError(409, 'DUPLICATE_DISPATCH', `子任务 "${input.title}" 已完成并交付(任务 ${done.id})。已有成果:${preview || '(见任务详情)'}。直接引用该成果即可,不要重复派发相同工作。`)
       }
       task = this.getTaskEngine().dispatch(parent, {
         assigneeId: input.assigneeId,

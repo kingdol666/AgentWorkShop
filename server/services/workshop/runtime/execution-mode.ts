@@ -12,7 +12,7 @@
  * 模式信息存储:任务 metadata['x-aw-exec-mode'] + metadata['x-aw-mode-config']。
  * SchedulerLoop 每轮 tick 时,ModeOrchestrator 根据 channel 当前任务的模式调整 lead 决策 prompt。
  */
-import type { SupervisionSnapshot, ExecutionMode } from '../agents/agent-interface'
+import type { ExecutionMode } from '../agents/agent-interface'
 import type { WorkspaceTask } from '../types/task'
 
 /** 模式配置(存储在任务 metadata['x-aw-mode-config']) */
@@ -103,105 +103,6 @@ export function encodeTaskMode(mode: ExecutionMode, config: ModeConfig, descript
     parts.push(`[stages:${config.stages.map(s => s.name).join('->')}]`)
   }
   return `${parts.join('')} ${description}`
-}
-
-/**
- * 模式感知的 supervise prompt 构建。
- * 根据 channel 当前活跃任务的模式,生成不同的 lead 指令。
- */
-export function buildModeAwarePrompt(
-  mode: ExecutionMode,
-  config: ModeConfig,
-  snapshot: SupervisionSnapshot,
-  leadAgentId: string,
-): string {
-  switch (mode) {
-    case 'goal':
-      return buildGoalPrompt(config, snapshot, leadAgentId)
-    case 'loop':
-      return buildLoopPrompt(config, snapshot, leadAgentId)
-    case 'pipeline':
-      return buildPipelinePrompt(config, snapshot, leadAgentId)
-    default:
-      return ''
-  }
-}
-
-/** goal 模式 prompt:lead 判断目标是否满足 */
-function buildGoalPrompt(config: ModeConfig, snapshot: SupervisionSnapshot, _leadAgentId: string): string {
-  const criteria = config.goalCriteria ?? '任务描述中的需求已全部完成'
-  const lines: string[] = [
-    `## Execution Mode: GOAL`,
-    `You are working in GOAL mode. Your objective is to ensure the following goal is fully achieved:`,
-    `**Goal Criteria**: ${criteria}`,
-    ``,
-    `## Decision Process`,
-    `1. If there are tasks assigned to you with no children yet: dispatch them to idle workers.`,
-    `2. If all child tasks are COMPLETED: evaluate whether the goal criteria are met by examining the artifacts.`,
-    `3. If the goal is NOT met: dispatch NEW tasks to address the gaps. Use the task description and artifacts to identify what's missing.`,
-    `4. If the goal IS met: call complete_task on the parent task. MANDATORY — the completion MUST be accompanied by a FINAL CONCLUSION summarizing the end result: (a) the goal, (b) the judgment criteria, (c) what was completed, (d) the final outcome. Never complete the parent without this concluding summary; it is the goal-mode close-out deliverable.`,
-    ``,
-    `## Current State`,
-    formatSnapshotForPrompt(snapshot),
-  ]
-  return lines.join('\n')
-}
-
-/** loop 模式 prompt:lead 循环执行 */
-function buildLoopPrompt(config: ModeConfig, snapshot: SupervisionSnapshot, _leadAgentId: string): string {
-  const interval = (config.intervalMs ?? 60_000) / 1000
-  const lines: string[] = [
-    `## Execution Mode: LOOP`,
-    `You are working in LOOP mode. The task should be executed repeatedly every ${interval}s.`,
-    `Interval: ${interval}s${config.maxIterations !== undefined && config.maxIterations !== Number.POSITIVE_INFINITY ? `, Max iterations: ${config.maxIterations}` : ''}`,
-    ``,
-    `## Decision Process`,
-    `1. If the parent task is COMPLETED: do nothing (the loop controller will re-submit automatically).`,
-    `2. If the parent task is SUBMITTED/WORKING with no children: dispatch to an idle worker.`,
-    `3. If all children are COMPLETED: complete the parent task.`,
-    ``,
-    `## Current State`,
-    formatSnapshotForPrompt(snapshot),
-  ]
-  return lines.join('\n')
-}
-
-/** pipeline 模式 prompt:lead 按阶段流水线编排 */
-function buildPipelinePrompt(config: ModeConfig, snapshot: SupervisionSnapshot, _leadAgentId: string): string {
-  const stages = config.stages ?? []
-  const stageList = stages.length > 0
-    ? stages.map((s, i) => `  Stage ${i + 1}: ${s.name} — ${s.description}`).join('\n')
-    : '  (no stages defined — decompose the task into sequential stages yourself)'
-  const lines: string[] = [
-    `## Execution Mode: PIPELINE`,
-    `You are working in PIPELINE mode. The task must be executed as a sequence of stages,`,
-    `where each stage depends on the output of the previous stage.`,
-    ``,
-    `## Pipeline Stages`,
-    stageList,
-    ``,
-    `## Decision Process`,
-    `1. Identify which stage should run next (the first incomplete stage with no children).`,
-    `2. For the current stage: dispatch a child task to a worker, including the previous stage's output (from artifacts) as context.`,
-    `3. Do NOT start stage N+1 until stage N is COMPLETED.`,
-    `4. When all stages are COMPLETED: complete the parent task with the final deliverable.`,
-    ``,
-    `## Current State`,
-    formatSnapshotForPrompt(snapshot),
-  ]
-  return lines.join('\n')
-}
-
-/** 格式化快照为 prompt 友好文本 */
-function formatSnapshotForPrompt(snapshot: SupervisionSnapshot): string {
-  const members = snapshot.members.map(m =>
-    `  - ${m.agentId} (${m.name}, ${m.role}, ${m.state})`,
-  ).join('\n')
-  const tasks = snapshot.tasks.map((t) => {
-    const artifacts = t.artifacts.length > 0 ? `, artifacts=${t.artifacts.length}` : ''
-    return `  - ${t.id} [${t.state}] "${t.title}" assignee=${t.assigneeId}, progress=${t.progress}%${artifacts}`
-  }).join('\n')
-  return `### Team\n${members || '  (none)'}\n\n### Tasks\n${tasks || '  (none)'}`
 }
 
 /**

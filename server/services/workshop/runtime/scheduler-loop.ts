@@ -14,7 +14,6 @@ import type { ChannelRuntime } from './channel-runtime'
 import type { AgentRuntime } from './agent-runtime'
 import {
   extractTaskMode,
-  buildModeAwarePrompt,
   findModeTask,
   LoopController,
   type ModeConfig,
@@ -40,6 +39,7 @@ interface MemberView {
 export interface SchedulerLoopOptions {
   tickMs?: number
   stallMs?: number
+  /** supervise 最小间隔 ms(默认 20s;防 LLM 忙轮转烧 token) */
   /** 调度快照邮件提供者(manager 注入;返回最新在前);未注入则快照 mail 为空 */
   supervisionMail?: (limit: number) => ChannelMail[]
 }
@@ -48,6 +48,9 @@ export class SchedulerLoop {
   private readonly tickMs: number
   private readonly stallMs: number
   private readonly supervisionMail: ((limit: number) => ChannelMail[]) | null
+  /** supervise 节流:最小间隔与最近一次执行时刻/信号指纹(token 效率) */
+  private lastSuperviseAt = 0
+  private lastFingerprint = ''
   private timer: ReturnType<typeof setInterval> | null = null
   private started = false
   private running = false
@@ -159,13 +162,44 @@ export class SchedulerLoop {
   }
 
   /**
+   * supervise 智能节流(token 效率,纯指纹驱动):
+   *  - 信号指纹 = 任务状态集合 · 成员状态/队列 · 最新邮件 id,不含 progress 渐变
+   *    (worker 进度上报不值得唤醒 lead;状态翻转/新邮件才是需要行动的信号);
+   *  - 指纹无变化 → 跳过 LLM supervise,只跑规则引擎(停滞检测/兜底派发照常);
+   *  - 指纹变化 → 立即 supervise(mock 剧本的秒级状态机与 LLM 决策跟进都不被拖延);
+   *  - 首轮必跑。
+   */
+  private superviseFingerprint(snapshot: SupervisionSnapshot): string {
+    const tasks = snapshot.tasks
+      .map(t => `${t.id}:${t.state}`)
+      .sort()
+      .join('|')
+    const members = snapshot.members
+      .map(m => `${m.agentId}:${m.state}:${m.queued ?? 0}`)
+      .sort()
+      .join('|')
+    const mailTop = snapshot.mail?.[0]?.messageId ?? ''
+    return `${tasks}#${members}#${mailTop}`
+  }
+
+  private shouldSupervise(snapshot: SupervisionSnapshot): boolean {
+    if (this.lead.supervise === null) return false // 无 LLM 决策能力,规则引擎自走
+    if (this.lastSuperviseAt === 0) return true // 首轮
+    return this.superviseFingerprint(snapshot) !== this.lastFingerprint
+  }
+
+  /**
    * 决策:lead.supervise 优先(真实 harness 的 LLM 调度);
    * supervise 未实现/抛错 → 内置规则引擎;
    * supervise 返回空但有可调度任务且无任何进展(如 LLM 拒绝/漏看)→ 规则引擎兜底补齐,
    * 保证系统不因单轮 LLM 决策失败而停滞(harness 无关的安全网)。
+   * 节流:指纹无变化 → 跳过 LLM(本轮仅规则引擎)。
    */
   private async decide(snapshot: SupervisionSnapshot): Promise<SupervisionDecision[]> {
     try {
+      if (!this.shouldSupervise(snapshot)) return this.ruleEngine(snapshot)
+      this.lastSuperviseAt = Date.now()
+      this.lastFingerprint = this.superviseFingerprint(snapshot)
       const decisions = await this.lead.supervise(snapshot)
       if (decisions === null) return this.ruleEngine(snapshot)
       if (decisions.length > 0) return decisions
@@ -380,6 +414,12 @@ export class SchedulerLoop {
         break
       }
       case 'complete': {
+        // 幂等守卫:LLM lead 可能对已终态任务重复 complete(快照滞后/重复决策)——
+        // 静默跳过而非报错,避免调度噪音(正确性不受影响:终态即目标状态)
+        const existing = this.lead.taskEngine.get(decision.taskId)
+        if (existing && ['COMPLETED', 'CANCELED', 'FAILED'].includes(existing.state)) {
+          break
+        }
         const completed = this.lead.taskEngine.complete(decision.taskId, decision.artifacts)
         // lead 状态同步:complete 由调度器直接收口(不经 processMessage),终态迁移后
         // 重广播 lead 队列上下文(current→null/completed+1),前端实时反映 lead 判定完成
@@ -525,11 +565,5 @@ export class SchedulerLoop {
       )
       this.loopController.onTaskCompleted()
     }
-  }
-
-  /** 获取当前模式的额外 prompt(注入 lead 的 supervise 上下文) */
-  getModePrompt(snapshot: SupervisionSnapshot): string {
-    if (!this.activeMode) return ''
-    return buildModeAwarePrompt(this.activeMode, this.activeModeConfig, snapshot, this.lead.agentId)
   }
 }
