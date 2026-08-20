@@ -365,6 +365,8 @@ export function ensureStream(manager: AgentChannelManager, channelId: string): C
     busRef: internalsOf(manager).buses.get(channelId) ?? null,
   }
   bindStreamSubscriptions(manager, stream)
+  // bind 过程可能懒创建 bus:同步真实 busRef,否则 stale 检查会误判重绑
+  stream.busRef = internalsOf(manager).buses.get(channelId) ?? null
   streams.set(channelId, stream)
   return stream
 }

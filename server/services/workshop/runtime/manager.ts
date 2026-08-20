@@ -387,11 +387,9 @@ export class AgentChannelManager {
 
   subscribeAgentStatus(channelId: string, fn: (e: Parameters<ChannelBus['notifyAgent']>[0]) => void): () => void {
     // 先确保 bus 存在:channel 尚未激活时订阅会被静默丢弃(monitor 先订阅后提交任务的场景)
+    // 返回 bus 的真实退订函数:stream 重绑时必须可退订,否则同一 bus 上订阅两份 → 事件双发
     this.ensureChannelRuntime(channelId)
-    const bus = this.buses.get(channelId)
-    if (!bus) return () => {}
-    bus.onAgentStatus(fn)
-    return () => {}
+    return this.buses.get(channelId)?.onAgentStatus(fn) ?? (() => {})
   }
 
   subscribeChannelEvents(channelId: string, fn: (event: AgentEvent, source: A2AMessage) => void): () => void {
@@ -400,11 +398,9 @@ export class AgentChannelManager {
   }
 
   subscribeTaskEvents(channelId: string, fn: (e: { taskId: string, state?: TaskState, progress?: number, agentId?: string }) => void): () => void {
+    // 真实退订(同上:防 stream 重绑泄漏导致 task.status 双发落库)
     this.ensureChannelRuntime(channelId)
-    const bus = this.buses.get(channelId)
-    if (!bus) return () => {}
-    bus.onTaskEvent(fn)
-    return () => {}
+    return this.buses.get(channelId)?.onTaskEvent(fn) ?? (() => {})
   }
 
   /** 订阅 channel 内消息投递(AEP a2a.message 事件源;route 汇流点触发) */
