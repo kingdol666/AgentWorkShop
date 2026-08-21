@@ -7,14 +7,20 @@
  */
 import { useEventsStore, type EventFilter } from '@/app/stores/workshop/events'
 import { useClusteredBlocks } from '@/app/composables/workshop/useClusteredBlocks'
+import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
 import { useCodeCopy } from '@/app/composables/useCodeCopy'
 
 const props = defineProps<{ channelId: string }>()
 const events = useEventsStore()
+const { conn } = useWorkshopWs()
 // 代码块复制事件委托(文档级单例;时间线内所有 .code-copy 通用)
 useCodeCopy()
 const scroller = ref<HTMLElement | null>(null)
 const stickBottom = ref(true)
+
+/** 连接中骨架:WS 连接中且尚无块 → 按 block 行形态的 shimmer(open-tag skel 声部) */
+const connecting = computed(() =>
+  conn.state === 'connecting' && events.ring(props.channelId).items.length === 0)
 
 const filter = computed({
   get: () => events.filters[props.channelId] ?? 'all',
@@ -154,8 +160,27 @@ const blockDayFlags = computed(() => {
         >
           已加载全部历史(最早 1 条起)
         </div>
+        <!-- 连接中骨架:头像圆 + 双行占位,布局对齐最终块形态(免跳变) -->
         <div
-          v-if="blocks.length === 0"
+          v-if="connecting"
+          class="skel-stack"
+        >
+          <div
+            v-for="n in 3"
+            :key="n"
+            class="skel-row"
+            :style="{ '--d': `${(n - 1) * 0.12}s` }"
+          >
+            <span class="aw-skel skel-ava" />
+            <div class="skel-lines">
+              <span class="aw-skel skel-line name" />
+              <span class="aw-skel skel-line w70" />
+              <span class="aw-skel skel-line w45" />
+            </div>
+          </div>
+        </div>
+        <div
+          v-else-if="blocks.length === 0"
           class="empty"
         >
           <span class="i-tabler-message-dots empty-icon" />
@@ -179,6 +204,7 @@ const blockDayFlags = computed(() => {
           <workshop-event-block
             :block="b"
             :turn-start="i > 0 && blocks[i - 1]!.agentId !== b.agentId"
+            :compact="i > 0 && blocks[i - 1]!.agentId === b.agentId"
           />
         </template>
       </div>
@@ -297,5 +323,45 @@ const blockDayFlags = computed(() => {
   margin: 0;
   font-size: 12px;
   color: var(--ink-faint);
+}
+
+/* 连接中骨架:对齐块行网格(26px 头像列 + 内容列),行间延迟入场 */
+.skel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px 6px;
+}
+
+.skel-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  animation: aw-rise 0.4s cubic-bezier(0.22, 0.68, 0.36, 1) backwards;
+  animation-delay: var(--d, 0s);
+}
+
+.skel-ava {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+}
+
+.skel-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skel-line {
+  height: 11px;
+}
+
+.skel-line.name { width: 120px; height: 13px; }
+.skel-line.w70 { width: 70%; }
+.skel-line.w45 { width: 45%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .skel-row { animation: none; }
 }
 </style>

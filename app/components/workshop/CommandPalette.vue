@@ -156,7 +156,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
           </div>
         </div>
         <div class="palette-foot">
-          <kbd>↑↓</kbd> 选择 · <kbd>↵</kbd> 执行 · <kbd>esc</kbd> 关闭
+          <kbd>↑↓</kbd> 选择 / <kbd>↵</kbd> 执行 / <kbd>esc</kbd> 关闭
         </div>
       </div>
     </div>

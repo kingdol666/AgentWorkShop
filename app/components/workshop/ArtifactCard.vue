@@ -30,12 +30,12 @@ const isDeliverable = computed(() =>
 /** 工件语义图标(交付物/汇总/输出/输入) */
 const artifactIcon = computed(() => {
   switch (props.artifact.name) {
-    case 'deliverable': return '📦'
-    case 'summary': return '📋'
-    case 'result': return '✅'
-    case 'output': return '📄'
-    case 'input': return '📥'
-    default: return '🧾'
+    case 'deliverable': return 'i-tabler-package'
+    case 'summary': return 'i-tabler-list-check'
+    case 'result': return 'i-tabler-circle-check'
+    case 'output': return 'i-tabler-file-text'
+    case 'input': return 'i-tabler-inbox'
+    default: return 'i-tabler-receipt-2'
   }
 })
 
@@ -64,7 +64,7 @@ const copy = async (): Promise<void> => {
     :class="{ deliverable: isDeliverable }"
   >
     <div class="artifact-head">
-      <span class="tag">{{ artifactIcon }}</span>
+      <span class="tag"><span :class="artifactIcon" /></span>
       <span class="name">{{ artifact.name ?? 'artifact' }}</span>
       <a-button
         size="small"

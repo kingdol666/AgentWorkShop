@@ -37,12 +37,12 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
     case 'task.progress': return `${String(p.progress ?? '')}%`
     case 'agent.delta': return `…${String(p.delta ?? '').slice(-24)}`
     case 'agent.message': return `${String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 40)}`
-    case 'a2a.message': return `📨 ${String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 30)}`
-    case 'a2a.artifact': return `📦 ${String((p.artifact as { name?: string } | undefined)?.name ?? '')}`
-    case 'memory.saved': return `🧠 ${String(p.title ?? '')}`
-    case 'agent.member': return `👤 ${String(p.op ?? '')} ${String(p.name ?? '')}`
+    case 'a2a.message': return `消息 ${String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 30)}`
+    case 'a2a.artifact': return `交付 ${String((p.artifact as { name?: string } | undefined)?.name ?? '')}`
+    case 'memory.saved': return `记忆 ${String(p.title ?? '')}`
+    case 'agent.member': return `成员 ${String(p.op ?? '')} ${String(p.name ?? '')}`
     case 'agent.status': return `${String(p.state)}`
-    case 'error': return `✖ ${String(p.code ?? '')}`
+    case 'error': return `错误 ${String(p.code ?? '')}`
     default: return e.type
   }
 }
@@ -63,7 +63,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
     >
       <div class="col-head">
         <span class="col-name">{{ col.name }}</span>
-        <span class="col-meta">{{ col.agents }}a · {{ col.busy }}忙 · {{ col.activeTasks }}任务 · seq{{ col.seq }}</span>
+        <span class="col-meta">{{ col.agents }}a / 忙{{ col.busy }} / 任务{{ col.activeTasks }} / seq{{ col.seq }}</span>
       </div>
       <div class="col-body">
         <div

@@ -1,14 +1,16 @@
 <script setup lang="ts">
 /**
- * 事件聚合块 — Codex 式壳层分发器。
- * 头部:agent 色点 + 名字 + 类别小标居左;合并粒度/去重/时间右对齐(暗色)。
- * 各行渲染按 kind 分发到隔离组件(stream/tool/status/life/route/task/artifact/…)——
- * 不同事件块互不耦合,流式更新只触发命中 kind 的组件。
+ * 事件聚合块 — open-tag 聊天行声部(.msg 网格:头像列 + 内容列):
+ *  - 头部:26px 头像 + 名字 + 类别小标 + 计数/时间;正文落在内容列(块体组件复用);
+ *  - 连续同发送者块 compact 分组:隐藏头像与名字(Slack 消息分组),保留左列对齐;
+ *  - 悬停工具条(open-tag msg-toolbar):流/消息块可复制全文 / 引用到输入框(经 Composer 总线);
+ *  - 各行渲染按 kind 分发到隔离组件 —— 流式更新只触发命中 kind 的组件。
  */
 import { computed } from 'vue'
 import type { Component } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
-import { KIND_META, type EventBlock } from '@/app/composables/workshop/useEventBlocks'
+import { useComposerBus } from '@/app/composables/workshop/useComposerBus'
+import { KIND_META, buildStreamText, type EventBlock } from '@/app/composables/workshop/useEventBlocks'
 import ClusterStream from '@/app/components/workshop/blocks/ClusterStream.vue'
 import ClusterTool from '@/app/components/workshop/blocks/ClusterTool.vue'
 import ClusterStatus from '@/app/components/workshop/blocks/ClusterStatus.vue'
@@ -21,9 +23,15 @@ import ClusterMemory from '@/app/components/workshop/blocks/ClusterMemory.vue'
 import ClusterError from '@/app/components/workshop/blocks/ClusterError.vue'
 import ClusterOther from '@/app/components/workshop/blocks/ClusterOther.vue'
 
-const props = defineProps<{ block: EventBlock, turnStart?: boolean }>()
+const props = defineProps<{
+  block: EventBlock
+  turnStart?: boolean
+  /** 连续同发送者紧凑分组(隐藏头像/名字,Slack 式) */
+  compact?: boolean
+}>()
 
 const entities = useEntitiesStore()
+const { quote } = useComposerBus()
 const cid = computed(() => props.block.events[0]?.channelId ?? '')
 
 const time = computed(() => props.block.firstAt.slice(11, 19))
@@ -87,12 +95,51 @@ const KIND_COMPONENT: Record<string, Component> = {
   other: ClusterOther,
 }
 const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
+
+/** 工具条可用正文:流块取累计文本;路由块取消息 parts(供复制/引用) */
+const toolbarText = computed(() => {
+  if (props.block.kind === 'stream') {
+    const t = buildStreamText(props.block).trim()
+    return t || null
+  }
+  if (props.block.kind === 'route') {
+    const t = props.block.events
+      .map((e) => {
+        const parts = (e.payload as { parts?: Array<{ text?: string }> }).parts ?? []
+        return parts.map(p => p.text ?? '').join('\n').trim()
+      })
+      .filter(Boolean)
+      .join('\n')
+    return t || null
+  }
+  return null
+})
+
+const copied = ref(false)
+const copyAll = async (): Promise<void> => {
+  const t = toolbarText.value
+  if (!t) return
+  try {
+    await navigator.clipboard.writeText(t)
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 1400)
+  }
+  catch { /* 剪贴板不可用时静默 */ }
+}
+
+/** 引用到 Composer:块正文以 `> ` 前缀注入输入框 */
+const quoteToComposer = (): void => {
+  const t = toolbarText.value
+  if (t) quote(t)
+}
 </script>
 
 <template>
   <section
     class="event-block"
-    :class="{ 'turn-start': turnStart }"
+    :class="{ 'turn-start': turnStart, compact }"
     :data-kind="block.kind"
     :data-settled="block.settled ? 'true' : 'false'"
     :data-covered="block.coveredBy ? 'true' : 'false'"
@@ -100,61 +147,92 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
     :data-events="block.events.length"
     :data-folded="block.folded"
   >
-    <header class="block-head">
+    <span
+      class="agent-avatar"
+      :class="{ 'is-agent': !!block.agentId, 'is-human': !!humanLabel }"
+      :title="humanLabel ?? agentLabel"
+    >
       <span
-        class="agent-avatar"
-        :class="{ 'is-agent': !!block.agentId, 'is-human': !!humanLabel }"
-        :title="humanLabel ?? agentLabel"
-      >
-        <span
-          v-if="humanLabel"
-          class="i-tabler-user system-icon"
-        />
-        <span
-          v-else-if="!block.agentId"
-          class="i-tabler-cpu system-icon"
-        />
-        <template v-else>{{ agentInitial }}</template>
-      </span>
-      <span class="agent-name">{{ humanLabel ?? agentLabel }}</span>
-      <span class="kind">
-        <span
-          class="kind-dot"
-          :style="{ background: kindTone }"
-        />{{ meta.label }}
-      </span>
-      <span class="head-right">
-        <span
-          v-if="block.folded > 0"
-          class="folded"
-          title="与 delta 增量重复的内容已合并为一段"
-        >去重 {{ block.folded }}</span>
-        <span
-          v-if="block.events.length > 1"
-          class="merged"
-        >×{{ block.events.length }}</span>
-        <span class="time">{{ time }}</span>
-      </span>
-    </header>
+        v-if="humanLabel"
+        class="i-tabler-user system-icon"
+      />
+      <span
+        v-else-if="!block.agentId"
+        class="i-tabler-cpu system-icon"
+      />
+      <template v-else>{{ agentInitial }}</template>
+    </span>
 
-    <component
-      :is="body"
-      :block="block"
-    />
+    <div class="eb-main">
+      <header
+        v-show="!compact"
+        class="block-head"
+      >
+        <span class="agent-name">{{ humanLabel ?? agentLabel }}</span>
+        <span class="kind">
+          <span
+            class="kind-dot"
+            :style="{ background: kindTone }"
+          />{{ meta.label }}
+        </span>
+        <span class="head-right">
+          <span
+            v-if="block.folded > 0"
+            class="folded"
+            title="与 delta 增量重复的内容已合并为一段"
+          >去重 {{ block.folded }}</span>
+          <span
+            v-if="block.events.length > 1"
+            class="merged"
+          >×{{ block.events.length }}</span>
+          <span class="time">{{ time }}</span>
+        </span>
+        <!-- 悬停工具条:复制全文 / 引用到输入框(open-tag msg-toolbar) -->
+        <span
+          v-if="toolbarText"
+          class="eb-toolbar"
+        >
+          <button
+            type="button"
+            class="eb-tool"
+            :title="copied ? '已复制' : '复制全文'"
+            @click="copyAll"
+          >
+            <span :class="copied ? 'i-tabler-check' : 'i-tabler-copy'" />
+          </button>
+          <button
+            type="button"
+            class="eb-tool"
+            title="引用到输入框"
+            @click="quoteToComposer"
+          >
+            <span class="i-tabler-quote" />
+          </button>
+        </span>
+      </header>
+
+      <component
+        :is="body"
+        :block="block"
+        class="eb-body"
+      />
+    </div>
   </section>
 </template>
 
 <style scoped>
 .event-block {
-  position: relative;
-  padding: 4px 8px 4px 0;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  column-gap: 10px;
+  padding: 2px 8px 2px 0;
   margin: 0 8px 3px 6px;
   border-left: 2px solid color-mix(in srgb, var(--ink) 9%, transparent);
   transition: border-color 0.15s ease, background 0.15s ease;
   animation: block-in 0.22s cubic-bezier(0.2, 0.6, 0.3, 1);
 }
 
-/* turn 边界:不同 agent 的新回合开始 → 加大间距 + 顶部 hairline(现代 harness 会话分节感) */
+/* turn 边界:不同 agent 的新回合开始 → 加大间距 + 顶部 hairline */
 .event-block.turn-start {
   margin-top: 12px;
   border-top: 1px solid var(--divider-hair);
@@ -180,25 +258,16 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
 .event-block[data-kind='error'] { border-left-color: var(--tone-danger-dot); }
 .event-block[data-covered='true'] { opacity: 0.72; }
 
-.block-head {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  min-height: 18px;
-  padding-bottom: 1px;
-  font-family: var(--font-body);
-}
-/* 头像:agent = 粉彩径向渐变(open-tag .mav.agent),system = surface */
+/* 头像列:agent = 粉彩径向渐变,human/system = surface */
 .agent-avatar {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: 5px;
+  width: 26px;
+  height: 26px;
+  margin-top: 1px;
   font-family: var(--font-body);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--ink);
   background: var(--paper-deep);
@@ -214,8 +283,42 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 .agent-avatar .system-icon {
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1;
+}
+
+/* 紧凑分组:隐藏头像与头部,保留列对齐(Slack 连续消息) */
+.event-block.compact .agent-avatar {
+  visibility: hidden;
+  height: 0;
+  margin-top: 0;
+}
+.event-block.compact {
+  margin-top: -1px;
+}
+
+.eb-main {
+  min-width: 0;
+}
+
+.block-head {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 20px;
+  padding-bottom: 1px;
+  font-family: var(--font-body);
+}
+
+.agent-name {
+  overflow: hidden;
+  max-width: 180px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kind-dot {
@@ -226,17 +329,9 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   vertical-align: 1px;
   border-radius: 50%;
 }
-.agent-name {
-  overflow: hidden;
-  max-width: 160px;
-  font-size: 10.5px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .kind {
-  font-size: 9px;
-  letter-spacing: 0.14em;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
   color: var(--ink-faint);
 }
 .head-right {
@@ -261,4 +356,50 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   border-radius: var(--radius-chip);
 }
 .time { flex: 0 0 auto; width: 50px; text-align: right; }
+
+/* 悬停工具条:头部右侧浮出(复制/引用) */
+.eb-toolbar {
+  position: absolute;
+  top: -4px;
+  right: 56px;
+  z-index: 5;
+  display: inline-flex;
+  gap: 2px;
+  padding: 1px;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  transition: opacity var(--transition-fast);
+}
+.event-block:hover .eb-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+.eb-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.eb-tool:hover {
+  color: var(--ink);
+  background: var(--paper-deep);
+}
+
+/* 块体组件统一缩进归零(布局由本壳层的头像列接管;子组件自带 padding-left 归拢到内容列起点) */
+.eb-body {
+  padding-left: 2px !important;
+  margin-top: 1px;
+}
 </style>

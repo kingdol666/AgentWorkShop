@@ -56,14 +56,14 @@ function routeKindOf(meta: Record<string, unknown>): { icon: string, label: stri
   const priority = meta['x-aw-msg-priority'] === 'immediate' ? 'immediate' : 'task'
   const taskKind = typeof meta['x-aw-task-kind'] === 'string' ? meta['x-aw-task-kind'] as string : ''
   return taskKind === 'assign'
-    ? { icon: '📋', label: '任务派发', tone: 'assign' }
+    ? { icon: 'i-tabler-send', label: '任务派发', tone: 'assign' }
     : taskKind === 'cancel'
       ? { icon: '🚫', label: '取消通知', tone: 'notice' }
       : taskKind === 'child-completed'
-        ? { icon: '✅', label: '子任务完成', tone: 'notice' }
+        ? { icon: 'i-tabler-circle-check', label: '子任务完成', tone: 'notice' }
         : priority === 'immediate'
-          ? { icon: '⚡', label: '实时注入', tone: 'immediate' }
-          : { icon: '📨', label: '协作消息', tone: 'peer' }
+          ? { icon: 'i-tabler-bolt', label: '实时注入', tone: 'immediate' }
+          : { icon: 'i-tabler-message', label: '协作消息', tone: 'peer' }
 }
 
 const route = computed(() => {
@@ -179,7 +179,7 @@ const stateColor: Record<string, string> = {
         v-if="lifeState.currentTitle"
         class="life-task"
       >「{{ lifeState.currentTitle.slice(0, 24) }}」</span>
-      <span class="life-meta">Q{{ lifeState.queued }} · ✓{{ lifeState.completed }}</span>
+      <span class="life-meta">队列 {{ lifeState.queued }} · 完成 {{ lifeState.completed }}</span>
     </div>
 
     <!-- 消息路由(from → to + 类型徽章) -->
@@ -190,7 +190,7 @@ const stateColor: Record<string, string> = {
       <span
         class="route-badge"
         :data-tone="route && route.kind ? route.kind.tone : 'peer'"
-      >{{ route ? route.kind.icon : '📨' }} {{ route ? route.kind.label : '' }}</span>
+      >{{ route ? route.kind.label : '' }}</span>
       <span class="route-path">{{ route?.from }} → {{ route?.to }}</span>
       <span class="route-text">{{ msgText.slice(0, 100) }}{{ msgText.length > 100 ? '…' : '' }}</span>
     </div>
@@ -261,7 +261,7 @@ const stateColor: Record<string, string> = {
       v-else-if="event.type === 'agent.member'"
       class="body member-line"
     >
-      <span class="tag">👤</span>
+      <span class="tag i-tabler-user" />
       <span class="member-text">{{ memberText }}</span>
     </div>
 

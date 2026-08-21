@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /**
  * 流块(打字机气泡)— Codex 式散文渲染:
- *  - markdown-lite(段落/标题/列表/引用/行内代码/加粗)替代等宽文本墙;
+ *  - markdown-lite(段落/标题/列表/引用/GitHub提示框/任务列表/行内代码/加粗)替代等宽文本墙;
  *  - 实时流式:逐帧增量揭示(rAF 比例追赶;后台标签页/落定/大段全速);
  *  - 光标只在"有文本且未落定"时出现 —— 空块绝不闪烁空光标;
- *  - 落定消息与 delta 重复内容由聚类折入,正文绝不二次渲染。
+ *  - 落定消息与 delta 重复内容由聚类折入,正文绝不二次渲染;
+ *  - 复制/引用工具条在 EventBlock 壳层悬停浮出。
  */
 import { computed } from 'vue'
 import { buildStreamText, isStreaming, streamCursorVisible, mdLiteMentions, type EventBlock, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
@@ -115,19 +116,6 @@ const showCursor = computed(() =>
 )
 
 const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value), members.value))
-
-/** 悬停复制全文(落定后可用;流式中复制揭示进度无意义) */
-const copied = ref(false)
-const copyAll = async (): Promise<void> => {
-  try {
-    await navigator.clipboard.writeText(full.value)
-    copied.value = true
-    setTimeout(() => {
-      copied.value = false
-    }, 1400)
-  }
-  catch { /* 剪贴板不可用(权限/非安全上下文)时静默 */ }
-}
 </script>
 
 <template>
@@ -151,14 +139,6 @@ const copyAll = async (): Promise<void> => {
         class="cursor"
       >▋</span>
     </div>
-    <button
-      v-if="block.settled"
-      class="copy-btn"
-      :title="copied ? '已复制' : '复制全文'"
-      @click="copyAll"
-    >
-      <span :class="copied ? 'i-tabler-check' : 'i-tabler-copy'" />
-    </button>
   </div>
   <div
     v-else-if="streaming"
@@ -171,36 +151,9 @@ const copyAll = async (): Promise<void> => {
 <style scoped>
 .stream-bubble {
   position: relative;
-  padding: 2px 0 6px 20px;
+  padding: 2px 0 6px;
 }
 
-.copy-btn {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
-  color: var(--ink-faint);
-  cursor: pointer;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-  opacity: 0;
-  transition: opacity var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
-}
-
-.stream-bubble:hover .copy-btn {
-  opacity: 1;
-}
-
-.copy-btn:hover {
-  color: var(--ink);
-  border-color: var(--line-strong);
-}
 .stream-text {
   padding: 8px 12px;
   font-size: 12.5px;
@@ -317,7 +270,7 @@ const copyAll = async (): Promise<void> => {
   display: flex;
   gap: 4px;
   align-items: center;
-  padding: 6px 0 6px 20px;
+  padding: 6px 0;
 }
 .pending-dot {
   width: 4px;
@@ -335,7 +288,7 @@ const copyAll = async (): Promise<void> => {
 .stream-covered {
   display: flex;
   gap: 6px;
-  padding: 1px 0 1px 20px;
+  padding: 1px 0;
   align-items: center;
   font-size: 11px;
   opacity: 0.5;

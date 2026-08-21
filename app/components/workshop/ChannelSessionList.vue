@@ -241,7 +241,7 @@ const saveAsTemplate = async (): Promise<void> => {
         />
       </div>
       <div class="row2">
-        <span class="meta">{{ ch.agents }} agent · {{ ch.busy }} 忙 · {{ ch.activeTasks }} 活跃任务</span>
+        <span class="meta">{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</span>
       </div>
       <div
         v-if="ch.workspace"

@@ -227,6 +227,141 @@ h2 {
   background: color-mix(in srgb, var(--g-peach) 72%, transparent);
 }
 
+/* ── GitHub 风格提示框(open-tag github-alert 移植;`> [!NOTE]` 等)── */
+.gh-alert {
+  margin: 6px 0;
+  padding: 5px 12px 6px;
+  background: color-mix(in srgb, var(--gh-c) 9%, transparent);
+  border-left: 3px solid var(--gh-c);
+  border-radius: 0 8px 8px 0;
+}
+
+.gh-alert .gh-title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 1px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gh-c);
+}
+
+.gh-alert .gh-title .i-tabler-info-circle,
+.gh-alert .gh-title .i-tabler-bulb,
+.gh-alert .gh-title .i-tabler-flag,
+.gh-alert .gh-title .i-tabler-alert-triangle,
+.gh-alert .gh-title .i-tabler-shield-half {
+  font-size: 13px;
+}
+
+.gh-alert p { margin: 0; }
+.gh-note { --gh-c: #5a8fd6; }
+.gh-tip { --gh-c: #4c9a70; }
+.gh-important { --gh-c: #8f76c9; }
+.gh-warning { --gh-c: #b98f2c; }
+.gh-caution { --gh-c: #c25a4e; }
+
+html.dark .gh-note { --gh-c: #92b6ff; }
+html.dark .gh-tip { --gh-c: #7fc98f; }
+html.dark .gh-important { --gh-c: #ab8bd8; }
+html.dark .gh-warning { --gh-c: #dcae4e; }
+html.dark .gh-caution { --gh-c: #e08893; }
+
+/* ── 任务列表勾选(open-tag task-list 移植;`- [ ]` / `- [x]`)── */
+ul.task-list {
+  margin: 4px 0 6px;
+  padding-left: 2px;
+  list-style: none;
+}
+
+.task-item {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  margin: 2px 0;
+}
+
+.task-check {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  font-size: 9px;
+  line-height: 1;
+  color: #ffffff;
+  vertical-align: baseline;
+  background: var(--paper-raised);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 3px;
+  transform: translateY(1.5px);
+}
+
+.task-check.on {
+  background: var(--tone-success-dot);
+  border-color: var(--tone-success-dot);
+}
+
+.task-item.done .task-text {
+  color: var(--ink-fainter);
+  text-decoration: line-through;
+}
+
+/* ── 加载骨架(open-tag skel 声部:hairline 占位 + 柔光扫过;reduced-motion 收敛)── */
+.aw-skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--line);
+  border-radius: 6px;
+}
+
+.aw-skel::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--paper-raised) 65%, transparent), transparent);
+  animation: aw-skel-shimmer 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes aw-skel-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-skel::after { display: none; }
+}
+
+/* ── @提及悬停信息卡(open-tag agent-hovercard 移植;纯信息浮层,不挡点击)── */
+.mh-card {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  min-width: 200px;
+  max-width: 260px;
+  padding: 12px 14px;
+  pointer-events: none;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow-float);
+  animation: mh-in var(--transition-fast) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mh-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mh-card { animation: none; }
+}
+
 /* ============================================================
  * 通用工具类
  * ============================================================ */
@@ -260,6 +395,9 @@ h2 {
   font-style: italic;
   font-weight: 400;
   letter-spacing: -0.01em;
+  /* 斜体降部预留:y/g/j/p/q 等降部字符不被紧行高裁切 */
+  line-height: 1.15;
+  padding-bottom: 0.06em;
 }
 
 /* 等宽数据:数字一律 tabular,列对齐不跳动 */

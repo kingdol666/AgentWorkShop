@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
         ghost
         @click="openMemberModal"
       >
-        ➕ 添加成员
+        添加成员
       </a-button>
     </div>
     <div class="lanes">
@@ -337,7 +337,7 @@ onBeforeUnmount(() => {
             title="编辑成员信息 / 场景提示词"
             @click="openEditMember(a)"
           >
-            ✎
+            <span class="i-tabler-edit" />
           </a-button>
           <a-popconfirm
             :title="`中断成员 ${a.name} 的运行时?执行中任务将中止,成员保留`"
@@ -368,7 +368,7 @@ onBeforeUnmount(() => {
               class="lane-remove"
               :loading="removing === a.agentId"
             >
-              ✕
+              <span class="i-tabler-x" />
             </a-button>
           </a-popconfirm>
         </div>
@@ -399,10 +399,10 @@ onBeforeUnmount(() => {
           🆕 从零创建
         </a-radio-button>
         <a-radio-button value="template">
-          📋 从模板克隆
+          从模板克隆
         </a-radio-button>
         <a-radio-button value="team">
-          👥 部署编组
+          部署编组
         </a-radio-button>
       </a-radio-group>
 

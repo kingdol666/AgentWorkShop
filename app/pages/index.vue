@@ -7,7 +7,6 @@ import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 const { t } = useI18n()
 const site = useSiteConfig()
 const config = useRuntimeConfig().public
-const store = useAppStore()
 const userStore = useUserStore()
 
 const fields = computed(() => [
@@ -73,9 +72,9 @@ if (userStore.isLoggedIn) {
 }
 
 const stats = computed(() => [
-  { key: 'ws', icon: 'i-tabler-box', label: t('home.stats.workspaces'), value: userStore.isLoggedIn ? String(wsStore.workspaces.length) : '—' },
-  { key: 'channels', icon: 'i-tabler-messages', label: t('home.stats.activeChannels'), value: runtimeStats.value ? String(runtimeStats.value.activeChannels.length) : '—' },
-  { key: 'agents', icon: 'i-tabler-users-group', label: t('home.stats.wiredAgents'), value: runtimeStats.value ? String(runtimeStats.value.wiredAgents.length) : '—' },
+  { key: 'ws', icon: 'i-tabler-box', label: t('home.stats.workspaces'), value: userStore.isLoggedIn ? String(wsStore.workspaces.length) : '-' },
+  { key: 'channels', icon: 'i-tabler-messages', label: t('home.stats.activeChannels'), value: runtimeStats.value ? String(runtimeStats.value.activeChannels.length) : '-' },
+  { key: 'agents', icon: 'i-tabler-users-group', label: t('home.stats.wiredAgents'), value: runtimeStats.value ? String(runtimeStats.value.wiredAgents.length) : '-' },
   { key: 'version', icon: 'i-tabler-tag', label: t('home.fields.version'), value: `v${site.version}` },
 ])
 </script>
@@ -109,16 +108,6 @@ const stats = computed(() => [
           >
             <span class="i-tabler-device-gamepad-2 im-pop" />
             {{ t('menu.game') }}
-          </button>
-          <button
-            class="aw-pill outline im"
-            @click="store.toggleDark()"
-          >
-            <span
-              class="im-rotate"
-              :class="store.isDark ? 'i-tabler-sun-high' : 'i-tabler-moon-stars'"
-            />
-            {{ store.isDark ? t('common.light') : t('common.dark') }}
           </button>
         </div>
       </div>

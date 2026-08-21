@@ -43,7 +43,7 @@ const capLine = (agentId: string): string => {
   if (!agg || agg.total === 0) return '暂无历史'
   const rate = Math.round((agg.completed / agg.total) * 100)
   const avg = agg.completed > 0 ? Math.round(agg.durationSum / agg.completed / 1000) : 0
-  return `成功率 ${rate}% · 均耗 ${avg}s · 失败 ${agg.failed}`
+  return `成功率 ${rate}% / 均耗 ${avg}s / 失败 ${agg.failed}`
 }
 const childCount = (id: string): number => tasks.value.filter(t => t.parentId === id).length
 
@@ -95,7 +95,7 @@ const taskStateColor: Record<string, string> = {
               </a-tag>
             </div>
             <div class="member-meta">
-              {{ a.state }} · 队列{{ a.queued ?? 0 }} · 完成{{ a.completed ?? 0 }}
+              {{ a.state }} / 队列 {{ a.queued ?? 0 }} / 完成 {{ a.completed ?? 0 }}
               <span
                 v-if="a.currentTaskId"
                 class="ct"

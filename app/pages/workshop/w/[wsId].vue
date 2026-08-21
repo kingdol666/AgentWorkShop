@@ -107,6 +107,8 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
 
 <template>
   <div class="harness">
+    <!-- @提及悬停信息卡(文档级委托;时间线/lanes 全树生效) -->
+    <workshop-mention-hover-card />
     <!-- 顶栏 -->
     <div class="topbar">
       <div class="left">

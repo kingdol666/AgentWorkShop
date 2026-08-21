@@ -9,6 +9,7 @@
  */
 import { message } from 'ant-design-vue'
 import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
+import { useComposerBus } from '@/app/composables/workshop/useComposerBus'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useUserStore } from '@/app/stores/workshop/user'
 
@@ -20,6 +21,17 @@ const userStore = useUserStore()
 
 const mode = ref<'task' | 'message'>('task')
 const input = ref('')
+
+// ===== 引用总线:块工具条「引用到输入框」→ 以 `> ` 前缀注入并聚焦 =====
+const { quoteText } = useComposerBus()
+const taEl = ref<HTMLTextAreaElement | null>(null)
+watch(quoteText, (t) => {
+  if (!t) return
+  const quoted = t.trim().split('\n').map(l => `> ${l}`).join('\n')
+  input.value = input.value ? `${input.value}\n\n${quoted}\n\n` : `${quoted}\n\n`
+  quoteText.value = null
+  nextTick(() => taEl.value?.focus())
+})
 const taskMode = ref<'goal' | 'loop' | 'pipeline'>('goal')
 /** loop 间隔秒(留空由下方校验拦截) */
 const loopIntervalSeconds = ref<number | null>(60)
@@ -243,7 +255,7 @@ const placeholder = computed(() =>
           <span class="chip-key">任务</span>
           <span>{{ taskMode }}</span>
           <span v-if="taskMode === 'loop'">
-            · 间隔 {{ loopIntervalSeconds ?? '—' }}s
+            间隔 {{ loopIntervalSeconds ?? '-' }}s
           </span>
           <span class="chip-hint">首行 = 标题</span>
         </template>
@@ -256,6 +268,7 @@ const placeholder = computed(() =>
       </div>
 
       <textarea
+        ref="taEl"
         v-model="input"
         class="composer-input"
         rows="1"

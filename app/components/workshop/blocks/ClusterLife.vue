@@ -43,7 +43,7 @@ const currentTitle = computed(() => {
         class="life-task"
         :title="life.currentTaskId ?? ''"
       >「{{ currentTitle }}」</span>
-      <span class="life-meta">Q{{ life.queued }} · ✓{{ life.completed }}</span>
+      <span class="life-meta">队列 {{ life.queued }} · 完成 {{ life.completed }}</span>
       <span
         v-if="life.transitions > 1"
         class="life-count"

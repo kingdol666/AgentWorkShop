@@ -170,10 +170,13 @@ useHead({ title: 'Workshop · Agent Harness' })
     <!-- 登录门 -->
     <div
       v-if="!userStore.isLoggedIn"
-      class="auth-gate"
+      class="auth-gate aw-orbs"
     >
       <a-card class="auth-card">
-        <h2>AgentWorkShop 用户登录</h2>
+        <p class="aw-kicker">
+          agentworkshop / sign in
+        </p>
+        <h2>进入工作台</h2>
         <p class="sub">
           全局用户系统统管身份;每个用户可管理多个 API Token,
           管理 API 需用户 token(Authorization: Bearer)。
@@ -275,48 +278,62 @@ useHead({ title: 'Workshop · Agent Harness' })
 
     <!-- 工作区(已登录) -->
     <template v-else>
-      <div class="head">
+      <div class="aw-page-head">
         <div>
-          <h2>Workshop 工作区</h2>
+          <p class="aw-kicker">
+            workshop / overview
+          </p>
+          <h1>Workshop 工作区</h1>
           <p class="sub">
             {{ userStore.user?.name }} 的资源(用户级隔离;服务端持久化)
           </p>
         </div>
-        <a-space>
-          <a-tag
-            color="green"
-            class="user-tag"
-          >
-            <span class="i-tabler-user" />
-            {{ userStore.user?.name }}
-          </a-tag>
-          <a-button @click="doLogout">
-            退出
-          </a-button>
-          <a-button @click="navigateTo('/tokens')">
-            <span class="i-tabler-key" />
-            API Token
-          </a-button>
-          <a-button @click="navigateTo('/workshop/agents')">
-            <span class="i-tabler-users" />
-            模板库
-          </a-button>
-          <a-button @click="navigateTo('/workshop/teams')">
-            <span class="i-tabler-users-group" />
-            编组库
-          </a-button>
-          <a-button @click="navigateTo('/workshop/channel-templates')">
-            <span class="i-tabler-layout-grid-add" />
-            Channel 模板
-          </a-button>
-          <a-button
-            type="primary"
+        <div class="head-acts">
+          <div class="lib-links">
+            <button
+              type="button"
+              class="lib-link"
+              @click="navigateTo('/workshop/agents')"
+            >
+              模板库
+            </button>
+            <button
+              type="button"
+              class="lib-link"
+              @click="navigateTo('/workshop/teams')"
+            >
+              编组库
+            </button>
+            <button
+              type="button"
+              class="lib-link"
+              @click="navigateTo('/workshop/channel-templates')"
+            >
+              Channel 模板
+            </button>
+            <button
+              type="button"
+              class="lib-link"
+              @click="navigateTo('/tokens')"
+            >
+              API Token
+            </button>
+            <button
+              type="button"
+              class="lib-link"
+              @click="doLogout"
+            >
+              退出
+            </button>
+          </div>
+          <button
+            class="aw-pill im"
             @click="createOpen = true"
           >
-            <span class="i-tabler-plus" />
+            <span class="i-tabler-plus im-pop" />
             新建 Workspace
-          </a-button>
-        </a-space>
+          </button>
+        </div>
       </div>
 
       <a-spin :spinning="!ready">
@@ -327,24 +344,8 @@ useHead({ title: 'Workshop · Agent Harness' })
             class="card"
           >
             <div class="card-head">
-              <span class="i-tabler-box" />
+              <span class="card-mark"><span class="i-tabler-box" /></span>
               <span class="name">{{ ws.name }}</span>
-              <a-dropdown>
-                <span class="i-tabler-dots op" />
-                <template #overlay>
-                  <a-menu>
-                    <a-menu-item @click="navigateTo(`/workshop/w/${ws.id}`)">
-                      进入
-                    </a-menu-item>
-                    <a-menu-item
-                      danger
-                      @click="remove(ws.id)"
-                    >
-                      删除
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
             </div>
             <div class="card-body">
               <div
@@ -358,7 +359,7 @@ useHead({ title: 'Workshop · Agent Harness' })
                   :class="{ live: ch.activeTasks > 0 }"
                 />
                 <span class="ch-name">{{ ch.name }}</span>
-                <span class="ch-meta">{{ ch.agents }} agent · {{ ch.busy }} 忙 · {{ ch.activeTasks }} 任务</span>
+                <span class="ch-meta">{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</span>
               </div>
               <div
                 v-if="ws.channelIds.length === 0"
@@ -367,14 +368,22 @@ useHead({ title: 'Workshop · Agent Harness' })
                 未挂载 Channel(进入后从左栏挂载)
               </div>
             </div>
-            <a-button
-              block
-              type="primary"
-              ghost
-              @click="navigateTo(`/workshop/w/${ws.id}`)"
-            >
-              进入控制台
-            </a-button>
+            <div class="card-foot">
+              <button
+                class="aw-pill outline im"
+                @click="navigateTo(`/workshop/w/${ws.id}`)"
+              >
+                <span class="i-tabler-arrow-right im-pop" />
+                进入控制台
+              </button>
+              <button
+                class="aw-ghost im"
+                title="删除 Workspace"
+                @click.stop="remove(ws.id)"
+              >
+                <span class="i-tabler-trash im-shake" />
+              </button>
+            </div>
           </div>
 
           <div
@@ -415,21 +424,77 @@ useHead({ title: 'Workshop · Agent Harness' })
   padding-top: 8vh;
 }
 
-.auth-card { width: 460px; max-width: 92vw; }
-.auth-card h2 { margin: 0 0 8px; font-family: var(--font-display); }
-.sub { margin: 0 0 12px; font-size: 12px; opacity: 0.6; }
-.hint { margin: 8px 0 0; font-size: 11px; opacity: 0.5; }
-
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+/* 登录卡:open-tag auth 声部(hairline-strong + 柔投影 + serif 标题) */
+.auth-card {
+  position: relative;
+  width: 420px;
+  max-width: 92vw;
+  padding: 26px 26px 18px;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
 }
 
-h2 { margin: 0 0 4px; font-family: var(--font-display); }
+.auth-card :deep(h2) {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 26px;
+}
 
-.user-tag { display: inline-flex; gap: 4px; align-items: center; padding: 3px 10px; }
+.sub { margin: 0 0 14px; font-size: 12.5px; color: var(--ink-faint); }
+.hint { margin: 8px 0 0; font-size: 11px; color: var(--ink-fainter); }
+
+.head-acts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+/* 库链接行:安静文字链(降噪,主 CTA 只剩一个) */
+.lib-links { display: inline-flex; flex-wrap: wrap; gap: 2px 14px; justify-content: flex-end; }
+
+.lib-link {
+  padding: 2px 0;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  transition: color var(--transition-fast);
+}
+
+.lib-link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+/* 卡片头:软方块 mark + serif 名称 */
+.card-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border-radius: var(--radius-panel-sm);
+}
+
+.card-head .name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.card-foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
 
 .grid {
   display: grid;

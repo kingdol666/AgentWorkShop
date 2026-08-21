@@ -273,7 +273,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
               <span
                 v-if="t.artifacts"
                 class="tk-num"
-              >📦 {{ t.artifacts }}</span>
+              ><span class="i-tabler-package" /> {{ t.artifacts }}</span>
             </div>
             <div class="tk-title">
               {{ t.title }}
@@ -308,7 +308,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
             v-if="col.items.length === 0"
             class="col-empty"
           >
-            {{ col.moveAction ? '拖入此处执行该动作' : '—' }}
+            {{ col.moveAction ? '拖入此处执行该动作' : '-' }}
           </div>
         </div>
       </div>
