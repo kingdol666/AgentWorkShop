@@ -42,6 +42,8 @@ export class Mailbox {
   private closed = false
   /** 外部通知回调(如唤醒调度循环);由 AgentRuntime/Manager 注入 */
   private onWake: () => void
+  /** 到信回调注册(poll_messages 长轮询即时唤醒;注册方自带注销句柄) */
+  private arrivalCbs = new Set<() => void>()
 
   constructor(
     private messageRepo: MessageRepo,
@@ -54,7 +56,7 @@ export class Mailbox {
     this.onWake = wake
   }
 
-  /** 投递:落库 pending + 唤醒 dequeue 门闩 + 通知外部 */
+  /** 投递:落库 pending + 唤醒 dequeue 门闩 + 到信回调 + 通知外部 */
   enqueue(message: A2AMessage): void {
     if (this.closed) return
     this.messageRepo.create({
@@ -69,20 +71,41 @@ export class Mailbox {
       metadata: message.metadata,
     })
     this.wake()
+    for (const cb of this.arrivalCbs) {
+      try {
+        cb()
+      }
+      catch { /* 回调异常不阻断投递 */ }
+    }
     this.onWake()
+  }
+
+  /** 到信回调注册(即时唤醒阻塞等待方);返回注销函数 */
+  onArrival(cb: () => void): () => void {
+    this.arrivalCbs.add(cb)
+    return () => {
+      this.arrivalCbs.delete(cb)
+    }
   }
 
   /** 取出下一条(FIFO);无消息时挂起等待;关闭后返回 null */
   async dequeue(): Promise<A2AMessage | null> {
     for (;;) {
       if (this.closed) return null
+      // 先取门闩引用再查询:查询空档内 enqueue 的 releaseGate 才不会丢唤醒
+      // (若查询后才取引用,新门闩替换旧门闩 → 挂在未触发的门闩上永久沉睡)
+      const gate = this.gate
       const rows = this.messageRepo.listPendingByChannelAgent(this.channelId, this.agentId)
       const row = rows[0]
       if (row) {
         this.messageRepo.markConsuming(row.id)
         return rowToMessage(row)
       }
-      await this.gate.promise
+      // 门闩挂起 + 15s 兜底重查:任何唤醒丢失路径自愈(消息最多滞后 15s)
+      await Promise.race([
+        gate.promise,
+        new Promise<void>(resolve => setTimeout(resolve, 15_000)),
+      ])
     }
   }
 
@@ -95,6 +118,11 @@ export class Mailbox {
   /** 标记已消费 */
   markConsumed(messageId: string): void {
     this.messageRepo.markConsumed(messageId)
+  }
+
+  /** 回合失败重投(consuming → pending);返回是否实际重投 */
+  requeue(messageId: string): boolean {
+    return this.messageRepo.requeue(messageId)
   }
 
   /** 外部唤醒:解除 dequeue 挂起(供 manager 在 taskEngine 直接落库后唤醒) */

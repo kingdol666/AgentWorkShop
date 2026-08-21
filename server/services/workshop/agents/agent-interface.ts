@@ -61,6 +61,8 @@ export interface AgentWorkspace {
   sendMessage(input: { toAgentId: string, parts: Part[], metadata?: Record<string, unknown> }): Promise<A2AMessage>
   /** 拉取自己 mailbox 未消费消息 */
   pollMailbox(limit?: number): Promise<A2AMessage[]>
+  /** 阻塞长轮询未消费消息(到信即时唤醒 + 250ms 兜底;poll_messages 用) */
+  waitMailbox(limit?: number, waitMs?: number): Promise<A2AMessage[]>
   /** 确认消费自己 mailbox 的协作消息(读即取;任务指派不经此确认,由执行循环处理) */
   ackMailbox(messageIds: string[]): Promise<void>
   /** (lead)Channel 邮件全览:全部 agent 间消息(含已消费),按时间倒序;可选按参与方过滤 */
@@ -179,10 +181,12 @@ export interface AgentInterface {
   /** lead 调度决策(可选,仅 role='lead' 时被 SchedulerLoop 调用) */
   supervise?(snapshot: SupervisionSnapshot, ctx: AgentRunContext): Promise<SupervisionDecision[]>
   /**
-   * 实时消息注入:将文本作为 steer 注入正在运行的 omp 会话。
-   * agent 空闲时无操作;agent 忙碌时注入为 steering message(agent 在当前轮看到)。
+   * 实时消息注入:将文本注入正在运行的 omp 会话。
+   * 返回送达模式:'steer' = 已注入流式会话(同轮可见,可安全标记消费);
+   * 'deferred' = 未能注入(回合被工具阻塞/空闲/发送失败)——消息保持 pending,
+   * 由 poll_messages 即时取走或消费循环起回合处理。
    */
-  steer?(text: string): Promise<void>
+  steer?(text: string): Promise<'steer' | 'deferred'>
   init?(config: { agent: AgentInfo, channelId: string }): Promise<void>
   dispose?(): Promise<void>
   /**

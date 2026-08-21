@@ -69,7 +69,7 @@ export interface OmpAgentConfig {
   systemPromptPrefix?: string
   /** 限制 omp 仅使用指定内置工具(null = 全部) */
   toolNames?: string[]
-  /** 每轮 prompt 超时(ms,默认 120000) */
+  /** 每轮停滞超时(ms,默认 300000):整轮无任何 omp 事件才中止;工具内阻塞(poll_messages ≤180s)有 tool 事件刷新计时 */
   promptTimeoutMs?: number
   /** supervise 轮超时(ms,默认 60000) */
   superviseTimeoutMs?: number
@@ -343,13 +343,16 @@ export class OmpRpcAgentImpl implements AgentInterface {
   }
 
   /**
-   * 实时消息注入(可靠):
-   *  - 回合 streaming 中 → 立即 steer(同轮可见)
-   *  - 回合活跃但尚未 streaming(prompt 排队窗口)→ 短轮询等待输出开始后再 steer
-   *  - 回合已结束/空闲 → follow_up 作为新输入投递(仍会被模型处理并回复)
-   * 兜底链保证:注入文本不会因为命中 omp 的静默丢弃窗口而丢失。
+   * 实时消息注入(送达模式协议):
+   *  - 回合 streaming 中 → 立即 steer,返回 'steer'(同轮可见,唯一可标记消费的路径)
+   *  - 回合活跃但尚未 streaming(prompt 排队窗口,上限 20s)→ 等 streaming 开始后 steer
+   *  - 回合被 host 工具阻塞(如 poll_messages 等待)/空闲/发送失败 → 返回 'deferred':
+   *    不再走 follow_up 兜底 —— 目标处理中时 omp 会拒绝该请求,而旧实现拒绝后仍被
+   *    上层标记消费,消息从信箱消失(轮询查空丢失 bug 根因)。deferred 下消息保持
+   *    pending:poll_messages 的 Mailbox 到信回调即时取走(毫秒级),或本回合结束后
+   *    由消费循环按 FIFO 起回合处理。
    */
-  async steer(text: string): Promise<void> {
+  async steer(text: string): Promise<'steer' | 'deferred'> {
     // 从确定性触发横幅提取回执上下文(AgentRuntime.injectSteer 生成,格式固定):
     // "[实时消息 from <id>]: ..." + "[系统触发器] 本消息要求回复(reply_to=<messageId>)。"
     const banner = text.match(/\[实时消息 from ([^\]]+)]:[\s\S]*?要求回复\(reply_to=([0-9a-f-]{36})\)/)
@@ -357,14 +360,14 @@ export class OmpRpcAgentImpl implements AgentInterface {
       this.replyContext = { fromId: banner[1]!, messageId: banner[2]! }
     }
     const client = this.client
-    if (!client) return
+    if (!client) return 'deferred'
     try {
       if (this.streaming) {
         await client.send({ type: 'steer', message: text })
-        return
+        return 'steer'
       }
       if (this.turnActive) {
-        // prompt 排队窗口:等 streaming 开始(上限 20s),期间回合结束则走 follow_up
+        // prompt 排队窗口:等 streaming 开始(上限 20s);工具阻塞的回合等不到 → deferred
         const deadline = Date.now() + 20_000
         while (Date.now() < deadline && this.turnActive && !this.streaming) {
           const { promise, resolve } = Promise.withResolvers()
@@ -373,14 +376,16 @@ export class OmpRpcAgentImpl implements AgentInterface {
         }
         if (this.streaming && this.turnActive) {
           await client.send({ type: 'steer', message: text })
-          return
+          return 'steer'
         }
+        return 'deferred'
       }
-      // 空闲或回合已结束:follow_up 开新输入(模型仍会处理;不再是"注入运行中会话"但内容不丢)
-      await client.send({ type: 'follow_up', message: text })
+      // 空闲/回合已结束:deferred(消息 pending,消费循环 dequeue 即起回合)
+      return 'deferred'
     }
     catch (err) {
-      console.error(`[OmpRpcAgent:${this.selfAgentId}] steer 注入失败:`, err instanceof Error ? err.message : err)
+      console.error(`[OmpRpcAgent:${this.selfAgentId}] steer 注入失败(消息保持 pending):`, err instanceof Error ? err.message : err)
+      return 'deferred'
     }
   }
 
@@ -393,8 +398,11 @@ export class OmpRpcAgentImpl implements AgentInterface {
       return
     }
 
-    // worker/lead: 同事点对点消息(含实时通信触发器)→ 按触发器语义处理并回复
-    if (!kind && request.fromAgentId) {
+    // worker/lead: 同事点对点消息(含实时通信触发器)→ 按触发器语义处理并回复;
+    // 人类经 REST 注入的消息(from 空 + x-aw-from-label)同样进入应答流 ——
+    // 旧判定把 from 为空的人类消息落到 no-op 分支静默吞掉(消息秒标 consumed,
+    // Agent 从未读到内容),这是"给 Agent 发消息没有回复"的根因
+    if (!kind && (request.fromAgentId || request.message.metadata?.['x-aw-from-label'])) {
       yield* this.peerMessageRun(request, ctx)
       return
     }
@@ -499,13 +507,18 @@ export class OmpRpcAgentImpl implements AgentInterface {
     }
     if (!this.client) return
 
-    const fromId = request.fromAgentId ?? 'unknown'
     const msg = request.message
+    // 显示名:agent 同事用 id(名册可解析);人类发送者用 fromLabel;兜底 unknown
+    const fromId = request.fromAgentId
+      ?? (typeof msg.metadata?.['x-aw-from-label'] === 'string' ? msg.metadata['x-aw-from-label'] : undefined)
+      ?? 'unknown'
     const msgText = partsToText(msg.parts)
     const requireReply = msg.metadata?.['x-aw-require-reply'] === 'true'
     const isReply = typeof msg.metadata?.['x-aw-in-reply-to'] === 'string'
-    this.replyContext = requireReply && fromId !== 'unknown'
-      ? { fromId, messageId: msg.messageId }
+    // 回执自动关联仅对真实 agent 发送者生效(人类无 agentId 可回投;
+    // 对人类的回复经事件流/时间线可见)
+    this.replyContext = requireReply && request.fromAgentId
+      ? { fromId: request.fromAgentId, messageId: msg.messageId }
       : null
 
     const roleLine = this.agentRole === 'lead'
@@ -615,9 +628,18 @@ export class OmpRpcAgentImpl implements AgentInterface {
     const enqueue = (event: AgentEvent): void => {
       queue.push(event)
       if (event.kind === 'done' || event.kind === 'error') isDone = true
+      lastActivity = Date.now()
       resolveWait?.()
       resolveWait = null
     }
+
+    // 停滞看门狗:整轮无任何 omp 事件(挂死的 LLM 调用/子进程僵死)时中止回合,
+    // 否则消息永久卡 consuming、队友消息无限堆积。host 工具内阻塞
+    // (poll_messages 最长 180s)与慢 provider(实测单步可 >5min)都有
+    // tool/状态事件刷新计时;默认 600s 覆盖慢回合,只拦真僵死。
+    const idleTimeoutMs = this.config.promptTimeoutMs ?? 600_000
+    let lastActivity = Date.now()
+    let stallTimer: ReturnType<typeof setTimeout> | null = null
 
     // LLM 流式增量缓冲:50ms 批量合并为一帧 delta(防高频 text_delta 洪泛 WS)
     let deltaBuf = ''
@@ -682,9 +704,33 @@ export class OmpRpcAgentImpl implements AgentInterface {
     try {
       while (!isDone || queue.length > 0) {
         if (queue.length === 0 && !isDone) {
+          const remaining = idleTimeoutMs - (Date.now() - lastActivity)
+          if (remaining <= 0) {
+            client.send({ type: 'abort' }).catch(() => {})
+            // 子进程大概率已僵死:击杀并清引用,下回合 ensureClient 全新重生
+            this.killProcess()
+            this.client = null
+            this.hostToolsRegistered = false
+            enqueue({
+              kind: 'error',
+              error: {
+                code: 'TURN_STALLED',
+                message: `回合停滞 ${Math.round(idleTimeoutMs / 1000)}s 无 omp 事件,已中止重置(消息按已处理落账,后续消息继续)`,
+              },
+            })
+            continue
+          }
           await new Promise<void>((r) => {
             resolveWait = r
+            stallTimer = setTimeout(() => {
+              resolveWait = null
+              r()
+            }, remaining + 100)
           })
+          if (stallTimer) {
+            clearTimeout(stallTimer)
+            stallTimer = null
+          }
         }
         while (queue.length > 0) {
           yield queue.shift()!
@@ -692,6 +738,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
       }
     }
     finally {
+      if (stallTimer) clearTimeout(stallTimer)
       unsubState()
       this.turnActive = false
       this.streaming = false
@@ -1131,14 +1178,11 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
         case 'poll_messages': {
           const limit = (req.arguments.limit as number | undefined) ?? 10
-          // 阻塞等待:wait_seconds 内每秒检查一次,消息一到即返(取代模型侧空轮询)
+          // 阻塞等待(真即时):Mailbox 到信回调毫秒级唤醒 + 250ms 兜底重查;
+          // 对方消息一到立即返回 —— 取代旧每秒盲查(阻塞窗口内到信可能被
+          // 实时注入层抢先标记消费,盲查扑空即"轮询查空"丢失)
           const waitSec = Math.min(180, Math.max(0, Number(req.arguments.wait_seconds ?? 0) || 0))
-          const deadline = Date.now() + waitSec * 1000
-          let msgs = await ws.pollMailbox(limit)
-          while (msgs.length === 0 && Date.now() < deadline) {
-            await new Promise(r => setTimeout(r, 1000))
-            msgs = await ws.pollMailbox(limit)
-          }
+          const msgs = await ws.waitMailbox(limit, waitSec * 1000)
           if (msgs.length === 0) {
             return {
               text: waitSec > 0
@@ -1159,7 +1203,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
               : ''
             const needReply = m.metadata?.['x-aw-require-reply'] === 'true' ? ' [需回复]' : ''
             const body = m.parts.map(p => 'text' in p ? p.text : '').join(' ')
-            return `  [from ${from}]${needReply}${reply} ${body.slice(0, 100)}`
+            // 不截断:谜面/任务书等长消息截到 100 字符会让收件人只看到半句话
+            // (实测猜谜者因截断误判谜面不完整而反复索要原文)
+            return `  [from ${from}]${needReply}${reply} ${body.slice(0, 2000)}`
           }).join('\n')
           return { text: `未消费消息(${msgs.length},已读即取):\n${text}` }
         }
@@ -1172,7 +1218,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
           const text = mails.map((m) => {
             const from = m.fromAgentId ?? '(系统)'
             const to = m.toAgentId ?? '(广播)'
-            const body = partsToText(m.parts).trim().slice(0, 120)
+            const body = partsToText(m.parts).trim().slice(0, 2000)
             const reply = m.metadata?.['x-aw-in-reply-to']
               ? ` [回复 ${String(m.metadata['x-aw-in-reply-to']).slice(0, 8)}…]`
               : ''

@@ -63,6 +63,8 @@ export class ChannelRuntime {
       const agent = this.ensureAgent(agentId)
       if (!agent) continue
       agent.enqueue(message)
+      // 空闲收件人即时唤醒消费循环(不等调度器周期扫描,降低新消息起回合延迟)
+      if (agent.getState() === 'idle') agent.wakeMailbox()
       if (realtime) agent.injectSteer(message)
     }
   }

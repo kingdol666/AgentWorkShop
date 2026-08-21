@@ -145,6 +145,8 @@ export class AgentRuntime {
   readonly channelId: string
   readonly name: string
   private state: 'idle' | 'busy' | 'stopped' = 'idle'
+  /** 回合失败重投计数(每消息;进程内存,重启由 resetConsuming 重新给机会) */
+  private runErrorRetries = new Map<string, number>()
   /** 正在执行的任务 id(run 期间;空闲时 null) */
   private currentTaskId: string | null = null
   /** run 与 supervise 互斥锁(promise 链) */
@@ -218,10 +220,13 @@ export class AgentRuntime {
 
   /**
    * 实时消息注入(仅 busy 收件人;消息已由 route 统一 enqueue 落库):
-   *  - busy 且 impl 支持 steer → 注入运行中的 omp 会话(同轮可见),送达即消费
-   *    (消费循环不再对该消息起第二个回合,防重复处理)
-   *  - idle/stopped/不支持 steer → no-op:消息已在 mailbox pending,
-   *    由消费循环按 FIFO 起回合处理
+   *  - busy 且 impl 处于流式输出 → steer 注入运行中的 omp 会话(同轮可见),
+   *    仅在确认注入成功('steer')后标记消费——消息必达
+   *  - busy 但回合被 host 工具阻塞(如 poll_messages 等待中)/空闲 → 保留 pending:
+   *    · 阻塞中的 poll_messages 由 Mailbox 到信回调即时唤醒并取走(同轮可见,最快路径)
+   *    · 否则由消费循环在本回合结束后按 FIFO 起回合处理
+   *    (不再走 follow_up 兜底:目标处理中时会被 omp 拒绝,且旧实现在拒绝后仍标记
+   *     消费导致消息从信箱消失 —— 即"轮询查空"丢失 bug 的根因)
    * 触发器语义:metadata['x-aw-require-reply']='true' 时,注入文本携带回执指令——
    * 接收方须把执行结果与对方所需内容经 send_message_to_agent 回给发送者,
    * 并以 x-aw-in-reply-to 关联原消息、自带 x-aw-require-reply 声明是否需再响应。
@@ -246,13 +251,35 @@ export class AgentRuntime {
       )
     }
     this.impl.steer(lines.join('\n'))
-      .then(() => {
-        // 送达即消费:会话内已可见,消费循环跳过(防同消息二次起回合)
-        this.deps.mailbox.markConsumed(message.messageId)
+      .then((mode) => {
+        // 仅确认注入流式会话才消费;其余路径消息保持 pending
+        // (poll_messages 即时取走 或 消费循环起回合),杜绝未送达先消费
+        if (mode === 'steer') {
+          this.deps.mailbox.markConsumed(message.messageId)
+        }
       })
       .catch((err) => {
         console.error(`[AgentRuntime:${this.agentId}] steer 失败(消息保持 pending 待循环处理):`, err)
       })
+  }
+
+  /**
+   * 长轮询未消费消息(poll_messages host 工具用):
+   * 250ms 兜底重查 + Mailbox 到信回调即时唤醒——消息到达后毫秒级返回,
+   * 不再每秒盲查。不改消息状态(peek 只读);消费语义由调用方(poll 读即取)决定。
+   */
+  async waitPending(limit: number, waitMs: number): Promise<A2AMessage[]> {
+    const deadline = Date.now() + Math.max(0, waitMs)
+    for (;;) {
+      const msgs = await this.deps.mailbox.peek(limit)
+      if (msgs.length > 0 || Date.now() >= deadline) return msgs
+      const { promise, resolve } = Promise.withResolvers<unknown>()
+      const off = this.deps.mailbox.onArrival(() => resolve(undefined))
+      const timer = setTimeout(() => resolve(undefined), 250)
+      await promise
+      clearTimeout(timer)
+      off()
+    }
   }
 
   /** 启动消费循环 */
@@ -403,6 +430,8 @@ export class AgentRuntime {
     this.state = 'busy'
     this.currentTaskId = taskId ?? null
     this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'busy', ...this.queueContext() })
+    // 回合失败标记(须在 try 外声明,finally 依据它决定重投还是消费)
+    let sawRunError = false
     try {
       // 任务消息联动:assign → WORKING(自动接取;状态事件由 TaskEngine transition hooks 广播)
       // 仅 SUBMITTED/ASSIGNED 自动接取:WAITING(已有子任务)的任务由 SchedulerLoop/子任务汇总推进,
@@ -439,14 +468,22 @@ export class AgentRuntime {
       const cap = (text: string): void => {
         if (replyText.length < 400) replyText += text.slice(0, 400 - replyText.length)
       }
-      for await (const event of this.impl.run(request, ctx)) {
-        this.deps.bus.emit(event, enrichedSource)
-        // LLM 流式增量:只走事件流(AEP agent.delta),不进任务引擎/交付兜底管道
-        if (event.kind === 'delta') continue
-        if (taskId) await this.deps.taskEngine.applyEvent(taskId, event)
-        if (event.kind === 'message') cap(partsToText(event.message.parts))
-        else if (event.kind === 'status' && event.status.message) cap(partsToText(event.status.message.parts))
-        else if (event.kind === 'artifact' && event.artifact.name === 'output') cap(partsToText(event.artifact.parts))
+      try {
+        for await (const event of this.impl.run(request, ctx)) {
+          this.deps.bus.emit(event, enrichedSource)
+          // LLM 流式增量:只走事件流(AEP agent.delta),不进任务引擎/交付兜底管道
+          if (event.kind === 'delta') continue
+          if (event.kind === 'error') sawRunError = true
+          if (taskId) await this.deps.taskEngine.applyEvent(taskId, event)
+          if (event.kind === 'message') cap(partsToText(event.message.parts))
+          else if (event.kind === 'status' && event.status.message) cap(partsToText(event.status.message.parts))
+          else if (event.kind === 'artifact' && event.artifact.name === 'output') cap(partsToText(event.artifact.parts))
+        }
+      }
+      catch (err) {
+        // run 生成器抛错(如 omp 子进程 spawn 失败):按回合失败走重投,不外抛断循环
+        sawRunError = true
+        console.error(`[AgentRuntime:${this.agentId}] 回合异常:`, err)
       }
       // 交付兜底(harness 回合结束 ≠ 任务完成):
       //  - 回合产出过实质 artifact(LLM 完成了工作但跳过 complete_task 工具)→ 隐式完成,
@@ -516,7 +553,30 @@ export class AgentRuntime {
         this.state = 'idle'
         this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'idle', ...this.queueContext() })
       }
-      this.deps.mailbox.markConsumed(msg.messageId)
+      // 回合失败(harness 错误/停滞看门狗中止/子进程异常):重投消息而非静默消费,
+      // 内容不丢,重试回合(通常已是全新子进程)再处理;每消息最多重投 2 次防毒消息死循环
+      if (sawRunError && (this.runErrorRetries.get(msg.messageId) ?? 0) < 2
+        && this.deps.mailbox.requeue(msg.messageId)) {
+        const attempt = (this.runErrorRetries.get(msg.messageId) ?? 0) + 1
+        this.runErrorRetries.set(msg.messageId, attempt)
+        this.emitExternal({
+          kind: 'status',
+          status: {
+            state: 'WORKING',
+            message: {
+              messageId: randomUUID(),
+              contextId: this.channelId,
+              role: 'ROLE_AGENT',
+              parts: [{ text: `消息 ${msg.messageId.slice(0, 8)} 回合失败,已重投信箱待重试(第 ${attempt} 次)` }],
+            },
+            timestamp: new Date().toISOString(),
+          },
+        })
+      }
+      else {
+        this.runErrorRetries.delete(msg.messageId)
+        this.deps.mailbox.markConsumed(msg.messageId)
+      }
     }
   }
 

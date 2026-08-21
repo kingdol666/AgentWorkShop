@@ -275,10 +275,9 @@ async function testErrorDoesNotBlock(): Promise<void> {
   rt.start()
   rt.enqueue(mkMessage('ch1', []))
   rt.enqueue(mkMessage('ch1', []))
-  await waitUntil(() => impl.calls.length === 2)
-  await waitUntil(() => rt.getState() === 'idle')
-  check('单条抛错不阻塞下一条:两条均被处理', impl.calls.length === 2)
-  check('抛错后消息仍标记消费', s.messages.listPendingByChannelAgent('ch1', 'a1').length === 0)
+  await waitUntil(() => impl.calls.length >= 3 && rt.getState() === 'idle')
+  check('单条抛错重投重试:失败消息重试成功且不阻塞下一条', impl.calls.length === 3)
+  check('重试后消息仍标记消费', s.messages.listPendingByChannelAgent('ch1', 'a1').length === 0)
   await rt.stop()
 }
 

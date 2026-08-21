@@ -843,6 +843,7 @@ export class AgentChannelManager {
       reassignTask: (taskId, toAgentId) => this.reassignTask(channelId, agent.id, taskId, toAgentId),
       sendMessage: input => this.sendA2A(channelId, agent.id, input),
       pollMailbox: limit => this.pollMailbox(channelId, agent.id, limit),
+      waitMailbox: (limit, waitMs) => this.waitMailbox(channelId, agent.id, limit ?? 10, waitMs ?? 0),
       ackMailbox: ids => Promise.resolve(this.ackMailbox(channelId, agent.id, ids)),
       listMail: opts => this.listChannelMail(channelId, agent.id, opts),
       subscribe: input => this.subscribe(channelId, agent.id, input),
@@ -2159,6 +2160,15 @@ export class AgentChannelManager {
     const message = buildMessage(input.channelId, 'ROLE_AGENT', input.parts, metadata)
     this.route(input.channelId, message)
     return message
+  }
+
+  /** 阻塞长轮询(poll_messages):到信即时唤醒,250ms 兜底重查 */
+  async waitMailbox(channelId: string, callerAgentId: string, limit: number, waitMs: number): Promise<A2AMessage[]> {
+    this.requireMember(channelId, callerAgentId)
+    const runtime = this.ensureAgentRuntime(channelId, callerAgentId)
+    if (runtime) return runtime.waitPending(limit, waitMs)
+    // 运行时未装配(极端时序):退化为一次性快照查询
+    return this.pollMailbox(channelId, callerAgentId, limit)
   }
 
   async pollMailbox(channelId: string, callerAgentId: string, limit = 100): Promise<A2AMessage[]> {

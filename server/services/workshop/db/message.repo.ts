@@ -40,6 +40,9 @@ export function createMessageRepo(db: DatabaseSync) {
   const resetConsumingStmt = db.prepare(
     `UPDATE messages SET state = 'pending' WHERE state = 'consuming'`,
   )
+  const requeueStmt = db.prepare(
+    `UPDATE messages SET state = 'pending' WHERE id = ? AND state = 'consuming'`,
+  )
   const consumePendingByTaskStmt = db.prepare(
     `UPDATE messages SET state = 'consumed', consumed_at = ? WHERE task_id = ? AND state = 'pending'`,
   )
@@ -97,6 +100,11 @@ export function createMessageRepo(db: DatabaseSync) {
     /** 启动恢复:所有 consuming 重置回 pending(重新投递) */
     resetConsuming(): void {
       resetConsumingStmt.run()
+    },
+
+    /** 单条重投:consuming → pending(回合失败重试);返回是否实际重投 */
+    requeue(id: string): boolean {
+      return requeueStmt.run(id).changes > 0
     },
 
     /** 按 channel 倒序列出最近消息 */
