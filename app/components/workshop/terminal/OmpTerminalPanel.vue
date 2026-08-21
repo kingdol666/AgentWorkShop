@@ -78,22 +78,44 @@ const C = {
   dimItalicMagenta: '\x1b[2;3;35m',
 }
 
-/** 写入正文:先冲刷流式缓冲(保序)→ 清当前输入行 → 写内容(保证末尾换行)→ 重绘输入行 */
+/** 流式行未收尾标志:光标停在流式行中间 —— 下一个块/回合收尾前先补换行 */
+let streamLineOpen = false
+
+/**
+ * 冲刷流式增量:直接续写在光标后。
+ * 不补换行、不清行、不碰底部输入行 —— 流式批次之间是同一段正文,
+ * 旧实现按"块语义"逐批强制换行 + 重绘 prompt,导致实时消费出现逐批断行
+ * (历史重放一次冲刷故正常)。
+ */
+function flushStream(): void {
+  if (streamBuf.length === 0) return
+  const text = streamBuf.join('')
+  streamBuf.length = 0
+  term?.write(text)
+  if (!/\r?\n$/.test(text)) streamLineOpen = true
+}
+
+/** 收尾流式行:仅在光标停在流式行中时补一个换行 */
+function closeStreamLine(): void {
+  if (!streamLineOpen) return
+  streamLineOpen = false
+  term?.write('\r\n')
+}
+
+/** 写入完整块(独立行):冲刷流式增量并收尾流式行 → 清输入行 → 写块 → 重绘输入行 */
 function writeBlock(text: string): void {
   if (!term) return
-  if (streamBuf.length > 0) {
-    const pending = streamBuf.join('')
-    streamBuf.length = 0
-    writeBlock(pending)
-  }
+  flushStream()
+  closeStreamLine()
   term.write('\r\x1b[K')
   term.write(text.endsWith('\r\n') || text.endsWith('\n') ? text : `${text}\r\n`)
   renderInputRow()
 }
 
-/** 重绘底部输入行(prompt + 已键入内容) */
+/** 重绘底部输入行(prompt + 已键入内容);流式行未收尾时跳过(回合收尾后统一补绘) */
 function renderInputRow(): void {
   if (!term) return
+  if (streamLineOpen || streamBuf.length > 0) return
   term.write(`\r\x1b[K${C.dim}❯${C.reset} ${C.cyan}${inputLine}${C.reset}`)
 }
 
@@ -121,14 +143,6 @@ const streamBuf: string[] = []
  * text_delta(只有换行),全文在 text_end.content 落定 —— 差额补发防止终端缺正文。
  */
 const textSent = new Map<number, number>()
-
-/** 批量冲刷流式缓冲(每条 term.frames 消息处理完调用一次) */
-function flushStream(): void {
-  if (streamBuf.length === 0) return
-  const text = streamBuf.join('')
-  streamBuf.length = 0
-  writeBlock(text)
-}
 
 function renderFrame(f: TermFrame): void {
   if (f.seq <= lastRenderedSeq) return
@@ -165,7 +179,7 @@ function renderFrame(f: TermFrame): void {
         const text = String(frame.text ?? '')
         // follow_up 的 user 回显与人类输入同文 → 已渲染,跳过;平台注入的任务 prompt 正常回显
         if (text === lastHumanInput) return
-        writeBlock(`\r\n${C.bold}${C.cyan}❯ ${text.replace(/\n/g, '\r\n')}${C.reset}`)
+        writeBlock(`${C.bold}${C.cyan}❯ ${text.replace(/\n/g, '\r\n')}${C.reset}`)
       }
       return
     }
@@ -199,8 +213,11 @@ function renderFrame(f: TermFrame): void {
     case 'message_end': {
       const role = String(frame.role ?? '')
       if (role === 'assistant' && assistantStreamActive) {
+        // 回合收尾:冲刷剩余增量 → 流式行补换行 → 恢复底部输入行
         assistantStreamActive = false
-        streamBuf.push('\r\n')
+        flushStream()
+        closeStreamLine()
+        renderInputRow()
       }
       return
     }
@@ -591,6 +608,8 @@ onBeforeUnmount(() => {
 })
 
 const doClear = (): void => {
+  streamBuf.length = 0
+  streamLineOpen = false
   term?.clear()
   renderInputRow()
 }
@@ -624,7 +643,7 @@ const connLabel = computed(() => {
       <span class="term-title">
         <span class="i-tabler-terminal-2" />
         {{ t('terminal.title') }}
-        <span class="aw-mono dim">PID {{ livePid ?? pid ?? '–' }}</span>
+        <span class="aw-mono dim">PID {{ livePid ?? pid ?? '-' }}</span>
         <span
           v-if="subtitle"
           class="dim"

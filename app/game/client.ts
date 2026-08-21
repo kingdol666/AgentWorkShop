@@ -16,6 +16,8 @@ export interface GameClientOptions {
   onStatus?: (connected: boolean) => void
   url?: string
   reconnectDelayMs?: number
+  /** 用户 token 获取器(连接鉴权 ?token=;重连时取最新值) */
+  getToken?: () => string | undefined
 }
 
 export class GameClient {
@@ -27,12 +29,14 @@ export class GameClient {
   private disposed = false
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private joined = false
+  private readonly getToken?: () => string | undefined
 
   constructor(options: GameClientOptions) {
     this.url = options.url ?? '/api/game/ws'
     this.reconnectDelayMs = options.reconnectDelayMs ?? 3000
     this.onCommand = options.onCommand
     this.onStatus = options.onStatus
+    this.getToken = options.getToken
   }
 
   connect(): void {
@@ -40,7 +44,9 @@ export class GameClient {
       return
     }
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    this.ws = new WebSocket(`${proto}//${location.host}${this.url}`)
+    const token = this.getToken?.()
+    const authQuery = token ? `?token=${encodeURIComponent(token)}` : ''
+    this.ws = new WebSocket(`${proto}//${location.host}${this.url}${authQuery}`)
 
     this.ws.onopen = () => {
       this.joined = false

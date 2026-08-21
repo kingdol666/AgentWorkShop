@@ -42,6 +42,8 @@ export const useUserStore = defineStore('workshop.user', {
   getters: {
     isLoggedIn: state => state.user !== null,
     token: state => state.user?.token ?? '',
+    /** admin 角色(最高管理权限:全量监控/任意模板/用户管理) */
+    isAdmin: state => state.user?.role === 'admin',
   },
   actions: {
     applyCookie(): void {

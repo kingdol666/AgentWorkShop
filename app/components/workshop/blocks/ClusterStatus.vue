@@ -106,7 +106,7 @@ const toggle = (): void => {
   line-height: 13px;
   color: var(--ink-soft, inherit);
   background: color-mix(in srgb, var(--ink) 8%, transparent);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
   align-self: center;
 }
 .st-preview {

@@ -57,7 +57,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   line-height: 20px;
   color: var(--accent-vermilion, #ff4d4f);
 }
-.error-code { padding: 0 5px; font-size: 9px; background: color-mix(in srgb, var(--accent-vermilion, #ff4d4f) 14%, transparent); border-radius: var(--radius-chip, 8px); }
+.error-code { padding: 0 5px; font-size: 9px; background: color-mix(in srgb, var(--accent-vermilion, #ff4d4f) 14%, transparent); border-radius: var(--radius-chip); }
 .error-text { overflow-wrap: anywhere; word-break: break-word; }
 .more-btn {
   padding: 0 6px;
@@ -66,7 +66,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   cursor: pointer;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent-vermilion, #ff4d4f) 35%, transparent);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
 }
 .more-btn:hover { background: color-mix(in srgb, var(--accent-vermilion, #ff4d4f) 8%, transparent); }
 </style>

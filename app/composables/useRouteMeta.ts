@@ -17,6 +17,12 @@ export function useRouteMeta() {
   const staticMap: Record<string, RouteMeta> = {
     '/': { title: t('menu.dashboard'), icon: 'i-tabler-layout-dashboard' },
     '/workshop': { title: t('menu.workshop'), icon: 'i-tabler-box' },
+
+    '/workshop/agents': { title: 'Agent 模板库', icon: 'i-tabler-users' },
+
+    '/workshop/teams': { title: 'AgentTeam 编组库', icon: 'i-tabler-users-group' },
+
+    '/workshop/channel-templates': { title: 'Channel 模板中心', icon: 'i-tabler-layout-grid-add' },
     '/game': { title: t('menu.game'), icon: 'i-tabler-device-gamepad-2' },
     '/tokens': { title: t('menu.tokens'), icon: 'i-tabler-key' },
     '/users': { title: t('menu.users'), icon: 'i-tabler-users-group' },

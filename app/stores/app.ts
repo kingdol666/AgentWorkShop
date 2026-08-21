@@ -4,6 +4,11 @@ export const useAppStore = defineStore('app', () => {
   //   其内部有 import.meta.client 守卫，SSR 安全）
   const isDark = ref(false)
   const sidebarCollapsed = ref(false)
+  /**
+   * 主题强调色(warm-editorial:默认墨色药丸;设置页可换 muted 预设,实时生效并持久化)。
+   * null = 跟随 config.yml 默认(config.primaryColor 注入的 --color-primary)。
+   */
+  const accent = ref<string | null>(null)
 
   function toggleDark() {
     isDark.value = !isDark.value
@@ -13,10 +18,14 @@ export const useAppStore = defineStore('app', () => {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
 
-  return { isDark, sidebarCollapsed, toggleDark, toggleSidebar }
+  function setAccent(color: string | null) {
+    accent.value = color
+  }
+
+  return { isDark, sidebarCollapsed, accent, toggleDark, toggleSidebar, setAccent }
 }, {
   persist: {
-    pick: ['isDark', 'sidebarCollapsed'],
+    pick: ['isDark', 'sidebarCollapsed', 'accent'],
     storage: piniaPluginPersistedstate.localStorage(),
   },
 })

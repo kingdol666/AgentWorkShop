@@ -16,8 +16,10 @@ import { readBody } from 'h3'
 import { defineApiHandler } from '../../utils/response'
 import { AppError } from '../../utils/errors'
 import { gameSession } from '../../services/game/session'
+import { resolveUser } from '../workshop/caller'
 
 export default defineApiHandler(async (event) => {
+  resolveUser(event)
   const body = await readBody<{ type?: string, payload?: unknown }>(event)
   if (!body || typeof body.type !== 'string') {
     throw new AppError(400, 'BAD_MESSAGE', '需要 { type, payload }')

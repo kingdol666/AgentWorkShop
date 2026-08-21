@@ -40,13 +40,13 @@ export default defineNuxtConfig({
 
   css: [
     '~/assets/css/main.css',
-    // 制图台设计系统字体:展示衬线 + 正文 + 等宽数据字体(全部本地打包,离线可用)
-    '@fontsource-variable/fraunces/index.css',
-    '@fontsource/ibm-plex-sans/400.css',
-    '@fontsource/ibm-plex-sans/500.css',
-    '@fontsource/ibm-plex-sans/600.css',
+    // warm-editorial 设计系统字体:Inter 正文 + EB Garamond 衬线 display + 等宽数据字体(全部本地打包,离线可用)
+    '@fontsource-variable/inter',
+    '@fontsource/eb-garamond/400.css',
+    '@fontsource/eb-garamond/400-italic.css',
     '@fontsource/ibm-plex-mono/400.css',
     '@fontsource/ibm-plex-mono/500.css',
+    '@fontsource/ibm-plex-mono/600.css',
     // harness 终端(/monitor)xterm 渲染样式(组件内动态加载 xterm,样式全局注入)
     '@xterm/xterm/css/xterm.css',
   ],

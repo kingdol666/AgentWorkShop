@@ -18,18 +18,21 @@ const deploySchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const teamId = getRouterParam(event, 'id')!
+  const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(deploySchema))
   const manager = getWorkshopManager()
-  const user = resolveUser(event)
   const team = manager.getTeam(teamId)
   if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
-  // 部署 = 克隆成员模板到本人 channel(不修改编组本身):公共编组(NULL owner)允许任何人使用;
-  // 私有编组仅属主可用(他人可见模板但无权批量部署)
-  if (team.ownerUserId !== null && team.ownerUserId !== user.id) {
-    throw new AppError(403, 'SCOPE_VIOLATION', 'AgentTeam 不属于当前用户')
+  // 部署 = 克隆成员模板到本人 channel(不修改编组本身):
+  // 内置/公开编组允许任何人使用;私有编组仅属主/admin 可用
+  manager.requireTemplateReadable(team, user, 'AgentTeam')
+  // 成员模板同样需操作者可读(公开 team 含私有成员时非属主/admin 拒绝)
+  for (const m of team.members) {
+    const tpl = manager.getAgent(m.templateId)
+    if (tpl) manager.requireTemplateReadable(tpl, user, '成员 Agent 模板')
   }
   const ch = manager.getChannelForUser(body.channelId, user.id)
-  manager.requireOwned(ch.ownerUserId, user.id, 'channel')
+  manager.requireWritable(ch.ownerUserId, user, 'channel')
   // 部署后:若 channel 尚无调度循环(新 lead 就位)→ 启动
   const result = await manager.deployTeamToChannel({ teamId, channelId: body.channelId })
   ensureLeadSchedulerLoop(manager, body.channelId)

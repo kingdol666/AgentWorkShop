@@ -18,12 +18,12 @@ const addMemberSchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const teamId = getRouterParam(event, 'id')!
+  const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(addMemberSchema))
   const manager = getWorkshopManager()
-  const user = resolveUser(event)
   const team = manager.getTeam(teamId)
   if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
-  manager.requireOwned(team.ownerUserId, user.id, 'AgentTeam')
+  manager.requireWritable(team.ownerUserId, user, 'AgentTeam')
   return manager.addTemplateToTeam({
     teamId,
     templateId: body.agentId,

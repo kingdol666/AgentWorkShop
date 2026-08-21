@@ -16,7 +16,7 @@ export default defineApiHandler(async (event) => {
   const manager = getWorkshopManager()
   const user = resolveUser(event)
   const channel = manager.getChannelForUser(channelId, user.id)
-  manager.requireOwned(channel.ownerUserId, user.id, 'channel')
+  manager.requireWritable(channel.ownerUserId, user, 'channel')
   const members = await manager.listChannelAgents(channelId)
   if (!members.some(a => a.id === agentId)) {
     throw new AppError(404, 'NOT_FOUND', `成员不存在: ${agentId}`)

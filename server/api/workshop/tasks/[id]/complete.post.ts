@@ -26,7 +26,7 @@ const completeSchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const taskId = getRouterParam(event, 'id')!
-  const body = await readValidatedBody(event, zValidator(completeSchema))
   const caller = resolveCaller(event)
+  const body = await readValidatedBody(event, zValidator(completeSchema))
   return getWorkshopManager().completeTask(caller.channelId, caller.id, { taskId, artifacts: body.artifacts })
 })

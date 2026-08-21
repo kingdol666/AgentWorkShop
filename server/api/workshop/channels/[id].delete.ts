@@ -12,7 +12,7 @@ export default defineApiHandler(async (event) => {
   const manager = getWorkshopManager()
   const user = resolveUser(event)
   const channel = manager.getChannelForUser(channelId, user.id)
-  manager.requireOwned(channel.ownerUserId, user.id, 'channel')
+  manager.requireWritable(channel.ownerUserId, user, 'channel')
   await manager.removeChannel(channelId)
   return { ok: true }
 })

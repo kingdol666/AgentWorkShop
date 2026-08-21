@@ -22,12 +22,21 @@ export const useRouteTrailStore = defineStore('app.routeTrail', () => {
     waypoints.value = [...rest, { path, at: Date.now() }].slice(-MAX_WAYPOINTS)
   }
 
+  /** 关闭单个航点(标签页);返回被移除航点在原数组中的下标(供关闭当前页时挑选跳转目标) */
+  function remove(path: string): number {
+    const idx = waypoints.value.findIndex(w => w.path === path)
+    if (idx >= 0) {
+      waypoints.value = waypoints.value.filter(w => w.path !== path)
+    }
+    return idx
+  }
+
   /** 清空航迹 */
   function clear(): void {
     waypoints.value = []
   }
 
-  return { waypoints, visit, clear }
+  return { waypoints, visit, remove, clear }
 }, {
   persist: {
     pick: ['waypoints'],

@@ -20,8 +20,8 @@ const teamMemorySchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
-  const body = await readValidatedBody(event, zValidator(teamMemorySchema))
   const caller = resolveCaller(event)
+  const body = await readValidatedBody(event, zValidator(teamMemorySchema))
   if (caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可写团队记忆')
   return getWorkshopManager().addTeamMemory(channelId, caller.id, {
     title: body.title,

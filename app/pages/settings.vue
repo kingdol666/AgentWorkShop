@@ -1,55 +1,78 @@
 <script setup lang="ts">
 import { message } from 'ant-design-vue'
+import { useUserStore } from '@/app/stores/workshop/user'
 
-const { t } = useI18n()
+const { t, locale, locales, setLocale } = useI18n()
 const store = useAppStore()
 const site = useSiteConfig()
+const config = useRuntimeConfig().public
+const userStore = useUserStore()
 
-const activeTab = ref('basic')
+const activeTab = ref('appearance')
 
-// 基本设置
-const basicForm = reactive({
-  name: site.name,
-  description: site.description || '',
-})
+/** 强调色预设(warm-editorial:muted 低饱和族;默认 = 墨色药丸,跟随 config.yml) */
+const defaultAccent = String(config.primaryColor)
+const colorPresets = [
+  { value: defaultAccent, label: t('settings.accentInk') },
+  { value: '#44403c', label: t('settings.accentStone') },
+  { value: '#44615a', label: t('settings.accentMoss') },
+  { value: '#3f6094', label: t('settings.accentSlate') },
+  { value: '#6b5aa0', label: t('settings.accentPlum') },
+  { value: '#9c5744', label: t('settings.accentClay') },
+]
 
-// 主题设置
-const colorPresets = ['#2e51c8', '#c23b2e', '#3e7a47', '#b45f1a', '#6b4e9e', '#0e7490']
-const themeForm = reactive({
-  primaryColor: '#2e51c8',
-})
+const currentAccent = computed(() => store.accent ?? defaultAccent)
 
-function pickColor(c: string) {
-  themeForm.primaryColor = c
+function pickAccent(c: string) {
+  store.setAccent(c === defaultAccent ? null : c)
+  message.success(t('settings.accentApplied'))
 }
 
-// 通知设置
-const notifyForm = reactive({
-  email: true,
-  sms: false,
-  push: true,
-})
-
-function handleSave() {
-  message.success(t('settings.saveSuccess'))
+/** 恢复默认(墨色药丸,跟随 config.yml) */
+function resetAccent() {
+  store.setAccent(null)
+  message.success(t('settings.accentReset'))
 }
+
+const localeOptions = computed(() =>
+  (locales.value as Array<{ code: string, name: string }>).map(l => ({
+    label: l.name,
+    value: l.code,
+  })),
+)
+
+const switchLocale = (value: unknown) => {
+  if (value != null) {
+    setLocale(String(value) as 'zh-CN' | 'en')
+  }
+}
+
+/** 系统态概览(只读,同源 config.yml) */
+const systemRows = computed(() => [
+  { label: t('home.fields.name'), value: site.name },
+  { label: t('home.fields.version'), value: `v${site.version}` },
+  { label: t('home.fields.mode'), value: site.mode },
+  { label: t('home.fields.apiBase'), value: `${site.apiBase} (${config.apiTimeout}ms)` },
+  { label: t('home.fields.primary'), value: defaultAccent },
+  { label: 'i18n', value: locale.value },
+])
 
 const tabs = computed(() => [
-  { key: 'basic', icon: 'i-tabler-settings', label: t('settings.basic') },
-  { key: 'theme', icon: 'i-tabler-palette', label: t('settings.theme') },
-  { key: 'notification', icon: 'i-tabler-bell', label: t('settings.notification') },
+  { key: 'appearance', icon: 'i-tabler-palette', label: t('settings.theme') },
+  { key: 'system', icon: 'i-tabler-server-2', label: t('settings.systemTab') },
 ])
 </script>
 
 <template>
-  <div class="page-wrap">
-    <div class="page-head">
-      <h2 class="page-title">
-        {{ t('settings.title') }}
-      </h2>
-      <p class="page-sub">
-        {{ t('settings.subtitle') }}
-      </p>
+  <div class="settings-page">
+    <div class="aw-page-head">
+      <div>
+        <p class="aw-kicker">
+          {{ t('menu.system') }} / settings
+        </p>
+        <h1>{{ t('settings.title') }}</h1>
+      </div>
+      <span class="aw-stamp">v{{ site.version }}</span>
     </div>
 
     <a-card
@@ -71,135 +94,117 @@ const tabs = computed(() => [
           </button>
         </div>
 
-        <!-- 右侧表单区 -->
+        <!-- 右侧内容区 -->
         <div class="settings-body">
-          <!-- 基本设置 -->
-          <div v-show="activeTab === 'basic'">
-            <h3 class="section-title">
-              {{ t('settings.basic') }}
-            </h3>
-            <p class="section-desc">
-              {{ t('settings.basicDesc') }}
-            </p>
-            <a-form
-              layout="vertical"
-              class="settings-form"
-            >
-              <a-form-item :label="t('settings.appName')">
-                <a-input
-                  v-model:value="basicForm.name"
-                  size="large"
-                />
-              </a-form-item>
-              <a-form-item :label="t('settings.appDesc')">
-                <a-textarea
-                  v-model:value="basicForm.description"
-                  :rows="4"
-                  :maxlength="200"
-                  show-count
-                />
-              </a-form-item>
-            </a-form>
-          </div>
-
-          <!-- 主题设置 -->
-          <div v-show="activeTab === 'theme'">
+          <!-- 外观:主题色 / 深浅 / 语言(全部实时生效并持久化) -->
+          <div v-show="activeTab === 'appearance'">
             <h3 class="section-title">
               {{ t('settings.theme') }}
             </h3>
             <p class="section-desc">
-              {{ t('settings.themeDesc') }}
+              {{ t('settings.appearanceDesc') }}
             </p>
-            <a-form
-              layout="vertical"
-              class="settings-form"
-            >
-              <a-form-item :label="t('settings.primaryColor')">
-                <div class="color-swatches">
-                  <button
-                    v-for="c in colorPresets"
-                    :key="c"
-                    class="swatch"
-                    :class="{ selected: themeForm.primaryColor === c }"
-                    :style="{ background: c }"
-                    @click="pickColor(c)"
-                  >
-                    <span
-                      v-if="themeForm.primaryColor === c"
-                      class="i-tabler-check"
-                    />
-                  </button>
-                </div>
-              </a-form-item>
-              <a-form-item :label="t('settings.themeMode')">
-                <a-segmented
-                  :value="store.isDark ? 'dark' : 'light'"
-                  :options="[
-                    { label: t('common.light'), value: 'light' },
-                    { label: t('common.dark'), value: 'dark' },
-                  ]"
-                  @change="store.toggleDark()"
-                />
-              </a-form-item>
-            </a-form>
-          </div>
 
-          <!-- 通知设置 -->
-          <div v-show="activeTab === 'notification'">
-            <h3 class="section-title">
-              {{ t('settings.notification') }}
-            </h3>
-            <p class="section-desc">
-              {{ t('settings.notificationDesc') }}
-            </p>
-            <div class="notify-list">
-              <div class="notify-item">
-                <div>
-                  <div class="notify-label">
-                    <span class="i-tabler-mail" /> {{ t('settings.emailNotify') }}
-                  </div>
-                  <div class="notify-desc">
-                    {{ t('settings.emailNotifyDesc') }}
-                  </div>
+            <div class="set-row">
+              <div class="set-text">
+                <div class="set-title">
+                  {{ t('settings.primaryColor') }}
                 </div>
-                <a-switch v-model:checked="notifyForm.email" />
-              </div>
-              <div class="notify-item">
-                <div>
-                  <div class="notify-label">
-                    <span class="i-tabler-message" /> {{ t('settings.smsNotify') }}
-                  </div>
-                  <div class="notify-desc">
-                    {{ t('settings.smsNotifyDesc') }}
-                  </div>
+                <div class="set-sub">
+                  {{ t('settings.accentDesc') }}
                 </div>
-                <a-switch v-model:checked="notifyForm.sms" />
               </div>
-              <div class="notify-item">
-                <div>
-                  <div class="notify-label">
-                    <span class="i-tabler-bell-ringing" /> {{ t('settings.pushNotify') }}
-                  </div>
-                  <div class="notify-desc">
-                    {{ t('settings.pushNotifyDesc') }}
-                  </div>
+            </div>
+            <div class="color-swatches">
+              <button
+                v-for="c in colorPresets"
+                :key="c.value"
+                class="swatch"
+                :class="{ on: currentAccent.toLowerCase() === c.value.toLowerCase() }"
+                :style="{ '--sw': c.value }"
+                :title="c.label"
+                @click="pickAccent(c.value)"
+              >
+                <span class="swatch-dot" />
+                <span class="swatch-label">{{ c.label }}</span>
+                <span
+                  v-if="currentAccent.toLowerCase() === c.value.toLowerCase()"
+                  class="i-tabler-check swatch-check"
+                />
+              </button>
+            </div>
+            <button
+              class="aw-pill outline reset-btn"
+              @click="resetAccent"
+            >
+              <span class="i-tabler-rotate" />
+              {{ t('settings.accentResetAction') }}
+            </button>
+
+            <div class="toggle-row">
+              <div class="set-text">
+                <div class="set-title">
+                  {{ store.isDark ? t('common.dark') : t('common.light') }}
                 </div>
-                <a-switch v-model:checked="notifyForm.push" />
+                <div class="set-sub">
+                  {{ t('settings.darkDesc') }}
+                </div>
               </div>
+              <button
+                class="switch"
+                :class="{ on: store.isDark }"
+                role="switch"
+                :aria-checked="store.isDark"
+                @click="store.toggleDark()"
+              >
+                <span class="knob" />
+              </button>
+            </div>
+
+            <div class="toggle-row">
+              <div class="set-text">
+                <div class="set-title">
+                  {{ t('header.language') }}
+                </div>
+                <div class="set-sub">
+                  {{ t('settings.languageDesc') }}
+                </div>
+              </div>
+              <a-select
+                :value="locale"
+                :options="localeOptions"
+                style="width: 140px"
+                @change="switchLocale"
+              />
             </div>
           </div>
 
-          <div class="form-actions">
-            <a-button
-              type="primary"
-              size="large"
-              @click="handleSave"
+          <!-- 系统:只读运行参数 -->
+          <div v-show="activeTab === 'system'">
+            <h3 class="section-title">
+              {{ t('settings.systemTab') }}
+            </h3>
+            <p class="section-desc">
+              {{ t('settings.systemDesc') }}
+            </p>
+            <a-descriptions
+              bordered
+              :column="1"
+              size="small"
             >
-              {{ t('common.save') }}
-            </a-button>
-            <a-button size="large">
-              {{ t('common.cancel') }}
-            </a-button>
+              <a-descriptions-item
+                v-for="row in systemRows"
+                :key="row.label"
+                :label="row.label"
+              >
+                <span class="aw-mono">{{ row.value }}</span>
+              </a-descriptions-item>
+            </a-descriptions>
+            <p class="identity-note">
+              {{ userStore.isLoggedIn
+                ? `${t('settings.identity')}: ${userStore.user?.name} (${userStore.user?.role})`
+                : t('settings.identityGuest') }}
+            </p>
           </div>
         </div>
       </div>
@@ -208,169 +213,214 @@ const tabs = computed(() => [
 </template>
 
 <style scoped>
-.page-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--app-text, #1f1f1f);
-}
-
-.page-sub {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--app-text-secondary, #999);
+.settings-page {
+  padding: 4px;
 }
 
 .settings-card {
   overflow: hidden;
-  border-radius: 12px;
-  box-shadow: 0 1px 8px rgb(0 0 0 / 4%);
 }
 
 .settings-layout {
   display: flex;
-  gap: 32px;
   min-height: 420px;
 }
 
+/* 左侧导航:8px 圆角条目(active = surface-strong 墨字) */
 .settings-nav {
   display: flex;
   flex: 0 0 180px;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px;
-  background: var(--app-fill, #fafafa);
-  border-radius: 10px;
+  gap: 2px;
+  padding: 14px;
+  border-right: 1px solid var(--line);
 }
 
 .nav-item {
   display: flex;
+  gap: 9px;
   align-items: center;
-  gap: 10px;
   width: 100%;
-  height: 42px;
-  padding: 0 14px;
-  font-size: 14px;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
   font-weight: 500;
-  color: var(--app-text-secondary, #666);
+  color: var(--ink-faint);
   text-align: left;
   cursor: pointer;
   background: transparent;
-  border: none;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  border: 0;
+  border-radius: var(--radius-panel-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .nav-item:hover {
-  color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--ink);
+  background: var(--paper-deep);
 }
 
 .nav-item.active {
-  color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper-deep);
 }
 
 .settings-body {
   flex: 1;
   min-width: 0;
+  padding: 22px 26px;
 }
 
 .section-title {
   margin: 0 0 4px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--app-text, #1f1f1f);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 
 .section-desc {
-  margin: 0 0 20px;
+  margin: 0 0 18px;
   font-size: 13px;
-  color: var(--app-text-secondary, #999);
+  line-height: 1.6;
+  color: var(--ink-faint);
 }
 
-.settings-form {
-  max-width: 460px;
-}
-
+/* 色板:粉彩圆点 + 名称;选中 = 墨描边 */
 .color-swatches {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 4px;
 }
 
 .swatch {
-  display: flex;
+  position: relative;
+  display: inline-flex;
+  gap: 8px;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  font-size: 16px;
-  color: #fff;
+  padding: 8px 14px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
   cursor: pointer;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  transition: all 0.2s ease;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .swatch:hover {
-  transform: scale(1.12);
+  background: var(--paper-deep);
 }
 
-.swatch.selected {
-  border-color: var(--app-text, #333);
-  box-shadow: 0 0 0 2px #fff inset;
+.swatch.on {
+  color: var(--ink);
+  border-color: var(--ink);
 }
 
-.notify-list {
-  display: flex;
-  flex-direction: column;
-  max-width: 520px;
+.swatch-dot {
+  width: 14px;
+  height: 14px;
+  background: var(--sw);
+  border: 1px solid rgb(0 0 0 / 8%);
+  border-radius: 50%;
 }
 
-.notify-item {
+.swatch-check {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.reset-btn {
+  margin: 10px 0 4px;
+}
+
+/* 开关行(设置页 toggle row) */
+.toggle-row,
+.set-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--app-border, #f0f0f0);
+  gap: 20px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
 }
 
-.notify-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.set-text {
+  min-width: 0;
+}
+
+.set-title {
   font-size: 14px;
   font-weight: 500;
-  color: var(--app-text, #1f1f1f);
+  color: var(--ink-soft);
 }
 
-.notify-desc {
-  margin-top: 2px;
+.set-sub {
+  max-width: 52ch;
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+/* 药丸开关(ink on 态) */
+.switch {
+  position: relative;
+  flex: none;
+  width: 42px;
+  height: 25px;
+  padding: 0;
+  cursor: pointer;
+  background: var(--line-strong);
+  border: 0;
+  border-radius: var(--radius-pill);
+  transition: background 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.switch .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 19px;
+  height: 19px;
+  background: var(--paper-raised);
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgb(12 10 9 / 25%);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.switch.on {
+  background: var(--accent);
+}
+
+.switch.on .knob {
+  transform: translateX(17px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch .knob {
+    transition: none;
+  }
+}
+
+.identity-note {
+  margin: 14px 0 0;
   font-size: 12px;
-  color: var(--app-text-secondary, #999);
-}
-
-.form-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 32px;
+  color: var(--ink-faint);
 }
 
 @media (max-width: 768px) {
-  .settings-layout {
-    flex-direction: column;
-  }
-
+  .settings-layout { flex-direction: column; }
   .settings-nav {
-    flex: none;
     flex-direction: row;
-    overflow-x: auto;
+    flex: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
   }
 }
 </style>

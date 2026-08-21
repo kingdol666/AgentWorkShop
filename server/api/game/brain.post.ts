@@ -7,8 +7,10 @@
 import { getQuery } from 'h3'
 import { defineApiHandler } from '../../utils/response'
 import { gameSession } from '../../services/game/session'
+import { resolveUser } from '../workshop/caller'
 
 export default defineApiHandler(async (event) => {
+  resolveUser(event)
   const q = getQuery(event)
   const pause = q.pause === 'true' || q.pause === '1'
   if (pause) {

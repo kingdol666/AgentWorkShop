@@ -5,17 +5,21 @@
  *  - task(默认):进入目标 agent 的 mailbox 队列,等当前任务结束消费
  * - 可带 fromAgentId(模拟某个 agent 发送);缺省为系统消息
  */
-import { z } from 'zod'
+import { z } from 'zod'
+
 import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
 import { AppError } from '../../../../../utils/errors'
-import { getWorkshopManager } from '../../../../../plugins/workshop'
+import { getWorkshopManager } from '../../../../../plugins/workshop'
+
 const sendMessageSchema = z.object({
   toAgentId: z.string().min(1, 'toAgentId 必填'),
   text: z.string().min(1, 'text 必填'),
   fromAgentId: z.string().optional(),
+  /** 人类发送者显示名(时间线 a2a.message 的发送者归属 → x-aw-from-label) */
+  fromLabel: z.string().max(120).optional(),
   priority: z.enum(['immediate', 'task']).default('task'),
   /** 触发器:要求接收方回执(执行结果 + 所需内容,in_reply_to 关联) */
   requireReply: z.boolean().optional(),
@@ -23,9 +27,9 @@ const sendMessageSchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
+  const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(sendMessageSchema))
   const manager = getWorkshopManager()
-  const user = resolveUser(event)
   const channel = manager.getChannelForUser(channelId, user.id)
   manager.requireOwned(channel.ownerUserId, user.id, 'channel')
 
@@ -41,6 +45,7 @@ export default defineApiHandler(async (event) => {
       toAgentId: body.toAgentId,
       parts: [{ text: body.text }],
       requireReply: body.requireReply,
+      fromLabel: body.fromLabel,
     })
   }
   // task 优先级:经 fromAgentId 身份走 sendA2A;无 fromAgentId 时用 immediate 通道(空闲即入队)
@@ -60,5 +65,6 @@ export default defineApiHandler(async (event) => {
     toAgentId: body.toAgentId,
     parts: [{ text: body.text }],
     requireReply: body.requireReply,
+    fromLabel: body.fromLabel,
   })
 })

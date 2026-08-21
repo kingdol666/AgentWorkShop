@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS agents (
   harness     TEXT NOT NULL,
   config_json TEXT NOT NULL DEFAULT '{}',
   enabled     INTEGER NOT NULL DEFAULT 1,
+  visibility  TEXT NOT NULL DEFAULT 'private',  -- 'private' | 'public'(owner_user_id NULL = 内置公共,不可变更)
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL
 );
@@ -100,6 +101,7 @@ CREATE TABLE IF NOT EXISTS teams (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
+  visibility  TEXT NOT NULL DEFAULT 'private',  -- 'private' | 'public'(owner_user_id NULL = 内置公共,不可变更)
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL
 );
@@ -186,7 +188,25 @@ CREATE TABLE IF NOT EXISTS workspace_channels (
   channel_id   TEXT NOT NULL,
   created_at   TEXT NOT NULL,
   PRIMARY KEY (workspace_id, channel_id)
-);`
+);
+-- v10:Channel 模板(场景 + 工作目录 + 团队编组的可复用组合;实例化 = 一键建 channel 并装配成员)。
+-- lead_json:内联 lead 定义 {name,harness,config}(空串 = 无 lead);
+-- members_json:[{templateId,role}](引用 Agent 模板)或 [{inline:{name,harness,config},role}](内联成员)。
+-- owner_user_id NULL = 内置公共模板(visibility 恒 public,任何人不可修改删除)。
+CREATE TABLE IF NOT EXISTS channel_templates (
+  id              TEXT PRIMARY KEY,
+  name            TEXT NOT NULL,
+  description     TEXT NOT NULL DEFAULT '',
+  scenario_prompt TEXT NOT NULL DEFAULT '',
+  workspace       TEXT NOT NULL DEFAULT '',
+  lead_json       TEXT NOT NULL DEFAULT '',
+  members_json    TEXT NOT NULL DEFAULT '[]',
+  visibility      TEXT NOT NULL DEFAULT 'private',
+  owner_user_id   TEXT,
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_channel_templates_owner ON channel_templates(owner_user_id);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 
@@ -245,21 +265,56 @@ const DEFAULT_TEAMS: Array<{ id: string, name: string, description: string, memb
   },
 ]
 
+/** 内置 Channel 模板成员条目(members_json 元素) */
+type BuiltinChannelMember = { templateId: string, role: 'lead' | 'worker' } | { inline: { name: string, harness: string, config: Record<string, unknown> }, role: 'lead' | 'worker' }
+
+/** 默认 Channel 模板(场景 + 团队组合;实例化 = 一键建 channel 并装配成员) */
+const DEFAULT_CHANNEL_TEMPLATES: Array<{
+  id: string
+  name: string
+  description: string
+  scenarioPrompt: string
+  members: BuiltinChannelMember[]
+}> = [
+  {
+    id: 'chtpl-default-fullstack',
+    name: '全栈交付通道',
+    description: '内置模板:主管带队 + 后端/前端/测试,适合常规交付任务',
+    scenarioPrompt: '团队按主管调度协作交付;每个子任务完成后由主管复核,产出统一沉淀为 artifact。',
+    members: [
+      { templateId: 'tpl-default-lead', role: 'lead' },
+      { templateId: 'tpl-default-backend', role: 'worker' },
+      { templateId: 'tpl-default-frontend', role: 'worker' },
+      { templateId: 'tpl-default-qa', role: 'worker' },
+    ],
+  },
+  {
+    id: 'chtpl-default-review',
+    name: '文档评审通道',
+    description: '内置模板:文档撰写 + 测试复核,适合文档、报告与评审场景',
+    scenarioPrompt: '以文档产出与质量复核为主线;撰写完成后由复核角色检查并反馈修改意见。',
+    members: [
+      { templateId: 'tpl-default-docs', role: 'lead' },
+      { templateId: 'tpl-default-qa', role: 'worker' },
+    ],
+  },
+]
+
 /**
  * 默认模板与编组注入:
  * - 固定 id + INSERT OR IGNORE,每次初始化幂等执行(重启安全;已有库补种,新库直接种)
- * - owner_user_id = NULL:公共资源,对所有登录用户只读可见(写操作走 FORBIDDEN_LEGACY 守卫)
+ * - owner_user_id = NULL + visibility = 'public':内置公共模板,所有用户可读可用,任何人(含 admin)不可修改删除
  */
 function seedDefaultWorkshopData(db: DatabaseSync): void {
   const now = new Date().toISOString()
   const insertAgent = db.prepare(
-    'INSERT OR IGNORE INTO agents (id, name, harness, config_json, enabled, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, 1, NULL, ?, ?)',
+    'INSERT OR IGNORE INTO agents (id, name, harness, config_json, enabled, visibility, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, 1, \'public\', NULL, ?, ?)',
   )
   for (const t of DEFAULT_AGENT_TEMPLATES) {
     insertAgent.run(t.id, t.name, t.harness, JSON.stringify(t.config), now, now)
   }
   const insertTeam = db.prepare(
-    'INSERT OR IGNORE INTO teams (id, name, description, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?)',
+    'INSERT OR IGNORE INTO teams (id, name, description, visibility, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, \'public\', NULL, ?, ?)',
   )
   const insertMember = db.prepare(
     'INSERT OR IGNORE INTO team_members (team_id, template_id, role, created_at) VALUES (?, ?, ?, ?)',
@@ -269,6 +324,12 @@ function seedDefaultWorkshopData(db: DatabaseSync): void {
     for (const m of team.members) {
       insertMember.run(team.id, m.templateId, m.role, now)
     }
+  }
+  const insertChannelTpl = db.prepare(
+    'INSERT OR IGNORE INTO channel_templates (id, name, description, scenario_prompt, workspace, lead_json, members_json, visibility, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, \'\', \'\', ?, \'public\', NULL, ?, ?)',
+  )
+  for (const tpl of DEFAULT_CHANNEL_TEMPLATES) {
+    insertChannelTpl.run(tpl.id, tpl.name, tpl.description, tpl.scenarioPrompt, JSON.stringify(tpl.members), now, now)
   }
 }
 
@@ -325,7 +386,9 @@ export interface AgentRow {
   harness: string
   configJson: string
   enabled: number
-  /** 归属用户(null = 遗留公共) */
+  /** 可见性:'private' 仅属主 | 'public' 全员可读可用(owner NULL = 内置,恒 public 不可变更) */
+  visibility: string
+  /** 归属用户(null = 内置公共模板) */
   ownerUserId: string | null
   createdAt: string
   updatedAt: string
@@ -336,7 +399,27 @@ export interface TeamRow {
   id: string
   name: string
   description: string
-  /** 归属用户(null = 遗留公共) */
+  /** 可见性:'private' 仅属主 | 'public' 全员可读可用(owner NULL = 内置,恒 public 不可变更) */
+  visibility: string
+  /** 归属用户(null = 内置公共模板) */
+  ownerUserId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * channel_templates 表行(Channel 模板:场景 + 工作目录 + 成员组合)。
+ * membersJson 元素:{templateId, role} 引用 Agent 模板 | {inline:{name,harness,config}, role} 内联定义。
+ */
+export interface ChannelTemplateRow {
+  id: string
+  name: string
+  description: string
+  scenarioPrompt: string
+  workspace: string
+  leadJson: string
+  membersJson: string
+  visibility: string
   ownerUserId: string | null
   createdAt: string
   updatedAt: string
@@ -448,6 +531,12 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAddColumn(db, 'channels', 'scenario_prompt', 'TEXT NOT NULL DEFAULT \'\'')
   // 派发路由理由(koda RouteDecision 借鉴):lead 派发留痕"为什么派给他",供审计与前端呈现
   migrateAddColumn(db, 'tasks', 'route_reason', 'TEXT NOT NULL DEFAULT \'\'')
+  // v10:模板可见性列(既有库补列;默认 private,仅属主可见)
+  migrateAddColumn(db, 'agents', 'visibility', 'TEXT NOT NULL DEFAULT \'private\'')
+  migrateAddColumn(db, 'teams', 'visibility', 'TEXT NOT NULL DEFAULT \'private\'')
+  // 回填:内置/遗留公共模板(owner NULL)强制 public —— 升级后保持全员可读可用
+  db.exec('UPDATE agents SET visibility = \'public\' WHERE owner_user_id IS NULL')
+  db.exec('UPDATE teams SET visibility = \'public\' WHERE owner_user_id IS NULL')
   migrateMissingForeignKeys(db)
   migrateDropOwnerFks(db)
   seedDefaultWorkshopData(db)
@@ -571,11 +660,12 @@ function migrateDropOwnerFks(db: DatabaseSync): void {
           harness      TEXT NOT NULL,
           config_json  TEXT NOT NULL DEFAULT '{}',
           enabled      INTEGER NOT NULL DEFAULT 1,
+          visibility   TEXT NOT NULL DEFAULT 'private',
           owner_user_id TEXT,
           created_at   TEXT NOT NULL,
           updated_at   TEXT NOT NULL
         );
-        INSERT INTO agents_new SELECT id, name, harness, config_json, enabled, owner_user_id, created_at, updated_at FROM agents;`,
+        INSERT INTO agents_new SELECT id, name, harness, config_json, enabled, visibility, owner_user_id, created_at, updated_at FROM agents;`,
     })
   }
   if (hasForeignKey(db, 'teams', 'owner_user_id', 'users')) {

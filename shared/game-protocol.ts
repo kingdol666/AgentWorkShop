@@ -179,7 +179,7 @@ export const UPLINK_TYPES = [
 // 4. CMDParser — 指令解析器(消息边界的权威校验入口)
 // ============================================================================
 
-export type ParseErrorCode = 'BAD_MESSAGE' | 'UNKNOWN_COMMAND' | 'INVALID_PAYLOAD' | 'FORBIDDEN'
+export type ParseErrorCode = 'BAD_MESSAGE' | 'UNKNOWN_COMMAND' | 'INVALID_PAYLOAD' | 'FORBIDDEN' | 'USER_UNAUTHORIZED'
 
 export interface ParseError {
   code: ParseErrorCode

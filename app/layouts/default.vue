@@ -34,13 +34,11 @@ const site = useSiteConfig()
         class="app-footer"
         :style="{ color: token?.colorTextSecondary }"
       >
-        <span class="footer-rule" />
-        <span>{{ site.title }}</span>
-        <i />
+        <span class="footer-title aw-serif-accent">{{ site.title }}</span>
+        <span class="sep">/</span>
         <span>v{{ site.version }}</span>
-        <i />
+        <span class="sep">/</span>
         <span>mode={{ site.mode }}</span>
-        <span class="footer-rule" />
       </a-layout-footer>
     </a-layout>
   </a-layout>
@@ -66,7 +64,7 @@ const site = useSiteConfig()
   padding: 2px;
 }
 
-/* 页脚:拉丝铭牌(固定高度,供 harness 页计算视口高度) */
+/* 页脚:mono 铭牌行(固定高度,供 harness 页计算视口高度) */
 .app-footer {
   display: flex;
   gap: 10px;
@@ -76,26 +74,15 @@ const site = useSiteConfig()
   padding: 0 50px;
   font-family: var(--font-mono);
   font-size: 10.5px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-align: center;
-  text-transform: uppercase;
 }
 
-.app-footer i {
-  width: 3px;
-  height: 3px;
-  background: var(--accent-vermilion);
-  opacity: 0.7;
+.app-footer .sep {
+  color: var(--ink-fainter);
 }
 
-.footer-rule {
-  width: 46px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, currentcolor);
-  opacity: 0.35;
-}
-
-.footer-rule:last-child {
-  background: linear-gradient(90deg, currentcolor, transparent);
+.footer-title {
+  font-size: 13px;
 }
 </style>

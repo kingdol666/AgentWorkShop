@@ -57,9 +57,9 @@ const submitTaskSchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
+  const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(submitTaskSchema))
   const manager = getWorkshopManager()
-  const user = resolveUser(event)
   const channel = manager.getChannelForUser(channelId, user.id)
   manager.requireOwned(channel.ownerUserId, user.id, 'channel')
   return manager.submitChannelTask({

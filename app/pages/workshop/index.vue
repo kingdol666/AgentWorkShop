@@ -305,6 +305,10 @@ useHead({ title: 'Workshop · Agent Harness' })
             <span class="i-tabler-users-group" />
             编组库
           </a-button>
+          <a-button @click="navigateTo('/workshop/channel-templates')">
+            <span class="i-tabler-layout-grid-add" />
+            Channel 模板
+          </a-button>
           <a-button
             type="primary"
             @click="createOpen = true"
@@ -442,27 +446,14 @@ h2 { margin: 0 0 4px; font-family: var(--font-display); }
   padding: 16px;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
-.card::after {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 8px;
-  height: 8px;
-  pointer-events: none;
-  content: '';
-  border-right: 1.5px solid var(--ink-faint);
-  border-bottom: 1.5px solid var(--ink-faint);
-}
-
 .card:hover {
   border-color: var(--line-strong);
-  box-shadow: var(--shadow-offset);
-  transform: translate(-1px, -1px);
+  transform: translateY(-1px);
 }
 
 .card.placeholder {
@@ -490,7 +481,7 @@ h2 { margin: 0 0 4px; font-family: var(--font-display); }
   flex: 1 1 auto;
   font-family: var(--font-display);
   font-size: 17px;
-  font-weight: 590;
+  font-weight: 600;
 }
 
 .op { cursor: pointer; opacity: 0.4; }
@@ -506,7 +497,7 @@ h2 { margin: 0 0 4px; font-family: var(--font-display); }
   margin: 2px 0;
   font-size: 12px;
   cursor: pointer;
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-panel);
   transition: background 0.15s ease, transform 0.15s ease;
 }
 

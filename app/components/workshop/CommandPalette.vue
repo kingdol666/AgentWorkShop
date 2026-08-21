@@ -34,6 +34,7 @@ const commands = computed<Command[]>(() => {
     { key: 'nav-home', label: '前往:工作区总览', hint: '/workshop', run: () => navigateTo('/workshop') },
     { key: 'nav-agents', label: '前往:Agent 模板库', hint: '/workshop/agents', run: () => navigateTo('/workshop/agents') },
     { key: 'nav-teams', label: '前往:AgentTeam 编组库', hint: '/workshop/teams', run: () => navigateTo('/workshop/teams') },
+    { key: 'nav-channel-templates', label: '前往:Channel 模板中心', hint: '/workshop/channel-templates', run: () => navigateTo('/workshop/channel-templates') },
     { key: 'view-timeline', label: '视图:时间线', run: () => { emit('setView', 'timeline') } },
     { key: 'view-lanes', label: '视图:Agent lanes', run: () => { emit('setView', 'lanes') } },
     { key: 'view-board', label: '视图:任务板', run: () => { emit('setView', 'board') } },
@@ -121,17 +122,21 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
       @click.self="open = false"
     >
       <div class="palette">
-        <input
-          v-model="query"
-          class="palette-input"
-          placeholder="输入命令…(导航/视图/Channel/过滤/动作)"
-          autofocus
-          @keydown="onKeydown"
-        >
+        <div class="palette-search">
+          <span class="i-tabler-search ps-icon" />
+          <input
+            v-model="query"
+            class="palette-input"
+            placeholder="输入命令…(导航/视图/Channel/过滤/动作)"
+            autofocus
+            @keydown="onKeydown"
+          >
+        </div>
         <div class="palette-list">
-          <div
+          <button
             v-for="(c, i) in filtered"
             :key="c.key"
+            type="button"
             class="palette-item"
             :class="{ selected: i === selected }"
             @click="execute(c)"
@@ -142,13 +147,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
               v-if="c.hint"
               class="pi-hint"
             >{{ c.hint }}</span>
-          </div>
+          </button>
           <div
             v-if="filtered.length === 0"
             class="palette-empty"
           >
             无匹配命令
           </div>
+        </div>
+        <div class="palette-foot">
+          <kbd>↑↓</kbd> 选择 · <kbd>↵</kbd> 执行 · <kbd>esc</kbd> 关闭
         </div>
       </div>
     </div>
@@ -164,27 +172,48 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   align-items: flex-start;
   justify-content: center;
   padding-top: 12vh;
-  background: rgb(0 0 0 / 45%);
+  background: var(--scrim, rgb(12 10 9 / 40%));
 }
+/* open-tag quick switcher 声部:hairline 圆角卡 + 搜索行 + kbd 页脚 */
 .palette {
+  display: flex;
+  flex-direction: column;
   width: 560px;
   max-width: 92vw;
   overflow: hidden;
-  background: var(--app-bg-container, #fff);
-  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
   border-radius: 12px;
-  box-shadow: 0 16px 48px rgb(0 0 0 / 35%);
+  box-shadow: var(--shadow-float);
+  animation: palette-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
+@keyframes palette-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .palette { animation: none; }
+}
+.palette-search {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 13px 16px;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--line);
+}
+.ps-icon { font-size: 15px; flex: none; }
 .palette-input {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 12px 16px;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-body);
   font-size: 14px;
+  color: var(--ink);
   background: transparent;
   border: none;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
   outline: none;
 }
+.palette-input::placeholder { color: var(--ink-fainter); }
 .palette-list {
   max-height: 320px;
   overflow-y: auto;
@@ -192,19 +221,51 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
 }
 .palette-item {
   display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-panel-sm);
+}
+.palette-item.selected {
+  color: var(--ink);
+  background: var(--paper-deep);
+}
+.pi-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pi-hint {
+  flex: none;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  background: var(--paper-deep);
+  border-radius: var(--radius-pill);
+}
+.palette-item.selected .pi-hint { background: var(--paper-raised); }
+.palette-empty { padding: 18px; font-size: 13px; color: var(--ink-faint); text-align: center; }
+.palette-foot {
+  display: flex;
   gap: 8px;
   align-items: center;
-  padding: 8px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 8px;
-}
-.palette-item.selected { background: color-mix(in srgb, var(--color-primary) 15%, transparent); }
-.pi-label { flex: 1 1 auto; }
-.pi-hint {
-  font-family: ui-monospace, Consolas, monospace;
+  padding: 9px 16px;
   font-size: 11px;
-  opacity: 0.45;
+  color: var(--ink-faint);
+  border-top: 1px solid var(--line);
 }
-.palette-empty { padding: 16px; font-size: 13px; opacity: 0.4; text-align: center; }
+.palette-foot kbd {
+  padding: 1px 5px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+}
 </style>

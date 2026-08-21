@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import type { EChartsOption } from 'echarts'
 import ITablerDashboard from '~icons/tabler/layout-dashboard'
-import ITablerBolt from '~icons/tabler/bolt'
 import ITablerServer from '~icons/tabler/server'
+import { useUserStore } from '@/app/stores/workshop/user'
+import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 
 const { t } = useI18n()
 const site = useSiteConfig()
 const config = useRuntimeConfig().public
 const store = useAppStore()
+const userStore = useUserStore()
 
 const fields = computed(() => [
   { key: 'name', label: t('home.fields.name'), value: site.name },
@@ -18,56 +19,6 @@ const fields = computed(() => [
   { key: 'api', label: t('home.fields.apiBase'), value: `${site.apiBase}  (${config.apiTimeout}ms)` },
   { key: 'primary', label: t('home.fields.primary'), value: config.primaryColor as string },
 ])
-
-// 制图台配色:钴蓝主线 + 朱红误差线 + 灰阶网格
-const chartOption = shallowRef<EChartsOption>({
-  color: ['#2e51c8', '#c23b2e'],
-  tooltip: {
-    trigger: 'axis',
-    borderWidth: 1,
-    borderColor: '#d3ccb8',
-    textStyle: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 11 },
-  },
-  legend: {
-    data: ['Requests', 'Errors'],
-    top: 6,
-    textStyle: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 10.5 },
-  },
-  grid: { left: 36, right: 16, top: 40, bottom: 28 },
-  xAxis: {
-    type: 'category',
-    data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    axisLine: { lineStyle: { color: '#b9b096' } },
-    axisTick: { show: false },
-    axisLabel: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, color: '#8a8371' },
-  },
-  yAxis: {
-    type: 'value',
-    splitLine: { lineStyle: { color: 'rgba(27, 39, 51, 0.08)' } },
-    axisLabel: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, color: '#8a8371' },
-  },
-  series: [
-    {
-      name: 'Requests',
-      type: 'line',
-      smooth: false,
-      symbol: 'rect',
-      symbolSize: 6,
-      lineStyle: { width: 2 },
-      areaStyle: { color: 'rgba(46, 81, 200, 0.07)' },
-      data: [120, 200, 150, 80, 70, 110, 130],
-    },
-    {
-      name: 'Errors',
-      type: 'line',
-      smooth: false,
-      symbol: 'rect',
-      symbolSize: 6,
-      lineStyle: { width: 2, type: 'dashed' },
-      data: [5, 8, 3, 2, 1, 4, 6],
-    },
-  ],
-})
 
 // 服务端配置一致性演示:前端 useSiteConfig() 与后端 GET /api/system/config 同源于 config.yml
 interface ServerConfigView {
@@ -84,8 +35,11 @@ interface ApiEnvelope<T> {
   data: T | null
 }
 
+// 业务鉴权:system/config 需用户 token;未登录/过期 → 静默降级(卡片显示登录提示)
 const { data: serverConfig } = await useAsyncData('server-config', () =>
-  $fetch<ApiEnvelope<ServerConfigView>>('/api/system/config'),
+  $fetch<ApiEnvelope<ServerConfigView>>('/api/system/config', {
+    headers: userStore.token ? { authorization: `Bearer ${userStore.token}` } : {},
+  }).catch(() => null),
 )
 
 const serverFields = computed(() => {
@@ -103,35 +57,105 @@ const serverFields = computed(() => {
     { key: 'maxPageSize', label: t('home.serverCard.maxPageSize'), value: String(d.api.maxPageSize) },
   ]
 })
+
+// ── 运行时实况(真实数据,替换旧演示图表):workspace / 活跃 channel / 在线 agent 实例 ──
+const wsStore = useWorkspacesStore()
+interface RuntimeView { wiredAgents: string[], activeChannels: string[] }
+const runtimeStats = ref<RuntimeView | null>(null)
+
+if (userStore.isLoggedIn) {
+  if (!wsStore.loaded) wsStore.load().catch(() => {})
+  $fetch<ApiEnvelope<RuntimeView>>('/api/workshop/runtime', {
+    headers: { authorization: `Bearer ${userStore.token}` },
+  })
+    .then(res => (runtimeStats.value = res.data ?? null))
+    .catch(() => {})
+}
+
+const stats = computed(() => [
+  { key: 'ws', icon: 'i-tabler-box', label: t('home.stats.workspaces'), value: userStore.isLoggedIn ? String(wsStore.workspaces.length) : '—' },
+  { key: 'channels', icon: 'i-tabler-messages', label: t('home.stats.activeChannels'), value: runtimeStats.value ? String(runtimeStats.value.activeChannels.length) : '—' },
+  { key: 'agents', icon: 'i-tabler-users-group', label: t('home.stats.wiredAgents'), value: runtimeStats.value ? String(runtimeStats.value.wiredAgents.length) : '—' },
+  { key: 'version', icon: 'i-tabler-tag', label: t('home.fields.version'), value: `v${site.version}` },
+])
 </script>
 
 <template>
   <div class="home">
-    <!-- 图签头:总览大标题 + 版本印章 -->
-    <div class="aw-page-head">
-      <div>
+    <!-- Hero:暖纸画布 + 粉彩光斑 + 衬线大标题(open-tag warm-editorial 声部) -->
+    <section class="hero aw-orbs aw-stagger">
+      <div class="hero-body">
         <p class="aw-kicker">
-          {{ t('menu.system') }} / overview
+          {{ t('menu.system') }} · {{ site.mode }}
         </p>
-        <h1>{{ t('home.title') }}</h1>
+        <h1 class="hero-title">
+          {{ t('home.heroTitle') }}
+          <span class="aw-serif-accent-italic">{{ t('home.heroAccent') }}</span>
+        </h1>
+        <p class="hero-sub">
+          {{ t('home.heroSub') }}
+        </p>
+        <div class="hero-acts">
+          <button
+            class="aw-pill im"
+            @click="navigateTo('/workshop')"
+          >
+            <span class="i-tabler-box im-pop" />
+            {{ t('home.ctaWorkshop') }}
+          </button>
+          <button
+            class="aw-pill outline im"
+            @click="navigateTo('/game')"
+          >
+            <span class="i-tabler-device-gamepad-2 im-pop" />
+            {{ t('menu.game') }}
+          </button>
+          <button
+            class="aw-pill outline im"
+            @click="store.toggleDark()"
+          >
+            <span
+              class="im-rotate"
+              :class="store.isDark ? 'i-tabler-sun-high' : 'i-tabler-moon-stars'"
+            />
+            {{ store.isDark ? t('common.light') : t('common.dark') }}
+          </button>
+        </div>
       </div>
-      <span class="aw-stamp">v{{ site.version }}(living document)</span>
+    </section>
+
+    <!-- 实况统计:serif 数字(editorial stat numerals) -->
+    <div class="stat-row aw-stagger">
+      <div
+        v-for="s in stats"
+        :key="s.key"
+        class="stat-card"
+      >
+        <span
+          class="stat-icon"
+          :class="s.icon"
+        />
+        <div class="stat-text">
+          <span class="stat-value aw-serif-accent">{{ s.value }}</span>
+          <span class="stat-label">{{ s.label }}</span>
+        </div>
+      </div>
     </div>
 
     <a-row
       :gutter="[16, 16]"
       class="aw-stagger"
     >
-      <a-col :span="24">
+      <a-col
+        :xs="24"
+        :md="14"
+      >
         <a-card class="aw-panel">
           <template #title>
             <span class="flex items-center gap-2">
               <ITablerDashboard class="text-[15px] opacity-70" />
               {{ t('home.title') }}
             </span>
-          </template>
-          <template #extra>
-            <span class="aw-kicker">identity sheet</span>
           </template>
           <a-descriptions
             bordered
@@ -151,44 +175,18 @@ const serverFields = computed(() => {
 
       <a-col
         :xs="24"
-        :md="16"
-      >
-        <a-card
-          class="aw-panel"
-          :title="t('home.chart')"
-        >
-          <template #extra>
-            <span class="aw-kicker">7d trace</span>
-          </template>
-          <AppChart
-            class="h-76 w-full"
-            :option="chartOption"
-          />
-        </a-card>
-      </a-col>
-
-      <a-col
-        :xs="24"
-        :md="8"
+        :md="10"
       >
         <a-card class="aw-panel paradigm-card">
           <a-typography-title
             :level="5"
-            class="!mb-2 flex items-center gap-2"
+            class="!mb-2"
           >
-            <ITablerBolt class="text-[15px]" />
             {{ t('home.paradigm') }}
           </a-typography-title>
           <a-typography-paragraph type="secondary">
             {{ t('home.paradigmDesc') }}
           </a-typography-paragraph>
-          <a-button
-            type="primary"
-            @click="store.toggleDark()"
-          >
-            {{ store.isDark ? t('common.light') : t('common.dark') }}
-          </a-button>
-          <span class="aw-kicker paradigm-index">06 / paradigm</span>
         </a-card>
       </a-col>
 
@@ -205,9 +203,6 @@ const serverFields = computed(() => {
                 {{ t('home.serverCard.synced') }}
               </a-tag>
             </span>
-          </template>
-          <template #extra>
-            <span class="aw-kicker">server ledger</span>
           </template>
           <template v-if="serverFields.length">
             <a-descriptions
@@ -230,6 +225,20 @@ const serverFields = computed(() => {
               {{ t('home.serverCard.desc') }}
             </a-typography-paragraph>
           </template>
+          <!-- 未登录/401:静默降级为登录提示 -->
+          <div
+            v-else-if="!userStore.isLoggedIn"
+            class="config-gate"
+          >
+            <span class="i-tabler-lock" />
+            <p>{{ t('home.serverCard.gate') }}</p>
+            <button
+              class="aw-pill"
+              @click="navigateTo('/workshop')"
+            >
+              {{ t('home.ctaWorkshop') }}
+            </button>
+          </div>
           <a-skeleton
             v-else
             active
@@ -245,15 +254,123 @@ const serverFields = computed(() => {
   padding: 4px;
 }
 
-/* 范式卡内页脚索引 */
-.paradigm-card {
-  overflow: hidden;
+/* Hero:暖纸画布 + 光斑氛围;文字层级 kicker/serif 大标/副行/药丸 CTA */
+.hero {
+  position: relative;
+  margin-bottom: 16px;
+  padding: 44px 40px 40px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
 }
 
-.paradigm-index {
-  position: absolute;
-  right: 12px;
-  bottom: 8px;
-  opacity: 0.35;
+.hero-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  max-width: 640px;
+}
+
+.hero-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.hero-sub {
+  max-width: 52ch;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-faint);
+}
+
+.hero-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* 实况统计行:白卡 + serif 数字 + 小标 */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 20px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  transition: border-color var(--transition-base);
+}
+
+.stat-card:hover {
+  border-color: var(--line-strong);
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  font-size: 19px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border-radius: var(--radius-panel-sm);
+}
+
+.stat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-fainter);
+}
+
+.config-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  padding: 22px 0;
+  color: var(--ink-faint);
+}
+
+.config-gate > .i-tabler-lock { font-size: 22px; }
+
+.config-gate p { margin: 0; font-size: 12.5px; }
+
+@media (max-width: 640px) {
+  .hero { padding: 30px 22px; }
+  .hero-title { font-size: 30px; }
 }
 </style>

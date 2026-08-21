@@ -14,6 +14,6 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const team = manager.getTeam(teamId)
   if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
-  manager.requireOwned(team.ownerUserId, user.id, 'AgentTeam')
+  manager.requireWritable(team.ownerUserId, user, 'AgentTeam')
   return manager.removeTemplateFromTeam(teamId, agentId)
 })

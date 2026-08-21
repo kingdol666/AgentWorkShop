@@ -7,10 +7,33 @@
  *  - 落定消息与 delta 重复内容由聚类折入,正文绝不二次渲染。
  */
 import { computed } from 'vue'
-import { buildStreamText, isStreaming, streamCursorVisible, mdLite } from '@/app/composables/workshop/useEventBlocks'
-import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
+import { buildStreamText, isStreaming, streamCursorVisible, mdLiteMentions, type EventBlock, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
 
 const props = defineProps<{ block: EventBlock }>()
+
+const entities = useEntitiesStore()
+
+/** @提及点击 → 打开 Agent 抽屉(w/[wsId] provide;缺省安全兜底) */
+const openAgent = inject<(target: { channelId: string, agentId: string }) => void>(
+  'aw:open-agent',
+  () => {},
+)
+
+const channelId = computed(() => props.block.events[0]?.channelId ?? '')
+
+/** 本 channel 成员表(LLM 正文里的 @成员 高亮) */
+const members = computed<MentionMember[]>(() =>
+  (entities.agents[channelId.value] ?? []).map(a => ({ agentId: a.agentId, name: a.name })),
+)
+
+/** 正文内提及 pill 点击(事件委托) */
+const onBodyClick = (ev: MouseEvent): void => {
+  const el = (ev.target as HTMLElement).closest<HTMLElement>('.md-mention')
+  if (!el) return
+  const agentId = el.dataset.agentId
+  if (agentId) openAgent({ channelId: channelId.value, agentId })
+}
 
 const full = computed(() => buildStreamText(props.block))
 const streaming = computed(() => isStreaming(props.block))
@@ -91,7 +114,7 @@ const showCursor = computed(() =>
   streamCursorVisible(full.value.length, visible.value, streaming.value),
 )
 
-const rendered = computed(() => mdLite(full.value.slice(0, visible.value)))
+const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value), members.value))
 
 /** 悬停复制全文(落定后可用;流式中复制揭示进度无意义) */
 const copied = ref(false)
@@ -119,6 +142,7 @@ const copyAll = async (): Promise<void> => {
     v-else-if="full"
     class="stream-bubble"
     :class="{ settled: block.settled }"
+    @click="onBodyClick"
   >
     <!-- eslint-disable-next-line vue/no-v-html -- 内容经 escapeHtml 转义后仅注入受控标记 -->
     <div class="stream-text prose">
@@ -164,9 +188,9 @@ const copyAll = async (): Promise<void> => {
   cursor: pointer;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
   opacity: 0;
-  transition: opacity var(--transition-fast, 0.12s ease), color var(--transition-fast, 0.12s ease);
+  transition: opacity var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .stream-bubble:hover .copy-btn {
@@ -184,12 +208,12 @@ const copyAll = async (): Promise<void> => {
   color: var(--ink);
   background: var(--paper-raised);
   border: 1px solid color-mix(in srgb, var(--ink) 7%, transparent);
-  border-left: 2px solid var(--accent-cobalt);
-  border-radius: 3px 6px 6px 3px;
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-chip);
   transition: border-left-color 0.2s ease;
 }
 .stream-bubble.settled .stream-text {
-  border-left-color: color-mix(in srgb, var(--accent-cobalt) 28%, transparent);
+  border-left-color: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .prose :deep(p) { margin: 0 0 6px; }
@@ -199,7 +223,7 @@ const copyAll = async (): Promise<void> => {
 .prose :deep(h5) {
   margin: 10px 0 4px;
   font-size: 12.5px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink);
 }
 .prose :deep(h3):first-child,
@@ -223,7 +247,7 @@ const copyAll = async (): Promise<void> => {
   color: var(--ink-soft, inherit);
   border-left: 2px solid color-mix(in srgb, var(--ink) 18%, transparent);
 }
-.prose :deep(b) { font-weight: 650; }
+.prose :deep(b) { font-weight: 600; }
 
 /* 围栏代码块:头栏(语言 + 复制)+ 等宽正文(现代 harness 标配) */
 .prose :deep(.code-block) {
@@ -231,7 +255,7 @@ const copyAll = async (): Promise<void> => {
   overflow: hidden;
   background: var(--paper-deep);
   border: 1px solid var(--line);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
 }
 
 .prose :deep(.code-head) {
@@ -258,7 +282,8 @@ const copyAll = async (): Promise<void> => {
   cursor: pointer;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .prose :deep(.code-copy:hover) {
@@ -282,7 +307,7 @@ const copyAll = async (): Promise<void> => {
 
 .cursor {
   display: inline-block;
-  color: var(--accent-moss);
+  color: var(--accent);
   animation: blink 0.9s step-end infinite;
 }
 @keyframes blink {

@@ -18,6 +18,7 @@ const createOpen = ref(false)
 const createLabel = ref('')
 const createLoading = ref(false)
 const createdRaw = ref('')
+const lastCreatedLabel = ref('')
 
 // ===== 重命名 =====
 const renameOpen = ref(false)
@@ -53,6 +54,7 @@ const doCreate = async (): Promise<void> => {
   try {
     const res = await userStore.createToken(createLabel.value)
     createdRaw.value = res.token
+    lastCreatedLabel.value = createLabel.value
     createOpen.value = false
     createLabel.value = ''
     await load()
@@ -104,12 +106,57 @@ const doRevoke = (t: { id?: string }): void => {
   })()
 }
 
-const copy = (text: string): void => {
-  void navigator.clipboard.writeText(text)
-  message.success('已复制')
+// ===== 新 token 明文回显:默认掩码,眼睛切换显示,一键复制 =====
+const revealed = ref(false)
+const copied = ref(false)
+const masked = computed(() => {
+  const raw = createdRaw.value
+  if (!raw) return ''
+  return `${raw.slice(0, 6)}${'•'.repeat(Math.max(12, raw.length - 10))}${raw.slice(-4)}`
+})
+const toggleReveal = (): void => {
+  revealed.value = !revealed.value
+}
+const copyCreated = async (): Promise<void> => {
+  const text = createdRaw.value
+  let ok = false
+  try {
+    await navigator.clipboard.writeText(text)
+    ok = true
+  }
+  catch {
+    // 剪贴板 API 不可用(非安全上下文/权限拒绝)→ execCommand 兜底
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    catch {
+      ok = false
+    }
+  }
+  if (ok) {
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 1600)
+  }
+  else {
+    message.error('复制失败,请手动选择复制')
+  }
+}
+const dismissCreated = (): void => {
+  createdRaw.value = ''
+  revealed.value = false
+  copied.value = false
 }
 
-const fmt = (s: string | null): string => (s ? s.replace('T', ' ').slice(0, 19) : '—')
+const fmt = (s: string | null): string => (s ? s.replace('T', ' ').slice(0, 19) : '-')
 
 const openRename = (t: { id?: string, label?: string }): void => {
   renameId.value = t.id ?? ''
@@ -246,30 +293,47 @@ useHead({ title: 'API Token · AgentWorkShop' })
         />
       </a-modal>
 
-      <!-- 明文回显(仅创建时一次) -->
+      <!-- 明文回显(仅创建时一次):默认掩码,眼睛切换,一键复制 -->
       <a-modal
         :open="createdRaw !== ''"
         title="Token 已创建"
         :footer="null"
-        @cancel="createdRaw = ''"
-        @after-close="createdRaw = ''"
+        :mask-closable="false"
+        @cancel="dismissCreated"
+        @after-close="dismissCreated"
       >
-        <p class="sub">
-          请立即保存,关闭后明文不再可见:
-        </p>
-        <a-typography-paragraph
-          copyable
-          class="raw"
-          @click="copy(createdRaw)"
-        >
-          {{ createdRaw }}
-        </a-typography-paragraph>
+        <div class="once-banner">
+          <span class="i-tabler-alert-triangle" />
+          <span>明文仅此一次展示,关闭后无法再次查看(服务端只存哈希);请立即复制保存。</span>
+        </div>
+        <div class="raw-row">
+          <code class="raw">{{ revealed ? createdRaw : masked }}</code>
+          <button
+            class="raw-op"
+            :title="revealed ? '隐藏明文' : '显示明文'"
+            @click="toggleReveal"
+          >
+            <span :class="revealed ? 'i-tabler-eye-off' : 'i-tabler-eye'" />
+          </button>
+          <button
+            class="raw-op"
+            :class="{ ok: copied }"
+            :title="copied ? '已复制' : '复制'"
+            @click="copyCreated"
+          >
+            <span :class="copied ? 'i-tabler-check' : 'i-tabler-copy'" />
+          </button>
+        </div>
+        <div class="once-meta">
+          <span>标签:{{ lastCreatedLabel || '(未命名)' }}</span>
+          <span>用法:Authorization: Bearer &lt;token&gt;</span>
+        </div>
         <a-button
           type="primary"
           block
-          @click="createdRaw = ''"
+          @click="dismissCreated"
         >
-          我已保存
+          我已保存,关闭
         </a-button>
       </a-modal>
 
@@ -314,16 +378,72 @@ useHead({ title: 'API Token · AgentWorkShop' })
 
 h2 { margin: 0 0 4px; font-family: var(--font-display); }
 
+.once-banner {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--tone-warning-dot);
+  background: var(--tone-warning-bg);
+  border-radius: var(--radius-chip);
+}
+
+.raw-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
 .raw {
+  flex: 1 1 auto;
   padding: 10px 12px;
   font-family: var(--font-mono);
   font-size: 13px;
+  letter-spacing: 0.02em;
   word-break: break-all;
-  background: var(--app-fill);
-  border: 1px solid var(--app-border);
-  border-radius: var(--radius-chip, 8px);
-  cursor: pointer;
+  user-select: all;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
 }
 
-.text-primary { color: var(--color-primary); }
+.raw-op {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  font-size: 15px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.raw-op:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.raw-op.ok {
+  color: var(--tone-success-dot);
+  border-color: var(--tone-success-dot);
+}
+
+.once-meta {
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin: 10px 2px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.text-primary { color: var(--accent); }
 </style>

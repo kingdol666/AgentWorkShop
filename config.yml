@@ -44,8 +44,8 @@ i18n:
 
 # 主题
 theme:
-  # 制图台色板:钴蓝墨水(antd 主色由本行驱动;夜间蓝图模式 index 由 app.vue 派生)
-  primaryColor: "#2E51C8"
+  # harness 色板:朱砂(vermilion)单一强调色,全局色彩锁由 main.css / app.vue 派生
+  primaryColor: "#292524"
   mode: light # light | dark
 
 # 安全配置

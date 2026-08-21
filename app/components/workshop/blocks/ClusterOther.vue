@@ -54,7 +54,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   cursor: pointer;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
 }
 .more-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
 </style>

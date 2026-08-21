@@ -273,7 +273,7 @@ const stateColor: Record<string, string> = {
   font-size: 12px;
   background: var(--paper-deep);
   border: 1px solid var(--line);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
 }
 .route-label {
   flex: 0 0 auto;

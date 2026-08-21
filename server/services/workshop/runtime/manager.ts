@@ -14,6 +14,7 @@ import { resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { AppError } from '../../../utils/errors'
+import { userRepository } from '../../../repositories/user.repository'
 import type { A2AMessage, A2AArtifact, ChannelMail, Part } from '../types/a2a'
 import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
 import { TERMINAL_TASK_STATES } from '../types/task'
@@ -28,8 +29,7 @@ import type { ChannelAgentRepo } from '../db/channel-agent.repo'
 import type { MessageRepo } from '../db/message.repo'
 import type { SubscriptionRepo } from '../db/subscription.repo'
 import type { TaskRepo, TaskPatch } from '../db/task.repo'
-import { parseJson } from '../db/database'
-import type { AgentRow, ChannelAgentRow, ChannelRow, MemoryRow, MessageRow, TaskRow, TeamRow, UserRow, WorkspaceRow } from '../db/database'
+import { parseJson, type AgentRow, type ChannelAgentRow, type ChannelRow, type ChannelTemplateRow, type MemoryRow, type MessageRow, type TaskRow, type TeamRow, type UserRow, type WorkspaceRow } from '../db/database'
 import { Mailbox, rowToMessage } from './mailbox'
 import { AgentRuntime } from './agent-runtime'
 import type { ChannelBus, MemberChangeEvent, TaskEngine } from './agent-runtime'
@@ -43,6 +43,7 @@ import { hasTerminalSession, sweepTerminalSessions } from '../agents/harness-ter
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 import type { UserRepo } from '../db/user.repo'
 import type { ChannelEventRepo } from '../db/channel-event.repo'
+import type { ChannelTemplateRepo, ChannelTemplateMember } from '../db/channel-template.repo'
 
 /** 全部仓储(依赖注入) */
 export interface AllRepos {
@@ -52,6 +53,7 @@ export interface AllRepos {
   agents: AgentRepo
   teams: TeamRepo
   teamMembers: TeamMemberRepo
+  channelTemplates: ChannelTemplateRepo
   channelAgents: ChannelAgentRepo
   messages: MessageRepo
   subscriptions: SubscriptionRepo
@@ -67,6 +69,12 @@ export interface ManagerDeps {
   db: DatabaseSync
 }
 
+/** 权限主体(路由层 ResolvedUser 的子集;role 供 admin 判定) */
+export interface ActingUser {
+  id: string
+  role?: string
+}
+
 /** Agent 模板详情(全局;含其克隆出的全部实例) */
 export interface AgentTemplateDetail {
   id: string
@@ -74,7 +82,11 @@ export interface AgentTemplateDetail {
   harness: string
   config: Record<string, unknown>
   enabled: number
-  /** 归属用户(null = 遗留公共) */
+  /** 可见性:'private' | 'public' */
+  visibility: string
+  /** 内置模板(owner NULL;公开只读,任何人含 admin 不可修改删除) */
+  isBuiltin: boolean
+  /** 归属用户(null = 内置公共) */
   ownerUserId: string | null
   /** 该模板克隆出的全部实例(跨 channel) */
   instances: Array<{ id: string, channelId: string, role: 'lead' | 'worker', token: string }>
@@ -87,7 +99,11 @@ export interface AgentTeamDetail {
   id: string
   name: string
   description: string
-  /** 归属用户(null = 遗留公共) */
+  /** 可见性:'private' | 'public' */
+  visibility: string
+  /** 内置编组(owner NULL;公开只读,任何人含 admin 不可修改删除) */
+  isBuiltin: boolean
+  /** 归属用户(null = 内置公共) */
   ownerUserId: string | null
   /** 成员(按加入顺序;快照含模板当前 name/harness,便于前端展示) */
   members: Array<{
@@ -97,6 +113,24 @@ export interface AgentTeamDetail {
     role: 'lead' | 'worker'
     addedAt: string
   }>
+  createdAt: string
+  updatedAt: string
+}
+
+/** Channel 模板详情(场景 + 工作目录 + 成员组合;lead/members 已反序列化) */
+export interface ChannelTemplateDetail {
+  id: string
+  name: string
+  description: string
+  scenarioPrompt: string
+  workspace: string
+  /** 内联 lead 定义(空 = 无 lead) */
+  lead: { name: string, harness: string, config?: Record<string, unknown> } | null
+  /** 成员组合:引用 Agent 模板或内联定义 */
+  members: ChannelTemplateMember[]
+  visibility: string
+  isBuiltin: boolean
+  ownerUserId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -170,6 +204,22 @@ function runtimeKey(channelId: string, agentId: string): string {
 /** factory 支持的 harness 集(lead 建成员时校验;与 agents/factory.ts 对齐) */
 const KNOWN_HARNESSES = new Set(['mock', 'omp', 'claude'])
 
+/** 全局用户名解析(带 60s 缓存;owner 归属呈现用,解析失败返回 null) */
+const ownerNameCache = new Map<string, { name: string | null, at: number }>()
+export function resolveOwnerName(userId: string): string | null {
+  const hit = ownerNameCache.get(userId)
+  if (hit && Date.now() - hit.at < 60_000) return hit.name
+  let name: string | null
+  try {
+    name = userRepository.findById(userId)?.name ?? null
+  }
+  catch {
+    name = null
+  }
+  ownerNameCache.set(userId, { name, at: Date.now() })
+  return name
+}
+
 /** 运行时资源监控:单个 ChannelRuntime 视图 */
 export interface RuntimeChannelView {
   channelId: string
@@ -180,6 +230,10 @@ export interface RuntimeChannelView {
   /** 是否为 lead 装配并启动了 SchedulerLoop */
   hasScheduler: boolean
   leadAgentId: string | null
+  /** 归属用户(admin 全量视图附带;普通用户视图为自身) */
+  ownerUserId?: string | null
+  /** 归属用户名(admin 视角呈现创建者) */
+  ownerName?: string | null
 }
 
 /** 运行时资源监控:单个 AgentRuntime 视图 */
@@ -195,6 +249,9 @@ export interface RuntimeAgentView {
   completedCount: number
   /** harness 进程(进程内 harness 为 null) */
   process: { pid: number, alive: boolean, command: string } | null
+  /** 归属用户(admin 全量视图附带;普通用户视图为自身) */
+  ownerUserId?: string | null
+  ownerName?: string | null
 }
 
 /** 运行时资源监控:harnest 进程视图(注册表,含孤儿) */
@@ -596,6 +653,7 @@ export class AgentChannelManager {
         memberCount: this.deps.repos.channelAgents.listByChannel(cr.channelId).length,
         hasScheduler: cr.scheduler !== null,
         leadAgentId: channel?.leadAgentId ?? null,
+        ownerUserId: channel?.ownerUserId ?? null,
       }
     })
     const agents: RuntimeAgentView[] = [...this.agentIndex.values()].map((rt) => {
@@ -614,6 +672,7 @@ export class AgentChannelManager {
         process: rt.getProcessInfo(),
       }
     })
+    const channelOwner = new Map(channels.map(c => [c.channelId, c.ownerUserId ?? null]))
     const boundPids = new Set(
       agents.map(a => a.process?.pid).filter((p): p is number => typeof p === 'number'),
     )
@@ -632,6 +691,14 @@ export class AgentChannelManager {
       bound: boundPids.has(p.pid),
       terminal: hasTerminalSession(p.pid),
     }))
+    for (const a of agents) {
+      a.ownerUserId = channelOwner.get(a.channelId) ?? null
+    }
+    for (const p of processes) {
+      ;(p as RuntimeProcessView & { ownerUserId?: string | null }).ownerUserId = p.channelId
+        ? channelOwner.get(p.channelId) ?? null
+        : null
+    }
     return {
       generatedAt: new Date().toISOString(),
       serverPid: process.pid,
@@ -646,6 +713,66 @@ export class AgentChannelManager {
         aliveProcesses: processes.filter(p => p.alive).length,
         orphanProcesses: processes.filter(p => p.alive && !p.bound).length,
       },
+    }
+  }
+
+  /**
+   * 用户级监控快照(v10 用户隔离):
+   * - 普通用户:仅本人 channel 的 runtime/agent,以及绑定到本人 channel 的进程;
+   *   未绑定/孤儿进程与遗留无主 channel 一律不可见。
+   * - admin:全量视图,每个 channel/agent/process 附带 ownerUserId(ownerName 由路由层补注)。
+   */
+  monitorRuntimeForUser(user: ActingUser): RuntimeMonitorSnapshot & { scope: 'user' | 'admin', ownerNames?: Record<string, string> } {
+    const snap = this.monitorRuntime()
+    if (user.role === 'admin') {
+      const ownerIds = new Set<string>()
+      for (const c of snap.channels) {
+        if (c.ownerUserId) ownerIds.add(c.ownerUserId)
+      }
+      const ownerNames: Record<string, string> = {}
+      for (const id of ownerIds) {
+        const name = resolveOwnerName(id)
+        if (name) ownerNames[id] = name
+      }
+      for (const c of snap.channels) c.ownerName = c.ownerUserId ? ownerNames[c.ownerUserId] ?? null : null
+      for (const a of snap.agents) a.ownerName = a.ownerUserId ? ownerNames[a.ownerUserId] ?? null : null
+      return { ...snap, scope: 'admin', ownerNames }
+    }
+    const visibleChannels = new Set(snap.channels.filter(c => c.ownerUserId === user.id).map(c => c.channelId))
+    // 本人有主但当前未装配 runtime 的 channel 也计入 channels 视图(成员数来自 DB,装配为 0)
+    for (const row of this.deps.repos.channels.list()) {
+      if (row.ownerUserId === user.id) visibleChannels.add(row.id)
+    }
+    const channels = snap.channels.filter(c => visibleChannels.has(c.channelId))
+    for (const row of this.deps.repos.channels.list()) {
+      if (visibleChannels.has(row.id) && !channels.some(c => c.channelId === row.id)) {
+        channels.push({
+          channelId: row.id,
+          wiredAgentCount: 0,
+          memberCount: this.deps.repos.channelAgents.listByChannel(row.id).length,
+          hasScheduler: false,
+          leadAgentId: row.leadAgentId,
+          ownerUserId: row.ownerUserId,
+        })
+      }
+    }
+    const agents = snap.agents.filter(a => visibleChannels.has(a.channelId))
+    const processes = snap.processes.filter(p => p.channelId !== null && visibleChannels.has(p.channelId))
+    return {
+      generatedAt: snap.generatedAt,
+      serverPid: snap.serverPid,
+      uptimeMs: snap.uptimeMs,
+      channels,
+      agents,
+      processes,
+      counts: {
+        channels: channels.length,
+        agents: agents.length,
+        processes: processes.length,
+        aliveProcesses: processes.filter(p => p.alive).length,
+        orphanProcesses: processes.filter(p => p.alive && !p.bound).length,
+      },
+      scope: 'user',
     }
   }
 
@@ -767,6 +894,32 @@ export class AgentChannelManager {
     }
   }
 
+  /**
+   * 模板/资源可写守卫(v10 权限系统):
+   * - 内置模板(owner NULL)→ 任何人(含 admin)不可修改删除(TEMPLATE_BUILTIN);
+   * - 属主 → 放行;
+   * - admin → 越权放行(最高管理权限);
+   * - 其余 → 403 SCOPE_VIOLATION。
+   */
+  requireWritable(ownerUserId: string | null | undefined, user: ActingUser, what: string): void {
+    if (ownerUserId === null || ownerUserId === undefined) {
+      throw new AppError(403, 'TEMPLATE_BUILTIN', `${what} 为内置公共模板,不可修改或删除`)
+    }
+    if (ownerUserId === user.id) return
+    if (user.role === 'admin') return
+    throw new AppError(403, 'SCOPE_VIOLATION', `${what} 不属于当前用户`)
+  }
+
+  /**
+   * 模板可读守卫:属主 / public / admin 放行;他人 private → 403(不存在语义由调用方先判)。
+   */
+  requireTemplateReadable(tpl: { ownerUserId: string | null, visibility: string }, user: ActingUser, what: string): void {
+    if (tpl.ownerUserId === null || tpl.ownerUserId === user.id) return
+    if (tpl.visibility === 'public') return
+    if (user.role === 'admin') return
+    throw new AppError(403, 'SCOPE_VIOLATION', `${what} 不属于当前用户且未公开`)
+  }
+
   /** channel 读取(已认证用户可见本人 + 遗留公共;不存在 → 404) */
   getChannelForUser(channelId: string, userId: string): ChannelRow {
     const channel = this.deps.repos.channels.findById(channelId)
@@ -842,10 +995,12 @@ export class AgentChannelManager {
 
     let leadAgentId: string | undefined
     if (input.leadAgent) {
+      // lead 内联模板归属 channel 属主(private;避免落成无主内置模板)
       const tpl = this.deps.repos.agents.create({
         name: input.leadAgent.name,
         harness: input.leadAgent.harness,
         config: input.leadAgent.config,
+        ownerUserId: input.ownerUserId ?? null,
       })
       const inst = this.deps.repos.channelAgents.create({
         channelId: channel.id,
@@ -942,16 +1097,17 @@ export class AgentChannelManager {
     this.deps.repos.channels.remove(channelId)
   }
 
-  // ===== Agent 模板管理面(全局,可复用) =====
+  // ===== Agent 模板管理面(全局,可复用;v10 可见性隔离) =====
 
-  /** 创建 Agent 模板(可复用数据结构) */
+  /** 创建 Agent 模板(可复用数据结构;visibility 缺省 private) */
   async createAgent(input: {
     name: string
     harness: string
     config?: Record<string, unknown>
+    visibility?: string
     ownerUserId?: string | null
   }): Promise<AgentTemplateDetail> {
-    const row = this.deps.repos.agents.create({ name: input.name, harness: input.harness, config: input.config, ownerUserId: input.ownerUserId ?? null })
+    const row = this.deps.repos.agents.create({ name: input.name, harness: input.harness, config: input.config, visibility: input.visibility, ownerUserId: input.ownerUserId ?? null })
     return this.templateDetailOf(row)
   }
 
@@ -965,6 +1121,14 @@ export class AgentChannelManager {
     return this.deps.repos.agents.listForOwner(userId).map(row => this.templateDetailOf(row))
   }
 
+  /** 可见性感知列表:普通用户 = 本人(任意可见性)+ 全部 public(含内置);admin = 全量 */
+  async listAgentsVisibleTo(user: ActingUser): Promise<AgentTemplateDetail[]> {
+    const rows = user.role === 'admin'
+      ? this.deps.repos.agents.list()
+      : this.deps.repos.agents.listVisible(user.id)
+    return rows.map(row => this.templateDetailOf(row))
+  }
+
   /** Agent 模板详情(含其克隆出的全部实例) */
   getAgent(agentId: string): AgentTemplateDetail | undefined {
     const row = this.deps.repos.agents.findById(agentId)
@@ -972,8 +1136,8 @@ export class AgentChannelManager {
     return this.templateDetailOf(row)
   }
 
-  /** 更新 Agent 模板(name/harness/config/enabled);不影响已克隆实例(复制语义) */
-  async updateAgent(agentId: string, patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number }): Promise<AgentTemplateDetail> {
+  /** 更新 Agent 模板(name/harness/config/enabled/visibility);不影响已克隆实例(复制语义) */
+  async updateAgent(agentId: string, patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number, visibility?: string }): Promise<AgentTemplateDetail> {
     const row = this.deps.repos.agents.findById(agentId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${agentId}`)
     const updated = this.deps.repos.agents.update(agentId, patch)
@@ -995,6 +1159,8 @@ export class AgentChannelManager {
       harness: row.harness,
       config: parseJson<Record<string, unknown>>(row.configJson, {}),
       enabled: row.enabled,
+      visibility: row.ownerUserId === null ? 'public' : row.visibility,
+      isBuiltin: row.ownerUserId === null,
       ownerUserId: row.ownerUserId ?? null,
       instances: instances.map(i => ({ id: i.id, channelId: i.channelId, role: i.role as 'lead' | 'worker', token: i.token })),
       createdAt: row.createdAt,
@@ -1377,11 +1543,11 @@ export class AgentChannelManager {
     return best
   }
 
-  // ===== AgentTeam 管理面(模板编组 + 批量部署) =====
+  // ===== AgentTeam 管理面(模板编组 + 批量部署;v10 可见性隔离) =====
 
   /** 创建 AgentTeam */
-  async createTeam(input: { name: string, description?: string, ownerUserId?: string | null }): Promise<AgentTeamDetail> {
-    const row = this.deps.repos.teams.create({ name: input.name, description: input.description, ownerUserId: input.ownerUserId ?? null })
+  async createTeam(input: { name: string, description?: string, visibility?: string, ownerUserId?: string | null }): Promise<AgentTeamDetail> {
+    const row = this.deps.repos.teams.create({ name: input.name, description: input.description, visibility: input.visibility, ownerUserId: input.ownerUserId ?? null })
     return this.teamDetailOf(row)
   }
 
@@ -1395,6 +1561,14 @@ export class AgentChannelManager {
     return this.deps.repos.teams.listForOwner(userId).map(row => this.teamDetailOf(row))
   }
 
+  /** 可见性感知列表:普通用户 = 本人(任意可见性)+ 全部 public(含内置);admin = 全量 */
+  async listTeamsVisibleTo(user: ActingUser): Promise<AgentTeamDetail[]> {
+    const rows = user.role === 'admin'
+      ? this.deps.repos.teams.list()
+      : this.deps.repos.teams.listVisible(user.id)
+    return rows.map(row => this.teamDetailOf(row))
+  }
+
   /** AgentTeam 详情(含成员模板快照);不存在返回 undefined */
   getTeam(teamId: string): AgentTeamDetail | undefined {
     const row = this.deps.repos.teams.findById(teamId)
@@ -1402,8 +1576,8 @@ export class AgentChannelManager {
     return this.teamDetailOf(row)
   }
 
-  /** 更新 AgentTeam(name/description) */
-  async updateTeam(teamId: string, patch: { name?: string, description?: string }): Promise<AgentTeamDetail> {
+  /** 更新 AgentTeam(name/description/visibility) */
+  async updateTeam(teamId: string, patch: { name?: string, description?: string, visibility?: string }): Promise<AgentTeamDetail> {
     const updated = this.deps.repos.teams.update(teamId, patch)
     if (!updated) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
     return this.teamDetailOf(updated)
@@ -1477,6 +1651,8 @@ export class AgentChannelManager {
       id: row.id,
       name: row.name,
       description: row.description,
+      visibility: row.ownerUserId === null ? 'public' : row.visibility,
+      isBuiltin: row.ownerUserId === null,
       ownerUserId: row.ownerUserId ?? null,
       members: members.map((m) => {
         const tpl = this.deps.repos.agents.findById(m.templateId)
@@ -1488,6 +1664,154 @@ export class AgentChannelManager {
           addedAt: m.createdAt,
         }
       }),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }
+  }
+
+  // ===== Channel 模板管理面(v10:场景 + 工作目录 + 成员组合;实例化一键建 channel) =====
+
+  /** 可见性感知 Channel 模板列表:普通用户 = 本人 + public(含内置);admin = 全量 */
+  listChannelTemplatesVisibleTo(user: ActingUser): ChannelTemplateDetail[] {
+    const rows = user.role === 'admin'
+      ? this.deps.repos.channelTemplates.list()
+      : this.deps.repos.channelTemplates.listVisible(user.id)
+    return rows.map(row => this.channelTemplateDetailOf(row))
+  }
+
+  /** Channel 模板详情;不存在返回 undefined */
+  getChannelTemplate(templateId: string): ChannelTemplateDetail | undefined {
+    const row = this.deps.repos.channelTemplates.findById(templateId)
+    if (!row) return undefined
+    return this.channelTemplateDetailOf(row)
+  }
+
+  /** 创建 Channel 模板 */
+  createChannelTemplate(input: {
+    name: string
+    description?: string
+    scenarioPrompt?: string
+    workspace?: string
+    lead?: { name: string, harness: string, config?: Record<string, unknown> } | null
+    members?: ChannelTemplateMember[]
+    visibility?: string
+    ownerUserId: string
+  }): ChannelTemplateDetail {
+    this.assertHarness(input.lead?.harness)
+    const row = this.deps.repos.channelTemplates.create({
+      name: input.name,
+      description: input.description,
+      scenarioPrompt: input.scenarioPrompt,
+      workspace: input.workspace,
+      lead: input.lead ?? null,
+      members: input.members ?? [],
+      visibility: input.visibility,
+      ownerUserId: input.ownerUserId,
+    })
+    return this.channelTemplateDetailOf(row)
+  }
+
+  /** 从既有 Channel 实例捕获模板:场景 + 工作目录 + lead(内联)+ 成员(有模板引用则引用,否则内联快照) */
+  createChannelTemplateFromChannel(channelId: string, input: { name: string, description?: string, visibility?: string }, ownerUserId: string): ChannelTemplateDetail {
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+    const members = this.deps.repos.channelAgents.listByChannel(channelId)
+      .filter(m => m.id !== channel.leadAgentId)
+      .map((m): ChannelTemplateMember => m.templateId
+        ? { templateId: m.templateId, role: m.role === 'lead' ? 'lead' : 'worker' }
+        : { inline: { name: m.name, harness: m.harness, config: parseJson<Record<string, unknown>>(m.configJson, {}) }, role: m.role === 'lead' ? 'lead' : 'worker' })
+    const leadInst = channel.leadAgentId
+      ? this.deps.repos.channelAgents.findById(channel.leadAgentId)
+      : undefined
+    const lead = leadInst
+      ? {
+          name: leadInst.name,
+          harness: leadInst.harness,
+          config: parseJson<Record<string, unknown>>(leadInst.configJson, {}),
+        }
+      : null
+    const row = this.deps.repos.channelTemplates.create({
+      name: input.name,
+      description: input.description,
+      scenarioPrompt: channel.scenarioPrompt,
+      workspace: channel.workspace,
+      lead,
+      members,
+      visibility: input.visibility,
+      ownerUserId,
+    })
+    return this.channelTemplateDetailOf(row)
+  }
+
+  /** 更新 Channel 模板(属主/admin;内置拒绝) */
+  updateChannelTemplate(templateId: string, patch: Parameters<ChannelTemplateRepo['update']>[1]): ChannelTemplateDetail {
+    const updated = this.deps.repos.channelTemplates.update(templateId, patch)
+    if (!updated) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
+    return this.channelTemplateDetailOf(updated)
+  }
+
+  /** 删除 Channel 模板(属主/admin;内置拒绝) */
+  removeChannelTemplate(templateId: string): void {
+    this.deps.repos.channelTemplates.remove(templateId)
+  }
+
+  /**
+   * 实例化 Channel 模板 → 新 channel(属主 = 操作用户):
+   * 场景/工作目录照搬;lead 内联创建;成员逐个克隆(引用模板时校验操作者可读)。
+   * 返回 createChannel 同构结果 + 成员实例数。
+   */
+  async instantiateChannelTemplate(templateId: string, user: ActingUser, nameOverride?: string): Promise<{ channelId: string, workspace: string, agentCount: number, leadAgentId?: string }> {
+    const tpl = this.deps.repos.channelTemplates.findById(templateId)
+    if (!tpl) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
+    this.requireTemplateReadable(tpl, user, 'Channel 模板')
+    const lead = tpl.leadJson
+      ? parseJson<{ name: string, harness: string, config?: Record<string, unknown> } | null>(tpl.leadJson, null)
+      : null
+    const created = await this.createChannel({
+      name: (nameOverride && nameOverride.trim()) || tpl.name,
+      description: tpl.description,
+      scenarioPrompt: tpl.scenarioPrompt,
+      workspace: tpl.workspace || undefined,
+      leadAgent: lead ? { name: lead.name, harness: lead.harness, config: lead.config } : undefined,
+      ownerUserId: user.id,
+    })
+    const members = parseJson<ChannelTemplateMember[]>(tpl.membersJson, [])
+    let agentCount = lead ? 1 : 0
+    for (const m of members) {
+      if ('templateId' in m) {
+        const tplRow = this.deps.repos.agents.findById(m.templateId)
+        if (!tplRow) throw new AppError(404, 'NOT_FOUND', `成员 Agent 模板不存在: ${m.templateId}`)
+        this.requireTemplateReadable(tplRow, user, '成员 Agent 模板')
+        await this.addAgentToChannel({ channelId: created.channelId, agentId: m.templateId, role: m.role, by: 'template' })
+      }
+      else {
+        this.assertHarness(m.inline.harness)
+        const inlineTpl = await this.createAgent({ name: m.inline.name, harness: m.inline.harness, config: m.inline.config, ownerUserId: user.id })
+        await this.addAgentToChannel({ channelId: created.channelId, agentId: inlineTpl.id, role: m.role, by: 'template' })
+      }
+      agentCount += 1
+    }
+    return { channelId: created.channelId, workspace: created.workspace, agentCount, leadAgentId: created.leadAgentId }
+  }
+
+  private assertHarness(harness: string | undefined): void {
+    if (harness && !KNOWN_HARNESSES.has(harness)) {
+      throw new AppError(400, 'BAD_REQUEST', `未知 harness: ${harness}`)
+    }
+  }
+
+  private channelTemplateDetailOf(row: ChannelTemplateRow): ChannelTemplateDetail {
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      scenarioPrompt: row.scenarioPrompt,
+      workspace: row.workspace,
+      lead: row.leadJson ? parseJson<ChannelTemplateDetail['lead']>(row.leadJson, null) : null,
+      members: parseJson<ChannelTemplateMember[]>(row.membersJson, []),
+      visibility: row.ownerUserId === null ? 'public' : row.visibility,
+      isBuiltin: row.ownerUserId === null,
+      ownerUserId: row.ownerUserId ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }
@@ -1822,12 +2146,15 @@ export class AgentChannelManager {
     toAgentId: string
     parts: Part[]
     requireReply?: boolean
+    /** 人类发送者显示名(REST 注入时的时间线归属;进入 x-aw-from-label 元数据) */
+    fromLabel?: string
   }): Promise<A2AMessage> {
     const metadata: Record<string, unknown> = {
       'x-aw-target-agent': input.toAgentId,
       'x-aw-from-agent': input.fromAgentId ?? '',
       'x-aw-msg-priority': 'immediate',
     }
+    if (input.fromLabel) metadata['x-aw-from-label'] = input.fromLabel
     if (input.requireReply) metadata['x-aw-require-reply'] = 'true'
     const message = buildMessage(input.channelId, 'ROLE_AGENT', input.parts, metadata)
     this.route(input.channelId, message)

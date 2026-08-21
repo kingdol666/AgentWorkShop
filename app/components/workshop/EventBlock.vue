@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 import type { Component } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
-import { KIND_META, agentHueColor, type EventBlock } from '@/app/composables/workshop/useEventBlocks'
+import { KIND_META, type EventBlock } from '@/app/composables/workshop/useEventBlocks'
 import ClusterStream from '@/app/components/workshop/blocks/ClusterStream.vue'
 import ClusterTool from '@/app/components/workshop/blocks/ClusterTool.vue'
 import ClusterStatus from '@/app/components/workshop/blocks/ClusterStatus.vue'
@@ -32,11 +32,22 @@ const agentLabel = computed(() => {
   if (!id) return 'system'
   return entities.agentName(cid.value, id)
 })
-const agentColor = computed(() => agentHueColor(props.block.agentId))
-/** 头像章首字母(名字或 id 首字符;system 用 ✳) */
+/**
+ * 人类发送者名(a2a.message 且 from 空 + x-aw-from-label):
+ * 头部以"用户章"呈现 —— Slack 声部里人也是会话一方。
+ */
+const humanLabel = computed(() => {
+  if (props.block.agentId) return null
+  const e = props.block.events[0]
+  if (!e || e.type !== 'a2a.message') return null
+  const meta = (e.payload as { metadata?: Record<string, unknown> }).metadata ?? {}
+  const label = meta['x-aw-from-label']
+  return typeof label === 'string' && label ? label : null
+})
+/** 头像章首字母(名字或 id 首字符;system 用 cpu 图标) */
 const agentInitial = computed(() => {
   const id = props.block.agentId
-  if (!id) return '✳'
+  if (!id) return ''
   const name = entities.agentName(cid.value, id)
   return (name || id).charAt(0).toUpperCase()
 })
@@ -92,10 +103,20 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
     <header class="block-head">
       <span
         class="agent-avatar"
-        :style="{ background: agentColor }"
-        :title="agentLabel"
-      >{{ agentInitial }}</span>
-      <span class="agent-name">{{ agentLabel }}</span>
+        :class="{ 'is-agent': !!block.agentId, 'is-human': !!humanLabel }"
+        :title="humanLabel ?? agentLabel"
+      >
+        <span
+          v-if="humanLabel"
+          class="i-tabler-user system-icon"
+        />
+        <span
+          v-else-if="!block.agentId"
+          class="i-tabler-cpu system-icon"
+        />
+        <template v-else>{{ agentInitial }}</template>
+      </span>
+      <span class="agent-name">{{ humanLabel ?? agentLabel }}</span>
       <span class="kind">
         <span
           class="kind-dot"
@@ -150,13 +171,13 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   }
 }
 .event-block:hover {
-  border-left-color: color-mix(in srgb, var(--accent-cobalt) 55%, transparent);
-  background: color-mix(in srgb, var(--accent-cobalt) 3%, transparent);
+  border-left-color: color-mix(in srgb, var(--g-sky) 80%, transparent);
+  background: var(--hover-tint);
 }
 .event-block[data-kind='stream']:not([data-settled='true']) {
-  border-left-color: color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
+  border-left-color: color-mix(in srgb, var(--g-sky) 55%, transparent);
 }
-.event-block[data-kind='error'] { border-left-color: var(--accent-vermilion, #ff4d4f); }
+.event-block[data-kind='error'] { border-left-color: var(--tone-danger-dot); }
 .event-block[data-covered='true'] { opacity: 0.72; }
 
 .block-head {
@@ -165,21 +186,36 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   align-items: center;
   min-height: 18px;
   padding-bottom: 1px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
+/* 头像:agent = 粉彩径向渐变(open-tag .mav.agent),system = surface */
 .agent-avatar {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   margin-left: 5px;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 9.5px;
-  font-weight: 650;
-  color: var(--paper-raised);
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper-deep);
   border-radius: 50%;
+}
+.agent-avatar.is-agent {
+  color: var(--ink);
+  background: radial-gradient(circle at 30% 28%, var(--g-mint), var(--g-lav) 70%, var(--g-sky));
+}
+.agent-avatar.is-human {
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.agent-avatar .system-icon {
+  font-size: 10px;
+  line-height: 1;
 }
 
 .kind-dot {
@@ -210,18 +246,19 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   align-items: center;
   justify-content: flex-end;
   font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
   color: var(--ink-faint);
 }
 .folded {
   padding: 0 4px;
-  color: var(--accent-moss);
-  background: color-mix(in srgb, var(--accent-moss) 12%, transparent);
-  border-radius: var(--radius-chip, 8px);
+  color: var(--tone-success-dot);
+  background: color-mix(in srgb, var(--tone-success-dot) 12%, transparent);
+  border-radius: var(--radius-chip);
 }
 .merged {
   padding: 0 4px;
   background: color-mix(in srgb, var(--ink) 7%, transparent);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
 }
 .time { flex: 0 0 auto; width: 50px; text-align: right; }
 </style>

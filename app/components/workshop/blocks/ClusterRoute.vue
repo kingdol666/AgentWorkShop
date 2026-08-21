@@ -1,167 +1,315 @@
 <script setup lang="ts">
 /**
- * 消息路由块 — 从→到 + 类型徽章 + 文本预览;每行独立。
- * 短消息单行预览;长消息(>120 字符)折叠预览 + 点击展开全文。
+ * 消息路由块 — Slack/open-tag 聊天声部:
+ *  - 每条 a2a.message 渲染为一条聊天行:@目标 pill(可点击打开 Agent 抽屉)+
+ *    类型徽章(任务派发/实时注入/协作消息…)+ 时间 + 正文(mdLite + @提及高亮);
+ *  - 人类发送(from 空 + x-aw-from-label)→ 头部显示发送者名,行内带用户章;
+ *  - agent↔agent 协作、lead→worker 任务派发共用同一渲染面(@ 语义统一)。
  */
 import { computed, ref } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
-import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
+import { mdLiteMentions, type EventBlock, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
 
 const props = defineProps<{ block: EventBlock }>()
 const entities = useEntitiesStore()
 
-const PREVIEW_MAX = 120
+/** @pill 点击 → 控制台打开 Agent 抽屉(w/[wsId] provide;缺省安全兜底) */
+const openAgent = inject<(target: { channelId: string, agentId: string }) => void>(
+  'aw:open-agent',
+  () => {},
+)
 
-const lines = computed(() =>
-  props.block.events.map((_e, i) => {
-    const e = props.block.events[i]!
+interface RouteRow {
+  seq: number
+  i: number
+  channelId: string
+  from: string
+  fromLabel: string
+  to: string
+  kind: { icon: string, label: string, tone: string }
+  text: string
+  time: string
+}
+
+const rows = computed<RouteRow[]>(() =>
+  props.block.events.map((e, i) => {
     const meta = (e.payload as { metadata?: Record<string, unknown> }).metadata ?? {}
     const fromId = typeof meta['x-aw-from-agent'] === 'string' ? meta['x-aw-from-agent'] as string : ''
+    const fromLabel = typeof meta['x-aw-from-label'] === 'string' ? meta['x-aw-from-label'] as string : ''
     const toId = typeof meta['x-aw-target-agent'] === 'string' ? meta['x-aw-target-agent'] as string : ''
     const priority = meta['x-aw-msg-priority'] === 'immediate' ? 'immediate' : 'task'
     const taskKind = typeof meta['x-aw-task-kind'] === 'string' ? meta['x-aw-task-kind'] as string : ''
     const kind = taskKind === 'assign'
-      ? { icon: 'i-tabler-send', label: '任务派发', tone: 'assign' as const }
+      ? { icon: 'i-tabler-send', label: '任务派发', tone: 'assign' }
       : taskKind === 'cancel'
-        ? { icon: 'i-tabler-circle-x', label: '取消通知', tone: 'notice' as const }
+        ? { icon: 'i-tabler-circle-x', label: '取消通知', tone: 'notice' }
         : taskKind === 'child-completed'
-          ? { icon: 'i-tabler-circle-check', label: '子任务完成', tone: 'notice' as const }
+          ? { icon: 'i-tabler-circle-check', label: '子任务完成', tone: 'notice' }
           : priority === 'immediate'
-            ? { icon: 'i-tabler-bolt', label: '实时注入', tone: 'immediate' as const }
-            : { icon: 'i-tabler-message', label: '协作消息', tone: 'peer' as const }
+            ? { icon: 'i-tabler-bolt', label: '实时注入', tone: 'immediate' }
+            : { icon: 'i-tabler-message', label: '协作消息', tone: 'peer' }
     const parts = (e.payload as { parts?: Array<{ text?: string }> }).parts ?? []
-    const text = parts.map(p => p.text ?? '').join('\n').trim()
-    const seq = e.seq
-    const channelId = e.channelId
-    const long = text.length > PREVIEW_MAX
-    return { seq, kind, channelId, from: fromId, to: toId, text, long, preview: long ? `${text.slice(0, PREVIEW_MAX)}…` : text, i }
+    return {
+      seq: e.seq,
+      i,
+      channelId: e.channelId,
+      from: fromId,
+      fromLabel,
+      to: toId,
+      kind,
+      text: parts.map(p => p.text ?? '').join('\n').trim(),
+      time: e.at.slice(11, 19),
+    }
   }),
 )
-const expandedRows = ref(new Set<number>())
-const toggle = (i: number): void => {
-  const s = new Set(expandedRows.value)
-  if (s.has(i)) s.delete(i)
-  else s.add(i)
-  expandedRows.value = s
+
+const channelId = computed(() => props.block.events[0]?.channelId ?? '')
+
+/** 本 channel 成员表(@提及高亮 + pill 名称解析) */
+const members = computed<MentionMember[]>(() =>
+  (entities.agents[channelId.value] ?? []).map(a => ({ agentId: a.agentId, name: a.name })),
+)
+
+const nameOf = (id: string): string =>
+  id ? entities.agentName(channelId.value, id) : ''
+
+const initials = (name: string) => name.trim().charAt(0).toUpperCase()
+
+const rendered = computed(() => rows.value.map(r => mdLiteMentions(r.text, members.value)))
+
+/** @pill / 正文内提及点击(事件委托) */
+const onBodyClick = (ev: MouseEvent): void => {
+  const el = (ev.target as HTMLElement).closest<HTMLElement>('.md-mention, .who-pill')
+  if (!el) return
+  const agentId = el.dataset.agentId
+  if (agentId) openAgent({ channelId: channelId.value, agentId })
 }
 
 const expanded = ref(false)
 const MAX = 4
-const shown = computed(() => (expanded.value ? lines.value : lines.value.slice(0, MAX)))
-const hasMore = computed(() => lines.value.length > MAX)
+const shown = computed(() => (expanded.value ? rows.value : rows.value.slice(0, MAX)))
+const shownRendered = computed(() => (expanded.value ? rendered.value : rendered.value.slice(0, MAX)))
+const hasMore = computed(() => rows.value.length > MAX)
 </script>
 
 <template>
-  <div class="route-cluster">
+  <div
+    class="route-cluster"
+    @click="onBodyClick"
+  >
     <div
-      v-for="r in shown"
+      v-for="(r, ri) in shown"
       :key="r.seq"
-      class="route-row"
+      class="chat-row"
     >
-      <span
-        class="route-badge"
-        :data-tone="r.kind.tone"
-      ><span :class="r.kind.icon" /> {{ r.kind.label }}</span>
-      <span class="route-path">{{ r.from ? entities.agentName(r.channelId, r.from) : 'system' }} → {{ r.to ? entities.agentName(r.channelId, r.to) : '(广播)' }}</span>
-      <template v-if="r.long && expandedRows.has(r.i)">
-        <span class="route-full">
-          <pre class="route-full-text">{{ r.text }}</pre>
-          <button
-            class="expand-btn"
-            @click="toggle(r.i)"
-          >收起</button>
-        </span>
-      </template>
-      <template v-else>
+      <!-- 元行:发送者 → @目标 + 类型徽章 + 时间 -->
+      <div class="chat-meta">
         <span
-          v-if="r.text"
-          class="route-text"
-        >{{ r.preview }}</span>
-        <button
-          v-if="r.long"
-          class="expand-btn"
-          title="展开全文"
-          @click="toggle(r.i)"
+          v-if="r.fromLabel && !r.from"
+          class="human-chip"
+          :title="`人类发送者:${r.fromLabel}`"
         >
-          展开
+          <span class="i-tabler-user" />
+          {{ r.fromLabel }}
+        </span>
+        <button
+          v-if="r.from"
+          type="button"
+          class="who-pill from"
+          :data-agent-id="r.from"
+          :title="`查看 ${nameOf(r.from)}`"
+        >
+          <span class="aw-avatar is-agent who-ava">{{ initials(nameOf(r.from)) }}</span>
+          @{{ nameOf(r.from) }}
         </button>
-      </template>
+        <span
+          v-if="r.to"
+          class="to-arrow"
+          aria-hidden="true"
+        >→</span>
+        <button
+          v-if="r.to"
+          type="button"
+          class="who-pill"
+          :data-agent-id="r.to"
+          :title="`查看 ${nameOf(r.to)}`"
+        >
+          @{{ nameOf(r.to) }}
+        </button>
+        <span
+          v-else
+          class="who-broadcast"
+        >(广播)</span>
+        <span
+          class="route-badge"
+          :data-tone="r.kind.tone"
+        ><span :class="r.kind.icon" />{{ r.kind.label }}</span>
+        <span class="chat-time aw-mono">{{ r.time }}</span>
+      </div>
+      <!-- 正文:markdown-lite + @提及 pill -->
+      <div
+        v-if="r.text"
+        class="chat-body prose"
+        v-html="shownRendered[ri]"
+      />
     </div>
     <button
       v-if="hasMore"
       class="more-btn"
       @click="expanded = !expanded"
     >
-      {{ expanded ? '收起' : `全部 ${lines.length} 条` }}
+      {{ expanded ? '收起' : `全部 ${rows.length} 条` }}
     </button>
   </div>
 </template>
 
 <style scoped>
-.route-cluster { padding: 1px 0 4px 20px; }
-.route-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 1px 0;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  line-height: 20px;
-  flex-wrap: wrap;
+.route-cluster {
+  padding: 2px 0 4px 18px;
 }
+
+.chat-row {
+  margin-bottom: 4px;
+  padding: 6px 10px 7px;
+  background: var(--paper-raised);
+  border: 1px solid color-mix(in srgb, var(--ink) 7%, transparent);
+  border-radius: var(--radius-chip);
+  transition: border-color var(--transition-fast);
+}
+
+.chat-row:hover {
+  border-color: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.chat-row:last-of-type {
+  margin-bottom: 0;
+}
+
+/* 元行:@pill / 徽章 / 时间 */
+.chat-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.who-pill {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 0 7px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  background: var(--mention);
+  border: 0;
+  border-radius: 4px;
+  transition: background var(--transition-fast);
+}
+
+.who-pill:hover {
+  background: color-mix(in srgb, var(--g-peach) 72%, transparent);
+}
+
+.who-ava {
+  width: 16px;
+  height: 16px;
+  font-size: 8.5px;
+}
+
+.who-pill.from .who-ava {
+  display: none;
+}
+
+.to-arrow {
+  font-size: 11px;
+  color: var(--ink-fainter);
+}
+
+.who-broadcast {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.human-chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 0 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border-radius: 4px;
+}
+
 .route-badge {
   display: inline-flex;
   gap: 4px;
   align-items: center;
   padding: 0 6px;
   font-size: 9.5px;
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
 }
-.route-badge[data-tone='assign'] { color: var(--accent-cobalt); background: color-mix(in srgb, var(--accent-cobalt) 12%, transparent); }
-.route-badge[data-tone='immediate'] { color: var(--accent-amber); background: color-mix(in srgb, var(--accent-amber) 15%, transparent); }
-.route-badge[data-tone='notice'] { color: var(--accent-moss); background: color-mix(in srgb, var(--accent-moss) 12%, transparent); }
-.route-badge[data-tone='peer'] { color: var(--accent-violet); background: color-mix(in srgb, var(--accent-violet) 14%, transparent); }
-.route-path { flex: 0 0 auto; opacity: 0.6; }
-.route-text { overflow-wrap: anywhere; word-break: break-word; opacity: 0.85; }
-.route-full {
-  flex: 1 1 100%;
-  margin: 2px 0 1px;
-}
-.route-full-text {
-  max-height: 260px;
-  margin: 0 0 2px;
-  overflow-y: auto;
-  padding: 6px 10px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  line-height: 1.55;
-  white-space: pre-wrap;
-  word-break: break-word;
-  background: color-mix(in srgb, var(--ink) 3.5%, transparent);
-  border-left: 2px solid color-mix(in srgb, var(--ink) 14%, transparent);
-  border-radius: 0 3px 3px 0;
-}
-.expand-btn {
-  flex: 0 0 auto;
-  padding: 0 5px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--accent-cobalt);
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
-  border-radius: var(--radius-chip, 8px);
-}
-.expand-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
-.more-btn {
-  margin: 2px 0 0;
-  padding: 0 6px;
+
+.route-badge[data-tone='assign'] { color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 12%, transparent); }
+.route-badge[data-tone='immediate'] { color: var(--tone-warning-dot); background: color-mix(in srgb, var(--tone-warning-dot) 15%, transparent); }
+.route-badge[data-tone='notice'] { color: var(--tone-success-dot); background: color-mix(in srgb, var(--tone-success-dot) 12%, transparent); }
+.route-badge[data-tone='peer'] { color: var(--tone-retry-dot); background: color-mix(in srgb, var(--tone-retry-dot) 14%, transparent); }
+
+.chat-time {
+  margin-left: auto;
   font-size: 9.5px;
-  color: var(--accent-cobalt);
+  color: var(--ink-fainter);
+}
+
+/* 正文:聊天气泡排版 */
+.chat-body {
+  max-height: 420px;
+  padding: 2px 0 0 2px;
+  overflow-y: auto;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ink);
+  white-space: normal;
+  word-break: break-word;
+}
+
+.prose :deep(p) { margin: 0 0 5px; }
+.prose :deep(p:last-child) { margin-bottom: 0; }
+.prose :deep(code) {
+  padding: 0.5px 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  border-radius: 3px;
+}
+.prose :deep(pre) {
+  max-width: 100%;
+  margin: 4px 0;
+  padding: 6px 9px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--paper-deep);
+  border-radius: var(--radius-chip);
+}
+.prose :deep(b) { font-weight: 600; }
+
+.more-btn {
+  margin-top: 4px;
+  padding: 0 8px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--tone-info-dot);
   cursor: pointer;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
-  border-radius: var(--radius-chip, 8px);
+  border: 1px solid color-mix(in srgb, var(--tone-info-dot) 35%, transparent);
+  border-radius: var(--radius-pill);
 }
-.more-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
+
+.more-btn:hover { background: color-mix(in srgb, var(--tone-info-dot) 8%, transparent); }
 </style>

@@ -23,21 +23,20 @@ const createAgentSchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
+  const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(createAgentSchema))
   const manager = getWorkshopManager()
   const channel = (await manager.listChannels()).find(c => c.id === channelId)
   if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
 
-  const user = resolveUser(event)
   const ch = manager.getChannelForUser(channelId, user.id)
-  manager.requireOwned(ch.ownerUserId, user.id, 'channel')
+  manager.requireWritable(ch.ownerUserId, user, 'channel')
   const role = body.role ?? 'worker'
-  // 克隆模板时校验模板可读(本人或遗留公共;他人模板 → 403)
+  // 克隆模板时校验模板可读(属主/public 含内置/admin;他人 private → 403)
   if (body.agentId) {
     const tpl = manager.getAgent(body.agentId)
-    if (tpl && tpl.config && (tpl as { ownerUserId?: string | null }).ownerUserId !== null && (tpl as { ownerUserId?: string | null }).ownerUserId !== user.id) {
-      throw new (await import('../../../../../utils/errors')).AppError(403, 'SCOPE_VIOLATION', 'Agent 模板不属于当前用户')
-    }
+    if (!tpl) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${body.agentId}`)
+    manager.requireTemplateReadable(tpl, user, 'Agent 模板')
   }
   const agent = body.agentId
     ? await manager.addAgentToChannel({
@@ -51,7 +50,7 @@ export default defineApiHandler(async (event) => {
         if (!body.name || !body.harness) {
           throw new AppError(400, 'BAD_REQUEST', '需提供 name+harness(新建模板)或 agentId(克隆已有模板)')
         }
-        const tpl = await manager.createAgent({ name: body.name, harness: body.harness, config: body.config })
+        const tpl = await manager.createAgent({ name: body.name, harness: body.harness, config: body.config, ownerUserId: user.id })
         return manager.addAgentToChannel({ channelId, agentId: tpl.id, role })
       })()
 

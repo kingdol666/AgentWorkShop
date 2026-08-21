@@ -89,17 +89,20 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   opacity: 0.85;
 }
 .tool-line.host .tool-icon,
-.tool-line.host .tool-name { color: var(--accent-violet); }
+.tool-line.host .tool-name {
+  font-weight: 600;
+  color: var(--ink);
+}
 .tool-kind {
   flex: 0 0 auto;
+  align-self: center;
   padding: 0 5px;
   font-size: 8.5px;
   letter-spacing: 0.1em;
   line-height: 14px;
-  color: var(--accent-violet);
-  background: color-mix(in srgb, var(--accent-violet) 14%, transparent);
-  border-radius: var(--radius-chip, 8px);
-  align-self: center;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
 }
 .tool-line:hover .tool-args { opacity: 1; }
 .more-btn {
@@ -107,13 +110,14 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   padding: 0 6px;
   font-family: var(--font-mono);
   font-size: 9.5px;
-  color: var(--accent-cobalt);
+  color: var(--accent);
   cursor: pointer;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
-  border-radius: var(--radius-chip, 8px);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: var(--radius-chip);
+  transition: background var(--transition-fast);
 }
 .more-btn:hover {
-  background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent);
+  background: var(--accent-soft);
 }
 </style>

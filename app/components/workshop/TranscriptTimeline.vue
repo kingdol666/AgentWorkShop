@@ -83,6 +83,35 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
   { value: 'team', label: '团队' },
   { value: 'errors', label: '错误' },
 ]
+
+// ===== 日期分隔线(open-tag date-divider 移植):块 firstAt 跨日 → 插入 hairline 分隔 =====
+const startOfDay = (iso: string): number => {
+  const d = new Date(iso)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+}
+const dayLabel = (iso: string): string => {
+  const d = new Date(iso)
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  if (sameDay(d, today)) return '今天'
+  if (sameDay(d, yesterday)) return '昨天'
+  const y = d.getFullYear() !== today.getFullYear() ? `${d.getFullYear()} 年 ` : ''
+  return `${y}${d.getMonth() + 1} 月 ${d.getDate()} 日`
+}
+/** 每个块是否需要前置日界分隔(与上一块不同日,或首块) */
+const blockDayFlags = computed(() => {
+  const flags: Array<{ divider: string | null }> = []
+  let prevDay: number | null = null
+  for (const b of blocks.value) {
+    const day = startOfDay(b.firstAt)
+    flags.push({ divider: prevDay === null || day !== prevDay ? dayLabel(b.firstAt) : null })
+    prevDay = day
+  }
+  return flags
+})
 </script>
 
 <template>
@@ -129,14 +158,29 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
           v-if="blocks.length === 0"
           class="empty"
         >
-          等待事件…(提交任务后此处实时渲染 Agent 执行过程)
+          <span class="i-tabler-message-dots empty-icon" />
+          <p class="empty-title">
+            等待事件流入
+          </p>
+          <p class="empty-hint">
+            在下方提交任务后,Agent 执行过程将在此实时渲染
+          </p>
         </div>
-        <workshop-event-block
+        <template
           v-for="(b, i) in blocks"
           :key="b.id"
-          :block="b"
-          :turn-start="i > 0 && blocks[i - 1]!.agentId !== b.agentId"
-        />
+        >
+          <div
+            v-if="blockDayFlags[i]?.divider"
+            class="date-divider"
+          >
+            <span class="date-divider-label">{{ blockDayFlags[i]!.divider }}</span>
+          </div>
+          <workshop-event-block
+            :block="b"
+            :turn-start="i > 0 && blocks[i - 1]!.agentId !== b.agentId"
+          />
+        </template>
       </div>
     </div>
   </div>
@@ -153,13 +197,15 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 6px 12px;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+  padding: 6px 16px;
+  background: var(--paper-raised);
+  border-bottom: 1px solid var(--line);
 }
 .count {
   font-size: 11px;
   font-family: var(--font-mono);
-  opacity: 0.45;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-fainter);
 }
 .jump-latest {
   position: sticky;
@@ -171,18 +217,19 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
   float: right;
   margin-right: 14px;
   padding: 5px 12px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 11px;
-  color: var(--paper-raised);
+  color: var(--on-accent);
   cursor: pointer;
-  background: var(--accent-cobalt);
+  background: var(--accent);
   border: none;
-  border-radius: 999px;
-  box-shadow: 0 4px 14px rgb(16 16 16 / 18%);
-  transition: opacity var(--transition-fast, 0.12s ease);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-float);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
-.jump-latest:hover { opacity: 0.88; }
+.jump-latest:hover { opacity: 0.92; }
+.jump-latest:active { transform: translateY(1px); }
 
 .scroller {
   flex: 1 1 auto;
@@ -203,17 +250,19 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
 .earlier-btn {
   display: block;
   margin: 0 auto 10px;
-  padding: 3px 14px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--accent-cobalt);
+  padding: 4px 14px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--ink-faint);
   cursor: pointer;
-  background: transparent;
-  border: 1px dashed color-mix(in srgb, var(--accent-cobalt) 40%, transparent);
-  border-radius: 10px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 .earlier-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent);
+  color: var(--ink);
+  background: var(--paper-deep);
 }
 .earlier-btn:disabled { opacity: 0.5; cursor: default; }
 .earlier-done {
@@ -221,12 +270,32 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
   font-family: var(--font-mono);
   font-size: 9.5px;
   text-align: center;
-  opacity: 0.35;
+  color: var(--ink-fainter);
 }
+/* 空态:编辑部式 serif 标题(pane-empty 声部) */
 .empty {
-  padding: 40px 16px;
-  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: 72px 16px;
   text-align: center;
-  opacity: 0.35;
+}
+.empty-icon {
+  font-size: 28px;
+  color: var(--ink-fainter);
+}
+.empty-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ink-soft);
+}
+.empty-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
 }
 </style>

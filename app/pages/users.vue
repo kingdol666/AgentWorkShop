@@ -1,17 +1,52 @@
 <script setup lang="ts">
+/**
+ * 用户管理页(仅 admin):真实数据源 GET /api/users(其余角色 → 403 门禁视图)。
+ * 角色 admin/editor/user;状态 active/disabled;支持角色调整、启停、删除。
+ */
+import { message } from 'ant-design-vue'
+import { useUserStore } from '../stores/workshop/user'
+
 const { t } = useI18n()
+const userStore = useUserStore()
 
 interface UserRecord {
-  key: string
+  id: string
   name: string
   email: string
   role: 'admin' | 'editor' | 'user'
   status: 'active' | 'disabled'
   createdAt: string
 }
+interface ApiEnvelope<T> { code: number | string, message: string, data: T | null }
+
+const loading = ref(false)
+const users = ref<UserRecord[]>([])
+const keyword = ref('')
+const authHeaders = computed(() => userStore.authHeaders())
+
+const load = async (): Promise<void> => {
+  if (!userStore.isAdmin) return
+  loading.value = true
+  try {
+    const res = await $fetch<ApiEnvelope<{ items: UserRecord[] }>>('/api/users', {
+      headers: authHeaders.value,
+      query: { pageSize: 100, keyword: keyword.value || undefined },
+    })
+    users.value = res.data?.items ?? []
+  }
+  catch (e) {
+    message.error(e instanceof Error ? e.message : '加载失败')
+  }
+  finally {
+    loading.value = false
+  }
+}
+watch(() => userStore.isLoggedIn, (v) => {
+  if (v) void load()
+}, { immediate: true })
 
 const roleColor: Record<UserRecord['role'], string> = {
-  admin: 'red',
+  admin: 'volcano',
   editor: 'blue',
   user: 'default',
 }
@@ -19,33 +54,64 @@ const roleColor: Record<UserRecord['role'], string> = {
 const columns = computed(() => [
   { title: t('users.name'), dataIndex: 'name', key: 'name' },
   { title: t('users.email'), dataIndex: 'email', key: 'email' },
-  { title: t('users.role'), dataIndex: 'role', key: 'role' },
-  { title: t('common.status'), dataIndex: 'status', key: 'status' },
-  { title: t('users.created'), dataIndex: 'createdAt', key: 'createdAt' },
-  { title: t('common.actions'), key: 'action', width: 140 },
+  { title: t('users.role'), dataIndex: 'role', key: 'role', width: 110 },
+  { title: t('common.status'), dataIndex: 'status', key: 'status', width: 90 },
+  { title: t('users.created'), dataIndex: 'createdAt', key: 'createdAt', width: 150 },
+  { title: t('common.actions'), key: 'action', width: 220 },
 ])
-
-const data: UserRecord[] = [
-  { key: '1', name: '张伟', email: 'zhangwei@awshop.io', role: 'admin', status: 'active', createdAt: '2026-07-01 09:24' },
-  { key: '2', name: '王芳', email: 'wangfang@awshop.io', role: 'editor', status: 'active', createdAt: '2026-07-03 14:10' },
-  { key: '3', name: '李娜', email: 'lina@awshop.io', role: 'user', status: 'disabled', createdAt: '2026-07-05 16:42' },
-  { key: '4', name: '刘洋', email: 'liuyang@awshop.io', role: 'editor', status: 'active', createdAt: '2026-07-08 11:05' },
-  { key: '5', name: '陈静', email: 'chenjing@awshop.io', role: 'user', status: 'active', createdAt: '2026-07-10 08:33' },
-  { key: '6', name: 'Michael Chen', email: 'michael@awshop.io', role: 'user', status: 'active', createdAt: '2026-07-12 19:50' },
-]
-
-const keyword = ref('')
-
-const filtered = computed(() =>
-  data.filter(u =>
-    u.name.toLowerCase().includes(keyword.value.toLowerCase())
-    || u.email.toLowerCase().includes(keyword.value.toLowerCase()),
-  ),
-)
 
 function roleLabel(role: UserRecord['role']) {
   return t(`users.role${role.charAt(0).toUpperCase()}${role.slice(1)}`)
 }
+
+const changeRole = async (u: UserRecord, role: UserRecord['role']): Promise<void> => {
+  try {
+    await $fetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
+      method: 'PUT',
+      headers: authHeaders.value,
+      body: { role },
+    })
+    message.success(`${u.name} 角色已调整为 ${role}`)
+    void load()
+  }
+  catch (e) {
+    message.error(e instanceof Error ? e.message : '更新失败')
+  }
+}
+
+const toggleStatus = async (u: UserRecord): Promise<void> => {
+  const status = u.status === 'active' ? 'disabled' : 'active'
+  try {
+    await $fetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
+      method: 'PUT',
+      headers: authHeaders.value,
+      body: { status },
+    })
+    message.success(`${u.name} 已${status === 'active' ? '启用' : '停用'}`)
+    void load()
+  }
+  catch (e) {
+    message.error(e instanceof Error ? e.message : '更新失败')
+  }
+}
+
+const removeUser = async (u: UserRecord): Promise<void> => {
+  try {
+    await $fetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
+      method: 'DELETE',
+      headers: authHeaders.value,
+    })
+    message.success(`已删除 ${u.name}`)
+    void load()
+  }
+  catch (e) {
+    message.error(e instanceof Error ? e.message : '删除失败')
+  }
+}
+
+const isSelf = (u: UserRecord): boolean => u.id === userStore.user?.id
+
+useHead({ title: '用户管理 · AgentWorkShop' })
 </script>
 
 <template>
@@ -54,99 +120,99 @@ function roleLabel(role: UserRecord['role']) {
       <div>
         <h2 class="page-title">
           {{ t('users.title') }}
+          <a-tag
+            color="volcano"
+            class="admin-tag"
+          >
+            <span class="i-tabler-shield-check" />
+            admin
+          </a-tag>
         </h2>
         <p class="page-sub">
-          {{ t('users.subtitle') }}
+          管理全局用户与角色(admin 拥有最高权限:全量监控、任意模板、用户管理)。
         </p>
       </div>
-      <a-button
-        type="primary"
-        size="large"
-      >
-        <template #icon>
-          <span class="i-tabler-plus" />
-        </template>
-        {{ t('users.add') }}
-      </a-button>
+      <a-input-search
+        v-model:value="keyword"
+        :placeholder="t('users.search')"
+        style="width: 240px"
+        @search="load"
+      />
     </div>
 
+    <!-- 非 admin 门禁视图 -->
     <a-card
+      v-if="!userStore.isAdmin"
+      :bordered="false"
+      class="gate-card"
+    >
+      <span class="i-tabler-lock gate-icon" />
+      <p class="gate-title">
+        需要管理员权限
+      </p>
+      <p class="gate-hint">
+        用户管理仅对 admin 角色开放;请联系管理员调整角色。
+      </p>
+    </a-card>
+
+    <a-card
+      v-else
       :bordered="false"
       class="table-card"
     >
-      <div class="table-toolbar">
-        <a-input
-          v-model:value="keyword"
-          allow-clear
-          :placeholder="t('users.search')"
-          class="search-input"
-        >
-          <template #prefix>
-            <span class="i-tabler-search opacity-40" />
-          </template>
-        </a-input>
-        <a-space>
-          <a-button>
-            <template #icon>
-              <span class="i-tabler-filter" />
-            </template>
-            {{ t('common.all') }}
-          </a-button>
-          <a-button>
-            <template #icon>
-              <span class="i-tabler-download" />
-            </template>
-          </a-button>
-        </a-space>
-      </div>
-
       <a-table
+        :data-source="users"
         :columns="columns"
-        :data-source="filtered"
-        :pagination="{ pageSize: 8, showSizeChanger: true }"
+        :loading="loading"
+        row-key="id"
+        size="small"
+        :pagination="false"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'name'">
-            <div class="user-cell">
-              <a-avatar
-                :size="34"
-                style="background: var(--color-primary)"
-              >
-                {{ record.name.charAt(0) }}
-              </a-avatar>
-              <span class="font-medium">{{ record.name }}</span>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'role'">
+          <template v-if="column.key === 'role'">
             <a-tag :color="roleColor[record.role as UserRecord['role']]">
               {{ roleLabel(record.role as UserRecord['role']) }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-badge
-              :status="record.status === 'active' ? 'success' : 'default'"
-              :text="record.status === 'active' ? t('users.active') : t('users.disabled')"
-            />
+            <a-tag :color="record.status === 'active' ? 'green' : 'default'">
+              {{ record.status === 'active' ? '启用' : '停用' }}
+            </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-space>
-              <a-button
-                type="link"
+            <a-space size="small">
+              <a-select
+                :value="record.role"
                 size="small"
+                style="width: 92px"
+                :disabled="isSelf(record as UserRecord)"
+                :options="[
+                  { value: 'user', label: 'user' },
+                  { value: 'editor', label: 'editor' },
+                  { value: 'admin', label: 'admin' },
+                ]"
+                @change="(v: unknown) => changeRole(record as UserRecord, v as UserRecord['role'])"
+              />
+              <a-button
+                size="small"
+                type="text"
+                :disabled="isSelf(record as UserRecord)"
+                @click="toggleStatus(record as UserRecord)"
               >
-                <span class="i-tabler-edit" />
+                {{ record.status === 'active' ? '停用' : '启用' }}
               </a-button>
               <a-popconfirm
-                :title="t('users.deleteConfirm')"
-                :ok-text="t('common.confirm')"
-                :cancel-text="t('common.cancel')"
+                title="删除该用户?(其名下资源保留,归属仍可追溯)"
+                :disabled="isSelf(record as UserRecord)"
+                @confirm="removeUser(record as UserRecord)"
               >
                 <a-button
-                  type="link"
                   size="small"
+                  type="text"
                   danger
+                  :disabled="isSelf(record as UserRecord)"
                 >
-                  <span class="i-tabler-trash" />
+                  删除
                 </a-button>
               </a-popconfirm>
             </a-space>
@@ -159,50 +225,33 @@ function roleLabel(role: UserRecord['role']) {
 
 <style scoped>
 .page-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  max-width: 1080px;
+  margin: 0 auto;
 }
-
 .page-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--app-text, #1f1f1f);
-}
-
-.page-sub {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--app-text-secondary, #999);
-}
-
-.table-card {
-  overflow: hidden;
-  border-radius: 12px;
-  box-shadow: 0 1px 8px rgb(0 0 0 / 4%);
-}
-
-.table-toolbar {
-  display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   margin-bottom: 16px;
 }
-
-.search-input {
-  width: 280px;
-}
-
-.user-cell {
+.page-title {
   display: flex;
+  gap: 8px;
   align-items: center;
-  gap: 10px;
+  margin: 0 0 4px;
+  font-size: 24px;
 }
+.admin-tag { transform: translateY(-2px); }
+.page-sub { margin: 0; font-size: 12.5px; opacity: 0.55; }
+.gate-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  padding: 56px 24px;
+  text-align: center;
+}
+.gate-icon { font-size: 32px; color: var(--ink-fainter); }
+.gate-title { margin: 0; font-size: 15px; font-weight: 600; }
+.gate-hint { margin: 0; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); }
 </style>

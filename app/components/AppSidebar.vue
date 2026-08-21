@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { MenuProps } from 'ant-design-vue'
-
 const { t } = useI18n()
 const route = useRoute()
 const site = useSiteConfig()
@@ -10,28 +8,26 @@ interface MenuItem {
   key: string
   icon: string
   label: string
+  /** 图标微动效类(im-*) */
+  motion?: string
 }
 
 const menuItems = computed<MenuItem[]>(() => [
-  { key: '/', icon: 'i-tabler-layout-dashboard', label: t('menu.dashboard') },
-  { key: '/workshop', icon: 'i-tabler-box', label: t('menu.workshop') },
-  { key: '/game', icon: 'i-tabler-device-gamepad-2', label: t('menu.game') },
-  { key: '/tokens', icon: 'i-tabler-key', label: t('menu.tokens') },
-  { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users') },
-  { key: '/monitor', icon: 'i-tabler-cpu', label: t('menu.monitor') },
-  { key: '/settings', icon: 'i-tabler-settings', label: t('menu.settings') },
+  { key: '/', icon: 'i-tabler-layout-dashboard', label: t('menu.dashboard'), motion: 'im-pop' },
+  { key: '/workshop', icon: 'i-tabler-box', label: t('menu.workshop'), motion: 'im-pop' },
+  { key: '/game', icon: 'i-tabler-device-gamepad-2', label: t('menu.game'), motion: 'im-pop' },
+  { key: '/tokens', icon: 'i-tabler-key', label: t('menu.tokens'), motion: 'im-nudge-up' },
+  { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users'), motion: 'im-pop' },
+  { key: '/monitor', icon: 'i-tabler-cpu', label: t('menu.monitor'), motion: 'im-pulse' },
+  { key: '/settings', icon: 'i-tabler-settings', label: t('menu.settings'), motion: 'im-rotate' },
 ])
 
-// 当前路由高亮对应菜单项
-const selectedKeys = computed(() => [route.path])
+const isActive = (key: string): boolean =>
+  key === '/' ? route.path === '/' : route.path.startsWith(key)
 
-const onMenuClick: MenuProps['onClick'] = ({ key }) => {
-  if (String(key) !== route.path) {
-    navigateTo(String(key))
-  }
+const go = (key: string) => {
+  if (!isActive(key)) navigateTo(key)
 }
-
-const indexOf = (i: number) => String(i + 1).padStart(2, '0')
 </script>
 
 <template>
@@ -40,15 +36,18 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
     :trigger="null"
     collapsible
     breakpoint="lg"
-    :width="224"
+    :width="228"
     :collapsed-width="64"
     class="app-sider"
   >
-    <!-- Logo 区:制图室铭牌 -->
+    <!-- 品牌区:墨方印(serif A + 蜜桃点) -->
     <div class="logo">
       <div class="logo-mark">
-        <span>A</span>
-        <i>.</i>
+        <span class="logo-letter">A</span>
+        <span
+          class="logo-dot"
+          aria-hidden="true"
+        />
       </div>
       <transition name="slide-fade">
         <div
@@ -56,7 +55,7 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
           class="logo-text"
         >
           <span class="logo-title">{{ site.name }}</span>
-          <span class="logo-sub">software workbench</span>
+          <span class="logo-sub">agent workshop</span>
         </div>
       </transition>
     </div>
@@ -68,41 +67,36 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
       {{ t('menu.system') }}
     </div>
 
-    <a-menu
-      theme="light"
-      mode="inline"
-      :selected-keys="selectedKeys"
-      class="app-menu"
-      @click="onMenuClick"
-    >
-      <a-menu-item
-        v-for="(item, i) in menuItems"
+    <nav class="app-menu">
+      <button
+        v-for="item in menuItems"
         :key="item.key"
+        type="button"
+        class="menu-item im"
+        :class="{ active: isActive(item.key) }"
+        :title="store.sidebarCollapsed ? item.label : undefined"
+        @click="go(item.key)"
       >
-        <template #icon>
-          <span
-            class="menu-icon"
-            :class="item.icon"
-          />
-        </template>
-        <span class="menu-label">{{ item.label }}</span>
-        <span class="menu-index">{{ indexOf(i) }}</span>
-      </a-menu-item>
-    </a-menu>
+        <span
+          class="menu-icon"
+          :class="[item.icon, item.motion]"
+        />
+        <span
+          v-show="!store.sidebarCollapsed"
+          class="menu-label"
+        >{{ item.label }}</span>
+      </button>
+    </nav>
 
-    <!-- 底部铭牌:版本与状态 -->
+    <!-- 底部铭牌:版本与运行模式 -->
     <div
       v-show="!store.sidebarCollapsed"
       class="sider-footer"
     >
-      <div class="footer-rule" />
       <div class="footer-line">
-        <span>build v{{ site.version }}</span>
-        <span class="footer-dot" />
-        <span>mode {{ site.mode }}</span>
-      </div>
-      <div class="footer-note">
-        draft · measure · ship
+        <span>v{{ site.version }}</span>
+        <span class="sep">/</span>
+        <span>{{ site.mode }}</span>
       </div>
     </div>
   </a-layout-sider>
@@ -115,7 +109,7 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
   height: 100vh;
   overflow: hidden auto;
   background: var(--sider-bg);
-  border-right: 1px solid var(--divider-hair);
+  border-right: 1px solid var(--line);
   z-index: 20;
 }
 
@@ -127,36 +121,40 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 56px;
+  height: 58px;
   padding: 0 16px;
   overflow: hidden;
-  border-bottom: 1px solid var(--divider-hair);
+  border-bottom: 1px solid var(--line);
 }
 
-/* 铭牌:黑方印 + 白衬线 A(koda 黑主色标识) */
+/* 墨方印:serif A + 蜜桃状态点(open-tag rail brand 声部) */
 .logo-mark {
+  position: relative;
   display: flex;
   flex: 0 0 auto;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding-top: 6px;
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  font-style: italic;
-  line-height: 1;
-  color: var(--paper-raised);
-  background: var(--accent-cobalt);
-  border-radius: var(--radius-chip, 8px);
+  width: 32px;
+  height: 32px;
+  background: var(--ink);
+  border-radius: var(--radius-panel-sm);
 }
 
-.logo-mark i {
-  font-size: 11px;
-  font-style: normal;
-  color: var(--paper-raised);
-  opacity: 0.55;
+.logo-letter {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--paper);
+}
+
+.logo-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  background: var(--g-peach);
+  border: 1.5px solid var(--sider-bg);
+  border-radius: 50%;
 }
 
 .logo-text {
@@ -168,9 +166,8 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
 
 .logo-title {
   font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 590;
-  letter-spacing: -0.02em;
+  font-size: 16px;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
@@ -183,68 +180,72 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
 }
 
 .sider-section-label {
-  padding: 18px 22px 6px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.12em;
+  padding: 18px 20px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--sider-ink-faint);
 }
 
 .app-menu {
-  padding: 4px 10px 0;
-  background: transparent;
-  border-inline-end: none !important;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 10px 0;
 }
 
-:deep(.app-menu .ant-menu-item) {
+.menu-item {
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 34px;
-  margin: 1px 0;
-  line-height: 34px;
-  border-inline-end: none !important;
-  border-radius: var(--radius-panel-sm, 10px);
+  min-height: 36px;
+  padding: 0 10px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--sider-ink);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-panel-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-:deep(.app-menu .ant-menu-item .ant-menu-title-content) {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  justify-content: space-between;
+.menu-item:hover {
+  color: var(--ink);
+  background: var(--paper-deep);
+}
+
+.menu-item.active {
+  color: var(--ink);
+  background: var(--paper-deep);
 }
 
 .menu-icon {
+  flex: 0 0 20px;
   font-size: 16px;
-  opacity: 0.9;
 }
 
-.menu-label {
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+.menu-item .menu-icon {
+  color: var(--sider-ink-faint);
 }
 
-.menu-index {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  opacity: 0.38;
-}
-
-/* 选中项:panel-strong 圆角块 + 黑图标(koda is-active) */
-:deep(.app-menu .ant-menu-item-selected) {
-  background: var(--paper-tint) !important;
-  box-shadow: none !important;
-}
-
-:deep(.app-menu .ant-menu-item-selected .menu-icon) {
+.menu-item:hover .menu-icon,
+.menu-item.active .menu-icon {
   color: var(--ink);
 }
 
-:deep(.app-menu .ant-menu-item:hover) {
-  background: var(--hover-tint) !important;
+.menu-label {
+  overflow: hidden;
+  padding-left: 10px;
+  white-space: nowrap;
+  transition: opacity var(--transition-fast);
+}
+
+.menu-item.active .menu-label {
+  font-weight: 600;
 }
 
 .sider-footer {
@@ -255,37 +256,19 @@ const indexOf = (i: number) => String(i + 1).padStart(2, '0')
   padding: 14px 18px 18px;
 }
 
-.footer-rule {
-  height: 1px;
-  margin-bottom: 10px;
-  background: var(--divider-hair);
-}
-
 .footer-line {
   display: flex;
   gap: 8px;
   align-items: center;
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--sider-ink-faint);
 }
 
-.footer-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--tone-success-dot);
-}
-
-.footer-note {
-  margin-top: 5px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--sider-ink-faint);
-  opacity: 0.7;
+.footer-line .sep {
+  color: var(--ink-fainter);
 }
 
 .slide-fade-enter-active,

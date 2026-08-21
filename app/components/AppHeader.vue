@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { MenuProps, SelectProps } from 'ant-design-vue'
+import { useUserStore } from '@/app/stores/workshop/user'
 
 const { t, locale, locales, setLocale } = useI18n()
 const store = useAppStore()
 const route = useRoute()
 const trail = useRouteTrailStore()
+const userStore = useUserStore()
 const { metaFor } = useRouteMeta()
 
 const localeOptions = computed(() =>
@@ -20,13 +22,13 @@ const switchLocale: SelectProps['onChange'] = (value) => {
   }
 }
 
-// ── 航迹导航:路由变化 → 记录航点;切换时绘图仪进度线扫过 ──
+// ── 航迹导航:路由变化 → 记录航点;切换时进度线扫过 ──
 const hydrated = ref(false)
 const plotting = ref(false)
 let plotTimer: ReturnType<typeof setTimeout> | null = null
 
-watch(() => route.path, (path) => {
-  trail.visit(path)
+watch(() => route.path, () => {
+  trail.visit(route.path)
   plotting.value = false
   requestAnimationFrame(() => {
     plotting.value = true
@@ -52,7 +54,19 @@ const go = (path: string) => {
   }
 }
 
-const waypointIndex = (i: number) => String(i + 1).padStart(2, '0')
+/**
+ * 关闭航点标签页:
+ * - 非当前页 → 仅从航迹移除;
+ * - 当前页 → 先选好跳转目标(优先左侧相邻航点,其次右侧,兜底仪表盘)再移除并跳转,
+ *   避免关闭后停留在一个已无标签的路由上(watcher 会在跳转后 visit 目标页,不会回补被关页)。
+ */
+const closeWaypoint = (path: string) => {
+  const idx = trail.remove(path)
+  if (path !== route.path) return
+  const rest = trail.waypoints
+  const target = rest[Math.min(Math.max(idx - 1, 0), Math.max(rest.length - 1, 0))]?.path ?? '/'
+  navigateTo(target)
+}
 
 const isFullscreen = ref(false)
 
@@ -67,16 +81,41 @@ function toggleFullscreen() {
   }
 }
 
-const avatarItems = [
-  { key: 'profile', icon: 'i-tabler-user', label: t('header.profile') },
-  { key: 'settings', icon: 'i-tabler-adjustments', label: t('menu.settings') },
-  { type: 'divider' as const },
-  { key: 'logout', icon: 'i-tabler-logout', label: t('header.logout'), danger: true },
-]
+// 用户铭牌:真实身份(workshop 用户系统;未登录 = 访客)
+const userInitial = computed(() => (userStore.user?.name ?? '?').trim().charAt(0).toUpperCase())
+const userName = computed(() => userStore.user?.name ?? t('header.guest'))
+const userRole = computed(() => (userStore.isLoggedIn ? userStore.user?.role ?? 'user' : 'anonymous'))
 
-const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
+interface AvatarMenuEntry {
+  key: string
+  label: string
+  icon?: string
+  danger?: boolean
+  divider?: boolean
+}
+
+const avatarItems = computed<AvatarMenuEntry[]>(() => {
+  const items: AvatarMenuEntry[] = [
+    { key: 'tokens', icon: 'i-tabler-key', label: t('menu.tokens') },
+    { key: 'settings', icon: 'i-tabler-adjustments', label: t('menu.settings') },
+  ]
+  if (userStore.isLoggedIn) {
+    items.push({ key: 'd-logout', label: '', divider: true })
+    items.push({ key: 'logout', icon: 'i-tabler-logout', label: t('header.logout'), danger: true })
+  }
+  return items
+})
+
+const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   if (key === 'settings') {
     navigateTo('/settings')
+  }
+  else if (key === 'tokens') {
+    navigateTo('/tokens')
+  }
+  else if (key === 'logout') {
+    await userStore.logout()
+    navigateTo('/workshop')
   }
 }
 </script>
@@ -86,7 +125,7 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
     class="app-header"
     :style="{
       background: 'var(--app-bg-layout, transparent)',
-      borderBottomColor: 'var(--app-border, #d3ccb8)',
+      borderBottomColor: 'var(--app-border, var(--line))',
     }"
   >
     <!-- 左侧:折叠 + 航迹标绘轨 -->
@@ -121,24 +160,29 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
                 class="trail-link"
                 aria-hidden="true"
               />
-              <button
+              <div
                 class="trail-node"
                 :class="{ active: w.path === route.path }"
-                :title="`${waypointIndex(i)} · ${metaFor(w.path).title}`"
+                role="button"
+                tabindex="0"
+                :title="metaFor(w.path).title"
                 @click="go(w.path)"
+                @keydown.enter.prevent="go(w.path)"
               >
-                <span class="node-index">{{ waypointIndex(i) }}</span>
                 <span
                   class="node-icon"
                   :class="metaFor(w.path).icon"
                 />
                 <span class="node-title">{{ metaFor(w.path).title }}</span>
-                <span
-                  v-if="w.path === route.path"
-                  class="node-here"
-                  aria-hidden="true"
-                />
-              </button>
+                <button
+                  class="node-close"
+                  :aria-label="`关闭 ${metaFor(w.path).title}`"
+                  :title="`关闭 ${metaFor(w.path).title}`"
+                  @click.stop="closeWaypoint(w.path)"
+                >
+                  <span class="i-tabler-x" />
+                </button>
+              </div>
             </template>
           </template>
         </transition-group>
@@ -189,27 +233,31 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 
       <a-dropdown>
         <div class="user-chip">
-          <span class="user-initial">A</span>
+          <span class="user-initial aw-avatar">{{ userInitial }}</span>
           <span class="user-meta">
-            <span class="user-name">Admin</span>
-            <span class="user-role">operator</span>
+            <span class="user-name">{{ userName }}</span>
+            <span class="user-role">{{ userRole }}</span>
           </span>
         </div>
         <template #overlay>
           <a-menu @click="onAvatarMenu">
-            <a-menu-item
+            <template
               v-for="item in avatarItems"
-              :key="item.key ?? 'divider'"
-              :divider="item.type === 'divider'"
-              :danger="item.danger"
+              :key="item.key"
             >
-              <span
-                v-if="item.icon"
-                :class="item.icon"
-                class="mr-2"
-              />
-              {{ item.label }}
-            </a-menu-item>
+              <a-menu-divider v-if="item.divider" />
+              <a-menu-item
+                v-else
+                :key="item.key"
+                :danger="item.danger"
+              >
+                <span
+                  :class="item.icon"
+                  class="mr-2"
+                />
+                {{ item.label }}
+              </a-menu-item>
+            </template>
           </a-menu>
         </template>
       </a-dropdown>
@@ -274,15 +322,15 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   white-space: nowrap;
 }
 
-/* 航点间点线:图纸坐标连线 */
+/* 航点间细线:同色系 hairline */
 .trail-link {
   flex: 0 0 auto;
-  width: 16px;
-  height: 0;
-  border-top: 1px dashed var(--line-strong);
+  width: 14px;
+  height: 1px;
+  background: var(--line-strong);
 }
 
-/* 航点票券:方角描边,悬停抬升,当前页钴蓝填充 + 朱红"在此"角标 */
+/* 航点:chip 圆角描边,悬停抬亮,当前页墨色填充(ink pill) */
 .trail-node {
   position: relative;
   display: inline-flex;
@@ -290,40 +338,38 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   gap: 6px;
   align-items: center;
   height: 32px;
-  padding: 0 10px 0 8px;
-  font-family: var(--font-mono);
+  padding: 0 12px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   color: var(--app-text, var(--ink-soft));
   cursor: pointer;
   background: var(--paper-deep);
   border: 1px solid var(--line);
-  border-radius: var(--radius-chip, 8px);
-  transition: background var(--transition-fast, 0.12s ease), color var(--transition-fast, 0.12s ease);
+  border-radius: var(--radius-pill);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .trail-node:hover {
   color: var(--ink);
   background: var(--paper-tint);
+  border-color: var(--line-strong);
 }
 
 .trail-node:active {
-  background: var(--paper-tint);
+  transform: translateY(1px);
 }
 
 .trail-node:focus-visible {
-  outline: 2px solid var(--accent-cobalt);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .trail-node.active {
-  color: var(--paper);
-  background: var(--accent-cobalt);
-  border-color: var(--accent-cobalt);
-}
-
-.node-index {
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  opacity: 0.55;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .node-icon {
@@ -333,60 +379,96 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 .node-title {
   max-width: 132px;
   overflow: hidden;
-  font-size: 11.5px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
   text-overflow: ellipsis;
-  text-transform: uppercase;
+  white-space: nowrap;
+  transition: max-width 0.18s var(--ease-out-quart), margin 0.18s var(--ease-out-quart), opacity 0.18s var(--ease-out-quart);
 }
 
-/* 当前页右上角朱红三角:图纸"you are here"记号(内嵌定位,避免被轨 clip) */
-.node-here {
-  position: absolute;
-  top: 0;
-  right: 0;
+/* 标签关闭钮:悬停标签时展开显示(浏览器页签交互);当前页签(朱砂底)用白色保证对比 */
+.node-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
   width: 0;
-  height: 0;
-  border-top: 7px solid var(--paper-raised);
-  border-bottom: 7px solid transparent;
-  border-left: 7px solid transparent;
-  opacity: 0.85;
+  height: 16px;
+  margin-left: 0;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-chip);
+  opacity: 0;
+  transition: width 0.18s var(--ease-out-quart), margin 0.18s var(--ease-out-quart), opacity 0.18s var(--ease-out-quart), color var(--transition-fast), background var(--transition-fast);
 }
 
-/* 盖章进场:微缩放 + 轻微落章偏转 */
+.trail-node:hover .node-close {
+  width: 16px;
+  margin-left: 4px;
+  opacity: 1;
+}
+
+.node-close:hover {
+  color: var(--ink);
+  background: var(--hover-tint);
+}
+
+.node-close:active {
+  transform: scale(0.9);
+}
+
+.trail-node.active .node-close {
+  color: color-mix(in srgb, var(--on-accent) 85%, transparent);
+}
+
+.trail-node.active .node-close:hover {
+  color: var(--on-accent);
+  background: color-mix(in srgb, var(--on-accent) 18%, transparent);
+}
+
+.node-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* 航点进场:轻抬升淡入 */
 .stamp-enter-active {
-  transition: all 0.22s cubic-bezier(0.2, 1.4, 0.4, 1);
+  transition: opacity 0.22s var(--ease-out-quart), transform 0.22s var(--ease-out-quart);
 }
 
 .stamp-enter-from {
   opacity: 0;
-  transform: scale(0.82) rotate(-2deg);
+  transform: translateY(4px);
 }
 
 .stamp-leave-active {
   position: absolute;
-  transition: all 0.14s ease;
+  transition: opacity 0.14s ease;
 }
 
 .stamp-leave-to {
   opacity: 0;
-  transform: scale(0.9);
 }
 
 .stamp-move {
   transition: transform 0.22s ease;
 }
 
-/* 绘图仪进度线 */
+/* 路由切换进度线:天青→蜜桃粉彩扫过(warm-editorial 光斑声部) */
 .plotter-line {
   position: absolute;
   bottom: -1px;
   left: 0;
-  width: 0;
+  width: 100%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent-cobalt) 30%, var(--accent-cobalt));
+  background: linear-gradient(90deg, transparent, var(--g-sky) 30%, var(--g-peach));
   opacity: 0;
   pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: left center;
 }
 
 .plotter-line.run {
@@ -395,7 +477,7 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 
 @keyframes plot-sweep {
   0% {
-    width: 0;
+    transform: scaleX(0);
     opacity: 0.9;
   }
 
@@ -404,12 +486,12 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   }
 
   100% {
-    width: 100%;
+    transform: scaleX(1);
     opacity: 0;
   }
 }
 
-/* 方角描边按钮(制图工具感),悬停显钴蓝 */
+/* 幽灵图标钮:无描边,悬停浮 surface(open-tag tp-close 声部) */
 .collapse-btn,
 .icon-btn {
   display: inline-flex;
@@ -422,29 +504,27 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   color: var(--app-text, var(--ink-soft));
   cursor: pointer;
   background: transparent;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel-sm, 10px);
-  transition: background var(--transition-fast, 0.12s ease), color var(--transition-fast, 0.12s ease);
+  border: 0;
+  border-radius: var(--radius-panel-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .collapse-btn:hover,
 .icon-btn:hover {
-  color: var(--accent-cobalt);
-  border-color: var(--accent-cobalt);
-  transform: translate(-1px, -1px);
+  color: var(--ink);
+  background: var(--paper-deep);
 }
 
 .collapse-btn:active,
 .icon-btn:active {
-  transform: translate(1px, 1px);
-  box-shadow: 0 0 0 transparent;
+  transform: translateY(1px);
 }
 
 .lang-select {
   width: 118px;
 }
 
-/* 操作者徽记:方印 + 双行铭牌 */
+/* 操作者铭牌:头像 + 双行 */
 .user-chip {
   display: flex;
   align-items: center;
@@ -454,7 +534,8 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
   padding: 0 12px 0 8px;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: all 0.16s ease;
+  border-radius: var(--radius-pill);
+  transition: border-color 0.16s ease, background 0.16s ease;
 }
 
 .user-chip:hover {
@@ -463,18 +544,9 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 }
 
 .user-initial {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 28px;
   height: 28px;
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-style: italic;
-  color: var(--paper);
-  background: var(--accent-cobalt);
-  border-radius: var(--radius-chip, 8px);
-  box-shadow: 1.5px 1.5px 0 rgb(27 39 51 / 30%);
+  font-size: 12px;
 }
 
 .user-meta {
@@ -484,11 +556,10 @@ const onAvatarMenu: MenuProps['onClick'] = ({ key }) => {
 }
 
 .user-name {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 600;
   color: var(--app-text, var(--ink));
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
 }
 
 .user-role {

@@ -21,10 +21,10 @@ const patchChannelSchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
+  const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(patchChannelSchema))
   const manager = getWorkshopManager()
-  const user = resolveUser(event)
   const channel = manager.getChannelForUser(channelId, user.id)
-  manager.requireOwned(channel.ownerUserId, user.id, 'channel')
+  manager.requireWritable(channel.ownerUserId, user, 'channel')
   return manager.updateChannel(channelId, body)
 })

@@ -11,6 +11,9 @@ import type Phaser from 'phaser'
 import { GameClient } from '~/game/client'
 import type { RpgScene } from '~/game/rpg-scene'
 import type { AgentMode } from '~/game/protocol'
+import { useUserStore } from '~/stores/workshop/user'
+
+const userStore = useUserStore()
 
 definePageMeta({
   title: 'Tuxemon Town · RPG Demo',
@@ -145,6 +148,7 @@ async function boot() {
     onStatus: (ok) => {
       connected.value = ok
     },
+    getToken: () => userStore.token || undefined,
   })
   clientRef.value = client
   // 上行传输注入:场景键盘/位置采样 -> WS
@@ -343,7 +347,7 @@ onBeforeUnmount(() => {
     </div>
 
     <p class="mt-3 text-center text-xs text-white/40">
-      Phaser 4 渲染层 · Nitro WebSocket 事件流 · 后端 Agent 驱动(模拟 Agent) — 素材: Tuxemon (开源) / Kenney
+      Phaser 4 渲染层 · Nitro WebSocket 事件流 · 后端 Agent 驱动(模拟 Agent),素材: Tuxemon (开源) / Kenney
     </p>
   </div>
 </template>

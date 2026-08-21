@@ -23,8 +23,8 @@ const agentMemorySchema = z.object({
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const agentId = getRouterParam(event, 'agentId')!
-  const body = await readValidatedBody(event, zValidator(agentMemorySchema))
   const caller = resolveCaller(event)
+  const body = await readValidatedBody(event, zValidator(agentMemorySchema))
   if (caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可策展 Agent 记忆')
   getWorkshopManager().addAgentMemory(channelId, caller.id, agentId, {
     title: body.title,

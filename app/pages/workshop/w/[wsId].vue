@@ -80,6 +80,13 @@ const openAgent = (id: string): void => {
   agentDrawerId.value = id
   agentDrawerOpen.value = true
 }
+/** 活动条入口:跨 channel 的 busy 成员 → 先聚焦其 channel 再开抽屉 */
+const openAgentInChannel = (target: { channelId: string, agentId: string }): void => {
+  wsStore.setActiveChannel(wsId.value, target.channelId)
+  openAgent(target.agentId)
+}
+/** @提及 pill 点击入口(ClusterRoute/ClusterStream inject;时间线与 lanes 全树可用) */
+provide('aw:open-agent', openAgentInChannel)
 const taskDrawerOpen = ref(false)
 const taskDrawerId = ref<string | null>(null)
 const openTask = (id: string): void => {
@@ -103,14 +110,15 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
     <!-- 顶栏 -->
     <div class="topbar">
       <div class="left">
-        <span class="i-tabler-box" />
+        <span class="topbar-mark i-tabler-box" />
         <span class="ws-name">{{ workspace?.name ?? '未知 Workspace' }}</span>
-        <a-tag
+        <span
           v-if="channelId"
-          color="blue"
+          class="chan-chip"
+          :title="channelId"
         >
-          {{ entities.channels[channelId]?.name ?? channelId.slice(0, 8) }}
-        </a-tag>
+          <span class="chan-hash">#</span>{{ entities.channels[channelId]?.name ?? channelId.slice(0, 8) }}
+        </span>
         <a-segmented
           v-if="channelId"
           v-model:value="view"
@@ -121,37 +129,35 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
       </div>
       <div class="right">
         <button
-          class="pane-toggle"
+          class="pane-toggle im"
           :class="{ off: !leftOpen }"
           title="收起/展开 会话栏"
           @click="leftOpen = !leftOpen"
         >
-          <span class="i-tabler-layout-sidebar-left-collapse" />
+          <span class="i-tabler-layout-sidebar-left-collapse im-pop" />
         </button>
         <button
-          class="pane-toggle"
+          class="pane-toggle im"
           :class="{ off: !rightOpen }"
           title="收起/展开 检查器"
           @click="rightOpen = !rightOpen"
         >
-          <span class="i-tabler-layout-sidebar-right-collapse" />
+          <span class="i-tabler-layout-sidebar-right-collapse im-pop" />
         </button>
-        <a-button
-          size="small"
-          type="text"
+        <button
+          class="pane-toggle im"
           title="A2A RPC/SSE 调试器"
           @click="a2aDebugOpen = true"
         >
-          <span class="i-tabler-terminal-2" />
-        </a-button>
-        <a-button
-          size="small"
-          type="text"
+          <span class="i-tabler-terminal-2 im-pop" />
+        </button>
+        <button
+          class="pane-toggle im"
           title="命令面板(⌘K)"
           @click="paletteOpen = true"
         >
-          <span class="i-tabler-command" />
-        </a-button>
+          <span class="i-tabler-command im-pop" />
+        </button>
         <span
           class="dot"
           :style="{ background: stateColor }"
@@ -170,7 +176,13 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         v-if="leftOpen"
         class="left-pane"
       >
-        <workshop-channel-session-list :ws-id="wsId" />
+        <div class="left-scroll">
+          <workshop-channel-session-list :ws-id="wsId" />
+        </div>
+        <workshop-live-agent-bar
+          :ws-id="wsId"
+          @open-agent="openAgentInChannel"
+        />
       </div>
       <div class="center-pane">
         <template v-if="channelId">
@@ -195,9 +207,15 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         </template>
         <div
           v-else
-          class="no-channel"
+          class="pane-empty"
         >
-          左侧挂载或选择一个 Channel 开始
+          <span class="pe-icon i-tabler-messages" />
+          <div class="pe-title">
+            从左侧挂载或选择一个 <span class="aw-serif-accent-italic">Channel</span> 开始
+          </div>
+          <div class="pe-sub">
+            会话列表支持新建 Channel、从模板实例化,以及热修改场景与工作目录
+          </div>
         </div>
       </div>
       <div
@@ -258,7 +276,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   min-height: 0;
   margin: 0;
   border: 1px solid var(--line);
-  border-radius: var(--radius-shell, 14px);
+  border-radius: var(--radius-shell);
   overflow: hidden;
   background: var(--paper-raised);
   box-shadow: var(--shadow-card);
@@ -267,9 +285,9 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
+  padding: 8px 14px;
   font-size: 13px;
-  background: color-mix(in srgb, var(--accent-cobalt) 4%, var(--paper-raised));
+  background: var(--paper-raised);
   border-bottom: 1px solid var(--line);
 }
 .left,
@@ -278,10 +296,34 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   gap: 8px;
   align-items: center;
 }
+.topbar-mark {
+  font-size: 15px;
+  color: var(--ink-faint);
+}
 .ws-name {
   font-family: var(--font-display);
-  font-weight: 590;
-  font-size: 15px;
+  font-weight: 400;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+/* channel 胶囊:hairline chip + serif # */
+.chan-chip {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  max-width: 200px;
+  padding: 1px 10px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+}
+.chan-hash {
+  font-family: var(--font-display);
+  color: var(--ink-faint);
 }
 .view-switch { margin-left: 8px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -292,14 +334,19 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   text-transform: uppercase;
   padding: 1px 6px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-shell, 14px);
+  border-radius: var(--radius-chip);
 }
-.ws-state[data-state='open'] { color: var(--accent-moss); border-color: color-mix(in srgb, var(--accent-moss) 45%, transparent); }
-.ws-state[data-state='connecting'] { color: var(--accent-amber); border-color: color-mix(in srgb, var(--accent-amber) 45%, transparent); }
-.ws-state[data-state='closed'] { color: var(--accent-vermilion); border-color: color-mix(in srgb, var(--accent-vermilion) 45%, transparent); }
-.seq { font-family: var(--font-mono); font-size: 10px; opacity: 0.5; }
+.ws-state[data-state='open'] { color: var(--tone-success-dot); border-color: color-mix(in srgb, var(--tone-success-dot) 45%, transparent); }
+.ws-state[data-state='connecting'] { color: var(--tone-warning-dot); border-color: color-mix(in srgb, var(--tone-warning-dot) 45%, transparent); }
+.ws-state[data-state='closed'] { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 45%, transparent); }
+.seq {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  color: var(--ink-faint);
+}
 
-/* 侧栏折叠开关(制图工具钮) */
+/* 侧栏折叠开关:幽灵图标钮 */
 .pane-toggle {
   display: inline-flex;
   align-items: center;
@@ -310,13 +357,13 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   color: var(--ink-soft);
   cursor: pointer;
   background: transparent;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-shell, 14px);
-  transition: all 0.15s ease;
+  border: 0;
+  border-radius: var(--radius-panel-sm);
+  transition: color var(--transition-fast), background var(--transition-fast), opacity var(--transition-fast);
 }
 .pane-toggle:hover {
-  color: var(--accent-cobalt);
-  border-color: var(--accent-cobalt);
+  color: var(--ink);
+  background: var(--paper-deep);
 }
 .pane-toggle.off {
   opacity: 0.4;
@@ -330,10 +377,18 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   min-height: 0;
 }
 .left-pane {
-  flex: 0 0 240px;
+  display: flex;
+  flex: 0 0 248px;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  border-right: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+  border-right: 1px solid var(--line);
+  background: var(--paper);
+}
+.left-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden auto;
 }
 .center-pane {
   display: flex;
@@ -347,19 +402,12 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   min-width: 0;
   max-width: 100%;
 }
-.no-channel {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  opacity: 0.4;
-}
 .right-pane {
   flex: 0 0 300px;
   min-height: 0;
   overflow: hidden;
-  border-left: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+  border-left: 1px solid var(--line);
+  background: var(--paper);
 }
 .right-pane.empty { opacity: 0.35; }
 .composer-pane { flex: 0 0 auto; }

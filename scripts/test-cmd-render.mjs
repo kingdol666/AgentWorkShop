@@ -32,20 +32,31 @@ function check(name, ok, detail = '') {
 /** POST /api/game/cmd 注入下行指令,返回归一化结果 { ok, applied?, code?, message? }
  * defineApiHandler 成功时包成 { code:0, data:{applied,...} },失败时为 { code:ErrCode, message } */
 async function injectCmd(page, type, payload) {
-  const res = await page.evaluate(async ({ type, payload }) => {
+  const res = await page.evaluate(async ({ type, payload, token }) => {
     const r = await fetch('/api/game/cmd', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({ type, payload }),
     })
     return r.json()
-  }, { type, payload })
+  }, { type, payload, token: USER_TOKEN })
   if (res.code === 0) {
     return { ok: true, applied: res.data?.applied === true, type: res.data?.type }
   }
   return { ok: false, code: res.code, message: res.message }
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+/** 业务 API 鉴权:注册临时用户拿 token(game/cmd|brain 需用户 token) */
+const USER_TOKEN = await (async () => {
+  const r = await fetch(`${BASE}/api/users/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: `cmd-${Date.now().toString(36)}`, email: `cmd-${Date.now().toString(36)}@test.local`, password: 'Passw0rd!123' }),
+  }).then(x => x.json())
+  if (r.code !== 0) throw new Error(`注册失败: ${r.message}`)
+  return r.data.token
+})()
 
 /** 读 Agent 模式 HUD 文本 */
 async function agentMode(page) {
@@ -87,9 +98,9 @@ async function main() {
   console.log('\n=== 下行指令渲染验证 ===')
   await waitPageReady(page)
   // 暂停自主 brain:让下行指令渲染验证不受模拟 Agent 自发对话/移动干扰
-  await page.evaluate(async () => {
-    await fetch('/api/game/brain?pause=true', { method: 'POST' })
-  })
+  await page.evaluate(async (token) => {
+    await fetch('/api/game/brain?pause=true', { method: 'POST', headers: { authorization: `Bearer ${token}` } })
+  }, USER_TOKEN)
   await sleep(300)
   await page.screenshot({ path: `${SHOT_DIR}/cmd-01-baseline.png` })
 

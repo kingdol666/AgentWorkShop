@@ -41,6 +41,8 @@ Thumbs.db
 
 # 游戏渲染验证截图(脚本生成)
 .game-verify
+# 设计验证截图(脚本生成)
+.design-verify
 
 # 运行时数据库(data/ 为程序生成的 sqlite 文件)
 data/

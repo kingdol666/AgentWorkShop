@@ -9,7 +9,19 @@
  * 仅验证"线上解析"层(前后端消息边界);"前端渲染"由浏览器截图单独验证。
  * 使用 Node 内置全局 WebSocket(Node 22+),无需第三方依赖。
  */
-const WS_URL = process.env.WS_URL ?? 'ws://localhost:3000/api/game/ws'
+/** 业务 WS 鉴权:先注册临时用户拿 token(?token= 查询参数) */
+async function bootstrapToken(): Promise<string> {
+  const base = (process.env.WS_URL ?? 'ws://localhost:3000').replace(/^ws/, 'http').replace(/\/api\/game\/ws$/, '')
+  const r = await fetch(`${base}/api/users/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: `wsp-${Date.now().toString(36)}`, email: `wsp-${Date.now().toString(36)}@test.local`, password: 'Passw0rd!123' }),
+  }).then(x => x.json())
+  if (r.code !== 0) throw new Error(`注册失败: ${r.message}`)
+  return r.data.token as string
+}
+const USER_TOKEN = await bootstrapToken()
+const WS_URL = `${process.env.WS_URL ?? 'ws://localhost:3000/api/game/ws'}?token=${encodeURIComponent(USER_TOKEN)}`
 let pass = 0
 let fail = 0
 function check(name: string, ok: boolean, detail = ''): void {

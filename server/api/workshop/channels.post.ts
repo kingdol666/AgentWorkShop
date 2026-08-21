@@ -27,8 +27,8 @@ const createChannelSchema = z.object({
 })
 
 export default defineApiHandler(async (event) => {
-  const body = await readValidatedBody(event, zValidator(createChannelSchema))
   const user = resolveUser(event)
+  const body = await readValidatedBody(event, zValidator(createChannelSchema))
   const manager = getWorkshopManager()
   const result = await manager.createChannel({
     name: body.name,

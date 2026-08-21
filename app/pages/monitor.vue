@@ -19,6 +19,8 @@ interface ChannelView {
   memberCount: number
   hasScheduler: boolean
   leadAgentId: string | null
+  ownerUserId?: string | null
+  ownerName?: string | null
 }
 interface AgentView {
   channelId: string
@@ -31,6 +33,8 @@ interface AgentView {
   queuedCount: number
   completedCount: number
   process: ProcessInfo | null
+  ownerUserId?: string | null
+  ownerName?: string | null
 }
 interface ProcessView {
   pid: number
@@ -52,6 +56,9 @@ interface MonitorSnapshot {
   generatedAt: string
   serverPid: number
   uptimeMs: number
+  /** 视图范围:user = 本人资源 | admin = 全量(附归属标注) */
+  scope?: 'user' | 'admin'
+  ownerNames?: Record<string, string>
   channels: ChannelView[]
   agents: AgentView[]
   processes: ProcessView[]
@@ -61,6 +68,7 @@ interface ApiEnvelope<T> { code: number | string, message: string, data: T | nul
 
 const { t } = useI18n()
 const userStore = useUserStore()
+const isAdmin = computed(() => userStore.isAdmin)
 
 const snapshot = ref<MonitorSnapshot | null>(null)
 const loading = ref(false)
@@ -179,14 +187,17 @@ const uptimeText = (ms: number): string => {
 const startedAtText = (ts: number): string => new Date(ts).toLocaleTimeString()
 
 // ===== 表格列 =====
-const channelColumns = [
+const ownerColumn = computed(() =>
+  isAdmin.value ? [{ title: '归属用户', dataIndex: 'ownerName', key: 'ownerName', width: 110 }] : [])
+const channelColumns = computed(() => [
   { title: t('monitor.chChannel'), dataIndex: 'channelId', key: 'channelId' },
-  { title: t('monitor.members'), dataIndex: 'memberCount', key: 'memberCount', width: 120 },
-  { title: t('monitor.wired'), dataIndex: 'wiredAgentCount', key: 'wiredAgentCount', width: 100 },
-  { title: t('monitor.scheduler'), dataIndex: 'hasScheduler', key: 'hasScheduler', width: 120 },
+  { title: t('monitor.members'), dataIndex: 'memberCount', key: 'memberCount', width: 100 },
+  { title: t('monitor.wired'), dataIndex: 'wiredAgentCount', key: 'wiredAgentCount', width: 90 },
+  { title: t('monitor.scheduler'), dataIndex: 'hasScheduler', key: 'hasScheduler', width: 110 },
   { title: t('monitor.lead'), dataIndex: 'leadAgentId', key: 'leadAgentId' },
-]
-const agentColumns = [
+  ...ownerColumn.value,
+])
+const agentColumns = computed(() => [
   { title: t('monitor.name'), dataIndex: 'name', key: 'name' },
   { title: t('monitor.role'), dataIndex: 'role', key: 'role', width: 90 },
   { title: t('monitor.harness'), dataIndex: 'harness', key: 'harness', width: 90 },
@@ -195,9 +206,10 @@ const agentColumns = [
   { title: t('monitor.queue'), dataIndex: 'queuedCount', key: 'queuedCount', width: 90 },
   { title: 'PID', dataIndex: 'process', key: 'pid', width: 130 },
   { title: t('monitor.channel'), dataIndex: 'channelId', key: 'channelId', width: 130 },
+  ...ownerColumn.value,
   { title: t('monitor.actions'), key: 'actions', width: 190, fixed: 'right' as const },
-]
-const processColumns = [
+])
+const processColumns = computed(() => [
   { title: 'PID', dataIndex: 'pid', key: 'pid', width: 100 },
   { title: t('monitor.binding'), dataIndex: 'bound', key: 'bound', width: 100 },
   { title: t('monitor.agent'), dataIndex: 'name', key: 'name' },
@@ -205,8 +217,9 @@ const processColumns = [
   { title: t('monitor.command'), dataIndex: 'command', key: 'command' },
   { title: t('monitor.startedAt'), dataIndex: 'startedAt', key: 'startedAt', width: 110 },
   { title: t('monitor.state'), dataIndex: 'alive', key: 'alive', width: 100 },
+  ...ownerColumn.value,
   { title: t('monitor.actions'), key: 'actions', width: 170, fixed: 'right' as const },
-]
+])
 </script>
 
 <template>
@@ -216,14 +229,23 @@ const processColumns = [
         <p class="aw-kicker">
           {{ t('menu.system') }} / runtime ledger
         </p>
-        <h1>{{ t('monitor.title') }}</h1>
+        <h1>
+          {{ t('monitor.title') }}
+          <a-tag
+            :color="snapshot?.scope === 'admin' ? 'volcano' : 'blue'"
+            class="scope-tag"
+          >
+            <span :class="snapshot?.scope === 'admin' ? 'i-tabler-shield-check' : 'i-tabler-user'" />
+            {{ snapshot?.scope === 'admin' ? 'admin 全量视图' : '我的资源' }}
+          </a-tag>
+        </h1>
       </div>
       <div class="head-right">
         <a-switch
           v-model:checked="autoRefresh"
           size="small"
         />
-        <span class="aw-kicker">{{ t('monitor.autoRefresh') }}</span>
+        <span class="toggle-label">{{ t('monitor.autoRefresh') }}</span>
         <a-button
           size="small"
           :loading="loading"
@@ -329,7 +351,7 @@ const processColumns = [
         :title="t('monitor.channelRuntimes')"
       >
         <template #extra>
-          <span class="aw-kicker">{{ snapshot?.channels.length ?? 0 }} wired</span>
+          <span class="aw-mono count-extra">{{ snapshot?.channels.length ?? 0 }} wired</span>
         </template>
         <a-table
           :columns="channelColumns"
@@ -368,7 +390,7 @@ const processColumns = [
         :title="t('monitor.agentRuntimes')"
       >
         <template #extra>
-          <span class="aw-kicker">{{ snapshot?.agents.length ?? 0 }} wired</span>
+          <span class="aw-mono count-extra">{{ snapshot?.agents.length ?? 0 }} wired</span>
         </template>
         <a-table
           :columns="agentColumns"
@@ -410,7 +432,7 @@ const processColumns = [
               </span>
               <span
                 v-else
-                class="aw-kicker"
+                class="aw-mono"
               >in-proc</span>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -457,7 +479,7 @@ const processColumns = [
         :title="t('monitor.harnessProcesses')"
       >
         <template #extra>
-          <span class="aw-kicker">
+          <span class="aw-mono count-extra">
             {{ snapshot?.processes.length ?? 0 }} spawned ·
             {{ snapshot?.counts.orphanProcesses ?? 0 }} orphan
           </span>
@@ -486,7 +508,7 @@ const processColumns = [
               <span>{{ record.name ?? '–' }}</span>
               <span
                 v-if="record.agentId"
-                class="aw-kicker agent-sub"
+                class="aw-mono agent-sub"
               >
                 {{ shortId(record.agentId) }}
               </span>
@@ -606,12 +628,31 @@ const processColumns = [
   font-size: 11px;
   color: #fa8c16;
   background: rgb(250 140 22 / 12%);
-  border-radius: var(--radius-chip, 8px);
+  border-radius: var(--radius-chip);
 }
 
 .agent-sub {
   display: block;
   margin-top: 2px;
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+.scope-tag {
+  margin-left: 10px;
+  font-size: 11px;
+  vertical-align: 3px;
+}
+
+/* 卡片右上角计数:tabular mono 数据(非眉题) */
+.count-extra {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.toggle-label {
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
 .small {
