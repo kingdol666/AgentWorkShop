@@ -230,66 +230,72 @@ const saveAsTemplate = async (): Promise<void> => {
       </span>
     </div>
 
-    <div
-      v-if="mountedChannels.length === 0"
-      class="empty"
-    >
-      尚未挂载 Channel(可从下方模板一键实例化)
-    </div>
-
-    <div
-      v-for="ch in mountedChannels"
-      :key="ch.id"
-      class="channel-item"
-      :class="{ active: workspace?.activeChannelId === ch.id }"
-      @click="select(ch.id)"
-    >
-      <div class="row1">
-        <span
-          class="dot"
-          :class="{ live: ch.activeTasks > 0 }"
-        />
-        <span class="ch-name">{{ ch.name }}</span>
-        <button
-          class="op im"
-          type="button"
-          title="Channel 设置(场景/工作目录/存为模板)"
-          :aria-label="`设置 ${ch.name}`"
-          @click.stop="openSettings(ch.id)"
-        >
-          <span class="i-tabler-settings2 im-pop" />
-        </button>
-        <button
-          class="op im"
-          type="button"
-          title="移出 workspace"
-          :aria-label="`移出 ${ch.name}`"
-          @click.stop="unmount(ch.id)"
-        >
-          <span class="i-tabler-x im-pop" />
-        </button>
-      </div>
-      <div class="row2">
-        <!-- 快照未到达:计数不可信,显示同步占位(不呈现误导性的"0 成员") -->
-        <span
-          v-if="!ch.synced"
-          class="meta syncing"
-        >同步中…</span>
-        <span
-          v-else
-          class="meta"
-        >{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</span>
-      </div>
-      <button
-        v-if="displayWorkspace(ch.workspace)"
-        class="row2 ws im"
-        type="button"
-        :title="`工作目录:${ch.workspace}(点击复制路径)`"
-        @click.stop="copyWorkspace(ch.workspace)"
+    <!-- 频道列表主体:数据源(REST channels + WS entities)均为客户端态,
+         SSR 首帧为空 → 硬刷新水合时结构与客户端首渲染不一致,节点会错配到
+         相邻 antd Select 的 DOM 上(行内 .row1 布局丢失、按钮错位)。
+         ClientOnly 隔离:SSR 输出空壳,客户端一次性渲染,无水合配对。 -->
+    <ClientOnly>
+      <div
+        v-if="mountedChannels.length === 0"
+        class="empty"
       >
-        <span class="i-tabler-folder" /> {{ displayWorkspace(ch.workspace) }}
-      </button>
-    </div>
+        尚未挂载 Channel(可从下方模板一键实例化)
+      </div>
+
+      <div
+        v-for="ch in mountedChannels"
+        :key="ch.id"
+        class="channel-item"
+        :class="{ active: workspace?.activeChannelId === ch.id }"
+        @click="select(ch.id)"
+      >
+        <div class="row1">
+          <span
+            class="dot"
+            :class="{ live: ch.activeTasks > 0 }"
+          />
+          <span class="ch-name">{{ ch.name }}</span>
+          <button
+            class="op im"
+            type="button"
+            title="Channel 设置(场景/工作目录/存为模板)"
+            :aria-label="`设置 ${ch.name}`"
+            @click.stop="openSettings(ch.id)"
+          >
+            <span class="i-tabler-settings2 im-pop" />
+          </button>
+          <button
+            class="op im"
+            type="button"
+            title="移出 workspace"
+            :aria-label="`移出 ${ch.name}`"
+            @click.stop="unmount(ch.id)"
+          >
+            <span class="i-tabler-x im-pop" />
+          </button>
+        </div>
+        <div class="row2">
+          <!-- 快照未到达:计数不可信,显示同步占位(不呈现误导性的"0 成员") -->
+          <span
+            v-if="!ch.synced"
+            class="meta syncing"
+          >同步中…</span>
+          <span
+            v-else
+            class="meta"
+          >{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</span>
+        </div>
+        <button
+          v-if="displayWorkspace(ch.workspace)"
+          class="row2 ws im"
+          type="button"
+          :title="`工作目录:${ch.workspace}(点击复制路径)`"
+          @click.stop="copyWorkspace(ch.workspace)"
+        >
+          <span class="i-tabler-folder" /> {{ displayWorkspace(ch.workspace) }}
+        </button>
+      </div>
+    </ClientOnly>
 
     <div class="mount-template">
       <a-select
