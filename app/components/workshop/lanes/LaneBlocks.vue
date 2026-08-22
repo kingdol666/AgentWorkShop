@@ -44,9 +44,9 @@ const { blocks } = useClusteredBlocks(
 
 <style scoped>
 .lane-empty {
-  padding: 20px 8px;
-  font-size: 12px;
-  opacity: 0.4;
+  padding: 28px 8px;
+  font-size: 11.5px;
+  color: var(--ink-fainter);
   text-align: center;
 }
 </style>

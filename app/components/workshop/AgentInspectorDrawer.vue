@@ -192,6 +192,7 @@ const stateColor: Record<string, string> = {
       <a-tabs
         v-model:active-key="tab"
         size="small"
+        class="drawer-tabs"
       >
         <a-tab-pane
           key="stream"
@@ -336,25 +337,42 @@ const stateColor: Record<string, string> = {
   gap: 8px;
   align-items: center;
   padding-bottom: 8px;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  border-bottom: 1px solid var(--line);
 }
 .dot { width: 9px; height: 9px; border-radius: 50%; }
-.state-text { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
-.queue-meta { flex: 1 1 auto; font-size: 11px; opacity: 0.55; }
+.state-text { font-family: var(--font-mono); font-size: 12px; }
+.queue-meta { flex: 1 1 auto; font-size: 11px; color: var(--ink-faint); }
 .current-task {
   padding: 6px 0;
   font-size: 12px;
   color: var(--tone-info-dot);
-  border-bottom: 1px dashed color-mix(in srgb, currentColor 10%, transparent);
+  border-bottom: 1px dashed var(--divider-hair);
+}
+/* 抽屉体改 flex 列:tabs 区为唯一滚动区,footer 固定末列(旧 absolute 方案会把
+ * 流/队列尾部滚进发送盒底下造成遮挡) */
+.agent-drawer :deep(.ant-drawer-body) {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+.drawer-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+.drawer-tabs :deep(.ant-tabs-content-holder) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .stream {
-  max-height: 100%;
-  overflow-y: auto;
   font-size: 12px;
 }
-.empty { padding: 12px 4px; font-size: 12px; opacity: 0.4; }
+.empty { padding: 12px 4px; font-size: 12px; color: var(--ink-faint); }
 .queue-group { margin-bottom: 10px; }
-.group-title { padding: 4px 0; font-size: 12px; font-weight: 600; opacity: 0.7; }
+.group-title { padding: 4px 0; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .queue-task {
   display: flex;
   gap: 6px;
@@ -362,7 +380,7 @@ const stateColor: Record<string, string> = {
   padding: 4px 6px;
   border-radius: var(--radius-chip);
 }
-.queue-task:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+.queue-task:hover { background: var(--hover-tint); }
 .state { margin-inline-end: 0; font-size: 10px; }
 .qt-title {
   flex: 1 1 auto;
@@ -371,15 +389,14 @@ const stateColor: Record<string, string> = {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.qt-meta { font-family: ui-monospace, Consolas, monospace; font-size: 11px; opacity: 0.5; }
+.qt-meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
 .footer {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  padding: 8px 16px 10px;
-  background: var(--app-bg-container, inherit);
-  border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  flex: 0 0 auto;
+  margin: 8px -24px 0;
+  padding: 8px 24px 12px;
+  background: var(--paper-raised);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
 }
 .member-ops {
   display: flex;
@@ -388,7 +405,7 @@ const stateColor: Record<string, string> = {
   margin-bottom: 8px;
   font-size: 11px;
 }
-.op-label { opacity: 0.6; }
+.op-label { color: var(--ink-faint); }
 .send-ops {
   display: flex;
   gap: 8px;

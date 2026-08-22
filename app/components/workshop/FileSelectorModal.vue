@@ -152,7 +152,7 @@ const cancel = (): void => emit('update:open', false)
 .fs { display: flex; flex-direction: column; gap: 8px; }
 .addr {
   padding: 4px 8px;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   background: color-mix(in srgb, currentColor 5%, transparent);
   border-radius: var(--radius-chip);

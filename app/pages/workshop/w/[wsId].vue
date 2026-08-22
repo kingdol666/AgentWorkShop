@@ -376,16 +376,21 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   display: flex;
   gap: 8px;
   align-items: center;
+  min-width: 0;
 }
 .topbar-mark {
   font-size: 15px;
   color: var(--ink-faint);
 }
 .ws-name {
+  max-width: 260px;
+  overflow: hidden;
   font-family: var(--font-display);
   font-weight: 400;
   font-size: 17px;
   letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* channel 胶囊:hairline chip + serif # */
 .chan-chip {

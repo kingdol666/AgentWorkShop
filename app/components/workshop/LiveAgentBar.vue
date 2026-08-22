@@ -204,7 +204,7 @@ const open = (a: LiveAgent) => {
   bottom: -2px;
   width: 9px;
   height: 9px;
-  background: hsl(46 66% 50%);
+  background: var(--tone-live-dot);
   border: 1.5px solid var(--paper);
   border-radius: 50%;
 }
@@ -338,7 +338,7 @@ const open = (a: LiveAgent) => {
   flex: none;
   width: 8px;
   height: 8px;
-  background: hsl(46 66% 50%);
+  background: var(--tone-live-dot);
   border-radius: 50%;
 }
 

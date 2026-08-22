@@ -80,7 +80,10 @@ const taskStateColor: Record<string, string> = {
           v-for="a in agents"
           :key="a.agentId"
           class="member"
+          role="button"
+          tabindex="0"
           @click="emit('openAgent', a.agentId)"
+          @keydown.enter="emit('openAgent', a.agentId)"
         >
           <span
             class="dot"
@@ -88,7 +91,7 @@ const taskStateColor: Record<string, string> = {
           />
           <div class="member-info">
             <div class="member-name">
-              {{ a.name }}
+              <span class="name-text">{{ a.name }}</span>
               <a-tag
                 :color="a.role === 'lead' ? 'purple' : 'blue'"
                 class="role"
@@ -124,7 +127,10 @@ const taskStateColor: Record<string, string> = {
           v-for="t in rootTasks"
           :key="t.id"
           class="task"
+          role="button"
+          tabindex="0"
           @click="emit('openTask', t.id)"
+          @keydown.enter="emit('openTask', t.id)"
         >
           <div class="task-head">
             <a-tag
@@ -194,7 +200,7 @@ const taskStateColor: Record<string, string> = {
   cursor: pointer;
   border-radius: var(--radius-chip);
 }
-.member:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+.member:hover { background: var(--hover-tint); }
 .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .member-info { flex: 1 1 auto; min-width: 0; }
 .member-name {
@@ -203,8 +209,14 @@ const taskStateColor: Record<string, string> = {
   align-items: center;
   font-size: 13px;
 }
-.role { margin-inline-start: 0; font-size: 10px; line-height: 14px; }
-.member-meta { font-size: 11px; font-family: ui-monospace, Consolas, monospace; opacity: 0.55; }
+.name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role { flex: 0 0 auto; margin-inline-start: 0; font-size: 10px; line-height: 14px; }
+.member-meta { font-size: 11px; font-family: var(--font-mono); color: var(--ink-faint); }
 
 .member-cap {
   margin-top: 2px;
@@ -214,8 +226,13 @@ const taskStateColor: Record<string, string> = {
   color: var(--ink-faint);
 }
 .ct { opacity: 0.8; }
-.task { padding: 6px 8px; margin: 2px 0; border-radius: var(--radius-chip); }
-.task:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+.task {
+  padding: 6px 8px;
+  margin: 2px 0;
+  cursor: pointer;
+  border-radius: var(--radius-chip);
+}
+.task:hover { background: var(--hover-tint); }
 .task-head { display: flex; gap: 6px; align-items: center; }
 .state { margin-inline-end: 0; font-size: 10px; }
 .task-title {
@@ -225,6 +242,6 @@ const taskStateColor: Record<string, string> = {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.task-meta { font-size: 11px; font-family: ui-monospace, Consolas, monospace; opacity: 0.55; }
-.empty { padding: 16px 8px; font-size: 12px; opacity: 0.4; }
+.task-meta { font-size: 11px; font-family: var(--font-mono); color: var(--ink-faint); }
+.empty { padding: 16px 8px; font-size: 12px; color: var(--ink-faint); }
 </style>

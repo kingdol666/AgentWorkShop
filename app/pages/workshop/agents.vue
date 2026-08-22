@@ -375,6 +375,6 @@ h2 { margin: 0 0 4px; }
   font-size: 12px;
 }
 .inst-id,
-.inst-ch { font-family: ui-monospace, Consolas, monospace; opacity: 0.6; }
+.inst-ch { font-family: var(--font-mono); opacity: 0.6; }
 .empty { padding: 6px 0; font-size: 12px; opacity: 0.4; }
 </style>

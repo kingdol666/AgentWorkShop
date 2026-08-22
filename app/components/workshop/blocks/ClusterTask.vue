@@ -46,13 +46,13 @@ const hasProgress = computed(() => {
 })
 /** 状态 → koda tone(bg + dot) */
 const STATE_TONE: Record<string, { bg: string, dot: string }> = {
-  SUBMITTED: { bg: 'var(--tone-neutral-dot)', dot: 'var(--tone-neutral-dot)' },
+  SUBMITTED: { bg: 'var(--tone-neutral-bg)', dot: 'var(--tone-neutral-dot)' },
   ASSIGNED: { bg: 'var(--tone-info-bg)', dot: 'var(--tone-info-dot)' },
   WORKING: { bg: 'var(--tone-info-bg)', dot: 'var(--tone-info-dot)' },
   WAITING: { bg: 'var(--tone-warning-bg)', dot: 'var(--tone-warning-dot)' },
   COMPLETED: { bg: 'var(--tone-success-bg)', dot: 'var(--tone-success-dot)' },
   FAILED: { bg: 'var(--tone-danger-bg)', dot: 'var(--tone-danger-dot)' },
-  CANCELED: { bg: 'var(--tone-neutral-dot)', dot: 'var(--tone-neutral-dot)' },
+  CANCELED: { bg: 'var(--tone-neutral-bg)', dot: 'var(--tone-neutral-dot)' },
 }
 const toneOf = (state: string) => STATE_TONE[state] ?? STATE_TONE.SUBMITTED!
 
@@ -144,6 +144,6 @@ const labelOf = (state: string) => STATE_LABEL[state] ?? state
 .task-tag { margin: 0 !important; }
 .chain-arrow { font-size: 10px; opacity: 0.4; }
 .task-title { font-weight: 600; }
-.task-assignee { font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; opacity: 0.6; }
+.task-assignee { font-family: var(--font-mono); font-size: 10.5px; opacity: 0.6; }
 .progress { flex: 0 0 180px; margin: 0 !important; }
 </style>

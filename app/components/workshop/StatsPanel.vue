@@ -137,7 +137,7 @@ const rate = computed(() => buckets.value.slice(-10).reduce((a, b) => a + b, 0) 
   border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
   border-radius: var(--radius-panel-sm);
 }
-.kpi-num { font-size: 16px; font-weight: 700; font-family: ui-monospace, Consolas, monospace; }
+.kpi-num { font-size: 16px; font-weight: 700; font-family: var(--font-mono); }
 .kpi-label { margin-top: 2px; font-size: 11px; opacity: 0.55; }
 .chart {
   height: 140px;
@@ -151,7 +151,7 @@ const rate = computed(() => buckets.value.slice(-10).reduce((a, b) => a + b, 0) 
   gap: 6px;
   align-items: center;
   padding: 1px 0;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 .t-name { flex: 0 0 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

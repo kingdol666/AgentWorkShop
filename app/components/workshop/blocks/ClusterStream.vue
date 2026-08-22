@@ -159,11 +159,13 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
   font-size: 12.5px;
   line-height: 1.68;
   color: var(--ink);
+  word-break: break-word;
+  overflow-wrap: anywhere;
   background: var(--paper-raised);
-  border: 1px solid color-mix(in srgb, var(--ink) 7%, transparent);
+  border: 1px solid var(--line);
   border-left: 2px solid var(--accent);
   border-radius: var(--radius-chip);
-  transition: border-left-color 0.2s ease;
+  transition: border-left-color var(--transition-base);
 }
 .stream-bubble.settled .stream-text {
   border-left-color: color-mix(in srgb, var(--accent) 28%, transparent);
@@ -191,13 +193,13 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
   padding: 0.5px 4px;
   font-family: var(--font-mono);
   font-size: 11px;
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
-  border-radius: 3px;
+  background: var(--paper-deep);
+  border-radius: var(--radius-chip);
 }
 .prose :deep(blockquote) {
   margin: 4px 0;
   padding: 2px 10px;
-  color: var(--ink-soft, inherit);
+  color: var(--ink-soft);
   border-left: 2px solid color-mix(in srgb, var(--ink) 18%, transparent);
 }
 .prose :deep(b) { font-weight: 600; }
@@ -231,7 +233,7 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
   padding: 1px 8px;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--ink-soft, inherit);
+  color: var(--ink-soft);
   cursor: pointer;
   background: var(--paper-raised);
   border: 1px solid var(--line);
@@ -292,6 +294,6 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
   align-items: center;
   font-size: 11px;
   opacity: 0.5;
-  color: var(--ink-soft, inherit);
+  color: var(--ink-soft);
 }
 </style>

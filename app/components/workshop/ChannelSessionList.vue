@@ -526,7 +526,7 @@ const saveAsTemplate = async (): Promise<void> => {
   border-radius: 50%;
 }
 .dot.live {
-  background: hsl(137 36% 52%);
+  background: var(--tone-success-dot);
   opacity: 1;
 }
 .ch-name {

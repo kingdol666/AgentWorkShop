@@ -18,6 +18,9 @@ const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()
 const entities = useEntitiesStore()
 const api = useWorkshopApi()
 const tasks = computed(() => entities.tasks[props.channelId] ?? [])
+/** 实体快照是否已到达(未到时空态显示同步中,不误判"没有任务") */
+const synced = computed(() => entities.channels[props.channelId] !== undefined
+  || entities.tasks[props.channelId] !== undefined)
 
 /** 乐观覆盖:taskId → 预期 state(REST 进行中;WS 确认后由实体覆盖) */
 const optimistic = ref(new Map<string, string>())
@@ -36,7 +39,7 @@ interface Column {
 }
 
 const BASE_COLUMNS: Array<Omit<Column, 'items'>> = [
-  { key: 'todo', title: '待启动', states: ['SUBMITTED', 'ASSIGNED'], dot: 'var(--tone-warning-dot)', moveAction: 'retry' },
+  { key: 'todo', title: '待启动', states: ['SUBMITTED', 'ASSIGNED'], dot: 'var(--tone-neutral-dot)', moveAction: 'retry' },
   { key: 'doing', title: '执行中', states: ['WORKING'], dot: 'var(--tone-info-dot)', moveAction: null },
   { key: 'waiting', title: '等待汇总', states: ['WAITING'], dot: 'var(--tone-warning-dot)', moveAction: null },
   { key: 'done', title: '已完成', states: ['COMPLETED'], dot: 'var(--tone-success-dot)', moveAction: null },
@@ -217,17 +220,17 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
       <span class="count">{{ mergedTasks.length }} 任务 · 拖拽卡片到「异常/取消」取消,失败任务拖回「待启动」重试</span>
     </div>
 
-    <!-- 空态 -->
+    <!-- 空态(快照未到 → 同步中,不误判为空) -->
     <div
       v-if="mergedTasks.length === 0"
       class="pane-empty"
     >
-      <span class="pe-icon i-tabler-list-check" />
+      <span :class="synced ? 'pe-icon i-tabler-list-check' : 'pe-icon i-tabler-refresh'" />
       <div class="pe-title">
-        还没有 <span class="aw-serif-accent-italic">任务</span>
+        {{ synced ? '还没有' : '正在同步' }} <span class="aw-serif-accent-italic">任务</span>
       </div>
       <div class="pe-sub">
-        在下方 Composer 提交首个任务(首行标题,支持 goal / loop / pipeline 模式)
+        {{ synced ? '在下方 Composer 提交首个任务(首行标题,支持 goal / loop / pipeline 模式)' : '任务快照对齐后自动呈现' }}
       </div>
     </div>
 
@@ -417,6 +420,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
 
 /* 看板:全高等宽泳道(surface-strong 软底,白卡浮于其上) */
 .board {
+  overscroll-behavior: contain;
   display: flex;
   flex: 1 1 auto;
   gap: 12px;
@@ -437,7 +441,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
 }
 .task-col.drop-over {
   background: var(--tone-info-bg);
-  outline: 2px dashed var(--g-sky);
+  outline: 2px dashed color-mix(in srgb, var(--tone-info-dot) 65%, transparent);
   outline-offset: -2px;
 }
 .task-col.no-drop { opacity: 0.6; }
@@ -466,6 +470,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
   border-radius: 50%;
 }
 .task-col-body {
+  overscroll-behavior: contain;
   flex: 1 1 auto;
   min-height: 0;
   padding: 0 2px;
@@ -554,6 +559,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
 
 /* 列表视图 */
 .task-list {
+  overscroll-behavior: contain;
   flex: 1 1 auto;
   min-height: 0;
   padding: 10px 16px 18px;

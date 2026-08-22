@@ -64,7 +64,7 @@ onBeforeUnmount(() => {
 })
 
 const stateDot = (s: AgentView['state']): string =>
-  s === 'busy' ? 'hsl(46 66% 50%)' : 'var(--ink-fainter)'
+  s === 'busy' ? 'var(--tone-live-dot)' : 'var(--ink-fainter)'
 </script>
 
 <template>

@@ -182,20 +182,20 @@ const hasMore = computed(() => rows.value.length > MAX)
 
 <style scoped>
 .route-cluster {
-  padding: 2px 0 4px 18px;
+  padding: 2px 0 4px 20px;
 }
 
 .chat-row {
   margin-bottom: 4px;
   padding: 6px 10px 7px;
   background: var(--paper-raised);
-  border: 1px solid color-mix(in srgb, var(--ink) 7%, transparent);
+  border: 1px solid var(--line);
   border-radius: var(--radius-chip);
   transition: border-color var(--transition-fast);
 }
 
 .chat-row:hover {
-  border-color: color-mix(in srgb, var(--ink) 14%, transparent);
+  border-color: var(--line-strong);
 }
 
 .chat-row:last-of-type {
@@ -219,7 +219,7 @@ const hasMore = computed(() => rows.value.length > MAX)
   font-family: var(--font-body);
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--mention-ink);
   cursor: pointer;
   background: var(--mention);
   border: 0;
@@ -228,13 +228,13 @@ const hasMore = computed(() => rows.value.length > MAX)
 }
 
 .who-pill:hover {
-  background: color-mix(in srgb, var(--g-peach) 72%, transparent);
+  background: color-mix(in srgb, var(--mention) 70%, var(--g-peach));
 }
 
 .who-ava {
   width: 16px;
   height: 16px;
-  font-size: 8.5px;
+  font-size: 9px;
 }
 
 .who-pill.from .who-ava {
@@ -283,7 +283,7 @@ const hasMore = computed(() => rows.value.length > MAX)
   background: color-mix(in srgb, var(--tone-warning-dot) 14%, transparent);
 }
 .route-badge.reply-link {
-  font-size: 9px;
+  font-size: 9.5px;
   color: var(--ink-fainter);
   background: color-mix(in srgb, var(--ink) 6%, transparent);
 }
@@ -312,8 +312,8 @@ const hasMore = computed(() => rows.value.length > MAX)
   padding: 0.5px 4px;
   font-family: var(--font-mono);
   font-size: 11px;
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
-  border-radius: 3px;
+  background: var(--paper-deep);
+  border-radius: var(--radius-chip);
 }
 .prose :deep(pre) {
   max-width: 100%;
@@ -329,15 +329,20 @@ const hasMore = computed(() => rows.value.length > MAX)
 
 .more-btn {
   margin-top: 4px;
-  padding: 0 8px;
-  font-family: var(--font-body);
+  padding: 1px 10px;
+  font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--tone-info-dot);
+  color: var(--ink-faint);
   cursor: pointer;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--tone-info-dot) 35%, transparent);
-  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.more-btn:hover { background: color-mix(in srgb, var(--tone-info-dot) 8%, transparent); }
+.more-btn:hover {
+  color: var(--ink);
+  background: var(--hover-tint);
+  border-color: var(--ink-fainter);
+}
 </style>

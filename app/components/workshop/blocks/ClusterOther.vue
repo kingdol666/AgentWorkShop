@@ -48,13 +48,20 @@ const hasMore = computed(() => lines.value.length > MAX)
   opacity: 0.65;
 }
 .more-btn {
-  padding: 0 6px;
-  font-size: 9.5px;
-  color: var(--accent-cobalt);
+  margin-top: 4px;
+  padding: 1px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
   cursor: pointer;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-chip);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
-.more-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
+.more-btn:hover {
+  color: var(--ink);
+  background: var(--hover-tint);
+  border-color: var(--ink-fainter);
+}
 </style>

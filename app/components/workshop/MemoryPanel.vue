@@ -161,7 +161,7 @@ const doWrite = async (): Promise<void> => {
         <span
           class="token-state"
           :data-ok="tokenResolved"
-        >🔑{{ tokenResolved ? 'auto' : '手动' }}</span>
+        ><span class="i-tabler-key" />{{ tokenResolved ? 'auto' : '手动' }}</span>
       </a-tooltip>
     </div>
     <a-input-password
@@ -305,13 +305,13 @@ const doWrite = async (): Promise<void> => {
 .token-state {
   flex: 0 0 auto;
   padding: 0 5px;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
-  border-radius: 3px;
+  border-radius: var(--radius-chip);
   background: color-mix(in srgb, currentColor 8%, transparent);
 }
 .token-state[data-ok='true'] { color: var(--tone-success-dot); }
-.token-state[data-ok='false'] { color: #fa8c16; }
+.token-state[data-ok='false'] { color: var(--tone-warning-dot); }
 .token { margin-bottom: 6px; }
 .search-bar {
   display: flex;
@@ -325,16 +325,19 @@ const doWrite = async (): Promise<void> => {
   gap: 6px;
   align-items: center;
   padding: 2px 4px;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 .src {
   padding: 0 4px;
-  color: #fff;
-  background: color-mix(in srgb, var(--tone-info-dot) 60%, transparent);
-  border-radius: 3px;
+  color: var(--tone-info-dot);
+  background: var(--tone-info-bg);
+  border-radius: var(--radius-chip);
 }
-.src[data-source='shared'] { background: color-mix(in srgb, var(--tone-retry-dot) 60%, transparent); }
+.src[data-source='shared'] {
+  color: var(--tone-retry-dot);
+  background: var(--tone-retry-bg);
+}
 .score { opacity: 0.5; }
 .hit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-head {
@@ -348,7 +351,7 @@ const doWrite = async (): Promise<void> => {
 .row { padding: 4px 0; border-bottom: 1px dashed color-mix(in srgb, currentColor 10%, transparent); }
 .row-head { display: flex; gap: 6px; align-items: center; }
 .kind { margin-inline-end: 0; font-size: 10px; }
-.row-importance { font-family: ui-monospace, Consolas, monospace; font-size: 10px; opacity: 0.5; }
+.row-importance { font-family: var(--font-mono); font-size: 10px; opacity: 0.5; }
 .row-title { font-weight: 600; font-size: 12px; }
 .row-content {
   font-size: 11px;

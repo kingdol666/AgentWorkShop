@@ -66,7 +66,7 @@ const currentTitle = computed(() => {
   font-size: 11px;
   opacity: 0.88;
 }
-.life-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong, #666); }
+.life-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
 .life-dot[data-state='busy'] { background: var(--accent-cobalt); }
 .life-dot[data-state='idle'] { background: var(--accent-moss); }
 .life-row {

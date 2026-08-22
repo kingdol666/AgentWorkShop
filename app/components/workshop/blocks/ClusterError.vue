@@ -48,25 +48,38 @@ const hasMore = computed(() => lines.value.length > MAX)
 .error-cluster {
   padding: 1px 0 4px 20px;
 }
+/* 错误块体:danger 底色轻染(与任务 FAILED chip 同一视觉语义) */
 .error-line {
   display: flex;
   gap: 7px;
   align-items: center;
+  padding: 1px 6px;
   font-family: var(--font-mono);
   font-size: 10.5px;
   line-height: 20px;
-  color: var(--accent-vermilion);
+  color: var(--tone-danger-dot);
 }
-.error-code { padding: 0 5px; font-size: 9px; background: color-mix(in srgb, var(--accent-vermilion) 14%, transparent); border-radius: var(--radius-chip); }
-.error-text { overflow-wrap: anywhere; word-break: break-word; }
-.more-btn {
-  padding: 0 6px;
-  font-size: 9.5px;
-  color: var(--accent-vermilion);
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent-vermilion) 35%, transparent);
+.error-line:first-child {
+  background: var(--tone-danger-bg);
   border-radius: var(--radius-chip);
 }
-.more-btn:hover { background: color-mix(in srgb, var(--accent-vermilion) 8%, transparent); }
+.error-code { padding: 0 5px; font-size: 9px; background: color-mix(in srgb, var(--tone-danger-dot) 14%, transparent); border-radius: var(--radius-chip); }
+.error-text { overflow-wrap: anywhere; word-break: break-word; }
+.more-btn {
+  margin-top: 4px;
+  padding: 1px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+.more-btn:hover {
+  color: var(--ink);
+  background: var(--hover-tint);
+  border-color: var(--ink-fainter);
+}
 </style>

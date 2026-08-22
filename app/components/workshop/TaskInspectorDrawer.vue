@@ -283,7 +283,7 @@ const stateColor: Record<string, string> = {
   padding-bottom: 8px;
   border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
 }
-.meta { font-size: 12px; font-family: ui-monospace, Consolas, monospace; opacity: 0.6; }
+.meta { font-size: 12px; font-family: var(--font-mono); opacity: 0.6; }
 .spacer { flex: 1 1 auto; }
 .desc { margin-top: 8px; }
 .route-reason {
@@ -312,7 +312,7 @@ const stateColor: Record<string, string> = {
   align-items: center;
   padding: 3px 0;
   font-size: 12px;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
 }
 .tl-time { opacity: 0.45; }
 .state { margin-inline-end: 0; font-size: 10px; }

@@ -47,8 +47,10 @@
   --g-peach: #f4c5a8;
   --g-lav: #c8b8e0;
   --g-sky: #a8c8e8;
-  /* 高亮底(mark/选中):蜜桃纸 */
+  /* 高亮底(mark/选中):蜜桃纸;暗色换深蜜桃并翻转前景 */
   --mention: #fdf2d6;
+  --mention-ink: var(--ink);
+  --scrim: rgb(12 10 9 / 40%);
 
   /* 兼容别名:旧变量名统一收敛到 accent / tone 系统 */
   --color-primary: var(--accent);
@@ -60,6 +62,7 @@
 
   /* tone 语义状态系统(仅表真实状态,不做装饰;open-tag 状态声部) */
   --tone-neutral-dot: #a8a29e;
+  --tone-neutral-bg: #efeeec;
   --tone-success-bg: #eaf7ef;
   --tone-success-dot: #4c8f63;
   --tone-info-bg: #eef3fb;
@@ -70,6 +73,8 @@
   --tone-danger-dot: #c25a4e;
   --tone-retry-bg: #f1eef9;
   --tone-retry-dot: #6b5aa0;
+  /* 运行中信号(busy 呼吸点/运行指示;比 warning-dot 更亮的琥珀,仅作指示点) */
+  --tone-live-dot: hsl(46 66% 50%);
 
   /* 圆角体系(形状锁:pill CTAs > 16/14 卡片 > 8 控件 > 6 小件) */
   --radius-shell: 16px;
@@ -120,8 +125,12 @@ html.dark {
   --line-strong: #44403c;
   --divider-hair: rgb(245 245 245 / 6%);
   --hover-tint: rgb(245 245 245 / 4%);
+  --mention: rgb(220 174 78 / 22%);
+  --mention-ink: #f3e8c8;
+  --scrim: rgb(0 0 0 / 60%);
 
   --tone-neutral-dot: #78716c;
+  --tone-neutral-bg: rgb(120 113 108 / 14%);
   --tone-success-bg: rgb(76 143 99 / 16%);
   --tone-success-dot: #7fc98f;
   --tone-info-bg: rgb(63 96 148 / 18%);
@@ -132,6 +141,7 @@ html.dark {
   --tone-danger-dot: #e08893;
   --tone-retry-bg: rgb(107 90 160 / 16%);
   --tone-retry-dot: #ab8bd8;
+  --tone-live-dot: hsl(46 70% 58%);
 
   --shadow-float: 0 8px 28px rgb(0 0 0 / 45%);
 
@@ -216,7 +226,7 @@ h2 {
 .md-mention {
   padding: 0 3px;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--mention-ink);
   cursor: pointer;
   background: var(--mention);
   border-radius: var(--radius-chip);
@@ -224,7 +234,7 @@ h2 {
 }
 
 .md-mention:hover {
-  background: color-mix(in srgb, var(--g-peach) 72%, transparent);
+  background: color-mix(in srgb, var(--mention) 70%, var(--g-peach));
 }
 
 /* ── GitHub 风格提示框(open-tag github-alert 移植;`> [!NOTE]` 等)── */
@@ -292,11 +302,11 @@ ul.task-list {
   height: 13px;
   font-size: 9px;
   line-height: 1;
-  color: #ffffff;
+  color: var(--on-accent);
   vertical-align: baseline;
   background: var(--paper-raised);
   border: 1.5px solid var(--line-strong);
-  border-radius: 3px;
+  border-radius: var(--radius-chip);
   transform: translateY(1.5px);
 }
 
@@ -932,8 +942,9 @@ ul.task-list {
   opacity: 0.7;
 }
 
-/* 进度条:圆角轨道 */
+/* 进度条:圆角轨道 + tone 信息色(替换 antd 默认饱和蓝,色彩锁) */
 .ant-progress-bg {
+  background: var(--tone-info-dot) !important;
   border-radius: var(--radius-pill) !important;
 }
 

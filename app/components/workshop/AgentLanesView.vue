@@ -302,7 +302,22 @@ onBeforeUnmount(() => {
         v-if="agents.length === 0"
         class="empty"
       >
-        等待成员快照…
+        <!-- 快照未到 → 同步中;真无成员 → 空态指引(诚实区分,不永挂"等待") -->
+        <template v-if="!entities.channels[channelId]">
+          <span class="i-tabler-refresh empty-icon" />
+          <p class="empty-title">
+            成员快照同步中…
+          </p>
+        </template>
+        <template v-else>
+          <span class="i-tabler-users-group empty-icon" />
+          <p class="empty-title">
+            团队暂无成员
+          </p>
+          <p class="empty-hint">
+            点击右上「添加成员」从零创建,或从模板 / 编组一键部署
+          </p>
+        </template>
       </div>
       <template
         v-for="(a, i) in agents"
@@ -615,7 +630,8 @@ onBeforeUnmount(() => {
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px 4px;
+  padding: 8px 14px 6px;
+  border-bottom: 1px solid var(--divider-hair);
 }
 .team-summary {
   display: flex;
@@ -653,6 +669,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 .lanes {
+  overscroll-behavior: contain;
   display: flex;
   flex: 1 1 auto;
   gap: 10px;
@@ -668,7 +685,7 @@ onBeforeUnmount(() => {
   flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
   flex-direction: column;
   min-width: 240px;
-  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel-sm);
   container-type: inline-size; /* 泳道自身为容器:窄列时内部自适应 */
 }
@@ -681,7 +698,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   padding: 10px 12px 9px;
   font-size: 13px;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  border-bottom: 1px solid var(--line);
 }
 .head-top {
   display: flex;
@@ -732,7 +749,7 @@ onBeforeUnmount(() => {
   gap: 5px;
   align-items: center;
   padding: 2px;
-  background: color-mix(in srgb, currentColor 4%, transparent);
+  background: var(--hover-tint);
   border-radius: var(--radius-chip);
 }
 .lane-actions .ant-btn {
@@ -767,16 +784,37 @@ onBeforeUnmount(() => {
   .term-badge { display: none; }
 }
 .lane-body {
+  overscroll-behavior: contain;
   flex: 1 1 auto;
   min-height: 0;
   padding: 8px 4px 16px;
   overflow-y: auto;
 }
 .empty {
-  padding: 20px 8px;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 12px;
+  color: var(--ink-faint);
   font-size: 12px;
-  opacity: 0.4;
   text-align: center;
+}
+.empty-icon {
+  font-size: 22px;
+  color: var(--ink-fainter);
+}
+.empty-title {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.empty-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-fainter);
 }
 .member-form { margin-top: 8px; }
 .mode-switch { margin-top: 4px; }

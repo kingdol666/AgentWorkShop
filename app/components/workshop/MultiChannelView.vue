@@ -92,13 +92,13 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
             v-if="col.items.length === 0"
             class="col-empty"
           >
-            等待事件…
+            {{ col.synced ? '暂无事件' : '同步中…' }}
           </div>
           <div
             v-for="e in col.items"
             :key="`${col.id}-${e.seq}`"
             class="mini-event"
-            :class="{ clickable: e.type === 'task.status' || e.type === 'a2a.artifact' }"
+            :class="{ clickable: e.type === 'task.status' }"
             @click="e.type === 'task.status' && emit('openTask', (e.payload as { taskId: string }).taskId)"
           >
             <span class="me-time">{{ e.at.slice(11, 19) }}</span>
@@ -119,6 +119,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
 
 <style scoped>
 .split {
+  overscroll-behavior: contain;
   display: flex;
   gap: 8px;
   height: 100%;
@@ -131,7 +132,8 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
   flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
   flex-direction: column;
   min-width: 300px;
-  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel-sm);
 }
 .col-head {
@@ -139,21 +141,22 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
   gap: 8px;
   align-items: center;
   padding: 8px 10px;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  border-bottom: 1px solid var(--line);
 }
 .col-name { font-size: 13px; font-weight: 700; }
 .col-meta {
   flex: 1 1 auto;
   font-size: 11px;
-  font-family: ui-monospace, Consolas, monospace;
-  opacity: 0.5;
+  font-family: var(--font-mono);
+  color: var(--ink-faint);
   text-align: right;
 }
 .col-body {
+  overscroll-behavior: contain;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 .mini-event {
@@ -163,9 +166,9 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
   line-height: 1.6;
 }
 .mini-event.clickable { cursor: pointer; }
-.mini-event.clickable:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
-.me-time { flex: 0 0 auto; opacity: 0.4; }
-.me-agent { flex: 0 0 auto; opacity: 0.6; }
+.mini-event.clickable:hover { background: var(--hover-tint); }
+.me-time { flex: 0 0 auto; color: var(--ink-fainter); }
+.me-agent { flex: 0 0 auto; color: var(--ink-faint); }
 .me-text {
   flex: 1 1 auto;
   overflow: hidden;
@@ -174,9 +177,9 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
 }
 .col-empty,
 .empty {
-  padding: 20px 8px;
+  padding: 24px 8px;
   font-size: 12px;
-  opacity: 0.4;
+  color: var(--ink-faint);
   text-align: center;
 }
 </style>

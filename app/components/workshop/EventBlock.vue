@@ -372,7 +372,7 @@ const quoteToComposer = (): void => {
   border-radius: 50%;
 }
 .av-status.busy {
-  background: hsl(46 66% 50%);
+  background: var(--tone-live-dot);
   animation: av-breathe 1.9s ease-in-out infinite;
 }
 .av-status.stopped { background: var(--tone-danger-dot); }
@@ -464,7 +464,7 @@ const quoteToComposer = (): void => {
 .running-chip .running-dot {
   width: 6px;
   height: 6px;
-  background: hsl(46 66% 50%);
+  background: var(--tone-live-dot);
   border-radius: 50%;
   animation: av-breathe 1.9s ease-in-out infinite;
 }

@@ -777,7 +777,7 @@ const placeholder = computed(() =>
 }
 
 .mention-state.busy {
-  background: hsl(46 66% 50%);
+  background: var(--tone-live-dot);
   opacity: 1;
 }
 </style>

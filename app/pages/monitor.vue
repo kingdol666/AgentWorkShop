@@ -626,7 +626,7 @@ const processColumns = computed(() => [
   padding: 1px 6px;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: #fa8c16;
+  color: var(--tone-warning-dot);
   background: rgb(250 140 22 / 12%);
   border-radius: var(--radius-chip);
 }

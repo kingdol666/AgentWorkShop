@@ -49,6 +49,9 @@ const loadEarlier = async (): Promise<void> => {
       el.scrollTop = el.scrollHeight - anchor.height + anchor.top
     }
   }
+  catch {
+    /* 历史拉取失败:保持按钮可重试,不打断时间线 */
+  }
   finally {
     loadingEarlier.value = false
   }
@@ -297,12 +300,33 @@ const blockDayFlags = computed(() => {
           v-else-if="blocks.length === 0 && totalEvents === 0"
           class="empty"
         >
-          <span class="i-tabler-message-dots empty-icon" />
+          <!-- 同步中 ≠ 空:诚实区分(快照未到时不断言"无事件") -->
+          <span
+            v-if="syncing || conn.state !== 'open'"
+            class="i-tabler-refresh empty-icon"
+          />
+          <span
+            v-else
+            class="i-tabler-message-dots empty-icon"
+          />
           <p class="empty-title">
-            等待事件流入
+            {{ syncing || conn.state !== 'open' ? '正在同步时间线…' : '等待事件流入' }}
           </p>
           <p class="empty-hint">
-            在下方提交任务后,Agent 执行过程将在此实时渲染
+            {{ syncing || conn.state !== 'open' ? '连接恢复后事件将自动对齐' : '在下方提交任务后,Agent 执行过程将在此实时渲染' }}
+          </p>
+        </div>
+        <!-- 过滤空态:有事件但当前过滤无匹配(区别于真空) -->
+        <div
+          v-else-if="blocks.length === 0"
+          class="empty filtered"
+        >
+          <span class="i-tabler-filter-off empty-icon" />
+          <p class="empty-title">
+            无匹配事件
+          </p>
+          <p class="empty-hint">
+            「{{ filterOptions.find(o => o.value === filter)?.label ?? filter }}」过滤下没有事件,可切换过滤条件
           </p>
         </div>
         <template
@@ -408,6 +432,7 @@ const blockDayFlags = computed(() => {
 .jump-latest:active { transform: translateY(1px); }
 
 .scroller {
+  overscroll-behavior: contain;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;

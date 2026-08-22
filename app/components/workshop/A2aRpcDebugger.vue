@@ -219,14 +219,14 @@ const run = async (): Promise<void> => {
 }
 .agent { flex: 1 1 55%; }
 .method { flex: 1 1 45%; }
-.params { font-family: ui-monospace, Consolas, monospace; }
+.params { font-family: var(--font-mono); }
 .ops { justify-content: flex-end; }
 .output {
   min-height: 240px;
   padding: 10px;
   overflow: auto;
   font-size: 11px;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   white-space: pre-wrap;
   word-break: break-all;
   background: color-mix(in srgb, currentColor 5%, transparent);

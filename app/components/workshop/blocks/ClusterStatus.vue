@@ -83,7 +83,7 @@ const toggle = (): void => {
   cursor: pointer;
   background: transparent;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-chip);
 }
 .st-toggle:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .chev {
@@ -104,7 +104,7 @@ const toggle = (): void => {
   padding: 0 4px;
   font-size: 9px;
   line-height: 13px;
-  color: var(--ink-soft, inherit);
+  color: var(--ink-soft);
   background: color-mix(in srgb, var(--ink) 8%, transparent);
   border-radius: var(--radius-chip);
   align-self: center;
@@ -113,7 +113,7 @@ const toggle = (): void => {
   min-width: 0;
   overflow: hidden;
   font-style: italic;
-  color: var(--ink-soft, inherit);
+  color: var(--ink-soft);
   text-overflow: ellipsis;
   white-space: nowrap;
   opacity: 0.75;
