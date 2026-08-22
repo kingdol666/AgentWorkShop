@@ -149,6 +149,8 @@ export class AgentRuntime {
   private runErrorRetries = new Map<string, number>()
   /** 正在执行的任务 id(run 期间;空闲时 null) */
   private currentTaskId: string | null = null
+  /** poll_messages 阻塞等待数(waitPending 活动计数;>0 = 有轮询在等,实时消息留信箱由其取走) */
+  private pollWaiters = 0
   /** run 与 supervise 互斥锁(promise 链) */
   private execLock: Promise<void> = Promise.resolve()
   private abortController: AbortController | null = null
@@ -219,26 +221,24 @@ export class AgentRuntime {
   }
 
   /**
-   * 实时消息注入(仅 busy 收件人;消息已由 route 统一 enqueue 落库):
-   *  - busy 且 impl 处于流式输出 → steer 注入运行中的 omp 会话(同轮可见),
-   *    仅在确认注入成功('steer')后标记消费——消息必达
-   *  - busy 但回合被 host 工具阻塞(如 poll_messages 等待中)/空闲 → 保留 pending:
-   *    · 阻塞中的 poll_messages 由 Mailbox 到信回调即时唤醒并取走(同轮可见,最快路径)
-   *    · 否则由消费循环在本回合结束后按 FIFO 起回合处理
-   *    (不再走 follow_up 兜底:目标处理中时会被 omp 拒绝,且旧实现在拒绝后仍标记
-   *     消费导致消息从信箱消失 —— 即"轮询查空"丢失 bug 的根因)
-   * 触发器语义:metadata['x-aw-require-reply']='true' 时,注入文本携带回执指令——
-   * 接收方须把执行结果与对方所需内容经 send_message_to_agent 回给发送者,
-   * 并以 x-aw-in-reply-to 关联原消息、自带 x-aw-require-reply 声明是否需再响应。
-   *
-   * 恰好一次契约:注入前先原子认领(pending → consuming)。认领失败 = 消息已被
-   * poll_messages 读即取或消费循环 dequeue 起回合(唯一所有权),直接让路;
-   * 认领成功后 steer 期间消息不可见(peek/dequeue 只看 pending),投递路径唯一。
-   * steer 未确认注入('deferred'/异常)→ 释放认领回 pending 并唤醒等待方接管。
+   * 实时注入策略(信箱优先,与主动轮询完全兼容):
+   *  - poll_messages 等待中:任何实时消息留在 pending —— 等待中的轮询经 Mailbox
+   *    到信回调毫秒级取走(读即取=已读),零打断、不与轮询竞争唯一所有权
+   *  - agent 间协作消息(from-agent):同样走信箱 —— turn 结束后消费循环按 peer
+   *    回合处理(require_reply 触发语义/回执关联完整)。steer 注入 omp 会话会让
+   *    其把排队消息后的工具调用标记 "Skipped due to queued user message",
+   *    中断 poll_messages 长等待并污染执行流(实测故障源)
+   *  - 仅人类紧急直发(immediate + from-label,无 from-agent)保留 steer 同轮注入:
+   *    紧急人工打断是唯一值得中断会话的场景
    */
   injectSteer(message: A2AMessage): void {
     if (this.state !== 'busy' || !this.impl.steer) return
-    // 原子认领:与 poll_messages 读即取 / 消费循环 dequeue 竞争唯一所有权
+    // ① 轮询等待中:留 pending 给 poll_messages(毫秒级取走并标记已读)
+    if (this.pollWaiters > 0) return
+    // ② agent 间协作消息:信箱优先(turn 结束 peer 回合处理)
+    const from = message.metadata?.['x-aw-from-agent']
+    if (typeof from === 'string' && from.length > 0) return
+    // ③ 其余(人类紧急直发):原有 steer 注入路径
     if (!this.deps.mailbox.claim(message.messageId)) return
     const text = message.parts
       .map((p) => {
@@ -286,18 +286,26 @@ export class AgentRuntime {
    * 长轮询未消费消息(poll_messages host 工具用):
    * 250ms 兜底重查 + Mailbox 到信回调即时唤醒——消息到达后毫秒级返回,
    * 不再每秒盲查。不改消息状态(peek 只读);消费语义由调用方(poll 读即取)决定。
+   * pollWaiters 计数暴露"轮询等待中"状态:injectSteer 据此把实时消息留在信箱
+   * 由本方法取走(不打断会话、与主动轮询兼容)。
    */
   async waitPending(limit: number, waitMs: number): Promise<A2AMessage[]> {
-    const deadline = Date.now() + Math.max(0, waitMs)
-    for (;;) {
-      const msgs = await this.deps.mailbox.peek(limit)
-      if (msgs.length > 0 || Date.now() >= deadline) return msgs
-      const { promise, resolve } = Promise.withResolvers<unknown>()
-      const off = this.deps.mailbox.onArrival(() => resolve(undefined))
-      const timer = setTimeout(() => resolve(undefined), 250)
-      await promise
-      clearTimeout(timer)
-      off()
+    this.pollWaiters += 1
+    try {
+      const deadline = Date.now() + Math.max(0, waitMs)
+      for (;;) {
+        const msgs = await this.deps.mailbox.peek(limit)
+        if (msgs.length > 0 || Date.now() >= deadline) return msgs
+        const { promise, resolve } = Promise.withResolvers<unknown>()
+        const off = this.deps.mailbox.onArrival(() => resolve(undefined))
+        const timer = setTimeout(() => resolve(undefined), 250)
+        await promise
+        clearTimeout(timer)
+        off()
+      }
+    }
+    finally {
+      this.pollWaiters -= 1
     }
   }
 

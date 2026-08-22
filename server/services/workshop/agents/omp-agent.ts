@@ -1243,12 +1243,26 @@ export class OmpRpcAgentImpl implements AgentInterface {
             .filter(m => !m.metadata?.['x-aw-task-kind'])
             .map(m => m.messageId)
           if (ackIds.length > 0) await ws.ackMailbox(ackIds)
+          // 触发上下文(轮询路径的回执自动关联):取到的 require-reply 协作消息 →
+          // 后续 send_message_to_agent 回给发送者时自动盖 in_reply_to(与 peer 回合同源)
+          const trigger = msgs.find(m =>
+            m.metadata?.['x-aw-require-reply'] === 'true'
+            && typeof m.metadata?.['x-aw-from-agent'] === 'string')
+          if (trigger) {
+            this.replyContext = {
+              fromId: String(trigger.metadata!['x-aw-from-agent']),
+              messageId: trigger.messageId,
+            }
+          }
           const text = msgs.map((m, i) => {
             const from = m.metadata?.['x-aw-from-agent'] ?? '?'
             const reply = m.metadata?.['x-aw-in-reply-to']
               ? ` (回复 ${String(m.metadata['x-aw-in-reply-to']).slice(0, 8)}…)`
               : ''
-            const needReply = m.metadata?.['x-aw-require-reply'] === 'true' ? ' [需回复]' : ''
+            // 需回复的消息附带回执指令:对方在等你的结果,须回信并关联原消息
+            const needReply = m.metadata?.['x-aw-require-reply'] === 'true'
+              ? ` [需回复:用 send_message_to_agent 回 ${from},in_reply_to=${m.messageId}]`
+              : ''
             const body = m.parts.map(p => 'text' in p ? p.text : '').join(' ')
             // 不截到 100 字符:谜面/任务书等长消息截半句会让收件人误判内容不完整
             return `  [${i + 1}/${msgs.length}] [from ${from}]${needReply}${reply} ${body.slice(0, 2000)}`
