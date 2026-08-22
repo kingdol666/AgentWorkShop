@@ -12,6 +12,7 @@
  * 终端按钮仍可用(抽屉内等待 + 自动接入)。
  */
 import { message } from 'ant-design-vue'
+import { useStorage } from '@vueuse/core'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useWorkshopApi, type TerminalSessionDto } from '@/app/composables/workshop/useWorkshopApi'
 import LaneBlocks from '@/app/components/workshop/lanes/LaneBlocks.vue'
@@ -22,6 +23,19 @@ const entities = useEntitiesStore()
 const api = useWorkshopApi()
 
 const agents = computed(() => entities.agents[props.channelId] ?? [])
+
+// ===== 泳道列宽拖拽调节(PaneSplitter;按 agentId 持久化,双击复位默认宽) =====
+const LANE_W_DEFAULT = 320
+const laneWidths = useStorage<Record<string, number>>('aw.harness.laneW', {})
+const laneWidth = (id: string): number => laneWidths.value[id] ?? LANE_W_DEFAULT
+const resizeLane = (id: string, d: number): void => {
+  laneWidths.value = { ...laneWidths.value, [id]: Math.min(720, Math.max(240, laneWidth(id) + d)) }
+}
+const resetLane = (id: string): void => {
+  const next = { ...laneWidths.value }
+  Reflect.deleteProperty(next, id)
+  laneWidths.value = next
+}
 
 const stateDot: Record<string, string> = {
   idle: 'var(--tone-success-dot)',
@@ -284,102 +298,114 @@ onBeforeUnmount(() => {
       >
         等待成员快照…
       </div>
-      <div
-        v-for="a in agents"
+      <template
+        v-for="(a, i) in agents"
         :key="a.agentId"
-        class="lane"
       >
-        <div class="lane-head">
-          <span
-            class="dot"
-            :style="{ background: stateDot[a.state] ?? 'var(--tone-neutral-dot)' }"
-          />
-          <span class="lane-name">{{ a.name }}</span>
-          <a-tag
-            v-if="a.config?.systemPromptPrefix"
-            color="gold"
-            title="已注入场景系统提示词"
-            class="scenario-tag"
-          >
-            场景
-          </a-tag>
-          <a-tag
-            :color="a.role === 'lead' ? 'purple' : 'blue'"
-            class="role"
-          >
-            {{ a.role }}
-          </a-tag>
-          <span class="lane-meta">{{ a.state }} · Q{{ a.queued ?? 0 }}</span>
-          <!-- harness 会话徽标(rpc-ui 终端实时状态) -->
-          <a-tag
-            v-if="termBadge(terminalOf.get(a.agentId))"
-            :color="termBadge(terminalOf.get(a.agentId))!.color"
-            class="term-badge"
-            :title="`omp 进程 PID ${terminalOf.get(a.agentId)?.pid} · harness 会话状态`"
-          >
-            {{ termBadge(terminalOf.get(a.agentId))!.text }}
-          </a-tag>
-          <a-button
-            v-if="a.harness === 'omp'"
-            size="small"
-            type="primary"
-            ghost
-            class="lane-term"
-            title="打开该成员的 omp 原生终端(实时 TUI + HITL 控制:注入对话 / 中止 / 应答 ask)"
-            @click="openTerminal(a)"
-          >
-            <span class="i-tabler-terminal-2" />
-          </a-button>
-          <a-button
-            size="small"
-            type="text"
-            class="lane-edit"
-            title="编辑成员信息 / 场景提示词"
-            @click="openEditMember(a)"
-          >
-            <span class="i-tabler-edit" />
-          </a-button>
-          <a-popconfirm
-            :title="`中断成员 ${a.name} 的运行时?执行中任务将中止,成员保留`"
-            ok-text="停止"
-            cancel-text="取消"
-            @confirm="stopMember(a.agentId, a.name)"
-          >
+        <div
+          class="lane"
+          :style="{ flexBasis: `${laneWidth(a.agentId)}px` }"
+        >
+          <div class="lane-head">
+            <span
+              class="dot"
+              :style="{ background: stateDot[a.state] ?? 'var(--tone-neutral-dot)' }"
+            />
+            <span class="lane-name">{{ a.name }}</span>
+            <a-tag
+              v-if="a.config?.systemPromptPrefix"
+              color="gold"
+              title="已注入场景系统提示词"
+              class="scenario-tag"
+            >
+              场景
+            </a-tag>
+            <a-tag
+              :color="a.role === 'lead' ? 'purple' : 'blue'"
+              class="role"
+            >
+              {{ a.role }}
+            </a-tag>
+            <span class="lane-meta">{{ a.state }} · Q{{ a.queued ?? 0 }}</span>
+            <!-- harness 会话徽标(rpc-ui 终端实时状态) -->
+            <a-tag
+              v-if="termBadge(terminalOf.get(a.agentId))"
+              :color="termBadge(terminalOf.get(a.agentId))!.color"
+              class="term-badge"
+              :title="`omp 进程 PID ${terminalOf.get(a.agentId)?.pid} · harness 会话状态`"
+            >
+              {{ termBadge(terminalOf.get(a.agentId))!.text }}
+            </a-tag>
+            <a-button
+              v-if="a.harness === 'omp'"
+              size="small"
+              type="primary"
+              ghost
+              class="lane-term"
+              title="打开该成员的 omp 原生终端(实时 TUI + HITL 控制:注入对话 / 中止 / 应答 ask)"
+              @click="openTerminal(a)"
+            >
+              <span class="i-tabler-terminal-2" />
+            </a-button>
             <a-button
               size="small"
               type="text"
-              class="lane-stop"
-              :loading="stopping === a.agentId"
-              title="HITL 停止该 Agent 运行时"
+              class="lane-edit"
+              title="编辑成员信息 / 场景提示词"
+              @click="openEditMember(a)"
             >
-              ⏹
+              <span class="i-tabler-edit" />
             </a-button>
-          </a-popconfirm>
-          <a-popconfirm
-            :title="`移除成员 ${a.name}?其排队任务将自动回收`"
-            ok-text="移除"
-            cancel-text="取消"
-            @confirm="removeMember(a.agentId, a.name)"
-          >
-            <a-button
-              size="small"
-              type="text"
-              danger
-              class="lane-remove"
-              :loading="removing === a.agentId"
+            <a-popconfirm
+              :title="`中断成员 ${a.name} 的运行时?执行中任务将中止,成员保留`"
+              ok-text="停止"
+              cancel-text="取消"
+              @confirm="stopMember(a.agentId, a.name)"
             >
-              <span class="i-tabler-x" />
-            </a-button>
-          </a-popconfirm>
+              <a-button
+                size="small"
+                type="text"
+                class="lane-stop"
+                :loading="stopping === a.agentId"
+                title="HITL 停止该 Agent 运行时"
+              >
+                ⏹
+              </a-button>
+            </a-popconfirm>
+            <a-popconfirm
+              :title="`移除成员 ${a.name}?其排队任务将自动回收`"
+              ok-text="移除"
+              cancel-text="取消"
+              @confirm="removeMember(a.agentId, a.name)"
+            >
+              <a-button
+                size="small"
+                type="text"
+                danger
+                class="lane-remove"
+                :loading="removing === a.agentId"
+              >
+                <span class="i-tabler-x" />
+              </a-button>
+            </a-popconfirm>
+          </div>
+          <div class="lane-body">
+            <!-- 列体:同类型连续事件聚合为块组件(实时/历史同一路径,无重复消费;
+                 宽度随泳道拖拽自适应,EventBlock 26px+1fr 网格自收缩) -->
+            <LaneBlocks
+              :channel-id="channelId"
+              :agent-id="a.agentId"
+            />
+          </div>
         </div>
-        <div class="lane-body">
-          <!-- 列体:同类型连续事件聚合为块组件(实时/历史同一路径,无重复消费) -->
-          <LaneBlocks
-            :channel-id="channelId"
-            :agent-id="a.agentId"
-          />
-        </div>
-      </div>
+        <!-- 泳道分隔条:拖拽调节该列宽度(双击复位;键盘 ←→ 微调) -->
+        <workshop-pane-splitter
+          v-if="i < agents.length - 1"
+          :label="`拖拽调节 ${a.name} 泳道宽度`"
+          @resize="d => resizeLane(a.agentId, d)"
+          @reset="resetLane(a.agentId)"
+        />
+      </template>
     </div>
 
     <!-- 添加成员弹窗(三模式:从零创建 / 模板克隆 / 编组部署) -->
@@ -596,11 +622,12 @@ onBeforeUnmount(() => {
 }
 .lane {
   display: flex;
-  flex: 0 0 320px;
+  flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
   flex-direction: column;
-  min-width: 260px;
+  min-width: 240px;
   border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
   border-radius: var(--radius-panel-sm);
+  container-type: inline-size; /* 泳道自身为容器:窄列时内部自适应 */
 }
 .lane-head {
   display: flex;
@@ -622,10 +649,19 @@ onBeforeUnmount(() => {
 .role { margin-inline-end: 0; font-size: 10px; line-height: 14px; }
 .lane-meta {
   flex: 1 1 auto;
+  overflow: hidden;
   font-size: 11px;
   font-family: ui-monospace, Consolas, monospace;
   opacity: 0.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: right;
+}
+/* 窄泳道自适应(拖窄到 <300px):次要徽标让位,核心信息(名字/状态/操作)保留 */
+@container (max-width: 300px) {
+  .term-badge,
+  .scenario-tag { display: none; }
+  .lane-meta { flex: 0 0 auto; }
 }
 .lane-remove { flex: 0 0 auto; font-size: 11px; }
 .lane-edit { flex: 0 0 auto; font-size: 11px; padding-inline: 4px; }

@@ -20,12 +20,17 @@ const userStore = useUserStore()
 const wsStore = useWorkspacesStore()
 
 // 用户守卫 + workspace 服务端加载
-if (!userStore.isLoggedIn) {
-  navigateTo('/workshop')
-}
-if (userStore.isLoggedIn && !wsStore.loaded) {
-  wsStore.load().catch(() => {})
-}
+// SSR 阶段不判登录(会话恢复是客户端插件,服务端无登录态——同步踢回会把
+// 刷新/直达 URL 的已登录用户误弹回总览);客户端挂载后校验并按需加载
+const authReady = ref(false)
+onMounted(() => {
+  if (!userStore.isLoggedIn) {
+    navigateTo('/workshop')
+    return
+  }
+  authReady.value = true
+  if (!wsStore.loaded) wsStore.load().catch(() => {})
+})
 const entities = useEntitiesStore()
 const { subscribe, unsubscribe, conn } = useWorkshopWs()
 
