@@ -74,14 +74,37 @@ const stateColor = computed(() =>
 const lastSeq = computed(() => (channelId.value ? conn.cursors[channelId.value] ?? 0 : 0))
 
 // 视图切换(P1 三视图 + P2 多通道同屏)
+// 深链:?view=lanes/board/split 直达指定视图(可分享/收藏)
 type CenterView = 'timeline' | 'lanes' | 'board' | 'split'
-const view = ref<CenterView>('timeline')
+const VIEW_KEYS: Record<string, CenterView> = {
+  1: 'timeline',
+  2: 'lanes',
+  3: 'board',
+  4: 'split',
+}
+const VIEW_VALUES = new Set(['timeline', 'lanes', 'board', 'split'])
+const initView = route.query.view
+const view = ref<CenterView>(
+  typeof initView === 'string' && VIEW_VALUES.has(initView) ? initView as CenterView : 'timeline',
+)
 const viewOptions = [
   { value: 'timeline', label: '时间线' },
   { value: 'lanes', label: 'Agent lanes' },
   { value: 'board', label: '任务板' },
   { value: 'split', label: '同屏' },
 ]
+// 数字快捷键 1-4 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向)
+const onViewKey = (ev: KeyboardEvent): void => {
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return
+  const t = ev.target as HTMLElement | null
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+  const next = VIEW_KEYS[ev.key]
+  if (!next || !channelId.value) return
+  ev.preventDefault()
+  view.value = next
+}
+onMounted(() => window.addEventListener('keydown', onViewKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onViewKey))
 
 // 侧栏折叠(现代 harness 布局:左会话栏 / 右检查器可按需收起)
 const leftOpen = ref(true)
@@ -140,7 +163,11 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
     <workshop-mention-hover-card />
     <!-- 顶栏 -->
     <div class="topbar">
-      <div class="left">
+      <div
+        class="left"
+        tabindex="-1"
+        @keydown="onViewKey"
+      >
         <span class="topbar-mark i-tabler-box" />
         <span class="ws-name">{{ workspace?.name ?? '未知 Workspace' }}</span>
         <span
@@ -156,6 +183,8 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
           size="small"
           :options="viewOptions"
           class="view-switch"
+          title="快捷键 1-4 直切视图"
+          @keydown="onViewKey"
         />
       </div>
       <div class="right">

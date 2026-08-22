@@ -281,14 +281,20 @@ onBeforeUnmount(() => {
 <template>
   <div class="lanes-wrap">
     <div class="toolbar">
-      <span class="team-count">团队 {{ agents.length }} 人(lead {{ agents.filter(a => a.role === 'lead').length }} / worker {{ agents.filter(a => a.role === 'worker').length }})</span>
+      <div class="team-summary">
+        <span class="ts-label">团队</span>
+        <span class="ts-count">{{ agents.length }}</span>
+        <span class="ts-unit">名成员</span>
+        <span class="ts-detail">lead {{ agents.filter(a => a.role === 'lead').length }} · worker {{ agents.filter(a => a.role === 'worker').length }}</span>
+      </div>
       <a-button
         size="small"
         type="primary"
         ghost
         @click="openMemberModal"
       >
-        添加成员
+        <span class="i-tabler-user-plus" />
+        <span>添加成员</span>
       </a-button>
     </div>
     <div class="lanes">
@@ -307,87 +313,99 @@ onBeforeUnmount(() => {
           :style="{ flexBasis: `${laneWidth(a.agentId)}px` }"
         >
           <div class="lane-head">
-            <span
-              class="dot"
-              :style="{ background: stateDot[a.state] ?? 'var(--tone-neutral-dot)' }"
-            />
-            <span class="lane-name">{{ a.name }}</span>
-            <a-tag
-              v-if="a.config?.systemPromptPrefix"
-              color="gold"
-              title="已注入场景系统提示词"
-              class="scenario-tag"
-            >
-              场景
-            </a-tag>
-            <a-tag
-              :color="a.role === 'lead' ? 'purple' : 'blue'"
-              class="role"
-            >
-              {{ a.role }}
-            </a-tag>
-            <span class="lane-meta">{{ a.state }} · Q{{ a.queued ?? 0 }}</span>
-            <!-- harness 会话徽标(rpc-ui 终端实时状态) -->
-            <a-tag
-              v-if="termBadge(terminalOf.get(a.agentId))"
-              :color="termBadge(terminalOf.get(a.agentId))!.color"
-              class="term-badge"
-              :title="`omp 进程 PID ${terminalOf.get(a.agentId)?.pid} · harness 会话状态`"
-            >
-              {{ termBadge(terminalOf.get(a.agentId))!.text }}
-            </a-tag>
-            <a-button
-              v-if="a.harness === 'omp'"
-              size="small"
-              type="primary"
-              ghost
-              class="lane-term"
-              title="打开该成员的 omp 原生终端(实时 TUI + HITL 控制:注入对话 / 中止 / 应答 ask)"
-              @click="openTerminal(a)"
-            >
-              <span class="i-tabler-terminal-2" />
-            </a-button>
-            <a-button
-              size="small"
-              type="text"
-              class="lane-edit"
-              title="编辑成员信息 / 场景提示词"
-              @click="openEditMember(a)"
-            >
-              <span class="i-tabler-edit" />
-            </a-button>
-            <a-popconfirm
-              :title="`中断成员 ${a.name} 的运行时?执行中任务将中止,成员保留`"
-              ok-text="停止"
-              cancel-text="取消"
-              @confirm="stopMember(a.agentId, a.name)"
-            >
-              <a-button
-                size="small"
-                type="text"
-                class="lane-stop"
-                :loading="stopping === a.agentId"
-                title="HITL 停止该 Agent 运行时"
+            <!-- 第一行:身份(状态点 + 名称 + 徽标);名称为弹性吸收项,任何宽度截断不遮挡 -->
+            <div class="head-top">
+              <span
+                class="dot"
+                :style="{ background: stateDot[a.state] ?? 'var(--tone-neutral-dot)' }"
+              />
+              <span
+                class="lane-name"
+                :title="a.name"
+              >{{ a.name }}</span>
+              <a-tag
+                v-if="a.config?.systemPromptPrefix"
+                color="gold"
+                title="已注入场景系统提示词"
+                class="scenario-tag"
               >
-                ⏹
-              </a-button>
-            </a-popconfirm>
-            <a-popconfirm
-              :title="`移除成员 ${a.name}?其排队任务将自动回收`"
-              ok-text="移除"
-              cancel-text="取消"
-              @confirm="removeMember(a.agentId, a.name)"
-            >
-              <a-button
-                size="small"
-                type="text"
-                danger
-                class="lane-remove"
-                :loading="removing === a.agentId"
+                场景
+              </a-tag>
+              <a-tag
+                :color="a.role === 'lead' ? 'purple' : 'blue'"
+                class="role"
               >
-                <span class="i-tabler-x" />
-              </a-button>
-            </a-popconfirm>
+                {{ a.role }}
+              </a-tag>
+              <a-tag
+                v-if="termBadge(terminalOf.get(a.agentId))"
+                :color="termBadge(terminalOf.get(a.agentId))!.color"
+                class="term-badge"
+                :title="`omp 进程 PID ${terminalOf.get(a.agentId)?.pid} · harness 会话状态`"
+              >
+                {{ termBadge(terminalOf.get(a.agentId))!.text }}
+              </a-tag>
+            </div>
+            <!-- 第二行:状态摘要 + 操作簇(常驻可见;hairline 分隔破坏性操作) -->
+            <div class="head-sub">
+              <span class="lane-meta">{{ a.state }} · Q{{ a.queued ?? 0 }}</span>
+              <div class="lane-actions">
+                <a-button
+                  v-if="a.harness === 'omp'"
+                  size="small"
+                  type="primary"
+                  ghost
+                  class="lane-term"
+                  title="打开该成员的 omp 原生终端(实时 TUI + HITL 控制:注入对话 / 中止 / 应答 ask)"
+                  @click="openTerminal(a)"
+                >
+                  <span class="i-tabler-terminal-2" />
+                  <span class="term-label">终端</span>
+                </a-button>
+                <a-button
+                  size="small"
+                  type="text"
+                  class="lane-edit"
+                  title="编辑成员信息 / 场景提示词"
+                  @click="openEditMember(a)"
+                >
+                  <span class="i-tabler-edit" />
+                </a-button>
+                <span class="actions-divider" />
+                <a-popconfirm
+                  :title="`中断成员 ${a.name} 的运行时?执行中任务将中止,成员保留`"
+                  ok-text="停止"
+                  cancel-text="取消"
+                  @confirm="stopMember(a.agentId, a.name)"
+                >
+                  <a-button
+                    size="small"
+                    type="text"
+                    class="lane-stop"
+                    :loading="stopping === a.agentId"
+                    title="HITL 停止该 Agent 运行时"
+                  >
+                    <span class="i-tabler-player-stop" />
+                  </a-button>
+                </a-popconfirm>
+                <a-popconfirm
+                  :title="`移除成员 ${a.name}?其排队任务将自动回收`"
+                  ok-text="移除"
+                  cancel-text="取消"
+                  @confirm="removeMember(a.agentId, a.name)"
+                >
+                  <a-button
+                    size="small"
+                    type="text"
+                    danger
+                    class="lane-remove"
+                    :loading="removing === a.agentId"
+                  >
+                    <span class="i-tabler-x" />
+                  </a-button>
+                </a-popconfirm>
+              </div>
+            </div>
           </div>
           <div class="lane-body">
             <!-- 列体:同类型连续事件聚合为块组件(实时/历史同一路径,无重复消费;
@@ -422,7 +440,7 @@ onBeforeUnmount(() => {
         class="mode-switch"
       >
         <a-radio-button value="create">
-          🆕 从零创建
+          从零创建
         </a-radio-button>
         <a-radio-button value="template">
           从模板克隆
@@ -593,30 +611,55 @@ onBeforeUnmount(() => {
 .toolbar {
   display: flex;
   flex: 0 0 auto;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   align-items: center;
-  justify-content: flex-end;
-  padding: 6px 12px 0;
+  justify-content: space-between;
+  padding: 8px 14px 4px;
 }
-.team-count {
+.team-summary {
+  display: flex;
   flex: 1 1 auto;
+  gap: 7px;
+  min-width: 0;
+  align-items: baseline;
+}
+.ts-label {
+  flex: 0 0 auto;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+.ts-count {
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+.ts-unit {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.ts-detail {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   font-size: 11px;
-  font-family: ui-monospace, Consolas, monospace;
-  opacity: 0.55;
+  font-family: var(--font-mono);
+  color: var(--ink-faint);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .lanes {
   display: flex;
   flex: 1 1 auto;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   min-width: 0;
   min-height: 0;
-  padding: 8px;
+  padding: 8px 12px 12px;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -629,48 +672,104 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-panel-sm);
   container-type: inline-size; /* 泳道自身为容器:窄列时内部自适应 */
 }
+/* 双层头部:第一行身份(点/名/徽标),第二行状态摘要 + 操作簇 ——
+   单行方案在 320px 列内固定元素 ~360px 必然挤压遮挡,分层后各行均有余量 */
 .lane-head {
   display: flex;
-  gap: 6px;
-  min-width: 0;
-  align-items: center;
-  padding: 8px 10px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 9px;
   font-size: 13px;
   border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
 }
+.head-top {
+  display: flex;
+  gap: 7px;
+  min-width: 0;
+  align-items: center;
+}
 .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .lane-name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
+  font-size: 13.5px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.role { margin-inline-end: 0; font-size: 10px; line-height: 14px; }
+.role,
+.scenario-tag,
+.term-badge {
+  flex: 0 0 auto;
+  margin-inline-end: 0;
+  font-size: 10px;
+  line-height: 14px;
+}
+.term-badge { font-family: var(--font-mono); }
+.head-sub {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+}
 .lane-meta {
   flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
-  font-size: 11px;
-  font-family: ui-monospace, Consolas, monospace;
-  opacity: 0.5;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--ink-faint);
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: right;
 }
-/* 窄泳道自适应(拖窄到 <300px):次要徽标让位,核心信息(名字/状态/操作)保留 */
+/* 操作簇:统一浅底胶囊分组,常驻可见(hover 提亮);hairline 分隔破坏性操作 */
+.lane-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 5px;
+  align-items: center;
+  padding: 2px;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  border-radius: var(--radius-chip);
+}
+.lane-actions .ant-btn {
+  font-size: 12px;
+  opacity: 0.78;
+  transition: opacity 0.15s ease;
+}
+.lane-head:hover .lane-actions .ant-btn { opacity: 1; }
+.actions-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 14px;
+  margin-inline: 2px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+.lane-term { padding-inline: 7px; }
+.lane-edit,
+.lane-stop,
+.lane-remove { padding-inline: 5px; }
+.term-label {
+  display: none;
+  margin-inline-start: 5px;
+}
+/* 窄泳道渐进披露(<300px 场景徽标让位;<260px 终端徽标让位;操作簇永不隐藏) */
+@container (min-width: 380px) {
+  .term-label { display: inline; }
+}
 @container (max-width: 300px) {
-  .term-badge,
   .scenario-tag { display: none; }
-  .lane-meta { flex: 0 0 auto; }
 }
-.lane-remove { flex: 0 0 auto; font-size: 11px; }
-.lane-edit { flex: 0 0 auto; font-size: 11px; padding-inline: 4px; }
-.lane-term { flex: 0 0 auto; padding-inline: 5px; }
-.term-badge { flex: 0 0 auto; margin-inline-end: 0; font-family: ui-monospace, Consolas, monospace; font-size: 10px; line-height: 14px; }
-.scenario-tag { flex: 0 0 auto; font-size: 10px; line-height: 14px; }
+@container (max-width: 260px) {
+  .term-badge { display: none; }
+}
 .lane-body {
   flex: 1 1 auto;
   min-height: 0;
+  padding: 8px 4px 16px;
   overflow-y: auto;
 }
 .empty {
