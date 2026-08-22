@@ -79,15 +79,22 @@ export function useClusteredBlocks(
   /** reset 重建挂起:过滤/频道切换后的重算必须立即全量呈现(不能等聚合窗) */
   let rebuildPending = false
 
-  /** 尾部流块未落定且文本过短 → 本拍暂缓(攒出实质内容再上屏) */
+  /**
+   * 呈现过滤(空壳块全量防线):
+   *  ① 无文本流块(纯空白 delta 累计 / 中断回合)任何位置都不上屏——壳都不给
+   *  ② 尾部活动流块且累计文本不足阈值 → 本拍暂缓(攒出实质内容再上屏);
+   *     仅限 tail(仍可能增长);被后续块顶离尾部的短流块是已成内容,照常显示
+   */
   const presentable = (list: EventBlock[]): EventBlock[] => {
+    if (list.length === 0) return list
     const lastIdx = list.length - 1
-    if (lastIdx < 0) return list
-    const tail = list[lastIdx]!
-    if (tail.kind === 'stream' && !tail.settled && buildStreamText(tail).trim().length < MIN_STREAM_PREVIEW) {
-      return list.slice(0, lastIdx)
-    }
-    return list
+    return list.filter((b, i) => {
+      if (b.kind !== 'stream') return true
+      const text = buildStreamText(b).trim()
+      if (!text && !b.overrideText) return false
+      if (i === lastIdx && !b.settled && text.length < MIN_STREAM_PREVIEW) return false
+      return true
+    })
   }
 
   const publish = (): void => {
