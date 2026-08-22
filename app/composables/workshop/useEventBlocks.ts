@@ -279,6 +279,12 @@ export class BlockClusterer {
   push(e: AepEnvelope): EventBlock | null {
     if (e.type === 'channel.snapshot' || e.type === 'pong') return this.last
 
+    // 空内容帧抑制(空白块根因):空 delta / 纯空白落定文本不成块不合并。
+    // 服务端已守卫新增帧;此处兜底历史库旧帧与漏网路径——保证"思考/中间输出"
+    // 类块永远有实质内容,不再出现空白折叠行。
+    if (e.type === 'agent.delta' && !textOf(e)) return this.last
+    if ((e.type === 'agent.status.message' || e.type === 'agent.message') && !textOf(e).trim()) return this.last
+
     const agentId = e.agentId ?? null
     const taskId = taskIdOf(e)
     const agentKey = agentId ?? ''

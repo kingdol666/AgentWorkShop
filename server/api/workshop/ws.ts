@@ -284,12 +284,14 @@ function mapAgentEvent(manager: AgentChannelManager, stream: ChannelStream, even
       publish(manager, stream, 'agent.message', event.message, { agentId, taskId: event.message.taskId ?? taskId })
       break
     case 'delta':
-      publish(manager, stream, 'agent.delta', { delta: event.delta.text }, { agentId, taskId })
+      // 空增量不下发(reasoning 流的空白差额帧):客户端会聚出空白流块
+      if (event.delta.text) publish(manager, stream, 'agent.delta', { delta: event.delta.text }, { agentId, taskId })
       break
     case 'status':
       if (event.status.message) {
+        // 纯空白文本(换行/空格拼接)同样不下发:聚合出"思考/中间输出 (空)"空白块
         const text = event.status.message.parts.map(p => ('text' in p ? p.text : '')).join(' ')
-        if (text) publish(manager, stream, 'agent.status.message', { text }, { agentId, taskId })
+        if (text.trim()) publish(manager, stream, 'agent.status.message', { text }, { agentId, taskId })
       }
       break
     case 'artifact':

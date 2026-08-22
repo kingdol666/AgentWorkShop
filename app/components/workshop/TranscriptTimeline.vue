@@ -294,7 +294,7 @@ const blockDayFlags = computed(() => {
           </div>
         </div>
         <div
-          v-else-if="blocks.length === 0"
+          v-else-if="blocks.length === 0 && totalEvents === 0"
           class="empty"
         >
           <span class="i-tabler-message-dots empty-icon" />
