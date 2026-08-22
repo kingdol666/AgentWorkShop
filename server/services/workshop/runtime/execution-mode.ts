@@ -12,8 +12,10 @@
  * 模式信息存储:任务 metadata['x-aw-exec-mode'] + metadata['x-aw-mode-config']。
  * SchedulerLoop 每轮 tick 时,ModeOrchestrator 根据 channel 当前任务的模式调整 lead 决策 prompt。
  */
+import { randomUUID } from 'node:crypto'
 import type { ExecutionMode } from '../agents/agent-interface'
 import type { WorkspaceTask } from '../types/task'
+import type { A2AArtifact } from '../types/a2a'
 
 /** 模式配置(存储在任务 metadata['x-aw-mode-config']) */
 export interface ModeConfig {
@@ -169,4 +171,45 @@ export function findModeTask(
     }
   }
   return null
+}
+
+/** goal-summary 完成标志判定:artifact 名称约定或正文含总结标头 */
+export function isGoalSummaryArtifact(a: A2AArtifact): boolean {
+  return a.name === 'goal-summary'
+    || a.parts.some(p => 'text' in p && p.text.includes('【目标完成总结】'))
+}
+
+/**
+ * goal 模式收口总结(「目标完成总结」结构化交付物)。
+ * 单一事实源:mock lead 确定性生成 / omp lead 按 prompt 模板自写 / 平台在
+ * taskEngine.complete 保底合成 —— 三路径同构,目标/判定标准/完成过程/最终成果/结论。
+ */
+export function synthesizeGoalSummary(
+  task: WorkspaceTask,
+  children: WorkspaceTask[],
+  criteria: string,
+): A2AArtifact {
+  const results = children
+    .flatMap(c => c.artifacts.flatMap(a => (a.name === 'input' ? [] : a.parts)))
+    .filter((p): p is { text: string } => 'text' in p)
+    .map(p => p.text.trim())
+    .filter(t => t.length > 0)
+    .slice(-8)
+  const conclusion = [
+    `【目标完成总结】`,
+    `目标: ${task.title}`,
+    `判定标准: ${criteria}`,
+    `完成过程: ${children.length > 0 ? children.map(c => `「${c.title}」`).join(' → ') : '(单任务达成)'} 全部完成`,
+    `最终成果: ${results.length > 0 ? results.join('; ') : '(交付物见任务 artifacts)'}`,
+    `结论: 目标已达成,全部任务完成。`,
+  ].join('\n')
+  return {
+    artifactId: randomUUID(),
+    name: 'goal-summary',
+    parts: [
+      { text: conclusion },
+      { text: `标准:${criteria}` },
+      { text: `子任务:${children.length > 0 ? children.map(c => c.title).join(' + ') : task.title}` },
+    ],
+  }
 }

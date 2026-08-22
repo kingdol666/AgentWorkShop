@@ -53,18 +53,24 @@ const expanded = ref(props.block.dupStream)
   align-items: center;
   font-family: var(--font-mono);
   font-size: 10px;
-  opacity: 0.6;
+  color: var(--ink-faint);
 }
 .mini-btn {
-  padding: 0 6px;
-  font-size: 9.5px;
-  color: var(--accent-cobalt);
+  padding: 1px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
   cursor: pointer;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent-cobalt) 35%, transparent);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-chip);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
-.mini-btn:hover { background: color-mix(in srgb, var(--accent-cobalt) 8%, transparent); }
+.mini-btn:hover {
+  color: var(--ink);
+  background: var(--hover-tint);
+  border-color: var(--ink-fainter);
+}
 .artifact-cluster > :deep(.artifact-card) {
   margin-top: 4px;
 }

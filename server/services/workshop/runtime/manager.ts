@@ -20,7 +20,7 @@ import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } fr
 import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentInfo, AgentInterface, AgentWorkspace, AgentEvent, ExecutionMode } from '../agents/agent-interface'
 import type { ModeConfig } from './execution-mode'
-import { encodeTaskMode } from './execution-mode'
+import { encodeTaskMode, isGoalSummaryArtifact } from './execution-mode'
 import type { ChannelRepo } from '../db/channel.repo'
 import type { AgentRepo } from '../db/agent.repo'
 import type { TeamRepo } from '../db/team.repo'
@@ -2095,6 +2095,17 @@ export class AgentChannelManager {
       throw new AppError(409, 'TASK_TERMINAL', `任务 ${input.taskId.slice(0, 8)} 已被平台${task.state === 'CANCELED' ? '取消' : '判定失败'},不能再标记完成;请继续处理队列下一项`)
     }
     const completed = this.getTaskEngine().complete(input.taskId, input.artifacts)
+    // goal 保底合成产物广播(goal 模式父任务且 lead 未自带总结时,taskEngine 追加了
+    // 平台合成的 goal-summary;以 goal-summary 语义 + artifactId 差集识别,幂等不重复广播)
+    const knownIds = new Set([
+      ...task.artifacts.map(a => a.artifactId),
+      ...(input.artifacts ?? []).map(a => a.artifactId),
+    ])
+    for (const artifact of completed.artifacts) {
+      if (isGoalSummaryArtifact(artifact) && !knownIds.has(artifact.artifactId)) {
+        this.runtimeOf(channelId, callerAgentId)?.emitExternal({ kind: 'artifact', artifact }, callerAgentId)
+      }
+    }
     if (completed.parentId) {
       this.getTaskEngine().onChildCompleted(completed)
       const parent = this.getTaskEngine().get(completed.parentId)

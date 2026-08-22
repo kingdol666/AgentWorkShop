@@ -24,10 +24,10 @@ const isJson = computed(() => {
 })
 
 const isDeliverable = computed(() =>
-  props.artifact.name === 'deliverable' || props.artifact.name === 'summary' || props.artifact.name === 'result',
+  props.artifact.name === 'deliverable' || props.artifact.name === 'summary' || props.artifact.name === 'result' || props.artifact.name === 'goal-summary',
 )
 
-/** 工件语义图标(交付物/汇总/输出/输入) */
+/** 工件语义图标(交付物/汇总/输出/输入/goal 收口总结) */
 const artifactIcon = computed(() => {
   switch (props.artifact.name) {
     case 'deliverable': return 'i-tabler-package'
@@ -35,6 +35,7 @@ const artifactIcon = computed(() => {
     case 'result': return 'i-tabler-circle-check'
     case 'output': return 'i-tabler-file-text'
     case 'input': return 'i-tabler-inbox'
+    case 'goal-summary': return 'i-tabler-flag'
     default: return 'i-tabler-receipt-2'
   }
 })

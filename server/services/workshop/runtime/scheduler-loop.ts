@@ -15,6 +15,7 @@ import type { AgentRuntime } from './agent-runtime'
 import {
   extractTaskMode,
   findModeTask,
+  isGoalSummaryArtifact,
   LoopController,
   type ModeConfig,
 } from './execution-mode'
@@ -60,6 +61,10 @@ export class SchedulerLoop {
   private readonly notified = new Set<string>()
   /** WORKING 任务最近一次 progress 与时间(停滞检测) */
   private readonly lastProgress = new Map<string, { progress: number, at: number }>()
+  /** goal 父任务「全部子任务 COMPLETED」首见时刻(宽限后规则引擎兜底收口) */
+  private readonly goalAllDoneAt = new Map<string, number>()
+  /** goal 收口宽限窗(ms):给 lead 充分判定机会,超时平台兜底完成 */
+  private readonly goalGraceMs = 45_000
   /** 成员空闲起始时间(最久空闲 worker 排序) */
   private readonly idleSince = new Map<string, number>()
   /** 当前活跃的执行模式(null = 默认无模式) */
@@ -366,11 +371,30 @@ export class SchedulerLoop {
       if (children.length === 0) continue
       if (task.state === 'COMPLETED' || task.state === 'FAILED' || task.state === 'CANCELED') continue
       const allDone = children.every(c => c.state === 'COMPLETED')
+      // goal/pipeline 父任务的完成判定属于 lead 模式剧本(goal 需满意度判定、
+      // pipeline 需全部阶段收敛),规则引擎不越权提前收口;loop 与无模式照旧兜底
+      const modeInfo = extractTaskMode(task)
+      if (modeInfo && (modeInfo.mode === 'goal' || modeInfo.mode === 'pipeline')) {
+        // goal 收口保活:lead 判定回合可能以纯文本收尾(未调用 complete_task),之后
+        // 状态不再变化 → 监督回合被指纹节流 → goal 永挂 WORKING 直至看门狗误取消。
+        // 全部子任务 COMPLETED 持续超过宽限窗(45s,lead 仍有充分判定机会)后由
+        // 规则引擎兜底收口;taskEngine.complete 内建 goal-summary 合成,标志必然落盘。
+        if (modeInfo.mode !== 'goal') continue
+        if (!allDone || (task.state !== 'WAITING' && task.state !== 'WORKING')) {
+          this.goalAllDoneAt.delete(task.id)
+          continue
+        }
+        const since = this.goalAllDoneAt.get(task.id)
+        if (since === undefined) {
+          this.goalAllDoneAt.set(task.id, now)
+        }
+        else if (now - since >= this.goalGraceMs) {
+          this.goalAllDoneAt.delete(task.id)
+          decisions.push({ kind: 'complete', taskId: task.id })
+        }
+        continue
+      }
       if (allDone && (task.state === 'WAITING' || task.state === 'WORKING')) {
-        // goal/pipeline 父任务的完成判定属于 lead 模式剧本(goal 需满意度判定、
-        // pipeline 需全部阶段收敛),规则引擎不越权提前收口;loop 与无模式照旧兜底
-        const modeInfo = extractTaskMode(task)
-        if (modeInfo && (modeInfo.mode === 'goal' || modeInfo.mode === 'pipeline')) continue
         decisions.push({ kind: 'complete', taskId: task.id })
       }
     }
@@ -462,6 +486,13 @@ export class SchedulerLoop {
         // 汇总成果走统一事件流(与 harness 事件同构,monitor/WS 可见)
         for (const artifact of decision.artifacts ?? []) {
           this.lead.emitExternal({ kind: 'artifact', artifact }, this.lead.agentId)
+        }
+        // goal 保底合成产物(lead 未自带总结时 taskEngine 追加)同样广播
+        const knownArtifacts = new Set((decision.artifacts ?? []).map(a => a.artifactId))
+        for (const artifact of completed.artifacts) {
+          if (isGoalSummaryArtifact(artifact) && !knownArtifacts.has(artifact.artifactId)) {
+            this.lead.emitExternal({ kind: 'artifact', artifact }, this.lead.agentId)
+          }
         }
         // lead 终态记忆沉淀:调度器直接收口不经过 processMessage,此处补齐 harvest(异常不阻塞调度)
         void this.lead.recordTaskMemory(completed).catch(() => {})
