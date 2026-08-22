@@ -111,10 +111,16 @@ def scenario_c(token):
             if st == 'WORKING': sim[ag] = sim.get(ag, 0) + 1; mx = max(mx, sim[ag])
             elif st in ('COMPLETED', 'FAILED', 'CANCELED', 'WAITING'): sim[ag] = max(0, sim.get(ag, 0) - 1)
     check('C 单 WORKING 不变量(并发≤1)', mx <= 1, f'max={mx}')
+    # FIFO:按 events 中每任务 COMPLETED 的出现序,校验每 worker 的完成序 = 提交序
+    order = {}
+    for e in evs:
+        if e['type'] == 'task.status' and (e.get('payload') or {}).get('state') == 'COMPLETED' and e.get('taskId') in tset:
+            order.setdefault(e['taskId'], len(order))
+    seq_of = {tid: i for i, tid in enumerate(ids)}
     per = {}
     for tid in ids:
         a = tmap[tid]['assigneeId']; per.setdefault(a, []).append(tid)
-    fifo = all([int(tmap[x]['title'].split('-')[1].split('(')[0]) for x in lst] == sorted(int(tmap[x]['title'].split('-')[1].split('(')[0]) for x in lst) for lst in per.values())
+    fifo = all([seq_of[x] for x in sorted(lst, key=lambda x: order.get(x, 99))] == sorted(seq_of[x] for x in lst) for lst in per.values())
     check('C 每 worker FIFO', fifo, '; '.join(f'{k[:8]}:{len(v)}' for k, v in per.items()))
     return cid
 
@@ -181,12 +187,17 @@ def main():
     which = sys.argv[1] if len(sys.argv) > 1 else 'all'
     user = api('POST', '/api/users/register', body={'name': f'sv-{int(time.time())%1000000}', 'email': f'sv{int(time.time()*1000)%10**10}@t.local', 'password': 'Test1234!'})
     token = user['token']
+    parts = set(which.split(','))
     cids = []
-    if which in ('all', 'a'): cids.append(scenario_a(token))
-    if which in ('all', 'b'): cids.append(scenario_b(token))
-    if which in ('all', 'c'): cids.append(scenario_c(token))
-    if which in ('all', 'd'): cids.append(scenario_d(token))
-    if which in ('all', 'e'): cids.append(scenario_e(token))
+    # 清理上一轮中断遗留的测试频道(sv- 前缀)
+    for c in api('GET', '/api/workshop/channels', token=token):
+        if str(c.get('name', '')).startswith('sv-'):
+            api('DELETE', f"/api/workshop/channels/{c['id']}", token=token)
+    if 'a' in parts: cids.append(scenario_a(token))
+    if 'b' in parts: cids.append(scenario_b(token))
+    if 'c' in parts: cids.append(scenario_c(token))
+    if 'd' in parts: cids.append(scenario_d(token))
+    if 'e' in parts: cids.append(scenario_e(token))
     audit(token, cids)
     for cid in cids:
         api('DELETE', f'/api/workshop/channels/{cid}', token=token)
