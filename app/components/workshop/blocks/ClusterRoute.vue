@@ -29,6 +29,9 @@ interface RouteRow {
   kind: { icon: string, label: string, tone: string }
   text: string
   time: string
+  /** 回执语义(open-tag action receipt 移植):需对方回复 / 是对某消息的回复 */
+  requireReply: boolean
+  inReplyTo: string
 }
 
 const rows = computed<RouteRow[]>(() =>
@@ -49,6 +52,7 @@ const rows = computed<RouteRow[]>(() =>
             ? { icon: 'i-tabler-bolt', label: '实时注入', tone: 'immediate' }
             : { icon: 'i-tabler-message', label: '协作消息', tone: 'peer' }
     const parts = (e.payload as { parts?: Array<{ text?: string }> }).parts ?? []
+    const replyRaw = meta['x-aw-in-reply-to']
     return {
       seq: e.seq,
       i,
@@ -59,6 +63,8 @@ const rows = computed<RouteRow[]>(() =>
       kind,
       text: parts.map(p => p.text ?? '').join('\n').trim(),
       time: e.at.slice(11, 19),
+      requireReply: meta['x-aw-require-reply'] === 'true',
+      inReplyTo: typeof replyRaw === 'string' ? replyRaw : '',
     }
   }),
 )
@@ -144,6 +150,17 @@ const hasMore = computed(() => rows.value.length > MAX)
           class="route-badge"
           :data-tone="r.kind.tone"
         ><span :class="r.kind.icon" />{{ r.kind.label }}</span>
+        <!-- 回执徽章(open-tag action receipt):需回复 = 等待对方响应;回执 = 对某消息的回复关联 -->
+        <span
+          v-if="r.requireReply"
+          class="route-badge receipt"
+          title="发送方要求回复:接收方须回执执行结果"
+        ><span class="i-tabler-mail-reply" />需回复</span>
+        <span
+          v-if="r.inReplyTo"
+          class="route-badge reply-link aw-mono"
+          :title="`回复关联消息 ${r.inReplyTo}`"
+        >↩ {{ r.inReplyTo.slice(0, 8) }}</span>
         <span class="chat-time aw-mono">{{ r.time }}</span>
       </div>
       <!-- 正文:markdown-lite + @提及 pill -->
@@ -206,7 +223,7 @@ const hasMore = computed(() => rows.value.length > MAX)
   cursor: pointer;
   background: var(--mention);
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
   transition: background var(--transition-fast);
 }
 
@@ -243,7 +260,7 @@ const hasMore = computed(() => rows.value.length > MAX)
   font-weight: 600;
   color: var(--ink-soft);
   background: var(--paper-deep);
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
 }
 
 .route-badge {
@@ -259,6 +276,17 @@ const hasMore = computed(() => rows.value.length > MAX)
 .route-badge[data-tone='immediate'] { color: var(--tone-warning-dot); background: color-mix(in srgb, var(--tone-warning-dot) 15%, transparent); }
 .route-badge[data-tone='notice'] { color: var(--tone-success-dot); background: color-mix(in srgb, var(--tone-success-dot) 12%, transparent); }
 .route-badge[data-tone='peer'] { color: var(--tone-retry-dot); background: color-mix(in srgb, var(--tone-retry-dot) 14%, transparent); }
+
+/* 回执徽章:需回复(琥珀,注意级)/ 回复关联(低视觉权重,等宽短 id 可对账) */
+.route-badge.receipt {
+  color: var(--tone-warning-dot);
+  background: color-mix(in srgb, var(--tone-warning-dot) 14%, transparent);
+}
+.route-badge.reply-link {
+  font-size: 9px;
+  color: var(--ink-fainter);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
 
 .chat-time {
   margin-left: auto;

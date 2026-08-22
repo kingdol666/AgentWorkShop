@@ -156,6 +156,8 @@ const channelSummary = (channelIds: string[]) => channelIds.map((id) => {
   return {
     id,
     name: meta?.name ?? id.slice(0, 8),
+    /** 实体基线(WS 快照)是否已到达:未到时计数不可信,展示"同步中"而非误导性的 0 */
+    synced: meta !== undefined,
     agents: agents.length,
     busy: agents.filter(a => a.state === 'busy').length,
     activeTasks: (entities.tasks[id] ?? []).filter(t => !['COMPLETED', 'CANCELED', 'FAILED'].includes(t.state)).length,
@@ -359,7 +361,10 @@ useHead({ title: 'Workshop · Agent Harness' })
                   :class="{ live: ch.activeTasks > 0 }"
                 />
                 <span class="ch-name">{{ ch.name }}</span>
-                <span class="ch-meta">{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</span>
+                <span class="ch-meta">
+                  <template v-if="ch.synced">{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</template>
+                  <template v-else>同步中…</template>
+                </span>
               </div>
               <div
                 v-if="ws.channelIds.length === 0"

@@ -55,6 +55,22 @@ const STATE_TONE: Record<string, { bg: string, dot: string }> = {
   CANCELED: { bg: 'var(--tone-neutral-dot)', dot: 'var(--tone-neutral-dot)' },
 }
 const toneOf = (state: string) => STATE_TONE[state] ?? STATE_TONE.SUBMITTED!
+
+/**
+ * 状态人类语言(open-tag State Language 移植):状态不只靠颜色,chip 同时给出
+ * 人类短语 + 等宽枚举代码(标识符可读可复制)。关键区分:"COMPLETED = 经 lead
+ * 验收的完成"(completion gate)——executor 跑完只是 WORKING→终态迁移,不是完成。
+ */
+const STATE_LABEL: Record<string, string> = {
+  SUBMITTED: '已提交',
+  ASSIGNED: '已指派',
+  WORKING: '执行中',
+  WAITING: '等待合并',
+  COMPLETED: '完成·经验收',
+  FAILED: '失败·待改派',
+  CANCELED: '已取消',
+}
+const labelOf = (state: string) => STATE_LABEL[state] ?? state
 </script>
 
 <template>
@@ -71,11 +87,12 @@ const toneOf = (state: string) => STATE_TONE[state] ?? STATE_TONE.SUBMITTED!
         class="state-chip"
         :style="{ background: toneOf(s).bg }"
         :data-state="s"
+        :title="`状态代码 ${s}`"
       >
         <span
           class="state-dot"
           :style="{ background: toneOf(s).dot }"
-        />{{ s }}
+        />{{ labelOf(s) }}<span class="state-code">{{ s }}</span>
       </span>
     </template>
     <span class="task-title">{{ title }}</span>
@@ -104,14 +121,19 @@ const toneOf = (state: string) => STATE_TONE[state] ?? STATE_TONE.SUBMITTED!
 }
 .state-chip {
   display: inline-flex;
-  gap: 4px;
+  gap: 5px;
   align-items: center;
   padding: 1px 7px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.05em;
+  font-family: var(--font-body);
+  font-size: 10px;
   color: var(--ink);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
+}
+.state-chip .state-code {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.05em;
+  opacity: 0.55;
 }
 
 .state-dot {

@@ -7,13 +7,23 @@ import { getRouterParam } from 'h3'
 import { AppError } from '../../../../../utils/errors'
 import { defineApiHandler } from '../../../../../utils/response'
 import { getWorkshopManager } from '../../../../../plugins/workshop'
-import { resolveCaller } from '../../../caller'
+import { resolveAgentOrUser } from '../../../caller'
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const memoryId = getRouterParam(event, 'memoryId')!
-  const caller = resolveCaller(event)
-  if (caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可删团队记忆')
-  await getWorkshopManager().deleteTeamMemory(channelId, caller.id, memoryId)
+  // 双域鉴权:Agent 成员 token(作业面)或用户 token(控制台 owner)
+  const who = resolveAgentOrUser(event)
+  const manager = getWorkshopManager()
+  let byOwner = false
+  if (who.kind === 'agent') {
+    if (who.caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可删团队记忆')
+  }
+  else {
+    const ch = manager.getChannelForUser(channelId, who.user.id)
+    manager.requireOwned(ch.ownerUserId, who.user.id, 'channel')
+    byOwner = true
+  }
+  await manager.deleteTeamMemory(channelId, who.kind === 'agent' && !byOwner ? who.caller.id : '__team__', memoryId, { byOwner })
   return { deleted: true, memoryId }
 })

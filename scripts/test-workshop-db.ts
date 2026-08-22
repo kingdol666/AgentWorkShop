@@ -137,8 +137,9 @@ function testMessageStateMachine(db: DatabaseSync): void {
   check('parseJson 读回 parts', parseJson<{ text: string }[]>(m1.partsJson, []).length === 1)
   check('parseJson 解析失败返回默认值', parseJson('{broken', []).length === 0)
 
-  repo.markConsuming(m1.id)
-  check('markConsuming 后 pending 减为 1', repo.listPendingByChannelAgent(ch.id, 'agent-a').length === 1)
+  check('claim 首次认领成功', repo.claim(m1.id) === true)
+  check('claim 后 pending 减为 1', repo.listPendingByChannelAgent(ch.id, 'agent-a').length === 1)
+  check('claim 重复认领失败(唯一所有权)', repo.claim(m1.id) === false)
   const consuming = db.prepare(`SELECT state FROM messages WHERE id = ?`).get(m1.id) as { state: string }
   check('m1 state 变为 consuming', consuming.state === 'consuming')
 
@@ -146,7 +147,7 @@ function testMessageStateMachine(db: DatabaseSync): void {
   const consumed = db.prepare(`SELECT state, consumed_at FROM messages WHERE id = ?`).get(m1.id) as { state: string, consumed_at: string | null }
   check('markConsumed 后 state=consumed 且 consumed_at 非空', consumed.state === 'consumed' && consumed.consumed_at != null)
 
-  repo.markConsuming(m2.id)
+  repo.claim(m2.id)
   repo.resetConsuming()
   const m2After = db.prepare(`SELECT state FROM messages WHERE id = ?`).get(m2.id) as { state: string }
   check('resetConsuming 将 consuming 重置为 pending', m2After.state === 'pending')

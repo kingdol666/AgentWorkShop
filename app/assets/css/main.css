@@ -86,10 +86,10 @@
   /* 图标微交互专用回弹(仅 hover/focus 反馈) */
   --im-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* 字体:serif 展示 + Inter 正文 + mono 数据 */
+  /* 字体:serif 展示 + Geist 正文 + mono 数据(Geist 替换 Inter:design-taste 技术字体规范) */
   --font-display: 'EB Garamond', 'Songti SC', 'SimSun', 'Times New Roman', serif;
-  --font-body: 'Inter Variable', 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
-  --font-mono: 'IBM Plex Mono', 'Cascadia Mono', ui-monospace, consolas, monospace;
+  --font-body: 'Geist Variable', 'Geist', -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', 'Geist Mono', 'IBM Plex Mono', 'Cascadia Mono', ui-monospace, consolas, monospace;
 
   /* 分层:深度靠 surface 阶梯 + hairline;悬浮件用同色系淡投影 */
   --shadow-offset: none;
@@ -198,7 +198,7 @@ h2 {
   background: var(--line-strong);
   border: 3px solid transparent;
   background-clip: content-box;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -219,7 +219,7 @@ h2 {
   color: var(--ink);
   cursor: pointer;
   background: var(--mention);
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
   transition: background var(--transition-fast);
 }
 
@@ -233,7 +233,7 @@ h2 {
   padding: 5px 12px 6px;
   background: color-mix(in srgb, var(--gh-c) 9%, transparent);
   border-left: 3px solid var(--gh-c);
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 var(--radius-panel-sm) var(--radius-panel-sm) 0;
 }
 
 .gh-alert .gh-title {
@@ -315,7 +315,7 @@ ul.task-list {
   position: relative;
   overflow: hidden;
   background: var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
 }
 
 .aw-skel::after {
@@ -348,7 +348,7 @@ ul.task-list {
   pointer-events: none;
   background: var(--paper-raised);
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: var(--radius-panel);
   box-shadow: var(--shadow-float);
   animation: mh-in var(--transition-fast) cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -890,6 +890,11 @@ ul.task-list {
   border-radius: var(--radius-panel) !important;
 }
 
+/* 可调宽抽屉:panel 定位上下文(drawer-resizer 锚定左缘;content 不滚动,手柄不随 body 滚动) */
+.aw-resizable-drawer .ant-drawer-content {
+  position: relative;
+}
+
 .ant-modal-header,
 .ant-drawer-header {
   border-bottom: 1px solid var(--line) !important;
@@ -906,7 +911,7 @@ ul.task-list {
 .ant-badge .ant-badge-count {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   box-shadow: none;
 }
 
@@ -929,11 +934,11 @@ ul.task-list {
 
 /* 进度条:圆角轨道 */
 .ant-progress-bg {
-  border-radius: 999px !important;
+  border-radius: var(--radius-pill) !important;
 }
 
 .ant-progress-inner {
-  border-radius: 999px !important;
+  border-radius: var(--radius-pill) !important;
   background: var(--paper-deep);
 }
 
@@ -972,6 +977,15 @@ ul.task-list {
   border-radius: 1px;
 }
 
+/* 面板拖拽调宽进行中(PaneSplitter 挂载):禁文本选中/统一列宽光标,防拖动误触 */
+.aw-pane-dragging {
+  cursor: col-resize;
+  user-select: none;
+}
+.aw-pane-dragging * {
+  cursor: col-resize !important;
+}
+
 /* 动效敏感用户:全局收敛(进场/流式动画退化为即时呈现) */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -980,5 +994,20 @@ ul.task-list {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  /* 例外:antd 组件的运动状态机(抽屉/弹窗/下拉)靠 transitionend·animationend
+     事件清理 motion 类;0.01ms 突变在部分环境丢事件 → 抽屉卡死在
+     enter-start/leave-active(面板停在屏外不可见)。这些是位置过场而非装饰动效,
+     恢复正常时长保证功能可用(reduced-motion 语义不被破坏:无循环/无弹跳)。 */
+  .ant-drawer-content-wrapper,
+  .ant-drawer-mask,
+  .ant-modal,
+  .ant-modal-mask,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover,
+  .ant-tooltip {
+    transition-duration: 200ms !important;
+    animation-duration: 200ms !important;
   }
 }

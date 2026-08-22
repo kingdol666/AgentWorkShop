@@ -67,8 +67,8 @@ const currentTitle = computed(() => {
   opacity: 0.88;
 }
 .life-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong, #666); }
-.life-dot[data-state='busy'] { background: var(--accent-cobalt, #1677ff); }
-.life-dot[data-state='idle'] { background: var(--accent-moss, #52c41a); }
+.life-dot[data-state='busy'] { background: var(--accent-cobalt); }
+.life-dot[data-state='idle'] { background: var(--accent-moss); }
 .life-row {
   display: flex;
   gap: 8px;

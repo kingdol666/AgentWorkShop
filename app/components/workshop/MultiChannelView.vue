@@ -3,12 +3,26 @@
  * 多 channel 同屏视图(P2):workspace 挂载的全部 channel 并排 mini 时间线。
  * 单条 WS 连接多路 sub 的 UI 呈现面;每列独立事件流 + 状态头(seq/事件数/活跃任务)。
  */
+import { useStorage } from '@vueuse/core'
 import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useEventsStore } from '@/app/stores/workshop/events'
 
 const props = defineProps<{ wsId: string }>()
 const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()
+
+// 每列宽度拖拽调节(PaneSplitter;按 channelId 持久化,双击复位默认宽)
+const COL_W_DEFAULT = 360
+const colWidths = useStorage<Record<string, number>>('aw.harness.mcColW', {})
+const colWidth = (id: string): number => colWidths.value[id] ?? COL_W_DEFAULT
+const resizeCol = (id: string, d: number): void => {
+  colWidths.value = { ...colWidths.value, [id]: Math.min(760, Math.max(300, colWidth(id) + d)) }
+}
+const resetCol = (id: string): void => {
+  const next = { ...colWidths.value }
+  Reflect.deleteProperty(next, id)
+  colWidths.value = next
+}
 
 const wsStore = useWorkspacesStore()
 const entities = useEntitiesStore()
@@ -21,6 +35,8 @@ const columns = computed(() =>
     return {
       id,
       name: entities.channels[id]?.name ?? id.slice(0, 8),
+      /** 实体基线(WS 快照)是否已到达:未到时计数不可信 */
+      synced: entities.channels[id] !== undefined,
       busy: agents.filter(a => a.state === 'busy').length,
       agents: agents.length,
       activeTasks: tasks.filter(t => !['COMPLETED', 'CANCELED', 'FAILED'].includes(t.state)).length,
@@ -56,35 +72,48 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
     >
       左侧挂载多个 Channel 后在此同屏观察
     </div>
-    <div
-      v-for="col in columns"
+    <template
+      v-for="(col, i) in columns"
       :key="col.id"
-      class="col"
     >
-      <div class="col-head">
-        <span class="col-name">{{ col.name }}</span>
-        <span class="col-meta">{{ col.agents }}a / 忙{{ col.busy }} / 任务{{ col.activeTasks }} / seq{{ col.seq }}</span>
-      </div>
-      <div class="col-body">
-        <div
-          v-if="col.items.length === 0"
-          class="col-empty"
-        >
-          等待事件…
+      <div
+        class="col"
+        :style="{ flexBasis: `${colWidth(col.id)}px` }"
+      >
+        <div class="col-head">
+          <span class="col-name">{{ col.name }}</span>
+          <span class="col-meta">
+            <template v-if="col.synced">{{ col.agents }}a / 忙{{ col.busy }} / 任务{{ col.activeTasks }} / seq{{ col.seq }}</template>
+            <template v-else>同步中…</template>
+          </span>
         </div>
-        <div
-          v-for="e in col.items"
-          :key="`${col.id}-${e.seq}`"
-          class="mini-event"
-          :class="{ clickable: e.type === 'task.status' || e.type === 'a2a.artifact' }"
-          @click="e.type === 'task.status' && emit('openTask', (e.payload as { taskId: string }).taskId)"
-        >
-          <span class="me-time">{{ e.at.slice(11, 19) }}</span>
-          <span class="me-agent">{{ e.agentId?.slice(0, 4) ?? 'sys' }}</span>
-          <span class="me-text">{{ summaryOf(e) }}</span>
+        <div class="col-body">
+          <div
+            v-if="col.items.length === 0"
+            class="col-empty"
+          >
+            等待事件…
+          </div>
+          <div
+            v-for="e in col.items"
+            :key="`${col.id}-${e.seq}`"
+            class="mini-event"
+            :class="{ clickable: e.type === 'task.status' || e.type === 'a2a.artifact' }"
+            @click="e.type === 'task.status' && emit('openTask', (e.payload as { taskId: string }).taskId)"
+          >
+            <span class="me-time">{{ e.at.slice(11, 19) }}</span>
+            <span class="me-agent">{{ e.agentId?.slice(0, 4) ?? 'sys' }}</span>
+            <span class="me-text">{{ summaryOf(e) }}</span>
+          </div>
         </div>
       </div>
-    </div>
+      <workshop-pane-splitter
+        v-if="i < columns.length - 1"
+        :label="`拖拽调节 ${col.name} 列宽`"
+        @resize="d => resizeCol(col.id, d)"
+        @reset="resetCol(col.id)"
+      />
+    </template>
   </div>
 </template>
 
@@ -99,11 +128,11 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
 }
 .col {
   display: flex;
-  flex: 0 0 360px;
+  flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
   flex-direction: column;
   min-width: 300px;
   border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-  border-radius: 8px;
+  border-radius: var(--radius-panel-sm);
 }
 .col-head {
   display: flex;

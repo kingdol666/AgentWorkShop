@@ -40,8 +40,10 @@ export default defineNuxtConfig({
 
   css: [
     '~/assets/css/main.css',
-    // warm-editorial 设计系统字体:Inter 正文 + EB Garamond 衬线 display + 等宽数据字体(全部本地打包,离线可用)
-    '@fontsource-variable/inter',
+    // warm-editorial 设计系统字体:Geist 正文 + EB Garamond 衬线 display + 等宽数据字体(全部本地打包,离线可用)
+    // Geist 替换 Inter(design-taste 规范:技术 UI 用高辨识 sans,禁用 Inter)
+    '@fontsource-variable/geist',
+    '@fontsource-variable/geist-mono',
     '@fontsource/eb-garamond/400.css',
     '@fontsource/eb-garamond/400-italic.css',
     '@fontsource/ibm-plex-mono/400.css',

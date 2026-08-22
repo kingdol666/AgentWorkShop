@@ -433,7 +433,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
   min-height: 0;
   padding: 2px 8px 8px;
   background: var(--paper-deep);
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
 }
 .task-col.drop-over {
   background: var(--tone-info-bg);
@@ -480,7 +480,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
   cursor: pointer;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-panel);
   transition: transform 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
 }
 .card.task:hover {
@@ -530,7 +530,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
   color: var(--ink-fainter);
   text-align: center;
   border: 1.5px dashed var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-panel);
 }
 
 /* 状态胶囊:hairline pill,色调随列 */
@@ -569,7 +569,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
   cursor: pointer;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-panel);
   transition: border-color 0.12s ease;
 }
 .list-row:hover { border-color: var(--line-strong); }

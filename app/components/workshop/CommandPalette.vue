@@ -183,7 +183,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   overflow: hidden;
   background: var(--paper-raised);
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: var(--radius-panel);
   box-shadow: var(--shadow-float);
   animation: palette-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -266,6 +266,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   color: var(--ink-soft);
   background: var(--paper-deep);
   border: 1px solid var(--line-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
 }
 </style>

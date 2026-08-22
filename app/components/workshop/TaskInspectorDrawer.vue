@@ -6,6 +6,7 @@
  *  - 子任务树;操作:取消任务
  */
 import { message } from 'ant-design-vue'
+import { useStorage } from '@vueuse/core'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useEventsStore } from '@/app/stores/workshop/events'
 import { useWorkshopApi, type TaskDto } from '@/app/composables/workshop/useWorkshopApi'
@@ -15,6 +16,13 @@ const props = defineProps<{
   taskId: string | null
 }>()
 const open = defineModel<boolean>('open', { default: false })
+
+// 抽屉宽度拖拽调节(PaneSplitter;持久化,双击复位)
+const DRAWER_W_DEFAULT = 560
+const drawerWidth = useStorage('aw.drawer.taskW', DRAWER_W_DEFAULT)
+const resizeDrawer = (d: number): void => {
+  drawerWidth.value = Math.min(960, Math.max(380, drawerWidth.value - d))
+}
 
 const entities = useEntitiesStore()
 const events = useEventsStore()
@@ -104,9 +112,17 @@ const stateColor: Record<string, string> = {
   <a-drawer
     v-model:open="open"
     placement="right"
-    :width="560"
+    :width="drawerWidth"
     :title="detail?.title ?? taskView?.title ?? '任务详情'"
+    class="aw-resizable-drawer"
   >
+    <workshop-pane-splitter
+      variant="bare"
+      class="drawer-resizer"
+      label="拖拽调节抽屉宽度"
+      @resize="resizeDrawer"
+      @reset="drawerWidth = DRAWER_W_DEFAULT"
+    />
     <a-spin :spinning="loading">
       <template v-if="detail || taskView">
         <div class="head">
@@ -254,6 +270,12 @@ const stateColor: Record<string, string> = {
 </template>
 
 <style scoped>
+/* 抽屉左缘调宽手柄:锚定 panel 左缘(aw-resizable-drawer 提供 positioning 上下文) */
+.drawer-resizer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 8;
+}
 .head {
   display: flex;
   gap: 8px;
@@ -300,7 +322,7 @@ const stateColor: Record<string, string> = {
   gap: 6px;
   align-items: center;
   padding: 4px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
 }
 .child-row:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
 .child-title {

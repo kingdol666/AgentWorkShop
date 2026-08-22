@@ -10,16 +10,22 @@ export type WsState = 'connecting' | 'open' | 'closed'
 /** 半死连接阈值:超过该时长无任何帧(pong/事件)→ 主动断开重连 */
 const STALE_MS = 45_000
 
-/** 数据级失联阈值:pong 仍应答但长期无数据帧(服务端 HMR 后 hub 失联等)→ 主动重连恢复订阅 */
-const DATA_STALE_MS = 180_000
+/**
+ * 数据级失联阈值:pong 仍应答但长期无数据帧(服务端 HMR 后 hub 失联等)→ 主动重连恢复订阅。
+ * 需与心跳周期(30s)联动:检测延迟最坏为阈值 + 一个心跳周期。阈值须显著大于
+ * 空闲 channel 的正常静默(无活动即无数据帧),避免健康空闲连接被反复重连。
+ */
+const DATA_STALE_MS = 90_000
 
 export const useWsConnectionStore = defineStore('workshop.connection', {
   state: () => ({
     state: 'closed' as WsState,
     /** 已订阅 channel → 最近 seq(断线续传游标) */
     cursors: {} as Record<string, number>,
-    /** 断线期间缓冲的待确认事件数(重放后清零) */
-    pendingReplay: 0,
+    /** 最近一次数据帧到达时间(ms;0 = 尚无数据)——状态条"最后已知更新"依据(open-tag 规范:断连时不假装在线) */
+    lastDataAt: 0,
+    /** 断线期间是否有已订阅 channel 游标待对齐(重连后收到首帧清零) */
+    pendingReplay: false,
     lastError: '' as string,
     retryCount: 0,
   }),
@@ -31,6 +37,8 @@ export class WorkshopWsSession {
   private retry = 0
   private closedByUser = false
   private subscribed = new Set<string>()
+  /** 每 channel 订阅引用计数:多组件(总览页/控制台/抽屉)共享同一订阅,最后一个引用释放才真正退订 */
+  private refCounts = new Map<string, number>()
   /** 每 channel 最近 seq(重连续传游标;由事件回调 updateCursor 持续推进) */
   private lastSeqByChannel = new Map<string, number>()
   /** 最近收帧时间(半死连接检测基准) */
@@ -43,6 +51,8 @@ export class WorkshopWsSession {
   constructor(
     private readonly onEvent: (e: AepEnvelope) => void,
     private readonly onStateChange: (s: WsState, retry: number) => void,
+    private readonly onPendingReplay: () => void = () => {},
+    private readonly onDataRecovered: () => void = () => {},
   ) {}
 
   /** 事件消费方推进游标(供重连 lastSeq 续传) */
@@ -74,7 +84,11 @@ export class WorkshopWsSession {
       this.lastFrameAt = Date.now()
       try {
         const e = JSON.parse(ev.data as string) as AepEnvelope
-        if (e.type !== 'pong') this.lastDataAt = Date.now()
+        if (e.type !== 'pong') {
+          this.lastDataAt = Date.now()
+          // 重连后首帧:断线期间的缺口已由服务端重放/快照对齐
+          this.onDataRecovered()
+        }
         this.onEvent(e)
       }
       catch { /* 非 JSON 帧忽略 */ }
@@ -86,6 +100,8 @@ export class WorkshopWsSession {
         return
       }
       this.onStateChange('closed', this.retry)
+      // 有订阅游标的断线:重连后需服务端重放对齐(状态条提示"同步中")
+      if (this.subscribed.size > 0) this.onPendingReplay()
       // 指数退避:1s → 2s → 4s → … → 10s 封顶
       const delay = Math.min(1000 * 2 ** this.retry, 10_000)
       this.retry += 1
@@ -111,6 +127,10 @@ export class WorkshopWsSession {
   }
 
   subscribe(channelId: string, lastSeq?: number): void {
+    const prev = this.refCounts.get(channelId) ?? 0
+    this.refCounts.set(channelId, prev + 1)
+    // 已有持有者:会话已订阅,不再重发 sub(重复帧会触发服务端重放/快照,浪费且扰动 UI)
+    if (prev > 0) return
     this.subscribed.add(channelId)
     if (typeof lastSeq === 'number') this.lastSeqByChannel.set(channelId, lastSeq)
     if (this.ws?.readyState === WebSocket.OPEN) this.sendSub(channelId, this.lastSeqByChannel.get(channelId))
@@ -118,8 +138,21 @@ export class WorkshopWsSession {
   }
 
   unsubscribe(channelId: string): void {
-    this.subscribed.delete(channelId)
-    if (this.ws?.readyState === WebSocket.OPEN) this.ws?.send(JSON.stringify({ type: 'unsub', channelId }))
+    const prev = this.refCounts.get(channelId) ?? 0
+    // 引用计数归零才真正退订:页面切换时旧页卸载不得拆掉新页仍在用的订阅
+    if (prev <= 1) {
+      this.refCounts.delete(channelId)
+      this.subscribed.delete(channelId)
+      if (this.ws?.readyState === WebSocket.OPEN) this.ws?.send(JSON.stringify({ type: 'unsub', channelId }))
+    }
+    else {
+      this.refCounts.set(channelId, prev - 1)
+    }
+  }
+
+  /** 当前 channel 的订阅引用数(0 = 会话已不持有;消费方据此决定是否清本地缓冲) */
+  refCount(channelId: string): number {
+    return this.refCounts.get(channelId) ?? 0
   }
 
   ping(): void {

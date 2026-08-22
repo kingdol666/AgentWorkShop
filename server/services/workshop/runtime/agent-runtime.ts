@@ -230,9 +230,16 @@ export class AgentRuntime {
    * 触发器语义:metadata['x-aw-require-reply']='true' 时,注入文本携带回执指令——
    * 接收方须把执行结果与对方所需内容经 send_message_to_agent 回给发送者,
    * 并以 x-aw-in-reply-to 关联原消息、自带 x-aw-require-reply 声明是否需再响应。
+   *
+   * 恰好一次契约:注入前先原子认领(pending → consuming)。认领失败 = 消息已被
+   * poll_messages 读即取或消费循环 dequeue 起回合(唯一所有权),直接让路;
+   * 认领成功后 steer 期间消息不可见(peek/dequeue 只看 pending),投递路径唯一。
+   * steer 未确认注入('deferred'/异常)→ 释放认领回 pending 并唤醒等待方接管。
    */
   injectSteer(message: A2AMessage): void {
     if (this.state !== 'busy' || !this.impl.steer) return
+    // 原子认领:与 poll_messages 读即取 / 消费循环 dequeue 竞争唯一所有权
+    if (!this.deps.mailbox.claim(message.messageId)) return
     const text = message.parts
       .map((p) => {
         if ('text' in p) return p.text
@@ -252,15 +259,27 @@ export class AgentRuntime {
     }
     this.impl.steer(lines.join('\n'))
       .then((mode) => {
-        // 仅确认注入流式会话才消费;其余路径消息保持 pending
-        // (poll_messages 即时取走 或 消费循环起回合),杜绝未送达先消费
         if (mode === 'steer') {
+          // 确认注入流式会话 → 消费落定(at-least-once:进程崩溃由 resetConsuming 兜底)
           this.deps.mailbox.markConsumed(message.messageId)
+        }
+        else {
+          // deferred:释放认领回 pending,poll_messages(250ms 兜底重查)或
+          // 本回合结束后的消费循环(FIFO)接管,消息必达不丢失
+          this.releaseSteerClaim(message.messageId)
         }
       })
       .catch((err) => {
-        console.error(`[AgentRuntime:${this.agentId}] steer 失败(消息保持 pending 待循环处理):`, err)
+        console.error(`[AgentRuntime:${this.agentId}] steer 失败(释放认领回 pending 待循环处理):`, err)
+        this.releaseSteerClaim(message.messageId)
       })
+  }
+
+  /** 释放 steer 认领:consuming → pending + 唤醒 dequeue 门闩与到信等待方 */
+  private releaseSteerClaim(messageId: string): void {
+    if (this.deps.mailbox.requeue(messageId)) {
+      this.deps.mailbox.wake()
+    }
   }
 
   /**

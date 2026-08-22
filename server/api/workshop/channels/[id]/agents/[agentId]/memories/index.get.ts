@@ -7,14 +7,23 @@ import { getRouterParam } from 'h3'
 import { AppError } from '../../../../../../../utils/errors'
 import { defineApiHandler } from '../../../../../../../utils/response'
 import { getWorkshopManager } from '../../../../../../../plugins/workshop'
-import { resolveCallerOrNull } from '../../../../../caller'
+import { resolveAgentOrUser } from '../../../../../caller'
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const agentId = getRouterParam(event, 'agentId')!
-  const caller = resolveCallerOrNull(event)
-  if (!caller || caller.channelId !== channelId) {
-    throw new AppError(401, 'UNAUTHORIZED', '需要有效的 Agent token')
+  // 双域鉴权:Agent 成员 token(作业面)或用户 token(控制台 owner)
+  const who = resolveAgentOrUser(event)
+  const manager = getWorkshopManager()
+  let byOwner = false
+  if (who.kind === 'agent') {
+    if (who.caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可观察 Agent 记忆')
   }
-  return getWorkshopManager().listMemories(channelId, agentId)
+  else {
+    const ch = manager.getChannelForUser(channelId, who.user.id)
+    manager.requireOwned(ch.ownerUserId, who.user.id, 'channel')
+    byOwner = true
+  }
+  void byOwner
+  return manager.listMemories(channelId, agentId)
 })

@@ -17,6 +17,8 @@ const tab = ref<'members' | 'tasks' | 'memory' | 'stats'>('members')
 const agents = computed(() => entities.agents[props.channelId] ?? [])
 const tasks = computed(() => entities.tasks[props.channelId] ?? [])
 const rootTasks = computed(() => tasks.value.filter(t => !t.parentId))
+/** 实体基线(WS 快照)是否已到达:未到时列表为空 ≠ 真的没有,展示同步提示 */
+const synced = computed(() => entities.channels[props.channelId] !== undefined)
 
 // 成员能力画像(koda 运营信号):按任务历史算成功率/均耗时
 const capability = computed(() => {
@@ -48,9 +50,9 @@ const capLine = (agentId: string): string => {
 const childCount = (id: string): number => tasks.value.filter(t => t.parentId === id).length
 
 const stateDot: Record<string, string> = {
-  idle: '#52c41a',
-  busy: '#1677ff',
-  stopped: '#8c8c8c',
+  idle: 'var(--tone-success-dot)',
+  busy: 'var(--tone-info-dot)',
+  stopped: 'var(--tone-neutral-dot)',
 }
 const taskStateColor: Record<string, string> = {
   SUBMITTED: 'default',
@@ -82,7 +84,7 @@ const taskStateColor: Record<string, string> = {
         >
           <span
             class="dot"
-            :style="{ background: stateDot[a.state] ?? '#8c8c8c' }"
+            :style="{ background: stateDot[a.state] ?? 'var(--tone-neutral-dot)' }"
           />
           <div class="member-info">
             <div class="member-name">
@@ -105,6 +107,12 @@ const taskStateColor: Record<string, string> = {
               {{ capLine(a.agentId) }}
             </div>
           </div>
+        </div>
+        <div
+          v-if="agents.length === 0"
+          class="empty"
+        >
+          {{ synced ? '暂无成员' : '成员同步中…' }}
         </div>
       </a-tab-pane>
 
@@ -143,7 +151,7 @@ const taskStateColor: Record<string, string> = {
           v-if="rootTasks.length === 0"
           class="empty"
         >
-          暂无任务
+          {{ synced ? '暂无任务' : '任务同步中…' }}
         </div>
       </a-tab-pane>
 
@@ -184,7 +192,7 @@ const taskStateColor: Record<string, string> = {
   padding: 6px 8px;
   margin: 2px 0;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
 }
 .member:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
 .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
@@ -206,7 +214,7 @@ const taskStateColor: Record<string, string> = {
   color: var(--ink-faint);
 }
 .ct { opacity: 0.8; }
-.task { padding: 6px 8px; margin: 2px 0; border-radius: 6px; }
+.task { padding: 6px 8px; margin: 2px 0; border-radius: var(--radius-chip); }
 .task:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
 .task-head { display: flex; gap: 6px; align-items: center; }
 .state { margin-inline-end: 0; font-size: 10px; }

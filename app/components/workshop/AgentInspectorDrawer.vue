@@ -8,6 +8,7 @@
  * lead 成员不提供启停与移除(移除 lead 会使 channel 失去调度,须走 channel 删除)。
  */
 import { message } from 'ant-design-vue'
+import { useStorage } from '@vueuse/core'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useEventsStore } from '@/app/stores/workshop/events'
 import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
@@ -20,6 +21,13 @@ const props = defineProps<{
 }>()
 const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ (e: 'removed', agentId: string): void }>()
+
+// 抽屉宽度拖拽调节(PaneSplitter;持久化,双击复位)
+const DRAWER_W_DEFAULT = 520
+const drawerWidth = useStorage('aw.drawer.agentW', DRAWER_W_DEFAULT)
+const resizeDrawer = (d: number): void => {
+  drawerWidth.value = Math.min(900, Math.max(360, drawerWidth.value - d))
+}
 
 const entities = useEntitiesStore()
 const events = useEventsStore()
@@ -127,9 +135,9 @@ const send = async (): Promise<void> => {
 }
 
 const stateDot: Record<string, string> = {
-  idle: '#52c41a',
-  busy: '#1677ff',
-  stopped: '#8c8c8c',
+  idle: 'var(--tone-success-dot)',
+  busy: 'var(--tone-info-dot)',
+  stopped: 'var(--tone-neutral-dot)',
 }
 const stateColor: Record<string, string> = {
   SUBMITTED: 'default',
@@ -146,15 +154,22 @@ const stateColor: Record<string, string> = {
   <a-drawer
     v-model:open="open"
     placement="right"
-    :width="520"
+    :width="drawerWidth"
     :title="agent ? `${agent.name}(${agent.role})` : 'Agent'"
-    class="agent-drawer"
+    class="agent-drawer aw-resizable-drawer"
   >
+    <workshop-pane-splitter
+      variant="bare"
+      class="drawer-resizer"
+      label="拖拽调节抽屉宽度"
+      @resize="resizeDrawer"
+      @reset="drawerWidth = DRAWER_W_DEFAULT"
+    />
     <template v-if="agent">
       <div class="head">
         <span
           class="dot"
-          :style="{ background: stateDot[agent.state] ?? '#8c8c8c' }"
+          :style="{ background: stateDot[agent.state] ?? 'var(--tone-neutral-dot)' }"
         />
         <span class="state-text">{{ agent.state }}</span>
         <a-tag>{{ agent.harness }}</a-tag>
@@ -202,7 +217,7 @@ const stateColor: Record<string, string> = {
             任务队列
             <a-badge
               :count="assignedTasks.working.length"
-              :number-style="{ backgroundColor: '#1677ff' }"
+              :number-style="{ backgroundColor: 'var(--tone-info-dot)' }"
               size="small"
             />
           </template>
@@ -310,6 +325,12 @@ const stateColor: Record<string, string> = {
 </template>
 
 <style scoped>
+/* 抽屉左缘调宽手柄:锚定 panel 左缘(aw-resizable-drawer 提供 positioning 上下文) */
+.drawer-resizer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 8;
+}
 .head {
   display: flex;
   gap: 8px;
@@ -323,7 +344,7 @@ const stateColor: Record<string, string> = {
 .current-task {
   padding: 6px 0;
   font-size: 12px;
-  color: #1677ff;
+  color: var(--tone-info-dot);
   border-bottom: 1px dashed color-mix(in srgb, currentColor 10%, transparent);
 }
 .stream {
@@ -339,7 +360,7 @@ const stateColor: Record<string, string> = {
   gap: 6px;
   align-items: center;
   padding: 4px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
 }
 .queue-task:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
 .state { margin-inline-end: 0; font-size: 10px; }

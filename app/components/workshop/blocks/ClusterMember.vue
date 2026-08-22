@@ -70,7 +70,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   font-size: 10.5px;
   line-height: 20px;
 }
-.member-line[data-op='added'] { color: var(--accent-moss, #52c41a); }
+.member-line[data-op='added'] { color: var(--accent-moss); }
 .member-line[data-op='removed'] { color: var(--accent-vermilion, #ff6d6a); }
 .member-line[data-op='updated'] { color: var(--ink-soft, inherit); }
 .line-text { overflow-wrap: anywhere; word-break: break-word; }

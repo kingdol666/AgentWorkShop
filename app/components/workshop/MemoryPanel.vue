@@ -310,7 +310,7 @@ const doWrite = async (): Promise<void> => {
   border-radius: 3px;
   background: color-mix(in srgb, currentColor 8%, transparent);
 }
-.token-state[data-ok='true'] { color: #52c41a; }
+.token-state[data-ok='true'] { color: var(--tone-success-dot); }
 .token-state[data-ok='false'] { color: #fa8c16; }
 .token { margin-bottom: 6px; }
 .search-bar {
@@ -331,10 +331,10 @@ const doWrite = async (): Promise<void> => {
 .src {
   padding: 0 4px;
   color: #fff;
-  background: #1677ff99;
+  background: color-mix(in srgb, var(--tone-info-dot) 60%, transparent);
   border-radius: 3px;
 }
-.src[data-source='shared'] { background: #9254de99; }
+.src[data-source='shared'] { background: color-mix(in srgb, var(--tone-retry-dot) 60%, transparent); }
 .score { opacity: 0.5; }
 .hit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-head {

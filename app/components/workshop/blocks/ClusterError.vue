@@ -55,18 +55,18 @@ const hasMore = computed(() => lines.value.length > MAX)
   font-family: var(--font-mono);
   font-size: 10.5px;
   line-height: 20px;
-  color: var(--accent-vermilion, #ff4d4f);
+  color: var(--accent-vermilion);
 }
-.error-code { padding: 0 5px; font-size: 9px; background: color-mix(in srgb, var(--accent-vermilion, #ff4d4f) 14%, transparent); border-radius: var(--radius-chip); }
+.error-code { padding: 0 5px; font-size: 9px; background: color-mix(in srgb, var(--accent-vermilion) 14%, transparent); border-radius: var(--radius-chip); }
 .error-text { overflow-wrap: anywhere; word-break: break-word; }
 .more-btn {
   padding: 0 6px;
   font-size: 9.5px;
-  color: var(--accent-vermilion, #ff4d4f);
+  color: var(--accent-vermilion);
   cursor: pointer;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent-vermilion, #ff4d4f) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-vermilion) 35%, transparent);
   border-radius: var(--radius-chip);
 }
-.more-btn:hover { background: color-mix(in srgb, var(--accent-vermilion, #ff4d4f) 8%, transparent); }
+.more-btn:hover { background: color-mix(in srgb, var(--accent-vermilion) 8%, transparent); }
 </style>

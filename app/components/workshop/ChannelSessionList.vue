@@ -39,6 +39,8 @@ const mountedChannels = computed(() =>
     .map(({ id, meta, entity }) => ({
       id,
       name: entity?.name ?? meta?.name ?? id.slice(0, 8),
+      /** 实体基线(WS 快照)是否已到达:未到时计数不可信,展示"同步中"而非误导性的 0 */
+      synced: entity !== undefined,
       busy: entities.busyCount(id),
       agents: entities.agents[id]?.length ?? 0,
       activeTasks: (entities.tasks[id] ?? []).filter(t => !['COMPLETED', 'CANCELED', 'FAILED'].includes(t.state)).length,
@@ -241,7 +243,15 @@ const saveAsTemplate = async (): Promise<void> => {
         />
       </div>
       <div class="row2">
-        <span class="meta">{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</span>
+        <!-- 快照未到达:计数不可信,显示同步占位(不呈现误导性的"0 成员") -->
+        <span
+          v-if="!ch.synced"
+          class="meta syncing"
+        >同步中…</span>
+        <span
+          v-else
+          class="meta"
+        >{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</span>
       </div>
       <div
         v-if="ch.workspace"
@@ -501,6 +511,7 @@ const saveAsTemplate = async (): Promise<void> => {
 .channel-item:hover .op { opacity: 0.75; }
 .op:hover { opacity: 1 !important; color: var(--ink); }
 .row2 { padding-left: 14px; font-size: 11px; color: var(--ink-faint); }
+.meta.syncing { font-style: italic; opacity: 0.6; }
 .row2.ws {
   display: flex;
   gap: 4px;

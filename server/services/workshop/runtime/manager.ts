@@ -336,7 +336,9 @@ export class AgentChannelManager {
         taskEngine: this.getTaskEngine(),
         subscriptionRepo: this.deps.repos.subscriptions,
         channelAgents: this.deps.repos.channelAgents,
-      })
+      // 路由成功 → 总线通知(a2a.message 帧):经 runtime 回调统一收口,
+      // 调度器直呼 channelRuntime.route 的消息同样可见
+      }, msg => this.buses.get(channelId)?.notifyMessage(msg))
       cr.setLoader(id => this.ensureAgentRuntime(channelId, id))
       this.channels.set(channelId, cr)
       this.buses.set(channelId, this.buildBus(cr))
@@ -842,6 +844,7 @@ export class AgentChannelManager {
       updateTask: (taskId, patch) => this.updateTask(channelId, agent.id, taskId, patch),
       reassignTask: (taskId, toAgentId) => this.reassignTask(channelId, agent.id, taskId, toAgentId),
       sendMessage: input => this.sendA2A(channelId, agent.id, input),
+      refuseTask: (taskId, reason) => this.refuseTask(channelId, agent.id, taskId, reason),
       pollMailbox: limit => this.pollMailbox(channelId, agent.id, limit),
       waitMailbox: (limit, waitMs) => this.waitMailbox(channelId, agent.id, limit ?? 10, waitMs ?? 0),
       ackMailbox: ids => Promise.resolve(this.ackMailbox(channelId, agent.id, ids)),
@@ -941,7 +944,14 @@ export class AgentChannelManager {
   listWorkspaces(userId: string): Array<WorkspaceRow & { channelIds: string[] }> {
     return this.deps.repos.users.listWorkspaces(userId).map(ws => ({
       ...ws,
-      channelIds: this.deps.repos.users.listMountedChannels(ws.id),
+      // 挂载引用自愈:channel 删除(removeChannel)不级联清理 workspace_channels,
+      // 死引用会让前端订阅永不到达(左栏"幽灵频道"+ 右栏空数据假象)——
+      // 读取时过滤并顺手删除挂载行,历史脏数据随读取收敛
+      channelIds: this.deps.repos.users.listMountedChannels(ws.id).filter((id) => {
+        if (this.deps.repos.channels.findById(id)) return true
+        this.deps.repos.users.unmountChannel(ws.id, id)
+        return false
+      }),
     }))
   }
 
@@ -1237,8 +1247,10 @@ export class AgentChannelManager {
     callerAgentId: string,
     targetAgentId: string,
     input: { query: string, scope?: 'auto' | 'private' | 'shared', limit?: number },
+    opts: { byOwner?: boolean } = {},
   ): Promise<MemorySnippet[]> {
-    this.requireMember(channelId, callerAgentId)
+    // byOwner:人类 owner(channel 属主)经控制台检索,跳过 agent 成员校验
+    if (!opts.byOwner) this.requireMember(channelId, callerAgentId)
     if (!this.deps.repos.channelAgents.findByChannelAgent(channelId, targetAgentId)) {
       throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${targetAgentId}`)
     }
@@ -1256,9 +1268,12 @@ export class AgentChannelManager {
   }
 
   /** 写/更新团队记忆(仅 lead;稳定 dedupKey 幂等刷新;成功后 fire-and-forget 向量化) */
-  addTeamMemory(channelId: string, callerAgentId: string, input: { title: string, content: string, importance?: number, dedupKey?: string }): MemoryRow[] {
-    const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
-    if (!caller || caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可写团队记忆')
+  addTeamMemory(channelId: string, callerAgentId: string, input: { title: string, content: string, importance?: number, dedupKey?: string }, opts: { byOwner?: boolean } = {}): MemoryRow[] {
+    // byOwner:人类 owner 策展(与 lead 同权;curator 身份以 __team__ 哨兵入事件)
+    if (!opts.byOwner) {
+      const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
+      if (!caller || caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可写团队记忆')
+    }
     const dedupKey = input.dedupKey ?? `manual:${randomUUID()}`
     this.deps.repos.memories.upsert({
       channelId,
@@ -1278,9 +1293,11 @@ export class AgentChannelManager {
   }
 
   /** 删团队记忆(仅 lead;vec 行残留由维护任务统一清理) */
-  deleteTeamMemory(channelId: string, callerAgentId: string, memoryId: string): void {
-    const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
-    if (!caller || caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可删团队记忆')
+  deleteTeamMemory(channelId: string, callerAgentId: string, memoryId: string, opts: { byOwner?: boolean } = {}): void {
+    if (!opts.byOwner) {
+      const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
+      if (!caller || caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可删团队记忆')
+    }
     const row = this.deps.repos.memories.listByAgentChannel(channelId, TEAM_AGENT_ID, 1_000_000).find(r => r.id === memoryId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `团队记忆不存在: ${memoryId}`)
     this.deps.repos.memories.delete(memoryId)
@@ -1295,9 +1312,15 @@ export class AgentChannelManager {
 
   /** 写/更新 Agent 私有记忆(caller 须为本人或 lead;稳定 dedupKey 幂等刷新)。
    *  scope='shared'(caller 任意成员)→ 落 Channel 公共域(agent:<caller>:<key> 命名空间,全员可检索)。 */
-  addAgentMemory(channelId: string, callerAgentId: string, targetAgentId: string, input: { title: string, content: string, importance?: number, dedupKey?: string, scope?: 'private' | 'shared' }): void {
-    const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
-    if (!caller) throw new AppError(403, 'SCOPE_VIOLATION', '调用方 Agent 不在本 channel')
+  addAgentMemory(channelId: string, callerAgentId: string, targetAgentId: string, input: { title: string, content: string, importance?: number, dedupKey?: string, scope?: 'private' | 'shared' }, opts: { byOwner?: boolean } = {}): void {
+    // byOwner:人类 owner 策展任意成员记忆(本人/lead 校验旁路;curator 以目标成员入事件)
+    if (!opts.byOwner) {
+      const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
+      if (!caller) throw new AppError(403, 'SCOPE_VIOLATION', '调用方 Agent 不在本 channel')
+      if (input.scope !== 'shared' && callerAgentId !== targetAgentId && caller.role !== 'lead') {
+        throw new AppError(403, 'SCOPE_VIOLATION', '仅本人或 lead 可策展 Agent 记忆')
+      }
+    }
     if (input.scope === 'shared') {
       // 共享域:走 AgentMemory.save 同源路径(命名空间 dedup + 自动向量化)
       const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: callerAgentId, embedder: this.memoryEmbedder ?? undefined })
@@ -1309,9 +1332,6 @@ export class AgentChannelManager {
         dedupKey: input.dedupKey,
       }).then(saved => this.buses.get(channelId)?.notifyMemory({ agentId: callerAgentId, scope: 'shared', title: input.title, dedupKey: saved.dedupKey })).catch(() => {})
       return
-    }
-    if (callerAgentId !== targetAgentId && caller.role !== 'lead') {
-      throw new AppError(403, 'SCOPE_VIOLATION', '仅本人或 lead 可策展 Agent 记忆')
     }
     if (!this.deps.repos.channelAgents.findByChannelAgent(channelId, targetAgentId)) {
       throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${targetAgentId}`)
@@ -1334,10 +1354,12 @@ export class AgentChannelManager {
   }
 
   /** 删 Agent 私有记忆(caller 须为本人或 lead;行须属该 agent) */
-  deleteAgentMemory(channelId: string, callerAgentId: string, targetAgentId: string, memoryId: string): void {
-    const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
-    if (!caller || (callerAgentId !== targetAgentId && caller.role !== 'lead')) {
-      throw new AppError(403, 'SCOPE_VIOLATION', '仅本人或 lead 可删除 Agent 记忆')
+  deleteAgentMemory(channelId: string, callerAgentId: string, targetAgentId: string, memoryId: string, opts: { byOwner?: boolean } = {}): void {
+    if (!opts.byOwner) {
+      const caller = this.deps.repos.channelAgents.findByChannelAgent(channelId, callerAgentId)
+      if (!caller || (callerAgentId !== targetAgentId && caller.role !== 'lead')) {
+        throw new AppError(403, 'SCOPE_VIOLATION', '仅本人或 lead 可删除 Agent 记忆')
+      }
     }
     const row = this.deps.repos.memories.listByAgent(targetAgentId, 10_000)
       .find(r => r.id === memoryId && r.channelId === channelId && r.agentId === targetAgentId)
@@ -1820,6 +1842,13 @@ export class AgentChannelManager {
 
   // ===== 任务作业面 =====
 
+  /**
+   * 人类向 channel 提交任务(HITL 控制面入口):
+   *  - 缺省 assigneeId → 自动路由 lead(原行为);
+   *  - 指定 assigneeId(Composer @ 某成员)→ 直发该成员:任务 create→ASSIGNED,
+   *    assign 消息直投其信箱(不经 lead 调度,人类即此刻的调度者);
+   *  - fromLabel(登录用户名)盖章 x-aw-from-label → 时间线以"用户章"渲染发送者。
+   */
   async submitChannelTask(input: {
     channelId: string
     title: string
@@ -1827,6 +1856,10 @@ export class AgentChannelManager {
     parts?: Part[]
     mode?: ExecutionMode
     modeConfig?: ModeConfig
+    /** HITL 直发目标(缺省 lead);须为本 channel 启用成员 */
+    assigneeId?: string
+    /** 人类发送者显示名(时间线归属) */
+    fromLabel?: string
   }): Promise<WorkspaceTask> {
     const channel = this.deps.repos.channels.findById(input.channelId)
     if (!channel || !channel.leadAgentId) {
@@ -1836,23 +1869,40 @@ export class AgentChannelManager {
       throw new AppError(403, 'CHANNEL_DISABLED', `channel ${input.channelId} 已禁用`)
     }
     this.ensureChannelActive(input.channelId)
+    // HITL 直发目标校验 + 容错寻址(id/名字/唯一前缀;人类输入名字即可直发)
+    let assigneeId = channel.leadAgentId
+    if (input.assigneeId && input.assigneeId !== channel.leadAgentId) {
+      assigneeId = this.resolveMemberRef(input.channelId, input.assigneeId).id
+    }
     const description = input.mode
       ? encodeTaskMode(input.mode, input.modeConfig ?? {}, input.description ?? '')
       : input.description
-    const task = this.getTaskEngine().create({
+    let task = this.getTaskEngine().create({
       channelId: input.channelId,
       creatorId: '',
-      assigneeId: channel.leadAgentId,
+      assigneeId,
       title: input.title,
       description,
       parts: input.parts,
     })
-    const message = buildMessage(input.channelId, 'ROLE_USER', input.parts ?? [], {
+    // 直发 worker:补 ASSIGNED 迁移(与 dispatchTask 独立任务同构,worker 消费循环按 assign 起回合)
+    if (assigneeId !== channel.leadAgentId) {
+      task = this.getTaskEngine().transition(task.id, 'ASSIGNED', 'system')
+    }
+    const messageMetadata: Record<string, unknown> = {
       'x-aw-task-kind': 'assign',
       'x-aw-task-id': task.id,
-    })
+    }
+    if (input.fromLabel) messageMetadata['x-aw-from-label'] = input.fromLabel
+    const message = buildMessage(input.channelId, 'ROLE_USER', input.parts ?? [], messageMetadata)
     message.taskId = task.id
-    this.route(input.channelId, message)
+    const delivered = this.route(input.channelId, message)
+    if (!delivered.includes(assigneeId)) {
+      // 投递失败补偿:任务回收终态(不留幽灵任务,用户重试不再累积重复任务)
+      this.getTaskEngine().transition(task.id, 'CANCELED', 'system')
+      throw new AppError(502, 'DELIVERY_FAILED', `任务指派未能投递到 ${assigneeId.slice(0, 8)} 的信箱,请重试`)
+    }
+    if (assigneeId !== channel.leadAgentId) this.wakeAgent(input.channelId, assigneeId)
     this.ensureChannelRuntime(input.channelId).wakeScheduler()
     return task
   }
@@ -1929,9 +1979,80 @@ export class AgentChannelManager {
         'x-aw-from-agent': callerAgentId,
       })
       message.taskId = task.id
-      this.route(channelId, message)
+      const delivered = this.route(channelId, message)
+      if (!delivered.includes(input.assigneeId)) {
+        // 投递失败补偿:子任务回收终态(父任务等全部子任务终态后由调度器重新决策)
+        this.getTaskEngine().transition(task.id, 'CANCELED', callerAgentId)
+        throw new AppError(502, 'DELIVERY_FAILED', `子任务指派未能投递到 ${input.assigneeId.slice(0, 8)} 的信箱,请重试或改派`)
+      }
     }
     return task
+  }
+
+  /**
+   * 任务拒绝(assignee 认为任务超出自己能力/作业范畴时主动退回):
+   *  - 任务置 FAILED(调度器将按重试规则改派他人,而非本 Agent 硬扛或静默搁置);
+   *  - 回执拒绝通知:优先发任务创建者(本 channel 成员),否则 channel lead ——
+   *    有发送人就必须让对方知道"为什么被拒",防止错发任务石沉大海。
+   */
+  async refuseTask(
+    channelId: string,
+    refuserId: string,
+    taskId: string,
+    reason: string,
+  ): Promise<{ task: WorkspaceTask, notifiedTo: string | null }> {
+    this.requireMember(channelId, refuserId)
+    const engine = this.getTaskEngine()
+    const task = engine.get(taskId)
+    if (!task || task.channelId !== channelId) {
+      throw new AppError(404, 'NOT_FOUND', `任务不存在或不在本 channel: ${taskId}`)
+    }
+    if (task.assigneeId !== refuserId) {
+      throw new AppError(403, 'SCOPE_VIOLATION', `只能拒绝指派给自己的任务(assignee=${task.assigneeId.slice(0, 8)})`)
+    }
+    if (task.state === 'WAITING') {
+      throw new AppError(400, 'INVALID_TRANSITION', 'WAITING 父任务(有子任务/阶段在执行)不可整体拒绝;请拒绝对应的子任务,父任务会按子任务结果汇总')
+    }
+    const trimmedReason = reason.trim()
+    if (!trimmedReason) throw new AppError(400, 'BAD_REQUEST', '拒绝必须说明原因(reason)')
+
+    let current = task
+    if (!TERMINAL_TASK_STATES[current.state]) {
+      // 状态机需经 WORKING 到 FAILED(SUBMITTED/ASSIGNED 直达 FAILED 非法)
+      if (current.state === 'SUBMITTED' || current.state === 'ASSIGNED') {
+        current = engine.transition(taskId, 'WORKING', refuserId)
+      }
+      if (current.state !== 'FAILED') {
+        current = engine.transition(taskId, 'FAILED', refuserId)
+      }
+      // 拒绝理由进任务历史(审计留痕)
+      this.deps.repos.tasks.update(taskId, {
+        history: [...current.history, {
+          messageId: randomUUID(),
+          contextId: channelId,
+          role: 'ROLE_AGENT' as const,
+          parts: [{ text: `[任务拒绝] ${refuserId.slice(0, 8)}:${trimmedReason}` }],
+        }],
+      })
+    }
+
+    // 回执对象:任务创建者(仍为本 channel 在册成员)优先,fallback channel lead
+    const members = this.deps.repos.channelAgents.listByChannel(channelId).filter(m => m.enabled === 1)
+    const notifyTo = members.find(m => m.id === task.creatorId)?.id
+      ?? members.find(m => m.role === 'lead')?.id
+      ?? null
+    if (notifyTo && notifyTo !== refuserId) {
+      const message = buildMessage(channelId, 'ROLE_AGENT', [{
+        text: `【任务拒绝回执】任务「${task.title}」(${taskId.slice(0, 8)}) 已被 ${refuserId.slice(0, 8)} 拒绝。原因:${trimmedReason}。请改派给能力匹配的成员,或取消该任务。`,
+      }], {
+        'x-aw-target-agent': notifyTo,
+        'x-aw-from-agent': refuserId,
+        'x-aw-msg-priority': 'immediate',
+      })
+      const delivered = this.route(channelId, message)
+      return { task: engine.get(taskId) ?? current, notifiedTo: delivered.includes(notifyTo) ? notifyTo : null }
+    }
+    return { task: engine.get(taskId) ?? current, notifiedTo: null }
   }
 
   async reportTask(
@@ -1966,6 +2087,12 @@ export class AgentChannelManager {
     const task = this.requireTaskInScope(channelId, callerAgentId, input.taskId)
     if (task.assigneeId !== callerAgentId) {
       throw new AppError(403, 'SCOPE_VIOLATION', '仅 assignee 可完成任务')
+    }
+    // 终态幂等:已完成 → 原样返回(重复 complete 不炸);
+    // 已取消/失败 → 语义化错误(非裸状态机异常),调用方可据此引导继续下一项
+    if (task.state === 'COMPLETED') return task
+    if (task.state === 'CANCELED' || task.state === 'FAILED') {
+      throw new AppError(409, 'TASK_TERMINAL', `任务 ${input.taskId.slice(0, 8)} 已被平台${task.state === 'CANCELED' ? '取消' : '判定失败'},不能再标记完成;请继续处理队列下一项`)
     }
     const completed = this.getTaskEngine().complete(input.taskId, input.artifacts)
     if (completed.parentId) {
@@ -2109,12 +2236,9 @@ export class AgentChannelManager {
     if (caller.role !== 'lead') {
       throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可调配任务')
     }
-    const target = this.deps.repos.channelAgents.findByChannelAgent(channelId, toAgentId)
-    if (!target || target.enabled !== 1) {
-      throw new AppError(403, 'SCOPE_VIOLATION', '目标 Agent 不在本 channel 或已禁用')
-    }
-    const updated = this.getTaskEngine().reassign(taskId, toAgentId)
-    this.wakeAgent(channelId, toAgentId)
+    const target = this.resolveMemberRef(channelId, toAgentId)
+    const updated = this.getTaskEngine().reassign(taskId, target.id)
+    this.wakeAgent(channelId, target.id)
     return updated
   }
 
@@ -2124,16 +2248,19 @@ export class AgentChannelManager {
     input: { toAgentId: string, parts: Part[], metadata?: Record<string, unknown> },
   ): Promise<A2AMessage> {
     this.requireMember(channelId, callerAgentId)
-    const target = this.deps.repos.channelAgents.findByChannelAgent(channelId, input.toAgentId)
-    if (!target) {
-      throw new AppError(403, 'SCOPE_VIOLATION', '目标 Agent 不在本 channel')
-    }
+    // 容错寻址:id/模板 id/名字/唯一前缀;失败错误携带当前名册(LLM 自我纠正)
+    const target = this.resolveMemberRef(channelId, input.toAgentId)
     const message = buildMessage(channelId, 'ROLE_AGENT', input.parts, {
       ...(input.metadata ?? {}),
-      'x-aw-target-agent': input.toAgentId,
+      'x-aw-target-agent': target.id,
       'x-aw-from-agent': callerAgentId,
     })
-    this.route(channelId, message)
+    // 真送达契约:route 回执必须包含目标(落库 enqueue 同步完成),否则向上抛错 ——
+    // 消息绝不允许"报告已发送"却没进对方信箱
+    const delivered = this.route(channelId, message)
+    if (!delivered.includes(target.id)) {
+      throw new AppError(502, 'DELIVERY_FAILED', `消息未能投递到 ${target.name} 的信箱(成员装配失败),请重试或改投其他成员`)
+    }
     return message
   }
 
@@ -2150,15 +2277,23 @@ export class AgentChannelManager {
     /** 人类发送者显示名(REST 注入时的时间线归属;进入 x-aw-from-label 元数据) */
     fromLabel?: string
   }): Promise<A2AMessage> {
+    // 无主消息拦截:发送方必须可追溯(agent 成员或人类显示名),否则拒绝发送
+    const hasFromAgent = !!input.fromAgentId && this.deps.repos.channelAgents.findByChannelAgent(input.channelId, input.fromAgentId) != null
+    if (!hasFromAgent && !input.fromLabel) {
+      throw new AppError(400, 'NO_SENDER', '消息缺少可追溯发送人(fromAgentId 须为本 channel 成员,或提供 fromLabel 人类显示名)')
+    }
     const metadata: Record<string, unknown> = {
       'x-aw-target-agent': input.toAgentId,
-      'x-aw-from-agent': input.fromAgentId ?? '',
       'x-aw-msg-priority': 'immediate',
     }
+    if (hasFromAgent) metadata['x-aw-from-agent'] = input.fromAgentId
     if (input.fromLabel) metadata['x-aw-from-label'] = input.fromLabel
     if (input.requireReply) metadata['x-aw-require-reply'] = 'true'
     const message = buildMessage(input.channelId, 'ROLE_AGENT', input.parts, metadata)
-    this.route(input.channelId, message)
+    const delivered = this.route(input.channelId, message)
+    if (!delivered.includes(input.toAgentId)) {
+      throw new AppError(502, 'DELIVERY_FAILED', `消息未能投递到 ${input.toAgentId} 的信箱,请重试`)
+    }
     return message
   }
 
@@ -2188,7 +2323,11 @@ export class AgentChannelManager {
         .map(r => r.id),
     )
     for (const id of messageIds) {
-      if (pending.has(id)) this.deps.repos.messages.markConsumed(id)
+      // claim 守卫:与 steer 注入原子竞争(peek 与 ack 之间消息可能被认领),
+      // 认领成功才标记消费——失败说明 steer 已注入运行中会话,不再重复投递
+      if (pending.has(id) && this.deps.repos.messages.claim(id)) {
+        this.deps.repos.messages.markConsumed(id)
+      }
     }
   }
 
@@ -2273,14 +2412,48 @@ export class AgentChannelManager {
 
   // ===== 内部辅助 =====
 
-  private route(channelId: string, message: A2AMessage): void {
-    this.ensureChannelRuntime(channelId).route(message)
-    // 消息投递通知(AEP a2a.message;route 是 sendA2A/assign/inject 的统一汇流点)
-    this.buses.get(channelId)?.notifyMessage(message)
+  private route(channelId: string, message: A2AMessage): string[] {
+    // 总线通知(a2a.message)由 ChannelRuntime 构造时注入的 onRouted 回调统一发出
+    // (见 ensureChannelRuntime):调度器直呼 runtime.route 的消息同样可见
+    return this.ensureChannelRuntime(channelId).route(message)
   }
 
   private wakeAgent(channelId: string, agentId: string): void {
     this.ensureAgentRuntime(channelId, agentId)?.wakeMailbox()
+  }
+
+  /**
+   * 成员寻址(A2A 身份命中率的核心):接受 id(实例/模板)、名字、唯一名字前缀。
+   * 多智能体对话中 LLM 常以名字称呼同事,名册缓存也可能滞后于成员重建 ——
+   * 精确 id 未命中时按名字/前缀解析,让"想发给谁"总能落到"谁"的实例上;
+   * 解析失败时把当前名册(id | 名字)放进错误信息,LLM 下一轮即可自我纠正。
+   */
+  private resolveMemberRef(channelId: string, ref: string): ChannelAgentRow {
+    const trimmed = ref.trim()
+    if (!trimmed) throw new AppError(400, 'BAD_REQUEST', '缺少目标成员引用(to_agent_id/assignee_id)')
+    const members = this.deps.repos.channelAgents.listByChannel(channelId).filter(m => m.enabled === 1)
+    // ① 精确实例 id
+    const byId = members.find(m => m.id === trimmed)
+    if (byId) return byId
+    // ② 模板 id(名册/记忆中的旧实例 id 复用同一模板 → 按模板命中当前实例)
+    const byTemplate = members.find(m => m.templateId === trimmed)
+    if (byTemplate) return byTemplate
+    // ③ 名字精确(大小写不敏感;含"← 你"等标记已剥离)
+    const lower = trimmed.toLowerCase()
+    const byName = members.find(m => m.name.toLowerCase() === lower)
+    if (byName) return byName
+    // ④ 唯一名字前缀/包含(多候选 → 拒绝,防止误投)
+    const partial = members.filter(m => m.name.toLowerCase().includes(lower))
+    if (partial.length === 1) return partial[0]!
+    const roster = members.map(m => `${m.id} | ${m.name}(${m.role})`).join('; ')
+    throw new AppError(404, 'MEMBER_NOT_FOUND',
+      `目标成员未命中: "${trimmed}"。当前 Channel 名册(用其中 id 或名字寻址): ${roster}`)
+  }
+
+  /** 成员寻址(公开包装:REST/工具桥共用;语义同 resolveMemberRef) */
+  resolveChannelMember(channelId: string, ref: string): { id: string, name: string, role: string } {
+    const m = this.resolveMemberRef(channelId, ref)
+    return { id: m.id, name: m.name, role: m.role }
   }
 
   /** 校验调用方是本 channel 实例;返回实例行(含 role) */

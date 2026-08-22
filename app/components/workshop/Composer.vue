@@ -1,11 +1,15 @@
 <script setup lang="ts">
 /**
- * Composer(底部输入区,open-tag composer 声部):
+ * Composer(底部输入区,open-tag composer 声部 + HITL 人类控制面):
  *  - 浮起输入卡(inset hairline + 柔和投影)+ 底部工具行 + 墨色药丸发送;
- *  - 任务模式:POST /channels/:id/tasks(title+description+mode goal/loop/pipeline);
- *  - 消息模式:POST /channels/:id/messages(toAgentId/priority/requireReply);
+ *  - 统一 @ 寻址(任务/消息两模式共用):@ 某成员 → 任务直发该成员(HITL 调度)/
+ *    消息发往该成员;无 @ 缺省 lead(任务走 lead 调度,消息发 lead);
+ *  - 任务模式:POST /channels/:id/tasks(title+description+mode goal/loop/pipeline+assigneeId);
+ *  - 消息模式:POST /channels/:id/messages(toAgentId/priority/requireReply),
+ *    immediate = 实时注入(HITL steer:目标 busy 时注入运行中的回合);
  *  - @提及自动补全(open-tag mention-menu 移植):输入 "@" 触发成员菜单,
- *    ↑↓/Enter 选中 → 回填 @名字 并锁定目标 agent(Esc 关闭)。
+ *    ↑↓/Enter 选中 → 回填 @名字 并锁定目标 agent(Esc 关闭);
+ *  - 人类发送者 = 登录用户名(fromLabel):时间线以"用户章"渲染我方消息。
  */
 import { message } from 'ant-design-vue'
 import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
@@ -50,23 +54,31 @@ const sendLoading = ref(false)
 
 const agents = computed(() => entities.agents[props.channelId] ?? [])
 const workersAndLead = computed(() => agents.value)
+/** 统一 HITL 目标(任务/消息共用):缺省 lead;@ 提及或下拉选择切换 */
+const leadAgentId = computed(() =>
+  agents.value.find(a => a.role === 'lead')?.agentId ?? agents.value[0]?.agentId ?? '')
 const toAgentId = ref<string>('')
-watch(agents, (list) => {
-  if (!toAgentId.value && list.length > 0) toAgentId.value = list[0]?.agentId ?? ''
+watch([agents, leadAgentId], ([list]) => {
+  if (list.length === 0) return
+  // 目标未设置,或频道切换后原目标不在本频道 → 回落 lead
+  if (!toAgentId.value || !list.some(a => a.agentId === toAgentId.value)) {
+    toAgentId.value = leadAgentId.value || (list[0]?.agentId ?? '')
+  }
 }, { immediate: true })
 const priority = ref<'task' | 'immediate'>('immediate')
 const requireReply = ref(false)
 
-// ===== @提及自动补全 =====
+/** 发送成功后目标回落缺省 lead(下一条不会静默发给上一位成员) */
+const resetTarget = (): void => {
+  toAgentId.value = leadAgentId.value
+}
+
+// ===== @提及自动补全(任务/消息双模式通用) =====
 const mentionOpen = ref(false)
 const mentionQuery = ref('')
 const mentionHi = ref(0)
 /** 光标前未闭合的 "@词"(无空格断开才算进行中) */
 const detectMention = (): void => {
-  if (mode.value !== 'message') {
-    mentionOpen.value = false
-    return
-  }
   const el = document.activeElement as HTMLTextAreaElement | null
   const text = el?.value ?? input.value
   const caret = el?.selectionStart ?? text.length
@@ -171,8 +183,15 @@ const send = async (): Promise<void> => {
               },
             }
           : {}),
+        // HITL:@ 指定成员 → 任务直发(人类此刻即调度者);缺省 lead 自动调度
+        assigneeId: toAgentId.value || undefined,
+        // 人类发送者登录名:assign 消息以此盖章,时间线渲染"用户章"
+        fromLabel: userStore.user?.name ?? undefined,
+        // 任务全文随 assign 消息进时间线(人类提交内容在聊天界面可见)
+        parts: [{ text: input.value.trim() }],
       })
-      message.success(`任务已提交(${taskMode.value})`)
+      const routedTo = targetName.value || 'lead'
+      message.success(`任务已下发 → @${routedTo}(${taskMode.value})`)
     }
     else {
       if (!toAgentId.value) {
@@ -187,9 +206,10 @@ const send = async (): Promise<void> => {
         // 人类发送者名:时间线 a2a.message 以"@你 → @目标"聊天行呈现
         fromLabel: userStore.user?.name ?? undefined,
       })
-      message.success(`消息已发送给 @${targetName.value}(${priority.value})`)
+      message.success(`消息已发送给 @${targetName.value}(${priority.value === 'immediate' ? '实时注入' : '排队'})`)
     }
     input.value = ''
+    resetTarget()
     emit('submitted')
   }
   catch (e) {
@@ -201,6 +221,8 @@ const send = async (): Promise<void> => {
 }
 
 const onKeydown = (ev: KeyboardEvent): void => {
+  // IME 组合中不拦截按键(中文输入法选词确认的 Enter/方向键不做快捷处理)
+  if (ev.isComposing) return
   if (onMentionKeydown(ev)) return
   if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
     ev.preventDefault()
@@ -208,19 +230,82 @@ const onKeydown = (ev: KeyboardEvent): void => {
   }
 }
 
+// ===== 输入框自适应高度(open-tag composer auto-resize) =====
+watch(input, async () => {
+  await nextTick()
+  const el = taEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+})
+
 /** 当前目标成员(状态行 chip 与提及回显) */
 const targetAgent = computed(() => workersAndLead.value.find(a => a.agentId === toAgentId.value))
 const targetName = computed(() => targetAgent.value?.name ?? '')
+/** 目标是否为缺省路由(lead)——chip 提示"@ 可切换" */
+const isDefaultLead = computed(() => !!leadAgentId.value && toAgentId.value === leadAgentId.value)
+
+/**
+ * 可达性提示(open-tag reach hint 移植 + HITL 送达语义):直接回答
+ * "我发的东西对方以何种方式收到"。任务模式 = 排队进信箱;消息模式即时 =
+ * busy 时实时注入运行中的回合(HITL steer)。
+ */
+type Reach = { tone: 'ok' | 'info' | 'warn', text: string, title: string }
+const reachHint = computed<Reach | null>(() => {
+  if (!targetAgent.value) return null
+  const st = targetAgent.value.state
+  if (mode.value === 'task') {
+    if (st === 'busy') {
+      return {
+        tone: 'info',
+        text: '运行中 · 任务进入其信箱排队',
+        title: '目标正在执行:新任务投递到信箱,当前回合结束后按 FIFO 处理',
+      }
+    }
+    if (st === 'stopped') {
+      return {
+        tone: 'warn',
+        text: '已停止 · 任务将入队,唤醒后执行',
+        title: '目标运行时已停止:任务安全入队,重新启用后自动处理',
+      }
+    }
+    return { tone: 'ok', text: '空闲 · 任务将立即起回合执行', title: '目标空闲:任务投递后立即开始处理' }
+  }
+  if (st === 'busy') {
+    return {
+      tone: 'info',
+      text: priority.value === 'immediate' ? '运行中 · 将实时注入当前回合(HITL)' : '运行中 · 本回合结束后处理',
+      title: '目标正在执行任务:即时消息会注入其运行中的会话(同轮可见)',
+    }
+  }
+  if (st === 'stopped') {
+    return {
+      tone: 'warn',
+      text: '已停止 · 消息将入队,唤醒后送达',
+      title: '目标运行时已停止:消息安全入队,重新启用后自动处理',
+    }
+  }
+  return { tone: 'ok', text: '空闲 · 将立即起回合处理', title: '目标空闲:消息投递后立即开始处理' }
+})
 
 const placeholder = computed(() =>
   mode.value === 'task'
-    ? '输入任务(首行标题)…  ⌘/Ctrl+Enter 提交'
-    : '输入消息,@ 提及成员选择目标…  ⌘/Ctrl+Enter 发送',
+    ? '输入任务下发(首行标题,@ 成员直发,缺省 lead)…  ⌘/Ctrl+Enter 提交'
+    : '输入消息/通知(@ 成员指定目标,缺省 lead)…  ⌘/Ctrl+Enter 发送',
 )
 </script>
 
 <template>
   <div class="composer">
+    <!-- Hero 品牌层:暖粉彩光斑 + 墨方印衬线 A 水印(装饰,不挡交互) -->
+    <div
+      class="composer-hero"
+      aria-hidden="true"
+    >
+      <span class="hero-orb orb-mint" />
+      <span class="hero-orb orb-peach" />
+      <span class="hero-mark">A</span>
+    </div>
     <div class="composer-box">
       <!-- @提及菜单(输入卡上方) -->
       <div
@@ -257,12 +342,40 @@ const placeholder = computed(() =>
           <span v-if="taskMode === 'loop'">
             间隔 {{ loopIntervalSeconds ?? '-' }}s
           </span>
+          <span
+            class="chip-target"
+            :title="isDefaultLead ? '未 @ 指定:任务自动路由 lead 调度;@ 某成员可直发' : `直发 @${targetName}`"
+          >→ {{ targetName ? `@${targetName}` : 'lead' }}{{ isDefaultLead ? ' · 默认' : ' · 直发' }}</span>
+          <!-- HITL 送达语义提示 -->
+          <span
+            v-if="reachHint"
+            class="reach-chip"
+            :data-tone="reachHint.tone"
+            :title="reachHint.title"
+          >
+            <span
+              class="reach-dot"
+              aria-hidden="true"
+            />{{ reachHint.text }}
+          </span>
           <span class="chip-hint">首行 = 标题</span>
         </template>
         <template v-else>
           <span class="chip-key">消息</span>
-          <span v-if="targetName">@{{ targetName }}</span>
+          <span v-if="targetName">@{{ targetName }}{{ isDefaultLead ? ' · 默认' : '' }}</span>
           <span>{{ priority === 'immediate' ? '即时注入' : '排队' }}</span>
+          <!-- 可达性提示(open-tag reach hint):对方能否收到、将以何种方式送达 -->
+          <span
+            v-if="reachHint"
+            class="reach-chip"
+            :data-tone="reachHint.tone"
+            :title="reachHint.title"
+          >
+            <span
+              class="reach-dot"
+              aria-hidden="true"
+            />{{ reachHint.text }}
+          </span>
           <span class="chip-hint">输入 @ 提及成员 · ⌘/Ctrl+Enter 发送</span>
         </template>
       </div>
@@ -296,6 +409,14 @@ const placeholder = computed(() =>
               消息
             </button>
           </div>
+
+          <!-- HITL 目标选择(任务/消息共用):缺省 lead;@ 提及或下拉切换直发对象 -->
+          <a-select
+            v-model:value="toAgentId"
+            size="small"
+            class="target"
+            :options="workersAndLead.map(a => ({ value: a.agentId, label: `@ ${a.name}${a.role === 'lead' ? ' · lead' : ''}` }))"
+          />
 
           <template v-if="mode === 'task'">
             <div class="aw-seg">
@@ -333,16 +454,11 @@ const placeholder = computed(() =>
             </template>
           </template>
           <template v-else>
-            <a-select
-              v-model:value="toAgentId"
-              size="small"
-              class="target"
-              :options="workersAndLead.map(a => ({ value: a.agentId, label: `@ ${a.name}` }))"
-            />
             <div class="aw-seg">
               <button
                 type="button"
                 :class="{ on: priority === 'immediate' }"
+                title="HITL 实时注入:目标运行中时直接注入其当前回合(同轮可见)"
                 @click="priority = 'immediate'"
               >
                 即时
@@ -386,28 +502,78 @@ const placeholder = computed(() =>
 
 <style scoped>
 .composer {
+  position: relative;
   padding: 10px 16px 12px;
+  overflow: hidden;
   background: var(--paper-raised);
   border-top: 1px solid var(--line);
 }
 
-/* 浮起输入卡:inset hairline + 柔和投影(open-tag composer-box) */
+/* ===== Hero 品牌层(open-tag warm-editorial 声部 × design-taste 液态玻璃) =====
+ * 粉彩光斑仅作氛围 radial 装饰(设计系统铁律:永不作前景色);
+ * 输入卡半透明 + backdrop-blur 形成"透过毛玻璃看品牌水印"的层次。 */
+.composer-hero {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(34px);
+  opacity: 0.5;
+}
+.hero-orb.orb-mint {
+  right: -40px;
+  bottom: -70px;
+  width: 240px;
+  height: 180px;
+  background: radial-gradient(circle, var(--g-mint), transparent 72%);
+}
+.hero-orb.orb-peach {
+  right: 180px;
+  bottom: -90px;
+  width: 200px;
+  height: 160px;
+  background: radial-gradient(circle, var(--g-peach), transparent 70%);
+  opacity: 0.42;
+}
+/* 墨方印衬线 A 水印:与侧栏品牌同族;半隐于毛玻璃之后 */
+.hero-mark {
+  margin: 0 26px 2px 0;
+  font-family: var(--font-display);
+  font-size: 118px;
+  line-height: 0.72;
+  color: color-mix(in srgb, var(--ink) 7%, transparent);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--paper-raised) 60%, transparent);
+  user-select: none;
+}
+
+/* 浮起输入卡 → 毛玻璃:半透纸面 + backdrop-blur + 内侧 1px 折射边 +
+ * inset 高光(liquid glass:edge refraction,非外发光) */
 .composer-box {
   position: relative;
   max-width: 900px;
   padding: 8px 12px 8px;
   margin: 0 auto;
-  background: var(--paper-raised);
-  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper-raised) 68%, transparent);
+  backdrop-filter: blur(16px) saturate(1.08);
+  -webkit-backdrop-filter: blur(16px) saturate(1.08);
+  border-radius: var(--radius-panel);
   box-shadow:
-    inset 0 0 0 0.5px color-mix(in srgb, var(--ink) 16%, transparent),
+    inset 0 0 0 0.5px color-mix(in srgb, var(--ink) 13%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
     0 6px 22px rgb(12 10 9 / 5%);
   transition: box-shadow var(--transition-slow);
 }
 .composer-box:focus-within {
   box-shadow:
-    inset 0 0 0 0.5px color-mix(in srgb, var(--ink) 26%, transparent),
-    0 8px 26px rgb(12 10 9 / 6%);
+    inset 0 0 0 0.5px color-mix(in srgb, var(--ink) 22%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 30%, transparent),
+    0 8px 26px rgb(12 10 9 / 7%);
 }
 
 /* 状态行:轻 chip 说明当前模式参数 */
@@ -428,11 +594,34 @@ const placeholder = computed(() =>
   font-weight: 600;
   color: var(--ink-soft);
 }
+.chip-target {
+  font-weight: 600;
+  color: var(--ink);
+}
 .chip-hint {
   margin-left: auto;
   padding-left: 8px;
   color: var(--ink-fainter);
 }
+
+/* 可达性提示 chip:ok 绿 / info 蓝 / warn 琥珀 —— 状态不只靠颜色(附文字) */
+.reach-chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 10.5px;
+  border-radius: var(--radius-chip);
+}
+.reach-chip .reach-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.reach-chip[data-tone='ok'] { color: var(--tone-success-dot); background: color-mix(in srgb, var(--tone-success-dot) 10%, transparent); }
+.reach-chip[data-tone='info'] { color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 10%, transparent); }
+.reach-chip[data-tone='warn'] { color: var(--tone-warning-dot); background: color-mix(in srgb, var(--tone-warning-dot) 13%, transparent); }
 
 .composer-input {
   display: block;
@@ -513,6 +702,7 @@ const placeholder = computed(() =>
   transition: background var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
 }
 .send-btn:hover:not(:disabled) { background: var(--accent-strong); }
+.send-btn:active:not(:disabled) { transform: scale(0.96); }
 .send-btn:disabled { opacity: 0.3; cursor: default; }
 
 .loop-number { width: 104px; }
@@ -531,7 +721,7 @@ const placeholder = computed(() =>
   overflow: auto;
   background: var(--paper-raised);
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: var(--radius-panel);
   box-shadow: var(--shadow-float);
 }
 .mention-opt {

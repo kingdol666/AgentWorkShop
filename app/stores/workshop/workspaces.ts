@@ -63,12 +63,20 @@ export const useWorkspacesStore = defineStore('workshop.workspaces', {
       const res = await authFetch<ServerWorkspace[]>('/api/workshop/workspaces')
       if (res.code !== 0) throw new Error(res.message ?? '加载失败')
       const active = loadActiveMap()
-      this.workspaces = (res.data ?? []).map(w => ({
-        id: w.id,
-        name: w.name,
-        channelIds: w.channelIds ?? [],
-        activeChannelId: active[w.id],
-      }))
+      this.workspaces = (res.data ?? []).map((w) => {
+        const ids = w.channelIds ?? []
+        // 本地持久化的 activeChannelId 可能已过期(channel 被卸载/删除/换设备变更):
+        // 不在服务端挂载清单内的一律丢弃,回退首频道——否则前端会订阅死频道,
+        // 快照永不到达,右栏/列表长时间呈现"空数据"假象
+        const stored = active[w.id]
+        const activeChannelId = stored && ids.includes(stored) ? stored : undefined
+        if (stored !== activeChannelId) {
+          if (activeChannelId) active[w.id] = activeChannelId
+          else Reflect.deleteProperty(active, w.id)
+        }
+        return { id: w.id, name: w.name, channelIds: ids, activeChannelId }
+      })
+      saveActiveMap(active)
       this.loaded = true
     },
     async create(name: string): Promise<WorkspaceMeta> {

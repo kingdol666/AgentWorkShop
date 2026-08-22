@@ -326,9 +326,18 @@ export class SchedulerLoop {
       }
     }
 
-    // WORKING 停滞检测:progress 停滞超过 stallMs → notify 催一次;再超时 → cancel
+    // WORKING 停滞检测:progress 停滞超过 stallMs → notify 催一次;再超时 → cancel。
+    // 活跃度感知:assignee 正 busy(执行中,含多轮协作/等待回执的长任务)不算停滞 ——
+    // progress 数字不是唯一生命信号,看门狗只回收真正被遗弃的任务(idle/stopped 挂着 WORKING)。
+    const assigneeState = new Map(this.channelRuntime.getAgents().map(a => [a.agentId, a.getState()]))
     for (const task of tasks) {
       if (task.state !== 'WORKING') continue
+      if (assigneeState.get(task.assigneeId) === 'busy') {
+        // 执行中:刷新时间戳,防止累计误判(协作回合可能远超 stallMs)
+        this.lastProgress.set(task.id, { progress: task.progress, at: now })
+        this.notified.delete(task.id)
+        continue
+      }
       const prev = this.lastProgress.get(task.id)
       if (!prev || prev.progress !== task.progress) {
         this.lastProgress.set(task.id, { progress: task.progress, at: now })

@@ -119,6 +119,25 @@ function renderInputRow(): void {
   term.write(`\r\x1b[K${C.dim}❯${C.reset} ${C.cyan}${inputLine}${C.reset}`)
 }
 
+/**
+ * 清空视图(切换目标 / 重开抽屉):丢弃上一会话的全部渲染状态与 xterm 缓冲。
+ * 不清空会把前一个 Agent 的历史输出叠进本 Agent 的终端,重开抽屉还会整环
+ * 重放造成重复 —— 每个 Agent 的终端必须只渲染自己的信息。
+ */
+function resetView(): void {
+  streamBuf.length = 0
+  streamLineOpen = false
+  assistantStreamActive = false
+  textSent.clear()
+  lastHumanInput = ''
+  inputLine = ''
+  // 命令历史随视图一并清空:历史属于会话,跨 Agent/重开共享会串上下文
+  inputHistory = []
+  inputHistoryIdx = -1
+  term?.reset()
+  renderInputRow()
+}
+
 const ts = (): string => {
   const d = new Date()
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
@@ -569,6 +588,7 @@ watch(open, (v) => {
   if (v) {
     nextTick(async () => {
       await ensureTerm()
+      resetView()
       lastRenderedSeq = 0
       retryCount = 0
       lastErrorMessage = ''
@@ -588,11 +608,12 @@ watch(open, (v) => {
   }
 })
 
-/** 目标切换(pid 直连或 agent 寻址变化)→ 重连 */
+/** 目标切换(pid 直连或 agent 寻址变化)→ 清空视图重连(不同 Agent 的输出不得混渲染) */
 watch(() => [props.pid, props.agentId], () => {
   if (!open.value) return
   disconnect()
   nextTick(() => {
+    resetView()
     lastRenderedSeq = 0
     retryCount = 0
     lastErrorMessage = ''
@@ -640,33 +661,34 @@ const connLabel = computed(() => {
     class="omp-terminal-drawer"
   >
     <template #title>
-      <span class="term-title">
-        <span class="i-tabler-terminal-2" />
-        {{ t('terminal.title') }}
-        <span class="aw-mono dim">PID {{ livePid ?? pid ?? '-' }}</span>
+      <div class="term-title">
+        <span class="term-brand">
+          <span class="i-tabler-terminal-2" />
+        </span>
+        <span class="term-name">{{ t('terminal.title') }}</span>
+        <span class="ts-chip aw-mono ts-pid">PID {{ livePid ?? pid ?? '–' }}</span>
         <span
           v-if="subtitle"
-          class="dim"
-        >· {{ subtitle }}</span>
-      </span>
+          class="ts-chip ts-sub"
+        >{{ subtitle }}</span>
+      </div>
     </template>
     <template #extra>
       <div class="term-toolbar">
-        <a-tag
-          :color="connLabel.color"
-          class="aw-mono"
-        >
-          {{ connLabel.text }}
-        </a-tag>
-        <a-tag
-          :color="stateLabel.color"
-          class="aw-mono"
-        >
-          {{ stateLabel.text }}
-        </a-tag>
+        <!-- 连接态 chip:呼吸点 + 文本(open=绿 / retrying=琥珀脉冲 / 其他=灰蓝) -->
+        <span
+          class="ts-chip aw-mono"
+          :data-state="connState"
+        ><span class="ts-dot" />{{ connLabel.text }}</span>
+        <!-- 会话态 chip:idle=青 / busy=琥珀 / 流式=青脉冲 -->
+        <span
+          class="ts-chip aw-mono"
+          :data-live="running ? (streaming ? 'streaming' : 'running') : 'idle'"
+        >{{ stateLabel.text }}</span>
         <a-button
           size="small"
           danger
+          class="ts-btn"
           :disabled="!running && !streaming"
           @click="doAbort"
         >
@@ -677,6 +699,7 @@ const connLabel = computed(() => {
         </a-button>
         <a-button
           size="small"
+          class="ts-btn"
           @click="doClear"
         >
           <template #icon>
@@ -776,23 +799,115 @@ const connLabel = computed(() => {
 </template>
 
 <style scoped>
+/* 状态栏品牌块:终端图标入方形墨章(与侧栏墨方印同族,tokyo-night 冷暖对撞) */
 .term-title {
   display: inline-flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
+}
+.term-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
   font-size: 14px;
+  color: #9ece6a;
+  background: rgb(158 206 106 / 10%);
+  border: 1px solid rgb(158 206 106 / 22%);
+  border-radius: var(--radius-panel-sm);
+}
+.term-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #e6edf3;
 }
 
-.term-title .dim {
-  opacity: 0.65;
-  font-size: 12px;
+/* 状态 chip:等宽微字 + 语义点;色板对齐 xterm tokyo-night */
+.ts-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 1px 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: #a9b1d6;
+  background: rgb(65 72 104 / 26%);
+  border: 1px solid rgb(146 153 179 / 16%);
+  border-radius: var(--radius-pill);
+}
+.ts-chip.ts-pid { color: #7dcfff; }
+.ts-chip.ts-sub {
+  font-family: var(--font-body);
+  color: #9aa5ce;
+}
+.ts-dot {
+  width: 6px;
+  height: 6px;
+  background: #565f89;
+  border-radius: 50%;
+}
+/* 连接态语义色 */
+.ts-chip[data-state='open'] { color: #9ece6a; background: rgb(158 206 106 / 10%); border-color: rgb(158 206 106 / 22%); }
+.ts-chip[data-state='open'] .ts-dot { background: #9ece6a; animation: ts-breathe 2.2s ease-in-out infinite; }
+.ts-chip[data-state='retrying'] { color: #e0af68; background: rgb(224 175 104 / 10%); border-color: rgb(224 175 104 / 24%); }
+.ts-chip[data-state='retrying'] .ts-dot { background: #e0af68; animation: ts-breathe 1.1s ease-in-out infinite; }
+.ts-chip[data-state='connecting'] { color: #7aa2f7; }
+.ts-chip[data-state='connecting'] .ts-dot { background: #7aa2f7; animation: ts-breathe 1.1s ease-in-out infinite; }
+/* 会话态 */
+.ts-chip[data-live='streaming'] { color: #7dcfff; background: rgb(125 207 255 / 10%); border-color: rgb(125 207 255 / 24%); }
+.ts-chip[data-live='streaming']::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: #7dcfff;
+  border-radius: 50%;
+  animation: ts-breathe 0.9s ease-in-out infinite;
+}
+.ts-chip[data-live='running'] { color: #e0af68; background: rgb(224 175 104 / 10%); border-color: rgb(224 175 104 / 24%); }
+.ts-chip[data-live='running']::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: #e0af68;
+  border-radius: 50%;
+  animation: ts-breathe 1.6s ease-in-out infinite;
+}
+.ts-chip[data-live='idle'] { color: #565f89; }
+.ts-chip[data-live='idle']::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: #565f89;
+  border-radius: 50%;
+}
+@keyframes ts-breathe {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ts-dot, .ts-chip::before { animation: none !important; opacity: 0.85; }
 }
 
+/* 工具按钮:暗面浮起 + 按压反馈 */
 .term-toolbar {
   display: flex;
   gap: 8px;
   align-items: center;
 }
+:deep(.ts-btn.ant-btn) {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: #c0caf5;
+  background: rgb(65 72 104 / 30%);
+  border: 1px solid rgb(146 153 179 / 18%);
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+:deep(.ts-btn.ant-btn:hover:not(:disabled)) { background: rgb(65 72 104 / 50%); }
+:deep(.ts-btn.ant-btn:active:not(:disabled)) { transform: translateY(1px); }
+:deep(.ts-btn.ant-btn:disabled) { opacity: 0.4; }
 
 .term-body {
   position: relative;
@@ -824,7 +939,7 @@ const connLabel = computed(() => {
   padding: 12px 14px;
   background: rgb(23 30 40 / 97%);
   border: 1px solid #bb9af7;
-  border-radius: 8px;
+  border-radius: var(--radius-panel-sm);
   box-shadow: 0 8px 28px rgb(0 0 0 / 55%);
 }
 
@@ -884,6 +999,11 @@ const connLabel = computed(() => {
 
 <style>
 /* drawer 挂 body teleport,全局态:暗色标题/内容(xterm 主题一致) */
+.omp-terminal-drawer .ant-drawer-header {
+  background: linear-gradient(180deg, #131a24 0%, #10151c 100%) !important;
+  border-bottom: 1px solid #1d2733 !important;
+  box-shadow: inset 0 1px 0 rgb(146 153 179 / 6%);
+}
 .omp-terminal-drawer .ant-drawer-header-title {
   color: #e6edf3;
 }

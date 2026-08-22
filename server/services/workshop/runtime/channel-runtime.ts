@@ -30,6 +30,10 @@ export class ChannelRuntime {
   constructor(
     channelId: string,
     private deps: { taskEngine: TaskEngine, subscriptionRepo: SubscriptionRepo, channelAgents: ChannelAgentRepo },
+    /** 路由成功回调(manager 注入:总线通知 → AEP a2a.message 帧 + 落库)。
+     *  经由本回调而非 manager.route 显式通知,是为了让调度器等直呼
+     *  channelRuntime.route 的调用方同样产生可见事件(催办消息不再对前端隐身)。 */
+    private onRouted: (message: A2AMessage) => void = () => {},
   ) {
     this.channelId = channelId
   }
@@ -48,25 +52,63 @@ export class ChannelRuntime {
 
   /** 核心路由:解析收件人 → 按需装配 → 按优先级投递(immediate → injectSteer;task → mailbox) */
   /**
-   * Channel 信箱路由(本 channel 内):每条消息统一落库到收件人 mailbox
-   * (pending;lead 全览/断线重投/空闲回合作业都以此为准),
+   * Channel 信箱路由(本 channel 内):垃圾守卫通过的消息统一落库到收件人
+   * mailbox(pending;lead 全览/断线重投/空闲回合作业都以此为准),
    * 实时类消息(immediate 优先级,或带 in_reply_to 的回执)额外注入收件人
    * 运行中的会话(steer 推送,送达即消费)——收件人忙则同轮可见,空闲则由
    * 消费循环按 FIFO 起回合处理。
+   * 返回实际投递成功的收件人列表(发送方据此确认"真送达",不再静默丢失)。
    */
-  route(message: A2AMessage): void {
+  route(message: A2AMessage): string[] {
+    if (!this.acceptByGuard(message)) return []
     const meta = message.metadata ?? {}
     const realtime
       = meta['x-aw-msg-priority'] === 'immediate'
         || typeof meta['x-aw-in-reply-to'] === 'string'
+    const delivered: string[] = []
     for (const agentId of this.resolveRecipients(message)) {
       const agent = this.ensureAgent(agentId)
       if (!agent) continue
       agent.enqueue(message)
-      // 空闲收件人即时唤醒消费循环(不等调度器周期扫描,降低新消息起回合延迟)
+      delivered.push(agentId)
+      // 空闲收件人即时唤醒消费循环
       if (agent.getState() === 'idle') agent.wakeMailbox()
       if (realtime) agent.injectSteer(message)
     }
+    // 实际投递成功的消息才通知总线(a2a.message 可见 + 落库);
+    // 守卫拦截/无收件人的消息不产生事件帧(时间线不出现幽灵消息)
+    if (delivered.length > 0) this.onRouted(message)
+    return delivered
+  }
+
+  /**
+   * 信箱守卫(垃圾信息拦截):三类消息放行,其余直接丢弃(不落库、不投递)——
+   *  ① 平台任务消息(task-kind + 真实存在的任务);
+   *  ② 声明发送人为本 channel 成员的消息(伪造/已移除成员 → 拒);
+   *  ③ 人类经 REST 注入的消息(x-aw-from-label 必须非空)。
+   * 防脏信息注入:无主消息与未知发送人的消息没有回执对象,处理它们只会
+   * 污染 Agent 上下文,因此拦截并删除。
+   */
+  private acceptByGuard(message: A2AMessage): boolean {
+    const meta = message.metadata ?? {}
+    const taskKind = meta['x-aw-task-kind']
+    if (taskKind !== undefined) {
+      const taskId = meta['x-aw-task-id']
+      if (typeof taskId === 'string' && this.deps.taskEngine.get(taskId)) return true
+      console.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截无效任务消息(kind=${String(taskKind)} task=${String(taskId)}),已丢弃`)
+      return false
+    }
+    const from = meta['x-aw-from-agent']
+    if (typeof from === 'string' && from.length > 0) {
+      const member = this.deps.channelAgents.findByChannelAgent(this.channelId, from)
+      if (member && member.enabled === 1) return true
+      console.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截非成员/已禁用成员消息(from=${from}),已丢弃`)
+      return false
+    }
+    const label = meta['x-aw-from-label']
+    if (typeof label === 'string' && label.length > 0) return true
+    console.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截无发送人消息(target=${String(meta['x-aw-target-agent'] ?? '广播')}),已丢弃`)
+    return false
   }
 
   /** 按需装配 agent(loader 幂等);未装配成功返回 undefined */

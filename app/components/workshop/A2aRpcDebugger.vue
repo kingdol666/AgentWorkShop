@@ -6,10 +6,18 @@
  * - message/send 需 Bearer token(可选填)
  */
 import { message } from 'ant-design-vue'
+import { useStorage } from '@vueuse/core'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 
 const props = defineProps<{ channelId: string }>()
 const open = defineModel<boolean>('open', { default: false })
+
+// 抽屉宽度拖拽调节(PaneSplitter;持久化,双击复位)
+const DRAWER_W_DEFAULT = 600
+const drawerWidth = useStorage('aw.drawer.a2aW', DRAWER_W_DEFAULT)
+const resizeDrawer = (d: number): void => {
+  drawerWidth.value = Math.min(1040, Math.max(420, drawerWidth.value - d))
+}
 
 const entities = useEntitiesStore()
 const agents = computed(() => entities.agents[props.channelId] ?? [])
@@ -133,9 +141,17 @@ const run = async (): Promise<void> => {
   <a-drawer
     v-model:open="open"
     placement="right"
-    :width="600"
+    :width="drawerWidth"
     title="A2A RPC / SSE 调试器"
+    class="aw-resizable-drawer"
   >
+    <workshop-pane-splitter
+      variant="bare"
+      class="drawer-resizer"
+      label="拖拽调节抽屉宽度"
+      @resize="resizeDrawer"
+      @reset="drawerWidth = DRAWER_W_DEFAULT"
+    />
     <div class="dbg">
       <div class="row">
         <a-select
@@ -185,6 +201,12 @@ const run = async (): Promise<void> => {
 </template>
 
 <style scoped>
+/* 抽屉左缘调宽手柄:锚定 panel 左缘(aw-resizable-drawer 提供 positioning 上下文) */
+.drawer-resizer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 8;
+}
 .dbg {
   display: flex;
   flex-direction: column;
@@ -208,6 +230,6 @@ const run = async (): Promise<void> => {
   white-space: pre-wrap;
   word-break: break-all;
   background: color-mix(in srgb, currentColor 5%, transparent);
-  border-radius: 8px;
+  border-radius: var(--radius-panel-sm);
 }
 </style>

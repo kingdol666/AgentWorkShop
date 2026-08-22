@@ -181,13 +181,13 @@ function main(): void {
 
   console.log('\n--- 1. 点对点直投 ---')
   clearReceived()
-  const p2p = routeMsg({ 'x-aw-target-agent': 'agentB' })
+  const p2p = routeMsg({ 'x-aw-target-agent': 'agentB', 'x-aw-from-agent': 'agentA' })
   check('点对点直投:目标收到', b.received.includes(p2p))
   check('点对点直投:非目标未收到', !a.received.includes(p2p) && !c.received.includes(p2p))
 
   console.log('\n--- 2. 跨 channel 目标忽略 ---')
   clearReceived()
-  routeMsg({ 'x-aw-target-agent': 'agentX' })
+  routeMsg({ 'x-aw-target-agent': 'agentX', 'x-aw-from-agent': 'agentA' })
   check('跨 channel 目标忽略:无投递', a.received.length === 0 && b.received.length === 0 && c.received.length === 0)
 
   console.log('\n--- 3. 任务消息直投 assignee ---')
@@ -213,10 +213,86 @@ function main(): void {
   check('订阅后广播可达:A 收到 C 的广播', a.received.includes(bcastC))
   check('订阅后广播:C 自身未收到', !c.received.includes(bcastC))
 
+  console.log('\n--- 7. 垃圾拦截(无发送人/伪造发送人/无效任务) ---')
+  clearReceived()
+  const noSender = routeMsg({ 'x-aw-target-agent': 'agentB' })
+  check('无发送人消息被拦截', !b.received.includes(noSender))
+  const fakeSender = routeMsg({ 'x-aw-target-agent': 'agentB', 'x-aw-from-agent': 'agentZ' })
+  check('伪造发送人(非成员)消息被拦截', !b.received.includes(fakeSender))
+  routeMsg({ 'x-aw-task-kind': 'assign', 'x-aw-task-id': 'task-not-exist' })
+  check('无效任务消息被拦截', a.received.length === 0 && b.received.length === 0 && c.received.length === 0)
+  const humanMsg = routeMsg({ 'x-aw-target-agent': 'agentB', 'x-aw-from-label': 'tester' })
+  check('人类消息(from-label)放行', b.received.includes(humanMsg))
+
   console.log('\n--- 真实 Mailbox 持久化 ---')
-  void b.mailbox.peek(10).then((peeked) => {
+  void b.mailbox.peek(10).then(async (peeked) => {
     const persisted = peeked.find(m => m.metadata?.['x-aw-target-agent'] === 'agentB')
     check('点对点直投:Mailbox 落库 pending', persisted !== undefined, `peeked ${peeked.length} 条`)
+
+    // ===== 恰好一次认领(steer 注入 / poll_messages 读即取 / 消费循环 dequeue 三方竞争) =====
+    console.log('\n--- 恰好一次认领(原子 claim) ---')
+    // 清空 B 信箱残留(FIFO 顺序干扰):全部认领并消费
+    for (const old of await b.mailbox.peek(50)) {
+      if (b.mailbox.claim(old.messageId)) b.mailbox.markConsumed(old.messageId)
+    }
+    const raceMsg: A2AMessage = {
+      messageId: randomUUID(),
+      contextId: channelId,
+      role: 'ROLE_AGENT',
+      parts: [{ text: 'race' }],
+      metadata: { 'x-aw-target-agent': 'agentB', 'x-aw-from-agent': 'agentA', 'x-aw-msg-priority': 'immediate' },
+    }
+    b.mailbox.enqueue(raceMsg)
+    // 三个竞争方依次认领:只有第一个成功(唯一所有权 → 消息绝不双投)
+    const steerGot = b.mailbox.claim(raceMsg.messageId)
+    const pollGot = b.mailbox.claim(raceMsg.messageId)
+    const dqGot = b.mailbox.claim(raceMsg.messageId)
+    check('首竞争者(steer)认领成功', steerGot === true)
+    check('后到竞争者(poll/dequeue)认领失败', pollGot === false && dqGot === false)
+    // 认领期间消息对 peek 不可见(poll_messages 不会重复取走)
+    const visible = await b.mailbox.peek(10)
+    check('认领期间 peek 不可见', !visible.some(x => x.messageId === raceMsg.messageId))
+    // steer 放弃(deferred)→ requeue 释放回 pending → dequeue 接管
+    check('requeue 释放认领', b.mailbox.requeue(raceMsg.messageId) === true)
+    const taken = await Promise.race([
+      b.mailbox.dequeue(),
+      new Promise<A2AMessage | null>(r => setTimeout(() => r(null), 1000)),
+    ])
+    check('释放后 dequeue 取到消息', taken?.messageId === raceMsg.messageId)
+    // 终态:markConsumed 后 claim 不复活消息
+    b.mailbox.markConsumed(raceMsg.messageId)
+    check('consumed 后 claim 不复活', b.mailbox.claim(raceMsg.messageId) === false)
+
+    // ===== 同毫秒突发 FIFO(rowid 决胜回归) =====
+    // 紧密循环同步入队:大概率全部落在同一毫秒内 → dequeue 顺序必须 === 入队顺序
+    console.log('\n--- 同毫秒突发 FIFO(rowid 决胜) ---')
+    const burst: A2AMessage[] = []
+    for (let i = 0; i < 30; i++) {
+      const m: A2AMessage = {
+        messageId: randomUUID(),
+        contextId: channelId,
+        role: 'ROLE_AGENT',
+        parts: [{ text: `burst-${i}` }],
+        metadata: { 'x-aw-target-agent': 'agentB', 'x-aw-from-agent': 'agentA' },
+      }
+      b.mailbox.enqueue(m)
+      burst.push(m)
+    }
+    const textOf = (m: A2AMessage): string =>
+      (m.parts[0] && 'text' in m.parts[0] ? m.parts[0].text : '') as string
+    const takenOrder: string[] = []
+    for (let i = 0; i < burst.length; i++) {
+      const got = await Promise.race([
+        b.mailbox.dequeue(),
+        new Promise<A2AMessage | null>(r => setTimeout(() => r(null), 1000)),
+      ])
+      if (!got) break
+      takenOrder.push(textOf(got))
+    }
+    const expectOrder = burst.map(textOf)
+    check('30 条同毫秒突发按入队顺序逐条出队(FIFO)', takenOrder.join(',') === expectOrder.join(','),
+      `${takenOrder.length} 条`)
+
     console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`)
     process.exit(failures === 0 ? 0 : 1)
   })

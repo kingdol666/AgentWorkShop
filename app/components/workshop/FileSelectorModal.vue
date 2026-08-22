@@ -155,7 +155,7 @@ const cancel = (): void => emit('update:open', false)
   font-family: ui-monospace, Consolas, monospace;
   font-size: 12px;
   background: color-mix(in srgb, currentColor 5%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
 }
 .crumbs :deep(a) { color: var(--color-primary); }
 .manual { max-width: 100%; }
@@ -163,7 +163,7 @@ const cancel = (): void => emit('update:open', false)
   height: 280px;
   overflow-y: auto;
   border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
 }
 .row {
   display: flex;

@@ -29,7 +29,8 @@ export function createMessageRepo(db: DatabaseSync) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectPending = db.prepare(
-    `SELECT ${COLS} FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC`,
+    // rowid 决胜:同一毫秒内批量入队(连发任务/调度批量派发)也保持严格入队顺序(FIFO)
+    `SELECT ${COLS} FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC, rowid ASC`,
   )
   const markConsumingStmt = db.prepare(
     `UPDATE messages SET state = 'consuming' WHERE id = ? AND state = 'pending'`,
@@ -87,9 +88,13 @@ export function createMessageRepo(db: DatabaseSync) {
       return selectPending.all(channelId, toAgentId) as unknown as MessageRow[]
     },
 
-    /** pending → consuming(消费中,防重复投递) */
-    markConsuming(id: string): void {
-      markConsumingStmt.run(id)
+    /**
+     * 原子认领:pending → consuming(WHERE state='pending' 守卫)。
+     * 返回是否认领成功——多方竞争(steer 注入 / poll_messages 读即取 / 消费循环
+     * dequeue)下只有第一个认领者获得消息所有权,保证恰好一次投递。
+     */
+    claim(id: string): boolean {
+      return markConsumingStmt.run(id).changes > 0
     },
 
     /** consuming → consumed(记录消费时间) */

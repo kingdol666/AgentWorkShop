@@ -11,7 +11,7 @@ import { zValidator } from '../../../../../../../utils/validate'
 import { AppError } from '../../../../../../../utils/errors'
 import { defineApiHandler } from '../../../../../../../utils/response'
 import { getWorkshopManager } from '../../../../../../../plugins/workshop'
-import { resolveCaller } from '../../../../../caller'
+import { resolveAgentOrUser } from '../../../../../caller'
 
 const searchSchema = z.object({
   query: z.string().min(1, 'query 必填'),
@@ -22,12 +22,22 @@ const searchSchema = z.object({
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const agentId = getRouterParam(event, 'agentId')!
-  const caller = resolveCaller(event)
+  // 双域鉴权:Agent 成员 token(作业面)或用户 token(控制台 owner)
+  const who = resolveAgentOrUser(event)
+  const manager = getWorkshopManager()
+  let byOwner = false
+  if (who.kind === 'agent') {
+    if (who.caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可检索记忆')
+  }
+  else {
+    const ch = manager.getChannelForUser(channelId, who.user.id)
+    manager.requireOwned(ch.ownerUserId, who.user.id, 'channel')
+    byOwner = true
+  }
   const body = await readValidatedBody(event, zValidator(searchSchema))
-  if (caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可检索记忆')
-  return getWorkshopManager().searchAgentMemories(channelId, caller.id, agentId, {
+  return manager.searchAgentMemories(channelId, who.kind === 'agent' && !byOwner ? who.caller.id : agentId, agentId, {
     query: body.query,
     scope: body.scope,
     limit: body.limit,
-  })
+  }, { byOwner })
 })

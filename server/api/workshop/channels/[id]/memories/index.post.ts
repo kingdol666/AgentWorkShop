@@ -9,7 +9,7 @@ import { zValidator } from '../../../../../utils/validate'
 import { AppError } from '../../../../../utils/errors'
 import { defineApiHandler } from '../../../../../utils/response'
 import { getWorkshopManager } from '../../../../../plugins/workshop'
-import { resolveCaller } from '../../../caller'
+import { resolveAgentOrUser } from '../../../caller'
 
 const teamMemorySchema = z.object({
   title: z.string().min(1, 'title 必填'),
@@ -20,13 +20,23 @@ const teamMemorySchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
-  const caller = resolveCaller(event)
+  // 双域鉴权:Agent 成员 token(作业面)或用户 token(控制台 owner)
+  const who = resolveAgentOrUser(event)
+  const manager = getWorkshopManager()
+  let byOwner = false
+  if (who.kind === 'agent') {
+    if (who.caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可写团队记忆')
+  }
+  else {
+    const ch = manager.getChannelForUser(channelId, who.user.id)
+    manager.requireOwned(ch.ownerUserId, who.user.id, 'channel')
+    byOwner = true
+  }
   const body = await readValidatedBody(event, zValidator(teamMemorySchema))
-  if (caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可写团队记忆')
-  return getWorkshopManager().addTeamMemory(channelId, caller.id, {
+  return manager.addTeamMemory(channelId, who.kind === 'agent' && !byOwner ? who.caller.id : '__team__', {
     title: body.title,
     content: body.content,
     importance: body.importance,
     dedupKey: body.dedupKey,
-  })
+  }, { byOwner })
 })

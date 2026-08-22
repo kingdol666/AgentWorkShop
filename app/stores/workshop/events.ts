@@ -4,19 +4,21 @@
  */
 import { defineStore } from 'pinia'
 import { useUserStore } from './user'
+import { envelopeTier } from '@/app/composables/workshop/useEventBlocks'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 
 const RING_CAP = 2000
 
-export type EventFilter = 'all' | 'messages' | 'tasks' | 'team' | 'errors'
+export type EventFilter = 'all' | 'messages' | 'tasks' | 'team' | 'errors' | 'key'
 
-/** 过滤器 → 允许的事件类型集合 */
+/** 过滤器 → 允许的事件类型集合(key = 档位过滤:只看注意级+终局级,open-tag deliveryTier) */
 const FILTER_TYPES: Record<EventFilter, string[] | null> = {
   all: null,
   messages: ['agent.message', 'agent.delta', 'agent.status.message', 'a2a.message'],
   tasks: ['task.status', 'task.progress', 'a2a.artifact'],
   team: ['agent.member', 'task.status'],
   errors: ['error'],
+  key: null,
 }
 
 interface ChannelRing {
@@ -53,8 +55,21 @@ export const useEventsStore = defineStore('workshop.events', {
         const focus = state.focusAgents[channelId] ?? null
         return ring.items.filter((e) => {
           if (e.type === 'channel.snapshot') return false
+          // key 过滤:只看注意级 + 终局级(open-tag deliveryTier —— agent 噪声让路)
+          if (filter === 'key') {
+            const t = envelopeTier(e)
+            return t === 'attention' || t === 'terminal'
+          }
           if (allow && !allow.includes(e.type)) return false
-          if (focus && e.type !== 'task.status' && e.type !== 'task.progress' && e.agentId !== focus) return false
+          if (focus && e.type !== 'task.status' && e.type !== 'task.progress') {
+            if (e.agentId === focus) return true
+            // 消息归属发送方,但发给聚焦 Agent 的消息(a2a.message target)仍属其流
+            if (e.type === 'a2a.message') {
+              const target = (e.payload as { metadata?: { 'x-aw-target-agent'?: string } }).metadata?.['x-aw-target-agent']
+              return target === focus
+            }
+            return false
+          }
           return true
         })
       }

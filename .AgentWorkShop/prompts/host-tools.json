@@ -452,5 +452,27 @@
         "agent_id"
       ]
     }
+  },
+  {
+    "name": "refuse_task",
+    "label": "Refuse Task",
+    "description": "Reject a task assigned to you because it is outside your capability or work scope (wrong recipient, unrelated domain, or missing prerequisites). The task is marked FAILED with your reason and a rejection notice is immediately sent back to the dispatcher (task creator, or the channel lead), who should reassign it to a fitting member. Use this INSTEAD of silently ignoring the task or doing unrelated work; do NOT use it for tasks you are able to do, and do NOT use cancel_task for refusals.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "ID of the task you are refusing (must be assigned to you)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the task is out of your scope: capability mismatch / wrong recipient / prerequisites missing. Be specific so the dispatcher can reassign properly."
+        }
+      },
+      "required": [
+        "task_id",
+        "reason"
+      ]
+    }
   }
 ]

@@ -49,7 +49,8 @@ const themeConfig = computed(() => {
       colorInfo: dark ? '#92b6ff' : '#3f6094',
       colorLink: accent,
       borderRadius: 8,
-      fontFamily: `'Inter Variable', 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif`,
+      // 与 main.css --font-body 同源:Geist Variable(实际加载的字体;中文回退系统栈)
+      fontFamily: `'Geist Variable', -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif`,
       colorBgLayout: paper,
       colorBgContainer: raised,
       colorBgElevated: elevated,

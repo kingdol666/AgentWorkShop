@@ -336,10 +336,12 @@ export class OmpRpcAgentImpl implements AgentInterface {
       this.rosterAt = Date.now()
     }
     catch {
-      this.rosterCache = this.rosterCache ?? ''
-      this.rosterAt = Date.now()
+      // 拉取失败不再沿用旧名册(频道重建/运行时漂移会把陈旧 id 冻结进每个回合,
+      // 直接导致 A2A 寻址未命中);置空下次重试,寻址层另有名字容错兜底
+      this.rosterCache = null
+      this.rosterAt = 0
     }
-    return this.rosterCache
+    return this.rosterCache ?? ''
   }
 
   /**
@@ -1126,6 +1128,25 @@ export class OmpRpcAgentImpl implements AgentInterface {
               isError: true,
             }
           }
+          // 终态幂等:任务已被平台收口(看门狗取消/调度器完成)时不撞状态机 ——
+          // 给 Agent 明确的"无需再完成,继续下一项"信号,杜绝重复重试烧 token
+          const current = await ws.getTask(taskId)
+          if (current && current.state !== 'SUBMITTED' && current.state !== 'ASSIGNED' && current.state !== 'WORKING' && current.state !== 'WAITING') {
+            if (current.state === 'COMPLETED') {
+              return { text: `任务 ${taskId} 已是完成状态(可能已被平台收口),无需重复完成。` }
+            }
+            try {
+              const q = await ws.myQueue()
+              const next = q.queued[0]
+              return {
+                text: `任务 ${taskId} 已被平台${current.state === 'CANCELED' ? '取消(如停滞回收/上级作废)' : '判定失败'},不能再标记完成 —— 这不是你的错误,也无需重试。${next ? `队列还有 ${q.queued.length} 项,下一项「${next.title}」即将开始,请继续处理。` : '队列为空,保持待命。'}`,
+                isError: false,
+              }
+            }
+            catch {
+              return { text: `任务 ${taskId} 已被平台${current.state === 'CANCELED' ? '取消' : '判定失败'},无需再完成,请继续处理队列下一项。` }
+            }
+          }
           const artifacts: A2AArtifact[] = []
           if (deliverable || summary) {
             artifacts.push({
@@ -1135,7 +1156,22 @@ export class OmpRpcAgentImpl implements AgentInterface {
             })
           }
           await ws.completeTask(taskId, artifacts)
-          return { text: `任务 ${taskId} 已完成` }
+          this.currentTaskId = null
+          // 完成即衔接:报告队列余量与下一项(状态同步 + 驱动继续处理;
+          // 消费循环随后会以新消息自动起回合,这里给 LLM 明确的继续信号)
+          try {
+            const q = await ws.myQueue()
+            const next = q.queued[0]
+            if (next) {
+              return {
+                text: `任务 ${taskId} 已完成(状态已同步为 COMPLETED)。你的队列还有 ${q.queued.length} 项待处理,下一项:「${next.title}」(即将自动开始;收到任务指派消息后按工作流执行,完成后同样调用 complete_task)。`,
+              }
+            }
+            return { text: `任务 ${taskId} 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。` }
+          }
+          catch {
+            return { text: `任务 ${taskId} 已完成(状态已同步为 COMPLETED)。` }
+          }
         }
 
         case 'dispatch_task': {
@@ -1176,6 +1212,17 @@ export class OmpRpcAgentImpl implements AgentInterface {
           return { text: `消息 ${sent.messageId.slice(0, 8)}… 已发送给 ${toAgentId}(priority=${priority})${triggerNote}` }
         }
 
+        case 'refuse_task': {
+          const taskId = req.arguments.task_id as string
+          const reason = req.arguments.reason as string
+          if (!taskId || !reason) return { text: '缺少 task_id 或 reason', isError: true }
+          const r = await ws.refuseTask(taskId, reason)
+          const notified = r.notifiedTo ? `拒绝回执已送达 ${r.notifiedTo.slice(0, 8)}` : '无回执对象(创建者已不在 channel)'
+          return {
+            text: `任务 ${taskId.slice(0, 8)}("${r.task.title}") 已拒绝(state=${r.task.state});${notified}。调度器将改派他人,请勿再处理该任务。`,
+          }
+        }
+
         case 'poll_messages': {
           const limit = (req.arguments.limit as number | undefined) ?? 10
           // 阻塞等待(真即时):Mailbox 到信回调毫秒级唤醒 + 250ms 兜底重查;
@@ -1196,18 +1243,23 @@ export class OmpRpcAgentImpl implements AgentInterface {
             .filter(m => !m.metadata?.['x-aw-task-kind'])
             .map(m => m.messageId)
           if (ackIds.length > 0) await ws.ackMailbox(ackIds)
-          const text = msgs.map((m) => {
+          const text = msgs.map((m, i) => {
             const from = m.metadata?.['x-aw-from-agent'] ?? '?'
             const reply = m.metadata?.['x-aw-in-reply-to']
               ? ` (回复 ${String(m.metadata['x-aw-in-reply-to']).slice(0, 8)}…)`
               : ''
             const needReply = m.metadata?.['x-aw-require-reply'] === 'true' ? ' [需回复]' : ''
             const body = m.parts.map(p => 'text' in p ? p.text : '').join(' ')
-            // 不截断:谜面/任务书等长消息截到 100 字符会让收件人只看到半句话
-            // (实测猜谜者因截断误判谜面不完整而反复索要原文)
-            return `  [from ${from}]${needReply}${reply} ${body.slice(0, 2000)}`
+            // 不截到 100 字符:谜面/任务书等长消息截半句会让收件人误判内容不完整
+            return `  [${i + 1}/${msgs.length}] [from ${from}]${needReply}${reply} ${body.slice(0, 2000)}`
           }).join('\n')
-          return { text: `未消费消息(${msgs.length},已读即取):\n${text}` }
+          return {
+            text:
+              `未消费消息(${msgs.length},已读即取):\n${text}`
+              + (msgs.length > 1
+                ? '\n(收到多条:请按编号逐条处理并逐条回复,不要只回应最后一条或合并敷衍)'
+                : ''),
+          }
         }
 
         case 'read_channel_mail': {

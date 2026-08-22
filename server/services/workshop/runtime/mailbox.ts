@@ -98,7 +98,9 @@ export class Mailbox {
       const rows = this.messageRepo.listPendingByChannelAgent(this.channelId, this.agentId)
       const row = rows[0]
       if (row) {
-        this.messageRepo.markConsuming(row.id)
+        // 原子认领:认领失败 = 消息已被 steer 注入或 poll_messages 读即取
+        // (唯一所有权),让路重查下一条——消费循环绝不重复处理他人消息
+        if (!this.messageRepo.claim(row.id)) continue
         return rowToMessage(row)
       }
       // 门闩挂起 + 15s 兜底重查:任何唤醒丢失路径自愈(消息最多滞后 15s)
@@ -107,6 +109,11 @@ export class Mailbox {
         new Promise<void>(resolve => setTimeout(resolve, 15_000)),
       ])
     }
+  }
+
+  /** 原子认领(pending → consuming):多方竞争下唯一所有权;认领失败返回 false */
+  claim(messageId: string): boolean {
+    return this.messageRepo.claim(messageId)
   }
 
   /** 只读查看未消费消息(不改变状态) */

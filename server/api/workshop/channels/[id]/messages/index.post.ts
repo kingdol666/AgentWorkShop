@@ -11,7 +11,7 @@ import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
-import { AppError } from '../../../../../utils/errors'
+
 import { getWorkshopManager } from '../../../../../plugins/workshop'
 
 const sendMessageSchema = z.object({
@@ -33,25 +33,30 @@ export default defineApiHandler(async (event) => {
   const channel = manager.getChannelForUser(channelId, user.id)
   manager.requireOwned(channel.ownerUserId, user.id, 'channel')
 
-  // 目标 agent 必须在本 channel
-  const agents = await manager.listChannelAgents(channelId)
-  const target = agents.find(a => a.id === body.toAgentId)
-  if (!target) throw new AppError(404, 'NOT_FOUND', `目标 agent 不在本 channel: ${body.toAgentId}`)
+  // 目标寻址(容错:精确实例 id / 模板 id / 名字 / 唯一名字前缀)
+  const target = manager.resolveChannelMember(channelId, body.toAgentId)
+  // 发送方身份校验:显式 fromAgentId 必须可解析到本 channel 成员 ——
+  // 伪造/已移除成员不再静默降级为人类消息(调用方意图是 agent 身份,降级会造成归属欺骗)
+  let fromAgentId = body.fromAgentId
+  if (fromAgentId) {
+    fromAgentId = manager.resolveChannelMember(channelId, fromAgentId).id
+  }
 
   if (body.priority === 'immediate') {
     return manager.sendImmediateMessage({
       channelId,
-      fromAgentId: body.fromAgentId,
-      toAgentId: body.toAgentId,
+      fromAgentId: fromAgentId,
+      toAgentId: target.id,
       parts: [{ text: body.text }],
       requireReply: body.requireReply,
-      fromLabel: body.fromLabel,
+      // 无主消息拦截 + 发送人语义:人类消息缺省发送人=登录用户名(时间线"用户章")
+      fromLabel: body.fromLabel ?? user.name,
     })
   }
   // task 优先级:经 fromAgentId 身份走 sendA2A;无 fromAgentId 时用 immediate 通道(空闲即入队)
-  if (body.fromAgentId) {
-    return manager.sendA2A(channelId, body.fromAgentId, {
-      toAgentId: body.toAgentId,
+  if (fromAgentId) {
+    return manager.sendA2A(channelId, fromAgentId, {
+      toAgentId: target.id,
       parts: [{ text: body.text }],
       metadata: {
         'x-aw-msg-priority': 'task',
@@ -62,9 +67,9 @@ export default defineApiHandler(async (event) => {
   return manager.sendImmediateMessage({
     channelId,
     fromAgentId: '',
-    toAgentId: body.toAgentId,
+    toAgentId: target.id,
     parts: [{ text: body.text }],
     requireReply: body.requireReply,
-    fromLabel: body.fromLabel,
+    fromLabel: body.fromLabel ?? user.name,
   })
 })

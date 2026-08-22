@@ -18,7 +18,7 @@ const time = computed(() => props.event.at.slice(11, 19))
 /** agent 稳定配色(id hash → hue;lead 固定紫) */
 const agentColor = computed(() => {
   const id = props.event.agentId ?? ''
-  if (!id) return '#8c8c8c'
+  if (!id) return 'var(--tone-neutral-dot)'
   let h = 0
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) % 360
   return `hsl(${h}, 65%, 55%)`
@@ -320,7 +320,7 @@ const stateColor: Record<string, string> = {
   color: #fff;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
 }
 .body { flex: 1 1 auto; min-width: 0; }
 
@@ -333,15 +333,15 @@ const stateColor: Record<string, string> = {
   opacity: 0.75;
 }
 .tool-line.host { opacity: 0.95; }
-.tool-line.host .tool-name { color: #9254de; }
+.tool-line.host .tool-name { color: var(--tone-retry-dot); }
 .tool-icon { flex: 0 0 auto; font-size: 11px; }
 .tool-name { font-weight: 600; }
 .tool-kind {
   flex: 0 0 auto;
   padding: 0 4px;
   font-size: 9px;
-  color: #9254de;
-  background: color-mix(in srgb, #9254de 15%, transparent);
+  color: var(--tone-retry-dot);
+  background: color-mix(in srgb, var(--tone-retry-dot) 15%, transparent);
   border-radius: 3px;
 }
 
@@ -357,11 +357,11 @@ const stateColor: Record<string, string> = {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #8c8c8c;
+  background: var(--tone-neutral-dot);
 }
-.life-line[data-state='busy'] .life-dot { background: #1677ff; }
+.life-line[data-state='busy'] .life-dot { background: var(--tone-info-dot); }
 .life-line[data-state='busy'] { opacity: 0.8; }
-.life-line[data-state='idle'] .life-dot { background: #52c41a; }
+.life-line[data-state='idle'] .life-dot { background: var(--tone-success-dot); }
 .life-state { font-weight: 600; }
 .life-task { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .life-meta { flex: 0 0 auto; font-size: 10px; opacity: 0.7; }
@@ -379,9 +379,9 @@ const stateColor: Record<string, string> = {
   border-radius: 3px;
   background: color-mix(in srgb, currentColor 8%, transparent);
 }
-.route-badge[data-tone='assign'] { color: #1677ff; background: color-mix(in srgb, #1677ff 12%, transparent); }
+.route-badge[data-tone='assign'] { color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 12%, transparent); }
 .route-badge[data-tone='immediate'] { color: #fa8c16; background: color-mix(in srgb, #fa8c16 15%, transparent); }
-.route-badge[data-tone='notice'] { color: #52c41a; background: color-mix(in srgb, #52c41a 12%, transparent); }
+.route-badge[data-tone='notice'] { color: var(--tone-success-dot); background: color-mix(in srgb, var(--tone-success-dot) 12%, transparent); }
 .route-path { flex: 0 0 auto; font-size: 11px; opacity: 0.7; }
 .route-text { overflow: hidden; color: inherit; text-overflow: ellipsis; white-space: nowrap; opacity: 0.85; }
 
@@ -389,12 +389,12 @@ const stateColor: Record<string, string> = {
   padding: 4px 8px;
   background: color-mix(in srgb, var(--color-primary) 8%, transparent);
   border-left: 2px solid var(--color-primary);
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
 }
-.bubble.streaming { border-left-color: #52c41a; }
+.bubble.streaming { border-left-color: var(--tone-success-dot); }
 .cursor {
   font-size: 11px;
-  color: #52c41a;
+  color: var(--tone-success-dot);
   animation: blink 0.9s step-end infinite;
 }
 @keyframes blink {
@@ -410,7 +410,7 @@ const stateColor: Record<string, string> = {
 }
 .memory-line,
 .member-line { opacity: 0.85; }
-.member-line { color: #9254de; }
+.member-line { color: var(--tone-retry-dot); }
 .tag { margin-right: 4px; }
 .mem-scope {
   flex: 0 0 auto;
@@ -418,8 +418,8 @@ const stateColor: Record<string, string> = {
   font-size: 9px;
   border-radius: 3px;
 }
-.mem-scope[data-scope='shared'] { color: #9254de; background: color-mix(in srgb, #9254de 15%, transparent); }
-.mem-scope[data-scope='private'] { color: #1677ff; background: color-mix(in srgb, #1677ff 12%, transparent); }
+.mem-scope[data-scope='shared'] { color: var(--tone-retry-dot); background: color-mix(in srgb, var(--tone-retry-dot) 15%, transparent); }
+.mem-scope[data-scope='private'] { color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 12%, transparent); }
 .member-text,
 .route-text,
 .mem-text,

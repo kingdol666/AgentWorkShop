@@ -37,6 +37,13 @@ export function useWorkshopWs() {
         conn.state = state
         conn.retryCount = retry
       },
+      // 断线且有订阅游标 → 重连后待对齐(状态条"同步中"提示)
+      () => { conn.pendingReplay = true },
+      // 重连后首帧到达 → 缺口已对齐 + 记录最后数据时间(诚实在线状态)
+      () => {
+        conn.pendingReplay = false
+        conn.lastDataAt = Date.now()
+      },
     )
     session = s
     ;(globalThis as { __workshopWs?: WorkshopWsSession }).__workshopWs = session
@@ -55,8 +62,11 @@ export function useWorkshopWs() {
     session?.subscribe(channelId, lastSeq > 0 ? lastSeq : undefined)
   }
   const unsubscribe = (channelId: string): void => {
-    session?.unsubscribe(channelId)
-    events.clear(channelId)
+    if (!session) return
+    session.unsubscribe(channelId)
+    // 引用计数归零才清本地事件缓冲:仍有页面(如总览页)持有订阅时,
+    // 控制台卸载不得把对方的时间线/游标抹掉(清了会导致已订阅会话收不到快照重发,实时流静默死亡)
+    if (session.refCount(channelId) === 0) events.clear(channelId)
   }
 
   let heartbeat: ReturnType<typeof setInterval> | null = null

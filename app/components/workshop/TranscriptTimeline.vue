@@ -57,16 +57,79 @@ const loadEarlier = async (): Promise<void> => {
 const onScroll = (): void => {
   const el = scroller.value
   if (!el) return
-  stickBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+  stickBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 120
 }
+
+// ===== 回底动画(open-tag jump-bottom:800ms ease-out,动画期抑制按钮闪烁) =====
+const scrollingDown = ref(false)
+/** 结构化滚动容器(绕开 vue-tsc 双 lib.dom 的 Element 类型不兼容) */
+type ScrollBox = { scrollTop: number, scrollHeight: number, clientHeight: number }
+const animateScroll = (el: ScrollBox, ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.scrollTop = el.scrollHeight
+      resolve()
+      return
+    }
+    const from = el.scrollTop
+    const delta = el.scrollHeight - el.clientHeight - from
+    const t0 = performance.now()
+    const step = (t: number): void => {
+      const k = Math.min(1, (t - t0) / ms)
+      const eased = 1 - (1 - k) ** 3 // ease-out cubic
+      el.scrollTop = from + delta * eased
+      if (k < 1) requestAnimationFrame(step)
+      else resolve()
+    }
+    requestAnimationFrame(step)
+  })
 
 /** 跳回最新:滚底并恢复吸底(用户离开底部后新内容不再自动跟随) */
 const jumpToLatest = async (): Promise<void> => {
   stickBottom.value = true
-  await nextTick()
   const el = scroller.value
-  if (el) el.scrollTop = el.scrollHeight
+  if (!el) return
+  scrollingDown.value = true
+  try {
+    await animateScroll(el, 800)
+  }
+  finally {
+    scrollingDown.value = false
+  }
 }
+
+// ===== 新块进场编排(open-tag motion charter 移植) =====
+/**
+ * 只有实时新到的尾部块做进场动画(60ms stagger,600ms burst 窗口,上限 8 条);
+ * 整体重建(过滤切换/聚焦/历史回填——一次出现大量新 id)与组件首载直接显示,
+ * 不动画不延迟。映射:blockId → 进场延迟 ms;-1 = 不动画。
+ */
+type Stage = { enter: boolean, delay: number }
+const staged = ref(new Map<string, Stage>())
+let burstAt = 0
+let burstN = 0
+const mountedAt = Date.now()
+watch(blocks, (list, prev) => {
+  const prevIds = new Set((prev ?? []).map(b => b.id))
+  const fresh = list.filter(b => !prevIds.has(b.id))
+  const map = new Map<string, Stage>()
+  const wholesale = fresh.length === 0
+    || fresh.length > Math.max(8, Math.ceil(list.length * 0.4))
+    || Date.now() - mountedAt < 1500
+  if (!wholesale) {
+    const now = Date.now()
+    if (now - burstAt > 600) {
+      burstAt = now
+      burstN = 0
+    }
+  }
+  for (const b of list) {
+    const isFresh = !prevIds.has(b.id)
+    const delay = isFresh && !wholesale ? Math.min(burstN++, 7) * 60 : -1
+    map.set(b.id, { enter: delay >= 0, delay: Math.max(0, delay) })
+  }
+  staged.value = map
+}, { immediate: true })
 
 /** 吸底:新块出现 / seq 增长 / 块内容尺寸变化(可能高增)后滚到底 */
 const scrollToBottom = async (): Promise<void> => {
@@ -82,8 +145,40 @@ watch(() => events.lastSeq(props.channelId), () => {
   void scrollToBottom()
 })
 
+// 内容高度增长吸底:同一流块 delta 打字机让块变高(块数与 seq 不变或合并帧不推 seq),
+// ResizeObserver 观测内容列高度变化补一次滚底 —— 长输出不再"卡"在中途。
+// (观察器以结构化类型声明:绕开 vue-tsc 双 lib.dom 下 Element 类型不兼容问题)
+const columnEl = ref<HTMLElement | null>(null)
+let contentObserver: { disconnect(): void } | null = null
+onMounted(() => {
+  const el = scroller.value
+  const column = columnEl.value
+  if (!el || !column || typeof ResizeObserver === 'undefined') return
+  const Observer = ResizeObserver as unknown as
+    new (cb: () => void) => { observe(target: unknown): void, disconnect(): void }
+  const observer = new Observer(() => {
+    if (stickBottom.value) el.scrollTop = el.scrollHeight
+  })
+  observer.observe(column)
+  contentObserver = observer
+})
+onBeforeUnmount(() => {
+  contentObserver?.disconnect()
+  contentObserver = null
+})
+
+/** 断线待对齐(诚实连接态:open-tag 规范——不假装在线,提示同步中) */
+const syncing = computed(() => conn.pendingReplay || conn.state === 'connecting')
+/** 最后数据时间(x 秒前;无数据返回空) */
+const lastDataAgo = computed(() => {
+  if (!conn.lastDataAt) return ''
+  const s = Math.max(0, Math.round((Date.now() - conn.lastDataAt) / 1000))
+  return s < 5 ? '刚刚' : `${s}s 前`
+})
+
 const filterOptions: Array<{ value: EventFilter, label: string }> = [
   { value: 'all', label: '全部' },
+  { value: 'key', label: '关键' },
   { value: 'messages', label: '消息' },
   { value: 'tasks', label: '任务' },
   { value: 'team', label: '团队' },
@@ -129,15 +224,31 @@ const blockDayFlags = computed(() => {
         :options="filterOptions"
       />
       <span class="count">{{ totalEvents }} 事件 / {{ blocks.length }} 块</span>
+      <!-- 连接诚实态:断线待对齐 → 同步中脉搏;在线 → 最后数据时间(open-tag 规范) -->
+      <span
+        class="sync-chip"
+        :data-state="syncing ? 'syncing' : conn.state"
+        :title="syncing ? '连接中断,重连后将自动对齐缺失事件' : `最后数据更新:${lastDataAgo || '无'}`"
+      >
+        <span
+          v-if="syncing"
+          class="sync-pulse"
+        />
+        <span
+          v-else-if="conn.state === 'open'"
+          class="i-tabler-point-filled sync-dot"
+        />
+        {{ syncing ? '同步中' : conn.state === 'open' ? lastDataAgo || '在线' : '离线' }}
+      </span>
     </div>
     <div
       ref="scroller"
       class="scroller"
       @scroll="onScroll"
     >
-      <!-- 离底时的跳转最新悬浮按钮(流式新内容到达不强制跟随,点击回底) -->
+      <!-- 离底时的跳转最新悬浮按钮(流式新内容到达不强制跟随,点击回底;动画期抑制闪烁) -->
       <button
-        v-if="!stickBottom"
+        v-if="!stickBottom && !scrollingDown"
         class="jump-latest"
         title="跳转到最新"
         @click="jumpToLatest"
@@ -145,7 +256,10 @@ const blockDayFlags = computed(() => {
         <span class="i-tabler-arrow-down" />
         最新
       </button>
-      <div class="column">
+      <div
+        ref="columnEl"
+        class="column"
+      >
         <button
           v-if="maybeMore"
           class="earlier-btn"
@@ -205,6 +319,7 @@ const blockDayFlags = computed(() => {
             :block="b"
             :turn-start="i > 0 && blocks[i - 1]!.agentId !== b.agentId"
             :compact="i > 0 && blocks[i - 1]!.agentId === b.agentId"
+            :enter-stage="staged.get(b.id)"
           />
         </template>
       </div>
@@ -232,6 +347,41 @@ const blockDayFlags = computed(() => {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--ink-fainter);
+}
+/* 连接诚实态 chip:同步中琥珀脉搏 / 在线绿点+最后数据时间 / 离线灰 */
+.sync-chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  margin-left: auto;
+  padding: 1px 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+  background: var(--paper-deep);
+  border-radius: var(--radius-pill);
+}
+.sync-chip[data-state='syncing'] {
+  color: var(--tone-warning-dot);
+}
+.sync-chip[data-state='open'] .sync-dot {
+  font-size: 7px;
+  color: var(--tone-success-dot);
+}
+.sync-pulse {
+  width: 6px;
+  height: 6px;
+  background: var(--tone-warning-dot);
+  border-radius: 50%;
+  animation: sync-breath 1.2s ease-in-out infinite;
+}
+@keyframes sync-breath {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sync-pulse { animation: none; opacity: 0.8; }
 }
 .jump-latest {
   position: sticky;

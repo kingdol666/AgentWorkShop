@@ -24,9 +24,9 @@ const api = useWorkshopApi()
 const agents = computed(() => entities.agents[props.channelId] ?? [])
 
 const stateDot: Record<string, string> = {
-  idle: '#52c41a',
-  busy: '#1677ff',
-  stopped: '#8c8c8c',
+  idle: 'var(--tone-success-dot)',
+  busy: 'var(--tone-info-dot)',
+  stopped: 'var(--tone-neutral-dot)',
 }
 
 // ===== 成员管理(用户侧 REST;状态回流以 WS agent.member 事件为准) =====
@@ -292,7 +292,7 @@ onBeforeUnmount(() => {
         <div class="lane-head">
           <span
             class="dot"
-            :style="{ background: stateDot[a.state] ?? '#8c8c8c' }"
+            :style="{ background: stateDot[a.state] ?? 'var(--tone-neutral-dot)' }"
           />
           <span class="lane-name">{{ a.name }}</span>
           <a-tag
@@ -600,7 +600,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   min-width: 260px;
   border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-  border-radius: 8px;
+  border-radius: var(--radius-panel-sm);
 }
 .lane-head {
   display: flex;
@@ -650,6 +650,6 @@ onBeforeUnmount(() => {
   font-size: 11px;
   opacity: 0.6;
   background: color-mix(in srgb, currentColor 5%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
 }
 </style>

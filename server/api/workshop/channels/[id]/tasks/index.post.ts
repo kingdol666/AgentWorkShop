@@ -53,6 +53,10 @@ const submitTaskSchema = z.object({
       assigneeId: z.string().optional(),
     })).optional(),
   }).optional(),
+  /** HITL 直发目标(缺省自动路由 lead);@ 某成员下发任务 */
+  assigneeId: z.string().optional(),
+  /** 人类发送者显示名(时间线"用户章"归属;缺省取登录用户名) */
+  fromLabel: z.string().optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -69,5 +73,7 @@ export default defineApiHandler(async (event) => {
     parts: body.parts,
     mode: body.mode,
     modeConfig: body.modeConfig,
+    assigneeId: body.assigneeId,
+    fromLabel: body.fromLabel ?? user.name,
   })
 })

@@ -94,7 +94,7 @@ export function useWorkshopApi() {
       http.post<{ data: { agentId: string, stopped: boolean } }>(`/workshop/channels/${id}/agents/${agentId}/stop`, {}),
     // tasks
     listTasks: (id: string) => http.get<{ data: TaskDto[] }>(`/workshop/channels/${id}/tasks`),
-    submitTask: (id: string, body: { title: string, description?: string, mode?: 'goal' | 'loop' | 'pipeline', modeConfig?: Record<string, unknown> }) =>
+    submitTask: (id: string, body: { title: string, description?: string, mode?: 'goal' | 'loop' | 'pipeline', modeConfig?: Record<string, unknown>, assigneeId?: string, fromLabel?: string, parts?: Array<{ text: string }> }) =>
       http.post<{ data: TaskDto }>(`/workshop/channels/${id}/tasks`, body),
     // messages(注入即时消息/队列消息;fromLabel = 人类发送者显示名)
     injectMessage: (id: string, body: { toAgentId: string, text: string, priority?: 'immediate' | 'task', requireReply?: boolean, fromLabel?: string }) =>

@@ -252,6 +252,17 @@ export class TaskEngine {
     if (!allowed.includes(state)) {
       throw new AppError(400, 'INVALID_TRANSITION', `非法状态迁移: ${current} → ${state}`)
     }
+    // 单 WORKING 不变量(软守卫):同一 assignee 同时只应有一个 WORKING 任务。
+    // 消费循环串行结构上已保证;此处观测异常路径(调度竞态/恢复残留)并告警,
+    // 不阻断迁移(阻断会让恢复路径卡死,告警 + 事件可观测足以及时纠偏)。
+    if (state === 'WORKING' && current !== 'WORKING') {
+      const clash = this.repos.tasks
+        .listByChannelAssignee(row.channelId, row.assigneeId)
+        .find(r => r.id !== taskId && r.state === 'WORKING')
+      if (clash) {
+        console.warn(`[TaskEngine] 单 WORKING 不变量被突破:assignee=${row.assigneeId.slice(0, 8)} 已有 WORKING 任务 ${clash.id.slice(0, 8)},又迁移 ${taskId.slice(0, 8)} → WORKING(by=${by.slice(0, 8)})`)
+      }
+    }
     const updated = this.repos.tasks.update(taskId, { state })
     if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
     void by // 操作者预留(历史/审计);当前行模型无独立字段,暂不持久化

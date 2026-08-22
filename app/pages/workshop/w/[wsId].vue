@@ -10,6 +10,7 @@ import { useWorkspacesStore } from '../../../stores/workshop/workspaces'
 import { useEntitiesStore } from '../../../stores/workshop/entities'
 import { useWorkshopWs } from '../../../composables/workshop/useWorkshopWs'
 import { useUserStore } from '../../../stores/workshop/user'
+import { useStorage } from '@vueuse/core'
 
 definePageMeta({ layout: 'default' })
 
@@ -29,7 +30,15 @@ const entities = useEntitiesStore()
 const { subscribe, unsubscribe, conn } = useWorkshopWs()
 
 const workspace = computed(() => wsStore.workspaces.find(w => w.id === wsId.value))
-const channelId = computed(() => workspace.value?.activeChannelId ?? workspace.value?.channelIds[0])
+// 聚焦 channel:activeChannelId 须在挂载清单内(陈旧持久化/竞态下回退首频道),
+// 避免订阅死频道 → 快照永不到达 → 右栏/时间线长时间"空数据"假象
+const channelId = computed(() => {
+  const ws = workspace.value
+  if (!ws) return undefined
+  const ids = ws.channelIds
+  const active = ws.activeChannelId
+  return active && ids.includes(active) ? active : ids[0]
+})
 
 // 订阅生命周期:workspace 挂载的 channel 变化 → 增量 sub/unsub
 watch(
@@ -55,7 +64,7 @@ onBeforeUnmount(() => {
 })
 
 const stateColor = computed(() =>
-  conn.state === 'open' ? '#52c41a' : conn.state === 'connecting' ? '#faad14' : '#ff4d4f',
+  conn.state === 'open' ? 'var(--tone-success-dot)' : conn.state === 'connecting' ? 'var(--tone-warning-dot)' : 'var(--tone-danger-dot)',
 )
 const lastSeq = computed(() => (channelId.value ? conn.cursors[channelId.value] ?? 0 : 0))
 
@@ -72,6 +81,21 @@ const viewOptions = [
 // 侧栏折叠(现代 harness 布局:左会话栏 / 右检查器可按需收起)
 const leftOpen = ref(true)
 const rightOpen = ref(true)
+
+// 侧栏宽度拖拽调节(PaneSplitter;localStorage 持久化,双击复位到默认值)
+const LEFT_W_DEFAULT = 248
+const RIGHT_W_DEFAULT = 300
+const leftWidth = useStorage('aw.harness.leftW', LEFT_W_DEFAULT)
+const rightWidth = useStorage('aw.harness.rightW', RIGHT_W_DEFAULT)
+const resizeLeft = (d: number): void => {
+  leftWidth.value = Math.min(460, Math.max(200, leftWidth.value + d))
+}
+const resizeRight = (d: number): void => {
+  rightWidth.value = Math.min(560, Math.max(240, rightWidth.value - d))
+}
+// 初始化消毒:陈旧持久化值(超出合法范围/异常类型)夹取回默认邻域,防布局被历史脏数据撑坏
+resizeLeft(0)
+resizeRight(0)
 
 // 抽屉状态(P1)
 const agentDrawerOpen = ref(false)
@@ -172,11 +196,12 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
       </div>
     </div>
 
-    <!-- 主体三栏(左/右侧栏可折叠) -->
+    <!-- 主体三栏(左/右侧栏可折叠 + 拖拽调宽;分隔条 hairline 即面板边界) -->
     <div class="main">
       <div
         v-if="leftOpen"
         class="left-pane"
+        :style="{ flexBasis: `${leftWidth}px` }"
       >
         <div class="left-scroll">
           <workshop-channel-session-list :ws-id="wsId" />
@@ -186,6 +211,12 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
           @open-agent="openAgentInChannel"
         />
       </div>
+      <workshop-pane-splitter
+        v-if="leftOpen"
+        label="拖拽调节会话栏宽度"
+        @resize="resizeLeft"
+        @reset="leftWidth = LEFT_W_DEFAULT"
+      />
       <div class="center-pane">
         <template v-if="channelId">
           <workshop-transcript-timeline
@@ -220,10 +251,17 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
           </div>
         </div>
       </div>
+      <workshop-pane-splitter
+        v-if="rightOpen"
+        label="拖拽调节检查器宽度"
+        @resize="resizeRight"
+        @reset="rightWidth = RIGHT_W_DEFAULT"
+      />
       <div
         v-if="rightOpen"
         class="right-pane"
-        :class="{ empty: !channelId }"
+        :class="{ empty: wsStore.loaded && !channelId }"
+        :style="{ flexBasis: `${rightWidth}px` }"
       >
         <workshop-inspector-panel
           v-if="channelId"
@@ -231,6 +269,13 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
           @open-agent="openAgent"
           @open-task="openTask"
         />
+        <!-- 加载中/无频道的诚实降级态(workspace 列表未返回前不误判为"空") -->
+        <div
+          v-else-if="!wsStore.loaded"
+          class="pane-loading"
+        >
+          正在加载 Workspace…
+        </div>
       </div>
     </div>
 
@@ -380,11 +425,10 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
 }
 .left-pane {
   display: flex;
-  flex: 0 0 248px;
+  flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  border-right: 1px solid var(--line);
   background: var(--paper);
 }
 .left-scroll {
@@ -405,12 +449,20 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   max-width: 100%;
 }
 .right-pane {
-  flex: 0 0 300px;
+  flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
   min-height: 0;
   overflow: hidden;
-  border-left: 1px solid var(--line);
   background: var(--paper);
 }
 .right-pane.empty { opacity: 0.35; }
+/* workspace 列表加载中的诚实降级态(不算"空",不淡化整栏) */
+.pane-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
 .composer-pane { flex: 0 0 auto; }
 </style>

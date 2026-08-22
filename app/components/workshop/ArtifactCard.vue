@@ -95,10 +95,10 @@ const copy = async (): Promise<void> => {
   margin: 2px 0;
   padding: 4px 8px;
   background: color-mix(in srgb, currentColor 4%, transparent);
-  border-left: 2px solid #595959;
-  border-radius: 4px;
+  border-left: 2px solid var(--ink-faint);
+  border-radius: var(--radius-chip);
 }
-.artifact-card.deliverable { border-left-color: #faad14; }
+.artifact-card.deliverable { border-left-color: var(--tone-warning-dot); }
 .artifact-head {
   display: flex;
   gap: 6px;

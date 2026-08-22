@@ -33,6 +33,26 @@ export function resolveCallerOrNull(event: H3Event): AgentInfo | null {
   }
 }
 
+/**
+ * 双域鉴权主体:Agent 实例 token(本 channel 成员语义)或用户 token(owner 语义)。
+ * 记忆观察/策展等"agent 作业面 + 人类控制台"共用端点的统一入口:
+ * 用户路径的 channel 可见性/所有权由调用方经 getChannelForUser/requireOwned 校验。
+ */
+export type ResolvedPrincipal
+  = | { kind: 'agent', caller: AgentInfo }
+    | { kind: 'user', user: ResolvedUser }
+
+export function resolveAgentOrUser(event: H3Event): ResolvedPrincipal {
+  const auth = getRequestHeader(event, 'authorization')
+  const token = auth?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
+  if (!token) throw new AppError(401, 'UNAUTHORIZED', '需要 Agent token 或用户 token(Authorization: Bearer)')
+  const agent = getWorkshopManager().findByToken(token)
+  if (agent) return { kind: 'agent', caller: agent }
+  const user = resolveUserByToken(token)
+  if (user) return { kind: 'user', user }
+  throw new AppError(401, 'UNAUTHORIZED', 'token 无效(Agent 实例 token 或用户 token)')
+}
+
 /** 用户面认证解析结果（全局用户档案子集,供所有权/统计/权限消费） */
 export interface ResolvedUser {
   id: string

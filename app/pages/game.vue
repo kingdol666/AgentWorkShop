@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
   width: 100%;
   max-width: 1100px;
   aspect-ratio: 16 / 9;
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   overflow: hidden;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),
@@ -391,7 +391,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   min-width: 22px;
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-bottom-width: 2px;
   background: rgba(255, 255, 255, 0.08);

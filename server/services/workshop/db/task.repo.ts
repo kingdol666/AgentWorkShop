@@ -47,13 +47,13 @@ export function createTaskRepo(db: DatabaseSync) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectById = db.prepare(`SELECT ${COLS} FROM tasks WHERE id = ?`)
-  const selectByChannel = db.prepare(`SELECT ${COLS} FROM tasks WHERE channel_id = ? ORDER BY createdAt ASC`)
-  const selectByAssignee = db.prepare(`SELECT ${COLS} FROM tasks WHERE assignee_id = ? ORDER BY createdAt ASC`)
+  const selectByChannel = db.prepare(`SELECT ${COLS} FROM tasks WHERE channel_id = ? ORDER BY createdAt ASC, rowid ASC`)
+  const selectByAssignee = db.prepare(`SELECT ${COLS} FROM tasks WHERE assignee_id = ? ORDER BY createdAt ASC, rowid ASC`)
   const selectByChannelAssignee = db.prepare(
-    `SELECT ${COLS} FROM tasks WHERE channel_id = ? AND assignee_id = ? ORDER BY createdAt ASC`,
+    `SELECT ${COLS} FROM tasks WHERE channel_id = ? AND assignee_id = ? ORDER BY createdAt ASC, rowid ASC`,
   )
   const selectNonTerminal = db.prepare(
-    `SELECT ${COLS} FROM tasks WHERE state IN (${NON_TERMINAL_STATES}) ORDER BY createdAt ASC`,
+    `SELECT ${COLS} FROM tasks WHERE state IN (${NON_TERMINAL_STATES}) ORDER BY createdAt ASC, rowid ASC`,
   )
   const updateStmt = db.prepare(
     `UPDATE tasks SET parent_id = ?, assignee_id = ?, creator_id = ?, title = ?, description = ?, state = ?, progress = ?, retry_count = ?, artifacts_json = ?, history_json = ?, updated_at = ? WHERE id = ?`,

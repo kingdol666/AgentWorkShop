@@ -59,6 +59,11 @@ export interface AgentWorkspace {
   cancelTask(taskId: string): Promise<WorkspaceTask>
   /** 点对点发消息给同事 */
   sendMessage(input: { toAgentId: string, parts: Part[], metadata?: Record<string, unknown> }): Promise<A2AMessage>
+  /**
+   * 拒绝指派给自己的任务(能力/范畴不匹配):任务置 FAILED(调度器改派他人),
+   * 并向派发方(任务创建者,缺省 channel lead)回执拒绝原因。
+   */
+  refuseTask(taskId: string, reason: string): Promise<{ task: WorkspaceTask, notifiedTo: string | null }>
   /** 拉取自己 mailbox 未消费消息 */
   pollMailbox(limit?: number): Promise<A2AMessage[]>
   /** 阻塞长轮询未消费消息(到信即时唤醒 + 250ms 兜底;poll_messages 用) */

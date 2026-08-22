@@ -43,6 +43,14 @@ interface ChannelStream {
   unsubs: Array<() => void>
   /** 当前已订阅的 channel 总线对象(总线生命期短于 stream:空闲卸载会重建 bus → 需重订) */
   busRef: object | null
+  /**
+   * agent.delta 聚合落库缓冲:打字机帧高频(每秒数十帧 × 多 agent 并发),
+   * 逐帧同步 insert 会阻塞事件循环拖慢全部推送。delta 仅是过程性帧(终帧
+   * agent.message 携带全文必落库),缓冲 400ms 批量刷盘即可——实时广播
+   * 不经缓冲(逐帧直推),只有持久化走聚合路径。
+   */
+  deltaBuffer: AepEnvelope[]
+  deltaFlushTimer: NodeJS.Timeout | null
 }
 
 /**
@@ -71,6 +79,11 @@ function ensureHubBound(manager: AgentChannelManager): void {
   hub.boundManager = manager
   for (const stream of [...streams.values()]) {
     const channelId = stream.channelId
+    // manager 更替前刷净 delta 缓冲:流即将重建,缓冲帧必须先落库保序
+    try {
+      flushDeltaBuffer(manager, stream)
+    }
+    catch { /* 尽力刷盘 */ }
     // seq/ring 延续:客户端游标(已收到的 lastSeq)不变,重建流必须接续原 seq 递增,
     // 否则新事件 seq 从 1 重来会被客户端 ingest 的 seq>lastSeq 判重逻辑整段丢弃。
     const seq = stream.seq
@@ -151,6 +164,30 @@ function sendEnvelope(stream: ChannelStream, peer: WsPeer, e: AepEnvelope): void
   }
 }
 
+/** delta 缓冲刷盘窗口(ms):高频打字机帧按此节奏批量落库 */
+const DELTA_FLUSH_MS = 400
+
+/** 刷盘缓冲中的 delta(按 seq 升序逐条落库;清定时器) */
+function flushDeltaBuffer(manager: AgentChannelManager, stream: ChannelStream): void {
+  if (stream.deltaFlushTimer) {
+    clearTimeout(stream.deltaFlushTimer)
+    stream.deltaFlushTimer = null
+  }
+  if (stream.deltaBuffer.length === 0) return
+  const buffered = stream.deltaBuffer
+  stream.deltaBuffer = []
+  try {
+    for (const e of buffered) {
+      internalsOf(manager).deps.repos.channelEvents.insert(stream.channelId, {
+        seq: e.seq, type: e.type, at: e.at, agentId: e.agentId ?? null, taskId: e.taskId ?? null, payload: e.payload,
+      })
+    }
+  }
+  catch (err) {
+    console.error('[workshop-ws] delta 批量落库失败:', err)
+  }
+}
+
 /** 发布事件:seq 递增 → 入环形缓冲 → 广播全部 peer(逐 peer 容错,死连接即时清理) */
 function publish(
   manager: AgentChannelManager,
@@ -171,11 +208,26 @@ function publish(
   }
   stream.ring.push(e)
   if (stream.ring.length > RING_CAP) stream.ring.splice(0, stream.ring.length - RING_CAP)
-  // 持久化(server 驱动;与 client 无关):落库失败仅记日志,不影响实时推送
+  // 持久化(server 驱动;与 client 无关):落库失败仅记日志,不影响实时推送。
+  // delta 帧走聚合缓冲(400ms 批量);其余帧(含终帧/状态)先刷缓冲再落库,
+  // 保证 DB 内 seq 严格升序——重放路径不依赖 delta 的落库即时性。
   try {
-    internalsOf(manager).deps.repos.channelEvents.insert(stream.channelId, {
-      seq: e.seq, type: e.type, at: e.at, agentId: e.agentId ?? null, taskId: e.taskId ?? null, payload: e.payload,
-    })
+    if (type === 'agent.delta') {
+      stream.deltaBuffer.push(e)
+      if (!stream.deltaFlushTimer) {
+        stream.deltaFlushTimer = setTimeout(() => {
+          stream.deltaFlushTimer = null
+          if (hub.boundManager) flushDeltaBuffer(hub.boundManager, stream)
+        }, DELTA_FLUSH_MS)
+        stream.deltaFlushTimer.unref?.()
+      }
+    }
+    else {
+      flushDeltaBuffer(manager, stream)
+      internalsOf(manager).deps.repos.channelEvents.insert(stream.channelId, {
+        seq: e.seq, type: e.type, at: e.at, agentId: e.agentId ?? null, taskId: e.taskId ?? null, payload: e.payload,
+      })
+    }
   }
   catch (err) {
     console.error('[workshop-ws] 事件落库失败:', err)
@@ -293,10 +345,11 @@ function bindStreamSubscriptions(manager: AgentChannelManager, stream: ChannelSt
   }, { agentId: e.agentId })))
   // harness 事件流(message/artifact/status.message/error)
   stream.unsubs.push(manager.subscribeChannelEvents(channelId, (event, source) => mapAgentEvent(manager, stream, event, source)))
-  // 消息投递(route 汇流点)
+  // 消息投递(route 汇流点)。信封 agentId = 时间线归属 = 发送方(from-agent);
+  // 人类消息(仅 x-aw-from-label)agentId 留空 —— 前端据 from-label 渲染"用户章",
+  // 不再把人类消息错误归属到收件 Agent(收件方信息在 payload.metadata 的 target 字段)。
   stream.unsubs.push(manager.subscribeChannelMessages(channelId, (message) => {
-    const agentId = (message.metadata?.['x-aw-from-agent'] as string | undefined)
-      ?? (message.metadata?.['x-aw-target-agent'] as string | undefined)
+    const agentId = (message.metadata?.['x-aw-from-agent'] as string | undefined) ?? undefined
     publish(manager, stream, 'a2a.message', message, { agentId, taskId: message.taskId ?? undefined })
   }))
   // 记忆写入
@@ -334,6 +387,8 @@ if (!rebindTimer) {
       for (const stream of streams.values()) {
         try {
           rebindStreamIfStale(hub.boundManager, stream)
+          // 顺带兜底刷盘:delta 缓冲异常滞留(如定时器丢失)时由 sweep 收口
+          if (stream.deltaBuffer.length > 0) flushDeltaBuffer(hub.boundManager, stream)
         }
         catch { /* 单个 stream 自愈失败不影响其他 */ }
       }
@@ -365,6 +420,8 @@ export function ensureStream(manager: AgentChannelManager, channelId: string): C
     peers: new Set(),
     unsubs: [],
     busRef: internalsOf(manager).buses.get(channelId) ?? null,
+    deltaBuffer: [],
+    deltaFlushTimer: null,
   }
   bindStreamSubscriptions(manager, stream)
   // bind 过程可能懒创建 bus:同步真实 busRef,否则 stale 检查会误判重绑

@@ -135,14 +135,14 @@ const rate = computed(() => buckets.value.slice(-10).reduce((a, b) => a + b, 0) 
   padding: 8px;
   text-align: center;
   border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-  border-radius: 8px;
+  border-radius: var(--radius-panel-sm);
 }
 .kpi-num { font-size: 16px; font-weight: 700; font-family: ui-monospace, Consolas, monospace; }
 .kpi-label { margin-top: 2px; font-size: 11px; opacity: 0.55; }
 .chart {
   height: 140px;
   border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-  border-radius: 8px;
+  border-radius: var(--radius-panel-sm);
 }
 .app-chart { height: 100%; }
 .types-title { padding: 4px 0; font-weight: 600; opacity: 0.7; }
@@ -160,7 +160,7 @@ const rate = computed(() => buckets.value.slice(-10).reduce((a, b) => a + b, 0) 
   height: 8px;
   overflow: hidden;
   background: color-mix(in srgb, currentColor 8%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
 }
 .t-bar { height: 100%; background: var(--color-primary); }
 .t-n { flex: 0 0 36px; text-align: right; opacity: 0.6; }

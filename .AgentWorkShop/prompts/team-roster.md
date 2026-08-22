@@ -4,5 +4,6 @@
 - 需要某位成员的产出 → send_message_to_agent(to_agent_id=对方id, message=自包含请求(背景+所需+期望格式), require_reply=true, priority=immediate)
 - 对方处理后回复会实时注入你的会话;若你正等待回复 → poll_messages(wait_seconds=90) 一次阻塞等待即可,不要反复空轮询
 - 回复他人 → send_message_to_agent(to_agent_id=发送者id, message=结果+对方所需内容, in_reply_to=原消息id)
-- 名册中的 id 是唯一寻址键;不确定谁擅长什么时,按"擅长"字段选择最合适的成员
+- 寻址:to_agent_id 接受 id 或名字(如 "李四");id 优先,名字同样精确直达。不确定谁擅长什么时,按"擅长"字段选择最合适的成员
+- 若发送报"目标成员未命中":错误信息里附有当前最新名册,请改用其中的 id 或名字立即重发一次(名册可能已更新)
 - 你的信箱按 FIFO 消费:空闲时下一项自动开始;任务积压情况可用 my_queue 查看

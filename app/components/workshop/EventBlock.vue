@@ -10,7 +10,7 @@ import { computed } from 'vue'
 import type { Component } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useComposerBus } from '@/app/composables/workshop/useComposerBus'
-import { KIND_META, buildStreamText, type EventBlock } from '@/app/composables/workshop/useEventBlocks'
+import { KIND_META, buildStreamText, blockTier, type EventBlock } from '@/app/composables/workshop/useEventBlocks'
 import ClusterStream from '@/app/components/workshop/blocks/ClusterStream.vue'
 import ClusterTool from '@/app/components/workshop/blocks/ClusterTool.vue'
 import ClusterStatus from '@/app/components/workshop/blocks/ClusterStatus.vue'
@@ -28,6 +28,8 @@ const props = defineProps<{
   turnStart?: boolean
   /** 连续同发送者紧凑分组(隐藏头像/名字,Slack 式) */
   compact?: boolean
+  /** 进场编排(open-tag motion):实时新块带 60ms burst stagger;历史/重建块直接显示 */
+  enterStage?: { enter: boolean, delay: number }
 }>()
 
 const entities = useEntitiesStore()
@@ -61,6 +63,27 @@ const agentInitial = computed(() => {
 })
 
 const meta = computed(() => KIND_META[props.block.kind])
+
+/**
+ * 注意力档位(open-tag deliveryTier 移植):terminal(终局产出)= 成功色左缘 +
+ * 加重名字;attention(等待回应/错误)= 琥珀左缘 + 脉搏点;silent(过程噪声)=
+ * 轻微收敛。视觉层级随"该不该打断人"伸缩,状态不只靠颜色(chip 文本仍在)。
+ */
+const tier = computed(() => blockTier(props.block.events))
+
+/** 头像状态 pip(open-tag av-status 移植):agent 实时状态叠层(busy 暖橙呼吸/idle 静灰) */
+const agentState = computed(() => {
+  const id = props.block.agentId
+  if (!id) return null as 'idle' | 'busy' | 'stopped' | null
+  const a = (entities.agents[cid.value] ?? []).find(x => x.agentId === id)
+  return (a?.state ?? null) as 'idle' | 'busy' | 'stopped' | null
+})
+
+/** 流式运行指示(open-tag msg-agent-state 移植):未落定流块 + agent busy → "运行中" */
+const runningNow = computed(() =>
+  props.block.kind === 'stream'
+  && !props.block.settled
+  && agentState.value === 'busy')
 
 /** kind → tone 色点(koda tone 系统) */
 const KIND_TONE: Record<string, string> = {
@@ -139,8 +162,10 @@ const quoteToComposer = (): void => {
 <template>
   <section
     class="event-block"
-    :class="{ 'turn-start': turnStart, compact }"
+    :class="{ 'turn-start': turnStart, compact, 'enter': enterStage?.enter }"
+    :style="enterStage?.enter ? { '--d': `${enterStage.delay}ms` } : undefined"
     :data-kind="block.kind"
+    :data-tier="tier"
     :data-settled="block.settled ? 'true' : 'false'"
     :data-covered="block.coveredBy ? 'true' : 'false'"
     :data-seq="firstSeq"
@@ -161,6 +186,13 @@ const quoteToComposer = (): void => {
         class="i-tabler-cpu system-icon"
       />
       <template v-else>{{ agentInitial }}</template>
+      <!-- 状态 pip:busy 呼吸圈 / idle 静点(open-tag av-status) -->
+      <span
+        v-if="block.agentId && agentState"
+        class="av-status"
+        :class="agentState"
+        :title="agentState === 'busy' ? '运行中' : agentState === 'stopped' ? '已停止' : '空闲'"
+      />
     </span>
 
     <div class="eb-main">
@@ -169,6 +201,11 @@ const quoteToComposer = (): void => {
         class="block-head"
       >
         <span class="agent-name">{{ humanLabel ?? agentLabel }}</span>
+        <span
+          v-if="tier === 'attention'"
+          class="tier-attention"
+          title="需要回应或人工知悉"
+        ><span class="i-tabler-alert-circle" />需关注</span>
         <span class="kind">
           <span
             class="kind-dot"
@@ -176,6 +213,11 @@ const quoteToComposer = (): void => {
           />{{ meta.label }}
         </span>
         <span class="head-right">
+          <!-- 流式运行指示(open-tag msg-agent-state):当前 agent 正在产出 -->
+          <span
+            v-if="runningNow"
+            class="running-chip"
+          ><span class="running-dot" />运行中</span>
           <span
             v-if="block.folded > 0"
             class="folded"
@@ -229,7 +271,16 @@ const quoteToComposer = (): void => {
   margin: 0 8px 3px 6px;
   border-left: 2px solid color-mix(in srgb, var(--ink) 9%, transparent);
   transition: border-color 0.15s ease, background 0.15s ease;
-  animation: block-in 0.22s cubic-bezier(0.2, 0.6, 0.3, 1);
+}
+
+/* 进场编排(open-tag motion charter):仅实时新块,60ms burst stagger;
+ * 历史/过滤重建直接显示(reduced-motion 直显) */
+.event-block.enter {
+  animation: block-in 0.32s var(--ease-out-quart) backwards;
+  animation-delay: var(--d, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-block.enter { animation: none; }
 }
 
 /* turn 边界:不同 agent 的新回合开始 → 加大间距 + 顶部 hairline */
@@ -258,8 +309,30 @@ const quoteToComposer = (): void => {
 .event-block[data-kind='error'] { border-left-color: var(--tone-danger-dot); }
 .event-block[data-covered='true'] { opacity: 0.72; }
 
+/* 注意力档位(open-tag deliveryTier):终局产出加重,过程噪声收敛,注意级琥珀 */
+.event-block[data-tier='terminal'] {
+  border-left-color: color-mix(in srgb, var(--tone-success-dot) 65%, transparent);
+}
+.event-block[data-tier='terminal'] .agent-name { font-weight: 700; }
+.event-block[data-tier='attention'] {
+  border-left-color: color-mix(in srgb, var(--tone-warning-dot) 80%, transparent);
+}
+.event-block[data-tier='silent'] { opacity: 0.86; }
+.event-block[data-tier='silent']:hover { opacity: 1; }
+.tier-attention {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 0 5px;
+  font-size: 9px;
+  color: var(--tone-warning-dot);
+  background: color-mix(in srgb, var(--tone-warning-dot) 13%, transparent);
+  border-radius: var(--radius-chip);
+}
+
 /* 头像列:agent = 粉彩径向渐变,human/system = surface */
 .agent-avatar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -285,6 +358,30 @@ const quoteToComposer = (): void => {
 .agent-avatar .system-icon {
   font-size: 13px;
   line-height: 1;
+}
+
+/* 状态 pip:头像右下 8px 叠层(open-tag av-status);busy 呼吸,stopped 灰,idle 淡 */
+.av-status {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  background: var(--ink-fainter);
+  border: 1.5px solid var(--paper-raised);
+  border-radius: 50%;
+}
+.av-status.busy {
+  background: hsl(46 66% 50%);
+  animation: av-breathe 1.9s ease-in-out infinite;
+}
+.av-status.stopped { background: var(--tone-danger-dot); }
+@keyframes av-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .av-status.busy { animation: none; opacity: 0.9; }
 }
 
 /* 紧凑分组:隐藏头像与头部,保留列对齐(Slack 连续消息) */
@@ -357,6 +454,24 @@ const quoteToComposer = (): void => {
 }
 .time { flex: 0 0 auto; width: 50px; text-align: right; }
 
+/* 流式运行指示(open-tag msg-agent-state):暖橙呼吸点 + 词 */
+.running-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--ink-faint);
+}
+.running-chip .running-dot {
+  width: 6px;
+  height: 6px;
+  background: hsl(46 66% 50%);
+  border-radius: 50%;
+  animation: av-breathe 1.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .running-chip .running-dot { animation: none; opacity: 0.9; }
+}
+
 /* 悬停工具条:头部右侧浮出(复制/引用) */
 .eb-toolbar {
   position: absolute;
@@ -389,7 +504,7 @@ const quoteToComposer = (): void => {
   cursor: pointer;
   background: transparent;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 .eb-tool:hover {
