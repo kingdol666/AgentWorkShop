@@ -88,7 +88,7 @@ const RIGHT_W_DEFAULT = 300
 const leftWidth = useStorage('aw.harness.leftW', LEFT_W_DEFAULT)
 const rightWidth = useStorage('aw.harness.rightW', RIGHT_W_DEFAULT)
 const resizeLeft = (d: number): void => {
-  leftWidth.value = Math.min(460, Math.max(200, leftWidth.value + d))
+  leftWidth.value = Math.min(460, Math.max(220, leftWidth.value + d))
 }
 const resizeRight = (d: number): void => {
   rightWidth.value = Math.min(560, Math.max(240, rightWidth.value - d))

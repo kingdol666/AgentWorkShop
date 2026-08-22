@@ -52,6 +52,25 @@ const select = (channelId: string): void => {
   wsStore.setActiveChannel(props.wsId, channelId)
 }
 
+/** 点击工作目录行:复制完整路径到剪贴板(有真实作用;title 提示全路径) */
+const copyWorkspace = async (path: string): Promise<void> => {
+  try {
+    await navigator.clipboard.writeText(path)
+    message.success(`已复制:${path}`)
+  }
+  catch {
+    message.error('复制失败(浏览器未授权剪贴板)')
+  }
+}
+/** 路径显示 basename(E:\codes\AgentWorkShop → AgentWorkShop),全路径在 title/复制 */
+const baseName = (path: string): string => path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? path
+/** 默认目录(data/workspaces/<uuid>)的 basename 是 36 位裸 UUID,对用户零信息量 → 不展示该行 */
+const UUID_RE = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i
+const displayWorkspace = (path: string): string => {
+  const base = baseName(path)
+  return UUID_RE.test(base) ? '' : base
+}
+
 // ===== 新建 Channel 并挂载(空团队) =====
 const mountModal = ref(false)
 const mountForm = reactive({ name: '', description: '', workspace: '', scenarioPrompt: '' })
@@ -231,16 +250,24 @@ const saveAsTemplate = async (): Promise<void> => {
           :class="{ live: ch.activeTasks > 0 }"
         />
         <span class="ch-name">{{ ch.name }}</span>
-        <span
-          class="i-tabler-settings2 op"
+        <button
+          class="op im"
+          type="button"
           title="Channel 设置(场景/工作目录/存为模板)"
+          :aria-label="`设置 ${ch.name}`"
           @click.stop="openSettings(ch.id)"
-        />
-        <span
-          class="i-tabler-x op"
+        >
+          <span class="i-tabler-settings2 im-pop" />
+        </button>
+        <button
+          class="op im"
+          type="button"
           title="移出 workspace"
+          :aria-label="`移出 ${ch.name}`"
           @click.stop="unmount(ch.id)"
-        />
+        >
+          <span class="i-tabler-x im-pop" />
+        </button>
       </div>
       <div class="row2">
         <!-- 快照未到达:计数不可信,显示同步占位(不呈现误导性的"0 成员") -->
@@ -253,13 +280,15 @@ const saveAsTemplate = async (): Promise<void> => {
           class="meta"
         >{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</span>
       </div>
-      <div
-        v-if="ch.workspace"
-        class="row2 ws"
-        :title="`工作目录:${ch.workspace}(Agent 作业 cwd)`"
+      <button
+        v-if="displayWorkspace(ch.workspace)"
+        class="row2 ws im"
+        type="button"
+        :title="`工作目录:${ch.workspace}(点击复制路径)`"
+        @click.stop="copyWorkspace(ch.workspace)"
       >
-        <span class="i-tabler-folder" /> {{ ch.workspace }}
-      </div>
+        <span class="i-tabler-folder" /> {{ displayWorkspace(ch.workspace) }}
+      </button>
     </div>
 
     <div class="mount-template">
@@ -501,15 +530,27 @@ const saveAsTemplate = async (): Promise<void> => {
   white-space: nowrap;
 }
 .op {
+  display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   font-size: 13px;
   color: var(--ink-fainter);
-  opacity: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
   border-radius: var(--radius-chip);
-  transition: opacity var(--transition-fast), color var(--transition-fast);
+  /* 常显(低透明度):不再 hover-only——行级操作入口不应时隐时现 */
+  opacity: 0.55;
+  transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
 }
-.channel-item:hover .op { opacity: 0.75; }
-.op:hover { opacity: 1 !important; color: var(--ink); }
+.channel-item:hover .op,
+.channel-item.active .op { opacity: 0.9; }
+.op:hover { opacity: 1; color: var(--ink); background: var(--paper-deep); }
+.op:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row2 { padding-left: 14px; font-size: 11px; color: var(--ink-faint); }
 .meta.syncing { font-style: italic; opacity: 0.6; }
 .row2.ws {
@@ -518,11 +559,21 @@ const saveAsTemplate = async (): Promise<void> => {
   align-items: center;
   overflow: hidden;
   max-width: 100%;
+  padding: 0 2px 0 14px;
   font-family: var(--font-mono);
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink-fainter);
+  text-align: left;
+  cursor: copy; /* 点击复制完整路径(title 提示) */
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-chip);
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
+.row2.ws:hover { color: var(--ink-soft); background: color-mix(in srgb, currentColor 6%, transparent); }
+.row2.ws:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .mount-template { padding: 12px 6px 6px; border-top: 1px solid var(--line); margin-top: 10px; }
 .select { width: 100%; }
 .tpl-hint {
