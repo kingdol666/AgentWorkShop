@@ -70,9 +70,8 @@ const hasMore = computed(() => lines.value.length > MAX)
   font-size: 10.5px;
   line-height: 20px;
 }
-.member-line[data-op='added'] { color: var(--accent-moss); }
-.member-line[data-op='removed'] { color: var(--tone-danger-dot); }
-.member-line[data-op='updated'] { color: var(--ink-soft); }
+/* 成员变更行:统一中性墨(动词语义已含 新增/移除,不靠颜色重复表意) */
+.member-line { color: var(--ink-soft); }
 .line-text { overflow-wrap: anywhere; word-break: break-word; }
 .more-btn {
   margin-top: 4px;

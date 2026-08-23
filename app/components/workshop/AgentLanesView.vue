@@ -15,6 +15,7 @@ import { message } from 'ant-design-vue'
 import { useStorage } from '@vueuse/core'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useWorkshopApi, type TerminalSessionDto } from '@/app/composables/workshop/useWorkshopApi'
+import { agentHueColor } from '@/app/composables/workshop/useEventBlocks'
 import LaneBlocks from '@/app/components/workshop/lanes/LaneBlocks.vue'
 import OmpTerminalPanel from '@/app/components/workshop/terminal/OmpTerminalPanel.vue'
 
@@ -37,10 +38,15 @@ const resetLane = (id: string): void => {
   laneWidths.value = next
 }
 
-const stateDot: Record<string, string> = {
-  idle: 'var(--tone-success-dot)',
-  busy: 'var(--tone-info-dot)',
-  stopped: 'var(--tone-neutral-dot)',
+/** 泳道身份:头像章 + 稳定身份色(与聊天头像/提及卡同一哈希色相源) */
+const laneInitial = (name: string): string => name.trim().charAt(0).toUpperCase() || '?'
+const laneHue = (id: string): string => agentHueColor(id)
+
+/** harness 终端徽章色(antd 语义 → 本设计 tone 点;仅作指示,文字仍说明状态) */
+const TERM_DOT: Record<string, string> = {
+  processing: 'var(--tone-live-dot)',
+  warning: 'var(--tone-warning-dot)',
+  success: 'var(--tone-success-dot)',
 }
 
 // ===== 成员管理(用户侧 REST;状态回流以 WS agent.member 事件为准) =====
@@ -328,38 +334,43 @@ onBeforeUnmount(() => {
           :style="{ flexBasis: `${laneWidth(a.agentId)}px` }"
         >
           <div class="lane-head">
-            <!-- 第一行:身份(状态点 + 名称 + 徽标);名称为弹性吸收项,任何宽度截断不遮挡 -->
+            <!-- 第一行:身份(头像章 + 名称 + 中性徽标);名称为弹性吸收项,任意宽度截断不遮挡 -->
             <div class="head-top">
-              <span
-                class="dot"
-                :style="{ background: stateDot[a.state] ?? 'var(--tone-neutral-dot)' }"
-              />
+              <span class="lane-ava">
+                <span :style="{ '--av': laneHue(a.agentId) }">{{ laneInitial(a.name) }}</span>
+                <span
+                  class="lane-state"
+                  :class="a.state"
+                />
+              </span>
               <span
                 class="lane-name"
                 :title="a.name"
               >{{ a.name }}</span>
-              <a-tag
+              <span
                 v-if="a.config?.systemPromptPrefix"
-                color="gold"
+                class="lane-chip"
                 title="已注入场景系统提示词"
-                class="scenario-tag"
               >
                 场景
-              </a-tag>
-              <a-tag
-                :color="a.role === 'lead' ? 'purple' : 'blue'"
-                class="role"
+              </span>
+              <span
+                class="lane-role"
+                :class="a.role"
               >
                 {{ a.role }}
-              </a-tag>
-              <a-tag
+              </span>
+              <span
                 v-if="termBadge(terminalOf.get(a.agentId))"
-                :color="termBadge(terminalOf.get(a.agentId))!.color"
                 class="term-badge"
                 :title="`omp 进程 PID ${terminalOf.get(a.agentId)?.pid} · harness 会话状态`"
               >
+                <span
+                  class="term-dot"
+                  :style="{ background: TERM_DOT[termBadge(terminalOf.get(a.agentId))!.color] ?? 'var(--tone-neutral-dot)' }"
+                />
                 {{ termBadge(terminalOf.get(a.agentId))!.text }}
-              </a-tag>
+              </span>
             </div>
             <!-- 第二行:状态摘要 + 操作簇(常驻可见;hairline 分隔破坏性操作) -->
             <div class="head-sub">
@@ -622,6 +633,7 @@ onBeforeUnmount(() => {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  background: var(--paper); /* 灰画布:气泡白卡在此浮出(Slack 声部分层) */
 }
 .toolbar {
   display: flex;
@@ -631,7 +643,8 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 8px 14px 6px;
-  border-bottom: 1px solid var(--divider-hair);
+  background: var(--paper-raised);
+  border-bottom: 1px solid var(--line);
 }
 .team-summary {
   display: flex;
@@ -685,11 +698,13 @@ onBeforeUnmount(() => {
   flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
   flex-direction: column;
   min-width: 240px;
+  background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius-panel-sm);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
   container-type: inline-size; /* 泳道自身为容器:窄列时内部自适应 */
 }
-/* 双层头部:第一行身份(点/名/徽标),第二行状态摘要 + 操作簇 ——
+/* 双层头部:第一行身份(头像/名/徽标),第二行状态摘要 + 操作簇 ——
    单行方案在 320px 列内固定元素 ~360px 必然挤压遮挡,分层后各行均有余量 */
 .lane-head {
   display: flex;
@@ -706,7 +721,51 @@ onBeforeUnmount(() => {
   min-width: 0;
   align-items: center;
 }
-.dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
+/* 身份头像章:稳定身份色 + 白首字母;右下状态 pip(busy 呼吸 / stopped 红 / idle 静灰) */
+.lane-ava {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-av);
+  border-radius: var(--radius-panel-sm);
+}
+.lane-ava > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--av, var(--av-fallback));
+  border-radius: var(--radius-panel-sm);
+}
+.lane-state {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  background: var(--ink-fainter);
+  border: 1.5px solid var(--paper-raised);
+  border-radius: 50%;
+}
+.lane-state.busy {
+  background: var(--tone-live-dot);
+  animation: lane-breathe 1.9s ease-in-out infinite;
+}
+.lane-state.stopped { background: var(--tone-danger-dot); }
+@keyframes lane-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lane-state.busy { animation: none; opacity: 0.9; }
+}
 .lane-name {
   flex: 1 1 auto;
   min-width: 0;
@@ -716,15 +775,53 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.role,
-.scenario-tag,
-.term-badge {
+/* 中性小徽标:场景/角色/终端 —— 发丝线 chip 或墨色填充,不再叠 antd 多色 tag */
+.lane-chip {
   flex: 0 0 auto;
-  margin-inline-end: 0;
-  font-size: 10px;
-  line-height: 14px;
+  padding: 0 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  line-height: 15px;
+  color: var(--ink-faint);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
 }
-.term-badge { font-family: var(--font-mono); }
+.lane-role {
+  flex: 0 0 auto;
+  padding: 0 7px;
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  line-height: 16px;
+  text-transform: uppercase;
+  border-radius: var(--radius-pill);
+}
+.lane-role.lead {
+  color: var(--on-accent);
+  background: var(--accent);
+}
+.lane-role.worker {
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+}
+.term-badge {
+  display: inline-flex;
+  gap: 4px;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 15px;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+}
+.term-badge .term-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
 .head-sub {
   display: flex;
   gap: 8px;
@@ -778,7 +875,7 @@ onBeforeUnmount(() => {
   .term-label { display: inline; }
 }
 @container (max-width: 300px) {
-  .scenario-tag { display: none; }
+  .lane-chip { display: none; }
 }
 @container (max-width: 260px) {
   .term-badge { display: none; }
@@ -789,6 +886,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   padding: 8px 4px 16px;
   overflow-y: auto;
+  background: var(--paper); /* 灰画布:消息气泡白卡浮出 */
 }
 .empty {
   display: flex;

@@ -149,23 +149,31 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
 </template>
 
 <style scoped>
-/* open-tag 消息正文:无气泡、无边框,散文直接落在消息行内容列;层次靠
- * 字号/行高/段距而非容器阴影。仅代码块/列表保持次级 surface 区分 */
+/* 聊天气泡(Slack 声部):灰画布上的白卡片 + 发丝线 + 12px 圆角。
+ * 层次靠"画布灰 → 气泡白"的 surface 阶梯,而非阴影堆叠;代码块/列表
+ * 在气泡内以次级 surface(paper-deep)区分。 */
 .stream-bubble {
   position: relative;
   padding: 0;
 }
 
 .stream-text {
-  padding: 2px 2px 7px;
+  padding: 9px 13px 10px;
+  margin: 2px 2px 8px 0;
   font-size: 13px;
-  line-height: 1.72;
+  line-height: 1.7;
   color: var(--ink);
   word-break: break-word;
   overflow-wrap: anywhere;
-  background: transparent;
-  border: 0;
-  transition: none;
+  background: var(--bubble-bg);
+  border: 1px solid var(--bubble-line);
+  border-radius: var(--radius-bubble);
+  box-shadow: var(--bubble-shadow);
+  transition: border-color var(--transition-fast);
+}
+
+.stream-text:hover {
+  border-color: var(--line-strong);
 }
 
 .prose :deep(p) { margin: 0 0 7px; }

@@ -58,10 +58,11 @@ const hasMore = computed(() => lines.value.length > MAX)
   padding: 0 5px;
   font-size: 8.5px;
   letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  border: 1px solid var(--line);
   border-radius: var(--radius-chip);
 }
-.mem-scope[data-scope='shared'] { color: var(--accent-violet); background: color-mix(in srgb, var(--accent-violet) 14%, transparent); }
-.mem-scope[data-scope='private'] { color: var(--accent-cobalt); background: color-mix(in srgb, var(--accent-cobalt) 12%, transparent); }
 .mem-title { overflow-wrap: anywhere; word-break: break-word; }
 .more-btn {
   margin-top: 4px;

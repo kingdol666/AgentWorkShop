@@ -10,7 +10,7 @@ import { computed } from 'vue'
 import type { Component } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useComposerBus } from '@/app/composables/workshop/useComposerBus'
-import { KIND_META, buildStreamText, blockTier, type EventBlock } from '@/app/composables/workshop/useEventBlocks'
+import { KIND_META, buildStreamText, blockTier, agentHueColor, type EventBlock } from '@/app/composables/workshop/useEventBlocks'
 import ClusterStream from '@/app/components/workshop/blocks/ClusterStream.vue'
 import ClusterTool from '@/app/components/workshop/blocks/ClusterTool.vue'
 import ClusterStatus from '@/app/components/workshop/blocks/ClusterStatus.vue'
@@ -62,6 +62,11 @@ const agentInitial = computed(() => {
   return (name || id).charAt(0).toUpperCase()
 })
 
+/** 身份色(agentId 哈希 → 稳定色相;与泳道头/提及卡同一来源,全站不再另造配色) */
+const avColor = computed(() =>
+  props.block.agentId ? agentHueColor(props.block.agentId) : undefined,
+)
+
 const meta = computed(() => KIND_META[props.block.kind])
 
 /** 头像点击 → 打开 Agent 抽屉(与 @pill 同入口) */
@@ -104,22 +109,6 @@ const runningNow = computed(() =>
   props.block.kind === 'stream'
   && !props.block.settled
   && agentState.value === 'busy')
-
-/** kind → tone 色点(koda tone 系统) */
-const KIND_TONE: Record<string, string> = {
-  stream: 'var(--tone-info-dot)',
-  tool: 'var(--tone-neutral-dot)',
-  status: 'var(--tone-neutral-dot)',
-  life: 'var(--tone-success-dot)',
-  route: 'var(--tone-info-dot)',
-  task: 'var(--tone-info-dot)',
-  artifact: 'var(--tone-success-dot)',
-  member: 'var(--tone-retry-dot)',
-  memory: 'var(--tone-warning-dot)',
-  error: 'var(--tone-danger-dot)',
-  other: 'var(--tone-neutral-dot)',
-}
-const kindTone = computed(() => KIND_TONE[props.block.kind] ?? 'var(--tone-neutral-dot)')
 
 /** 消费完整性观测:块首事件 seq + 块内事件数(浏览器测试对账用) */
 const firstSeq = computed(() => props.block.events[0]?.seq ?? 0)
@@ -197,6 +186,7 @@ const quoteToComposer = (): void => {
       class="agent-avatar"
       :class="{ 'is-agent': !!block.agentId, 'is-human': !!humanLabel, 'clickable': !!block.agentId }"
       :title="humanLabel ?? `${agentLabel}${roleLabel ? ` · ${roleLabel}` : ''}`"
+      :style="avColor ? { '--av': avColor } : undefined"
       @click="onAvatarClick"
     >
       <span
@@ -249,12 +239,7 @@ const quoteToComposer = (): void => {
             v-if="block.events.length > 1"
             class="merged"
           >×{{ block.events.length }}</span>
-          <span class="kind-chip">
-            <span
-              class="kind-dot"
-              :style="{ background: kindTone }"
-            />{{ meta.label }}
-          </span>
+          <span class="kind-chip">{{ meta.label }}</span>
           <span class="time">{{ time }}</span>
         </span>
         <!-- 悬停工具条:复制全文 / 引用到输入框(open-tag msg-toolbar) -->
@@ -336,18 +321,15 @@ const quoteToComposer = (): void => {
 }
 
 .event-block[data-kind='stream']:not([data-settled='true']) {
-  background: color-mix(in srgb, var(--g-sky) 5%, transparent);
+  background: color-mix(in srgb, var(--ink) 2.5%, transparent);
   border-radius: 4px;
 }
-/* 仅终局/注意/错误级接入色缘(兑色边缘不干扰 process 噪声) */
-.event-block[data-tier='terminal'] {
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--tone-success-dot) 55%, transparent);
-}
+/* 仅注意/错误级接入色缘(兑色低饱和度;终局不加彩色缘,靠名字加粗表意) */
 .event-block[data-tier='attention'] {
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--tone-warning-dot) 78%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--tone-warning-dot) 55%, transparent);
 }
 .event-block[data-kind='error'] {
-  box-shadow: inset 2px 0 0 var(--tone-danger-dot);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--tone-danger-dot) 70%, transparent);
 }
 .event-block[data-covered='true'] { opacity: 0.72; }
 
@@ -376,7 +358,8 @@ const quoteToComposer = (): void => {
   }
 }
 
-/* 头像列:agent = 粉彩径向渐变,human/system = surface(open-tag av 尺寸档 36/28) */
+/* 头像列:agent = 身份色(agentId 哈希 → --av,同源色相,白字首字母);
+   human/system = surface(open-tag av 尺寸档 36/28) */
 .agent-avatar {
   position: relative;
   display: flex;
@@ -404,8 +387,8 @@ const quoteToComposer = (): void => {
   box-shadow: 0 0 0 var(--radius-chip) transparent, 0 3px 10px rgb(12 10 9 / 16%);
 }
 .agent-avatar.is-agent {
-  color: var(--ink);
-  background: radial-gradient(circle at 30% 28%, var(--g-mint), var(--g-lav) 70%, var(--g-sky));
+  color: var(--on-av);
+  background: var(--av, var(--av-fallback));
 }
 .agent-avatar.is-human {
   color: var(--ink-soft);
@@ -489,28 +472,17 @@ const quoteToComposer = (): void => {
   white-space: nowrap;
 }
 
-.kind-dot {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin-right: 4px;
-  vertical-align: 1px;
-  border-radius: 50%;
-}
-
-/* 类别小标:edged 细线 chip,替代裸文本(与 Slack 消息元语一致) */
+/* 类别小标:中性等宽纯文本(无边框/无彩色点 —— 类别是元语不是状态,
+   彩色语义只留给 attention/error 边缘) */
 .kind-chip {
   display: inline-flex;
-  gap: 0;
   align-items: center;
-  padding: 1px 7px;
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-  color: var(--ink-faint);
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
+  padding: 0 2px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
   line-height: 14px;
+  color: var(--ink-fainter);
 }
 .head-right {
   display: flex;
@@ -524,8 +496,8 @@ const quoteToComposer = (): void => {
 }
 .folded {
   padding: 0 4px;
-  color: var(--tone-success-dot);
-  background: color-mix(in srgb, var(--tone-success-dot) 12%, transparent);
+  color: var(--ink-faint);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
   border-radius: var(--radius-chip);
 }
 .merged {

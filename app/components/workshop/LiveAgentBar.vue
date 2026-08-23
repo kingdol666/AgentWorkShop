@@ -10,6 +10,7 @@
  */
 import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useEntitiesStore, type AgentView } from '@/app/stores/workshop/entities'
+import { agentHueColor } from '@/app/composables/workshop/useEventBlocks'
 
 const props = defineProps<{ wsId: string }>()
 const emit = defineEmits<{ (e: 'openAgent', target: { channelId: string, agentId: string }): void }>()
@@ -75,7 +76,10 @@ const open = (a: LiveAgent) => {
         @click="open(live[0]!)"
       >
         <span class="live-ava">
-          <span class="aw-avatar is-agent live-avatar">{{ initials(live[0]!.name) }}</span>
+          <span
+            class="aw-avatar is-agent live-avatar"
+            :style="{ '--av': agentHueColor(live[0]!.agentId) }"
+          >{{ initials(live[0]!.name) }}</span>
           <span
             class="live-pip"
             aria-hidden="true"
@@ -115,7 +119,10 @@ const open = (a: LiveAgent) => {
             class="live-pop-item"
             @click="open(a)"
           >
-            <span class="aw-avatar is-agent live-avatar-sm">{{ initials(a.name) }}</span>
+            <span
+              class="aw-avatar is-agent live-avatar-sm"
+              :style="{ '--av': agentHueColor(a.agentId) }"
+            >{{ initials(a.name) }}</span>
             <span class="live-pop-text">
               <span class="live-pop-name">{{ a.name }}</span>
               <span class="live-pop-detail">{{ a.taskLabel }}</span>

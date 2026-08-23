@@ -114,15 +114,15 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   opacity: 0.85;
 }
 .tool-line.host .tool-node {
-  border-color: var(--tone-retry-dot);
-  background: color-mix(in srgb, var(--tone-retry-dot) 16%, var(--paper-raised));
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 14%, var(--paper-raised));
 }
 .tool-line.host .tool-icon,
 .tool-line.host .tool-name {
   font-weight: 600;
   color: var(--ink);
 }
-.tool-line.host .tool-icon { color: var(--tone-retry-dot); opacity: 1; }
+.tool-line.host .tool-icon { opacity: 1; }
 .tool-kind {
   flex: 0 0 auto;
   align-self: center;
@@ -130,9 +130,9 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   font-size: 8.5px;
   letter-spacing: 0.1em;
   line-height: 14px;
-  color: var(--tone-retry-dot);
-  background: color-mix(in srgb, var(--tone-retry-dot) 12%, transparent);
-  border: 0;
+  color: var(--ink-faint);
+  background: transparent;
+  border: 1px solid var(--line);
   border-radius: var(--radius-pill);
 }
 .tool-line:hover .tool-args { opacity: 1; }

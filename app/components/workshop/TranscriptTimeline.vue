@@ -357,6 +357,7 @@ const blockDayFlags = computed(() => {
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  background: var(--paper); /* 灰画布:消息气泡白卡在此浮出(Slack 声部) */
 }
 .filter-bar {
   display: flex;

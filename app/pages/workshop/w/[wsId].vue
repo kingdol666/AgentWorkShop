@@ -482,6 +482,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
   min-height: 0;
   max-width: 100%;
   overflow: hidden;
+  background: var(--paper); /* 灰画布:消息气泡/白色面板在此浮出(Slack 式分层) */
 }
 .center-pane > * {
   min-width: 0;

@@ -16,6 +16,7 @@ import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
 import { useComposerBus } from '@/app/composables/workshop/useComposerBus'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useUserStore } from '@/app/stores/workshop/user'
+import { agentHueColor } from '@/app/composables/workshop/useEventBlocks'
 
 const props = defineProps<{ channelId: string }>()
 const emit = defineEmits<{ (e: 'submitted'): void }>()
@@ -297,15 +298,6 @@ const placeholder = computed(() =>
 
 <template>
   <div class="composer">
-    <!-- Hero 品牌层:暖粉彩光斑 + 墨方印衬线 A 水印(装饰,不挡交互) -->
-    <div
-      class="composer-hero"
-      aria-hidden="true"
-    >
-      <span class="hero-orb orb-mint" />
-      <span class="hero-orb orb-peach" />
-      <span class="hero-mark">A</span>
-    </div>
     <div class="composer-box">
       <!-- @提及菜单(输入卡上方) -->
       <div
@@ -324,7 +316,10 @@ const placeholder = computed(() =>
           @mousedown.prevent="pickMention(i)"
           @mouseenter="mentionHi = i"
         >
-          <span class="aw-avatar is-agent mention-ava">{{ a.name.charAt(0).toUpperCase() }}</span>
+          <span
+            class="aw-avatar is-agent mention-ava"
+            :style="{ '--av': agentHueColor(a.agentId) }"
+          >{{ a.name.charAt(0).toUpperCase() }}</span>
           <span class="mention-name">@{{ a.name }}</span>
           <span class="mention-role">{{ a.role }}</span>
           <span
@@ -509,71 +504,22 @@ const placeholder = computed(() =>
   border-top: 1px solid var(--line);
 }
 
-/* ===== Hero 品牌层(open-tag warm-editorial 声部 × design-taste 液态玻璃) =====
- * 粉彩光斑仅作氛围 radial 装饰(设计系统铁律:永不作前景色);
- * 输入卡半透明 + backdrop-blur 形成"透过毛玻璃看品牌水印"的层次。 */
-.composer-hero {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  pointer-events: none;
-}
-.hero-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(34px);
-  opacity: 0.5;
-}
-.hero-orb.orb-mint {
-  right: -40px;
-  bottom: -70px;
-  width: 240px;
-  height: 180px;
-  background: radial-gradient(circle, var(--g-mint), transparent 72%);
-}
-.hero-orb.orb-peach {
-  right: 180px;
-  bottom: -90px;
-  width: 200px;
-  height: 160px;
-  background: radial-gradient(circle, var(--g-peach), transparent 70%);
-  opacity: 0.42;
-}
-/* 墨方印衬线 A 水印:与侧栏品牌同族;半隐于毛玻璃之后 */
-.hero-mark {
-  margin: 0 26px 2px 0;
-  font-family: var(--font-display);
-  font-size: 118px;
-  line-height: 0.72;
-  color: color-mix(in srgb, var(--ink) 7%, transparent);
-  text-shadow: 0 1px 0 color-mix(in srgb, var(--paper-raised) 60%, transparent);
-  user-select: none;
-}
-
-/* 浮起输入卡 → 毛玻璃:半透纸面 + backdrop-blur + 内侧 1px 折射边 +
- * inset 高光(liquid glass:edge refraction,非外发光) */
+/* 输入卡(Slack 声部):纯白面 + 发丝线 + 12px 圆角;聚焦时墨色内缘加深。
+ * 去掉了光斑/水印装饰层 —— 输入区是作业面,不是品牌海报。 */
 .composer-box {
   position: relative;
   max-width: 900px;
   padding: 8px 12px 8px;
   margin: 0 auto;
-  background: color-mix(in srgb, var(--paper-raised) 68%, transparent);
-  backdrop-filter: blur(16px) saturate(1.08);
-  -webkit-backdrop-filter: blur(16px) saturate(1.08);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel);
-  box-shadow:
-    inset 0 0 0 0.5px color-mix(in srgb, var(--ink) 13%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
-    0 6px 22px rgb(12 10 9 / 5%);
-  transition: box-shadow var(--transition-slow);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 30%, transparent), var(--bubble-shadow);
+  transition: border-color var(--transition-slow), box-shadow var(--transition-slow);
 }
 .composer-box:focus-within {
-  box-shadow:
-    inset 0 0 0 0.5px color-mix(in srgb, var(--ink) 22%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 30%, transparent),
-    0 8px 26px rgb(12 10 9 / 7%);
+  border-color: var(--ink-fainter);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--ink) 18%, transparent), 0 6px 22px rgb(12 10 9 / 5%);
 }
 
 /* 状态行:轻 chip 说明当前模式参数 */

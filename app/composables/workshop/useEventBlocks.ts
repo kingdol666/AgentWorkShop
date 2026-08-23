@@ -123,12 +123,13 @@ export function classifyEvent(e: AepEnvelope): BlockKind {
   }
 }
 
-/** agent 稳定配色(id hash → hue;无 id 灰。饱和度/亮度压低:白字首字母可达 AA 对比) */
+/** agent 稳定配色(id hash → hue;无 id 灰。饱和度/亮度压低:白字首字母可达 AA 对比;
+ *  同一色相供头像/泳道头/提及悬停卡共用 —— 身份色全站同源,不另造配色) */
 export function agentHueColor(agentId: string | null | undefined): string {
   if (!agentId) return '#6e6e77'
   let h = 0
   for (const ch of agentId) h = (h * 31 + ch.charCodeAt(0)) % 360
-  return `hsl(${h}, 48%, 38%)`
+  return `hsl(${h}, 42%, 34%)`
 }
 
 // ===== 注意力档位(open-tag deliveryTier 移植) =====

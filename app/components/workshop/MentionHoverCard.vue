@@ -8,6 +8,7 @@
  */
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useEntitiesStore, type AgentView } from '@/app/stores/workshop/entities'
+import { agentHueColor } from '@/app/composables/workshop/useEventBlocks'
 
 const entities = useEntitiesStore()
 
@@ -74,7 +75,10 @@ const stateDot = (s: AgentView['state']): string =>
       class="mh-card"
       :style="{ left: `${card.x}px`, top: `${card.y}px` }"
     >
-      <span class="aw-avatar is-agent mh-ava">{{ card.agent.name.trim().charAt(0).toUpperCase() }}</span>
+      <span
+        class="aw-avatar is-agent mh-ava"
+        :style="{ '--av': agentHueColor(card.agent.agentId) }"
+      >{{ card.agent.name.trim().charAt(0).toUpperCase() }}</span>
       <div class="mh-body">
         <div class="mh-name">
           <span

@@ -8,7 +8,7 @@
  */
 import { computed, ref } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
-import { mdLiteMentions, type EventBlock, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
+import { mdLiteMentions, agentHueColor, type EventBlock, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
 
 const props = defineProps<{ block: EventBlock }>()
 const entities = useEntitiesStore()
@@ -125,7 +125,10 @@ const hasMore = computed(() => rows.value.length > MAX)
           :data-agent-id="r.from"
           :title="`查看 ${nameOf(r.from)}`"
         >
-          <span class="aw-avatar is-agent who-ava">{{ initials(nameOf(r.from)) }}</span>
+          <span
+            class="aw-avatar is-agent who-ava"
+            :style="{ '--av': agentHueColor(r.from) }"
+          >{{ initials(nameOf(r.from)) }}</span>
           @{{ nameOf(r.from) }}
         </button>
         <span
@@ -188,14 +191,14 @@ const hasMore = computed(() => rows.value.length > MAX)
 .chat-row {
   margin-bottom: 6px;
   padding: 7px 12px 8px;
-  background: color-mix(in srgb, var(--paper-deep) 42%, transparent);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel-sm);
+  background: var(--bubble-bg);
+  border: 1px solid var(--bubble-line);
+  border-radius: var(--radius-bubble);
+  box-shadow: var(--bubble-shadow);
   transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .chat-row:hover {
-  background: color-mix(in srgb, var(--paper-deep) 62%, transparent);
   border-color: var(--line-strong);
 }
 
@@ -266,18 +269,28 @@ const hasMore = computed(() => rows.value.length > MAX)
   align-items: center;
   padding: 0 6px;
   font-size: 9.5px;
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--ink) 4.5%, transparent);
+  border: 1px solid var(--line);
   border-radius: var(--radius-chip);
 }
 
-.route-badge[data-tone='assign'] { color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 12%, transparent); }
-.route-badge[data-tone='immediate'] { color: var(--tone-warning-dot); background: color-mix(in srgb, var(--tone-warning-dot) 15%, transparent); }
-.route-badge[data-tone='notice'] { color: var(--tone-success-dot); background: color-mix(in srgb, var(--tone-success-dot) 12%, transparent); }
-.route-badge[data-tone='peer'] { color: var(--tone-retry-dot); background: color-mix(in srgb, var(--tone-retry-dot) 14%, transparent); }
+/* 消息类型徽章(Slack 规范:类型是元语,用中性 chip + 图标表意,不堆彩色) */
+.route-badge[data-tone='assign'],
+.route-badge[data-tone='immediate'],
+.route-badge[data-tone='notice'],
+.route-badge[data-tone='peer'] {
+  color: var(--ink-soft);
+  background: transparent;
+  border-color: var(--line);
+}
+.route-badge[data-tone='assign'] { color: var(--ink-soft); }
 
-/* 回执徽章:需回复(琥珀,注意级)/ 回复关联(低视觉权重,等宽短 id 可对账) */
+/* 回执徽章:需回复(琥珀,注意级,附文字) / 回复关联(低视觉权重,等宽短 id 可对账) */
 .route-badge.receipt {
   color: var(--tone-warning-dot);
-  background: color-mix(in srgb, var(--tone-warning-dot) 14%, transparent);
+  background: color-mix(in srgb, var(--tone-warning-dot) 12%, transparent);
+  border-color: transparent;
 }
 .route-badge.reply-link {
   font-size: 9.5px;
