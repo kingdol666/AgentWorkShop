@@ -321,7 +321,14 @@ export class AgentChannelManager {
     if (!this.taskEngine) {
       const factory = this.deps.taskEngineFactory ?? (r => new TaskEngineImpl(r, {
         onTaskChange: (e) => {
-          this.buses.get(e.channelId)?.notifyTask({ taskId: e.taskId, state: e.state, agentId: e.agentId })
+          // 全字段转发(含 progress):TaskEngine 内部进度变化(applyEvent 分块折算 /
+          // complete 置 100)须经总线 → WS task.progress 实时同步,否则前端实体进度滞后
+          this.buses.get(e.channelId)?.notifyTask({
+            taskId: e.taskId,
+            state: e.state,
+            progress: e.progress,
+            agentId: e.agentId,
+          })
         },
       }))
       this.taskEngine = factory({ tasks: this.deps.repos.tasks, messages: this.deps.repos.messages })
@@ -609,6 +616,14 @@ export class AgentChannelManager {
     this.idleSweeperTimer = setInterval(() => {
       const now = Date.now()
       for (const rt of [...this.agentIndex.values()]) {
+        // 存活校准优先:休眠/强杀后子进程 exit 事件可能不达,周期探 OS 实际存在性,
+        // 死进程收敛为已退出(在途回合归位,下一回合自动重生),避免 stuck busy/死客户端空转
+        try {
+          rt.reconcileProcess()
+        }
+        catch (err) {
+          console.error(`[AgentChannelManager] 校准 ${rt.channelId}/${rt.agentId} 进程存活失败:`, err)
+        }
         const key = runtimeKey(rt.channelId, rt.agentId)
         if (rt.getState() === 'idle') {
           const since = idleSince.get(key) ?? now

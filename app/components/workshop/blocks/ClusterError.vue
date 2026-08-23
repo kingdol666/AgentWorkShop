@@ -46,7 +46,7 @@ const hasMore = computed(() => lines.value.length > MAX)
 
 <style scoped>
 .error-cluster {
-  padding: 1px 0 4px 20px;
+  padding: 2px 0 5px 2px;
 }
 /* 错误块体:danger 底色轻染(与任务 FAILED chip 同一视觉语义) */
 .error-line {

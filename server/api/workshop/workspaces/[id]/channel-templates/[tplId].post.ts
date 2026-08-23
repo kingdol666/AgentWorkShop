@@ -24,5 +24,8 @@ export default defineApiHandler(async (event) => {
   if (result.leadAgentId) {
     ensureLeadSchedulerLoop(manager, result.channelId)
   }
+  // 常驻事件录制器(与 channels.post 同口径):确保无人 WS 订阅前事件也已持久化
+  const { ensureStream } = await import('../../../ws')
+  ensureStream(manager, result.channelId)
   return result
 })

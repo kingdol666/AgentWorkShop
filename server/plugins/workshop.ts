@@ -72,6 +72,13 @@ export function ensureLeadSchedulerLoop(
 export default function workshopPlugin(nitroApp: {
   hooks: { hook(name: string, fn: (...args: unknown[]) => void | Promise<void>): void }
 }): void {
+  // 进程级未处理拒绝兜底(Node ≥23 默认对 unhandledRejection 抛错可击穿整个服务)。
+  // 环境型连接复位(休眠/断网后陈旧 socket read ECONNRESET、omp 子进程管道抖动等)
+  // 不应让服务崩溃;记录上下文后继续运行(正常业务错误仍走各自显式处理路径)。
+  process.on('unhandledRejection', (reason) => {
+    console.error('[workshop] 未处理 Promise rejection(已兜底,不影响服务):', reason)
+  })
+
   // 先检查已设置:避免重复装配覆盖既有单例
   if (globalThis.__workshopManager) return
 

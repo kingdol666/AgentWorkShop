@@ -96,6 +96,23 @@ export function sweepHarnessProcesses(retentionMs = 10 * 60_000): void {
 }
 
 /**
+ * OS 级进程存活探针(signal 0,不产生实际信号)。
+ * 系统休眠/强杀/崩溃后子进程的 exit 事件可能不达父进程(Node 侧 → 'exited' 仍 false),
+ * 注册表/客户端的 alive 标记会长期失真。此探针按 PID 查 OS 实际存在性来校准:
+ *  EPERM = 进程存在但无权限(仍视为存活);ESRCH = 进程已不存在;其余未知均视为不可信。
+ */
+export function isProcessAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  }
+  catch (err) {
+    return (err as NodeJS.ErrnoException).code === 'EPERM'
+  }
+}
+
+/**
  * 强制终止进程树。
  * Windows: taskkill /pid <pid> /T /F(整棵进程树,含 omp 可能拉起的子进程);
  * POSIX: 先按进程组(-pid)后按单进程 SIGKILL。

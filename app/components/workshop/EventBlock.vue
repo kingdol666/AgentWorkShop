@@ -64,6 +64,26 @@ const agentInitial = computed(() => {
 
 const meta = computed(() => KIND_META[props.block.kind])
 
+/** 头像点击 → 打开 Agent 抽屉(与 @pill 同入口) */
+const openAgent = inject<(target: { channelId: string, agentId: string }) => void>(
+  'aw:open-agent',
+  () => {},
+)
+const onAvatarClick = (): void => {
+  if (props.block.agentId) openAgent({ channelId: cid.value, agentId: props.block.agentId })
+}
+
+/** 发送方身份字幕(open-tag msg-role):lead/worker · harness,agent 行的身份描述 */
+const roleLabel = computed(() => {
+  const id = props.block.agentId
+  if (!id) return ''
+  const a = (entities.agents[cid.value] ?? []).find(x => x.agentId === id)
+  if (!a) return 'agent'
+  const role = a.role === 'lead' ? 'lead' : 'worker'
+  const harness = a.harness ?? ''
+  return harness ? `${role} · ${harness}` : role
+})
+
 /**
  * 注意力档位(open-tag deliveryTier 移植):terminal(终局产出)= 成功色左缘 +
  * 加重名字;attention(等待回应/错误)= 琥珀左缘 + 脉搏点;silent(过程噪声)=
@@ -172,10 +192,12 @@ const quoteToComposer = (): void => {
     :data-events="block.events.length"
     :data-folded="block.folded"
   >
-    <span
+    <button
+      type="button"
       class="agent-avatar"
-      :class="{ 'is-agent': !!block.agentId, 'is-human': !!humanLabel }"
-      :title="humanLabel ?? agentLabel"
+      :class="{ 'is-agent': !!block.agentId, 'is-human': !!humanLabel, 'clickable': !!block.agentId }"
+      :title="humanLabel ?? `${agentLabel}${roleLabel ? ` · ${roleLabel}` : ''}`"
+      @click="onAvatarClick"
     >
       <span
         v-if="humanLabel"
@@ -185,7 +207,9 @@ const quoteToComposer = (): void => {
         v-else-if="!block.agentId"
         class="i-tabler-cpu system-icon"
       />
-      <template v-else>{{ agentInitial }}</template>
+      <template v-else>
+        {{ agentInitial }}
+      </template>
       <!-- 状态 pip:busy 呼吸圈 / idle 静点(open-tag av-status) -->
       <span
         v-if="block.agentId && agentState"
@@ -193,7 +217,7 @@ const quoteToComposer = (): void => {
         :class="agentState"
         :title="agentState === 'busy' ? '运行中' : agentState === 'stopped' ? '已停止' : '空闲'"
       />
-    </span>
+    </button>
 
     <div class="eb-main">
       <header
@@ -202,16 +226,14 @@ const quoteToComposer = (): void => {
       >
         <span class="agent-name">{{ humanLabel ?? agentLabel }}</span>
         <span
+          v-if="roleLabel"
+          class="role-label"
+        >{{ roleLabel }}</span>
+        <span
           v-if="tier === 'attention'"
           class="tier-attention"
           title="需要回应或人工知悉"
         ><span class="i-tabler-alert-circle" />需关注</span>
-        <span class="kind">
-          <span
-            class="kind-dot"
-            :style="{ background: kindTone }"
-          />{{ meta.label }}
-        </span>
         <span class="head-right">
           <!-- 流式运行指示(open-tag msg-agent-state):当前 agent 正在产出 -->
           <span
@@ -227,6 +249,12 @@ const quoteToComposer = (): void => {
             v-if="block.events.length > 1"
             class="merged"
           >×{{ block.events.length }}</span>
+          <span class="kind-chip">
+            <span
+              class="kind-dot"
+              :style="{ background: kindTone }"
+            />{{ meta.label }}
+          </span>
           <span class="time">{{ time }}</span>
         </span>
         <!-- 悬停工具条:复制全文 / 引用到输入框(open-tag msg-toolbar) -->
@@ -253,6 +281,12 @@ const quoteToComposer = (): void => {
         </span>
       </header>
 
+      <!-- 紧凑态副作用:紧凑态隐藏头部后,悬停显示抹去的时间(chat 侧厢时间轴) -->
+      <span
+        v-if="compact"
+        class="ghost-time"
+      >{{ time.slice(0, 5) }}</span>
+
       <component
         :is="body"
         :block="block"
@@ -263,14 +297,20 @@ const quoteToComposer = (): void => {
 </template>
 
 <style scoped>
+/* Slack 聊天行:行跨度经头像列成组;默认无左缘,仅终局/注意级/流式/错误插色缘 */
 .event-block {
+  position: relative;
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
-  column-gap: 10px;
-  padding: 2px 8px 2px 0;
-  margin: 0 8px 3px 6px;
-  border-left: 2px solid color-mix(in srgb, var(--ink) 9%, transparent);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 11px;
+  padding: 5px 10px 4px 12px;
+  margin: 0;
+  transition: background 0.15s ease;
+}
+
+.event-block:hover {
+  background: var(--hover-tint);
+  border-radius: 4px;
 }
 
 /* 进场编排(open-tag motion charter):仅实时新块,60ms burst stagger;
@@ -283,11 +323,47 @@ const quoteToComposer = (): void => {
   .event-block.enter { animation: none; }
 }
 
-/* turn 边界:不同 agent 的新回合开始 → 加大间距 + 顶部 hairline */
+/* turn 边界:不同 agent 的新回合 → 加大间距 + 顶部 hairline(角色回合切换) */
 .event-block.turn-start {
-  margin-top: 12px;
-  border-top: 1px solid var(--divider-hair);
-  padding-top: 7px;
+  margin-top: 13px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+.event-block.turn-start.compact {
+  margin-top: 0;
+  padding-top: 5px;
+  border-top: 0;
+}
+
+.event-block[data-kind='stream']:not([data-settled='true']) {
+  background: color-mix(in srgb, var(--g-sky) 5%, transparent);
+  border-radius: 4px;
+}
+/* 仅终局/注意/错误级接入色缘(兑色边缘不干扰 process 噪声) */
+.event-block[data-tier='terminal'] {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--tone-success-dot) 55%, transparent);
+}
+.event-block[data-tier='attention'] {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--tone-warning-dot) 78%, transparent);
+}
+.event-block[data-kind='error'] {
+  box-shadow: inset 2px 0 0 var(--tone-danger-dot);
+}
+.event-block[data-covered='true'] { opacity: 0.72; }
+
+.event-block[data-tier='terminal'] .agent-name { font-weight: 700; }
+.event-block[data-tier='silent'] { opacity: 0.88; }
+.event-block[data-tier='silent']:hover { opacity: 1; }
+
+.tier-attention {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 0 5px;
+  font-size: 9px;
+  color: var(--tone-warning-dot);
+  background: color-mix(in srgb, var(--tone-warning-dot) 13%, transparent);
+  border-radius: var(--radius-chip);
 }
 @keyframes block-in {
   from {
@@ -299,52 +375,33 @@ const quoteToComposer = (): void => {
     transform: none;
   }
 }
-.event-block:hover {
-  border-left-color: color-mix(in srgb, var(--g-sky) 80%, transparent);
-  background: var(--hover-tint);
-}
-.event-block[data-kind='stream']:not([data-settled='true']) {
-  border-left-color: color-mix(in srgb, var(--g-sky) 55%, transparent);
-}
-.event-block[data-kind='error'] { border-left-color: var(--tone-danger-dot); }
-.event-block[data-covered='true'] { opacity: 0.72; }
 
-/* 注意力档位(open-tag deliveryTier):终局产出加重,过程噪声收敛,注意级琥珀 */
-.event-block[data-tier='terminal'] {
-  border-left-color: color-mix(in srgb, var(--tone-success-dot) 65%, transparent);
-}
-.event-block[data-tier='terminal'] .agent-name { font-weight: 700; }
-.event-block[data-tier='attention'] {
-  border-left-color: color-mix(in srgb, var(--tone-warning-dot) 80%, transparent);
-}
-.event-block[data-tier='silent'] { opacity: 0.86; }
-.event-block[data-tier='silent']:hover { opacity: 1; }
-.tier-attention {
-  display: inline-flex;
-  gap: 3px;
-  align-items: center;
-  padding: 0 5px;
-  font-size: 9px;
-  color: var(--tone-warning-dot);
-  background: color-mix(in srgb, var(--tone-warning-dot) 13%, transparent);
-  border-radius: var(--radius-chip);
-}
-
-/* 头像列:agent = 粉彩径向渐变,human/system = surface */
+/* 头像列:agent = 粉彩径向渐变,human/system = surface(open-tag av 尺寸档 36/28) */
 .agent-avatar {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  margin-top: 1px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  margin-top: 0;
+  padding: 0;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink);
   background: var(--paper-deep);
+  border: 0;
   border-radius: 50%;
+}
+.agent-avatar.clickable {
+  cursor: pointer;
+  transition: transform var(--transition-fast) var(--im-spring), box-shadow var(--transition-fast);
+}
+.agent-avatar.clickable:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 var(--radius-chip) transparent, 0 3px 10px rgb(12 10 9 / 16%);
 }
 .agent-avatar.is-agent {
   color: var(--ink);
@@ -356,7 +413,7 @@ const quoteToComposer = (): void => {
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 .agent-avatar .system-icon {
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1;
 }
 
@@ -384,14 +441,18 @@ const quoteToComposer = (): void => {
   .av-status.busy { animation: none; opacity: 0.9; }
 }
 
-/* 紧凑分组:隐藏头像与头部,保留列对齐(Slack 连续消息) */
+/* 紧凑分组:隐藏头像与头部,保留列对齐(Slack 连续消息;ghost 时间月台悬浮显) */
 .event-block.compact .agent-avatar {
   visibility: hidden;
   height: 0;
   margin-top: 0;
 }
 .event-block.compact {
-  margin-top: -1px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.event-block.compact + .event-block.compact {
+  margin-top: -2px;
 }
 
 .eb-main {
@@ -410,10 +471,20 @@ const quoteToComposer = (): void => {
 
 .agent-name {
   overflow: hidden;
-  max-width: 180px;
-  font-size: 12px;
+  max-width: 220px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 身份字幕(open-tag msg-role):lead/worker · harness,灰调不与之争关注 */
+.role-label {
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  color: var(--ink-fainter);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -426,10 +497,20 @@ const quoteToComposer = (): void => {
   vertical-align: 1px;
   border-radius: 50%;
 }
-.kind {
+
+/* 类别小标:edged 细线 chip,替代裸文本(与 Slack 消息元语一致) */
+.kind-chip {
+  display: inline-flex;
+  gap: 0;
+  align-items: center;
+  padding: 1px 7px;
   font-size: 9.5px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--ink-faint);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  line-height: 14px;
 }
 .head-right {
   display: flex;
@@ -452,7 +533,35 @@ const quoteToComposer = (): void => {
   background: color-mix(in srgb, var(--ink) 7%, transparent);
   border-radius: var(--radius-chip);
 }
-.time { flex: 0 0 auto; width: 50px; text-align: right; }
+.time {
+  flex: 0 0 auto;
+  width: 60px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* 紧凑态月台时间:悬停行时右侧浮现(Slack 紧凑组的时间轴补偿;仅住行头) */
+.ghost-time {
+  position: absolute;
+  top: 3px;
+  right: 10px;
+  z-index: 2;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-fainter);
+  pointer-events: none;
+  opacity: 0;
+  background: var(--paper-raised);
+  border-radius: var(--radius-chip);
+  transition: opacity var(--transition-fast);
+}
+.event-block.compact:hover .ghost-time {
+  opacity: 1;
+}
 
 /* 流式运行指示(open-tag msg-agent-state):暖橙呼吸点 + 词 */
 .running-chip {

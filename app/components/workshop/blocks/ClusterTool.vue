@@ -16,7 +16,7 @@ const toolLines = computed(() =>
     const m = text.match(/^🔧\s*(\S+?)(?:\(([\s\S]*)\))?$/)
     const name = m?.[1] ?? 'tool'
     const args = m?.[2] ?? ''
-    return { seq: e.seq, name, args, meta: TOOL_META[name] ?? { icon: 'i-tabler-tool', kind: 'native' as const } }
+    return { seq: e.seq, time: e.at.slice(11, 19), name, args, meta: TOOL_META[name] ?? { icon: 'i-tabler-tool', kind: 'native' as const } }
   }),
 )
 
@@ -34,6 +34,8 @@ const hasMore = computed(() => toolLines.value.length > MAX)
       class="tool-line"
       :class="t.meta.kind"
     >
+      <time class="tool-time aw-mono">{{ t.time }}</time>
+      <span class="tool-node" />
       <span
         class="tool-icon"
         :class="t.meta.icon"
@@ -60,39 +62,67 @@ const hasMore = computed(() => toolLines.value.length > MAX)
 </template>
 
 <style scoped>
+/* open-tag AgentActivity 活动流形态:左缘活动行 —— mono 时间 → 节点 → 内容;
+ * 工具调用节点为方点(视觉区别于状态圆点),host 协作工具紫调强调 */
 .tool-cluster {
-  padding: 1px 0 4px 20px;
+  position: relative;
+  padding: 1px 0 5px 2px;
 }
 .tool-line {
   display: flex;
-  gap: 7px;
+  gap: 8px;
   align-items: baseline;
   min-width: 0;
   padding: 1.5px 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.tool-time {
+  flex: 0 0 34px;
+  text-align: right;
   font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 19px;
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-fainter);
+}
+.tool-node {
+  flex: 0 0 7px;
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 2.5px;
+  background: var(--paper-raised);
 }
 .tool-icon {
   flex: 0 0 auto;
-  font-size: 12px;
-  line-height: 19px;
-  opacity: 0.7;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.75;
 }
-.tool-name { flex: 0 0 auto; font-weight: 500; }
+.tool-name { flex: 0 0 auto; font-family: var(--font-mono); font-weight: 500; font-size: 11.5px; }
 .tool-args {
   min-width: 0;
+  max-width: min(52ch, 100%);
   overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11px;
   color: var(--ink-soft);
   text-overflow: ellipsis;
   white-space: nowrap;
   opacity: 0.85;
+}
+.tool-line.host .tool-node {
+  border-color: var(--tone-retry-dot);
+  background: color-mix(in srgb, var(--tone-retry-dot) 16%, var(--paper-raised));
 }
 .tool-line.host .tool-icon,
 .tool-line.host .tool-name {
   font-weight: 600;
   color: var(--ink);
 }
+.tool-line.host .tool-icon { color: var(--tone-retry-dot); opacity: 1; }
 .tool-kind {
   flex: 0 0 auto;
   align-self: center;
@@ -100,13 +130,15 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   font-size: 8.5px;
   letter-spacing: 0.1em;
   line-height: 14px;
-  color: var(--ink-faint);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
+  color: var(--tone-retry-dot);
+  background: color-mix(in srgb, var(--tone-retry-dot) 12%, transparent);
+  border: 0;
+  border-radius: var(--radius-pill);
 }
 .tool-line:hover .tool-args { opacity: 1; }
 .more-btn {
-  margin-top: 4px;
+  margin-top: 5px;
+  margin-left: 49px;
   padding: 1px 10px;
   font-family: var(--font-mono);
   font-size: 10px;
@@ -114,7 +146,7 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   cursor: pointer;
   background: transparent;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
+  border-radius: var(--radius-pill);
   transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
 .more-btn:hover {

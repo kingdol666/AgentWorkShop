@@ -264,6 +264,15 @@ export class OmpRpcAgentImpl implements AgentInterface {
     }
   }
 
+  /**
+   * harness 进程存活校准(manager sweeper 周期性调用;休眠/强杀后 exit 事件
+   * 可能不达父进程):按 PID 探 OS 实际存在性,进程已死 → 客户端收敛为已退出,
+   * 在途回合经 __process_exit__ 归位,下一回合 ensureClient 重生子进程。
+   */
+  reconcileProcess(): void {
+    this.client?.reconcile()
+  }
+
   /** omp 输出模式(rpc-ui = 默认,启用 HITL 对话框) */
   private get rpcMode(): 'rpc' | 'rpc-ui' {
     return this.config.rpcMode === 'rpc' ? 'rpc' : 'rpc-ui'
@@ -1034,7 +1043,11 @@ export class OmpRpcAgentImpl implements AgentInterface {
       this.agentRole = ctx.role
     }
 
-    if (!this.client) {
+    if (!this.client || !this.client.alive) {
+      // 旧客户端已退出(exit 事件/OS 存活校准 reconcile 触发)——必须丢弃并重生,
+      // 否则后续回合会一直对着死 stdio 报 PROMPT_FAILED 烧重试配额
+      this.client = null
+      this.hostToolsRegistered = false
       const command = this.config.command ?? 'omp'
       const client = new OmpRpcClient({
         command,

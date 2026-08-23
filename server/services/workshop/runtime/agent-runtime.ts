@@ -361,6 +361,16 @@ export class AgentRuntime {
     this.impl.killProcess?.()
   }
 
+  /** harness 进程存活校准(manager sweeper 周期性调用;休眠/强杀后校准 alive 失真;异常不抛出) */
+  reconcileProcess(): void {
+    try {
+      this.impl.reconcileProcess?.()
+    }
+    catch (err) {
+      console.error(`[AgentRuntime:${this.agentId}] 进程存活校准失败:`, err)
+    }
+  }
+
   /** 暴露 TaskEngine(供 SchedulerLoop 收集快照与执行调度决策) */
   get taskEngine(): TaskEngine {
     return this.deps.taskEngine
@@ -581,8 +591,12 @@ export class AgentRuntime {
         this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'idle', ...this.queueContext() })
       }
       // 回合失败(harness 错误/停滞看门狗中止/子进程异常):重投消息而非静默消费,
-      // 内容不丢,重试回合(通常已是全新子进程)再处理;每消息最多重投 2 次防毒消息死循环
-      if (sawRunError && (this.runErrorRetries.get(msg.messageId) ?? 0) < 2
+      // 内容不丢,重试回合(通常已是全新子进程)再处理;每消息最多重投 2 次防毒消息死循环。
+      // 任务已终态(取消/收口后 abort 让回合报错)则不再重投 —— 消息依任务终态
+      // 由调度器 reassign/新 assign 驱动,重投只会空转(启动即被终态检查消费)。
+      const taskNow = taskId ? this.deps.taskEngine.get(taskId) : undefined
+      const taskDone = !!taskNow && TERMINAL_TASK_STATES[taskNow.state]
+      if (sawRunError && !taskDone && (this.runErrorRetries.get(msg.messageId) ?? 0) < 2
         && this.deps.mailbox.requeue(msg.messageId)) {
         const attempt = (this.runErrorRetries.get(msg.messageId) ?? 0) + 1
         this.runErrorRetries.set(msg.messageId, attempt)

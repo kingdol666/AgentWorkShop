@@ -314,12 +314,106 @@ function testOnChildCompleted(): void {
   check('child-completed x-aw-child-task-id=子2 id', last?.metadata['x-aw-child-task-id'] === child2.id)
 }
 
+function testApplyEventErrorOnTerminal(): void {
+  const { engine, lead, worker, channel } = setup()
+  // WORKING 收到错误事件 → FAILED(正常路径)
+  {
+    const t = engine.create({ channelId: channel.id, creatorId: lead.id, assigneeId: worker.id, title: '正常失败' })
+    engine.transition(t.id, 'WORKING', worker.id)
+    engine.applyEvent(t.id, { kind: 'error', error: { code: 'OMP_LLM_ERROR', message: 'boom' } })
+    check('WORKING 错误事件 → FAILED', engine.get(t.id)?.state === 'FAILED', `state=${engine.get(t.id)?.state}`)
+  }
+  // 已 CANCELED 的任务(取消后 abort 回合报 "Interrupted by user")→ 幂等 no-op,不抛非法迁移
+  {
+    const t = engine.create({ channelId: channel.id, creatorId: lead.id, assigneeId: worker.id, title: '取消后回合报错' })
+    engine.transition(t.id, 'WORKING', worker.id)
+    engine.cancel(t.id, lead.id)
+    let threw = false
+    try {
+      engine.applyEvent(t.id, { kind: 'error', error: { code: 'OMP_LLM_ERROR', message: 'Interrupted by user' } })
+    }
+    catch {
+      threw = true
+    }
+    check('CANCELED 错误事件不抛非法迁移', !threw)
+    check('CANCELED 错误事件不改变状态', engine.get(t.id)?.state === 'CANCELED', `state=${engine.get(t.id)?.state}`)
+  }
+  // 已 COMPLETED / FAILED → 同样幂等 no-op
+  {
+    const t = engine.create({ channelId: channel.id, creatorId: lead.id, assigneeId: worker.id, title: '完成后回合报错' })
+    engine.transition(t.id, 'WORKING', worker.id)
+    engine.complete(t.id)
+    engine.applyEvent(t.id, { kind: 'error', error: { code: 'OMP_LLM_ERROR', message: 'late' } })
+    check('COMPLETED 错误事件保持 COMPLETED', engine.get(t.id)?.state === 'COMPLETED', `state=${engine.get(t.id)?.state}`)
+  }
+}
+
+function testSyncBroadcast(): void {
+  // 带 hooks 的 engine:验证 onTaskChange 正常收到 state 与 progress(前端同步链的事实源)
+  const db = openWorkshopDb(':memory:')
+  const channels = createChannelRepo(db)
+  const agents = createAgentRepo(db)
+  const tasks = createTaskRepo(db)
+  const messages = createMessageRepo(db)
+  const events: Array<{ state?: string, progress?: number }> = []
+  const engine = new TaskEngine({ tasks, messages }, {
+    onTaskChange: (e) => {
+      events.push({ state: e.state, progress: e.progress })
+    },
+  })
+  const channel = channels.create({ name: 'sync-channel' })
+  const lead = agents.create({ name: 'lead', harness: 'mock' })
+  const worker = agents.create({ name: 'worker', harness: 'mock' })
+
+  // ① 分块折算进度 → hook 广播 progress(不重复广播相同进度)
+  const t = engine.create({ channelId: channel.id, creatorId: lead.id, assigneeId: worker.id, title: '同步任务' })
+  engine.transition(t.id, 'WORKING', worker.id)
+  const before = events.length
+  engine.applyEvent(t.id, {
+    kind: 'artifact',
+    artifact: { artifactId: 'a1', name: 'report', parts: [{ text: 'chunk-1' }] },
+    append: true,
+    totalChunks: 4,
+  })
+  engine.applyEvent(t.id, {
+    kind: 'artifact',
+    artifact: { artifactId: 'a1', name: 'report', parts: [{ text: 'chunk-2' }] },
+    append: true,
+    totalChunks: 4,
+  })
+  const progressEvents = events.slice(before).filter(e => e.progress !== undefined)
+  check('分块折算进度触发 progress 广播', progressEvents.length === 2, `count=${progressEvents.length}`)
+  check('progress 数值递增正确', progressEvents[0]?.progress === 25 && progressEvents[1]?.progress === 50,
+    `p0=${progressEvents[0]?.progress} p1=${progressEvents[1]?.progress}`)
+  // 相同进度不重复广播(append 无折算变化)
+  engine.applyEvent(t.id, { kind: 'artifact', artifact: { artifactId: 'a2', name: 'notes', parts: [{ text: 'x' }] } })
+  const afterExtra = events.filter(e => e.progress !== undefined).length
+  check('无进度变化的 artifact 不触发 progress 广播', afterExtra === progressEvents.length, `count=${afterExtra}`)
+
+  // ② complete:先置 100 再迁移 → 状态广播时任务进度已是 100(状态帧携带完成态进度)
+  const stateEvents: Array<{ state?: string, progressAtBroadcast?: number }> = []
+  const engine2 = new TaskEngine({ tasks, messages }, {
+    onTaskChange: (e) => {
+      if (e.state === 'COMPLETED') {
+        // 状态广播时刻的 DB 进度(transition 内部读行构造 task.status → 直接可见)
+        stateEvents.push({ state: e.state, progressAtBroadcast: tasks.findById(t.id)?.progress })
+      }
+    },
+  })
+  engine2.complete(t.id)
+  const completed = stateEvents[0]
+  check('COMPLETED 状态广播时进度已为 100', completed?.state === 'COMPLETED' && completed?.progressAtBroadcast === 100,
+    `progress=${completed?.progressAtBroadcast}`)
+}
+
 function main(): void {
   testCreateDispatch()
   testDispatchAssignMessage()
   testAllLegalTransitions()
   testIllegalTransitions()
   testApplyEventArtifactChunking()
+  testApplyEventErrorOnTerminal()
+  testSyncBroadcast()
   testComplete()
   testReassign()
   testCancel()

@@ -116,7 +116,7 @@ const labelOf = (state: string) => STATE_LABEL[state] ?? state
   gap: 7px;
   align-items: center;
   flex-wrap: wrap;
-  padding: 2px 0 2px 20px;
+  padding: 3px 0 4px 2px;
   font-size: 12px;
 }
 .state-chip {

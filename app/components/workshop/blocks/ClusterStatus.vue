@@ -69,7 +69,8 @@ const toggle = (): void => {
 </template>
 
 <style scoped>
-.status-cluster { padding: 1px 0 3px 20px; }
+/* open-tag msg-act 折叠行形态:内容列起点对齐,无双重缩进 */
+.status-cluster { padding: 1px 0 4px 2px; }
 .st-toggle {
   display: flex;
   gap: 7px;

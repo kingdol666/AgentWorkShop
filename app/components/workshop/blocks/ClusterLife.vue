@@ -61,7 +61,7 @@ const currentTitle = computed(() => {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 1px 0 1px 20px;
+  padding: 2px 0 3px 2px;
   font-family: var(--font-mono);
   font-size: 11px;
   opacity: 0.88;

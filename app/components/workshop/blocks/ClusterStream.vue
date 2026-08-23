@@ -149,64 +149,82 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
 </template>
 
 <style scoped>
+/* open-tag 消息正文:无气泡、无边框,散文直接落在消息行内容列;层次靠
+ * 字号/行高/段距而非容器阴影。仅代码块/列表保持次级 surface 区分 */
 .stream-bubble {
   position: relative;
-  padding: 2px 0 6px;
+  padding: 0;
 }
 
 .stream-text {
-  padding: 8px 12px;
-  font-size: 12.5px;
-  line-height: 1.68;
+  padding: 2px 2px 7px;
+  font-size: 13px;
+  line-height: 1.72;
   color: var(--ink);
   word-break: break-word;
   overflow-wrap: anywhere;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-left: 2px solid var(--accent);
-  border-radius: var(--radius-chip);
-  transition: border-left-color var(--transition-base);
-}
-.stream-bubble.settled .stream-text {
-  border-left-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  background: transparent;
+  border: 0;
+  transition: none;
 }
 
-.prose :deep(p) { margin: 0 0 6px; }
+.prose :deep(p) { margin: 0 0 7px; }
 .prose :deep(p:last-child) { margin-bottom: 0; }
 .prose :deep(h3),
 .prose :deep(h4),
 .prose :deep(h5) {
-  margin: 10px 0 4px;
-  font-size: 12.5px;
+  margin: 12px 0 5px;
+  font-family: var(--font-display);
   font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
   color: var(--ink);
 }
 .prose :deep(h3):first-child,
 .prose :deep(h4):first-child,
-.prose :deep(h5):first-child { margin-top: 2px; }
+.prose :deep(h5):first-child { margin-top: 3px; }
 .prose :deep(ul) {
-  margin: 2px 0 6px;
-  padding-left: 18px;
+  margin: 3px 0 8px;
+  padding-left: 20px;
+  list-style: disc;
 }
-.prose :deep(li) { margin: 1px 0; }
+.prose :deep(ul) :deep(ul) {
+  margin: 2px 0 4px;
+  list-style: circle;
+}
+.prose :deep(li) {
+  margin: 2px 0;
+  padding-left: 1px;
+}
+.prose :deep(li::marker) {
+  color: var(--ink-fainter);
+}
 .prose :deep(code) {
-  padding: 0.5px 4px;
+  padding: 1px 5px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   background: var(--paper-deep);
   border-radius: var(--radius-chip);
 }
 .prose :deep(blockquote) {
-  margin: 4px 0;
-  padding: 2px 10px;
+  margin: 7px 0;
+  padding: 4px 4px 4px 12px;
   color: var(--ink-soft);
-  border-left: 2px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 var(--radius-chip) var(--radius-chip) 0;
+  background: color-mix(in srgb, var(--paper) 55%, transparent);
 }
-.prose :deep(b) { font-weight: 600; }
+.prose :deep(b) { font-weight: 650; }
+.prose :deep(a) {
+  color: var(--tone-info-dot);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 /* 围栏代码块:头栏(语言 + 复制)+ 等宽正文(现代 harness 标配) */
 .prose :deep(.code-block) {
-  margin: 6px 0;
+  margin: 7px 0;
   overflow: hidden;
   background: var(--paper-deep);
   border: 1px solid var(--line);

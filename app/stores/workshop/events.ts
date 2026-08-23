@@ -1,13 +1,20 @@
 /**
- * AEP 事件缓冲:per-channel 环形(ring 2000)+ lastSeq 游标 + 派生 selectors。
- * 全部渲染组件从本 store 派生,不直接持有事件。
+ * AEP 事件缓冲:per-channel 环形(ring 5000,与服务端 RING_CAP 同量级)+
+ * lastSeq 游标 + 派生 selectors。全部渲染组件从本 store 派生,不直接持有事件。
  */
 import { defineStore } from 'pinia'
 import { useUserStore } from './user'
 import { envelopeTier } from '@/app/composables/workshop/useEventBlocks'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 
-const RING_CAP = 2000
+const RING_CAP = 5000
+
+/**
+ * 历史回放剔除的过程帧:agent.delta 的打字机增量在历史里由落定 agent.message
+ * 携带全文(终帧必落库),逐帧重放既浪费窗口又会把单 agent 的流式帧灌满
+ * 全局 200 帧限额 —— 其他 agent 的消息一条都进不来(lane 空 <-> 时间线缺消息)。
+ */
+const HISTORY_EXCLUDE_TYPES = ['agent.delta']
 
 export type EventFilter = 'all' | 'messages' | 'tasks' | 'team' | 'errors' | 'key'
 
@@ -33,12 +40,40 @@ interface ChannelRing {
 
 const EMPTY_RING = (): ChannelRing => ({ lastSeq: 0, items: [], consumed: new Set() })
 
+/** 历史接口响应壳(全局/lane 同构) */
+interface EventsHistoryRes {
+  code: number | string
+  data?: { items: AepEnvelope[], total?: number }
+}
+
+/**
+ * 历史帧合并(共享水路):seq ≤ ceiling 窗口校验(增量路径由 ingest 处理)+
+ * consumed 去重(含被合并吃掉的帧)→ 排序归位 + 容量裁剪。返回净新增数。
+ */
+function mergeHistory(ring: ChannelRing, items: AepEnvelope[], ceiling: number): number {
+  let added = 0
+  for (const e of items) {
+    if (typeof e.seq !== 'number' || e.seq > ceiling) continue
+    if (ring.consumed.has(e.seq)) continue
+    ring.items.push(e)
+    ring.consumed.add(e.seq)
+    added += 1
+  }
+  if (added > 0) {
+    ring.items.sort((a, b) => a.seq - b.seq)
+    if (ring.items.length > RING_CAP) ring.items.splice(0, ring.items.length - RING_CAP)
+  }
+  return added
+}
+
 export const useEventsStore = defineStore('workshop.events', {
   state: () => ({
     rings: {} as Record<string, ChannelRing>,
     filters: {} as Record<string, EventFilter>,
     /** 时间线聚焦的 agent(只看该 agent 的流;null = 全部) */
     focusAgents: {} as Record<string, string | null>,
+    /** lane 历史已回填的 agent(channelId → agentId 集合;防视图切换重复拉取) */
+    laneLoaded: {} as Record<string, Set<string>>,
   }),
   getters: {
     ring(state) {
@@ -120,25 +155,19 @@ export const useEventsStore = defineStore('workshop.events', {
      * 持久化历史拉取(server 驱动):刷新后从 DB 拉最近事件并填充 ring。
      * 与 WS 增量无缝衔接:仅接受 seq ≤ 当前游标的帧;已消费过的 seq
      * (含被 delta 合并吃掉的中间 seq,经 consumed 集合识别)绝不重复插入。
+     * 剔除 agent.delta 过程帧:落定 agent.message 携带全文,历史窗口
+     * 不被单 agent 的打字机帧淹没(其他 agent 的消息才能进窗口)。
      */
     async loadHistory(channelId: string, limit = 200): Promise<void> {
       if (typeof window === 'undefined') return
+      const ring = this.rings[channelId] ?? EMPTY_RING()
       try {
-        const res = await $fetch<{ code: number | string, data?: { items: AepEnvelope[] } }>(
+        const res = await $fetch<EventsHistoryRes>(
           `/api/workshop/channels/${channelId}/events`,
-          { params: { limit }, headers: { authorization: `Bearer ${useUserStore().token}` } },
+          { params: { limit, excludeTypes: HISTORY_EXCLUDE_TYPES.join(',') }, headers: { authorization: `Bearer ${useUserStore().token}` } },
         )
         if (res.code !== 0 || !res.data?.items?.length) return
-        const ring = this.rings[channelId] ?? EMPTY_RING()
-        // 历史帧按 seq 升序补入(items 头部),不回退游标
-        for (const e of res.data.items) {
-          if (typeof e.seq !== 'number' || e.seq > ring.lastSeq) continue // 增量路径由 ingest 处理
-          if (ring.consumed.has(e.seq)) continue // 已消费(含合并帧)——绝不重复渲染
-          ring.items.push(e)
-          ring.consumed.add(e.seq)
-        }
-        ring.items.sort((a, b) => a.seq - b.seq)
-        if (ring.items.length > RING_CAP) ring.items.splice(0, ring.items.length - RING_CAP)
+        mergeHistory(ring, res.data.items, ring.lastSeq)
         this.rings[channelId] = ring
       }
       catch { /* 历史拉取失败不阻塞实时流 */ }
@@ -155,25 +184,79 @@ export const useEventsStore = defineStore('workshop.events', {
       const minSeq = ring.items.length > 0 ? (ring.items[0]?.seq ?? 0) : ring.lastSeq
       if (minSeq <= 1) return false
       try {
-        const res = await $fetch<{ code: number | string, data?: { items: AepEnvelope[], total?: number } }>(
+        const res = await $fetch<EventsHistoryRes>(
           `/api/workshop/channels/${channelId}/events`,
-          { params: { limit, beforeSeq: Math.max(1, minSeq - 1) }, headers: { authorization: `Bearer ${useUserStore().token}` } },
+          { params: { limit, beforeSeq: Math.max(1, minSeq - 1), excludeTypes: HISTORY_EXCLUDE_TYPES.join(',') }, headers: { authorization: `Bearer ${useUserStore().token}` } },
         )
         if (res.code !== 0 || !res.data?.items?.length) return false
-        let added = 0
-        for (const e of res.data.items) {
-          if (typeof e.seq !== 'number' || e.seq >= minSeq) continue
-          if (ring.consumed.has(e.seq)) continue
-          ring.items.push(e)
-          ring.consumed.add(e.seq)
-          added += 1
-        }
-        if (added > 0) {
-          ring.items.sort((a, b) => a.seq - b.seq)
-          if (ring.items.length > RING_CAP) ring.items.splice(0, ring.items.length - RING_CAP)
+        const added = mergeHistory(ring, res.data.items, ring.lastSeq)
+        if (added > 0) this.rings[channelId] = ring
+        // 返回是否可能还有更早(拉满一页视为有;由下次点击自然探底)
+        return added > 0 && res.data.items.length >= limit
+      }
+      catch {
+        return false
+      }
+    },
+    /**
+     * lane 历史按需回填:按 agent 维度拉取该成员的全部事件(剔除 delta 过程帧),
+     * 合并进 channel ring —— lanes 谓词按 agentId 过滤,时间线同样受益。
+     * laneLoaded 守卫保证每订阅生命周期内每 agent 只回填一次(视图切换不重复拉取;
+     * clear 随 ring 一并重置);拉取失败移除守卫,下次挂载可重试。
+     * 快照竞态防御:ring 未建立(lastSeq=0,channel.snapshot 未到)时先有界等待 ——
+     * 过早合并会被快照全量重建整环覆盖,等价于白拉。
+     */
+    async loadLaneHistory(channelId: string, agentId: string, limit = 200): Promise<void> {
+      if (typeof window === 'undefined') return
+      if (this.laneLoaded[channelId]?.has(agentId)) return
+      ;(this.laneLoaded[channelId] ??= new Set()).add(agentId)
+      for (let i = 0; i < 20 && this.lastSeq(channelId) === 0; i++) {
+        await new Promise(resolve => setTimeout(resolve, 150))
+      }
+      if (this.lastSeq(channelId) === 0) {
+        // 快照迟迟未到(WS 未连/权限拒绝):放弃本次,守卫移除待重试
+        this.laneLoaded[channelId]?.delete(agentId)
+        return
+      }
+      const ring = this.rings[channelId]!
+      try {
+        const res = await $fetch<EventsHistoryRes>(
+          `/api/workshop/channels/${channelId}/events`,
+          { params: { limit, agentId, excludeTypes: HISTORY_EXCLUDE_TYPES.join(',') }, headers: { authorization: `Bearer ${useUserStore().token}` } },
+        )
+        if (res.code === 0 && res.data?.items?.length) {
+          mergeHistory(ring, res.data.items, ring.lastSeq)
           this.rings[channelId] = ring
         }
-        // 返回是否可能还有更早(拉满一页视为有;由下次点击自然探底)
+      }
+      catch {
+        this.laneLoaded[channelId]?.delete(agentId)
+      }
+    },
+    /**
+     * lane 向上翻页:该 agent 在 ring 内的最小 seq 为游标,拉更早一段。
+     * 返回 false 表示该 agent 已无更早历史(lane"加载更早"按钮隐藏)。
+     */
+    async loadLaneEarlier(channelId: string, agentId: string, limit = 200): Promise<boolean> {
+      if (typeof window === 'undefined') return false
+      const ring = this.rings[channelId]
+      if (!ring) return false
+      let minSeq = 0
+      for (const e of ring.items) {
+        if (e.agentId === agentId) {
+          minSeq = e.seq
+          break
+        }
+      }
+      if (minSeq <= 1) return false
+      try {
+        const res = await $fetch<EventsHistoryRes>(
+          `/api/workshop/channels/${channelId}/events`,
+          { params: { limit, agentId, beforeSeq: minSeq - 1, excludeTypes: HISTORY_EXCLUDE_TYPES.join(',') }, headers: { authorization: `Bearer ${useUserStore().token}` } },
+        )
+        if (res.code !== 0 || !res.data?.items?.length) return false
+        const added = mergeHistory(ring, res.data.items, ring.lastSeq)
+        if (added > 0) this.rings[channelId] = ring
         return added > 0 && res.data.items.length >= limit
       }
       catch {
@@ -186,6 +269,7 @@ export const useEventsStore = defineStore('workshop.events', {
     },
     clear(channelId: string): void {
       Reflect.deleteProperty(this.rings, channelId)
+      Reflect.deleteProperty(this.laneLoaded, channelId)
     },
   },
 })

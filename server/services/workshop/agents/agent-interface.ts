@@ -204,4 +204,10 @@ export interface AgentInterface {
    * 终止后调用方(manager)应随之 stop 对应的 AgentRuntime。
    */
   killProcess?(): void
+  /**
+   * 可选:harness 进程存活校准(manager sweeper 周期性调用)。
+   * OS 级存活探针:系统休眠/强杀后子进程 exit 事件可能不达父进程,alive 标记失真;
+   * 探到进程已死时收敛为已退出,让在途回合归位、下一回合自动重生子进程。
+   */
+  reconcileProcess?(): void
 }

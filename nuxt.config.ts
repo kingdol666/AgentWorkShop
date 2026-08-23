@@ -100,6 +100,20 @@ export default defineNuxtConfig({
     experimental: {
       websocket: true,
     },
+    // 服务器侧 rollup 构建:显式外置 node:* 内建模块(如 node:sqlite)。
+    // rollup 的内建模块清单不含 node:sqlite,Nitro 的 externals 插件也放行,
+    // 否则每次 dev 热构建都报 UNRESOLVED_IMPORT“treated as external”告警;
+    // 这里抢先从插件层标记 external,运行期仍由 Node 原生解析,语义不变。
+    rollupConfig: {
+      plugins: [
+        {
+          name: 'node-builtins-external',
+          resolveId(id) {
+            if (id.startsWith('node:')) return { id, external: true }
+          },
+        },
+      ],
+    },
     hooks: {
       /**
        * 修复 nitropack 2.13.4 的 import-meta 插件缺陷:非入口 chunk 的

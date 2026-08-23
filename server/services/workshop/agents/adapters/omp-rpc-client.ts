@@ -11,6 +11,7 @@
  * 协议权威见 omp://rpc.md。
  */
 import { spawn, type ChildProcess } from 'node:child_process'
+import { isProcessAlive } from '../harness-process'
 
 // ===== 协议帧类型(仅本项目消费的子集) =====
 
@@ -147,6 +148,20 @@ export class OmpRpcClient {
   /** 子进程是否存活(spawn 前或已退出 → false) */
   get alive(): boolean {
     return !!this.child && !this.exited
+  }
+
+  /**
+   * OS 级存活校准(系统休眠/强杀后 exit 事件可能不达,alive 会失真):
+   * 按 PID 探 OS 实际存在性,进程已死则收敛为已退出(与 exit 事件同路径:
+   * onExit 登记、拒绝 pending、广播 __process_exit__),在途回合据此归位,
+   * 后续 ensureClient 得以重生子进程。幂等;进程健在/未 spawn 时无操作。
+   */
+  reconcile(): boolean {
+    const pid = this.child?.pid
+    if (!pid || this.exited || this.disposed) return true
+    if (isProcessAlive(pid)) return true
+    this.handleExit(null)
+    return false
   }
 
   /** 强制终止子进程(不等优雅退出;进程树终止由监控层 killHarnessProcess 负责) */
@@ -449,8 +464,9 @@ export class OmpRpcClient {
     }
   }
 
-  /** 子进程退出处理 */
+  /** 子进程退出处理(exit 事件 / OS 存活校准 reconcile 共用;幂等) */
   private handleExit(code: number | null): void {
+    if (this.exited) return
     this.exited = true
     this.exitCode = code
     this.options.onExit?.(this.child?.pid ?? -1, code)

@@ -43,6 +43,8 @@ Thumbs.db
 .game-verify
 # 设计验证截图(脚本生成)
 .design-verify
+# GUI 走查截图(脚本生成)
+gui-test-screenshots/
 
 # 运行时数据库(data/ 为程序生成的 sqlite 文件)
 data/

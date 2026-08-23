@@ -58,7 +58,11 @@ export class TaskEngine {
   constructor(
     private readonly repos: { tasks: TaskRepo, messages: MessageRepo },
     private readonly hooks?: {
-      onTaskChange?(e: { taskId: string, channelId: string, state: TaskState, agentId?: string }): void
+      /**
+       * 任务变更广播(状态迁移带 state;进度变化带 progress;终态迁移经 transition
+       * 统一触发)。状态/进度的实时同步唯一出口 —— 前端/WS/monitor 据此对齐实体。
+       */
+      onTaskChange?(e: { taskId: string, channelId: string, state?: TaskState, progress?: number, agentId?: string }): void
     },
   ) {}
 
@@ -303,6 +307,11 @@ export class TaskEngine {
           artifacts.push(artifact)
         }
         this.repos.tasks.update(taskId, { artifacts, progress })
+        // 进度变化主动广播(applyEvent 不经 transition,落库进度须实时同步前端
+        // task.progress;与 report_progress 的 notifyTask 同口径)
+        if (progress !== task.progress) {
+          this.hooks?.onTaskChange?.({ taskId, channelId: task.channelId, progress, agentId: task.assigneeId })
+        }
         break
       }
       case 'status': {
@@ -313,7 +322,11 @@ export class TaskEngine {
         break
       }
       case 'error': {
-        // 执行失败 → FAILED(状态机仅允许 WORKING → FAILED)
+        // 执行失败 → FAILED(状态机仅允许 WORKING → FAILED)。
+        // 终态幂等:任务已被平台收口(取消/完成/已失败)后到来的错误事件(如
+        // 取消触发的 abort 让 omp 回合报 "Interrupted by user")直接忽略 ——
+        // 否则会对已 CANCELED 任务撞状态机抛非法迁移(崩溃噪声 + 触发无谓重投)
+        if (task.state !== 'WORKING') break
         this.transition(taskId, 'FAILED', task.assigneeId)
         break
       }
@@ -360,16 +373,20 @@ export class TaskEngine {
       if (!hasSummary) {
         artifacts = [...(artifacts ?? []), synthesizeGoalSummary(
           task,
-          children.filter(c => c.state === 'COMPLETED'),
+          children.filter(c => c.state === 'COMPLETED').map(rowToTask),
           modeInfo.config.goalCriteria ?? '任务描述中的需求已全部完成',
         )]
       }
     }
+    // 先置进度 100 再迁移:transition 广播的 task.status 帧直接携带 100,前端实体一次对齐
+    // (若先迁移后补进度,状态帧读到的是完成前进度,补写又无广播 → 前端进度滞后)
     if (artifacts && artifacts.length > 0) {
-      this.repos.tasks.update(taskId, { artifacts: [...task.artifacts, ...artifacts] })
+      this.repos.tasks.update(taskId, { artifacts: [...task.artifacts, ...artifacts], progress: 100 })
+    }
+    else {
+      this.repos.tasks.update(taskId, { progress: 100 })
     }
     this.transition(taskId, 'COMPLETED', task.assigneeId)
-    this.repos.tasks.update(taskId, { progress: 100 })
     return this.requireTask(taskId)
   }
 

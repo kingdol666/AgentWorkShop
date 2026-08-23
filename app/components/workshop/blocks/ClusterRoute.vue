@@ -155,7 +155,7 @@ const hasMore = computed(() => rows.value.length > MAX)
           v-if="r.requireReply"
           class="route-badge receipt"
           title="发送方要求回复:接收方须回执执行结果"
-        ><span class="i-tabler-mail-reply" />需回复</span>
+        ><span class="i-tabler-message-reply" />需回复</span>
         <span
           v-if="r.inReplyTo"
           class="route-badge reply-link aw-mono"
@@ -182,19 +182,20 @@ const hasMore = computed(() => rows.value.length > MAX)
 
 <style scoped>
 .route-cluster {
-  padding: 2px 0 4px 20px;
+  padding: 1px 0 5px;
 }
 
 .chat-row {
-  margin-bottom: 4px;
-  padding: 6px 10px 7px;
-  background: var(--paper-raised);
+  margin-bottom: 6px;
+  padding: 7px 12px 8px;
+  background: color-mix(in srgb, var(--paper-deep) 42%, transparent);
   border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-  transition: border-color var(--transition-fast);
+  border-radius: var(--radius-panel-sm);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .chat-row:hover {
+  background: color-mix(in srgb, var(--paper-deep) 62%, transparent);
   border-color: var(--line-strong);
 }
 
@@ -208,14 +209,14 @@ const hasMore = computed(() => rows.value.length > MAX)
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .who-pill {
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  padding: 0 7px;
+  padding: 1px 8px 1px 3px;
   font-family: var(--font-body);
   font-size: 11.5px;
   font-weight: 600;
@@ -223,7 +224,7 @@ const hasMore = computed(() => rows.value.length > MAX)
   cursor: pointer;
   background: var(--mention);
   border: 0;
-  border-radius: var(--radius-chip);
+  border-radius: var(--radius-pill);
   transition: background var(--transition-fast);
 }
 
@@ -232,13 +233,9 @@ const hasMore = computed(() => rows.value.length > MAX)
 }
 
 .who-ava {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   font-size: 9px;
-}
-
-.who-pill.from .who-ava {
-  display: none;
 }
 
 .to-arrow {
@@ -294,19 +291,17 @@ const hasMore = computed(() => rows.value.length > MAX)
   color: var(--ink-fainter);
 }
 
-/* 正文:聊天气泡排版 */
+/* 正文:聊天正文排版(无高度封顶,消息流自然展开) */
 .chat-body {
-  max-height: 420px;
-  padding: 2px 0 0 2px;
-  overflow-y: auto;
-  font-size: 12.5px;
-  line-height: 1.65;
+  padding: 1px 0 0 2px;
+  font-size: 13px;
+  line-height: 1.7;
   color: var(--ink);
   white-space: normal;
   word-break: break-word;
 }
 
-.prose :deep(p) { margin: 0 0 5px; }
+.prose :deep(p) { margin: 0 0 6px; }
 .prose :deep(p:last-child) { margin-bottom: 0; }
 .prose :deep(code) {
   padding: 0.5px 4px;
