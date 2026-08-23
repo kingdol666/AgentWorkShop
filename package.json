@@ -22,7 +22,11 @@
     "game:test": "tsx scripts/test-agent-brain.ts && tsx scripts/test-game-session.ts",
     "test:api-live": "node scripts/api-live-e2e.mjs",
     "game:verify": "node scripts/verify-game.mjs",
-    "game:build-assets": "node scripts/build-player-sheet.mjs"
+    "game:build-assets": "node scripts/build-player-sheet.mjs",
+    "game:build-wuwa": "node scripts/build-wuwa-assets.mjs",
+    "game:build-models": "node scripts/build-character-models.mjs",
+    "game:build-world": "node scripts/build-world-map.mjs",
+    "game:build-model3d": "node scripts/build-model-3d.mjs"
   },
   "lint-staged": {
     "*.{js,mjs,cjs,ts,vue}": "eslint --fix"
@@ -67,6 +71,7 @@
     "@nuxtjs/i18n": "^9.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^26.2.0",
+    "@types/three": "^0.185.4",
     "@unocss/nuxt": "^66.0.0",
     "@unocss/preset-attributify": "^66.0.0",
     "@unocss/preset-icons": "^66.7.5",

@@ -10,6 +10,7 @@ import { useStorage } from '@vueuse/core'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useEventsStore } from '@/app/stores/workshop/events'
 import { useWorkshopApi, type TaskDto } from '@/app/composables/workshop/useWorkshopApi'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
 const props = defineProps<{
   channelId: string
@@ -199,7 +200,7 @@ const stateColor: Record<string, string> = {
               :key="`${e.seq}-${e.type}`"
               class="tl-row"
             >
-              <span class="tl-time">{{ e.at.slice(11, 19) }}</span>
+              <span class="tl-time">{{ formatLocalClock(e.at) }}</span>
               <a-tag
                 v-if="e.type === 'task.status'"
                 :color="stateColor[(e.payload as { state: string }).state] ?? 'default'"

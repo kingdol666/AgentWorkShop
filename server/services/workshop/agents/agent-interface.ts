@@ -140,7 +140,7 @@ export interface SupervisionSnapshot {
   now: number
   /** 全 channel 任务摘要 */
   tasks: WorkspaceTask[]
-  /** 成员状态(含队列上下文:待执行数/执行中任务,供 lead 做最优调配) */
+  /** 成员状态(含队列上下文与实时进度,供 lead 做最优调配与停滞识别) */
   members: {
     agentId: string
     name: string
@@ -150,8 +150,14 @@ export interface SupervisionSnapshot {
     queued?: number
     /** 执行中任务 id(空闲时 null) */
     currentTaskId?: string | null
+    /** 执行中任务标题(lead 观察 worker 在干什么,不必翻任务表) */
+    currentTaskTitle?: string | null
+    /** 执行中任务进度 0-100(空闲/未上报为 null;lead 据此判断是否在推进) */
+    currentTaskProgress?: number | null
     /** 已完成任务数 */
     completedCount?: number
+    /** 忙碌但进度长期停滞(超 stallMs 未变)→ lead 应介入(notify/reassign/cancel) */
+    stalled?: boolean
   }[]
   /** 每个父任务未完成的子任务数 */
   pendingChildren: Record<string, number>

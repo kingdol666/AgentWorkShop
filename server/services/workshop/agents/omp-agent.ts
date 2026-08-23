@@ -922,15 +922,21 @@ export class OmpRpcAgentImpl implements AgentInterface {
     if (ctx) parts.push(ctx)
     if (memory) parts.push(memory)
     parts.push(this.systemManual())
-    // 格式化成员(含队列上下文 + 能力画像:koda 运营信号借鉴——按任务历史算
-    // 成功率/平均耗时/失败数,lead 按证据而非直觉选人)
+    // 格式化成员(含队列上下文 + 实时进度 + 停滞标记 + 能力画像:koda 运营信号借鉴 —
+    // 按任务历史算成功率/平均耗时/失败数,lead 按证据而非直觉选人)。
+    // 进度透出(heads-up):lead 看到每个 worker 正在执行的进度 %;stalled 标记
+    // 直接提示"忙碌但进展停滞 → 应介入",从根上杜绝"worker 在跑但 lead 不知道"。
     const capability = this.capabilityProfiles(snapshot)
     const members = snapshot.members.map((m) => {
       const cap = capability.get(m.agentId)
       const capLine = cap && cap.total > 0
         ? `, 成功率=${Math.round(cap.successRate * 100)}%, 均耗时=${Math.round(cap.avgDurationMs / 1000)}s, 失败=${cap.failed}`
         : ', 暂无历史'
-      return `  - ${m.agentId} (${m.name}, role=${m.role}, state=${m.state}, executing=${m.currentTaskId ?? '-'}, queued=${m.queued ?? 0}, completed=${m.completedCount ?? 0}${capLine})`
+      const prog = m.currentTaskProgress != null
+        ? `, progress=${m.currentTaskProgress}%${m.stalled ? ' [STALLED 停滞,请介入:notify/reassign/cancel]' : ''}`
+        : ''
+      const execTitle = m.currentTaskTitle ? `「${m.currentTaskTitle}」` : ''
+      return `  - ${m.agentId} (${m.name}, role=${m.role}, state=${m.state}, executing=${m.currentTaskId ?? '-'}${execTitle}, queued=${m.queued ?? 0}, completed=${m.completedCount ?? 0}${prog}${capLine})`
     }).join('\n')
 
     // 格式化任务(createdAt ASC = FIFO 顺序);COMPLETED 附交付预览(lead 直接看到 worker 成果)
@@ -1352,7 +1358,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
         case 'get_queue_overview': {
           const overview = await ws.queueOverview()
           const lines = overview.map(s =>
-            `  ${s.agentId} (${s.name}, role=${s.role}, state=${s.state}, current=${s.currentTaskId ?? '-'}, queued=${s.queuedCount}, completed=${s.completedCount})`,
+            `  ${s.agentId} (${s.name}, role=${s.role}, state=${s.state}, current=${s.currentTaskId ?? '-'}${s.currentTaskTitle ? `「${s.currentTaskTitle}」` : ''}, progress=${s.currentTaskProgress ?? '-'}%, queued=${s.queuedCount}, completed=${s.completedCount})`,
           )
           return { text: `团队队列总览(${overview.length}):\n${lines.join('\n') || '(空)'}` }
         }

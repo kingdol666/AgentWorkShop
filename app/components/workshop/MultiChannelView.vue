@@ -7,6 +7,7 @@ import { useStorage } from '@vueuse/core'
 import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useEventsStore } from '@/app/stores/workshop/events'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
 const props = defineProps<{ wsId: string }>()
 const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()
@@ -101,7 +102,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
             :class="{ clickable: e.type === 'task.status' }"
             @click="e.type === 'task.status' && emit('openTask', (e.payload as { taskId: string }).taskId)"
           >
-            <span class="me-time">{{ e.at.slice(11, 19) }}</span>
+            <span class="me-time">{{ formatLocalClock(e.at) }}</span>
             <span class="me-agent">{{ e.agentId?.slice(0, 4) ?? 'sys' }}</span>
             <span class="me-text">{{ summaryOf(e) }}</span>
           </div>

@@ -174,17 +174,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   padding-top: 12vh;
   background: var(--scrim, rgb(12 10 9 / 40%));
 }
-/* open-tag quick switcher 声部:hairline 圆角卡 + 搜索行 + kbd 页脚 */
+/* open-tag quick switcher 声部:轻量玻璃浮层(悬浮于画布之上,点到为止) */
 .palette {
   display: flex;
   flex-direction: column;
   width: 560px;
   max-width: 92vw;
   overflow: hidden;
-  background: var(--paper-raised);
-  border: 1px solid var(--line-strong);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-float);
+  box-shadow: var(--glass-highlight), var(--shadow-float);
   animation: palette-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes palette-in {
@@ -250,6 +252,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
 }
 .palette-item.selected .pi-hint { background: var(--paper-raised); }
 .palette-empty { padding: 18px; font-size: 13px; color: var(--ink-faint); text-align: center; }
+.palette-frost,
 .palette-foot {
   display: flex;
   gap: 8px;
@@ -258,6 +261,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   font-size: 11px;
   color: var(--ink-faint);
   border-top: 1px solid var(--line);
+  background: var(--frost-bg);
 }
 .palette-foot kbd {
   padding: 1px 5px;

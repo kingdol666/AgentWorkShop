@@ -254,6 +254,8 @@ function buildSnapshot(manager: AgentChannelManager, channelId: string): Record<
       config: parseJson<Record<string, unknown>>(m.configJson, {}),
       state: rt ? rt.getState() : 'idle',
       currentTaskId: view.current?.id ?? null,
+      currentTaskTitle: view.current?.title ?? null,
+      currentTaskProgress: view.current?.progress != null ? view.current.progress : null,
       queued: view.queued.length,
       completed: view.completed.length,
     }
@@ -267,6 +269,8 @@ function buildSnapshot(manager: AgentChannelManager, channelId: string): Record<
     role: a.role,
     state: a.state,
     currentTaskId: a.currentTaskId ?? null,
+    currentTaskTitle: a.currentTaskTitle ?? null,
+    currentTaskProgress: a.currentTaskProgress ?? null,
     queuedCount: a.queued ?? 0,
     completedCount: a.completed ?? 0,
   }))
@@ -342,6 +346,8 @@ function bindStreamSubscriptions(manager: AgentChannelManager, stream: ChannelSt
     agentId: e.agentId,
     state: e.state,
     currentTaskId: e.currentTaskId ?? null,
+    currentTaskTitle: e.currentTaskTitle ?? null,
+    currentTaskProgress: e.currentTaskProgress ?? null,
     queued: e.queuedCount ?? 0,
     completed: e.completedCount ?? 0,
   }, { agentId: e.agentId })))

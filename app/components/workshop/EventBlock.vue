@@ -11,6 +11,7 @@ import type { Component } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useComposerBus } from '@/app/composables/workshop/useComposerBus'
 import { KIND_META, buildStreamText, blockTier, agentHueColor, type EventBlock } from '@/app/composables/workshop/useEventBlocks'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 import ClusterStream from '@/app/components/workshop/blocks/ClusterStream.vue'
 import ClusterTool from '@/app/components/workshop/blocks/ClusterTool.vue'
 import ClusterStatus from '@/app/components/workshop/blocks/ClusterStatus.vue'
@@ -36,7 +37,7 @@ const entities = useEntitiesStore()
 const { quote } = useComposerBus()
 const cid = computed(() => props.block.events[0]?.channelId ?? '')
 
-const time = computed(() => props.block.firstAt.slice(11, 19))
+const time = computed(() => formatLocalClock(props.block.firstAt))
 const agentLabel = computed(() => {
   const id = props.block.agentId
   if (!id) return 'system'

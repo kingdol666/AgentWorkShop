@@ -17,6 +17,12 @@ export interface AgentView {
   /** 场景配置(含 systemPromptPrefix 等;由 WS 快照下发) */
   config?: Record<string, unknown>
   currentTaskId?: string | null
+  /** 执行中任务标题(lead 观察 worker 在干什么) */
+  currentTaskTitle?: string | null
+  /** 执行中任务进度 0-100(空闲/未上报为 null) */
+  currentTaskProgress?: number | null
+  /** 用户给该角色绑定的自定义模型(assetId;缺省用内置精魂) */
+  modelRef?: string | null
   queued?: number
   completed?: number
 }
@@ -95,6 +101,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
             agentId: string
             state: AgentView['state']
             currentTaskId?: string | null
+            currentTaskTitle?: string | null
+            currentTaskProgress?: number | null
             queued?: number
             completed?: number
             queuedCount?: number
@@ -104,6 +112,8 @@ export const useEntitiesStore = defineStore('workshop.entities', {
             agentId: raw.agentId,
             state: raw.state,
             currentTaskId: raw.currentTaskId ?? null,
+            currentTaskTitle: raw.currentTaskTitle ?? null,
+            currentTaskProgress: raw.currentTaskProgress ?? null,
             queued: raw.queued ?? raw.queuedCount ?? 0,
             completed: raw.completed ?? raw.completedCount ?? 0,
           }
@@ -154,6 +164,7 @@ export const useEntitiesStore = defineStore('workshop.entities', {
                 harness: p.harness,
                 enabled: p.enabled,
                 config: p.config,
+                modelRef: (p.config as { modelRef?: string } | undefined)?.modelRef ?? null,
                 state: 'idle',
                 currentTaskId: null,
                 queued: 0,
@@ -164,13 +175,15 @@ export const useEntitiesStore = defineStore('workshop.entities', {
           else if (p.op === 'updated') {
             if (idx >= 0) {
               const prev = list[idx]!
+              const nextConfig = p.config ?? prev.config
               list[idx] = {
                 ...prev,
                 name: p.name ?? prev.name,
                 role: p.role ?? prev.role,
                 harness: p.harness ?? prev.harness,
                 enabled: p.enabled ?? prev.enabled,
-                config: p.config ?? prev.config,
+                config: nextConfig,
+                modelRef: (nextConfig as { modelRef?: string } | undefined)?.modelRef ?? prev.modelRef ?? null,
               }
             }
           }

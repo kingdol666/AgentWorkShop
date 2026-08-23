@@ -23,7 +23,7 @@ export function useRouteMeta() {
     '/workshop/teams': { title: 'AgentTeam 编组库', icon: 'i-tabler-users-group' },
 
     '/workshop/channel-templates': { title: 'Channel 模板中心', icon: 'i-tabler-layout-grid-add' },
-    '/game': { title: t('menu.game'), icon: 'i-tabler-device-gamepad-2' },
+    '/town': { title: t('menu.town'), icon: 'i-tabler-map-2' },
     '/tokens': { title: t('menu.tokens'), icon: 'i-tabler-key' },
     '/users': { title: t('menu.users'), icon: 'i-tabler-users-group' },
     '/monitor': { title: t('menu.monitor'), icon: 'i-tabler-cpu' },

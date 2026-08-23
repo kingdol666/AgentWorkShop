@@ -15,7 +15,7 @@ interface MenuItem {
 const menuItems = computed<MenuItem[]>(() => [
   { key: '/', icon: 'i-tabler-layout-dashboard', label: t('menu.dashboard'), motion: 'im-pop' },
   { key: '/workshop', icon: 'i-tabler-box', label: t('menu.workshop'), motion: 'im-pop' },
-  { key: '/game', icon: 'i-tabler-device-gamepad-2', label: t('menu.game'), motion: 'im-pop' },
+  { key: '/town', icon: 'i-tabler-map-2', label: t('menu.town'), motion: 'im-pop' },
   { key: '/tokens', icon: 'i-tabler-key', label: t('menu.tokens'), motion: 'im-nudge-up' },
   { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users'), motion: 'im-pop' },
   { key: '/monitor', icon: 'i-tabler-cpu', label: t('menu.monitor'), motion: 'im-pulse' },
@@ -210,7 +210,7 @@ const go = (key: string) => {
   background: transparent;
   border: 0;
   border-radius: var(--radius-panel-sm);
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 
 .menu-item:hover {
@@ -218,9 +218,17 @@ const go = (key: string) => {
   background: var(--paper-deep);
 }
 
+.menu-item:active {
+  transform: translateY(1px);
+}
+
+/* 当前页:墨色药丸(ink pill)明确标识所在位置(导航当前态) */
 .menu-item.active {
-  color: var(--ink);
-  background: var(--paper-deep);
+  color: var(--on-accent);
+  background: var(--accent);
+}
+.menu-item.active:hover {
+  background: var(--accent-strong);
 }
 
 .menu-icon {
@@ -232,9 +240,13 @@ const go = (key: string) => {
   color: var(--sider-ink-faint);
 }
 
-.menu-item:hover .menu-icon,
-.menu-item.active .menu-icon {
+.menu-item:hover .menu-icon {
   color: var(--ink);
+}
+
+/* 当前页图标:反色(在墨色药丸上) */
+.menu-item.active .menu-icon {
+  color: color-mix(in srgb, var(--on-accent) 92%, transparent);
 }
 
 .menu-label {

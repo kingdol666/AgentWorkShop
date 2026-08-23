@@ -457,14 +457,14 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   transition: transform 0.22s ease;
 }
 
-/* 路由切换进度线:天青→蜜桃粉彩扫过(warm-editorial 光斑声部) */
+/* 路由切换进度线:墨色细扫过(替换原天青→蜜桃粉彩渐变,色锁:温灰下仅墨色动线) */
 .plotter-line {
   position: absolute;
   bottom: -1px;
   left: 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--g-sky) 30%, var(--g-peach));
+  background: linear-gradient(90deg, transparent, var(--ink-fainter) 30%, var(--accent));
   opacity: 0;
   pointer-events: none;
   transform: scaleX(0);

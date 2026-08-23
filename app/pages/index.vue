@@ -104,10 +104,10 @@ const stats = computed(() => [
           </button>
           <button
             class="aw-pill outline im"
-            @click="navigateTo('/game')"
+            @click="navigateTo('/town')"
           >
-            <span class="i-tabler-device-gamepad-2 im-pop" />
-            {{ t('menu.game') }}
+            <span class="i-tabler-map-2 im-pop" />
+            {{ t('menu.town') }}
           </button>
         </div>
       </div>

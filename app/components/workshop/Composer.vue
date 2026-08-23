@@ -505,7 +505,7 @@ const placeholder = computed(() =>
 }
 
 /* 输入卡(Slack 声部):纯白面 + 发丝线 + 12px 圆角;聚焦时墨色内缘加深。
- * 去掉了光斑/水印装饰层 —— 输入区是作业面,不是品牌海报。 */
+ * 去掉了光斑/水印装饰层 — 输入区是作业面,不是品牌海报。 */
 .composer-box {
   position: relative;
   max-width: 900px;

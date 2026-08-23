@@ -16,7 +16,7 @@ export default {
     system: 'AgentWorkShop',
     dashboard: '仪表盘',
     workshop: 'Agent 工作台',
-    game: 'RPG 演练场',
+    town: 'Agent 小镇',
     tokens: 'API Token',
     users: '用户管理',
     monitor: '运行时监控',

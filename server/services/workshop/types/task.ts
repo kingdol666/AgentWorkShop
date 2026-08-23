@@ -74,6 +74,10 @@ export interface AgentStatusView {
   state: 'idle' | 'busy' | 'stopped'
   /** 执行中的任务 id(空闲时 null) */
   currentTaskId: string | null
+  /** 执行中任务的标题(空闲时 null;lead 观察 worker 在干什么,不必去翻任务表) */
+  currentTaskTitle: string | null
+  /** 执行中任务的进度 0-100(空闲/未上报进度时 null;lead 据此判断 worker 是否在推进) */
+  currentTaskProgress: number | null
   /** 待执行队列长度(实时) */
   queuedCount: number
   /** 已完成任务数 */

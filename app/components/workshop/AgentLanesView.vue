@@ -374,7 +374,16 @@ onBeforeUnmount(() => {
             </div>
             <!-- 第二行:状态摘要 + 操作簇(常驻可见;hairline 分隔破坏性操作) -->
             <div class="head-sub">
-              <span class="lane-meta">{{ a.state }} · Q{{ a.queued ?? 0 }}</span>
+              <span class="lane-meta">
+                <template v-if="a.state === 'busy' && a.currentTaskTitle">
+                  {{ a.currentTaskTitle }}
+                  <span
+                    v-if="a.currentTaskProgress != null"
+                    class="lane-progress"
+                  >{{ a.currentTaskProgress }}%</span>
+                </template>
+                <template v-else>{{ a.state }} · Q{{ a.queued ?? 0 }}</template>
+              </span>
               <div class="lane-actions">
                 <a-button
                   v-if="a.harness === 'omp'"
@@ -838,6 +847,16 @@ onBeforeUnmount(() => {
   color: var(--ink-faint);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* 执行中进度:busy 时展示当前任务标题 + 进度 %(leader 对 worker 推进的实时可见性) */
+.lane-progress {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+  margin-left: 4px;
+  color: var(--tone-info-dot);
+  background: color-mix(in srgb, var(--tone-info-dot) 10%, transparent);
+  border-radius: var(--radius-pill);
 }
 /* 操作簇:统一浅底胶囊分组,常驻可见(hover 提亮);hairline 分隔破坏性操作 */
 .lane-actions {

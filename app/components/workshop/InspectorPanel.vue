@@ -54,15 +54,6 @@ const stateDot: Record<string, string> = {
   busy: 'var(--tone-info-dot)',
   stopped: 'var(--tone-neutral-dot)',
 }
-const taskStateColor: Record<string, string> = {
-  SUBMITTED: 'default',
-  ASSIGNED: 'processing',
-  WORKING: 'processing',
-  WAITING: 'warning',
-  COMPLETED: 'success',
-  FAILED: 'error',
-  CANCELED: 'default',
-}
 </script>
 
 <template>
@@ -79,7 +70,7 @@ const taskStateColor: Record<string, string> = {
         <div
           v-for="a in agents"
           :key="a.agentId"
-          class="member"
+          class="member aw-tile"
           role="button"
           tabindex="0"
           @click="emit('openAgent', a.agentId)"
@@ -92,19 +83,28 @@ const taskStateColor: Record<string, string> = {
           <div class="member-info">
             <div class="member-name">
               <span class="name-text">{{ a.name }}</span>
-              <a-tag
-                :color="a.role === 'lead' ? 'purple' : 'blue'"
-                class="role"
-              >
-                {{ a.role }}
-              </a-tag>
+              <span
+                class="role-chip"
+                :class="a.role"
+              >{{ a.role }}</span>
             </div>
             <div class="member-meta">
-              {{ a.state }} / 队列 {{ a.queued ?? 0 }} / 完成 {{ a.completed ?? 0 }}
-              <span
-                v-if="a.currentTaskId"
-                class="ct"
-              >· 执行 {{ a.currentTaskId.slice(0, 6) }}</span>
+              <template v-if="a.state === 'busy' && a.currentTaskTitle">
+                {{ a.currentTaskTitle }}
+                <span
+                  v-if="a.currentTaskProgress != null"
+                  class="prog"
+                >{{ a.currentTaskProgress }}%</span>
+              </template>
+              <template v-else>
+                {{ a.state }}
+                <template v-if="a.queued">
+                  · 队列 {{ a.queued }}
+                </template>
+                <template v-if="a.completed">
+                  · 完成 {{ a.completed }}
+                </template>
+              </template>
             </div>
             <div class="member-cap">
               {{ capLine(a.agentId) }}
@@ -126,19 +126,14 @@ const taskStateColor: Record<string, string> = {
         <div
           v-for="t in rootTasks"
           :key="t.id"
-          class="task"
+          class="task aw-tile"
           role="button"
           tabindex="0"
           @click="emit('openTask', t.id)"
           @keydown.enter="emit('openTask', t.id)"
         >
           <div class="task-head">
-            <a-tag
-              :color="taskStateColor[t.state] ?? 'default'"
-              class="state"
-            >
-              {{ t.state }}
-            </a-tag>
+            <span class="state-chip aw-mono">{{ t.state }}</span>
             <span class="task-title">{{ t.title }}</span>
           </div>
           <div class="task-meta">
@@ -193,19 +188,18 @@ const taskStateColor: Record<string, string> = {
 }
 .member {
   display: flex;
-  gap: 8px;
+  gap: 9px;
   align-items: center;
-  padding: 6px 8px;
-  margin: 2px 0;
+  padding: 8px 10px;
+  margin: 3px 0;
   cursor: pointer;
-  border-radius: var(--radius-chip);
 }
-.member:hover { background: var(--hover-tint); }
+.member:hover { border-color: var(--line-strong); }
 .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .member-info { flex: 1 1 auto; min-width: 0; }
 .member-name {
   display: flex;
-  gap: 6px;
+  gap: 7px;
   align-items: center;
   font-size: 13px;
 }
@@ -215,8 +209,20 @@ const taskStateColor: Record<string, string> = {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.role { flex: 0 0 auto; margin-inline-start: 0; font-size: 10px; line-height: 14px; }
+/* 角色 chip:lead 墨色填充 / worker 发丝线(去 antd 彩色 tag,色锁) */
+.role-chip {
+  flex: 0 0 auto;
+  padding: 0 7px;
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  line-height: 16px;
+  text-transform: uppercase;
+  border-radius: var(--radius-pill);
+}
+.role-chip.lead { color: var(--on-accent); background: var(--accent); }
+.role-chip.worker { color: var(--ink-soft); border: 1px solid var(--line-strong); }
 .member-meta { font-size: 11px; font-family: var(--font-mono); color: var(--ink-faint); }
+.prog { padding: 0 5px; color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 10%, transparent); border-radius: var(--radius-pill); }
 
 .member-cap {
   margin-top: 2px;
@@ -227,14 +233,24 @@ const taskStateColor: Record<string, string> = {
 }
 .ct { opacity: 0.8; }
 .task {
-  padding: 6px 8px;
-  margin: 2px 0;
+  padding: 8px 10px;
+  margin: 3px 0;
   cursor: pointer;
-  border-radius: var(--radius-chip);
 }
-.task:hover { background: var(--hover-tint); }
+.task:hover { border-color: var(--line-strong); }
 .task-head { display: flex; gap: 6px; align-items: center; }
-.state { margin-inline-end: 0; font-size: 10px; }
+/* 状态 chip:等宽枚举 + 细边(不靠彩色 tag 堆叠,色锁;语义仍由文字传达) */
+.state-chip {
+  flex: none;
+  padding: 1px 7px;
+  font-size: 9.5px;
+  line-height: 15px;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+}
 .task-title {
   flex: 1 1 auto;
   overflow: hidden;

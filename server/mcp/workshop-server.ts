@@ -15,6 +15,7 @@ import { z } from 'zod'
 import type { AgentChannelManager } from '../services/workshop/runtime/manager'
 import type { AgentInfo } from '../services/workshop/agents/agent-interface'
 import type { A2AArtifact, Part } from '../services/workshop/types/a2a'
+import { getDeviceTwinRepo } from '../services/workshop/assets/device-twin.repo'
 
 /** A2A 消息片段(Part):四种变体(text/data/url/raw)。运行时校验与契约一致;zod union 推断形状与契约存在无害差异,as 收窄 */
 const partSchema = z.union([
@@ -427,6 +428,81 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       const caller = requireCaller(manager, extra)
       await manager.subscribe(caller.channelId, caller.id, { agentIds: args.agentIds })
       return jsonResult({ ok: true })
+    },
+  )
+
+  // ===== device 数字孪生(赛博物理闭环:数字人经 MCP 控制真实/虚拟设备) =====
+  // 让 Agent 读取设备遥测、下发指令、绑定自己为控制者,实现 MAS↔物理闭环。
+  // 真实设备接入时,由采集器推 telemetry 到 device-twins API,Agent 经这些工具下发 desired 指令。
+
+  server.registerTool(
+    'device.list',
+    {
+      description: '列出数字孪生设备(含 telemetry/state/desired)。Agent 据此判断哪些设备可控、当前状态如何。',
+      inputSchema: { workspaceId: z.string().optional() },
+    },
+    async (args) => {
+      return jsonResult(getDeviceTwinRepo().listAll(args.workspaceId))
+    },
+  )
+
+  server.registerTool(
+    'device.read',
+    {
+      description: '读取单个设备实时遥测 + 运行状态 + 可用指令集。数字人作业前先 read 感知设备当前情况。',
+      inputSchema: { deviceId: z.string() },
+    },
+    async (args) => {
+      const twin = getDeviceTwinRepo().findById(args.deviceId)
+      if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
+      return jsonResult(twin)
+    },
+  )
+
+  server.registerTool(
+    'device.control',
+    {
+      description: '对设备下发控制指令(如 power_on/power_off/set_speed/set_temperature/stop),写 desired 并驱动 state。数字人据此远程操作设备。',
+      inputSchema: {
+        deviceId: z.string(),
+        command: z.string(),
+        args: z.record(z.string(), z.unknown()).optional(),
+      },
+    },
+    async (args) => {
+      const twin = getDeviceTwinRepo().applyControl(args.deviceId, args.command, args.args ?? {})
+      if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
+      return jsonResult(twin)
+    },
+  )
+
+  server.registerTool(
+    'device.push_telemetry',
+    {
+      description: '将数字孪生数据采集写入设备(采集器/传感器模拟)。真实设备 OPC-UA/MQTT 采集器亦可对接本工具。',
+      inputSchema: {
+        deviceId: z.string(),
+        telemetry: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])),
+      },
+    },
+    async (args) => {
+      const twin = getDeviceTwinRepo().applyTelemetry(args.deviceId, args.telemetry)
+      if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
+      return jsonResult({ state: twin.state, telemetry: twin.telemetry })
+    },
+  )
+
+  server.registerTool(
+    'device.bind_agent',
+    {
+      description: '把 Agent 绑定为某设备的控制者(数字人接管设备)。绑定后该 Agent 的 MCP 调用即代表操作该设备。',
+      inputSchema: { deviceId: z.string(), agentId: z.string() },
+    },
+    async (args, extra) => {
+      requireCaller(manager, extra)
+      const twin = getDeviceTwinRepo().update(args.deviceId, { boundAgentId: args.agentId })
+      if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
+      return jsonResult(twin)
     },
   )
 

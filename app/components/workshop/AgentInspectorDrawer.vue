@@ -139,15 +139,6 @@ const stateDot: Record<string, string> = {
   busy: 'var(--tone-info-dot)',
   stopped: 'var(--tone-neutral-dot)',
 }
-const stateColor: Record<string, string> = {
-  SUBMITTED: 'default',
-  ASSIGNED: 'processing',
-  WORKING: 'processing',
-  WAITING: 'warning',
-  COMPLETED: 'success',
-  FAILED: 'error',
-  CANCELED: 'default',
-}
 </script>
 
 <template>
@@ -172,7 +163,7 @@ const stateColor: Record<string, string> = {
           :style="{ background: stateDot[agent.state] ?? 'var(--tone-neutral-dot)' }"
         />
         <span class="state-text">{{ agent.state }}</span>
-        <a-tag>{{ agent.harness }}</a-tag>
+        <span class="role-chip">{{ agent.harness }}</span>
         <span class="queue-meta">队列{{ agent.queued ?? 0 }} · 完成{{ agent.completed ?? 0 }}</span>
         <a-button
           size="small"
@@ -235,12 +226,7 @@ const stateColor: Record<string, string> = {
               :key="t.id"
               class="queue-task"
             >
-              <a-tag
-                :color="stateColor[t.state] ?? 'default'"
-                class="state"
-              >
-                {{ t.state }}
-              </a-tag>
+              <span class="state-chip aw-mono">{{ t.state }}</span>
               <span class="qt-title">{{ t.title }}</span>
               <span class="qt-meta">{{ t.progress }}%</span>
             </div>
@@ -341,6 +327,17 @@ const stateColor: Record<string, string> = {
 }
 .dot { width: 9px; height: 9px; border-radius: 50%; }
 .state-text { font-family: var(--font-mono); font-size: 12px; }
+/* 角色 chip:发丝线中性小标(去 antd tag,色锁) */
+.role-chip {
+  flex: 0 0 auto;
+  padding: 0 7px;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+}
 .queue-meta { flex: 1 1 auto; font-size: 11px; color: var(--ink-faint); }
 .current-task {
   padding: 6px 0;
@@ -378,10 +375,20 @@ const stateColor: Record<string, string> = {
   gap: 6px;
   align-items: center;
   padding: 4px 6px;
-  border-radius: var(--radius-chip);
+  border-radius: var(--radius-panel-sm);
 }
 .queue-task:hover { background: var(--hover-tint); }
-.state { margin-inline-end: 0; font-size: 10px; }
+/* 状态 chip:等宽枚举 + 细边(去 antd 彩色 tag;色锁,语义由文字传达) */
+.state-chip {
+  flex: none;
+  padding: 1px 6px;
+  font-size: 9px;
+  line-height: 15px;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+}
 .qt-title {
   flex: 1 1 auto;
   overflow: hidden;

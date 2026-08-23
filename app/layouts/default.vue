@@ -41,6 +41,12 @@ const site = useSiteConfig()
         <span>mode={{ site.mode }}</span>
       </a-layout-footer>
     </a-layout>
+
+    <!-- 全局噪点:抵消数字平面冷感(固定覆盖,不挡交互) -->
+    <span
+      class="aw-noise"
+      aria-hidden="true"
+    />
   </a-layout>
 </template>
 

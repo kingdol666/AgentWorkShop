@@ -5,6 +5,7 @@
  */
 import { computed, ref } from 'vue'
 import { TOOL_META } from '@/app/composables/workshop/useEventBlocks'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
 
 const props = defineProps<{ block: EventBlock }>()
@@ -16,7 +17,7 @@ const toolLines = computed(() =>
     const m = text.match(/^🔧\s*(\S+?)(?:\(([\s\S]*)\))?$/)
     const name = m?.[1] ?? 'tool'
     const args = m?.[2] ?? ''
-    return { seq: e.seq, time: e.at.slice(11, 19), name, args, meta: TOOL_META[name] ?? { icon: 'i-tabler-tool', kind: 'native' as const } }
+    return { seq: e.seq, time: formatLocalClock(e.at), name, args, meta: TOOL_META[name] ?? { icon: 'i-tabler-tool', kind: 'native' as const } }
   }),
 )
 

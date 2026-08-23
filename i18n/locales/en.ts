@@ -16,7 +16,7 @@ export default {
     system: 'AgentWorkShop',
     dashboard: 'Dashboard',
     workshop: 'Agent Harness',
-    game: 'Game',
+    town: 'Agent Town',
     tokens: 'API Tokens',
     users: 'Users',
     monitor: 'Runtime Monitor',

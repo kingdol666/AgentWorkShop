@@ -9,6 +9,7 @@
 import { computed, ref } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { mdLiteMentions, agentHueColor, type EventBlock, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
 const props = defineProps<{ block: EventBlock }>()
 const entities = useEntitiesStore()
@@ -62,7 +63,7 @@ const rows = computed<RouteRow[]>(() =>
       to: toId,
       kind,
       text: parts.map(p => p.text ?? '').join('\n').trim(),
-      time: e.at.slice(11, 19),
+      time: formatLocalClock(e.at),
       requireReply: meta['x-aw-require-reply'] === 'true',
       inReplyTo: typeof replyRaw === 'string' ? replyRaw : '',
     }

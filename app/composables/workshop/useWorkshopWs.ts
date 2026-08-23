@@ -8,6 +8,7 @@ import { useUserStore } from '../../stores/workshop/user'
 import { WorkshopWsSession, useWsConnectionStore } from '../../stores/workshop/connection'
 import { useEventsStore } from '../../stores/workshop/events'
 import { useEntitiesStore } from '../../stores/workshop/entities'
+import { useTownBus } from './useTownBus'
 import type { AepEnvelope, AepSnapshot } from '#shared/workshop-protocol'
 
 export function useWorkshopWs() {
@@ -15,6 +16,7 @@ export function useWorkshopWs() {
   const userStore = useUserStore()
   const events = useEventsStore()
   const entities = useEntitiesStore()
+  const townBus = useTownBus()
 
   // 模块级单例:多组件共享一条连接
   let session: WorkshopWsSession | null = (globalThis as { __workshopWs?: WorkshopWsSession }).__workshopWs ?? null
@@ -32,6 +34,8 @@ export function useWorkshopWs() {
           conn.cursors[e.channelId] = e.seq
           s.updateCursor(e.channelId, e.seq) // 推进重连续传游标
         }
+        // 旁路广播:小镇场景与时间线拿同一实时事件流(不改既有分发,可注释回退)
+        townBus.emit(e)
       },
       (state, retry) => {
         conn.state = state

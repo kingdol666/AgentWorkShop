@@ -23,7 +23,7 @@ import {
 /** 调度快照注入的最近邮件条数(倒序;控制 supervise prompt 体量) */
 const MAIL_SNAPSHOT_LIMIT = 20
 
-/** 成员摘要(快照内;含队列上下文,供 lead 最优调配) */
+/** 成员摘要(快照内;含队列上下文与实时进度,供 lead 最优调配与停滞识别) */
 interface MemberView {
   agentId: string
   name: string
@@ -33,8 +33,14 @@ interface MemberView {
   queued: number
   /** 执行中任务 id(空闲为 null) */
   currentTaskId: string | null
+  /** 执行中任务标题(lead 观察 worker 在干什么,不必翻任务表) */
+  currentTaskTitle: string | null
+  /** 执行中任务进度 0-100(空闲/未上报为 null;lead 据此判断是否在推进) */
+  currentTaskProgress: number | null
   /** 已完成任务数 */
   completedCount: number
+  /** 忙碌但进度长期停滞(超 stallMs 未变)→ lead 应介入(notify/reassign/cancel) */
+  stalled: boolean
 }
 
 export interface SchedulerLoopOptions {
@@ -61,6 +67,9 @@ export class SchedulerLoop {
   private readonly notified = new Set<string>()
   /** WORKING 任务最近一次 progress 与时间(停滞检测) */
   private readonly lastProgress = new Map<string, { progress: number, at: number }>()
+  /** busy 成员执行中任务的进度基线(与 lastProgress 分离:busy 不重置——
+   *  独立检测"忙碌但进度长期不变"的停滞,喂给快照的 stalled 标记) */
+  private readonly progressSeen = new Map<string, { progress: number, at: number }>()
   /** goal 父任务「全部子任务 COMPLETED」首见时刻(宽限后规则引擎兜底收口) */
   private readonly goalAllDoneAt = new Map<string, number>()
   /** goal 收口宽限窗(ms):给 lead 充分判定机会,超时平台兜底完成 */
@@ -253,14 +262,34 @@ export class SchedulerLoop {
     // 队列视图来自 tasks 表(未装配成员的排队任务同样可见)
     const members: MemberView[] = this.channelRuntime.listChannelAgents().map((m) => {
       const view = this.lead.taskEngine.queueViewOf(this.channelRuntime.channelId, m.agentId)
+      const current = view.current
+      const progress = current?.progress ?? null
+      // 进度基线更新:progress 变化或首次记录时刷新时间;不变则保留起始时刻
+      if (current && progress != null) {
+        const seen = this.progressSeen.get(current.id)
+        if (!seen || seen.progress !== progress) {
+          this.progressSeen.set(current.id, { progress, at: now })
+        }
+      }
+      // 停滞识别:执行中任务长期无进度变化(i.e. progress 与上次观测相同且超 stallMs)。
+      // busy 状态不再无限豁免 —— 一个进程活着但 LLM 回合内卡死、progress 从不变化的
+      // worker 是最危险场景(worker 自认为在跑,lead 无从知晓),必须给 lead 明确信号。
+      const seen = current ? this.progressSeen.get(current.id) : undefined
+      const stalled = current != null
+        && seen != null
+        && seen.progress === progress
+        && now - seen.at > this.stallMs
       return {
         agentId: m.agentId,
         name: m.name,
         role: m.role,
         state: wired.get(m.agentId) ?? 'idle',
         queued: view.queued.length,
-        currentTaskId: view.current?.id ?? null,
+        currentTaskId: current?.id ?? null,
+        currentTaskTitle: current?.title ?? null,
+        currentTaskProgress: progress,
         completedCount: view.completed.length,
+        stalled,
       }
     })
     const pendingChildren: Record<string, number> = {}
@@ -332,15 +361,34 @@ export class SchedulerLoop {
     }
 
     // WORKING 停滞检测:progress 停滞超过 stallMs → notify 催一次;再超时 → cancel。
-    // 活跃度感知:assignee 正 busy(执行中,含多轮协作/等待回执的长任务)不算停滞 ——
-    // progress 数字不是唯一生命信号,看门狗只回收真正被遗弃的任务(idle/stopped 挂着 WORKING)。
+    // 活跃度感知:assignee 正 busy(执行中,含多轮协作/等待回执的长任务)不算"被遗弃"——
+    // 看门狗不回收 busy(取消忙碌中的回合是破坏性的)。
+    // 但 busy 且 progress 长期不变(progressSeen 基线)代表"在跑但无产出信号",
+    // 用 progressSeen 独立追踪:给 lead 发一次 notify 提醒介入(可见性修复:杜绝
+    //  worker 自己觉得在跑、lead 却毫无感知)。是否 cancel 由 lead(supervise)判断,
+    // 规则引擎对 busy 不强制取消 —— 只留可见信号,不做破坏性动作。
     const assigneeState = new Map(this.channelRuntime.getAgents().map(a => [a.agentId, a.getState()]))
     for (const task of tasks) {
       if (task.state !== 'WORKING') continue
       if (assigneeState.get(task.assigneeId) === 'busy') {
-        // 执行中:刷新时间戳,防止累计误判(协作回合可能远超 stallMs)
-        this.lastProgress.set(task.id, { progress: task.progress, at: now })
-        this.notified.delete(task.id)
+        // busy 且 progress 长期不变:催一次 lead 介入(notify 到 assignee 本人,请其推进/汇报);
+        // 尚未到基准时间或 progress 已变 → 刷新基线
+        const seen = this.progressSeen.get(task.id)
+        if (seen && seen.progress === task.progress && now - seen.at > this.stallMs) {
+          if (!this.notified.has(task.id)) {
+            this.notified.add(task.id)
+            decisions.push({
+              kind: 'notify',
+              toAgentId: task.assigneeId,
+              parts: [{ text: `任务「${task.title}」进度 ${task.progress}% 已 ${Math.round((now - seen.at) / 1000)}s 未变化,请确认是否仍在推进;若卡住请说明阻塞并请求协助` }],
+            })
+          }
+          // 已催过一次仍无变化:不重复催(避免每 tick 打扰),把最终裁决交给 lead
+        }
+        else {
+          this.notified.delete(task.id)
+          this.lastProgress.set(task.id, { progress: task.progress, at: now })
+        }
         continue
       }
       const prev = this.lastProgress.get(task.id)
@@ -395,6 +443,18 @@ export class SchedulerLoop {
         continue
       }
       if (allDone && (task.state === 'WAITING' || task.state === 'WORKING')) {
+        decisions.push({ kind: 'complete', taskId: task.id })
+      }
+      // 部分成功收口(防父任务永挂):全部子任务已终态,但存在失败/取消且至少一个
+      // COMPLETED 交付 —— 父任务不应 CANCEL(有成果),也不应无限 WAITING。
+      // 以"已有成果"为完成条件收口父任务(lead 汇总已产出部分,缺的口子明确可见),
+      // 否则父任务在子任务混合终态时永久卡死,lead 无从得知去补派。
+      else if (
+        (task.state === 'WAITING' || task.state === 'WORKING')
+        && children.every(c => TERMINAL_TASK_STATES[c.state] === true)
+        && children.some(c => c.state === 'COMPLETED')
+        && !children.every(c => c.state === 'COMPLETED')
+      ) {
         decisions.push({ kind: 'complete', taskId: task.id })
       }
     }

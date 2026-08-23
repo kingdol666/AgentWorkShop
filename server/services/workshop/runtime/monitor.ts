@@ -27,7 +27,7 @@ export type MonitorEvent
   = | { kind: 'agent.event', seq: number, at: string, channelId: string, agentId: string | null, event: AgentEvent }
     | { kind: 'task.status', seq: number, at: string, channelId: string, taskId: string, agentId?: string, state: TaskState }
     | { kind: 'task.progress', seq: number, at: string, channelId: string, taskId: string, agentId?: string, progress: number }
-    | { kind: 'agent.status', seq: number, at: string, channelId: string, agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, queuedCount?: number, completedCount?: number }
+    | { kind: 'agent.status', seq: number, at: string, channelId: string, agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, currentTaskTitle?: string | null, currentTaskProgress?: number | null, queuedCount?: number, completedCount?: number }
     | { kind: 'lifecycle', seq: number, at: string, channelId: string, message: string }
 
 export interface MonitorOptions {
@@ -119,6 +119,8 @@ export function monitorChannel(manager: AgentChannelManager, channelId: string, 
       agentId: e.agentId,
       state: e.state,
       currentTaskId: e.currentTaskId ?? null,
+      currentTaskTitle: e.currentTaskTitle ?? null,
+      currentTaskProgress: e.currentTaskProgress ?? null,
       queuedCount: e.queuedCount,
       completedCount: e.completedCount,
     })

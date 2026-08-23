@@ -32,12 +32,15 @@ export interface ChannelBus {
   onTaskEvent(fn: (e: { taskId: string, state?: TaskState, progress?: number }) => void): () => void
   /**
    * 成员状态通知(idle/busy/stopped + 队列上下文;AgentRuntime 转换处触发,事件驱动无轮询)。
-   * currentTaskId/queuedCount/completedCount 为增量字段:实时状态追踪的完整视图。
+   * currentTaskId/currentTaskTitle/currentTaskProgress/queuedCount/completedCount
+   * 为增量字段:实时状态追踪的完整视图(lead 观察 worker 进度,防"在跑但无信号")。
    */
   notifyAgent(e: {
     agentId: string
     state: 'idle' | 'busy' | 'stopped'
     currentTaskId?: string | null
+    currentTaskTitle?: string | null
+    currentTaskProgress?: number | null
     queuedCount?: number
     completedCount?: number
   }): void
@@ -45,6 +48,8 @@ export interface ChannelBus {
     agentId: string
     state: 'idle' | 'busy' | 'stopped'
     currentTaskId?: string | null
+    currentTaskTitle?: string | null
+    currentTaskProgress?: number | null
     queuedCount?: number
     completedCount?: number
   }) => void): () => void
@@ -186,13 +191,17 @@ export class AgentRuntime {
   /** 实时状态视图:idle/busy/stopped + 当前任务 + 队列上下文(实时追踪的单一入口) */
   getStatus(): AgentStatusView {
     const queue = this.getQueueView()
+    const current = queue.current ?? (this.currentTaskId ? this.deps.taskEngine.get(this.currentTaskId) : undefined)
     return {
       agentId: this.agentId,
       channelId: this.channelId,
       role: this.role,
       name: this.name,
       state: this.state,
-      currentTaskId: queue.current?.id ?? this.currentTaskId,
+      currentTaskId: current?.id ?? null,
+      // 进度/标题透出:lead 观察 worker 是否在推进(progress 空闲/未上报时为 null)
+      currentTaskTitle: current?.title ?? null,
+      currentTaskProgress: current?.progress != null ? current.progress : null,
       queuedCount: queue.queued.length,
       completedCount: queue.completed.length,
     }
@@ -532,7 +541,7 @@ export class AgentRuntime {
         if (after && after.assigneeId === this.agentId && after.state === 'WORKING') {
           const deliverable = after.artifacts.find(a => a.name !== 'input' && a.parts.some(p => ('text' in p ? p.text.trim().length : 1) > 0))
           if (deliverable) {
-            await this.deps.taskEngine.complete(taskId)
+            const completed = await this.deps.taskEngine.complete(taskId)
             this.emitExternal({
               kind: 'status',
               status: {
@@ -546,6 +555,14 @@ export class AgentRuntime {
                 timestamp: new Date().toISOString(),
               },
             })
+            // 子任务隐式完成 → 通知父任务(lead 汇总/WAITING→WORKING 接续):
+            // 与 manager.completeTask 的显式收口同构,否则父任务 WAITING 永挂
+            // (无 child-completed 事件、父任务不翻转,lead 无感知)。
+            if (completed.parentId) {
+              this.deps.taskEngine.onChildCompleted(completed)
+              const parent = this.deps.taskEngine.get(completed.parentId)
+              if (parent) this.deps.bus.wakeScheduler()
+            }
           }
           else {
             await this.deps.taskEngine.transition(taskId, 'FAILED', this.agentId)
@@ -622,10 +639,12 @@ export class AgentRuntime {
   }
 
   /** 状态通知的队列上下文(实时:当前任务/待执行数/已完成数) */
-  private queueContext(): Pick<AgentStatusView, 'currentTaskId' | 'queuedCount' | 'completedCount'> {
+  private queueContext(): Pick<AgentStatusView, 'currentTaskId' | 'currentTaskTitle' | 'currentTaskProgress' | 'queuedCount' | 'completedCount'> {
     const status = this.getStatus()
     return {
       currentTaskId: status.currentTaskId,
+      currentTaskTitle: status.currentTaskTitle,
+      currentTaskProgress: status.currentTaskProgress,
       queuedCount: status.queuedCount,
       completedCount: status.completedCount,
     }

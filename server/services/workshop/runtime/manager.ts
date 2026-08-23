@@ -2227,6 +2227,8 @@ export class AgentChannelManager {
           name: m.name,
           state: 'idle' as const,
           currentTaskId: view.current?.id ?? null,
+          currentTaskTitle: view.current?.title ?? null,
+          currentTaskProgress: view.current?.progress != null ? view.current.progress : null,
           queuedCount: view.queued.length,
           completedCount: view.completed.length,
         }
