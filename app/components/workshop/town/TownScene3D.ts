@@ -27,8 +27,38 @@ export type TownEventMap = {
   blockCount: number
   lastActivity: { channelId: string, agentName: string, text: string } | null
   behavior: { agentName: string, action: string, targetName: string | null } | null
-  /** 选中 Agent/设备(供 Vue 弹缩放滑杆);null 取消选中 */
-  select: { kind: 'agent' | 'device', id: string, scale: number } | null
+  /** 选中 Agent/设备(供 Vue 弹缩放/旋转滑杆);null 取消选中 */
+  select: { kind: 'agent' | 'device', id: string, scale: number, rotation: number } | null
+  /** 选中频道(供 Vue 边界编辑面板);null 取消 */
+  selectChannel: string | null
+  /** 频道布局被拖拽/手柄调整(供 Vue 刷新边界面板草稿);null 取消 */
+  channelResized: { channelId: string, layout: ChannelLayout } | null
+  /** 场景保存状态(设备/角色布局持久化进度) */
+  saveState: { state: 'idle' | 'dirty' | 'saving' | 'saved' | 'error', at: number } | null
+}
+
+/** 编辑 / 浏览模式:浏览只读(相机+点选),编辑可拖拽设备/调整角色落点 */
+export type TownScene3DMode = 'browse' | 'edit'
+
+/** 设备 transform 补丁(拖拽/滑杆结束防抖保存) */
+export interface DeviceTransformPatch {
+  posX?: number
+  posZ?: number
+  rotationY?: number
+  scale?: number
+}
+
+/** syncDevices 输入:与 useDeviceTwins.DeviceTwinView 同构的子集 */
+export interface DeviceTwinSync {
+  id: string
+  name: string
+  modelRef: string
+  state?: 'idle' | 'running' | 'offline' | 'alarm'
+  telemetry?: Record<string, number | string | boolean>
+  posX?: number
+  posZ?: number
+  rotationY?: number
+  scale?: number
 }
 
 /** 场景内可缩放目标(Agent 或设备节点) */
@@ -55,20 +85,107 @@ export interface TownEntityInput {
     currentTaskTitle?: string | null
     currentTaskProgress?: number | null
     modelRef?: string | null
+    /** 管理员布局落点(来自 config.homeX/homeZ;缺省 = 领地环形排布) */
+    homeX?: number | null
+    homeZ?: number | null
   }>
 }
 
-/** 领地渲染态 */
+/** 频道布局(3D 小镇放置):与共享 AepSceneLayout/useSceneLayouts 同构 */
+export interface ChannelLayout {
+  channelId: string
+  x: number
+  z: number
+  radiusX: number
+  radiusZ: number
+  shape: 'ellipse' | 'rect'
+  rotationY: number
+}
+
+/** 领地渲染态(边界由 channelLayout 驱动;未放置频道不进入场景) */
 interface Block3D {
   channelId: string
   name: string
   x: number
   z: number
-  radius: number
+  radiusX: number
+  radiusZ: number
+  shape: 'ellipse' | 'rect'
+  rotationY: number
   color: number
   platform: THREE.Mesh
-  ring: THREE.Mesh
+  /** 活动边界(编辑高亮) */
+  boundary: THREE.LineLoop
   label: THREE.Sprite
+}
+
+/** 边界几何体:椭圆/矩形线框,弯折朝向 rotationY(度) */
+function makeBoundary(shape: 'ellipse' | 'rect', rx: number, rz: number, color: number): THREE.LineLoop {
+  const pts: THREE.Vector3[] = []
+  const seg = 48
+  if (shape === 'rect') {
+    const hx = rx / 2
+    const hz = rz / 2
+    pts.push(new THREE.Vector3(-hx, 0, -hz), new THREE.Vector3(hx, 0, -hz), new THREE.Vector3(hx, 0, hz), new THREE.Vector3(-hx, 0, hz))
+  }
+  else {
+    for (let i = 0; i < seg; i++) {
+      const t = (i / seg) * Math.PI * 2
+      pts.push(new THREE.Vector3(Math.cos(t) * rx, 0, Math.sin(t) * rz))
+    }
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts)
+  const line = new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.75, depthTest: false }))
+  return line
+}
+
+/** 归一化边界(radius 钳制下限;rect 用半宽) */
+function normLayout(l: ChannelLayout): ChannelLayout {
+  return {
+    channelId: l.channelId,
+    x: l.x,
+    z: l.z,
+    radiusX: Math.max(60, l.radiusX),
+    radiusZ: Math.max(40, l.radiusZ),
+    shape: l.shape === 'rect' ? 'rect' : 'ellipse',
+    rotationY: l.rotationY || 0,
+  }
+}
+
+/** 把点钳制到频道边界内(带内缩 margin;旋转边界用逆变换求局部坐标) */
+function clampToBoundary(layout: ChannelLayout, x: number, z: number, margin = 0): { x: number, z: number } {
+  const l = normLayout(layout)
+  // 旋转回局部坐标
+  const rad = -l.rotationY * Math.PI / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  const dx = x - l.x
+  const dz = z - l.z
+  const lx = dx * cos - dz * sin
+  const lz = dx * sin + dz * cos
+  const rx = Math.max(8, l.radiusX - margin)
+  const rz = Math.max(8, l.radiusZ - margin)
+  let cx = lx
+  let cz = lz
+  if (l.shape === 'rect') {
+    cx = Math.max(-rx, Math.min(rx, lx))
+    cz = Math.max(-rz, Math.min(rz, lz))
+  }
+  else {
+    // 椭圆:点缩放到单位圆内
+    const nx = lx / rx
+    const nz = lz / rz
+    const d = Math.hypot(nx, nz)
+    if (d > 1) {
+      cx = nx / d * rx
+      cz = nz / d * rz
+    }
+  }
+  // 旋回世界坐标
+  const wrad = l.rotationY * Math.PI / 180
+  const wcos = Math.cos(wrad)
+  const wsin = Math.sin(wrad)
+  return { x: l.x + cx * wcos - cz * wsin, z: l.z + cx * wsin + cz * wcos }
 }
 
 /** 角色 3D 渲染态 */
@@ -118,6 +235,8 @@ interface DeviceNode {
   name: string
   modelRef: string
   root: THREE.Group
+  /** 模型挂载组(换模型时 clear 重挂;缩放施加于此) */
+  holder: THREE.Group
   ring: THREE.Mesh
   label: THREE.Sprite
   state: 'idle' | 'running' | 'offline' | 'alarm'
@@ -138,8 +257,6 @@ const WORLD_W = 3200
 const WORLD_H = 2400
 const WORLD_CX = WORLD_W / 2
 const WORLD_CZ = WORLD_H / 2
-const RING_RX = 980
-const RING_RZ = 560
 /** 地面 y=0,Agent 站立于其上 */
 const GROUND_Y = 0
 /** GLB 归一化到该高度(世界单位,角色要清晰可读) */
@@ -147,6 +264,8 @@ const UNITS = 120
 const AGENT_SPEED = 96
 const WAIT_MS = 2600
 const ARRIVE = 48
+/** 编辑拖拽网格吸附粒度(世界单位) */
+const SNAP_SIZE = 16
 
 /** 角色模型来源登记(registerModelsFromList) */
 interface ModelInfo { id: string, file: string, name: string, kind?: string }
@@ -208,6 +327,22 @@ export class TownScene3D {
   private disposed = false
   /** 当前相机缩放(滚轮;作用于 dolly 距离) */
   private dolly = 1.0
+  /** 编辑 / 浏览模式(浏览只读:设备/角色不可拖,仅点选) */
+  private mode: TownScene3DMode = 'browse'
+  /** 正在拖曳的场景对象(编辑模式):设备 / 角色落点 / 频道整体 / 边界手柄 */
+  private pointerDrag:
+    | { kind: 'device', id: string }
+    | { kind: 'agent', id: string }
+    | { kind: 'channel', id: string, dx: number, dz: number }
+    | { kind: 'resize', id: string, handle: number }
+    | null = null
+
+  /** 网格吸附(编辑拖拽落点对齐 16 单位网格) */
+  private snapEnabled = true
+  /** 选中高亮环(编辑模式,跟随当前选中设备/角色) */
+  private selRing: THREE.Mesh | null = null
+  /** 边界缩放手柄(编辑模式选中频道时显示;拖拽手柄调整 radiusX/radiusZ) */
+  private resizeHandles: Array<{ mesh: THREE.Mesh, cid: string, handle: number }> = []
   private lastActivity: { channelId: string, agentName: string, text: string } | null = null
   private recentActivity: Array<{ channelId: string, agentName: string, text: string }> = []
   private dbgBubbles: Array<{ text: string, at: number }> = []
@@ -217,8 +352,20 @@ export class TownScene3D {
   resolveTaskAssignee: ((taskId: string) => string | null) | null = null
   /** 数字孪生设备 API(由 TownView 注入 useDeviceTwins 适配器;拖 dev 模型进场景时创建设备) */
   devices: {
-    create(input: { name: string, modelRef?: string, kind?: string, controls?: string[] }): Promise<{ id: string }>
+    create(input: { name: string, modelRef?: string, kind?: string, controls?: string[], posX?: number, posZ?: number, scale?: number }): Promise<{ id: string }>
+    update(id: string, patch: DeviceTransformPatch): Promise<unknown>
+    remove?(id: string): Promise<unknown>
     control(id: string, command: string, args?: Record<string, unknown>): Promise<unknown>
+  } | null = null
+
+  /** 管理员布局:保存 Agent 落点(由 TownView 注入;经既有 channel_agents.config 持久化) */
+  agentApi: {
+    updateHome(agentId: string, x: number, z: number): Promise<unknown>
+  } | null = null
+
+  /** 频道布局持久化(由 TownView 注入;频道拖拽移动/边界拖拽调整后落库) */
+  channelApi: {
+    save(channelId: string, layout: ChannelLayout): Promise<unknown>
   } | null = null
 
   private readonly busHandlers = new Map<string, (e: unknown) => void>()
@@ -242,16 +389,38 @@ export class TownScene3D {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.el.appendChild(this.renderer.domElement)
-    // 选中:点击 Agent/设备 → 弹缩放滑杆(经 on('select') 通知 Vue)
+    // 选中:点击 Agent/设备 → 弹缩放/旋转滑杆(经 on('select') 通知 Vue);拖拽释放不触发
     this.renderer.domElement.addEventListener('pointerup', (e: PointerEvent) => {
-      if (e.button !== 0) return
+      if (e.button !== 0 || this.pointerDrag) return
       const w = this.screenToWorld(e.clientX, e.clientY)
       const hit = this.pickAt(w.x, w.z)
-      this.setSelected(hit)
+      if (hit) {
+        this.setSelected(hit)
+        // 点中角色/设备时清除频道选中(避免与边界面板混用)
+        if (this.selectedChannel) this.selectChannel(null)
+        return
+      }
+      // 未命中 agent/设备 → 尝试点选频道领地(打开边界编辑面板)
+      const cid = this.pickChannel(w.x, w.z)
+      this.setSelected(null)
+      if (cid && this.mode === 'edit') this.selectChannel(cid)
     })
 
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color(0x101826)
+
+    // 边界缩放手柄(编辑模式选中频道时显示;4 个:椭圆轴点 / 矩形角点)
+    for (let i = 0; i < 4; i++) {
+      const h = new THREE.Mesh(
+        new THREE.TorusGeometry(13, 5, 8, 20),
+        new THREE.MeshBasicMaterial({ color: 0xffd27f, transparent: true, opacity: 0.95, depthTest: false }),
+      )
+      h.rotation.x = Math.PI / 2
+      h.position.y = 1.4
+      h.visible = false
+      this.scene.add(h)
+      this.resizeHandles.push({ mesh: h, cid: '', handle: i })
+    }
 
     // 相机:斜俯视 2.5D
     this.camera = new THREE.PerspectiveCamera(50, (this.el.clientWidth || 1100) / (this.el.clientHeight || 700), 1, 12000)
@@ -286,7 +455,35 @@ export class TownScene3D {
     grid.position.y = 0.1
     this.scene.add(grid)
 
+    this.applyGroundTexture()
+
     this.loop()
+  }
+
+  /** 赛博小镇背景贴图 → 地面材质(重复平铺;加载失败保持纯色,永不报错) */
+  private applyGroundTexture(): void {
+    try {
+      const loader = new THREE.TextureLoader()
+      loader.load(
+        '/scene/background/cyber-town-background.svg',
+        (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace
+          tex.wrapS = THREE.RepeatWrapping
+          tex.wrapT = THREE.RepeatWrapping
+          tex.repeat.set(2, 2)
+          tex.anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy())
+          const mat = this.ground.material as THREE.MeshStandardMaterial
+          mat.map = tex
+          mat.color.set(0xffffff)
+          mat.roughness = 0.96
+          mat.needsUpdate = true
+          this.dirty = true
+        },
+        undefined,
+        () => { /* SVG 不可用:保持纯色地面 */ },
+      )
+    }
+    catch { /* TextureLoader 不可用:保持纯色地面 */ }
   }
 
   // ================================================================
@@ -304,44 +501,82 @@ export class TownScene3D {
   }
 
   // ================================================================
-  // 实体基线构建(环形布点 + 领地平台 + 名牌)
+  // 实体基线构建(布局驱动放置:只呈现「已放置」的频道;未放置不进场景)
   // ================================================================
 
+  /**
+   * 用频道实体基线同步领地/角色。仅放置已保存布局的频道(布局来自 useSceneLayouts,
+   * 经 applySceneLayouts 注入);未放置频道只出现在频道坞,不进 3D。
+   */
   private buildBlocks(seeds: TownEntityInput[]): void {
-    const count = Math.max(1, seeds.length)
-    const radius = count <= 1 ? 210 : Math.min(210, 300 - count * 8)
-    seeds.forEach((ch, i) => {
-      const ang = i === 0 ? -Math.PI / 2 : -Math.PI / 2 + (i * 2 * Math.PI) / count
-      const x = Math.round(WORLD_CX + Math.cos(ang) * RING_RX)
-      const z = Math.round(WORLD_CZ + Math.sin(ang) * RING_RZ)
-      const color = channelColorNum(ch.channelId)
-      const platform = this.makeBlock(color, x, z, radius)
-      const block: Block3D = { channelId: ch.channelId, name: ch.channelName, x, z, radius, color, platform, ring: platform, label: this.makeLabel(ch.channelName, x, 30, z) }
-      this.blocks.set(ch.channelId, block)
-      for (const a of ch.agents) this.ensureAgent({ ...a, channelId: ch.channelId }, x, z, color)
-    })
+    this.entityIndex.clear()
+    for (const ch of seeds) {
+      this.entityIndex.set(ch.channelId, ch)
+      const layout = this.layouts.get(ch.channelId)
+      if (!layout) continue
+      this.placeChannel(ch, layout)
+    }
     this.emit('blockCount', this.blocks.size)
     this.emit('agentCount', this.agents.size)
   }
 
-  /** 领地:地面色环 + 光晕平台 + 名牌 */
-  private makeBlock(color: number, x: number, z: number, r: number): THREE.Mesh {
+  /** 按布局放置一个频道领地 + 在其边界内铺放全部 Agent */
+  private placeChannel(ch: TownEntityInput, rawLayout: ChannelLayout): void {
+    const layout = normLayout(rawLayout)
+    const color = channelColorNum(ch.channelId)
+    const platform = this.makeBlock(ch.channelName, color, layout)
+    const block: Block3D = {
+      channelId: ch.channelId, name: ch.channelName,
+      x: layout.x, z: layout.z,
+      radiusX: layout.radiusX, radiusZ: layout.radiusZ,
+      shape: layout.shape, rotationY: layout.rotationY,
+      color,
+      platform,
+      boundary: makeBoundary(layout.shape, layout.radiusX, layout.radiusZ, color),
+      label: this.makeLabel(ch.channelName, layout.x, 30, layout.z),
+    }
+    block.boundary.position.set(layout.x, 0.3, layout.z)
+    block.boundary.rotation.y = layout.rotationY * Math.PI / 180
+    this.scene.add(block.boundary)
+    this.blocks.set(ch.channelId, block)
+    // 在边界内铺放该频道的全部 Agent(lead 居中心,worker 左右展开;钳在边界内)
+    this.layoutAgentsInBlock(ch, block)
+  }
+
+  /** 在频道领地里铺放全部 Agent(按边界内分布;客户自定 home 优先) */
+  private layoutAgentsInBlock(ch: TownEntityInput, block: Block3D): void {
+    const { x, z, radiusX, radiusZ } = block
+    const inner = 0.6 // 内缩比例:agent 铺在边界内侧
+    const n = Math.max(1, ch.agents.length)
+    ch.agents.forEach((a, i) => {
+      // 若该 agent 有 persisted home(且在边界附近)则用之;否则沿长轴均匀铺放
+      let px: number
+      let pz: number
+      if (typeof a.homeX === 'number' && typeof a.homeZ === 'number') {
+        px = a.homeX
+        pz = a.homeZ
+      }
+      else {
+        const t = n <= 1 ? 0 : (i / (n - 1)) * 2 - 1
+        px = x + t * radiusX * inner * 0.8
+        pz = z + (a.role === 'lead' ? 0 : (i % 2 === 0 ? -1 : 1) * radiusZ * inner * 0.4)
+      }
+      this.ensureAgent({ ...a, channelId: ch.channelId }, px, pz, block.color)
+    })
+  }
+
+  /** 领地:地面色平台 + 名牌(边界线框由 makeBoundary 另行添加) */
+  private makeBlock(name: string, color: number, layout: ChannelLayout): THREE.Mesh {
     const platform = new THREE.Mesh(
-      new THREE.CircleGeometry(r * 0.9, 40),
-      new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.28, roughness: 0.9, side: THREE.DoubleSide }),
+      new THREE.CircleGeometry(Math.max(layout.radiusX, layout.radiusZ) * 0.9, 40),
+      new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.24, roughness: 0.9, side: THREE.DoubleSide }),
     )
     platform.rotation.x = -Math.PI / 2
-    platform.position.set(x, 0.16, z)
+    platform.position.set(layout.x, 0.16, layout.z)
+    platform.scale.set(layout.radiusX / Math.max(layout.radiusX, layout.radiusZ), 1, layout.radiusZ / Math.max(layout.radiusX, layout.radiusZ))
     platform.receiveShadow = true
     this.scene.add(platform)
-    // 外环描边
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(r * 0.9, r * 0.98, 40),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, side: THREE.DoubleSide }),
-    )
-    ring.rotation.x = -Math.PI / 2
-    ring.position.set(x, 0.2, z)
-    this.scene.add(ring)
+    void name
     return platform
   }
 
@@ -375,8 +610,17 @@ export class TownScene3D {
   private ensureAgent(a: TownEntityInput['agents'][number] & { channelId: string }, cx: number, cz: number, color: number): void {
     const key = a.agentId
     if (this.agents.has(key)) return
+    // 管理员布局落点(来自 config.homeX/homeZ)优先;缺省按领地内排布;整体钳制在频道边界内
+    const layout = this.blockLayout(a.channelId)
+    let homeX = a.homeX ?? cx
+    let homeZ = a.homeZ ?? cz
+    if (layout) {
+      const clamped = clampToBoundary(layout, homeX, homeZ, 20)
+      homeX = clamped.x
+      homeZ = clamped.z
+    }
     const root = new THREE.Group()
-    root.position.set(cx, GROUND_Y, cz)
+    root.position.set(homeX, GROUND_Y, homeZ)
     // 脚下同频道色环
     const aura = new THREE.Mesh(
       new THREE.RingGeometry(10, 16, 24),
@@ -385,7 +629,7 @@ export class TownScene3D {
     aura.rotation.x = -Math.PI / 2
     aura.position.y = 0.22
     root.add(aura)
-    const nameSprite = this.makeLabel(a.name, cx, 48, cz)
+    const nameSprite = this.makeLabel(a.name, homeX, 48, homeZ)
     // 默认模型(内置 hero-3d)
     const texKey = a.modelRef || 'hero-3d'
     const model = new THREE.Group()
@@ -407,8 +651,8 @@ export class TownScene3D {
       state: a.state,
       progress: a.currentTaskProgress ?? null,
       dragging: false,
-      homeX: cx,
-      homeZ: cz,
+      homeX,
+      homeZ,
       textureKey: texKey,
       modelRef: a.modelRef ?? '',
       behavior: { mode: 'idle', roamTarget: null, targetId: null, waitUntil: 0, engaged: false },
@@ -481,8 +725,52 @@ export class TownScene3D {
   }
 
   // ================================================================
-  // 重建 / 聚焦 / 事件入口(公开面与 2D 镜像)
+  // 布局注入 / 重建 / 聚焦 / 事件入口(公开面与 2D 镜像)
   // ================================================================
+
+  /**
+   * 注入频道领地布局(来自 useSceneLayouts)。构建场景前必须调用;
+   * 未放置的频道会在 rebuild 时被跳过(只停留在频道坞)。
+   */
+  applySceneLayouts(layouts: ChannelLayout[]): void {
+    this.layouts.clear()
+    for (const l of layouts) {
+      const n = normLayout(l)
+      this.layouts.set(n.channelId, n)
+    }
+  }
+
+  /** 频道是否已放入场景(供频道坞标记已放置/未放置) */
+  hasChannel(channelId: string): boolean {
+    return this.blocks.has(channelId)
+  }
+
+  /** 频道当前布局(供边界约束;未放置返回空) */
+  private blockLayout(channelId: string): ChannelLayout | null {
+    const b = this.blocks.get(channelId)
+    if (!b) return null
+    return {
+      channelId, x: b.x, z: b.z,
+      radiusX: b.radiusX, radiusZ: b.radiusZ,
+      shape: b.shape, rotationY: b.rotationY,
+    }
+  }
+
+  /** 已放入场景的频道集(供频道坞/选中面板) */
+  placedChannels(): string[] {
+    return [...this.blocks.keys()]
+  }
+
+  /** 频道当前布局(供边界编辑面板初始化) */
+  getChannelLayout(channelId: string): ChannelLayout | null {
+    const b = this.blocks.get(channelId)
+    if (!b) return null
+    return {
+      channelId, x: b.x, z: b.z,
+      radiusX: b.radiusX, radiusZ: b.radiusZ,
+      shape: b.shape, rotationY: b.rotationY,
+    }
+  }
 
   rebuild(channels: TownEntityInput[]): void {
     this.resetAll()
@@ -497,8 +785,255 @@ export class TownScene3D {
     this.focusTo(b.x, b.z)
   }
 
+  // ================================================================
+  // 频道放置(drop 入口)+ 活动边界编辑
+  // ================================================================
+
+  /**
+   * 频道拖入场景:在落点建领地 + 铺放其全部 Agent(钳在边界内)。
+   * 频道 id 需已在实体基线中;返回落点世界坐标(供 HUD 提示)。
+   */
+  dropChannelOnWorld(x: number, z: number, channelId: string, channelName: string, agentCount: number): { x: number, z: number, channelId: string, name: string } {
+    const existing = this.blocks.get(channelId)
+    if (existing) {
+      this.focusTo(existing.x, existing.z)
+      return { x: Math.round(existing.x), z: Math.round(existing.z), channelId, name: existing.name }
+    }
+    // 缺省布局:以落点为中心、与 Agent 数匹配的边界
+    const rx = Math.max(120, 110 + agentCount * 18)
+    const rz = Math.max(80, 70 + agentCount * 14)
+    const layout: ChannelLayout = { channelId, x, z, radiusX: rx, radiusZ: rz, shape: 'ellipse', rotationY: 0 }
+    this.layouts.set(channelId, normLayout(layout))
+    // 从实体基线取该频道 agents(由 TownView ensureChannelPresent 提前放置)
+    const seed = this.entityIndex.get(channelId)
+    if (seed) {
+      this.placeChannel(seed, layout)
+    }
+    else {
+      // 无实体基线(频道坞拖入,数据尚未到达):只建空领地占位
+      const color = channelColorNum(channelId)
+      const platform = this.makeBlock(channelName, color, layout)
+      const block: Block3D = {
+        channelId, name: channelName, x, z,
+        radiusX: layout.radiusX, radiusZ: layout.radiusZ,
+        shape: layout.shape, rotationY: layout.rotationY, color,
+        platform,
+        boundary: makeBoundary(layout.shape, layout.radiusX, layout.radiusZ, color),
+        label: this.makeLabel(channelName, x, 30, z),
+      }
+      block.boundary.position.set(x, 0.3, z)
+      this.scene.add(block.boundary)
+      this.blocks.set(channelId, block)
+    }
+    this.emit('blockCount', this.blocks.size)
+    this.emit('agentCount', this.agents.size)
+    return { x: Math.round(x), z: Math.round(z), channelId, name: channelName }
+  }
+
+  /** 更新频道布局(编辑边界后本地即时生效;持久化由 TownView 经 useSceneLayouts.save 落库) */
+  updateChannelLayout(channelId: string, patch: Partial<ChannelLayout>): void {
+    const b = this.blocks.get(channelId)
+    if (!b) return
+    if (patch.x !== undefined) b.x = patch.x
+    if (patch.z !== undefined) b.z = patch.z
+    if (patch.radiusX !== undefined) b.radiusX = Math.max(60, patch.radiusX)
+    if (patch.radiusZ !== undefined) b.radiusZ = Math.max(40, patch.radiusZ)
+    if (patch.shape !== undefined) b.shape = patch.shape
+    if (patch.rotationY !== undefined) b.rotationY = patch.rotationY
+    const layout = normLayout({ channelId, x: b.x, z: b.z, radiusX: b.radiusX, radiusZ: b.radiusZ, shape: b.shape, rotationY: b.rotationY })
+    this.layouts.set(channelId, layout)
+    // 重建领地平台/边界/名牌
+    this.scene.remove(b.boundary)
+    b.platform.scale.set(layout.radiusX / Math.max(layout.radiusX, layout.radiusZ), 1, layout.radiusZ / Math.max(layout.radiusX, layout.radiusZ))
+    b.boundary = makeBoundary(layout.shape, layout.radiusX, layout.radiusZ, b.color)
+    b.boundary.position.set(layout.x, 0.3, layout.z)
+    b.boundary.rotation.y = layout.rotationY * Math.PI / 180
+    this.scene.add(b.boundary)
+    this.dirty = true
+  }
+
+  /** 移除频道放置(从场景撤走领地及其 Agent) */
+  removeChannel(channelId: string): void {
+    const b = this.blocks.get(channelId)
+    if (!b) return
+    this.scene.remove(b.platform)
+    if (b.boundary) this.scene.remove(b.boundary)
+    this.scene.remove(b.label)
+    for (const [aid, a] of [...this.agents.entries()]) {
+      if (a.channelId === channelId) {
+        this.scene.remove(a.root)
+        if (a.nameSprite) this.scene.remove(a.nameSprite)
+        if (a.bubble) this.scene.remove(a.bubble)
+        this.agents.delete(aid)
+      }
+    }
+    this.blocks.delete(channelId)
+    this.layouts.delete(channelId)
+    for (const hl of this.resizeHandles) hl.mesh.visible = false
+    if (this.selectedChannel === channelId) {
+      this.selectedChannel = null
+      this.emit('selectChannel', null)
+    }
+    this.emit('blockCount', this.blocks.size)
+    this.emit('agentCount', this.agents.size)
+    this.dirty = true
+  }
+
+  // ================================================================
+  // 频道整体拖拽 / 边界手柄缩放(编辑模式;用户自定义布局)
+  // ================================================================
+
+  /** 把频道地块整体平移(平台/边界/名牌/成员落点一并位移) */
+  private applyBlockMove(b: Block3D, nx: number, nz: number): void {
+    const dx = nx - b.x
+    const dz = nz - b.z
+    b.x = nx
+    b.z = nz
+    b.platform.position.set(nx, 0.16, nz)
+    b.boundary.position.set(nx, 0.3, nz)
+    b.boundary.rotation.y = b.rotationY * Math.PI / 180
+    b.label.position.set(nx, 30, nz)
+    for (const a of this.agents.values()) {
+      if (a.channelId !== b.channelId) continue
+      a.root.position.x += dx
+      a.root.position.z += dz
+      a.homeX += dx
+      a.homeZ += dz
+    }
+    this.layouts.set(b.channelId, normLayout({ channelId: b.channelId, x: b.x, z: b.z, radiusX: b.radiusX, radiusZ: b.radiusZ, shape: b.shape, rotationY: b.rotationY }))
+    this.dirty = true
+  }
+
+  /** 按当前 Block 字段重建领地几何(平台刻度/边界线框/朝向),供缩放与移动共用 */
+  private applyLayoutToBlock(b: Block3D): void {
+    const layout = { channelId: b.channelId, x: b.x, z: b.z, radiusX: b.radiusX, radiusZ: b.radiusZ, shape: b.shape, rotationY: b.rotationY }
+    this.layouts.set(b.channelId, normLayout(layout))
+    b.platform.position.set(b.x, 0.16, b.z)
+    b.platform.scale.set(b.radiusX / Math.max(b.radiusX, b.radiusZ), 1, b.radiusZ / Math.max(b.radiusX, b.radiusZ))
+    if (b.boundary) this.scene.remove(b.boundary)
+    b.boundary = makeBoundary(b.shape, b.radiusX, b.radiusZ, b.color)
+    b.boundary.position.set(b.x, 0.3, b.z)
+    b.boundary.rotation.y = b.rotationY * Math.PI / 180
+    this.scene.add(b.boundary)
+    this.dirty = true
+  }
+
+  /** 边界手柄本地坐标(椭圆:轴向四点;矩形:四角),按当前形状生成 */
+  private boundaryHandlePoints(layout: { radiusX: number, radiusZ: number, shape: 'ellipse' | 'rect' }): Array<[number, number]> {
+    if (layout.shape === 'rect') {
+      const hx = layout.radiusX / 2
+      const hz = layout.radiusZ / 2
+      return [[hx, hz], [-hx, hz], [-hx, -hz], [hx, -hz]]
+    }
+    return [[layout.radiusX, 0], [-layout.radiusX, 0], [0, layout.radiusZ], [0, -layout.radiusZ]]
+  }
+
+  /** 刷新边界手柄位置/可见性(编辑模式选中频道时显示;其余隐藏) */
+  private refreshChannelHandles(): void {
+    for (const hl of this.resizeHandles) hl.mesh.visible = false
+    if (this.mode !== 'edit' || !this.selectedChannel) return
+    const b = this.blocks.get(this.selectedChannel)
+    if (!b) return
+    const rot = b.rotationY * Math.PI / 180
+    const pts = this.boundaryHandlePoints(b)
+    for (let i = 0; i < this.resizeHandles.length && i < pts.length; i++) {
+      const [lx, lz] = pts[i]!
+      const wx = b.x + lx * Math.cos(rot) - lz * Math.sin(rot)
+      const wz = b.z + lx * Math.sin(rot) + lz * Math.cos(rot)
+      this.resizeHandles[i]!.cid = b.channelId
+      this.resizeHandles[i]!.mesh.position.set(wx, 1.4, wz)
+      this.resizeHandles[i]!.mesh.visible = true
+    }
+  }
+
+  /** 命中边界手柄(仅编辑模式;返回频道 id + 手柄号) */
+  private pickResizeHandle(x: number, z: number): { cid: string, handle: number } | null {
+    if (this.mode !== 'edit') return null
+    for (const hl of this.resizeHandles) {
+      if (!hl.mesh.visible) continue
+      if (Math.hypot(hl.mesh.position.x - x, hl.mesh.position.z - z) < 46) return { cid: hl.cid, handle: hl.handle }
+    }
+    return null
+  }
+
+  /** 拖拽手柄 → 实时调整 radiusX/radiusZ(矩形:角点双轴;椭圆:对应轴向轴点) */
+  private applyResize(b: Block3D, handle: number, wx: number, wz: number): void {
+    const rad = -b.rotationY * Math.PI / 180
+    const cos = Math.cos(rad)
+    const sin = Math.sin(rad)
+    const dx = wx - b.x
+    const dz = wz - b.z
+    const lx = dx * cos - dz * sin
+    const lz = dx * sin + dz * cos
+    if (b.shape === 'rect') {
+      // 四角:中心不动,拖拽角到中心距离 ×2 = 新半径
+      b.radiusX = Math.max(60, Math.min(1000, Math.abs(lx) * 2))
+      b.radiusZ = Math.max(40, Math.min(900, Math.abs(lz) * 2))
+    }
+    else {
+      if (handle === 0 || handle === 1) b.radiusX = Math.max(60, Math.min(1000, Math.abs(lx)))
+      else b.radiusZ = Math.max(40, Math.min(900, Math.abs(lz)))
+    }
+    this.applyLayoutToBlock(b)
+    this.refreshChannelHandles()
+    this.dirty = true
+  }
+
+  /** 缩放/移动结束后把该频道成员落点钳回新边界内 */
+  private clampAgentsToBoundary(channelId: string): void {
+    const layout = this.blockLayout(channelId)
+    if (!layout) return
+    for (const a of this.agents.values()) {
+      if (a.channelId !== channelId) continue
+      const c = clampToBoundary(layout, a.root.position.x, a.root.position.z, 16)
+      a.root.position.x = c.x
+      a.root.position.z = c.z
+      a.homeX = c.x
+      a.homeZ = c.z
+    }
+    this.dirty = true
+  }
+
+  /** 频道是否在场景内且被选中(供边界编辑面板) */
+  getSelectedChannel(): string | null {
+    return this.selectedChannel
+  }
+
+  /** 点选频道(供频道坞/边界编辑面板打开) */
+  selectChannel(channelId: string | null): void {
+    this.selectedChannel = channelId
+    this.emit('selectChannel', channelId)
+    this.refreshChannelHandles()
+    if (channelId) this.focusTo(this.blocks.get(channelId)?.x ?? WORLD_CX, this.blocks.get(channelId)?.z ?? WORLD_CZ)
+  }
+
+  /** 当前场景内全部频道布局(供「保存全部布局」/E2E) */
+  getAllChannelLayouts(): ChannelLayout[] {
+    return [...this.blocks.values()].map(b => ({
+      channelId: b.channelId, x: b.x, z: b.z,
+      radiusX: b.radiusX, radiusZ: b.radiusZ,
+      shape: b.shape, rotationY: b.rotationY,
+    }))
+  }
+
   handleTownEvent(e: AepEnvelope): void {
     if (e.type === 'channel.snapshot') return
+    // 频道布局事件:本地已放同一频道则即时应用(他人编辑边界/移入场景 → 本端同步)
+    if (e.type === 'scene.layout.saved') {
+      const l = e.payload as ChannelLayout
+      if (this.blocks.has(l.channelId)) {
+        this.applySceneLayouts([...(this.layouts.values()), l])
+        // 更新对应领地几何
+        const cur = this.getChannelLayout(l.channelId)
+        if (cur) this.updateChannelLayout(l.channelId, l)
+      }
+      return
+    }
+    if (e.type === 'scene.layout.removed') {
+      const { channelId } = e.payload as { channelId: string }
+      this.removeChannel(channelId)
+      return
+    }
     const intent = mapEnvelopeToIntent(e)
     if (!intent) return
     if (intent.agentId) {
@@ -548,9 +1083,16 @@ export class TownScene3D {
       }
       b.mode = 'roam'
       if (!b.roamTarget) {
-        const def = this.blocks.get(asp.channelId)
-        const range = def?.radius ? def.radius * 0.5 : 80
-        b.roamTarget = { x: asp.homeX + (Math.random() * 2 - 1) * range, z: asp.homeZ + (Math.random() * 2 - 1) * range * 0.6 }
+        const layout = this.blockLayout(asp.channelId)
+        const range = layout ? Math.min(layout.radiusX, layout.radiusZ) * 0.45 : 80
+        let tx = asp.homeX + (Math.random() * 2 - 1) * range
+        let tz = asp.homeZ + (Math.random() * 2 - 1) * range * 0.6
+        if (layout) {
+          const clamped = clampToBoundary(layout, tx, tz, 16)
+          tx = clamped.x
+          tz = clamped.z
+        }
+        b.roamTarget = { x: tx, z: tz }
       }
       this.driveToward(asp, b.roamTarget, AGENT_SPEED * 0.5, dt)
       if (this.reached(asp, b.roamTarget)) b.roamTarget = null
@@ -619,8 +1161,17 @@ export class TownScene3D {
   private driveToward(asp: Agent3D, target: { x: number, z: number }, speed: number, dt: number): void {
     const cur = { x: asp.root.position.x, z: asp.root.position.z }
     const next = stepToward({ x: cur.x, y: cur.z }, { x: target.x, y: target.z }, speed, dt)
-    asp.root.position.x = next.x
-    asp.root.position.z = next.y
+    // 边界约束:频道角色不得越出其领地活动边界
+    let nx = next.x
+    let nz = next.y
+    const layout = this.blockLayout(asp.channelId)
+    if (layout) {
+      const clamped = clampToBoundary(layout, nx, nz, 6)
+      nx = clamped.x
+      nz = clamped.z
+    }
+    asp.root.position.x = nx
+    asp.root.position.z = nz
     // 朝向
     const dir = next.dir
     if (dir === 'left') asp.root.rotation.y = Math.PI
@@ -652,6 +1203,22 @@ export class TownScene3D {
 
   private resolveFile(id: string): string {
     return this.modelsById.get(id)?.file ?? ''
+  }
+
+  /** 相机注视目标(供频道坞首放落点/聚焦) */
+  getCameraTarget(): { x: number, z: number } {
+    return { x: Math.round(this.camTarget.x), z: Math.round(this.camTarget.z) }
+  }
+
+  /** 为指定角色换装模型(选择器绑定;要求实体已在场景,否则仅记录) */
+  swapAgentModel(agentId: string, modelRef: string): void {
+    const asp = this.agents.get(agentId)
+    if (!asp) return
+    const info = this.modelsById.get(modelRef)
+    const file = info?.file ?? '/assets/game/character/hero-3d.glb'
+    asp.modelRef = modelRef
+    asp.textureKey = modelRef
+    void this.mountModel(asp, file, info?.name ?? modelRef)
   }
 
   // ================================================================
@@ -714,6 +1281,13 @@ export class TownScene3D {
   }
 
   private rafAnims: Array<() => void> = []
+
+  /** 频道领地布局(channelId → 放置);由 applySceneLayouts 注入,驱动 buildBlocks/边界约束 */
+  private layouts = new Map<string, ChannelLayout>()
+  /** 频道实体基线(channelId → seed;供 dropChannelOnWorld 即时铺放) */
+  private entityIndex = new Map<string, TownEntityInput>()
+  /** 当前选中频道(供边界编辑面板) */
+  private selectedChannel: string | null = null
 
   // ================================================================
   // 气泡(头顶 Sprite)
@@ -904,25 +1478,36 @@ export class TownScene3D {
     ring.position.y = 0.3
     root.add(ring)
     // 设备模型
-    const model = new THREE.Group()
-    root.add(model)
+    const holder = new THREE.Group()
+    root.add(holder)
     const label = this.makeLabel(`⚙ ${name}`, x, 60, z)
     this.scene.add(root)
-    // 绑定 device twin
-    const twin: DeviceNode = { twinId, name, modelRef: texKey, root, ring, label, state: 'idle', telemetry: {} }
+    // 绑定 device twin(携带落点与缩放 → 刷新/他人客户端即可恢复与同步)
+    const twin: DeviceNode = { twinId, name, modelRef: texKey, root, holder, ring, label, state: 'idle', telemetry: {} }
     this.deviceNodes.set(twinId, twin)
     // 客制化:注册设备可缩放目标(twinId 为临时 id;REST 返回真实 id 后更新 key)
-    this.registerScalable('device', twinId, model)
+    this.registerScalable('device', twinId, holder)
     // 加载模型(GLB)
-    void this.loadGltfToGroup(file, model, UNITS * 1.6)
+    void this.loadGltfToGroup(file, holder, UNITS * 1.6)
     // 创建设备(异步;失败则仅本地节点)
-    void this.devices?.create({ name, modelRef: texKey, kind: 'device', controls: ['power_on', 'power_off', 'set_speed'] })
+    const st = this.scalables.get(`device:${twinId}`)
+    void this.devices?.create({
+      name, modelRef: texKey, kind: 'device', controls: ['power_on', 'power_off', 'set_speed'],
+      posX: Math.round(x * 10) / 10,
+      posZ: Math.round(z * 10) / 10,
+      scale: st ? Math.round(st.userScale * 100) / 100 : 1,
+    })
       .then((d) => {
+        if (this.disposed) return
         twin.twinId = d.id
         // 把可缩放目标从临时 id 迁移到真实 id(保留缩放%)
         const saved = this.scalables.get(`device:${twinId}`)
         this.scalables.delete(`device:${twinId}`)
         if (saved) this.scalables.set(`device:${d.id}`, saved)
+        // 若选中临时节点,迁移选中到真实 id
+        if (this.selected?.kind === 'device' && this.selected.id === twinId) {
+          this.selected = { kind: 'device', id: d.id }
+        }
       })
       .catch(() => {})
     return twinId
@@ -1009,6 +1594,48 @@ export class TownScene3D {
     if (telemetry) dev.telemetry = { ...dev.telemetry, ...telemetry }
   }
 
+  /** 设备改名(重建名牌 Sprite;持久化由 TownView 走 devices.update) */
+  renameDevice(id: string, name: string): void {
+    const dev = this.deviceNodes.get(id)
+    if (!dev || !name.trim() || name.trim() === dev.name) return
+    dev.name = name.trim()
+    this.scene.remove(dev.label)
+    dev.label = this.makeLabel(`⚙ ${dev.name}`, dev.root.position.x, 60, dev.root.position.z)
+    this.dirty = true
+  }
+
+  /** 设备换模型(按 modelRef 重挂 GLB 到 holder;持久化由 TownView 走 devices.update) */
+  swapDeviceModel(id: string, modelRef: string): void {
+    const dev = this.deviceNodes.get(id)
+    const info = this.modelsById.get(modelRef)
+    if (!dev || !info || !info.file || modelRef === dev.modelRef) return
+    dev.modelRef = modelRef
+    dev.holder.clear()
+    void this.loadGltfToGroup(info.file, dev.holder, UNITS * 1.6)
+    this.dirty = true
+  }
+
+  /** 设备当前名称(供属性面板初始化) */
+  getDeviceName(id: string): string {
+    return this.deviceNodes.get(id)?.name ?? ''
+  }
+
+  /** 设备当前绑定模型 id(供模型下拉高亮) */
+  getDeviceModelRef(id: string): string {
+    return this.deviceNodes.get(id)?.modelRef ?? ''
+  }
+
+  /** 删除设备实例:落库删除 + 移除场景节点(由 TownView 触发;失败仅移除本地节点) */
+  async removeDevice(id: string): Promise<void> {
+    const dev = this.deviceNodes.get(id)
+    if (!dev) return
+    try {
+      await this.devices?.remove?.(id)
+    }
+    catch { /* 服务端失败仍移除本地节点(尽力同步) */ }
+    this.removeDeviceNode(id)
+  }
+
   /** 设备节点列表(供 HUD/E2E) */
   getDeviceNodes(): Array<{ twinId: string, name: string, x: number, z: number, state: string, telemetry: Record<string, number | string | boolean> }> {
     return [...this.deviceNodes.values()].map(d => ({
@@ -1032,6 +1659,17 @@ export class TownScene3D {
     if (!clip) return
     asp.mixer.stopAllAction()
     asp.mixer.clipAction(clip).reset().play()
+  }
+
+  /** 角色当前绑定模型 id(供模型选择器高亮) */
+  getAgentModel(agentId: string): string | null {
+    const asp = this.agents.get(agentId)
+    return asp?.modelRef ?? null
+  }
+
+  /** 角色名字(供模型选择器标题) */
+  getAgentName(agentId: string): string {
+    return this.agents.get(agentId)?.name ?? agentId.slice(0, 8)
   }
 
   /** 角色动画 clip 名列表(供 UI 展示可绑定动作;无则空) */
@@ -1059,15 +1697,52 @@ export class TownScene3D {
     return best ? { kind: best.kind, id: best.id } : null
   }
 
-  /** 设置选中(点击后由 Vue 弹缩放滑杆) */
+  /** 点选频道:返回包含该点的频道 id(边界内;供编辑模式打开边界编辑面板) */
+  private pickChannel(x: number, z: number): string | null {
+    for (const b of this.blocks.values()) {
+      const layout: ChannelLayout = {
+        channelId: b.channelId, x: b.x, z: b.z,
+        radiusX: b.radiusX, radiusZ: b.radiusZ,
+        shape: b.shape, rotationY: b.rotationY,
+      }
+      if (this.pointInBoundary(layout, x, z)) return b.channelId
+    }
+    return null
+  }
+
+  /** 点到边界内判定(解析闭合;互斥命中最靠近中心的频道) */
+  private pointInBoundary(layout: ChannelLayout, x: number, z: number): boolean {
+    const l = normLayout(layout)
+    const rad = -l.rotationY * Math.PI / 180
+    const cos = Math.cos(rad)
+    const sin = Math.sin(rad)
+    const dx = x - l.x
+    const dz = z - l.z
+    const lx = dx * cos - dz * sin
+    const lz = dx * sin + dz * cos
+    if (l.shape === 'rect') return Math.abs(lx) <= l.radiusX / 2 && Math.abs(lz) <= l.radiusZ / 2
+    const nx = lx / l.radiusX
+    const nz = lz / l.radiusZ
+    return nx * nx + nz * nz <= 1
+  }
+
+  /** 设置选中(点击后由 Vue 弹缩放/旋转滑杆) */
   private setSelected(sel: { kind: 'agent' | 'device', id: string } | null): void {
     this.selected = sel
     if (!sel) {
+      this.showSelectionRing(null)
       this.emit('select', null)
       return
     }
     const st = this.scalables.get(`${sel.kind}:${sel.id}`)
-    if (st) this.emit('select', { kind: sel.kind, id: sel.id, scale: st.userScale })
+    if (st) {
+      this.emit('select', {
+        kind: sel.kind,
+        id: sel.id,
+        scale: st.userScale,
+        rotation: Math.round(this.getModelRotation(sel.id, sel.kind) * 10) / 10,
+      })
+    }
   }
 
   /** 场景内缩放:为 Agent(id)或设备(id)设定用户缩放倍率(0.2~5;1=默认归一化) */
@@ -1083,26 +1758,388 @@ export class TownScene3D {
   }
 
   /** 当前选中对象(供 Vue/滑杆初始化) */
-  getSelectedScale(): { kind: 'agent' | 'device', id: string, scale: number } | null {
+  getSelectedScale(): { kind: 'agent' | 'device', id: string, scale: number, rotation: number } | null {
     if (!this.selected) return null
     const st = this.scalables.get(`${this.selected.kind}:${this.selected.id}`)
     if (!st) return null
-    return { kind: this.selected.kind, id: this.selected.id, scale: st.userScale }
+    return {
+      kind: this.selected.kind,
+      id: this.selected.id,
+      scale: st.userScale,
+      rotation: Math.round(this.getModelRotation(this.selected.id, this.selected.kind) * 10) / 10,
+    }
   }
 
-  /** 组装可缩放目标并恢复持久化缩放(load from localStorage 'town.scale.<kind:id>') */
-  private registerScalable(kind: 'agent' | 'device', id: string, holder: THREE.Group): void {
-    const saved = typeof localStorage !== 'undefined' ? Number(localStorage.getItem(`town.scale.${kind}:${id}`) ?? 1) : 1
+  /** 组装可缩放目标并恢复初始化缩放(initialScale 优先=服务端持久化;否则 localStorage) */
+  private registerScalable(kind: 'agent' | 'device', id: string, holder: THREE.Group, initialScale?: number): void {
+    const saved = initialScale !== undefined
+      ? initialScale
+      : (typeof localStorage !== 'undefined' ? Number(localStorage.getItem(`town.scale.${kind}:${id}`) ?? 1) : 1)
     const userScale = Number.isFinite(saved) && saved > 0 ? saved : 1
     this.scalables.set(`${kind}:${id}`, { kind, id, userScale, holder })
     holder.scale.setScalar(userScale)
   }
 
-  /** 持久化指定对象的缩放(滑杆松手时调用) */
+  /** 持久化指定对象的缩放(滑杆松手时调用;设备同时落库,角色仅本地) */
   persistScale(kind: 'agent' | 'device', id: string): void {
     const st = this.scalables.get(`${kind}:${id}`)
     if (!st || typeof localStorage === 'undefined') return
     localStorage.setItem(`town.scale.${kind}:${id}`, String(st.userScale))
+    if (kind === 'device') this.persistDeviceTransform(id)
+  }
+
+  // ================================================================
+  // 编辑/浏览模式 + 场景对象拖拽(设备↔地面,角色↔落点)
+  // ================================================================
+
+  /** 模式切换:浏览(只读:相机+点选) / 编辑(可拖拽设备/调整角色落点/旋转/频道整体移动/边界手柄) */
+  setMode(mode: TownScene3DMode): void {
+    if (this.mode === mode) return
+    this.mode = mode
+    if (mode === 'browse') {
+      if (this.pointerDrag) this.endPointerDrag()
+      this.setSelected(null)
+      this.refreshChannelHandles()
+    }
+    else if (this.selected) {
+      this.showSelectionRing(this.selected)
+    }
+    this.refreshChannelHandles()
+    this.dirty = true
+  }
+
+  getMode(): TownScene3DMode {
+    return this.mode
+  }
+
+  /** 网格吸附开关(编辑拖拽落点;默认开) */
+  setSnap(enabled: boolean): void {
+    this.snapEnabled = enabled
+  }
+
+  getSnap(): boolean {
+    return this.snapEnabled
+  }
+
+  /**
+   * 尝试开始场景拖拽(编辑模式;指针按下命中设备/角色 → 占用该手势)。
+   * 返回 true 表示场景已接管指针(调用方应跳过相机平移)。
+   */
+  tryStartPointerDrag(clientX: number, clientY: number): boolean {
+    if (this.mode !== 'edit') return false
+    const w = this.screenToWorld(clientX, clientY)
+    // 1) 边界缩放手柄优先(编辑模式选中频道的 4 个手柄 → 调整范围大小)
+    const h = this.pickResizeHandle(w.x, w.z)
+    if (h) {
+      this.pointerDrag = { kind: 'resize', id: h.cid, handle: h.handle }
+      this.setSelected(null)
+      this.emitSaveState('dirty')
+      return true
+    }
+    // 2) 设备 / 角色
+    const hit = this.pickAt(w.x, w.z)
+    if (hit) {
+      if (hit.kind === 'device') {
+        if (!this.deviceNodes.has(hit.id)) return false
+        this.pointerDrag = hit
+        this.setSelected(hit)
+        this.showSelectionRing(hit)
+        this.emitSaveState('dirty')
+        return true
+      }
+      // 角色:仅频道角色可调整落点(装饰居民不持久化、不可布局)
+      const asp = this.agents.get(hit.id)
+      if (!asp || !asp.channelId) return false
+      if (asp.bubbleTimer) {
+        clearTimeout(asp.bubbleTimer)
+        asp.bubbleTimer = null
+      }
+      asp.dragging = true
+      asp.behavior.mode = 'idle'
+      asp.behavior.targetId = null
+      this.pointerDrag = hit
+      this.setSelected(hit)
+      this.showSelectionRing(hit)
+      this.emitSaveState('dirty')
+      return true
+    }
+    // 3) 频道领地整体拖拽:点中领地空白处 → 平移整个频道(平台/边界/名牌/成员落点)
+    const cid = this.pickChannel(w.x, w.z)
+    if (cid) {
+      const b = this.blocks.get(cid)
+      if (!b) return false
+      this.pointerDrag = { kind: 'channel', id: cid, dx: b.x - w.x, dz: b.z - w.z }
+      this.setSelected(null)
+      this.selectChannel(cid)
+      this.emitSaveState('dirty')
+      return true
+    }
+    return false
+  }
+
+  isPointerDragging(): boolean {
+    return this.pointerDrag !== null
+  }
+
+  private snapWorld(v: number): number {
+    return this.snapEnabled ? Math.round(v / SNAP_SIZE) * SNAP_SIZE : Math.round(v * 10) / 10
+  }
+
+  /** 拖拽中:对象跟随指针指向的 xz 平面(仅改内存;落库在 endPointerDrag) */
+  movePointerDrag(clientX: number, clientY: number): void {
+    if (!this.pointerDrag) return
+    const w = this.screenToWorld(clientX, clientY)
+    const x = Math.min(WORLD_W, Math.max(0, this.snapWorld(w.x)))
+    const z = Math.min(WORLD_H, Math.max(0, this.snapWorld(w.z)))
+    const pd = this.pointerDrag
+    if (pd.kind === 'device') {
+      const dev = this.deviceNodes.get(pd.id)
+      if (dev) {
+        dev.root.position.x = x
+        dev.root.position.z = z
+        this.dirty = true
+      }
+    }
+    else if (pd.kind === 'agent') {
+      const asp = this.agents.get(pd.id)
+      if (asp) {
+        // 频道角色落点钳制在所属领地边界内(不可拖出频道)
+        let px = x
+        let pz = z
+        const layout = this.blockLayout(asp.channelId)
+        if (layout) {
+          const clamped = clampToBoundary(layout, x, z, 20)
+          px = clamped.x
+          pz = clamped.z
+        }
+        asp.root.position.x = px
+        asp.root.position.z = pz
+        this.dirty = true
+      }
+    }
+    else if (pd.kind === 'channel') {
+      const b = this.blocks.get(pd.id)
+      if (b) this.applyBlockMove(b, x + pd.dx, z + pd.dz)
+    }
+    else if (pd.kind === 'resize') {
+      const b = this.blocks.get(pd.id)
+      if (b) this.applyResize(b, pd.handle, w.x, w.z)
+    }
+  }
+
+  /** 拖拽结束:设备 → 防抖落库;角色 → home 更新 + 持久化;频道 → 布局落库 */
+  endPointerDrag(): void {
+    if (!this.pointerDrag) return
+    const pd = this.pointerDrag
+    this.pointerDrag = null
+    if (pd.kind === 'device') {
+      const dev = this.deviceNodes.get(pd.id)
+      if (dev) this.persistDeviceTransform(pd.id)
+    }
+    else if (pd.kind === 'agent') {
+      const asp = this.agents.get(pd.id)
+      if (asp) {
+        asp.homeX = asp.root.position.x
+        asp.homeZ = asp.root.position.z
+        asp.dragging = false
+        this.emitSaveState('saving')
+        void this.agentApi?.updateHome(pd.id, asp.homeX, asp.homeZ)
+          .then(() => this.emitSaveState('saved', Date.now()))
+          .catch(() => this.emitSaveState('error'))
+      }
+    }
+    else {
+      // channel / resize:把成员钳回新边界 + 布局落库 + 通知 Vue 刷新边界面板草稿
+      const b = this.blocks.get(pd.id)
+      if (b) {
+        this.clampAgentsToBoundary(pd.id)
+        this.refreshChannelHandles()
+        const layout = this.getChannelLayout(pd.id)
+        if (layout) {
+          this.emitSaveState('saving')
+          void this.channelApi?.save(pd.id, layout)
+            .then(() => this.emitSaveState('saved', Date.now()))
+            .catch(() => this.emitSaveState('error'))
+          this.emit('channelResized', { channelId: pd.id, layout })
+        }
+      }
+    }
+    this.showSelectionRing(this.selected)
+  }
+
+  /** 对象朝向(度;编辑模式旋转滑杆实时) */
+  setModelRotation(id: string, deg: number, kind?: 'agent' | 'device'): void {
+    const k = kind ?? (this.deviceNodes.has(id) ? 'device' : 'agent')
+    if (k === 'device') {
+      const dev = this.deviceNodes.get(id)
+      if (!dev) return
+      dev.root.rotation.y = deg * Math.PI / 180
+    }
+    else {
+      const asp = this.agents.get(id)
+      if (!asp) return
+      asp.root.rotation.y = deg * Math.PI / 180
+    }
+    this.dirty = true
+  }
+
+  getModelRotation(id: string, kind?: 'agent' | 'device'): number {
+    const k = kind ?? (this.deviceNodes.has(id) ? 'device' : 'agent')
+    if (k === 'device') {
+      const dev = this.deviceNodes.get(id)
+      return dev ? THREE.MathUtils.radToDeg(dev.root.rotation.y) : 0
+    }
+    const asp = this.agents.get(id)
+    return asp ? THREE.MathUtils.radToDeg(asp.root.rotation.y) : 0
+  }
+
+  // ================================================================
+  // 场景保存状态(未保存/保存中/已保存/失败)+ 设备 transform 防抖落库
+  // ================================================================
+
+  private emitSaveState(state: 'idle' | 'dirty' | 'saving' | 'saved' | 'error', at = Date.now()): void {
+    this.emit('saveState', { state, at })
+  }
+
+  /** 持久化设备 transform(位置/朝向/缩放一次写入;防抖 350ms,不逐帧写库) */
+  persistDeviceTransform(id: string): void {
+    const dev = this.deviceNodes.get(id)
+    if (!dev || !this.devices?.update) return
+    const st = this.scalables.get(`device:${id}`)
+    const prev = this.pendingSaveTimers.get(id)
+    if (prev) clearTimeout(prev)
+    this.pendingSaveTimers.set(id, setTimeout(() => {
+      this.pendingSaveTimers.delete(id)
+      this.emitSaveState('saving')
+      void this.devices!.update(id, {
+        posX: Math.round(dev.root.position.x * 10) / 10,
+        posZ: Math.round(dev.root.position.z * 10) / 10,
+        rotationY: Math.round(THREE.MathUtils.radToDeg(dev.root.rotation.y) * 10) / 10,
+        scale: st ? Math.round(st.userScale * 100) / 100 : undefined,
+      })
+        .then(() => this.emitSaveState('saved', Date.now()))
+        .catch(() => this.emitSaveState('error'))
+    }, 350))
+    this.emitSaveState('dirty')
+  }
+
+  /** 保存全部设备节点(「保存布局」按钮:强制全量落库) */
+  persistAllDevices(): void {
+    for (const id of [...this.deviceNodes.keys()]) this.persistDeviceTransform(id)
+  }
+
+  private pendingSaveTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+  // ================================================================
+  // 设备场景实例同步(服务端设备孪生 → 本地节点;多客户端一致)
+  // ================================================================
+
+  /**
+   * 与设备孪生清单对齐:
+   *  - 服务端有落点且本地无节点 → 按保存的 transform 重建节点(刷新后恢复);
+   *  - 已存在 → 收敛状态/遥测,并在未拖拽时收敛 transform(他人编辑即时跟随);
+   *  - 服务端已删除 → 移除本地节点。
+   * TownView 在 device.* 事件与轮询时调用;轮询兜底多客户端同步。
+   */
+  syncDevices(twins: DeviceTwinSync[]): void {
+    const serverIds = new Set(twins.map(t => t.id))
+    for (const id of [...this.deviceNodes.keys()]) {
+      if (!serverIds.has(id)) this.removeDeviceNode(id)
+    }
+    for (const t of twins) {
+      const existing = this.deviceNodes.get(t.id)
+      if (!existing) {
+        if (typeof t.posX === 'number' && typeof t.posZ === 'number') this.recreateDeviceNode(t)
+        continue
+      }
+      if (t.state) existing.state = t.state
+      if (t.telemetry) existing.telemetry = { ...existing.telemetry, ...t.telemetry }
+      // 名称/模型变更(他人改名/换模 → 即时收敛场景节点)
+      if (t.name && t.name !== existing.name) this.renameDevice(t.id, t.name)
+      if (t.modelRef && t.modelRef !== existing.modelRef) this.swapDeviceModel(t.id, t.modelRef)
+      if (this.pointerDrag?.id !== t.id) {
+        const moved = (typeof t.posX === 'number' && t.posX !== existing.root.position.x)
+          || (typeof t.posZ === 'number' && t.posZ !== existing.root.position.z)
+        if (typeof t.posX === 'number') existing.root.position.x = t.posX
+        if (typeof t.posZ === 'number') existing.root.position.z = t.posZ
+        if (typeof t.rotationY === 'number') existing.root.rotation.y = t.rotationY * Math.PI / 180
+        const st = this.scalables.get(`device:${t.id}`)
+        if (typeof t.scale === 'number' && st) {
+          st.userScale = t.scale
+          st.holder.scale.setScalar(t.scale)
+        }
+        if (moved) this.dirty = true
+      }
+      this.dirty = true
+    }
+    if (this.selected && this.selRing?.visible) this.showSelectionRing(this.selected)
+  }
+
+  /** 按设备孪生记录重建场景节点(持久化恢复:pos/rotation/scale;模型缺失则跳过) */
+  private recreateDeviceNode(t: DeviceTwinSync): void {
+    const model = this.modelsById.get(t.modelRef)
+    const file = model?.file ?? ''
+    if (!file) return
+    const x = typeof t.posX === 'number' ? t.posX : WORLD_CX
+    const z = typeof t.posZ === 'number' ? t.posZ : WORLD_CZ
+    const root = new THREE.Group()
+    root.position.set(x, GROUND_Y, z)
+    root.rotation.y = typeof t.rotationY === 'number' ? t.rotationY * Math.PI / 180 : 0
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(20, 26, 32),
+      new THREE.MeshBasicMaterial({ color: 0x8fe8d4, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
+    )
+    ring.rotation.x = -Math.PI / 2
+    ring.position.y = 0.3
+    root.add(ring)
+    const holder = new THREE.Group()
+    root.add(holder)
+    const label = this.makeLabel(`⚙ ${t.name}`, x, 60, z)
+    this.scene.add(root)
+    const twin: DeviceNode = { twinId: t.id, name: t.name, modelRef: t.modelRef, root, holder, ring, label, state: t.state ?? 'idle', telemetry: t.telemetry ?? {} }
+    this.deviceNodes.set(t.id, twin)
+    // 服务端缩放优先(持久化恢复);缺省回退 localStorage
+    this.registerScalable('device', t.id, holder, typeof t.scale === 'number' ? t.scale : undefined)
+    void this.loadGltfToGroup(file, holder, UNITS * 1.6)
+    this.dirty = true
+  }
+
+  /** 移除设备场景节点(服务端记录被删/本地重建清理) */
+  private removeDeviceNode(id: string): void {
+    const dev = this.deviceNodes.get(id)
+    if (!dev) return
+    this.scene.remove(dev.root)
+    this.scene.remove(dev.label)
+    if (this.selected?.kind === 'device' && this.selected.id === id) this.setSelected(null)
+    this.scalables.delete(`device:${id}`)
+    this.deviceNodes.delete(id)
+    this.dirty = true
+  }
+
+  /** 选中高亮环(编辑模式;跟随选中设备/角色) */
+  private showSelectionRing(hit: { kind: 'agent' | 'device', id: string } | null): void {
+    if (!this.selRing) {
+      this.selRing = new THREE.Mesh(
+        new THREE.RingGeometry(34, 42, 48),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthTest: false }),
+      )
+      this.selRing.rotation.x = -Math.PI / 2
+      this.selRing.position.y = 0.42
+      this.selRing.visible = false
+      this.scene.add(this.selRing)
+    }
+    if (!hit || this.mode !== 'edit') {
+      this.selRing.visible = false
+      return
+    }
+    const obj = hit.kind === 'device' ? this.deviceNodes.get(hit.id)?.root : this.agents.get(hit.id)?.root
+    if (!obj) {
+      this.selRing.visible = false
+      return
+    }
+    this.selRing.position.x = obj.position.x
+    this.selRing.position.z = obj.position.z
+    this.selRing.visible = true
   }
 
   // ================================================================
@@ -1134,6 +2171,16 @@ export class TownScene3D {
         const color = dev.state === 'alarm' ? 0xff6b6b : dev.state === 'offline' ? 0x9aa4ae : dev.state === 'running' ? 0x8fe8d4 : 0xf0c05a
         ;(dev.ring.material as THREE.MeshBasicMaterial).color.setHex(color)
       }
+      // 选中高亮环跟随(编辑模式)
+      if (this.selRing?.visible && this.selected) {
+        const obj = this.selected.kind === 'device'
+          ? this.deviceNodes.get(this.selected.id)?.root
+          : this.agents.get(this.selected.id)?.root
+        if (obj) {
+          this.selRing.position.x = obj.position.x
+          this.selRing.position.z = obj.position.z
+        }
+      }
       const anims = this.rafAnims
       this.rafAnims = []
       for (const f of anims) f()
@@ -1163,8 +2210,20 @@ export class TownScene3D {
     }
     for (const b of this.blocks.values()) {
       this.scene.remove(b.platform)
+      this.scene.remove(b.boundary)
       this.scene.remove(b.label)
     }
+    for (const dev of this.deviceNodes.values()) {
+      this.scene.remove(dev.root)
+      this.scene.remove(dev.label)
+    }
+    this.deviceNodes.clear()
+    this.scalables.clear()
+    this.pointerDrag = null
+    this.selected = null
+    this.selectedChannel = null
+    for (const hl of this.resizeHandles) hl.mesh.visible = false
+    this.showSelectionRing(null)
     this.agents.clear()
     this.blocks.clear()
   }
@@ -1173,6 +2232,8 @@ export class TownScene3D {
   dispose(): void {
     this.disposed = true
     cancelAnimationFrame(this.raf)
+    for (const t of this.pendingSaveTimers.values()) clearTimeout(t)
+    this.pendingSaveTimers.clear()
     this.renderer.dispose()
     if (this.renderer.domElement.parentElement === this.el) this.renderer.domElement.remove()
   }

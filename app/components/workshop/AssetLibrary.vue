@@ -1,24 +1,24 @@
 <script setup lang="ts">
 /**
- * 素材库(Asset Library)面板 —— 列出「可拖拽加载到小镇」的角色模型,并支持上传/删除。
+ * 设备模型库(Asset Library)面板 —— 只列举「设备/实体」3D 模型,支持上传/删除。
  *
  * 交互:
- *  - 每张模型卡可拖拽:拖起时把 assetId 写入 dataTransfer,小镇地图作为放进区域,
- *    落下时 TownScene.dropModelOnWorld() 就近换装或落点生成居民(已实现)。
- *  - 「绑定」:选中某 agent → 点模型卡上的绑定钮,写 PATCH modelRef(经 useCharacterAssets.bind)。
- *  - 上传:选择本地图片(multipart)→ 刷新清单。
- *  - 删除:引删保护(仍被绑定 → 提示 used>0,不硬删)。
+ *  - 仅展示 kind === 'dev' 的模型(扫描 public/assets/game/devices + 用户上传);
+ *    character 角色模型不出现在模型库 —— 在频道成员管理中为成员设置。
+ *  - 每张模型卡可拖拽:拖起把 assetId 写入 dataTransfer,落到小镇场景 →
+ *    TownScene3D.dropModelOnWorld() 在落点生成一个设备实例(数字孪生)。
+ *  - 上传:选择 .glb/.gltf/.obj/.fbx → POST /api/workshop/assets/devices,写入 devices 目录。
+ *  - 删除:删除对应模型文件(仅限 devices 目录内)。
  */
-
 import { useCharacterAssets } from '@/app/composables/workshop/useCharacterAssets'
 
 const assets = useCharacterAssets()
-const props = defineProps<{
-  /** 当前聚焦 channelId(绑定用) */
-  channelId?: string
-  /** 可选:提供 agent 列表供"绑定到角色" */
-  agents?: Array<{ agentId: string, name: string, role: string }>
-}>()
+
+/** 侧边模型库:仅设备目录(public/assets/game/devices)下的设备模型。
+ *  内置 device-3d 等位于 character 目录的模型不出现;角色模型在频道成员管理中设置。 */
+const deviceModels = computed(() =>
+  assets.models.filter(m => m.kind === 'dev' && m.file.includes('/assets/game/devices/')),
+)
 
 // 拖起:把模型 id 交给 dataTransfer(HTML5 DnD)
 function onDragStart(e: DragEvent, id: string): void {
@@ -28,11 +28,7 @@ function onDragStart(e: DragEvent, id: string): void {
   e.dataTransfer.effectAllowed = 'copy'
 }
 
-function onDragEnd(e: DragEvent): void {
-  void e
-}
-
-// ---------- 上传 ----------
+// ---------- 上传(设备 3D 模型) ----------
 const uploading = ref(false)
 const uploadError = ref('')
 const uploadFile = ref<File | null>(null)
@@ -44,14 +40,15 @@ const onPickFile = (e: Event): void => {
 async function doUpload(): Promise<void> {
   const f = uploadFile.value
   if (!f) {
-    uploadError.value = '请先选择图片文件'
+    uploadError.value = '请先选择设备模型文件(.glb/.gltf/.obj/.fbx)'
     return
   }
   uploading.value = true
   uploadError.value = ''
   try {
-    await assets.upload(f, { kind: 'sheet', frameWidth: 48, frameHeight: 88, frames: 4 })
+    const model = await assets.uploadDevice(f)
     uploadFile.value = null
+    uploadError.value = `已上传 → ${model.name}`
   }
   catch (err) {
     uploadError.value = err instanceof Error ? err.message : String(err)
@@ -61,17 +58,15 @@ async function doUpload(): Promise<void> {
   }
 }
 
-// ---------- 删除(引删保护) ----------
+// ---------- 删除(设备模型文件;已生成实例不受影响,刷新后节点因缺模型被跳过) ----------
 const deletingId = ref('')
 const deleteMsg = ref('')
 async function doRemove(id: string): Promise<void> {
   deletingId.value = id
   deleteMsg.value = ''
   try {
-    const res = await assets.remove(id)
-    deleteMsg.value = res.used > 0
-      ? `该模型仍被 ${res.used} 个角色使用,未删除`
-      : '已删除'
+    await assets.removeDevice(id)
+    deleteMsg.value = '已删除模型文件'
   }
   catch (err) {
     deleteMsg.value = err instanceof Error ? err.message : String(err)
@@ -80,52 +75,33 @@ async function doRemove(id: string): Promise<void> {
     deletingId.value = ''
   }
 }
-
-// ---------- 绑定到角色 ----------
-const bindAgentId = ref('')
-const bindMsg = ref('')
-async function doBind(id: string): Promise<void> {
-  const agentId = bindAgentId.value
-  if (!props.channelId || !agentId) {
-    bindMsg.value = props.agents?.length ? '请先选择角色' : '无可绑定的角色(未选择频道)'
-    return
-  }
-  bindMsg.value = ''
-  try {
-    await assets.bind(props.channelId, agentId, id)
-    bindMsg.value = '已绑定'
-  }
-  catch (err) {
-    bindMsg.value = err instanceof Error ? err.message : String(err)
-  }
-}
 </script>
 
 <template>
   <aside class="asset-lib">
     <div class="lib-head">
       <span class="head-dot" />
-      <span class="head-title">模型库</span>
-      <span class="head-hint">拖到地图上任一角色即换装</span>
+      <span class="head-title">设备模型库</span>
+      <span class="head-hint">拖入小镇生成实例</span>
     </div>
 
-    <!-- 上传区 -->
+    <!-- 上传区(设备 3D 模型) -->
     <div class="upload-box">
       <label class="upload-row">
         <input
           type="file"
-          accept="image/png,image/webp,image/gif"
+          accept=".glb,.gltf,.obj,.fbx"
           class="file-input"
           @change="onPickFile"
         >
-        <span class="upload-name">{{ uploadFile?.name || '选择贴图(png/webp/gif)' }}</span>
+        <span class="upload-name">{{ uploadFile?.name || '选择模型(glb/gltf/obj/fbx)' }}</span>
       </label>
       <button
         class="upload-btn"
         :disabled="uploading"
         @click="doUpload"
       >
-        {{ uploading ? '上传中…' : '上传模型' }}
+        {{ uploading ? '上传中…' : '上传设备模型' }}
       </button>
       <span
         v-if="uploadError"
@@ -133,65 +109,24 @@ async function doBind(id: string): Promise<void> {
       >{{ uploadError }}</span>
     </div>
 
-    <!-- 绑定区 -->
-    <div
-      v-if="agents && agents.length"
-      class="bind-box"
-    >
-      <span class="bind-label">绑定到角色:</span>
-      <select
-        v-model="bindAgentId"
-        class="bind-select"
-      >
-        <option value="">
-          选择…
-        </option>
-        <option
-          v-for="a in agents"
-          :key="a.agentId"
-          :value="a.agentId"
-        >
-          {{ a.name }}({{ a.role }})
-        </option>
-      </select>
-    </div>
-
     <div class="lib-grid">
       <div
-        v-for="m in assets.models"
+        v-for="m in deviceModels"
         :key="m.id"
         class="model-card"
         :data-model-id="m.id"
         draggable="true"
-        :title="m.hint || `拖到地图上给角色换装 · ${m.name}`"
+        :title="m.hint || `拖到小镇场景即生成设备实例 · ${m.name}`"
         @dragstart="onDragStart($event, m.id)"
-        @dragend="onDragEnd"
       >
-        <template v-if="m.kind === 'glb' || m.kind === 'dev'">
-          <span
-            class="model-img glb"
-            :class="{ dev: m.kind === 'dev' }"
-          >
-            <span class="glb-cube">{{ m.kind === 'dev' ? '⚙' : '◈' }}</span>
-          </span>
-        </template>
-        <img
-          v-else
-          :src="m.file"
-          :alt="m.name"
-          class="model-img"
-          draggable="false"
+        <span
+          class="model-img glb dev"
         >
+          <span class="glb-cube">⚙</span>
+        </span>
         <span class="model-name">{{ m.name }}</span>
-        <span class="model-badge">{{ m.kind === 'dev' ? '设备' : m.kind === 'glb' ? '3D .glb' : `${m.frames}帧` }} · {{ m.applied ? '使用中' : '闲置' }}</span>
+        <span class="model-badge">设备 · 拖拽放置</span>
         <div class="card-actions">
-          <button
-            v-if="agents && agents.length"
-            class="card-btn"
-            @click="doBind(m.id)"
-          >
-            绑定
-          </button>
           <button
             class="card-btn danger"
             :disabled="deletingId === m.id"
@@ -206,20 +141,20 @@ async function doBind(id: string): Promise<void> {
         class="model-card loading"
       >
         <span class="loading-dot" />
-        载入模型库…
+        载入设备模型库…
       </div>
       <div
-        v-else-if="assets.models.length === 0"
+        v-else-if="deviceModels.length === 0"
         class="model-card empty"
       >
-        暂无模型
+        暂无设备模型。把 .glb 放进 public/assets/game/devices 或上传。
       </div>
     </div>
 
     <span
-      v-if="deleteMsg || bindMsg"
+      v-if="deleteMsg"
       class="mini-msg"
-    >{{ deleteMsg || bindMsg }}</span>
+    >{{ deleteMsg }}</span>
   </aside>
 </template>
 
@@ -255,10 +190,6 @@ async function doBind(id: string): Promise<void> {
 .upload-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upload-btn { padding: 3px 8px; font-size: 11px; font-weight: 600; color: var(--on-av); background: var(--accent); border: 0; border-radius: var(--radius-chip); cursor: pointer; }
 .upload-btn:disabled { opacity: 0.5; cursor: default; }
-
-.bind-box { display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-panel-sm); }
-.bind-label { font-size: 10px; color: var(--ink-faint); }
-.bind-select { font-size: 11px; padding: 3px; border: 1px solid var(--line); border-radius: var(--radius-chip); background: var(--paper); color: var(--ink); }
 
 .lib-grid { display: flex; flex-direction: column; gap: 8px; }
 .model-card {

@@ -6,7 +6,7 @@
  * 高频流式帧淹没全局 200 帧窗口);excludeTypes 剔除过程帧(agent.delta 的
  * 打字机增量在历史回放里由落定 agent.message 携带全文,无需逐帧重放)。
  */
-import type { DatabaseSync } from 'node:sqlite'
+import type { DatabaseSync, SQLInputValue } from 'node:sqlite'
 import type { ChannelEventRow } from './database'
 
 export interface StoredAepEvent {
@@ -39,9 +39,9 @@ export function createChannelEventRepo(db: DatabaseSync) {
   const stmtCache = new Map<string, ReturnType<DatabaseSync['prepare']>>()
 
   /** WHERE 追加过滤(agentId / excludeTypes),返回 [sql片段, 绑定参数] */
-  const filterClause = (opts?: EventQueryOpts): [string, unknown[]] => {
+  const filterClause = (opts?: EventQueryOpts): [string, SQLInputValue[]] => {
     let sql = ''
-    const params: unknown[] = []
+    const params: SQLInputValue[] = []
     if (opts?.agentId !== undefined) {
       sql += ' AND agent_id = ?'
       params.push(opts.agentId)
@@ -53,7 +53,7 @@ export function createChannelEventRepo(db: DatabaseSync) {
     return [sql, params]
   }
 
-  const select = (baseWhere: string, tail: string, baseParams: unknown[], tailParams: unknown[], opts?: EventQueryOpts) => {
+  const select = (baseWhere: string, tail: string, baseParams: SQLInputValue[], tailParams: SQLInputValue[], opts?: EventQueryOpts) => {
     const [filterSql, filterParams] = filterClause(opts)
     const sql = `SELECT ${COLS} FROM channel_events WHERE ${baseWhere}${filterSql} ${tail}`
     let stmt = stmtCache.get(sql)

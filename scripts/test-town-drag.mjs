@@ -1,3 +1,4 @@
+/* eslint-disable -- 浏览器 E2E 脚本:一次性验证,允许紧凑断言 */
 /**
  * 小镇·模型拖拽加载 + 全频道 Agent 落地 验证(E2E via puppeteer)。
  * 断言:
@@ -63,13 +64,18 @@ async function main() {
   await setInput('input[type="email"]', email)
   await setInput('input[type="password"]', 'Passw0rd!123')
   await sleep(200)
-  for (const b of await page.$$('button')) {
-    if ((await b.evaluate(el => el.textContent) || '').replace(/\s/g, '') === '登录') {
-      await b.click()
-      break
+  // 点表单内登录提交按钮(优先 type=submit / .ant-btn-primary;避免命中 header 导航"登 录")
+  const loginBtn = await page.$('button[type="submit"], .ant-btn-primary, form button[type="submit"]')
+  if (loginBtn) {
+    await loginBtn.click()
+  }
+  else {
+    for (const b of await page.$$('form button, .ant-form button')) {
+      const txt = (await b.evaluate(el => el.textContent) || '').replace(/\s/g, '')
+      if (txt === '登录') { await b.click(); break }
     }
   }
-  await sleep(4500)
+  await sleep(5000)
 
   await page.goto(`${BASE}/workshop/w/${ws.data.id}?view=town`, { waitUntil: 'domcontentloaded' })
   await sleep(5500)
@@ -77,10 +83,18 @@ async function main() {
   // 等待场景 ready(模型库异步加载,单独断言)
   let ready = false
   for (let i = 0; i < 30 && !ready; i++) {
-    ready = await page.evaluate(() => window.__town?.scene?.getDebugState?.()?.blocks > 0)
+    ready = await page.evaluate(() => !!window.__town?.scene)
     if (!ready) await sleep(500)
   }
   if (!ready) throw new Error('小镇场景未 ready')
+  // 新需求:初始为空场地——把两个频道拖入场景(模拟频道坞拖放;placeChannel 铺放其全部 Agent)
+  await page.evaluate(({ cidA, cidB }) => {
+    const s = window.__town.scene
+    s.dropChannelOnWorld(1600, 1200, cidA, '共鸣海港', 2)
+    s.dropChannelOnWorld(2600, 1200, cidB, '苍山苔原', 2)
+  }, { cidA, cidB })
+  await sleep(1200)
+  await page.evaluate(() => window.__town.scene.getDebugState())
   // 等模型库加载完成
   let modelsReady = false
   for (let i = 0; i < 20 && !modelsReady; i++) {
@@ -114,13 +128,13 @@ async function main() {
 
   // 断言 2:AssetLibrary 有模型卡且可拖(轮询等待组件挂载+模型加载)
   let libDom = { lib: 0, cards: 0, cardIds: [] }
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 20; i++) {
     libDom = await page.evaluate(() => ({
       lib: document.querySelectorAll('.asset-lib').length,
       cards: document.querySelectorAll('.model-card').length,
       cardIds: [...document.querySelectorAll('.model-card[data-model-id]')].map(e => e.getAttribute('data-model-id')),
     }))
-    if (libDom.lib > 0) break
+    if (libDom.cardIds.length > 0) break // 等模型加载完成(卡片带 data-model-id)再断言
     await sleep(400)
   }
   console.log('AssetLibrary DOM:', JSON.stringify(libDom))
@@ -129,30 +143,13 @@ async function main() {
   console.log(`模型库卡数: ${modelCount} | 可拖拽: ${canDrag ? 'PASS' : 'FAIL'}`)
 
   // 断言 3:拖模型到某角色 → 换装(textureKey/modelRef 变 modelId)
-  // 取第一个频道 worker
+  // 取第一个频道 worker(默认 3D 渲染器 TownScene3D:getDebugState 的 x/y 即世界坐标,
+  // 直接在世界坐标调用 dropModelOnWorld;HTML5 drag 可拖拽已由「可拖拽」断言覆盖)
   const worker = agents.find(a => a.role === 'worker' && a.channelId)
   const beforeTex = worker.textureKey
-  // 通过 HTML5 drag 模拟:设置 dataTransfer 后 page.mouse 拖到该 worker 身上
-  const world = await page.evaluate(({ target }) => {
-    const s = window.__town.scene
-    const cam = s.cameras.main
-    const cv = s.game.canvas
-    const rect = cv.getBoundingClientRect()
-    const vx = (target.x - cam.worldView.x) / cam.worldView.width
-    const vy = (target.y - cam.worldView.y) / cam.worldView.height
-    return { px: rect.left + vx * rect.width, py: rect.top + vy * rect.height, rect }
-  }, { target: worker })
-  console.log('worker world→page:', Math.round(world.px), Math.round(world.py))
-  // 页面坐标 → dispatch HTML5 drop(用 DragEvent 携带 dataTransfer)
-  await page.evaluate(({ px, py, assetId }) => {
-    const cv = window.__town.game.canvas
-    const dt = new DataTransfer()
-    dt.setData('application/x-aw-model', assetId)
-    dt.setData('text/plain', assetId)
-    const opts = { bubbles: true, cancelable: true, clientX: px, clientY: py, dataTransfer: dt }
-    cv.dispatchEvent(new DragEvent('dragover', opts))
-    cv.dispatchEvent(new DragEvent('drop', opts))
-  }, { px: world.px, py: world.py, assetId: 'knight' })
+  await page.evaluate(({ x, y, assetId }) => {
+    window.__town.scene.dropModelOnWorld(x, y, assetId)
+  }, { x: worker.x, y: worker.y, assetId: 'knight' })
   await sleep(400)
   const afterTex = await page.evaluate(({ id }) => {
     const a = window.__town.scene.getDebugState().agents.find(x => x.agentId === id)
@@ -174,7 +171,18 @@ async function main() {
   const resident = await page.evaluate(() => window.__town.scene.getDebugState().agents.find(a => a.decorated))
   console.log(`生成居民: ${afterCount > beforeCount && resident ? 'PASS' : 'FAIL'} (${beforeCount}→${afterCount}, decor=${resident?.textureKey})`)
 
-  const summary = { allLand, modelCount, canDrag, rebind: afterTex === 'knight', spawn: afterCount > beforeCount }
+  // 断言 5(本轮新增):拖 dev 设备模型 → 生成数字孪生节点;孪生记录含落点 transform
+  const devBefore = await page.evaluate(() => window.__town.scene.getDeviceNodes().length)
+  await page.evaluate(() => window.__town.scene.dropModelOnWorld(1250, 720, 'dev-folder-pump'))
+  await sleep(1200)
+  const devNodes = await page.evaluate(() => window.__town.scene.getDeviceNodes().map(d => ({ id: d.twinId, x: d.x, z: d.z, state: d.state })))
+  const devInScene = devNodes.length > devBefore
+  console.log(`设备拖入场景(节点): ${devInScene ? 'PASS' : 'FAIL'} ${JSON.stringify(devNodes)}`)
+  // 真实孪生 id 形如 dev-<ts36>-<rand>(两段,含 '-');本地临时 id 为 dev-<ts36>(无 '-' 段)
+  const placed = devNodes.find(d => /^dev-[a-z0-9]+-[a-z0-9]+$/.test(d.id))
+  console.log(`设备孪生已建(真 id+落点): ${placed ? 'PASS' : 'FAIL'} (${placed ? `${placed.id}@(${placed.x},${placed.z})` : 'none'})`)
+
+  const summary = { allLand, modelCount, canDrag, rebind: afterTex === 'knight', spawn: afterCount > beforeCount, device: devInScene }
   console.log('\nSUMMARY:', JSON.stringify(summary))
   const allPass = allLand && canDrag && modelCount >= 1 && afterTex === 'knight' && afterCount > beforeCount
   console.log(allPass ? '\n==> ALL PASS' : '\n==> SOME FAIL')

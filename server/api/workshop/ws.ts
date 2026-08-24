@@ -509,6 +509,43 @@ function unsubscribePeer(peer: WsPeer, channelId?: string): void {
   if (channels.size === 0) peerChannels.delete(peer)
 }
 
+/**
+ * 场景事件广播(设备孪生 REST 变更 → 全部已连 peer)。
+ * 设备实例属 workspace 而非 channel,信封 channelId='' 不进 channel 流/不落事件库;
+ * 客户端经 townBus 旁路消费(scene.syncDevices 即时收敛),轮询兜底不变。
+ */
+export function broadcastSceneEvent(type: string, payload: unknown): void {
+  const e: AepEnvelope = {
+    v: AEP_VERSION,
+    type,
+    seq: 0,
+    at: new Date().toISOString(),
+    channelId: '',
+    payload: payload as AepEnvelope['payload'],
+  }
+  for (const peer of hub.peerChannels.keys()) {
+    try {
+      peer.send(JSON.stringify(e))
+    }
+    catch { /* 死连接 */ }
+  }
+}
+
+/**
+ * 频道领地布局事件(scene.layout.saved/removed):经该频道频道流广播(仅订阅该频道的
+ * peer 收到;小镇页订阅全部挂载频道 → 实时同步布局)。走既有 publish 计入 seq/环形缓冲。
+ */
+export function publishSceneLayoutEvent(
+  manager: AgentChannelManager,
+  channelId: string,
+  type: 'scene.layout.saved' | 'scene.layout.removed',
+  payload: unknown,
+): void {
+  const stream = ensureStream(manager, channelId)
+  if (!stream) return
+  publish(manager, stream, type, payload)
+}
+
 /** 插件启动钩子:为全部存量 channel 建立常驻录制流(新 channel 由 ensureStream 即时建) */
 export async function ensureAllEventRecorders(manager: AgentChannelManager): Promise<void> {
   for (const ch of await manager.listChannels()) {

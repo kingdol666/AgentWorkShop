@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" preserveAspectRatio="xMidYMid slice">
+  <!-- 赛博生命小镇背景贴图 cyber-town-background
+       用途:3D 场景地面贴图 / 页面 CSS 背景。
+       要素:深色渐变 + 透视网格 + 发光线路 + 节点数据流 + 城区轮廓;低对比度,不干扰前景模型。
+       文字由 HTML/UI 层渲染,本文件不写死文本。 -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#070b16"/>
+      <stop offset="0.36" stop-color="#0d1526"/>
+      <stop offset="0.55" stop-color="#111d33"/>
+      <stop offset="1" stop-color="#0a1020"/>
+    </linearGradient>
+    <radialGradient id="glowCenter" cx="0.5" cy="0.46" r="0.7">
+      <stop offset="0" stop-color="#20335c" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#111d33" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.4"/>
+    </filter>
+    <filter id="softBig" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+    <filter id="ringBlur" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+    <pattern id="dither" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="4" height="4" fill="#ffffff" fill-opacity="0.012"/>
+    </pattern>
+  </defs>
+
+  <!-- 底色 -->
+  <rect width="1600" height="1200" fill="url(#bgGrad)"/>
+  <rect width="1600" height="1200" fill="url(#glowCenter)"/>
+  <rect width="1600" height="1200" fill="url(#dither)"/>
+
+  <!-- 城区轮廓(六个模糊区块,低对比) -->
+  <g filter="url(#softBig)" opacity="0.5">
+    <ellipse cx="330" cy="430" rx="230" ry="175" fill="#1d3a5f" fill-opacity="0.5"/>
+    <ellipse cx="760" cy="330" rx="205" ry="150" fill="#2b3557" fill-opacity="0.5"/>
+    <ellipse cx="1220" cy="460" rx="240" ry="180" fill="#1e3a4f" fill-opacity="0.5"/>
+    <ellipse cx="520" cy="760" rx="240" ry="170" fill="#243052" fill-opacity="0.42"/>
+    <ellipse cx="1080" cy="820" rx="250" ry="180" fill="#193a52" fill-opacity="0.45"/>
+    <ellipse cx="1540" cy="700" rx="210" ry="160" fill="#2a3450" fill-opacity="0.4"/>
+  </g>
+  <!-- 城区描边(极淡) -->
+  <g fill="none" stroke="#5c7bb0" stroke-opacity="0.28" stroke-width="1.6" filter="url(#soft)">
+    <ellipse cx="330" cy="430" rx="190" ry="140"/>
+    <ellipse cx="760" cy="330" rx="170" ry="120"/>
+    <ellipse cx="1220" cy="460" rx="200" ry="145"/>
+    <ellipse cx="520" cy="760" rx="200" ry="135"/>
+    <ellipse cx="1080" cy="820" rx="210" ry="145"/>
+    <ellipse cx="1540" cy="700" rx="175" ry="125"/>
+  </g>
+
+  <!-- 透视网格(汇聚到地平线) -->
+  <g stroke="#3b5a8c" stroke-opacity="0.34" fill="none">
+    <!-- 横向(随距离加密) -->
+    <path d="M0 1200 L1600 1200"/>
+    <path d="M0 1030 L1600 1030"/>
+    <path d="M0 880 L1600 880"/>
+    <path d="M0 750 L1600 750"/>
+    <path d="M0 640 L1600 640"/>
+    <path d="M0 550 L1600 550"/>
+    <path d="M0 478 L1600 478"/>
+    <path d="M0 432 L1600 432"/>
+    <path d="M0 398 L1600 398"/>
+    <path d="M0 372 L1600 372"/>
+    <!-- 纵向(向中心汇聚) -->
+    <path d="M800 1200 L716 300 L884 300"/>
+    <path d="M0 1200 L420 300 L1180 300"/>
+    <path d="M1600 1200 L1180 300 L420 300"/>
+    <path d="M320 1200 L556 300 L1044 300"/>
+    <path d="M1280 1200 L1044 300 L556 300"/>
+    <path d="M560 1200 L660 300 L940 300"/>
+    <path d="M1040 1200 L940 300 L660 300"/>
+  </g>
+
+  <!-- 数据流线路(发光,沿网格布线) -->
+  <g stroke-linecap="round" fill="none">
+    <path d="M150 1150 L320 900 L420 640 L640 520" stroke="#4fe3c1" stroke-opacity="0.5" stroke-width="2.4" filter="url(#soft)"/>
+    <path d="M150 1150 L320 900 L420 640 L640 520" stroke="#9ffbe8" stroke-opacity="0.22" stroke-width="6" filter="url(#softBig)"/>
+    <path d="M330 430 L640 520 L760 330" stroke="#5b8cff" stroke-opacity="0.5" stroke-width="2.2" filter="url(#soft)"/>
+    <path d="M760 330 L1080 610 L1220 460" stroke="#5b8cff" stroke-opacity="0.4" stroke-width="2.2" filter="url(#soft)"/>
+    <path d="M1220 460 L1450 700" stroke="#4fe3c1" stroke-opacity="0.45" stroke-width="2.2" filter="url(#soft)"/>
+    <path d="M520 760 L1080 820" stroke="#8a7bff" stroke-opacity="0.4" stroke-width="2" filter="url(#soft)"/>
+    <path d="M1080 820 L1540 700" stroke="#8a7bff" stroke-opacity="0.36" stroke-width="2" filter="url(#soft)"/>
+  </g>
+
+  <!-- 节点 + 数据流脉冲 -->
+  <g filter="url(#soft)">
+    <circle cx="420" cy="640" r="9" fill="#4fe3c1" fill-opacity="0.85"/>
+    <circle cx="640" cy="520" r="6" fill="#9ffbe8" fill-opacity="0.9"/>
+    <circle cx="760" cy="330" r="10" fill="#5b8cff" fill-opacity="0.9"/>
+    <circle cx="1080" cy="610" r="6" fill="#5b8cff" fill-opacity="0.8"/>
+    <circle cx="1220" cy="460" r="8" fill="#4fe3c1" fill-opacity="0.85"/>
+    <circle cx="520" cy="760" r="7" fill="#8a7bff" fill-opacity="0.85"/>
+    <circle cx="1080" cy="820" r="9" fill="#8a7bff" fill-opacity="0.85"/>
+    <circle cx="1540" cy="700" r="6" fill="#4fe3c1" fill-opacity="0.7"/>
+    <circle cx="330" cy="430" r="8" fill="#5b8cff" fill-opacity="0.8"/>
+  </g>
+
+  <!-- 环绕光晕(弱) -->
+  <g fill="none" stroke="#4fe3c1" stroke-opacity="0.16" stroke-width="1" filter="url(#ringBlur)">
+    <circle cx="760" cy="330" r="95"/>
+    <ellipse cx="1080" cy="820" rx="120" ry="80"/>
+  </g>
+
+  <!-- 顶部微光(镜头晕影) -->
+  <rect width="1600" height="300" fill="url(#glowCenter)"/>
+</svg>

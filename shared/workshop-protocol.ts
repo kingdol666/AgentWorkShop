@@ -18,10 +18,19 @@
  *  a2a.message         A2AMessage(channel 内新消息投递:assign/peer/inject)
  *  agent.member        { op: added/updated/removed, agent, by, reason? }(团队成员增改删;lead 或用户操作)
  *  memory.saved        { agentId, scope, title, dedupKey }
+ *  device.created      { id, name, modelRef, kind, state, posX?, posZ?, rotationY?, scale?, ... }(3D 小镇设备入场景)
+ *  device.updated      { ...同 device.created }(设备 transform/名称/状态变更;多客户端即时同步)
+ *  device.deleted      { id, name }(设备被删除,客户端移除场景节点)
+ *  scene.layout.saved  { channelId, x, z, radiusX, radiusZ, shape, rotationY }(频道领地放置/边界更新)
+ *  scene.layout.removed{ channelId }(频道领地从场景移除;其 Agent 一并撤出)
  *  error               { code, message }
  *  pong                { t }
  *
  * 上行:{ type:'ping' } → pong;{ type:'sub', channelId, lastSeq? };{ type:'unsub', channelId }
+ *
+ * 说明:device.* 事件无 channel 归属(设备实例属 workspace),经广播直推任一已连 peer,
+ * 信封 channelId='';不落 channel_events,客户端经 townBus 旁路消费。
+ * scene.layout.* 走该频道频道流(仅订阅该频道的 peer 收到;小镇页订阅全部挂载频道 → 实时同步)。
  */
 import type { A2AArtifact, A2AMessage } from '../server/services/workshop/types/a2a'
 import type { WorkspaceTask } from '../server/services/workshop/types/task'
@@ -78,6 +87,35 @@ export interface AepMemberEvent {
   reason?: string
 }
 
+/** device.* 事件 payload:数字孪生设备场景实例(3D 小镇同步) */
+export interface AepDeviceEvent {
+  id: string
+  name: string
+  modelRef: string
+  kind: string
+  state: string
+  /** 场景落点 / 朝向 / 缩放(undefined = 未入场景) */
+  posX?: number
+  posZ?: number
+  rotationY?: number
+  scale?: number
+  workspaceId?: string
+  boundAgentId?: string | null
+  telemetry?: Record<string, number | string | boolean>
+  updatedAt?: string
+}
+
+/** scene.layout.saved payload:频道领地放置(3D 小镇自定义边界) */
+export interface AepSceneLayout {
+  channelId: string
+  x: number
+  z: number
+  radiusX: number
+  radiusZ: number
+  shape: 'ellipse' | 'rect'
+  rotationY: number
+}
+
 export type AepEvent
   = | { type: 'channel.snapshot', payload: AepSnapshot }
     | { type: 'agent.status', payload: { agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, queued?: number, completed?: number } }
@@ -90,6 +128,11 @@ export type AepEvent
     | { type: 'a2a.message', payload: A2AMessage }
     | { type: 'agent.member', payload: AepMemberEvent }
     | { type: 'memory.saved', payload: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string } }
+    | { type: 'device.created', payload: AepDeviceEvent }
+    | { type: 'device.updated', payload: AepDeviceEvent }
+    | { type: 'device.deleted', payload: { id: string, name: string } }
+    | { type: 'scene.layout.saved', payload: AepSceneLayout }
+    | { type: 'scene.layout.removed', payload: { channelId: string } }
     | { type: 'error', payload: { code: string, message: string } }
     | { type: 'pong', payload: { t: number } }
 
@@ -118,5 +161,7 @@ export const AEP_GROUPS: Record<string, string[]> = {
   tools: ['agent.status.message'],
   tasks: ['task.status', 'task.progress', 'a2a.artifact'],
   team: ['agent.member'],
+  devices: ['device.created', 'device.updated', 'device.deleted'],
+  scene: ['scene.layout.saved', 'scene.layout.removed'],
   errors: ['error'],
 }

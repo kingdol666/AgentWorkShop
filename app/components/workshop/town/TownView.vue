@@ -8,12 +8,15 @@
  */
 import type Phaser from 'phaser'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
 import { useTownBus } from '@/app/composables/workshop/useTownBus'
 import { useCharacterAssets } from '@/app/composables/workshop/useCharacterAssets'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
+import { useSceneLayouts } from '@/app/composables/workshop/useSceneLayouts'
+import { useHttp } from '@/app/composables/useHttp'
 import type { TownScene, TownEntityInput } from './TownScene'
-import type { TownScene3D } from './TownScene3D'
+import type { TownScene3D, ChannelLayout } from './TownScene3D'
 
 /**
  * 两种渲染器(Phaser 2D / Three.js 3D)共享的最小公开接口。
@@ -29,10 +32,13 @@ const props = defineProps<{
   allChannels?: boolean
 }>()
 const entities = useEntitiesStore()
+const wsStore = useWorkspacesStore()
 const { conn } = useWorkshopWs()
 const townBus = useTownBus()
 const characterAssets = useCharacterAssets()
 const deviceTwins = useDeviceTwins()
+const sceneLayouts = useSceneLayouts()
+const http = useHttp()
 
 const hostRef = ref<HTMLDivElement | null>(null)
 /** 当前渲染器(TownScene / TownScene3D 之一) */
@@ -49,12 +55,51 @@ const fps = ref(0)
 const agentCount = ref(0)
 const blockCount = ref(0)
 const activity = ref<{ channelId: string, agentName: string, text: string } | null>(null)
-const selected = ref<{ kind: 'agent' | 'device', id: string, scale: number } | null>(null)
+const selected = ref<{ kind: 'agent' | 'device', id: string, scale: number, rotation: number } | null>(null)
 const errorText = ref('')
 const syncing = computed(() => conn.state === 'connecting')
 const activeChannelName = computed(() => entities.channels[props.channelId]?.name ?? '')
 
-/** 缩放滑杆:实时 setModelScale + 松手 persistScale */
+// ---------- 编辑 / 浏览模式 + 布局保存 ----------
+const mode = ref<'browse' | 'edit'>('browse')
+const snap = ref(true)
+const saveState = ref<{ state: 'idle' | 'dirty' | 'saving' | 'saved' | 'error', at: number } | null>(null)
+const saveStateLabel = computed(() => {
+  switch (saveState.value?.state) {
+    case 'dirty': return '未保存'
+    case 'saving': return '保存中…'
+    case 'saved': return '已保存'
+    case 'error': return '保存失败'
+    default: return ''
+  }
+})
+function toggleMode(): void {
+  mode.value = mode.value === 'browse' ? 'edit' : 'browse'
+  scene3dRef.value?.setMode(mode.value)
+  if (mode.value === 'browse') {
+    closeScale()
+    onSelectChannel(null)
+  }
+}
+function toggleSnap(): void {
+  snap.value = !snap.value
+  scene3dRef.value?.setSnap(snap.value)
+}
+/** Admin 布局:持久化角色落点(改 config.homeX/homeZ;与 modelRef 合并保留) */
+function updateAgentHome(agentId: string, x: number, z: number): Promise<unknown> {
+  if (!props.channelId) return Promise.resolve()
+  return http.request({
+    method: 'PATCH',
+    url: `/workshop/channels/${props.channelId}/agents/${agentId}/position`,
+    data: { x, z },
+  }).catch(() => null)
+}
+/** 保存布局:强制全部设备 transform 落库 */
+function saveLayout(): void {
+  scene3dRef.value?.persistAllDevices()
+}
+
+/** 缩放滑杆:实时 setModelScale + 松手 persistScale(设备同时落库) */
 function onScaleInput(v: number): void {
   if (!selected.value) return
   scene3dRef.value?.setModelScale(selected.value.id, v, selected.value.kind)
@@ -64,13 +109,246 @@ function onScaleCommit(v: number): void {
   scene3dRef.value?.persistScale(selected.value.kind, selected.value.id)
   void v
 }
+/** 旋转滑杆(编辑模式设备):实时 + 松手落库 */
+function onRotationInput(v: number): void {
+  if (!selected.value) return
+  scene3dRef.value?.setModelRotation(selected.value.id, v, selected.value.kind)
+}
+function onRotationCommit(): void {
+  if (!selected.value) return
+  scene3dRef.value?.persistDeviceTransform(selected.value.id)
+}
 function closeScale(): void {
   selected.value = null
 }
-/** 当前聚焦频道的成员(供模型库"绑定到角色") */
-const libraryAgents = computed(() =>
-  (entities.agents[props.channelId] ?? []).map(a => ({ agentId: a.agentId, name: a.name, role: a.role })),
-)
+
+// ---------- 频道坞 + 频道边界编辑 ----------
+/** 选中频道(边界编辑面板) */
+const selectedChannel = ref<string | null>(null)
+/** 边界编辑面板(拖拽中存草稿;确认后场景 applySceneLayouts + 落库) */
+const boundaryDraft = ref<ChannelLayout | null>(null)
+/** 点选频道回调(场景 pointerup pickChannel → selectChannel) */
+function onSelectChannel(cid: string | null): void {
+  selectedChannel.value = cid
+  boundaryDraft.value = cid ? scene3dRef.value?.getChannelLayout(cid) ?? null : null
+}
+/** 落库频道布局(PUT);场景已异步 applySceneLayouts,此处仅持久化 */
+async function saveChannelLayout(): Promise<void> {
+  if (!selectedChannel.value || !boundaryDraft.value) return
+  const l = boundaryDraft.value
+  const payload = { x: l.x, z: l.z, radiusX: l.radiusX, radiusZ: l.radiusZ, shape: l.shape ?? 'ellipse', rotationY: l.rotationY ?? 0 }
+  try {
+    await sceneLayouts.save(selectedChannel.value, payload)
+    saveState.value = { state: 'saved', at: Date.now() }
+  }
+  catch (err) {
+    saveState.value = { state: 'error', at: Date.now() }
+    errorText.value = err instanceof Error ? err.message : String(err)
+  }
+}
+/** 从场景移除频道(其 Agent 一并撤出) */
+async function removeChannelFromScene(): Promise<void> {
+  if (!selectedChannel.value) return
+  try {
+    await sceneLayouts.remove(selectedChannel.value)
+    scene3dRef.value?.removeChannel(selectedChannel.value)
+    onSelectChannel(null)
+  }
+  catch (err) {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  }
+}
+/** 边界编辑输入 → 场景即时生效(草稿) */
+function applyBoundaryDraft(): void {
+  if (!selectedChannel.value || !boundaryDraft.value) return
+  scene3dRef.value?.updateChannelLayout(selectedChannel.value, boundaryDraft.value)
+  saveState.value = { state: 'dirty', at: Date.now() }
+}
+/** 频道坞:把某频道拖入场景(须拖拽放置;点击不自动落点)。 */
+const dockHint = ref('')
+function onDockCardClick(ch: { channelId: string, placed: boolean }): void {
+  const s = scene3dRef.value
+  if (!s) return
+  if (ch.placed) {
+    // 已放置:聚焦并打开频道管理面板
+    s.focusChannel(ch.channelId)
+    onSelectChannel(ch.channelId)
+    return
+  }
+  dockHint.value = '请把频道卡片拖拽到场景中放置(松开即安放)'
+  window.setTimeout(() => {
+    dockHint.value = ''
+  }, 2600)
+}
+/** 把频道放在指定世界坐标(拖拽落点;相同频道只能放置一个,已放置则聚焦) */
+function dropChannelAt(channelId: string, x: number, z: number): boolean {
+  const s = scene3dRef.value
+  if (!s) return false
+  const seed = buildTownInput().find(c => c.channelId === channelId)
+  const name = seed?.channelName ?? entities.channels[channelId]?.name ?? channelId.slice(0, 8)
+  const agentCount = seed?.agents.length ?? (entities.agents[channelId]?.length ?? 0)
+  const existing = s.getChannelLayout(channelId)
+  if (existing) {
+    // 已放置 → 聚焦到现有位置,不重复落点
+    dockHint.value = `「${name}」已在场景中(相同频道只能放置一个)`
+    window.setTimeout(() => {
+      dockHint.value = ''
+    }, 2600)
+    s.focusChannel(channelId)
+    onSelectChannel(channelId)
+    return false
+  }
+  s.dropChannelOnWorld(x, z, channelId, name, agentCount)
+  // 新放置:立即落库(刷新后恢复),并聚焦
+  void sceneLayouts.save(channelId, {
+    x, z,
+    radiusX: Math.max(120, 110 + agentCount * 18),
+    radiusZ: Math.max(80, 70 + agentCount * 14),
+    shape: 'ellipse',
+    rotationY: 0,
+  })
+    .then(() => { saveState.value = { state: 'saved', at: Date.now() } })
+    .catch(() => { saveState.value = { state: 'error', at: Date.now() } })
+  s.focusChannel(channelId)
+  return true
+}
+
+// ---------- 场景对象属性管理(选中设备/角色) ----------
+/** 角色模型选项(character 3D .glb;只在成员/选中面板设置,不进设备模型库) */
+const agentModels = computed(() => characterAssets.models.filter(m => m.kind === 'glb'))
+/** 设备模型选项(仅设备模型;换模即时重挂 + 落库) */
+const deviceModels = computed(() => characterAssets.models.filter(m => m.kind === 'dev'))
+
+/** 选中对象名称草稿(设备可改名;角色只读显示) */
+const objNameDraft = ref('')
+watch(() => selected.value, (sel) => {
+  objNameDraft.value = sel?.kind === 'device' ? (scene3dRef.value?.getDeviceName?.(sel.id) ?? '') : ''
+})
+/** 设备改名提交(重建名牌 + PATCH 落库,广播后其他客户端同步) */
+function onObjNameCommit(): void {
+  if (!selected.value || selected.value.kind !== 'device') return
+  const id = selected.value.id
+  const name = objNameDraft.value.trim()
+  if (!name) return
+  scene3dRef.value?.renameDevice(id, name)
+  void deviceTwins.update(id, { name }).catch((err) => {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  })
+}
+/** 角色独立换模型(选中角色 → character 模型下拉即时换装 + 持久化) */
+async function bindAgentModel(modelRef: string): Promise<void> {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'agent') return
+  const agentId = sel.id
+  const cid = entities.agents
+    ? Object.keys(entities.agents).find(c => (entities.agents[c] ?? []).some(a => a.agentId === agentId))
+    : undefined
+  if (!cid) {
+    errorText.value = '找不到所属频道,无法绑定模型'
+    return
+  }
+  try {
+    await characterAssets.bind(cid, agentId, modelRef)
+    // 场景即时换装
+    scene3dRef.value?.swapAgentModel(agentId, modelRef)
+  }
+  catch (err) {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  }
+}
+/** 设备独立换模型(下拉选择设备模型 → 重挂 + 落库,广播后其他客户端同步) */
+async function bindDeviceModel(modelRef: string): Promise<void> {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'device') return
+  scene3dRef.value?.swapDeviceModel(sel.id, modelRef)
+  try {
+    await deviceTwins.update(sel.id, { modelRef })
+  }
+  catch (err) {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  }
+}
+/** 删除选中设备实例(移除孪生 + 场景节点) */
+async function removeSelectedDevice(): Promise<void> {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'device') return
+  const name = scene3dRef.value?.getDeviceName?.(sel.id) ?? sel.id
+  if (!window.confirm(`确定移除设备实例「${name}」吗?`)) return
+  try {
+    await scene3dRef.value?.removeDevice(sel.id)
+    closeScale()
+  }
+  catch (err) {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  }
+}
+
+// ---------- 频道成员角色模型管理(在频道管理实例中设置) ----------
+const channelPanelTab = ref<'boundary' | 'members'>('boundary')
+/** 选中频道成员(供成员 tab 为每个成员设置 character 模型) */
+const channelMembers = computed(() => {
+  if (!selectedChannel.value) return []
+  return buildTownInput().find(c => c.channelId === selectedChannel.value)?.agents ?? []
+})
+/** 成员换装:绑定模型 + 场景即时换装(角色模型只在频道管理中设置) */
+async function bindMemberModel(agentId: string, modelRef: string): Promise<void> {
+  if (!selectedChannel.value) return
+  try {
+    await characterAssets.bind(selectedChannel.value, agentId, modelRef)
+    scene3dRef.value?.swapAgentModel(agentId, modelRef)
+  }
+  catch (err) {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  }
+}
+/** 频道管理面板 tab 切换 */
+function openChannelTab(tab: 'boundary' | 'members'): void {
+  channelPanelTab.value = tab
+}
+
+// ---------- 频道坞数据 ----------
+/** 频道坞列表(所有挂载频道;已放置/未放置标记) */
+const dockChannels = computed(() => {
+  const cids = allMountedChannelIds()
+  return cids.map((cid) => {
+    const ch = entities.channels[cid]
+    return {
+      channelId: cid,
+      name: ch?.name ?? cid.slice(0, 8),
+      agentCount: (entities.agents[cid] ?? []).length,
+      placed: scene3dRef.value?.hasChannel(cid) ?? false,
+      color: hashColor(cid),
+    }
+  })
+})
+function allMountedChannelIds(): string[] {
+  const ids: string[] = []
+  for (const ws of wsWorkspaces() ?? []) {
+    for (const cid of ws.channelIds ?? []) {
+      if (!ids.includes(cid)) ids.push(cid)
+    }
+  }
+  if (!ids.includes(props.channelId)) ids.push(props.channelId)
+  return ids
+}
+/** workspaces store(频道坞列举所有已挂载频道) */
+function wsWorkspaces(): Array<{ channelIds?: string[] }> {
+  return wsStore.workspaces as Array<{ channelIds?: string[] }>
+}
+/** 稳定频道色(与场景 channelColorNum 同源) */
+function hashColor(id: string): string {
+  if (!id) return '#5b8cff'
+  let h = 0
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 360
+  return `hsl(${Math.round(h)}, 58%, 60%)`
+}
+/** 频道坞拖起:写入 channelId 供场景 drop 放置 */
+function onChannelDragStart(e: DragEvent, channelId: string): void {
+  if (!e.dataTransfer) return
+  e.dataTransfer.setData('application/x-aw-channel', channelId)
+  e.dataTransfer.setData('text/plain', channelId)
+  e.dataTransfer.effectAllowed = 'copy'
+}
 
 /** 从 entities store 构建小镇实体基线(当前 workspace 挂载的 channel) */
 function buildTownInput(): TownEntityInput[] {
@@ -91,6 +369,9 @@ function buildTownInput(): TownEntityInput[] {
         currentTaskTitle: curTask?.title ?? null,
         currentTaskProgress: a.currentTaskProgress ?? curTask?.progress ?? null,
         modelRef: a.modelRef ?? null,
+        // 管理员布局落点(来自 config.homeX/homeZ;缺省 = 领地环形排布)
+        homeX: (a.config as { homeX?: number } | undefined)?.homeX ?? null,
+        homeZ: (a.config as { homeZ?: number } | undefined)?.homeZ ?? null,
       }
     })
     out.push({ channelId: cid, channelName: ch.name, agents })
@@ -112,6 +393,8 @@ async function boot() {
 async function boot3D(): Promise<void> {
   const host = hostRef.value
   if (!host) return
+  // 布局加载不阻塞场景 ready:先建空场地,布局异步到达后 apply + rebuild。
+  // 若加载失败(401/网络),keep catch 静默 → 场景保持空场地,用户手动拖入频道。
   const [{ TownScene3D: Scene3D }] = await Promise.all([import('./TownScene3D')])
   const scene = new Scene3D(buildTownInput(), host as HTMLDivElement)
   scene.registerModelsFromList(characterAssets.models.map(m => ({ id: m.id, file: m.file, name: m.name, kind: m.kind })))
@@ -119,14 +402,41 @@ async function boot3D(): Promise<void> {
     const task = (entities.tasks as Record<string, Array<{ id: string, assigneeId: string }>>)[props.channelId]?.find(t => t.id === taskId)
     return task?.assigneeId ?? null
   }
-  // 注入数字孪生设备 API(拖 dev 模型进场景时创建设备)
+  // 注入数字孪生设备 API(拖 dev 模型进场景时创建设备;场景 transform 变更落库)
   scene.devices = {
     async create(input) {
-      const t = await deviceTwins.create({ name: input.name, modelRef: input.modelRef, kind: input.kind, controls: input.controls })
+      const t = await deviceTwins.create({
+        name: input.name,
+        modelRef: input.modelRef,
+        kind: input.kind,
+        controls: input.controls,
+        posX: input.posX,
+        posZ: input.posZ,
+        scale: input.scale,
+      })
       return { id: t.id }
+    },
+    async update(id, patch) {
+      await deviceTwins.update(id, patch)
+      return undefined
+    },
+    async remove(id) {
+      await deviceTwins.remove(id)
     },
     async control(id, command, args) {
       return deviceTwins.control(id, command, args)
+    },
+  }
+  // 注入管理员布局:持久化角色落点
+  scene.agentApi = {
+    async updateHome(agentId, x, z) {
+      return updateAgentHome(agentId, x, z)
+    },
+  }
+  // 注入频道布局持久化:频道整体拖拽 / 边界手柄调整后经 useSceneLayouts 落库
+  scene.channelApi = {
+    async save(channelId, layout) {
+      return sceneLayouts.save(channelId, layout)
     },
   }
   sceneRef.value = scene
@@ -134,9 +444,22 @@ async function boot3D(): Promise<void> {
 
   wireCommon(scene)
 
-  // 选中(3D 专用):点选 Agent/设备 → 弹缩放滑杆
+  // 选中(3D 专用):点选 Agent/设备 → 弹缩放/旋转滑杆
   scene.on('select', (v) => {
     selected.value = v
+  })
+  // 保存状态(布局落库进度 → HUD 徽标)
+  scene.on('saveState', (v) => {
+    saveState.value = v
+  })
+  // 点选频道 → 打开边界编辑面板
+  scene.on('selectChannel', (cid) => {
+    onSelectChannel(cid)
+  })
+  // 频道被拖拽/手柄调整 → 边界面板草稿即时跟随(避免保存时回退旧值)
+  scene.on('channelResized', (e) => {
+    if (!e) return
+    if (selectedChannel.value === e.channelId) boundaryDraft.value = e.layout
   })
 
   // 3D 立即可交互(canvas 同步挂载)
@@ -144,6 +467,12 @@ async function boot3D(): Promise<void> {
   bindSceneInput(scene)
   // 轮询设备遥测 → 驱动 3D 设备节点状态/颜色
   bindDevicePoll(scene)
+
+  // 布局异步加载:到达后 apply + rebuild(仅放置的频道呈现;失败保持空场地)
+  void sceneLayouts.load().then(() => {
+    syncSceneLayouts(scene)
+    syncChannelDock()
+  }).catch(() => {})
 }
 
 /** 2D 引导(?render=2d):Phaser TownScene */
@@ -215,6 +544,21 @@ function wireCommon(scene: CommonTownScene): void {
       if (e.type === 'channel.snapshot') {
         scene.rebuild(buildTownInput())
         if (props.channelId) scene.focusChannel(props.channelId)
+        return
+      }
+      // 设备场景事件(device.created/updated/deleted):重拉清单 → 场景即时同步
+      if (e.type === 'device.created' || e.type === 'device.updated' || e.type === 'device.deleted') {
+        void deviceTwins.load().then(() => {
+          if (sceneRef.value) syncSceneDevices(sceneRef.value)
+        })
+        return
+      }
+      // 频道布局事件(他人编辑边界/移入移除):重拉布局 → 场景即时收敛
+      if (e.type === 'scene.layout.saved' || e.type === 'scene.layout.removed') {
+        void sceneLayouts.load().then(() => {
+          syncSceneLayouts(sceneRef.value)
+          syncChannelDock()
+        })
         return
       }
       scene.handleTownEvent(e)
@@ -327,11 +671,17 @@ function bindSceneInput3D(scene: TownScene3D): void {
   let lastCY = 0
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
     if (e.button !== 0) return
+    // 编辑模式:先问场景是否接管(拖设备/角色落点);接管则本手势不再平移相机
+    if (scene.tryStartPointerDrag(e.clientX, e.clientY)) return
     draggingCam = true
     lastCX = e.clientX
     lastCY = e.clientY
   })
   window.addEventListener('pointermove', (e: PointerEvent) => {
+    if (scene.isPointerDragging()) {
+      scene.movePointerDrag(e.clientX, e.clientY)
+      return
+    }
     if (!draggingCam) return
     const rect = canvas.getBoundingClientRect()
     // 页面 px → 世界单位(近似:视角 45°,取 rect 宽对应世界宽)
@@ -343,6 +693,10 @@ function bindSceneInput3D(scene: TownScene3D): void {
     lastCY = e.clientY
   })
   window.addEventListener('pointerup', () => {
+    if (scene.isPointerDragging()) {
+      scene.endPointerDrag()
+      return
+    }
     draggingCam = false
   })
 
@@ -352,18 +706,52 @@ function bindSceneInput3D(scene: TownScene3D): void {
     scene.zoomBy(e.deltaY < 0 ? 0.08 : -0.08)
   }, { passive: false })
 
-  // ---- 模型拖放(AssetLibrary.card → scene canvas) ----
+  // ---- 拖放(频道坞→安放频道;模型库→换装/生成居民) ----
   canvas.addEventListener('dragover', (e: DragEvent) => {
     e.preventDefault()
     e.dataTransfer!.dropEffect = 'copy'
   })
   canvas.addEventListener('drop', (e: DragEvent) => {
     e.preventDefault()
-    const assetId = e.dataTransfer?.getData('application/x-aw-model') || e.dataTransfer?.getData('text/plain')
-    if (!assetId) return
-    const world = scene.screenToWorld(e.clientX, e.clientY)
-    const res = scene.dropModelOnWorld(world.x, world.z, assetId)
-    lastDrop.value = res
+    const dt = e.dataTransfer
+    if (!dt) return
+    // 1) 频道坞拖入 → 安放频道 + 其 Agent
+    const channelId = dt.getData('application/x-aw-channel') || dt.getData('text/plain')
+    if (channelId && dockChannels.value.some(c => c.channelId === channelId)) {
+      const world = scene.screenToWorld(e.clientX, e.clientY)
+      dropChannelAt(channelId, world.x, world.z)
+      return
+    }
+    // 2) 模型拖放 → 换装/生成
+    const assetId = dt.getData('application/x-aw-model') || dt.getData('text/plain')
+    if (assetId) {
+      const world = scene.screenToWorld(e.clientX, e.clientY)
+      const res = scene.dropModelOnWorld(world.x, world.z, assetId)
+      lastDrop.value = res
+    }
+  })
+}
+
+/** 用设备孪生清单收敛场景节点(three 3D / phaser 2D 各自实现) */
+function syncSceneDevices(scene: TownViewScene): void {
+  if ('syncDevices' in scene) {
+    ;(scene as TownScene3D).syncDevices(deviceTwins.twins)
+  }
+}
+
+/** 用频道布局清单收敛场景(已放置频道存在性/边界;供 WS 事件后即时同步) */
+function syncSceneLayouts(scene: TownViewScene | null): void {
+  if (!scene || !('applySceneLayouts' in scene)) return
+  const s = scene as TownScene3D
+  // 先应用全部布局到场景(新增/变更/移除),再 rebuild 实体基线(仅放置的频道呈现)
+  s.applySceneLayouts(Object.values(sceneLayouts.layouts))
+  s.rebuild(buildTownInput())
+}
+
+/** 频道坞已放置/未放置标记刷新(布局变化后) */
+function syncChannelDock(): void {
+  void sceneLayouts.load().finally(() => {
+    // 由场景 hasChannel 反映;以下依赖已完成加载
   })
 }
 
@@ -381,15 +769,17 @@ const lastDropText = computed(() => {
     : `已在落点放入居民 → ${d.textureKey}`
 })
 
-/** 轮询设备遥测 → 驱动 3D 设备节点状态/颜色(设备节点由 dev 模型拖入生成) */
+/** 轮询设备孪生 → 场景节点同步 + 状态环颜色(设备节点由 dev 模型拖入/服务端恢复生成) */
 function bindDevicePoll(scene: TownScene3D): void {
   setInterval(() => {
-    // 刷新列表(轻量);对每个设备节点按 state 更新 3D 环色
-    void deviceTwins.load()
-    for (const node of scene.getDeviceNodes()) {
-      const twin = deviceTwins.byId(node.twinId)
-      if (twin) scene.updateDeviceNode(node.twinId, twin.state, twin.telemetry)
-    }
+    void deviceTwins.load().then(() => {
+      // 场景节点与服务端对齐(刷新恢复/他人编辑/删除同步;轮询兜底,WS 事件即时)
+      scene.syncDevices(deviceTwins.twins)
+      for (const node of scene.getDeviceNodes()) {
+        const twin = deviceTwins.byId(node.twinId)
+        if (twin) scene.updateDeviceNode(node.twinId, twin.state, twin.telemetry)
+      }
+    })
   }, 1500)
 }
 
@@ -439,22 +829,205 @@ onBeforeUnmount(() => {
         class="town-host"
       />
       <div class="hud pointer-events-none absolute inset-0 z-10 select-none">
-        <!-- 左:模型库(可拖拽到场景,pointer-events 开启) -->
-        <WorkshopAssetLibrary
-          class="lib-panel"
-          :channel-id="props.channelId"
-          :agents="libraryAgents"
-        />
+        <!-- 左:设备模型库(仅设备模型,可拖拽到场景实例化) -->
+        <WorkshopAssetLibrary class="lib-panel" />
         <!-- 左:数字孪生侧栏(设备列表/遥测/控制) -->
         <WorkshopDeviceTwinPanel class="twin-panel" />
 
-        <!-- 选中 Agent/设备 → 缩放滑杆(客制化) -->
+        <!-- 频道坞:拖拽卡片到场景放置(相同频道只能放置一个;点击不自动落点) -->
+        <aside class="channel-dock">
+          <div class="dock-head">
+            <span class="head-dot" />
+            <span class="head-title">频道坞</span>
+            <span class="head-hint">拖入地图即安放</span>
+          </div>
+          <div class="dock-list">
+            <div
+              v-for="ch in dockChannels"
+              :key="ch.channelId"
+              class="dock-card"
+              :draggable="!ch.placed"
+              :class="{ placed: ch.placed, disabled: ch.placed }"
+              :data-channel-id="ch.channelId"
+              :title="ch.placed ? '已在场景中(不可重复放置),点击查看' : '拖拽到场景放置'"
+              @dragstart="ch.placed ? undefined : onChannelDragStart($event, ch.channelId)"
+              @click="onDockCardClick(ch)"
+            >
+              <span
+                class="dock-color"
+                :style="{ background: ch.color }"
+              />
+              <span class="dock-name">{{ ch.name }}</span>
+              <span class="dock-meta">{{ ch.agentCount }} 精魂 · {{ ch.placed ? '已放置' : '未放置' }}</span>
+              <span class="dock-toggle">{{ ch.placed ? '✓' : '＋' }}</span>
+            </div>
+          </div>
+          <span
+            v-if="dockHint"
+            class="dock-hint"
+          >{{ dockHint }}</span>
+        </aside>
+
+        <!-- 频道管理面板(边界编辑 + 成员角色模型设置) -->
+        <div
+          v-if="selectedChannel && boundaryDraft"
+          class="boundary-panel"
+        >
+          <div class="bp-title">
+            <span class="bp-name">{{ entities.channels[selectedChannel]?.name ?? selectedChannel.slice(0, 8) }}</span>
+            <span class="bp-sub">频道管理</span>
+            <div class="bp-tabs">
+              <button
+                class="bp-tab"
+                :class="{ on: channelPanelTab === 'boundary' }"
+                @click="openChannelTab('boundary')"
+              >
+                边界
+              </button>
+              <button
+                class="bp-tab"
+                :class="{ on: channelPanelTab === 'members' }"
+                @click="openChannelTab('members')"
+              >
+                成员 {{ channelMembers.length }}
+              </button>
+            </div>
+          </div>
+
+          <!-- 边界 tab:领地形状/半径/朝向 -->
+          <template v-if="channelPanelTab === 'boundary'">
+            <div class="bp-row">
+              <span class="bp-label">形状</span>
+              <div class="bp-seg">
+                <button
+                  class="seg-btn"
+                  :class="{ on: boundaryDraft.shape === 'ellipse' }"
+                  @click="boundaryDraft.shape = 'ellipse'; applyBoundaryDraft()"
+                >
+                  椭圆
+                </button>
+                <button
+                  class="seg-btn"
+                  :class="{ on: boundaryDraft.shape === 'rect' }"
+                  @click="boundaryDraft.shape = 'rect'; applyBoundaryDraft()"
+                >
+                  矩形
+                </button>
+              </div>
+            </div>
+            <div class="bp-row">
+              <span class="bp-label">横轴半径</span>
+              <input
+                v-model.number="boundaryDraft.radiusX"
+                class="bp-range"
+                type="range"
+                min="80"
+                max="700"
+                step="8"
+                @change="applyBoundaryDraft"
+              >
+              <span class="bp-val">{{ Math.round(boundaryDraft.radiusX) }}</span>
+            </div>
+            <div class="bp-row">
+              <span class="bp-label">纵轴半径</span>
+              <input
+                v-model.number="boundaryDraft.radiusZ"
+                class="bp-range"
+                type="range"
+                min="60"
+                max="480"
+                step="8"
+                @change="applyBoundaryDraft"
+              >
+              <span class="bp-val">{{ Math.round(boundaryDraft.radiusZ) }}</span>
+            </div>
+            <div class="bp-row">
+              <span class="bp-label">朝向</span>
+              <input
+                v-model.number="boundaryDraft.rotationY"
+                class="bp-range"
+                type="range"
+                min="0"
+                max="360"
+                step="5"
+                @change="applyBoundaryDraft"
+              >
+              <span class="bp-val">{{ Math.round(boundaryDraft.rotationY ?? 0) }}°</span>
+            </div>
+          </template>
+
+          <!-- 成员 tab:为每个成员设置 character 模型(角色模型只在频道管理中设置) -->
+          <template v-else>
+            <div class="bp-hint">
+              为频道成员选择 3D 角色模型(实时换装并持久化)
+            </div>
+            <div class="member-list">
+              <div
+                v-for="m in channelMembers"
+                :key="m.agentId"
+                class="member-row"
+              >
+                <span
+                  class="member-ava"
+                  :style="{ color: hashColor(selectedChannel) }"
+                >{{ m.name.charAt(0).toUpperCase() }}</span>
+                <div class="member-info">
+                  <span class="member-name">{{ m.name }}</span>
+                  <span class="member-role">{{ m.role === 'lead' ? '领队' : '成员' }}</span>
+                </div>
+                <select
+                  class="member-select"
+                  :value="(m.modelRef ?? '') || 'hero-3d'"
+                  @change="bindMemberModel(m.agentId, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option
+                    v-for="model in agentModels"
+                    :key="model.id"
+                    :value="model.id"
+                  >
+                    {{ model.name }}
+                  </option>
+                </select>
+              </div>
+              <div
+                v-if="channelMembers.length === 0"
+                class="bp-hint"
+              >
+                该频道暂无成员
+              </div>
+            </div>
+          </template>
+
+          <div class="bp-actions">
+            <button
+              v-if="channelPanelTab === 'boundary'"
+              class="bp-btn save"
+              @click="saveChannelLayout"
+            >
+              保存边界
+            </button>
+            <button
+              class="bp-btn danger"
+              @click="removeChannelFromScene"
+            >
+              移除频道
+            </button>
+            <button
+              class="bp-btn"
+              @click="onSelectChannel(null)"
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+
+        <!-- 场景对象属性面板(选中设备/角色:改名/换模型/旋转/缩放/删除) -->
         <div
           v-if="selected"
-          class="scale-panel"
+          class="object-panel"
         >
           <div class="scale-title">
-            <span class="scale-kind">{{ selected.kind === 'agent' ? '角色' : '设备' }}</span>
+            <span class="scale-kind">{{ selected.kind === 'agent' ? '角色' : '设备实例' }}</span>
             <span class="scale-id">{{ selected.id.slice(0, 8) }}</span>
             <button
               class="scale-close"
@@ -463,6 +1036,74 @@ onBeforeUnmount(() => {
               ×
             </button>
           </div>
+
+          <!-- 名称(设备可改名 + 落库;角色只读) -->
+          <div
+            v-if="selected.kind === 'device'"
+            class="obj-row"
+          >
+            <span class="obj-label">名称</span>
+            <input
+              v-model="objNameDraft"
+              class="obj-input"
+              placeholder="设备名称"
+              @change="onObjNameCommit"
+              @keydown.enter="onObjNameCommit"
+            >
+          </div>
+
+          <!-- 模型(设备 → 设备模型下拉;角色 → character 模型下拉) -->
+          <div class="obj-row">
+            <span class="obj-label">模型</span>
+            <select
+              v-if="selected.kind === 'device'"
+              class="obj-select"
+              :value="scene3dRef?.getDeviceModelRef?.(selected.id) ?? ''"
+              @change="bindDeviceModel(($event.target as HTMLSelectElement).value)"
+            >
+              <option
+                v-for="m in deviceModels"
+                :key="m.id"
+                :value="m.id"
+              >
+                {{ m.name }}
+              </option>
+            </select>
+            <select
+              v-else
+              class="obj-select"
+              :value="(scene3dRef?.getAgentModel?.(selected.id) ?? '') || 'hero-3d'"
+              @change="bindAgentModel(($event.target as HTMLSelectElement).value)"
+            >
+              <option
+                v-for="m in agentModels"
+                :key="m.id"
+                :value="m.id"
+              >
+                {{ m.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 旋转(编辑模式;角色仅本地,设备落库) -->
+          <div
+            v-if="mode === 'edit'"
+            class="scale-row"
+          >
+            <span class="scale-min">0°</span>
+            <input
+              class="scale-range"
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              :value="selected.rotation"
+              @input="onRotationInput(Number(($event.target as HTMLInputElement).value))"
+              @change="onRotationCommit"
+            >
+            <span class="scale-max">360°</span>
+          </div>
+          <!-- 缩放 -->
           <div class="scale-row">
             <span class="scale-min">0.2×</span>
             <input
@@ -480,6 +1121,51 @@ onBeforeUnmount(() => {
           <div class="scale-val">
             {{ Math.round(selected.scale * 100) }}%
           </div>
+
+          <!-- 删除(仅设备实例;角色为频道成员,由频道管理面板管理) -->
+          <button
+            v-if="selected.kind === 'device'"
+            class="obj-del"
+            @click="removeSelectedDevice"
+          >
+            移除设备实例
+          </button>
+        </div>
+
+        <!-- 编辑/浏览模式工具栏 + 布局保存 -->
+        <div class="mode-bar">
+          <button
+            class="mode-btn"
+            :class="{ active: mode === 'edit' }"
+            :title="mode === 'edit' ? '编辑模式:可拖拽设备/调整角色落点' : '浏览模式:只读巡视'"
+            @click="toggleMode"
+          >
+            {{ mode === 'edit' ? '编辑中' : '浏览' }}
+          </button>
+          <button
+            v-if="mode === 'edit'"
+            class="mode-btn"
+            :class="{ active: snap }"
+            title="网格吸附(拖拽落点对齐 16 单位)"
+            @click="toggleSnap"
+          >
+            吸附{{ snap ? '开' : '关' }}
+          </button>
+          <button
+            v-if="mode === 'edit'"
+            class="mode-btn save"
+            title="把全部设备的位置/朝向/缩放写入数据库"
+            @click="saveLayout"
+          >
+            保存布局
+          </button>
+          <span
+            v-if="saveState && saveState.state !== 'idle'"
+            class="save-chip"
+            :class="`s-${saveState.state}`"
+          >
+            {{ saveStateLabel }}
+          </span>
         </div>
 
         <!-- 顶栏:标题 / 统计 / 连接 -->
@@ -595,35 +1281,32 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-    <p class="town-foot">
-      传奇共鸣城镇 · 每频道 = 一片共鸣领地,每角色 = 一个共鸣精魂 · 同频道共享同色灵光 · 角色可自由拖动 · 头顶气泡 = 实时事件
-    </p>
   </div>
 </template>
 
 <style scoped>
 .town-view {
   width: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
 }
 .town-frame {
   position: relative;
+  flex: 1 1 auto;
   width: 100%;
-  max-width: 1160px;
-  aspect-ratio: 16 / 10;
-  border-radius: var(--radius-panel);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-float);
+  background: radial-gradient(1200px 700px at 50% 30%, rgba(60, 92, 120, 0.18), transparent 70%);
 }
 .town-host {
   position: absolute;
   inset: 0;
+  display: block;
 }
 .town-host canvas { image-rendering: pixelated; }
-.town-foot { margin-top: 10px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
 
 .hud { font-family: var(--font-body); }
 
@@ -647,8 +1330,8 @@ onBeforeUnmount(() => {
   overflow: hidden auto;
 }
 
-/* 选中缩放面板(点击角色/设备后弹出) */
-.scale-panel {
+/* 场景对象属性面板(选中设备/角色:改名/换模型/旋转/缩放/删除) */
+.object-panel {
   position: absolute;
   bottom: 46px;
   left: 50%;
@@ -656,7 +1339,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 260px;
+  width: 280px;
   padding: 10px 14px;
   pointer-events: auto;
   background: var(--glass-bg);
@@ -669,11 +1352,185 @@ onBeforeUnmount(() => {
 .scale-title { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-soft); }
 .scale-kind { font-weight: 700; color: var(--ink); }
 .scale-id { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+.scale-hint { font-size: 10px; color: var(--tone-warning-dot); margin-left: auto; }
 .scale-close { margin-left: auto; font-size: 14px; color: var(--ink-faint); background: transparent; border: 0; cursor: pointer; }
 .scale-row { display: flex; gap: 8px; align-items: center; }
 .scale-min, .scale-max { font-family: var(--font-mono); font-size: 9px; color: var(--ink-faint); }
 .scale-range { flex: 1; accent-color: var(--accent); }
 .scale-val { text-align: center; font-family: var(--font-mono); font-size: 11px; color: var(--ink); }
+.obj-row { display: flex; gap: 8px; align-items: center; }
+.obj-label { flex: none; width: 34px; font-size: 10px; color: var(--ink-faint); }
+.obj-input {
+  flex: 1; min-width: 0; font-size: 11px; padding: 3px 7px;
+  border: 1px solid var(--line); border-radius: var(--radius-chip);
+  background: var(--paper); color: var(--ink);
+}
+.obj-input:focus { outline: none; border-color: var(--accent); }
+.obj-select {
+  flex: 1; min-width: 0; font-size: 11px; padding: 3px 6px;
+  border: 1px solid var(--line); border-radius: var(--radius-chip);
+  background: var(--paper); color: var(--ink);
+}
+.obj-del {
+  margin-top: 2px; padding: 5px 10px; font-size: 11px; font-weight: 600;
+  color: var(--tone-danger-dot); background: var(--tone-danger-bg);
+  border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 35%, transparent);
+  border-radius: var(--radius-chip); cursor: pointer;
+}
+
+/* 编辑/浏览模式工具栏(顶栏下方右侧) */
+.mode-bar {
+  position: absolute;
+  top: 58px;
+  right: 16px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  pointer-events: auto;
+  background: var(--frost-bg);
+  backdrop-filter: var(--frost-blur);
+  -webkit-backdrop-filter: var(--frost-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--glass-highlight), var(--shadow-float);
+}
+
+/* 频道坞(左,模型库旁) */
+.channel-dock {
+  position: absolute;
+  top: 56px;
+  left: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 200px;
+  padding: 10px 12px;
+  pointer-events: auto;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--glass-highlight);
+}
+.dock-head { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--ink-soft); }
+.head-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.head-title { font-weight: 700; color: var(--ink); }
+.head-hint { margin-left: auto; font-size: 10px; color: var(--ink-faint); white-space: nowrap; }
+.dock-list { display: flex; flex-direction: column; gap: 6px; max-height: 42vh; overflow: hidden auto; }
+.dock-card {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  cursor: grab;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel-sm);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+.dock-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.dock-card:active { cursor: grabbing; }
+.dock-card.placed { border-color: var(--tone-success-dot); }
+.dock-card.disabled { cursor: default; }
+.dock-card.disabled:hover { border-color: var(--line); transform: none; }
+.dock-card.disabled:active { cursor: default; }
+.dock-hint { font-size: 10px; color: var(--tone-warning-dot); padding: 0 2px; }
+.dock-color { flex: none; width: 9px; height: 9px; border-radius: 50%; }
+.dock-name { font-size: 11px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock-meta { margin-left: auto; font-size: 9px; color: var(--ink-faint); white-space: nowrap; }
+.dock-toggle { flex: none; font-size: 12px; font-weight: 700; color: var(--accent); }
+.dock-card.placed .dock-toggle { color: var(--tone-success-dot); }
+
+/* 频道边界编辑面板 */
+.boundary-panel {
+  position: absolute;
+  bottom: 46px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 300px;
+  padding: 12px 14px;
+  pointer-events: auto;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--glass-highlight), var(--shadow-float);
+}
+.bp-title { display: flex; gap: 8px; align-items: baseline; }
+.bp-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+.bp-sub { font-size: 10px; color: var(--ink-faint); }
+.bp-row { display: flex; gap: 8px; align-items: center; }
+.bp-label { flex: none; width: 46px; font-size: 10px; color: var(--ink-faint); }
+.bp-range { flex: 1; accent-color: var(--accent); }
+.bp-val { flex: none; width: 40px; text-align: right; font-family: var(--font-mono); font-size: 10px; color: var(--ink); }
+.bp-seg { display: flex; gap: 4px; }
+.seg-btn { padding: 3px 10px; font-size: 11px; font-weight: 600; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line); border-radius: var(--radius-chip); cursor: pointer; }
+.seg-btn.on { color: var(--on-av); background: var(--accent); border-color: var(--accent); }
+.bp-actions { display: flex; gap: 6px; margin-top: 2px; }
+.bp-btn { padding: 5px 10px; font-size: 11px; font-weight: 600; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line); border-radius: var(--radius-chip); cursor: pointer; }
+.bp-btn.save { color: var(--tone-success-dot); }
+.bp-btn.danger { color: var(--tone-danger-dot); }
+
+/* 频道管理面板:tabs + 成员角色模型设置 */
+.bp-tabs { display: flex; gap: 4px; margin-left: auto; }
+.bp-tab {
+  padding: 2px 9px; font-size: 10px; font-weight: 600;
+  color: var(--ink-soft); background: var(--paper-deep);
+  border: 1px solid var(--line); border-radius: var(--radius-chip); cursor: pointer;
+}
+.bp-tab.on { color: var(--on-av); background: var(--accent); border-color: var(--accent); }
+.bp-hint { font-size: 10px; color: var(--ink-faint); }
+.member-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: hidden auto; }
+.member-row {
+  display: flex; gap: 8px; align-items: center; padding: 4px 6px;
+  background: var(--paper-raised); border: 1px solid var(--line);
+  border-radius: var(--radius-panel-sm);
+}
+.member-ava {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; flex: none; font-size: 11px; font-weight: 700;
+  background: var(--paper-deep); border-radius: var(--radius-panel-sm);
+}
+.member-info { display: flex; flex-direction: column; min-width: 0; }
+.member-name { font-size: 11px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-role { font-size: 9px; color: var(--ink-faint); }
+.member-select {
+  min-width: 0; flex: 1; font-size: 10px; padding: 2px 4px;
+  border: 1px solid var(--line); border-radius: var(--radius-chip);
+  background: var(--paper); color: var(--ink);
+}
+
+.mode-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.mode-btn:hover { border-color: var(--accent); color: var(--ink); }
+.mode-btn.active { color: var(--on-av); background: var(--accent); border-color: var(--accent); }
+.mode-btn.save { color: var(--tone-success-dot); }
+.save-chip {
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  border-radius: var(--radius-chip);
+  white-space: nowrap;
+}
+.save-chip.s-dirty { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
+.save-chip.s-saving { color: var(--ink-soft); background: var(--paper-deep); }
+.save-chip.s-saved { color: var(--tone-success-dot); background: var(--tone-success-bg); }
+.save-chip.s-error { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
 
 /* 模型落点反馈 */
 .drop-chip {

@@ -13,7 +13,7 @@ import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
 import { useUserStore } from '@/app/stores/workshop/user'
 
-definePageMeta({ layout: 'default', title: 'Agent 小镇' })
+definePageMeta({ layout: 'town', title: 'Agent 小镇' })
 
 const userStore = useUserStore()
 const entities = useEntitiesStore()
@@ -104,9 +104,13 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
 
 <style scoped>
 .town-page {
-  height: calc(100dvh - var(--app-header-h, 56px) - var(--app-footer-h, 46px) - 16px);
+  /* 独立全屏布局(town.vue):占据整个视口,无侧栏/顶栏/页脚的穿插 */
+  width: 100vw;
+  height: 100dvh;
   min-height: 0;
   overflow: hidden;
+  /* 赛博小镇背景贴图(3D 场景地面同源;低对比,不影响前景) */
+  background: var(--paper) url('/scene/background/cyber-town-background.svg') center / cover no-repeat fixed;
 }
 .pane-empty {
   display: flex;
@@ -116,6 +120,11 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
   justify-content: center;
   height: 100%;
   color: var(--ink-faint);
+  background: var(--frost-bg);
+  backdrop-filter: var(--frost-blur);
+  -webkit-backdrop-filter: var(--frost-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-panel);
 }
 .pe-icon { font-size: 30px; opacity: 0.6; }
 .pe-title { font-size: 14px; font-weight: 600; color: var(--ink-soft); }
@@ -127,5 +136,10 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
   height: 100%;
   font-size: 12px;
   color: var(--ink-faint);
+  background: var(--frost-bg);
+  backdrop-filter: var(--frost-blur);
+  -webkit-backdrop-filter: var(--frost-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-panel);
 }
 </style>

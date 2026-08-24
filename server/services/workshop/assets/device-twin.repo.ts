@@ -29,6 +29,13 @@ export interface DeviceTwin {
   state: 'idle' | 'running' | 'offline' | 'alarm'
   /** 可下发指令集(供 Agent 经 MCP 调用) */
   controls: string[]
+  /** 场景落点(3D 小镇 x/z 世界坐标;undefined = 未放入场景,仅注册表记录) */
+  posX?: number
+  posZ?: number
+  /** 场景朝向(绕 y 轴角度,度;缺省 0) */
+  rotationY?: number
+  /** 场景内缩放倍率(缺省 1 = 默认归一化尺寸) */
+  scale?: number
   /** 最近更新时间(数据采集心跳) */
   updatedAt: string
   createdAt: string
@@ -75,6 +82,10 @@ class DeviceTwinRepo {
       desired: input.desired ?? {},
       state: input.state ?? 'idle',
       controls: input.controls ?? [],
+      posX: input.posX,
+      posZ: input.posZ,
+      rotationY: input.rotationY,
+      scale: input.scale,
       updatedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     }
@@ -83,7 +94,7 @@ class DeviceTwinRepo {
     return full
   }
 
-  update(id: string, patch: Partial<Pick<DeviceTwin, 'name' | 'modelRef' | 'boundAgentId' | 'controls' | 'desired'>>): DeviceTwin | undefined {
+  update(id: string, patch: Partial<Pick<DeviceTwin, 'name' | 'modelRef' | 'boundAgentId' | 'controls' | 'desired' | 'posX' | 'posZ' | 'rotationY' | 'scale'>>): DeviceTwin | undefined {
     const d = this.findById(id)
     if (!d) return undefined
     if (patch.name !== undefined) d.name = patch.name
@@ -91,6 +102,10 @@ class DeviceTwinRepo {
     if (patch.boundAgentId !== undefined) d.boundAgentId = patch.boundAgentId
     if (patch.controls !== undefined) d.controls = patch.controls
     if (patch.desired !== undefined) d.desired = { ...d.desired, ...patch.desired }
+    if (patch.posX !== undefined) d.posX = patch.posX
+    if (patch.posZ !== undefined) d.posZ = patch.posZ
+    if (patch.rotationY !== undefined) d.rotationY = patch.rotationY
+    if (patch.scale !== undefined) d.scale = patch.scale
     d.updatedAt = new Date().toISOString()
     save(this.list)
     return d
@@ -142,4 +157,26 @@ let singleton: DeviceTwinRepo | null = null
 export function getDeviceTwinRepo(): DeviceTwinRepo {
   if (!singleton) singleton = new DeviceTwinRepo()
   return singleton
+}
+
+/**
+ * 场景事件载荷(设备孪生 → device.created/updated/deleted 广播)。
+ * 与前端 DeviceTwinView 同构,供其他小镇客户端即时同步场景节点。
+ */
+export function deviceScenePayload(d: DeviceTwin): Record<string, unknown> {
+  return {
+    id: d.id,
+    name: d.name,
+    modelRef: d.modelRef,
+    kind: d.kind,
+    state: d.state,
+    posX: d.posX,
+    posZ: d.posZ,
+    rotationY: d.rotationY,
+    scale: d.scale,
+    workspaceId: d.workspaceId,
+    boundAgentId: d.boundAgentId,
+    telemetry: d.telemetry,
+    updatedAt: d.updatedAt,
+  }
 }
