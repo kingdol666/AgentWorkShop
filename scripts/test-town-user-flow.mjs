@@ -66,7 +66,7 @@ async function main() {
   fs.copyFileSync(path.resolve('public/assets/game/character/hero-3d.glb'), hunterDst)
 
   try {
-    const result = await runTest({ token, cid, ts, regEmail })
+    const result = await runTest({ token, cid, ts })
     console.log(`\n结果: ${result.pass} 通过 / ${result.fail} 失败`)
     fs.rmSync(hunterDst, { force: true })
     process.exit(result.fail > 0 ? 1 : 0)
@@ -77,7 +77,7 @@ async function main() {
   }
 }
 
-async function runTest({ token, cid, ts, regEmail }) {
+async function runTest({ token, cid, ts }) {
   const browser = await puppeteer.launch({
     executablePath: EDGE, headless: 'new', args: ['--no-sandbox'],
     defaultViewport: { width: 1400, height: 900 },
@@ -85,36 +85,16 @@ async function runTest({ token, cid, ts, regEmail }) {
   const page = await browser.newPage()
   page.on('pageerror', e => console.log('  [pageerror]', e.message.slice(0, 160)))
 
-  // ---- 登录(与既有脚本一致:真实 UI 表单;轮询等表单渲染,容忍 dev 首次编译) ----
+  // ---- 登录:注入真实登录 token cookie(经 session-restore 插件恢复会话;绕开 antd 表单的脆弱性) ----
   await page.goto(`${BASE}/workshop`, { waitUntil: 'domcontentloaded', timeout: 60000 })
-  let formReady = false
-  for (let i = 0; i < 60 && !formReady; i++) {
-    formReady = await page.evaluate(() => !!document.querySelector('input[type="email"]'))
-    if (!formReady) await sleep(500)
-  }
-  if (!formReady) throw new Error('登录表单未渲染')
-  const setInput = (sel, v) => page.$eval(sel, (el, val) => {
-    const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
-    Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, val)
-    el.dispatchEvent(new Event('input', { bubbles: true }))
-  }, v)
-  await setInput('input[type="email"]', regEmail)
-  await setInput('input[type="password"]', 'Passw0rd!123')
-  await sleep(200)
-  const loginBtn = await page.$('button[type="submit"], .ant-btn-primary, form button[type="submit"]')
-  if (loginBtn) await loginBtn.click()
-  else {
-    for (const b of await page.$$('form button, .ant-form button')) {
-      const txt = ((await b.evaluate(el => el.textContent)) || '').replace(/\s/g, '')
-      if (txt === '登录') { await b.click(); break }
-    }
-  }
+  await page.setCookie({ name: 'token', value: token, url: BASE })
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 })
   let logged = false
-  for (let i = 0; i < 40 && !logged; i++) {
-    logged = await page.evaluate(() => !!document.cookie.match(/(?:^|;\s*)token=([^;]+)/))
+  for (let i = 0; i < 50 && !logged; i++) {
+    logged = await page.evaluate(() => !document.querySelector('.auth-gate') && !!document.cookie.match(/(?:^|;\s*)token=/))
     if (!logged) await sleep(500)
   }
-  if (!logged) throw new Error('登录未写入 token cookie')
+  if (!logged) throw new Error('会话未通过 token cookie 恢复')
 
   // ---- 进入 /town 满屏小镇页 ----
   await page.goto(`${BASE}/town`, { waitUntil: 'domcontentloaded' })
@@ -245,15 +225,16 @@ async function runTest({ token, cid, ts, regEmail }) {
   await sleep(500)
   const bp1 = await page.evaluate(() => {
     const p = document.querySelector('.boundary-panel')
-    return { open: !!p, tabs: [...(p?.querySelectorAll('.bp-tab') || [])].map(t => t.textContent) }
+    return { open: !!p, tabs: [...(p?.querySelectorAll('.bp-tab') || [])].map(t => (t.textContent || '').trim()) }
   })
   console.log('  频道管理面板:', JSON.stringify(bp1))
   check('点击已放置频道 → 频道管理面板', bp1.open && bp1.tabs.includes('边界') && bp1.tabs.some(t => t.includes('成员')), JSON.stringify(bp1))
   await page.evaluate(() => {
     const sliders = [...document.querySelectorAll('.bp-range')]
-    const rx = sliders[0] // 横轴半径
+    const rx = sliders[0] // 横轴半径(step=8 → 用步进对齐值 512)
     const proto = HTMLInputElement.prototype
-    Object.getOwnPropertyDescriptor(proto, 'value').set.call(rx, '420')
+    Object.getOwnPropertyDescriptor(proto, 'value').set.call(rx, '512')
+    rx.dispatchEvent(new Event('input', { bubbles: true }))
     rx.dispatchEvent(new Event('change', { bubbles: true }))
   })
   await sleep(300)
@@ -266,7 +247,7 @@ async function runTest({ token, cid, ts, regEmail }) {
   layoutRes = await api('GET', '/api/workshop/scene/layouts', { token })
   const savedLayout = layoutRes?.data?.layouts?.find(l => l.channelId === cid)
   console.log('  保存后 layout:', JSON.stringify(savedLayout))
-  check('边界编辑(radiusX=420)落库', savedLayout?.radiusX === 420, `radiusX=${savedLayout?.radiusX}`)
+  check('边界编辑(radiusX=512)落库', savedLayout?.radiusX === 512, `radiusX=${savedLayout?.radiusX}`)
   await page.screenshot({ path: `${OUT}/05-boundary.png` })
 
   console.log('\n== 10. Channel 管理:成员自定义绑定角色模型 ==')
@@ -300,8 +281,322 @@ async function runTest({ token, cid, ts, regEmail }) {
   check('场景角色即时换装', sceneLead?.modelRef === 'ch-folder-hunter', JSON.stringify(sceneLead))
   await page.screenshot({ path: `${OUT}/06-members.png` })
 
+  // ================= 统计场景几何(世界→屏幕投影,与 TownScene3D 相机同构) =================
+  const sceneGeo = () => page.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight }))
+  const camState = () => page.evaluate(() => window.__town.scene.getCameraTarget())
+  const cam = await camState()
+  const geo = await sceneGeo()
+
+  console.log('\n== 11. Agent 独立活动范围:框选绘制 ==')
+  await page.evaluate(() => window.__town.scene.setMode('edit'))
+  await sleep(400)
+  // 点击 lead 角色选中它(用其 debug 位置反算屏幕坐标;pointerup 触发场景点选)
+  const leadPos = await page.evaluate(({ cid }) => {
+    const a = window.__town.scene.getDebugState().agents.find(x => x.role === 'lead' && x.channelId === cid)
+    return { x: a.x, y: a.y }
+  }, { cid })
+  const leadC = worldToClient(await camState(), geo, leadPos.x, leadPos.y)
+  await page.evaluate(({ x, y }) => {
+    const c = document.querySelector('.town-host canvas')
+    c.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, clientX: x, clientY: y }))
+  }, { x: leadC.x, y: leadC.y })
+  await sleep(400)
+  const rp1 = await page.evaluate(() => {
+    const p = document.querySelector('.object-panel')
+    return { open: !!p, hasRange: !!p?.querySelector('.obj-mini'), status: p?.querySelector('.range-status')?.textContent ?? '' }
+  })
+  console.log('  角色属性面板:', JSON.stringify(rp1))
+  check('点击角色 → 对象面板含活动范围区块', rp1.open && rp1.hasRange, JSON.stringify(rp1))
+  // 点「框选绘制」进入绘制模式
+  await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('.obj-mini')]
+    const draw = btns.find(b => (b.textContent || '').includes('框选绘制'))
+    if (draw) draw.click()
+  })
+  await sleep(300)
+  const drawing = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('.obj-mini')].find(x => (x.textContent || '').includes('绘制中'))
+    return b ? b.className : ''
+  })
+  check('框选绘制模式激活(按钮高亮)', drawing.includes('on'), `cls=${drawing}`)
+  // 在 lead 周围拉一个框:范围半径 ≈ 120×80(居中,避免贴近频道边界导致被钳制收缩)
+  const rFrom = worldToClient(await camState(), geo, leadPos.x - 120, leadPos.y - 80)
+  const rTo = worldToClient(await camState(), geo, leadPos.x + 120, leadPos.y + 80)
+  await canvasDrag(page, rFrom, rTo)
+  await sleep(1300)
+  const agentsResR = await api('GET', `/api/workshop/channels/${cid}/agents`, { token })
+  const leadR = (agentsResR?.data ?? agentsResR ?? []).find(a => a.role === 'lead')
+  const cfgRange = leadR?.config?.range
+  const sceneRange = await page.evaluate(() => {
+    const a = window.__town.scene.getDebugState().agents.find(x => x.role === 'lead')
+    return a?.range ?? null
+  })
+  console.log(`  框选后 config.range: ${JSON.stringify(cfgRange)} | scene.range: ${JSON.stringify(sceneRange)}`)
+  check('框选绘制生成 Agent 活动范围(场景)', !!sceneRange && sceneRange.shape === 'rect', JSON.stringify(sceneRange))
+  check('范围配置落库(config.range)', !!cfgRange && typeof cfgRange.radiusX === 'number' && cfgRange.shape === 'rect', JSON.stringify(cfgRange))
+  check('范围中心围绕角色落点', !!cfgRange && Math.abs(cfgRange.x - leadPos.x) < 200 && Math.abs(cfgRange.z - leadPos.y) < 200, JSON.stringify({ cfgRange, leadPos }))
+  await page.screenshot({ path: `${OUT}/07-agent-range-drawn.png` })
+
+  console.log('\n== 12. Agent 活动范围:滑杆扩张 + 落库 ==')
+  // 对象面板横轴滑杆(第一个 .obj-range)调到 320;input 实时、change 提交落库
+  await page.evaluate(() => {
+    const sliders = [...document.querySelectorAll('.obj-range')]
+    const rx = sliders[0]
+    const proto = HTMLInputElement.prototype
+    Object.getOwnPropertyDescriptor(proto, 'value').set.call(rx, '320')
+    rx.dispatchEvent(new Event('input', { bubbles: true }))
+    rx.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  await sleep(1200)
+  const agentsResR2 = await api('GET', `/api/workshop/channels/${cid}/agents`, { token })
+  const leadR2 = (agentsResR2?.data ?? agentsResR2 ?? []).find(a => a.role === 'lead')
+  const cfgRange2 = leadR2?.config?.range
+  console.log(`  滑杆扩张后 config.range: ${JSON.stringify(cfgRange2)}(扩张前 radiusX=${cfgRange?.radiusX})`)
+  check('滑杆扩张范围后落库(radiusX 增大)', (cfgRange2?.radiusX ?? 0) >= ((cfgRange?.radiusX ?? 0) + 40), `rx ${cfgRange?.radiusX} → ${cfgRange2?.radiusX}`)
+
+  console.log('\n== 13. Agent 活动范围:清除回退频道 ==')
+  await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('.obj-mini')]
+    const clear = btns.find(b => (b.textContent || '').includes('清除范围'))
+    if (clear) clear.click()
+  })
+  await sleep(1200)
+  const agentsResR3 = await api('GET', `/api/workshop/channels/${cid}/agents`, { token })
+  const leadR3 = (agentsResR3?.data ?? agentsResR3 ?? []).find(a => a.role === 'lead')
+  const sceneRange3 = await page.evaluate(() => {
+    const a = window.__town.scene.getDebugState().agents.find(x => x.role === 'lead')
+    return a?.range ?? null
+  })
+  console.log('  清除后 config.range:', JSON.stringify(leadR3?.config?.range), 'scene.range:', JSON.stringify(sceneRange3))
+  check('清除后 config.range 归空(回退频道边界)', !leadR3?.config?.range, JSON.stringify(leadR3?.config?.range))
+  check('清除后场景范围移除', sceneRange3 === null, JSON.stringify(sceneRange3))
+  await page.screenshot({ path: `${OUT}/08-agent-range-cleared.png` })
+
+  console.log('\n== 14. 频道整体拖拽移动 ==')
+  await page.evaluate(() => window.__town.scene.setMode('edit'))
+  await sleep(400)
+  const layBefore = await page.evaluate(({ cid }) => {
+    const l = window.__town.scene.getChannelLayout(cid)
+    return { x: l.x, z: l.z, radiusX: l.radiusX, radiusZ: l.radiusZ }
+  }, { cid })
+  // 起点选在领地内部、远离成员角色与边界手柄的内点(避免 pickAt 命中角色 / 手柄);
+  // 拖拽位移 = 终点 − 起点,与起点在领地内的相对偏移无关
+  const sx = layBefore.x + 120
+  const sz = layBefore.z + 60
+  const fromC = worldToClient(cam, geo, sx, sz)
+  const toC = worldToClient(cam, geo, sx + 260, sz + 180)
+  await canvasDrag(page, fromC, toC)
+  await sleep(1400)
+  const layMoved = await page.evaluate(({ cid }) => {
+    const l = window.__town.scene.getChannelLayout(cid)
+    return { x: l.x, z: l.z }
+  }, { cid })
+  const movedOk = Math.abs(layMoved.x - (layBefore.x + 260)) <= 32 && Math.abs(layMoved.z - (layBefore.z + 180)) <= 32
+  console.log(`  移动: (${layBefore.x},${layBefore.z}) → (${layMoved.x},${layMoved.z})`)
+  check('频道整体拖拽移动到自定义点位', movedOk, JSON.stringify(layMoved))
+  const layServer1 = (await api('GET', '/api/workshop/scene/layouts', { token })).data.layouts.find(l => l.channelId === cid)
+  check('频道移动已落库', Math.abs(layServer1.x - layMoved.x) <= 2 && Math.abs(layServer1.z - layMoved.z) <= 2, `server=(${layServer1.x},${layServer1.z})`)
+
+  console.log('\n== 15. 边界手柄拖拽缩放 ==')
+  // 重新聚焦频道 + 重取相机(拖拽移动时不聚焦,相机仍停在原位,手柄可能在取景外)
+  await page.evaluate(({ cid }) => window.__town.scene.selectChannel(cid), { cid })
+  await sleep(1000)
+  const cam12 = await camState()
+  const layB = await page.evaluate(({ cid }) => {
+    const l = window.__town.scene.getChannelLayout(cid)
+    return { x: l.x, z: l.z, radiusX: l.radiusX, radiusZ: l.radiusZ, rotationY: l.rotationY }
+  }, { cid })
+  const rot12 = (layB.rotationY || 0) * Math.PI / 180
+  const hx = layB.x + layB.radiusX * Math.cos(rot12)
+  const hz = layB.z + layB.radiusX * Math.sin(rot12)
+  const hC = worldToClient(cam12, geo, hx, hz)
+  const hTo = worldToClient(cam12, geo, hx + 160, hz)
+  await canvasDrag(page, hC, hTo)
+  await sleep(1300)
+  const layR = await page.evaluate(({ cid }) => {
+    const l = window.__town.scene.getChannelLayout(cid)
+    return { radiusX: l.radiusX, radiusZ: l.radiusZ }
+  }, { cid })
+  console.log(`  缩放手柄: radiusX ${layB.radiusX} → ${layR.radiusX}`)
+  check('边界手柄拖拽调整范围(radiusX 增大)', layR.radiusX > layB.radiusX + 30, `${layB.radiusX}→${layR.radiusX}`)
+  const layServer2 = (await api('GET', '/api/workshop/scene/layouts', { token })).data.layouts.find(l => l.channelId === cid)
+  check('边界缩放已落库', Math.abs(layServer2.radiusX - layR.radiusX) <= 2, `server rx=${layServer2.radiusX}`)
+  await page.screenshot({ path: `${OUT}/07-handle-resize.png` })
+
+  console.log('\n== 13. 移除频道 → 重新放置(同频道最多一个实例) ==')
+  await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('.bp-btn')]
+    const rm = btns.find(b => b.textContent.includes('移除频道'))
+    if (rm) rm.click()
+  })
+  await sleep(1600)
+  const layGone = (await api('GET', '/api/workshop/scene/layouts', { token })).data.layouts.find(l => l.channelId === cid)
+  const blocks0 = await page.evaluate(() => window.__town.scene.getDebugState().blocks)
+  const cardAfter = await page.evaluate(({ cid }) => {
+    const c = document.querySelector(`.dock-card[data-channel-id="${cid}"]`)
+    return { draggable: c.getAttribute('draggable'), placed: c.className.includes('placed') }
+  }, { cid })
+  console.log('  移除后: layout=', !!layGone, ' blocks=', blocks0, ' 卡片=', JSON.stringify(cardAfter))
+  check('频道移除后布局删除', !layGone && blocks0 === 0, `blocks=${blocks0}`)
+  check('移除后卡片恢复可拖拽(可重新放置)', cardAfter.draggable === 'true' && !cardAfter.placed, JSON.stringify(cardAfter))
+  await page.evaluate(() => window.__town.scene.setMode('browse'))
+  await html5Drag(page, `.dock-card[data-channel-id="${cid}"]`, '.town-host canvas', 'application/x-aw-channel', cid, { x: 520, y: 520 })
+  await sleep(1600)
+  const layBack = (await api('GET', '/api/workshop/scene/layouts', { token })).data.layouts.find(l => l.channelId === cid)
+  const blocks1 = await page.evaluate(() => window.__town.scene.getDebugState().blocks)
+  console.log('  重新放置后: layout=', !!layBack, ' blocks=', blocks1)
+  check('移除后重新拖拽放置成功', !!layBack && blocks1 === 1, `layout=${!!layBack} blocks=${blocks1}`)
+  const blocksAgain2 = await page.evaluate(({ cid }) => {
+    window.__town.scene.dropChannelOnWorld(900, 700, cid, 'E2E', 3)
+    return window.__town.scene.getDebugState().blocks
+  }, { cid })
+  check('重新放置后同频道仍只一个实例(去重)', blocksAgain2 === 1, `blocks=${blocksAgain2}`)
+  await page.screenshot({ path: `${OUT}/08-replaced.png` })
+
+  console.log('\n== 14. 刷新后放置与边界恢复(持久化) ==')
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 })
+  let reReady = false
+  for (let i = 0; i < 50 && !reReady; i++) {
+    reReady = await page.evaluate(() => !!window.__town?.scene)
+    if (!reReady) await sleep(500)
+  }
+  // 布局加载先于 WS 快照:rebuild 依赖实体基线,轮询等待快照重建领地
+  let restored = { blocks: 0, chAgents: 0, hasLayout: false, radiusX: null }
+  for (let i = 0; i < 30; i++) {
+    restored = await page.evaluate(({ cid }) => {
+      const s = window.__town.scene.getDebugState()
+      const l = window.__town.scene.getChannelLayout(cid)
+      const chAgents = s.agents.filter(a => a.channelId === cid).length
+      return { blocks: s.blocks, chAgents, hasLayout: !!l, radiusX: l?.radiusX ?? null }
+    }, { cid })
+    if (restored.blocks >= 1 && restored.hasLayout) break
+    await sleep(500)
+  }
+  console.log('  刷新后:', JSON.stringify(restored))
+  check('刷新后频道领地恢复', restored.blocks >= 1 && restored.hasLayout, JSON.stringify(restored))
+  check('刷新后边界设置保留(radiusX>默认)', (restored.radiusX ?? 0) >= 80, `radiusX=${restored.radiusX}`)
+  check('刷新后频道成员落地', restored.chAgents === 3, `agents=${restored.chAgents}`)
+  await page.screenshot({ path: `${OUT}/09-restored.png` })
+
+  console.log('\n== 18. 实时信息接收器:FIFO 聊天气泡 ==')
+  // 经 handleTownEvent 注入 3 条同频道短消息(顺序: lead → worker-a → worker-b),
+  // 断言接收器按 FIFO 逐条消费:瞬时只显示第 1 条;随后用 debugAdvanceReceiver
+  // 确定性推进,逐步验证 2、3 条按序渲染、各自挂在对应 Agent 头顶
+  const bubbleIds = await page.evaluate(({ cid }) => {
+    const s = window.__town.scene.getDebugState().agents.filter(a => a.channelId === cid)
+    return {
+      lead: s.find(a => a.role === 'lead')?.agentId,
+      w1: s.find(a => a.name === 'worker-a')?.agentId,
+      w2: s.find(a => a.name === 'worker-b')?.agentId,
+    }
+  }, { cid })
+  await page.evaluate(({ cid, bubbleIds }) => {
+    const scene = window.__town.scene
+    const mk = (agentId, text) => ({
+      v: 1, type: 'agent.message', seq: Math.floor(Math.random() * 1e6) + 1,
+      at: new Date().toISOString(), channelId: cid, agentId,
+      payload: { parts: [{ text }] },
+    })
+    scene.handleTownEvent(mk(bubbleIds.lead, '大家好,我们要开工了'))
+    scene.handleTownEvent(mk(bubbleIds.w1, '收到,领队!'))
+    scene.handleTownEvent(mk(bubbleIds.w2, '我这就去办。'))
+  }, { cid, bubbleIds })
+  const bubbleState = () => page.evaluate(({ cid }) => {
+    return window.__town.scene.getDebugState().agents
+      .filter(a => a.channelId === cid)
+      .map(a => ({ name: a.name, bubble: a.bubbleText }))
+  }, { cid })
+  const advance = (cid) => page.evaluate(({ cid }) => window.__town.scene.debugAdvanceReceiver(cid), { cid })
+  await sleep(500)
+  const b1 = await bubbleState()
+  console.log('  T+0.5s 当前气泡(应只有第 1 条):', JSON.stringify(b1))
+  check('FIFO:注入后瞬时只渲染第 1 条', b1.some(a => a.bubble === '大家好,我们要开工了') && !b1.some(a => a.bubble === '收到,领队!') && !b1.some(a => a.bubble === '我这就去办。'), JSON.stringify(b1))
+  await page.screenshot({ path: `${OUT}/10-bubble-1.png` })
+  await advance(cid)
+  await sleep(350)
+  const b2 = await bubbleState()
+  console.log('  推进一次后当前气泡(应为第 2 条):', JSON.stringify(b2))
+  check('FIFO:推进后按序渲染第 2 条(worker-a)', b2.some(a => a.name === 'worker-a' && a.bubble === '收到,领队!') && !b2.some(a => a.bubble === '大家好,我们要开工了') && !b2.some(a => a.bubble === '我这就去办。'), JSON.stringify(b2))
+  await advance(cid)
+  await sleep(350)
+  const b3 = await bubbleState()
+  console.log('  再推进一次后当前气泡(应为第 3 条):', JSON.stringify(b3))
+  check('FIFO:再次推进后按序渲染第 3 条(worker-b)', b3.some(a => a.name === 'worker-b' && a.bubble === '我这就去办。') && !b3.some(a => a.bubble === '收到,领队!'), JSON.stringify(b3))
+  await advance(cid)
+  await sleep(350)
+  const b4 = await bubbleState()
+  check('FIFO:队列消费完毕后气泡清空', b4.every(a => a.bubble === null), JSON.stringify(b4))
+  await page.screenshot({ path: `${OUT}/11-bubble-drained.png` })
+
+  console.log('\n== 19. 数据驱动模型:动画监听(motion)+ debug.anim ==')
+  // motion 事件可订阅:场景内 Agent 走走停停漫游 → 动画状态在 idle/walk 间切换并广播
+  const motionEvents = await page.evaluate(() => new Promise((resolve) => {
+    const s = window.__town.scene
+    const out = []
+    let off = null
+    off = s.on('motion', (e) => {
+      if (e) out.push({ agentName: e.agentName, anim: e.anim })
+      if (out.length >= 3 && off) { off(); resolve(out) }
+    })
+    setTimeout(() => { if (off) off(); resolve(out) }, 3500)
+  }))
+  console.log('  motion 事件:', JSON.stringify(motionEvents.slice(0, 3)))
+  check('motion 事件可订阅(动画数据驱动)', (motionEvents?.length ?? 0) >= 1 && motionEvents.every(e => e.anim === 'idle' || e.anim === 'walk'), JSON.stringify(motionEvents.slice(0, 3)))
+  const anims = await page.evaluate(({ cid }) => {
+    return window.__town.scene.getDebugState().agents.filter(a => a.channelId === cid).map(a => a.anim)
+  }, { cid })
+  console.log('  debug.anim:', JSON.stringify(anims))
+  check('debug.anim 随移动输出(idle/walk)', anims.length === 3 && anims.every(a => a === 'idle' || a === 'walk'), JSON.stringify(anims))
+  await page.screenshot({ path: `${OUT}/12-data-driven.png` })
+
   await browser.close()
   return { pass, fail }
+}
+
+/** 世界坐标 → 屏幕坐标(与 TownScene3D 相机投影同构:dolly=1, fov=50, 高 620, 距 940) */
+function worldToClient(cam, { w, h }, wx, wz) {
+  const tx = cam.x
+  const tz = cam.z
+  const px = tx
+  const py = 620
+  const pz = tz + 940 * 0.76
+  // forward = normalize(target - pos)
+  let fx = tx - px
+  let fy = 20 - py
+  let fz = tz - pz
+  const fl = Math.hypot(fx, fy, fz) || 1
+  fx /= fl; fy /= fl; fz /= fl
+  // right = normalize(cross(forward, up=(0,1,0))) = (-fz, 0, fx)
+  const rl = Math.hypot(fz, fx) || 1
+  const rx = -fz / rl
+  const rz = fx / rl
+  // up = cross(right, forward)
+  const ux = -rz * fy
+  const uy = rz * fx - rx * fz
+  const uz = rx * fy
+  const vx = wx - px
+  const vy = 0 - py
+  const vz = wz - pz
+  const xc = vx * rx + vz * rz
+  const yc = vx * ux + vy * uy + vz * uz
+  const zc = vx * fx + vy * fy + vz * fz
+  const fov = (50 * Math.PI) / 180
+  const aspect = w / h
+  const zSafe = Math.max(1, zc)
+  const ndcx = xc / (zSafe * Math.tan(fov / 2) * aspect)
+  const ndcy = yc / (zSafe * Math.tan(fov / 2))
+  return { x: Math.round((ndcx * 0.5 + 0.5) * w), y: Math.round((-ndcy * 0.5 + 0.5) * h) }
+}
+
+/** 场景指针拖拽:canvas pointerdown → window pointermove → window pointerup */
+async function canvasDrag(page, from, to) {
+  await page.evaluate(({ from, to }) => {
+    const c = document.querySelector('.town-host canvas')
+    if (!c) throw new Error('canvas 缺失')
+    c.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: from.x, clientY: from.y }))
+    window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: to.x, clientY: to.y }))
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: to.x, clientY: to.y }))
+  }, { from, to })
 }
 
 /** 真实 HTML5 DnD 模拟:源卡 dragstart → 目标 dragover/drop(带 dataTransfer) */

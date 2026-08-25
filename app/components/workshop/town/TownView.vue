@@ -16,7 +16,7 @@ import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 import { useSceneLayouts } from '@/app/composables/workshop/useSceneLayouts'
 import { useHttp } from '@/app/composables/useHttp'
 import type { TownScene, TownEntityInput } from './TownScene'
-import type { TownScene3D, ChannelLayout } from './TownScene3D'
+import type { TownScene3D, ChannelLayout, AgentRangeLayout } from './TownScene3D'
 
 /**
  * 两种渲染器(Phaser 2D / Three.js 3D)共享的最小公开接口。
@@ -80,6 +80,7 @@ function toggleMode(): void {
     closeScale()
     onSelectChannel(null)
   }
+  agentDrawingRange.value = false
 }
 function toggleSnap(): void {
   snap.value = !snap.value
@@ -92,6 +93,15 @@ function updateAgentHome(agentId: string, x: number, z: number): Promise<unknown
     method: 'PATCH',
     url: `/workshop/channels/${props.channelId}/agents/${agentId}/position`,
     data: { x, z },
+  }).catch(() => null)
+}
+/** Admin 布局:持久化角色独立活动范围(改 config.range;null 清除回退频道边界) */
+function updateAgentRange(agentId: string, range: AgentRangeLayout | null): Promise<unknown> {
+  if (!props.channelId) return Promise.resolve()
+  return http.request({
+    method: 'PATCH',
+    url: `/workshop/channels/${props.channelId}/agents/${agentId}/range`,
+    data: { range },
   }).catch(() => null)
 }
 /** 保存布局:强制全部设备 transform 落库 */
@@ -221,9 +231,62 @@ const deviceModels = computed(() => characterAssets.models.filter(m => m.kind ==
 
 /** 选中对象名称草稿(设备可改名;角色只读显示) */
 const objNameDraft = ref('')
+/** 选中角色活动范围草稿(面板滑杆/形状实时 → setAgentRangeScene;提交 → 落库) */
+const agentRangeDraft = ref<{ radiusX: number, radiusZ: number, shape: 'ellipse' | 'rect' } | null>(null)
+/** 框选绘制中标记(面板按钮态;绘制完成/切换选中/退出编辑自动复位) */
+const agentDrawingRange = ref(false)
 watch(() => selected.value, (sel) => {
   objNameDraft.value = sel?.kind === 'device' ? (scene3dRef.value?.getDeviceName?.(sel.id) ?? '') : ''
+  agentRangeDraft.value = null
+  if (sel?.kind === 'agent') {
+    const r = scene3dRef.value?.getAgentRange?.(sel.id)
+    agentRangeDraft.value = r ? { radiusX: r.radiusX, radiusZ: r.radiusZ, shape: r.shape } : null
+    // 绘制态以场景为准(startRangeDraw 会同步 setSelected,避免被本 watch 复位)
+    agentDrawingRange.value = scene3dRef.value?.isRangeDrawing(sel.id) ?? false
+  }
+  else {
+    agentDrawingRange.value = false
+  }
 })
+/** 活动范围状态文本(对象面板展示) */
+const agentRangeStatusText = computed(() => {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'agent') return ''
+  const r = scene3dRef.value?.getAgentRange?.(sel.id)
+  if (!r) return '未设置 · 沿用频道领地'
+  return `${r.shape === 'rect' ? '矩形' : '椭圆'} ${Math.round(r.radiusX)} × ${Math.round(r.radiusZ)}`
+})
+/** 框选绘制按钮:进入/退出绘制模式(编辑模式 + 选中角色) */
+function onToggleRangeDraw(): void {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'agent') return
+  if (agentDrawingRange.value) {
+    scene3dRef.value?.cancelRangeDraw()
+    agentDrawingRange.value = false
+    return
+  }
+  scene3dRef.value?.startRangeDraw(sel.id)
+  agentDrawingRange.value = true
+}
+/** 面板滑杆/形状:实时应用到场景(草稿态) */
+function applyAgentRangeDraft(): void {
+  if (!selected.value || selected.value.kind !== 'agent' || !agentRangeDraft.value) return
+  scene3dRef.value?.setAgentRangeScene(selected.value.id, agentRangeDraft.value)
+  saveState.value = { state: 'dirty', at: Date.now() }
+}
+/** 面板提交:范围落库;home 若被迫位移一并落库 */
+function onAgentRangeCommit(): void {
+  if (!selected.value || selected.value.kind !== 'agent') return
+  scene3dRef.value?.commitAgentRange(selected.value.id)
+}
+/** 清除角色活动范围(回退频道边界;落库 null) */
+function onClearAgentRange(): void {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'agent') return
+  scene3dRef.value?.clearAgentRange(sel.id)
+  agentRangeDraft.value = null
+  agentDrawingRange.value = false
+}
 /** 设备改名提交(重建名牌 + PATCH 落库,广播后其他客户端同步) */
 function onObjNameCommit(): void {
   if (!selected.value || selected.value.kind !== 'device') return
@@ -307,8 +370,11 @@ function openChannelTab(tab: 'boundary' | 'members'): void {
 }
 
 // ---------- 频道坞数据 ----------
+/** 场景放置/移除版本戳(blockCount 事件时自增;驱动 dockChannels 对 hasChannel 的响应式重算) */
+const dockRev = ref(0)
 /** 频道坞列表(所有挂载频道;已放置/未放置标记) */
 const dockChannels = computed(() => {
+  void dockRev.value
   const cids = allMountedChannelIds()
   return cids.map((cid) => {
     const ch = entities.channels[cid]
@@ -372,6 +438,8 @@ function buildTownInput(): TownEntityInput[] {
         // 管理员布局落点(来自 config.homeX/homeZ;缺省 = 领地环形排布)
         homeX: (a.config as { homeX?: number } | undefined)?.homeX ?? null,
         homeZ: (a.config as { homeZ?: number } | undefined)?.homeZ ?? null,
+        // 管理员布局活动范围(来自 config.range;缺省 = 沿用频道边界)
+        range: (a.config as { range?: AgentRangeLayout | null } | undefined)?.range ?? null,
       }
     })
     out.push({ channelId: cid, channelName: ch.name, agents })
@@ -427,10 +495,13 @@ async function boot3D(): Promise<void> {
       return deviceTwins.control(id, command, args)
     },
   }
-  // 注入管理员布局:持久化角色落点
+  // 注入管理员布局:持久化角色落点 + 独立活动范围
   scene.agentApi = {
     async updateHome(agentId, x, z) {
       return updateAgentHome(agentId, x, z)
+    },
+    async updateRange(agentId, range) {
+      return updateAgentRange(agentId, range)
     },
   }
   // 注入频道布局持久化:频道整体拖拽 / 边界手柄调整后经 useSceneLayouts 落库
@@ -461,6 +532,14 @@ async function boot3D(): Promise<void> {
     if (!e) return
     if (selectedChannel.value === e.channelId) boundaryDraft.value = e.layout
   })
+  // Agent 活动范围被框选绘制/整框移动/手柄调整/清除 → 对象面板草稿即时跟随
+  scene.on('agentRangeChanged', (e) => {
+    if (!e) return
+    if (selected.value?.kind === 'agent' && selected.value.id === e.agentId) {
+      const r = scene3dRef.value?.getAgentRange?.(e.agentId)
+      agentRangeDraft.value = r ? { radiusX: r.radiusX, radiusZ: r.radiusZ, shape: r.shape } : null
+    }
+  })
 
   // 3D 立即可交互(canvas 同步挂载)
   ready.value = true
@@ -468,9 +547,10 @@ async function boot3D(): Promise<void> {
   // 轮询设备遥测 → 驱动 3D 设备节点状态/颜色
   bindDevicePoll(scene)
 
-  // 布局异步加载:到达后 apply + rebuild(仅放置的频道呈现;失败保持空场地)
+  // 布局异步加载:到达后按数据库元数据统一实例化并初始化场景内全部实例
+  // (频道布局 + 实体基线 + 设备孪生 → hydrate;仅放置的频道呈现;失败保持空场地)
   void sceneLayouts.load().then(() => {
-    syncSceneLayouts(scene)
+    scene.hydrate(buildTownInput(), Object.values(sceneLayouts.layouts), deviceTwins.twins)
     syncChannelDock()
   }).catch(() => {})
 }
@@ -533,6 +613,7 @@ function wireCommon(scene: CommonTownScene): void {
   })
   s.on('blockCount', (v: number) => {
     blockCount.value = v
+    dockRev.value++
   })
   s.on('lastActivity', (v) => {
     activity.value = v
@@ -1122,6 +1203,84 @@ onBeforeUnmount(() => {
             {{ Math.round(selected.scale * 100) }}%
           </div>
 
+          <!-- 活动范围(选中角色:框选绘制 / 形状 / 半径 / 清除;逐 Agent 独立定制) -->
+          <template v-if="selected.kind === 'agent'">
+            <div class="obj-sep" />
+            <div class="obj-row">
+              <span class="obj-label">活动范围</span>
+              <span class="range-status">{{ agentRangeStatusText }}</span>
+              <button
+                class="obj-mini"
+                :class="{ on: agentDrawingRange }"
+                :title="agentDrawingRange ? '在场景中拖动框选;再次点击取消' : '在场景中拉动框选,确定该角色的移动范围'"
+                @click="onToggleRangeDraw"
+              >
+                {{ agentDrawingRange ? '绘制中' : '框选绘制' }}
+              </button>
+            </div>
+            <template v-if="agentRangeDraft">
+              <div class="obj-row">
+                <span class="obj-label">形状</span>
+                <div class="bp-seg">
+                  <button
+                    class="seg-btn"
+                    :class="{ on: agentRangeDraft.shape === 'ellipse' }"
+                    @click="agentRangeDraft.shape = 'ellipse'; applyAgentRangeDraft()"
+                  >
+                    椭圆
+                  </button>
+                  <button
+                    class="seg-btn"
+                    :class="{ on: agentRangeDraft.shape === 'rect' }"
+                    @click="agentRangeDraft.shape = 'rect'; applyAgentRangeDraft()"
+                  >
+                    矩形
+                  </button>
+                </div>
+              </div>
+              <div class="obj-row">
+                <span class="obj-label">横轴</span>
+                <input
+                  v-model.number="agentRangeDraft.radiusX"
+                  class="obj-range"
+                  type="range"
+                  min="40"
+                  max="600"
+                  step="8"
+                  @input="applyAgentRangeDraft"
+                  @change="onAgentRangeCommit"
+                >
+                <span class="bp-val">{{ Math.round(agentRangeDraft.radiusX) }}</span>
+              </div>
+              <div class="obj-row">
+                <span class="obj-label">纵轴</span>
+                <input
+                  v-model.number="agentRangeDraft.radiusZ"
+                  class="obj-range"
+                  type="range"
+                  min="40"
+                  max="480"
+                  step="8"
+                  @input="applyAgentRangeDraft"
+                  @change="onAgentRangeCommit"
+                >
+                <span class="bp-val">{{ Math.round(agentRangeDraft.radiusZ) }}</span>
+              </div>
+              <button
+                class="obj-mini danger"
+                @click="onClearAgentRange"
+              >
+                清除范围(回退频道)
+              </button>
+            </template>
+            <div
+              v-else
+              class="obj-hint"
+            >
+              未设置:角色沿用频道领地活动;点「框选绘制」后在场景中拖动定制
+            </div>
+          </template>
+
           <!-- 删除(仅设备实例;角色为频道成员,由频道管理面板管理) -->
           <button
             v-if="selected.kind === 'device'"
@@ -1159,6 +1318,14 @@ onBeforeUnmount(() => {
           >
             保存布局
           </button>
+          <span
+            v-if="mode === 'edit'"
+            class="mode-hint"
+          >
+            <span class="mh-key">拖拽</span> 移动 ·
+            <span class="mh-key">拉框</span> Agent范围 ·
+            <span class="mh-key">手柄</span> 缩放/清除
+          </span>
           <span
             v-if="saveState && saveState.state !== 'idle'"
             class="save-chip"
@@ -1377,6 +1544,18 @@ onBeforeUnmount(() => {
   border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 35%, transparent);
   border-radius: var(--radius-chip); cursor: pointer;
 }
+/* 活动范围区块(选中角色) */
+.obj-sep { height: 1px; background: var(--line); margin: 2px 0; }
+.range-status { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; color: var(--ink-faint); }
+.obj-mini {
+  flex: none; padding: 3px 8px; font-size: 10px; font-weight: 600;
+  color: var(--ink-soft); background: var(--paper-deep);
+  border: 1px solid var(--line); border-radius: var(--radius-chip); cursor: pointer;
+}
+.obj-mini.on { color: var(--on-av); background: var(--accent); border-color: var(--accent); }
+.obj-mini.danger { color: var(--tone-danger-dot); margin-top: 2px; }
+.obj-range { flex: 1; accent-color: var(--accent); }
+.obj-hint { font-size: 9px; line-height: 1.5; color: var(--ink-faint); }
 
 /* 编辑/浏览模式工具栏(顶栏下方右侧) */
 .mode-bar {
@@ -1486,6 +1665,25 @@ onBeforeUnmount(() => {
 }
 .bp-tab.on { color: var(--on-av); background: var(--accent); border-color: var(--accent); }
 .bp-hint { font-size: 10px; color: var(--ink-faint); }
+
+/* 美工:面板辉光 + 细腻 hover(玻璃拟态增强) */
+.boundary-panel, .object-panel {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--glass-bg) 88%, #fff 4%), var(--glass-bg));
+  box-shadow: var(--glass-highlight), var(--shadow-float), 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.boundary-panel::before, .object-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 20%, transparent));
+  opacity: 0.9;
+}
+.bp-range, .obj-range, .scale-range { transition: filter var(--transition-fast); }
+.bp-range:hover, .obj-range:hover, .scale-range:hover { filter: brightness(1.12); }
+.seg-btn, .bp-btn, .obj-mini, .member-select, .obj-select, .obj-input { transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast); }
+.dock-card.placed { border-left: 3px solid var(--tone-success-dot); }
 .member-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: hidden auto; }
 .member-row {
   display: flex; gap: 8px; align-items: center; padding: 4px 6px;
@@ -1520,6 +1718,24 @@ onBeforeUnmount(() => {
 .mode-btn:hover { border-color: var(--accent); color: var(--ink); }
 .mode-btn.active { color: var(--on-av); background: var(--accent); border-color: var(--accent); }
 .mode-btn.save { color: var(--tone-success-dot); }
+.mode-hint {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+  background: linear-gradient(135deg, rgba(159, 232, 212, 0.12), rgba(139, 183, 255, 0.1));
+  border: 1px solid color-mix(in srgb, var(--tone-info-dot) 28%, transparent);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.mh-key {
+  font-weight: 700;
+  color: var(--tone-info-dot);
+}
 .save-chip {
   padding: 3px 8px;
   font-family: var(--font-mono);
