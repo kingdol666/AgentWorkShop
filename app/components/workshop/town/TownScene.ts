@@ -12,7 +12,7 @@
  *
  * 数据源:初始实体来自 Vue 传入 entities 快照;实时增量来自 handleTownEvent(AEP)。
  */
-import Phaser from 'phaser'
+import * as Phaser from 'phaser'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { mapEnvelopeToIntent, type TownBubbleKind } from '#shared/town-protocol'
 import { parseActionFromEnvelope, stepToward, type ActionKind, type ActionContext } from '#shared/town-behavior'

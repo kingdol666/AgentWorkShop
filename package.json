@@ -52,7 +52,7 @@
     "js-yaml": "^4.1.0",
     "nuxt": "^4.0.0",
     "nuxt-auth-utils": "^0.5.0",
-    "phaser": "^4.2.1",
+    "phaser": "^4.0.0",
     "pinia": "^3.0.0",
     "pinia-plugin-persistedstate": "^4.2.0",
     "sqlite-vec": "^0.1.9",

@@ -18,6 +18,17 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { mapEnvelopeToIntent, type TownBubbleKind } from '#shared/town-protocol'
 import { parseActionFromEnvelope, stepToward, type ActionKind, type ActionContext } from '#shared/town-behavior'
+// 纯几何/色彩/尺度决策层(与测试共用,零渲染依赖)
+import {
+  AGENT_SPEED, ARRIVE, BUBBLE_Y, GROUND_Y, SNAP_SIZE, UNITS, WAIT_MS,
+  WORLD_CX, WORLD_CZ, WORLD_H, WORLD_W,
+  boundaryPoints, bubbleDisplayMs, channelColorNum,
+  clampRangeToLayout, clampToAgentRange, clampToBoundary, distToRangeBoundary,
+  normLayout, pointInBoundary,
+  type AgentRangeLayout, type ChannelLayout,
+} from '#shared/town-scene-math'
+
+export type { AgentRangeLayout, ChannelLayout } from '#shared/town-scene-math'
 
 /** 场景 → Vue HUD 事件(TownEventMap 与 2D 同构) */
 export type TownEventMap = {
@@ -97,27 +108,10 @@ export interface TownEntityInput {
   }>
 }
 
-/** 频道布局(3D 小镇放置):与共享 AepSceneLayout/useSceneLayouts 同构 */
-export interface ChannelLayout {
-  channelId: string
-  x: number
-  z: number
-  radiusX: number
-  radiusZ: number
-  shape: 'ellipse' | 'rect'
-  rotationY: number
-}
+/** 频道布局(3D 小镇放置):与共享 AepSceneLayout/useSceneLayouts 同构 —— 定义见 #shared/town-scene-math */
 
 /** Agent 独立活动范围(编辑模式框选绘制/手柄调整;经 config.range 持久化)。
- *  缺省(null)= 未设置,该 Agent 沿用频道边界活动。 */
-export interface AgentRangeLayout {
-  x: number
-  z: number
-  radiusX: number
-  radiusZ: number
-  shape: 'ellipse' | 'rect'
-  rotationY: number
-}
+ *  缺省(null)= 未设置,该 Agent 沿用频道边界活动。 —— 定义见 #shared/town-scene-math */
 
 /** 频道领地 3D 实例(面向对象:持有布局/网格/成员,封装移动/边界/成员钳制等行为)。
  *  数据来自 scene-layouts 持久化,由场景按数据库元数据实例化,并注入宿主控制器。 */
@@ -167,13 +161,9 @@ class Block3D {
     return normLayout(this.layout())
   }
 
-  /** 边界手柄本地坐标(矩形四角 / 椭圆轴向四点,按当前形状) */
+  /** 边界手柄本地坐标(矩形四角 / 椭圆轴向四点;radius 是半轴或半宽)。 */
   handlePoints(): Array<[number, number]> {
-    if (this.shape === 'rect') {
-      const hx = this.radiusX / 2
-      const hz = this.radiusZ / 2
-      return [[hx, hz], [-hx, hz], [-hx, -hz], [hx, -hz]]
-    }
+    if (this.shape === 'rect') return [[this.radiusX, this.radiusZ], [-this.radiusX, this.radiusZ], [-this.radiusX, -this.radiusZ], [this.radiusX, -this.radiusZ]]
     return [[this.radiusX, 0], [-this.radiusX, 0], [0, this.radiusZ], [0, -this.radiusZ]]
   }
 
@@ -239,175 +229,28 @@ class Block3D {
   }
 }
 
-/** 边界几何体:椭圆/矩形线框,弯折朝向 rotationY(度) */
+/** 边界几何体:椭圆/矩形线框,弯折朝向 rotationY(度)。
+ *  轮廓点来自 #shared/town-scene-math.boundaryPoints(纯几何,场景只做渲染)。 */
 function makeBoundary(shape: 'ellipse' | 'rect', rx: number, rz: number, color: number): THREE.LineLoop {
-  const pts: THREE.Vector3[] = []
-  const seg = 48
-  if (shape === 'rect') {
-    const hx = rx / 2
-    const hz = rz / 2
-    pts.push(new THREE.Vector3(-hx, 0, -hz), new THREE.Vector3(hx, 0, -hz), new THREE.Vector3(hx, 0, hz), new THREE.Vector3(-hx, 0, hz))
-  }
-  else {
-    for (let i = 0; i < seg; i++) {
-      const t = (i / seg) * Math.PI * 2
-      pts.push(new THREE.Vector3(Math.cos(t) * rx, 0, Math.sin(t) * rz))
-    }
-  }
+  const pts = boundaryPoints(shape, rx, rz, 48).map(([x, z]) => new THREE.Vector3(x, 0, z))
   const geo = new THREE.BufferGeometry().setFromPoints(pts)
   const line = new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.75, depthTest: false }))
   return line
 }
 
-/** 归一化边界(radius 钳制下限;rect 用半宽) */
-function normLayout(l: ChannelLayout): ChannelLayout {
-  return {
-    channelId: l.channelId,
-    x: l.x,
-    z: l.z,
-    radiusX: Math.max(60, l.radiusX),
-    radiusZ: Math.max(40, l.radiusZ),
-    shape: l.shape === 'rect' ? 'rect' : 'ellipse',
-    rotationY: l.rotationY || 0,
-  }
-}
+/** 归一化边界(radius 钳制下限;rect 用半宽) —— 定义见 #shared/town-scene-math */
 
-/** 把点钳制到频道边界内(带内缩 margin;旋转边界用逆变换求局部坐标) */
-function clampToBoundary(layout: ChannelLayout, x: number, z: number, margin = 0): { x: number, z: number } {
-  const l = normLayout(layout)
-  // 旋转回局部坐标
-  const rad = -l.rotationY * Math.PI / 180
-  const cos = Math.cos(rad)
-  const sin = Math.sin(rad)
-  const dx = x - l.x
-  const dz = z - l.z
-  const lx = dx * cos - dz * sin
-  const lz = dx * sin + dz * cos
-  const rx = Math.max(8, l.radiusX - margin)
-  const rz = Math.max(8, l.radiusZ - margin)
-  let cx = lx
-  let cz = lz
-  if (l.shape === 'rect') {
-    cx = Math.max(-rx, Math.min(rx, lx))
-    cz = Math.max(-rz, Math.min(rz, lz))
-  }
-  else {
-    // 椭圆:点缩放到单位圆内
-    const nx = lx / rx
-    const nz = lz / rz
-    const d = Math.hypot(nx, nz)
-    if (d > 1) {
-      cx = nx / d * rx
-      cz = nz / d * rz
-    }
-  }
-  // 旋回世界坐标
-  const wrad = l.rotationY * Math.PI / 180
-  const wcos = Math.cos(wrad)
-  const wsin = Math.sin(wrad)
-  return { x: l.x + cx * wcos - cz * wsin, z: l.z + cx * wsin + cz * wcos }
-}
+/** 把点钳制到频道边界内 —— 定义见 #shared/town-scene-math */
 
-/** 点到边界内判定(与 clampToBoundary 同旋转约定;纯函数,供工具与场景共用) */
-function pointInBoundary(layout: ChannelLayout, x: number, z: number): boolean {
-  const l = normLayout(layout)
-  const rad = -l.rotationY * Math.PI / 180
-  const cos = Math.cos(rad)
-  const sin = Math.sin(rad)
-  const dx = x - l.x
-  const dz = z - l.z
-  const lx = dx * cos - dz * sin
-  const lz = dx * sin + dz * cos
-  if (l.shape === 'rect') return Math.abs(lx) <= l.radiusX / 2 && Math.abs(lz) <= l.radiusZ / 2
-  const nx = lx / l.radiusX
-  const nz = lz / l.radiusZ
-  return nx * nx + nz * nz <= 1
-}
+/** 点到边界内判定 —— 定义见 #shared/town-scene-math */
 
-/** 边界/范围的极值点(矩形四角 / 椭圆轴向四点;世界坐标,含 rotationY) */
-function boundaryExtremePoints(layout: { x: number, z: number, radiusX: number, radiusZ: number, shape: 'ellipse' | 'rect', rotationY: number }, margin = 0): Array<[number, number]> {
-  const rx = Math.max(0, layout.radiusX - margin)
-  const rz = Math.max(0, layout.radiusZ - margin)
-  const local: Array<[number, number]> = layout.shape === 'rect'
-    ? [[rx, rz], [-rx, rz], [-rx, -rz], [rx, -rz]]
-    : [[rx, 0], [-rx, 0], [0, rz], [0, -rz]]
-  const rot = layout.rotationY * Math.PI / 180
-  const cos = Math.cos(rot)
-  const sin = Math.sin(rot)
-  return local.map(([lx, lz]) => [layout.x + lx * cos - lz * sin, layout.z + lx * sin + lz * cos])
-}
+/** 边界/范围的极值点(矩形四角 / 椭圆轴向四点;世界坐标,含 rotationY) —— 定义见 #shared/town-scene-math */
 
-/** 把 Agent 活动范围整体收进频道边界:中心钳入 + 半径收缩使极值点全部在边界内 */
-function clampRangeToLayout(layout: ChannelLayout, range: AgentRangeLayout): AgentRangeLayout {
-  const l = normLayout(layout)
-  const center = clampToBoundary(l, range.x, range.z, 20)
-  let rx = Math.max(30, range.radiusX)
-  let rz = Math.max(30, range.radiusZ)
-  const margin = 12
-  for (let i = 0; i < 24; i++) {
-    const outside = boundaryExtremePoints({ x: center.x, z: center.z, radiusX: rx, radiusZ: rz, shape: range.shape, rotationY: range.rotationY }, margin)
-      .some(([wx, wz]) => !pointInBoundary(l, wx, wz))
-    if (!outside) break
-    rx = Math.max(30, rx * 0.9)
-    rz = Math.max(30, rz * 0.9)
-  }
-  return { x: center.x, z: center.z, radiusX: rx, radiusZ: rz, shape: range.shape, rotationY: range.rotationY }
-}
+/** 把 Agent 活动范围整体收进频道边界 —— 定义见 #shared/town-scene-math */
 
-/** 把点钳制到 Agent 自己活动范围内(带内缩 margin;旋转边界用逆变换求局部坐标) */
-function clampToAgentRange(range: AgentRangeLayout, x: number, z: number, margin = 0): { x: number, z: number } {
-  const rad = -range.rotationY * Math.PI / 180
-  const cos = Math.cos(rad)
-  const sin = Math.sin(rad)
-  const dx = x - range.x
-  const dz = z - range.z
-  const lx = dx * cos - dz * sin
-  const lz = dx * sin + dz * cos
-  const rx = Math.max(8, range.radiusX - margin)
-  const rz = Math.max(8, range.radiusZ - margin)
-  let cx = lx
-  let cz = lz
-  if (range.shape === 'rect') {
-    cx = Math.max(-rx, Math.min(rx, lx))
-    cz = Math.max(-rz, Math.min(rz, lz))
-  }
-  else {
-    const nx = lx / rx
-    const nz = lz / rz
-    const d = Math.hypot(nx, nz)
-    if (d > 1) {
-      cx = (nx / d) * rx
-      cz = (nz / d) * rz
-    }
-  }
-  const wrad = range.rotationY * Math.PI / 180
-  const wcos = Math.cos(wrad)
-  const wsin = Math.sin(wrad)
-  return { x: range.x + cx * wcos - cz * wsin, z: range.z + cx * wsin + cz * wcos }
-}
+/** 把点钳制到 Agent 自己活动范围内 —— 定义见 #shared/town-scene-math */
 
-/** 世界点到活动范围边界线的最近距离(矩形 4 边带 / 椭圆等距采样;供「拖边界整框平移」命中) */
-function distToRangeBoundary(range: AgentRangeLayout, x: number, z: number): number {
-  const rad = -range.rotationY * Math.PI / 180
-  const cos = Math.cos(rad)
-  const sin = Math.sin(rad)
-  const dx = x - range.x
-  const dz = z - range.z
-  const lx = dx * cos - dz * sin
-  const lz = dx * sin + dz * cos
-  const rx = Math.max(8, range.radiusX)
-  const rz = Math.max(8, range.radiusZ)
-  if (range.shape === 'rect') {
-    return Math.min(Math.abs(lz - rz), Math.abs(lz + rz), Math.abs(lx - rx), Math.abs(lx + rx))
-  }
-  let best = Infinity
-  const seg = 40
-  for (let i = 0; i < seg; i++) {
-    const t = (i / seg) * Math.PI * 2
-    best = Math.min(best, Math.hypot(lx - Math.cos(t) * rx, lz - Math.sin(t) * rz))
-  }
-  return best
-}
+/** 世界点到活动范围边界线的最近距离 —— 定义见 #shared/town-scene-math */
 
 /** 角色 3D 实例(面向对象:持有模型/状态/行为,封装漫游 FSM、移动钳制、动画、活动范围)。
  *  由场景按 entities/数据库元数据(home/range/modelRef)实例化并注入宿主;动画状态驱动 motion 事件。 */
@@ -776,49 +619,10 @@ interface ChannelMessageReceiver {
   currentUntil: number
 }
 
-// ---- 世界尺度(与 2D 对齐:3200×2400,3D 用 x/z 平面,y 向上) ----
-const WORLD_W = 3200
-const WORLD_H = 2400
-const WORLD_CX = WORLD_W / 2
-const WORLD_CZ = WORLD_H / 2
-/** 地面 y=0,Agent 站立于其上 */
-const GROUND_Y = 0
-/** GLB 归一化到该高度(世界单位,角色要清晰可读) */
-const UNITS = 120
-const AGENT_SPEED = 96
-const WAIT_MS = 2600
-const ARRIVE = 48
-/** 编辑拖拽网格吸附粒度(世界单位) */
-const SNAP_SIZE = 16
-/** 聊天气泡悬挂高度(世界单位;角色头顶名牌上方,随模型缩放微调) */
-const BUBBLE_Y = 86
+/** 世界尺度/速度/身份色等纯常量与函数集中定义于 #shared/town-scene-math(与 2D/测试共用) */
 
 /** 角色模型来源登记(registerModelsFromList) */
 interface ModelInfo { id: string, file: string, name: string, kind?: string }
-
-/** FIFO 下每条气泡的展示时长:短句快速切换、长句稍长,营造对话节奏(1.4s~3.4s) */
-function bubbleDisplayMs(text: string): number {
-  return Math.min(3400, Math.max(1400, 1200 + text.length * 26))
-}
-
-function hashHue(id: string): number {
-  if (!id) return 200
-  let h = 0
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 360
-  return h
-}
-function channelColorNum(channelId: string): number {
-  const c = hslToRgb(hashHue(channelId) / 360, 0.58, 0.6)
-  return (c.r << 16) | (c.g << 8) | c.b
-}
-function hslToRgb(h: number, s: number, l: number): { r: number, g: number, b: number } {
-  const f = (n: number) => {
-    const k = (n + h * 12) % 12
-    const a = s * Math.min(l, 1 - l)
-    return Math.round((l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255)
-  }
-  return { r: f(0), g: f(8), b: f(4) }
-}
 
 export class TownScene3D {
   private renderer!: THREE.WebGLRenderer
@@ -831,6 +635,12 @@ export class TownScene3D {
   private agents = new Map<string, Agent3D>()
   /** 数字孪生设备节点(twinId → node) */
   private deviceNodes = new Map<string, DeviceNode>()
+  /** 服务端已有但模型资产尚未注册的设备孪生，资产到达后补建节点。 */
+  private pendingDeviceTwins = new Map<string, DeviceTwinSync>()
+  /** 尚未取得服务端 ID 的本地设备节点(临时 ID → 创建请求初始状态)。 */
+  private pendingDeviceCreates = new Map<string, { name: string, modelRef: string, posX: number, posZ: number }>()
+  /** 用户在创建设备完成前删除的临时节点，创建完成后补偿删除服务端记录。 */
+  private cancelledDeviceCreates = new Set<string>()
   /** 场景内可缩放目标(Agent 或设备) */
   private scalables = new Map<string, ScaledTarget>()
   /** 当前选中(kind:id) */
@@ -945,6 +755,20 @@ export class TownScene3D {
       const cid = this.pickChannel(w.x, w.z)
       this.setSelected(null)
       if (cid && this.mode === 'edit') this.selectChannel(cid)
+    })
+    // 双击 Agent/设备:缓动聚焦(指挥官镜头;不打断选择语义)
+    this.renderer.domElement.addEventListener('dblclick', (e: MouseEvent) => {
+      if (this.pointerDrag) return
+      const w = this.screenToWorld(e.clientX, e.clientY)
+      const hit = this.pickAt(w.x, w.z)
+      if (hit?.kind === 'agent') {
+        const a = this.agents.get(hit.id)
+        if (a) this.focusTo(a.root.position.x, a.root.position.z)
+      }
+      else if (hit?.kind === 'device') {
+        const d = this.deviceNodes.get(hit.id)
+        if (d) this.focusTo(d.root.position.x, d.root.position.z)
+      }
     })
 
     this.scene = new THREE.Scene()
@@ -1285,9 +1109,32 @@ export class TownScene3D {
     })
   }
 
-  /** 注册模型清单(供 mountModel 查 file) */
+  /** 注册模型清单，并将晚到资产挂载到已存在的 Agent/设备。 */
   registerModelsFromList(list: Array<{ id: string, file: string, name: string, kind?: string }>): void {
-    for (const m of list) if (!this.modelsById.has(m.id)) this.modelsById.set(m.id, m)
+    if (this.disposed) return
+    const changed = new Set<string>()
+    for (const model of list) {
+      const previous = this.modelsById.get(model.id)
+      if (!previous || previous.file !== model.file || previous.name !== model.name || previous.kind !== model.kind) {
+        this.modelsById.set(model.id, model)
+        changed.add(model.id)
+      }
+    }
+    if (changed.size > 0) {
+      for (const agent of this.agents.values()) {
+        if (!agent.modelRef || !changed.has(agent.modelRef)) continue
+        const model = this.modelsById.get(agent.modelRef)
+        if (model) void this.mountModel(agent, model.file, model.name)
+      }
+      for (const device of this.deviceNodes.values()) {
+        if (changed.has(device.modelRef)) this.swapDeviceModelSprite(device, device.modelRef)
+      }
+    }
+    for (const twin of [...this.pendingDeviceTwins.values()]) {
+      if (!this.modelsById.get(twin.modelRef)?.file) continue
+      this.pendingDeviceTwins.delete(twin.id)
+      this.recreateDeviceNode(twin)
+    }
   }
 
   // ================================================================
@@ -1355,17 +1202,19 @@ export class TownScene3D {
     this.dirty = true
   }
 
-  /** 设备换模型:按 modelRef 重挂 GLB 到 holder(由 DeviceNode.applyTwin 委托) */
+  /** 设备换模型:按 modelRef 重挂 GLB 到 holder(由 DeviceNode.applyTwin 委托)。 */
   swapDeviceModelSprite(dev: DeviceNode, modelRef: string): void {
     const info = this.modelsById.get(modelRef)
-    if (!info || !info.file || modelRef === dev.modelRef) return
+    if (!info?.file) return
+    if (dev.modelRef === modelRef && dev.holder.userData.modelFile === info.file) return
     dev.modelRef = modelRef
     dev.holder.clear()
+    dev.holder.userData.modelFile = info.file
     void this.loadGltfToGroup(info.file, dev.holder, UNITS * 1.6)
     this.dirty = true
   }
 
-  /** 统一实例化入口:按数据库元数据(布局/实体/设备孪生)实例化并初始化场景内全部实例 */
+  /** 统一实例化入口:按数据库元数据(布局/实体/设备孪生)实例化并初始化场景内全部实例。 */
   hydrate(channels: TownEntityInput[], layouts: ChannelLayout[], devices: DeviceTwinSync[]): void {
     this.applySceneLayouts(layouts)
     this.rebuild(channels)
@@ -1512,13 +1361,9 @@ export class TownScene3D {
     this.dirty = true
   }
 
-  /** 边界手柄本地坐标(椭圆:轴向四点;矩形:四角),按当前形状生成 */
+  /** 边界手柄本地坐标(椭圆:轴向四点;矩形:四角;radius 是半轴或半宽)。 */
   private boundaryHandlePoints(layout: { radiusX: number, radiusZ: number, shape: 'ellipse' | 'rect' }): Array<[number, number]> {
-    if (layout.shape === 'rect') {
-      const hx = layout.radiusX / 2
-      const hz = layout.radiusZ / 2
-      return [[hx, hz], [-hx, hz], [-hx, -hz], [hx, -hz]]
-    }
+    if (layout.shape === 'rect') return [[layout.radiusX, layout.radiusZ], [-layout.radiusX, layout.radiusZ], [-layout.radiusX, -layout.radiusZ], [layout.radiusX, -layout.radiusZ]]
     return [[layout.radiusX, 0], [-layout.radiusX, 0], [0, layout.radiusZ], [0, -layout.radiusZ]]
   }
 
@@ -1550,7 +1395,7 @@ export class TownScene3D {
     return null
   }
 
-  /** 拖拽手柄 → 实时调整 radiusX/radiusZ(矩形:角点双轴;椭圆:对应轴向轴点) */
+  /** 拖拽手柄 → 实时调整 radiusX/radiusZ(矩形:角点双轴;椭圆:对应轴向轴点)。 */
   private applyResize(b: Block3D, handle: number, wx: number, wz: number): void {
     const rad = -b.rotationY * Math.PI / 180
     const cos = Math.cos(rad)
@@ -1560,9 +1405,9 @@ export class TownScene3D {
     const lx = dx * cos - dz * sin
     const lz = dx * sin + dz * cos
     if (b.shape === 'rect') {
-      // 四角:中心不动,拖拽角到中心距离 ×2 = 新半径
-      b.radiusX = Math.max(60, Math.min(1000, Math.abs(lx) * 2))
-      b.radiusZ = Math.max(40, Math.min(900, Math.abs(lz) * 2))
+      // radiusX/radiusZ 表示半宽:角点到中心的局部距离即新半宽。
+      b.radiusX = Math.max(60, Math.min(1000, Math.abs(lx)))
+      b.radiusZ = Math.max(40, Math.min(900, Math.abs(lz)))
     }
     else {
       if (handle === 0 || handle === 1) b.radiusX = Math.max(60, Math.min(1000, Math.abs(lx)))
@@ -2125,10 +1970,9 @@ export class TownScene3D {
    * - state 驱动:alarm→红环,running→青环,offline→灰环,idle→亮环。
    */
   private spawnDeviceNode(x: number, z: number, texKey: string, file: string, name: string): string {
-    const twinId = `dev-${Date.now().toString(36)}`
+    const tempId = `dev-${Date.now().toString(36)}`
     const root = new THREE.Group()
     root.position.set(x, GROUND_Y, z)
-    // 设备底座光环(状态环)
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(20, 26, 32),
       new THREE.MeshBasicMaterial({ color: 0x8fe8d4, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
@@ -2136,41 +1980,69 @@ export class TownScene3D {
     ring.rotation.x = -Math.PI / 2
     ring.position.y = 0.3
     root.add(ring)
-    // 设备模型
     const holder = new THREE.Group()
     root.add(holder)
+    holder.userData.modelFile = file
     const label = this.makeLabel(`⚙ ${name}`, x, 60, z)
     this.scene.add(root)
-    // 绑定 device twin(携带落点与缩放 → 刷新/他人客户端即可恢复与同步)
-    const twin = new DeviceNode({ twinId, name, modelRef: texKey, root, holder, ring, label, state: 'idle', telemetry: {} })
+    const twin = new DeviceNode({ twinId: tempId, name, modelRef: texKey, root, holder, ring, label, state: 'idle', telemetry: {} })
     twin.host = this
-    this.deviceNodes.set(twinId, twin)
-    // 客制化:注册设备可缩放目标(twinId 为临时 id;REST 返回真实 id 后更新 key)
-    this.registerScalable('device', twinId, holder)
-    // 加载模型(GLB)
+    this.deviceNodes.set(tempId, twin)
+    this.registerScalable('device', tempId, holder)
     void this.loadGltfToGroup(file, holder, UNITS * 1.6)
-    // 创建设备(异步;失败则仅本地节点)
-    const st = this.scalables.get(`device:${twinId}`)
-    void this.devices?.create({
+    const st = this.scalables.get(`device:${tempId}`)
+    const createPromise = this.devices?.create({
       name, modelRef: texKey, kind: 'device', controls: ['power_on', 'power_off', 'set_speed'],
       posX: Math.round(x * 10) / 10,
       posZ: Math.round(z * 10) / 10,
       scale: st ? Math.round(st.userScale * 100) / 100 : 1,
     })
-      .then((d) => {
-        if (this.disposed) return
-        twin.twinId = d.id
-        // 把可缩放目标从临时 id 迁移到真实 id(保留缩放%)
-        const saved = this.scalables.get(`device:${twinId}`)
-        this.scalables.delete(`device:${twinId}`)
-        if (saved) this.scalables.set(`device:${d.id}`, saved)
-        // 若选中临时节点,迁移选中到真实 id
-        if (this.selected?.kind === 'device' && this.selected.id === twinId) {
-          this.selected = { kind: 'device', id: d.id }
+    if (!createPromise) return tempId
+    this.pendingDeviceCreates.set(tempId, { name, modelRef: texKey, posX: x, posZ: z })
+    void createPromise
+      .then((created) => {
+        const cancelled = this.cancelledDeviceCreates.delete(tempId)
+        this.pendingDeviceCreates.delete(tempId)
+        if (cancelled) {
+          void this.devices?.remove?.(created.id).catch(() => {})
+          return
         }
+        if (this.disposed) return
+        this.adoptDeviceNode(tempId, created.id)
       })
-      .catch(() => {})
-    return twinId
+      .catch(() => {
+        this.cancelledDeviceCreates.delete(tempId)
+        this.pendingDeviceCreates.delete(tempId)
+      })
+    return tempId
+  }
+
+  /** 将本地临时设备原子迁移到服务端 ID，避免后续更新/删除命中旧键。 */
+  private adoptDeviceNode(tempId: string, realId: string): void {
+    this.pendingDeviceCreates.delete(tempId)
+    const node = this.deviceNodes.get(tempId)
+    if (!node) return
+    const duplicate = this.deviceNodes.get(realId)
+    if (duplicate && duplicate !== node) {
+      this.removeDeviceNode(tempId)
+      if (this.selected?.kind === 'device' && this.selected.id === tempId) this.setSelected({ kind: 'device', id: realId })
+      return
+    }
+    this.deviceNodes.delete(tempId)
+    node.twinId = realId
+    this.deviceNodes.set(realId, node)
+    const scalable = this.scalables.get(`device:${tempId}`)
+    this.scalables.delete(`device:${tempId}`)
+    if (scalable) {
+      scalable.id = realId
+      this.scalables.set(`device:${realId}`, scalable)
+    }
+    const timer = this.pendingSaveTimers.get(tempId)
+    this.pendingSaveTimers.delete(tempId)
+    if (timer) this.pendingSaveTimers.set(realId, timer)
+    if (this.pointerDrag?.kind === 'device' && this.pointerDrag.id === tempId) this.pointerDrag.id = realId
+    if (this.selected?.kind === 'device' && this.selected.id === tempId) this.setSelected({ kind: 'device', id: realId })
+    this.persistDeviceTransform(realId)
   }
 
   /** 将 GLB 加载进 Group(按高度归一化 scale) */
@@ -2287,10 +2159,15 @@ export class TownScene3D {
     return this.deviceNodes.get(id)?.modelRef ?? ''
   }
 
-  /** 删除设备实例:落库删除 + 移除场景节点(由 TownView 触发;失败仅移除本地节点) */
+  /** 删除设备实例:落库删除 + 移除场景节点(由 TownView 触发;失败仅移除本地节点)。 */
   async removeDevice(id: string): Promise<void> {
     const dev = this.deviceNodes.get(id)
     if (!dev) return
+    if (this.pendingDeviceCreates.has(id)) {
+      this.cancelledDeviceCreates.add(id)
+      this.removeDeviceNode(id)
+      return
+    }
     try {
       await this.devices?.remove?.(id)
     }
@@ -2983,12 +2860,13 @@ export class TownScene3D {
   /** 持久化设备 transform(位置/朝向/缩放一次写入;防抖 350ms,不逐帧写库) */
   persistDeviceTransform(id: string): void {
     const dev = this.deviceNodes.get(id)
-    if (!dev || !this.devices?.update) return
+    if (!dev || !this.devices?.update || this.pendingDeviceCreates.has(id)) return
     const st = this.scalables.get(`device:${id}`)
     const prev = this.pendingSaveTimers.get(id)
     if (prev) clearTimeout(prev)
     this.pendingSaveTimers.set(id, setTimeout(() => {
       this.pendingSaveTimers.delete(id)
+      if (this.disposed || this.pendingDeviceCreates.has(id)) return
       this.emitSaveState('saving')
       void this.devices!.update(id, {
         posX: Math.round(dev.root.position.x * 10) / 10,
@@ -3023,15 +2901,25 @@ export class TownScene3D {
   syncDevices(twins: DeviceTwinSync[]): void {
     const serverIds = new Set(twins.map(t => t.id))
     for (const id of [...this.deviceNodes.keys()]) {
-      if (!serverIds.has(id)) this.removeDeviceNode(id)
+      if (!serverIds.has(id) && !this.pendingDeviceCreates.has(id)) this.removeDeviceNode(id)
     }
     for (const t of twins) {
-      const existing = this.deviceNodes.get(t.id)
+      let existing = this.deviceNodes.get(t.id)
       if (!existing) {
-        if (typeof t.posX === 'number' && typeof t.posZ === 'number') this.recreateDeviceNode(t)
+        const pending = [...this.pendingDeviceCreates.entries()].find(([, p]) =>
+          p.name === t.name && p.modelRef === t.modelRef,
+        )
+        if (pending) {
+          this.adoptDeviceNode(pending[0], t.id)
+          existing = this.deviceNodes.get(t.id)
+        }
+      }
+      if (!existing) {
+        if (this.modelsById.get(t.modelRef)?.file && typeof t.posX === 'number' && typeof t.posZ === 'number') this.recreateDeviceNode(t)
+        else this.pendingDeviceTwins.set(t.id, t)
         continue
       }
-      // 状态/遥测/名称/模型 → 委托 DeviceNode.applyTwin(数据驱动:孪生记录 → 节点)
+      this.pendingDeviceTwins.delete(t.id)
       existing.applyTwin(t)
       if (this.pointerDrag?.id !== t.id) {
         const moved = (typeof t.posX === 'number' && t.posX !== existing.root.position.x)
@@ -3047,6 +2935,9 @@ export class TownScene3D {
         if (moved) this.dirty = true
       }
       this.dirty = true
+    }
+    for (const id of [...this.pendingDeviceTwins.keys()]) {
+      if (!serverIds.has(id)) this.pendingDeviceTwins.delete(id)
     }
     if (this.selected && this.selRing?.visible) this.showSelectionRing(this.selected)
   }
@@ -3071,6 +2962,7 @@ export class TownScene3D {
     const holder = new THREE.Group()
     root.add(holder)
     const label = this.makeLabel(`⚙ ${t.name}`, x, 60, z)
+    holder.userData.modelFile = file
     this.scene.add(root)
     const twin = new DeviceNode({ twinId: t.id, name: t.name, modelRef: t.modelRef, root, holder, ring, label, state: t.state ?? 'idle', telemetry: t.telemetry ?? {} })
     twin.host = this

@@ -77,8 +77,17 @@ async function main() {
   }
   await sleep(5000)
 
-  await page.goto(`${BASE}/workshop/w/${ws.data.id}?view=town`, { waitUntil: 'domcontentloaded' })
-  await sleep(5500)
+  // 进入工作台:点击 ws 卡上的「进入控制台」(SPA 客户端路由;workspaces store 已内存加载)。
+  // 注:不直接 page.goto 到 /workshop/w/<id>?view=town —— 该 store 不做持久化,
+  // 整页刷新后 wsStore 需重新拉取,刷新直达场景存在竞态(见代码注释),真实用法即 SPA 导航。
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll('button')].find(b => (b.textContent || '').includes('进入控制台'))
+    if (btn) btn.click()
+  })
+  await sleep(4000)
+  // 切到小镇视图:数字快捷键 5(顶栏 segmented 等价;聚焦不在输入框即可)
+  await page.keyboard.press('5')
+  await sleep(4000)
 
   // 等待场景 ready(模型库异步加载,单独断言)
   let ready = false
@@ -86,7 +95,19 @@ async function main() {
     ready = await page.evaluate(() => !!window.__town?.scene)
     if (!ready) await sleep(500)
   }
-  if (!ready) throw new Error('小镇场景未 ready')
+  if (!ready) {
+    const diag = await page.evaluate(() => ({
+      url: location.pathname + location.search,
+      wsName: document.querySelector('.ws-name')?.textContent,
+      hasTown: !!document.querySelector('.town-view'),
+      hasLoading: !!document.querySelector('[data-hud="town-loading"]'),
+      err: document.querySelector('.error-chip')?.textContent ?? null,
+      segmented: [...document.querySelectorAll('.ant-segmented-item-label')].map(e => e.textContent),
+    }))
+    console.log('scene not ready →', JSON.stringify(diag))
+    await page.screenshot({ path: `${OUT}/03-not-ready.png` })
+    throw new Error('小镇场景未 ready')
+  }
   // 新需求:初始为空场地——把两个频道拖入场景(模拟频道坞拖放;placeChannel 铺放其全部 Agent)
   await page.evaluate(({ cidA, cidB }) => {
     const s = window.__town.scene
@@ -182,9 +203,9 @@ async function main() {
   const placed = devNodes.find(d => /^dev-[a-z0-9]+-[a-z0-9]+$/.test(d.id))
   console.log(`设备孪生已建(真 id+落点): ${placed ? 'PASS' : 'FAIL'} (${placed ? `${placed.id}@(${placed.x},${placed.z})` : 'none'})`)
 
-  const summary = { allLand, modelCount, canDrag, rebind: afterTex === 'knight', spawn: afterCount > beforeCount, device: devInScene }
+  const summary = { allLand, modelCount, canDrag, rebind: afterTex === 'knight', spawn: afterCount > beforeCount, device: devInScene, deviceTwin: Boolean(placed) }
   console.log('\nSUMMARY:', JSON.stringify(summary))
-  const allPass = allLand && canDrag && modelCount >= 1 && afterTex === 'knight' && afterCount > beforeCount
+  const allPass = allLand && canDrag && modelCount >= 1 && afterTex === 'knight' && afterCount > beforeCount && devInScene && Boolean(placed)
   console.log(allPass ? '\n==> ALL PASS' : '\n==> SOME FAIL')
   await browser.close()
   process.exit(allPass ? 0 : 1)

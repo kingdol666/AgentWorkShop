@@ -14,10 +14,9 @@ import { useCharacterAssets } from '@/app/composables/workshop/useCharacterAsset
 
 const assets = useCharacterAssets()
 
-/** 侧边模型库:仅设备目录(public/assets/game/devices)下的设备模型。
- *  内置 device-3d 等位于 character 目录的模型不出现;角色模型在频道成员管理中设置。 */
+/** 侧边模型库:展示所有设备实体模型(含内置模型、设备目录扫描与用户上传)。 */
 const deviceModels = computed(() =>
-  assets.models.filter(m => m.kind === 'dev' && m.file.includes('/assets/game/devices/')),
+  assets.models.filter(m => m.kind === 'dev'),
 )
 
 // 拖起:把模型 id 交给 dataTransfer(HTML5 DnD)
@@ -122,12 +121,16 @@ async function doRemove(id: string): Promise<void> {
         <span
           class="model-img glb dev"
         >
-          <span class="glb-cube">⚙</span>
+          <span
+            class="i-tabler-cpu glb-cube"
+            aria-hidden="true"
+          />
         </span>
         <span class="model-name">{{ m.name }}</span>
         <span class="model-badge">设备 · 拖拽放置</span>
         <div class="card-actions">
           <button
+            v-if="m.file.includes('/assets/game/devices/')"
             class="card-btn danger"
             :disabled="deletingId === m.id"
             @click="doRemove(m.id)"
@@ -147,7 +150,7 @@ async function doRemove(id: string): Promise<void> {
         v-else-if="deviceModels.length === 0"
         class="model-card empty"
       >
-        暂无设备模型。把 .glb 放进 public/assets/game/devices 或上传。
+        暂无设备模型。上传一个设备模型即可开始。
       </div>
     </div>
 
@@ -163,76 +166,110 @@ async function doRemove(id: string): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 9px;
-  width: 172px;
+  width: 180px;
   flex: none;
-  padding: 10px 12px;
+  padding: 12px 12px 13px;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
-  box-shadow: var(--glass-highlight);
+  box-shadow: var(--glass-highlight), var(--shadow-float);
 }
 .lib-head {
   display: flex;
-  gap: 6px;
+  gap: 7px;
   align-items: center;
-  font-size: 12px;
-  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
 }
 .head-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
-.head-title { font-weight: 700; color: var(--ink); }
+.head-title {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
 .head-hint { margin-left: auto; font-size: 10px; color: var(--ink-faint); white-space: nowrap; }
 
-.upload-box { display: flex; flex-direction: column; gap: 5px; padding: 6px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-panel-sm); }
-.upload-row { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ink-soft); cursor: pointer; }
+.upload-box { display: flex; flex-direction: column; gap: 6px; padding: 7px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-panel-sm); }
+.upload-row { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-soft); cursor: pointer; }
 .file-input { display: none; }
 .upload-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.upload-btn { padding: 3px 8px; font-size: 11px; font-weight: 600; color: var(--on-av); background: var(--accent); border: 0; border-radius: var(--radius-chip); cursor: pointer; }
+.upload-btn {
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+.upload-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--paper-tint); }
+.upload-btn:active:not(:disabled) { transform: scale(0.98); }
 .upload-btn:disabled { opacity: 0.5; cursor: default; }
 
-.lib-grid { display: flex; flex-direction: column; gap: 8px; }
+.lib-grid { display: flex; flex-direction: column; gap: 7px; max-height: 46vh; overflow: hidden auto; padding-right: 1px; }
 .model-card {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 8px 6px 6px;
+  padding: 9px 6px 8px;
   cursor: grab;
   background: var(--paper-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-panel-sm);
-  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
 }
-.model-card:hover { border-color: var(--accent); box-shadow: var(--shadow-float); transform: translateY(-1px); }
+.model-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-float); transform: translateY(-1px); }
 .model-card:active { cursor: grabbing; }
 .model-img { width: 46px; height: 68px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
 .model-img.glb {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, rgba(128,180,196,0.35), rgba(64,96,120,0.2));
-  border: 1px solid rgba(150,200,220,0.35);
+  width: 52px;
+  height: 44px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel-sm);
 }
-.glb-cube { font-size: 26px; color: var(--accent); }
 .model-img.glb.dev {
-  background: linear-gradient(160deg, rgba(239,181,106,0.4), rgba(120,90,40,0.2));
-  border-color: rgba(239,181,106,0.4);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--tone-warning-bg) 70%, var(--paper-deep)), var(--paper-deep));
+  border-color: color-mix(in srgb, var(--tone-warning-dot) 30%, var(--line));
 }
+.glb-cube { font-size: 24px; line-height: 1; color: var(--ink-faint); }
 .model-img.glb.dev .glb-cube { color: var(--tone-warning-dot); }
 .model-name { font-size: 11px; font-weight: 600; color: var(--ink); }
 .model-badge { font-family: var(--font-mono); font-size: 9px; color: var(--ink-faint); }
 .card-actions { display: flex; gap: 4px; }
-.card-btn { padding: 2px 7px; font-size: 10px; font-weight: 600; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line); border-radius: var(--radius-chip); cursor: pointer; }
+.card-btn {
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.card-btn:hover:not(:disabled) { border-color: var(--line-strong); color: var(--ink); }
 .card-btn.danger { color: var(--tone-danger-dot); }
+.card-btn.danger:hover:not(:disabled) { border-color: color-mix(in srgb, var(--tone-danger-dot) 40%, var(--line)); color: var(--tone-danger-dot); }
 .card-btn:disabled { opacity: 0.5; cursor: default; }
 
-.model-card.loading, .model-card.empty { cursor: default; font-size: 11px; color: var(--ink-faint); }
+.model-card.loading, .model-card.empty { cursor: default; font-size: 11px; color: var(--ink-faint); gap: 7px; }
 .loading-dot { width: 12px; height: 12px; border: 2px solid var(--line-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.mini-err, .mini-msg { font-size: 10px; color: var(--tone-danger-dot); }
+.mini-err { color: var(--tone-danger-dot); }
+.mini-err, .mini-msg { font-size: 10px; }
 .mini-msg { color: var(--ink-soft); }
 </style>

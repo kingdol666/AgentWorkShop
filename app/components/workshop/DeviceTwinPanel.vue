@@ -65,7 +65,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
       v-else-if="twins.twins.length === 0"
       class="twin-empty"
     >
-      暂无设备。把「工业泵设备」(⚙)拖入小镇即可创建数字孪生。
+      暂无设备。把「工业泵设备」模型拖入小镇即可创建数字孪生。
     </div>
     <div
       v-else
@@ -138,32 +138,61 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
   display: flex;
   flex-direction: column;
   gap: 9px;
-  width: 172px;
+  width: 186px;
   flex: none;
-  padding: 10px 12px;
+  padding: 12px 12px 13px;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
-  box-shadow: var(--glass-highlight);
+  box-shadow: var(--glass-highlight), var(--shadow-float);
 }
-.twin-head { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--ink-soft); }
-.head-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tone-warning-dot); }
-.head-title { font-weight: 700; color: var(--ink); }
+.twin-head { display: flex; gap: 7px; align-items: center; font-size: 11px; letter-spacing: 0.05em; color: var(--ink-faint); }
+.head-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tone-info-dot); }
+.head-title { font-size: 12px; font-weight: 650; letter-spacing: 0.02em; color: var(--ink); }
 .head-hint { margin-left: auto; font-size: 10px; color: var(--ink-faint); white-space: nowrap; }
-.twin-empty { font-size: 11px; color: var(--ink-faint); padding: 6px 4px; }
-.twin-list { display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow: hidden auto; }
-.twin-card { padding: 7px 8px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-panel-sm); }
+.twin-empty { font-size: 11px; line-height: 1.55; color: var(--ink-faint); padding: 6px 4px; }
+.twin-list { display: flex; flex-direction: column; gap: 7px; max-height: 38vh; overflow: hidden auto; padding-right: 1px; }
+.twin-card {
+  padding: 8px 9px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel-sm);
+  transition: border-color var(--transition-base);
+}
+.twin-card:hover { border-color: var(--line-strong); }
 .twin-row { display: flex; gap: 6px; align-items: center; }
-.twin-state-dot { width: 8px; height: 8px; border-radius: 50%; }
-.twin-name { font-size: 11px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.twin-state { margin-left: auto; font-size: 10px; color: var(--ink-soft); }
-.twin-tele { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 5px 0; font-size: 10px; color: var(--ink-faint); }
-.tele-item b { color: var(--ink); font-family: var(--font-mono); }
+.twin-state-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, var(--paper-deep) 80%, transparent); }
+.twin-name { font-size: 11.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.twin-state { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); }
+.twin-tele { display: flex; flex-wrap: wrap; gap: 3px 8px; margin: 6px 0 7px; font-size: 10px; color: var(--ink-faint); }
+.tele-item b { color: var(--ink-soft); font-family: var(--font-mono); font-weight: 500; }
 .twin-ctrl { display: flex; gap: 4px; align-items: center; }
-.ctrl-btn { padding: 2px 7px; font-size: 10px; font-weight: 600; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line); border-radius: var(--radius-chip); cursor: pointer; }
+.ctrl-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+.ctrl-btn:hover:not(:disabled) { border-color: var(--line-strong); color: var(--ink); }
+.ctrl-btn:active:not(:disabled) { transform: scale(0.96); }
 .ctrl-btn:disabled { opacity: 0.5; cursor: default; }
-.ctrl-input { width: 44px; font-size: 10px; padding: 2px 4px; border: 1px solid var(--line); border-radius: var(--radius-chip); background: var(--paper); color: var(--ink); }
+.ctrl-input {
+  width: 44px;
+  font-size: 10px;
+  padding: 3px 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  background: var(--paper);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ctrl-input:focus { outline: none; border-color: var(--accent); }
 .twin-err { font-size: 10px; color: var(--tone-danger-dot); }
 </style>
