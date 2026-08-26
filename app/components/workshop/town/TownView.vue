@@ -852,6 +852,11 @@ const WORLD_W3D = 3200
 
 /** 迷你地图点击 → 镜头聚焦到对应世界点(指挥官快捷跳转) */
 function onMinimapClick(e: MouseEvent): void {
+  // 拖拽结束后触发 click:位移超过阈值 → 视为拖拽,屏蔽跳转
+  if (miniDragMoved.value) {
+    miniDragMoved.value = false
+    return
+  }
   const s = scene3dRef.value
   const svg = e.currentTarget as SVGSVGElement
   const rect = svg.getBoundingClientRect()
@@ -859,6 +864,34 @@ function onMinimapClick(e: MouseEvent): void {
   const wx = ((e.clientX - rect.left) / rect.width) * WORLD_W
   const wz = ((e.clientY - rect.top) / rect.height) * WORLD_H
   s.focusTo(wx, wz)
+}
+
+/** 小地图拖拽平移:按下记录起点;移动按世界比例换算 → scene.panBy 平移相机 */
+const miniDragging = ref(false)
+const miniDragMoved = ref(false)
+let miniLast = { x: 0, y: 0 }
+function onMinimapDown(e: PointerEvent): void {
+  const s = scene3dRef.value
+  if (!s || typeof (s as TownScene3D).panBy !== 'function') return
+  miniDragging.value = true
+  miniDragMoved.value = false
+  miniLast = { x: e.clientX, y: e.clientY }
+}
+function onMinimapMove(e: PointerEvent): void {
+  if (!miniDragging.value) return
+  const s = scene3dRef.value
+  const svg = e.currentTarget as SVGSVGElement
+  const rect = svg.getBoundingClientRect()
+  if (!s || rect.width === 0 || rect.height === 0) return
+  const dx = e.clientX - miniLast.x
+  const dy = e.clientY - miniLast.y
+  if (Math.abs(dx) + Math.abs(dy) > 3) miniDragMoved.value = true
+  // 小地图拖动 → 相机目标反向平移(拖向哪,视口移向哪)
+  ;(s as TownScene3D).panBy(-(dx / rect.width) * WORLD_W, -(dy / rect.height) * WORLD_H)
+  miniLast = { x: e.clientX, y: e.clientY }
+}
+function onMinimapUp(): void {
+  miniDragging.value = false
 }
 
 const lastDrop = shallowRef<{ mode: string, agentId?: string, textureKey: string, x: number, y: number } | null>(null)
@@ -870,6 +903,18 @@ const lastDropText = computed(() => {
   return d.mode === 'rebind'
     ? `已为 ${d.agentId?.slice(0, 8) ?? '角色'} 换装 → ${d.textureKey}`
     : `已在落点放入居民 → ${d.textureKey}`
+})
+
+/** 精魂会话台:选中角色时,只展示其「本人」近实时消息(大字号实时消费);未选中回退全局事件流 */
+const agentChatRows = computed(() => {
+  if (!selected.value || selected.value.kind !== 'agent') return []
+  const name = scene3dRef.value?.getAgentName?.(selected.value.id) ?? ''
+  if (!name) return []
+  return ticker.value.filter(t => t.agentName === name)
+})
+const agentChatTitle = computed(() => {
+  if (!selected.value || selected.value.kind !== 'agent') return ''
+  return scene3dRef.value?.getAgentName?.(selected.value.id) ?? '精魂'
 })
 
 /** 轮询设备孪生 → 场景节点同步 + 状态环颜色(设备节点由 dev 模型拖入/服务端恢复生成) */
@@ -1401,6 +1446,28 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
+        <!-- 精魂会话台:选中角色时放大展示其本人近实时消息(实时消费自己的信息) -->
+        <div
+          v-if="selected?.kind === 'agent' && agentChatRows.length"
+          class="agent-chat"
+          :data-agent-id="selected.id"
+        >
+          <div class="agent-chat-head">
+            <span class="act-ava">{{ agentChatTitle.charAt(0).toUpperCase() }}</span>
+            <span class="agent-chat-name">{{ agentChatTitle }} · 实时会话</span>
+            <span class="agent-chat-live">● LIVE</span>
+          </div>
+          <div class="agent-chat-rows">
+            <div
+              v-for="(t, i) in agentChatRows"
+              :key="`${t.agentName}-${i}`"
+              class="agent-chat-row"
+            >
+              <span class="agent-chat-body">{{ t.text }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- 模型落点反馈 -->
         <div
           v-if="lastDropText"
@@ -1409,18 +1476,23 @@ onBeforeUnmount(() => {
           {{ lastDropText }}
         </div>
 
-        <!-- 迷你地图(缩略世界;领地色点+角色+视口) -->
+        <!-- 迷你地图(缩略世界;领地色点+角色+设备+视口;点击跳转/拖动平移) -->
         <div
           v-if="minimap"
           class="mini-map"
-          :title="'世界 · 点击跳转'"
+          :title="'世界 · 点击跳转 · 拖动平移'"
         >
           <svg
             :viewBox="`0 0 ${minimap.world.w} ${minimap.world.h}`"
             class="mini-svg"
             role="img"
-            aria-label="世界迷你地图,点击跳转镜头"
+            aria-label="世界迷你地图,点击跳转,拖动平移镜头"
             @click="onMinimapClick"
+            @pointerdown="onMinimapDown"
+            @pointermove="onMinimapMove"
+            @pointerup="onMinimapUp"
+            @pointercancel="onMinimapUp"
+            @pointerleave="onMinimapUp"
           >
             <rect
               x="0"
@@ -1446,17 +1518,29 @@ onBeforeUnmount(() => {
               :r="a.busy ? 16 : 11"
               :fill="`#${a.color.toString(16).padStart(6, '0')}`"
             />
+            <!-- 数字孪生设备(四边形;状态色与场景状态环一致) -->
             <rect
-              :x="(minimap.player.x - 0.04) * minimap.world.w"
-              :y="(minimap.player.y - 0.04) * minimap.world.h"
-              :width="0.08 * minimap.world.w"
-              :height="0.08 * minimap.world.h"
+              v-for="d in minimap.devices"
+              :key="`d-${d.x}-${d.y}`"
+              :x="d.x * minimap.world.w - 11"
+              :y="d.y * minimap.world.h - 11"
+              width="22"
+              height="22"
+              rx="4"
+              :fill="`#${d.color.toString(16).padStart(6, '0')}`"
+              opacity="0.92"
+            />
+            <rect
+              :x="(minimap.player.x - 0.05) * minimap.world.w"
+              :y="(minimap.player.y - 0.05) * minimap.world.h"
+              :width="0.1 * minimap.world.w"
+              :height="0.1 * minimap.world.h"
               fill="rgba(255,255,255,0.18)"
               stroke="#fff"
               stroke-width="4"
             />
           </svg>
-          <span class="mini-label">MAP · {{ blockCount }} 领地</span>
+          <span class="mini-label">MAP · {{ blockCount }} 领地 · {{ minimap.devices?.length ?? 0 }} 设备</span>
         </div>
 
         <!-- 错误态 -->
@@ -1860,6 +1944,100 @@ onBeforeUnmount(() => {
 .save-chip.s-saved { color: var(--tone-success-dot); background: var(--tone-success-bg); }
 .save-chip.s-error { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
 
+/* 精魂会话台:选中角色时的大字号实时会话窗(底部左下,位于事件流上方) */
+.agent-chat {
+  position: absolute;
+  bottom: 246px;
+  left: 188px;
+  width: min(46%, 480px);
+  max-height: 250px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 14px 12px;
+  pointer-events: auto;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--glass-line));
+  border-radius: var(--radius-panel);
+  box-shadow: var(--glass-highlight), var(--shadow-float);
+}
+.agent-chat-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--divider-hair);
+}
+.agent-chat-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+.agent-chat-live {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--tone-success-dot);
+}
+.agent-chat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 172px;
+  overflow: hidden auto;
+}
+.agent-chat-row {
+  padding: 4px 6px;
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--paper-raised) 72%, transparent);
+}
+.agent-chat-body {
+  display: block;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  overflow: hidden;
+  word-break: break-word;
+}
+.agent-chat-row:first-child .agent-chat-body {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* 电影感覆盖层:暗角(vignette)+ 数字孪生扫描线(仅视觉,不遮交互;位于 HUD 之下) */
+.town-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    radial-gradient(130% 100% at 50% 44%, transparent 58%, rgba(4, 8, 14, 0.3) 100%),
+    linear-gradient(180deg, rgba(4, 8, 14, 0.14), transparent 16%, transparent 84%, rgba(4, 8, 14, 0.22));
+}
+.town-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(140, 190, 230, 0.028) 0 1px,
+    transparent 1px 4px
+  );
+  mix-blend-mode: screen;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .agent-chat { background: var(--paper-raised); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .town-frame::before, .town-frame::after { content: none; }
+}
+
 /* 模型落点反馈 */
 .drop-chip {
   position: absolute;
@@ -2016,7 +2194,74 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-panel-sm);
 }
 
-/* 加载态(serif 编辑部空态声部) */
+/* ============================================================
+ * RPG 2.5D UI 风格统一(覆盖层:统一玻璃质感/圆角/边框/动效)
+ * ============================================================ */
+.channel-dock,
+.boundary-panel,
+.object-panel,
+.mode-bar,
+.mini-map,
+.ticker-box,
+.agent-chat,
+.lib-panel,
+.scale-panel,
+.twin-panel,
+.device-panel {
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--glass-line));
+  box-shadow: var(--glass-highlight), 0 18px 42px rgba(8, 14, 24, 0.28);
+}
+.channel-dock > .dock-head,
+.boundary-panel > .bp-title {
+  letter-spacing: 0.06em;
+}
+.dock-list {
+  scrollbar-width: thin;
+}
+/* 事件流与会话台:首尾呼吸分隔 */
+.ticker-row {
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.ticker-row:hover {
+  background: color-mix(in srgb, var(--paper-raised) 86%, transparent);
+  transform: translateX(2px);
+}
+/* 迷你地图:外发光描边 */
+.mini-map {
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--glass-line));
+  box-shadow: var(--glass-highlight), 0 14px 34px rgba(8, 14, 24, 0.3);
+  cursor: grab;
+  touch-action: none;
+}
+.mini-map:active {
+  cursor: grabbing;
+}
+.mini-svg { display: block; width: 100%; }
+/* 模式栏按钮:圆角胶囊 + 按压反馈 */
+.mode-btn {
+  border-radius: 10px;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+.mode-btn:active {
+  transform: translateY(1px);
+}
+.mode-btn.active {
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+/* 顶栏质感微调 */
+.glass-chip {
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--glass-line));
+}
+/* 小地图/面板内部滚条一致 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--line-strong) 70%, transparent);
+  border-radius: 99px;
+}
 .loading-mask {
   position: absolute;
   inset: 0;

@@ -159,10 +159,17 @@ async function main(): Promise<void> {
   check('新成员接取并完成任务', directDone)
 
   console.log('== 6. 孤儿任务回收:排队中(ASSIGNED)成员移除 → 重派 ==')
-  // 造一个"排队中"任务:目标成员被禁用 → 投递无人消费,任务滞留 ASSIGNED
+  // 造一个"排队中"任务:给启用成员连发两个任务(FIFO)——第一个进入 WORKING,
+  // 第二个滞留其信箱 ASSIGNED(排队中,未消费)——随后移除成员经回收路径重派。
+  // (注:新版有"投递失败补偿",向已禁用成员派发会被 DELIVERY_FAILED 拒绝并回收任务,
+  //  因此排队任务只可能存在于"曾可投递但未及消费"的成员队列中)
   const idleTpl = await manager.createAgent({ name: 'idle-queue', harness: 'mock', config: { delayMs: 100 } })
   const idleMember = await manager.addAgentToChannel({ channelId, agentId: idleTpl.id, role: 'worker' })
-  await manager.updateTeamMember(channelId, leadAgentId!, idleMember.id, { enabled: 0 })
+  await manager.dispatchTask(channelId, leadAgentId!, {
+    assigneeId: idleMember.id,
+    title: '队列首任务',
+    description: '先被消费',
+  })
   const queuedTask = await manager.dispatchTask(channelId, leadAgentId!, {
     assigneeId: idleMember.id,
     title: '排队中的任务',
@@ -170,7 +177,7 @@ async function main(): Promise<void> {
   })
   await sleep(200)
   const queuedState = (await manager.getTask(channelId, leadAgentId!, queuedTask.id)).state
-  check('禁用成员的任务滞留排队(ASSIGNED)', queuedState === 'ASSIGNED', queuedState)
+  check('第二个任务滞留排队(ASSIGNED)', queuedState === 'ASSIGNED', queuedState)
   const recycle = await manager.removeTeamMember(channelId, leadAgentId!, idleMember.id, '清理闲置成员')
   check('removeTeamMember 返回回收任务列表', recycle.recycledTasks.includes(queuedTask.id), JSON.stringify(recycle.recycledTasks))
   const afterTask = await manager.getTask(channelId, leadAgentId!, queuedTask.id)

@@ -1208,6 +1208,7 @@ export class TownScene extends Phaser.Scene {
     world: { w: number, h: number }
     blocks: Array<{ x: number, y: number, color: number, name: string }>
     agents: Array<{ x: number, y: number, color: number, busy: boolean }>
+    devices: Array<{ x: number, y: number, color: number, state: string }>
     player: { x: number, y: number }
   } {
     const nx = (x: number) => x / WORLD_W
@@ -1216,6 +1217,7 @@ export class TownScene extends Phaser.Scene {
       world: { w: WORLD_W, h: WORLD_H },
       blocks: [...this.blocks.values()].map(b => ({ x: nx(b.centerX), y: ny(b.centerY), color: b.colorNum, name: b.name })),
       agents: [...this.agents.values()].map(a => ({ x: nx(a.sprite.x), y: ny(a.sprite.y), color: a.aura.tintTopLeft, busy: a.state === 'busy' })),
+      devices: [],
       player: { x: nx(this.viewer.x), y: ny(this.viewer.y) },
     }
   }

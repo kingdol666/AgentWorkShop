@@ -57,9 +57,8 @@ const BUSINESS_ROUTES = [
   ['GET', '/api/workshop/workspaces', 200],
   ['GET', '/api/workshop/runtime', 200],
   ['GET', '/api/workshop/fs/dirs', 200],
-  ['POST', '/api/game/brain?pause=true', 200],
-  ['POST', '/api/game/cmd', 400], // 有 token 但 body 缺 type → 400(而非 401)
   ['GET', '/api/users', 403], // 有 token 但非 admin → ADMIN_REQUIRED(无 token 401)
+  // 注:game/* 端点已随 2D RPG → 3D 小镇重构移除(2026),其鉴权语义由 town/device 域承担,此处不再断言
 ]
 
 async function main() {
@@ -99,45 +98,9 @@ async function main() {
     check(`${expectStatus} ${method} ${path}(带 token)`, r.status === expectStatus, `status=${r.status} code=${r.code}`)
   }
 
-  // game cmd 合法 body → 200 applied 语义
-  const cmdOk = await api('POST', '/api/game/cmd', { token, body: { type: 'dialog.close', payload: {} } })
-  check('game/cmd 合法指令放行', cmdOk.status === 200, `status=${cmdOk.status} ${cmdOk.message ?? ''}`)
-
-  // game ws:无 token 被拒(用 fetch 升级握手验证 4401 不可行,改验 HTTP 层行为:WS 由 ws 库测试)
-  // —— 简化:验证 ws URL 无 token 时服务器在 open 阶段关闭(通过 node ws 客户端)
-  try {
-    const { WebSocket } = await import('ws')
-    await new Promise((resolve) => {
-      const ws = new WebSocket(`${BASE.replace('http', 'ws')}/api/game/ws`)
-      const result = { code: '' }
-      ws.on('message', (d) => {
-        if (String(d).includes('USER_UNAUTHORIZED')) result.code = 'rejected'
-      })
-      ws.on('close', (code) => {
-        result.code = result.code || `closed-${code}`
-        check('game/ws 无 token → 拒绝并关闭', result.code === 'rejected', String(result.code))
-        resolve(null)
-      })
-      ws.on('open', () => {
-        // 服务器应在 open 校验后关闭
-      })
-      ws.on('error', () => {
-        // 忽略握手层噪音
-      })
-      setTimeout(() => {
-        try {
-          ws.terminate()
-        }
-        catch {
-          // noop
-        }
-        resolve(null)
-      }, 4000)
-    })
-  }
-  catch {
-    console.log('SKIP  game/ws(ws 库不可用)')
-  }
+  // game/cmd 与 game/ws:游戏域端点已随 2D→3D 小镇重构移除(2026),check 从略。
+  // 等价鉴权语义由 workshop/town/device 域用例覆盖(见 test-dual-drive / e2e-rest-robustness)。
+  console.log('SKIP  game/cmd + game/ws(游戏域端点已移除,鉴权语义由 town/device 域覆盖)')
 
   // ===== 4. users 管理面:无 token 401;普通 token 403 =====
   console.log('\n=== 用户管理面分层 ===')

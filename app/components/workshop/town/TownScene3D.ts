@@ -126,6 +126,10 @@ class Block3D {
   rotationY!: number
   color!: number
   platform!: THREE.Mesh
+  /** 领地边缘发光环(工业孪生边界告示;随平台移动) */
+  padRing!: THREE.Mesh
+  /** 领地中央信标灯柱(领队台座标记) */
+  beacon!: THREE.Group
   /** 活动边界(编辑高亮) */
   boundary!: THREE.LineLoop
   label!: THREE.Sprite
@@ -145,6 +149,8 @@ class Block3D {
     rotationY: number
     color: number
     platform: THREE.Mesh
+    padRing: THREE.Mesh
+    beacon: THREE.Group
     boundary: THREE.LineLoop
     label: THREE.Sprite
   }) {
@@ -177,6 +183,8 @@ class Block3D {
     this.x += dx
     this.z += dz
     this.platform.position.set(this.x, 0.16, this.z)
+    this.padRing.position.set(this.x, 0.32, this.z)
+    this.beacon.position.set(this.x, 0, this.z)
     this.boundary.position.set(this.x, 0.3, this.z)
     this.boundary.rotation.y = this.rotationY * Math.PI / 180
     this.label.position.set(this.x, 30, this.z)
@@ -293,6 +301,8 @@ class Agent3D {
   modelRef!: string
   /** 当前动画状态(数据驱动模型:idle/walk;经宿主 motion 事件监听) */
   animState: 'idle' | 'walk' = 'idle'
+  /** 当前 mixer action(crossfade 切换用;null = 未开始) */
+  activeAction: THREE.AnimationAction | null = null
   /** 宿主场景控制器(实例化后注入) */
   host!: TownScene3D
   /** 本帧是否在移动(update 结束时驱动动画) */
@@ -353,9 +363,16 @@ class Agent3D {
     }
     this.root.position.x = nx
     this.root.position.z = nz
+    // 朝向平滑:朝移动方向插值转动(左/右两态,不用瞬间 snap,2.5D 行走更顺)
     const dir = next.dir
-    if (dir === 'left') this.root.rotation.y = Math.PI
-    else if (dir === 'right') this.root.rotation.y = 0
+    const targetY = dir === 'left' ? Math.PI : 0
+    const curY = this.root.rotation.y
+    // 最短角差插值(0 ↔ π 之间取捷径;步长限速防抖)
+    let d = targetY - curY
+    if (d > Math.PI) d -= Math.PI * 2
+    else if (d < -Math.PI) d += Math.PI * 2
+    const maxStep = dt * 3.2
+    this.root.rotation.y = curY + Math.max(-maxStep, Math.min(maxStep, d))
     void dt
   }
 
@@ -469,18 +486,29 @@ class Agent3D {
       this.host.notifyMotion(this)
     }
     if (this.clips.length === 0) {
-      // 无动画 → 轻微上下浮动(bob)
-      this.root.position.y = GROUND_Y + (moving ? Math.abs(Math.sin(performance.now() * 0.004)) * 4 : 0)
+      // 无动画 clip → 程序化动作绑定(model 局部,色环/名牌保持贴地稳定):
+      //  待机呼吸浮动 + 行走跳跃颠簸 + 行走左右微摆
+      const t = performance.now()
+      const breathe = 1.2 + Math.sin(t * 0.0016) * 1.6
+      const hop = Math.abs(Math.sin(t * 0.005)) * 6
+      this.model.position.y = moving ? hop : breathe
+      const swayTarget = moving ? Math.sin(t * 0.006) * 0.07 : 0
+      this.model.rotation.z += (swayTarget - this.model.rotation.z) * 0.12
       return
     }
-    // 有动画 clip:idle(0)/walk(1),按移动切换(缺省则用 clip[0])
+    // 有动画 clip:按移动状态切换 idle/walk,crossfade 平滑过渡(避免双 action 叠加)
     if (!this.mixer) return
     const idx = moving ? (this.clips.length > 1 ? 1 : 0) : 0
     const clip = this.clips[idx]
     if (!clip) return
-    const action = this.mixer.clipAction(clip)
-    action.play()
-    action.timeScale = moving ? 1.3 : 0.9
+    const nextAction = this.mixer.clipAction(clip)
+    if (this.activeAction === nextAction) {
+      nextAction.timeScale = moving ? 1.3 : 0.9
+      return
+    }
+    nextAction.reset().setEffectiveTimeScale(moving ? 1.3 : 0.9).fadeIn(0.15).play()
+    if (this.activeAction) this.activeAction.fadeOut(0.15)
+    this.activeAction = nextAction
   }
 
   /** 更新 home 落点(行为结束后回归点;含拖拽/范围位移后落库路径) */
@@ -631,6 +659,8 @@ export class TownScene3D {
   private camTarget = new THREE.Vector3(WORLD_CX, 20, WORLD_CZ)
   private scene!: THREE.Scene
   private ground!: THREE.Mesh
+  /** 穹顶天幕(随镜头平移,保证无限视野观感) */
+  private skyDome: THREE.Mesh | null = null
   private blocks = new Map<string, Block3D>()
   private agents = new Map<string, Agent3D>()
   /** 数字孪生设备节点(twinId → node) */
@@ -772,7 +802,13 @@ export class TownScene3D {
     })
 
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0x101826)
+    this.scene.background = new THREE.Color(0x0a0f18)
+    // 大气纵深:雾把远处柔化进夜色,2.5D 场景立刻有工业孪生的空间感
+    this.scene.fog = new THREE.Fog(0x0a0f18, 1600, 9000)
+
+    // 穹顶渐变天幕(深空蓝黑 → 地平线工业暖灰;BackSide 大球,随镜头平移)
+    this.skyDome = this.makeSkyDome()
+    this.scene.add(this.skyDome)
 
     // 边界缩放手柄(编辑模式选中频道时显示;4 个:椭圆轴点 / 矩形角点)
     for (let i = 0; i < 4; i++) {
@@ -799,14 +835,16 @@ export class TownScene3D {
       this.agentRangeHandles.push({ mesh: h, agentId: '', handle: i })
     }
 
-    // 相机:斜俯视 2.5D
-    this.camera = new THREE.PerspectiveCamera(50, (this.el.clientWidth || 1100) / (this.el.clientHeight || 700), 1, 12000)
-    this.camera.position.set(WORLD_CX, 620, WORLD_CZ + 720)
+    // 相机:斜俯视 2.5D(FOV 55 + 远距框景,整个园区一块入画)
+    this.camera = new THREE.PerspectiveCamera(55, (this.el.clientWidth || 1100) / (this.el.clientHeight || 700), 1, 12000)
+    this.camera.position.set(WORLD_CX, 760, WORLD_CZ + 900)
     this.camera.lookAt(WORLD_CX, 20, WORLD_CZ)
 
-    // 灯光:环境 + 主方向光(带阴影) + 补光 —— 调亮,保证角色/平台清晰
-    this.scene.add(new THREE.AmbientLight(0xd0e4ee, 1.1))
-    const key = new THREE.DirectionalLight(0xfff4e0, 2.2)
+    // 灯光:环境 + 半球(天空色反弹)+ 主方向光(带阴影)+ 补光 —— 亮而不平,2.5D 立体感
+    this.scene.add(new THREE.AmbientLight(0xd0e4ee, 1.35))
+    const hemi = new THREE.HemisphereLight(0x9fc7e8, 0x3a2f25, 0.55)
+    this.scene.add(hemi)
+    const key = new THREE.DirectionalLight(0xfff4e0, 2.6)
     key.position.set(WORLD_CX + 500, 900, WORLD_CZ + 300)
     key.castShadow = true
     key.shadow.mapSize.set(2048, 2048)
@@ -815,20 +853,20 @@ export class TownScene3D {
     key.shadow.camera.top = 2000
     key.shadow.camera.bottom = -2000
     this.scene.add(key)
-    const fill = new THREE.DirectionalLight(0x88bbff, 0.4)
+    const fill = new THREE.DirectionalLight(0x88bbff, 0.6)
     fill.position.set(WORLD_CX - 1200, 900, WORLD_CZ - 800)
     this.scene.add(fill)
 
-    // 地面(大平面)
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x4d7468, roughness: 0.95 })
-    this.ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W * 1.5, WORLD_H * 1.5), groundMat)
+    // 地面(大平面,无限观感:7× 世界尺寸 + 高重复贴图)——蓝灰工业混凝土地基
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x27333f, roughness: 0.9, metalness: 0.08 })
+    this.ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W * 7, WORLD_H * 7), groundMat)
     this.ground.rotation.x = -Math.PI / 2
     this.ground.receiveShadow = true
     this.scene.add(this.ground)
-    // 网格辅助(轻微,暗示地表)
-    const grid = new THREE.GridHelper(WORLD_W * 1.2, 40, 0x2f4a42, 0x3a554a)
+    // 网格辅助(轻微,暗示地表;随世界放大)
+    const grid = new THREE.GridHelper(WORLD_W * 6, 120, 0x2b3f52, 0x1a2433)
     ;(grid.material as THREE.Material).transparent = true
-    ;(grid.material as THREE.Material).opacity = 0.25
+    ;(grid.material as THREE.Material).opacity = 0.3
     grid.position.y = 0.1
     this.scene.add(grid)
 
@@ -837,30 +875,102 @@ export class TownScene3D {
     this.loop()
   }
 
-  /** 赛博小镇背景贴图 → 地面材质(重复平铺;加载失败保持纯色,永不报错) */
+  /** 工业孪生地面贴图(程序化 Canvas:深色混凝土地基 + 分块拼缝 + 细网格导引线 + 噪点)。
+   *  一次性生成并缓存;SVG 背景贴图仅作历史兼容,优先使用本贴图。 */
+  private makeIndustrialGroundTexture(): THREE.CanvasTexture {
+    const size = 1024
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')!
+    // 深色混凝土地基(微渐变)+ 分块拼缝 + 细网格导引线 —— 蓝灰工业面板,整体偏亮但不刺眼
+    const grad = ctx.createLinearGradient(0, 0, size, size)
+    grad.addColorStop(0, '#2b3948')
+    grad.addColorStop(0.5, '#26333f')
+    grad.addColorStop(1, '#293845')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, size, size)
+    // 分块拼缝(工业板格 8×8)
+    ctx.strokeStyle = 'rgba(120,150,180,0.34)'
+    ctx.lineWidth = 2
+    for (let i = 0; i <= 8; i++) {
+      const p = (i / 8) * size
+      ctx.beginPath()
+      ctx.moveTo(p, 0)
+      ctx.lineTo(p, size)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(0, p)
+      ctx.lineTo(size, p)
+      ctx.stroke()
+    }
+    // 细网格导引线(浅蓝,数字化孪生感)
+    ctx.strokeStyle = 'rgba(130,190,230,0.16)'
+    ctx.lineWidth = 1
+    for (let i = 0; i <= 32; i++) {
+      const p = (i / 32) * size
+      ctx.beginPath()
+      ctx.moveTo(p, 0)
+      ctx.lineTo(p, size)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(0, p)
+      ctx.lineTo(size, p)
+      ctx.stroke()
+    }
+    // 噪点(亚光粗糙感;伪随机但确定性)
+    ctx.fillStyle = 'rgba(255,255,255,0.02)'
+    for (let i = 0; i < 900; i++) {
+      const x = (i * 733) % size
+      const y = (i * 151) % size
+      ctx.fillRect(x, y, 2, 2)
+    }
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.wrapS = THREE.RepeatWrapping
+    tex.wrapT = THREE.RepeatWrapping
+    tex.repeat.set(10, 10)
+    tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
+    return tex
+  }
+
+  /** 穹顶天幕:垂直渐变(顶部深空 → 地平线工业暖灰)+ 底部更亮一点,覆盖整球 */
+  private makeSkyDome(): THREE.Mesh {
+    const canvas = document.createElement('canvas')
+    canvas.width = 32
+    canvas.height = 256
+    const ctx = canvas.getContext('2d')!
+    const grad = ctx.createLinearGradient(0, 0, 0, 256)
+    grad.addColorStop(0, '#0a1220') // 天顶:深空蓝黑
+    grad.addColorStop(0.42, '#17222e')
+    grad.addColorStop(0.62, '#27384a') // 中段工业蓝灰
+    grad.addColorStop(0.78, '#41525f') // 地平线辉光
+    grad.addColorStop(1, '#2e3c48') // 地平线下收暗(下半球)
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, 32, 256)
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.colorSpace = THREE.SRGBColorSpace
+    const geo = new THREE.SphereGeometry(5600, 24, 16)
+    const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, depthWrite: false })
+    const dome = new THREE.Mesh(geo, mat)
+    dome.position.set(WORLD_CX, 0, WORLD_CZ)
+    dome.renderOrder = -10
+    return dome
+  }
+
+  /** 赛博小镇背景贴图 → 地面材质(优先程序化工业贴图;SVG 兼容保留) */
   private applyGroundTexture(): void {
     try {
-      const loader = new THREE.TextureLoader()
-      loader.load(
-        '/scene/background/cyber-town-background.svg',
-        (tex) => {
-          tex.colorSpace = THREE.SRGBColorSpace
-          tex.wrapS = THREE.RepeatWrapping
-          tex.wrapT = THREE.RepeatWrapping
-          tex.repeat.set(2, 2)
-          tex.anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy())
-          const mat = this.ground.material as THREE.MeshStandardMaterial
-          mat.map = tex
-          mat.color.set(0xffffff)
-          mat.roughness = 0.96
-          mat.needsUpdate = true
-          this.dirty = true
-        },
-        undefined,
-        () => { /* SVG 不可用:保持纯色地面 */ },
-      )
+      const mat = this.ground.material as THREE.MeshStandardMaterial
+      // 工业孪生贴图为主(SVG 历史贴图只在程序化不可用时兜底)
+      mat.map = this.makeIndustrialGroundTexture()
+      mat.color.set(0xffffff)
+      mat.roughness = 0.94
+      mat.metalness = 0.06
+      mat.needsUpdate = true
+      this.dirty = true
     }
-    catch { /* TextureLoader 不可用:保持纯色地面 */ }
+    catch { /* Canvas 不可用:保持纯色地面 */ }
   }
 
   // ================================================================
@@ -901,13 +1011,16 @@ export class TownScene3D {
   private placeChannel(ch: TownEntityInput, rawLayout: ChannelLayout): void {
     const layout = normLayout(rawLayout)
     const color = channelColorNum(ch.channelId)
+    const pad = this.makeBlock(ch.channelName, color, layout)
     const block = new Block3D({
       channelId: ch.channelId, name: ch.channelName,
       x: layout.x, z: layout.z,
       radiusX: layout.radiusX, radiusZ: layout.radiusZ,
       shape: layout.shape, rotationY: layout.rotationY,
       color,
-      platform: this.makeBlock(ch.channelName, color, layout),
+      platform: pad.platform,
+      padRing: pad.padRing,
+      beacon: pad.beacon,
       boundary: makeBoundary(layout.shape, layout.radiusX, layout.radiusZ, color),
       label: this.makeLabel(ch.channelName, layout.x, 30, layout.z),
     })
@@ -946,19 +1059,53 @@ export class TownScene3D {
     })
   }
 
-  /** 领地:地面色平台 + 名牌(边界线框由 makeBoundary 另行添加) */
-  private makeBlock(name: string, color: number, layout: ChannelLayout): THREE.Mesh {
+  /** 领地:工业孪生工位基座 = 地面色平台(半透明+自发光) + 边缘发光环 + 中央信标灯柱 */
+  private makeBlock(name: string, color: number, layout: ChannelLayout): { platform: THREE.Mesh, padRing: THREE.Mesh, beacon: THREE.Group } {
+    const r = Math.max(layout.radiusX, layout.radiusZ)
     const platform = new THREE.Mesh(
-      new THREE.CircleGeometry(Math.max(layout.radiusX, layout.radiusZ) * 0.9, 40),
-      new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.24, roughness: 0.9, side: THREE.DoubleSide }),
+      new THREE.CircleGeometry(r * 0.9, 40),
+      new THREE.MeshStandardMaterial({
+        color, transparent: true, opacity: 0.3, roughness: 0.85, metalness: 0.12,
+        emissive: color, emissiveIntensity: 0.18, side: THREE.DoubleSide,
+      }),
     )
     platform.rotation.x = -Math.PI / 2
     platform.position.set(layout.x, 0.16, layout.z)
-    platform.scale.set(layout.radiusX / Math.max(layout.radiusX, layout.radiusZ), 1, layout.radiusZ / Math.max(layout.radiusX, layout.radiusZ))
+    platform.scale.set(layout.radiusX / r, 1, layout.radiusZ / r)
     platform.receiveShadow = true
     this.scene.add(platform)
+    // 边缘发光环(工业边界告示条)
+    const padRing = new THREE.Mesh(
+      new THREE.RingGeometry(r * 0.9 - 10, r * 0.9 + 3, 48),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }),
+    )
+    padRing.rotation.x = -Math.PI / 2
+    padRing.position.set(layout.x, 0.34, layout.z)
+    padRing.scale.set(layout.radiusX / r, 1, layout.radiusZ / r)
+    this.scene.add(padRing)
+    // 中央信标灯柱(领队台座标记:矮立柱 + 发光顶球 + 底座光环)
+    const beacon = new THREE.Group()
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(4, 6, 36, 10),
+      new THREE.MeshStandardMaterial({ color: 0x2b3644, roughness: 0.5, metalness: 0.55 }),
+    )
+    pole.position.y = 18
+    const orb = new THREE.Mesh(
+      new THREE.SphereGeometry(8, 16, 12),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 }),
+    )
+    orb.position.y = 40
+    const halo = new THREE.Mesh(
+      new THREE.TorusGeometry(20, 2.4, 8, 24),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, depthWrite: false }),
+    )
+    halo.rotation.x = Math.PI / 2
+    halo.position.y = 1.2
+    beacon.add(pole, orb, halo)
+    beacon.position.set(layout.x, 0, layout.z)
+    this.scene.add(beacon)
     void name
-    return platform
+    return { platform, padRing, beacon }
   }
 
   /** 文本 Sprite(名牌/名字) */
@@ -1005,17 +1152,24 @@ export class TownScene3D {
     if (a.range && layout) range = clampRangeToLayout(layout, a.range)
     const root = new THREE.Group()
     root.position.set(homeX, GROUND_Y, homeZ)
-    // 脚下同频道色环
+    // 脚下同频道色环(双层:主环 + 外圈,角色辨识度;主环仍是 Mesh 供气泡取色)
     const aura = new THREE.Mesh(
-      new THREE.RingGeometry(10, 16, 24),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
+      new THREE.RingGeometry(14, 22, 28),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }),
     )
     aura.rotation.x = -Math.PI / 2
-    aura.position.y = 0.22
+    aura.position.y = 0.24
     root.add(aura)
+    const auraOuter = new THREE.Mesh(
+      new THREE.RingGeometry(24, 26, 28),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false }),
+    )
+    auraOuter.rotation.x = -Math.PI / 2
+    auraOuter.position.y = 0.2
+    root.add(auraOuter)
     const nameSprite = this.makeLabel(a.name, homeX, 48, homeZ)
-    // 默认模型(内置 hero-3d)
-    const texKey = a.modelRef || 'hero-3d'
+    // 默认模型(内置二次元角色 hero-anime-1「樱叶少女」;模型库换装可覆盖)
+    const texKey = a.modelRef || 'hero-anime-1'
     const model = new THREE.Group()
     root.add(model)
     this.scene.add(root)
@@ -1046,8 +1200,11 @@ export class TownScene3D {
     })
     agent.host = this
     this.agents.set(key, agent)
-    // 载入模型(GLB)
-    const info = this.modelsById.get(texKey) ?? { id: 'hero-3d', file: '/assets/game/character/hero-3d.glb', name: '共鸣精魂' }
+    // 载入模型(GLB);模型库注册先于/晚于挂载都能正确解析(内置二次元角色按 id 直取文件)
+    const info = this.modelsById.get(texKey)
+      ?? (texKey.startsWith('hero-anime-')
+        ? { id: texKey, file: `/assets/game/character/${texKey}.glb`, name: '二次元角色' }
+        : (this.modelsById.get('hero-3d') ?? { id: 'hero-3d', file: '/assets/game/character/hero-3d.glb', name: '共鸣精魂' }))
     void this.mountModel(agent, info.file, info.name)
     agent.renderRangeLine()
     this.emit('agentCount', this.agents.size)
@@ -1072,12 +1229,12 @@ export class TownScene3D {
         const box = new THREE.Box3().setFromObject(loaded)
         height = Math.max(0.5, box.max.y - box.min.y)
         this.gltfCache.set(file, { file, scene: loaded, height })
-        // 缓存动画 clip(供 mixer 状态切换)
-        this.agentAnimClips.set(file, (gltf as unknown as { animations?: THREE.AnimationClip[] }).animations ?? [])
+        // 缓存动画 clip(供 mixer 状态切换;GLTFLoader 动画必须在解析层保留)
+        this.agentAnimClips.set(file, gltf.animations)
       }
       catch {
-        // 加载失败回退空占位,用默认高度
-        loaded = new THREE.Group()
+        // 加载失败回退程序化「孪生机器人」(胶囊躯干 + 发光核心 + 天线),角色永不隐形
+        loaded = this.makeFallbackBot()
         height = 1.4
       }
     }
@@ -1090,12 +1247,15 @@ export class TownScene3D {
     // 客制化:注册可缩放目标并恢复用户缩放(套在 asp.model 上,作为自适应之上的倍率层)
     this.registerScalable('agent', asp.agentId, asp.model)
     asp.mixer = null
+    asp.activeAction = null
     const clips = this.agentAnimClips.get(file) ?? []
     const firstClip = clips[0]
     if (firstClip) {
       asp.mixer = new THREE.AnimationMixer(loaded)
       asp.clips = clips
-      asp.mixer.clipAction(firstClip).play()
+      const firstAction = asp.mixer.clipAction(firstClip)
+      firstAction.play()
+      asp.activeAction = firstAction
     }
     void name
     this.dirty = true
@@ -1103,10 +1263,43 @@ export class TownScene3D {
 
   private agentAnimClips = new Map<string, THREE.AnimationClip[]>()
 
-  private loadGltf(file: string): Promise<{ scene: THREE.Group }> {
+  private loadGltf(file: string): Promise<{ scene: THREE.Group, animations: THREE.AnimationClip[] }> {
     return new Promise((resolve, reject) => {
-      this.gltfLoader.load(file, gltf => resolve({ scene: gltf.scene as THREE.Group }), undefined, reject)
+      this.gltfLoader.load(file, gltf => resolve({ scene: gltf.scene as THREE.Group, animations: gltf.animations ?? [] }), undefined, reject)
     })
+  }
+
+  /**
+   * 程序化「孪生机器人」兜底模型:GLB 缺失/加载失败时使用,保证 Agent 永远可见。
+   * 结构:胶囊躯干 + 头部 + 发光核心胸灯 + 天线信号球 + 悬浮底盘;中性工业灰 + 青蓝核心。
+   */
+  private makeFallbackBot(): THREE.Group {
+    const bot = new THREE.Group()
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a3542, roughness: 0.42, metalness: 0.62 })
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x141b24, roughness: 0.6, metalness: 0.4 })
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0x59d9ff })
+    // 躯干(胶囊)
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.62, 8, 16), bodyMat)
+    body.position.y = 0.86
+    // 头部
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 12), bodyMat)
+    head.position.y = 1.62
+    // 面窗(发光条带,数字孪生眼)
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.12), coreMat)
+    visor.position.set(0, 1.66, 0.27)
+    // 发光核心胸灯
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 8), coreMat)
+    core.position.set(0, 1.1, 0.36)
+    // 悬浮底盘
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.62, 0.26, 16), darkMat)
+    base.position.y = 0.16
+    // 天线 + 信号球
+    const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 6), darkMat)
+    antenna.position.set(0, 2.04, 0)
+    const signal = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), coreMat)
+    signal.position.set(0, 2.34, 0)
+    bot.add(body, head, visor, core, base, antenna, signal)
+    return bot
   }
 
   /** 注册模型清单，并将晚到资产挂载到已存在的 Agent/设备。 */
@@ -1263,11 +1456,14 @@ export class TownScene3D {
     else {
       // 无实体基线(频道坞拖入,数据尚未到达):只建空领地占位
       const color = channelColorNum(channelId)
+      const pad = this.makeBlock(channelName, color, layout)
       const block = new Block3D({
         channelId, name: channelName, x, z,
         radiusX: layout.radiusX, radiusZ: layout.radiusZ,
         shape: layout.shape, rotationY: layout.rotationY, color,
-        platform: this.makeBlock(channelName, color, layout),
+        platform: pad.platform,
+        padRing: pad.padRing,
+        beacon: pad.beacon,
         boundary: makeBoundary(layout.shape, layout.radiusX, layout.radiusZ, color),
         label: this.makeLabel(channelName, x, 30, z),
       })
@@ -1703,7 +1899,8 @@ export class TownScene3D {
     const sprite = this.makeChatBubble(text, name, accent, msg.kind)
     const x = asp?.root.position.x ?? b!.x
     const z = asp?.root.position.z ?? b!.z
-    sprite.position.set(x, asp ? BUBBLE_Y + Math.max(0, asp.model.scale.y - 1) * 22 : 56, z)
+    // 放大气泡后锚点整体抬升(避免压到 48 处名牌)
+    sprite.position.set(x, asp ? BUBBLE_Y + 16 + Math.max(0, asp.model.scale.y - 1) * 22 : 56, z)
     this.scene.add(sprite)
     if (!asp) {
       // 频道级(系统)气泡:展示期满自行移除
@@ -1727,18 +1924,19 @@ export class TownScene3D {
     const accentHex = `#${accent.toString(16).padStart(6, '0')}`
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
-    const bodyFont = '14px Geist, "PingFang SC", sans-serif'
-    const headFont = 'bold 11px Geist, "PingFang SC", sans-serif'
-    const maxTextW = 268
-    const padX = 14
-    const padY = 9
-    const nameH = 21
-    const lineH = 19
-    const tailH = 11
+    // 大字号会话气泡:正文 16px / 头名 12.5px / 最多 5 行 / 宽 ≤ 560px —— Agent 实时信息一眼可读
+    const bodyFont = '16px Geist, "PingFang SC", sans-serif'
+    const headFont = 'bold 12.5px Geist, "PingFang SC", sans-serif'
+    const maxTextW = 400
+    const padX = 16
+    const padY = 11
+    const nameH = 24
+    const lineH = 22
+    const tailH = 12
     ctx.font = bodyFont
-    const lines = this.wrapBubbleLines(ctx, text.replace(/\s+/g, ' ').trim() || '…', maxTextW, 3)
+    const lines = this.wrapBubbleLines(ctx, text.replace(/\s+/g, ' ').trim() || '…', maxTextW, 5)
     const textW = Math.max(...lines.map(l => ctx.measureText(l).width))
-    const bw = Math.min(360, Math.max(100, Math.ceil(textW) + padX * 2))
+    const bw = Math.min(560, Math.max(120, Math.ceil(textW) + padX * 2))
     const bodyH = nameH + lines.length * lineH + padY * 2
     const bh = bodyH + tailH
     canvas.width = bw
@@ -1792,11 +1990,11 @@ export class TownScene3D {
     ctx.font = bodyFont
     ctx.fillStyle = kind === 'error' ? '#ff9d9d' : '#eef2fb'
     lines.forEach((l, i) => ctx.fillText(l, padX, padY + nameH + 10 + i * lineH))
-    // Sprite(纹理按 1/3.2 缩放到世界单位)
+    // Sprite(纹理按 1/2.6 缩放到世界单位 —— 放大气泡后保持更大可见尺度)
     const tex = new THREE.CanvasTexture(canvas)
     tex.colorSpace = THREE.SRGBColorSpace
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }))
-    const k = 3.2
+    const k = 2.6
     sprite.scale.set(bw / k, bh / k, 1)
     return sprite
   }
@@ -2109,12 +2307,16 @@ export class TownScene3D {
     world: { w: number, h: number }
     blocks: Array<{ x: number, y: number, color: number, name: string }>
     agents: Array<{ x: number, y: number, color: number, busy: boolean }>
+    devices: Array<{ x: number, y: number, color: number, state: string }>
     player: { x: number, y: number }
   } {
+    const stateColor = (state: 'idle' | 'running' | 'offline' | 'alarm'): number =>
+      state === 'alarm' ? 0xff6b6b : state === 'offline' ? 0x8b96a3 : state === 'running' ? 0x8fe8d4 : 0xf0c05a
     return {
       world: { w: WORLD_W, h: WORLD_H },
       blocks: [...this.blocks.values()].map(b => ({ x: b.x / WORLD_W, y: b.z / WORLD_H, color: b.color, name: b.name })),
       agents: [...this.agents.values()].map(a => ({ x: a.root.position.x / WORLD_W, y: a.root.position.z / WORLD_H, color: (a.aura.material as THREE.MeshBasicMaterial).color.getHex() ?? 0, busy: a.state === 'busy' })),
+      devices: [...this.deviceNodes.values()].map(d => ({ x: d.root.position.x / WORLD_W, y: d.root.position.z / WORLD_H, color: stateColor(d.state), state: d.state })),
       player: { x: this.camera.position.x / WORLD_W, y: this.camera.position.z / WORLD_H },
     }
   }
@@ -3033,9 +3235,14 @@ export class TownScene3D {
       // 名字/环/气泡跟随 + 逐帧动画(脉冲/光柱/缓动)
       for (const asp of this.agents.values()) {
         asp.nameSprite.position.set(asp.root.position.x, 48, asp.root.position.z)
-        asp.aura.position.set(asp.root.position.x, 0.22, asp.root.position.z)
+        asp.aura.position.set(asp.root.position.x, 0.24, asp.root.position.z)
+        // busy → 身份环呼吸脉冲(工作状态一目了然)
+        const auraMat = asp.aura.material as THREE.MeshBasicMaterial
+        auraMat.opacity = asp.state === 'busy'
+          ? 0.62 + Math.abs(Math.sin(performance.now() * 0.005)) * 0.38
+          : 0.85
         if (asp.bubble) {
-          asp.bubble.position.set(asp.root.position.x, BUBBLE_Y + Math.max(0, asp.model.scale.y - 1) * 22, asp.root.position.z)
+          asp.bubble.position.set(asp.root.position.x, BUBBLE_Y + 16 + Math.max(0, asp.model.scale.y - 1) * 22, asp.root.position.z)
         }
       }
       // 设备节点:状态环颜色驱动 + 名牌跟随(数据驱动:state → 环色)
@@ -3057,10 +3264,12 @@ export class TownScene3D {
       const anims = this.rafAnims
       this.rafAnims = []
       for (const f of anims) f()
-      // 相机:围绕 camTarget 按 dolly 距离摆放(拖拽平移 camTarget,滚轮调 dolly,tween 平移 camTarget)
-      const dist = 940 * this.dolly
-      this.camera.position.set(this.camTarget.x, 620 * this.dolly, this.camTarget.z + dist * 0.76)
+      // 相机:围绕 camTarget 按 dolly 距离摆放(拖拽平移 camTarget,滚轮调 dolly,tween 平移 camTarget);
+      // 基线 1250/760 + FOV55 = 全园区电影化 2.5D 框景;穹顶随镜头平移(无限视野观感)
+      const dist = 1250 * this.dolly
+      this.camera.position.set(this.camTarget.x, 760 * this.dolly, this.camTarget.z + dist * 0.72)
       this.camera.lookAt(this.camTarget.x, 20, this.camTarget.z)
+      if (this.skyDome) this.skyDome.position.set(this.camTarget.x, 0, this.camTarget.z)
       this.renderer.render(this.scene, this.camera)
       // FPS
       this.frameCount += 1
@@ -3084,6 +3293,8 @@ export class TownScene3D {
     }
     for (const b of this.blocks.values()) {
       this.scene.remove(b.platform)
+      this.scene.remove(b.padRing)
+      this.scene.remove(b.beacon)
       this.scene.remove(b.boundary)
       this.scene.remove(b.label)
     }

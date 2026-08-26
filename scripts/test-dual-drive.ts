@@ -149,7 +149,7 @@ async function main(): Promise<void> {
   await client.connect(new StreamableHTTPClientTransport(new URL('http://localhost/api/mcp/workshop'), { fetch: mcpFetch }))
 
   const tools = await client.listTools()
-  check('tools/list 返回 20 工具', tools.tools.length === 20, `got=${tools.tools.length}`)
+  check('tools/list 返回 25 工具(16 基础 + 4 扩展 + 5 设备孪生)', tools.tools.length === 25, `got=${tools.tools.length}`)
 
   // channel.create + agent.create(lead/worker)→ 拿 token
   const ch = await client.callTool({ name: 'workshop.channel.create', arguments: { name: 'mcp-channel', leadAgent: { name: 'lead', harness: 'mock', config: { delayMs: 0 } } } })

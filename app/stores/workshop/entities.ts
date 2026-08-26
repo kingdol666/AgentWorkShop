@@ -89,7 +89,14 @@ export const useEntitiesStore = defineStore('workshop.entities', {
     applySnapshot(payload: AepSnapshot): void {
       const { channelId } = payload
       this.channels[channelId] = { ...payload.channel, loadedAt: Date.now() }
-      this.agents[channelId] = payload.agents.map(a => ({ ...a }))
+      // 快照 agents 携带 config(server buildSnapshot);换装元数据 modelRef 从 config 派生,
+      // 保证「再次进入直接加载用户选择的模型」——与 agent.member 事件路径同一语义。
+      this.agents[channelId] = payload.agents.map(a => ({
+        ...a,
+        modelRef: (a as { config?: Record<string, unknown> }).config?.modelRef as string | undefined
+          ?? (a as { modelRef?: string | null }).modelRef
+          ?? null,
+      }))
       this.tasks[channelId] = payload.tasks.map(t => this.toTaskView(t))
     }, applyEvent(e: AepEnvelope): void {
       const cid = e.channelId

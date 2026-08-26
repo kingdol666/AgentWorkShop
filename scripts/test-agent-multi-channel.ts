@@ -116,7 +116,8 @@ async function main(): Promise<void> {
 
     // ---- 5. mailbox channel 隔离 ----
     console.log('\n--- 5. mailbox channel 隔离 ---')
-    await manager.sendImmediateMessage({ channelId: chA.channelId, toAgentId: a1.id, parts: [{ text: 'hi-A' }] })
+    // 溯源守卫(v8):消息必须携带可追溯发送人(本 channel 成员或人类 fromLabel)
+    await manager.sendImmediateMessage({ channelId: chA.channelId, toAgentId: a1.id, parts: [{ text: 'hi-A' }], fromLabel: 'e2e-test' })
     const recentA = messagesRepo.listRecentByChannel(chA.channelId, 10)
     const recentB = messagesRepo.listRecentByChannel(chB.channelId, 10)
     check('消息只落在 channel A', recentA.length === 1 && recentA[0]!.toAgentId === a1.id, `n=${recentA.length}`)

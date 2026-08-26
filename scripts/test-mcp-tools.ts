@@ -68,7 +68,7 @@ function createLinkedPair(): [TokenClientTransport, InMemoryTransport] {
   return [clientTransport, serverTransport]
 }
 
-/** §6.1 表逐字的 16 个工具名 */
+/** MCP 工具目录(与 server/mcp/workshop-server.ts 逐字一致):16 基础 + 4 扩展 + 5 设备孪生 */
 const EXPECTED_TOOLS = [
   'workshop.channel.create',
   'workshop.channel.list',
@@ -90,6 +90,11 @@ const EXPECTED_TOOLS = [
   'workshop.a2a.subscribe',
   'workshop.mail.list',
   'workshop.queue.overview',
+  'device.list',
+  'device.read',
+  'device.control',
+  'device.push_telemetry',
+  'device.bind_agent',
 ]
 
 /** fake manager stub:记录调用 + 返回预设值(与 AgentChannelManager 相同方法签名) */
@@ -184,7 +189,7 @@ async function main(): Promise<void> {
   const { tools } = await client.listTools()
   const actualNames = tools.map(t => t.name).sort()
   const expectedNames = [...EXPECTED_TOOLS].sort()
-  check('tools/list 返回 20 个工具', tools.length === 20, `got ${tools.length}`)
+  check('tools/list 返回 25 个工具', tools.length === 25, `got ${tools.length}`)
   check(
     '工具名与 §6.1 逐字一致',
     JSON.stringify(actualNames) === JSON.stringify(expectedNames),

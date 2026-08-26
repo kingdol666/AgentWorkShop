@@ -71,6 +71,9 @@ function testAgentCrud(db: DatabaseSync): void {
   console.log('\n--- 3. agent 定义 CRUD(全局) ---')
   const repo = createAgentRepo(db)
 
+  // v10:初始化已种入内置公共模板(owner NULL);断言按"相对基线"计数,避免与种子数据耦合
+  const baseline = repo.list().length
+
   const lead = repo.create({ name: '主理人', harness: 'mock' })
   check('create 生成 id', lead.id.length > 0)
   check('create 默认 configJson {}', lead.configJson === '{}')
@@ -78,14 +81,14 @@ function testAgentCrud(db: DatabaseSync): void {
   const worker = repo.create({ name: '工人', harness: 'claude', config: { model: 'x' } })
   check('create config 序列化为 JSON', worker.configJson === JSON.stringify({ model: 'x' }))
 
-  check('list 返回 2 条', repo.list().length === 2)
+  check('list 返回基线+2 条', repo.list().length === baseline + 2, `n=${repo.list().length}`)
   check('findById 命中', repo.findById(lead.id)?.name === '主理人')
 
   const updated = repo.update(worker.id, { name: '工人改', config: { model: 'y' } })
   check('update 修改 name/config', updated?.name === '工人改' && updated?.configJson === JSON.stringify({ model: 'y' }))
 
   repo.remove(worker.id)
-  check('remove 后 list 长度 1', repo.list().length === 1)
+  check('remove 后 list 基线+1', repo.list().length === baseline + 1)
 }
 
 function testChannelAgentCrud(db: DatabaseSync): void {

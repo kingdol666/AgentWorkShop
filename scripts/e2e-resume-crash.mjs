@@ -31,11 +31,19 @@ function check(name, ok, detail = '') {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-// 用户级隔离:注册测试用户;管理面 API 全程携带用户 token
-const __user = await fetch(BASE + '/users/register', {
-  method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
-}).then(r => r.json()).catch(() => null)
+// 用户级隔离:注册测试用户;管理面 API 全程携带用户 token。
+// 跨阶段复用(crash→重启→verify):AW_RESUME_TOKEN 环境变量优先 —— verify 阶段的 channel
+// 属于 crash 阶段注册的用户,新注册用户看不该 channel(403),必须沿用同一 token。
+let __user
+if (process.env.AW_RESUME_TOKEN) {
+  __user = { data: { token: process.env.AW_RESUME_TOKEN } }
+}
+else {
+  __user = await fetch(BASE + '/users/register', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
+  }).then(r => r.json()).catch(() => null)
+}
 const __userToken = __user?.data?.token
 if (!__userToken) {
   console.error('用户注册失败')
@@ -144,7 +152,7 @@ async function crash() {
   check('崩溃后 DB 中任务仍 WORKING(持久化)', rows[0]?.state === 'WORKING', `db.state=${rows[0]?.state}`)
   // 写入标记文件供 verify 阶段使用
   const { writeFileSync } = await import('node:fs')
-  writeFileSync('.resume-test.json', JSON.stringify({ channelId, taskId, workerTaskId: working.id }))
+  writeFileSync('.resume-test.json', JSON.stringify({ channelId, taskId, workerTaskId: working.id, token: __userToken }))
   console.log(`  标记写入 .resume-test.json (channel=${channelId.slice(0, 8)}… task=${taskId.slice(0, 8)}…)`)
   console.log(`\n结果: PASS=${pass} FAIL=${fail}`)
   process.exit(fail === 0 ? 0 : 1)
@@ -156,12 +164,14 @@ async function verify() {
   const mark = JSON.parse(readFileSync('.resume-test.json', 'utf8'))
   console.log(`  恢复目标: task=${mark.taskId.slice(0, 8)}… (workerTask=${mark.workerTaskId.slice(0, 8)}…)`)
 
-  // 重启后立即查 DB:消息应已重投(resetConsuming/redeliverAssign 落库)
+  // 重启后立即查 DB:消息应已重投(resetConsuming/redeliverAssign 落库)。
+  // dev server 首次请求才懒编译路由,restore 在 HTTP 可达前已跑完 —— 慢 worker 可能
+  // 已被快速接走甚至完成(consumed),故按"存在重投轨迹"断言(pending/consuming/consumed)。
   const pending = dbQuery(
-    `SELECT COUNT(*) AS n FROM messages WHERE task_id = ? AND state = 'pending'`,
+    `SELECT COUNT(*) AS n FROM messages WHERE task_id = ? AND state IN ('pending', 'consuming', 'consumed')`,
     mark.workerTaskId,
   )
-  check('重启后 assign 已重投为 pending', pending[0].n > 0, `pending=${pending[0].n}`)
+  check('重启后 assign 重投轨迹存在(pending/consuming/consumed)', pending[0].n > 0, `trail=${pending[0].n}`)
 
   // 等待自动恢复执行至 COMPLETED(restore 唤醒 → worker 重放)
   const finalState = await waitState(mark.taskId, ['COMPLETED', 'FAILED', 'CANCELED'], 40_000)
@@ -206,7 +216,7 @@ async function gap() {
   check('缺口已制造(无任何待消费消息)', left.n === 0, `remaining=${left.n}`)
 
   const { writeFileSync } = await import('node:fs')
-  writeFileSync('.resume-test.json', JSON.stringify({ channelId, taskId, workerTaskId: working.id }))
+  writeFileSync('.resume-test.json', JSON.stringify({ channelId, taskId, workerTaskId: working.id, token: __userToken }))
   console.log(`\n结果: PASS=${pass} FAIL=${fail}`)
   process.exit(fail === 0 ? 0 : 1)
 }
@@ -217,10 +227,10 @@ async function verifyGap() {
   const mark = JSON.parse(readFileSync('.resume-test.json', 'utf8'))
 
   const pending = dbQuery(
-    `SELECT COUNT(*) AS n FROM messages WHERE task_id = ? AND state = 'pending' AND metadata_json LIKE '%"x-aw-task-kind":"assign"%'`,
+    `SELECT COUNT(*) AS n FROM messages WHERE task_id = ? AND state IN ('pending','consuming','consumed') AND metadata_json LIKE '%"x-aw-task-kind":"assign"%'`,
     mark.workerTaskId,
   )
-  check('restore 重投了缺口 assign', pending[0].n > 0, `pending-assign=${pending[0].n}`)
+  check('restore 重投缺口 assign(轨迹存在)', pending[0].n > 0, `assign-trail=${pending[0].n}`)
 
   const finalState = await waitState(mark.taskId, ['COMPLETED', 'FAILED', 'CANCELED'], 40_000)
   check('缺口任务自动恢复至 COMPLETED', finalState === 'COMPLETED', `state=${finalState}`)

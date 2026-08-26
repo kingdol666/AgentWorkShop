@@ -89,17 +89,18 @@ async function main() {
   check('任务1 提交 → 200', t1.status === 200 && t1.code === 0, `taskId=${t1.data?.id?.slice(0, 8)}`)
 
   const done1 = await waitUntil(async () => {
-    const r = await api('GET', `/channels/${channelId}/tasks`, { token: lead.token })
-    return r.data.find(t => t.title === '实现支付网关对接' && t.state === 'COMPLETED')
+    // channel 级任务列表属用户管理面(agent token 不适用;缺省用注册用户 token)
+    const r = await api('GET', `/channels/${channelId}/tasks`)
+    return r.data?.find(t => t.title === '实现支付网关对接' && t.state === 'COMPLETED')
   }, 30_000)
   check('任务1 闭环 COMPLETED', !!done1)
 
-  const tasks1 = (await api('GET', `/channels/${channelId}/tasks`, { token: lead.token })).data
+  const tasks1 = (await api('GET', `/channels/${channelId}/tasks`)).data
   const child1 = tasks1.find(t => t.parentId === t1.data.id)
   check('lead 自动调配(生成子任务指派 worker)', !!child1 && child1.assigneeId !== lead.id, child1 ? `assignee=${child1.assigneeId.slice(0, 8)}` : 'no child')
   check('worker 执行留痕(子任务 progress=100 + artifacts)', !!child1 && child1.progress === 100 && child1.artifacts.length > 0)
 
-  const queue = await api('GET', `/channels/${channelId}/queue`, { token: lead.token })
+  const queue = await api('GET', `/channels/${channelId}/queue`)
   check('GET queue 状态视图(3 成员)', queue.code === 0 && queue.data.length === 3, JSON.stringify(queue.data?.map(s => `${s.name}:${s.state}`)))
 
   // ── ③ 执行 summary 自动沉淀记忆 ──
@@ -201,12 +202,12 @@ async function main() {
   console.log('\n=== ⑦ 新相关任务自动感知 ===')
   await submit('支付网关重试机制', '为支付网关对接增加失败重试,遵循支付网关接入规范')
   const done2 = await waitUntil(async () => {
-    const r = await api('GET', `/channels/${channelId}/tasks`, { token: lead.token })
+    const r = await api('GET', `/channels/${channelId}/tasks`)
     return r.data.find(t => t.title === '支付网关重试机制' && t.state === 'COMPLETED')
   }, 30_000)
   check('任务2(相关)闭环', !!done2)
 
-  const tasks2 = (await api('GET', `/channels/${channelId}/tasks`, { token: lead.token })).data
+  const tasks2 = (await api('GET', `/channels/${channelId}/tasks`)).data
   const child2 = tasks2.find(t => t.title === '支付网关重试机制' && t.parentId)
   const memRowsAfter = await waitUntil(async () => {
     const rows = await memOf(child2.assigneeId, lead.token)

@@ -153,18 +153,21 @@ export class MockAgentImpl implements AgentInterface {
 
     const judged = this.goalJudged.get(task.id) ?? 0
     if (judged < this.goalRejectRounds) {
-      this.goalJudged.set(task.id, judged + 1)
+      // 仅在真正派发出补充子任务时才消耗一次判定轮次:无空闲 worker 时跳过本轮,
+      // 下一轮再判 —— 「判定不满 N 次」应等于「实际补发了 N 轮工作」,否则
+      // 短暂的空池(worker 收尾中)会白白烧掉一次评审,目标被提前接受、缺口真实丢失
+      // (与 omp LLM lead 的语义对齐:空决策的 supervise 轮不推进任何状态)。
       const worker = this.pickWorker(pool, now)
-      if (worker) {
-        const criteria = extractTaskMode(task)?.config.goalCriteria ?? '任务描述中的需求'
-        decisions.push({
-          kind: 'dispatch',
-          parentTaskId: task.id,
-          assigneeId: worker.agentId,
-          title: `${task.title} - 目标补充第 ${judged + 1} 轮`,
-          description: `[goal 缺口补充] 评审结论:目标尚未满足(标准:${criteria})。请基于既有成果继续补齐。`,
-        })
-      }
+      if (!worker) return
+      this.goalJudged.set(task.id, judged + 1)
+      const criteria = extractTaskMode(task)?.config.goalCriteria ?? '任务描述中的需求'
+      decisions.push({
+        kind: 'dispatch',
+        parentTaskId: task.id,
+        assigneeId: worker.agentId,
+        title: `${task.title} - 目标补充第 ${judged + 1} 轮`,
+        description: `[goal 缺口补充] 评审结论:目标尚未满足(标准:${criteria})。请基于既有成果继续补齐。`,
+      })
       return
     }
     this.goalJudged.delete(task.id)

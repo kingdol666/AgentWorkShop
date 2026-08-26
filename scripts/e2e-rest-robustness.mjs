@@ -89,7 +89,7 @@ async function main() {
   check('任务非法 mode 枚举 → 400', badMode.status === 400)
 
   console.log('\n=== ② 鉴权层(401)===')
-  const noToken = await api('POST', `/channels/${channelId}/agents/${w1.id}/memories/search`, { body: { query: 'x' } })
+  const noToken = await api('POST', `/channels/${channelId}/agents/${w1.id}/memories/search`, { token: null, body: { query: 'x' } })
   check('search 无 token → 401', noToken.status === 401)
   const fakeToken = await api('POST', `/channels/${channelId}/memories`, { token: 'not-a-real-token', body: { title: 'x', content: 'y' } })
   check('伪 token → 401', fakeToken.status === 401)
@@ -110,7 +110,9 @@ async function main() {
   const crossSend = await api('POST', '/a2a/send', {
     token: other.token, body: { toAgentId: w1.id, parts: [{ text: 'hi' }] },
   })
-  check('跨 channel 发消息 → 403', crossSend.status === 403)
+  // 跨 channel 寻址被隔离:目标不在调用方频道 → 404 MEMBER_NOT_FOUND(不泄漏他频道存在性);
+  // 403 与 404 均表明隔离成立
+  check('跨 channel 发消息 → 403/404 隔离', crossSend.status === 403 || crossSend.status === 404, `status=${crossSend.status} code=${crossSend.code}`)
   const workerTeamWrite = await api('POST', `/channels/${channelId}/memories`, {
     token: w1.token, body: { title: 'x', content: 'y' },
   })

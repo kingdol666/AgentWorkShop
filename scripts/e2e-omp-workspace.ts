@@ -153,7 +153,21 @@ async function main(): Promise<void> {
   finally {
     await manager.shutdown()
     db.close()
-    rmSync(ws, { recursive: true, force: true })
+    // Windows 收尾竞态:omp 子进程(含终端镜像)可能仍持有 cwd 目录句柄,
+    // 立即 rmSync 会 EPERM —— 带宽限重试,仍失败则告警保留(不掩盖功能断言结果)。
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        rmSync(ws, { recursive: true, force: true })
+        break
+      }
+      catch {
+        if (attempt === 4) {
+          console.warn(`[e2e-omp-workspace] 临时工作区清理失败(Windows 句柄占用),已保留: ${ws}`)
+          break
+        }
+        await sleep(500)
+      }
+    }
   }
 
   console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILED`}`)

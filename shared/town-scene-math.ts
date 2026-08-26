@@ -221,9 +221,9 @@ export function distToRangeBoundary(range: AgentRangeLayout, x: number, z: numbe
 // 身份色(agentId / channelId 哈希 → 稳定色相,一处定义)
 // ================================================================
 
-/** FIFO 下每条气泡的展示时长:短句快速切换、长句稍长(1.4s~3.4s) */
+/** FIFO 下每条气泡的展示时长:短句快速切换、长句更久(2.2s~5.6s)——放大聊天框后同步延长可读窗口 */
 export function bubbleDisplayMs(text: string): number {
-  return Math.min(3400, Math.max(1400, 1200 + text.length * 26))
+  return Math.min(5600, Math.max(2200, 1600 + text.length * 34))
 }
 
 export function hashHue(id: string): number {

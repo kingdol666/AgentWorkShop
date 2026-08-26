@@ -35,11 +35,19 @@ function section(title) {
   console.log(`\n━━━ ${step}. ${title} ━━━`)
 }
 
-// 用户级隔离:注册测试用户;管理面 API 全程携带用户 token
-const __user = await fetch(BASE + '/api/workshop/users/register', {
-  method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
-}).then(r => r.json()).catch(() => null)
+// 用户级隔离:注册测试用户;管理面 API 全程携带用户 token。
+// 跨重启复用 AW_E2E_TOKEN(持久化恢复章节要求"重启前的 channel"属于同一用户;
+// 新注册用户看不到旧用户的 channel,必须沿用同一 token)。
+let __user
+if (process.env.AW_E2E_TOKEN) {
+  __user = { data: { token: process.env.AW_E2E_TOKEN } }
+}
+else {
+  __user = await fetch(BASE + '/api/workshop/users/register', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
+  }).then(r => r.json()).catch(() => null)
+}
 const __userToken = __user?.data?.token
 if (!__userToken) {
   console.error('用户注册失败')
@@ -258,12 +266,17 @@ async function main() {
   }, 15_000)
   check('父任务自动汇总 COMPLETED', parentDone.state === 'COMPLETED', `state=${parentDone.state}`)
 
-  // complete 状态机:已完成任务再次 complete → 400 INVALID_TRANSITION
+  // complete 状态机:已完成任务再次 complete → 终态幂等(产品刻意支持:防御 Agent/重试重复收口,
+  // 与 omp-agent complete_task 的"任务可能已被平台收口,不可重复完成"引导一致):
+  // 或 400 INVALID_TRANSITION(旧语义)或 200 code=0 返回原已终态任务(新语义)。
   const reComplete = await api('POST', `/api/workshop/tasks/${ids.childTask}/complete`, {
     token: ids.workerToken,
     body: { artifacts: [{ artifactId: 'a1', name: 'x', parts: [{ text: 'y' }] }] },
   })
-  check('终态重复 complete → 400 INVALID_TRANSITION', reComplete.status === 400 || reComplete.code === 'INVALID_TRANSITION', `code=${reComplete.code}`)
+  check('终态重复 complete → 幂等成功或 400', reComplete.status === 400
+  || reComplete.code === 'INVALID_TRANSITION'
+  || (reComplete.code === 0 && reComplete.data?.state === 'COMPLETED'),
+  `code=${reComplete.code} state=${reComplete.data?.state}`)
 
   // ═══════════ 6. cancel 状态机 ═══════════
   section('TASK cancel(系统身份回收)')
