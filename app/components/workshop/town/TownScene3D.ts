@@ -1900,7 +1900,7 @@ export class TownScene3D {
     const x = asp?.root.position.x ?? b!.x
     const z = asp?.root.position.z ?? b!.z
     // 放大气泡后锚点整体抬升(避免压到 48 处名牌)
-    sprite.position.set(x, asp ? BUBBLE_Y + 16 + Math.max(0, asp.model.scale.y - 1) * 22 : 56, z)
+    sprite.position.set(x, asp ? BUBBLE_Y + 22 + Math.max(0, asp.model.scale.y - 1) * 22 : 64, z)
     this.scene.add(sprite)
     if (!asp) {
       // 频道级(系统)气泡:展示期满自行移除
@@ -1924,19 +1924,19 @@ export class TownScene3D {
     const accentHex = `#${accent.toString(16).padStart(6, '0')}`
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
-    // 大字号会话气泡:正文 16px / 头名 12.5px / 最多 5 行 / 宽 ≤ 560px —— Agent 实时信息一眼可读
-    const bodyFont = '16px Geist, "PingFang SC", sans-serif'
-    const headFont = 'bold 12.5px Geist, "PingFang SC", sans-serif'
-    const maxTextW = 400
-    const padX = 16
-    const padY = 11
-    const nameH = 24
-    const lineH = 22
-    const tailH = 12
+    // 超大字号会话气泡:正文 18px / 头名 13.5px / 最多 6 行 / 宽 ≤ 680px —— 实时信息一眼可读
+    const bodyFont = '18px Geist, "PingFang SC", sans-serif'
+    const headFont = 'bold 13.5px Geist, "PingFang SC", sans-serif'
+    const maxTextW = 470
+    const padX = 18
+    const padY = 12
+    const nameH = 26
+    const lineH = 24
+    const tailH = 13
     ctx.font = bodyFont
-    const lines = this.wrapBubbleLines(ctx, text.replace(/\s+/g, ' ').trim() || '…', maxTextW, 5)
+    const lines = this.wrapBubbleLines(ctx, text.replace(/\s+/g, ' ').trim() || '…', maxTextW, 6)
     const textW = Math.max(...lines.map(l => ctx.measureText(l).width))
-    const bw = Math.min(560, Math.max(120, Math.ceil(textW) + padX * 2))
+    const bw = Math.min(680, Math.max(140, Math.ceil(textW) + padX * 2))
     const bodyH = nameH + lines.length * lineH + padY * 2
     const bh = bodyH + tailH
     canvas.width = bw
@@ -1990,11 +1990,11 @@ export class TownScene3D {
     ctx.font = bodyFont
     ctx.fillStyle = kind === 'error' ? '#ff9d9d' : '#eef2fb'
     lines.forEach((l, i) => ctx.fillText(l, padX, padY + nameH + 10 + i * lineH))
-    // Sprite(纹理按 1/2.6 缩放到世界单位 —— 放大气泡后保持更大可见尺度)
+    // Sprite(纹理按 1/2.4 缩放到世界单位 —— 放大气泡后保持更大可见尺度)
     const tex = new THREE.CanvasTexture(canvas)
     tex.colorSpace = THREE.SRGBColorSpace
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }))
-    const k = 2.6
+    const k = 2.4
     sprite.scale.set(bw / k, bh / k, 1)
     return sprite
   }
@@ -3242,7 +3242,7 @@ export class TownScene3D {
           ? 0.62 + Math.abs(Math.sin(performance.now() * 0.005)) * 0.38
           : 0.85
         if (asp.bubble) {
-          asp.bubble.position.set(asp.root.position.x, BUBBLE_Y + 16 + Math.max(0, asp.model.scale.y - 1) * 22, asp.root.position.z)
+          asp.bubble.position.set(asp.root.position.x, BUBBLE_Y + 22 + Math.max(0, asp.model.scale.y - 1) * 22, asp.root.position.z)
         }
       }
       // 设备节点:状态环颜色驱动 + 名牌跟随(数据驱动:state → 环色)

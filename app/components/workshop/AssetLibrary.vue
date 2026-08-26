@@ -11,6 +11,7 @@
  *  - 删除:删除对应模型文件(仅限 devices 目录内)。
  */
 import { useCharacterAssets } from '@/app/composables/workshop/useCharacterAssets'
+import ModelPreview3D from './town/ModelPreview3D.vue'
 
 const assets = useCharacterAssets()
 
@@ -18,6 +19,9 @@ const assets = useCharacterAssets()
 const deviceModels = computed(() =>
   assets.models.filter(m => m.kind === 'dev'),
 )
+
+/** 可 3D 预览的格式(glb/gltf);obj/fbx 保持占位图标 */
+const isPreviewable = (name: string): boolean => /\.(glb|gltf)$/i.test(name)
 
 // 拖起:把模型 id 交给 dataTransfer(HTML5 DnD)
 function onDragStart(e: DragEvent, id: string): void {
@@ -27,19 +31,34 @@ function onDragStart(e: DragEvent, id: string): void {
   e.dataTransfer.effectAllowed = 'copy'
 }
 
-// ---------- 上传(设备 3D 模型) ----------
+// ---------- 上传(设备 3D 模型:拖放/选择 → 本地 3D 预览 → 确认上传) ----------
 const uploading = ref(false)
 const uploadError = ref('')
 const uploadFile = ref<File | null>(null)
+const dropActive = ref(false)
 const onPickFile = (e: Event): void => {
   const input = e.target as HTMLInputElement
-  uploadFile.value = input.files?.[0] ?? null
+  setUploadFile(input.files?.[0] ?? null)
+}
+const onDropFile = (e: DragEvent): void => {
+  dropActive.value = false
+  setUploadFile(e.dataTransfer?.files?.[0] ?? null)
+}
+const setUploadFile = (f: File | null): void => {
+  if (f && !/\.(glb|gltf|obj|fbx)$/i.test(f.name)) {
+    uploadError.value = '仅支持 .glb/.gltf/.obj/.fbx 模型文件'
+    return
+  }
+  uploadFile.value = f
   uploadError.value = ''
+}
+const clearUpload = (): void => {
+  uploadFile.value = null
 }
 async function doUpload(): Promise<void> {
   const f = uploadFile.value
   if (!f) {
-    uploadError.value = '请先选择设备模型文件(.glb/.gltf/.obj/.fbx)'
+    uploadError.value = '请先拖入或选择设备模型文件(.glb/.gltf/.obj/.fbx)'
     return
   }
   uploading.value = true
@@ -84,8 +103,14 @@ async function doRemove(id: string): Promise<void> {
       <span class="head-hint">拖入小镇生成实例</span>
     </div>
 
-    <!-- 上传区(设备 3D 模型) -->
-    <div class="upload-box">
+    <!-- 上传区(设备 3D 模型:拖放/选择 → 本地 3D 预览 → 确认上传) -->
+    <div
+      class="upload-box"
+      :class="{ drop: dropActive }"
+      @dragover.prevent="dropActive = true"
+      @dragleave="dropActive = false"
+      @drop.prevent="onDropFile"
+    >
       <label class="upload-row">
         <input
           type="file"
@@ -93,17 +118,53 @@ async function doRemove(id: string): Promise<void> {
           class="file-input"
           @change="onPickFile"
         >
-        <span class="upload-name">{{ uploadFile?.name || '选择模型(glb/gltf/obj/fbx)' }}</span>
+        <span class="upload-name">
+          <span class="i-tabler-plus upload-ico" />
+          {{ uploadFile?.name || '拖放或选择模型文件' }}
+        </span>
       </label>
-      <button
-        class="upload-btn"
-        :disabled="uploading"
-        @click="doUpload"
-      >
-        {{ uploading ? '上传中…' : '上传设备模型' }}
-      </button>
       <span
-        v-if="uploadError"
+        v-if="dropActive"
+        class="drop-hint"
+      >
+        <span class="i-tabler-download" />
+        松开以选择模型
+      </span>
+
+      <!-- 上传前本地 3D 预览(glb/gltf 实时渲染真实形状) -->
+      <template v-if="uploadFile">
+        <ModelPreview3D
+          v-if="isPreviewable(uploadFile.name)"
+          :local-file="uploadFile"
+          :height="92"
+        />
+        <span
+          v-else
+          class="upload-file-tag"
+        >{{ uploadFile.name }} (暂不支持 3D 预览)</span>
+        <div class="upload-actions">
+          <button
+            class="upload-btn go"
+            :disabled="uploading"
+            @click="doUpload"
+          >
+            {{ uploading ? '上传中…' : '确认上传' }}
+          </button>
+          <button
+            class="upload-btn"
+            :disabled="uploading"
+            @click="clearUpload"
+          >
+            取消
+          </button>
+        </div>
+      </template>
+      <span
+        v-else-if="uploading"
+        class="mini-err"
+      >上传中…</span>
+      <span
+        v-if="uploadError && !uploadFile"
         class="mini-err"
       >{{ uploadError }}</span>
     </div>
@@ -118,7 +179,14 @@ async function doRemove(id: string): Promise<void> {
         :title="m.hint || `拖到小镇场景即生成设备实例 · ${m.name}`"
         @dragstart="onDragStart($event, m.id)"
       >
+        <!-- GLB/GLTF:实时 3D 模型预览(真实几何形状);其余格式占位图标 -->
+        <ModelPreview3D
+          v-if="isPreviewable(m.file)"
+          :file="m.file"
+          :height="76"
+        />
         <span
+          v-else
           class="model-img glb dev"
         >
           <span
@@ -272,4 +340,96 @@ async function doRemove(id: string): Promise<void> {
 .mini-err { color: var(--tone-danger-dot); }
 .mini-err, .mini-msg { font-size: 10px; }
 .mini-msg { color: var(--ink-soft); }
+
+/* ============================================================
+ * 上传体验优化 + GLB 实时预览(工业 HMI 覆盖)
+ * ============================================================ */
+.upload-box {
+  position: relative;
+  gap: 7px;
+  border: 1px dashed var(--hud-line, #2a3844);
+  background: rgba(14, 20, 29, 0.5);
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+.upload-box.drop {
+  border-color: var(--hud-accent, #4fa8ff);
+  background: rgba(79, 168, 255, 0.08);
+}
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+}
+.upload-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--hud-dim, #7f919e);
+}
+.upload-ico {
+  color: var(--hud-accent, #4fa8ff);
+  font-size: 13px;
+}
+.drop-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--hud-accent, #4fa8ff);
+  padding: 2px 0 4px;
+}
+.upload-file-tag {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--hud-dim, #7f919e);
+  padding: 3px 6px;
+  border: 1px solid var(--hud-line, #2a3844);
+  border-radius: 2px;
+}
+.upload-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.upload-btn {
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  padding: 5px 10px;
+  font-size: 10px;
+}
+.upload-btn.go {
+  color: var(--hud-amber, #f0a04c);
+  border-color: rgba(240, 160, 76, 0.55);
+  background: rgba(240, 160, 76, 0.08);
+}
+.upload-btn.go:hover:not(:disabled) {
+  background: rgba(240, 160, 76, 0.16);
+  border-color: var(--hud-amber, #f0a04c);
+}
+/* 模型卡:预览贯通整行,内容左对齐 */
+.model-card {
+  align-items: stretch;
+  padding: 6px;
+  gap: 4px;
+}
+.model-card .model-preview-3d {
+  margin-bottom: 2px;
+}
+.model-card .model-name {
+  text-align: left;
+  padding: 0 2px;
+}
+.model-card .model-badge {
+  text-align: left;
+  padding: 0 2px;
+}
+.model-card .card-actions {
+  justify-content: flex-end;
+}
 </style>

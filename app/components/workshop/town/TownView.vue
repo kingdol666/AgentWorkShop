@@ -19,6 +19,9 @@ import type { TownScene, TownEntityInput } from './TownScene'
 import type { TownScene3D, ChannelLayout, AgentRangeLayout } from './TownScene3D'
 // 频道身份色/世界尺度与 3D 场景同源(避免 UI 与场景两套色相哈希分叉)
 import { WORLD_H, WORLD_W, channelColorCss } from '#shared/town-scene-math'
+// 历史聊天:复用事件→气泡意图映射(与 3D 场景同源,确保历史/实时同一语义)
+import { mapEnvelopeToIntent } from '#shared/town-protocol'
+import type { AepEnvelope } from '#shared/workshop-protocol'
 
 /**
  * 两种渲染器(Phaser 2D / Three.js 3D)共享的最小公开接口。
@@ -855,6 +858,79 @@ function onFocusDevice(t: { id: string, posX?: number, posZ?: number }): void {
   ;(s as unknown as { setSelected?: (x: { kind: 'device', id: string }) => void }).setSelected?.({ kind: 'device', id: t.id })
 }
 
+/* ============================================================
+ * 可拖动面板(对象属性卡/边界面板/精魂会话台):
+ * 抓取标题栏拖动,自由移动避免堆叠在底部;位置经 localStorage 记忆
+ * ============================================================ */
+const panelPos = reactive<Record<string, { x: number, y: number }>>({})
+const PANEL_POS_KEY = 'aw-town-panel-pos'
+function restorePanelPos(): void {
+  if (typeof localStorage === 'undefined') return
+  try {
+    const saved = JSON.parse(localStorage.getItem(PANEL_POS_KEY) || '{}') as Record<string, { x: number, y: number }>
+    for (const k of Object.keys(saved)) {
+      if (saved[k] && Number.isFinite(saved[k].x)) panelPos[k] = saved[k]
+    }
+  }
+  catch { /* 损坏的存档忽略 */ }
+}
+function savePanelPos(): void {
+  try {
+    localStorage.setItem(PANEL_POS_KEY, JSON.stringify(panelPos))
+  }
+  catch { /* 隐私模式等忽略 */ }
+}
+let dragToken: { frame: HTMLElement, panel: HTMLElement, offX: number, offY: number } | null = null
+
+/** 抓取面板标题栏开始拖动(pointerdown) */
+function onPanelGripDown(e: PointerEvent, key: string): void {
+  const grip = e.currentTarget as HTMLElement
+  const panel = grip.closest<HTMLElement>('.drag-panel')
+  const frame = grip.closest<HTMLElement>('.town-frame')
+  if (!panel || !frame) return
+  e.preventDefault()
+  const rect = panel.getBoundingClientRect()
+  const fr = frame.getBoundingClientRect()
+  // 由「底部居中」布局切换为显式定位(之后完全随拖动)
+  panel.style.left = `${rect.left - fr.left}px`
+  panel.style.top = `${rect.top - fr.top}px`
+  panel.style.bottom = 'auto'
+  panel.style.transform = 'none'
+  panelPos[key] = { x: rect.left - fr.left, y: rect.top - fr.top }
+  dragToken = {
+    frame,
+    panel,
+    offX: e.clientX - rect.left,
+    offY: e.clientY - rect.top,
+  }
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'grabbing'
+  const onMove = (ev: PointerEvent): void => {
+    const tk = dragToken
+    if (!tk) return
+    const fr2 = tk.frame.getBoundingClientRect()
+    const x = ev.clientX - tk.offX - fr2.left
+    const y = ev.clientY - tk.offY - fr2.top
+    const pw = tk.panel.offsetWidth
+    const nx = Math.max(-pw + 90, Math.min(x, fr2.width - 30))
+    const ny = Math.max(4, Math.min(y, fr2.height - 34))
+    tk.panel.style.left = `${nx}px`
+    tk.panel.style.top = `${ny}px`
+    panelPos[key] = { x: nx, y: ny }
+  }
+  const onUp = (): void => {
+    dragToken = null
+    document.body.style.userSelect = ''
+    document.body.style.cursor = ''
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    savePanelPos()
+  }
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+}
+restorePanelPos()
+
 /** 世界宽度估算(与 TownScene3D 的 WORLD_W 对齐;仅供拖拽位移换算) */
 const WORLD_W3D = 3200
 
@@ -923,6 +999,106 @@ const agentChatRows = computed(() => {
 const agentChatTitle = computed(() => {
   if (!selected.value || selected.value.kind !== 'agent') return ''
   return scene3dRef.value?.getAgentName?.(selected.value.id) ?? '精魂'
+})
+
+/* ============================================================
+ * Agent 历史聊天:REST 拉取频道事件,经 mapEnvelopeToIntent 还原该角色的
+ * 全部对话(与 3D 头顶气泡同语义),与实时流合并成 RPG 对话面板
+ * ============================================================ */
+interface ChatEntry {
+  id: string
+  agentId: string
+  text: string
+  kind: string
+  at: number
+  live: boolean
+}
+const agentHistory = ref<ChatEntry[]>([])
+const historyLoading = ref(false)
+const historyCache = new Map<string, ChatEntry[]>()
+const chatScroll = ref<HTMLElement | null>(null)
+
+function cookieToken(): string {
+  if (typeof document === 'undefined') return ''
+  return (document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? '')
+}
+function channelOfAgent(agentId: string): string | undefined {
+  for (const cid of Object.keys(entities.agents)) {
+    if ((entities.agents[cid] ?? []).some(a => a.agentId === agentId)) return cid
+  }
+  return undefined
+}
+
+/** 拉取并缓存该角色的历史对话(按 at 升序) */
+async function loadAgentHistory(agentId: string, channelId: string): Promise<void> {
+  const cached = historyCache.get(agentId)
+  if (cached) {
+    agentHistory.value = cached
+    return
+  }
+  historyLoading.value = true
+  try {
+    const tok = cookieToken()
+    const q = `/api/workshop/channels/${channelId}/events?limit=500&excludeTypes=agent.delta`
+    const res = await fetch(q, { headers: tok ? { authorization: `Bearer ${decodeURIComponent(tok)}` } : {} })
+    const json = await res.json().catch(() => null)
+    const events: AepEnvelope[] = json?.data ?? []
+    const rows: ChatEntry[] = []
+    for (const e of events) {
+      const b = mapEnvelopeToIntent(e)?.bubble
+      if (!b || b.agentId !== agentId) continue
+      const atRaw = e.at
+      const at = typeof atRaw === 'number' ? atRaw : (atRaw ? Date.parse(String(atRaw)) : 0)
+      rows.push({ id: `${String(e.seq ?? rows.length)}-${rows.length}`, agentId: b.agentId, text: b.text, kind: b.kind, at, live: false })
+    }
+    rows.sort((a, b) => a.at - b.at)
+    historyCache.set(agentId, rows)
+    agentHistory.value = rows
+  }
+  catch {
+    agentHistory.value = []
+  }
+  finally {
+    historyLoading.value = false
+  }
+}
+
+// 切换选中角色:重新加载其历史对话
+watch(() => selected.value, (sel) => {
+  if (!sel || sel.kind !== 'agent') {
+    agentHistory.value = []
+    return
+  }
+  const cid = channelOfAgent(sel.id)
+  if (cid) void loadAgentHistory(sel.id, cid)
+  else agentHistory.value = []
+}, { immediate: true })
+
+/** 合并历史 + 实时(RPG 对话面板数据源) */
+/** 选中角色的身份色(频道哈希,与场景环同源) */
+const agentChatColor = computed(() => {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'agent') return '#4fa8ff'
+  const cid = channelOfAgent(sel.id)
+  return cid ? (channelColorCss(cid) ?? '#4fa8ff') : '#4fa8ff'
+})
+
+/** 对话类型标签(工业 HMI 小印章) */
+function chatKindLabel(kind: string): string {
+  switch (kind) {
+    case 'artifact': return '交付'
+    case 'delta': return '……'
+    case 'info': return '系统'
+    case 'error': return '异常'
+    default: return ''
+  }
+}
+
+// 新消息自动滚到底部(历史或实时条数变化)
+watch(() => agentHistory.value.length + agentChatRows.value.length, async () => {
+  await nextTick()
+  const el = chatScroll.value
+  if (el) el.scrollTop = el.scrollHeight
 })
 
 /** 轮询设备孪生 → 场景节点同步 + 状态环颜色(设备节点由 dev 模型拖入/服务端恢复生成) */
@@ -1032,12 +1208,17 @@ onBeforeUnmount(() => {
           >{{ dockHint }}</span>
         </aside>
 
-        <!-- 频道管理面板(边界编辑 + 成员角色模型设置) -->
+        <!-- 频道管理面板(边界编辑 + 成员角色模型设置;标题栏可拖动) -->
         <div
           v-if="selectedChannel && boundaryDraft"
-          class="boundary-panel"
+          class="boundary-panel drag-panel"
+          :style="panelPos.boundary ? { left: panelPos.boundary.x + 'px', top: panelPos.boundary.y + 'px', bottom: 'auto', transform: 'none' } : undefined"
         >
-          <div class="bp-title">
+          <div
+            class="bp-title drag-grip"
+            title="拖动移动面板"
+            @pointerdown="onPanelGripDown($event, 'boundary')"
+          >
             <span class="bp-name">{{ entities.channels[selectedChannel]?.name ?? selectedChannel.slice(0, 8) }}</span>
             <span class="bp-sub">频道管理</span>
             <div class="bp-tabs">
@@ -1185,12 +1366,17 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- 场景对象属性面板(选中设备/角色:改名/换模型/旋转/缩放/删除) -->
+        <!-- 场景对象属性面板(选中设备/角色:改名/换模型/旋转/缩放/删除;标题栏可拖动) -->
         <div
           v-if="selected"
-          class="object-panel"
+          class="object-panel drag-panel"
+          :style="panelPos.object ? { left: panelPos.object.x + 'px', top: panelPos.object.y + 'px', bottom: 'auto', transform: 'none' } : undefined"
         >
-          <div class="scale-title">
+          <div
+            class="scale-title drag-grip"
+            title="拖动移动面板"
+            @pointerdown="onPanelGripDown($event, 'object')"
+          >
             <span class="scale-kind">{{ selected.kind === 'agent' ? '角色' : '设备实例' }}</span>
             <span class="scale-id">{{ selected.id.slice(0, 8) }}</span>
             <button
@@ -1457,24 +1643,81 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- 精魂会话台:选中角色时放大展示其本人近实时消息(实时消费自己的信息) -->
+        <!-- 精魂对话:选中角色 → RPG 风格对话窗(历史记录 + 实时流,标题栏可拖动) -->
         <div
-          v-if="selected?.kind === 'agent' && agentChatRows.length"
-          class="agent-chat"
+          v-if="selected?.kind === 'agent'"
+          class="agent-chat drag-panel rpg-dialog"
           :data-agent-id="selected.id"
+          :style="panelPos['agent-chat'] ? { left: panelPos['agent-chat'].x + 'px', top: panelPos['agent-chat'].y + 'px', bottom: 'auto', transform: 'none' } : undefined"
         >
-          <div class="agent-chat-head">
-            <span class="act-ava">{{ agentChatTitle.charAt(0).toUpperCase() }}</span>
-            <span class="agent-chat-name">{{ agentChatTitle }} · 实时会话</span>
-            <span class="agent-chat-live">● LIVE</span>
+          <div
+            class="agent-chat-head drag-grip"
+            title="拖动移动面板"
+            @pointerdown="onPanelGripDown($event, 'agent-chat')"
+          >
+            <span
+              class="rpg-portrait"
+              :style="{ '--p-acc': agentChatColor }"
+            >{{ agentChatTitle.slice(0, 1).toUpperCase() }}</span>
+            <div class="rpg-nameplate">
+              <span class="agent-chat-name">{{ agentChatTitle }}</span>
+              <span class="agent-chat-live">{{ historyLoading ? '◇ 读取历史…' : '● 实时' }}</span>
+            </div>
+            <span class="rpg-tag">AGENT LOG</span>
           </div>
-          <div class="agent-chat-rows">
+          <div
+            ref="chatScroll"
+            class="rpg-lines"
+          >
+            <div
+              v-if="historyLoading"
+              class="rpg-note"
+            >
+              正在读取历史对话…
+            </div>
+            <template v-if="agentHistory.length">
+              <div class="rpg-divider">
+                ◇ 历史记录
+              </div>
+              <div
+                v-for="r in agentHistory"
+                :key="r.id"
+                class="rpg-line hist"
+              >
+                <span class="rpg-ava mini">{{ agentChatTitle.slice(0, 1).toUpperCase() }}</span>
+                <div class="rpg-bubble">
+                  <span
+                    v-if="chatKindLabel(r.kind)"
+                    class="rpg-kind"
+                  >{{ chatKindLabel(r.kind) }}</span>
+                  <span class="rpg-text">{{ r.text }}</span>
+                </div>
+              </div>
+            </template>
+            <div
+              v-if="agentChatRows.length"
+              class="rpg-divider live"
+            >
+              ◇ 实时
+            </div>
             <div
               v-for="(t, i) in agentChatRows"
-              :key="`${t.agentName}-${i}`"
-              class="agent-chat-row"
+              :key="`l-${i}`"
+              class="rpg-line live"
             >
-              <span class="agent-chat-body">{{ t.text }}</span>
+              <span
+                class="rpg-ava"
+                :style="{ '--p-acc': agentChatColor }"
+              >{{ agentChatTitle.slice(0, 1).toUpperCase() }}</span>
+              <div class="rpg-bubble">
+                <span class="rpg-text">{{ t.text }}</span>
+              </div>
+            </div>
+            <div
+              v-if="!historyLoading && !agentHistory.length && !agentChatRows.length"
+              class="rpg-note"
+            >
+              暂无对话 · 该精魂尚未开口
             </div>
           </div>
         </div>
@@ -2300,6 +2543,21 @@ onBeforeUnmount(() => {
   color: var(--ink-faint);
 }
 
+/* 可拖动面板:标题栏抓手(拖动移动,避免面板堆叠底部) */
+.drag-grip {
+  cursor: grab;
+  touch-action: none;
+}
+.drag-grip:active {
+  cursor: grabbing;
+}
+.drag-panel {
+  will-change: left, top;
+}
+.drag-panel.dragging {
+  transition: none;
+}
+
 /* ============================================================
  * 工业数字孪生 HMI 设计令牌(继承至 DeviceTwinPanel 等子组件)
  * ============================================================ */
@@ -2570,5 +2828,170 @@ onBeforeUnmount(() => {
 .town-view :deep(.model-img) {
   border-radius: 2px;
   background: #0e141d;
+}
+
+/* ============================================================
+ * RPG 对话窗(历史 + 实时)——暗色电影感游戏对话声部
+ * ============================================================ */
+.agent-chat.rpg-dialog {
+  width: min(58%, 620px);
+  max-height: 400px;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background:
+    radial-gradient(140% 90% at 18% 0%, rgba(79, 168, 255, 0.10), transparent 55%),
+    var(--hud-panel, #10161f);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+}
+.agent-chat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--hud-line, #2a3844);
+}
+.rpg-portrait {
+  --p-acc: #4fa8ff;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--p-acc);
+  background: radial-gradient(circle, color-mix(in srgb, var(--p-acc) 24%, transparent), transparent 70%);
+  border: 1px solid color-mix(in srgb, var(--p-acc) 55%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-acc) 14%, transparent);
+}
+.rpg-nameplate {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.rpg-nameplate .agent-chat-name {
+  color: var(--hud-text, #d8e2ea);
+  letter-spacing: 0.05em;
+  font-size: 13px;
+}
+.rpg-nameplate .agent-chat-live {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--hud-ok, #7fd4a0);
+}
+.rpg-tag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  color: var(--hud-dim, #7f919e);
+  padding: 2px 6px;
+  border: 1px solid var(--hud-line, #2a3844);
+  border-radius: 2px;
+}
+.rpg-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  max-height: 330px;
+  overflow: hidden auto;
+}
+.rpg-divider {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-align: center;
+  color: var(--hud-dim, #7f919e);
+  margin: 2px 0;
+  opacity: 0.8;
+}
+.rpg-divider.live {
+  color: var(--hud-amber, #f0a04c);
+}
+.rpg-line {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.rpg-ava {
+  --p-acc: #4fa8ff;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--p-acc);
+  background: color-mix(in srgb, var(--p-acc) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--p-acc) 40%, transparent);
+  border-radius: 50%;
+  margin-top: 2px;
+}
+.rpg-ava.mini {
+  width: 18px;
+  height: 18px;
+  font-size: 8px;
+}
+.rpg-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 11px;
+  background: var(--hud-panel-raised, #151e29);
+  border: 1px solid var(--hud-line, #2a3844);
+  border-left: 2px solid var(--hud-accent, #4fa8ff);
+  border-radius: 2px 8px 8px 8px;
+}
+.rpg-line.hist .rpg-bubble {
+  opacity: 0.72;
+  border-left-color: var(--hud-dim, #7f919e);
+}
+.rpg-line.live .rpg-bubble {
+  animation: rpg-in 0.28s ease-out both;
+}
+@keyframes rpg-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rpg-kind {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  color: var(--hud-dim, #7f919e);
+}
+.rpg-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--hud-text, #d8e2ea);
+  word-break: break-word;
+}
+.rpg-line.live .rpg-text {
+  color: #eaf2f8;
+}
+.rpg-note {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--hud-dim, #7f919e);
+  text-align: center;
+  padding: 14px 0;
+  opacity: 0.8;
 }
 </style>
