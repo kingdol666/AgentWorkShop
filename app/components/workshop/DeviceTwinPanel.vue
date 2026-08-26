@@ -1,11 +1,14 @@
 <script setup lang="ts">
 /**
- * 数字孪生侧栏(Device Twin Panel) —— 列出设备、实时遥测、下发控制指令。
+ * 设备控制台(Device Twin Console) —— 工业数字孪生 HMI:
+ * 设备实体直接列表展示(状态灯/遥测数据网格/下发控制),点击行聚焦小镇场景中的对应实体。
  *
  * 与 3D 小镇联动:拖 `dev` 模型进场景会创建设备 twin;本面板实时刷新其 state/telemetry,
  * 并提供 power_on/power_off/set_speed 等控制(等价 MCP device.control 的用户面)。
  */
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
+
+defineEmits<{ (e: 'focus-device', twin: { id: string, posX?: number, posZ?: number }): void }>()
 
 const twins = useDeviceTwins()
 
@@ -36,53 +39,76 @@ async function doControl(t: { id: string, name: string }, command: string, args?
 }
 
 const stateColor: Record<string, string> = {
-  idle: 'var(--tone-warning-dot)',
-  running: 'var(--tone-success-dot)',
-  alarm: 'var(--tone-danger-dot)',
-  offline: 'var(--ink-faint)',
+  idle: 'var(--hud-amber)',
+  running: 'var(--hud-ok)',
+  alarm: 'var(--hud-danger)',
+  offline: 'var(--hud-dim)',
 }
 const stateLabel: Record<string, string> = {
-  idle: '待机', running: '运行', alarm: '告警', offline: '离线',
+  idle: 'STANDBY', running: 'RUNNING', alarm: 'ALARM', offline: 'OFFLINE',
 }
+const modelTag = (name: string): string => name.replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase() || 'DEV'
+const devNo = (id: string): string => id.replace(/^dev-/, '').replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase()
 const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100) / 100).toString() : String(v))
 </script>
 
 <template>
   <aside class="twin-panel">
     <div class="twin-head">
-      <span class="head-dot" />
-      <span class="head-title">数字孪生</span>
-      <span class="head-hint">设备 · 遥测 · 控制</span>
+      <span class="twin-kicker">DEVICE TWIN CONSOLE</span>
+      <span class="twin-count">{{ twins.twins.length }}</span>
+    </div>
+    <div class="twin-sub">
+      <span class="twin-live-dot" />
+      <span class="twin-sub-label">设备实体 · 实时遥测 · 控制</span>
     </div>
 
     <div
       v-if="!twins.loaded"
       class="twin-empty"
     >
-      载入中…
+      正在装载设备寄存器…
     </div>
     <div
       v-else-if="twins.twins.length === 0"
       class="twin-empty"
     >
-      暂无设备。把「工业泵设备」模型拖入小镇即可创建数字孪生。
+      <div class="twin-empty-frame">
+        <div class="twin-empty-title">
+          未注册设备
+        </div>
+        <div class="twin-empty-sub">
+          将设备模型拖入小镇场景即可创建数字孪生实体
+        </div>
+      </div>
     </div>
     <div
       v-else
       class="twin-list"
     >
-      <div
+      <button
         v-for="t in twins.twins"
         :key="t.id"
         class="twin-card"
+        type="button"
+        @click="$emit('focus-device', t)"
       >
         <div class="twin-row">
+          <span class="twin-model-plate">{{ modelTag(t.modelRef || t.name) }}</span>
+          <div class="twin-idbar">
+            <span class="twin-name">{{ t.name }}</span>
+            <span class="twin-code">{{ devNo(t.id) }}</span>
+          </div>
           <span
-            class="twin-state-dot"
-            :style="{ background: stateColor[t.state] || 'var(--ink-faint)' }"
-          />
-          <span class="twin-name">{{ t.name }}</span>
-          <span class="twin-state">{{ stateLabel[t.state] || t.state }}</span>
+            class="twin-state"
+            :class="`s-${t.state}`"
+          >
+            <i
+              class="twin-state-dot"
+              :style="{ background: stateColor[t.state] || 'var(--hud-dim)' }"
+            />
+            {{ stateLabel[t.state] || t.state }}
+          </span>
         </div>
         <div
           v-if="Object.keys(t.telemetry).length"
@@ -92,38 +118,38 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
             v-for="(v, k) in t.telemetry"
             :key="k"
             class="tele-item"
-          >{{ k }}: <b>{{ fmt(v) }}</b></span>
+          ><em>{{ k }}</em><b>{{ fmt(v) }}</b></span>
         </div>
         <div class="twin-ctrl">
           <button
-            class="ctrl-btn"
+            class="ctrl-btn on"
             :disabled="busyId === t.id"
-            @click="doControl(t, 'power_on')"
+            @click.stop="doControl(t, 'power_on')"
           >
-            开
+            开机
           </button>
           <button
             class="ctrl-btn"
             :disabled="busyId === t.id"
-            @click="doControl(t, 'power_off')"
+            @click.stop="doControl(t, 'power_off')"
           >
-            关
+            停机
           </button>
           <input
             class="ctrl-input"
             type="number"
-            :placeholder="'速度'"
+            :placeholder="'SPD'"
             @change="(e) => doControl(t, 'set_speed', { value: Number((e.target as HTMLInputElement).value) })"
           >
           <button
             class="ctrl-btn"
             :disabled="busyId === t.id"
-            @click="doControl(t, 'set_speed', { value: 60 })"
+            @click.stop="doControl(t, 'set_speed', { value: 60 })"
           >
             设定
           </button>
         </div>
-      </div>
+      </button>
     </div>
 
     <span
@@ -137,62 +163,207 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
 .twin-panel {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  width: 186px;
+  gap: 8px;
+  width: 208px;
   flex: none;
-  padding: 12px 12px 13px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--glass-highlight), var(--shadow-float);
+  padding: 0;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-radius: 3px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
 }
-.twin-head { display: flex; gap: 7px; align-items: center; font-size: 11px; letter-spacing: 0.05em; color: var(--ink-faint); }
-.head-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tone-info-dot); }
-.head-title { font-size: 12px; font-weight: 650; letter-spacing: 0.02em; color: var(--ink); }
-.head-hint { margin-left: auto; font-size: 10px; color: var(--ink-faint); white-space: nowrap; }
-.twin-empty { font-size: 11px; line-height: 1.55; color: var(--ink-faint); padding: 6px 4px; }
-.twin-list { display: flex; flex-direction: column; gap: 7px; max-height: 38vh; overflow: hidden auto; padding-right: 1px; }
+.twin-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid var(--hud-line);
+}
+.twin-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--hud-accent);
+}
+.twin-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--hud-text);
+  padding: 1px 6px;
+  border: 1px solid var(--hud-line);
+  border-radius: 2px;
+}
+.twin-sub {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 0 10px 2px;
+}
+.twin-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hud-ok);
+}
+.twin-sub-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--hud-dim);
+}
+.twin-empty {
+  padding: 10px;
+}
+.twin-empty-frame {
+  border: 1px dashed var(--hud-line);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.twin-empty-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--hud-text);
+}
+.twin-empty-sub {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--hud-dim);
+}
+.twin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 46vh;
+  overflow: hidden auto;
+  padding: 2px 8px 10px;
+}
 .twin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 8px 9px;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel-sm);
-  transition: border-color var(--transition-base);
+  text-align: left;
+  background: var(--hud-panel-raised);
+  border: 1px solid var(--hud-line);
+  border-left: 2px solid var(--hud-line);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
 }
-.twin-card:hover { border-color: var(--line-strong); }
-.twin-row { display: flex; gap: 6px; align-items: center; }
-.twin-state-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, var(--paper-deep) 80%, transparent); }
-.twin-name { font-size: 11.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.twin-state { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); }
-.twin-tele { display: flex; flex-wrap: wrap; gap: 3px 8px; margin: 6px 0 7px; font-size: 10px; color: var(--ink-faint); }
-.tele-item b { color: var(--ink-soft); font-family: var(--font-mono); font-weight: 500; }
+.twin-card:hover {
+  background: var(--hud-panel-hover);
+  border-color: var(--hud-accent);
+}
+.twin-card:active {
+  background: var(--hud-panel-raised);
+}
+.twin-row { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.twin-model-plate {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  color: var(--hud-accent);
+  background: rgba(79, 168, 255, 0.08);
+  border: 1px solid rgba(79, 168, 255, 0.3);
+  border-radius: 2px;
+}
+.twin-idbar { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.twin-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--hud-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.twin-code {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--hud-dim);
+}
+.twin-state {
+  flex: none;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  color: var(--hud-dim);
+  padding: 2px 5px;
+  border: 1px solid var(--hud-line);
+  border-radius: 2px;
+}
+.twin-state.s-alarm { color: var(--hud-danger); border-color: rgba(255, 107, 92, 0.5); }
+.twin-state.s-running { color: var(--hud-ok); border-color: rgba(127, 212, 160, 0.4); }
+.twin-state-dot { width: 5px; height: 5px; border-radius: 50%; }
+.twin-tele {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 10px;
+  margin: 0 0 2px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--hud-line);
+}
+.tele-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--hud-dim);
+  min-width: 0;
+}
+.tele-item em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
+.tele-item b { color: var(--hud-text); font-weight: 500; }
 .twin-ctrl { display: flex; gap: 4px; align-items: center; }
 .ctrl-btn {
-  padding: 3px 8px;
-  font-size: 10px;
+  padding: 3px 7px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
   font-weight: 600;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
+  font-family: var(--font-mono);
+  color: var(--hud-text);
+  background: transparent;
+  border: 1px solid var(--hud-line);
+  border-radius: 2px;
   cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
 }
-.ctrl-btn:hover:not(:disabled) { border-color: var(--line-strong); color: var(--ink); }
-.ctrl-btn:active:not(:disabled) { transform: scale(0.96); }
-.ctrl-btn:disabled { opacity: 0.5; cursor: default; }
+.ctrl-btn:hover:not(:disabled) {
+  border-color: var(--hud-accent);
+  color: var(--hud-accent);
+}
+.ctrl-btn.on {
+  color: var(--hud-amber);
+  border-color: rgba(240, 160, 76, 0.5);
+}
+.ctrl-btn.on:hover:not(:disabled) {
+  background: rgba(240, 160, 76, 0.12);
+  color: var(--hud-amber);
+}
+.ctrl-btn:disabled { opacity: 0.45; cursor: default; }
 .ctrl-input {
-  width: 44px;
+  width: 48px;
+  font-family: var(--font-mono);
   font-size: 10px;
-  padding: 3px 5px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
-  background: var(--paper);
-  color: var(--ink);
+  padding: 3px 6px;
+  border: 1px solid var(--hud-line);
+  border-radius: 2px;
+  background: var(--hud-input);
+  color: var(--hud-text);
   font-variant-numeric: tabular-nums;
 }
-.ctrl-input:focus { outline: none; border-color: var(--accent); }
-.twin-err { font-size: 10px; color: var(--tone-danger-dot); }
+.ctrl-input:focus { outline: none; border-color: var(--hud-accent); }
+.twin-err { font-size: 9.5px; color: var(--hud-danger); padding: 0 10px 8px; }
 </style>

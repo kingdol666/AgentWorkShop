@@ -847,6 +847,14 @@ function syncChannelDock(): void {
   })
 }
 
+/** 设备控制台行点击 → 场景镜头聚焦该实体并选中(工业 HMI 联动手感) */
+function onFocusDevice(t: { id: string, posX?: number, posZ?: number }): void {
+  const s = scene3dRef.value
+  if (!s) return
+  if (typeof t.posX === 'number' && typeof t.posZ === 'number') s.focusTo(t.posX, t.posZ)
+  ;(s as unknown as { setSelected?: (x: { kind: 'device', id: string }) => void }).setSelected?.({ kind: 'device', id: t.id })
+}
+
 /** 世界宽度估算(与 TownScene3D 的 WORLD_W 对齐;仅供拖拽位移换算) */
 const WORLD_W3D = 3200
 
@@ -984,14 +992,17 @@ onBeforeUnmount(() => {
       <div class="hud aw-stagger pointer-events-none absolute inset-0 z-10 select-none">
         <!-- 左:设备模型库(仅设备模型,可拖拽到场景实例化) -->
         <WorkshopAssetLibrary class="lib-panel" />
-        <!-- 左:数字孪生侧栏(设备列表/遥测/控制) -->
-        <WorkshopDeviceTwinPanel class="twin-panel" />
+        <!-- 左:设备控制台(设备实体列表/遥测/控制;点击行聚焦场景实体) -->
+        <WorkshopDeviceTwinPanel
+          class="twin-panel"
+          @focus-device="onFocusDevice"
+        />
 
         <!-- 频道坞:拖拽卡片到场景放置(相同频道只能放置一个;点击不自动落点) -->
         <aside class="channel-dock">
           <div class="dock-head">
             <span class="head-dot" />
-            <span class="head-title">频道坞</span>
+            <span class="head-title">领地索引</span>
             <span class="head-hint">拖入地图即安放</span>
           </div>
           <div class="dock-list">
@@ -1411,7 +1422,7 @@ onBeforeUnmount(() => {
         <div class="absolute top-0 left-0 right-0 flex items-start justify-between p-4">
           <div class="glass-chip">
             <span class="ch-dot" />
-            <span class="hud-title">AGENTTEAM 小镇</span>
+            <span class="hud-title">AGENTTEAM 数字孪生小镇</span>
             <span class="hud-sub">Channel · {{ activeChannelName || '加载中' }}</span>
           </div>
           <div class="glass-chip">
@@ -1433,7 +1444,7 @@ onBeforeUnmount(() => {
           class="ticker-box"
         >
           <div class="ticker-title">
-            事件流
+            事件日志
           </div>
           <div
             v-for="(t, i) in ticker"
@@ -2287,5 +2298,277 @@ onBeforeUnmount(() => {
   font-size: 16px;
   letter-spacing: -0.01em;
   color: var(--ink-faint);
+}
+
+/* ============================================================
+ * 工业数字孪生 HMI 设计令牌(继承至 DeviceTwinPanel 等子组件)
+ * ============================================================ */
+.town-view {
+  --hud-bg: #0c1118;
+  --hud-panel: #10161f;
+  --hud-panel-raised: #151e29;
+  --hud-panel-hover: #1a2531;
+  --hud-line: #2a3844;
+  --hud-input: #0e141d;
+  --hud-text: #d8e2ea;
+  --hud-dim: #7f919e;
+  --hud-accent: #4fa8ff;
+  --hud-amber: #f0a04c;
+  --hud-ok: #7fd4a0;
+  --hud-danger: #ff6b5c;
+}
+
+/* ============================================================
+ * 工业 HMI 面板统一:扁平静态、发丝描边、方角、深投影(去玻璃拟态)
+ * ============================================================ */
+.channel-dock,
+.boundary-panel,
+.object-panel,
+.mode-bar,
+.mini-map,
+.ticker-box,
+.agent-chat,
+.lib-panel,
+.twin-panel {
+  background: var(--hud-panel);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--hud-line);
+  border-radius: 3px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+/* 蓝图角标(选读面板:频道坞/迷你地图/设备台/事件日志) */
+.channel-dock::before,
+.mini-map::before,
+.agent-chat::before,
+.twin-panel::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 12px;
+  height: 12px;
+  border-top: 2px solid var(--hud-accent);
+  border-left: 2px solid var(--hud-accent);
+  pointer-events: none;
+}
+.channel-dock::after,
+.mini-map::after,
+.agent-chat::after,
+.twin-panel::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 12px;
+  height: 12px;
+  border-bottom: 2px solid var(--hud-accent);
+  border-right: 2px solid var(--hud-accent);
+  pointer-events: none;
+}
+.channel-dock,
+.mini-map,
+.agent-chat,
+.twin-panel {
+  position: absolute;
+}
+/* 面板头部:HMI 分段标签(等宽大写 + 发丝分隔) */
+.dock-head,
+.twin-head,
+.bp-title {
+  letter-spacing: 0.14em;
+  font-family: var(--font-mono);
+}
+.dock-head .head-dot,
+.bp-title .head-dot {
+  background: var(--hud-accent);
+}
+.dock-head span:first-of-type,
+.bp-title span:first-of-type {
+  color: var(--hud-accent);
+  font-size: 10px;
+}
+.dock-head .dock-title,
+.bp-title .bp-name {
+  color: var(--hud-text);
+}
+.dock-head .dock-hint {
+  color: var(--hud-dim);
+}
+/* 频道坞行:领地索引行(色章 + 名称 + 状态,发丝分隔) */
+.dock-row {
+  border-bottom: 1px solid rgba(42, 56, 68, 0.6);
+  border-radius: 0;
+  background: transparent;
+}
+.dock-row:hover {
+  background: var(--hud-panel-hover);
+}
+/* 事件日志:等宽时间/类型 + 引线色条 */
+.ticker-box {
+  padding: 0 0 6px;
+}
+.ticker-title {
+  color: var(--hud-accent);
+  letter-spacing: 0.14em;
+}
+.ticker-row {
+  border-left: 2px solid rgba(79, 168, 255, 0.35);
+  background: transparent;
+  border-radius: 0;
+}
+.ticker-row .act-name {
+  color: var(--hud-text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+.ticker-row .act-text {
+  color: var(--hud-dim);
+}
+/* 精魂会话台:终端式面板 */
+.agent-chat {
+  background: var(--hud-panel);
+}
+.agent-chat-head {
+  border-bottom-color: var(--hud-line);
+}
+.agent-chat-name {
+  color: var(--hud-text);
+  letter-spacing: 0.05em;
+}
+.agent-chat-live {
+  color: var(--hud-ok);
+}
+.agent-chat-row {
+  background: var(--hud-panel-raised);
+  border-radius: 2px;
+}
+.agent-chat-body {
+  color: var(--hud-dim);
+}
+.agent-chat-row:first-child .agent-chat-body {
+  color: var(--hud-text);
+}
+/* 迷你地图:蓝图底纹 + 十字准星 */
+.mini-map {
+  background: var(--hud-panel);
+  background-image:
+    linear-gradient(rgba(79, 168, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 168, 255, 0.05) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+.mini-label {
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  color: var(--hud-dim);
+}
+/* 顶栏状态条:实心 HMI 芯片 */
+.glass-chip {
+  background: var(--hud-panel);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--hud-line);
+  border-radius: 2px;
+}
+.glass-chip .hud-title {
+  letter-spacing: 0.14em;
+  color: var(--hud-text);
+  font-weight: 600;
+}
+.glass-chip .hud-sub,
+.glass-chip .hud-mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--hud-dim);
+}
+/* 模式栏/对象面板:方块按钮 + 琥珀选中 */
+.mode-btn,
+.seg-btn,
+.bp-seg button {
+  border-radius: 2px;
+}
+.mode-btn.active,
+.seg-btn.on,
+.bp-seg .on {
+  background: var(--hud-amber);
+  border-color: var(--hud-amber);
+  color: #17120a;
+  box-shadow: none;
+}
+/* 编辑手柄/迷你地图滚动条:暗色细轨 */
+.town-view ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.town-view ::-webkit-scrollbar-thumb {
+  background: #2c3a46;
+  border-radius: 3px;
+}
+
+/* ============================================================
+ * 设备模型库(AssetLibrary 内部)工业 HMI 覆盖:去白卡圆角,
+ * 统一为深色方角「装备行」+ 等宽标签
+ * ============================================================ */
+.town-view :deep(.asset-lib) {
+  background: var(--hud-panel);
+}
+.town-view :deep(.lib-head) {
+  letter-spacing: 0.14em;
+  font-family: var(--font-mono);
+}
+.town-view :deep(.lib-head .head-title) {
+  color: var(--hud-accent);
+  font-size: 10px;
+}
+.town-view :deep(.lib-head .head-hint) {
+  color: var(--hud-dim);
+  font-size: 9.5px;
+}
+.town-view :deep(.upload-box) {
+  border: 1px dashed var(--hud-line);
+  border-radius: 2px;
+  background: transparent;
+}
+.town-view :deep(.upload-name) {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--hud-dim);
+}
+.town-view :deep(.upload-btn),
+.town-view :deep(.card-btn) {
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--hud-text);
+  background: var(--hud-panel-raised);
+  border: 1px solid var(--hud-line);
+}
+.town-view :deep(.upload-btn:hover),
+.town-view :deep(.card-btn:hover) {
+  border-color: var(--hud-accent);
+  color: var(--hud-accent);
+}
+.town-view :deep(.model-card) {
+  background: var(--hud-panel-raised);
+  border: 1px solid var(--hud-line);
+  border-radius: 2px;
+}
+.town-view :deep(.model-card:hover) {
+  border-color: var(--hud-accent);
+}
+.town-view :deep(.model-name) {
+  color: var(--hud-text);
+  font-size: 11px;
+}
+.town-view :deep(.model-badge) {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--hud-dim);
+  font-size: 8.5px;
+}
+.town-view :deep(.model-img) {
+  border-radius: 2px;
+  background: #0e141d;
 }
 </style>
