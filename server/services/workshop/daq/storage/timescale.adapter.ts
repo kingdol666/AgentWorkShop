@@ -1,0 +1,88 @@
+/**
+ * TimescaleAdapter —— 生产级 TimescaleDB 实现(端口契约见 tsdb-port)。
+ *
+ * 由 DAQ_TSDB_URL(postgres://user:pass@host:5432/db)启用。首次 init 幂等建表
+ * 并调用 create_hypertable(ts 列,chunk 按天);写走参数化批量 INSERT,
+ * 读按 time_bucket 降采样(Timescale 原生函数)。连接失败由工厂捕获降级仿真库。
+ */
+import { createRequire } from 'node:module'
+import type { Pool } from 'pg'
+import type { DaqQueryOpts, DaqSampleRow, TsdbPoint, TsdbPort } from './tsdb-port'
+
+/* nitro(Windows)dev 下对 external 的动态 import 会生成绝对盘符路径 → ESM loader
+ * 拒绝 'd:' scheme;用 createRequire 走 CJS require 由 Node 原生解析(生产亦同)。 */
+const requirePg = createRequire(import.meta.url)
+
+export class TimescaleAdapter implements TsdbPort {
+  readonly backend = 'timescale'
+  private pool: Pool | null = null
+
+  constructor(private readonly url: string) {}
+
+  async init(): Promise<void> {
+    const mod = requirePg('pg') as typeof import('pg')
+    this.pool = new mod.Pool({ connectionString: this.url, max: 4 })
+    await this.pool.query(`
+      CREATE TABLE IF NOT EXISTS daq_samples (
+        node_id text        NOT NULL,
+        ts       timestamptz NOT NULL,
+        value    double precision NOT NULL,
+        state    text        NOT NULL DEFAULT 'ok',
+        PRIMARY KEY (node_id, ts)
+      );
+    `)
+    // hypertable 幂等创建(未装 timescaledb 扩展时报错 → 由工厂降级)
+    await this.pool.query(
+      `SELECT create_hypertable('daq_samples', 'ts', if_not_exists => TRUE, migrate_data => TRUE)`,
+    )
+    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_node_ts ON daq_samples (node_id, ts DESC)`)
+  }
+
+  async writeSamples(rows: DaqSampleRow[]): Promise<void> {
+    if (!this.pool || rows.length === 0) return
+    const values: unknown[] = []
+    const tuples = rows.map((r, i) => {
+      values.push(r.nodeId, new Date(r.tsMs).toISOString(), r.value, r.state)
+      const b = i * 4
+      return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4})`
+    })
+    await this.pool.query(
+      `INSERT INTO daq_samples (node_id, ts, value, state) VALUES ${tuples.join(',')}
+       ON CONFLICT (node_id, ts) DO NOTHING`,
+      values,
+    )
+  }
+
+  async query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]> {
+    if (!this.pool) return []
+    const limit = Math.min(opts.limit ?? 500, 5000)
+    if (opts.bucketMs && opts.bucketMs >= 100) {
+      const { rows } = await this.pool.query(
+        `SELECT time_bucket($1::interval, ts) AS bucket,
+                avg(value)::double precision AS avg, min(value) AS min, max(value) AS max, count(*) AS cnt
+         FROM daq_samples WHERE node_id = $2 AND ts >= $3 AND ts <= $4
+         GROUP BY bucket ORDER BY bucket DESC LIMIT $5`,
+        [`${opts.bucketMs} milliseconds`, nodeId, new Date(opts.fromMs ?? 0).toISOString(), new Date(opts.toMs ?? Date.now()).toISOString(), limit],
+      )
+      return rows.map(r => ({ at: Date.parse(r.bucket), avg: Number(r.avg), min: Number(r.min), max: Number(r.max), cnt: Number(r.cnt) }))
+    }
+    const { rows } = await this.pool.query(
+      `SELECT ts, value, state FROM daq_samples WHERE node_id = $1 AND ts >= $2 AND ts <= $3
+       ORDER BY ts DESC LIMIT $4`,
+      [nodeId, new Date(opts.fromMs ?? 0).toISOString(), new Date(opts.toMs ?? Date.now()).toISOString(), limit],
+    )
+    return rows.map(r => ({ at: Date.parse(r.ts), value: Number(r.value), state: String(r.state) }))
+  }
+
+  async latest(): Promise<Map<string, DaqSampleRow>> {
+    const out = new Map<string, DaqSampleRow>()
+    if (!this.pool) return out
+    const { rows } = await this.pool.query(
+      `SELECT DISTINCT ON (node_id) node_id, ts, value, state FROM daq_samples ORDER BY node_id, ts DESC`,
+    )
+    for (const r of rows) {
+      out.set(String(r.node_id), { nodeId: String(r.node_id), tsMs: Date.parse(r.ts), value: Number(r.value), state: String(r.state) })
+    }
+    return out
+  }
+}

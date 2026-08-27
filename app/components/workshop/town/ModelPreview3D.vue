@@ -1,12 +1,11 @@
 <script setup lang="ts">
 /**
- * ModelPreview3D —— 设备模型 GLB 实时 3D 缩略预览。
+ * ModelPreview3D —— 设备模型 GLB 实时 3D 缩略预览(共享渲染器版)。
  *
- * 用独立的小 WebGL 场景渲染模型真实几何形状(自动旋转、适配居中),
- * 替换设备库里的占位图标卡。支持:
- *  - 服务端已上传文件(file URL)
- *  - 本地待上传文件(localFile: File → objectURL,上传前即可预览确认)
- * 画布 pointer-events: none,不干扰卡片拖拽到小镇场景。
+ * 关键设计:模型库有 12+ 张卡,浏览器 WebGL 活动上下文上限 ~16 —— 每卡独立
+ * WebGLRenderer 会让排在后面的卡(薄膜双拉系列)上下文被驱逐 → 黑块。
+ * 这里改为模块级共享单渲染器:一个 offscreen WebGL canvas + 单 rAF 循环,
+ * 逐槽位渲染后 drawImage 到各卡自己的 2D canvas。上下文恒为 1,GPU 占用受控。
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -29,60 +28,67 @@ const hostRef = ref<HTMLDivElement | null>(null)
 const failed = ref(false)
 const loading = ref(false)
 
-let renderer: THREE.WebGLRenderer | null = null
-let raf = 0
-let modelGroup: THREE.Group | null = null
+// ---------- 共享渲染器管理器(模块级单例;槽位 = 场景 + 2D 目标画布) ----------
+interface Slot {
+  canvas: HTMLCanvasElement
+  ctx: CanvasRenderingContext2D
+  scene: THREE.Scene
+  camera: THREE.PerspectiveCamera
+  group: THREE.Group | null
+  w: number
+  h: number
+  speed: number
+}
+
+interface SharedRig {
+  renderer: THREE.WebGLRenderer
+  slots: Set<Slot>
+  raf: number
+  clock: THREE.Clock
+}
+
+const rigGlobal = globalThis as typeof globalThis & { __modelPreviewRig?: SharedRig }
 let objectUrl = ''
 
-function dispose(): void {
-  cancelAnimationFrame(raf)
-  if (objectUrl) URL.revokeObjectURL(objectUrl)
-  objectUrl = ''
-  if (renderer) {
-    renderer.dispose()
-    renderer.domElement.remove()
-    renderer = null
+function acquireRig(): SharedRig {
+  if (rigGlobal.__modelPreviewRig) return rigGlobal.__modelPreviewRig
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: 'low-power' })
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  renderer.toneMappingExposure = 1.15
+  const rig: SharedRig = { renderer, slots: new Set(), raf: 0, clock: new THREE.Clock() }
+  const tick = (): void => {
+    rig.raf = requestAnimationFrame(tick)
+    const dt = rig.clock.getDelta()
+    // 逐槽渲染(76px 卡 × ~20 槽 = 极小开销);槽画布不在文档中(卸载竞态)则跳过
+    for (const s of rig.slots) {
+      if (!s.canvas.isConnected && s.canvas.width === 0) continue
+      if (s.group) s.group.rotation.y += dt * s.speed
+      rig.renderer.setSize(s.w, s.h, false)
+      rig.renderer.render(s.scene, s.camera)
+      s.ctx.clearRect(0, 0, s.w, s.h)
+      s.ctx.drawImage(rig.renderer.domElement, 0, 0, s.w, s.h)
+    }
   }
-  modelGroup = null
+  tick()
+  rigGlobal.__modelPreviewRig = rig
+  return rig
 }
 
-function fitObject(obj: THREE.Object3D): void {
-  const box = new THREE.Box3().setFromObject(obj)
-  const size = new THREE.Vector3()
-  box.getSize(size)
-  const max = Math.max(size.x, Math.max(size.y, size.z)) || 1
-  obj.position.x -= box.min.x + size.x / 2
-  obj.position.y -= box.min.y + size.y / 2
-  obj.position.z -= box.min.z + size.z / 2
-  obj.scale.setScalar(2 / max)
+function releaseRig(): void {
+  const rig = rigGlobal.__modelPreviewRig
+  if (!rig || rig.slots.size > 0) return
+  cancelAnimationFrame(rig.raf)
+  rig.renderer.dispose()
+  rig.renderer.domElement.remove()
+  delete rigGlobal.__modelPreviewRig
 }
 
-function mountScene(source: string | ArrayBuffer, onFail?: () => void): void {
-  if (!hostRef.value || failed.value) return
-  const el = hostRef.value
-  const w = el.clientWidth || 120
-  const h = props.height || 64
-
-  if (!renderer) {
-    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: 'low-power' })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
-    renderer.setSize(w, h)
-    // 与主场景同管线:ACES 色调映射(金属深色模型在缩略图里不再发黑)
-    renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.15
-    renderer.domElement.style.width = '100%'
-    renderer.domElement.style.height = `${h}px`
-    renderer.domElement.style.pointerEvents = 'none'
-    el.appendChild(renderer.domElement)
-  }
-
-  const scene = new THREE.Scene()
-  const camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 100)
-  camera.position.set(2.4, 1.8, 3.1)
-  camera.lookAt(0, 0, 0)
-  // PBR 环境光:金属/粗糙材质获得反射(无环境的金属 GLB = 纯黑)
+function buildLighting(scene: THREE.Scene): void {
   try {
-    const pmrem = new THREE.PMREMGenerator(renderer)
+    // PBR 环境光:金属/粗糙材质获得反射(无环境的金属 GLB = 纯黑)。
+    // PMREM 需要临时借用共享渲染器 —— 与渲染循环串行(同一 JS 线程),安全。
+    const pmrem = new THREE.PMREMGenerator(rigGlobal.__modelPreviewRig!.renderer)
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
     scene.environmentIntensity = 0.55
     pmrem.dispose()
@@ -92,32 +98,61 @@ function mountScene(source: string | ArrayBuffer, onFail?: () => void): void {
   const key = new THREE.DirectionalLight(0xfff2df, 2.2)
   key.position.set(3, 4, 2)
   scene.add(key)
-  const rim = new THREE.DirectionalLight(0x4da3ff, 1.0)
+  const rim = new THREE.DirectionalLight(0x41c8f4, 1.0)
   rim.position.set(-3, 1, -2.5)
   scene.add(rim)
+}
 
-  modelGroup = new THREE.Group()
-  scene.add(modelGroup)
+function fitObject(obj: THREE.Object3D): void {
+  const box = new THREE.Box3().setFromObject(obj)
+  const size = new THREE.Vector3()
+  box.getSize(size)
+  const center = box.getCenter(new THREE.Vector3())
+  const max = Math.max(size.x, Math.max(size.y, size.z)) || 1
+  const s = 2 / max
+  obj.scale.setScalar(s)
+  // 根平移不被自身缩放作用:必须用 center×s 补偿(模型原始中心远离原点时,
+  // 裸 center 平移会把物体甩出视野 —— 薄膜双拉系列预览空白即此因)
+  obj.position.set(-center.x * s, -center.y * s, -center.z * s)
+}
 
-  const loader = new GLTFLoader()
-  loading.value = true
-  const finish = (): void => {
-    loading.value = false
+let slot: Slot | null = null
+
+function mountScene(source: string): void {
+  if (!hostRef.value || failed.value) return
+  const el = hostRef.value
+  const w = el.clientWidth || 120
+  const h = props.height || 64
+  const rig = acquireRig()
+
+  const canvas = document.createElement('canvas')
+  canvas.style.width = '100%'
+  canvas.style.height = `${h}px`
+  canvas.width = Math.max(2, Math.round(w * Math.min(window.devicePixelRatio, 1.5)))
+  canvas.height = Math.max(2, Math.round(h * Math.min(window.devicePixelRatio, 1.5)))
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    failed.value = true
+    return
   }
-  const parseSrc = (buf: ArrayBuffer): Promise<THREE.Group> => new Promise((res, rej) => {
-    loader.parse(buf, '', (glt: unknown) => res((glt as { scene: THREE.Group }).scene), rej)
-  })
-  const fetchSrc = (url: string): Promise<THREE.Group> => new Promise((res, rej) => {
-    loader.load(url, (glt: unknown) => res((glt as { scene: THREE.Group }).scene), undefined, rej)
-  })
-  const loadSrc: Promise<THREE.Group> = source instanceof ArrayBuffer ? parseSrc(source) : fetchSrc(source)
+  el.appendChild(canvas)
 
-  loadSrc.then((obj) => {
-    const g = modelGroup
-    if (!g) {
-      finish()
-      return
-    }
+  const scene = new THREE.Scene()
+  buildLighting(scene)
+  const camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 100)
+  camera.position.set(2.4, 1.8, 3.1)
+  camera.lookAt(0, 0, 0)
+  const group = new THREE.Group()
+  scene.add(group)
+
+  slot = { canvas, ctx, scene, camera, group, w: canvas.width, h: canvas.height, speed: 0.6 }
+  rig.slots.add(slot)
+
+  loading.value = true
+  const loader = new GLTFLoader()
+  loader.load(source, (glt: unknown) => {
+    const obj = (glt as { scene: THREE.Group }).scene
+    if (!slot) return
     obj.traverse((c) => {
       const m = c as THREE.Mesh
       if (m.isMesh) {
@@ -126,29 +161,44 @@ function mountScene(source: string | ArrayBuffer, onFail?: () => void): void {
       }
     })
     fitObject(obj)
-    g.add(obj)
-    finish()
-  }).catch(() => {
-    finish()
+    slot.group!.add(obj)
+    loading.value = false
+  }, undefined, () => {
+    loading.value = false
     failed.value = true
-    onFail?.()
   })
+}
 
-  const clock = new THREE.Clock()
-  const tick = (): void => {
-    if (!renderer) return
-    raf = requestAnimationFrame(tick)
-    const dt = clock.getDelta()
-    if (modelGroup) modelGroup.rotation.y += dt * 0.6
-    renderer.render(scene, camera)
+function dispose(): void {
+  if (objectUrl) URL.revokeObjectURL(objectUrl)
+  objectUrl = ''
+  if (slot) {
+    const rig = rigGlobal.__modelPreviewRig
+    rig?.slots.delete(slot)
+    // 显存释放:几何/材质/纹理逐项 dispose(场景小,遍历即可)
+    slot.scene.traverse((c) => {
+      const mesh = c as THREE.Mesh
+      if (mesh.isMesh) {
+        mesh.geometry?.dispose()
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        for (const mat of mats) {
+          for (const key of Object.keys(mat as unknown as Record<string, unknown>)) {
+            const v = (mat as unknown as Record<string, unknown>)[key]
+            if (v && (v as THREE.Texture).isTexture) (v as THREE.Texture).dispose()
+          }
+          mat?.dispose()
+        }
+      }
+    })
+    slot.canvas.remove()
+    slot = null
+    releaseRig()
   }
-  tick()
 }
 
 function startLoad(): void {
   failed.value = false
   if (props.localFile) {
-    if (objectUrl) URL.revokeObjectURL(objectUrl)
     objectUrl = URL.createObjectURL(props.localFile)
     mountScene(objectUrl)
     return
@@ -158,19 +208,9 @@ function startLoad(): void {
 
 onMounted(startLoad)
 watch(() => [props.file, props.localFile], () => {
-  // 文件变更:清空重建(多实例自动旋转状态独立)
   dispose()
   const src = props.localFile ?? (props.file ? props.file : null)
-  if (src && hostRef.value) {
-    if (props.localFile) {
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-      objectUrl = URL.createObjectURL(props.localFile)
-      mountScene(objectUrl)
-    }
-    else {
-      mountScene(props.file)
-    }
-  }
+  if (src) nextTick(() => startLoad())
 })
 onBeforeUnmount(dispose)
 </script>
@@ -202,7 +242,7 @@ onBeforeUnmount(dispose)
   width: 100%;
   min-height: 40px;
   background:
-    radial-gradient(120% 90% at 50% 20%, rgba(77, 163, 255, 0.12), transparent 62%),
+    radial-gradient(120% 90% at 50% 20%, rgba(65, 200, 244, 0.12), transparent 62%),
     linear-gradient(180deg, #0b121b, #0e141d);
   border: 1px solid var(--hud-line, #263340);
   border-radius: 2px;
@@ -217,8 +257,8 @@ onBeforeUnmount(dispose)
 .mp-spin {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(77, 163, 255, 0.25);
-  border-top-color: #4da3ff;
+  border: 2px solid rgba(65, 200, 244, 0.25);
+  border-top-color: #41c8f4;
   border-radius: 50%;
   animation: mp-spin 0.8s linear infinite;
 }

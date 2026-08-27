@@ -17,6 +17,7 @@ const menuItems = computed<MenuItem[]>(() => [
   { key: '/workshop', icon: 'i-tabler-box', label: t('menu.workshop'), motion: 'im-pop' },
   { key: '/town', icon: 'i-tabler-map-2', label: t('menu.town'), motion: 'im-pop' },
   { key: '/tokens', icon: 'i-tabler-key', label: t('menu.tokens'), motion: 'im-nudge-up' },
+  { key: '/daq', icon: 'i-tabler-activity', label: t('menu.daq'), motion: 'im-pop' },
   { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users'), motion: 'im-pop' },
   { key: '/monitor', icon: 'i-tabler-cpu', label: t('menu.monitor'), motion: 'im-pulse' },
   { key: '/settings', icon: 'i-tabler-settings', label: t('menu.settings'), motion: 'im-rotate' },
@@ -40,14 +41,13 @@ const go = (key: string) => {
     :collapsed-width="64"
     class="app-sider"
   >
-    <!-- 品牌区:墨方印(serif A + 蜜桃点) -->
+    <!-- 品牌区:六边形 Glyph(绿描边 + 数据青点,与 Digital Twin 控制室同源) -->
     <div class="logo">
-      <div class="logo-mark">
+      <div
+        class="logo-mark"
+        aria-hidden="true"
+      >
         <span class="logo-letter">A</span>
-        <span
-          class="logo-dot"
-          aria-hidden="true"
-        />
       </div>
       <transition name="slide-fade">
         <div
@@ -127,7 +127,7 @@ const go = (key: string) => {
   border-bottom: 1px solid var(--line);
 }
 
-/* 墨方印:serif A + 蜜桃状态点(open-tag rail brand 声部) */
+/* 六边形 Glyph:hairline 绿描边 + mono A(品牌与 TownView「DIGITAL TWIN」同源) */
 .logo-mark {
   position: relative;
   display: flex;
@@ -135,26 +135,29 @@ const go = (key: string) => {
   align-items: center;
   justify-content: center;
   width: 32px;
-  height: 32px;
-  background: var(--ink);
-  border-radius: var(--radius-panel-sm);
+  height: 36px;
+  background:
+    linear-gradient(150deg, rgb(53 224 160 / 10%), transparent 55%),
+    var(--paper-raised);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+.logo-mark::after {
+  position: absolute;
+  inset: 1px;
+  content: "";
+  pointer-events: none;
+  background: var(--sider-bg);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
 }
 
 .logo-letter {
-  font-family: var(--font-display);
-  font-size: 19px;
-  color: var(--paper);
-}
-
-.logo-dot {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 9px;
-  height: 9px;
-  background: var(--g-peach);
-  border: 1.5px solid var(--sider-bg);
-  border-radius: 50%;
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .logo-text {
@@ -165,9 +168,11 @@ const go = (key: string) => {
 }
 
 .logo-title {
-  font-family: var(--font-display);
-  font-size: 16px;
-  letter-spacing: -0.01em;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--ink);
 }
 
@@ -222,13 +227,14 @@ const go = (key: string) => {
   transform: translateY(1px);
 }
 
-/* 当前页:墨色药丸(ink pill)明确标识所在位置(导航当前态) */
+/* 当前页:控制室绿洗 + 左缘品牌绿标记(导航定位态,替代旧墨色药丸) */
 .menu-item.active {
-  color: var(--on-accent);
-  background: var(--accent);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .menu-item.active:hover {
-  background: var(--accent-strong);
+  background: var(--tone-success-bg);
 }
 
 .menu-icon {
@@ -244,9 +250,9 @@ const go = (key: string) => {
   color: var(--ink);
 }
 
-/* 当前页图标:反色(在墨色药丸上) */
+/* 当前页图标:品牌绿 */
 .menu-item.active .menu-icon {
-  color: color-mix(in srgb, var(--on-accent) 92%, transparent);
+  color: var(--accent-strong);
 }
 
 .menu-label {

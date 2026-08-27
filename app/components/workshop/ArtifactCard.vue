@@ -116,5 +116,5 @@ const copy = async (): Promise<void> => {
   white-space: pre-wrap;
   word-break: break-word;
 }
-.artifact-body.json { color: #69b1ff; }
+.artifact-body.json { color: var(--tone-info-dot); }
 </style>

@@ -104,7 +104,8 @@ watch(() => userStore.isLoggedIn, async (ok) => {
     ready.value = true
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : '加载失败')
+    // SSR 安全:ant-design-vue message 依赖 DOM,服务端静默(客户端进入页面后可重试)
+    if (import.meta.client) message.error(e instanceof Error ? e.message : '加载失败')
   }
 }, { immediate: true })
 

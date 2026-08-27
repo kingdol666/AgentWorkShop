@@ -24,6 +24,8 @@ import { channelColorCss } from '#shared/town-scene-math'
 import { useStorage } from '@vueuse/core'
 import { mapEnvelopeToIntent } from '#shared/town-protocol'
 import type { AepEnvelope } from '#shared/workshop-protocol'
+import { DAQ_TEMPLATES } from '#shared/daq-protocol'
+import { useDaqStream, type DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
 
 /**
  * 两种渲染器(Phaser 2D / Three.js 3D)共享的最小公开接口。
@@ -529,10 +531,19 @@ async function boot3D(): Promise<void> {
       return { id: t.id }
     },
     async update(id, patch) {
+      // 数采节点伪孪生 → 场景落点走 daq REST(节点实体在 server)
+      if (daq.nodeById(id)) {
+        await daq.saveTransform(id, patch.posX, patch.posZ)
+        return undefined
+      }
       await deviceTwins.update(id, patch)
       return undefined
     },
     async remove(id) {
+      if (daq.nodeById(id)) {
+        await daq.removeNode(id)
+        return
+      }
       await deviceTwins.remove(id)
     },
     async control(id, command, args) {
@@ -888,18 +899,16 @@ function bindSceneInput3D(scene: TownScene3D): void {
       dropChannelAt(channelId, world.x, world.z)
       return
     }
-    // 1.5) 数采节点拖入 → 实例化(后端 device-twins kind=daq;程序化网格,实时模拟上报)
+    // 1.5) 数采节点拖入 → 创建 server DaqNode(权威实体;WS 广播收敛全端)
     //      落点 ±95 单位内存在设备 → 自动绑定(设计稿:数采靠近设备自动接通道)
     const daqTplId = dt.getData('application/x-aw-daq')
     if (daqTplId) {
       const tpl = daqTemplates.find(t => t.id === daqTplId)
       if (tpl) {
         const world = scene.screenToWorld(e.clientX, e.clientY)
-        const n = daqCount(tpl.id) + 1
-        void deviceTwins.create({
-          name: `${tpl.name} ${String(n).padStart(2, '0')}`,
-          modelRef: `daq-${tpl.id}`,
-          kind: 'daq',
+        const seq = daq.nodes.filter(x => x.templateRef === `daq-${tpl.id}`).length + 1
+        void daq.createFromTemplate(`daq-${tpl.id}`, {
+          name: `${tpl.name} ${String(seq).padStart(2, '0')}`,
           posX: Math.round(world.x),
           posZ: Math.round(world.z),
         }).then((created) => {
@@ -1243,14 +1252,22 @@ watch(() => agentHistory.value.length + agentChatRows.value.length, async () => 
   if (el) el.scrollTop = el.scrollHeight
 })
 
+/** 场景管线统一设备池:真实设备孪生(剔除旧 daq 孪生)+ server 数采节点伪孪生 */
+const sceneTwinPool = computed<DeviceTwinView[]>(() => [
+  ...deviceTwins.twins.filter(t => !isLegacyDaqTwin(t)),
+  ...daqTwins.value,
+])
+const sceneTwinById = (id: string): DeviceTwinView | undefined =>
+  sceneTwinPool.value.find(t => t.id === id)
+
 /** 轮询设备孪生 → 场景节点同步 + 状态环颜色(设备节点由 dev 模型拖入/服务端恢复生成) */
 function bindDevicePoll(scene: TownScene3D): ReturnType<typeof setInterval> {
   return setInterval(() => {
     void deviceTwins.load().then(() => {
       if (sceneRef.value !== scene) return
-      scene.syncDevices(deviceTwins.twins)
+      scene.syncDevices(sceneTwinPool.value)
       for (const node of scene.getDeviceNodes()) {
-        const twin = deviceTwins.byId(node.twinId)
+        const twin = sceneTwinById(node.twinId)
         if (twin) scene.updateDeviceNode(node.twinId, twin.state, twin.telemetry)
       }
     })
@@ -1261,10 +1278,14 @@ function bindDevicePoll(scene: TownScene3D): ReturnType<typeof setInterval> {
 const ticker = shallowRef<Array<{ channelId: string, agentName: string, text: string, at?: number }>>([])
 
 /* ============================================================
- * 数采节点 · DAQ(前端模拟):模板 → 拖拽实例化(device-twins kind=daq)
- * → 1s 模拟上报 → 绑定设备后以悬浮标注(设计稿 callout)展示实时值
- * 目录与量程域 = 设计稿 DAQ 表(薄膜双拉产线信号)
+ * 数采节点 · DAQ(server 数据驱动):节点实体/采集循环/告警派生全部在服务端
+ * (DaqNode class + DaqController,WS daq.reading 实时下发)。前端只做:
+ * 模板目录渲染(shared 单一事实源)→ 拖入创建 REST 节点 → 绑定设备 → 展示。
+ * 有多少 server Node,场景就有多少数采节点。
  * ============================================================ */
+/** 数采流单例:REST 快照 + townBus WS 帧(reading/node.changed/controller) */
+const daq = useDaqStream()
+/** 左轨模板目录(shared DAQ 表投影;字段名兼容既有轨道模板标记) */
 interface DaqTemplate {
   id: string
   name: string
@@ -1280,22 +1301,84 @@ interface DaqTemplate {
   /** 图标(设计稿 ICONS 键) */
   icon: string
 }
-const daqTemplates: DaqTemplate[] = [
-  { id: 'temp-tc', name: '温度传感器', code: 'TEMP · TC', ch: '熔体/箱体温度', unit: '℃', base: 168, amp: 3.2, min: 150, max: 185, decimals: 1, icon: 'thermo' },
-  { id: 'pressure-tx', name: '压力变送器', code: 'PRESSURE · TX', ch: '熔体压力', unit: 'MPa', base: 0.82, amp: 0.05, min: 0.6, max: 1.2, decimals: 2, icon: 'pressure' },
-  { id: 'tension-cell', name: '张力传感器', code: 'TENSION · CELL', ch: '膜张力', unit: 'kN', base: 21.4, amp: 0.9, min: 18, max: 26, decimals: 1, icon: 'tension' },
-  { id: 'line-encoder', name: '速度编码器', code: 'LINE · ENCODER', ch: '产线速度', unit: 'm/min', base: 318, amp: 7, min: 280, max: 360, decimals: 0, icon: 'encoder' },
-  { id: 'vision-cam', name: '视觉检测相机', code: 'VISION · CAM', ch: '表面缺陷率', unit: '‰', base: 0.42, amp: 0.09, min: 0.1, max: 0.9, decimals: 2, icon: 'camera' },
-  { id: 'power-meter', name: '电参采集器', code: 'POWER · METER', ch: '运行功率', unit: 'kW', base: 45.2, amp: 2.6, min: 38, max: 55, decimals: 1, icon: 'gateway' },
-]
-const daqTplById = (ref: string): DaqTemplate | undefined =>
-  daqTemplates.find(t => `daq-${t.id}` === ref)
+const daqTemplates: DaqTemplate[] = DAQ_TEMPLATES.map(t => ({
+  id: t.key,
+  name: t.name,
+  code: t.code,
+  ch: t.ch,
+  unit: t.unit,
+  base: t.base,
+  amp: t.amp,
+  min: t.min,
+  max: t.max,
+  decimals: t.decimals,
+  icon: t.icon,
+}))
+const daqTplById = (ref: string): DaqTemplate | undefined => {
+  const key = ref.startsWith('daq-') ? ref.slice(4) : ref
+  return daqTemplates.find(t => t.id === key)
+}
+const daqTplOf = (n: DaqNodeLive): DaqTemplate | undefined => daqTplById(n.templateRef)
 
-/** 场景中的数采实例(来自 device-twins;kind=daq 或 modelRef 前缀兜底旧数据) */
-const isDaqTwin = (t: DeviceTwinView): boolean => t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-')
-const daqTwins = computed(() => deviceTwins.twins.filter(isDaqTwin))
-const daqCount = (tplId: string): number =>
-  daqTwins.value.filter(t => t.modelRef === `daq-${tplId}`).length
+/** 孪生状态映射(node state → DeviceTwin.state 联合;warn 在值卡层表达) */
+function effectiveTwinState(n: DaqNodeLive): DeviceTwinView['state'] {
+  if (!daq.controller.running || !n.enabled) return 'offline'
+  if (n.state === 'alarm') return 'alarm'
+  return 'running'
+}
+
+/** 场景中的数采实例(server Node → 伪孪生投影;与设备孪生同构进 syncDevices/callout 管线) */
+const isLegacyDaqTwin = (t: DeviceTwinView): boolean =>
+  t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-')
+const daqTwins = computed<DeviceTwinView[]>(() =>
+  daq.nodes.map(n => ({
+    id: n.id,
+    workspaceId: '',
+    name: n.name,
+    modelRef: `daq-${daqTplOf(n)?.id ?? 'unknown'}`,
+    boundAgentId: null,
+    kind: 'daq',
+    telemetry: { value: n.value ?? 0 },
+    desired: {},
+    controls: [],
+    state: effectiveTwinState(n),
+    posX: n.posX,
+    posZ: n.posZ,
+    updatedAt: n.lastAt ?? n.createdAt,
+  })))
+
+/**
+ * 兼容视图:旧 UI 全部消费 DaqSimState(value/hist/tpl/alarm),保留同形结构,
+ * 数据源换成 server 读数流(daq.reading → node.hist 由 useDaqStream 填充)。
+ */
+interface DaqSimState { value: number, hist: number[], phase: number, tpl: DaqTemplate, alarm?: boolean }
+const daqSim = computed<Map<string, DaqSimState>>(() => {
+  const m = new Map<string, DaqSimState>()
+  for (const n of daq.nodes) {
+    const tpl = daqTplOf(n)
+    if (!tpl || n.value == null) continue
+    m.set(n.id, { value: n.value, hist: n.hist, phase: 0, tpl, alarm: n.state === 'alarm' })
+  }
+  return m
+})
+const fmtDaq = (st: DaqSimState): string => st.value.toFixed(st.tpl.decimals)
+
+/** 告警推进(server 派生 state 变化 → 场景告警面板;恢复自动消警语义保持) */
+const prevDaqState = new Map<string, string>()
+watch(() => daq.nodes.map(n => `${n.id}:${n.state}`).join('|'), () => {
+  for (const n of daq.nodes) {
+    const prev = prevDaqState.get(n.id)
+    prevDaqState.set(n.id, n.state)
+    if (!prev || prev === n.state) continue
+    const tpl = daqTplOf(n)
+    const dev = n.deviceBindingId ? deviceTwins.byId(n.deviceBindingId)?.name : null
+    const label = dev ?? n.name
+    const val = `${n.value?.toFixed(tpl?.decimals ?? 2) ?? '--'} ${tpl?.unit ?? ''}`
+    if (n.state === 'alarm') raiseAlarm(`${label} ${tpl?.ch ?? ''}越限量程(${val})`, 'crit', n.name)
+    else if (n.state === 'warn') raiseAlarm(`${label} ${tpl?.ch ?? ''}进入预警带(${val})`, 'warn', n.name)
+    else if (prev !== 'ok' && n.state === 'ok') raiseAlarm(`${label} ${tpl?.ch ?? ''}恢复正常`, 'info', n.name)
+  }
+})
 
 function onDaqDragStart(e: DragEvent, tpl: DaqTemplate): void {
   if (!e.dataTransfer) return
@@ -1304,57 +1387,19 @@ function onDaqDragStart(e: DragEvent, tpl: DaqTemplate): void {
   e.dataTransfer.effectAllowed = 'copy'
 }
 
-/** 模拟上报状态(实例 id → 当前值 + 历史环形缓冲;相位由 id 哈希决定,重启波形连续感一致) */
-interface DaqSimState { value: number, hist: number[], phase: number, tpl: DaqTemplate, alarm?: boolean }
-const daqSim = reactive(new Map<string, DaqSimState>())
-const hashPhase = (id: string): number => {
-  let h = 0
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 628
-  return h / 100
-}
-function tickDaqSim(): void {
-  const now = performance.now() / 1000
-  for (const t of daqTwins.value) {
-    const tpl = daqTplById(t.modelRef)
-    if (!tpl) continue
-    let st = daqSim.get(t.id)
-    if (!st) {
-      st = { value: tpl.base, hist: [], phase: hashPhase(t.id), tpl }
-      daqSim.set(t.id, st)
-    }
-    const v = tpl.base + tpl.amp * Math.sin(now * 0.35 + st.phase) + (Math.random() - 0.5) * tpl.amp * 0.18
-    st.value = Math.min(tpl.max, Math.max(tpl.min, v))
-    st.hist.push(st.value)
-    if (st.hist.length > 120) st.hist.shift()
-    // 阈值越限告警(设计稿 simStep:进入越限升警,恢复自动消警)
-    const { lo, hi } = alarmRange(st.tpl.min, st.tpl.max)
-    const breach = st.value > hi || st.value < lo
-    const devName = deviceTwins.twins.find(x => x.id === boundDeviceOf(t.id))?.name ?? t.name
-    if (breach && !st.alarm) {
-      st.alarm = true
-      raiseAlarm(`${devName} ${tpl.ch}异常（${fmtDaq(st)} ${tpl.unit}）`, 'warn', t.name)
-    }
-    else if (!breach && st.alarm) {
-      st.alarm = false
-    }
-  }
-  drawTrend()
-  drawBindSparks()
-}
-const fmtDaq = (st: DaqSimState): string => st.value.toFixed(st.tpl.decimals)
-
-/** 数采 → 设备绑定(daqId → deviceId;前端模拟,localStorage 持久) */
-const daqBindings = useStorage<Record<string, string>>('aw.twin.daqBindings', {})
-const boundDeviceOf = (daqId: string): string | null => daqBindings.value[daqId] ?? null
+/** 数采 → 设备绑定(server 权威:node.deviceBindingId;REST bind 落库 + WS 收敛) */
+const boundDeviceOf = (daqId: string): string | null => daq.nodeById(daqId)?.deviceBindingId ?? null
 const daqOfDevice = (deviceId: string): string[] =>
-  Object.entries(daqBindings.value).filter(([, dev]) => dev === deviceId).map(([daq]) => daq)
+  deviceId ? daq.nodes.filter(n => n.deviceBindingId === deviceId).map(n => n.id) : []
 function bindDaq(daqId: string, deviceId: string): void {
-  daqBindings.value = { ...daqBindings.value, [daqId]: deviceId }
+  void daq.bindNode(daqId, deviceId).catch((err: unknown) => {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  })
 }
 function unbindDaq(daqId: string): void {
-  const next = { ...daqBindings.value }
-  Reflect.deleteProperty(next, daqId)
-  daqBindings.value = next
+  void daq.bindNode(daqId, null).catch((err: unknown) => {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  })
 }
 
 /** 数采模板图标(设计稿 ICONS;SVG path 直嵌) */
@@ -1373,7 +1418,7 @@ function nearestDeviceTwin(x: number, z: number, maxDist: number): DeviceTwinVie
   let best: DeviceTwinView | null = null
   let bd = maxDist
   for (const t of deviceTwins.twins) {
-    if (isDaqTwin(t)) continue
+    if (isLegacyDaqTwin(t)) continue
     if (typeof t.posX !== 'number' || typeof t.posZ !== 'number') continue
     const d = Math.hypot(t.posX - x, t.posZ - z)
     if (d < bd) {
@@ -1384,32 +1429,31 @@ function nearestDeviceTwin(x: number, z: number, maxDist: number): DeviceTwinVie
   return best
 }
 
-/** bind-pop:添加数采通道(设计稿逻辑 —— 就近复用未绑定同类节点,无则实例化并绑定) */
+/** bind-pop:添加数采通道(设计稿逻辑 —— 就近复用未绑定同类节点,无则创建并绑定) */
 const bindPopOpen = ref(false)
 async function addChannelFromTemplate(tpl: DaqTemplate): Promise<void> {
   const devId = selected.value?.id
   if (!devId || selected.value?.kind !== 'device') return
   const devTwin = deviceTwins.twins.find(t => t.id === devId)
-  const unbound = deviceTwins.twins
-    .filter(t => isDaqTwin(t) && t.modelRef === `daq-${tpl.id}` && !boundDeviceOf(t.id))
-    .map(t => ({ t, d: Math.hypot((t.posX ?? 0) - (devTwin?.posX ?? 0), (t.posZ ?? 0) - (devTwin?.posZ ?? 0)) }))
+  const unbound = daq.nodes
+    .filter(n => n.templateRef === `daq-${tpl.id}` && !n.deviceBindingId && typeof n.posX === 'number')
+    .map(n => ({ n, d: Math.hypot((n.posX ?? 0) - (devTwin?.posX ?? 0), (n.posZ ?? 0) - (devTwin?.posZ ?? 0)) }))
     .sort((a, b) => a.d - b.d)[0]
   if (unbound && unbound.d < 420) {
-    bindDaq(unbound.t.id, devId)
+    bindDaq(unbound.n.id, devId)
     bindPopOpen.value = false
     return
   }
   try {
-    const n = daqCount(tpl.id) + 1
+    const seq = daq.nodes.filter(x => x.templateRef === `daq-${tpl.id}`).length + 1
     const off = daqOfDevice(devId).length
-    const created = await deviceTwins.create({
-      name: `${tpl.name} ${String(n).padStart(2, '0')}`,
-      modelRef: `daq-${tpl.id}`,
-      kind: 'daq',
+    await daq.createFromTemplate(`daq-${tpl.id}`, {
+      name: `${tpl.name} ${String(seq).padStart(2, '0')}`,
       posX: Math.round((devTwin?.posX ?? 0) + 95 + (off % 3) * 26),
       posZ: Math.round((devTwin?.posZ ?? 0) + 100 + (off % 2) * 30),
+    }).then((created) => {
+      void daq.bindNode(created.id, devId)
     })
-    bindDaq(created.id, devId)
     bindPopOpen.value = false
   }
   catch (err) {
@@ -1426,7 +1470,7 @@ function setSparkRef(id: string, el: unknown): void {
 }
 function drawBindSparks(): void {
   for (const [id, canvas] of sparkRefs) {
-    const st = daqSim.get(id)
+    const st = daqSim.value.get(id)
     const ctx = canvas.getContext('2d')
     if (!st || !ctx) continue
     const w = canvas.width
@@ -1454,14 +1498,14 @@ function drawBindSparks(): void {
   }
 }
 
-/** 场景链路同步:绑定关系 → TownScene3D.syncDaqLinks(虚线 + 脉冲) */
-watch([() => deviceTwins.twins, daqBindings], () => {
+/** 场景链路同步:绑定关系 → TownScene3D.syncDaqLinks(虚线 + 脉冲);server 绑定为权威 */
+watch(() => daq.nodes.map(n => `${n.id}:${n.deviceBindingId ?? ''}`).join('|'), () => {
   const s = scene3dRef.value
   if (!s || !('syncDaqLinks' in s)) return
-  s.syncDaqLinks(Object.entries(daqBindings.value)
-    .filter(([daqId, devId]) => deviceTwins.twins.some(t => t.id === daqId) && deviceTwins.twins.some(t => t.id === devId))
-    .map(([daqId, deviceId]) => ({ daqId, deviceId })))
-}, { deep: true })
+  s.syncDaqLinks(daq.nodes
+    .filter(n => n.deviceBindingId)
+    .map(n => ({ daqId: n.id, deviceId: n.deviceBindingId! })))
+})
 
 /** 选中上下文:是否数采节点 / 其模板 / 实时值 */
 const selectedIsDaq = computed(() =>
@@ -1469,11 +1513,11 @@ const selectedIsDaq = computed(() =>
 )
 const daqOfSelected = computed(() => {
   if (selected.value?.kind !== 'device') return null as DeviceTwinView | null
-  return deviceTwins.twins.find(t => t.id === selected.value?.id) ?? null
+  return sceneTwinById(selected.value?.id) ?? null
 })
 const selectedDaqSim = computed(() => {
   const id = selected.value?.id
-  return id ? daqSim.get(id) ?? null : null
+  return id ? daqSim.value.get(id) ?? null : null
 })
 /** 绑定选择器:待绑定数采下拉 */
 const bindPick = ref('')
@@ -1481,8 +1525,8 @@ const boundDaqRows = computed(() => {
   const id = selected.value?.id
   if (!id) return []
   return daqOfDevice(id).map((daqId) => {
-    const t = deviceTwins.twins.find(x => x.id === daqId)
-    const st = daqSim.get(daqId)
+    const t = sceneTwinById(daqId)
+    const st = daqSim.value.get(daqId)
     const tpl = st?.tpl ?? daqTplById(t?.modelRef ?? '')
     return {
       daqId,
@@ -1504,13 +1548,37 @@ const daqBoundDeviceName = computed(() => {
   return deviceTwins.twins.find(t => t.id === devId)?.name ?? devId.slice(0, 8)
 })
 
+/** 选中数采节点的 live 视图(检查器单点控制用:启停/周期/阈值/解绑/删除) */
+const selectedDaqNode = computed<DaqNodeLive | null>(() => {
+  const id = selected.value?.id
+  return id ? daq.nodeById(id) ?? null : null
+})
+const daqIntervalDraft = ref<number | null>(null)
+watch(selectedDaqNode, (n) => {
+  daqIntervalDraft.value = n ? (n.intervalMs ?? daq.controller.defaultIntervalMs) : null
+}, { immediate: true })
+function onDaqIntervalCommit(): void {
+  const n = selectedDaqNode.value
+  if (!n || daqIntervalDraft.value == null) return
+  void daq.patchNode(n.id, { intervalMs: Math.max(120, Math.min(60_000, Math.round(daqIntervalDraft.value))) }).catch((err: unknown) => {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  })
+}
+function onDaqThresholdCommit(key: 'min' | 'max' | 'warnLow' | 'warnHigh', raw: string): void {
+  const v = Number(raw)
+  if (!Number.isFinite(v)) return
+  void daq.patchNode(selectedDaqNode.value!.id, { [key]: key.startsWith('warn') ? v : v }).catch((err: unknown) => {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  })
+}
+
 /** 标注显隐(设计稿 tPins,默认开) */
 const showCallouts = ref(true)
 
 /** 点击 callout → 选中其绑定设备(设计稿 co.onclick = select(dev)) */
 function selectDeviceFromCallout(daqId: string): void {
   const devId = boundDeviceOf(daqId) ?? daqId
-  const t = deviceTwins.twins.find(x => x.id === devId)
+  const t = sceneTwinById(devId)
   if (!t) return
   selected.value = { kind: 'device', id: devId, scale: selected.value?.scale ?? 1, rotation: selected.value?.rotation ?? 0 }
   objNameDraft.value = t.name
@@ -1547,11 +1615,11 @@ const calloutPos = ref<Record<string, { x: number, y: number }>>({})
  *  只有所注视/飞近的设备亮起数据,邻机与远方节点保持静默 —— 数据属于走近的人。 */
 const calloutNearDist = useStorage('aw.twin.calloutNear', 1150)
 
-/** 设备控制台实时数采(twinId → 相关通道;数采自身 + 绑定设备双挂,1s 随模拟刷新) */
+/** 设备控制台实时数采(twinId → 相关通道;数采自身 + 绑定设备双挂,随 server 读数流刷新) */
 const daqLive = computed(() => {
   const map: Record<string, Array<{ ch: string, value: string, unit: string, alarm?: boolean }>> = {}
   for (const t of daqTwins.value) {
-    const st = daqSim.get(t.id)
+    const st = daqSim.value.get(t.id)
     if (!st) continue
     const row = { ch: st.tpl.ch, value: fmtDaq(st), unit: st.tpl.unit, alarm: st.alarm ?? false }
     ;(map[t.id] ??= []).push(row)
@@ -1575,7 +1643,7 @@ const callouts = computed(() => {
   interface Row { t: DeviceTwinView, st: DaqSimState, anchor: { twinId: string, name: string, x: number, z: number, topY?: number }, pos: { x: number, y: number } }
   const rows: Row[] = []
   for (const t of daqTwins.value) {
-    const st = daqSim.get(t.id)
+    const st = daqSim.value.get(t.id)
     if (!st) continue
     const boundDev = boundDeviceOf(t.id)
     const anchor = boundDev ? nodes.find(n => n.twinId === boundDev) : nodes.find(n => n.twinId === t.id)
@@ -1774,7 +1842,7 @@ function drawTrend(): void {
   }
   for (const t of daqTwins.value) {
     if (hiddenTrends.value[t.id]) continue
-    const st = daqSim.get(t.id)
+    const st = daqSim.value.get(t.id)
     if (!st || st.hist.length < 2) continue
     const lo = st.tpl.min
     const hi = st.tpl.max
@@ -1876,10 +1944,10 @@ function drawNavMap(): void {
     x.fill()
     x.globalAlpha = 1
   }
-  // 绑定链路(数采→设备 青色细线)
+  // 绑定链路(数采→设备 青色细线;server 绑定为权威)
   x.strokeStyle = 'rgba(65,200,244,.28)'
-  const boundSet = new Set(Object.keys(daqBindings.value))
-  for (const [daqId, devId] of Object.entries(daqBindings.value)) {
+  const boundSet = new Set(daq.nodes.filter(n => n.deviceBindingId).map(n => n.id))
+  for (const [daqId, devId] of daq.nodes.filter(n => n.deviceBindingId).map(n => [n.id, n.deviceBindingId!] as const)) {
     const dn = (mm?.devices ?? []).find(d => d.twinId === daqId)
     const dv = (mm?.devices ?? []).find(d => d.twinId === devId)
     if (!dn || !dv) continue
@@ -2007,6 +2075,9 @@ function onNavUp(e: PointerEvent): void {
 }
 onMounted(() => {
   window.addEventListener('keydown', onTownKey)
+  // 数采流:REST 基线 + WS 实时帧(server 权威;进数字孪生空间即建立连接)
+  daq.ensureWsFeed()
+  void daq.load()
   miniTimer = setInterval(() => {
     const s = sceneRef.value
     if (s?.getMinimapState) minimap.value = s.getMinimapState()
@@ -2031,8 +2102,12 @@ onMounted(() => {
       }
     }
   }, 150)
+  // 数采画布重绘节奏(读数帧由 WS 增量到达;这里只负责趋势/火花线绘制)
   daqTimer = setInterval(() => {
-    if (daqTwins.value.length) tickDaqSim()
+    if (daq.nodes.length) {
+      drawTrend()
+      drawBindSparks()
+    }
   }, 1000)
   tickerTimer = setInterval(() => {
     const s = sceneRef.value
@@ -2186,6 +2261,31 @@ onBeforeUnmount(() => {
             <h3>数采节点 · DAQ</h3>
             <span class="panel-tag">{{ daqTwins.length }}</span>
           </div>
+          <!-- 采集总控(server DaqController:全局启停 + 缺省周期;所有节点到期由其统一调度) -->
+          <div class="daq-ctrl">
+            <button
+              class="daq-ctl-btn"
+              :class="{ on: daq.controller.running }"
+              :title="daq.controller.running ? '暂停全部采集' : '恢复全部采集'"
+              @click="daq.controllerAction(daq.controller.running ? 'stop' : 'start')"
+            >
+              {{ daq.controller.running ? '采集中' : '已暂停' }}
+            </button>
+            <label
+              class="daq-ctl-cycle mono"
+              title="缺省采样周期(未单独设置周期的节点跟随此值)"
+            >
+              周期
+              <input
+                type="number"
+                min="200"
+                max="60000"
+                step="100"
+                :value="daq.controller.defaultIntervalMs"
+                @change="daq.controllerAction('config', Number(($event.target as HTMLInputElement).value))"
+              >ms
+            </label>
+          </div>
           <div class="daq-list">
             <div
               v-for="tpl in daqTemplates"
@@ -2206,7 +2306,7 @@ onBeforeUnmount(() => {
                 <span class="daq-name">{{ tpl.name }}</span>
                 <span class="daq-code">{{ tpl.code }}</span>
               </div>
-              <span class="daq-count">×{{ daqCount(tpl.id) }}</span>
+              <span class="daq-count">×{{ daq.nodes.filter(n => n.templateRef === `daq-${tpl.id}`).length }}</span>
             </div>
           </div>
         </section>
@@ -2553,6 +2653,7 @@ onBeforeUnmount(() => {
                   min="80"
                   max="4000"
                   step="8"
+                  :style="{ '--fill': sliderPct(boundaryDraft.radiusX, 80, 4000) }"
                   @change="applyBoundaryDraft"
                 >
                 <span class="bp-val">{{ Math.round(boundaryDraft.radiusX) }}</span>
@@ -2566,6 +2667,7 @@ onBeforeUnmount(() => {
                   min="60"
                   max="4000"
                   step="8"
+                  :style="{ '--fill': sliderPct(boundaryDraft.radiusZ, 60, 4000) }"
                   @change="applyBoundaryDraft"
                 >
                 <span class="bp-val">{{ Math.round(boundaryDraft.radiusZ) }}</span>
@@ -2579,6 +2681,7 @@ onBeforeUnmount(() => {
                   min="0"
                   max="360"
                   step="5"
+                  :style="{ '--fill': sliderPct(boundaryDraft.rotationY ?? 0, 0, 360) }"
                   @change="applyBoundaryDraft"
                 >
                 <span class="bp-val">{{ Math.round(boundaryDraft.rotationY ?? 0) }}°</span>
@@ -2860,7 +2963,7 @@ onBeforeUnmount(() => {
                     选择设备实例…
                   </option>
                   <option
-                    v-for="dv in deviceTwins.twins.filter(x => !isDaqTwin(x) && x.id !== (selected?.id ?? ''))"
+                    v-for="dv in deviceTwins.twins.filter(x => !isLegacyDaqTwin(x) && x.id !== (selected?.id ?? ''))"
                     :key="dv.id"
                     :value="dv.id"
                   >
@@ -2874,6 +2977,86 @@ onBeforeUnmount(() => {
                 >
                   {{ daqBoundDeviceName ? '解绑' : '绑定' }}
                 </button>
+              </div>
+              <!-- 节点单点控制(server DaqNode 参数:启停/周期/量程/预警带;REST 落库即时生效) -->
+              <div
+                v-if="mode === 'edit' && selectedDaqNode"
+                class="daq-node-ctl"
+              >
+                <div class="daq-info-row">
+                  <span>采样周期</span>
+                  <span class="daq-th-inputs">
+                    <input
+                      v-model.number="daqIntervalDraft"
+                      type="number"
+                      min="200"
+                      max="60000"
+                      step="100"
+                      class="daq-num"
+                      @change="onDaqIntervalCommit"
+                    ><small>ms(空=跟随全局)</small>
+                  </span>
+                </div>
+                <div class="daq-info-row">
+                  <span>预警带</span>
+                  <span class="daq-th-inputs">
+                    <input
+                      :value="selectedDaqNode.warnLow"
+                      type="number"
+                      step="any"
+                      class="daq-num"
+                      @change="onDaqThresholdCommit('warnLow', ($event.target as HTMLInputElement).value)"
+                    >
+                    ~
+                    <input
+                      :value="selectedDaqNode.warnHigh"
+                      type="number"
+                      step="any"
+                      class="daq-num"
+                      @change="onDaqThresholdCommit('warnHigh', ($event.target as HTMLInputElement).value)"
+                    >
+                  </span>
+                </div>
+                <div class="daq-info-row">
+                  <span>硬限量程</span>
+                  <span class="daq-th-inputs">
+                    <input
+                      :value="selectedDaqNode.min"
+                      type="number"
+                      step="any"
+                      class="daq-num"
+                      @change="onDaqThresholdCommit('min', ($event.target as HTMLInputElement).value)"
+                    >
+                    ~
+                    <input
+                      :value="selectedDaqNode.max"
+                      type="number"
+                      step="any"
+                      class="daq-num"
+                      @change="onDaqThresholdCommit('max', ($event.target as HTMLInputElement).value)"
+                    >
+                  </span>
+                </div>
+                <div class="daq-info-row">
+                  <span>采集</span>
+                  <button
+                    class="bind-add-btn"
+                    :class="{ warn: selectedDaqNode.enabled }"
+                    @click="daq.patchNode(selected.id, { enabled: !selectedDaqNode.enabled })"
+                  >
+                    {{ selectedDaqNode.enabled ? '停用本节点' : '启用本节点' }}
+                  </button>
+                </div>
+                <div class="daq-info-row">
+                  <span>删除</span>
+                  <button
+                    class="bind-add-btn danger"
+                    title="删除该数采节点(server 实体一并移除)"
+                    @click="removeSelectedDevice()"
+                  >
+                    删除节点
+                  </button>
+                </div>
               </div>
               <div
                 v-else
@@ -4016,13 +4199,14 @@ onBeforeUnmount(() => {
 .kpi-ico.c5 { background: rgba(255, 107, 107, 0.12); color: var(--hud-danger); }
 .kpi-svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .kpi-meta { line-height: 1.25; }
-.kpi-label { font-size: 10.5px; color: var(--hud-dim); }
+.kpi-label { font-size: 10px; color: var(--hud-dim); letter-spacing: 0.08em; text-transform: uppercase; }
 .kpi-val {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--hud-text);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 .kpi-val small { font-size: 10px; color: var(--hud-faint); font-weight: 500; margin-left: 2px; }
 .empty-hint {
@@ -4096,7 +4280,13 @@ onBeforeUnmount(() => {
   background: #fff;
   border: 2.5px solid var(--hud-accent);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s var(--hud-ease), box-shadow 0.15s var(--hud-ease);
 }
+.ctl-range:hover::-webkit-slider-thumb { transform: scale(1.18); box-shadow: 0 0 0 5px rgba(53, 224, 160, 0.12), 0 1px 4px rgba(0, 0, 0, 0.5); }
+.ctl-range:active::-webkit-slider-thumb { transform: scale(1.05); }
+.bp-range { accent-color: var(--hud-accent); }
+.bp-range::-webkit-slider-thumb { transition: transform 0.15s var(--hud-ease); }
+.bp-range:hover::-webkit-slider-thumb { transform: scale(1.15); }
 .snap-toggle {
   flex: 1;
   height: 22px;
@@ -4132,6 +4322,7 @@ onBeforeUnmount(() => {
 .btn-ghost:hover { background: #14203a; border-color: #33507c; }
 .btn-danger { background: #b3273a; color: #fff; }
 .btn-danger:hover { background: #d1304a; }
+.btn:not(:disabled):active { transform: translateY(1px); }
 /* 只读态:禁用控件降透明度 + 禁止光标(运行模式视觉语言) */
 .btn:disabled, .nav-action:disabled, .obj-input:disabled, .obj-select:disabled,
 .bind-select:disabled, .obj-mini:disabled {
@@ -4558,7 +4749,25 @@ onBeforeUnmount(() => {
 .bp-tab.on { color: #04120c; background: var(--hud-accent); border-color: var(--hud-accent); }
 .bp-row { display: flex; gap: 8px; align-items: center; }
 .bp-label { flex: none; width: 52px; font-size: 10.5px; color: var(--hud-dim); }
-.bp-range { flex: 1; accent-color: var(--hud-accent); }
+.bp-range {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--hud-accent-dim) var(--fill, 50%), #1d2a42 var(--fill, 50%));
+  cursor: pointer;
+}
+.bp-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--hud-accent);
+  transition: transform 0.15s var(--hud-ease);
+}
+.bp-range:hover::-webkit-slider-thumb { transform: scale(1.15); }
 .bp-hint { font-size: 10px; line-height: 1.6; color: var(--hud-faint); }
 .bp-actions { display: flex; gap: 6px; margin-top: 4px; }
 .bp-btn {
@@ -4748,6 +4957,67 @@ onBeforeUnmount(() => {
 }
 .daq-info-row b { font-family: var(--font-mono); font-weight: 600; color: var(--hud-text); font-variant-numeric: tabular-nums; }
 .daq-info-row b.cy { color: var(--hud-cyan); font-size: 13px; }
+
+/* ===== 数采总控(左轨)+ 节点单点控制(检查器)===== */
+.daq-ctrl {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-r-sm);
+}
+.daq-ctl-btn {
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--hud-dim);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--hud-line-hi);
+  border-radius: var(--hud-r-sm);
+}
+.daq-ctl-btn.on {
+  color: var(--hud-accent);
+  border-color: rgba(53, 224, 160, 0.45);
+}
+.daq-ctl-cycle {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--hud-faint);
+}
+.daq-ctl-cycle input,
+.daq-num {
+  width: 64px;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--hud-text);
+  background: var(--hud-input);
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+}
+.daq-th-inputs {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--hud-faint);
+}
+.bind-add-btn.warn:not(:disabled) {
+  color: var(--hud-amber);
+  border-color: rgba(246, 196, 83, 0.4);
+}
+.bind-add-btn.danger:not(:disabled) {
+  color: var(--hud-danger);
+  border-color: rgba(255, 107, 107, 0.4);
+}
 
 /* ===== 状态栏 ===== */
 .statusbar {

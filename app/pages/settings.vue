@@ -10,11 +10,11 @@ const userStore = useUserStore()
 
 const activeTab = ref('appearance')
 
-/** 强调色预设(warm-editorial:muted 低饱和族;默认 = 墨色药丸,跟随 config.yml) */
+/** 强调色预设(控制室低饱和族;默认 = 品牌绿,跟随 config.yml) */
 const defaultAccent = String(config.primaryColor)
 const colorPresets = [
   { value: defaultAccent, label: t('settings.accentInk') },
-  { value: '#44403c', label: t('settings.accentStone') },
+  { value: '#c9963f', label: t('settings.accentStone') },
   { value: '#44615a', label: t('settings.accentMoss') },
   { value: '#3f6094', label: t('settings.accentSlate') },
   { value: '#6b5aa0', label: t('settings.accentPlum') },
@@ -28,7 +28,7 @@ function pickAccent(c: string) {
   message.success(t('settings.accentApplied'))
 }
 
-/** 恢复默认(墨色药丸,跟随 config.yml) */
+/** 恢复默认(品牌绿,跟随 config.yml) */
 function resetAccent() {
   store.setAccent(null)
   message.success(t('settings.accentReset'))

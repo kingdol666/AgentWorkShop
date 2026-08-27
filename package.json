@@ -1,6 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
@@ -50,8 +50,12 @@
     "echarts": "^5.6.0",
     "h3": "2.0.1-rc.26",
     "js-yaml": "^4.1.0",
+    "modbus-serial": "^8.0.25",
+    "mqtt": "^5.15.2",
+    "node-opcua": "^2.178.0",
     "nuxt": "^4.0.0",
     "nuxt-auth-utils": "^0.5.0",
+    "pg": "^8.23.0",
     "phaser": "^4.0.0",
     "pinia": "^3.0.0",
     "pinia-plugin-persistedstate": "^4.2.0",
@@ -86,5 +90,10 @@
     "unocss": "^66.0.0",
     "unplugin-icons": "^22.0.0",
     "vue-tsc": "^3.3.10"
+  },
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "@serialport/bindings-cpp"
+    ]
   }
 }

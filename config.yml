@@ -10,7 +10,7 @@
 app:
   name: AgentWorkShop
   title: AgentWorkShop 软件开发系统
-  version: 0.1.0
+  version: 0.2.0
   description: 基于 Nuxt 4 的配置驱动运行范式
 
 # 运行模式（dev/prod 实际由启动命令决定，此处仅作运行时展示）
@@ -44,11 +44,26 @@ i18n:
 
 # 主题
 theme:
-  # harness 色板:朱砂(vermilion)单一强调色,全局色彩锁由 main.css / app.vue 派生
-  primaryColor: "#292524"
+  # Agent Harness · Digital Twin 控制室色板:品牌绿(交互/确认/DAQ)+ 数据青,见 TownView.vue --hud-*
+  primaryColor: "#35e0a0"
   mode: light # light | dark
 
 # 安全配置
+# 数据采集基础设施(数采 DAQ;地址与 docker-compose.yml 默认一致)
+# startInfrastructure: never=启动探测,不通且有 Docker 则自动 docker compose 拉起;
+#   always=仅 Docker 拉起;never=只直连。连接失败降级并警告,可前端一键重连。
+daq:
+  startInfrastructure: auto
+  mqtt:
+    host: 127.0.0.1
+    port: 1883
+  timescale:
+    host: 127.0.0.1
+    port: 5432
+    user: postgres
+    password: awshop
+    database: awshop
+
 security:
   # Session cookie 加密密钥（nuxt-auth-utils 使用）
   # 生产环境必须修改为强随机值；可用环境变量 NUXT_SESSION_PASSWORD 覆盖

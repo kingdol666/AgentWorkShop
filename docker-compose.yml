@@ -1,0 +1,34 @@
+# ============================================================
+# AgentWorkShop 数采基础设施(DAQ infrastructure)
+# ------------------------------------------------------------
+# 与 config.yml `daq:` 段默认一致;项目启动时若端口不通且存在 Docker,
+# 服务端自动执行 `docker compose up -d daq-mosquitto daq-timescale`。
+#   - daq-mosquitto:标准 MQTT 3.1.1/5 broker(数采下沉队列)
+#   - daq-timescale:TimescaleDB(时序数据持久化;named volume 常驻)
+# 手动启动:docker compose up -d
+# ============================================================
+services:
+  daq-mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: awshop-daq-mosquitto
+    # no-auth 配置:内网/开发态;生产请挂载自定义 mosquitto.conf 启用鉴权/TLS
+    command: ["mosquitto", "-c", "/mosquitto-no-auth.conf"]
+    ports:
+      - "1883:1883"   # 与 config.yml daq.mqtt.port 一致
+    restart: unless-stopped
+
+  daq-timescale:
+    image: timescale/timescaledb:latest-pg16
+    container_name: awshop-daq-timescale
+    environment:
+      POSTGRES_USER: postgres        # config.yml daq.timescale.user
+      POSTGRES_PASSWORD: awshop      # config.yml daq.timescale.password
+      POSTGRES_DB: awshop            # config.yml daq.timescale.database
+    ports:
+      - "5432:5432"                  # 与 config.yml daq.timescale.port 一致
+    volumes:
+      - awshop-daq-tsdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  awshop-daq-tsdata:

@@ -62,6 +62,8 @@ export default defineNuxtConfig({
     session: {
       password: config.security.sessionPassword,
     },
+    // 数采基础设施(config.yml -> daq;服务端启动插件消费)
+    daq: config.daq,
     public: {
       appName: config.app.name,
       appTitle: config.app.title,
@@ -99,6 +101,12 @@ export default defineNuxtConfig({
   nitro: {
     experimental: {
       websocket: true,
+    },
+    // 原生/重型服务端依赖外置(不参与 bundle,运行期 require 解析):
+    // pg/mqtt/modbus-serial/node-opcua 被 bundle 后,Windows 下动态 import 会变成
+    // 绝对盘符路径('d:\...')→ ESM loader 报 "protocol 'd:'";外置后由 Node 原生加载。
+    externals: {
+      external: ['pg', 'mqtt', 'modbus-serial', 'node-opcua', '@serialport/bindings-cpp'],
     },
     // 服务器侧 rollup 构建:显式外置 node:* 内建模块(如 node:sqlite)。
     // rollup 的内建模块清单不含 node:sqlite,Nitro 的 externals 插件也放行,

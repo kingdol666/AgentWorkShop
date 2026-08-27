@@ -524,6 +524,17 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   width: 118px;
 }
 
+/* 语言选择器:令牌驱动(主题失配时 antd 兜底色会露白,这里显式钉死) */
+.lang-select :deep(.ant-select-selector) {
+  color: var(--app-text, var(--ink));
+  background: transparent !important;
+  border-color: var(--app-border, var(--line)) !important;
+}
+
+.lang-select :deep(.ant-select-arrow) {
+  color: var(--app-text-secondary, var(--ink-faint));
+}
+
 /* 操作者铭牌:头像 + 双行 */
 .user-chip {
   display: flex;

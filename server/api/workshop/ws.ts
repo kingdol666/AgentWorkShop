@@ -24,6 +24,7 @@ import type { AgentEvent } from '../../services/workshop/agents/agent-interface'
 import type { A2AMessage } from '../../services/workshop/types/a2a'
 import type { AepEnvelope } from '../../../shared/workshop-protocol'
 import { parseJson } from '../../services/workshop/db/database'
+import { registerScenePeer, unregisterScenePeer } from '../../services/workshop/scene-events'
 
 const AEP_VERSION = 1
 const RING_CAP = 5000
@@ -464,6 +465,8 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
     return
   }
   stream.peers.add(peer)
+  // 共享场景事件注册表:daq 等无频道归属广播由此直达该 peer
+  registerScenePeer(peer)
   let channels = peerChannels.get(peer)
   if (!channels) {
     channels = new Set()
@@ -514,22 +517,7 @@ function unsubscribePeer(peer: WsPeer, channelId?: string): void {
  * 设备实例属 workspace 而非 channel,信封 channelId='' 不进 channel 流/不落事件库;
  * 客户端经 townBus 旁路消费(scene.syncDevices 即时收敛),轮询兜底不变。
  */
-export function broadcastSceneEvent(type: string, payload: unknown): void {
-  const e: AepEnvelope = {
-    v: AEP_VERSION,
-    type,
-    seq: 0,
-    at: new Date().toISOString(),
-    channelId: '',
-    payload: payload as AepEnvelope['payload'],
-  }
-  for (const peer of hub.peerChannels.keys()) {
-    try {
-      peer.send(JSON.stringify(e))
-    }
-    catch { /* 死连接 */ }
-  }
-}
+export { broadcastSceneEvent } from '../../services/workshop/scene-events'
 
 /**
  * 频道领地布局事件(scene.layout.saved/removed):经该频道频道流广播(仅订阅该频道的
@@ -613,10 +601,12 @@ export default defineWebSocketHandler({
 
   close(peer) {
     unsubscribePeer(peer)
+    unregisterScenePeer(peer)
   },
 
   error(peer, error) {
     console.error('[workshop-ws] connection error:', error)
     unsubscribePeer(peer)
+    unregisterScenePeer(peer)
   },
 })

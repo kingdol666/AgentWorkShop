@@ -1,0 +1,62 @@
+{
+  "name": "team-interop-demo",
+  "id": "team-interop-demo",
+  "description": "AgentWorkShop 项目中验证 AgentTeams 任务互通与信息互通的最小实测：研究员研究一个问题并把结论直接私信给撰稿人，撰稿人基于该信息产出总结。通过任务依赖 + 成员直发消息证明任务与信息双通道都能打通。",
+  "captainSessionId": "session-c4cc3b8d-d2b9-4905-8e41-917d82673299",
+  "createdAt": 1787801148653,
+  "members": [
+    {
+      "id": "7ccae39b-a093-4e4d-9d8b-afd8b91f126c",
+      "name": "researcher",
+      "role": "研究员",
+      "provider": "ustc",
+      "model": "deepseek-v4-flash-ascend",
+      "reasoningEffort": "max",
+      "joinedAt": 1787801176576,
+      "status": "removed"
+    },
+    {
+      "id": "0c53bed4-c072-47d6-9510-2498d6105714",
+      "name": "writer",
+      "role": "撰稿人",
+      "provider": "ustc",
+      "model": "deepseek-v4-flash-ascend",
+      "reasoningEffort": "max",
+      "joinedAt": 1787801176623,
+      "status": "removed"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "研究：中国大熊猫主要栖息地",
+      "description": "你是研究员。请仅凭常识回答（无需联网）：中国野生大熊猫的主要栖息地位于哪个省份（及主要山脉）。给出 1-2 句简明结论。完成两件事：\n1. 在任务 output 里写入你的最终结论（作为任务结果）。\n2. 【关键】用 agent_teams_send_message 给成员 writer 发送一条消息，内容为：「大熊猫栖息地结论：<你的结论>」，from 默认为你（researcher）即可。这用于验证成员之间的信息直接互通。\n完成后将任务标记为 completed。",
+      "status": "completed",
+      "assignee": "researcher",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1787801263809,
+      "updatedAt": 1787802129599,
+      "reassigning": false,
+      "attemptId": "eb5c758a-5552-4d0e-ab7e-cad66dab5071",
+      "output": "中国大熊猫主要栖息地研究结论：\n1) 分布格局：野生大熊猫（第四次全国调查约1864只）集中分布在四川、陕西、甘肃三省交界的六大山系——秦岭、岷山、邛崃山、凉山、大相岭、小相岭；栖息地多为青藏高原东缘至四川盆地的亚高山针阔混交林/竹丛林地带（海拔约1200–3500m），以箭竹等竹类为主食源。\n2) 关键数据：全国野生大熊猫栖息地258万公顷、潜在栖息地91万公顷（四调，截至2013年底）；三省共67个自然保护区，总保护面积约3.36万km²，保护种群约1246只；三省分布约四川1200只、陕西300只、甘肃100只。\n3) 代表性保护区：四川卧龙、蜂桶寨、陕西佛坪、甘肃白水江等；大熊猫国家公园跨川陕甘三省、保护面积2.2万km²，整合73个自然保护地，保护全国70%以上野生大熊猫，实现13个局域种群连通。\n4) 威胁与保护：栖息地破碎化（人类活动造成种群被分割为若干小种群）、走廊带建设（如108国道秦岭隧道大熊猫走廊带）等。\n来源：WWF中国、国家林草局、大熊猫国家公园官方资料等。"
+    },
+    {
+      "id": "t2",
+      "subject": "基于研究员结论写一段总结",
+      "description": "你是撰稿人。你的前序任务「研究：中国大熊猫主要栖息地」（t1）完成后，研究员 researcher 会通过 agent_teams_send_message 给你发送结论私信（也可能由 captain 转发）。请先查看你的收件箱：成员消息会作为你的下一轮输入送达；如果还没收到，请用 agent_teams_send_message 主动向 researcher 发消息索要结论。\n拿到结论后，写一段不超过 60 字的中文总结，把总结文字写入本任务的 output，然后标记 completed。验证这些点：\n- 任务依赖是否生效：你在 t1 完成前不应被调度；\n- 信息互通是否生效：你能拿到研究员的第一手结论而不是自己重复研究。",
+      "status": "completed",
+      "assignee": "writer",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 1,
+      "createdAt": 1787801325931,
+      "updatedAt": 1787802318107,
+      "attemptId": "92903b05-096e-4b30-acbe-4ee4ebb04fff",
+      "reassigning": false,
+      "output": "【总结】大熊猫栖息地集中川陕甘三省六大山系，约1864只；国家公园整合73处保护地，连通13个局域种群，守护七成以上野生大熊猫。\n\n验证结果：①任务依赖生效——t1 完成后 t2 才被调度；②信息互通生效——结论来自 researcher 私信第一手研究数据，未自行重复研究。"
+    }
+  ],
+  "taskSeq": 2
+}

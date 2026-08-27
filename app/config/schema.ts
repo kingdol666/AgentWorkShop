@@ -42,6 +42,20 @@ export const appConfigSchema = z.object({
   security: z.object({
     sessionPassword: z.string().min(16, 'session 密钥至少 16 位').default(''),
   }),
+  daq: z.object({
+    startInfrastructure: z.enum(['auto', 'always', 'never']).default('auto'),
+    mqtt: z.object({
+      host: z.string().default('127.0.0.1'),
+      port: z.number().int().min(1).max(65535).default(1883),
+    }),
+    timescale: z.object({
+      host: z.string().default('127.0.0.1'),
+      port: z.number().int().min(1).max(65535).default(5432),
+      user: z.string().default('postgres'),
+      password: z.string().default('awshop'),
+      database: z.string().default('awshop'),
+    }),
+  }).default({ startInfrastructure: 'auto', mqtt: { host: '127.0.0.1', port: 1883 }, timescale: { host: '127.0.0.1', port: 5432, user: 'postgres', password: 'awshop', database: 'awshop' } }),
 })
 
 export type AppConfig = z.infer<typeof appConfigSchema>
