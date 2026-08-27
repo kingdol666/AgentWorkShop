@@ -1,7 +1,7 @@
 /**
  * 角色模型库素材生成器(可拖拽加载到小镇的"自定义模型")。
  * 产出 public/assets/game/character/ 下的多张 4 帧精灵表(48x88→192x88),
- * 帧布局与内置 wu-* 精魂一致,运行时走同一套 wu-bob-<key> 动画。
+ * 帧布局与内置 wu-* 员工一致,运行时走同一套 wu-bob-<key> 动画。
  * 依赖:pngjs。运行:node scripts/build-character-models.mjs
  */
 import { PNG } from 'pngjs'

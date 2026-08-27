@@ -326,7 +326,7 @@ onBeforeUnmount(() => {
         </template>
       </div>
       <template
-        v-for="(a, i) in agents"
+        v-for="a in agents"
         :key="a.agentId"
       >
         <div
@@ -451,9 +451,9 @@ onBeforeUnmount(() => {
             />
           </div>
         </div>
-        <!-- 泳道分隔条:拖拽调节该列宽度(双击复位;键盘 ←→ 微调) -->
+        <!-- 泳道分隔条:每列右侧都挂(含最右列);统一调节"其左侧泳道"的宽度,
+             尾条即最右泳道的右缘调节柄(双击复位;键盘 ←→ 微调) -->
         <workshop-pane-splitter
-          v-if="i < agents.length - 1"
           :label="`拖拽调节 ${a.name} 泳道宽度`"
           @resize="d => resizeLane(a.agentId, d)"
           @reset="resetLane(a.agentId)"

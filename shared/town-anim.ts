@@ -1,7 +1,7 @@
 /**
  * town-anim —— 角色模型 → 动画状态映射(纯函数,零 Phaser,可单测)。
  *
- * 让「内置精魂」与「自定义上传模型」走同一套动画接口:
+ * 让「内置员工模型」与「自定义上传模型」走同一套动画接口:
  *  - resolveAnimDef(textureKey, model) → 依模型帧布局给出 idle/walk/work 的帧区间与帧率。
  *  - 约定:模型若声明 anims 就用之;否则回退默认(4 帧悬停 bob = 全部帧循环)。
  *  - 供 TownScene 在 registerModelFromId / createAnimations / swapTexture 统一取帧。

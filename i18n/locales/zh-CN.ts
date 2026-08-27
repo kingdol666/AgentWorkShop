@@ -16,7 +16,7 @@ export default {
     system: 'AgentWorkShop',
     dashboard: '仪表盘',
     workshop: 'Agent 工作台',
-    town: 'Agent 小镇',
+    town: 'AgentWorkShop',
     tokens: 'API Token',
     users: '用户管理',
     monitor: '运行时监控',

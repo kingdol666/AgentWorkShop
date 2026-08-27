@@ -30,6 +30,8 @@ interface SceneLayoutStore {
   loaded: boolean
   loading: boolean
   error: string
+  /** 布局数据版本号(load 成功/save/remove 时自增;供组件监听后幂等收敛重建) */
+  rev: number
   load(): Promise<void>
   byChannel(channelId: string): SceneLayoutView | undefined
   save(channelId: string, input: { x: number, z: number, radiusX: number, radiusZ: number, shape?: 'ellipse' | 'rect', rotationY?: number }): Promise<SceneLayoutView>
@@ -47,48 +49,65 @@ function headers(json = true): Record<string, string> {
 }
 
 function createStore(): SceneLayoutStore {
+  /** 在飞请求句柄:并发 load 等同一个真实请求(旧实现直接 return → 调用方拿空 layouts 去 hydrate,频道竞态消失) */
+  let inFlight: Promise<void> | null = null
+  const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms))
+
   const store: SceneLayoutStore = reactive({
     layouts: {},
     loaded: false,
     loading: false,
     error: '',
+    rev: 0,
+
     async load() {
-      // 每次真实拉取(不做 loaded 缓存):布局是高频变更的共享场景状态,
-      // 缓存会让 WS 广播回调读到旧快照,把刚放置/他人编辑的频道在 rebuild 中清掉。
-      if (store.loading) return
-      store.loading = true
-      try {
-        const res = await fetch('/api/workshop/scene/layouts', { headers: headers() })
-        const json = await res.json().catch(() => ({}))
-        const list: SceneLayoutView[] = json?.data?.layouts ?? []
-        const next: Record<string, SceneLayoutView> = {}
-        for (const l of list) next[l.channelId] = l
-        store.layouts = next
-        store.loaded = true
-        store.error = ''
+      if (!inFlight) {
+        inFlight = doLoad().finally(() => {
+          inFlight = null
+        })
       }
-      catch (err) {
-        store.loaded = false
-        store.error = err instanceof Error ? err.message : String(err)
-      }
-      finally {
-        store.loading = false
-      }
+      return inFlight
     },
+
     byChannel(channelId) {
       return store.layouts[channelId]
     },
+
     async save(channelId, input) {
-      const res = await fetch(`/api/workshop/scene/layouts/${channelId}`, {
-        method: 'PUT',
-        headers: headers(),
-        body: JSON.stringify(input),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok || !json?.data?.layout) throw new Error(json?.message ?? '保存频道布局失败')
-      store.layouts[channelId] = json.data.layout
-      return json.data.layout
+      // 乐观写入:本地即刻生效(WS snapshot 重建不会清掉刚放置的频道),随后持久化重试
+      store.layouts[channelId] = {
+        channelId,
+        x: input.x,
+        z: input.z,
+        radiusX: input.radiusX,
+        radiusZ: input.radiusZ,
+        shape: input.shape ?? 'ellipse',
+        rotationY: input.rotationY ?? 0,
+        updatedAt: new Date().toISOString(),
+      }
+      store.rev++
+      let lastErr: Error | null = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch(`/api/workshop/scene/layouts/${channelId}`, {
+            method: 'PUT',
+            headers: headers(),
+            body: JSON.stringify(input),
+          })
+          const json = await res.json().catch(() => ({}))
+          if (!res.ok || !json?.data?.layout) throw new Error(json?.message ?? '保存频道布局失败')
+          store.layouts[channelId] = json.data.layout
+          store.rev++
+          return json.data.layout
+        }
+        catch (err) {
+          lastErr = err instanceof Error ? err : new Error(String(err))
+          if (attempt < 2) await sleep(500 * (attempt + 1))
+        }
+      }
+      throw lastErr ?? new Error('保存频道布局失败')
     },
+
     async remove(channelId) {
       const res = await fetch(`/api/workshop/scene/layouts/${channelId}`, {
         method: 'DELETE',
@@ -98,8 +117,42 @@ function createStore(): SceneLayoutStore {
       if (!res.ok) throw new Error(json?.message ?? '移除频道放置失败')
       const next = Object.fromEntries(Object.entries(store.layouts).filter(([k]) => k !== channelId))
       store.layouts = next
+      store.rev++
     },
   })
+
+  /** 单次真实拉取(3 次退避重试;非 2xx 视为失败 —— 401/500 的空 layouts 曾让整场频道消失) */
+  async function doLoad(): Promise<void> {
+    store.loading = true
+    let lastErr = ''
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch('/api/workshop/scene/layouts', { headers: headers() })
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const json = await res.json().catch(() => ({}))
+          const list: SceneLayoutView[] = json?.data?.layouts ?? []
+          const next: Record<string, SceneLayoutView> = {}
+          for (const l of list) next[l.channelId] = l
+          store.layouts = next
+          store.loaded = true
+          store.error = ''
+          store.rev++
+          return
+        }
+        catch (err) {
+          lastErr = err instanceof Error ? err.message : String(err)
+          if (attempt < 2) await sleep(400 * (attempt + 1))
+        }
+      }
+      store.loaded = false
+      store.error = lastErr
+    }
+    finally {
+      store.loading = false
+    }
+  }
+
   return store
 }
 

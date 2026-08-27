@@ -19,7 +19,7 @@ export default defineApiHandler(async (event) => {
     name: body.name.trim(),
     modelRef: body.modelRef ?? '',
     workspaceId: body.workspaceId ?? '',
-    kind: (body.kind === 'environment' || body.kind === 'asset' ? body.kind : 'device') as DeviceTwin['kind'],
+    kind: (body.kind === 'environment' || body.kind === 'asset' || body.kind === 'daq' ? body.kind : 'device') as DeviceTwin['kind'],
     controls: body.controls ?? [],
     telemetry: (body.telemetry ?? {}) as Record<string, number | string | boolean>,
     posX: typeof body.posX === 'number' && Number.isFinite(body.posX) ? Math.round(body.posX * 10) / 10 : undefined,

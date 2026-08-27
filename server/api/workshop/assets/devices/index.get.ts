@@ -39,6 +39,24 @@ const BASE_DIRS = {
   character: 'public/assets/game/character',
 }
 
+/** 薄膜双拉产线基础设备元数据(basename → 展示名 + 相对高度系数)。
+ *  高度系数以 TD 拉幅机为 1.0 基准(与设计稿一致的比例关系):
+ *  渲染层把每个 GLB 归一化到基准高度 × 系数 —— 产线设备高矮错落,不做等高强归一。 */
+const DEVICE_META: Record<string, { label: string, hFactor: number }> = {
+  'extruder': { label: '挤出机 · EXT', hFactor: 0.69 },
+  'caster': { label: '流延冷却单元 · CST', hFactor: 0.87 },
+  'mdo': { label: 'MD 纵拉机 · MDO', hFactor: 1.08 },
+  'tdo': { label: 'TD 拉幅机 · TDO', hFactor: 1.0 },
+  'winder': { label: '收卷机 · WND', hFactor: 0.78 },
+  'thickness-scanner': { label: '厚度扫描仪 · THK', hFactor: 0.82 },
+  'agv': { label: 'AGV 搬运车 · AGV', hFactor: 0.38 },
+  'power-cabinet': { label: '配电柜 · PWR', hFactor: 0.62 },
+  'device-console': { label: '控制台 · CON', hFactor: 0.5 },
+  'device-robot-arm': { label: '机械臂单元 · ARM', hFactor: 0.5 },
+  'device-scanner': { label: '扫描仪 · SCN', hFactor: 1.0 },
+  'pump': { label: '循环泵 · PMP', hFactor: 1.0 },
+}
+
 function scanDir(category: 'device' | 'character', folder: string): SceneModelAsset[] {
   const abs = join(process.cwd(), folder)
   let entries: string[]
@@ -60,13 +78,14 @@ function scanDir(category: 'device' | 'character', folder: string): SceneModelAs
     catch { /* 无权限等;仅元数据缺省 */ }
     const base = name.replace(/\.[^.]+$/, '')
     const id = `${category === 'device' ? 'dev-folder-' : 'ch-folder-'}${base}`
+    const meta = category === 'device' ? DEVICE_META[base] : undefined
     out.push({
       id,
-      name: base.replace(/[-_]/g, ' '),
+      name: meta?.label ?? base.replace(/[-_]/g, ' '),
       file: `/assets/game/${category === 'device' ? 'devices' : 'character'}/${name}`,
       category,
       fileType: ext.slice(1) as SceneModelAsset['fileType'],
-      defaultScale: 1,
+      defaultScale: meta?.hFactor ?? 1,
       size,
       thumbnailPath: null,
       key: base,

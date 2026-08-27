@@ -8,18 +8,20 @@
  */
 import type Phaser from 'phaser'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
+import { useUserStore } from '@/app/stores/workshop/user'
 import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
 import { useTownBus } from '@/app/composables/workshop/useTownBus'
 import { useCharacterAssets } from '@/app/composables/workshop/useCharacterAssets'
-import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
+import { useDeviceTwins, type DeviceTwinView } from '@/app/composables/workshop/useDeviceTwins'
 import { useSceneLayouts } from '@/app/composables/workshop/useSceneLayouts'
 import { useHttp } from '@/app/composables/useHttp'
 import type { TownScene, TownEntityInput } from './TownScene'
 import type { TownScene3D, ChannelLayout, AgentRangeLayout } from './TownScene3D'
-// 频道身份色/世界尺度与 3D 场景同源(避免 UI 与场景两套色相哈希分叉)
-import { WORLD_H, WORLD_W, channelColorCss } from '#shared/town-scene-math'
+// 频道身份色(与 3D 场景同源:同一 hashHue,UI 用 CSS 色)
+import { channelColorCss } from '#shared/town-scene-math'
 // 历史聊天:复用事件→气泡意图映射(与 3D 场景同源,确保历史/实时同一语义)
+import { useStorage } from '@vueuse/core'
 import { mapEnvelopeToIntent } from '#shared/town-protocol'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 
@@ -87,30 +89,63 @@ function toggleMode(): void {
   }
   agentDrawingRange.value = false
 }
+/** 变换模式(Blender 键位):G 移动 / R 旋转 / S 缩放;选中设备时与场景手柄联动 */
+const tMode = ref<'translate' | 'rotate' | 'scale'>('translate')
+function setTMode(m: 'translate' | 'rotate' | 'scale'): void {
+  tMode.value = m
+  scene3dRef.value?.setTransformMode(m)
+}
+// 选中设备(编辑模式)→ 手柄按当前模式出现
+watch(() => [selected.value, mode.value] as const, ([sel, m]) => {
+  if (m === 'edit' && sel?.kind === 'device') scene3dRef.value?.setTransformMode(tMode.value)
+})
+
+// Blender 键位:G/R/S 切换变换模式,Esc 取消选中(输入框聚焦时不劫持)
+function onTownKey(e: KeyboardEvent): void {
+  const t = e.target as HTMLElement | null
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+  const k = e.key.toLowerCase()
+  // Esc:取消选中(任何模式,设计稿 deselect)
+  if (e.key === 'Escape') {
+    closeScale()
+    return
+  }
+  if (mode.value !== 'edit' || selected.value?.kind !== 'device') return
+  if (k === 'g') setTMode('translate')
+  else if (k === 'r') setTMode('rotate')
+  else if (k === 's') setTMode('scale')
+  else if (e.key === 'Delete' || e.key === 'Backspace') removeSelectedDevice()
+}
 function toggleSnap(): void {
   snap.value = !snap.value
   scene3dRef.value?.setSnap(snap.value)
 }
-/** Admin 布局:持久化角色落点(改 config.homeX/homeZ;与 modelRef 合并保留) */
-function updateAgentHome(agentId: string, x: number, z: number): Promise<unknown> {
-  if (!props.channelId) return Promise.resolve()
+/** Admin 布局:持久化角色落点(按 Agent 所属频道落库 —— 多频道小镇不能错发到页面主频道) */
+function updateAgentHome(agentId: string, channelId: string, x: number, z: number): Promise<unknown> {
+  const cid = channelId || props.channelId
+  if (!cid) return Promise.resolve()
   return http.request({
     method: 'PATCH',
-    url: `/workshop/channels/${props.channelId}/agents/${agentId}/position`,
+    url: `/workshop/channels/${cid}/agents/${agentId}/position`,
     data: { x, z },
   }).catch(() => null)
 }
 /** Admin 布局:持久化角色独立活动范围(改 config.range;null 清除回退频道边界) */
-function updateAgentRange(agentId: string, range: AgentRangeLayout | null): Promise<unknown> {
-  if (!props.channelId) return Promise.resolve()
+function updateAgentRange(agentId: string, channelId: string, range: AgentRangeLayout | null): Promise<unknown> {
+  const cid = channelId || props.channelId
+  if (!cid) return Promise.resolve()
   return http.request({
     method: 'PATCH',
-    url: `/workshop/channels/${props.channelId}/agents/${agentId}/range`,
+    url: `/workshop/channels/${cid}/agents/${agentId}/range`,
     data: { range },
   }).catch(() => null)
 }
 /** 保存布局:强制全部设备 transform 落库 */
 function saveLayout(): void {
+  if (mode.value !== 'edit') {
+    runHint()
+    return
+  }
   scene3dRef.value?.persistAllDevices()
 }
 
@@ -123,15 +158,6 @@ function onScaleCommit(v: number): void {
   if (!selected.value) return
   scene3dRef.value?.persistScale(selected.value.kind, selected.value.id)
   void v
-}
-/** 旋转滑杆(编辑模式设备):实时 + 松手落库 */
-function onRotationInput(v: number): void {
-  if (!selected.value) return
-  scene3dRef.value?.setModelRotation(selected.value.id, v, selected.value.kind)
-}
-function onRotationCommit(): void {
-  if (!selected.value) return
-  scene3dRef.value?.persistDeviceTransform(selected.value.id)
 }
 function closeScale(): void {
   selected.value = null
@@ -258,7 +284,7 @@ const agentRangeStatusText = computed(() => {
   const sel = selected.value
   if (!sel || sel.kind !== 'agent') return ''
   const r = scene3dRef.value?.getAgentRange?.(sel.id)
-  if (!r) return '未设置 · 沿用频道领地'
+  if (!r) return '未设置 · 沿用频道边界'
   return `${r.shape === 'rect' ? '矩形' : '椭圆'} ${Math.round(r.radiusX)} × ${Math.round(r.radiusZ)}`
 })
 /** 框选绘制按钮:进入/退出绘制模式(编辑模式 + 选中角色) */
@@ -336,19 +362,24 @@ async function bindDeviceModel(modelRef: string): Promise<void> {
     errorText.value = err instanceof Error ? err.message : String(err)
   }
 }
-/** 删除选中设备实例(移除孪生 + 场景节点) */
-async function removeSelectedDevice(): Promise<void> {
+/** 删除选中设备实例(移除孪生 + 场景节点);两步确认:首击布防 3s,再击执行 */
+const deviceDeleteArmed = ref('')
+function removeSelectedDevice(): void {
   const sel = selected.value
   if (!sel || sel.kind !== 'device') return
-  const name = scene3dRef.value?.getDeviceName?.(sel.id) ?? sel.id
-  if (!window.confirm(`确定移除设备实例「${name}」吗?`)) return
-  try {
-    await scene3dRef.value?.removeDevice(sel.id)
-    closeScale()
+  if (deviceDeleteArmed.value !== sel.id) {
+    deviceDeleteArmed.value = sel.id
+    window.setTimeout(() => {
+      if (deviceDeleteArmed.value === sel.id) deviceDeleteArmed.value = ''
+    }, 3000)
+    return
   }
-  catch (err) {
-    errorText.value = err instanceof Error ? err.message : String(err)
-  }
+  deviceDeleteArmed.value = ''
+  void scene3dRef.value?.removeDevice(sel.id)
+    .then(() => closeScale())
+    .catch((err: unknown) => {
+      errorText.value = err instanceof Error ? err.message : String(err)
+    })
 }
 
 // ---------- 频道成员角色模型管理(在频道管理实例中设置) ----------
@@ -452,7 +483,7 @@ function buildTownInput(): TownEntityInput[] {
 function syncSceneModels(scene: TownViewScene | null): void {
   if (!scene || !('registerModelsFromList' in scene)) return
   if ('screenToWorld' in scene) {
-    scene.registerModelsFromList(characterAssets.models.map(m => ({ id: m.id, file: m.file, name: m.name, kind: m.kind })))
+    scene.registerModelsFromList(characterAssets.models.map(m => ({ id: m.id, file: m.file, name: m.name, kind: m.kind, hFactor: m.hFactor ?? 1 })))
   }
   else {
     scene.registerModelsFromList(characterAssets.models.map(m => ({ id: m.id, file: m.file, name: m.name })))
@@ -510,11 +541,11 @@ async function boot3D(): Promise<void> {
   }
   // 注入管理员布局:持久化角色落点 + 独立活动范围
   scene.agentApi = {
-    async updateHome(agentId, x, z) {
-      return updateAgentHome(agentId, x, z)
+    async updateHome(agentId, channelId, x, z) {
+      return updateAgentHome(agentId, channelId, x, z)
     },
-    async updateRange(agentId, range) {
-      return updateAgentRange(agentId, range)
+    async updateRange(agentId, channelId, range) {
+      return updateAgentRange(agentId, channelId, range)
     },
   }
   // 注入频道布局持久化:频道整体拖拽 / 边界手柄调整后经 useSceneLayouts 落库
@@ -562,11 +593,18 @@ async function boot3D(): Promise<void> {
   devicePollTimer = bindDevicePoll(scene)
 
   // 布局异步加载:到达后按数据库元数据统一实例化并初始化场景内全部实例
-  // (频道布局 + 实体基线 + 设备孪生 → hydrate;仅放置的频道呈现;失败保持空场地)
+  // (频道布局 + 实体基线 + 设备孪生 → hydrate;仅放置的频道呈现)。
+  // 健壮性:composable 内部已 3 次退避重试;此处再兜底 —— 失败浮出错误并定时重拉,
+  // rev-watch 会在数据到达后自动收敛重建,任何时序下频道都不会"消失"。
   void sceneLayouts.load().then(() => {
     scene.hydrate(buildTownInput(), Object.values(sceneLayouts.layouts), deviceTwins.twins)
     syncChannelDock()
-  }).catch(() => {})
+  }).catch((err) => {
+    errorText.value = `频道布局加载失败,自动重试中(${err instanceof Error ? err.message : String(err)})`
+    window.setTimeout(() => {
+      void sceneLayouts.load()
+    }, 2500)
+  })
 }
 
 /** 2D 引导(?render=2d):Phaser TownScene */
@@ -656,6 +694,10 @@ function wireCommon(scene: CommonTownScene): void {
         })
         return
       }
+      // 会话台实时缓冲:气泡意图 → 所属角色的近实时消息(与头顶气泡同语义;
+      // 独立于事件日志 30 条上限,选中角色的消息不会被其他角色刷屏挤掉)
+      const bub = mapEnvelopeToIntent(e)?.bubble
+      if (bub?.agentId) appendLiveChat(bub.agentId, bub.kind, bub.text, e.at, e.seq)
       scene.handleTownEvent(e)
     }
     catch (err) {
@@ -755,50 +797,74 @@ function bindSceneInput2D(scene: Exclude<TownViewScene, TownScene3D>): void {
   })
 }
 
-/** 3D(Three.js):用 scene.canvas + scene.screenToWorld + panBy/zoomBy */
+/** 运行模式只读提示(2.6s 自动消退) */
+let runHintTimer: ReturnType<typeof setTimeout> | null = null
+function runHint(): void {
+  errorText.value = '运行模式为只读 · 切换「编辑」后可修改场景'
+  if (runHintTimer) clearTimeout(runHintTimer)
+  runHintTimer = setTimeout(() => {
+    errorText.value = ''
+  }, 2600)
+}
+
+/** 3D(Three.js):相机交互 1:1 设计稿 OrbitLite ——
+ *  左键拖拽=环绕 / 中键·右键·Shift+左键=平移 / 滚轮=dolly(乘性);
+ *  实体/领地/手柄拖拽优先,双击实体=flyTo 聚焦(场景内部已实现)。 */
 function bindSceneInput3D(scene: TownScene3D): void {
   const canvas = scene.canvas
   if (!canvas) return
 
-  // ---- 相机拖拽平移(页面位移 → scene.panBy) ----
-  let draggingCam = false
+  let camMode = 0 // 0 无 / 1 环绕 / 2 平移
   let lastCX = 0
   let lastCY = 0
+  canvas.addEventListener('contextmenu', e => e.preventDefault())
+  canvas.addEventListener('mousedown', (e: MouseEvent) => {
+    if (e.button === 1) e.preventDefault()
+  })
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+    // 变换手柄悬停/拖拽 → 让出(手柄优先)
+    if (scene.isGizmoBusy?.()) return
+    const panGesture = e.button === 1 || e.button === 2 || e.shiftKey
+    if (panGesture) {
+      e.preventDefault()
+      camMode = 2
+      lastCX = e.clientX
+      lastCY = e.clientY
+      return
+    }
     if (e.button !== 0) return
-    // 编辑模式:先问场景是否接管(拖设备/角色落点);接管则本手势不再平移相机
+    // 编辑模式:实体/领地/范围/边界等场景拖拽接管;未接管(空白处)→ 左键环绕
     if (scene.tryStartPointerDrag(e.clientX, e.clientY)) return
-    draggingCam = true
+    camMode = 1
     lastCX = e.clientX
     lastCY = e.clientY
   })
   window.addEventListener('pointermove', (e: PointerEvent) => {
+    if (scene.isGizmoBusy?.()) return
     if (scene.isPointerDragging()) {
       scene.movePointerDrag(e.clientX, e.clientY)
       return
     }
-    if (!draggingCam) return
-    const rect = canvas.getBoundingClientRect()
-    // 页面 px → 世界单位(近似:视角 45°,取 rect 宽对应世界宽)
-    const worldPerPx = WORLD_W3D / rect.width
-    const dx = (e.clientX - lastCX) * worldPerPx
-    const dy = (e.clientY - lastCY) * worldPerPx
-    scene.panBy(dx, dy)
+    if (!camMode) return
+    const dx = e.clientX - lastCX
+    const dy = e.clientY - lastCY
     lastCX = e.clientX
     lastCY = e.clientY
+    if (camMode === 1) scene.orbitBy(dx, dy)
+    else scene.panByScreen(dx, dy)
   })
   window.addEventListener('pointerup', () => {
     if (scene.isPointerDragging()) {
       scene.endPointerDrag()
       return
     }
-    draggingCam = false
+    camMode = 0
   })
 
-  // ---- 滚轮缩放 ----
+  // ---- 滚轮 dolly(设计稿:乘性缩放,任意层级手感一致) ----
   canvas.addEventListener('wheel', (e: WheelEvent) => {
     e.preventDefault()
-    scene.zoomBy(e.deltaY < 0 ? 0.08 : -0.08)
+    scene.zoomBy(e.deltaY > 0 ? 0.12 : -0.11)
   }, { passive: false })
 
   // ---- 拖放(频道坞→安放频道;模型库→换装/生成居民) ----
@@ -810,11 +876,39 @@ function bindSceneInput3D(scene: TownScene3D): void {
     e.preventDefault()
     const dt = e.dataTransfer
     if (!dt) return
+    // 运行模式只读:不接受任何场景投放(频道/数采/设备)
+    if (mode.value !== 'edit') {
+      runHint()
+      return
+    }
     // 1) 频道坞拖入 → 安放频道 + 其 Agent
     const channelId = dt.getData('application/x-aw-channel') || dt.getData('text/plain')
     if (channelId && dockChannels.value.some(c => c.channelId === channelId)) {
       const world = scene.screenToWorld(e.clientX, e.clientY)
       dropChannelAt(channelId, world.x, world.z)
+      return
+    }
+    // 1.5) 数采节点拖入 → 实例化(后端 device-twins kind=daq;程序化网格,实时模拟上报)
+    //      落点 ±95 单位内存在设备 → 自动绑定(设计稿:数采靠近设备自动接通道)
+    const daqTplId = dt.getData('application/x-aw-daq')
+    if (daqTplId) {
+      const tpl = daqTemplates.find(t => t.id === daqTplId)
+      if (tpl) {
+        const world = scene.screenToWorld(e.clientX, e.clientY)
+        const n = daqCount(tpl.id) + 1
+        void deviceTwins.create({
+          name: `${tpl.name} ${String(n).padStart(2, '0')}`,
+          modelRef: `daq-${tpl.id}`,
+          kind: 'daq',
+          posX: Math.round(world.x),
+          posZ: Math.round(world.z),
+        }).then((created) => {
+          const near = nearestDeviceTwin(world.x, world.z, 95)
+          if (near) bindDaq(created.id, near.id)
+        }).catch((err: unknown) => {
+          errorText.value = err instanceof Error ? err.message : String(err)
+        })
+      }
       return
     }
     // 2) 模型拖放 → 换装/生成
@@ -833,6 +927,15 @@ function syncSceneDevices(scene: TownViewScene): void {
     ;(scene as TownScene3D).syncDevices(deviceTwins.twins)
   }
 }
+
+// 布局数据版本 → 幂等收敛:load 晚到/save/remove/他人编辑后,场景一律重建对齐
+// (hydrates 是 resetAll+rebuild,幂等;这是"每次进场都能从数据库实例化"的最终保证)
+watch(() => sceneLayouts.rev, (rev) => {
+  const scene = scene3dRef.value
+  if (!scene || !sceneLayouts.loaded || rev === 0) return
+  scene.hydrate(buildTownInput(), Object.values(sceneLayouts.layouts), deviceTwins.twins)
+  syncChannelDock()
+})
 
 /** 用频道布局清单收敛场景(已放置频道存在性/边界;供 WS 事件后即时同步) */
 function syncSceneLayouts(scene: TownViewScene | null): void {
@@ -859,7 +962,7 @@ function onFocusDevice(t: { id: string, posX?: number, posZ?: number }): void {
 }
 
 /* ============================================================
- * 可拖动面板(对象属性卡/边界面板/精魂会话台):
+ * 可拖动面板(对象属性卡/边界面板/员工会话台):
  * 抓取标题栏拖动,自由移动避免堆叠在底部;位置经 localStorage 记忆
  * ============================================================ */
 const panelPos = reactive<Record<string, { x: number, y: number }>>({})
@@ -931,52 +1034,23 @@ function onPanelGripDown(e: PointerEvent, key: string): void {
 }
 restorePanelPos()
 
-/** 世界宽度估算(与 TownScene3D 的 WORLD_W 对齐;仅供拖拽位移换算) */
+/* ============================================================
+ * 小地图(设计稿 drawMinimap):全域固定比例导航图 + 相机锥/准星。
+ * 画布重绘在 miniTimer(150ms);拖拽 = panWorldBy,滚轮 = dolly。
+ * ============================================================ */
+/** 领地块(2D 场景无形状数据 → 回退圆) */
+interface MiniBlock { x: number, y: number, color: number, name: string, shape?: 'ellipse' | 'rect', rx?: number, rz?: number, rot?: number }
+interface MiniState {
+  world: { w: number, h: number }
+  blocks: MiniBlock[]
+  agents: Array<{ x: number, y: number, color: number, busy: boolean }>
+  devices: Array<{ x: number, y: number, color: number, state: string, twinId?: string, daq?: boolean, bound?: boolean }>
+  player: { x: number, y: number }
+}
 const WORLD_W3D = 3200
-
-/** 迷你地图点击 → 镜头聚焦到对应世界点(指挥官快捷跳转) */
-function onMinimapClick(e: MouseEvent): void {
-  // 拖拽结束后触发 click:位移超过阈值 → 视为拖拽,屏蔽跳转
-  if (miniDragMoved.value) {
-    miniDragMoved.value = false
-    return
-  }
-  const s = scene3dRef.value
-  const svg = e.currentTarget as SVGSVGElement
-  const rect = svg.getBoundingClientRect()
-  if (!s || rect.width === 0 || rect.height === 0) return
-  const wx = ((e.clientX - rect.left) / rect.width) * WORLD_W
-  const wz = ((e.clientY - rect.top) / rect.height) * WORLD_H
-  s.focusTo(wx, wz)
-}
-
-/** 小地图拖拽平移:按下记录起点;移动按世界比例换算 → scene.panBy 平移相机 */
-const miniDragging = ref(false)
-const miniDragMoved = ref(false)
-let miniLast = { x: 0, y: 0 }
-function onMinimapDown(e: PointerEvent): void {
-  const s = scene3dRef.value
-  if (!s || typeof (s as TownScene3D).panBy !== 'function') return
-  miniDragging.value = true
-  miniDragMoved.value = false
-  miniLast = { x: e.clientX, y: e.clientY }
-}
-function onMinimapMove(e: PointerEvent): void {
-  if (!miniDragging.value) return
-  const s = scene3dRef.value
-  const svg = e.currentTarget as SVGSVGElement
-  const rect = svg.getBoundingClientRect()
-  if (!s || rect.width === 0 || rect.height === 0) return
-  const dx = e.clientX - miniLast.x
-  const dy = e.clientY - miniLast.y
-  if (Math.abs(dx) + Math.abs(dy) > 3) miniDragMoved.value = true
-  // 小地图拖动 → 相机目标反向平移(拖向哪,视口移向哪)
-  ;(s as TownScene3D).panBy(-(dx / rect.width) * WORLD_W, -(dy / rect.height) * WORLD_H)
-  miniLast = { x: e.clientX, y: e.clientY }
-}
-function onMinimapUp(): void {
-  miniDragging.value = false
-}
+const WORLD_H3D = 2400
+const minimap = shallowRef<MiniState | null>(null)
+const toHex = (c: number): string => `#${c.toString(16).padStart(6, '0')}`
 
 const lastDrop = shallowRef<{ mode: string, agentId?: string, textureKey: string, x: number, y: number } | null>(null)
 
@@ -989,21 +1063,53 @@ const lastDropText = computed(() => {
     : `已在落点放入居民 → ${d.textureKey}`
 })
 
-/** 精魂会话台:选中角色时,只展示其「本人」近实时消息(大字号实时消费);未选中回退全局事件流 */
-const agentChatRows = computed(() => {
-  if (!selected.value || selected.value.kind !== 'agent') return []
-  const name = scene3dRef.value?.getAgentName?.(selected.value.id) ?? ''
-  if (!name) return []
-  return ticker.value.filter(t => t.agentName === name)
+/** 员工会话台:选中角色时展示其「本人」消息(实时缓冲直采,按 agentId 精确归属;重名不串扰) */
+const agentChatRows = computed<ChatEntry[]>(() => {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'agent') return []
+  const rows = liveChatBuf.get(sel.id)
+  if (!rows || rows.length === 0) return []
+  // 只展示历史尾部之后的实时行(REST 回填的历史已包含更早内容,按时间分界去重)
+  const lastHistAt = agentHistory.value.length
+    ? agentHistory.value[agentHistory.value.length - 1]?.at ?? 0
+    : 0
+  return rows.filter(r => r.at > lastHistAt)
 })
 const agentChatTitle = computed(() => {
   if (!selected.value || selected.value.kind !== 'agent') return ''
-  return scene3dRef.value?.getAgentName?.(selected.value.id) ?? '精魂'
+  return scene3dRef.value?.getAgentName?.(selected.value.id) ?? '员工'
+})
+/** 选中角色的实体元数据(状态/harness/角色;驱动会话台头部状态章) */
+const selectedAgentMeta = computed(() => {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'agent') return null
+  for (const list of Object.values(entities.agents)) {
+    const a = (list ?? []).find(x => x.agentId === sel.id)
+    if (a) return a
+  }
+  return null
+})
+/** 选中角色的职务名(卡片标题/身份章):Leader / Worker —— 以职务取代人称,贴近 Agent Harness 习惯 */
+const selectedAgentRoleLabel = computed(() =>
+  selectedAgentMeta.value?.role === 'lead' ? 'Leader' : 'Worker',
+)
+const selectedAgentRoleTag = computed(() =>
+  selectedAgentMeta.value?.role === 'lead' ? 'LEADER' : 'WORKER',
+)
+const agentChatStateLabel = computed(() => {
+  const st = selectedAgentMeta.value?.state
+  if (st === 'busy') return '工作中'
+  if (st === 'stopped') return '已停止'
+  return '待命'
 })
 
 /* ============================================================
- * Agent 历史聊天:REST 拉取频道事件,经 mapEnvelopeToIntent 还原该角色的
- * 全部对话(与 3D 头顶气泡同语义),与实时流合并成 RPG 对话面板
+ * Agent 会话台消息流(实时 + 历史统一):
+ *  - 实时:towmBus 气泡意图直采进 per-agent 缓冲(独立于 30 条上限的
+ *    事件日志,其他角色刷屏不会挤掉本角色的行);
+ *  - 历史:REST 频道事件回放,经同一 mapEnvelopeToIntent 还原(与头顶
+ *    气泡同语义),带 TTL 缓存 + 手动刷新;
+ *  - 合并:历史尾部时间戳之后追加实时行,时间分界天然去重。
  * ============================================================ */
 interface ChatEntry {
   id: string
@@ -1015,8 +1121,29 @@ interface ChatEntry {
 }
 const agentHistory = ref<ChatEntry[]>([])
 const historyLoading = ref(false)
-const historyCache = new Map<string, ChatEntry[]>()
+/** 历史缓存(30s TTL;重选同角色短时间内免拉) */
+const historyCache = new Map<string, { rows: ChatEntry[], at: number }>()
+const HISTORY_TTL_MS = 30_000
 const chatScroll = ref<HTMLElement | null>(null)
+/** 实时消息缓冲(agentId → 近实时条目;响应式 Map,computed 直接追踪) */
+const liveChatBuf = reactive(new Map<string, ChatEntry[]>())
+const LIVE_CAP = 80
+
+/** townBus 气泡意图 → 该角色实时缓冲(wireCommon 订阅内调用;与头顶气泡同语义) */
+function appendLiveChat(agentId: string, kind: string, text: string, atRaw: number | string | undefined, seq?: number): void {
+  const at = typeof atRaw === 'number' ? atRaw : (atRaw ? Date.parse(String(atRaw)) : Date.now())
+  if (!Number.isFinite(at) || at <= 0) return
+  let rows = liveChatBuf.get(agentId)
+  if (!rows) {
+    rows = []
+    liveChatBuf.set(agentId, rows)
+  }
+  // 相邻同文本抖动去重(WS 重连重放窗口)
+  const last = rows[rows.length - 1]
+  if (last && last.text === text && Math.abs(at - last.at) < 1500) return
+  rows.push({ id: `live-${seq ?? at}-${rows.length}`, agentId, text, kind, at, live: true })
+  if (rows.length > LIVE_CAP) rows.splice(0, rows.length - LIVE_CAP)
+}
 
 function cookieToken(): string {
   if (typeof document === 'undefined') return ''
@@ -1029,11 +1156,11 @@ function channelOfAgent(agentId: string): string | undefined {
   return undefined
 }
 
-/** 拉取并缓存该角色的历史对话(按 at 升序) */
-async function loadAgentHistory(agentId: string, channelId: string): Promise<void> {
+/** 拉取并缓存该角色的历史对话(按 at 升序;force 跳过 TTL 缓存) */
+async function loadAgentHistory(agentId: string, channelId: string, force = false): Promise<void> {
   const cached = historyCache.get(agentId)
-  if (cached) {
-    agentHistory.value = cached
+  if (!force && cached && Date.now() - cached.at < HISTORY_TTL_MS) {
+    agentHistory.value = cached.rows
     return
   }
   historyLoading.value = true
@@ -1042,7 +1169,8 @@ async function loadAgentHistory(agentId: string, channelId: string): Promise<voi
     const q = `/api/workshop/channels/${channelId}/events?limit=500&excludeTypes=agent.delta`
     const res = await fetch(q, { headers: tok ? { authorization: `Bearer ${decodeURIComponent(tok)}` } : {} })
     const json = await res.json().catch(() => null)
-    const events: AepEnvelope[] = json?.data ?? []
+    // 接口返回 { data: { channelId, total, maxSeq, items } }(旧代码误把 data 当数组迭代,历史一直为空)
+    const events: AepEnvelope[] = json?.data?.items ?? (Array.isArray(json?.data) ? json.data : [])
     const rows: ChatEntry[] = []
     for (const e of events) {
       const b = mapEnvelopeToIntent(e)?.bubble
@@ -1052,7 +1180,7 @@ async function loadAgentHistory(agentId: string, channelId: string): Promise<voi
       rows.push({ id: `${String(e.seq ?? rows.length)}-${rows.length}`, agentId: b.agentId, text: b.text, kind: b.kind, at, live: false })
     }
     rows.sort((a, b) => a.at - b.at)
-    historyCache.set(agentId, rows)
+    historyCache.set(agentId, { rows, at: Date.now() })
     agentHistory.value = rows
   }
   catch {
@@ -1061,6 +1189,14 @@ async function loadAgentHistory(agentId: string, channelId: string): Promise<voi
   finally {
     historyLoading.value = false
   }
+}
+
+/** 手动刷新历史(会话台头部 ↻ 按钮) */
+function onRefreshHistory(): void {
+  const sel = selected.value
+  if (!sel || sel.kind !== 'agent') return
+  const cid = channelOfAgent(sel.id)
+  if (cid) void loadAgentHistory(sel.id, cid, true)
 }
 
 // 切换选中角色:重新加载其历史对话
@@ -1074,13 +1210,12 @@ watch(() => selected.value, (sel) => {
   else agentHistory.value = []
 }, { immediate: true })
 
-/** 合并历史 + 实时(RPG 对话面板数据源) */
 /** 选中角色的身份色(频道哈希,与场景环同源) */
 const agentChatColor = computed(() => {
   const sel = selected.value
-  if (!sel || sel.kind !== 'agent') return '#4fa8ff'
+  if (!sel || sel.kind !== 'agent') return '#35e0a0'
   const cid = channelOfAgent(sel.id)
-  return cid ? (channelColorCss(cid) ?? '#4fa8ff') : '#4fa8ff'
+  return cid ? (channelColorCss(cid) ?? '#35e0a0') : '#35e0a0'
 })
 
 /** 对话类型标签(工业 HMI 小印章) */
@@ -1092,6 +1227,13 @@ function chatKindLabel(kind: string): string {
     case 'error': return '异常'
     default: return ''
   }
+}
+
+/** 时间戳(HH:MM:SS;空值占位) */
+function fmtTime(at?: number): string {
+  if (!at || !Number.isFinite(at) || at <= 0) return '--:--:--'
+  const d = new Date(at)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
 }
 
 // 新消息自动滚到底部(历史或实时条数变化)
@@ -1115,25 +1257,800 @@ function bindDevicePoll(scene: TownScene3D): ReturnType<typeof setInterval> {
   }, 1500)
 }
 
-/** 迷你地图:节流轮询场景 getMinimapState,渲染缩略世界 */
-const minimap = shallowRef<ReturnType<TownScene['getMinimapState']> | null>(null)
-/** 事件跑马灯:最近事件队列 */
-const ticker = shallowRef<Array<{ channelId: string, agentName: string, text: string }>>([])
-/** 迷你地图/设备孪生轮询定时器(卸载时清理) */
+/** 事件流:最近事件队列(at 供右轨"实时事件"面板;2D 场景无 at → 占位) */
+const ticker = shallowRef<Array<{ channelId: string, agentName: string, text: string, at?: number }>>([])
+
+/* ============================================================
+ * 数采节点 · DAQ(前端模拟):模板 → 拖拽实例化(device-twins kind=daq)
+ * → 1s 模拟上报 → 绑定设备后以悬浮标注(设计稿 callout)展示实时值
+ * 目录与量程域 = 设计稿 DAQ 表(薄膜双拉产线信号)
+ * ============================================================ */
+interface DaqTemplate {
+  id: string
+  name: string
+  code: string
+  /** 通道语义(如 熔体压力/膜张力;bind-row 与 callout 主标题) */
+  ch: string
+  unit: string
+  base: number
+  amp: number
+  min: number
+  max: number
+  decimals: number
+  /** 图标(设计稿 ICONS 键) */
+  icon: string
+}
+const daqTemplates: DaqTemplate[] = [
+  { id: 'temp-tc', name: '温度传感器', code: 'TEMP · TC', ch: '熔体/箱体温度', unit: '℃', base: 168, amp: 3.2, min: 150, max: 185, decimals: 1, icon: 'thermo' },
+  { id: 'pressure-tx', name: '压力变送器', code: 'PRESSURE · TX', ch: '熔体压力', unit: 'MPa', base: 0.82, amp: 0.05, min: 0.6, max: 1.2, decimals: 2, icon: 'pressure' },
+  { id: 'tension-cell', name: '张力传感器', code: 'TENSION · CELL', ch: '膜张力', unit: 'kN', base: 21.4, amp: 0.9, min: 18, max: 26, decimals: 1, icon: 'tension' },
+  { id: 'line-encoder', name: '速度编码器', code: 'LINE · ENCODER', ch: '产线速度', unit: 'm/min', base: 318, amp: 7, min: 280, max: 360, decimals: 0, icon: 'encoder' },
+  { id: 'vision-cam', name: '视觉检测相机', code: 'VISION · CAM', ch: '表面缺陷率', unit: '‰', base: 0.42, amp: 0.09, min: 0.1, max: 0.9, decimals: 2, icon: 'camera' },
+  { id: 'power-meter', name: '电参采集器', code: 'POWER · METER', ch: '运行功率', unit: 'kW', base: 45.2, amp: 2.6, min: 38, max: 55, decimals: 1, icon: 'gateway' },
+]
+const daqTplById = (ref: string): DaqTemplate | undefined =>
+  daqTemplates.find(t => `daq-${t.id}` === ref)
+
+/** 场景中的数采实例(来自 device-twins;kind=daq 或 modelRef 前缀兜底旧数据) */
+const isDaqTwin = (t: DeviceTwinView): boolean => t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-')
+const daqTwins = computed(() => deviceTwins.twins.filter(isDaqTwin))
+const daqCount = (tplId: string): number =>
+  daqTwins.value.filter(t => t.modelRef === `daq-${tplId}`).length
+
+function onDaqDragStart(e: DragEvent, tpl: DaqTemplate): void {
+  if (!e.dataTransfer) return
+  e.dataTransfer.setData('application/x-aw-daq', tpl.id)
+  e.dataTransfer.setData('text/plain', tpl.id)
+  e.dataTransfer.effectAllowed = 'copy'
+}
+
+/** 模拟上报状态(实例 id → 当前值 + 历史环形缓冲;相位由 id 哈希决定,重启波形连续感一致) */
+interface DaqSimState { value: number, hist: number[], phase: number, tpl: DaqTemplate, alarm?: boolean }
+const daqSim = reactive(new Map<string, DaqSimState>())
+const hashPhase = (id: string): number => {
+  let h = 0
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 628
+  return h / 100
+}
+function tickDaqSim(): void {
+  const now = performance.now() / 1000
+  for (const t of daqTwins.value) {
+    const tpl = daqTplById(t.modelRef)
+    if (!tpl) continue
+    let st = daqSim.get(t.id)
+    if (!st) {
+      st = { value: tpl.base, hist: [], phase: hashPhase(t.id), tpl }
+      daqSim.set(t.id, st)
+    }
+    const v = tpl.base + tpl.amp * Math.sin(now * 0.35 + st.phase) + (Math.random() - 0.5) * tpl.amp * 0.18
+    st.value = Math.min(tpl.max, Math.max(tpl.min, v))
+    st.hist.push(st.value)
+    if (st.hist.length > 120) st.hist.shift()
+    // 阈值越限告警(设计稿 simStep:进入越限升警,恢复自动消警)
+    const { lo, hi } = alarmRange(st.tpl.min, st.tpl.max)
+    const breach = st.value > hi || st.value < lo
+    const devName = deviceTwins.twins.find(x => x.id === boundDeviceOf(t.id))?.name ?? t.name
+    if (breach && !st.alarm) {
+      st.alarm = true
+      raiseAlarm(`${devName} ${tpl.ch}异常（${fmtDaq(st)} ${tpl.unit}）`, 'warn', t.name)
+    }
+    else if (!breach && st.alarm) {
+      st.alarm = false
+    }
+  }
+  drawTrend()
+  drawBindSparks()
+}
+const fmtDaq = (st: DaqSimState): string => st.value.toFixed(st.tpl.decimals)
+
+/** 数采 → 设备绑定(daqId → deviceId;前端模拟,localStorage 持久) */
+const daqBindings = useStorage<Record<string, string>>('aw.twin.daqBindings', {})
+const boundDeviceOf = (daqId: string): string | null => daqBindings.value[daqId] ?? null
+const daqOfDevice = (deviceId: string): string[] =>
+  Object.entries(daqBindings.value).filter(([, dev]) => dev === deviceId).map(([daq]) => daq)
+function bindDaq(daqId: string, deviceId: string): void {
+  daqBindings.value = { ...daqBindings.value, [daqId]: deviceId }
+}
+function unbindDaq(daqId: string): void {
+  const next = { ...daqBindings.value }
+  Reflect.deleteProperty(next, daqId)
+  daqBindings.value = next
+}
+
+/** 数采模板图标(设计稿 ICONS;SVG path 直嵌) */
+const DAQ_ICONS: Record<string, string> = {
+  thermo: '<path d="M10 4a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0V4Z"/><circle cx="12" cy="16.5" r="1.6"/>',
+  pressure: '<circle cx="12" cy="12" r="8"/><path d="m12 12 3.5-3.5"/><circle cx="12" cy="12" r="1.2"/>',
+  tension: '<circle cx="12" cy="10" r="4"/><path d="M4 18.5h16M8 18.5V14M16 18.5V14"/><path d="M2.5 10H8M16 10h5.5"/>',
+  encoder: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3"/>',
+  camera: '<rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 11 5-3v8l-5-3"/><circle cx="8" cy="12" r="2.5"/>',
+  gateway: '<rect x="8" y="11" width="8" height="10" rx="1.5"/><circle cx="12" cy="5.5" r="1.5"/><path d="M12 10V7M8.5 8.5a5 5 0 0 1 7 0M6 6a8.5 8.5 0 0 1 12 0"/>',
+}
+const daqIcon = (icon: string): string => DAQ_ICONS[icon] ?? DAQ_ICONS.gateway!
+
+/** 最近设备孪生(拖放自动绑定:数采落点 ±95 世界单位内最近的非数采设备) */
+function nearestDeviceTwin(x: number, z: number, maxDist: number): DeviceTwinView | null {
+  let best: DeviceTwinView | null = null
+  let bd = maxDist
+  for (const t of deviceTwins.twins) {
+    if (isDaqTwin(t)) continue
+    if (typeof t.posX !== 'number' || typeof t.posZ !== 'number') continue
+    const d = Math.hypot(t.posX - x, t.posZ - z)
+    if (d < bd) {
+      bd = d
+      best = t
+    }
+  }
+  return best
+}
+
+/** bind-pop:添加数采通道(设计稿逻辑 —— 就近复用未绑定同类节点,无则实例化并绑定) */
+const bindPopOpen = ref(false)
+async function addChannelFromTemplate(tpl: DaqTemplate): Promise<void> {
+  const devId = selected.value?.id
+  if (!devId || selected.value?.kind !== 'device') return
+  const devTwin = deviceTwins.twins.find(t => t.id === devId)
+  const unbound = deviceTwins.twins
+    .filter(t => isDaqTwin(t) && t.modelRef === `daq-${tpl.id}` && !boundDeviceOf(t.id))
+    .map(t => ({ t, d: Math.hypot((t.posX ?? 0) - (devTwin?.posX ?? 0), (t.posZ ?? 0) - (devTwin?.posZ ?? 0)) }))
+    .sort((a, b) => a.d - b.d)[0]
+  if (unbound && unbound.d < 420) {
+    bindDaq(unbound.t.id, devId)
+    bindPopOpen.value = false
+    return
+  }
+  try {
+    const n = daqCount(tpl.id) + 1
+    const off = daqOfDevice(devId).length
+    const created = await deviceTwins.create({
+      name: `${tpl.name} ${String(n).padStart(2, '0')}`,
+      modelRef: `daq-${tpl.id}`,
+      kind: 'daq',
+      posX: Math.round((devTwin?.posX ?? 0) + 95 + (off % 3) * 26),
+      posZ: Math.round((devTwin?.posZ ?? 0) + 100 + (off % 2) * 30),
+    })
+    bindDaq(created.id, devId)
+    bindPopOpen.value = false
+  }
+  catch (err) {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  }
+}
+
+/** bind-row 迷你折线(实时历史;ref 回调收集画布,1s tick 重绘) */
+const sparkRefs = new Map<string, HTMLCanvasElement>()
+function setSparkRef(id: string, el: unknown): void {
+  const c = el as HTMLCanvasElement | null
+  if (c) sparkRefs.set(id, c)
+  else sparkRefs.delete(id)
+}
+function drawBindSparks(): void {
+  for (const [id, canvas] of sparkRefs) {
+    const st = daqSim.get(id)
+    const ctx = canvas.getContext('2d')
+    if (!st || !ctx) continue
+    const w = canvas.width
+    const h = canvas.height
+    ctx.clearRect(0, 0, w, h)
+    const hist = st.hist
+    if (hist.length < 2) continue
+    let lo = hist[0]!
+    let hi = hist[0]!
+    for (const v of hist) {
+      if (v < lo) lo = v
+      if (v > hi) hi = v
+    }
+    const span = Math.max(1e-6, hi - lo)
+    ctx.strokeStyle = trendColor(id)
+    ctx.lineWidth = 1.4
+    ctx.beginPath()
+    hist.forEach((v, i) => {
+      const x = (i / (hist.length - 1)) * (w - 2) + 1
+      const y = h - 2 - ((v - lo) / span) * (h - 4)
+      if (i) ctx.lineTo(x, y)
+      else ctx.moveTo(x, y)
+    })
+    ctx.stroke()
+  }
+}
+
+/** 场景链路同步:绑定关系 → TownScene3D.syncDaqLinks(虚线 + 脉冲) */
+watch([() => deviceTwins.twins, daqBindings], () => {
+  const s = scene3dRef.value
+  if (!s || !('syncDaqLinks' in s)) return
+  s.syncDaqLinks(Object.entries(daqBindings.value)
+    .filter(([daqId, devId]) => deviceTwins.twins.some(t => t.id === daqId) && deviceTwins.twins.some(t => t.id === devId))
+    .map(([daqId, deviceId]) => ({ daqId, deviceId })))
+}, { deep: true })
+
+/** 选中上下文:是否数采节点 / 其模板 / 实时值 */
+const selectedIsDaq = computed(() =>
+  selected.value?.kind === 'device' && (daqOfSelected.value?.modelRef || '').startsWith('daq-'),
+)
+const daqOfSelected = computed(() => {
+  if (selected.value?.kind !== 'device') return null as DeviceTwinView | null
+  return deviceTwins.twins.find(t => t.id === selected.value?.id) ?? null
+})
+const selectedDaqSim = computed(() => {
+  const id = selected.value?.id
+  return id ? daqSim.get(id) ?? null : null
+})
+/** 绑定选择器:待绑定数采下拉 */
+const bindPick = ref('')
+const boundDaqRows = computed(() => {
+  const id = selected.value?.id
+  if (!id) return []
+  return daqOfDevice(id).map((daqId) => {
+    const t = deviceTwins.twins.find(x => x.id === daqId)
+    const st = daqSim.get(daqId)
+    const tpl = st?.tpl ?? daqTplById(t?.modelRef ?? '')
+    return {
+      daqId,
+      name: t?.name ?? daqId,
+      ch: tpl?.ch ?? '数据通道',
+      icon: tpl?.icon ?? 'gateway',
+      value: st ? fmtDaq(st) : '--',
+      unit: st?.tpl.unit ?? tpl?.unit ?? '',
+      color: trendColor(daqId),
+    }
+  })
+})
+/** 数采节点选中:其绑定设备名 */
+const daqBoundDeviceName = computed(() => {
+  const id = selected.value?.id
+  if (!id) return ''
+  const devId = boundDeviceOf(id)
+  if (!devId) return ''
+  return deviceTwins.twins.find(t => t.id === devId)?.name ?? devId.slice(0, 8)
+})
+
+/** 标注显隐(设计稿 tPins,默认开) */
+const showCallouts = ref(true)
+
+/** 点击 callout → 选中其绑定设备(设计稿 co.onclick = select(dev)) */
+function selectDeviceFromCallout(daqId: string): void {
+  const devId = boundDeviceOf(daqId) ?? daqId
+  const t = deviceTwins.twins.find(x => x.id === devId)
+  if (!t) return
+  selected.value = { kind: 'device', id: devId, scale: selected.value?.scale ?? 1, rotation: selected.value?.rotation ?? 0 }
+  objNameDraft.value = t.name
+}
+
+/** 自动环绕(设计稿 tOrbit) */
+const orbitOn = ref(false)
+function toggleOrbit(): void {
+  orbitOn.value = !orbitOn.value
+  scene3dRef.value?.setAutoOrbit(orbitOn.value)
+}
+
+/** 定位选中(设计稿 tLocate):镜头飞到选中实体并压低半径 */function locateSelected(): void {
+  const s = scene3dRef.value
+  const sel = selected.value
+  if (!s) return
+  if (!sel) {
+    errorText.value = '请先在场景中选中一台设备'
+    return
+  }
+  if (sel.kind === 'device') {
+    const n = s.getDeviceNodes().find(x => x.twinId === sel.id)
+    if (n) s.focusTo(n.x, n.z)
+  }
+  else {
+    const a = s.getAgent(sel.id)
+    if (a) s.focusTo(a.root.position.x, a.root.position.z)
+  }
+}
+
+/** 悬浮标注(绑定设备的实时值;150ms 跟随投影) */
+const calloutPos = ref<Record<string, { x: number, y: number }>>({})
+/** 越近越亮:相机到锚点的 3D 距离阈值(世界单位;用户可在场景控制里调节)。
+ *  只有所注视/飞近的设备亮起数据,邻机与远方节点保持静默 —— 数据属于走近的人。 */
+const calloutNearDist = useStorage('aw.twin.calloutNear', 1150)
+
+/** 设备控制台实时数采(twinId → 相关通道;数采自身 + 绑定设备双挂,1s 随模拟刷新) */
+const daqLive = computed(() => {
+  const map: Record<string, Array<{ ch: string, value: string, unit: string, alarm?: boolean }>> = {}
+  for (const t of daqTwins.value) {
+    const st = daqSim.get(t.id)
+    if (!st) continue
+    const row = { ch: st.tpl.ch, value: fmtDaq(st), unit: st.tpl.unit, alarm: st.alarm ?? false }
+    ;(map[t.id] ??= []).push(row)
+    const dev = boundDeviceOf(t.id)
+    if (dev) (map[dev] ??= []).push(row)
+  }
+  return map
+})
+/** 同设备多路通道的竖排堆叠间距(px;卡高 ~88 + 间隙) */
+const CALLOUT_STACK = 104
+/** 相机位姿快照(150ms 刷新;callout 距离显隐的响应式来源) */
+const camPose = ref<{ pos: { x: number, y: number, z: number }, target: { x: number, z: number }, yaw: number, dolly: number }>({
+  pos: { x: 0, y: 0, z: 0 }, target: { x: 0, z: 0 }, yaw: 0, dolly: 1,
+})
+const callouts = computed(() => {
+  if (!showCallouts.value) return []
+  const s3 = scene3dRef.value
+  if (!s3) return []
+  const nodes = s3.getDeviceNodes()
+  const stageW = stageRef.value?.clientWidth ?? 1600
+  interface Row { t: DeviceTwinView, st: DaqSimState, anchor: { twinId: string, name: string, x: number, z: number, topY?: number }, pos: { x: number, y: number } }
+  const rows: Row[] = []
+  for (const t of daqTwins.value) {
+    const st = daqSim.get(t.id)
+    if (!st) continue
+    const boundDev = boundDeviceOf(t.id)
+    const anchor = boundDev ? nodes.find(n => n.twinId === boundDev) : nodes.find(n => n.twinId === t.id)
+    if (!anchor) continue
+    const pos = calloutPos.value[t.id]
+    if (!pos) continue
+    rows.push({ t, st, anchor, pos })
+  }
+  const anchorTopY = new Map(rows.map(r => [r.anchor.twinId, r.anchor.topY]))
+  // 按锚点分组:同设备多路通道 → 一列竖排(稳定按 daqId 排序,闪烁零抖动)
+  const byAnchor = new Map<string, Row[]>()
+  for (const r of rows) {
+    const list = byAnchor.get(r.anchor.twinId) ?? []
+    list.push(r)
+    byAnchor.set(r.anchor.twinId, list)
+  }
+  const out: Array<{ id: string, x: number, y: number, label: string, value: string, unit: string, lo: number, hi: number, warn: boolean, near: boolean, leader: boolean }> = []
+  for (const group of byAnchor.values()) {
+    group.sort((a, b) => (a.t.id < b.t.id ? -1 : 1))
+    const head = group[0]!
+    const near = Math.hypot(
+      camPose.value.pos.x - head.anchor.x,
+      camPose.value.pos.y - (anchorTopY.get(head.anchor.twinId) ?? 60),
+      camPose.value.pos.z - head.anchor.z,
+    ) < calloutNearDist.value
+    const cx = Math.min(stageW - 96, Math.max(96, head.pos.x))
+    group.forEach((r, i) => {
+      const { lo, hi } = alarmRange(r.st.tpl.min, r.st.tpl.max)
+      out.push({
+        id: r.t.id, x: cx, y: head.pos.y - i * CALLOUT_STACK,
+        label: `${r.st.tpl.ch} · ${r.anchor.name || r.t.name}`,
+        value: fmtDaq(r.st), unit: r.st.tpl.unit, lo, hi, warn: r.st.alarm ?? false,
+        near, leader: i === 0,
+      })
+    })
+  }
+  return out
+})
+let calloutTimer: ReturnType<typeof setInterval> | null = null
+
+/** KPI 条(舞台底部居中浮条) */
+const deviceCount = computed(() => deviceTwins.twins.length)
+const runningCount = computed(() => deviceTwins.twins.filter(t => t.state === 'running').length)
+
+/** 顶栏用户 */
+const userStore = useUserStore()
+/** 舞台引用(全屏)与视角预设 */
+const stageRef = ref<HTMLElement | null>(null)
+const viewPreset = ref<'std' | 'top' | 'front' | 'side'>('std')
+function onViewPreset(e: Event): void {
+  viewPreset.value = (e.target as HTMLSelectElement).value as 'std' | 'top' | 'front' | 'side'
+  scene3dRef.value?.setViewPreset(viewPreset.value)
+}
+function fullscreenStage(): void {
+  if (document.fullscreenElement) document.exitFullscreen()
+  else stageRef.value?.requestFullscreen?.()
+}
+
+/** 设备健康度(环形图数据) */
+const idleCount = computed(() => deviceTwins.twins.filter(t => t.state === 'idle').length)
+const alarmCount = computed(() => deviceTwins.twins.filter(t => t.state === 'alarm').length)
+const offlineCount = computed(() => deviceTwins.twins.filter(t => t.state === 'offline').length)
+const healthPct = computed(() => {
+  const total = deviceTwins.twins.length
+  if (!total) return 100
+  const healthy = runningCount.value + idleCount.value
+  return Math.round((healthy / total) * 100)
+})
+const donutCanvas = ref<HTMLCanvasElement | null>(null)
+function drawDonut(): void {
+  const cv = donutCanvas.value
+  if (!cv) return
+  const ctx = cv.getContext('2d')
+  if (!ctx) return
+  const total = deviceTwins.twins.length || 1
+  const segs: Array<{ n: number, color: string }> = [
+    { n: runningCount.value, color: '#35e0a0' },
+    { n: idleCount.value, color: '#f6c453' },
+    { n: alarmCount.value, color: '#ff6b6b' },
+    { n: offlineCount.value, color: '#3a4a63' },
+  ]
+  ctx.clearRect(0, 0, 118, 118)
+  ctx.lineWidth = 12
+  let ang = -Math.PI / 2
+  for (const seg of segs) {
+    if (!seg.n) continue
+    const sweep = (seg.n / total) * Math.PI * 2
+    ctx.beginPath()
+    ctx.strokeStyle = seg.color
+    ctx.arc(59, 59, 48, ang, ang + sweep)
+    ctx.stroke()
+    ang += sweep
+  }
+}
+watch(healthPct, () => drawDonut())
+watch(() => deviceTwins.twins.length, () => drawDonut())
+onMounted(() => drawDonut())
+
+/* ============================================================
+ * 告警系统(设计稿:阈值越限自动告警 + 状态流转 待处理→处理中→已确认)
+ * ============================================================ */
+interface AlarmItem { id: number, txt: string, src: string, time: string, state: 0 | 1 | 2, level: 'warn' | 'crit' | 'info' }
+const alarms = ref<AlarmItem[]>([])
+let alarmTid = 0
+const ALARM_STATES = ['待处理', '处理中', '已确认'] as const
+function raiseAlarm(txt: string, level: AlarmItem['level'] = 'warn', src = 'SYSTEM'): void {
+  const d = new Date()
+  const time = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':')
+  alarms.value.unshift({ id: ++alarmTid, txt, src, time, state: 0, level })
+  if (alarms.value.length > 30) alarms.value.pop()
+}
+const activeAlarmCount = computed(() => alarms.value.filter(a => a.state < 2).length)
+function advanceAlarm(id: number): void {
+  const a = alarms.value.find(x => x.id === id)
+  if (!a) return
+  a.state = Math.min(2, a.state + 1) as AlarmItem['state']
+}
+function clearAlarms(): void {
+  alarms.value = alarms.value.map(a => ({ ...a, state: 2 as const }))
+}
+
+/** 告警阈值(设计稿 rThresh 60~120%;>100 收紧,<100 放宽) */
+const threshPct = ref(100)
+/** 量程收紧后的告警上下界(设计稿公式:base ± 按阈值比例的内缩区间) */
+function alarmRange(min: number, max: number): { lo: number, hi: number } {
+  const t = threshPct.value / 100
+  const mid = (min + max) / 2
+  return { lo: mid - (mid - min) * t, hi: mid + (max - mid) * t }
+}
+
+/** E-STOP(设计稿 btnEstop:全线停机态;告警面板置 crit;再次点击解除) */
+const estop = ref(false)
+function toggleEstop(): void {
+  estop.value = !estop.value
+  raiseAlarm(
+    estop.value ? '紧急停止(E-STOP)已触发，产线全线停机' : '紧急停止已解除，产线恢复运行',
+    estop.value ? 'crit' : 'info',
+    'SYSTEM',
+  )
+}
+
+/** 场景控制:曝光/领地染色/重置视角 */
+const exposure = ref(1.12)
+const tintOpacity = ref(1)
+/** 滑杆填充比例(--fill;轨道随值染色,设计稿 setSliderFill) */
+function sliderPct(v: number, min: number, max: number): string {
+  return `${Math.min(100, Math.max(0, ((v - min) / (max - min)) * 100)).toFixed(1)}%`
+}
+function onExposureInput(e: Event): void {
+  exposure.value = Number((e.target as HTMLInputElement).value) / 100
+  scene3dRef.value?.setExposure(exposure.value)
+}
+function onTintInput(e: Event): void {
+  tintOpacity.value = Number((e.target as HTMLInputElement).value) / 100
+  scene3dRef.value?.setTerritoryOpacity(tintOpacity.value)
+}
+function onResetView(): void {
+  scene3dRef.value?.resetView()
+  exposure.value = 1.12
+  tintOpacity.value = 1
+  scene3dRef.value?.setExposure(1.12)
+  scene3dRef.value?.setTerritoryOpacity(1)
+}
+function toggleTrend(id: string): void {
+  hiddenTrends.value = { ...hiddenTrends.value, [id]: !hiddenTrends.value[id] }
+}
+
+/** 趋势图(数采历史;画布在 dock 趋势卡) */
+const trendCanvas = ref<HTMLCanvasElement | null>(null)
+const hiddenTrends = ref<Record<string, boolean>>({})
+const TREND_COLORS = ['#35e0a0', '#41c8f4', '#f6c453', '#a78bfa', '#ff6b6b', '#4dd0e1']
+const trendColor = (id: string): string => TREND_COLORS[Math.abs(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % TREND_COLORS.length] ?? '#35e0a0'
+function drawTrend(): void {
+  const cv = trendCanvas.value
+  if (!cv) return
+  const dpr = Math.min(window.devicePixelRatio, 2)
+  const w = cv.clientWidth
+  const h = cv.clientHeight
+  if (cv.width !== w * dpr || cv.height !== h * dpr) {
+    cv.width = w * dpr
+    cv.height = h * dpr
+  }
+  const ctx = cv.getContext('2d')
+  if (!ctx) return
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.clearRect(0, 0, w, h)
+  // 网格
+  ctx.strokeStyle = 'rgba(29, 42, 66, 0.6)'
+  ctx.lineWidth = 1
+  for (let i = 1; i < 4; i++) {
+    const y = (h / 4) * i
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(w, y)
+    ctx.stroke()
+  }
+  for (const t of daqTwins.value) {
+    if (hiddenTrends.value[t.id]) continue
+    const st = daqSim.get(t.id)
+    if (!st || st.hist.length < 2) continue
+    const lo = st.tpl.min
+    const hi = st.tpl.max
+    ctx.strokeStyle = trendColor(t.id)
+    ctx.lineWidth = 1.6
+    ctx.beginPath()
+    st.hist.forEach((v, i) => {
+      const x = (i / (120 - 1)) * w
+      const y = h - ((v - lo) / (hi - lo)) * (h - 8) - 4
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    })
+    ctx.stroke()
+  }
+}
+/** 迷你地图/设备孪生轮询定时器(卸载时清理;小地图 150ms 保证镜头居中滑动跟手) */
 let miniTimer: ReturnType<typeof setInterval> | null = null
+let tickerTimer: ReturnType<typeof setInterval> | null = null
 let devicePollTimer: ReturnType<typeof setInterval> | null = null
+let daqTimer: ReturnType<typeof setInterval> | null = null
+
+/* ============================================================
+ * 3D 导航地图(RPG 规范):相机注视点钉死图心,世界内容随镜头移动在图下滑动。
+ * 缩放与 3D 视角同源:窗口宽 = NAV_BASE_WIN × dolly(滚轮/+- 直接调 3D dolly,
+ * 小地图与视角永远同步);窗外实体以边缘信标(clamped blip)呈现,全域可见。
+ * 拖拽 = 平移镜头;点击 = 聚焦该点。
+ * ============================================================ */
+const navCanvas = ref<HTMLCanvasElement | null>(null)
+const NAV_BASE_WIN = 1600
+/** 地图窗口缩放随 3D dolly(夹在 0.4~5;dolly 再深地图不再放大) */
+const navScale = computed(() => Math.min(5, Math.max(0.4, camPose.value.dolly)))
+let navDrag: { lx: number, ly: number, moved: boolean } | null = null
+/** 投影:镜头注视点 = 图心;返回 比例尺(s) 与 画布尺寸。 */
+function navProj(cv: HTMLCanvasElement): { s: number, w: number, h: number } {
+  const w = cv.clientWidth || 220
+  const h = cv.clientHeight || 148
+  const winW = NAV_BASE_WIN * navScale.value
+  return { s: w / winW, w, h }
+}
+function drawNavMap(): void {
+  const cv = navCanvas.value
+  const mm = minimap.value
+  const s3 = scene3dRef.value
+  if (!cv) return
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const P = navProj(cv)
+  if (cv.width !== Math.round(P.w * dpr) || cv.height !== Math.round(P.h * dpr)) {
+    cv.width = Math.round(P.w * dpr)
+    cv.height = Math.round(P.h * dpr)
+  }
+  const x = cv.getContext('2d')
+  if (!x) return
+  x.setTransform(dpr, 0, 0, dpr, 0, 0)
+  x.fillStyle = '#060b13'
+  x.fillRect(0, 0, P.w, P.h)
+  // 相机注视点(RPG 的"你在这里")= 图心;投影:世界 → 画布
+  const pose = s3?.getCameraPose()
+  const cx = pose ? pose.target.x : WORLD_W3D / 2
+  const cz = pose ? pose.target.z : WORLD_H3D / 2
+  const halfW = P.w / 2 / P.s
+  const halfH = P.h / 2 / P.s
+  const toPx = (wx: number, wz: number): { x: number, y: number } => ({
+    x: P.w / 2 + (wx - cx) * P.s,
+    y: P.h / 2 + (wz - cz) * P.s,
+  })
+  const inWin = (wx: number, wz: number, pad = 60): boolean =>
+    wx > cx - halfW - pad && wx < cx + halfW + pad && wz > cz - halfH - pad && wz < cz + halfH + pad
+  // 网格点阵(仅窗口内;固定世界步长,内容随镜头滑动)
+  x.fillStyle = 'rgba(65,200,244,.10)'
+  const step = 250
+  for (let gx = Math.floor((cx - halfW) / step) * step; gx <= cx + halfW; gx += step) {
+    for (let gz = Math.floor((cz - halfH) / step) * step; gz <= cz + halfH; gz += step) {
+      const p = toPx(gx, gz)
+      x.fillRect(p.x - 1, p.y - 1, 1.6, 1.6)
+    }
+  }
+  // 世界边界(绿框;越界即出画布,提示世界边沿)
+  const b0 = toPx(0, 0)
+  const b1 = toPx(WORLD_W3D, WORLD_H3D)
+  x.strokeStyle = 'rgba(53,224,160,.35)'
+  x.lineWidth = 1
+  x.strokeRect(b0.x, b0.y, b1.x - b0.x, b1.y - b0.y)
+  // 领地(色环 + 淡填充;窗口外跳过)
+  for (const b of mm?.blocks ?? []) {
+    const wx = b.x * WORLD_W3D
+    const wz = b.y * WORLD_H3D
+    if (!inWin(wx, wz, 400)) continue
+    const p = toPx(wx, wz)
+    const rx = Math.max(4, (b.rx ?? 0.03) * WORLD_W3D * P.s)
+    const ry = Math.max(3, (b.rz ?? 0.03) * WORLD_H3D * P.s)
+    x.strokeStyle = toHex(b.color)
+    x.globalAlpha = 0.6
+    x.lineWidth = 1
+    x.beginPath()
+    x.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2)
+    x.stroke()
+    x.globalAlpha = 0.08
+    x.fillStyle = toHex(b.color)
+    x.fill()
+    x.globalAlpha = 1
+  }
+  // 绑定链路(数采→设备 青色细线)
+  x.strokeStyle = 'rgba(65,200,244,.28)'
+  const boundSet = new Set(Object.keys(daqBindings.value))
+  for (const [daqId, devId] of Object.entries(daqBindings.value)) {
+    const dn = (mm?.devices ?? []).find(d => d.twinId === daqId)
+    const dv = (mm?.devices ?? []).find(d => d.twinId === devId)
+    if (!dn || !dv) continue
+    const a = toPx(dn.x * WORLD_W3D, dn.y * WORLD_H3D)
+    const b = toPx(dv.x * WORLD_W3D, dv.y * WORLD_H3D)
+    x.beginPath()
+    x.moveTo(a.x, a.y)
+    x.lineTo(b.x, b.y)
+    x.stroke()
+  }
+  // 实体:设备方点 / 数采绿点(绑定光环)/ Agent 圆点;窗外实体 → 边缘信标(夹到图框,
+  // 缩小 + 降透明度)—— 所有实体始终在图上有落点,全景不丢导航信息
+  const blip = (p: { x: number, y: number }): { x: number, y: number, edge: boolean } => {
+    const m = 7
+    if (p.x >= m && p.x <= P.w - m && p.y >= m && p.y <= P.h - m) return { ...p, edge: false }
+    return { x: Math.min(P.w - m, Math.max(m, p.x)), y: Math.min(P.h - m, Math.max(m, p.y)), edge: true }
+  }
+  for (const d of mm?.devices ?? []) {
+    const wx = d.x * WORLD_W3D
+    const wz = d.y * WORLD_H3D
+    const p = blip(toPx(wx, wz))
+    if (d.daq) {
+      x.globalAlpha = p.edge ? 0.4 : 1
+      x.fillStyle = '#35e0a0'
+      x.beginPath()
+      x.arc(p.x, p.y, p.edge ? 1.8 : 2.4, 0, 7)
+      x.fill()
+      if (!p.edge && d.twinId && boundSet.has(d.twinId)) {
+        x.strokeStyle = 'rgba(53,224,160,.5)'
+        x.beginPath()
+        x.arc(p.x, p.y, 4.4, 0, 7)
+        x.stroke()
+      }
+    }
+    else {
+      x.globalAlpha = p.edge ? 0.4 : 1
+      x.fillStyle = toHex(d.color)
+      const s = p.edge ? 3.6 : 5.2
+      x.fillRect(p.x - s / 2, p.y - s / 2, s, s)
+    }
+    x.globalAlpha = 1
+  }
+  for (const a of mm?.agents ?? []) {
+    const wx = a.x * WORLD_W3D
+    const wz = a.y * WORLD_H3D
+    const p = blip(toPx(wx, wz))
+    x.globalAlpha = p.edge ? 0.35 : 1
+    x.fillStyle = toHex(a.color)
+    x.beginPath()
+    x.arc(p.x, p.y, p.edge ? 1.6 : 2.2, 0, 7)
+    x.fill()
+    x.globalAlpha = 1
+  }
+  // 图心准星(RPG 规范:钉死中央不随内容移动):
+  // 视锥扇形指向注视方向(相机→注视点 = -(sinYaw, cosYaw)),相机本体若在窗内画白点
+  if (pose) {
+    const viewAng = Math.atan2(-Math.cos(pose.yaw), -Math.sin(pose.yaw))
+    const r = Math.min(P.w, P.h) * 0.36
+    x.fillStyle = 'rgba(65,200,244,.14)'
+    x.strokeStyle = 'rgba(65,200,244,.5)'
+    x.lineWidth = 1
+    x.beginPath()
+    x.moveTo(P.w / 2, P.h / 2)
+    x.arc(P.w / 2, P.h / 2, r, viewAng - 0.4, viewAng + 0.4)
+    x.closePath()
+    x.fill()
+    x.stroke()
+    const cam = toPx(pose.pos.x, pose.pos.z)
+    if (cam.x > 4 && cam.x < P.w - 4 && cam.y > 4 && cam.y < P.h - 4) {
+      x.fillStyle = 'rgba(255,255,255,.85)'
+      x.beginPath()
+      x.arc(cam.x, cam.y, 2.4, 0, 7)
+      x.fill()
+    }
+  }
+  x.fillStyle = '#fff'
+  x.beginPath()
+  x.arc(P.w / 2, P.h / 2, 3, 0, 7)
+  x.fill()
+  x.strokeStyle = 'rgba(255,255,255,.4)'
+  x.beginPath()
+  x.arc(P.w / 2, P.h / 2, 5.5, 0, 7)
+  x.stroke()
+}
+/** 地图缩放 = 3D dolly(与视角同源):滚轮/+- 直接驱动场景缩放,小地图自动跟随 */
+function onNavWheel(e: WheelEvent): void {
+  scene3dRef.value?.zoomBy(e.deltaY > 0 ? 0.14 : -0.12)
+}
+function onNavDown(e: PointerEvent): void {
+  navDrag = { lx: e.clientX, ly: e.clientY, moved: false }
+  // headless/合成事件无活动指针 → setPointerCapture 会抛 NotFoundError
+  try {
+    ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+  }
+  catch { /* 无真实指针时忽略 */ }
+}
+function onNavMove(e: PointerEvent): void {
+  const cv = navCanvas.value
+  const s3 = scene3dRef.value
+  if (!navDrag || !cv || !s3) return
+  const P = navProj(cv)
+  const dx = e.clientX - navDrag.lx
+  const dy = e.clientY - navDrag.ly
+  if (Math.abs(dx) + Math.abs(dy) > 3) navDrag.moved = true
+  const dxw = dx / P.s
+  const dzw = dy / P.s
+  navDrag.lx = e.clientX
+  navDrag.ly = e.clientY
+  // 抓取语义:拖右 = 世界右移 = 镜头左扫(注视点/相机同步平移)
+  s3.panWorldBy(dxw, dzw)
+}
+function onNavUp(e: PointerEvent): void {
+  // 无拖拽的单击 = RPG 点图移动:镜头聚焦到该世界点
+  const cv = navCanvas.value
+  const s3 = scene3dRef.value
+  if (navDrag && !navDrag.moved && cv && s3) {
+    const rect = cv.getBoundingClientRect()
+    const P = navProj(cv)
+    const pose = s3.getCameraPose()
+    const wx = pose.target.x + (e.clientX - rect.left - rect.width / 2) / P.s
+    const wz = pose.target.z + (e.clientY - rect.top - rect.height / 2) / P.s
+    s3.focusTo(wx, wz)
+  }
+  navDrag = null
+}
 onMounted(() => {
+  window.addEventListener('keydown', onTownKey)
   miniTimer = setInterval(() => {
     const s = sceneRef.value
     if (s?.getMinimapState) minimap.value = s.getMinimapState()
+    drawNavMap()
+    // 标注跟随:锚定绑定设备的模型顶面(无绑定 → 数采立杆顶),150ms 跟手
+    const s3 = scene3dRef.value
+    if (s3) {
+      camPose.value = s3.getCameraPose()
+      if (showCallouts.value) {
+        const nodes = s3.getDeviceNodes()
+        // worldToScreen 返回页面坐标;callout-layer 是 stage 相对定位 → 换算成 stage 内坐标
+        const sRect = stageRef.value?.getBoundingClientRect()
+        const next: Record<string, { x: number, y: number }> = {}
+        for (const t of daqTwins.value) {
+          const boundDev = boundDeviceOf(t.id)
+          const anchor = boundDev ? nodes.find(n => n.twinId === boundDev) : nodes.find(n => n.twinId === t.id)
+          if (!anchor) continue
+          const p = s3.worldToScreen(anchor.x, (anchor.topY ?? 92) + 26, anchor.z)
+          if (p && sRect) next[t.id] = { x: p.x - sRect.left, y: p.y - sRect.top }
+        }
+        calloutPos.value = next
+      }
+    }
+  }, 150)
+  daqTimer = setInterval(() => {
+    if (daqTwins.value.length) tickDaqSim()
+  }, 1000)
+  tickerTimer = setInterval(() => {
+    const s = sceneRef.value
     if (s?.getRecentActivity) ticker.value = s.getRecentActivity()
   }, 400)
 })
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onTownKey)
   if (miniTimer) clearInterval(miniTimer)
+  if (daqTimer) clearInterval(daqTimer)
+  if (tickerTimer) clearInterval(tickerTimer)
   if (devicePollTimer) clearInterval(devicePollTimer)
+  if (calloutTimer) clearInterval(calloutTimer)
   miniTimer = null
+  daqTimer = null
+  tickerTimer = null
   devicePollTimer = null
+  calloutTimer = null
 })
 
 /** 首次挂载即建一次(若 entities 已有数据) */
@@ -1159,335 +2076,1035 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="town-view">
-    <div class="town-frame">
-      <div
-        id="town-host"
-        ref="hostRef"
-        class="town-host"
-      />
-      <div class="hud aw-stagger pointer-events-none absolute inset-0 z-10 select-none">
-        <!-- 左:设备模型库(仅设备模型,可拖拽到场景实例化) -->
-        <WorkshopAssetLibrary class="lib-panel" />
-        <!-- 左:设备控制台(设备实体列表/遥测/控制;点击行聚焦场景实体) -->
-        <WorkshopDeviceTwinPanel
-          class="twin-panel"
-          @focus-device="onFocusDevice"
-        />
-
-        <!-- 频道坞:拖拽卡片到场景放置(相同频道只能放置一个;点击不自动落点) -->
-        <aside class="channel-dock">
-          <div class="dock-head">
-            <span class="head-dot" />
-            <span class="head-title">领地索引</span>
-            <span class="head-hint">拖入地图即安放</span>
+    <!-- ================= 顶部导航 ================= -->
+    <header class="topnav">
+      <div class="brand">
+        <svg
+          class="brand-glyph"
+          viewBox="0 0 32 32"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M16 2.5 27.5 9v14L16 29.5 4.5 23V9L16 2.5Z"
+            stroke="#35e0a0"
+            stroke-width="1.6"
+          />
+          <path
+            d="M16 8.2 22.5 12v8L16 23.8 9.5 20v-8L16 8.2Z"
+            stroke="#41c8f4"
+            stroke-width="1.3"
+            opacity=".85"
+          />
+          <circle
+            cx="16"
+            cy="16"
+            r="2.4"
+            fill="#35e0a0"
+          />
+          <circle
+            cx="25.5"
+            cy="7.5"
+            r="1.6"
+            fill="#41c8f4"
+          />
+        </svg>
+        <div>
+          <div class="brand-name">
+            DIGITAL <em>TWIN</em>
           </div>
-          <div class="dock-list">
+          <div class="brand-sub">
+            AGENTWORKSHOP · 数字孪生平台
+          </div>
+        </div>
+      </div>
+      <nav
+        class="nav-tabs"
+        aria-label="场景模式"
+      >
+        <div class="seg">
+          <button
+            :class="{ on: mode === 'browse' }"
+            @click="mode === 'edit' && toggleMode()"
+          >
+            运行
+          </button>
+          <button
+            :class="{ on: mode === 'edit' }"
+            @click="mode === 'browse' && toggleMode()"
+          >
+            编辑
+          </button>
+        </div>
+        <button
+          class="nav-action"
+          :disabled="mode !== 'edit'"
+          :title="mode === 'edit' ? '把全部设备的位置/朝向/缩放写入数据库' : '运行模式只读'"
+          @click="saveLayout"
+        >
+          保存布局
+        </button>
+        <span
+          v-if="saveState && saveState.state !== 'idle'"
+          class="save-chip"
+          :class="`s-${saveState.state}`"
+        >{{ saveStateLabel }}</span>
+      </nav>
+      <div class="nav-right">
+        <span
+          class="nav-chip mono"
+          :class="{ 'nav-bell-warn': activeAlarmCount > 0 }"
+          title="活跃告警"
+        >◉ {{ activeAlarmCount }}</span>
+        <span class="nav-chip mono">{{ fps }} FPS</span>
+        <div
+          class="avatar-chip"
+          title="当前用户"
+        >
+          <div class="avatar-fallback">
+            {{ (userStore.user?.name ?? 'OP').slice(0, 2).toUpperCase() }}
+          </div>
+          <span>{{ userStore.user?.name || '产线管理员' }}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================= 三栏应用区 ================= -->
+    <div class="app">
+      <!-- 左轨:设备资源 / 数采节点 / 场景管理 -->
+      <aside class="rail rail-left">
+        <section class="panel">
+          <div class="panel-hd">
+            <h3>设备资源</h3>
+            <span class="panel-tag">{{ deviceModels.length }}</span>
+          </div>
+          <WorkshopAssetLibrary class="lib-embed" />
+        </section>
+
+        <section class="panel">
+          <div class="panel-hd">
+            <h3>数采节点 · DAQ</h3>
+            <span class="panel-tag">{{ daqTwins.length }}</span>
+          </div>
+          <div class="daq-list">
+            <div
+              v-for="tpl in daqTemplates"
+              :key="tpl.id"
+              class="daq-card"
+              draggable="true"
+              :title="`${tpl.name} · ${tpl.ch} · 拖到设备旁自动绑定,量程 ${tpl.min} ~ ${tpl.max} ${tpl.unit}`"
+              @dragstart="onDaqDragStart($event, tpl)"
+            >
+              <span class="daq-ico">
+                <svg
+                  class="daq-svg"
+                  viewBox="0 0 24 24"
+                  v-html="daqIcon(tpl.icon)"
+                />
+              </span>
+              <div class="daq-meta">
+                <span class="daq-name">{{ tpl.name }}</span>
+                <span class="daq-code">{{ tpl.code }}</span>
+              </div>
+              <span class="daq-count">×{{ daqCount(tpl.id) }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-hd">
+            <h3>场景管理</h3>
+            <span class="panel-tag">{{ dockChannels.length }}</span>
+          </div>
+          <div class="scene-list">
             <div
               v-for="ch in dockChannels"
               :key="ch.channelId"
-              class="dock-card"
-              :draggable="!ch.placed"
-              :class="{ placed: ch.placed, disabled: ch.placed }"
+              class="scene-row"
+              :class="{ active: ch.placed }"
+              :draggable="!ch.placed && mode === 'edit'"
               :data-channel-id="ch.channelId"
-              :title="ch.placed ? '已在场景中(不可重复放置),点击查看' : '拖拽到场景放置'"
+              :title="ch.placed ? '已在场景中,点击定位' : '拖拽到场景放置'"
               @dragstart="ch.placed ? undefined : onChannelDragStart($event, ch.channelId)"
               @click="onDockCardClick(ch)"
             >
               <span
-                class="dock-color"
-                :style="{ background: ch.color }"
+                class="scene-ico"
+                :style="{ '--ch': ch.color }"
               />
-              <span class="dock-name">{{ ch.name }}</span>
-              <span class="dock-meta">{{ ch.agentCount }} 精魂 · {{ ch.placed ? '已放置' : '未放置' }}</span>
-              <span class="dock-toggle">{{ ch.placed ? '✓' : '＋' }}</span>
+              <div class="scene-meta-wrap">
+                <span class="scene-name">{{ ch.name }}</span>
+                <span class="scene-meta">{{ ch.agentCount }} 员工 · {{ ch.placed ? '已放置' : '未放置' }}</span>
+              </div>
+              <span
+                v-if="ch.placed"
+                class="scene-cur"
+              >✓</span>
+              <span
+                v-else
+                class="scene-add"
+              >＋</span>
+            </div>
+            <div
+              v-if="dockHint"
+              class="scene-hint"
+            >
+              {{ dockHint }}
             </div>
           </div>
-          <span
-            v-if="dockHint"
-            class="dock-hint"
-          >{{ dockHint }}</span>
-        </aside>
+        </section>
+      </aside>
 
-        <!-- 频道管理面板(边界编辑 + 成员角色模型设置;标题栏可拖动) -->
+      <!-- 中栏:舞台 + 底部坞 -->
+      <main class="stage-col">
         <div
-          v-if="selectedChannel && boundaryDraft"
-          class="boundary-panel drag-panel"
-          :style="panelPos.boundary ? { left: panelPos.boundary.x + 'px', top: panelPos.boundary.y + 'px', bottom: 'auto', transform: 'none' } : undefined"
+          ref="stageRef"
+          class="stage"
         >
           <div
-            class="bp-title drag-grip"
-            title="拖动移动面板"
-            @pointerdown="onPanelGripDown($event, 'boundary')"
-          >
-            <span class="bp-name">{{ entities.channels[selectedChannel]?.name ?? selectedChannel.slice(0, 8) }}</span>
-            <span class="bp-sub">频道管理</span>
-            <div class="bp-tabs">
+            id="town-host"
+            ref="hostRef"
+            class="town-host"
+          />
+          <div class="stage-vignette" />
+
+          <div class="stage-top">
+            <div class="vp-title">
+              <h2>产线孪生总览</h2>
+              <span class="vp-id">CH · {{ activeChannelName || '加载中' }}</span>
+            </div>
+            <div class="vp-tools">
               <button
-                class="bp-tab"
-                :class="{ on: channelPanelTab === 'boundary' }"
-                @click="openChannelTab('boundary')"
+                class="vp-tool"
+                title="定位选中设备"
+                @click="locateSelected"
               >
-                边界
+                <svg
+                  class="vp-svg"
+                  viewBox="0 0 24 24"
+                ><circle
+                  cx="12"
+                  cy="12"
+                  r="7"
+                /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
               </button>
               <button
-                class="bp-tab"
-                :class="{ on: channelPanelTab === 'members' }"
-                @click="openChannelTab('members')"
+                class="vp-tool"
+                :class="{ on: orbitOn }"
+                title="自动环绕"
+                @click="toggleOrbit"
               >
-                成员 {{ channelMembers.length }}
+                <svg
+                  class="vp-svg"
+                  viewBox="0 0 24 24"
+                ><circle
+                  cx="12"
+                  cy="12"
+                  r="3.2"
+                /><path d="M20.5 9a10 10 0 0 1 .3 4.5M3.5 15a10 10 0 0 1-.3-4.5" /></svg>
+              </button>
+              <button
+                class="vp-tool"
+                :class="{ on: showCallouts }"
+                title="数据标注显隐"
+                @click="showCallouts = !showCallouts"
+              >
+                <svg
+                  class="vp-svg"
+                  viewBox="0 0 24 24"
+                ><path d="M4 8h12l4 4-4 4H4z" /><circle
+                  cx="8.5"
+                  cy="12"
+                  r="1.4"
+                /></svg>
+              </button>
+              <button
+                class="vp-tool"
+                title="全屏"
+                @click="fullscreenStage"
+              >
+                <svg
+                  class="vp-svg"
+                  viewBox="0 0 24 24"
+                ><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
               </button>
             </div>
           </div>
 
-          <!-- 边界 tab:领地形状/半径/朝向 -->
-          <template v-if="channelPanelTab === 'boundary'">
-            <div class="bp-row">
-              <span class="bp-label">形状</span>
-              <div class="bp-seg">
-                <button
-                  class="seg-btn"
-                  :class="{ on: boundaryDraft.shape === 'ellipse' }"
-                  @click="boundaryDraft.shape = 'ellipse'; applyBoundaryDraft()"
-                >
-                  椭圆
-                </button>
-                <button
-                  class="seg-btn"
-                  :class="{ on: boundaryDraft.shape === 'rect' }"
-                  @click="boundaryDraft.shape = 'rect'; applyBoundaryDraft()"
-                >
-                  矩形
-                </button>
-              </div>
-            </div>
-            <div class="bp-row">
-              <span class="bp-label">横轴半径</span>
-              <input
-                v-model.number="boundaryDraft.radiusX"
-                class="bp-range"
-                type="range"
-                min="80"
-                max="700"
-                step="8"
-                @change="applyBoundaryDraft"
-              >
-              <span class="bp-val">{{ Math.round(boundaryDraft.radiusX) }}</span>
-            </div>
-            <div class="bp-row">
-              <span class="bp-label">纵轴半径</span>
-              <input
-                v-model.number="boundaryDraft.radiusZ"
-                class="bp-range"
-                type="range"
-                min="60"
-                max="480"
-                step="8"
-                @change="applyBoundaryDraft"
-              >
-              <span class="bp-val">{{ Math.round(boundaryDraft.radiusZ) }}</span>
-            </div>
-            <div class="bp-row">
-              <span class="bp-label">朝向</span>
-              <input
-                v-model.number="boundaryDraft.rotationY"
-                class="bp-range"
-                type="range"
-                min="0"
-                max="360"
-                step="5"
-                @change="applyBoundaryDraft"
-              >
-              <span class="bp-val">{{ Math.round(boundaryDraft.rotationY ?? 0) }}°</span>
-            </div>
-          </template>
+          <div class="angle-chip">
+            <select
+              :value="viewPreset"
+              aria-label="视角预设"
+              @change="onViewPreset($event)"
+            >
+              <option value="std">
+                3D 视角 · 标准
+              </option>
+              <option value="top">
+                俯视 · TOP
+              </option>
+              <option value="front">
+                前视 · FRONT
+              </option>
+              <option value="side">
+                侧视 · SIDE
+              </option>
+            </select>
+          </div>
 
-          <!-- 成员 tab:为每个成员设置 character 模型(角色模型只在频道管理中设置) -->
-          <template v-else>
-            <div class="bp-hint">
-              为频道成员选择 3D 角色模型(实时换装并持久化)
-            </div>
-            <div class="member-list">
-              <div
-                v-for="m in channelMembers"
-                :key="m.agentId"
-                class="member-row"
+          <!-- 数据标注层(靠近浮现:callout + 引线 + 锚点;同设备多路竖排堆叠;点击选中设备) -->
+          <template v-if="showCallouts">
+            <svg class="leaders">
+              <g
+                v-for="c in callouts"
+                v-show="c.leader"
+                :key="`ld-${c.id}`"
+                :class="{ near: c.near }"
               >
-                <span
-                  class="member-ava"
-                  :style="{ color: hashColor(selectedChannel) }"
-                >{{ m.name.charAt(0).toUpperCase() }}</span>
-                <div class="member-info">
-                  <span class="member-name">{{ m.name }}</span>
-                  <span class="member-role">{{ m.role === 'lead' ? '领队' : '成员' }}</span>
+                <path
+                  :d="`M ${c.x} ${c.y - 8} L ${c.x} ${c.y - 2}`"
+                  :stroke="c.warn ? 'rgba(246,196,83,.8)' : 'rgba(65,200,244,.55)'"
+                  stroke-width="1.3"
+                  fill="none"
+                />
+                <circle
+                  :cx="c.x"
+                  :cy="c.y"
+                  r="2.6"
+                  :fill="c.warn ? '#f6c453' : '#41c8f4'"
+                />
+              </g>
+            </svg>
+            <div class="callout-layer">
+              <div
+                v-for="c in callouts"
+                :key="c.id"
+                class="callout"
+                :class="{ warn: c.warn, near: c.near }"
+                :style="{ left: c.x + 'px', top: c.y + 'px' }"
+                title="点击选中该设备"
+                @click="selectDeviceFromCallout(c.id)"
+              >
+                <div class="co-label">
+                  <span class="co-dot" />{{ c.label }}
                 </div>
-                <select
-                  class="member-select"
-                  :value="(m.modelRef ?? '') || 'hero-3d'"
-                  @change="bindMemberModel(m.agentId, ($event.target as HTMLSelectElement).value)"
-                >
-                  <option
-                    v-for="model in agentModels"
-                    :key="model.id"
-                    :value="model.id"
-                  >
-                    {{ model.name }}
-                  </option>
-                </select>
-              </div>
-              <div
-                v-if="channelMembers.length === 0"
-                class="bp-hint"
-              >
-                该频道暂无成员
+                <div class="co-val">
+                  {{ c.value }}<small>{{ c.unit }}</small>
+                </div>
+                <div class="co-range">
+                  正常范围 {{ c.lo.toFixed(Math.min(2, (String(c.lo).split('.')[1] ?? '').length + 1)) }} – {{ c.hi.toFixed(Math.min(2, (String(c.hi).split('.')[1] ?? '').length + 1)) }}
+                </div>
               </div>
             </div>
           </template>
 
-          <div class="bp-actions">
-            <button
-              v-if="channelPanelTab === 'boundary'"
-              class="bp-btn save"
-              @click="saveChannelLayout"
+          <!-- KPI 条(设计稿五项:设备/运行/告警/数采通道/健康度) -->
+          <div class="kpi-strip">
+            <div class="kpi">
+              <span class="kpi-ico c1">
+                <svg
+                  class="kpi-svg"
+                  viewBox="0 0 24 24"
+                ><path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5v-7Z" /><path d="M4 8.5l8 4.5 8-4.5M12 13v7" /></svg>
+              </span>
+              <div class="kpi-meta">
+                <div class="kpi-label">
+                  设备总数
+                </div>
+                <div class="kpi-val">
+                  {{ deviceCount }}<small>台</small>
+                </div>
+              </div>
+            </div>
+            <div class="kpi">
+              <span class="kpi-ico c2">
+                <svg
+                  class="kpi-svg"
+                  viewBox="0 0 24 24"
+                ><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+              </span>
+              <div class="kpi-meta">
+                <div class="kpi-label">
+                  运行设备
+                </div>
+                <div class="kpi-val">
+                  {{ runningCount }}<small>台</small>
+                </div>
+              </div>
+            </div>
+            <div class="kpi">
+              <span class="kpi-ico c3">
+                <svg
+                  class="kpi-svg"
+                  viewBox="0 0 24 24"
+                ><path d="M12 3 22 20H2L12 3Z" /><path d="M12 10v4M12 17v.2" /></svg>
+              </span>
+              <div class="kpi-meta">
+                <div class="kpi-label">
+                  活跃告警
+                </div>
+                <div class="kpi-val">
+                  {{ activeAlarmCount }}<small>条</small>
+                </div>
+              </div>
+            </div>
+            <div class="kpi">
+              <span class="kpi-ico c4">
+                <svg
+                  class="kpi-svg"
+                  viewBox="0 0 24 24"
+                ><path d="M9.5 14.5 14.5 9.5" /><path d="M11 6.5 12.8 4.7a4 4 0 0 1 5.6 5.6L16.5 12" /><path d="m13 17.5-1.8 1.8a4 4 0 0 1-5.6-5.6L7.5 12" /></svg>
+              </span>
+              <div class="kpi-meta">
+                <div class="kpi-label">
+                  数采通道
+                </div>
+                <div class="kpi-val">
+                  {{ daqTwins.length }}<small>路</small>
+                </div>
+              </div>
+            </div>
+            <div class="kpi">
+              <span class="kpi-ico c5">
+                <svg
+                  class="kpi-svg"
+                  viewBox="0 0 24 24"
+                ><path d="M5 19a9 9 0 1 1 14 0" /><path d="M12 13l3.5-3.5" /><circle
+                  cx="12"
+                  cy="13"
+                  r="1.4"
+                /></svg>
+              </span>
+              <div class="kpi-meta">
+                <div class="kpi-label">
+                  线体健康度
+                </div>
+                <div class="kpi-val">
+                  {{ healthPct }}<small>%</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-if="blockCount === 0 && ready"
+            class="empty-hint"
+          >
+            <b>空场景</b>
+            <span>从左侧「设备资源 / 数采节点」拖入实体,开始搭建数字孪生空间</span>
+          </div>
+
+          <!-- 频道边界编辑(浮动) -->
+          <div
+            v-if="selectedChannel && boundaryDraft"
+            class="boundary-panel drag-panel"
+            :style="panelPos.boundary ? { left: panelPos.boundary.x + 'px', top: panelPos.boundary.y + 'px', bottom: 'auto', transform: 'none' } : undefined"
+          >
+            <div
+              class="bp-title drag-grip"
+              title="拖动移动面板"
+              @pointerdown="onPanelGripDown($event, 'boundary')"
             >
-              保存边界
-            </button>
-            <button
-              class="bp-btn danger"
-              @click="removeChannelFromScene"
-            >
-              移除频道
-            </button>
-            <button
-              class="bp-btn"
-              @click="onSelectChannel(null)"
-            >
-              关闭
-            </button>
+              <span class="bp-name">{{ entities.channels[selectedChannel]?.name ?? selectedChannel.slice(0, 8) }}</span>
+              <span class="bp-sub">频道管理</span>
+              <div class="bp-tabs">
+                <button
+                  class="bp-tab"
+                  :class="{ on: channelPanelTab === 'boundary' }"
+                  @click="openChannelTab('boundary')"
+                >
+                  边界
+                </button>
+                <button
+                  class="bp-tab"
+                  :class="{ on: channelPanelTab === 'members' }"
+                  @click="openChannelTab('members')"
+                >
+                  成员 {{ channelMembers.length }}
+                </button>
+              </div>
+            </div>
+            <template v-if="channelPanelTab === 'boundary'">
+              <div class="bp-row">
+                <span class="bp-label">形状</span>
+                <div class="bp-seg">
+                  <button
+                    class="seg-btn"
+                    :class="{ on: boundaryDraft.shape === 'ellipse' }"
+                    @click="boundaryDraft.shape = 'ellipse'; applyBoundaryDraft()"
+                  >
+                    椭圆
+                  </button>
+                  <button
+                    class="seg-btn"
+                    :class="{ on: boundaryDraft.shape === 'rect' }"
+                    @click="boundaryDraft.shape = 'rect'; applyBoundaryDraft()"
+                  >
+                    矩形
+                  </button>
+                </div>
+              </div>
+              <div class="bp-row">
+                <span class="bp-label">横轴半径</span>
+                <input
+                  v-model.number="boundaryDraft.radiusX"
+                  class="bp-range"
+                  type="range"
+                  min="80"
+                  max="4000"
+                  step="8"
+                  @change="applyBoundaryDraft"
+                >
+                <span class="bp-val">{{ Math.round(boundaryDraft.radiusX) }}</span>
+              </div>
+              <div class="bp-row">
+                <span class="bp-label">纵轴半径</span>
+                <input
+                  v-model.number="boundaryDraft.radiusZ"
+                  class="bp-range"
+                  type="range"
+                  min="60"
+                  max="4000"
+                  step="8"
+                  @change="applyBoundaryDraft"
+                >
+                <span class="bp-val">{{ Math.round(boundaryDraft.radiusZ) }}</span>
+              </div>
+              <div class="bp-row">
+                <span class="bp-label">朝向</span>
+                <input
+                  v-model.number="boundaryDraft.rotationY"
+                  class="bp-range"
+                  type="range"
+                  min="0"
+                  max="360"
+                  step="5"
+                  @change="applyBoundaryDraft"
+                >
+                <span class="bp-val">{{ Math.round(boundaryDraft.rotationY ?? 0) }}°</span>
+              </div>
+            </template>
+            <template v-else>
+              <div class="bp-hint">
+                为频道成员选择 3D 角色模型(实时换装并持久化)
+              </div>
+              <div class="member-list">
+                <div
+                  v-for="m in channelMembers"
+                  :key="m.agentId"
+                  class="member-row"
+                >
+                  <span
+                    class="member-ava"
+                    :style="{ color: hashColor(selectedChannel) }"
+                  >{{ m.name.charAt(0).toUpperCase() }}</span>
+                  <div class="member-info">
+                    <span class="member-name">{{ m.name }}</span>
+                    <span
+                      class="member-role"
+                      :class="m.role === 'lead' ? 'r-lead' : 'r-worker'"
+                    >{{ m.role === 'lead' ? 'Leader' : 'Worker' }}</span>
+                  </div>
+                  <select
+                    class="member-select"
+                    :value="(m.modelRef ?? '') || 'hero-3d'"
+                    @change="bindMemberModel(m.agentId, ($event.target as HTMLSelectElement).value)"
+                  >
+                    <option
+                      v-for="model in agentModels"
+                      :key="model.id"
+                      :value="model.id"
+                    >
+                      {{ model.name }}
+                    </option>
+                  </select>
+                </div>
+                <div
+                  v-if="channelMembers.length === 0"
+                  class="bp-hint"
+                >
+                  该频道暂无成员
+                </div>
+              </div>
+            </template>
+            <div class="bp-actions">
+              <button
+                v-if="channelPanelTab === 'boundary'"
+                class="bp-btn save"
+                @click="saveChannelLayout"
+              >
+                保存边界
+              </button>
+              <button
+                class="bp-btn danger"
+                @click="removeChannelFromScene"
+              >
+                移除频道
+              </button>
+              <button
+                class="bp-btn"
+                @click="onSelectChannel(null)"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+
+          <!-- 反馈芯片 -->
+          <div
+            v-if="lastDropText"
+            class="drop-chip"
+          >
+            {{ lastDropText }}
+          </div>
+          <div
+            v-if="errorText"
+            class="error-chip"
+          >
+            {{ errorText }}
+          </div>
+
+          <!-- 加载遮罩 -->
+          <div
+            v-if="!ready"
+            data-hud="town-loading"
+            class="loading-mask"
+          >
+            <div class="loading-spinner" />
+            <span class="loading-text">正在铺设数字孪生空间…</span>
           </div>
         </div>
 
-        <!-- 场景对象属性面板(选中设备/角色:改名/换模型/旋转/缩放/删除;标题栏可拖动) -->
-        <div
+        <!-- 底部坞:场景控制 + 趋势分析 -->
+        <div class="dock">
+          <section class="dock-card">
+            <div class="dock-hd">
+              <h3>场景控制</h3>
+              <span class="dock-mode">{{ mode === 'edit' ? '编辑模式' : '运行模式' }}</span>
+            </div>
+            <div class="ctl-row">
+              <span class="ctl-name">环境光照</span>
+              <input
+                class="ctl-range"
+                type="range"
+                min="30"
+                max="220"
+                :value="Math.round(exposure * 100)"
+                :style="{ '--fill': sliderPct(Math.round(exposure * 100), 30, 220) }"
+                @input="onExposureInput($event)"
+              >
+              <span class="ctl-val">{{ Math.round(exposure * 100) }}%</span>
+            </div>
+            <div class="ctl-row">
+              <span class="ctl-name">构造透明度</span>
+              <input
+                class="ctl-range"
+                type="range"
+                min="10"
+                max="100"
+                :value="Math.round(tintOpacity * 100)"
+                :style="{ '--fill': sliderPct(Math.round(tintOpacity * 100), 10, 100) }"
+                @input="onTintInput($event)"
+              >
+              <span class="ctl-val">{{ Math.round(tintOpacity * 100) }}%</span>
+            </div>
+            <div class="ctl-row">
+              <span class="ctl-name">告警阈值</span>
+              <input
+                class="ctl-range"
+                type="range"
+                min="60"
+                max="120"
+                :value="threshPct"
+                :style="{ '--fill': sliderPct(threshPct, 60, 120) }"
+                @input="threshPct = Number(($event.target as HTMLInputElement).value)"
+              >
+              <span class="ctl-val">{{ threshPct }}%</span>
+            </div>
+            <div class="ctl-row">
+              <span
+                class="ctl-name"
+                title="相机靠近设备多少距离内显示数采数据卡"
+              >数采可视距离</span>
+              <input
+                class="ctl-range"
+                type="range"
+                min="0"
+                max="3000"
+                step="50"
+                :value="calloutNearDist"
+                :style="{ '--fill': sliderPct(calloutNearDist, 0, 3000) }"
+                @input="calloutNearDist = Number(($event.target as HTMLInputElement).value)"
+              >
+              <span class="ctl-val">{{ calloutNearDist === 0 ? '关' : `${calloutNearDist}` }}</span>
+            </div>
+            <div class="ctl-row">
+              <span class="ctl-name">网格吸附</span>
+              <button
+                class="snap-toggle"
+                :class="{ on: snap }"
+                @click="toggleSnap"
+              >
+                {{ snap ? '开' : '关' }}
+              </button>
+              <span class="ctl-val" />
+            </div>
+            <div class="ctl-btns">
+              <button
+                class="btn btn-primary"
+                @click="onResetView"
+              >
+                重置视角
+              </button>
+              <button
+                class="btn btn-ghost"
+                :disabled="mode !== 'edit'"
+                :title="mode === 'edit' ? '保存全部设备布局' : '运行模式只读'"
+                @click="saveLayout"
+              >
+                保存布局
+              </button>
+              <button
+                class="btn btn-danger"
+                :class="{ armed: estop }"
+                @click="toggleEstop"
+              >
+                紧急停止
+              </button>
+            </div>
+          </section>
+
+          <section class="dock-card">
+            <div class="dock-hd">
+              <h3>趋势分析</h3>
+              <div class="trend-legend">
+                <button
+                  v-for="t in daqTwins"
+                  :key="t.id"
+                  class="lg-chip"
+                  :class="{ off: hiddenTrends[t.id] }"
+                  @click="toggleTrend(t.id)"
+                >
+                  <span
+                    class="lg-dot"
+                    :style="{ background: trendColor(t.id) }"
+                  />{{ t.name }}
+                </button>
+              </div>
+            </div>
+            <div class="trend-wrap">
+              <canvas
+                ref="trendCanvas"
+                class="trend-cv"
+              />
+              <span
+                v-if="!daqTwins.length"
+                class="trend-empty"
+              >从左侧拖入数采节点,实时趋势将在此绘制</span>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <!-- 右轨:Inspector / 设备运行状态 / 关键设备 / 实时事件 / 导航 -->
+      <aside class="rail rail-right">
+        <section
           v-if="selected"
-          class="object-panel drag-panel"
-          :style="panelPos.object ? { left: panelPos.object.x + 'px', top: panelPos.object.y + 'px', bottom: 'auto', transform: 'none' } : undefined"
+          class="panel inspector"
         >
-          <div
-            class="scale-title drag-grip"
-            title="拖动移动面板"
-            @pointerdown="onPanelGripDown($event, 'object')"
-          >
-            <span class="scale-kind">{{ selected.kind === 'agent' ? '角色' : '设备实例' }}</span>
-            <span class="scale-id">{{ selected.id.slice(0, 8) }}</span>
+          <div class="panel-hd">
+            <h3>{{ selected.kind === 'device' ? (selectedIsDaq ? '数采节点' : '设备实例') : selectedAgentRoleLabel }}</h3>
             <button
-              class="scale-close"
+              class="mini-btn"
+              title="取消选中"
               @click="closeScale"
             >
-              ×
+              ✕
             </button>
           </div>
 
-          <!-- 名称(设备可改名 + 落库;角色只读) -->
-          <div
-            v-if="selected.kind === 'device'"
-            class="obj-row"
-          >
-            <span class="obj-label">名称</span>
-            <input
-              v-model="objNameDraft"
-              class="obj-input"
-              placeholder="设备名称"
-              @change="onObjNameCommit"
-              @keydown.enter="onObjNameCommit"
-            >
+          <div class="ins-chip-row">
+            <span class="ins-chip mono">{{ selected.id.slice(0, 8) }}</span>
+            <span
+              v-if="selected.kind === 'device' && selectedIsDaq"
+              class="ins-chip accent"
+            >DAQ</span>
           </div>
 
-          <!-- 模型(设备 → 设备模型下拉;角色 → character 模型下拉) -->
-          <div class="obj-row">
-            <span class="obj-label">模型</span>
-            <select
-              v-if="selected.kind === 'device'"
-              class="obj-select"
-              :value="scene3dRef?.getDeviceModelRef?.(selected.id) ?? ''"
-              @change="bindDeviceModel(($event.target as HTMLSelectElement).value)"
+          <template v-if="selected.kind === 'device'">
+            <div
+              v-if="selectedIsDaq"
+              class="daq-info"
             >
-              <option
-                v-for="m in deviceModels"
-                :key="m.id"
-                :value="m.id"
+              <div class="daq-info-row">
+                <span>实时值</span>
+                <b class="cy">{{ selectedDaqSim ? fmtDaq(selectedDaqSim) : '--' }} {{ selectedDaqSim?.tpl.unit }}</b>
+              </div>
+              <div class="daq-info-row">
+                <span>正常范围</span>
+                <b>{{ selectedDaqSim?.tpl.min }} ~ {{ selectedDaqSim?.tpl.max }}</b>
+              </div>
+              <div class="daq-info-row">
+                <span>绑定设备</span>
+                <b>{{ daqBoundDeviceName || '未绑定' }}</b>
+              </div>
+              <div
+                v-if="mode === 'edit'"
+                class="daq-bind-bar"
               >
-                {{ m.name }}
-              </option>
-            </select>
-            <select
-              v-else
-              class="obj-select"
-              :value="(scene3dRef?.getAgentModel?.(selected.id) ?? '') || 'hero-3d'"
-              @change="bindAgentModel(($event.target as HTMLSelectElement).value)"
-            >
-              <option
-                v-for="m in agentModels"
-                :key="m.id"
-                :value="m.id"
+                <select
+                  v-model="bindPick"
+                  class="bind-select"
+                >
+                  <option value="">
+                    选择设备实例…
+                  </option>
+                  <option
+                    v-for="dv in deviceTwins.twins.filter(x => !isDaqTwin(x) && x.id !== (selected?.id ?? ''))"
+                    :key="dv.id"
+                    :value="dv.id"
+                  >
+                    {{ dv.name }}
+                  </option>
+                </select>
+                <button
+                  class="bind-add-btn"
+                  :disabled="!bindPick"
+                  @click="daqBoundDeviceName ? unbindDaq(selected.id) : bindDaq(selected.id, bindPick); bindPick = ''"
+                >
+                  {{ daqBoundDeviceName ? '解绑' : '绑定' }}
+                </button>
+              </div>
+              <div
+                v-else
+                class="ins-empty"
               >
-                {{ m.name }}
-              </option>
-            </select>
-          </div>
+                运行模式 · 只读
+              </div>
+            </div>
+            <template v-else>
+              <div class="obj-row">
+                <span class="obj-label">名称</span>
+                <input
+                  v-model="objNameDraft"
+                  class="obj-input"
+                  placeholder="设备名称"
+                  :disabled="mode !== 'edit'"
+                  :title="mode === 'edit' ? '设备名称' : '运行模式只读'"
+                  @change="onObjNameCommit"
+                  @keydown.enter="onObjNameCommit"
+                >
+              </div>
+              <div class="obj-row">
+                <span class="obj-label">模型</span>
+                <select
+                  class="obj-select"
+                  :value="scene3dRef?.getDeviceModelRef?.(selected.id) ?? ''"
+                  :disabled="mode !== 'edit'"
+                  @change="bindDeviceModel(($event.target as HTMLSelectElement).value)"
+                >
+                  <option
+                    v-for="m in deviceModels"
+                    :key="m.id"
+                    :value="m.id"
+                  >
+                    {{ m.name }}
+                  </option>
+                </select>
+              </div>
 
-          <!-- 旋转(编辑模式;角色仅本地,设备落库) -->
-          <div
-            v-if="mode === 'edit'"
-            class="scale-row"
-          >
-            <span class="scale-min">0°</span>
-            <input
-              class="scale-range"
-              type="range"
-              min="0"
-              max="360"
-              step="1"
-              :value="selected.rotation"
-              @input="onRotationInput(Number(($event.target as HTMLInputElement).value))"
-              @change="onRotationCommit"
-            >
-            <span class="scale-max">360°</span>
-          </div>
-          <!-- 缩放 -->
-          <div class="scale-row">
-            <span class="scale-min">0.2×</span>
-            <input
-              class="scale-range"
-              type="range"
-              min="0.2"
-              max="5"
-              step="0.05"
-              :value="selected.scale"
-              @input="onScaleInput(Number(($event.target as HTMLInputElement).value))"
-              @change="onScaleCommit(Number(($event.target as HTMLInputElement).value))"
-            >
-            <span class="scale-max">5×</span>
-          </div>
-          <div class="scale-val">
-            {{ Math.round(selected.scale * 100) }}%
-          </div>
+              <!-- 数采绑定(设计稿 bind-row:图标 + 通道 + 实时值 + 迷你折线 + 解绑;运行模式只读展示) -->
+              <div class="sect-hd">
+                数据绑定 · {{ boundDaqRows.length }} 路通道
+              </div>
+              <div
+                v-for="r in boundDaqRows"
+                :key="r.daqId"
+                class="bind-row"
+              >
+                <span class="bind-ico">
+                  <svg
+                    class="bind-svg"
+                    viewBox="0 0 24 24"
+                    v-html="daqIcon(r.icon)"
+                  />
+                </span>
+                <span class="bind-meta">
+                  <span class="bind-label">{{ r.ch }}</span>
+                  <span class="bind-val"><b>{{ r.value }}</b> {{ r.unit }} · {{ r.name }}</span>
+                </span>
+                <canvas
+                  :ref="el => setSparkRef(r.daqId, el)"
+                  class="bind-spark"
+                  width="56"
+                  height="20"
+                />
+                <button
+                  v-if="mode === 'edit'"
+                  class="bind-x"
+                  title="解除绑定"
+                  @click="unbindDaq(r.daqId)"
+                >
+                  ✕
+                </button>
+              </div>
+              <div
+                v-if="!boundDaqRows.length"
+                class="ins-empty"
+              >
+                暂无数据通道 · 拖入数采节点靠近此设备即可自动绑定
+              </div>
+              <div
+                v-if="mode === 'edit'"
+                class="bind-add-wrap"
+              >
+                <button
+                  class="bind-add"
+                  @click="bindPopOpen = !bindPopOpen"
+                >
+                  ＋ 添加数采通道
+                </button>
+                <div
+                  v-if="bindPopOpen"
+                  class="bind-pop"
+                >
+                  <button
+                    v-for="tpl in daqTemplates"
+                    :key="tpl.id"
+                    @click="addChannelFromTemplate(tpl)"
+                  >
+                    <svg
+                      class="bind-svg"
+                      viewBox="0 0 24 24"
+                      v-html="daqIcon(tpl.icon)"
+                    />
+                    <span>{{ tpl.name }} · {{ tpl.ch }}</span>
+                  </button>
+                </div>
+              </div>
 
-          <!-- 活动范围(选中角色:框选绘制 / 形状 / 半径 / 清除;逐 Agent 独立定制) -->
-          <template v-if="selected.kind === 'agent'">
+              <!-- 变换模式(Blender G/R/S;仅编辑模式) -->
+              <template v-if="mode === 'edit'">
+                <div class="sect-hd">
+                  变换 · BLENDER
+                </div>
+                <div class="xz-seg">
+                  <button
+                    class="seg-btn"
+                    :class="{ on: tMode === 'translate' }"
+                    @click="setTMode('translate')"
+                  >
+                    移动 G
+                  </button>
+                  <button
+                    class="seg-btn"
+                    :class="{ on: tMode === 'rotate' }"
+                    @click="setTMode('rotate')"
+                  >
+                    旋转 R
+                  </button>
+                  <button
+                    class="seg-btn"
+                    :class="{ on: tMode === 'scale' }"
+                    @click="setTMode('scale')"
+                  >
+                    缩放 S
+                  </button>
+                </div>
+                <div class="scale-row">
+                  <span class="scale-min">0.2×</span>
+                  <input
+                    class="scale-range"
+                    type="range"
+                    min="0.2"
+                    max="5"
+                    step="0.05"
+                    :value="selected.scale"
+                    @input="onScaleInput(Number(($event.target as HTMLInputElement).value))"
+                    @change="onScaleCommit(Number(($event.target as HTMLInputElement).value))"
+                  >
+                  <span class="scale-max">5×</span>
+                </div>
+                <div class="scale-val">
+                  {{ Math.round(selected.scale * 100) }}%
+                </div>
+
+                <div class="ins-foot">
+                  <button
+                    class="btn btn-danger ins-del"
+                    :class="{ armed: deviceDeleteArmed === selected.id }"
+                    @click="removeSelectedDevice"
+                  >
+                    {{ deviceDeleteArmed === selected.id ? '再次点击确认删除' : '删除设备实例' }}
+                  </button>
+                </div>
+              </template>
+              <div
+                v-else
+                class="ins-empty"
+              >
+                运行模式 · 只读(切换「编辑」可调整变换/删除)
+              </div>
+            </template>
+          </template>
+
+          <template v-else-if="selected.kind === 'agent'">
+            <div class="chat-id-row">
+              <span
+                class="chat-badge"
+                :style="{ '--p-acc': agentChatColor }"
+              >{{ agentChatTitle.slice(0, 1).toUpperCase() }}</span>
+              <div class="chat-nameplate">
+                <span class="chat-name">{{ agentChatTitle }}</span>
+                <span class="chat-meta">
+                  <span
+                    class="chat-role"
+                    :class="selectedAgentMeta?.role === 'lead' ? 'r-lead' : 'r-worker'"
+                  >{{ selectedAgentRoleTag }}</span>
+                  <span
+                    class="chat-state"
+                    :class="`s-${selectedAgentMeta?.state ?? 'idle'}`"
+                  >{{ agentChatStateLabel }}</span>
+                  <span
+                    v-if="selectedAgentMeta?.harness"
+                    class="chat-harness"
+                  >{{ selectedAgentMeta.harness.toUpperCase() }}</span>
+                  <span class="chat-count">{{ agentHistory.length + agentChatRows.length }} 条</span>
+                </span>
+              </div>
+            </div>
+            <div class="obj-row">
+              <span class="obj-label">模型</span>
+              <select
+                class="obj-select"
+                :value="(scene3dRef?.getAgentModel?.(selected.id) ?? '') || 'hero-3d'"
+                :disabled="mode !== 'edit'"
+                @change="bindAgentModel(($event.target as HTMLSelectElement).value)"
+              >
+                <option
+                  v-for="m in agentModels"
+                  :key="m.id"
+                  :value="m.id"
+                >
+                  {{ m.name }}
+                </option>
+              </select>
+            </div>
             <div class="obj-sep" />
             <div class="obj-row">
               <span class="obj-label">活动范围</span>
               <span class="range-status">{{ agentRangeStatusText }}</span>
               <button
+                v-if="mode === 'edit'"
                 class="obj-mini"
                 :class="{ on: agentDrawingRange }"
-                :title="agentDrawingRange ? '在场景中拖动框选;再次点击取消' : '在场景中拉动框选,确定该角色的移动范围'"
+                title="在场景中拖动框选,确定该角色的移动范围"
                 @click="onToggleRangeDraw"
               >
                 {{ agentDrawingRange ? '绘制中' : '框选绘制' }}
               </button>
             </div>
-            <template v-if="agentRangeDraft">
+            <template v-if="agentRangeDraft && mode === 'edit'">
               <div class="obj-row">
                 <span class="obj-label">形状</span>
                 <div class="bp-seg">
@@ -1514,7 +3131,7 @@ onBeforeUnmount(() => {
                   class="obj-range"
                   type="range"
                   min="40"
-                  max="600"
+                  max="4000"
                   step="8"
                   @input="applyAgentRangeDraft"
                   @change="onAgentRangeCommit"
@@ -1528,7 +3145,7 @@ onBeforeUnmount(() => {
                   class="obj-range"
                   type="range"
                   min="40"
-                  max="480"
+                  max="4000"
                   step="8"
                   @input="applyAgentRangeDraft"
                   @change="onAgentRangeCommit"
@@ -1544,1454 +3161,1735 @@ onBeforeUnmount(() => {
             </template>
             <div
               v-else
-              class="obj-hint"
+              class="ins-empty"
             >
-              未设置:角色沿用频道领地活动;点「框选绘制」后在场景中拖动定制
+              未设置:沿用频道边界活动;点「框选绘制」定制
             </div>
-          </template>
 
-          <!-- 删除(仅设备实例;角色为频道成员,由频道管理面板管理) -->
-          <button
-            v-if="selected.kind === 'device'"
-            class="obj-del"
-            @click="removeSelectedDevice"
-          >
-            移除设备实例
-          </button>
-        </div>
-
-        <!-- 编辑/浏览模式工具栏 + 布局保存 -->
-        <div class="mode-bar">
-          <button
-            class="mode-btn"
-            :class="{ active: mode === 'edit' }"
-            :title="mode === 'edit' ? '编辑模式:可拖拽设备/调整角色落点' : '浏览模式:只读巡视'"
-            @click="toggleMode"
-          >
-            {{ mode === 'edit' ? '编辑中' : '浏览' }}
-          </button>
-          <button
-            v-if="mode === 'edit'"
-            class="mode-btn"
-            :class="{ active: snap }"
-            title="网格吸附(拖拽落点对齐 16 单位)"
-            @click="toggleSnap"
-          >
-            吸附{{ snap ? '开' : '关' }}
-          </button>
-          <button
-            v-if="mode === 'edit'"
-            class="mode-btn save"
-            title="把全部设备的位置/朝向/缩放写入数据库"
-            @click="saveLayout"
-          >
-            保存布局
-          </button>
-          <span
-            v-if="mode === 'edit'"
-            class="mode-hint"
-          >
-            <span class="mh-key">拖拽</span> 移动 ·
-            <span class="mh-key">拉框</span> Agent范围 ·
-            <span class="mh-key">手柄</span> 缩放/清除
-          </span>
-          <span
-            v-if="saveState && saveState.state !== 'idle'"
-            class="save-chip"
-            :class="`s-${saveState.state}`"
-          >
-            {{ saveStateLabel }}
-          </span>
-        </div>
-
-        <!-- 顶栏:标题 / 统计 / 连接 -->
-        <div class="absolute top-0 left-0 right-0 flex items-start justify-between p-4">
-          <div class="glass-chip">
-            <span class="ch-dot" />
-            <span class="hud-title">AGENTTEAM 数字孪生小镇</span>
-            <span class="hud-sub">Channel · {{ activeChannelName || '加载中' }}</span>
-          </div>
-          <div class="glass-chip">
-            <span
-              class="conn-dot"
-              :class="conn.state === 'open' ? 'on' : 'off'"
-            />
-            {{ conn.state === 'open' ? '在线' : syncing ? '同步中' : '离线' }}
-            <span class="hud-sep" />
-            <span class="hud-mono">{{ blockCount }} 领地 · {{ agentCount }} 精魂</span>
-            <span class="hud-sep" />
-            <span class="hud-mono">{{ fps }} FPS</span>
-          </div>
-        </div>
-
-        <!-- 事件跑马灯(最近几条"此刻谁在说话") -->
-        <div
-          v-if="ticker.length"
-          class="ticker-box"
-        >
-          <div class="ticker-title">
-            事件日志
-          </div>
-          <div
-            v-for="(t, i) in ticker"
-            :key="`${t.agentName}-${i}`"
-            class="ticker-row"
-          >
-            <span class="act-ava">{{ t.agentName.charAt(0).toUpperCase() }}</span>
-            <span class="act-name">{{ t.agentName }}</span>
-            <span class="act-text">{{ t.text }}</span>
-          </div>
-        </div>
-
-        <!-- 精魂对话:选中角色 → RPG 风格对话窗(历史记录 + 实时流,标题栏可拖动) -->
-        <div
-          v-if="selected?.kind === 'agent'"
-          class="agent-chat drag-panel rpg-dialog"
-          :data-agent-id="selected.id"
-          :style="panelPos['agent-chat'] ? { left: panelPos['agent-chat'].x + 'px', top: panelPos['agent-chat'].y + 'px', bottom: 'auto', transform: 'none' } : undefined"
-        >
-          <div
-            class="agent-chat-head drag-grip"
-            title="拖动移动面板"
-            @pointerdown="onPanelGripDown($event, 'agent-chat')"
-          >
-            <span
-              class="rpg-portrait"
-              :style="{ '--p-acc': agentChatColor }"
-            >{{ agentChatTitle.slice(0, 1).toUpperCase() }}</span>
-            <div class="rpg-nameplate">
-              <span class="agent-chat-name">{{ agentChatTitle }}</span>
-              <span class="agent-chat-live">{{ historyLoading ? '◇ 读取历史…' : '● 实时' }}</span>
+            <!-- 会话记录(侧边信息;历史 + 实时,不再悬浮于场景) -->
+            <div class="obj-sep" />
+            <div class="sect-hd chat-sect">
+              会话记录 · {{ agentChatTitle }}
+              <button
+                class="mini-btn chat-refresh"
+                title="重新拉取该角色的历史对话"
+                @click="onRefreshHistory"
+              >
+                {{ historyLoading ? '…' : '↻' }}
+              </button>
             </div>
-            <span class="rpg-tag">AGENT LOG</span>
-          </div>
-          <div
-            ref="chatScroll"
-            class="rpg-lines"
-          >
             <div
-              v-if="historyLoading"
-              class="rpg-note"
+              ref="chatScroll"
+              class="rpg-lines chat-embed"
             >
-              正在读取历史对话…
-            </div>
-            <template v-if="agentHistory.length">
-              <div class="rpg-divider">
-                ◇ 历史记录
+              <div
+                v-if="historyLoading"
+                class="rpg-note"
+              >
+                正在读取历史对话…
+              </div>
+              <template v-if="agentHistory.length">
+                <div class="rpg-divider">
+                  历史记录 · {{ agentHistory.length }}
+                </div>
+                <div
+                  v-for="r in agentHistory"
+                  :key="r.id"
+                  class="rpg-line hist"
+                >
+                  <span class="rpg-time">{{ fmtTime(r.at) }}</span>
+                  <div class="rpg-bubble">
+                    <span
+                      v-if="chatKindLabel(r.kind)"
+                      class="rpg-kind"
+                      :class="`k-${r.kind}`"
+                    >{{ chatKindLabel(r.kind) }}</span>
+                    <span class="rpg-text">{{ r.text }}</span>
+                  </div>
+                </div>
+              </template>
+              <div
+                v-if="agentChatRows.length"
+                class="rpg-divider live"
+              >
+                实时 · {{ agentChatRows.length }}
               </div>
               <div
-                v-for="r in agentHistory"
+                v-for="r in agentChatRows"
                 :key="r.id"
-                class="rpg-line hist"
+                class="rpg-line live"
               >
-                <span class="rpg-ava mini">{{ agentChatTitle.slice(0, 1).toUpperCase() }}</span>
+                <span class="rpg-time">{{ fmtTime(r.at) }}</span>
                 <div class="rpg-bubble">
-                  <span
-                    v-if="chatKindLabel(r.kind)"
-                    class="rpg-kind"
-                  >{{ chatKindLabel(r.kind) }}</span>
                   <span class="rpg-text">{{ r.text }}</span>
                 </div>
               </div>
-            </template>
-            <div
-              v-if="agentChatRows.length"
-              class="rpg-divider live"
-            >
-              ◇ 实时
-            </div>
-            <div
-              v-for="(t, i) in agentChatRows"
-              :key="`l-${i}`"
-              class="rpg-line live"
-            >
-              <span
-                class="rpg-ava"
-                :style="{ '--p-acc': agentChatColor }"
-              >{{ agentChatTitle.slice(0, 1).toUpperCase() }}</span>
-              <div class="rpg-bubble">
-                <span class="rpg-text">{{ t.text }}</span>
+              <div
+                v-if="selectedAgentMeta?.state === 'busy'"
+                class="rpg-typing"
+              >
+                <span class="ty-dot" /><span class="ty-dot" /><span class="ty-dot" />
+                <span class="ty-label">执行中</span>
+              </div>
+              <div
+                v-if="!historyLoading && !agentHistory.length && !agentChatRows.length"
+                class="rpg-note"
+              >
+                暂无对话 · 该员工尚未发言
               </div>
             </div>
-            <div
-              v-if="!historyLoading && !agentHistory.length && !agentChatRows.length"
-              class="rpg-note"
-            >
-              暂无对话 · 该精魂尚未开口
+          </template>
+        </section>
+
+        <section class="panel">
+          <div class="panel-hd">
+            <h3>设备运行状态</h3>
+          </div>
+          <div class="health-body">
+            <div class="donut-wrap">
+              <canvas
+                ref="donutCanvas"
+                width="118"
+                height="118"
+              />
+              <div class="donut-center">
+                <b>{{ healthPct }}%</b>
+                <span>设备健康度</span>
+              </div>
+            </div>
+            <div class="health-legend">
+              <div class="hl-row">
+                <span
+                  class="hl-dot"
+                  :style="{ background: 'var(--hud-accent)' }"
+                />
+                运行中
+                <span class="n">{{ runningCount }}</span>
+              </div>
+              <div class="hl-row">
+                <span
+                  class="hl-dot"
+                  :style="{ background: 'var(--hud-amber)' }"
+                />
+                待命
+                <span class="n">{{ idleCount }}</span>
+              </div>
+              <div class="hl-row">
+                <span
+                  class="hl-dot"
+                  :style="{ background: 'var(--hud-danger)' }"
+                />
+                告警
+                <span class="n">{{ alarmCount }}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- 模型落点反馈 -->
-        <div
-          v-if="lastDropText"
-          class="drop-chip"
-        >
-          {{ lastDropText }}
-        </div>
+        <section class="panel">
+          <div class="panel-hd">
+            <h3>关键设备监控</h3>
+            <span class="panel-tag">{{ deviceTwins.twins.length }}</span>
+          </div>
+          <WorkshopDeviceTwinPanel
+            class="kd-embed"
+            :daq-live="daqLive"
+            @focus-device="onFocusDevice"
+          />
+        </section>
 
-        <!-- 迷你地图(缩略世界;领地色点+角色+设备+视口;点击跳转/拖动平移) -->
-        <div
-          v-if="minimap"
-          class="mini-map"
-          :title="'世界 · 点击跳转 · 拖动平移'"
-        >
-          <svg
-            :viewBox="`0 0 ${minimap.world.w} ${minimap.world.h}`"
-            class="mini-svg"
-            role="img"
-            aria-label="世界迷你地图,点击跳转,拖动平移镜头"
-            @click="onMinimapClick"
-            @pointerdown="onMinimapDown"
-            @pointermove="onMinimapMove"
-            @pointerup="onMinimapUp"
-            @pointercancel="onMinimapUp"
-            @pointerleave="onMinimapUp"
-          >
-            <rect
-              x="0"
-              y="0"
-              :width="minimap.world.w"
-              :height="minimap.world.h"
-              fill="rgba(14,21,36,0.35)"
-            />
-            <circle
-              v-for="b in minimap.blocks"
-              :key="`b-${b.name}`"
-              :cx="b.x * minimap.world.w"
-              :cy="b.y * minimap.world.h"
-              r="70"
-              :fill="`#${b.color.toString(16).padStart(6, '0')}`"
-              opacity="0.45"
-            />
-            <circle
-              v-for="a in minimap.agents"
-              :key="`a-${a.x}-${a.y}`"
-              :cx="a.x * minimap.world.w"
-              :cy="a.y * minimap.world.h"
-              :r="a.busy ? 16 : 11"
-              :fill="`#${a.color.toString(16).padStart(6, '0')}`"
-            />
-            <!-- 数字孪生设备(四边形;状态色与场景状态环一致) -->
-            <rect
-              v-for="d in minimap.devices"
-              :key="`d-${d.x}-${d.y}`"
-              :x="d.x * minimap.world.w - 11"
-              :y="d.y * minimap.world.h - 11"
-              width="22"
-              height="22"
-              rx="4"
-              :fill="`#${d.color.toString(16).padStart(6, '0')}`"
-              opacity="0.92"
-            />
-            <rect
-              :x="(minimap.player.x - 0.05) * minimap.world.w"
-              :y="(minimap.player.y - 0.05) * minimap.world.h"
-              :width="0.1 * minimap.world.w"
-              :height="0.1 * minimap.world.h"
-              fill="rgba(255,255,255,0.18)"
-              stroke="#fff"
-              stroke-width="4"
-            />
-          </svg>
-          <span class="mini-label">MAP · {{ blockCount }} 领地 · {{ minimap.devices?.length ?? 0 }} 设备</span>
-        </div>
+        <section class="panel">
+          <div class="panel-hd">
+            <h3>实时告警</h3>
+            <span class="panel-tag">{{ activeAlarmCount }} 条</span>
+            <button
+              class="mini-btn"
+              title="全部确认"
+              @click="clearAlarms"
+            >
+              ✓
+            </button>
+          </div>
+          <div class="alarm-list">
+            <div
+              v-for="a in alarms.slice(0, 8)"
+              :key="a.id"
+              class="al-row"
+            >
+              <span
+                class="al-ico"
+                :class="a.state === 2 ? 'info' : a.state === 1 ? 'warn' : 'crit'"
+              >
+                <svg
+                  class="al-svg"
+                  viewBox="0 0 24 24"
+                ><path d="M12 3 22 20H2L12 3Z" /><path d="M12 10v4M12 17v.2" /></svg>
+              </span>
+              <div class="al-body">
+                <div class="al-txt">
+                  {{ a.txt }}
+                </div>
+                <div class="al-src">
+                  {{ a.src }} · {{ a.time }}
+                </div>
+              </div>
+              <button
+                class="al-state"
+                :class="`s${a.state}`"
+                @click="advanceAlarm(a.id)"
+              >
+                {{ ALARM_STATES[a.state] }}
+              </button>
+            </div>
+            <div
+              v-if="!alarms.length"
+              class="al-empty"
+            >
+              暂无告警，产线运行平稳
+            </div>
+          </div>
+        </section>
 
-        <!-- 错误态 -->
-        <div
-          v-if="errorText"
-          class="error-chip"
-        >
-          {{ errorText }}
-        </div>
+        <section class="panel">
+          <div class="panel-hd">
+            <h3>实时事件</h3>
+            <span class="panel-tag">{{ ticker.length }}</span>
+          </div>
+          <div class="event-list">
+            <div
+              v-for="(t, i) in [...ticker].reverse()"
+              :key="`${t.at}-${i}`"
+              class="event-row"
+            >
+              <span class="ev-time">{{ fmtTime(t.at) }}</span>
+              <span
+                class="ev-name"
+                :title="t.agentName"
+              >{{ t.agentName }}</span>
+              <span
+                class="ev-text"
+                :title="t.text"
+              >{{ t.text }}</span>
+            </div>
+            <div
+              v-if="!ticker.length"
+              class="event-empty"
+            >
+              事件总线待命
+            </div>
+          </div>
+        </section>
 
-        <!-- 加载遮罩 -->
-        <div
-          v-if="!ready"
-          data-hud="town-loading"
-          class="loading-mask"
-        >
-          <div class="loading-spinner" />
-          <span class="loading-text">正在铺设小镇…</span>
-        </div>
-      </div>
+        <section class="panel">
+          <div class="panel-hd">
+            <h3>3D 视图导航</h3>
+          </div>
+          <div class="mm-body">
+            <div
+              class="mm-wrap"
+              title="RPG 导航图 · 准星=镜头 · 拖动平移 · 点击聚焦 · 滚轮同步视角缩放"
+            >
+              <canvas
+                ref="navCanvas"
+                class="nav-cv"
+                @pointerdown="onNavDown"
+                @pointermove="onNavMove"
+                @pointerup="onNavUp"
+                @pointercancel="onNavUp"
+                @wheel.prevent="onNavWheel"
+              />
+            </div>
+            <div class="mm-col">
+              <button
+                class="vp-tool"
+                title="重置视角"
+                @click="onResetView"
+              >
+                <svg
+                  class="vp-svg"
+                  viewBox="0 0 24 24"
+                ><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" /></svg>
+              </button>
+              <button
+                class="vp-tool"
+                title="缩小视角(小地图同步)"
+                @click="scene3dRef?.zoomBy(0.22)"
+              >
+                <svg
+                  class="vp-svg"
+                  viewBox="0 0 24 24"
+                ><circle
+                  cx="11"
+                  cy="11"
+                  r="6.5"
+                /><path d="m16 16 4.5 4.5M8.5 11h5" /></svg>
+              </button>
+              <button
+                class="vp-tool"
+                title="放大视角(小地图同步)"
+                @click="scene3dRef?.zoomBy(-0.18)"
+              >
+                <svg
+                  class="vp-svg"
+                  viewBox="0 0 24 24"
+                ><circle
+                  cx="11"
+                  cy="11"
+                  r="6.5"
+                /><path d="m16 16 4.5 4.5M8.5 11h5M11 8.5v5" /></svg>
+              </button>
+            </div>
+          </div>
+          <div class="mm-meta mono">
+            准星=镜头 · 同步视角 ×{{ navScale.toFixed(1) }} · {{ minimap?.devices?.length ?? 0 }} 设备
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <!-- ================= 状态栏 ================= -->
+    <footer class="statusbar">
+      <span>
+        <span
+          class="sb-dot"
+          :class="{ red: conn.state !== 'open' }"
+        />系统状态 <b>{{ conn.state === 'open' ? '正常' : syncing ? '同步中' : '离线' }}</b>
+      </span>
+      <span class="sb-stats">
+        频道 <b>{{ blockCount }}</b><i>·</i>员工 <b>{{ agentCount }}</b><i>·</i>设备 <b>{{ deviceCount }}</b>
+      </span>
+      <span class="sb-lat mono">
+        {{ fps }} FPS
+      </span>
+      <span class="copy">
+        © 2026 ABO · DIGITAL TWIN · 演示数据为模拟信号
+      </span>
+    </footer>
+
+    <!-- 加载遮罩(全页) -->
+    <div
+      v-if="!ready"
+      data-hud="town-loading"
+      class="loading-mask"
+    >
+      <div class="loading-spinner" />
+      <span class="loading-text">正在铺设数字孪生空间…</span>
     </div>
   </div>
 </template>
 
 <style scoped>
 /* ============================================================
- * 小镇控制台 Chrome —— 延续全局 Warm Editorial 设计系统
- *  舞台是暗场,家具(面板)是编辑台上可读的控制件:
- *  统一玻璃配方(glass-bg + blur + hairline + 内缘高光)、panel 圆角、
- *  kicker 头部、墨色药丸 CTA、120–320ms ease-out-quart;
- *  不引入新鲜色相,只消费 --tone/* 语义状态色。
+ * DIGITAL TWIN · 控制室 UI(设计稿 1:1 架构)
+ * topnav 50 / 三栏网格(250 · 1fr · 342) / dock / statusbar 30
  * ============================================================ */
 .town-view {
-  width: 100%;
+  --hud-bg: #070b13;
+  --hud-panel: #0d1420;
+  --hud-panel-2: #111a2b;
+  --hud-panel-raised: #152034;
+  --hud-panel-hover: #16233a;
+  --hud-line: #1d2a42;
+  --hud-line-soft: #16202f;
+  --hud-line-hi: #2c4568;
+  --hud-input: #0a111d;
+  --hud-text: #e8eef8;
+  --hud-dim: #8fa0b5;
+  --hud-faint: #5f6e84;
+  --hud-accent: #35e0a0;
+  --hud-accent-dim: #1f9e6e;
+  --hud-cyan: #41c8f4;
+  --hud-amber: #f6c453;
+  --hud-ok: #35e0a0;
+  --hud-danger: #ff6b6b;
+  --hud-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --hud-ease: cubic-bezier(0.22, 0.68, 0.36, 1);
+  --hud-r-sm: 8px;
+  --hud-r-md: 10px;
+  --hud-r-lg: 12px;
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-.town-frame {
-  position: relative;
-  flex: 1 1 auto;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  background: radial-gradient(1200px 700px at 50% 30%, rgba(84, 120, 150, 0.15), transparent 70%);
-}
-.town-host {
-  position: absolute;
-  inset: 0;
-  display: block;
-}
-/* 3D 渲染器不强制 pixelated(仅 2D Phaser 像素风需要);默认抗锯齿 */
-.town-host canvas { image-rendering: auto; }
-
-.hud { font-family: var(--font-body); }
-
-/* 通用浮动面板配方:所有控制件同一玻璃质感 */
-.channel-dock,
-.boundary-panel,
-.object-panel,
-.mode-bar,
-.mini-map,
-.ticker-box {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--glass-highlight), var(--shadow-float);
-}
-
-/* 模型库面板(可交互,脱离 pointer-events-none) */
-.lib-panel {
-  position: absolute;
-  top: 56px;
-  left: 16px;
-  pointer-events: auto;
-  max-height: min(56vh, 420px);
-  overflow: hidden auto;
-}
-
-/* 数字孪生侧栏(右侧,迷你地图上方) */
-.twin-panel {
-  position: absolute;
-  right: 16px;
-  bottom: 292px;
-  pointer-events: auto;
-  max-height: min(34vh, 300px);
-  overflow: hidden auto;
-}
-
-/* 偏好禁用透明:玻璃退回纯 paper 面,保证可读(对齐 main.css 的 reduced-transparency) */
-@media (prefers-reduced-transparency: reduce) {
-  .channel-dock,
-  .boundary-panel,
-  .object-panel,
-  .mode-bar,
-  .mini-map,
-  .ticker-box {
-    background: var(--paper-raised);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-}
-
-/* 场景对象属性面板(选中设备/角色:改名/换模型/旋转/缩放/删除) */
-.object-panel {
-  position: absolute;
-  bottom: 46px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 284px;
-  padding: 11px 14px 12px;
-  pointer-events: auto;
-  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
-}
-.scale-title { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-soft); }
-.scale-kind { font-weight: 650; color: var(--ink); }
-.scale-id { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
-.scale-hint { font-size: 10px; color: var(--tone-warning-dot); margin-left: auto; }
-.scale-close {
-  margin-left: auto;
-  width: 22px;
-  height: 22px;
-  font-size: 14px;
-  line-height: 1;
-  color: var(--ink-faint);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-.scale-close:hover { color: var(--ink); background: var(--paper-deep); }
-.scale-row { display: flex; gap: 8px; align-items: center; }
-.scale-min, .scale-max { font-family: var(--font-mono); font-size: 9px; color: var(--ink-faint); }
-.scale-range { flex: 1; accent-color: var(--accent); }
-.scale-val { text-align: center; font-family: var(--font-mono); font-size: 11px; color: var(--ink); }
-.obj-row { display: flex; gap: 8px; align-items: center; }
-.obj-label { flex: none; width: 34px; font-size: 10px; color: var(--ink-faint); }
-.obj-input {
-  flex: 1; min-width: 0; font-size: 11px; padding: 4px 8px;
-  border: 1px solid var(--line-strong); border-radius: var(--radius-chip);
-  background: var(--paper); color: var(--ink);
-  transition: border-color var(--transition-fast);
-}
-.obj-input:focus { outline: none; border-color: var(--accent); }
-.obj-select {
-  flex: 1; min-width: 0; font-size: 11px; padding: 3px 6px;
-  border: 1px solid var(--line-strong); border-radius: var(--radius-chip);
-  background: var(--paper); color: var(--ink);
-  transition: border-color var(--transition-fast);
-}
-.obj-select:hover { border-color: var(--accent); }
-.obj-del {
-  margin-top: 3px;
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--tone-danger-dot);
-  background: var(--tone-danger-bg);
-  border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 35%, transparent);
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition: filter var(--transition-fast), transform var(--transition-fast);
-}
-.obj-del:hover { filter: brightness(1.04); }
-.obj-del:active { transform: scale(0.98); }
-/* 活动范围区块(选中角色) */
-.obj-sep { height: 1px; background: var(--divider-hair); margin: 3px 0; }
-.range-status { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; color: var(--ink-faint); }
-.obj-mini {
-  flex: none;
-  padding: 4px 9px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
-}
-.obj-mini:hover { border-color: var(--accent); color: var(--ink); }
-.obj-mini.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
-.obj-mini.danger { color: var(--tone-danger-dot); margin-top: 3px; }
-.obj-range { flex: 1; accent-color: var(--accent); }
-.obj-hint { font-size: 9px; line-height: 1.55; color: var(--ink-faint); }
-
-/* 编辑/浏览模式工具栏(顶栏下方右侧;药丸形态,与全局 aw-pill 一致) */
-.mode-bar {
-  position: absolute;
-  top: 58px;
-  right: 16px;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  padding: 7px 9px;
-  pointer-events: auto;
-  border-radius: var(--radius-pill);
-}
-
-/* 频道坞(左,模型库旁) */
-.channel-dock {
-  position: absolute;
-  top: 56px;
-  left: 204px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 204px;
-  padding: 12px 12px 13px;
-  pointer-events: auto;
-}
-.dock-head { display: flex; gap: 7px; align-items: center; font-size: 11px; letter-spacing: 0.05em; color: var(--ink-faint); }
-.head-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
-.head-title { font-size: 12px; font-weight: 650; letter-spacing: 0.02em; color: var(--ink); }
-.head-hint { margin-left: auto; font-size: 10px; color: var(--ink-faint); white-space: nowrap; }
-.dock-list { display: flex; flex-direction: column; gap: 6px; max-height: 42vh; overflow: hidden auto; padding-right: 1px; }
-.dock-card {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 9px;
-  cursor: grab;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel-sm);
-  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
-}
-.dock-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-float); transform: translateY(-1px); }
-.dock-card:active { cursor: grabbing; }
-.dock-card.placed { border-color: var(--line-strong); border-left: 3px solid var(--tone-success-dot); }
-.dock-card.disabled { cursor: default; }
-.dock-card.disabled:hover { border-color: var(--line); box-shadow: none; transform: none; }
-.dock-card.disabled:active { cursor: default; }
-.dock-hint {
-  font-size: 10px;
-  color: var(--tone-warning-dot);
-  padding: 5px 8px;
-  border-radius: var(--radius-chip);
-  background: var(--tone-warning-bg);
-  border: 1px solid color-mix(in srgb, var(--tone-warning-dot) 30%, transparent);
-}
-.dock-color { flex: none; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, var(--paper-deep) 85%, transparent); }
-.dock-name { font-size: 11.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dock-meta { margin-left: auto; font-family: var(--font-mono); font-size: 9px; color: var(--ink-faint); white-space: nowrap; }
-.dock-toggle { flex: none; font-size: 12px; font-weight: 700; color: var(--accent); }
-.dock-card.placed .dock-toggle { color: var(--tone-success-dot); }
-
-/* 频道边界编辑面板 */
-.boundary-panel {
-  position: absolute;
-  bottom: 46px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 304px;
-  padding: 12px 14px 13px;
-  pointer-events: auto;
-  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
-}
-.bp-title { display: flex; gap: 8px; align-items: baseline; }
-.bp-name { font-size: 14px; font-weight: 400; font-family: var(--font-display); letter-spacing: -0.01em; color: var(--ink); }
-.bp-sub { font-size: 10px; color: var(--ink-faint); }
-.bp-row { display: flex; gap: 8px; align-items: center; }
-.bp-label { flex: none; width: 46px; font-size: 10px; color: var(--ink-faint); }
-.bp-range { flex: 1; accent-color: var(--accent); }
-.bp-val { flex: none; width: 40px; text-align: right; font-family: var(--font-mono); font-size: 10px; color: var(--ink); }
-.bp-seg { display: flex; gap: 4px; }
-.seg-btn {
-  padding: 4px 11px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
-}
-.seg-btn:hover { border-color: var(--line-strong); color: var(--ink); }
-.seg-btn.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
-.bp-actions { display: flex; gap: 6px; margin-top: 3px; }
-.bp-btn {
-  padding: 5px 11px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
-}
-.bp-btn:hover { border-color: var(--accent); color: var(--ink); }
-.bp-btn:active { transform: scale(0.97); }
-.bp-btn.save { color: var(--tone-success-dot); }
-.bp-btn.danger { color: var(--tone-danger-dot); }
-
-/* 频道管理面板:tabs + 成员角色模型设置 */
-.bp-tabs { display: flex; gap: 4px; margin-left: auto; }
-.bp-tab {
-  padding: 3px 10px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
-}
-.bp-tab:hover { border-color: var(--line-strong); color: var(--ink); }
-.bp-tab.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
-.bp-hint { font-size: 10px; line-height: 1.55; color: var(--ink-faint); }
-
-/* 美工:面板顶部纤细 accent 缘(仅活跃面板;玻璃基底由通用配方承载) */
-.boundary-panel::before,
-.object-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
-  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 22%, transparent));
-  opacity: 0.8;
-}
-.bp-range, .obj-range, .scale-range { transition: filter var(--transition-fast); }
-.bp-range:hover, .obj-range:hover, .scale-range:hover { filter: brightness(1.12); }
-.member-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: hidden auto; padding-right: 1px; }
-.member-row {
-  display: flex; gap: 8px; align-items: center; padding: 5px 7px;
-  background: var(--paper-raised); border: 1px solid var(--line);
-  border-radius: var(--radius-panel-sm);
-  transition: border-color var(--transition-fast);
-}
-.member-row:hover { border-color: var(--line-strong); }
-.member-ava {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; flex: none; font-size: 11px; font-weight: 700;
-  background: var(--paper-deep); border-radius: var(--radius-panel-sm);
-}
-.member-info { display: flex; flex-direction: column; min-width: 0; }
-.member-name { font-size: 11px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.member-role { font-size: 9px; color: var(--ink-faint); }
-.member-select {
-  min-width: 0; flex: 1; font-size: 10px; padding: 3px 5px;
-  border: 1px solid var(--line-strong); border-radius: var(--radius-chip);
-  background: var(--paper); color: var(--ink);
-  transition: border-color var(--transition-fast);
-}
-.member-select:hover { border-color: var(--accent); }
-
-.mode-btn {
-  padding: 5px 11px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
-}
-.mode-btn:hover { border-color: var(--accent); color: var(--ink); }
-.mode-btn:active { transform: scale(0.97); }
-.mode-btn.active { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
-.mode-btn.save { color: var(--tone-success-dot); }
-.mode-hint {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  padding: 4px 10px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.04em;
-  color: var(--ink-faint);
-  background: var(--frost-bg);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-.mh-key { font-weight: 700; color: var(--ink-soft); }
-.save-chip {
-  padding: 4px 9px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  border-radius: var(--radius-chip);
-  white-space: nowrap;
-}
-.save-chip.s-dirty { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
-.save-chip.s-saving { color: var(--ink-soft); background: var(--paper-deep); }
-.save-chip.s-saved { color: var(--tone-success-dot); background: var(--tone-success-bg); }
-.save-chip.s-error { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
-
-/* 精魂会话台:选中角色时的大字号实时会话窗(底部左下,位于事件流上方) */
-.agent-chat {
-  position: absolute;
-  bottom: 246px;
-  left: 188px;
-  width: min(46%, 480px);
-  max-height: 250px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 11px 14px 12px;
-  pointer-events: auto;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--glass-line));
-  border-radius: var(--radius-panel);
-  box-shadow: var(--glass-highlight), var(--shadow-float);
-}
-.agent-chat-head {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--divider-hair);
-}
-.agent-chat-name {
+  background: var(--hud-bg);
+  color: var(--hud-text);
+  font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 650;
-  color: var(--ink);
-  letter-spacing: 0.02em;
-}
-.agent-chat-live {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  color: var(--tone-success-dot);
-}
-.agent-chat-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  max-height: 172px;
-  overflow: hidden auto;
-}
-.agent-chat-row {
-  padding: 4px 6px;
-  border-radius: var(--radius-chip);
-  background: color-mix(in srgb, var(--paper-raised) 72%, transparent);
-}
-.agent-chat-body {
-  display: block;
-  font-size: 14.5px;
-  line-height: 1.5;
-  color: var(--ink-soft);
-  overflow: hidden;
-  word-break: break-word;
-}
-.agent-chat-row:first-child .agent-chat-body {
-  color: var(--ink);
-  font-weight: 500;
 }
 
-/* 电影感覆盖层:暗角(vignette)+ 数字孪生扫描线(仅视觉,不遮交互;位于 HUD 之下) */
-.town-frame::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background:
-    radial-gradient(130% 100% at 50% 44%, transparent 58%, rgba(4, 8, 14, 0.3) 100%),
-    linear-gradient(180deg, rgba(4, 8, 14, 0.14), transparent 16%, transparent 84%, rgba(4, 8, 14, 0.22));
-}
-.town-frame::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(140, 190, 230, 0.028) 0 1px,
-    transparent 1px 4px
-  );
-  mix-blend-mode: screen;
-}
-@media (prefers-reduced-transparency: reduce) {
-  .agent-chat { background: var(--paper-raised); backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .town-frame::before, .town-frame::after { content: none; }
-}
-
-/* 模型落点反馈 */
-.drop-chip {
-  position: absolute;
-  bottom: 16px;
-  left: 188px;
-  max-width: 60%;
-  padding: 7px 13px;
-  font-size: 12px;
-  color: var(--ink-soft);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--glass-highlight), var(--shadow-float);
-}
-
-.glass-chip {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 12px;
-  font-size: 12px;
-  color: var(--ink-soft);
-  background: var(--frost-bg);
-  backdrop-filter: var(--frost-blur);
-  -webkit-backdrop-filter: var(--frost-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-panel-sm);
-  box-shadow: var(--glass-highlight);
-}
-.hud-title {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  color: var(--ink);
-}
-.hud-sub { font-size: 11px; color: var(--ink-faint); }
-.hud-mono { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
-.hud-sep { width: 1px; height: 12px; background: var(--line-strong); }
-.ch-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tone-info-dot); }
-.conn-dot { width: 8px; height: 8px; border-radius: 50%; }
-.conn-dot.on { background: var(--tone-success-dot); }
-.conn-dot.off { background: var(--tone-danger-dot); }
-
-/* 迷你地图(点击跳转镜头;统一面板配方) */
-.mini-map {
-  position: absolute;
-  bottom: 74px;
-  right: 16px;
-  width: 172px;
-  pointer-events: auto;
-  overflow: hidden;
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-.mini-map:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--glass-line)); }
-.mini-svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.mini-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 9px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  color: var(--ink-faint);
-  border-top: 1px solid var(--glass-line);
-}
-
-/* 事件跑马灯(最近"谁在说话") */
-.ticker-box {
-  position: absolute;
-  bottom: 16px;
-  left: 188px;
-  width: min(46%, 380px);
-  max-height: 152px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 9px 11px 10px;
-}
-.ticker-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  color: var(--ink-faint);
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--divider-hair);
-  margin-bottom: 2px;
-}
-.ticker-row {
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  overflow: hidden;
-  font-size: 11px;
-}
-.act-ava {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
+/* ===== 顶部导航 ===== */
+.topnav {
+  height: 50px;
   flex: none;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--on-av);
-  background: var(--av-fallback);
-  border-radius: var(--radius-panel-sm);
-}
-.act-name { flex: none; font-weight: 600; color: var(--ink); }
-.act-text { overflow: hidden; color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
-
-/* 当前说话者 */
-.activity-chip {
-  position: absolute;
-  bottom: 44px;
-  left: 188px;
   display: flex;
-  gap: 8px;
   align-items: center;
-  max-width: 70%;
-  padding: 7px 13px;
-  font-size: 12px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--glass-highlight), var(--shadow-float);
+  gap: 14px;
+  padding: 0 16px;
+  background: linear-gradient(180deg, #0c1320, #0a101b);
+  border-bottom: 1px solid var(--hud-line-soft);
+  position: relative;
+  z-index: 60;
 }
-.activity-chip .act-ava { width: 22px; height: 22px; font-size: 11px; }
-
-/* 错误态 */
-.error-chip {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  max-width: 60%;
-  padding: 8px 13px;
-  font-size: 12px;
-  color: var(--tone-danger-dot);
-  background: var(--tone-danger-bg);
-  border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 30%, transparent);
-  border-radius: var(--radius-panel-sm);
-}
-
-/* ============================================================
- * RPG 2.5D UI 风格统一(覆盖层:统一玻璃质感/圆角/边框/动效)
- * ============================================================ */
-.channel-dock,
-.boundary-panel,
-.object-panel,
-.mode-bar,
-.mini-map,
-.ticker-box,
-.agent-chat,
-.lib-panel,
-.scale-panel,
-.twin-panel,
-.device-panel {
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--glass-line));
-  box-shadow: var(--glass-highlight), 0 18px 42px rgba(8, 14, 24, 0.28);
-}
-.channel-dock > .dock-head,
-.boundary-panel > .bp-title {
-  letter-spacing: 0.06em;
-}
-.dock-list {
-  scrollbar-width: thin;
-}
-/* 事件流与会话台:首尾呼吸分隔 */
-.ticker-row {
-  transition: background 0.18s ease, transform 0.18s ease;
-}
-.ticker-row:hover {
-  background: color-mix(in srgb, var(--paper-raised) 86%, transparent);
-  transform: translateX(2px);
-}
-/* 迷你地图:外发光描边 */
-.mini-map {
-  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--glass-line));
-  box-shadow: var(--glass-highlight), 0 14px 34px rgba(8, 14, 24, 0.3);
-  cursor: grab;
-  touch-action: none;
-}
-.mini-map:active {
-  cursor: grabbing;
-}
-.mini-svg { display: block; width: 100%; }
-/* 模式栏按钮:圆角胶囊 + 按压反馈 */
-.mode-btn {
-  border-radius: 10px;
-  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
-}
-.mode-btn:active {
-  transform: translateY(1px);
-}
-.mode-btn.active {
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 38%, transparent);
-}
-/* 顶栏质感微调 */
-.glass-chip {
-  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--glass-line));
-}
-/* 小地图/面板内部滚条一致 */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--line-strong) 70%, transparent);
-  border-radius: 99px;
-}
-.loading-mask {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 13px;
-  align-items: center;
-  justify-content: center;
-  background: var(--paper);
-}
-.loading-spinner {
-  width: 28px;
-  height: 28px;
-  border: 2.5px solid var(--line-strong);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .loading-spinner { animation: none; } }
-.loading-text {
-  font-family: var(--font-display);
-  font-size: 16px;
-  letter-spacing: -0.01em;
-  color: var(--ink-faint);
-}
-
-/* 可拖动面板:标题栏抓手(拖动移动,避免面板堆叠底部) */
-.drag-grip {
-  cursor: grab;
-  touch-action: none;
-}
-.drag-grip:active {
-  cursor: grabbing;
-}
-.drag-panel {
-  will-change: left, top;
-}
-.drag-panel.dragging {
-  transition: none;
-}
-
-/* ============================================================
- * 工业数字孪生 HMI 设计令牌(继承至 DeviceTwinPanel 等子组件)
- * ============================================================ */
-.town-view {
-  --hud-bg: #0c1118;
-  --hud-panel: #10161f;
-  --hud-panel-raised: #151e29;
-  --hud-panel-hover: #1a2531;
-  --hud-line: #2a3844;
-  --hud-input: #0e141d;
-  --hud-text: #d8e2ea;
-  --hud-dim: #7f919e;
-  --hud-accent: #4fa8ff;
-  --hud-amber: #f0a04c;
-  --hud-ok: #7fd4a0;
-  --hud-danger: #ff6b5c;
-}
-
-/* ============================================================
- * 工业 HMI 面板统一:扁平静态、发丝描边、方角、深投影(去玻璃拟态)
- * ============================================================ */
-.channel-dock,
-.boundary-panel,
-.object-panel,
-.mode-bar,
-.mini-map,
-.ticker-box,
-.agent-chat,
-.lib-panel,
-.twin-panel {
-  background: var(--hud-panel);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border: 1px solid var(--hud-line);
-  border-radius: 3px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-}
-/* 蓝图角标(选读面板:频道坞/迷你地图/设备台/事件日志) */
-.channel-dock::before,
-.mini-map::before,
-.agent-chat::before,
-.twin-panel::before {
+/* 顶栏下缘呼吸光:制造深度,不做渐变横幅 */
+.topnav::after {
   content: '';
   position: absolute;
-  top: -1px;
-  left: -1px;
-  width: 12px;
-  height: 12px;
-  border-top: 2px solid var(--hud-accent);
-  border-left: 2px solid var(--hud-accent);
-  pointer-events: none;
-}
-.channel-dock::after,
-.mini-map::after,
-.agent-chat::after,
-.twin-panel::after {
-  content: '';
-  position: absolute;
+  left: 0;
+  right: 0;
   bottom: -1px;
-  right: -1px;
-  width: 12px;
-  height: 12px;
-  border-bottom: 2px solid var(--hud-accent);
-  border-right: 2px solid var(--hud-accent);
+  height: 1px;
+  background: linear-gradient(90deg, transparent 4%, rgba(53, 224, 160, 0.35) 50%, transparent 96%);
   pointer-events: none;
 }
-.channel-dock,
-.mini-map,
-.agent-chat,
-.twin-panel {
+.brand { display: flex; align-items: center; gap: 10px; min-width: 230px; }
+.brand-glyph { width: 26px; height: 26px; flex: none; }
+.brand-name { font-weight: 800; font-size: 14.5px; letter-spacing: 0.06em; }
+.brand-name em { font-style: normal; color: var(--hud-accent); }
+.brand-sub { font-size: 10px; color: var(--hud-faint); letter-spacing: 0.18em; margin-top: 2px; }
+.nav-tabs {
   position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
-/* 面板头部:HMI 分段标签(等宽大写 + 发丝分隔) */
-.dock-head,
-.twin-head,
-.bp-title {
-  letter-spacing: 0.14em;
+.nav-action {
+  background: transparent;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--hud-r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hud-text);
+  border: 1px solid #27395c;
+  transition: background 0.15s var(--hud-ease), border-color 0.15s var(--hud-ease);
+}
+.nav-action:hover { background: #14203a; border-color: #33507c; }
+.save-chip {
   font-family: var(--font-mono);
-}
-.dock-head .head-dot,
-.bp-title .head-dot {
-  background: var(--hud-accent);
-}
-.dock-head span:first-of-type,
-.bp-title span:first-of-type {
-  color: var(--hud-accent);
   font-size: 10px;
-}
-.dock-head .dock-title,
-.bp-title .bp-name {
-  color: var(--hud-text);
-}
-.dock-head .dock-hint {
+  letter-spacing: 0.08em;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--hud-line);
   color: var(--hud-dim);
+  white-space: nowrap;
 }
-/* 频道坞行:领地索引行(色章 + 名称 + 状态,发丝分隔) */
-.dock-row {
-  border-bottom: 1px solid rgba(42, 56, 68, 0.6);
-  border-radius: 0;
-  background: transparent;
-}
-.dock-row:hover {
-  background: var(--hud-panel-hover);
-}
-/* 事件日志:等宽时间/类型 + 引线色条 */
-.ticker-box {
-  padding: 0 0 6px;
-}
-.ticker-title {
-  color: var(--hud-accent);
-  letter-spacing: 0.14em;
-}
-.ticker-row {
-  border-left: 2px solid rgba(79, 168, 255, 0.35);
-  background: transparent;
-  border-radius: 0;
-}
-.ticker-row .act-name {
-  color: var(--hud-text);
+.save-chip.s-dirty { color: var(--hud-amber); border-color: rgba(246, 196, 83, 0.4); }
+.save-chip.s-saving { color: var(--hud-dim); }
+.save-chip.s-saved { color: var(--hud-accent); border-color: rgba(53, 224, 160, 0.4); }
+.save-chip.s-error { color: var(--hud-danger); border-color: rgba(255, 107, 107, 0.4); }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.nav-chip {
   font-family: var(--font-mono);
   font-size: 10.5px;
-}
-.ticker-row .act-text {
   color: var(--hud-dim);
-}
-/* 精魂会话台:终端式面板 */
-.agent-chat {
-  background: var(--hud-panel);
-}
-.agent-chat-head {
-  border-bottom-color: var(--hud-line);
-}
-.agent-chat-name {
-  color: var(--hud-text);
-  letter-spacing: 0.05em;
-}
-.agent-chat-live {
-  color: var(--hud-ok);
-}
-.agent-chat-row {
-  background: var(--hud-panel-raised);
-  border-radius: 2px;
-}
-.agent-chat-body {
-  color: var(--hud-dim);
-}
-.agent-chat-row:first-child .agent-chat-body {
-  color: var(--hud-text);
-}
-/* 迷你地图:蓝图底纹 + 十字准星 */
-.mini-map {
-  background: var(--hud-panel);
-  background-image:
-    linear-gradient(rgba(79, 168, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79, 168, 255, 0.05) 1px, transparent 1px);
-  background-size: 14px 14px;
-}
-.mini-label {
-  font-family: var(--font-mono);
-  letter-spacing: 0.12em;
-  color: var(--hud-dim);
-}
-/* 顶栏状态条:实心 HMI 芯片 */
-.glass-chip {
-  background: var(--hud-panel);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   border: 1px solid var(--hud-line);
-  border-radius: 2px;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
 }
-.glass-chip .hud-title {
-  letter-spacing: 0.14em;
-  color: var(--hud-text);
+.avatar-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--hud-line-soft);
+  background: #0e1626;
+}
+.avatar-chip span { font-size: 12px; color: var(--hud-text); }
+.avatar-fallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1f9e6e, #41c8f4);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #04120c;
+}
+.seg {
+  display: inline-flex;
+  background: #0a111d;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-r-sm);
+  padding: 2px;
+}
+.seg button {
+  padding: 4px 16px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--hud-dim);
   font-weight: 600;
+  transition: background 0.15s var(--hud-ease), color 0.15s var(--hud-ease);
 }
-.glass-chip .hud-sub,
-.glass-chip .hud-mono {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--hud-dim);
-}
-/* 模式栏/对象面板:方块按钮 + 琥珀选中 */
-.mode-btn,
-.seg-btn,
-.bp-seg button {
-  border-radius: 2px;
-}
-.mode-btn.active,
-.seg-btn.on,
-.bp-seg .on {
-  background: var(--hud-amber);
-  border-color: var(--hud-amber);
-  color: #17120a;
-  box-shadow: none;
-}
-/* 编辑手柄/迷你地图滚动条:暗色细轨 */
-.town-view ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.town-view ::-webkit-scrollbar-thumb {
-  background: #2c3a46;
-  border-radius: 3px;
+.seg button.on {
+  background: var(--hud-accent);
+  color: #04120c;
+  box-shadow: 0 0 12px rgba(53, 224, 160, 0.35);
 }
 
-/* ============================================================
- * 设备模型库(AssetLibrary 内部)工业 HMI 覆盖:去白卡圆角,
- * 统一为深色方角「装备行」+ 等宽标签
- * ============================================================ */
-.town-view :deep(.asset-lib) {
-  background: var(--hud-panel);
+/* ===== 三栏应用区 ===== */
+.app {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 250px minmax(540px, 1fr) 342px;
 }
-.town-view :deep(.lib-head) {
-  letter-spacing: 0.14em;
-  font-family: var(--font-mono);
-}
-.town-view :deep(.lib-head .head-title) {
-  color: var(--hud-accent);
-  font-size: 10px;
-}
-.town-view :deep(.lib-head .head-hint) {
-  color: var(--hud-dim);
-  font-size: 9.5px;
-}
-.town-view :deep(.upload-box) {
-  border: 1px dashed var(--hud-line);
-  border-radius: 2px;
-  background: transparent;
-}
-.town-view :deep(.upload-name) {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--hud-dim);
-}
-.town-view :deep(.upload-btn),
-.town-view :deep(.card-btn) {
-  border-radius: 2px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--hud-text);
-  background: var(--hud-panel-raised);
-  border: 1px solid var(--hud-line);
-}
-.town-view :deep(.upload-btn:hover),
-.town-view :deep(.card-btn:hover) {
-  border-color: var(--hud-accent);
-  color: var(--hud-accent);
-}
-.town-view :deep(.model-card) {
-  background: var(--hud-panel-raised);
-  border: 1px solid var(--hud-line);
-  border-radius: 2px;
-}
-.town-view :deep(.model-card:hover) {
-  border-color: var(--hud-accent);
-}
-.town-view :deep(.model-name) {
-  color: var(--hud-text);
-  font-size: 11px;
-}
-.town-view :deep(.model-badge) {
-  font-family: var(--font-mono);
-  letter-spacing: 0.08em;
-  color: var(--hud-dim);
-  font-size: 8.5px;
-}
-.town-view :deep(.model-img) {
-  border-radius: 2px;
-  background: #0e141d;
-}
-
-/* ============================================================
- * RPG 对话窗(历史 + 实时)——暗色电影感游戏对话声部
- * ============================================================ */
-.agent-chat.rpg-dialog {
-  width: min(58%, 620px);
-  max-height: 400px;
-  overflow: hidden;
-  padding: 0;
+.rail {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  background:
-    radial-gradient(140% 90% at 18% 0%, rgba(79, 168, 255, 0.10), transparent 55%),
-    var(--hud-panel, #10161f);
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+  gap: 10px;
+  background: #080d16;
 }
-.agent-chat-head {
+.rail-left { border-right: 1px solid var(--hud-line-soft); }
+.rail-right { border-left: 1px solid var(--hud-line-soft); }
+.rail::-webkit-scrollbar { width: 8px; }
+.rail::-webkit-scrollbar-thumb { background: #1c2942; border-radius: 4px; border: 2px solid #080d16; }
+.rail::-webkit-scrollbar-track { background: transparent; }
+
+.panel {
+  background: linear-gradient(180deg, #101827 0%, #0d1420 100%);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-r-lg);
+  padding: 12px;
+  flex: none;
+}
+.panel-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.panel-hd h3 {
+  position: relative;
+  margin: 0;
+  padding-left: 11px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex: 1;
+}
+/* 左缘数据条:与 3D 场景名牌(makeLabel)同一 motif,双端一致 */
+.panel-hd h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 12px;
+  transform: translateY(-50%);
+  background: var(--hud-accent);
+  border-radius: 2px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--hud-accent) 45%, transparent);
+}
+.panel-tag {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--hud-cyan);
+  background: rgba(65, 200, 244, 0.1);
+  border: 1px solid rgba(65, 200, 244, 0.25);
+  padding: 0 6px;
+  border-radius: 6px;
+  line-height: 15px;
+}
+
+/* ===== 左轨:资源 / DAQ / 场景管理 ===== */
+.lib-embed { margin: -4px 0 0; }
+.daq-list, .scene-list { display: flex; flex-direction: column; gap: 4px; }
+.daq-card {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 9px;
+  border-radius: var(--hud-r-md);
+  background: var(--hud-panel-2);
+  border: 1px solid rgba(31, 74, 58, 0.55);
+  margin-bottom: 4px;
+  cursor: grab;
+  transition: transform 0.15s var(--hud-ease), border-color 0.15s var(--hud-ease), background 0.15s var(--hud-ease);
+}
+.daq-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(53, 224, 160, 0.5);
+  background: #12291f;
+}
+.daq-card:active { cursor: grabbing; }
+.daq-ico {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--hud-accent);
+  border-radius: 9px;
+  background: linear-gradient(160deg, #12291f, #0e1a24);
+  border: 1px solid rgba(31, 74, 58, 0.65);
+}
+.daq-svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.daq-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.daq-name { font-size: 12px; font-weight: 600; color: var(--hud-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.daq-code { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--hud-faint); }
+.daq-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--hud-accent);
+  background: rgba(53, 224, 160, 0.1);
+  border: 1px solid rgba(53, 224, 160, 0.28);
+  padding: 0 6px;
+  border-radius: 6px;
+  line-height: 15px;
+}
+.scene-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--hud-line, #2a3844);
+  padding: 8px 9px;
+  border-radius: var(--hud-r-md);
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+  cursor: grab;
+  transition: background 0.15s var(--hud-ease), border-color 0.15s var(--hud-ease);
 }
-.rpg-portrait {
-  --p-acc: #4fa8ff;
+.scene-row:hover { background: #111b2c; }
+.scene-row.active {
+  background: rgba(53, 224, 160, 0.06);
+  border-color: rgba(53, 224, 160, 0.35);
+}
+.scene-row:active { cursor: grabbing; }
+.scene-ico {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex: none;
+  background: color-mix(in srgb, var(--ch, var(--hud-accent)) 16%, #101a2c);
+  border: 1px solid color-mix(in srgb, var(--ch, var(--hud-accent)) 45%, transparent);
+}
+.scene-row.active .scene-ico { box-shadow: 0 0 10px color-mix(in srgb, var(--ch, var(--hud-accent)) 40%, transparent); }
+.scene-meta-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.scene-name { font-size: 12px; font-weight: 600; color: var(--hud-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scene-meta { font-family: var(--font-mono); font-size: 9px; color: var(--hud-faint); }
+.scene-cur, .scene-add {
+  margin-left: auto;
+  flex: none;
+  font-size: 10px;
+  border-radius: 6px;
+  padding: 1px 7px;
+}
+.scene-cur { color: var(--hud-accent); border: 1px solid rgba(53, 224, 160, 0.4); }
+.scene-add { color: var(--hud-dim); border: 1px solid var(--hud-line); }
+.scene-hint {
+  font-size: 10px;
+  color: var(--hud-amber);
+  padding: 6px 4px 0;
+  line-height: 1.5;
+}
+
+/* ===== 舞台 ===== */
+.stage-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.stage { flex: 1; position: relative; min-height: 320px; background: #060a11; overflow: hidden; }
+.stage:fullscreen { border-radius: 0; }
+.town-host { position: absolute; inset: 0; }
+.town-host canvas { display: block; image-rendering: auto; }
+.stage-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background:
+    radial-gradient(120% 90% at 50% 38%, transparent 52%, rgba(2, 4, 9, 0.5) 100%),
+    linear-gradient(180deg, rgba(8, 13, 24, 0.32), transparent 18%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px);
+}
+.stage-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px;
+  pointer-events: none;
+}
+.stage-top > * { pointer-events: auto; }
+.vp-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(9, 14, 24, 0.72);
+  border: 1px solid #1c2942;
+  border-radius: var(--hud-r-md);
+  padding: 8px 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.vp-title h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+.vp-id {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--hud-dim);
+  border: 1px solid #223050;
+  border-radius: 6px;
+  padding: 1px 8px;
+  white-space: nowrap;
+  background: rgba(10, 17, 29, 0.6);
+}
+.vp-tools { display: flex; gap: 8px; align-items: center; }
+.vp-tool {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--hud-dim);
+  background: rgba(13, 20, 32, 0.85);
+  border: 1px solid #223050;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 12px;
+  font-weight: 600;
+  transition: color 0.15s var(--hud-ease), border-color 0.15s var(--hud-ease), background 0.15s var(--hud-ease);
+}
+.vp-tool:hover { color: var(--hud-text); border-color: #33507c; }
+.vp-tool.on {
+  color: #04120c;
+  background: var(--hud-accent);
+  border-color: var(--hud-accent);
+  box-shadow: 0 0 12px rgba(53, 224, 160, 0.3);
+}
+.vp-svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 7;
+  pointer-events: none;
+}
+.angle-chip {
+  position: absolute;
+  top: 64px;
+  left: 16px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(9, 14, 24, 0.78);
+  border: 1px solid #1c2942;
+  border-radius: var(--hud-r-sm);
+  padding: 5px 8px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 11.5px;
+  color: var(--hud-dim);
+}
+.angle-chip select {
+  background: transparent;
+  border: 0;
+  color: var(--hud-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.angle-chip select option { background: #0e1626; }
+
+/* 标注层 */
+.callout-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  overflow: hidden;
+}
+.callout {
+  position: absolute;
+  min-width: 150px;
+  transform: translate(-50%, -112%) translateY(5px);
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(16, 26, 43, 0.94), rgba(10, 16, 28, 0.94));
+  border: 1px solid rgba(65, 200, 244, 0.4);
+  border-radius: var(--hud-r-md);
+  padding: 9px 12px 8px;
+  box-shadow: var(--hud-shadow);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 0.22s var(--hud-ease), transform 0.22s var(--hud-ease), border-color 0.15s var(--hud-ease);
+}
+/* 越近越亮:相机进入阈值半径后淡入上浮(数据只属于走近的人) */
+.callout.near {
+  opacity: 1;
+  transform: translate(-50%, -112%);
+  pointer-events: auto;
+}
+.leaders g { opacity: 0; transition: opacity 0.22s var(--hud-ease); }
+.leaders g.near { opacity: 1; }
+.callout.warn { border-color: rgba(246, 196, 83, 0.6); }
+.co-label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--hud-dim);
+  white-space: nowrap;
+}
+.co-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hud-cyan);
+  box-shadow: 0 0 8px rgba(65, 200, 244, 0.9);
+  flex: none;
+}
+.callout.warn .co-dot { background: var(--hud-amber); box-shadow: 0 0 8px rgba(246, 196, 83, 0.9); }
+.co-val {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+  color: var(--hud-text);
+  font-variant-numeric: tabular-nums;
+}
+.co-val small { font-size: 10.5px; color: var(--hud-dim); font-weight: 500; margin-left: 3px; }
+.co-range {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--hud-faint);
+  margin-top: 1px;
+}
+.callout.warn .co-range { color: var(--hud-amber); }
+
+/* KPI 条 */
+.kpi-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  z-index: 6;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 0 16px;
+  pointer-events: none;
+  flex-wrap: wrap;
+}
+.kpi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  pointer-events: auto;
+  background: rgba(12, 19, 32, 0.9);
+  border: 1px solid #1e2c46;
+  border-radius: var(--hud-r-md);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 0.2s var(--hud-ease), transform 0.2s var(--hud-ease);
+}
+.kpi:hover { border-color: #2c4568; transform: translateY(-1px); }
+.kpi-ico {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+.kpi-ico.c1 { background: rgba(65, 200, 244, 0.12); color: var(--hud-cyan); }
+.kpi-ico.c2 { background: rgba(53, 224, 160, 0.12); color: var(--hud-accent); }
+.kpi-ico.c3 { background: rgba(246, 196, 83, 0.12); color: var(--hud-amber); }
+.kpi-ico.c4 { background: rgba(167, 139, 250, 0.14); color: #a78bfa; }
+.kpi-ico.c5 { background: rgba(255, 107, 107, 0.12); color: var(--hud-danger); }
+.kpi-svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.kpi-meta { line-height: 1.25; }
+.kpi-label { font-size: 10.5px; color: var(--hud-dim); }
+.kpi-val {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--hud-text);
+  font-variant-numeric: tabular-nums;
+}
+.kpi-val small { font-size: 10px; color: var(--hud-faint); font-weight: 500; margin-left: 2px; }
+.empty-hint {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  text-align: center;
+  color: var(--hud-dim);
+  pointer-events: none;
+}
+.empty-hint b { color: var(--hud-text); font-size: 14px; display: block; margin-bottom: 4px; }
+.empty-hint span { font-size: 12px; }
+
+/* ===== 底部坞 ===== */
+.dock {
+  flex: none;
+  display: grid;
+  grid-template-columns: 308px 1fr;
+  gap: 10px;
+  padding: 10px;
+  background: #080d16;
+  border-top: 1px solid var(--hud-line-soft);
+}
+.dock-card {
+  background: linear-gradient(180deg, #101827 0%, #0d1420 100%);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-r-lg);
+  padding: 12px 14px;
+  min-height: 178px;
+  display: flex;
+  flex-direction: column;
+}
+.dock-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.dock-hd h3 { margin: 0; font-size: 12.5px; font-weight: 700; flex: 1; }
+.dock-mode {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--hud-faint);
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  padding: 1px 7px;
+}
+.ctl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.ctl-name { font-size: 11.5px; color: var(--hud-dim); width: 64px; flex: none; }
+.ctl-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--hud-text);
+  width: 38px;
+  text-align: right;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.ctl-range {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--hud-accent-dim) var(--fill, 50%), #1d2a42 var(--fill, 50%));
+  cursor: pointer;
+}
+.ctl-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--hud-accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.snap-toggle {
+  flex: 1;
+  height: 22px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--hud-dim);
+  background: var(--hud-input);
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.snap-toggle.on { color: var(--hud-accent); border-color: rgba(53, 224, 160, 0.4); background: rgba(53, 224, 160, 0.08); }
+.ctl-btns { display: flex; gap: 8px; margin-top: auto; }
+.btn {
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--hud-r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter 0.15s var(--hud-ease), background 0.15s var(--hud-ease), border-color 0.15s var(--hud-ease);
+}
+.btn-primary { background: var(--hud-accent-dim); color: #04120c; }
+.btn-primary:hover { background: #25b57e; }
+.btn-ghost { border: 1px solid #27395c; color: var(--hud-text); }
+.btn-ghost:hover { background: #14203a; border-color: #33507c; }
+.btn-danger { background: #b3273a; color: #fff; }
+.btn-danger:hover { background: #d1304a; }
+/* 只读态:禁用控件降透明度 + 禁止光标(运行模式视觉语言) */
+.btn:disabled, .nav-action:disabled, .obj-input:disabled, .obj-select:disabled,
+.bind-select:disabled, .obj-mini:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  filter: saturate(0.4);
+}
+.btn:disabled:hover, .nav-action:disabled:hover { background: inherit; }
+
+/* 趋势 */
+.trend-legend { display: flex; gap: 5px; flex-wrap: wrap; margin-left: auto; }
+.lg-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--hud-dim);
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: opacity 0.15s var(--hud-ease);
+}
+.lg-chip.off { opacity: 0.32; }
+.lg-dot { width: 7px; height: 7px; border-radius: 2px; }
+.trend-wrap { flex: 1; min-height: 0; position: relative; }
+.trend-cv { position: absolute; inset: 0; width: 100%; height: 100%; }
+.trend-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--hud-faint);
+}
+
+/* ===== 右轨 ===== */
+.inspector { animation: rise 0.18s var(--hud-ease); }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.ins-chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.ins-chip {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--hud-dim);
+  border: 1px solid #26354a;
+  border-radius: 6px;
+  padding: 1.5px 7px;
+}
+.ins-chip.accent { color: var(--hud-accent); border-color: rgba(53, 224, 160, 0.4); }
+.sect-hd {
+  font-size: 10px;
+  color: var(--hud-faint);
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  margin: 10px 0 7px;
+}
+.obj-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.obj-label { flex: none; width: 52px; font-size: 10.5px; color: var(--hud-dim); }
+.obj-input, .obj-select {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--hud-text);
+  background: var(--hud-input);
+  border: 1px solid var(--hud-line);
+  border-radius: 7px;
+  padding: 5px 8px;
+  transition: border-color 0.15s var(--hud-ease);
+}
+.obj-input:focus, .obj-select:focus { outline: none; border-color: var(--hud-accent); }
+.obj-sep { height: 1px; background: var(--hud-line-soft); margin: 8px 0; }
+.range-status { flex: 1; min-width: 0; font-size: 10px; color: var(--hud-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obj-mini {
+  flex: none;
+  padding: 4px 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--hud-dim);
+  background: var(--hud-input);
+  border: 1px solid var(--hud-line);
+  border-radius: 7px;
+  cursor: pointer;
+}
+.obj-mini.on { color: #04120c; background: var(--hud-accent); border-color: var(--hud-accent); }
+.obj-mini.danger { color: var(--hud-danger); margin-top: 4px; width: 100%; }
+.obj-range { flex: 1; accent-color: var(--hud-accent); }
+.bp-val {
+  flex: none;
+  width: 40px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--hud-text);
+  font-variant-numeric: tabular-nums;
+}
+.bp-seg { display: flex; gap: 4px; }
+.seg-btn {
+  padding: 4px 12px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--hud-dim);
+  background: var(--hud-input);
+  border: 1px solid var(--hud-line);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: border-color 0.14s var(--hud-ease), color 0.14s var(--hud-ease), background 0.14s var(--hud-ease);
+}
+.seg-btn:hover { border-color: var(--hud-line-hi); color: var(--hud-text); }
+.seg-btn.on { color: #04120c; background: var(--hud-accent); border-color: var(--hud-accent); }
+.xz-seg { display: flex; gap: 6px; margin-bottom: 8px; }
+.xz-seg .seg-btn { flex: 1; }
+.scale-row { display: flex; gap: 8px; align-items: center; }
+.scale-min, .scale-max { font-family: var(--font-mono); font-size: 9px; color: var(--hud-faint); }
+.scale-range { flex: 1; accent-color: var(--hud-accent); }
+.scale-val {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--hud-text);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+.ins-foot { display: flex; gap: 8px; margin-top: 12px; }
+.ins-del { border: 0; background: rgba(255, 107, 107, 0.1); color: var(--hud-danger); border: 1px solid rgba(255, 107, 107, 0.4); }
+.ins-del.armed { background: var(--hud-danger); color: #fff; }
+.ins-empty { color: var(--hud-faint); font-size: 11px; text-align: center; padding: 8px 0 6px; }
+
+/* 设备健康环 */
+.health-body { display: flex; align-items: center; gap: 14px; }
+.donut-wrap { position: relative; width: 118px; height: 118px; flex: none; }
+.donut-wrap canvas { width: 118px; height: 118px; }
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+.donut-center b { font-family: var(--font-mono); font-size: 21px; font-weight: 700; color: var(--hud-accent); }
+.donut-center span { font-size: 9.5px; color: var(--hud-faint); }
+.health-legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.hl-row { display: flex; align-items: center; gap: 7px; font-size: 11.5px; }
+.hl-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.hl-row .n { margin-left: auto; font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--hud-text); }
+
+/* 实时事件 */
+.event-list {
+  flex: 1;
+  min-height: 0;
+  max-height: 200px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden auto;
+}
+.event-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 7px;
+  transition: background 0.13s var(--hud-ease);
+}
+.event-row:hover { background: rgba(53, 224, 160, 0.05); }
+.ev-time { flex: none; font-family: var(--font-mono); font-size: 9px; font-variant-numeric: tabular-nums; color: var(--hud-faint); }
+.ev-name {
+  flex: none;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--hud-text);
+}
+.ev-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  color: var(--hud-dim);
+}
+.event-empty { padding: 12px; font-family: var(--font-mono); font-size: 9.5px; color: var(--hud-faint); text-align: center; }
+
+/* 导航图 */
+.mm-body { display: flex; gap: 8px; align-items: stretch; }
+.mm-wrap {
+  flex: 1;
+  position: relative;
+  border-radius: var(--hud-r-md);
+  overflow: hidden;
+  border: 1px solid #223050;
+  min-height: 148px;
+  background: #060b13;
+}
+.mini-svg { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+.nav-cv { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+.alarm-list { display: flex; flex-direction: column; }
+.al-row {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 9px 8px;
+  border-radius: var(--hud-r-md);
+  transition: background 0.15s;
+}
+.al-row:hover { background: #101a2c; }
+.al-ico {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.al-ico.crit { background: rgba(255, 107, 107, 0.12); color: var(--hud-danger); }
+.al-ico.warn { background: rgba(246, 196, 83, 0.12); color: var(--hud-amber); }
+.al-ico.info { background: rgba(65, 200, 244, 0.12); color: var(--hud-cyan); }
+.al-svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.al-body { flex: 1; min-width: 0; }
+.al-txt { font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--hud-text); }
+.al-src { font-family: var(--font-mono); font-size: 9.5px; color: var(--hud-faint); margin-top: 2px; }
+.al-state {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  flex: none;
+  cursor: pointer;
+  border: 1px solid;
+  background: transparent;
+  margin-top: 2px;
+}
+.al-state.s0 { color: var(--hud-danger); background: rgba(255, 107, 107, 0.1); border-color: rgba(255, 107, 107, 0.4); }
+.al-state.s1 { color: var(--hud-amber); background: rgba(246, 196, 83, 0.1); border-color: rgba(246, 196, 83, 0.35); }
+.al-state.s2 { color: var(--hud-dim); background: rgba(143, 160, 181, 0.08); border-color: rgba(143, 160, 181, 0.3); }
+.al-empty { color: var(--hud-faint); font-size: 11.5px; text-align: center; padding: 14px 0; }
+.nav-bell-warn { color: var(--hud-danger); border-color: rgba(255, 107, 107, 0.5); }
+.mm-col { display: flex; flex-direction: column; gap: 6px; }
+.mm-col .vp-tool { width: 30px; height: 30px; border-radius: 8px; }
+.mm-meta {
+  margin-top: 8px;
+  font-size: 9.5px;
+  color: var(--hud-faint);
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* ===== 浮动:员工会话台 / 频道边界 / 芯片 ===== */
+/* 会话记录侧边嵌入态:静态入轨,高度受限滚动(悬浮壳已废) */
+.rpg-lines.chat-embed {
+  max-height: 268px;
+  padding: 2px 0 4px;
+  background: rgba(15, 23, 38, 0.5);
+  border: 1px solid var(--hud-line-soft);
+  border-radius: var(--hud-r-md);
+}
+.chat-sect {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chat-sect .chat-refresh { margin-left: auto; }
+.chat-id-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.chat-badge {
+  --p-acc: var(--hud-accent);
   flex: none;
   width: 34px;
   height: 34px;
   display: grid;
   place-items: center;
-  font-family: var(--font-display);
-  font-size: 16px;
+  font-family: var(--font-mono);
+  font-size: 15px;
   font-weight: 700;
   color: var(--p-acc);
-  background: radial-gradient(circle, color-mix(in srgb, var(--p-acc) 24%, transparent), transparent 70%);
-  border: 1px solid color-mix(in srgb, var(--p-acc) 55%, transparent);
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-acc) 14%, transparent);
+  background: color-mix(in srgb, var(--p-acc) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--p-acc) 45%, transparent);
+  border-radius: var(--hud-r-sm);
 }
-.rpg-nameplate {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-.rpg-nameplate .agent-chat-name {
-  color: var(--hud-text, #d8e2ea);
-  letter-spacing: 0.05em;
-  font-size: 13px;
-}
-.rpg-nameplate .agent-chat-live {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  color: var(--hud-ok, #7fd4a0);
-}
-.rpg-tag {
-  margin-left: auto;
+.chat-nameplate { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.chat-name { font-size: 13px; font-weight: 650; color: var(--hud-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-meta { display: flex; gap: 6px; align-items: center; }
+.chat-state {
   font-family: var(--font-mono);
   font-size: 8.5px;
-  letter-spacing: 0.18em;
-  color: var(--hud-dim, #7f919e);
-  padding: 2px 6px;
-  border: 1px solid var(--hud-line, #2a3844);
-  border-radius: 2px;
+  letter-spacing: 0.1em;
+  color: var(--hud-dim);
+  padding: 1px 6px;
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
 }
-.rpg-lines {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px 12px;
-  max-height: 330px;
-  overflow: hidden auto;
-}
-.rpg-divider {
+/* 职务章:Leader(琥珀=指挥)/ Worker(青=执行),与 KPI 语义色同源 */
+.chat-role {
   font-family: var(--font-mono);
   font-size: 8.5px;
-  letter-spacing: 0.2em;
-  text-align: center;
-  color: var(--hud-dim, #7f919e);
-  margin: 2px 0;
-  opacity: 0.8;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 1px 7px;
+  border-radius: 6px;
 }
-.rpg-divider.live {
-  color: var(--hud-amber, #f0a04c);
-}
-.rpg-line {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-.rpg-ava {
-  --p-acc: #4fa8ff;
+.chat-role.r-lead { color: var(--hud-amber); background: rgba(246, 196, 83, 0.1); border: 1px solid rgba(246, 196, 83, 0.45); }
+.chat-role.r-worker { color: var(--hud-cyan); background: rgba(65, 200, 244, 0.1); border: 1px solid rgba(65, 200, 244, 0.4); }
+.chat-state.s-busy { color: var(--hud-amber); border-color: rgba(246, 196, 83, 0.5); }
+.chat-state.s-stopped { color: var(--hud-danger); border-color: rgba(255, 107, 107, 0.5); }
+.chat-harness { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.1em; color: var(--hud-faint); }
+.chat-count { font-family: var(--font-mono); font-size: 8.5px; color: var(--hud-faint); }
+.chat-refresh {
   flex: none;
   width: 22px;
   height: 22px;
-  display: grid;
-  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--hud-dim);
+  background: transparent;
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.14s var(--hud-ease), color 0.14s var(--hud-ease), transform 0.32s var(--hud-ease);
+}
+.chat-refresh:hover { border-color: var(--hud-accent); color: var(--hud-accent); }
+.chat-refresh:active { transform: rotate(180deg); }
+.rpg-lines {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px 12px;
+  overflow: hidden auto;
+}
+.rpg-divider { margin: 4px 0 2px; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.2em; color: var(--hud-faint); }
+.rpg-divider.live { color: var(--hud-amber); }
+.rpg-line { display: flex; gap: 8px; align-items: flex-start; }
+.rpg-time {
+  flex: none;
+  width: 52px;
+  text-align: right;
+  margin-top: 5px;
   font-family: var(--font-mono);
   font-size: 9px;
-  color: var(--p-acc);
-  background: color-mix(in srgb, var(--p-acc) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--p-acc) 40%, transparent);
-  border-radius: 50%;
-  margin-top: 2px;
-}
-.rpg-ava.mini {
-  width: 18px;
-  height: 18px;
-  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--hud-faint);
 }
 .rpg-bubble {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
   padding: 7px 11px;
-  background: var(--hud-panel-raised, #151e29);
-  border: 1px solid var(--hud-line, #2a3844);
-  border-left: 2px solid var(--hud-accent, #4fa8ff);
-  border-radius: 2px 8px 8px 8px;
+  background: var(--hud-panel-2);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-r-md);
 }
-.rpg-line.hist .rpg-bubble {
-  opacity: 0.72;
-  border-left-color: var(--hud-dim, #7f919e);
-}
+.rpg-line.hist { opacity: 0.62; }
 .rpg-line.live .rpg-bubble {
-  animation: rpg-in 0.28s ease-out both;
+  animation: rise 0.26s var(--hud-ease) both;
+  background: #14213a;
+  border-color: var(--hud-line-hi);
 }
-@keyframes rpg-in {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+.rpg-kind { align-self: flex-start; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.14em; color: var(--hud-faint); }
+.rpg-kind.k-artifact { color: var(--hud-accent); }
+.rpg-kind.k-error { color: var(--hud-danger); }
+.rpg-text { font-size: 13px; line-height: 1.6; color: var(--hud-text); word-break: break-word; text-wrap: pretty; }
+.rpg-line.live .rpg-text { color: #edf4fa; }
+.rpg-typing { display: flex; gap: 4px; align-items: center; padding: 5px 2px; }
+.ty-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--hud-amber);
+  animation: ty-bounce 1.15s var(--hud-ease) infinite;
 }
-.rpg-kind {
-  font-family: var(--font-mono);
-  font-size: 8.5px;
-  letter-spacing: 0.14em;
-  color: var(--hud-dim, #7f919e);
+.ty-dot:nth-child(2) { animation-delay: 0.15s; }
+.ty-dot:nth-child(3) { animation-delay: 0.3s; }
+.ty-label { margin-left: 5px; font-family: var(--font-mono); font-size: 9px; color: var(--hud-faint); }
+.rpg-note { font-family: var(--font-mono); font-size: 10px; color: var(--hud-dim); text-align: center; padding: 14px 0; }
+
+/* 频道边界编辑(浮动) */
+.boundary-panel {
+  position: absolute;
+  top: 84px;
+  left: 16px;
+  width: 302px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 14px;
+  z-index: 9;
+  background: linear-gradient(180deg, rgba(16, 24, 39, 0.97), rgba(13, 20, 32, 0.97));
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-r-lg);
+  box-shadow: var(--hud-shadow);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
 }
-.rpg-text {
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--hud-text, #d8e2ea);
-  word-break: break-word;
+.bp-title { display: flex; gap: 8px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--hud-line); cursor: grab; touch-action: none; }
+.bp-title:active { cursor: grabbing; }
+.bp-name { font-size: 13px; font-weight: 700; color: var(--hud-text); }
+.bp-sub { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.12em; color: var(--hud-faint); }
+.bp-tabs { display: flex; gap: 4px; margin-left: auto; }
+.bp-tab {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--hud-dim);
+  background: var(--hud-input);
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  cursor: pointer;
 }
-.rpg-line.live .rpg-text {
-  color: #eaf2f8;
+.bp-tab.on { color: #04120c; background: var(--hud-accent); border-color: var(--hud-accent); }
+.bp-row { display: flex; gap: 8px; align-items: center; }
+.bp-label { flex: none; width: 52px; font-size: 10.5px; color: var(--hud-dim); }
+.bp-range { flex: 1; accent-color: var(--hud-accent); }
+.bp-hint { font-size: 10px; line-height: 1.6; color: var(--hud-faint); }
+.bp-actions { display: flex; gap: 6px; margin-top: 4px; }
+.bp-btn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--hud-text);
+  background: transparent;
+  border: 1px solid #27395c;
+  border-radius: var(--hud-r-sm);
+  cursor: pointer;
 }
-.rpg-note {
+.bp-btn:hover { border-color: #33507c; background: #14203a; }
+.bp-btn.save { color: #04120c; background: var(--hud-accent-dim); border-color: var(--hud-accent-dim); }
+.bp-btn.save:hover { background: #25b57e; }
+.bp-btn.danger { color: var(--hud-danger); border-color: rgba(255, 107, 107, 0.4); }
+.bp-btn.danger:hover { background: rgba(255, 107, 107, 0.1); }
+.member-list { display: flex; flex-direction: column; gap: 5px; max-height: 220px; overflow: hidden auto; }
+.member-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--hud-panel-2);
+  border: 1px solid var(--hud-line-soft);
+  border-radius: var(--hud-r-md);
+}
+.member-ava {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--hud-dim, #7f919e);
-  text-align: center;
-  padding: 14px 0;
-  opacity: 0.8;
+  font-weight: 700;
+  color: var(--hud-text);
+  background: var(--hud-panel-raised);
+  border: 1px solid var(--hud-line);
+  border-radius: 7px;
+}
+.member-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.member-name { font-size: 11px; font-weight: 600; color: var(--hud-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-role { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.06em; color: var(--hud-faint); }
+.member-role.r-lead { color: var(--hud-amber); }
+.member-role.r-worker { color: var(--hud-cyan); }
+.member-select { flex: 1; min-width: 0; font-size: 10px; color: var(--hud-text); background: var(--hud-input); border: 1px solid var(--hud-line); border-radius: 6px; padding: 3px 6px; }
+
+/* 芯片(Toast 风) */
+.drop-chip, .error-chip {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 11.5px;
+  background: rgba(14, 22, 38, 0.96);
+  border: 1px solid #2a3d63;
+  border-radius: var(--hud-r-md);
+  box-shadow: var(--hud-shadow);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drop-chip { color: var(--hud-accent); }
+.error-chip { color: var(--hud-danger); border-color: rgba(255, 107, 107, 0.4); }
+
+/* 数采绑定/信息 */
+/* 数采绑定行(设计稿 bind-row:图标 + 通道 + 实时值 + 迷你折线 + 解绑) */
+.bind-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  margin-bottom: 6px;
+  background: #0f1726;
+  border: 1px solid var(--hud-line-soft);
+  border-radius: var(--hud-r-md);
+}
+.bind-ico {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--hud-accent);
+  background: #0d1a26;
+  border-radius: 7px;
+}
+.bind-svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.bind-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.bind-label { font-size: 11px; font-weight: 600; color: var(--hud-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bind-val { font-family: var(--font-mono); font-size: 10px; color: var(--hud-cyan); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bind-val b { font-size: 11px; font-weight: 700; }
+.bind-spark { width: 56px; height: 20px; flex: none; }
+.bind-x {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--hud-faint);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.bind-x:hover { background: rgba(255, 107, 107, 0.12); color: var(--hud-danger); }
+.bind-add-wrap { position: relative; }
+.bind-add {
+  width: 100%;
+  height: 30px;
+  font-size: 11px;
+  color: var(--hud-dim);
+  background: transparent;
+  border: 1px dashed #274064;
+  border-radius: var(--hud-r-sm);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.bind-add:hover { border-color: var(--hud-accent-dim); color: var(--hud-accent); }
+.bind-pop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 4px);
+  z-index: 30;
+  overflow: hidden;
+  background: #0e1626;
+  border: 1px solid #27395c;
+  border-radius: var(--hud-r-md);
+  box-shadow: var(--hud-shadow-pop, 0 16px 40px rgba(0, 0, 0, 0.55));
+}
+.bind-pop button {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 10px;
+  font-size: 11.5px;
+  color: var(--hud-dim);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.bind-pop button:hover { background: #12203a; color: var(--hud-text); }
+.bind-pop .bind-svg { color: var(--hud-accent); }
+.daq-bind-bar { display: flex; gap: 6px; }
+.bind-select {
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--hud-dim);
+  background: var(--hud-input);
+  border: 1px dashed #274064;
+  border-radius: var(--hud-r-sm);
+  padding: 5px 8px;
+}
+.bind-select:focus { outline: none; border-color: var(--hud-accent); color: var(--hud-text); }
+.bind-add-btn {
+  flex: none;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #04120c;
+  background: var(--hud-accent-dim);
+  border: 0;
+  border-radius: var(--hud-r-sm);
+  cursor: pointer;
+}
+.bind-add-btn:disabled { opacity: 0.4; cursor: default; }
+.daq-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--hud-dim);
+  padding: 3px 0;
+}
+.daq-info-row b { font-family: var(--font-mono); font-weight: 600; color: var(--hud-text); font-variant-numeric: tabular-nums; }
+.daq-info-row b.cy { color: var(--hud-cyan); font-size: 13px; }
+
+/* ===== 状态栏 ===== */
+.statusbar {
+  height: 30px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+  background: #0a101b;
+  border-top: 1px solid var(--hud-line-soft);
+  font-size: 11px;
+  color: var(--hud-dim);
+  position: relative;
+  z-index: 60;
+}
+.statusbar b { color: var(--hud-accent); font-weight: 600; }
+.statusbar .sb-stats {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.sb-stats b { color: var(--hud-text); font-weight: 600; }
+.sb-stats i { font-style: normal; color: var(--hud-line-hi); }
+.sb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hud-accent);
+  box-shadow: 0 0 6px var(--hud-accent);
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.sb-dot.red { background: var(--hud-danger); box-shadow: 0 0 6px var(--hud-danger); }
+.sb-dot:not(.red) { animation: sb-pulse 2.4s var(--hud-ease) infinite; }
+@keyframes sb-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-dot:not(.red) { animation: none; }
+}
+.sb-lat {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.statusbar .copy { margin-left: auto; color: var(--hud-faint); font-family: var(--font-mono); font-size: 10px; }
+
+/* ===== 加载遮罩 ===== */
+.loading-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  background: var(--hud-bg);
+}
+.loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 2.5px solid var(--hud-line);
+  border-top-color: var(--hud-accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+.loading-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: var(--hud-dim);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes ty-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+
+/* 拖动面板抓手 */
+.drag-grip { cursor: grab; touch-action: none; }
+.drag-grip:active { cursor: grabbing; }
+.drag-panel { will-change: left, top; }
+
+/* 滚动条 */
+.town-view ::-webkit-scrollbar { width: 8px; height: 8px; }
+.town-view ::-webkit-scrollbar-track { background: transparent; }
+.town-view ::-webkit-scrollbar-thumb { background: #1c2942; border-radius: 4px; border: 2px solid #080d16; }
+.town-view ::-webkit-scrollbar-thumb:hover { background: #2c4568; }
+
+/* ============================================================
+ * 微交互抛光(丝滑:统一曲线 + 按压反馈 + 键盘焦点环 + 降级动画)
+ * ============================================================ */
+/* 按压态:轻微下沉,松手回弹(所有可点元件统一手感) */
+.btn:active, .vp-tool:active, .mini-btn:active, .snap-toggle:active,
+.lg-chip:active, .bind-add:active, .bind-x:active, .al-state:active,
+.bp-btn:active, .obj-mini:active {
+  transform: scale(0.96);
+}
+.btn, .vp-tool, .mini-btn, .snap-toggle, .lg-chip, .bind-add, .al-state, .bp-btn, .obj-mini {
+  transition-property: filter, background, border-color, color, transform, opacity;
+  transition-duration: 0.15s;
+  transition-timing-function: var(--hud-ease);
+}
+/* 键盘可达:焦点环(设计稿 --focus-ring) */
+.town-view button:focus-visible,
+.town-view input:focus-visible,
+.town-view select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--hud-bg), 0 0 0 4px rgba(65, 200, 244, 0.45);
+  border-radius: 6px;
+}
+/* 视口标题明确亮色(避免继承发灰) */
+.vp-title h2 { color: var(--hud-text); }
+/* E-STOP armed 呼吸(设计稿 estop keyframes) */
+@keyframes estop-pulse { 50% { filter: brightness(1.35); } }
+.btn-danger.armed { animation: estop-pulse 1s ease-in-out infinite; }
+/* 减少动态偏好:关停入场/呼吸动画 */
+@media (prefers-reduced-motion: reduce) {
+  .inspector, .callout { animation: none; }
+  .btn-danger.armed { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rpg-line.live .rpg-bubble, .ty-dot, .loading-spinner { animation: none; }
+}
+
+/* 窄屏:轨道收为抽屉 */
+@media (max-width: 1180px) {
+  .app { grid-template-columns: 0 1fr 0; }
+  .rail { position: fixed; top: 50px; bottom: 30px; z-index: 70; width: 288px; background: #0a101b; transition: transform 0.22s var(--hud-ease); box-shadow: var(--hud-shadow); }
+  .rail-left { left: 0; transform: translateX(-104%); }
+  .rail-right { right: 0; transform: translateX(104%); }
+  .dock { grid-template-columns: 1fr; }
+  .stage-dock { grid-template-columns: 1fr; }
 }
 </style>

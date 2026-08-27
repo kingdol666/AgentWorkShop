@@ -158,6 +158,18 @@ export const userService = {
     return { id: tokenId }
   },
 
+  /** 查看存档明文（仅本人）；undefined=token 不存在，null=旧数据未存档 */
+  revealToken(userId: string, tokenId: string): string | null {
+    const plain = userRepository.findTokenPlain(userId, tokenId)
+    if (plain === undefined) {
+      throw new AppError(404, ErrorCodes.NOT_FOUND, 'token 不存在或不属于当前用户')
+    }
+    if (plain === null) {
+      throw new AppError(410, 'TOKEN_PLAIN_GONE', '该 token 创建于旧版本（仅存哈希），无法查看明文；请重新签发')
+    }
+    return plain
+  },
+
   /** 公开档案（不含敏感字段） */
   publicProfile(u: { id: string, name: string, email: string, role: string, createdAt: string }): AuthResult['user'] {
     return { id: u.id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt }

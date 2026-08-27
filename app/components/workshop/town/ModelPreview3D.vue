@@ -10,6 +10,7 @@
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 
 const props = withDefaults(defineProps<{
   /** 已上传模型 URL(/assets/...) */
@@ -66,6 +67,9 @@ function mountScene(source: string | ArrayBuffer, onFail?: () => void): void {
     renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: 'low-power' })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     renderer.setSize(w, h)
+    // 与主场景同管线:ACES 色调映射(金属深色模型在缩略图里不再发黑)
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
+    renderer.toneMappingExposure = 1.15
     renderer.domElement.style.width = '100%'
     renderer.domElement.style.height = `${h}px`
     renderer.domElement.style.pointerEvents = 'none'
@@ -76,11 +80,19 @@ function mountScene(source: string | ArrayBuffer, onFail?: () => void): void {
   const camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 100)
   camera.position.set(2.4, 1.8, 3.1)
   camera.lookAt(0, 0, 0)
-  scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x3a2f25, 1.1))
-  const key = new THREE.DirectionalLight(0xfff2df, 1.6)
+  // PBR 环境光:金属/粗糙材质获得反射(无环境的金属 GLB = 纯黑)
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer)
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+    scene.environmentIntensity = 0.55
+    pmrem.dispose()
+  }
+  catch { /* 环境不可用:退回灯光方案 */ }
+  scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x3a2f25, 1.3))
+  const key = new THREE.DirectionalLight(0xfff2df, 2.2)
   key.position.set(3, 4, 2)
   scene.add(key)
-  const rim = new THREE.DirectionalLight(0x4fa8ff, 0.9)
+  const rim = new THREE.DirectionalLight(0x4da3ff, 1.0)
   rim.position.set(-3, 1, -2.5)
   scene.add(rim)
 
@@ -190,9 +202,9 @@ onBeforeUnmount(dispose)
   width: 100%;
   min-height: 40px;
   background:
-    radial-gradient(120% 90% at 50% 20%, rgba(79, 168, 255, 0.14), transparent 62%),
+    radial-gradient(120% 90% at 50% 20%, rgba(77, 163, 255, 0.12), transparent 62%),
     linear-gradient(180deg, #0b121b, #0e141d);
-  border: 1px solid var(--hud-line, #2a3844);
+  border: 1px solid var(--hud-line, #263340);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -205,8 +217,8 @@ onBeforeUnmount(dispose)
 .mp-spin {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(79, 168, 255, 0.25);
-  border-top-color: #4fa8ff;
+  border: 2px solid rgba(77, 163, 255, 0.25);
+  border-top-color: #4da3ff;
   border-radius: 50%;
   animation: mp-spin 0.8s linear infinite;
 }

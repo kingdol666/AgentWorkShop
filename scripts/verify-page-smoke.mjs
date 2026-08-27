@@ -43,7 +43,7 @@ try {
     console.log('town state:', JSON.stringify(state))
     await page.screenshot({ path: `${OUT}/town-3d.png` })
 
-    // 选中第一个 Agent → 触发精魂会话台(大字号会话窗)
+    // 选中第一个 Agent → 触发员工会话台(大字号会话窗)
     const agentSel = await page.evaluate(() => {
       const s = window.__town?.scene
       if (!s) return null
@@ -54,7 +54,7 @@ try {
     })
     console.log('agent selected:', JSON.stringify(agentSel))
 
-    // 注入实时对话(演示头顶大字号气泡 + 精魂会话台实时消费)
+    // 注入实时对话(演示头顶大字号气泡 + 员工会话台实时消费)
     const demoCh = await fetch(`${BASE}/api/workshop/channels`, { headers: { authorization: `Bearer ${TOKEN}` } }).then(r => r.json())
     const targetCh = (demoCh.data ?? [])[0]
     if (targetCh?.id) {

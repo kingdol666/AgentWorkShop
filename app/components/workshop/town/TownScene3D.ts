@@ -15,6 +15,8 @@
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { mapEnvelopeToIntent, type TownBubbleKind } from '#shared/town-protocol'
 import { parseActionFromEnvelope, stepToward, type ActionKind, type ActionContext } from '#shared/town-behavior'
@@ -22,9 +24,9 @@ import { parseActionFromEnvelope, stepToward, type ActionKind, type ActionContex
 import {
   AGENT_SPEED, ARRIVE, BUBBLE_Y, GROUND_Y, SNAP_SIZE, UNITS, WAIT_MS,
   WORLD_CX, WORLD_CZ, WORLD_H, WORLD_W,
-  boundaryPoints, bubbleDisplayMs, channelColorNum,
-  clampRangeToLayout, clampToAgentRange, clampToBoundary, distToRangeBoundary,
-  normLayout, pointInBoundary,
+  boundaryPoints, bubbleDisplayMs, channelColorNum, drainDisplayMs,
+  clampToAgentRange, clampToBoundary, distToRangeBoundary,
+  normLayout, pointInBoundary, toLocal,
   type AgentRangeLayout, type ChannelLayout,
 } from '#shared/town-scene-math'
 
@@ -36,7 +38,7 @@ export type TownEventMap = {
   fps: number
   agentCount: number
   blockCount: number
-  lastActivity: { channelId: string, agentName: string, text: string } | null
+  lastActivity: { channelId: string, agentName: string, text: string, at?: number } | null
   behavior: { agentName: string, action: string, targetName: string | null } | null
   /** 选中 Agent/设备(供 Vue 弹缩放/旋转滑杆);null 取消选中 */
   select: { kind: 'agent' | 'device', id: string, scale: number, rotation: number } | null
@@ -68,6 +70,8 @@ export interface DeviceTwinSync {
   id: string
   name: string
   modelRef: string
+  /** 实体类别:'device' 常规设备(GLB) / 'daq' 数采节点(程序化网格);后端为宽 string */
+  kind?: string
   state?: 'idle' | 'running' | 'offline' | 'alarm'
   telemetry?: Record<string, number | string | boolean>
   posX?: number
@@ -128,7 +132,7 @@ class Block3D {
   platform!: THREE.Mesh
   /** 领地边缘发光环(工业孪生边界告示;随平台移动) */
   padRing!: THREE.Mesh
-  /** 领地中央信标灯柱(领队台座标记) */
+  /** 中央信标(HMI 定位销:点击 → 定位频道中心 + 唤醒边界编辑) */
   beacon!: THREE.Group
   /** 活动边界(编辑高亮) */
   boundary!: THREE.LineLoop
@@ -222,7 +226,6 @@ class Block3D {
       a.homeX = c.x
       a.homeZ = c.z
       if (a.range) {
-        a.range = clampRangeToLayout(layout, a.range)
         a.renderRangeLine()
         const cc = clampToAgentRange(a.range, a.homeX, a.homeZ, 0)
         if (cc.x !== a.homeX || cc.z !== a.homeZ) {
@@ -274,8 +277,8 @@ class Agent3D {
   mixer!: THREE.AnimationMixer | null
   /** 当前模型动画 clip(若有) */
   clips!: THREE.AnimationClip[]
-  /** 脚下同频道色环 */
-  aura!: THREE.Mesh
+  /** 身份色(频道哈希色;气泡/小地图等取色数据源) */
+  colorNum!: number
   /** 头顶名字 Sprite */
   nameSprite!: THREE.Sprite
   /** 当前气泡 */
@@ -317,7 +320,7 @@ class Agent3D {
     model: THREE.Group
     mixer: THREE.AnimationMixer | null
     clips: THREE.AnimationClip[]
-    aura: THREE.Mesh
+    colorNum: number
     nameSprite: THREE.Sprite
     bubble: THREE.Sprite | null
     bubbleText: string | null
@@ -524,7 +527,7 @@ class Agent3D {
       this.rangeLine = null
     }
     if (!this.range) return
-    const color = this.range.shape === 'rect' ? 0x9fe8d4 : 0x8fb7ff
+    const color = 0x4da3ff
     const line = makeBoundary(this.range.shape, this.range.radiusX, this.range.radiusZ, color)
     // 虚线描边(与频道实线边界区分;2.5D 可读性)
     line.material = new THREE.LineDashedMaterial({ color, transparent: true, opacity: 0.75, depthTest: false, dashSize: 14, gapSize: 9 })
@@ -595,7 +598,7 @@ class DeviceNode {
 
   /** 状态环颜色(数据驱动:state → 环色) */
   updateRing(): void {
-    const color = this.state === 'alarm' ? 0xff6b6b : this.state === 'offline' ? 0x9aa4ae : this.state === 'running' ? 0x8fe8d4 : 0xf0c05a
+    const color = this.state === 'alarm' ? 0xff6b5c : this.state === 'offline' ? 0x8496a5 : this.state === 'running' ? 0x57d29a : 0xf5a742
     ;(this.ring.material as THREE.MeshBasicMaterial).color.setHex(color)
   }
 
@@ -650,13 +653,15 @@ interface ChannelMessageReceiver {
 /** 世界尺度/速度/身份色等纯常量与函数集中定义于 #shared/town-scene-math(与 2D/测试共用) */
 
 /** 角色模型来源登记(registerModelsFromList) */
-interface ModelInfo { id: string, file: string, name: string, kind?: string }
+interface ModelInfo { id: string, file: string, name: string, kind?: string, hFactor?: number }
 
 export class TownScene3D {
   private renderer!: THREE.WebGLRenderer
   private camera!: THREE.PerspectiveCamera
   /** 相机注视目标(拖拽平移它,zoom 微调距离) */
   private camTarget = new THREE.Vector3(WORLD_CX, 20, WORLD_CZ)
+  /** 主方向光(阴影相机范围随 dolly 扩,大领地投影不消失) */
+  private keyLight!: THREE.DirectionalLight
   private scene!: THREE.Scene
   private ground!: THREE.Mesh
   /** 穹顶天幕(随镜头平移,保证无限视野观感) */
@@ -665,6 +670,18 @@ export class TownScene3D {
   private agents = new Map<string, Agent3D>()
   /** 数字孪生设备节点(twinId → node) */
   private deviceNodes = new Map<string, DeviceNode>()
+  /** 数采节点顶端 LED 环(twinId → 环;渲染循环缓转呼吸) */
+  private daqLedRings = new Map<string, THREE.Mesh>()
+  /** 数采→设备 绑定链路(虚线贝塞尔 + 流动脉冲;syncDaqLinks 维护) */
+  private daqLinkGroup = new THREE.Group()
+  private daqLinks: Array<{ daqId: string, deviceId: string, line: THREE.Line, pulse: THREE.Mesh, curve: THREE.QuadraticBezierCurve3, pt: number }> = []
+  private daqLinkSig = ''
+  /** 期望链路(TownView 传入;设备节点晚到时由 syncDevices 末尾重仲裁) */
+  private daqLinksWanted: Array<{ daqId: string, deviceId: string }> = []
+  /** 薄膜 web(产线设备之间的半透明膜;按 X 序连接挤出→流延→MD→TD→收卷) */
+  private filmWebGroup = new THREE.Group()
+  private filmWebSig = ''
+  private filmWebMat: THREE.MeshStandardMaterial | null = null
   /** 服务端已有但模型资产尚未注册的设备孪生，资产到达后补建节点。 */
   private pendingDeviceTwins = new Map<string, DeviceTwinSync>()
   /** 尚未取得服务端 ID 的本地设备节点(临时 ID → 创建请求初始状态)。 */
@@ -691,6 +708,15 @@ export class TownScene3D {
   private disposed = false
   /** 当前相机缩放(滚轮;作用于 dolly 距离) */
   private dolly = 1.0
+  /** 轨道相机状态机(Blender 规范):yaw 方位角 / pitch 仰角 / radius 半径。
+   *  viewTarget 供预设平滑趋近;左键环绕直接改双值(即时跟手)。 */
+  private autoOrbit = false
+  private viewCur = { yaw: 0, pitch: 0.7, radius: 1178 }
+  private viewTarget = { yaw: 0, pitch: 0.7, radius: 1178 }
+  /** Blender 式变换手柄(选中设备;G 移动 / R 旋转 / S 缩放) */
+  private tControls: TransformControls | null = null
+  /** 舞台尺寸观察器 */
+  private resizeOb: ResizeObserver | null = null
   /** 编辑 / 浏览模式(浏览只读:设备/角色不可拖,仅点选) */
   private mode: TownScene3DMode = 'browse'
   /** 正在拖曳的场景对象(编辑模式):设备 / 角色落点 / 频道整体 / 边界手柄 / Agent 活动范围 */
@@ -699,6 +725,7 @@ export class TownScene3D {
     | { kind: 'agent', id: string }
     | { kind: 'channel', id: string, dx: number, dz: number }
     | { kind: 'resize', id: string, handle: number }
+    | { kind: 'channelEdge', id: string, rx0: number, rz0: number, rd0: number }
     | { kind: 'rangeDraw', id: string, x0: number, z0: number }
     | { kind: 'agentRange', id: string, dx: number, dz: number }
     | { kind: 'agentRangeResize', id: string, handle: number }
@@ -707,7 +734,6 @@ export class TownScene3D {
   /** 网格吸附(编辑拖拽落点对齐 16 单位网格) */
   private snapEnabled = true
   /** 选中高亮环(编辑模式,跟随当前选中设备/角色) */
-  private selRing: THREE.Mesh | null = null
   /** 边界缩放手柄(编辑模式选中频道时显示;拖拽手柄调整 radiusX/radiusZ) */
   private resizeHandles: Array<{ mesh: THREE.Mesh, cid: string, handle: number }> = []
   /** Agent 活动范围缩放手柄(编辑模式选中带范围角色时显示;拖拽调整该 Agent 范围大小) */
@@ -720,8 +746,8 @@ export class TownScene3D {
   private rangeDrawPreviewState: { x0: number, z0: number, x1: number, z1: number } | null = null
   /** setAgentRangeScene 中因范围收缩而位移的 home(面板提交时一并落库) */
   private rangeHomeMoved: { agentId: string, x: number, z: number } | null = null
-  private lastActivity: { channelId: string, agentName: string, text: string } | null = null
-  private recentActivity: Array<{ channelId: string, agentName: string, text: string }> = []
+  private lastActivity: { channelId: string, agentName: string, text: string, at?: number } | null = null
+  private recentActivity: Array<{ channelId: string, agentName: string, text: string, at?: number }> = []
   private dbgBubbles: Array<{ text: string, at: number }> = []
   /** 频道信息接收器(channelId → FIFO 队列;实时信息经 handleTownEvent 入队,渲染循环逐条消费) */
   private receivers = new Map<string, ChannelMessageReceiver>()
@@ -739,9 +765,9 @@ export class TownScene3D {
 
   /** 管理员布局:保存 Agent 落点(由 TownView 注入;经既有 channel_agents.config 持久化) */
   agentApi: {
-    updateHome(agentId: string, x: number, z: number): Promise<unknown>
+    updateHome(agentId: string, channelId: string, x: number, z: number): Promise<unknown>
     /** 保存 Agent 独立活动范围(经 config.range 持久化;null 清除回退频道边界) */
-    updateRange(agentId: string, range: AgentRangeLayout | null): Promise<unknown>
+    updateRange(agentId: string, channelId: string, range: AgentRangeLayout | null): Promise<unknown>
   } | null = null
 
   /** 频道布局持久化(由 TownView 注入;频道拖拽移动/边界拖拽调整后落库) */
@@ -769,11 +795,45 @@ export class TownScene3D {
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    // 电影级色调映射:高光滚降 + 中间调层次,GLB 材质不再"平板曝光"
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = 1.12
     this.el.appendChild(this.renderer.domElement)
+    // 舞台尺寸跟随宿主(网格布局/抽屉/全屏切换都会改变宿主尺寸)
+    this.resizeOb = new ResizeObserver(() => {
+      const w = this.el.clientWidth
+      const h = this.el.clientHeight
+      if (w < 2 || h < 2) return
+      this.renderer.setSize(w, h)
+      this.camera.aspect = w / h
+      this.camera.updateProjectionMatrix()
+      this.dirty = true
+    })
+    this.resizeOb.observe(this.el)
     // 选中:点击 Agent/设备 → 弹缩放/旋转滑杆(经 on('select') 通知 Vue);拖拽释放不触发
+    // 点击语义守卫:记录按下位置;松手位移大 = 相机平移手势 → 不触发点选(含信标)
+    let clickDownAt: { x: number, y: number } | null = null
+    this.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
+      clickDownAt = e.button === 0 ? { x: e.clientX, y: e.clientY } : null
+    })
     this.renderer.domElement.addEventListener('pointerup', (e: PointerEvent) => {
-      if (e.button !== 0 || this.pointerDrag) return
+      if (e.button !== 0 || this.pointerDrag || this.tControls?.dragging) return
+      // 平移手势(按下后移动超 8px)→ 不作点选
+      if (clickDownAt && Math.hypot(e.clientX - clickDownAt.x, e.clientY - clickDownAt.y) > 8) {
+        clickDownAt = null
+        return
+      }
+      clickDownAt = null
       const w = this.screenToWorld(e.clientX, e.clientY)
+      // 频道信标优先(领队驻扎中心与信标重叠;中心 ±34 内点=信标,按住拖=Agent:
+      // 拖拽手势在 pointerup 时因 pointerDrag 存在提前返回,不会误触信标)
+      const beacon = this.pickBeacon(w.x, w.z)
+      if (beacon) {
+        this.setSelected(null)
+        this.selectChannel(beacon.cid)
+        this.focusTo(beacon.x, beacon.z)
+        return
+      }
       const hit = this.pickAt(w.x, w.z)
       if (hit) {
         this.setSelected(hit)
@@ -799,12 +859,31 @@ export class TownScene3D {
         const d = this.deviceNodes.get(hit.id)
         if (d) this.focusTo(d.root.position.x, d.root.position.z)
       }
+      else {
+        // 双击领地(非 Agent/设备落点)→ 对焦该 Channel 中心并选中
+        // (浏览模式:边界面板即刻可用调节范围;编辑模式:缩放手柄同时显示,可拖拽控制)
+        const cid = this.pickChannel(w.x, w.z)
+        const b = cid ? this.blocks.get(cid) : undefined
+        if (b) {
+          this.selectChannel(cid)
+          this.focusTo(b.x, b.z)
+        }
+      }
     })
 
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color(0x0a0f18)
     // 大气纵深:雾把远处柔化进夜色,2.5D 场景立刻有工业孪生的空间感
-    this.scene.fog = new THREE.Fog(0x0a0f18, 1600, 9000)
+    this.scene.fog = new THREE.Fog(0x1b2836, 1400, 8800)
+    // PBR 环境光照:PMREM 室内环境 → 金属/粗糙 GLB 材质获得真实反射与 specular 生命;
+    // 低强度保留夜景工业气氛(只在材质细节里"呼吸",不提亮全场)
+    try {
+      const pmrem = new THREE.PMREMGenerator(this.renderer)
+      this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+      this.scene.environmentIntensity = 0.42
+      pmrem.dispose()
+    }
+    catch { /* 环境贴图失败:退回纯灯光方案 */ }
 
     // 穹顶渐变天幕(深空蓝黑 → 地平线工业暖灰;BackSide 大球,随镜头平移)
     this.skyDome = this.makeSkyDome()
@@ -813,7 +892,7 @@ export class TownScene3D {
     // 边界缩放手柄(编辑模式选中频道时显示;4 个:椭圆轴点 / 矩形角点)
     for (let i = 0; i < 4; i++) {
       const h = new THREE.Mesh(
-        new THREE.TorusGeometry(13, 5, 8, 20),
+        new THREE.TorusGeometry(16, 6, 8, 20),
         new THREE.MeshBasicMaterial({ color: 0xffd27f, transparent: true, opacity: 0.95, depthTest: false }),
       )
       h.rotation.x = Math.PI / 2
@@ -826,7 +905,7 @@ export class TownScene3D {
     for (let i = 0; i < 4; i++) {
       const h = new THREE.Mesh(
         new THREE.TorusGeometry(10, 4, 8, 16),
-        new THREE.MeshBasicMaterial({ color: 0x9fe8d4, transparent: true, opacity: 0.95, depthTest: false }),
+        new THREE.MeshBasicMaterial({ color: 0x4da3ff, transparent: true, opacity: 0.95, depthTest: false }),
       )
       h.rotation.x = Math.PI / 2
       h.position.y = 1.2
@@ -840,35 +919,71 @@ export class TownScene3D {
     this.camera.position.set(WORLD_CX, 760, WORLD_CZ + 900)
     this.camera.lookAt(WORLD_CX, 20, WORLD_CZ)
 
-    // 灯光:环境 + 半球(天空色反弹)+ 主方向光(带阴影)+ 补光 —— 亮而不平,2.5D 立体感
-    this.scene.add(new THREE.AmbientLight(0xd0e4ee, 1.35))
-    const hemi = new THREE.HemisphereLight(0x9fc7e8, 0x3a2f25, 0.55)
+    // Blender 式变换手柄:选中设备时出现(移动 G / 旋转 R / 缩放 S;UI 分段钮 + 键盘同源)
+    const tc = new TransformControls(this.camera, this.renderer.domElement)
+    tc.size = 0.85
+    tc.setMode('translate')
+    tc.showY = false
+    tc.addEventListener('dragging-changed', (e) => {
+      // 手柄拖拽期间压制场景点选/相机平移;松手后设备 transform 落库
+      if (!e.value) {
+        const sel = this.selected
+        if (sel?.kind === 'device' && this.deviceNodes.has(sel.id)) this.persistDeviceTransform(sel.id)
+      }
+    })
+    tc.addEventListener('objectChange', () => {
+      const sel = this.selected
+      if (!sel || sel.kind !== 'device') return
+      const dev = this.deviceNodes.get(sel.id)
+      if (!dev) return
+      // 缩放转移:gizmo 对 root 的缩放倍率转移到模型 holder(免得环/铭牌跟着变大),root 复位
+      if (tc.mode === 'scale' && Math.abs(dev.root.scale.x - 1) > 1e-4) {
+        const reg = this.scalables.get(`device:${sel.id}`)
+        const cur = reg?.userScale ?? 1
+        this.setModelScale(sel.id, Math.min(50, Math.max(0.02, cur * dev.root.scale.x)), 'device')
+        dev.root.scale.set(1, 1, 1)
+      }
+      this.dirty = true
+    })
+    this.tControls = tc
+    this.scene.add(tc.getHelper())
+
+    // 灯光:为 ACES 配平(整体提亮补偿 filmic 滚降;normalBias 消除模型自阴影痤疮)
+    this.scene.add(new THREE.AmbientLight(0xd0e4ee, 1.6))
+    const hemi = new THREE.HemisphereLight(0x9fc7e8, 0x3a2f25, 0.7)
     this.scene.add(hemi)
-    const key = new THREE.DirectionalLight(0xfff4e0, 2.6)
+    const key = new THREE.DirectionalLight(0xfff4e0, 3.2)
     key.position.set(WORLD_CX + 500, 900, WORLD_CZ + 300)
     key.castShadow = true
+    this.keyLight = key
     key.shadow.mapSize.set(2048, 2048)
     key.shadow.camera.left = -1400
     key.shadow.camera.right = 1400
     key.shadow.camera.top = 2000
     key.shadow.camera.bottom = -2000
+    key.shadow.normalBias = 2
+    key.shadow.radius = 4
     this.scene.add(key)
-    const fill = new THREE.DirectionalLight(0x88bbff, 0.6)
+    const fill = new THREE.DirectionalLight(0x88bbff, 0.75)
     fill.position.set(WORLD_CX - 1200, 900, WORLD_CZ - 800)
     this.scene.add(fill)
+    // 设计稿光系补光:青色轮廓光(金属切边高光)+ 绿色低位补光(孪生绿氛围)
+    const rim = new THREE.DirectionalLight(0x41c8f4, 1.4)
+    rim.position.set(WORLD_CX - 1400, 620, WORLD_CZ - 1000)
+    this.scene.add(rim)
+    const green = new THREE.DirectionalLight(0x35e0a0, 0.4)
+    green.position.set(WORLD_CX + 700, 380, WORLD_CZ + 900)
+    this.scene.add(green)
 
-    // 地面(大平面,无限观感:7× 世界尺寸 + 高重复贴图)——蓝灰工业混凝土地基
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x27333f, roughness: 0.9, metalness: 0.08 })
-    this.ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W * 7, WORLD_H * 7), groundMat)
+    // 地面(大平面,无限观感:7× 世界尺寸 + 高重复贴图)——夜航深蓝地坪;低反射让网格退为纹理
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.62, metalness: 0.3, envMapIntensity: 0.42 })
+    this.ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W * 16, WORLD_H * 16), groundMat)
     this.ground.rotation.x = -Math.PI / 2
     this.ground.receiveShadow = true
     this.scene.add(this.ground)
-    // 网格辅助(轻微,暗示地表;随世界放大)
-    const grid = new THREE.GridHelper(WORLD_W * 6, 120, 0x2b3f52, 0x1a2433)
-    ;(grid.material as THREE.Material).transparent = true
-    ;(grid.material as THREE.Material).opacity = 0.3
-    grid.position.y = 0.1
-    this.scene.add(grid)
+
+    // 绑定链路层 + 薄膜 web 层(syncDaqLinks / 产线设备增删移动时重建)
+    this.scene.add(this.daqLinkGroup, this.filmWebGroup)
 
     this.applyGroundTexture()
 
@@ -883,15 +998,15 @@ export class TownScene3D {
     canvas.width = size
     canvas.height = size
     const ctx = canvas.getContext('2d')!
-    // 深色混凝土地基(微渐变)+ 分块拼缝 + 细网格导引线 —— 蓝灰工业面板,整体偏亮但不刺眼
+    // 深色混凝土地基(微渐变)+ 分块拼缝 + 细网格导引线 —— 夜航深蓝基调(设计稿 #131f36 系)
     const grad = ctx.createLinearGradient(0, 0, size, size)
-    grad.addColorStop(0, '#2b3948')
-    grad.addColorStop(0.5, '#26333f')
-    grad.addColorStop(1, '#293845')
+    grad.addColorStop(0, '#151f36')
+    grad.addColorStop(0.5, '#101a2d')
+    grad.addColorStop(1, '#131c31')
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, size, size)
-    // 分块拼缝(工业板格 8×8)
-    ctx.strokeStyle = 'rgba(120,150,180,0.34)'
+    // 分块拼缝(工业板格 8×8;低调度 —— 地面是舞台,不是主角)
+    ctx.strokeStyle = 'rgba(42,63,102,0.32)'
     ctx.lineWidth = 2
     for (let i = 0; i <= 8; i++) {
       const p = (i / 8) * size
@@ -904,8 +1019,8 @@ export class TownScene3D {
       ctx.lineTo(size, p)
       ctx.stroke()
     }
-    // 细网格导引线(浅蓝,数字化孪生感)
-    ctx.strokeStyle = 'rgba(130,190,230,0.16)'
+    // 细网格导引线(设计稿 GridHelper 主色 0x2a3f66;压暗让设备读第一眼)
+    ctx.strokeStyle = 'rgba(42,63,102,0.2)'
     ctx.lineWidth = 1
     for (let i = 0; i <= 32; i++) {
       const p = (i / 32) * size
@@ -929,7 +1044,7 @@ export class TownScene3D {
     tex.colorSpace = THREE.SRGBColorSpace
     tex.wrapS = THREE.RepeatWrapping
     tex.wrapT = THREE.RepeatWrapping
-    tex.repeat.set(10, 10)
+    tex.repeat.set(23, 17)
     tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
     return tex
   }
@@ -941,11 +1056,11 @@ export class TownScene3D {
     canvas.height = 256
     const ctx = canvas.getContext('2d')!
     const grad = ctx.createLinearGradient(0, 0, 0, 256)
-    grad.addColorStop(0, '#0a1220') // 天顶:深空蓝黑
-    grad.addColorStop(0.42, '#17222e')
-    grad.addColorStop(0.62, '#27384a') // 中段工业蓝灰
-    grad.addColorStop(0.78, '#41525f') // 地平线辉光
-    grad.addColorStop(1, '#2e3c48') // 地平线下收暗(下半球)
+    grad.addColorStop(0, '#080d16') // 天顶:近黑夜空
+    grad.addColorStop(0.40, '#121b27')
+    grad.addColorStop(0.64, '#22303e') // 中段石墨蓝(提前起坡,渐变带更长)
+    grad.addColorStop(0.84, '#3b4b5b') // 地平线:钢色微光(与雾同族)
+    grad.addColorStop(1, '#2a3644') // 地平线下收暗(下半球)
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, 32, 256)
     const tex = new THREE.CanvasTexture(canvas)
@@ -967,6 +1082,8 @@ export class TownScene3D {
       mat.color.set(0xffffff)
       mat.roughness = 0.94
       mat.metalness = 0.06
+      // 环境反射压低:沥青地面保持亚光,反射生命留给金属设备/角色模型
+      mat.envMapIntensity = 0.28
       mat.needsUpdate = true
       this.dirty = true
     }
@@ -1059,76 +1176,159 @@ export class TownScene3D {
     })
   }
 
-  /** 领地:工业孪生工位基座 = 地面色平台(半透明+自发光) + 边缘发光环 + 中央信标灯柱 */
+  /** 领地底盘 = 按真实形状的平台(染色层) + 同形边框环(边界告示);所见即用户设置 */
   private makeBlock(name: string, color: number, layout: ChannelLayout): { platform: THREE.Mesh, padRing: THREE.Mesh, beacon: THREE.Group } {
-    const r = Math.max(layout.radiusX, layout.radiusZ)
+    const rotY = layout.rotationY * Math.PI / 180
+    // 平台:按真实半轴构建(与边框环同一构建路径,无单位几何、无 scale 传递 —— 杜绝缩放残留)
     const platform = new THREE.Mesh(
-      new THREE.CircleGeometry(r * 0.9, 40),
+      this.makePadShapeGeometry(layout.shape, layout.radiusX, layout.radiusZ),
       new THREE.MeshStandardMaterial({
-        color, transparent: true, opacity: 0.3, roughness: 0.85, metalness: 0.12,
-        emissive: color, emissiveIntensity: 0.18, side: THREE.DoubleSide,
+        color, transparent: true, opacity: 0.24, roughness: 0.85, metalness: 0.12,
+        emissive: color, emissiveIntensity: 0.12, side: THREE.DoubleSide,
       }),
     )
-    platform.rotation.x = -Math.PI / 2
+    // 几何已烘焙放平(XY→XZ 无镜像),网格仅做 Y 旋转(与边界线同语义),不再有任何 scale
+    platform.rotation.set(0, rotY, 0)
     platform.position.set(layout.x, 0.16, layout.z)
-    platform.scale.set(layout.radiusX / r, 1, layout.radiusZ / r)
-    platform.receiveShadow = true
+    platform.receiveShadow = false
     this.scene.add(platform)
-    // 边缘发光环(工业边界告示条)
+    // 边框环:实际尺寸外形挖去内缩内形(恒定 13 单位线宽,随形状变化重建)
     const padRing = new THREE.Mesh(
-      new THREE.RingGeometry(r * 0.9 - 10, r * 0.9 + 3, 48),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }),
+      this.makePadRingGeometry(layout.shape, layout.radiusX, layout.radiusZ),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.52, side: THREE.DoubleSide, depthWrite: false }),
     )
-    padRing.rotation.x = -Math.PI / 2
+    padRing.rotation.set(0, rotY, 0)
     padRing.position.set(layout.x, 0.34, layout.z)
-    padRing.scale.set(layout.radiusX / r, 1, layout.radiusZ / r)
     this.scene.add(padRing)
-    // 中央信标灯柱(领队台座标记:矮立柱 + 发光顶球 + 底座光环)
-    const beacon = new THREE.Group()
-    const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(4, 6, 36, 10),
-      new THREE.MeshStandardMaterial({ color: 0x2b3644, roughness: 0.5, metalness: 0.55 }),
-    )
-    pole.position.y = 18
-    const orb = new THREE.Mesh(
-      new THREE.SphereGeometry(8, 16, 12),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 }),
-    )
-    orb.position.y = 40
-    const halo = new THREE.Mesh(
-      new THREE.TorusGeometry(20, 2.4, 8, 24),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, depthWrite: false }),
-    )
-    halo.rotation.x = Math.PI / 2
-    halo.position.y = 1.2
-    beacon.add(pole, orb, halo)
+    // 中央信标(HMI 定位销):底座 + 立杆 + 频道色菱形顶标(顶标随渲染循环缓转)
+    const beacon = this.makeBeacon(color)
     beacon.position.set(layout.x, 0, layout.z)
     this.scene.add(beacon)
     void name
     return { platform, padRing, beacon }
   }
 
-  /** 文本 Sprite(名牌/名字) */
-  private makeLabel(text: string, x: number, y: number, z: number): THREE.Sprite {
+  /** 频道中心信标(HMI 定位销):点击 → pickBeacon 定位中心 + 唤醒边界编辑 */
+  private makeBeacon(color: number): THREE.Group {
+    const g = new THREE.Group()
+    const metal = new THREE.MeshStandardMaterial({ color: 0x2a3542, roughness: 0.45, metalness: 0.65 })
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(7, 9, 5, 12), metal)
+    base.position.y = 2.5
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 30, 8), metal)
+    pole.position.y = 18
+    const tip = new THREE.Mesh(new THREE.OctahedronGeometry(6.5), new THREE.MeshBasicMaterial({ color }))
+    tip.position.y = 37
+    g.add(base, pole, tip)
+    return g
+  }
+
+  /** 命中频道信标(中心 ±34 单位;点击信标 = 定位中心 + 唤醒边界编辑,任何模式) */
+  private pickBeacon(x: number, z: number): { cid: string, x: number, z: number } | null {
+    for (const b of this.blocks.values()) {
+      if (Math.hypot(b.x - x, b.z - z) < 34) return { cid: b.channelId, x: b.x, z: b.z }
+    }
+    return null
+  }
+
+  /** 领地平台面几何:按真实半轴的外形(椭圆/矩形);放平烘焙进顶点(XY→XZ,无镜像),
+   *  网格仅需 rotation.y —— 与边界线同一旋转语义,任意朝向严格贴合 */
+  private makePadShapeGeometry(shape: 'ellipse' | 'rect', radiusX: number, radiusZ: number): THREE.ShapeGeometry {
+    const shp = new THREE.Shape()
+    if (shape === 'rect') {
+      shp.moveTo(-radiusX, -radiusZ)
+      shp.lineTo(radiusX, -radiusZ)
+      shp.lineTo(radiusX, radiusZ)
+      shp.lineTo(-radiusX, radiusZ)
+      shp.closePath()
+    }
+    else {
+      shp.absellipse(0, 0, radiusX, radiusZ, 0, Math.PI * 2)
+    }
+    const geo = new THREE.ShapeGeometry(shp, shape === 'rect' ? 1 : 56)
+    geo.rotateX(Math.PI / 2)
+    return geo
+  }
+
+  /** 领地边框几何:外形挖去内缩 ringW 的同形内形(椭圆/矩形;恒定世界线宽) */
+  private makePadRingGeometry(shape: 'ellipse' | 'rect', radiusX: number, radiusZ: number, ringW = 13): THREE.ShapeGeometry {
+    const irx = Math.max(4, radiusX - ringW)
+    const irz = Math.max(4, radiusZ - ringW)
+    const outer = new THREE.Shape()
+    const inner = new THREE.Path()
+    if (shape === 'rect') {
+      outer.moveTo(-radiusX, -radiusZ)
+      outer.lineTo(radiusX, -radiusZ)
+      outer.lineTo(radiusX, radiusZ)
+      outer.lineTo(-radiusX, radiusZ)
+      outer.closePath()
+      inner.moveTo(-irx, -irz)
+      inner.lineTo(irx, -irz)
+      inner.lineTo(irx, irz)
+      inner.lineTo(-irx, irz)
+      inner.closePath()
+    }
+    else {
+      outer.absellipse(0, 0, radiusX, radiusZ, 0, Math.PI * 2)
+      inner.absellipse(0, 0, irx, irz, 0, Math.PI * 2)
+    }
+    outer.holes.push(inner)
+    const geo = new THREE.ShapeGeometry(outer, shape === 'rect' ? 1 : 56)
+    geo.rotateX(Math.PI / 2)
+    return geo
+  }
+
+  /** 平台/边框贴形(半径或形状变化后):平台与边框几何都按真实尺寸重建;同步朝向 */
+  private applyPadToBlock(b: Block3D): void {
+    const rotY = b.rotationY * Math.PI / 180
+    b.platform.rotation.set(0, rotY, 0)
+    b.padRing.rotation.set(0, rotY, 0)
+    const oldP = b.platform.geometry
+    b.platform.geometry = this.makePadShapeGeometry(b.shape, b.radiusX, b.radiusZ)
+    oldP.dispose()
+    const old = b.padRing.geometry
+    b.padRing.geometry = this.makePadRingGeometry(b.shape, b.radiusX, b.radiusZ)
+    old.dispose()
+  }
+
+  /** 文本 Sprite(名牌/名字)—— HMI 铭牌:深底 + 发丝描边 + 左缘数据条 + 等宽字。
+   *  accent: 左缘数据条与描边 tint 的身份色(Agent 铭牌传所属频道哈希色 → 归属一眼可辨)。 */
+  private makeLabel(text: string, x: number, y: number, z: number, accent = '#4da3ff'): THREE.Sprite {
     const canvas = document.createElement('canvas')
-    canvas.width = 256
-    canvas.height = 64
     const ctx = canvas.getContext('2d')!
-    ctx.fillStyle = 'rgba(18,20,30,0.72)'
-    const w = Math.max(120, ctx.measureText(text).width + 20)
-    ctx.fillRect(0, 0, w, 64)
-    ctx.fillStyle = '#fff'
-    ctx.font = 'bold 22px Geist, PingFang SC, sans-serif'
-    ctx.textAlign = 'center'
+    const font = '600 21px "Geist Mono", Geist, "PingFang SC", monospace'
+    ctx.font = font
+    const padL = 26
+    const padR = 14
+    const w = Math.max(104, Math.ceil(ctx.measureText(text).width) + padL + padR)
+    const h = 48
+    canvas.width = w
+    canvas.height = h
+    ctx.font = font
+    // 深色铭牌底 + 半透明度(不遮场景,只提字)
+    ctx.fillStyle = 'rgba(10,14,20,0.8)'
+    ctx.fillRect(0, 0, w, h)
+    // 发丝描边(身份色轻 tint)+ 左缘数据条(身份色)
+    ctx.strokeStyle = `${accent}66`
+    ctx.lineWidth = 1
+    ctx.strokeRect(0.5, 0.5, w - 1, h - 1)
+    ctx.fillStyle = accent
+    ctx.fillRect(0, 0, 3, h)
+    ctx.fillStyle = '#dce7f0'
+    ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
-    ctx.fillText(text, w / 2, 34)
+    ctx.fillText(text, padL, h / 2 + 1)
     const tex = new THREE.CanvasTexture(canvas)
     tex.colorSpace = THREE.SRGBColorSpace
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }))
-    sprite.scale.set(w / 8, 8, 1)
+    sprite.scale.set(w / 6, h / 6, 1)
     sprite.position.set(x, y, z)
     this.scene.add(sprite)
     return sprite
+  }
+
+  /** int 颜色 → CSS hex(铭牌身份色用) */
+  private hexOf(color: number): string {
+    return `#${color.toString(16).padStart(6, '0')}`
   }
 
   // ================================================================
@@ -1148,26 +1348,10 @@ export class TownScene3D {
       homeZ = clamped.z
     }
     // 管理员布局活动范围(来自 config.range;缺省 null = 沿用频道边界);收进频道边界
-    let range: AgentRangeLayout | null = null
-    if (a.range && layout) range = clampRangeToLayout(layout, a.range)
+    const range: AgentRangeLayout | null = a.range ?? null
     const root = new THREE.Group()
     root.position.set(homeX, GROUND_Y, homeZ)
-    // 脚下同频道色环(双层:主环 + 外圈,角色辨识度;主环仍是 Mesh 供气泡取色)
-    const aura = new THREE.Mesh(
-      new THREE.RingGeometry(14, 22, 28),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }),
-    )
-    aura.rotation.x = -Math.PI / 2
-    aura.position.y = 0.24
-    root.add(aura)
-    const auraOuter = new THREE.Mesh(
-      new THREE.RingGeometry(24, 26, 28),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false }),
-    )
-    auraOuter.rotation.x = -Math.PI / 2
-    auraOuter.position.y = 0.2
-    root.add(auraOuter)
-    const nameSprite = this.makeLabel(a.name, homeX, 48, homeZ)
+    const nameSprite = this.makeLabel(a.name, homeX, 48, homeZ, this.hexOf(color))
     // 默认模型(内置二次元角色 hero-anime-1「樱叶少女」;模型库换装可覆盖)
     const texKey = a.modelRef || 'hero-anime-1'
     const model = new THREE.Group()
@@ -1182,7 +1366,7 @@ export class TownScene3D {
       model,
       mixer: null,
       clips: [],
-      aura,
+      colorNum: color,
       nameSprite,
       bubble: null,
       bubbleText: null,
@@ -1204,7 +1388,7 @@ export class TownScene3D {
     const info = this.modelsById.get(texKey)
       ?? (texKey.startsWith('hero-anime-')
         ? { id: texKey, file: `/assets/game/character/${texKey}.glb`, name: '二次元角色' }
-        : (this.modelsById.get('hero-3d') ?? { id: 'hero-3d', file: '/assets/game/character/hero-3d.glb', name: '共鸣精魂' }))
+        : (this.modelsById.get('hero-3d') ?? { id: 'hero-3d', file: '/assets/game/character/hero-3d.glb', name: '标准员工模型' }))
     void this.mountModel(agent, info.file, info.name)
     agent.renderRangeLine()
     this.emit('agentCount', this.agents.size)
@@ -1241,6 +1425,10 @@ export class TownScene3D {
     // 归一化 scale(使模型高度≈UNITS 世界单位)并贴地(模型大小自适应)
     loaded.position.y = 0
     loaded.scale.setScalar(UNITS / height)
+    // 真实投影:模型网格 castShadow(角色/设备 GLB 的体积感与落地感来源)
+    loaded.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) o.castShadow = true
+    })
     // 清掉旧模型子节点与 mixer
     asp.model.clear()
     asp.model.add(loaded)
@@ -1277,7 +1465,7 @@ export class TownScene3D {
     const bot = new THREE.Group()
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a3542, roughness: 0.42, metalness: 0.62 })
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x141b24, roughness: 0.6, metalness: 0.4 })
-    const coreMat = new THREE.MeshBasicMaterial({ color: 0x59d9ff })
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0x4da3ff })
     // 躯干(胶囊)
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.62, 8, 16), bodyMat)
     body.position.y = 0.86
@@ -1303,13 +1491,13 @@ export class TownScene3D {
   }
 
   /** 注册模型清单，并将晚到资产挂载到已存在的 Agent/设备。 */
-  registerModelsFromList(list: Array<{ id: string, file: string, name: string, kind?: string }>): void {
+  registerModelsFromList(list: Array<{ id: string, file: string, name: string, kind?: string, hFactor?: number }>): void {
     if (this.disposed) return
     const changed = new Set<string>()
     for (const model of list) {
       const previous = this.modelsById.get(model.id)
-      if (!previous || previous.file !== model.file || previous.name !== model.name || previous.kind !== model.kind) {
-        this.modelsById.set(model.id, model)
+      if (!previous || previous.file !== model.file || previous.name !== model.name || previous.kind !== model.kind || previous.hFactor !== (model.hFactor ?? 1)) {
+        this.modelsById.set(model.id, { ...model, hFactor: model.hFactor ?? 1 })
         changed.add(model.id)
       }
     }
@@ -1324,7 +1512,8 @@ export class TownScene3D {
       }
     }
     for (const twin of [...this.pendingDeviceTwins.values()]) {
-      if (!this.modelsById.get(twin.modelRef)?.file) continue
+      const isDaq = twin.kind === 'daq' || (twin.modelRef ?? '').startsWith('daq-')
+      if (!isDaq && !this.modelsById.get(twin.modelRef)?.file) continue
       this.pendingDeviceTwins.delete(twin.id)
       this.recreateDeviceNode(twin)
     }
@@ -1491,7 +1680,7 @@ export class TownScene3D {
     this.layouts.set(channelId, layout)
     // 重建领地平台/边界/名牌
     this.scene.remove(b.boundary)
-    b.platform.scale.set(layout.radiusX / Math.max(layout.radiusX, layout.radiusZ), 1, layout.radiusZ / Math.max(layout.radiusX, layout.radiusZ))
+    this.applyPadToBlock(b)
     b.boundary = makeBoundary(layout.shape, layout.radiusX, layout.radiusZ, b.color)
     b.boundary.position.set(layout.x, 0.3, layout.z)
     b.boundary.rotation.y = layout.rotationY * Math.PI / 180
@@ -1506,6 +1695,8 @@ export class TownScene3D {
     const b = this.blocks.get(channelId)
     if (!b) return
     this.scene.remove(b.platform)
+    this.scene.remove(b.padRing)
+    this.scene.remove(b.beacon)
     if (b.boundary) this.scene.remove(b.boundary)
     this.scene.remove(b.label)
     for (const [aid, a] of [...this.agents.entries()]) {
@@ -1548,7 +1739,8 @@ export class TownScene3D {
     const layout = { channelId: b.channelId, x: b.x, z: b.z, radiusX: b.radiusX, radiusZ: b.radiusZ, shape: b.shape, rotationY: b.rotationY }
     this.layouts.set(b.channelId, normLayout(layout))
     b.platform.position.set(b.x, 0.16, b.z)
-    b.platform.scale.set(b.radiusX / Math.max(b.radiusX, b.radiusZ), 1, b.radiusZ / Math.max(b.radiusX, b.radiusZ))
+    b.padRing.position.set(b.x, 0.34, b.z)
+    this.applyPadToBlock(b)
     if (b.boundary) this.scene.remove(b.boundary)
     b.boundary = makeBoundary(b.shape, b.radiusX, b.radiusZ, b.color)
     b.boundary.position.set(b.x, 0.3, b.z)
@@ -1586,7 +1778,7 @@ export class TownScene3D {
     if (this.mode !== 'edit') return null
     for (const hl of this.resizeHandles) {
       if (!hl.mesh.visible) continue
-      if (Math.hypot(hl.mesh.position.x - x, hl.mesh.position.z - z) < 46) return { cid: hl.cid, handle: hl.handle }
+      if (Math.hypot(hl.mesh.position.x - x, hl.mesh.position.z - z) < 90) return { cid: hl.cid, handle: hl.handle }
     }
     return null
   }
@@ -1601,16 +1793,17 @@ export class TownScene3D {
     const lx = dx * cos - dz * sin
     const lz = dx * sin + dz * cos
     if (b.shape === 'rect') {
-      // radiusX/radiusZ 表示半宽:角点到中心的局部距离即新半宽。
-      b.radiusX = Math.max(60, Math.min(1000, Math.abs(lx)))
-      b.radiusZ = Math.max(40, Math.min(900, Math.abs(lz)))
+      // radiusX/radiusZ 表示半宽:角点到中心的局部距离即新半宽(无上限,相机自动跟随取景)
+      b.radiusX = Math.max(60, Math.abs(lx))
+      b.radiusZ = Math.max(40, Math.abs(lz))
     }
     else {
-      if (handle === 0 || handle === 1) b.radiusX = Math.max(60, Math.min(1000, Math.abs(lx)))
-      else b.radiusZ = Math.max(40, Math.min(900, Math.abs(lz)))
+      if (handle === 0 || handle === 1) b.radiusX = Math.max(60, Math.abs(lx))
+      else b.radiusZ = Math.max(40, Math.abs(lz))
     }
     this.applyLayoutToBlock(b)
     this.refreshChannelHandles()
+    this.autoFrameTo(b.radiusX, b.radiusZ)
     this.dirty = true
   }
 
@@ -1772,13 +1965,13 @@ export class TownScene3D {
     const z = asp?.root.position.z ?? b?.z
     if (x === undefined || z === undefined) return
     if (e.type === 'agent.message' || e.type === 'agent.status.message' || e.type === 'a2a.message') {
-      this.pulseRing(x, z, asp ? 0x9fe8d4 : (b?.color ?? 0xffffff))
+      this.pulseRing(x, z, asp ? 0x4da3ff : (b?.color ?? 0x4da3ff))
     }
     else if (e.type === 'error' || (e.type === 'task.status' && ((e.payload as { state?: string }).state === 'failed' || (e.payload as { state?: string }).state === 'canceled'))) {
-      this.pulseRing(x, z, 0xff6b6b)
+      this.pulseRing(x, z, 0xff6b5c)
     }
     else if (e.type === 'task.status' && (e.payload as { state?: string }).state === 'completed') {
-      this.lightColumn(x, z, 0xd8fff2)
+      this.lightColumn(x, z, 0x57d29a)
     }
   }
 
@@ -1839,9 +2032,9 @@ export class TownScene3D {
     // 事件流 / 最近活动 / 调试气泡即时更新(展示延迟只作用于 3D 气泡)
     this.dbgBubbles.push({ text, at: Date.now() })
     const speaker = agentId ? this.agents.get(agentId)?.name : undefined
-    this.lastActivity = { channelId, agentName: speaker ?? this.blocks.get(channelId)?.name ?? '系统', text }
+    this.lastActivity = { channelId, agentName: speaker ?? this.blocks.get(channelId)?.name ?? '系统', text, at: Date.now() }
     this.recentActivity.push(this.lastActivity)
-    if (this.recentActivity.length > 6) this.recentActivity.splice(0, this.recentActivity.length - 6)
+    if (this.recentActivity.length > 30) this.recentActivity.splice(0, this.recentActivity.length - 30)
     this.emit('lastActivity', this.lastActivity)
     // 入队(FIFO;超长队列丢最旧,防止异常风暴撑爆内存)
     let rec = this.receivers.get(channelId)
@@ -1854,7 +2047,8 @@ export class TownScene3D {
     this.dirty = true
   }
 
-  /** 各频道接收器 FIFO 消费:当前条目展示期满 → 清理其气泡并取下一条实时渲染(渲染循环每帧调用) */
+  /** 各频道接收器 FIFO 消费:当前条目展示期满 → 清理其气泡并取下一条实时渲染(渲染循环每帧调用)。
+   *  队列积压时按 drainDisplayMs 压缩单条时长,让爆发期消息尽快追平。 */
   private drainReceivers(now: number): void {
     for (const rec of this.receivers.values()) {
       if (rec.current) {
@@ -1865,7 +2059,7 @@ export class TownScene3D {
       const msg = rec.queue.shift()
       if (!msg) continue
       rec.current = msg
-      rec.currentUntil = now + bubbleDisplayMs(msg.text)
+      rec.currentUntil = now + drainDisplayMs(msg.text, rec.queue.length)
       this.renderReceiverBubble(rec.channelId, msg)
     }
   }
@@ -1893,8 +2087,8 @@ export class TownScene3D {
     if (!asp && !b) return
     const name = asp?.name ?? b?.name ?? '系统'
     const accent = asp
-      ? (asp.aura.material as THREE.MeshBasicMaterial).color.getHex()
-      : (b?.color ?? 0x9fe8d4)
+      ? asp.colorNum
+      : (b?.color ?? 0x4da3ff)
     const text = (msg.kind === 'artifact' && !msg.text.startsWith('📦') ? `📦 ${msg.text}` : msg.text) || '…'
     const sprite = this.makeChatBubble(text, name, accent, msg.kind)
     const x = asp?.root.position.x ?? b!.x
@@ -1919,14 +2113,15 @@ export class TownScene3D {
     this.dirty = true
   }
 
-  /** 2.5D 聊天气泡:圆角矩形 + 向下尾角 + 身份色名牌头 + 多行换行文本 + 投影描边 */
+  /** 2.5D 聊天气泡:工业 HMI 风格 —— 头部身份条(等宽名牌 + 类型印章)+ 多行正文 + 尾角 */
   private makeChatBubble(text: string, name: string, accent: number, kind: TownBubbleKind): THREE.Sprite {
     const accentHex = `#${accent.toString(16).padStart(6, '0')}`
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
-    // 超大字号会话气泡:正文 18px / 头名 13.5px / 最多 6 行 / 宽 ≤ 680px —— 实时信息一眼可读
+    // 超大字号会话气泡:正文 18px / 头名 13px / 最多 6 行 / 宽 ≤ 680px —— 实时信息一眼可读
     const bodyFont = '18px Geist, "PingFang SC", sans-serif'
-    const headFont = 'bold 13.5px Geist, "PingFang SC", sans-serif'
+    const headFont = '600 13px "Geist Mono", Geist, "PingFang SC", monospace'
+    const tagFont = '600 10px "Geist Mono", Geist, monospace'
     const maxTextW = 470
     const padX = 18
     const padY = 12
@@ -1942,8 +2137,8 @@ export class TownScene3D {
     canvas.width = bw
     canvas.height = bh
     ctx.clearRect(0, 0, bw, bh)
-    // 圆角矩形 + 底部中央尾角(指向说话人)
-    const r = 10
+    // 方角矩形 + 底部中央尾角(指向说话人;HMI 直角配方)
+    const r = 4
     const cx = bw / 2
     const t = Math.min(24, bw * 0.32)
     const path = () => {
@@ -1962,33 +2157,64 @@ export class TownScene3D {
       ctx.quadraticCurveTo(0, 0, r, 0)
       ctx.closePath()
     }
-    // 柔和投影 → 底色
+    // 柔和投影 → 深色面板底
     ctx.save()
-    ctx.shadowColor = 'rgba(0,0,0,0.5)'
-    ctx.shadowBlur = 12
+    ctx.shadowColor = 'rgba(0,0,0,0.55)'
+    ctx.shadowBlur = 14
     ctx.shadowOffsetY = 4
     path()
-    ctx.fillStyle = 'rgba(15,17,28,0.92)'
+    ctx.fillStyle = 'rgba(14,18,27,0.94)'
     ctx.fill()
     ctx.restore()
-    // 身份色描边
+    // 头部数据带(轻微抬升 + 发丝底边)
+    ctx.save()
     path()
-    ctx.lineWidth = 1.6
-    ctx.strokeStyle = `${accentHex}cc`
+    ctx.clip()
+    ctx.fillStyle = 'rgba(255,255,255,0.045)'
+    ctx.fillRect(0, 0, bw, padY + nameH)
+    ctx.restore()
+    ctx.globalAlpha = 0.28
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(padX, padY + 18, bw - padX * 2, 1)
+    ctx.globalAlpha = 1
+    // 发丝描边 + 左缘身份色数据条
+    path()
+    ctx.lineWidth = 1.2
+    ctx.strokeStyle = 'rgba(140,170,195,0.4)'
     ctx.stroke()
-    // 名牌头:身份色名字 + 细分隔线
+    ctx.save()
+    path()
+    ctx.clip()
+    ctx.fillStyle = accentHex
+    ctx.fillRect(0, 0, 3, bodyH)
+    ctx.restore()
+    // 头牌:等宽名牌(身份色)+ 右侧类型印章(交付/异常)
     ctx.font = headFont
     ctx.fillStyle = accentHex
     ctx.textBaseline = 'middle'
     ctx.textAlign = 'left'
     ctx.fillText(name, padX, padY + 10)
-    ctx.globalAlpha = 0.32
-    ctx.fillStyle = '#fff'
-    ctx.fillRect(padX, padY + 18, bw - padX * 2, 1)
-    ctx.globalAlpha = 1
+    const tag = kind === 'artifact' ? 'ARTIFACT' : kind === 'error' ? 'FAULT' : ''
+    if (tag) {
+      const tw = ctx.measureText(tag).width + 12
+      ctx.font = tagFont
+      ctx.fillStyle = kind === 'error' ? '#ff8d80' : '#9fc3e8'
+      ctx.strokeStyle = kind === 'error' ? 'rgba(255,141,128,0.55)' : 'rgba(159,195,232,0.45)'
+      ctx.lineWidth = 1
+      const tx = bw - padX - tw
+      const ty = padY + 2
+      const th = 16
+      ctx.beginPath()
+      ctx.rect(tx, ty, tw, th)
+      ctx.fill()
+      ctx.stroke()
+      ctx.textAlign = 'center'
+      ctx.fillText(tag, tx + tw / 2, ty + th / 2 + 0.5)
+    }
     // 正文(错误微红)
     ctx.font = bodyFont
     ctx.fillStyle = kind === 'error' ? '#ff9d9d' : '#eef2fb'
+    ctx.textAlign = 'left'
     lines.forEach((l, i) => ctx.fillText(l, padX, padY + nameH + 10 + i * lineH))
     // Sprite(纹理按 1/2.4 缩放到世界单位 —— 放大气泡后保持更大可见尺度)
     const tex = new THREE.CanvasTexture(canvas)
@@ -2047,6 +2273,24 @@ export class TownScene3D {
     return this.renderer.domElement
   }
 
+  /** 世界坐标 → 屏幕像素(数据标注/悬浮 callout 投影;返回 null = 在相机背后) */
+  worldToScreen(x: number, y: number, z: number): { x: number, y: number } | null {
+    const rect = this.renderer.domElement.getBoundingClientRect()
+    // 相机背后的点 project() 会按负 w 翻转到错误的屏幕位置 → 先用前向点积剔除
+    const dir = new THREE.Vector3()
+    this.camera.getWorldDirection(dir)
+    const rel = new THREE.Vector3(x - this.camera.position.x, y - this.camera.position.y, z - this.camera.position.z)
+    if (rel.dot(dir) <= 0.1) return null
+    const v = new THREE.Vector3(x, y, z).project(this.camera)
+    if (v.z > 1) return null
+    // 视锥外过远(NDC ±1.6)的点投影无意义(可能落到数千 px 外)→ 剔除;边缘 ±1 内保留供夹取
+    if (Math.abs(v.x) > 1.6 || Math.abs(v.y) > 1.6) return null
+    return {
+      x: rect.left + (v.x + 1) / 2 * rect.width,
+      y: rect.top + (1 - v.y) / 2 * rect.height,
+    }
+  }
+
   /** 页面坐标 → 世界 xz(经 canvas rect + 相机射线打在 y=0 平面) */
   screenToWorld(clientX: number, clientY: number): { x: number, z: number } {
     const rect = this.renderer.domElement.getBoundingClientRect()
@@ -2066,9 +2310,137 @@ export class TownScene3D {
     this.camTarget.z -= dzWorld
   }
 
+  /** 自动取景目标 dolly(缩放拖拽期间按范围尺寸计算;渲染循环平滑跟随,拖拽结束清除) */
+  private autoDolly: number | null = null
+
+  /** 范围半轴 → 容纳它的 dolly(基线几何:水平半幅 ≈ 613*aspect*d,地面纵深 ≈ 950*d) */
+  private fitDollyFor(rx: number, rz: number): number {
+    const aspect = this.camera.aspect || 1.6
+    return Math.max(rx / (0.82 * 613 * aspect), rz / (0.82 * 950))
+  }
+
+  /** 缩放过程中调用:范围超出当前视野 → 相机自动拉远(只放大不缩小,收敛于拖拽结束) */
+  private autoFrameTo(rx: number, rz: number): void {
+    const fit = this.fitDollyFor(rx, rz)
+    if (fit > this.dolly) this.autoDolly = Math.min(40, fit * 1.18)
+  }
+
+  /** 变换模式(Blender 规范):translate=移动 G / rotate=旋转 R / scale=缩放 S。
+   *  轴约束:移动仅 XZ(模型贴地),旋转仅 Y(2.5D 朝向),缩放 XYZ。 */
+  setTransformMode(mode: 'translate' | 'rotate' | 'scale'): void {
+    if (!this.tControls) return
+    this.tControls.setMode(mode)
+    this.tControls.showX = mode !== 'rotate'
+    this.tControls.showY = mode !== 'translate'
+    this.tControls.showZ = mode !== 'rotate'
+  }
+
+  /** 手柄是否悬停/拖拽中(调用方应让出相机平移与点选) */
+  isGizmoBusy(): boolean {
+    return !!this.tControls && (this.tControls.dragging || !!this.tControls.axis)
+  }
+
   /** 滚轮缩放(改变 dolly 距离) */
+  /** 视角预设(设计稿 angle-chip):std 标准 / top 俯视 / front 前视 / side 侧视。
+   *  轨道参数:yaw 方位 / pitch 仰角(rad) / radius 半径(再乘 dolly)。 */
+  setViewPreset(p: 'std' | 'top' | 'front' | 'side'): void {
+    const presets: Record<string, { yaw: number, pitch: number, radius: number }> = {
+      std: { yaw: 0, pitch: 0.70, radius: 1178 },
+      top: { yaw: 0, pitch: 1.51, radius: 2400 },
+      front: { yaw: 0, pitch: 0.09, radius: 1510 },
+      side: { yaw: Math.PI / 2, pitch: 0.33, radius: 1320 },
+    }
+    const t = presets[p] ?? presets.std!
+    this.viewTarget = { ...t }
+    // 预设切换走平滑趋近;环绕拖拽则是即时双写
+  }
+
+  /** 左键环绕(设计稿 OrbitLite 语义):theta -= dx·0.0052(拖右=场景右转,内容跟手不反向);
+   *  phi -= dy·0.0052(拖上=压低视角看地平,拖下=抬升俯视),夹在仰角安全区间 */
+  /** 环绕(设计稿 OrbitLite 1:1):theta -= dx·0.0052;仰角 += dy·0.0052
+   *  (设计稿 phi -= dy·0.0052,phi 为极角 → 仰角随 dy 增大:往下拖 = 相机升向俯视) */
+  orbitBy(dxPx: number, dyPx: number): void {
+    const yaw = this.viewCur.yaw - dxPx * 0.0052
+    const pitch = Math.min(1.52, Math.max(0.06, this.viewCur.pitch + dyPx * 0.0052))
+    this.viewCur = { yaw, pitch, radius: this.viewCur.radius }
+    this.viewTarget = { ...this.viewCur }
+    this.dirty = true
+  }
+
+  /** 自动环绕(设计稿 tOrbit):渲染循环缓转 yaw;orbitBy 拖拽时暂停 */
+  setAutoOrbit(on: boolean): void {
+    this.autoOrbit = on
+  }
+
+  getAutoOrbit(): boolean {
+    return this.autoOrbit
+  }
+
+  /** 滚轮缩放(改变 dolly 距离) */
+
+  /** 平移(设计稿 OrbitLite 1:1):target += (−right·dx + up·dy)·s。
+   *  right=(cosY,0,−sinY),up 地面分量 = −sinP·(sinY,cosY);panBy 内部取负 → 注视点
+   *  拖右时沿 −right 移动 = 相机左扫 = 内容跟随光标(抓取语义,与设计稿逐项一致)。 */
+  panByScreen(dxPx: number, dyPx: number): void {
+    const r = this.viewCur.radius * this.dolly
+    const k = r * 0.0011
+    const sinY = Math.sin(this.viewCur.yaw)
+    const cosY = Math.cos(this.viewCur.yaw)
+    const sinP = Math.sin(this.viewCur.pitch)
+    const dxw = (cosY * dxPx + sinP * sinY * dyPx) * k
+    const dzw = (-sinY * dxPx + sinP * cosY * dyPx) * k
+    this.panBy(dxw, dzw)
+  }
+
+  /** 飞往预设视角(平滑;设计稿 flyTo) */
+  flyToPreset(p: 'std' | 'top' | 'front' | 'side', _dur = 900): void {
+    this.setViewPreset(p)
+  }
+
+  /** 相机即时状态(导航地图/callout 距离显隐;世界坐标) */
+  getCameraPose(): { pos: { x: number, y: number, z: number }, target: { x: number, z: number }, yaw: number, dolly: number } {
+    return {
+      pos: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
+      target: { x: this.camTarget.x, z: this.camTarget.z },
+      yaw: this.viewCur.yaw,
+      dolly: this.dolly,
+    }
+  }
+
+  /** 导航地图拖拽平移:世界位移直接作用于注视点与相机位置(设计稿 minimap drag) */
+  panWorldBy(dxw: number, dzw: number): void {
+    this.camTarget.x -= dxw
+    this.camTarget.z -= dzw
+    this.camera.position.x -= dxw
+    this.camera.position.z -= dzw
+    this.dirty = true
+  }
+
+  /** 渲染曝光(场景控制坞"环境光照";0.2~2.2) */
+  setExposure(v: number): void {
+    this.renderer.toneMappingExposure = Math.min(2.2, Math.max(0.2, v))
+  }
+
+  /** 领地染色浓度(平台透明度系数;0.05~1) */
+  setTerritoryOpacity(v: number): void {
+    const o = Math.min(1, Math.max(0.05, v))
+    for (const b of this.blocks.values()) {
+      ;(b.platform.material as THREE.MeshStandardMaterial).opacity = 0.24 * o
+    }
+    this.dirty = true
+  }
+
+  /** 重置视角(注视世界中心,标准轨道,基准 dolly) */
+  resetView(): void {
+    this.dolly = 1
+    this.autoDolly = null
+    this.tweenCamTo(WORLD_CX, WORLD_CZ)
+    this.setViewPreset('std')
+  }
+
   zoomBy(f: number): void {
-    this.dolly = Math.min(2.2, Math.max(0.55, this.dolly + f))
+    this.autoDolly = null
+    this.dolly = Math.min(1000, Math.max(0.001, this.dolly + f))
   }
 
   /** 缓动聚焦某世界点(移动 camTarget) */
@@ -2140,17 +2512,13 @@ export class TownScene3D {
   private spawnResident(x: number, z: number, texKey: string, name: string): void {
     const root = new THREE.Group()
     root.position.set(x, GROUND_Y, z)
-    const aura = new THREE.Mesh(new THREE.RingGeometry(10, 16, 24), new THREE.MeshBasicMaterial({ color: 0xffe9c4, transparent: true, opacity: 0.6, side: THREE.DoubleSide }))
-    aura.rotation.x = -Math.PI / 2
-    aura.position.y = 0.22
-    root.add(aura)
     const model = new THREE.Group()
     root.add(model)
-    const nameSprite = this.makeLabel(name, x, 48, z)
+    const nameSprite = this.makeLabel(name, x, 48, z, this.hexOf(0xffe9c4))
     this.scene.add(root)
     const resident = new Agent3D({
       channelId: '', agentId: `resident-${Date.now().toString(36)}`, name,
-      role: 'worker', root, model, mixer: null, clips: [], aura, nameSprite,
+      role: 'worker', root, model, mixer: null, clips: [], colorNum: 0xffe9c4, nameSprite,
       bubble: null, bubbleText: null, bubbleTimer: null, state: 'idle', progress: null,
       dragging: false, homeX: x, homeZ: z, range: null, rangeLine: null, textureKey: texKey, modelRef: texKey,
       behavior: { mode: 'idle', roamTarget: null, targetId: null, waitUntil: 0, pauseUntil: 0, engaged: false },
@@ -2173,7 +2541,7 @@ export class TownScene3D {
     root.position.set(x, GROUND_Y, z)
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(20, 26, 32),
-      new THREE.MeshBasicMaterial({ color: 0x8fe8d4, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ color: 0xf5a742, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
     )
     ring.rotation.x = -Math.PI / 2
     ring.position.y = 0.3
@@ -2252,6 +2620,10 @@ export class TownScene3D {
       const scale = targetH / h
       gltf.scene.scale.setScalar(scale)
       gltf.scene.position.y = 0
+      // 真实投影:设备 GLB 网格 castShadow(落地感)
+      gltf.scene.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) o.castShadow = true
+      })
       group.add(gltf.scene)
     }
     catch {
@@ -2283,7 +2655,7 @@ export class TownScene3D {
         y: Math.round(a.root.position.z),
         visible: true,
         draggable: true,
-        auraColor: (a.aura.material as THREE.MeshBasicMaterial).color.getHex() ?? 0,
+        auraColor: a.colorNum,
         behavior: a.behavior.mode,
         targetId: a.behavior.targetId,
         homeX: Math.round(a.homeX),
@@ -2305,19 +2677,38 @@ export class TownScene3D {
 
   getMinimapState(): {
     world: { w: number, h: number }
-    blocks: Array<{ x: number, y: number, color: number, name: string }>
+    blocks: Array<{ x: number, y: number, color: number, name: string, shape?: 'ellipse' | 'rect', rx?: number, rz?: number, rot?: number }>
     agents: Array<{ x: number, y: number, color: number, busy: boolean }>
     devices: Array<{ x: number, y: number, color: number, state: string }>
     player: { x: number, y: number }
   } {
     const stateColor = (state: 'idle' | 'running' | 'offline' | 'alarm'): number =>
-      state === 'alarm' ? 0xff6b6b : state === 'offline' ? 0x8b96a3 : state === 'running' ? 0x8fe8d4 : 0xf0c05a
+      state === 'alarm' ? 0xff6b5c : state === 'offline' ? 0x8496a5 : state === 'running' ? 0x57d29a : 0xf5a742
     return {
       world: { w: WORLD_W, h: WORLD_H },
-      blocks: [...this.blocks.values()].map(b => ({ x: b.x / WORLD_W, y: b.z / WORLD_H, color: b.color, name: b.name })),
-      agents: [...this.agents.values()].map(a => ({ x: a.root.position.x / WORLD_W, y: a.root.position.z / WORLD_H, color: (a.aura.material as THREE.MeshBasicMaterial).color.getHex() ?? 0, busy: a.state === 'busy' })),
-      devices: [...this.deviceNodes.values()].map(d => ({ x: d.root.position.x / WORLD_W, y: d.root.position.z / WORLD_H, color: stateColor(d.state), state: d.state })),
-      player: { x: this.camera.position.x / WORLD_W, y: this.camera.position.z / WORLD_H },
+      // 领地含真实形状/半轴/朝向(归一化;镜头居中小地图按形状绘制)
+      blocks: [...this.blocks.values()].map(b => ({
+        x: b.x / WORLD_W,
+        y: b.z / WORLD_H,
+        color: b.color,
+        name: b.name,
+        shape: b.shape,
+        rx: b.radiusX / WORLD_W,
+        rz: b.radiusZ / WORLD_H,
+        rot: b.rotationY,
+      })),
+      agents: [...this.agents.values()].map(a => ({ x: a.root.position.x / WORLD_W, y: a.root.position.z / WORLD_H, color: a.colorNum, busy: a.state === 'busy' })),
+      devices: [...this.deviceNodes.values()].map(d => ({
+        twinId: d.twinId,
+        x: d.root.position.x / WORLD_W,
+        y: d.root.position.z / WORLD_H,
+        color: stateColor(d.state),
+        state: d.state,
+        daq: d.modelRef.startsWith('daq-') || d.modelRef.includes('daq'),
+        bound: false,
+      })),
+      // 镜头 = camTarget(画面注视中心;小地图准星锚点)
+      player: { x: this.camTarget.x / WORLD_W, y: this.camTarget.z / WORLD_H },
     }
   }
 
@@ -2377,13 +2768,14 @@ export class TownScene3D {
     this.removeDeviceNode(id)
   }
 
-  /** 设备节点列表(供 HUD/E2E) */
-  getDeviceNodes(): Array<{ twinId: string, name: string, x: number, z: number, state: string, telemetry: Record<string, number | string | boolean> }> {
+  /** 设备节点列表(供 HUD/E2E;topY = 模型顶面世界高度,callout 锚定用) */
+  getDeviceNodes(): Array<{ twinId: string, name: string, x: number, z: number, topY: number, state: string, telemetry: Record<string, number | string | boolean> }> {
     return [...this.deviceNodes.values()].map(d => ({
       twinId: d.twinId,
       name: d.name,
       x: Math.round(d.root.position.x),
       z: Math.round(d.root.position.z),
+      topY: Math.round(this.deviceTopY(d)),
       state: d.state,
       telemetry: d.telemetry,
     }))
@@ -2451,15 +2843,32 @@ export class TownScene3D {
     return null
   }
 
+  /** 命中频道边界线(世界点落在某领地边界带 ±42 单位内 → 边界拖拽等比缩放)。 */
+  private pickChannelEdge(x: number, z: number): { cid: string, rx0: number, rz0: number, rd0: number } | null {
+    for (const b of this.blocks.values()) {
+      const lxz = toLocal(b, x, z)
+      const rd = Math.hypot(lxz.x / b.radiusX, lxz.z / b.radiusZ)
+      const tol = 42 / Math.min(b.radiusX, b.radiusZ)
+      if (Math.abs(rd - 1) <= tol) {
+        return { cid: b.channelId, rx0: b.radiusX, rz0: b.radiusZ, rd0: rd }
+      }
+    }
+    return null
+  }
+
   /** 设置选中(点击后由 Vue 弹缩放/旋转滑杆) */
   private setSelected(sel: { kind: 'agent' | 'device', id: string } | null): void {
     // 选中切换/取消 → 退出框选绘制(清理预览)
     if (!sel || sel.kind !== 'agent' || sel.id !== this.rangeDrawAgent) this.cancelRangeDraw()
     this.selected = sel
+    // 变换手柄跟随选中设备(Blender 规范:选中即出手柄;运行模式只读 → 不出手柄)
+    if (this.tControls) {
+      if (sel?.kind === 'device' && this.mode === 'edit' && this.deviceNodes.has(sel.id)) this.tControls.attach(this.deviceNodes.get(sel.id)!.root)
+      else this.tControls.detach()
+    }
     this.refreshAgentRangeLines()
     this.refreshAgentRangeHandles()
     if (!sel) {
-      this.showSelectionRing(null)
       this.emit('select', null)
       return
     }
@@ -2529,10 +2938,8 @@ export class TownScene3D {
       if (this.pointerDrag) this.endPointerDrag()
       this.cancelRangeDraw()
       this.setSelected(null)
-      this.refreshChannelHandles()
-    }
-    else if (this.selected) {
-      this.showSelectionRing(this.selected)
+      // 运行模式只读:收起变换手柄(拖拽已在 tryStartPointerDrag 门禁)
+      this.tControls?.detach()
     }
     this.refreshChannelHandles()
     this.refreshAgentRangeHandles()
@@ -2559,7 +2966,7 @@ export class TownScene3D {
    * 返回 true 表示场景已接管指针(调用方应跳过相机平移)。
    */
   tryStartPointerDrag(clientX: number, clientY: number): boolean {
-    if (this.mode !== 'edit') return false
+    if (this.mode !== 'edit' || this.isGizmoBusy()) return false
     const w = this.screenToWorld(clientX, clientY)
     // 1) Agent 活动范围手柄(编辑模式选中带范围角色时 → 拖拽调整该 Agent 范围大小)
     const ar = this.pickAgentRangeHandle(w.x, w.z)
@@ -2589,7 +2996,6 @@ export class TownScene3D {
         if (!this.deviceNodes.has(hit.id)) return false
         this.pointerDrag = hit
         this.setSelected(hit)
-        this.showSelectionRing(hit)
         this.emitSaveState('dirty')
         return true
       }
@@ -2605,7 +3011,6 @@ export class TownScene3D {
       asp.behavior.targetId = null
       this.pointerDrag = hit
       this.setSelected(hit)
-      this.showSelectionRing(hit)
       this.emitSaveState('dirty')
       return true
     }
@@ -2617,7 +3022,18 @@ export class TownScene3D {
       this.emitSaveState('dirty')
       return true
     }
-    // 6) 频道领地整体拖拽:点中领地空白处 → 平移整个频道(平台/边界/名牌/成员落点)
+    // 6) 频道边界线拖拽:抓住边界附近 → 整体等比缩放(手柄之外,自由拉边调节范围)
+    const edge = this.pickChannelEdge(w.x, w.z)
+    if (edge) {
+      this.pointerDrag = { kind: 'channelEdge', id: edge.cid, rx0: edge.rx0, rz0: edge.rz0, rd0: edge.rd0 }
+      this.setSelected(null)
+      this.selectChannel(edge.cid)
+      this.emitSaveState('dirty')
+      return true
+    }
+    // 7) 频道信标:非拖拽目标(点击定位语义交给 pointerup;避免编辑模式下点信标变成整体拖动)
+    if (this.pickBeacon(w.x, w.z)) return false
+    // 8) 频道领地整体拖拽:点中领地空白处 → 平移整个频道(平台/边界/名牌/成员落点)
     const cid = this.pickChannel(w.x, w.z)
     if (cid) {
       const b = this.blocks.get(cid)
@@ -2643,8 +3059,9 @@ export class TownScene3D {
   movePointerDrag(clientX: number, clientY: number): void {
     if (!this.pointerDrag) return
     const w = this.screenToWorld(clientX, clientY)
-    const x = Math.min(WORLD_W, Math.max(0, this.snapWorld(w.x)))
-    const z = Math.min(WORLD_H, Math.max(0, this.snapWorld(w.z)))
+    // 无边界画布:仅网格吸附,不钳制世界范围(模型可摆放到任意位置)
+    const x = this.snapWorld(w.x)
+    const z = this.snapWorld(w.z)
     const pd = this.pointerDrag
     if (pd.kind === 'device') {
       const dev = this.deviceNodes.get(pd.id)
@@ -2691,11 +3108,9 @@ export class TownScene3D {
       // 拖 Agent 活动范围边界 → 整框平移(钳入频道边界;范围线框/手柄跟随)
       const asp = this.agents.get(pd.id)
       if (!asp || !asp.range) return
-      const layout = this.blockLayout(asp.channelId)
-      if (!layout) return
-      const nx = Math.min(WORLD_W, Math.max(0, x + pd.dx))
-      const nz = Math.min(WORLD_H, Math.max(0, z + pd.dz))
-      asp.range = clampRangeToLayout(layout, { ...asp.range, x: nx, z: nz })
+      const nx = x + pd.dx
+      const nz = z + pd.dz
+      asp.range = { ...asp.range, x: nx, z: nz }
       asp.renderRangeLine()
       this.refreshAgentRangeHandles()
       this.dirty = true
@@ -2704,20 +3119,32 @@ export class TownScene3D {
       // 拖 Agent 范围手柄 → 实时调整 radiusX/radiusZ(矩形角点双轴 / 椭圆轴向轴点)
       const asp = this.agents.get(pd.id)
       if (!asp || !asp.range) return
-      const layout = this.blockLayout(asp.channelId)
-      if (!layout) return
-      asp.range = this.applyAgentRangeResize(asp.range, pd.handle, w.x, w.z, layout)
+      asp.range = this.applyAgentRangeResize(asp.range, pd.handle, w.x, w.z)
       asp.renderRangeLine()
       this.refreshAgentRangeHandles()
+      this.autoFrameTo(asp.range.radiusX, asp.range.radiusZ)
       this.dirty = true
     }
     else if (pd.kind === 'channel') {
       const b = this.blocks.get(pd.id)
-      if (b) this.applyBlockMove(b, Math.min(WORLD_W, Math.max(0, x + pd.dx)), Math.min(WORLD_H, Math.max(0, z + pd.dz)))
+      if (b) this.applyBlockMove(b, x + pd.dx, z + pd.dz)
     }
     else if (pd.kind === 'resize') {
       const b = this.blocks.get(pd.id)
       if (b) this.applyResize(b, pd.handle, w.x, w.z)
+    }
+    else if (pd.kind === 'channelEdge') {
+      // 边界线等比缩放:指针沿"中心→边界"射线的归一化距离比例 → 双轴同倍率
+      const b = this.blocks.get(pd.id)
+      if (b) {
+        const lxz = toLocal(b, x, z)
+        const rd = Math.hypot(lxz.x / pd.rx0, lxz.z / pd.rz0)
+        const factor = pd.rd0 > 0.05 ? rd / pd.rd0 : 1
+        b.radiusX = Math.max(60, Math.round(pd.rx0 * factor))
+        b.radiusZ = Math.max(40, Math.round(pd.rz0 * factor))
+        this.applyLayoutToBlock(b)
+        this.autoFrameTo(b.radiusX, b.radiusZ)
+      }
     }
   }
 
@@ -2737,7 +3164,7 @@ export class TownScene3D {
         asp.homeZ = asp.root.position.z
         asp.dragging = false
         this.emitSaveState('saving')
-        void this.agentApi?.updateHome(pd.id, asp.homeX, asp.homeZ)
+        void this.agentApi?.updateHome(pd.id, asp.channelId, asp.homeX, asp.homeZ)
           .then(() => this.emitSaveState('saved', Date.now()))
           .catch(() => this.emitSaveState('error'))
       }
@@ -2746,7 +3173,6 @@ export class TownScene3D {
       // 框选结束:以拖框中点为中心、半宽为半径生成矩形范围(过小拖动视为取消)
       const asp = this.agents.get(pd.id)
       if (asp && this.rangeDrawPreviewState) {
-        const layout = this.blockLayout(asp.channelId)
         const d = this.rangeDrawPreviewState
         const range: AgentRangeLayout = {
           x: (d.x0 + d.x1) / 2,
@@ -2756,8 +3182,8 @@ export class TownScene3D {
           shape: 'rect',
           rotationY: 0,
         }
-        if (layout && range.radiusX >= 40 && range.radiusZ >= 40) {
-          asp.range = clampRangeToLayout(layout, range)
+        if (range.radiusX >= 40 && range.radiusZ >= 40) {
+          asp.range = range
           asp.renderRangeLine()
           // 把角色落点收进新范围(home 若在范围外会导致回归/漫游卡死)
           const c = clampToAgentRange(asp.range, asp.homeX, asp.homeZ, 0)
@@ -2766,10 +3192,10 @@ export class TownScene3D {
             asp.homeZ = c.z
             asp.root.position.x = c.x
             asp.root.position.z = c.z
-            void this.agentApi?.updateHome(pd.id, c.x, c.z).catch(() => {})
+            void this.agentApi?.updateHome(pd.id, asp.channelId, c.x, c.z).catch(() => {})
           }
           this.emitSaveState('saving')
-          void this.agentApi?.updateRange(pd.id, asp.range)
+          void this.agentApi?.updateRange(pd.id, asp.channelId, asp.range)
             .then(() => this.emitSaveState('saved', Date.now()))
             .catch(() => this.emitSaveState('error'))
         }
@@ -2783,7 +3209,7 @@ export class TownScene3D {
       const asp = this.agents.get(pd.id)
       if (asp && asp.range) {
         this.emitSaveState('saving')
-        void this.agentApi?.updateRange(pd.id, asp.range)
+        void this.agentApi?.updateRange(pd.id, asp.channelId, asp.range)
           .then(() => this.emitSaveState('saved', Date.now()))
           .catch(() => this.emitSaveState('error'))
       }
@@ -2806,7 +3232,6 @@ export class TownScene3D {
         }
       }
     }
-    this.showSelectionRing(this.selected)
   }
 
   // ================================================================
@@ -2876,7 +3301,7 @@ export class TownScene3D {
   }
 
   /** 拖范围手柄 → 实时调整 radiusX/radiusZ(矩形:角点双轴;椭圆:对应轴向轴点),并收进频道边界 */
-  private applyAgentRangeResize(range: AgentRangeLayout, handle: number, wx: number, wz: number, layout: ChannelLayout): AgentRangeLayout {
+  private applyAgentRangeResize(range: AgentRangeLayout, handle: number, wx: number, wz: number): AgentRangeLayout {
     const rad = -range.rotationY * Math.PI / 180
     const cos = Math.cos(rad)
     const sin = Math.sin(rad)
@@ -2894,7 +3319,7 @@ export class TownScene3D {
     else {
       next = { ...range, radiusZ: Math.max(30, Math.abs(lz)) }
     }
-    return clampRangeToLayout(layout, next)
+    return next
   }
 
   /** 框选预览:以 (x0,z0)-(x1,z1) 为对角生成矩形线框(实时跟随指针) */
@@ -2908,7 +3333,7 @@ export class TownScene3D {
     const rx = Math.max(8, (hx - lx) / 2)
     const rz = Math.max(8, (hz - lz) / 2)
     if (!this.rangeDrawLine) {
-      const line = makeBoundary('rect', 1, 1, 0x9fe8d4)
+      const line = makeBoundary('rect', 1, 1, 0x4da3ff)
       ;(line.material as THREE.LineBasicMaterial).opacity = 0.95
       line.position.y = 0.5
       this.scene.add(line)
@@ -2965,17 +3390,16 @@ export class TownScene3D {
     return this.agents.get(agentId)?.range ?? null
   }
 
-  /** 面板滑杆/形状即时调整:局部更新范围(钳入频道) + 线框/手柄刷新;home 被迫位移时记档待提交 */
+  /** 面板滑杆/形状即时调整:局部更新范围(无上限,信任用户设定) + 线框/手柄刷新;home 被迫位移时记档待提交 */
   setAgentRangeScene(agentId: string, patch: Partial<AgentRangeLayout>): void {
     const asp = this.agents.get(agentId)
     if (!asp) return
-    const layout = this.blockLayout(asp.channelId)
     if (!asp.range) {
       // 尚无范围:以落点为中心、频道半径 1/4 起手(面板直接给值时)
       asp.range = { x: asp.homeX, z: asp.homeZ, radiusX: 120, radiusZ: 90, shape: 'ellipse', rotationY: 0 }
     }
     const next = { ...asp.range, ...patch }
-    asp.range = layout ? clampRangeToLayout(layout, next) : next
+    asp.range = next
     // 范围收缩致 home 越界 → 落点收进范围(提交时随 updateRange 一并落库)
     const c = clampToAgentRange(asp.range, asp.homeX, asp.homeZ, 0)
     if (c.x !== asp.homeX || c.z !== asp.homeZ) {
@@ -2997,10 +3421,10 @@ export class TownScene3D {
     if (this.rangeHomeMoved?.agentId === agentId) {
       const { x, z } = this.rangeHomeMoved
       this.rangeHomeMoved = null
-      void this.agentApi?.updateHome(agentId, x, z).catch(() => {})
+      void this.agentApi?.updateHome(agentId, asp.channelId, x, z).catch(() => {})
     }
     this.emitSaveState('saving')
-    void this.agentApi?.updateRange(agentId, asp.range)
+    void this.agentApi?.updateRange(agentId, asp.channelId, asp.range)
       .then(() => this.emitSaveState('saved', Date.now()))
       .catch(() => this.emitSaveState('error'))
     this.emitAgentRangeChanged(agentId)
@@ -3018,7 +3442,7 @@ export class TownScene3D {
     this.rangeHomeMoved = null
     this.refreshAgentRangeHandles()
     this.emitSaveState('saving')
-    void this.agentApi?.updateRange(agentId, null)
+    void this.agentApi?.updateRange(agentId, asp.channelId, null)
       .then(() => this.emitSaveState('saved', Date.now()))
       .catch(() => this.emitSaveState('error'))
     this.emitAgentRangeChanged(agentId)
@@ -3117,7 +3541,10 @@ export class TownScene3D {
         }
       }
       if (!existing) {
-        if (this.modelsById.get(t.modelRef)?.file && typeof t.posX === 'number' && typeof t.posZ === 'number') this.recreateDeviceNode(t)
+        // 数采节点走程序化路径(无 GLB 也可实例化);设备需模型可解析 + 已入场景
+        const isDaq = t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-')
+        const resolvable = isDaq || !!this.resolveDeviceModel(t.modelRef)?.file
+        if (resolvable && typeof t.posX === 'number' && typeof t.posZ === 'number') this.recreateDeviceNode(t)
         else this.pendingDeviceTwins.set(t.id, t)
         continue
       }
@@ -3138,15 +3565,33 @@ export class TownScene3D {
       }
       this.dirty = true
     }
+    // 设备节点就位后重仲裁绑定链路(链路期望先于节点到达的时序兜底)
+    if (this.daqLinksWanted.length) this.syncDaqLinks(this.daqLinksWanted)
     for (const id of [...this.pendingDeviceTwins.keys()]) {
       if (!serverIds.has(id)) this.pendingDeviceTwins.delete(id)
     }
-    if (this.selected && this.selRing?.visible) this.showSelectionRing(this.selected)
   }
 
   /** 按设备孪生记录重建场景节点(持久化恢复:pos/rotation/scale;模型缺失则跳过) */
+  /** 设备模型解析:精确 id → `dev-folder-<ref>` 前缀 → `-<ref>` 后缀(兼容旧数据短 modelRef) */
+  private resolveDeviceModel(ref: string): { id: string, file: string, hFactor: number } | null {
+    const direct = this.modelsById.get(ref)
+    if (direct?.file) return { id: direct.id, file: direct.file, hFactor: direct.hFactor ?? 1 }
+    for (const [id, m] of this.modelsById) {
+      if (m.kind !== 'dev' || !m.file) continue
+      if (id === `dev-folder-${ref}` || id.endsWith(`-${ref}`)) return { id, file: m.file, hFactor: m.hFactor ?? 1 }
+    }
+    return null
+  }
+
   private recreateDeviceNode(t: DeviceTwinSync): void {
-    const model = this.modelsById.get(t.modelRef)
+    // 数采节点:程序化传感网格(基座 + 传感头 + 信号环),不依赖 GLB 资产
+    // (modelRef 前缀兜底:旧数据 kind 落成 'device' 的数采实例同样走程序化路径)
+    if (t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-')) {
+      this.recreateDaqNode(t)
+      return
+    }
+    const model = this.resolveDeviceModel(t.modelRef)
     const file = model?.file ?? ''
     if (!file) return
     const x = typeof t.posX === 'number' ? t.posX : WORLD_CX
@@ -3156,7 +3601,7 @@ export class TownScene3D {
     root.rotation.y = typeof t.rotationY === 'number' ? t.rotationY * Math.PI / 180 : 0
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(20, 26, 32),
-      new THREE.MeshBasicMaterial({ color: 0x8fe8d4, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ color: 0xf5a742, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
     )
     ring.rotation.x = -Math.PI / 2
     ring.position.y = 0.3
@@ -3171,7 +3616,114 @@ export class TownScene3D {
     this.deviceNodes.set(t.id, twin)
     // 服务端缩放优先(持久化恢复);缺省回退 localStorage
     this.registerScalable('device', t.id, holder, typeof t.scale === 'number' ? t.scale : undefined)
-    void this.loadGltfToGroup(file, holder, UNITS * 1.6)
+    // 高度系数:产线设备按设计稿比例错落(基准高 × 模型系数),未知模型维持 1
+    void this.loadGltfToGroup(file, holder, UNITS * 1.6 * (model?.hFactor ?? 1))
+    this.dirty = true
+  }
+
+  /** 数采节点传感头(设计稿 DAQ 预制件 1:1 移植,×34 世界单位):
+   *  立杆基座 + 顶端 LED 环 + 每模板独立传感形态 —— 温度计/压力表/张力辊/编码盘/相机/电参天线。 */
+  private makeDaqMesh(modelRef: string): { group: THREE.Group, ledRing: THREE.Mesh } {
+    const S = 34
+    const g = new THREE.Group()
+    const steel = new THREE.MeshStandardMaterial({ color: 0x9fb2c8, metalness: 0.85, roughness: 0.32 })
+    const body = new THREE.MeshStandardMaterial({ color: 0x74869c, metalness: 0.35, roughness: 0.5 })
+    const body2 = new THREE.MeshStandardMaterial({ color: 0x55647a, metalness: 0.4, roughness: 0.55 })
+    const dark = new THREE.MeshStandardMaterial({ color: 0x2b3442, metalness: 0.7, roughness: 0.45 })
+    const chrome = new THREE.MeshStandardMaterial({ color: 0xdfe8f2, metalness: 1, roughness: 0.14 })
+    const copper = new THREE.MeshStandardMaterial({ color: 0xc57a45, metalness: 0.9, roughness: 0.35 })
+    const glow = new THREE.MeshBasicMaterial({ color: 0x53d6ff })
+    const B = (w: number, h: number, d: number, m: THREE.Material): THREE.Mesh => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w * S, h * S, d * S), m)
+      mesh.castShadow = true
+      return mesh
+    }
+    const Cyl = (rt: number, rb: number, h: number, m: THREE.Material, seg = 20): THREE.Mesh => {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt * S, rb * S, h * S, seg), m)
+      mesh.castShadow = true
+      return mesh
+    }
+    const at = (m: THREE.Mesh, x: number, y: number, z: number): THREE.Mesh => {
+      m.position.set(x * S, y * S, z * S)
+      g.add(m)
+      return m
+    }
+    // 立杆基座(设计稿 daqPole)
+    at(Cyl(0.17, 0.22, 0.09, dark), 0, 0.045, 0)
+    at(Cyl(0.028, 0.028, 0.95, steel, 10), 0, 0.55, 0)
+    const ledRing = new THREE.Mesh(new THREE.TorusGeometry(0.09 * S, 0.02 * S, 10, 28), new THREE.MeshBasicMaterial({ color: 0x35e0a0 }))
+    ledRing.rotation.x = Math.PI / 2
+    g.add(ledRing)
+    ledRing.position.y = 1.02 * S
+    // 每模板传感头(modelRef = `daq-<tplId>`)
+    if (modelRef.endsWith('temp-tc')) {
+      at(B(0.24, 0.32, 0.24, body), 0, 1.2, 0)
+      const probe = at(Cyl(0.014, 0.014, 0.4, steel, 8), 0.14, 0.85, 0)
+      probe.rotation.z = -0.5
+    }
+    else if (modelRef.endsWith('pressure-tx')) {
+      at(Cyl(0.13, 0.16, 0.3, steel), 0, 1.22, 0)
+      at(Cyl(0.12, 0.12, 0.05, dark), 0, 1.4, 0)
+      at(B(0.05, 0.05, 0.2, copper), 0, 1.1, 0.2)
+    }
+    else if (modelRef.endsWith('tension-cell')) {
+      at(B(0.34, 0.2, 0.2, body), 0, 1.25, 0)
+      for (const x of [-0.11, 0.11]) {
+        const roll = at(Cyl(0.06, 0.06, 0.26, chrome), x, 1.25, 0)
+        roll.rotation.x = Math.PI / 2
+      }
+    }
+    else if (modelRef.endsWith('line-encoder')) {
+      at(B(0.34, 0.05, 0.05, steel), 0.14, 1.28, 0)
+      const disc = at(Cyl(0.16, 0.16, 0.05, dark), 0.32, 1.28, 0)
+      disc.rotation.z = Math.PI / 2
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.1 * S, 0.015 * S, 10, 26), ledRing.material as THREE.Material)
+      at(halo, 0.35, 1.28, 0)
+    }
+    else if (modelRef.endsWith('vision-cam')) {
+      at(B(0.28, 0.2, 0.36, body2), 0, 1.3, 0)
+      const lens = at(Cyl(0.07, 0.09, 0.14, dark), 0, 1.3, 0.24)
+      lens.rotation.x = Math.PI / 2
+      const iris = new THREE.Mesh(new THREE.TorusGeometry(0.075 * S, 0.012 * S, 10, 24), ledRing.material as THREE.Material)
+      at(iris, 0, 1.3, 0.3)
+    }
+    else if (modelRef.endsWith('power-meter')) {
+      at(B(0.32, 0.42, 0.18, body), 0, 1.3, 0)
+      at(Cyl(0.012, 0.012, 0.42, steel, 8), 0.1, 1.7, 0)
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.028 * S, 10, 8), ledRing.material as THREE.Material)
+      at(tip, 0.1, 1.92, 0)
+      at(B(0.2, 0.06, 0.02, glow), 0, 1.42, 0.1)
+    }
+    return { group: g, ledRing }
+  }
+
+  /** 数采节点(程序化):模板分化传感网格 + 地面信号环 + 名牌 —— 拖拽实例化的数采模板落点形态 */
+  private recreateDaqNode(t: DeviceTwinSync): void {
+    const x = typeof t.posX === 'number' ? t.posX : WORLD_CX
+    const z = typeof t.posZ === 'number' ? t.posZ : WORLD_CZ
+    const root = new THREE.Group()
+    root.position.set(x, GROUND_Y, z)
+    root.rotation.y = typeof t.rotationY === 'number' ? t.rotationY * Math.PI / 180 : 0
+    const { group: sensor, ledRing } = this.makeDaqMesh(t.modelRef)
+    root.add(sensor)
+    const sigRing = new THREE.Mesh(
+      new THREE.RingGeometry(16, 21, 36),
+      new THREE.MeshBasicMaterial({ color: 0x35e0a0, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }),
+    )
+    sigRing.rotation.x = -Math.PI / 2
+    sigRing.position.y = 0.35
+    root.add(sigRing)
+    const label = this.makeLabel(t.name, x, 62, z, '#35e0a0')
+    this.scene.add(root)
+    const node = new DeviceNode({
+      twinId: t.id, name: t.name, modelRef: t.modelRef,
+      root, holder: root, ring: sigRing, label,
+      state: t.state ?? 'running', telemetry: t.telemetry ?? {},
+    })
+    node.host = this
+    this.deviceNodes.set(t.id, node)
+    this.daqLedRings.set(t.id, ledRing)
+    this.registerScalable('device', t.id, root, typeof t.scale === 'number' ? t.scale : undefined)
     this.dirty = true
   }
 
@@ -3184,33 +3736,108 @@ export class TownScene3D {
     if (this.selected?.kind === 'device' && this.selected.id === id) this.setSelected(null)
     this.scalables.delete(`device:${id}`)
     this.deviceNodes.delete(id)
+    this.daqLedRings.delete(id)
+    this.daqLinkSig = ''
+    this.filmWebSig = ''
     this.dirty = true
   }
 
-  /** 选中高亮环(编辑模式;跟随选中设备/角色) */
-  private showSelectionRing(hit: { kind: 'agent' | 'device', id: string } | null): void {
-    if (!this.selRing) {
-      this.selRing = new THREE.Mesh(
-        new THREE.RingGeometry(34, 42, 48),
-        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthTest: false }),
-      )
-      this.selRing.rotation.x = -Math.PI / 2
-      this.selRing.position.y = 0.42
-      this.selRing.visible = false
-      this.scene.add(this.selRing)
+  // ================================================================
+  // 数采绑定链路 + 薄膜 web(设计稿 buildChanLine / rebuildWeb 移植)
+  // ================================================================
+
+  /** 设备顶端世界高度(holder 包围盒;链路/膜 web 的挂点) */
+  private deviceTopY(dev: DeviceNode): number {
+    const box = new THREE.Box3().setFromObject(dev.holder)
+    return Number.isFinite(box.max.y) ? Math.max(40, box.max.y) : 64
+  }
+
+  /** 同步数采→设备绑定链路(TownView 传入 [{daqId, deviceId}];端点移动时逐帧跟随重建) */
+  syncDaqLinks(links: Array<{ daqId: string, deviceId: string }>): void {
+    this.daqLinksWanted = links
+    // 签名按"成功建链"的链路计算:节点未就绪被跳过的链路不计入 → 设备节点晚到时 syncDevices 末尾重仲裁补链
+    const built = links.filter(l => this.deviceNodes.has(l.daqId) && this.deviceNodes.has(l.deviceId))
+    const sig = built.map(l => `${l.daqId}>${l.deviceId}`).sort().join('|')
+    if (sig === this.daqLinkSig) return
+    this.daqLinkSig = sig
+    for (const l of this.daqLinks) {
+      this.daqLinkGroup.remove(l.line)
+      this.daqLinkGroup.remove(l.pulse)
+      l.line.geometry.dispose()
     }
-    if (!hit || this.mode !== 'edit') {
-      this.selRing.visible = false
-      return
+    this.daqLinks = []
+    for (const l of built) {
+      const daq = this.deviceNodes.get(l.daqId)!
+      const dev = this.deviceNodes.get(l.deviceId)!
+      const a = new THREE.Vector3(daq.root.position.x, 42, daq.root.position.z)
+      const b = new THREE.Vector3(dev.root.position.x, this.deviceTopY(dev) + 6, dev.root.position.z)
+      const mid = a.clone().add(b).multiplyScalar(0.5)
+      mid.y = Math.max(a.y, b.y) + 42
+      const curve = new THREE.QuadraticBezierCurve3(a, mid, b)
+      const geo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(28))
+      const line = new THREE.Line(geo, new THREE.LineDashedMaterial({ color: 0x35e0a0, transparent: true, opacity: 0.55, dashSize: 8, gapSize: 5 }))
+      line.computeLineDistances()
+      const pulse = new THREE.Mesh(new THREE.SphereGeometry(2.6, 10, 8), new THREE.MeshBasicMaterial({ color: 0x53d6ff }))
+      this.daqLinkGroup.add(line, pulse)
+      this.daqLinks.push({ ...l, line, pulse, curve, pt: Math.random() })
     }
-    const obj = hit.kind === 'device' ? this.deviceNodes.get(hit.id)?.root : this.agents.get(hit.id)?.root
-    if (!obj) {
-      this.selRing.visible = false
-      return
+    this.dirty = true
+  }
+
+  /** 端点跟随:任一端点位移超阈值 → 重建该链路曲线(拖拽设备/数采时虚线实时跟随) */
+  private refreshDaqLinks(): void {
+    for (const l of this.daqLinks) {
+      const daq = this.deviceNodes.get(l.daqId)
+      const dev = this.deviceNodes.get(l.deviceId)
+      if (!daq || !dev) continue
+      const a = new THREE.Vector3(daq.root.position.x, 42, daq.root.position.z)
+      const b = new THREE.Vector3(dev.root.position.x, this.deviceTopY(dev) + 6, dev.root.position.z)
+      const mid = a.clone().add(b).multiplyScalar(0.5)
+      mid.y = Math.max(a.y, b.y) + 42
+      l.curve.v0.copy(a)
+      l.curve.v1.copy(mid)
+      l.curve.v2.copy(b)
+      const pts = l.curve.getPoints(28)
+      l.line.geometry.setFromPoints(pts)
+      l.line.computeLineDistances()
     }
-    this.selRing.position.x = obj.position.x
-    this.selRing.position.z = obj.position.z
-    this.selRing.visible = true
+  }
+
+  /** 产线设备型号识别(modelRef 含产线关键字 → 薄膜 web 连线成员) */
+  private isLineDevice(modelRef: string): boolean {
+    const ref = modelRef.toLowerCase()
+    return /extruder|caster|mdo|tdo|winder/.test(ref)
+  }
+
+  /** 薄膜 web:按 X 序连接产线设备(挤出→流延→MD→TD→收卷),半透明膜面 —— 产线工艺连续性可视化 */
+  private rebuildFilmWeb(): void {
+    const list = [...this.deviceNodes.values()]
+      .filter(d => this.isLineDevice(d.modelRef) && !d.modelRef.startsWith('daq-'))
+      .sort((a, b) => a.root.position.x - b.root.position.x)
+    const sig = list.map(d => `${d.twinId}:${Math.round(d.root.position.x)},${Math.round(d.root.position.z)}`).join('|')
+    if (sig === this.filmWebSig) return
+    this.filmWebSig = sig
+    while (this.filmWebGroup.children.length) {
+      const c = this.filmWebGroup.children[0] as THREE.Mesh
+      this.filmWebGroup.remove(c)
+      c.geometry.dispose()
+    }
+    if (!this.filmWebMat) {
+      this.filmWebMat = new THREE.MeshStandardMaterial({
+        color: 0xaad8ff, metalness: 0.1, roughness: 0.35, transparent: true, opacity: 0.3,
+        emissive: 0x2b6b8f, emissiveIntensity: 0.4, side: THREE.DoubleSide, depthWrite: false,
+      })
+    }
+    for (let i = 0; i < list.length - 1; i++) {
+      const a = list[i]!.root.position
+      const b = list[i + 1]!.root.position
+      const len = Math.abs(b.x - a.x) - 110
+      if (len < 30) continue
+      const web = new THREE.Mesh(new THREE.BoxGeometry(len, 1.2, 46), this.filmWebMat)
+      web.position.set((a.x + b.x) / 2, 48, (a.z + b.z) / 2)
+      this.filmWebGroup.add(web)
+    }
+    this.dirty = true
   }
 
   // ================================================================
@@ -3222,6 +3849,7 @@ export class TownScene3D {
       if (this.disposed) return
       this.raf = requestAnimationFrame(animate)
       const dt = this.clock.getDelta()
+      const t = this.clock.elapsedTime
       // 频道信息接收器:FIFO 逐条消费实时消息(每帧检查,展示期满取下一条)
       this.drainReceivers(performance.now())
       // 行为 FSM
@@ -3232,15 +3860,11 @@ export class TownScene3D {
       for (const asp of this.agents.values()) {
         if (asp.mixer) asp.mixer.update(dt)
       }
+      // 频道信标缓转(顶标菱形旋转,中心定位销的生命感)
+      for (const b of this.blocks.values()) b.beacon.rotation.y += dt * 0.4
       // 名字/环/气泡跟随 + 逐帧动画(脉冲/光柱/缓动)
       for (const asp of this.agents.values()) {
         asp.nameSprite.position.set(asp.root.position.x, 48, asp.root.position.z)
-        asp.aura.position.set(asp.root.position.x, 0.24, asp.root.position.z)
-        // busy → 身份环呼吸脉冲(工作状态一目了然)
-        const auraMat = asp.aura.material as THREE.MeshBasicMaterial
-        auraMat.opacity = asp.state === 'busy'
-          ? 0.62 + Math.abs(Math.sin(performance.now() * 0.005)) * 0.38
-          : 0.85
         if (asp.bubble) {
           asp.bubble.position.set(asp.root.position.x, BUBBLE_Y + 22 + Math.max(0, asp.model.scale.y - 1) * 22, asp.root.position.z)
         }
@@ -3251,25 +3875,77 @@ export class TownScene3D {
         dev.label.position.set(dev.root.position.x, 60, dev.root.position.z)
         dev.updateRing()
       }
-      // 选中高亮环跟随(编辑模式)
-      if (this.selRing?.visible && this.selected) {
-        const obj = this.selected.kind === 'device'
-          ? this.deviceNodes.get(this.selected.id)?.root
-          : this.agents.get(this.selected.id)?.root
-        if (obj) {
-          this.selRing.position.x = obj.position.x
-          this.selRing.position.z = obj.position.z
+      // 数采节点 LED 环:缓转 + 呼吸(绑定链路的信号生命感)
+      for (const ring of this.daqLedRings.values()) {
+        ring.rotation.z += dt * 1.2
+        const s = 1 + Math.sin(t * 3.2) * 0.08
+        ring.scale.setScalar(s)
+      }
+      // 绑定链路:端点跟随 + 脉冲上行(数据从数采流向设备)
+      if (this.daqLinks.length) {
+        this.refreshDaqLinks()
+        for (const l of this.daqLinks) {
+          l.pt = (l.pt + dt * 0.3) % 1
+          l.pulse.position.copy(l.curve.getPoint(l.pt))
         }
       }
+      // 薄膜 web:产线设备增删/移动时重建(签名防抖)
+      this.rebuildFilmWeb()
       const anims = this.rafAnims
       this.rafAnims = []
       for (const f of anims) f()
       // 相机:围绕 camTarget 按 dolly 距离摆放(拖拽平移 camTarget,滚轮调 dolly,tween 平移 camTarget);
       // 基线 1250/760 + FOV55 = 全园区电影化 2.5D 框景;穹顶随镜头平移(无限视野观感)
-      const dist = 1250 * this.dolly
-      this.camera.position.set(this.camTarget.x, 760 * this.dolly, this.camTarget.z + dist * 0.72)
+      if (this.autoDolly !== null) {
+        this.dolly += (this.autoDolly - this.dolly) * 0.12
+        if (Math.abs(this.autoDolly - this.dolly) < 0.01) this.autoDolly = null
+      }
+      for (const k of ['yaw', 'pitch', 'radius'] as const) {
+        this.viewCur[k] += (this.viewTarget[k] - this.viewCur[k]) * 0.08
+      }
+      // 自动环绕(设计稿 tOrbit):缓转方位角(约 24s/圈;指针按住场景时暂停)
+      if (this.autoOrbit && !this.pointerDrag) {
+        this.viewCur.yaw -= 0.0026
+        this.viewTarget.yaw = this.viewCur.yaw
+      }
+      const r = this.viewCur.radius * this.dolly
+      const cp = Math.cos(this.viewCur.pitch)
+      this.camera.position.set(
+        this.camTarget.x + r * cp * Math.sin(this.viewCur.yaw),
+        20 + r * Math.sin(this.viewCur.pitch),
+        this.camTarget.z + r * cp * Math.cos(this.viewCur.yaw),
+      )
       this.camera.lookAt(this.camTarget.x, 20, this.camTarget.z)
-      if (this.skyDome) this.skyDome.position.set(this.camTarget.x, 0, this.camTarget.z)
+      // 无级缩放:近/远裁剪面随 dolly 伸缩(贴脸到星野全程不裁剪)
+      const near = Math.max(0.05, 1.2 * this.dolly)
+      const far = 16000 * this.dolly
+      if (Math.abs(this.camera.near - near) > 0.005 || Math.abs(this.camera.far - far) > 1) {
+        this.camera.near = near
+        this.camera.far = far
+        this.camera.updateProjectionMatrix()
+      }
+      if (this.skyDome) {
+        this.skyDome.position.set(this.camTarget.x, 0, this.camTarget.z)
+        // 穹顶随 dolly 缩放:高空拉远时相机始终在穹内,无硬地平线
+        this.skyDome.scale.setScalar(Math.max(1, this.dolly * 1.3))
+      }
+      // 地面跟随镜头滑动(重复纹理 = 无限地面;高空不见地面边缘)
+      this.ground.position.set(this.camTarget.x, 0, this.camTarget.z)
+      // 雾距/阴影范围随 dolly 缩放:任意 zoom 层级下取景内容都不被雾吞、投影不消失
+      const fog = this.scene.fog
+      if (fog instanceof THREE.Fog) {
+        fog.near = 1400 * this.dolly
+        fog.far = 8800 * this.dolly
+      }
+      const sc = this.keyLight.shadow.camera
+      const ext = 1600 * Math.max(1, this.dolly)
+      if (Math.abs(sc.right - ext) > 1) {
+        sc.left = -ext
+        sc.right = ext
+        sc.top = 2300 * Math.max(1, this.dolly)
+        sc.bottom = -2300 * Math.max(1, this.dolly)
+        sc.updateProjectionMatrix()
+      }
       this.renderer.render(this.scene, this.camera)
       // FPS
       this.frameCount += 1
@@ -3311,7 +3987,6 @@ export class TownScene3D {
     this.selectedChannel = null
     for (const hl of this.resizeHandles) hl.mesh.visible = false
     for (const hl of this.agentRangeHandles) hl.mesh.visible = false
-    this.showSelectionRing(null)
     this.agents.clear()
     this.blocks.clear()
   }
@@ -3323,6 +3998,10 @@ export class TownScene3D {
     for (const t of this.pendingSaveTimers.values()) clearTimeout(t)
     this.pendingSaveTimers.clear()
     this.receivers.clear()
+    this.resizeOb?.disconnect()
+    this.resizeOb = null
+    this.tControls?.dispose()
+    this.tControls = null
     this.renderer.dispose()
     if (this.renderer.domElement.parentElement === this.el) this.renderer.domElement.remove()
   }

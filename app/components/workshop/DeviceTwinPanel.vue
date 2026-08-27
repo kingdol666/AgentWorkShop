@@ -8,9 +8,18 @@
  */
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 
+/** 实时数采数据(twinId → 该实体相关的实时通道:
+ *  数采节点 = 自身通道;设备 = 绑定到它的全部数采通道;由 TownView 从模拟上报喂入) */
+interface DaqLiveRow { ch: string, value: string, unit: string, alarm?: boolean }
+defineProps<{ daqLive?: Record<string, DaqLiveRow[]> }>()
+
 defineEmits<{ (e: 'focus-device', twin: { id: string, posX?: number, posZ?: number }): void }>()
 
 const twins = useDeviceTwins()
+
+/** 数采实体(绿卡):kind=daq 或旧数据 modelRef 前缀兜底 */
+const isDaq = (t: { kind?: string, modelRef?: string }): boolean =>
+  t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-')
 
 // 节流轮询刷新(不打断拖拽/交互)
 let timer: ReturnType<typeof setInterval> | null = null
@@ -24,6 +33,32 @@ onBeforeUnmount(() => {
 
 const busyId = ref('')
 const ctrlMsg = ref('')
+/** 行内删除(两步确认:首击布防 3s,再击执行) */
+const armedId = ref('')
+let armedTimer: ReturnType<typeof setTimeout> | null = null
+async function removeTwin(t: { id: string, name: string }): Promise<void> {
+  if (armedId.value !== t.id) {
+    armedId.value = t.id
+    if (armedTimer) clearTimeout(armedTimer)
+    armedTimer = setTimeout(() => {
+      armedId.value = ''
+    }, 3000)
+    return
+  }
+  if (armedTimer) clearTimeout(armedTimer)
+  armedId.value = ''
+  busyId.value = t.id
+  ctrlMsg.value = ''
+  try {
+    await twins.remove(t.id)
+  }
+  catch (err) {
+    ctrlMsg.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    busyId.value = ''
+  }
+}
 async function doControl(t: { id: string, name: string }, command: string, args?: Record<string, unknown>): Promise<void> {
   busyId.value = t.id
   ctrlMsg.value = ''
@@ -55,12 +90,8 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
 <template>
   <aside class="twin-panel">
     <div class="twin-head">
-      <span class="twin-kicker">DEVICE TWIN CONSOLE</span>
+      <span class="twin-kicker">设备控制台</span>
       <span class="twin-count">{{ twins.twins.length }}</span>
-    </div>
-    <div class="twin-sub">
-      <span class="twin-live-dot" />
-      <span class="twin-sub-label">设备实体 · 实时遥测 · 控制</span>
     </div>
 
     <div
@@ -78,7 +109,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
           未注册设备
         </div>
         <div class="twin-empty-sub">
-          将设备模型拖入小镇场景即可创建数字孪生实体
+          将设备模型拖入孪生场景即可创建数字孪生实体
         </div>
       </div>
     </div>
@@ -90,15 +121,25 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
         v-for="t in twins.twins"
         :key="t.id"
         class="twin-card"
+        :class="{ daq: isDaq(t) }"
         type="button"
         @click="$emit('focus-device', t)"
       >
         <div class="twin-row">
-          <span class="twin-model-plate">{{ modelTag(t.modelRef || t.name) }}</span>
+          <span class="twin-model-tag">{{ modelTag(t.modelRef || t.name) }}</span>
           <div class="twin-idbar">
             <span class="twin-name">{{ t.name }}</span>
-            <span class="twin-code">{{ devNo(t.id) }}</span>
+            <span class="twin-code">{{ isDaq(t) ? 'DAQ' : devNo(t.id) }}</span>
           </div>
+          <button
+            class="twin-del"
+            :class="{ armed: armedId === t.id }"
+            :disabled="busyId === t.id"
+            :title="armedId === t.id ? '再次点击确认删除该设备实例' : '删除该设备实例'"
+            @click.stop="removeTwin(t)"
+          >
+            {{ armedId === t.id ? '确认' : '✕' }}
+          </button>
           <span
             class="twin-state"
             :class="`s-${t.state}`"
@@ -120,7 +161,25 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
             class="tele-item"
           ><em>{{ k }}</em><b>{{ fmt(v) }}</b></span>
         </div>
-        <div class="twin-ctrl">
+        <!-- 实时数采(绿色;数采节点 = 自身通道,设备 = 绑定通道) -->
+        <div
+          v-if="daqLive?.[t.id]?.length"
+          class="twin-daq"
+        >
+          <span
+            v-for="(d, i) in daqLive[t.id]"
+            :key="`${d.ch}-${i}`"
+            class="daq-item"
+            :class="{ alarm: d.alarm }"
+          >
+            <em>{{ d.ch }}</em>
+            <b>{{ d.value }}<i>{{ d.unit }}</i></b>
+          </span>
+        </div>
+        <div
+          v-if="!isDaq(t)"
+          class="twin-ctrl"
+        >
           <button
             class="ctrl-btn on"
             :disabled="busyId === t.id"
@@ -164,52 +223,34 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 208px;
+  width: auto;
   flex: none;
   padding: 0;
-  background: var(--hud-panel);
-  border: 1px solid var(--hud-line);
-  border-radius: 3px;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .twin-head {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 8px 10px 6px;
-  border-bottom: 1px solid var(--hud-line);
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid rgba(38, 51, 64, 0.45);
 }
 .twin-kicker {
   font-family: var(--font-mono);
   font-size: 10px;
+  font-weight: 600;
   letter-spacing: 0.16em;
-  color: var(--hud-accent);
+  color: var(--hud-text, #d9e4ee);
 }
 .twin-count {
   margin-left: auto;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--hud-text);
-  padding: 1px 6px;
-  border: 1px solid var(--hud-line);
-  border-radius: 2px;
-}
-.twin-sub {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  padding: 0 10px 2px;
-}
-.twin-live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--hud-ok);
-}
-.twin-sub-label {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--hud-dim);
+  font-variant-numeric: tabular-nums;
+  color: var(--hud-dim, #8496a5);
 }
 .twin-empty {
   padding: 10px;
@@ -235,45 +276,51 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
 .twin-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   max-height: 46vh;
   overflow: hidden auto;
-  padding: 2px 8px 10px;
+  padding: 4px 0 10px;
 }
 .twin-card {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin: 0 10px;
   padding: 8px 9px;
   text-align: left;
-  background: var(--hud-panel-raised);
-  border: 1px solid var(--hud-line);
-  border-left: 2px solid var(--hud-line);
+  background: rgba(20, 27, 38, 0.65);
+  border: 0;
   border-radius: 2px;
   cursor: pointer;
-  transition: border-color 0.16s ease, background 0.16s ease;
+  transition: background 0.16s ease;
 }
 .twin-card:hover {
   background: var(--hud-panel-hover);
-  border-color: var(--hud-accent);
 }
 .twin-card:active {
   background: var(--hud-panel-raised);
 }
+.twin-card:hover .twin-name { color: #e8f1f8; }
+/* 数采节点绿卡(用户指定:设备监控中数采卡为绿色) */
+.twin-card.daq {
+  background: rgba(53, 224, 160, 0.06);
+  border: 1px solid rgba(53, 224, 160, 0.32);
+}
+.twin-card.daq:hover {
+  background: rgba(53, 224, 160, 0.11);
+  border-color: rgba(53, 224, 160, 0.5);
+}
+.twin-card.daq .twin-model-tag,
+.twin-card.daq .twin-code { color: var(--hud-accent, #35e0a0); }
 .twin-row { display: flex; gap: 8px; align-items: center; min-width: 0; }
-.twin-model-plate {
+.twin-model-tag {
   flex: none;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
+  min-width: 30px;
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 0.05em;
-  color: var(--hud-accent);
-  background: rgba(79, 168, 255, 0.08);
-  border: 1px solid rgba(79, 168, 255, 0.3);
-  border-radius: 2px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--hud-faint);
 }
 .twin-idbar { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
 .twin-name {
@@ -290,6 +337,32 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
   letter-spacing: 0.08em;
   color: var(--hud-dim);
 }
+.twin-del {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1;
+  color: var(--hud-dim, #8496a5);
+  background: transparent;
+  border: 1px solid var(--hud-line, #263340);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+}
+.twin-del:hover:not(:disabled) {
+  border-color: var(--hud-danger, #ff6b5c);
+  color: var(--hud-danger, #ff6b5c);
+}
+.twin-del.armed {
+  width: auto;
+  padding: 0 5px;
+  color: #1a0d0a;
+  background: var(--hud-danger, #ff6b5c);
+  border-color: var(--hud-danger, #ff6b5c);
+}
+.twin-del:disabled { opacity: 0.4; cursor: default; }
 .twin-state {
   flex: none;
   display: inline-flex;
@@ -326,6 +399,36 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
 }
 .tele-item em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
 .tele-item b { color: var(--hud-text); font-weight: 500; }
+/* 实时数采行(绿;越限琥珀) */
+.twin-daq {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 2px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(53, 224, 160, 0.3);
+}
+.daq-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--hud-accent, #35e0a0);
+  min-width: 0;
+}
+.daq-item em {
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.daq-item b { font-weight: 700; font-size: 10.5px; white-space: nowrap; }
+.daq-item b i { font-style: normal; font-size: 8.5px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
+.daq-item.alarm { color: var(--hud-amber, #f6c453); }
 .twin-ctrl { display: flex; gap: 4px; align-items: center; }
 .ctrl-btn {
   padding: 3px 7px;

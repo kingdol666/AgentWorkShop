@@ -22,6 +22,10 @@ export interface TokenMeta {
   label: string
   createdAt: string
   lastUsedAt: string | null
+  /** 服务端掩码预览（前 6 后 4）；旧 token 未存档明文时为 null */
+  preview: string | null
+  /** 是否可随时查看明文（旧数据仅存哈希 → false） */
+  hasPlain: boolean
 }
 
 export interface AuthPayload {
@@ -141,6 +145,14 @@ export const useUserStore = defineStore('workshop.user', {
       })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? '更新 token 失败')
       return res.data
+    },
+    /** 查看存档明文（随时可查；404=非本人/不存在, 410=旧数据仅存哈希） */
+    async revealToken(id: string): Promise<string | null> {
+      const res = await $fetch<ApiEnvelope<{ token: string | null }>>(`/api/users/tokens/${id}/token`, {
+        headers: this.authHeaders(),
+      })
+      if (res.code !== 0 || !res.data) throw new Error(res.message ?? '查看 token 失败')
+      return res.data.token
     },
     async revokeToken(id: string): Promise<void> {
       const res = await $fetch<ApiEnvelope<{ id: string }>>(`/api/users/tokens/${id}`, {

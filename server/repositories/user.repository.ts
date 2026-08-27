@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS user_tokens (
   user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   label        TEXT NOT NULL DEFAULT '',
   token_hash   TEXT NOT NULL UNIQUE,
+  token_plain  TEXT,
   created_at   TEXT NOT NULL,
   last_used_at TEXT
 );
@@ -52,10 +53,24 @@ function getDb(): DatabaseSync {
     mkdirSync(resolve(process.cwd(), 'data'), { recursive: true })
     db = new DatabaseSync(DB_PATH)
     db.exec(SCHEMA_SQL)
+    migrateSchema(db)
     seedIfEmpty()
     importLegacyWorkshopUsers(db)
   }
   return db
+}
+
+/** 轻量迁移：旧库 user_tokens 补 token_plain 列（明文存档，支持随时查看） */
+function migrateSchema(d: DatabaseSync): void {
+  const cols = d.prepare('PRAGMA table_info(user_tokens)').all() as Array<{ name: string }>
+  if (!cols.some(c => c.name === 'token_plain')) {
+    d.exec('ALTER TABLE user_tokens ADD COLUMN token_plain TEXT')
+  }
+}
+
+/** 掩码预览：前 6 后 4（token 形如 ut-xxxxxxxx…，前 6 含前缀可辨识） */
+function maskPreview(raw: string): string {
+  return `${raw.slice(0, 6)}${'•'.repeat(8)}${raw.slice(-4)}`
 }
 
 /** 首次建库写入种子用户（幂等：users 非空即跳过） */
@@ -99,7 +114,7 @@ function importLegacyWorkshopUsers(d: DatabaseSync): void {
   const exists = d.prepare('SELECT 1 FROM users WHERE id = ?')
   const insertUser = d.prepare('INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
   const tokenExists = d.prepare('SELECT 1 FROM user_tokens WHERE token_hash = ?')
-  const insertToken = d.prepare('INSERT INTO user_tokens (id, user_id, label, token_hash, created_at) VALUES (?, ?, ?, ?, ?)')
+  const insertToken = d.prepare('INSERT INTO user_tokens (id, user_id, label, token_hash, token_plain, created_at) VALUES (?, ?, ?, ?, ?, ?)')
 
   for (const row of rows) {
     if (exists.get(row.id)) continue
@@ -107,7 +122,7 @@ function importLegacyWorkshopUsers(d: DatabaseSync): void {
     insertUser.run(row.id, row.name, email, hashPassword(randomPassword()), 'user', 'active', row.created_at ?? now())
     const hash = hashToken(row.token)
     if (!tokenExists.get(hash)) {
-      insertToken.run(randomUUID(), row.id, 'legacy', hash, row.created_at ?? now())
+      insertToken.run(randomUUID(), row.id, 'legacy', hash, row.token, row.created_at ?? now())
     }
   }
 }
@@ -149,7 +164,7 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
 
-/** 签发新 token：明文返回一次，库中仅存哈希 */
+/** 签发新 token：明文返回一次并存档（token_plain，支持随时查看），库中另存哈希用于认证比对 */
 function issueToken(userId: string, label: string): { raw: string, row: UserToken } {
   const raw = `ut-${randomUUID().replace(/-/g, '')}`
   const hash = hashToken(raw)
@@ -159,10 +174,12 @@ function issueToken(userId: string, label: string): { raw: string, row: UserToke
     label,
     createdAt: now(),
     lastUsedAt: null,
+    preview: maskPreview(raw),
+    hasPlain: true,
   }
   const d = getDb()
-  d.prepare('INSERT INTO user_tokens (id, user_id, label, token_hash, created_at) VALUES (?, ?, ?, ?, ?)')
-    .run(row.id, userId, label, hash, row.createdAt)
+  d.prepare('INSERT INTO user_tokens (id, user_id, label, token_hash, token_plain, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(row.id, userId, label, hash, raw, row.createdAt)
   return { raw, row }
 }
 
@@ -286,12 +303,21 @@ export const userRepository = {
 
   // ===== API Token（每用户多个，CRUD）=====
 
-  /** 列出某用户全部 token（不含哈希/明文） */
+  /** 列出某用户全部 token（含掩码 preview，不含哈希/明文） */
   listTokens(userId: string): UserToken[] {
     const d = getDb()
-    return d.prepare(
-      'SELECT id, user_id AS userId, label, created_at AS createdAt, last_used_at AS lastUsedAt FROM user_tokens WHERE user_id = ? ORDER BY created_at ASC',
-    ).all(userId) as unknown as UserToken[]
+    const rows = d.prepare(
+      'SELECT id, user_id AS userId, label, token_plain AS tokenPlain, created_at AS createdAt, last_used_at AS lastUsedAt FROM user_tokens WHERE user_id = ? ORDER BY created_at ASC',
+    ).all(userId) as Array<{ id: string, userId: string, label: string, tokenPlain: string | null, createdAt: string, lastUsedAt: string | null }>
+    return rows.map(r => ({
+      id: r.id,
+      userId: r.userId,
+      label: r.label,
+      createdAt: r.createdAt,
+      lastUsedAt: r.lastUsedAt,
+      preview: r.tokenPlain ? maskPreview(r.tokenPlain) : null,
+      hasPlain: r.tokenPlain != null && r.tokenPlain !== '',
+    }))
   },
 
   /** 创建 token（label 缺省空串；明文仅此一次返回） */
@@ -306,6 +332,15 @@ export const userRepository = {
       'SELECT id, user_id AS userId, label, created_at AS createdAt, last_used_at AS lastUsedAt FROM user_tokens WHERE id = ? AND user_id = ?',
     ).get(tokenId, userId) as unknown as UserToken | undefined
     return row
+  },
+
+  /** 按 id 取某用户 token 的存档明文；非本人/不存在 → undefined，未存档（旧数据）→ null */
+  findTokenPlain(userId: string, tokenId: string): string | null | undefined {
+    const d = getDb()
+    const row = d.prepare(
+      'SELECT token_plain AS tokenPlain FROM user_tokens WHERE id = ? AND user_id = ?',
+    ).get(tokenId, userId) as { tokenPlain: string | null } | undefined
+    return row ? row.tokenPlain : undefined
   },
 
   /** 改 token 标签；不存在或非本人返回 false */

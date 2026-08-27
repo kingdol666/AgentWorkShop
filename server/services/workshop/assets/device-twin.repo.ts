@@ -20,7 +20,8 @@ export interface DeviceTwin {
   modelRef: string
   /** 控制该设备的 Agent(数字人);经 MCP device.* 控制 */
   boundAgentId: string | null
-  kind: 'device' | 'environment' | 'asset'
+  /** 实体类别:device 设备 / environment 环境 / asset 资产 / daq 数采节点(程序化传感网格) */
+  kind: 'device' | 'environment' | 'asset' | 'daq'
   /** 实时数据采集(数字孪生字段集合) */
   telemetry: Record<string, number | string | boolean>
   /** 期望状态(Agent 下发) */

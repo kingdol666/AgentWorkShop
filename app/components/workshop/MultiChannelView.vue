@@ -74,7 +74,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
       左侧挂载多个 Channel 后在此同屏观察
     </div>
     <template
-      v-for="(col, i) in columns"
+      v-for="col in columns"
       :key="col.id"
     >
       <div
@@ -108,8 +108,9 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
           </div>
         </div>
       </div>
+      <!-- 每列右侧都挂分隔条(含最右列):分隔条统一调节"其左侧列"的宽度,
+           尾条即最右列的右缘调节柄 —— 最右列也能拖拽拉宽/收窄 -->
       <workshop-pane-splitter
-        v-if="i < columns.length - 1"
         :label="`拖拽调节 ${col.name} 列宽`"
         @resize="d => resizeCol(col.id, d)"
         @reset="resetCol(col.id)"

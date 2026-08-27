@@ -5,7 +5,7 @@
  * 交互:
  *  - 仅展示 kind === 'dev' 的模型(扫描 public/assets/game/devices + 用户上传);
  *    character 角色模型不出现在模型库 —— 在频道成员管理中为成员设置。
- *  - 每张模型卡可拖拽:拖起把 assetId 写入 dataTransfer,落到小镇场景 →
+ *  - 每张模型卡可拖拽:拖起把 assetId 写入 dataTransfer,落到孪生场景 →
  *    TownScene3D.dropModelOnWorld() 在落点生成一个设备实例(数字孪生)。
  *  - 上传:选择 .glb/.gltf/.obj/.fbx → POST /api/workshop/assets/devices,写入 devices 目录。
  *  - 删除:删除对应模型文件(仅限 devices 目录内)。
@@ -98,9 +98,8 @@ async function doRemove(id: string): Promise<void> {
 <template>
   <aside class="asset-lib">
     <div class="lib-head">
-      <span class="head-dot" />
       <span class="head-title">设备模型库</span>
-      <span class="head-hint">拖入小镇生成实例</span>
+      <span class="head-hint">拖入孪生空间生成实例</span>
     </div>
 
     <!-- 上传区(设备 3D 模型:拖放/选择 → 本地 3D 预览 → 确认上传) -->
@@ -176,7 +175,7 @@ async function doRemove(id: string): Promise<void> {
         class="model-card"
         :data-model-id="m.id"
         draggable="true"
-        :title="m.hint || `拖到小镇场景即生成设备实例 · ${m.name}`"
+        :title="m.hint || `拖到孪生场景即生成设备实例 · ${m.name}`"
         @dragstart="onDragStart($event, m.id)"
       >
         <!-- GLB/GLTF:实时 3D 模型预览(真实几何形状);其余格式占位图标 -->
@@ -209,16 +208,16 @@ async function doRemove(id: string): Promise<void> {
       </div>
       <div
         v-if="!assets.loaded"
-        class="model-card loading"
+        class="lib-note"
       >
         <span class="loading-dot" />
-        载入设备模型库…
+        载入中…
       </div>
       <div
         v-else-if="deviceModels.length === 0"
-        class="model-card empty"
+        class="lib-note"
       >
-        暂无设备模型。上传一个设备模型即可开始。
+        暂无设备模型,拖入 .glb 文件上传
       </div>
     </div>
 
@@ -230,149 +229,72 @@ async function doRemove(id: string): Promise<void> {
 </template>
 
 <style scoped>
+/* ============================================================
+ * 设备模型库 —— 工业 HMI 单层样式(消费 .town-view 的 --hud-* 令牌,
+ * 带本地兜底;不再依赖宿主 :deep 覆盖)
+ * ============================================================ */
 .asset-lib {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  width: 180px;
+  gap: 8px;
+  width: 184px;
   flex: none;
-  padding: 12px 12px 13px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--glass-highlight), var(--shadow-float);
+  padding: 0 0 10px;
+  font-family: var(--font-body);
 }
 .lib-head {
   display: flex;
   gap: 7px;
   align-items: center;
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  color: var(--ink-faint);
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid rgba(38, 51, 64, 0.45);
 }
-.head-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .head-title {
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  color: var(--ink);
-}
-.head-hint { margin-left: auto; font-size: 10px; color: var(--ink-faint); white-space: nowrap; }
-
-.upload-box { display: flex; flex-direction: column; gap: 6px; padding: 7px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-panel-sm); }
-.upload-row { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-soft); cursor: pointer; }
-.file-input { display: none; }
-.upload-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.upload-btn {
-  padding: 5px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink);
-  background: var(--paper-deep);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
-}
-.upload-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--paper-tint); }
-.upload-btn:active:not(:disabled) { transform: scale(0.98); }
-.upload-btn:disabled { opacity: 0.5; cursor: default; }
-
-.lib-grid { display: flex; flex-direction: column; gap: 7px; max-height: 46vh; overflow: hidden auto; padding-right: 1px; }
-.model-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 9px 6px 8px;
-  cursor: grab;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel-sm);
-  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
-}
-.model-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-float); transform: translateY(-1px); }
-.model-card:active { cursor: grabbing; }
-.model-img { width: 46px; height: 68px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
-.model-img.glb {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 44px;
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel-sm);
-}
-.model-img.glb.dev {
-  background:
-    linear-gradient(160deg, color-mix(in srgb, var(--tone-warning-bg) 70%, var(--paper-deep)), var(--paper-deep));
-  border-color: color-mix(in srgb, var(--tone-warning-dot) 30%, var(--line));
-}
-.glb-cube { font-size: 24px; line-height: 1; color: var(--ink-faint); }
-.model-img.glb.dev .glb-cube { color: var(--tone-warning-dot); }
-.model-name { font-size: 11px; font-weight: 600; color: var(--ink); }
-.model-badge { font-family: var(--font-mono); font-size: 9px; color: var(--ink-faint); }
-.card-actions { display: flex; gap: 4px; }
-.card-btn {
-  padding: 2px 8px;
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast);
+  letter-spacing: 0.16em;
+  color: var(--hud-text, #d9e4ee);
+  white-space: nowrap;
 }
-.card-btn:hover:not(:disabled) { border-color: var(--line-strong); color: var(--ink); }
-.card-btn.danger { color: var(--tone-danger-dot); }
-.card-btn.danger:hover:not(:disabled) { border-color: color-mix(in srgb, var(--tone-danger-dot) 40%, var(--line)); color: var(--tone-danger-dot); }
-.card-btn:disabled { opacity: 0.5; cursor: default; }
+.head-hint {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  color: var(--hud-faint, #5b6c7b);
+  white-space: nowrap;
+}
 
-.model-card.loading, .model-card.empty { cursor: default; font-size: 11px; color: var(--ink-faint); gap: 7px; }
-.loading-dot { width: 12px; height: 12px; border: 2px solid var(--line-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.mini-err { color: var(--tone-danger-dot); }
-.mini-err, .mini-msg { font-size: 10px; }
-.mini-msg { color: var(--ink-soft); }
-
-/* ============================================================
- * 上传体验优化 + GLB 实时预览(工业 HMI 覆盖)
- * ============================================================ */
+/* 上传区:虚线收件格(拖放/选择 → 本地 3D 预览 → 确认) */
 .upload-box {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   gap: 7px;
-  border: 1px dashed var(--hud-line, #2a3844);
-  background: rgba(14, 20, 29, 0.5);
-  transition: border-color 0.16s ease, background 0.16s ease;
+  margin: 8px 10px 0;
+  padding: 7px;
+  border: 1px dashed rgba(38, 51, 64, 0.8);
+  border-radius: 2px;
+  background: rgba(11, 16, 24, 0.4);
+  transition: border-color 0.16s var(--hud-ease, ease), background 0.16s var(--hud-ease, ease);
 }
 .upload-box.drop {
-  border-color: var(--hud-accent, #4fa8ff);
-  background: rgba(79, 168, 255, 0.08);
+  border-color: var(--hud-accent, #4da3ff);
+  background: rgba(77, 163, 255, 0.08);
 }
-.upload-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 26px;
-}
+.upload-row { display: flex; align-items: center; gap: 6px; min-height: 26px; cursor: pointer; }
+.file-input { display: none; }
 .upload-name {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--hud-dim, #7f919e);
+  color: var(--hud-dim, #8496a5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.upload-ico {
-  color: var(--hud-accent, #4fa8ff);
-  font-size: 13px;
-}
+.upload-ico { color: var(--hud-accent, #4da3ff); font-size: 13px; }
 .drop-hint {
   display: inline-flex;
   align-items: center;
@@ -380,56 +302,147 @@ async function doRemove(id: string): Promise<void> {
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.08em;
-  color: var(--hud-accent, #4fa8ff);
+  color: var(--hud-accent, #4da3ff);
   padding: 2px 0 4px;
 }
 .upload-file-tag {
   font-family: var(--font-mono);
   font-size: 9.5px;
-  color: var(--hud-dim, #7f919e);
+  color: var(--hud-dim, #8496a5);
   padding: 3px 6px;
-  border: 1px solid var(--hud-line, #2a3844);
+  border: 1px solid var(--hud-line, #263340);
   border-radius: 2px;
 }
-.upload-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
+.upload-actions { display: flex; gap: 6px; align-items: center; }
 .upload-btn {
-  border-radius: 2px;
-  font-family: var(--font-mono);
-  letter-spacing: 0.06em;
   padding: 5px 10px;
+  font-family: var(--font-mono);
   font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--hud-text, #d9e4ee);
+  background: var(--hud-panel-raised, #141b26);
+  border: 1px solid var(--hud-line, #263340);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.14s var(--hud-ease, ease), color 0.14s var(--hud-ease, ease);
 }
+.upload-btn:hover:not(:disabled) { border-color: var(--hud-accent, #4da3ff); color: var(--hud-accent, #4da3ff); }
+.upload-btn:disabled { opacity: 0.45; cursor: default; }
 .upload-btn.go {
-  color: var(--hud-amber, #f0a04c);
-  border-color: rgba(240, 160, 76, 0.55);
-  background: rgba(240, 160, 76, 0.08);
+  color: var(--hud-amber, #f5a742);
+  border-color: rgba(245, 167, 66, 0.55);
+  background: rgba(245, 167, 66, 0.08);
 }
 .upload-btn.go:hover:not(:disabled) {
-  background: rgba(240, 160, 76, 0.16);
-  border-color: var(--hud-amber, #f0a04c);
+  background: rgba(245, 167, 66, 0.16);
+  border-color: var(--hud-amber, #f5a742);
+  color: var(--hud-amber, #f5a742);
 }
-/* 模型卡:预览贯通整行,内容左对齐 */
-.model-card {
-  align-items: stretch;
-  padding: 6px;
+.mini-err { font-family: var(--font-mono); font-size: 9.5px; color: var(--hud-danger, #ff6b5c); }
+.mini-err, .mini-msg { font-size: 10px; }
+.mini-msg { font-family: var(--font-mono); color: var(--hud-dim, #8496a5); padding: 0 10px; }
+
+/* 模型清单:方角装备行 */
+.lib-grid {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
+  max-height: 42vh;
+  overflow: hidden auto;
+  padding: 6px 10px 2px;
 }
-.model-card .model-preview-3d {
-  margin-bottom: 2px;
+.model-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px;
+  cursor: grab;
+  background: rgba(20, 27, 38, 0.65);
+  border: 0;
+  border-radius: 2px;
+  transition: background 0.14s var(--hud-ease, ease);
 }
-.model-card .model-name {
+.model-card:hover {
+  background: var(--hud-panel-hover, #1a2432);
+}
+.model-card:active { cursor: grabbing; }
+.model-card .model-preview-3d { margin-bottom: 2px; }
+.model-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--hud-text, #d9e4ee);
+  text-align: left;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.model-badge {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  color: var(--hud-faint, #5b6c7b);
   text-align: left;
   padding: 0 2px;
 }
-.model-card .model-badge {
-  text-align: left;
-  padding: 0 2px;
+.card-actions { display: flex; justify-content: flex-end; gap: 4px; }
+.card-btn {
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--hud-text, #d9e4ee);
+  background: transparent;
+  border: 1px solid var(--hud-line, #263340);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.14s var(--hud-ease, ease), color 0.14s var(--hud-ease, ease);
 }
-.model-card .card-actions {
-  justify-content: flex-end;
+.card-btn:hover:not(:disabled) { border-color: var(--hud-accent, #4da3ff); color: var(--hud-accent, #4da3ff); }
+.card-btn.danger { color: var(--hud-danger, #ff6b5c); }
+.card-btn.danger:hover:not(:disabled) { border-color: var(--hud-danger, #ff6b5c); color: var(--hud-danger, #ff6b5c); }
+.card-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* 非 GLB 格式占位图标(obj/fbx 暂不支持实时预览) */
+.model-img {
+  width: 46px;
+  height: 68px;
+  object-fit: contain;
+  pointer-events: none;
 }
+.model-img.glb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 44px;
+  background: var(--hud-input, #0b1018);
+  border: 1px dashed var(--hud-line, #263340);
+  border-radius: 2px;
+}
+.glb-cube { font-size: 24px; line-height: 1; color: var(--hud-faint, #5b6c7b); }
+
+.lib-note {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 8px 2px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--hud-faint, #5b6c7b);
+}
+.loading-dot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--hud-line, #263340);
+  border-top-color: var(--hud-accent, #4da3ff);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .loading-dot { animation: none; } }
 </style>

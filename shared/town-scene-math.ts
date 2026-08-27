@@ -226,6 +226,14 @@ export function bubbleDisplayMs(text: string): number {
   return Math.min(7200, Math.max(2400, 1700 + text.length * 36))
 }
 
+/** 接收器排空节拍:队列积压时按长度压缩单条展示时长(下限 1.4s 保证可读),
+ *  让爆发期(多 Agent 并发输出)的消息都能在场景里露脸,而不是被 FIFO 长队列吞掉。 */
+export function drainDisplayMs(text: string, queueLen = 0): number {
+  const base = bubbleDisplayMs(text)
+  if (queueLen <= 2) return base
+  return Math.max(1400, Math.min(base, 6400 / (queueLen - 1)))
+}
+
 export function hashHue(id: string): number {
   if (!id) return 200
   let h = 0

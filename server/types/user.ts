@@ -25,13 +25,17 @@ export interface UserListQuery {
   keyword?: string
 }
 
-/** API Token（每用户多个；仅存哈希，明文只在创建时返回一次） */
+/** API Token（每用户多个；列表仅含掩码 preview，明文经 reveal 接口按需获取） */
 export interface UserToken {
   id: string
   userId: string
   label: string
   createdAt: string
   lastUsedAt: string | null
+  /** 掩码预览（前 6 后 4）；旧 token 未存档明文时为 null */
+  preview: string | null
+  /** 是否可随时查看明文（旧数据仅存哈希 → false） */
+  hasPlain: boolean
 }
 
 /** 登录/注册成功载荷（token 明文仅此处一次性返回） */

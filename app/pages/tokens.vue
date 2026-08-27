@@ -117,12 +117,12 @@ const masked = computed(() => {
 const toggleReveal = (): void => {
   revealed.value = !revealed.value
 }
-const copyCreated = async (): Promise<void> => {
-  const text = createdRaw.value
-  let ok = false
+
+// ===== 通用剪贴板:API 优先,execCommand 兜底 =====
+const copyText = async (text: string): Promise<boolean> => {
   try {
     await navigator.clipboard.writeText(text)
-    ok = true
+    return true
   }
   catch {
     // 剪贴板 API 不可用(非安全上下文/权限拒绝)→ execCommand 兜底
@@ -133,14 +133,18 @@ const copyCreated = async (): Promise<void> => {
       ta.style.opacity = '0'
       document.body.appendChild(ta)
       ta.select()
-      ok = document.execCommand('copy')
+      const ok = document.execCommand('copy')
       document.body.removeChild(ta)
+      return ok
     }
     catch {
-      ok = false
+      return false
     }
   }
-  if (ok) {
+}
+
+const copyCreated = async (): Promise<void> => {
+  if (await copyText(createdRaw.value)) {
     copied.value = true
     setTimeout(() => {
       copied.value = false
@@ -156,6 +160,73 @@ const dismissCreated = (): void => {
   copied.value = false
 }
 
+// ===== 列表行:掩码/眼睛切换/复制(明文经 reveal 接口按需获取,仅存内存,刷新即隐) =====
+const revealedPlain = ref<Record<string, string>>({})
+const revealingId = ref('')
+const copyId = ref('')
+
+const isRevealed = (id: string): boolean => id in revealedPlain.value
+
+const rowDisplay = (t: TokenMeta): string => {
+  if (isRevealed(t.id)) return revealedPlain.value[t.id]!
+  return t.preview ?? `ut-${'•'.repeat(14)}`
+}
+
+/** 眼睛切换:已明文 → 遮回;否则拉取存档明文(懒加载,不自动展开) */
+const toggleRowReveal = async (t: TokenMeta): Promise<void> => {
+  if (isRevealed(t.id)) {
+    Reflect.deleteProperty(revealedPlain.value, t.id)
+    return
+  }
+  if (!t.hasPlain) {
+    message.warning('该 token 创建于旧版本(仅存哈希),无法查看明文;建议吊销后重新签发')
+    return
+  }
+  revealingId.value = t.id
+  try {
+    const plain = await userStore.revealToken(t.id)
+    if (plain) revealedPlain.value[t.id] = plain
+  }
+  catch (e) {
+    message.error(e instanceof Error ? e.message : '查看明文失败')
+  }
+  finally {
+    revealingId.value = ''
+  }
+}
+
+/** 行复制:优先用已展开明文,否则先静默拉取存档明文再复制(不改变显示状态) */
+const copyRow = async (t: TokenMeta): Promise<void> => {
+  const cached = revealedPlain.value[t.id]
+  let text: string | null = cached ?? null
+  if (!text) {
+    if (!t.hasPlain) {
+      message.warning('该 token 创建于旧版本(仅存哈希),无法复制明文;建议吊销后重新签发')
+      return
+    }
+    revealingId.value = t.id
+    try {
+      text = await userStore.revealToken(t.id)
+    }
+    catch (e) {
+      message.error(e instanceof Error ? e.message : '获取明文失败')
+      return
+    }
+    finally {
+      revealingId.value = ''
+    }
+  }
+  if (text && await copyText(text)) {
+    copyId.value = t.id
+    setTimeout(() => {
+      copyId.value = ''
+    }, 1600)
+  }
+  else {
+    message.error('复制失败,请先显示明文后手动选择复制')
+  }
+}
+
 const fmt = (s: string | null): string => (s ? s.replace('T', ' ').slice(0, 19) : '-')
 
 const openRename = (t: { id?: string, label?: string }): void => {
@@ -165,9 +236,10 @@ const openRename = (t: { id?: string, label?: string }): void => {
 }
 const columns = [
   { title: '标签', key: 'label', dataIndex: 'label' },
-  { title: '创建时间', key: 'createdAt', dataIndex: 'createdAt', width: 200 },
+  { title: 'Token', key: 'token', width: 360 },
+  { title: '创建时间', key: 'createdAt', dataIndex: 'createdAt', width: 170 },
   { title: '最近使用', key: 'lastUsedAt', dataIndex: 'lastUsedAt', width: 200 },
-  { title: '操作', key: 'action', width: 200 },
+  { title: '操作', key: 'action', width: 170 },
 ]
 
 useHead({ title: 'API Token · AgentWorkShop' })
@@ -200,7 +272,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
         <div>
           <h2>API Token</h2>
           <p class="sub">
-            {{ userStore.user?.name }} · 每个 token 可独立吊销;明文仅创建时展示一次
+            {{ userStore.user?.name }} · 每个 token 可独立吊销;明文存档于服务端,可随时查看复制
           </p>
         </div>
         <a-space>
@@ -239,6 +311,44 @@ useHead({ title: 'API Token · AgentWorkShop' })
                   当前会话
                 </a-tag>
               </a-space>
+            </template>
+            <template v-else-if="column.key === 'token'">
+              <div class="tok-cell">
+                <code
+                  class="tok-val"
+                  :class="{ revealed: isRevealed(record.id) }"
+                  :title="isRevealed(record.id) ? '已显示明文,点击眼睛遮回' : '掩码预览,点击眼睛查看明文'"
+                >{{ rowDisplay(record as TokenMeta) }}</code>
+                <a-button
+                  type="text"
+                  size="small"
+                  class="tok-op"
+                  :loading="revealingId === record.id"
+                  :disabled="!record.hasPlain"
+                  :title="!record.hasPlain ? '旧版本 token 未存档明文,不可查看' : (isRevealed(record.id) ? '遮回' : '查看明文')"
+                  @click="toggleRowReveal(record as TokenMeta)"
+                >
+                  <span :class="isRevealed(record.id) ? 'i-tabler-eye-off' : 'i-tabler-eye'" />
+                </a-button>
+                <a-button
+                  type="text"
+                  size="small"
+                  class="tok-op"
+                  :class="{ ok: copyId === record.id }"
+                  :disabled="!record.hasPlain"
+                  :title="copyId === record.id ? '已复制' : '复制明文'"
+                  @click="copyRow(record as TokenMeta)"
+                >
+                  <span :class="copyId === record.id ? 'i-tabler-check' : 'i-tabler-copy'" />
+                </a-button>
+                <a-tag
+                  v-if="!record.hasPlain"
+                  class="legacy-tag"
+                  color="orange"
+                >
+                  旧版不可见
+                </a-tag>
+              </div>
             </template>
             <template v-else-if="column.key === 'createdAt'">
               {{ fmt(record.createdAt) }}
@@ -303,8 +413,8 @@ useHead({ title: 'API Token · AgentWorkShop' })
         @after-close="dismissCreated"
       >
         <div class="once-banner">
-          <span class="i-tabler-alert-triangle" />
-          <span>明文仅此一次展示,关闭后无法再次查看(服务端只存哈希);请立即复制保存。</span>
+          <span class="i-tabler-circle-check" />
+          <span>Token 已创建并存档,之后可随时在列表中查看/复制;仍建议仅在可信环境展示明文。</span>
         </div>
         <div class="raw-row">
           <code class="raw">{{ revealed ? createdRaw : masked }}</code>
@@ -443,6 +553,55 @@ h2 { margin: 0 0 4px; font-family: var(--font-display); }
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-faint);
+}
+
+/* ===== 列表行 token 单元格 ===== */
+.tok-cell {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  min-width: 0;
+}
+
+.tok-val {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+}
+
+.tok-val.revealed {
+  color: var(--accent);
+  user-select: all;
+}
+
+.tok-op {
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+}
+
+.tok-op:hover {
+  color: var(--accent);
+}
+
+.tok-op.ok {
+  color: var(--tone-success-dot);
+}
+
+.legacy-tag {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  font-size: 10px;
+  line-height: 16px;
 }
 
 .text-primary { color: var(--accent); }

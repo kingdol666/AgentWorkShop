@@ -23,6 +23,8 @@ export interface CharacterModel {
   /** 是否被任一 agent 绑定(引删保护用) */
   applied: boolean
   hint?: string
+  /** 设备模型相对高度系数(1 = 基准;薄膜产线设备按设计稿比例错落) */
+  hFactor?: number
 }
 
 interface ApiAsset {
@@ -75,7 +77,7 @@ function createStore(): CharacterAssetStore {
     { id: 'knight', name: '灰羽骑士', file: '/assets/game/character/knight.png', frames: 4, frameWidth: 48, frameHeight: 88, kind: 'sheet', builtin: true, applied: false },
     { id: 'mage', name: '紫晶法师', file: '/assets/game/character/mage.png', frames: 4, frameWidth: 48, frameHeight: 88, kind: 'sheet', builtin: true, applied: false },
     { id: 'bot', name: '青枢机械', file: '/assets/game/character/bot.png', frames: 4, frameWidth: 48, frameHeight: 88, kind: 'sheet', builtin: true, applied: false },
-    { id: 'hero-3d', name: '共鸣精魂', file: '/assets/game/character/hero-3d.glb', frames: 1, frameWidth: 0, frameHeight: 0, kind: 'glb', builtin: true, applied: false, hint: '3D 默认角色模型' },
+    { id: 'hero-3d', name: '标准员工模型', file: '/assets/game/character/hero-3d.glb', frames: 1, frameWidth: 0, frameHeight: 0, kind: 'glb', builtin: true, applied: false, hint: '默认员工 3D 模型' },
     { id: 'device-3d', name: '工业泵设备', file: '/assets/game/character/device-3d.glb', frames: 1, frameWidth: 0, frameHeight: 0, kind: 'dev', builtin: true, applied: false, hint: '数字孪生实体模型(拖入场景生成设备)' },
   ]
 
@@ -140,7 +142,7 @@ function createStore(): CharacterAssetStore {
         const scanJson = scanRes.status === 'fulfilled' ? await scanRes.value.json().catch(() => ({})) : {}
         const apiAssets: ApiAsset[] = charJson?.data?.assets ?? []
         // 服务端扫描的设备模型(运行期新增立即可见;失败则静默,由本地兜底补)
-        const scannedDevices: CharacterModel[] = (scanJson?.data?.devices ?? []).map((d: { id: string, name: string, file: string }) => ({
+        const scannedDevices: CharacterModel[] = (scanJson?.data?.devices ?? []).map((d: { id: string, name: string, file: string, defaultScale?: number }) => ({
           id: d.id,
           name: d.name,
           file: d.file,
@@ -151,6 +153,7 @@ function createStore(): CharacterAssetStore {
           builtin: true,
           applied: false,
           hint: '设备实体(拖入场景生成数字孪生)',
+          hFactor: typeof d.defaultScale === 'number' && d.defaultScale > 0 ? d.defaultScale : 1,
         }))
         // 服务端扫描的角色 3D 模型(character 目录 .glb;供 Channel 成员换装,不进侧边模型库;
         // 过滤掉与内置 hero-3d/device-3d 同文件的重复项,成员下拉只保留语义唯一的选项)

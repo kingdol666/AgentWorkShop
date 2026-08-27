@@ -21,7 +21,7 @@ export interface AgentView {
   currentTaskTitle?: string | null
   /** 执行中任务进度 0-100(空闲/未上报为 null) */
   currentTaskProgress?: number | null
-  /** 用户给该角色绑定的自定义模型(assetId;缺省用内置精魂) */
+  /** 用户给该角色绑定的自定义模型(assetId;缺省用内置员工模型) */
   modelRef?: string | null
   queued?: number
   completed?: number

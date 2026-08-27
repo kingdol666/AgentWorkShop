@@ -1,5 +1,5 @@
 /**
- * 内置 3D 角色模型生成器 —— 用 Three.js 搭一个低多边形「共鸣精魂」并导出为 GLB。
+ * 内置 3D 角色模型生成器 —— 用 Three.js 搭一个低多边形「共鸣员工」并导出为 GLB。
  * 产出:public/assets/game/character/hero-3d.glb(单文件,内嵌几何,无外部贴图)。
  * 运行:node scripts/build-model-3d.mjs(或 pnpm game:build-model3d)。
  */
@@ -33,7 +33,7 @@ globalThis.FileReader = globalThis.FileReader || class {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.resolve(__dirname, '../public/assets/game/character/hero-3d.glb')
 
-/** 建低多边形精魂:发光核心 + 锥形长袍 + 头部 + 飘带头发 + 双臂 */
+/** 建低多边形员工:发光核心 + 锥形长袍 + 头部 + 飘带头发 + 双臂 */
 function buildHero() {
   const g = new THREE.Group()
 

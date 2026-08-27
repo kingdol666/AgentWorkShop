@@ -1,13 +1,13 @@
 /**
  * 鸣潮-系(Resonance Dusk)小镇素材生成器 —— 原创绘制,仅借鉴其视觉语言(黄昏天空 / 层叠山脊 /
- * 流转水面 / 辉光共鸣 / 飘逸精魂),不引用任何游戏原图。
+ * 流转水面 / 辉光共鸣 / 飘逸员工),不引用任何游戏原图。
  *
  * 产出(public/assets/game/wuwa/):
  *   scene-map.png   1600x1200 场景地图(黄昏海岸台地)
  *   wu-aura.png     128x128   白色径向辉光(运行时按频道色 tint)
  *   wu-ring.png     128x128   细辉光圆环(频道领地/共鸣场)
- *   wu-lead.png     192x88    领队精魂(4 帧悬停 bob)
- *   wu-worker-0/1/2.png  192x88   worker 精魂(4 帧)
+ *   wu-lead.png     192x88    领队员工(4 帧悬停 bob)
+ *   wu-worker-0/1/2.png  192x88   worker 员工(4 帧)
  *   wu-slash.png    48x48     飘带粒子(尾迹点缀)
  *
  * 依赖:pngjs(已安装)。运行:node scripts/build-wuwa-assets.mjs
@@ -235,11 +235,11 @@ map.save('scene-map.png')
 }
 
 // =====================================================================
-// 角色精魂 sheet:4 帧悬停 bob(向下→中→上→中),每帧 48x88 → 192x88
+// 角色员工 sheet:4 帧悬停 bob(向下→中→上→中),每帧 48x88 → 192x88
 // =====================================================================
 const FRAME_W = 48, FRAME_H = 88, FRAMES = 4
 
-/** 画一帧精魂(飘带裙摆 + 发光核心 + 发丝)。palette 决定主色。 */
+/** 画一帧员工(飘带裙摆 + 发光核心 + 发丝)。palette 决定主色。 */
 function drawSpirit(img, frame, p) {
   const fx = frame * FRAME_W
   const bobY = frame === 0 ? 3 : frame === 2 ? -3 : 0

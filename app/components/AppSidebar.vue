@@ -55,7 +55,7 @@ const go = (key: string) => {
           class="logo-text"
         >
           <span class="logo-title">{{ site.name }}</span>
-          <span class="logo-sub">agent workshop</span>
+          <span class="logo-sub">agent harness · digital twin</span>
         </div>
       </transition>
     </div>

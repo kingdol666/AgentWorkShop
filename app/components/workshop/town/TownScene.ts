@@ -4,7 +4,7 @@
  * 渲染层职责(只渲染,不决策):
  *  - 背景:原创「共鸣黄昏」场景地图(黄昏天空/山脊/台地),不再是白色方块。
  *  - 每个 Channel → 地图上一片同色「共鸣领地」(环形能场 + 柔光,频道色=领地色);
- *  - 每个 Agent → 一个飘逸「共鸣精魂」sprite,头顶名字/状态环/进度条;
+ *  - 每个 Agent → 一个「员工」sprite(Leader/Worker 职务章),头顶名字/状态环/进度条;
  *  - 同一 Channel 的 Agent 共享同一种领地共鸣色:脚下灵光(aura)颜色一致,一眼可辨"谁属于哪个频道";
  *  - 所有 Agent 均可被用户手动拖动到地图任意位置(拖动期间暂停自动行为,松手后落点即新 home);
  *  - 事件驱动(useTownBus 旁路,与时间线同源)→ 头顶气泡 / 状态环 / 进度 / 行为 FSM;
@@ -43,7 +43,7 @@ export interface TownEntityInput {
     currentTaskId?: string | null
     currentTaskTitle?: string | null
     currentTaskProgress?: number | null
-    /** 用户给该角色绑定的自定义模型(assetId;缺省用内置精魂) */
+    /** 用户给该角色绑定的自定义模型(assetId;缺省用内置员工模型) */
     modelRef?: string | null
   }>
 }
@@ -127,7 +127,7 @@ const WORLD_CY = FIELD_Y
 const RING_RADIUS_X = 980
 const RING_RADIUS_Y = 560
 
-/** worker sprite 图集候选(按 agentId 哈希选长相;均为共鸣精魂) */
+/** worker sprite 图集候选(按 agentId 哈希选长相;均为员工形象) */
 const WORKER_SHEETS = ['wu-worker-0', 'wu-worker-1', 'wu-worker-2'] as const
 const LEAD_SHEET = 'wu-lead'
 const WALK_SPEED = 150
@@ -241,7 +241,7 @@ export class TownScene extends Phaser.Scene {
     this.load.image('wu-aura', '/assets/game/wuwa/wu-aura.png')
     this.load.image('wu-ring', '/assets/game/wuwa/wu-ring.png')
     this.load.image('wu-slash', '/assets/game/wuwa/wu-slash.png')
-    // 共鸣精魂 sprite(4 帧悬停 bob;48x88 → 192x88)
+    // 员工 sprite(4 帧悬停 bob;48x88 → 192x88)
     const fr = { frameWidth: 48, frameHeight: 88 }
     this.load.spritesheet(LEAD_SHEET, '/assets/game/wuwa/wu-lead.png', fr)
     this.load.spritesheet('wu-worker-0', '/assets/game/wuwa/wu-worker-0.png', fr)
@@ -492,9 +492,9 @@ export class TownScene extends Phaser.Scene {
     const cx = WORLD_CX
     const cy = WORLD_CY
     // 塔基能量场(大面积)
-    const field = this.add.image(cx, cy, 'wu-aura').setScale(6).setTint(0x9fe8d4).setAlpha(0.28).setDepth(-20)
+    const field = this.add.image(cx, cy, 'wu-aura').setScale(6).setTint(0x4da3ff).setAlpha(0.28).setDepth(-20)
     // 塔身(多层收窄的能量柱)
-    const body = this.add.rectangle(cx, cy - 90, 120, 300, 0x8fe8d4, 0.7).setOrigin(0.5, 1).setDepth(cy - 22)
+    const body = this.add.rectangle(cx, cy - 90, 120, 300, 0x57d29a, 0.7).setOrigin(0.5, 1).setDepth(cy - 22)
     body.setStrokeStyle(2, 0xd8fff2, 0.6)
     const body2 = this.add.rectangle(cx, cy - 220, 70, 180, 0xc4f4e8, 0.75).setOrigin(0.5, 1).setDepth(cy - 21)
     // 顶部光球(呼吸)
@@ -526,7 +526,7 @@ export class TownScene extends Phaser.Scene {
     const def = this.blocks.get(a.channelId)
     const colorNum = def?.colorNum ?? channelColorNum(a.channelId)
     const builtinSheet = a.role === 'lead' ? LEAD_SHEET : WORKER_SHEETS[Math.abs(a.agentId.split('').reduce((h, c) => h * 31 + c.charCodeAt(0), 0)) % WORKER_SHEETS.length]!
-    // 模型绑定:若该角色绑定了自定义模型且纹理已注册,则用之;否则回退内置精魂
+    // 模型绑定:若该角色绑定了自定义模型且纹理已注册,则用之;否则回退内置员工模型
     const sheet = a.modelRef && this.textures.exists(a.modelRef) ? a.modelRef : builtinSheet
     const bx = def?.centerX ?? cx ?? 400
     const by = def?.centerY ?? cy ?? 300
@@ -717,7 +717,7 @@ export class TownScene extends Phaser.Scene {
     asp.sprite.setTexture(texKey)
     asp.sprite.anims.play(`wu-bob-${texKey}`, true)
     asp.textureKey = texKey
-    // 仅当 texKey 是自定义模型 id 时记录;内置精魂不回写(避免覆盖引导)
+    // 仅当 texKey 是自定义模型 id 时记录;内置员工模型不回写(避免覆盖引导)
     asp.modelRef = texKey
   }
 
@@ -823,10 +823,10 @@ export class TownScene extends Phaser.Scene {
     if (cx === undefined || cy === undefined) return
 
     if (e.type === 'agent.message' || e.type === 'agent.status.message' || e.type === 'a2a.message') {
-      this.pulseRing(cx, cy, asp?.aura.tintTopLeft ?? def?.colorNum ?? 0xffffff, 0x9fe8d4)
+      this.pulseRing(cx, cy, asp?.aura.tintTopLeft ?? def?.colorNum ?? 0xffffff, 0x4da3ff)
     }
     else if (e.type === 'error') {
-      this.pulseRing(cx, cy, 0xff6b6b, 0xff6b6b)
+      this.pulseRing(cx, cy, 0xff6b5c, 0xff6b5c)
       this.setFlag(e.channelId, 'danger')
     }
     else if (e.type === 'task.status') {
@@ -878,7 +878,7 @@ export class TownScene extends Phaser.Scene {
   private setFlag(channelId: string, state: 'busy' | 'wait' | 'danger'): void {
     const def = this.blocks.get(channelId)
     if (!def) return
-    const color = state === 'danger' ? 0xff6b6b : state === 'wait' ? 0xf0c05a : 0x8fe8d4
+    const color = state === 'danger' ? 0xff6b5c : state === 'wait' ? 0xf5a742 : 0x57d29a
     // 在塔顶光球处再放一个呼吸旗(轻量;若已存在则复用)
     let flag = this.flagBy.get(channelId)
     if (!flag) {

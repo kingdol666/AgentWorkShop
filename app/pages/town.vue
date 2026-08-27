@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * /town —— Agent 小镇(独立全屏页面)
+ * /town —— AgentWorkShop 数字孪生空间(独立全屏页面)
  *
  * 全频道汇聚一镇:加载所有 workspaces 下已挂载的 channel,订阅其实时事件流,
- * 交给 <workshop-town-view>(TownScene3D)把所有 Agent/设备铺到同一个 3D 小镇。
+ * 交给 <workshop-town-view>(TownScene3D)把所有 Agent/设备铺到同一个 3D 孪生空间。
  * - 复用全局 WS 单例 useWorkshopWs(任意页面 subscribe 即拿实时流);
  * - snapshot 一次性填充 entities.channels/agents/tasks;
  * - TownScene3D 的 buildBlocks 遍历 entities.channels,天然铺全频道。
@@ -13,7 +13,7 @@ import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
 import { useUserStore } from '@/app/stores/workshop/user'
 
-definePageMeta({ layout: 'town', title: 'Agent 小镇' })
+definePageMeta({ layout: 'town', title: 'Digital Twin' })
 
 const userStore = useUserStore()
 const entities = useEntitiesStore()
@@ -82,10 +82,10 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
         还没有挂载任何 Channel
       </div>
       <div class="pe-sub">
-        请到 <b>Agent 工作台</b> 创建/挂载频道后,再回来看小镇。
+        请到 <b>Agent 工作台</b> 创建/挂载频道后,再回到 AgentWorkShop 孪生空间。
       </div>
     </div>
-    <!-- 小镇(复用 TownView:内部自建 2D/3D 场景 + 全频道铺放 + 模型库/数字孪生/缩放) -->
+    <!-- 孪生空间(复用 TownView:内部自建 2D/3D 场景 + 全频道铺放 + 模型库/数字孪生/缩放) -->
     <workshop-town-view
       v-else-if="focusedChannelId"
       :channel-id="focusedChannelId"
@@ -97,7 +97,7 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
       data-hud="town-loading"
       class="pane-loading"
     >
-      正在接入小镇(订阅实时事件流)…
+      正在接入 AgentWorkShop 孪生空间(订阅实时事件流)…
     </div>
   </div>
 </template>

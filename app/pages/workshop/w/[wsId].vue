@@ -93,7 +93,7 @@ const viewOptions = [
   { value: 'lanes', label: 'Agent lanes' },
   { value: 'board', label: '任务板' },
   { value: 'split', label: '同屏' },
-  { value: 'town', label: '小镇' },
+  { value: 'town', label: '孪生空间' },
 ]
 // 数字快捷键 1-5 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向)
 const onViewKey = (ev: KeyboardEvent): void => {
