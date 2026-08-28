@@ -19,7 +19,7 @@ export default {
     town: 'AgentWorkShop',
     tokens: 'API Tokens',
     daq: 'DAQ Console',
-    dcw: 'Control Center',
+    dcw: 'Line Ops',
     users: 'Users',
     monitor: 'Runtime Monitor',
     settings: 'Settings',

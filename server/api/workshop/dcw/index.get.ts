@@ -18,5 +18,7 @@ export default defineApiHandler(async (event) => {
     recipes: ctrl.listRecipes(),
     runs: ctrl.listRuns(),
     history: ctrl.listHistory(60),
+    products: ctrl.listProducts(),
+    line: ctrl.lineState(),
   }
 })

@@ -31,9 +31,21 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
         ts_ms   INTEGER NOT NULL,
         value   REAL    NOT NULL,
         state   TEXT    NOT NULL DEFAULT 'ok',
+        product_id TEXT,
+        recipe_id  TEXT,
+        run_id     TEXT,
         PRIMARY KEY (node_id, ts_ms)
       );
       CREATE INDEX IF NOT EXISTS idx_daq_node_ts ON daq_samples (node_id, ts_ms DESC);
+    `)
+    // 存量库迁移:先补打标列(幂等),再建依赖列的索引
+    const cols = new Set((this.db.prepare('PRAGMA table_info(daq_samples)').all() as Array<{ name: string }>).map(c => c.name))
+    for (const [col, ddl] of [['product_id', 'ALTER TABLE daq_samples ADD COLUMN product_id TEXT'], ['recipe_id', 'ALTER TABLE daq_samples ADD COLUMN recipe_id TEXT'], ['run_id', 'ALTER TABLE daq_samples ADD COLUMN run_id TEXT']] as const) {
+      if (!cols.has(col)) this.db.exec(ddl)
+    }
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_daq_tag ON daq_samples (product_id, recipe_id, ts_ms DESC);
+      CREATE INDEX IF NOT EXISTS idx_daq_run ON daq_samples (run_id, ts_ms DESC);
     `)
     // 保留窗口:启动清一次 + 后台周期任务(30min,防长会话磁盘无限涨)
     this.sweepRetention()
@@ -67,11 +79,11 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     if (!this.db || rows.length === 0) return
     // 批内单事务:一次 fsync 落整批(逐行 run 会每行一次 WAL fsync,写放大)
     const ins = this.db.prepare(
-      'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state) VALUES (?, ?, ?, ?)',
+      'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state, product_id, recipe_id, run_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
     )
     this.db.exec('BEGIN')
     try {
-      for (const r of rows) ins.run(r.nodeId, r.tsMs, r.value, r.state)
+      for (const r of rows) ins.run(r.nodeId, r.tsMs, r.value, r.state, r.productId ?? null, r.recipeId ?? null, r.runId ?? null)
       this.db.exec('COMMIT')
     }
     catch (err) {
@@ -105,6 +117,57 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       ORDER BY ts_ms DESC LIMIT :lim
     `).all({ ':id': nodeId, ':from': from, ':to': to, ':lim': limit }) as Array<{ ts_ms: number, value: number, state: string }>
     return rows.map(r => ({ at: Number(r.ts_ms), value: Number(r.value), state: String(r.state) }))
+  }
+
+  async queryTagged(q: import('./tsdb-port').TsdbTagQuery): Promise<Map<string, import('./tsdb-port').TsdbPoint[]>> {
+    const out = new Map<string, import('./tsdb-port').TsdbPoint[]>()
+    if (!this.db) return out
+    const where: string[] = []
+    const params: Array<string | number> = []
+    if (q.productId) {
+      where.push('product_id = ?')
+      params.push(q.productId)
+    }
+    if (q.recipeId) {
+      where.push('recipe_id = ?')
+      params.push(q.recipeId)
+    }
+    if (q.runId) {
+      where.push('run_id = ?')
+      params.push(q.runId)
+    }
+    if (q.nodeIds?.length) {
+      where.push(`node_id IN (${q.nodeIds.map(() => '?').join(',')})`)
+      params.push(...q.nodeIds)
+    }
+    where.push('ts_ms >= ?')
+    params.push(q.fromMs ?? 0)
+    where.push('ts_ms <= ?')
+    params.push(q.toMs ?? Date.now())
+    const limit = Math.min(q.limit ?? 2000, 10_000)
+    if (q.bucketMs && q.bucketMs >= 100) {
+      const rows2 = (this.db.prepare(`
+        SELECT node_id, (ts_ms / ?) * ? AS b_at, AVG(value) AS avg, MIN(value) AS min, MAX(value) AS max, COUNT(*) AS cnt
+        FROM daq_samples WHERE ${where.join(' AND ')}
+        GROUP BY node_id, b_at ORDER BY b_at ASC LIMIT ?
+      `).all(q.bucketMs, q.bucketMs, ...params, limit)) as Array<{ node_id: string, b_at: number, avg: number, min: number, max: number, cnt: number }>
+      for (const r of rows2) {
+        const list = out.get(r.node_id) ?? []
+        list.push({ at: Number(r.b_at), avg: r.avg, min: r.min, max: r.max, cnt: Number(r.cnt) })
+        out.set(r.node_id, list)
+      }
+      return out
+    }
+    const rows = (this.db.prepare(`
+      SELECT node_id, ts_ms, value FROM daq_samples WHERE ${where.join(' AND ')}
+      ORDER BY ts_ms ASC LIMIT ?
+    `).all(...params, limit)) as Array<{ node_id: string, ts_ms: number, value: number }>
+    for (const r of rows) {
+      const list = out.get(r.node_id) ?? []
+      list.push({ at: Number(r.ts_ms), value: r.value })
+      out.set(r.node_id, list)
+    }
+    return out
   }
 
   async latest(): Promise<Map<string, DaqSampleRow>> {

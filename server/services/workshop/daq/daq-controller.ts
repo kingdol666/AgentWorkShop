@@ -32,6 +32,7 @@ import { DaqNodeRuntime, type DaqRuntimeHost } from './daq-runtime'
 import { getDaqNodeRepo } from './daq-node.repo'
 import { getTsdb, tsdbReady } from './storage'
 import { getDaqQueue } from './bus'
+import { bumpTaggedSamples, getActiveLineRun } from '../dcw/line-run'
 import type { DaqSampleEnvelope } from './bus/queue-port'
 
 /** 数采值回写绑定时,映射进设备孪生已有遥测语义键(命中既有告警派生规则) */
@@ -93,8 +94,8 @@ class DaqController {
   private timer: NodeJS.Timeout | null = null
   /** 边缘运行时注册表(节点 id → 独立运行时;网关统一管理生命周期) */
   private runtimes = new Map<string, DaqNodeRuntime>()
-  /** TSDB 批量缓冲(consumer 攒批 → 定窗刷盘;上限背压,满丢最旧) */
-  private tsdbBuffer: Array<{ nodeId: string, tsMs: number, value: number, state: string }> = []
+  /** TSDB 批量缓冲(consumer 攒批 → 定窗刷盘;上限背压,满丢最旧;产线窗口内逐样本打标) */
+  private tsdbBuffer: Array<{ nodeId: string, tsMs: number, value: number, state: string, productId?: string | null, recipeId?: string | null, runId?: string | null }> = []
   private tsdbFlushTimer: NodeJS.Timeout | null = null
   /** 单 in-flight 写:写库中不叠写(promise 链串行化) */
   private tsdbWriting = false
@@ -178,8 +179,19 @@ class DaqController {
     this.writeBackTelemetry(node)
 
     // 时序库批量攒写(定窗刷盘;上限背压:满丢最旧并计数)
+    // 产线批次打标:活动 LineRun 窗口内每条样本携带 product/recipe/run id(产品级数据隔离)
     const tsMs = Date.parse(env.at)
-    this.tsdbBuffer.push({ nodeId: node.id, tsMs, value: env.value, state: node.state })
+    const lineRun = getActiveLineRun()
+    if (lineRun) bumpTaggedSamples(1)
+    this.tsdbBuffer.push({
+      nodeId: node.id,
+      tsMs,
+      value: env.value,
+      state: node.state,
+      productId: lineRun?.productId ?? null,
+      recipeId: lineRun?.recipeId ?? null,
+      runId: lineRun?.runId ?? null,
+    })
     if (this.tsdbBuffer.length > TSDB_BUFFER_CAP) {
       this.tsdbBuffer.splice(0, this.tsdbBuffer.length - TSDB_BUFFER_CAP)
       this.tsdbDropped += 1

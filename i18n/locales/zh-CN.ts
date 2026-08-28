@@ -19,7 +19,7 @@ export default {
     town: 'AgentWorkShop',
     tokens: 'API Token',
     daq: '数采中心',
-    dcw: '智控中心',
+    dcw: '产线运营',
     users: '用户管理',
     monitor: '运行时监控',
     settings: '系统设置',

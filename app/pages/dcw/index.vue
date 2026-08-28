@@ -8,7 +8,7 @@
 import { onBeforeUnmount, onMounted, reactive, ref, watch, computed } from 'vue'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
-import { DCW_DRIVERS, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_DRIVERS, type LineQueryResult, type RecipeRunData } from '#shared/dcw-protocol'
 import type { DriverConfigField } from '#shared/daq-protocol'
 
 definePageMeta({ layout: 'default' })
@@ -132,12 +132,127 @@ async function doAddNode(): Promise<void> {
   }
 }
 
+// ---------- 产线运行控制(开跑必设配方;窗口内数采逐样本打标) ----------
+const lineProductId = ref('')
+const lineRecipeId = ref('')
+const lineBusy = ref(false)
+const lineMsg = ref('')
+const lineErr = ref('')
+
+const lineRecipes = computed(() => dcw.recipes.filter(r => r.productId === lineProductId.value))
+
+async function doLineStart(): Promise<void> {
+  lineBusy.value = true
+  lineMsg.value = ''
+  lineErr.value = ''
+  try {
+    if (!lineRecipeId.value) {
+      throw new Error('开跑前必须先设定配方:请选择产品与配方(配方需含工艺参数)')
+    }
+    await dcw.startLine(lineRecipeId.value)
+    lineMsg.value = `产线已开跑:${dcw.line.productName} · ${dcw.line.recipeName}(批次 ${dcw.line.runId})`
+  }
+  catch (err) {
+    lineErr.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    lineBusy.value = false
+  }
+}
+
+async function doLineStop(): Promise<void> {
+  lineBusy.value = true
+  lineMsg.value = ''
+  lineErr.value = ''
+  try {
+    const was = `${dcw.line.productName ?? ''} · ${dcw.line.recipeName ?? ''}`
+    await dcw.stopLine()
+    lineMsg.value = `产线已停止(${was});窗口数据保留可查`
+  }
+  catch (err) {
+    lineErr.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    lineBusy.value = false
+  }
+}
+
+// ---------- 产品管理 ----------
+const productOpen = ref(false)
+const productSaving = ref(false)
+const productError = ref('')
+const productForm = reactive({ name: '', description: '' })
+const filterProductId = ref('')
+
+async function doCreateProduct(): Promise<void> {
+  productSaving.value = true
+  productError.value = ''
+  try {
+    const p = await dcw.createProduct({ name: productForm.name.trim(), description: productForm.description.trim() })
+    lineProductId.value = p.id
+    filterProductId.value = p.id
+    productOpen.value = false
+    productForm.name = ''
+    productForm.description = ''
+  }
+  catch (err) {
+    productError.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    productSaving.value = false
+  }
+}
+
+const visibleRecipes = computed(() =>
+  filterProductId.value ? dcw.recipes.filter(r => r.productId === filterProductId.value) : dcw.recipes,
+)
+const productName = (id: string): string => dcw.products.find(p => p.id === id)?.name ?? id
+
+// ---------- 产线数据查询(产品/配方/参数/时间/间隔) ----------
+const query = reactive({
+  productId: '',
+  recipeId: '',
+  paramKey: '',
+  lastMin: 30,
+  bucketMs: 0,
+})
+const queryResult = ref<LineQueryResult | null>(null)
+const queryBusy = ref(false)
+const queryError = ref('')
+
+async function doQuery(): Promise<void> {
+  queryBusy.value = true
+  queryError.value = ''
+  queryResult.value = null
+  try {
+    queryResult.value = await dcw.queryLine({
+      productId: query.productId || undefined,
+      recipeId: query.recipeId || undefined,
+      paramKey: query.paramKey || undefined,
+      fromMs: Date.now() - query.lastMin * 60_000,
+      toMs: Date.now(),
+      bucketMs: query.bucketMs > 0 ? query.bucketMs : undefined,
+      limit: 2000,
+    })
+    if (queryResult.value.channels.length === 0) queryError.value = '窗口内无匹配数据(检查产品/配方/时间范围;仅产线运行中的样本带产品标识)'
+  }
+  catch (err) {
+    queryError.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    queryBusy.value = false
+  }
+}
+
+/** 查询参数选项(DAQ 模板 key,含自定义) */
+const daqParamKeys = computed(() => dcw.templates.map(t => t.key))
+
 // ---------- Recipe 配方管理 ----------
 const recipeOpen = ref(false)
 const recipeEditing = ref<string | null>(null)
 const recipeSaving = ref(false)
 const recipeError = ref('')
-const recipeForm = reactive({ name: '', description: '', params: [] as Array<{ templateRef: string, value: number | '' }> })
+const recipeForm = reactive({ productId: '', name: '', description: '', params: [] as Array<{ templateRef: string, value: number | '' }> })
 const applyResult = ref<{ runId: string, ok: number, total: number } | null>(null)
 const runDataView = ref<{ runId: string, data: RecipeRunData } | null>(null)
 const runDataLoading = ref(false)
@@ -145,6 +260,7 @@ const runDataLoading = ref(false)
 function openRecipeCreate(): void {
   recipeEditing.value = null
   recipeError.value = ''
+  recipeForm.productId = filterProductId.value || lineProductId.value || dcw.products[0]?.id || ''
   recipeForm.name = ''
   recipeForm.description = ''
   recipeForm.params = [{ templateRef: dcw.templates[0]?.key ?? '', value: '' }]
@@ -156,6 +272,7 @@ function openRecipeEdit(id: string): void {
   if (!r) return
   recipeEditing.value = id
   recipeError.value = ''
+  recipeForm.productId = r.productId
   recipeForm.name = r.name
   recipeForm.description = r.description
   recipeForm.params = r.params.map(p => ({ templateRef: p.templateRef.startsWith('dcw-') ? p.templateRef.slice(4) : p.templateRef, value: p.value }))
@@ -167,6 +284,7 @@ async function saveRecipe(): Promise<void> {
   recipeError.value = ''
   try {
     const input = {
+      productId: recipeForm.productId,
       name: recipeForm.name.trim(),
       description: recipeForm.description.trim(),
       params: recipeForm.params
@@ -213,6 +331,13 @@ async function doViewRun(id: string): Promise<void> {
   }
 }
 
+/** 查询点位展示(原始值或桶均值) */
+function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
+  if (!p) return '-'
+  const v = p.value ?? p.avg
+  return v != null ? Number(v).toFixed(2) : '-'
+}
+
 /** 模板量程(配方行提示) */
 const tplRange = (key: string): string => {
   const t = dcw.templates.find(x => x.key === key)
@@ -225,11 +350,11 @@ const tplRange = (key: string): string => {
     <div class="aw-page-head">
       <div>
         <p class="aw-kicker">
-          AGENTWORKSHOP / DCW CONSOLE
+          AGENTWORKSHOP / LINE OPERATIONS
         </p>
-        <h1>智控中心</h1>
+        <h1>产线运营管理</h1>
         <p class="sub">
-          写控制网关:用户面向工艺量纲(物理含义/单位),PLC 底层换算/写/回读校验由系统封装;Recipe 配方一键下发,批次隔离产品数据。
+          产品 / 配方 / 数据查询 / 参数控制 / 数采启停一体化:开跑必设配方,窗口内数采逐样本携带产品与配方标识,实现真实的产品级数据隔离;PLC 底层(换算/写/回读)由系统封装。
         </p>
       </div>
       <div class="badges mono">
@@ -278,6 +403,99 @@ const tplRange = (key: string): string => {
     >
       {{ writeError || writeOk }}
     </p>
+
+    <!-- 产线运行控制:开跑必设配方;窗口内数采逐样本打标 -->
+    <section class="aw-tile line-card">
+      <div class="line-status">
+        <span
+          class="line-dot"
+          :class="{ on: dcw.line.active }"
+        />
+        <div class="line-info">
+          <b>{{ dcw.line.active ? '产线运行中' : '产线停止' }}</b>
+          <small
+            v-if="dcw.line.active"
+            class="mono dim"
+          >{{ dcw.line.productName }} · {{ dcw.line.recipeName }} · 批次 {{ dcw.line.runId }} · 开跑 {{ dcw.line.startedAt?.slice(11, 19) }} · 已打标 {{ dcw.line.taggedSamples }} 样本</small>
+          <small
+            v-else
+            class="dim"
+          >选择产品与配方后开跑;运行中的每条数采数据将携带产品/配方/批次标识</small>
+        </div>
+      </div>
+      <div class="line-ctl">
+        <label class="ctl-sel">
+          <span>产品</span>
+          <select
+            v-model="lineProductId"
+            class="inp"
+            @change="lineRecipeId = ''"
+          >
+            <option value="">
+              选择产品…
+            </option>
+            <option
+              v-for="p in dcw.products"
+              :key="p.id"
+              :value="p.id"
+            >
+              {{ p.name }}
+            </option>
+          </select>
+        </label>
+        <label class="ctl-sel">
+          <span>配方</span>
+          <select
+            v-model="lineRecipeId"
+            class="inp"
+            :disabled="!lineProductId"
+          >
+            <option value="">
+              选择配方…
+            </option>
+            <option
+              v-for="r in lineRecipes"
+              :key="r.id"
+              :value="r.id"
+              :disabled="r.params.length === 0"
+            >
+              {{ r.name }}{{ r.params.length === 0 ? '(无参数,不可开跑)' : `(${r.params.length} 参数)` }}
+            </option>
+          </select>
+        </label>
+        <button
+          v-if="!dcw.line.active"
+          class="pill-btn"
+          :disabled="lineBusy || !lineRecipeId"
+          :title="!lineRecipeId ? '开跑前必须先设定配方' : '下发配方参数并开始打标数据采集'"
+          @click="doLineStart"
+        >
+          ▶ 开始数采
+        </button>
+        <button
+          v-else
+          class="pill-btn stop"
+          :disabled="lineBusy"
+          @click="doLineStop"
+        >
+          ■ 停止数采
+        </button>
+      </div>
+      <p
+        v-if="lineErr"
+        class="banner bad"
+        style="margin-top: 10px;"
+      >
+        {{ lineErr }}
+      </p>
+      <p
+        v-if="lineMsg"
+        class="banner good"
+        style="margin-top: 10px;"
+      >
+        {{ lineMsg }}
+      </p>
+    </section>
 
     <!-- 添加控制节点向导 -->
     <div
@@ -538,11 +756,11 @@ const tplRange = (key: string): string => {
       </section>
     </a-spin>
 
-    <!-- Recipe 配方管理 -->
+    <!-- 产品与配方管理 -->
     <section class="aw-tile recipe-card">
       <div class="recipe-hd">
-        <h3>Recipe 配方管理</h3>
-        <span class="panel-tag mono">{{ dcw.recipes.length }}</span>
+        <h3>产品与配方</h3>
+        <span class="panel-tag mono">{{ dcw.products.length }} 产品 / {{ visibleRecipes.length }} 配方</span>
         <button
           class="pill-btn"
           style="margin-left: auto;"
@@ -550,19 +768,63 @@ const tplRange = (key: string): string => {
         >
           + 新建配方
         </button>
+        <button
+          class="mini-btn"
+          @click="productOpen = true"
+        >
+          + 新建产品
+        </button>
       </div>
       <p class="recipe-sub">
-        配方 = 产品工艺参数集(引用控制模板 + 目标工程值)。「下发」创建生产批次并逐参数写 PLC;
-        数采数据与写历史按批次窗口隔离,实现产品级数据归属。
+        一个产品可有多个配方;配方 = 工艺参数集(控制模板 + 目标工程值)。产线开跑时选定配方,其参数随开跑下发,
+        数采数据逐样本携带产品/配方/批次标识。
       </p>
+
+      <!-- 产品管理行 -->
+      <div
+        v-if="dcw.products.length"
+        class="product-row"
+      >
+        <button
+          class="prod-chip"
+          :class="{ on: filterProductId === '' }"
+          @click="filterProductId = ''"
+        >
+          全部
+        </button>
+        <button
+          v-for="p in dcw.products"
+          :key="p.id"
+          class="prod-chip"
+          :class="{ on: filterProductId === p.id }"
+          :title="p.description"
+          @click="filterProductId = p.id"
+        >
+          {{ p.name }}
+          <span
+            class="prod-del"
+            title="删除产品"
+            @click.stop="dcw.removeProduct(p.id)"
+          >×</span>
+        </button>
+      </div>
+      <p
+        v-else
+        class="dim"
+        style="margin: 6px 0 12px; font-size: 12px;"
+      >
+        暂无产品 —— 点击「新建产品」创建(配方必挂产品;数据按产品隔离)。
+      </p>
+
       <div class="recipe-grid">
         <div
-          v-for="r in dcw.recipes"
+          v-for="r in visibleRecipes"
           :key="r.id"
           class="recipe-item"
         >
           <div class="recipe-name">
             <b>{{ r.name }}</b>
+            <small class="dim">{{ productName(r.productId) }}</small>
             <small class="mono dim">{{ r.id }}</small>
           </div>
           <p
@@ -811,6 +1073,21 @@ const tplRange = (key: string): string => {
         </h3>
         <div class="f-grid">
           <label class="f">
+            <span>所属产品<em>*</em></span>
+            <select
+              v-model="recipeForm.productId"
+              class="inp"
+            >
+              <option
+                v-for="p in dcw.products"
+                :key="p.id"
+                :value="p.id"
+              >
+                {{ p.name }}
+              </option>
+            </select>
+          </label>
+          <label class="f">
             <span>配方名称<em>*</em></span>
             <input
               v-model="recipeForm.name"
@@ -896,6 +1173,145 @@ const tplRange = (key: string): string => {
       </div>
     </div>
 
+    <!-- 产线数据查询(产品/配方/参数/时间/间隔) -->
+    <section class="aw-tile query-card">
+      <p class="sec-label">
+        产线数据查询(产品 · 配方 · 工艺参数 · 时间 · 间隔)
+      </p>
+      <div class="q-grid">
+        <label class="f">
+          <span>产品</span>
+          <select
+            v-model="query.productId"
+            class="inp"
+            @change="query.recipeId = ''"
+          >
+            <option value="">
+              全部产品
+            </option>
+            <option
+              v-for="p in dcw.products"
+              :key="p.id"
+              :value="p.id"
+            >
+              {{ p.name }}
+            </option>
+          </select>
+        </label>
+        <label class="f">
+          <span>配方</span>
+          <select
+            v-model="query.recipeId"
+            class="inp"
+            :disabled="!query.productId"
+          >
+            <option value="">
+              全部配方
+            </option>
+            <option
+              v-for="r in dcw.recipes.filter(x => !query.productId || x.productId === query.productId)"
+              :key="r.id"
+              :value="r.id"
+            >
+              {{ r.name }}
+            </option>
+          </select>
+        </label>
+        <label class="f">
+          <span>工艺参数</span>
+          <select
+            v-model="query.paramKey"
+            class="inp"
+          >
+            <option value="">
+              全部通道
+            </option>
+            <option
+              v-for="k in daqParamKeys"
+              :key="k"
+              :value="k"
+            >
+              {{ k }}
+            </option>
+          </select>
+        </label>
+        <label class="f">
+          <span>最近(分钟)</span>
+          <input
+            v-model.number="query.lastMin"
+            type="number"
+            min="1"
+            max="10080"
+            class="inp"
+          >
+        </label>
+        <label class="f">
+          <span>聚合间隔 ms(0=原始点)</span>
+          <input
+            v-model.number="query.bucketMs"
+            type="number"
+            min="0"
+            step="100"
+            class="inp"
+          >
+        </label>
+        <div class="f q-actions">
+          <button
+            class="pill-btn"
+            :disabled="queryBusy"
+            @click="doQuery"
+          >
+            {{ queryBusy ? '查询中…' : '查询' }}
+          </button>
+        </div>
+      </div>
+      <p
+        v-if="queryError"
+        class="banner bad"
+        style="margin-top: 8px;"
+      >
+        {{ queryError }}
+      </p>
+      <div
+        v-if="queryResult"
+        class="q-result"
+      >
+        <table class="nodes-table">
+          <thead>
+            <tr>
+              <th>通道</th>
+              <th>节点</th>
+              <th>点数</th>
+              <th>首值</th>
+              <th>末值</th>
+              <th>区间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="c in queryResult.channels"
+              :key="c.nodeId"
+            >
+              <td>{{ c.ch }}<small class="mono dim"> {{ c.unit }}</small></td>
+              <td>{{ c.nodeName }}</td>
+              <td class="mono">
+                {{ c.points.length }}
+              </td>
+              <td class="mono">
+                {{ fmtPoint(c.points[0]) }}
+              </td>
+              <td class="mono">
+                {{ fmtPoint(c.points[c.points.length - 1]) }}
+              </td>
+              <td class="mono dim">
+                {{ new Date(c.points[0]?.at ?? 0).toLocaleTimeString() }} ~ {{ new Date(c.points[c.points.length - 1]?.at ?? 0).toLocaleTimeString() }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- 写历史 -->
     <section
       v-if="dcw.history.length"
@@ -934,6 +1350,58 @@ const tplRange = (key: string): string => {
         </tbody>
       </table>
     </section>
+
+    <!-- 新建产品弹窗 -->
+    <div
+      v-if="productOpen"
+      class="modal-mask"
+      @click.self="productOpen = false"
+    >
+      <div class="modal">
+        <h3 class="m-title">
+          新建产品
+        </h3>
+        <div class="f-grid">
+          <label class="f">
+            <span>产品名称<em>*</em></span>
+            <input
+              v-model="productForm.name"
+              class="inp"
+              placeholder="如 0.8mm 光学膜"
+            >
+          </label>
+          <label class="f">
+            <span>描述</span>
+            <input
+              v-model="productForm.description"
+              class="inp"
+              placeholder="产品/工艺说明(可选)"
+            >
+          </label>
+        </div>
+        <p
+          v-if="productError"
+          class="m-err"
+        >
+          {{ productError }}
+        </p>
+        <div class="m-actions">
+          <button
+            class="aw-pill outline"
+            @click="productOpen = false"
+          >
+            取消
+          </button>
+          <button
+            class="pill-btn"
+            :disabled="productSaving"
+            @click="doCreateProduct"
+          >
+            {{ productSaving ? '创建中…' : '创建产品' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <p
       v-if="dcw.error"
@@ -991,6 +1459,26 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .mini-btn:hover { border-color: var(--accent); color: var(--accent); }
 .inp { padding: 5px 9px; font-size: 12.5px; color: var(--ink); background: var(--paper-deep); border: 1px solid var(--line-strong); border-radius: var(--radius-chip); }
 
+.line-card { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; margin-bottom: 14px; }
+.line-status { display: flex; gap: 12px; align-items: center; min-width: 260px; }
+.line-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--tone-neutral-dot); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone-neutral-dot) 20%, transparent); }
+.line-dot.on { background: var(--tone-success-dot); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone-success-dot) 22%, transparent); animation: linePulse 1.6s infinite; }
+@keyframes linePulse { 0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone-success-dot) 25%, transparent); } 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--tone-success-dot) 8%, transparent); } }
+.line-info b { font-size: 14px; }
+.line-info small { display: block; margin-top: 2px; font-size: 11px; }
+.line-ctl { display: flex; gap: 10px; align-items: flex-end; }
+.ctl-sel { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--ink-faint); }
+.ctl-sel .inp { min-width: 150px; }
+.pill-btn.stop { background: var(--tone-danger-dot); border-color: var(--tone-danger-dot); }
+.product-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.prod-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 12px; font-size: 12px; cursor: pointer; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); }
+.prod-chip.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+.prod-del { color: var(--tone-danger-dot); font-weight: 700; }
+.query-card { padding: 14px 18px; margin-bottom: 14px; }
+.q-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: end; }
+.q-grid .f { font-size: 11px; color: var(--ink-faint); }
+.q-actions { justify-content: flex-end; }
+.q-result { margin-top: 12px; overflow-x: auto; }
 .recipe-card { padding: 16px 18px; margin-bottom: 14px; }
 .recipe-hd { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
 .recipe-hd h3 { margin: 0; font-size: 16px; }

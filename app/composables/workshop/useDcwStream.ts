@@ -7,7 +7,7 @@
 import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
 import type { AepEnvelope } from '#shared/workshop-protocol'
-import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwWritten, type DcwNodeView, type DcwTemplateDef, type DcwTemplateInput, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwWritten, type DcwNodeView, type DcwTemplateDef, type DcwTemplateInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type ProductInput, type ProductView, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
 
 function headers(json = true): Record<string, string> {
   const cookieToken = typeof document !== 'undefined'
@@ -36,6 +36,8 @@ function createStore() {
   const recipes = reactive<RecipeView[]>([])
   const runs = reactive<RecipeRunView[]>([])
   const history = reactive<DcwWriteHistoryEntry[]>([])
+  const products = reactive<ProductView[]>([])
+  const line = reactive<LineRunState>({ active: false, runId: null, recipeId: null, recipeName: null, productId: null, productName: null, startedAt: null, taggedSamples: 0 })
 
   function upsert(node: DcwNodeView): void {
     const i = nodes.findIndex(x => x.id === node.id)
@@ -77,13 +79,15 @@ function createStore() {
 
   async function load(): Promise<void> {
     try {
-      const data = await api<{ controller: AepDcwControllerState, nodes: DcwNodeView[], templates?: DcwTemplateDef[], recipes?: RecipeView[], runs?: RecipeRunView[], history?: DcwWriteHistoryEntry[] }>('')
+      const data = await api<{ controller: AepDcwControllerState, nodes: DcwNodeView[], templates?: DcwTemplateDef[], recipes?: RecipeView[], runs?: RecipeRunView[], history?: DcwWriteHistoryEntry[], products?: ProductView[], line?: LineRunState }>('')
       nodes.splice(0, nodes.length, ...data.nodes)
       Object.assign(controller, data.controller)
       if (data.templates?.length) templates.splice(0, templates.length, ...data.templates.map(t => ({ ...t })))
       recipes.splice(0, recipes.length, ...(data.recipes ?? []))
       runs.splice(0, runs.length, ...(data.runs ?? []))
       history.splice(0, history.length, ...(data.history ?? []))
+      products.splice(0, products.length, ...(data.products ?? []))
+      if (data.line) Object.assign(line, data.line)
       store.loaded = true
       store.error = ''
     }
@@ -99,6 +103,8 @@ function createStore() {
     recipes,
     runs,
     history,
+    products,
+    line,
     loaded: false,
     error: '',
     ensureWsFeed,
@@ -168,7 +174,53 @@ function createStore() {
     },
     runData: (id: string): Promise<RecipeRunData> => api(`/runs/${id}/data`),
     nodeById: (id: string): DcwNodeView | undefined => nodes.find(n => n.id === id),
+    // ---------- 产品 ----------
+    createProduct: async (input: ProductInput): Promise<ProductView> => {
+      const data = await api<{ product: ProductView }>('/products', { method: 'POST', body: JSON.stringify(input) })
+      products.push(data.product)
+      return data.product
+    },
+    updateProduct: async (id: string, patch: Partial<ProductInput>): Promise<ProductView> => {
+      return api<{ product: ProductView }>(`/products/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }).then((r) => {
+        void r
+        void dcwReloadLight()
+        return r.product
+      })
+    },
+    removeProduct: async (id: string): Promise<void> => {
+      await api(`/products/${id}`, { method: 'DELETE' })
+      const i = products.findIndex(p => p.id === id)
+      if (i >= 0) products.splice(i, 1)
+    },
+    // ---------- 产线运营 ----------
+    startLine: async (recipeId: string): Promise<void> => {
+      const data = await api<{ line: LineRunState }>('/line/start', { method: 'POST', body: JSON.stringify({ recipeId }) })
+      Object.assign(line, data.line)
+    },
+    stopLine: async (): Promise<void> => {
+      const data = await api<{ line: LineRunState }>('/line/stop', { method: 'POST' })
+      Object.assign(line, data.line)
+    },
+    queryLine: (opts: LineQueryOpts): Promise<LineQueryResult> => {
+      const qs = new URLSearchParams()
+      if (opts.productId) qs.set('productId', opts.productId)
+      if (opts.recipeId) qs.set('recipeId', opts.recipeId)
+      if (opts.paramKey) qs.set('paramKey', opts.paramKey)
+      if (opts.fromMs != null) qs.set('from', String(opts.fromMs))
+      if (opts.toMs != null) qs.set('to', String(opts.toMs))
+      if (opts.bucketMs != null) qs.set('bucketMs', String(opts.bucketMs))
+      if (opts.limit != null) qs.set('limit', String(opts.limit))
+      return api(`/line/query?${qs.toString()}`)
+    },
   })
+  async function dcwReloadLight(): Promise<void> {
+    try {
+      const data = await api<{ products?: ProductView[], recipes?: RecipeView[] }>('')
+      products.splice(0, products.length, ...(data.products ?? []))
+      recipes.splice(0, recipes.length, ...(data.recipes ?? []))
+    }
+    catch { /* 忽略:轻量重载失败不阻塞 */ }
+  }
   return store
 }
 

@@ -10,7 +10,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, RecipeInput, RecipeRunView } from '../../../../shared/dcw-protocol'
+import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, LineQueryOpts, LineQueryResult, LineRunState, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
 import { dcwKeyFromRef } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { normalizeDcwDriverKind, resolveDcwDriver } from './drivers'
@@ -20,6 +20,8 @@ import { DcwNode } from './dcw-node'
 import { getDcwNodeRepo } from './dcw-node.repo'
 import { DcwNodeRuntime } from './dcw-runtime'
 import { getDcwRecipeRepo, type DcwWriteHistoryEntry } from './dcw-recipe.repo'
+import { getDcwProductRepo } from './dcw-product.repo'
+import { clearActiveLineRun, getActiveLineRun, setActiveLineRun } from './line-run'
 
 type BroadcastFn = (type: string, payload: unknown) => void
 
@@ -344,17 +346,11 @@ class DcwController {
   }
 
   /**
-   * Recipe 应用(一键下发工艺参数集):
-   * 创建批次(Run)→ 按 templateRef 匹配控制节点(参数可显式指定 nodeId)→
-   * 逐参数写命令(带 runId 入写历史)→ 批次结果快照。无匹配节点 → 该参数记失败不阻塞其余。
+   * 逐参数写核心(apply 与产线开跑共用):按 templateRef 匹配控制节点
+   * (参数可显式指定 nodeId)→ 逐参数写命令(runId 入写历史)→ 结果快照。
+   * 无匹配节点 → 该参数记失败不阻塞其余。
    */
-  async applyRecipe(recipeId: string) {
-    this.ensureLoop()
-    const repo = getDcwRecipeRepo()
-    const recipe = repo.byId(recipeId)
-    if (!recipe) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${recipeId}`)
-    if (recipe.params.length === 0) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Recipe 无工艺参数,无可下发内容')
-    const run = repo.createRun(recipe)
+  private async writeRecipeParams(recipe: RecipeView, run: RecipeRunView): Promise<void> {
     const results: RecipeRunView['results'] = []
     for (const param of recipe.params) {
       const key = dcwKeyFromRef(param.templateRef)
@@ -374,12 +370,146 @@ class DcwController {
       }
     }
     run.results = results
-    repo.updateRun(run)
+    getDcwRecipeRepo().updateRun(run)
+  }
+
+  /** Recipe 手动应用(一键下发工艺参数集;不激活产线窗口) */
+  async applyRecipe(recipeId: string) {
+    this.ensureLoop()
+    const repo = getDcwRecipeRepo()
+    const recipe = repo.byId(recipeId)
+    if (!recipe) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${recipeId}`)
+    if (recipe.params.length === 0) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Recipe 无工艺参数,无可下发内容')
+    const run = repo.createRun(recipe)
+    await this.writeRecipeParams(recipe, run)
     return run
   }
 
   closeRun(id: string) {
     return getDcwRecipeRepo().closeRun(id)
+  }
+
+  // ---------- 产线运营(开跑必设配方;窗口内数采逐样本打标) ----------
+
+  /**
+   * 产线开跑:选定产品+配方 → 下发配方参数 → 创建批次并激活产线窗口。
+   * 门控:配方必挂产品且含工艺参数 —— 未设定配方不可开跑数据采集。
+   */
+  async lineStart(recipeId: string) {
+    this.ensureLoop()
+    if (getActiveLineRun()) {
+      throw new AppError(409, ErrorCodes.CONFLICT, `产线已在运行(批次 ${getActiveLineRun()!.runId}),请先停止当前数据采集`)
+    }
+    const repo = getDcwRecipeRepo()
+    const recipe = repo.byId(recipeId)
+    if (!recipe) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${recipeId}`)
+    if (recipe.params.length === 0) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '开跑前必须先设定配方:当前 Recipe 无工艺参数')
+    }
+    const product = getDcwProductRepo().byId(recipe.productId)
+    if (!product) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '开跑前必须先设定配方:Recipe 未归属有效产品,请先补全产品信息')
+    }
+    const run = repo.createRun(recipe)
+    setActiveLineRun({
+      runId: run.id,
+      recipeId: recipe.id,
+      recipeName: recipe.name,
+      productId: product.id,
+      productName: product.name,
+      startedAt: run.startedAt,
+      taggedSamples: 0,
+    })
+    await this.writeRecipeParams(recipe, run)
+    this.broadcast?.('dcw.controller', this.controllerState())
+    return run
+  }
+
+  /** 产线停止:关闭批次窗口(此后样本不再打标;数据保留可查) */
+  lineStop() {
+    const prev = clearActiveLineRun()
+    if (!prev) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '产线未在运行')
+    const run = getDcwRecipeRepo().closeRun(prev.runId)
+    this.broadcast?.('dcw.controller', this.controllerState())
+    return run
+  }
+
+  /** 产线运行状态(活动窗口 + 打标计数) */
+  lineState(): LineRunState {
+    const r = getActiveLineRun()
+    if (!r) {
+      return { active: false, runId: null, recipeId: null, recipeName: null, productId: null, productName: null, startedAt: null, taggedSamples: 0 }
+    }
+    return {
+      active: true,
+      runId: r.runId,
+      recipeId: r.recipeId,
+      recipeName: r.recipeName,
+      productId: r.productId,
+      productName: r.productName,
+      startedAt: r.startedAt,
+      taggedSamples: r.taggedSamples,
+    }
+  }
+
+  /**
+   * 产线数据查询(产品/配方/工艺参数/时间/间隔 五维):
+   * 打标样本跨通道聚合;paramKey 限定工艺参数(DAQ 模板),bucketMs 降采样。
+   */
+  async lineQuery(opts: LineQueryOpts): Promise<LineQueryResult> {
+    const { getTsdb, tsdbReady } = await import('../daq/storage')
+    await tsdbReady
+    const { getDaqNodeRepo } = await import('../daq/daq-node.repo')
+    const { findDaqTemplate } = await import('../daq/daq-templates')
+    const nodes = getDaqNodeRepo().all().filter((n) => {
+      if (opts.paramKey && n.templateKey !== opts.paramKey) return false
+      return true
+    })
+    const series = await getTsdb().queryTagged({
+      productId: opts.productId,
+      recipeId: opts.recipeId,
+      nodeIds: nodes.map(n => n.id),
+      fromMs: opts.fromMs,
+      toMs: opts.toMs,
+      bucketMs: opts.bucketMs,
+      limit: opts.limit,
+    })
+    const channels: LineQueryResult['channels'] = []
+    for (const n of nodes) {
+      const points = series.get(n.id)
+      if (!points || points.length === 0) continue
+      const tpl = findDaqTemplate(n.templateKey)
+      channels.push({
+        nodeId: n.id,
+        nodeName: n.name,
+        templateRef: n.templateRef,
+        ch: tpl?.ch ?? n.templateKey,
+        unit: n.unit,
+        points,
+      })
+    }
+    return { productId: opts.productId ?? null, recipeId: opts.recipeId ?? null, channels }
+  }
+
+  // ---------- 产品 ----------
+
+  listProducts(): ProductView[] {
+    return getDcwProductRepo().all()
+  }
+
+  createProduct(input: ProductInput): ProductView {
+    return getDcwProductRepo().create(input)
+  }
+
+  updateProduct(id: string, patch: Partial<ProductInput>): ProductView {
+    return getDcwProductRepo().update(id, patch)
+  }
+
+  removeProduct(id: string): void {
+    if (getActiveLineRun()?.productId === id) {
+      throw new AppError(409, ErrorCodes.CONFLICT, '产品正在产线运行中,不可删除(请先停止数据采集)')
+    }
+    if (!getDcwProductRepo().remove(id)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产品不存在: ${id}`)
   }
 
   /**

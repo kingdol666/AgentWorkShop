@@ -206,8 +206,21 @@ export interface AepDcwControllerState {
 }
 
 // ============================================================
-// Recipe 配方(产品工艺参数集 + 生产批次隔离)
+// Product 产品 + Recipe 配方(产品-配方-批次三级隔离)
 // ============================================================
+
+/** 产品(一个产品可有多个配方;数据隔离的顶层维度) */
+export interface ProductView {
+  id: string
+  name: string
+  description: string
+  createdAt: string
+}
+
+export interface ProductInput {
+  name: string
+  description?: string
+}
 
 /** 配方参数项(引用控制模板 + 目标工程值) */
 export interface RecipeParam {
@@ -219,6 +232,8 @@ export interface RecipeParam {
 
 export interface RecipeView {
   id: string
+  /** 所属产品(产线开跑与数据归属的必需维度) */
+  productId: string
   name: string
   description: string
   params: RecipeParam[]
@@ -227,6 +242,7 @@ export interface RecipeView {
 }
 
 export interface RecipeInput {
+  productId?: string
   name: string
   description?: string
   params?: RecipeParam[]
@@ -237,10 +253,24 @@ export interface RecipeRunView {
   id: string
   recipeId: string
   recipeName: string
+  productId: string
   startedAt: string
   endedAt: string | null
   /** apply 时逐参数写结果快照 */
   results: Array<{ templateRef: string, nodeId: string | null, ok: boolean, message: string, value: number }>
+}
+
+/** 产线运行状态(开跑必设配方;活动窗口内数采逐样本打标 productId/recipeId/runId) */
+export interface LineRunState {
+  active: boolean
+  runId: string | null
+  recipeId: string | null
+  recipeName: string | null
+  productId: string | null
+  productName: string | null
+  startedAt: string | null
+  /** 本窗口已入库的打标样本数 */
+  taggedSamples: number
 }
 
 /** 运行批次数据视图(数采汇总 + 写历史,按批次窗口隔离) */
@@ -250,4 +280,31 @@ export interface RecipeRunData {
   daq: Array<{ templateRef: string, nodeId: string, nodeName: string, ch: string, unit: string, latest: number | null, avg: number | null, min: number | null, max: number | null, cnt: number }>
   /** 批次窗口内的写历史 */
   writes: Array<{ nodeId: string, nodeName: string, param: string, eng: number, raw: number | null, ok: boolean, at: string }>
+}
+
+/** 产线数据查询(产品/配方/工艺参数/时间/间隔 五维) */
+export interface LineQueryOpts {
+  productId?: string
+  recipeId?: string
+  /** 工艺参数(DAQ 模板 key;缺省全部通道) */
+  paramKey?: string
+  fromMs?: number
+  toMs?: number
+  /** 聚合桶宽 ms(缺省原始点) */
+  bucketMs?: number
+  limit?: number
+}
+
+/** 产线查询结果(逐通道序列) */
+export interface LineQueryResult {
+  productId: string | null
+  recipeId: string | null
+  channels: Array<{
+    nodeId: string
+    nodeName: string
+    templateRef: string
+    ch: string
+    unit: string
+    points: Array<{ at: number, value?: number, avg?: number, min?: number, max?: number, cnt?: number }>
+  }>
 }

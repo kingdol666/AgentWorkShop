@@ -10,6 +10,7 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { RecipeInput, RecipeParam, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
+import { getDcwProductRepo } from './dcw-product.repo'
 
 const DATA_DIR = process.cwd().endsWith('server')
   ? 'data'
@@ -80,9 +81,15 @@ class DcwRecipeRepo {
   create(input: RecipeInput): RecipeView {
     const name = String(input.name ?? '').trim()
     if (!name) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Recipe 名称必填')
+    // 配方必挂产品(数据隔离顶层维度:产品 → 配方 → 批次 → 样本)
+    const productId = String(input.productId ?? '').trim()
+    if (!productId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'productId 必填:配方必须归属产品')
+    const product = getDcwProductRepo().byId(productId)
+    if (!product) throw new AppError(404, ErrorCodes.NOT_FOUND, `产品不存在: ${productId}`)
     const now = new Date().toISOString()
     const recipe: RecipeView = {
       id: `rc-${randomUUID().slice(0, 8)}`,
+      productId,
       name,
       description: String(input.description ?? '').trim(),
       params: normParams(input.params),
@@ -97,6 +104,11 @@ class DcwRecipeRepo {
   update(id: string, patch: Partial<RecipeInput>): RecipeView {
     const r = this.byId(id)
     if (!r) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${id}`)
+    if (patch.productId !== undefined && patch.productId !== r.productId) {
+      const product = getDcwProductRepo().byId(String(patch.productId))
+      if (!product) throw new AppError(404, ErrorCodes.NOT_FOUND, `产品不存在: ${patch.productId}`)
+      r.productId = String(patch.productId)
+    }
     if (patch.name !== undefined) {
       const name = String(patch.name).trim()
       if (!name) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Recipe 名称必填')
@@ -134,6 +146,7 @@ class DcwRecipeRepo {
       id: `rr-${randomUUID().slice(0, 8)}`,
       recipeId: recipe.id,
       recipeName: recipe.name,
+      productId: recipe.productId,
       startedAt: new Date().toISOString(),
       endedAt: null,
       results: [],

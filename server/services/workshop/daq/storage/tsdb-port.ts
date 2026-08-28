@@ -18,6 +18,10 @@ export interface DaqSampleRow {
   tsMs: number
   value: number
   state: string
+  /** 产线批次打标(活动 LineRun 窗口内的样本逐条携带;null = 线体空闲段) */
+  productId?: string | null
+  recipeId?: string | null
+  runId?: string | null
 }
 
 export interface DaqQueryOpts {
@@ -40,12 +44,27 @@ export interface TsdbPoint {
   state?: string
 }
 
+/** 跨通道打标查询(产线数据隔离:产品/配方/批次/通道/时间/桶) */
+export interface TsdbTagQuery {
+  productId?: string
+  recipeId?: string
+  runId?: string
+  /** 限定通道(缺省全部) */
+  nodeIds?: string[]
+  fromMs?: number
+  toMs?: number
+  bucketMs?: number
+  limit?: number
+}
+
 export interface TsdbPort {
   /** 后端标识(sqlite-emulated | timescale)——REST meta 直报前端 */
   readonly backend: string
   init(): Promise<void>
   writeSamples(rows: DaqSampleRow[]): Promise<void>
   query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]>
+  /** 按产线打标跨通道查询(产品/配方隔离) */
+  queryTagged(q: TsdbTagQuery): Promise<Map<string, TsdbPoint[]>>
   /** 各节点最近一个样本(列表页值列兜底) */
   latest(): Promise<Map<string, DaqSampleRow>>
   /** 释放底层连接池/句柄(rebuild 换池时由工厂调用;可选) */

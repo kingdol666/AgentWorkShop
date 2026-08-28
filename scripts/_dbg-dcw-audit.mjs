@@ -46,7 +46,8 @@ if (wM.data?.outcome?.ok === true && wM.data.outcome.raw === 1000) console.log('
 else fail(`modbus write wrong: ${JSON.stringify(wM.data?.outcome ?? wM.message)}`)
 
 // ===== 4. Recipe 配方 + 一键下发 + 批次隔离 =====
-const rc = await post('/recipes', {
+const prod = (await post('/products', { name: '审计产品' })).data.product
+const rc = await post('/recipes', { productId: prod.id,
   name: '审计配方-光学膜',
   description: '审计用',
   params: [
@@ -75,7 +76,7 @@ if (writes1.length === 1 && writes1[0].recipeRunId === run.id) console.log('PASS
 else fail(`run data writes wrong: ${writes1.length}`)
 
 // 第二个配方 + 批次 → 验证窗口隔离
-const rc2 = await post('/recipes', { name: '审计配方-B', params: [{ templateRef: 'dcw-temp-sp', value: 160 }] })
+const rc2 = await post('/recipes', { productId: prod.id, name: '审计配方-B', params: [{ templateRef: 'dcw-temp-sp', value: 160 }] })
 const ap2 = await post(`/recipes/${rc2.data.recipe.id}/apply`, {})
 const run2 = ap2.data?.run
 await sleep(2500) // 等数采样本落入 run2 窗口(1s 采样周期)
@@ -98,6 +99,7 @@ await del(`/${mkA.id}`)
 await del(`/${mkM.id}`)
 await del(`/recipes/${recipeId}`)
 await del(`/recipes/${rc2.data.recipe.id}`)
+await fetch((process.env.DAQ_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop/dcw/products/' + prod.id, { method: 'DELETE', headers: H })
 console.log('cleanup done')
 
 console.log(process.exitCode ? 'AUDIT FAILED' : 'AUDIT ALL PASS')
