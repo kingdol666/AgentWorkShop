@@ -8,6 +8,7 @@ import { AppError } from '@/server/utils/errors'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDeviceTwinRepo } from '@/server/services/workshop/assets/device-twin.repo'
 import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
+import { getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 
 export default defineApiHandler(async (event) => {
@@ -16,8 +17,9 @@ export default defineApiHandler(async (event) => {
   const twin = getDeviceTwinRepo().findById(id)
   const ok = getDeviceTwinRepo().remove(id)
   if (!ok) throw new AppError(404, 'NOT_FOUND', `设备不存在: ${id}`)
-  // 级联解绑其 DAQ 采集节点(不等下次回写失败自愈)+ 广播节点变更
+  // 级联解绑其 DAQ 采集节点与 DCW 控制节点 + 广播节点变更
   getDaqController().unbindDevice(id)
+  getDcwController().unbindDevice(id)
   broadcastSceneEvent('device.deleted', { id, name: twin?.name ?? '' })
   return { deleted: true }
 })

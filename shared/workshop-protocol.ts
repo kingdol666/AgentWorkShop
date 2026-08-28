@@ -35,6 +35,7 @@
 import type { A2AArtifact, A2AMessage } from '../server/services/workshop/types/a2a'
 import type { WorkspaceTask } from '../server/services/workshop/types/task'
 import type { AepDaqControllerState, AepDaqNodeChange, AepDaqReading, AepDaqTemplateChange } from './daq-protocol'
+import type { AepDcwControllerState, AepDcwNodeChange, AepDcwWritten } from './dcw-protocol'
 
 export const AEP_VERSION = 1
 
@@ -138,6 +139,9 @@ export type AepEvent
     | { type: 'daq.node.changed', payload: AepDaqNodeChange }
     | { type: 'daq.controller', payload: AepDaqControllerState }
     | { type: 'daq.template.changed', payload: AepDaqTemplateChange }
+    | { type: 'dcw.node.changed', payload: AepDcwNodeChange }
+    | { type: 'dcw.written', payload: AepDcwWritten }
+    | { type: 'dcw.controller', payload: AepDcwControllerState }
     | { type: 'error', payload: { code: string, message: string } }
     | { type: 'pong', payload: { t: number } }
 
@@ -169,5 +173,6 @@ export const AEP_GROUPS: Record<string, string[]> = {
   devices: ['device.created', 'device.updated', 'device.deleted'],
   scene: ['scene.layout.saved', 'scene.layout.removed'],
   daq: ['daq.reading', 'daq.node.changed', 'daq.controller', 'daq.template.changed'],
+  dcw: ['dcw.node.changed', 'dcw.written', 'dcw.controller'],
   errors: ['error'],
 }

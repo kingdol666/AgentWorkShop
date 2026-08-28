@@ -26,6 +26,7 @@ import { mapEnvelopeToIntent } from '#shared/town-protocol'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { DAQ_TEMPLATES } from '#shared/daq-protocol'
 import { useDaqStream, type DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
+import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 
 /**
  * 两种渲染器(Phaser 2D / Three.js 3D)共享的最小公开接口。
@@ -944,6 +945,12 @@ function bindSceneInput3D(scene: TownScene3D): void {
           errorText.value = err instanceof Error ? err.message : String(err)
         })
       }
+      // 1.6) 智控节点拖入 → 创建 server DcwNode(写控制;落点 ±95 内设备自动绑定)
+      const dcwTplId = dt.getData('application/x-aw-dcw')
+      if (dcwTplId) {
+        onDcwDrop(e, scene)
+        return
+      }
       return
     }
     // 2) 模型拖放 → 换装/生成
@@ -1282,9 +1289,28 @@ watch(() => agentHistory.value.length + agentChatRows.value.length, async () => 
 })
 
 /** 场景管线统一设备池:真实设备孪生(剔除旧 daq 孪生)+ server 数采节点伪孪生 */
+/** 智控节点伪孪生投影(与 daqTwins 同构;value = 当前设定值) */
+const dcwTwins = computed<DeviceTwinView[]>(() =>
+  dcw.nodes.map(n => ({
+    id: n.id,
+    workspaceId: '',
+    name: n.name,
+    modelRef: `dcw-${n.templateRef.startsWith('dcw-') ? n.templateRef.slice(4) : n.templateRef}`,
+    boundAgentId: null,
+    kind: 'daq' as const,
+    telemetry: { value: n.value ?? 0 },
+    desired: {},
+    controls: [],
+    state: n.enabled ? (n.state === 'error' ? 'alarm' : 'running') : 'offline',
+    posX: n.posX,
+    posZ: n.posZ,
+    updatedAt: n.lastWriteAt ?? n.createdAt,
+  })))
+
 const sceneTwinPool = computed<DeviceTwinView[]>(() => [
   ...deviceTwins.twins.filter(t => !isLegacyDaqTwin(t)),
   ...daqTwins.value,
+  ...dcwTwins.value,
 ])
 const sceneTwinById = (id: string): DeviceTwinView | undefined =>
   sceneTwinPool.value.find(t => t.id === id)
@@ -1316,6 +1342,56 @@ const ticker = shallowRef<Array<{ channelId: string, agentName: string, text: st
  * ============================================================ */
 /** 数采流单例:REST 快照 + townBus WS 帧(reading/node.changed/controller) */
 const daq = useDaqStream()
+/** 智控流单例(写控制;与数采对称:模板目录/节点/场景/绑定) */
+const dcw = useDcwStream()
+/** 智控模板目录(server 权威;与 daqTemplates 同构投影) */
+const dcwTemplates = reactive(dcw.templates.map(t => ({
+  id: t.key,
+  name: t.name,
+  code: t.code,
+  ch: t.ch,
+  unit: t.unit,
+  min: t.min,
+  max: t.max,
+  decimals: t.decimals,
+  icon: t.icon,
+})))
+watch(() => dcw.templates, (list) => {
+  if (!list?.length) return
+  dcwTemplates.splice(0, dcwTemplates.length, ...list.map(t => ({
+    id: t.key,
+    name: t.name,
+    code: t.code,
+    ch: t.ch,
+    unit: t.unit,
+    min: t.min,
+    max: t.max,
+    decimals: t.decimals,
+    icon: t.icon,
+  })))
+}, { immediate: true, deep: true })
+function onDcwDragStart(e: DragEvent, tpl: { id: string }): void {
+  if (!e.dataTransfer) return
+  e.dataTransfer.setData('application/x-aw-dcw', tpl.id)
+  e.dataTransfer.setData('text/plain', tpl.id)
+  e.dataTransfer.effectAllowed = 'copy'
+}
+/** 智控节点拖入:创建 server DcwNode + 落点 ±95 内设备自动绑定 */
+function onDcwDrop(e: DragEvent, scene: TownScene3D): void {
+  const tplId = e.dataTransfer?.getData('application/x-aw-dcw')
+  if (!tplId || !dcwTemplates.some(t => t.id === tplId)) return
+  const world = scene.screenToWorld(e.clientX, e.clientY)
+  void dcw.createFromTemplate(`dcw-${tplId}`, {
+    posX: Math.round(world.x),
+    posZ: Math.round(world.z),
+  }).then((created) => {
+    const near = nearestDeviceTwin(world.x, world.z, 95)
+    if (near) void dcw.bindNode(created.id, near.id)
+    if (sceneRef.value) syncSceneDevices(sceneRef.value)
+  }).catch((err: unknown) => {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  })
+}
 /** 左轨模板目录(server 权威:内置 + 自定义随 REST/WS 收敛;字段名兼容既有轨道模板标记) */
 interface DaqTemplate {
   id: string
@@ -1549,6 +1625,10 @@ function drawBindSparks(): void {
 // DAQ 节点清单(增删/落点/启停/状态/绑定)变化 → 场景即时收敛
 // (签名不含 value:每秒读数帧不值得全量 reconcile,实时值走 callout/KPI 管线)
 watch(() => daq.nodes.map(n => `${n.id}:${n.posX ?? ''}:${n.posZ ?? ''}:${n.enabled}:${n.state}:${n.deviceBindingId ?? ''}`).join('|'), () => {
+  if (sceneRef.value) syncSceneDevices(sceneRef.value)
+})
+// 智控节点清单(增删/落点/绑定)变化 → 场景即时收敛
+watch(() => dcw.nodes.map(n => `${n.id}:${n.posX ?? ''}:${n.posZ ?? ''}:${n.enabled}:${n.deviceBindingId ?? ''}`).join('|'), () => {
   if (sceneRef.value) syncSceneDevices(sceneRef.value)
 })
 watch(() => daq.nodes.map(n => `${n.id}:${n.deviceBindingId ?? ''}`).join('|'), () => {
@@ -2191,6 +2271,9 @@ onMounted(() => {
   // 数采流:REST 基线 + WS 实时帧(server 权威;进数字孪生空间即建立连接)
   daq.ensureWsFeed()
   void daq.load()
+  // 智控流:同款上电(REST 基线 + dcw.* WS 帧),dcwTwins 投影进 sceneTwinPool
+  dcw.ensureWsFeed()
+  void dcw.load()
   miniTimer = setInterval(miniTick, 150)
   // 数采画布重绘节奏(读数帧由 WS 增量到达;这里只负责趋势/火花线绘制)
   daqTimer = setInterval(() => {
@@ -2405,6 +2488,36 @@ onBeforeUnmount(() => {
                 <span class="daq-code">{{ tpl.code }}</span>
               </div>
               <span class="daq-count">×{{ daq.nodes.filter(n => n.templateRef === `daq-${tpl.id}`).length }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-hd">
+            <h3>智控节点 · DCW</h3>
+            <span class="panel-tag">{{ dcw.nodes.length }}</span>
+          </div>
+          <div class="daq-list">
+            <div
+              v-for="tpl in dcwTemplates"
+              :key="tpl.id"
+              class="daq-card"
+              draggable="true"
+              :title="`${tpl.name} · ${tpl.ch} · 设定值域 ${tpl.min} ~ ${tpl.max} ${tpl.unit} · 拖到设备旁自动绑定`"
+              @dragstart="onDcwDragStart($event, tpl)"
+            >
+              <span class="daq-ico">
+                <svg
+                  class="daq-svg"
+                  viewBox="0 0 24 24"
+                  v-html="daqIcon(tpl.icon)"
+                />
+              </span>
+              <div class="daq-meta">
+                <span class="daq-name">{{ tpl.name }}</span>
+                <span class="daq-code">{{ tpl.code }}</span>
+              </div>
+              <span class="daq-count">×{{ dcw.nodes.filter(n => n.templateRef === `dcw-${tpl.id}`).length }}</span>
             </div>
           </div>
         </section>

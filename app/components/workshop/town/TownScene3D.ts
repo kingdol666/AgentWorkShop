@@ -3566,8 +3566,8 @@ export class TownScene3D {
         }
       }
       if (!existing) {
-        // 数采节点走程序化路径(无 GLB 也可实例化);设备需模型可解析 + 已入场景
-        const isDaq = t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-')
+        // 数采/智控节点走程序化路径(无 GLB 也可实例化);设备需模型可解析 + 已入场景
+        const isDaq = t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-') || (t.modelRef ?? '').startsWith('dcw-')
         const resolvable = isDaq || !!this.resolveDeviceModel(t.modelRef)?.file
         if (resolvable && typeof t.posX === 'number' && typeof t.posZ === 'number') this.recreateDeviceNode(t)
         else this.pendingDeviceTwins.set(t.id, t)
@@ -3610,9 +3610,9 @@ export class TownScene3D {
   }
 
   private recreateDeviceNode(t: DeviceTwinSync): void {
-    // 数采节点:程序化传感网格(基座 + 传感头 + 信号环),不依赖 GLB 资产
+    // 数采/智控节点:程序化传感网格(基座 + 传感头 + 信号环),不依赖 GLB 资产
     // (modelRef 前缀兜底:旧数据 kind 落成 'device' 的数采实例同样走程序化路径)
-    if (t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-')) {
+    if (t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-') || (t.modelRef ?? '').startsWith('dcw-')) {
       this.recreateDaqNode(t)
       return
     }

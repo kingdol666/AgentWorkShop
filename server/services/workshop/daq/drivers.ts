@@ -109,7 +109,7 @@ export const mockDaqDriver: DaqDriver = {
 // Modbus TCP 真实驱动(modbus-serial;连接池按 host:port:unitId 复用)
 // ============================================================
 
-interface ModbusConn {
+export interface ModbusConn {
   client: import('modbus-serial').ModbusRTU
   lastUsed: number
   busy: boolean
@@ -120,11 +120,11 @@ const modbusPool = new Map<string, ModbusConn>()
 /** 空闲连接回收(10 分钟未用断开;采样周期最长 60s,足够保守) */
 const MODBUS_IDLE_MS = 600_000
 
-function modbusKey(cfg: Record<string, unknown>): string {
+export function modbusKey(cfg: Record<string, unknown>): string {
   return `${cfg.host}:${cfg.port ?? 502}:${cfg.unitId ?? 1}`
 }
 
-async function getModbusConn(cfg: Record<string, unknown>): Promise<ModbusConn> {
+export async function getModbusConn(cfg: Record<string, unknown>): Promise<ModbusConn> {
   const key = modbusKey(cfg)
   const existing = modbusPool.get(key)
   if (existing && existing.client.isOpen) return existing
@@ -148,7 +148,7 @@ async function getModbusConn(cfg: Record<string, unknown>): Promise<ModbusConn> 
 }
 
 /** 寄存器值解码(1~2 word;字节序:big/little/wordSwap) */
-function decodeRegisters(data: number[], dataType: string, byteOrder: string): number {
+export function decodeRegisters(data: number[], dataType: string, byteOrder: string): number {
   if (dataType === 'int16' || dataType === 'uint16') {
     const raw = data[0] ?? 0
     return dataType === 'int16' ? (raw << 16) >> 16 : raw
@@ -170,12 +170,12 @@ function decodeRegisters(data: number[], dataType: string, byteOrder: string): n
 }
 
 /** 4xxxx 保持寄存器 → 协议偏移(40001 → 0);3xxxx 输入寄存器同理 */
-function registerOffset(addr: number, area: string): number {
+export function registerOffset(addr: number, area: string): number {
   if (area === 'input') return addr >= 30001 ? addr - 30001 : addr
   return addr >= 40001 ? addr - 40001 : addr
 }
 
-const WORDS_OF: Record<string, number> = { int16: 1, uint16: 1, int32: 2, uint32: 2, float32: 2 }
+export const WORDS_OF: Record<string, number> = { int16: 1, uint16: 1, int32: 2, uint32: 2, float32: 2 }
 
 async function modbusRead(conn: ModbusConn, cfg: Record<string, unknown>): Promise<number> {
   const area = String(cfg.registerType ?? 'holding')
@@ -279,7 +279,7 @@ if (!sweepGlobal.__daqModbusSweep) {
 // OPC UA 真实驱动(node-opcua;会话池按 endpoint+账号 复用)
 // ============================================================
 
-interface OpcUaConn {
+export interface OpcUaConn {
   session: import('node-opcua').ClientSession
   client: import('node-opcua').OPCUAClient
   lastUsed: number
@@ -288,11 +288,11 @@ interface OpcUaConn {
 
 const opcuaPool = new Map<string, OpcUaConn>()
 
-function opcuaKey(cfg: Record<string, unknown>): string {
+export function opcuaKey(cfg: Record<string, unknown>): string {
   return `${cfg.endpoint}|${cfg.username ?? ''}`
 }
 
-async function getOpcUaConn(cfg: Record<string, unknown>): Promise<OpcUaConn> {
+export async function getOpcUaConn(cfg: Record<string, unknown>): Promise<OpcUaConn> {
   const key = opcuaKey(cfg)
   const existing = opcuaPool.get(key)
   if (existing) {

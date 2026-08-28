@@ -28,12 +28,20 @@ setInterval(() => {
   HOLDING[3] = t1
 }, 1000)
 
+// 设定值组(40021+,上位机写入口;模拟器不覆盖,写入即保持 —— 供写控制链路验证)
 const vector = {
   getHoldingRegister(addr) {
     return HOLDING[addr] ?? 0
   },
   getMultipleHoldingRegisters(addr, length) {
     return HOLDING.slice(addr, addr + length)
+  },
+  setRegister(addr, value) {
+    HOLDING[addr] = value & 0xFFFF
+  },
+  setMultipleRegisters(addr, values) {
+    for (let i = 0; i < values.length; i++) HOLDING[addr + i] = values[i] & 0xFFFF
+    console.log(`[modbus-sim] 写入保持寄存器 offset=${addr}: ${values.join(',')}`)
   },
 }
 

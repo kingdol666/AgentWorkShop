@@ -18,6 +18,7 @@ const menuItems = computed<MenuItem[]>(() => [
   { key: '/town', icon: 'i-tabler-map-2', label: t('menu.town'), motion: 'im-pop' },
   { key: '/tokens', icon: 'i-tabler-key', label: t('menu.tokens'), motion: 'im-nudge-up' },
   { key: '/daq', icon: 'i-tabler-activity', label: t('menu.daq'), motion: 'im-pop' },
+  { key: '/dcw', icon: 'i-tabler-settings-automation', label: t('menu.dcw'), motion: 'im-pop' },
   { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users'), motion: 'im-pop' },
   { key: '/monitor', icon: 'i-tabler-cpu', label: t('menu.monitor'), motion: 'im-pulse' },
   { key: '/settings', icon: 'i-tabler-settings', label: t('menu.settings'), motion: 'im-rotate' },
