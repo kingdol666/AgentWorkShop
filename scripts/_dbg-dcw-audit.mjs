@@ -46,20 +46,23 @@ if (wM.data?.outcome?.ok === true && wM.data.outcome.raw === 1000) console.log('
 else fail(`modbus write wrong: ${JSON.stringify(wM.data?.outcome ?? wM.message)}`)
 
 // ===== 4. Recipe 配方 + 一键下发 + 批次隔离 =====
+// 无节点自定义模板 → 验证"参数无匹配节点记失败不阻塞"(内置模板均有 legacy 示例节点,不可再作反例)
+const tplEmpty = (await post('/templates', { name: '审计-无节点模板', unit: 'kPa', min: 0, max: 400, decimals: 1, ch: '审计用空模板', code: 'AUDIT · VOID' })).data?.template
+if (!tplEmpty?.key) { console.error('FAIL: create empty template'); process.exit(1) }
 const prod = (await post('/products', { name: '审计产品' })).data.product
 const rc = await post('/recipes', { productId: prod.id,
   name: '审计配方-光学膜',
   description: '审计用',
   params: [
     { templateRef: 'dcw-temp-sp', value: 185 },
-    { templateRef: 'dcw-speed-sp', value: 320 },
+    { templateRef: tplEmpty.key, value: 320 },
   ],
 })
 const recipeId = rc.data?.recipe?.id
 if (!recipeId) { console.error('FAIL: create recipe', JSON.stringify(rc).slice(0, 120)); process.exit(1) }
 console.log('recipe created:', recipeId)
 
-// 速度模板无节点 → 该参数应记失败不阻塞;温度节点存在 → 写成功
+// 无节点模板参数 → 该参数应记失败不阻塞;温度参数 → 写成功(可能命中 legacy 示例节点)
 const ap = await post(`/recipes/${recipeId}/apply`, {})
 const run = ap.data?.run
 if (!run) { console.error('FAIL: apply recipe', JSON.stringify(ap).slice(0, 160)); process.exit(1) }
@@ -71,7 +74,7 @@ await sleep(800)
 const data1 = await get(`/runs/${run.id}/data`)
 const writes1 = data1.data?.writes ?? []
 console.log(`run data: writes=${writes1.length}, daq channels=${(data1.data?.daq ?? []).length}`)
-// speed-sp 无匹配节点未产生写命令 → 预期 1 条(温度写);且必须归属本批次
+// 无节点模板参数未产生写命令 → 预期 1 条(温度写);且必须归属本批次
 if (writes1.length === 1 && writes1[0].recipeRunId === run.id) console.log('PASS run data: write history bound to run (无节点参数不产生写)')
 else fail(`run data writes wrong: ${writes1.length}`)
 
@@ -101,6 +104,7 @@ await del(`/${mkM.id}`)
 await del(`/recipes/${recipeId}`)
 await post('/line/stop', {})
 await del(`/recipes/${rc2.data.recipe.id}`)
+await del(`/templates/${tplEmpty.key}`)
 await fetch((process.env.DAQ_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop/dcw/products/' + prod.id, { method: 'DELETE', headers: H })
 console.log('cleanup done')
 

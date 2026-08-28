@@ -112,13 +112,42 @@ export const mockDaqDriver: DaqDriver = {
 export interface ModbusConn {
   client: import('modbus-serial').ModbusRTU
   lastUsed: number
-  busy: boolean
+  /** 连接级操作队列尾(采/控共用链路串行化:TCP 网关并发事务会协议错乱) */
+  tail: Promise<unknown>
+  /** 在队列中等待/执行中的操作数(0 = 链路空闲) */
+  pending: number
   errors: number
 }
 
 const modbusPool = new Map<string, ModbusConn>()
 /** 空闲连接回收(10 分钟未用断开;采样周期最长 60s,足够保守) */
 const MODBUS_IDLE_MS = 600_000
+
+/** 连续故障自愈:关闭并移除池内连接(下次操作重建) */
+export function evictModbusConn(cfg: Record<string, unknown>): void {
+  const key = modbusKey(cfg)
+  const conn = modbusPool.get(key)
+  if (!conn) return
+  try {
+    void conn.client.close()
+  }
+  catch { /* 已断 */ }
+  modbusPool.delete(key)
+}
+
+/**
+ * 连接级排队执行:操作串行入队,完成后链路归还。
+ * 数控写入等当前采样读完成再执行(不再 409 快速失败);数采采样忙时仍跳帧让路防堆积。
+ */
+export function withModbusConn<R>(conn: ModbusConn, fn: () => Promise<R>): Promise<R> {
+  conn.pending++
+  const run = conn.tail.then(() => fn(), () => fn())
+  conn.tail = run.then(
+    () => { conn.pending-- },
+    () => { conn.pending-- },
+  )
+  return run
+}
 
 export function modbusKey(cfg: Record<string, unknown>): string {
   return `${cfg.host}:${cfg.port ?? 502}:${cfg.unitId ?? 1}`
@@ -142,7 +171,7 @@ export async function getModbusConn(cfg: Record<string, unknown>): Promise<Modbu
   client.setTimeout(3000)
   await client.connectTCP(String(cfg.host), { port: Number(cfg.port ?? 502) })
   client.setID(Number(cfg.unitId ?? 1))
-  const conn: ModbusConn = { client, lastUsed: Date.now(), busy: false, errors: 0 }
+  const conn: ModbusConn = { client, lastUsed: Date.now(), tail: Promise.resolve(), pending: 0, errors: 0 }
   modbusPool.set(key, conn)
   return conn
 }
@@ -203,30 +232,22 @@ export const modbusTcpDriver: DaqDriver = {
   },
   async sample({ driverConfig }) {
     const conn = await getModbusConn(driverConfig)
-    // 连接级互斥:同链路串行读(TCP 网关/串行链路并发读会协议错乱);占用则本轮跳过
-    if (conn.busy) return null
-    conn.busy = true
+    // 连接级串行:数控写入/其它读在队列中 → 本轮跳帧让路(采样周期性,丢一帧无碍;防止读堆积)
+    if (conn.pending > 0) return null
     conn.lastUsed = Date.now()
-    try {
-      const v = await modbusRead(conn, driverConfig)
-      conn.errors = 0
-      return v
-    }
-    catch (err) {
-      conn.errors++
-      // 连续故障 → 主动断开,下次采样重建(自愈)
-      if (conn.errors >= 3) {
-        try {
-          await conn.client.close()
-        }
-        catch { /* ignore */ }
-        modbusPool.delete(modbusKey(driverConfig))
+    return withModbusConn(conn, async () => {
+      try {
+        const v = await modbusRead(conn, driverConfig)
+        conn.errors = 0
+        return v
       }
-      throw err
-    }
-    finally {
-      conn.busy = false
-    }
+      catch (err) {
+        conn.errors++
+        // 连续故障 → 主动断开,下次采样重建(自愈)
+        if (conn.errors >= 3) evictModbusConn(driverConfig)
+        throw err
+      }
+    })
   },
   async test(driverConfig) {
     const t0 = Date.now()
@@ -234,7 +255,7 @@ export const modbusTcpDriver: DaqDriver = {
       if (!driverConfig.host) return { ok: false, message: '缺少设备地址 host' }
       if (driverConfig.register == null) return { ok: false, message: '缺少寄存器地址 register' }
       const conn = await getModbusConn(driverConfig)
-      const v = await modbusRead(conn, driverConfig)
+      const v = await withModbusConn(conn, () => modbusRead(conn, driverConfig))
       return {
         ok: true,
         message: `连接成功,读取 ${driverConfig.register} = ${v}`,
@@ -263,7 +284,7 @@ if (!sweepGlobal.__daqModbusSweep) {
   sweepGlobal.__daqModbusSweep = setInterval(() => {
     const now = Date.now()
     for (const [key, conn] of modbusPool) {
-      if (now - conn.lastUsed > MODBUS_IDLE_MS && !conn.busy) {
+      if (now - conn.lastUsed > MODBUS_IDLE_MS && conn.pending === 0) {
         try {
           void conn.client.close()
         }

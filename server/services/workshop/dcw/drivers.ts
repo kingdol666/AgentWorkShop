@@ -10,7 +10,7 @@
 import { createRequire } from 'node:module'
 import type { DcwDriverKind } from '../../../../shared/dcw-protocol'
 import { AppError } from '../../../utils/errors'
-import { decodeRegisters, getModbusConn, getOpcUaConn, modbusKey, registerOffset } from '../daq/drivers'
+import { decodeRegisters, evictModbusConn, getModbusConn, getOpcUaConn, modbusKey, registerOffset, withModbusConn } from '../daq/drivers'
 
 const reqNative = createRequire(import.meta.url)
 
@@ -133,29 +133,34 @@ async function modbusWrite(input: DcwWriteInput): Promise<DcwWriteResult> {
   const offset = registerOffset(Number(cfg.register ?? 0), area)
   const conn = await getModbusConn(cfg)
   conn.lastUsed = Date.now()
-  if (conn.busy) throw new AppError(409, 'CONFLICT', '链路忙:上一读写未完成,请稍后重试')
-  conn.busy = true
-  try {
-    await conn.client.writeRegisters(offset, words)
-    // 回读校验:同址读回 → 解码 → 换算回工程量 → 容差比较
-    const rb = area === 'holding'
-      ? await conn.client.readHoldingRegisters(offset, words.length)
-      : await conn.client.readInputRegisters(offset, words.length)
-    const rawBack = decodeRegisters(rb.data as number[], dataType, byteOrder)
-    const engBack = rawToEng(rawBack, input)
-    const ok = Math.abs(engBack - input.eng) <= input.tolerance
-    return {
-      ok,
-      message: ok
-        ? `写入并回读一致:${input.eng} → raw ${rounded},回读 ${Number(engBack.toFixed(4))}`
-        : `回读偏差超容差:写 ${input.eng},回读 ${Number(engBack.toFixed(4))}(容差 ${input.tolerance})`,
-      raw: rounded,
-      readback: engBack,
+  // 连接级排队:等当前数采读/其它事务完成后执行(采/控共用链路,写不再因忙被 409 拒绝)
+  return withModbusConn(conn, async (): Promise<DcwWriteResult> => {
+    try {
+      await conn.client.writeRegisters(offset, words)
+      // 回读校验:同址读回 → 解码 → 换算回工程量 → 容差比较
+      const rb = area === 'holding'
+        ? await conn.client.readHoldingRegisters(offset, words.length)
+        : await conn.client.readInputRegisters(offset, words.length)
+      const rawBack = decodeRegisters(rb.data as number[], dataType, byteOrder)
+      const engBack = rawToEng(rawBack, input)
+      const ok = Math.abs(engBack - input.eng) <= input.tolerance
+      conn.errors = 0
+      return {
+        ok,
+        message: ok
+          ? `写入并回读一致:${input.eng} → raw ${rounded},回读 ${Number(engBack.toFixed(4))}`
+          : `回读偏差超容差:写 ${input.eng},回读 ${Number(engBack.toFixed(4))}(容差 ${input.tolerance})`,
+        raw: rounded,
+        readback: engBack,
+      }
     }
-  }
-  finally {
-    conn.busy = false
-  }
+    catch (err) {
+      // 与数采对称的自愈:连续故障主动断开,下次操作重建连接
+      conn.errors++
+      if (conn.errors >= 3) evictModbusConn(cfg)
+      throw err
+    }
+  })
 }
 
 export const modbusTcpDcwDriver: DcwWriteDriver = {
@@ -184,7 +189,7 @@ export const modbusTcpDcwDriver: DcwWriteDriver = {
       if (!driverConfig.host) return { ok: false, message: '缺少设备地址 host' }
       if (driverConfig.register == null) return { ok: false, message: '缺少写寄存器地址 register' }
       const conn = await getModbusConn(driverConfig)
-      await conn.client.readHoldingRegisters(registerOffset(Number(driverConfig.register ?? 0), 'holding'), 1)
+      await withModbusConn(conn, () => conn.client.readHoldingRegisters(registerOffset(Number(driverConfig.register ?? 0), 'holding'), 1))
       return { ok: true, message: `连接成功,写寄存器可访问(offset=${registerOffset(Number(driverConfig.register ?? 0), 'holding')}), ${Date.now() - t0}ms` }
     }
     catch (err) {

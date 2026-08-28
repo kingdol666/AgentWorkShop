@@ -9,7 +9,7 @@
     "node": ">=23.4.0"
   },
   "scripts": {
-    "dev": "nuxt dev",
+    "dev": "node scripts/dev-guard.mjs dev",
     "build": "nuxt build",
     "start": "node scripts/start.mjs",
     "generate": "nuxt generate",

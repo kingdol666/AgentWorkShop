@@ -40,7 +40,8 @@ const afterCreate = await page.evaluate(() => {
   return { total: s.deviceNodes.size, dcw: dcw.length, ids: dcw.map(d => d.twinId) }
 })
 console.log('after create:', JSON.stringify(afterCreate))
-if (afterCreate.dcw === made.length && made.every(m => afterCreate.ids.includes(m.id))) {
+// 场景可能已有持久化 dcw 节点(示例等用户数据)→ 只要求新建节点全部挂载
+if (made.every(m => afterCreate.ids.includes(m.id))) {
   console.log(`PASS ${made.length} dcw nodes mounted in town scene`)
 }
 else fail(`dcw scene mount wrong: ${JSON.stringify(afterCreate)}`)
