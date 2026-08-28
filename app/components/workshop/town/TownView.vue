@@ -3421,7 +3421,7 @@ onBeforeUnmount(() => {
                 </select>
                 <button
                   class="bind-add-btn"
-                  :disabled="!dcwBindPick"
+                  :disabled="!selectedDcwDeviceName && !dcwBindPick"
                   @click="selectedDcwDeviceName ? unbindSelectedDcw() : bindSelectedDcw()"
                 >
                   {{ selectedDcwDeviceName ? '解绑' : '绑定' }}
@@ -3465,7 +3465,7 @@ onBeforeUnmount(() => {
                 </select>
                 <button
                   class="bind-add-btn"
-                  :disabled="!bindPick"
+                  :disabled="!daqBoundDeviceName && !bindPick"
                   @click="daqBoundDeviceName ? unbindDaq(selected.id) : bindDaq(selected.id, bindPick); bindPick = ''"
                 >
                   {{ daqBoundDeviceName ? '解绑' : '绑定' }}
@@ -4413,7 +4413,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: #080d16;
+  /* 轨道微渐变:与场景天穹同族的纵深(左轨亮→右轨暗,视线向舞台聚焦) */
+  background: linear-gradient(180deg, #0a101c 0%, #080d16 100%);
 }
 .rail-left { border-right: 1px solid var(--hud-line-soft); }
 .rail-right { border-left: 1px solid var(--hud-line-soft); }
@@ -4422,11 +4423,26 @@ onBeforeUnmount(() => {
 .rail::-webkit-scrollbar-track { background: transparent; }
 
 .panel {
+  position: relative;
   background: linear-gradient(180deg, #101827 0%, #0d1420 100%);
   border: 1px solid var(--hud-line);
   border-radius: var(--hud-r-lg);
   padding: 12px;
   flex: none;
+  /* 玻璃光泽:顶部内高光(面板上缘受光)+ 深色外投影(悬浮层次) */
+  box-shadow:
+    inset 0 1px 0 rgba(143, 176, 220, 0.07),
+    0 10px 28px rgba(3, 7, 14, 0.45);
+}
+/* 面板顶部光泽扫光:与 topnav 呼吸光同 motif,让面板像仪表台玻璃 */
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 44px;
+  border-radius: var(--hud-r-lg) var(--hud-r-lg) 0 0;
+  background: linear-gradient(180deg, rgba(120, 165, 220, 0.055), transparent);
+  pointer-events: none;
 }
 .panel-hd {
   display: flex;
@@ -4757,14 +4773,24 @@ onBeforeUnmount(() => {
   gap: 10px;
   padding: 8px 14px;
   pointer-events: auto;
-  background: rgba(12, 19, 32, 0.9);
+  background: linear-gradient(180deg, rgba(20, 30, 48, 0.92) 0%, rgba(12, 19, 32, 0.9) 100%);
   border: 1px solid #1e2c46;
   border-radius: var(--hud-r-md);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  transition: border-color 0.2s var(--hud-ease), transform 0.2s var(--hud-ease);
+  /* 玻璃光泽:上缘内高光 + 悬浮投影,与 .panel 同族 */
+  box-shadow:
+    inset 0 1px 0 rgba(143, 176, 220, 0.08),
+    0 8px 20px rgba(3, 7, 14, 0.4);
+  transition: border-color 0.2s var(--hud-ease), transform 0.2s var(--hud-ease), box-shadow 0.2s var(--hud-ease);
 }
-.kpi:hover { border-color: #2c4568; transform: translateY(-1px); }
+.kpi:hover {
+  border-color: #2c4568;
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(143, 176, 220, 0.1),
+    0 12px 26px rgba(3, 7, 14, 0.5);
+}
 .kpi-ico {
   width: 30px;
   height: 30px;

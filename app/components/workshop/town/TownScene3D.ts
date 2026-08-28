@@ -970,13 +970,15 @@ export class TownScene3D {
     key.position.set(WORLD_CX + 500, 900, WORLD_CZ + 300)
     key.castShadow = true
     this.keyLight = key
-    key.shadow.mapSize.set(1024, 1024)
+    // 高分辨率软影:2048 map + 大 radius(PCSS 观感),贴地阴影是真实感的核心来源
+    key.shadow.mapSize.set(2048, 2048)
     key.shadow.camera.left = -1400
     key.shadow.camera.right = 1400
     key.shadow.camera.top = 2000
     key.shadow.camera.bottom = -2000
     key.shadow.normalBias = 2
-    key.shadow.radius = 4
+    key.shadow.bias = -0.0002
+    key.shadow.radius = 6
     this.scene.add(key)
     const fill = new THREE.DirectionalLight(0x88bbff, 0.75)
     fill.position.set(WORLD_CX - 1200, 900, WORLD_CZ - 800)
@@ -1439,10 +1441,11 @@ export class TownScene3D {
     // 归一化 scale(使模型高度≈UNITS 世界单位)并贴地(模型大小自适应)
     loaded.position.y = 0
     loaded.scale.setScalar(UNITS / height)
-    // 真实投影:模型网格 castShadow(角色/设备 GLB 的体积感与落地感来源)
+    // 真实投影 + PBR 增强:模型网格 cast/receiveShadow(体积感) + 分级环境反射(角色质感)
     loaded.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) o.castShadow = true
     })
+    this.enhancePbrMaterials(loaded, 'character')
     // 清掉旧模型子节点与 mixer
     asp.model.clear()
     asp.model.add(loaded)
@@ -2637,15 +2640,49 @@ export class TownScene3D {
       const scale = targetH / h
       gltf.scene.scale.setScalar(scale)
       gltf.scene.position.y = 0
-      // 真实投影:设备 GLB 网格 castShadow(落地感)
+      // 真实投影 + PBR 材质增强(设备:金属机身材质反射拉满,像真实工业设备)
       gltf.scene.traverse((o) => {
         if ((o as THREE.Mesh).isMesh) o.castShadow = true
       })
+      this.enhancePbrMaterials(gltf.scene, 'device')
       group.add(gltf.scene)
     }
     catch {
       // 加载失败:空 Group,静默(节点仍存在,只是无网格)
     }
+  }
+
+  /**
+   * 模型 PBR 材质增强(放入场景后的渲染优化;设备/角色共用)。
+   * - receiveShadow:自阴影/互阴影,体积感与落地感的来源;
+   * - 金属件(envMapIntensity 1.25)高反射、涂装件(0.85)亚光车漆感 —— 真实工业设备观感;
+   * - 半透明件(指示灯/屏幕)保留透光,轻微提亮自发光。
+   */
+  private enhancePbrMaterials(root: THREE.Object3D, kind: 'device' | 'character'): void {
+    const baseEnv = kind === 'device' ? 0.85 : 0.7
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh) return
+      mesh.receiveShadow = true
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      for (const raw of mats) {
+        const m = raw as THREE.MeshStandardMaterial
+        if (!m || !('envMapIntensity' in m)) continue
+        if (m.transparent) {
+          // 灯罩/屏幕/指示窗:轻微自发光,像通电的设备部件
+          m.envMapIntensity = baseEnv * 0.6
+          if (m.emissive) m.emissive.setScalar(Math.max(m.emissive.r, 0.06))
+        }
+        else if (m.metalness >= 0.5) {
+          m.envMapIntensity = 1.25 // 不锈钢/铝机身:镜面反射车间环境
+        }
+        else {
+          m.envMapIntensity = baseEnv // 烤漆/塑料外壳:亚光车漆质感
+        }
+        m.needsUpdate = true
+      }
+    })
+    this.dirty = true
   }
 
   // ================================================================
