@@ -233,6 +233,10 @@ export interface RecipeParam {
   value: number
   /** 显式指定目标控制节点(缺省按模板匹配最早创建的节点) */
   nodeId?: string
+  /** 配方级工艺下限(叠加在节点全局量程之上;该配方运行期间写入值不得低于此值) */
+  min?: number
+  /** 配方级工艺上限 */
+  max?: number
 }
 
 export interface RecipeView {

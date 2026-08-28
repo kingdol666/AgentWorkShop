@@ -61,11 +61,31 @@ export interface DcwWriteHistoryEntry {
 const normParams = (params: RecipeParam[] | undefined): RecipeParam[] =>
   (params ?? [])
     .filter(p => p && typeof p.templateRef === 'string' && Number.isFinite(Number(p.value)))
-    .map(p => ({
-      templateRef: String(p.templateRef),
-      value: Number(p.value),
-      ...(p.nodeId ? { nodeId: String(p.nodeId) } : {}),
-    }))
+    .map((p) => {
+      const out: RecipeParam = { templateRef: String(p.templateRef), value: Number(p.value) }
+      if (p.nodeId) out.nodeId = String(p.nodeId)
+      // 配方级工艺窗口:提供时须 min <= value <= max(越窗的配方本身即非法)
+      const min = p.min == null ? undefined : Number(p.min)
+      const max = p.max == null ? undefined : Number(p.max)
+      if (min != null) {
+        if (!Number.isFinite(min)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 的配方下限需为数字`)
+        out.min = min
+      }
+      if (max != null) {
+        if (!Number.isFinite(max)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 的配方上限需为数字`)
+        out.max = max
+      }
+      if (out.min != null && out.max != null && out.min > out.max) {
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 的配方窗口非法:min ${out.min} > max ${out.max}`)
+      }
+      if (out.min != null && out.value < out.min) {
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 设定值 ${out.value} 低于配方下限 ${out.min}`)
+      }
+      if (out.max != null && out.value > out.max) {
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 设定值 ${out.value} 超出配方上限 ${out.max}`)
+      }
+      return out
+    })
 
 class DcwRecipeRepo {
   private recipes: RecipeView[] = loadJson<RecipeView[]>(RECIPES_PATH, [])

@@ -257,7 +257,7 @@ const recipeOpen = ref(false)
 const recipeEditing = ref<string | null>(null)
 const recipeSaving = ref(false)
 const recipeError = ref('')
-const recipeForm = reactive({ productId: '', name: '', description: '', params: [] as Array<{ templateRef: string, value: number | '' }> })
+const recipeForm = reactive({ productId: '', name: '', description: '', params: [] as Array<{ templateRef: string, value: number | '', min: number | '', max: number | '' }> })
 const applyResult = ref<{ runId: string, ok: number, total: number } | null>(null)
 const runDataView = ref<{ runId: string, data: RecipeRunData } | null>(null)
 const runDataLoading = ref(false)
@@ -268,7 +268,7 @@ function openRecipeCreate(): void {
   recipeForm.productId = filterProductId.value || lineProductId.value || dcw.products[0]?.id || ''
   recipeForm.name = ''
   recipeForm.description = ''
-  recipeForm.params = [{ templateRef: dcw.templates[0]?.key ?? '', value: '' }]
+  recipeForm.params = [{ templateRef: dcw.templates[0]?.key ?? '', value: '', min: '', max: '' }]
   recipeOpen.value = true
 }
 
@@ -280,7 +280,12 @@ function openRecipeEdit(id: string): void {
   recipeForm.productId = r.productId
   recipeForm.name = r.name
   recipeForm.description = r.description
-  recipeForm.params = r.params.map(p => ({ templateRef: p.templateRef.startsWith('dcw-') ? p.templateRef.slice(4) : p.templateRef, value: p.value }))
+  recipeForm.params = r.params.map(p => ({
+    templateRef: p.templateRef.startsWith('dcw-') ? p.templateRef.slice(4) : p.templateRef,
+    value: p.value,
+    min: p.min ?? '',
+    max: p.max ?? '',
+  }))
   recipeOpen.value = true
 }
 
@@ -294,7 +299,12 @@ async function saveRecipe(): Promise<void> {
       description: recipeForm.description.trim(),
       params: recipeForm.params
         .filter(p => p.templateRef && p.value !== '' && Number.isFinite(Number(p.value)))
-        .map(p => ({ templateRef: `dcw-${p.templateRef}`, value: Number(p.value) })),
+        .map(p => ({
+          templateRef: `dcw-${p.templateRef}`,
+          value: Number(p.value),
+          ...(p.min !== '' && Number.isFinite(Number(p.min)) ? { min: Number(p.min) } : {}),
+          ...(p.max !== '' && Number.isFinite(Number(p.max)) ? { max: Number(p.max) } : {}),
+        })),
     }
     if (recipeEditing.value) await dcw.updateRecipe(recipeEditing.value, input)
     else await dcw.createRecipe(input)
@@ -343,11 +353,8 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
   return v != null ? Number(v).toFixed(2) : '-'
 }
 
-/** 模板量程(配方行提示) */
-const tplRange = (key: string): string => {
-  const t = dcw.templates.find(x => x.key === key)
-  return t ? `${t.min}~${t.max} ${t.unit}` : ''
-}
+const tplMin = (key: string): number | undefined => dcw.templates.find(x => x.key === key)?.min
+const tplMax = (key: string): number | undefined => dcw.templates.find(x => x.key === key)?.max
 </script>
 
 <template>
@@ -1154,7 +1161,7 @@ const tplRange = (key: string): string => {
         <div
           v-for="(p, i) in recipeForm.params"
           :key="i"
-          class="f-grid param-row"
+          class="param-row"
         >
           <label class="f">
             <span>控制模板</span>
@@ -1172,12 +1179,32 @@ const tplRange = (key: string): string => {
             </select>
           </label>
           <label class="f">
-            <span>目标值({{ tplRange(p.templateRef) }})<em>*</em></span>
+            <span>目标值<em>*</em></span>
             <input
               v-model.number="p.value"
               type="number"
               class="inp"
               :step="0.1"
+            >
+          </label>
+          <label class="f">
+            <span>配方下限(可选,≥{{ tplMin(p.templateRef) ?? '-' }})</span>
+            <input
+              v-model.number="p.min"
+              type="number"
+              class="inp"
+              :step="0.1"
+              placeholder="节点全局量程内"
+            >
+          </label>
+          <label class="f">
+            <span>配方上限(可选,≤{{ tplMax(p.templateRef) ?? '-' }})</span>
+            <input
+              v-model.number="p.max"
+              type="number"
+              class="inp"
+              :step="0.1"
+              placeholder="运行期写入硬约束"
             >
           </label>
           <button
@@ -1189,7 +1216,7 @@ const tplRange = (key: string): string => {
         </div>
         <button
           class="mini-btn"
-          @click="recipeForm.params.push({ templateRef: dcw.templates[0]?.key ?? '', value: '' })"
+          @click="recipeForm.params.push({ templateRef: dcw.templates[0]?.key ?? '', value: '', min: '', max: '' })"
         >
           + 添加参数
         </button>
@@ -1551,7 +1578,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .seg.on { font-weight: 600; color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 .driver-form { grid-template-columns: repeat(3, 1fr); }
-.param-row { align-items: end; }
+.param-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
 .param-row .f { flex: 1; }
 .param-del { margin-bottom: 2px; }
 .f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }

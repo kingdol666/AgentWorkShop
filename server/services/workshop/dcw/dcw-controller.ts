@@ -319,11 +319,27 @@ class DcwController {
 
   // ---------- 写命令(上位机核心操作)----------
 
-  /** 手动设定:用户提交工程量,网关校验/换算/下发/回读校验 */
+  /** 手动设定:用户提交工程量,网关校验/换算/下发/回读校验。
+   *  配方联锁:产线运行中,写入值还须落在活动配方对该参数的工艺窗口内
+   *  (节点全局量程之外的第二道约束 —— 换配方即换工艺窗口)。 */
   async write(id: string, eng: number, recipeRunId: string | null = null) {
     this.ensureLoop()
     const rt = this.runtimes.get(id)
     if (!rt) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
+    const node = rt.node
+    const run = getActiveLineRun()
+    if (run && recipeRunId == null) {
+      const recipe = getDcwRecipeRepo().byId(run.recipeId)
+      const param = recipe?.params.find(p => p.nodeId === id || dcwKeyFromRef(p.templateRef) === node.templateKey)
+      if (param) {
+        if (param.min != null && eng < param.min) {
+          throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `设定值 ${eng}${node.unit} 低于当前配方「${run.recipeName}」的工艺下限 ${param.min}${node.unit}(节点全局量程 ${node.min}~${node.max} 不适用于本批次)`)
+        }
+        if (param.max != null && eng > param.max) {
+          throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `设定值 ${eng}${node.unit} 超出当前配方「${run.recipeName}」的工艺上限 ${param.max}${node.unit}(节点全局量程 ${node.min}~${node.max} 不适用于本批次)`)
+        }
+      }
+    }
     return rt.write(eng, recipeRunId)
   }
 
