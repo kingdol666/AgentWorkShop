@@ -76,6 +76,53 @@ export const daqKeyFromRef = (ref: string): string =>
   ref.startsWith('daq-') ? ref.slice(4) : ref
 
 // ============================================================
+// 数据语义标定钩子(PLC 原始值 ↔ 真实物理参数)
+// ============================================================
+
+/**
+ * 数据后处理钩子:衔接"PLC 里的值"与"真实物理参数"。
+ *  - DAQ(数采,decoder):物理值 = scale × 采集值 + offset —— 采样后执行,
+ *    状态派生/入库/WS 下发全部使用物理值;
+ *  - DCW(智控,encode):PLC 设定值 = (物理值 - offset) / scale —— 下发前执行,
+ *    回读值再经 decoder 换算回物理值做死区校验。
+ * 典型:PLC 0.1℃ 整数(1850 ↔ 185.0℃)→ scale 0.1;0~27648 ↔ 0~10MPa → scale 10/27648。
+ * kind='none'(缺省)= 透传:PLC 已给出工程量,禁止二次换算。
+ */
+export interface DataTransform {
+  kind: 'none' | 'linear'
+  /** decode 斜率(物理值 = scale × PLC值 + offset);≠0 */
+  scale?: number
+  /** decode 截距 */
+  offset?: number
+}
+
+/** transform 元数据校验归一:linear 要求 scale ≠ 0;none/非法 → undefined(透传) */
+export function normalizeDataTransform(t?: DataTransform): DataTransform | undefined {
+  if (!t || t.kind === 'none' || t.kind !== 'linear') return undefined
+  const scale = Number(t.scale)
+  if (!Number.isFinite(scale) || scale === 0) return undefined
+  const offset = Number(t.offset ?? 0)
+  if (!Number.isFinite(offset)) return undefined
+  return { kind: 'linear', scale, offset }
+}
+
+/** decoder:PLC 值 → 物理值(数采采样后 / 智控回读后) */
+export function applyTransform(v: number, t?: DataTransform): number {
+  if (!t || t.kind !== 'linear') return v
+  const scale = Number.isFinite(t.scale) && t.scale !== 0 ? t.scale! : 1
+  const offset = Number.isFinite(t.offset) ? t.offset! : 0
+  return scale * v + offset
+}
+
+/** encoder:物理值 → PLC 设定值(智控下发前;decoder 的逆变换) */
+export function inverseTransform(v: number, t?: DataTransform): number {
+  if (!t || t.kind !== 'linear') return v
+  const scale = Number.isFinite(t.scale) && t.scale !== 0 ? t.scale! : 1
+  const offset = Number.isFinite(t.offset) ? t.offset! : 0
+  return (v - offset) / scale
+}
+
+// ============================================================
 // 节点视图(REST/WS 同构载荷)
 // ============================================================
 
@@ -203,6 +250,8 @@ export interface DaqNodeView {
   warnHigh: number | null
   /** 绑定的设备孪生 id(null = 未绑定) */
   deviceBindingId: string | null
+  /** 数据语义标定钩子(decoder:PLC 采集值 → 物理值) */
+  transform?: DataTransform
   /** 驱动连接参数(mock 空;modbus-tcp/opcua 按协议 schema 填写;随节点持久化) */
   driverConfig: Record<string, string | number | boolean>
   /** 场景落点(undefined = 未入场景) */
@@ -214,7 +263,7 @@ export interface DaqNodeView {
   createdAt: string
 }
 
-/** daq.reading 帧载荷(controller 每次采样直推) */
+/** daq.reading 帧载荷(controller 每次采样直推;value = 标定后物理值) */
 export interface AepDaqReading {
   nodeId: string
   templateRef: string

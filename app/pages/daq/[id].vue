@@ -51,6 +51,9 @@ const form = reactive({
   driver: 'mock' as DaqDriverKind,
   followGlobal: true,
   intervalMs: 1000,
+  calKind: 'none' as 'none' | 'linear',
+  calScale: 1,
+  calOffset: 0,
   publishFollow: true,
   publishEveryFrame: false,
   publishMs: 1000,
@@ -408,6 +411,33 @@ watch(bucketMs, () => void loadHistory())
               class="input"
               :disabled="form.followGlobal"
             ><small>ms</small>
+          </label>
+          <label class="field row">
+            <button
+              type="button"
+              class="toggle slim"
+              :class="{ on: form.calKind === 'linear' }"
+              title="采集标定 decoder:物理值 = scale × PLC采集值 + offset"
+              @click="form.calKind = form.calKind === 'linear' ? 'none' : 'linear'"
+            >
+              {{ form.calKind === 'linear' ? '标定生效' : '无标定' }}
+            </button>
+            <input
+              v-model.number="form.calScale"
+              type="number"
+              step="0.1"
+              class="input"
+              :disabled="form.calKind !== 'linear'"
+              title="decode 斜率(≠0)"
+            >
+            <input
+              v-model.number="form.calOffset"
+              type="number"
+              step="0.1"
+              class="input"
+              :disabled="form.calKind !== 'linear'"
+              title="decode 截距"
+            ><small>decoder</small>
           </label>
           <label class="field row">
             <button

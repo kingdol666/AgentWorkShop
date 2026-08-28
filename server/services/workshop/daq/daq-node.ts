@@ -7,7 +7,7 @@
  * 采样历史仅驻内存(环形缓冲),不进磁盘快照 —— 磁盘只存"配置 + 最近一次读数"。
  */
 
-import { daqKeyFromRef, type DaqDriverKind, type DaqNodeState, type DaqNodeView } from '../../../../shared/daq-protocol'
+import { daqKeyFromRef, type DaqDriverKind, type DaqNodeState, type DaqNodeView, type DataTransform } from '../../../../shared/daq-protocol'
 import { findDaqTemplate } from './daq-templates'
 
 /** 采样历史环形缓冲长度(前端趋势图/火花线消费;1s 周期 ≈ 5 分钟窗口) */
@@ -29,6 +29,8 @@ interface DaqNodeOptions {
   warnLow?: number | null
   warnHigh?: number | null
   deviceBindingId?: string | null
+  /** 数据语义标定钩子(decoder:采集值 → 物理值) */
+  transform?: DataTransform
   posX?: number
   posZ?: number
   /** 驱动连接参数(modbus-tcp/opcua 协议参数;mock 空) */
@@ -55,6 +57,7 @@ export class DaqNode {
   warnHigh: number | null
   deviceBindingId: string | null
   driverConfig: Record<string, string | number | boolean>
+  transform?: DataTransform
   posX?: number
   posZ?: number
   value: number | null
@@ -83,6 +86,7 @@ export class DaqNode {
     this.warnHigh = o.warnHigh !== undefined ? o.warnHigh : tpl ? +(this.max - (this.max - this.min) * 0.08).toFixed(this.decimals) : null
     this.deviceBindingId = o.deviceBindingId ?? null
     this.driverConfig = o.driverConfig ?? {}
+    if (o.transform) this.transform = o.transform
     if (o.posX !== undefined) this.posX = o.posX
     if (o.posZ !== undefined) this.posZ = o.posZ
     this.value = null
@@ -157,6 +161,7 @@ export class DaqNode {
       warnHigh: this.warnHigh,
       deviceBindingId: this.deviceBindingId,
       driverConfig: this.driverConfig,
+      transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,
       value: this.value,
@@ -183,6 +188,7 @@ export class DaqNode {
       warnHigh: row.warnHigh === undefined ? undefined : (row.warnHigh == null ? null : Number(row.warnHigh)),
       deviceBindingId: row.deviceBindingId === undefined ? undefined : (row.deviceBindingId == null ? null : String(row.deviceBindingId)),
       driverConfig: (row.driverConfig as Record<string, string | number | boolean>) ?? {},
+      transform: (row.transform as DataTransform | undefined) ?? undefined,
       posX: row.posX == null ? undefined : Number(row.posX),
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
@@ -213,6 +219,7 @@ export class DaqNode {
       warnHigh: this.warnHigh,
       deviceBindingId: this.deviceBindingId,
       driverConfig: this.driverConfig,
+      transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,
       value: this.value,

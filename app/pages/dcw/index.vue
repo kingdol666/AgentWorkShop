@@ -69,6 +69,7 @@ const addDriver = ref<'mock' | 'modbus-tcp' | 'opcua'>('mock')
 const addName = ref('')
 const addHold = ref<number | null>(null)
 const addCfg = ref<Record<string, string | number>>({})
+const addTransform = reactive({ kind: 'none' as 'none' | 'linear', scale: 1, offset: 0 })
 const addTesting = ref(false)
 const addTest = ref<{ ok: boolean, message: string } | null>(null)
 const addSaving = ref(false)
@@ -110,10 +111,14 @@ async function doAddNode(): Promise<void> {
       }
     }
     const tpl = dcw.templates.find(t => t.key === addTemplate.value)
+    const transform = addTransform.kind === 'linear'
+      ? { kind: 'linear' as const, scale: Number(addTransform.scale), offset: Number(addTransform.offset) }
+      : undefined
     await dcw.createFromTemplate(`dcw-${addTemplate.value}`, {
       name: addName.value || undefined,
       driver: addScenario.value === 'real' ? addDriver.value : 'mock',
       driverConfig: addScenario.value === 'real' ? { ...addCfg.value } : {},
+      transform,
       holdIntervalMs: addHold.value,
       unit: tpl?.unit,
       decimals: tpl?.decimals,
@@ -560,6 +565,45 @@ const tplRange = (key: string): string => {
               class="inp"
               placeholder="如 5000(心跳重下发)"
             >
+          </label>
+        </div>
+
+        <!-- 数据语义标定 encode(物理设定值 → PLC 设定值;mock/真实均可用) -->
+        <div class="f-grid cal-form">
+          <label class="f">
+            <span>写入标定 encode(物理值 → PLC 设定值)</span>
+            <select
+              v-model="addTransform.kind"
+              class="inp"
+            >
+              <option value="none">
+                无(直接写工程值)
+              </option>
+              <option value="linear">
+                线性标定:PLC值 = (物理值 - offset) / scale
+              </option>
+            </select>
+          </label>
+          <label class="f">
+            <span>scale / offset</span>
+            <div style="display: flex; gap: 6px;">
+              <input
+                v-model.number="addTransform.scale"
+                type="number"
+                step="0.1"
+                class="inp"
+                :disabled="addTransform.kind !== 'linear'"
+                title="decoder 斜率(≠0):物理值 = scale × PLC值 + offset;下发时自动取逆"
+              >
+              <input
+                v-model.number="addTransform.offset"
+                type="number"
+                step="0.1"
+                class="inp"
+                :disabled="addTransform.kind !== 'linear'"
+                title="decoder 截距"
+              >
+            </div>
           </label>
         </div>
 
@@ -1479,6 +1523,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .q-grid .f { font-size: 11px; color: var(--ink-faint); }
 .q-actions { justify-content: flex-end; }
 .q-result { margin-top: 12px; overflow-x: auto; }
+.cal-form { grid-template-columns: 2fr 1fr; align-items: end; }
 .recipe-card { padding: 16px 18px; margin-bottom: 14px; }
 .recipe-hd { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
 .recipe-hd h3 { margin: 0; font-size: 16px; }

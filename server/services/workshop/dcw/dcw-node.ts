@@ -7,7 +7,7 @@
  * 序列化经 toRow/fromRow 对接持久化仓库(dcws.json)。
  */
 
-import { dcwKeyFromRef, type DcwDriverKind, type DcwNodeState, type DcwNodeView } from '../../../../shared/dcw-protocol'
+import { dcwKeyFromRef, type DcwDriverKind, type DcwNodeState, type DcwNodeView, type DataTransform } from '../../../../shared/dcw-protocol'
 import { findDcwTemplate } from './dcw-templates'
 
 interface DcwNodeOptions {
@@ -24,6 +24,8 @@ interface DcwNodeOptions {
   max?: number
   deviceBindingId?: string | null
   driverConfig?: Record<string, string | number | boolean>
+  /** 数据语义标定钩子(encode:物理值 → PLC 设定值;回读经 decoder 校验) */
+  transform?: DataTransform
   posX?: number
   posZ?: number
   createdAt?: string
@@ -42,6 +44,7 @@ export class DcwNode {
   max: number
   deviceBindingId: string | null
   driverConfig: Record<string, string | number | boolean>
+  transform?: DataTransform
   posX?: number
   posZ?: number
   /** 当前设定值(工程量;null = 从未下发) */
@@ -66,6 +69,7 @@ export class DcwNode {
     this.max = o.max ?? tpl?.max ?? 100
     this.deviceBindingId = o.deviceBindingId ?? null
     this.driverConfig = o.driverConfig ?? {}
+    if (o.transform) this.transform = o.transform
     if (o.posX !== undefined) this.posX = o.posX
     if (o.posZ !== undefined) this.posZ = o.posZ
     this.createdAt = o.createdAt ?? new Date().toISOString()
@@ -113,6 +117,7 @@ export class DcwNode {
       max: this.max,
       deviceBindingId: this.deviceBindingId,
       driverConfig: this.driverConfig,
+      transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,
       value: this.value,
@@ -138,6 +143,7 @@ export class DcwNode {
       max: row.max != null ? Number(row.max) : undefined,
       deviceBindingId: row.deviceBindingId === undefined ? undefined : (row.deviceBindingId == null ? null : String(row.deviceBindingId)),
       driverConfig: (row.driverConfig as Record<string, string | number | boolean>) ?? {},
+      transform: (row.transform as DataTransform | undefined) ?? undefined,
       posX: row.posX == null ? undefined : Number(row.posX),
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
@@ -164,6 +170,7 @@ export class DcwNode {
       max: this.max,
       deviceBindingId: this.deviceBindingId,
       driverConfig: this.driverConfig,
+      transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,
       value: this.value,

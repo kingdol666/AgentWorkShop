@@ -12,7 +12,10 @@
  * 统一调度(保写节拍 = 心跳重下发,镜像数采的采样节拍)。
  */
 
-import type { DriverConfigField } from './daq-protocol'
+import type { DataTransform, DriverConfigField } from './daq-protocol'
+
+// 数据语义标定钩子(与数采共用数学:DCW encode 用其逆变换)
+export { applyTransform, inverseTransform, normalizeDataTransform, type DataTransform } from './daq-protocol'
 
 // ============================================================
 // 控制模板目录(工艺设定值域;创建节点的缺省域来源)
@@ -156,6 +159,8 @@ export interface DcwNodeView {
   enabled: boolean
   /** 保写周期 ms(心跳重下发;null = 仅手动下发) */
   holdIntervalMs: number | null
+  /** 数据语义标定钩子(encode:物理值 → PLC 设定值) */
+  transform?: DataTransform
   unit: string
   decimals: number
   /** 工艺安全量程(写入值硬校验) */

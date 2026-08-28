@@ -10,8 +10,8 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, LineQueryOpts, LineQueryResult, LineRunState, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
-import { dcwKeyFromRef } from '../../../../shared/dcw-protocol'
+import { applyTransform, inverseTransform, normalizeDataTransform, dcwKeyFromRef } from '../../../../shared/dcw-protocol'
+import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, DataTransform, LineQueryOpts, LineQueryResult, LineRunState, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { normalizeDcwDriverKind, resolveDcwDriver } from './drivers'
 import { findDcwTemplate } from './dcw-templates'
@@ -30,6 +30,8 @@ export interface DcwCreateInput {
   name?: string
   driver?: DcwDriverKind
   driverConfig?: Record<string, string | number | boolean>
+  /** 数据语义标定钩子(encode:物理值 → PLC 设定值) */
+  transform?: DataTransform
   holdIntervalMs?: number | null
   unit?: string
   decimals?: number
@@ -45,6 +47,8 @@ export interface DcwPatchInput {
   name?: string
   driver?: DcwDriverKind
   driverConfig?: Record<string, string | number | boolean>
+  /** 数据语义标定钩子(encode) */
+  transform?: DataTransform
   holdIntervalMs?: number | null
   unit?: string
   decimals?: number
@@ -113,14 +117,22 @@ class DcwController {
    */
   private async executeWrite(node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null): Promise<{ ok: boolean, message: string, raw: number | null, readback: number | null }> {
     const at = new Date().toISOString()
+    // 数据语义标定钩子(encode):物理值 → PLC 设定值。
+    // 回读值再经 decoder 换算回物理量做死区校验(容差按标定比例同步缩放)。
+    const t = node.transform
+    const plcValue = inverseTransform(eng, t)
+    const plcTolerance = Math.max(tolerance, 1e-9) / (t?.kind === 'linear' && Math.abs(t.scale ?? 1) > 0 ? Math.abs(t.scale!) : 1)
     let outcome: { ok: boolean, message: string, raw: number | null, readback: number | null }
     try {
       outcome = await resolveDcwDriver(node.driver).write({
-        eng,
-        tolerance,
+        eng: plcValue,
+        tolerance: plcTolerance,
         domain: { min: node.min, max: node.max },
         driverConfig: node.driverConfig,
       })
+      // 回读换算回物理量(message 保留 PLC 域数值供排查)
+      if (outcome.readback != null) outcome.readback = applyTransform(outcome.readback, t)
+      if (outcome.ok) outcome.message = `${outcome.message}(标定后物理值 ${Number((outcome.readback ?? eng).toFixed(node.decimals))})`
     }
     catch (err) {
       outcome = { ok: false, message: err instanceof Error ? err.message : String(err), raw: null, readback: null }
@@ -223,6 +235,7 @@ class DcwController {
       name: input.name ?? `${tpl.name} ${String(seq).padStart(2, '0')}`,
       driver: input.driver ? normalizeDcwDriverKind(input.driver) : undefined,
       driverConfig: input.driverConfig ?? {},
+      transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
       holdIntervalMs: input.holdIntervalMs ?? null,
       unit: input.unit,
@@ -246,6 +259,12 @@ class DcwController {
     if (patch.name !== undefined) node.name = patch.name
     if (patch.driver !== undefined) node.driver = normalizeDcwDriverKind(patch.driver)
     if (patch.driverConfig !== undefined) node.driverConfig = { ...node.driverConfig, ...patch.driverConfig }
+    if (patch.transform !== undefined) {
+      if (patch.transform.kind === 'linear' && (!Number.isFinite(Number(patch.transform.scale)) || Number(patch.transform.scale) === 0)) {
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '标定系数 scale 必须为非零数字(物理值 = scale × PLC值 + offset)')
+      }
+      node.transform = normalizeDataTransform(patch.transform)
+    }
     if (patch.unit !== undefined) node.unit = patch.unit
     if (patch.decimals !== undefined) node.decimals = patch.decimals
     if (patch.min !== undefined) node.min = patch.min

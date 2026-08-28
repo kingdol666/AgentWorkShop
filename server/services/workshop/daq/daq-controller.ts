@@ -22,7 +22,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { daqKeyFromRef, DAQ_DRIVERS, type AepDaqControllerState, type AepDaqReading, type AepDaqNodeChange, type DaqDriverKind, type DaqNodeView, type DriverTestResult } from '../../../../shared/daq-protocol'
+import { daqKeyFromRef, normalizeDataTransform, DAQ_DRIVERS, type AepDaqControllerState, type AepDaqReading, type AepDaqNodeChange, type DaqDriverKind, type DaqNodeView, type DataTransform, type DriverTestResult } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { normalizeDriverKind, resolveDaqDriver, probeDriverAvailability } from './drivers'
 import { findDaqTemplate } from './daq-templates'
@@ -46,6 +46,8 @@ export interface DaqCreateInput {
   name?: string
   driver?: DaqDriverKind
   driverConfig?: Record<string, string | number | boolean>
+  /** 数据语义标定钩子(decoder) */
+  transform?: DataTransform
   unit?: string
   decimals?: number
   min?: number
@@ -65,6 +67,8 @@ export interface DaqPatchInput {
   name?: string
   driver?: DaqDriverKind
   driverConfig?: Record<string, string | number | boolean>
+  /** 数据语义标定钩子(decoder) */
+  transform?: DataTransform
   unit?: string
   decimals?: number
   min?: number
@@ -450,6 +454,7 @@ class DaqController {
       name: input.name ?? (tpl ? `${tpl.name} ${String(seq).padStart(2, '0')}` : (input.driver && input.driver !== 'mock' ? `${input.driver.toUpperCase()} 通道` : undefined)),
       driver: input.driver ? normalizeDriverKind(input.driver) : undefined,
       driverConfig: input.driverConfig ?? {},
+      transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
       intervalMs: input.intervalMs ?? null,
       publishIntervalMs: input.publishIntervalMs ?? null,
@@ -475,6 +480,12 @@ class DaqController {
     if (patch.name !== undefined) node.name = patch.name
     if (patch.driver !== undefined) node.driver = normalizeDriverKind(patch.driver)
     if (patch.driverConfig !== undefined) node.driverConfig = { ...node.driverConfig, ...patch.driverConfig }
+    if (patch.transform !== undefined) {
+      if (patch.transform.kind === 'linear' && (!Number.isFinite(Number(patch.transform.scale)) || Number(patch.transform.scale) === 0)) {
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '标定系数 scale 必须为非零数字(物理值 = scale × PLC值 + offset)')
+      }
+      node.transform = normalizeDataTransform(patch.transform)
+    }
     if (patch.unit !== undefined) node.unit = patch.unit
     if (patch.decimals !== undefined) node.decimals = patch.decimals
     if (patch.min !== undefined) node.min = patch.min

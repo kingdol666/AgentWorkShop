@@ -9,6 +9,7 @@
  * 节拍状态独立 → 单节点慢驱动/停用/重配不波及邻居;网关只做统一调度与管线汇聚。
  */
 
+import { applyTransform } from '../../../../shared/daq-protocol'
 import type { DaqNode } from './daq-node'
 import type { DaqSampleEnvelope } from './bus/queue-port'
 
@@ -87,10 +88,13 @@ export class DaqNodeRuntime {
         this.lastSampleAt = Date.now()
       }
       if (v == null || Number.isNaN(v)) return
+      // 数据语义标定钩子(decoder):PLC 采集值 → 真实物理参数。
+      // 状态派生/入库/WS 下发全部使用物理值(节点元数据 transform 驱动)。
+      const phys = applyTransform(v, node.transform)
       this.host.publishSample({
         nodeId: node.id,
         templateRef: node.templateRef,
-        value: Number(v.toFixed(node.decimals)),
+        value: Number(phys.toFixed(node.decimals)),
         state: 'ok', // 健康态由消费端按量程派生(生产者只负责读数)
         at: new Date(now).toISOString(),
       })

@@ -68,6 +68,7 @@ const addDriver = ref('modbus-tcp')
 const addName = ref('')
 const addInterval = ref<number | null>(null)
 const addCfg = ref<Record<string, string | number>>({})
+const addTransform = reactive({ kind: 'none' as 'none' | 'linear', scale: 1, offset: 0 })
 const addTesting = ref(false)
 const addTest = ref<DaqDriverTestResult | null>(null)
 const addSaving = ref(false)
@@ -106,8 +107,14 @@ async function doAddNode(): Promise<void> {
   addSaving.value = true
   addError.value = ''
   try {
+    const transform = addTransform.kind === 'linear'
+      ? { kind: 'linear' as const, scale: Number(addTransform.scale), offset: Number(addTransform.offset) }
+      : undefined
     if (addScenario.value === 'mock') {
-      await daq.createFromTemplate(`daq-${addTemplate.value}`, addName.value ? { name: addName.value } : undefined)
+      await daq.createFromTemplate(`daq-${addTemplate.value}`, {
+        name: addName.value ? { name: addName.value }.name : undefined,
+        transform,
+      })
     }
     else {
       // 校验必填
@@ -121,6 +128,7 @@ async function doAddNode(): Promise<void> {
         name: addName.value || undefined,
         driver: addDriver.value as never,
         driverConfig: { ...addCfg.value },
+        transform,
         intervalMs: addInterval.value,
         unit: tpl?.unit,
         min: tpl?.min,
@@ -1010,6 +1018,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 }
 .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 .driver-form { grid-template-columns: repeat(3, 1fr); }
+.cal-form { grid-template-columns: 2fr 1fr; align-items: end; }
 .f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }
 .f em { margin-left: 3px; font-style: normal; color: var(--tone-danger-dot); }
 .inp {
