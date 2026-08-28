@@ -26,7 +26,8 @@ import { mapEnvelopeToIntent } from '#shared/town-protocol'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { DAQ_TEMPLATES } from '#shared/daq-protocol'
 import { useDaqStream, type DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
-import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
+import { useDcwStream, type DcwNodeView } from '@/app/composables/workshop/useDcwStream'
+import type { RecipeParam } from '#shared/dcw-protocol'
 
 /**
  * 两种渲染器(Phaser 2D / Three.js 3D)共享的最小公开接口。
@@ -1682,6 +1683,179 @@ const daqBoundDeviceName = computed(() => {
   return deviceTwins.twins.find(t => t.id === devId)?.name ?? devId.slice(0, 8)
 })
 
+// ---------- 智控绑定与设定(选中设备面板直写 + 选中智控节点检查器) ----------
+const dcwOfDevice = (deviceId: string): DcwNodeView[] =>
+  deviceId ? dcw.nodes.filter(n => n.deviceBindingId === deviceId) : []
+
+/** 活动配方对该智控节点的工艺窗口参数(产线未开跑/未命中 → null = 用节点全局量程) */
+function activeRecipeParamOf(dcwId: string): RecipeParam | null {
+  if (!dcw.line.active || !dcw.line.recipeId) return null
+  const r = dcw.recipes.find(x => x.id === dcw.line.recipeId)
+  const node = dcw.nodeById(dcwId)
+  if (!r || !node) return null
+  const key = node.templateRef.startsWith('dcw-') ? node.templateRef.slice(4) : node.templateRef
+  return r.params.find(p => p.nodeId === dcwId || (p.templateRef.startsWith('dcw-') ? p.templateRef.slice(4) : p.templateRef) === key) ?? null
+}
+
+interface DcwBoundRow {
+  dcwId: string
+  name: string
+  ch: string
+  unit: string
+  icon: string
+  value: number | null
+  state: string
+  decimals: number
+  /** 节点全局量程(连接期设定) */
+  gMin: number
+  gMax: number
+  /** 活动配方工艺窗口(产线运行中且配方命中;null = 未限定) */
+  rMin: number | null
+  rMax: number | null
+}
+
+const boundDcwRows = computed<DcwBoundRow[]>(() => {
+  const id = selected.value?.id
+  if (!id) return []
+  return dcwOfDevice(id).map((n) => {
+    const key = n.templateRef.startsWith('dcw-') ? n.templateRef.slice(4) : n.templateRef
+    const tpl = dcw.templates.find(t => t.key === key)
+    const rp = activeRecipeParamOf(n.id)
+    return {
+      dcwId: n.id,
+      name: n.name,
+      ch: tpl?.ch ?? key,
+      unit: n.unit,
+      icon: tpl?.icon ?? 'gateway',
+      value: n.value,
+      state: n.state,
+      decimals: n.decimals,
+      gMin: n.min,
+      gMax: n.max,
+      rMin: rp?.min ?? null,
+      rMax: rp?.max ?? null,
+    }
+  })
+})
+
+/** 生效窗口:活动配方窗口优先,否则节点全局量程 */
+function dcwWindowOf(node: DcwNodeView): { lo: number, hi: number, src: 'recipe' | 'global' } {
+  const rp = activeRecipeParamOf(node.id)
+  if (rp && (rp.min != null || rp.max != null)) {
+    return { lo: rp.min ?? Number.NEGATIVE_INFINITY, hi: rp.max ?? Number.POSITIVE_INFINITY, src: 'recipe' }
+  }
+  return { lo: node.min, hi: node.max, src: 'global' }
+}
+
+const dcwWriteDrafts = reactive<Record<string, number | ''>>({})
+const dcwWriteErrs = reactive<Record<string, string>>({})
+
+function doDcwWrite(node: DcwNodeView): void {
+  const raw = dcwWriteDrafts[node.id]
+  if (raw == null || raw === '') return
+  const w = dcwWindowOf(node)
+  if (Number(raw) < w.lo || Number(raw) > w.hi) {
+    dcwWriteErrs[node.id] = `超出${w.src === 'recipe' ? '当前配方工艺窗口' : '节点量程'} ${Number.isFinite(w.lo) ? w.lo : '-∞'} ~ ${Number.isFinite(w.hi) ? w.hi : '+∞'}`
+    return
+  }
+  dcwWriteErrs[node.id] = ''
+  void dcw.write(node.id, Number(raw)).then((out) => {
+    if (!out.ok) dcwWriteErrs[node.id] = out.message
+  }).catch((err: unknown) => {
+    dcwWriteErrs[node.id] = err instanceof Error ? err.message : String(err)
+  })
+}
+
+/** 添加智控通道(与数采同策略:就近复用未绑定同模板节点,无则创建并绑定) */
+const dcwBindPopOpen = ref(false)
+async function addDcwChannelFromTemplate(tpl: { id: string, name: string }): Promise<void> {
+  const devId = selected.value?.id
+  if (!devId || selected.value?.kind !== 'device') return
+  const devTwin = deviceTwins.twins.find(t => t.id === devId)
+  const unbound = dcw.nodes
+    .filter(n => n.templateRef === `dcw-${tpl.id}` && !n.deviceBindingId && typeof n.posX === 'number')
+    .map(n => ({ n, d: Math.hypot((n.posX ?? 0) - (devTwin?.posX ?? 0), (n.posZ ?? 0) - (devTwin?.posZ ?? 0)) }))
+    .sort((a, b) => a.d - b.d)[0]
+  if (unbound && unbound.d < 420) {
+    void dcw.bindNode(unbound.n.id, devId)
+    dcwBindPopOpen.value = false
+    return
+  }
+  try {
+    const seq = dcw.nodes.filter(x => x.templateRef === `dcw-${tpl.id}`).length + 1
+    const off = dcwOfDevice(devId).length
+    const created = await dcw.createFromTemplate(`dcw-${tpl.id}`, {
+      name: `${tpl.name} ${String(seq).padStart(2, '0')}`,
+      posX: Math.round((devTwin?.posX ?? 0) + 95 + (off % 3) * 26),
+      posZ: Math.round((devTwin?.posZ ?? 0) - 100 - (off % 2) * 30),
+    })
+    await dcw.bindNode(created.id, devId)
+    dcwBindPopOpen.value = false
+  }
+  catch (err) {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  }
+}
+
+function unbindDcw(dcwId: string): void {
+  void dcw.bindNode(dcwId, null).catch((err: unknown) => {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  })
+}
+
+/** 选中智控节点(检查器:绑定设备 + 设定值直写) */
+const selectedIsDcw = computed(() =>
+  selected.value?.kind === 'device' && (sceneTwinById(selected.value?.id)?.modelRef ?? '').startsWith('dcw-'),
+)
+const selectedDcwNode = computed<DcwNodeView | null>(() => {
+  const id = selected.value?.id
+  return id ? dcw.nodeById(id) ?? null : null
+})
+const selectedDcwWindow = computed(() => {
+  const n = selectedDcwNode.value
+  return n ? dcwWindowOf(n) : null
+})
+const selectedDcwDeviceName = computed(() => {
+  const n = selectedDcwNode.value
+  if (!n?.deviceBindingId) return ''
+  return deviceTwins.twins.find(t => t.id === n.deviceBindingId)?.name ?? n.deviceBindingId.slice(0, 8)
+})
+const dcwBindPick = ref('')
+function bindSelectedDcw(): void {
+  const n = selectedDcwNode.value
+  if (!n || !dcwBindPick.value) return
+  void dcw.bindNode(n.id, dcwBindPick.value).catch((err: unknown) => {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  })
+  dcwBindPick.value = ''
+}
+function unbindSelectedDcw(): void {
+  const n = selectedDcwNode.value
+  if (!n) return
+  void dcw.bindNode(n.id, null).catch((err: unknown) => {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  })
+}
+function doWriteSelectedDcw(): void {
+  const n = selectedDcwNode.value
+  if (!n) return
+  doDcwWrite(n)
+}
+function dcwWinLabel(n: DcwNodeView | null): string {
+  if (!n) return '--'
+  const w = dcwWindowOf(n)
+  const lo = Number.isFinite(w.lo) ? w.lo : '-∞'
+  const hi = Number.isFinite(w.hi) ? w.hi : '+∞'
+  return `${lo} ~ ${hi} ${n.unit}`
+}
+function dcwWinInputPh(n: DcwNodeView | null): string {
+  if (!n) return ''
+  const w = dcwWindowOf(n)
+  const lo = Number.isFinite(w.lo) ? w.lo : ''
+  const hi = Number.isFinite(w.hi) ? w.hi : ''
+  return `${lo} ~ ${hi}`
+}
+
 /** 选中数采节点的 live 视图(检查器单点控制用:启停/周期/阈值/解绑/删除) */
 const selectedDaqNode = computed<DaqNodeLive | null>(() => {
   const id = selected.value?.id
@@ -1762,6 +1936,41 @@ const daqLive = computed(() => {
   }
   return map
 })
+/** 智控设定实时数据(关键设备监控卡片:twinId → 该设备绑定的全部智控通道;
+ *  含当前 set 值与生效上下限(活动配方工艺窗口优先,否则节点全局量程),由 TownView 喂入) */
+interface DcwLiveRow {
+  id: string
+  ch: string
+  name: string
+  unit: string
+  value: number | null
+  decimals: number
+  lo: number
+  hi: number
+  src: 'recipe' | 'global'
+}
+const dcwLive = computed<Record<string, DcwLiveRow[]>>(() => {
+  const map: Record<string, DcwLiveRow[]> = {}
+  for (const n of dcw.nodes) {
+    if (!n.deviceBindingId) continue
+    const key = n.templateRef.startsWith('dcw-') ? n.templateRef.slice(4) : n.templateRef
+    const tpl = dcw.templates.find(t => t.key === key)
+    const w = dcwWindowOf(n)
+    ;(map[n.deviceBindingId] ??= []).push({
+      id: n.id,
+      ch: tpl?.ch ?? key,
+      name: n.name,
+      unit: n.unit,
+      value: n.value,
+      decimals: n.decimals,
+      lo: w.lo,
+      hi: w.hi,
+      src: w.src,
+    })
+  }
+  return map
+})
+
 /** 同设备多路通道的竖排堆叠间距(px;卡高 ~88 + 间隙) */
 const CALLOUT_STACK = 104
 /** 相机位姿快照(150ms 刷新;callout 距离显隐的响应式来源) */
@@ -3129,7 +3338,7 @@ onBeforeUnmount(() => {
           class="panel inspector"
         >
           <div class="panel-hd">
-            <h3>{{ selected.kind === 'device' ? (selectedIsDaq ? '数采节点' : '设备实例') : selectedAgentRoleLabel }}</h3>
+            <h3>{{ selected.kind === 'device' ? (selectedIsDcw ? '智控节点' : selectedIsDaq ? '数采节点' : '设备实例') : selectedAgentRoleLabel }}</h3>
             <button
               class="mini-btn"
               title="取消选中"
@@ -3145,11 +3354,82 @@ onBeforeUnmount(() => {
               v-if="selected.kind === 'device' && selectedIsDaq"
               class="ins-chip accent"
             >DAQ</span>
+            <span
+              v-else-if="selected.kind === 'device' && selectedIsDcw"
+              class="ins-chip accent"
+            >DCW</span>
           </div>
 
           <template v-if="selected.kind === 'device'">
             <div
-              v-if="selectedIsDaq"
+              v-if="selectedIsDcw"
+              class="daq-info"
+            >
+              <div class="daq-info-row">
+                <span>当前设定</span>
+                <b class="cy">{{ selectedDcwNode?.value != null ? selectedDcwNode.value.toFixed(selectedDcwNode.decimals) : '--' }} {{ selectedDcwNode?.unit }}</b>
+              </div>
+              <div class="daq-info-row">
+                <span>{{ selectedDcwWindow?.src === 'recipe' ? '配方工艺窗口' : '节点量程' }}</span>
+                <b :class="{ amber: selectedDcwWindow?.src === 'recipe' }">{{ dcwWinLabel(selectedDcwNode) }}</b>
+              </div>
+              <div class="daq-info-row">
+                <span>绑定设备</span>
+                <b>{{ selectedDcwDeviceName || '未绑定' }}</b>
+              </div>
+              <div class="daq-bind-bar">
+                <input
+                  v-model.number="dcwWriteDrafts[selected.id]"
+                  type="number"
+                  class="bind-select"
+                  :step="10 ** -(selectedDcwNode?.decimals ?? 2)"
+                  :placeholder="dcwWinInputPh(selectedDcwNode)"
+                  @keydown.enter="doWriteSelectedDcw"
+                >
+                <button
+                  class="bind-add-btn"
+                  :disabled="dcwWriteDrafts[selected.id] == null || dcwWriteDrafts[selected.id] === ''"
+                  @click="doWriteSelectedDcw"
+                >
+                  下发 write
+                </button>
+              </div>
+              <p
+                v-if="dcwWriteErrs[selected.id]"
+                class="dcw-err"
+              >
+                {{ dcwWriteErrs[selected.id] }}
+              </p>
+              <div
+                v-if="mode === 'edit'"
+                class="daq-bind-bar"
+              >
+                <select
+                  v-model="dcwBindPick"
+                  class="bind-select"
+                >
+                  <option value="">
+                    选择设备实例…
+                  </option>
+                  <option
+                    v-for="dv in deviceTwins.twins.filter(x => !isLegacyDaqTwin(x) && x.id !== (selected?.id ?? ''))"
+                    :key="dv.id"
+                    :value="dv.id"
+                  >
+                    {{ dv.name }}
+                  </option>
+                </select>
+                <button
+                  class="bind-add-btn"
+                  :disabled="!dcwBindPick"
+                  @click="selectedDcwDeviceName ? unbindSelectedDcw() : bindSelectedDcw()"
+                >
+                  {{ selectedDcwDeviceName ? '解绑' : '绑定' }}
+                </button>
+              </div>
+            </div>
+            <div
+              v-else-if="selectedIsDaq"
               class="daq-info"
             >
               <div class="daq-info-row">
@@ -3368,6 +3648,95 @@ onBeforeUnmount(() => {
                     v-for="tpl in daqTemplates"
                     :key="tpl.id"
                     @click="addChannelFromTemplate(tpl)"
+                  >
+                    <svg
+                      class="bind-svg"
+                      viewBox="0 0 24 24"
+                      v-html="daqIcon(tpl.icon)"
+                    />
+                    <span>{{ tpl.name }} · {{ tpl.ch }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 智控设定(写控制通道:当前设定 + 直写下发 + 活动配方窗口) -->
+              <div class="sect-hd">
+                智控设定 · {{ boundDcwRows.length }} 路
+              </div>
+              <div
+                v-for="r in boundDcwRows"
+                :key="r.dcwId"
+                class="bind-row dcw-row"
+              >
+                <span class="bind-ico">
+                  <svg
+                    class="bind-svg"
+                    viewBox="0 0 24 24"
+                    v-html="daqIcon(r.icon)"
+                  />
+                </span>
+                <span class="bind-meta">
+                  <span class="bind-label">{{ r.ch }}</span>
+                  <span class="bind-val"><b>{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}</b> {{ r.unit }} · {{ r.name }}</span>
+                  <span
+                    class="dcw-win"
+                    :class="{ recipe: r.rMin != null || r.rMax != null }"
+                  >{{ r.rMin != null || r.rMax != null ? `配方窗口 ${r.rMin ?? '-∞'} ~ ${r.rMax ?? '+∞'}` : `全局量程 ${r.gMin} ~ ${r.gMax}` }}</span>
+                </span>
+                <span class="dcw-write">
+                  <input
+                    v-model.number="dcwWriteDrafts[r.dcwId]"
+                    type="number"
+                    :step="10 ** -r.decimals"
+                    :placeholder="`${(r.rMin ?? r.gMin)} ~ ${(r.rMax ?? r.gMax)}`"
+                    @keydown.enter="doDcwWrite(dcw.nodeById(r.dcwId)!)"
+                  >
+                  <button
+                    class="dcw-send"
+                    :disabled="dcwWriteDrafts[r.dcwId] == null || dcwWriteDrafts[r.dcwId] === ''"
+                    title="下发 write(工程设定值;越窗将被配方联锁拒绝)"
+                    @click="doDcwWrite(dcw.nodeById(r.dcwId)!)"
+                  >
+                    write
+                  </button>
+                </span>
+                <button
+                  v-if="mode === 'edit'"
+                  class="bind-x"
+                  title="解除绑定"
+                  @click="unbindDcw(r.dcwId)"
+                >
+                  ✕
+                </button>
+                <small
+                  v-if="dcwWriteErrs[r.dcwId]"
+                  class="dcw-err"
+                >{{ dcwWriteErrs[r.dcwId] }}</small>
+              </div>
+              <div
+                v-if="!boundDcwRows.length"
+                class="ins-empty"
+              >
+                暂无智控通道 · 拖入智控节点靠近此设备即可自动绑定
+              </div>
+              <div
+                v-if="mode === 'edit'"
+                class="bind-add-wrap"
+              >
+                <button
+                  class="bind-add"
+                  @click="dcwBindPopOpen = !dcwBindPopOpen"
+                >
+                  ＋ 添加智控通道
+                </button>
+                <div
+                  v-if="dcwBindPopOpen"
+                  class="bind-pop"
+                >
+                  <button
+                    v-for="tpl in dcwTemplates"
+                    :key="tpl.id"
+                    @click="addDcwChannelFromTemplate(tpl)"
                   >
                     <svg
                       class="bind-svg"
@@ -3690,6 +4059,7 @@ onBeforeUnmount(() => {
           <WorkshopDeviceTwinPanel
             class="kd-embed"
             :daq-live="daqLive"
+            :dcw-live="dcwLive"
             @focus-device="onFocusDevice"
           />
         </section>

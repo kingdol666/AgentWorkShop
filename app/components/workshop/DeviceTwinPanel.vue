@@ -4,18 +4,37 @@
  * 设备实体直接列表展示(状态灯/遥测数据网格/下发控制),点击行聚焦小镇场景中的对应实体。
  *
  * 与 3D 小镇联动:拖 `dev` 模型进场景会创建设备 twin;本面板实时刷新其 state/telemetry,
- * 并提供 power_on/power_off/set_speed 等控制(等价 MCP device.control 的用户面)。
+ * 并展示绑定智控通道的当前 set 值,支持窗口内直写下发(替代旧 power_on/power_off/set_speed)。
  */
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
+import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 
 /** 实时数采数据(twinId → 该实体相关的实时通道:
  *  数采节点 = 自身通道;设备 = 绑定到它的全部数采通道;由 TownView 从模拟上报喂入) */
 interface DaqLiveRow { ch: string, value: string, unit: string, alarm?: boolean }
-defineProps<{ daqLive?: Record<string, DaqLiveRow[]> }>()
+/** 智控设定数据(twinId → 该设备绑定的全部智控通道;含当前 set 值与生效上下限) */
+export interface DcwLiveRow {
+  id: string
+  ch: string
+  name: string
+  unit: string
+  /** 当前设定值(工程量;null = 从未下发) */
+  value: number | null
+  decimals: number
+  /** 生效下/上限(活动配方工艺窗口优先,否则节点全局量程;-∞/+∞ 表示不限定) */
+  lo: number
+  hi: number
+  src: 'recipe' | 'global'
+}
+defineProps<{
+  daqLive?: Record<string, DaqLiveRow[]>
+  dcwLive?: Record<string, DcwLiveRow[]>
+}>()
 
 defineEmits<{ (e: 'focus-device', twin: { id: string, posX?: number, posZ?: number }): void }>()
 
 const twins = useDeviceTwins()
+const dcw = useDcwStream()
 
 /** 数采实体(绿卡):kind=daq 或旧数据 modelRef 前缀兜底 */
 const isDaq = (t: { kind?: string, modelRef?: string }): boolean =>
@@ -59,20 +78,6 @@ async function removeTwin(t: { id: string, name: string }): Promise<void> {
     busyId.value = ''
   }
 }
-async function doControl(t: { id: string, name: string }, command: string, args?: Record<string, unknown>): Promise<void> {
-  busyId.value = t.id
-  ctrlMsg.value = ''
-  try {
-    await twins.control(t.id, command, args)
-  }
-  catch (err) {
-    ctrlMsg.value = err instanceof Error ? err.message : String(err)
-  }
-  finally {
-    busyId.value = ''
-  }
-}
-
 const stateColor: Record<string, string> = {
   idle: 'var(--hud-amber)',
   running: 'var(--hud-ok)',
@@ -85,6 +90,34 @@ const stateLabel: Record<string, string> = {
 const modelTag = (name: string): string => name.replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase() || 'DEV'
 const devNo = (id: string): string => id.replace(/^dev-/, '').replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase()
 const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100) / 100).toString() : String(v))
+
+// ---------- 智控设定(每张设备卡:当前 set 值展示 + 窗口内直写下发) ----------
+/** 智控上下限文案(无穷大显示 ±∞) */
+const dcwWinText = (r: DcwLiveRow): string =>
+  `${Number.isFinite(r.lo) ? r.lo : '-∞'} ~ ${Number.isFinite(r.hi) ? r.hi : '+∞'} ${r.unit}`
+/** 写入草稿/错误(智控节点 id 键控) */
+const dcwDrafts = reactive<Record<string, number | ''>>({})
+const dcwErrs = reactive<Record<string, string>>({})
+const dcwBusy = ref('')
+/** 下发设定值:先本地窗口校验(不越限),再走 server write(配方联锁二道门) */
+function doDcwWrite(r: DcwLiveRow): void {
+  const raw = dcwDrafts[r.id]
+  if (raw == null || raw === '') return
+  const v = Number(raw)
+  if (v < r.lo || v > r.hi) {
+    dcwErrs[r.id] = `超出${r.src === 'recipe' ? '配方工艺窗口' : '节点量程'} ${dcwWinText(r)}`
+    return
+  }
+  dcwErrs[r.id] = ''
+  dcwBusy.value = r.id
+  void dcw.write(r.id, v).then((out) => {
+    if (!out.ok) dcwErrs[r.id] = out.message
+  }).catch((err: unknown) => {
+    dcwErrs[r.id] = err instanceof Error ? err.message : String(err)
+  }).finally(() => {
+    dcwBusy.value = ''
+  })
+}
 </script>
 
 <template>
@@ -176,37 +209,51 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
             <b>{{ d.value }}<i>{{ d.unit }}</i></b>
           </span>
         </div>
+        <!-- 智控设定(绑定通道的当前 set 值展示 + 生效上下限 + 窗口内直写下发) -->
         <div
-          v-if="!isDaq(t)"
-          class="twin-ctrl"
+          v-if="dcwLive?.[t.id]?.length"
+          class="twin-dcw"
         >
-          <button
-            class="ctrl-btn on"
-            :disabled="busyId === t.id"
-            @click.stop="doControl(t, 'power_on')"
+          <div
+            v-for="r in dcwLive[t.id]"
+            :key="r.id"
+            class="dcw-item"
           >
-            开机
-          </button>
-          <button
-            class="ctrl-btn"
-            :disabled="busyId === t.id"
-            @click.stop="doControl(t, 'power_off')"
-          >
-            停机
-          </button>
-          <input
-            class="ctrl-input"
-            type="number"
-            :placeholder="'SPD'"
-            @change="(e) => doControl(t, 'set_speed', { value: Number((e.target as HTMLInputElement).value) })"
-          >
-          <button
-            class="ctrl-btn"
-            :disabled="busyId === t.id"
-            @click.stop="doControl(t, 'set_speed', { value: 60 })"
-          >
-            设定
-          </button>
+            <div class="dcw-head">
+              <em>{{ r.ch }}<i
+                v-if="r.src === 'recipe'"
+                class="dcw-src"
+              >配方</i></em>
+              <b class="dcw-set">{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}<i>{{ r.unit }}</i></b>
+            </div>
+            <div class="dcw-win">
+              <span :title="r.src === 'recipe' ? '当前运行配方工艺窗口' : '节点全局量程'">{{ dcwWinText(r) }}</span>
+            </div>
+            <div class="dcw-ctrl">
+              <input
+                v-model.number="dcwDrafts[r.id]"
+                type="number"
+                class="ctrl-input"
+                :step="10 ** -r.decimals"
+                :min="Number.isFinite(r.lo) ? r.lo : undefined"
+                :max="Number.isFinite(r.hi) ? r.hi : undefined"
+                :placeholder="`${Number.isFinite(r.lo) ? r.lo : ''} ~ ${Number.isFinite(r.hi) ? r.hi : ''}`"
+                @keydown.enter="doDcwWrite(r)"
+              >
+              <button
+                class="ctrl-btn dcw-send"
+                :disabled="dcwDrafts[r.id] == null || dcwDrafts[r.id] === '' || dcwBusy === r.id"
+                title="下发设定值(越限将被拒绝)"
+                @click.stop="doDcwWrite(r)"
+              >
+                {{ dcwBusy === r.id ? '···' : 'SET' }}
+              </button>
+            </div>
+            <small
+              v-if="dcwErrs[r.id]"
+              class="dcw-err"
+            >{{ dcwErrs[r.id] }}</small>
+          </div>
         </div>
       </button>
     </div>
@@ -429,7 +476,82 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
 .daq-item b { font-weight: 700; font-size: 10.5px; white-space: nowrap; }
 .daq-item b i { font-style: normal; font-size: 8.5px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
 .daq-item.alarm { color: var(--hud-amber, #f6c453); }
-.twin-ctrl { display: flex; gap: 4px; align-items: center; }
+/* 智控设定区(每通道:set 值 + 上下限 + 窗口内直写) */
+.twin-dcw {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 2px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(240, 160, 76, 0.35);
+}
+.dcw-item { display: flex; flex-direction: column; gap: 3px; }
+.dcw-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--hud-dim);
+}
+.dcw-head em {
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dcw-src {
+  font-style: normal;
+  font-size: 8px;
+  padding: 0 3px;
+  margin-left: 4px;
+  color: var(--hud-amber, #f6c453);
+  border: 1px solid rgba(240, 160, 76, 0.5);
+  border-radius: 2px;
+}
+.dcw-set {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--hud-amber, #f6c453);
+  white-space: nowrap;
+}
+.dcw-set i {
+  font-style: normal;
+  font-size: 8.5px;
+  font-weight: 500;
+  margin-left: 2px;
+  opacity: 0.75;
+}
+.dcw-win {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--hud-faint);
+  letter-spacing: 0.04em;
+}
+.dcw-win span {
+  border-bottom: 1px dotted var(--hud-line);
+  padding-bottom: 1px;
+}
+.dcw-ctrl { display: flex; gap: 4px; align-items: center; }
+.dcw-ctrl .ctrl-input { flex: 1; min-width: 0; width: auto; }
+.dcw-send {
+  flex: none;
+  color: var(--hud-amber, #f6c453);
+  border-color: rgba(240, 160, 76, 0.5);
+}
+.dcw-send:hover:not(:disabled) {
+  background: rgba(240, 160, 76, 0.12);
+  color: var(--hud-amber, #f6c453);
+  border-color: var(--hud-amber, #f6c453);
+}
+.dcw-err {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  color: var(--hud-danger, #ff6b5c);
+}
 .ctrl-btn {
   padding: 3px 7px;
   font-size: 9px;
@@ -446,14 +568,6 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
 .ctrl-btn:hover:not(:disabled) {
   border-color: var(--hud-accent);
   color: var(--hud-accent);
-}
-.ctrl-btn.on {
-  color: var(--hud-amber);
-  border-color: rgba(240, 160, 76, 0.5);
-}
-.ctrl-btn.on:hover:not(:disabled) {
-  background: rgba(240, 160, 76, 0.12);
-  color: var(--hud-amber);
 }
 .ctrl-btn:disabled { opacity: 0.45; cursor: default; }
 .ctrl-input {

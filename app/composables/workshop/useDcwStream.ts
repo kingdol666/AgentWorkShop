@@ -9,6 +9,8 @@ import { useTownBus } from './useTownBus'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwWritten, type DcwNodeView, type DcwTemplateDef, type DcwTemplateInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type ProductInput, type ProductView, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
 
+export type { DcwNodeView }
+
 function headers(json = true): Record<string, string> {
   const cookieToken = typeof document !== 'undefined'
     ? (document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? '')
