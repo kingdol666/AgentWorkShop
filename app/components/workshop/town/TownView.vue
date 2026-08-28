@@ -1627,8 +1627,10 @@ function drawBindSparks(): void {
 watch(() => daq.nodes.map(n => `${n.id}:${n.posX ?? ''}:${n.posZ ?? ''}:${n.enabled}:${n.state}:${n.deviceBindingId ?? ''}`).join('|'), () => {
   if (sceneRef.value) syncSceneDevices(sceneRef.value)
 })
-// 智控节点清单(增删/落点/绑定)变化 → 场景即时收敛
-watch(() => dcw.nodes.map(n => `${n.id}:${n.posX ?? ''}:${n.posZ ?? ''}:${n.enabled}:${n.deviceBindingId ?? ''}`).join('|'), () => {
+// 智控节点清单(增删/落点/绑定/设定值)变化 → 场景即时收敛
+// (签名含 value:dcw.written 帧更新设定值后场景 telemetry 必须跟随;
+//  写操作低频,无需像 daq 读数那样做签名剔除)
+watch(() => dcw.nodes.map(n => `${n.id}:${n.posX ?? ''}:${n.posZ ?? ''}:${n.enabled}:${n.deviceBindingId ?? ''}:${n.value ?? ''}`).join('|'), () => {
   if (sceneRef.value) syncSceneDevices(sceneRef.value)
 })
 watch(() => daq.nodes.map(n => `${n.id}:${n.deviceBindingId ?? ''}`).join('|'), () => {

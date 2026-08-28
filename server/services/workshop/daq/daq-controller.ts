@@ -209,13 +209,23 @@ class DaqController {
     this.broadcast?.('error', { code: 'DAQ_DRIVER', message: `[${node.name}] ${message}` })
   }
 
-  /** 网关统一调度:250ms 扫描,到期判定与互斥由各运行时私有节拍自治(单节点慢/停不波及邻居) */
+  /** 网关统一调度:250ms 扫描,到期判定与互斥由各运行时私有节拍自治(单节点慢/停不波及邻居)。
+   *  产线门控:未选定配方(无活动 LineRun)不执行采集 —— 采样与实时下发均由配方驱动。 */
   private sweep(): void {
     if (!this.pipelineReady || !this.running) return
+    if (!getActiveLineRun()) return
     const now = Date.now()
     for (const rt of this.runtimes.values()) {
       void rt.tick(now)
     }
+  }
+
+  /** 产线停止:全部节点置 offline(开跑后由采样自然恢复) */
+  markAllOffline(): void {
+    for (const n of this.repo.all()) {
+      if (n.enabled) n.state = 'offline'
+    }
+    this.emitController()
   }
 
   /** 运行时注册表对账(仓库为权威:增删节点/启动即对齐;返回新建的运行时) */

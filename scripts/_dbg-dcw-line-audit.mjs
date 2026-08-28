@@ -30,12 +30,7 @@ console.log('bound:', daqNode?.deviceBindingId === dev.id, dcwNode?.deviceBindin
 if (daqNode?.deviceBindingId === dev.id && dcwNode?.deviceBindingId === dev.id) console.log('PASS daq+dcw nodes bound to same device')
 else fail('bind failed')
 
-// ===== 3. 实时读数 + 设参(mock) =====
-await sleep(1600)
-const live = (await fetch(DAQ, { headers: H }).then(r => r.json())).data.nodes.find(n => n.id === dq.id)
-console.log('live value:', live?.value, live?.state)
-if (live?.value != null) console.log('PASS real-time daq reading flowing')
-else fail('no live reading')
+// ===== 3. 设参(mock;写控制不受产线门控) =====
 const w = await jpost(`${DCW}/${dw.id}/write`, { value: 45 })
 if (w.data?.outcome?.ok) console.log('PASS set control param 45um (mock PLC ACK)')
 else fail(`write failed: ${JSON.stringify(w).slice(0, 100)}`)
@@ -64,6 +59,11 @@ if (again.code === 'CONFLICT') console.log('PASS double-start rejected (409)')
 else fail(`double start: ${again.code}`)
 
 await sleep(3500) // 收集打标样本(500ms 通道)
+// 实时读数(产线开跑后;门控语义:配方驱动采集)
+const live = (await fetch(DAQ, { headers: H }).then(r => r.json())).data.nodes.find(n => n.id === dq.id)
+console.log('live value:', live?.value, live?.state)
+if (live?.value != null && live?.state !== 'offline') console.log('PASS real-time daq reading flowing (recipe-driven)')
+else fail('no live reading while line active')
 
 // ===== 6. 逐样本打标验证:按产品+配方+参数查询,数据必须归属本产品 =====
 const q = await fetch(`${DCW}/line/query?productId=${prod.id}&recipeId=${rc.id}&paramKey=${daqTpl.key}&from=${Date.now() - 60_000}&to=${Date.now()}&bucketMs=1000`, { headers: H }).then(r => r.json())

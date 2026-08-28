@@ -15,6 +15,14 @@ const H = { 'authorization': `Bearer ${token}`, 'content-type': 'application/jso
 // 0) 基线
 const base = await fetch(`${BASE}/api/workshop/daq`, { headers: H }).then(r => r.json())
 console.log('[baseline] controller =', JSON.stringify(base.data?.controller))
+
+// 0) 产线门控前置:数采由配方驱动(产品+配方+开跑;无匹配控制节点的参数记失败不阻塞)
+const dpost = (u, b) => fetch(`${BASE}/api/workshop/dcw${u}`, { method: 'POST', headers: H, body: JSON.stringify(b) }).then(r => r.json())
+const gateProd = (await dpost('/products', { name: 'E2E审计产品' })).data.product
+const gateRc = (await dpost('/recipes', { productId: gateProd.id, name: 'E2E审计配方', params: [{ templateRef: 'dcw-temp-sp', value: 180 }] })).data.recipe
+const gateStart = await dpost('/line/start', { recipeId: gateRc.id })
+if (!gateStart.data?.line?.active) { console.error('[gating] FAIL: line start:', JSON.stringify(gateStart).slice(0, 140)); process.exit(1) }
+console.log('[gating] line started (recipe-driven acquisition)')
 console.log('[baseline] legacy nodes provisioned =', base.data?.nodes?.length ?? 0)
 
 // 1) 建两个节点(不同模板),一个绑定到现有设备孪生
@@ -153,4 +161,9 @@ for (const id of [n1.id, n2.id]) {
   await fetch(`${BASE}/api/workshop/daq/${id}`, { method: 'DELETE', headers: H }).catch(() => {})
 }
 console.log('[cleanup] test nodes removed')
+// 停线 + 清理配方/产品(产线门控收口)
+await dpost('/line/stop', {})
+await fetch(`${BASE}/api/workshop/dcw/recipes/${gateRc.id}`, { method: 'DELETE', headers: H }).catch(() => {})
+await fetch(`${BASE}/api/workshop/dcw/products/${gateProd.id}`, { method: 'DELETE', headers: H }).catch(() => {})
+console.log('[cleanup] line stopped, recipe/product removed')
 await browser.close()

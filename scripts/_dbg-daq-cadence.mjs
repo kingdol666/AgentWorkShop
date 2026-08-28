@@ -9,7 +9,16 @@ const post = (url, body) => fetch(BASE + url, { method: 'POST', headers: H, body
 const patch = (id, body) => fetch(`${BASE}/${id}`, { method: 'PATCH', headers: H, body: JSON.stringify(body) }).then(r => r.json())
 const get = () => fetch(BASE, { headers: H }).then(r => r.json())
 
-// 0) 建两个同模板节点:A=采样 500ms/下发 2500ms;B=采样 500ms/下发 0(每帧)
+// 0) 产线门控前置:数采由配方驱动,先建产品+配方并开跑(无匹配节点的参数记失败不阻塞)
+const DCW = (process.env.DAQ_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop/dcw'
+const dpost = (u, b) => fetch(DCW + u, { method: 'POST', headers: H, body: JSON.stringify(b) }).then(r => r.json())
+const gateProd = (await dpost('/products', { name: '节拍审计产品' })).data.product
+const gateRc = (await dpost('/recipes', { productId: gateProd.id, name: '节拍审计配方', params: [{ templateRef: 'dcw-temp-sp', value: 180 }] })).data.recipe
+const gateStart = await dpost('/line/start', { recipeId: gateRc.id })
+if (!gateStart.data?.line?.active) { console.error('FAIL: line start for gating:', JSON.stringify(gateStart).slice(0, 140)); process.exit(1) }
+console.log('line gating: started (recipe-driven acquisition)')
+
+// 0b) 建两个同模板节点:A=采样 500ms/下发 2500ms;B=采样 500ms/下发 0(每帧)
 const a = (await post('', { templateRef: 'daq-line-encoder', name: '双节拍A', intervalMs: 500, publishIntervalMs: 2500, posX: 100, posZ: 100 })).data.node
 const b = (await post('', { templateRef: 'daq-line-encoder', name: '双节拍B', intervalMs: 500, publishIntervalMs: 0, posX: 140, posZ: 100 })).data.node
 if (!a || !b) { console.error('FAIL: create nodes'); process.exit(1) }
@@ -84,7 +93,10 @@ else {
 if (sa >= 8 && sb >= 8) console.log(`PASS storage unaffected by publish gating (A=${sa}, B=${sb} samples stored)`)
 else fail(`storage gated wrongly: A=${sa}, B=${sb}`)
 
-// cleanup
+// cleanup:停线(采集门控关闭)+ 删节点/配方/产品
 for (const id of [a.id, b.id]) await fetch(`${BASE}/${id}`, { method: 'DELETE', headers: H })
+await dpost('/line/stop', {})
+await fetch(`${DCW}/recipes/${gateRc.id}`, { method: 'DELETE', headers: H })
+await fetch(`${DCW}/products/${gateProd.id}`, { method: 'DELETE', headers: H })
 console.log(process.exitCode ? 'AUDIT FAILED' : 'AUDIT ALL PASS')
 process.exit(process.exitCode ?? 0)

@@ -6,6 +6,7 @@
  */
 import { onBeforeUnmount, onMounted } from 'vue'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
+import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
 
@@ -13,12 +14,15 @@ definePageMeta({ layout: 'default' })
 useHead({ title: '数采中心 · AgentWorkShop' })
 
 const daq = useDaqStream()
+const dcw = useDcwStream()
 let unsub: (() => void) | null = null
 let redrawTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
   unsub = daq.ensureWsFeed()
   void daq.load()
+  // 产线门控状态(无活动配方不采集;状态仅展示,控制在产线运营页)
+  void dcw.load()
   // meta 指标随读数帧落库节奏低频刷新(诚实可见的管线运行数据)
   redrawTimer = setInterval(() => void daq.load(), 5000)
 })
@@ -289,6 +293,15 @@ async function doReconnect(): Promise<void> {
       </div>
     </div>
 
+    <!-- 产线门控横幅(无活动配方:采集与实时下发暂停) -->
+    <div
+      v-if="daq.loaded && !dcw.line.active"
+      class="infra-banner"
+    >
+      <span class="i-tabler-info-circle" />
+      <span class="txt">产线未开跑 —— 数采由配方驱动:请在<NuxtLink to="/dcw">产线运营</NuxtLink>选择产品与配方后「开始数采」</span>
+    </div>
+
     <!-- 基础设施降级横幅(MQTT/Timescale 不可达:在线采集停用 + 一键重连) -->
     <div
       v-if="daq.meta.infra?.degraded"
@@ -371,6 +384,14 @@ async function doReconnect(): Promise<void> {
           <span class="i-tabler-plus" />
           添加节点
         </button>
+        <NuxtLink
+          class="line-chip mono"
+          :class="{ on: dcw.line.active }"
+          to="/dcw"
+          :title="dcw.line.active ? `产线运行中:${dcw.line.productName} · ${dcw.line.recipeName}` : '产线未开跑:数据采集由配方驱动,请在产线运营页选择产品与配方后开始数采'"
+        >
+          {{ dcw.line.active ? `● 产线 ${dcw.line.productName} · ${dcw.line.recipeName}` : '○ 产线未开跑' }}
+        </NuxtLink>
       </div>
     </section>
 
@@ -930,6 +951,19 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   border-radius: var(--radius-chip);
 }
 .infra-banner .txt { flex: 1 1 auto; font-size: 12.5px; line-height: 1.5; }
+.infra-banner .txt a { color: var(--accent); text-decoration: underline; }
+.line-chip {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--tone-neutral-dot);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-pill);
+}
+.line-chip.on {
+  color: var(--tone-success-dot);
+  border: 1px solid color-mix(in srgb, var(--tone-success-dot) 50%, transparent);
+  background: var(--tone-success-bg);
+}
 .infra-banner .pill-btn { flex: 0 0 auto; color: var(--paper-raised); }
 
 /* ---------- 添加节点向导 ---------- */

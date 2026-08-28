@@ -61,7 +61,11 @@ export interface DcwWriteHistoryEntry {
 const normParams = (params: RecipeParam[] | undefined): RecipeParam[] =>
   (params ?? [])
     .filter(p => p && typeof p.templateRef === 'string' && Number.isFinite(Number(p.value)))
-    .map(p => ({ templateRef: String(p.templateRef), value: Number(p.value) }))
+    .map(p => ({
+      templateRef: String(p.templateRef),
+      value: Number(p.value),
+      ...(p.nodeId ? { nodeId: String(p.nodeId) } : {}),
+    }))
 
 class DcwRecipeRepo {
   private recipes: RecipeView[] = loadJson<RecipeView[]>(RECIPES_PATH, [])

@@ -425,12 +425,16 @@ class DcwController {
     return run
   }
 
-  /** 产线停止:关闭批次窗口(此后样本不再打标;数据保留可查) */
+  /** 产线停止:关闭批次窗口(此后样本不再打标;数据保留可查)+ 采集镜像停摆 */
   lineStop() {
     const prev = clearActiveLineRun()
     if (!prev) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '产线未在运行')
     const run = getDcwRecipeRepo().closeRun(prev.runId)
     this.broadcast?.('dcw.controller', this.controllerState())
+    // 数采门控联动:无活动配方即停止采集,节点置 offline 并广播收敛
+    void import('../daq/daq-controller').then(({ getDaqController }) => {
+      getDaqController().markAllOffline()
+    }).catch(() => {})
     return run
   }
 

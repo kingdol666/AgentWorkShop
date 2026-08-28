@@ -77,7 +77,8 @@ else fail(`run data writes wrong: ${writes1.length}`)
 
 // 第二个配方 + 批次 → 验证窗口隔离
 const rc2 = await post('/recipes', { productId: prod.id, name: '审计配方-B', params: [{ templateRef: 'dcw-temp-sp', value: 160 }] })
-const ap2 = await post(`/recipes/${rc2.data.recipe.id}/apply`, {})
+// 门控语义:runData 的数采聚合需产线开跑(配方驱动采集 + 打标)
+const ap2 = await post('/line/start', { recipeId: rc2.data.recipe.id })
 const run2 = ap2.data?.run
 await sleep(2500) // 等数采样本落入 run2 窗口(1s 采样周期)
 const data2 = await get(`/runs/${run2.id}/data`)
@@ -98,6 +99,7 @@ else fail('run close failed')
 await del(`/${mkA.id}`)
 await del(`/${mkM.id}`)
 await del(`/recipes/${recipeId}`)
+await post('/line/stop', {})
 await del(`/recipes/${rc2.data.recipe.id}`)
 await fetch((process.env.DAQ_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop/dcw/products/' + prod.id, { method: 'DELETE', headers: H })
 console.log('cleanup done')
