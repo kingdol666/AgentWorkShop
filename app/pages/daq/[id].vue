@@ -8,7 +8,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
-import { DAQ_TEMPLATES, daqKeyFromRef, DAQ_DRIVERS, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DaqDriverTestResult } from '#shared/daq-protocol'
+import { DAQ_TEMPLATES, daqKeyFromRef, DAQ_DRIVERS, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult } from '#shared/daq-protocol'
 
 definePageMeta({ layout: 'default' })
 
@@ -20,7 +20,7 @@ const deviceTwins = useDeviceTwins()
 const node = computed(() => daq.nodeById(nodeId.value) ?? null)
 const tpl = computed(() => {
   const key = node.value ? daqKeyFromRef(node.value.templateRef) : ''
-  return DAQ_TEMPLATES.find(t => t.key === key)
+  return daq.templates.find(t => t.key === key) ?? DAQ_TEMPLATES.find(t => t.key === key)
 })
 const stateLabel: Record<DaqNodeState, string> = { ok: '正常', warn: '预警', alarm: '告警', offline: '离线' }
 const effectiveState = (): DaqNodeState => {
@@ -38,12 +38,22 @@ onMounted(() => {
 })
 onBeforeUnmount(() => unsub?.())
 
+/** WS 下发节拍展示(null=跟随全局;0=每帧;>0 独立间隔) */
+function publishLabel(v: number | null): string {
+  if (v == null) return `全局 ${daq.controller.defaultPublishIntervalMs}ms`
+  if (v === 0) return '每帧(随采样)'
+  return `${v}ms`
+}
+
 // ---------- 参数表单(server 单点控制;变更经 PATCH 落库,node.changed 帧回灌) ----------
 const form = reactive({
   enabled: true,
   driver: 'mock' as DaqDriverKind,
   followGlobal: true,
   intervalMs: 1000,
+  publishFollow: true,
+  publishEveryFrame: false,
+  publishMs: 1000,
   unit: '',
   decimals: 1,
   min: 0,
@@ -57,6 +67,10 @@ watch(node, (n) => {
   form.driver = n.driver
   form.followGlobal = n.intervalMs == null
   form.intervalMs = n.intervalMs ?? daq.controller.defaultIntervalMs
+  // WS 下发节拍:null=跟随全局;0=每帧;>0 独立间隔
+  form.publishFollow = n.publishIntervalMs == null
+  form.publishEveryFrame = n.publishIntervalMs === 0
+  form.publishMs = n.publishIntervalMs == null ? daq.controller.defaultPublishIntervalMs : n.publishIntervalMs
   form.unit = n.unit
   form.decimals = n.decimals
   form.min = n.min
@@ -109,6 +123,9 @@ async function saveParams(): Promise<void> {
       driver: form.driver,
       driverConfig: { ...driverCfg.value },
       intervalMs: form.followGlobal ? null : Math.max(120, Math.min(60_000, Math.round(form.intervalMs))),
+      publishIntervalMs: form.publishFollow
+        ? null
+        : (form.publishEveryFrame ? 0 : Math.max(0, Math.min(60_000, Math.round(form.publishMs)))),
       unit: form.unit,
       decimals: Math.max(0, Math.min(6, Math.round(form.decimals))),
       min: form.min,
@@ -318,6 +335,10 @@ watch(bucketMs, () => void loadHistory())
               <dd>{{ node.intervalMs ?? `全局 ${daq.controller.defaultIntervalMs}ms` }}</dd>
             </div>
             <div>
+              <dt>下发</dt>
+              <dd>{{ publishLabel(node.publishIntervalMs) }}</dd>
+            </div>
+            <div>
               <dt>预警带</dt>
               <dd>{{ node.warnLow ?? '-∞' }} ~ {{ node.warnHigh ?? '+∞' }}</dd>
             </div>
@@ -386,6 +407,31 @@ watch(bucketMs, () => void loadHistory())
               step="100"
               class="input"
               :disabled="form.followGlobal"
+            ><small>ms</small>
+          </label>
+          <label class="field row">
+            <button
+              type="button"
+              class="toggle slim"
+              :class="{ on: form.publishFollow }"
+              @click="form.publishFollow = !form.publishFollow"
+            >
+              {{ form.publishFollow ? '跟随全局下发' : '节点独立下发' }}
+            </button>
+            <span
+              class="toggle slim"
+              :class="{ on: form.publishEveryFrame }"
+              style="cursor: pointer;"
+              @click="form.publishEveryFrame = !form.publishEveryFrame"
+            >{{ form.publishEveryFrame ? '每帧' : '定间隔' }}</span>
+            <input
+              v-model.number="form.publishMs"
+              type="number"
+              min="0"
+              max="60000"
+              step="100"
+              class="input"
+              :disabled="form.publishFollow || form.publishEveryFrame"
             ><small>ms</small>
           </label>
           <label class="field">

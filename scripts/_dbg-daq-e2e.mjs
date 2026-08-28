@@ -10,7 +10,7 @@ const login = await fetch(`${BASE}/api/users/login`, {
 }).then(r => r.json())
 const token = login?.data?.token
 if (!token) throw new Error(`login failed: ${JSON.stringify(login).slice(0, 200)}`)
-const H = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }
+const H = { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' }
 
 // 0) 基线
 const base = await fetch(`${BASE}/api/workshop/daq`, { headers: H }).then(r => r.json())
@@ -79,7 +79,7 @@ const seen2 = await page.evaluate(async ({ tok, durMs }) => new Promise((resolve
   const sock = new WebSocket(`ws://127.0.0.1:3000/api/workshop/ws?token=${tok}`)
   sock.onopen = () => { seen.open = true; sock.send(JSON.stringify({ type: 'ping' })) }
   sock.onerror = () => { seen.error = 'err' }
-  sock.onclose = e => { seen.close = `${e.code}` }
+  sock.onclose = (e) => { seen.close = `${e.code}` }
   sock.onmessage = (ev) => {
     try {
       const d = JSON.parse(String(ev.data))
@@ -88,9 +88,13 @@ const seen2 = await page.evaluate(async ({ tok, durMs }) => new Promise((resolve
       else if (d.type === 'daq.node.changed') seen.changed++
       else if (d.type === 'daq.controller') seen.controller++
       else if (d.type === 'channel.snapshot') seen.snap++
-    } catch {}
+    }
+    catch {}
   }
-  setTimeout(() => { try { sock.close() } catch {}; resolve(seen) }, durMs)
+  setTimeout(() => {
+    try { sock.close() }
+    catch {}; resolve(seen)
+  }, durMs)
 }), { tok: token, durMs: 5000 })
 console.log('[frames no-sub check]', JSON.stringify(seen2))
 const frames = await page.evaluate(async ({ wsToken, channelId, durMs }) => new Promise((resolve) => {

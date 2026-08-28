@@ -5,7 +5,7 @@ const login = await fetch(`${BASE}/api/users/login`, {
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
 }).then(r => r.json())
-const H = { authorization: `Bearer ${login.data.token}`, 'content-type': 'application/json' }
+const H = { 'authorization': `Bearer ${login.data.token}`, 'content-type': 'application/json' }
 
 // 1) 连接测试:真实协议打到模拟器(1502),读 40001 float32 压力
 const t = await fetch(`${BASE}/api/workshop/daq/test-driver`, {

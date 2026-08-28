@@ -10,6 +10,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { AppError } from '../../../utils/errors'
 
 export interface DeviceTwin {
   id: string
@@ -59,8 +60,27 @@ function save(list: DeviceTwin[]): void {
   fs.writeFileSync(DB_PATH, JSON.stringify(list, null, 2), 'utf-8')
 }
 
-class DeviceTwinRepo {
+export class DeviceTwinRepo {
   private list: DeviceTwin[] = load()
+  private flushTimer: NodeJS.Timeout | null = null
+
+  /** 遥测写盘防抖(采样回写每帧触发,逐次全文件序列化会 fsync 抖动;2s 合并) */
+  private flushDebounced(ms = 2000): void {
+    if (this.flushTimer) return
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null
+      this.flushNow()
+    }, ms)
+    this.flushTimer.unref?.()
+  }
+
+  private flushNow(): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer)
+      this.flushTimer = null
+    }
+    save(this.list)
+  }
 
   listAll(workspaceId?: string): DeviceTwin[] {
     if (!workspaceId) return this.list
@@ -112,7 +132,7 @@ class DeviceTwinRepo {
     return d
   }
 
-  /** 采集:更新 telemetry + 派生 state(含模拟规则) */
+  /** 采集:更新 telemetry + 派生 state(含模拟规则);写盘走防抖(热路径) */
   applyTelemetry(id: string, patch: Record<string, number | string | boolean>): DeviceTwin | undefined {
     const d = this.findById(id)
     if (!d) return undefined
@@ -124,22 +144,41 @@ class DeviceTwinRepo {
     else if (d.state === 'alarm') d.state = 'running'
     else if (d.state !== 'running' && d.desired.on !== false) d.state = 'running'
     d.updatedAt = new Date().toISOString()
-    save(this.list)
+    this.flushDebounced()
     return d
   }
 
-  /** 下发指令:写 desired + 触发 state 变化指令 */
+  /** 下发指令:白名单校验(twin.controls 非空时)→ 写 desired + state 变化,拒绝静默成功 */
   applyControl(id: string, cmd: string, args: Record<string, unknown>): DeviceTwin | undefined {
     const d = this.findById(id)
     if (!d) return undefined
-    if (cmd === 'power_on') d.desired.on = true
-    if (cmd === 'power_off') d.desired.on = false
-    if (cmd === 'set_speed' && typeof args.value === 'number') d.desired.speed = args.value
-    if (cmd === 'set_temperature' && typeof args.value === 'number') d.desired.temperature = args.value
-    if (cmd === 'stop') d.desired.on = false
+    if (d.controls.length > 0 && !d.controls.includes(cmd)) {
+      throw new AppError(400, 'BAD_REQUEST', `未知指令 "${cmd}"(设备支持:${d.controls.join(', ') || '无'})`)
+    }
+    switch (cmd) {
+      case 'power_on':
+        d.desired.on = true
+        break
+      case 'power_off':
+        d.desired.on = false
+        break
+      case 'stop':
+        d.desired.on = false
+        break
+      case 'set_speed':
+        if (typeof args.value !== 'number') throw new AppError(400, 'BAD_REQUEST', 'set_speed 需要 number 型 args.value')
+        d.desired.speed = args.value
+        break
+      case 'set_temperature':
+        if (typeof args.value !== 'number') throw new AppError(400, 'BAD_REQUEST', 'set_temperature 需要 number 型 args.value')
+        d.desired.temperature = args.value
+        break
+      default:
+        throw new AppError(400, 'BAD_REQUEST', `未知指令 "${cmd}"`)
+    }
     d.state = d.desired.on === false ? 'idle' : 'running'
     d.updatedAt = new Date().toISOString()
-    save(this.list)
+    this.flushNow()
     return d
   }
 

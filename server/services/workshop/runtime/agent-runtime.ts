@@ -22,14 +22,26 @@ import type { AgentMemory } from './memory'
 import type { Mailbox } from './mailbox'
 
 /** ChannelBus:运行时事件总线(逐事件广播 + 任务/成员事件通知 + 调度唤醒) */
+/** 任务变更事件携带的源头任务视图(WS 推送免 per-event 回查;WorkspaceTask 结构兼容) */
+export interface TaskEventTask {
+  id: string
+  title?: string
+  parentId?: string
+  assigneeId?: string
+  progress?: number | null
+  routeReason?: string
+  createdAt: string
+  artifacts?: unknown[]
+}
+
 export interface ChannelBus {
   /** AgentEvent 流式广播:所有 harness 的统一事件出口(自定义协议流) */
   emit(event: AgentEvent, source: A2AMessage): void
   /** 订阅 AgentEvent 流(monitor/WS 消费);返回退订函数 */
   onEvent(fn: (event: AgentEvent, source: A2AMessage) => void): () => void
-  /** 任务事件通知(状态迁移/进度变化;由 TaskEngine hooks 统一触发) */
-  notifyTask(e: { taskId: string, state?: TaskState, progress?: number, agentId?: string }): void
-  onTaskEvent(fn: (e: { taskId: string, state?: TaskState, progress?: number }) => void): () => void
+  /** 任务事件通知(状态迁移/进度变化;由 TaskEngine hooks 统一触发;task = 源头视图) */
+  notifyTask(e: { taskId: string, state?: TaskState, progress?: number, agentId?: string, task?: TaskEventTask }): void
+  onTaskEvent(fn: (e: { taskId: string, state?: TaskState, progress?: number, agentId?: string, task?: TaskEventTask }) => void): () => void
   /**
    * 成员状态通知(idle/busy/stopped + 队列上下文;AgentRuntime 转换处触发,事件驱动无轮询)。
    * currentTaskId/currentTaskTitle/currentTaskProgress/queuedCount/completedCount
@@ -117,6 +129,8 @@ export interface TaskEngine {
   redeliverAssign(taskId: string): WorkspaceTask
   /** 单 agent 任务队列视图(待执行 FIFO / 执行中 / 已完成) */
   queueViewOf(channelId: string, agentId: string): AgentTaskQueueView
+  /** 批量队列视图(一次查询聚合全 channel;调度快照热路径) */
+  queueViewsOf(channelId: string): Map<string, AgentTaskQueueView>
 }
 
 /**
@@ -215,6 +229,8 @@ export class AgentRuntime {
   /** 中止当前 run(任务取消/Agent 移除时);空闲时无操作 */
   abortCurrent(): void {
     this.abortController?.abort()
+    // supervise 回合同样可打断(调度器 cancel 路径 → LLM 回合真中止)
+    this.superviseController?.abort()
   }
 
   emitExternal(event: AgentEvent, fromAgentId?: string): void {
@@ -395,6 +411,9 @@ export class AgentRuntime {
    * 未实现 supervise 时返回 null(调用方回退内置规则引擎);
    * 与 run 的互斥由调用方通过 withExecLock 保证。
    */
+  /** 当前 supervise 回合的控制器(abortCurrent 经此打断 LLM 调度回合) */
+  private superviseController: AbortController | null = null
+
   async supervise(snapshot: SupervisionSnapshot): Promise<SupervisionDecision[] | null> {
     if (!this.impl.supervise) return null
     // lead 调度记忆:非终态/失败任务标题 + 成员名构造查询;touch:false 防 tick 通胀
@@ -409,15 +428,22 @@ export class AgentRuntime {
     catch (err) {
       console.error(`[AgentRuntime:${this.agentId}] supervise 记忆召回失败:`, err)
     }
+    const controller = new AbortController()
+    this.superviseController = controller
     const ctx: AgentRunContext = {
       agentId: this.agentId,
       channelId: this.channelId,
       role: this.role,
       workspace: this.deps.workspace,
-      signal: new AbortController().signal,
+      signal: controller.signal,
       memory: memoryBlock,
     }
-    return this.impl.supervise(snapshot, ctx)
+    try {
+      return await this.impl.supervise(snapshot, ctx, { signal: controller.signal })
+    }
+    finally {
+      if (this.superviseController === controller) this.superviseController = null
+    }
   }
 
   /**

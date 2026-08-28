@@ -28,9 +28,9 @@ const out = await page.evaluate(() => {
         triangles: rig.renderer.info.render.triangles,
         canvasW: rig.renderer.domElement.width,
         canvasH: rig.renderer.domElement.height,
-        perSlot: [...rig.slots].map(s => {
+        perSlot: [...rig.slots].map((s) => {
           let tris = 0, visible = 0, geomEmpty = 0
-          if (s.group) s.group.traverse(c => {
+          if (s.group) s.group.traverse((c) => {
             if (c.isMesh) {
               const g = c.geometry
               const pos = g?.attributes?.position
@@ -40,7 +40,7 @@ const out = await page.evaluate(() => {
             }
           })
           return {
-            w: s.w, h: s.h, meshCount: (() => { let n = 0; s.group?.traverse(c => { if (c.isMesh) n++ }); return n })(),
+            w: s.w, h: s.h, meshCount: (() => { let n = 0; s.group?.traverse((c) => { if (c.isMesh) n++ }); return n })(),
             tris: Math.round(tris), visible, geomEmpty,
             canvasPx: (() => { const d = s.ctx.getImageData(0, 0, Math.min(s.w, 400), Math.min(s.h, 200)).data; let lit = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 8) lit++; return lit })(),
           }
@@ -59,20 +59,21 @@ const out = await page.evaluate(() => {
   const bb = new (Object.getPrototypeOf(s0.group).constructor)().setFromObject ? null : null
   try {
     s0.group.updateWorldMatrix(true, true)
-    const bx = new s0.group.children[0].Box3 ? null : null
-  } catch {}
+    const bx = new s0.group.children[0].Box3() ? null : null
+  }
+  catch {}
   // 用 three 全局?页面无 THREE;借助 rig 之外方式:直接数学遍历
   const pts = []
-  s0.group.traverse(c => {
+  s0.group.traverse((c) => {
     if (c.isMesh) {
       const pos = c.geometry.attributes.position
       const m = c.matrixWorld
       const v = [0, 0, 0]
       for (let i = 0; i < pos.count; i += Math.max(1, Math.floor(pos.count / 7))) {
         v[0] = pos.getX(i); v[1] = pos.getY(i); v[2] = pos.getZ(i)
-        const wx = m[0]*v[0]+m[4]*v[1]+m[8]*v[2]+m[12]
-        const wy = m[1]*v[0]+m[5]*v[1]+m[9]*v[2]+m[13]
-        const wz = m[2]*v[0]+m[6]*v[1]+m[10]*v[2]+m[14]
+        const wx = m[0] * v[0] + m[4] * v[1] + m[8] * v[2] + m[12]
+        const wy = m[1] * v[0] + m[5] * v[1] + m[9] * v[2] + m[13]
+        const wz = m[2] * v[0] + m[6] * v[1] + m[10] * v[2] + m[14]
         pts.push([wx, wy, wz])
       }
     }

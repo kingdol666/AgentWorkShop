@@ -396,8 +396,8 @@ export function listTerminalSessions(channelId?: string): TerminalSessionView[] 
     }))
 }
 
-/** 惰性清理:退出超过 retentionMs 的会话(防泄漏;monitor 快照时调用) */
-export function sweepTerminalSessions(retentionMs = 10 * 60_000): void {
+/** 惰性清理:退出超过 retentionMs 且无订阅者的会话(防泄漏;monitor 快照时调用) */
+export function sweepTerminalSessions(retentionMs = 60_000): void {
   const now = Date.now()
   for (const [pid, s] of sessions) {
     if (!s.alive) {

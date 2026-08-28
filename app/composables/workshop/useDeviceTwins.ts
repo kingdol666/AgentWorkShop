@@ -45,7 +45,11 @@ interface DeviceTwinStore {
   twins: DeviceTwinView[]
   loaded: boolean
   error: string
+  /** in-flight 请求 promise(去重用) */
+  __loading?: Promise<void> | null
   load(): Promise<void>
+  applyRemote(twin: DeviceTwinView): void
+  removeRemote(id: string): void
   byId(id: string): DeviceTwinView | undefined
   create(input: { name: string, modelRef?: string, workspaceId?: string, kind?: string, controls?: string[], telemetry?: Record<string, number | string | boolean>, posX?: number, posZ?: number, rotationY?: number, scale?: number }): Promise<DeviceTwinView>
   update(id: string, patch: DeviceTransformPatch): Promise<DeviceTwinView>
@@ -71,18 +75,37 @@ function createStore(): DeviceTwinStore {
     loaded: false,
     error: '',
     async load() {
-      try {
-        const res = await fetch('/api/workshop/device-twins', { headers: headers() })
-        const json = await res.json().catch(() => ({}))
-        // 经 reactive 代理变更,驱动 DeviceTwinPanel 等组件重渲染
-        store.twins.splice(0, store.twins.length, ...(json?.data?.twins ?? []))
-        store.loaded = true
-        store.error = ''
-      }
-      catch (err) {
-        store.loaded = false
-        store.error = err instanceof Error ? err.message : String(err)
-      }
+      // in-flight 去重:多消费方同帧触发只发一次请求(轮询 + 事件回灌叠加期防请求风暴)
+      if (store.__loading) return store.__loading
+      store.__loading = (async () => {
+        try {
+          const res = await fetch('/api/workshop/device-twins', { headers: headers() })
+          const json = await res.json().catch(() => ({}))
+          // 经 reactive 代理变更,驱动 DeviceTwinPanel 等组件重渲染
+          store.twins.splice(0, store.twins.length, ...(json?.data?.twins ?? []))
+          store.loaded = true
+          store.error = ''
+        }
+        catch (err) {
+          store.loaded = false
+          store.error = err instanceof Error ? err.message : String(err)
+        }
+        finally {
+          store.__loading = null
+        }
+      })()
+      return store.__loading
+    },
+    /** WS 增量合并(device.updated 事件直推;免全量重拉) */
+    applyRemote(twin: DeviceTwinView) {
+      const i = store.twins.findIndex(t => t.id === twin.id)
+      if (i >= 0) Object.assign(store.twins[i]!, twin)
+      else store.twins.push({ ...twin })
+    },
+    /** WS 删除收敛 */
+    removeRemote(id: string) {
+      const i = store.twins.findIndex(t => t.id === id)
+      if (i >= 0) store.twins.splice(i, 1)
     },
     byId(id) {
       return twins.find(t => t.id === id)

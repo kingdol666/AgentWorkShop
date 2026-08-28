@@ -596,6 +596,9 @@ class DeviceNode {
     Object.assign(this, init)
   }
 
+  /** 模型顶面世界高度缓存(HUD/callout 每帧读取;缩放变更时失效) */
+  topYCache: number | null = null
+
   /** 状态环颜色(数据驱动:state → 环色) */
   updateRing(): void {
     const color = this.state === 'alarm' ? 0xff6b5c : this.state === 'offline' ? 0x8496a5 : this.state === 'running' ? 0x57d29a : 0xf5a742
@@ -674,7 +677,15 @@ export class TownScene3D {
   private daqLedRings = new Map<string, THREE.Mesh>()
   /** 数采→设备 绑定链路(虚线贝塞尔 + 流动脉冲;syncDaqLinks 维护) */
   private daqLinkGroup = new THREE.Group()
-  private daqLinks: Array<{ daqId: string, deviceId: string, line: THREE.Line, pulse: THREE.Mesh, curve: THREE.QuadraticBezierCurve3, pt: number }> = []
+  private daqLinks: Array<{ daqId: string, deviceId: string, line: THREE.Line, pulse: THREE.Mesh, curve: THREE.QuadraticBezierCurve3, pt: number, ptSig: string }> = []
+
+  // ===== 投影/拾取 scratch 单例(热路径零分配) =====
+  private static readonly _wDir = new THREE.Vector3()
+  private static readonly _wRel = new THREE.Vector3()
+  private static readonly _wVec = new THREE.Vector3()
+  private static readonly _wVec2 = new THREE.Vector2()
+  private static readonly _groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+  private static readonly _raycaster = new THREE.Raycaster()
   private daqLinkSig = ''
   /** 期望链路(TownView 传入;设备节点晚到时由 syncDevices 末尾重仲裁) */
   private daqLinksWanted: Array<{ daqId: string, deviceId: string }> = []
@@ -794,6 +805,9 @@ export class TownScene3D {
     this.renderer.setSize(this.el.clientWidth || 1100, this.el.clientHeight || 700)
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    // 阴影按需重绘:渲染循环里仅场景内容变化(dirty)或角色动画在跑时置 needsUpdate,
+    // 静态场景(总览/无动画)不再每帧全量重绘阴影贴图(2048² PCFSoft 是最大单项 GPU 开销)
+    this.renderer.shadowMap.autoUpdate = false
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     // 电影级色调映射:高光滚降 + 中间调层次,GLB 材质不再"平板曝光"
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -956,7 +970,7 @@ export class TownScene3D {
     key.position.set(WORLD_CX + 500, 900, WORLD_CZ + 300)
     key.castShadow = true
     this.keyLight = key
-    key.shadow.mapSize.set(2048, 2048)
+    key.shadow.mapSize.set(1024, 1024)
     key.shadow.camera.left = -1400
     key.shadow.camera.right = 1400
     key.shadow.camera.top = 2000
@@ -1705,9 +1719,11 @@ export class TownScene3D {
         if (a.nameSprite) this.scene.remove(a.nameSprite)
         if (a.bubble) this.scene.remove(a.bubble)
         if (a.rangeLine) this.scene.remove(a.rangeLine)
+        this.disposeAgentAssets(a)
         this.agents.delete(aid)
       }
     }
+    if (b.label) this.disposeCanvasTextures(b.label)
     if (this.rangeDrawAgent && this.agents.get(this.rangeDrawAgent) === undefined) this.cancelRangeDraw()
     this.blocks.delete(channelId)
     this.layouts.delete(channelId)
@@ -2031,6 +2047,7 @@ export class TownScene3D {
   private enqueueBubble(channelId: string, agentId: string | undefined, kind: TownBubbleKind, text: string, ttlMs: number): void {
     // 事件流 / 最近活动 / 调试气泡即时更新(展示延迟只作用于 3D 气泡)
     this.dbgBubbles.push({ text, at: Date.now() })
+    if (this.dbgBubbles.length > 30) this.dbgBubbles.splice(0, this.dbgBubbles.length - 30)
     const speaker = agentId ? this.agents.get(agentId)?.name : undefined
     this.lastActivity = { channelId, agentName: speaker ?? this.blocks.get(channelId)?.name ?? '系统', text, at: Date.now() }
     this.recentActivity.push(this.lastActivity)
@@ -2105,6 +2122,7 @@ export class TownScene3D {
     }
     if (asp.bubble) {
       this.scene.remove(asp.bubble)
+      this.disposeCanvasTextures(asp.bubble)
       asp.bubbleText = null
     }
     asp.bubble = sprite
@@ -2277,11 +2295,11 @@ export class TownScene3D {
   worldToScreen(x: number, y: number, z: number): { x: number, y: number } | null {
     const rect = this.renderer.domElement.getBoundingClientRect()
     // 相机背后的点 project() 会按负 w 翻转到错误的屏幕位置 → 先用前向点积剔除
-    const dir = new THREE.Vector3()
+    const dir = TownScene3D._wDir
     this.camera.getWorldDirection(dir)
-    const rel = new THREE.Vector3(x - this.camera.position.x, y - this.camera.position.y, z - this.camera.position.z)
+    const rel = TownScene3D._wRel.set(x - this.camera.position.x, y - this.camera.position.y, z - this.camera.position.z)
     if (rel.dot(dir) <= 0.1) return null
-    const v = new THREE.Vector3(x, y, z).project(this.camera)
+    const v = TownScene3D._wVec.set(x, y, z).project(this.camera)
     if (v.z > 1) return null
     // 视锥外过远(NDC ±1.6)的点投影无意义(可能落到数千 px 外)→ 剔除;边缘 ±1 内保留供夹取
     if (Math.abs(v.x) > 1.6 || Math.abs(v.y) > 1.6) return null
@@ -2296,11 +2314,10 @@ export class TownScene3D {
     const rect = this.renderer.domElement.getBoundingClientRect()
     const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1
     const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1
-    const raycaster = new THREE.Raycaster()
-    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera)
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
-    const pt = new THREE.Vector3()
-    raycaster.ray.intersectPlane(plane, pt)
+    const raycaster = TownScene3D._raycaster
+    raycaster.setFromCamera(TownScene3D._wVec2.set(ndcX, ndcY), this.camera)
+    const pt = TownScene3D._wVec
+    raycaster.ray.intersectPlane(TownScene3D._groundPlane, pt)
     return pt ? { x: pt.x, z: pt.z } : { x: this.camera.position.x, z: this.camera.position.z }
   }
 
@@ -2892,6 +2909,10 @@ export class TownScene3D {
     st.userScale = scale
     // 施加于模型 holder(相对已归一化的默认尺寸)
     st.holder.scale.setScalar(st.userScale)
+    if (k === 'device') {
+      const dev = this.deviceNodes.get(id)
+      if (dev) dev.topYCache = null
+    }
     this.dirty = true
   }
 
@@ -2916,6 +2937,10 @@ export class TownScene3D {
     const userScale = Number.isFinite(saved) && saved > 0 ? saved : 1
     this.scalables.set(`${kind}:${id}`, { kind, id, userScale, holder })
     holder.scale.setScalar(userScale)
+    if (kind === 'device') {
+      const dev = this.deviceNodes.get(id)
+      if (dev) dev.topYCache = null
+    }
   }
 
   /** 持久化指定对象的缩放(滑杆松手时调用;设备同时落库,角色仅本地) */
@@ -3733,6 +3758,7 @@ export class TownScene3D {
     if (!dev) return
     this.scene.remove(dev.root)
     this.scene.remove(dev.label)
+    this.disposeDeviceAssets(dev)
     if (this.selected?.kind === 'device' && this.selected.id === id) this.setSelected(null)
     this.scalables.delete(`device:${id}`)
     this.deviceNodes.delete(id)
@@ -3746,10 +3772,15 @@ export class TownScene3D {
   // 数采绑定链路 + 薄膜 web(设计稿 buildChanLine / rebuildWeb 移植)
   // ================================================================
 
-  /** 设备顶端世界高度(holder 包围盒;链路/膜 web 的挂点) */
+  /** 设备顶端世界高度(holder 包围盒;链路/膜 web 的挂点)。
+   *  缓存优先:Box3.setFromObject 遍历整个 GLB 子树,原每帧每设备全量计算是 HUD 最大热点;
+   *  设备贴地 y=0,高度只随缩放变化 → setModelScale/registerScalable 时失效即可。 */
   private deviceTopY(dev: DeviceNode): number {
+    if (dev.topYCache != null) return dev.topYCache
     const box = new THREE.Box3().setFromObject(dev.holder)
-    return Number.isFinite(box.max.y) ? Math.max(40, box.max.y) : 64
+    const y = Number.isFinite(box.max.y) ? Math.max(40, box.max.y) : 64
+    dev.topYCache = y
+    return y
   }
 
   /** 同步数采→设备绑定链路(TownView 传入 [{daqId, deviceId}];端点移动时逐帧跟随重建) */
@@ -3779,20 +3810,29 @@ export class TownScene3D {
       line.computeLineDistances()
       const pulse = new THREE.Mesh(new THREE.SphereGeometry(2.6, 10, 8), new THREE.MeshBasicMaterial({ color: 0x53d6ff }))
       this.daqLinkGroup.add(line, pulse)
-      this.daqLinks.push({ ...l, line, pulse, curve, pt: Math.random() })
+      this.daqLinks.push({ ...l, line, pulse, curve, pt: Math.random(), ptSig: '' })
     }
     this.dirty = true
   }
 
   /** 端点跟随:任一端点位移超阈值 → 重建该链路曲线(拖拽设备/数采时虚线实时跟随) */
+  /** 链路端点 scratch(逐帧跟随用;免每帧 3 次分配) */
+  private static readonly _lkA = new THREE.Vector3()
+  private static readonly _lkB = new THREE.Vector3()
+  private static readonly _lkM = new THREE.Vector3()
+
   private refreshDaqLinks(): void {
     for (const l of this.daqLinks) {
       const daq = this.deviceNodes.get(l.daqId)
       const dev = this.deviceNodes.get(l.deviceId)
       if (!daq || !dev) continue
-      const a = new THREE.Vector3(daq.root.position.x, 42, daq.root.position.z)
-      const b = new THREE.Vector3(dev.root.position.x, this.deviceTopY(dev) + 6, dev.root.position.z)
-      const mid = a.clone().add(b).multiplyScalar(0.5)
+      const topY = this.deviceTopY(dev) + 6
+      const sig = `${Math.round(daq.root.position.x)},${Math.round(daq.root.position.z)},${Math.round(dev.root.position.x)},${Math.round(dev.root.position.z)},${Math.round(topY)}`
+      if (sig === l.ptSig) continue // 端点未动:曲线/geometry 不重建(脉冲仍逐帧走)
+      l.ptSig = sig
+      const a = TownScene3D._lkA.set(daq.root.position.x, 42, daq.root.position.z)
+      const b = TownScene3D._lkB.set(dev.root.position.x, topY, dev.root.position.z)
+      const mid = TownScene3D._lkM.copy(a).add(b).multiplyScalar(0.5)
       mid.y = Math.max(a.y, b.y) + 42
       l.curve.v0.copy(a)
       l.curve.v1.copy(mid)
@@ -3945,8 +3985,19 @@ export class TownScene3D {
         sc.top = 2300 * Math.max(1, this.dolly)
         sc.bottom = -2300 * Math.max(1, this.dolly)
         sc.updateProjectionMatrix()
+        this.renderer.shadowMap.needsUpdate = true
       }
+      // 阴影按需:内容变化(dirty)或有动画角色(mixer 驱动蒙皮位移)才重绘阴影贴图
+      let shadowAnimated = false
+      for (const asp of this.agents.values()) {
+        if (asp.mixer) {
+          shadowAnimated = true
+          break
+        }
+      }
+      this.renderer.shadowMap.needsUpdate = this.dirty || shadowAnimated
       this.renderer.render(this.scene, this.camera)
+      this.dirty = false
       // FPS
       this.frameCount += 1
       this.fpsAccum += dt * 1000
@@ -3959,6 +4010,44 @@ export class TownScene3D {
     animate()
   }
 
+  // ================================================================
+  // 实例本地资源释放(防长会话 GPU 内存只涨不跌)
+  // ================================================================
+  // 注意:GLB 克隆(clone)与 gltfCache 原件**共享** geometry/material/纹理,
+  // 其 GPU 资源归缓存原件管理 —— 释放路径绝不可碰 GLB 克隆内部,否则同模型
+  // 其他活动实例会被连带摧毁。这里只释放每实例独占的资源:
+  // 名牌/气泡的 CanvasTexture(材质 map)、状态环/链路等自建几何与材质。
+
+  /** 释放对象树内所有 Canvas 纹理(名牌/气泡 sprite 的独占资源) */
+  private disposeCanvasTextures(root: THREE.Object3D | null): void {
+    if (!root) return
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      const mat = mesh.material as THREE.Material | THREE.Material[] | undefined
+      const mats = Array.isArray(mat) ? mat : mat ? [mat] : []
+      for (const m of mats) {
+        const std = m as THREE.Material & { map?: THREE.Texture | null }
+        if (std.map && std.map.image instanceof HTMLCanvasElement) std.map.dispose()
+        m.dispose()
+      }
+    })
+  }
+
+  /** 释放单个设备节点的实例资源(状态环 + LED 环 + 名牌) */
+  private disposeDeviceAssets(dev: DeviceNode): void {
+    dev.ring.geometry.dispose()
+    const rmat = dev.ring.material as THREE.Material & { map?: THREE.Texture | null }
+    rmat.dispose()
+    this.disposeCanvasTextures(dev.label)
+  }
+
+  /** 释放单个 agent 的实例资源(名牌/气泡纹理 + 活动范围线几何;GLB 克隆不动) */
+  private disposeAgentAssets(a: { nameSprite?: THREE.Sprite | null, bubble?: THREE.Sprite | null, rangeLine?: THREE.Line | null }): void {
+    this.disposeCanvasTextures(a.nameSprite ?? null)
+    this.disposeCanvasTextures(a.bubble ?? null)
+    a.rangeLine?.geometry.dispose()
+  }
+
   /** 重置全部(rebuild 用) */
   private resetAll(): void {
     for (const a of this.agents.values()) {
@@ -3966,6 +4055,7 @@ export class TownScene3D {
       if (a.nameSprite) this.scene.remove(a.nameSprite)
       if (a.bubble) this.scene.remove(a.bubble)
       if (a.rangeLine) this.scene.remove(a.rangeLine)
+      this.disposeAgentAssets(a)
     }
     for (const b of this.blocks.values()) {
       this.scene.remove(b.platform)
@@ -3973,10 +4063,12 @@ export class TownScene3D {
       this.scene.remove(b.beacon)
       this.scene.remove(b.boundary)
       this.scene.remove(b.label)
+      this.disposeCanvasTextures(b.label)
     }
     for (const dev of this.deviceNodes.values()) {
       this.scene.remove(dev.root)
       this.scene.remove(dev.label)
+      this.disposeDeviceAssets(dev)
     }
     this.deviceNodes.clear()
     this.scalables.clear()

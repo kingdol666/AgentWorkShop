@@ -423,12 +423,17 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
   // ===== supervise() =====
 
-  async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext): Promise<SupervisionDecision[]> {
+  /** supervise 单飞守卫:同一 client 不并发 LLM 回合(残留回合与下一 prompt 混流的根因) */
+  private supervising = false
+
+  async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
     await this.ensureClient(ctx)
     if (!this.client) return []
+    if (this.supervising) return [] // 上一轮 supervise 未收口:跳过本拍(节流即正确)
 
     const prompt = await this.buildSupervisePrompt(snapshot, ctx.memory)
-    const timeoutMs = this.config.superviseTimeoutMs ?? 60_000
+    // 20s 上界:supervise 持 lead.execLock 期间信箱消费停顿;真 abort 已实现,20s 足够小 prompt 调度回合
+    const timeoutMs = this.config.superviseTimeoutMs ?? 20_000
 
     return new Promise<SupervisionDecision[]>((resolve) => {
       let assistantText = ''
@@ -437,9 +442,18 @@ export class OmpRpcAgentImpl implements AgentInterface {
       const finish = (decisions: SupervisionDecision[]) => {
         if (resolved) return
         resolved = true
+        this.supervising = false
         unsub()
         clearTimeout(timer)
+        signalUnsub?.()
         resolve(decisions)
+      }
+
+      const abortTurn = (): void => {
+        // 超时/外部取消:真正中止 omp 当前回合 —— 只 resolve 不 abort 会让残留回合
+        // 与下一个 prompt 在同一 client 混流(决策错位 + token 空烧)
+        void this.client?.send({ type: 'abort' }).catch(() => {})
+        finish([])
       }
 
       const unsub = this.client!.onEvent((event) => {
@@ -462,8 +476,22 @@ export class OmpRpcAgentImpl implements AgentInterface {
         }
       })
 
-      const timer = setTimeout(() => finish([]), timeoutMs)
+      const timer = setTimeout(abortTurn, timeoutMs)
 
+      // 外部取消(调度器 cancel 路径)传导:abort 当前 LLM 回合并立即收口
+      let signalUnsub: (() => void) | undefined
+      if (opts?.signal) {
+        if (opts.signal.aborted) {
+          unsub()
+          resolve([])
+          return
+        }
+        const onAbort = (): void => abortTurn()
+        opts.signal.addEventListener('abort', onAbort, { once: true })
+        signalUnsub = () => opts.signal?.removeEventListener('abort', onAbort)
+      }
+
+      this.supervising = true
       this.client!.send({ type: 'prompt', message: prompt }).catch(() => finish([]))
     })
   }

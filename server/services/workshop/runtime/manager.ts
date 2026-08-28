@@ -32,7 +32,7 @@ import type { TaskRepo, TaskPatch } from '../db/task.repo'
 import { parseJson, type AgentRow, type ChannelAgentRow, type ChannelRow, type ChannelTemplateRow, type MemoryRow, type MessageRow, type TaskRow, type TeamRow, type UserRow, type WorkspaceRow } from '../db/database'
 import { Mailbox, rowToMessage } from './mailbox'
 import { AgentRuntime } from './agent-runtime'
-import type { ChannelBus, MemberChangeEvent, TaskEngine } from './agent-runtime'
+import type { ChannelBus, MemberChangeEvent, TaskEngine, TaskEventTask } from './agent-runtime'
 import { ChannelRuntime } from './channel-runtime'
 import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
@@ -328,7 +328,10 @@ export class AgentChannelManager {
             state: e.state,
             progress: e.progress,
             agentId: e.agentId,
+            task: e.task,
           })
+          // 事件驱动调度:任务状态变化即唤醒该频道调度循环(空闲退避即刻恢复快节奏)
+          this.channels.get(e.channelId)?.scheduler?.wake()
         },
       }))
       this.taskEngine = factory({ tasks: this.deps.repos.tasks, messages: this.deps.repos.messages })
@@ -376,7 +379,7 @@ export class AgentChannelManager {
         eventListeners.add(fn)
         return () => eventListeners.delete(fn)
       },
-      notifyTask: (e) => {
+      notifyTask: (e: { taskId: string, state?: TaskState, progress?: number, agentId?: string, task?: TaskEventTask }) => {
         for (const fn of taskListeners) {
           try {
             fn(e)
@@ -464,7 +467,7 @@ export class AgentChannelManager {
     return this.buses.get(channelId)?.onEvent(fn) ?? (() => {})
   }
 
-  subscribeTaskEvents(channelId: string, fn: (e: { taskId: string, state?: TaskState, progress?: number, agentId?: string }) => void): () => void {
+  subscribeTaskEvents(channelId: string, fn: (e: { taskId: string, state?: TaskState, progress?: number, agentId?: string, task?: TaskEventTask }) => void): () => void {
     // 真实退订(同上:防 stream 重绑泄漏导致 task.status 双发落库)
     this.ensureChannelRuntime(channelId)
     return this.buses.get(channelId)?.onTaskEvent(fn) ?? (() => {})
@@ -490,7 +493,7 @@ export class AgentChannelManager {
 
   private notifyTask(
     channelId: string,
-    e: { taskId: string, state?: TaskState, progress?: number, agentId?: string },
+    e: { taskId: string, state?: TaskState, progress?: number, agentId?: string, task?: TaskEventTask },
   ): void {
     this.buses.get(channelId)?.notifyTask(e)
   }

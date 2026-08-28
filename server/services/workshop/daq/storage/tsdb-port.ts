@@ -48,4 +48,6 @@ export interface TsdbPort {
   query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]>
   /** 各节点最近一个样本(列表页值列兜底) */
   latest(): Promise<Map<string, DaqSampleRow>>
+  /** 释放底层连接池/句柄(rebuild 换池时由工厂调用;可选) */
+  close?(): Promise<void> | void
 }

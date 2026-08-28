@@ -25,7 +25,38 @@ export interface DaqTemplateDef {
   min: number
   max: number
   decimals: number
-  icon: 'thermo' | 'pressure' | 'tension' | 'encoder' | 'camera' | 'gateway'
+  icon: DaqTemplateIcon
+  /** 用户自定义模板(server 落盘可增删改);undefined = 内置 */
+  builtin?: boolean
+}
+
+/** 模板图标(设计稿 ICONS 键;自定义模板从中选取) */
+export const DAQ_TEMPLATE_ICONS = ['thermo', 'pressure', 'tension', 'encoder', 'camera', 'gateway'] as const
+export type DaqTemplateIcon = typeof DAQ_TEMPLATE_ICONS[number]
+
+/** 自定义模板创建/编辑载荷(server 校验归一后入库) */
+export interface DaqTemplateInput {
+  name: string
+  /** 通道语义,缺省取 name */
+  ch?: string
+  /** 位号代号,缺省自动生成 */
+  code?: string
+  unit: string
+  min: number
+  max: number
+  /** 模拟基值(mock 采样中心),缺省量程中点 */
+  base?: number
+  /** 模拟波幅,缺省量程 4% */
+  amp?: number
+  /** 小数位 0..4,缺省 2 */
+  decimals?: number
+  icon?: DaqTemplateIcon
+}
+
+/** daq.template.changed 帧载荷(自定义模板 CRUD 收敛帧) */
+export interface AepDaqTemplateChange {
+  op: 'added' | 'updated' | 'removed'
+  template: DaqTemplateDef | null
 }
 
 export const DAQ_TEMPLATES: DaqTemplateDef[] = [
@@ -160,6 +191,8 @@ export interface DaqNodeView {
   enabled: boolean
   /** 全局缺省周期(null = 跟随 controller.defaultIntervalMs) */
   intervalMs: number | null
+  /** WS 实时下发(消费)间隔 ms;null = 跟随全局,0 = 每帧(随采样节拍) */
+  publishIntervalMs: number | null
   unit: string
   decimals: number
   /** 物理量程(硬限;越界 = alarm) */
@@ -200,6 +233,8 @@ export interface AepDaqNodeChange {
 export interface AepDaqControllerState {
   running: boolean
   defaultIntervalMs: number
+  /** 全局缺省 WS 下发间隔(节点 publishIntervalMs=null 时跟随;0 = 随采样节拍) */
+  defaultPublishIntervalMs: number
   nodesTotal: number
   nodesOnline: number
   /** 管线指标:生产/消费/队列丢失(produced-consumed)/时序库入库数 */
@@ -207,4 +242,6 @@ export interface AepDaqControllerState {
   consumed?: number
   dropped?: number
   samplesStored?: number
+  /** 写库侧丢弃(重试耗尽/攒批溢出;与 dropped 的队列侧丢弃分列) */
+  tsdbDropped?: number
 }

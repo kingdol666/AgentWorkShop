@@ -91,7 +91,7 @@ const out = await page.evaluate(async () => {
   }
   // D) mesh 二分:逐 mesh 单独渲染(其余 visible=false),找出可见者
   const meshes = []
-  obj.traverse(c => { if (c.isMesh) meshes.push(c) })
+  obj.traverse((c) => { if (c.isMesh) meshes.push(c) })
   const per = []
   for (const m of meshes) {
     for (const o of meshes) o.visible = o === m
@@ -131,7 +131,7 @@ const out = await page.evaluate(async () => {
   ctx.drawImage(rig.renderer.domElement, 0, 0, 150, 76)
   const doubleSidePx = count()
   // G) mesh 级诊断:世界包围盒/索引/材质
-  const diag = meshes.slice(0, 4).map(m => {
+  const diag = meshes.slice(0, 4).map((m) => {
     const b = new THREE.Box3().setFromObject(m)
     const sz = b.getSize(new THREE.Vector3())
     return {

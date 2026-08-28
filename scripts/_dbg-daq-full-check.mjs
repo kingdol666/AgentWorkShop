@@ -20,7 +20,7 @@ const login = await fetch(`${BASE}/api/users/login`, {
 }).then(r => r.json())
 const token = login.data?.token
 check('登录', Boolean(token))
-const H = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }
+const H = { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' }
 
 // ---------- 1. 快照与 meta ----------
 const base = await fetch(`${BASE}/api/workshop/daq`, { headers: H }).then(r => r.json())

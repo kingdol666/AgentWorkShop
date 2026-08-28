@@ -95,8 +95,7 @@ export class Mailbox {
       // 先取门闩引用再查询:查询空档内 enqueue 的 releaseGate 才不会丢唤醒
       // (若查询后才取引用,新门闩替换旧门闩 → 挂在未触发的门闩上永久沉睡)
       const gate = this.gate
-      const rows = this.messageRepo.listPendingByChannelAgent(this.channelId, this.agentId)
-      const row = rows[0]
+      const row = this.messageRepo.firstPendingByChannelAgent(this.channelId, this.agentId)
       if (row) {
         // 原子认领:认领失败 = 消息已被 steer 注入或 poll_messages 读即取
         // (唯一所有权),让路重查下一条——消费循环绝不重复处理他人消息
@@ -118,8 +117,7 @@ export class Mailbox {
 
   /** 只读查看未消费消息(不改变状态) */
   async peek(limit: number): Promise<A2AMessage[]> {
-    const rows = this.messageRepo.listPendingByChannelAgent(this.channelId, this.agentId).slice(0, limit)
-    return rows.map(rowToMessage)
+    return this.messageRepo.listPendingByChannelAgent(this.channelId, this.agentId, limit).map(rowToMessage)
   }
 
   /** 标记已消费 */

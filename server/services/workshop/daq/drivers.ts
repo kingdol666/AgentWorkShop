@@ -203,6 +203,9 @@ export const modbusTcpDriver: DaqDriver = {
   },
   async sample({ driverConfig }) {
     const conn = await getModbusConn(driverConfig)
+    // 连接级互斥:同链路串行读(TCP 网关/串行链路并发读会协议错乱);占用则本轮跳过
+    if (conn.busy) return null
+    conn.busy = true
     conn.lastUsed = Date.now()
     try {
       const v = await modbusRead(conn, driverConfig)
@@ -220,6 +223,9 @@ export const modbusTcpDriver: DaqDriver = {
         modbusPool.delete(modbusKey(driverConfig))
       }
       throw err
+    }
+    finally {
+      conn.busy = false
     }
   },
   async test(driverConfig) {

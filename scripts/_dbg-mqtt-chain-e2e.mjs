@@ -13,7 +13,7 @@ const login = await fetch(`${BASE}/api/users/login`, {
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
 }).then(r => r.json())
-const H = { authorization: `Bearer ${login.data.token}`, 'content-type': 'application/json' }
+const H = { 'authorization': `Bearer ${login.data.token}`, 'content-type': 'application/json' }
 
 // ---------- 第三方 MQTT 订阅者(规范验证:独立于应用进程) ----------
 const frames = []

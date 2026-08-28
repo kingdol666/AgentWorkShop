@@ -20,15 +20,33 @@ export function useWorkshopWs() {
 
   // 模块级单例:多组件共享一条连接
   let session: WorkshopWsSession | null = (globalThis as { __workshopWs?: WorkshopWsSession }).__workshopWs ?? null
+  // per-channel 已应用 seq(断线续传重放/缓冲重叠的同帧在此单点丢弃;
+  // entities/场景计数等下游消费方不再各自防重)
+  const appliedSeq = new Map<string, number>()
   if (!session) {
     const s = new WorkshopWsSession(
       (e: AepEnvelope) => {
-        events.ingest(e)
-        entities.applyEvent(e)
-        if (e.type === 'channel.snapshot') {
+        // seq 去重收口:快照重置游标;非快照帧 seq 单调,重复帧直接丢弃
+        if (e.channelId && typeof e.seq === 'number' && e.seq > 0 && e.type !== 'channel.snapshot') {
+          const last = appliedSeq.get(e.channelId) ?? 0
+          if (e.seq <= last) return
+          appliedSeq.set(e.channelId, e.seq)
+          // 重连对齐确认:收到缺口后的新帧(或任意非重复帧)即视为已对齐
+          if (conn.pendingReplay) conn.pendingReplay = false
+        }
+        if (e.type === 'channel.snapshot' && e.channelId) {
+          // 快照 = 实体基线对齐(seq 游标以快照为准,服务重启 seq 倒退由此收敛)
+          appliedSeq.set(e.channelId, typeof e.seq === 'number' ? e.seq : 0)
+          conn.pendingReplay = false
+          events.ingest(e)
+          entities.applyEvent(e)
           entities.applySnapshot(e.payload as AepSnapshot)
           // 持久化历史(server 驱动):快照后从 DB 拉历史填充时间线
           void events.loadHistory(e.channelId)
+        }
+        else {
+          events.ingest(e)
+          entities.applyEvent(e)
         }
         if (typeof e.seq === 'number' && e.seq > 0 && e.channelId) {
           conn.cursors[e.channelId] = e.seq
@@ -43,9 +61,9 @@ export function useWorkshopWs() {
       },
       // 断线且有订阅游标 → 重连后待对齐(状态条"同步中"提示)
       () => { conn.pendingReplay = true },
-      // 重连后首帧到达 → 缺口已对齐 + 记录最后数据时间(诚实在线状态)
+      // 重连后首帧到达 → 记录最后数据时间(诚实在线状态);
+      // pendingReplay 的清除由 ingest 的对齐语义决定(快照或非重复帧,而非任意首帧)
       () => {
-        conn.pendingReplay = false
         conn.lastDataAt = Date.now()
       },
     )

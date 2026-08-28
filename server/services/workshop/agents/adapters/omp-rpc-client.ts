@@ -105,6 +105,12 @@ interface PendingRequest {
   timer?: ReturnType<typeof setTimeout>
 }
 
+/** 流式缓冲上限(超限截断并计数,防大输出/异常流拖爆内存) */
+const STDERR_CAP = 1024 * 1024
+const STDOUT_LINE_CAP = 8 * 1024 * 1024
+/** chunk 重组缓冲 TTL(残缺分片 30s 后清理,base64 大 payload 不永久驻留) */
+const CHUNK_TTL_MS = 30_000
+
 /**
  * OmpRpcClient — omp RPC 子进程的完整客户端。
  *
@@ -121,6 +127,7 @@ export class OmpRpcClient {
   private child: ChildProcess | null = null
   private stdoutBuf = ''
   private stderrBuf = ''
+  private stderrTruncated = 0
   private ready = false
   private disposed = false
   /** 子进程是否已退出(资源监控/优雅 dispose 用) */
@@ -135,8 +142,8 @@ export class OmpRpcClient {
   private readonly rawFrameListeners = new Set<(frame: Record<string, unknown>) => void>()
   private hostToolHandler: HostToolHandler | null = null
 
-  /** v2 chunk 重组缓冲 */
-  private readonly chunkBuffers = new Map<string, { count: number, parts: Map<number, string> }>()
+  /** v2 chunk 重组缓冲(带最近活跃时间;TTL 清理残缺分片) */
+  private readonly chunkBuffers = new Map<string, { count: number, parts: Map<number, string>, at: number }>()
 
   constructor(private readonly options: OmpRpcClientOptions = {}) {}
 
@@ -203,6 +210,11 @@ export class OmpRpcClient {
       this.child!.stdout!.on('data', (data: string) => this.onStdout(data))
       this.child!.stderr!.on('data', (data: string) => {
         this.stderrBuf += data
+        if (this.stderrBuf.length > STDERR_CAP) {
+          // 保留尾部(诊断价值最高),截断部分计数可见
+          this.stderrTruncated += this.stderrBuf.length - STDERR_CAP
+          this.stderrBuf = this.stderrBuf.slice(-STDERR_CAP)
+        }
       })
       this.child!.on('error', (err: Error) => {
         if (!this.ready) reject(err)
@@ -330,6 +342,10 @@ export class OmpRpcClient {
   /** stdout 数据处理:逐行 JSON 解析 → 分发 */
   private onStdout(data: string): void {
     this.stdoutBuf += data
+    if (this.stdoutBuf.length > STDOUT_LINE_CAP) {
+      // 半行缓冲异常膨胀(对端异常流):丢弃已积累部分,防内存无界增长
+      this.stdoutBuf = ''
+    }
     const lines = this.stdoutBuf.split('\n')
     this.stdoutBuf = lines.pop() ?? ''
 
@@ -440,11 +456,18 @@ export class OmpRpcClient {
     const { chunkId, index, count, byteLength, data } = frame
     if (!chunkId || typeof index !== 'number' || typeof count !== 'number') return
 
+    // TTL 清扫:残缺分片(丢失/乱序未收齐)30s 后释放
+    const now = Date.now()
+    for (const [cid, b] of this.chunkBuffers) {
+      if (now - b.at > CHUNK_TTL_MS) this.chunkBuffers.delete(cid)
+    }
+
     let buf = this.chunkBuffers.get(chunkId)
     if (!buf) {
-      buf = { count, parts: new Map() }
+      buf = { count, parts: new Map(), at: now }
       this.chunkBuffers.set(chunkId, buf)
     }
+    buf.at = now
     buf.parts.set(index, data ?? '')
 
     // 全部分片到齐 → 重组

@@ -32,6 +32,10 @@ export function createMessageRepo(db: DatabaseSync) {
     // rowid 决胜:同一毫秒内批量入队(连发任务/调度批量派发)也保持严格入队顺序(FIFO)
     `SELECT ${COLS} FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC, rowid ASC`,
   )
+  /** 队头单条(dequeue 热路径;idx_messages_queue 覆盖,LIMIT 1 免全量拉取) */
+  const firstPending = db.prepare(
+    `SELECT ${COLS} FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC, rowid ASC LIMIT 1`,
+  )
   const markConsumingStmt = db.prepare(
     `UPDATE messages SET state = 'consuming' WHERE id = ? AND state = 'pending'`,
   )
@@ -83,9 +87,19 @@ export function createMessageRepo(db: DatabaseSync) {
       return row
     },
 
-    /** 拉取某 channel 内某 Agent 的未消费消息(FIFO) */
-    listPendingByChannelAgent(channelId: string, toAgentId: string): MessageRow[] {
+    /** 拉取某 channel 内某 Agent 的未消费消息(FIFO;limit 给出则只取前 N 条) */
+    listPendingByChannelAgent(channelId: string, toAgentId: string, limit?: number): MessageRow[] {
+      if (limit != null) {
+        return db.prepare(
+          `SELECT ${COLS} FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC, rowid ASC LIMIT ?`,
+        ).all(channelId, toAgentId, limit) as unknown as MessageRow[]
+      }
       return selectPending.all(channelId, toAgentId) as unknown as MessageRow[]
+    },
+
+    /** 队头单条(dequeue 热路径:WHERE+ORDER 走 idx_messages_queue,LIMIT 1 免全量) */
+    firstPendingByChannelAgent(channelId: string, toAgentId: string): MessageRow | undefined {
+      return (firstPending.get(channelId, toAgentId) as MessageRow | undefined) ?? undefined
     },
 
     /**

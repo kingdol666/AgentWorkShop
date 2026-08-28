@@ -8,7 +8,7 @@ const login = await fetch(`${BASE}/api/users/login`, {
   body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
 }).then(r => r.json())
 const token = login.data.token
-const H = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }
+const H = { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' }
 
 // 生产顺序:进数字孪生空间先 GET daq 快照(此请求同时把 WS 广播出装配到控制器)
 const daqBase = await fetch(`${BASE}/api/workshop/daq`, { headers: H }).then(r => r.json())
@@ -30,7 +30,10 @@ function nodeWsProbe(durMs = 5000) {
       else if (d.type === 'daq.reading') seen.reading++
       else seen.other[d.type] = (seen.other[d.type] ?? 0) + 1
     }
-    setTimeout(() => { try { sock.close() } catch {}; resolve(seen) }, durMs)
+    setTimeout(() => {
+      try { sock.close() }
+      catch {}; resolve(seen)
+    }, durMs)
   })
 }
 
@@ -55,7 +58,7 @@ if (chanId) {
     const sock = new WebSocket(`ws://127.0.0.1:3000/api/workshop/ws?token=${tok}`)
     sock.onopen = () => { seen.open = true; sock.send(JSON.stringify({ type: 'ping' })) }
     sock.onerror = () => { seen.error = 'socket-error' }
-    sock.onclose = e => { if (!seen.pong) seen.error += ` close:${e.code}` }
+    sock.onclose = (e) => { if (!seen.pong) seen.error += ` close:${e.code}` }
     sock.onmessage = (ev) => {
       const d = JSON.parse(String(ev.data))
       if (d.type === 'pong') { seen.pong = true; sock.send(JSON.stringify({ type: 'sub', channelId: ch, token: tok })) }
@@ -63,7 +66,10 @@ if (chanId) {
       else if (d.type === 'daq.reading') seen.reading++
       else seen.others[d.type] = (seen.others[d.type] ?? 0) + 1
     }
-    setTimeout(() => { try { sock.close() } catch {}; resolve(seen) }, durMs)
+    setTimeout(() => {
+      try { sock.close() }
+      catch {}; resolve(seen)
+    }, durMs)
   }), { tok: token, ch: chanId, durMs: 6000 })
   console.log('[probe B: page ctx + sub]', JSON.stringify(probeB))
 }

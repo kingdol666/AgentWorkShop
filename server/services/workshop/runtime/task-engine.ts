@@ -50,6 +50,9 @@ function rowToTask(row: TaskRow): WorkspaceTask {
   }
 }
 
+/** 任务执行历史上限(applyEvent 整列重写模型下的写放大有界化) */
+const TASK_HISTORY_CAP = 200
+
 export class TaskEngine {
   /**
    * hooks.onTaskChange:任务状态迁移的统一通知点(monitor/WS 消费)。
@@ -62,11 +65,30 @@ export class TaskEngine {
        * 任务变更广播(状态迁移带 state;进度变化带 progress;终态迁移经 transition
        * 统一触发)。状态/进度的实时同步唯一出口 —— 前端/WS/monitor 据此对齐实体。
        */
-      onTaskChange?(e: { taskId: string, channelId: string, state?: TaskState, progress?: number, agentId?: string }): void
+      onTaskChange?(e: { taskId: string, channelId: string, state?: TaskState, progress?: number, agentId?: string, task?: WorkspaceTask }): void
     },
   ) {}
 
   /** 单 agent 任务队列视图(queued FIFO / current / completed;派生只读投影,无第二份状态) */
+  /** 批量队列视图:一次 list(channel) 聚合全部成员(调度快照热路径,消除 O(M) 次查询) */
+  queueViewsOf(channelId: string): Map<string, AgentTaskQueueView> {
+    const rows = this.repos.tasks.listByChannel(channelId)
+    const views = new Map<string, AgentTaskQueueView>()
+    for (const row of rows) {
+      const task = rowToTask(row)
+      let v = views.get(task.assigneeId)
+      if (!v) {
+        v = { agentId: task.assigneeId, channelId, queued: [], completed: [] }
+        views.set(task.assigneeId, v)
+      }
+      if (task.state === 'SUBMITTED' || task.state === 'ASSIGNED') v.queued.push(task)
+      else if (task.state === 'WORKING') v.current = task
+      else if (task.state === 'COMPLETED') v.completed.push(task)
+      // WAITING(等子任务)/FAILED/CANCELED 不计入队列
+    }
+    return views
+  }
+
   queueViewOf(channelId: string, agentId: string): AgentTaskQueueView {
     const rows = this.repos.tasks.listByChannelAssignee(channelId, agentId)
     const queued: WorkspaceTask[] = []
@@ -208,7 +230,7 @@ export class TaskEngine {
       }
     }
     const created = rowToTask(row)
-    this.hooks?.onTaskChange?.({ taskId: created.id, channelId: created.channelId, state: 'SUBMITTED', agentId: input.assigneeId })
+    this.hooks?.onTaskChange?.({ taskId: created.id, channelId: created.channelId, state: 'SUBMITTED', agentId: input.assigneeId, task: created })
     return created
   }
 
@@ -217,6 +239,15 @@ export class TaskEngine {
     parent: WorkspaceTask,
     input: { assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string },
   ): WorkspaceTask {
+    // 判重下沉(单一入口守卫:REST / LLM 工具 / 调度器直通统一遵守):
+    // 同父同标题在途子任务 → 409,快照滞后引发的重复派发在此收口(省 token 不重跑)
+    const norm = (t: string): string => t.replace(/\s+/g, ' ').trim().toLowerCase()
+    const siblingRow = this.repos.tasks.listByChannel(parent.channelId)
+      .find(r => r.parentId === parent.id && norm(r.title) === norm(input.title)
+        && r.state !== 'COMPLETED' && r.state !== 'CANCELED' && r.state !== 'FAILED')
+    if (siblingRow) {
+      throw new AppError(409, 'DUPLICATE_DISPATCH', `子任务 "${input.title}" 已在执行中(状态 ${siblingRow.state},指派 ${siblingRow.assigneeId?.slice(0, 8) ?? '?'}),不要重复派发`)
+    }
     const child = this.repos.tasks.create({
       channelId: parent.channelId,
       parentId: parent.id,
@@ -244,7 +275,7 @@ export class TaskEngine {
       this.transition(parent.id, 'WAITING', parent.assigneeId)
     }
     const created = rowToTask(child)
-    this.hooks?.onTaskChange?.({ taskId: created.id, channelId: created.channelId, state: 'ASSIGNED', agentId: input.assigneeId })
+    this.hooks?.onTaskChange?.({ taskId: created.id, channelId: created.channelId, state: 'ASSIGNED', agentId: input.assigneeId, task: created })
     return created
   }
 
@@ -271,8 +302,9 @@ export class TaskEngine {
     const updated = this.repos.tasks.update(taskId, { state })
     if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
     void by // 操作者预留(历史/审计);当前行模型无独立字段,暂不持久化
-    this.hooks?.onTaskChange?.({ taskId, channelId: updated.channelId, state, agentId: by || undefined })
-    return rowToTask(updated)
+    const view = rowToTask(updated)
+    this.hooks?.onTaskChange?.({ taskId, channelId: updated.channelId, state, agentId: by || undefined, task: view })
+    return view
   }
 
   /** 应用 Agent 事件:artifact(分块 append/进度折算)、status(追加 history)、error(FAILED)、done(无) */
@@ -306,18 +338,21 @@ export class TaskEngine {
         else {
           artifacts.push(artifact)
         }
-        this.repos.tasks.update(taskId, { artifacts, progress })
+        const updatedRow = this.repos.tasks.update(taskId, { artifacts, progress })
         // 进度变化主动广播(applyEvent 不经 transition,落库进度须实时同步前端
         // task.progress;与 report_progress 的 notifyTask 同口径)
         if (progress !== task.progress) {
-          this.hooks?.onTaskChange?.({ taskId, channelId: task.channelId, progress, agentId: task.assigneeId })
+          this.hooks?.onTaskChange?.({ taskId, channelId: task.channelId, progress, agentId: task.assigneeId, task: updatedRow ? rowToTask(updatedRow) : undefined })
         }
         break
       }
       case 'status': {
-        // 追加执行历史(有 message 时)
+        // 追加执行历史(有 message 时);条数封顶防 history_json 无限膨胀
+        // (每事件整列重写,长任务的 O(n²) 写放大在此收口;完整流在 channel_events)
         if (event.status.message) {
-          this.repos.tasks.update(taskId, { history: [...task.history, event.status.message] })
+          const history = [...task.history, event.status.message]
+          if (history.length > TASK_HISTORY_CAP) history.splice(0, history.length - TASK_HISTORY_CAP)
+          this.repos.tasks.update(taskId, { history })
         }
         break
       }

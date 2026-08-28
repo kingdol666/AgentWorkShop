@@ -20,7 +20,7 @@ const login = await fetch(`${BASE}/api/users/login`, {
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
 }).then(r => r.json())
-const H = { authorization: `Bearer ${login.data.token}`, 'content-type': 'application/json' }
+const H = { 'authorization': `Bearer ${login.data.token}`, 'content-type': 'application/json' }
 
 const list = await fetch(`${BASE}/api/workshop/daq`, { headers: H }).then(r => r.json())
 const audit = list.data.nodes.find(n => n.name.includes('MQTT链路审计'))

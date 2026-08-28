@@ -70,6 +70,40 @@ export function createChannelEventRepo(db: DatabaseSync) {
     insertStmt.run(channelId, e.seq, e.type, e.at, e.agentId, e.taskId, JSON.stringify(e.payload))
   }
 
+  /** 批量写(单事务一次 fsync;hub 400ms 聚合缓冲的刷盘出口) */
+  function insertMany(channelId: string, events: StoredAepEvent[]): void {
+    if (events.length === 0) return
+    db.exec('BEGIN')
+    try {
+      for (const e of events) {
+        insertStmt.run(channelId, e.seq, e.type, e.at, e.agentId, e.taskId, JSON.stringify(e.payload))
+      }
+      db.exec('COMMIT')
+    }
+    catch (err) {
+      try {
+        db.exec('ROLLBACK')
+      }
+      catch { /* 事务已终结 */ }
+      throw err
+    }
+  }
+
+  /** 保留期清理:分批 DELETE(单批 5000 行,防长事务锁库);返回清理行数 */
+  function sweepRetention(retentionDays = 7): number {
+    const cutoff = new Date(Date.now() - retentionDays * 86_400_000).toISOString()
+    let removed = 0
+    for (;;) {
+      const r = db.prepare(
+        'DELETE FROM channel_events WHERE rowid IN (SELECT rowid FROM channel_events WHERE at < ? LIMIT 5000)',
+      ).run(cutoff) as { changes: number | bigint }
+      const n = Number(r.changes)
+      removed += n
+      if (n < 5000) break
+    }
+    return removed
+  }
+
   /** 最近 N 条(倒序取→正序返回,时间线顺序) */
   function listRecent(channelId: string, limit: number, opts?: EventQueryOpts): StoredAepEvent[] {
     return select('channel_id = ?', 'ORDER BY seq DESC LIMIT ?', [channelId], [limit], opts)
@@ -100,7 +134,7 @@ export function createChannelEventRepo(db: DatabaseSync) {
     return ((stmt.get(channelId, ...filterParams) as { n: number } | undefined)?.n) ?? 0
   }
 
-  return { insert, listRecent, listBefore, maxSeq, count }
+  return { insert, insertMany, sweepRetention, listRecent, listBefore, maxSeq, count }
 }
 
 function rowToEvent(row: ChannelEventRow): StoredAepEvent {

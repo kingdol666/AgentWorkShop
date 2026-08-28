@@ -8,4 +8,8 @@ export default withNuxt(
       '@stylistic/semi': ['error', 'never'],
     },
   },
+  // 一次性审计/调试脚本(_dbg-*):短平快风格,不入主链路,豁免风格规则
+  {
+    ignores: ['scripts/_dbg-*.mjs'],
+  },
 )

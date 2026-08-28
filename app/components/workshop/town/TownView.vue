@@ -492,7 +492,9 @@ function syncSceneModels(scene: TownViewScene | null): void {
   }
 }
 
-watch(() => characterAssets.models, () => syncSceneModels(sceneRef.value), { deep: true })
+// 签名对比替代 deep 监听:模型资产任何字段变化都曾触发全量 syncSceneModels;
+// 实际只有增删/换文件才需要同步(id+file 签名)
+watch(() => characterAssets.models.map(m => `${m.id}:${m.file}`).join('|'), () => syncSceneModels(sceneRef.value))
 
 async function boot() {
   if (sceneRef.value || !hostRef.value) return
@@ -608,7 +610,7 @@ async function boot3D(): Promise<void> {
   // 健壮性:composable 内部已 3 次退避重试;此处再兜底 —— 失败浮出错误并定时重拉,
   // rev-watch 会在数据到达后自动收敛重建,任何时序下频道都不会"消失"。
   void sceneLayouts.load().then(() => {
-    scene.hydrate(buildTownInput(), Object.values(sceneLayouts.layouts), deviceTwins.twins)
+    scene.hydrate(buildTownInput(), Object.values(sceneLayouts.layouts), sceneTwinPool.value)
     syncChannelDock()
   }).catch((err) => {
     errorText.value = `频道布局加载失败,自动重试中(${err instanceof Error ? err.message : String(err)})`
@@ -687,14 +689,27 @@ function wireCommon(scene: CommonTownScene): void {
     try {
       if (e.type === 'channel.snapshot') {
         scene.rebuild(buildTownInput())
+        // rebuild 内部 resetAll 清掉全部设备/数采节点,必须立即按全量池恢复
+        if (sceneRef.value) syncSceneDevices(sceneRef.value)
         if (props.channelId) scene.focusChannel(props.channelId)
         return
       }
-      // 设备场景事件(device.created/updated/deleted):重拉清单 → 场景即时同步
-      if (e.type === 'device.created' || e.type === 'device.updated' || e.type === 'device.deleted') {
+      // 设备场景事件:updated(含遥测直推,1s 节流)走增量合并;
+      // created 走全量重拉(新孪生需完整字段);deleted 本地移除
+      if (e.type === 'device.updated') {
+        deviceTwins.applyRemote((e.payload as unknown as DeviceTwinView))
+        if (sceneRef.value) syncSceneDevices(sceneRef.value)
+        return
+      }
+      if (e.type === 'device.created') {
         void deviceTwins.load().then(() => {
           if (sceneRef.value) syncSceneDevices(sceneRef.value)
         })
+        return
+      }
+      if (e.type === 'device.deleted') {
+        deviceTwins.removeRemote((e.payload as { id: string }).id)
+        if (sceneRef.value) syncSceneDevices(sceneRef.value)
         return
       }
       // 频道布局事件(他人编辑边界/移入移除):重拉布局 → 场景即时收敛
@@ -742,6 +757,9 @@ function bindSceneInput(scene: TownViewScene): void {
   bindSceneInput2D(scene)
 }
 
+/** window 级监听器清理登记(卸载统一移除;匿名 window 监听器持已销毁场景 = 悬空引用) */
+const windowCleanups: Array<() => void> = []
+
 /** 2D(Phaser):用 game.canvas + cam.worldView 反解世界坐标 */
 function bindSceneInput2D(scene: Exclude<TownViewScene, TownScene3D>): void {
   const canvas = scene.game.canvas
@@ -768,7 +786,7 @@ function bindSceneInput2D(scene: Exclude<TownViewScene, TownScene3D>): void {
     lastCX = e.clientX
     lastCY = e.clientY
   })
-  window.addEventListener('pointermove', (e: PointerEvent) => {
+  const onCamPointerMove = (e: PointerEvent): void => {
     if (!draggingCam) return
     const cam = scene.cameras.main
     const rect = canvas.getBoundingClientRect()
@@ -780,10 +798,14 @@ function bindSceneInput2D(scene: Exclude<TownViewScene, TownScene3D>): void {
     cam.scrollY -= dy
     lastCX = e.clientX
     lastCY = e.clientY
-  })
-  window.addEventListener('pointerup', () => {
+  }
+  const onCamPointerUp = (): void => {
     draggingCam = false
-  })
+  }
+  window.addEventListener('pointermove', onCamPointerMove)
+  window.addEventListener('pointerup', onCamPointerUp)
+  windowCleanups.push(() => window.removeEventListener('pointermove', onCamPointerMove))
+  windowCleanups.push(() => window.removeEventListener('pointerup', onCamPointerUp))
 
   // ---- 滚轮缩放 ----
   canvas.addEventListener('wheel', (e: WheelEvent) => {
@@ -850,7 +872,7 @@ function bindSceneInput3D(scene: TownScene3D): void {
     lastCX = e.clientX
     lastCY = e.clientY
   })
-  window.addEventListener('pointermove', (e: PointerEvent) => {
+  const onScenePointerMove = (e: PointerEvent): void => {
     if (scene.isGizmoBusy?.()) return
     if (scene.isPointerDragging()) {
       scene.movePointerDrag(e.clientX, e.clientY)
@@ -863,14 +885,18 @@ function bindSceneInput3D(scene: TownScene3D): void {
     lastCY = e.clientY
     if (camMode === 1) scene.orbitBy(dx, dy)
     else scene.panByScreen(dx, dy)
-  })
-  window.addEventListener('pointerup', () => {
+  }
+  const onScenePointerUp = (): void => {
     if (scene.isPointerDragging()) {
       scene.endPointerDrag()
       return
     }
     camMode = 0
-  })
+  }
+  window.addEventListener('pointermove', onScenePointerMove)
+  window.addEventListener('pointerup', onScenePointerUp)
+  windowCleanups.push(() => window.removeEventListener('pointermove', onScenePointerMove))
+  windowCleanups.push(() => window.removeEventListener('pointerup', onScenePointerUp))
 
   // ---- 滚轮 dolly(设计稿:乘性缩放,任意层级手感一致) ----
   canvas.addEventListener('wheel', (e: WheelEvent) => {
@@ -930,10 +956,12 @@ function bindSceneInput3D(scene: TownScene3D): void {
   })
 }
 
-/** 用设备孪生清单收敛场景节点(three 3D / phaser 2D 各自实现) */
+/** 用全量设备池收敛场景节点(真设备孪生 + 全部 DAQ 节点投影;按节点 id 对账)。
+ *  必须传 sceneTwinPool 而非 deviceTwins.twins —— syncDevices 会移除不在清单内的
+ *  本地节点,漏掉 daq 投影时设备事件每次到达都会把场景中的数采节点误删。 */
 function syncSceneDevices(scene: TownViewScene): void {
   if ('syncDevices' in scene) {
-    ;(scene as TownScene3D).syncDevices(deviceTwins.twins)
+    ;(scene as TownScene3D).syncDevices(sceneTwinPool.value)
   }
 }
 
@@ -942,7 +970,8 @@ function syncSceneDevices(scene: TownViewScene): void {
 watch(() => sceneLayouts.rev, (rev) => {
   const scene = scene3dRef.value
   if (!scene || !sceneLayouts.loaded || rev === 0) return
-  scene.hydrate(buildTownInput(), Object.values(sceneLayouts.layouts), deviceTwins.twins)
+  // 设备输入必须是全量池(含 DAQ 投影):hydrate→syncDevices 按清单对账,漏 daq 会清场
+  scene.hydrate(buildTownInput(), Object.values(sceneLayouts.layouts), sceneTwinPool.value)
   syncChannelDock()
 })
 
@@ -1262,6 +1291,8 @@ const sceneTwinById = (id: string): DeviceTwinView | undefined =>
 
 /** 轮询设备孪生 → 场景节点同步 + 状态环颜色(设备节点由 dev 模型拖入/服务端恢复生成) */
 function bindDevicePoll(scene: TownScene3D): ReturnType<typeof setInterval> {
+  // 5s 兜底轮询:遥测/状态主通道是 WS device.updated 直推(server 1s 节流),
+  // 轮询仅覆盖断线窗口(useDeviceTwins.load 已 in-flight 去重)
   return setInterval(() => {
     void deviceTwins.load().then(() => {
       if (sceneRef.value !== scene) return
@@ -1271,7 +1302,7 @@ function bindDevicePoll(scene: TownScene3D): ReturnType<typeof setInterval> {
         if (twin) scene.updateDeviceNode(node.twinId, twin.state, twin.telemetry)
       }
     })
-  }, 1500)
+  }, 5000)
 }
 
 /** 事件流:最近事件队列(at 供右轨"实时事件"面板;2D 场景无 at → 占位) */
@@ -1285,7 +1316,7 @@ const ticker = shallowRef<Array<{ channelId: string, agentName: string, text: st
  * ============================================================ */
 /** 数采流单例:REST 快照 + townBus WS 帧(reading/node.changed/controller) */
 const daq = useDaqStream()
-/** 左轨模板目录(shared DAQ 表投影;字段名兼容既有轨道模板标记) */
+/** 左轨模板目录(server 权威:内置 + 自定义随 REST/WS 收敛;字段名兼容既有轨道模板标记) */
 interface DaqTemplate {
   id: string
   name: string
@@ -1301,7 +1332,7 @@ interface DaqTemplate {
   /** 图标(设计稿 ICONS 键) */
   icon: string
 }
-const daqTemplates: DaqTemplate[] = DAQ_TEMPLATES.map(t => ({
+const daqTemplates = reactive<DaqTemplate[]>(DAQ_TEMPLATES.map(t => ({
   id: t.key,
   name: t.name,
   code: t.code,
@@ -1313,7 +1344,23 @@ const daqTemplates: DaqTemplate[] = DAQ_TEMPLATES.map(t => ({
   max: t.max,
   decimals: t.decimals,
   icon: t.icon,
-}))
+})))
+watch(() => daq.templates, (list) => {
+  if (!list?.length) return
+  daqTemplates.splice(0, daqTemplates.length, ...list.map(t => ({
+    id: t.key,
+    name: t.name,
+    code: t.code,
+    ch: t.ch,
+    unit: t.unit,
+    base: t.base,
+    amp: t.amp,
+    min: t.min,
+    max: t.max,
+    decimals: t.decimals,
+    icon: t.icon,
+  })))
+}, { immediate: true, deep: true })
 const daqTplById = (ref: string): DaqTemplate | undefined => {
   const key = ref.startsWith('daq-') ? ref.slice(4) : ref
   return daqTemplates.find(t => t.id === key)
@@ -1499,6 +1546,11 @@ function drawBindSparks(): void {
 }
 
 /** 场景链路同步:绑定关系 → TownScene3D.syncDaqLinks(虚线 + 脉冲);server 绑定为权威 */
+// DAQ 节点清单(增删/落点/启停/状态/绑定)变化 → 场景即时收敛
+// (签名不含 value:每秒读数帧不值得全量 reconcile,实时值走 callout/KPI 管线)
+watch(() => daq.nodes.map(n => `${n.id}:${n.posX ?? ''}:${n.posZ ?? ''}:${n.enabled}:${n.state}:${n.deviceBindingId ?? ''}`).join('|'), () => {
+  if (sceneRef.value) syncSceneDevices(sceneRef.value)
+})
 watch(() => daq.nodes.map(n => `${n.id}:${n.deviceBindingId ?? ''}`).join('|'), () => {
   const s = scene3dRef.value
   if (!s || !('syncDaqLinks' in s)) return
@@ -2073,35 +2125,73 @@ function onNavUp(e: PointerEvent): void {
   }
   navDrag = null
 }
+/** 150ms HUD 节拍(小地图/相机位/标注跟随;topY 已缓存,不再每拍 Box3 全树) */
+function miniTick(): void {
+  const s = sceneRef.value
+  if (s?.getMinimapState) minimap.value = s.getMinimapState()
+  drawNavMap()
+  // 标注跟随:锚定绑定设备的模型顶面(无绑定 → 数采立杆顶),150ms 跟手
+  const s3 = scene3dRef.value
+  if (s3) {
+    camPose.value = s3.getCameraPose()
+    if (showCallouts.value) {
+      const nodes = s3.getDeviceNodes()
+      // worldToScreen 返回页面坐标;callout-layer 是 stage 相对定位 → 换算成 stage 内坐标
+      const sRect = stageRef.value?.getBoundingClientRect()
+      const next: Record<string, { x: number, y: number }> = {}
+      for (const t of daqTwins.value) {
+        const boundDev = boundDeviceOf(t.id)
+        const anchor = boundDev ? nodes.find(n => n.twinId === boundDev) : nodes.find(n => n.twinId === t.id)
+        if (!anchor) continue
+        const p = s3.worldToScreen(anchor.x, (anchor.topY ?? 92) + 26, anchor.z)
+        if (p && sRect) next[t.id] = { x: p.x - sRect.left, y: p.y - sRect.top }
+      }
+      calloutPos.value = next
+    }
+  }
+}
+
+/** 后台标签页暂停全部 HUD 定时器(前台恢复;恒定 CPU 底噪归零) */
+function onVisChange(): void {
+  if (document.hidden) {
+    if (miniTimer) {
+      clearInterval(miniTimer)
+      miniTimer = null
+    }
+    if (daqTimer) {
+      clearInterval(daqTimer)
+      daqTimer = null
+    }
+    if (tickerTimer) {
+      clearInterval(tickerTimer)
+      tickerTimer = null
+    }
+    return
+  }
+  if (!miniTimer) miniTimer = setInterval(miniTick, 150)
+  if (!daqTimer) {
+    daqTimer = setInterval(() => {
+      if (daq.nodes.length) {
+        drawTrend()
+        drawBindSparks()
+      }
+    }, 1000)
+  }
+  if (!tickerTimer) {
+    tickerTimer = setInterval(() => {
+      const s = sceneRef.value
+      if (s?.getRecentActivity) ticker.value = s.getRecentActivity()
+    }, 400)
+  }
+}
+
 onMounted(() => {
   window.addEventListener('keydown', onTownKey)
+  document.addEventListener('visibilitychange', onVisChange)
   // 数采流:REST 基线 + WS 实时帧(server 权威;进数字孪生空间即建立连接)
   daq.ensureWsFeed()
   void daq.load()
-  miniTimer = setInterval(() => {
-    const s = sceneRef.value
-    if (s?.getMinimapState) minimap.value = s.getMinimapState()
-    drawNavMap()
-    // 标注跟随:锚定绑定设备的模型顶面(无绑定 → 数采立杆顶),150ms 跟手
-    const s3 = scene3dRef.value
-    if (s3) {
-      camPose.value = s3.getCameraPose()
-      if (showCallouts.value) {
-        const nodes = s3.getDeviceNodes()
-        // worldToScreen 返回页面坐标;callout-layer 是 stage 相对定位 → 换算成 stage 内坐标
-        const sRect = stageRef.value?.getBoundingClientRect()
-        const next: Record<string, { x: number, y: number }> = {}
-        for (const t of daqTwins.value) {
-          const boundDev = boundDeviceOf(t.id)
-          const anchor = boundDev ? nodes.find(n => n.twinId === boundDev) : nodes.find(n => n.twinId === t.id)
-          if (!anchor) continue
-          const p = s3.worldToScreen(anchor.x, (anchor.topY ?? 92) + 26, anchor.z)
-          if (p && sRect) next[t.id] = { x: p.x - sRect.left, y: p.y - sRect.top }
-        }
-        calloutPos.value = next
-      }
-    }
-  }, 150)
+  miniTimer = setInterval(miniTick, 150)
   // 数采画布重绘节奏(读数帧由 WS 增量到达;这里只负责趋势/火花线绘制)
   daqTimer = setInterval(() => {
     if (daq.nodes.length) {
@@ -2116,6 +2206,14 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onTownKey)
+  for (const fn of windowCleanups) {
+    try {
+      fn()
+    }
+    catch { /* 尽力清理 */ }
+  }
+  windowCleanups.length = 0
+  document.removeEventListener('visibilitychange', onVisChange)
   if (miniTimer) clearInterval(miniTimer)
   if (daqTimer) clearInterval(daqTimer)
   if (tickerTimer) clearInterval(tickerTimer)

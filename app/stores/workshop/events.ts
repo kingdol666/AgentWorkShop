@@ -28,6 +28,37 @@ const FILTER_TYPES: Record<EventFilter, string[] | null> = {
   key: null,
 }
 
+/** 时间线过滤纯函数(记忆化缓存的真实计算体) */
+function computeTimeline(
+  items: AepEnvelope[],
+  filter: EventFilter,
+  allow: string[] | null,
+  focus: string | null,
+): AepEnvelope[] {
+  return items.filter((e) => {
+    if (e.type === 'channel.snapshot') return false
+    // key 过滤:只看注意级 + 终局级(open-tag deliveryTier —— agent 噪声让路)
+    if (filter === 'key') {
+      const t = envelopeTier(e)
+      return t === 'attention' || t === 'terminal'
+    }
+    if (allow && !allow.includes(e.type)) return false
+    if (focus && e.type !== 'task.status' && e.type !== 'task.progress') {
+      if (e.agentId === focus) return true
+      // 消息归属发送方,但发给聚焦 Agent 的消息(a2a.message target)仍属其流
+      if (e.type === 'a2a.message') {
+        const target = (e.payload as { metadata?: { 'x-aw-target-agent'?: string } }).metadata?.['x-aw-target-agent']
+        return target === focus
+      }
+      return false
+    }
+    return true
+  })
+}
+
+/** per-channel 时间线记忆化(key 含 lastSeq/条数/过滤态;原 getter 每访问全量过滤 5000 帧) */
+const timelineCache = new Map<string, { key: string, result: AepEnvelope[] }>()
+
 interface ChannelRing {
   lastSeq: number
   items: AepEnvelope[]
@@ -80,33 +111,19 @@ export const useEventsStore = defineStore('workshop.events', {
       return (channelId: string): ChannelRing =>
         state.rings[channelId] ?? EMPTY_RING()
     },
-    /** 应用过滤 + agent 聚焦后的时间线(虚拟滚动/自动吸底消费) */
+    /** 应用过滤 + agent 聚焦后的时间线(虚拟滚动/自动吸底消费;per-channel 记忆化) */
     timeline(state) {
       return (channelId: string): AepEnvelope[] => {
         const ring = state.rings[channelId]
         if (!ring) return []
         const filter = state.filters[channelId] ?? 'all'
-        const allow = FILTER_TYPES[filter]
         const focus = state.focusAgents[channelId] ?? null
-        return ring.items.filter((e) => {
-          if (e.type === 'channel.snapshot') return false
-          // key 过滤:只看注意级 + 终局级(open-tag deliveryTier —— agent 噪声让路)
-          if (filter === 'key') {
-            const t = envelopeTier(e)
-            return t === 'attention' || t === 'terminal'
-          }
-          if (allow && !allow.includes(e.type)) return false
-          if (focus && e.type !== 'task.status' && e.type !== 'task.progress') {
-            if (e.agentId === focus) return true
-            // 消息归属发送方,但发给聚焦 Agent 的消息(a2a.message target)仍属其流
-            if (e.type === 'a2a.message') {
-              const target = (e.payload as { metadata?: { 'x-aw-target-agent'?: string } }).metadata?.['x-aw-target-agent']
-              return target === focus
-            }
-            return false
-          }
-          return true
-        })
+        const memoKey = `${filter}:${focus ?? ''}:${ring.lastSeq}:${ring.items.length}`
+        const hit = timelineCache.get(channelId)
+        if (hit && hit.key === memoKey) return hit.result
+        const result = computeTimeline(ring.items, filter, FILTER_TYPES[filter], focus)
+        timelineCache.set(channelId, { key: memoKey, result })
+        return result
       }
     },
     lastSeq(state) {

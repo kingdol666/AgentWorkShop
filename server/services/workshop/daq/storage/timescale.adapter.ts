@@ -16,6 +16,9 @@ const requirePg = createRequire(import.meta.url)
 export class TimescaleAdapter implements TsdbPort {
   readonly backend = 'timescale'
   private pool: Pool | null = null
+  private retentionTimer: NodeJS.Timeout | null = null
+  /** 保留期(默认 7 天,DAQ_TS_RETENTION_H 可调) */
+  private readonly retentionH = Number(process.env.DAQ_TS_RETENTION_H ?? 168)
 
   constructor(private readonly url: string) {}
 
@@ -36,6 +39,32 @@ export class TimescaleAdapter implements TsdbPort {
       `SELECT create_hypertable('daq_samples', 'ts', if_not_exists => TRUE, migrate_data => TRUE)`,
     )
     await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_node_ts ON daq_samples (node_id, ts DESC)`)
+    // 保留期:drop_chunks 周期执行(30min;未装扩展时静默跳过)
+    void this.sweepRetention()
+    if (!this.retentionTimer) {
+      this.retentionTimer = setInterval(() => void this.sweepRetention(), 30 * 60_000)
+      this.retentionTimer.unref?.()
+    }
+  }
+
+  private async sweepRetention(): Promise<void> {
+    if (!this.pool) return
+    try {
+      await this.pool.query(
+        `SELECT drop_chunks('daq_samples', older_than => now() - ($1 || ' hours')::interval)`,
+        [this.retentionH],
+      )
+    }
+    catch { /* 非 hypertable(扩展缺失)→ 静默 */ }
+  }
+
+  async close(): Promise<void> {
+    if (this.retentionTimer) {
+      clearInterval(this.retentionTimer)
+      this.retentionTimer = null
+    }
+    await this.pool?.end().catch(() => {})
+    this.pool = null
   }
 
   async writeSamples(rows: DaqSampleRow[]): Promise<void> {

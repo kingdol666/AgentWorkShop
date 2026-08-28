@@ -2,6 +2,7 @@
 import puppeteer from 'puppeteer-core'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+
 const exec = promisify(execFile)
 
 const BASE = 'http://127.0.0.1:3000'
@@ -11,7 +12,7 @@ const login = await fetch(`${BASE}/api/users/login`, {
   body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
 }).then(r => r.json())
 const token = login.data.token
-const H = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }
+const H = { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' }
 
 const browser = await puppeteer.launch({
   executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',

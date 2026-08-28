@@ -51,6 +51,9 @@ export interface SchedulerLoopOptions {
   supervisionMail?: (limit: number) => ChannelMail[]
 }
 
+/** 空闲退避上限(指纹不变时 tick 间隔指数退避至此;事件 wake 立即恢复) */
+const IDLE_TICK_CAP_MS = 8000
+
 export class SchedulerLoop {
   private readonly tickMs: number
   private readonly stallMs: number
@@ -58,7 +61,7 @@ export class SchedulerLoop {
   /** supervise 节流:最小间隔与最近一次执行时刻/信号指纹(token 效率) */
   private lastSuperviseAt = 0
   private lastFingerprint = ''
-  private timer: ReturnType<typeof setInterval> | null = null
+  private timer: NodeJS.Timeout | null = null
   private started = false
   private running = false
   private pendingWake = false
@@ -96,29 +99,48 @@ export class SchedulerLoop {
     this.supervisionMail = options.supervisionMail ?? null
   }
 
-  /** 启动定时 tick */
+  /** 空闲退避:快照指纹连续不变的轮数(决定下次 tick 间隔) */
+  private idleStreak = 0
+  /** 上一轮快照指纹(空闲判定) */
+  private lastRoundFingerprint = ''
+
+  /** 启动调度(自重排 setTimeout:tick 间隔可按空闲状态退避) */
   start(): void {
     if (this.started) return
     this.started = true
-    this.timer = setInterval(() => this.wake(), this.tickMs)
+    this.scheduleNext(this.tickMs)
   }
 
-  /** 事件唤醒:一轮执行中到达的唤醒信号合并到下一轮(去抖) */
+  /** 事件唤醒(任务状态变化即调):空闲退避中的循环立即恢复快节奏 */
   wake(): void {
     if (!this.started) return
     if (this.running) {
       this.pendingWake = true
       return
     }
+    this.clearTimer()
     void this.runRound()
+  }
+
+  private clearTimer(): void {
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = null
+    }
+  }
+
+  private scheduleNext(delayMs: number): void {
+    this.clearTimer()
+    this.timer = setTimeout(() => {
+      this.timer = null
+      this.wake()
+    }, delayMs)
+    this.timer.unref?.()
   }
 
   stop(): void {
     this.started = false
-    if (this.timer) {
-      clearInterval(this.timer)
-      this.timer = null
-    }
+    this.clearTimer()
     if (this.loopController) {
       this.loopController.stop()
       this.loopController = null
@@ -143,9 +165,16 @@ export class SchedulerLoop {
     }
     finally {
       this.running = false
-      if (this.pendingWake && this.started) {
-        this.pendingWake = false
-        void this.runRound()
+      if (this.started) {
+        if (this.pendingWake) {
+          // 事件驱动:执行期间有新信号 → 立即下一轮(节奏不退避)
+          this.pendingWake = false
+          void this.runRound()
+        }
+        else {
+          // 定时驱动:空闲退避(指纹不变 → 间隔翻倍至 8s 上限;有事件 wake() 即刻打断)
+          this.scheduleNext(Math.min(this.tickMs * 2 ** this.idleStreak, IDLE_TICK_CAP_MS))
+        }
       }
     }
   }
@@ -153,6 +182,13 @@ export class SchedulerLoop {
   private async tickRound(): Promise<void> {
     this.tick += 1
     const snapshot = this.collectSnapshot()
+    // 空闲判定指纹(与 supervise 节流同源):任务/成员/邮件信号均未变 → 退避
+    const fp = this.superviseFingerprint(snapshot)
+    if (fp === this.lastRoundFingerprint) this.idleStreak++
+    else {
+      this.idleStreak = 0
+      this.lastRoundFingerprint = fp
+    }
 
     // 检测当前活跃的执行模式
     const modeTask = findModeTask(snapshot.tasks, this.lead.agentId)
@@ -260,8 +296,11 @@ export class SchedulerLoop {
     const wired = new Map(this.channelRuntime.getAgents().map(a => [a.agentId, a.getState()]))
     // channel 全部 enabled 成员(含未装配懒加载成员 → idle,lead 可据此 dispatch);
     // 队列视图来自 tasks 表(未装配成员的排队任务同样可见)
+    // 队列视图批量化:一次 list(channel) 聚合全部成员(原每成员一次查询)
+    const views = this.lead.taskEngine.queueViewsOf(this.channelRuntime.channelId)
+    const emptyView = { queued: [] as typeof tasks, current: undefined, completed: [] as typeof tasks }
     const members: MemberView[] = this.channelRuntime.listChannelAgents().map((m) => {
-      const view = this.lead.taskEngine.queueViewOf(this.channelRuntime.channelId, m.agentId)
+      const view = views.get(m.agentId) ?? emptyView
       const current = view.current
       const progress = current?.progress ?? null
       // 进度基线更新:progress 变化或首次记录时刷新时间;不变则保留起始时刻
@@ -314,6 +353,15 @@ export class SchedulerLoop {
     const decisions: SupervisionDecision[] = []
     const { tasks, members, now } = snapshot
     this.refreshIdle(members, now)
+    // parent → children 一次构建(原每任务 some/filter 全量扫描,O(N²) → O(N))
+    const childrenByParent = new Map<string, typeof tasks>()
+    for (const t of tasks) {
+      if (!t.parentId) continue
+      const arr = childrenByParent.get(t.parentId)
+      if (arr) arr.push(t)
+      else childrenByParent.set(t.parentId, [t])
+    }
+    const childrenOf = (id: string): typeof tasks => childrenByParent.get(id) ?? []
     // 本轮可用空闲 worker 池:dispatch/reassign 消费后即从池中移除,
     // 保证一轮内不会把多个任务重复分给同一个"看似空闲"的 worker(其状态尚未翻 busy)。
     const pool = members.filter(m => m.role === 'worker' && m.state === 'idle')
@@ -321,7 +369,7 @@ export class SchedulerLoop {
     // 任务按 createdAt ASC 迭代(list 顺序)= 外部提交 FIFO:先提交先分解先分发。
     for (const task of tasks) {
       // SUBMITTED or WORKING 且 assignee=lead 且无子任务 → dispatch 给最优空闲 worker
-      const hasChildren = tasks.some(t2 => t2.parentId === task.id)
+      const hasChildren = childrenOf(task.id).length > 0
       if ((task.state === 'SUBMITTED' || task.state === 'WORKING')
         && task.assigneeId === this.lead.agentId
         && !hasChildren) {
@@ -415,7 +463,7 @@ export class SchedulerLoop {
 
     // 子任务全完成且父任务(WAITING/WORKING)→ complete 父
     for (const task of tasks) {
-      const children = tasks.filter(t => t.parentId === task.id)
+      const children = childrenOf(task.id)
       if (children.length === 0) continue
       if (task.state === 'COMPLETED' || task.state === 'FAILED' || task.state === 'CANCELED') continue
       const allDone = children.every(c => c.state === 'COMPLETED')
@@ -464,7 +512,7 @@ export class SchedulerLoop {
     // 已有 COMPLETED 交付的父任务不自动取消——作废尝试(FAILED/CANCELED)不阻塞,
     // 收尾判定属于 lead(goal 模式按目标达成度而非子任务簿记收尾)
     for (const task of tasks) {
-      const children = tasks.filter(t => t.parentId === task.id)
+      const children = childrenOf(task.id)
       if (children.length === 0) continue
       if (task.state !== 'WAITING' && task.state !== 'WORKING') continue
       const allTerminal = children.every(c => TERMINAL_TASK_STATES[c.state] === true)

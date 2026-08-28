@@ -7,7 +7,8 @@
  * 采样历史仅驻内存(环形缓冲),不进磁盘快照 —— 磁盘只存"配置 + 最近一次读数"。
  */
 
-import { daqKeyFromRef, daqTemplateByKey, type DaqDriverKind, type DaqNodeState, type DaqNodeView } from '../../../../shared/daq-protocol'
+import { daqKeyFromRef, type DaqDriverKind, type DaqNodeState, type DaqNodeView } from '../../../../shared/daq-protocol'
+import { findDaqTemplate } from './daq-templates'
 
 /** 采样历史环形缓冲长度(前端趋势图/火花线消费;1s 周期 ≈ 5 分钟窗口) */
 export const DAQ_HIST_CAP = 60
@@ -19,6 +20,8 @@ interface DaqNodeOptions {
   driver?: DaqDriverKind
   enabled?: boolean
   intervalMs?: number | null
+  /** WS 实时下发间隔(null=跟随全局;0=每帧) */
+  publishIntervalMs?: number | null
   unit?: string
   decimals?: number
   min?: number
@@ -42,6 +45,8 @@ export class DaqNode {
   enabled: boolean
   /** null = 跟随 controller 全局周期 */
   intervalMs: number | null
+  /** WS 实时下发(消费)间隔;null = 跟随全局,0 = 每帧(随采样节拍) */
+  publishIntervalMs: number | null
   unit: string
   decimals: number
   min: number
@@ -55,16 +60,20 @@ export class DaqNode {
   value: number | null
   state: DaqNodeState = 'offline'
   lastAt: string | null = null
+  /** 去抖候选态(连续 3 帧一致才切换;alarm/offline 立即生效,安全优先) */
+  private stateCand: DaqNodeState | null = null
+  private stateCandN = 0
   readonly createdAt: string
 
   constructor(o: DaqNodeOptions) {
-    const tpl = daqTemplateByKey(daqKeyFromRef(o.templateRef))
+    const tpl = findDaqTemplate(daqKeyFromRef(o.templateRef))
     this.id = o.id
     this.templateRef = o.templateRef
     this.name = o.name ?? (tpl ? `${tpl.name}` : '数采节点')
     this.driver = o.driver ?? 'mock'
     this.enabled = o.enabled ?? true
     this.intervalMs = o.intervalMs ?? null
+    this.publishIntervalMs = o.publishIntervalMs ?? null
     this.unit = o.unit ?? tpl?.unit ?? ''
     this.decimals = o.decimals ?? tpl?.decimals ?? 2
     this.min = o.min ?? tpl?.min ?? 0
@@ -90,18 +99,43 @@ export class DaqNode {
     return Math.max(120, this.intervalMs ?? defaultIntervalMs)
   }
 
-  /** 越限派生:硬限外 = alarm,预警带外 = warn */
+  /** 越限派生:硬限外 = alarm;预警带 2% 滞回(退出需越过内缩边界,防临界抖动)。
+   *  注意:滞回依赖当前 state,故仅在 applyReading 的稳态链路中语义正确。 */
   deriveState(v: number): DaqNodeState {
     if (!this.enabled) return 'offline'
     if (v < this.min || v > this.max) return 'alarm'
+    const margin = (this.max - this.min) * 0.02
+    if (this.state === 'warn') {
+      // 已在预警:回到"内缩边界内"才算恢复
+      if (this.warnLow != null && v < this.warnLow + margin) return 'warn'
+      if (this.warnHigh != null && v > this.warnHigh - margin) return 'warn'
+      return 'ok'
+    }
     if ((this.warnLow != null && v < this.warnLow) || (this.warnHigh != null && v > this.warnHigh)) return 'warn'
     return 'ok'
   }
 
-  /** 记录一次采样(controller 采样循环调用) */
+  /** 记录一次采样(controller 采样循环调用):去抖 + 滞回后落状态 */
   applyReading(v: number, at: string): void {
     this.value = v
-    this.state = this.deriveState(v)
+    const raw = this.deriveState(v)
+    // alarm/offline 立即切换(安全事件不等去抖);ok↔warn 需连续 3 帧一致
+    if (raw === 'alarm' || raw === 'offline' || raw === this.state) {
+      this.state = raw
+      this.stateCand = null
+      this.stateCandN = 0
+    }
+    else if (raw === this.stateCand) {
+      if (++this.stateCandN >= 3) {
+        this.state = raw
+        this.stateCand = null
+        this.stateCandN = 0
+      }
+    }
+    else {
+      this.stateCand = raw
+      this.stateCandN = 1
+    }
     this.lastAt = at
   }
 
@@ -114,6 +148,7 @@ export class DaqNode {
       driver: this.driver,
       enabled: this.enabled,
       intervalMs: this.intervalMs,
+      publishIntervalMs: this.publishIntervalMs,
       unit: this.unit,
       decimals: this.decimals,
       min: this.min,
@@ -139,6 +174,7 @@ export class DaqNode {
       driver: (row.driver as DaqDriverKind) ?? undefined,
       enabled: row.enabled === undefined ? undefined : Boolean(row.enabled),
       intervalMs: row.intervalMs == null ? null : Number(row.intervalMs),
+      publishIntervalMs: row.publishIntervalMs == null ? null : Number(row.publishIntervalMs),
       unit: row.unit != null ? String(row.unit) : undefined,
       decimals: row.decimals != null ? Number(row.decimals) : undefined,
       min: row.min != null ? Number(row.min) : undefined,
@@ -168,6 +204,7 @@ export class DaqNode {
       driver: this.driver,
       enabled: this.enabled,
       intervalMs: this.intervalMs,
+      publishIntervalMs: this.publishIntervalMs,
       unit: this.unit,
       decimals: this.decimals,
       min: this.min,

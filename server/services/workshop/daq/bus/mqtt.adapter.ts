@@ -18,14 +18,25 @@ const TOPIC_ROOT = 'aw/daq'
 const TOPIC_SAMPLE = (nodeId: string) => `${TOPIC_ROOT}/${nodeId}/sample`
 const TOPIC_WILDCARD = `${TOPIC_ROOT}/+/sample`
 
+/** 断连离线缓冲上限(满丢最旧;补发帧按消费侧乱序防御自然去重) */
+const OFFLINE_CAP = 2000
+
 export class MqttQueueAdapter implements DaqQueuePort {
   readonly backend = 'mqtt' as const
   private client: MqttClient | null = null
   private consumers = new Set<DaqConsumer>()
   published = 0
   received = 0
+  /** 断连窗口未发布计数(仪表可见的队列层丢弃) */
+  lostCount = 0
+  /** 断连离线缓冲(重连后按原序补发;带上限防内存无限涨) */
+  private offline: DaqSampleEnvelope[] = []
 
   constructor(private readonly url: string) {}
+
+  get lost(): number {
+    return this.lostCount
+  }
 
   async init(): Promise<void> {
     if (this.client) return
@@ -40,6 +51,12 @@ export class MqttQueueAdapter implements DaqQueuePort {
     this.client.on('connect', () => {
       this.client?.subscribe(TOPIC_WILDCARD, { qos })
       console.log('[daq-mqtt] 已连接', this.url, '· 订阅', TOPIC_WILDCARD)
+      // 断连窗口积压补发(消费侧 lastIngestAt 乱序防御兜底)
+      if (this.offline.length > 0) {
+        const backlog = this.offline.splice(0, this.offline.length)
+        for (const env of backlog) this.publish(env)
+        console.log('[daq-mqtt] 断连积压补发:', backlog.length)
+      }
     })
     this.client.on('message', (topic, payload) => {
       try {
@@ -56,7 +73,13 @@ export class MqttQueueAdapter implements DaqQueuePort {
 
   publish(env: DaqSampleEnvelope): void {
     if (!this.client || !this.client.connected) {
-      return // 断连窗口:不阻塞采集;丢弃计数交由消费侧观测(inproc 为准的指标在 mqtt 模式下无意义)
+      // 断连窗口:入离线缓冲(满丢最旧),lost 只计溢出部分
+      if (this.offline.length >= OFFLINE_CAP) {
+        this.offline.shift()
+        this.lostCount++
+      }
+      this.offline.push(env)
+      return
     }
     this.published++
     this.client.publish(TOPIC_SAMPLE(env.nodeId), JSON.stringify(env), { qos: Number(process.env.DAQ_MQTT_QOS ?? 0) })

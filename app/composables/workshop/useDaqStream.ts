@@ -9,7 +9,7 @@
 import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
 import type { AepEnvelope } from '#shared/workshop-protocol'
-import type { AepDaqControllerState, AepDaqReading, AepDaqNodeChange, DaqNodeView } from '#shared/daq-protocol'
+import { DAQ_TEMPLATES, type AepDaqControllerState, type AepDaqReading, type AepDaqNodeChange, type AepDaqTemplateChange, type DaqNodeView, type DaqTemplateDef, type DaqTemplateInput } from '#shared/daq-protocol'
 
 /** 历史缓冲长度(1s 默认周期 ≈ 最近 5 分钟趋势) */
 const HIST_CAP = 60
@@ -22,6 +22,8 @@ export interface DaqNodeLive extends DaqNodeView {
 interface DaqControllerState {
   running: boolean
   defaultIntervalMs: number
+  /** 全局缺省 WS 下发间隔(节点 null 跟随;0=随采样节拍) */
+  defaultPublishIntervalMs: number
   nodesTotal: number
   nodesOnline: number
   produced?: number
@@ -78,13 +80,14 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 function createStore() {
   const nodes = reactive<DaqNodeLive[]>([])
-  const controller = reactive<DaqControllerState>({ running: true, defaultIntervalMs: 1000, nodesTotal: 0, nodesOnline: 0 })
+  const controller = reactive<DaqControllerState>({ running: true, defaultIntervalMs: 1000, defaultPublishIntervalMs: 0, nodesTotal: 0, nodesOnline: 0 })
   const meta = reactive<DaqBackendMeta>({
     tsdb: '…', queue: '…', drivers: [], driverAvailable: {},
     infra: undefined,
     produced: 0, consumed: 0, dropped: 0, samplesStored: 0,
   })
-  const state = reactive({ loaded: false, error: '' })
+  // 模板目录:内置 6 种先行(SEO 首帧即有),REST 快照与 WS 帧收敛为 server 权威
+  const templates = reactive<DaqTemplateDef[]>(DAQ_TEMPLATES.map(t => ({ ...t })))
 
   function upsert(node: DaqNodeView): void {
     const i = nodes.findIndex(x => x.id === node.id)
@@ -94,17 +97,6 @@ function createStore() {
     }
     else {
       nodes.push({ ...node, hist: [] })
-    }
-  }
-
-  function applyChange(p: AepDaqNodeChange): void {
-    if (p.node) {
-      if (p.op === 'removed') {
-        const i = nodes.findIndex(x => x.id === p.node!.id)
-        if (i >= 0) nodes.splice(i, 1)
-        return
-      }
-      upsert(p.node)
     }
   }
 
@@ -118,6 +110,32 @@ function createStore() {
     if (n.hist.length > HIST_CAP) n.hist.splice(0, n.hist.length - HIST_CAP)
   }
 
+  function applyChange(p: AepDaqNodeChange): void {
+    if (p.node) {
+      if (p.op === 'removed') {
+        const i = nodes.findIndex(x => x.id === p.node!.id)
+        if (i >= 0) nodes.splice(i, 1)
+        return
+      }
+      upsert(p.node)
+    }
+  }
+
+  function applyTemplates(list: DaqTemplateDef[]): void {
+    templates.splice(0, templates.length, ...list.map(t => ({ ...t })))
+  }
+
+  function applyTemplateChange(p: AepDaqTemplateChange): void {
+    if (!p.template) return
+    const i = templates.findIndex(t => t.key === p.template!.key)
+    if (p.op === 'removed') {
+      if (i >= 0) templates.splice(i, 1)
+      return
+    }
+    if (i >= 0) templates[i] = { ...p.template }
+    else templates.push({ ...p.template })
+  }
+
   /** 挂 WS 帧(townBus);幂等(globalThis 防重复订阅)。返回退订函数。 */
   function ensureWsFeed(): () => void {
     const g = globalThis as typeof globalThis & { __daqBusFed?: boolean }
@@ -127,12 +145,13 @@ function createStore() {
       if (e.type === 'daq.reading') applyReading(e.payload as AepDaqReading)
       else if (e.type === 'daq.node.changed') applyChange(e.payload as AepDaqNodeChange)
       else if (e.type === 'daq.controller') Object.assign(controller, e.payload as AepDaqControllerState)
+      else if (e.type === 'daq.template.changed') applyTemplateChange(e.payload as AepDaqTemplateChange)
     })
   }
 
   async function load(): Promise<void> {
     try {
-      const data = await api<{ controller: DaqControllerState, nodes: DaqNodeView[], meta: DaqBackendMeta, driverAvailable?: Record<string, boolean> }>('')
+      const data = await api<{ controller: DaqControllerState, nodes: DaqNodeView[], meta: DaqBackendMeta, driverAvailable?: Record<string, boolean>, infra?: DaqInfraState, templates?: DaqTemplateDef[] }>('')
       // 快照合并:hist 是客户端读数流资产,轮询重载不得清零(按 id 迁移旧缓冲)
       const prevHist = new Map(nodes.map(n => [n.id, n.hist]))
       nodes.splice(0, nodes.length, ...data.nodes.map(n => ({ ...n, hist: prevHist.get(n.id) ?? [] })))
@@ -140,11 +159,12 @@ function createStore() {
       Object.assign(meta, data.meta ?? {})
       meta.driverAvailable = data.driverAvailable ?? {}
       meta.infra = data.infra
-      state.loaded = true
-      state.error = ''
+      if (data.templates?.length) applyTemplates(data.templates)
+      store.loaded = true
+      store.error = ''
     }
     catch (err) {
-      state.error = err instanceof Error ? err.message : String(err)
+      store.error = err instanceof Error ? err.message : String(err)
     }
   }
 
@@ -200,10 +220,10 @@ function createStore() {
     return data.infra
   }
 
-  async function controllerAction(action: 'start' | 'stop' | 'config', defaultIntervalMs?: number): Promise<void> {
+  async function controllerAction(action: 'start' | 'stop' | 'config', defaultIntervalMs?: number, defaultPublishIntervalMs?: number): Promise<void> {
     const data = await api<{ controller: DaqControllerState }>('/controller', {
       method: 'POST',
-      body: JSON.stringify({ action, defaultIntervalMs }),
+      body: JSON.stringify({ action, defaultIntervalMs, defaultPublishIntervalMs }),
     })
     Object.assign(controller, data.controller)
   }
@@ -219,14 +239,44 @@ function createStore() {
     return data.points ?? []
   }
 
-  return reactive({
+  // ---------- 自定义模板 CRUD(server 权威;WS daq.template.changed 收敛其余客户端) ----------
+
+  async function createTemplate(input: DaqTemplateInput): Promise<DaqTemplateDef> {
+    const data = await api<{ template: DaqTemplateDef }>('/templates', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    applyTemplateChange({ op: 'added', template: data.template })
+    return data.template
+  }
+
+  async function updateTemplate(key: string, patch: Partial<DaqTemplateInput>): Promise<DaqTemplateDef> {
+    const data = await api<{ template: DaqTemplateDef }>(`/templates/${key}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+    applyTemplateChange({ op: 'updated', template: data.template })
+    return data.template
+  }
+
+  async function removeTemplate(key: string): Promise<void> {
+    await api(`/templates/${key}`, { method: 'DELETE' })
+    applyTemplateChange({ op: 'removed', template: { key } as DaqTemplateDef })
+  }
+
+  const store = reactive({
     nodes,
     controller,
     meta,
-    ...state,
+    templates,
+    loaded: false,
+    error: '',
     ensureWsFeed,
     load,
     createFromTemplate,
+    createTemplate,
+    updateTemplate,
+    removeTemplate,
     testDriver,
     testNode,
     reconnectInfra,
@@ -240,6 +290,7 @@ function createStore() {
     ofDevice: (deviceId: string | null): DaqNodeLive[] =>
       deviceId ? nodes.filter(n => n.deviceBindingId === deviceId) : [],
   })
+  return store
 }
 
 type DaqStreamStore = ReturnType<typeof createStore>

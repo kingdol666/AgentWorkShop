@@ -17,6 +17,10 @@ export class InProcQueueAdapter implements DaqQueuePort {
   /** 拥塞丢弃计数(观测用;正常远低于队列容量) */
   dropped = 0
 
+  get lost(): number {
+    return this.dropped
+  }
+
   async init(): Promise<void> {
     if (this.pump) return
     this.pump = setInterval(() => this.drain(), PUMP_INTERVAL)

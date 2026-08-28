@@ -1,5 +1,5 @@
 /**
- * POST /api/workshop/daq/controller —— 采集总控:{ action: 'start' | 'stop' | 'config', defaultIntervalMs? }
+ * POST /api/workshop/daq/controller —— 采集总控:{ action: 'start'|'stop'|'config', defaultIntervalMs?, defaultPublishIntervalMs? }
  */
 import { readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
@@ -11,14 +11,14 @@ export default defineApiHandler(async (event) => {
   resolveUser(event)
   bindDaqBroadcast(broadcastSceneEvent)
   const ctrl = getDaqController()
-  const body = await readBody<{ action?: 'start' | 'stop' | 'config', defaultIntervalMs?: number }>(event) ?? {}
+  const body = await readBody<{ action?: 'start' | 'stop' | 'config', defaultIntervalMs?: number, defaultPublishIntervalMs?: number }>(event) ?? {}
   switch (body.action) {
     case 'start':
       return { controller: ctrl.startAll() }
     case 'stop':
       return { controller: ctrl.stopAll() }
     case 'config':
-      return { controller: ctrl.configure({ defaultIntervalMs: body.defaultIntervalMs }) }
+      return { controller: ctrl.configure({ defaultIntervalMs: body.defaultIntervalMs, defaultPublishIntervalMs: body.defaultPublishIntervalMs }) }
     default:
       return { controller: ctrl.controllerState() }
   }

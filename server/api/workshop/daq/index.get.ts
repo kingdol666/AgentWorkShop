@@ -5,6 +5,7 @@
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDaqBroadcast, getDaqController } from '@/server/services/workshop/daq/daq-controller'
+import { listDaqTemplates } from '@/server/services/workshop/daq/daq-templates'
 import { tsdbReady } from '@/server/services/workshop/daq/storage'
 import { getDaqQueue } from '@/server/services/workshop/daq/bus'
 import { daqInfraStatus } from '@/server/services/workshop/daq/infra'
@@ -32,5 +33,7 @@ export default defineApiHandler(async (event) => {
     driverAvailable: await ctrl.driverAvailability(),
     // 基础设施在线状态(降级 → 前端横幅 + 重连入口)
     infra: daqInfraStatus(),
+    // 信号模板目录(内置 + 用户自定义;前端下拉/左轨/控制台同源消费)
+    templates: listDaqTemplates(),
   }
 })

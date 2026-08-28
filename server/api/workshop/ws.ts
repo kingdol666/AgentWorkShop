@@ -28,6 +28,14 @@ import { registerScenePeer, unregisterScenePeer } from '../../services/workshop/
 
 const AEP_VERSION = 1
 const RING_CAP = 5000
+/** ring 字节上限(含大 artifact 载荷的长会话内存有界;超出丢最旧) */
+const RING_BYTES_CAP = 4 * 1024 * 1024
+/** 落库聚合缓冲上限(滞留超限即刷,防库故障时缓冲无限涨) */
+const DB_BUFFER_CAP = 2000
+/** 事件保留期(天;channel_events 周期清理,防磁盘无限涨) */
+const EVENTS_RETENTION_DAYS = Number(process.env.AW_EVENTS_RETENTION_D ?? 7)
+/** 单 peer 发送预算(字节/秒):超限视为慢消费者断开(1013),客户端重连快照对齐 */
+const PEER_SEND_BUDGET_BYTES = 32 * 1024 * 1024
 
 /** 最小 peer 接口(h3 2.x 未 re-export crossws 类型,duck typing;与 game/ws.ts 同风格) */
 interface WsPeer {
@@ -39,19 +47,20 @@ interface WsPeer {
 interface ChannelStream {
   channelId: string
   seq: number
-  ring: AepEnvelope[]
+  /** 环形缓冲(条数 RING_CAP + 字节 RING_BYTES_CAP 双封顶;重放/续传窗口) */
+  ring: Array<{ e: AepEnvelope, bytes: number }>
+  ringBytes: number
   peers: Set<WsPeer>
   unsubs: Array<() => void>
   /** 当前已订阅的 channel 总线对象(总线生命期短于 stream:空闲卸载会重建 bus → 需重订) */
   busRef: object | null
   /**
-   * agent.delta 聚合落库缓冲:打字机帧高频(每秒数十帧 × 多 agent 并发),
-   * 逐帧同步 insert 会阻塞事件循环拖慢全部推送。delta 仅是过程性帧(终帧
-   * agent.message 携带全文必落库),缓冲 400ms 批量刷盘即可——实时广播
-   * 不经缓冲(逐帧直推),只有持久化走聚合路径。
+   * 落库聚合缓冲(全部事件类型,保持发布序):逐帧同步 insert 会阻塞事件循环;
+   * 400ms 批量事务刷盘(单次 fsync 落整批)。实时广播不经缓冲(逐帧直推),
+   * 只有持久化走聚合路径 —— 与旧 delta-only 缓冲同语义,推广到全部帧型。
    */
-  deltaBuffer: AepEnvelope[]
-  deltaFlushTimer: NodeJS.Timeout | null
+  dbBuffer: AepEnvelope[]
+  dbFlushTimer: NodeJS.Timeout | null
 }
 
 /**
@@ -80,9 +89,9 @@ function ensureHubBound(manager: AgentChannelManager): void {
   hub.boundManager = manager
   for (const stream of [...streams.values()]) {
     const channelId = stream.channelId
-    // manager 更替前刷净 delta 缓冲:流即将重建,缓冲帧必须先落库保序
+    // manager 更替前刷净落库缓冲:流即将重建,缓冲帧必须先落库保序
     try {
-      flushDeltaBuffer(manager, stream)
+      flushDbBuffer(manager, stream)
     }
     catch { /* 尽力刷盘 */ }
     // seq/ring 延续:客户端游标(已收到的 lastSeq)不变,重建流必须接续原 seq 递增,
@@ -155,9 +164,28 @@ function sendControl(peer: WsPeer, obj: unknown): void {
   catch { /* 死连接 */ }
 }
 
-function sendEnvelope(stream: ChannelStream, peer: WsPeer, e: AepEnvelope): void {
+/** 每 peer 发送预算窗(慢消费者守卫;正常 peer 零延迟影响) */
+const peerBudget = new WeakMap<WsPeer, { bytes: number, winStart: number }>()
+
+function sendFrame(stream: ChannelStream, peer: WsPeer, frame: string): void {
+  // 预算:同一秒窗内累计发送超限 → 判定慢消费者,断开交由客户端重连快照对齐
+  const now = Date.now()
+  let b = peerBudget.get(peer)
+  if (!b || now - b.winStart >= 1000) {
+    b = { bytes: 0, winStart: now }
+    peerBudget.set(peer, b)
+  }
+  b.bytes += frame.length
+  if (b.bytes > PEER_SEND_BUDGET_BYTES) {
+    try {
+      peer.close(1013, 'slow consumer')
+    }
+    catch { /* already gone */ }
+    stream.peers.delete(peer)
+    return
+  }
   try {
-    peer.send(JSON.stringify(e))
+    peer.send(frame)
   }
   catch {
     // 死连接(TCP 硬断未走 close 回调):移除防后续广播中断
@@ -165,31 +193,29 @@ function sendEnvelope(stream: ChannelStream, peer: WsPeer, e: AepEnvelope): void
   }
 }
 
-/** delta 缓冲刷盘窗口(ms):高频打字机帧按此节奏批量落库 */
-const DELTA_FLUSH_MS = 400
+/** 落库缓冲刷盘窗口(ms):全部帧型按此节奏批量事务落库 */
+const DB_FLUSH_MS = 400
 
-/** 刷盘缓冲中的 delta(按 seq 升序逐条落库;清定时器) */
-function flushDeltaBuffer(manager: AgentChannelManager, stream: ChannelStream): void {
-  if (stream.deltaFlushTimer) {
-    clearTimeout(stream.deltaFlushTimer)
-    stream.deltaFlushTimer = null
+/** 刷盘缓冲中的事件(单事务批量 insert;清定时器) */
+function flushDbBuffer(manager: AgentChannelManager, stream: ChannelStream): void {
+  if (stream.dbFlushTimer) {
+    clearTimeout(stream.dbFlushTimer)
+    stream.dbFlushTimer = null
   }
-  if (stream.deltaBuffer.length === 0) return
-  const buffered = stream.deltaBuffer
-  stream.deltaBuffer = []
+  if (stream.dbBuffer.length === 0) return
+  const buffered = stream.dbBuffer
+  stream.dbBuffer = []
   try {
-    for (const e of buffered) {
-      internalsOf(manager).deps.repos.channelEvents.insert(stream.channelId, {
-        seq: e.seq, type: e.type, at: e.at, agentId: e.agentId ?? null, taskId: e.taskId ?? null, payload: e.payload,
-      })
-    }
+    internalsOf(manager).deps.repos.channelEvents.insertMany(stream.channelId, buffered.map(e => ({
+      seq: e.seq, type: e.type, at: e.at, agentId: e.agentId ?? null, taskId: e.taskId ?? null, payload: e.payload,
+    })))
   }
   catch (err) {
-    console.error('[workshop-ws] delta 批量落库失败:', err)
+    console.error('[workshop-ws] 事件批量落库失败:', err)
   }
 }
 
-/** 发布事件:seq 递增 → 入环形缓冲 → 广播全部 peer(逐 peer 容错,死连接即时清理) */
+/** 发布事件:seq 递增 → 入环形缓冲(双封顶)→ 批量落库 → 广播全部 peer(信封单次序列化复用) */
 function publish(
   manager: AgentChannelManager,
   stream: ChannelStream,
@@ -207,33 +233,28 @@ function publish(
     ...ids,
     payload: payload as AepEnvelope['payload'],
   }
-  stream.ring.push(e)
-  if (stream.ring.length > RING_CAP) stream.ring.splice(0, stream.ring.length - RING_CAP)
-  // 持久化(server 驱动;与 client 无关):落库失败仅记日志,不影响实时推送。
-  // delta 帧走聚合缓冲(400ms 批量);其余帧(含终帧/状态)先刷缓冲再落库,
-  // 保证 DB 内 seq 严格升序——重放路径不依赖 delta 的落库即时性。
-  try {
-    if (type === 'agent.delta') {
-      stream.deltaBuffer.push(e)
-      if (!stream.deltaFlushTimer) {
-        stream.deltaFlushTimer = setTimeout(() => {
-          stream.deltaFlushTimer = null
-          if (hub.boundManager) flushDeltaBuffer(hub.boundManager, stream)
-        }, DELTA_FLUSH_MS)
-        stream.deltaFlushTimer.unref?.()
-      }
-    }
-    else {
-      flushDeltaBuffer(manager, stream)
-      internalsOf(manager).deps.repos.channelEvents.insert(stream.channelId, {
-        seq: e.seq, type: e.type, at: e.at, agentId: e.agentId ?? null, taskId: e.taskId ?? null, payload: e.payload,
-      })
-    }
+  // 环形缓冲:条数 + 字节双封顶(帧串行化一次,字节数直接可得)
+  const frame = JSON.stringify(e)
+  stream.ring.push({ e, bytes: frame.length })
+  stream.ringBytes += frame.length
+  while ((stream.ringBytes > RING_BYTES_CAP || stream.ring.length > RING_CAP) && stream.ring.length > 1) {
+    const evicted = stream.ring.shift()!
+    stream.ringBytes -= evicted.bytes
   }
-  catch (err) {
-    console.error('[workshop-ws] 事件落库失败:', err)
+  // 持久化(server 驱动):全部帧型进有序聚合缓冲,400ms 单事务批量刷盘。
+  // 缓冲滞留超限即刷(库故障时防无限涨);失败仅记日志,不影响实时推送。
+  stream.dbBuffer.push(e)
+  if (stream.dbBuffer.length >= DB_BUFFER_CAP) {
+    flushDbBuffer(manager, stream)
   }
-  for (const peer of stream.peers) sendEnvelope(stream, peer, e)
+  else if (!stream.dbFlushTimer) {
+    stream.dbFlushTimer = setTimeout(() => {
+      stream.dbFlushTimer = null
+      if (hub.boundManager) flushDbBuffer(hub.boundManager, stream)
+    }, DB_FLUSH_MS)
+    stream.dbFlushTimer.unref?.()
+  }
+  for (const peer of stream.peers) sendFrame(stream, peer, frame)
   return e
 }
 
@@ -319,10 +340,11 @@ function mapAgentEvent(manager: AgentChannelManager, stream: ChannelStream, even
 function bindStreamSubscriptions(manager: AgentChannelManager, stream: ChannelStream): void {
   const channelId = stream.channelId
   // 任务事件:状态迁移(assignee + 标题/父级/进度/交付数正文随事件直推——
-  // 客户端事件即实体,免 REST 补全;协议字段见 shared/workshop-protocol)
+  // 客户端事件即实体,免 REST 补全;协议字段见 shared/workshop-protocol)。
+  // 任务全量视图由事件源头携带(TaskEngine → bus → 此处),仅旧事件缺 task 时回查兜底。
   stream.unsubs.push(manager.subscribeTaskEvents(channelId, (e) => {
     if (e.state !== undefined) {
-      const task = internalsOf(manager).getTaskEngine().get(e.taskId)
+      const task = e.task ?? internalsOf(manager).getTaskEngine().get(e.taskId)
       const assigneeId = task?.assigneeId
       publish(manager, stream, 'task.status', {
         taskId: e.taskId,
@@ -334,7 +356,7 @@ function bindStreamSubscriptions(manager: AgentChannelManager, stream: ChannelSt
         progress: task?.progress,
         routeReason: task?.routeReason,
         createdAt: task?.createdAt,
-        artifacts: task?.artifacts.length,
+        artifacts: task?.artifacts?.length,
       }, { taskId: e.taskId, agentId: e.agentId ?? assigneeId })
     }
     if (e.progress !== undefined) {
@@ -396,8 +418,8 @@ if (!rebindTimer) {
       for (const stream of streams.values()) {
         try {
           rebindStreamIfStale(hub.boundManager, stream)
-          // 顺带兜底刷盘:delta 缓冲异常滞留(如定时器丢失)时由 sweep 收口
-          if (stream.deltaBuffer.length > 0) flushDeltaBuffer(hub.boundManager, stream)
+          // 顺带兜底刷盘:落库缓冲异常滞留(如定时器丢失)时由 sweep 收口
+          if (stream.dbBuffer.length > 0) flushDbBuffer(hub.boundManager, stream)
         }
         catch { /* 单个 stream 自愈失败不影响其他 */ }
       }
@@ -405,6 +427,23 @@ if (!rebindTimer) {
   }, BUS_REBIND_MS)
   rebindTimer.unref?.()
   ;(hubGlobal as Record<string, unknown>)[REBIND_TIMER_KEY] = rebindTimer
+}
+
+/** channel_events 保留期任务(30min 周期分批清理;globalThis 防 HMR 重复) */
+const RETENTION_TIMER_KEY = '__workshopWsRetentionTimer'
+if (!(hubGlobal as Record<string, unknown>)[RETENTION_TIMER_KEY]) {
+  const t = setInterval(() => {
+    if (!hub.boundManager) return
+    try {
+      const removed = internalsOf(hub.boundManager).deps.repos.channelEvents.sweepRetention(EVENTS_RETENTION_DAYS)
+      if (removed > 0) console.log(`[workshop-ws] 事件保留期清理 ${removed} 行(>${EVENTS_RETENTION_DAYS}d)`)
+    }
+    catch (err) {
+      console.error('[workshop-ws] 事件保留期清理失败:', err)
+    }
+  }, 30 * 60_000)
+  t.unref?.()
+  ;(hubGlobal as Record<string, unknown>)[RETENTION_TIMER_KEY] = t
 }
 
 /**
@@ -426,11 +465,12 @@ export function ensureStream(manager: AgentChannelManager, channelId: string): C
     channelId,
     seq: initSeq,
     ring: [],
+    ringBytes: 0,
     peers: new Set(),
     unsubs: [],
     busRef: internalsOf(manager).buses.get(channelId) ?? null,
-    deltaBuffer: [],
-    deltaFlushTimer: null,
+    dbBuffer: [],
+    dbFlushTimer: null,
   }
   bindStreamSubscriptions(manager, stream)
   // bind 过程可能懒创建 bus:同步真实 busRef,否则 stale 检查会误判重绑
@@ -478,7 +518,7 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
   // 否则重放缺失段。lastSeq=0 视为"新订阅者"(游标未建立),同样走快照路径——
   // 仅重放事件会让客户端丢失实体基线(空闲成员/历史任务永远不出现)。
   const cursor: number | undefined = (lastSeq !== undefined && lastSeq > 0) ? lastSeq : undefined
-  const oldest = stream.ring[0]?.seq ?? stream.seq + 1
+  const oldest = stream.ring[0]?.e.seq ?? stream.seq + 1
   if (cursor === undefined || cursor >= stream.seq || cursor + 1 < oldest) {
     const snapshot = buildSnapshot(manager, channelId)
     if (snapshot) {
@@ -494,8 +534,8 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
   }
   else {
     // 已建立游标且缺口在缓冲窗内 → 重放缺失段(快照无需重发)
-    for (const e of stream.ring) {
-      if (e.seq > cursor) sendEnvelope(stream, peer, e)
+    for (const { e } of stream.ring) {
+      if (e.seq > cursor) sendFrame(stream, peer, JSON.stringify(e))
     }
   }
 }

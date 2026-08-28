@@ -8,7 +8,7 @@ const login = await fetch(`${BASE}/api/users/login`, {
   body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
 }).then(r => r.json())
 const token = login.data.token
-const H = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }
+const H = { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' }
 
 // 取一个真实节点 id(优先非 legacy,便于展示)
 const nodes = await fetch(`${BASE}/api/workshop/daq`, { headers: H }).then(r => r.json())

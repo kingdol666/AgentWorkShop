@@ -7,7 +7,7 @@
 import { onBeforeUnmount, onMounted } from 'vue'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
-import { DAQ_TEMPLATES, DAQ_DRIVERS, daqKeyFromRef, type DaqNodeState, type DriverConfigField, type DaqDriverTestResult } from '#shared/daq-protocol'
+import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
 
 definePageMeta({ layout: 'default' })
 useHead({ title: '数采中心 · AgentWorkShop' })
@@ -40,6 +40,13 @@ watch(() => deviceTwins.twins, (list) => {
 const intervalOf = (intervalMs: number | null): string => {
   if (intervalMs == null) return `全局 ${daq.controller.defaultIntervalMs}ms`
   return `${intervalMs}ms`
+}
+
+/** WS 下发节拍展示(null=跟随全局;0=每帧;>0 独立间隔) */
+const publishOf = (v: number | null): string => {
+  if (v == null) return `全局 ${daq.controller.defaultPublishIntervalMs}ms`
+  if (v === 0) return '每帧'
+  return `${v}ms`
 }
 
 const stateLabel: Record<DaqNodeState, string> = {
@@ -105,15 +112,16 @@ async function doAddNode(): Promise<void> {
           throw new Error(`缺少必填参数:${f.label}`)
         }
       }
+      const tpl = daq.templates.find(t => t.key === addTemplate.value)
       await daq.createFromTemplate(`daq-${addTemplate.value}`, {
         name: addName.value || undefined,
         driver: addDriver.value as never,
         driverConfig: { ...addCfg.value },
         intervalMs: addInterval.value,
-        unit: DAQ_TEMPLATES.find(t => t.key === addTemplate.value)?.unit,
-        min: DAQ_TEMPLATES.find(t => t.key === addTemplate.value)?.min,
-        max: DAQ_TEMPLATES.find(t => t.key === addTemplate.value)?.max,
-        decimals: DAQ_TEMPLATES.find(t => t.key === addTemplate.value)?.decimals,
+        unit: tpl?.unit,
+        min: tpl?.min,
+        max: tpl?.max,
+        decimals: tpl?.decimals,
       } as never)
     }
     addOpen.value = false
@@ -134,10 +142,110 @@ function effectiveState(n: { enabled: boolean, state: DaqNodeState }): DaqNodeSt
   return n.state
 }
 
-/** 模板通道语义(shared 目录单一事实源;daq- 前缀兼容) */
+/** 模板通道语义(server 目录为准,内置兜底;daq- 前缀兼容) */
 function daqTemplateRefCh(templateRef: string): string {
-  const tpl = DAQ_TEMPLATES.find(t => t.key === daqKeyFromRef(templateRef))
+  const tpl = daq.templates.find(t => t.key === daqKeyFromRef(templateRef))
+    ?? DAQ_TEMPLATES.find(t => t.key === daqKeyFromRef(templateRef))
   return tpl ? `${tpl.name} · ${tpl.ch}` : templateRef || '-'
+}
+
+// ---------- 自定义信号模板管理(server 权威 CRUD;内置只读可复制) ----------
+const tplOpen = ref(false)
+const tplEditing = ref<string | null>(null)
+const tplSaving = ref(false)
+const tplError = ref('')
+const confirmingDel = ref('')
+const tplForm = reactive({
+  name: '', ch: '', code: '', unit: '',
+  min: 0, max: 100, base: 50, amp: 2,
+  decimals: 2, icon: 'thermo' as DaqTemplateIcon,
+})
+const ICON_LABEL: Record<DaqTemplateIcon, string> = {
+  thermo: '温度', pressure: '压力', tension: '张力', encoder: '编码器', camera: '视觉', gateway: '电参/网关',
+}
+
+const customTpls = computed<DaqTemplateDef[]>(() => daq.templates.filter(t => !t.builtin))
+const builtinTpls = computed<DaqTemplateDef[]>(() => daq.templates.filter(t => t.builtin))
+
+function fillTplForm(t: DaqTemplateDef, asCopy = false): void {
+  tplForm.name = asCopy ? `${t.name} 副本` : t.name
+  tplForm.ch = t.ch
+  tplForm.code = t.code
+  tplForm.unit = t.unit
+  tplForm.min = t.min
+  tplForm.max = t.max
+  tplForm.base = t.base
+  tplForm.amp = t.amp
+  tplForm.decimals = t.decimals
+  tplForm.icon = t.icon
+}
+
+function resetTplForm(): void {
+  tplEditing.value = null
+  tplError.value = ''
+  confirmingDel.value = ''
+  fillTplForm({ key: '', name: '', code: '', ch: '', unit: '', base: 50, amp: 2, min: 0, max: 100, decimals: 2, icon: 'thermo' })
+}
+
+function editTpl(t: DaqTemplateDef): void {
+  tplEditing.value = t.key
+  tplError.value = ''
+  fillTplForm(t)
+}
+
+function copyTpl(t: DaqTemplateDef): void {
+  tplEditing.value = null
+  tplError.value = ''
+  fillTplForm(t, true)
+}
+
+async function saveTpl(): Promise<void> {
+  tplSaving.value = true
+  tplError.value = ''
+  try {
+    const num = (v: number | string): number | undefined => {
+      const n = Number(v)
+      return v === '' || v == null || !Number.isFinite(n) ? undefined : n
+    }
+    const input = {
+      name: tplForm.name.trim(),
+      ch: tplForm.ch.trim() || undefined,
+      code: tplForm.code.trim() || undefined,
+      unit: tplForm.unit.trim(),
+      min: num(tplForm.min)!,
+      max: num(tplForm.max)!,
+      base: num(tplForm.base),
+      amp: num(tplForm.amp),
+      decimals: num(tplForm.decimals),
+      icon: tplForm.icon,
+    }
+    if (tplEditing.value) await daq.updateTemplate(tplEditing.value, input)
+    else await daq.createTemplate(input)
+    resetTplForm()
+  }
+  catch (err) {
+    tplError.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    tplSaving.value = false
+  }
+}
+
+/** 两段式删除确认(避免误删;空目录风格与节点表一致) */
+async function askDelTpl(t: DaqTemplateDef): Promise<void> {
+  if (confirmingDel.value !== t.key) {
+    confirmingDel.value = t.key
+    return
+  }
+  try {
+    await daq.removeTemplate(t.key)
+  }
+  catch (err) {
+    tplError.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    confirmingDel.value = ''
+  }
 }
 
 /** 驱动是否为预留协议(meta status=planned) */
@@ -219,6 +327,20 @@ async function doReconnect(): Promise<void> {
             @change="daq.controllerAction('config', daq.controller.defaultIntervalMs)"
           >ms
         </label>
+        <label
+          class="cycle mono"
+          title="节点未单独设置 WS 下发间隔时的全局缺省;0 = 随采样节拍每帧下发"
+        >
+          缺省下发
+          <input
+            v-model.number="daq.controller.defaultPublishIntervalMs"
+            type="number"
+            min="0"
+            max="60000"
+            step="100"
+            @change="daq.controllerAction('config', daq.controller.defaultIntervalMs, daq.controller.defaultPublishIntervalMs)"
+          >ms
+        </label>
       </div>
       <div class="ctrl-right">
         <span class="ctrl-metrics mono">
@@ -235,6 +357,13 @@ async function doReconnect(): Promise<void> {
           <span class="sep">·</span>
           <span title="时序库累计入库样本">入库 {{ daq.meta.samplesStored }}</span>
         </span>
+        <button
+          class="aw-pill outline add-btn"
+          @click="tplOpen = true; resetTplForm()"
+        >
+          <span class="i-tabler-adjustments-horizontal" />
+          模板管理
+        </button>
         <button
           class="aw-pill add-btn"
           @click="addOpen = true"
@@ -281,11 +410,11 @@ async function doReconnect(): Promise<void> {
               class="inp"
             >
               <option
-                v-for="t in DAQ_TEMPLATES"
+                v-for="t in daq.templates"
                 :key="t.key"
                 :value="t.key"
               >
-                {{ t.name }} · {{ t.ch }}({{ t.min }}~{{ t.max }} {{ t.unit }})
+                {{ t.name }} · {{ t.ch }}({{ t.min }}~{{ t.max }} {{ t.unit }}){{ t.builtin ? '' : ' · 自定义' }}
               </option>
             </select>
           </label>
@@ -403,13 +532,214 @@ async function doReconnect(): Promise<void> {
           </button>
           <button
             class="aw-pill"
-            :disabled="addSaving || (addScenario === 'real' && addTest && !addTest.ok)"
+            :disabled="addSaving || (addScenario === 'real' && addTest != null && !addTest.ok)"
             :title="addScenario === 'real' && !(addTest && addTest.ok) ? '真实场景需先通过测试连接' : ''"
             @click="doAddNode"
           >
             {{ addSaving ? '创建中…' : (addScenario === 'real' ? '测试通过后创建并采集' : '创建节点') }}
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- 模板管理:自定义模板增删改 + 内置模板复制 -->
+    <div
+      v-if="tplOpen"
+      class="modal-mask"
+      @click.self="tplOpen = false"
+    >
+      <div class="modal">
+        <h3 class="m-title">
+          信号模板管理
+        </h3>
+
+        <p class="sec-label">
+          自定义模板
+        </p>
+        <table class="tpl-table">
+          <tbody>
+            <tr
+              v-for="t in customTpls"
+              :key="t.key"
+            >
+              <td>
+                <b>{{ t.name }}</b>
+                <small class="mono dim">{{ t.code }}</small>
+              </td>
+              <td class="mono range">
+                {{ t.min }}~{{ t.max }} {{ t.unit }} · {{ t.decimals }} 位
+              </td>
+              <td class="right actions">
+                <button
+                  class="mini-btn"
+                  @click="editTpl(t)"
+                >
+                  编辑
+                </button>
+                <button
+                  class="mini-btn danger"
+                  @click="askDelTpl(t)"
+                >
+                  {{ confirmingDel === t.key ? '确认删除' : '删除' }}
+                </button>
+              </td>
+            </tr>
+            <tr v-if="!customTpls.length">
+              <td
+                colspan="3"
+                class="empty"
+              >
+                暂无自定义模板 —— 从下方内置模板复制,或直接在下方表单新建。
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="sec-label">
+          {{ tplEditing ? '编辑模板' : '新建模板' }}
+        </p>
+        <div class="f-grid">
+          <label class="f">
+            <span>名称<em>*</em></span>
+            <input
+              v-model="tplForm.name"
+              class="inp"
+              placeholder="如 烘箱湿度"
+            >
+          </label>
+          <label class="f">
+            <span>单位<em>*</em></span>
+            <input
+              v-model="tplForm.unit"
+              class="inp"
+              placeholder="如 %RH"
+            >
+          </label>
+          <label class="f">
+            <span>通道语义</span>
+            <input
+              v-model="tplForm.ch"
+              class="inp"
+              placeholder="缺省同名称"
+            >
+          </label>
+          <label class="f">
+            <span>位号代号</span>
+            <input
+              v-model="tplForm.code"
+              class="inp"
+              placeholder="缺省自动生成"
+            >
+          </label>
+          <label class="f">
+            <span>量程下限<em>*</em></span>
+            <input
+              v-model.number="tplForm.min"
+              type="number"
+              class="inp"
+            >
+          </label>
+          <label class="f">
+            <span>量程上限<em>*</em></span>
+            <input
+              v-model.number="tplForm.max"
+              type="number"
+              class="inp"
+            >
+          </label>
+          <label class="f">
+            <span>小数位</span>
+            <input
+              v-model.number="tplForm.decimals"
+              type="number"
+              min="0"
+              max="4"
+              class="inp"
+            >
+          </label>
+          <label class="f">
+            <span>图标</span>
+            <select
+              v-model="tplForm.icon"
+              class="inp"
+            >
+              <option
+                v-for="ic in DAQ_TEMPLATE_ICONS"
+                :key="ic"
+                :value="ic"
+              >
+                {{ ICON_LABEL[ic] }}
+              </option>
+            </select>
+          </label>
+          <label class="f">
+            <span>模拟基值</span>
+            <input
+              v-model.number="tplForm.base"
+              type="number"
+              class="inp"
+            >
+            <small class="hint">Mock 采样中心值,缺省量程中点</small>
+          </label>
+          <label class="f">
+            <span>模拟波幅</span>
+            <input
+              v-model.number="tplForm.amp"
+              type="number"
+              class="inp"
+            >
+            <small class="hint">Mock 波动幅度,缺省量程 4%</small>
+          </label>
+        </div>
+        <p
+          v-if="tplError"
+          class="m-err"
+        >
+          {{ tplError }}
+        </p>
+        <div class="m-actions">
+          <button
+            class="aw-pill outline"
+            @click="resetTplForm"
+          >
+            重置
+          </button>
+          <button
+            class="pill-btn"
+            :disabled="tplSaving"
+            @click="saveTpl"
+          >
+            {{ tplSaving ? '保存中…' : (tplEditing ? '保存修改' : '保存模板') }}
+          </button>
+        </div>
+
+        <p class="sec-label">
+          内置模板(只读,可复制)
+        </p>
+        <table class="tpl-table">
+          <tbody>
+            <tr
+              v-for="t in builtinTpls"
+              :key="t.key"
+            >
+              <td>
+                <b>{{ t.name }}</b>
+                <small class="mono dim">{{ t.code }}</small>
+              </td>
+              <td class="mono range">
+                {{ t.min }}~{{ t.max }} {{ t.unit }} · {{ t.decimals }} 位
+              </td>
+              <td class="right actions">
+                <button
+                  class="mini-btn"
+                  @click="copyTpl(t)"
+                >
+                  复制
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -423,6 +753,7 @@ async function doReconnect(): Promise<void> {
               <th>状态</th>
               <th>实时值</th>
               <th>采样周期</th>
+              <th>WS 下发</th>
               <th>驱动</th>
               <th>绑定设备</th>
               <th class="right">
@@ -453,6 +784,9 @@ async function doReconnect(): Promise<void> {
               <td class="mono">
                 {{ intervalOf(n.intervalMs) }}
               </td>
+              <td class="mono">
+                {{ publishOf(n.publishIntervalMs) }}
+              </td>
               <td>
                 <span
                   class="drv-tag"
@@ -472,7 +806,7 @@ async function doReconnect(): Promise<void> {
               </td>
             </tr>
             <tr v-if="daq.loaded && daq.nodes.length === 0">
-              <td colspan="7">
+              <td colspan="8">
                 <div
                   class="pane-empty"
                   style="min-height: 120px;"
@@ -671,4 +1005,31 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .m-err { margin: 8px 0 0; font-size: 12px; color: var(--tone-danger-dot); }
 .m-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 .aw-pill.outline { color: var(--ink); background: var(--paper-raised); border-color: var(--line-strong); }
+
+/* ---------- 模板管理 ---------- */
+.sec-label {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.tpl-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tpl-table td { padding: 7px 8px; border-bottom: 1px solid var(--divider-hair); }
+.tpl-table td b { margin-right: 8px; }
+.tpl-table .range { font-size: 11.5px; color: var(--ink-soft); }
+.tpl-table .empty { color: var(--ink-fainter); font-size: 12px; text-align: center; padding: 14px 0; }
+.tpl-table .actions { white-space: nowrap; }
+.mini-btn {
+  padding: 3px 10px;
+  font-size: 11.5px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+}
+.mini-btn.danger { color: var(--tone-danger-dot); }
+.mini-btn:hover { border-color: var(--accent); color: var(--accent); }
 </style>

@@ -45,26 +45,32 @@ export const tsdbReady: Promise<void> = (() => {
 
 export function getTsdb(): TsdbPort {
   const st: DaqTsdbState = g.__daqTsdbState ??= {}
-  st.current ??= (() => {
-    const dev = new SqliteTimeSeriesAdapter()
-    dev.init()
+  let cur = st.current
+  if (!cur) {
+    cur = new SqliteTimeSeriesAdapter()
+    void cur.init()
     console.log('[daq-tsdb] SQLite 时序仿真就绪(data/daq-timeseries.sqlite)')
-    return dev
-  })()
-  return st.current
+    st.current = cur
+  }
+  return cur
 }
 
-/** 重连/初始装配:按 infra 判定结果(重新)构建真实或降级实例 */
+/** 重连/初始装配:按 infra 判定结果(重新)构建真实或降级实例;旧实例显式释放连接 */
 export async function rebuildTsdb(online: boolean, url?: string | null): Promise<void> {
   const st: DaqTsdbState = g.__daqTsdbState ??= {}
+  const swap = (next: TsdbPort): void => {
+    const old = st.current
+    st.current = next
+    // 旧池延后释放(在飞写自然失败一次即被消费侧重试收口)
+    void Promise.resolve(old?.close?.()).catch(() => {})
+  }
   if (!online || !url) {
     if (st.current?.backend !== 'sqlite-emulated') {
-      st.current = makeFallback('infra 判定离线')
+      swap(makeFallback('infra 判定离线'))
     }
     return
   }
   const adapter = new TimescaleAdapter(url)
-  st.current = adapter
   // PG/Timescale 初始化窗口:接受 TCP 但建连即断(Connection terminated)→ 有限重试
   let lastErr: unknown
   for (let i = 0; i < 5; i++) {
@@ -78,6 +84,10 @@ export async function rebuildTsdb(online: boolean, url?: string | null): Promise
       await new Promise(r => setTimeout(r, 2500))
     }
   }
-  if (lastErr) throw lastErr
+  if (lastErr) {
+    await adapter.close?.().catch(() => {})
+    throw lastErr
+  }
+  swap(adapter)
   console.log('[daq-tsdb] TimescaleDB 就绪:', url.replace(/\/\/[^@]*@/, '//***@'))
 }

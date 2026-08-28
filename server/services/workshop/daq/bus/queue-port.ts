@@ -26,6 +26,8 @@ export type DaqConsumer = (env: DaqSampleEnvelope) => void
 
 export interface DaqQueuePort {
   readonly backend: 'mqtt' | 'inproc'
+  /** 队列层真实丢弃计数(inproc 拥塞丢最旧 / mqtt 断连窗口未发布) */
+  readonly lost: number
   init(): Promise<void>
   /** 生产者:发布一条样本帧 */
   publish(env: DaqSampleEnvelope): void

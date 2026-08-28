@@ -34,7 +34,7 @@
  */
 import type { A2AArtifact, A2AMessage } from '../server/services/workshop/types/a2a'
 import type { WorkspaceTask } from '../server/services/workshop/types/task'
-import type { AepDaqControllerState, AepDaqNodeChange, AepDaqReading } from './daq-protocol'
+import type { AepDaqControllerState, AepDaqNodeChange, AepDaqReading, AepDaqTemplateChange } from './daq-protocol'
 
 export const AEP_VERSION = 1
 
@@ -137,6 +137,7 @@ export type AepEvent
     | { type: 'daq.reading', payload: AepDaqReading }
     | { type: 'daq.node.changed', payload: AepDaqNodeChange }
     | { type: 'daq.controller', payload: AepDaqControllerState }
+    | { type: 'daq.template.changed', payload: AepDaqTemplateChange }
     | { type: 'error', payload: { code: string, message: string } }
     | { type: 'pong', payload: { t: number } }
 
@@ -167,6 +168,6 @@ export const AEP_GROUPS: Record<string, string[]> = {
   team: ['agent.member'],
   devices: ['device.created', 'device.updated', 'device.deleted'],
   scene: ['scene.layout.saved', 'scene.layout.removed'],
-  daq: ['daq.reading', 'daq.node.changed', 'daq.controller'],
+  daq: ['daq.reading', 'daq.node.changed', 'daq.controller', 'daq.template.changed'],
   errors: ['error'],
 }

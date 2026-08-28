@@ -8,7 +8,7 @@
  * 定位:模块级单例,harnest 装配(OmpRpcAgentImpl)登记,manager 监控层读取;
  * 不依赖 manager,避免循环依赖。
  */
-import { spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 
 /** 注册表条目:一个已启动(或已退出)的 harness 子进程 */
 export interface HarnessProcessEntry {
@@ -85,8 +85,8 @@ export function listAliveHarnessProcessesByAgent(agentId: string): HarnessProces
   return [...registry.values()].filter(e => e.alive && e.agentId === agentId)
 }
 
-/** 惰性清理:退出超过 retentionMs 的条目(防泄漏,monitor 快照时调用) */
-export function sweepHarnessProcesses(retentionMs = 10 * 60_000): void {
+/** 惰性清理:退出超过 retentionMs 的条目(防泄漏,monitor 快照时调用;1min 足够监控可见性) */
+export function sweepHarnessProcesses(retentionMs = 60_000): void {
   const now = Date.now()
   for (const [pid, e] of registry) {
     if (!e.alive && e.exitedAt !== null && now - e.exitedAt > retentionMs) {
@@ -113,18 +113,23 @@ export function isProcessAlive(pid: number): boolean {
 }
 
 /**
- * 强制终止进程树。
+ * 强制终止进程树(异步;taskkill 需等进程树枚举+逐个终止,同步 spawn 会阻塞事件循环数百 ms)。
  * Windows: taskkill /pid <pid> /T /F(整棵进程树,含 omp 可能拉起的子进程);
- * POSIX: 先按进程组(-pid)后按单进程 SIGKILL。
- * 同步标记条目为已退出(OS 层 exit 事件随后也会触发 markHarnessProcessExit)。
+ * POSIX: 先按进程组(-pid)后按单进程 SIGKILL(同步 signal,无阻塞)。
+ * 立即同步标记条目为已退出(OS 层 exit 事件随后也会触发 markHarnessProcessExit);
+ * `ok` 反映终止请求是否已受理(Windows 为 taskkill 进程退出码,异步回调补记)。
  */
 export function killHarnessProcess(pid: number): boolean {
   if (!Number.isInteger(pid) || pid <= 0) return false
   let ok = false
   try {
     if (process.platform === 'win32') {
-      const r = spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
-      ok = r.status === 0
+      const child = spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
+      child.on('exit', (code) => {
+        if (code !== 0) console.warn(`[harness] taskkill pid=${pid} 退出码 ${code}`)
+      })
+      child.on('error', () => { /* spawn 失败:保持 ok=false */ })
+      ok = true // 请求已受理;结果异步(失败仅告警,exit 事件兜底归位)
     }
     else {
       try {

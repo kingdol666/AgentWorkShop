@@ -44,7 +44,7 @@ await new Promise(r => setTimeout(r, 400))
 await page.type('.modal input[placeholder="192.168.1.10"]', '127.0.0.1')
 const numInputs = await page.$$('.modal .driver-form input[type="number"]')
 // driver-form 顺序:port(默认502) / unitId(1) / register(空) / scale(1)
-await numInputs[0].evaluate(el => { el.value = '' })
+await numInputs[0].evaluate((el) => { el.value = '' })
 await numInputs[0].type('1502')
 if (numInputs[2]) await numInputs[2].type('40001')
 

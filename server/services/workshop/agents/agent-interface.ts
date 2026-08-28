@@ -190,7 +190,7 @@ export interface AgentInterface {
   /** 标准流式返回:输入一次,产出统一事件流 */
   run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent>
   /** lead 调度决策(可选,仅 role='lead' 时被 SchedulerLoop 调用) */
-  supervise?(snapshot: SupervisionSnapshot, ctx: AgentRunContext): Promise<SupervisionDecision[]>
+  supervise?(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]>
   /**
    * 实时消息注入:将文本注入正在运行的 omp 会话。
    * 返回送达模式:'steer' = 已注入流式会话(同轮可见,可安全标记消费);

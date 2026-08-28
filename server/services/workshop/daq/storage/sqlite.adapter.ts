@@ -17,11 +17,14 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   private db: DatabaseSync | null = null
   /** 启动清理水位(默认保留 7 天,环境变量 DAQ_TS_RETENTION_H 可调) */
   private readonly retentionH = Number(process.env.DAQ_TS_RETENTION_H ?? 168)
+  private retentionTimer: NodeJS.Timeout | null = null
 
-  init(): void | Promise<void> {
+  async init(): Promise<void> {
     mkdirSync(resolve(process.cwd(), 'data'), { recursive: true })
     this.db = new DatabaseSync(DB_PATH)
     this.db.exec('PRAGMA journal_mode = WAL')
+    // WAL + NORMAL:批写单事务一次 fsync,兼顾持久性与事件循环停顿
+    this.db.exec('PRAGMA synchronous = NORMAL')
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS daq_samples (
         node_id TEXT    NOT NULL,
@@ -32,17 +35,52 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       );
       CREATE INDEX IF NOT EXISTS idx_daq_node_ts ON daq_samples (node_id, ts_ms DESC);
     `)
-    // 保留窗口清理(启动一次;量级受采样周期约束,足够)
+    // 保留窗口:启动清一次 + 后台周期任务(30min,防长会话磁盘无限涨)
+    this.sweepRetention()
+    if (!this.retentionTimer) {
+      this.retentionTimer = setInterval(() => this.sweepRetention(), 30 * 60_000)
+      this.retentionTimer.unref?.()
+    }
+  }
+
+  /** 保留期清理:分批 DELETE(单批 5000 行,避免长事务锁库) */
+  private sweepRetention(): void {
+    if (!this.db) return
     const cutoff = Date.now() - this.retentionH * 3600_000
-    this.db.prepare('DELETE FROM daq_samples WHERE ts_ms < ?').run(cutoff)
+    try {
+      let removed = 0
+      for (;;) {
+        const r = this.db.prepare(
+          'DELETE FROM daq_samples WHERE rowid IN (SELECT rowid FROM daq_samples WHERE ts_ms < ? LIMIT 5000)',
+        ).run(cutoff)
+        removed += Number(r.changes)
+        if (Number(r.changes) < 5000) break
+      }
+      if (removed > 0) console.log(`[daq-tsdb] 保留期清理 ${removed} 行(>${this.retentionH}h)`)
+    }
+    catch (err) {
+      console.error('[daq-tsdb] 保留期清理失败:', err instanceof Error ? err.message : err)
+    }
   }
 
   async writeSamples(rows: DaqSampleRow[]): Promise<void> {
     if (!this.db || rows.length === 0) return
+    // 批内单事务:一次 fsync 落整批(逐行 run 会每行一次 WAL fsync,写放大)
     const ins = this.db.prepare(
       'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state) VALUES (?, ?, ?, ?)',
     )
-    for (const r of rows) ins.run(r.nodeId, r.tsMs, r.value, r.state)
+    this.db.exec('BEGIN')
+    try {
+      for (const r of rows) ins.run(r.nodeId, r.tsMs, r.value, r.state)
+      this.db.exec('COMMIT')
+    }
+    catch (err) {
+      try {
+        this.db.exec('ROLLBACK')
+      }
+      catch { /* 事务已终结 */ }
+      throw err
+    }
   }
 
   async query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]> {
@@ -72,13 +110,26 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   async latest(): Promise<Map<string, DaqSampleRow>> {
     const out = new Map<string, DaqSampleRow>()
     if (!this.db) return out
+    // SQLite 裸列保证:GROUP BY + MAX() 时裸列取自 max 所在行(命中 idx_daq_node_ts,免相关子查询)
     const rows = this.db.prepare(`
-      SELECT node_id, ts_ms, value, state FROM daq_samples
-      WHERE ts_ms = (SELECT MAX(ts_ms) FROM daq_samples s2 WHERE s2.node_id = daq_samples.node_id)
+      SELECT node_id, MAX(ts_ms) AS ts_ms, value, state FROM daq_samples GROUP BY node_id
     `).all() as Array<{ node_id: string, ts_ms: number, value: number, state: string }>
     for (const r of rows) {
       out.set(r.node_id, { nodeId: r.node_id, tsMs: Number(r.ts_ms), value: Number(r.value), state: String(r.state) })
     }
     return out
+  }
+
+  close(): Promise<void> | void {
+    this.sweepRetentionTimerStop()
+    this.db?.close()
+    this.db = null
+  }
+
+  private sweepRetentionTimerStop(): void {
+    if (this.retentionTimer) {
+      clearInterval(this.retentionTimer)
+      this.retentionTimer = null
+    }
   }
 }

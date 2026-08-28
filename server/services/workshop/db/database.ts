@@ -97,6 +97,8 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
+-- 调度快照/队列视图热查询:listByChannelAssignee(channel+assignee ORDER BY created_at)
+CREATE INDEX IF NOT EXISTS idx_tasks_channel_assignee ON tasks(channel_id, assignee_id, state, created_at);
 CREATE TABLE IF NOT EXISTS teams (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
