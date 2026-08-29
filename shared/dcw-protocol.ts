@@ -35,6 +35,8 @@ export interface DcwTemplateDef {
   decimals: number
   /** 图标(设计稿 ICONS 键) */
   icon: 'thermo' | 'pressure' | 'tension' | 'encoder' | 'camera' | 'gateway'
+  /** 工艺语义(Agent 上下文注入:该控制量的物理意义/对产线的影响/调整守则;用户可编辑) */
+  semantics?: string
   /** 用户自定义模板(server 落盘可增删改);undefined = 内置 */
   builtin?: boolean
 }
@@ -43,10 +45,10 @@ export const DCW_TEMPLATE_ICONS = ['thermo', 'pressure', 'tension', 'encoder', '
 export type DcwTemplateIcon = typeof DCW_TEMPLATE_ICONS[number]
 
 export const DCW_TEMPLATES: DcwTemplateDef[] = [
-  { key: 'temp-sp', name: '温度设定器', code: 'TEMP · SP', ch: '烘箱温度设定', unit: '℃', min: 150, max: 200, decimals: 1, icon: 'thermo' },
-  { key: 'speed-sp', name: '速度设定器', code: 'LINE · SP', ch: '产线速度设定', unit: 'm/min', min: 280, max: 360, decimals: 0, icon: 'encoder' },
-  { key: 'tension-sp', name: '张力设定器', code: 'TENSION · SP', ch: '膜张力设定', unit: 'kN', min: 18, max: 26, decimals: 1, icon: 'tension' },
-  { key: 'pressure-sp', name: '压力设定器', code: 'PRESSURE · SP', ch: '熔体压力设定', unit: 'MPa', min: 0.6, max: 1.2, decimals: 2, icon: 'pressure' },
+  { key: 'temp-sp', name: '温度设定器', code: 'TEMP · SP', ch: '烘箱温度设定', unit: '℃', min: 150, max: 200, decimals: 1, icon: 'thermo', semantics: '烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均。调整后需等待热惯性(数十秒级)再评估效果。' },
+  { key: 'speed-sp', name: '速度设定器', code: 'LINE · SP', ch: '产线速度设定', unit: 'm/min', min: 280, max: 360, decimals: 0, icon: 'encoder', semantics: '产线速度设定:升速提高产能但缩短物料受热时间(温度补偿需联动),降速利于精细工艺。速度变化会同步影响张力与厚度分布。' },
+  { key: 'tension-sp', name: '张力设定器', code: 'TENSION · SP', ch: '膜张力设定', unit: 'kN', min: 18, max: 26, decimals: 1, icon: 'tension', semantics: '膜张力设定:张力过大易断膜/拉伸变形,过小则跑偏起皱。调整需平缓,并与速度联动观察。' },
+  { key: 'pressure-sp', name: '压力设定器', code: 'PRESSURE · SP', ch: '熔体压力设定', unit: 'MPa', min: 0.6, max: 1.2, decimals: 2, icon: 'pressure', semantics: '熔体压力设定:反映挤出/泵送负荷,压力偏高提示阻力大或温度偏低,偏低可能是料位不足。调整需小幅步进。' },
 ]
 
 export const dcwTemplateByKey = (key: string): DcwTemplateDef | undefined =>
@@ -66,6 +68,8 @@ export interface DcwTemplateInput {
   max: number
   decimals?: number
   icon?: DcwTemplateIcon
+  /** 工艺语义(物理意义/影响/守则;注入 Agent 上下文) */
+  semantics?: string
 }
 
 // ============================================================
@@ -187,6 +191,8 @@ export interface DcwNodeView {
   holdIntervalMs: number | null
   /** 数据语义标定钩子(encode:物理值 → PLC 设定值) */
   transform?: DataTransform
+  /** 节点级工艺语义备注(覆盖模板 semantics;注入 Agent 上下文) */
+  semantics?: string
   unit: string
   decimals: number
   /** 工艺安全量程(写入值硬校验) */
@@ -356,6 +362,8 @@ export interface LineQueryOpts {
   recipeId?: string
   /** 工艺参数(DAQ 模板 key;缺省全部通道) */
   paramKey?: string
+  /** 节点过滤(单个 id 或逗号分隔多 id;缺省全部) */
+  nodeId?: string
   fromMs?: number
   toMs?: number
   /** 聚合桶宽 ms(缺省原始点) */

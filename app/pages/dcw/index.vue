@@ -130,7 +130,7 @@ ${label}`)) return
 // ---------- 控制模板管理(自定义分类) ----------
 const tplOpen = ref(false)
 const tplError = ref('')
-const tplForm = reactive({ name: '', ch: '', code: '', unit: '', min: '' as number | '', max: '' as number | '', decimals: 1, icon: 'gateway' as DcwTemplateIcon })
+const tplForm = reactive({ name: '', ch: '', code: '', unit: '', min: '' as number | '', max: '' as number | '', decimals: 1, icon: 'gateway' as DcwTemplateIcon, semantics: '' })
 const tplIcons: Array<{ key: DcwTemplateIcon, label: string }> = [
   { key: 'thermo', label: '温度' },
   { key: 'pressure', label: '压力' },
@@ -154,6 +154,7 @@ async function doCreateTemplate(): Promise<void> {
       max: Number(tplForm.max),
       decimals: Number(tplForm.decimals) || 0,
       icon: tplForm.icon,
+      semantics: tplForm.semantics.trim() || undefined,
     })
     tplForm.name = ''
     tplForm.ch = ''
@@ -405,9 +406,14 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             v-for="t in dcw.templates"
             :key="t.key"
             class="tpl-row"
+            :title="t.semantics ?? ''"
           >
             <b>{{ t.name }}</b>
             <small class="mono dim">{{ t.code }} · {{ t.min }}~{{ t.max }} {{ t.unit }}</small>
+            <small
+              v-if="t.semantics"
+              class="tpl-sem"
+            >{{ t.semantics.slice(0, 40) }}{{ t.semantics.length > 40 ? '…' : '' }}</small>
             <span
               class="tpl-tag"
               :class="{ builtin: t.builtin }"
@@ -497,6 +503,15 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             </select>
           </label>
         </div>
+        <label class="f">
+          <span>工艺语义(物理意义/对产线的影响/调整守则 —— 注入绑定此模板的 Agent 上下文)</span>
+          <textarea
+            v-model="tplForm.semantics"
+            class="inp"
+            rows="3"
+            placeholder="如:电机电流设定:电流升高表示负载增大…调整需小幅步进并观察温升"
+          />
+        </label>
         <p
           v-if="tplError"
           class="m-err"
@@ -734,6 +749,8 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 }
 .tpl-tag.builtin { color: #5f6e84; border-color: rgba(95, 110, 132, 0.5); }
 .tpl-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tpl-sem { flex: 1; color: #8fa0b5; }
+textarea.inp { height: auto; padding: 6px 9px; font-size: 11.5px; resize: vertical; }
 .mini-btn {
   padding: 4px 10px;
   font-size: 10.5px;

@@ -232,8 +232,10 @@ export const modbusTcpDriver: DaqDriver = {
   },
   async sample({ driverConfig }) {
     const conn = await getModbusConn(driverConfig)
-    // 连接级串行:数控写入/其它读在队列中 → 本轮跳帧让路(采样周期性,丢一帧无碍;防止读堆积)
-    if (conn.pending > 0) return null
+    // 连接级串行队列:读 ~20ms、采样周期 >=120ms,正常排队深度 1~2;仅当队列深积
+    // (PLC 慢/离线,单读逼近超时)时跳帧保护,阈值 pending>8 防雪崩。
+    // (不用 busy>0 一票跳帧:同链路多节点同节拍会互相跳帧,新节点长期出不了首值)
+    if (conn.pending > 8) return null
     conn.lastUsed = Date.now()
     return withModbusConn(conn, async () => {
       try {

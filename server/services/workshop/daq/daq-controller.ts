@@ -64,6 +64,8 @@ export interface DaqCreateInput {
   posZ?: number
   /** 所属产线('' = 未分配) */
   lineId?: string
+  /** 节点级采集语义备注(覆盖模板) */
+  semantics?: string
   deviceBindingId?: string | null
 }
 
@@ -87,6 +89,8 @@ export interface DaqPatchInput {
   posZ?: number
   /** 所属产线('' = 未分配;采集门控按产线) */
   lineId?: string
+  /** 节点级采集语义备注(覆盖模板) */
+  semantics?: string
 }
 
 type BroadcastFn = (type: string, payload: unknown) => void
@@ -505,6 +509,7 @@ class DaqController {
       posX: input.posX,
       posZ: input.posZ,
       lineId: input.lineId,
+      semantics: input.semantics,
     })
     this.repo.insert(node)
     this.syncRuntimes() // 新节点即刻入网关注册表(边缘运行时实例化)
@@ -555,6 +560,7 @@ class DaqController {
       if (lid && !getDcwLineRepo().byId(lid)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lid}`)
       node.lineId = lid
     }
+    if (patch.semantics !== undefined) node.semantics = String(patch.semantics)
     if (node.value != null) node.state = node.deriveState(node.value)
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)

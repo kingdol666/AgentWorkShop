@@ -21,6 +21,7 @@ export default defineApiHandler(async (event) => {
     productId: q.productId ? String(q.productId) : undefined,
     recipeId: q.recipeId ? String(q.recipeId) : undefined,
     paramKey: q.paramKey ? String(q.paramKey) : undefined,
+    nodeId: q.nodeId ? String(q.nodeId) : undefined,
     fromMs: num(q.from),
     toMs: num(q.to),
     bucketMs: num(q.bucketMs),

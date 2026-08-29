@@ -44,6 +44,8 @@ export interface DcwCreateInput {
   deviceBindingId?: string | null
   /** 所属产线('' = 未分配) */
   lineId?: string
+  /** 节点级工艺语义备注(覆盖模板) */
+  semantics?: string
 }
 
 export interface DcwPatchInput {
@@ -61,6 +63,7 @@ export interface DcwPatchInput {
   posX?: number
   posZ?: number
   lineId?: string
+  semantics?: string
 }
 
 /** 网关扫描周期(ms;保写心跳分辨率) */
@@ -252,6 +255,7 @@ class DcwController {
       posX: input.posX,
       posZ: input.posZ,
       lineId: input.lineId,
+      semantics: input.semantics,
     })
     this.repo.insert(node)
     this.syncRuntimes()
@@ -292,6 +296,7 @@ class DcwController {
       if (lid && !getDcwLineRepo().byId(lid)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lid}`)
       node.lineId = lid
     }
+    if (patch.semantics !== undefined) node.semantics = String(patch.semantics)
     if (rearm) this.runtimes.get(id)?.rearm()
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)
@@ -583,9 +588,12 @@ class DcwController {
     await tsdbReady
     const { getDaqNodeRepo } = await import('../daq/daq-node.repo')
     const { findDaqTemplate } = await import('../daq/daq-templates')
+    const nodeFilter = opts.nodeId ? opts.nodeId.split(',').map(x => x.trim()).filter(Boolean) : []
     const nodes = getDaqNodeRepo().all().filter((n) => {
       if (opts.paramKey && n.templateKey !== opts.paramKey) return false
       if (opts.lineId && (n.lineId ?? '') !== opts.lineId) return false
+      // 节点维过滤(多节点绑定同模板时精确定位;支持多节点逗号分隔)
+      if (nodeFilter.length > 0 && !nodeFilter.includes(n.id)) return false
       return true
     })
     const series = await getTsdb().queryTagged({

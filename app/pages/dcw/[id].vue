@@ -120,6 +120,7 @@ const addName = ref('')
 const addHold = ref<number | null>(null)
 const addCfg = ref<Record<string, string | number>>({})
 const addTransform = reactive({ kind: 'none' as 'none' | 'linear', scale: 1, offset: 0 })
+const addSemantics = ref('')
 const addTesting = ref(false)
 const addTest = ref<{ ok: boolean, message: string } | null>(null)
 const addSaving = ref(false)
@@ -171,9 +172,11 @@ async function doAddNode(): Promise<void> {
       transform,
       holdIntervalMs: addHold.value,
       lineId: lineId.value,
+      semantics: addSemantics.value.trim() || undefined,
     })
     addOpen.value = false
     addName.value = ''
+    addSemantics.value = ''
   }
   catch (err) {
     addError.value = err instanceof Error ? err.message : String(err)
@@ -266,6 +269,7 @@ const query = reactive({
   productId: '',
   recipeId: '',
   paramKey: '',
+  nodeId: '',
   lastMin: 30,
   bucketMs: 0,
 })
@@ -283,6 +287,7 @@ async function doQuery(): Promise<void> {
       productId: query.productId || undefined,
       recipeId: query.recipeId || undefined,
       paramKey: query.paramKey || undefined,
+      nodeId: query.nodeId || undefined,
       fromMs: Date.now() - query.lastMin * 60_000,
       toMs: Date.now(),
       bucketMs: query.bucketMs > 0 ? query.bucketMs : undefined,
@@ -808,6 +813,16 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             >{{ addTest.ok ? '✓' : '✗' }} {{ addTest.message }}</span>
           </div>
         </template>
+
+        <label class="f">
+          <span>节点工艺语义(可选,覆盖模板描述 —— 注入绑定此节点的 Agent 上下文)</span>
+          <textarea
+            v-model="addSemantics"
+            class="inp"
+            rows="2"
+            placeholder="如:2 号烘箱温度:与 1 号联动控制分区温差,调整步进 ≤1℃"
+          />
+        </label>
 
         <p
           v-if="addError"
@@ -1489,6 +1504,24 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               :value="k"
             >
               {{ k }}
+            </option>
+          </select>
+        </label>
+        <label class="f">
+          <span>节点</span>
+          <select
+            v-model="query.nodeId"
+            class="inp"
+          >
+            <option value="">
+              全部节点
+            </option>
+            <option
+              v-for="n in lineDaqNodes"
+              :key="n.id"
+              :value="n.id"
+            >
+              {{ n.name }}
             </option>
           </select>
         </label>

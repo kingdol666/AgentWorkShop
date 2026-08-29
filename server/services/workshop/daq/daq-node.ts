@@ -35,6 +35,8 @@ interface DaqNodeOptions {
   posZ?: number
   /** 所属产线('' = 未分配;采集门控/场景光晕按产线隔离) */
   lineId?: string
+  /** 节点级采集语义备注(覆盖模板 semantics;注入 Agent 上下文) */
+  semantics?: string
   /** 驱动连接参数(modbus-tcp/opcua 协议参数;mock 空) */
   driverConfig?: Record<string, string | number | boolean>
   createdAt?: string
@@ -64,6 +66,8 @@ export class DaqNode {
   posZ?: number
   /** 所属产线('' = 未分配;采集门控/场景光晕按产线隔离) */
   lineId = ''
+  /** 节点级采集语义备注(覆盖模板 semantics) */
+  semantics?: string
   value: number | null
   state: DaqNodeState = 'offline'
   lastAt: string | null = null
@@ -94,6 +98,7 @@ export class DaqNode {
     if (o.posX !== undefined) this.posX = o.posX
     if (o.posZ !== undefined) this.posZ = o.posZ
     this.lineId = o.lineId ?? ''
+    this.semantics = o.semantics
     this.value = null
     this.createdAt = o.createdAt ?? new Date().toISOString()
   }
@@ -170,6 +175,7 @@ export class DaqNode {
       posX: this.posX,
       posZ: this.posZ,
       lineId: this.lineId,
+      semantics: this.semantics,
       value: this.value,
       state: this.state,
       lastAt: this.lastAt,
@@ -198,6 +204,7 @@ export class DaqNode {
       posX: row.posX == null ? undefined : Number(row.posX),
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       lineId: row.lineId == null ? '' : String(row.lineId),
+      semantics: row.semantics == null ? undefined : String(row.semantics),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
     })
     if (row.value != null && !Number.isNaN(Number(row.value))) {
@@ -230,6 +237,7 @@ export class DaqNode {
       posX: this.posX,
       posZ: this.posZ,
       lineId: this.lineId,
+      semantics: this.semantics,
       value: this.value,
       state: this.state,
       lastAt: this.lastAt,

@@ -30,6 +30,8 @@ interface DcwNodeOptions {
   posZ?: number
   /** 所属产线('' = 未分配) */
   lineId?: string
+  /** 节点级工艺语义备注(覆盖模板 semantics;注入 Agent 上下文) */
+  semantics?: string
   createdAt?: string
 }
 
@@ -56,6 +58,8 @@ export class DcwNode {
   state: DcwNodeState = 'idle'
   /** 所属产线('' = 未分配;采集门控/写联锁/场景光晕按产线隔离) */
   lineId = ''
+  /** 节点级工艺语义备注(覆盖模板 semantics) */
+  semantics?: string
   lastError: string | null = null
   readonly createdAt: string
 
@@ -77,6 +81,7 @@ export class DcwNode {
     if (o.posX !== undefined) this.posX = o.posX
     if (o.posZ !== undefined) this.posZ = o.posZ
     this.lineId = o.lineId ?? ''
+    this.semantics = o.semantics
     this.createdAt = o.createdAt ?? new Date().toISOString()
   }
 
@@ -126,6 +131,7 @@ export class DcwNode {
       posX: this.posX,
       posZ: this.posZ,
       lineId: this.lineId,
+      semantics: this.semantics,
       value: this.value,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
@@ -152,6 +158,7 @@ export class DcwNode {
       transform: (row.transform as DataTransform | undefined) ?? undefined,
       posX: row.posX == null ? undefined : Number(row.posX),
       lineId: row.lineId == null ? '' : String(row.lineId),
+      semantics: row.semantics == null ? undefined : String(row.semantics),
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
     })
@@ -181,6 +188,7 @@ export class DcwNode {
       posX: this.posX,
       posZ: this.posZ,
       lineId: this.lineId,
+      semantics: this.semantics,
       value: this.value,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,

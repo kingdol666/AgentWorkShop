@@ -228,6 +228,7 @@ export class AgentRuntime {
 
   /** 中止当前 run(任务取消/Agent 移除时);空闲时无操作 */
   abortCurrent(): void {
+    console.warn(`[AgentRuntime:${this.agentId}] abortCurrent 调用(state=${this.state})`)
     this.abortController?.abort()
     // supervise 回合同样可打断(调度器 cancel 路径 → LLM 回合真中止)
     this.superviseController?.abort()
@@ -344,6 +345,7 @@ export class AgentRuntime {
 
   /** 停止:中断当前 run + 等当前事件流结束 + dispose impl(杀子进程等) */
   async stop(): Promise<void> {
+    console.warn(`[AgentRuntime:${this.agentId}] runtime.stop() 调用(卸载/停用)`)
     this.state = 'stopped'
     this.abortController?.abort()
     this.deps.mailbox.close()

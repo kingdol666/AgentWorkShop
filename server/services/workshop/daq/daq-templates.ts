@@ -71,6 +71,7 @@ function normalize(input: Partial<DaqTemplateInput>, prev?: DaqTemplateDef): Daq
     max,
     decimals,
     icon,
+    semantics: String(input.semantics ?? prev?.semantics ?? '').trim() || undefined,
     builtin: false,
   }
 }

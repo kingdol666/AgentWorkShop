@@ -56,6 +56,7 @@ function normalize(input: Partial<DcwTemplateInput>, prev?: DcwTemplateDef): Dcw
     max,
     decimals,
     icon,
+    semantics: String(input.semantics ?? prev?.semantics ?? '').trim() || undefined,
     builtin: false,
   }
 }

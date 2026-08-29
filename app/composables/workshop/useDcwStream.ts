@@ -234,6 +234,7 @@ function createStore() {
       if (opts.productId) qs.set('productId', opts.productId)
       if (opts.recipeId) qs.set('recipeId', opts.recipeId)
       if (opts.paramKey) qs.set('paramKey', opts.paramKey)
+      if (opts.nodeId) qs.set('nodeId', opts.nodeId)
       if (opts.fromMs != null) qs.set('from', String(opts.fromMs))
       if (opts.toMs != null) qs.set('to', String(opts.toMs))
       if (opts.bucketMs != null) qs.set('bucketMs', String(opts.bucketMs))
