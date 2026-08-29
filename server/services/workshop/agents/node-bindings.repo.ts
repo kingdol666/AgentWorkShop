@@ -49,6 +49,19 @@ export class AgentNodeBindingRepo {
     return this.list.filter(b => b.agentId === agentId)
   }
 
+  /** 反查:某节点的全部绑定(节点删除时级联清理用) */
+  byNode(nodeId: string): AgentNodeBinding[] {
+    return this.list.filter(b => b.nodeId === nodeId)
+  }
+
+  /** 节点删除级联:移除该节点的全部绑定(返回删除数) */
+  removeNode(nodeId: string): number {
+    const before = this.list.length
+    this.list = this.list.filter(b => b.nodeId !== nodeId)
+    if (this.list.length !== before) this.flush()
+    return before - this.list.length
+  }
+
   find(agentId: string, nodeId: string, kind: AgentNodeBindingKind): AgentNodeBinding | undefined {
     return this.list.find(b => b.agentId === agentId && b.nodeId === nodeId && b.kind === kind)
   }
@@ -84,6 +97,22 @@ export class AgentNodeBindingRepo {
     b.mode = mode
     this.flush()
     return b
+  }
+
+  /** 三元组精确删除(工具侧失效绑定自清理) */
+  removeAgentNode(agentId: string, nodeId: string, kind: AgentNodeBindingKind): boolean {
+    const before = this.list.length
+    this.list = this.list.filter(b => !(b.agentId === agentId && b.nodeId === nodeId && b.kind === kind))
+    if (this.list.length !== before) this.flush()
+    return this.list.length !== before
+  }
+
+  /** 按节点+类型解绑(工具侧便捷入口) */
+  unbindNode(agentId: string, nodeId: string, kind: AgentNodeBindingKind): boolean {
+    const before = this.list.length
+    this.list = this.list.filter(b => !(b.agentId === agentId && b.nodeId === nodeId && b.kind === kind))
+    if (this.list.length !== before) this.flush()
+    return this.list.length !== before
   }
 
   unbind(id: string): boolean {

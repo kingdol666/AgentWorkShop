@@ -80,6 +80,31 @@ class ToolApprovalService {
       .filter(a => !agentId || a.agentId === agentId)
   }
 
+  /** 解绑/换线时取消挂起审批:该 Agent 对某节点的全部 pending 按拒绝收敛(备注说明原因) */
+  cancelPendingFor(agentId: string, nodeId: string): number {
+    let n = 0
+    for (const [id, entry] of [...this.pending.entries()]) {
+      if (entry.approval.agentId !== agentId || entry.approval.nodeId !== nodeId) continue
+      clearTimeout(entry.timer)
+      this.pending.delete(id)
+      entry.approval.status = 'denied'
+      entry.approval.comment = '绑定已解除,审批失效'
+      entry.approval.decidedAt = new Date().toISOString()
+      this.remember(entry.approval)
+      entry.resolve({ approved: false, comment: entry.approval.comment, id })
+      n++
+    }
+    return n
+  }
+
+  /** 同一 Agent 同一节点的挂起审批去重:已有 pending 时拒绝新挂起(防审批面板堆积) */
+  hasPendingFor(agentId: string, nodeId: string): boolean {
+    for (const entry of this.pending.values()) {
+      if (entry.approval.agentId === agentId && entry.approval.nodeId === nodeId) return true
+    }
+    return false
+  }
+
   historyList(): ToolApproval[] {
     return this.history
   }

@@ -303,6 +303,16 @@ class DcwController {
     if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
     this.repo.remove(id)
     this.runtimes.delete(id)
+    // 级联清理:该节点的 Agent 绑定移除,挂起中的手动审批按失效收敛
+    void import('../agents/node-bindings.repo').then(({ getAgentNodeBindingRepo }) => {
+      const repo = getAgentNodeBindingRepo()
+      for (const b of repo.byNode(id)) {
+        void import('../agents/tool-approvals').then(({ getToolApprovals }) => {
+          getToolApprovals().cancelPendingFor(b.agentId, id)
+        }).catch(() => {})
+        repo.removeAgentNode(b.agentId, id, 'dcw')
+      }
+    }).catch(() => {})
     this.emitNodeChanged('removed', node)
   }
 

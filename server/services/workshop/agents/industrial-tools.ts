@@ -47,20 +47,29 @@ function describeDaqNode(nodeId: string, mode: string): string | null {
 
 /** 工具:my_industrial_nodes —— 列出 Agent 持有的节点与物理意义/规则 */
 export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: string }> {
-  const bindings = getAgentNodeBindingRepo().byAgent(agentId)
+  const repo = getAgentNodeBindingRepo()
+  const bindings = repo.byAgent(agentId)
   if (bindings.length === 0) {
     return { text: '你尚未绑定任何工业节点。请在数字孪生界面的 Agent 详情面板中绑定数控/数采节点后再调用工业工具。' }
   }
-  const lines = bindings
-    .map(b => b.kind === 'dcw' ? describeDcwNode(b.nodeId, b.mode) : describeDaqNode(b.nodeId, b.mode))
-    .filter((s): s is string => !!s)
+  const lines: string[] = []
+  let staleCount = 0
+  for (const b of bindings) {
+    const d = b.kind === 'dcw' ? describeDcwNode(b.nodeId, b.mode) : describeDaqNode(b.nodeId, b.mode)
+    if (d) lines.push(d)
+    else {
+      staleCount++
+      repo.removeAgentNode(agentId, b.nodeId, b.kind) // 节点已删除 → 绑定失效,自清理
+    }
+  }
   if (lines.length === 0) return { text: '绑定的节点均已不存在(可能被删除),请重新绑定。' }
+  const staleNote = staleCount > 0 ? `\n(另有 ${staleCount} 条失效绑定已自动清理)` : ''
   return {
-    text: `你持有 ${lines.length} 个工业节点绑定:\n${lines.join('\n')}\n\n规则:数控下发用 dcw_control(node_id, value),设定值不得越出安全量程与活动配方工艺窗口(越窗将被联锁拒绝);数据查询用 daq_query,可按产线/产品/配方/时间/节点检索。下发前请确认物理含义与窗口。`,
+    text: `你持有 ${lines.length} 个工业节点绑定:\n${lines.join('\n')}${staleNote}\n\n规则:一个 Agent 可绑定多个节点;数控下发用 dcw_control(node_id, value),设定值不得越出安全量程与活动配方工艺窗口(越窗将被联锁拒绝);数据查询用 daq_query(不传 node_id = 查询你全部数采节点),可按产线/产品/配方/时间检索。下发前请确认物理含义与窗口。`,
   }
 }
 
-/** 工具:dcw_control —— 数控下发(鉴权 → 手动审批 → 安全联锁 → 回读语义结果) */
+/** 工具:dcw_control —— 数控下发(鉴权 → 停线守卫 → 手动审批 → 安全联锁 → 回读语义结果) */
 export async function toolDcwControl(agentId: string, args: { node_id?: string, value?: number | string }): Promise<{ text: string, isError?: boolean }> {
   const nodeId = String(args.node_id ?? '').trim()
   const value = Number(args.value)
@@ -79,19 +88,33 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
     return { text: '设定值 value 必须为数字。', isError: true }
   }
   const node = getDcwController().byId(nodeId)
-  if (!node) return { text: `数控节点不存在: ${nodeId}`, isError: true }
+  if (!node) {
+    // 节点已被删除 → 绑定失效自清理,提示重新绑定
+    repo.removeAgentNode(agentId, nodeId, 'dcw')
+    return { text: `数控节点 ${nodeId} 已不存在(可能被删除),原绑定已自动清理,请重新绑定。`, isError: true }
+  }
+  // 停线守卫:产线未开跑时手动写允许(调试),但提示当前无配方窗口约束
   const tpl = findDcwTemplate(node.templateKey)
 
   // 手动确认模式:挂起等待用户批准(备注会回给 Agent)
+  // 同 Agent 同节点的挂起审批去重:防止审批面板堆积(前一条未决,拒绝新的)
   if (binding.mode === 'manual') {
+    const approvals = getToolApprovals()
+    if (approvals.hasPendingFor(agentId, nodeId)) {
+      return { text: `你对该节点已有一条待审批的下发指令,请等待用户处理后再发新指令(避免审批堆积)。`, isError: true }
+    }
     const run = node.lineId ? getActiveLineRun(node.lineId) : null
     const recipe = run ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
     const param = recipe?.params.find(p => p.nodeId === nodeId)
     const detail = `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit}`
       + (param && (param.min != null || param.max != null) ? `,配方窗口 ${param.min ?? '-∞'}~${param.max ?? '+∞'}${node.unit}` : `,安全量程 ${node.min}~${node.max}${node.unit}`)
-    const ap = await getToolApprovals().request(agentId, nodeId, 'dcw', detail)
+    const ap = await approvals.request(agentId, nodeId, 'dcw', detail)
     if (!ap.approved) {
       return { text: `指令未执行:用户${ap.comment.includes('超时') ? '未在时限内批准(超时)' : `拒绝了本次下发`}。用户备注:${ap.comment || '(无)'}` }
+    }
+    // 审批期间节点可能被解绑/删除(权限在批准时失效):二次校验
+    if (!repo.find(agentId, nodeId, 'dcw')) {
+      return { text: '指令未执行:审批通过时你的该节点绑定已被解除(权限在批准时失效)。', isError: true }
     }
   }
 

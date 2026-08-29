@@ -566,6 +566,10 @@ class DaqController {
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
     this.repo.remove(id)
     this.runtimes.delete(id) // 运行时随节点注销
+    // 级联清理:该节点的 Agent 绑定移除
+    void import('../agents/node-bindings.repo').then(({ getAgentNodeBindingRepo }) => {
+      getAgentNodeBindingRepo().removeNode(id)
+    }).catch(() => {})
     this.emitNodeChanged('removed', node)
   }
 
