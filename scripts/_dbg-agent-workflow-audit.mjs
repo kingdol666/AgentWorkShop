@@ -54,7 +54,7 @@ async function main() {
   // ===== 1. my_industrial_nodes:A1 多节点清单 =====
   const mine1 = await invoke(A1, 'my_industrial_nodes', {})
   const ok1 = mine1.text.includes('温度设定') && mine1.text.includes('压力设定') && mine1.text.includes('温度采集')
-    && mine1.text.includes('176~188') && mine1.text.includes('手动确认') && mine1.text.includes('自动')
+    && mine1.text.includes('176') && mine1.text.includes('188') && mine1.text.includes('手动确认') && mine1.text.includes('自动')
   if (ok1) console.log('PASS A1 多节点清单:3 绑定(2 数控 + 1 数采),窗口/模式齐备')
   else fail(`A1 清单异常: ${mine1.text.slice(0, 200)}`)
   const mine2 = await invoke(A2, 'my_industrial_nodes', {})

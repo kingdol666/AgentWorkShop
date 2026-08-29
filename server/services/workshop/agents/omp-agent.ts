@@ -49,6 +49,7 @@ import {
   renderPrompt,
 } from '../prompts/loader'
 import { toolDaqQuery, toolDcwControl, toolMyIndustrialNodes } from './industrial-tools'
+import { buildIndustrialContext } from './industrial-context'
 import { extractTaskMode } from '../runtime/execution-mode'
 
 // ===== 配置 =====
@@ -302,6 +303,13 @@ export class OmpRpcAgentImpl implements AgentInterface {
         ``,
       )
     }
+    // 工业工况简报(实时):本 Agent 绑定节点所在的产线运行状态/活动配方窗口/关联设备
+    // 孪生遥测 —— 让 Agent 每次回合开头就知道自己在哪条产线、生产什么、窗口多少、
+    // 设备当前状态,从而把节点读写放进工艺上下文里决策(而非盲操作)。
+    const industrial = buildIndustrialContext(this.selfAgentId)
+    if (industrial) {
+      parts.push(industrial, ``)
+    }
     if (roster) {
       parts.push(roster, ``)
     }
@@ -456,6 +464,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
       const abortTurn = (): void => {
         // 超时/外部取消:真正中止 omp 当前回合 —— 只 resolve 不 abort 会让残留回合
         // 与下一个 prompt 在同一 client 混流(决策错位 + token 空烧)
+        console.warn(`[OmpRpcAgent:${this.selfAgentId}] supervise 超时(${timeoutMs}ms)→ abort 当前调度回合`)
         void this.client?.send({ type: 'abort' }).catch(() => {})
         finish([])
       }
@@ -714,6 +723,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
     // abort 传导
     const onAbort = (): void => {
+      console.warn(`[OmpRpcAgent:${this.selfAgentId}] run 被 abort(signal)→ 中止 omp 回合,taskId=${taskId ?? '-'}`)
       client.send({ type: 'abort' }).catch(() => {})
       if (!isDone) {
         enqueue({ kind: 'done', final: taskId ? { taskId } : undefined })

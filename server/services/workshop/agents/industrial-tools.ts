@@ -10,62 +10,38 @@
 import type { AgentNodeBinding } from './node-bindings.repo'
 import { getAgentNodeBindingRepo } from './node-bindings.repo'
 import { getToolApprovals } from './tool-approvals'
+import { nodeSemanticCards } from './industrial-context'
 import { getDcwController } from '../dcw/dcw-controller'
-import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { getActiveLineRun } from '../dcw/line-run'
 import { findDcwTemplate } from '../dcw/dcw-templates'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { findDaqTemplate } from '../daq/daq-templates'
 
-/** 数控节点的人类语义摘要(物理含义 + 量程 + 活动配方窗口 + 模式) */
-function describeDcwNode(nodeId: string, mode: string): string | null {
-  const node = getDcwController().byId(nodeId)
-  if (!node) return null
-  const tpl = findDcwTemplate(node.templateKey)
-  const run = node.lineId ? getActiveLineRun(node.lineId) : null
-  const recipe = run ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
-  const param = recipe?.params.find(p => p.nodeId === nodeId)
-  const line = node.lineId ? getDcwLineRepo().byId(node.lineId)?.name ?? '' : '未分配产线'
-  const win = param && (param.min != null || param.max != null)
-    ? `活动配方「${recipe!.name}」工艺窗口 ${param.min ?? '-∞'}~${param.max ?? '+∞'}${node.unit}`
-    : `无配方窗口约束(全局量程生效)`
-  return `- [数控] ${node.name}(${tpl?.ch ?? node.templateKey}):当前设定 ${node.value != null ? node.value : '未下发'}${node.unit},安全量程 ${node.min}~${node.max}${node.unit},${win},所属产线 ${line},控制模式 ${mode === 'manual' ? '手动确认(每次下发需用户批准)' : '自动'}`
-}
-
-/** 数采节点的人类语义摘要 */
-function describeDaqNode(nodeId: string, mode: string): string | null {
-  const node = getDaqNodeRepo().byId(nodeId)
-  if (!node) return null
-  const tpl = findDaqTemplate(node.templateKey)
-  const run = node.lineId ? getActiveLineRun(node.lineId) : null
-  const recipe = run ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
-  const win = recipe?.daqWindows?.find(w => w.nodeId === nodeId)
-  const line = node.lineId ? getDcwLineRepo().byId(node.lineId)?.name ?? '' : '未分配产线'
-  const winTxt = win ? `活动配方「${recipe!.name}」监控窗口 ${win.min ?? '-∞'}~${win.max ?? '+∞'}${node.unit}(越限报警)` : '无配方监控窗口'
-  return `- [数采] ${node.name}(${tpl?.ch ?? node.templateKey}):当前 ${node.value != null ? node.value : '无数据'}${node.unit},正常量程 ${node.min}~${node.max}${node.unit}(越限即报警),${winTxt},所属产线 ${line},数据模式 ${mode === 'manual' ? '手动确认' : '自动'}`
-}
-
-/** 工具:my_industrial_nodes —— 列出 Agent 持有的节点与物理意义/规则 */
 export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: string }> {
   const repo = getAgentNodeBindingRepo()
   const bindings = repo.byAgent(agentId)
   if (bindings.length === 0) {
     return { text: '你尚未绑定任何工业节点。请在数字孪生界面的 Agent 详情面板中绑定数控/数采节点后再调用工业工具。' }
   }
-  const lines: string[] = []
-  let staleCount = 0
-  for (const b of bindings) {
-    const d = b.kind === 'dcw' ? describeDcwNode(b.nodeId, b.mode) : describeDaqNode(b.nodeId, b.mode)
-    if (d) lines.push(d)
-    else {
-      staleCount++
-      repo.removeAgentNode(agentId, b.nodeId, b.kind) // 节点已删除 → 绑定失效,自清理
-    }
-  }
-  if (lines.length === 0) return { text: '绑定的节点均已不存在(可能被删除),请重新绑定。' }
-  const staleNote = staleCount > 0 ? `\n(另有 ${staleCount} 条失效绑定已自动清理)` : ''
+  const cards = nodeSemanticCards(agentId)
+  if (cards.stale > 0) repo.removeAgentNodeStale(agentId, bindings.filter((b) => {
+    const has = b.kind === 'dcw' ? !!getDcwController().byId(b.nodeId) : !!getDaqNodeRepo().byId(b.nodeId)
+    return !has
+  }).map(b => b.id))
+  if (!cards.text) return { text: '绑定的节点均已不存在(可能被删除),请重新绑定。' }
+  const staleNote = cards.stale > 0
+    ? `
+(另有 ${cards.stale} 条失效绑定已自动清理)`
+    : ''
   return {
-    text: `你持有 ${lines.length} 个工业节点绑定:\n${lines.join('\n')}${staleNote}\n\n规则:一个 Agent 可绑定多个节点;数控下发用 dcw_control(node_id, value),设定值不得越出安全量程与活动配方工艺窗口(越窗将被联锁拒绝);数据查询用 daq_query(不传 node_id = 查询你全部数采节点),可按产线/产品/配方/时间检索。下发前请确认物理含义与窗口。`,
+    text: `${cards.text}${staleNote}
+
+---
+通用规则:
+1. 一个 Agent 可绑定多个节点;先读本清单理解每个节点的物理意义与操作守则,再动手。
+2. 数控下发 dcw_control(node_id, value):目标值必须落在「安全量程 ∩ 活动配方工艺窗口」;单次调幅建议按语义卡的步进指引。
+3. 数据获取 daq_query(不传 node_id = 全部数采节点),支持按产线/产品/配方/时间检索;解读数据时结合语义卡的判读方法。
+4. 改动设定后等待工艺响应(热惯性/传动惯量)再评估,避免连续大幅调整。`,
   }
 }
 
@@ -192,16 +168,33 @@ export async function toolDaqQuery(agentId: string, args: {
         points = await tsdb.query(nodeId, { fromMs, toMs, bucketMs, limit })
       }
       const head = `■ ${node.name}(${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}${bucketMs ? `(降采样 ${bucketMs}ms)` : ''}`
+      // 工况判读容器(具体判读在 values 计算后追加)
+      const readout: string[] = []
       if (points.length === 0) {
         sections.push(`${head}\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线运行中的样本被持久化打标)`)
         continue
       }
       const values = points.map(p => p.value ?? p.avg ?? 0).filter(Number.isFinite)
       const latest = values[values.length - 1]!
+      // 工况判读:最新值相对活动配方监控窗口/同线数控设定的位置(数据 → 语义)
+      const latestRaw = latest
+      const rw = node.lineId ? getActiveLineRun(node.lineId) : null
+      const recipeR = rw ? getDcwController().listRecipes().find(r => r.id === rw.recipeId) : undefined
+      const rwin = recipeR?.daqWindows?.find(w2 => w2.nodeId === nodeId)
+      if (rw && rwin) {
+        const inWin = (rwin.min == null || latestRaw >= rwin.min) && (rwin.max == null || latestRaw <= rwin.max)
+        readout.push(`活动配方「${rw.recipeName}」监控窗口 [${rwin.min ?? '-∞'}, ${rwin.max ?? '+∞'}]:当前 ${latestRaw}${node.unit} ${inWin ? '窗口内(正常)' : '**越限(该节点应已报警)**'}`)
+      }
+      {
+        const dcwAll = getDcwController().listViews().filter(d => d.lineId === node.lineId && d.value != null)
+        if (dcwAll.length > 0) {
+          readout.push(`同产线数控设定: ${dcwAll.map(d => `${d.name}=${d.value}${d.unit}`).join(';')}(判读时考虑设定↔实际量的耦合与滞后)`)
+        }
+      }
       const avg = values.reduce((a, b) => a + b, 0) / values.length
       const tail = points.slice(-12).map(p => `${new Date(p.at).toISOString().slice(11, 19)}=${p.value != null ? p.value : `avg ${Number((p.avg ?? 0).toFixed(2))}`}`)
       sections.push(
-        `${head}\n  样本 ${values.length} 点 | 最新 ${latest}${node.unit} | 均值 ${Number(avg.toFixed(3))} | 最小 ${Math.min(...values)} | 最大 ${Math.max(...values)}\n  最近序列: ${tail.join('; ')}`,
+        `${head}\n  样本 ${values.length} 点 | 最新 ${latest}${node.unit} | 均值 ${Number(avg.toFixed(3))} | 最小 ${Math.min(...values)} | 最大 ${Math.max(...values)}\n  最近序列: ${tail.join('; ')}${readout.length > 0 ? `\n  工况判读: ${readout.join(' | ')}` : ''}`,
       )
     }
     catch (err) {
@@ -211,5 +204,5 @@ export async function toolDaqQuery(agentId: string, args: {
   const prov = args.product_id || args.recipe_id
     ? `\n(已按${args.product_id ? ` 产品 ${args.product_id}` : ''}${args.recipe_id ? ` 配方 ${args.recipe_id}` : ''}过滤 —— 仅活动批次窗口内逐样本打标的数据)`
     : ''
-  return { text: `数采数据查询结果(${targets.length} 个节点):\n\n${sections.join('\n\n')}${prov}\n\n数值均为经标定钩子处理后的真实物理量纲。` }
+  return { text: `数采数据查询结果(${targets.length} 个节点):\n\n${sections.join('\n\n')}${prov}\n\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。` }
 }

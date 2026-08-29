@@ -99,6 +99,17 @@ export class AgentNodeBindingRepo {
     return b
   }
 
+  /** 按 id 列表批量删除(失效绑定自清理) */
+  removeAgentNodeStale(agentId: string, ids: string[]): number {
+    if (ids.length === 0) return 0
+    const set = new Set(ids)
+    const before = this.list.length
+    this.list = this.list.filter(b => !(b.agentId === agentId && set.has(b.id)))
+    const removed = before - this.list.length
+    if (removed > 0) this.flush()
+    return removed
+  }
+
   /** 三元组精确删除(工具侧失效绑定自清理) */
   removeAgentNode(agentId: string, nodeId: string, kind: AgentNodeBindingKind): boolean {
     const before = this.list.length
