@@ -31,6 +31,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
         ts_ms   INTEGER NOT NULL,
         value   REAL    NOT NULL,
         state   TEXT    NOT NULL DEFAULT 'ok',
+        line_id    TEXT,
         product_id TEXT,
         recipe_id  TEXT,
         run_id     TEXT,
@@ -40,7 +41,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     `)
     // 存量库迁移:先补打标列(幂等),再建依赖列的索引
     const cols = new Set((this.db.prepare('PRAGMA table_info(daq_samples)').all() as Array<{ name: string }>).map(c => c.name))
-    for (const [col, ddl] of [['product_id', 'ALTER TABLE daq_samples ADD COLUMN product_id TEXT'], ['recipe_id', 'ALTER TABLE daq_samples ADD COLUMN recipe_id TEXT'], ['run_id', 'ALTER TABLE daq_samples ADD COLUMN run_id TEXT']] as const) {
+    for (const [col, ddl] of [['line_id', 'ALTER TABLE daq_samples ADD COLUMN line_id TEXT'], ['product_id', 'ALTER TABLE daq_samples ADD COLUMN product_id TEXT'], ['recipe_id', 'ALTER TABLE daq_samples ADD COLUMN recipe_id TEXT'], ['run_id', 'ALTER TABLE daq_samples ADD COLUMN run_id TEXT']] as const) {
       if (!cols.has(col)) this.db.exec(ddl)
     }
     this.db.exec(`
@@ -79,11 +80,11 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     if (!this.db || rows.length === 0) return
     // 批内单事务:一次 fsync 落整批(逐行 run 会每行一次 WAL fsync,写放大)
     const ins = this.db.prepare(
-      'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state, product_id, recipe_id, run_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state, line_id, product_id, recipe_id, run_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     )
     this.db.exec('BEGIN')
     try {
-      for (const r of rows) ins.run(r.nodeId, r.tsMs, r.value, r.state, r.productId ?? null, r.recipeId ?? null, r.runId ?? null)
+      for (const r of rows) ins.run(r.nodeId, r.tsMs, r.value, r.state, r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null)
       this.db.exec('COMMIT')
     }
     catch (err) {
@@ -124,6 +125,10 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     if (!this.db) return out
     const where: string[] = []
     const params: Array<string | number> = []
+    if (q.lineId) {
+      where.push('line_id = ?')
+      params.push(q.lineId)
+    }
     if (q.productId) {
       where.push('product_id = ?')
       params.push(q.productId)

@@ -10,15 +10,16 @@ const post = (u, b) => fetch(u, { method: 'POST', headers: H, body: JSON.stringi
 const del = (u) => fetch(u, { method: 'DELETE', headers: H })
 const get = (u) => fetch(u, { headers: H }).then(r => r.json())
 
-// 0) 确保产线停止(幂等;400=本就未跑)
-await post(DCW + '/line/stop', {}).catch(() => {})
+// 0) 产线夹具(逐产线门控)
+const { makeLineFixture } = await import('./_lib-dcw-line.mjs')
+const fx = await makeLineFixture(ROOT, H, '门控审计产线')
 
 // 1) mock 自定义模板 + 节点 + 双向绑定
 const daqTpl = (await post(DAQ + '/templates', { name: '门控-厚度', unit: 'um', min: 30, max: 60, decimals: 1, icon: 'gateway', ch: '膜厚' })).data.template
 const dcwTpl = (await post(DCW + '/templates', { name: '门控-厚度设定', unit: 'um', min: 30, max: 60, decimals: 1, icon: 'gateway', ch: '膜厚设定' })).data.template
 const devList = (await get(ROOT + '/api/workshop/device-twins')).data?.twins ?? []
 const dev = devList.find(t => t.kind !== 'daq' && typeof t.posX === 'number')
-const dq = (await post(DAQ, { templateRef: `daq-${daqTpl.key}`, name: '门控-厚度通道', intervalMs: 500, posX: dev.posX + 40, posZ: dev.posZ + 40 })).data.node
+const dq = (await post(DAQ, { templateRef: `daq-${daqTpl.key}`, name: '门控-厚度通道', intervalMs: 500, posX: dev.posX + 40, posZ: dev.posZ + 40, lineId: fx.line.id })).data.node
 const dw = (await post(DCW, { templateRef: `dcw-${dcwTpl.key}`, name: '门控-厚度设定', posX: dev.posX - 40, posZ: dev.posZ - 40 })).data.node
 await post(`${DAQ}/${dq.id}/bind`, { deviceId: dev.id })
 await post(`${DCW}/${dw.id}/bind`, { deviceId: dev.id })
@@ -36,7 +37,7 @@ if (p1 === p0) console.log('PASS no acquisition without active recipe')
 else fail(`sampling while line idle: +${p1 - p0}`)
 
 // 3) 产品/配方管理 + 设定值查看
-const prod = (await post(DCW + '/products', { name: '门控审计产品', description: 'recipe mgmt' })).data.product
+const prod = (await post(DCW + '/products', { name: '门控审计产品', description: 'recipe mgmt', lineId: fx.line.id })).data.product
 const rc = (await post(DCW + '/recipes', {
   productId: prod.id,
   name: '门控审计配方',
@@ -50,7 +51,7 @@ if (rcList?.productId === prod.id && rcList?.params?.[0]?.value === 45 && rcList
 else fail('recipe mgmt/setpoint wrong')
 
 // 4) 开跑:配方下发(节点 value=45)+ 采集启动 + 实时帧
-const st = await post(DCW + '/line/start', { recipeId: rc.id })
+const st = await fx.start(rc.id)
 if (!st.data?.line?.active) { fail(`line start: ${JSON.stringify(st).slice(0, 140)}`); process.exit(1) }
 const dwApplied = (await get(DCW)).data.nodes.find(n => n.id === dw.id)
 console.log('recipe applied to node:', dwApplied?.value, dwApplied?.state)
@@ -86,7 +87,7 @@ if (pts.length >= 3) console.log(`PASS tagged data under product+recipe (${pts.l
 else fail(`tagged points: ${pts.length}`)
 
 // 6) 停线:采集即停 + 节点 offline
-const sp = await post(DCW + '/line/stop', {})
+const sp = await fx.stop()
 await sleep(2600)
 const p4 = (await get(DAQ)).data.controller.produced
 const nodesAfter = (await get(DAQ)).data.nodes.find(n => n.id === dq.id)
@@ -101,6 +102,7 @@ await del(`${DCW}/recipes/${rc.id}`)
 await del(`${DCW}/products/${prod.id}`)
 await del(`${DAQ}/templates/${daqTpl.key}`)
 await del(`${DCW}/templates/${dcwTpl.key}`)
+await fx.cleanup()
 console.log('cleanup done')
 console.log(process.exitCode ? 'AUDIT FAILED' : 'AUDIT ALL PASS')
 process.exit(process.exitCode ?? 0)

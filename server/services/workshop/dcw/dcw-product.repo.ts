@@ -39,6 +39,7 @@ class DcwProductRepo {
     if (!name) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '产品名称必填')
     const p: ProductView = {
       id: `pd-${randomUUID().slice(0, 8)}`,
+      lineId: String(input.lineId ?? ''),
       name,
       description: String(input.description ?? '').trim(),
       createdAt: new Date().toISOString(),
@@ -57,6 +58,7 @@ class DcwProductRepo {
       p.name = name
     }
     if (patch.description !== undefined) p.description = String(patch.description).trim()
+    if (patch.lineId !== undefined) p.lineId = String(patch.lineId)
     this.flush()
     return p
   }

@@ -1290,7 +1290,11 @@ watch(() => agentHistory.value.length + agentChatRows.value.length, async () => 
 })
 
 /** 场景管线统一设备池:真实设备孪生(剔除旧 daq 孪生)+ server 数采节点伪孪生 */
-/** 智控节点伪孪生投影(与 daqTwins 同构;value = 当前设定值) */
+/** 产线光晕色(lineId → Hex;未分配 undefined = 缺省绿) */
+const lineColorOf = (lid: string): string | undefined =>
+  dcw.lines.find(l => l.id === lid)?.color
+
+/** 智控节点伪孪生投影(与 daqTwins 同构;value = 当前设定值;lineColor = 产线光环) */
 const dcwTwins = computed<DeviceTwinView[]>(() =>
   dcw.nodes.map(n => ({
     id: n.id,
@@ -1305,6 +1309,8 @@ const dcwTwins = computed<DeviceTwinView[]>(() =>
     state: n.enabled ? (n.state === 'error' ? 'alarm' : 'running') : 'offline',
     posX: n.posX,
     posZ: n.posZ,
+    lineId: n.lineId || undefined,
+    lineColor: n.lineId ? lineColorOf(n.lineId) : undefined,
     updatedAt: n.lastWriteAt ?? n.createdAt,
   })))
 
@@ -1468,6 +1474,8 @@ const daqTwins = computed<DeviceTwinView[]>(() =>
     state: effectiveTwinState(n),
     posX: n.posX,
     posZ: n.posZ,
+    lineId: n.lineId || undefined,
+    lineColor: n.lineId ? lineColorOf(n.lineId) : undefined,
     updatedAt: n.lastAt ?? n.createdAt,
   })))
 
@@ -1575,6 +1583,7 @@ async function addChannelFromTemplate(tpl: DaqTemplate): Promise<void> {
       name: `${tpl.name} ${String(seq).padStart(2, '0')}`,
       posX: Math.round((devTwin?.posX ?? 0) + 95 + (off % 3) * 26),
       posZ: Math.round((devTwin?.posZ ?? 0) + 100 + (off % 2) * 30),
+      lineId: lineIdForNewChannel(devId),
     }).then((created) => {
       void daq.bindNode(created.id, devId)
     })
@@ -1688,13 +1697,15 @@ const dcwOfDevice = (deviceId: string): DcwNodeView[] =>
   deviceId ? dcw.nodes.filter(n => n.deviceBindingId === deviceId) : []
 
 /** 活动配方对该智控节点的工艺窗口参数(产线未开跑/未命中 → null = 用节点全局量程) */
+/** 节点所属产线的活动配方窗口参数(逐产线运行窗;节点级寻址) */
 function activeRecipeParamOf(dcwId: string): RecipeParam | null {
-  if (!dcw.line.active || !dcw.line.recipeId) return null
-  const r = dcw.recipes.find(x => x.id === dcw.line.recipeId)
   const node = dcw.nodeById(dcwId)
-  if (!r || !node) return null
-  const key = node.templateRef.startsWith('dcw-') ? node.templateRef.slice(4) : node.templateRef
-  return r.params.find(p => p.nodeId === dcwId || (p.templateRef.startsWith('dcw-') ? p.templateRef.slice(4) : p.templateRef) === key) ?? null
+  if (!node || !node.lineId) return null
+  const run = dcw.lineStateOf(node.lineId)
+  if (!run.active || !run.recipeId) return null
+  const r = dcw.recipes.find(x => x.id === run.recipeId)
+  if (!r) return null
+  return r.params.find(p => p.nodeId === dcwId) ?? null
 }
 
 interface DcwBoundRow {
@@ -1747,6 +1758,14 @@ function dcwWindowOf(node: DcwNodeView): { lo: number, hi: number, src: 'recipe'
   return { lo: node.min, hi: node.max, src: 'global' }
 }
 
+/** 窗口游标(0~100%):当前设定值在生效窗口带上的位置(越界钳边;∞ 窗口居中) */
+function dcwMarkPct(r: { value: number | null, rMin: number | null, rMax: number | null, gMin: number, gMax: number }): number {
+  const lo = r.rMin ?? r.gMin
+  const hi = r.rMax ?? r.gMax
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo || r.value == null) return 50
+  return Math.min(100, Math.max(0, ((r.value - lo) / (hi - lo)) * 100))
+}
+
 const dcwWriteDrafts = reactive<Record<string, number | ''>>({})
 const dcwWriteErrs = reactive<Record<string, string>>({})
 
@@ -1764,6 +1783,19 @@ function doDcwWrite(node: DcwNodeView): void {
   }).catch((err: unknown) => {
     dcwWriteErrs[node.id] = err instanceof Error ? err.message : String(err)
   })
+}
+
+/**
+ * 新建通道的产线归属:继承该设备已绑通道的产线(同类设备产线一致);
+ * 设备无任何通道时,若当前仅一条产线则归入之,否则未分配(到产线页收编)。
+ */
+function lineIdForNewChannel(devId: string): string {
+  const bound = [
+    ...dcwOfDevice(devId).map(n => n.lineId),
+    ...daq.nodes.filter(n => n.deviceBindingId === devId).map(n => n.lineId ?? ''),
+  ].filter(Boolean)
+  if (bound.length) return bound[0]!
+  return dcw.lines.length === 1 ? dcw.lines[0]!.id : ''
 }
 
 /** 添加智控通道(与数采同策略:就近复用未绑定同模板节点,无则创建并绑定) */
@@ -1788,6 +1820,7 @@ async function addDcwChannelFromTemplate(tpl: { id: string, name: string }): Pro
       name: `${tpl.name} ${String(seq).padStart(2, '0')}`,
       posX: Math.round((devTwin?.posX ?? 0) + 95 + (off % 3) * 26),
       posZ: Math.round((devTwin?.posZ ?? 0) - 100 - (off % 2) * 30),
+      lineId: lineIdForNewChannel(devId),
     })
     await dcw.bindNode(created.id, devId)
     dcwBindPopOpen.value = false
@@ -3659,31 +3692,50 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
-              <!-- 智控设定(写控制通道:当前设定 + 直写下发 + 活动配方窗口) -->
+              <!-- 智控设定(三段式仪表卡:身份行 / 工艺窗口带 / 下发行) -->
               <div class="sect-hd">
                 智控设定 · {{ boundDcwRows.length }} 路
               </div>
               <div
                 v-for="r in boundDcwRows"
                 :key="r.dcwId"
-                class="bind-row dcw-row"
+                class="dcw-row"
               >
-                <span class="bind-ico">
-                  <svg
-                    class="bind-svg"
-                    viewBox="0 0 24 24"
-                    v-html="daqIcon(r.icon)"
-                  />
-                </span>
-                <span class="bind-meta">
-                  <span class="bind-label">{{ r.ch }}</span>
-                  <span class="bind-val"><b>{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}</b> {{ r.unit }} · {{ r.name }}</span>
-                  <span
-                    class="dcw-win"
-                    :class="{ recipe: r.rMin != null || r.rMax != null }"
-                  >{{ r.rMin != null || r.rMax != null ? `配方窗口 ${r.rMin ?? '-∞'} ~ ${r.rMax ?? '+∞'}` : `全局量程 ${r.gMin} ~ ${r.gMax}` }}</span>
-                </span>
-                <span class="dcw-write">
+                <div class="dcw-top">
+                  <span class="bind-ico">
+                    <svg
+                      class="bind-svg"
+                      viewBox="0 0 24 24"
+                      v-html="daqIcon(r.icon)"
+                    />
+                  </span>
+                  <span class="dcw-id">
+                    <span class="bind-label">{{ r.ch }}<i
+                      v-if="r.rMin != null || r.rMax != null"
+                      class="dcw-tag"
+                    >配方</i></span>
+                    <span class="dcw-name">{{ r.name }}</span>
+                  </span>
+                  <span class="dcw-cur"><b>{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}</b><i>{{ r.unit }}</i></span>
+                  <button
+                    v-if="mode === 'edit'"
+                    class="bind-x"
+                    title="解除绑定"
+                    @click="unbindDcw(r.dcwId)"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div
+                  class="dcw-win"
+                  :class="{ recipe: r.rMin != null || r.rMax != null }"
+                >
+                  <em>{{ r.rMin != null || r.rMax != null ? '配方窗口' : '全局量程' }}</em>
+                  <span class="dcw-win-num">{{ r.rMin ?? '-∞' }}</span>
+                  <span class="dcw-win-track"><i :style="{ left: `${dcwMarkPct(r)}%` }" /></span>
+                  <span class="dcw-win-num">{{ r.rMax ?? '+∞' }}</span>
+                </div>
+                <div class="dcw-write">
                   <input
                     v-model.number="dcwWriteDrafts[r.dcwId]"
                     type="number"
@@ -3699,15 +3751,7 @@ onBeforeUnmount(() => {
                   >
                     write
                   </button>
-                </span>
-                <button
-                  v-if="mode === 'edit'"
-                  class="bind-x"
-                  title="解除绑定"
-                  @click="unbindDcw(r.dcwId)"
-                >
-                  ✕
-                </button>
+                </div>
                 <small
                   v-if="dcwWriteErrs[r.dcwId]"
                   class="dcw-err"
@@ -4949,12 +4993,14 @@ onBeforeUnmount(() => {
   gap: 5px;
   font-size: 10.5px;
   color: var(--hud-dim);
-  border: 1px solid var(--hud-line);
+  border: 1px solid var(--hud-line-soft);
+  background: rgba(13, 20, 32, 0.6);
   border-radius: 6px;
   padding: 2px 8px;
   cursor: pointer;
-  transition: opacity 0.15s var(--hud-ease);
+  transition: opacity 0.15s var(--hud-ease), border-color 0.15s var(--hud-ease), color 0.15s var(--hud-ease);
 }
+.lg-chip:hover { border-color: var(--hud-line-hi); color: var(--hud-text); }
 .lg-chip.off { opacity: 0.32; }
 .lg-dot { width: 7px; height: 7px; border-radius: 2px; }
 .trend-wrap { flex: 1; min-height: 0; position: relative; }
@@ -4986,11 +5032,23 @@ onBeforeUnmount(() => {
 }
 .ins-chip.accent { color: var(--hud-accent); border-color: rgba(53, 224, 160, 0.4); }
 .sect-hd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 10px;
   color: var(--hud-faint);
   letter-spacing: 0.16em;
   font-weight: 700;
   margin: 10px 0 7px;
+}
+/* 分区头刻度线:与面板左缘数据条同 motif,建立分区节奏 */
+.sect-hd::before {
+  content: '';
+  width: 3px;
+  height: 9px;
+  background: var(--hud-accent);
+  border-radius: 1px;
+  opacity: 0.55;
 }
 .obj-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
 .obj-label { flex: none; width: 52px; font-size: 10.5px; color: var(--hud-dim); }
@@ -5531,18 +5589,257 @@ onBeforeUnmount(() => {
 }
 .bind-pop button:hover { background: #12203a; color: var(--hud-text); }
 .bind-pop .bind-svg { color: var(--hud-accent); }
+
+/* ===== 智控设定 · 三段式仪表卡(身份行 / 工艺窗口带 / 下发行) ===== */
+.dcw-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px 10px 10px;
+  margin-bottom: 7px;
+  background: linear-gradient(180deg, #111a2b 0%, #0e1522 100%);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-r-md);
+  transition: border-color 0.18s var(--hud-ease), box-shadow 0.18s var(--hud-ease);
+}
+.dcw-row:hover {
+  border-color: var(--hud-line-hi);
+  box-shadow: 0 6px 18px rgba(3, 7, 14, 0.4);
+}
+.dcw-top { display: flex; gap: 8px; align-items: center; }
+.dcw-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.dcw-name {
+  font-size: 9.5px;
+  color: var(--hud-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dcw-tag {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 0 5px;
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--hud-amber);
+  background: rgba(246, 196, 83, 0.1);
+  border: 1px solid rgba(246, 196, 83, 0.32);
+  border-radius: 4px;
+  vertical-align: 1px;
+}
+.dcw-cur {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.dcw-cur b {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--hud-cyan);
+  text-shadow: 0 0 14px rgba(65, 200, 244, 0.28);
+}
+.dcw-cur i {
+  font-style: normal;
+  font-size: 9.5px;
+  color: var(--hud-faint);
+}
+/* 工艺窗口带:标签 + 端点值 + 刻度轨(游标 = 当前设定值位置) */
+.dcw-win {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 4px 8px;
+  background: rgba(10, 17, 29, 0.72);
+  border: 1px solid var(--hud-line-soft);
+  border-radius: 7px;
+}
+.dcw-win em {
+  flex: none;
+  font-style: normal;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--hud-faint);
+}
+.dcw-win-num {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--hud-dim);
+  font-variant-numeric: tabular-nums;
+}
+.dcw-win-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: #1a2740;
+  border-radius: 999px;
+}
+/* 窗口带内的可行域高亮 + 当前值游标 */
+.dcw-win-track::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(90, 130, 175, 0.4), rgba(90, 130, 175, 0.14));
+}
+.dcw-win-track i {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  background: #dfeef8;
+  border: 2px solid var(--hud-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(65, 200, 244, 0.55);
+  transform: translate(-50%, -50%);
+  transition: left 0.3s var(--hud-ease);
+}
+/* 配方态:可行域转琥珀(工艺窗口是产线纪律,视觉权重高于全局量程) */
+.dcw-win.recipe em { color: var(--hud-amber); }
+.dcw-win.recipe .dcw-win-track::before {
+  background: linear-gradient(90deg, rgba(246, 196, 83, 0.5), rgba(246, 196, 83, 0.16));
+}
+.dcw-win.recipe .dcw-win-track i {
+  border-color: var(--hud-amber);
+  box-shadow: 0 0 8px rgba(246, 196, 83, 0.55);
+}
+/* 下发行:深色输入 + 主色 write 按钮 */
+.dcw-write { display: flex; gap: 6px; }
+.dcw-write input {
+  flex: 1;
+  min-width: 0;
+  height: 27px;
+  padding: 0 9px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--hud-text);
+  background: var(--hud-input);
+  border: 1px solid var(--hud-line);
+  border-radius: 7px;
+  transition: border-color 0.15s var(--hud-ease), box-shadow 0.15s var(--hud-ease);
+}
+.dcw-write input::placeholder { color: var(--hud-faint); font-size: 10px; }
+.dcw-write input:focus {
+  outline: none;
+  border-color: var(--hud-accent);
+  box-shadow: 0 0 0 3px rgba(53, 224, 160, 0.13);
+}
+.dcw-send {
+  flex: none;
+  height: 27px;
+  padding: 0 14px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #04120c;
+  background: var(--hud-accent-dim);
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s var(--hud-ease), box-shadow 0.15s var(--hud-ease);
+}
+.dcw-send:hover:not(:disabled) {
+  background: var(--hud-accent);
+  box-shadow: 0 0 14px rgba(53, 224, 160, 0.35);
+}
+.dcw-send:disabled { opacity: 0.38; cursor: default; }
+.dcw-err {
+  display: block;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: var(--hud-danger);
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.28);
+  border-radius: 6px;
+}
+
+/* ===== 控件语汇统一:输入场 focus 柔光环 + number 去原生 spinner ===== */
+.obj-input:hover, .obj-select:hover, .bind-select:hover, .daq-num:hover,
+.daq-ctl-cycle input:hover {
+  border-color: var(--hud-line-hi);
+}
+.obj-input:focus, .obj-select:focus, .bind-select:focus, .daq-num:focus,
+.daq-ctl-cycle input:focus {
+  outline: none;
+  border-color: var(--hud-accent);
+  box-shadow: 0 0 0 3px rgba(53, 224, 160, 0.13);
+}
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
+
+/* ===== 滑块全自绘:细轨 + 白芯绿环 thumb(场景控制/变换缩放等) ===== */
+.obj-range, .scale-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #1a2740;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+.obj-range::-webkit-slider-thumb, .scale-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  background: #e8f6ef;
+  border: 2px solid var(--hud-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(53, 224, 160, 0.15), 0 2px 6px rgba(3, 7, 14, 0.5);
+  transition: transform 0.15s var(--hud-ease), box-shadow 0.15s var(--hud-ease);
+}
+.obj-range::-webkit-slider-thumb:hover, .scale-range::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 5px rgba(53, 224, 160, 0.2), 0 2px 8px rgba(3, 7, 14, 0.55);
+}
+.obj-range::-moz-range-thumb, .scale-range::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  background: #e8f6ef;
+  border: 2px solid var(--hud-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(53, 224, 160, 0.15);
+}
+.obj-range::-moz-range-track, .scale-range::-moz-range-track {
+  height: 4px;
+  background: #1a2740;
+  border-radius: 999px;
+}
+
+/* 绑定行 hover 微抬(DAQ 行与智控卡同一 hover 语言) */
+.bind-row { transition: border-color 0.18s var(--hud-ease), box-shadow 0.18s var(--hud-ease); }
+.bind-row:hover {
+  border-color: var(--hud-line-hi);
+  box-shadow: 0 6px 18px rgba(3, 7, 14, 0.4);
+}
+/* 添加通道按钮:虚线框 hover 实心化 + 底色微亮 */
+.bind-add:hover { background: rgba(53, 224, 160, 0.05); border-style: solid; }
 .daq-bind-bar { display: flex; gap: 6px; }
 .bind-select {
   flex: 1;
   min-width: 0;
+  height: 28px;
   font-size: 10.5px;
   color: var(--hud-dim);
   background: var(--hud-input);
-  border: 1px dashed #274064;
+  border: 1px solid var(--hud-line);
   border-radius: var(--hud-r-sm);
-  padding: 5px 8px;
+  padding: 0 8px;
+  transition: border-color 0.15s var(--hud-ease), box-shadow 0.15s var(--hud-ease), color 0.15s var(--hud-ease);
 }
-.bind-select:focus { outline: none; border-color: var(--hud-accent); color: var(--hud-text); }
+.bind-select:hover { border-color: var(--hud-line-hi); color: var(--hud-text); }
+.bind-select:focus { outline: none; border-color: var(--hud-accent); color: var(--hud-text); box-shadow: 0 0 0 3px rgba(53, 224, 160, 0.13); }
 .bind-add-btn {
   flex: none;
   height: 28px;
@@ -5554,6 +5851,11 @@ onBeforeUnmount(() => {
   border: 0;
   border-radius: var(--hud-r-sm);
   cursor: pointer;
+  transition: background 0.15s var(--hud-ease), box-shadow 0.15s var(--hud-ease);
+}
+.bind-add-btn:hover:not(:disabled) {
+  background: var(--hud-accent);
+  box-shadow: 0 0 14px rgba(53, 224, 160, 0.35);
 }
 .bind-add-btn:disabled { opacity: 0.4; cursor: default; }
 .daq-info-row {
@@ -5621,11 +5923,21 @@ onBeforeUnmount(() => {
 }
 .bind-add-btn.warn:not(:disabled) {
   color: var(--hud-amber);
-  border-color: rgba(246, 196, 83, 0.4);
+  background: rgba(246, 196, 83, 0.12);
+  box-shadow: none;
+}
+.bind-add-btn.warn:hover:not(:disabled) {
+  background: rgba(246, 196, 83, 0.2);
+  box-shadow: 0 0 14px rgba(246, 196, 83, 0.25);
 }
 .bind-add-btn.danger:not(:disabled) {
   color: var(--hud-danger);
-  border-color: rgba(255, 107, 107, 0.4);
+  background: rgba(255, 107, 107, 0.1);
+  box-shadow: none;
+}
+.bind-add-btn.danger:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.18);
+  box-shadow: 0 0 14px rgba(255, 107, 107, 0.25);
 }
 
 /* ===== 状态栏 ===== */

@@ -8,6 +8,8 @@ const post = (url, body) => fetch(BASE + url, { method: 'POST', headers: H, body
 const patch = (url, body) => fetch(BASE + url, { method: 'PATCH', headers: H, body: JSON.stringify(body) }).then(r => r.json())
 const del = (url) => fetch(BASE + url, { method: 'DELETE', headers: H }).then(r => r.json())
 const get = (url = '') => fetch(BASE + url, { headers: H }).then(r => r.json())
+const { makeLineFixture } = await import('./_lib-dcw-line.mjs')
+const fx = await makeLineFixture(process.env.DAQ_BASE ?? 'http://127.0.0.1:3000', H, 'dcw-audit 线')
 
 // ===== 1. Mock 写节点:创建/下发/ACK =====
 const mkA = (await post('', { templateRef: 'dcw-temp-sp', name: '审计-温度设定' })).data.node
@@ -45,11 +47,17 @@ console.log('modbus write 175:', JSON.stringify(wM.data?.outcome ?? wM).slice(0,
 if (wM.data?.outcome?.ok === true && wM.data.outcome.raw === 1000) console.log('PASS modbus real write: raw=1000(换算 175→0.1分辨率), 回读一致')
 else fail(`modbus write wrong: ${JSON.stringify(wM.data?.outcome ?? wM.message)}`)
 
+// ===== 3.5 数采通道(挂审计产线:门控下仅线内节点采样;批次 daq 聚合用) =====
+const dqA = (await (await fetch((process.env.DAQ_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop/daq', { method: 'POST', headers: H, body: JSON.stringify({ templateRef: 'daq-temp-tc', name: 'dcw审计-温度通道', intervalMs: 500, lineId: fx.line.id }) })).json()).data.node
+if (!dqA) { console.error('FAIL: create daq node'); process.exit(1) }
+
 // ===== 4. Recipe 配方 + 一键下发 + 批次隔离 =====
 // 无节点自定义模板 → 验证"参数无匹配节点记失败不阻塞"(内置模板均有 legacy 示例节点,不可再作反例)
 const tplEmpty = (await post('/templates', { name: '审计-无节点模板', unit: 'kPa', min: 0, max: 400, decimals: 1, ch: '审计用空模板', code: 'AUDIT · VOID' })).data?.template
 if (!tplEmpty?.key) { console.error('FAIL: create empty template'); process.exit(1) }
-const prod = (await post('/products', { name: '审计产品' })).data.product
+// 先给该模板建一个节点(配方参数必须可解析到节点),建配方后再删节点 → apply 时逐参数失败隔离
+const mkC = (await post('', { templateRef: `dcw-${tplEmpty.key}`, name: '审计-临时参数节点' })).data.node
+const prod = (await post('/products', { name: '审计产品', lineId: fx.line.id })).data.product
 const rc = await post('/recipes', { productId: prod.id,
   name: '审计配方-光学膜',
   description: '审计用',
@@ -61,8 +69,9 @@ const rc = await post('/recipes', { productId: prod.id,
 const recipeId = rc.data?.recipe?.id
 if (!recipeId) { console.error('FAIL: create recipe', JSON.stringify(rc).slice(0, 120)); process.exit(1) }
 console.log('recipe created:', recipeId)
+await del(`/${mkC.id}`) // 参数目标节点被删 → apply 该参数应记失败不阻塞
 
-// 无节点模板参数 → 该参数应记失败不阻塞;温度参数 → 写成功(可能命中 legacy 示例节点)
+// 已删节点的参数 → 该参数应记失败不阻塞;温度参数 → 写成功(命中 legacy 示例节点)
 const ap = await post(`/recipes/${recipeId}/apply`, {})
 const run = ap.data?.run
 if (!run) { console.error('FAIL: apply recipe', JSON.stringify(ap).slice(0, 160)); process.exit(1) }
@@ -81,7 +90,7 @@ else fail(`run data writes wrong: ${writes1.length}`)
 // 第二个配方 + 批次 → 验证窗口隔离
 const rc2 = await post('/recipes', { productId: prod.id, name: '审计配方-B', params: [{ templateRef: 'dcw-temp-sp', value: 160 }] })
 // 门控语义:runData 的数采聚合需产线开跑(配方驱动采集 + 打标)
-const ap2 = await post('/line/start', { recipeId: rc2.data.recipe.id })
+const ap2 = await fx.start(rc2.data.recipe.id)
 const run2 = ap2.data?.run
 await sleep(2500) // 等数采样本落入 run2 窗口(1s 采样周期)
 const data2 = await get(`/runs/${run2.id}/data`)
@@ -99,10 +108,11 @@ if (cl.data?.run?.endedAt) console.log('PASS run closed (isolation window sealed
 else fail('run close failed')
 
 // ===== 清理 =====
+await fetch((process.env.DAQ_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop/daq/' + dqA.id, { method: 'DELETE', headers: H })
 await del(`/${mkA.id}`)
 await del(`/${mkM.id}`)
 await del(`/recipes/${recipeId}`)
-await post('/line/stop', {})
+await fx.cleanup()
 await del(`/recipes/${rc2.data.recipe.id}`)
 await del(`/templates/${tplEmpty.key}`)
 await fetch((process.env.DAQ_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop/dcw/products/' + prod.id, { method: 'DELETE', headers: H })

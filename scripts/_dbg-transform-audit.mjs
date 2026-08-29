@@ -9,11 +9,13 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const post = (u, b) => fetch(u, { method: 'POST', headers: H, body: JSON.stringify(b) }).then(r => r.json())
 const get = (u) => fetch(u, { headers: H }).then(r => r.json())
 const del = (u) => fetch(u, { method: 'DELETE', headers: H }).then(r => r.json())
+const { makeLineFixture } = await import('./_lib-dcw-line.mjs')
+const fx = await makeLineFixture(ROOT, H, 'transform-audit 线')
 
 // 产线开跑(配方驱动采集门控)
-const prod = (await post(DCW + '/products', { name: '标定审计产品' })).data.product
+const prod = (await post(DCW + '/products', { name: '标定审计产品', lineId: fx.line.id })).data.product
 const rc = (await post(DCW + '/recipes', { productId: prod.id, name: '标定审计配方', params: [{ templateRef: 'dcw-temp-sp', value: 180 }] })).data.recipe
-await post(DCW + '/line/start', { recipeId: rc.id })
+await fx.start(rc.id)
 
 // ===== 1. DAQ decoder:读 40003(温度 float32,PLC 值 165~175),标定 scale 0.1 → 物理 ≈ 16.5~17.5 =====
 const dq = (await post(DAQ, {
@@ -23,6 +25,7 @@ const dq = (await post(DAQ, {
   driverConfig: { host: '127.0.0.1', port: 1502, unitId: 1, register: 40003, dataType: 'float32', byteOrder: 'big' },
   transform: { kind: 'linear', scale: 0.1, offset: 0 },
   intervalMs: 500,
+  lineId: fx.line.id,
 })).data.node
 if (!dq) { console.error('FAIL: create daq node'); process.exit(1) }
 await sleep(2600)
@@ -83,7 +86,7 @@ for (const id of [dq.id, dw.id, dw2.id]) await fetch(`${DCW}/${id}`.replace('/ap
 await fetch(`${DAQ}/${dq.id}`, { method: 'DELETE', headers: H }).catch(() => {})
 await fetch(`${DCW}/${dw.id}`, { method: 'DELETE', headers: H }).catch(() => {})
 await fetch(`${DCW}/${dw2.id}`, { method: 'DELETE', headers: H }).catch(() => {})
-await post(DCW + '/line/stop', {})
+await fx.cleanup()
 await del(DCW + `/recipes/${rc.id}`)
 await del(DCW + `/products/${prod.id}`)
 console.log('cleanup done')

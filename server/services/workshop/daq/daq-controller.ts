@@ -32,7 +32,8 @@ import { DaqNodeRuntime, type DaqRuntimeHost } from './daq-runtime'
 import { getDaqNodeRepo } from './daq-node.repo'
 import { getTsdb, tsdbReady } from './storage'
 import { getDaqQueue } from './bus'
-import { bumpTaggedSamples, getActiveLineRun } from '../dcw/line-run'
+import { bumpTaggedSamples, getActiveLineRun, getAllActiveLineRuns } from '../dcw/line-run'
+import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import type { DaqSampleEnvelope } from './bus/queue-port'
 
 /** 数采值回写绑定时,映射进设备孪生已有遥测语义键(命中既有告警派生规则) */
@@ -60,6 +61,8 @@ export interface DaqCreateInput {
   enabled?: boolean
   posX?: number
   posZ?: number
+  /** 所属产线('' = 未分配) */
+  lineId?: string
   deviceBindingId?: string | null
 }
 
@@ -81,6 +84,8 @@ export interface DaqPatchInput {
   enabled?: boolean
   posX?: number
   posZ?: number
+  /** 所属产线('' = 未分配;采集门控按产线) */
+  lineId?: string
 }
 
 type BroadcastFn = (type: string, payload: unknown) => void
@@ -99,7 +104,7 @@ class DaqController {
   /** 边缘运行时注册表(节点 id → 独立运行时;网关统一管理生命周期) */
   private runtimes = new Map<string, DaqNodeRuntime>()
   /** TSDB 批量缓冲(consumer 攒批 → 定窗刷盘;上限背压,满丢最旧;产线窗口内逐样本打标) */
-  private tsdbBuffer: Array<{ nodeId: string, tsMs: number, value: number, state: string, productId?: string | null, recipeId?: string | null, runId?: string | null }> = []
+  private tsdbBuffer: Array<{ nodeId: string, tsMs: number, value: number, state: string, lineId?: string | null, productId?: string | null, recipeId?: string | null, runId?: string | null }> = []
   private tsdbFlushTimer: NodeJS.Timeout | null = null
   /** 单 in-flight 写:写库中不叠写(promise 链串行化) */
   private tsdbWriting = false
@@ -185,13 +190,14 @@ class DaqController {
     // 时序库批量攒写(定窗刷盘;上限背压:满丢最旧并计数)
     // 产线批次打标:活动 LineRun 窗口内每条样本携带 product/recipe/run id(产品级数据隔离)
     const tsMs = Date.parse(env.at)
-    const lineRun = getActiveLineRun()
-    if (lineRun) bumpTaggedSamples(1)
+    const lineRun = getActiveLineRun(node.lineId)
+    if (lineRun) bumpTaggedSamples(node.lineId)
     this.tsdbBuffer.push({
       nodeId: node.id,
       tsMs,
       value: env.value,
       state: node.state,
+      lineId: lineRun?.lineId ?? null,
       productId: lineRun?.productId ?? null,
       recipeId: lineRun?.recipeId ?? null,
       runId: lineRun?.runId ?? null,
@@ -217,14 +223,24 @@ class DaqController {
    *  产线门控:未选定配方(无活动 LineRun)不执行采集 —— 采样与实时下发均由配方驱动。 */
   private sweep(): void {
     if (!this.pipelineReady || !this.running) return
-    if (!getActiveLineRun()) return
+    if (getAllActiveLineRuns().length === 0) return
     const now = Date.now()
     for (const rt of this.runtimes.values()) {
+      // 逐产线门控:节点只在其所属产线的活动批次窗口内采集(lineId 空 = 未分配,不采集)
+      if (!getActiveLineRun(rt.node.lineId)) continue
       void rt.tick(now)
     }
   }
 
-  /** 产线停止:全部节点置 offline(开跑后由采样自然恢复) */
+  /** 产线停止:该产线全部节点置 offline(开跑后由采样自然恢复) */
+  markLineOffline(lineId: string): void {
+    for (const n of this.repo.all()) {
+      if (n.enabled && n.lineId === lineId) n.state = 'offline'
+    }
+    this.emitController()
+  }
+
+  /** 网关停止:全部节点置 offline */
   markAllOffline(): void {
     for (const n of this.repo.all()) {
       if (n.enabled) n.state = 'offline'
@@ -467,6 +483,7 @@ class DaqController {
       deviceBindingId: input.deviceBindingId ?? null,
       posX: input.posX,
       posZ: input.posZ,
+      lineId: input.lineId,
     })
     this.repo.insert(node)
     this.syncRuntimes() // 新节点即刻入网关注册表(边缘运行时实例化)
@@ -512,6 +529,11 @@ class DaqController {
     if (rearm) this.runtimes.get(id)?.rearm() // 元数据变更即刻生效(独立运行时节拍重置)
     if (patch.posX !== undefined) node.posX = patch.posX
     if (patch.posZ !== undefined) node.posZ = patch.posZ
+    if (patch.lineId !== undefined) {
+      const lid = String(patch.lineId)
+      if (lid && !getDcwLineRepo().byId(lid)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lid}`)
+      node.lineId = lid
+    }
     if (node.value != null) node.state = node.deriveState(node.value)
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)

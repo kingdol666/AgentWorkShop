@@ -257,6 +257,8 @@ export interface DaqNodeView {
   /** 场景落点(undefined = 未入场景) */
   posX?: number
   posZ?: number
+  /** 所属产线('' = 未分配;采集门控/场景光晕按产线隔离) */
+  lineId: string
   value: number | null
   state: DaqNodeState
   lastAt: string | null

@@ -41,6 +41,7 @@ export class TimescaleAdapter implements TsdbPort {
     await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_node_ts ON daq_samples (node_id, ts DESC)`)
     // 存量库迁移:先补打标列(幂等;已存在时报错吞掉),再建依赖列的索引
     for (const ddl of [
+      'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS line_id text',
       'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS product_id text',
       'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS recipe_id text',
       'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS run_id text',
@@ -80,12 +81,12 @@ export class TimescaleAdapter implements TsdbPort {
     if (!this.pool || rows.length === 0) return
     const values: unknown[] = []
     const tuples = rows.map((r, i) => {
-      values.push(r.nodeId, new Date(r.tsMs).toISOString(), r.value, r.state, r.productId ?? null, r.recipeId ?? null, r.runId ?? null)
-      const b = i * 7
-      return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, $${b + 7})`
+      values.push(r.nodeId, new Date(r.tsMs).toISOString(), r.value, r.state, r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null)
+      const b = i * 8
+      return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, $${b + 7}, $${b + 8})`
     })
     await this.pool.query(
-      `INSERT INTO daq_samples (node_id, ts, value, state, product_id, recipe_id, run_id) VALUES ${tuples.join(',')}
+      `INSERT INTO daq_samples (node_id, ts, value, state, line_id, product_id, recipe_id, run_id) VALUES ${tuples.join(',')}
        ON CONFLICT (node_id, ts) DO NOTHING`,
       values,
     )
@@ -117,6 +118,10 @@ export class TimescaleAdapter implements TsdbPort {
     if (!this.pool) return out
     const where: string[] = []
     const params: unknown[] = []
+    if (q.lineId) {
+      where.push(`line_id = $${params.length + 1}`)
+      params.push(q.lineId)
+    }
     if (q.productId) {
       where.push(`product_id = $${params.length + 1}`)
       params.push(q.productId)

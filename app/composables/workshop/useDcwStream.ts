@@ -7,7 +7,7 @@
 import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
 import type { AepEnvelope } from '#shared/workshop-protocol'
-import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwWritten, type DcwNodeView, type DcwTemplateDef, type DcwTemplateInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type ProductInput, type ProductView, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwWritten, type DcwNodeView, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type ProductInput, type ProductView, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
 
 export type { DcwNodeView }
 
@@ -39,7 +39,9 @@ function createStore() {
   const runs = reactive<RecipeRunView[]>([])
   const history = reactive<DcwWriteHistoryEntry[]>([])
   const products = reactive<ProductView[]>([])
-  const line = reactive<LineRunState>({ active: false, runId: null, recipeId: null, recipeName: null, productId: null, productName: null, startedAt: null, taggedSamples: 0 })
+  const lines = reactive<LineView[]>([])
+  /** 逐产线运行状态(lineId → state) */
+  const lineStates = reactive<Record<string, LineRunState>>({})
 
   function upsert(node: DcwNodeView): void {
     const i = nodes.findIndex(x => x.id === node.id)
@@ -81,7 +83,7 @@ function createStore() {
 
   async function load(): Promise<void> {
     try {
-      const data = await api<{ controller: AepDcwControllerState, nodes: DcwNodeView[], templates?: DcwTemplateDef[], recipes?: RecipeView[], runs?: RecipeRunView[], history?: DcwWriteHistoryEntry[], products?: ProductView[], line?: LineRunState }>('')
+      const data = await api<{ controller: AepDcwControllerState, nodes: DcwNodeView[], templates?: DcwTemplateDef[], recipes?: RecipeView[], runs?: RecipeRunView[], history?: DcwWriteHistoryEntry[], products?: ProductView[], lines?: LineView[], lineStates?: LineRunState[] }>('')
       nodes.splice(0, nodes.length, ...data.nodes)
       Object.assign(controller, data.controller)
       if (data.templates?.length) templates.splice(0, templates.length, ...data.templates.map(t => ({ ...t })))
@@ -89,7 +91,9 @@ function createStore() {
       runs.splice(0, runs.length, ...(data.runs ?? []))
       history.splice(0, history.length, ...(data.history ?? []))
       products.splice(0, products.length, ...(data.products ?? []))
-      if (data.line) Object.assign(line, data.line)
+      lines.splice(0, lines.length, ...(data.lines ?? []))
+      for (const k of Object.keys(lineStates)) Reflect.deleteProperty(lineStates, k)
+      for (const st of data.lineStates ?? []) lineStates[st.lineId] = st
       store.loaded = true
       store.error = ''
     }
@@ -106,7 +110,8 @@ function createStore() {
     runs,
     history,
     products,
-    line,
+    lines,
+    lineStates,
     loaded: false,
     error: '',
     ensureWsFeed,
@@ -194,17 +199,38 @@ function createStore() {
       const i = products.findIndex(p => p.id === id)
       if (i >= 0) products.splice(i, 1)
     },
-    // ---------- 产线运营 ----------
-    startLine: async (recipeId: string): Promise<void> => {
-      const data = await api<{ line: LineRunState }>('/line/start', { method: 'POST', body: JSON.stringify({ recipeId }) })
-      Object.assign(line, data.line)
+    // ---------- 产线(实体 + 逐线运营) ----------
+    createLine: async (input: LineInput): Promise<LineView> => {
+      const data = await api<{ line: LineView }>('/lines', { method: 'POST', body: JSON.stringify(input) })
+      lines.push(data.line)
+      return data.line
     },
-    stopLine: async (): Promise<void> => {
-      const data = await api<{ line: LineRunState }>('/line/stop', { method: 'POST' })
-      Object.assign(line, data.line)
+    updateLine: async (id: string, patch: Partial<LineInput>): Promise<void> => {
+      const data = await api<{ line: LineView }>(`/lines/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+      const i = lines.findIndex(l => l.id === id)
+      if (i >= 0) lines[i] = data.line
     },
+    removeLine: async (id: string): Promise<void> => {
+      await api(`/lines/${id}`, { method: 'DELETE' })
+      const i = lines.findIndex(l => l.id === id)
+      if (i >= 0) lines.splice(i, 1)
+      Reflect.deleteProperty(lineStates, id)
+      await load()
+    },
+    /** 产线开跑:lineStart(lineId, recipeId);状态收敛到 lineStates */
+    startLine: async (lineId: string, recipeId: string): Promise<void> => {
+      const data = await api<{ line: LineRunState }>(`/lines/${lineId}/start`, { method: 'POST', body: JSON.stringify({ recipeId }) })
+      lineStates[lineId] = data.line
+    },
+    stopLine: async (lineId: string): Promise<void> => {
+      const data = await api<{ line: LineRunState }>(`/lines/${lineId}/stop`, { method: 'POST' })
+      lineStates[lineId] = data.line
+    },
+    lineStateOf: (lineId: string): LineRunState =>
+      lineStates[lineId] ?? { lineId, active: false, runId: null, recipeId: null, recipeName: null, productId: null, productName: null, startedAt: null, taggedSamples: 0 },
     queryLine: (opts: LineQueryOpts): Promise<LineQueryResult> => {
       const qs = new URLSearchParams()
+      if (opts.lineId) qs.set('lineId', opts.lineId)
       if (opts.productId) qs.set('productId', opts.productId)
       if (opts.recipeId) qs.set('recipeId', opts.recipeId)
       if (opts.paramKey) qs.set('paramKey', opts.paramKey)

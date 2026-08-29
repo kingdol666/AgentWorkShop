@@ -9,8 +9,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { RecipeInput, RecipeParam, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
+import { dcwKeyFromRef } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { getDcwProductRepo } from './dcw-product.repo'
+import { getDcwNodeRepo } from './dcw-node.repo'
 
 const DATA_DIR = process.cwd().endsWith('server')
   ? 'data'
@@ -58,31 +60,54 @@ export interface DcwWriteHistoryEntry {
   at: string
 }
 
-const normParams = (params: RecipeParam[] | undefined): RecipeParam[] =>
+/**
+ * 配方参数归一化(**节点级绑定**):nodeId 必填且必须指向真实控制节点
+ * (节点才是真实下发 PLC 的执行体;模板仅分类)。templateRef 为展示冗余,
+ * 缺失时按节点自动补全。配方级窗口须 min <= value <= max。
+ */
+const normParams = (params: RecipeParam[] | undefined, lineId = ''): RecipeParam[] =>
   (params ?? [])
-    .filter(p => p && typeof p.templateRef === 'string' && Number.isFinite(Number(p.value)))
+    .filter(p => p && Number.isFinite(Number(p.value)))
     .map((p) => {
-      const out: RecipeParam = { templateRef: String(p.templateRef), value: Number(p.value) }
-      if (p.nodeId) out.nodeId = String(p.nodeId)
-      // 配方级工艺窗口:提供时须 min <= value <= max(越窗的配方本身即非法)
+      // 节点解析:nodeId 优先;兼容 templateRef 引用(自动解析到该模板最早创建的节点)
+      let nodeId = String(p.nodeId ?? '').trim()
+      if (!nodeId) {
+        const key = dcwKeyFromRef(String(p.templateRef ?? ''))
+        const cand = getDcwNodeRepo().all()
+          .filter(n => n.templateKey === key)
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]
+        nodeId = cand?.id ?? ''
+      }
+      if (!nodeId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `配方参数无法解析到控制节点(nodeId/templateRef 均未命中): ${p.templateRef ?? p.nodeId}`)
+      const node = getDcwNodeRepo().byId(nodeId)
+      if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `配方参数绑定的控制节点不存在: ${nodeId}`)
+      // 产线隔离硬约束:参数节点必须属于配方产线;未分配节点自动收编,跨线节点拒绝
+      if (lineId) {
+        if (!node.lineId) node.lineId = lineId
+        else if (node.lineId !== lineId) {
+          throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数节点「${node.name}」属于其他产线,不可挂入本产线配方(产线隔离)`)
+        }
+      }
+      const label = node.name
+      const out: RecipeParam = { nodeId, templateRef: node.templateRef, value: Number(p.value) }
       const min = p.min == null ? undefined : Number(p.min)
       const max = p.max == null ? undefined : Number(p.max)
       if (min != null) {
-        if (!Number.isFinite(min)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 的配方下限需为数字`)
+        if (!Number.isFinite(min)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${label} 的配方下限需为数字`)
         out.min = min
       }
       if (max != null) {
-        if (!Number.isFinite(max)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 的配方上限需为数字`)
+        if (!Number.isFinite(max)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${label} 的配方上限需为数字`)
         out.max = max
       }
       if (out.min != null && out.max != null && out.min > out.max) {
-        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 的配方窗口非法:min ${out.min} > max ${out.max}`)
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${label} 的配方窗口非法:min ${out.min} > max ${out.max}`)
       }
       if (out.min != null && out.value < out.min) {
-        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 设定值 ${out.value} 低于配方下限 ${out.min}`)
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${label} 设定值 ${out.value} 低于配方下限 ${out.min}`)
       }
       if (out.max != null && out.value > out.max) {
-        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${p.templateRef} 设定值 ${out.value} 超出配方上限 ${out.max}`)
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${label} 设定值 ${out.value} 超出配方上限 ${out.max}`)
       }
       return out
     })
@@ -114,9 +139,10 @@ class DcwRecipeRepo {
     const recipe: RecipeView = {
       id: `rc-${randomUUID().slice(0, 8)}`,
       productId,
+      lineId: product.lineId,
       name,
       description: String(input.description ?? '').trim(),
-      params: normParams(input.params),
+      params: normParams(input.params, product.lineId),
       createdAt: now,
       updatedAt: now,
     }
@@ -139,7 +165,7 @@ class DcwRecipeRepo {
       r.name = name
     }
     if (patch.description !== undefined) r.description = String(patch.description).trim()
-    if (patch.params !== undefined) r.params = normParams(patch.params)
+    if (patch.params !== undefined) r.params = normParams(patch.params, r.lineId)
     r.updatedAt = new Date().toISOString()
     this.flushRecipes()
     return r
@@ -165,12 +191,31 @@ class DcwRecipeRepo {
     return this.runs.find(r => r.id === id)
   }
 
+  /** 产品换线级联:直接设置配方产线归属 */
+  setRecipeLine(id: string, lineId: string): void {
+    const r = this.byId(id)
+    if (r && r.lineId !== lineId) {
+      r.lineId = lineId
+      this.flushRecipes()
+    }
+  }
+
+  /** 产线删除时解挂:配方 lineId 归空(数据保留) */
+  detachLine(id: string): void {
+    const r = this.byId(id)
+    if (r && r.lineId !== '') {
+      r.lineId = ''
+      this.flushRecipes()
+    }
+  }
+
   createRun(recipe: RecipeView): RecipeRunView {
     const run: RecipeRunView = {
       id: `rr-${randomUUID().slice(0, 8)}`,
       recipeId: recipe.id,
       recipeName: recipe.name,
       productId: recipe.productId,
+      lineId: recipe.lineId,
       startedAt: new Date().toISOString(),
       endedAt: null,
       results: [],

@@ -5,6 +5,8 @@ const TOKEN = process.env.AW_TOKEN ?? 'ut-258a3578a5f2450d92416c08d1c1205f'
 const ROOT = 'http://127.0.0.1:3000'
 const H = { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }
 const fail = (m) => { console.error('FAIL:', m); process.exitCode = 1 }
+const { makeLineFixture } = await import('./_lib-dcw-line.mjs')
+const fx = await makeLineFixture(ROOT, H, 'twin-e2e 产线')
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const getNode = async (id) => (await (await fetch(`${ROOT}/api/workshop/dcw`, { headers: H })).json()).data.nodes.find(n => n.id === id)
 
@@ -15,12 +17,17 @@ const dev = (await (await fetch(`${ROOT}/api/workshop/device-twins`, {
 })).json()).data.twin
 console.log('device:', dev.id, dev.name)
 
-const prod = (await (await fetch(`${ROOT}/api/workshop/dcw/products`, { method: 'POST', headers: H, body: JSON.stringify({ name: 'E2E产品' }) })).json()).data.product
+const prod = (await (await fetch(`${ROOT}/api/workshop/dcw/products`, { method: 'POST', headers: H, body: JSON.stringify({ name: 'E2E产品', lineId: fx.line.id }) })).json()).data.product
+// 窗口验证节点:显式挂产线 + 绑定设备;配方参数 nodeId 显式指向它(节点级绑定语义)
+const dwWin = (await (await fetch(`${ROOT}/api/workshop/dcw`, {
+  method: 'POST', headers: H,
+  body: JSON.stringify({ templateRef: 'dcw-temp-sp', name: 'E2E-窗口温度', lineId: fx.line.id, deviceBindingId: dev.id, posX: 2440, posZ: 860 }),
+})).json()).data.node
 const rc = (await (await fetch(`${ROOT}/api/workshop/dcw/recipes`, {
   method: 'POST', headers: H,
-  body: JSON.stringify({ productId: prod.id, name: 'E2E配方', params: [{ templateRef: 'dcw-temp-sp', value: 182, min: 176, max: 188 }] }),
+  body: JSON.stringify({ productId: prod.id, name: 'E2E配方', params: [{ templateRef: 'dcw-temp-sp', nodeId: dwWin.id, value: 182, min: 176, max: 188 }] }),
 })).json()).data.recipe
-const lineStart = await (await fetch(`${ROOT}/api/workshop/dcw/line/start`, { method: 'POST', headers: H, body: JSON.stringify({ recipeId: rc.id }) })).json()
+const lineStart = await fx.start(rc.id)
 console.log('line active:', lineStart.data?.line?.active)
 
 const browser = await puppeteer.launch({
@@ -88,16 +95,20 @@ await page.evaluate(() => {
 await sleep(2500)
 const nodes1 = (await (await fetch(`${ROOT}/api/workshop/dcw`, { headers: H })).json()).data.nodes
 const created = nodes1.filter(n => n.templateRef === 'dcw-temp-sp')
-const boundNew = created.find(n => n.deviceBindingId === dev.id)
+const boundNew = created.find(n => n.deviceBindingId === dev.id && n.id !== dwWin.id)
 console.log(`dcw temp nodes ${beforeCnt} -> ${created.length}; bound to dev: ${boundNew?.id ?? 'none'}`)
-// 设计策略:优先就近复用未绑定节点(计数不变但新增绑定),无复用目标才新建
+// 设计策略:优先就近复用未绑定节点(计数不变但新增绑定),无复用目标才新建;新建通道继承设备产线
 if (!boundNew) fail('添加智控通道未创建/绑定节点')
-else console.log(`PASS 添加智控通道生效(${created.length > beforeCnt ? '新建并绑定' : '就近复用未绑定节点并绑定'})`)
+else {
+  const lineOk = !boundNew.lineId || boundNew.lineId === fx.line.id
+  if (lineOk) console.log(`PASS 添加智控通道生效(${created.length > beforeCnt ? '新建并绑定' : '就近复用未绑定节点并绑定'};产线归属 ${boundNew.lineId || '未分配'})`)
+  else fail(`新建通道产线归属错误: ${boundNew.lineId}`)
+}
 const dcwId = boundNew?.id
 const dcwName = boundNew?.name
 
-// ---------- 3. 选中智控节点 → 检查器(标题/芯片/绑定选择器/直写) ----------
-await page.evaluate((id) => { window.__town.scene.setSelected({ kind: 'device', id }) }, dcwId)
+// ---------- 3. 选中智控节点(dwWin:配方参数显式指向它)→ 检查器 ----------
+await page.evaluate((id) => { window.__town.scene.setSelected({ kind: 'device', id }) }, dwWin.id)
 await sleep(800)
 const insp = await page.evaluate(() => ({
   title: [...document.querySelectorAll('.inspector h3')].map(h => h.textContent.trim()).find(t => t.includes('智控')),
@@ -111,7 +122,9 @@ if (!(insp.title && insp.chip && insp.hasWrite)) fail(`智控检查器不完整:
 else if (!insp.winLabel.includes('176') || !insp.winLabel.includes('188')) fail(`检查器窗口未按配方展示: ${insp.winLabel}`)
 else console.log('PASS 智控节点检查器:标题/芯片/直写/配方窗口 176~188')
 
-// ---------- 4. 检查器内解绑 → 重新绑定设备(双向验证) ----------
+// ---------- 4. 检查器内解绑 → 重新绑定设备(双向验证;切到 UI 新增的通道) ----------
+await page.evaluate((id) => { window.__town.scene.setSelected({ kind: 'device', id }) }, dcwId)
+await sleep(600)
 if (insp.hasBindSel) {
   const dbg = await page.evaluate(() => ({
     bars: [...document.querySelectorAll('.daq-bind-bar')].map(b => [...b.querySelectorAll('button')].map(x => x.textContent.trim())),
@@ -151,16 +164,16 @@ if (insp.hasBindSel) {
 // ---------- 5. 设备面板:智控设定行 + 配方窗口 + 越窗阻断 + 窗内直写 ----------
 await page.evaluate((id) => { window.__town.scene.setSelected({ kind: 'device', id }) }, dev.id)
 await sleep(800)
-await panelWrite(page, dcwName, 195)
+await panelWrite(page, dwWin.name, 195)
 await sleep(900)
 const overErr = await page.evaluate(() => [...document.querySelectorAll('.dcw-row .dcw-err')].map(e => e.textContent).find(t => t) ?? '')
 console.log('over-window hint:', overErr.slice(0, 80))
 if (overErr.includes('配方工艺窗口')) console.log('PASS 越窗 195 前端阻断并提示配方工艺窗口')
 else fail(`越窗提示缺失: ${overErr}`)
 
-await panelWrite(page, dcwName, 180)
+await panelWrite(page, dwWin.name, 180)
 await sleep(1500)
-const n2 = await getNode(dcwId)
+const n2 = await getNode(dwWin.id)
 console.log('in-window write: value =', n2?.value, 'state =', n2?.state)
 if (n2?.value === 180 && n2?.state === 'ok') console.log('PASS 窗内 180 直写成功且 server ACK')
 else fail(`窗内直写失败: ${n2?.value}/${n2?.state}`)
@@ -169,7 +182,8 @@ await page.screenshot({ path: 'docs/audit/screenshots/town-dcw-twin-e2e.png' })
 if (pageErrors.length) { console.error('pageerrors:', pageErrors.slice(0, 3)); fail('页面存在 JS 错误') }
 
 // ---------- 清理(停线 + 删除审计数据与本测试创建的设备) ----------
-await fetch(`${ROOT}/api/workshop/dcw/line/stop`, { method: 'POST', headers: H })
+await fx.cleanup()
+await fetch(`${ROOT}/api/workshop/dcw/${dwWin.id}`, { method: 'DELETE', headers: H })
 await fetch(`${ROOT}/api/workshop/dcw/${dcwId}`, { method: 'DELETE', headers: H })
 await fetch(`${ROOT}/api/workshop/dcw/recipes/${rc.id}`, { method: 'DELETE', headers: H })
 await fetch(`${ROOT}/api/workshop/dcw/products/${prod.id}`, { method: 'DELETE', headers: H })

@@ -19,6 +19,7 @@ export interface DaqSampleRow {
   value: number
   state: string
   /** 产线批次打标(活动 LineRun 窗口内的样本逐条携带;null = 线体空闲段) */
+  lineId?: string | null
   productId?: string | null
   recipeId?: string | null
   runId?: string | null
@@ -46,6 +47,7 @@ export interface TsdbPoint {
 
 /** 跨通道打标查询(产线数据隔离:产品/配方/批次/通道/时间/桶) */
 export interface TsdbTagQuery {
+  lineId?: string
   productId?: string
   recipeId?: string
   runId?: string

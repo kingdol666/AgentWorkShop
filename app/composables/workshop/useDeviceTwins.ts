@@ -26,6 +26,10 @@ export interface DeviceTwinView {
   posZ?: number
   rotationY?: number
   scale?: number
+  /** 所属产线(数采/智控节点;场景光晕分色) */
+  lineId?: string
+  /** 产线光晕色(Hex) */
+  lineColor?: string
   updatedAt: string
 }
 

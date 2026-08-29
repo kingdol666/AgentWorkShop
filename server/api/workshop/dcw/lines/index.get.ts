@@ -1,5 +1,5 @@
 /**
- * POST /api/workshop/dcw/line/stop —— 停止产线数据采集(关闭打标窗口)。
+ * GET /api/workshop/dcw/lines —— 产线列表 + 各产线运行状态。
  */
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
@@ -9,6 +9,6 @@ import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 export default defineApiHandler(async (event) => {
   resolveUser(event)
   bindDcwBroadcast(broadcastSceneEvent)
-  const run = getDcwController().lineStop()
-  return { run, line: getDcwController().lineState() }
+  const ctrl = getDcwController()
+  return { lines: ctrl.listLines(), states: ctrl.allLineStates() }
 })

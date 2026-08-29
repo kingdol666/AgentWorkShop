@@ -6,6 +6,7 @@
  */
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 import { DAQ_TEMPLATES, daqKeyFromRef, DAQ_DRIVERS, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult } from '#shared/daq-protocol'
@@ -15,6 +16,8 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const nodeId = computed(() => String(route.params.id ?? ''))
 const daq = useDaqStream()
+const dcw = useDcwStream()
+void dcw.load()
 const deviceTwins = useDeviceTwins()
 
 const node = computed(() => daq.nodeById(nodeId.value) ?? null)
@@ -49,6 +52,7 @@ function publishLabel(v: number | null): string {
 const form = reactive({
   enabled: true,
   driver: 'mock' as DaqDriverKind,
+  lineId: '',
   followGlobal: true,
   intervalMs: 1000,
   calKind: 'none' as 'none' | 'linear',
@@ -67,6 +71,7 @@ const form = reactive({
 watch(node, (n) => {
   if (!n) return
   form.enabled = n.enabled
+  form.lineId = n.lineId ?? ''
   form.driver = n.driver
   form.followGlobal = n.intervalMs == null
   form.intervalMs = n.intervalMs ?? daq.controller.defaultIntervalMs
@@ -124,6 +129,7 @@ async function saveParams(): Promise<void> {
     await daq.patchNode(n.id, {
       enabled: form.enabled,
       driver: form.driver,
+      lineId: form.lineId,
       driverConfig: { ...driverCfg.value },
       intervalMs: form.followGlobal ? null : Math.max(120, Math.min(60_000, Math.round(form.intervalMs))),
       publishIntervalMs: form.publishFollow
@@ -376,6 +382,24 @@ watch(bucketMs, () => void loadHistory())
             >
               {{ form.enabled ? '采集中' : '已停用' }}
             </button>
+          </label>
+          <label class="field">
+            <span>所属产线(未挂载不采集)</span>
+            <select
+              v-model="form.lineId"
+              class="input"
+            >
+              <option value="">
+                未分配
+              </option>
+              <option
+                v-for="l in dcw.lines"
+                :key="l.id"
+                :value="l.id"
+              >
+                {{ l.name }}
+              </option>
+            </select>
           </label>
           <label class="field">
             <span>采样驱动</span>

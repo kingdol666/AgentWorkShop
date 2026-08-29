@@ -28,6 +28,8 @@ interface DcwNodeOptions {
   transform?: DataTransform
   posX?: number
   posZ?: number
+  /** 所属产线('' = 未分配) */
+  lineId?: string
   createdAt?: string
 }
 
@@ -52,6 +54,8 @@ export class DcwNode {
   lastAckAt: string | null = null
   lastWriteAt: string | null = null
   state: DcwNodeState = 'idle'
+  /** 所属产线('' = 未分配;采集门控/写联锁/场景光晕按产线隔离) */
+  lineId = ''
   lastError: string | null = null
   readonly createdAt: string
 
@@ -72,6 +76,7 @@ export class DcwNode {
     if (o.transform) this.transform = o.transform
     if (o.posX !== undefined) this.posX = o.posX
     if (o.posZ !== undefined) this.posZ = o.posZ
+    this.lineId = o.lineId ?? ''
     this.createdAt = o.createdAt ?? new Date().toISOString()
   }
 
@@ -120,6 +125,7 @@ export class DcwNode {
       transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,
+      lineId: this.lineId,
       value: this.value,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
@@ -145,6 +151,7 @@ export class DcwNode {
       driverConfig: (row.driverConfig as Record<string, string | number | boolean>) ?? {},
       transform: (row.transform as DataTransform | undefined) ?? undefined,
       posX: row.posX == null ? undefined : Number(row.posX),
+      lineId: row.lineId == null ? '' : String(row.lineId),
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
     })
@@ -173,6 +180,7 @@ export class DcwNode {
       transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,
+      lineId: this.lineId,
       value: this.value,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,

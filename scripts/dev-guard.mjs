@@ -1,16 +1,24 @@
 /**
- * dev 守卫包装:nuxt dev 的 CLI 父进程(Vite HMR WS 所在)没有 nitro 插件里
- * 的 unhandledRejection 兜底 —— 审计浏览器频繁开/关会触发陈旧 socket 的
- * read ECONNRESET rejection 直接击穿父进程(dev server 整体退出)。
- * 此处在加载 nuxt CLI 前注册兜底:记录并继续运行,与 worker 侧策略一致。
- * (生产构建为单进程 nitro,由 server/plugins/workshop.ts 的守卫覆盖,不经此路径。)
+ * dev 守卫包装:nuxt dev 的 CLI 父进程(Vite HMR WS 所在)与 nitro worker 都可能被
+ * 审计浏览器频繁开/关触发的陈旧 socket `read ECONNRESET` unhandledRejection 击穿
+ * (nuxt CLI 自带的 pretty 处理器会 log 后退出;worker 默认 throw)。
+ *
+ * 策略:以 `--unhandled-rejections=warn` 重入自身 —— Node 对未处理拒绝只发进程警告,
+ * 不派发 unhandledRejection 事件(任何注册处理器都不会触发 exit),nitro fork 的
+ * worker 继承 execArgv 同享保护。生产构建为单进程 nitro,由 workshop 插件守卫覆盖。
  */
-process.on('unhandledRejection', (reason) => {
-  console.error('[dev-guard] 未处理 Promise rejection(已兜底,dev server 继续运行):', reason)
-})
-process.on('uncaughtException', (err) => {
-  console.error('[dev-guard] 未捕获异常(已兜底,dev server 继续运行):', err)
-})
+if (!process.env.__AW_DEV_GUARD) {
+  const { spawnSync } = await import('node:child_process')
+  const { fileURLToPath } = await import('node:url')
+  const r = spawnSync(
+    process.execPath,
+    ['--unhandled-rejections=warn', ...process.execArgv, fileURLToPath(import.meta.url), ...process.argv.slice(2)],
+    { stdio: 'inherit', env: { ...process.env, __AW_DEV_GUARD: '1' } },
+  )
+  process.exit(r.status ?? 0)
+}
+
+console.log('[dev-guard] unhandled-rejections=warn 已启用(dev server 对断连 rejection 免疫)')
 
 // nuxt 包 exports 不暴露 ./bin 子路径 → 用文件 URL 直连磁盘 CLI 入口(等效 `nuxt dev`)
 const { pathToFileURL } = await import('node:url')

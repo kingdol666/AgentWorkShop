@@ -78,6 +78,10 @@ export interface DeviceTwinSync {
   posZ?: number
   rotationY?: number
   scale?: number
+  /** 所属产线(场景光晕分色依据) */
+  lineId?: string
+  /** 产线光晕色(Hex;同产线节点同色光环) */
+  lineColor?: string
 }
 
 /** 场景内可缩放目标(Agent 或设备节点) */
@@ -598,6 +602,10 @@ class DeviceNode {
 
   /** 模型顶面世界高度缓存(HUD/callout 每帧读取;缩放变更时失效) */
   topYCache: number | null = null
+  /** 当前产线光晕色(空 = 未分配) */
+  lineColor = ''
+  /** 产线换色回调(recreateDaqNode 装配;applyTwin 检测变化时重 tint) */
+  applyLine: ((color: string) => void) | null = null
 
   /** 状态环颜色(数据驱动:state → 环色) */
   updateRing(): void {
@@ -605,12 +613,16 @@ class DeviceNode {
     ;(this.ring.material as THREE.MeshBasicMaterial).color.setHex(color)
   }
 
-  /** 与数据库讑生记录收敛(状态/遥测/名称/模型;宿主完成名牌与模型重挂) */
+  /** 与数据库讑生记录收敛(状态/遥测/名称/模型/产线光晕;宿主完成名牌与模型重挂) */
   applyTwin(t: DeviceTwinSync): void {
     if (t.state) this.state = t.state
     if (t.telemetry) this.telemetry = { ...this.telemetry, ...t.telemetry }
     if (t.name && t.name !== this.name) this.host.renameDeviceSprite(this, t.name)
     if (t.modelRef && t.modelRef !== this.modelRef) this.host.swapDeviceModelSprite(this, t.modelRef)
+    if ((t.lineColor ?? '') !== this.lineColor) {
+      this.lineColor = t.lineColor ?? ''
+      this.applyLine?.(this.lineColor)
+    }
     this.updateRing()
     this.host.markDirty()
   }
@@ -2655,32 +2667,59 @@ export class TownScene3D {
   /**
    * 模型 PBR 材质增强(放入场景后的渲染优化;设备/角色共用)。
    * - receiveShadow:自阴影/互阴影,体积感与落地感的来源;
-   * - 金属件(envMapIntensity 1.25)高反射、涂装件(0.85)亚光车漆感 —— 真实工业设备观感;
-   * - 半透明件(指示灯/屏幕)保留透光,轻微提亮自发光。
+   * - 烤漆件(低金属不透明)升 MeshPhysicalMaterial 清漆层 —— 工业车漆「高光下的镜面」观感;
+   * - 金属件 envMapIntensity 1.35 不锈钢镜面;透光件(灯罩/屏幕)微自发光。
    */
   private enhancePbrMaterials(root: THREE.Object3D, kind: 'device' | 'character'): void {
-    const baseEnv = kind === 'device' ? 0.85 : 0.7
+    const baseEnv = kind === 'device' ? 1.0 : 0.72
+    const coat = kind === 'device' ? 0.6 : 0.32
     root.traverse((o) => {
       const mesh = o as THREE.Mesh
       if (!mesh.isMesh) return
       mesh.receiveShadow = true
-      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-      for (const raw of mats) {
+      const tune = (raw: THREE.Material): THREE.Material => {
         const m = raw as THREE.MeshStandardMaterial
-        if (!m || !('envMapIntensity' in m)) continue
+        if (!m || !('envMapIntensity' in m)) return raw
         if (m.transparent) {
           // 灯罩/屏幕/指示窗:轻微自发光,像通电的设备部件
           m.envMapIntensity = baseEnv * 0.6
           if (m.emissive) m.emissive.setScalar(Math.max(m.emissive.r, 0.06))
+          return m
         }
-        else if (m.metalness >= 0.5) {
-          m.envMapIntensity = 1.25 // 不锈钢/铝机身:镜面反射车间环境
+        if (m.metalness >= 0.5) {
+          m.envMapIntensity = 1.35 // 不锈钢/铝机身:镜面反射车间环境
+          return m
         }
-        else {
-          m.envMapIntensity = baseEnv // 烤漆/塑料外壳:亚光车漆质感
+        // 涂装/塑料外壳 → 物理材质清漆层(已是物理材质只调参,避免 clone 共享材质重复替换)
+        if ((m as unknown as { isMeshPhysicalMaterial?: boolean }).isMeshPhysicalMaterial) {
+          const p = m as THREE.MeshPhysicalMaterial
+          p.clearcoat = coat
+          p.clearcoatRoughness = 0.26
+          p.envMapIntensity = baseEnv
+          p.needsUpdate = true
+          return p
         }
-        m.needsUpdate = true
+        const p = new THREE.MeshPhysicalMaterial({
+          color: m.color,
+          map: m.map,
+          normalMap: m.normalMap,
+          roughnessMap: m.roughnessMap,
+          aoMap: m.aoMap,
+          emissive: m.emissive,
+          emissiveMap: m.emissiveMap,
+          emissiveIntensity: m.emissiveIntensity,
+          roughness: Math.min(m.roughness, 0.5),
+          metalness: m.metalness,
+          clearcoat: coat,
+          clearcoatRoughness: 0.26,
+        })
+        p.name = m.name
+        p.side = m.side
+        m.dispose()
+        return p
       }
+      if (Array.isArray(mesh.material)) mesh.material = mesh.material.map(tune)
+      else mesh.material = tune(mesh.material)
     })
     this.dirty = true
   }
@@ -3759,7 +3798,7 @@ export class TownScene3D {
     return { group: g, ledRing }
   }
 
-  /** 数采节点(程序化):模板分化传感网格 + 地面信号环 + 名牌 —— 拖拽实例化的数采模板落点形态 */
+  /** 数采/智控节点(程序化):模板分化传感网格 + **产线光晕**(同产线同色光环)+ 名牌 */
   private recreateDaqNode(t: DeviceTwinSync): void {
     const x = typeof t.posX === 'number' ? t.posX : WORLD_CX
     const z = typeof t.posZ === 'number' ? t.posZ : WORLD_CZ
@@ -3775,7 +3814,16 @@ export class TownScene3D {
     sigRing.rotation.x = -Math.PI / 2
     sigRing.position.y = 0.35
     root.add(sigRing)
-    const label = this.makeLabel(t.name, x, 62, z, '#35e0a0')
+    // 产线光晕:外圈加性光环(soft) + 内圈亮环;未分配 = 缺省绿
+    const haloOuter = new THREE.Mesh(
+      new THREE.RingGeometry(24, 34, 48),
+      new THREE.MeshBasicMaterial({ color: 0x35e0a0, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+    )
+    haloOuter.rotation.x = -Math.PI / 2
+    haloOuter.position.y = 0.28
+    root.add(haloOuter)
+    const accent = t.lineColor || '#35e0a0'
+    const label = this.makeLabel(t.name, x, 62, z, accent)
     this.scene.add(root)
     const node = new DeviceNode({
       twinId: t.id, name: t.name, modelRef: t.modelRef,
@@ -3783,6 +3831,21 @@ export class TownScene3D {
       state: t.state ?? 'running', telemetry: t.telemetry ?? {},
     })
     node.host = this
+    node.lineColor = t.lineColor ?? ''
+    // 换产线/换色:重 tint 光环 + LED 环 + 名牌(applyTwin 检测 lineColor 变化时触发)
+    node.applyLine = (color: string) => {
+      const c = new THREE.Color(color || '#35e0a0')
+      ;(sigRing.material as THREE.MeshBasicMaterial).color.copy(c)
+      ;(haloOuter.material as THREE.MeshBasicMaterial).color.copy(c)
+      ;(ledRing.material as THREE.MeshBasicMaterial).color.copy(c)
+      this.scene.remove(label)
+      label.material.dispose()
+      const fresh = this.makeLabel(node.name, root.position.x, 62, root.position.z, color || '#35e0a0')
+      node.label = fresh
+      this.scene.add(fresh)
+      this.dirty = true
+    }
+    if (t.lineColor) node.applyLine(t.lineColor)
     this.deviceNodes.set(t.id, node)
     this.daqLedRings.set(t.id, ledRing)
     this.registerScalable('device', t.id, root, typeof t.scale === 'number' ? t.scale : undefined)

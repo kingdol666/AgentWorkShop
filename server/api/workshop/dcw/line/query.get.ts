@@ -17,6 +17,7 @@ export default defineApiHandler(async (event) => {
     return v != null && v !== '' && Number.isFinite(n) ? n : undefined
   }
   const result = await getDcwController().lineQuery({
+    lineId: q.lineId ? String(q.lineId) : undefined,
     productId: q.productId ? String(q.productId) : undefined,
     recipeId: q.recipeId ? String(q.recipeId) : undefined,
     paramKey: q.paramKey ? String(q.paramKey) : undefined,

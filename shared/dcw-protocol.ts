@@ -144,6 +144,32 @@ export const DCW_DRIVERS: DcwDriverMeta[] = [
 ]
 
 // ============================================================
+// 产线(Line)—— 节点/产品/配方/批次的顶层隔离维度
+// ============================================================
+
+/** 产线光晕色板(数字孪生场景:同产线节点同色光环;1号蓝 2号黄…) */
+export const DCW_LINE_COLORS = ['#3aa0ff', '#f4c542', '#35e0a0', '#41c8f4', '#b58cff', '#ff8a5c'] as const
+
+export const dcwLineColorFor = (index: number): string =>
+  DCW_LINE_COLORS[index % DCW_LINE_COLORS.length]!
+
+/** 产线(节点/产品/配方挂载其下;开跑/采集/场景光晕按产线隔离) */
+export interface LineView {
+  id: string
+  name: string
+  /** 场景光晕/界面身份色(Hex;缺省按创建序取色板) */
+  color: string
+  description: string
+  createdAt: string
+}
+
+export interface LineInput {
+  name: string
+  color?: string
+  description?: string
+}
+
+// ============================================================
 // 节点视图(REST/WS 同构载荷)
 // ============================================================
 
@@ -170,6 +196,8 @@ export interface DcwNodeView {
   driverConfig: Record<string, string | number | boolean>
   posX?: number
   posZ?: number
+  /** 所属产线('' = 未分配;采集/场景光晕按产线隔离) */
+  lineId: string
   /** 当前设定值(工程量;null = 从未下发) */
   value: number | null
   /** 最近一次成功下发时刻 / 最近一次写尝试时刻 */
@@ -214,9 +242,11 @@ export interface AepDcwControllerState {
 // Product 产品 + Recipe 配方(产品-配方-批次三级隔离)
 // ============================================================
 
-/** 产品(一个产品可有多个配方;数据隔离的顶层维度) */
+/** 产品(挂载产线;一个产品可有多个配方) */
 export interface ProductView {
   id: string
+  /** 所属产线('' = 未分配) */
+  lineId: string
   name: string
   description: string
   createdAt: string
@@ -225,14 +255,20 @@ export interface ProductView {
 export interface ProductInput {
   name: string
   description?: string
+  /** 所属产线(产线隔离顶层归属) */
+  lineId?: string
 }
 
-/** 配方参数项(引用控制模板 + 目标工程值) */
+/**
+ * 配方参数项 —— **节点级绑定**:每个参数显式指向一个控制节点
+ * (节点才是真实控制 PLC 工艺参数的执行体;模板只负责分类,不参与下发寻址)。
+ */
 export interface RecipeParam {
-  templateRef: string
+  /** 目标控制节点(必填;写入/联锁/结果快照均按节点寻址) */
+  nodeId: string
+  /** 冗余模板引用(展示用;服务端按节点归一化) */
+  templateRef?: string
   value: number
-  /** 显式指定目标控制节点(缺省按模板匹配最早创建的节点) */
-  nodeId?: string
   /** 配方级工艺下限(叠加在节点全局量程之上;该配方运行期间写入值不得低于此值) */
   min?: number
   /** 配方级工艺上限 */
@@ -243,6 +279,8 @@ export interface RecipeView {
   id: string
   /** 所属产品(产线开跑与数据归属的必需维度) */
   productId: string
+  /** 所属产线(创建时自产品继承;产线隔离) */
+  lineId: string
   name: string
   description: string
   params: RecipeParam[]
@@ -263,14 +301,18 @@ export interface RecipeRunView {
   recipeId: string
   recipeName: string
   productId: string
+  /** 所属产线(自配方继承) */
+  lineId: string
   startedAt: string
   endedAt: string | null
-  /** apply 时逐参数写结果快照 */
+  /** apply 时逐参数写结果快照(节点级寻址) */
   results: Array<{ templateRef: string, nodeId: string | null, ok: boolean, message: string, value: number }>
 }
 
-/** 产线运行状态(开跑必设配方;活动窗口内数采逐样本打标 productId/recipeId/runId) */
+/** 单条产线的运行状态(开跑必设配方;活动窗口内数采逐样本打标 lineId/productId/recipeId/runId) */
 export interface LineRunState {
+  /** 产线 id */
+  lineId: string
   active: boolean
   runId: string | null
   recipeId: string | null
@@ -291,8 +333,10 @@ export interface RecipeRunData {
   writes: Array<{ nodeId: string, nodeName: string, param: string, eng: number, raw: number | null, ok: boolean, at: string }>
 }
 
-/** 产线数据查询(产品/配方/工艺参数/时间/间隔 五维) */
+/** 产线数据查询(产品/配方/工艺参数/时间/间隔 五维;lineId 限定产线通道) */
 export interface LineQueryOpts {
+  /** 限定产线(仅聚合该产线的数采节点) */
+  lineId?: string
   productId?: string
   recipeId?: string
   /** 工艺参数(DAQ 模板 key;缺省全部通道) */

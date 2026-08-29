@@ -16,11 +16,15 @@ const dcwTpl = (await jpost(DCW + '/templates', { name: '线审计-厚度设定'
 console.log('templates:', daqTpl?.key, dcwTpl?.key)
 if (!daqTpl || !dcwTpl) { console.error('FAIL: create templates'); process.exit(1) }
 
+// ===== 1.5 产线夹具(节点挂线;逐产线门控) =====
+const { makeLineFixture } = await import('./_lib-dcw-line.mjs')
+const fx = await makeLineFixture(ROOT, H, '线审计产线A')
+
 // ===== 2. 节点 + 设备绑定(mock 驱动) =====
 const devList = (await fetch(DEV, { headers: H }).then(r => r.json())).data?.twins ?? []
 const dev = devList.find(t => t.kind !== 'daq' && typeof t.posX === 'number')
 if (!dev) { console.error('FAIL: no device twin for binding'); process.exit(1) }
-const dq = (await jpost(DAQ, { templateRef: `daq-${daqTpl.key}`, name: '线审计-厚度通道', intervalMs: 500, posX: dev.posX + 40, posZ: dev.posZ + 40 })).data.node
+const dq = (await jpost(DAQ, { templateRef: `daq-${daqTpl.key}`, name: '线审计-厚度通道', intervalMs: 500, posX: dev.posX + 40, posZ: dev.posZ + 40, lineId: fx.line.id })).data.node
 const dw = (await jpost(DCW, { templateRef: `dcw-${dcwTpl.key}`, name: '线审计-厚度设定', posX: dev.posX - 40, posZ: dev.posZ - 40 })).data.node
 await jpost(`${DAQ}/${dq.id}/bind`, { deviceId: dev.id })
 await jpost(`${DCW}/${dw.id}/bind`, { deviceId: dev.id })
@@ -35,26 +39,26 @@ const w = await jpost(`${DCW}/${dw.id}/write`, { value: 45 })
 if (w.data?.outcome?.ok) console.log('PASS set control param 45um (mock PLC ACK)')
 else fail(`write failed: ${JSON.stringify(w).slice(0, 100)}`)
 
-// ===== 4. 产品/配方 + 开跑门控 =====
-const prod = (await jpost(DCW + '/products', { name: '线审计产品A', description: '隔离验证' })).data.product
+// ===== 4. 产品/配方 + 开跑门控(逐产线) =====
+const prod = (await jpost(DCW + '/products', { name: '线审计产品A', description: '隔离验证', lineId: fx.line.id })).data.product
 const rc = (await jpost(DCW + '/recipes', { productId: prod.id, name: '线审计配方', params: [{ templateRef: `dcw-${dcwTpl.key}`, nodeId: dw.id, value: 45 }] })).data.recipe
-// 4.1 无配方开跑 → 400
-const g1 = await jpost(DCW + '/line/start', { recipeId: 'rc-nonexist' })
+// 4.1 未知配方开跑 → 404
+const g1 = await fx.start('rc-nonexist')
 if (g1.code === 'NOT_FOUND') console.log('PASS start gating: unknown recipe rejected')
 else fail(`gating unknown recipe: ${g1.code}`)
 // 4.2 空参数配方 → 400
 const rcEmpty = (await jpost(DCW + '/recipes', { productId: prod.id, name: '空参数配方', params: [] })).data.recipe
-const g2 = await jpost(DCW + '/line/start', { recipeId: rcEmpty.id })
+const g2 = await fx.start(rcEmpty.id)
 if (g2.code === 'VALIDATION_ERROR') console.log('PASS start gating: recipe without params rejected ——', (g2.message ?? '').slice(0, 24))
 else fail(`gating empty recipe: ${g2.code}`)
 
 // ===== 5. 开跑:参数下发 + 窗口打标 =====
-const st = await jpost(DCW + '/line/start', { recipeId: rc.id })
+const st = await fx.start(rc.id)
 console.log('line start:', st.data?.run?.id, '| recipe applied:', JSON.stringify(st.data?.run?.results?.[0]?.ok))
 if (st.data?.line?.active && st.data?.run?.results?.[0]?.ok === true) console.log('PASS line started with recipe applied')
 else fail(`line start wrong: ${JSON.stringify(st).slice(0, 160)}`)
 // 重复开跑 → 409
-const again = await jpost(DCW + '/line/start', { recipeId: rc.id })
+const again = await fx.start(rc.id)
 if (again.code === 'CONFLICT') console.log('PASS double-start rejected (409)')
 else fail(`double start: ${again.code}`)
 
@@ -78,7 +82,7 @@ if ((q2.data?.channels ?? []).length === 0) console.log('PASS isolation: other p
 else fail(`isolation broken: ${q2.data.channels.length} channels leaked`)
 
 // ===== 7. 停止:窗口封闭,新样本不再打标 =====
-const sp = await jpost(DCW + '/line/stop', {})
+const sp = await fx.stop()
 if (sp.data?.run?.endedAt) console.log('PASS line stopped, run sealed:', sp.data.run.endedAt)
 else fail('stop failed')
 await sleep(1600)
@@ -97,6 +101,7 @@ await jdel(`${DCW}/recipes/${rcEmpty.id}`)
 await jdel(`${DCW}/products/${prod.id}`)
 await jdel(`${DAQ}/templates/${daqTpl.key}`)
 await jdel(`${DCW}/templates/${dcwTpl.key}`)
+await fx.cleanup()
 console.log('cleanup done')
 console.log(process.exitCode ? 'AUDIT FAILED' : 'AUDIT ALL PASS')
 process.exit(process.exitCode ?? 0)

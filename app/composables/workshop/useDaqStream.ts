@@ -168,7 +168,7 @@ function createStore() {
     }
   }
 
-  async function createFromTemplate(templateRef: string, opts?: { name?: string, posX?: number, posZ?: number, transform?: { kind: 'none' | 'linear', scale?: number, offset?: number } }): Promise<DaqNodeView> {
+  async function createFromTemplate(templateRef: string, opts?: Record<string, unknown>): Promise<DaqNodeView> {
     const data = await api<{ node: DaqNodeView }>('', {
       method: 'POST',
       body: JSON.stringify({ templateRef, ...opts }),

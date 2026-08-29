@@ -33,6 +33,8 @@ interface DaqNodeOptions {
   transform?: DataTransform
   posX?: number
   posZ?: number
+  /** 所属产线('' = 未分配;采集门控/场景光晕按产线隔离) */
+  lineId?: string
   /** 驱动连接参数(modbus-tcp/opcua 协议参数;mock 空) */
   driverConfig?: Record<string, string | number | boolean>
   createdAt?: string
@@ -60,6 +62,8 @@ export class DaqNode {
   transform?: DataTransform
   posX?: number
   posZ?: number
+  /** 所属产线('' = 未分配;采集门控/场景光晕按产线隔离) */
+  lineId = ''
   value: number | null
   state: DaqNodeState = 'offline'
   lastAt: string | null = null
@@ -89,6 +93,7 @@ export class DaqNode {
     if (o.transform) this.transform = o.transform
     if (o.posX !== undefined) this.posX = o.posX
     if (o.posZ !== undefined) this.posZ = o.posZ
+    this.lineId = o.lineId ?? ''
     this.value = null
     this.createdAt = o.createdAt ?? new Date().toISOString()
   }
@@ -164,6 +169,7 @@ export class DaqNode {
       transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,
+      lineId: this.lineId,
       value: this.value,
       state: this.state,
       lastAt: this.lastAt,
@@ -191,6 +197,7 @@ export class DaqNode {
       transform: (row.transform as DataTransform | undefined) ?? undefined,
       posX: row.posX == null ? undefined : Number(row.posX),
       posZ: row.posZ == null ? undefined : Number(row.posZ),
+      lineId: row.lineId == null ? '' : String(row.lineId),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
     })
     if (row.value != null && !Number.isNaN(Number(row.value))) {
@@ -222,6 +229,7 @@ export class DaqNode {
       transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,
+      lineId: this.lineId,
       value: this.value,
       state: this.state,
       lastAt: this.lastAt,

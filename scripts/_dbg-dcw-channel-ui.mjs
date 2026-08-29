@@ -6,17 +6,19 @@ const ROOT = 'http://127.0.0.1:3000'
 const H = { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }
 const fail = (m) => { console.error('FAIL:', m); process.exitCode = 1 }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const { makeLineFixture } = await import('./_lib-dcw-line.mjs')
+const fx = await makeLineFixture(ROOT, H, 'UI审计产线')
 
 // 前置:产品/配方(带工艺窗口,nodeId 显式指向 dwTemp)/智控节点 REST 建好并绑定
-const prod = (await (await fetch(`${ROOT}/api/workshop/dcw/products`, { method: 'POST', headers: H, body: JSON.stringify({ name: 'UI审计产品' }) })).json()).data.product
-const dwTemp = (await (await fetch(`${ROOT}/api/workshop/dcw`, { method: 'POST', headers: H, body: JSON.stringify({ templateRef: 'dcw-temp-sp', name: 'UI审计-温度设定', posX: 700, posZ: 1500 }) })).json()).data.node
-const dwPres = (await (await fetch(`${ROOT}/api/workshop/dcw`, { method: 'POST', headers: H, body: JSON.stringify({ templateRef: 'dcw-pressure-sp', name: 'UI审计-压力设定', posX: 820, posZ: 1500 }) })).json()).data.node
+const prod = (await (await fetch(`${ROOT}/api/workshop/dcw/products`, { method: 'POST', headers: H, body: JSON.stringify({ name: 'UI审计产品', lineId: fx.line.id }) })).json()).data.product
+const dwTemp = (await (await fetch(`${ROOT}/api/workshop/dcw`, { method: 'POST', headers: H, body: JSON.stringify({ templateRef: 'dcw-temp-sp', name: 'UI审计-温度设定', posX: 700, posZ: 1500, lineId: fx.line.id }) })).json()).data.node
+const dwPres = (await (await fetch(`${ROOT}/api/workshop/dcw`, { method: 'POST', headers: H, body: JSON.stringify({ templateRef: 'dcw-pressure-sp', name: 'UI审计-压力设定', posX: 820, posZ: 1500, lineId: fx.line.id }) })).json()).data.node
 const twins = (await (await fetch(`${ROOT}/api/workshop/device-twins`, { headers: H })).json()).data.twins.filter(t => t.kind !== 'daq' && typeof t.posX === 'number')
 const dev = twins[0]
 await fetch(`${ROOT}/api/workshop/dcw/${dwTemp.id}/bind`, { method: 'POST', headers: H, body: JSON.stringify({ deviceId: dev.id }) })
 const rc = (await (await fetch(`${ROOT}/api/workshop/dcw/recipes`, { method: 'POST', headers: H, body: JSON.stringify({ productId: prod.id, name: 'UI审计配方', params: [{ templateRef: 'dcw-temp-sp', nodeId: dwTemp.id, value: 182, min: 176, max: 188 }] }) })).json()).data.recipe
 // 开跑(配方驱动采集 + 工艺窗口生效)
-const st = await (await fetch(`${ROOT}/api/workshop/dcw/line/start`, { method: 'POST', headers: H, body: JSON.stringify({ recipeId: rc.id }) })).json()
+const st = await fx.start(rc.id)
 console.log('line:', st.data?.line?.active)
 
 const browser = await puppeteer.launch({
@@ -134,7 +136,7 @@ await page.screenshot({ path: 'docs/audit/screenshots/town-dcw-channel.png' })
 if (pageErrors.length) { console.error('pageerrors:', pageErrors.slice(0, 3)); fail('page errors present') }
 
 // 清理(停线;删除审计节点/配方/产品)
-await fetch(`${ROOT}/api/workshop/dcw/line/stop`, { method: 'POST', headers: H })
+await fx.cleanup()
 for (const id of [dwTemp.id, dwPres.id]) await fetch(`${ROOT}/api/workshop/dcw/${id}`, { method: 'DELETE', headers: H })
 await fetch(`${ROOT}/api/workshop/dcw/recipes/${rc.id}`, { method: 'DELETE', headers: H })
 await fetch(`${ROOT}/api/workshop/dcw/products/${prod.id}`, { method: 'DELETE', headers: H })

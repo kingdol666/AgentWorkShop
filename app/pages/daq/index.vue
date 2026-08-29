@@ -4,7 +4,7 @@
  * 后端能力自描述(tsdb/queue/驱动族 + 管线指标)、控制器全局启停/周期、
  * 节点清单(状态/实时值/周期/绑定/驱动),点进 /daq/[id] 进入单节点专业控制台。
  */
-import { onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
@@ -15,6 +15,17 @@ useHead({ title: '数采中心 · AgentWorkShop' })
 
 const daq = useDaqStream()
 const dcw = useDcwStream()
+
+/** 是否存在任意运行中的产线(横幅判定) */
+const anyLineActive = computed(() => dcw.lines.some(l => dcw.lineStateOf(l.id).active))
+
+/** 节点产线归属变更(挂载到产线/移出) */
+async function setNodeLine(id: string, e: Event): Promise<void> {
+  const lineId = (e.target as HTMLSelectElement).value
+  await daq.patchNode(id, { lineId })
+  const n = daq.nodes.find(x => x.id === id)
+  if (n) n.lineId = lineId
+}
 let unsub: (() => void) | null = null
 let redrawTimer: ReturnType<typeof setInterval> | null = null
 
@@ -303,11 +314,11 @@ async function doReconnect(): Promise<void> {
 
     <!-- 产线门控横幅(无活动配方:采集与实时下发暂停) -->
     <div
-      v-if="daq.loaded && !dcw.line.active"
+      v-if="daq.loaded && !anyLineActive"
       class="infra-banner"
     >
       <span class="i-tabler-info-circle" />
-      <span class="txt">产线未开跑 —— 数采由配方驱动:请在<NuxtLink to="/dcw">产线运营</NuxtLink>选择产品与配方后「开始数采」</span>
+      <span class="txt">产线未开跑 —— 数采由产线配方驱动:请在<NuxtLink to="/dcw">产线运营</NuxtLink>开跑产线,并将节点挂载到产线</span>
     </div>
 
     <!-- 基础设施降级横幅(MQTT/Timescale 不可达:在线采集停用 + 一键重连) -->
@@ -393,12 +404,22 @@ async function doReconnect(): Promise<void> {
           添加节点
         </button>
         <NuxtLink
+          v-for="l in dcw.lines"
+          :key="l.id"
           class="line-chip mono"
-          :class="{ on: dcw.line.active }"
+          :class="{ on: dcw.lineStateOf(l.id).active }"
+          :style="dcw.lineStateOf(l.id).active ? { '--lc': l.color } : undefined"
           to="/dcw"
-          :title="dcw.line.active ? `产线运行中:${dcw.line.productName} · ${dcw.line.recipeName}` : '产线未开跑:数据采集由配方驱动,请在产线运营页选择产品与配方后开始数采'"
+          :title="dcw.lineStateOf(l.id).active ? `产线运行中:${dcw.lineStateOf(l.id).productName} · ${dcw.lineStateOf(l.id).recipeName}` : `${l.name} 待机:开跑后本产线节点开始采集`"
         >
-          {{ dcw.line.active ? `● 产线 ${dcw.line.productName} · ${dcw.line.recipeName}` : '○ 产线未开跑' }}
+          {{ dcw.lineStateOf(l.id).active ? `● ${l.name}` : `○ ${l.name}` }}
+        </NuxtLink>
+        <NuxtLink
+          v-if="dcw.lines.length === 0"
+          class="line-chip mono"
+          to="/dcw"
+        >
+          ○ 产线未开跑
         </NuxtLink>
       </div>
     </section>
@@ -784,6 +805,7 @@ async function doReconnect(): Promise<void> {
               <th>采样周期</th>
               <th>WS 下发</th>
               <th>驱动</th>
+              <th>产线</th>
               <th>绑定设备</th>
               <th class="right">
                 操作
@@ -822,6 +844,25 @@ async function doReconnect(): Promise<void> {
                   :class="{ planned: driverPlanned(n.driver) }"
                   :title="driverPlanned(n.driver) ? '预留协议:待真实通道接入' : ''"
                 >{{ n.driver }}</span>
+              </td>
+              <td>
+                <select
+                  class="line-sel"
+                  :value="n.lineId"
+                  title="节点产线归属(未挂载产线的节点不采集)"
+                  @change="setNodeLine(n.id, $event)"
+                >
+                  <option value="">
+                    未分配
+                  </option>
+                  <option
+                    v-for="l in dcw.lines"
+                    :key="l.id"
+                    :value="l.id"
+                  >
+                    {{ l.name }}
+                  </option>
+                </select>
               </td>
               <td>{{ deviceName(n.deviceBindingId) }}</td>
               <td class="right">
@@ -968,9 +1009,9 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   border-radius: var(--radius-pill);
 }
 .line-chip.on {
-  color: var(--tone-success-dot);
-  border: 1px solid color-mix(in srgb, var(--tone-success-dot) 50%, transparent);
-  background: var(--tone-success-bg);
+  color: var(--lc, var(--tone-success-dot));
+  border: 1px solid color-mix(in srgb, var(--lc, var(--tone-success-dot)) 50%, transparent);
+  background: color-mix(in srgb, var(--lc, var(--tone-success-dot)) 12%, transparent);
 }
 .infra-banner .pill-btn { flex: 0 0 auto; color: var(--paper-raised); }
 
@@ -1075,4 +1116,15 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 }
 .mini-btn.danger { color: var(--tone-danger-dot); }
 .mini-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.line-sel {
+  max-width: 120px;
+  padding: 3px 6px;
+  font-size: 10.5px;
+  color: #8fa0b5;
+  background: #0a111d;
+  border: 1px solid rgba(45, 62, 92, 0.8);
+  border-radius: 6px;
+}
+.line-sel:focus { outline: none; border-color: #35e0a0; }
 </style>

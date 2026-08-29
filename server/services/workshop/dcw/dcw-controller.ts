@@ -11,7 +11,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { applyTransform, inverseTransform, normalizeDataTransform, dcwKeyFromRef } from '../../../../shared/dcw-protocol'
-import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, DataTransform, LineQueryOpts, LineQueryResult, LineRunState, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
+import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, DataTransform, LineInput, LineQueryOpts, LineQueryResult, LineRunState, LineView, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { normalizeDcwDriverKind, resolveDcwDriver } from './drivers'
 import { findDcwTemplate } from './dcw-templates'
@@ -21,7 +21,8 @@ import { getDcwNodeRepo } from './dcw-node.repo'
 import { DcwNodeRuntime } from './dcw-runtime'
 import { getDcwRecipeRepo, type DcwWriteHistoryEntry } from './dcw-recipe.repo'
 import { getDcwProductRepo } from './dcw-product.repo'
-import { clearActiveLineRun, getActiveLineRun, setActiveLineRun } from './line-run'
+import { getDcwLineRepo } from './dcw-line.repo'
+import { clearActiveLineRun, getActiveLineRun, getAllActiveLineRuns, setActiveLineRun } from './line-run'
 
 type BroadcastFn = (type: string, payload: unknown) => void
 
@@ -41,6 +42,8 @@ export interface DcwCreateInput {
   posX?: number
   posZ?: number
   deviceBindingId?: string | null
+  /** 所属产线('' = 未分配) */
+  lineId?: string
 }
 
 export interface DcwPatchInput {
@@ -57,6 +60,7 @@ export interface DcwPatchInput {
   enabled?: boolean
   posX?: number
   posZ?: number
+  lineId?: string
 }
 
 /** 网关扫描周期(ms;保写心跳分辨率) */
@@ -139,7 +143,9 @@ class DcwController {
     }
     this.writesTotal++
     if (!outcome.ok) this.writesFailed++
-    node.applyWriteResult(eng, outcome.ok, outcome.message, at)
+    // set 后 hook:节点暴露值 = PLC 回读经 decoder 解码的**真实物理值**(而非指令值);
+    // 回读缺失(驱动不支持)才回退指令值。节点对外呈现的始终是处理后的工艺参数。
+    node.applyWriteResult(outcome.readback ?? eng, outcome.ok, outcome.message, at)
     this.repo.flushNow()
     const repo = getDcwRecipeRepo()
     const entry: DcwWriteHistoryEntry = {
@@ -245,6 +251,7 @@ class DcwController {
       deviceBindingId: input.deviceBindingId ?? null,
       posX: input.posX,
       posZ: input.posZ,
+      lineId: input.lineId,
     })
     this.repo.insert(node)
     this.syncRuntimes()
@@ -280,6 +287,11 @@ class DcwController {
     }
     if (patch.posX !== undefined) node.posX = patch.posX
     if (patch.posZ !== undefined) node.posZ = patch.posZ
+    if (patch.lineId !== undefined) {
+      const lid = String(patch.lineId)
+      if (lid && !getDcwLineRepo().byId(lid)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lid}`)
+      node.lineId = lid
+    }
     if (rearm) this.runtimes.get(id)?.rearm()
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)
@@ -327,10 +339,11 @@ class DcwController {
     const rt = this.runtimes.get(id)
     if (!rt) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
     const node = rt.node
-    const run = getActiveLineRun()
+    // 写联锁按产线:仅当**本节点所属产线**在跑时,叠加该批次配方的工艺窗口
+    const run = getActiveLineRun(node.lineId)
     if (run && recipeRunId == null) {
       const recipe = getDcwRecipeRepo().byId(run.recipeId)
-      const param = recipe?.params.find(p => p.nodeId === id || dcwKeyFromRef(p.templateRef) === node.templateKey)
+      const param = recipe?.params.find(p => p.nodeId === id)
       if (param) {
         if (param.min != null && eng < param.min) {
           throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `设定值 ${eng}${node.unit} 低于当前配方「${run.recipeName}」的工艺下限 ${param.min}${node.unit}(节点全局量程 ${node.min}~${node.max} 不适用于本批次)`)
@@ -381,27 +394,24 @@ class DcwController {
   }
 
   /**
-   * 逐参数写核心(apply 与产线开跑共用):按 templateRef 匹配控制节点
-   * (参数可显式指定 nodeId)→ 逐参数写命令(runId 入写历史)→ 结果快照。
-   * 无匹配节点 → 该参数记失败不阻塞其余。
+   * 逐参数写核心(apply 与产线开跑共用):**节点级寻址** —— 每个参数显式指向
+   * 控制节点(节点才是真实控制 PLC 工艺参数的执行体)→ 逐参数写命令
+   * (runId 入写历史)→ 结果快照。节点不存在 → 该参数记失败不阻塞其余。
    */
   private async writeRecipeParams(recipe: RecipeView, run: RecipeRunView): Promise<void> {
     const results: RecipeRunView['results'] = []
     for (const param of recipe.params) {
-      const key = dcwKeyFromRef(param.templateRef)
-      const node = this.repo.all()
-        .filter(n => n.templateKey === key && (param.nodeId ? n.id === param.nodeId : true))
-        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]
+      const node = param.nodeId ? this.repo.byId(param.nodeId) : undefined
       if (!node) {
-        results.push({ templateRef: param.templateRef, nodeId: null, ok: false, message: `无匹配的控制节点(模板 ${key}),参数未下发`, value: param.value })
+        results.push({ templateRef: param.templateRef ?? param.nodeId, nodeId: null, ok: false, message: `目标控制节点不存在(${param.nodeId}),参数未下发`, value: param.value })
         continue
       }
       try {
         const outcome = await this.write(node.id, param.value, run.id)
-        results.push({ templateRef: param.templateRef, nodeId: node.id, ok: outcome.ok, message: outcome.message, value: param.value })
+        results.push({ templateRef: node.templateRef, nodeId: node.id, ok: outcome.ok, message: outcome.message, value: param.value })
       }
       catch (err) {
-        results.push({ templateRef: param.templateRef, nodeId: node.id, ok: false, message: err instanceof Error ? err.message : String(err), value: param.value })
+        results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: err instanceof Error ? err.message : String(err), value: param.value })
       }
     }
     run.results = results
@@ -424,20 +434,63 @@ class DcwController {
     return getDcwRecipeRepo().closeRun(id)
   }
 
-  // ---------- 产线运营(开跑必设配方;窗口内数采逐样本打标) ----------
+  // ---------- 产线(实体 CRUD;节点/产品/配方挂载其下实现隔离) ----------
+
+  listLines(): LineView[] {
+    return getDcwLineRepo().all()
+  }
+
+  createLine(input: LineInput): LineView {
+    return getDcwLineRepo().create(input)
+  }
+
+  updateLine(id: string, patch: Partial<LineInput>): LineView {
+    return getDcwLineRepo().update(id, patch)
+  }
+
+  /** 删除产线:自动停止运行窗口;旗下节点/产品/配方解除挂载(lineId='' 未分配),数据保留 */
+  async removeLine(id: string): Promise<void> {
+    const line = getDcwLineRepo().byId(id)
+    if (!line) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${id}`)
+    if (getActiveLineRun(id)) this.lineStop(id)
+    for (const n of this.repo.all()) {
+      if (n.lineId === id) {
+        n.lineId = ''
+        this.emitNodeChanged('updated', n)
+      }
+    }
+    this.repo.flushNow()
+    const productRepo = getDcwProductRepo()
+    for (const p of productRepo.all()) {
+      if (p.lineId === id) productRepo.update(p.id, { lineId: '' })
+    }
+    const recipeRepo = getDcwRecipeRepo()
+    for (const r of recipeRepo.list()) {
+      if (r.lineId === id) recipeRepo.detachLine(r.id)
+    }
+    getDcwLineRepo().remove(id)
+    this.broadcast?.('dcw.controller', this.controllerState())
+  }
+
+  // ---------- 产线运营(逐产线开跑;开跑必设配方;窗口内数采逐样本打标) ----------
 
   /**
-   * 产线开跑:选定产品+配方 → 下发配方参数 → 创建批次并激活产线窗口。
-   * 门控:配方必挂产品且含工艺参数 —— 未设定配方不可开跑数据采集。
+   * 产线开跑:选定产品+配方 → 下发配方参数 → 创建批次并激活**该产线**窗口。
+   * 门控:配方必归属本产线的产品且含工艺参数 —— 未设定配方不可开跑数据采集。
    */
-  async lineStart(recipeId: string) {
+  async lineStart(lineId: string, recipeId: string) {
     this.ensureLoop()
-    if (getActiveLineRun()) {
-      throw new AppError(409, ErrorCodes.CONFLICT, `产线已在运行(批次 ${getActiveLineRun()!.runId}),请先停止当前数据采集`)
+    const line = getDcwLineRepo().byId(lineId)
+    if (!line) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lineId}`)
+    if (getActiveLineRun(lineId)) {
+      throw new AppError(409, ErrorCodes.CONFLICT, `产线「${line.name}」已在运行(批次 ${getActiveLineRun(lineId)!.runId}),请先停止当前数据采集`)
     }
     const repo = getDcwRecipeRepo()
     const recipe = repo.byId(recipeId)
     if (!recipe) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${recipeId}`)
+    if (recipe.lineId !== lineId) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `配方「${recipe.name}」不属于产线「${line.name}」,请先将其产品挂载到本产线`)
+    }
     if (recipe.params.length === 0) {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '开跑前必须先设定配方:当前 Recipe 无工艺参数')
     }
@@ -447,6 +500,7 @@ class DcwController {
     }
     const run = repo.createRun(recipe)
     setActiveLineRun({
+      lineId,
       runId: run.id,
       recipeId: recipe.id,
       recipeName: recipe.name,
@@ -460,26 +514,28 @@ class DcwController {
     return run
   }
 
-  /** 产线停止:关闭批次窗口(此后样本不再打标;数据保留可查)+ 采集镜像停摆 */
-  lineStop() {
-    const prev = clearActiveLineRun()
-    if (!prev) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '产线未在运行')
+  /** 产线停止:关闭该产线批次窗口(此后样本不再打标;数据保留可查)+ 该产线数采停摆 */
+  lineStop(lineId: string) {
+    const line = getDcwLineRepo().byId(lineId)
+    if (!line) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lineId}`)
+    const prev = clearActiveLineRun(lineId)
+    if (!prev) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `产线「${line.name}」未在运行`)
     const run = getDcwRecipeRepo().closeRun(prev.runId)
     this.broadcast?.('dcw.controller', this.controllerState())
-    // 数采门控联动:无活动配方即停止采集,节点置 offline 并广播收敛
+    // 数采门控联动:该产线无活动配方即停止其节点采集,置 offline 并广播收敛
     void import('../daq/daq-controller').then(({ getDaqController }) => {
-      getDaqController().markAllOffline()
+      getDaqController().markLineOffline(lineId)
     }).catch(() => {})
     return run
   }
 
-  /** 产线运行状态(活动窗口 + 打标计数) */
-  lineState(): LineRunState {
-    const r = getActiveLineRun()
-    if (!r) {
-      return { active: false, runId: null, recipeId: null, recipeName: null, productId: null, productName: null, startedAt: null, taggedSamples: 0 }
-    }
+  /** 单条产线运行状态(活动窗口 + 打标计数) */
+  lineState(lineId: string): LineRunState {
+    const base: LineRunState = { lineId, active: false, runId: null, recipeId: null, recipeName: null, productId: null, productName: null, startedAt: null, taggedSamples: 0 }
+    const r = getActiveLineRun(lineId)
+    if (!r) return base
     return {
+      ...base,
       active: true,
       runId: r.runId,
       recipeId: r.recipeId,
@@ -489,6 +545,23 @@ class DcwController {
       startedAt: r.startedAt,
       taggedSamples: r.taggedSamples,
     }
+  }
+
+  /** 全部产线运行状态(产线总览/状态条聚合) */
+  allLineStates(): LineRunState[] {
+    const lines = getDcwLineRepo().all()
+    const seen = new Set(lines.map(l => l.id))
+    const states = lines.map(l => this.lineState(l.id))
+    // 已删除产线的残留窗口兜底展示(避免批次计数幽灵丢失)
+    for (const r of getAllActiveLineRuns()) {
+      if (!seen.has(r.lineId)) states.push(this.lineState(r.lineId))
+    }
+    return states
+  }
+
+  /** 是否存在任意活动产线窗口(数采全局快速门) */
+  hasAnyActiveLineRun(): boolean {
+    return getAllActiveLineRuns().length > 0
   }
 
   /**
@@ -502,11 +575,13 @@ class DcwController {
     const { findDaqTemplate } = await import('../daq/daq-templates')
     const nodes = getDaqNodeRepo().all().filter((n) => {
       if (opts.paramKey && n.templateKey !== opts.paramKey) return false
+      if (opts.lineId && (n.lineId ?? '') !== opts.lineId) return false
       return true
     })
     const series = await getTsdb().queryTagged({
       productId: opts.productId,
       recipeId: opts.recipeId,
+      lineId: opts.lineId,
       nodeIds: nodes.map(n => n.id),
       fromMs: opts.fromMs,
       toMs: opts.toMs,
@@ -537,18 +612,35 @@ class DcwController {
   }
 
   createProduct(input: ProductInput): ProductView {
-    return getDcwProductRepo().create(input)
+    const lineId = String(input.lineId ?? '')
+    if (lineId && !getDcwLineRepo().byId(lineId)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lineId}`)
+    return getDcwProductRepo().create({ ...input, lineId })
   }
 
   updateProduct(id: string, patch: Partial<ProductInput>): ProductView {
-    return getDcwProductRepo().update(id, patch)
+    if (patch.lineId) {
+      const lid = String(patch.lineId)
+      if (!getDcwLineRepo().byId(lid)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lid}`)
+    }
+    const prev = getDcwProductRepo().byId(id)
+    const updated = getDcwProductRepo().update(id, patch)
+    // 产品换线 → 旗下配方产线归属级联(开跑校验按 recipe.lineId)
+    if (prev && prev.lineId !== updated.lineId) {
+      const recipeRepo = getDcwRecipeRepo()
+      for (const r of recipeRepo.list()) {
+        if (r.productId === id) recipeRepo.setRecipeLine(r.id, updated.lineId)
+      }
+    }
+    return updated
   }
 
   removeProduct(id: string): void {
-    if (getActiveLineRun()?.productId === id) {
+    const product = getDcwProductRepo().byId(id)
+    if (!product) throw new AppError(404, ErrorCodes.NOT_FOUND, `产品不存在: ${id}`)
+    if (product.lineId && getActiveLineRun(product.lineId)?.productId === id) {
       throw new AppError(409, ErrorCodes.CONFLICT, '产品正在产线运行中,不可删除(请先停止数据采集)')
     }
-    if (!getDcwProductRepo().remove(id)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产品不存在: ${id}`)
+    getDcwProductRepo().remove(id)
   }
 
   /**

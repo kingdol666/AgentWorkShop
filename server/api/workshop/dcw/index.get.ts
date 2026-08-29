@@ -19,6 +19,7 @@ export default defineApiHandler(async (event) => {
     runs: ctrl.listRuns(),
     history: ctrl.listHistory(60),
     products: ctrl.listProducts(),
-    line: ctrl.lineState(),
+    lines: ctrl.listLines(),
+    lineStates: ctrl.allLineStates(),
   }
 })
