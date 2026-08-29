@@ -260,6 +260,17 @@ export interface ProductInput {
 }
 
 /**
+ * 配方级数采监控窗口:活动批次内,数采节点实时值越出窗口即判 alarm
+ * (实时报警:节点标红 + 孪生红环 + 告警面板)。不同 Recipe 可设不同窗口。
+ */
+export interface RecipeDaqWindow {
+  /** 目标数采节点(必填;窗口按节点寻址) */
+  nodeId: string
+  min?: number
+  max?: number
+}
+
+/**
  * 配方参数项 —— **节点级绑定**:每个参数显式指向一个控制节点
  * (节点才是真实控制 PLC 工艺参数的执行体;模板只负责分类,不参与下发寻址)。
  */
@@ -284,6 +295,8 @@ export interface RecipeView {
   name: string
   description: string
   params: RecipeParam[]
+  /** 配方级数采监控窗口(活动批次内越限即报警;产线隔离) */
+  daqWindows: RecipeDaqWindow[]
   createdAt: string
   updatedAt: string
 }
@@ -293,6 +306,8 @@ export interface RecipeInput {
   name: string
   description?: string
   params?: RecipeParam[]
+  /** 配方级数采监控窗口(目标数采节点 + 越限上下限) */
+  daqWindows?: RecipeDaqWindow[]
 }
 
 /** 生产批次(Recipe 应用的隔离窗口:数采数据/写历史按窗口归属产品) */

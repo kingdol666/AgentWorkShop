@@ -7,8 +7,8 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
+import type { DaqNodeView, DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
-import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
 
 definePageMeta({ layout: 'default' })
 useHead({ title: '数采中心 · AgentWorkShop' })
@@ -25,6 +25,22 @@ async function setNodeLine(id: string, e: Event): Promise<void> {
   await daq.patchNode(id, { lineId })
   const n = daq.nodes.find(x => x.id === id)
   if (n) n.lineId = lineId
+}
+
+/** 活动配方对该节点的数采监控窗口(本线活动批次;不同 Recipe 不同窗口) */
+function recipeWinOf(n: { lineId: string, id: string }): { min?: number, max?: number } | null {
+  if (!n.lineId) return null
+  const run = dcw.lineStateOf(n.lineId)
+  if (!run.active || !run.recipeId) return null
+  const r = dcw.recipes.find(x => x.id === run.recipeId)
+  return r?.daqWindows?.find(w => w.nodeId === n.id) ?? null
+}
+
+/** 配方窗口越限(与服务端 alarm 判定同源;行标红) */
+function recipeAlarm(n: DaqNodeView): boolean {
+  const w = recipeWinOf(n)
+  if (!w || n.value == null) return false
+  return (w.min != null && n.value < w.min) || (w.max != null && n.value > w.max)
 }
 let unsub: (() => void) | null = null
 let redrawTimer: ReturnType<typeof setInterval> | null = null
@@ -816,6 +832,7 @@ async function doReconnect(): Promise<void> {
             <tr
               v-for="n in daq.nodes"
               :key="n.id"
+              :class="{ 'row-recipe-alarm': recipeAlarm(n) }"
             >
               <td>
                 <span class="mono dim">{{ n.id.slice(0, 8) }}</span>
@@ -826,7 +843,8 @@ async function doReconnect(): Promise<void> {
                 <span
                   class="st-pill"
                   :class="[effectiveState(n)]"
-                >{{ stateLabel[effectiveState(n)] }}</span>
+                  :title="recipeWinOf(n) ? `活动配方监控窗口 ${recipeWinOf(n)!.min ?? '-∞'} ~ ${recipeWinOf(n)!.max ?? '+∞'}${recipeAlarm(n) ? '(越限报警)' : ''}` : ''"
+                >{{ recipeAlarm(n) ? '配方越限' : stateLabel[effectiveState(n)] }}</span>
               </td>
               <td class="mono val">
                 {{ n.value != null ? n.value.toFixed(n.decimals) : '--' }}
@@ -970,6 +988,9 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .st-pill.ok { color: var(--tone-success-dot); background: var(--tone-success-bg); }
 .st-pill.warn { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
 .st-pill.alarm { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+/* 配方越限行:整行淡红底 + 左缘警示条 */
+tr.row-recipe-alarm { background: color-mix(in srgb, var(--tone-danger-dot, #ff6b6b) 8%, transparent); }
+tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger-dot, #ff6b6b); }
 .st-pill.offline { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); }
 
 .drv-tag {

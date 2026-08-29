@@ -10,11 +10,14 @@ import { useRoute } from 'vue-router'
 import { DCW_DRIVERS, type LineQueryResult, type RecipeRunData } from '#shared/dcw-protocol'
 import type { DriverConfigField } from '#shared/daq-protocol'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
+import { useDaqStream } from '~/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '~/composables/workshop/useDeviceTwins'
 
 const route = useRoute()
 const dcw = useDcwStream()
+const daq = useDaqStream()
 const deviceTwins = useDeviceTwins()
+void daq.load()
 
 /** 路由产线 id;总览页「产线管理」进入 */
 const lineId = computed(() => String(route.params.id ?? ''))
@@ -42,6 +45,14 @@ function nodeMin(nodeId: string): number | undefined {
 }
 function nodeMax(nodeId: string): number | undefined {
   return dcw.nodeById(nodeId)?.max
+}
+
+/** 本产线数采节点(配方监控窗口的可选目标) */
+const lineDaqNodes = computed(() => daq.nodes.filter(n => n.lineId === lineId.value))
+
+/** 监控窗口 chip 显示:数采节点参数语义 */
+function daqNodeCh(nodeId: string): string {
+  return daq.nodeById(nodeId)?.name ?? nodeId
 }
 
 // ---------- 产线作用域数据(仅本产线 + 未分配收编) ----------
@@ -295,7 +306,13 @@ const recipeOpen = ref(false)
 const recipeEditing = ref<string | null>(null)
 const recipeSaving = ref(false)
 const recipeError = ref('')
-const recipeForm = reactive({ productId: '', name: '', description: '', params: [] as Array<{ nodeId: string, value: number | '', min: number | '', max: number | '' }> })
+const recipeForm = reactive({
+  productId: '',
+  name: '',
+  description: '',
+  params: [] as Array<{ nodeId: string, value: number | '', min: number | '', max: number | '' }>,
+  daqWindows: [] as Array<{ nodeId: string, min: number | '', max: number | '' }>,
+})
 const applyResult = ref<{ runId: string, ok: number, total: number } | null>(null)
 const runDataView = ref<{ runId: string, data: RecipeRunData } | null>(null)
 const runDataLoading = ref(false)
@@ -307,6 +324,7 @@ function openRecipeCreate(): void {
   recipeForm.name = ''
   recipeForm.description = ''
   recipeForm.params = [{ nodeId: lineNodes.value[0]?.id ?? '', value: '', min: '', max: '' }]
+  recipeForm.daqWindows = []
   recipeOpen.value = true
 }
 
@@ -323,6 +341,11 @@ function openRecipeEdit(id: string): void {
     value: p.value,
     min: p.min ?? '',
     max: p.max ?? '',
+  }))
+  recipeForm.daqWindows = (r.daqWindows ?? []).map(w => ({
+    nodeId: w.nodeId,
+    min: w.min ?? '',
+    max: w.max ?? '',
   }))
   recipeOpen.value = true
 }
@@ -342,6 +365,13 @@ async function saveRecipe(): Promise<void> {
           value: Number(p.value),
           ...(p.min !== '' && Number.isFinite(Number(p.min)) ? { min: Number(p.min) } : {}),
           ...(p.max !== '' && Number.isFinite(Number(p.max)) ? { max: Number(p.max) } : {}),
+        })),
+      daqWindows: recipeForm.daqWindows
+        .filter(w => w.nodeId && (w.min !== '' || w.max !== ''))
+        .map(w => ({
+          nodeId: w.nodeId,
+          ...(w.min !== '' && Number.isFinite(Number(w.min)) ? { min: Number(w.min) } : {}),
+          ...(w.max !== '' && Number.isFinite(Number(w.max)) ? { max: Number(w.max) } : {}),
         })),
     }
     if (recipeEditing.value) await dcw.updateRecipe(recipeEditing.value, input)
@@ -984,6 +1014,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             >
               {{ (dcw.templates.find(t => t.key === (p.templateRef ?? '').replace('dcw-', ''))?.ch ?? p.templateRef) }} = {{ p.value }}
             </span>
+            <span
+              v-for="(w, i) in r.daqWindows"
+              :key="`w-${i}`"
+              class="param-chip daqwin"
+              title="活动批次内数采越限即报警"
+            >
+              ◎ {{ daqNodeCh(w.nodeId) }} ∈ [{{ w.min ?? '-∞' }}, {{ w.max ?? '+∞' }}]
+            </span>
           </div>
           <div class="recipe-actions">
             <button
@@ -1312,6 +1350,62 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         >
           + 添加参数
         </button>
+        <p class="sec-label">
+          数采监控窗口(活动批次内,数采节点实时值越出窗口即报警标红)
+        </p>
+        <div
+          v-for="(w, i) in recipeForm.daqWindows"
+          :key="`dw-${i}`"
+          class="param-row"
+        >
+          <label class="f">
+            <span>数采节点</span>
+            <select
+              v-model="w.nodeId"
+              class="inp"
+            >
+              <option
+                v-for="n in lineDaqNodes"
+                :key="n.id"
+                :value="n.id"
+              >
+                {{ n.name }}({{ n.min }}~{{ n.max }} {{ n.unit }})
+              </option>
+            </select>
+          </label>
+          <label class="f">
+            <span>监控下限(可选)</span>
+            <input
+              v-model.number="w.min"
+              type="number"
+              class="inp"
+              :step="0.1"
+            >
+          </label>
+          <label class="f">
+            <span>监控上限(可选)</span>
+            <input
+              v-model.number="w.max"
+              type="number"
+              class="inp"
+              :step="0.1"
+            >
+          </label>
+          <button
+            class="mini-btn danger param-del"
+            @click="recipeForm.daqWindows.splice(i, 1)"
+          >
+            移除
+          </button>
+        </div>
+        <button
+          class="mini-btn"
+          :disabled="lineDaqNodes.length === 0"
+          :title="lineDaqNodes.length === 0 ? '本产线暂无数采节点' : ''"
+          @click="recipeForm.daqWindows.push({ nodeId: lineDaqNodes[0]?.id ?? '', min: '', max: '' })"
+        >
+          + 添加监控窗口
+        </button>
         <p
           v-if="recipeError"
           class="m-err"
@@ -1585,6 +1679,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
   border-radius: 3px;
   box-shadow: 0 0 10px currentColor;
 }
+.param-chip.daqwin { color: #41c8f4; border-color: rgba(65, 200, 244, 0.4); }
 .adopt-card { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
 .adopt-title { font-size: 12px; color: var(--aw-dim, #8fa0b5); flex: none; padding-top: 4px; }
 .adopt-list { display: flex; gap: 8px; flex-wrap: wrap; }

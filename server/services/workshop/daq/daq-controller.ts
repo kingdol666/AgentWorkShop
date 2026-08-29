@@ -34,6 +34,7 @@ import { getTsdb, tsdbReady } from './storage'
 import { getDaqQueue } from './bus'
 import { bumpTaggedSamples, getActiveLineRun, getAllActiveLineRuns } from '../dcw/line-run'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
+import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
 import type { DaqSampleEnvelope } from './bus/queue-port'
 
 /** 数采值回写绑定时,映射进设备孪生已有遥测语义键(命中既有告警派生规则) */
@@ -175,7 +176,27 @@ class DaqController {
 
   /** 消费面:样本入网关管线(状态派生已在 runtime 完成)。
    *  allowPublish = 通过该节点 WS 下发节拍门控;入库/遥测回写不受门控(每帧必达)。 */
+  /**
+   * 活动配方对该节点的数采监控窗口(逐产线:仅本线活动批次的窗口生效)。
+   * 不同 Recipe 可设不同窗口 —— 窗口随开跑生效、随停线失效。
+   */
+  private recipeDaqWindowFor(node: DaqNode): { min: number | null, max: number | null } | null {
+    if (!node.lineId) return null
+    const run = getActiveLineRun(node.lineId)
+    if (!run) return null
+    const recipe = getDcwRecipeRepo().byId(run.recipeId)
+    const w = recipe?.daqWindows?.find(x => x.nodeId === node.id)
+    return w ? { min: w.min ?? null, max: w.max ?? null } : null
+  }
+
   private ingestNode(node: DaqNode, env: DaqSampleEnvelope, allowPublish: boolean): void {
+    // 配方级数采监控:实时值越出活动配方窗口 → 立即 alarm(越限即报,不等去抖);
+    // 广播/入库/遥测回写/孪生环全部携带该状态。窗口恢复后由量程派生自然回落。
+    const rw = this.recipeDaqWindowFor(node)
+    if (rw && node.state !== 'alarm') {
+      const v = env.value
+      if ((rw.min != null && v < rw.min) || (rw.max != null && v > rw.max)) node.state = 'alarm'
+    }
     if (allowPublish) {
       this.broadcast?.('daq.reading', {
         nodeId: node.id,

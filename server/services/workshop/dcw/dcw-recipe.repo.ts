@@ -8,11 +8,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { RecipeInput, RecipeParam, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
+import type { RecipeDaqWindow, RecipeInput, RecipeParam, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
 import { dcwKeyFromRef } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { getDcwProductRepo } from './dcw-product.repo'
 import { getDcwNodeRepo } from './dcw-node.repo'
+import { getDaqNodeRepo } from '../daq/daq-node.repo'
 
 const DATA_DIR = process.cwd().endsWith('server')
   ? 'data'
@@ -112,6 +113,37 @@ const normParams = (params: RecipeParam[] | undefined, lineId = ''): RecipeParam
       return out
     })
 
+/**
+ * 配方级数采监控窗口归一化:绑定数采节点(必填),产线隔离守卫
+ * (未分配自动收编/跨线拒绝),窗口需至少一侧且 min <= max。
+ */
+const normDaqWindows = (windows: RecipeDaqWindow[] | undefined, lineId = ''): RecipeDaqWindow[] =>
+  (windows ?? []).map((w) => {
+    const nodeId = String(w.nodeId ?? '').trim()
+    if (!nodeId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '数采监控窗口必须绑定数采节点(nodeId 必填)')
+    const node = getDaqNodeRepo().byId(nodeId)
+    if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `监控窗口绑定的数采节点不存在: ${nodeId}`)
+    if (lineId) {
+      if (!node.lineId) {
+        node.lineId = lineId
+        getDaqNodeRepo().flushNow()
+      }
+      else if (node.lineId !== lineId) {
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `数采节点「${node.name}」属于其他产线,不可挂入本产线配方(产线隔离)`)
+      }
+    }
+    const min = w.min == null ? undefined : Number(w.min)
+    const max = w.max == null ? undefined : Number(w.max)
+    if (min == null && max == null) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `数采节点「${node.name}」的监控窗口需至少提供 min 或 max`)
+    if (min != null && !Number.isFinite(min)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `数采节点「${node.name}」监控下限需为数字`)
+    if (max != null && !Number.isFinite(max)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `数采节点「${node.name}」监控上限需为数字`)
+    if (min != null && max != null && min > max) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `数采节点「${node.name}」监控窗口非法:min ${min} > max ${max}`)
+    const out: RecipeDaqWindow = { nodeId }
+    if (min != null) out.min = min
+    if (max != null) out.max = max
+    return out
+  })
+
 class DcwRecipeRepo {
   private recipes: RecipeView[] = loadJson<RecipeView[]>(RECIPES_PATH, [])
   private runs: RecipeRunView[] = loadJson<RecipeRunView[]>(RUNS_PATH, [])
@@ -143,6 +175,7 @@ class DcwRecipeRepo {
       name,
       description: String(input.description ?? '').trim(),
       params: normParams(input.params, product.lineId),
+      daqWindows: normDaqWindows(input.daqWindows, product.lineId),
       createdAt: now,
       updatedAt: now,
     }
@@ -166,6 +199,7 @@ class DcwRecipeRepo {
     }
     if (patch.description !== undefined) r.description = String(patch.description).trim()
     if (patch.params !== undefined) r.params = normParams(patch.params, r.lineId)
+    if (patch.daqWindows !== undefined) r.daqWindows = normDaqWindows(patch.daqWindows, r.lineId)
     r.updatedAt = new Date().toISOString()
     this.flushRecipes()
     return r
