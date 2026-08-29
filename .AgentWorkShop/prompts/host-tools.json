@@ -474,5 +474,82 @@
         "reason"
       ]
     }
+  },
+  {
+    "name": "my_industrial_nodes",
+    "label": "My Industrial Nodes",
+    "description": "列出你绑定的全部数采/数控节点及其物理含义(参数含义/单位/安全量程/活动配方工艺窗口/控制模式)。在进行任何工业操作前必须先调用本工具理解节点语义与设定规则。",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "dcw_control",
+    "label": "DCW Control",
+    "description": "对绑定的数控节点下发工艺设定值(真实物理量纲)。仅限你有权控制的节点;设定值会被安全量程与活动配方工艺窗口联锁校验,越窗直接拒绝。手动确认模式下需等待用户批准,用户备注会随结果返回。下发前先调用 my_industrial_nodes 理解节点物理含义。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "数控节点 id(见 my_industrial_nodes)"
+        },
+        "value": {
+          "type": "number",
+          "description": "目标设定值(真实物理量纲,如 ℃)"
+        }
+      },
+      "required": [
+        "node_id",
+        "value"
+      ]
+    }
+  },
+  {
+    "name": "daq_query",
+    "label": "DAQ Query",
+    "description": "从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "限定单个数采节点 id(缺省 = 全部绑定节点)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "按产线过滤(数据归属产线)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "按产品过滤(逐样本打标)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "按配方/批次过滤(逐样本打标)"
+        },
+        "last_minutes": {
+          "type": "number",
+          "description": "最近 N 分钟(缺省 30)"
+        },
+        "from_ms": {
+          "type": "number",
+          "description": "起始 epoch ms(与 to_ms 配合,优先于 last_minutes)"
+        },
+        "to_ms": {
+          "type": "number",
+          "description": "结束 epoch ms"
+        },
+        "bucket_ms": {
+          "type": "number",
+          "description": "降采样桶宽 ms(长窗口建议 1000~60000)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回点数上限(缺省 500)"
+        }
+      }
+    }
   }
 ]

@@ -48,6 +48,7 @@ import {
   loadHostToolDefs,
   renderPrompt,
 } from '../prompts/loader'
+import { toolDaqQuery, toolDcwControl, toolMyIndustrialNodes } from './industrial-tools'
 import { extractTaskMode } from '../runtime/execution-mode'
 
 // ===== 配置 =====
@@ -1516,6 +1517,15 @@ export class OmpRpcAgentImpl implements AgentInterface {
           return { text: `团队成员 ${agentId} 已移除。${recycleNote}` }
         }
 
+        case 'my_industrial_nodes': {
+          return toolMyIndustrialNodes(this.selfAgentId)
+        }
+        case 'dcw_control': {
+          return toolDcwControl(this.selfAgentId, req.arguments as { node_id?: string, value?: number | string })
+        }
+        case 'daq_query': {
+          return toolDaqQuery(this.selfAgentId, req.arguments as Parameters<typeof toolDaqQuery>[1])
+        }
         default:
           return { text: `未知工具: ${req.toolName}`, isError: true }
       }

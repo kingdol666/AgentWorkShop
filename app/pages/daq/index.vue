@@ -7,7 +7,7 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
-import type { DaqNodeView, DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
+import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeView, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 
 definePageMeta({ layout: 'default' })

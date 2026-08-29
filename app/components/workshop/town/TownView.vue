@@ -1519,6 +1519,109 @@ function onDaqDragStart(e: DragEvent, tpl: DaqTemplate): void {
   e.dataTransfer.effectAllowed = 'copy'
 }
 
+// ===== Agent 工业节点绑定(数采/数控工具授权)+ 手动确认审批面板 =====
+interface AgentNodeBindingRow {
+  id: string
+  agentId: string
+  nodeId: string
+  kind: 'dcw' | 'daq'
+  mode: 'auto' | 'manual'
+}
+interface ToolApprovalRow {
+  id: string
+  agentId: string
+  kind: string
+  detail: string
+  createdAt: string
+  status: string
+}
+
+const authHeaders = (): Record<string, string> => {
+  const token = document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? ''
+  return { 'content-type': 'application/json', 'authorization': `Bearer ${decodeURIComponent(token)}` }
+}
+
+const agentBindings = ref<AgentNodeBindingRow[]>([])
+const agentBindKind = ref<'dcw' | 'daq'>('dcw')
+const agentBindNodeId = ref('')
+const agentBindMode = ref<'auto' | 'manual'>('auto')
+const pendingApprovals = ref<ToolApprovalRow[]>([])
+const approvalComments = reactive<Record<string, string>>({})
+let approvalPoll: ReturnType<typeof setInterval> | null = null
+
+async function loadAgentBindings(): Promise<void> {
+  const id = selected.value?.id
+  if (selected.value?.kind !== 'agent' || !id) return
+  try {
+    const r = await fetch(`/api/workshop/agent-tools/bindings?agentId=${encodeURIComponent(id)}`, { headers: authHeaders() }).then(x => x.json())
+    agentBindings.value = r.data?.bindings ?? []
+  }
+  catch { /* 忽略轮询失败 */ }
+}
+
+async function loadPendingApprovals(): Promise<void> {
+  const id = selected.value?.id
+  if (selected.value?.kind !== 'agent' || !id) return
+  try {
+    const r = await fetch(`/api/workshop/agent-tools/approvals?agentId=${encodeURIComponent(id)}`, { headers: authHeaders() }).then(x => x.json())
+    pendingApprovals.value = r.data?.approvals ?? []
+  }
+  catch { /* 忽略轮询失败 */ }
+}
+
+async function bindAgentNode(): Promise<void> {
+  if (!selected.value?.id || !agentBindNodeId.value) return
+  await fetch('/api/workshop/agent-tools/bindings', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ agentId: selected.value.id, nodeId: agentBindNodeId.value, kind: agentBindKind.value, mode: agentBindMode.value }),
+  })
+  agentBindNodeId.value = ''
+  await loadAgentBindings()
+}
+
+async function unbindAgentNode(id: string): Promise<void> {
+  await fetch(`/api/workshop/agent-tools/bindings/${id}`, { method: 'DELETE', headers: authHeaders() })
+  await loadAgentBindings()
+}
+
+async function setBindingMode(id: string, mode: 'auto' | 'manual'): Promise<void> {
+  await fetch(`/api/workshop/agent-tools/bindings/${id}`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ mode }) })
+  await loadAgentBindings()
+}
+
+async function decideApproval(id: string, approved: boolean): Promise<void> {
+  await fetch(`/api/workshop/agent-tools/approvals/${id}/decide`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ approved, comment: approvalComments[id] ?? '' }),
+  })
+  Reflect.deleteProperty(approvalComments, id)
+  await loadPendingApprovals()
+}
+
+watch(() => selected.value?.id, (id) => {
+  if (approvalPoll) {
+    clearInterval(approvalPoll)
+    approvalPoll = null
+  }
+  if (selected.value?.kind === 'agent' && id) {
+    void loadAgentBindings()
+    void loadPendingApprovals()
+    approvalPoll = setInterval(() => {
+      void loadPendingApprovals()
+    }, 3000)
+  }
+}, { immediate: true })
+onBeforeUnmount(() => {
+  if (approvalPoll) clearInterval(approvalPoll)
+})
+
+/** 绑定行的节点名(dcw/daq store 解析) */
+function bindingNodeName(b: AgentNodeBindingRow): string {
+  return b.kind === 'dcw' ? dcw.nodeById(b.nodeId)?.name ?? b.nodeId : daq.nodeById(b.nodeId)?.name ?? b.nodeId
+}
+
 /** 数采 → 设备绑定(server 权威:node.deviceBindingId;REST bind 落库 + WS 收敛) */
 const boundDeviceOf = (daqId: string): string | null => daq.nodeById(daqId)?.deviceBindingId ?? null
 const daqOfDevice = (deviceId: string): string[] =>
@@ -3913,6 +4016,158 @@ onBeforeUnmount(() => {
                 {{ agentDrawingRange ? '绘制中' : '框选绘制' }}
               </button>
             </div>
+
+            <!-- 工业节点绑定(数采/数控工具授权 + 控制模式 + 手动确认审批) -->
+            <div class="obj-sep" />
+            <div class="sect-hd">
+              工业节点绑定
+            </div>
+            <div
+              v-for="b in agentBindings"
+              :key="b.id"
+              class="bind-row"
+            >
+              <span
+                class="ins-chip"
+                :class="b.kind === 'dcw' ? 'accent' : ''"
+                style="flex: none;"
+              >{{ b.kind === 'dcw' ? '数控' : '数采' }}</span>
+              <span class="bind-meta">
+                <span class="bind-label">{{ bindingNodeName(b) }}</span>
+                <select
+                  class="bind-select"
+                  style="margin-top: 3px;"
+                  :value="b.mode"
+                  title="自动 = 工具调用直接执行;手动 = 每次下发需在此批准"
+                  @change="setBindingMode(b.id, ($event.target as HTMLSelectElement).value as 'auto' | 'manual')"
+                >
+                  <option value="auto">
+                    自动执行
+                  </option>
+                  <option value="manual">
+                    手动确认
+                  </option>
+                </select>
+              </span>
+              <button
+                class="bind-x"
+                title="解除绑定"
+                @click="unbindAgentNode(b.id)"
+              >
+                ✕
+              </button>
+            </div>
+            <div
+              v-if="!agentBindings.length"
+              class="ins-empty"
+            >
+              未绑定工业节点 —— 绑定后 Agent 可用 dcw_control / daq_query 工具
+            </div>
+            <div
+              v-if="mode === 'edit'"
+              class="daq-bind-bar"
+              style="margin-bottom: 8px;"
+            >
+              <select
+                v-model="agentBindKind"
+                class="bind-select"
+                style="flex: none; width: 62px;"
+              >
+                <option value="dcw">
+                  数控
+                </option>
+                <option value="daq">
+                  数采
+                </option>
+              </select>
+              <select
+                v-model="agentBindNodeId"
+                class="bind-select"
+              >
+                <option value="">
+                  选择节点…
+                </option>
+                <template v-if="agentBindKind === 'dcw'">
+                  <option
+                    v-for="n in dcw.nodes"
+                    :key="n.id"
+                    :value="n.id"
+                  >
+                    {{ n.name }}
+                  </option>
+                </template>
+                <template v-else>
+                  <option
+                    v-for="n in daq.nodes"
+                    :key="n.id"
+                    :value="n.id"
+                  >
+                    {{ n.name }}
+                  </option>
+                </template>
+              </select>
+              <select
+                v-model="agentBindMode"
+                class="bind-select"
+                style="flex: none; width: 76px;"
+              >
+                <option value="auto">
+                  自动
+                </option>
+                <option value="manual">
+                  手动
+                </option>
+              </select>
+              <button
+                class="bind-add-btn"
+                :disabled="!agentBindNodeId"
+                @click="bindAgentNode"
+              >
+                绑定
+              </button>
+            </div>
+
+            <!-- 手动确认:待审批 -->
+            <template v-if="pendingApprovals.length">
+              <div
+                class="sect-hd"
+                style="color: var(--hud-amber);"
+              >
+                待审批下发 · {{ pendingApprovals.length }}
+              </div>
+              <div
+                v-for="ap in pendingApprovals"
+                :key="ap.id"
+                class="approval-card"
+              >
+                <div class="approval-detail">
+                  {{ ap.detail }}
+                </div>
+                <input
+                  v-model="approvalComments[ap.id]"
+                  class="dcw-write input-inline"
+                  style="width: 100%; margin-top: 5px;"
+                  placeholder="备注(随结果返回给 Agent)…"
+                >
+                <div
+                  class="daq-bind-bar"
+                  style="margin-top: 5px;"
+                >
+                  <button
+                    class="bind-add-btn"
+                    @click="decideApproval(ap.id, true)"
+                  >
+                    ✓ 批准执行
+                  </button>
+                  <button
+                    class="bind-add-btn danger"
+                    @click="decideApproval(ap.id, false)"
+                  >
+                    ✕ 拒绝
+                  </button>
+                </div>
+              </div>
+            </template>
             <template v-if="agentRangeDraft && mode === 'edit'">
               <div class="obj-row">
                 <span class="obj-label">形状</span>
@@ -6083,4 +6338,13 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   .dock { grid-template-columns: 1fr; }
   .stage-dock { grid-template-columns: 1fr; }
 }
+
+.approval-card {
+  padding: 8px 9px;
+  margin-bottom: 7px;
+  background: rgba(246, 196, 83, 0.06);
+  border: 1px solid rgba(246, 196, 83, 0.3);
+  border-radius: var(--hud-r-md);
+}
+.approval-detail { font-size: 11px; color: var(--hud-text); }
 </style>
