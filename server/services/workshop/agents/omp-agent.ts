@@ -434,7 +434,10 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
     const prompt = await this.buildSupervisePrompt(snapshot, ctx.memory)
     // 20s 上界:supervise 持 lead.execLock 期间信箱消费停顿;真 abort 已实现,20s 足够小 prompt 调度回合
-    const timeoutMs = this.config.superviseTimeoutMs ?? 20_000
+    // supervise 是一次真实 LLM 回合:omp 冷启动(插件/MCP 加载 30~90s)+ 慢 provider
+    // 单步可能 >60s;20s 会把正常回合掐成 "Interrupted by user"。默认放宽到 150s,
+    // 仅拦真僵死(更紧的预算由调用方 config.superviseTimeoutMs 显式传入)。
+    const timeoutMs = this.config.superviseTimeoutMs ?? 150_000
 
     return new Promise<SupervisionDecision[]>((resolve) => {
       let assistantText = ''
