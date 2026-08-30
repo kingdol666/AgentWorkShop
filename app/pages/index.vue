@@ -1,91 +1,274 @@
 <script setup lang="ts">
-import ITablerDashboard from '~icons/tabler/layout-dashboard'
-import ITablerServer from '~icons/tabler/server'
-import { useUserStore } from '@/app/stores/workshop/user'
-import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
+/**
+ * 仪表盘(/)—— 产线运营数字大屏。
+ * ECharts 可视化:实时工况趋势(量程归一化)/ 产线运行状态 / 数采管线吞吐 /
+ * 写控制成功率 / 节点状态分布 + 产线清单卡。
+ * 数据权威在 server:useDcwStream + useDaqStream(REST 基线 + WS 实时收敛
+ * + 5s 低频兜底刷新);趋势缓冲为本页每 5s 一次的量程归一化快照。
+ */
+import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
+import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
+import AwChart from '@/app/components/AwChart.vue'
+import type { EChartsOption } from 'echarts'
+
+useHead({ title: '仪表盘 · AgentWorkShop' })
 
 const { t } = useI18n()
 const site = useSiteConfig()
-const config = useRuntimeConfig().public
-const userStore = useUserStore()
+const store = useAppStore()
+const daq = useDaqStream()
+const dcw = useDcwStream()
 
-const fields = computed(() => [
-  { key: 'name', label: t('home.fields.name'), value: site.name },
-  { key: 'version', label: t('home.fields.version'), value: site.version },
-  { key: 'mode', label: t('home.fields.mode'), value: site.mode },
-  { key: 'dev', label: t('home.fields.devPort'), value: `${config.serverHost}:${config.devPort}  (pnpm dev)` },
-  { key: 'prod', label: t('home.fields.prodPort'), value: `${config.serverHost}:${config.prodPort}  (pnpm start)` },
-  { key: 'api', label: t('home.fields.apiBase'), value: `${site.apiBase}  (${config.apiTimeout}ms)` },
-  { key: 'primary', label: t('home.fields.primary'), value: config.primaryColor as string },
-])
+// 数据宪法色板:绿主 / 数据青 / 琥珀 / 紫罗兰(与产线光晕色板同源)
+const PAL = { accent: '#35e0a0', cyan: '#41c8f4', amber: '#f4c542', violet: '#b58cff', danger: '#ff6b6b' }
 
-// 服务端配置一致性演示:前端 useSiteConfig() 与后端 GET /api/system/config 同源于 config.yml
-interface ServerConfigView {
-  app: { name: string, title: string, version: string, mode: string }
-  server: { host: string, devPort: number, prodPort: number }
-  api: { baseURL: string, timeout: number, pageSize: number, maxPageSize: number }
-  theme: { primaryColor: string, themeMode: string }
-  i18n: { defaultLocale: string }
-}
-
-interface ApiEnvelope<T> {
-  code: number | string
-  message: string
-  data: T | null
-}
-
-// 业务鉴权:system/config 需用户 token;未登录/过期 → 静默降级(卡片显示登录提示)
-const { data: serverConfig } = await useAsyncData('server-config', () =>
-  $fetch<ApiEnvelope<ServerConfigView>>('/api/system/config', {
-    headers: userStore.token ? { authorization: `Bearer ${userStore.token}` } : {},
-  }).catch(() => null),
-)
-
-const serverFields = computed(() => {
-  const d = serverConfig.value?.data
-  if (!d) {
-    return []
-  }
-  return [
-    { key: 'name', label: t('home.fields.name'), value: d.app.name },
-    { key: 'version', label: t('home.fields.version'), value: d.app.version },
-    { key: 'mode', label: t('home.fields.mode'), value: d.app.mode },
-    { key: 'dev', label: t('home.fields.devPort'), value: `${d.server.host}:${d.server.devPort}` },
-    { key: 'prod', label: t('home.fields.prodPort'), value: `${d.server.host}:${d.server.prodPort}` },
-    { key: 'pageSize', label: t('home.serverCard.pageSize'), value: String(d.api.pageSize) },
-    { key: 'maxPageSize', label: t('home.serverCard.maxPageSize'), value: String(d.api.maxPageSize) },
-  ]
+// ---------- 数据装载(WS 实时 + 5s 兜底) ----------
+let timer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  daq.ensureWsFeed()
+  dcw.ensureWsFeed()
+  void Promise.all([daq.load(), dcw.load()]).then(() => pushTrend())
+  timer = setInterval(() => {
+    void daq.load()
+    void dcw.load()
+    pushTrend()
+  }, 5000)
+})
+onBeforeUnmount(() => {
+  if (timer) clearInterval(timer)
 })
 
-// ── 运行时实况(真实数据,替换旧演示图表):workspace / 活跃 channel / 在线 agent 实例 ──
-const wsStore = useWorkspacesStore()
-interface RuntimeView { wiredAgents: string[], activeChannels: string[] }
-const runtimeStats = ref<RuntimeView | null>(null)
+// ---------- KPI ----------
+const linesActive = computed(() => dcw.lines.filter(l => dcw.lineStateOf(l.id).active))
+const daqOnline = computed(() => daq.nodes.filter(n => n.enabled && n.state !== 'offline').length)
+const daqTotal = computed(() => daq.nodes.length)
+const alarmCount = computed(() => daq.nodes.filter(n => n.state === 'alarm').length)
+const writeRate = computed(() => {
+  const total = dcw.controller.writesTotal
+  if (total === 0) return 100
+  return Math.round(((total - dcw.controller.writesFailed) / total) * 1000) / 10
+})
 
-if (userStore.isLoggedIn) {
-  if (!wsStore.loaded) wsStore.load().catch(() => {})
-  $fetch<ApiEnvelope<RuntimeView>>('/api/workshop/runtime', {
-    headers: { authorization: `Bearer ${userStore.token}` },
-  })
-    .then(res => (runtimeStats.value = res.data ?? null))
-    .catch(() => {})
+// ---------- 趋势缓冲(近 3 分钟,5s 一拍,量程归一化) ----------
+interface TrendPoint { t: number, m: Record<string, number | null> }
+const trendBuf = ref<TrendPoint[]>([])
+/** 趋势通道:有实时值的节点优先(在线优先),稳定取前 4 */
+const trendNodes = computed(() => daq.nodes
+  .filter(n => n.value != null && n.max > n.min)
+  .sort((a, b) => (a.lineId ? 0 : 1) - (b.lineId ? 0 : 1) || a.id.localeCompare(b.id))
+  .slice(0, 4))
+
+function pushTrend(): void {
+  const m: Record<string, number | null> = {}
+  for (const n of trendNodes.value) {
+    m[n.id] = n.value == null ? null : Math.round(((n.value - n.min) / (n.max - n.min)) * 1000)
+  }
+  trendBuf.value.push({ t: Date.now(), m: m as Record<string, number | null> })
+  if (trendBuf.value.length > 36) trendBuf.value.shift()
 }
 
-const stats = computed(() => [
-  { key: 'ws', icon: 'i-tabler-box', label: t('home.stats.workspaces'), value: userStore.isLoggedIn ? String(wsStore.workspaces.length) : '-' },
-  { key: 'channels', icon: 'i-tabler-messages', label: t('home.stats.activeChannels'), value: runtimeStats.value ? String(runtimeStats.value.activeChannels.length) : '-' },
-  { key: 'agents', icon: 'i-tabler-users-group', label: t('home.stats.wiredAgents'), value: runtimeStats.value ? String(runtimeStats.value.wiredAgents.length) : '-' },
-  { key: 'version', icon: 'i-tabler-tag', label: t('home.fields.version'), value: `v${site.version}` },
-])
+// ---------- 主题感知的图表公共色 ----------
+const inkC = computed(() => (store.isDark ? '#e8eef8' : '#1f2a3a'))
+const dimC = computed(() => (store.isDark ? 'rgba(143,160,181,0.85)' : 'rgba(80,95,120,0.85)'))
+const splitC = computed(() => (store.isDark ? 'rgba(143,160,181,0.13)' : 'rgba(80,95,120,0.14)'))
+const tipBg = computed(() => (store.isDark ? 'rgba(10,16,28,0.94)' : 'rgba(255,255,255,0.97)'))
+
+const baseTooltip = computed(() => ({
+  backgroundColor: tipBg.value,
+  borderColor: splitC.value,
+  textStyle: { color: inkC.value, fontSize: 11 },
+}))
+
+// ---------- 图 1:实时工况趋势(多通道量程归一化) ----------
+const trendOpt = computed<EChartsOption>(() => ({
+  backgroundColor: 'transparent',
+  tooltip: { trigger: 'axis', ...baseTooltip.value },
+  legend: {
+    top: 0, right: 4, icon: 'roundRect', itemWidth: 10, itemHeight: 4,
+    textStyle: { color: dimC.value, fontSize: 10.5 },
+  },
+  grid: { left: 42, right: 14, top: 30, bottom: 24 },
+  xAxis: {
+    type: 'time',
+    axisLabel: { color: dimC.value, fontSize: 10, formatter: '{HH}:{mm}:{ss}' },
+    axisLine: { lineStyle: { color: splitC.value } },
+    splitLine: { show: false },
+  },
+  yAxis: {
+    type: 'value', min: 0, max: 100,
+    name: t('home.trendY'), nameTextStyle: { color: dimC.value, fontSize: 10, align: 'left' },
+    axisLabel: { color: dimC.value, fontSize: 10 },
+    splitLine: { lineStyle: { color: splitC.value } },
+  },
+  series: trendNodes.value.map((n, i) => {
+    const color = [PAL.accent, PAL.cyan, PAL.amber, PAL.violet][i % 4]
+    const fill = ['rgba(53,224,160,0.07)', 'rgba(65,200,244,0.07)', 'rgba(244,197,66,0.07)', 'rgba(181,140,255,0.07)'][i % 4]
+    return {
+      name: n.name,
+      type: 'line',
+      smooth: true,
+      showSymbol: false,
+      connectNulls: true,
+      lineStyle: { width: 1.6, color },
+      itemStyle: { color },
+      areaStyle: { color: fill },
+      data: trendBuf.value.map(p => [p.t, p.m[n.id] ?? null]),
+    }
+  }),
+}))
+
+// ---------- 图 2:产线运行状态(donut) ----------
+const lineStateOpt = computed<EChartsOption>(() => ({
+  backgroundColor: 'transparent',
+  tooltip: { trigger: 'item', ...baseTooltip.value },
+  legend: {
+    bottom: 0, left: 'center', icon: 'roundRect', itemWidth: 10, itemHeight: 4,
+    textStyle: { color: dimC.value, fontSize: 10.5 },
+  },
+  series: [{
+    type: 'pie',
+    radius: ['62%', '82%'],
+    center: ['50%', '44%'],
+    label: { show: false },
+    silent: false,
+    data: [
+      { value: linesActive.value.length, name: t('home.runNow'), itemStyle: { color: PAL.accent } },
+      { value: Math.max(dcw.lines.length - linesActive.value.length, 0), name: t('home.standBy'), itemStyle: { color: splitC.value } },
+    ],
+  }],
+}))
+
+// ---------- 图 3:数采管线吞吐(累计) ----------
+const pipelineOpt = computed<EChartsOption>(() => ({
+  backgroundColor: 'transparent',
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, ...baseTooltip.value },
+  grid: { left: 70, right: 34, top: 10, bottom: 24 },
+  xAxis: {
+    type: 'value',
+    axisLabel: { color: dimC.value, fontSize: 10, formatter: (v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : String(v) },
+    splitLine: { lineStyle: { color: splitC.value } },
+  },
+  yAxis: {
+    type: 'category',
+    data: [t('home.pipelineSeries.stored'), t('home.pipelineSeries.consumed'), t('home.pipelineSeries.produced')],
+    axisLabel: { color: dimC.value, fontSize: 10.5 },
+    axisLine: { lineStyle: { color: splitC.value } },
+  },
+  series: [{
+    type: 'bar',
+    barWidth: 10,
+    data: [
+      { value: daq.meta.samplesStored ?? 0, itemStyle: { color: PAL.amber } },
+      { value: daq.meta.consumed ?? 0, itemStyle: { color: PAL.cyan } },
+      { value: daq.meta.produced ?? 0, itemStyle: { color: PAL.accent } },
+    ],
+    itemStyle: { borderRadius: [0, 5, 5, 0] },
+  }],
+}))
+
+// ---------- 图 4:写控制成功率(gauge) ----------
+const writeOpt = computed<EChartsOption>(() => ({
+  backgroundColor: 'transparent',
+  series: [{
+    type: 'gauge',
+    startAngle: 210,
+    endAngle: -30,
+    min: 0,
+    max: 100,
+    radius: '92%',
+    center: ['50%', '58%'],
+    progress: { show: true, width: 12, itemStyle: { color: PAL.accent } },
+    axisLine: { lineStyle: { width: 12, color: [[1, splitC.value]] } },
+    axisTick: { show: false },
+    splitLine: { show: false },
+    axisLabel: { show: false },
+    pointer: { show: false },
+    anchor: { show: false },
+    title: { show: false },
+    detail: {
+      valueAnimation: true,
+      formatter: '{value}%',
+      color: inkC.value,
+      fontSize: 26,
+      fontFamily: 'monospace',
+      offsetCenter: [0, '4%'],
+    },
+    data: [{ value: writeRate.value }],
+  }],
+}))
+
+// ---------- 图 5:节点状态分布(数采/控制 堆叠) ----------
+const NODE_STATES = [
+  { key: 'ok', color: PAL.accent },
+  { key: 'warn', color: PAL.amber },
+  { key: 'alarm', color: PAL.danger },
+  { key: 'writing', color: PAL.cyan },
+  { key: 'idle', color: '#8fa0b5' },
+  { key: 'error', color: '#ff8a5c' },
+  { key: 'offline', color: 'rgba(143,160,181,0.35)' },
+] as const
+
+const nodeStateOpt = computed<EChartsOption>(() => {
+  const daqCount = new Map<string, number>()
+  for (const n of daq.nodes) daqCount.set(n.state, (daqCount.get(n.state) ?? 0) + 1)
+  const dcwCount = new Map<string, number>()
+  for (const n of dcw.nodes) dcwCount.set(n.state, (dcwCount.get(n.state) ?? 0) + 1)
+  const states = NODE_STATES.filter(s => daqCount.get(s.key) || dcwCount.get(s.key))
+  return {
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, ...baseTooltip.value },
+    legend: {
+      top: 0, left: 'center', icon: 'roundRect', itemWidth: 10, itemHeight: 4,
+      textStyle: { color: dimC.value, fontSize: 10 },
+    },
+    grid: { left: 56, right: 14, top: 30, bottom: 24 },
+    xAxis: {
+      type: 'value',
+      axisLabel: { color: dimC.value, fontSize: 10 },
+      splitLine: { lineStyle: { color: splitC.value } },
+    },
+    yAxis: {
+      type: 'category',
+      data: [t('home.stateDcw'), t('home.stateDaq')],
+      axisLabel: { color: dimC.value, fontSize: 10.5 },
+      axisLine: { lineStyle: { color: splitC.value } },
+    },
+    series: states.map(s => ({
+      name: t(`home.states.${s.key}`),
+      type: 'bar' as const,
+      stack: 'nodes',
+      barWidth: 12,
+      itemStyle: { color: s.color },
+      data: [dcwCount.get(s.key) ?? 0, daqCount.get(s.key) ?? 0],
+    })),
+  }
+})
+
+// ---------- 产线清单卡 ----------
+const lineCards = computed(() => dcw.lines.map((l) => {
+  const st = dcw.lineStateOf(l.id)
+  return {
+    id: l.id,
+    name: l.name,
+    color: l.color,
+    active: st.active,
+    product: st.productName,
+    recipe: st.recipeName,
+    runId: st.runId,
+    tagged: st.taggedSamples,
+    dcwCount: dcw.nodes.filter(n => n.lineId === l.id).length,
+    daqCount: daq.nodes.filter(n => n.lineId === l.id).length,
+  }
+}))
 </script>
 
 <template>
   <div class="home">
-    <!-- Hero:暖纸画布 + 粉彩光斑 + 衬线大标题(open-tag warm-editorial 声部) -->
-    <section class="hero aw-orbs aw-stagger">
-      <div class="hero-body">
+    <!-- Hero:产线运营中枢(暗夜航仪;右侧 LIVE 实况) -->
+    <section class="hero aw-stagger">
+      <div class="hero-main">
         <p class="aw-kicker">
-          {{ t('menu.system') }} · {{ site.mode }}
+          {{ t('home.kicker') }} · {{ site.mode }}
         </p>
         <h1 class="hero-title">
           {{ t('home.heroTitle') }}
@@ -97,269 +280,456 @@ const stats = computed(() => [
         <div class="hero-acts">
           <button
             class="aw-pill im"
-            @click="navigateTo('/workshop')"
-          >
-            <span class="i-tabler-box im-pop" />
-            {{ t('home.ctaWorkshop') }}
-          </button>
-          <button
-            class="aw-pill outline im"
             @click="navigateTo('/town')"
           >
             <span class="i-tabler-map-2 im-pop" />
-            {{ t('menu.town') }}
+            {{ t('home.ctaTown') }}
           </button>
+          <button
+            class="aw-pill outline im"
+            @click="navigateTo('/dcw')"
+          >
+            <span class="i-tabler-route im-pop" />
+            {{ t('home.ctaLine') }}
+          </button>
+        </div>
+      </div>
+      <div class="hero-live mono">
+        <span class="live-badge"><span class="live-dot" />{{ t('home.live') }}</span>
+        <div class="live-rows">
+          <span>{{ t('home.runNow') }} <b>{{ linesActive.length }}</b>/{{ dcw.lines.length }} {{ t('home.kpi.lines') }}</span>
+          <span>{{ t('home.kpi.samples') }} <b>{{ daq.meta.samplesStored ?? 0 }}</b></span>
+          <span
+            class="live-alarms"
+            :class="{ on: alarmCount > 0 }"
+          >{{ t('home.kpi.alarms') }} <b>{{ alarmCount }}</b></span>
         </div>
       </div>
     </section>
 
-    <!-- 实况统计:serif 数字(editorial stat numerals) -->
-    <div class="stat-row aw-stagger">
+    <!-- KPI 行 -->
+    <div class="kpi-row aw-stagger">
+      <div class="kpi">
+        <span class="kpi-label">{{ t('home.kpi.lines') }}</span>
+        <span class="kpi-value">{{ linesActive.length }}<small>/{{ dcw.lines.length }}</small></span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">{{ t('home.kpi.dcwNodes') }}</span>
+        <span class="kpi-value">{{ dcw.controller.nodesOnline }}<small>/{{ dcw.controller.nodesTotal }}</small></span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">{{ t('home.kpi.daqNodes') }}</span>
+        <span class="kpi-value">{{ daqOnline }}<small>/{{ daqTotal }}</small></span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">{{ t('home.kpi.samples') }}</span>
+        <span class="kpi-value mono">{{ daq.meta.samplesStored ?? 0 }}</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">{{ t('home.kpi.writeRate') }}</span>
+        <span class="kpi-value">{{ writeRate }}<small>%</small></span>
+      </div>
       <div
-        v-for="s in stats"
-        :key="s.key"
-        class="stat-card"
+        class="kpi"
+        :class="{ alarm: alarmCount > 0 }"
       >
-        <span
-          class="stat-icon"
-          :class="s.icon"
-        />
-        <div class="stat-text">
-          <span class="stat-value aw-serif-accent">{{ s.value }}</span>
-          <span class="stat-label">{{ s.label }}</span>
-        </div>
+        <span class="kpi-label">{{ t('home.kpi.alarms') }}</span>
+        <span class="kpi-value">{{ alarmCount }}</span>
       </div>
     </div>
 
-    <a-row
-      :gutter="[16, 16]"
-      class="aw-stagger"
-    >
-      <a-col
-        :xs="24"
-        :md="14"
-      >
-        <a-card class="aw-panel">
-          <template #title>
-            <span class="flex items-center gap-2">
-              <ITablerDashboard class="text-[15px] opacity-70" />
-              {{ t('home.title') }}
-            </span>
-          </template>
-          <a-descriptions
-            bordered
-            :column="1"
-            size="small"
-          >
-            <a-descriptions-item
-              v-for="f in fields"
-              :key="f.key"
-              :label="f.label"
-            >
-              <span class="aw-mono">{{ f.value }}</span>
-            </a-descriptions-item>
-          </a-descriptions>
-        </a-card>
-      </a-col>
-
-      <a-col
-        :xs="24"
-        :md="10"
-      >
-        <a-card class="aw-panel paradigm-card">
-          <a-typography-title
-            :level="5"
-            class="!mb-2"
-          >
-            {{ t('home.paradigm') }}
-          </a-typography-title>
-          <a-typography-paragraph type="secondary">
-            {{ t('home.paradigmDesc') }}
-          </a-typography-paragraph>
-        </a-card>
-      </a-col>
-
-      <a-col :span="24">
-        <a-card class="aw-panel">
-          <template #title>
-            <span class="flex items-center gap-2">
-              <ITablerServer class="text-[15px] opacity-70" />
-              {{ t('home.serverCard.title') }}
-              <a-tag
-                color="success"
-                class="ml-1"
-              >
-                {{ t('home.serverCard.synced') }}
-              </a-tag>
-            </span>
-          </template>
-          <template v-if="serverFields.length">
-            <a-descriptions
-              bordered
-              :column="1"
-              size="small"
-            >
-              <a-descriptions-item
-                v-for="f in serverFields"
-                :key="f.key"
-                :label="f.label"
-              >
-                <span class="aw-mono">{{ f.value }}</span>
-              </a-descriptions-item>
-            </a-descriptions>
-            <a-typography-paragraph
-              type="secondary"
-              class="mt-3 mb-0"
-            >
-              {{ t('home.serverCard.desc') }}
-            </a-typography-paragraph>
-          </template>
-          <!-- 未登录/401:静默降级为登录提示 -->
-          <div
-            v-else-if="!userStore.isLoggedIn"
-            class="config-gate"
-          >
-            <span class="i-tabler-lock" />
-            <p>{{ t('home.serverCard.gate') }}</p>
-            <button
-              class="aw-pill"
-              @click="navigateTo('/workshop')"
-            >
-              {{ t('home.ctaWorkshop') }}
-            </button>
-          </div>
-          <a-skeleton
-            v-else
-            active
+    <!-- 大屏图阵 -->
+    <div class="grid aw-stagger">
+      <section class="dpanel span8">
+        <header class="dp-hd">
+          <h3>{{ t('home.charts.trend') }}</h3>
+          <small>{{ t('home.charts.trendSub') }}</small>
+        </header>
+        <ClientOnly>
+          <AwChart
+            :option="trendOpt"
+            class="chart h280"
           />
-        </a-card>
-      </a-col>
-    </a-row>
+        </ClientOnly>
+      </section>
+      <section class="dpanel span4">
+        <header class="dp-hd">
+          <h3>{{ t('home.charts.lineState') }}</h3>
+        </header>
+        <div class="donut-wrap">
+          <div class="donut-center mono">
+            <b>{{ linesActive.length }}</b>
+            <small>/ {{ dcw.lines.length }}</small>
+          </div>
+          <ClientOnly>
+            <AwChart
+              :option="lineStateOpt"
+              class="chart h240"
+            />
+          </ClientOnly>
+        </div>
+      </section>
+      <section class="dpanel span4">
+        <header class="dp-hd">
+          <h3>{{ t('home.charts.pipeline') }}</h3>
+        </header>
+        <ClientOnly>
+          <AwChart
+            :option="pipelineOpt"
+            class="chart h240"
+          />
+        </ClientOnly>
+      </section>
+      <section class="dpanel span4">
+        <header class="dp-hd">
+          <h3>{{ t('home.charts.writeCtl') }}</h3>
+          <small class="mono">{{ dcw.controller.writesTotal }} {{ t('home.writesFailed') }} {{ dcw.controller.writesFailed }}</small>
+        </header>
+        <ClientOnly>
+          <AwChart
+            :option="writeOpt"
+            class="chart h240"
+          />
+        </ClientOnly>
+      </section>
+      <section class="dpanel span4">
+        <header class="dp-hd">
+          <h3>{{ t('home.charts.nodeState') }}</h3>
+        </header>
+        <ClientOnly>
+          <AwChart
+            :option="nodeStateOpt"
+            class="chart h240"
+          />
+        </ClientOnly>
+      </section>
+    </div>
+
+    <!-- 产线清单 -->
+    <section class="dpanel fleet aw-stagger">
+      <header class="dp-hd">
+        <h3>{{ t('home.charts.lines') }}</h3>
+        <small class="mono">{{ dcw.lines.length }}</small>
+      </header>
+      <div class="fleet-grid">
+        <NuxtLink
+          v-for="l in lineCards"
+          :key="l.id"
+          class="line-card"
+          :class="{ on: l.active }"
+          :style="{ '--lc': l.color }"
+          :to="`/dcw/${l.id}`"
+        >
+          <div class="lc-head">
+            <span class="lc-dot" />
+            <b>{{ l.name }}</b>
+            <span
+              class="lc-state"
+              :class="{ on: l.active }"
+            >{{ l.active ? t('home.runNow') : t('home.standBy') }}</span>
+          </div>
+          <div
+            v-if="l.active"
+            class="lc-run mono"
+          >
+            <span>{{ l.product }} · {{ l.recipe }}</span>
+            <small>{{ t('home.batch') }} {{ l.runId?.slice(0, 8) }} · {{ t('home.tagged') }} {{ l.tagged }}</small>
+          </div>
+          <div class="lc-meta mono">
+            <span>{{ t('home.nodesUnit') }} {{ l.dcwCount }}</span>
+            <span>{{ t('home.daqUnit') }} {{ l.daqCount }}</span>
+          </div>
+        </NuxtLink>
+        <p
+          v-if="lineCards.length === 0"
+          class="fleet-empty"
+        >
+          {{ t('home.noLine') }}
+        </p>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.home {
-  padding: 4px;
-}
+.home { padding: 4px; }
 
-/* Hero:暖纸画布 + 光斑氛围;文字层级 kicker/serif 大标/副行/药丸 CTA */
+/* ---------- Hero:中枢横幅 + LIVE 实况 ---------- */
 .hero {
   position: relative;
-  margin-bottom: 16px;
-  padding: 44px 40px 40px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 30px 34px;
+  overflow: hidden;
   background: var(--paper-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
 }
-
-.hero-body {
-  position: relative;
+.hero::after {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  content: '';
+  background: linear-gradient(90deg, transparent, rgb(53 224 160 / 45%), transparent);
+}
+.hero-main {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  align-items: flex-start;
-  max-width: 640px;
+  gap: 10px;
+  max-width: 620px;
 }
-
 .hero-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 40px;
+  font-size: 36px;
   font-weight: 400;
-  line-height: 1.1;
+  line-height: 1.12;
   letter-spacing: -0.015em;
   color: var(--ink);
 }
-
 .hero-sub {
-  max-width: 52ch;
+  max-width: 54ch;
   margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.65;
   color: var(--ink-faint);
 }
-
 .hero-acts {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
-
-/* 实况统计行:白卡 + serif 数字 + 小标 */
-.stat-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.stat-card {
+.hero-live {
   display: flex;
-  gap: 14px;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 210px;
+  padding: 16px 18px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+}
+.live-badge {
+  display: inline-flex;
+  gap: 7px;
   align-items: center;
-  padding: 18px 20px;
+  width: fit-content;
+  padding: 2px 10px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--tone-success-dot);
+  border: 1px solid color-mix(in srgb, var(--tone-success-dot) 45%, transparent);
+  border-radius: var(--radius-pill);
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--tone-success-dot);
+  border-radius: 50%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot { animation: livePulse 1.6s ease-in-out infinite; }
+}
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 3px var(--tone-success-dot); }
+  50% { box-shadow: 0 0 9px var(--tone-success-dot); }
+}
+.live-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+.live-rows b { color: var(--ink); }
+.live-alarms.on { color: var(--tone-danger-dot); }
+.live-alarms.on b { color: var(--tone-danger-dot); }
+
+/* ---------- KPI 行 ---------- */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 1100px) {
+  .kpi-row { grid-template-columns: repeat(3, 1fr); }
+}
+.kpi {
+  padding: 14px 18px;
   background: var(--paper-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
-  transition: border-color var(--transition-base);
 }
-
-.stat-card:hover {
-  border-color: var(--line-strong);
-}
-
-.stat-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  font-size: 19px;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border-radius: var(--radius-panel-sm);
-}
-
-.stat-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-
-.stat-value {
-  font-size: 26px;
-  line-height: 1.15;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.stat-label {
-  font-size: 11px;
+.kpi-label {
+  display: block;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-fainter);
 }
-
-.config-gate {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-  padding: 22px 0;
+.kpi-value {
+  margin-top: 5px;
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.kpi-value small {
+  margin-left: 2px;
+  font-size: 13px;
   color: var(--ink-faint);
 }
+.kpi.alarm .kpi-value { color: var(--tone-danger-dot); }
 
-.config-gate > .i-tabler-lock { font-size: 22px; }
+/* ---------- 大屏图阵 ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.span8 { grid-column: span 8; }
+.span4 { grid-column: span 4; }
+@media (max-width: 1100px) {
+  .span8, .span4 { grid-column: span 12; }
+}
+.dpanel {
+  position: relative;
+  padding: 14px 16px 10px;
+  overflow: hidden;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+.dpanel::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  content: '';
+  background: linear-gradient(90deg, rgb(53 224 160 / 40%), rgb(65 200 244 / 18%) 40%, transparent 75%);
+  pointer-events: none;
+}
+.dp-hd {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.dp-hd h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.dp-hd small {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-fainter);
+}
+.chart { width: 100%; }
+.h280 { height: 280px; }
+.h240 { height: 240px; }
+.donut-wrap { position: relative; }
+.donut-center {
+  position: absolute;
+  top: 38%;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.donut-center b { font-size: 24px; color: var(--ink); }
+.donut-center small { font-size: 11px; color: var(--ink-faint); }
 
-.config-gate p { margin: 0; font-size: 12.5px; }
+/* ---------- 产线清单 ---------- */
+.fleet { padding-bottom: 16px; }
+.fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.line-card {
+  padding: 12px 14px;
+  cursor: pointer;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  transition: border-color 0.15s, background 0.15s;
+}
+.line-card:hover { border-color: var(--lc, var(--accent)); }
+.line-card.on {
+  background: color-mix(in srgb, var(--lc) 7%, var(--paper-deep));
+  border-color: color-mix(in srgb, var(--lc) 45%, transparent);
+}
+.lc-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.lc-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--lc);
+  border-radius: 50%;
+}
+.line-card.on .lc-dot {
+  background: var(--lc);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--lc) 70%, transparent);
+}
+.lc-head b { font-size: 13px; color: var(--ink); }
+.lc-state {
+  margin-left: auto;
+  padding: 1px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+}
+.lc-state.on {
+  color: var(--tone-success-dot);
+  border-color: color-mix(in srgb, var(--tone-success-dot) 45%, transparent);
+}
+.lc-run {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--lc) 70%, var(--ink));
+}
+.lc-run small { font-size: 10px; color: var(--ink-fainter); }
+.lc-meta {
+  display: flex;
+  gap: 14px;
+  margin-top: 9px;
+  padding-top: 8px;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  border-top: 1px solid var(--divider-hair);
+}
+.fleet-empty {
+  padding: 18px 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  text-align: center;
+}
 
 @media (max-width: 640px) {
-  .hero { padding: 30px 22px; }
-  .hero-title { font-size: 30px; }
+  .hero { padding: 24px 20px; }
+  .hero-title { font-size: 28px; }
 }
 </style>

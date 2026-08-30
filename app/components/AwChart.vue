@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { BarChart, LineChart, PieChart } from 'echarts/charts'
+import { BarChart, GaugeChart, LineChart, PieChart } from 'echarts/charts'
 import {
   DataZoomComponent,
   GridComponent,
@@ -13,12 +13,13 @@ import VChart from 'vue-echarts'
 import type { PropType } from 'vue'
 import type { EChartsOption } from 'echarts'
 
-// 按需注册 ECharts 模块（.client 组件：仅客户端执行，SSR 端被 Nuxt stub 替换）
+// 按需注册 ECharts 模块(必须在 <ClientOnly> 内使用:canvas 仅客户端可渲染)
 use([
   CanvasRenderer,
   BarChart,
   LineChart,
   PieChart,
+  GaugeChart,
   GridComponent,
   TooltipComponent,
   LegendComponent,

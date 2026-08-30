@@ -42,13 +42,13 @@ const go = (key: string) => {
     :collapsed-width="64"
     class="app-sider"
   >
-    <!-- 品牌区:六边形 Glyph(绿描边 + 数据青点,与 Digital Twin 控制室同源) -->
+    <!-- 品牌区:AwLogo 六边形标志(绿→青渐变 + 孪生虚影 + 三节点互连,与 favicon 同源) -->
     <div class="logo">
       <div
         class="logo-mark"
         aria-hidden="true"
       >
-        <span class="logo-letter">A</span>
+        <AwLogo :size="30" />
       </div>
       <transition name="slide-fade">
         <div
@@ -56,7 +56,7 @@ const go = (key: string) => {
           class="logo-text"
         >
           <span class="logo-title">{{ site.name }}</span>
-          <span class="logo-sub">agent harness · digital twin</span>
+          <span class="logo-sub">digital twin</span>
         </div>
       </transition>
     </div>
@@ -128,37 +128,15 @@ const go = (key: string) => {
   border-bottom: 1px solid var(--line);
 }
 
-/* 六边形 Glyph:hairline 绿描边 + mono A(品牌与 TownView「DIGITAL TWIN」同源) */
+/* 品牌标志:AwLogo SVG 直渲染(渐变六边形自带描边),微辉光点缀 */
 .logo-mark {
-  position: relative;
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 36px;
-  background:
-    linear-gradient(150deg, rgb(53 224 160 / 10%), transparent 55%),
-    var(--paper-raised);
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-}
-
-.logo-mark::after {
-  position: absolute;
-  inset: 1px;
-  content: "";
-  pointer-events: none;
-  background: var(--sider-bg);
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-}
-
-.logo-letter {
-  position: relative;
-  z-index: 1;
-  font-family: var(--font-mono);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--accent);
+  filter: drop-shadow(0 0 6px rgb(53 224 160 / 30%));
 }
 
 .logo-text {
