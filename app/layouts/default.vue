@@ -60,6 +60,8 @@ const site = useSiteConfig()
   position: relative;
   z-index: 1;
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   flex-direction: column;
   min-height: 100vh;
 }
@@ -70,8 +72,12 @@ const site = useSiteConfig()
   padding: 2px;
 }
 
-/* 页脚:mono 铭牌行(固定高度,供 harness 页计算视口高度) */
+/* 页脚:mono 铭牌行(固定高度,供 harness 页计算视口高度);玻璃收边 */
 .app-footer {
+  background: linear-gradient(0deg, var(--frost-bg), color-mix(in srgb, var(--frost-bg) 60%, transparent));
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border-top: 1px solid var(--glass-line);
   display: flex;
   gap: 10px;
   align-items: center;

@@ -125,11 +125,7 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 
 <template>
   <a-layout-header
-    class="app-header"
-    :style="{
-      background: 'var(--app-bg-layout, transparent)',
-      borderBottomColor: 'var(--app-border, var(--line))',
-    }"
+    class="app-header app-header-glass"
   >
     <!-- 左侧:折叠 + 航迹标绘轨 -->
     <div class="header-left">
@@ -286,6 +282,17 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   overflow: hidden;
   border-bottom: 1px solid var(--divider-hair);
   transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+/* 顶栏玻璃:透出极光画布;下缘发丝线 + 微暗渐变保对比 */
+.app-header-glass {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: linear-gradient(180deg, var(--frost-bg), color-mix(in srgb, var(--frost-bg) 72%, transparent));
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border-bottom: 1px solid var(--glass-line);
 }
 
 .header-left,

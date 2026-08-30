@@ -465,9 +465,12 @@ const lineCards = computed(() => dcw.lines.map((l) => {
   margin-bottom: 14px;
   padding: 30px 34px;
   overflow: hidden;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
+  box-shadow: var(--glass-edge);
 }
 .hero::after {
   position: absolute;
@@ -510,8 +513,8 @@ const lineCards = computed(() => dcw.lines.map((l) => {
   gap: 12px;
   min-width: 210px;
   padding: 16px 18px;
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
+  background: var(--frost-bg);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-chip);
 }
 .live-badge {
@@ -561,10 +564,21 @@ const lineCards = computed(() => dcw.lines.map((l) => {
   .kpi-row { grid-template-columns: repeat(3, 1fr); }
 }
 .kpi {
+  position: relative;
   padding: 14px 18px;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
+  overflow: hidden;
+  background: var(--surface-glass);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
+  box-shadow: var(--glass-edge);
+  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+}
+.kpi:hover {
+  border-color: color-mix(in srgb, var(--line-strong) 70%, var(--accent) 30%);
+  transform: translateY(-1px);
+  box-shadow: var(--glass-edge), var(--shadow-float);
 }
 .kpi-label {
   display: block;
@@ -604,9 +618,12 @@ const lineCards = computed(() => dcw.lines.map((l) => {
   position: relative;
   padding: 14px 16px 10px;
   overflow: hidden;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
+  box-shadow: var(--glass-edge);
 }
 .dpanel::before {
   position: absolute;
@@ -662,8 +679,8 @@ const lineCards = computed(() => dcw.lines.map((l) => {
 .line-card {
   padding: 12px 14px;
   cursor: pointer;
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
+  background: var(--frost-bg);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-chip);
   transition: border-color 0.15s, background 0.15s;
 }

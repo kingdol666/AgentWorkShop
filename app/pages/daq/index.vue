@@ -1354,10 +1354,12 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
   max-height: 88vh;
   overflow-y: auto;
   padding: 22px 24px;
-  background: var(--paper-raised);
-  border: 1px solid var(--line-strong);
+  background: var(--surface-glass-strong);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-float);
+  box-shadow: var(--glass-edge), var(--shadow-float);
 }
 .m-title { margin: 0 0 14px; font-size: 17px; }
 .seg-row { display: flex; gap: 8px; margin-bottom: 14px; }

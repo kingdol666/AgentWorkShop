@@ -687,10 +687,12 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   max-height: 82vh;
   padding: 18px;
   overflow: auto;
-  background: #0e1626;
-  border: 1px solid #27395c;
-  border-radius: 14px;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+  background: var(--surface-glass-strong);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--glass-edge), var(--shadow-float);
 }
 .modal.wide { width: min(640px, calc(100vw - 40px)); }
 .m-title { display: flex; gap: 10px; align-items: baseline; font-size: 15px; color: #e8eef8; }

@@ -109,8 +109,10 @@ const go = (key: string) => {
   top: 0;
   height: 100vh;
   overflow: hidden auto;
-  background: var(--sider-bg);
-  border-right: 1px solid var(--line);
+  background: var(--frost-bg);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border-right: 1px solid var(--glass-line);
   z-index: 20;
 }
 

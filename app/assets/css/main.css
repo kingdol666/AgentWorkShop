@@ -124,6 +124,18 @@
   --frost-bg: color-mix(in srgb, var(--paper-raised) 58%, transparent);
   --frost-blur: blur(18px) saturate(1.04);
 
+  /* ── Aurora Glass:应用壳层玻璃(数据卡/侧栏/顶栏)。
+   *    半透 surface + 深模糊 + 内缘折射;背后是 body 的极光氛围层。 */
+  --surface-glass: color-mix(in srgb, var(--paper-raised) 78%, transparent);
+  --surface-glass-strong: color-mix(in srgb, var(--paper-raised) 88%, transparent);
+  --glass-edge: inset 0 1px 0 color-mix(in srgb, white 45%, transparent);
+  --aurora-blur: blur(22px) saturate(1.1);
+  /* 极光辉光(品牌色低饱和;只作氛围源,永不作前景) */
+  --aurora-a: rgb(53 224 160 / 9%);
+  --aurora-b: rgb(65 200 244 / 8%);
+  --aurora-c: rgb(200 184 224 / 12%);
+  --aurora-veil: transparent;
+
   /* 全局噪点(抵消数字平面的冷感;固定 pointer-events-none 覆盖,不进滚动容器) */
   --noise-opacity: 0.028;
 
@@ -187,6 +199,15 @@ html.dark {
   --frost-bg: color-mix(in srgb, var(--paper-raised) 52%, transparent);
   --noise-opacity: 0.03;
 
+  /* Aurora Glass 暗阶:玻璃透出深海军蓝画布上的极光 glow */
+  --surface-glass: color-mix(in srgb, var(--paper-raised) 62%, transparent);
+  --surface-glass-strong: color-mix(in srgb, var(--paper-raised) 76%, transparent);
+  --glass-edge: inset 0 1px 0 rgb(255 255 255 / 10%);
+  --aurora-a: rgb(53 224 160 / 14%);
+  --aurora-b: rgb(65 200 244 / 12%);
+  --aurora-c: rgb(24 46 78 / 50%);
+  --aurora-veil: rgb(2 6 12 / 22%);
+
   --av-fallback: #3d4f68;
   --on-av: #e8eef8;
 
@@ -238,6 +259,38 @@ body {
   text-rendering: optimizeLegibility;
   /* 纯净 canvas:层次交给 surface 阶梯与 hairline */
   background-color: var(--paper);
+  background-attachment: fixed;
+}
+
+/* ── Aurora 氛围层(fixed,双主题):玻璃表面的折射源。
+ *    暗色 = 深海军蓝画布上品牌绿/数据青 glow;亮色 = 暖纸上的柔和粉彩。
+ *    装饰是负资产:低饱和、大半径、零动画(除极慢漂移),reduced-motion 全收敛。 */
+body::before {
+  position: fixed;
+  z-index: -2;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    radial-gradient(1100px 640px at 12% -8%, var(--aurora-a), transparent 62%),
+    radial-gradient(1000px 720px at 108% 32%, var(--aurora-b), transparent 60%),
+    radial-gradient(900px 600px at 50% 118%, var(--aurora-c), transparent 66%),
+    var(--aurora-veil);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body::before {
+    animation: aurora-drift 46s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes aurora-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-2.2%, 1.6%, 0) scale(1.045); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
 }
 
 /* ---------- 标题层级:serif display(衬线编辑部声部,weight 400) ---------- */
@@ -621,21 +674,34 @@ ul.task-list {
   }
 }
 
-/* ── 交互卡基座:surface + hairline,悬停物理浮起(inspector/任务板/list 通用) ── */
+/* ── 交互卡基座(Aurora Glass):半透 surface + backdrop 深模糊 + 内缘折射高光;
+ *    悬停物理浮起 + hairline 提亮。极光在卡片后透出,玻璃质感成立。 ── */
 .aw-tile {
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
+  position: relative;
+  background: var(--surface-glass);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel-sm);
-  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+  box-shadow: var(--glass-edge);
+  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .aw-tile:hover {
-    border-color: var(--line-strong);
+    border-color: color-mix(in srgb, var(--line-strong) 70%, var(--accent) 30%);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-float);
+    box-shadow: var(--glass-edge), var(--shadow-float);
   }
   .aw-tile:active {
     transform: translateY(0) scale(0.99);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .aw-tile {
+    background: var(--paper-raised);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
@@ -908,11 +974,14 @@ ul.task-list {
   background: transparent;
 }
 
-/* 卡片:surface 卡 + hairline + panel 圆角(无阴影分层) */
+/* 卡片:玻璃 surface + hairline + panel 圆角(与 aw-tile 同族) */
 .ant-card {
-  background: var(--paper-raised);
-  border-color: var(--line) !important;
+  background: var(--surface-glass);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border-color: var(--glass-line) !important;
   border-radius: var(--radius-panel) !important;
+  box-shadow: var(--glass-edge);
   transition: border-color var(--transition-base);
 }
 
