@@ -68,7 +68,7 @@ if (idleBanner && !idleBanner.good && idleBanner.text.includes('未开跑') && i
 const idleLink = await page.evaluate(() => document.querySelector('.infra-banner .pill-btn')?.getAttribute('href'))
 if (idleLink === `/dcw/${target.id}`) console.log('PASS jump link → /dcw/{lineId}:', idleLink)
 else fail(`jump link wrong: ${idleLink}`)
-if (noteIdle === '待机') console.log('PASS row note 待机 (idle)')
+if (noteIdle === '未运行') console.log('PASS row note 未运行 (idle)')
 else fail(`row note wrong: ${noteIdle}`)
 await page.screenshot({ path: 'docs/audit/screenshots/daq-linebanner-idle.png' })
 

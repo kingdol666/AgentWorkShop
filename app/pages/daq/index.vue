@@ -1076,16 +1076,16 @@ async function doReconnect(): Promise<void> {
                     {{ l.name }}
                   </option>
                 </select>
-                <!-- 所属产线运行态注记:运行中带产品/Recipe,待机灰点 -->
+                <!-- 所属产线运行态注记:运行中带产品/Recipe,未运行灰点 -->
                 <div
                   v-if="lineRunOf(n.lineId)"
                   class="line-run"
                   :class="{ on: lineRunOf(n.lineId)!.active }"
                   :title="lineRunOf(n.lineId)!.active
                     ? `产线运行中:${lineRunOf(n.lineId)!.product} · ${lineRunOf(n.lineId)!.recipe}`
-                    : '产线待机:开跑后本节点开始采集'"
+                    : '产线未运行:开跑后本节点开始采集'"
                 >
-                  {{ lineRunOf(n.lineId)!.active ? '运行中' : '待机' }}
+                  {{ lineRunOf(n.lineId)!.active ? '运行中' : '未运行' }}
                   <span
                     v-if="lineRunOf(n.lineId)!.active"
                     class="lr-detail"
