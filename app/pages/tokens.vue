@@ -7,7 +7,7 @@ import { message } from 'ant-design-vue'
 import { useUserStore } from '../stores/workshop/user'
 import type { TokenMeta } from '../stores/workshop/user'
 
-const { t } = useI18n()
+const { t: tt } = useI18n()
 
 definePageMeta({ layout: 'default' })
 
@@ -35,7 +35,7 @@ const load = async (): Promise<void> => {
     tokens.value = await userStore.listTokens()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : t('tokens.k19jvk54013'))
+    message.error(e instanceof Error ? e.message : tt('tokens.k19jvk54013'))
   }
   finally {
     loading.value = false
@@ -73,7 +73,7 @@ const doCreate = async (): Promise<void> => {
 
 const doRename = async (): Promise<void> => {
   if (!renameLabel.value.trim()) {
-    message.warning(t('tokens.k169z26g014'))
+    message.warning(tt('tokens.k169z26g014'))
     return
   }
   renameLoading.value = true
@@ -81,7 +81,7 @@ const doRename = async (): Promise<void> => {
     await userStore.renameToken(renameId.value, renameLabel.value)
     renameOpen.value = false
     await load()
-    message.success(t('tokens.k3n9aij015'))
+    message.success(tt('tokens.k3n9aij015'))
   }
   catch (e) {
     message.error(e instanceof Error ? e.message : String(e))
@@ -98,7 +98,7 @@ const doRevoke = (t: { id?: string }): void => {
   void (async () => {
     try {
       await userStore.revokeToken(tokenId)
-      message.success(t('tokens.k3n64kh016'))
+      message.success(tt('tokens.k3n64kh016'))
       if (isCurrent) return // revokeToken 已触发登出跳转
       await load()
     }
@@ -153,7 +153,7 @@ const copyCreated = async (): Promise<void> => {
     }, 1600)
   }
   else {
-    message.error(t('tokens.kjtcn2h017'))
+    message.error(tt('tokens.kjtcn2h017'))
   }
 }
 const dismissCreated = (): void => {
@@ -181,7 +181,7 @@ const toggleRowReveal = async (t: TokenMeta): Promise<void> => {
     return
   }
   if (!t.hasPlain) {
-    message.warning(t('tokens.kkpgzo8018'))
+    message.warning(tt('tokens.kkpgzo8018'))
     return
   }
   revealingId.value = t.id
@@ -190,7 +190,7 @@ const toggleRowReveal = async (t: TokenMeta): Promise<void> => {
     if (plain) revealedPlain.value[t.id] = plain
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : t('tokens.k1gj9ls019'))
+    message.error(e instanceof Error ? e.message : tt('tokens.k1gj9ls019'))
   }
   finally {
     revealingId.value = ''
@@ -203,7 +203,7 @@ const copyRow = async (t: TokenMeta): Promise<void> => {
   let text: string | null = cached ?? null
   if (!text) {
     if (!t.hasPlain) {
-      message.warning(t('tokens.kr5ovor020'))
+      message.warning(tt('tokens.kr5ovor020'))
       return
     }
     revealingId.value = t.id
@@ -211,7 +211,7 @@ const copyRow = async (t: TokenMeta): Promise<void> => {
       text = await userStore.revealToken(t.id)
     }
     catch (e) {
-      message.error(e instanceof Error ? e.message : t('tokens.kubtby5021'))
+      message.error(e instanceof Error ? e.message : tt('tokens.kubtby5021'))
       return
     }
     finally {
@@ -225,7 +225,7 @@ const copyRow = async (t: TokenMeta): Promise<void> => {
     }, 1600)
   }
   else {
-    message.error(t('tokens.kgkfcr0022'))
+    message.error(tt('tokens.kgkfcr0022'))
   }
 }
 
@@ -237,14 +237,14 @@ const openRename = (t: { id?: string, label?: string }): void => {
   renameOpen.value = true
 }
 const columns = [
-  { title: t('tokens.k41416002'), key: 'label', dataIndex: 'label' },
+  { title: tt('tokens.k41416002'), key: 'label', dataIndex: 'label' },
   { title: 'Token', key: 'token', width: 360 },
-  { title: t('tokens.k1bg95gk023'), key: 'createdAt', dataIndex: 'createdAt', width: 170 },
-  { title: t('tokens.k1euotul024'), key: 'lastUsedAt', dataIndex: 'lastUsedAt', width: 200 },
-  { title: t('tokens.k40aa6025'), key: 'action', width: 170 },
+  { title: tt('tokens.k1bg95gk023'), key: 'createdAt', dataIndex: 'createdAt', width: 170 },
+  { title: tt('tokens.k1euotul024'), key: 'lastUsedAt', dataIndex: 'lastUsedAt', width: 200 },
+  { title: tt('tokens.k40aa6025'), key: 'action', width: 170 },
 ]
 
-useHead({ title: () => t('titles.tokens') })
+useHead({ title: () => tt('titles.tokens') })
 </script>
 
 <template>

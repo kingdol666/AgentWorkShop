@@ -8,7 +8,7 @@ import { message } from 'ant-design-vue'
 import { useWorkshopApi, type AgentTemplateDto } from '../../composables/workshop/useWorkshopApi'
 import { useUserStore } from '../../stores/workshop/user'
 
-const { t } = useI18n()
+const { t: tt } = useI18n()
 
 definePageMeta({ layout: 'default' })
 
@@ -33,13 +33,13 @@ type Filter = 'all' | 'mine' | 'public' | 'builtin' | 'others'
 const filter = ref<Filter>('all')
 const filterOptions = computed(() => {
   const opts: Array<{ value: Filter, label: string }> = [
-    { value: 'all', label: t('chips.chipAll', { n: templates.value.length }) },
-    { value: 'mine', label: t('chips.chipMine', { n: templates.value.filter(t => t.ownerUserId === userStore.user?.id).length }) },
-    { value: 'public', label: t('chips.chipPublic', { n: templates.value.filter(t => t.visibility === 'public').length }) },
-    { value: 'builtin', label: t('chips.chipBuiltin', { n: templates.value.filter(t => t.isBuiltin).length }) },
+    { value: 'all', label: tt('chips.chipAll', { n: templates.value.length }) },
+    { value: 'mine', label: tt('chips.chipMine', { n: templates.value.filter(t => t.ownerUserId === userStore.user?.id).length }) },
+    { value: 'public', label: tt('chips.chipPublic', { n: templates.value.filter(t => t.visibility === 'public').length }) },
+    { value: 'builtin', label: tt('chips.chipBuiltin', { n: templates.value.filter(t => t.isBuiltin).length }) },
   ]
   if (userStore.isAdmin) {
-    opts.push({ value: 'others', label: t('chips.chipOthers', { n: templates.value.filter(t => t.ownerUserId !== null && t.ownerUserId !== userStore.user?.id && t.visibility === 'private').length }) })
+    opts.push({ value: 'others', label: tt('chips.chipOthers', { n: templates.value.filter(t => t.ownerUserId !== null && t.ownerUserId !== userStore.user?.id && t.visibility === 'private').length }) })
   }
   return opts
 })
@@ -59,9 +59,9 @@ const canWrite = (t: AgentTemplateDto): boolean =>
   !t.isBuiltin && (t.ownerUserId === userStore.user?.id || userStore.isAdmin)
 
 const visTag = (t: AgentTemplateDto): { text: string, color: string, icon?: string } => {
-  if (t.isBuiltin) return { text: t('agents.k3x23c017'), color: 'default', icon: 'i-tabler-lock' }
-  if (t.visibility === 'public') return { text: t('agents.k3wv1t018'), color: 'green' }
-  return { text: t('agents.k447jj019'), color: 'default' }
+  if (t.isBuiltin) return { text: tt('agents.k3x23c017'), color: 'default', icon: 'i-tabler-lock' }
+  if (t.visibility === 'public') return { text: tt('agents.k3wv1t018'), color: 'green' }
+  return { text: tt('agents.k447jj019'), color: 'default' }
 }
 
 const editOpen = ref(false)
@@ -95,11 +95,11 @@ const save = async (): Promise<void> => {
   try {
     if (editing.value) {
       await api.updateTemplate(editing.value.id, { name: form.name, harness: form.harness, config, visibility: form.visibility })
-      message.success(t('agents.k3n9aij020'))
+      message.success(tt('agents.k3n9aij020'))
     }
     else {
       await api.createTemplate({ name: form.name, harness: form.harness, config, visibility: form.visibility })
-      message.success(t('agents.k3n5hak021'))
+      message.success(tt('agents.k3n5hak021'))
     }
     editOpen.value = false
     void load()
@@ -110,7 +110,7 @@ const save = async (): Promise<void> => {
 }
 const remove = async (t: AgentTemplateDto): Promise<void> => {
   await api.deleteTemplate(t.id)
-  message.success(t('agents.k3n5sd7022'))
+  message.success(tt('agents.k3n5sd7022'))
   void load()
 }
 
@@ -123,7 +123,7 @@ const toggleEnabled = async (t: AgentTemplateDto): Promise<void> => {
 const toggleVisibility = async (t: AgentTemplateDto, pub: boolean): Promise<void> => {
   try {
     await api.updateTemplate(t.id, { visibility: pub ? 'public' : 'private' })
-    message.success(pub ? t('agents.kxa6cxx023') : t('agents.k1xxabaf024'))
+    message.success(pub ? tt('agents.kxa6cxx023') : tt('agents.k1xxabaf024'))
     void load()
   }
   catch (e) {
@@ -131,7 +131,7 @@ const toggleVisibility = async (t: AgentTemplateDto, pub: boolean): Promise<void
   }
 }
 
-useHead({ title: () => t('titles.agents') })
+useHead({ title: () => tt('titles.agents') })
 </script>
 
 <template>

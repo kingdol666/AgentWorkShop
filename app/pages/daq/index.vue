@@ -10,10 +10,10 @@ import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeView, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 
-const { t } = useI18n()
+const { t: tt } = useI18n()
 
 definePageMeta({ layout: 'default' })
-useHead({ title: () => t('titles.daq') })
+useHead({ title: () => tt('titles.daq') })
 
 const daq = useDaqStream()
 const dcw = useDcwStream()
@@ -65,7 +65,7 @@ onBeforeUnmount(() => {
 })
 
 const deviceName = (id: string | null): string =>
-  id ? (nodeDevices.get(id) ?? `${id.slice(0, 8)}…`) : t('daq.k3own4q056')
+  id ? (nodeDevices.get(id) ?? `${id.slice(0, 8)}…`) : tt('daq.k3own4q056')
 
 // ---------- 节点筛选(产线 / 设备绑定 / 产线运行态 / 节点状态) ----------
 const filters = reactive({ lineId: '', deviceId: '', lineRun: '', state: '' })
@@ -123,22 +123,22 @@ watch(() => deviceTwins.twins, (list) => {
 }, { immediate: true, deep: true })
 
 const intervalOf = (intervalMs: number | null): string => {
-  if (intervalMs == null) return t('daq.k9vnp9h124', { p0: daq.controller.defaultIntervalMs })
+  if (intervalMs == null) return tt('daq.k9vnp9h124', { p0: daq.controller.defaultIntervalMs })
   return `${intervalMs}ms`
 }
 
 /** WS 下发节拍展示(null=跟随全局;0=每帧;>0 独立间隔) */
 const publishOf = (v: number | null): string => {
-  if (v == null) return t('daq.k9vnp9h124', { p0: daq.controller.defaultPublishIntervalMs })
-  if (v === 0) return t('daq.k41mvv078')
+  if (v == null) return tt('daq.k9vnp9h124', { p0: daq.controller.defaultPublishIntervalMs })
+  if (v === 0) return tt('daq.k41mvv078')
   return `${v}ms`
 }
 
 const stateLabel: Record<DaqNodeState, string> = {
-  ok: t('daq.k41k5c062'),
-  warn: t('daq.k49z8v063'),
-  alarm: t('daq.k3xmid064'),
-  offline: t('daq.k44c2n065'),
+  ok: tt('daq.k41k5c062'),
+  warn: tt('daq.k49z8v063'),
+  alarm: tt('daq.k3xmid064'),
+  offline: tt('daq.k44c2n065'),
 }
 
 // ---------- 添加节点向导(mock / 真实场景 + 动态参数表单 + 测试连接) ----------
@@ -201,7 +201,7 @@ async function doAddNode(): Promise<void> {
       // 校验必填
       for (const f of addFields.value) {
         if (f.required && !addCfg.value[f.key] && addCfg.value[f.key] !== 0) {
-          throw new Error(t('daq.kyuadl0125', { p0: f.label }))
+          throw new Error(tt('daq.kyuadl0125', { p0: f.label }))
         }
       }
       const tpl = daq.templates.find(t => t.key === addTemplate.value)
@@ -253,14 +253,14 @@ const tplForm = reactive({
   decimals: 2, icon: 'thermo' as DaqTemplateIcon,
 })
 const ICON_LABEL: Record<DaqTemplateIcon, string> = {
-  thermo: t('daq.k422b8079'), pressure: t('daq.k3x6ff080'), tension: t('daq.k3z9xc081'), encoder: t('daq.k3subk4082'), camera: t('daq.k47atw083'), gateway: t('daq.kz7yhbj084'),
+  thermo: tt('daq.k422b8079'), pressure: tt('daq.k3x6ff080'), tension: tt('daq.k3z9xc081'), encoder: tt('daq.k3subk4082'), camera: tt('daq.k47atw083'), gateway: tt('daq.kz7yhbj084'),
 }
 
 const customTpls = computed<DaqTemplateDef[]>(() => daq.templates.filter(t => !t.builtin))
 const builtinTpls = computed<DaqTemplateDef[]>(() => daq.templates.filter(t => t.builtin))
 
 function fillTplForm(t: DaqTemplateDef, asCopy = false): void {
-  tplForm.name = asCopy ? t('daq.k2hbo3c126', { p0: t.name }) : t.name
+  tplForm.name = asCopy ? tt('daq.k2hbo3c126', { p0: t.name }) : t.name
   tplForm.ch = t.ch
   tplForm.code = t.code
   tplForm.unit = t.unit

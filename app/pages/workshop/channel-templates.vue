@@ -10,7 +10,7 @@ import { message } from 'ant-design-vue'
 import { useWorkshopApi, type ChannelTemplateDto, type AgentTemplateDto, type ChannelTemplateMemberDto } from '../../composables/workshop/useWorkshopApi'
 import { useUserStore } from '../../stores/workshop/user'
 
-const { t } = useI18n()
+const { t: tt } = useI18n()
 
 definePageMeta({ layout: 'default' })
 
@@ -49,9 +49,9 @@ const canWrite = (t: ChannelTemplateDto): boolean =>
   !t.isBuiltin && (t.ownerUserId === userStore.user?.id || userStore.isAdmin)
 
 const visTag = (t: ChannelTemplateDto): { text: string, color: string, icon?: string } => {
-  if (t.isBuiltin) return { text: t('ctpl.k3x23c021'), color: 'default', icon: 'i-tabler-lock' }
-  if (t.visibility === 'public') return { text: t('ctpl.k3wv1t022'), color: 'green' }
-  return { text: t('ctpl.k447jj023'), color: 'default' }
+  if (t.isBuiltin) return { text: tt('ctpl.k3x23c021'), color: 'default', icon: 'i-tabler-lock' }
+  if (t.visibility === 'public') return { text: tt('ctpl.k3wv1t022'), color: 'green' }
+  return { text: tt('ctpl.k447jj023'), color: 'default' }
 }
 
 /** 成员预览名(引用模板 → 当前名;内联 → 快照名) */
@@ -82,7 +82,7 @@ const openCreate = (): void => {
 }
 const create = async (): Promise<void> => {
   if (!createForm.name.trim()) {
-    message.warning(t('ctpl.k1i0ji0y024'))
+    message.warning(tt('ctpl.k1i0ji0y024'))
     return
   }
   const leadTpl = createForm.leadId ? agentTemplates.value.find(a => a.id === createForm.leadId) : undefined
@@ -99,7 +99,7 @@ const create = async (): Promise<void> => {
       members,
       visibility: createForm.visibility,
     })
-    message.success(t('ctpl.kyppebc025'))
+    message.success(tt('ctpl.kyppebc025'))
     createOpen.value = false
     void load()
   }
@@ -112,7 +112,7 @@ const create = async (): Promise<void> => {
 const toggleVisibility = async (t: ChannelTemplateDto, pub: boolean): Promise<void> => {
   try {
     await api.updateChannelTemplate(t.id, { visibility: pub ? 'public' : 'private' })
-    message.success(pub ? t('ctpl.kkziya3026') : t('ctpl.k1xxabaf027'))
+    message.success(pub ? tt('ctpl.kkziya3026') : tt('ctpl.k1xxabaf027'))
     void load()
   }
   catch (e) {
@@ -127,7 +127,7 @@ const instantiate = async (t: ChannelTemplateDto): Promise<void> => {
   try {
     const res = await api.instantiateChannelTemplate(t.id)
     const data = (res as unknown as { data?: { channelId: string, agentCount: number } })?.data
-    message.success(t('ctpl.kefkfnl030', { p0: t.name, p1: data?.agentCount ?? 0 }))
+    message.success(tt('ctpl.kefkfnl030', { p0: t.name, p1: data?.agentCount ?? 0 }))
   }
   catch (e) {
     message.error(e instanceof Error ? e.message : String(e))
@@ -139,11 +139,11 @@ const instantiate = async (t: ChannelTemplateDto): Promise<void> => {
 
 const remove = async (t: ChannelTemplateDto): Promise<void> => {
   await api.deleteChannelTemplate(t.id)
-  message.success(t('ctpl.k1oxfuqj028'))
+  message.success(tt('ctpl.k1oxfuqj028'))
   void load()
 }
 
-useHead({ title: () => t('titles.ctpl') })
+useHead({ title: () => tt('titles.ctpl') })
 </script>
 
 <template>
