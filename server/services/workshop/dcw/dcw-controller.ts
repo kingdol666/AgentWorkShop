@@ -214,6 +214,10 @@ class DcwController {
 
   startAll() {
     this.running = true
+    // 恢复控制:因「暂停全部控制」转 offline 的启用节点回待机(暂停态与恢复态对称)
+    for (const n of this.repo.all()) {
+      if (n.enabled && n.state === 'offline') n.state = 'idle'
+    }
     this.ensureLoop()
     this.broadcast?.('dcw.controller', this.controllerState())
     return this.controllerState()
@@ -288,7 +292,9 @@ class DcwController {
     }
     if (patch.enabled !== undefined) {
       node.enabled = patch.enabled
+      // 暂停/恢复的状态同步:暂停 → offline(暂停控制);恢复 → 回到待机(等下次写 ACK 转 ok)
       if (!patch.enabled) node.state = 'offline'
+      else if (node.state === 'offline') node.state = 'idle'
       rearm = true
     }
     if (patch.posX !== undefined) node.posX = patch.posX
@@ -356,6 +362,14 @@ class DcwController {
     const rt = this.runtimes.get(id)
     if (!rt) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
     const node = rt.node
+    // 控制暂停双重门控:网关全局暂停(暂停全部控制)或节点级暂停 → 一律拒绝下发。
+    // 手动 REST / 配方下发 / 产线开跑 / Agent 工具共用本入口,拒绝语义单点收敛。
+    if (!this.running) {
+      throw new AppError(409, ErrorCodes.CONFLICT, '控制网关已暂停(暂停全部控制):设定下发被拒绝,请先「恢复全部控制」')
+    }
+    if (!node.enabled) {
+      throw new AppError(409, ErrorCodes.CONFLICT, `当前节点暂停:「${node.name}」控制已暂停,仅开启控制的节点可被设定`)
+    }
     // 写联锁按产线:仅当**本节点所属产线**在跑时,叠加该批次配方的工艺窗口
     const run = getActiveLineRun(node.lineId)
     if (run && recipeRunId == null) {
@@ -497,6 +511,9 @@ class DcwController {
    */
   async lineStart(lineId: string, recipeId: string) {
     this.ensureLoop()
+    if (!this.running) {
+      throw new AppError(409, ErrorCodes.CONFLICT, '控制网关已暂停(暂停全部控制):开跑需下发配方参数,请先「恢复全部控制」')
+    }
     const line = getDcwLineRepo().byId(lineId)
     if (!line) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lineId}`)
     if (getActiveLineRun(lineId)) {

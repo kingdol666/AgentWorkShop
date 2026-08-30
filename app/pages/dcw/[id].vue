@@ -5,9 +5,9 @@
  * 模板仅分类(电机电流/转速/线速度…);真正下发 PLC 的是节点。
  */
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { DCW_DRIVERS, type LineQueryResult, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_DRIVERS, type DcwTemplateIcon, type LineQueryResult, type RecipeRunData } from '#shared/dcw-protocol'
 import type { DriverConfigField } from '#shared/daq-protocol'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
 import { useDaqStream } from '~/composables/workshop/useDaqStream'
@@ -25,6 +25,9 @@ const line = computed(() => dcw.lines.find(l => l.id === lineId.value))
 const ls = computed(() => dcw.lineStateOf(lineId.value))
 
 void dcw.load()
+/** WS 喂帧:节点变更(dcw.node.changed)/写 ACK 实时收敛 —— 本页状态同步的通道 */
+const unsubDcw = dcw.ensureWsFeed()
+onUnmounted(() => unsubDcw())
 
 const deviceName = (id: string | null): string =>
   id ? (deviceTwins.twins.find(t => t.id === id)?.name ?? id) : '未绑定'
@@ -111,6 +114,29 @@ async function doWrite(nodeId: string, value: number): Promise<void> {
   }
 }
 
+// ---------- 逐节点 控制开启/暂停 ----------
+const togglingId = ref('')
+/** 开启/暂停单个节点的控制:暂停后服务端拒绝一切下发(409 当前节点暂停),本地即时收敛状态 */
+async function toggleControl(nodeId: string, enabled: boolean): Promise<void> {
+  togglingId.value = nodeId
+  writeError.value = ''
+  try {
+    await dcw.patchNode(nodeId, { enabled })
+    const n = dcw.nodeById(nodeId)
+    if (n) {
+      n.enabled = enabled
+      if (!enabled) n.state = 'offline'
+      else if (n.state === 'offline') n.state = 'idle'
+    }
+  }
+  catch (err) {
+    writeError.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    togglingId.value = ''
+  }
+}
+
 // ---------- 添加控制节点向导 ----------
 const addOpen = ref(false)
 const addScenario = ref<'mock' | 'real'>('mock')
@@ -183,6 +209,69 @@ async function doAddNode(): Promise<void> {
   }
   finally {
     addSaving.value = false
+  }
+}
+
+// ---------- 添加控制节点模板(自定义创建) ----------
+const tplOpen = ref(false)
+const tplSaving = ref(false)
+const tplError = ref('')
+const tplOk = ref('')
+
+function openTplModal(): void {
+  tplOpen.value = true
+  tplError.value = ''
+  tplOk.value = ''
+}
+
+const tplForm = reactive({
+  name: '', ch: '', code: '', unit: '', min: '' as number | '', max: '' as number | '',
+  decimals: 1, icon: 'gateway' as DcwTemplateIcon, semantics: '',
+})
+const tplIcons: Array<{ key: DcwTemplateIcon, label: string }> = [
+  { key: 'thermo', label: '温度' },
+  { key: 'pressure', label: '压力' },
+  { key: 'tension', label: '张力' },
+  { key: 'encoder', label: '编码/速度' },
+  { key: 'camera', label: '视觉' },
+  { key: 'gateway', label: '通用' },
+]
+
+async function doCreateTemplate(): Promise<void> {
+  tplSaving.value = true
+  tplError.value = ''
+  tplOk.value = ''
+  try {
+    if (!tplForm.name.trim()) throw new Error('模板名称必填')
+    if (tplForm.unit.trim() === '') throw new Error('单位必填(如 ℃ / A)')
+    if (tplForm.min === '' || tplForm.max === '') throw new Error('工艺量程(min/max)必填')
+    const tpl = await dcw.createTemplate({
+      name: tplForm.name.trim(),
+      ch: tplForm.ch.trim() || tplForm.name.trim(),
+      code: tplForm.code.trim() || 'CUSTOM',
+      unit: tplForm.unit.trim(),
+      min: Number(tplForm.min),
+      max: Number(tplForm.max),
+      decimals: Number(tplForm.decimals) || 0,
+      icon: tplForm.icon,
+      semantics: tplForm.semantics.trim() || undefined,
+    })
+    // 新模板即刻可选:添加控制节点向导自动选中它,下拉随 store 响应式更新
+    addTemplate.value = tpl.key
+    tplOk.value = `模板「${tpl.name}」已创建,已在「添加控制节点」向导中选中`
+    tplForm.name = ''
+    tplForm.ch = ''
+    tplForm.code = ''
+    tplForm.unit = ''
+    tplForm.min = ''
+    tplForm.max = ''
+    tplForm.semantics = ''
+  }
+  catch (err) {
+    tplError.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    tplSaving.value = false
   }
 }
 
@@ -489,6 +578,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           >失败 {{ dcw.controller.writesFailed }}</span>
         </span>
         <button
+          class="aw-pill outline"
+          title="自定义创建控制节点模板:物理含义/单位/工艺安全量程"
+          @click="openTplModal"
+        >
+          <span class="i-tabler-template" />
+          添加控制模板
+        </button>
+        <button
           class="aw-pill add-btn"
           @click="addOpen = true"
         >
@@ -635,6 +732,156 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         {{ lineMsg }}
       </p>
     </section>
+
+    <!-- 添加控制节点模板(自定义创建) -->
+    <div
+      v-if="tplOpen"
+      class="modal-mask"
+      @click.self="tplOpen = false"
+    >
+      <div class="modal">
+        <h3 class="m-title">
+          添加控制节点模板 <small class="dim mono">内置 {{ dcw.templates.filter(t => t.builtin).length }} · 自定义 {{ dcw.templates.filter(t => !t.builtin).length }}</small>
+        </h3>
+        <p class="dim tpl-hint">
+          模板 = 参数分类(物理含义/单位/工艺安全量程):创建控制节点时选模板继承域;模板下发不涉及 PLC,真正执行的是节点。
+        </p>
+
+        <div class="tpl-chips">
+          <span
+            v-for="t in dcw.templates"
+            :key="t.key"
+            class="tpl-chip"
+            :title="`${t.code} · ${t.min}~${t.max} ${t.unit}${t.semantics ? ` · ${t.semantics}` : ''}`"
+          >
+            {{ t.name }} <small class="mono">{{ t.min }}~{{ t.max }}{{ t.unit }}</small>
+            <em
+              class="tpl-tag"
+              :class="{ builtin: t.builtin }"
+            >{{ t.builtin ? '内置' : '自定义' }}</em>
+          </span>
+        </div>
+
+        <p class="sec-label">
+          新建自定义模板
+        </p>
+        <div class="f-grid tpl-form">
+          <label class="f">
+            <span>模板名称<em>*</em></span>
+            <input
+              v-model="tplForm.name"
+              class="inp"
+              placeholder="如 电机电流设定"
+            >
+          </label>
+          <label class="f">
+            <span>参数语义</span>
+            <input
+              v-model="tplForm.ch"
+              class="inp"
+              placeholder="如 电机电流"
+            >
+          </label>
+          <label class="f">
+            <span>位号代号</span>
+            <input
+              v-model="tplForm.code"
+              class="inp"
+              placeholder="如 MOTOR · I"
+            >
+          </label>
+          <label class="f">
+            <span>单位<em>*</em></span>
+            <input
+              v-model="tplForm.unit"
+              class="inp"
+              placeholder="如 A"
+            >
+          </label>
+          <label class="f">
+            <span>量程下限<em>*</em></span>
+            <input
+              v-model.number="tplForm.min"
+              type="number"
+              class="inp"
+              placeholder="工艺安全下限"
+            >
+          </label>
+          <label class="f">
+            <span>量程上限<em>*</em></span>
+            <input
+              v-model.number="tplForm.max"
+              type="number"
+              class="inp"
+              placeholder="工艺安全上限"
+            >
+          </label>
+          <label class="f">
+            <span>小数位</span>
+            <input
+              v-model.number="tplForm.decimals"
+              type="number"
+              min="0"
+              max="4"
+              class="inp"
+            >
+          </label>
+          <label class="f">
+            <span>图标</span>
+            <select
+              v-model="tplForm.icon"
+              class="inp"
+            >
+              <option
+                v-for="ic in tplIcons"
+                :key="ic.key"
+                :value="ic.key"
+              >
+                {{ ic.label }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <label class="f">
+          <span>工艺语义(物理意义/对产线的影响/调整守则 —— 注入绑定此模板节点的 Agent 上下文)</span>
+          <textarea
+            v-model="tplForm.semantics"
+            class="inp"
+            rows="2"
+            placeholder="如:电机电流设定:电流升高表示负载增大…调整需小幅步进并观察温升"
+          />
+        </label>
+
+        <p
+          v-if="tplOk"
+          class="banner good"
+          style="margin-top: 10px;"
+        >
+          {{ tplOk }}
+        </p>
+        <p
+          v-if="tplError"
+          class="m-err"
+        >
+          {{ tplError }}
+        </p>
+        <div class="m-actions">
+          <button
+            class="aw-pill outline"
+            @click="tplOpen = false"
+          >
+            关闭
+          </button>
+          <button
+            class="pill-btn"
+            :disabled="tplSaving || !tplForm.name.trim() || tplForm.unit.trim() === '' || tplForm.min === '' || tplForm.max === ''"
+            @click="doCreateTemplate"
+          >
+            {{ tplSaving ? '创建中…' : '创建模板' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- 添加控制节点向导 -->
     <div
@@ -856,6 +1103,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           <thead>
             <tr>
               <th>控制节点</th>
+              <th>控制</th>
               <th>状态</th>
               <th>当前设定</th>
               <th>设定下发</th>
@@ -871,6 +1119,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             <tr
               v-for="n in lineNodes"
               :key="n.id"
+              :class="{ 'node-paused': !n.enabled }"
             >
               <td>
                 <span class="mono dim">{{ n.id.slice(0, 8) }}</span>
@@ -878,7 +1127,24 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                 <small class="mono ch">{{ dcwTemplateRefCh(n.templateRef) }}</small>
               </td>
               <td>
+                <button
+                  class="ctrl-toggle"
+                  :class="{ on: n.enabled }"
+                  :disabled="togglingId === n.id"
+                  :title="n.enabled ? '暂停该节点控制:下发将被拒绝' : '开启该节点控制:恢复可下发'"
+                  @click="toggleControl(n.id, !n.enabled)"
+                >
+                  <span class="ct-dot" />
+                  {{ n.enabled ? '控制中' : '已暂停' }}
+                </button>
+              </td>
+              <td>
                 <span
+                  v-if="!n.enabled"
+                  class="st-pill paused"
+                >已暂停</span>
+                <span
+                  v-else
                   class="st-pill"
                   :class="n.state"
                 >{{ stateLabel[n.state] ?? n.state }}</span>
@@ -901,10 +1167,13 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                     :min="n.min"
                     :max="n.max"
                     :step="10 ** -n.decimals"
+                    :disabled="!n.enabled"
+                    :title="!n.enabled ? '当前节点暂停:开启控制后方可设定' : ''"
                   >
                   <button
                     class="mini-btn write-btn"
-                    :disabled="writingId === n.id || setInputs[n.id] == null || setInputs[n.id] === ''"
+                    :disabled="!n.enabled || writingId === n.id || setInputs[n.id] == null || setInputs[n.id] === ''"
+                    :title="!n.enabled ? '当前节点暂停:开启控制后方可设定' : '下发设定值'"
                     @click="doWrite(n.id, Number(setInputs[n.id]))"
                   >
                     {{ writingId === n.id ? '写入中' : '下发' }}
@@ -928,7 +1197,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               </td>
             </tr>
             <tr v-if="dcw.loaded && lineNodes.length === 0">
-              <td colspan="8">
+              <td colspan="9">
                 <div
                   class="pane-empty"
                   style="min-height: 120px;"
@@ -1764,6 +2033,24 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .st-pill.error, .st-pill.alarm { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
 .st-pill.warn { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
 .st-pill.offline, .st-pill.idle { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); }
+.st-pill.paused { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
+
+/* 逐节点 控制开关 */
+.ctrl-toggle { display: inline-flex; gap: 6px; align-items: center; padding: 3px 10px; font-size: 11.5px; cursor: pointer; color: var(--ink-faint); background: var(--paper-deep); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); }
+.ctrl-toggle .ct-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tone-neutral-dot); }
+.ctrl-toggle.on { color: var(--tone-success-dot); border-color: color-mix(in srgb, var(--tone-success-dot) 45%, transparent); }
+.ctrl-toggle.on .ct-dot { background: var(--tone-success-dot); box-shadow: 0 0 6px var(--tone-success-dot); }
+.ctrl-toggle:disabled { opacity: 0.55; cursor: wait; }
+.node-paused td { opacity: 0.6; }
+.node-paused .write-row { opacity: 0.5; }
+
+/* 模板弹窗 */
+.tpl-hint { margin: 0 0 10px; font-size: 12px; }
+.tpl-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.tpl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 3px 9px; font-size: 11.5px; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line); border-radius: var(--radius-chip); }
+.tpl-chip small { color: var(--ink-faint); }
+.tpl-tag { padding: 1px 6px; font-size: 10px; font-style: normal; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: var(--radius-pill); }
+.tpl-tag.builtin { color: var(--ink-faint); border-color: var(--line-strong); }
 
 .write-row { display: flex; gap: 6px; align-items: center; }
 .write-inp { width: 92px; padding: 4px 8px; }
