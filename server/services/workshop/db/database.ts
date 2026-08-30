@@ -99,6 +99,8 @@ CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
 -- 调度快照/队列视图热查询:listByChannelAssignee(channel+assignee ORDER BY created_at)
 CREATE INDEX IF NOT EXISTS idx_tasks_channel_assignee ON tasks(channel_id, assignee_id, state, created_at);
+-- 子任务聚合(dispatch 判重/complete 闸门/onChildCompleted 统计;childrenOf 热查询)
+CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id);
 CREATE TABLE IF NOT EXISTS teams (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
@@ -298,6 +300,50 @@ const DEFAULT_CHANNEL_TEMPLATES: Array<{
     members: [
       { templateId: 'tpl-default-docs', role: 'lead' },
       { templateId: 'tpl-default-qa', role: 'worker' },
+    ],
+  },
+  {
+    id: 'chtpl-preset-optical-film',
+    name: '光学薄膜涂布产线优化组',
+    description: '工业场景预设:涂布产线数字孪生优化 —— 生产主管 + 工艺工程师 + 数据分析师,面向烘箱温控与涂层质量闭环',
+    scenarioPrompt: `## 产线场景:光学薄膜涂布产线(精密涂布车间)
+本团队服务于一条光学薄膜涂布产线:PET 基材经放卷 → 电晕处理 → 精密涂布(光学胶)→ 烘箱多段干燥 → 收卷,成品为显示面板用光学级薄膜。烘箱温度是涂层厚度均匀性与气泡缺陷的第一工艺根因;供胶/熔体系统压力波动反映输胶健康度,与温度耦合影响流平效果。
+质量目标:涂层厚度均匀性 ±2% 以内,无气泡/橘皮缺陷;能耗约束下避免过热降解。产线的数控节点(烘箱温度设定等)与数采节点(涂布温度/系统压力等)已实时接入数字孪生;节点按产线分色渲染,操作前必须先调用 my_industrial_nodes 理解授权节点的物理意义、安全量程与活动配方工艺窗口。
+
+## 团队分工(每位成员按此定位协作)
+- 生产主管(lead):理解用户优化目标 → 拆解为「数据分析」与「工艺调整」子任务并派发 → 复核成员结论(必须带数据证据)→ 汇总汇报;不直接操作节点,协调跨成员信息(如把数据分析师的越限发现转给工艺工程师处置)。
+- 工艺工程师(worker):持有数控节点授权 —— 用 daq_query 取证 → 判定设定-响应关系 → 在「安全量程 ∩ 配方窗口」内小步幅下发 dcw_control(单变量调整);手动确认模式节点先说明理由等用户批准;调整后等待热惯性响应再复测。
+- 数据分析师(worker):持有数采节点授权 —— 用 daq_query 获取时序数据(支持按产品/配方/时间窗过滤),输出趋势/均值/极值/越限统计与工况判读(区分设定-响应滞后与真实异常);发现越限或异常趋势第一时间用 send_message_to_agent 通报 lead 与工艺工程师。
+协作规则:引用数值必带单位与时间窗;结论不确定时先补数据再下判断;所有阶段性结论沉淀为任务交付物。
+
+## 作业纪律
+数据先行(先看数再动手)→ 窗口内小步幅(单次 ≤ 量程 2%)→ 单变量调整 → 复测闭环(调整后等待工艺响应再评估,不连续大幅调整)→ 异常先判读再行动 → 结论必附数据证据。任何成员不得越权操作未绑定节点。`,
+    members: [
+      { templateId: 'tpl-default-lead', role: 'lead' },
+      { inline: { name: '工艺工程师', harness: 'omp', config: { rpcMode: 'rpc', systemPromptPrefix: '你是光学薄膜涂布产线的工艺工程师,精通烘箱多段温控与涂层质量的关联。操作数控节点的标准流程:my_industrial_nodes 理解节点 → daq_query 取证 → dcw_control 在配方窗口内小步幅下发 → 等待热惯性后复测。手动确认模式下发前必须说明理由。结论一律引用带单位与时间窗的数据。' } }, role: 'worker' },
+      { inline: { name: '数据分析师', harness: 'omp', config: { rpcMode: 'rpc', systemPromptPrefix: '你是光学薄膜涂布产线的数据分析师,擅长时序数据判读与工况诊断。用 daq_query 获取授权数采节点数据,输出趋势/统计/越限分析,判读时结合同产线数控设定考虑设定-响应滞后;发现越限或异常趋势立即通报 lead 与工艺工程师。结论一律引用具体数值。' } }, role: 'worker' },
+    ],
+  },
+  {
+    id: 'chtpl-preset-extrusion',
+    name: '薄膜挤出流延产线优化组',
+    description: '工业场景预设:挤出流延产线数字孪生优化 —— 生产主管 + 工艺工程师 + 数据分析师,面向熔体压力/温度耦合控制',
+    scenarioPrompt: `## 产线场景:薄膜挤出流延产线(挤出车间)
+本团队服务于一条薄膜挤出流延产线:原料经计量混料 → 螺杆挤出塑化 → 熔体泵计量 → 挤出模头流延 → 冷辊定型 → 测厚 → 收卷。熔体压力稳定性是挤出质量的脉搏:压力波动直接导致膜厚纵向偏差;熔体温度决定塑化质量,过热引发降解发黄、过低塑化不良。压力与温度强耦合(温度升高黏度下降、压力响应滞后),调参必须单变量小步幅。
+质量目标:膜厚纵向偏差 ≤ ±3%,无晶点/发黄;注意螺杆与熔体泵的机械损耗征兆(压力基线漂移)。产线的数控节点(熔体温度设定等)与数采节点(熔体压力/熔体温度等)已接入数字孪生;操作前必须先调用 my_industrial_nodes 理解授权节点。
+
+## 团队分工(每位成员按此定位协作)
+- 生产主管(lead):承接用户优化目标 → 拆解派发子任务 → 复核数据证据 → 汇总汇报;协调信息流(数据侧发现 → 工艺侧处置 → 数据侧复测确认);不直接操作节点。
+- 工艺工程师(worker):持有数控节点授权 —— 温度/转速设定调整遵循「先看数、小步幅、单变量、等响应」;目标值必须在安全量程与活动配方工艺窗口内;手动确认模式先说明理由等用户批准。
+- 数据分析师(worker):持有数采节点授权 —— 监控压力/温度时序,识别基线漂移、周期性波动(螺杆脉动)与越限报警;为工艺调整提供前后对照证据;异常立即通报。
+协作规则:引用数值必带单位与时间窗;跨成员信息经 send_message_to_agent 传递;结论沉淀为任务交付物。
+
+## 作业纪律
+数据先行 → 窗口内小步幅(单次 ≤ 量程 2%)→ 单变量调整(温度与转速禁止同时调)→ 复测闭环 → 压力异常优先判读(滤网堵塞倾向 vs 温度耦合 vs 真实波动)→ 结论必附数据证据。任何成员不得越权操作未绑定节点。`,
+    members: [
+      { templateId: 'tpl-default-lead', role: 'lead' },
+      { inline: { name: '工艺工程师', harness: 'omp', config: { rpcMode: 'rpc', systemPromptPrefix: '你是薄膜挤出流延产线的工艺工程师,精通熔体压力/温度耦合控制与流延质量。操作数控节点:my_industrial_nodes → daq_query 取证 → dcw_control 窗口内小步幅(温度与转速禁同调)→ 等响应后复测。结论引用带单位与时间窗的数据。' } }, role: 'worker' },
+      { inline: { name: '数据分析师', harness: 'omp', config: { rpcMode: 'rpc', systemPromptPrefix: '你是薄膜挤出流延产线的数据分析师,擅长熔体压力/温度时序判读。用 daq_query 输出趋势/统计/越限分析,识别基线漂移与周期波动;结合同线数控设定考虑耦合与滞后;异常立即通报 lead 与工艺工程师。结论引用具体数值。' } }, role: 'worker' },
     ],
   },
 ]
@@ -586,14 +632,19 @@ function migrateMissingForeignKeys(db: DatabaseSync): void {
         retry_count    INTEGER NOT NULL DEFAULT 0,
         artifacts_json TEXT NOT NULL DEFAULT '[]',
         history_json   TEXT NOT NULL DEFAULT '[]',
+        route_reason   TEXT NOT NULL DEFAULT '',
         created_at     TEXT NOT NULL,
         updated_at     TEXT NOT NULL
       );
-      INSERT INTO tasks_new SELECT id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, created_at, updated_at FROM tasks;
+      INSERT INTO tasks_new SELECT id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, route_reason, created_at, updated_at FROM tasks;
       DROP TABLE tasks;
       ALTER TABLE tasks_new RENAME TO tasks;
+      -- 重建后索引必须与 SCHEMA_SQL 对齐:漏建则热查询退化为全表扫描(route_reason 列
+      -- 由 migrateAddColumn 先于本函数添加,SELECT 引用安全)
       CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);
-      CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);`)
+      CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
+      CREATE INDEX IF NOT EXISTS idx_tasks_channel_assignee ON tasks(channel_id, assignee_id, state, created_at);
+      CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id);`)
     }
     if (needSubs) {
       db.exec(`DELETE FROM subscriptions
