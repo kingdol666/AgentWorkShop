@@ -100,18 +100,64 @@ const filteredLine = computed(() => dcw.lines.find(l => l.id === filters.lineId)
 const filteredLineState = computed(() =>
   filteredLine.value ? dcw.lineStateOf(filteredLine.value.id) : null)
 
-/** 节点所属产线的运行视图(表格产线列的状态注记;未挂线 → null 不展示) */
-function lineRunOf(lineId: string) {
-  if (!lineId) return null
-  const st = dcw.lineStateOf(lineId)
-  return { active: st.active, product: st.productName, recipe: st.recipeName }
+// ---------- 行级展示状态(真实场景语义):人为停用/未分配/产线未运行 与 故障离线 分离 ----------
+// 状态机:disabled(人为停用) → unassigned(未挂产线,永不采集) → idle(产线未开跑,采集门控)
+// → offline(网关暂停,或产线运行中却采不到新数据) → ok/warn/alarm(新鲜数据按量程/预警带/配方窗口派生)
+type RowState = DaqNodeState | 'idle' | 'disabled' | 'unassigned'
+
+/** 数据新鲜度:超过 max(4×有效周期, 12s) 无新样本视为「采不到数据」(容忍 5s REST 刷新拍与时钟偏差) */
+function staleOf(n: DaqNodeView): boolean {
+  if (!n.lastAt) return true
+  const iv = n.intervalMs ?? daq.controller.defaultIntervalMs
+  return Date.now() - Date.parse(n.lastAt) > Math.max(iv * 4, 12_000)
+}
+
+function rowStateOf(n: DaqNodeView): RowState {
+  if (!n.enabled) return 'disabled'
+  if (!n.lineId) return 'unassigned'
+  if (!dcw.lineStateOf(n.lineId).active) return 'idle'
+  if (!daq.controller.running || staleOf(n)) return 'offline'
+  return n.state
+}
+
+/** 数据是否在线(实时值列据此区分「实时值」与「最后值」) */
+function isLive(n: DaqNodeView): boolean {
+  const s = rowStateOf(n)
+  return s === 'ok' || s === 'warn' || s === 'alarm'
+}
+
+const rowLabel: Record<RowState, string> = {
+  ok: tt('daq.k41k5c062'),
+  warn: tt('daq.k49z8v063'),
+  alarm: tt('daq.k3xmid064'),
+  offline: tt('daq.k44c2n065'),
+  idle: tt('daq.k3ozyqz117'),
+  disabled: tt('daq.k1disabl130'),
+  unassigned: tt('daq.k3ootr6053'),
+}
+
+/** 状态 pill(含诚实的原因提示;配方越限标签仅在数据新鲜时展示) */
+function statePillOf(n: DaqNodeView): { key: RowState, label: string, tip: string } {
+  const s = rowStateOf(n)
+  if (s === 'offline') {
+    const tip = !daq.controller.running
+      ? tt('daq.k1gateoff140')
+      : tt('daq.k1staled129', { p0: Math.round(Math.max((n.intervalMs ?? daq.controller.defaultIntervalMs) * 4, 12_000) / 1000) })
+    return { key: s, label: rowLabel.offline, tip }
+  }
+  if (s === 'idle') return { key: s, label: rowLabel.idle, tip: tt('daq.k1idlehin139') }
+  if ((s === 'ok' || s === 'warn' || s === 'alarm') && recipeAlarm(n)) {
+    const w = recipeWinOf(n)
+    return { key: 'alarm', label: tt('daq.k1l3pt51104'), tip: tt('daq.k1hrrqa1122', { p0: w?.min ?? '-∞', p1: w?.max ?? '+∞', p2: '' }) }
+  }
+  return { key: s, label: rowLabel[s], tip: '' }
 }
 
 const filteredNodes = computed<DaqNodeView[]>(() => daq.nodes.filter((n) => {
   if (filters.lineId && (filters.lineId === 'none' ? !!n.lineId : (n.lineId ?? '') !== filters.lineId)) return false
   if (filters.deviceId && (filters.deviceId === 'none' ? !!n.deviceBindingId : n.deviceBindingId !== filters.deviceId)) return false
   if (!lineRunMatch(n)) return false
-  if (filters.state && effectiveState(n) !== filters.state) return false
+  if (filters.state && rowStateOf(n) !== filters.state) return false
   return true
 }))
 
@@ -132,13 +178,6 @@ const publishOf = (v: number | null): string => {
   if (v == null) return tt('daq.k9vnp9h124', { p0: daq.controller.defaultPublishIntervalMs })
   if (v === 0) return tt('daq.k41mvv078')
   return `${v}ms`
-}
-
-const stateLabel: Record<DaqNodeState, string> = {
-  ok: tt('daq.k41k5c062'),
-  warn: tt('daq.k49z8v063'),
-  alarm: tt('daq.k3xmid064'),
-  offline: tt('daq.k44c2n065'),
 }
 
 // ---------- 添加节点向导(mock / 真实场景 + 动态参数表单 + 测试连接) ----------
@@ -227,12 +266,6 @@ async function doAddNode(): Promise<void> {
   finally {
     addSaving.value = false
   }
-}
-
-/** 展示态:控制器暂停或节点停用 → offline(与服务端 effectiveTwinState 同语义) */
-function effectiveState(n: { enabled: boolean, state: DaqNodeState }): DaqNodeState {
-  if (!daq.controller.running || !n.enabled) return 'offline'
-  return n.state
 }
 
 /** 模板通道语义(server 目录为唯一事实源;模板已删除 → 显示 templateRef 原文降级) */
@@ -372,11 +405,11 @@ async function doReconnect(): Promise<void> {
       <div class="badges mono">
         <span
           class="badge"
-          :title="'时序存储后端:DAQ_TSDB_URL 可切换 TimescaleDB'"
+          :title="$t('daq.k1tsdbtip133')"
         >TSDB · {{ daq.meta.tsdb }}</span>
         <span
           class="badge"
-          :title="'消息队列:DAQ_MQTT_URL 可切换标准 MQTT broker'"
+          :title="$t('daq.k1queuet134')"
         >QUEUE · {{ daq.meta.queue }}</span>
       </div>
     </div>
@@ -476,7 +509,7 @@ async function doReconnect(): Promise<void> {
             <span class="sep">·</span>
             <span
               :class="{ warn: (daq.meta.dropped ?? 0) > 0 }"
-              title="队列丢失(produced-consumed)"
+              :title="$t('daq.k1droptip135')"
             >{{ $t('daq.k3w8go089') }} {{ daq.meta.dropped }}</span>
             <span class="sep">·</span>
             <span :title="$t('daq.kj1jbmw004')">{{ $t('daq.k3wusd090') }} {{ daq.meta.samplesStored }}</span>
@@ -603,7 +636,7 @@ async function doReconnect(): Promise<void> {
               max="60000"
               step="100"
               class="inp"
-              placeholder="如 1000"
+              :placeholder="$t('daq.k1eg1000a136')"
             >
           </label>
         </div>
@@ -698,7 +731,7 @@ async function doReconnect(): Promise<void> {
           <button
             class="aw-pill"
             :disabled="addSaving || (addScenario === 'real' && addTest != null && !addTest.ok)"
-            :title="addScenario === 'real' && !(addTest && addTest.ok) ? '真实场景需先通过测试连接' : ''"
+            :title="addScenario === 'real' && !(addTest && addTest.ok) ? $t('daq.k1needtst137') : ''"
             @click="doAddNode"
           >
             {{ addSaving ? $t('daq.k1bg4759100') : (addScenario === 'real' ? $t('daq.k7pxjxo113') : $t('daq.k1bge46t118')) }}
@@ -1018,6 +1051,12 @@ async function doReconnect(): Promise<void> {
               <th>{{ $t('daq.k3zi0nf071') }}</th>
               <th>{{ $t('daq.k4a0la072') }}</th>
               <th>{{ $t('daq.k3wj9n051') }}</th>
+              <th :title="$t('daq.k1runtipc131')">
+                {{ $t('daq.k1b2tkyv057') }}
+              </th>
+              <th :title="$t('daq.k1prdrtip132')">
+                {{ $t('daq.k1prodrc128') }}
+              </th>
               <th>{{ $t('daq.k1i8rtqt054') }}</th>
               <th class="right">
                 {{ $t('daq.k40aa6073') }}
@@ -1038,11 +1077,15 @@ async function doReconnect(): Promise<void> {
               <td>
                 <span
                   class="st-pill"
-                  :class="[effectiveState(n)]"
-                  :title="recipeWinOf(n) ? $t('daq.k1hrrqa1122', { p0: recipeWinOf(n)!.min ?? '-∞', p1: recipeWinOf(n)!.max ?? '+∞', p2: recipeAlarm(n) ? '(越限报警)' : '' }) : ''"
-                >{{ recipeAlarm(n) ? $t('daq.k1l3pt51104') : stateLabel[effectiveState(n)] }}</span>
+                  :class="[statePillOf(n).key]"
+                  :title="statePillOf(n).tip"
+                >{{ statePillOf(n).label }}</span>
               </td>
-              <td class="mono val">
+              <td
+                class="mono val"
+                :class="{ stale: !isLive(n) }"
+                :title="isLive(n) ? undefined : statePillOf(n).tip"
+              >
                 {{ n.value != null ? n.value.toFixed(n.decimals) : '--' }}
                 <small>{{ n.unit }}</small>
               </td>
@@ -1056,7 +1099,7 @@ async function doReconnect(): Promise<void> {
                 <span
                   class="drv-tag"
                   :class="{ planned: driverPlanned(n.driver) }"
-                  :title="driverPlanned(n.driver) ? '预留协议:待真实通道接入' : ''"
+                  :title="driverPlanned(n.driver) ? $t('daq.k1plndrv138') : ''"
                 >{{ n.driver }}</span>
               </td>
               <td>
@@ -1077,21 +1120,36 @@ async function doReconnect(): Promise<void> {
                     {{ l.name }}
                   </option>
                 </select>
-                <!-- 所属产线运行态注记:运行中带产品/Recipe,未运行灰点 -->
-                <div
-                  v-if="lineRunOf(n.lineId)"
-                  class="line-run"
-                  :class="{ on: lineRunOf(n.lineId)!.active }"
-                  :title="lineRunOf(n.lineId)!.active
-                    ? $t('daq.k11wnl1y123', { p0: lineRunOf(n.lineId)!.product, p1: lineRunOf(n.lineId)!.recipe })
-                    : '产线未运行:开跑后本节点开始采集'"
+              </td>
+              <!-- 产线运行:呼吸绿点=运行中 / 空心点=未运行(与产线状态带同一套点语义) -->
+              <td>
+                <span
+                  v-if="n.lineId"
+                  class="run-pill"
+                  :class="{ on: dcw.lineStateOf(n.lineId).active }"
+                  :title="$t('daq.k1runtipc131')"
                 >
-                  {{ lineRunOf(n.lineId)!.active ? $t('daq.k3vp67i096') : $t('daq.k3ozyqz117') }}
-                  <span
-                    v-if="lineRunOf(n.lineId)!.active"
-                    class="lr-detail"
-                  >{{ lineRunOf(n.lineId)!.product }} · {{ lineRunOf(n.lineId)!.recipe }}</span>
-                </div>
+                  <span class="rp-dot" />
+                  {{ dcw.lineStateOf(n.lineId).active ? $t('daq.k3vp67i096') : $t('daq.k3ozyqz117') }}
+                </span>
+                <span
+                  v-else
+                  class="run-pill na"
+                >{{ $t('daq.k3ootr6053') }}</span>
+              </td>
+              <!-- 产品 / Recipe:本线活动批次(运行中才携带;停线/未分配 → --) -->
+              <td class="prod-cell">
+                <template v-if="n.lineId && dcw.lineStateOf(n.lineId).active">
+                  <b :title="$t('daq.k1prdrtip132')">{{ dcw.lineStateOf(n.lineId).productName || '--' }}</b>
+                  <small
+                    class="mono"
+                    :title="$t('daq.k1prdrtip132')"
+                  >{{ dcw.lineStateOf(n.lineId).recipeName || '--' }}</small>
+                </template>
+                <span
+                  v-else
+                  class="dim"
+                >--</span>
               </td>
               <td>{{ deviceName(n.deviceBindingId) }}</td>
               <td class="right">
@@ -1105,7 +1163,7 @@ async function doReconnect(): Promise<void> {
               </td>
             </tr>
             <tr v-if="daq.loaded && daq.nodes.length === 0">
-              <td colspan="9">
+              <td colspan="11">
                 <div
                   class="pane-empty"
                   style="min-height: 120px;"
@@ -1117,7 +1175,7 @@ async function doReconnect(): Promise<void> {
               </td>
             </tr>
             <tr v-else-if="daq.loaded && filteredNodes.length === 0">
-              <td colspan="9">
+              <td colspan="11">
                 <div
                   class="pane-empty"
                   style="min-height: 90px;"
@@ -1279,6 +1337,8 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .right { text-align: right; }
 .val { font-size: 13px; }
 .val small { margin-left: 3px; color: var(--ink-faint); }
+/* 数据静默(停用/未运行/采不到数据):最后值置灰呈现,不再冒充实时值 */
+.val.stale { opacity: 0.45; }
 
 .st-pill {
   display: inline-block;
@@ -1295,6 +1355,8 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 tr.row-recipe-alarm { background: color-mix(in srgb, var(--tone-danger-dot, #ff6b6b) 8%, transparent); }
 tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger-dot, #ff6b6b); }
 .st-pill.offline { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); }
+/* 非故障的静止态(停用/未分配/未运行):同为中性灰,与故障离线区分靠文案与提示 */
+.st-pill.idle, .st-pill.disabled, .st-pill.unassigned { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); }
 
 .drv-tag {
   font-family: var(--font-mono);
@@ -1485,31 +1547,62 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 }
 .line-sel:focus { outline: none; border-color: var(--accent); }
 
-/* 产线列运行态注记:空心点待机 / 绿点运行中(与状态带同一套点语义) */
-.line-run {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 6px;
+/* 产线运行列:空心点=未运行(中性) / 呼吸绿点=运行中 —— 与产线状态带同一套点语义 */
+.run-pill {
+  display: inline-flex;
+  gap: 6px;
   align-items: center;
-  max-width: 150px;
-  margin-top: 4px;
-  font-size: 10px;
+  padding: 2px 9px;
+  font-size: 10.5px;
   color: var(--ink-fainter);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
 }
-.line-run::before {
-  content: '';
-  flex: 0 0 auto;
+.run-pill .rp-dot {
   width: 6px;
   height: 6px;
   border: 1.5px solid currentColor;
   border-radius: 50%;
   opacity: 0.7;
 }
-.line-run.on { color: var(--tone-success-dot); }
-.line-run.on::before {
+.run-pill.na {
+  border-style: dashed;
+  opacity: 0.75;
+}
+.run-pill.on {
+  color: var(--tone-success-dot);
+  border-color: color-mix(in srgb, var(--tone-success-dot) 40%, transparent);
+  background: var(--tone-success-bg);
+}
+.run-pill.on .rp-dot {
   background: var(--tone-success-dot);
   border-color: transparent;
   opacity: 1;
 }
-.line-run .lr-detail { color: var(--ink-faint); }
+@media (prefers-reduced-motion: no-preference) {
+  .run-pill.on .rp-dot { animation: rpPulse 1.8s ease-in-out infinite; }
+}
+@keyframes rpPulse {
+  0%, 100% { box-shadow: 0 0 2px color-mix(in srgb, var(--tone-success-dot) 55%, transparent); }
+  50% { box-shadow: 0 0 7px color-mix(in srgb, var(--tone-success-dot) 85%, transparent); }
+}
+
+/* 产品 / Recipe 列:产品主行 + Recipe 副行(两行紧凑,超长省略) */
+.prod-cell { max-width: 170px; }
+.prod-cell b {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prod-cell small {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>
