@@ -50,8 +50,12 @@ onMounted(() => {
   void daq.load()
   // 产线门控状态(无活动配方不采集;状态仅展示,控制在产线运营页)
   void dcw.load()
-  // meta 指标随读数帧落库节奏低频刷新(诚实可见的管线运行数据)
-  redrawTimer = setInterval(() => void daq.load(), 5000)
+  // meta 指标随读数帧落库节奏低频刷新(诚实可见的管线运行数据);
+  // 产线运行态(横幅/产线列注记)同拍刷新 —— 开跑/停线后本页 ≤5s 收敛
+  redrawTimer = setInterval(() => {
+    void daq.load()
+    void dcw.load()
+  }, 5000)
 })
 onBeforeUnmount(() => {
   unsub?.()
@@ -87,6 +91,18 @@ function lineRunMatch(n: DaqNodeView): boolean {
   if (!filters.lineRun) return true
   const active = !!n.lineId && dcw.lineStateOf(n.lineId).active
   return filters.lineRun === 'on' ? active : !active
+}
+
+// ---------- 筛选产线的上下文横幅(运行态/产品/Recipe;未筛选到具体产线时回退全局门控提示) ----------
+const filteredLine = computed(() => dcw.lines.find(l => l.id === filters.lineId) ?? null)
+const filteredLineState = computed(() =>
+  filteredLine.value ? dcw.lineStateOf(filteredLine.value.id) : null)
+
+/** 节点所属产线的运行视图(表格产线列的状态注记;未挂线 → null 不展示) */
+function lineRunOf(lineId: string) {
+  if (!lineId) return null
+  const st = dcw.lineStateOf(lineId)
+  return { active: st.active, product: st.productName, recipe: st.recipeName }
 }
 
 const filteredNodes = computed<DaqNodeView[]>(() => daq.nodes.filter((n) => {
@@ -363,9 +379,32 @@ async function doReconnect(): Promise<void> {
       </div>
     </div>
 
-    <!-- 产线门控横幅(无活动配方:采集与实时下发暂停) -->
+    <!-- 产线门控横幅:筛选到具体产线 → 展示该产线运行态/产品/Recipe(待机可直达产线管理);
+         未筛选具体产线 → 全局门控提示 -->
     <div
-      v-if="daq.loaded && !anyLineActive"
+      v-if="daq.loaded && filteredLine && filteredLineState"
+      class="infra-banner"
+      :class="{ good: filteredLineState.active }"
+    >
+      <span :class="filteredLineState.active ? 'i-tabler-circle-check' : 'i-tabler-info-circle'" />
+      <span class="txt">
+        <template v-if="filteredLineState.active">
+          产线「{{ filteredLine.name }}」运行中 —— 当前产品:<b>{{ filteredLineState.productName }}</b> · Recipe:<b>{{ filteredLineState.recipeName }}</b>
+          <small class="mono">批次 {{ filteredLineState.runId?.slice(0, 8) }} · 开跑 {{ filteredLineState.startedAt?.slice(11, 19) }} · 已打标 {{ filteredLineState.taggedSamples }} 样本</small>
+        </template>
+        <template v-else>
+          产线「{{ filteredLine.name }}」未开跑 —— 本产线节点暂停采集
+        </template>
+      </span>
+      <NuxtLink
+        class="pill-btn"
+        :to="`/dcw/${filteredLine.id}`"
+      >
+        {{ filteredLineState.active ? '前往产线管理' : '前往产线管理开跑' }}
+      </NuxtLink>
+    </div>
+    <div
+      v-else-if="daq.loaded && !anyLineActive"
       class="infra-banner"
     >
       <span class="i-tabler-info-circle" />
@@ -1037,6 +1076,21 @@ async function doReconnect(): Promise<void> {
                     {{ l.name }}
                   </option>
                 </select>
+                <!-- 所属产线运行态注记:运行中带产品/Recipe,待机灰点 -->
+                <div
+                  v-if="lineRunOf(n.lineId)"
+                  class="line-run"
+                  :class="{ on: lineRunOf(n.lineId)!.active }"
+                  :title="lineRunOf(n.lineId)!.active
+                    ? `产线运行中:${lineRunOf(n.lineId)!.product} · ${lineRunOf(n.lineId)!.recipe}`
+                    : '产线待机:开跑后本节点开始采集'"
+                >
+                  {{ lineRunOf(n.lineId)!.active ? '运行中' : '待机' }}
+                  <span
+                    v-if="lineRunOf(n.lineId)!.active"
+                    class="lr-detail"
+                  >{{ lineRunOf(n.lineId)!.product }} · {{ lineRunOf(n.lineId)!.recipe }}</span>
+                </div>
               </td>
               <td>{{ deviceName(n.deviceBindingId) }}</td>
               <td class="right">
@@ -1268,9 +1322,17 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
   border: 1px solid color-mix(in srgb, var(--tone-warning-dot) 40%, transparent);
   border-radius: var(--radius-chip);
 }
+/* 筛选产线运行中:绿色语义变体 */
+.infra-banner.good {
+  color: var(--tone-success-dot);
+  background: var(--tone-success-bg);
+  border-color: color-mix(in srgb, var(--tone-success-dot) 40%, transparent);
+}
 .infra-banner .txt { flex: 1 1 auto; font-size: 12.5px; line-height: 1.5; }
 .infra-banner .txt a { color: var(--accent); text-decoration: underline; }
-.infra-banner .pill-btn { flex: 0 0 auto; color: var(--paper-raised); }
+.infra-banner .txt b { font-weight: 600; }
+.infra-banner .txt small { margin-left: 8px; font-size: 10.5px; opacity: 0.75; }
+.infra-banner .pill-btn { flex: 0 0 auto; color: var(--paper-raised); text-decoration: none; }
 
 /* ---------- 添加节点向导 ---------- */
 .ctrl-right { display: flex; gap: 12px; align-items: center; }
@@ -1419,4 +1481,32 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
   transition: border-color 0.15s;
 }
 .line-sel:focus { outline: none; border-color: var(--accent); }
+
+/* 产线列运行态注记:空心点待机 / 绿点运行中(与状态带同一套点语义) */
+.line-run {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  align-items: center;
+  max-width: 150px;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--ink-fainter);
+}
+.line-run::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+.line-run.on { color: var(--tone-success-dot); }
+.line-run.on::before {
+  background: var(--tone-success-dot);
+  border-color: transparent;
+  opacity: 1;
+}
+.line-run .lr-detail { color: var(--ink-faint); }
 </style>
