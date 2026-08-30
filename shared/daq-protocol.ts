@@ -28,6 +28,8 @@ export interface DaqTemplateDef {
   icon: DaqTemplateIcon
   /** 采集语义(Agent 上下文注入:该被控量的物理意义/判读方法/耦合关系;用户可编辑) */
   semantics?: string
+  /** 设备孪生遥测语义键(绑定设备回写 telemetry 的键名;缺省 = templateKey;用户可编辑) */
+  telemetryKey?: string
   /** 用户自定义模板(server 落盘可增删改);undefined = 内置 */
   builtin?: boolean
 }
@@ -52,6 +54,8 @@ export interface DaqTemplateInput {
   amp?: number
   /** 采集语义(物理意义/判读方法;注入 Agent 上下文) */
   semantics?: string
+  /** 设备孪生遥测语义键(缺省 = templateKey) */
+  telemetryKey?: string
   /** 小数位 0..4,缺省 2 */
   decimals?: number
   icon?: DaqTemplateIcon
@@ -64,8 +68,8 @@ export interface AepDaqTemplateChange {
 }
 
 export const DAQ_TEMPLATES: DaqTemplateDef[] = [
-  { key: 'temp-tc', name: '温度传感器', code: 'TEMP · TC', ch: '熔体/箱体温度', unit: '℃', base: 168, amp: 3.2, min: 150, max: 185, decimals: 1, icon: 'thermo', semantics: '熔体/箱体温度:热工艺核心被控量,热惯性大(变化平缓)。判读:与设定值偏差 ±2℃ 内为稳态;持续单边漂移 = 加热/散热失衡;骤升骤降多为扰动或传感器异常。' },
-  { key: 'pressure-tx', name: '压力变送器', code: 'PRESSURE · TX', ch: '熔体压力', unit: 'MPa', base: 0.82, amp: 0.05, min: 0.6, max: 1.2, decimals: 2, icon: 'pressure', semantics: '熔体压力:挤出负荷的「血压计」。判读:与温度负相关(温度升→熔体黏度降→压力降);压力突升常见于滤网堵塞或出料受阻。' },
+  { key: 'temp-tc', name: '温度传感器', code: 'TEMP · TC', ch: '熔体/箱体温度', unit: '℃', base: 168, amp: 3.2, min: 150, max: 185, decimals: 1, icon: 'thermo', telemetryKey: 'temperature', semantics: '熔体/箱体温度:热工艺核心被控量,热惯性大(变化平缓)。判读:与设定值偏差 ±2℃ 内为稳态;持续单边漂移 = 加热/散热失衡;骤升骤降多为扰动或传感器异常。' },
+  { key: 'pressure-tx', name: '压力变送器', code: 'PRESSURE · TX', ch: '熔体压力', unit: 'MPa', base: 0.82, amp: 0.05, min: 0.6, max: 1.2, decimals: 2, icon: 'pressure', telemetryKey: 'pressure', semantics: '熔体压力:挤出负荷的「血压计」。判读:与温度负相关(温度升→熔体黏度降→压力降);压力突升常见于滤网堵塞或出料受阻。' },
   { key: 'tension-cell', name: '张力传感器', code: 'TENSION · CELL', ch: '膜张力', unit: 'kN', base: 21.4, amp: 0.9, min: 18, max: 26, decimals: 1, icon: 'tension', semantics: '膜张力:成膜质量直接指标。判读:张力波动与速度/温度设定强耦合,评估张力前先确认速度稳定。' },
   { key: 'line-encoder', name: '速度编码器', code: 'LINE · ENCODER', ch: '产线速度', unit: 'm/min', base: 318, amp: 7, min: 280, max: 360, decimals: 0, icon: 'encoder', semantics: '产线速度:产能直接观测量。判读:实际速度对设定值的跟随滞后反映传动惯量;速度波动会传导至张力与厚度。' },
   { key: 'vision-cam', name: '视觉检测相机', code: 'VISION · CAM', ch: '表面缺陷率', unit: '‰', base: 0.42, amp: 0.09, min: 0.1, max: 0.9, decimals: 2, icon: 'camera' },

@@ -132,17 +132,29 @@ export class DeviceTwinRepo {
     return d
   }
 
-  /** 采集:更新 telemetry + 派生 state(含模拟规则);写盘走防抖(热路径) */
-  applyTelemetry(id: string, patch: Record<string, number | string | boolean>): DeviceTwin | undefined {
+  /**
+   * 采集:更新 telemetry + 派生 state;写盘走防抖(热路径)。
+   * state 派生两级:
+   *  - nodeState 透传(DAQ 回写路径):节点态由用户设置的量程/预警带数据派生,
+   *    设备信任量测侧结论(数据驱动,零硬编码);多节点绑定已在 DAQ 侧聚合最严重态;
+   *  - 无 nodeState(REST/MCP 直写遥测):保留既有阈值规则兜底(向后兼容)。
+   */
+  applyTelemetry(id: string, patch: Record<string, number | string | boolean>, nodeState?: 'alarm' | 'warn' | 'ok'): DeviceTwin | undefined {
     const d = this.findById(id)
     if (!d) return undefined
     d.telemetry = { ...d.telemetry, ...patch }
-    // 派生 state:温度/压力越限 → alarm;否则 running/idle
-    const temp = Number(d.telemetry.temperature ?? 0)
-    const pressure = Number(d.telemetry.pressure ?? 0)
-    if ((temp > 0 && temp > 85) || (pressure > 0 && pressure > 2.0)) d.state = 'alarm'
-    else if (d.state === 'alarm') d.state = 'running'
-    else if (d.state !== 'running' && d.desired.on !== false) d.state = 'running'
+    if (nodeState) {
+      if (nodeState === 'alarm') d.state = 'alarm'
+      else if (d.state === 'alarm') d.state = d.desired.on === false ? 'idle' : 'running'
+    }
+    else {
+      // legacy 派生:温度/压力越限 → alarm;否则 running/idle
+      const temp = Number(d.telemetry.temperature ?? 0)
+      const pressure = Number(d.telemetry.pressure ?? 0)
+      if ((temp > 0 && temp > 85) || (pressure > 0 && pressure > 2.0)) d.state = 'alarm'
+      else if (d.state === 'alarm') d.state = 'running'
+      else if (d.state !== 'running' && d.desired.on !== false) d.state = 'running'
+    }
     d.updatedAt = new Date().toISOString()
     this.flushDebounced()
     return d

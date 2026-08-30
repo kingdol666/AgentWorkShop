@@ -73,7 +73,7 @@ export interface OmpAgentConfig {
   toolNames?: string[]
   /** 每轮停滞超时(ms,默认 300000):整轮无任何 omp 事件才中止;工具内阻塞(poll_messages ≤180s)有 tool 事件刷新计时 */
   promptTimeoutMs?: number
-  /** supervise 轮超时(ms,默认 60000) */
+  /** supervise 轮超时(ms,默认 150000) */
   superviseTimeoutMs?: number
   /**
    * omp 输出模式:'rpc-ui'(默认)= RPC 协议 + UI 上下文 —— ask 工具与
@@ -447,10 +447,10 @@ export class OmpRpcAgentImpl implements AgentInterface {
     if (this.supervising) return [] // 上一轮 supervise 未收口:跳过本拍(节流即正确)
 
     const prompt = await this.buildSupervisePrompt(snapshot, ctx.memory)
-    // 20s 上界:supervise 持 lead.execLock 期间信箱消费停顿;真 abort 已实现,20s 足够小 prompt 调度回合
+    // 150s 上界:supervise 持 lead.execLock 期间信箱消费停顿(更久会拖垮 worker 回执处理);
     // supervise 是一次真实 LLM 回合:omp 冷启动(插件/MCP 加载 30~90s)+ 慢 provider
-    // 单步可能 >60s;20s 会把正常回合掐成 "Interrupted by user"。默认放宽到 150s,
-    // 仅拦真僵死(更紧的预算由调用方 config.superviseTimeoutMs 显式传入)。
+    // 单步可能 >60s,过紧会把正常回合掐成 "Interrupted by user"。默认 150s,
+    // 仅拦真僵死(更紧的预算由调用方 config.superviseTimeoutMs 显式传入);真 abort 已实现。
     const timeoutMs = this.config.superviseTimeoutMs ?? 150_000
 
     return new Promise<SupervisionDecision[]>((resolve) => {
@@ -560,10 +560,23 @@ export class OmpRpcAgentImpl implements AgentInterface {
     try {
       await this.ensureClient(ctx)
     }
-    catch {
+    catch (err) {
+      // spawn 失败必须显式报错:静默 return 会让 sawRunError=false → 消息被
+      // 直接 markConsumed,实时消息一次性丢失且无任何重试;产出 error 事件
+      // 走消息 requeue(≤2 次),与 workerRun 同口径
+      yield {
+        kind: 'error',
+        error: {
+          code: 'OMP_SPAWN_FAILED',
+          message: `omp 子进程启动失败(peer 消息未消费,将重试): ${err instanceof Error ? err.message : String(err)}`,
+        },
+      }
       return
     }
-    if (!this.client) return
+    if (!this.client) {
+      yield { kind: 'error', error: { code: 'OMP_NOT_READY', message: 'omp 客户端未就绪(peer 消息未消费,将重试)' } }
+      return
+    }
 
     const msg = request.message
     // 显示名:agent 同事用 id(名册可解析);人类发送者用 fromLabel;兜底 unknown
@@ -749,6 +762,14 @@ export class OmpRpcAgentImpl implements AgentInterface {
     catch (err) {
       unsub()
       signal.removeEventListener('abort', onAbort)
+      // 僵死进程回收:prompt send 失败 = stdio 断裂或 60s 命令确认超时 —— 进程
+      // "活着但不干活"(alive-but-wedged)。若仅报错不清理,消息重试(≤2 次)会
+      // 复用同一僵死 stdio 每次空转 60s;必须杀掉并置空,下回合 ensureClient
+      // 全新重生(host tools/模型/终端 tap 随重建)。
+      console.warn(`[OmpRpcAgent:${this.selfAgentId}] prompt 失败 → 回收可疑僵死进程 pid=${client.pid}`)
+      this.killProcess()
+      this.client = null
+      this.hostToolsRegistered = false
       yield {
         kind: 'error',
         error: {
@@ -798,7 +819,12 @@ export class OmpRpcAgentImpl implements AgentInterface {
     }
     finally {
       if (stallTimer) clearTimeout(stallTimer)
+      // 事件监听必须全部解除:本 client 跨回合长期复用,残留的 mapOmpEvent
+      // 闭包会在后续每一帧继续执行并把事件 push 进孤儿队列(内存/CPU 随
+      // 回合数线性劣化,直接违背进程常驻的稳定性目标)
       unsubState()
+      unsub()
+      signal.removeEventListener('abort', onAbort)
       this.turnActive = false
       this.streaming = false
       this.currentTaskId = null
@@ -1143,8 +1169,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
         })
       }
 
-      // 设置模型(如果配置了)
-      if (this.config.provider && this.config.model) {
+      // 设置模型(如果配置了 provider/model 任一;omp 以当前已设值为缺省补全,
+      // 只配其一时也显式发送,避免 respawn 后静默回落默认模型)
+      if (this.config.provider || this.config.model) {
         try {
           await client.send({ type: 'set_model', provider: this.config.provider, modelId: this.config.model })
         }

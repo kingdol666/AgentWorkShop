@@ -46,7 +46,6 @@ interface MemberView {
 export interface SchedulerLoopOptions {
   tickMs?: number
   stallMs?: number
-  /** supervise 最小间隔 ms(默认 20s;防 LLM 忙轮转烧 token) */
   /** 调度快照邮件提供者(manager 注入;返回最新在前);未注入则快照 mail 为空 */
   supervisionMail?: (limit: number) => ChannelMail[]
 }
@@ -86,6 +85,8 @@ export class SchedulerLoop {
   private loopController: LoopController | null = null
   /** 已通知 loop 控制器的完成任务,避免每轮 tick 重复计数 */
   private readonly loopCompletedTaskIds = new Set<string>()
+  /** 调度器启动时刻(loop 完成识别基线;防进程重启后重放重启前的 loop 主任务) */
+  private readonly bootAt = Date.now()
   /** loop 模式下重新提交任务的回调 */
   private onLoopResubmit: ((title: string, description: string) => void) | null = null
 
@@ -182,6 +183,21 @@ export class SchedulerLoop {
   private async tickRound(): Promise<void> {
     this.tick += 1
     const snapshot = this.collectSnapshot()
+    // 状态 Map 生命周期修剪:终态/已删任务的条目随轮清理(长会话内存有界)。
+    // progressSeen 全程只增不减;notified/lastProgress/goalAllDoneAt/loopCompletedTaskIds
+    // 仅部分路径清理 —— 统一对当前任务集收敛,任务重入(FAILED→ASSIGNED)时自然重建。
+    const liveIds = new Set(snapshot.tasks.map(t => t.id))
+    for (const map of [this.progressSeen, this.lastProgress, this.goalAllDoneAt]) {
+      for (const key of map.keys()) {
+        if (!liveIds.has(key)) map.delete(key)
+      }
+    }
+    for (const key of this.notified) {
+      if (!liveIds.has(key)) this.notified.delete(key)
+    }
+    for (const key of this.loopCompletedTaskIds) {
+      if (!liveIds.has(key)) this.loopCompletedTaskIds.delete(key)
+    }
     // 空闲判定指纹(与 supervise 节流同源):任务/成员/邮件信号均未变 → 退避
     const fp = this.superviseFingerprint(snapshot)
     if (fp === this.lastRoundFingerprint) this.idleStreak++
@@ -291,13 +307,15 @@ export class SchedulerLoop {
   /** 收集快照:全 channel 任务 + 成员状态与队列视图(含未装配成员,标 idle)+ pendingChildren */
   private collectSnapshot(): SupervisionSnapshot {
     const now = Date.now()
-    const tasks = this.lead.taskEngine.list(this.channelRuntime.channelId)
+    // lite 快照:元数据投影,免每 tick 对全部任务做 artifacts/history JSON 大列解析
+    // (调度决策/规则引擎仅消费状态/进度/标题/描述;LLM 交付预览降级,状态信息仍完整)
+    const tasks = this.lead.taskEngine.listLite(this.channelRuntime.channelId)
     // 已装配成员的实时状态
     const wired = new Map(this.channelRuntime.getAgents().map(a => [a.agentId, a.getState()]))
     // channel 全部 enabled 成员(含未装配懒加载成员 → idle,lead 可据此 dispatch);
     // 队列视图来自 tasks 表(未装配成员的排队任务同样可见)
     // 队列视图批量化:一次 list(channel) 聚合全部成员(原每成员一次查询)
-    const views = this.lead.taskEngine.queueViewsOf(this.channelRuntime.channelId)
+    const views = this.lead.taskEngine.queueViewsOfLite(this.channelRuntime.channelId)
     const emptyView = { queued: [] as typeof tasks, current: undefined, completed: [] as typeof tasks }
     const members: MemberView[] = this.channelRuntime.listChannelAgents().map((m) => {
       const view = views.get(m.agentId) ?? emptyView
@@ -667,6 +685,11 @@ export class SchedulerLoop {
   }
 
   private refreshIdle(members: SupervisionSnapshot['members'], now: number): void {
+    const liveIds = new Set(members.map(m => m.agentId))
+    // 修剪已删除成员的残留条目(成员删除时正 idle → 不在 liveIds,不清会永久残留)
+    for (const id of this.idleSince.keys()) {
+      if (!liveIds.has(id)) this.idleSince.delete(id)
+    }
     for (const m of members) {
       if (m.state === 'idle') {
         if (!this.idleSince.has(m.agentId)) this.idleSince.set(m.agentId, now)
@@ -699,11 +722,15 @@ export class SchedulerLoop {
   private checkLoopCompletion(snapshot: SupervisionSnapshot): void {
     if (this.activeMode !== 'loop') return
 
-    // 找到当前循环新完成的 COMPLETED 主任务(尚未通知过控制器)
+    // 找到当前循环新完成的 COMPLETED 主任务(尚未通知过控制器)。
+    // bootAt 过滤:loopCompletedTaskIds 是内存态,进程重启后为空 —— 不过滤会把
+    // 重启前已完成的主任务再识别一次并 resubmit(多跑一轮);只认本进程生命
+    // 周期内完成的任务,重启前的历史 loop 由用户/上游重新提交
     const current = snapshot.tasks.find((t) => {
       if (t.assigneeId !== this.lead.agentId) return false
       if (t.state !== 'COMPLETED') return false
       if (this.loopCompletedTaskIds.has(t.id)) return false
+      if (Date.parse(t.updatedAt) < this.bootAt) return false
       const modeInfo = extractTaskMode(t)
       return !!modeInfo && modeInfo.mode === 'loop'
     })

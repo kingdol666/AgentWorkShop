@@ -1,4 +1,5 @@
 /** 一次性:DCW 写控制全链路审计(mock ACK/工程换算/回读校验/量程拒绝/Recipe 隔离/Modbus 真写) */
+import { randomUUID } from 'node:crypto'
 const TOKEN = process.env.DAQ_TOKEN ?? 'ut-ffc1dfbbc0c1444c87c1ec69a9e8208c'
 const BASE = (process.env.DAQ_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop/dcw'
 const H = { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }
@@ -53,7 +54,8 @@ if (!dqA) { console.error('FAIL: create daq node'); process.exit(1) }
 
 // ===== 4. Recipe 配方 + 一键下发 + 批次隔离 =====
 // 无节点自定义模板 → 验证"参数无匹配节点记失败不阻塞"(内置模板均有 legacy 示例节点,不可再作反例)
-const tplEmpty = (await post('/templates', { name: '审计-无节点模板', unit: 'kPa', min: 0, max: 400, decimals: 1, ch: '审计用空模板', code: 'AUDIT · VOID' })).data?.template
+// 名字带随机后缀:上次失败运行残留同名模板(同名 409)时本脚本仍可重跑
+const tplEmpty = (await post('/templates', { name: `审计-无节点模板-${randomUUID().slice(0, 4)}`, unit: 'kPa', min: 0, max: 400, decimals: 1, ch: '审计用空模板', code: 'AUDIT · VOID' })).data?.template
 if (!tplEmpty?.key) { console.error('FAIL: create empty template'); process.exit(1) }
 // 先给该模板建一个节点(配方参数必须可解析到节点),建配方后再删节点 → apply 时逐参数失败隔离
 const mkC = (await post('', { templateRef: `dcw-${tplEmpty.key}`, name: '审计-临时参数节点' })).data.node
@@ -62,8 +64,10 @@ const rc = await post('/recipes', { productId: prod.id,
   name: '审计配方-光学膜',
   description: '审计用',
   params: [
-    { templateRef: 'dcw-temp-sp', value: 185 },
-    { templateRef: tplEmpty.key, value: 320 },
+    // 显式 nodeId(自建节点):templateRef 兼容解析会命中"最早同模板节点"——
+    // 多产线环境下那可能是用户 fixture 节点(已挂产线),产线隔离会正确拒绝
+    { nodeId: mkA.id, value: 185 },
+    { nodeId: mkC.id, value: 320 },
   ],
 })
 const recipeId = rc.data?.recipe?.id
@@ -88,7 +92,7 @@ if (writes1.length === 1 && writes1[0].recipeRunId === run.id) console.log('PASS
 else fail(`run data writes wrong: ${writes1.length}`)
 
 // 第二个配方 + 批次 → 验证窗口隔离
-const rc2 = await post('/recipes', { productId: prod.id, name: '审计配方-B', params: [{ templateRef: 'dcw-temp-sp', value: 160 }] })
+const rc2 = await post('/recipes', { productId: prod.id, name: '审计配方-B', params: [{ nodeId: mkA.id, value: 160 }] })
 // 门控语义:runData 的数采聚合需产线开跑(配方驱动采集 + 打标)
 const ap2 = await fx.start(rc2.data.recipe.id)
 const run2 = ap2.data?.run

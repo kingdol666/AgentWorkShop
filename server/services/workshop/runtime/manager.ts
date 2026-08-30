@@ -583,8 +583,11 @@ export class AgentChannelManager {
       cr.scheduler?.stop()
       cr.scheduler = null
     }
-    await runtime.stop()
+    // 先摘除再停机:runtime.stop() 会关闭 mailbox,若成员仍在 route 视野内,
+    // 停机窗口内到达的消息会被 closed mailbox 静默吞掉但 delivered 照常上报
+    // (发送方收到成功假象);先 detach 让 route 立即按"成员不存在"如实失败
     cr?.detachAgent(agentId)
+    await runtime.stop()
     this.agentIndex.delete(key)
     if (cr && cr.getAgents().length === 0 && !cr.scheduler) {
       this.channels.delete(channelId)
@@ -1887,6 +1890,15 @@ export class AgentChannelManager {
       throw new AppError(403, 'CHANNEL_DISABLED', `channel ${input.channelId} 已禁用`)
     }
     this.ensureChannelActive(input.channelId)
+    // 入口幂等(数据状态驱动):同 channel 同标题且**非终态**的任务已存在 → 409。
+    // 挡住 HITL 双击/客户端重试造成的重复执行;前一轮已 COMPLETED 的 loop 重放
+    // (LoopController → 本方法)不受影响 —— 终态不参与判定
+    const duplicate = this.getTaskEngine().list(input.channelId).find(t =>
+      t.title === input.title
+      && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
+    if (duplicate) {
+      throw new AppError(409, 'TASK_DUPLICATE', `同标题任务已在途:「${input.title}」(${duplicate.id.slice(0, 8)},${duplicate.state}),请等待其完成或取消后再提交`)
+    }
     // HITL 直发目标校验 + 容错寻址(id/名字/唯一前缀;人类输入名字即可直发)
     let assigneeId = channel.leadAgentId
     if (input.assigneeId && input.assigneeId !== channel.leadAgentId) {
@@ -2082,6 +2094,12 @@ export class AgentChannelManager {
     if (task.assigneeId !== callerAgentId) {
       throw new AppError(403, 'SCOPE_VIOLATION', '仅 assignee 可上报任务')
     }
+    // 终态设防:进度/交付物/历史是任务活性信号,终态任务(COMPLETED/FAILED/CANCELED)
+    // 不得再写 —— 否则状态数据被污染(如 cancel 后迟到回合继续长出"新进度"),
+    // 破坏"所有执行都标记 state"的数据状态驱动不变量
+    if (task.state === 'COMPLETED' || task.state === 'FAILED' || task.state === 'CANCELED') {
+      return task
+    }
     const patch: TaskPatch = {}
     if (input.progress !== undefined) patch.progress = input.progress
     if (input.artifact) patch.artifacts = [...task.artifacts, input.artifact]
@@ -2089,7 +2107,7 @@ export class AgentChannelManager {
       patch.history = [
         ...task.history,
         { messageId: randomUUID(), contextId: task.channelId, role: 'ROLE_AGENT' as const, parts: [{ text: input.message }] },
-      ]
+      ].slice(-200)
     }
     const updated = this.deps.repos.tasks.update(input.taskId, patch)
     const next = rowToTask(updated!)

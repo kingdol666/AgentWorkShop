@@ -149,7 +149,9 @@ class DcwController {
     // set 后 hook:节点暴露值 = PLC 回读经 decoder 解码的**真实物理值**(而非指令值);
     // 回读缺失(驱动不支持)才回退指令值。节点对外呈现的始终是处理后的工艺参数。
     node.applyWriteResult(outcome.readback ?? eng, outcome.ok, outcome.message, at)
-    this.repo.flushNow()
+    // 写值走防抖落盘:保写心跳按 holdIntervalMs 周期触发本方法,同步全量重写
+    // dcws.json 会随节点数放大成周期性 fs 抖动;防抖窗内崩溃丢失的设定值可从 PLC 回读恢复
+    this.repo.flushDebounced()
     const repo = getDcwRecipeRepo()
     const entry: DcwWriteHistoryEntry = {
       id: `wh-${randomUUID().slice(0, 8)}`,

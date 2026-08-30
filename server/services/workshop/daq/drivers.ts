@@ -311,6 +311,30 @@ export interface OpcUaConn {
 
 const opcuaPool = new Map<string, OpcUaConn>()
 
+// OPC UA 会话空闲回收(对照 modbus 池 sweep;节点删除/端点弃用后不再有读取
+// 路径触发 3 错误驱逐,无 sweep 会话与 TCP 连接会永久驻留)
+const OPCUA_IDLE_MS = 600_000
+const opcuaSweepGlobal = globalThis as typeof globalThis & { __daqOpcUaSweep?: NodeJS.Timeout }
+if (!opcuaSweepGlobal.__daqOpcUaSweep) {
+  opcuaSweepGlobal.__daqOpcUaSweep = setInterval(() => {
+    const now = Date.now()
+    for (const [key, conn] of opcuaPool) {
+      if (now - conn.lastUsed > OPCUA_IDLE_MS) {
+        try {
+          void conn.session.close()
+        }
+        catch { /* ignore */ }
+        try {
+          void conn.client.disconnect()
+        }
+        catch { /* ignore */ }
+        opcuaPool.delete(key)
+      }
+    }
+  }, 120_000)
+  opcuaSweepGlobal.__daqOpcUaSweep.unref?.()
+}
+
 export function opcuaKey(cfg: Record<string, unknown>): string {
   return `${cfg.endpoint}|${cfg.username ?? ''}`
 }

@@ -117,8 +117,13 @@ export default function workshopPlugin(nitroApp: {
   // 全时事件录制:为全部存量 channel 建立常驻流(事件 server 驱动落库,与 client 无关)
   void ensureAllEventRecorders(manager).catch(err => console.error('[workshop] 事件录制器初始化失败:', err))
 
-  // idle sweeper:空闲 agent 超时自动卸载(释放 omp 子进程与内存)
-  const stopSweeper = manager.startIdleSweeper({ intervalMs: 30_000, graceMs: 120_000 })
+  // idle sweeper:空闲 agent 超时自动卸载(释放 omp 子进程与内存)。
+  // busy 成员有三重守卫(state!==idle / 信箱 pending / lead 活跃任务)不会被卸载,
+  // "作业期间进程不断开"由守卫保证;空闲宽限可经 env 调整 —— 需要进程更长常驻
+  // (免冷启动 30~90s)时调大 WORKSHOP_IDLE_GRACE_MS。
+  const idleSweepMs = Number(process.env.WORKSHOP_IDLE_SWEEP_MS) || 30_000
+  const idleGraceMs = Number(process.env.WORKSHOP_IDLE_GRACE_MS) || 120_000
+  const stopSweeper = manager.startIdleSweeper({ intervalMs: idleSweepMs, graceMs: idleGraceMs })
 
   // 关机:完整关闭 manager(sweeper + 调度循环 + agent 运行时),关闭数据库
   nitroApp.hooks.hook('close', async () => {

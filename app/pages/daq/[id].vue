@@ -9,7 +9,7 @@ import { useRoute } from 'vue-router'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
-import { DAQ_TEMPLATES, daqKeyFromRef, DAQ_DRIVERS, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult } from '#shared/daq-protocol'
+import { daqKeyFromRef, DAQ_DRIVERS, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult } from '#shared/daq-protocol'
 
 definePageMeta({ layout: 'default' })
 
@@ -21,9 +21,11 @@ void dcw.load()
 const deviceTwins = useDeviceTwins()
 
 const node = computed(() => daq.nodeById(nodeId.value) ?? null)
+// server 模板目录为唯一事实源:模板被删除时降级显示 key 原文,不再回退到
+// 打包内置常量(那会渲染过期语义)
 const tpl = computed(() => {
   const key = node.value ? daqKeyFromRef(node.value.templateRef) : ''
-  return daq.templates.find(t => t.key === key) ?? DAQ_TEMPLATES.find(t => t.key === key)
+  return daq.templates.find(t => t.key === key) ?? null
 })
 const stateLabel: Record<DaqNodeState, string> = { ok: '正常', warn: '预警', alarm: '告警', offline: '离线' }
 const effectiveState = (): DaqNodeState => {

@@ -72,6 +72,7 @@ function normalize(input: Partial<DaqTemplateInput>, prev?: DaqTemplateDef): Daq
     decimals,
     icon,
     semantics: String(input.semantics ?? prev?.semantics ?? '').trim() || undefined,
+    telemetryKey: String(input.telemetryKey ?? prev?.telemetryKey ?? '').trim() || undefined,
     builtin: false,
   }
 }

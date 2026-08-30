@@ -38,8 +38,11 @@ export function sceneEventPeerCount(): number {
   return peers().size
 }
 
-/** 全员直推(channelId='' 不落库;死连接静默剔除) */
+/** 全员直推(channelId='' 不落库;死连接静默剔除)。
+ *  信封序列化一次、全 peer 复用:dag 遥测经此出口 N 节点×P 页面/秒高频扇出,
+ *  per-peer 重复 stringify 是纯浪费。 */
 export function broadcastSceneEvent(type: string, payload: unknown): void {
+  if (peers().size === 0) return
   const e: AepEnvelope = {
     v: AEP_VERSION,
     type,
@@ -48,9 +51,10 @@ export function broadcastSceneEvent(type: string, payload: unknown): void {
     channelId: '',
     payload: payload as AepEnvelope['payload'],
   }
+  const frame = JSON.stringify(e)
   for (const peer of peers()) {
     try {
-      peer.send(JSON.stringify(e))
+      peer.send(frame)
     }
     catch {
       peers().delete(peer)

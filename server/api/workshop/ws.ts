@@ -415,8 +415,15 @@ let rebindTimer = (hubGlobal as Record<string, unknown>)[REBIND_TIMER_KEY] as No
 if (!rebindTimer) {
   rebindTimer = setInterval(() => {
     if (hub.boundManager) {
-      for (const stream of streams.values()) {
+      for (const stream of [...streams.values()]) {
         try {
+          // channel 已删除 → 回收事件流:死 stream 的 ring(≤4MB)会永久驻留,
+          // 且本 sweep 每 3s 永远遍历它。回收 = 刷净落库缓冲 + 退订 + 释放。
+          const exists = internalsOf(hub.boundManager).deps.repos.channels.findById(stream.channelId)
+          if (!exists) {
+            closeStream(hub.boundManager, stream.channelId)
+            continue
+          }
           rebindStreamIfStale(hub.boundManager, stream)
           // 顺带兜底刷盘:落库缓冲异常滞留(如定时器丢失)时由 sweep 收口
           if (stream.dbBuffer.length > 0) flushDbBuffer(hub.boundManager, stream)
@@ -444,6 +451,33 @@ if (!(hubGlobal as Record<string, unknown>)[RETENTION_TIMER_KEY]) {
   }, 30 * 60_000)
   t.unref?.()
   ;(hubGlobal as Record<string, unknown>)[RETENTION_TIMER_KEY] = t
+}
+
+/**
+ * 回收 channel 事件流(channel 已删除时由 rebind sweep 调用):刷净落库缓冲 →
+ * 退订总线 → 释放 ring/peers。不做 manager→api 反向依赖的回调接线,
+ * 由 sweep 自愈发现(≤3s 收敛)。
+ */
+function closeStream(manager: AgentChannelManager, channelId: string): void {
+  const stream = streams.get(channelId)
+  if (!stream) return
+  try {
+    flushDbBuffer(manager, stream)
+  }
+  catch { /* 尽力刷盘 */ }
+  for (const unsub of stream.unsubs) {
+    try {
+      unsub()
+    }
+    catch { /* 尽力清理 */ }
+  }
+  streams.delete(channelId)
+  for (const peer of stream.peers) {
+    peerChannels.get(peer)?.delete(channelId)
+  }
+  stream.peers.clear()
+  stream.ring.length = 0
+  console.log(`[workshop-ws] channel ${channelId.slice(0, 8)} 已删除,事件流已回收`)
 }
 
 /**
@@ -480,8 +514,7 @@ export function ensureStream(manager: AgentChannelManager, channelId: string): C
 }
 
 /** 订阅:用户鉴权(channel 可见性)+ 快照对齐或 lastSeq 重放 */
-function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: string, lastSeq?: number, userToken?: string): void {
-  // 用户隔离:管理 API 同口径(sub 帧 token 字段或连接 ?token=;本人 channel + 遗留公共只读观察)
+function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: string, lastSeq?: number, userToken?: string): void { // 用户隔离:管理 API 同口径(sub 帧 token 字段或连接 ?token=;本人 channel + 遗留公共只读观察)
   if (!userToken) {
     sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: 'WS 订阅需要用户 token(sub 帧携带 token 字段或连接 ?token= 查询参数)' } })
     return

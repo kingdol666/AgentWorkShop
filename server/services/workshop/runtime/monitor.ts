@@ -103,7 +103,7 @@ export function monitorChannel(manager: AgentChannelManager, channelId: string, 
   })
 
   // 源 2:任务事件(状态迁移/进度;TaskEngine hooks 与 reportTask 处广播)
-  manager.subscribeTaskEvents(channelId, (e) => {
+  const unsubTaskEvents = manager.subscribeTaskEvents(channelId, (e) => {
     if (e.state !== undefined) {
       push({ kind: 'task.status', channelId, taskId: e.taskId, agentId: e.agentId, state: e.state })
     }
@@ -112,7 +112,7 @@ export function monitorChannel(manager: AgentChannelManager, channelId: string, 
     }
   })
   // 源 3:成员状态(idle/busy/stopped + 队列上下文;AgentRuntime 转换处主动通知,事件驱动无轮询)
-  manager.subscribeAgentStatus(channelId, (e) => {
+  const unsubAgentStatus = manager.subscribeAgentStatus(channelId, (e) => {
     push({
       kind: 'agent.status',
       channelId,
@@ -180,7 +180,11 @@ export function monitorChannel(manager: AgentChannelManager, channelId: string, 
       return lines.join('\n')
     },
     stop() {
+      // 全部事件源退订:漏退订会在 bus 上永久挂 listener 并把本 monitor 的
+      // append-only events 数组钉死在内存(泄漏)
       unsubEvents()
+      unsubTaskEvents()
+      unsubAgentStatus()
       push({ kind: 'lifecycle', channelId, message: 'monitor stopped' })
     },
   }

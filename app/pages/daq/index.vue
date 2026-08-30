@@ -181,10 +181,9 @@ function effectiveState(n: { enabled: boolean, state: DaqNodeState }): DaqNodeSt
   return n.state
 }
 
-/** 模板通道语义(server 目录为准,内置兜底;daq- 前缀兼容) */
+/** 模板通道语义(server 目录为唯一事实源;模板已删除 → 显示 templateRef 原文降级) */
 function daqTemplateRefCh(templateRef: string): string {
   const tpl = daq.templates.find(t => t.key === daqKeyFromRef(templateRef))
-    ?? DAQ_TEMPLATES.find(t => t.key === daqKeyFromRef(templateRef))
   return tpl ? `${tpl.name} · ${tpl.ch}` : templateRef || '-'
 }
 

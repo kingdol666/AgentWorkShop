@@ -37,12 +37,6 @@ import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
 import type { DaqSampleEnvelope } from './bus/queue-port'
 
-/** 数采值回写绑定时,映射进设备孪生已有遥测语义键(命中既有告警派生规则) */
-const TELEMETRY_KEY_OF: Record<string, string> = {
-  'temp-tc': 'temperature',
-  'pressure-tx': 'pressure',
-}
-
 export interface DaqCreateInput {
   templateRef?: string
   name?: string
@@ -337,18 +331,24 @@ class DaqController {
     }
   }
 
-  /** 绑定设备端到端回写:通道值进入 DeviceTwin.telemetry(键名对齐既有告警派生) */
+  /** 绑定设备端到端回写:通道值进入 DeviceTwin.telemetry(键名 = 模板 telemetryKey 数据,缺省 templateKey);
+   *  状态随行:节点 alarm 派生自用户设置的量程/预警带(数据驱动),透传给孪生而非让孪生按硬编码阈值猜 */
   private pendingBackfill = new Map<string, Record<string, number | string | boolean>>()
 
   private writeBackTelemetry(node: DaqNode): void {
     if (!node.deviceBindingId || node.value == null) return
-    const key = TELEMETRY_KEY_OF[node.templateKey] ?? node.templateKey
+    const key = findDaqTemplate(node.templateKey)?.telemetryKey ?? node.templateKey
+    // 同设备多节点绑定:取最严重节点态(alarm > warn > ok/offline),避免"最近写者定态"抖动
+    const siblings = this.repo.all().filter(n => n.deviceBindingId === node.deviceBindingId)
+    const worst = siblings.some(n => n.state === 'alarm')
+      ? 'alarm'
+      : siblings.some(n => n.state === 'warn') ? 'warn' : 'ok'
     const twins = getDeviceTwinRepo()
     const acc = this.pendingBackfill.get(node.deviceBindingId) ?? {}
     acc[key] = node.value
     this.pendingBackfill.set(node.deviceBindingId, acc)
     try {
-      const twin = twins.applyTelemetry(node.deviceBindingId, acc)
+      const twin = twins.applyTelemetry(node.deviceBindingId, acc, worst)
       this.pendingBackfill.delete(node.deviceBindingId)
       if (twin) this.pushTwinTelemetry(twin)
     }

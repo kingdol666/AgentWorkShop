@@ -5,7 +5,7 @@
  * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块 T4。
  */
 import { randomUUID } from 'node:crypto'
-import type { TaskRepo } from '../db/task.repo'
+import type { TaskMetaRow, TaskRepo } from '../db/task.repo'
 import type { MessageRepo } from '../db/message.repo'
 import { parseJson } from '../db/database'
 import type { TaskRow } from '../db/database'
@@ -44,6 +44,27 @@ function rowToTask(row: TaskRow): WorkspaceTask {
     retryCount: row.retryCount,
     artifacts: parseJson<A2AArtifact[]>(row.artifactsJson, []),
     history: parseJson<A2AMessage[]>(row.historyJson, []),
+    routeReason: row.routeReason || undefined,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }
+}
+
+/** 元数据行 → 域对象:免 JSON 大列解析(artifacts/history 置空,仅供调度快照/队列视图消费) */
+function rowToTaskLite(row: TaskMetaRow): WorkspaceTask {
+  return {
+    id: row.id,
+    channelId: row.channelId,
+    parentId: row.parentId ?? undefined,
+    assigneeId: row.assigneeId,
+    creatorId: row.creatorId ?? '',
+    title: row.title,
+    description: row.description ?? undefined,
+    state: row.state as TaskState,
+    progress: row.progress,
+    retryCount: row.retryCount,
+    artifacts: [],
+    history: [],
     routeReason: row.routeReason || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -89,13 +110,41 @@ export class TaskEngine {
     return views
   }
 
+  /** 批量队列视图 lite 版(调度快照热路径):元数据投影,免 artifacts/history JSON 大列解析 */
+  queueViewsOfLite(channelId: string): Map<string, AgentTaskQueueView> {
+    const rows = this.repos.tasks.listByChannelMeta(channelId)
+    const views = new Map<string, AgentTaskQueueView>()
+    for (const row of rows) {
+      const task = rowToTaskLite(row)
+      let v = views.get(task.assigneeId)
+      if (!v) {
+        v = { agentId: task.assigneeId, channelId, queued: [], completed: [] }
+        views.set(task.assigneeId, v)
+      }
+      if (task.state === 'SUBMITTED' || task.state === 'ASSIGNED') v.queued.push(task)
+      else if (task.state === 'WORKING') v.current = task
+      else if (task.state === 'COMPLETED') v.completed.push(task)
+    }
+    return views
+  }
+
+  /** 任务列表 lite 版(调度快照热路径):元数据投影,免 artifacts/history JSON 大列解析。
+   *  调度决策/规则引擎/LLM 快照仅消费 id/state/parent/assignee/progress/title/description/retry;
+   *  artifacts 置空 → LLM 交付预览行降级为无交付摘要(状态/进度/标题仍完整)。 */
+  listLite(channelId: string): WorkspaceTask[] {
+    return this.repos.tasks.listByChannelMeta(channelId).map(rowToTaskLite)
+  }
+
   queueViewOf(channelId: string, agentId: string): AgentTaskQueueView {
-    const rows = this.repos.tasks.listByChannelAssignee(channelId, agentId)
+    // META 投影:本视图在每次 agent 状态广播/队列上下文/调度收口时触发,
+    // 全历史整行取回(含 artifacts/history 大 JSON 解析)是最高频的重复解析 ——
+    // 队列消费方仅需 id/state/progress/title 等元数据,artifacts 置空即可
+    const rows = this.repos.tasks.listByChannelAssigneeMeta(channelId, agentId)
     const queued: WorkspaceTask[] = []
     let current: WorkspaceTask | undefined
     const completed: WorkspaceTask[] = []
     for (const row of rows) {
-      const task = rowToTask(row)
+      const task = rowToTaskLite(row)
       if (task.state === 'SUBMITTED' || task.state === 'ASSIGNED') queued.push(task)
       else if (task.state === 'WORKING') current = task
       else if (task.state === 'COMPLETED') completed.push(task)
@@ -240,10 +289,11 @@ export class TaskEngine {
     input: { assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string },
   ): WorkspaceTask {
     // 判重下沉(单一入口守卫:REST / LLM 工具 / 调度器直通统一遵守):
-    // 同父同标题在途子任务 → 409,快照滞后引发的重复派发在此收口(省 token 不重跑)
+    // 同父同标题在途子任务 → 409,快照滞后引发的重复派发在此收口(省 token 不重跑)。
+    // 子任务直查(listChildrenMeta;idx_tasks_parent 支撑),免全 channel 扫描。
     const norm = (t: string): string => t.replace(/\s+/g, ' ').trim().toLowerCase()
-    const siblingRow = this.repos.tasks.listByChannel(parent.channelId)
-      .find(r => r.parentId === parent.id && norm(r.title) === norm(input.title)
+    const siblingRow = this.repos.tasks.listChildrenMeta(parent.channelId, parent.id)
+      .find(r => norm(r.title) === norm(input.title)
         && r.state !== 'COMPLETED' && r.state !== 'CANCELED' && r.state !== 'FAILED')
     if (siblingRow) {
       throw new AppError(409, 'DUPLICATE_DISPATCH', `子任务 "${input.title}" 已在执行中(状态 ${siblingRow.state},指派 ${siblingRow.assigneeId?.slice(0, 8) ?? '?'}),不要重复派发`)
@@ -310,6 +360,12 @@ export class TaskEngine {
   /** 应用 Agent 事件:artifact(分块 append/进度折算)、status(追加 history)、error(FAILED)、done(无) */
   applyEvent(taskId: string, event: AgentEvent): void {
     const task = this.requireTask(taskId)
+    // 终态设防(数据状态驱动不变量):COMPLETED/FAILED/CANCELED 是封闭终态,
+    // 迟到事件(cancel→abort 后队列里已映射的 delta/artifact 仍会吐尽)不得
+    // 再写入 —— 否则 CANCELED 任务长出"新交付物",状态数据被污染
+    if (task.state === 'COMPLETED' || task.state === 'FAILED' || task.state === 'CANCELED') {
+      if (event.kind !== 'error' && event.kind !== 'done') return
+    }
     switch (event.kind) {
       case 'artifact': {
         const { artifact, append, totalChunks } = event
@@ -498,10 +554,9 @@ export class TaskEngine {
       kind: 'child-completed',
       childTaskId: child.id,
     })
-    // 统计未完成子任务数(排除 COMPLETED/CANCELED);为 0 即最后一个完成
-    const siblings = this.repos.tasks
-      .listByChannel(parent.channelId)
-      .filter(t => t.parentId === parent.id)
+    // 统计未完成子任务数(排除 COMPLETED/CANCELED);为 0 即最后一个完成。
+    // 子任务直查(免全 channel 扫描);完成闸门仅需 state → 元数据投影足够。
+    const siblings = this.repos.tasks.listChildrenMeta(parent.channelId, parent.id)
     const incomplete = siblings.filter(t => t.state !== 'COMPLETED' && t.state !== 'CANCELED')
     if (incomplete.length === 0 && parent.state === 'WAITING') {
       this.transition(parent.id, 'WORKING', child.assigneeId)

@@ -14,7 +14,11 @@ const fx = await makeLineFixture(ROOT, H, 'transform-audit 线')
 
 // 产线开跑(配方驱动采集门控)
 const prod = (await post(DCW + '/products', { name: '标定审计产品', lineId: fx.line.id })).data.product
-const rc = (await post(DCW + '/recipes', { productId: prod.id, name: '标定审计配方', params: [{ templateRef: 'dcw-temp-sp', value: 180 }] })).data.recipe
+// 配方参数节点(显式 nodeId + 自建节点):templateRef 兼容解析会命中"最早同模板节点"
+// —— 多产线环境下那可能是用户 fixture 节点(已挂产线),产线隔离会正确拒绝
+const dwFix = (await post(DCW, { templateRef: 'dcw-temp-sp', name: '标定审计-参数节点', driver: 'mock', lineId: fx.line.id })).data.node
+const rc = (await post(DCW + '/recipes', { productId: prod.id, name: '标定审计配方', params: [{ nodeId: dwFix.id, value: 180 }] })).data.recipe
+if (!rc) { console.error('FAIL: create recipe'); process.exit(1) }
 await fx.start(rc.id)
 
 // ===== 1. DAQ decoder:读 40003(温度 float32,PLC 值 165~175),标定 scale 0.1 → 物理 ≈ 16.5~17.5 =====
@@ -82,10 +86,10 @@ if (badT.code === 'VALIDATION_ERROR') console.log('PASS invalid transform(scale=
 else fail(`invalid transform accepted: ${badT.code}`)
 
 // cleanup
-for (const id of [dq.id, dw.id, dw2.id]) await fetch(`${DCW}/${id}`.replace('/api/workshop/dcw/', '/api/workshop/daq/') === id ? id : id, {}).catch(() => {})
 await fetch(`${DAQ}/${dq.id}`, { method: 'DELETE', headers: H }).catch(() => {})
 await fetch(`${DCW}/${dw.id}`, { method: 'DELETE', headers: H }).catch(() => {})
 await fetch(`${DCW}/${dw2.id}`, { method: 'DELETE', headers: H }).catch(() => {})
+await fetch(`${DCW}/${dwFix.id}`, { method: 'DELETE', headers: H }).catch(() => {})
 await fx.cleanup()
 await del(DCW + `/recipes/${rc.id}`)
 await del(DCW + `/products/${prod.id}`)

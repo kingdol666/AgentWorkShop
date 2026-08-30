@@ -148,6 +148,7 @@ class DcwRecipeRepo {
   private recipes: RecipeView[] = loadJson<RecipeView[]>(RECIPES_PATH, [])
   private runs: RecipeRunView[] = loadJson<RecipeRunView[]>(RUNS_PATH, [])
   private history: DcwWriteHistoryEntry[] = loadJson<DcwWriteHistoryEntry[]>(WRITES_PATH, [])
+  private historyFlushTimer: NodeJS.Timeout | null = null
 
   // ---------- 配方 ----------
 
@@ -278,7 +279,13 @@ class DcwRecipeRepo {
   appendHistory(entry: DcwWriteHistoryEntry): void {
     this.history.push(entry)
     if (this.history.length > WRITES_CAP) this.history.splice(0, this.history.length - WRITES_CAP)
-    this.flushHistory()
+    // 短窗防抖:保写心跳每 holdIntervalMs 追加一条,同步全量重写 writes.json
+    // (≤3000 条)随节点数放大成周期性 fs 抖动;崩溃丢窗口内心跳帧无审计价值损失
+    this.historyFlushTimer ??= setTimeout(() => {
+      this.historyFlushTimer = null
+      this.flushHistory()
+    }, 1500)
+    this.historyFlushTimer.unref?.()
   }
 
   historyList(limit = 100): DcwWriteHistoryEntry[] {

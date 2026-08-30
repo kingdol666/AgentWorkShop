@@ -39,6 +39,23 @@ export interface TaskPatch {
   history?: unknown[]
 }
 
+/** 任务元数据行(META_COLS 投影;不含 artifactsJson/historyJson 两个 JSON 大列) */
+export interface TaskMetaRow {
+  id: string
+  channelId: string
+  parentId: string | null
+  assigneeId: string
+  creatorId: string | null
+  title: string
+  description: string | null
+  state: string
+  progress: number
+  retryCount: number
+  routeReason: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type TaskRepo = ReturnType<typeof createTaskRepo>
 
 export function createTaskRepo(db: DatabaseSync) {
@@ -55,6 +72,14 @@ export function createTaskRepo(db: DatabaseSync) {
   const selectNonTerminal = db.prepare(
     `SELECT ${COLS} FROM tasks WHERE state IN (${NON_TERMINAL_STATES}) ORDER BY createdAt ASC, rowid ASC`,
   )
+  // 元数据投影(调度快照热路径):不含 artifacts_json/history_json 两个 JSON 大列,
+  // 免每 tick 对全部任务做全量 JSON.parse(历史最多 200 条消息,频道任务多时解析成本线性放大)。
+  // 调度/队列视图只需 id/state/parent/assignee/progress/title/description/retry/createdAt。
+  const META_COLS
+    = 'id, channel_id AS channelId, parent_id AS parentId, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, route_reason AS routeReason, created_at AS createdAt, updated_at AS updatedAt'
+  const selectByChannelMeta = db.prepare(`SELECT ${META_COLS} FROM tasks WHERE channel_id = ? ORDER BY createdAt ASC, rowid ASC`)
+  const selectByChannelAssigneeMeta = db.prepare(`SELECT ${META_COLS} FROM tasks WHERE channel_id = ? AND assignee_id = ? ORDER BY createdAt ASC, rowid ASC`)
+  const selectChildrenMeta = db.prepare(`SELECT ${META_COLS} FROM tasks WHERE channel_id = ? AND parent_id = ? ORDER BY createdAt ASC, rowid ASC`)
   const updateStmt = db.prepare(
     `UPDATE tasks SET parent_id = ?, assignee_id = ?, creator_id = ?, title = ?, description = ?, state = ?, progress = ?, retry_count = ?, artifacts_json = ?, history_json = ?, updated_at = ? WHERE id = ?`,
   )
@@ -130,6 +155,21 @@ export function createTaskRepo(db: DatabaseSync) {
     /** 非终态任务(SUBMITTED/ASSIGNED/WORKING/WAITING) */
     listNonTerminal(): TaskRow[] {
       return selectNonTerminal.all() as unknown as TaskRow[]
+    },
+
+    /** channel 全部任务的元数据投影(调度快照热路径;免 JSON 大列解析) */
+    listByChannelMeta(channelId: string): TaskMetaRow[] {
+      return selectByChannelMeta.all(channelId) as unknown as TaskMetaRow[]
+    },
+
+    /** channel 内指定 assignee 的任务元数据投影(队列视图热路径;免 JSON 大列解析) */
+    listByChannelAssigneeMeta(channelId: string, assigneeId: string): TaskMetaRow[] {
+      return selectByChannelAssigneeMeta.all(channelId, assigneeId) as unknown as TaskMetaRow[]
+    },
+
+    /** channel 内指定父任务的子任务元数据(判重/完成闸门/子任务统计直查;idx_tasks_parent 支撑) */
+    listChildrenMeta(channelId: string, parentId: string): TaskMetaRow[] {
+      return selectChildrenMeta.all(channelId, parentId) as unknown as TaskMetaRow[]
     },
   }
 }
