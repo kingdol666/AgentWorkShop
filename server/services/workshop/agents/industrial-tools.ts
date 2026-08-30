@@ -133,7 +133,26 @@ export async function toolDaqQuery(agentId: string, args: {
   if (wanted && !daqBindings.some(b => b.nodeId === wanted)) {
     return { text: `无权查询节点 ${wanted}。你有权访问的数采节点:${daqBindings.map(b => b.nodeId).join(', ')}`, isError: true }
   }
-  const targets = wanted ? [wanted] : daqBindings.map(b => b.nodeId)
+  // line_id 过滤(工具契约声明了该参数):按节点归属产线收敛目标集;
+  // 权限仍以绑定为先 —— line_id 只能缩小范围,不能放大
+  const lineFilter = args.line_id ? String(args.line_id).trim() : ''
+  const lineOf = (id: string): string => getDaqNodeRepo().byId(id)?.lineId ?? ''
+  if (lineFilter && wanted && lineOf(wanted) !== lineFilter) {
+    return {
+      text: `节点 ${wanted} 不属于产线 ${lineFilter}(实际归属:${lineOf(wanted) || '未分配'}),line_id 与 node_id 过滤冲突。`,
+      isError: true,
+    }
+  }
+  let targets = wanted ? [wanted] : daqBindings.map(b => b.nodeId)
+  if (lineFilter && !wanted) {
+    const onLine = targets.filter(id => lineOf(id) === lineFilter)
+    if (onLine.length === 0) {
+      return {
+        text: `你绑定的数采节点中没有归属产线 ${lineFilter} 的(各节点归属:${daqBindings.map(b => `${b.nodeId}=${lineOf(b.nodeId) || '未分配'}`).join('; ')})。`,
+      }
+    }
+    targets = onLine
+  }
 
   const toMs = Number(args.to_ms) || Date.now()
   const fromMs = Number(args.from_ms) || toMs - (Number(args.last_minutes) || 30) * 60_000
@@ -201,8 +220,8 @@ export async function toolDaqQuery(agentId: string, args: {
       sections.push(`■ ${node.name}:查询失败 ${err instanceof Error ? err.message : String(err)}`)
     }
   }
-  const prov = args.product_id || args.recipe_id
-    ? `\n(已按${args.product_id ? ` 产品 ${args.product_id}` : ''}${args.recipe_id ? ` 配方 ${args.recipe_id}` : ''}过滤 —— 仅活动批次窗口内逐样本打标的数据)`
+  const prov = (args.product_id || args.recipe_id || lineFilter)
+    ? `\n(过滤条件:${lineFilter ? ` 产线 ${lineFilter}` : ''}${args.product_id ? ` 产品 ${args.product_id}` : ''}${args.recipe_id ? ` 配方 ${args.recipe_id}` : ''}${(args.product_id || args.recipe_id) ? ' —— 产品/配方过滤基于活动批次窗口内逐样本打标' : ''})`
     : ''
   return { text: `数采数据查询结果(${targets.length} 个节点):\n\n${sections.join('\n\n')}${prov}\n\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。` }
 }

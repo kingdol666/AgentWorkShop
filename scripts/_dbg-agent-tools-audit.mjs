@@ -51,7 +51,7 @@ else fail(`绑定 CRUD 异常: ${JSON.stringify(list)}`)
 
   // 3.2 my_industrial_nodes:物理语义 + 窗口 + 模式
   const mine = await invoke('my_industrial_nodes', {})
-  const okMine = mine.text.includes('数控') && mine.text.includes('数采') && mine.text.includes('176~188') && mine.text.includes('手动确认')
+  const okMine = mine.text.includes('数控') && mine.text.includes('数采') && mine.text.includes('[176, 188]') && mine.text.includes('手动确认')
   if (okMine) console.log('PASS my_industrial_nodes:物理含义/配方窗口/控制模式齐备')
   else fail(`节点语义缺失: ${mine.text.slice(0, 200)}`)
 

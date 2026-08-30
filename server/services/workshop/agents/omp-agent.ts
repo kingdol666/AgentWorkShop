@@ -49,7 +49,7 @@ import {
   renderPrompt,
 } from '../prompts/loader'
 import { toolDaqQuery, toolDcwControl, toolMyIndustrialNodes } from './industrial-tools'
-import { buildIndustrialContext } from './industrial-context'
+import { buildIndustrialContext, industrialLoopGuide } from './industrial-context'
 import { extractTaskMode } from '../runtime/execution-mode'
 
 // ===== 配置 =====
@@ -309,6 +309,12 @@ export class OmpRpcAgentImpl implements AgentInterface {
     const industrial = buildIndustrialContext(this.selfAgentId)
     if (industrial) {
       parts.push(industrial, ``)
+    }
+    // 工业调控作业环(方法论层):有绑定节点才注入 —— 保证 Agent 在拿到任何
+    // 工具之前就理解「观察→理解→窗口内小步幅→执行→复测」的调控纪律。
+    const loop = industrialLoopGuide(this.selfAgentId)
+    if (loop) {
+      parts.push(loop, ``)
     }
     if (roster) {
       parts.push(roster, ``)

@@ -147,8 +147,45 @@ export function buildIndustrialContext(agentId: string): string {
       if (desc) twinNames.add(desc)
     }
     if (twinNames.size > 0) lines.push(`- 关联设备孪生: ${Array.from(twinNames).join(' | ')}`)
+    // 当前报警透出(只报本 Agent 绑定的数采节点):越限即报警是工况里最需要
+    // Agent 优先感知的事实 —— 不注入的话,Agent 只能靠 daq_query 事后发现
+    const alarms = daqIds
+      .map(id => getDaqNodeRepo().byId(id))
+      .filter(n => n && n.lineId === lineId && n.state === 'alarm')
+    if (alarms.length > 0) {
+      lines.push(`- **当前报警**: ${alarms.map(n => `${n.name} 实时 ${n.value ?? '?'}${n.unit} 处于报警态(越量程或越配方监控窗口)`)},应优先判读(设定-响应滞后 vs 真实异常)并处置`)
+    }
     sections.push(lines.join('\n'))
   }
   if (sections.length === 0) return ''
   return `## 产线工况简报(实时;每次回合自动注入)\n${sections.join('\n\n')}`
+}
+
+/**
+ * 工业调控作业环(prompt 层纪律注入;有工业绑定才注入,零硬编码)。
+ * 与节点语义卡(my_industrial_nodes 结果)互补:语义卡在工具调用后可见,
+ * 作业环保证 Agent 在**任何回合开头**就知道调控方法论 —— 先观察、窗口内小步幅、
+ * 等待响应、复测收敛,而不是拿到 dcw_control 就盲写。
+ */
+export function industrialLoopGuide(agentId: string): string {
+  const bindings = getAgentNodeBindingRepo().byAgent(agentId)
+  if (bindings.length === 0) return ''
+  const hasDcw = bindings.some(b => b.kind === 'dcw')
+  const hasManual = bindings.some(b => b.kind === 'dcw' && b.mode === 'manual')
+  const steps: string[] = [
+    '1. 观察:daq_query 获取绑定节点的真实时序数据(支持按产品/配方/时间窗过滤),结合返回的工况判读理解当前状态。',
+    '2. 理解:my_industrial_nodes 读取节点语义卡 —— 物理量含义/单位/安全量程/活动配方工艺窗口/单次调幅步进,以及量测数据与工艺质量的关联。',
+  ]
+  if (hasDcw) {
+    steps.push('3. 决策:目标值必须落在「安全量程 ∩ 活动配方工艺窗口」内,越窗下发会被联锁拒绝;优先小步幅(≤量程 2%)、单向逼近目标,避免往复震荡。')
+    steps.push('4. 执行与验证:dcw_control 下发后等待工艺响应(热惯性/传动惯量),勿连续大幅调整;再 daq_query 复测确认实际值向目标收敛,收敛异常时分析根因或上报,而非盲目加码。')
+  }
+  else {
+    steps.push('3. 判读:你是量测侧 —— 数据越过配方监控窗口会触发节点报警与孪生告警;判读时区分「同线数控设定-响应滞后」与「真实过程异常」,结论引用具体数值与时间窗。')
+  }
+  if (hasManual) {
+    steps.push('5. 权限边界:手动确认模式的节点,下发前必须说明理由并等待用户批准(用户备注会随结果返回,请响应其关切);自动模式节点直接执行,但同样受联锁约束。')
+  }
+  steps.push('6. 数值口径:工具返回的采集/设定值均为经标定钩子处理后的真实物理量纲;引用数值时带上单位与时间,便于人工复核。')
+  return `## 工业调控作业环(你的节点操作方法论,每回合生效)\n${steps.join('\n')}`
 }
