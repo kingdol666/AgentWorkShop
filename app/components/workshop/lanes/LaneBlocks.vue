@@ -69,13 +69,13 @@ const loadLaneEarlier = async (): Promise<void> => {
     class="lane-empty"
   >
     <span class="i-tabler-refresh lane-empty-icon" />
-    正在同步历史…
+    {{ $t('laneBlocks.k1otw1r3001') }}
   </div>
   <div
     v-else-if="blocks.length === 0"
     class="lane-empty"
   >
-    暂无事件
+    {{ $t('laneBlocks.k1el0s5k002') }}
   </div>
   <template v-else>
     <button
@@ -85,7 +85,7 @@ const loadLaneEarlier = async (): Promise<void> => {
       :disabled="loadingEarlier"
       @click="loadLaneEarlier"
     >
-      {{ loadingEarlier ? '加载中…' : '加载更早' }}
+      {{ loadingEarlier ? $t('laneBlocks.k1br0ij9003') : $t('laneBlocks.k1br5dtr004') }}
     </button>
     <workshop-event-block
       v-for="b in blocks"

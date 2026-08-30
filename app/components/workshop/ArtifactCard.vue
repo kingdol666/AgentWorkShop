@@ -73,7 +73,7 @@ const copy = async (): Promise<void> => {
         class="op"
         @click="expanded = !expanded"
       >
-        {{ expanded ? '收起' : '展开' }}
+        {{ expanded ? $t('artifactCard.k40p82001') : $t('artifactCard.k3yu62003') }}
       </a-button>
       <a-button
         size="small"
@@ -81,7 +81,7 @@ const copy = async (): Promise<void> => {
         class="op"
         @click="copy"
       >
-        {{ copied ? '已复制' : '复制' }}
+        {{ copied ? $t('artifactCard.k3n6o1m002') : $t('artifactCard.k3y694004') }}
       </a-button>
     </div>
     <pre

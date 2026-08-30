@@ -10,8 +10,10 @@ import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeView, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 
+const { t } = useI18n()
+
 definePageMeta({ layout: 'default' })
-useHead({ title: '数采中心 · AgentWorkShop' })
+useHead({ title: () => t('titles.daq') })
 
 const daq = useDaqStream()
 const dcw = useDcwStream()
@@ -63,7 +65,7 @@ onBeforeUnmount(() => {
 })
 
 const deviceName = (id: string | null): string =>
-  id ? (nodeDevices.get(id) ?? `${id.slice(0, 8)}…`) : '未绑定'
+  id ? (nodeDevices.get(id) ?? `${id.slice(0, 8)}…`) : t('daq.k3own4q056')
 
 // ---------- 节点筛选(产线 / 设备绑定 / 产线运行态 / 节点状态) ----------
 const filters = reactive({ lineId: '', deviceId: '', lineRun: '', state: '' })
@@ -121,22 +123,22 @@ watch(() => deviceTwins.twins, (list) => {
 }, { immediate: true, deep: true })
 
 const intervalOf = (intervalMs: number | null): string => {
-  if (intervalMs == null) return `全局 ${daq.controller.defaultIntervalMs}ms`
+  if (intervalMs == null) return t('daq.k9vnp9h124', { p0: daq.controller.defaultIntervalMs })
   return `${intervalMs}ms`
 }
 
 /** WS 下发节拍展示(null=跟随全局;0=每帧;>0 独立间隔) */
 const publishOf = (v: number | null): string => {
-  if (v == null) return `全局 ${daq.controller.defaultPublishIntervalMs}ms`
-  if (v === 0) return '每帧'
+  if (v == null) return t('daq.k9vnp9h124', { p0: daq.controller.defaultPublishIntervalMs })
+  if (v === 0) return t('daq.k41mvv078')
   return `${v}ms`
 }
 
 const stateLabel: Record<DaqNodeState, string> = {
-  ok: '正常',
-  warn: '预警',
-  alarm: '告警',
-  offline: '离线',
+  ok: t('daq.k41k5c062'),
+  warn: t('daq.k49z8v063'),
+  alarm: t('daq.k3xmid064'),
+  offline: t('daq.k44c2n065'),
 }
 
 // ---------- 添加节点向导(mock / 真实场景 + 动态参数表单 + 测试连接) ----------
@@ -199,7 +201,7 @@ async function doAddNode(): Promise<void> {
       // 校验必填
       for (const f of addFields.value) {
         if (f.required && !addCfg.value[f.key] && addCfg.value[f.key] !== 0) {
-          throw new Error(`缺少必填参数:${f.label}`)
+          throw new Error(t('daq.kyuadl0125', { p0: f.label }))
         }
       }
       const tpl = daq.templates.find(t => t.key === addTemplate.value)
@@ -251,14 +253,14 @@ const tplForm = reactive({
   decimals: 2, icon: 'thermo' as DaqTemplateIcon,
 })
 const ICON_LABEL: Record<DaqTemplateIcon, string> = {
-  thermo: '温度', pressure: '压力', tension: '张力', encoder: '编码器', camera: '视觉', gateway: '电参/网关',
+  thermo: t('daq.k422b8079'), pressure: t('daq.k3x6ff080'), tension: t('daq.k3z9xc081'), encoder: t('daq.k3subk4082'), camera: t('daq.k47atw083'), gateway: t('daq.kz7yhbj084'),
 }
 
 const customTpls = computed<DaqTemplateDef[]>(() => daq.templates.filter(t => !t.builtin))
 const builtinTpls = computed<DaqTemplateDef[]>(() => daq.templates.filter(t => t.builtin))
 
 function fillTplForm(t: DaqTemplateDef, asCopy = false): void {
-  tplForm.name = asCopy ? `${t.name} 副本` : t.name
+  tplForm.name = asCopy ? t('daq.k2hbo3c126', { p0: t.name }) : t.name
   tplForm.ch = t.ch
   tplForm.code = t.code
   tplForm.unit = t.unit
@@ -362,9 +364,9 @@ async function doReconnect(): Promise<void> {
         <p class="aw-kicker">
           AGENTWORKSHOP / DAQ CONSOLE
         </p>
-        <h1>数采中心</h1>
+        <h1>{{ $t('daq.k1emg364011') }}</h1>
         <p class="sub">
-          采集 → 队列(MQTT)→ 时序库(Timescale)→ WS 实时下发全链路;节点实体与参数以服务端为准。
+          {{ $t('daq.k1wmg2bz012') }}
         </p>
       </div>
       <div class="badges mono">
@@ -389,18 +391,17 @@ async function doReconnect(): Promise<void> {
       <span :class="filteredLineState.active ? 'i-tabler-circle-check' : 'i-tabler-info-circle'" />
       <span class="txt">
         <template v-if="filteredLineState.active">
-          产线「{{ filteredLine.name }}」运行中 —— 当前产品:<b>{{ filteredLineState.productName }}</b> · Recipe:<b>{{ filteredLineState.recipeName }}</b>
-          <small class="mono">批次 {{ filteredLineState.runId?.slice(0, 8) }} · 开跑 {{ filteredLineState.startedAt?.slice(11, 19) }} · 已打标 {{ filteredLineState.taggedSamples }} 样本</small>
+          {{ $t('daq.k3ktxbr085') }}{{ filteredLine.name }}」{{ $t('daq.k15lvw0o105') }}<b>{{ filteredLineState.productName }}</b> · Recipe:<b>{{ filteredLineState.recipeName }}</b>
+          <small class="mono">{{ $t('daq.k400lb086') }} {{ filteredLineState.runId?.slice(0, 8) }} · {{ $t('daq.k3zkt2106') }} {{ filteredLineState.startedAt?.slice(11, 19) }} {{ $t('daq.k69vag8108') }} {{ filteredLineState.taggedSamples }} {{ $t('daq.k4118o092') }}</small>
         </template>
         <template v-else>
-          产线「{{ filteredLine.name }}」未开跑 —— 本产线节点暂停采集
-        </template>
+          {{ $t('daq.k3ktxbr085') }}{{ filteredLine.name }}」{{ $t('daq.k12uge2o107') }}</template>
       </span>
       <NuxtLink
         class="pill-btn"
         :to="`/dcw/${filteredLine.id}`"
       >
-        {{ filteredLineState.active ? '前往产线管理' : '前往产线管理开跑' }}
+        {{ filteredLineState.active ? $t('daq.k1ukoy0v093') : $t('daq.k1cg78i8109') }}
       </NuxtLink>
     </div>
     <div
@@ -408,7 +409,7 @@ async function doReconnect(): Promise<void> {
       class="infra-banner"
     >
       <span class="i-tabler-info-circle" />
-      <span class="txt">产线未开跑 —— 数采由产线配方驱动:请在<NuxtLink to="/dcw">产线运营</NuxtLink>开跑产线,并将节点挂载到产线</span>
+      <span class="txt">{{ $t('daq.k19onw5w013') }}<NuxtLink to="/dcw">{{ $t('daq.k1b2tk5c014') }}</NuxtLink>{{ $t('daq.k1u9wnlg015') }}</span>
     </div>
 
     <!-- 基础设施降级横幅(MQTT/Timescale 不可达:在线采集停用 + 一键重连) -->
@@ -423,7 +424,7 @@ async function doReconnect(): Promise<void> {
         :disabled="reconnecting"
         @click="doReconnect"
       >
-        {{ reconnecting ? '重连中…' : '重连基础设施' }}
+        {{ reconnecting ? $t('daq.k1ld43ur094') : $t('daq.kzg9805110') }}
       </button>
     </div>
 
@@ -437,10 +438,10 @@ async function doReconnect(): Promise<void> {
             @click="daq.controllerAction(daq.controller.running ? 'stop' : 'start')"
           >
             <span :class="daq.controller.running ? 'i-tabler-player-pause' : 'i-tabler-player-play'" />
-            {{ daq.controller.running ? '暂停全部采集' : '恢复全部采集' }}
+            {{ daq.controller.running ? $t('daq.kpui00095') : $t('daq.knxpdpt111') }}
           </button>
           <label class="cycle mono">
-            缺省周期
+            {{ $t('daq.k1ifahxj016') }}
             <input
               v-model.number="daq.controller.defaultIntervalMs"
               type="number"
@@ -452,9 +453,9 @@ async function doReconnect(): Promise<void> {
           </label>
           <label
             class="cycle mono"
-            title="节点未单独设置 WS 下发间隔时的全局缺省;0 = 随采样节拍每帧下发"
+            :title="$t('daq.k1e8lcoo001')"
           >
-            缺省下发
+            {{ $t('daq.k1if98n0017') }}
             <input
               v-model.number="daq.controller.defaultPublishIntervalMs"
               type="number"
@@ -467,32 +468,32 @@ async function doReconnect(): Promise<void> {
         </div>
         <div class="ctrl-right">
           <span class="ctrl-metrics mono">
-            <span>节点 {{ daq.controller.nodesOnline }}/{{ daq.controller.nodesTotal }}</span>
+            <span>{{ $t('daq.k45uio067') }} {{ daq.controller.nodesOnline }}/{{ daq.controller.nodesTotal }}</span>
             <span class="sep">·</span>
-            <span title="生产者已发布到队列">发布 {{ daq.meta.produced }}</span>
+            <span :title="$t('daq.k1yztsu4002')">{{ $t('daq.k3xagp087') }} {{ daq.meta.produced }}</span>
             <span class="sep">·</span>
-            <span title="消费者已从队列取得">消费 {{ daq.meta.consumed }}</span>
+            <span :title="$t('daq.ko09iha003')">{{ $t('daq.k427eu088') }} {{ daq.meta.consumed }}</span>
             <span class="sep">·</span>
             <span
               :class="{ warn: (daq.meta.dropped ?? 0) > 0 }"
               title="队列丢失(produced-consumed)"
-            >丢失 {{ daq.meta.dropped }}</span>
+            >{{ $t('daq.k3w8go089') }} {{ daq.meta.dropped }}</span>
             <span class="sep">·</span>
-            <span title="时序库累计入库样本">入库 {{ daq.meta.samplesStored }}</span>
+            <span :title="$t('daq.kj1jbmw004')">{{ $t('daq.k3wusd090') }} {{ daq.meta.samplesStored }}</span>
           </span>
           <button
             class="aw-pill outline add-btn"
             @click="tplOpen = true; resetTplForm()"
           >
             <span class="i-tabler-adjustments-horizontal" />
-            模板管理
+            {{ $t('daq.k1f5cv0s018') }}
           </button>
           <button
             class="aw-pill add-btn"
             @click="addOpen = true"
           >
             <span class="i-tabler-plus" />
-            添加节点
+            {{ $t('daq.k1fn0ukb019') }}
           </button>
         </div>
       </div>
@@ -500,7 +501,7 @@ async function doReconnect(): Promise<void> {
       <div class="line-strip">
         <span class="strip-label">
           <span class="i-tabler-route" />
-          产线状态<small class="mono">{{ dcw.lines.length }}</small>
+          {{ $t('daq.k1b2o3b6020') }}<small class="mono">{{ dcw.lines.length }}</small>
         </span>
         <div class="strip-scroll">
           <NuxtLink
@@ -511,19 +512,19 @@ async function doReconnect(): Promise<void> {
             :style="{ '--lc': l.color }"
             :to="`/dcw/${l.id}`"
             :title="dcw.lineStateOf(l.id).active
-              ? `${l.name} 运行中:${dcw.lineStateOf(l.id).productName} · ${dcw.lineStateOf(l.id).recipeName}`
-              : `${l.name} 待机:开跑后本产线节点开始采集`"
+              ? $t('daq.k3v957u120', { p0: l.name, p1: dcw.lineStateOf(l.id).productName, p2: dcw.lineStateOf(l.id).recipeName })
+              : $t('daq.k1x7jnru121', { p0: l.name })"
           >
             <span class="lp-dot" />
             <b>{{ l.name }}</b>
             <small
               v-if="dcw.lineStateOf(l.id).active"
               class="lp-run"
-            >{{ dcw.lineStateOf(l.id).recipeName ?? '运行中' }}</small>
+            >{{ dcw.lineStateOf(l.id).recipeName ?? $t('daq.k3vp67i096') }}</small>
             <small
               v-else
               class="lp-idle"
-            >待机</small>
+            >{{ $t('daq.k3zgkk021') }}</small>
           </NuxtLink>
           <NuxtLink
             v-if="dcw.lines.length === 0"
@@ -531,8 +532,8 @@ async function doReconnect(): Promise<void> {
             to="/dcw"
           >
             <span class="lp-dot" />
-            <b>暂无产线</b>
-            <small class="lp-idle">去产线运营创建</small>
+            <b>{{ $t('daq.k1el12b1022') }}</b>
+            <small class="lp-idle">{{ $t('daq.k8jxxe8023') }}</small>
           </NuxtLink>
         </div>
       </div>
@@ -546,7 +547,7 @@ async function doReconnect(): Promise<void> {
     >
       <div class="modal">
         <h3 class="m-title">
-          添加数采节点
+          {{ $t('daq.k19rioqa024') }}
         </h3>
 
         <div class="seg-row">
@@ -555,20 +556,20 @@ async function doReconnect(): Promise<void> {
             :class="{ on: addScenario === 'mock' }"
             @click="addScenario = 'mock'"
           >
-            Mock 模拟源
+            {{ $t('daq.k1p5c1un025') }}
           </button>
           <button
             class="seg"
             :class="{ on: addScenario === 'real' }"
             @click="addScenario = 'real'"
           >
-            真实设备采集
+            {{ $t('daq.k1cbcp3o026') }}
           </button>
         </div>
 
         <div class="f-grid">
           <label class="f">
-            <span>信号模板(量程/单位域)</span>
+            <span>{{ $t('daq.k1fsgerc027') }}</span>
             <select
               v-model="addTemplate"
               class="inp"
@@ -578,23 +579,23 @@ async function doReconnect(): Promise<void> {
                 :key="t.key"
                 :value="t.key"
               >
-                {{ t.name }} · {{ t.ch }}({{ t.min }}~{{ t.max }} {{ t.unit }}){{ t.builtin ? '' : ' · 自定义' }}
+                {{ t.name }} · {{ t.ch }}({{ t.min }}~{{ t.max }} {{ t.unit }}){{ t.builtin ? '' : $t('daq.kr45rk9097') }}
               </option>
             </select>
           </label>
           <label class="f">
-            <span>节点名称(可选)</span>
+            <span>{{ $t('daq.k1ce2k1y028') }}</span>
             <input
               v-model="addName"
               class="inp"
-              placeholder="缺省按模板自增命名"
+              :placeholder="$t('daq.kgpxzy3005')"
             >
           </label>
           <label
             v-if="addScenario === 'real'"
             class="f"
           >
-            <span>采样周期 ms(空=跟随全局)</span>
+            <span>{{ $t('daq.k13mfsfc029') }}</span>
             <input
               v-model.number="addInterval"
               type="number"
@@ -611,7 +612,7 @@ async function doReconnect(): Promise<void> {
         <template v-if="addScenario === 'real'">
           <div class="f-grid">
             <label class="f">
-              <span>通信协议</span>
+              <span>{{ $t('daq.k1kt87rx030') }}</span>
               <select
                 v-model="addDriver"
                 class="inp"
@@ -621,7 +622,7 @@ async function doReconnect(): Promise<void> {
                   :key="d.kind"
                   :value="d.kind"
                 >
-                  {{ d.label }}{{ driverReady(d.kind) ? '' : '(栈未装)' }}
+                  {{ d.label }}{{ driverReady(d.kind) ? '' : $t('daq.kjbqphp098') }}
                 </option>
               </select>
             </label>
@@ -670,7 +671,7 @@ async function doReconnect(): Promise<void> {
               :disabled="addTesting"
               @click="doTestConnection"
             >
-              {{ addTesting ? '测试中…' : '测试连接' }}
+              {{ addTesting ? $t('daq.k1fsh720099') : $t('daq.k1fstglk112') }}
             </button>
             <span
               v-if="addTest"
@@ -692,7 +693,7 @@ async function doReconnect(): Promise<void> {
             class="aw-pill outline"
             @click="addOpen = false"
           >
-            取消
+            {{ $t('daq.k3xdnn031') }}
           </button>
           <button
             class="aw-pill"
@@ -700,7 +701,7 @@ async function doReconnect(): Promise<void> {
             :title="addScenario === 'real' && !(addTest && addTest.ok) ? '真实场景需先通过测试连接' : ''"
             @click="doAddNode"
           >
-            {{ addSaving ? '创建中…' : (addScenario === 'real' ? '测试通过后创建并采集' : '创建节点') }}
+            {{ addSaving ? $t('daq.k1bg4759100') : (addScenario === 'real' ? $t('daq.k7pxjxo113') : $t('daq.k1bge46t118')) }}
           </button>
         </div>
       </div>
@@ -714,11 +715,11 @@ async function doReconnect(): Promise<void> {
     >
       <div class="modal">
         <h3 class="m-title">
-          信号模板管理
+          {{ $t('daq.k11mv96s032') }}
         </h3>
 
         <p class="sec-label">
-          自定义模板
+          {{ $t('daq.ktji4ky033') }}
         </p>
         <table class="tpl-table">
           <tbody>
@@ -731,20 +732,20 @@ async function doReconnect(): Promise<void> {
                 <small class="mono dim">{{ t.code }}</small>
               </td>
               <td class="mono range">
-                {{ t.min }}~{{ t.max }} {{ t.unit }} · {{ t.decimals }} 位
+                {{ t.min }}~{{ t.max }} {{ t.unit }} · {{ t.decimals }} {{ $t('daq.k48oi091') }}
               </td>
               <td class="right actions">
                 <button
                   class="mini-btn"
                   @click="editTpl(t)"
                 >
-                  编辑
+                  {{ $t('daq.k45eb0034') }}
                 </button>
                 <button
                   class="mini-btn danger"
                   @click="askDelTpl(t)"
                 >
-                  {{ confirmingDel === t.key ? '确认删除' : '删除' }}
+                  {{ confirmingDel === t.key ? $t('daq.k1hhheu3101') : $t('daq.k3xakp114') }}
                 </button>
               </td>
             </tr>
@@ -753,26 +754,26 @@ async function doReconnect(): Promise<void> {
                 colspan="3"
                 class="empty"
               >
-                暂无自定义模板 —— 从下方内置模板复制,或直接在下方表单新建。
+                {{ $t('daq.kztvzbo035') }}
               </td>
             </tr>
           </tbody>
         </table>
 
         <p class="sec-label">
-          {{ tplEditing ? '编辑模板' : '新建模板' }}
+          {{ tplEditing ? $t('daq.k1iiph0s102') : $t('daq.k1efixrj115') }}
         </p>
         <div class="f-grid">
           <label class="f">
-            <span>名称<em>*</em></span>
+            <span>{{ $t('daq.k3xhia036') }}<em>*</em></span>
             <input
               v-model="tplForm.name"
               class="inp"
-              placeholder="如 烘箱湿度"
+              :placeholder="$t('daq.k5opd2t006')"
             >
           </label>
           <label class="f">
-            <span>单位<em>*</em></span>
+            <span>{{ $t('daq.k3x4ef037') }}<em>*</em></span>
             <input
               v-model="tplForm.unit"
               class="inp"
@@ -780,23 +781,23 @@ async function doReconnect(): Promise<void> {
             >
           </label>
           <label class="f">
-            <span>通道语义</span>
+            <span>{{ $t('daq.k1l477m0038') }}</span>
             <input
               v-model="tplForm.ch"
               class="inp"
-              placeholder="缺省同名称"
+              :placeholder="$t('daq.kk8o4tl007')"
             >
           </label>
           <label class="f">
-            <span>位号代号</span>
+            <span>{{ $t('daq.k1ayxrqb039') }}</span>
             <input
               v-model="tplForm.code"
               class="inp"
-              placeholder="缺省自动生成"
+              :placeholder="$t('daq.kzn3l7l008')"
             >
           </label>
           <label class="f">
-            <span>量程下限<em>*</em></span>
+            <span>{{ $t('daq.k1l9jv5m040') }}<em>*</em></span>
             <input
               v-model.number="tplForm.min"
               type="number"
@@ -804,7 +805,7 @@ async function doReconnect(): Promise<void> {
             >
           </label>
           <label class="f">
-            <span>量程上限<em>*</em></span>
+            <span>{{ $t('daq.k1l9jv4p041') }}<em>*</em></span>
             <input
               v-model.number="tplForm.max"
               type="number"
@@ -812,7 +813,7 @@ async function doReconnect(): Promise<void> {
             >
           </label>
           <label class="f">
-            <span>小数位</span>
+            <span>{{ $t('daq.k3mxmcx042') }}</span>
             <input
               v-model.number="tplForm.decimals"
               type="number"
@@ -822,7 +823,7 @@ async function doReconnect(): Promise<void> {
             >
           </label>
           <label class="f">
-            <span>图标</span>
+            <span>{{ $t('daq.k3xx56043') }}</span>
             <select
               v-model="tplForm.icon"
               class="inp"
@@ -837,22 +838,22 @@ async function doReconnect(): Promise<void> {
             </select>
           </label>
           <label class="f">
-            <span>模拟基值</span>
+            <span>{{ $t('daq.k1f4eknv044') }}</span>
             <input
               v-model.number="tplForm.base"
               type="number"
               class="inp"
             >
-            <small class="hint">Mock 采样中心值,缺省量程中点</small>
+            <small class="hint">{{ $t('daq.kytd15s045') }}</small>
           </label>
           <label class="f">
-            <span>模拟波幅</span>
+            <span>{{ $t('daq.k1f4ifpo046') }}</span>
             <input
               v-model.number="tplForm.amp"
               type="number"
               class="inp"
             >
-            <small class="hint">Mock 波动幅度,缺省量程 4%</small>
+            <small class="hint">{{ $t('daq.ksp2aji047') }}</small>
           </label>
         </div>
         <p
@@ -866,19 +867,19 @@ async function doReconnect(): Promise<void> {
             class="aw-pill outline"
             @click="resetTplForm"
           >
-            重置
+            {{ $t('daq.k48p40048') }}
           </button>
           <button
             class="pill-btn"
             :disabled="tplSaving"
             @click="saveTpl"
           >
-            {{ tplSaving ? '保存中…' : (tplEditing ? '保存修改' : '保存模板') }}
+            {{ tplSaving ? $t('daq.k1b38d59103') : (tplEditing ? $t('daq.k1b39281116') : $t('daq.k1b3dtga119')) }}
           </button>
         </div>
 
         <p class="sec-label">
-          内置模板(只读,可复制)
+          {{ $t('daq.k1w8s84s049') }}
         </p>
         <table class="tpl-table">
           <tbody>
@@ -891,14 +892,14 @@ async function doReconnect(): Promise<void> {
                 <small class="mono dim">{{ t.code }}</small>
               </td>
               <td class="mono range">
-                {{ t.min }}~{{ t.max }} {{ t.unit }} · {{ t.decimals }} 位
+                {{ t.min }}~{{ t.max }} {{ t.unit }} · {{ t.decimals }} {{ $t('daq.k48oi091') }}
               </td>
               <td class="right actions">
                 <button
                   class="mini-btn"
                   @click="copyTpl(t)"
                 >
-                  复制
+                  {{ $t('daq.k3y694050') }}
                 </button>
               </td>
             </tr>
@@ -913,13 +914,13 @@ async function doReconnect(): Promise<void> {
         <div class="tbl-toolbar">
           <div class="filters">
             <label class="flt">
-              <span>产线</span>
+              <span>{{ $t('daq.k3wj9n051') }}</span>
               <select
                 v-model="filters.lineId"
                 class="inp-sel"
               >
                 <option value="">
-                  全部产线
+                  {{ $t('daq.k1bkl9uj052') }}
                 </option>
                 <option
                   v-for="l in dcw.lines"
@@ -929,18 +930,18 @@ async function doReconnect(): Promise<void> {
                   {{ l.name }}
                 </option>
                 <option value="none">
-                  未分配
+                  {{ $t('daq.k3ootr6053') }}
                 </option>
               </select>
             </label>
             <label class="flt">
-              <span>绑定设备</span>
+              <span>{{ $t('daq.k1i8rtqt054') }}</span>
               <select
                 v-model="filters.deviceId"
                 class="inp-sel"
               >
                 <option value="">
-                  全部设备
+                  {{ $t('daq.k1bkw4m2055') }}
                 </option>
                 <option
                   v-for="d in boundDevices"
@@ -950,50 +951,50 @@ async function doReconnect(): Promise<void> {
                   {{ d.name }}({{ d.count }})
                 </option>
                 <option value="none">
-                  未绑定
+                  {{ $t('daq.k3own4q056') }}
                 </option>
               </select>
             </label>
             <label
               class="flt"
-              title="节点所属产线的开跑状态:未开跑/未分配的节点不采集"
+              :title="$t('daq.khb8mru009')"
             >
-              <span>产线运行</span>
+              <span>{{ $t('daq.k1b2tkyv057') }}</span>
               <select
                 v-model="filters.lineRun"
                 class="inp-sel"
               >
                 <option value="">
-                  全部
+                  {{ $t('daq.k3x4t1058') }}
                 </option>
                 <option value="on">
-                  采集开启(运行中)
+                  {{ $t('daq.k1nxm3p7059') }}
                 </option>
                 <option value="off">
-                  采集关闭(待机/未分配)
+                  {{ $t('daq.k1ulx34e060') }}
                 </option>
               </select>
             </label>
             <label class="flt">
-              <span>节点状态</span>
+              <span>{{ $t('daq.k1iwdfef061') }}</span>
               <select
                 v-model="filters.state"
                 class="inp-sel"
               >
                 <option value="">
-                  全部
+                  {{ $t('daq.k3x4t1058') }}
                 </option>
                 <option value="ok">
-                  正常
+                  {{ $t('daq.k41k5c062') }}
                 </option>
                 <option value="warn">
-                  预警
+                  {{ $t('daq.k49z8v063') }}
                 </option>
                 <option value="alarm">
-                  告警
+                  {{ $t('daq.k3xmid064') }}
                 </option>
                 <option value="offline">
-                  离线
+                  {{ $t('daq.k44c2n065') }}
                 </option>
               </select>
             </label>
@@ -1002,24 +1003,24 @@ async function doReconnect(): Promise<void> {
               class="mini-btn clear-btn"
               @click="clearFilters"
             >
-              清除筛选
+              {{ $t('daq.k1fygck2066') }}
             </button>
           </div>
-          <span class="count mono">{{ filteredNodes.length }} / {{ daq.nodes.length }} 节点</span>
+          <span class="count mono">{{ filteredNodes.length }} / {{ daq.nodes.length }} {{ $t('daq.k45uio067') }}</span>
         </div>
         <table class="nodes-table">
           <thead>
             <tr>
-              <th>节点</th>
-              <th>状态</th>
-              <th>实时值</th>
-              <th>采样周期</th>
-              <th>WS 下发</th>
-              <th>驱动</th>
-              <th>产线</th>
-              <th>绑定设备</th>
+              <th>{{ $t('daq.k45uio067') }}</th>
+              <th>{{ $t('daq.k42w8s068') }}</th>
+              <th>{{ $t('daq.k3mv305069') }}</th>
+              <th>{{ $t('daq.k1l6g2ga070') }}</th>
+              <th>{{ $t('daq.k3zi0nf071') }}</th>
+              <th>{{ $t('daq.k4a0la072') }}</th>
+              <th>{{ $t('daq.k3wj9n051') }}</th>
+              <th>{{ $t('daq.k1i8rtqt054') }}</th>
               <th class="right">
-                操作
+                {{ $t('daq.k40aa6073') }}
               </th>
             </tr>
           </thead>
@@ -1038,8 +1039,8 @@ async function doReconnect(): Promise<void> {
                 <span
                   class="st-pill"
                   :class="[effectiveState(n)]"
-                  :title="recipeWinOf(n) ? `活动配方监控窗口 ${recipeWinOf(n)!.min ?? '-∞'} ~ ${recipeWinOf(n)!.max ?? '+∞'}${recipeAlarm(n) ? '(越限报警)' : ''}` : ''"
-                >{{ recipeAlarm(n) ? '配方越限' : stateLabel[effectiveState(n)] }}</span>
+                  :title="recipeWinOf(n) ? $t('daq.k1hrrqa1122', { p0: recipeWinOf(n)!.min ?? '-∞', p1: recipeWinOf(n)!.max ?? '+∞', p2: recipeAlarm(n) ? '(越限报警)' : '' }) : ''"
+                >{{ recipeAlarm(n) ? $t('daq.k1l3pt51104') : stateLabel[effectiveState(n)] }}</span>
               </td>
               <td class="mono val">
                 {{ n.value != null ? n.value.toFixed(n.decimals) : '--' }}
@@ -1062,11 +1063,11 @@ async function doReconnect(): Promise<void> {
                 <select
                   class="line-sel"
                   :value="n.lineId"
-                  title="节点产线归属(未挂载产线的节点不采集)"
+                  :title="$t('daq.k3q23v3010')"
                   @change="setNodeLine(n.id, $event)"
                 >
                   <option value="">
-                    未分配
+                    {{ $t('daq.k3ootr6053') }}
                   </option>
                   <option
                     v-for="l in dcw.lines"
@@ -1082,10 +1083,10 @@ async function doReconnect(): Promise<void> {
                   class="line-run"
                   :class="{ on: lineRunOf(n.lineId)!.active }"
                   :title="lineRunOf(n.lineId)!.active
-                    ? `产线运行中:${lineRunOf(n.lineId)!.product} · ${lineRunOf(n.lineId)!.recipe}`
+                    ? $t('daq.k11wnl1y123', { p0: lineRunOf(n.lineId)!.product, p1: lineRunOf(n.lineId)!.recipe })
                     : '产线未运行:开跑后本节点开始采集'"
                 >
-                  {{ lineRunOf(n.lineId)!.active ? '运行中' : '未运行' }}
+                  {{ lineRunOf(n.lineId)!.active ? $t('daq.k3vp67i096') : $t('daq.k3ozyqz117') }}
                   <span
                     v-if="lineRunOf(n.lineId)!.active"
                     class="lr-detail"
@@ -1099,7 +1100,7 @@ async function doReconnect(): Promise<void> {
                   :to="`/daq/${n.id}`"
                 >
                   <span class="i-tabler-dashboard" />
-                  控制台
+                  {{ $t('daq.k3o3jg2074') }}
                 </NuxtLink>
               </td>
             </tr>
@@ -1110,7 +1111,7 @@ async function doReconnect(): Promise<void> {
                   style="min-height: 120px;"
                 >
                   <p class="pe-sub">
-                    暂无数采节点 —— 在数字孪生空间从左轨「数采节点 · DAQ」拖入即可(server 建立节点实体)。
+                    {{ $t('daq.kvhjyc3075') }}
                   </p>
                 </div>
               </td>
@@ -1122,7 +1123,7 @@ async function doReconnect(): Promise<void> {
                   style="min-height: 90px;"
                 >
                   <p class="pe-sub">
-                    无匹配节点 —— 当前筛选条件下没有节点,请调整或清除筛选。
+                    {{ $t('daq.k1w20qew076') }}
                   </p>
                 </div>
               </td>
@@ -1136,7 +1137,7 @@ async function doReconnect(): Promise<void> {
       v-if="daq.error"
       class="err"
     >
-      {{ daq.error }}(<NuxtLink to="/workshop">前往登录</NuxtLink>)
+      {{ daq.error }}(<NuxtLink to="/workshop">{{ $t('daq.k1bhhheq077') }}</NuxtLink>)
     </p>
   </div>
 </template>

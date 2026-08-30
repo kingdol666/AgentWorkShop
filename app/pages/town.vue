@@ -79,10 +79,10 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
     >
       <span class="pe-icon i-tabler-map-2" />
       <div class="pe-title">
-        还没有挂载任何 Channel
+        {{ $t('town.k1wm8wtr001') }}
       </div>
       <div class="pe-sub">
-        请到 <b>Agent 工作台</b> 创建/挂载频道后,再回到 AgentWorkShop 孪生空间。
+        {{ $t('town.k47e4s002') }} <b>Agent {{ $t('town.k3n4mae005') }}</b> {{ $t('town.k17rerba003') }}
       </div>
     </div>
     <!-- 孪生空间(复用 TownView:内部自建 2D/3D 场景 + 全频道铺放 + 模型库/数字孪生/缩放) -->
@@ -97,7 +97,7 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
       data-hud="town-loading"
       class="pane-loading"
     >
-      正在接入 AgentWorkShop 孪生空间(订阅实时事件流)…
+      {{ $t('town.k1uc5mup004') }}
     </div>
   </div>
 </template>

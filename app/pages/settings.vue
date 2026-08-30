@@ -43,7 +43,10 @@ const localeOptions = computed(() =>
 
 const switchLocale = (value: unknown) => {
   if (value != null) {
+    // 持久化 + 强刷:与 AppHeader 同策略(setup 期词条需重载整体切换)
+    localStorage.setItem('aw.locale', String(value))
     setLocale(String(value) as 'zh-CN' | 'en')
+    window.location.reload()
   }
 }
 

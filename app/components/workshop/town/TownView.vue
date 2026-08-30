@@ -29,6 +29,8 @@ import { useDaqStream, type DaqNodeLive } from '@/app/composables/workshop/useDa
 import { useDcwStream, type DcwNodeView } from '@/app/composables/workshop/useDcwStream'
 import type { RecipeParam } from '#shared/dcw-protocol'
 
+const { t } = useI18n()
+
 /**
  * 两种渲染器(Phaser 2D / Three.js 3D)共享的最小公开接口。
  * TownView 无感切换:事件订阅/HUD/跑马灯/迷你地图/拖放换装只用这里的方法。
@@ -77,10 +79,10 @@ const snap = ref(true)
 const saveState = ref<{ state: 'idle' | 'dirty' | 'saving' | 'saved' | 'error', at: number } | null>(null)
 const saveStateLabel = computed(() => {
   switch (saveState.value?.state) {
-    case 'dirty': return '未保存'
-    case 'saving': return '保存中…'
-    case 'saved': return '已保存'
-    case 'error': return '保存失败'
+    case 'dirty': return t('townView.k3oo50k155')
+    case 'saving': return t('townView.k1b38d59156')
+    case 'saved': return t('townView.k3n51yk157')
+    case 'error': return t('townView.k1b3ayhc158')
     default: return ''
   }
 })
@@ -220,7 +222,7 @@ function onDockCardClick(ch: { channelId: string, placed: boolean }): void {
     onSelectChannel(ch.channelId)
     return
   }
-  dockHint.value = '请把频道卡片拖拽到场景中放置(松开即安放)'
+  dockHint.value = t('townView.k7rvbts159')
   window.setTimeout(() => {
     dockHint.value = ''
   }, 2600)
@@ -235,7 +237,7 @@ function dropChannelAt(channelId: string, x: number, z: number): boolean {
   const existing = s.getChannelLayout(channelId)
   if (existing) {
     // 已放置 → 聚焦到现有位置,不重复落点
-    dockHint.value = `「${name}」已在场景中(相同频道只能放置一个)`
+    dockHint.value = t('townView.kcyn0191', { p0: name })
     window.setTimeout(() => {
       dockHint.value = ''
     }, 2600)
@@ -288,8 +290,8 @@ const agentRangeStatusText = computed(() => {
   const sel = selected.value
   if (!sel || sel.kind !== 'agent') return ''
   const r = scene3dRef.value?.getAgentRange?.(sel.id)
-  if (!r) return '未设置 · 沿用频道边界'
-  return `${r.shape === 'rect' ? '矩形' : '椭圆'} ${Math.round(r.radiusX)} × ${Math.round(r.radiusZ)}`
+  if (!r) return t('townView.k1v1icf6160')
+  return `${r.shape === 'rect' ? t('townView.k43u0g050') : t('townView.k414bc049')} ${Math.round(r.radiusX)} × ${Math.round(r.radiusZ)}`
 })
 /** 框选绘制按钮:进入/退出绘制模式(编辑模式 + 选中角色) */
 function onToggleRangeDraw(): void {
@@ -342,7 +344,7 @@ async function bindAgentModel(modelRef: string): Promise<void> {
     ? Object.keys(entities.agents).find(c => (entities.agents[c] ?? []).some(a => a.agentId === agentId))
     : undefined
   if (!cid) {
-    errorText.value = '找不到所属频道,无法绑定模型'
+    errorText.value = t('townView.kpplr16161')
     return
   }
   try {
@@ -615,7 +617,7 @@ async function boot3D(): Promise<void> {
     scene.hydrate(buildTownInput(), Object.values(sceneLayouts.layouts), sceneTwinPool.value)
     syncChannelDock()
   }).catch((err) => {
-    errorText.value = `频道布局加载失败,自动重试中(${err instanceof Error ? err.message : String(err)})`
+    errorText.value = t('townView.k1hmf2ut192', { p0: err instanceof Error ? err.message : String(err) })
     window.setTimeout(() => {
       void sceneLayouts.load()
     }, 2500)
@@ -835,7 +837,7 @@ function bindSceneInput2D(scene: Exclude<TownViewScene, TownScene3D>): void {
 /** 运行模式只读提示(2.6s 自动消退) */
 let runHintTimer: ReturnType<typeof setTimeout> | null = null
 function runHint(): void {
-  errorText.value = '运行模式为只读 · 切换「编辑」后可修改场景'
+  errorText.value = t('townView.kt6xb5p162')
   if (runHintTimer) clearTimeout(runHintTimer)
   runHintTimer = setTimeout(() => {
     errorText.value = ''
@@ -1105,8 +1107,8 @@ const lastDropText = computed(() => {
   const d = lastDrop.value
   if (!d) return ''
   return d.mode === 'rebind'
-    ? `已为 ${d.agentId?.slice(0, 8) ?? '角色'} 换装 → ${d.textureKey}`
-    : `已在落点放入居民 → ${d.textureKey}`
+    ? t('townView.kgz2nej193', { p0: d.agentId?.slice(0, 8) ?? t('townView.k479op189'), p1: d.textureKey })
+    : t('townView.k5e2460194', { p0: d.textureKey })
 })
 
 /** 员工会话台:选中角色时展示其「本人」消息(实时缓冲直采,按 agentId 精确归属;重名不串扰) */
@@ -1123,7 +1125,7 @@ const agentChatRows = computed<ChatEntry[]>(() => {
 })
 const agentChatTitle = computed(() => {
   if (!selected.value || selected.value.kind !== 'agent') return ''
-  return scene3dRef.value?.getAgentName?.(selected.value.id) ?? '员工'
+  return scene3dRef.value?.getAgentName?.(selected.value.id) ?? t('townView.k3xdvm125')
 })
 /** 选中角色的实体元数据(状态/harness/角色;驱动会话台头部状态章) */
 const selectedAgentMeta = computed(() => {
@@ -1144,9 +1146,9 @@ const selectedAgentRoleTag = computed(() =>
 )
 const agentChatStateLabel = computed(() => {
   const st = selectedAgentMeta.value?.state
-  if (st === 'busy') return '工作中'
-  if (st === 'stopped') return '已停止'
-  return '待命'
+  if (st === 'busy') return t('townView.k3n4l5f163')
+  if (st === 'stopped') return t('townView.k3n58d1164')
+  return t('townView.k3zcvb115')
 })
 
 /* ============================================================
@@ -1267,10 +1269,10 @@ const agentChatColor = computed(() => {
 /** 对话类型标签(工业 HMI 小印章) */
 function chatKindLabel(kind: string): string {
   switch (kind) {
-    case 'artifact': return '交付'
+    case 'artifact': return t('townView.k3w9q9165')
     case 'delta': return '……'
-    case 'info': return '系统'
-    case 'error': return '异常'
+    case 'info': return t('townView.k44xa7166')
+    case 'error': return t('townView.k3zbgf167')
     default: return ''
   }
 }
@@ -1506,9 +1508,9 @@ watch(() => daq.nodes.map(n => `${n.id}:${n.state}`).join('|'), () => {
     const dev = n.deviceBindingId ? deviceTwins.byId(n.deviceBindingId)?.name : null
     const label = dev ?? n.name
     const val = `${n.value?.toFixed(tpl?.decimals ?? 2) ?? '--'} ${tpl?.unit ?? ''}`
-    if (n.state === 'alarm') raiseAlarm(`${label} ${tpl?.ch ?? ''}越限量程(${val})`, 'crit', n.name)
-    else if (n.state === 'warn') raiseAlarm(`${label} ${tpl?.ch ?? ''}进入预警带(${val})`, 'warn', n.name)
-    else if (prev !== 'ok' && n.state === 'ok') raiseAlarm(`${label} ${tpl?.ch ?? ''}恢复正常`, 'info', n.name)
+    if (n.state === 'alarm') raiseAlarm(t('townView.k113fir9195', { p0: label, p1: tpl?.ch ?? '', p2: val }), 'crit', n.name)
+    else if (n.state === 'warn') raiseAlarm(t('townView.k1knv89d196', { p0: label, p1: tpl?.ch ?? '', p2: val }), 'warn', n.name)
+    else if (prev !== 'ok' && n.state === 'ok') raiseAlarm(t('townView.ksjancw197', { p0: label, p1: tpl?.ch ?? '' }), 'info', n.name)
   }
 })
 
@@ -1778,7 +1780,7 @@ const boundDaqRows = computed(() => {
     return {
       daqId,
       name: t?.name ?? daqId,
-      ch: tpl?.ch ?? '数据通道',
+      ch: tpl?.ch ?? t('townView.k1ef3cls168'),
       icon: tpl?.icon ?? 'gateway',
       value: st ? fmtDaq(st) : '--',
       unit: st?.tpl.unit ?? tpl?.unit ?? '',
@@ -1877,7 +1879,7 @@ function doDcwWrite(node: DcwNodeView): void {
   if (raw == null || raw === '') return
   const w = dcwWindowOf(node)
   if (Number(raw) < w.lo || Number(raw) > w.hi) {
-    dcwWriteErrs[node.id] = `超出${w.src === 'recipe' ? '当前配方工艺窗口' : '节点量程'} ${Number.isFinite(w.lo) ? w.lo : '-∞'} ~ ${Number.isFinite(w.hi) ? w.hi : '+∞'}`
+    dcwWriteErrs[node.id] = t('townView.kbuyve5198', { p0: w.src === 'recipe' ? t('townView.kb251ac190') : t('townView.k1iwj796179'), p1: Number.isFinite(w.lo) ? w.lo : '-∞', p2: Number.isFinite(w.hi) ? w.hi : '+∞' })
     return
   }
   dcwWriteErrs[node.id] = ''
@@ -2040,7 +2042,7 @@ function toggleOrbit(): void {
   const sel = selected.value
   if (!s) return
   if (!sel) {
-    errorText.value = '请先在场景中选中一台设备'
+    errorText.value = t('townView.k15tn2fh169')
     return
   }
   if (sel.kind === 'device') {
@@ -2227,7 +2229,7 @@ onMounted(() => drawDonut())
 interface AlarmItem { id: number, txt: string, src: string, time: string, state: 0 | 1 | 2, level: 'warn' | 'crit' | 'info' }
 const alarms = ref<AlarmItem[]>([])
 let alarmTid = 0
-const ALARM_STATES = ['待处理', '处理中', '已确认'] as const
+const ALARM_STATES = [t('townView.k3ng94k170'), t('townView.k3mi2n0171'), t('townView.k3ncnxl172')] as const
 function raiseAlarm(txt: string, level: AlarmItem['level'] = 'warn', src = 'SYSTEM'): void {
   const d = new Date()
   const time = [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':')
@@ -2258,7 +2260,7 @@ const estop = ref(false)
 function toggleEstop(): void {
   estop.value = !estop.value
   raiseAlarm(
-    estop.value ? '紧急停止(E-STOP)已触发，产线全线停机' : '紧急停止已解除，产线恢复运行',
+    estop.value ? t('townView.kb157zk173') : t('townView.k1s9qzr9174'),
     estop.value ? 'crit' : 'info',
     'SYSTEM',
   )
@@ -2717,26 +2719,26 @@ onBeforeUnmount(() => {
             DIGITAL <em>TWIN</em>
           </div>
           <div class="brand-sub">
-            AGENTWORKSHOP · 数字孪生平台
+            AGENTWORKSHOP · {{ $t('townView.klyi8yg127') }}
           </div>
         </div>
       </div>
       <nav
         class="nav-tabs"
-        aria-label="场景模式"
+        :aria-label="$t('townView.k1c9jyta001')"
       >
         <div class="seg">
           <button
             :class="{ on: mode === 'browse' }"
             @click="mode === 'edit' && toggleMode()"
           >
-            运行
+            {{ $t('townView.k48dwh027') }}
           </button>
           <button
             :class="{ on: mode === 'edit' }"
             @click="mode === 'browse' && toggleMode()"
           >
-            编辑
+            {{ $t('townView.k45eb0028') }}
           </button>
         </div>
         <button
@@ -2745,7 +2747,7 @@ onBeforeUnmount(() => {
           :title="mode === 'edit' ? '把全部设备的位置/朝向/缩放写入数据库' : '运行模式只读'"
           @click="saveLayout"
         >
-          保存布局
+          {{ $t('townView.k1b3bk8t029') }}
         </button>
         <span
           v-if="saveState && saveState.state !== 'idle'"
@@ -2757,17 +2759,17 @@ onBeforeUnmount(() => {
         <span
           class="nav-chip mono"
           :class="{ 'nav-bell-warn': activeAlarmCount > 0 }"
-          title="活跃告警"
+          :title="$t('townView.k1fsi3ir002')"
         >◉ {{ activeAlarmCount }}</span>
         <span class="nav-chip mono">{{ fps }} FPS</span>
         <div
           class="avatar-chip"
-          title="当前用户"
+          :title="$t('townView.k1demf38003')"
         >
           <div class="avatar-fallback">
             {{ (userStore.user?.name ?? 'OP').slice(0, 2).toUpperCase() }}
           </div>
-          <span>{{ userStore.user?.name || '产线管理员' }}</span>
+          <span>{{ userStore.user?.name || $t('townView.k1pub99m139') }}</span>
         </div>
       </div>
     </header>
@@ -2778,7 +2780,7 @@ onBeforeUnmount(() => {
       <aside class="rail rail-left">
         <section class="panel">
           <div class="panel-hd">
-            <h3>设备资源</h3>
+            <h3>{{ $t('townView.k1k75lzy030') }}</h3>
             <span class="panel-tag">{{ deviceModels.length }}</span>
           </div>
           <WorkshopAssetLibrary class="lib-embed" />
@@ -2786,7 +2788,7 @@ onBeforeUnmount(() => {
 
         <section class="panel">
           <div class="panel-hd">
-            <h3>数采节点 · DAQ</h3>
+            <h3>{{ $t('townView.k2gwyas031') }}</h3>
             <span class="panel-tag">{{ daqTwins.length }}</span>
           </div>
           <!-- 采集总控(server DaqController:全局启停 + 缺省周期;所有节点到期由其统一调度) -->
@@ -2797,13 +2799,13 @@ onBeforeUnmount(() => {
               :title="daq.controller.running ? '暂停全部采集' : '恢复全部采集'"
               @click="daq.controllerAction(daq.controller.running ? 'stop' : 'start')"
             >
-              {{ daq.controller.running ? '采集中' : '已暂停' }}
+              {{ daq.controller.running ? $t('townView.k3w3j8f140') : $t('townView.k3n93ed175') }}
             </button>
             <label
               class="daq-ctl-cycle mono"
-              title="缺省采样周期(未单独设置周期的节点跟随此值)"
+              :title="$t('townView.khzlyf5004')"
             >
-              周期
+              {{ $t('townView.k3xg3w032') }}
               <input
                 type="number"
                 min="200"
@@ -2820,7 +2822,7 @@ onBeforeUnmount(() => {
               :key="tpl.id"
               class="daq-card"
               draggable="true"
-              :title="`${tpl.name} · ${tpl.ch} · 拖到设备旁自动绑定,量程 ${tpl.min} ~ ${tpl.max} ${tpl.unit}`"
+              :title="$t('townView.k1w6xehu187', { p0: tpl.name, p1: tpl.ch, p2: tpl.min, p3: tpl.max, p4: tpl.unit })"
               @dragstart="onDaqDragStart($event, tpl)"
             >
               <span class="daq-ico">
@@ -2841,7 +2843,7 @@ onBeforeUnmount(() => {
 
         <section class="panel">
           <div class="panel-hd">
-            <h3>智控节点 · DCW</h3>
+            <h3>{{ $t('townView.km7ayhi033') }}</h3>
             <span class="panel-tag">{{ dcw.nodes.length }}</span>
           </div>
           <div class="daq-list">
@@ -2850,7 +2852,7 @@ onBeforeUnmount(() => {
               :key="tpl.id"
               class="daq-card"
               draggable="true"
-              :title="`${tpl.name} · ${tpl.ch} · 设定值域 ${tpl.min} ~ ${tpl.max} ${tpl.unit} · 拖到设备旁自动绑定`"
+              :title="$t('townView.k1icez46188', { p0: tpl.name, p1: tpl.ch, p2: tpl.min, p3: tpl.max, p4: tpl.unit })"
               @dragstart="onDcwDragStart($event, tpl)"
             >
               <span class="daq-ico">
@@ -2871,7 +2873,7 @@ onBeforeUnmount(() => {
 
         <section class="panel">
           <div class="panel-hd">
-            <h3>场景管理</h3>
+            <h3>{{ $t('townView.k1c9n911034') }}</h3>
             <span class="panel-tag">{{ dockChannels.length }}</span>
           </div>
           <div class="scene-list">
@@ -2892,7 +2894,7 @@ onBeforeUnmount(() => {
               />
               <div class="scene-meta-wrap">
                 <span class="scene-name">{{ ch.name }}</span>
-                <span class="scene-meta">{{ ch.agentCount }} 员工 · {{ ch.placed ? '已放置' : '未放置' }}</span>
+                <span class="scene-meta">{{ ch.agentCount }} {{ $t('townView.k1brss7t128') }} {{ ch.placed ? $t('townView.k3n94g3141') : $t('townView.k3os7i3176') }}</span>
               </div>
               <span
                 v-if="ch.placed"
@@ -2928,13 +2930,13 @@ onBeforeUnmount(() => {
 
           <div class="stage-top">
             <div class="vp-title">
-              <h2>产线孪生总览</h2>
-              <span class="vp-id">CH · {{ activeChannelName || '加载中' }}</span>
+              <h2>{{ $t('townView.k1b0z4vr035') }}</h2>
+              <span class="vp-id">CH · {{ activeChannelName || $t('townView.k3lkuz3142') }}</span>
             </div>
             <div class="vp-tools">
               <button
                 class="vp-tool"
-                title="定位选中设备"
+                :title="$t('townView.k18d6wnb005')"
                 @click="locateSelected"
               >
                 <svg
@@ -2949,7 +2951,7 @@ onBeforeUnmount(() => {
               <button
                 class="vp-tool"
                 :class="{ on: orbitOn }"
-                title="自动环绕"
+                :title="$t('townView.k1io51dn006')"
                 @click="toggleOrbit"
               >
                 <svg
@@ -2964,7 +2966,7 @@ onBeforeUnmount(() => {
               <button
                 class="vp-tool"
                 :class="{ on: showCallouts }"
-                title="数据标注显隐"
+                :title="$t('townView.k1sgjlq8007')"
                 @click="showCallouts = !showCallouts"
               >
                 <svg
@@ -2978,7 +2980,7 @@ onBeforeUnmount(() => {
               </button>
               <button
                 class="vp-tool"
-                title="全屏"
+                :title="$t('townView.k3wuf0008')"
                 @click="fullscreenStage"
               >
                 <svg
@@ -2992,11 +2994,11 @@ onBeforeUnmount(() => {
           <div class="angle-chip">
             <select
               :value="viewPreset"
-              aria-label="视角预设"
+              :aria-label="$t('townView.k1k4j5i7009')"
               @change="onViewPreset($event)"
             >
               <option value="std">
-                3D 视角 · 标准
+                {{ $t('townView.kv72860036') }}
               </option>
               <option value="top">
                 俯视 · TOP
@@ -3040,7 +3042,7 @@ onBeforeUnmount(() => {
                 class="callout"
                 :class="{ warn: c.warn, near: c.near }"
                 :style="{ left: c.x + 'px', top: c.y + 'px' }"
-                title="点击选中该设备"
+                :title="$t('townView.k1ejxiwp010')"
                 @click="selectDeviceFromCallout(c.id)"
               >
                 <div class="co-label">
@@ -3050,7 +3052,7 @@ onBeforeUnmount(() => {
                   {{ c.value }}<small>{{ c.unit }}</small>
                 </div>
                 <div class="co-range">
-                  正常范围 {{ c.lo.toFixed(Math.min(2, (String(c.lo).split('.')[1] ?? '').length + 1)) }} – {{ c.hi.toFixed(Math.min(2, (String(c.hi).split('.')[1] ?? '').length + 1)) }}
+                  {{ $t('townView.k1faqmjb073') }} {{ c.lo.toFixed(Math.min(2, (String(c.lo).split('.')[1] ?? '').length + 1)) }} – {{ c.hi.toFixed(Math.min(2, (String(c.hi).split('.')[1] ?? '').length + 1)) }}
                 </div>
               </div>
             </div>
@@ -3067,10 +3069,10 @@ onBeforeUnmount(() => {
               </span>
               <div class="kpi-meta">
                 <div class="kpi-label">
-                  设备总数
+                  {{ $t('townView.k1k6xemt037') }}
                 </div>
                 <div class="kpi-val">
-                  {{ deviceCount }}<small>台</small>
+                  {{ deviceCount }}<small>{{ $t('townView.k49lh038') }}</small>
                 </div>
               </div>
             </div>
@@ -3083,10 +3085,10 @@ onBeforeUnmount(() => {
               </span>
               <div class="kpi-meta">
                 <div class="kpi-label">
-                  运行设备
+                  {{ $t('townView.k1l1a9t2039') }}
                 </div>
                 <div class="kpi-val">
-                  {{ runningCount }}<small>台</small>
+                  {{ runningCount }}<small>{{ $t('townView.k49lh038') }}</small>
                 </div>
               </div>
             </div>
@@ -3099,10 +3101,10 @@ onBeforeUnmount(() => {
               </span>
               <div class="kpi-meta">
                 <div class="kpi-label">
-                  活跃告警
+                  {{ $t('townView.k1fsi3ir002') }}
                 </div>
                 <div class="kpi-val">
-                  {{ activeAlarmCount }}<small>条</small>
+                  {{ activeAlarmCount }}<small>{{ $t('townView.k4dfq040') }}</small>
                 </div>
               </div>
             </div>
@@ -3115,10 +3117,10 @@ onBeforeUnmount(() => {
               </span>
               <div class="kpi-meta">
                 <div class="kpi-label">
-                  数采通道
+                  {{ $t('townView.k1emsai1041') }}
                 </div>
                 <div class="kpi-val">
-                  {{ daqTwins.length }}<small>路</small>
+                  {{ daqTwins.length }}<small>{{ $t('townView.k4l1w042') }}</small>
                 </div>
               </div>
             </div>
@@ -3135,7 +3137,7 @@ onBeforeUnmount(() => {
               </span>
               <div class="kpi-meta">
                 <div class="kpi-label">
-                  线体健康度
+                  {{ $t('townView.kbrxdq1043') }}
                 </div>
                 <div class="kpi-val">
                   {{ healthPct }}<small>%</small>
@@ -3148,8 +3150,8 @@ onBeforeUnmount(() => {
             v-if="blockCount === 0 && ready"
             class="empty-hint"
           >
-            <b>空场景</b>
-            <span>从左侧「设备资源 / 数采节点」拖入实体,开始搭建数字孪生空间</span>
+            <b>{{ $t('townView.k3rwxjc044') }}</b>
+            <span>{{ $t('townView.k1sa1eaj045') }}</span>
           </div>
 
           <!-- 频道边界编辑(浮动) -->
@@ -3160,50 +3162,50 @@ onBeforeUnmount(() => {
           >
             <div
               class="bp-title drag-grip"
-              title="拖动移动面板"
+              :title="$t('townView.k1d0rl5z011')"
               @pointerdown="onPanelGripDown($event, 'boundary')"
             >
               <span class="bp-name">{{ entities.channels[selectedChannel]?.name ?? selectedChannel.slice(0, 8) }}</span>
-              <span class="bp-sub">频道管理</span>
+              <span class="bp-sub">{{ $t('townView.k1mehlxs046') }}</span>
               <div class="bp-tabs">
                 <button
                   class="bp-tab"
                   :class="{ on: channelPanelTab === 'boundary' }"
                   @click="openChannelTab('boundary')"
                 >
-                  边界
+                  {{ $t('townView.k489ka047') }}
                 </button>
                 <button
                   class="bp-tab"
                   :class="{ on: channelPanelTab === 'members' }"
                   @click="openChannelTab('members')"
                 >
-                  成员 {{ channelMembers.length }}
+                  {{ $t('townView.k3ztf1129') }} {{ channelMembers.length }}
                 </button>
               </div>
             </div>
             <template v-if="channelPanelTab === 'boundary'">
               <div class="bp-row">
-                <span class="bp-label">形状</span>
+                <span class="bp-label">{{ $t('townView.k3zhy5048') }}</span>
                 <div class="bp-seg">
                   <button
                     class="seg-btn"
                     :class="{ on: boundaryDraft.shape === 'ellipse' }"
                     @click="boundaryDraft.shape = 'ellipse'; applyBoundaryDraft()"
                   >
-                    椭圆
+                    {{ $t('townView.k414bc049') }}
                   </button>
                   <button
                     class="seg-btn"
                     :class="{ on: boundaryDraft.shape === 'rect' }"
                     @click="boundaryDraft.shape = 'rect'; applyBoundaryDraft()"
                   >
-                    矩形
+                    {{ $t('townView.k43u0g050') }}
                   </button>
                 </div>
               </div>
               <div class="bp-row">
-                <span class="bp-label">横轴半径</span>
+                <span class="bp-label">{{ $t('townView.k1fbz4s1051') }}</span>
                 <input
                   v-model.number="boundaryDraft.radiusX"
                   class="bp-range"
@@ -3217,7 +3219,7 @@ onBeforeUnmount(() => {
                 <span class="bp-val">{{ Math.round(boundaryDraft.radiusX) }}</span>
               </div>
               <div class="bp-row">
-                <span class="bp-label">纵轴半径</span>
+                <span class="bp-label">{{ $t('townView.k1ighwgs052') }}</span>
                 <input
                   v-model.number="boundaryDraft.radiusZ"
                   class="bp-range"
@@ -3231,7 +3233,7 @@ onBeforeUnmount(() => {
                 <span class="bp-val">{{ Math.round(boundaryDraft.radiusZ) }}</span>
               </div>
               <div class="bp-row">
-                <span class="bp-label">朝向</span>
+                <span class="bp-label">{{ $t('townView.k40qab053') }}</span>
                 <input
                   v-model.number="boundaryDraft.rotationY"
                   class="bp-range"
@@ -3247,7 +3249,7 @@ onBeforeUnmount(() => {
             </template>
             <template v-else>
               <div class="bp-hint">
-                为频道成员选择 3D 角色模型(实时换装并持久化)
+                {{ $t('townView.kimxls2054') }}
               </div>
               <div class="member-list">
                 <div
@@ -3284,7 +3286,7 @@ onBeforeUnmount(() => {
                   v-if="channelMembers.length === 0"
                   class="bp-hint"
                 >
-                  该频道暂无成员
+                  {{ $t('townView.k419rbs055') }}
                 </div>
               </div>
             </template>
@@ -3294,19 +3296,19 @@ onBeforeUnmount(() => {
                 class="bp-btn save"
                 @click="saveChannelLayout"
               >
-                保存边界
+                {{ $t('townView.k1b3kp8f056') }}
               </button>
               <button
                 class="bp-btn danger"
                 @click="removeChannelFromScene"
               >
-                移除频道
+                {{ $t('townView.k1hs45qg057') }}
               </button>
               <button
                 class="bp-btn"
                 @click="onSelectChannel(null)"
               >
-                关闭
+                {{ $t('townView.k3x62t058') }}
               </button>
             </div>
           </div>
@@ -3332,7 +3334,7 @@ onBeforeUnmount(() => {
             class="loading-mask"
           >
             <div class="loading-spinner" />
-            <span class="loading-text">正在铺设数字孪生空间…</span>
+            <span class="loading-text">{{ $t('townView.kvjdqfg059') }}</span>
           </div>
         </div>
 
@@ -3340,11 +3342,11 @@ onBeforeUnmount(() => {
         <div class="dock">
           <section class="dock-card">
             <div class="dock-hd">
-              <h3>场景控制</h3>
-              <span class="dock-mode">{{ mode === 'edit' ? '编辑模式' : '运行模式' }}</span>
+              <h3>{{ $t('townView.k1c9iq23060') }}</h3>
+              <span class="dock-mode">{{ mode === 'edit' ? $t('townView.k1iipfcs143') : $t('townView.k1l147w1177') }}</span>
             </div>
             <div class="ctl-row">
-              <span class="ctl-name">环境光照</span>
+              <span class="ctl-name">{{ $t('townView.k1gizopz061') }}</span>
               <input
                 class="ctl-range"
                 type="range"
@@ -3357,7 +3359,7 @@ onBeforeUnmount(() => {
               <span class="ctl-val">{{ Math.round(exposure * 100) }}%</span>
             </div>
             <div class="ctl-row">
-              <span class="ctl-name">构造透明度</span>
+              <span class="ctl-name">{{ $t('townView.k1bcpqto062') }}</span>
               <input
                 class="ctl-range"
                 type="range"
@@ -3370,7 +3372,7 @@ onBeforeUnmount(() => {
               <span class="ctl-val">{{ Math.round(tintOpacity * 100) }}%</span>
             </div>
             <div class="ctl-row">
-              <span class="ctl-name">告警阈值</span>
+              <span class="ctl-name">{{ $t('townView.k1bztha1063') }}</span>
               <input
                 class="ctl-range"
                 type="range"
@@ -3385,8 +3387,8 @@ onBeforeUnmount(() => {
             <div class="ctl-row">
               <span
                 class="ctl-name"
-                title="相机靠近设备多少距离内显示数采数据卡"
-              >数采可视距离</span>
+                :title="$t('townView.kz71l1f012')"
+              >{{ $t('townView.ka4i1s9064') }}</span>
               <input
                 class="ctl-range"
                 type="range"
@@ -3397,16 +3399,16 @@ onBeforeUnmount(() => {
                 :style="{ '--fill': sliderPct(calloutNearDist, 0, 3000) }"
                 @input="calloutNearDist = Number(($event.target as HTMLInputElement).value)"
               >
-              <span class="ctl-val">{{ calloutNearDist === 0 ? '关' : `${calloutNearDist}` }}</span>
+              <span class="ctl-val">{{ calloutNearDist === 0 ? $t('townView.k493s144') : `${calloutNearDist}` }}</span>
             </div>
             <div class="ctl-row">
-              <span class="ctl-name">网格吸附</span>
+              <span class="ctl-name">{{ $t('townView.k1idc6pa065') }}</span>
               <button
                 class="snap-toggle"
                 :class="{ on: snap }"
                 @click="toggleSnap"
               >
-                {{ snap ? '开' : '关' }}
+                {{ snap ? $t('townView.k4bs5145') : $t('townView.k493s144') }}
               </button>
               <span class="ctl-val" />
             </div>
@@ -3415,7 +3417,7 @@ onBeforeUnmount(() => {
                 class="btn btn-primary"
                 @click="onResetView"
               >
-                重置视角
+                {{ $t('townView.k1lap9bs024') }}
               </button>
               <button
                 class="btn btn-ghost"
@@ -3423,21 +3425,21 @@ onBeforeUnmount(() => {
                 :title="mode === 'edit' ? '保存全部设备布局' : '运行模式只读'"
                 @click="saveLayout"
               >
-                保存布局
+                {{ $t('townView.k1b3bk8t029') }}
               </button>
               <button
                 class="btn btn-danger"
                 :class="{ armed: estop }"
                 @click="toggleEstop"
               >
-                紧急停止
+                {{ $t('townView.k1i046wf066') }}
               </button>
             </div>
           </section>
 
           <section class="dock-card">
             <div class="dock-hd">
-              <h3>趋势分析</h3>
+              <h3>{{ $t('townView.k1kfoef9067') }}</h3>
               <div class="trend-legend">
                 <button
                   v-for="t in daqTwins"
@@ -3461,7 +3463,7 @@ onBeforeUnmount(() => {
               <span
                 v-if="!daqTwins.length"
                 class="trend-empty"
-              >从左侧拖入数采节点,实时趋势将在此绘制</span>
+              >{{ $t('townView.k1uht2uv068') }}</span>
             </div>
           </section>
         </div>
@@ -3474,10 +3476,10 @@ onBeforeUnmount(() => {
           class="panel inspector"
         >
           <div class="panel-hd">
-            <h3>{{ selected.kind === 'device' ? (selectedIsDcw ? '智控节点' : selectedIsDaq ? '数采节点' : '设备实例') : selectedAgentRoleLabel }}</h3>
+            <h3>{{ selected.kind === 'device' ? (selectedIsDcw ? $t('townView.k1ekqxlt146') : selectedIsDaq ? $t('townView.k1empnnb178') : $t('townView.k1k6wg8j185')) : selectedAgentRoleLabel }}</h3>
             <button
               class="mini-btn"
-              title="取消选中"
+              :title="$t('townView.k1bsckft013')"
               @click="closeScale"
             >
               ✕
@@ -3502,16 +3504,16 @@ onBeforeUnmount(() => {
               class="daq-info"
             >
               <div class="daq-info-row">
-                <span>当前设定</span>
+                <span>{{ $t('townView.k1deqh0d069') }}</span>
                 <b class="cy">{{ selectedDcwNode?.value != null ? selectedDcwNode.value.toFixed(selectedDcwNode.decimals) : '--' }} {{ selectedDcwNode?.unit }}</b>
               </div>
               <div class="daq-info-row">
-                <span>{{ selectedDcwWindow?.src === 'recipe' ? '配方工艺窗口' : '节点量程' }}</span>
+                <span>{{ selectedDcwWindow?.src === 'recipe' ? $t('townView.kq2jssk147') : $t('townView.k1iwj796179') }}</span>
                 <b :class="{ amber: selectedDcwWindow?.src === 'recipe' }">{{ dcwWinLabel(selectedDcwNode) }}</b>
               </div>
               <div class="daq-info-row">
-                <span>绑定设备</span>
-                <b>{{ selectedDcwDeviceName || '未绑定' }}</b>
+                <span>{{ $t('townView.k1i8rtqt070') }}</span>
+                <b>{{ selectedDcwDeviceName || $t('townView.k3own4q148') }}</b>
               </div>
               <div class="daq-bind-bar">
                 <input
@@ -3545,7 +3547,7 @@ onBeforeUnmount(() => {
                   class="bind-select"
                 >
                   <option value="">
-                    选择设备实例…
+                    {{ $t('townView.kjo6ekr071') }}
                   </option>
                   <option
                     v-for="dv in deviceTwins.twins.filter(x => !isLegacyDaqTwin(x) && x.id !== (selected?.id ?? ''))"
@@ -3560,7 +3562,7 @@ onBeforeUnmount(() => {
                   :disabled="!selectedDcwDeviceName && !dcwBindPick"
                   @click="selectedDcwDeviceName ? unbindSelectedDcw() : bindSelectedDcw()"
                 >
-                  {{ selectedDcwDeviceName ? '解绑' : '绑定' }}
+                  {{ selectedDcwDeviceName ? $t('townView.k479eh149') : $t('townView.k452a8102') }}
                 </button>
               </div>
             </div>
@@ -3569,16 +3571,16 @@ onBeforeUnmount(() => {
               class="daq-info"
             >
               <div class="daq-info-row">
-                <span>实时值</span>
+                <span>{{ $t('townView.k3mv305072') }}</span>
                 <b class="cy">{{ selectedDaqSim ? fmtDaq(selectedDaqSim) : '--' }} {{ selectedDaqSim?.tpl.unit }}</b>
               </div>
               <div class="daq-info-row">
-                <span>正常范围</span>
+                <span>{{ $t('townView.k1faqmjb073') }}</span>
                 <b>{{ selectedDaqSim?.tpl.min }} ~ {{ selectedDaqSim?.tpl.max }}</b>
               </div>
               <div class="daq-info-row">
-                <span>绑定设备</span>
-                <b>{{ daqBoundDeviceName || '未绑定' }}</b>
+                <span>{{ $t('townView.k1i8rtqt070') }}</span>
+                <b>{{ daqBoundDeviceName || $t('townView.k3own4q148') }}</b>
               </div>
               <div
                 v-if="mode === 'edit'"
@@ -3589,7 +3591,7 @@ onBeforeUnmount(() => {
                   class="bind-select"
                 >
                   <option value="">
-                    选择设备实例…
+                    {{ $t('townView.kjo6ekr071') }}
                   </option>
                   <option
                     v-for="dv in deviceTwins.twins.filter(x => !isLegacyDaqTwin(x) && x.id !== (selected?.id ?? ''))"
@@ -3604,7 +3606,7 @@ onBeforeUnmount(() => {
                   :disabled="!daqBoundDeviceName && !bindPick"
                   @click="daqBoundDeviceName ? unbindDaq(selected.id) : bindDaq(selected.id, bindPick); bindPick = ''"
                 >
-                  {{ daqBoundDeviceName ? '解绑' : '绑定' }}
+                  {{ daqBoundDeviceName ? $t('townView.k479eh149') : $t('townView.k452a8102') }}
                 </button>
               </div>
               <!-- 节点单点控制(server DaqNode 参数:启停/周期/量程/预警带;REST 落库即时生效) -->
@@ -3613,7 +3615,7 @@ onBeforeUnmount(() => {
                 class="daq-node-ctl"
               >
                 <div class="daq-info-row">
-                  <span>采样周期</span>
+                  <span>{{ $t('townView.k1l6g2ga074') }}</span>
                   <span class="daq-th-inputs">
                     <input
                       v-model.number="daqIntervalDraft"
@@ -3623,11 +3625,11 @@ onBeforeUnmount(() => {
                       step="100"
                       class="daq-num"
                       @change="onDaqIntervalCommit"
-                    ><small>ms(空=跟随全局)</small>
+                    ><small>{{ $t('townView.k1or92b075') }}</small>
                   </span>
                 </div>
                 <div class="daq-info-row">
-                  <span>预警带</span>
+                  <span>{{ $t('townView.k3x5tpx076') }}</span>
                   <span class="daq-th-inputs">
                     <input
                       :value="selectedDaqNode.warnLow"
@@ -3647,7 +3649,7 @@ onBeforeUnmount(() => {
                   </span>
                 </div>
                 <div class="daq-info-row">
-                  <span>硬限量程</span>
+                  <span>{{ $t('townView.k1hjj0jf077') }}</span>
                   <span class="daq-th-inputs">
                     <input
                       :value="selectedDaqNode.min"
@@ -3667,23 +3669,23 @@ onBeforeUnmount(() => {
                   </span>
                 </div>
                 <div class="daq-info-row">
-                  <span>采集</span>
+                  <span>{{ $t('townView.k48tki078') }}</span>
                   <button
                     class="bind-add-btn"
                     :class="{ warn: selectedDaqNode.enabled }"
                     @click="daq.patchNode(selected.id, { enabled: !selectedDaqNode.enabled })"
                   >
-                    {{ selectedDaqNode.enabled ? '停用本节点' : '启用本节点' }}
+                    {{ selectedDaqNode.enabled ? $t('townView.k1wv0nyo150') : $t('townView.kh1586b180') }}
                   </button>
                 </div>
                 <div class="daq-info-row">
-                  <span>删除</span>
+                  <span>{{ $t('townView.k3xakp079') }}</span>
                   <button
                     class="bind-add-btn danger"
-                    title="删除该数采节点(server 实体一并移除)"
+                    :title="$t('townView.kpwutri014')"
                     @click="removeSelectedDevice()"
                   >
-                    删除节点
+                    {{ $t('townView.k1bpp30k080') }}
                   </button>
                 </div>
               </div>
@@ -3691,16 +3693,16 @@ onBeforeUnmount(() => {
                 v-else
                 class="ins-empty"
               >
-                运行模式 · 只读
+                {{ $t('townView.kzk5dfx081') }}
               </div>
             </div>
             <template v-else>
               <div class="obj-row">
-                <span class="obj-label">名称</span>
+                <span class="obj-label">{{ $t('townView.k3xhia082') }}</span>
                 <input
                   v-model="objNameDraft"
                   class="obj-input"
-                  placeholder="设备名称"
+                  :placeholder="$t('townView.k1k6vbaf015')"
                   :disabled="mode !== 'edit'"
                   :title="mode === 'edit' ? '设备名称' : '运行模式只读'"
                   @change="onObjNameCommit"
@@ -3708,7 +3710,7 @@ onBeforeUnmount(() => {
                 >
               </div>
               <div class="obj-row">
-                <span class="obj-label">模型</span>
+                <span class="obj-label">{{ $t('townView.k41amp083') }}</span>
                 <select
                   class="obj-select"
                   :value="scene3dRef?.getDeviceModelRef?.(selected.id) ?? ''"
@@ -3727,7 +3729,7 @@ onBeforeUnmount(() => {
 
               <!-- 数采绑定(设计稿 bind-row:图标 + 通道 + 实时值 + 迷你折线 + 解绑;运行模式只读展示) -->
               <div class="sect-hd">
-                数据绑定 · {{ boundDaqRows.length }} 路通道
+                {{ $t('townView.k1vtyk05130') }} {{ boundDaqRows.length }} {{ $t('townView.k3vfpz5138') }}
               </div>
               <div
                 v-for="r in boundDaqRows"
@@ -3754,7 +3756,7 @@ onBeforeUnmount(() => {
                 <button
                   v-if="mode === 'edit'"
                   class="bind-x"
-                  title="解除绑定"
+                  :title="$t('townView.k1k73omv016')"
                   @click="unbindDaq(r.daqId)"
                 >
                   ✕
@@ -3764,7 +3766,7 @@ onBeforeUnmount(() => {
                 v-if="!boundDaqRows.length"
                 class="ins-empty"
               >
-                暂无数据通道 · 拖入数采节点靠近此设备即可自动绑定
+                {{ $t('townView.kgpuqhb084') }}
               </div>
               <div
                 v-if="mode === 'edit'"
@@ -3774,7 +3776,7 @@ onBeforeUnmount(() => {
                   class="bind-add"
                   @click="bindPopOpen = !bindPopOpen"
                 >
-                  ＋ 添加数采通道
+                  {{ $t('townView.kvm0lin085') }}
                 </button>
                 <div
                   v-if="bindPopOpen"
@@ -3797,7 +3799,7 @@ onBeforeUnmount(() => {
 
               <!-- 智控设定(三段式仪表卡:身份行 / 工艺窗口带 / 下发行) -->
               <div class="sect-hd">
-                智控设定 · {{ boundDcwRows.length }} 路
+                {{ $t('townView.ktzir2t131') }} {{ boundDcwRows.length }} {{ $t('townView.k4l1w042') }}
               </div>
               <div
                 v-for="r in boundDcwRows"
@@ -3816,14 +3818,14 @@ onBeforeUnmount(() => {
                     <span class="bind-label">{{ r.ch }}<i
                       v-if="r.rMin != null || r.rMax != null"
                       class="dcw-tag"
-                    >配方</i></span>
+                    >{{ $t('townView.k48grv086') }}</i></span>
                     <span class="dcw-name">{{ r.name }}</span>
                   </span>
                   <span class="dcw-cur"><b>{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}</b><i>{{ r.unit }}</i></span>
                   <button
                     v-if="mode === 'edit'"
                     class="bind-x"
-                    title="解除绑定"
+                    :title="$t('townView.k1k73omv016')"
                     @click="unbindDcw(r.dcwId)"
                   >
                     ✕
@@ -3833,7 +3835,7 @@ onBeforeUnmount(() => {
                   class="dcw-win"
                   :class="{ recipe: r.rMin != null || r.rMax != null }"
                 >
-                  <em>{{ r.rMin != null || r.rMax != null ? '配方窗口' : '全局量程' }}</em>
+                  <em>{{ r.rMin != null || r.rMax != null ? $t('townView.k1l3m0hx151') : $t('townView.k1bc6rqf181') }}</em>
                   <span class="dcw-win-num">{{ r.rMin ?? '-∞' }}</span>
                   <span class="dcw-win-track"><i :style="{ left: `${dcwMarkPct(r)}%` }" /></span>
                   <span class="dcw-win-num">{{ r.rMax ?? '+∞' }}</span>
@@ -3849,7 +3851,7 @@ onBeforeUnmount(() => {
                   <button
                     class="dcw-send"
                     :disabled="dcwWriteDrafts[r.dcwId] == null || dcwWriteDrafts[r.dcwId] === ''"
-                    title="下发 write(工程设定值;越窗将被配方联锁拒绝)"
+                    :title="$t('townView.k15t7izc017')"
                     @click="doDcwWrite(dcw.nodeById(r.dcwId)!)"
                   >
                     write
@@ -3864,7 +3866,7 @@ onBeforeUnmount(() => {
                 v-if="!boundDcwRows.length"
                 class="ins-empty"
               >
-                暂无智控通道 · 拖入智控节点靠近此设备即可自动绑定
+                {{ $t('townView.k10smf24087') }}
               </div>
               <div
                 v-if="mode === 'edit'"
@@ -3874,7 +3876,7 @@ onBeforeUnmount(() => {
                   class="bind-add"
                   @click="dcwBindPopOpen = !dcwBindPopOpen"
                 >
-                  ＋ 添加智控通道
+                  {{ $t('townView.kvk1vh5088') }}
                 </button>
                 <div
                   v-if="dcwBindPopOpen"
@@ -3906,21 +3908,21 @@ onBeforeUnmount(() => {
                     :class="{ on: tMode === 'translate' }"
                     @click="setTMode('translate')"
                   >
-                    移动 G
+                    {{ $t('townView.k1hg3167089') }}
                   </button>
                   <button
                     class="seg-btn"
                     :class="{ on: tMode === 'rotate' }"
                     @click="setTMode('rotate')"
                   >
-                    旋转 R
+                    {{ $t('townView.k1enlg7i090') }}
                   </button>
                   <button
                     class="seg-btn"
                     :class="{ on: tMode === 'scale' }"
                     @click="setTMode('scale')"
                   >
-                    缩放 S
+                    {{ $t('townView.k1ibjg3j091') }}
                   </button>
                 </div>
                 <div class="scale-row">
@@ -3947,7 +3949,7 @@ onBeforeUnmount(() => {
                     :class="{ armed: deviceDeleteArmed === selected.id }"
                     @click="removeSelectedDevice"
                   >
-                    {{ deviceDeleteArmed === selected.id ? '再次点击确认删除' : '删除设备实例' }}
+                    {{ deviceDeleteArmed === selected.id ? $t('townView.k1w10xa5152') : $t('townView.k121kfef182') }}
                   </button>
                 </div>
               </template>
@@ -3955,7 +3957,7 @@ onBeforeUnmount(() => {
                 v-else
                 class="ins-empty"
               >
-                运行模式 · 只读(切换「编辑」可调整变换/删除)
+                {{ $t('townView.kt0i3y2092') }}
               </div>
             </template>
           </template>
@@ -3981,12 +3983,12 @@ onBeforeUnmount(() => {
                     v-if="selectedAgentMeta?.harness"
                     class="chat-harness"
                   >{{ selectedAgentMeta.harness.toUpperCase() }}</span>
-                  <span class="chat-count">{{ agentHistory.length + agentChatRows.length }} 条</span>
+                  <span class="chat-count">{{ agentHistory.length + agentChatRows.length }} {{ $t('townView.k4dfq040') }}</span>
                 </span>
               </div>
             </div>
             <div class="obj-row">
-              <span class="obj-label">模型</span>
+              <span class="obj-label">{{ $t('townView.k41amp083') }}</span>
               <select
                 class="obj-select"
                 :value="(scene3dRef?.getAgentModel?.(selected.id) ?? '') || 'hero-3d'"
@@ -4004,23 +4006,23 @@ onBeforeUnmount(() => {
             </div>
             <div class="obj-sep" />
             <div class="obj-row">
-              <span class="obj-label">活动范围</span>
+              <span class="obj-label">{{ $t('townView.k1fix3hb093') }}</span>
               <span class="range-status">{{ agentRangeStatusText }}</span>
               <button
                 v-if="mode === 'edit'"
                 class="obj-mini"
                 :class="{ on: agentDrawingRange }"
-                title="在场景中拖动框选,确定该角色的移动范围"
+                :title="$t('townView.k13enoy3018')"
                 @click="onToggleRangeDraw"
               >
-                {{ agentDrawingRange ? '绘制中' : '框选绘制' }}
+                {{ agentDrawingRange ? $t('townView.k3slzhc153') : $t('townView.k1f1xmci183') }}
               </button>
             </div>
 
             <!-- 工业节点绑定(数采/数控工具授权 + 控制模式 + 手动确认审批) -->
             <div class="obj-sep" />
             <div class="sect-hd">
-              工业节点绑定
+              {{ $t('townView.k1p7nru2094') }}
             </div>
             <div
               v-for="b in agentBindings"
@@ -4031,27 +4033,27 @@ onBeforeUnmount(() => {
                 class="ins-chip"
                 :class="b.kind === 'dcw' ? 'accent' : ''"
                 style="flex: none;"
-              >{{ b.kind === 'dcw' ? '数控' : '数采' }}</span>
+              >{{ b.kind === 'dcw' ? $t('townView.k40ifw097') : $t('townView.k40rjw098') }}</span>
               <span class="bind-meta">
                 <span class="bind-label">{{ bindingNodeName(b) }}</span>
                 <select
                   class="bind-select"
                   style="margin-top: 3px;"
                   :value="b.mode"
-                  title="自动 = 工具调用直接执行;手动 = 每次下发需在此批准"
+                  :title="$t('townView.khqvwix019')"
                   @change="setBindingMode(b.id, ($event.target as HTMLSelectElement).value as 'auto' | 'manual')"
                 >
                   <option value="auto">
-                    自动执行
+                    {{ $t('townView.k1io1ylm095') }}
                   </option>
                   <option value="manual">
-                    手动确认
+                    {{ $t('townView.k1duyr8q096') }}
                   </option>
                 </select>
               </span>
               <button
                 class="bind-x"
-                title="解除绑定"
+                :title="$t('townView.k1k73omv016')"
                 @click="unbindAgentNode(b.id)"
               >
                 ✕
@@ -4074,10 +4076,10 @@ onBeforeUnmount(() => {
                 style="flex: none; width: 62px;"
               >
                 <option value="dcw">
-                  数控
+                  {{ $t('townView.k40ifw097') }}
                 </option>
                 <option value="daq">
-                  数采
+                  {{ $t('townView.k40rjw098') }}
                 </option>
               </select>
               <select
@@ -4085,7 +4087,7 @@ onBeforeUnmount(() => {
                 class="bind-select"
               >
                 <option value="">
-                  选择节点…
+                  {{ $t('townView.kurjldk099') }}
                 </option>
                 <template v-if="agentBindKind === 'dcw'">
                   <option
@@ -4112,10 +4114,10 @@ onBeforeUnmount(() => {
                 style="flex: none; width: 76px;"
               >
                 <option value="auto">
-                  自动
+                  {{ $t('townView.k45kpj100') }}
                 </option>
                 <option value="manual">
-                  手动
+                  {{ $t('townView.k3zul4101') }}
                 </option>
               </select>
               <button
@@ -4123,7 +4125,7 @@ onBeforeUnmount(() => {
                 :disabled="!agentBindNodeId"
                 @click="bindAgentNode"
               >
-                绑定
+                {{ $t('townView.k452a8102') }}
               </button>
             </div>
 
@@ -4133,7 +4135,7 @@ onBeforeUnmount(() => {
                 class="sect-hd"
                 style="color: var(--hud-amber);"
               >
-                待审批下发 · {{ pendingApprovals.length }}
+                {{ $t('townView.k1gk2jg7132') }} {{ pendingApprovals.length }}
               </div>
               <div
                 v-for="ap in pendingApprovals"
@@ -4147,7 +4149,7 @@ onBeforeUnmount(() => {
                   v-model="approvalComments[ap.id]"
                   class="dcw-write input-inline"
                   style="width: 100%; margin-top: 5px;"
-                  placeholder="备注(随结果返回给 Agent)…"
+                  :placeholder="$t('townView.keztqrn020')"
                 >
                 <div
                   class="daq-bind-bar"
@@ -4157,39 +4159,39 @@ onBeforeUnmount(() => {
                     class="bind-add-btn"
                     @click="decideApproval(ap.id, true)"
                   >
-                    ✓ 批准执行
+                    {{ $t('townView.kslcozu103') }}
                   </button>
                   <button
                     class="bind-add-btn danger"
                     @click="decideApproval(ap.id, false)"
                   >
-                    ✕ 拒绝
+                    {{ $t('townView.k14gu3rd104') }}
                   </button>
                 </div>
               </div>
             </template>
             <template v-if="agentRangeDraft && mode === 'edit'">
               <div class="obj-row">
-                <span class="obj-label">形状</span>
+                <span class="obj-label">{{ $t('townView.k3zhy5048') }}</span>
                 <div class="bp-seg">
                   <button
                     class="seg-btn"
                     :class="{ on: agentRangeDraft.shape === 'ellipse' }"
                     @click="agentRangeDraft.shape = 'ellipse'; applyAgentRangeDraft()"
                   >
-                    椭圆
+                    {{ $t('townView.k414bc049') }}
                   </button>
                   <button
                     class="seg-btn"
                     :class="{ on: agentRangeDraft.shape === 'rect' }"
                     @click="agentRangeDraft.shape = 'rect'; applyAgentRangeDraft()"
                   >
-                    矩形
+                    {{ $t('townView.k43u0g050') }}
                   </button>
                 </div>
               </div>
               <div class="obj-row">
-                <span class="obj-label">横轴</span>
+                <span class="obj-label">{{ $t('townView.k41lwj105') }}</span>
                 <input
                   v-model.number="agentRangeDraft.radiusX"
                   class="obj-range"
@@ -4203,7 +4205,7 @@ onBeforeUnmount(() => {
                 <span class="bp-val">{{ Math.round(agentRangeDraft.radiusX) }}</span>
               </div>
               <div class="obj-row">
-                <span class="obj-label">纵轴</span>
+                <span class="obj-label">{{ $t('townView.k45bta106') }}</span>
                 <input
                   v-model.number="agentRangeDraft.radiusZ"
                   class="obj-range"
@@ -4220,23 +4222,23 @@ onBeforeUnmount(() => {
                 class="obj-mini danger"
                 @click="onClearAgentRange"
               >
-                清除范围(回退频道)
+                {{ $t('townView.k1w45mzc107') }}
               </button>
             </template>
             <div
               v-else
               class="ins-empty"
             >
-              未设置:沿用频道边界活动;点「框选绘制」定制
+              {{ $t('townView.k14s8urm108') }}
             </div>
 
             <!-- 会话记录(侧边信息;历史 + 实时,不再悬浮于场景) -->
             <div class="obj-sep" />
             <div class="sect-hd chat-sect">
-              会话记录 · {{ agentChatTitle }}
+              {{ $t('townView.k1ghjbfc133') }} {{ agentChatTitle }}
               <button
                 class="mini-btn chat-refresh"
-                title="重新拉取该角色的历史对话"
+                :title="$t('townView.k15avt7g021')"
                 @click="onRefreshHistory"
               >
                 {{ historyLoading ? '…' : '↻' }}
@@ -4250,11 +4252,11 @@ onBeforeUnmount(() => {
                 v-if="historyLoading"
                 class="rpg-note"
               >
-                正在读取历史对话…
+                {{ $t('townView.kkhlx5h109') }}
               </div>
               <template v-if="agentHistory.length">
                 <div class="rpg-divider">
-                  历史记录 · {{ agentHistory.length }}
+                  {{ $t('townView.k768cnt134') }} {{ agentHistory.length }}
                 </div>
                 <div
                   v-for="r in agentHistory"
@@ -4276,7 +4278,7 @@ onBeforeUnmount(() => {
                 v-if="agentChatRows.length"
                 class="rpg-divider live"
               >
-                实时 · {{ agentChatRows.length }}
+                {{ $t('townView.k1cwz73k135') }} {{ agentChatRows.length }}
               </div>
               <div
                 v-for="r in agentChatRows"
@@ -4293,13 +4295,13 @@ onBeforeUnmount(() => {
                 class="rpg-typing"
               >
                 <span class="ty-dot" /><span class="ty-dot" /><span class="ty-dot" />
-                <span class="ty-label">执行中</span>
+                <span class="ty-label">{{ $t('townView.k3o5tz9110') }}</span>
               </div>
               <div
                 v-if="!historyLoading && !agentHistory.length && !agentChatRows.length"
                 class="rpg-note"
               >
-                暂无对话 · 该员工尚未发言
+                {{ $t('townView.k1qkqld7111') }}
               </div>
             </div>
           </template>
@@ -4307,7 +4309,7 @@ onBeforeUnmount(() => {
 
         <section class="panel">
           <div class="panel-hd">
-            <h3>设备运行状态</h3>
+            <h3>{{ $t('townView.k17dkhgd112') }}</h3>
           </div>
           <div class="health-body">
             <div class="donut-wrap">
@@ -4318,7 +4320,7 @@ onBeforeUnmount(() => {
               />
               <div class="donut-center">
                 <b>{{ healthPct }}%</b>
-                <span>设备健康度</span>
+                <span>{{ $t('townView.k7h1nxo113') }}</span>
               </div>
             </div>
             <div class="health-legend">
@@ -4327,7 +4329,7 @@ onBeforeUnmount(() => {
                   class="hl-dot"
                   :style="{ background: 'var(--hud-accent)' }"
                 />
-                运行中
+                {{ $t('townView.k3vp67i114') }}
                 <span class="n">{{ runningCount }}</span>
               </div>
               <div class="hl-row">
@@ -4335,7 +4337,7 @@ onBeforeUnmount(() => {
                   class="hl-dot"
                   :style="{ background: 'var(--hud-amber)' }"
                 />
-                待命
+                {{ $t('townView.k3zcvb115') }}
                 <span class="n">{{ idleCount }}</span>
               </div>
               <div class="hl-row">
@@ -4343,7 +4345,7 @@ onBeforeUnmount(() => {
                   class="hl-dot"
                   :style="{ background: 'var(--hud-danger)' }"
                 />
-                告警
+                {{ $t('townView.k3xmid116') }}
                 <span class="n">{{ alarmCount }}</span>
               </div>
             </div>
@@ -4352,7 +4354,7 @@ onBeforeUnmount(() => {
 
         <section class="panel">
           <div class="panel-hd">
-            <h3>关键设备监控</h3>
+            <h3>{{ $t('townView.k1q247fn117') }}</h3>
             <span class="panel-tag">{{ deviceTwins.twins.length }}</span>
           </div>
           <WorkshopDeviceTwinPanel
@@ -4365,11 +4367,11 @@ onBeforeUnmount(() => {
 
         <section class="panel">
           <div class="panel-hd">
-            <h3>实时告警</h3>
-            <span class="panel-tag">{{ activeAlarmCount }} 条</span>
+            <h3>{{ $t('townView.k1cxf749118') }}</h3>
+            <span class="panel-tag">{{ activeAlarmCount }} {{ $t('townView.k4dfq040') }}</span>
             <button
               class="mini-btn"
-              title="全部确认"
+              :title="$t('townView.k1bkswpz022')"
               @click="clearAlarms"
             >
               ✓
@@ -4410,14 +4412,14 @@ onBeforeUnmount(() => {
               v-if="!alarms.length"
               class="al-empty"
             >
-              暂无告警，产线运行平稳
+              {{ $t('townView.kjz544r119') }}
             </div>
           </div>
         </section>
 
         <section class="panel">
           <div class="panel-hd">
-            <h3>实时事件</h3>
+            <h3>{{ $t('townView.k1cxdtq2120') }}</h3>
             <span class="panel-tag">{{ ticker.length }}</span>
           </div>
           <div class="event-list">
@@ -4440,19 +4442,19 @@ onBeforeUnmount(() => {
               v-if="!ticker.length"
               class="event-empty"
             >
-              事件总线待命
+              {{ $t('townView.k2uk6ua121') }}
             </div>
           </div>
         </section>
 
         <section class="panel">
           <div class="panel-hd">
-            <h3>3D 视图导航</h3>
+            <h3>{{ $t('townView.kjug2jq122') }}</h3>
           </div>
           <div class="mm-body">
             <div
               class="mm-wrap"
-              title="RPG 导航图 · 准星=镜头 · 拖动平移 · 点击聚焦 · 滚轮同步视角缩放"
+              :title="$t('townView.klfwiqg023')"
             >
               <canvas
                 ref="navCanvas"
@@ -4467,7 +4469,7 @@ onBeforeUnmount(() => {
             <div class="mm-col">
               <button
                 class="vp-tool"
-                title="重置视角"
+                :title="$t('townView.k1lap9bs024')"
                 @click="onResetView"
               >
                 <svg
@@ -4477,7 +4479,7 @@ onBeforeUnmount(() => {
               </button>
               <button
                 class="vp-tool"
-                title="缩小视角(小地图同步)"
+                :title="$t('townView.kav8a8k025')"
                 @click="scene3dRef?.zoomBy(0.22)"
               >
                 <svg
@@ -4491,7 +4493,7 @@ onBeforeUnmount(() => {
               </button>
               <button
                 class="vp-tool"
-                title="放大视角(小地图同步)"
+                :title="$t('townView.k1u7uce9026')"
                 @click="scene3dRef?.zoomBy(-0.18)"
               >
                 <svg
@@ -4506,7 +4508,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="mm-meta mono">
-            准星=镜头 · 同步视角 ×{{ navScale.toFixed(1) }} · {{ minimap?.devices?.length ?? 0 }} 设备
+            {{ $t('townView.k1gaaodq136') }}{{ navScale.toFixed(1) }} · {{ minimap?.devices?.length ?? 0 }} {{ $t('townView.k47e16126') }}
           </div>
         </section>
       </aside>
@@ -4518,17 +4520,16 @@ onBeforeUnmount(() => {
         <span
           class="sb-dot"
           :class="{ red: conn.state !== 'open' }"
-        />系统状态 <b>{{ conn.state === 'open' ? '正常' : syncing ? '同步中' : '离线' }}</b>
+        />{{ $t('townView.k1i4g246123') }} <b>{{ conn.state === 'open' ? $t('townView.k41k5c154') : syncing ? $t('townView.k3lmtk3184') : $t('townView.k44c2n186') }}</b>
       </span>
       <span class="sb-stats">
-        频道 <b>{{ blockCount }}</b><i>·</i>员工 <b>{{ agentCount }}</b><i>·</i>设备 <b>{{ deviceCount }}</b>
+        {{ $t('townView.k4a0jt124') }} <b>{{ blockCount }}</b><i>·</i>{{ $t('townView.k3xdvm125') }} <b>{{ agentCount }}</b><i>·</i>{{ $t('townView.k47e16126') }} <b>{{ deviceCount }}</b>
       </span>
       <span class="sb-lat mono">
         {{ fps }} FPS
       </span>
       <span class="copy">
-        © 2026 ABO · DIGITAL TWIN · 演示数据为模拟信号
-      </span>
+        © 2026 ABO · DIGITAL TWIN · {{ $t('townView.k1h5gxpf137') }}</span>
     </footer>
 
     <!-- 加载遮罩(全页) -->
@@ -4538,7 +4539,7 @@ onBeforeUnmount(() => {
       class="loading-mask"
     >
       <div class="loading-spinner" />
-      <span class="loading-text">正在铺设数字孪生空间…</span>
+      <span class="loading-text">{{ $t('townView.kvjdqfg059') }}</span>
     </div>
   </div>
 </template>

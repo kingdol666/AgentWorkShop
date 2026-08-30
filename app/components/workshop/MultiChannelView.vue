@@ -9,6 +9,8 @@ import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useEventsStore } from '@/app/stores/workshop/events'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
+const { t } = useI18n()
+
 const props = defineProps<{ wsId: string }>()
 const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()
 
@@ -54,12 +56,12 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
     case 'task.progress': return `${String(p.progress ?? '')}%`
     case 'agent.delta': return `…${String(p.delta ?? '').slice(-24)}`
     case 'agent.message': return `${String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 40)}`
-    case 'a2a.message': return `消息 ${String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 30)}`
+    case 'a2a.message': return `文本 ${String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 40)}`
     case 'a2a.artifact': return `交付 ${String((p.artifact as { name?: string } | undefined)?.name ?? '')}`
-    case 'memory.saved': return `记忆 ${String(p.title ?? '')}`
-    case 'agent.member': return `成员 ${String(p.op ?? '')} ${String(p.name ?? '')}`
+    case 'memory.saved': return t('multiChannelView.kfvue7n009', { p0: String(p.title ?? '') })
+    case 'agent.member': return t('multiChannelView.khq39oe010', { p0: String(p.op ?? ''), p1: String(p.name ?? '') })
     case 'agent.status': return `${String(p.state)}`
-    case 'error': return `错误 ${String(p.code ?? '')}`
+    case 'error': return t('multiChannelView.k16wopr9011', { p0: String(p.code ?? '') })
     default: return e.type
   }
 }
@@ -71,7 +73,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
       v-if="columns.length === 0"
       class="empty"
     >
-      左侧挂载多个 Channel 后在此同屏观察
+      {{ $t('multiChannelView.k1bfi9ms001') }}
     </div>
     <template
       v-for="col in columns"
@@ -84,8 +86,8 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
         <div class="col-head">
           <span class="col-name">{{ col.name }}</span>
           <span class="col-meta">
-            <template v-if="col.synced">{{ col.agents }}a / 忙{{ col.busy }} / 任务{{ col.activeTasks }} / seq{{ col.seq }}</template>
-            <template v-else>同步中…</template>
+            <template v-if="col.synced">{{ col.agents }}a / {{ $t('multiChannelView.k4by6003') }}{{ col.busy }} / {{ $t('multiChannelView.k3wcox005') }}{{ col.activeTasks }} / seq{{ col.seq }}</template>
+            <template v-else>{{ $t('multiChannelView.k1bst7s9002') }}</template>
           </span>
         </div>
         <div class="col-body">
@@ -93,7 +95,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
             v-if="col.items.length === 0"
             class="col-empty"
           >
-            {{ col.synced ? '暂无事件' : '同步中…' }}
+            {{ col.synced ? $t('multiChannelView.k1el0s5k004') : $t('multiChannelView.k1bst7s9002') }}
           </div>
           <div
             v-for="e in col.items"
@@ -111,7 +113,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
       <!-- 每列右侧都挂分隔条(含最右列):分隔条统一调节"其左侧列"的宽度,
            尾条即最右列的右缘调节柄 —— 最右列也能拖拽拉宽/收窄 -->
       <workshop-pane-splitter
-        :label="`拖拽调节 ${col.name} 列宽`"
+        :label="$t('multiChannelView.kvfx0mh006', { p0: col.name })"
         @resize="d => resizeCol(col.id, d)"
         @reset="resetCol(col.id)"
       />

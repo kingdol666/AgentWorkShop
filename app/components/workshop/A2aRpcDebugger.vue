@@ -9,6 +9,8 @@ import { message } from 'ant-design-vue'
 import { useStorage } from '@vueuse/core'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 
+const { t } = useI18n()
+
 const props = defineProps<{ channelId: string }>()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -47,11 +49,11 @@ const template = (): Record<string, unknown> => {
   switch (method.value) {
     case 'tasks/send':
     case 'tasks/sendSubscribe':
-      return { message: { role: 'ROLE_USER', parts: [{ text: '调试:请回显这条消息' }] } }
+      return { message: { role: 'ROLE_USER', parts: [{ text: t('a2aRpcDebugger.kq00d3v005') }] } }
     case 'tasks/get':
       return { taskId: '<taskId>' }
     case 'message/send':
-      return { message: { role: 'ROLE_USER', parts: [{ text: '调试消息' }] } }
+      return { message: { role: 'ROLE_USER', parts: [{ text: t('a2aRpcDebugger.k1kgwib8006') }] } }
     default:
       return {}
   }
@@ -91,12 +93,12 @@ const runSse = async (body: Record<string, unknown>): Promise<void> => {
       if (dataLine) append(`◀ ${dataLine.slice(5).trim().slice(0, 400)}`)
     }
   }
-  append('▶ 流结束')
+  append(t('a2aRpcDebugger.k1e1hi4u007'))
 }
 
 const run = async (): Promise<void> => {
   if (!agentId.value) {
-    message.warning('选择目标 agent')
+    message.warning(t('a2aRpcDebugger.k1vryfv008'))
     return
   }
   let params: Record<string, unknown>
@@ -148,7 +150,7 @@ const run = async (): Promise<void> => {
     <workshop-pane-splitter
       variant="bare"
       class="drawer-resizer"
-      label="拖拽调节抽屉宽度"
+      :label="$t('a2aRpcDebugger.k6hcbxi001')"
       @resize="resizeDrawer"
       @reset="drawerWidth = DRAWER_W_DEFAULT"
     />
@@ -157,7 +159,7 @@ const run = async (): Promise<void> => {
         <a-select
           v-model:value="agentId"
           class="agent"
-          placeholder="目标 agent 实例"
+          :placeholder="$t('a2aRpcDebugger.k34cz76002')"
           :options="agents.map(a => ({ value: a.agentId, label: `${a.name}(${a.role})` }))"
         />
         <a-select
@@ -184,7 +186,7 @@ const run = async (): Promise<void> => {
           size="small"
           @click="paramsJson = JSON.stringify(template(), null, 2)"
         >
-          参数模板
+          {{ $t('a2aRpcDebugger.k1bqe2pj003') }}
         </a-button>
         <a-button
           type="primary"
@@ -192,7 +194,7 @@ const run = async (): Promise<void> => {
           :loading="running"
           @click="run"
         >
-          执行
+          {{ $t('a2aRpcDebugger.k405w8004') }}
         </a-button>
       </div>
       <pre class="output">{{ output || '(输出;sendSubscribe 将逐条渲染 SSE 事件)' }}</pre>

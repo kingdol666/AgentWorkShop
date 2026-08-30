@@ -7,6 +7,8 @@ import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useEventsStore } from '@/app/stores/workshop/events'
 
+const { t } = useI18n()
+
 const props = defineProps<{ wsId: string }>()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -31,15 +33,15 @@ const selected = ref(0)
 
 const commands = computed<Command[]>(() => {
   const list: Command[] = [
-    { key: 'nav-home', label: '前往:工作区总览', hint: '/workshop', run: () => navigateTo('/workshop') },
-    { key: 'nav-agents', label: '前往:Agent 模板库', hint: '/workshop/agents', run: () => navigateTo('/workshop/agents') },
+    { key: 'nav-home', label: t('commandPalette.kmxxk3u006'), hint: '/workshop', run: () => navigateTo('/workshop') },
+    { key: 'nav-agents', label: t('commandPalette.k4s8e5q007'), hint: '/workshop/agents', run: () => navigateTo('/workshop/agents') },
     { key: 'nav-teams', label: '前往:AgentTeam 编组库', hint: '/workshop/teams', run: () => navigateTo('/workshop/teams') },
-    { key: 'nav-channel-templates', label: '前往:Channel 模板中心', hint: '/workshop/channel-templates', run: () => navigateTo('/workshop/channel-templates') },
-    { key: 'view-timeline', label: '视图:时间线', run: () => { emit('setView', 'timeline') } },
+    { key: 'nav-channel-templates', label: t('commandPalette.k1ezz11x008'), hint: '/workshop/channel-templates', run: () => navigateTo('/workshop/channel-templates') },
+    { key: 'view-timeline', label: t('commandPalette.k143z9bg009'), run: () => { emit('setView', 'timeline') } },
     { key: 'view-lanes', label: '视图:Agent lanes', run: () => { emit('setView', 'lanes') } },
-    { key: 'view-board', label: '视图:任务板', run: () => { emit('setView', 'board') } },
-    { key: 'view-split', label: '视图:多通道同屏', run: () => { emit('setView', 'split') } },
-    { key: 'act-compose', label: '动作:聚焦任务输入框', hint: '⌘I', run: () => { emit('compose') } },
+    { key: 'view-board', label: t('commandPalette.k13ztmim010'), run: () => { emit('setView', 'board') } },
+    { key: 'view-split', label: t('commandPalette.k21cpnp011'), run: () => { emit('setView', 'split') } },
+    { key: 'act-compose', label: t('commandPalette.k1tm54il012'), hint: '⌘I', run: () => { emit('compose') } },
     { key: 'act-a2a', label: '动作:A2A RPC/SSE 调试器', run: () => { emit('openA2aDebug') } },
   ]
   // Channel 切换
@@ -47,7 +49,7 @@ const commands = computed<Command[]>(() => {
     const name = entities.channels[id]?.name ?? id.slice(0, 8)
     list.push({
       key: `ch-${id}`,
-      label: `切换 Channel:${name}`,
+      label: t('commandPalette.k1nz14ux013', { p0: name }),
       hint: id.slice(0, 8),
       run: () => wsStore.setActiveChannel(props.wsId, id),
     })
@@ -58,7 +60,7 @@ const commands = computed<Command[]>(() => {
     const cur = events.filters[active] ?? 'all'
     for (const f of ['all', 'messages', 'tasks', 'errors'] as const) {
       if (f !== cur) {
-        list.push({ key: `filter-${f}`, label: `时间线过滤:${f}`, run: () => events.setFilter(active, f) })
+        list.push({ key: `filter-${f}`, label: t('commandPalette.k1d8xtez014', { p0: f }), run: () => events.setFilter(active, f) })
       }
     }
   }
@@ -127,7 +129,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
           <input
             v-model="query"
             class="palette-input"
-            placeholder="输入命令…(导航/视图/Channel/过滤/动作)"
+            :placeholder="$t('commandPalette.k1nn6i83001')"
             autofocus
             @keydown="onKeydown"
           >
@@ -152,11 +154,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
             v-if="filtered.length === 0"
             class="palette-empty"
           >
-            无匹配命令
+            {{ $t('commandPalette.ktup4q4002') }}
           </div>
         </div>
         <div class="palette-foot">
-          <kbd>↑↓</kbd> 选择 / <kbd>↵</kbd> 执行 / <kbd>esc</kbd> 关闭
+          <kbd>↑↓</kbd> {{ $t('commandPalette.k1kvl0fa003') }} <kbd>↵</kbd> {{ $t('commandPalette.k1e3ualj004') }} <kbd>esc</kbd> {{ $t('commandPalette.k3x62t005') }}
         </div>
       </div>
     </div>

@@ -31,7 +31,7 @@ const hasMore = computed(() => lines.value.length > MAX)
       class="more-btn"
       @click="expanded = !expanded"
     >
-      {{ expanded ? '收起' : `全部 ${lines.length} 条` }}
+      {{ expanded ? $t('clusterOther.k40p82001') : `全部 ${lines.length} 条` }}
     </button>
   </div>
 </template>

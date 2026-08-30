@@ -12,6 +12,8 @@ import { useWorkshopWs } from '../../../composables/workshop/useWorkshopWs'
 import { useUserStore } from '../../../stores/workshop/user'
 import { useStorage } from '@vueuse/core'
 
+const { t } = useI18n()
+
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
@@ -89,11 +91,11 @@ const view = ref<CenterView>(
   typeof initView === 'string' && VIEW_VALUES.has(initView) ? initView as CenterView : 'timeline',
 )
 const viewOptions = [
-  { value: 'timeline', label: '时间线' },
+  { value: 'timeline', label: t('wsView.k3otu32010') },
   { value: 'lanes', label: 'Agent lanes' },
-  { value: 'board', label: '任务板' },
-  { value: 'split', label: '同屏' },
-  { value: 'town', label: '孪生空间' },
+  { value: 'board', label: t('wsView.k3ko7a8011') },
+  { value: 'split', label: t('wsView.k3xbmo012') },
+  { value: 'town', label: t('wsView.k1cz0pbw013') },
 ]
 // 数字快捷键 1-5 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向)
 const onViewKey = (ev: KeyboardEvent): void => {
@@ -156,7 +158,7 @@ const focusComposer = (): void => {
   composerBox.value?.querySelector('textarea')?.focus()
 }
 
-useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness` })
+useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop` })
 </script>
 
 <template>
@@ -185,7 +187,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
           size="small"
           :options="viewOptions"
           class="view-switch"
-          title="快捷键 1-5 直切视图"
+          :title="$t('wsView.kqwckjr001')"
           @keydown="onViewKey"
         />
       </div>
@@ -193,7 +195,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         <button
           class="pane-toggle im"
           :class="{ off: !leftOpen }"
-          title="收起/展开 会话栏"
+          :title="$t('wsView.k1tsy2e4002')"
           @click="leftOpen = !leftOpen"
         >
           <span class="i-tabler-layout-sidebar-left-collapse im-pop" />
@@ -201,7 +203,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         <button
           class="pane-toggle im"
           :class="{ off: !rightOpen }"
-          title="收起/展开 检查器"
+          :title="$t('wsView.k1tx0ppf003')"
           @click="rightOpen = !rightOpen"
         >
           <span class="i-tabler-layout-sidebar-right-collapse im-pop" />
@@ -215,7 +217,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         </button>
         <button
           class="pane-toggle im"
-          title="命令面板(⌘K)"
+          :title="$t('wsView.k1cvg8sb004')"
           @click="paletteOpen = true"
         >
           <span class="i-tabler-command im-pop" />
@@ -249,7 +251,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
       </div>
       <workshop-pane-splitter
         v-if="leftOpen"
-        label="拖拽调节会话栏宽度"
+        :label="$t('wsView.k1fkfvra005')"
         @resize="resizeLeft"
         @reset="leftWidth = LEFT_W_DEFAULT"
       />
@@ -284,16 +286,16 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · Agent Harness
         >
           <span class="pe-icon i-tabler-messages" />
           <div class="pe-title">
-            从左侧挂载或选择一个 <span class="aw-serif-accent-italic">Channel</span> 开始
+            {{ $t('wsView.klzbtyp007') }} <span class="aw-serif-accent-italic">Channel</span> {{ $t('wsView.k3zaj4008') }}
           </div>
           <div class="pe-sub">
-            会话列表支持新建 Channel、从模板实例化,以及热修改场景与工作目录
+            {{ $t('wsView.k1us0cxy009') }}
           </div>
         </div>
       </div>
       <workshop-pane-splitter
         v-if="rightOpen"
-        label="拖拽调节检查器宽度"
+        :label="$t('wsView.kwqb0st006')"
         @resize="resizeRight"
         @reset="rightWidth = RIGHT_W_DEFAULT"
       />

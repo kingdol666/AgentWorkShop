@@ -12,6 +12,8 @@ import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useEntitiesStore, type AgentView } from '@/app/stores/workshop/entities'
 import { agentHueColor } from '@/app/composables/workshop/useEventBlocks'
 
+const { t } = useI18n()
+
 const props = defineProps<{ wsId: string }>()
 const emit = defineEmits<{ (e: 'openAgent', target: { channelId: string, agentId: string }): void }>()
 
@@ -36,7 +38,7 @@ const live = computed<LiveAgent[]>(() => {
         channelId: cid,
         taskLabel: a.currentTaskId
           ? entities.taskTitle(cid, a.currentTaskId)
-          : (a.queued ? `队列 ×${a.queued}` : '执行中'),
+          : (a.queued ? t('liveAgentBar.k68d2a2006', { p0: a.queued }) : t('liveAgentBar.k3o5tz9005')),
       })
     }
   }
@@ -64,7 +66,7 @@ const open = (a: LiveAgent) => {
         class="idle-dot"
         aria-hidden="true"
       />
-      <span class="idle-text">全部成员空闲</span>
+      <span class="idle-text">{{ $t('liveAgentBar.kr4bxgp001') }}</span>
     </div>
 
     <!-- 主显:最活跃成员 + 脉冲点 -->
@@ -72,7 +74,7 @@ const open = (a: LiveAgent) => {
       <button
         type="button"
         class="live-main"
-        :title="`查看 ${live[0]!.name} 的执行详情`"
+        :title="$t('liveAgentBar.kh66fan003', { p0: live[0]!.name })"
         @click="open(live[0]!)"
       >
         <span class="live-ava">
@@ -96,7 +98,7 @@ const open = (a: LiveAgent) => {
         class="live-more"
         aria-haspopup="true"
         :aria-expanded="popOpen"
-        :title="`${live.length - 1} 位成员同样在忙`"
+        :title="$t('liveAgentBar.k1a39d92004', { p0: live.length - 1 })"
         @click="popOpen = !popOpen"
       >
         +{{ live.length - 1 }}
@@ -110,7 +112,7 @@ const open = (a: LiveAgent) => {
         />
         <div class="live-pop">
           <div class="live-pop-title">
-            正在执行 · {{ live.length }}
+            {{ $t('liveAgentBar.k1sf0ymy002') }} {{ live.length }}
           </div>
           <button
             v-for="a in live"

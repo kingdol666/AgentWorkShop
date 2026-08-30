@@ -1,14 +1,9 @@
-/**
- * /dcw —— 产线运营总览。
- * 产线 = 节点/产品/配方/批次的顶层隔离维度:每张卡片一条产线(光晕色身份 +
- * 运行状态 + 快捷启停),「产线管理」进入该产线的详情(仅加载本产线数据)。
- * 控制模板(自定义分类:电机电流/转速/线速度…)在此统一管理 —— 模板只定义
- * 种类与量程,真正下发 PLC 的是挂到产线上的控制节点。
- */
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { DCW_LINE_COLORS, type DcwTemplateIcon, type LineView } from '#shared/dcw-protocol'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
+
+const { t } = useI18n()
 
 const dcw = useDcwStream()
 void dcw.load()
@@ -78,7 +73,7 @@ async function quickStart(card: LineCard): Promise<void> {
   quickErr.value = ''
   try {
     const rid = quickPick[card.line.id] ?? ''
-    if (!rid) throw new Error('请先选择该产线的配方(配方需绑定控制节点参数)')
+    if (!rid) throw new Error(t('dcw.k188cswn039'))
     await dcw.startLine(card.line.id, rid)
   }
   catch (err) {
@@ -111,7 +106,7 @@ function recipesOf(lineId: string) {
 /** 删除产线(确认后;旗下节点/产品/配方自动解挂为未分配) */
 const removing = ref('')
 async function doRemoveLine(card: LineCard): Promise<void> {
-  const label = `${card.line.name}(节点 ${card.nodes}/产品 ${card.products}/配方 ${card.recipes} 将解除挂载)`
+  const label = t('dcw.k1gp649b062', { p0: card.line.name, p1: card.nodes, p2: card.products, p3: card.recipes })
   if (!window.confirm(`确认删除产线「${card.line.name}」?
 ${label}`)) return
   removing.value = card.line.id
@@ -132,19 +127,19 @@ const tplOpen = ref(false)
 const tplError = ref('')
 const tplForm = reactive({ name: '', ch: '', code: '', unit: '', min: '' as number | '', max: '' as number | '', decimals: 1, icon: 'gateway' as DcwTemplateIcon, semantics: '' })
 const tplIcons: Array<{ key: DcwTemplateIcon, label: string }> = [
-  { key: 'thermo', label: '温度' },
-  { key: 'pressure', label: '压力' },
-  { key: 'tension', label: '张力' },
-  { key: 'encoder', label: '编码/速度' },
-  { key: 'camera', label: '视觉' },
-  { key: 'gateway', label: '通用' },
+  { key: 'thermo', label: t('dcw.k422b8040') },
+  { key: 'pressure', label: t('dcw.k3x6ff041') },
+  { key: 'tension', label: t('dcw.k3z9xc042') },
+  { key: 'encoder', label: t('dcw.kjb3vhs043') },
+  { key: 'camera', label: t('dcw.k47atw044') },
+  { key: 'gateway', label: t('dcw.k48c07045') },
 ]
 
 async function doCreateTemplate(): Promise<void> {
   tplError.value = ''
   try {
-    if (!tplForm.name.trim()) throw new Error('模板名称必填')
-    if (tplForm.min === '' || tplForm.max === '') throw new Error('工艺量程(min/max)必填')
+    if (!tplForm.name.trim()) throw new Error(t('dcw.k6ugbw2046'))
+    if (tplForm.min === '' || tplForm.max === '') throw new Error(t('dcw.k13awowo047'))
     await dcw.createTemplate({
       name: tplForm.name.trim(),
       ch: tplForm.ch.trim() || tplForm.name.trim(),
@@ -176,7 +171,7 @@ async function doRemoveTemplate(key: string): Promise<void> {
       headers: { authorization: `Bearer ${document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? ''}` },
     }).then(async (r) => {
       const json = await r.json().catch(() => ({}))
-      if (json?.code !== 0) throw new Error(json?.message ?? '删除失败')
+      if (json?.code !== 0) throw new Error(json?.message ?? t('dcw.k1bphrb3048'))
     })
     const i = dcw.templates.findIndex(t => t.key === key)
     if (i >= 0) dcw.templates.splice(i, 1)
@@ -196,24 +191,23 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
         <p class="aw-kicker">
           AGENTWORKSHOP / LINE OPERATIONS
         </p>
-        <h1>产线运营</h1>
+        <h1>{{ $t('dcw.k1b2tk5c009') }}</h1>
         <p class="sub">
-          产线是节点/产品/配方/数据的顶层隔离单元:每个控制节点挂载到产线,开跑后本产线数采逐样本携带产线标识;
-          控制模板只定义参数分类与工艺量程,真正下发 PLC 的是节点。
+          {{ $t('dcw.k5q0aqi010') }}
         </p>
       </div>
       <div class="badges mono">
         <span
           v-if="unassignedCount"
           class="badge warn-badge"
-          title="存在未挂载产线的节点/产品,可在对应产线详情页收编"
-        >未分配 {{ unassignedCount }}</span>
-        <span class="badge">产线 {{ dcw.lines.length }}</span>
+          :title="$t('dcw.k1i5a9vw001')"
+        >{{ $t('dcw.k3ootr6049') }} {{ unassignedCount }}</span>
+        <span class="badge">{{ $t('dcw.k3wj9n050') }} {{ dcw.lines.length }}</span>
         <button
           class="badge tpl-btn"
           @click="tplOpen = true"
         >
-          控制模板 · {{ dcw.templates.length }}
+          {{ $t('dcw.k11nndsp051') }} {{ dcw.templates.length }}
         </button>
       </div>
     </div>
@@ -239,10 +233,10 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
           <span
             class="lc-state"
             :class="{ on: dcw.lineStateOf(c.line.id).active }"
-          >{{ dcw.lineStateOf(c.line.id).active ? '● 运行中' : '○ 待机' }}</span>
+          >{{ dcw.lineStateOf(c.line.id).active ? $t('dcw.k1eox1el055') : $t('dcw.k149r6y7059') }}</span>
           <button
             class="lc-del"
-            title="删除产线(旗下节点/产品/配方解除挂载)"
+            :title="$t('dcw.k1yfm3gv002')"
             @click="doRemoveLine(c)"
           >
             ✕
@@ -251,15 +245,15 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
         <small
           v-if="dcw.lineStateOf(c.line.id).active"
           class="lc-run mono"
-        >{{ dcw.lineStateOf(c.line.id).productName }} · {{ dcw.lineStateOf(c.line.id).recipeName }} · 打标 {{ dcw.lineStateOf(c.line.id).taggedSamples }}</small>
+        >{{ dcw.lineStateOf(c.line.id).productName }} · {{ dcw.lineStateOf(c.line.id).recipeName }} · {{ $t('dcw.k3zz0f052') }} {{ dcw.lineStateOf(c.line.id).taggedSamples }}</small>
         <small
           v-else
           class="lc-run dim"
-        >{{ c.line.description || '选择配方后即可开跑数据采集' }}</small>
+        >{{ c.line.description || $t('dcw.k18moyq1056') }}</small>
         <div class="lc-stats mono">
-          <span>节点 <b>{{ c.nodes }}</b></span>
-          <span>产品 <b>{{ c.products }}</b></span>
-          <span>配方 <b>{{ c.recipes }}</b></span>
+          <span>{{ $t('dcw.k45uio011') }} <b>{{ c.nodes }}</b></span>
+          <span>{{ $t('dcw.k3waz1012') }} <b>{{ c.products }}</b></span>
+          <span>{{ $t('dcw.k48grv013') }} <b>{{ c.recipes }}</b></span>
         </div>
         <div class="lc-ctl">
           <template v-if="!dcw.lineStateOf(c.line.id).active">
@@ -267,10 +261,10 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
               v-model="quickPick[c.line.id]"
               class="inp"
               :disabled="recipesOf(c.line.id).length === 0"
-              title="选择配方后开跑"
+              :title="$t('dcw.k1dhaby4003')"
             >
               <option value="">
-                {{ recipesOf(c.line.id).length ? '选择配方…' : '暂无配方' }}
+                {{ recipesOf(c.line.id).length ? $t('dcw.kutxzsz057') : $t('dcw.k1elczt9060') }}
               </option>
               <option
                 v-for="r in recipesOf(c.line.id)"
@@ -286,7 +280,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
               :disabled="quickBusy === c.line.id || !quickPick[c.line.id]"
               @click="quickStart(c)"
             >
-              ▶ 开跑
+              {{ $t('dcw.k149b4vg014') }}
             </button>
           </template>
           <button
@@ -295,14 +289,14 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             :disabled="quickBusy === c.line.id"
             @click="quickStop(c)"
           >
-            ■ 停止
+            {{ $t('dcw.k148rclf015') }}
           </button>
         </div>
         <NuxtLink
           class="lc-manage"
           :to="`/dcw/${c.line.id}`"
         >
-          产线管理 →
+          {{ $t('dcw.k1fwqw5g016') }}
         </NuxtLink>
       </div>
 
@@ -312,8 +306,8 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
         @click="openCreate"
       >
         <span class="i-tabler-plus" />
-        新建产线
-        <small>光晕色自动取色板({{ nextColor }})</small>
+        {{ $t('dcw.k1efe391017') }}
+        <small>{{ $t('dcw.k19dlbli053') }}{{ nextColor }})</small>
       </button>
     </div>
 
@@ -321,7 +315,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
       v-if="dcw.loaded && dcw.lines.length === 0"
       class="banner"
     >
-      还没有产线:点击「新建产线」创建第一条产线,然后在产线详情里收编/添加控制节点、建产品与配方。
+      {{ $t('dcw.k1sk85vs018') }}
     </p>
 
     <!-- 新建产线弹窗 -->
@@ -332,26 +326,26 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
     >
       <div class="modal">
         <h3 class="m-title">
-          新建产线
+          {{ $t('dcw.k1efe391017') }}
         </h3>
         <label class="f">
-          <span>产线名称<em>*</em></span>
+          <span>{{ $t('dcw.k1b2ioko019') }}<em>*</em></span>
           <input
             v-model="createForm.name"
             class="inp"
-            placeholder="如 1号产线 / 流延线 A"
+            :placeholder="$t('dcw.kru37i3004')"
           >
         </label>
         <label class="f">
-          <span>描述(可选)</span>
+          <span>{{ $t('dcw.k24dxcd020') }}</span>
           <input
             v-model="createForm.description"
             class="inp"
-            placeholder="产线用途说明"
+            :placeholder="$t('dcw.k1f2nwsp005')"
           >
         </label>
         <div class="f">
-          <span>光晕色(数字孪生场景中本产线节点的光环色)</span>
+          <span>{{ $t('dcw.k1x7nubr021') }}</span>
           <div class="color-row">
             <button
               v-for="c in DCW_LINE_COLORS"
@@ -361,7 +355,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
               :style="{ background: c }"
               @click="createForm.color = createForm.color === c ? '' : c"
             />
-            <small class="dim">{{ createForm.color || `缺省 ${nextColor}(按创建序)` }}</small>
+            <small class="dim">{{ createForm.color || $t('dcw.k1qidbpy061', { p0: nextColor }) }}</small>
           </div>
         </div>
         <p
@@ -375,14 +369,14 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             class="mini-btn"
             @click="createOpen = false"
           >
-            取消
+            {{ $t('dcw.k3xdnn022') }}
           </button>
           <button
             class="pill-btn"
             :disabled="createSaving || !createForm.name.trim()"
             @click="doCreateLine"
           >
-            创建
+            {{ $t('dcw.k3wzi2023') }}
           </button>
         </div>
       </div>
@@ -396,10 +390,10 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
     >
       <div class="modal wide">
         <h3 class="m-title">
-          控制模板管理 <small class="dim mono">内置 {{ builtinCount }} · 自定义 {{ dcw.templates.length - builtinCount }}</small>
+          {{ $t('dcw.k11oadmx024') }} <small class="dim mono">{{ $t('dcw.k3x23c054') }} {{ builtinCount }} · {{ $t('dcw.k3t616a058') }} {{ dcw.templates.length - builtinCount }}</small>
         </h3>
         <p class="dim tpl-hint">
-          模板 = 参数分类(电机电流/转速/线速度…),定义单位与工艺安全量程;创建控制节点时选模板继承域,节点可再自定义覆盖。
+          {{ $t('dcw.k2hlav5025') }}
         </p>
         <div class="tpl-list">
           <div
@@ -417,38 +411,38 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             <span
               class="tpl-tag"
               :class="{ builtin: t.builtin }"
-            >{{ t.builtin ? '内置' : '自定义' }}</span>
+            >{{ t.builtin ? $t('dcw.k3x23c054') : $t('dcw.k3t616a058') }}</span>
             <button
               v-if="!t.builtin"
               class="mini-btn danger"
               @click="doRemoveTemplate(t.key)"
             >
-              删除
+              {{ $t('dcw.k3xakp026') }}
             </button>
           </div>
         </div>
         <p class="sec-label">
-          新建自定义模板
+          {{ $t('dcw.k169eb4s027') }}
         </p>
         <div class="tpl-form">
           <label class="f">
-            <span>名称<em>*</em></span>
+            <span>{{ $t('dcw.k3xhia028') }}<em>*</em></span>
             <input
               v-model="tplForm.name"
               class="inp"
-              placeholder="如 电机电流设定"
+              :placeholder="$t('dcw.k1tooi3o006')"
             >
           </label>
           <label class="f">
-            <span>参数语义</span>
+            <span>{{ $t('dcw.k1bqk219029') }}</span>
             <input
               v-model="tplForm.ch"
               class="inp"
-              placeholder="如 电机电流"
+              :placeholder="$t('dcw.k698qz0007')"
             >
           </label>
           <label class="f">
-            <span>位号代号</span>
+            <span>{{ $t('dcw.k1ayxrqb030') }}</span>
             <input
               v-model="tplForm.code"
               class="inp"
@@ -456,7 +450,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             >
           </label>
           <label class="f">
-            <span>单位</span>
+            <span>{{ $t('dcw.k3x4ef031') }}</span>
             <input
               v-model="tplForm.unit"
               class="inp"
@@ -464,7 +458,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             >
           </label>
           <label class="f">
-            <span>量程下限<em>*</em></span>
+            <span>{{ $t('dcw.k1l9jv5m032') }}<em>*</em></span>
             <input
               v-model.number="tplForm.min"
               type="number"
@@ -472,7 +466,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             >
           </label>
           <label class="f">
-            <span>量程上限<em>*</em></span>
+            <span>{{ $t('dcw.k1l9jv4p033') }}<em>*</em></span>
             <input
               v-model.number="tplForm.max"
               type="number"
@@ -480,7 +474,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             >
           </label>
           <label class="f">
-            <span>小数位</span>
+            <span>{{ $t('dcw.k3mxmcx034') }}</span>
             <input
               v-model.number="tplForm.decimals"
               type="number"
@@ -488,7 +482,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             >
           </label>
           <label class="f">
-            <span>图标</span>
+            <span>{{ $t('dcw.k3xx56035') }}</span>
             <select
               v-model="tplForm.icon"
               class="inp"
@@ -504,12 +498,12 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
           </label>
         </div>
         <label class="f">
-          <span>工艺语义(物理意义/对产线的影响/调整守则 —— 注入绑定此模板的 Agent 上下文)</span>
+          <span>{{ $t('dcw.k1b6qorg036') }}</span>
           <textarea
             v-model="tplForm.semantics"
             class="inp"
             rows="3"
-            placeholder="如:电机电流设定:电流升高表示负载增大…调整需小幅步进并观察温升"
+            :placeholder="$t('dcw.k1qdnfzc008')"
           />
         </label>
         <p
@@ -523,14 +517,14 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             class="mini-btn"
             @click="tplOpen = false"
           >
-            关闭
+            {{ $t('dcw.k3x62t037') }}
           </button>
           <button
             class="pill-btn"
             :disabled="!tplForm.name.trim() || tplForm.min === '' || tplForm.max === ''"
             @click="doCreateTemplate"
           >
-            创建模板
+            {{ $t('dcw.k1bg9nga038') }}
           </button>
         </div>
       </div>

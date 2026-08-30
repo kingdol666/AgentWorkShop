@@ -8,6 +8,8 @@ import { message } from 'ant-design-vue'
 import { useWorkshopApi, type AgentTemplateDto } from '../../composables/workshop/useWorkshopApi'
 import { useUserStore } from '../../stores/workshop/user'
 
+const { t } = useI18n()
+
 definePageMeta({ layout: 'default' })
 
 const api = useWorkshopApi()
@@ -31,13 +33,13 @@ type Filter = 'all' | 'mine' | 'public' | 'builtin' | 'others'
 const filter = ref<Filter>('all')
 const filterOptions = computed(() => {
   const opts: Array<{ value: Filter, label: string }> = [
-    { value: 'all', label: `全部 ${templates.value.length}` },
-    { value: 'mine', label: `我的 ${templates.value.filter(t => t.ownerUserId === userStore.user?.id).length}` },
-    { value: 'public', label: `公开 ${templates.value.filter(t => t.visibility === 'public').length}` },
-    { value: 'builtin', label: `内置 ${templates.value.filter(t => t.isBuiltin).length}` },
+    { value: 'all', label: t('chips.chipAll', { n: templates.value.length }) },
+    { value: 'mine', label: t('chips.chipMine', { n: templates.value.filter(t => t.ownerUserId === userStore.user?.id).length }) },
+    { value: 'public', label: t('chips.chipPublic', { n: templates.value.filter(t => t.visibility === 'public').length }) },
+    { value: 'builtin', label: t('chips.chipBuiltin', { n: templates.value.filter(t => t.isBuiltin).length }) },
   ]
   if (userStore.isAdmin) {
-    opts.push({ value: 'others', label: `他人私有 ${templates.value.filter(t => t.ownerUserId !== null && t.ownerUserId !== userStore.user?.id && t.visibility === 'private').length}` })
+    opts.push({ value: 'others', label: t('chips.chipOthers', { n: templates.value.filter(t => t.ownerUserId !== null && t.ownerUserId !== userStore.user?.id && t.visibility === 'private').length }) })
   }
   return opts
 })
@@ -57,9 +59,9 @@ const canWrite = (t: AgentTemplateDto): boolean =>
   !t.isBuiltin && (t.ownerUserId === userStore.user?.id || userStore.isAdmin)
 
 const visTag = (t: AgentTemplateDto): { text: string, color: string, icon?: string } => {
-  if (t.isBuiltin) return { text: '内置', color: 'default', icon: 'i-tabler-lock' }
-  if (t.visibility === 'public') return { text: '公开', color: 'green' }
-  return { text: '私有', color: 'default' }
+  if (t.isBuiltin) return { text: t('agents.k3x23c017'), color: 'default', icon: 'i-tabler-lock' }
+  if (t.visibility === 'public') return { text: t('agents.k3wv1t018'), color: 'green' }
+  return { text: t('agents.k447jj019'), color: 'default' }
 }
 
 const editOpen = ref(false)
@@ -93,11 +95,11 @@ const save = async (): Promise<void> => {
   try {
     if (editing.value) {
       await api.updateTemplate(editing.value.id, { name: form.name, harness: form.harness, config, visibility: form.visibility })
-      message.success('已更新')
+      message.success(t('agents.k3n9aij020'))
     }
     else {
       await api.createTemplate({ name: form.name, harness: form.harness, config, visibility: form.visibility })
-      message.success('已创建')
+      message.success(t('agents.k3n5hak021'))
     }
     editOpen.value = false
     void load()
@@ -108,7 +110,7 @@ const save = async (): Promise<void> => {
 }
 const remove = async (t: AgentTemplateDto): Promise<void> => {
   await api.deleteTemplate(t.id)
-  message.success('已删除')
+  message.success(t('agents.k3n5sd7022'))
   void load()
 }
 
@@ -121,7 +123,7 @@ const toggleEnabled = async (t: AgentTemplateDto): Promise<void> => {
 const toggleVisibility = async (t: AgentTemplateDto, pub: boolean): Promise<void> => {
   try {
     await api.updateTemplate(t.id, { visibility: pub ? 'public' : 'private' })
-    message.success(pub ? '已公开:全员可读可用,仅你可修改' : '已转为私有')
+    message.success(pub ? t('agents.kxa6cxx023') : t('agents.k1xxabaf024'))
     void load()
   }
   catch (e) {
@@ -129,27 +131,27 @@ const toggleVisibility = async (t: AgentTemplateDto, pub: boolean): Promise<void
   }
 }
 
-useHead({ title: 'Agent 模板库 · Workshop' })
+useHead({ title: () => t('titles.agents') })
 </script>
 
 <template>
   <div class="page">
     <div class="head">
       <div>
-        <h2>Agent 模板库</h2>
+        <h2>Agent {{ $t('agents.k3pa5h4025') }}</h2>
         <p class="sub">
-          模板按用户隔离:私有仅本人可见;公开后全员可读可用(仅属主可修改);内置模板公开且不可变更。
+          {{ $t('agents.k5nsz7y008') }}
         </p>
       </div>
       <a-space>
         <a-button @click="navigateTo('/workshop')">
-          返回工作区
+          {{ $t('agents.krpx6qa009') }}
         </a-button>
         <a-button
           type="primary"
           @click="openCreate"
         >
-          新建模板
+          {{ $t('agents.k1efixrj010') }}
         </a-button>
       </a-space>
     </div>
@@ -163,7 +165,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
       <span
         v-if="userStore.isAdmin"
         class="admin-note"
-      ><span class="i-tabler-shield-check" /> admin 视图:可见全部用户的模板与创建者</span>
+      ><span class="i-tabler-shield-check" /> {{ $t('agents.ka1gpdj011') }}</span>
     </div>
 
     <a-table
@@ -174,7 +176,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
       :pagination="false"
     >
       <a-table-column
-        title="名称"
+        :title="$t('agents.k3xhia001')"
         data-index="name"
       >
         <template #default="{ record }">
@@ -190,7 +192,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
         :width="100"
       />
       <a-table-column
-        title="可见性"
+        :title="$t('agents.k3lrqn0002')"
         :width="120"
       >
         <template #default="{ record }">
@@ -215,7 +217,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
         </template>
       </a-table-column>
       <a-table-column
-        title="创建者"
+        :title="$t('agents.k3l98u7003')"
         :width="130"
       >
         <template #default="{ record }">
@@ -223,7 +225,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
         </template>
       </a-table-column>
       <a-table-column
-        title="实例数"
+        :title="$t('agents.k3mr526004')"
         :width="70"
       >
         <template #default="{ record }">
@@ -231,7 +233,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
         </template>
       </a-table-column>
       <a-table-column
-        title="启用"
+        :title="$t('agents.k3xhfg005')"
         :width="70"
       >
         <template #default="{ record }">
@@ -244,7 +246,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
         </template>
       </a-table-column>
       <a-table-column
-        title="操作"
+        :title="$t('agents.k40aa6006')"
         :width="130"
       >
         <template #default="{ record }">
@@ -256,10 +258,10 @@ useHead({ title: 'Agent 模板库 · Workshop' })
               :title="record.isBuiltin ? '内置模板不可修改' : !canWrite(record) ? '仅属主可修改' : '编辑'"
               @click="openEdit(record)"
             >
-              编辑
+              {{ $t('agents.k45eb0012') }}
             </a-button>
             <a-popconfirm
-              title="删除模板?(已克隆实例保留)"
+              :title="$t('agents.keetzvf007')"
               :disabled="!canWrite(record)"
               @confirm="remove(record)"
             >
@@ -270,7 +272,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
                 :disabled="!canWrite(record)"
                 :title="record.isBuiltin ? '内置模板不可删除' : '删除'"
               >
-                删除
+                {{ $t('agents.k3xakp013') }}
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -292,7 +294,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
           v-if="record.instances.length === 0"
           class="empty"
         >
-          尚无实例
+          {{ $t('agents.k1d036zs014') }}
         </div>
       </template>
     </a-table>
@@ -305,7 +307,7 @@ useHead({ title: 'Agent 模板库 · Workshop' })
       @ok="save"
     >
       <a-form layout="vertical">
-        <a-form-item label="名称">
+        <a-form-item :label="$t('agents.k3xhia001')">
           <a-input v-model:value="form.name" />
         </a-form-item>
         <a-form-item label="harness">
@@ -314,13 +316,13 @@ useHead({ title: 'Agent 模板库 · Workshop' })
             :options="[{ value: 'mock', label: 'mock(测试)' }, { value: 'omp', label: 'omp(真实 LLM)' }, { value: 'claude', label: 'claude' }]"
           />
         </a-form-item>
-        <a-form-item label="可见性">
+        <a-form-item :label="$t('agents.k3lrqn0002')">
           <a-radio-group v-model:value="form.visibility">
             <a-radio value="private">
-              私有(仅本人可见)
+              {{ $t('agents.k17jfge3015') }}
             </a-radio>
             <a-radio value="public">
-              公开(全员可读可用,仅本人可修改)
+              {{ $t('agents.k1tt5zyo016') }}
             </a-radio>
           </a-radio-group>
         </a-form-item>

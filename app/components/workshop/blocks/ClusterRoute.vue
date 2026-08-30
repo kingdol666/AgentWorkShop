@@ -11,6 +11,8 @@ import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { mdLiteMentions, agentHueColor, type EventBlock, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
+const { t } = useI18n()
+
 const props = defineProps<{ block: EventBlock }>()
 const entities = useEntitiesStore()
 
@@ -44,14 +46,14 @@ const rows = computed<RouteRow[]>(() =>
     const priority = meta['x-aw-msg-priority'] === 'immediate' ? 'immediate' : 'task'
     const taskKind = typeof meta['x-aw-task-kind'] === 'string' ? meta['x-aw-task-kind'] as string : ''
     const kind = taskKind === 'assign'
-      ? { icon: 'i-tabler-send', label: '任务派发', tone: 'assign' }
+      ? { icon: 'i-tabler-send', label: t('clusterRoute.k1ax44eo005'), tone: 'assign' }
       : taskKind === 'cancel'
-        ? { icon: 'i-tabler-circle-x', label: '取消通知', tone: 'notice' }
+        ? { icon: 'i-tabler-circle-x', label: t('clusterRoute.k1bsct42006'), tone: 'notice' }
         : taskKind === 'child-completed'
-          ? { icon: 'i-tabler-circle-check', label: '子任务完成', tone: 'notice' }
+          ? { icon: 'i-tabler-circle-check', label: t('clusterRoute.k1ax087h007'), tone: 'notice' }
           : priority === 'immediate'
-            ? { icon: 'i-tabler-bolt', label: '实时注入', tone: 'immediate' }
-            : { icon: 'i-tabler-message', label: '协作消息', tone: 'peer' }
+            ? { icon: 'i-tabler-bolt', label: t('clusterRoute.k1cxjc4m008'), tone: 'immediate' }
+            : { icon: 'i-tabler-message', label: t('clusterRoute.k1bka5dz009'), tone: 'peer' }
     const parts = (e.payload as { parts?: Array<{ text?: string }> }).parts ?? []
     const replyRaw = meta['x-aw-in-reply-to']
     return {
@@ -114,7 +116,7 @@ const hasMore = computed(() => rows.value.length > MAX)
         <span
           v-if="r.fromLabel && !r.from"
           class="human-chip"
-          :title="`人类发送者:${r.fromLabel}`"
+          :title="$t('clusterRoute.k12448jn010', { p0: r.fromLabel })"
         >
           <span class="i-tabler-user" />
           {{ r.fromLabel }}
@@ -124,7 +126,7 @@ const hasMore = computed(() => rows.value.length > MAX)
           type="button"
           class="who-pill from"
           :data-agent-id="r.from"
-          :title="`查看 ${nameOf(r.from)}`"
+          :title="$t('clusterRoute.khsfl59011', { p0: nameOf(r.from) })"
         >
           <span
             class="aw-avatar is-agent who-ava"
@@ -142,14 +144,14 @@ const hasMore = computed(() => rows.value.length > MAX)
           type="button"
           class="who-pill"
           :data-agent-id="r.to"
-          :title="`查看 ${nameOf(r.to)}`"
+          :title="$t('clusterRoute.khsfl59011', { p0: nameOf(r.to) })"
         >
           @{{ nameOf(r.to) }}
         </button>
         <span
           v-else
           class="who-broadcast"
-        >(广播)</span>
+        >{{ $t('clusterRoute.kyza1ya002') }}</span>
         <span
           class="route-badge"
           :data-tone="r.kind.tone"
@@ -158,12 +160,12 @@ const hasMore = computed(() => rows.value.length > MAX)
         <span
           v-if="r.requireReply"
           class="route-badge receipt"
-          title="发送方要求回复:接收方须回执执行结果"
-        ><span class="i-tabler-message-reply" />需回复</span>
+          :title="$t('clusterRoute.kfbpe32001')"
+        ><span class="i-tabler-message-reply" />{{ $t('clusterRoute.k3wn89c003') }}</span>
         <span
           v-if="r.inReplyTo"
           class="route-badge reply-link aw-mono"
-          :title="`回复关联消息 ${r.inReplyTo}`"
+          :title="$t('clusterRoute.k94hqp2012', { p0: r.inReplyTo })"
         >↩ {{ r.inReplyTo.slice(0, 8) }}</span>
         <span class="chat-time aw-mono">{{ r.time }}</span>
       </div>
@@ -179,7 +181,7 @@ const hasMore = computed(() => rows.value.length > MAX)
       class="more-btn"
       @click="expanded = !expanded"
     >
-      {{ expanded ? '收起' : `全部 ${rows.length} 条` }}
+      {{ expanded ? $t('clusterRoute.k40p82004') : $t('clusterRoute.k13ewgum013', { p0: rows.length }) }}
     </button>
   </div>
 </template>

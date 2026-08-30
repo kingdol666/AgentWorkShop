@@ -14,25 +14,26 @@ export function useRouteMeta() {
   const { t } = useI18n()
   const workspaces = useWorkspacesStore()
 
-  const staticMap: Record<string, RouteMeta> = {
-    '/': { title: t('menu.dashboard'), icon: 'i-tabler-layout-dashboard' },
-    '/workshop': { title: t('menu.workshop'), icon: 'i-tabler-box' },
+  /** 静态路由表:标题存 i18n key(metaFor 求值时才 t(),语言切换即时生效) */
+  const staticMap: Record<string, { key: string, icon: string }> = {
+    '/': { key: 'menu.dashboard', icon: 'i-tabler-layout-dashboard' },
+    '/workshop': { key: 'menu.workshop', icon: 'i-tabler-box' },
 
-    '/workshop/agents': { title: 'Agent 模板库', icon: 'i-tabler-users' },
+    '/workshop/agents': { key: 'meta.agents', icon: 'i-tabler-users' },
 
-    '/workshop/teams': { title: 'AgentTeam 编组库', icon: 'i-tabler-users-group' },
+    '/workshop/teams': { key: 'meta.teams', icon: 'i-tabler-users-group' },
 
-    '/workshop/channel-templates': { title: 'Channel 模板中心', icon: 'i-tabler-layout-grid-add' },
-    '/town': { title: t('menu.town'), icon: 'i-tabler-map-2' },
-    '/tokens': { title: t('menu.tokens'), icon: 'i-tabler-key' },
-    '/users': { title: t('menu.users'), icon: 'i-tabler-users-group' },
-    '/monitor': { title: t('menu.monitor'), icon: 'i-tabler-cpu' },
-    '/settings': { title: t('menu.settings'), icon: 'i-tabler-settings' },
+    '/workshop/channel-templates': { key: 'meta.ctpl', icon: 'i-tabler-layout-grid-add' },
+    '/town': { key: 'menu.town', icon: 'i-tabler-map-2' },
+    '/tokens': { key: 'menu.tokens', icon: 'i-tabler-key' },
+    '/users': { key: 'menu.users', icon: 'i-tabler-users-group' },
+    '/monitor': { key: 'menu.monitor', icon: 'i-tabler-cpu' },
+    '/settings': { key: 'menu.settings', icon: 'i-tabler-settings' },
   }
 
   const metaFor = (path: string): RouteMeta => {
     const direct = staticMap[path]
-    if (direct) return direct
+    if (direct) return { title: t(direct.key), icon: direct.icon }
 
     // 动态:/workshop/w/<id> → workspace 名称(未加载时用短 id 占位)
     const wsMatch = path.match(/^\/workshop\/w\/([^/]+)$/)

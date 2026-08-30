@@ -8,6 +8,8 @@ import { message } from 'ant-design-vue'
 import { useWorkshopApi, type TeamDto, type AgentTemplateDto, type ChannelDto } from '../../composables/workshop/useWorkshopApi'
 import { useUserStore } from '../../stores/workshop/user'
 
+const { t } = useI18n()
+
 definePageMeta({ layout: 'default' })
 
 const api = useWorkshopApi()
@@ -48,20 +50,20 @@ const canWrite = (team: TeamDto): boolean =>
   !team.isBuiltin && (team.ownerUserId === userStore.user?.id || userStore.isAdmin)
 
 const visTag = (team: TeamDto): { text: string, color: string, icon?: string } => {
-  if (team.isBuiltin) return { text: '内置', color: 'default', icon: 'i-tabler-lock' }
-  if (team.visibility === 'public') return { text: '公开', color: 'green' }
-  return { text: '私有', color: 'default' }
+  if (team.isBuiltin) return { text: t('teams.k3x23c018'), color: 'default', icon: 'i-tabler-lock' }
+  if (team.visibility === 'public') return { text: t('teams.k3wv1t019'), color: 'green' }
+  return { text: t('teams.k447jj020'), color: 'default' }
 }
 
 const createOpen = ref(false)
 const createForm = reactive({ name: '', description: '', visibility: 'private' as 'private' | 'public' })
 const create = async (): Promise<void> => {
   if (!createForm.name.trim()) {
-    message.warning('名称必填')
+    message.warning(t('teams.k1bvcdo2021'))
     return
   }
   await api.createTeam({ name: createForm.name.trim(), description: createForm.description || undefined, visibility: createForm.visibility })
-  message.success('已创建')
+  message.success(t('teams.k3n5hak022'))
   createOpen.value = false
   createForm.name = ''
   createForm.description = ''
@@ -73,7 +75,7 @@ const create = async (): Promise<void> => {
 const toggleVisibility = async (team: TeamDto, pub: boolean): Promise<void> => {
   try {
     await api.updateTeam(team.id, { visibility: pub ? 'public' : 'private' })
-    message.success(pub ? '已公开:全员可部署,仅你可修改' : '已转为私有')
+    message.success(pub ? t('teams.k1globhp023') : t('teams.k1xxabaf024'))
     void load()
   }
   catch (e) {
@@ -93,12 +95,12 @@ const openAdd = (team: TeamDto): void => {
 }
 const addMember = async (): Promise<void> => {
   if (!addTeam.value || !addTemplateId.value) {
-    message.warning('选择模板')
+    message.warning(t('teams.k1kw4rtj025'))
     return
   }
   try {
     await api.addTeamMember(addTeam.value.id, { agentId: addTemplateId.value, role: addRole.value })
-    message.success('已加入')
+    message.success(t('teams.k3n5hzw026'))
     addOpen.value = false
     void load()
   }
@@ -129,7 +131,7 @@ const deploy = async (): Promise<void> => {
   try {
     const res = await api.deployTeam(deployTeamRef.value.id, deployChannelId.value)
     const agents = (res as unknown as { data?: { agents?: unknown[] } })?.data?.agents?.length ?? 0
-    message.success(`已部署 ${agents} 个实例到 Channel`)
+    message.success(t('teams.kh90glh031', { p0: agents }))
     deployOpen.value = false
   }
   catch (e) {
@@ -142,31 +144,31 @@ const deploy = async (): Promise<void> => {
 
 const removeTeam = async (team: TeamDto): Promise<void> => {
   await api.deleteTeam(team.id)
-  message.success('已删除编组')
+  message.success(t('teams.k1oxjrxx027'))
   void load()
 }
 
-useHead({ title: 'AgentTeam 编组库 · Workshop' })
+useHead({ title: () => t('titles.teams') })
 </script>
 
 <template>
   <div class="page">
     <div class="head">
       <div>
-        <h2>AgentTeam 编组库</h2>
+        <h2>AgentTeam {{ $t('teams.k3svl8y028') }}</h2>
         <p class="sub">
-          编组按用户隔离;公开编组全员可部署(仅属主可修改);一键整体部署到 Channel(每个成员克隆为独立实例)。
+          {{ $t('teams.k12gl4wn008') }}
         </p>
       </div>
       <a-space>
         <a-button @click="navigateTo('/workshop')">
-          返回工作区
+          {{ $t('teams.krpx6qa009') }}
         </a-button>
         <a-button
           type="primary"
           @click="createOpen = true"
         >
-          新建编组
+          {{ $t('teams.k1efmuyx002') }}
         </a-button>
       </a-space>
     </div>
@@ -176,16 +178,16 @@ useHead({ title: 'AgentTeam 编组库 · Workshop' })
         v-model:value="filter"
         size="small"
         :options="[
-          { value: 'all', label: `全部 ${teams.length}` },
-          { value: 'mine', label: '我的' },
-          { value: 'public', label: '公开' },
-          { value: 'builtin', label: '内置' },
+          { value: 'all', label: $t('chips.chipAll', { n: teams.length }) },
+          { value: 'mine', label: $t('chips.mine') },
+          { value: 'public', label: $t('chips.public') },
+          { value: 'builtin', label: $t('chips.builtin') },
         ]"
       />
       <span
         v-if="userStore.isAdmin"
         class="admin-note"
-      ><span class="i-tabler-shield-check" /> admin 视图:可见全部用户的编组与创建者</span>
+      ><span class="i-tabler-shield-check" /> {{ $t('teams.k1bpgi8h010') }}</span>
     </div>
 
     <a-spin :spinning="loading">
@@ -226,7 +228,7 @@ useHead({ title: 'AgentTeam 编组库 · Workshop' })
                     danger
                     @click="removeTeam(team)"
                   >
-                    删除编组
+                    {{ $t('teams.k1bpojhf011') }}
                   </a-menu-item>
                 </a-menu>
               </template>
@@ -235,10 +237,10 @@ useHead({ title: 'AgentTeam 编组库 · Workshop' })
               v-else
               size="small"
               type="text"
-              title="公开编组:全员可部署;仅属主可修改"
+              :title="$t('teams.kxheuf1001')"
               @click="openDeploy(team)"
             >
-              部署
+              {{ $t('teams.k48ja7012') }}
             </a-button>
           </div>
           <div class="members">
@@ -268,7 +270,7 @@ useHead({ title: 'AgentTeam 编组库 · Workshop' })
               block
               @click="openAdd(team)"
             >
-              + 添加成员模板
+              {{ $t('teams.krt2oib013') }}
             </a-button>
           </div>
         </div>
@@ -278,32 +280,32 @@ useHead({ title: 'AgentTeam 编组库 · Workshop' })
           @click="createOpen = true"
         >
           <span class="i-tabler-plus big" />
-          <span>新建第一个编组</span>
+          <span>{{ $t('teams.k6cbbgf014') }}</span>
         </div>
       </div>
     </a-spin>
 
     <a-modal
       v-model:open="createOpen"
-      title="新建编组"
+      :title="$t('teams.k1efmuyx002')"
       ok-text="创建"
       cancel-text="取消"
       @ok="create"
     >
       <a-form layout="vertical">
-        <a-form-item label="名称">
+        <a-form-item :label="$t('teams.k3xhia003')">
           <a-input v-model:value="createForm.name" />
         </a-form-item>
-        <a-form-item label="描述">
+        <a-form-item :label="$t('teams.k40gkk004')">
           <a-input v-model:value="createForm.description" />
         </a-form-item>
-        <a-form-item label="可见性">
+        <a-form-item :label="$t('teams.k3lrqn0005')">
           <a-radio-group v-model:value="createForm.visibility">
             <a-radio value="private">
-              私有(仅本人可见)
+              {{ $t('teams.k17jfge3015') }}
             </a-radio>
             <a-radio value="public">
-              公开(全员可部署,仅本人可修改)
+              {{ $t('teams.k1h2lq0o016') }}
             </a-radio>
           </a-radio-group>
         </a-form-item>
@@ -312,25 +314,25 @@ useHead({ title: 'AgentTeam 编组库 · Workshop' })
 
     <a-modal
       v-model:open="addOpen"
-      :title="`添加成员 · ${addTeam?.name ?? ''}`"
+      :title="$t('teams.k6ljhyv029', { p0: addTeam?.name ?? '' })"
       ok-text="加入"
       cancel-text="取消"
       @ok="addMember"
     >
       <a-form layout="vertical">
-        <a-form-item label="模板">
+        <a-form-item :label="$t('teams.k41ds5006')">
           <a-select
             v-model:value="addTemplateId"
             :options="templates.map(t => ({ value: t.id, label: `${t.name}(${t.harness})` }))"
           />
         </a-form-item>
-        <a-form-item label="角色">
+        <a-form-item :label="$t('teams.k479op007')">
           <a-radio-group v-model:value="addRole">
             <a-radio value="worker">
               worker
             </a-radio>
             <a-radio value="lead">
-              lead(至多一个)
+              {{ $t('teams.keowzlv017') }}
             </a-radio>
           </a-radio-group>
         </a-form-item>
@@ -339,7 +341,7 @@ useHead({ title: 'AgentTeam 编组库 · Workshop' })
 
     <a-modal
       v-model:open="deployOpen"
-      :title="`部署 · ${deployTeamRef?.name ?? ''}`"
+      :title="$t('teams.k1c0o6oe030', { p0: deployTeamRef?.name ?? '' })"
       :confirm-loading="deploying"
       ok-text="部署"
       cancel-text="取消"

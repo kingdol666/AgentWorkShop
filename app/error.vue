@@ -3,6 +3,8 @@ import type { NuxtError } from '#app'
 
 const props = defineProps<{ error: NuxtError }>()
 
+const { t } = useI18n()
+
 const handleClear = () => clearError({ redirect: '/' })
 
 const is404 = computed(() => props.error?.statusCode === 404)
@@ -18,14 +20,14 @@ const is404 = computed(() => props.error?.statusCode === 404)
         {{ error?.statusCode ?? 500 }}
       </h1>
       <p class="err-message">
-        {{ error?.message ?? '页面走失了' }}
+        {{ error?.message ?? t('error.lost') }}
       </p>
       <button
         class="aw-pill err-cta"
         @click="handleClear"
       >
         <span class="i-tabler-arrow-left" />
-        返回首页
+        {{ $t('error.backHome') }}
       </button>
     </div>
   </div>

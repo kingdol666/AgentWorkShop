@@ -12,6 +12,8 @@ import { message } from 'ant-design-vue'
 import { useEntitiesStore, type TaskView } from '@/app/stores/workshop/entities'
 import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
 
+const { t } = useI18n()
+
 const props = defineProps<{ channelId: string }>()
 const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()
 
@@ -39,11 +41,11 @@ interface Column {
 }
 
 const BASE_COLUMNS: Array<Omit<Column, 'items'>> = [
-  { key: 'todo', title: '待启动', states: ['SUBMITTED', 'ASSIGNED'], dot: 'var(--tone-neutral-dot)', moveAction: 'retry' },
-  { key: 'doing', title: '执行中', states: ['WORKING'], dot: 'var(--tone-info-dot)', moveAction: null },
-  { key: 'waiting', title: '等待汇总', states: ['WAITING'], dot: 'var(--tone-warning-dot)', moveAction: null },
-  { key: 'done', title: '已完成', states: ['COMPLETED'], dot: 'var(--tone-success-dot)', moveAction: null },
-  { key: 'bad', title: '异常/取消', states: ['FAILED', 'CANCELED'], dot: 'var(--tone-danger-dot)', moveAction: 'cancel' },
+  { key: 'todo', title: t('taskBoardView.k3nf71d008'), states: ['SUBMITTED', 'ASSIGNED'], dot: 'var(--tone-neutral-dot)', moveAction: 'retry' },
+  { key: 'doing', title: t('taskBoardView.k3o5tz9009'), states: ['WORKING'], dot: 'var(--tone-info-dot)', moveAction: null },
+  { key: 'waiting', title: t('taskBoardView.k1hpx9p1010'), states: ['WAITING'], dot: 'var(--tone-warning-dot)', moveAction: null },
+  { key: 'done', title: t('taskBoardView.k3n77g3011'), states: ['COMPLETED'], dot: 'var(--tone-success-dot)', moveAction: null },
+  { key: 'bad', title: t('taskBoardView.k1veotws012'), states: ['FAILED', 'CANCELED'], dot: 'var(--tone-danger-dot)', moveAction: 'cancel' },
 ]
 
 const columns = computed<Column[]>(() => BASE_COLUMNS.map(col => ({
@@ -140,7 +142,7 @@ const applyMove = async (taskId: string, action: 'cancel' | 'retry'): Promise<vo
   optimistic.value = opt
   try {
     await (action === 'cancel' ? api.cancelTask(taskId) : api.retryTask(taskId))
-    message.success(action === 'cancel' ? '已请求取消任务' : '任务已重新派发')
+    message.success(action === 'cancel' ? t('taskBoardView.k189y4q013') : t('taskBoardView.kv1l1j3014'))
   }
   catch (e) {
     // 回滚乐观预移,弹错(WS 事件为准)
@@ -148,7 +150,7 @@ const applyMove = async (taskId: string, action: 'cancel' | 'retry'): Promise<vo
     revert.set(taskId, prev)
     optimistic.value = revert
     const err = e as { data?: { message?: string }, message?: string }
-    message.error(err?.data?.message ?? err?.message ?? '操作失败')
+    message.error(err?.data?.message ?? err?.message ?? t('taskBoardView.k1e7zwuc015'))
   }
   finally {
     acting.value.delete(taskId)
@@ -176,12 +178,12 @@ const menuActions = computed(() => {
   if (!t) return []
   const acts: Array<{ key: 'cancel' | 'retry' | 'detail', label: string, danger?: boolean }> = []
   if (['SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING', 'FAILED'].includes(t.state)) {
-    acts.push({ key: 'cancel', label: '取消任务', danger: true })
+    acts.push({ key: 'cancel', label: t('taskBoardView.k1bs0t9b016'), danger: true })
   }
   if (['FAILED', 'CANCELED'].includes(t.state)) {
-    acts.push({ key: 'retry', label: '重试派发' })
+    acts.push({ key: 'retry', label: t('taskBoardView.k1lclwk6017') })
   }
-  acts.push({ key: 'detail', label: '打开详情' })
+  acts.push({ key: 'detail', label: t('taskBoardView.k1dx9ysj018') })
   return acts
 })
 const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
@@ -207,17 +209,17 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
           :class="{ on: layout === 'board' }"
           @click="setLayout('board')"
         >
-          看板
+          {{ $t('taskBoardView.k43pyn001') }}
         </button>
         <button
           type="button"
           :class="{ on: layout === 'list' }"
           @click="setLayout('list')"
         >
-          列表
+          {{ $t('taskBoardView.k3x7l0002') }}
         </button>
       </div>
-      <span class="count">{{ mergedTasks.length }} 任务 · 拖拽卡片到「异常/取消」取消,失败任务拖回「待启动」重试</span>
+      <span class="count">{{ mergedTasks.length }} {{ $t('taskBoardView.k168w1ze004') }}</span>
     </div>
 
     <!-- 空态(快照未到 → 同步中,不误判为空) -->
@@ -227,7 +229,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
     >
       <span :class="synced ? 'pe-icon i-tabler-list-check' : 'pe-icon i-tabler-refresh'" />
       <div class="pe-title">
-        {{ synced ? '还没有' : '正在同步' }} <span class="aw-serif-accent-italic">任务</span>
+        {{ synced ? $t('taskBoardView.k3vkhhj006') : $t('taskBoardView.k1f9c17l019') }} <span class="aw-serif-accent-italic">{{ $t('taskBoardView.k3wcox003') }}</span>
       </div>
       <div class="pe-sub">
         {{ synced ? '在下方 Composer 提交首个任务(首行标题,支持 goal / loop / pipeline 模式)' : '任务快照对齐后自动呈现' }}
@@ -272,7 +274,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
               <span
                 v-if="childCount(t.id)"
                 class="tk-num"
-              >子 {{ childCount(t.id) }}</span>
+              >{{ $t('taskBoardView.k4b1x005') }} {{ childCount(t.id) }}</span>
               <span
                 v-if="t.artifacts"
                 class="tk-num"
@@ -284,7 +286,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
             <div
               v-if="t.routeReason"
               class="tk-route"
-              :title="`路由理由:${t.routeReason}`"
+              :title="$t('taskBoardView.k8m7hm6020', { p0: t.routeReason })"
             >
               ↳ {{ t.routeReason }}
             </div>
@@ -311,7 +313,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
             v-if="col.items.length === 0"
             class="col-empty"
           >
-            {{ col.moveAction ? '拖入此处执行该动作' : '-' }}
+            {{ col.moveAction ? $t('taskBoardView.k13pad50007') : '-' }}
           </div>
         </div>
       </div>

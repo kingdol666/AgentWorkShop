@@ -57,7 +57,7 @@ const hasMore = computed(() => toolLines.value.length > MAX)
       class="more-btn"
       @click="expanded = !expanded"
     >
-      {{ expanded ? '收起' : `展开全部 ${toolLines.length} 个调用` }}
+      {{ expanded ? $t('clusterTool.k40p82001') : `展开全部 ${toolLines.length} 个调用` }}
     </button>
   </div>
 </template>

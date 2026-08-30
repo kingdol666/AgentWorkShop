@@ -12,6 +12,8 @@ import { useEventsStore } from '@/app/stores/workshop/events'
 import { useWorkshopApi, type TaskDto } from '@/app/composables/workshop/useWorkshopApi'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   channelId: string
   taskId: string | null
@@ -66,7 +68,7 @@ const cancel = async (): Promise<void> => {
   cancelling.value = true
   try {
     await api.cancelTask(props.taskId)
-    message.success('已请求取消')
+    message.success(t('taskInspectorDrawer.k1xj595a013'))
     void load()
   }
   catch (e) {
@@ -84,7 +86,7 @@ const retry = async (): Promise<void> => {
   retrying.value = true
   try {
     await api.retryTask(props.taskId)
-    message.success('已重新投递执行')
+    message.success(t('taskInspectorDrawer.ke7bh8u014'))
     void load()
   }
   catch (e) {
@@ -120,7 +122,7 @@ const stateColor: Record<string, string> = {
     <workshop-pane-splitter
       variant="bare"
       class="drawer-resizer"
-      label="拖拽调节抽屉宽度"
+      :label="$t('taskInspectorDrawer.k6hcbxi001')"
       @resize="resizeDrawer"
       @reset="drawerWidth = DRAWER_W_DEFAULT"
     />
@@ -132,23 +134,23 @@ const stateColor: Record<string, string> = {
           >
             {{ taskView?.state ?? detail?.state }}
           </a-tag>
-          <span class="meta">指派:{{ agentName(taskView?.assigneeId ?? detail?.assigneeId ?? '') }}</span>
+          <span class="meta">{{ $t('taskInspectorDrawer.k3o48o4010') }}{{ agentName(taskView?.assigneeId ?? detail?.assigneeId ?? '') }}</span>
           <span class="meta">{{ taskView?.progress ?? detail?.progress ?? 0 }}%</span>
           <div class="spacer" />
           <a-popconfirm
             v-if="(taskView?.state ?? detail?.state) === 'FAILED'"
-            title="确认重试该任务?"
+            :title="$t('taskInspectorDrawer.kns2a6x002')"
             @confirm="retry"
           >
             <a-button
               size="small"
               :loading="retrying"
             >
-              重试任务
+              {{ $t('taskInspectorDrawer.k1lcgf2b005') }}
             </a-button>
           </a-popconfirm>
           <a-popconfirm
-            title="确认取消该任务?"
+            :title="$t('taskInspectorDrawer.k1a7jqb9003')"
             @confirm="cancel"
           >
             <a-button
@@ -157,7 +159,7 @@ const stateColor: Record<string, string> = {
               :loading="cancelling"
               :disabled="['COMPLETED', 'CANCELED', 'FAILED'].includes(taskView?.state ?? detail?.state ?? '')"
             >
-              取消任务
+              {{ $t('taskInspectorDrawer.k1bs0t9b006') }}
             </a-button>
           </a-popconfirm>
         </div>
@@ -168,7 +170,7 @@ const stateColor: Record<string, string> = {
           size="small"
           class="desc"
         >
-          <a-descriptions-item label="描述">
+          <a-descriptions-item :label="$t('taskInspectorDrawer.k40gkk004')">
             {{ detail.description }}
           </a-descriptions-item>
         </a-descriptions>
@@ -177,7 +179,7 @@ const stateColor: Record<string, string> = {
           v-if="detail?.routeReason"
           class="route-reason"
         >
-          <span class="route-label">路由理由</span>
+          <span class="route-label">{{ $t('taskInspectorDrawer.k1knph8c007') }}</span>
           <span class="route-text">{{ detail.routeReason }}</span>
         </div>
 
@@ -193,7 +195,7 @@ const stateColor: Record<string, string> = {
               v-if="timeline.length === 0"
               class="empty"
             >
-              暂无事件(连接前发生)
+              {{ $t('taskInspectorDrawer.kr3vr2x008') }}
             </div>
             <div
               v-for="e in timeline"
@@ -211,19 +213,19 @@ const stateColor: Record<string, string> = {
               <span
                 v-else
                 class="tl-progress"
-              >进度 {{ (e.payload as { progress: number }).progress }}%</span>
+              >{{ $t('taskInspectorDrawer.k485ye011') }} {{ (e.payload as { progress: number }).progress }}%</span>
             </div>
           </a-tab-pane>
 
           <a-tab-pane
             key="artifacts"
-            :tab="`交付物(${detail?.artifacts.length ?? 0})`"
+            :tab="$t('taskInspectorDrawer.kkp77tf015', { p0: detail?.artifacts.length ?? 0 })"
           >
             <div
               v-if="!detail?.artifacts.length"
               class="empty"
             >
-              (无)
+              ({{ $t('taskInspectorDrawer.k401n2012') }}
             </div>
             <workshop-artifact-card
               v-for="a in detail?.artifacts ?? []"
@@ -234,13 +236,13 @@ const stateColor: Record<string, string> = {
 
           <a-tab-pane
             key="children"
-            :tab="`子任务(${children.length})`"
+            :tab="$t('taskInspectorDrawer.khnua62016', { p0: children.length })"
           >
             <div
               v-if="children.length === 0"
               class="empty"
             >
-              (无子任务)
+              {{ $t('taskInspectorDrawer.k1kmqn5u009') }}
             </div>
             <div
               v-for="c in children"
@@ -260,7 +262,7 @@ const stateColor: Record<string, string> = {
 
           <a-tab-pane
             key="raw"
-            :tab="`原始内容(${detail?.artifacts.reduce((n, a) => n + a.parts.length, 0) ?? 0} parts)`"
+            :tab="$t('taskInspectorDrawer.kxj74io017', { p0: detail?.artifacts.reduce((n, a) => n + a.parts.length, 0) ?? 0 })"
           >
             <pre class="raw">{{ JSON.stringify(detail?.artifacts, null, 2)?.slice(0, 4000) }}</pre>
           </a-tab-pane>

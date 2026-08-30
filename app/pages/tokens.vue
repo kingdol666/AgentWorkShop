@@ -7,6 +7,8 @@ import { message } from 'ant-design-vue'
 import { useUserStore } from '../stores/workshop/user'
 import type { TokenMeta } from '../stores/workshop/user'
 
+const { t } = useI18n()
+
 definePageMeta({ layout: 'default' })
 
 const userStore = useUserStore()
@@ -33,7 +35,7 @@ const load = async (): Promise<void> => {
     tokens.value = await userStore.listTokens()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : '加载 token 列表失败')
+    message.error(e instanceof Error ? e.message : t('tokens.k19jvk54013'))
   }
   finally {
     loading.value = false
@@ -71,7 +73,7 @@ const doCreate = async (): Promise<void> => {
 
 const doRename = async (): Promise<void> => {
   if (!renameLabel.value.trim()) {
-    message.warning('标签不能为空')
+    message.warning(t('tokens.k169z26g014'))
     return
   }
   renameLoading.value = true
@@ -79,7 +81,7 @@ const doRename = async (): Promise<void> => {
     await userStore.renameToken(renameId.value, renameLabel.value)
     renameOpen.value = false
     await load()
-    message.success('已更新')
+    message.success(t('tokens.k3n9aij015'))
   }
   catch (e) {
     message.error(e instanceof Error ? e.message : String(e))
@@ -96,7 +98,7 @@ const doRevoke = (t: { id?: string }): void => {
   void (async () => {
     try {
       await userStore.revokeToken(tokenId)
-      message.success('已吊销')
+      message.success(t('tokens.k3n64kh016'))
       if (isCurrent) return // revokeToken 已触发登出跳转
       await load()
     }
@@ -151,7 +153,7 @@ const copyCreated = async (): Promise<void> => {
     }, 1600)
   }
   else {
-    message.error('复制失败,请手动选择复制')
+    message.error(t('tokens.kjtcn2h017'))
   }
 }
 const dismissCreated = (): void => {
@@ -179,7 +181,7 @@ const toggleRowReveal = async (t: TokenMeta): Promise<void> => {
     return
   }
   if (!t.hasPlain) {
-    message.warning('该 token 创建于旧版本(仅存哈希),无法查看明文;建议吊销后重新签发')
+    message.warning(t('tokens.kkpgzo8018'))
     return
   }
   revealingId.value = t.id
@@ -188,7 +190,7 @@ const toggleRowReveal = async (t: TokenMeta): Promise<void> => {
     if (plain) revealedPlain.value[t.id] = plain
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : '查看明文失败')
+    message.error(e instanceof Error ? e.message : t('tokens.k1gj9ls019'))
   }
   finally {
     revealingId.value = ''
@@ -201,7 +203,7 @@ const copyRow = async (t: TokenMeta): Promise<void> => {
   let text: string | null = cached ?? null
   if (!text) {
     if (!t.hasPlain) {
-      message.warning('该 token 创建于旧版本(仅存哈希),无法复制明文;建议吊销后重新签发')
+      message.warning(t('tokens.kr5ovor020'))
       return
     }
     revealingId.value = t.id
@@ -209,7 +211,7 @@ const copyRow = async (t: TokenMeta): Promise<void> => {
       text = await userStore.revealToken(t.id)
     }
     catch (e) {
-      message.error(e instanceof Error ? e.message : '获取明文失败')
+      message.error(e instanceof Error ? e.message : t('tokens.kubtby5021'))
       return
     }
     finally {
@@ -223,7 +225,7 @@ const copyRow = async (t: TokenMeta): Promise<void> => {
     }, 1600)
   }
   else {
-    message.error('复制失败,请先显示明文后手动选择复制')
+    message.error(t('tokens.kgkfcr0022'))
   }
 }
 
@@ -235,14 +237,14 @@ const openRename = (t: { id?: string, label?: string }): void => {
   renameOpen.value = true
 }
 const columns = [
-  { title: '标签', key: 'label', dataIndex: 'label' },
+  { title: t('tokens.k41416002'), key: 'label', dataIndex: 'label' },
   { title: 'Token', key: 'token', width: 360 },
-  { title: '创建时间', key: 'createdAt', dataIndex: 'createdAt', width: 170 },
-  { title: '最近使用', key: 'lastUsedAt', dataIndex: 'lastUsedAt', width: 200 },
-  { title: '操作', key: 'action', width: 170 },
+  { title: t('tokens.k1bg95gk023'), key: 'createdAt', dataIndex: 'createdAt', width: 170 },
+  { title: t('tokens.k1euotul024'), key: 'lastUsedAt', dataIndex: 'lastUsedAt', width: 200 },
+  { title: t('tokens.k40aa6025'), key: 'action', width: 170 },
 ]
 
-useHead({ title: 'API Token · AgentWorkShop' })
+useHead({ title: () => t('titles.tokens') })
 </script>
 
 <template>
@@ -253,16 +255,16 @@ useHead({ title: 'API Token · AgentWorkShop' })
       class="auth-gate"
     >
       <a-card class="auth-card">
-        <h2>请先登录</h2>
+        <h2>{{ $t('tokens.k1k6z0r8003') }}</h2>
         <p class="sub">
-          Token 属于登录用户的私有资源,需登录后管理。
+          {{ $t('tokens.k1gjnree004') }}
         </p>
         <a-button
           type="primary"
           block
           @click="navigateTo('/workshop')"
         >
-          前往登录
+          {{ $t('tokens.k1bhhheq005') }}
         </a-button>
       </a-card>
     </div>
@@ -272,7 +274,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
         <div>
           <h2>API Token</h2>
           <p class="sub">
-            {{ userStore.user?.name }} · 每个 token 可独立吊销;明文存档于服务端,可随时查看复制
+            {{ userStore.user?.name }} · {{ $t('tokens.k1upppaw026') }}
           </p>
         </div>
         <a-space>
@@ -280,14 +282,14 @@ useHead({ title: 'API Token · AgentWorkShop' })
             v-if="userStore.user?.tokenId"
             color="green"
           >
-            当前会话 Token 已标识
+            {{ $t('tokens.khcxmsc006') }}
           </a-tag>
           <a-button
             type="primary"
             @click="createOpen = true"
           >
             <span class="i-tabler-plus" />
-            签发 Token
+            {{ $t('chips.issue') }}
           </a-button>
         </a-space>
       </div>
@@ -303,12 +305,12 @@ useHead({ title: 'API Token · AgentWorkShop' })
             <template v-if="column.key === 'label'">
               <a-space>
                 <span class="i-tabler-key text-primary" />
-                <span class="font-medium">{{ record.label || '(未命名)' }}</span>
+                <span class="font-medium">{{ record.label || $t('tokens.kj3mklm028') }}</span>
                 <a-tag
                   v-if="record.id === userStore.user?.tokenId"
                   color="green"
                 >
-                  当前会话
+                  {{ $t('tokens.k1defr98007') }}
                 </a-tag>
               </a-space>
             </template>
@@ -346,7 +348,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
                   class="legacy-tag"
                   color="orange"
                 >
-                  旧版不可见
+                  {{ $t('tokens.kyelqk1008') }}
                 </a-tag>
               </div>
             </template>
@@ -364,7 +366,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
                   @click="openRename(record)"
                 >
                   <span class="i-tabler-edit" />
-                  重命名
+                  {{ $t('tokens.k3vrpcs009') }}
                 </a-button>
                 <a-popconfirm
                   :title="record.id === userStore.user?.tokenId ? '吊销当前会话 token 将退出登录' : '吊销后立即失效'"
@@ -378,7 +380,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
                     danger
                   >
                     <span class="i-tabler-trash" />
-                    吊销
+                    {{ $t('tokens.k3xmrz010') }}
                   </a-button>
                 </a-popconfirm>
               </a-space>
@@ -390,7 +392,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
       <!-- 创建 Token -->
       <a-modal
         v-model:open="createOpen"
-        title="签发 API Token"
+        :title="$t('chips.issueTitle')"
         :confirm-loading="createLoading"
         ok-text="创建"
         cancel-text="取消"
@@ -398,7 +400,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
       >
         <a-input
           v-model:value="createLabel"
-          placeholder="标签,如:CI / 测试脚本 / 备用"
+          :placeholder="$t('tokens.k1hlqknl001')"
           @keydown.enter="doCreate"
         />
       </a-modal>
@@ -414,7 +416,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
       >
         <div class="once-banner">
           <span class="i-tabler-circle-check" />
-          <span>Token 已创建并存档,之后可随时在列表中查看/复制;仍建议仅在可信环境展示明文。</span>
+          <span>{{ $t('tokens.k12149oy011') }}</span>
         </div>
         <div class="raw-row">
           <code class="raw">{{ revealed ? createdRaw : masked }}</code>
@@ -435,7 +437,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
           </button>
         </div>
         <div class="once-meta">
-          <span>标签:{{ lastCreatedLabel || '(未命名)' }}</span>
+          <span>{{ $t('tokens.k3p0p44027') }}{{ lastCreatedLabel || $t('tokens.kj3mklm028') }}</span>
           <span>用法:Authorization: Bearer &lt;token&gt;</span>
         </div>
         <a-button
@@ -443,7 +445,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
           block
           @click="dismissCreated"
         >
-          我已保存,关闭
+          {{ $t('tokens.k1s5f5zd012') }}
         </a-button>
       </a-modal>
 
@@ -458,7 +460,7 @@ useHead({ title: 'API Token · AgentWorkShop' })
       >
         <a-input
           v-model:value="renameLabel"
-          placeholder="标签"
+          :placeholder="$t('tokens.k41416002')"
           @keydown.enter="doRename"
         />
       </a-modal>

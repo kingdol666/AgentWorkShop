@@ -9,6 +9,8 @@
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 
+const { t } = useI18n()
+
 /** 实时数采数据(twinId → 该实体相关的实时通道:
  *  数采节点 = 自身通道;设备 = 绑定到它的全部数采通道;由 TownView 从模拟上报喂入) */
 interface DaqLiveRow { ch: string, value: string, unit: string, alarm?: boolean }
@@ -105,7 +107,7 @@ function doDcwWrite(r: DcwLiveRow): void {
   if (raw == null || raw === '') return
   const v = Number(raw)
   if (v < r.lo || v > r.hi) {
-    dcwErrs[r.id] = `超出${r.src === 'recipe' ? '配方工艺窗口' : '节点量程'} ${dcwWinText(r)}`
+    dcwErrs[r.id] = t('deviceTwinPanel.kxddket010', { p0: r.src === 'recipe' ? t('deviceTwinPanel.kq2jssk008') : t('deviceTwinPanel.k1iwj796009'), p1: dcwWinText(r) })
     return
   }
   dcwErrs[r.id] = ''
@@ -123,7 +125,7 @@ function doDcwWrite(r: DcwLiveRow): void {
 <template>
   <aside class="twin-panel">
     <div class="twin-head">
-      <span class="twin-kicker">设备控制台</span>
+      <span class="twin-kicker">{{ $t('deviceTwinPanel.k7k6evr002') }}</span>
       <span class="twin-count">{{ twins.twins.length }}</span>
     </div>
 
@@ -131,7 +133,7 @@ function doDcwWrite(r: DcwLiveRow): void {
       v-if="!twins.loaded"
       class="twin-empty"
     >
-      正在装载设备寄存器…
+      {{ $t('deviceTwinPanel.kkw7sn5003') }}
     </div>
     <div
       v-else-if="twins.twins.length === 0"
@@ -139,10 +141,10 @@ function doDcwWrite(r: DcwLiveRow): void {
     >
       <div class="twin-empty-frame">
         <div class="twin-empty-title">
-          未注册设备
+          {{ $t('deviceTwinPanel.k13y2qmg004') }}
         </div>
         <div class="twin-empty-sub">
-          将设备模型拖入孪生场景即可创建数字孪生实体
+          {{ $t('deviceTwinPanel.kotf23l005') }}
         </div>
       </div>
     </div>
@@ -171,7 +173,7 @@ function doDcwWrite(r: DcwLiveRow): void {
             :title="armedId === t.id ? '再次点击确认删除该设备实例' : '删除该设备实例'"
             @click.stop="removeTwin(t)"
           >
-            {{ armedId === t.id ? '确认' : '✕' }}
+            {{ armedId === t.id ? $t('deviceTwinPanel.k44653007') : '✕' }}
           </button>
           <span
             class="twin-state"
@@ -223,7 +225,7 @@ function doDcwWrite(r: DcwLiveRow): void {
               <em>{{ r.ch }}<i
                 v-if="r.src === 'recipe'"
                 class="dcw-src"
-              >配方</i></em>
+              >{{ $t('deviceTwinPanel.k48grv006') }}</i></em>
               <b class="dcw-set">{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}<i>{{ r.unit }}</i></b>
             </div>
             <div class="dcw-win">
@@ -243,7 +245,7 @@ function doDcwWrite(r: DcwLiveRow): void {
               <button
                 class="ctrl-btn dcw-send"
                 :disabled="dcwDrafts[r.id] == null || dcwDrafts[r.id] === '' || dcwBusy === r.id"
-                title="下发设定值(越限将被拒绝)"
+                :title="$t('deviceTwinPanel.k1j04u8001')"
                 @click.stop="doDcwWrite(r)"
               >
                 {{ dcwBusy === r.id ? '···' : 'SET' }}

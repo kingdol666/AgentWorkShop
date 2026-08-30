@@ -94,10 +94,10 @@ const stateDot = (s: AgentView['state']): string =>
           v-if="card.agent.currentTaskId"
           class="mh-task"
         >
-          执行:{{ entities.taskTitle(card.channelId, card.agent.currentTaskId) }}
+          {{ $t('mentionHoverCard.k3o5eky002') }}{{ entities.taskTitle(card.channelId, card.agent.currentTaskId) }}
         </div>
         <div class="mh-hint">
-          点击提及打开执行详情
+          {{ $t('mentionHoverCard.k1t89ag4001') }}
         </div>
       </div>
     </div>

@@ -259,7 +259,7 @@ function renderFrame(f: TermFrame): void {
     case 'extension_ui_request': {
       const method = String(frame.method ?? '')
       if (method === 'cancel') {
-        writeBlock(`  ${C.dim}· 对话框已撤销(${String(frame.targetId ?? '')})${C.reset}`)
+        writeBlock(t('ompTerminalPanel.k14jk3nu001', { p0: C.dim, p1: String(frame.targetId ?? ''), p2: C.reset }))
         // omp 主动撤销(回合中止等)→ 关闭交互面板
         if (hitl.value && hitl.value.id === String(frame.targetId ?? '')) hitl.value = null
         return
@@ -336,7 +336,7 @@ function handleServerMessage(msg: TerminalServerMessage): void {
         livePid.value = msg.meta.pid
         lastRenderedSeq = 0
         lastErrorMessage = ''
-        writeBlock(`${C.dim}── 已接入 omp 进程 PID ${msg.meta.pid}(会话重放 ${msg.lastSeq} 帧)──${C.reset}`)
+        writeBlock(t('ompTerminalPanel.k68kkpc002', { p0: C.dim, p1: msg.meta.pid, p2: msg.lastSeq, p3: C.reset }))
       }
       alive.value = msg.alive
       running.value = msg.running
@@ -426,7 +426,7 @@ function sendRaw(obj: unknown): void {
     ws.send(JSON.stringify(obj))
     return
   }
-  writeBlock(`${C.red}✗ 终端连接未就绪,命令未发送${C.reset}`)
+  writeBlock(t('ompTerminalPanel.k59zj91003', { p0: C.red, p1: C.reset }))
 }
 
 function submitInput(text: string): void {
@@ -450,7 +450,7 @@ function hitlRespond(response: { id: string, value?: string, confirmed?: boolean
     : response.confirmed !== undefined
       ? String(response.confirmed)
       : `"${oneLine(response.value ?? '', 80)}"`
-  writeBlock(`${C.green}✔ HITL 已应答:${label}${C.reset}`)
+  writeBlock(t('ompTerminalPanel.kvzhi95004', { p0: C.green, p1: label, p2: C.reset }))
   hitl.value = null
 }
 

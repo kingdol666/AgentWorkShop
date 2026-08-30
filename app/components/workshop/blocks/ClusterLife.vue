@@ -43,16 +43,16 @@ const currentTitle = computed(() => {
         class="life-task"
         :title="life.currentTaskId ?? ''"
       >「{{ currentTitle }}」</span>
-      <span class="life-meta">队列 {{ life.queued }} · 完成 {{ life.completed }}</span>
+      <span class="life-meta">{{ $t('clusterLife.k498bf002') }} {{ life.queued }} · 完成 {{ life.completed }}</span>
       <span
         v-if="life.transitions > 1"
         class="life-count"
-      >{{ life.transitions }} 次状态</span>
+      >{{ life.transitions }} {{ $t('clusterLife.k3pi5z1003') }}</span>
     </div>
     <span
       v-else
       class="life-row"
-    >非状态事件</span>
+    >{{ $t('clusterLife.k1xthifv001') }}</span>
   </div>
 </template>
 

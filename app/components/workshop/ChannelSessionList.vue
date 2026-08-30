@@ -12,6 +12,8 @@ import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useWorkshopApi, type ChannelDto, type ChannelTemplateDto } from '@/app/composables/workshop/useWorkshopApi'
 
+const { t } = useI18n()
+
 const props = defineProps<{ wsId: string }>()
 const wsStore = useWorkspacesStore()
 const entities = useEntitiesStore()
@@ -56,10 +58,10 @@ const select = (channelId: string): void => {
 const copyWorkspace = async (path: string): Promise<void> => {
   try {
     await navigator.clipboard.writeText(path)
-    message.success(`已复制:${path}`)
+    message.success(t('channelSessionList.kud74vg040', { p0: path }))
   }
   catch {
-    message.error('复制失败(浏览器未授权剪贴板)')
+    message.error(t('channelSessionList.krij3gg026'))
   }
 }
 /** 路径显示 basename(E:\codes\AgentWorkShop → AgentWorkShop),全路径在 title/复制 */
@@ -92,7 +94,7 @@ const createAndMount = async (): Promise<void> => {
     })
     const created = (res as unknown as { data?: { channelId?: string } })?.data
     const channelId = created?.channelId
-    if (!channelId) throw new Error('创建失败')
+    if (!channelId) throw new Error(t('channelSessionList.k1bg6shc027'))
     await wsStore.mountChannel(props.wsId, channelId)
     mountModal.value = false
     mountForm.name = ''
@@ -100,10 +102,10 @@ const createAndMount = async (): Promise<void> => {
     mountForm.workspace = ''
     mountForm.scenarioPrompt = ''
     void refreshChannels()
-    message.success('Channel 已创建(空团队;进入后通过「添加成员」装配 lead / worker)')
+    message.success(t('channelSessionList.kn89jvs028'))
   }
   catch (e) {
-    message.error(`创建失败:${e instanceof Error ? e.message : String(e)}`)
+    message.error(t('channelSessionList.k1x2th9e041', { p0: e instanceof Error ? e.message : String(e) }))
   }
   finally {
     mountSubmitting.value = false
@@ -119,13 +121,13 @@ const mountFromTemplate = async (): Promise<void> => {
   try {
     const res = await api.mountChannelTemplate(props.wsId, templateMountId.value)
     const data = (res as unknown as { data?: { agentCount?: number } })?.data
-    message.success(`已从模板实例化并挂载(成员 ${data?.agentCount ?? 0} 个)`)
+    message.success(t('channelSessionList.kai50qc042', { p0: data?.agentCount ?? 0 }))
     templateMountId.value = undefined
     void refreshChannels()
   }
   catch (e) {
     const err = e as { data?: { message?: string }, message?: string }
-    message.error(err?.data?.message ?? err?.message ?? '模板挂载失败')
+    message.error(err?.data?.message ?? err?.message ?? t('channelSessionList.k97xi7u029'))
   }
   finally {
     templateMounting.value = false
@@ -134,7 +136,7 @@ const mountFromTemplate = async (): Promise<void> => {
 
 const unmount = (channelId: string): void => {
   wsStore.unmountChannel(props.wsId, channelId)
-    .catch((e: { data?: { message?: string }, message?: string }) => { message.error(e?.data?.message ?? e?.message ?? '移出失败') })
+    .catch((e: { data?: { message?: string }, message?: string }) => { message.error(e?.data?.message ?? e?.message ?? t('channelSessionList.k1hgfvdc030')) })
 }
 
 // ===== Channel 实例设置(场景/工作目录热更新)+ 保存为模板 =====
@@ -158,7 +160,7 @@ const saveSettings = async (): Promise<void> => {
       scenarioPrompt: settingsForm.scenarioPrompt,
       workspace: settingsForm.workspace.trim() || undefined,
     })
-    message.success('已更新;成员运行时将按新设置回收重装配')
+    message.success(t('channelSessionList.kvsxlu6031'))
     settingsOpen.value = false
     void refreshChannels()
   }
@@ -175,14 +177,14 @@ const saveTplOpen = ref(false)
 const saveTplForm = reactive({ name: '', description: '', visibility: 'private' as 'private' | 'public' })
 const saveTplSubmitting = ref(false)
 const openSaveTemplate = (): void => {
-  saveTplForm.name = `${settingsForm.name || 'channel'} 模板`
+  saveTplForm.name = t('channelSessionList.k2hfym5043', { p0: settingsForm.name || 'channel' })
   saveTplForm.description = ''
   saveTplForm.visibility = 'private'
   saveTplOpen.value = true
 }
 const saveAsTemplate = async (): Promise<void> => {
   if (!saveTplForm.name.trim()) {
-    message.warning('模板名必填')
+    message.warning(t('channelSessionList.k1i0ji0y032'))
     return
   }
   saveTplSubmitting.value = true
@@ -193,7 +195,7 @@ const saveAsTemplate = async (): Promise<void> => {
       description: saveTplForm.description || undefined,
       visibility: saveTplForm.visibility,
     })
-    message.success('已捕获为 Channel 模板(场景/目录/团队快照)')
+    message.success(t('channelSessionList.kjpguxw033'))
     saveTplOpen.value = false
     void refreshChannels()
   }
@@ -239,7 +241,7 @@ const saveAsTemplate = async (): Promise<void> => {
         v-if="mountedChannels.length === 0"
         class="empty"
       >
-        尚未挂载 Channel(可从下方模板一键实例化)
+        {{ $t('channelSessionList.kkv789s014') }}
       </div>
 
       <div
@@ -258,8 +260,8 @@ const saveAsTemplate = async (): Promise<void> => {
           <button
             class="op im"
             type="button"
-            title="Channel 设置(场景/工作目录/存为模板)"
-            :aria-label="`设置 ${ch.name}`"
+            :title="$t('channelSessionList.kne35ug001')"
+            :aria-label="$t('channelSessionList.kjmldih035', { p0: ch.name })"
             @click.stop="openSettings(ch.id)"
           >
             <span class="i-tabler-settings2 im-pop" />
@@ -268,7 +270,7 @@ const saveAsTemplate = async (): Promise<void> => {
             class="op im"
             type="button"
             title="移出 workspace"
-            :aria-label="`移出 ${ch.name}`"
+            :aria-label="$t('channelSessionList.k1yurooi036', { p0: ch.name })"
             @click.stop="unmount(ch.id)"
           >
             <span class="i-tabler-x im-pop" />
@@ -279,17 +281,17 @@ const saveAsTemplate = async (): Promise<void> => {
           <span
             v-if="!ch.synced"
             class="meta syncing"
-          >同步中…</span>
+          >{{ $t('channelSessionList.k1bst7s9015') }}</span>
           <span
             v-else
             class="meta"
-          >{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</span>
+          >{{ ch.agents }} {{ $t('channelSessionList.k1ggoa45025') }} {{ ch.busy }} / {{ $t('channelSessionList.k3wcox034') }} {{ ch.activeTasks }}</span>
         </div>
         <button
           v-if="displayWorkspace(ch.workspace)"
           class="row2 ws im"
           type="button"
-          :title="`工作目录:${ch.workspace}(点击复制路径)`"
+          :title="$t('channelSessionList.kfe4pzq037', { p0: ch.workspace })"
           @click.stop="copyWorkspace(ch.workspace)"
         >
           <span class="i-tabler-folder" /> {{ displayWorkspace(ch.workspace) }}
@@ -306,18 +308,18 @@ const saveAsTemplate = async (): Promise<void> => {
         :loading="templateMounting"
         :options="channelTemplates.map(t => ({
           value: t.id,
-          label: `${t.isBuiltin ? '内置 · ' : t.visibility === 'public' ? '公开 · ' : ''}${t.name}(${(t.lead ? 1 : 0) + t.members.length} 成员)`,
+          label: $t('channelSessionList.k1oes209038', { p0: t.isBuiltin ? '内置 · ' : t.visibility === 'public' ? '公开 · ' : '', p1: t.name, p2: (t.lead ? 1 : 0) + t.members.length }),
         }))"
         @change="mountFromTemplate"
       />
       <div class="tpl-hint">
-        模板 = 场景 + 工作目录 + 团队;实例化即装配成员
+        {{ $t('channelSessionList.k18ppu31016') }}
       </div>
     </div>
 
     <a-modal
       v-model:open="mountModal"
-      title="新建 Channel 并挂载"
+      :title="$t('channelSessionList.k1qjyl6l002')"
       :confirm-loading="mountSubmitting"
       ok-text="创建"
       cancel-text="取消"
@@ -327,20 +329,20 @@ const saveAsTemplate = async (): Promise<void> => {
         <a-form-item label="Channel 名称">
           <a-input v-model:value="mountForm.name" />
         </a-form-item>
-        <a-form-item label="描述">
+        <a-form-item :label="$t('channelSessionList.k40gkk003')">
           <a-input v-model:value="mountForm.description" />
         </a-form-item>
-        <a-form-item label="作业场景 Prompt(全员注入)">
+        <a-form-item :label="$t('channelSessionList.k1wj4f38004')">
           <a-textarea
             v-model:value="mountForm.scenarioPrompt"
             :rows="4"
-            placeholder="该 channel 全部 Agent 共享的作业场景规范,与系统设计手册组合注入每个 harness……例如:所有产出必须附中文摘要;代码修改需先列计划再动手;回复末尾附 [DONE] 标记"
+            :placeholder="$t('channelSessionList.k1098zie005')"
           />
           <template #extra>
-            <span class="ws-hint">注入顺序:场景规范 → 成员专长 → 记忆 → 系统手册 → 任务;设置弹窗可热更新(成员运行时自动回收重装配)</span>
+            <span class="ws-hint">{{ $t('channelSessionList.k1u3zsr5017') }}</span>
           </template>
         </a-form-item>
-        <a-form-item label="工作目录(团队作业挂载点)">
+        <a-form-item :label="$t('channelSessionList.kmgv4h5006')">
           <a-input-group compact>
             <a-input
               v-model:value="mountForm.workspace"
@@ -353,15 +355,15 @@ const saveAsTemplate = async (): Promise<void> => {
               style="width: 30%"
               @click="fileSelectorOpen = true"
             >
-              浏览…
+              {{ $t('channelSessionList.k3pz0ma018') }}
             </a-button>
           </a-input-group>
           <template #extra>
-            <span class="ws-hint">执行任务时该目录注入各 Agent harness 的作业 cwd(omp 子进程工作目录);不存在自动创建</span>
+            <span class="ws-hint">{{ $t('channelSessionList.kucq30k019') }}</span>
           </template>
         </a-form-item>
         <a-form-item>
-          <span class="ws-hint">Channel 创建后为空团队,无任何 Agent;进入后通过「添加成员」选择角色(lead/worker)与场景提示词完成装配</span>
+          <span class="ws-hint">{{ $t('channelSessionList.k1ful761020') }}</span>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -369,21 +371,21 @@ const saveAsTemplate = async (): Promise<void> => {
     <!-- Channel 实例设置:场景/工作目录热更新 + 保存为模板 -->
     <a-modal
       v-model:open="settingsOpen"
-      :title="`Channel 设置 · ${settingsForm.name}`"
+      :title="$t('channelSessionList.k1pmemvt039', { p0: settingsForm.name })"
       :confirm-loading="settingsSaving"
       ok-text="保存"
       cancel-text="取消"
       @ok="saveSettings"
     >
       <a-form layout="vertical">
-        <a-form-item label="作业场景 Prompt(修改后成员运行时自动回收,按新场景重装配)">
+        <a-form-item :label="$t('channelSessionList.k1i8q46x007')">
           <a-textarea
             v-model:value="settingsForm.scenarioPrompt"
             :rows="4"
-            placeholder="该 channel 全部 Agent 共享的作业场景规范……"
+            :placeholder="$t('channelSessionList.ku3ugac008')"
           />
         </a-form-item>
-        <a-form-item label="工作目录(Agent 作业 cwd;修改后 omp 子进程按新目录重启)">
+        <a-form-item :label="$t('channelSessionList.k67dzev009')">
           <a-input-group compact>
             <a-input
               v-model:value="settingsForm.workspace"
@@ -395,7 +397,7 @@ const saveAsTemplate = async (): Promise<void> => {
               style="width: 30%"
               @click="fileSelectorOpen2 = true"
             >
-              浏览…
+              {{ $t('channelSessionList.k3pz0ma018') }}
             </a-button>
           </a-input-group>
         </a-form-item>
@@ -405,9 +407,9 @@ const saveAsTemplate = async (): Promise<void> => {
             @click="openSaveTemplate"
           >
             <span class="i-tabler-template" />
-            保存为 Channel 模板
+            {{ $t('channelSessionList.k6kpql010') }}
           </a-button>
-          <span class="ws-hint">捕获当前场景/工作目录/团队组合为可复用模板</span>
+          <span class="ws-hint">{{ $t('channelSessionList.k1x6kznr021') }}</span>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -415,31 +417,31 @@ const saveAsTemplate = async (): Promise<void> => {
     <!-- 保存为模板 -->
     <a-modal
       v-model:open="saveTplOpen"
-      title="保存为 Channel 模板"
+      :title="$t('channelSessionList.k6kpql010')"
       :confirm-loading="saveTplSubmitting"
       ok-text="保存模板"
       cancel-text="取消"
       @ok="saveAsTemplate"
     >
       <a-form layout="vertical">
-        <a-form-item label="模板名称">
+        <a-form-item :label="$t('channelSessionList.k1f55q76011')">
           <a-input v-model:value="saveTplForm.name" />
         </a-form-item>
-        <a-form-item label="描述">
+        <a-form-item :label="$t('channelSessionList.k40gkk003')">
           <a-input v-model:value="saveTplForm.description" />
         </a-form-item>
-        <a-form-item label="可见性">
+        <a-form-item :label="$t('channelSessionList.k3lrqn0012')">
           <a-radio-group v-model:value="saveTplForm.visibility">
             <a-radio value="private">
-              私有(仅本人)
+              {{ $t('channelSessionList.k1otvrfv022') }}
             </a-radio>
             <a-radio value="public">
-              公开(全员可实例化)
+              {{ $t('channelSessionList.k1cc399s023') }}
             </a-radio>
           </a-radio-group>
         </a-form-item>
         <a-form-item>
-          <span class="ws-hint">成员有模板引用则保留引用,否则保存内联快照;场景与工作目录照搬</span>
+          <span class="ws-hint">{{ $t('channelSessionList.kl9btf7024') }}</span>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -447,13 +449,13 @@ const saveAsTemplate = async (): Promise<void> => {
     <!-- FileSelector:服务器目录选择 -> 回填工作目录 -->
     <workshop-file-selector-modal
       v-model:open="fileSelectorOpen"
-      title="选择团队工作目录"
+      :title="$t('channelSessionList.kbdp56k013')"
       :initial-path="mountForm.workspace || undefined"
       @select="(p) => { mountForm.workspace = p }"
     />
     <workshop-file-selector-modal
       v-model:open="fileSelectorOpen2"
-      title="选择团队工作目录"
+      :title="$t('channelSessionList.kbdp56k013')"
       :initial-path="settingsForm.workspace || undefined"
       @select="(p) => { settingsForm.workspace = p }"
     />

@@ -18,6 +18,8 @@ import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useUserStore } from '@/app/stores/workshop/user'
 import { agentHueColor } from '@/app/composables/workshop/useEventBlocks'
 
+const { t } = useI18n()
+
 const props = defineProps<{ channelId: string }>()
 const emit = defineEmits<{ (e: 'submitted'): void }>()
 const api = useWorkshopApi()
@@ -154,7 +156,7 @@ const send = async (): Promise<void> => {
     if (mode.value === 'task') {
       const { title, description } = parseTitleDesc()
       if (!title) {
-        message.warning('任务标题不能为空')
+        message.warning(t('composer.kqdhdlq014'))
         return
       }
       // loop 参数(先校验后使用;校验通过后下方 modeConfig 才可能引用)
@@ -166,7 +168,7 @@ const send = async (): Promise<void> => {
           return
         }
         if (maxIterations !== null && (!Number.isInteger(maxIterations) || maxIterations < 1 || maxIterations > 10000)) {
-          message.warning('最大次数需设置为 1 到 10000 次，留空表示不限次数')
+          message.warning(t('composer.k1l36qf9015'))
           return
         }
       }
@@ -192,11 +194,11 @@ const send = async (): Promise<void> => {
         parts: [{ text: input.value.trim() }],
       })
       const routedTo = targetName.value || 'lead'
-      message.success(`任务已下发 → @${routedTo}(${taskMode.value})`)
+      message.success(t('composer.k1d2idgj035', { p0: routedTo, p1: taskMode.value }))
     }
     else {
       if (!toAgentId.value) {
-        message.warning('请选择目标 Agent(可用 @ 提及)')
+        message.warning(t('composer.k1bw65is016'))
         return
       }
       await api.injectMessage(props.channelId, {
@@ -207,7 +209,7 @@ const send = async (): Promise<void> => {
         // 人类发送者名:时间线 a2a.message 以"@你 → @目标"聊天行呈现
         fromLabel: userStore.user?.name ?? undefined,
       })
-      message.success(`消息已发送给 @${targetName.value}(${priority.value === 'immediate' ? '实时注入' : '排队'})`)
+      message.success(t('composer.k1wk4bf036', { p0: targetName.value, p1: priority.value === 'immediate' ? t('composer.k1cxjc4m034') : t('composer.k40g8m009') }))
     }
     input.value = ''
     resetTarget()
@@ -259,40 +261,40 @@ const reachHint = computed<Reach | null>(() => {
     if (st === 'busy') {
       return {
         tone: 'info',
-        text: '运行中 · 任务进入其信箱排队',
-        title: '目标正在执行:新任务投递到信箱,当前回合结束后按 FIFO 处理',
+        text: t('composer.k1ww0ftm017'),
+        title: t('composer.k9eq10w018'),
       }
     }
     if (st === 'stopped') {
       return {
         tone: 'warn',
-        text: '已停止 · 任务将入队,唤醒后执行',
-        title: '目标运行时已停止:任务安全入队,重新启用后自动处理',
+        text: t('composer.kbhz1rp019'),
+        title: t('composer.kophjf5020'),
       }
     }
-    return { tone: 'ok', text: '空闲 · 任务将立即起回合执行', title: '目标空闲:任务投递后立即开始处理' }
+    return { tone: 'ok', text: t('composer.k4qgtiw021'), title: t('composer.kfmjwas022') }
   }
   if (st === 'busy') {
     return {
       tone: 'info',
-      text: priority.value === 'immediate' ? '运行中 · 将实时注入当前回合(HITL)' : '运行中 · 本回合结束后处理',
-      title: '目标正在执行任务:即时消息会注入其运行中的会话(同轮可见)',
+      text: priority.value === 'immediate' ? t('composer.kwg68t0023') : t('composer.k7w1etd024'),
+      title: t('composer.k9m6p7u025'),
     }
   }
   if (st === 'stopped') {
     return {
       tone: 'warn',
-      text: '已停止 · 消息将入队,唤醒后送达',
-      title: '目标运行时已停止:消息安全入队,重新启用后自动处理',
+      text: t('composer.kj1ngpo026'),
+      title: t('composer.kmf7lcc027'),
     }
   }
-  return { tone: 'ok', text: '空闲 · 将立即起回合处理', title: '目标空闲:消息投递后立即开始处理' }
+  return { tone: 'ok', text: t('composer.k1tet5df028'), title: t('composer.kn600in029') }
 })
 
 const placeholder = computed(() =>
   mode.value === 'task'
-    ? '输入任务下发(首行标题,@ 成员直发,缺省 lead)…  ⌘/Ctrl+Enter 提交'
-    : '输入消息/通知(@ 成员指定目标,缺省 lead)…  ⌘/Ctrl+Enter 发送',
+    ? t('composer.k2h5jwc030')
+    : t('composer.k15mwzt7031'),
 )
 </script>
 
@@ -305,7 +307,7 @@ const placeholder = computed(() =>
         class="mention-menu"
       >
         <div class="mention-title">
-          发送给…
+          {{ $t('composer.k1bxvc46004') }}
         </div>
         <button
           v-for="(a, i) in mentionCandidates"
@@ -332,15 +334,15 @@ const placeholder = computed(() =>
 
       <div class="composer-status-chip">
         <template v-if="mode === 'task'">
-          <span class="chip-key">任务</span>
+          <span class="chip-key">{{ $t('composer.k3wcox005') }}</span>
           <span>{{ taskMode }}</span>
           <span v-if="taskMode === 'loop'">
-            间隔 {{ loopIntervalSeconds ?? '-' }}s
+            {{ $t('composer.k49kr1011') }} {{ loopIntervalSeconds ?? '-' }}s
           </span>
           <span
             class="chip-target"
-            :title="isDefaultLead ? '未 @ 指定:任务自动路由 lead 调度;@ 某成员可直发' : `直发 @${targetName}`"
-          >→ {{ targetName ? `@${targetName}` : 'lead' }}{{ isDefaultLead ? ' · 默认' : ' · 直发' }}</span>
+            :title="isDefaultLead ? '未 @ 指定:任务自动路由 lead 调度;@ 某成员可直发' : $t('composer.kl3604i033', { p0: targetName })"
+          >→ {{ targetName ? `@${targetName}` : 'lead' }}{{ isDefaultLead ? $t('composer.k2z7yuw012') : $t('composer.k2z0fsx032') }}</span>
           <!-- HITL 送达语义提示 -->
           <span
             v-if="reachHint"
@@ -353,12 +355,12 @@ const placeholder = computed(() =>
               aria-hidden="true"
             />{{ reachHint.text }}
           </span>
-          <span class="chip-hint">首行 = 标题</span>
+          <span class="chip-hint">{{ $t('composer.k17u6q77006') }}</span>
         </template>
         <template v-else>
-          <span class="chip-key">消息</span>
-          <span v-if="targetName">@{{ targetName }}{{ isDefaultLead ? ' · 默认' : '' }}</span>
-          <span>{{ priority === 'immediate' ? '即时注入' : '排队' }}</span>
+          <span class="chip-key">{{ $t('composer.k41ykc007') }}</span>
+          <span v-if="targetName">@{{ targetName }}{{ isDefaultLead ? $t('composer.k2z7yuw012') : '' }}</span>
+          <span>{{ priority === 'immediate' ? $t('composer.k1bosqfv013') : $t('composer.k40g8m009') }}</span>
           <!-- 可达性提示(open-tag reach hint):对方能否收到、将以何种方式送达 -->
           <span
             v-if="reachHint"
@@ -394,14 +396,14 @@ const placeholder = computed(() =>
               :class="{ on: mode === 'task' }"
               @click="mode = 'task'"
             >
-              任务
+              {{ $t('composer.k3wcox005') }}
             </button>
             <button
               type="button"
               :class="{ on: mode === 'message' }"
               @click="mode = 'message'"
             >
-              消息
+              {{ $t('composer.k41ykc007') }}
             </button>
           </div>
 
@@ -443,7 +445,7 @@ const placeholder = computed(() =>
                 :max="10000"
                 :step="1"
                 :precision="0"
-                placeholder="不限次数"
+                :placeholder="$t('composer.k1b38y2b001')"
                 class="loop-number iterations"
               />
             </template>
@@ -453,28 +455,28 @@ const placeholder = computed(() =>
               <button
                 type="button"
                 :class="{ on: priority === 'immediate' }"
-                title="HITL 实时注入:目标运行中时直接注入其当前回合(同轮可见)"
+                :title="$t('composer.k1jqqvhe002')"
                 @click="priority = 'immediate'"
               >
-                即时
+                {{ $t('composer.k3x9n2008') }}
               </button>
               <button
                 type="button"
                 :class="{ on: priority === 'task' }"
                 @click="priority = 'task'"
               >
-                排队
+                {{ $t('composer.k40g8m009') }}
               </button>
             </div>
             <button
               type="button"
               class="chip-toggle"
               :class="{ on: requireReply }"
-              title="要求对方回执"
+              :title="$t('composer.k195594v003')"
               @click="requireReply = !requireReply"
             >
               <span class="i-tabler-mail-forward" />
-              回执
+              {{ $t('composer.k3xv7u010') }}
             </button>
           </template>
         </div>

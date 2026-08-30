@@ -7,6 +7,8 @@
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/app/stores/workshop/user'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   /** 受控 open(v-model:open) */
   open: boolean
@@ -35,7 +37,7 @@ const load = async (path?: string): Promise<void> => {
     })
     const json = await res.json()
     if (json.code !== 0) {
-      message.warning(json.message ?? '目录读取失败')
+      message.warning(json.message ?? t('fileSelectorModal.kz99pgv004'))
       return
     }
     cwd.value = json.data.cwd
@@ -120,7 +122,7 @@ const cancel = (): void => emit('update:open', false)
             @click="enter(parent)"
           >
             <span class="icon">⬆</span>
-            <span class="name">..(上一级)</span>
+            <span class="name">{{ $t('fileSelectorModal.kvwnnvn001') }}</span>
           </div>
           <div
             v-for="d in dirs"
@@ -136,13 +138,13 @@ const cancel = (): void => emit('update:open', false)
             v-if="!loading && dirs.length === 0"
             class="empty"
           >
-            (无子目录;可直接「选择此目录」使用当前位置)
+            {{ $t('fileSelectorModal.k268o2o002') }}
           </div>
         </div>
       </a-spin>
 
       <div class="hint">
-        双击目录 = 直接选用;选定路径将作为团队工作目录(Agent 作业 cwd),不存在时会自动创建。
+        {{ $t('fileSelectorModal.k1rt80dq003') }}
       </div>
     </div>
   </a-modal>

@@ -10,6 +10,8 @@ import { message } from 'ant-design-vue'
 import { useWorkshopApi, type ChannelTemplateDto, type AgentTemplateDto, type ChannelTemplateMemberDto } from '../../composables/workshop/useWorkshopApi'
 import { useUserStore } from '../../stores/workshop/user'
 
+const { t } = useI18n()
+
 definePageMeta({ layout: 'default' })
 
 const api = useWorkshopApi()
@@ -47,9 +49,9 @@ const canWrite = (t: ChannelTemplateDto): boolean =>
   !t.isBuiltin && (t.ownerUserId === userStore.user?.id || userStore.isAdmin)
 
 const visTag = (t: ChannelTemplateDto): { text: string, color: string, icon?: string } => {
-  if (t.isBuiltin) return { text: '内置', color: 'default', icon: 'i-tabler-lock' }
-  if (t.visibility === 'public') return { text: '公开', color: 'green' }
-  return { text: '私有', color: 'default' }
+  if (t.isBuiltin) return { text: t('ctpl.k3x23c021'), color: 'default', icon: 'i-tabler-lock' }
+  if (t.visibility === 'public') return { text: t('ctpl.k3wv1t022'), color: 'green' }
+  return { text: t('ctpl.k447jj023'), color: 'default' }
 }
 
 /** 成员预览名(引用模板 → 当前名;内联 → 快照名) */
@@ -80,7 +82,7 @@ const openCreate = (): void => {
 }
 const create = async (): Promise<void> => {
   if (!createForm.name.trim()) {
-    message.warning('模板名必填')
+    message.warning(t('ctpl.k1i0ji0y024'))
     return
   }
   const leadTpl = createForm.leadId ? agentTemplates.value.find(a => a.id === createForm.leadId) : undefined
@@ -97,7 +99,7 @@ const create = async (): Promise<void> => {
       members,
       visibility: createForm.visibility,
     })
-    message.success('模板已创建;可在工作区左侧会话栏一键实例化挂载')
+    message.success(t('ctpl.kyppebc025'))
     createOpen.value = false
     void load()
   }
@@ -110,7 +112,7 @@ const create = async (): Promise<void> => {
 const toggleVisibility = async (t: ChannelTemplateDto, pub: boolean): Promise<void> => {
   try {
     await api.updateChannelTemplate(t.id, { visibility: pub ? 'public' : 'private' })
-    message.success(pub ? '已公开:全员可实例化' : '已转为私有')
+    message.success(pub ? t('ctpl.kkziya3026') : t('ctpl.k1xxabaf027'))
     void load()
   }
   catch (e) {
@@ -125,7 +127,7 @@ const instantiate = async (t: ChannelTemplateDto): Promise<void> => {
   try {
     const res = await api.instantiateChannelTemplate(t.id)
     const data = (res as unknown as { data?: { channelId: string, agentCount: number } })?.data
-    message.success(`已实例化:${t.name}(成员 ${data?.agentCount ?? 0} 个),到工作区挂载使用`)
+    message.success(t('ctpl.kefkfnl030', { p0: t.name, p1: data?.agentCount ?? 0 }))
   }
   catch (e) {
     message.error(e instanceof Error ? e.message : String(e))
@@ -137,31 +139,31 @@ const instantiate = async (t: ChannelTemplateDto): Promise<void> => {
 
 const remove = async (t: ChannelTemplateDto): Promise<void> => {
   await api.deleteChannelTemplate(t.id)
-  message.success('已删除模板')
+  message.success(t('ctpl.k1oxfuqj028'))
   void load()
 }
 
-useHead({ title: 'Channel 模板中心 · Workshop' })
+useHead({ title: () => t('titles.ctpl') })
 </script>
 
 <template>
   <div class="page">
     <div class="head">
       <div>
-        <h2>Channel 模板中心</h2>
+        <h2>Channel {{ $t('ctpl.k1f54iqd029') }}</h2>
         <p class="sub">
-          场景 + 工作目录 + 团队的组合模板;一键实例化为 Channel(成员自动装配)。模板按用户隔离,公开后全员可用。
+          {{ $t('ctpl.k18gglgp011') }}
         </p>
       </div>
       <a-space>
         <a-button @click="navigateTo('/workshop')">
-          返回工作区
+          {{ $t('ctpl.krpx6qa012') }}
         </a-button>
         <a-button
           type="primary"
           @click="openCreate"
         >
-          新建模板
+          {{ $t('ctpl.k1efixrj013') }}
         </a-button>
       </a-space>
     </div>
@@ -171,16 +173,16 @@ useHead({ title: 'Channel 模板中心 · Workshop' })
         v-model:value="filter"
         size="small"
         :options="[
-          { value: 'all', label: `全部 ${templates.length}` },
-          { value: 'mine', label: '我的' },
-          { value: 'public', label: '公开' },
-          { value: 'builtin', label: '内置' },
+          { value: 'all', label: $t('chips.chipAll', { n: templates.length }) },
+          { value: 'mine', label: $t('chips.mine') },
+          { value: 'public', label: $t('chips.public') },
+          { value: 'builtin', label: $t('chips.builtin') },
         ]"
       />
       <span
         v-if="userStore.isAdmin"
         class="admin-note"
-      ><span class="i-tabler-shield-check" /> admin 视图:可见全部用户的模板与创建者</span>
+      ><span class="i-tabler-shield-check" /> {{ $t('ctpl.ka1gpdj014') }}</span>
     </div>
 
     <a-spin :spinning="loading">
@@ -232,7 +234,7 @@ useHead({ title: 'Channel 模板中心 · Workshop' })
             <span
               v-else
               class="count"
-            >空团队</span>
+            >{{ $t('ctpl.k3rx4ps015') }}</span>
           </div>
           <div
             v-if="t.scenarioPrompt"
@@ -250,7 +252,7 @@ useHead({ title: 'Channel 模板中心 · Workshop' })
             <span class="spacer" />
             <a-popconfirm
               v-if="canWrite(t)"
-              title="删除模板?(已实例化的 Channel 不受影响)"
+              :title="$t('ctpl.k117jag9001')"
               @confirm="remove(t)"
             >
               <a-button
@@ -258,7 +260,7 @@ useHead({ title: 'Channel 模板中心 · Workshop' })
                 type="text"
                 danger
               >
-                删除
+                {{ $t('ctpl.k3xakp016') }}
               </a-button>
             </a-popconfirm>
             <a-button
@@ -266,10 +268,10 @@ useHead({ title: 'Channel 模板中心 · Workshop' })
               type="primary"
               ghost
               :loading="instantiating === t.id"
-              title="按模板新建 Channel(成员自动装配)"
+              :title="$t('ctpl.knjomku002')"
               @click="instantiate(t)"
             >
-              实例化
+              {{ $t('ctpl.k3mr1fo017') }}
             </a-button>
           </div>
         </div>
@@ -279,7 +281,7 @@ useHead({ title: 'Channel 模板中心 · Workshop' })
           @click="openCreate"
         >
           <span class="i-tabler-layout-grid-add big" />
-          <span>新建第一个 Channel 模板</span>
+          <span>{{ $t('ctpl.k19fglby018') }}</span>
         </div>
       </div>
     </a-spin>
@@ -292,47 +294,47 @@ useHead({ title: 'Channel 模板中心 · Workshop' })
       @ok="create"
     >
       <a-form layout="vertical">
-        <a-form-item label="模板名称">
+        <a-form-item :label="$t('ctpl.k1f55q76003')">
           <a-input v-model:value="createForm.name" />
         </a-form-item>
-        <a-form-item label="描述">
+        <a-form-item :label="$t('ctpl.k40gkk004')">
           <a-input v-model:value="createForm.description" />
         </a-form-item>
         <a-form-item label="Lead 模板(实例化时克隆为 channel lead)">
           <a-select
             v-model:value="createForm.leadId"
             allow-clear
-            placeholder="选择 lead 模板(可空)"
+            :placeholder="$t('ctpl.k1ju32o7005')"
             :options="agentTemplates.map(a => ({ value: a.id, label: `${a.name}(${a.harness})` }))"
           />
         </a-form-item>
-        <a-form-item label="Worker 成员模板(实例化时逐个克隆)">
+        <a-form-item :label="$t('ctpl.k5uq1js006')">
           <a-select
             v-model:value="createForm.memberIds"
             mode="multiple"
-            placeholder="选择成员模板(可空)"
+            :placeholder="$t('ctpl.kqmdkc9007')"
             :options="agentTemplates.filter(a => a.id !== createForm.leadId).map(a => ({ value: a.id, label: `${a.name}(${a.harness})` }))"
           />
         </a-form-item>
-        <a-form-item label="作业场景 Prompt(注入全部成员)">
+        <a-form-item :label="$t('ctpl.k1q87yho008')">
           <a-textarea
             v-model:value="createForm.scenarioPrompt"
             :rows="3"
           />
         </a-form-item>
-        <a-form-item label="工作目录(留空 = 实例化时默认)">
+        <a-form-item :label="$t('ctpl.kk4u5cr009')">
           <a-input
             v-model:value="createForm.workspace"
             placeholder="data/workspaces/<channelId>"
           />
         </a-form-item>
-        <a-form-item label="可见性">
+        <a-form-item :label="$t('ctpl.k3lrqn0010')">
           <a-radio-group v-model:value="createForm.visibility">
             <a-radio value="private">
-              私有(仅本人可见)
+              {{ $t('ctpl.k17jfge3019') }}
             </a-radio>
             <a-radio value="public">
-              公开(全员可实例化,仅本人可修改)
+              {{ $t('ctpl.k191u0u5020') }}
             </a-radio>
           </a-radio-group>
         </a-form-item>

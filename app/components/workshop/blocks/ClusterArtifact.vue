@@ -25,12 +25,12 @@ const expanded = ref(props.block.dupStream)
       class="dup-note"
     >
       <span class="i-tabler-copy" />
-      <span>交付物正文与上方回复一致</span>
+      <span>{{ $t('clusterArtifact.kyh87lw001') }}</span>
       <button
         class="mini-btn"
         @click="expanded = !expanded"
       >
-        {{ expanded ? '隐藏' : '查看' }}
+        {{ expanded ? $t('clusterArtifact.k49les002') : '查看' }}
       </button>
     </div>
     <template v-if="showBody || expanded">

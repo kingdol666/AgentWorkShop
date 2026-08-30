@@ -35,7 +35,7 @@ const load = async (): Promise<void> => {
     users.value = res.data?.items ?? []
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : '加载失败')
+    message.error(e instanceof Error ? e.message : t('users.k1br33vc006'))
   }
   finally {
     loading.value = false
@@ -71,11 +71,11 @@ const changeRole = async (u: UserRecord, role: UserRecord['role']): Promise<void
       headers: authHeaders.value,
       body: { role },
     })
-    message.success(`${u.name} 角色已调整为 ${role}`)
+    message.success(t('users.krkb23h011', { p0: u.name, p1: role }))
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : '更新失败')
+    message.error(e instanceof Error ? e.message : t('users.k1enhqn3007'))
   }
 }
 
@@ -87,11 +87,11 @@ const toggleStatus = async (u: UserRecord): Promise<void> => {
       headers: authHeaders.value,
       body: { status },
     })
-    message.success(`${u.name} 已${status === 'active' ? '启用' : '停用'}`)
+    message.success(t('users.k1u7u12g012', { p0: u.name, p1: status === 'active' ? t('users.k3xhfg009') : t('users.k3wsi1010') }))
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : '更新失败')
+    message.error(e instanceof Error ? e.message : t('users.k1enhqn3007'))
   }
 }
 
@@ -101,17 +101,17 @@ const removeUser = async (u: UserRecord): Promise<void> => {
       method: 'DELETE',
       headers: authHeaders.value,
     })
-    message.success(`已删除 ${u.name}`)
+    message.success(t('users.knh5f2r013', { p0: u.name }))
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : '删除失败')
+    message.error(e instanceof Error ? e.message : t('users.k1bphrb3008'))
   }
 }
 
 const isSelf = (u: UserRecord): boolean => u.id === userStore.user?.id
 
-useHead({ title: '用户管理 · AgentWorkShop' })
+useHead({ title: () => t('titles.users') })
 </script>
 
 <template>
@@ -129,7 +129,7 @@ useHead({ title: '用户管理 · AgentWorkShop' })
           </a-tag>
         </h2>
         <p class="page-sub">
-          管理全局用户与角色(admin 拥有最高权限:全量监控、任意模板、用户管理)。
+          {{ $t('users.k1flpho5002') }}
         </p>
       </div>
       <a-input-search
@@ -148,10 +148,10 @@ useHead({ title: '用户管理 · AgentWorkShop' })
     >
       <span class="i-tabler-lock gate-icon" />
       <p class="gate-title">
-        需要管理员权限
+        {{ $t('users.kpdo6rc003') }}
       </p>
       <p class="gate-hint">
-        用户管理仅对 admin 角色开放;请联系管理员调整角色。
+        {{ $t('users.k1mue9bl004') }}
       </p>
     </a-card>
 
@@ -176,7 +176,7 @@ useHead({ title: '用户管理 · AgentWorkShop' })
           </template>
           <template v-else-if="column.key === 'status'">
             <a-tag :color="record.status === 'active' ? 'green' : 'default'">
-              {{ record.status === 'active' ? '启用' : '停用' }}
+              {{ record.status === 'active' ? $t('users.k3xhfg009') : $t('users.k3wsi1010') }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
@@ -199,10 +199,10 @@ useHead({ title: '用户管理 · AgentWorkShop' })
                 :disabled="isSelf(record as UserRecord)"
                 @click="toggleStatus(record as UserRecord)"
               >
-                {{ record.status === 'active' ? '停用' : '启用' }}
+                {{ record.status === 'active' ? $t('users.k3wsi1010') : $t('users.k3xhfg009') }}
               </a-button>
               <a-popconfirm
-                title="删除该用户?(其名下资源保留,归属仍可追溯)"
+                :title="$t('users.k1jk2os9001')"
                 :disabled="isSelf(record as UserRecord)"
                 @confirm="removeUser(record as UserRecord)"
               >
@@ -212,7 +212,7 @@ useHead({ title: '用户管理 · AgentWorkShop' })
                   danger
                   :disabled="isSelf(record as UserRecord)"
                 >
-                  删除
+                  {{ $t('users.k3xakp005') }}
                 </a-button>
               </a-popconfirm>
             </a-space>

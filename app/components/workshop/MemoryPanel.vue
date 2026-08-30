@@ -10,6 +10,8 @@ import { message } from 'ant-design-vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
 
+const { t } = useI18n()
+
 const props = defineProps<{ channelId: string, agentId?: string }>()
 const entities = useEntitiesStore()
 const api = useWorkshopApi()
@@ -71,7 +73,7 @@ const load = async (): Promise<void> => {
     const res = await fetch(url, { headers: authHeaders.value })
     const json = await res.json()
     rows.value = json.code === 0 ? json.data : []
-    if (json.code !== 0) message.warning(json.message ?? '读取失败(检查成员身份)')
+    if (json.code !== 0) message.warning(json.message ?? t('memoryPanel.k186sctu014'))
   }
   finally {
     loading.value = false
@@ -87,7 +89,7 @@ const searchResults = ref<Array<{ id: string, title: string, content: string, sc
 const searching = ref(false)
 const doSearch = async (): Promise<void> => {
   if (!searchText.value.trim() || !selectedAgent.value || !effectiveToken.value) {
-    message.warning('检索需要关键词与成员身份')
+    message.warning(t('memoryPanel.k1eh0fbo015'))
     return
   }
   searching.value = true
@@ -109,7 +111,7 @@ const writeOpen = ref(false)
 const writeForm = reactive({ title: '', content: '', scope: 'shared' as 'shared' | 'private', importance: 0.8, dedupKey: '' })
 const doWrite = async (): Promise<void> => {
   if (!writeForm.title || !writeForm.content || !selectedAgent.value || !effectiveToken.value) {
-    message.warning('标题/内容/成员身份必填')
+    message.warning(t('memoryPanel.k1dpj734016'))
     return
   }
   const res = await fetch(
@@ -122,14 +124,14 @@ const doWrite = async (): Promise<void> => {
   )
   const json = await res.json()
   if (json.code === 0) {
-    message.success('已写入')
+    message.success(t('memoryPanel.k3n5bat017'))
     writeOpen.value = false
     writeForm.title = ''
     writeForm.content = ''
     void load()
   }
   else {
-    message.error(json.message ?? '写入失败')
+    message.error(json.message ?? t('memoryPanel.k1bb5i1l018'))
   }
 }
 </script>
@@ -143,17 +145,17 @@ const doWrite = async (): Promise<void> => {
         button-style="solid"
       >
         <a-radio-button value="shared">
-          公共域
+          {{ $t('memoryPanel.k3l2hmp005') }}
         </a-radio-button>
         <a-radio-button value="private">
-          私有域
+          {{ $t('memoryPanel.k3rve9a006') }}
         </a-radio-button>
       </a-radio-group>
       <a-select
         v-if="!agentId"
         v-model:value="selectedAgent"
         size="small"
-        placeholder="成员身份"
+        :placeholder="$t('memoryPanel.k1du3379001')"
         class="agent-select"
         :options="agents.map(a => ({ value: a.agentId, label: a.name }))"
       />
@@ -161,7 +163,7 @@ const doWrite = async (): Promise<void> => {
         <span
           class="token-state"
           :data-ok="tokenResolved"
-        ><span class="i-tabler-key" />{{ tokenResolved ? 'auto' : '手动' }}</span>
+        ><span class="i-tabler-key" />{{ tokenResolved ? 'auto' : $t('memoryPanel.k3zul4013') }}</span>
       </a-tooltip>
     </div>
     <a-input-password
@@ -207,21 +209,21 @@ const doWrite = async (): Promise<void> => {
     </div>
 
     <div class="list-head">
-      <span>记忆列表</span>
+      <span>{{ $t('memoryPanel.k1k7okbe007') }}</span>
       <a-space size="small">
         <a-button
           size="small"
           type="text"
           @click="load"
         >
-          刷新
+          {{ $t('memoryPanel.k3x1jg008') }}
         </a-button>
         <a-button
           size="small"
           type="text"
           @click="writeOpen = true"
         >
-          写入
+          {{ $t('memoryPanel.k3wtib009') }}
         </a-button>
       </a-space>
     </div>
@@ -246,13 +248,13 @@ const doWrite = async (): Promise<void> => {
         v-if="rows.length === 0 && !loading"
         class="empty"
       >
-        (空)
+        ({{ $t('memoryPanel.k43rxk011') }}
       </div>
     </a-spin>
 
     <a-modal
       v-model:open="writeOpen"
-      title="写入记忆"
+      :title="$t('memoryPanel.k1bbee8p002')"
       ok-text="写入"
       cancel-text="取消"
       @ok="doWrite"
@@ -261,17 +263,17 @@ const doWrite = async (): Promise<void> => {
         <a-form-item label="scope">
           <a-radio-group v-model:value="writeForm.scope">
             <a-radio value="shared">
-              shared(公共域,全员可检索)
+              {{ $t('memoryPanel.kemjjvq010') }}
             </a-radio>
             <a-radio value="private">
-              private(本人)
+              private({{ $t('memoryPanel.k3onh9w012') }}
             </a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="标题">
+        <a-form-item :label="$t('memoryPanel.k419s4003')">
           <a-input v-model:value="writeForm.title" />
         </a-form-item>
-        <a-form-item label="内容">
+        <a-form-item :label="$t('memoryPanel.k3wv1f004')">
           <a-textarea
             v-model:value="writeForm.content"
             :rows="4"

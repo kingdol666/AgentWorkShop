@@ -11,6 +11,8 @@ import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 import { daqKeyFromRef, DAQ_DRIVERS, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult } from '#shared/daq-protocol'
 
+const { t } = useI18n()
+
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
@@ -27,7 +29,7 @@ const tpl = computed(() => {
   const key = node.value ? daqKeyFromRef(node.value.templateRef) : ''
   return daq.templates.find(t => t.key === key) ?? null
 })
-const stateLabel: Record<DaqNodeState, string> = { ok: '正常', warn: '预警', alarm: '告警', offline: '离线' }
+const stateLabel: Record<DaqNodeState, string> = { ok: t('daqDetail.k41k5c026'), warn: t('daqDetail.k49z8v027'), alarm: t('daqDetail.k3xmid028'), offline: t('daqDetail.k44c2n029') }
 const effectiveState = (): DaqNodeState => {
   const n = node.value
   if (!n) return 'offline'
@@ -45,8 +47,8 @@ onBeforeUnmount(() => unsub?.())
 
 /** WS 下发节拍展示(null=跟随全局;0=每帧;>0 独立间隔) */
 function publishLabel(v: number | null): string {
-  if (v == null) return `全局 ${daq.controller.defaultPublishIntervalMs}ms`
-  if (v === 0) return '每帧(随采样)'
+  if (v == null) return t('daqDetail.k9vnp9h053', { p0: daq.controller.defaultPublishIntervalMs })
+  if (v === 0) return t('daqDetail.k1m1zwux030')
   return `${v}ms`
 }
 
@@ -175,7 +177,7 @@ const historyPoints = ref<ChartRow[]>([])
 const bucketMs = ref<number>(5000)
 const histLoading = ref(false)
 const BUCKETS = [
-  { label: '原始点', ms: 0 },
+  { label: t('daqDetail.k3lha20031'), ms: 0 },
   { label: '1s 桶', ms: 1000 },
   { label: '5s 桶', ms: 5000 },
   { label: '30s 桶', ms: 30000 },
@@ -302,7 +304,7 @@ watch(bucketMs, () => void loadHistory())
       <NuxtLink
         to="/daq"
         class="back"
-      >数采中心</NuxtLink> / NODE {{ nodeId.slice(0, 8).toUpperCase() }}
+      >{{ $t('daqDetail.k1emg364001') }}</NuxtLink> / NODE {{ nodeId.slice(0, 8).toUpperCase() }}
     </p>
     <div class="aw-page-head">
       <h1>{{ node?.name ?? nodeId }}</h1>
@@ -316,7 +318,7 @@ watch(bucketMs, () => void loadHistory())
       v-if="!node && daq.error"
       class="err"
     >
-      {{ daq.error }}(<NuxtLink to="/workshop">前往登录</NuxtLink>)
+      {{ daq.error }}(<NuxtLink to="/workshop">{{ $t('daqDetail.k1bhhheq002') }}</NuxtLink>)
     </p>
 
     <div
@@ -327,7 +329,7 @@ watch(bucketMs, () => void loadHistory())
       <section class="col-live">
         <div class="aw-tile value-card">
           <p class="aw-kicker">
-            实时值 · {{ tpl?.ch ?? '-' }}
+            {{ $t('daqDetail.k1fx2vik032') }} {{ tpl?.ch ?? '-' }}
           </p>
           <div class="big-val mono">
             {{ node.value != null ? node.value.toFixed(node.decimals) : '--' }}<small>{{ node.unit }}</small>
@@ -338,28 +340,28 @@ watch(bucketMs, () => void loadHistory())
           />
           <dl class="facts mono">
             <div>
-              <dt>驱动</dt>
-              <dd>{{ node.driver }}{{ driverPlanned(node.driver) ? '(预留)' : '' }}</dd>
+              <dt>{{ $t('daqDetail.k4a0la003') }}</dt>
+              <dd>{{ node.driver }}{{ driverPlanned(node.driver) ? $t('daqDetail.kz8zr9v035') : '' }}</dd>
             </div>
             <div>
-              <dt>周期</dt>
-              <dd>{{ node.intervalMs ?? `全局 ${daq.controller.defaultIntervalMs}ms` }}</dd>
+              <dt>{{ $t('daqDetail.k3xg3w004') }}</dt>
+              <dd>{{ node.intervalMs ?? $t('daqDetail.k9vnp9h053', { p0: daq.controller.defaultIntervalMs }) }}</dd>
             </div>
             <div>
-              <dt>下发</dt>
+              <dt>{{ $t('daqDetail.k3w6td005') }}</dt>
               <dd>{{ publishLabel(node.publishIntervalMs) }}</dd>
             </div>
             <div>
-              <dt>预警带</dt>
+              <dt>{{ $t('daqDetail.k3x5tpx006') }}</dt>
               <dd>{{ node.warnLow ?? '-∞' }} ~ {{ node.warnHigh ?? '+∞' }}</dd>
             </div>
             <div>
-              <dt>硬限量程</dt>
+              <dt>{{ $t('daqDetail.k1hjj0jf007') }}</dt>
               <dd>{{ node.min }} ~ {{ node.max }}</dd>
             </div>
             <div>
-              <dt>绑定设备</dt>
-              <dd>{{ boundDeviceName || '未绑定' }}</dd>
+              <dt>{{ $t('daqDetail.k1i8rtqt008') }}</dt>
+              <dd>{{ boundDeviceName || $t('daqDetail.k3own4q036') }}</dd>
             </div>
           </dl>
         </div>
@@ -368,31 +370,31 @@ watch(bucketMs, () => void loadHistory())
       <!-- 中列:参数控制 -->
       <section class="col-form aw-tile pad">
         <h3 class="sec">
-          采集参数(server 单点控制)
+          {{ $t('daqDetail.kd9d69j009') }}
         </h3>
         <form
           class="form-grid"
           @submit.prevent="saveParams"
         >
           <label class="field">
-            <span>节点启停</span>
+            <span>{{ $t('daqDetail.k1iw7tbf010') }}</span>
             <button
               type="button"
               class="toggle"
               :class="{ on: form.enabled }"
               @click="form.enabled = !form.enabled"
             >
-              {{ form.enabled ? '采集中' : '已停用' }}
+              {{ form.enabled ? $t('daqDetail.k3w3j8f037') : $t('daqDetail.k3n5aaj045') }}
             </button>
           </label>
           <label class="field">
-            <span>所属产线(未挂载不采集)</span>
+            <span>{{ $t('daqDetail.k12k23od011') }}</span>
             <select
               v-model="form.lineId"
               class="input"
             >
               <option value="">
-                未分配
+                {{ $t('daqDetail.k3ootr6012') }}
               </option>
               <option
                 v-for="l in dcw.lines"
@@ -404,7 +406,7 @@ watch(bucketMs, () => void loadHistory())
             </select>
           </label>
           <label class="field">
-            <span>采样驱动</span>
+            <span>{{ $t('daqDetail.k1l6smxo013') }}</span>
             <select
               v-model="form.driver"
               class="input"
@@ -415,7 +417,7 @@ watch(bucketMs, () => void loadHistory())
                 :value="d.kind"
                 :disabled="d.status === 'planned'"
               >
-                {{ d.label }}{{ d.status === 'planned' ? '(预留)' : '' }}
+                {{ d.label }}{{ d.status === 'planned' ? $t('daqDetail.kz8zr9v035') : '' }}
               </option>
             </select>
           </label>
@@ -426,7 +428,7 @@ watch(bucketMs, () => void loadHistory())
               :class="{ on: form.followGlobal }"
               @click="form.followGlobal = !form.followGlobal"
             >
-              {{ form.followGlobal ? '跟随全局周期' : '节点独立周期' }}
+              {{ form.followGlobal ? $t('daqDetail.k1k2ueyq038') : $t('daqDetail.k1cgi8fy046') }}
             </button>
             <input
               v-model.number="form.intervalMs"
@@ -446,7 +448,7 @@ watch(bucketMs, () => void loadHistory())
               title="采集标定 decoder:物理值 = scale × PLC采集值 + offset"
               @click="form.calKind = form.calKind === 'linear' ? 'none' : 'linear'"
             >
-              {{ form.calKind === 'linear' ? '标定生效' : '无标定' }}
+              {{ form.calKind === 'linear' ? $t('daqDetail.k1eru4r1039') : $t('daqDetail.k3oktae047') }}
             </button>
             <input
               v-model.number="form.calScale"
@@ -472,14 +474,14 @@ watch(bucketMs, () => void loadHistory())
               :class="{ on: form.publishFollow }"
               @click="form.publishFollow = !form.publishFollow"
             >
-              {{ form.publishFollow ? '跟随全局下发' : '节点独立下发' }}
+              {{ form.publishFollow ? $t('daqDetail.k1k2t5o7040') : $t('daqDetail.k1cggz5f048') }}
             </button>
             <span
               class="toggle slim"
               :class="{ on: form.publishEveryFrame }"
               style="cursor: pointer;"
               @click="form.publishEveryFrame = !form.publishEveryFrame"
-            >{{ form.publishEveryFrame ? '每帧' : '定间隔' }}</span>
+            >{{ form.publishEveryFrame ? $t('daqDetail.k41mvv041') : $t('daqDetail.k3n42dj049') }}</span>
             <input
               v-model.number="form.publishMs"
               type="number"
@@ -491,14 +493,14 @@ watch(bucketMs, () => void loadHistory())
             ><small>ms</small>
           </label>
           <label class="field">
-            <span>单位</span>
+            <span>{{ $t('daqDetail.k3x4ef014') }}</span>
             <input
               v-model="form.unit"
               class="input"
             >
           </label>
           <label class="field">
-            <span>小数位</span>
+            <span>{{ $t('daqDetail.k3mxmcx015') }}</span>
             <input
               v-model.number="form.decimals"
               type="number"
@@ -509,7 +511,7 @@ watch(bucketMs, () => void loadHistory())
           </label>
           <div class="field-row">
             <label class="field">
-              <span>量程下限</span>
+              <span>{{ $t('daqDetail.k1l9jv5m016') }}</span>
               <input
                 v-model.number="form.min"
                 type="number"
@@ -518,7 +520,7 @@ watch(bucketMs, () => void loadHistory())
               >
             </label>
             <label class="field">
-              <span>预警下限</span>
+              <span>{{ $t('daqDetail.k1md63hm017') }}</span>
               <input
                 v-model.number="form.warnLow"
                 type="number"
@@ -527,7 +529,7 @@ watch(bucketMs, () => void loadHistory())
               >
             </label>
             <label class="field">
-              <span>预警上限</span>
+              <span>{{ $t('daqDetail.k1md63gp018') }}</span>
               <input
                 v-model.number="form.warnHigh"
                 type="number"
@@ -536,7 +538,7 @@ watch(bucketMs, () => void loadHistory())
               >
             </label>
             <label class="field">
-              <span>量程上限</span>
+              <span>{{ $t('daqDetail.k1l9jv4p019') }}</span>
               <input
                 v-model.number="form.max"
                 type="number"
@@ -550,14 +552,14 @@ watch(bucketMs, () => void loadHistory())
             type="submit"
             :disabled="saving"
           >
-            {{ saving ? '下发中…' : '下发参数到采集器' }}
+            {{ saving ? $t('daqDetail.k1as0g50042') : $t('daqDetail.ksn9cgo050') }}
           </button>
         </form>
 
         <!-- 驱动连接参数(mock 空;真实协议 schema 动态表单 + 测试连接) -->
         <template v-if="driverFields.length">
           <h3 class="sec mt">
-            驱动连接参数 · {{ DAQ_DRIVERS.find(d => d.kind === form.driver)?.label }}
+            {{ $t('daqDetail.k1p9gioa033') }} {{ DAQ_DRIVERS.find(d => d.kind === form.driver)?.label }}
           </h3>
           <div class="driver-grid">
             <label
@@ -594,7 +596,7 @@ watch(bucketMs, () => void loadHistory())
               :disabled="testing"
               @click="doTest"
             >
-              {{ testing ? '测试中…' : '测试连接' }}
+              {{ testing ? $t('daqDetail.k1fsh720043') : $t('daqDetail.k1fstglk051') }}
             </button>
             <span
               v-if="testResult"
@@ -605,7 +607,7 @@ watch(bucketMs, () => void loadHistory())
         </template>
 
         <h3 class="sec mt">
-          设备绑定(端到端集成)
+          {{ $t('daqDetail.k1ie6qju020') }}
         </h3>
         <div class="bind-row">
           <select
@@ -613,7 +615,7 @@ watch(bucketMs, () => void loadHistory())
             class="input grow"
           >
             <option value="">
-              选择设备孪生…
+              {{ $t('daqDetail.kjobzu3021') }}
             </option>
             <option
               v-for="dv in availableDevices"
@@ -627,7 +629,7 @@ watch(bucketMs, () => void loadHistory())
             class="pill-btn"
             @click="onBindToggle"
           >
-            {{ boundDeviceName ? '解绑' : '绑定' }}
+            {{ boundDeviceName ? $t('daqDetail.k479eh044') : $t('daqDetail.k452a8052') }}
           </button>
         </div>
       </section>
@@ -636,7 +638,7 @@ watch(bucketMs, () => void loadHistory())
       <section class="col-hist aw-tile pad">
         <div class="hist-hd">
           <h3 class="sec">
-            时序库历史({{ daq.meta.tsdb }})
+            {{ $t('daqDetail.k1i535i5034') }}{{ daq.meta.tsdb }})
           </h3>
           <div class="hist-ctl mono">
             <select
@@ -655,7 +657,7 @@ watch(bucketMs, () => void loadHistory())
               class="pill-btn"
               @click="loadHistory"
             >
-              刷新
+              {{ $t('daqDetail.k3x1jg022') }}
             </button>
           </div>
         </div>
@@ -665,7 +667,7 @@ watch(bucketMs, () => void loadHistory())
         />
         <table class="raw-table mono">
           <thead>
-            <tr><th>时间</th><th>值</th><th>态</th></tr>
+            <tr><th>{{ $t('daqDetail.k40vsf023') }}</th><th>{{ $t('daqDetail.k48v5024') }}</th><th>{{ $t('daqDetail.k4bza025') }}</th></tr>
           </thead>
           <tbody>
             <tr

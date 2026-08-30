@@ -1,9 +1,3 @@
-/**
- * /dcw/{id} —— 产线详情管理(单产线作用域)。
- * 仅加载挂载到本产线的节点/产品/配方/批次:节点直写(工程量,越窗联锁)、
- * 产品/配方 CRUD(配方参数**节点级绑定**)、开跑/停止、批次数据、五维查询。
- * 模板仅分类(电机电流/转速/线速度…);真正下发 PLC 的是节点。
- */
 <script setup lang="ts">
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -12,6 +6,8 @@ import type { DriverConfigField } from '#shared/daq-protocol'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
 import { useDaqStream } from '~/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '~/composables/workshop/useDeviceTwins'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const dcw = useDcwStream()
@@ -30,10 +26,10 @@ const unsubDcw = dcw.ensureWsFeed()
 onUnmounted(() => unsubDcw())
 
 const deviceName = (id: string | null): string =>
-  id ? (deviceTwins.twins.find(t => t.id === id)?.name ?? id) : '未绑定'
+  id ? (deviceTwins.twins.find(t => t.id === id)?.name ?? id) : t('dcwDetail.k3own4q121')
 
 const stateLabel: Record<string, string> = {
-  idle: '待机', writing: '写入中', ok: '已 ACK', error: '故障', offline: '离线',
+  idle: t('dcwDetail.k3zgkk122'), writing: t('dcwDetail.k3l3h80123'), ok: '已 ACK', error: t('dcwDetail.k40reu124'), offline: t('dcwDetail.k44c2n125'),
 }
 
 function dcwTemplateRefCh(templateRef?: string): string {
@@ -99,11 +95,11 @@ async function doWrite(nodeId: string, value: number): Promise<void> {
   try {
     const outcome = await dcw.write(nodeId, value)
     if (outcome.ok) {
-      writeOk.value = `节点 ${dcw.nodeById(nodeId)?.name ?? nodeId} 下发成功:${outcome.message}`
+      writeOk.value = t('dcwDetail.k1alcbyu182', { p0: dcw.nodeById(nodeId)?.name ?? nodeId, p1: outcome.message })
       setInputs[nodeId] = ''
     }
     else {
-      writeError.value = `节点 ${dcw.nodeById(nodeId)?.name ?? nodeId} 下发失败:${outcome.message}`
+      writeError.value = t('dcwDetail.kl1e9x9183', { p0: dcw.nodeById(nodeId)?.name ?? nodeId, p1: outcome.message })
     }
   }
   catch (err) {
@@ -185,7 +181,7 @@ async function doAddNode(): Promise<void> {
   try {
     for (const f of addFields.value) {
       if (f.required && (addCfg.value[f.key] === undefined || addCfg.value[f.key] === '')) {
-        throw new Error(`缺少必填驱动参数:${f.label}`)
+        throw new Error(t('dcwDetail.k8x1un1184', { p0: f.label }))
       }
     }
     const transform = addTransform.kind === 'linear'
@@ -229,12 +225,12 @@ const tplForm = reactive({
   decimals: 1, icon: 'gateway' as DcwTemplateIcon, semantics: '',
 })
 const tplIcons: Array<{ key: DcwTemplateIcon, label: string }> = [
-  { key: 'thermo', label: '温度' },
-  { key: 'pressure', label: '压力' },
-  { key: 'tension', label: '张力' },
-  { key: 'encoder', label: '编码/速度' },
-  { key: 'camera', label: '视觉' },
-  { key: 'gateway', label: '通用' },
+  { key: 'thermo', label: t('dcwDetail.k422b8126') },
+  { key: 'pressure', label: t('dcwDetail.k3x6ff127') },
+  { key: 'tension', label: t('dcwDetail.k3z9xc128') },
+  { key: 'encoder', label: t('dcwDetail.kjb3vhs129') },
+  { key: 'camera', label: t('dcwDetail.k47atw130') },
+  { key: 'gateway', label: t('dcwDetail.k48c07131') },
 ]
 
 async function doCreateTemplate(): Promise<void> {
@@ -242,9 +238,9 @@ async function doCreateTemplate(): Promise<void> {
   tplError.value = ''
   tplOk.value = ''
   try {
-    if (!tplForm.name.trim()) throw new Error('模板名称必填')
-    if (tplForm.unit.trim() === '') throw new Error('单位必填(如 ℃ / A)')
-    if (tplForm.min === '' || tplForm.max === '') throw new Error('工艺量程(min/max)必填')
+    if (!tplForm.name.trim()) throw new Error(t('dcwDetail.k6ugbw2132'))
+    if (tplForm.unit.trim() === '') throw new Error(t('dcwDetail.kx3pg59133'))
+    if (tplForm.min === '' || tplForm.max === '') throw new Error(t('dcwDetail.k13awowo134'))
     const tpl = await dcw.createTemplate({
       name: tplForm.name.trim(),
       ch: tplForm.ch.trim() || tplForm.name.trim(),
@@ -258,7 +254,7 @@ async function doCreateTemplate(): Promise<void> {
     })
     // 新模板即刻可选:添加控制节点向导自动选中它,下拉随 store 响应式更新
     addTemplate.value = tpl.key
-    tplOk.value = `模板「${tpl.name}」已创建,已在「添加控制节点」向导中选中`
+    tplOk.value = t('dcwDetail.ky4e1tr185', { p0: tpl.name })
     tplForm.name = ''
     tplForm.ch = ''
     tplForm.code = ''
@@ -290,10 +286,10 @@ async function doLineStart(): Promise<void> {
   lineErr.value = ''
   try {
     if (!lineRecipeId.value) {
-      throw new Error('开跑前必须先设定配方:请选择产品与配方(配方需含工艺参数)')
+      throw new Error(t('dcwDetail.k1b6qe0r135'))
     }
     await dcw.startLine(lineId.value, lineRecipeId.value)
-    lineMsg.value = `产线已开跑:${ls.value.productName} · ${ls.value.recipeName}(批次 ${ls.value.runId})`
+    lineMsg.value = t('dcwDetail.k17jteb9186', { p0: ls.value.productName, p1: ls.value.recipeName, p2: ls.value.runId })
   }
   catch (err) {
     lineErr.value = err instanceof Error ? err.message : String(err)
@@ -310,7 +306,7 @@ async function doLineStop(): Promise<void> {
   try {
     const was = `${ls.value.productName ?? ''} · ${ls.value.recipeName ?? ''}`
     await dcw.stopLine(lineId.value)
-    lineMsg.value = `产线已停止(${was});窗口数据保留可查`
+    lineMsg.value = t('dcwDetail.kzl49pd187', { p0: was })
   }
   catch (err) {
     lineErr.value = err instanceof Error ? err.message : String(err)
@@ -382,7 +378,7 @@ async function doQuery(): Promise<void> {
       bucketMs: query.bucketMs > 0 ? query.bucketMs : undefined,
       limit: 2000,
     })
-    if (queryResult.value.channels.length === 0) queryError.value = '窗口内无匹配数据(检查产品/配方/时间范围;仅产线运行中的样本带产线标识)'
+    if (queryResult.value.channels.length === 0) queryError.value = t('dcwDetail.kszv5sq136')
   }
   catch (err) {
     queryError.value = err instanceof Error ? err.message : String(err)
@@ -487,7 +483,7 @@ async function doApplyRecipe(id: string): Promise<void> {
     const run = await dcw.applyRecipe(id)
     const ok = run.results.filter(r => r.ok).length
     applyResult.value = { runId: run.id, ok, total: run.results.length }
-    if (ok < run.results.length) writeError.value = `配方下发部分失败:${run.results.filter(r => !r.ok).map(r => r.message).join(';')}`
+    if (ok < run.results.length) writeError.value = t('dcwDetail.ks7szkt188', { p0: run.results.filter(r => !r.ok).map(r => r.message).join(';') })
   }
   catch (err) {
     writeError.value = err instanceof Error ? err.message : String(err)
@@ -521,13 +517,13 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
     class="page"
   >
     <p class="banner bad">
-      产线不存在或已被删除。
+      {{ $t('dcwDetail.k19337yp018') }}
     </p>
     <NuxtLink
       class="pill-btn"
       to="/dcw"
     >
-      ← 返回产线总览
+      {{ $t('dcwDetail.kllwu1c019') }}
     </NuxtLink>
   </div>
   <div
@@ -542,15 +538,15 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             :style="{ background: line?.color ?? '#3aa0ff' }"
           />AGENTWORKSHOP / LINE / {{ line?.name ?? lineId }}
         </p>
-        <h1>{{ line?.name ?? '产线详情' }} · 运营管理</h1>
+        <h1>{{ line?.name ?? $t('dcwDetail.k1b2snna151') }} · {{ $t('dcwDetail.k1l0iow1137') }}</h1>
         <p class="sub">
-          {{ line?.description || '本产线专属的节点/产品/配方/批次管理:开跑必设配方,窗口内数采逐样本携带产线标识,实现真实的产线级数据隔离;PLC 底层(换算/写/回读)由系统封装。' }}
+          {{ line?.description || $t('dcwDetail.kzcbfki152') }}
         </p>
       </div>
       <div class="badges mono">
-        <span class="badge">节点 {{ lineNodes.length }}</span>
-        <span class="badge">产品 {{ lineProducts.length }}</span>
-        <span class="badge">配方 {{ lineRecipesAll.length }}</span>
+        <span class="badge">{{ $t('dcwDetail.k45uio082') }} {{ lineNodes.length }}</span>
+        <span class="badge">{{ $t('dcwDetail.k3waz1025') }} {{ lineProducts.length }}</span>
+        <span class="badge">{{ $t('dcwDetail.k48grv027') }} {{ lineRecipesAll.length }}</span>
       </div>
     </div>
 
@@ -563,34 +559,34 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           @click="dcw.startStop(dcw.controller.running ? 'stop' : 'start')"
         >
           <span :class="dcw.controller.running ? 'i-tabler-player-pause' : 'i-tabler-player-play'" />
-          {{ dcw.controller.running ? '暂停全部控制' : '恢复全部控制' }}
+          {{ dcw.controller.running ? $t('dcwDetail.kplrsg153') : $t('dcwDetail.knxgni9169') }}
         </button>
       </div>
       <div class="ctrl-right">
         <span class="ctrl-metrics mono">
-          <span>节点 {{ dcw.controller.nodesOnline }}/{{ dcw.controller.nodesTotal }}</span>
+          <span>{{ $t('dcwDetail.k45uio082') }} {{ dcw.controller.nodesOnline }}/{{ dcw.controller.nodesTotal }}</span>
           <span class="sep">·</span>
-          <span title="累计写命令">写入 {{ dcw.controller.writesTotal }}</span>
+          <span :title="$t('dcwDetail.kd3ygmn001')">{{ $t('dcwDetail.k3wtib138') }} {{ dcw.controller.writesTotal }}</span>
           <span class="sep">·</span>
           <span
             :class="{ warn: dcw.controller.writesFailed > 0 }"
-            title="累计写失败"
-          >失败 {{ dcw.controller.writesFailed }}</span>
+            :title="$t('dcwDetail.kd3znl0002')"
+          >{{ $t('dcwDetail.k3yit7139') }} {{ dcw.controller.writesFailed }}</span>
         </span>
         <button
           class="aw-pill outline"
-          title="自定义创建控制节点模板:物理含义/单位/工艺安全量程"
+          :title="$t('dcwDetail.kc4ixly003')"
           @click="openTplModal"
         >
           <span class="i-tabler-template" />
-          添加控制模板
+          {{ $t('dcwDetail.k1972dx9020') }}
         </button>
         <button
           class="aw-pill add-btn"
           @click="addOpen = true"
         >
           <span class="i-tabler-plus" />
-          添加控制节点
+          {{ $t('dcwDetail.k1976uns021') }}
         </button>
       </div>
     </section>
@@ -609,7 +605,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
       v-if="unassignedNodes.length || unassignedProducts.length"
       class="aw-tile adopt-card"
     >
-      <b class="adopt-title">未分配资产 · 收编到本产线</b>
+      <b class="adopt-title">{{ $t('dcwDetail.kaebkky022') }}</b>
       <div class="adopt-list">
         <span
           v-for="n in unassignedNodes"
@@ -621,7 +617,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             class="mini-btn"
             @click="adoptNode(n.id)"
           >
-            + 收编
+            {{ $t('dcwDetail.kyjp9fg023') }}
           </button>
         </span>
         <span
@@ -629,12 +625,11 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           :key="p.id"
           class="adopt-chip"
         >
-          {{ p.name }}(产品)
-          <button
+          {{ p.name }}({{ $t('dcwDetail.k3km252140') }}<button
             class="mini-btn"
             @click="adoptProduct(p.id)"
           >
-            + 收编
+            {{ $t('dcwDetail.kyjp9fg023') }}
           </button>
         </span>
       </div>
@@ -648,27 +643,27 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           :class="{ on: ls.active }"
         />
         <div class="line-info">
-          <b>{{ ls.active ? '产线运行中' : '产线停止' }}</b>
+          <b>{{ ls.active ? $t('dcwDetail.k1pxrhx0154') : $t('dcwDetail.k1b2hxmx170') }}</b>
           <small
             v-if="ls.active"
             class="mono dim"
-          >{{ ls.productName }} · {{ ls.recipeName }} · 批次 {{ ls.runId }} · 开跑 {{ ls.startedAt?.slice(11, 19) }} · 已打标 {{ ls.taggedSamples }} 样本</small>
+          >{{ ls.productName }} · {{ ls.recipeName }} · {{ $t('dcwDetail.k400lb075') }} {{ ls.runId }} · {{ $t('dcwDetail.k3zkt2166') }} {{ ls.startedAt?.slice(11, 19) }} {{ $t('dcwDetail.k69vag8168') }} {{ ls.taggedSamples }} {{ $t('dcwDetail.k4118o085') }}</small>
           <small
             v-else
             class="dim"
-          >选择产品与配方后开跑;运行中的每条数采数据将携带产品/配方/批次标识</small>
+          >{{ $t('dcwDetail.k19pof14024') }}</small>
         </div>
       </div>
       <div class="line-ctl">
         <label class="ctl-sel">
-          <span>产品</span>
+          <span>{{ $t('dcwDetail.k3waz1025') }}</span>
           <select
             v-model="lineProductId"
             class="inp"
             @change="lineRecipeId = ''"
           >
             <option value="">
-              选择产品…
+              {{ $t('dcwDetail.kuisodh026') }}
             </option>
             <option
               v-for="p in lineProducts"
@@ -680,14 +675,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           </select>
         </label>
         <label class="ctl-sel">
-          <span>配方</span>
+          <span>{{ $t('dcwDetail.k48grv027') }}</span>
           <select
             v-model="lineRecipeId"
             class="inp"
             :disabled="!lineProductId"
           >
             <option value="">
-              选择配方…
+              {{ $t('dcwDetail.kutxzsz028') }}
             </option>
             <option
               v-for="r in lineRecipes"
@@ -695,7 +690,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               :value="r.id"
               :disabled="r.params.length === 0"
             >
-              {{ r.name }}{{ r.params.length === 0 ? '(无参数,不可开跑)' : `(${r.params.length} 参数)` }}
+              {{ r.name }}{{ r.params.length === 0 ? $t('dcwDetail.k1hicmch155') : $t('dcwDetail.k1lzfi4g180', { p0: r.params.length }) }}
             </option>
           </select>
         </label>
@@ -706,7 +701,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           :title="!lineRecipeId ? '开跑前必须先设定配方' : '下发配方参数并开始打标数据采集'"
           @click="doLineStart"
         >
-          ▶ 开始数采
+          {{ $t('dcwDetail.kfb8vml029') }}
         </button>
         <button
           v-else
@@ -714,7 +709,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           :disabled="lineBusy"
           @click="doLineStop"
         >
-          ■ 停止数采
+          {{ $t('dcwDetail.k1xyhd2y030') }}
         </button>
       </div>
       <p
@@ -741,10 +736,10 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
     >
       <div class="modal">
         <h3 class="m-title">
-          添加控制节点模板 <small class="dim mono">内置 {{ dcw.templates.filter(t => t.builtin).length }} · 自定义 {{ dcw.templates.filter(t => !t.builtin).length }}</small>
+          {{ $t('dcwDetail.k1x4vam0031') }} <small class="dim mono">{{ $t('dcwDetail.k3x23c141') }} {{ dcw.templates.filter(t => t.builtin).length }} · {{ $t('dcwDetail.k3t616a142') }} {{ dcw.templates.filter(t => !t.builtin).length }}</small>
         </h3>
         <p class="dim tpl-hint">
-          模板 = 参数分类(物理含义/单位/工艺安全量程):创建控制节点时选模板继承域;模板下发不涉及 PLC,真正执行的是节点。
+          {{ $t('dcwDetail.ke1iyud032') }}
         </p>
 
         <div class="tpl-chips">
@@ -758,32 +753,32 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             <em
               class="tpl-tag"
               :class="{ builtin: t.builtin }"
-            >{{ t.builtin ? '内置' : '自定义' }}</em>
+            >{{ t.builtin ? $t('dcwDetail.k3x23c141') : $t('dcwDetail.k3t616a142') }}</em>
           </span>
         </div>
 
         <p class="sec-label">
-          新建自定义模板
+          {{ $t('dcwDetail.k169eb4s033') }}
         </p>
         <div class="f-grid tpl-form">
           <label class="f">
-            <span>模板名称<em>*</em></span>
+            <span>{{ $t('dcwDetail.k1f55q76034') }}<em>*</em></span>
             <input
               v-model="tplForm.name"
               class="inp"
-              placeholder="如 电机电流设定"
+              :placeholder="$t('dcwDetail.k1tooi3o004')"
             >
           </label>
           <label class="f">
-            <span>参数语义</span>
+            <span>{{ $t('dcwDetail.k1bqk219035') }}</span>
             <input
               v-model="tplForm.ch"
               class="inp"
-              placeholder="如 电机电流"
+              :placeholder="$t('dcwDetail.k698qz0005')"
             >
           </label>
           <label class="f">
-            <span>位号代号</span>
+            <span>{{ $t('dcwDetail.k1ayxrqb036') }}</span>
             <input
               v-model="tplForm.code"
               class="inp"
@@ -791,7 +786,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             >
           </label>
           <label class="f">
-            <span>单位<em>*</em></span>
+            <span>{{ $t('dcwDetail.k3x4ef037') }}<em>*</em></span>
             <input
               v-model="tplForm.unit"
               class="inp"
@@ -799,25 +794,25 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             >
           </label>
           <label class="f">
-            <span>量程下限<em>*</em></span>
+            <span>{{ $t('dcwDetail.k1l9jv5m038') }}<em>*</em></span>
             <input
               v-model.number="tplForm.min"
               type="number"
               class="inp"
-              placeholder="工艺安全下限"
+              :placeholder="$t('dcwDetail.kxz9174006')"
             >
           </label>
           <label class="f">
-            <span>量程上限<em>*</em></span>
+            <span>{{ $t('dcwDetail.k1l9jv4p039') }}<em>*</em></span>
             <input
               v-model.number="tplForm.max"
               type="number"
               class="inp"
-              placeholder="工艺安全上限"
+              :placeholder="$t('dcwDetail.kxz9167007')"
             >
           </label>
           <label class="f">
-            <span>小数位</span>
+            <span>{{ $t('dcwDetail.k3mxmcx040') }}</span>
             <input
               v-model.number="tplForm.decimals"
               type="number"
@@ -827,7 +822,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             >
           </label>
           <label class="f">
-            <span>图标</span>
+            <span>{{ $t('dcwDetail.k3xx56041') }}</span>
             <select
               v-model="tplForm.icon"
               class="inp"
@@ -843,12 +838,12 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           </label>
         </div>
         <label class="f">
-          <span>工艺语义(物理意义/对产线的影响/调整守则 —— 注入绑定此模板节点的 Agent 上下文)</span>
+          <span>{{ $t('dcwDetail.knjmyfr042') }}</span>
           <textarea
             v-model="tplForm.semantics"
             class="inp"
             rows="2"
-            placeholder="如:电机电流设定:电流升高表示负载增大…调整需小幅步进并观察温升"
+            :placeholder="$t('dcwDetail.k1qdnfzc008')"
           />
         </label>
 
@@ -870,14 +865,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             class="aw-pill outline"
             @click="tplOpen = false"
           >
-            关闭
+            {{ $t('dcwDetail.k3x62t043') }}
           </button>
           <button
             class="pill-btn"
             :disabled="tplSaving || !tplForm.name.trim() || tplForm.unit.trim() === '' || tplForm.min === '' || tplForm.max === ''"
             @click="doCreateTemplate"
           >
-            {{ tplSaving ? '创建中…' : '创建模板' }}
+            {{ tplSaving ? $t('dcwDetail.k1bg4759156') : $t('dcwDetail.k1bg9nga171') }}
           </button>
         </div>
       </div>
@@ -891,7 +886,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
     >
       <div class="modal">
         <h3 class="m-title">
-          添加控制节点
+          {{ $t('dcwDetail.k1976uns021') }}
         </h3>
 
         <div class="seg-row">
@@ -907,13 +902,13 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             :class="{ on: addScenario === 'real' }"
             @click="addScenario = 'real'"
           >
-            真实 PLC 写入
+            {{ $t('dcwDetail.kyj8fen044') }}
           </button>
         </div>
 
         <div class="f-grid">
           <label class="f">
-            <span>控制模板(物理含义/单位/安全量程)</span>
+            <span>{{ $t('dcwDetail.k1ejzwqp045') }}</span>
             <select
               v-model="addTemplate"
               class="inp"
@@ -923,20 +918,20 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                 :key="t.key"
                 :value="t.key"
               >
-                {{ t.name }} · {{ t.ch }}({{ t.min }}~{{ t.max }} {{ t.unit }}){{ t.builtin ? '' : ' · 自定义' }}
+                {{ t.name }} · {{ t.ch }}({{ t.min }}~{{ t.max }} {{ t.unit }}){{ t.builtin ? '' : $t('dcwDetail.kr45rk9157') }}
               </option>
             </select>
           </label>
           <label class="f">
-            <span>节点名称(可选)</span>
+            <span>{{ $t('dcwDetail.k1ce2k1y046') }}</span>
             <input
               v-model="addName"
               class="inp"
-              placeholder="缺省按模板自增命名"
+              :placeholder="$t('dcwDetail.kgpxzy3009')"
             >
           </label>
           <label class="f">
-            <span>保写周期 ms(空=仅手动下发)</span>
+            <span>{{ $t('dcwDetail.k1vyb8im047') }}</span>
             <input
               v-model.number="addHold"
               type="number"
@@ -944,7 +939,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               max="3600000"
               step="500"
               class="inp"
-              placeholder="如 5000(心跳重下发)"
+              :placeholder="$t('dcwDetail.kb1srz0010')"
             >
           </label>
         </div>
@@ -952,13 +947,13 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         <!-- 数据语义标定 encode(物理设定值 → PLC 设定值;mock/真实均可用) -->
         <div class="f-grid cal-form">
           <label class="f">
-            <span>写入标定 encode(物理值 → PLC 设定值)</span>
+            <span>{{ $t('dcwDetail.kiune1f048') }}</span>
             <select
               v-model="addTransform.kind"
               class="inp"
             >
               <option value="none">
-                无(直接写工程值)
+                {{ $t('dcwDetail.kkzy0k049') }}
               </option>
               <option value="linear">
                 线性标定:PLC值 = (物理值 - offset) / scale
@@ -991,7 +986,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         <template v-if="addScenario === 'real'">
           <div class="f-grid">
             <label class="f">
-              <span>通信协议</span>
+              <span>{{ $t('dcwDetail.k1kt87rx050') }}</span>
               <select
                 v-model="addDriver"
                 class="inp"
@@ -1051,7 +1046,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               :disabled="addTesting"
               @click="doTestConnection"
             >
-              {{ addTesting ? '测试中…' : '测试连接' }}
+              {{ addTesting ? $t('dcwDetail.k1fsh720158') : $t('dcwDetail.k1fstglk172') }}
             </button>
             <span
               v-if="addTest"
@@ -1062,12 +1057,12 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         </template>
 
         <label class="f">
-          <span>节点工艺语义(可选,覆盖模板描述 —— 注入绑定此节点的 Agent 上下文)</span>
+          <span>{{ $t('dcwDetail.k1hgizn7051') }}</span>
           <textarea
             v-model="addSemantics"
             class="inp"
             rows="2"
-            placeholder="如:2 号烘箱温度:与 1 号联动控制分区温差,调整步进 ≤1℃"
+            :placeholder="$t('dcwDetail.k12bnyt9011')"
           />
         </label>
 
@@ -1083,14 +1078,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             class="aw-pill outline"
             @click="addOpen = false"
           >
-            取消
+            {{ $t('dcwDetail.k3xdnn052') }}
           </button>
           <button
             class="aw-pill"
             :disabled="addSaving"
             @click="doAddNode"
           >
-            {{ addSaving ? '创建中…' : '创建节点' }}
+            {{ addSaving ? $t('dcwDetail.k1bg4759156') : $t('dcwDetail.k1bge46t173') }}
           </button>
         </div>
       </div>
@@ -1102,16 +1097,16 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         <table class="nodes-table">
           <thead>
             <tr>
-              <th>控制节点</th>
-              <th>控制</th>
-              <th>状态</th>
-              <th>当前设定</th>
-              <th>设定下发</th>
-              <th>工艺量程</th>
-              <th>保写周期</th>
-              <th>绑定设备</th>
+              <th>{{ $t('dcwDetail.k1e2dtkt053') }}</th>
+              <th>{{ $t('dcwDetail.k403cy054') }}</th>
+              <th>{{ $t('dcwDetail.k42w8s055') }}</th>
+              <th>{{ $t('dcwDetail.k1deqh0d056') }}</th>
+              <th>{{ $t('dcwDetail.k1k79ec9057') }}</th>
+              <th>{{ $t('dcwDetail.k1dexou6058') }}</th>
+              <th>{{ $t('dcwDetail.k1b1nnaa059') }}</th>
+              <th>{{ $t('dcwDetail.k1i8rtqt060') }}</th>
               <th class="right">
-                操作
+                {{ $t('dcwDetail.k40aa6061') }}
               </th>
             </tr>
           </thead>
@@ -1135,14 +1130,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   @click="toggleControl(n.id, !n.enabled)"
                 >
                   <span class="ct-dot" />
-                  {{ n.enabled ? '控制中' : '已暂停' }}
+                  {{ n.enabled ? $t('dcwDetail.k3o3ib3159') : $t('dcwDetail.k3n93ed062') }}
                 </button>
               </td>
               <td>
                 <span
                   v-if="!n.enabled"
                   class="st-pill paused"
-                >已暂停</span>
+                >{{ $t('dcwDetail.k3n93ed062') }}</span>
                 <span
                   v-else
                   class="st-pill"
@@ -1176,7 +1171,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                     :title="!n.enabled ? '当前节点暂停:开启控制后方可设定' : '下发设定值'"
                     @click="doWrite(n.id, Number(setInputs[n.id]))"
                   >
-                    {{ writingId === n.id ? '写入中' : '下发' }}
+                    {{ writingId === n.id ? $t('dcwDetail.k3l3h80123') : $t('dcwDetail.k3w6td174') }}
                   </button>
                 </div>
               </td>
@@ -1184,7 +1179,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                 {{ n.min }} ~ {{ n.max }} {{ n.unit }}
               </td>
               <td class="mono">
-                {{ n.holdIntervalMs == null ? '手动' : `${n.holdIntervalMs}ms` }}
+                {{ n.holdIntervalMs == null ? $t('dcwDetail.k3zul4160') : `${n.holdIntervalMs}ms` }}
               </td>
               <td>{{ deviceName(n.deviceBindingId) }}</td>
               <td class="right">
@@ -1192,7 +1187,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   class="mini-btn danger"
                   @click="dcw.removeNode(n.id)"
                 >
-                  删除
+                  {{ $t('dcwDetail.k3xakp063') }}
                 </button>
               </td>
             </tr>
@@ -1203,7 +1198,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   style="min-height: 120px;"
                 >
                   <p class="pe-sub">
-                    暂无控制节点 —— 点击右上「添加控制节点」从工艺模板创建。
+                    {{ $t('dcwDetail.k1wtecyw064') }}
                   </p>
                 </div>
               </td>
@@ -1216,25 +1211,24 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
     <!-- 产品与配方管理 -->
     <section class="aw-tile recipe-card">
       <div class="recipe-hd">
-        <h3>产品与配方</h3>
-        <span class="panel-tag mono">{{ lineProducts.length }} 产品 / {{ visibleRecipes.length }} 配方</span>
+        <h3>{{ $t('dcwDetail.k1j8w3hd065') }}</h3>
+        <span class="panel-tag mono">{{ lineProducts.length }} {{ $t('dcwDetail.k1av3wgs143') }} {{ visibleRecipes.length }} {{ $t('dcwDetail.k48grv027') }}</span>
         <button
           class="pill-btn"
           style="margin-left: auto;"
           @click="openRecipeCreate"
         >
-          + 新建配方
+          {{ $t('dcwDetail.k1akm6dc066') }}
         </button>
         <button
           class="mini-btn"
           @click="productOpen = true"
         >
-          + 新建产品
+          {{ $t('dcwDetail.k1aka0ki067') }}
         </button>
       </div>
       <p class="recipe-sub">
-        一个产品可有多个配方;配方 = 工艺参数集(控制模板 + 目标工程值)。产线开跑时选定配方,其参数随开跑下发,
-        数采数据逐样本携带产品/配方/批次标识。
+        {{ $t('dcwDetail.k6bl2q8068') }}
       </p>
 
       <!-- 产品管理行 -->
@@ -1247,7 +1241,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           :class="{ on: filterProductId === '' }"
           @click="filterProductId = ''"
         >
-          全部
+          {{ $t('dcwDetail.k3x4t1069') }}
         </button>
         <button
           v-for="p in lineProducts"
@@ -1260,7 +1254,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           {{ p.name }}
           <span
             class="prod-del"
-            title="删除产品"
+            :title="$t('dcwDetail.k1bpfjgx012')"
             @click.stop="dcw.removeProduct(p.id)"
           >×</span>
         </button>
@@ -1270,7 +1264,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         class="dim"
         style="margin: 6px 0 12px; font-size: 12px;"
       >
-        暂无产品 —— 点击「新建产品」创建(配方必挂产品;数据按产品隔离)。
+        {{ $t('dcwDetail.knov3zg070') }}
       </p>
 
       <div class="recipe-grid">
@@ -1302,7 +1296,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               v-for="(w, i) in r.daqWindows"
               :key="`w-${i}`"
               class="param-chip daqwin"
-              title="活动批次内数采越限即报警"
+              :title="$t('dcwDetail.k1l11api013')"
             >
               ◎ {{ daqNodeCh(w.nodeId) }} ∈ [{{ w.min ?? '-∞' }}, {{ w.max ?? '+∞' }}]
             </span>
@@ -1312,19 +1306,19 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               class="pill-btn"
               @click="doApplyRecipe(r.id)"
             >
-              ▶ 下发
+              {{ $t('dcwDetail.k1497qvr071') }}
             </button>
             <button
               class="mini-btn"
               @click="openRecipeEdit(r.id)"
             >
-              编辑
+              {{ $t('dcwDetail.k45eb0072') }}
             </button>
             <button
               class="mini-btn danger"
               @click="dcw.removeRecipe(r.id)"
             >
-              删除
+              {{ $t('dcwDetail.k3xakp063') }}
             </button>
           </div>
         </div>
@@ -1333,7 +1327,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           class="pane-empty"
           style="grid-column: 1 / -1;"
         >
-          暂无配方 —— 点击「新建配方」定义产品工艺参数集。
+          {{ $t('dcwDetail.keko1xy073') }}
         </div>
       </div>
 
@@ -1341,14 +1335,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         v-if="applyResult"
         class="banner good"
       >
-        配方批次 {{ applyResult.runId }} 下发完成:{{ applyResult.ok }}/{{ applyResult.total }} 参数成功
+        {{ $t('dcwDetail.k1l3hrvp144') }} {{ applyResult.runId }} {{ $t('dcwDetail.k1g3lh2v167') }}{{ applyResult.ok }}/{{ applyResult.total }} {{ $t('dcwDetail.k1bqci06149') }}
         <button
           class="mini-btn"
           style="margin-left: 10px;"
           :disabled="runDataLoading"
           @click="doViewRun(applyResult.runId)"
         >
-          {{ runDataLoading ? '加载中…' : '查看批次数据' }}
+          {{ runDataLoading ? $t('dcwDetail.k1br0ij9161') : $t('dcwDetail.kxwei5175') }}
         </button>
       </div>
 
@@ -1358,17 +1352,17 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         class="runs"
       >
         <p class="sec-label">
-          生产批次(数据隔离窗口)
+          {{ $t('dcwDetail.k1rjer8d074') }}
         </p>
         <table class="nodes-table">
           <thead>
             <tr>
-              <th>批次</th>
-              <th>配方</th>
-              <th>窗口</th>
-              <th>参数结果</th>
+              <th>{{ $t('dcwDetail.k400lb075') }}</th>
+              <th>{{ $t('dcwDetail.k48grv027') }}</th>
+              <th>{{ $t('dcwDetail.k4497j076') }}</th>
+              <th>{{ $t('dcwDetail.k1bqhtmu077') }}</th>
               <th class="right">
-                操作
+                {{ $t('dcwDetail.k40aa6061') }}
               </th>
             </tr>
           </thead>
@@ -1382,7 +1376,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               </td>
               <td>{{ run.recipeName }}</td>
               <td class="mono dim">
-                {{ run.startedAt.slice(5, 19) }} ~ {{ run.endedAt ? run.endedAt.slice(5, 19) : '进行中' }}
+                {{ run.startedAt.slice(5, 19) }} ~ {{ run.endedAt ? run.endedAt.slice(5, 19) : $t('dcwDetail.k3vpfg9162') }}
               </td>
               <td>
                 <span
@@ -1396,14 +1390,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   :disabled="runDataLoading"
                   @click="doViewRun(run.id)"
                 >
-                  批次数据
+                  {{ $t('dcwDetail.k1dzwrdp078') }}
                 </button>
                 <button
                   v-if="!run.endedAt"
                   class="mini-btn"
                   @click="dcw.closeRun(run.id)"
                 >
-                  关闭批次
+                  {{ $t('dcwDetail.k1blr7y7079') }}
                 </button>
               </td>
             </tr>
@@ -1419,20 +1413,20 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
       >
         <div class="modal">
           <h3 class="m-title">
-            批次数据 · {{ runDataView.data.run.recipeName }}({{ runDataView.runId }})
+            {{ $t('dcwDetail.k11lq94k145') }} {{ runDataView.data.run.recipeName }}({{ runDataView.runId }})
           </h3>
           <p class="sec-label">
-            数采通道汇总(批次窗口内,产品隔离)
+            {{ $t('dcwDetail.k1me41w8080') }}
           </p>
           <table class="nodes-table">
             <thead>
               <tr>
-                <th>通道</th>
-                <th>节点</th>
-                <th>最新</th>
-                <th>均值</th>
+                <th>{{ $t('dcwDetail.k48hde081') }}</th>
+                <th>{{ $t('dcwDetail.k45uio082') }}</th>
+                <th>{{ $t('dcwDetail.k40t11083') }}</th>
+                <th>{{ $t('dcwDetail.k3xuaw084') }}</th>
                 <th>min ~ max</th>
-                <th>样本</th>
+                <th>{{ $t('dcwDetail.k4118o085') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -1461,23 +1455,23 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   class="dim"
                   style="text-align: center; padding: 12px;"
                 >
-                  窗口内无数采样本
+                  {{ $t('dcwDetail.kd457ry086') }}
                 </td>
               </tr>
             </tbody>
           </table>
           <p class="sec-label">
-            写历史(批次窗口内)
+            {{ $t('dcwDetail.k12b7cxs087') }}
           </p>
           <table class="nodes-table">
             <thead>
               <tr>
-                <th>参数</th>
-                <th>节点</th>
-                <th>工程值</th>
-                <th>原始值</th>
-                <th>结果</th>
-                <th>时刻</th>
+                <th>{{ $t('dcwDetail.k3xbjr088') }}</th>
+                <th>{{ $t('dcwDetail.k45uio082') }}</th>
+                <th>{{ $t('dcwDetail.k3ncbsh089') }}</th>
+                <th>{{ $t('dcwDetail.k3lh3mz090') }}</th>
+                <th>{{ $t('dcwDetail.k454pg091') }}</th>
+                <th>{{ $t('dcwDetail.k40ieu092') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -1497,7 +1491,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   <span
                     class="st-pill"
                     :class="w.ok ? 'ok' : 'alarm'"
-                  >{{ w.ok ? 'ACK' : '失败' }}</span>
+                  >{{ w.ok ? 'ACK' : $t('dcwDetail.k3yit7139') }}</span>
                 </td>
                 <td class="mono dim">
                   {{ w.at.slice(5, 19) }}
@@ -1509,7 +1503,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   class="dim"
                   style="text-align: center; padding: 12px;"
                 >
-                  窗口内无写记录
+                  {{ $t('dcwDetail.knzcp8i093') }}
                 </td>
               </tr>
             </tbody>
@@ -1519,7 +1513,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               class="aw-pill outline"
               @click="runDataView = null"
             >
-              关闭
+              {{ $t('dcwDetail.k3x62t043') }}
             </button>
           </div>
         </div>
@@ -1534,11 +1528,11 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
     >
       <div class="modal">
         <h3 class="m-title">
-          {{ recipeEditing ? '编辑配方' : '新建配方' }}
+          {{ recipeEditing ? $t('dcwDetail.k1iiwk0i163') : $t('dcwDetail.k1efq0r9176') }}
         </h3>
         <div class="f-grid">
           <label class="f">
-            <span>所属产品<em>*</em></span>
+            <span>{{ $t('dcwDetail.k1dw4fzf094') }}<em>*</em></span>
             <select
               v-model="recipeForm.productId"
               class="inp"
@@ -1553,24 +1547,24 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             </select>
           </label>
           <label class="f">
-            <span>配方名称<em>*</em></span>
+            <span>{{ $t('dcwDetail.k1l3f8so095') }}<em>*</em></span>
             <input
               v-model="recipeForm.name"
               class="inp"
-              placeholder="如 0.8mm 光学膜"
+              :placeholder="$t('dcwDetail.k12c11vm014')"
             >
           </label>
           <label class="f">
-            <span>描述</span>
+            <span>{{ $t('dcwDetail.k40gkk096') }}</span>
             <input
               v-model="recipeForm.description"
               class="inp"
-              placeholder="产品/工艺说明(可选)"
+              :placeholder="$t('dcwDetail.k1hxx8hy015')"
             >
           </label>
         </div>
         <p class="sec-label">
-          工艺参数(绑定本产线控制节点:节点才是真实下发 PLC 的执行体,模板仅分类)
+          {{ $t('dcwDetail.ka1kfgh097') }}
         </p>
         <div
           v-for="(p, i) in recipeForm.params"
@@ -1578,7 +1572,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           class="param-row"
         >
           <label class="f">
-            <span>控制节点</span>
+            <span>{{ $t('dcwDetail.k1e2dtkt053') }}</span>
             <select
               v-model="p.nodeId"
               class="inp"
@@ -1593,7 +1587,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             </select>
           </label>
           <label class="f">
-            <span>目标值<em>*</em></span>
+            <span>{{ $t('dcwDetail.k3renp2098') }}<em>*</em></span>
             <input
               v-model.number="p.value"
               type="number"
@@ -1602,40 +1596,40 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             >
           </label>
           <label class="f">
-            <span>配方下限(可选,≥{{ nodeMin(p.nodeId) ?? '-' }})</span>
+            <span>{{ $t('dcwDetail.k134rw3b146') }}{{ nodeMin(p.nodeId) ?? '-' }})</span>
             <input
               v-model.number="p.min"
               type="number"
               class="inp"
               :step="0.1"
-              placeholder="节点全局量程内"
+              :placeholder="$t('dcwDetail.k5vew9z016')"
             >
           </label>
           <label class="f">
-            <span>配方上限(可选,≤{{ nodeMax(p.nodeId) ?? '-' }})</span>
+            <span>{{ $t('dcwDetail.khrv911147') }}{{ nodeMax(p.nodeId) ?? '-' }})</span>
             <input
               v-model.number="p.max"
               type="number"
               class="inp"
               :step="0.1"
-              placeholder="运行期写入硬约束"
+              :placeholder="$t('dcwDetail.kzoh5pr017')"
             >
           </label>
           <button
             class="mini-btn danger param-del"
             @click="recipeForm.params.splice(i, 1)"
           >
-            移除
+            {{ $t('dcwDetail.k44idg099') }}
           </button>
         </div>
         <button
           class="mini-btn"
           @click="recipeForm.params.push({ nodeId: lineNodes[0]?.id ?? '', value: '', min: '', max: '' })"
         >
-          + 添加参数
+          {{ $t('dcwDetail.k1broh7h100') }}
         </button>
         <p class="sec-label">
-          数采监控窗口(活动批次内,数采节点实时值越出窗口即报警标红)
+          {{ $t('dcwDetail.k1h5gues101') }}
         </p>
         <div
           v-for="(w, i) in recipeForm.daqWindows"
@@ -1643,7 +1637,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           class="param-row"
         >
           <label class="f">
-            <span>数采节点</span>
+            <span>{{ $t('dcwDetail.k1empnnb102') }}</span>
             <select
               v-model="w.nodeId"
               class="inp"
@@ -1658,7 +1652,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             </select>
           </label>
           <label class="f">
-            <span>监控下限(可选)</span>
+            <span>{{ $t('dcwDetail.kqm08ap103') }}</span>
             <input
               v-model.number="w.min"
               type="number"
@@ -1667,7 +1661,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             >
           </label>
           <label class="f">
-            <span>监控上限(可选)</span>
+            <span>{{ $t('dcwDetail.kpypf8g104') }}</span>
             <input
               v-model.number="w.max"
               type="number"
@@ -1679,7 +1673,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             class="mini-btn danger param-del"
             @click="recipeForm.daqWindows.splice(i, 1)"
           >
-            移除
+            {{ $t('dcwDetail.k44idg099') }}
           </button>
         </div>
         <button
@@ -1688,7 +1682,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           :title="lineDaqNodes.length === 0 ? '本产线暂无数采节点' : ''"
           @click="recipeForm.daqWindows.push({ nodeId: lineDaqNodes[0]?.id ?? '', min: '', max: '' })"
         >
-          + 添加监控窗口
+          {{ $t('dcwDetail.kv1de1p105') }}
         </button>
         <p
           v-if="recipeError"
@@ -1701,14 +1695,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             class="aw-pill outline"
             @click="recipeOpen = false"
           >
-            取消
+            {{ $t('dcwDetail.k3xdnn052') }}
           </button>
           <button
             class="pill-btn"
             :disabled="recipeSaving"
             @click="saveRecipe"
           >
-            {{ recipeSaving ? '保存中…' : '保存配方' }}
+            {{ recipeSaving ? $t('dcwDetail.k1b38d59164') : $t('dcwDetail.k1b3kwg0177') }}
           </button>
         </div>
       </div>
@@ -1717,18 +1711,18 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
     <!-- 产线数据查询(产品/配方/参数/时间/间隔) -->
     <section class="aw-tile query-card">
       <p class="sec-label">
-        产线数据查询(产品 · 配方 · 工艺参数 · 时间 · 间隔)
+        {{ $t('dcwDetail.k1us3jse106') }}
       </p>
       <div class="q-grid">
         <label class="f">
-          <span>产品</span>
+          <span>{{ $t('dcwDetail.k3waz1025') }}</span>
           <select
             v-model="query.productId"
             class="inp"
             @change="query.recipeId = ''"
           >
             <option value="">
-              全部产品
+              {{ $t('dcwDetail.k1bkl1jx107') }}
             </option>
             <option
               v-for="p in lineProducts"
@@ -1740,14 +1734,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           </select>
         </label>
         <label class="f">
-          <span>配方</span>
+          <span>{{ $t('dcwDetail.k48grv027') }}</span>
           <select
             v-model="query.recipeId"
             class="inp"
             :disabled="!query.productId"
           >
             <option value="">
-              全部配方
+              {{ $t('dcwDetail.k1bkx7cr108') }}
             </option>
             <option
               v-for="r in visibleRecipes"
@@ -1759,13 +1753,13 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           </select>
         </label>
         <label class="f">
-          <span>工艺参数</span>
+          <span>{{ $t('dcwDetail.k1demcae109') }}</span>
           <select
             v-model="query.paramKey"
             class="inp"
           >
             <option value="">
-              全部通道
+              {{ $t('dcwDetail.k1bkx7ya110') }}
             </option>
             <option
               v-for="k in daqParamKeys"
@@ -1777,13 +1771,13 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           </select>
         </label>
         <label class="f">
-          <span>节点</span>
+          <span>{{ $t('dcwDetail.k45uio082') }}</span>
           <select
             v-model="query.nodeId"
             class="inp"
           >
             <option value="">
-              全部节点
+              {{ $t('dcwDetail.k1bkul3k111') }}
             </option>
             <option
               v-for="n in lineDaqNodes"
@@ -1795,7 +1789,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           </select>
         </label>
         <label class="f">
-          <span>最近(分钟)</span>
+          <span>{{ $t('dcwDetail.kx2ojn0112') }}</span>
           <input
             v-model.number="query.lastMin"
             type="number"
@@ -1805,7 +1799,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           >
         </label>
         <label class="f">
-          <span>聚合间隔 ms(0=原始点)</span>
+          <span>{{ $t('dcwDetail.kjvnvn4113') }}</span>
           <input
             v-model.number="query.bucketMs"
             type="number"
@@ -1820,7 +1814,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             :disabled="queryBusy"
             @click="doQuery"
           >
-            {{ queryBusy ? '查询中…' : '查询' }}
+            {{ queryBusy ? $t('dcwDetail.k1eyx09r165') : $t('dcwDetail.k416ek178') }}
           </button>
         </div>
       </div>
@@ -1838,12 +1832,12 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         <table class="nodes-table">
           <thead>
             <tr>
-              <th>通道</th>
-              <th>节点</th>
-              <th>点数</th>
-              <th>首值</th>
-              <th>末值</th>
-              <th>区间</th>
+              <th>{{ $t('dcwDetail.k48hde081') }}</th>
+              <th>{{ $t('dcwDetail.k45uio082') }}</th>
+              <th>{{ $t('dcwDetail.k42kcu114') }}</th>
+              <th>{{ $t('dcwDetail.k49ujb115') }}</th>
+              <th>{{ $t('dcwDetail.k40pvw116') }}</th>
+              <th>{{ $t('dcwDetail.k3xho3117') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -1877,7 +1871,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
       class="aw-tile table-card"
     >
       <p class="sec-label">
-        写历史(最近 {{ lineHistory.length }} 条)
+        {{ $t('dcwDetail.kw7ym9b148') }} {{ lineHistory.length }} {{ $t('dcwDetail.k40bfz150') }}
       </p>
       <table class="nodes-table">
         <tbody>
@@ -1900,10 +1894,10 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               <span
                 class="st-pill"
                 :class="h.ok ? 'ok' : 'alarm'"
-              >{{ h.ok ? 'ACK' : '失败' }}</span>
+              >{{ h.ok ? 'ACK' : $t('dcwDetail.k3yit7139') }}</span>
             </td>
             <td class="dim">
-              {{ h.recipeRunId ? `批次 ${h.recipeRunId}` : '手动' }}
+              {{ h.recipeRunId ? $t('dcwDetail.k6vgks7181', { p0: h.recipeRunId }) : '手动' }}
             </td>
           </tr>
         </tbody>
@@ -1918,23 +1912,23 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
     >
       <div class="modal">
         <h3 class="m-title">
-          新建产品
+          {{ $t('dcwDetail.k1efduyf118') }}
         </h3>
         <div class="f-grid">
           <label class="f">
-            <span>产品名称<em>*</em></span>
+            <span>{{ $t('dcwDetail.k1avjrl6119') }}<em>*</em></span>
             <input
               v-model="productForm.name"
               class="inp"
-              placeholder="如 0.8mm 光学膜"
+              :placeholder="$t('dcwDetail.k12c11vm014')"
             >
           </label>
           <label class="f">
-            <span>描述</span>
+            <span>{{ $t('dcwDetail.k40gkk096') }}</span>
             <input
               v-model="productForm.description"
               class="inp"
-              placeholder="产品/工艺说明(可选)"
+              :placeholder="$t('dcwDetail.k1hxx8hy015')"
             >
           </label>
         </div>
@@ -1949,14 +1943,14 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             class="aw-pill outline"
             @click="productOpen = false"
           >
-            取消
+            {{ $t('dcwDetail.k3xdnn052') }}
           </button>
           <button
             class="pill-btn"
             :disabled="productSaving"
             @click="doCreateProduct"
           >
-            {{ productSaving ? '创建中…' : '创建产品' }}
+            {{ productSaving ? $t('dcwDetail.k1bg4759156') : $t('dcwDetail.k1bg4kn6179') }}
           </button>
         </div>
       </div>
@@ -1966,7 +1960,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
       v-if="dcw.error"
       class="err"
     >
-      {{ dcw.error }}(<NuxtLink to="/workshop">前往登录</NuxtLink>)
+      {{ dcw.error }}(<NuxtLink to="/workshop">{{ $t('dcwDetail.k1bhhheq120') }}</NuxtLink>)
     </p>
   </div>
 </template>

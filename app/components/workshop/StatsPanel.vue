@@ -62,7 +62,7 @@ const rate = computed(() => buckets.value.slice(-10).reduce((a, b) => a + b, 0) 
           {{ total }}
         </div>
         <div class="kpi-label">
-          缓冲事件
+          {{ $t('statsPanel.k1i88c0b001') }}
         </div>
       </div>
       <div class="kpi">
@@ -70,7 +70,7 @@ const rate = computed(() => buckets.value.slice(-10).reduce((a, b) => a + b, 0) 
           {{ rate.toFixed(1) }}/s
         </div>
         <div class="kpi-label">
-          近 10s 吞吐
+          {{ $t('statsPanel.kfplawo002') }}
         </div>
       </div>
       <div class="kpi">
@@ -93,7 +93,7 @@ const rate = computed(() => buckets.value.slice(-10).reduce((a, b) => a + b, 0) 
 
     <div class="types">
       <div class="types-title">
-        事件类型分布(缓冲窗口)
+        {{ $t('statsPanel.kzcd51003') }}
       </div>
       <div
         v-for="[type, n] in typeCounts"
@@ -113,7 +113,7 @@ const rate = computed(() => buckets.value.slice(-10).reduce((a, b) => a + b, 0) 
         v-if="typeCounts.length === 0"
         class="empty"
       >
-        (暂无事件)
+        {{ $t('statsPanel.k1pevwxl004') }}
       </div>
     </div>
   </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 /**
  * PaneSplitter — 面板宽度拖拽分隔条(可复用)。
  * pointer capture 拖动 → resize(deltaPx);双击 → reset;键盘 ←/→ 微调(a11y,Shift 加速)。
@@ -11,7 +12,7 @@ const props = withDefaults(defineProps<{
   label?: string
   variant?: 'divider' | 'bare'
 }>(), {
-  label: '拖拽调节面板宽度',
+  label: t('paneSplitter.kejk1i9001'),
   variant: 'divider',
 })
 

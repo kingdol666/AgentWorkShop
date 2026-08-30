@@ -13,6 +13,8 @@
 import { useCharacterAssets } from '@/app/composables/workshop/useCharacterAssets'
 import ModelPreview3D from './town/ModelPreview3D.vue'
 
+const { t } = useI18n()
+
 const assets = useCharacterAssets()
 
 /** 侧边模型库:展示所有设备实体模型(含内置模型、设备目录扫描与用户上传)。 */
@@ -58,7 +60,7 @@ const clearUpload = (): void => {
 async function doUpload(): Promise<void> {
   const f = uploadFile.value
   if (!f) {
-    uploadError.value = '请先拖入或选择设备模型文件(.glb/.gltf/.obj/.fbx)'
+    uploadError.value = t('assetLibrary.kcjqcaw012')
     return
   }
   uploading.value = true
@@ -66,7 +68,7 @@ async function doUpload(): Promise<void> {
   try {
     const model = await assets.uploadDevice(f)
     uploadFile.value = null
-    uploadError.value = `已上传 → ${model.name}`
+    uploadError.value = t('assetLibrary.k8nv3or016', { p0: model.name })
   }
   catch (err) {
     uploadError.value = err instanceof Error ? err.message : String(err)
@@ -84,7 +86,7 @@ async function doRemove(id: string): Promise<void> {
   deleteMsg.value = ''
   try {
     await assets.removeDevice(id)
-    deleteMsg.value = '已删除模型文件'
+    deleteMsg.value = t('assetLibrary.k8n918k013')
   }
   catch (err) {
     deleteMsg.value = err instanceof Error ? err.message : String(err)
@@ -98,8 +100,8 @@ async function doRemove(id: string): Promise<void> {
 <template>
   <aside class="asset-lib">
     <div class="lib-head">
-      <span class="head-title">设备模型库</span>
-      <span class="head-hint">拖入孪生空间生成实例</span>
+      <span class="head-title">{{ $t('assetLibrary.k7la4x5001') }}</span>
+      <span class="head-hint">{{ $t('assetLibrary.kulif5b002') }}</span>
     </div>
 
     <!-- 上传区(设备 3D 模型:拖放/选择 → 本地 3D 预览 → 确认上传) -->
@@ -119,7 +121,7 @@ async function doRemove(id: string): Promise<void> {
         >
         <span class="upload-name">
           <span class="i-tabler-plus upload-ico" />
-          {{ uploadFile?.name || '拖放或选择模型文件' }}
+          {{ uploadFile?.name || $t('assetLibrary.k1iiort6010') }}
         </span>
       </label>
       <span
@@ -127,7 +129,7 @@ async function doRemove(id: string): Promise<void> {
         class="drop-hint"
       >
         <span class="i-tabler-download" />
-        松开以选择模型
+        {{ $t('assetLibrary.k5hg6jq003') }}
       </span>
 
       <!-- 上传前本地 3D 预览(glb/gltf 实时渲染真实形状) -->
@@ -140,28 +142,28 @@ async function doRemove(id: string): Promise<void> {
         <span
           v-else
           class="upload-file-tag"
-        >{{ uploadFile.name }} (暂不支持 3D 预览)</span>
+        >{{ uploadFile.name }} ({{ $t('assetLibrary.k1xz5wvk009') }}</span>
         <div class="upload-actions">
           <button
             class="upload-btn go"
             :disabled="uploading"
             @click="doUpload"
           >
-            {{ uploading ? '上传中…' : '确认上传' }}
+            {{ uploading ? $t('assetLibrary.k1ar7n8i005') : $t('assetLibrary.k1hhga4h014') }}
           </button>
           <button
             class="upload-btn"
             :disabled="uploading"
             @click="clearUpload"
           >
-            取消
+            {{ $t('assetLibrary.k3xdnn004') }}
           </button>
         </div>
       </template>
       <span
         v-else-if="uploading"
         class="mini-err"
-      >上传中…</span>
+      >{{ $t('assetLibrary.k1ar7n8i005') }}</span>
       <span
         v-if="uploadError && !uploadFile"
         class="mini-err"
@@ -175,7 +177,7 @@ async function doRemove(id: string): Promise<void> {
         class="model-card"
         :data-model-id="m.id"
         draggable="true"
-        :title="m.hint || `拖到孪生场景即生成设备实例 · ${m.name}`"
+        :title="m.hint || $t('assetLibrary.katn7lo015', { p0: m.name })"
         @dragstart="onDragStart($event, m.id)"
       >
         <!-- GLB/GLTF:实时 3D 模型预览(真实几何形状);其余格式占位图标 -->
@@ -194,7 +196,7 @@ async function doRemove(id: string): Promise<void> {
           />
         </span>
         <span class="model-name">{{ m.name }}</span>
-        <span class="model-badge">设备 · 拖拽放置</span>
+        <span class="model-badge">{{ $t('assetLibrary.k1n32zs0006') }}</span>
         <div class="card-actions">
           <button
             v-if="m.file.includes('/assets/game/devices/')"
@@ -202,7 +204,7 @@ async function doRemove(id: string): Promise<void> {
             :disabled="deletingId === m.id"
             @click="doRemove(m.id)"
           >
-            {{ deletingId === m.id ? '…' : '删' }}
+            {{ deletingId === m.id ? '…' : $t('assetLibrary.k498l011') }}
           </button>
         </div>
       </div>
@@ -211,13 +213,13 @@ async function doRemove(id: string): Promise<void> {
         class="lib-note"
       >
         <span class="loading-dot" />
-        载入中…
+        {{ $t('assetLibrary.k1kq2tmi007') }}
       </div>
       <div
         v-else-if="deviceModels.length === 0"
         class="lib-note"
       >
-        暂无设备模型,拖入 .glb 文件上传
+        {{ $t('assetLibrary.k15527e1008') }}
       </div>
     </div>
 

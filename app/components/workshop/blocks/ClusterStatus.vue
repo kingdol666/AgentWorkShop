@@ -45,7 +45,7 @@ const toggle = (): void => {
         class="chev"
         :class="{ open: expanded }"
       >▸</span>
-      <span class="st-label">思考 / 中间输出</span>
+      <span class="st-label">{{ $t('clusterStatus.k1fpy8te001') }}</span>
       <span class="st-count">{{ lines.length }}</span>
       <span
         v-if="!expanded"

@@ -10,6 +10,8 @@ import { useClusteredBlocks } from '@/app/composables/workshop/useClusteredBlock
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
 import { useCodeCopy } from '@/app/composables/useCodeCopy'
 
+const { t } = useI18n()
+
 const props = defineProps<{ channelId: string }>()
 const events = useEventsStore()
 const { conn } = useWorkshopWs()
@@ -176,16 +178,16 @@ const syncing = computed(() => conn.pendingReplay || conn.state === 'connecting'
 const lastDataAgo = computed(() => {
   if (!conn.lastDataAt) return ''
   const s = Math.max(0, Math.round((Date.now() - conn.lastDataAt) / 1000))
-  return s < 5 ? '刚刚' : `${s}s 前`
+  return s < 5 ? t('transcriptTimeline.k3wwxl026') : t('transcriptTimeline.k2gyl6l027', { p0: s })
 })
 
 const filterOptions: Array<{ value: EventFilter, label: string }> = [
-  { value: 'all', label: '全部' },
-  { value: 'key', label: '关键' },
-  { value: 'messages', label: '消息' },
-  { value: 'tasks', label: '任务' },
-  { value: 'team', label: '团队' },
-  { value: 'errors', label: '错误' },
+  { value: 'all', label: t('transcriptTimeline.k3x4t1012') },
+  { value: 'key', label: t('transcriptTimeline.k3x5xi013') },
+  { value: 'messages', label: t('transcriptTimeline.k41ykc014') },
+  { value: 'tasks', label: t('transcriptTimeline.k3wcox015') },
+  { value: 'team', label: t('transcriptTimeline.k3y5ja016') },
+  { value: 'errors', label: t('transcriptTimeline.k49d2l017') },
 ]
 
 // ===== 日期分隔线(open-tag date-divider 移植):块 firstAt 跨日 → 插入 hairline 分隔 =====
@@ -200,10 +202,10 @@ const dayLabel = (iso: string): string => {
   yesterday.setDate(today.getDate() - 1)
   const sameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-  if (sameDay(d, today)) return '今天'
-  if (sameDay(d, yesterday)) return '昨天'
-  const y = d.getFullYear() !== today.getFullYear() ? `${d.getFullYear()} 年 ` : ''
-  return `${y}${d.getMonth() + 1} 月 ${d.getDate()} 日`
+  if (sameDay(d, today)) return t('transcriptTimeline.k3wcqg018')
+  if (sameDay(d, yesterday)) return t('transcriptTimeline.k40l1y019')
+  const y = d.getFullYear() !== today.getFullYear() ? t('transcriptTimeline.k2hda35028', { p0: d.getFullYear() }) : ''
+  return t('transcriptTimeline.kbs29zx029', { p0: y, p1: d.getMonth() + 1, p2: d.getDate() })
 }
 /** 每个块是否需要前置日界分隔(与上一块不同日,或首块) */
 const blockDayFlags = computed(() => {
@@ -226,12 +228,12 @@ const blockDayFlags = computed(() => {
         size="small"
         :options="filterOptions"
       />
-      <span class="count">{{ totalEvents }} 事件 / {{ blocks.length }} 块</span>
+      <span class="count">{{ totalEvents }} {{ $t('transcriptTimeline.k1atjpx1005') }} {{ blocks.length }} {{ $t('transcriptTimeline.k4a9o007') }}</span>
       <!-- 连接诚实态:断线待对齐 → 同步中脉搏;在线 → 最后数据时间(open-tag 规范) -->
       <span
         class="sync-chip"
         :data-state="syncing ? 'syncing' : conn.state"
-        :title="syncing ? '连接中断,重连后将自动对齐缺失事件' : `最后数据更新:${lastDataAgo || '无'}`"
+        :title="syncing ? '连接中断,重连后将自动对齐缺失事件' : $t('transcriptTimeline.kglov3b025', { p0: lastDataAgo || '无' })"
       >
         <span
           v-if="syncing"
@@ -241,7 +243,7 @@ const blockDayFlags = computed(() => {
           v-else-if="conn.state === 'open'"
           class="i-tabler-point-filled sync-dot"
         />
-        {{ syncing ? '同步中' : conn.state === 'open' ? lastDataAgo || '在线' : '离线' }}
+        {{ syncing ? $t('transcriptTimeline.k3lmtk3008') : conn.state === 'open' ? lastDataAgo || $t('transcriptTimeline.k3y2p8020') : $t('transcriptTimeline.k44c2n024') }}
       </span>
     </div>
     <div
@@ -253,11 +255,11 @@ const blockDayFlags = computed(() => {
       <button
         v-if="!stickBottom && !scrollingDown"
         class="jump-latest"
-        title="跳转到最新"
+        :title="$t('transcriptTimeline.kqu93z8001')"
         @click="jumpToLatest"
       >
         <span class="i-tabler-arrow-down" />
-        最新
+        {{ $t('transcriptTimeline.k40t11002') }}
       </button>
       <div
         ref="columnEl"
@@ -269,13 +271,13 @@ const blockDayFlags = computed(() => {
           :disabled="loadingEarlier"
           @click="loadEarlier"
         >
-          {{ loadingEarlier ? '加载中…' : '加载更早的事件' }}
+          {{ loadingEarlier ? $t('transcriptTimeline.k1br0ij9009') : $t('transcriptTimeline.kywgd38021') }}
         </button>
         <div
           v-if="earlierExhausted && loadedCount > 0"
           class="earlier-done"
         >
-          已加载全部历史(最早 1 条起)
+          {{ $t('transcriptTimeline.k1kbaden003') }}
         </div>
         <!-- 连接中骨架:头像圆 + 双行占位,布局对齐最终块形态(免跳变) -->
         <div
@@ -310,10 +312,10 @@ const blockDayFlags = computed(() => {
             class="i-tabler-message-dots empty-icon"
           />
           <p class="empty-title">
-            {{ syncing || conn.state !== 'open' ? '正在同步时间线…' : '等待事件流入' }}
+            {{ syncing || conn.state !== 'open' ? $t('transcriptTimeline.klnne6o010') : $t('transcriptTimeline.k126izdm022') }}
           </p>
           <p class="empty-hint">
-            {{ syncing || conn.state !== 'open' ? '连接恢复后事件将自动对齐' : '在下方提交任务后,Agent 执行过程将在此实时渲染' }}
+            {{ syncing || conn.state !== 'open' ? $t('transcriptTimeline.k1iuqpxj011') : $t('transcriptTimeline.kuyjpmi023') }}
           </p>
         </div>
         <!-- 过滤空态:有事件但当前过滤无匹配(区别于真空) -->
@@ -323,10 +325,10 @@ const blockDayFlags = computed(() => {
         >
           <span class="i-tabler-filter-off empty-icon" />
           <p class="empty-title">
-            无匹配事件
+            {{ $t('transcriptTimeline.ktuo1zg004') }}
           </p>
           <p class="empty-hint">
-            「{{ filterOptions.find(o => o.value === filter)?.label ?? filter }}」过滤下没有事件,可切换过滤条件
+            「{{ filterOptions.find(o => o.value === filter)?.label ?? filter }}」{{ $t('transcriptTimeline.kapxgq4006') }}
           </p>
         </div>
         <template

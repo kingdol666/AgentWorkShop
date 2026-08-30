@@ -7,6 +7,8 @@ import { computed } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
 
+const { t } = useI18n()
+
 const props = defineProps<{ block: EventBlock }>()
 
 const entities = useEntitiesStore()
@@ -62,13 +64,13 @@ const toneOf = (state: string) => STATE_TONE[state] ?? STATE_TONE.SUBMITTED!
  * 验收的完成"(completion gate)——executor 跑完只是 WORKING→终态迁移,不是完成。
  */
 const STATE_LABEL: Record<string, string> = {
-  SUBMITTED: '已提交',
-  ASSIGNED: '已指派',
-  WORKING: '执行中',
-  WAITING: '等待合并',
-  COMPLETED: '完成·经验收',
-  FAILED: '失败·待改派',
-  CANCELED: '已取消',
+  SUBMITTED: t('clusterTask.k3n8lhn001'),
+  ASSIGNED: t('clusterTask.k3n8mf0002'),
+  WORKING: t('clusterTask.k3o5tz9003'),
+  WAITING: t('clusterTask.k1hpsvap004'),
+  COMPLETED: t('clusterTask.k10w8u89005'),
+  FAILED: t('clusterTask.k4u7566006'),
+  CANCELED: t('clusterTask.k3n5vg5007'),
 }
 const labelOf = (state: string) => STATE_LABEL[state] ?? state
 </script>
@@ -87,7 +89,7 @@ const labelOf = (state: string) => STATE_LABEL[state] ?? state
         class="state-chip"
         :style="{ background: toneOf(s).bg }"
         :data-state="s"
-        :title="`状态代码 ${s}`"
+        :title="$t('clusterTask.kfwdcd4008', { p0: s })"
       >
         <span
           class="state-dot"

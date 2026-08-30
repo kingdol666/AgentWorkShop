@@ -223,19 +223,19 @@ const quoteToComposer = (): void => {
         <span
           v-if="tier === 'attention'"
           class="tier-attention"
-          title="需要回应或人工知悉"
-        ><span class="i-tabler-alert-circle" />需关注</span>
+          :title="$t('eventBlock.kc918hn001')"
+        ><span class="i-tabler-alert-circle" />{{ $t('eventBlock.k3wmcv4004') }}</span>
         <span class="head-right">
           <!-- 流式运行指示(open-tag msg-agent-state):当前 agent 正在产出 -->
           <span
             v-if="runningNow"
             class="running-chip"
-          ><span class="running-dot" />运行中</span>
+          ><span class="running-dot" />{{ $t('eventBlock.k3vp67i005') }}</span>
           <span
             v-if="block.folded > 0"
             class="folded"
-            title="与 delta 增量重复的内容已合并为一段"
-          >去重 {{ block.folded }}</span>
+            :title="$t('eventBlock.kcugdph002')"
+          >{{ $t('eventBlock.k3xk4t006') }} {{ block.folded }}</span>
           <span
             v-if="block.events.length > 1"
             class="merged"
@@ -259,7 +259,7 @@ const quoteToComposer = (): void => {
           <button
             type="button"
             class="eb-tool"
-            title="引用到输入框"
+            :title="$t('eventBlock.kknq700003')"
             @click="quoteToComposer"
           >
             <span class="i-tabler-quote" />

@@ -15,6 +15,8 @@ import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
 import { useClusteredBlocks } from '@/app/composables/workshop/useClusteredBlocks'
 import type { AepEnvelope } from '@/shared/workshop-protocol'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   channelId: string
   agentId: string | null
@@ -47,9 +49,9 @@ const toggleEnabled = async (checked: string | number | boolean): Promise<void> 
   try {
     await api.updateChannelAgent(props.channelId, props.agentId, {
       enabled: checked === true ? 1 : 0,
-      reason: checked === true ? '重新启用(接收新任务)' : '停用(暂停接收新任务)',
+      reason: checked === true ? t('agentInspectorDrawer.kgjqkq9014') : t('agentInspectorDrawer.kpkjhbz015'),
     })
-    message.success(checked === true ? '已启用' : '已停用(其排队任务由调度回收)')
+    message.success(checked === true ? t('agentInspectorDrawer.k3n5z7y016') : t('agentInspectorDrawer.k1dst50d017'))
   }
   catch (e) {
     message.error(e instanceof Error ? e.message : String(e))
@@ -66,7 +68,7 @@ const removeMember = async (): Promise<void> => {
   removing.value = true
   try {
     await api.removeChannelAgent(props.channelId, props.agentId)
-    message.success('成员已移除')
+    message.success(t('agentInspectorDrawer.kane5dq018'))
     open.value = false
     emit('removed', props.agentId)
   }
@@ -106,7 +108,7 @@ const focusActive = computed(() =>
 const toggleFocus = (): void => {
   if (!props.agentId) return
   events.setFocusAgent(props.channelId, focusActive.value ? null : props.agentId)
-  message.success(focusActive.value ? '已取消聚焦' : '主时间线已聚焦该 agent')
+  message.success(focusActive.value ? t('agentInspectorDrawer.k1p055kl019') : t('agentInspectorDrawer.ky2fhkf020'))
 }
 
 const sendText = ref('')
@@ -123,7 +125,7 @@ const send = async (): Promise<void> => {
       priority: priority.value,
       requireReply: requireReply.value,
     })
-    message.success('消息已注入')
+    message.success(t('agentInspectorDrawer.k1y2jrsr021'))
     sendText.value = ''
   }
   catch (e) {
@@ -152,7 +154,7 @@ const stateDot: Record<string, string> = {
     <workshop-pane-splitter
       variant="bare"
       class="drawer-resizer"
-      label="拖拽调节抽屉宽度"
+      :label="$t('agentInspectorDrawer.k6hcbxi001')"
       @resize="resizeDrawer"
       @reset="drawerWidth = DRAWER_W_DEFAULT"
     />
@@ -164,20 +166,20 @@ const stateDot: Record<string, string> = {
         />
         <span class="state-text">{{ agent.state }}</span>
         <span class="role-chip">{{ agent.harness }}</span>
-        <span class="queue-meta">队列{{ agent.queued ?? 0 }} · 完成{{ agent.completed ?? 0 }}</span>
+        <span class="queue-meta">{{ $t('agentInspectorDrawer.k498bf010') }}{{ agent.queued ?? 0 }} · {{ $t('agentInspectorDrawer.k3ypnl022') }}{{ agent.completed ?? 0 }}</span>
         <a-button
           size="small"
           :type="focusActive ? 'primary' : 'default'"
           @click="toggleFocus"
         >
-          {{ focusActive ? '取消聚焦' : '聚焦主时间线' }}
+          {{ focusActive ? $t('agentInspectorDrawer.k1bs9x43013') : $t('agentInspectorDrawer.k16t80ax023') }}
         </a-button>
       </div>
       <div
         v-if="currentTitle"
         class="current-task"
       >
-        执行中:「{{ currentTitle }}」
+        {{ $t('agentInspectorDrawer.kk653nv011') }}{{ currentTitle }}」
       </div>
 
       <a-tabs
@@ -194,7 +196,7 @@ const stateDot: Record<string, string> = {
               v-if="stream.length === 0"
               class="empty"
             >
-              该 agent 暂无事件(连接后产生)
+              {{ $t('agentInspectorDrawer.k1frr9es004') }}
             </div>
             <workshop-event-block
               v-for="b in stream"
@@ -206,7 +208,7 @@ const stateDot: Record<string, string> = {
 
         <a-tab-pane key="queue">
           <template #tab>
-            任务队列
+            {{ $t('agentInspectorDrawer.k1axbijb005') }}
             <a-badge
               :count="assignedTasks.working.length"
               :number-style="{ backgroundColor: 'var(--tone-info-dot)' }"
@@ -234,7 +236,7 @@ const stateDot: Record<string, string> = {
               v-if="(group[1] as typeof assignedTasks.working).length === 0"
               class="empty"
             >
-              (空)
+              ({{ $t('agentInspectorDrawer.k43rxk012') }}
             </div>
           </div>
         </a-tab-pane>
@@ -255,7 +257,7 @@ const stateDot: Record<string, string> = {
           v-if="agent.role === 'worker'"
           class="member-ops"
         >
-          <span class="op-label">成员管理:</span>
+          <span class="op-label">{{ $t('agentInspectorDrawer.kas9m5q006') }}</span>
           <a-switch
             :checked="(agent.enabled ?? 1) === 1"
             :loading="toggling"
@@ -265,7 +267,7 @@ const stateDot: Record<string, string> = {
             @change="toggleEnabled"
           />
           <a-popconfirm
-            title="移除该成员?其排队任务将自动重派给剩余成员"
+            :title="$t('agentInspectorDrawer.k1ofh789002')"
             ok-text="移除"
             cancel-text="取消"
             @confirm="removeMember"
@@ -276,7 +278,7 @@ const stateDot: Record<string, string> = {
               type="text"
               :loading="removing"
             >
-              移除成员
+              {{ $t('agentInspectorDrawer.k1hrtylo007') }}
             </a-button>
           </a-popconfirm>
         </div>
@@ -284,7 +286,7 @@ const stateDot: Record<string, string> = {
           <a-textarea
             v-model:value="sendText"
             :auto-size="{ minRows: 1, maxRows: 3 }"
-            placeholder="向该 agent 注入消息…"
+            :placeholder="$t('agentInspectorDrawer.kwsotdg003')"
             @keydown.enter.ctrl.prevent="send"
           />
           <div class="send-ops">
@@ -294,7 +296,7 @@ const stateDot: Record<string, string> = {
               :options="[{ value: 'immediate', label: '即时' }, { value: 'task', label: '排队' }]"
             />
             <a-checkbox v-model:checked="requireReply">
-              要求回执
+              {{ $t('agentInspectorDrawer.k1jxt8vh008') }}
             </a-checkbox>
             <a-button
               type="primary"
@@ -302,7 +304,7 @@ const stateDot: Record<string, string> = {
               :loading="sending"
               @click="send"
             >
-              发送
+              {{ $t('agentInspectorDrawer.k3xkc7009') }}
             </a-button>
           </div>
         </div>

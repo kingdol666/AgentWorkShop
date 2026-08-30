@@ -124,7 +124,7 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
     class="stream-covered"
   >
     <span class="i-tabler-corner-right-up" />
-    <span>内容并入了后续回复块(不再重复渲染)</span>
+    <span>{{ $t('clusterStream.kpk9wff001') }}</span>
   </div>
   <div
     v-else-if="full"

@@ -188,7 +188,7 @@ const startedAtText = (ts: number): string => new Date(ts).toLocaleTimeString()
 
 // ===== 表格列 =====
 const ownerColumn = computed(() =>
-  isAdmin.value ? [{ title: '归属用户', dataIndex: 'ownerName', key: 'ownerName', width: 110 }] : [])
+  isAdmin.value ? [{ title: t('monitor.k1dg9sr8001'), dataIndex: 'ownerName', key: 'ownerName', width: 110 }] : [])
 const channelColumns = computed(() => [
   { title: t('monitor.chChannel'), dataIndex: 'channelId', key: 'channelId' },
   { title: t('monitor.members'), dataIndex: 'memberCount', key: 'memberCount', width: 100 },
@@ -236,7 +236,7 @@ const processColumns = computed(() => [
             class="scope-tag"
           >
             <span :class="snapshot?.scope === 'admin' ? 'i-tabler-shield-check' : 'i-tabler-user'" />
-            {{ snapshot?.scope === 'admin' ? 'admin 全量视图' : '我的资源' }}
+            {{ snapshot?.scope === 'admin' ? $t('monitor.k16zpmg9002') : $t('monitor.k1dzryry003') }}
           </a-tag>
         </h1>
       </div>

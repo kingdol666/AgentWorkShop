@@ -11,7 +11,7 @@ import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import AwChart from '@/app/components/AwChart.vue'
 import type { EChartsOption } from 'echarts'
 
-useHead({ title: '仪表盘 · AgentWorkShop' })
+useHead({ title: () => t('titles.dashboard') })
 
 const { t } = useI18n()
 const site = useSiteConfig()

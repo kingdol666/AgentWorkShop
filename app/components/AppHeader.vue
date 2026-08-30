@@ -18,7 +18,10 @@ const localeOptions = computed(() =>
 
 const switchLocale: SelectProps['onChange'] = (value) => {
   if (value != null) {
+    // 持久化 + 强刷:setup 期求值的词条(脚本常量)只有重载才能整体切换
+    localStorage.setItem('aw.locale', String(value))
     setLocale(String(value) as 'zh-CN' | 'en')
+    window.location.reload()
   }
 }
 
@@ -176,8 +179,8 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
                 <span class="node-title">{{ metaFor(w.path).title }}</span>
                 <button
                   class="node-close"
-                  :aria-label="`关闭 ${metaFor(w.path).title}`"
-                  :title="`关闭 ${metaFor(w.path).title}`"
+                  :aria-label="$t('appHeader.kzwjv99001', { p0: metaFor(w.path).title })"
+                  :title="$t('appHeader.kzwjv99001', { p0: metaFor(w.path).title })"
                   @click.stop="closeWaypoint(w.path)"
                 >
                   <span class="i-tabler-x" />

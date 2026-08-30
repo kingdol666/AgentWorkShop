@@ -10,6 +10,8 @@ import { useEntitiesStore } from '../../stores/workshop/entities'
 import { useUserStore } from '../../stores/workshop/user'
 import { useWorkshopWs } from '../../composables/workshop/useWorkshopWs'
 
+const { t } = useI18n()
+
 definePageMeta({ layout: 'default' })
 
 const userStore = useUserStore()
@@ -27,21 +29,21 @@ const authLoading = ref(false)
 
 const doRegister = async (): Promise<void> => {
   if (!authName.value.trim()) {
-    message.warning('请填写用户名')
+    message.warning(t('wsHome.k1vnhyks019'))
     return
   }
   if (!authEmail.value.trim()) {
-    message.warning('请填写邮箱')
+    message.warning(t('wsHome.k8ieqzj020'))
     return
   }
   if (authPassword.value.length < 6) {
-    message.warning('密码至少 6 位 (需含字母和数字)')
+    message.warning(t('wsHome.ksx73ra021'))
     return
   }
   authLoading.value = true
   try {
     const user = await userStore.register(authName.value, authEmail.value, authPassword.value)
-    message.success(`注册成功:${user.name};登录 token 已保存`)
+    message.success(t('wsHome.k1mbatbh030', { p0: user.name }))
     authName.value = ''
     authEmail.value = ''
     authPassword.value = ''
@@ -55,13 +57,13 @@ const doRegister = async (): Promise<void> => {
 }
 const doLogin = async (): Promise<void> => {
   if (!authEmail.value.trim()) {
-    message.warning('请填写邮箱')
+    message.warning(t('wsHome.k8ieqzj020'))
     return
   }
   authLoading.value = true
   try {
     const user = await userStore.login(authEmail.value, authPassword.value)
-    message.success(`已登录:${user.name}`)
+    message.success(t('wsHome.kwixbdl031', { p0: user.name }))
     authPassword.value = ''
   }
   catch (e) {
@@ -75,7 +77,7 @@ const doLoginWithToken = async (): Promise<void> => {
   authLoading.value = true
   try {
     const user = await userStore.loginWithToken(authTokenInput.value)
-    message.success(`已登录:${user.name}`)
+    message.success(t('wsHome.kwixbdl031', { p0: user.name }))
     authTokenInput.value = ''
   }
   catch (e) {
@@ -87,7 +89,7 @@ const doLoginWithToken = async (): Promise<void> => {
 }
 const doLogout = (): void => {
   userStore.logout()
-  message.success('已退出')
+  message.success(t('wsHome.k3ngm6p022'))
 }
 
 // ===== 登录后加载 workspace(服务端持久化)=====
@@ -105,7 +107,7 @@ watch(() => userStore.isLoggedIn, async (ok) => {
   }
   catch (e) {
     // SSR 安全:ant-design-vue message 依赖 DOM,服务端静默(客户端进入页面后可重试)
-    if (import.meta.client) message.error(e instanceof Error ? e.message : '加载失败')
+    if (import.meta.client) message.error(e instanceof Error ? e.message : t('wsHome.k1br33vc023'))
   }
 }, { immediate: true })
 
@@ -148,7 +150,7 @@ const create = async (): Promise<void> => {
 
 const remove = async (id: string): Promise<void> => {
   await wsStore.remove(id)
-  message.success('已删除')
+  message.success(t('wsHome.k3n5sd7024'))
 }
 
 const channelSummary = (channelIds: string[]) => channelIds.map((id) => {
@@ -165,7 +167,7 @@ const channelSummary = (channelIds: string[]) => channelIds.map((id) => {
   }
 })
 
-useHead({ title: 'Workshop · Agent Harness' })
+useHead({ title: () => t('titles.workshop') })
 </script>
 
 <template>
@@ -179,7 +181,7 @@ useHead({ title: 'Workshop · Agent Harness' })
         <p class="aw-kicker">
           agentworkshop / sign in
         </p>
-        <h2>进入工作台</h2>
+        <h2>{{ $t('wsHome.kr0vzqu008') }}</h2>
         <p class="sub">
           全局用户系统统管身份;每个用户可管理多个 API Token,
           管理 API 需用户 token(Authorization: Bearer)。
@@ -196,12 +198,12 @@ useHead({ title: 'Workshop · Agent Harness' })
               <a-input
                 v-model:value="authEmail"
                 type="email"
-                placeholder="邮箱"
+                :placeholder="$t('wsHome.k48h2c001')"
                 @keydown.enter="doLogin"
               />
               <a-input-password
                 v-model:value="authPassword"
-                placeholder="密码"
+                :placeholder="$t('wsHome.k3yvgs002')"
                 @keydown.enter="doLogin"
               />
               <a-button
@@ -210,10 +212,10 @@ useHead({ title: 'Workshop · Agent Harness' })
                 :loading="authLoading"
                 @click="doLogin"
               >
-                登录
+                {{ $t('wsHome.k43kol009') }}
               </a-button>
               <p class="hint">
-                每次登录签发一个会话 token,可在 Token 管理页单独吊销。
+                {{ $t('wsHome.k17x74cj010') }}
               </p>
             </a-space>
           </a-tab-pane>
@@ -227,16 +229,16 @@ useHead({ title: 'Workshop · Agent Harness' })
             >
               <a-input
                 v-model:value="authName"
-                placeholder="用户名(唯一)"
+                :placeholder="$t('wsHome.kwgbai9003')"
               />
               <a-input
                 v-model:value="authEmail"
                 type="email"
-                placeholder="邮箱(唯一)"
+                :placeholder="$t('wsHome.kizjkbo004')"
               />
               <a-input-password
                 v-model:value="authPassword"
-                placeholder="密码(≥6 位,含字母和数字)"
+                :placeholder="$t('wsHome.kh3cqfn005')"
                 @keydown.enter="doRegister"
               />
               <a-button
@@ -245,10 +247,10 @@ useHead({ title: 'Workshop · Agent Harness' })
                 :loading="authLoading"
                 @click="doRegister"
               >
-                注册并登录
+                {{ $t('wsHome.k1so6a0v011') }}
               </a-button>
               <p class="hint">
-                注册成功后自动登录;可再自行签发多个 token。
+                {{ $t('wsHome.k1r0a4u3012') }}
               </p>
             </a-space>
           </a-tab-pane>
@@ -262,7 +264,7 @@ useHead({ title: 'Workshop · Agent Harness' })
             >
               <a-input-password
                 v-model:value="authTokenInput"
-                placeholder="粘贴用户 token"
+                :placeholder="$t('wsHome.k15qunld006')"
                 @keydown.enter="doLoginWithToken"
               />
               <a-button
@@ -271,7 +273,7 @@ useHead({ title: 'Workshop · Agent Harness' })
                 :loading="authLoading"
                 @click="doLoginWithToken"
               >
-                登录
+                {{ $t('wsHome.k43kol009') }}
               </a-button>
             </a-space>
           </a-tab-pane>
@@ -286,9 +288,9 @@ useHead({ title: 'Workshop · Agent Harness' })
           <p class="aw-kicker">
             workshop / overview
           </p>
-          <h1>Workshop 工作区</h1>
+          <h1>Workshop {{ $t('wsHome.k3n4m5c025') }}</h1>
           <p class="sub">
-            {{ userStore.user?.name }} 的资源(用户级隔离;服务端持久化)
+            {{ userStore.user?.name }} {{ $t('wsHome.ke16e53026') }}
           </p>
         </div>
         <div class="head-acts">
@@ -298,21 +300,21 @@ useHead({ title: 'Workshop · Agent Harness' })
               class="lib-link"
               @click="navigateTo('/workshop/agents')"
             >
-              模板库
+              {{ $t('wsHome.k3pa5h4013') }}
             </button>
             <button
               type="button"
               class="lib-link"
               @click="navigateTo('/workshop/teams')"
             >
-              编组库
+              {{ $t('wsHome.k3svl8y014') }}
             </button>
             <button
               type="button"
               class="lib-link"
               @click="navigateTo('/workshop/channel-templates')"
             >
-              Channel 模板
+              Channel {{ $t('wsHome.k41ds5027') }}
             </button>
             <button
               type="button"
@@ -326,7 +328,7 @@ useHead({ title: 'Workshop · Agent Harness' })
               class="lib-link"
               @click="doLogout"
             >
-              退出
+              {{ $t('wsHome.k484e7015') }}
             </button>
           </div>
           <button
@@ -334,7 +336,7 @@ useHead({ title: 'Workshop · Agent Harness' })
             @click="createOpen = true"
           >
             <span class="i-tabler-plus im-pop" />
-            新建 Workspace
+            {{ $t('wsHome.newWs') }}
           </button>
         </div>
       </div>
@@ -363,15 +365,15 @@ useHead({ title: 'Workshop · Agent Harness' })
                 />
                 <span class="ch-name">{{ ch.name }}</span>
                 <span class="ch-meta">
-                  <template v-if="ch.synced">{{ ch.agents }} 成员 / 忙 {{ ch.busy }} / 任务 {{ ch.activeTasks }}</template>
-                  <template v-else>同步中…</template>
+                  <template v-if="ch.synced">{{ ch.agents }} {{ $t('wsHome.k1ggoa45028') }} {{ ch.busy }} / {{ $t('wsHome.k3wcox029') }} {{ ch.activeTasks }}</template>
+                  <template v-else>{{ $t('wsHome.k1bst7s9016') }}</template>
                 </span>
               </div>
               <div
                 v-if="ws.channelIds.length === 0"
                 class="empty"
               >
-                未挂载 Channel(进入后从左栏挂载)
+                {{ $t('wsHome.k1ylgrbc017') }}
               </div>
             </div>
             <div class="card-foot">
@@ -380,7 +382,7 @@ useHead({ title: 'Workshop · Agent Harness' })
                 @click="navigateTo(`/workshop/w/${ws.id}`)"
               >
                 <span class="i-tabler-arrow-right im-pop" />
-                进入控制台
+                {{ $t('wsHome.kr1uwwi018') }}
               </button>
               <button
                 class="aw-ghost im"
@@ -405,7 +407,7 @@ useHead({ title: 'Workshop · Agent Harness' })
 
       <a-modal
         v-model:open="createOpen"
-        title="新建 Workspace"
+        :title="$t('wsHome.newWs')"
         :confirm-loading="createLoading"
         ok-text="创建并进入"
         cancel-text="取消"
@@ -413,7 +415,7 @@ useHead({ title: 'Workshop · Agent Harness' })
       >
         <a-input
           v-model:value="createName"
-          placeholder="Workspace 名称,如:支付网关重构"
+          :placeholder="$t('wsHome.ksmpk8l007')"
           @keydown.enter="create"
         />
       </a-modal>

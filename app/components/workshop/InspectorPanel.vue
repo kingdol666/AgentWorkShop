@@ -6,6 +6,8 @@
  */
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 
+const { t } = useI18n()
+
 const props = defineProps<{ channelId: string }>()
 const emit = defineEmits<{
   (e: 'openAgent' | 'openTask', id: string): void
@@ -42,10 +44,10 @@ const capability = computed(() => {
 })
 const capLine = (agentId: string): string => {
   const agg = capability.value.get(agentId)
-  if (!agg || agg.total === 0) return '暂无历史'
+  if (!agg || agg.total === 0) return t('inspectorPanel.k1el1plr007')
   const rate = Math.round((agg.completed / agg.total) * 100)
   const avg = agg.completed > 0 ? Math.round(agg.durationSum / agg.completed / 1000) : 0
-  return `成功率 ${rate}% / 均耗 ${avg}s / 失败 ${agg.failed}`
+  return t('inspectorPanel.k12oip5c010', { p0: rate, p1: avg, p2: agg.failed })
 }
 const childCount = (id: string): number => tasks.value.filter(t => t.parentId === id).length
 
@@ -99,10 +101,10 @@ const stateDot: Record<string, string> = {
               <template v-else>
                 {{ a.state }}
                 <template v-if="a.queued">
-                  · 队列 {{ a.queued }}
+                  · {{ $t('inspectorPanel.k498bf001') }} {{ a.queued }}
                 </template>
                 <template v-if="a.completed">
-                  · 完成 {{ a.completed }}
+                  · {{ $t('inspectorPanel.k3ypnl002') }} {{ a.completed }}
                 </template>
               </template>
             </div>
@@ -115,7 +117,7 @@ const stateDot: Record<string, string> = {
           v-if="agents.length === 0"
           class="empty"
         >
-          {{ synced ? '暂无成员' : '成员同步中…' }}
+          {{ synced ? $t('inspectorPanel.k1el4cgf005') : $t('inspectorPanel.k1tqitzl008') }}
         </div>
       </a-tab-pane>
 
@@ -138,8 +140,8 @@ const stateDot: Record<string, string> = {
           </div>
           <div class="task-meta">
             {{ t.id.slice(0, 8) }} · {{ t.progress }}%
-            <span v-if="childCount(t.id)">· 子任务 {{ childCount(t.id) }}</span>
-            <span v-if="t.artifacts">· 交付 {{ t.artifacts }}</span>
+            <span v-if="childCount(t.id)">· {{ $t('inspectorPanel.k3mp44x003') }} {{ childCount(t.id) }}</span>
+            <span v-if="t.artifacts">· {{ $t('inspectorPanel.k3w9q9004') }} {{ t.artifacts }}</span>
           </div>
           <a-progress
             v-if="t.state === 'WORKING'"
@@ -152,7 +154,7 @@ const stateDot: Record<string, string> = {
           v-if="rootTasks.length === 0"
           class="empty"
         >
-          {{ synced ? '暂无任务' : '任务同步中…' }}
+          {{ synced ? $t('inspectorPanel.k1el0vqb006') : $t('inspectorPanel.kks0y5h009') }}
         </div>
       </a-tab-pane>
 

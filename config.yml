@@ -9,7 +9,7 @@
 
 app:
   name: AgentWorkShop
-  title: AgentWorkShop · 数字孪生产线运营平台
+  title: AgentWorkShop
   version: 0.2.0
   description: 基于 Nuxt 4 的配置驱动运行范式
 

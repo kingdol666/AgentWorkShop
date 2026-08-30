@@ -19,6 +19,8 @@ import { agentHueColor } from '@/app/composables/workshop/useEventBlocks'
 import LaneBlocks from '@/app/components/workshop/lanes/LaneBlocks.vue'
 import OmpTerminalPanel from '@/app/components/workshop/terminal/OmpTerminalPanel.vue'
 
+const { t } = useI18n()
+
 const props = defineProps<{ channelId: string }>()
 const entities = useEntitiesStore()
 const api = useWorkshopApi()
@@ -95,7 +97,7 @@ const openEditMember = (a: { agentId: string, name: string, role: string, harnes
 const submitEditMember = async (): Promise<void> => {
   const name = editForm.name.trim()
   if (!name) {
-    message.warning('成员名不能为空')
+    message.warning(t('agentLanesView.ky6jqt4032'))
     return
   }
   editSubmitting.value = true
@@ -107,13 +109,13 @@ const submitEditMember = async (): Promise<void> => {
         ...(entities.agents[props.channelId]?.find(a => a.agentId === editForm.agentId)?.config ?? {}),
         systemPromptPrefix: editForm.systemPrompt.trim(),
       },
-      reason: 'user 编辑成员信息/场景提示词',
+      reason: t('agentLanesView.kfvflle033'),
     })
-    message.success(`成员 ${name} 已更新(运行时将按新提示词重载)`)
+    message.success(t('agentLanesView.k21xjz2044', { p0: name }))
     editModalOpen.value = false
   }
   catch (err) {
-    message.error(`更新失败: ${err instanceof Error ? err.message : String(err)}`)
+    message.error(t('agentLanesView.k3jmrw1045', { p0: err instanceof Error ? err.message : String(err) }))
   }
   finally {
     editSubmitting.value = false
@@ -136,7 +138,7 @@ const submitMember = async (): Promise<void> => {
   if (addMode.value === 'create') {
     const name = memberForm.name.trim()
     if (!name) {
-      message.warning('成员名不能为空')
+      message.warning(t('agentLanesView.ky6jqt4032'))
       return
     }
     memberSubmitting.value = true
@@ -149,11 +151,11 @@ const submitMember = async (): Promise<void> => {
           ? { systemPromptPrefix: memberForm.systemPrompt.trim() }
           : undefined,
       })
-      message.success(`成员 ${name} 已添加(等待 agent.member 事件回流对齐)`)
+      message.success(t('agentLanesView.k1g5ykr3046', { p0: name }))
       memberModalOpen.value = false
     }
     catch (err) {
-      message.error(`添加成员失败: ${err instanceof Error ? err.message : String(err)}`)
+      message.error(t('agentLanesView.k1j97j74047', { p0: err instanceof Error ? err.message : String(err) }))
     }
     finally {
       memberSubmitting.value = false
@@ -162,7 +164,7 @@ const submitMember = async (): Promise<void> => {
   }
   if (addMode.value === 'template') {
     if (!selectedTemplateId.value) {
-      message.warning('请选择要克隆的 Agent 模板')
+      message.warning(t('agentLanesView.k13xo8sz034'))
       return
     }
     memberSubmitting.value = true
@@ -175,7 +177,7 @@ const submitMember = async (): Promise<void> => {
           ? { systemPromptPrefix: memberForm.systemPrompt.trim() }
           : undefined,
       })
-      message.success(`已克隆模板添加 ${memberForm.role} 成员 ${tpl?.name ?? ''}(等待事件回流对齐)`)
+      message.success(t('agentLanesView.kk3uwzo048', { p0: memberForm.role, p1: tpl?.name ?? '' }))
       memberModalOpen.value = false
     }
     catch (err) {
@@ -189,14 +191,14 @@ const submitMember = async (): Promise<void> => {
   }
   // 部署编组:批量克隆全部成员模板(lead 冲突由服务端 409 拒绝)
   if (!selectedTeamId.value) {
-    message.warning('请选择要部署的 AgentTeam')
+    message.warning(t('agentLanesView.k1tjd5ab035'))
     return
   }
   memberSubmitting.value = true
   try {
     const team = teams.value.find(t => t.id === selectedTeamId.value)
     await api.deployTeam(selectedTeamId.value, props.channelId)
-    message.success(`编组 ${team?.name ?? ''} 已部署(${team?.memberCount ?? 0} 名成员,等待事件回流对齐)`)
+    message.success(t('agentLanesView.k1gslqf9050', { p0: team?.name ?? '', p1: team?.memberCount ?? 0 }))
     memberModalOpen.value = false
   }
   catch (err) {
@@ -213,10 +215,10 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
   removing.value = agentId
   try {
     await api.removeChannelAgent(props.channelId, agentId)
-    message.success(`成员 ${name} 已移除`)
+    message.success(t('agentLanesView.k1n3o03a052', { p0: name }))
   }
   catch (err) {
-    message.error(`移除成员失败: ${err instanceof Error ? err.message : String(err)}`)
+    message.error(t('agentLanesView.k13dsp10053', { p0: err instanceof Error ? err.message : String(err) }))
   }
   finally {
     removing.value = null
@@ -229,10 +231,10 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
   stopping.value = agentId
   try {
     await api.stopChannelAgent(props.channelId, agentId)
-    message.success(`已中断成员 ${name} 的运行时`)
+    message.success(t('agentLanesView.kcpbv47054', { p0: name }))
   }
   catch (err) {
-    message.error(`中断失败: ${err instanceof Error ? err.message : String(err)}`)
+    message.error(t('agentLanesView.k139ec5j055', { p0: err instanceof Error ? err.message : String(err) }))
   }
   finally {
     stopping.value = null
@@ -288,9 +290,9 @@ onBeforeUnmount(() => {
   <div class="lanes-wrap">
     <div class="toolbar">
       <div class="team-summary">
-        <span class="ts-label">团队</span>
+        <span class="ts-label">{{ $t('agentLanesView.k3y5ja016') }}</span>
         <span class="ts-count">{{ agents.length }}</span>
-        <span class="ts-unit">名成员</span>
+        <span class="ts-unit">{{ $t('agentLanesView.k3ll6sa017') }}</span>
         <span class="ts-detail">lead {{ agents.filter(a => a.role === 'lead').length }} · worker {{ agents.filter(a => a.role === 'worker').length }}</span>
       </div>
       <a-button
@@ -300,7 +302,7 @@ onBeforeUnmount(() => {
         @click="openMemberModal"
       >
         <span class="i-tabler-user-plus" />
-        <span>添加成员</span>
+        <span>{{ $t('agentLanesView.k1fmutgo018') }}</span>
       </a-button>
     </div>
     <div class="lanes">
@@ -312,16 +314,16 @@ onBeforeUnmount(() => {
         <template v-if="!entities.channels[channelId]">
           <span class="i-tabler-refresh empty-icon" />
           <p class="empty-title">
-            成员快照同步中…
+            {{ $t('agentLanesView.k1woev5v019') }}
           </p>
         </template>
         <template v-else>
           <span class="i-tabler-users-group empty-icon" />
           <p class="empty-title">
-            团队暂无成员
+            {{ $t('agentLanesView.k122h4pc020') }}
           </p>
           <p class="empty-hint">
-            点击右上「添加成员」从零创建,或从模板 / 编组一键部署
+            {{ $t('agentLanesView.k7cr2h8021') }}
           </p>
         </template>
       </div>
@@ -350,9 +352,9 @@ onBeforeUnmount(() => {
               <span
                 v-if="a.config?.systemPromptPrefix"
                 class="lane-chip"
-                title="已注入场景系统提示词"
+                :title="$t('agentLanesView.k107s4am001')"
               >
-                场景
+                {{ $t('agentLanesView.k3xycu022') }}
               </span>
               <span
                 class="lane-role"
@@ -363,7 +365,7 @@ onBeforeUnmount(() => {
               <span
                 v-if="termBadge(terminalOf.get(a.agentId))"
                 class="term-badge"
-                :title="`omp 进程 PID ${terminalOf.get(a.agentId)?.pid} · harness 会话状态`"
+                :title="$t('agentLanesView.k1wn2vmt036', { p0: terminalOf.get(a.agentId)?.pid })"
               >
                 <span
                   class="term-dot"
@@ -391,24 +393,24 @@ onBeforeUnmount(() => {
                   type="primary"
                   ghost
                   class="lane-term"
-                  title="打开该成员的 omp 原生终端(实时 TUI + HITL 控制:注入对话 / 中止 / 应答 ask)"
+                  :title="$t('agentLanesView.k1884q17002')"
                   @click="openTerminal(a)"
                 >
                   <span class="i-tabler-terminal-2" />
-                  <span class="term-label">终端</span>
+                  <span class="term-label">{{ $t('agentLanesView.k4588s023') }}</span>
                 </a-button>
                 <a-button
                   size="small"
                   type="text"
                   class="lane-edit"
-                  title="编辑成员信息 / 场景提示词"
+                  :title="$t('agentLanesView.k1pgd3tf003')"
                   @click="openEditMember(a)"
                 >
                   <span class="i-tabler-edit" />
                 </a-button>
                 <span class="actions-divider" />
                 <a-popconfirm
-                  :title="`中断成员 ${a.name} 的运行时?执行中任务将中止,成员保留`"
+                  :title="$t('agentLanesView.k1l029kf037', { p0: a.name })"
                   ok-text="停止"
                   cancel-text="取消"
                   @confirm="stopMember(a.agentId, a.name)"
@@ -424,7 +426,7 @@ onBeforeUnmount(() => {
                   </a-button>
                 </a-popconfirm>
                 <a-popconfirm
-                  :title="`移除成员 ${a.name}?其排队任务将自动回收`"
+                  :title="$t('agentLanesView.kt3n27m038', { p0: a.name })"
                   ok-text="移除"
                   cancel-text="取消"
                   @confirm="removeMember(a.agentId, a.name)"
@@ -454,7 +456,7 @@ onBeforeUnmount(() => {
         <!-- 泳道分隔条:每列右侧都挂(含最右列);统一调节"其左侧泳道"的宽度,
              尾条即最右泳道的右缘调节柄(双击复位;键盘 ←→ 微调) -->
         <workshop-pane-splitter
-          :label="`拖拽调节 ${a.name} 泳道宽度`"
+          :label="$t('agentLanesView.k7xt1y6039', { p0: a.name })"
           @resize="d => resizeLane(a.agentId, d)"
           @reset="resetLane(a.agentId)"
         />
@@ -464,7 +466,7 @@ onBeforeUnmount(() => {
     <!-- 添加成员弹窗(三模式:从零创建 / 模板克隆 / 编组部署) -->
     <a-modal
       v-model:open="memberModalOpen"
-      title="添加团队成员"
+      :title="$t('agentLanesView.k17kcn55004')"
       :confirm-loading="memberSubmitting"
       ok-text="添加"
       cancel-text="取消"
@@ -475,13 +477,13 @@ onBeforeUnmount(() => {
         class="mode-switch"
       >
         <a-radio-button value="create">
-          从零创建
+          {{ $t('agentLanesView.k1b7cwvy024') }}
         </a-radio-button>
         <a-radio-button value="template">
-          从模板克隆
+          {{ $t('agentLanesView.k1ndey1w025') }}
         </a-radio-button>
         <a-radio-button value="team">
-          部署编组
+          {{ $t('agentLanesView.k1l5qyux026') }}
         </a-radio-button>
       </a-radio-group>
 
@@ -491,7 +493,7 @@ onBeforeUnmount(() => {
         layout="vertical"
         class="member-form"
       >
-        <a-form-item label="成员名">
+        <a-form-item :label="$t('agentLanesView.k3nufdm005')">
           <a-input
             v-model:value="memberForm.name"
             placeholder="如 db-migrator / test-writer"
@@ -504,28 +506,28 @@ onBeforeUnmount(() => {
               omp(完整 LLM agent)
             </a-radio>
             <a-radio value="mock">
-              mock(测试剧本)
+              {{ $t('agentLanesView.kqg6783027') }}
             </a-radio>
             <a-radio value="claude">
               claude
             </a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="角色">
+        <a-form-item :label="$t('agentLanesView.k479op006')">
           <a-radio-group v-model:value="memberForm.role">
             <a-radio value="worker">
               worker
             </a-radio>
             <a-radio value="lead">
-              lead(至多一个,已有 lead 会被拒绝)
+              {{ $t('agentLanesView.k1weovo028') }}
             </a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="系统提示词前缀(可选,定义成员专长)">
+        <a-form-item :label="$t('agentLanesView.kaogfp007')">
           <a-textarea
             v-model:value="memberForm.systemPrompt"
             :rows="3"
-            placeholder="如:你是数据库迁移专家,专注 schema 变更与数据回填…"
+            :placeholder="$t('agentLanesView.kbqn6w5008')"
           />
         </a-form-item>
       </a-form>
@@ -539,29 +541,29 @@ onBeforeUnmount(() => {
         <a-form-item label="选择 Agent 模板(克隆 name/harness/config 为独立实例)">
           <a-select
             v-model:value="selectedTemplateId"
-            placeholder="选择模板…"
+            :placeholder="$t('agentLanesView.kung925009')"
             :options="templates.map(t => ({ value: t.id, label: `${t.name}(${t.harness})${t.enabled === 0 ? ' · 已停用' : ''}` }))"
           />
         </a-form-item>
-        <a-form-item label="克隆角色">
+        <a-form-item :label="$t('agentLanesView.k1bl78fu010')">
           <a-radio-group v-model:value="memberForm.role">
             <a-radio value="worker">
               worker
             </a-radio>
             <a-radio value="lead">
-              lead(至多一个,已有 lead 会被拒绝)
+              {{ $t('agentLanesView.k1weovo028') }}
             </a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="系统提示词覆盖(可选,留空沿用模板预设)">
+        <a-form-item :label="$t('agentLanesView.k1vhvbz7011')">
           <a-textarea
             v-model:value="memberForm.systemPrompt"
             :rows="3"
-            placeholder="留空 = 使用模板自带 config.systemPromptPrefix;填写则覆盖为该场景提示词"
+            :placeholder="$t('agentLanesView.k7ft6ig012')"
           />
         </a-form-item>
         <div class="mode-hint">
-          模板库为空?到「模板库」页面先创建可复用的 Agent 模板(omp/mock/claude + 系统提示词)。
+          {{ $t('agentLanesView.knybb6r029') }}
         </div>
       </a-form>
 
@@ -571,15 +573,15 @@ onBeforeUnmount(() => {
         layout="vertical"
         class="member-form"
       >
-        <a-form-item label="选择 AgentTeam(批量克隆全部成员)">
+        <a-form-item :label="$t('agentLanesView.k29om9b013')">
           <a-select
             v-model:value="selectedTeamId"
-            placeholder="选择编组…"
-            :options="teams.map(t => ({ value: t.id, label: `${t.name}(${t.memberCount} 名成员${t.hasLead ? ',含 lead' : ''})` }))"
+            :placeholder="$t('agentLanesView.kur1otz014')"
+            :options="teams.map(t => ({ value: t.id, label: $t('agentLanesView.k1qcmxyu040', { p0: t.name, p1: t.memberCount, p2: t.hasLead ? ',含 lead' : '' }) }))"
           />
         </a-form-item>
         <div class="mode-hint">
-          编组内每名成员模板都会克隆为独立实例;若编组含 lead 而本 channel 已有 lead,部署将被拒绝(409)。
+          {{ $t('agentLanesView.k1qqnq5030') }}
         </div>
       </a-form>
     </a-modal>
@@ -587,7 +589,7 @@ onBeforeUnmount(() => {
     <!-- 编辑成员(名 / 场景提示词) -->
     <a-modal
       v-model:open="editModalOpen"
-      :title="`编辑成员 ${editForm.name || ''}`"
+      :title="$t('agentLanesView.k19j5rho041', { p0: editForm.name || '' })"
       :confirm-loading="editSubmitting"
       ok-text="保存"
       cancel-text="取消"
@@ -597,7 +599,7 @@ onBeforeUnmount(() => {
         layout="vertical"
         class="member-form"
       >
-        <a-form-item label="成员名">
+        <a-form-item :label="$t('agentLanesView.k3nufdm005')">
           <a-input v-model:value="editForm.name" />
         </a-form-item>
         <a-form-item label="角色 / harness">
@@ -612,10 +614,10 @@ onBeforeUnmount(() => {
           <a-textarea
             v-model:value="editForm.systemPrompt"
             :rows="6"
-            placeholder="该内容作为系统提示词前缀,注入该成员 harness 每轮 prompt(omp)或状态消息(mock)。留空 = 无场景提示"
+            :placeholder="$t('agentLanesView.k10ti81i015')"
           />
           <template #extra>
-            <span class="ws-hint">保存后成员运行时重载,下次任务/调度使用新提示词</span>
+            <span class="ws-hint">{{ $t('agentLanesView.k1rw1rd2031') }}</span>
           </template>
         </a-form-item>
       </a-form>
