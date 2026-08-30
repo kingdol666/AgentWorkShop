@@ -61,6 +61,42 @@ onBeforeUnmount(() => {
 const deviceName = (id: string | null): string =>
   id ? (nodeDevices.get(id) ?? `${id.slice(0, 8)}…`) : '未绑定'
 
+// ---------- 节点筛选(产线 / 设备绑定 / 产线运行态 / 节点状态) ----------
+const filters = reactive({ lineId: '', deviceId: '', lineRun: '', state: '' })
+const hasFilters = computed(() => !!(filters.lineId || filters.deviceId || filters.lineRun || filters.state))
+function clearFilters(): void {
+  filters.lineId = ''
+  filters.deviceId = ''
+  filters.lineRun = ''
+  filters.state = ''
+}
+
+/** 筛选下拉的设备选项:仅列出至少绑定了一个节点的设备(空设备筛选无意义) */
+const boundDevices = computed<Array<{ id: string, name: string, count: number }>>(() => {
+  const used = new Map<string, number>()
+  for (const n of daq.nodes) {
+    if (n.deviceBindingId) used.set(n.deviceBindingId, (used.get(n.deviceBindingId) ?? 0) + 1)
+  }
+  return deviceTwins.twins
+    .filter(t => used.has(t.id))
+    .map(t => ({ id: t.id, name: nodeDevices.get(t.id) ?? t.name, count: used.get(t.id)! }))
+})
+
+/** 产线运行态筛选语义:on = 节点所属产线开跑中;off = 待机或未分配(均未采集) */
+function lineRunMatch(n: DaqNodeView): boolean {
+  if (!filters.lineRun) return true
+  const active = !!n.lineId && dcw.lineStateOf(n.lineId).active
+  return filters.lineRun === 'on' ? active : !active
+}
+
+const filteredNodes = computed<DaqNodeView[]>(() => daq.nodes.filter((n) => {
+  if (filters.lineId && (filters.lineId === 'none' ? !!n.lineId : (n.lineId ?? '') !== filters.lineId)) return false
+  if (filters.deviceId && (filters.deviceId === 'none' ? !!n.deviceBindingId : n.deviceBindingId !== filters.deviceId)) return false
+  if (!lineRunMatch(n)) return false
+  if (filters.state && effectiveState(n) !== filters.state) return false
+  return true
+}))
+
 // 设备名映射(device-twins 注册表;绑定列展示用)
 const deviceTwins = useDeviceTwins()
 const nodeDevices = new Map<string, string>()
@@ -352,90 +388,114 @@ async function doReconnect(): Promise<void> {
       </button>
     </div>
 
-    <!-- 控制器总控条 -->
+    <!-- 控制器总控条:第一行 控制/指标/操作,第二行 产线状态带 -->
     <section class="aw-tile ctrl-card">
-      <div class="ctrl-left">
-        <button
-          class="aw-pill"
-          :class="{ running: daq.controller.running }"
-          @click="daq.controllerAction(daq.controller.running ? 'stop' : 'start')"
-        >
-          <span :class="daq.controller.running ? 'i-tabler-player-pause' : 'i-tabler-player-play'" />
-          {{ daq.controller.running ? '暂停全部采集' : '恢复全部采集' }}
-        </button>
-        <label class="cycle mono">
-          缺省周期
-          <input
-            v-model.number="daq.controller.defaultIntervalMs"
-            type="number"
-            min="200"
-            max="60000"
-            step="100"
-            @change="daq.controllerAction('config', daq.controller.defaultIntervalMs)"
-          >ms
-        </label>
-        <label
-          class="cycle mono"
-          title="节点未单独设置 WS 下发间隔时的全局缺省;0 = 随采样节拍每帧下发"
-        >
-          缺省下发
-          <input
-            v-model.number="daq.controller.defaultPublishIntervalMs"
-            type="number"
-            min="0"
-            max="60000"
-            step="100"
-            @change="daq.controllerAction('config', daq.controller.defaultIntervalMs, daq.controller.defaultPublishIntervalMs)"
-          >ms
-        </label>
+      <div class="ctrl-row">
+        <div class="ctrl-left">
+          <button
+            class="aw-pill"
+            :class="{ running: daq.controller.running }"
+            @click="daq.controllerAction(daq.controller.running ? 'stop' : 'start')"
+          >
+            <span :class="daq.controller.running ? 'i-tabler-player-pause' : 'i-tabler-player-play'" />
+            {{ daq.controller.running ? '暂停全部采集' : '恢复全部采集' }}
+          </button>
+          <label class="cycle mono">
+            缺省周期
+            <input
+              v-model.number="daq.controller.defaultIntervalMs"
+              type="number"
+              min="200"
+              max="60000"
+              step="100"
+              @change="daq.controllerAction('config', daq.controller.defaultIntervalMs)"
+            >ms
+          </label>
+          <label
+            class="cycle mono"
+            title="节点未单独设置 WS 下发间隔时的全局缺省;0 = 随采样节拍每帧下发"
+          >
+            缺省下发
+            <input
+              v-model.number="daq.controller.defaultPublishIntervalMs"
+              type="number"
+              min="0"
+              max="60000"
+              step="100"
+              @change="daq.controllerAction('config', daq.controller.defaultIntervalMs, daq.controller.defaultPublishIntervalMs)"
+            >ms
+          </label>
+        </div>
+        <div class="ctrl-right">
+          <span class="ctrl-metrics mono">
+            <span>节点 {{ daq.controller.nodesOnline }}/{{ daq.controller.nodesTotal }}</span>
+            <span class="sep">·</span>
+            <span title="生产者已发布到队列">发布 {{ daq.meta.produced }}</span>
+            <span class="sep">·</span>
+            <span title="消费者已从队列取得">消费 {{ daq.meta.consumed }}</span>
+            <span class="sep">·</span>
+            <span
+              :class="{ warn: (daq.meta.dropped ?? 0) > 0 }"
+              title="队列丢失(produced-consumed)"
+            >丢失 {{ daq.meta.dropped }}</span>
+            <span class="sep">·</span>
+            <span title="时序库累计入库样本">入库 {{ daq.meta.samplesStored }}</span>
+          </span>
+          <button
+            class="aw-pill outline add-btn"
+            @click="tplOpen = true; resetTplForm()"
+          >
+            <span class="i-tabler-adjustments-horizontal" />
+            模板管理
+          </button>
+          <button
+            class="aw-pill add-btn"
+            @click="addOpen = true"
+          >
+            <span class="i-tabler-plus" />
+            添加节点
+          </button>
+        </div>
       </div>
-      <div class="ctrl-right">
-        <span class="ctrl-metrics mono">
-          <span>节点 {{ daq.controller.nodesOnline }}/{{ daq.controller.nodesTotal }}</span>
-          <span class="sep">·</span>
-          <span title="生产者已发布到队列">发布 {{ daq.meta.produced }}</span>
-          <span class="sep">·</span>
-          <span title="消费者已从队列取得">消费 {{ daq.meta.consumed }}</span>
-          <span class="sep">·</span>
-          <span
-            :class="{ warn: (daq.meta.dropped ?? 0) > 0 }"
-            title="队列丢失(produced-consumed)"
-          >丢失 {{ daq.meta.dropped }}</span>
-          <span class="sep">·</span>
-          <span title="时序库累计入库样本">入库 {{ daq.meta.samplesStored }}</span>
+      <!-- 产线状态带:单行横向滚动,每产线一枚 pill(空心点=待机 / 实心呼吸点=运行中) -->
+      <div class="line-strip">
+        <span class="strip-label">
+          <span class="i-tabler-route" />
+          产线状态<small class="mono">{{ dcw.lines.length }}</small>
         </span>
-        <button
-          class="aw-pill outline add-btn"
-          @click="tplOpen = true; resetTplForm()"
-        >
-          <span class="i-tabler-adjustments-horizontal" />
-          模板管理
-        </button>
-        <button
-          class="aw-pill add-btn"
-          @click="addOpen = true"
-        >
-          <span class="i-tabler-plus" />
-          添加节点
-        </button>
-        <NuxtLink
-          v-for="l in dcw.lines"
-          :key="l.id"
-          class="line-chip mono"
-          :class="{ on: dcw.lineStateOf(l.id).active }"
-          :style="dcw.lineStateOf(l.id).active ? { '--lc': l.color } : undefined"
-          to="/dcw"
-          :title="dcw.lineStateOf(l.id).active ? `产线运行中:${dcw.lineStateOf(l.id).productName} · ${dcw.lineStateOf(l.id).recipeName}` : `${l.name} 待机:开跑后本产线节点开始采集`"
-        >
-          {{ dcw.lineStateOf(l.id).active ? `● ${l.name}` : `○ ${l.name}` }}
-        </NuxtLink>
-        <NuxtLink
-          v-if="dcw.lines.length === 0"
-          class="line-chip mono"
-          to="/dcw"
-        >
-          ○ 产线未开跑
-        </NuxtLink>
+        <div class="strip-scroll">
+          <NuxtLink
+            v-for="l in dcw.lines"
+            :key="l.id"
+            class="line-pill"
+            :class="{ on: dcw.lineStateOf(l.id).active }"
+            :style="{ '--lc': l.color }"
+            :to="`/dcw/${l.id}`"
+            :title="dcw.lineStateOf(l.id).active
+              ? `${l.name} 运行中:${dcw.lineStateOf(l.id).productName} · ${dcw.lineStateOf(l.id).recipeName}`
+              : `${l.name} 待机:开跑后本产线节点开始采集`"
+          >
+            <span class="lp-dot" />
+            <b>{{ l.name }}</b>
+            <small
+              v-if="dcw.lineStateOf(l.id).active"
+              class="lp-run"
+            >{{ dcw.lineStateOf(l.id).recipeName ?? '运行中' }}</small>
+            <small
+              v-else
+              class="lp-idle"
+            >待机</small>
+          </NuxtLink>
+          <NuxtLink
+            v-if="dcw.lines.length === 0"
+            class="line-pill"
+            to="/dcw"
+          >
+            <span class="lp-dot" />
+            <b>暂无产线</b>
+            <small class="lp-idle">去产线运营创建</small>
+          </NuxtLink>
+        </div>
       </div>
     </section>
 
@@ -808,9 +868,106 @@ async function doReconnect(): Promise<void> {
       </div>
     </div>
 
-    <!-- 节点清单 -->
+    <!-- 节点清单:筛选工具条(产线/设备/产线运行/状态) + 节点表 -->
     <a-spin :spinning="!daq.loaded && !daq.error">
       <section class="aw-tile table-card">
+        <div class="tbl-toolbar">
+          <div class="filters">
+            <label class="flt">
+              <span>产线</span>
+              <select
+                v-model="filters.lineId"
+                class="inp-sel"
+              >
+                <option value="">
+                  全部产线
+                </option>
+                <option
+                  v-for="l in dcw.lines"
+                  :key="l.id"
+                  :value="l.id"
+                >
+                  {{ l.name }}
+                </option>
+                <option value="none">
+                  未分配
+                </option>
+              </select>
+            </label>
+            <label class="flt">
+              <span>绑定设备</span>
+              <select
+                v-model="filters.deviceId"
+                class="inp-sel"
+              >
+                <option value="">
+                  全部设备
+                </option>
+                <option
+                  v-for="d in boundDevices"
+                  :key="d.id"
+                  :value="d.id"
+                >
+                  {{ d.name }}({{ d.count }})
+                </option>
+                <option value="none">
+                  未绑定
+                </option>
+              </select>
+            </label>
+            <label
+              class="flt"
+              title="节点所属产线的开跑状态:未开跑/未分配的节点不采集"
+            >
+              <span>产线运行</span>
+              <select
+                v-model="filters.lineRun"
+                class="inp-sel"
+              >
+                <option value="">
+                  全部
+                </option>
+                <option value="on">
+                  采集开启(运行中)
+                </option>
+                <option value="off">
+                  采集关闭(待机/未分配)
+                </option>
+              </select>
+            </label>
+            <label class="flt">
+              <span>节点状态</span>
+              <select
+                v-model="filters.state"
+                class="inp-sel"
+              >
+                <option value="">
+                  全部
+                </option>
+                <option value="ok">
+                  正常
+                </option>
+                <option value="warn">
+                  预警
+                </option>
+                <option value="alarm">
+                  告警
+                </option>
+                <option value="offline">
+                  离线
+                </option>
+              </select>
+            </label>
+            <button
+              v-if="hasFilters"
+              class="mini-btn clear-btn"
+              @click="clearFilters"
+            >
+              清除筛选
+            </button>
+          </div>
+          <span class="count mono">{{ filteredNodes.length }} / {{ daq.nodes.length }} 节点</span>
+        </div>
         <table class="nodes-table">
           <thead>
             <tr>
@@ -829,7 +986,7 @@ async function doReconnect(): Promise<void> {
           </thead>
           <tbody>
             <tr
-              v-for="n in daq.nodes"
+              v-for="n in filteredNodes"
               :key="n.id"
               :class="{ 'row-recipe-alarm': recipeAlarm(n) }"
             >
@@ -893,13 +1050,25 @@ async function doReconnect(): Promise<void> {
               </td>
             </tr>
             <tr v-if="daq.loaded && daq.nodes.length === 0">
-              <td colspan="8">
+              <td colspan="9">
                 <div
                   class="pane-empty"
                   style="min-height: 120px;"
                 >
                   <p class="pe-sub">
                     暂无数采节点 —— 在数字孪生空间从左轨「数采节点 · DAQ」拖入即可(server 建立节点实体)。
+                  </p>
+                </div>
+              </td>
+            </tr>
+            <tr v-else-if="daq.loaded && filteredNodes.length === 0">
+              <td colspan="9">
+                <div
+                  class="pane-empty"
+                  style="min-height: 90px;"
+                >
+                  <p class="pe-sub">
+                    无匹配节点 —— 当前筛选条件下没有节点,请调整或清除筛选。
                   </p>
                 </div>
               </td>
@@ -937,12 +1106,17 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 
 .ctrl-card {
   display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 12px 18px 11px;
+  margin-bottom: 14px;
+}
+.ctrl-row {
+  display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 14px;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  margin-bottom: 14px;
 }
 .ctrl-left { display: flex; gap: 14px; align-items: center; }
 .aw-pill.running { background: var(--accent); }
@@ -958,6 +1132,81 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .ctrl-metrics { display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: var(--ink-soft); }
 .ctrl-metrics .sep { opacity: 0.4; }
 .ctrl-metrics .warn { color: var(--tone-warning-dot); }
+
+/* 产线状态带:label 固定 + 单行横向滚动(任意产线数量恒定一行高) */
+.line-strip {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--divider-hair);
+}
+.strip-label {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-fainter);
+}
+.strip-label small { font-size: 10px; color: var(--ink-faint); }
+.strip-scroll {
+  display: flex;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.strip-scroll::-webkit-scrollbar { height: 4px; }
+.strip-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 2px; }
+.strip-scroll::-webkit-scrollbar-track { background: transparent; }
+.line-pill {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 7px;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+/* 空心点 = 待机;实心呼吸点 = 运行(状态语义承载体,非装饰) */
+.line-pill .lp-dot {
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--lc, var(--ink-fainter));
+  border-radius: 50%;
+  opacity: 0.55;
+}
+.line-pill b { font-weight: 600; }
+.line-pill small { font-size: 10.5px; color: var(--ink-fainter); }
+.line-pill:hover { border-color: var(--lc, var(--accent)); color: var(--ink); }
+.line-pill.on {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--lc) 10%, transparent);
+  border-color: color-mix(in srgb, var(--lc) 50%, transparent);
+}
+.line-pill.on .lp-dot {
+  border-color: transparent;
+  background: var(--lc);
+  opacity: 1;
+}
+.line-pill.on .lp-run { color: color-mix(in srgb, var(--lc) 75%, var(--ink)); }
+@media (prefers-reduced-motion: no-preference) {
+  .line-pill.on .lp-dot { box-shadow: 0 0 7px color-mix(in srgb, var(--lc) 75%, transparent); animation: lpPulse 1.8s ease-in-out infinite; }
+}
+@keyframes lpPulse {
+  0%, 100% { box-shadow: 0 0 3px color-mix(in srgb, var(--lc) 55%, transparent); }
+  50% { box-shadow: 0 0 9px color-mix(in srgb, var(--lc) 85%, transparent); }
+}
 
 .table-card { overflow-x: auto; }
 .nodes-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -1021,18 +1270,6 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 }
 .infra-banner .txt { flex: 1 1 auto; font-size: 12.5px; line-height: 1.5; }
 .infra-banner .txt a { color: var(--accent); text-decoration: underline; }
-.line-chip {
-  padding: 6px 12px;
-  font-size: 11px;
-  color: var(--tone-neutral-dot);
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-pill);
-}
-.line-chip.on {
-  color: var(--lc, var(--tone-success-dot));
-  border: 1px solid color-mix(in srgb, var(--lc, var(--tone-success-dot)) 50%, transparent);
-  background: color-mix(in srgb, var(--lc, var(--tone-success-dot)) 12%, transparent);
-}
 .infra-banner .pill-btn { flex: 0 0 auto; color: var(--paper-raised); }
 
 /* ---------- 添加节点向导 ---------- */
@@ -1137,14 +1374,49 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 .mini-btn.danger { color: var(--tone-danger-dot); }
 .mini-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ---------- 节点筛选工具条 ---------- */
+.tbl-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--divider-hair);
+}
+.filters { display: flex; flex-wrap: wrap; gap: 9px; align-items: flex-end; }
+.flt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-fainter);
+}
+.inp-sel {
+  min-width: 112px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  transition: border-color 0.15s;
+}
+.inp-sel:focus { outline: none; border-color: var(--accent); }
+.clear-btn { margin-bottom: 1px; }
+.count { padding-bottom: 4px; font-size: 11px; color: var(--ink-faint); }
+
 .line-sel {
   max-width: 120px;
   padding: 3px 6px;
   font-size: 10.5px;
-  color: #8fa0b5;
-  background: #0a111d;
-  border: 1px solid rgba(45, 62, 92, 0.8);
-  border-radius: 6px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  transition: border-color 0.15s;
 }
-.line-sel:focus { outline: none; border-color: #35e0a0; }
+.line-sel:focus { outline: none; border-color: var(--accent); }
 </style>
