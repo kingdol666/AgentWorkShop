@@ -9,6 +9,7 @@
  * 单例挂 globalThis,跨组件安全;store 为 reactive(异步刷新后驱动组件重渲染)。
  */
 import { reactive } from 'vue'
+import { apiFetch } from './apiClient'
 
 export interface DeviceTwinView {
   id: string
@@ -62,16 +63,6 @@ interface DeviceTwinStore {
   remove(id: string): Promise<void>
 }
 
-function headers(json = true): Record<string, string> {
-  const cookieToken = typeof document !== 'undefined'
-    ? (document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? '')
-    : ''
-  const h: Record<string, string> = {}
-  if (cookieToken) h.authorization = `Bearer ${decodeURIComponent(cookieToken)}`
-  if (json) h['content-type'] = 'application/json'
-  return h
-}
-
 function createStore(): DeviceTwinStore {
   const twins: DeviceTwinView[] = []
   const store: DeviceTwinStore = reactive({
@@ -83,14 +74,14 @@ function createStore(): DeviceTwinStore {
       if (store.__loading) return store.__loading
       store.__loading = (async () => {
         try {
-          const res = await fetch('/api/workshop/device-twins', { headers: headers() })
-          const json = await res.json().catch(() => ({}))
+          const data = await apiFetch<{ twins: DeviceTwinView[] }>({ base: '/api/workshop/device-twins', retries: 2 })
           // 经 reactive 代理变更,驱动 DeviceTwinPanel 等组件重渲染
-          store.twins.splice(0, store.twins.length, ...(json?.data?.twins ?? []))
+          store.twins.splice(0, store.twins.length, ...(data?.twins ?? []))
           store.loaded = true
           store.error = ''
         }
         catch (err) {
+          // 失败不再静默清空:保留旧数据 + 置错误态(apiFetch 归一化网络/HTTP/业务错误)
           store.loaded = false
           store.error = err instanceof Error ? err.message : String(err)
         }
@@ -115,55 +106,31 @@ function createStore(): DeviceTwinStore {
       return twins.find(t => t.id === id)
     },
     async create(input) {
-      const res = await fetch('/api/workshop/device-twins', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify(input),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok || !json?.data?.twin) throw new Error(json?.message ?? '创建设备失败')
+      const data = await apiFetch<{ twin: DeviceTwinView }>({ base: '/api/workshop/device-twins', init: { method: 'POST', body: JSON.stringify(input) } })
       store.loaded = false
       await store.load()
-      return json.data.twin
+      return data.twin
     },
     async update(id, patch) {
-      const res = await fetch(`/api/workshop/device-twins/${id}`, {
-        method: 'PATCH',
-        headers: headers(),
-        body: JSON.stringify(patch),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok || !json?.data?.twin) throw new Error(json?.message ?? '更新设备失败')
+      const data = await apiFetch<{ twin: DeviceTwinView }>({ base: `/api/workshop/device-twins/${id}`, init: { method: 'PATCH', body: JSON.stringify(patch) } })
       store.loaded = false
       await store.load()
-      return json.data.twin
+      return data.twin
     },
     async control(id, command, args) {
-      const res = await fetch(`/api/workshop/device-twins/${id}/control`, {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ command, args: args ?? {} }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok || !json?.data?.twin) throw new Error(json?.message ?? '指令下发失败')
+      const data = await apiFetch<{ twin: DeviceTwinView }>({ base: `/api/workshop/device-twins/${id}/control`, init: { method: 'POST', body: JSON.stringify({ command, args: args ?? {} }) } })
       store.loaded = false
       await store.load()
-      return json.data.twin
+      return data.twin
     },
     async pushTelemetry(id, telemetry) {
-      const res = await fetch(`/api/workshop/device-twins/${id}/telemetry`, {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ telemetry }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok || !json?.data?.twin) throw new Error(json?.message ?? '遥测推送失败')
+      const data = await apiFetch<{ twin: DeviceTwinView }>({ base: `/api/workshop/device-twins/${id}/telemetry`, init: { method: 'POST', body: JSON.stringify({ telemetry }) } })
       store.loaded = false
       await store.load()
-      return json.data.twin
+      return data.twin
     },
     async remove(id) {
-      await fetch(`/api/workshop/device-twins/${id}`, { method: 'DELETE', headers: headers() })
+      await apiFetch({ base: `/api/workshop/device-twins/${id}`, init: { method: 'DELETE' } })
       store.loaded = false
       await store.load()
     },

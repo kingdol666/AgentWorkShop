@@ -100,6 +100,18 @@ const retry = async (): Promise<void> => {
 const agentName = (id: string): string =>
   entities.agentById(props.channelId, id)?.name ?? id.slice(0, 8)
 
+/** 失败原因:FAILED 任务取历史末条非空文本(REST 全量详情含 history) */
+const failureReason = computed(() => {
+  const d = detail.value
+  if (!d || d.state !== 'FAILED') return ''
+  const history = (d as unknown as { history?: Array<{ parts?: Array<{ text?: string }> }> }).history ?? []
+  for (let i = history.length - 1; i >= 0; i--) {
+    const text = (history[i]?.parts ?? []).map(p => p.text ?? '').join(' ').trim()
+    if (text) return text.slice(0, 500)
+  }
+  return d.description?.trim() ?? ''
+})
+
 const stateColor: Record<string, string> = {
   SUBMITTED: 'default',
   ASSIGNED: 'processing',
@@ -162,6 +174,15 @@ const stateColor: Record<string, string> = {
               {{ $t('taskInspectorDrawer.k1bs0t9b006') }}
             </a-button>
           </a-popconfirm>
+        </div>
+
+        <!-- 失败原因(FAILED 任务:历史末条错误原文,让用户知道哪里出了问题) -->
+        <div
+          v-if="(taskView?.state ?? detail?.state) === 'FAILED' && failureReason"
+          class="failure-reason"
+        >
+          <span class="fr-label">失败原因</span>
+          <span class="fr-text">{{ failureReason }}</span>
         </div>
 
         <a-descriptions
@@ -289,6 +310,30 @@ const stateColor: Record<string, string> = {
 .meta { font-size: 12px; font-family: var(--font-mono); opacity: 0.6; }
 .spacer { flex: 1 1 auto; }
 .desc { margin-top: 8px; }
+/* 失败原因块(FAILED 任务:历史末条错误原文) */
+.failure-reason {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 107, 107, 0.09);
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  border-radius: 8px;
+}
+.fr-label {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ff8080;
+}
+.fr-text {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--tone-danger-dot, #ff8080);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 .route-reason {
   display: flex;
   gap: 8px;

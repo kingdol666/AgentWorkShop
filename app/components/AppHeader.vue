@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MenuProps, SelectProps } from 'ant-design-vue'
 import { useUserStore } from '@/app/stores/workshop/user'
+import { useWsConnectionStore } from '@/app/stores/workshop/connection'
 
 const { t, locale, locales, setLocale } = useI18n()
 const store = useAppStore()
@@ -88,6 +89,20 @@ function toggleFullscreen() {
 const userInitial = computed(() => (userStore.user?.name ?? '?').trim().charAt(0).toUpperCase())
 const userName = computed(() => userStore.user?.name ?? t('header.guest'))
 const userRole = computed(() => (userStore.isLoggedIn ? userStore.user?.role ?? 'user' : 'anonymous'))
+
+// ── 实时连接状态点(全局 WS 单例的诚实在线指示;断连不假装在线) ──
+const conn = useWsConnectionStore()
+const wsVisible = computed(() => conn.state !== 'closed' || conn.lastDataAt > 0)
+const wsClass = computed(() => {
+  if (conn.state === 'open') return conn.pendingReplay ? 'syncing' : 'live'
+  if (conn.state === 'connecting') return 'syncing'
+  return 'down'
+})
+const wsLabel = computed(() => {
+  if (conn.state === 'open') return conn.pendingReplay ? t('appHeader.kwsdot0002') : t('appHeader.kwsdot0001')
+  if (conn.state === 'connecting') return t('appHeader.kwsdot0003')
+  return t('appHeader.kwsdot0004')
+})
 
 interface AvatarMenuEntry {
   key: string
@@ -190,6 +205,13 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 
     <!-- 右侧:功能集群 -->
     <div class="header-right">
+      <!-- 实时连接状态点(WS 会话全局单例;未用过 WS 的会话不显示) -->
+      <span
+        v-if="wsVisible"
+        class="ws-dot"
+        :class="wsClass"
+        :title="wsLabel"
+      />
       <a-tooltip :title="t('header.fullscreen')">
         <button
           class="icon-btn"
@@ -601,6 +623,29 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 
 .hidden {
   display: none;
+}
+
+/* 实时连接状态点(诚实在线:open=绿/syncing=琥珀呼吸/closed=红;reduced-motion 全局收敛) */
+.ws-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin: 0 2px;
+  border-radius: 50%;
+  background: var(--tone-success-dot);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--tone-success-dot) 55%, transparent);
+}
+.ws-dot.syncing {
+  background: var(--tone-warning-dot);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--tone-warning-dot) 55%, transparent);
+  animation: ws-pulse 1.2s ease-in-out infinite;
+}
+.ws-dot.down {
+  background: var(--tone-danger-dot);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--tone-danger-dot) 55%, transparent);
+}
+@keyframes ws-pulse {
+  50% { opacity: 0.45; }
 }
 
 @media (prefers-reduced-motion: reduce) {

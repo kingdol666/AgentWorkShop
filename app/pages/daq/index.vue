@@ -5,6 +5,7 @@
  * 节点清单(状态/实时值/周期/绑定/驱动),点进 /daq/[id] 进入单节点专业控制台。
  */
 import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { message } from 'ant-design-vue'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeView, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
@@ -21,18 +22,28 @@ const dcw = useDcwStream()
 /** 是否存在任意运行中的产线(横幅判定) */
 const anyLineActive = computed(() => dcw.lines.some(l => dcw.lineStateOf(l.id).active))
 
-/** 节点产线归属变更(挂载到产线/移出) */
+/** 节点产线归属变更(挂载到产线/移出;失败 toast 后端可读原因) */
 async function setNodeLine(id: string, e: Event): Promise<void> {
   const lineId = (e.target as HTMLSelectElement).value
-  await daq.patchNode(id, { lineId })
-  const n = daq.nodes.find(x => x.id === id)
-  if (n) n.lineId = lineId
+  try {
+    await daq.patchNode(id, { lineId })
+    const n = daq.nodes.find(x => x.id === id)
+    if (n) n.lineId = lineId
+  }
+  catch (err) {
+    message.error(err instanceof Error ? err.message : String(err))
+  }
 }
 
 /** 节点绑定设备(bind REST server 落库;与数字孪生/节点检查器同一条 deviceBindingId 链路) */
 async function setNodeDevice(id: string, e: Event): Promise<void> {
   const deviceId = (e.target as HTMLSelectElement).value
-  await daq.bindNode(id, deviceId || null)
+  try {
+    await daq.bindNode(id, deviceId || null)
+  }
+  catch (err) {
+    message.error(err instanceof Error ? err.message : String(err))
+  }
 }
 
 /** 活动配方对该节点的数采监控窗口(本线活动批次;不同 Recipe 不同窗口) */

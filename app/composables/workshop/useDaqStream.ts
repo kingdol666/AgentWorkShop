@@ -8,6 +8,7 @@
  */
 import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
+import { apiFetch } from './apiClient'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { DAQ_TEMPLATES, type AepDaqControllerState, type AepDaqReading, type AepDaqNodeChange, type AepDaqTemplateChange, type DaqNodeView, type DaqTemplateDef, type DaqTemplateInput } from '#shared/daq-protocol'
 
@@ -61,22 +62,9 @@ export interface DaqInfraState {
 
 export interface DaqTsdbPoint { at: number, value?: number, avg?: number, min?: number, max?: number, cnt?: number, state?: string }
 
-function headers(json = true): Record<string, string> {
-  const cookieToken = typeof document !== 'undefined'
-    ? (document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? '')
-    : ''
-  const h: Record<string, string> = {}
-  if (cookieToken) h.authorization = `Bearer ${decodeURIComponent(cookieToken)}`
-  if (json) h['content-type'] = 'application/json'
-  return h
-}
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api/workshop/daq${path}`, { headers: headers(), ...init })
-  const json = await res.json().catch(() => ({}))
-  if (json?.code !== 0) throw new Error(json?.message ?? `daq api 失败: ${res.status}`)
-  return json.data as T
-}
+/** 统一客户端:信封解析/业务码保留/GET 幂等重试(5xx 与网络错误;400ms 起退避) */
+const api = <T>(path: string, init?: RequestInit): Promise<T> =>
+  apiFetch<T>({ base: '/api/workshop/daq', path, init, retries: (init?.method ?? 'GET').toUpperCase() === 'GET' ? 2 : 0 })
 
 function createStore() {
   const nodes = reactive<DaqNodeLive[]>([])

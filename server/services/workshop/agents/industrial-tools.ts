@@ -105,10 +105,15 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
         text: `下发成功:${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit} → PLC 原始值 ${outcome.raw ?? '-'};回读 ${outcome.readback != null ? `${outcome.readback}${node.unit}` : '不支持'}一致。${winTxt}。${outcome.message}`,
       }
     }
-    return { text: `下发失败:${outcome.message}(节点 ${node.name},物理量 ${tpl?.ch ?? node.templateKey},安全量程 ${node.min}~${node.max}${node.unit})`, isError: true }
+    // 失败文案带自我纠正线索:当前保持原值 + 建议动作(缩小步进/稍后重试)
+    const keptHint = `当前设定值保持 ${node.value ?? '原值'}${node.unit} 未被改动`
+    const retryHint = /忙|busy/i.test(outcome.message) ? '链路忙属瞬时状态,可稍后重试' : '可缩小步进幅度后重试'
+    return { text: `下发失败:${outcome.message}(节点 ${node.name},物理量 ${tpl?.ch ?? node.templateKey},安全量程 ${node.min}~${node.max}${node.unit};${keptHint};${retryHint})`, isError: true }
   }
   catch (err) {
-    return { text: `下发被拒绝:${err instanceof Error ? err.message : String(err)}(节点 ${node.name},物理量 ${tpl?.ch ?? node.templateKey};设定值必须落在安全量程与活动配方工艺窗口内)`, isError: true }
+    const msg = err instanceof Error ? err.message : String(err)
+    const retryHint = /忙|busy/i.test(msg) ? '链路忙属瞬时状态,可稍后重试' : '设定值必须落在安全量程与活动配方工艺窗口内'
+    return { text: `下发被拒绝:${msg}(节点 ${node.name},物理量 ${tpl?.ch ?? node.templateKey};${retryHint})`, isError: true }
   }
 }
 

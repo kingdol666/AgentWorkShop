@@ -129,6 +129,14 @@ function doDcwWrite(r: DcwLiveRow): void {
       <span class="twin-count">{{ twins.twins.length }}</span>
     </div>
 
+    <!-- 加载失败横幅:错误可见,旧数据保留不清空 -->
+    <div
+      v-if="twins.error"
+      class="twin-error"
+    >
+      {{ twins.error }}
+    </div>
+
     <div
       v-if="!twins.loaded"
       class="twin-empty"
@@ -286,6 +294,17 @@ function doDcwWrite(r: DcwLiveRow): void {
   align-items: center;
   padding: 10px 12px 6px;
   border-bottom: 1px solid rgba(38, 51, 64, 0.45);
+}
+/* 加载失败横幅:错误可见(旧数据保留,不再静默清空) */
+.twin-error {
+  padding: 7px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #ffb4b4;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  border-radius: 8px;
+  word-break: break-all;
 }
 .twin-kicker {
   font-family: var(--font-mono);
