@@ -97,7 +97,8 @@ function createStore(): SceneLayoutStore {
           const json = await res.json().catch(() => ({}))
           if (!res.ok || !json?.data?.layout) throw new Error(json?.message ?? '保存频道布局失败')
           store.layouts[channelId] = json.data.layout
-          store.rev++
+          // rev 不再自增:乐观写入已触发 hydrate,服务端回显仅对齐 updatedAt(同值),
+          // 二次 rev 会让整场 resetAll+GLB 重载执行两遍(一次保存双倍重建)
           return json.data.layout
         }
         catch (err) {
