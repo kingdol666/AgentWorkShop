@@ -482,6 +482,7 @@ export default {
   dcw: {
     k1qidbpy061: 'Default {p0} (by creation order)',
     k1gp649b062: '{p0} ({p1} nodes / {p2} products / {p3} recipes will be unmounted)',
+    k7xq2mfd063: 'Delete line "{p0}"?',
     k3t616a058: 'Custom',
     k149r6y7059: '○ Standby',
     k1elczt9060: 'No recipes yet',
@@ -1269,8 +1270,13 @@ export default {
   townView: {
     k1k6wg8j185: 'Device Instance',
     k44c2n186: 'Offline',
-    k1w6xehu187: '{p0} · {p1} · 拖到设备旁自动绑定,量程 {p2} ~ {p3} {p4}',
-    k1icez46188: '{p0} · {p1} · 设定值域 {p2} ~ {p3} {p4} · 拖到设备旁自动绑定',
+    k1w6xehu187: '{p0} · {p1} · auto-binds near a device, range {p2} ~ {p3} {p4}',
+    k1icez46188: '{p0} · {p1} · setpoint range {p2} ~ {p3} {p4} · auto-binds near a device',
+    k2tplxp0001: 'Click to expand/collapse "{p0}" nodes · {p1} · range {p2} ~ {p3} {p4}',
+    k2tplxp0002: 'New "{p0}" node (drag into scene after creation)',
+    k2tplxp0003: 'No nodes yet — use + on the template row, or add in DAQ Center',
+    k2tplxp0005: 'Placed · click to locate & select; drag to re-place',
+    k2tplxp0006: 'Drag onto the scene to place (auto-binds a device within ±95)',
     k479op189: 'Role',
     kb251ac190: 'Current recipe process window',
     kcyn0191: '“{p0}” is already in the scene (one placement per channel)',
@@ -1465,6 +1471,9 @@ export default {
     k3ncnxl172: 'Acknowledged',
     kb157zk173: 'EMERGENCY STOP triggered — all lines halted',
     k1s9qzr9174: 'Emergency stop released — lines resumed',
+    kwrbtn180: 'Write',
+    ksavetip181: 'Save all device layout',
+    krotip182: 'Read-only in run mode',
   },
   transcriptTimeline: {
     k44c2n024: 'Offline',

@@ -103,12 +103,9 @@ function recipesOf(lineId: string) {
   return dcw.recipes.filter(r => r.lineId === lineId)
 }
 
-/** 删除产线(确认后;旗下节点/产品/配方自动解挂为未分配) */
+/** 删除产线(Popconfirm 确认后;旗下节点/产品/配方自动解挂为未分配) */
 const removing = ref('')
 async function doRemoveLine(card: LineCard): Promise<void> {
-  const label = t('dcw.k1gp649b062', { p0: card.line.name, p1: card.nodes, p2: card.products, p3: card.recipes })
-  if (!window.confirm(`确认删除产线「${card.line.name}」?
-${label}`)) return
   removing.value = card.line.id
   quickErr.value = ''
   try {
@@ -234,13 +231,20 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             class="lc-state"
             :class="{ on: dcw.lineStateOf(c.line.id).active }"
           >{{ dcw.lineStateOf(c.line.id).active ? $t('dcw.k1eox1el055') : $t('dcw.k149r6y7059') }}</span>
-          <button
-            class="lc-del"
-            :title="$t('dcw.k1yfm3gv002')"
-            @click="doRemoveLine(c)"
+          <a-popconfirm
+            :title="$t('dcw.k7xq2mfd063', { p0: c.line.name })"
+            :ok-text="t('common.confirm')"
+            :cancel-text="t('common.cancel')"
+            @confirm="doRemoveLine(c)"
           >
-            ✕
-          </button>
+            <button
+              class="lc-del"
+              :class="{ busy: removing === c.line.id }"
+              :title="$t('dcw.k1yfm3gv002')"
+            >
+              ✕
+            </button>
+          </a-popconfirm>
         </div>
         <small
           v-if="dcw.lineStateOf(c.line.id).active"
@@ -249,6 +253,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
         <small
           v-else
           class="lc-run dim"
+          :class="{ ph: !c.line.description }"
         >{{ c.line.description || $t('dcw.k18moyq1056') }}</small>
         <div class="lc-stats mono">
           <span>{{ $t('dcw.k45uio011') }} <b>{{ c.nodes }}</b></span>
@@ -604,10 +609,18 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   border: 0;
   border-radius: 5px;
   cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lc-del:hover { color: #ff6b6b; background: rgba(255, 107, 107, 0.12); }
+.lc-del:active { transform: scale(0.9); }
+.lc-del.busy { opacity: 0.45; pointer-events: none; }
 .lc-run { font-size: 10.5px; color: #41c8f4; }
 .lc-run.dim { color: #5f6e84; }
+/* 无描述时的兜底提示进一步退后(77 张卡同文反复出现即是噪音) */
+.lc-run.dim.ph { opacity: 0.55; }
 .lc-stats {
   display: flex;
   gap: 14px;

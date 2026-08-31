@@ -929,30 +929,43 @@ function bindSceneInput3D(scene: TownScene3D): void {
       dropChannelAt(channelId, world.x, world.z)
       return
     }
-    // 1.5) 数采节点拖入 → 创建 server DaqNode(权威实体;WS 广播收敛全端)
-    //      落点 ±95 单位内存在设备 → 自动绑定(设计稿:数采靠近设备自动接通道)
-    const daqTplId = dt.getData('application/x-aw-daq')
-    if (daqTplId) {
-      const tpl = daqTemplates.find(t => t.id === daqTplId)
-      if (tpl) {
+    // 1.5) 数采节点拖入 → 既有 server 节点落位(PATCH 位置;WS 收敛全端)
+    //      未绑定设备时:落点 ±95 内最近设备自动绑定(已绑定保持不重绑)
+    const daqNodeId = dt.getData('application/x-aw-daq-node')
+    if (daqNodeId) {
+      const n = daq.nodeById(daqNodeId)
+      if (n) {
         const world = scene.screenToWorld(e.clientX, e.clientY)
-        const seq = daq.nodes.filter(x => x.templateRef === `daq-${tpl.id}`).length + 1
-        void daq.createFromTemplate(`daq-${tpl.id}`, {
-          name: `${tpl.name} ${String(seq).padStart(2, '0')}`,
-          posX: Math.round(world.x),
-          posZ: Math.round(world.z),
-        }).then((created) => {
-          const near = nearestDeviceTwin(world.x, world.z, 95)
-          if (near) bindDaq(created.id, near.id)
+        void daq.patchNode(daqNodeId, { posX: Math.round(world.x), posZ: Math.round(world.z) }).then(() => {
+          if (!n.deviceBindingId) {
+            const near = nearestDeviceTwin(world.x, world.z, 95)
+            if (near) bindDaq(daqNodeId, near.id)
+          }
         }).catch((err: unknown) => {
           errorText.value = err instanceof Error ? err.message : String(err)
         })
       }
-      // 1.6) 智控节点拖入 → 创建 server DcwNode(写控制;落点 ±95 内设备自动绑定)
-      const dcwTplId = dt.getData('application/x-aw-dcw')
-      if (dcwTplId) {
-        onDcwDrop(e, scene)
-        return
+      return
+    }
+    // 1.6) 智控节点拖入 → 落位 + 未绑定时 ±95 内设备自动绑定(绑定后可直写下发)
+    const dcwNodeId = dt.getData('application/x-aw-dcw-node')
+    if (dcwNodeId) {
+      const n = dcw.nodes.find(x => x.id === dcwNodeId)
+      if (n) {
+        const world = scene.screenToWorld(e.clientX, e.clientY)
+        void dcw.patchNode(dcwNodeId, { posX: Math.round(world.x), posZ: Math.round(world.z) }).then(() => {
+          if (!n.deviceBindingId) {
+            const near = nearestDeviceTwin(world.x, world.z, 95)
+            if (near) {
+              void dcw.bindNode(dcwNodeId, near.id).catch((err: unknown) => {
+                errorText.value = err instanceof Error ? err.message : String(err)
+              })
+            }
+          }
+          if (sceneRef.value) syncSceneDevices(sceneRef.value)
+        }).catch((err: unknown) => {
+          errorText.value = err instanceof Error ? err.message : String(err)
+        })
       }
       return
     }
@@ -1379,27 +1392,78 @@ watch(() => dcw.templates, (list) => {
     icon: t.icon,
   })))
 }, { immediate: true, deep: true })
-function onDcwDragStart(e: DragEvent, tpl: { id: string }): void {
-  if (!e.dataTransfer) return
-  e.dataTransfer.setData('application/x-aw-dcw', tpl.id)
-  e.dataTransfer.setData('text/plain', tpl.id)
-  e.dataTransfer.effectAllowed = 'copy'
+/** 左轨树形目录:模板 = 可展开分组(不可拖拽),节点 = 可拖入场景的叶子。
+ *  展开状态持久化(aw.twin.treeOpen),拖拽载荷 = 既有节点 id(非模板)。 */
+const treeOpen = useStorage<Record<string, boolean>>('aw.twin.treeOpen', {})
+function toggleTreeGroup(key: string): void {
+  treeOpen.value[key] = !treeOpen.value[key]
 }
-/** 智控节点拖入:创建 server DcwNode + 落点 ±95 内设备自动绑定 */
-function onDcwDrop(e: DragEvent, scene: TownScene3D): void {
-  const tplId = e.dataTransfer?.getData('application/x-aw-dcw')
-  if (!tplId || !dcwTemplates.some(t => t.id === tplId)) return
-  const world = scene.screenToWorld(e.clientX, e.clientY)
-  void dcw.createFromTemplate(`dcw-${tplId}`, {
-    posX: Math.round(world.x),
-    posZ: Math.round(world.z),
-  }).then((created) => {
-    const near = nearestDeviceTwin(world.x, world.z, 95)
-    if (near) void dcw.bindNode(created.id, near.id)
-    if (sceneRef.value) syncSceneDevices(sceneRef.value)
-  }).catch((err: unknown) => {
+const daqNodesByTpl = computed<Map<string, DaqNodeLive[]>>(() => {
+  const m = new Map<string, DaqNodeLive[]>()
+  for (const n of daq.nodes) {
+    const key = n.templateRef.startsWith('daq-') ? n.templateRef.slice(4) : n.templateRef
+    const arr = m.get(key) ?? []
+    arr.push(n)
+    m.set(key, arr)
+  }
+  for (const arr of m.values()) arr.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+  return m
+})
+const dcwNodesByTpl = computed<Map<string, DcwNodeView[]>>(() => {
+  const m = new Map<string, DcwNodeView[]>()
+  for (const n of dcw.nodes) {
+    const key = n.templateRef.startsWith('dcw-') ? n.templateRef.slice(4) : n.templateRef
+    const arr = m.get(key) ?? []
+    arr.push(n)
+    m.set(key, arr)
+  }
+  for (const arr of m.values()) arr.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+  return m
+})
+/** 模板行 ＋:就地新建节点(不落位,入树后拖进场景);daq 沿用模板序号命名 */
+async function createDaqFromTemplate(tpl: DaqTemplate): Promise<void> {
+  try {
+    const seq = (daqNodesByTpl.value.get(tpl.id)?.length ?? 0) + 1
+    await daq.createFromTemplate(`daq-${tpl.id}`, { name: `${tpl.name} ${String(seq).padStart(2, '0')}` })
+    treeOpen.value[`daq:${tpl.id}`] = true
+  }
+  catch (err: unknown) {
     errorText.value = err instanceof Error ? err.message : String(err)
-  })
+  }
+}
+async function createDcwFromTemplate(tpl: { id: string }): Promise<void> {
+  try {
+    await dcw.createFromTemplate(`dcw-${tpl.id}`, {})
+    treeOpen.value[`dcw:${tpl.id}`] = true
+  }
+  catch (err: unknown) {
+    errorText.value = err instanceof Error ? err.message : String(err)
+  }
+}
+/** 节点叶子拖拽(编辑模式):载荷 = server 节点 id,投放走 PATCH 落位 */
+function onDaqNodeDragStart(e: DragEvent, n: DaqNodeLive): void {
+  if (!e.dataTransfer) return
+  e.dataTransfer.setData('application/x-aw-daq-node', n.id)
+  e.dataTransfer.setData('text/plain', n.id)
+  e.dataTransfer.effectAllowed = 'move'
+}
+function onDcwNodeDragStart(e: DragEvent, n: DcwNodeView): void {
+  if (!e.dataTransfer) return
+  e.dataTransfer.setData('application/x-aw-dcw-node', n.id)
+  e.dataTransfer.setData('text/plain', n.id)
+  e.dataTransfer.effectAllowed = 'move'
+}
+/** 叶子状态点(与伪孪生投影同一状态语义):绿=运行/黄=预警/红=告警/空心=离线 */
+type RailLeafState = 'running' | 'warn' | 'alarm' | 'offline'
+function daqLeafState(n: DaqNodeLive): RailLeafState {
+  if (!daq.controller.running || !n.enabled || n.state === 'offline') return 'offline'
+  if (n.state === 'alarm') return 'alarm'
+  if (n.state === 'warn') return 'warn'
+  return 'running'
+}
+function dcwLeafState(n: DcwNodeView): RailLeafState {
+  if (!n.enabled || n.state === 'error') return 'offline'
+  return 'running'
 }
 /** 左轨模板目录(server 权威:内置 + 自定义随 REST/WS 收敛;字段名兼容既有轨道模板标记) */
 interface DaqTemplate {
@@ -1513,13 +1577,6 @@ watch(() => daq.nodes.map(n => `${n.id}:${n.state}`).join('|'), () => {
     else if (prev !== 'ok' && n.state === 'ok') raiseAlarm(t('townView.ksjancw197', { p0: label, p1: tpl?.ch ?? '' }), 'info', n.name)
   }
 })
-
-function onDaqDragStart(e: DragEvent, tpl: DaqTemplate): void {
-  if (!e.dataTransfer) return
-  e.dataTransfer.setData('application/x-aw-daq', tpl.id)
-  e.dataTransfer.setData('text/plain', tpl.id)
-  e.dataTransfer.effectAllowed = 'copy'
-}
 
 // ===== Agent 工业节点绑定(数采/数控工具授权)+ 手动确认审批面板 =====
 interface AgentNodeBindingRow {
@@ -2820,23 +2877,78 @@ onBeforeUnmount(() => {
             <div
               v-for="tpl in daqTemplates"
               :key="tpl.id"
-              class="daq-card"
-              draggable="true"
-              :title="$t('townView.k1w6xehu187', { p0: tpl.name, p1: tpl.ch, p2: tpl.min, p3: tpl.max, p4: tpl.unit })"
-              @dragstart="onDaqDragStart($event, tpl)"
+              class="daq-group"
             >
-              <span class="daq-ico">
-                <svg
-                  class="daq-svg"
-                  viewBox="0 0 24 24"
-                  v-html="daqIcon(tpl.icon)"
-                />
-              </span>
-              <div class="daq-meta">
-                <span class="daq-name">{{ tpl.name }}</span>
-                <span class="daq-code">{{ tpl.code }}</span>
+              <!-- 模板分组头:点击展开/收起;不可拖拽(模板不能实例化,节点才能) -->
+              <div
+                class="daq-card tpl"
+                :class="{ open: !!treeOpen[`daq:${tpl.id}`] }"
+                role="button"
+                tabindex="0"
+                :title="$t('townView.k2tplxp0001', { p0: tpl.name, p1: tpl.ch, p2: tpl.min, p3: tpl.max, p4: tpl.unit })"
+                @click="toggleTreeGroup(`daq:${tpl.id}`)"
+                @keydown.enter.prevent="toggleTreeGroup(`daq:${tpl.id}`)"
+              >
+                <span class="daq-caret">▶</span>
+                <span class="daq-ico">
+                  <svg
+                    class="daq-svg"
+                    viewBox="0 0 24 24"
+                    v-html="daqIcon(tpl.icon)"
+                  />
+                </span>
+                <div class="daq-meta">
+                  <span class="daq-name">{{ tpl.name }}</span>
+                  <span class="daq-code">{{ tpl.code }}</span>
+                </div>
+                <button
+                  v-if="mode === 'edit'"
+                  class="daq-add"
+                  :title="$t('townView.k2tplxp0002', { p0: tpl.name })"
+                  @click.stop="createDaqFromTemplate(tpl)"
+                >
+                  ＋
+                </button>
+                <span class="daq-count">×{{ daqNodesByTpl.get(tpl.id)?.length ?? 0 }}</span>
               </div>
-              <span class="daq-count">×{{ daq.nodes.filter(n => n.templateRef === `daq-${tpl.id}`).length }}</span>
+              <!-- 节点叶子:可拖入场景落位(已绑定保持,未绑定就近自动绑);点击定位选中 -->
+              <div
+                v-if="treeOpen[`daq:${tpl.id}`]"
+                class="daq-children"
+              >
+                <div
+                  v-for="n in daqNodesByTpl.get(tpl.id) ?? []"
+                  :key="n.id"
+                  class="daq-node"
+                  :class="{ placed: typeof n.posX === 'number' }"
+                  :draggable="mode === 'edit'"
+                  :title="typeof n.posX === 'number' ? $t('townView.k2tplxp0005') : $t('townView.k2tplxp0006')"
+                  @dragstart="onDaqNodeDragStart($event, n)"
+                  @click="typeof n.posX === 'number' && onFocusDevice({ id: n.id, posX: n.posX, posZ: n.posZ })"
+                >
+                  <span
+                    class="node-dot"
+                    :class="daqLeafState(n)"
+                  />
+                  <div class="daq-meta">
+                    <span class="daq-name">{{ n.name }}</span>
+                    <span class="daq-node-sub">
+                      <span class="node-val mono">{{ n.value != null ? `${n.value.toFixed(tpl.decimals)} ${tpl.unit}` : '--' }}</span>
+                      <span class="node-dev">{{ n.deviceBindingId ? (deviceTwins.byId(n.deviceBindingId)?.name ?? $t('townView.k3own4q148')) : $t('townView.k3own4q148') }}</span>
+                    </span>
+                  </div>
+                  <span
+                    v-if="typeof n.posX === 'number'"
+                    class="scene-cur"
+                  >✓</span>
+                </div>
+                <div
+                  v-if="!daqNodesByTpl.get(tpl.id)?.length"
+                  class="daq-empty-hint"
+                >
+                  {{ $t('townView.k2tplxp0003') }}
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -2850,23 +2962,78 @@ onBeforeUnmount(() => {
             <div
               v-for="tpl in dcwTemplates"
               :key="tpl.id"
-              class="daq-card"
-              draggable="true"
-              :title="$t('townView.k1icez46188', { p0: tpl.name, p1: tpl.ch, p2: tpl.min, p3: tpl.max, p4: tpl.unit })"
-              @dragstart="onDcwDragStart($event, tpl)"
+              class="daq-group"
             >
-              <span class="daq-ico">
-                <svg
-                  class="daq-svg"
-                  viewBox="0 0 24 24"
-                  v-html="daqIcon(tpl.icon)"
-                />
-              </span>
-              <div class="daq-meta">
-                <span class="daq-name">{{ tpl.name }}</span>
-                <span class="daq-code">{{ tpl.code }}</span>
+              <!-- 模板分组头:点击展开/收起;不可拖拽(模板不能实例化,节点才能) -->
+              <div
+                class="daq-card tpl"
+                :class="{ open: !!treeOpen[`dcw:${tpl.id}`] }"
+                role="button"
+                tabindex="0"
+                :title="$t('townView.k2tplxp0001', { p0: tpl.name, p1: tpl.ch, p2: tpl.min, p3: tpl.max, p4: tpl.unit })"
+                @click="toggleTreeGroup(`dcw:${tpl.id}`)"
+                @keydown.enter.prevent="toggleTreeGroup(`dcw:${tpl.id}`)"
+              >
+                <span class="daq-caret">▶</span>
+                <span class="daq-ico">
+                  <svg
+                    class="daq-svg"
+                    viewBox="0 0 24 24"
+                    v-html="daqIcon(tpl.icon)"
+                  />
+                </span>
+                <div class="daq-meta">
+                  <span class="daq-name">{{ tpl.name }}</span>
+                  <span class="daq-code">{{ tpl.code }}</span>
+                </div>
+                <button
+                  v-if="mode === 'edit'"
+                  class="daq-add"
+                  :title="$t('townView.k2tplxp0002', { p0: tpl.name })"
+                  @click.stop="createDcwFromTemplate(tpl)"
+                >
+                  ＋
+                </button>
+                <span class="daq-count">×{{ dcwNodesByTpl.get(tpl.id)?.length ?? 0 }}</span>
               </div>
-              <span class="daq-count">×{{ dcw.nodes.filter(n => n.templateRef === `dcw-${tpl.id}`).length }}</span>
+              <!-- 节点叶子:拖入场景落位;绑定设备后即可在设备面板直写下发 -->
+              <div
+                v-if="treeOpen[`dcw:${tpl.id}`]"
+                class="daq-children"
+              >
+                <div
+                  v-for="n in dcwNodesByTpl.get(tpl.id) ?? []"
+                  :key="n.id"
+                  class="daq-node"
+                  :class="{ placed: typeof n.posX === 'number' }"
+                  :draggable="mode === 'edit'"
+                  :title="typeof n.posX === 'number' ? $t('townView.k2tplxp0005') : $t('townView.k2tplxp0006')"
+                  @dragstart="onDcwNodeDragStart($event, n)"
+                  @click="typeof n.posX === 'number' && onFocusDevice({ id: n.id, posX: n.posX, posZ: n.posZ })"
+                >
+                  <span
+                    class="node-dot"
+                    :class="dcwLeafState(n)"
+                  />
+                  <div class="daq-meta">
+                    <span class="daq-name">{{ n.name }}</span>
+                    <span class="daq-node-sub">
+                      <span class="node-val mono">{{ n.value != null ? `${n.value.toFixed(tpl.decimals)} ${tpl.unit}` : '--' }}</span>
+                      <span class="node-dev">{{ n.deviceBindingId ? (deviceTwins.byId(n.deviceBindingId)?.name ?? $t('townView.k3own4q148')) : $t('townView.k3own4q148') }}</span>
+                    </span>
+                  </div>
+                  <span
+                    v-if="typeof n.posX === 'number'"
+                    class="scene-cur"
+                  >✓</span>
+                </div>
+                <div
+                  v-if="!dcwNodesByTpl.get(tpl.id)?.length"
+                  class="daq-empty-hint"
+                >
+                  {{ $t('townView.k2tplxp0003') }}
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -3422,7 +3589,7 @@ onBeforeUnmount(() => {
               <button
                 class="btn btn-ghost"
                 :disabled="mode !== 'edit'"
-                :title="mode === 'edit' ? '保存全部设备布局' : '运行模式只读'"
+                :title="mode === 'edit' ? $t('townView.ksavetip181') : $t('townView.krotip182')"
                 @click="saveLayout"
               >
                 {{ $t('townView.k1b3bk8t029') }}
@@ -3440,6 +3607,7 @@ onBeforeUnmount(() => {
           <section class="dock-card">
             <div class="dock-hd">
               <h3>{{ $t('townView.k1kfoef9067') }}</h3>
+              <span class="dock-count mono">{{ daqTwins.length }}</span>
               <div class="trend-legend">
                 <button
                   v-for="t in daqTwins"
@@ -3529,7 +3697,7 @@ onBeforeUnmount(() => {
                   :disabled="dcwWriteDrafts[selected.id] == null || dcwWriteDrafts[selected.id] === ''"
                   @click="doWriteSelectedDcw"
                 >
-                  下发 write
+                  {{ $t('townView.kwrbtn180') }}
                 </button>
               </div>
               <p
@@ -4830,6 +4998,121 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   line-height: 15px;
 }
+/* ── 树形目录:模板分组头(可展开,不可拖) + 节点叶子(可拖入场景) ── */
+.daq-group { display: flex; flex-direction: column; }
+.daq-card.tpl {
+  cursor: pointer;
+  margin-bottom: 0;
+  user-select: none;
+}
+.daq-card.tpl:active { cursor: pointer; }
+.daq-card.tpl:focus-visible { outline: 1px solid var(--hud-accent); outline-offset: 1px; }
+.daq-caret {
+  flex: none;
+  font-size: 8px;
+  color: var(--hud-faint);
+  transition: transform 0.15s var(--hud-ease);
+}
+.daq-card.tpl.open .daq-caret { transform: rotate(90deg); }
+.daq-card.tpl:hover { transform: none; }
+.daq-add {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--hud-faint);
+  background: transparent;
+  border: 1px solid rgba(44, 69, 104, 0.7);
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s var(--hud-ease),
+    color 0.15s var(--hud-ease),
+    border-color 0.15s var(--hud-ease),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.daq-card.tpl:hover .daq-add,
+.daq-card.tpl:focus-within .daq-add { opacity: 1; }
+@media (hover: none) {
+  .daq-add { opacity: 1; }
+}
+.daq-add:hover { color: var(--hud-accent); border-color: rgba(53, 224, 160, 0.5); }
+.daq-add:active { transform: scale(0.9); }
+.daq-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 6px;
+  padding-left: 16px;
+  animation: daq-tree-in 0.16s var(--hud-ease);
+}
+@keyframes daq-tree-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.daq-node {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  cursor: default;
+  transition:
+    background 0.15s var(--hud-ease),
+    border-color 0.15s var(--hud-ease),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.daq-node:hover { background: #111b2c; border-color: rgba(44, 69, 104, 0.6); }
+.daq-node[draggable='true'] { cursor: grab; }
+.daq-node[draggable='true']:active { cursor: grabbing; transform: scale(0.98); }
+.daq-node.placed { cursor: pointer; }
+.daq-node.placed[draggable='true'] { cursor: grab; }
+.node-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hud-ok);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--hud-ok) 50%, transparent);
+}
+.node-dot.offline {
+  background: transparent;
+  border: 1px solid var(--hud-faint);
+  box-shadow: none;
+}
+.node-dot.warn {
+  background: var(--hud-amber);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--hud-amber) 50%, transparent);
+}
+.node-dot.alarm {
+  background: var(--hud-danger);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--hud-danger) 60%, transparent);
+}
+.daq-node .daq-name { font-size: 11.5px; font-weight: 500; }
+.daq-node-sub { display: flex; gap: 7px; align-items: baseline; min-width: 0; }
+.node-val {
+  flex: none;
+  font-size: 10px;
+  color: var(--hud-cyan);
+}
+.node-dev {
+  font-size: 9.5px;
+  color: var(--hud-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 104px;
+}
+.daq-empty-hint {
+  padding: 4px 8px 6px 10px;
+  font-size: 10px;
+  color: var(--hud-faint);
+}
 .scene-row {
   display: flex;
   align-items: center;
@@ -5131,6 +5414,29 @@ onBeforeUnmount(() => {
 .empty-hint b { color: var(--hud-text); font-size: 14px; display: block; margin-bottom: 4px; }
 .empty-hint span { font-size: 12px; }
 
+/* ── HUD 上电进场(夜航仪 Boot 序列):左轨 → 右轨 → 底部坞 依次浮现,
+ *    一次编排好的 page load,而非散落微交互;reduced-motion 全收敛。── */
+@media (prefers-reduced-motion: no-preference) {
+  .rail-left,
+  .rail-right,
+  .dock {
+    animation: hud-boot 0.52s cubic-bezier(0.22, 0.68, 0.36, 1) backwards;
+  }
+  .rail-left { animation-delay: 0.04s; }
+  .rail-right { animation-delay: 0.15s; }
+  .dock { animation-delay: 0.26s; }
+}
+@keyframes hud-boot {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ===== 底部坞 ===== */
 .dock {
   flex: none;
@@ -5151,8 +5457,19 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 .dock-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.dock-hd h3 { margin: 0; font-size: 12.5px; font-weight: 700; flex: 1; }
+.dock-hd h3 { margin: 0; font-size: 12.5px; font-weight: 700; flex: none; }
+/* 通道计数徽标:规模诚实可见(57 路不该藏在 chip 墙里) */
+.dock-count {
+  flex: none;
+  padding: 1px 7px;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--hud-dim);
+  border: 1px solid var(--hud-line-soft);
+  border-radius: 6px;
+}
 .dock-mode {
+  margin-left: auto;
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.1em;
@@ -5242,7 +5559,24 @@ onBeforeUnmount(() => {
 .btn:disabled:hover, .nav-action:disabled:hover { background: inherit; }
 
 /* 趋势 */
-.trend-legend { display: flex; gap: 5px; flex-wrap: wrap; margin-left: auto; }
+/* 信号选择条:两行封顶 + 受控细轨滚动 —— 57 路通道不再糊成一堵 chip 墙,
+ * 趋势画布高度恒定(容量估算:chip 行高 ~20px × 2 + gap) */
+.trend-legend {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: 45px;
+  margin-left: 6px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #1c2942 transparent;
+}
+.trend-legend::-webkit-scrollbar { width: 6px; }
+.trend-legend::-webkit-scrollbar-thumb { background: #1c2942; border-radius: 3px; }
+.trend-legend::-webkit-scrollbar-track { background: transparent; }
 .lg-chip {
   display: flex;
   align-items: center;
