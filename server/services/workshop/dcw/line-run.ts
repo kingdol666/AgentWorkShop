@@ -4,7 +4,15 @@
  * 多产线并存:每条产线独立开跑/停止,各自持有活动批次窗口。数采网关在入库时
  * 按节点所属产线取窗口为样本打 lineId/productId/recipeId/runId 标(产线级隔离);
  * 该产线停止即清其窗口。独立叶模块(无其他服务依赖),daq/dcw 两侧共用。
+ *
+ * 崩溃恢复(state 驱动初始化):结构性变更(开跑/停线)即落盘 line-runs.json,
+ * 进程启动后首次访问时恢复窗口 —— 服务崩溃/重启后数采门控、写联锁、打标、
+ * 保写心跳自动续跑,无需人工逐线重开。taggedSamples 为展示计数,不逐样本
+ * 落盘(写放大),恢复时从最近一次结构变更的值继续。
  */
+
+import fs from 'node:fs'
+import path from 'node:path'
 
 export interface ActiveLineRun {
   lineId: string
@@ -18,9 +26,45 @@ export interface ActiveLineRun {
   taggedSamples: number
 }
 
-const g = globalThis as typeof globalThis & { __activeLineRuns?: Map<string, ActiveLineRun> }
+const PERSIST_PATH = process.cwd().endsWith('server')
+  ? path.join('data', 'line-runs.json')
+  : path.join(process.cwd(), 'server', 'data', 'line-runs.json')
+
+const g = globalThis as typeof globalThis & {
+  __activeLineRuns?: Map<string, ActiveLineRun>
+  __lineRunsLoaded?: boolean
+}
+
+/** 从磁盘恢复活动窗口(幂等;首次访问触发;文件缺失/损坏 → 空窗口) */
+function restore(): void {
+  if (g.__lineRunsLoaded) return
+  g.__lineRunsLoaded = true
+  try {
+    const raw = fs.readFileSync(PERSIST_PATH, 'utf-8')
+    const arr: unknown = JSON.parse(raw)
+    if (!Array.isArray(arr)) return
+    for (const run of arr as ActiveLineRun[]) {
+      if (run?.lineId && run.runId && run.recipeId) registry().set(run.lineId, run)
+    }
+  }
+  catch {
+    // 首次启动无文件,或历史文件损坏 → 从空窗口开始(与崩溃前不可得时语义一致)
+  }
+}
+
+/** 结构性变更落盘(开跑/停线;非热路径) */
+function persist(): void {
+  try {
+    fs.mkdirSync(path.dirname(PERSIST_PATH), { recursive: true })
+    fs.writeFileSync(PERSIST_PATH, JSON.stringify(getAllActiveLineRuns(), null, 2), 'utf-8')
+  }
+  catch {
+    // 落盘失败不阻断主流程:内存窗口仍是权威;下次结构性变更再试
+  }
+}
 
 function registry(): Map<string, ActiveLineRun> {
+  restore()
   g.__activeLineRuns ??= new Map()
   return g.__activeLineRuns
 }
@@ -40,12 +84,14 @@ export function getAllActiveLineRuns(): ActiveLineRun[] {
 
 export function setActiveLineRun(run: ActiveLineRun): void {
   registry().set(run.lineId, run)
+  persist()
 }
 
 export function clearActiveLineRun(lineId: string): ActiveLineRun | null {
   const map = registry()
   const prev = map.get(lineId) ?? null
   map.delete(lineId)
+  persist()
   return prev
 }
 
