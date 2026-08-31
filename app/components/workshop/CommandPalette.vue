@@ -176,7 +176,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   padding-top: 12vh;
   background: var(--scrim, rgb(12 10 9 / 40%));
 }
-/* open-tag quick switcher 声部:轻量玻璃浮层(悬浮于画布之上,点到为止) */
+/* open-tag quick switcher 声部:轻量玻璃浮层(悬浮于画布之上,点到为止)。
+ * 键盘发起(Ctrl+K)高频操作:不设开启动画,即时呈现 */
 .palette {
   display: flex;
   flex-direction: column;
@@ -189,14 +190,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
   box-shadow: var(--glass-highlight), var(--shadow-float);
-  animation: palette-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@keyframes palette-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.99); }
-  to { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .palette { animation: none; }
 }
 .palette-search {
   display: flex;

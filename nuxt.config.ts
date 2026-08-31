@@ -27,6 +27,8 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   app: {
+    // 路由级轻淡入淡出(类定义在 main.css;仅 opacity 桥接,无位移)
+    pageTransition: { name: 'page-fade', mode: 'out-in' },
     head: {
       title: config.app.title,
       htmlAttrs: { lang: config.i18n.defaultLocale },

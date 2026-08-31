@@ -617,7 +617,7 @@ ul.task-list {
   border-color: var(--line-strong);
 }
 
-/* 幽灵图标钮(28px 方,hover 浮 surface) */
+/* 幽灵图标钮(28px 方,hover 浮 surface;按压缩放反馈) */
 .aw-ghost {
   display: inline-flex;
   flex: 0 0 auto;
@@ -632,7 +632,14 @@ ul.task-list {
   background: transparent;
   border: 0;
   border-radius: var(--radius-panel-sm);
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.aw-ghost:not(:disabled):active {
+  transform: scale(0.94);
 }
 
 /* ── 玻璃浮层(点到为止:浮层/抽屉/输入卡的统一质感;内缘折射边替代外发光) ── */
@@ -733,7 +740,14 @@ ul.task-list {
   cursor: pointer;
   background: none;
   border: 0;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.aw-seg button:not(.on):active {
+  transform: scale(0.96);
 }
 
 .aw-seg button + button {
@@ -899,6 +913,22 @@ ul.task-list {
   }
 }
 
+/* ── 路由级过渡(page-fade):内容区轻淡入淡出,桥接路由切换的硬切。
+ *    导航为 tens/day 频次 → 只做近不可察的 opacity 桥(140ms 进 / 90ms 出),
+ *    无位移;reduced-motion 收敛为更缓的纯淡入(不归零,保可理解性)。 ── */
+.page-fade-enter-active {
+  transition: opacity 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.page-fade-leave-active {
+  transition: opacity 90ms ease;
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}
+
 /* ============================================================
  * 图标微交互(iconMotion,自 open-tag 移植;纯 CSS,零依赖)
  * API:`im` 挂在交互元素上,图标挂效果类:
@@ -989,16 +1019,21 @@ ul.task-list {
   border-color: var(--line-strong) !important;
 }
 
-/* 按钮:药丸形(ink pill 主 / outline 次);按压物理反馈 */
+/* 按钮:药丸形(ink pill 主 / outline 次);按压物理反馈(缩放,非位移) */
 .ant-btn {
   border-radius: var(--radius-pill) !important;
   font-weight: 500;
   box-shadow: none;
-  transition: all var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    opacity var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ant-btn:not(:disabled):active {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
 
 .ant-btn-default:not(:disabled):hover {
@@ -1213,7 +1248,9 @@ ul.task-list {
   .ant-select-dropdown,
   .ant-picker-dropdown,
   .ant-popover,
-  .ant-tooltip {
+  .ant-tooltip,
+  .page-fade-enter-active,
+  .page-fade-leave-active {
     transition-duration: 200ms !important;
     animation-duration: 200ms !important;
   }

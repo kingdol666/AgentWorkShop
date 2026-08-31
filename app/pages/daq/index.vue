@@ -29,6 +29,12 @@ async function setNodeLine(id: string, e: Event): Promise<void> {
   if (n) n.lineId = lineId
 }
 
+/** 节点绑定设备(bind REST server 落库;与数字孪生/节点检查器同一条 deviceBindingId 链路) */
+async function setNodeDevice(id: string, e: Event): Promise<void> {
+  const deviceId = (e.target as HTMLSelectElement).value
+  await daq.bindNode(id, deviceId || null)
+}
+
 /** 活动配方对该节点的数采监控窗口(本线活动批次;不同 Recipe 不同窗口) */
 function recipeWinOf(n: { lineId: string, id: string }): { min?: number, max?: number } | null {
   if (!n.lineId) return null
@@ -52,6 +58,8 @@ onMounted(() => {
   void daq.load()
   // 产线门控状态(无活动配方不采集;状态仅展示,控制在产线运营页)
   void dcw.load()
+  // 设备注册表(绑定设备列:显示名 + 可编辑换绑;与数字孪生同源 bind REST)
+  void deviceTwins.load()
   // meta 指标随读数帧落库节奏低频刷新(诚实可见的管线运行数据);
   // 产线运行态(横幅/产线列注记)同拍刷新 —— 开跑/停线后本页 ≤5s 收敛
   redrawTimer = setInterval(() => {
@@ -63,9 +71,6 @@ onBeforeUnmount(() => {
   unsub?.()
   if (redrawTimer) clearInterval(redrawTimer)
 })
-
-const deviceName = (id: string | null): string =>
-  id ? (nodeDevices.get(id) ?? `${id.slice(0, 8)}…`) : tt('daq.k3own4q056')
 
 // ---------- 节点筛选(产线 / 设备绑定 / 产线运行态 / 节点状态) ----------
 const filters = reactive({ lineId: '', deviceId: '', lineRun: '', state: '' })
@@ -167,6 +172,10 @@ const nodeDevices = new Map<string, string>()
 watch(() => deviceTwins.twins, (list) => {
   for (const t of list) nodeDevices.set(t.id, t.name)
 }, { immediate: true, deep: true })
+
+/** 绑定设备下拉选项:全部真实设备孪生(剔除 daq/dcw 伪孪生) */
+const bindableDeviceTwins = computed(() =>
+  deviceTwins.twins.filter(t => t.kind !== 'daq' && !(t.modelRef ?? '').startsWith('daq-') && !(t.modelRef ?? '').startsWith('dcw-')))
 
 const intervalOf = (intervalMs: number | null): string => {
   if (intervalMs == null) return tt('daq.k9vnp9h124', { p0: daq.controller.defaultIntervalMs })
@@ -1151,7 +1160,25 @@ async function doReconnect(): Promise<void> {
                   class="dim"
                 >--</span>
               </td>
-              <td>{{ deviceName(n.deviceBindingId) }}</td>
+              <td>
+                <select
+                  class="line-sel"
+                  :value="n.deviceBindingId ?? ''"
+                  :title="$t('daq.k2bindtip137')"
+                  @change="setNodeDevice(n.id, $event)"
+                >
+                  <option value="">
+                    {{ $t('daq.k3own4q056') }}
+                  </option>
+                  <option
+                    v-for="d in bindableDeviceTwins"
+                    :key="d.id"
+                    :value="d.id"
+                  >
+                    {{ nodeDevices.get(d.id) ?? d.name }}
+                  </option>
+                </select>
+              </td>
               <td class="right">
                 <NuxtLink
                   class="console-link"

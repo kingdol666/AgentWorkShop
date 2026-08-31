@@ -368,7 +368,7 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 }
 
 .trail-node:active {
-  transform: translateY(1px);
+  transform: scale(0.98);
 }
 
 .trail-node:focus-visible {
@@ -395,16 +395,16 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   transition: max-width 0.18s var(--ease-out-quart), margin 0.18s var(--ease-out-quart), opacity 0.18s var(--ease-out-quart);
 }
 
-/* 标签关闭钮:悬停标签时展开显示(浏览器页签交互);当前页签(朱砂底)用白色保证对比 */
+/* 标签关闭钮:槽位常驻(零布局抖动),悬停标签时图标淡入展开(浏览器页签交互);
+ * 当前页签(朱砂底)用白色保证对比 */
 .node-close {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 0;
+  width: 16px;
   height: 16px;
-  margin-left: 0;
-  overflow: hidden;
+  margin-left: 4px;
   font-size: 12px;
   color: var(--ink-faint);
   cursor: pointer;
@@ -412,13 +412,18 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   border: none;
   border-radius: var(--radius-chip);
   opacity: 0;
-  transition: width 0.18s var(--ease-out-quart), margin 0.18s var(--ease-out-quart), opacity 0.18s var(--ease-out-quart), color var(--transition-fast), background var(--transition-fast);
+  transform: scale(0.6);
+  transition:
+    opacity 0.18s var(--ease-out-quart),
+    transform 0.18s var(--ease-out-quart),
+    color var(--transition-fast),
+    background var(--transition-fast);
 }
 
-.trail-node:hover .node-close {
-  width: 16px;
-  margin-left: 4px;
+.trail-node:hover .node-close,
+.trail-node:focus-within .node-close {
   opacity: 1;
+  transform: none;
 }
 
 .node-close:hover {
@@ -516,7 +521,10 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   background: transparent;
   border: 0;
   border-radius: var(--radius-panel-sm);
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .collapse-btn:hover,
@@ -527,7 +535,7 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 
 .collapse-btn:active,
 .icon-btn:active {
-  transform: translateY(1px);
+  transform: scale(0.94);
 }
 
 .lang-select {

@@ -1440,18 +1440,20 @@ async function createDcwFromTemplate(tpl: { id: string }): Promise<void> {
     errorText.value = err instanceof Error ? err.message : String(err)
   }
 }
-/** 节点叶子拖拽(编辑模式):载荷 = server 节点 id,投放走 PATCH 落位 */
+/** 节点叶子拖拽(编辑模式):载荷 = server 节点 id,投放走 PATCH 落位。
+ *  effectAllowed 必须 ⊇ 画布 dragover 声明的 dropEffect('copy'),否则真实拖拽
+ *  在浏览器拖拽控制器协商阶段被拒(drop 永不触发)。 */
 function onDaqNodeDragStart(e: DragEvent, n: DaqNodeLive): void {
   if (!e.dataTransfer) return
   e.dataTransfer.setData('application/x-aw-daq-node', n.id)
   e.dataTransfer.setData('text/plain', n.id)
-  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.effectAllowed = 'copy'
 }
 function onDcwNodeDragStart(e: DragEvent, n: DcwNodeView): void {
   if (!e.dataTransfer) return
   e.dataTransfer.setData('application/x-aw-dcw-node', n.id)
   e.dataTransfer.setData('text/plain', n.id)
-  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.effectAllowed = 'copy'
 }
 /** 叶子状态点(与伪孪生投影同一状态语义):绿=运行/黄=预警/红=告警/空心=离线 */
 type RailLeafState = 'running' | 'warn' | 'alarm' | 'offline'
@@ -1723,37 +1725,47 @@ function nearestDeviceTwin(x: number, z: number, maxDist: number): DeviceTwinVie
   return best
 }
 
-/** bind-pop:添加数采通道(设计稿逻辑 —— 就近复用未绑定同类节点,无则创建并绑定) */
+/** bind-pop:添加数采通道 —— 直接选择节点实例绑定(server 权威 deviceBindingId,双向同源)。
+ *  列出未绑定 + 绑在他设备的节点(按模板分组,显示当前归属);不再隐式创建/就近复用。 */
 const bindPopOpen = ref(false)
-async function addChannelFromTemplate(tpl: DaqTemplate): Promise<void> {
-  const devId = selected.value?.id
-  if (!devId || selected.value?.kind !== 'device') return
-  const devTwin = deviceTwins.twins.find(t => t.id === devId)
-  const unbound = daq.nodes
-    .filter(n => n.templateRef === `daq-${tpl.id}` && !n.deviceBindingId && typeof n.posX === 'number')
-    .map(n => ({ n, d: Math.hypot((n.posX ?? 0) - (devTwin?.posX ?? 0), (n.posZ ?? 0) - (devTwin?.posZ ?? 0)) }))
-    .sort((a, b) => a.d - b.d)[0]
-  if (unbound && unbound.d < 420) {
-    bindDaq(unbound.n.id, devId)
-    bindPopOpen.value = false
-    return
+const dcwBindPopOpen = ref(false)
+/** 弹层高度钳制:top 恰好贴住所属 Inspector 卡片顶缘(不越出面板、不顶到页面顶部) */
+const bindPopMaxH = ref(420)
+function toggleBindPop(key: 'daq' | 'dcw', e: MouseEvent): void {
+  const btn = e.currentTarget as HTMLElement | null
+  const panel = btn?.closest('.panel')
+  if (btn && panel) {
+    const avail = btn.getBoundingClientRect().top - panel.getBoundingClientRect().top - 12
+    bindPopMaxH.value = Math.max(160, Math.round(avail))
   }
-  try {
-    const seq = daq.nodes.filter(x => x.templateRef === `daq-${tpl.id}`).length + 1
-    const off = daqOfDevice(devId).length
-    await daq.createFromTemplate(`daq-${tpl.id}`, {
-      name: `${tpl.name} ${String(seq).padStart(2, '0')}`,
-      posX: Math.round((devTwin?.posX ?? 0) + 95 + (off % 3) * 26),
-      posZ: Math.round((devTwin?.posZ ?? 0) + 100 + (off % 2) * 30),
-      lineId: lineIdForNewChannel(devId),
-    }).then((created) => {
-      void daq.bindNode(created.id, devId)
+  if (key === 'daq') bindPopOpen.value = !bindPopOpen.value
+  else dcwBindPopOpen.value = !dcwBindPopOpen.value
+}
+interface RailBindChoice { id: string, name: string, tpl: DaqTemplate, devName: string | null, placed: boolean }
+const daqBindChoices = computed<Record<string, RailBindChoice[]>>(() => {
+  const devId = selected.value?.kind === 'device' ? selected.value.id : ''
+  const map: Record<string, RailBindChoice[]> = {}
+  if (!devId) return map
+  for (const n of daq.nodes) {
+    if (n.deviceBindingId === devId) continue
+    const tpl = daqTplOf(n)
+    if (!tpl) continue
+    ;(map[tpl.id] ??= []).push({
+      id: n.id,
+      name: n.name,
+      tpl,
+      devName: n.deviceBindingId ? deviceTwins.byId(n.deviceBindingId)?.name ?? null : null,
+      placed: typeof n.posX === 'number',
     })
-    bindPopOpen.value = false
   }
-  catch (err) {
-    errorText.value = err instanceof Error ? err.message : String(err)
-  }
+  return map
+})
+const daqBindChoiceCount = computed(() => Object.values(daqBindChoices.value).reduce((s, a) => s + a.length, 0))
+function bindDaqChoice(nodeId: string): void {
+  const devId = selected.value?.kind === 'device' ? selected.value.id : ''
+  if (!devId) return
+  bindDaq(nodeId, devId)
+  bindPopOpen.value = false
 }
 
 /** bind-row 迷你折线(实时历史;ref 回调收集画布,1s tick 重绘) */
@@ -1947,49 +1959,37 @@ function doDcwWrite(node: DcwNodeView): void {
   })
 }
 
-/**
- * 新建通道的产线归属:继承该设备已绑通道的产线(同类设备产线一致);
- * 设备无任何通道时,若当前仅一条产线则归入之,否则未分配(到产线页收编)。
- */
-function lineIdForNewChannel(devId: string): string {
-  const bound = [
-    ...dcwOfDevice(devId).map(n => n.lineId),
-    ...daq.nodes.filter(n => n.deviceBindingId === devId).map(n => n.lineId ?? ''),
-  ].filter(Boolean)
-  if (bound.length) return bound[0]!
-  return dcw.lines.length === 1 ? dcw.lines[0]!.id : ''
+/** 添加智控通道 —— 直接选择节点实例绑定(与数采同构;绑定后设备面板可 SET 直写) */
+const dcwTplById = (ref_: string) => {
+  const key = ref_.startsWith('dcw-') ? ref_.slice(4) : ref_
+  return dcwTemplates.find(t => t.id === key)
 }
-
-/** 添加智控通道(与数采同策略:就近复用未绑定同模板节点,无则创建并绑定) */
-const dcwBindPopOpen = ref(false)
-async function addDcwChannelFromTemplate(tpl: { id: string, name: string }): Promise<void> {
-  const devId = selected.value?.id
-  if (!devId || selected.value?.kind !== 'device') return
-  const devTwin = deviceTwins.twins.find(t => t.id === devId)
-  const unbound = dcw.nodes
-    .filter(n => n.templateRef === `dcw-${tpl.id}` && !n.deviceBindingId && typeof n.posX === 'number')
-    .map(n => ({ n, d: Math.hypot((n.posX ?? 0) - (devTwin?.posX ?? 0), (n.posZ ?? 0) - (devTwin?.posZ ?? 0)) }))
-    .sort((a, b) => a.d - b.d)[0]
-  if (unbound && unbound.d < 420) {
-    void dcw.bindNode(unbound.n.id, devId)
-    dcwBindPopOpen.value = false
-    return
-  }
-  try {
-    const seq = dcw.nodes.filter(x => x.templateRef === `dcw-${tpl.id}`).length + 1
-    const off = dcwOfDevice(devId).length
-    const created = await dcw.createFromTemplate(`dcw-${tpl.id}`, {
-      name: `${tpl.name} ${String(seq).padStart(2, '0')}`,
-      posX: Math.round((devTwin?.posX ?? 0) + 95 + (off % 3) * 26),
-      posZ: Math.round((devTwin?.posZ ?? 0) - 100 - (off % 2) * 30),
-      lineId: lineIdForNewChannel(devId),
+const dcwBindChoices = computed<Record<string, RailBindChoice[]>>(() => {
+  const devId = selected.value?.kind === 'device' ? selected.value.id : ''
+  const map: Record<string, RailBindChoice[]> = {}
+  if (!devId) return map
+  for (const n of dcw.nodes) {
+    if (n.deviceBindingId === devId) continue
+    const tpl = dcwTplById(n.templateRef)
+    if (!tpl) continue
+    ;(map[tpl.id] ??= []).push({
+      id: n.id,
+      name: n.name,
+      tpl,
+      devName: n.deviceBindingId ? deviceTwins.byId(n.deviceBindingId)?.name ?? null : null,
+      placed: typeof n.posX === 'number',
     })
-    await dcw.bindNode(created.id, devId)
-    dcwBindPopOpen.value = false
   }
-  catch (err) {
+  return map
+})
+const dcwBindChoiceCount = computed(() => Object.values(dcwBindChoices.value).reduce((s, a) => s + a.length, 0))
+function bindDcwChoice(nodeId: string): void {
+  const devId = selected.value?.kind === 'device' ? selected.value.id : ''
+  if (!devId) return
+  void dcw.bindNode(nodeId, devId).catch((err: unknown) => {
     errorText.value = err instanceof Error ? err.message : String(err)
-  }
+  })
+  dcwBindPopOpen.value = false
 }
 
 function unbindDcw(dcwId: string): void {
@@ -3942,26 +3942,52 @@ onBeforeUnmount(() => {
               >
                 <button
                   class="bind-add"
-                  @click="bindPopOpen = !bindPopOpen"
+                  @click="toggleBindPop('daq', $event)"
                 >
                   {{ $t('townView.kvm0lin085') }}
                 </button>
                 <div
                   v-if="bindPopOpen"
                   class="bind-pop"
+                  :style="{ maxHeight: `${bindPopMaxH}px` }"
                 >
-                  <button
+                  <template
                     v-for="tpl in daqTemplates"
                     :key="tpl.id"
-                    @click="addChannelFromTemplate(tpl)"
                   >
-                    <svg
-                      class="bind-svg"
-                      viewBox="0 0 24 24"
-                      v-html="daqIcon(tpl.icon)"
-                    />
-                    <span>{{ tpl.name }} · {{ tpl.ch }}</span>
-                  </button>
+                    <div
+                      v-if="daqBindChoices[tpl.id]?.length"
+                      class="bp-group"
+                    >
+                      <span class="bp-tpl">{{ tpl.name }} · {{ tpl.ch }}</span>
+                      <button
+                        v-for="c in daqBindChoices[tpl.id]"
+                        :key="c.id"
+                        :data-node-id="c.id"
+                        :title="c.devName ? $t('townView.k2bindr0007', { p0: c.devName }) : $t('townView.k2bindr0008')"
+                        @click="bindDaqChoice(c.id)"
+                      >
+                        <svg
+                          class="bind-svg"
+                          viewBox="0 0 24 24"
+                          v-html="daqIcon(c.tpl.icon)"
+                        />
+                        <span>{{ c.name }}<i
+                          v-if="c.devName"
+                          class="bp-cur"
+                        >→ {{ c.devName }}</i><i
+                          v-else-if="!c.placed"
+                          class="bp-cur"
+                        >{{ $t('townView.k2bindr0009') }}</i></span>
+                      </button>
+                    </div>
+                  </template>
+                  <div
+                    v-if="!daqBindChoiceCount"
+                    class="bp-empty"
+                  >
+                    {{ $t('townView.k2bindr0010') }}
+                  </div>
                 </div>
               </div>
 
@@ -4042,26 +4068,52 @@ onBeforeUnmount(() => {
               >
                 <button
                   class="bind-add"
-                  @click="dcwBindPopOpen = !dcwBindPopOpen"
+                  @click="toggleBindPop('dcw', $event)"
                 >
                   {{ $t('townView.kvk1vh5088') }}
                 </button>
                 <div
                   v-if="dcwBindPopOpen"
                   class="bind-pop"
+                  :style="{ maxHeight: `${bindPopMaxH}px` }"
                 >
-                  <button
+                  <template
                     v-for="tpl in dcwTemplates"
                     :key="tpl.id"
-                    @click="addDcwChannelFromTemplate(tpl)"
                   >
-                    <svg
-                      class="bind-svg"
-                      viewBox="0 0 24 24"
-                      v-html="daqIcon(tpl.icon)"
-                    />
-                    <span>{{ tpl.name }} · {{ tpl.ch }}</span>
-                  </button>
+                    <div
+                      v-if="dcwBindChoices[tpl.id]?.length"
+                      class="bp-group"
+                    >
+                      <span class="bp-tpl">{{ tpl.name }} · {{ tpl.ch }}</span>
+                      <button
+                        v-for="c in dcwBindChoices[tpl.id]"
+                        :key="c.id"
+                        :data-node-id="c.id"
+                        :title="c.devName ? $t('townView.k2bindr0007', { p0: c.devName }) : $t('townView.k2bindr0008')"
+                        @click="bindDcwChoice(c.id)"
+                      >
+                        <svg
+                          class="bind-svg"
+                          viewBox="0 0 24 24"
+                          v-html="daqIcon(c.tpl.icon)"
+                        />
+                        <span>{{ c.name }}<i
+                          v-if="c.devName"
+                          class="bp-cur"
+                        >→ {{ c.devName }}</i><i
+                          v-else-if="!c.placed"
+                          class="bp-cur"
+                        >{{ $t('townView.k2bindr0009') }}</i></span>
+                      </button>
+                    </div>
+                  </template>
+                  <div
+                    v-if="!dcwBindChoiceCount"
+                    class="bp-empty"
+                  >
+                    {{ $t('townView.k2bindr0010') }}
+                  </div>
                 </div>
               </div>
 
@@ -6159,12 +6211,23 @@ onBeforeUnmount(() => {
   right: 0;
   bottom: calc(100% + 4px);
   z-index: 30;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: min(46vh, 420px);
+  overscroll-behavior: contain;
   background: #0e1626;
   border: 1px solid #27395c;
   border-radius: var(--hud-r-md);
   box-shadow: var(--hud-shadow-pop, 0 16px 40px rgba(0, 0, 0, 0.55));
 }
+.bind-pop::-webkit-scrollbar { width: 8px; }
+.bind-pop::-webkit-scrollbar-thumb {
+  background: #2c4568;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 9999px;
+}
+.bind-pop::-webkit-scrollbar-thumb:hover { background: #3d5a85; background-clip: content-box; }
 .bind-pop button {
   display: flex;
   width: 100%;
@@ -6179,6 +6242,41 @@ onBeforeUnmount(() => {
 }
 .bind-pop button:hover { background: #12203a; color: var(--hud-text); }
 .bind-pop .bind-svg { color: var(--hud-accent); }
+/* 节点选择器分组(设备卡添加通道:直绑节点实例,非模板) */
+.bind-pop button > span {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.bp-group { display: flex; flex-direction: column; }
+.bp-group + .bp-group { border-top: 1px solid rgba(39, 57, 92, 0.55); }
+.bp-tpl {
+  padding: 6px 10px 3px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hud-faint);
+}
+.bp-cur {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 9.5px;
+  color: var(--hud-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 96px;
+}
+.bp-empty {
+  padding: 10px;
+  font-size: 10.5px;
+  color: var(--hud-faint);
+}
 
 /* ===== 智控设定 · 三段式仪表卡(身份行 / 工艺窗口带 / 下发行) ===== */
 .dcw-row {

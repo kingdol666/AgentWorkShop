@@ -205,7 +205,7 @@ const go = (key: string) => {
 }
 
 .menu-item:active {
-  transform: translateY(1px);
+  transform: scale(0.98);
 }
 
 /* 当前页:控制室绿洗 + 左缘品牌绿标记(导航定位态,替代旧墨色药丸) */
@@ -272,7 +272,9 @@ const go = (key: string) => {
 
 .slide-fade-enter-active,
 .slide-fade-leave-active {
-  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .slide-fade-enter-from,
