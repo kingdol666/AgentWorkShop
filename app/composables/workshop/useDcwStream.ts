@@ -198,8 +198,9 @@ function createStore() {
       const i = lines.findIndex(l => l.id === id)
       if (i >= 0) lines[i] = data.line
     },
-    removeLine: async (id: string): Promise<void> => {
-      await api(`/lines/${id}`, { method: 'DELETE' })
+    /** 删除产线;purge=true 连同旗下节点/产品/配方一并清理,否则仅解除挂载 */
+    removeLine: async (id: string, purge = false): Promise<void> => {
+      await api(`/lines/${id}${purge ? '?purge=1' : ''}`, { method: 'DELETE' })
       const i = lines.findIndex(l => l.id === id)
       if (i >= 0) lines.splice(i, 1)
       Reflect.deleteProperty(lineStates, id)

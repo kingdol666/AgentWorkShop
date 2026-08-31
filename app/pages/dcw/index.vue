@@ -103,19 +103,68 @@ function recipesOf(lineId: string) {
   return dcw.recipes.filter(r => r.lineId === lineId)
 }
 
-/** 删除产线(Popconfirm 确认后;旗下节点/产品/配方自动解挂为未分配) */
-const removing = ref('')
-async function doRemoveLine(card: LineCard): Promise<void> {
-  removing.value = card.line.id
-  quickErr.value = ''
+/** 删除产线(弹窗两步确认;purge 勾选 = 连同旗下节点/产品/配方一并清理) */
+const delOpen = ref(false)
+const delBusy = ref(false)
+const delErr = ref('')
+const delPurge = ref(true)
+const delCard = ref<LineCard | null>(null)
+
+function openDelete(card: LineCard): void {
+  delCard.value = card
+  delPurge.value = true
+  delErr.value = ''
+  delOpen.value = true
+}
+
+async function doDeleteLine(): Promise<void> {
+  if (!delCard.value)
+    return
+  delBusy.value = true
+  delErr.value = ''
   try {
-    await dcw.removeLine(card.line.id)
+    await dcw.removeLine(delCard.value.line.id, delPurge.value)
+    delOpen.value = false
   }
   catch (err) {
-    quickErr.value = err instanceof Error ? err.message : String(err)
+    delErr.value = err instanceof Error ? err.message : String(err)
   }
   finally {
-    removing.value = ''
+    delBusy.value = false
+  }
+}
+
+/** 编辑产线(名称/描述/光晕色) */
+const editOpen = ref(false)
+const editSaving = ref(false)
+const editError = ref('')
+const editForm = reactive({ id: '', name: '', description: '', color: '' })
+
+function openEdit(card: LineCard): void {
+  editForm.id = card.line.id
+  editForm.name = card.line.name
+  editForm.description = card.line.description
+  editForm.color = card.line.color
+  editError.value = ''
+  editOpen.value = true
+}
+
+async function doEditLine(): Promise<void> {
+  editSaving.value = true
+  editError.value = ''
+  try {
+    await dcw.updateLine(editForm.id, {
+      name: editForm.name.trim(),
+      description: editForm.description.trim(),
+      color: editForm.color || undefined,
+    })
+    editOpen.value = false
+  }
+  catch (err) {
+    editError.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    editSaving.value = false
   }
 }
 
@@ -222,6 +271,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
         v-for="c in cards"
         :key="c.line.id"
         class="line-card"
+        :class="{ idle: !dcw.lineStateOf(c.line.id).active }"
         :style="{ '--lc': c.line.color }"
       >
         <div class="lc-head">
@@ -231,20 +281,20 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             class="lc-state"
             :class="{ on: dcw.lineStateOf(c.line.id).active }"
           >{{ dcw.lineStateOf(c.line.id).active ? $t('dcw.k1eox1el055') : $t('dcw.k149r6y7059') }}</span>
-          <a-popconfirm
-            :title="$t('dcw.k7xq2mfd063', { p0: c.line.name })"
-            :ok-text="t('common.confirm')"
-            :cancel-text="t('common.cancel')"
-            @confirm="doRemoveLine(c)"
+          <button
+            class="lc-act"
+            :title="$t('common.edit')"
+            @click="openEdit(c)"
           >
-            <button
-              class="lc-del"
-              :class="{ busy: removing === c.line.id }"
-              :title="$t('dcw.k1yfm3gv002')"
-            >
-              ✕
-            </button>
-          </a-popconfirm>
+            <span class="i-tabler-pencil" />
+          </button>
+          <button
+            class="lc-act danger"
+            :title="$t('dcw.k3xakp026')"
+            @click="openDelete(c)"
+          >
+            <span class="i-tabler-trash" />
+          </button>
         </div>
         <small
           v-if="dcw.lineStateOf(c.line.id).active"
@@ -382,6 +432,117 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
             @click="doCreateLine"
           >
             {{ $t('dcw.k3wzi2023') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 编辑产线弹窗 -->
+    <div
+      v-if="editOpen"
+      class="modal-mask"
+      @click.self="editOpen = false"
+    >
+      <div class="modal">
+        <h3 class="m-title">
+          {{ $t('dcw.k5tq8wc071') }}
+        </h3>
+        <label class="f">
+          <span>{{ $t('dcw.k1b2ioko019') }}<em>*</em></span>
+          <input
+            v-model="editForm.name"
+            class="inp"
+            :placeholder="$t('dcw.kru37i3004')"
+          >
+        </label>
+        <label class="f">
+          <span>{{ $t('dcw.k24dxcd020') }}</span>
+          <input
+            v-model="editForm.description"
+            class="inp"
+            :placeholder="$t('dcw.k1f2nwsp005')"
+          >
+        </label>
+        <div class="f">
+          <span>{{ $t('dcw.k1x7nubr021') }}</span>
+          <div class="color-row">
+            <button
+              v-for="c in DCW_LINE_COLORS"
+              :key="c"
+              class="color-dot"
+              :class="{ on: editForm.color === c }"
+              :style="{ background: c }"
+              @click="editForm.color = editForm.color === c ? '' : c"
+            />
+            <small class="dim">{{ editForm.color || $t('dcw.k1qidbpy061', { p0: nextColor }) }}</small>
+          </div>
+        </div>
+        <p
+          v-if="editError"
+          class="m-err"
+        >
+          {{ editError }}
+        </p>
+        <div class="m-actions">
+          <button
+            class="mini-btn"
+            @click="editOpen = false"
+          >
+            {{ $t('dcw.k3xdnn022') }}
+          </button>
+          <button
+            class="pill-btn"
+            :disabled="editSaving || !editForm.name.trim()"
+            @click="doEditLine"
+          >
+            {{ $t('common.save') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 删除产线弹窗(两步确认;purge 勾选决定是否级联清理) -->
+    <div
+      v-if="delOpen && delCard"
+      class="modal-mask"
+      @click.self="delOpen = false"
+    >
+      <div class="modal">
+        <h3 class="m-title danger-title">
+          <span class="i-tabler-alert-triangle" />
+          {{ $t('dcw.k7xq2mfd063', { p0: delCard.line.name }) }}
+        </h3>
+        <p class="del-summary">
+          {{ delPurge
+            ? $t('dcw.k4r7nbd073', { p0: delCard.line.name, p1: delCard.nodes, p2: delCard.products, p3: delCard.recipes })
+            : $t('dcw.k1gp649b062', { p0: delCard.line.name, p1: delCard.nodes, p2: delCard.products, p3: delCard.recipes }) }}
+        </p>
+        <label class="del-purge">
+          <input
+            v-model="delPurge"
+            type="checkbox"
+          >
+          <span>{{ $t('dcw.k9m2vxa072') }}</span>
+        </label>
+        <p
+          v-if="delErr"
+          class="m-err"
+        >
+          {{ delErr }}
+        </p>
+        <div class="m-actions">
+          <button
+            class="mini-btn"
+            @click="delOpen = false"
+          >
+            {{ $t('dcw.k3xdnn022') }}
+          </button>
+          <button
+            class="pill-btn danger"
+            :disabled="delBusy"
+            @click="doDeleteLine"
+          >
+            {{ $t('dcw.k3xakp026') }}
           </button>
         </div>
       </div>
@@ -547,23 +708,28 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 14px; }
 .badges { display: flex; gap: 8px; }
+/* 状态徽章 = 玻璃芯片:双主题令牌化,浅色不再发白发黄 */
 .badge {
   padding: 3px 10px;
   font-size: 11px;
-  color: #8fa0b5;
-  background: rgba(13, 20, 32, 0.7);
-  border: 1px solid rgba(45, 62, 92, 0.6);
+  color: var(--ink-faint);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-line);
   border-radius: 999px;
+  backdrop-filter: var(--frost-blur);
+  -webkit-backdrop-filter: var(--frost-blur);
 }
-.warn-badge { color: #f6c453; border-color: rgba(246, 196, 83, 0.4); }
-.tpl-btn { color: #41c8f4; border-color: rgba(65, 200, 244, 0.45); cursor: pointer; }
-.tpl-btn:hover { background: rgba(65, 200, 244, 0.12); }
+.warn-badge { color: var(--tone-warning-dot); background: var(--tone-warning-bg); border-color: color-mix(in srgb, var(--tone-warning-dot) 32%, transparent); }
+.tpl-btn { color: var(--tone-info-dot); background: var(--tone-info-bg); border-color: color-mix(in srgb, var(--tone-info-dot) 34%, transparent); cursor: pointer; }
+.tpl-btn:hover { border-color: color-mix(in srgb, var(--tone-info-dot) 60%, transparent); }
 
 .line-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
 }
+/* 产线卡 = Aurora Glass 仪表砖:半透 surface + 深模糊 + 内缘折射;
+   运行卡在玻璃顶缘叠一线产线色洗染做「图」,待机卡收敛为磨砂做「底」 */
 .line-card {
   position: relative;
   display: flex;
@@ -571,63 +737,99 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   gap: 9px;
   padding: 14px 16px;
   text-align: left;
-  background: linear-gradient(180deg, #111a2b 0%, #0d1420 100%);
-  border: 1px solid rgba(45, 62, 92, 0.6);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 rgba(143, 176, 220, 0.07), 0 10px 28px rgba(3, 7, 14, 0.45);
-  transition: border-color 0.18s var(--hud-ease, ease), transform 0.18s var(--hud-ease, ease), box-shadow 0.18s var(--hud-ease, ease);
+  background: var(--surface-glass);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--glass-edge);
+  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
 }
-.line-card:hover {
-  border-color: color-mix(in srgb, var(--lc, #3aa0ff) 55%, #1d2a42);
-  transform: translateY(-2px);
-  box-shadow: inset 0 1px 0 rgba(143, 176, 220, 0.09), 0 14px 34px rgba(3, 7, 14, 0.55);
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .line-card:hover {
+    border-color: color-mix(in srgb, var(--lc, #3aa0ff) 55%, var(--line-strong));
+    transform: translateY(-2px);
+    box-shadow: var(--glass-edge), var(--shadow-float);
+  }
 }
-.lc-head { display: flex; gap: 9px; align-items: center; }
+.line-card:not(.idle) {
+  border-color: color-mix(in srgb, var(--lc, #3aa0ff) 38%, var(--line-strong));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--lc, #3aa0ff) 9%, transparent), transparent 46%),
+    var(--surface-glass);
+}
+.line-card.idle {
+  background: var(--frost-bg);
+}
+.line-card.idle .lc-dot {
+  box-shadow: none;
+  opacity: 0.72;
+}
+.line-card.idle .lc-name {
+  color: var(--ink-faint);
+}
+.lc-head { display: flex; gap: 8px; align-items: center; }
 .lc-dot {
-  width: 11px;
-  height: 11px;
+  width: 10px;
+  height: 10px;
   flex: none;
   background: var(--lc);
   border-radius: 4px;
-  box-shadow: 0 0 12px var(--lc);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--lc) 70%, transparent);
 }
-.lc-name { font-size: 14.5px; color: #e8eef8; }
+.lc-name {
+  overflow: hidden;
+  font-size: 14.5px;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .lc-state {
   margin-left: auto;
-  font-family: var(--font-mono, monospace);
-  font-size: 10px;
-  color: #5f6e84;
-}
-.lc-state.on { color: #35e0a0; }
-.lc-del {
   flex: none;
-  width: 20px;
-  height: 20px;
+  font-family: var(--font-mono);
   font-size: 10px;
-  color: #5f6e84;
+  color: var(--ink-fainter);
+}
+.lc-state.on { color: var(--tone-success-dot); }
+/* 头部图标钮:编辑/删除,悬停语义色染色 */
+.lc-act {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink-fainter);
   background: transparent;
   border: 0;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
+  opacity: 0;
   transition:
     color 0.15s ease,
     background 0.15s ease,
+    opacity 0.15s ease,
     transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.lc-del:hover { color: #ff6b6b; background: rgba(255, 107, 107, 0.12); }
-.lc-del:active { transform: scale(0.9); }
-.lc-del.busy { opacity: 0.45; pointer-events: none; }
-.lc-run { font-size: 10.5px; color: #41c8f4; }
-.lc-run.dim { color: #5f6e84; }
-/* 无描述时的兜底提示进一步退后(77 张卡同文反复出现即是噪音) */
-.lc-run.dim.ph { opacity: 0.55; }
+.line-card:hover .lc-act,
+.line-card:focus-within .lc-act { opacity: 1; }
+.lc-act:hover { color: var(--tone-info-dot); background: var(--tone-info-bg); }
+.lc-act.danger:hover { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+.lc-act:active { transform: scale(0.9); }
+.lc-run { font-size: 10.5px; color: var(--tone-info-dot); }
+.lc-run.dim { color: var(--ink-fainter); }
+/* 无描述时的兜底提示进一步退后(77 张卡同文反复出现即是噪音;不压到 0.55 以下,保浅色可读) */
+.lc-run.dim.ph { opacity: 0.75; }
 .lc-stats {
   display: flex;
   gap: 14px;
   font-size: 10.5px;
-  color: #8fa0b5;
+  color: var(--ink-faint);
 }
-.lc-stats b { color: #e8eef8; }
+.lc-stats b { color: var(--ink); font-weight: 600; }
 .lc-ctl { display: flex; gap: 8px; }
 .lc-ctl .inp {
   flex: 1;
@@ -635,33 +837,35 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   height: 30px;
   padding: 0 9px;
   font-size: 11.5px;
-  color: #e8eef8;
-  background: #0a111d;
-  border: 1px solid rgba(45, 62, 92, 0.8);
-  border-radius: 8px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel-sm);
 }
-.lc-ctl .inp:focus { outline: none; border-color: #35e0a0; box-shadow: 0 0 0 3px rgba(53, 224, 160, 0.13); }
+.lc-ctl .inp:focus { outline: none; border-color: var(--tone-success-dot); box-shadow: 0 0 0 3px var(--accent-soft); }
 .pill-btn {
   flex: none;
   height: 30px;
   padding: 0 14px;
   font-size: 11.5px;
   font-weight: 600;
-  color: #04120c;
-  background: #1f9e6e;
+  color: var(--on-accent);
+  background: var(--accent);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-panel-sm);
   cursor: pointer;
   transition: background 0.15s, box-shadow 0.15s;
 }
-.pill-btn:hover:not(:disabled) { background: #35e0a0; box-shadow: 0 0 14px rgba(53, 224, 160, 0.35); }
+.pill-btn:hover:not(:disabled) { background: var(--accent-strong); box-shadow: 0 0 14px var(--accent-soft); }
 .pill-btn:disabled { opacity: 0.4; cursor: default; }
-.pill-btn.stop { background: rgba(255, 107, 107, 0.14); color: #ff6b6b; }
-.pill-btn.stop:hover:not(:disabled) { background: rgba(255, 107, 107, 0.24); box-shadow: none; }
+.pill-btn.danger,
+.pill-btn.stop { background: var(--tone-danger-bg); color: var(--tone-danger-dot); }
+.pill-btn.danger:hover:not(:disabled),
+.pill-btn.stop:hover:not(:disabled) { background: color-mix(in srgb, var(--tone-danger-dot) 26%, transparent); box-shadow: none; }
 .lc-manage {
   font-size: 11.5px;
   font-weight: 600;
-  color: #41c8f4;
+  color: var(--tone-info-dot);
   text-decoration: none;
 }
 .lc-manage:hover { text-decoration: underline; }
@@ -671,17 +875,19 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #8fa0b5;
+  color: var(--ink-faint);
   background: transparent;
-  border: 1px dashed #274064;
+  border: 1px dashed var(--line-strong);
   box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   cursor: pointer;
 }
-.new-card:hover { color: #35e0a0; border-color: #1f9e6e; transform: none; }
-.new-card small { font-weight: 400; font-size: 10px; color: #5f6e84; }
+.new-card:hover { color: var(--tone-success-dot); border-color: var(--tone-success-dot); transform: none; }
+.new-card small { font-weight: 400; font-size: 10px; color: var(--ink-fainter); }
 
 .banner { padding: 8px 12px; font-size: 12px; border-radius: 10px; }
-.banner.bad { color: #ff6b6b; background: rgba(255, 107, 107, 0.08); border: 1px solid rgba(255, 107, 107, 0.28); }
+.banner.bad { color: var(--tone-danger-dot); background: var(--tone-danger-bg); border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 30%, transparent); }
 
 .modal-mask {
   position: fixed;
@@ -689,7 +895,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   z-index: 80;
   display: grid;
   place-items: center;
-  background: rgba(4, 8, 14, 0.66);
+  background: var(--scrim);
   backdrop-filter: blur(3px);
 }
 .modal {
@@ -708,19 +914,20 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   box-shadow: var(--glass-edge), var(--shadow-float);
 }
 .modal.wide { width: min(640px, calc(100vw - 40px)); }
-.m-title { display: flex; gap: 10px; align-items: baseline; font-size: 15px; color: #e8eef8; }
-.f { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: #8fa0b5; }
-.f em { color: #ff6b6b; font-style: normal; }
+.m-title { display: flex; gap: 10px; align-items: baseline; font-size: 15px; color: var(--ink); }
+.m-title.danger-title { align-items: center; color: var(--tone-danger-dot); }
+.f { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--ink-faint); }
+.f em { color: var(--tone-danger-dot); font-style: normal; }
 .f .inp {
   height: 30px;
   padding: 0 9px;
   font-size: 12px;
-  color: #e8eef8;
-  background: #0a111d;
-  border: 1px solid rgba(45, 62, 92, 0.8);
-  border-radius: 8px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel-sm);
 }
-.f .inp:focus { outline: none; border-color: #35e0a0; box-shadow: 0 0 0 3px rgba(53, 224, 160, 0.13); }
+.f .inp:focus { outline: none; border-color: var(--tone-success-dot); box-shadow: 0 0 0 3px var(--accent-soft); }
 .color-row { display: flex; gap: 7px; align-items: center; }
 .color-dot {
   width: 20px;
@@ -729,11 +936,19 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   border-radius: 6px;
   cursor: pointer;
 }
-.color-dot.on { border-color: #e8eef8; box-shadow: 0 0 10px currentColor; }
+.color-dot.on { border-color: var(--ink); box-shadow: 0 0 10px currentColor; }
 .m-actions { display: flex; gap: 8px; justify-content: flex-end; }
-.m-err { font-size: 11px; color: #ff6b6b; }
-.dim { color: #5f6e84; }
-.sec-label { font-size: 10px; font-weight: 700; color: #5f6e84; letter-spacing: 0.16em; }
+.m-err { font-size: 11px; color: var(--tone-danger-dot); }
+.dim { color: var(--ink-fainter); }
+.sec-label { font-size: 10px; font-weight: 700; color: var(--ink-fainter); letter-spacing: 0.16em; }
+/* 删除确认:摘要行 + 级联勾选 */
+.del-summary { font-size: 12px; line-height: 1.6; color: var(--ink-soft); }
+.del-purge { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink); cursor: pointer; }
+.del-purge input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--tone-danger-dot);
+}
 .tpl-hint { font-size: 11px; }
 .tpl-list { display: flex; flex-direction: column; gap: 6px; }
 .tpl-row {
@@ -742,33 +957,33 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   align-items: center;
   padding: 7px 10px;
   font-size: 12px;
-  color: #e8eef8;
-  background: rgba(13, 20, 32, 0.6);
-  border: 1px solid rgba(45, 62, 92, 0.5);
+  color: var(--ink);
+  background: var(--frost-bg);
+  border: 1px solid var(--glass-line);
   border-radius: 9px;
 }
 .tpl-row small { flex: 1; }
 .tpl-tag {
   padding: 1px 8px;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 9px;
-  color: #41c8f4;
-  border: 1px solid rgba(65, 200, 244, 0.4);
+  color: var(--tone-info-dot);
+  border: 1px solid color-mix(in srgb, var(--tone-info-dot) 40%, transparent);
   border-radius: 5px;
 }
-.tpl-tag.builtin { color: #5f6e84; border-color: rgba(95, 110, 132, 0.5); }
+.tpl-tag.builtin { color: var(--ink-fainter); border-color: var(--line-strong); }
 .tpl-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.tpl-sem { flex: 1; color: #8fa0b5; }
+.tpl-sem { flex: 1; color: var(--ink-faint); }
 textarea.inp { height: auto; padding: 6px 9px; font-size: 11.5px; resize: vertical; }
 .mini-btn {
   padding: 4px 10px;
   font-size: 10.5px;
-  color: #8fa0b5;
-  background: #0a111d;
-  border: 1px solid rgba(45, 62, 92, 0.8);
+  color: var(--ink-faint);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
   border-radius: 7px;
   cursor: pointer;
 }
-.mini-btn:hover { border-color: #33507c; color: #e8eef8; }
-.mini-btn.danger { color: #ff6b6b; }
+.mini-btn:hover { border-color: var(--ink-faint); color: var(--ink); }
+.mini-btn.danger { color: var(--tone-danger-dot); }
 </style>

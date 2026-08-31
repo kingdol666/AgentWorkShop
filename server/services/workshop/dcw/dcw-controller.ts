@@ -479,25 +479,41 @@ class DcwController {
     return getDcwLineRepo().update(id, patch)
   }
 
-  /** 删除产线:自动停止运行窗口;旗下节点/产品/配方解除挂载(lineId='' 未分配),数据保留 */
-  async removeLine(id: string): Promise<void> {
+  /** 删除产线:自动停止运行窗口。purge=true 连同旗下节点(含 Agent 绑定级联)/产品/配方一并删除;
+   *  否则仅解除挂载(lineId='' 未分配),节点与历史数据保留 */
+  async removeLine(id: string, opts?: { purge?: boolean }): Promise<void> {
     const line = getDcwLineRepo().byId(id)
     if (!line) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${id}`)
     if (getActiveLineRun(id)) this.lineStop(id)
-    for (const n of this.repo.all()) {
-      if (n.lineId === id) {
+    // 快照迭代:purge 分支的 this.remove 会边遍历边删节点
+    for (const n of [...this.repo.all()]) {
+      if (n.lineId !== id) continue
+      if (opts?.purge) this.remove(n.id)
+      else {
         n.lineId = ''
         this.emitNodeChanged('updated', n)
       }
     }
-    this.repo.flushNow()
-    const productRepo = getDcwProductRepo()
-    for (const p of productRepo.all()) {
-      if (p.lineId === id) productRepo.update(p.id, { lineId: '' })
+    if (opts?.purge) {
+      this.repo.flushNow()
+      const productRepo = getDcwProductRepo()
+      for (const p of productRepo.all()) {
+        if (p.lineId === id) productRepo.remove(p.id)
+      }
+      const recipeRepo = getDcwRecipeRepo()
+      for (const r of recipeRepo.list()) {
+        if (r.lineId === id) recipeRepo.remove(r.id)
+      }
     }
-    const recipeRepo = getDcwRecipeRepo()
-    for (const r of recipeRepo.list()) {
-      if (r.lineId === id) recipeRepo.detachLine(r.id)
+    else {
+      const productRepo = getDcwProductRepo()
+      for (const p of productRepo.all()) {
+        if (p.lineId === id) productRepo.update(p.id, { lineId: '' })
+      }
+      const recipeRepo = getDcwRecipeRepo()
+      for (const r of recipeRepo.list()) {
+        if (r.lineId === id) recipeRepo.detachLine(r.id)
+      }
     }
     getDcwLineRepo().remove(id)
     this.broadcast?.('dcw.controller', this.controllerState())
