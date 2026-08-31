@@ -250,15 +250,22 @@ export function hslToRgb(h: number, s: number, l: number): { r: number, g: numbe
   return { r: f(0), g: f(8), b: f(4) }
 }
 
+/** 频道身份色相桶(策展色域:橙/琥珀/绿/青绿/数据青/蓝/靛/紫)——
+ *  原始哈希落满 0-360 色相环会产出洋红/品红等与夜航控制室五色语义冲突的杂色,
+ *  收敛到与宪法色板同族的 8 档,身份区分靠桶间色差,纪律靠色域封锁 */
+const CHANNEL_HUES = [16, 40, 158, 178, 195, 212, 235, 262] as const
+
 /** channelId → 稳定色(3D 场景用:RGB 打包 int) */
 export function channelColorNum(channelId: string): number {
-  const c = hslToRgb(hashHue(channelId) / 360, 0.58, 0.6)
+  const h = CHANNEL_HUES[hashHue(channelId) % CHANNEL_HUES.length]!
+  const c = hslToRgb(h / 360, 0.52, 0.6)
   return (c.r << 16) | (c.g << 8) | c.b
 }
 
 /** channelId → CSS 色(UI 用:HSL 字符串,与场景同源) */
 export function channelColorCss(channelId: string): string {
-  return `hsl(${Math.round(hashHue(channelId))}, 58%, 60%)`
+  const h = CHANNEL_HUES[hashHue(channelId) % CHANNEL_HUES.length]!
+  return `hsl(${h}, 52%, 60%)`
 }
 
 // ================================================================

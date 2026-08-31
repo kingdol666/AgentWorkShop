@@ -145,19 +145,20 @@ const BUBBLE_STYLE: Record<TownBubbleKind, { bg: number, fg: string }> = {
   system: { bg: 0x1c1917, fg: '#c9c4bd' },
 }
 
-// ---- 频道共鸣色(稳定,同频道同色) ----
-function hashHue(id: string): number {
-  if (!id) return 200
+// ---- 频道共鸣色(稳定,同频道同色;色相桶与 shared/town-scene-math 同源) ----
+const CHANNEL_HUES = [16, 40, 158, 178, 195, 212, 235, 262] as const
+function channelHue(id: string): number {
+  if (!id) return 212
   let h = 0
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 360
-  return h
+  return CHANNEL_HUES[h % CHANNEL_HUES.length]!
 }
 function channelColorNum(channelId: string): number {
-  const c = Phaser.Display.Color.HSLToColor(hashHue(channelId) / 360, 0.58, 0.6)
+  const c = Phaser.Display.Color.HSLToColor(channelHue(channelId) / 360, 0.52, 0.6)
   return c.color
 }
 function channelRGBA(channelId: string, alpha = 1): string {
-  const c = Phaser.Display.Color.HSLToColor(hashHue(channelId) / 360, 0.58, 0.6)
+  const c = Phaser.Display.Color.HSLToColor(channelHue(channelId) / 360, 0.52, 0.6)
   return `rgba(${c.red},${c.green},${c.blue},${alpha})`
 }
 
