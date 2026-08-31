@@ -1337,6 +1337,14 @@ const sceneTwinPool = computed<DeviceTwinView[]>(() => [
 const sceneTwinById = (id: string): DeviceTwinView | undefined =>
   sceneTwinPool.value.find(t => t.id === id)
 
+/** 空场景提示判定:场景里没有任何「已落位」实体(设备/数采/数控)且无频道积木时才提示。
+ *  只看 blockCount 会在清空频道布局后、设备与工业节点仍在场时误报"空场景"。 */
+const sceneEmpty = computed(() =>
+  ready.value
+  && blockCount.value === 0
+  && !sceneTwinPool.value.some(t => typeof t.posX === 'number' && typeof t.posZ === 'number'),
+)
+
 /** 轮询设备孪生 → 场景节点同步 + 状态环颜色(设备节点由 dev 模型拖入/服务端恢复生成) */
 function bindDevicePoll(scene: TownScene3D): ReturnType<typeof setInterval> {
   // 5s 兜底轮询:遥测/状态主通道是 WS device.updated 直推(server 1s 节流),
@@ -3314,7 +3322,7 @@ onBeforeUnmount(() => {
           </div>
 
           <div
-            v-if="blockCount === 0 && ready"
+            v-if="sceneEmpty"
             class="empty-hint"
           >
             <b>{{ $t('townView.k3rwxjc044') }}</b>
