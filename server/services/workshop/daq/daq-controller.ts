@@ -518,23 +518,17 @@ class DaqController {
     return this.controllerState()
   }
 
-  /** 暂停快照:暂停全部采集时刻处于启用状态的节点 id 集(恢复时仅恢复它们) */
-  private pauseSnapshot: string[] = []
-
-  /** 暂停全部采集:以当前启用节点集为快照 → 网关停止;恢复语义见 resumeAll */
+  /**
+   * 暂停全部采集 → 网关停止;恢复全部采集 → 网关启动。
+   * 节点启停与网关暂停完全独立:enabled 标志是唯一采集资格,暂停期间节点
+   * 的 enabled 不被改动,恢复后只有 enabled=true(即暂停时刻在采集的那批)
+   * 的节点恢复采样;暂停前/暂停期间手动停用的节点保持停用,不会被自动拉起。
+   */
   pauseAll(): AepDaqControllerState {
-    this.pauseSnapshot = this.repo.all().filter(n => n.enabled).map(n => n.id)
     return this.stopAll()
   }
 
-  /** 恢复全部采集:仅恢复「暂停时刻快照」中的节点(其余保持原状)→ 网关启动 */
   resumeAll(): AepDaqControllerState {
-    const snapshot = this.pauseSnapshot
-    this.pauseSnapshot = []
-    for (const id of snapshot) {
-      const n = this.repo.byId(id)
-      if (n && !n.enabled) this.patch(id, { enabled: true })
-    }
     return this.startAll()
   }
 

@@ -2861,7 +2861,7 @@ onBeforeUnmount(() => {
             <button
               class="daq-ctl-btn"
               :class="{ on: daq.controller.running }"
-              :title="daq.controller.running ? '暂停全部采集(记录当前启用节点快照)' : '恢复全部采集(仅恢复暂停时刻快照中的节点)'"
+              :title="daq.controller.running ? '暂停全部采集:停止所有启用节点的采样(节点级启停独立)' : '恢复全部采集:仅启用节点恢复采集(手动停用的保持停用)'"
               @click="daq.controllerAction(daq.controller.running ? 'pause' : 'resume')"
             >
               {{ daq.controller.running ? $t('townView.k3w3j8f140') : $t('townView.k3n93ed175') }}

@@ -237,23 +237,17 @@ class DcwController {
     return this.controllerState()
   }
 
-  /** 暂停快照:暂停全部控制时刻处于启用状态的节点 id 集(恢复时仅恢复它们) */
-  private pauseSnapshot: string[] = []
-
-  /** 暂停全部控制:以当前启用节点集为快照 → 网关停止;恢复语义见 resumeAll */
+  /**
+   * 暂停全部控制 → 网关停止;恢复全部控制 → 网关启动。
+   * 节点启停与网关暂停完全独立:enabled 标志是唯一下发资格,恢复后只有
+   * enabled=true(即暂停时刻在控制的那批)的节点恢复;暂停前/暂停期间
+   * 手动停用的节点保持停用,不会被自动拉起。
+   */
   pauseAll() {
-    this.pauseSnapshot = this.repo.all().filter(n => n.enabled).map(n => n.id)
     return this.stopAll()
   }
 
-  /** 恢复全部控制:仅恢复「暂停时刻快照」中的节点(其余保持原状)→ 网关启动 */
   resumeAll() {
-    const snapshot = this.pauseSnapshot
-    this.pauseSnapshot = []
-    for (const id of snapshot) {
-      const n = this.repo.byId(id)
-      if (n && !n.enabled) this.patch(id, { enabled: true })
-    }
     return this.startAll()
   }
 
