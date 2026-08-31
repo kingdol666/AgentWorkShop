@@ -1540,6 +1540,10 @@ export default {
   },
   appHeader: {
     kzwjv99001: '关闭 {p0}',
+    kwsdot0001: '实时连接正常',
+    kwsdot0002: '实时同步中…',
+    kwsdot0003: '连接中…',
+    kwsdot0004: '连接已断开',
   },
   ompTerminalPanel: {
     k14jk3nu001: '  {p0}· 对话框已撤销({p1}){p2}',

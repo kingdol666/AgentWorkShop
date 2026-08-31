@@ -1540,6 +1540,10 @@ export default {
   },
   appHeader: {
     kzwjv99001: 'Close {p0}',
+    kwsdot0001: 'Live connection healthy',
+    kwsdot0002: 'Syncing in real time…',
+    kwsdot0003: 'Connecting…',
+    kwsdot0004: 'Connection lost',
   },
   ompTerminalPanel: {
     k14jk3nu001: '  {p0}· 对话框已撤销({p1}){p2}',

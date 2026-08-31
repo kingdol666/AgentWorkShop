@@ -156,7 +156,18 @@ export class WorkshopWsSession {
   }
 
   ping(): void {
-    this.ws?.send(JSON.stringify({ type: 'ping' }))
+    try {
+      this.ws?.send(JSON.stringify({ type: 'ping' }))
+    }
+    catch {
+      // 半开连接:发送即失败 → 立即关闭触发 onclose→重连(不等 45s stale 检测)
+      try {
+        this.ws?.close()
+      }
+      catch {
+        /* 已关闭 */
+      }
+    }
   }
 
   close(): void {

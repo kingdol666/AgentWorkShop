@@ -93,10 +93,12 @@ export function useWorkshopWs() {
 
   let heartbeat: ReturnType<typeof setInterval> | null = null
   onMounted(() => {
+    // 15s 心跳:pong 停止后 checkStale 的断线感知最坏 ~20-35s(服务强杀的半开连接
+    // 无 RST,靠 pong 超时发现);ping 发送失败立即关闭走重连,不等 stale 检测
     heartbeat = setInterval(() => {
       session?.ping()
       session?.checkStale()
-    }, 30_000)
+    }, 15_000)
   })
   onBeforeUnmount(() => {
     if (heartbeat) clearInterval(heartbeat)
