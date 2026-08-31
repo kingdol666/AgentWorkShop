@@ -4,9 +4,12 @@
  * 配置类变更立即刷盘,读数变更走 5s 防抖)。
  */
 
+import { createLogger } from '../logger'
 import fs from 'node:fs'
 import path from 'node:path'
 import { DaqNode } from './daq-node'
+
+const log = createLogger('daq.node-repo')
 
 const DB_PATH = process.cwd().endsWith('server')
   ? 'data/daqs.json'
@@ -70,7 +73,7 @@ class DaqNodeRepo {
       fs.writeFileSync(DB_PATH, JSON.stringify(this.list.map(n => n.toRow()), null, 2), 'utf-8')
     }
     catch (err) {
-      console.error('[daq] 快照落盘失败:', err)
+      log.error('[daq] 快照落盘失败:', err)
     }
   }
 

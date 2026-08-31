@@ -15,6 +15,7 @@
  * 定位:模块级单例(globalThis 跨 HMR 存活,与 workshop ws hub 同风格);
  * omp-agent 装配时 attach,manager 监控层读取 hasTerminalSession 标记进程行。
  */
+import { createLogger } from '../logger'
 import type { OmpRpcClient } from './adapters/omp-rpc-client'
 import {
   TERM_FRAME_TEXT_PREVIEW_MAX,
@@ -24,6 +25,8 @@ import {
   type TermSessionMeta,
   type TerminalServerMessage,
 } from '../../../../shared/terminal-protocol'
+
+const log = createLogger('workshop.harness-terminal')
 
 /** 终端会话(一个 pid 一份;进程退出后保留缓冲供事后查看) */
 interface TerminalSession {
@@ -537,6 +540,6 @@ function respondUi(
     session.client.writeRaw(frame)
   }
   catch (err) {
-    console.error(`[harness-terminal] extension_ui_response 写入失败(pid=${session.meta.pid}):`, err)
+    log.error(`[harness-terminal] extension_ui_response 写入失败(pid=${session.meta.pid}):`, err)
   }
 }

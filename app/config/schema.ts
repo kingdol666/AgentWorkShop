@@ -41,12 +41,19 @@ export const appConfigSchema = z.object({
   }),
   security: z.object({
     sessionPassword: z.string().min(16, 'session 密钥至少 16 位').default(''),
+    // R3:高危管理操作双人复核闸门(默认关;开启后 apply/controller/delete 需另一 admin 批核)
+    approvalGate: z.boolean().default(false),
   }),
   daq: z.object({
     startInfrastructure: z.enum(['auto', 'always', 'never']).default('auto'),
     mqtt: z.object({
       host: z.string().default('127.0.0.1'),
       port: z.number().int().min(1).max(65535).default(1883),
+      // S1:生产 broker 鉴权/TLS(可选项;dev 零配置 no-auth 不受影响;另可整体用 DAQ_MQTT_URL 覆盖)
+      username: z.string().default(''),
+      password: z.string().default(''),
+      secure: z.boolean().default(false), // true → mqtts://(8883 + CA)
+      caFile: z.string().default(''), // 自签 CA 证书路径(mqtts 时建议设置)
     }),
     timescale: z.object({
       host: z.string().default('127.0.0.1'),

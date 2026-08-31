@@ -3,11 +3,14 @@
  * 产品 = 数据隔离顶层维度:一个产品多个配方;批次/样本逐条携带 productId。
  */
 
+import { createLogger } from '../logger'
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { ProductInput, ProductView } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
+
+const log = createLogger('dcw.product-repo')
 
 const DB_PATH = process.cwd().endsWith('server')
   ? 'data/dcw-products.json'
@@ -79,7 +82,7 @@ class DcwProductRepo {
       fs.writeFileSync(DB_PATH, JSON.stringify(this.list, null, 2), 'utf-8')
     }
     catch (err) {
-      console.error('[dcw-product] 落盘失败:', err)
+      log.error('[dcw-product] 落盘失败:', err)
     }
   }
 }

@@ -424,6 +424,10 @@ export default {
     k1plndrv138: '预留协议:待真实通道接入',
     k1idlehin139: '产线未运行:开跑后本节点开始采集',
     k1gateoff140: '数采网关已暂停 —— 全部节点停止采集',
+    k1alarm141: '未确认报警',
+    k1ack142: '确认',
+    k1esc143: '已升级 {p0} 次重发通知',
+    k1acked144: '报警已确认',
   },
   daqDetail: {
     k9vnp9h053: '全局 {p0}ms',

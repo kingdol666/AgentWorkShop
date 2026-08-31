@@ -4,10 +4,13 @@
  * route 仅在本 channel 内路由消息;订阅关系经 subscriptionRepo。
  * 懒加载:agents map 不含目标时经 loader 回调按需装配(DB 行 → AgentRuntime);
  */
+import { createLogger } from '../logger'
 import type { A2AMessage } from '../types/a2a'
 import type { SubscriptionRepo } from '../db/subscription.repo'
 import type { ChannelAgentRepo } from '../db/channel-agent.repo'
 import type { AgentRuntimeLike, TaskEngine } from './agent-runtime'
+
+const log = createLogger('workshop.channel')
 
 /** 调度循环结构契约(实现方 T5 SchedulerLoop) */
 export interface SchedulerLoopLike {
@@ -95,19 +98,19 @@ export class ChannelRuntime {
     if (taskKind !== undefined) {
       const taskId = meta['x-aw-task-id']
       if (typeof taskId === 'string' && this.deps.taskEngine.get(taskId)) return true
-      console.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截无效任务消息(kind=${String(taskKind)} task=${String(taskId)}),已丢弃`)
+      log.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截无效任务消息(kind=${String(taskKind)} task=${String(taskId)}),已丢弃`)
       return false
     }
     const from = meta['x-aw-from-agent']
     if (typeof from === 'string' && from.length > 0) {
       const member = this.deps.channelAgents.findByChannelAgent(this.channelId, from)
       if (member && member.enabled === 1) return true
-      console.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截非成员/已禁用成员消息(from=${from}),已丢弃`)
+      log.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截非成员/已禁用成员消息(from=${from}),已丢弃`)
       return false
     }
     const label = meta['x-aw-from-label']
     if (typeof label === 'string' && label.length > 0) return true
-    console.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截无发送人消息(target=${String(meta['x-aw-target-agent'] ?? '广播')}),已丢弃`)
+    log.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截无发送人消息(target=${String(meta['x-aw-target-agent'] ?? '广播')}),已丢弃`)
     return false
   }
 

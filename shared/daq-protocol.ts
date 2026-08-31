@@ -212,6 +212,8 @@ export const DAQ_DRIVERS: DaqDriverMeta[] = [
       ] },
       { key: 'username', label: '用户名(可选)', type: 'string' },
       { key: 'password', label: '密码(可选)', type: 'string' },
+      { key: 'certificateFile', label: '客户端证书路径(可选)', type: 'string', placeholder: 'certs/client_cert.pem', hint: 'Sign/SignAndEncrypt 时的 PEM 证书;留空自动生成自签' },
+      { key: 'privateKeyFile', label: '私钥路径(可选)', type: 'string', placeholder: 'certs/client_key.pem', hint: '与证书配对的 PEM 私钥' },
     ],
   },
   {

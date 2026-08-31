@@ -21,21 +21,23 @@
  *  - 指标(produced/consumed/dropped/samplesStored)随 daq.controller 帧与 meta 暴露。
  */
 
+import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import { daqKeyFromRef, normalizeDataTransform, DAQ_DRIVERS, type AepDaqControllerState, type AepDaqReading, type AepDaqNodeChange, type DaqDriverKind, type DaqNodeView, type DataTransform, type DriverTestResult } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { normalizeDriverKind, resolveDaqDriver, probeDriverAvailability } from './drivers'
 import { findDaqTemplate } from './daq-templates'
-import { getDeviceTwinRepo, deviceScenePayload, type DeviceTwinRepo } from '../assets/device-twin.repo'
 import { DaqNode } from './daq-node'
 import { DaqNodeRuntime, type DaqRuntimeHost } from './daq-runtime'
 import { getDaqNodeRepo } from './daq-node.repo'
 import { getTsdb, tsdbReady } from './storage'
 import { getDaqQueue } from './bus'
-import { bumpTaggedSamples, getActiveLineRun, getAllActiveLineRuns } from '../dcw/line-run'
-import { getDcwLineRepo } from '../dcw/dcw-line.repo'
-import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
+import { getDaqHostPorts } from './host-ports'
+import { getOps } from '../ops/ops'
+import { notifyAlarm, newAlarmId, startAlarmEscalator } from './alarm-notify'
 import type { DaqSampleEnvelope } from './bus/queue-port'
+
+const log = createLogger('daq.controller')
 
 export interface DaqCreateInput {
   templateRef?: string
@@ -137,7 +139,7 @@ class DaqController {
         await queue.init()
         this.pipelineReady = true
       })()
-      this.queueInit.catch(err => console.error('[daq] 管线初始化失败:', err instanceof Error ? err.message : err))
+      this.queueInit.catch(err => log.error('[daq] 管线初始化失败:', err instanceof Error ? err.message : err))
     }
     if (this.timer) return
     // 网关扫描周期 250ms(统一调度;节拍判定/互斥在各运行时内部自治)
@@ -180,11 +182,11 @@ class DaqController {
    */
   private recipeDaqWindowFor(node: DaqNode): { min: number | null, max: number | null } | null {
     if (!node.lineId) return null
-    const run = getActiveLineRun(node.lineId)
+    const host = getDaqHostPorts()
+    if (!host) return null
+    const run = host.lineRun.activeRun(node.lineId)
     if (!run) return null
-    const recipe = getDcwRecipeRepo().byId(run.recipeId)
-    const w = recipe?.daqWindows?.find(x => x.nodeId === node.id)
-    return w ? { min: w.min ?? null, max: w.max ?? null } : null
+    return host.lineRun.recipeWindow(run.recipeId, node.id)
   }
 
   private ingestNode(node: DaqNode, env: DaqSampleEnvelope, allowPublish: boolean): void {
@@ -209,8 +211,8 @@ class DaqController {
     // 时序库批量攒写(定窗刷盘;上限背压:满丢最旧并计数)
     // 产线批次打标:活动 LineRun 窗口内每条样本携带 product/recipe/run id(产品级数据隔离)
     const tsMs = Date.parse(env.at)
-    const lineRun = getActiveLineRun(node.lineId)
-    if (lineRun) bumpTaggedSamples(node.lineId)
+    const lineRun = getDaqHostPorts()?.lineRun.activeRun(node.lineId) ?? null
+    if (lineRun) getDaqHostPorts()?.lineRun.bumpTaggedSamples(node.lineId)
     this.tsdbBuffer.push({
       nodeId: node.id,
       tsMs,
@@ -242,11 +244,12 @@ class DaqController {
    *  产线门控:未选定配方(无活动 LineRun)不执行采集 —— 采样与实时下发均由配方驱动。 */
   private sweep(): void {
     if (!this.pipelineReady || !this.running) return
-    if (getAllActiveLineRuns().length === 0) return
+    const host = getDaqHostPorts()
+    if (!host || !host.lineRun.hasAnyActiveRun()) return
     const now = Date.now()
     for (const rt of this.runtimes.values()) {
       // 逐产线门控:节点只在其所属产线的活动批次窗口内采集(lineId 空 = 未分配,不采集)
-      if (!getActiveLineRun(rt.node.lineId)) continue
+      if (!host.lineRun.activeRun(rt.node.lineId)) continue
       void rt.tick(now)
     }
   }
@@ -288,6 +291,60 @@ class DaqController {
     publishSample: env => this.publishSample(env),
     ingest: (node, env, allowPublish) => this.ingestNode(node, env, allowPublish),
     broadcastError: (node, message) => this.broadcastDriverError(node, message),
+    onAlarm: (node, value, rule, threshold) => this.handleAlarm(node, value, rule, threshold),
+    onAlarmRecover: (node, value) => this.handleAlarmRecover(node, value),
+  }
+
+  // ---------- S5:报警持久化/外送/确认 ----------
+
+  /** 累计报警次数(R4 指标暴露) */
+  alarmsRaised = 0
+
+  /** alarm 进入沿:落库(同节点同量未确认幂等)→ WS 广播 → webhook 外送;失败绝不影响采集 */
+  private handleAlarm(node: DaqNode, value: number, rule: 'lt-min' | 'gt-max', threshold: number): void {
+    this.alarmsRaised++
+    const repo = getOps()?.alarmEvents
+    let id = newAlarmId()
+    const createdAt = new Date().toISOString()
+    if (repo) {
+      try {
+        const raised = repo.raise({
+          id, nodeId: node.id, nodeName: node.name, metric: node.templateKey,
+          value, rule, threshold, createdAt,
+        })
+        if (!raised) id = '' // 已有同源未确认报警:不重复广播/外送
+      }
+      catch (err) {
+        log.error('[daq-alarm] 报警落库失败(不影响采集):', err instanceof Error ? err.message : err)
+      }
+    }
+    if (!id) return
+    const payload = {
+      id, nodeId: node.id, nodeName: node.name, metric: node.templateKey,
+      value, rule, threshold, escalation: 0, createdAt,
+    }
+    this.broadcast?.('daq.alarm', payload)
+    notifyAlarm(payload)
+  }
+
+  /** alarm 恢复沿:广播恢复(报警保持 open 待人工 ack) */
+  private handleAlarmRecover(node: DaqNode, value: number): void {
+    this.broadcast?.('daq.alarm.changed', { nodeId: node.id, nodeName: node.name, recovered: true, value, at: new Date().toISOString() })
+  }
+
+  /** 报警确认(HITL 闭环的人为一步;幂等:已确认返回 false) */
+  ackAlarm(id: string, byUserId: string, byName: string): boolean {
+    const repo = getOps()?.alarmEvents
+    if (!repo) throw new AppError(503, 'UNAVAILABLE', '报警持久化未就绪')
+    const ok = repo.ack(id, byUserId, byName, new Date().toISOString())
+    if (ok) this.broadcast?.('daq.alarm.changed', { id, ackedBy: byName, ackedAt: new Date().toISOString() })
+    return ok
+  }
+
+  listAlarms(scope: 'open' | 'all', limit = 100) {
+    const repo = getOps()?.alarmEvents
+    if (!repo) return []
+    return scope === 'open' ? repo.listOpen(limit) : repo.list(limit)
   }
 
   // ---------- 消费者:队列帧 → 存储/广播/回写 ----------
@@ -317,7 +374,7 @@ class DaqController {
           catch (err) {
             if (attempt === TSDB_WRITE_RETRIES - 1) {
               this.tsdbDropped += batch.length
-              console.error('[daq] 时序库写入失败(已重试,丢弃计数):', err instanceof Error ? err.message : err)
+              log.error('[daq] 时序库写入失败(已重试,丢弃计数):', err instanceof Error ? err.message : err)
             }
             else {
               await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
@@ -337,36 +394,38 @@ class DaqController {
 
   private writeBackTelemetry(node: DaqNode): void {
     if (!node.deviceBindingId || node.value == null) return
+    const host = getDaqHostPorts()
+    if (!host) return // 端口未装配(边缘独立/装配前):不攒积压,直接跳过回写
     const key = findDaqTemplate(node.templateKey)?.telemetryKey ?? node.templateKey
     // 同设备多节点绑定:取最严重节点态(alarm > warn > ok/offline),避免"最近写者定态"抖动
     const siblings = this.repo.all().filter(n => n.deviceBindingId === node.deviceBindingId)
     const worst = siblings.some(n => n.state === 'alarm')
       ? 'alarm'
       : siblings.some(n => n.state === 'warn') ? 'warn' : 'ok'
-    const twins = getDeviceTwinRepo()
     const acc = this.pendingBackfill.get(node.deviceBindingId) ?? {}
     acc[key] = node.value
     this.pendingBackfill.set(node.deviceBindingId, acc)
-    try {
-      const twin = twins.applyTelemetry(node.deviceBindingId, acc, worst)
-      this.pendingBackfill.delete(node.deviceBindingId)
-      if (twin) this.pushTwinTelemetry(twin)
-    }
-    catch {
+    const res = host.telemetry.applyTelemetry(node.deviceBindingId, acc, worst)
+    if (!res.ok) {
       // 目标设备已被删除:解绑自身,链路自愈
+      this.pendingBackfill.delete(node.deviceBindingId)
       node.deviceBindingId = null
       this.emitNodeChanged('updated', node)
+      return
     }
+    this.pendingBackfill.delete(node.deviceBindingId)
+    if (res.twinId) this.pushTwinTelemetry(res.twinId)
   }
 
   /** 遥测 WS 推送(1s/设备节流):孪生状态/遥测事件化直推,前端全量轮询降级为断线兜底 */
   private twinPushAt = new Map<string, number>()
 
-  private pushTwinTelemetry(twin: NonNullable<ReturnType<DeviceTwinRepo['applyTelemetry']>>): void {
+  private pushTwinTelemetry(twinId: string): void {
     const now = Date.now()
-    if (now - (this.twinPushAt.get(twin.id) ?? 0) < 1000) return
-    this.twinPushAt.set(twin.id, now)
-    this.broadcast?.('device.updated', deviceScenePayload(twin))
+    if (now - (this.twinPushAt.get(twinId) ?? 0) < 1000) return
+    this.twinPushAt.set(twinId, now)
+    const payload = getDaqHostPorts()?.telemetry.scenePayload(twinId)
+    if (payload) this.broadcast?.('device.updated', payload)
   }
 
   private emitNodeChanged(op: AepDaqNodeChange['op'], node: DaqNode | null): void {
@@ -402,6 +461,7 @@ class DaqController {
       dropped: Math.max(0, this.producedCount - this.consumedCount) + queueLost + this.lateDropped,
       samplesStored: this.storedCount,
       tsdbDropped: this.tsdbDropped,
+      alarmsRaised: this.alarmsRaised,
     }
   }
 
@@ -444,6 +504,7 @@ class DaqController {
   startAll(): AepDaqControllerState {
     this.running = true
     this.ensureLoop()
+    startAlarmEscalator() // S5:升级通知扫描器(懒启动,进程内单例)
     this.emitController()
     return this.controllerState()
   }
@@ -557,7 +618,7 @@ class DaqController {
     if (patch.posZ !== undefined) node.posZ = patch.posZ
     if (patch.lineId !== undefined) {
       const lid = String(patch.lineId)
-      if (lid && !getDcwLineRepo().byId(lid)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lid}`)
+      if (lid && !getDaqHostPorts()?.lineRun.lineExists(lid)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lid}`)
       node.lineId = lid
     }
     if (patch.semantics !== undefined) node.semantics = String(patch.semantics)
@@ -582,9 +643,8 @@ class DaqController {
   bind(id: string, deviceId: string | null): DaqNode {
     const node = this.repo.byId(id)
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
-    if (deviceId) {
-      const twin = getDeviceTwinRepo().findById(deviceId)
-      if (!twin) throw Object.assign(new Error(`目标设备不存在: ${deviceId}`), { status: 404 })
+    if (deviceId && !getDaqHostPorts()?.telemetry.deviceExists(deviceId)) {
+      throw Object.assign(new Error(`目标设备不存在: ${deviceId}`), { status: 404 })
     }
     node.deviceBindingId = deviceId
     this.repo.flushNow()
@@ -633,10 +693,9 @@ class DaqController {
    */
   provisionLegacyTwins(): void {
     this.ensureLoop()
-    const twins = getDeviceTwinRepo().listAll()
+    const twins = getDaqHostPorts()?.telemetry.listDaqTwins() ?? []
     for (const t of twins) {
-      const isDaq = t.kind === 'daq' || (t.modelRef ?? '').startsWith('daq-')
-      if (!isDaq || !t.modelRef) continue
+      if (!t.modelRef) continue
       const stableId = `dn-lg-${t.id}`
       if (this.repo.byId(stableId)) continue
       const node = new DaqNode({

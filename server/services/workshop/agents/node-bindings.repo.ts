@@ -7,10 +7,13 @@
  * 工具层(daq_query/dcw_control)据此鉴权;未绑定节点一律拒绝。
  */
 
+import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { AppError, ErrorCodes } from '../../../utils/errors'
+
+const log = createLogger('workshop.node-bindings')
 
 export type AgentNodeBindingKind = 'dcw' | 'daq'
 export type AgentNodeBindingMode = 'auto' | 'manual'
@@ -148,7 +151,7 @@ export class AgentNodeBindingRepo {
       fs.writeFileSync(DB_PATH, JSON.stringify(this.list, null, 2), 'utf-8')
     }
     catch (err) {
-      console.error('[agent-node-bindings] 落盘失败:', err)
+      log.error('[agent-node-bindings] 落盘失败:', err)
     }
   }
 }

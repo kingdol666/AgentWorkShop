@@ -7,6 +7,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { getOps } from '../ops/ops'
 
 export interface ToolApproval {
   id: string
@@ -19,6 +20,9 @@ export interface ToolApproval {
   status: 'pending' | 'approved' | 'denied' | 'expired'
   comment: string
   decidedAt: string | null
+  /** S4:裁决人留痕(空 = 超时/系统收敛) */
+  decidedBy: string
+  decidedName: string
 }
 
 const TIMEOUT_MS = 180_000
@@ -45,6 +49,8 @@ class ToolApprovalService {
       status: 'pending',
       comment: '',
       decidedAt: null,
+      decidedBy: '',
+      decidedName: '',
     }
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
@@ -60,7 +66,7 @@ class ToolApprovalService {
     })
   }
 
-  decide(id: string, approved: boolean, comment: string): ToolApproval {
+  decide(id: string, approved: boolean, comment: string, decidedBy = '', decidedName = ''): ToolApproval {
     const entry = this.pending.get(id)
     if (!entry) throw new Error(`审批不存在或已处理: ${id}`)
     clearTimeout(entry.timer)
@@ -68,6 +74,8 @@ class ToolApprovalService {
     entry.approval.status = approved ? 'approved' : 'denied'
     entry.approval.comment = String(comment ?? '').trim()
     entry.approval.decidedAt = new Date().toISOString()
+    entry.approval.decidedBy = decidedBy
+    entry.approval.decidedName = decidedName
     this.remember(entry.approval)
     entry.resolve({ approved, comment: entry.approval.comment, id })
     return entry.approval
@@ -106,12 +114,48 @@ class ToolApprovalService {
   }
 
   historyList(): ToolApproval[] {
+    // S4:优先读持久化表(重启后仍可查);未接线(测试/降级)回退内存窗口
+    const repo = getOps()?.approvalHistory
+    if (repo) {
+      return repo.list(HISTORY_CAP * 4).map(r => ({
+        id: r.id,
+        agentId: r.agentId,
+        nodeId: r.nodeId,
+        kind: r.kind as ToolApproval['kind'],
+        detail: r.detail,
+        status: r.status as ToolApproval['status'],
+        comment: r.comment,
+        decidedAt: r.decidedAt,
+        decidedBy: r.decidedBy,
+        decidedName: r.decidedName,
+        createdAt: r.createdAt,
+      }))
+    }
     return this.history
   }
 
   private remember(a: ToolApproval): void {
     this.history.unshift(a)
     if (this.history.length > HISTORY_CAP) this.history.splice(HISTORY_CAP)
+    // S4:同步持久化(失败不影响审批主流程——工具侧已拿到裁决结果)
+    try {
+      getOps()?.approvalHistory.upsert({
+        id: a.id,
+        agentId: a.agentId,
+        nodeId: a.nodeId,
+        kind: a.kind,
+        detail: a.detail,
+        status: a.status,
+        comment: a.comment,
+        decidedBy: a.decidedBy,
+        decidedName: a.decidedName,
+        createdAt: a.createdAt,
+        decidedAt: a.decidedAt,
+      })
+    }
+    catch {
+      // 持久化失败降级为仅内存历史
+    }
   }
 }
 

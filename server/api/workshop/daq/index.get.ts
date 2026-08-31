@@ -4,7 +4,8 @@
  */
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
-import { bindDaqBroadcast, getDaqController } from '@/server/services/workshop/daq/daq-controller'
+import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
+import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 import { listDaqTemplates } from '@/server/services/workshop/daq/daq-templates'
 import { tsdbReady } from '@/server/services/workshop/daq/storage'
 import { getDaqQueue } from '@/server/services/workshop/daq/bus'
@@ -14,7 +15,7 @@ import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
 export default defineApiHandler(async (event) => {
   resolveUser(event)
   // ws.ts 出口装配 + 管线上电(幂等;路由模块加载即绑定)
-  bindDaqBroadcast(broadcastSceneEvent)
+  bindDaqHost(broadcastSceneEvent)
   await Promise.all([tsdbReady, getDaqQueue()])
   const ctrl = getDaqController()
   ctrl.provisionLegacyTwins()

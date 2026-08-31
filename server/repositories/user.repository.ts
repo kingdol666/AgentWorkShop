@@ -60,12 +60,25 @@ function getDb(): DatabaseSync {
   return db
 }
 
-/** 轻量迁移：旧库 user_tokens 补 token_plain 列（明文存档，支持随时查看） */
+/** 轻量迁移：旧库 user_tokens 补 token_plain 列（明文存档，支持随时查看）+ expires_at（R2 后端过期） */
 function migrateSchema(d: DatabaseSync): void {
   const cols = d.prepare('PRAGMA table_info(user_tokens)').all() as Array<{ name: string }>
   if (!cols.some(c => c.name === 'token_plain')) {
     d.exec('ALTER TABLE user_tokens ADD COLUMN token_plain TEXT')
   }
+  if (!cols.some(c => c.name === 'expires_at')) {
+    d.exec('ALTER TABLE user_tokens ADD COLUMN expires_at TEXT')
+  }
+  // 存量 token 宽限 30 天(从部署时刻起算,避免升级即全员掉线)
+  d.prepare('UPDATE user_tokens SET expires_at = ? WHERE expires_at IS NULL').run(isoInDays(TOKEN_TTL_DAYS))
+}
+
+/** token 有效期(天,R2):过期后 findByToken 拒绝,用户重新登录即可 */
+const TOKEN_TTL_DAYS = 30
+
+/** 当前时刻 + n 天的 ISO 时间戳 */
+function isoInDays(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString()
 }
 
 /** 掩码预览：前 6 后 4（token 形如 ut-xxxxxxxx…，前 6 含前缀可辨识） */
@@ -178,21 +191,23 @@ function issueToken(userId: string, label: string): { raw: string, row: UserToke
     hasPlain: true,
   }
   const d = getDb()
-  d.prepare('INSERT INTO user_tokens (id, user_id, label, token_hash, token_plain, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(row.id, userId, label, hash, raw, row.createdAt)
+  d.prepare('INSERT INTO user_tokens (id, user_id, label, token_hash, token_plain, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(row.id, userId, label, hash, raw, row.createdAt, isoInDays(TOKEN_TTL_DAYS))
   return { raw, row }
 }
 
-/** 按 token 明文查用户（命中则刷新 last_used_at）；无效返回 null。tokenId 供前端识别当前会话 token。 */
+/** 按 token 明文查用户（命中且未过期则刷新 last_used_at）；无效/已过期返回 null。tokenId 供前端识别当前会话 token。 */
 export function findByToken(token: string): (User & { tokenId: string }) | null {
   const d = getDb()
   const hash = hashToken(token)
   const row = d.prepare(
-    `SELECT u.id, u.name, u.email, u.role, u.status, u.created_at AS createdAt, t.id AS tokenId
-     FROM user_tokens t JOIN users u ON u.id = t.user_id
-     WHERE t.token_hash = ?`,
-  ).get(hash) as (User & { tokenId: string }) | undefined
+    `SELECT u.id, u.name, u.email, u.role, u.status, u.created_at AS createdAt, t.id AS tokenId, t.expires_at AS expiresAt
+FROM user_tokens t JOIN users u ON u.id = t.user_id
+WHERE t.token_hash = ?`,
+  ).get(hash) as (User & { tokenId: string, expiresAt: string | null }) | undefined
   if (!row) return null
+  // R2:过期单点判定(resolveUser/resolveAgentOrUser/me 全部经此收敛)
+  if (row.expiresAt && Date.parse(row.expiresAt) < Date.now()) return null
   d.prepare('UPDATE user_tokens SET last_used_at = ? WHERE token_hash = ?').run(now(), hash)
   return row
 }

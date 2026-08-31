@@ -6,10 +6,13 @@
  * - 消费者:通配订阅 aw/daq/+/sample,JSON 解析回 envelope;
  * - 重连由 mqtt.js 客户端内建;发布在断连期间的样本按丢弃计数(仪表可见)。
  */
+import { createLogger } from '../../logger'
 import { createRequire } from 'node:module'
 import type { MqttClient } from 'mqtt'
 
 import type { DaqConsumer, DaqQueuePort, DaqSampleEnvelope } from './queue-port'
+
+const log = createLogger('daq.mqtt')
 
 /** createRequire 加载:nitro Windows 下动态 import external 会产生 'd:' scheme 错误 */
 const requireMqtt = createRequire(import.meta.url)
@@ -43,19 +46,34 @@ export class MqttQueueAdapter implements DaqQueuePort {
     // mqtt 包动态导入:未安装时不影响其余链路(工厂已兜底 inproc)
     const mod = requireMqtt('mqtt') as unknown as { connect: (url: string, opts?: Record<string, unknown>) => MqttClient }
     const qos = Number(process.env.DAQ_MQTT_QOS ?? 0)
-    this.client = mod.connect(this.url, {
+    // S1:凭据(env 优先)与 TLS(mqtts:// + 自签 CA;rejectUnauthorized 默认 true)
+    const username = process.env.DAQ_MQTT_USERNAME
+    const password = process.env.DAQ_MQTT_PASSWORD
+    const caFile = process.env.DAQ_MQTT_CA_FILE
+    const opts: Record<string, unknown> = {
       clientId: `aw-daq-${process.pid}-${Math.random().toString(36).slice(2, 6)}`,
       reconnectPeriod: 2000,
       keepalive: 20,
-    })
+    }
+    if (username) opts.username = username
+    if (password) opts.password = password
+    if (caFile) {
+      const fs = requireMqtt('node:fs') as typeof import('node:fs')
+      opts.ca = [fs.readFileSync(caFile)]
+    }
+    if (process.env.DAQ_MQTT_REJECT_UNAUTHORIZED === '0') opts.rejectUnauthorized = false
+    if (this.url.startsWith('mqtts://') && !username && process.env.NODE_ENV === 'production') {
+      log.warn('[daq-mqtt] WARN:生产环境 MQTT 连接未配置凭据(mqtts 仅加密传输,建议同时启用 username/password)')
+    }
+    this.client = mod.connect(this.url, opts)
     this.client.on('connect', () => {
       this.client?.subscribe(TOPIC_WILDCARD, { qos })
-      console.log('[daq-mqtt] 已连接', this.url, '· 订阅', TOPIC_WILDCARD)
+      log.info('[daq-mqtt] 已连接', this.url, '· 订阅', TOPIC_WILDCARD)
       // 断连窗口积压补发(消费侧 lastIngestAt 乱序防御兜底)
       if (this.offline.length > 0) {
         const backlog = this.offline.splice(0, this.offline.length)
         for (const env of backlog) this.publish(env)
-        console.log('[daq-mqtt] 断连积压补发:', backlog.length)
+        log.info('[daq-mqtt] 断连积压补发:', backlog.length)
       }
     })
     this.client.on('message', (topic, payload) => {
@@ -65,10 +83,10 @@ export class MqttQueueAdapter implements DaqQueuePort {
         for (const fn of this.consumers) fn(env)
       }
       catch (err) {
-        console.error('[daq-mqtt] 坏帧:', topic, err instanceof Error ? err.message : err)
+        log.error('[daq-mqtt] 坏帧:', topic, err instanceof Error ? err.message : err)
       }
     })
-    this.client.on('error', err => console.error('[daq-mqtt]', err.message))
+    this.client.on('error', err => log.error('[daq-mqtt]', err.message))
   }
 
   publish(env: DaqSampleEnvelope): void {

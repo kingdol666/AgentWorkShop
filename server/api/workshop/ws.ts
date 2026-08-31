@@ -25,6 +25,9 @@ import type { A2AMessage } from '../../services/workshop/types/a2a'
 import type { AepEnvelope } from '../../../shared/workshop-protocol'
 import { parseJson } from '../../services/workshop/db/database'
 import { registerScenePeer, unregisterScenePeer } from '../../services/workshop/scene-events'
+import { createLogger } from '../../services/workshop/logger'
+
+const log = createLogger('workshop.ws')
 
 const AEP_VERSION = 1
 const RING_CAP = 5000
@@ -211,7 +214,10 @@ function flushDbBuffer(manager: AgentChannelManager, stream: ChannelStream): voi
     })))
   }
   catch (err) {
-    console.error('[workshop-ws] 事件批量落库失败:', err)
+    // R4:失败计数暴露到 /api/metrics(落库异常静默重试,不能无观测)
+    const g = globalThis as typeof globalThis & { __wsDbFlushFails?: number }
+    g.__wsDbFlushFails = (g.__wsDbFlushFails ?? 0) + 1
+    log.error('[workshop-ws] 事件批量落库失败:', err)
   }
 }
 

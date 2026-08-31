@@ -5,6 +5,7 @@
  * 按批次时间窗归属产品;写历史追加式落盘(上限 3000 条,超出丢最旧)。
  */
 
+import { createLogger } from '../logger'
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -14,6 +15,8 @@ import { AppError, ErrorCodes } from '../../../utils/errors'
 import { getDcwProductRepo } from './dcw-product.repo'
 import { getDcwNodeRepo } from './dcw-node.repo'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
+
+const log = createLogger('dcw.recipe-repo')
 
 const DATA_DIR = process.cwd().endsWith('server')
   ? 'data'
@@ -42,7 +45,7 @@ function saveJson(file: string, data: unknown): void {
     fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8')
   }
   catch (err) {
-    console.error('[dcw-recipe] 落盘失败:', file, err)
+    log.error('[dcw-recipe] 落盘失败:', file, err)
   }
 }
 

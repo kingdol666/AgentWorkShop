@@ -27,6 +27,8 @@ import { createSubscriptionRepo } from '../services/workshop/db/subscription.rep
 import { createMemoryRepo } from '../services/workshop/db/memory.repo'
 import { createUserRepo } from '../services/workshop/db/user.repo'
 import { createChannelEventRepo } from '../services/workshop/db/channel-event.repo'
+import { createApprovalHistoryRepo, createAlarmEventRepo, createAuditRepo, createApprovalRequestRepo } from '../services/workshop/db/ops.repo'
+import { bindOpsRepos } from '../services/workshop/ops/ops'
 import { ensureAllEventRecorders } from '../api/workshop/ws'
 import { createAgentImpl } from '../services/workshop/agents/factory'
 import {
@@ -105,6 +107,13 @@ export default function workshopPlugin(nitroApp: {
     tasks: createTaskRepo(db),
     memories: createMemoryRepo(db),
   }
+  // S4/S5/R1/R3:合规三表仓储接线(审批历史/报警事件/审计日志/高危复核)
+  bindOpsRepos({
+    approvalHistory: createApprovalHistoryRepo(db),
+    alarmEvents: createAlarmEventRepo(db),
+    audit: createAuditRepo(db),
+    approvalRequests: createApprovalRequestRepo(db),
+  })
   const deps: ManagerDeps = { repos, implFactory: createAgentImpl, db }
 
   // 创建 manager → 挂全局单例(后续 REST/A2A/WS 经 getWorkshopManager() 读取)

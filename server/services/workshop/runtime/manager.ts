@@ -9,6 +9,7 @@
  * - 每个实例在各自 channel 独立装配 AgentRuntime(独立 mailbox/impl 子进程/状态)
  * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块 T3。
  */
+import { createLogger } from '../logger'
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -44,6 +45,8 @@ import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 import type { UserRepo } from '../db/user.repo'
 import type { ChannelEventRepo } from '../db/channel-event.repo'
 import type { ChannelTemplateRepo, ChannelTemplateMember } from '../db/channel-template.repo'
+
+const log = createLogger('workshop.manager')
 
 /** 全部仓储(依赖注入) */
 export interface AllRepos {
@@ -309,7 +312,7 @@ export class AgentChannelManager {
         runMemoryMaintenance(this.deps.repos.memories)
       }
       catch (err) {
-        console.error('[memory] 维护任务异常', err)
+        log.error('[memory] 维护任务异常', err)
       }
     }, envNum('AW_MEMORY_MAINTENANCE_MS', 6 * 3600_000))
     this.memoryTimer.unref?.()
@@ -370,7 +373,7 @@ export class AgentChannelManager {
             fn(event, source)
           }
           catch (err) {
-            console.error('[ChannelBus] event listener error:', err)
+            log.error('[ChannelBus] event listener error:', err)
           }
         }
         cr.wakeScheduler()
@@ -385,7 +388,7 @@ export class AgentChannelManager {
             fn(e)
           }
           catch (err) {
-            console.error('[ChannelBus] task listener error:', err)
+            log.error('[ChannelBus] task listener error:', err)
           }
         }
       },
@@ -399,7 +402,7 @@ export class AgentChannelManager {
             fn(e)
           }
           catch (err) {
-            console.error('[ChannelBus] agent listener error:', err)
+            log.error('[ChannelBus] agent listener error:', err)
           }
         }
       },
@@ -413,7 +416,7 @@ export class AgentChannelManager {
             fn(message)
           }
           catch (err) {
-            console.error('[ChannelBus] message listener error:', err)
+            log.error('[ChannelBus] message listener error:', err)
           }
         }
       },
@@ -427,7 +430,7 @@ export class AgentChannelManager {
             fn(e)
           }
           catch (err) {
-            console.error('[ChannelBus] memory listener error:', err)
+            log.error('[ChannelBus] memory listener error:', err)
           }
         }
       },
@@ -441,7 +444,7 @@ export class AgentChannelManager {
             fn(e)
           }
           catch (err) {
-            console.error('[ChannelBus] member listener error:', err)
+            log.error('[ChannelBus] member listener error:', err)
           }
         }
       },
@@ -566,7 +569,7 @@ export class AgentChannelManager {
         // 清理竞态:channel 已删除/lead 已卸载时的到期重放 → 静默(NOT_FOUND 为预期)
         const code = (err as { code?: string }).code
         if (code === 'NOT_FOUND' || code === 'NO_LEAD_AGENT') return
-        console.error(`[AgentChannelManager:${channelId}] loop 重新提交失败:`, err)
+        log.error(`[AgentChannelManager:${channelId}] loop 重新提交失败:`, err)
       })
     })
     cr.scheduler = loop
@@ -628,7 +631,7 @@ export class AgentChannelManager {
           rt.reconcileProcess()
         }
         catch (err) {
-          console.error(`[AgentChannelManager] 校准 ${rt.channelId}/${rt.agentId} 进程存活失败:`, err)
+          log.error(`[AgentChannelManager] 校准 ${rt.channelId}/${rt.agentId} 进程存活失败:`, err)
         }
         const key = runtimeKey(rt.channelId, rt.agentId)
         if (rt.getState() === 'idle') {
@@ -637,7 +640,7 @@ export class AgentChannelManager {
           if (now - since >= graceMs) {
             idleSince.delete(key)
             this.unloadAgent(rt.channelId, rt.agentId).catch((err) => {
-              console.error(`[AgentChannelManager] 卸载 ${rt.channelId}/${rt.agentId} 失败:`, err)
+              log.error(`[AgentChannelManager] 卸载 ${rt.channelId}/${rt.agentId} 失败:`, err)
             })
           }
         }
@@ -815,7 +818,7 @@ export class AgentChannelManager {
         runtime.killProcess()
       }
       catch (err) {
-        console.error(`[AgentChannelManager] 终止进程失败 ${channelId}/${agentId}:`, err)
+        log.error(`[AgentChannelManager] 终止进程失败 ${channelId}/${agentId}:`, err)
       }
       await this.stopAndDetach(channelId, agentId)
       return { agentId, stopped: true }

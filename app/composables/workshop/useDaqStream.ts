@@ -62,12 +62,29 @@ export interface DaqInfraState {
 
 export interface DaqTsdbPoint { at: number, value?: number, avg?: number, min?: number, max?: number, cnt?: number, state?: string }
 
+/** S5:报警事件(未确认/历史) */
+export interface DaqAlarmRow {
+  id: string
+  nodeId: string
+  nodeName: string
+  metric: string
+  value: number | null
+  rule: string
+  threshold: number | null
+  ackedBy: string
+  ackedAt: string | null
+  escalation: number
+  notifiedJson: string
+  createdAt: string
+}
+
 /** 统一客户端:信封解析/业务码保留/GET 幂等重试(5xx 与网络错误;400ms 起退避) */
 const api = <T>(path: string, init?: RequestInit): Promise<T> =>
   apiFetch<T>({ base: '/api/workshop/daq', path, init, retries: (init?.method ?? 'GET').toUpperCase() === 'GET' ? 2 : 0 })
 
-function createStore() {
+const createStore = () => {
   const nodes = reactive<DaqNodeLive[]>([])
+  const alarms = reactive<DaqAlarmRow[]>([]) // S5:未确认报警(轮询 + ack 后刷新)
   const controller = reactive<DaqControllerState>({ running: true, defaultIntervalMs: 1000, defaultPublishIntervalMs: 0, nodesTotal: 0, nodesOnline: 0 })
   const meta = reactive<DaqBackendMeta>({
     tsdb: '…', queue: '…', drivers: [], driverAvailable: {},
@@ -200,6 +217,23 @@ function createStore() {
     return data.test
   }
 
+  // ---------- 报警(S5):未确认报警轮询 + 确认(ack 后 server 广播 changed,其余客户端靠轮询收敛) ----------
+
+  async function fetchAlarms(): Promise<void> {
+    try {
+      const data = await api<{ alarms: DaqAlarmRow[] }>('/alarms?scope=open&limit=50')
+      alarms.splice(0, alarms.length, ...(data.alarms ?? []))
+    }
+    catch {
+      // 报警轮询失败静默(主链路不受影响;下一轮重试)
+    }
+  }
+
+  async function ackAlarm(id: string): Promise<void> {
+    await api(`/alarms/${id}/ack`, { method: 'POST' })
+    await fetchAlarms()
+  }
+
   /** 手动重连基础设施(探测→Docker 拉起→重建后端→恢复采集);随后刷新基线 */
   async function reconnectInfra(): Promise<DaqInfraState | null> {
     const data = await api<{ infra: DaqInfraState }>('/infra/reconnect', { method: 'POST' })
@@ -273,6 +307,9 @@ function createStore() {
     removeNode,
     bindNode,
     controllerAction,
+    alarms,
+    fetchAlarms,
+    ackAlarm,
     nodeById: (id: string): DaqNodeLive | undefined => nodes.find(n => n.id === id),
     samplesOf,
     ofDevice: (deviceId: string | null): DaqNodeLive[] =>

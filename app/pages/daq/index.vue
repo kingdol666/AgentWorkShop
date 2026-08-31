@@ -61,12 +61,25 @@ function recipeAlarm(n: DaqNodeView): boolean {
   if (!w || n.value == null) return false
   return (w.min != null && n.value < w.min) || (w.max != null && n.value > w.max)
 }
+/** 未确认报警确认(失败 toast 后端可读原因;成功后 fetchAlarms 已由 store 内部刷新) */
+async function ackOne(id: string): Promise<void> {
+  try {
+    await daq.ackAlarm(id)
+    message.success(tt('daq.k1acked144'))
+  }
+  catch (err) {
+    message.error(err instanceof Error ? err.message : String(err))
+  }
+}
+
 let unsub: (() => void) | null = null
 let redrawTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
   unsub = daq.ensureWsFeed()
   void daq.load()
+  // 未确认报警首轮拉取(S5;之后随低频刷新拍轮询)
+  void daq.fetchAlarms()
   // 产线门控状态(无活动配方不采集;状态仅展示,控制在产线运营页)
   void dcw.load()
   // 设备注册表(绑定设备列:显示名 + 可编辑换绑;与数字孪生同源 bind REST)
@@ -76,6 +89,7 @@ onMounted(() => {
   redrawTimer = setInterval(() => {
     void daq.load()
     void dcw.load()
+    void daq.fetchAlarms()
   }, 5000)
 })
 onBeforeUnmount(() => {
@@ -479,6 +493,40 @@ async function doReconnect(): Promise<void> {
       >
         {{ reconnecting ? $t('daq.k1ld43ur094') : $t('daq.kzg9805110') }}
       </button>
+    </div>
+
+    <!-- 未确认报警条(S5):边缘触发产生 / 轮询收敛,确认后立即消失 -->
+    <div
+      v-if="daq.alarms.length"
+      class="alarm-bar"
+    >
+      <span class="bar-label">
+        <span class="i-tabler-bell-ringing bell" />
+        {{ $t('daq.k1alarm141') }}
+        <b class="mono">{{ daq.alarms.length }}</b>
+      </span>
+      <div class="alarm-scroll">
+        <span
+          v-for="a in daq.alarms"
+          :key="a.id"
+          class="alarm-item"
+          :title="$t('daq.k1esc143', { p0: a.escalation })"
+        >
+          <b>{{ a.nodeName }}</b>
+          <span class="mono dim">{{ a.metric }}</span>
+          <span class="mono">{{ a.value }} {{ a.rule === 'lt-min' ? '<' : '>' }} {{ a.threshold }}</span>
+          <small
+            v-if="a.escalation > 0"
+            class="esc mono"
+          >+{{ a.escalation }}</small>
+          <button
+            class="mini-btn ack"
+            @click="ackOne(a.id)"
+          >
+            {{ $t('daq.k1ack142') }}
+          </button>
+        </span>
+      </div>
     </div>
 
     <!-- 控制器总控条:第一行 控制/指标/操作,第二行 产线状态带 -->
@@ -1434,6 +1482,70 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 .infra-banner .txt b { font-weight: 600; }
 .infra-banner .txt small { margin-left: 8px; font-size: 10.5px; opacity: 0.75; }
 .infra-banner .pill-btn { flex: 0 0 auto; color: var(--paper-raised); text-decoration: none; }
+
+/* ---------- 未确认报警条(S5) ---------- */
+.alarm-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  color: var(--tone-danger-dot);
+  background: var(--tone-danger-bg);
+  border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 40%, transparent);
+  border-radius: var(--radius-chip);
+}
+.bar-label {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.bar-label .bell { animation: bellShake 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .bar-label .bell { animation: none; }
+}
+@keyframes bellShake {
+  0%, 80%, 100% { transform: rotate(0deg); }
+  85% { transform: rotate(12deg); }
+  90% { transform: rotate(-10deg); }
+  95% { transform: rotate(6deg); }
+}
+.alarm-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.alarm-item {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 30%, transparent);
+  border-radius: var(--radius-pill);
+}
+.alarm-item b { font-weight: 600; }
+.alarm-item .dim { opacity: 0.6; }
+.alarm-item .esc { color: var(--tone-warning-dot); }
+.alarm-item .ack {
+  padding: 2px 9px;
+  color: var(--paper-raised);
+  background: var(--tone-danger-dot);
+  border-color: transparent;
+}
+.alarm-item .ack:hover { opacity: 0.85; border-color: transparent; color: var(--paper-raised); }
 
 /* ---------- 添加节点向导 ---------- */
 .ctrl-right { display: flex; gap: 12px; align-items: center; }

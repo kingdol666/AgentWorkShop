@@ -5,10 +5,13 @@
  * 结构与时序语义对齐(ts_ms 主键 + 节点索引、bucketMs 降采样用整除分桶聚合)。
  * 生产环境配置 DAQ_TSDB_URL 即切换 Timescale,业务代码零改动。
  */
+import { createLogger } from '../../logger'
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import type { DaqQueryOpts, DaqSampleRow, TsdbPoint, TsdbPort } from './tsdb-port'
+
+const log = createLogger('daq.tsdb.sqlite')
 
 const DB_PATH = resolve(process.cwd(), 'data', 'daq-timeseries.sqlite')
 
@@ -69,10 +72,10 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
         removed += Number(r.changes)
         if (Number(r.changes) < 5000) break
       }
-      if (removed > 0) console.log(`[daq-tsdb] 保留期清理 ${removed} 行(>${this.retentionH}h)`)
+      if (removed > 0) log.info(`[daq-tsdb] 保留期清理 ${removed} 行(>${this.retentionH}h)`)
     }
     catch (err) {
-      console.error('[daq-tsdb] 保留期清理失败:', err instanceof Error ? err.message : err)
+      log.error('[daq-tsdb] 保留期清理失败:', err instanceof Error ? err.message : err)
     }
   }
 

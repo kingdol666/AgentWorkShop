@@ -1,0 +1,10 @@
+# 生产 ACL 样例:最小权限(mosquitto.conf acl_file 指向本文件)
+# 应用(AgentWorkShop 服务端):数采/数控主题读写
+user awshop
+topic readwrite aw/daq/#
+topic readwrite aw/dcw/#
+
+# 边缘网关(如启用 R5 edge-agent):仅允许发布采集、订阅控制
+# user edge-gw
+# topic write aw/daq/#
+# topic read  aw/dcw/#

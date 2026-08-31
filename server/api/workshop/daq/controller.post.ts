@@ -4,12 +4,13 @@
 import { readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
-import { bindDaqBroadcast, getDaqController } from '@/server/services/workshop/daq/daq-controller'
+import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
+import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
 
 export default defineApiHandler(async (event) => {
   resolveUser(event)
-  bindDaqBroadcast(broadcastSceneEvent)
+  bindDaqHost(broadcastSceneEvent)
   const ctrl = getDaqController()
   const body = await readBody<{ action?: 'start' | 'stop' | 'config', defaultIntervalMs?: number, defaultPublishIntervalMs?: number }>(event) ?? {}
   switch (body.action) {

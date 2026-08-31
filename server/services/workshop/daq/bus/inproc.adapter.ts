@@ -3,7 +3,10 @@
  * 与 MQTT 版同契约:生产端 publish 即刻入队不阻塞采集;消费泵按序拉取,
  * 拥塞时丢最旧并计数(暴露给 meta,诚实可见)。
  */
+import { createLogger } from '../../logger'
 import type { DaqConsumer, DaqQueuePort, DaqSampleEnvelope } from './queue-port'
+
+const log = createLogger('daq.queue')
 
 const QUEUE_CAP = 10_000
 /** 消费泵节拍(ms):攒批交给下游(TSDB 批量写) */
@@ -51,7 +54,7 @@ export class InProcQueueAdapter implements DaqQueuePort {
           fn(env)
         }
         catch (err) {
-          console.error('[daq-queue] 消费异常:', err instanceof Error ? err.message : err)
+          log.error('[daq-queue] 消费异常:', err instanceof Error ? err.message : err)
         }
       }
     }

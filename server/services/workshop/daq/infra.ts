@@ -11,16 +11,19 @@
  * 控制器停采(在线数采停用),meta 携带 warning,前端横幅 + 一键重连;
  * 后台每 30s 自动重试,恢复后自动重启采集并切回真实后端。
  */
+import { createLogger } from '../logger'
 import { execFile } from 'node:child_process'
 import { createConnection } from 'node:net'
 import { promisify } from 'node:util'
 import { join } from 'node:path'
 
+const log = createLogger('daq.infra')
+
 const execFileAsync = promisify(execFile)
 
 export interface DaqInfraConfig {
   startInfrastructure: 'auto' | 'always' | 'never'
-  mqtt: { host: string, port: number }
+  mqtt: { host: string, port: number, username?: string, password?: string, secure?: boolean, caFile?: string }
   timescale: { host: string, port: number, user: string, password: string, database: string }
 }
 
@@ -105,9 +108,20 @@ export function daqInfraConfig(): DaqInfraConfig {
   return state().cfg
 }
 
-/** 配置 → 连接 URL(env 显式覆盖优先,便于外部托管 broker/db) */
+/** 配置 → 连接 URL(env 显式覆盖优先,便于外部托管 broker/db;S1:支持凭据/TLS) */
 export function daqUrls(cfg = state().cfg): { mqttUrl: string | null, tsdbUrl: string | null } {
-  const mqttUrl = process.env.DAQ_MQTT_URL ?? `mqtt://${cfg.mqtt.host}:${cfg.mqtt.port}`
+  // S1:凭据/TLS 优先 env(DAQ_MQTT_URL 整串覆盖),否则由 config.mqtt 拼(含 user:pass@ 与 mqtts://)
+  let mqttUrl: string
+  if (process.env.DAQ_MQTT_URL) {
+    mqttUrl = process.env.DAQ_MQTT_URL
+  }
+  else {
+    const scheme = cfg.mqtt.secure ? 'mqtts' : 'mqtt'
+    const cred = cfg.mqtt.username
+      ? `${encodeURIComponent(cfg.mqtt.username)}:${encodeURIComponent(cfg.mqtt.password ?? '')}@`
+      : ''
+    mqttUrl = `${scheme}://${cred}${cfg.mqtt.host}:${cfg.mqtt.port}`
+  }
   const { user, password, database, host, port } = cfg.timescale
   const tsdbUrl = process.env.DAQ_TSDB_URL ?? `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
   return { mqttUrl, tsdbUrl }
@@ -132,7 +146,7 @@ export async function ensureDaqInfrastructure(cfg: DaqInfraConfig, projectRoot: 
   if (!(probe.mqtt && probe.tsdb) && cfg.startInfrastructure !== 'never') {
     const canDocker = await dockerAvailable()
     if (canDocker) {
-      console.log('[daq-infra] 配置地址未就绪,经 Docker Compose 拉起(daq-mosquitto + daq-timescale)…')
+      log.info('[daq-infra] 配置地址未就绪,经 Docker Compose 拉起(daq-mosquitto + daq-timescale)…')
       const up = await dockerComposeUp(projectRoot)
       if (up.ok) {
         probe = await waitPorts(cfg, 60_000)
@@ -140,7 +154,7 @@ export async function ensureDaqInfrastructure(cfg: DaqInfraConfig, projectRoot: 
       }
       else {
         s.lastError = `docker compose 拉起失败: ${up.error?.slice(0, 200)}`
-        console.error('[daq-infra]', s.lastError)
+        log.error('[daq-infra]', s.lastError)
       }
     }
     else if (cfg.startInfrastructure === 'auto') {
@@ -161,11 +175,11 @@ export async function ensureDaqInfrastructure(cfg: DaqInfraConfig, projectRoot: 
     if (!probe.mqtt) missing.push(`MQTT ${cfg.mqtt.host}:${cfg.mqtt.port}`)
     if (!probe.tsdb) missing.push(`Timescale ${cfg.timescale.host}:${cfg.timescale.port}`)
     s.warning = `数采基础设施不可达:${missing.join('、')}${s.lastError ? `(${s.lastError})` : ''}。已降级:队列→进程内 / 时序库→SQLite 仿真,在线采集已停用;修复后可重连。`
-    console.warn(`[daq-infra] 降级运行 — ${s.warning}`)
+    log.warn(`[daq-infra] 降级运行 — ${s.warning}`)
   }
   else {
     s.warning = ''
-    console.log(`[daq-infra] 真实链路就绪(mqtt=${cfg.mqtt.host}:${cfg.mqtt.port}, timescale=${cfg.timescale.host}:${cfg.timescale.port}, 来源=${s.startedBy})`)
+    log.info(`[daq-infra] 真实链路就绪(mqtt=${cfg.mqtt.host}:${cfg.mqtt.port}, timescale=${cfg.timescale.host}:${cfg.timescale.port}, 来源=${s.startedBy})`)
   }
   return daqInfraStatus()
 }
@@ -179,7 +193,7 @@ export function scheduleAutoReconnect(onRestored: () => void): void {
     if (!s.degraded) return
     void ensureDaqInfrastructure(st.cfg, st.projectRoot ?? process.cwd()).then((fresh) => {
       if (!fresh.degraded) {
-        console.log('[daq-infra] 自动重连成功,恢复真实链路')
+        log.info('[daq-infra] 自动重连成功,恢复真实链路')
         onRestored()
       }
     }).catch(() => { /* 下个周期再试 */ })

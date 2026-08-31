@@ -4,6 +4,7 @@
  * 任务管理系统:每个运行时对自己的任务队列(待执行 FIFO / 执行中 / 已完成)有完整视图;
  * 队列是 tasks 表的派生投影(DB 唯一事实源),状态迁移实时广播(idle/busy + 队列上下文)。
  */
+import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import type {
   AgentEvent,
@@ -20,6 +21,8 @@ import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } fr
 import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentMemory } from './memory'
 import type { Mailbox } from './mailbox'
+
+const log = createLogger('workshop.agent-runtime')
 
 /** ChannelBus:运行时事件总线(逐事件广播 + 任务/成员事件通知 + 调度唤醒) */
 /** 任务变更事件携带的源头任务视图(WS 推送免 per-event 回查;WorkspaceTask 结构兼容) */
@@ -228,7 +231,7 @@ export class AgentRuntime {
 
   /** 中止当前 run(任务取消/Agent 移除时);空闲时无操作 */
   abortCurrent(): void {
-    console.warn(`[AgentRuntime:${this.agentId}] abortCurrent 调用(state=${this.state})`)
+    log.warn(`[AgentRuntime:${this.agentId}] abortCurrent 调用(state=${this.state})`)
     this.abortController?.abort()
     // supervise 回合同样可打断(调度器 cancel 路径 → LLM 回合真中止)
     this.superviseController?.abort()
@@ -296,7 +299,7 @@ export class AgentRuntime {
         }
       })
       .catch((err) => {
-        console.error(`[AgentRuntime:${this.agentId}] steer 失败(释放认领回 pending 待循环处理):`, err)
+        log.error(`[AgentRuntime:${this.agentId}] steer 失败(释放认领回 pending 待循环处理):`, err)
         this.releaseSteerClaim(message.messageId)
       })
   }
@@ -345,7 +348,7 @@ export class AgentRuntime {
 
   /** 停止:中断当前 run + 等当前事件流结束 + dispose impl(杀子进程等) */
   async stop(): Promise<void> {
-    console.warn(`[AgentRuntime:${this.agentId}] runtime.stop() 调用(卸载/停用)`)
+    log.warn(`[AgentRuntime:${this.agentId}] runtime.stop() 调用(卸载/停用)`)
     this.state = 'stopped'
     this.abortController?.abort()
     this.deps.mailbox.close()
@@ -357,7 +360,7 @@ export class AgentRuntime {
       await this.impl.dispose?.()
     }
     catch (err) {
-      console.error(`[AgentRuntime:${this.agentId}] dispose 失败:`, err)
+      log.error(`[AgentRuntime:${this.agentId}] dispose 失败:`, err)
     }
   }
 
@@ -394,7 +397,7 @@ export class AgentRuntime {
       this.impl.reconcileProcess?.()
     }
     catch (err) {
-      console.error(`[AgentRuntime:${this.agentId}] 进程存活校准失败:`, err)
+      log.error(`[AgentRuntime:${this.agentId}] 进程存活校准失败:`, err)
     }
   }
 
@@ -428,7 +431,7 @@ export class AgentRuntime {
       memoryBlock = (await this.deps.memory?.recall(query, { touch: false })) ?? undefined
     }
     catch (err) {
-      console.error(`[AgentRuntime:${this.agentId}] supervise 记忆召回失败:`, err)
+      log.error(`[AgentRuntime:${this.agentId}] supervise 记忆召回失败:`, err)
     }
     const controller = new AbortController()
     this.superviseController = controller
@@ -485,7 +488,7 @@ export class AgentRuntime {
         await this.withExecLock(() => this.processMessage(msg))
       }
       catch (err) {
-        console.error(`[AgentRuntime:${this.agentId}] run 失败:`, err)
+        log.error(`[AgentRuntime:${this.agentId}] run 失败:`, err)
       }
     }
   }
@@ -525,7 +528,7 @@ export class AgentRuntime {
         memoryBlock = (await this.deps.memory?.recall(partsToText(msg.parts))) ?? undefined
       }
       catch (err) {
-        console.error(`[AgentRuntime:${this.agentId}] 记忆召回失败:`, err)
+        log.error(`[AgentRuntime:${this.agentId}] 记忆召回失败:`, err)
       }
       const request: AgentRunRequest = this.toRequest(msg, memoryBlock)
       const ctx: AgentRunContext = {
@@ -557,7 +560,7 @@ export class AgentRuntime {
       catch (err) {
         // run 生成器抛错(如 omp 子进程 spawn 失败):按回合失败走重投,不外抛断循环
         sawRunError = true
-        console.error(`[AgentRuntime:${this.agentId}] 回合异常:`, err)
+        log.error(`[AgentRuntime:${this.agentId}] 回合异常:`, err)
       }
       // 交付兜底(harness 回合结束 ≠ 任务完成):
       //  - 回合产出过实质 artifact(LLM 完成了工作但跳过 complete_task 工具)→ 隐式完成,
@@ -624,7 +627,7 @@ export class AgentRuntime {
           }
         }
         catch (err) {
-          console.error(`[AgentRuntime:${this.agentId}] 记忆写入失败:`, err)
+          log.error(`[AgentRuntime:${this.agentId}] 记忆写入失败:`, err)
         }
       }
     }

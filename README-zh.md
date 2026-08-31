@@ -14,6 +14,9 @@
 
 > 在 **Channel(频道)** 中编排一支编码 Agent 团队 —— 任务是一等公民,主理人(lead)自动调度,Agent 拥有持久记忆,平台经四个互操作入口(WebSocket / MCP / A2A / REST)接入。
 
+> [!IMPORTANT]
+> **定位声明:监督层。** AgentWorkShop 是面向产线管理、数字孪生、数采与 Agent 编排的**监督层**(SCADA 同位)平台,运行在**秒级软实时**档位。它**不是**硬实时控制器:任何时序关键控制回路(**< 10 ms**、联锁、安全、伺服)**必须在 PLC 内实现**,严禁下沉到本平台;本平台下发的值均为建议性设定值,产线侧逻辑可否决。
+
 [**English documentation → README.md**](./README.md)
 
 [![License](https://img.shields.io/badge/license-TBD-lightgrey?style=flat-square)](#许可证)

@@ -17,10 +17,13 @@
  *   console.log(mon.summary())   // 人类可读时间线
  *   mon.stop()
  */
+import { createLogger } from '../logger'
 import type { AgentChannelManager } from './manager'
 import type { AgentEvent } from '../agents/agent-interface'
 import type { A2AMessage } from '../types/a2a'
 import type { TaskState } from '../types/task'
+
+const log = createLogger('workshop.monitor')
 
 /** 监控事件:统一自定义协议流(monitor 观察到的全部运行事实) */
 export type MonitorEvent
@@ -92,7 +95,7 @@ export function monitorChannel(manager: AgentChannelManager, channelId: string, 
         fn(full)
       }
       catch (err) {
-        console.error('[monitor] listener error:', err)
+        log.error('[monitor] listener error:', err)
       }
     }
   }

@@ -33,7 +33,15 @@ export default async function daqPlugin() {
   const raw = useRuntimeConfig().daq as DaqInfraConfig
   const cfg: DaqInfraConfig = {
     startInfrastructure: raw?.startInfrastructure ?? 'auto',
-    mqtt: { host: raw?.mqtt?.host ?? '127.0.0.1', port: Number(raw?.mqtt?.port ?? 1883) },
+    mqtt: {
+      host: raw?.mqtt?.host ?? '127.0.0.1',
+      port: Number(raw?.mqtt?.port ?? 1883),
+      // S1:生产 broker 鉴权/TLS 可选项(缺省 = dev 零配置 no-auth,行为不变)
+      username: raw?.mqtt?.username || undefined,
+      password: raw?.mqtt?.password || undefined,
+      secure: raw?.mqtt?.secure === true,
+      caFile: raw?.mqtt?.caFile || undefined,
+    },
     timescale: {
       host: raw?.timescale?.host ?? '127.0.0.1',
       port: Number(raw?.timescale?.port ?? 5432),

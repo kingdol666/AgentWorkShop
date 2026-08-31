@@ -16,6 +16,7 @@
  *
  * 协议权威:omp://rpc.md;AgentInterface 契约见 agent-interface.ts。
  */
+import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import type {
   AgentEvent,
@@ -51,6 +52,8 @@ import {
 import { toolDaqQuery, toolDcwControl, toolMyIndustrialNodes } from './industrial-tools'
 import { buildIndustrialContext, industrialLoopGuide } from './industrial-context'
 import { extractTaskMode } from '../runtime/execution-mode'
+
+const log = createLogger('workshop.omp')
 
 // ===== 配置 =====
 
@@ -410,7 +413,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
       return 'deferred'
     }
     catch (err) {
-      console.error(`[OmpRpcAgent:${this.selfAgentId}] steer 注入失败(消息保持 pending):`, err instanceof Error ? err.message : err)
+      log.error(`[OmpRpcAgent:${this.selfAgentId}] steer 注入失败(消息保持 pending):`, err instanceof Error ? err.message : err)
       return 'deferred'
     }
   }
@@ -470,7 +473,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
       const abortTurn = (): void => {
         // 超时/外部取消:真正中止 omp 当前回合 —— 只 resolve 不 abort 会让残留回合
         // 与下一个 prompt 在同一 client 混流(决策错位 + token 空烧)
-        console.warn(`[OmpRpcAgent:${this.selfAgentId}] supervise 超时(${timeoutMs}ms)→ abort 当前调度回合`)
+        log.warn(`[OmpRpcAgent:${this.selfAgentId}] supervise 超时(${timeoutMs}ms)→ abort 当前调度回合`)
         void this.client?.send({ type: 'abort' }).catch(() => {})
         finish([])
       }
@@ -742,7 +745,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
     // abort 传导
     const onAbort = (): void => {
-      console.warn(`[OmpRpcAgent:${this.selfAgentId}] run 被 abort(signal)→ 中止 omp 回合,taskId=${taskId ?? '-'}`)
+      log.warn(`[OmpRpcAgent:${this.selfAgentId}] run 被 abort(signal)→ 中止 omp 回合,taskId=${taskId ?? '-'}`)
       client.send({ type: 'abort' }).catch(() => {})
       if (!isDone) {
         enqueue({ kind: 'done', final: taskId ? { taskId } : undefined })
@@ -766,7 +769,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
       // "活着但不干活"(alive-but-wedged)。若仅报错不清理,消息重试(≤2 次)会
       // 复用同一僵死 stdio 每次空转 60s;必须杀掉并置空,下回合 ensureClient
       // 全新重生(host tools/模型/终端 tap 随重建)。
-      console.warn(`[OmpRpcAgent:${this.selfAgentId}] prompt 失败 → 回收可疑僵死进程 pid=${client.pid}`)
+      log.warn(`[OmpRpcAgent:${this.selfAgentId}] prompt 失败 → 回收可疑僵死进程 pid=${client.pid}`)
       this.killProcess()
       this.client = null
       this.hostToolsRegistered = false
@@ -900,7 +903,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
         if (failure) {
           const code = failure.errorStatus != null ? `OMP_LLM_${failure.errorStatus}` : 'OMP_LLM_ERROR'
           const detail = failure.errorMessage ?? 'harness 回合以错误结束(无错误详情)'
-          console.error(`[OmpRpcAgent:${this.selfAgentId}] harness 回合失败 ${code}: ${detail}`)
+          log.error(`[OmpRpcAgent:${this.selfAgentId}] harness 回合失败 ${code}: ${detail}`)
           // error 事件即回合终点(队列侧据此收口),不再追加 done
           return [{ kind: 'error', error: { code, message: detail } }]
         }

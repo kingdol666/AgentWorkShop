@@ -210,7 +210,69 @@ CREATE TABLE IF NOT EXISTS channel_templates (
   created_at      TEXT NOT NULL,
   updated_at      TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_channel_templates_owner ON channel_templates(owner_user_id);`
+CREATE INDEX IF NOT EXISTS idx_channel_templates_owner ON channel_templates(owner_user_id);
+-- v11:工具审批历史(S4:HITL 裁决留痕——进程内 pending 之外的持久化,重启可查)
+CREATE TABLE IF NOT EXISTS approval_history (
+  id           TEXT PRIMARY KEY,
+  agent_id     TEXT NOT NULL,
+  node_id      TEXT NOT NULL,
+  kind         TEXT NOT NULL,               -- 'dcw' | 'daq'
+  detail       TEXT NOT NULL DEFAULT '',
+  status       TEXT NOT NULL,               -- pending|approved|denied|expired
+  comment      TEXT NOT NULL DEFAULT '',
+  decided_by   TEXT NOT NULL DEFAULT '',    -- 裁决人(用户 id;空 = 超时/系统收敛)
+  decided_name TEXT NOT NULL DEFAULT '',    -- 裁决人名(呈现用)
+  created_at   TEXT NOT NULL,
+  decided_at   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_approval_history_created ON approval_history(created_at DESC);
+-- v12:DAQ 报警事件 + ack 闭环(S5:报警持久化/确认/升级)
+CREATE TABLE IF NOT EXISTS alarm_events (
+  id            TEXT PRIMARY KEY,
+  node_id       TEXT NOT NULL,
+  node_name     TEXT NOT NULL DEFAULT '',
+  metric        TEXT NOT NULL DEFAULT '',   -- 触发量名(如 temp)
+  value         REAL,
+  rule          TEXT NOT NULL DEFAULT '',   -- 'lt-min' | 'gt-max'
+  threshold     REAL,
+  acked_by      TEXT NOT NULL DEFAULT '',
+  acked_at      TEXT,
+  escalation    INTEGER NOT NULL DEFAULT 0, -- 未确认升级通知次数
+  notified_json TEXT NOT NULL DEFAULT '[]', -- 外送记录 [{url,ok,at,attempt}]
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_alarm_events_created ON alarm_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alarm_events_open ON alarm_events(created_at DESC) WHERE acked_at IS NULL;
+-- v13:结构化审计日志(R1:谁/何时/对什么/做了什么)
+CREATE TABLE IF NOT EXISTS audit_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor       TEXT NOT NULL DEFAULT '',
+  actor_name  TEXT NOT NULL DEFAULT '',
+  actor_kind  TEXT NOT NULL DEFAULT 'user', -- 'user' | 'agent'
+  action      TEXT NOT NULL,
+  target_kind TEXT NOT NULL DEFAULT '',
+  target_id   TEXT NOT NULL DEFAULT '',
+  detail_json TEXT NOT NULL DEFAULT '{}',
+  at          TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_at ON audit_log(at DESC);
+-- v14:高危管理操作双人复核(R3:maker-checker;config 开关默认关)
+CREATE TABLE IF NOT EXISTS approval_requests (
+  id            TEXT PRIMARY KEY,
+  action        TEXT NOT NULL,              -- 'recipe.apply' | 'controller.toggle' | 'node.delete'
+  target_id     TEXT NOT NULL,
+  payload_json  TEXT NOT NULL DEFAULT '{}',
+  summary       TEXT NOT NULL DEFAULT '',
+  requested_by  TEXT NOT NULL,
+  requested_name TEXT NOT NULL DEFAULT '',
+  requested_at  TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending', -- pending|approved|denied
+  decided_by    TEXT NOT NULL DEFAULT '',
+  decided_name  TEXT NOT NULL DEFAULT '',
+  decided_at    TEXT,
+  comment       TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_approval_requests_status ON approval_requests(status, requested_at DESC);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 
@@ -573,6 +635,8 @@ export function openWorkshopDb(path: string): DatabaseSync {
 /** 对已打开的库执行初始化:WAL + 外键约束 + 建表 + 增量迁移 */
 export function initWorkshopDb(db: DatabaseSync): void {
   db.exec('PRAGMA journal_mode = WAL;')
+  // S6:synchronous=NORMAL(WAL 推荐档)——与 TSDB 仿真库对齐;断电最多丢最后一个事务,不损坏库
+  db.exec('PRAGMA synchronous = NORMAL;')
   db.exec('PRAGMA foreign_keys = ON;')
   db.exec(SCHEMA_SQL)
   migrateLegacySchema(db)

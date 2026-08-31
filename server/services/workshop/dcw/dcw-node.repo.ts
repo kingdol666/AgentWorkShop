@@ -4,9 +4,12 @@
  * 同步全量重写会随节点数放大;防抖窗口内崩溃丢失的设定值可从 PLC 回读恢复)。
  */
 
+import { createLogger } from '../logger'
 import fs from 'node:fs'
 import path from 'node:path'
 import { DcwNode } from './dcw-node'
+
+const log = createLogger('dcw.node-repo')
 
 const DB_PATH = process.cwd().endsWith('server')
   ? 'data/dcws.json'
@@ -73,7 +76,7 @@ class DcwNodeRepo {
       fs.writeFileSync(DB_PATH, JSON.stringify(this.list.map(n => n.toRow()), null, 2), 'utf-8')
     }
     catch (err) {
-      console.error('[dcw] 快照落盘失败:', err)
+      log.error('[dcw] 快照落盘失败:', err)
     }
   }
 }

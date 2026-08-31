@@ -3,12 +3,16 @@
  * 自定义落盘 server/data/dcw-templates.json(与 daq-templates 同风格)。
  */
 
+import { createLogger } from '../logger'
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { DCW_TEMPLATES, DCW_TEMPLATE_ICONS, dcwTemplateByKey, type DcwTemplateDef, type DcwTemplateIcon, type DcwTemplateInput } from '../../../../shared/dcw-protocol'
+
 // dcwTemplateByKey 用于内置判别
 import { AppError, ErrorCodes } from '../../../utils/errors'
+
+const log = createLogger('dcw.templates')
 
 const DB_PATH = process.cwd().endsWith('server')
   ? 'data/dcw-templates.json'
@@ -113,7 +117,7 @@ class DcwTemplateRegistry {
       fs.writeFileSync(DB_PATH, JSON.stringify(this.customs, null, 2), 'utf-8')
     }
     catch (err) {
-      console.error('[dcw] 模板落盘失败:', err)
+      log.error('[dcw] 模板落盘失败:', err)
     }
   }
 }

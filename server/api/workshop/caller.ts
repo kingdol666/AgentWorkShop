@@ -87,6 +87,15 @@ export function requireAdmin(event: H3Event): ResolvedUser {
   return user
 }
 
+/** 角色 守卫(R3):高危控制面操作(配方应用/网关启停/节点删除)仅 admin/editor 可执行 */
+export function requireRole(event: H3Event, roles: string[] = ['admin', 'editor']): ResolvedUser {
+  const user = resolveUser(event)
+  if (!roles.includes(user.role)) {
+    throw new AppError(403, 'FORBIDDEN_ROLE', `该操作需要 ${roles.join('/')} 权限(当前角色 ${user.role})`)
+  }
+  return user
+}
+
 /** admin 判定(仅角色检查,不做认证;认证由 resolveUser 先行) */
 export function isAdmin(user: { role: string }): boolean {
   return user.role === 'admin'

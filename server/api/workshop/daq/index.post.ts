@@ -7,12 +7,13 @@
 import { readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
-import { bindDaqBroadcast, getDaqController, type DaqCreateInput } from '@/server/services/workshop/daq/daq-controller'
+import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
+import { getDaqController, type DaqCreateInput } from '@/server/services/workshop/daq/daq-controller'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
 
 export default defineApiHandler(async (event) => {
   resolveUser(event)
-  bindDaqBroadcast(broadcastSceneEvent)
+  bindDaqHost(broadcastSceneEvent)
   const body = await readBody<DaqCreateInput>(event) ?? {}
   const node = getDaqController().create(body)
   return { node: node.toView() }

@@ -5,6 +5,7 @@
  * 支持三种执行模式:goal(满意度判断)/ loop(循环重放)/ pipeline(流水线)。
  * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块 T5。
  */
+import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import { TERMINAL_TASK_STATES } from '../types/task'
 import type { A2AMessage, ChannelMail } from '../types/a2a'
@@ -19,6 +20,8 @@ import {
   LoopController,
   type ModeConfig,
 } from './execution-mode'
+
+const log = createLogger('workshop.scheduler')
 
 /** 调度快照注入的最近邮件条数(倒序;控制 supervise prompt 体量) */
 const MAIL_SNAPSHOT_LIMIT = 20
@@ -162,7 +165,7 @@ export class SchedulerLoop {
       await this.lead.withExecLock(() => this.tickRound())
     }
     catch (err) {
-      console.error(`[SchedulerLoop:${this.lead.agentId}] 一轮调度失败:`, err)
+      log.error(`[SchedulerLoop:${this.lead.agentId}] 一轮调度失败:`, err)
     }
     finally {
       this.running = false
@@ -222,7 +225,7 @@ export class SchedulerLoop {
         this.execute(decision)
       }
       catch (err) {
-        console.error(`[SchedulerLoop:${this.lead.agentId}] 执行决策失败:`, decision, err)
+        log.error(`[SchedulerLoop:${this.lead.agentId}] 执行决策失败:`, decision, err)
       }
     }
   }
@@ -299,7 +302,7 @@ export class SchedulerLoop {
         : decisions
     }
     catch (err) {
-      console.error(`[SchedulerLoop:${this.lead.agentId}] lead supervise 抛错,回退规则引擎:`, err)
+      log.error(`[SchedulerLoop:${this.lead.agentId}] lead supervise 抛错,回退规则引擎:`, err)
       return this.ruleEngine(snapshot)
     }
   }
@@ -557,7 +560,7 @@ export class SchedulerLoop {
         // listChannelAgents 仅返回 enabled=1 成员,存在即可用
         const target = this.channelRuntime.listChannelAgents().find(a => a.agentId === decision.assigneeId)
         if (!target) {
-          console.warn(`[SchedulerLoop:${this.lead.agentId}] dispatch 目标成员已不存在/禁用,跳过: ${decision.assigneeId}`)
+          log.warn(`[SchedulerLoop:${this.lead.agentId}] dispatch 目标成员已不存在/禁用,跳过: ${decision.assigneeId}`)
           break
         }
         const parent = this.lead.taskEngine.get(decision.parentTaskId)
@@ -580,7 +583,7 @@ export class SchedulerLoop {
         // listChannelAgents 仅返回 enabled=1 成员,存在即可用
         const target = this.channelRuntime.listChannelAgents().find(a => a.agentId === decision.toAgentId)
         if (!target) {
-          console.warn(`[SchedulerLoop:${this.lead.agentId}] reassign 目标成员已不存在/禁用,跳过: ${decision.toAgentId}`)
+          log.warn(`[SchedulerLoop:${this.lead.agentId}] reassign 目标成员已不存在/禁用,跳过: ${decision.toAgentId}`)
           break
         }
         this.lead.taskEngine.reassign(decision.taskId, decision.toAgentId)
@@ -654,7 +657,7 @@ export class SchedulerLoop {
           templateId: decision.templateId,
           reason: decision.reason,
         }).catch((err) => {
-          console.error(`[SchedulerLoop:${this.lead.agentId}] spawn_agent 决策执行失败:`, err)
+          log.error(`[SchedulerLoop:${this.lead.agentId}] spawn_agent 决策执行失败:`, err)
         })
         break
       }
@@ -666,14 +669,14 @@ export class SchedulerLoop {
           enabled: decision.enabled === undefined ? undefined : (decision.enabled ? 1 : 0),
           reason: decision.reason,
         }).catch((err) => {
-          console.error(`[SchedulerLoop:${this.lead.agentId}] update_agent 决策执行失败:`, err)
+          log.error(`[SchedulerLoop:${this.lead.agentId}] update_agent 决策执行失败:`, err)
         })
         break
       }
       case 'remove_agent': {
         const ws: AgentWorkspace = this.lead.workspace
         void ws.removeTeamMember(decision.agentId, decision.reason).catch((err) => {
-          console.error(`[SchedulerLoop:${this.lead.agentId}] remove_agent 决策执行失败:`, err)
+          log.error(`[SchedulerLoop:${this.lead.agentId}] remove_agent 决策执行失败:`, err)
         })
         break
       }

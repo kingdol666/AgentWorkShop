@@ -4,6 +4,7 @@
  * 完成通知、reassign/cancel。依赖注入 tasks/messages 两个 repo,不持有任何单例。
  * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块 T4。
  */
+import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import type { TaskMetaRow, TaskRepo } from '../db/task.repo'
 import type { MessageRepo } from '../db/message.repo'
@@ -15,6 +16,8 @@ import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentEvent } from '../agents/agent-interface'
 import { AppError } from '../../../utils/errors'
 import { extractTaskMode, isGoalSummaryArtifact, synthesizeGoalSummary } from './execution-mode'
+
+const log = createLogger('workshop.task-engine')
 
 /** 状态机合法迁移表(§2.2);终态(COMPLETED/FAILED/CANCELED)不在表中 → 不可迁移
  *  例外:WAITING(父任务等待子任务合并)→ COMPLETED 属于正常闭环
@@ -346,7 +349,7 @@ export class TaskEngine {
         .listByChannelAssignee(row.channelId, row.assigneeId)
         .find(r => r.id !== taskId && r.state === 'WORKING')
       if (clash) {
-        console.warn(`[TaskEngine] 单 WORKING 不变量被突破:assignee=${row.assigneeId.slice(0, 8)} 已有 WORKING 任务 ${clash.id.slice(0, 8)},又迁移 ${taskId.slice(0, 8)} → WORKING(by=${by.slice(0, 8)})`)
+        log.warn(`[TaskEngine] 单 WORKING 不变量被突破:assignee=${row.assigneeId.slice(0, 8)} 已有 WORKING 任务 ${clash.id.slice(0, 8)},又迁移 ${taskId.slice(0, 8)} → WORKING(by=${by.slice(0, 8)})`)
       }
     }
     const updated = this.repos.tasks.update(taskId, { state })

@@ -424,6 +424,10 @@ export default {
     k1plndrv138: 'Reserved protocol: awaiting real channel support',
     k1idlehin139: 'Line not running: this node starts sampling after the line starts',
     k1gateoff140: 'DAQ gateway is paused — all nodes stop sampling',
+    k1alarm141: 'Unacked alarms',
+    k1ack142: 'Ack',
+    k1esc143: 'Escalated {p0} times (notification re-sent)',
+    k1acked144: 'Alarm acknowledged',
   },
   daqDetail: {
     k9vnp9h053: 'Global {p0}ms',

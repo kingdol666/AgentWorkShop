@@ -14,6 +14,9 @@
 
 > Orchestrate teams of coding agents inside **Channels** — tasks as first-class objects, a lead-agent scheduler, persistent memory, and four interoperable entry points (WebSocket / MCP / A2A / REST).
 
+> [!IMPORTANT]
+> **Positioning: supervisory layer.** AgentWorkShop is a *supervisory* (SCADA-like) layer for production-line management, digital twins, DAQ and agent orchestration — operating at **second-level soft real-time**. It is **not** a hard real-time controller: any time-critical control loop (**< 10 ms**, interlock, safety, servo) **must be implemented inside the PLC**, never in this platform. Values written here are advisory setpoints that plant-side logic may veto.
+
 [**中文文档 → README-zh.md**](./README-zh.md)
 
 [![License](https://img.shields.io/badge/license-TBD-lightgrey?style=flat-square)](#license)

@@ -2,9 +2,12 @@
  * TsdbPort 工厂 —— 配置驱动(daqInfraUrls 提供真实 Timescale URL),降级 SQLite 仿真。
  * 单例挂 globalThis;rebuildTsdb() 支持重连时从降级实例切回真实实例。
  */
+import { createLogger } from '../../logger'
 import { SqliteTimeSeriesAdapter } from './sqlite.adapter'
 import { TimescaleAdapter } from './timescale.adapter'
 import type { TsdbPort } from './tsdb-port'
+
+const log = createLogger('daq.tsdb')
 
 interface DaqTsdbState { current?: TsdbPort, initError?: unknown }
 const g = globalThis as typeof globalThis & { __daqTsdbState?: DaqTsdbState }
@@ -12,7 +15,7 @@ const g = globalThis as typeof globalThis & { __daqTsdbState?: DaqTsdbState }
 function makeFallback(reason: string): TsdbPort {
   const dev = new SqliteTimeSeriesAdapter()
   dev.init()
-  console.warn(`[daq-tsdb] ${reason} → 已降级 SQLite 时序仿真`)
+  log.warn(`[daq-tsdb] ${reason} → 已降级 SQLite 时序仿真`)
   return dev
 }
 
@@ -31,7 +34,7 @@ export const tsdbReady: Promise<void> = (() => {
       const adapter = new TimescaleAdapter(url)
       st.current = adapter
       void adapter.init().then(
-        () => console.log('[daq-tsdb] TimescaleDB 就绪:', url.replace(/\/\/[^@]*@/, '//***@')),
+        () => log.info('[daq-tsdb] TimescaleDB 就绪:', url.replace(/\/\/[^@]*@/, '//***@')),
         (err) => {
           if (g.__daqTsdbState?.current === adapter) {
             g.__daqTsdbState.current = makeFallback(err instanceof Error ? err.message : String(err))
@@ -49,7 +52,7 @@ export function getTsdb(): TsdbPort {
   if (!cur) {
     cur = new SqliteTimeSeriesAdapter()
     void cur.init()
-    console.log('[daq-tsdb] SQLite 时序仿真就绪(data/daq-timeseries.sqlite)')
+    log.info('[daq-tsdb] SQLite 时序仿真就绪(data/daq-timeseries.sqlite)')
     st.current = cur
   }
   return cur
@@ -89,5 +92,5 @@ export async function rebuildTsdb(online: boolean, url?: string | null): Promise
     throw lastErr
   }
   swap(adapter)
-  console.log('[daq-tsdb] TimescaleDB 就绪:', url.replace(/\/\/[^@]*@/, '//***@'))
+  log.info('[daq-tsdb] TimescaleDB 就绪:', url.replace(/\/\/[^@]*@/, '//***@'))
 }

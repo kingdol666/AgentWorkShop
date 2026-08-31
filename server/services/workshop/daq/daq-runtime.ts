@@ -34,6 +34,10 @@ export interface DaqRuntimeHost {
   ingest(node: DaqNode, env: DaqSampleEnvelope, allowPublish: boolean): void
   /** 驱动故障告警(网关节流广播) */
   broadcastError(node: DaqNode, message: string): void
+  /** S5:越限进入 alarm(带触发量与越限方向) */
+  onAlarm?(node: DaqNode, value: number, rule: 'lt-min' | 'gt-max', threshold: number): void
+  /** S5:alarm 恢复(回到限内;报警仍待人工 ack) */
+  onAlarmRecover?(node: DaqNode, value: number): void
 }
 
 /** onSample 结果(网关据此计指标) */
@@ -123,7 +127,16 @@ export class DaqNodeRuntime {
     if (tsMs && tsMs <= this.lastIngestAt) return 'late'
     this.lastIngestAt = tsMs
 
+    // S5:alarm 进入/恢复沿(边沿触发,非每帧;恢复不自动 ack,仍待人工确认)
+    const prevState = node.state
     node.applyReading(env.value, env.at)
+    if (node.state === 'alarm' && prevState !== 'alarm') {
+      const rule = env.value < node.min ? 'lt-min' as const : 'gt-max' as const
+      this.host.onAlarm?.(node, env.value, rule, rule === 'lt-min' ? node.min : node.max)
+    }
+    else if (node.state !== 'alarm' && prevState === 'alarm') {
+      this.host.onAlarmRecover?.(node, env.value)
+    }
     const pubMs = Math.max(0, Math.min(PUBLISH_INTERVAL_MAX, node.publishIntervalMs ?? this.host.defaults().publishIntervalMs))
     const now = Date.now()
     const allowPublish = pubMs <= 0 || now - this.lastPublishAt >= pubMs

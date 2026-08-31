@@ -6,11 +6,14 @@
  * 缺省域、mock 采样一律经 findDaqTemplate 查找 —— 自定义模板与内置同权。
  */
 
+import { createLogger } from '../logger'
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { DAQ_TEMPLATES, DAQ_TEMPLATE_ICONS, daqTemplateByKey, type DaqTemplateDef, type DaqTemplateIcon, type DaqTemplateInput } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
+
+const log = createLogger('daq.templates')
 
 /** 业务错误捷径(经 defineApiHandler 映射为对应 HTTP 状态与消息) */
 const bad = (msg: string): AppError => new AppError(400, ErrorCodes.VALIDATION_ERROR, msg)
@@ -130,7 +133,7 @@ class DaqTemplateRegistry {
       fs.writeFileSync(DB_PATH, JSON.stringify(this.customs, null, 2), 'utf-8')
     }
     catch (err) {
-      console.error('[daq] 模板落盘失败:', err)
+      log.error('[daq] 模板落盘失败:', err)
     }
   }
 }

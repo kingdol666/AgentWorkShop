@@ -14,8 +14,11 @@
  *    安全策略/账号可选);
  *  - s7:预留(实现 nodes7 poll 后注册即可,链路零改动)。
  */
+import { createLogger } from '../logger'
 import { createRequire } from 'node:module'
 import type { DaqDriverKind, DriverTestResult } from '../../../../shared/daq-protocol'
+
+const log = createLogger('daq.drivers')
 
 /** createRequire 加载原生/重型协议栈(nitro Windows 动态 import external 的 'd:' scheme 规避) */
 const reqNative = createRequire(import.meta.url)
@@ -336,7 +339,8 @@ if (!opcuaSweepGlobal.__daqOpcUaSweep) {
 }
 
 export function opcuaKey(cfg: Record<string, unknown>): string {
-  return `${cfg.endpoint}|${cfg.username ?? ''}`
+  // S3:证书/安全模式必须纳入池 key——不同证书/安全策略绝不能复用同一连接
+  return `${cfg.endpoint}|${cfg.username ?? ''}|${cfg.securityMode ?? 'None'}|${cfg.certificateFile ?? ''}|${cfg.privateKeyFile ?? ''}`
 }
 
 export async function getOpcUaConn(cfg: Record<string, unknown>): Promise<OpcUaConn> {
@@ -350,13 +354,31 @@ export async function getOpcUaConn(cfg: Record<string, unknown>): Promise<OpcUaC
   const securityMode = (['None', 'Sign', 'SignAndEncrypt'] as const).includes(cfg.securityMode as 'None')
     ? (cfg.securityMode as 'None')
     : 'None'
-  const client = opcua.OPCUAClient.create({
+  if (securityMode === 'None' && process.env.NODE_ENV === 'production') {
+    log.warn(`[daq-opcua] WARN:节点 endpoint=${String(cfg.endpoint)} 使用 securityMode=None(匿名/明文),仅限测试环境;生产请配置 Sign/SignAndEncrypt + 证书`)
+  }
+  const clientOpts: Record<string, unknown> = {
     endpointMustExist: false,
     securityMode: opcua.MessageSecurityMode[securityMode],
     securityPolicy: securityMode === 'None' ? opcua.SecurityPolicy.None : opcua.SecurityPolicy.Basic256Sha256,
     connectionStrategy: { maxRetry: 1, initialDelay: 500, maxDelay: 2000 },
     requestTimeout: 4000,
-  })
+  }
+  // S3:自签客户端证书/私钥(可选;driverConfig 透传,存储层 Record 无需改)
+  const certFile = typeof cfg.certificateFile === 'string' && cfg.certificateFile ? cfg.certificateFile : ''
+  const keyFile = typeof cfg.privateKeyFile === 'string' && cfg.privateKeyFile ? cfg.privateKeyFile : ''
+  if (securityMode !== 'None') {
+    if (certFile && keyFile) {
+      const fs = reqNative('node:fs') as typeof import('node:fs')
+      clientOpts.certificateFile = fs.readFileSync(certFile)
+      clientOpts.privateKeyFile = keyFile
+    }
+    else {
+      // 无证书时由 node-opcua 自动生成自签证书(仍加密,但身份不可信);生产建议显式证书
+      log.warn(`[daq-opcua] WARN:securityMode=${securityMode} 但未配置 certificateFile/privateKeyFile,将使用自动生成自签证书`)
+    }
+  }
+  const client = opcua.OPCUAClient.create(clientOpts as Parameters<typeof opcua.OPCUAClient.create>[0])
   await client.connect(String(cfg.endpoint))
   const session = cfg.username
     ? await client.createSession({ userName: String(cfg.username), password: String(cfg.password ?? '') })

@@ -7,14 +7,15 @@
 import { readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
-import { bindDaqBroadcast, getDaqController } from '@/server/services/workshop/daq/daq-controller'
+import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
+import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
 import { normalizeDriverKind } from '@/server/services/workshop/daq/drivers'
 import type { DaqDriverKind } from '#shared/daq-protocol'
 
 export default defineApiHandler(async (event) => {
   resolveUser(event)
-  bindDaqBroadcast(broadcastSceneEvent)
+  bindDaqHost(broadcastSceneEvent)
   const body = await readBody<{ driver?: DaqDriverKind, driverConfig?: Record<string, string | number | boolean> }>(event) ?? {}
   if (!body.driver) return { ok: false, message: '缺少 driver' }
   const result = await getDaqController().testDriver(normalizeDriverKind(body.driver), body.driverConfig ?? {})

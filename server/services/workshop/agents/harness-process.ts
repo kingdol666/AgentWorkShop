@@ -8,7 +8,10 @@
  * 定位:模块级单例,harnest 装配(OmpRpcAgentImpl)登记,manager 监控层读取;
  * 不依赖 manager,避免循环依赖。
  */
+import { createLogger } from '../logger'
 import { spawn } from 'node:child_process'
+
+const log = createLogger('workshop.harness')
 
 /** 注册表条目:一个已启动(或已退出)的 harness 子进程 */
 export interface HarnessProcessEntry {
@@ -126,7 +129,7 @@ export function killHarnessProcess(pid: number): boolean {
     if (process.platform === 'win32') {
       const child = spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
       child.on('exit', (code) => {
-        if (code !== 0) console.warn(`[harness] taskkill pid=${pid} 退出码 ${code}`)
+        if (code !== 0) log.warn(`[harness] taskkill pid=${pid} 退出码 ${code}`)
       })
       child.on('error', () => { /* spawn 失败:保持 ok=false */ })
       ok = true // 请求已受理;结果异步(失败仅告警,exit 事件兜底归位)
