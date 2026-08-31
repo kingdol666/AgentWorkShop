@@ -242,7 +242,7 @@ const createStore = () => {
     return data.infra
   }
 
-  async function controllerAction(action: 'start' | 'stop' | 'config', defaultIntervalMs?: number, defaultPublishIntervalMs?: number): Promise<void> {
+  async function controllerAction(action: 'start' | 'stop' | 'pause' | 'resume' | 'config', defaultIntervalMs?: number, defaultPublishIntervalMs?: number): Promise<void> {
     const data = await api<{ controller: DaqControllerState }>('/controller', {
       method: 'POST',
       body: JSON.stringify({ action, defaultIntervalMs, defaultPublishIntervalMs }),

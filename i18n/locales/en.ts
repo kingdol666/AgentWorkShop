@@ -428,6 +428,9 @@ export default {
     k1ack142: 'Ack',
     k1esc143: 'Escalated {p0} times (notification re-sent)',
     k1acked144: 'Alarm acknowledged',
+    k1snap145: 'Pause all collection: snapshots currently enabled nodes; resume restores exactly that snapshot (nodes you stopped during the pause stay off)',
+    k1nodestop146: 'Stop collection',
+    k1nodestart147: 'Start collection',
   },
   daqDetail: {
     k9vnp9h053: 'Global {p0}ms',
@@ -593,6 +596,7 @@ export default {
     k1b2snna151: 'Line Detail',
     kzcbfki152: 'Line-scoped nodes/products/recipes/batches: a recipe is required to start a run, and every acquired sample within the window carries the line identity — true line-level data isolation; PLC low-level (scaling/write/readback) is encapsulated by the system.',
     kplrsg153: 'Pause All Control',
+    k1snap154: 'Pause all control: snapshots currently enabled nodes; resume restores exactly that snapshot (nodes you stopped during the pause stay off)',
     k1pxrhx0154: 'Line running',
     k1hicmch155: '(no parameters, cannot start)',
     k1bg4759156: 'Creating…',

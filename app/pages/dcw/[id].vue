@@ -556,7 +556,8 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         <button
           class="aw-pill"
           :class="{ running: dcw.controller.running }"
-          @click="dcw.startStop(dcw.controller.running ? 'stop' : 'start')"
+          :title="$t('dcwDetail.k1snap154')"
+          @click="dcw.startStop(dcw.controller.running ? 'pause' : 'resume')"
         >
           <span :class="dcw.controller.running ? 'i-tabler-player-pause' : 'i-tabler-player-play'" />
           {{ dcw.controller.running ? $t('dcwDetail.kplrsg153') : $t('dcwDetail.knxgni9169') }}

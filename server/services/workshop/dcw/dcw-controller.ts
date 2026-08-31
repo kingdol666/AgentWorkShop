@@ -11,7 +11,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { applyTransform, inverseTransform, normalizeDataTransform, dcwKeyFromRef } from '../../../../shared/dcw-protocol'
-import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, DataTransform, LineInput, LineQueryOpts, LineQueryResult, LineRunState, LineView, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
+import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, DataTransform, LineInput, LineQueryOpts, LineQueryResult, LineRunState, LineView, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView, DcwWriteMeta } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { normalizeDcwDriverKind, resolveDcwDriver } from './drivers'
 import { findDcwTemplate } from './dcw-templates'
@@ -23,6 +23,7 @@ import { getDcwRecipeRepo, type DcwWriteHistoryEntry } from './dcw-recipe.repo'
 import { getDcwProductRepo } from './dcw-product.repo'
 import { getDcwLineRepo } from './dcw-line.repo'
 import { clearActiveLineRun, getActiveLineRun, getAllActiveLineRuns, setActiveLineRun } from './line-run'
+import { getRecipeRollBackManager } from './recipe-rollback-manager'
 
 type BroadcastFn = (type: string, payload: unknown) => void
 
@@ -89,11 +90,13 @@ class DcwController {
     this.timer.unref?.()
   }
 
-  /** 网关统一调度:保写心跳在各运行时内部自治(单节点写事务不波及邻居) */
+  /** 网关统一调度:保写心跳在各运行时内部自治(单节点写事务不波及邻居);
+   *  调控闭环:open 优化记录的系统兜底评估复用本节拍(F1,不建新定时器) */
   private sweep(): void {
     if (!this.running) return
     const now = Date.now()
     for (const rt of this.runtimes.values()) rt.tick(now)
+    getRecipeRollBackManager().evaluateOpenRecords(now)
   }
 
   private syncRuntimes(): void {
@@ -187,6 +190,8 @@ class DcwController {
 
   setBroadcast(fn: BroadcastFn | null): void {
     this.broadcast = fn
+    // 调控闭环 WS 帧(dcw.optimization.changed)与既有帧同一广播通道
+    getRecipeRollBackManager().setBroadcast(fn)
   }
 
   // ---------- 查询 ----------
@@ -230,6 +235,26 @@ class DcwController {
     }
     this.broadcast?.('dcw.controller', this.controllerState())
     return this.controllerState()
+  }
+
+  /** 暂停快照:暂停全部控制时刻处于启用状态的节点 id 集(恢复时仅恢复它们) */
+  private pauseSnapshot: string[] = []
+
+  /** 暂停全部控制:以当前启用节点集为快照 → 网关停止;恢复语义见 resumeAll */
+  pauseAll() {
+    this.pauseSnapshot = this.repo.all().filter(n => n.enabled).map(n => n.id)
+    return this.stopAll()
+  }
+
+  /** 恢复全部控制:仅恢复「暂停时刻快照」中的节点(其余保持原状)→ 网关启动 */
+  resumeAll() {
+    const snapshot = this.pauseSnapshot
+    this.pauseSnapshot = []
+    for (const id of snapshot) {
+      const n = this.repo.byId(id)
+      if (n && !n.enabled) this.patch(id, { enabled: true })
+    }
+    return this.startAll()
   }
 
   // ---------- 节点 CRUD(单点控制入口)----------
@@ -356,8 +381,10 @@ class DcwController {
 
   /** 手动设定:用户提交工程量,网关校验/换算/下发/回读校验。
    *  配方联锁:产线运行中,写入值还须落在活动配方对该参数的工艺窗口内
-   *  (节点全局量程之外的第二道约束 —— 换配方即换工艺窗口)。 */
-  async write(id: string, eng: number, recipeRunId: string | null = null) {
+   *  (节点全局量程之外的第二道约束 —— 换配方即换工艺窗口)。
+   *  meta(F7):账本与优化记录的身份信息 —— 手动/配方/Agent/回退四路共用本入口,
+   *  缺省按 manual/user 记账;调控闭环护栏(Agent 互斥/回退冷却)在 beforeWrite。 */
+  async write(id: string, eng: number, recipeRunId: string | null = null, meta?: DcwWriteMeta) {
     this.ensureLoop()
     const rt = this.runtimes.get(id)
     if (!rt) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
@@ -370,6 +397,8 @@ class DcwController {
     if (!node.enabled) {
       throw new AppError(409, ErrorCodes.CONFLICT, `当前节点暂停:「${node.name}」控制已暂停,仅开启控制的节点可被设定`)
     }
+    // 调控闭环护栏(F1/F8):Agent 互斥(open 记录他人持有)+ 回退冷却方向性
+    getRecipeRollBackManager().beforeWrite(node, eng, meta)
     // 写联锁按产线:仅当**本节点所属产线**在跑时,叠加该批次配方的工艺窗口
     const run = getActiveLineRun(node.lineId)
     if (run && recipeRunId == null) {
@@ -384,7 +413,26 @@ class DcwController {
         }
       }
     }
-    return rt.write(eng, recipeRunId)
+    const prevValue = typeof node.value === 'number' ? node.value : null
+    const outcome = await rt.write(eng, recipeRunId)
+    // 调控闭环入册:成功写 → 参数锚(+Agent/回退路径开优化记录;窗口聚合异步回填 F2)
+    try {
+      const rbInfo = getRecipeRollBackManager().afterWrite(
+        node,
+        eng,
+        prevValue,
+        meta ?? { source: recipeRunId ? 'recipe' : 'manual', actor: 'user' },
+        recipeRunId,
+      )
+      if (rbInfo) {
+        outcome.recordId = rbInfo.recordId
+        outcome.anchorId = rbInfo.anchorId
+      }
+    }
+    catch (err) {
+      console.error('[dcw] 调控闭环入册失败(不影响写结果):', err)
+    }
+    return outcome
   }
 
   /** 连接测试 */
@@ -438,7 +486,7 @@ class DcwController {
         continue
       }
       try {
-        const outcome = await this.write(node.id, param.value, run.id)
+        const outcome = await this.write(node.id, param.value, run.id, { source: 'recipe', actor: 'recipe' })
         results.push({ templateRef: node.templateRef, nodeId: node.id, ok: outcome.ok, message: outcome.message, value: param.value })
       }
       catch (err) {
@@ -571,6 +619,8 @@ class DcwController {
     const prev = clearActiveLineRun(lineId)
     if (!prev) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `产线「${line.name}」未在运行`)
     const run = getDcwRecipeRepo().closeRun(prev.runId)
+    // 调控闭环封窗:该线 open 优化记录随批次窗口关闭(防跨批次污染)
+    getRecipeRollBackManager().closeForLine(lineId)
     this.broadcast?.('dcw.controller', this.controllerState())
     // 数采门控联动:该产线无活动配方即停止其节点采集,置 offline 并广播收敛
     void import('../daq/daq-controller').then(({ getDaqController }) => {

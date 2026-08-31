@@ -131,7 +131,7 @@ function createStore() {
     testNode: async (id: string): Promise<{ ok: boolean, message: string }> => {
       return api<{ test: { ok: boolean, message: string } }>(`/${id}/test`, { method: 'POST' }).then(r => r.test)
     },
-    startStop: async (action: 'start' | 'stop'): Promise<void> => {
+    startStop: async (action: 'start' | 'stop' | 'pause' | 'resume'): Promise<void> => {
       const data = await api<{ controller: AepDcwControllerState }>('/controller', { method: 'POST', body: JSON.stringify({ action }) })
       Object.assign(controller, data.controller)
     },

@@ -46,6 +46,20 @@ async function setNodeDevice(id: string, e: Event): Promise<void> {
   }
 }
 
+/** 单节点独立 启动/停止采集(PATCH enabled;server 权威,本地乐观翻转 + WS/轮询收敛) */
+async function toggleNodeEnabled(n: { id: string, enabled: boolean, state: string }): Promise<void> {
+  const next = !n.enabled
+  try {
+    await daq.patchNode(n.id, { enabled: next })
+    n.enabled = next
+    if (!next) n.state = 'offline'
+    message.success(next ? tt('daq.k1nodestart147') : tt('daq.k1nodestop146'))
+  }
+  catch (err) {
+    message.error(err instanceof Error ? err.message : String(err))
+  }
+}
+
 /** 活动配方对该节点的数采监控窗口(本线活动批次;不同 Recipe 不同窗口) */
 function recipeWinOf(n: { lineId: string, id: string }): { min?: number, max?: number } | null {
   if (!n.lineId) return null
@@ -536,7 +550,8 @@ async function doReconnect(): Promise<void> {
           <button
             class="aw-pill"
             :class="{ running: daq.controller.running }"
-            @click="daq.controllerAction(daq.controller.running ? 'stop' : 'start')"
+            :title="$t('daq.k1snap145')"
+            @click="daq.controllerAction(daq.controller.running ? 'pause' : 'resume')"
           >
             <span :class="daq.controller.running ? 'i-tabler-player-pause' : 'i-tabler-player-play'" />
             {{ daq.controller.running ? $t('daq.kpui00095') : $t('daq.knxpdpt111') }}
@@ -1239,6 +1254,15 @@ async function doReconnect(): Promise<void> {
                 </select>
               </td>
               <td class="right">
+                <button
+                  class="node-toggle"
+                  :class="{ off: !n.enabled }"
+                  :title="n.enabled ? $t('daq.k1nodestop146') : $t('daq.k1nodestart147')"
+                  @click="toggleNodeEnabled(n)"
+                >
+                  <span :class="n.enabled ? 'i-tabler-player-pause' : 'i-tabler-player-play'" />
+                  {{ n.enabled ? $t('daq.k1nodestop146') : $t('daq.k1nodestart147') }}
+                </button>
                 <NuxtLink
                   class="console-link"
                   :to="`/daq/${n.id}`"
@@ -1455,6 +1479,25 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 .drv-tag.planned { opacity: 0.55; border-style: dashed; }
 
 .console-link { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; color: var(--accent); }
+
+/* 单节点 启动/停止采集(R:独立节点控制) */
+.node-toggle {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  margin-right: 12px;
+  padding: 2px 9px;
+  font-size: 11.5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.node-toggle:hover { border-color: var(--accent); background: var(--hover-tint); }
+.node-toggle.off { color: var(--ink-soft); border-style: dashed; opacity: 0.8; }
+
 .err { margin-top: 14px; font-size: 13px; color: var(--tone-danger-dot); }
 @media (prefers-reduced-motion: no-preference) {
   .nodes-table tbody tr:hover { background: var(--hover-tint); }
