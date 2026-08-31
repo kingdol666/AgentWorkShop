@@ -12,9 +12,12 @@ const props = withDefaults(defineProps<{
   label?: string
   variant?: 'divider' | 'bare'
 }>(), {
-  label: t('paneSplitter.kejk1i9001'),
+  label: '',
   variant: 'divider',
 })
+
+// defineProps 默认值不可引用 setup 局部变量(编译器会提升到 setup 外),i18n 兜底在消费处解析
+const ariaLabel = computed(() => props.label || t('paneSplitter.kejk1i9001'))
 
 const emit = defineEmits<{
   (e: 'resize', deltaPx: number): void
@@ -67,7 +70,7 @@ const onKeydown = (e: KeyboardEvent): void => {
     :class="[variant, { dragging }]"
     role="separator"
     aria-orientation="vertical"
-    :aria-label="props.label"
+    :aria-label="ariaLabel"
     tabindex="0"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
