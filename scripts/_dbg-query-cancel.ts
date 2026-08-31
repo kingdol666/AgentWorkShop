@@ -1,0 +1,12 @@
+const { DatabaseSync } = await import('node:sqlite')
+const db = new DatabaseSync('D:/codes/ABO/AgentWorkShop/data/workshop.sqlite')
+const cols = db.prepare('PRAGMA table_info(tasks)').all().map((c: { name: string }) => c.name)
+console.log('tasks columns ok:', cols.includes('route_reason') && cols.includes('artifacts_json') && cols.includes('history_json'), '(' + cols.length + ' cols)')
+const idx = db.prepare('SELECT name FROM sqlite_master WHERE type=\'index\' AND tbl_name=\'tasks\'').all().map((r: { name: string }) => r.name)
+console.log('tasks indexes:', idx.join(', '))
+console.log('idx_tasks_parent present:', idx.includes('idx_tasks_parent'))
+console.log('idx_tasks_channel_assignee present:', idx.includes('idx_tasks_channel_assignee'))
+// 完整性抽查:迁移后任务数据未丢
+const n = db.prepare('SELECT COUNT(*) AS c FROM tasks').get()
+console.log('tasks rows:', n.c)
+db.close()

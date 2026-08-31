@@ -11,7 +11,7 @@ const errors = []
 page.on('pageerror', e => errors.push(String(e).slice(0, 300)))
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 200)) })
 await page.setCookie({ name: 'token', value: 'ut-ffc1dfbbc0c1444c87c1ec69a9e8208c', domain: '127.0.0.1', path: '/' })
-await page.goto('http://127.0.0.1:3000/daq', { waitUntil: 'domcontentloaded', timeout: 90000 })
+await page.goto('http://127.0.0.1:3000/workshop/agents', { waitUntil: 'domcontentloaded', timeout: 90000 })
 await page.evaluate(() => localStorage.setItem('aw.locale', 'en'))
 await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 })
 await new Promise(r => setTimeout(r, 4000))
