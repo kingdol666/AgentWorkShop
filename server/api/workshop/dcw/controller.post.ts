@@ -9,7 +9,7 @@ import { defineApiHandler } from '@/server/utils/response'
 import { gateDangerous } from '@/server/utils/approval-gate'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
-import { audit } from '@/server/services/workshop/ops/ops'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
   const user = requireRole(event)
@@ -28,7 +28,16 @@ export default defineApiHandler(async (event) => {
     : action === 'pause'
       ? ctrl.pauseAll()
       : action === 'resume' ? ctrl.resumeAll() : ctrl.startAll()
-  // R1:网关总控(影响全部下游设备)留痕
-  audit({ actor: user.id, actorName: user.name, actorKind: 'user', action: `dcw.controller.${action}`, targetKind: 'dcw-gateway', targetId: 'gateway' })
+  // R1:网关总控(影响全部下游设备)留痕 + 实时事件
+  recordOps({
+    actor: user.id,
+    actorName: user.name,
+    actorKind: 'user',
+    action: `dcw.controller.${action}`,
+    kind: 'system',
+    targetKind: 'dcw-gateway',
+    targetId: 'gateway',
+    summary: `写控制网关${zh[action]}全部节点`,
+  })
   return { controller }
 })

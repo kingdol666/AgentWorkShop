@@ -139,12 +139,31 @@ export type AepEvent
     | { type: 'daq.node.changed', payload: AepDaqNodeChange }
     | { type: 'daq.controller', payload: AepDaqControllerState }
     | { type: 'daq.template.changed', payload: AepDaqTemplateChange }
+    | { type: 'daq.alarm', payload: { id: string, nodeId: string, nodeName: string, metric: string, value: number | null, rule: string, threshold: number | null, createdAt: string } }
+    | { type: 'daq.alarm.changed', payload: { id: string, ackedBy?: string, ackedAt?: string, recovered?: boolean } }
+    | { type: 'ops.log', payload: AepOpsLog }
     | { type: 'dcw.node.changed', payload: AepDcwNodeChange }
     | { type: 'dcw.written', payload: AepDcwWritten }
     | { type: 'dcw.controller', payload: AepDcwControllerState }
     | { type: 'dcw.optimization.changed', payload: AepDcwOptimizationChange }
     | { type: 'error', payload: { code: string, message: string } }
     | { type: 'pong', payload: { t: number } }
+
+/** 运维日志实时帧(实时事件轨只渲染摘要;详情由 /logs 日志管理页按维度查询) */
+export interface AepOpsLog {
+  at: string
+  actor: string
+  actorName: string
+  actorKind: 'user' | 'agent' | 'system'
+  action: string
+  kind: string
+  summary: string
+  targetKind: string
+  targetId: string
+  lineId: string
+  productId: string
+  recipeId: string
+}
 
 /** AEP 下行信封 */
 export interface AepEnvelope<T = AepEvent['payload']> {
@@ -173,7 +192,8 @@ export const AEP_GROUPS: Record<string, string[]> = {
   team: ['agent.member'],
   devices: ['device.created', 'device.updated', 'device.deleted'],
   scene: ['scene.layout.saved', 'scene.layout.removed'],
-  daq: ['daq.reading', 'daq.node.changed', 'daq.controller', 'daq.template.changed'],
+  daq: ['daq.reading', 'daq.node.changed', 'daq.controller', 'daq.template.changed', 'daq.alarm', 'daq.alarm.changed'],
   dcw: ['dcw.node.changed', 'dcw.written', 'dcw.controller', 'dcw.optimization.changed'],
+  ops: ['ops.log'],
   errors: ['error'],
 }

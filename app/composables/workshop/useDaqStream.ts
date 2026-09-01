@@ -105,14 +105,37 @@ const createStore = () => {
     }
   }
 
+  /** 读数帧合批缓冲:采样帧 ≥1s/节点,但逐帧直改响应式会让整表以帧率重渲染;
+   *  500ms 合批把失效频率从「每帧一次」压到「每拍一次」,值延迟 ≤ 半个采样周期(不可感知) */
+  let readingBuf: AepDaqReading[] = []
+  let readingFlushTimer: ReturnType<typeof setTimeout> | null = null
+
+  function flushReadings(): void {
+    readingFlushTimer = null
+    const batch = readingBuf
+    readingBuf = []
+    if (!batch.length) return
+    // hist 逐帧入账(趋势连续性);value/state/lastAt 取每节点最新帧,一次响应式提交
+    const latest = new Map<string, AepDaqReading>()
+    for (const r of batch) {
+      latest.set(r.nodeId, r)
+      const n = nodes.find(x => x.id === r.nodeId)
+      if (!n) continue
+      n.hist.push(r.value)
+      if (n.hist.length > HIST_CAP) n.hist.splice(0, n.hist.length - HIST_CAP)
+    }
+    for (const r of latest.values()) {
+      const n = nodes.find(x => x.id === r.nodeId)
+      if (!n) continue
+      n.value = r.value
+      n.state = r.state
+      n.lastAt = r.at
+    }
+  }
+
   function applyReading(p: AepDaqReading): void {
-    const n = nodes.find(x => x.id === p.nodeId)
-    if (!n) return
-    n.value = p.value
-    n.state = p.state
-    n.lastAt = p.at
-    n.hist.push(p.value)
-    if (n.hist.length > HIST_CAP) n.hist.splice(0, n.hist.length - HIST_CAP)
+    readingBuf.push(p)
+    if (!readingFlushTimer) readingFlushTimer = setTimeout(flushReadings, 500)
   }
 
   function applyChange(p: AepDaqNodeChange): void {
@@ -151,15 +174,41 @@ const createStore = () => {
       else if (e.type === 'daq.node.changed') applyChange(e.payload as AepDaqNodeChange)
       else if (e.type === 'daq.controller') Object.assign(controller, e.payload as AepDaqControllerState)
       else if (e.type === 'daq.template.changed') applyTemplateChange(e.payload as AepDaqTemplateChange)
+      // S5 实时告警:server 权威事件直推(报警进入轨插入;ack 确认后移出未确认列表)
+      else if (e.type === 'daq.alarm') {
+        const p = e.payload as unknown as DaqAlarmRow
+        if (!alarms.some(a => a.id === p.id)) alarms.unshift(p)
+      }
+      else if (e.type === 'daq.alarm.changed') {
+        const p = e.payload as unknown as { id: string, ackedAt?: string, recovered?: boolean }
+        if (p.ackedAt) {
+          const i = alarms.findIndex(a => a.id === p.id)
+          if (i >= 0) alarms.splice(i, 1)
+        }
+      }
     })
   }
 
   async function load(): Promise<void> {
     try {
       const data = await api<{ controller: DaqControllerState, nodes: DaqNodeView[], meta: DaqBackendMeta, driverAvailable?: Record<string, boolean>, infra?: DaqInfraState, templates?: DaqTemplateDef[] }>('')
-      // 快照合并:hist 是客户端读数流资产,轮询重载不得清零(按 id 迁移旧缓冲)
-      const prevHist = new Map(nodes.map(n => [n.id, n.hist]))
-      nodes.splice(0, nodes.length, ...data.nodes.map(n => ({ ...n, hist: prevHist.get(n.id) ?? [] })))
+      // 快照合并:hist 是客户端读数流资产,轮询重载不得清零;
+      // 已有节点就地 assign(保留对象身份 → Vue 只补丁变化字段,不触发整表数组级失效),hist 自然保留
+      const prev = new Map(nodes.map(n => [n.id, n]))
+      const next: DaqNodeLive[] = []
+      for (const raw of data.nodes) {
+        const old = prev.get(raw.id)
+        if (old) {
+          Object.assign(old, raw)
+          next.push(old)
+          prev.delete(raw.id)
+        }
+        else {
+          next.push({ ...raw, hist: [] })
+        }
+      }
+      // 服务端权威:本轮未出现的节点移除(其 hist 随之丢弃,与原语义一致)
+      nodes.splice(0, nodes.length, ...next)
       Object.assign(controller, data.controller)
       Object.assign(meta, data.meta ?? {})
       meta.driverAvailable = data.driverAvailable ?? {}

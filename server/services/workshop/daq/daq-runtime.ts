@@ -38,6 +38,8 @@ export interface DaqRuntimeHost {
   onAlarm?(node: DaqNode, value: number, rule: 'lt-min' | 'gt-max', threshold: number): void
   /** S5:alarm 恢复(回到限内;报警仍待人工 ack) */
   onAlarmRecover?(node: DaqNode, value: number): void
+  /** 活动配方对该节点的数采监控窗口(null = 无活动批次/未设窗口;越窗视同 alarm) */
+  recipeWindowFor?(node: DaqNode): { min: number | null, max: number | null } | null
 }
 
 /** onSample 结果(网关据此计指标) */
@@ -128,11 +130,30 @@ export class DaqNodeRuntime {
     this.lastIngestAt = tsMs
 
     // S5:alarm 进入/恢复沿(边沿触发,非每帧;恢复不自动 ack,仍待人工确认)
+    // 配方监控窗口(活动批次)在派生后叠加:越窗视同 alarm,沿语义与量程告警一致
     const prevState = node.state
     node.applyReading(env.value, env.at)
+    const rw = this.host.recipeWindowFor?.(node) ?? null
+    if (rw && node.state !== 'alarm') {
+      if ((rw.min != null && env.value < rw.min) || (rw.max != null && env.value > rw.max))
+        node.state = 'alarm'
+    }
     if (node.state === 'alarm' && prevState !== 'alarm') {
-      const rule = env.value < node.min ? 'lt-min' as const : 'gt-max' as const
-      this.host.onAlarm?.(node, env.value, rule, rule === 'lt-min' ? node.min : node.max)
+      let rule: 'lt-min' | 'gt-max' = 'gt-max'
+      let threshold = node.max
+      if (rw && rw.max != null && env.value > rw.max) {
+        rule = 'gt-max'
+        threshold = rw.max
+      }
+      else if (rw && rw.min != null && env.value < rw.min) {
+        rule = 'lt-min'
+        threshold = rw.min
+      }
+      else if (env.value < node.min) {
+        rule = 'lt-min'
+        threshold = node.min
+      }
+      this.host.onAlarm?.(node, env.value, rule, threshold)
     }
     else if (node.state !== 'alarm' && prevState === 'alarm') {
       this.host.onAlarmRecover?.(node, env.value)

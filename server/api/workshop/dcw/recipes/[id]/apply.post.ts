@@ -9,7 +9,7 @@ import { defineApiHandler } from '@/server/utils/response'
 import { gateDangerous } from '@/server/utils/approval-gate'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
-import { audit } from '@/server/services/workshop/ops/ops'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
   const user = requireRole(event)
@@ -22,7 +22,19 @@ export default defineApiHandler(async (event) => {
     return { pending: true, requestId: gate.requestId }
   }
   const run = await getDcwController().applyRecipe(id)
-  // R1:配方一键下发 = 批量写命令,留痕
-  audit({ actor: user.id, actorName: user.name, actorKind: 'user', action: 'recipe.apply', targetKind: 'recipe', targetId: id, detail: { runId: (run as { id?: string }).id } })
+  // R1:配方一键下发 = 批量写命令,留痕 + 实时事件
+  recordOps({
+    actor: user.id,
+    actorName: user.name,
+    actorKind: 'user',
+    action: 'recipe.apply',
+    kind: 'recipe',
+    targetKind: 'recipe',
+    targetId: id,
+    summary: `一键下发配方批次 ${((run as { id?: string }).id ?? '')},逐参数写命令已执行`,
+    productId: (run as { productId?: string }).productId ?? '',
+    recipeId: id,
+    detail: { runId: (run as { id?: string }).id },
+  })
   return { run }
 })

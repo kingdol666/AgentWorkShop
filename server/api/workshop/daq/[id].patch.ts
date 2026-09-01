@@ -7,12 +7,25 @@ import { defineApiHandler } from '@/server/utils/response'
 import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
 import { getDaqController, type DaqPatchInput } from '@/server/services/workshop/daq/daq-controller'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
+import { recordOps } from '../../../services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   bindDaqHost(broadcastSceneEvent)
   const id = getRouterParam(event, 'id') ?? ''
   const body = await readBody<DaqPatchInput>(event) ?? {}
   const node = getDaqController().patch(id, body)
+  recordOps({
+    actor: user.id,
+    actorName: user.name,
+    actorKind: 'user',
+    action: 'daq.node.patch',
+    kind: 'daq',
+    targetKind: 'daq-node',
+    targetId: id,
+    summary: `修改数采节点「${node.name}」(${Object.keys(body).join('/') || '无变更'})`,
+    lineId: node.lineId ?? '',
+    detail: { keys: Object.keys(body) },
+  })
   return { node: node.toView() }
 })

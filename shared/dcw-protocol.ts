@@ -456,6 +456,8 @@ export interface DcwWriteMeta {
   source: DcwWriteSource
   /** userId / agentId / 'system' */
   actor: string
+  /** 呈现用名(运维日志 summary;缺省回退 actor) */
+  actorName?: string
   /** Agent 优化任务关联(尽力而为) */
   taskId?: string
   /** Agent 判定假设(作业环第 3 步声明) */

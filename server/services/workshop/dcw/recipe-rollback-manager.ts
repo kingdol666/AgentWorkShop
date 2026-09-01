@@ -29,6 +29,7 @@ import { getDcwRecipeRepo } from './dcw-recipe.repo'
 import { getDcwNodeRepo } from './dcw-node.repo'
 import { getActiveLineRun } from './line-run'
 import { getRecipeRollBackRepo, type RecipeRollBackRepo } from './recipe-rollback.repo'
+import { recordOps } from '../ops/ops'
 
 /** 回退后同向重写冷却 */
 const COOLDOWN_MS = Number(process.env.DCW_ROLLBACK_COOLDOWN_MS ?? 300_000)
@@ -157,6 +158,22 @@ export class RecipeRollBackManager {
         this.repo.flushNow()
         void this.fillMetrics(record, 'baseline', Date.parse(record.setAt) - BASELINE_MS, Date.parse(record.setAt))
         this.emit('opened', record)
+        recordOps({
+          actor: meta.actor,
+          actorName: meta.actorName ?? meta.actor,
+          actorKind: meta.source === 'agent' ? 'agent' : 'system',
+          action: 'optimization.open',
+          kind: 'rollback',
+          targetKind: 'optimization',
+          targetId: record.id,
+          summary: meta.source === 'agent'
+            ? `Agent 开优化记录:「${node.name}」→ ${eng}${node.unit ?? ''}${meta.hypothesis ? `(假设:${meta.hypothesis})` : ''}`
+            : `回退下发恢复「${node.name}」→ ${eng}${node.unit ?? ''}`,
+          lineId: node.lineId ?? '',
+          productId: run?.productId ?? '',
+          recipeId: run?.recipeId ?? '',
+          detail: { recordId: record.id, eng, prevValue, hypothesis: meta.hypothesis ?? '' },
+        })
         recordId = record.id
       }
       return { anchorId: anchor.id, recordId }
@@ -198,6 +215,19 @@ export class RecipeRollBackManager {
     // rollback:只落判定,不执行;uncertain:落判定,记录保持 open(判定与执行分离)
     this.repo.updateRecord(recordId, { judge: record.judge, status: record.status, closedAt: record.closedAt, closedBy: record.closedBy, windowAgg: record.windowAgg })
     this.emit('judged', record)
+    recordOps({
+      actor,
+      actorName: actor,
+      actorKind: by,
+      action: 'optimization.judge',
+      kind: 'rollback',
+      targetKind: 'optimization',
+      targetId: recordId,
+      summary: `${by === 'agent' ? 'Agent' : by === 'user' ? '人工' : '系统'}判定 ${record.nodeName ?? record.nodeId} → ${verdict}:${reason.slice(0, 80)}`,
+      lineId: record.lineId ?? '',
+      recipeId: record.recipeId ?? '',
+      detail: { verdict, reason, takeover: opts?.takeover ?? false },
+    })
     return record
   }
 
@@ -215,7 +245,7 @@ export class RecipeRollBackManager {
       throw new AppError(409, ErrorCodes.CONFLICT, `记录 ${recordId} 无基线值(首写无 prevValue),无法回退`)
     if (by === 'agent')
       this.checkRollbackAllowed(record.nodeId)
-    return this.executeRollbackWrite(record, from, actor, approvalId)
+    return this.executeRollbackWrite(record, from, actor, approvalId, undefined, by)
   }
 
   /** 节点级单步回退:目标 = 最近稳定锚的 prevValue(撤销栈栈顶) */
@@ -242,6 +272,7 @@ export class RecipeRollBackManager {
       actor,
       undefined,
       toAnchorId,
+      by,
     )
   }
 
@@ -303,6 +334,7 @@ export class RecipeRollBackManager {
     actor: string,
     approvalId?: string,
     toAnchorId?: string,
+    by: 'agent' | 'user' | 'system' = 'system',
   ): Promise<OptimizationRecord> {
     // 先关原记录(防回退写自身的 afterWrite 把它当 open supersede)
     const orig = this.repo.byId(record.id)
@@ -333,6 +365,19 @@ export class RecipeRollBackManager {
       orig.status = 'rolled-back'
       this.repo.updateRecord(orig.id, { status: 'rolled-back' })
       this.emit('rolled-back', orig)
+      recordOps({
+        actor,
+        actorName: actor,
+        actorKind: by === 'agent' ? 'agent' : by === 'user' ? 'user' : 'system',
+        action: 'optimization.rollback',
+        kind: 'rollback',
+        targetKind: 'optimization',
+        targetId: record.id,
+        summary: `回退完成:「${record.nodeName ?? record.nodeId}」已恢复 ${target}${record.id.startsWith('node:') ? '' : `(记录 ${record.id})`}`,
+        lineId: record.lineId ?? '',
+        recipeId: (record as { recipeId?: string }).recipeId ?? '',
+        detail: { recordId: record.id, target },
+      })
     }
     const fresh = this.repo.listRecords({ nodeId: record.nodeId, limit: 1 })[0]
     return fresh!
@@ -393,6 +438,19 @@ export class RecipeRollBackManager {
         record.judge = { by: 'system', actor: 'system', verdict: 'rollback', reason, at: new Date().toISOString() }
         this.repo.updateRecord(record.id, { judge: record.judge, evaluatedAt: record.evaluatedAt })
         this.emit('judged', record)
+        recordOps({
+          actor: 'system',
+          actorName: 'system',
+          actorKind: 'system',
+          action: 'optimization.judge',
+          kind: 'rollback',
+          targetKind: 'optimization',
+          targetId: record.id,
+          summary: `系统兜底判定回退:窗口内累计越限 ${totalBreaches} 采样,自动恢复基线`,
+          lineId: record.lineId ?? '',
+          recipeId: record.recipeId ?? '',
+          detail: { breaches: totalBreaches, policy: record.policy },
+        })
         await this.rollbackRecord(record.id, 'system', 'system')
       }
       else {

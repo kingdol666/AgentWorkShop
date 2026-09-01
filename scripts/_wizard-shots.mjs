@@ -1,14 +1,18 @@
-/** 一次性:向导驱动表单截图(每个协议一张)—— 供协议配置文档使用 */
+/** 一次性:向导驱动表单截图(每个协议一张,含真连测试结果)—— 供协议配置文档使用 */
 import puppeteer from 'puppeteer-core'
 
 const TOKEN = process.env.AW_PAGE_TOKEN ?? ''
-const drivers = [
-  ['modbus-tcp', 'modbus-tcp'],
-  ['modbus-rtu', 'modbus-rtu'],
-  ['opcua', 'opcua'],
-  ['mqtt', 'mqtt'],
-  ['http', 'http'],
-]
+// 每协议的演示配置:打本机 dev 模拟器(modbus 1502 / rtu 15030 / opcua 4840 / mqtt 1883 / http 1889)
+const FILL = {
+  'modbus-tcp': { host: '127.0.0.1', register: '40021' },
+  'modbus-rtu': { host: '127.0.0.1', register: '40001' },
+  'opcua': { endpoint: 'opc.tcp://127.0.0.1:4840', nodeId: 'ns=2;s=AW.Temp' },
+  'mqtt': { host: '127.0.0.1', topic: 'aw/sim/temp', jsonPath: 'data.temp' },
+  'http': { url: 'http://127.0.0.1:1889/api/value', jsonPath: 'data.value' },
+}
+const DRIVERS = ['modbus-tcp', 'modbus-rtu', 'opcua', 'mqtt', 'http']
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+
 const browser = await puppeteer.launch({
   executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   headless: 'new',
@@ -17,45 +21,70 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage()
 await page.setViewport({ width: 1920, height: 1200, deviceScaleFactor: 1 })
 await page.setCookie({ name: 'token', value: TOKEN, domain: '127.0.0.1', path: '/' })
-await page.goto('http://127.0.0.1:3000/daq', { waitUntil: 'domcontentloaded', timeout: 90000 })
-await new Promise(r => setTimeout(r, 8000))
 
-// 打开添加节点向导
-const addBtn = await page.evaluateHandle(() => {
-  const btns = [...document.querySelectorAll('button')]
-  return btns.find(b => (b.textContent ?? '').includes('添加节点'))
-})
-await addBtn.asElement()?.click()
-await new Promise(r => setTimeout(r, 1200))
-// 切到真实设备模式
-const realBtn = await page.evaluateHandle(() => {
-  const btns = [...document.querySelectorAll('button')]
-  return btns.find(b => (b.textContent ?? '').includes('真实设备'))
-})
-if (realBtn.asElement()) {
-  await realBtn.asElement().click()
-  await new Promise(r => setTimeout(r, 600))
-}
+for (const kind of DRIVERS) {
+  // 每个驱动独立加载,避免上一次的测试结果残留进画面
+  await page.goto('http://127.0.0.1:3000/daq', { waitUntil: 'domcontentloaded', timeout: 90000 })
+  await sleep(7000)
 
-for (const [kind, file] of drivers) {
+  const openRes = await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('button')]
+    const add = btns.find(b => (b.textContent ?? '').includes('添加节点'))
+    add?.click()
+    return !!add
+  })
+  void openRes
+  await sleep(1200)
+  await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('button')]
+    const real = btns.find(b => (b.textContent ?? '').includes('真实设备'))
+    real?.click()
+  })
+  await sleep(700)
+
+  // 协议下拉:唯一一个 option value 命中驱动名的 select(模板下拉的 value 是模板 ref,不会撞)
   await page.evaluate((k) => {
-    // 向导中的驱动下拉:DAQ_DRIVERS 驱动的 select
-    const selects = [...document.querySelectorAll('.modal select, [class*="wizard"] select')]
-    const sel = selects[0]
-    if (sel) {
-      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set
-      nativeSetter.call(sel, k)
-      sel.dispatchEvent(new Event('change', { bubbles: true }))
-    }
+    const selects = [...document.querySelectorAll('select')]
+    const sel = selects.find(s => [...s.options].some(o => o.value === k))
+    if (!sel)
+      throw new Error(`protocol select not found for ${k}`)
+    const set = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set
+    set.call(sel, k)
+    sel.dispatchEvent(new Event('change', { bubbles: true }))
   }, kind)
-  await new Promise(r => setTimeout(r, 800))
-  // 找向导 modal 容器截图
-  const modal = await page.$('.modal, [class*="wizard"]')
-  if (modal) {
-    await page.evaluate(() => document.querySelector('.modal')?.scrollIntoView({ block: 'start' }))
+  await sleep(800)
+
+  // 按 placeholder 填演示值(Vue v-model 监听 input 事件)
+  await page.evaluate((kv) => {
+    for (const [ph, val] of Object.entries(kv)) {
+      const inp = [...document.querySelectorAll('input')].find(i => i.placeholder === ph)
+      if (!inp)
+        throw new Error(`input placeholder「${ph}」not found`)
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+      set.call(inp, val)
+      inp.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+  }, FILL[kind])
+  await sleep(300)
+
+  // 点「测试连接」,等结果条出现
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll('button')].find(b => (b.textContent ?? '').includes('测试连接'))
+    btn?.click()
+  })
+  try {
+    await page.waitForFunction(() => {
+      const el = document.querySelector('.test-result')
+      return el && (el.textContent ?? '').length > 2
+    }, { timeout: 10000 })
   }
-  await new Promise(r => setTimeout(r, 300))
-  await (modal ? modal.asElement() : page).screenshot({ path: `docs/protocol-guides/wizard-${file}.png` })
-  console.log('shot:', file)
+  catch {
+    console.log(`warn: ${kind} 测试结果未出现(照常截图)`)
+  }
+  await sleep(400)
+
+  const modal = await page.$('.modal, [class*="wizard"]')
+  await (modal ?? page).screenshot({ path: `docs/protocol-guides/wizard-${kind}.png` })
+  console.log('shot:', kind)
 }
 await browser.close()

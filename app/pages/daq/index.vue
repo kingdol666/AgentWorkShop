@@ -9,9 +9,10 @@ import { message } from 'ant-design-vue'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
-import { useTownBus } from '@/app/composables/workshop/useTownBus'
 import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeView, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
+import { useOpsLog } from '@/app/composables/workshop/useOpsLog'
+import { useVisibleInterval } from '@/app/composables/workshop/useVisibleInterval'
 
 const { t: tt } = useI18n()
 
@@ -80,46 +81,19 @@ function recipeAlarm(n: DaqNodeView): boolean {
   return (w.min != null && n.value < w.min) || (w.max != null && n.value > w.max)
 }
 
-// ---------- 上下限实时警告(读数帧边沿触发;越全局量程或配方窗即入列,8s 自动消退) ----------
-interface LiveWarn { id: string, nodeName: string, dir: 'high' | 'low', value: number, limit: number, source: 'range' | 'recipe' }
-const liveWarns = ref<LiveWarn[]>([])
-const warnSeen = new Set<string>()
+// ---------- 运维日志(全操作统一记录):实时事件轨渲染摘要,详情在 /logs 日志管理 ----------
+const opsLog = useOpsLog()
 
-function limitOf(n: DaqNodeView): { min?: number, max?: number, source: 'range' | 'recipe' } {
-  const w = recipeWinOf(n)
-  if (w && (w.min != null || w.max != null)) return { min: w.min, max: w.max, source: 'recipe' as const }
-  return { min: n.min, max: n.max, source: 'range' as const }
+function opsKindLabel(kind: string): string {
+  const m: Record<string, string> = { write: tt('logs.kind.write'), manual: tt('logs.kind.manual'), alarm: tt('logs.kind.alarm'), line: tt('logs.kind.line'), recipe: tt('logs.kind.recipe'), rollback: tt('logs.kind.rollback'), daq: tt('logs.kind.daq'), system: tt('logs.kind.system') }
+  return m[kind] ?? (kind || tt('logs.kind.system'))
 }
 
-function checkLimitFrame(n: DaqNodeView, value: number): void {
-  const lim = limitOf(n)
-  const dir = (lim.min != null && value < lim.min)
-    ? 'low' as const
-    : (lim.max != null && value > lim.max) ? 'high' as const : null
-  if (!dir) {
-    warnSeen.delete(`${n.id}:high`)
-    warnSeen.delete(`${n.id}:low`)
-    warnSeen.add(`${n.id}:ok`)
-    return
-  }
-  if (warnSeen.has(`${n.id}:${dir}`)) return
-  warnSeen.delete(`${n.id}:${dir === 'high' ? 'low' : 'high'}`)
-  warnSeen.delete(`${n.id}:ok`)
-  warnSeen.add(`${n.id}:${dir}`)
-  const w: LiveWarn = {
-    id: `${n.id}:${dir}:${Date.now()}`,
-    nodeName: n.name,
-    dir,
-    value,
-    limit: (dir === 'high' ? lim.max : lim.min) ?? 0,
-    source: lim.source,
-  }
-  liveWarns.value.unshift(w)
-  if (liveWarns.value.length > 4) liveWarns.value.splice(4)
-  setTimeout(() => {
-    const i = liveWarns.value.indexOf(w)
-    if (i >= 0) liveWarns.value.splice(i, 1)
-  }, 8000)
+function opsTime(at: string): string {
+  const d = new Date(at)
+  return Number.isFinite(d.getTime())
+    ? `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
+    : ''
 }
 
 // ---------- 实时趋势(行内 sparkline;hist 为 WS 读数流客户端缓冲,每帧推进) ----------
@@ -145,6 +119,15 @@ function limitY(hist: number[], limit: number | undefined | null): number | null
   const span = max - min || 1
   return Number((TREND_H - ((limit - min) / span) * (TREND_H - 2) - 1).toFixed(1))
 }
+
+/** 行内趋势的有效限值:活动配方窗口优先,节点预警带兜底,皆无 → 不画限值线 */
+function limitOf(n: DaqNodeView): { min: number | null | undefined, max: number | null | undefined, source: 'recipe' | 'warn' } {
+  const w = recipeWinOf(n)
+  if (w && (w.min != null || w.max != null)) return { min: w.min, max: w.max, source: 'recipe' }
+  if (n.warnLow != null || n.warnHigh != null) return { min: n.warnLow, max: n.warnHigh, source: 'warn' }
+  return { min: null, max: null, source: 'warn' }
+}
+
 /** 未确认报警确认(失败 toast 后端可读原因;成功后 fetchAlarms 已由 store 内部刷新) */
 async function ackOne(id: string): Promise<void> {
   try {
@@ -157,23 +140,14 @@ async function ackOne(id: string): Promise<void> {
 }
 
 let unsub: (() => void) | null = null
-let unsubWarn: (() => void) | null = null
-let redrawTimer: ReturnType<typeof setInterval> | null = null
-
 onMounted(() => {
   // WS 会话建连(连接层即注册 scene peer):daq.reading 实时帧直达,不再等 5s 轮询
   ws.ensureConnected()
   unsub = daq.ensureWsFeed()
-  // 越限实时警告:直接订阅 townBus 读数帧做边沿检测(帧到即判,不等轮询)
-  unsubWarn = useTownBus().subscribe((e) => {
-    if (e.type !== 'daq.reading') return
-    const p = e.payload as { nodeId?: string, value?: number }
-    if (!p.nodeId || typeof p.value !== 'number' || !Number.isFinite(p.value)) return
-    const n = daq.nodes.find(x => x.id === p.nodeId)
-    if (n) checkLimitFrame(n, p.value)
-  })
+  // 运维日志实时事件轨(ops.log 帧;越限告警亦入轨 —— server 权威,详情在 /logs)
+  opsLog.ensureLive()
   void daq.load()
-  // 未确认报警首轮拉取(S5;之后随低频刷新拍轮询)
+  // 未确认报警首轮拉取(S5;WS daq.alarm 直推 + 此后随低频刷新拍轮询兜底)
   void daq.fetchAlarms()
   // 产线门控状态(无活动配方不采集;状态仅展示,控制在产线运营页)
   void dcw.load()
@@ -182,17 +156,19 @@ onMounted(() => {
   // Agent 优化记录首屏预取(面板展开即有数据;展开时仍会重拉一次保新鲜)
   void dcw.loadOptimizations()
   // meta 指标随读数帧落库节奏低频刷新(诚实可见的管线运行数据);
-  // 产线运行态(横幅/产线列注记)同拍刷新 —— 开跑/停线后本页 ≤5s 收敛
-  redrawTimer = setInterval(() => {
+  // 产线运行态(横幅/产线列注记)同拍刷新 —— 开跑/停线后本页 ≤5s 收敛;
+  // dcw 全量快照(95+ 线/配方/历史)是重载荷且行控状态已有 WS 帧收敛,降至 15s 兜底;
+  // 轮询走可见性调度:后台自动降频(5s→30s / 15s→60s),回前台立即补拍,主线程不被占满
+  useVisibleInterval(() => {
     void daq.load()
-    void dcw.load()
     void daq.fetchAlarms()
-  }, 5000)
+  }, 5000, { bgMs: 30000 })
+  useVisibleInterval(() => {
+    void dcw.load()
+  }, 15000, { bgMs: 60000 })
 })
 onBeforeUnmount(() => {
   unsub?.()
-  unsubWarn?.()
-  if (redrawTimer) clearInterval(redrawTimer)
 })
 
 // ---------- 节点筛选(产线/设备绑定/产线运行态/节点状态 + 模板/驱动/数据时间/名称搜索;全部 AND 复合) ----------
@@ -247,6 +223,8 @@ function searchMatch(n: DaqNodeView): boolean {
 
 // ---------- Agent 优化记录(调控闭环;数采中心视角) ----------
 const optOpen = ref(false)
+/** 首次展开后保持内容挂载(手风琴动画需要);收起态内容不再重渲染 */
+const optMounted = ref(false)
 const optFilterLine = ref('')
 const optFilterRecipe = ref('')
 const optSeriesOf = ref<Record<string, { channels: Array<{ nodeId: string, nodeName: string, ch: string, unit: string, points: Array<{ at: number, value?: number, avg?: number }> }> }>>({})
@@ -263,8 +241,10 @@ function optStatusKey(s: string): string {
 
 async function toggleOptPanel(): Promise<void> {
   optOpen.value = !optOpen.value
-  if (optOpen.value)
+  if (optOpen.value) {
+    optMounted.value = true
     await filterOpts()
+  }
 }
 
 async function filterOpts(): Promise<void> {
@@ -398,6 +378,25 @@ const filteredNodes = computed<DaqNodeView[]>(() => daq.nodes.filter((n) => {
   if (!searchMatch(n)) return false
   return true
 }))
+
+/** 行渲染上下文预计算:状态 pill/配方越限/在离线/模板名 每行只算一次,
+ *  模板里 11 次函数调用/行(102 行 = 1100+ 次/渲染,含多次 .find)收敛为 1 次查表 */
+const rowCtx = computed(() => {
+  const m = new Map<string, { pill: { key: RowState, label: string, tip: string }, alarm: boolean, live: boolean, tpl: string }>()
+  for (const n of filteredNodes.value) {
+    m.set(n.id, {
+      pill: statePillOf(n),
+      alarm: recipeAlarm(n),
+      live: isLive(n),
+      tpl: daqTemplateRefCh(n.templateRef),
+    })
+  }
+  return m
+})
+const EMPTY_CTX = { pill: { key: 'offline' as RowState, label: '', tip: '' }, alarm: false, live: false, tpl: '-' }
+/** 行渲染视图:节点 + 预计算上下文成对交付,模板零函数调用 */
+const filteredRows = computed(() =>
+  filteredNodes.value.map(n => ({ n, c: rowCtx.value.get(n.id) ?? EMPTY_CTX })))
 
 // 设备名映射(device-twins 注册表;绑定列展示用)
 const deviceTwins = useDeviceTwins()
@@ -1236,134 +1235,136 @@ async function doReconnect(): Promise<void> {
         class="opt-body"
         :class="{ open: optOpen }"
       >
-        <div class="opt-filters">
-          <select
-            v-model="optFilterLine"
-            class="inp-sel"
-            @change="onOptLineChange"
-          >
-            <option value="">
-              {{ $t('daq.k1optf001') }}
-            </option>
-            <option
-              v-for="l in dcw.lines"
-              :key="l.id"
-              :value="l.id"
+        <template v-if="optMounted">
+          <div class="opt-filters">
+            <select
+              v-model="optFilterLine"
+              class="inp-sel"
+              @change="onOptLineChange"
             >
-              {{ l.name }}
-            </option>
-          </select>
-          <select
-            v-model="optFilterRecipe"
-            class="inp-sel"
-            @change="filterOpts"
+              <option value="">
+                {{ $t('daq.k1optf001') }}
+              </option>
+              <option
+                v-for="l in dcw.lines"
+                :key="l.id"
+                :value="l.id"
+              >
+                {{ l.name }}
+              </option>
+            </select>
+            <select
+              v-model="optFilterRecipe"
+              class="inp-sel"
+              @change="filterOpts"
+            >
+              <option value="">
+                {{ $t('daq.k1optf004') }}
+              </option>
+              <option
+                v-for="r in optRecipeOptions"
+                :key="r.id"
+                :value="r.id"
+              >
+                {{ r.name }}
+              </option>
+            </select>
+            <button
+              class="mini-act"
+              @click="filterOpts"
+            >
+              {{ $t('daq.k1optf002') }}
+            </button>
+          </div>
+          <p
+            v-if="dcw.optimizations.length === 0"
+            class="opt-empty"
           >
-            <option value="">
-              {{ $t('daq.k1optf004') }}
-            </option>
-            <option
-              v-for="r in optRecipeOptions"
+            {{ $t('daq.k1opte001') }}
+          </p>
+          <ul class="opt-list">
+            <li
+              v-for="r in dcw.optimizations.slice(0, 30)"
               :key="r.id"
-              :value="r.id"
+              class="opt-row"
+              :class="r.status"
             >
-              {{ r.name }}
-            </option>
-          </select>
-          <button
-            class="mini-act"
-            @click="filterOpts"
-          >
-            {{ $t('daq.k1optf002') }}
-          </button>
-        </div>
-        <p
-          v-if="dcw.optimizations.length === 0"
-          class="opt-empty"
-        >
-          {{ $t('daq.k1opte001') }}
-        </p>
-        <ul class="opt-list">
-          <li
-            v-for="r in dcw.optimizations.slice(0, 30)"
-            :key="r.id"
-            class="opt-row"
-            :class="r.status"
-          >
-            <div class="opt-line1">
-              <span
-                class="opt-status"
-                :class="r.status"
-              >{{ $t(optStatusKey(r.status)) }}</span>
-              <b class="opt-node">{{ r.nodeName }}</b>
-              <span class="mono opt-params">{{ r.params[0]?.from ?? '?' }} → {{ r.params[0]?.to }}</span>
-              <span class="mono opt-time">{{ r.setAt.slice(5, 16).replace('T', ' ') }}</span>
-              <button
-                v-if="!optSeriesOf[r.id]"
-                class="mini-act"
-                :disabled="optSeriesLoading === r.id"
-                @click="showOptSeries(r.id)"
-              >
-                {{ $t('daq.k1opta001') }}
-              </button>
-              <button
-                v-if="r.status === 'open'"
-                class="mini-act danger"
-                @click="rollbackRecord(r.id)"
-              >
-                {{ $t('daq.k1opta002') }}
-              </button>
-            </div>
-            <div class="opt-line2 mono">
-              <span
-                v-if="r.judge"
-                class="opt-judge"
-                :class="r.judge.verdict"
-              >{{ r.judge.verdict }}({{ r.judge.by }}): {{ r.judge.reason.slice(0, 70) }}</span>
-              <span
-                v-else-if="r.status === 'open'"
-                class="opt-open-hint"
-              >{{ $t('daq.k1opto001') }}</span>
-              <span
-                v-if="r.aggPending"
-                class="opt-agg"
-              >{{ $t('daq.k1optw001') }}</span>
-              <span
-                v-else-if="r.windowAgg && r.windowAgg.channels.length"
-                class="opt-agg"
-              >
-                <template
-                  v-for="c in r.windowAgg.channels"
-                  :key="c.daqNodeId"
-                >{{ c.ch }} {{ fmtPoint(c.min) }}~{{ fmtPoint(c.max) }}({{ $t('daq.k1optw002') }}{{ c.breaches < 0 ? '-' : c.breaches }}) </template>
-              </span>
-            </div>
-            <div
-              v-if="optSeriesOf[r.id]"
-              class="opt-series"
-            >
-              <div
-                v-for="ch in optSeriesOf[r.id].channels"
-                :key="ch.nodeId"
-                class="opt-ch"
-              >
-                <svg
-                  class="opt-spark"
-                  viewBox="0 0 240 36"
-                  preserveAspectRatio="none"
+              <div class="opt-line1">
+                <span
+                  class="opt-status"
+                  :class="r.status"
+                >{{ $t(optStatusKey(r.status)) }}</span>
+                <b class="opt-node">{{ r.nodeName }}</b>
+                <span class="mono opt-params">{{ r.params[0]?.from ?? '?' }} → {{ r.params[0]?.to }}</span>
+                <span class="mono opt-time">{{ r.setAt.slice(5, 16).replace('T', ' ') }}</span>
+                <button
+                  v-if="!optSeriesOf[r.id]"
+                  class="mini-act"
+                  :disabled="optSeriesLoading === r.id"
+                  @click="showOptSeries(r.id)"
                 >
-                  <polyline :points="seriesPath(ch.points)" />
-                </svg>
-                <span class="mono">{{ ch.ch }} {{ fmtPoint(ch.points.at(-1)?.value ?? ch.points.at(-1)?.avg) }}{{ ch.unit }}</span>
+                  {{ $t('daq.k1opta001') }}
+                </button>
+                <button
+                  v-if="r.status === 'open'"
+                  class="mini-act danger"
+                  @click="rollbackRecord(r.id)"
+                >
+                  {{ $t('daq.k1opta002') }}
+                </button>
               </div>
-              <p
-                v-if="optSeriesOf[r.id].channels.length === 0"
-                class="opt-empty"
+              <div class="opt-line2 mono">
+                <span
+                  v-if="r.judge"
+                  class="opt-judge"
+                  :class="r.judge.verdict"
+                >{{ r.judge.verdict }}({{ r.judge.by }}): {{ r.judge.reason.slice(0, 70) }}</span>
+                <span
+                  v-else-if="r.status === 'open'"
+                  class="opt-open-hint"
+                >{{ $t('daq.k1opto001') }}</span>
+                <span
+                  v-if="r.aggPending"
+                  class="opt-agg"
+                >{{ $t('daq.k1optw001') }}</span>
+                <span
+                  v-else-if="r.windowAgg && r.windowAgg.channels.length"
+                  class="opt-agg"
+                >
+                  <template
+                    v-for="c in r.windowAgg.channels"
+                    :key="c.daqNodeId"
+                  >{{ c.ch }} {{ fmtPoint(c.min) }}~{{ fmtPoint(c.max) }}({{ $t('daq.k1optw002') }}{{ c.breaches < 0 ? '-' : c.breaches }}) </template>
+                </span>
+              </div>
+              <div
+                v-if="optSeriesOf[r.id]"
+                class="opt-series"
               >
-                {{ $t('daq.k1opte002') }}
-              </p>
-            </div>
-          </li>
-        </ul>
+                <div
+                  v-for="ch in optSeriesOf[r.id].channels"
+                  :key="ch.nodeId"
+                  class="opt-ch"
+                >
+                  <svg
+                    class="opt-spark"
+                    viewBox="0 0 240 36"
+                    preserveAspectRatio="none"
+                  >
+                    <polyline :points="seriesPath(ch.points)" />
+                  </svg>
+                  <span class="mono">{{ ch.ch }} {{ fmtPoint(ch.points.at(-1)?.value ?? ch.points.at(-1)?.avg) }}{{ ch.unit }}</span>
+                </div>
+                <p
+                  v-if="optSeriesOf[r.id].channels.length === 0"
+                  class="opt-empty"
+                >
+                  {{ $t('daq.k1opte002') }}
+                </p>
+              </div>
+            </li>
+          </ul>
+        </template>
       </div>
     </section>
 
@@ -1541,21 +1542,89 @@ async function doReconnect(): Promise<void> {
           </div>
           <span class="count mono">{{ filteredNodes.length }} / {{ daq.nodes.length }} {{ $t('daq.k45uio067') }}</span>
         </div>
-        <!-- 越限实时警告(读数帧边沿触发;8s 自动消退) -->
-        <div
-          v-if="liveWarns.length > 0"
-          class="live-warns"
-        >
+        <!-- 实时告警 + 实时事件:告警 = server 权威未确认报警(WS 直推/可确认);事件 = 全操作摘要轨(详情在日志管理) -->
+        <div class="ops-panels">
           <div
-            v-for="w in liveWarns"
-            :key="w.id"
-            class="live-warn"
-            :class="w.dir"
+            class="ops-panel alarm-panel"
+            :class="{ live: daq.alarms.length > 0 }"
           >
-            <span class="i-tabler-alert-triangle" />
-            <b>{{ w.nodeName }}</b>
-            <span class="mono">{{ w.value }} {{ w.dir === 'high' ? $t('daq.k1wrn001') : $t('daq.k1wrn002') }} {{ w.limit }}</span>
-            <small>{{ w.source === 'recipe' ? $t('daq.k1wrn003') : $t('daq.k1wrn004') }}</small>
+            <div class="panel-head">
+              <span class="i-tabler-bell-ringing bell" />
+              <b>{{ $t('daq.k1alarm141') }}</b>
+              <span
+                class="mono cnt"
+                :class="{ hot: daq.alarms.length > 0 }"
+              >{{ daq.alarms.length }}</span>
+            </div>
+            <div class="panel-body">
+              <p
+                v-if="daq.alarms.length === 0"
+                class="panel-empty"
+              >
+                {{ $t('daq.k1evt001') }}
+              </p>
+              <div
+                v-for="a in daq.alarms"
+                v-else
+                :key="a.id"
+                class="alarm-row"
+              >
+                <span class="i-tabler-alert-triangle tri" />
+                <b>{{ a.nodeName }}</b>
+                <span class="mono dim">{{ a.metric }}</span>
+                <span class="mono">{{ a.value }} {{ a.rule === 'lt-min' ? '<' : '>' }} {{ a.threshold }}</span>
+                <small
+                  v-if="a.escalation > 0"
+                  class="esc mono"
+                >+{{ a.escalation }}</small>
+                <button
+                  class="mini-btn ack"
+                  @click="ackOne(a.id)"
+                >
+                  {{ $t('daq.k1ack142') }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="ops-panel event-panel">
+            <div class="panel-head">
+              <span class="i-tabler-activity" />
+              <b>{{ $t('daq.k1evt002') }}</b>
+              <NuxtLink
+                class="panel-link"
+                to="/logs"
+              >
+                {{ $t('daq.k1evt003') }}<span class="i-tabler-arrow-right" />
+              </NuxtLink>
+            </div>
+            <div class="panel-body">
+              <p
+                v-if="opsLog.recent.length === 0"
+                class="panel-empty"
+              >
+                {{ $t('daq.k1evt004') }}
+              </p>
+              <div
+                v-for="(r, i) in opsLog.recent"
+                v-else
+                :key="`${r.at}:${r.actor}:${r.action}:${i}`"
+                class="evt-row"
+              >
+                <span class="mono dim t">{{ opsTime(r.at) }}</span>
+                <span
+                  class="src-badge"
+                  :class="r.actorKind"
+                >{{ r.actorKind === 'agent' ? 'Agent' : r.actorKind === 'user' ? $t('logs.src.user') : $t('logs.src.system') }}</span>
+                <span
+                  class="kind-chip"
+                  :class="r.kind"
+                >{{ opsKindLabel(r.kind) }}</span>
+                <span
+                  class="txt"
+                  :title="r.summary"
+                >{{ r.summary }}</span>
+              </div>
+            </div>
           </div>
         </div>
         <table class="nodes-table">
@@ -1583,26 +1652,26 @@ async function doReconnect(): Promise<void> {
           </thead>
           <tbody>
             <tr
-              v-for="n in filteredNodes"
+              v-for="{ n, c } in filteredRows"
               :key="n.id"
-              :class="{ 'row-recipe-alarm': recipeAlarm(n) }"
+              :class="{ 'row-recipe-alarm': c.alarm }"
             >
               <td>
                 <span class="mono dim">{{ n.id.slice(0, 8) }}</span>
                 <b>{{ n.name }}</b>
-                <small class="mono ch">{{ daqTemplateRefCh(n.templateRef) }}</small>
+                <small class="mono ch">{{ c.tpl }}</small>
               </td>
               <td>
                 <span
                   class="st-pill"
-                  :class="[statePillOf(n).key]"
-                  :title="statePillOf(n).tip"
-                >{{ statePillOf(n).label }}</span>
+                  :class="[c.pill.key]"
+                  :title="c.pill.tip"
+                >{{ c.pill.label }}</span>
               </td>
               <td
                 class="mono val"
-                :class="{ 'stale': !isLive(n), 'val-alarm': n.state === 'alarm' || recipeAlarm(n) }"
-                :title="isLive(n) ? undefined : statePillOf(n).tip"
+                :class="{ 'stale': !c.live, 'val-alarm': n.state === 'alarm' || c.alarm }"
+                :title="c.live ? undefined : c.pill.tip"
               >
                 {{ n.value != null ? n.value.toFixed(n.decimals) : '--' }}
                 <small>{{ n.unit }}</small>
@@ -1632,7 +1701,7 @@ async function doReconnect(): Promise<void> {
                   />
                   <polyline
                     class="trace"
-                    :class="{ alarm: n.state === 'alarm' || recipeAlarm(n) }"
+                    :class="{ alarm: n.state === 'alarm' || c.alarm }"
                     :points="trendPath(n.hist)"
                   />
                 </svg>
@@ -1898,6 +1967,8 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 
 .table-card { overflow-x: auto; }
 .nodes-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+/* 离屏行跳过布局/绘制(102 行长表;contain-intrinsic-size 给出占位高度防滚动条跳动) */
+.nodes-table tbody tr { content-visibility: auto; contain-intrinsic-size: auto 42px; }
 .nodes-table th, .nodes-table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--divider-hair); }
 .nodes-table th {
   font-size: 11px;
@@ -1917,34 +1988,110 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 /* 越限实时值:红字(与行红底叠加仍可读) */
 .val.val-alarm { color: var(--tone-danger-dot); font-weight: 700; }
 
-/* ── 越限实时警告(帧边沿触发,8s 消退;玻璃芯片语言) ── */
-.live-warns {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* ── 实时告警 + 实时事件双面板(server 权威;玻璃面板语言) ── */
+.ops-panels {
+  display: grid;
+  grid-template-columns: minmax(320px, 5fr) minmax(320px, 7fr);
+  gap: 10px;
   margin: 0 0 10px;
 }
-.live-warn {
+@media (max-width: 1100px) {
+  .ops-panels { grid-template-columns: 1fr; }
+}
+.ops-panel {
+  min-width: 0;
+  background: var(--surface-glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  backdrop-filter: blur(var(--aurora-blur)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--aurora-blur)) saturate(1.15);
+}
+.ops-panel.alarm-panel.live { border-color: color-mix(in srgb, var(--tone-danger-dot) 40%, var(--glass-line)); }
+.panel-head {
   display: flex;
-  gap: 8px;
+  gap: 7px;
   align-items: center;
-  padding: 7px 12px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--glass-line);
+}
+.panel-head .bell { color: var(--tone-danger-dot); }
+.panel-head .cnt { margin-left: auto; font-size: 11px; color: var(--ink-faint); }
+.panel-head .cnt.hot { color: var(--tone-danger-dot); font-weight: 700; }
+.panel-link {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--tone-info-dot);
+  text-decoration: none;
+}
+.panel-head .cnt + .panel-link { margin-left: 12px; }
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 168px;
+  padding: 8px 12px;
+  overflow-y: auto;
+}
+.panel-empty { margin: 4px 0; font-size: 12px; color: var(--ink-faint); }
+.alarm-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 5px 8px;
   font-size: 12px;
   color: var(--tone-danger-dot);
   background: var(--tone-danger-bg);
-  border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 40%, transparent);
-  border-left: 3px solid var(--tone-danger-dot);
-  border-radius: 8px;
-  animation: warnIn 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 35%, transparent);
+  border-radius: 7px;
 }
-.live-warn.low { border-left-color: var(--tone-info-dot); }
-.live-warn b { color: var(--ink); }
-.live-warn .mono { font-weight: 600; }
-.live-warn small { margin-left: auto; font-size: 10px; color: var(--ink-faint); }
-@keyframes warnIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
+.alarm-row .tri { flex: none; }
+.alarm-row b { color: var(--ink); }
+.alarm-row .esc { color: var(--tone-danger-dot); }
+.alarm-row .ack { margin-left: auto; }
+.evt-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 4px 6px;
+  font-size: 12px;
+  border-radius: 6px;
 }
+.evt-row:hover { background: var(--frost-bg); }
+.evt-row .t { flex: none; font-size: 11px; }
+.evt-row .txt {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.src-badge {
+  flex: none;
+  padding: 1px 6px;
+  font-size: 10px;
+  border: 1px solid var(--glass-line);
+  border-radius: 99px;
+  color: var(--ink-faint);
+}
+.src-badge.agent { color: var(--tone-info-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 40%, transparent); }
+.src-badge.user { color: var(--tone-success-dot); border-color: color-mix(in srgb, var(--tone-success-dot) 40%, transparent); }
+.src-badge.system { color: var(--ink-faint); }
+.kind-chip {
+  flex: none;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: var(--ink-soft);
+  background: var(--frost-bg);
+  border-radius: 5px;
+}
+.kind-chip.alarm { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+.kind-chip.write { color: var(--tone-info-dot); }
+.kind-chip.rollback { color: var(--tone-warning-dot); }
 
 /* ── 行内实时趋势(WS 读数流直驱;上下限虚线参考) ── */
 .trend-cell { width: 128px; }

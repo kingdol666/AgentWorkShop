@@ -24,6 +24,17 @@ import { getDcwProductRepo } from './dcw-product.repo'
 import { getDcwLineRepo } from './dcw-line.repo'
 import { clearActiveLineRun, getActiveLineRun, getAllActiveLineRuns, setActiveLineRun } from './line-run'
 import { getRecipeRollBackManager } from './recipe-rollback-manager'
+import { recordOps } from '../ops/ops'
+
+/** 运维日志写下发防噪:同节点同值 10s 内的心跳重下发不重复入册 */
+const opsWriteMemo = new Map<string, { eng: number, at: number }>()
+
+/** write() 来源 → 日志来源(user 人工下发 / agent 智能体 / system 配方·回退等系统路径) */
+function opsActorKindOf(source: string): 'user' | 'agent' | 'system' {
+  if (source === 'agent') return 'agent'
+  if (source === 'manual') return 'user'
+  return 'system'
+}
 
 type BroadcastFn = (type: string, payload: unknown) => void
 
@@ -427,6 +438,35 @@ class DcwController {
       }
       catch (err) {
         console.error('[dcw] 调控闭环入册失败(不影响写结果):', err)
+      }
+      // 运维日志:所有下发路径(manual/recipe/agent/rollback)单点入册 + 实时事件
+      try {
+        const src = meta?.source ?? (recipeRunId ? 'recipe' : 'manual')
+        const memo = opsWriteMemo.get(id)
+        const now = Date.now()
+        if (!memo || memo.eng !== eng || now - memo.at > 10_000) {
+          opsWriteMemo.set(id, { eng, at: now })
+          if (opsWriteMemo.size > 500)
+            opsWriteMemo.clear()
+          const runNow = getActiveLineRun(node.lineId)
+          recordOps({
+            actor: meta?.actor ?? 'user',
+            actorName: meta?.actorName ?? meta?.actor ?? 'user',
+            actorKind: opsActorKindOf(src),
+            action: `dcw.write.${src}`,
+            kind: 'write',
+            targetKind: 'dcw-node',
+            targetId: id,
+            summary: `下发设定「${node.name}」→ ${eng}${node.unit ?? ''}(${src === 'manual' ? '手动' : src === 'agent' ? 'Agent' : src === 'rollback' ? '回退恢复' : '配方'})`,
+            lineId: node.lineId ?? '',
+            productId: runNow?.productId ?? '',
+            recipeId: runNow?.recipeId ?? recipeRunId ?? '',
+            detail: { eng, prevValue, ok: outcome.ok, message: outcome.message, taskId: meta?.taskId ?? null },
+          })
+        }
+      }
+      catch {
+        // 日志失败不影响写结果
       }
     }
     return outcome

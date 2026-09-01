@@ -11,7 +11,9 @@ import { defineApiHandler } from '@/server/utils/response'
 import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
 import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
-import { audit } from '@/server/services/workshop/ops/ops'
+import { recordOps } from '@/server/services/workshop/ops/ops'
+
+const GATEWAY_ZH = { start: '启动', stop: '停止', pause: '暂停', resume: '恢复' } as const
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -30,7 +32,16 @@ export default defineApiHandler(async (event) => {
         : body.action === 'resume'
           ? ctrl.resumeAll()
           : body.action === 'stop' ? ctrl.stopAll() : ctrl.startAll()
-      audit({ actor: user.id, actorName: user.name, actorKind: 'user', action: `daq.controller.${body.action}`, targetKind: 'daq-gateway', targetId: 'gateway' })
+      recordOps({
+        actor: user.id,
+        actorName: user.name,
+        actorKind: 'user',
+        action: `daq.controller.${body.action}`,
+        kind: 'daq',
+        targetKind: 'daq-gateway',
+        targetId: 'gateway',
+        summary: `数采网关${GATEWAY_ZH[body.action]}全部采集`,
+      })
       return { controller }
     }
     case 'config':

@@ -139,23 +139,35 @@ export function createAlarmEventRepo(db: DatabaseSync) {
   }
 }
 
-// ===== R1:审计日志 =====
+// ===== R1:审计日志(OpsLog 运维日志:全操作记录 + 手动记录,按产线/产品/Recipe 隔离查询) =====
 
 export interface AuditEntry {
   actor: string
   actorName: string
-  actorKind: 'user' | 'agent'
+  /** 事件来源:user 人工 / agent 智能体 / system 系统兜底 */
+  actorKind: 'user' | 'agent' | 'system'
   action: string
   targetKind?: string
   targetId?: string
   detail?: Record<string, unknown>
   at?: string
+  /** OpsLog 维度:产线/产品/Recipe 隔离 + 分类 + 人读摘要(实时事件只渲染摘要,详情进日志管理) */
+  lineId?: string
+  productId?: string
+  recipeId?: string
+  kind?: 'write' | 'manual' | 'alarm' | 'line' | 'recipe' | 'rollback' | 'daq' | 'system'
+  summary?: string
 }
+
+const AUDIT_COLS = `id, actor, actor_name AS actorName, actor_kind AS actorKind, action,
+  target_kind AS targetKind, target_id AS targetId, detail_json AS detailJson, at,
+  line_id AS lineId, product_id AS productId, recipe_id AS recipeId, kind, summary`
 
 export function createAuditRepo(db: DatabaseSync) {
   const insertStmt = db.prepare(
-    `INSERT INTO audit_log (actor, actor_name, actor_kind, action, target_kind, target_id, detail_json, at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO audit_log (actor, actor_name, actor_kind, action, target_kind, target_id, detail_json, at,
+       line_id, product_id, recipe_id, kind, summary)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const stmtCache = new Map<string, ReturnType<DatabaseSync['prepare']>>()
 
@@ -165,9 +177,23 @@ export function createAuditRepo(db: DatabaseSync) {
         e.actor, e.actorName ?? '', e.actorKind ?? 'user', e.action,
         e.targetKind ?? '', e.targetId ?? '', JSON.stringify(e.detail ?? {}),
         e.at ?? new Date().toISOString(),
+        e.lineId ?? '', e.productId ?? '', e.recipeId ?? '', e.kind ?? '', e.summary ?? '',
       )
     },
-    query(opts: { actor?: string, targetId?: string, action?: string, limit?: number }): Array<Record<string, unknown>> {
+    query(opts: {
+      actor?: string
+      targetId?: string
+      action?: string
+      lineId?: string
+      productId?: string
+      recipeId?: string
+      actorKind?: string
+      kind?: string
+      q?: string
+      from?: string
+      to?: string
+      limit?: number
+    }): Array<Record<string, unknown>> {
       const where: string[] = []
       const args: SQLInputValue[] = []
       if (opts.actor) {
@@ -182,11 +208,43 @@ export function createAuditRepo(db: DatabaseSync) {
         where.push('action = ?')
         args.push(opts.action)
       }
+      if (opts.lineId) {
+        where.push('line_id = ?')
+        args.push(opts.lineId)
+      }
+      if (opts.productId) {
+        where.push('product_id = ?')
+        args.push(opts.productId)
+      }
+      if (opts.recipeId) {
+        where.push('recipe_id = ?')
+        args.push(opts.recipeId)
+      }
+      if (opts.actorKind) {
+        where.push('actor_kind = ?')
+        args.push(opts.actorKind)
+      }
+      if (opts.kind) {
+        where.push('kind = ?')
+        args.push(opts.kind)
+      }
+      if (opts.q) {
+        where.push('(summary LIKE ? OR action LIKE ? OR actor_name LIKE ? OR detail_json LIKE ?)')
+        const like = `%${opts.q}%`
+        args.push(like, like, like, like)
+      }
+      if (opts.from) {
+        where.push('at >= ?')
+        args.push(opts.from)
+      }
+      if (opts.to) {
+        where.push('at <= ?')
+        args.push(opts.to)
+      }
       const key = `${where.join('|')}`
       let stmt = stmtCache.get(key)
       if (!stmt) {
-        const sql = `SELECT id, actor, actor_name AS actorName, actor_kind AS actorKind, action,
-          target_kind AS targetKind, target_id AS targetId, detail_json AS detailJson, at
+        const sql = `SELECT ${AUDIT_COLS}
           FROM audit_log ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY at DESC LIMIT ?`
         stmt = db.prepare(sql)
         stmtCache.set(key, stmt)

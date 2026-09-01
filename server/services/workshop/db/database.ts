@@ -248,12 +248,18 @@ CREATE TABLE IF NOT EXISTS audit_log (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   actor       TEXT NOT NULL DEFAULT '',
   actor_name  TEXT NOT NULL DEFAULT '',
-  actor_kind  TEXT NOT NULL DEFAULT 'user', -- 'user' | 'agent'
+  actor_kind  TEXT NOT NULL DEFAULT 'user', -- 'user' | 'agent' | 'system'
   action      TEXT NOT NULL,
   target_kind TEXT NOT NULL DEFAULT '',
   target_id   TEXT NOT NULL DEFAULT '',
   detail_json TEXT NOT NULL DEFAULT '{}',
-  at          TEXT NOT NULL
+  at          TEXT NOT NULL,
+  -- 运维日志(OpsLog)维度列:按产线/产品/Recipe 隔离查询 + 分类 + 人读摘要
+  line_id     TEXT NOT NULL DEFAULT '',
+  product_id  TEXT NOT NULL DEFAULT '',
+  recipe_id   TEXT NOT NULL DEFAULT '',
+  kind        TEXT NOT NULL DEFAULT '',     -- write|manual|alarm|line|recipe|rollback|daq|system
+  summary     TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_audit_log_at ON audit_log(at DESC);
 -- v14:高危管理操作双人复核(R3:maker-checker;config 开关默认关)
@@ -649,6 +655,12 @@ export function initWorkshopDb(db: DatabaseSync): void {
   // 回填:内置/遗留公共模板(owner NULL)强制 public —— 升级后保持全员可读可用
   db.exec('UPDATE agents SET visibility = \'public\' WHERE owner_user_id IS NULL')
   db.exec('UPDATE teams SET visibility = \'public\' WHERE owner_user_id IS NULL')
+  // 运维日志(OpsLog)维度列:既有库补列(新库由上方 DDL 直建)
+  migrateAddColumn(db, 'audit_log', 'line_id', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'audit_log', 'product_id', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'audit_log', 'recipe_id', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'audit_log', 'kind', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'audit_log', 'summary', 'TEXT NOT NULL DEFAULT \'\'')
   migrateMissingForeignKeys(db)
   migrateDropOwnerFks(db)
   seedDefaultWorkshopData(db)

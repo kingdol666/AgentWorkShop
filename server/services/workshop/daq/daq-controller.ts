@@ -33,7 +33,7 @@ import { getDaqNodeRepo } from './daq-node.repo'
 import { getTsdb, tsdbReady } from './storage'
 import { getDaqQueue } from './bus'
 import { getDaqHostPorts } from './host-ports'
-import { getOps } from '../ops/ops'
+import { getOps, recordOps } from '../ops/ops'
 import { notifyAlarm, newAlarmId, startAlarmEscalator } from './alarm-notify'
 import type { DaqSampleEnvelope } from './bus/queue-port'
 
@@ -190,13 +190,8 @@ class DaqController {
   }
 
   private ingestNode(node: DaqNode, env: DaqSampleEnvelope, allowPublish: boolean): void {
-    // 配方级数采监控:实时值越出活动配方窗口 → 立即 alarm(越限即报,不等去抖);
-    // 广播/入库/遥测回写/孪生环全部携带该状态。窗口恢复后由量程派生自然回落。
-    const rw = this.recipeDaqWindowFor(node)
-    if (rw && node.state !== 'alarm') {
-      const v = env.value
-      if ((rw.min != null && v < rw.min) || (rw.max != null && v > rw.max)) node.state = 'alarm'
-    }
+    // 配方级数采监控窗口的越限判定已前移到运行时 onSample(与量程告警共用边沿语义,
+    // 越窗即 raise 落库 + 广播);此处 state 已含窗口结论,仅负责管线汇聚。
     if (allowPublish) {
       this.broadcast?.('daq.reading', {
         nodeId: node.id,
@@ -293,6 +288,7 @@ class DaqController {
     broadcastError: (node, message) => this.broadcastDriverError(node, message),
     onAlarm: (node, value, rule, threshold) => this.handleAlarm(node, value, rule, threshold),
     onAlarmRecover: (node, value) => this.handleAlarmRecover(node, value),
+    recipeWindowFor: node => this.recipeDaqWindowFor(node),
   }
 
   // ---------- S5:报警持久化/外送/确认 ----------
@@ -325,6 +321,20 @@ class DaqController {
     }
     this.broadcast?.('daq.alarm', payload)
     notifyAlarm(payload)
+    // 运维日志:越限告警入实时事件轨(恢复/详情在告警面板与日志管理)
+    const zh = rule === 'gt-max' ? '高于上限' : '低于下限'
+    recordOps({
+      actor: 'system',
+      actorName: 'system',
+      actorKind: 'system',
+      action: 'daq.alarm.raise',
+      kind: 'alarm',
+      targetKind: 'daq-node',
+      targetId: node.id,
+      summary: `告警:「${node.name}」${zh}阈值 ${threshold}(当前 ${value})`,
+      lineId: node.lineId ?? '',
+      detail: { alarmId: id, metric: node.templateKey, value, rule, threshold },
+    })
   }
 
   /** alarm 恢复沿:广播恢复(报警保持 open 待人工 ack) */
@@ -337,7 +347,19 @@ class DaqController {
     const repo = getOps()?.alarmEvents
     if (!repo) throw new AppError(503, 'UNAVAILABLE', '报警持久化未就绪')
     const ok = repo.ack(id, byUserId, byName, new Date().toISOString())
-    if (ok) this.broadcast?.('daq.alarm.changed', { id, ackedBy: byName, ackedAt: new Date().toISOString() })
+    if (ok) {
+      this.broadcast?.('daq.alarm.changed', { id, ackedBy: byName, ackedAt: new Date().toISOString() })
+      recordOps({
+        actor: byUserId,
+        actorName: byName,
+        actorKind: 'user',
+        action: 'daq.alarm.ack',
+        kind: 'alarm',
+        targetKind: 'alarm',
+        targetId: id,
+        summary: `确认报警 ${id}(处理完毕,移出实时告警)`,
+      })
+    }
     return ok
   }
 

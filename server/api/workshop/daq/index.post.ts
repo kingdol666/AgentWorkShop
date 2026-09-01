@@ -10,11 +10,24 @@ import { defineApiHandler } from '@/server/utils/response'
 import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
 import { getDaqController, type DaqCreateInput } from '@/server/services/workshop/daq/daq-controller'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
+import { recordOps } from '../../../services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   bindDaqHost(broadcastSceneEvent)
   const body = await readBody<DaqCreateInput>(event) ?? {}
   const node = getDaqController().create(body)
+  recordOps({
+    actor: user.id,
+    actorName: user.name,
+    actorKind: 'user',
+    action: 'daq.node.create',
+    kind: 'daq',
+    targetKind: 'daq-node',
+    targetId: node.id,
+    summary: `创建数采节点「${node.name}」(driver=${node.driver})`,
+    lineId: node.lineId ?? '',
+    detail: { driver: node.driver, templateRef: node.templateRef },
+  })
   return { node: node.toView() }
 })
