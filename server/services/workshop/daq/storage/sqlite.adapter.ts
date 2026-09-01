@@ -6,14 +6,14 @@
  * 生产环境配置 DAQ_TSDB_URL 即切换 Timescale,业务代码零改动。
  */
 import { createLogger } from '../../logger'
-import { mkdirSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import type { DaqQueryOpts, DaqSampleRow, TsdbPoint, TsdbPort } from './tsdb-port'
 
 const log = createLogger('daq.tsdb.sqlite')
 
-const DB_PATH = resolve(process.cwd(), 'data', 'daq-timeseries.sqlite')
+const DB_PATH = join(ensureDataDir(), 'daq-timeseries.sqlite')
 
 export class SqliteTimeSeriesAdapter implements TsdbPort {
   readonly backend = 'sqlite-emulated'
@@ -23,7 +23,6 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   private retentionTimer: NodeJS.Timeout | null = null
 
   async init(): Promise<void> {
-    mkdirSync(resolve(process.cwd(), 'data'), { recursive: true })
     this.db = new DatabaseSync(DB_PATH)
     this.db.exec('PRAGMA journal_mode = WAL')
     // WAL + NORMAL:批写单事务一次 fsync,兼顾持久性与事件循环停顿

@@ -1,18 +1,23 @@
-import { existsSync, mkdirSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { randomBytes, randomUUID, scryptSync, createHash, timingSafeEqual } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import type { Paginated, User, UserListQuery, UserToken } from '../types/user'
 import type { UserCreate, UserUpdate } from '../schemas/user.schema'
 
 /**
- * 全局用户数据访问层（Repository）—— SQLite 持久化（data/users.sqlite）。
+ * 全局用户数据访问层（Repository）—— SQLite 持久化（配置根 .AgentWorkShop/data/users.sqlite;
+ * repo 模式 <repo>/.AgentWorkShop/data,home 模式 ~/.AgentWorkShop/data,经 ensureDataDir 统一解析
+ * 并自动迁移旧 cwd/data 位置）。
  * - users 表：用户档案 + 密码哈希（scrypt，salt 内嵌，明文不进库）
  * - user_tokens 表：每用户多个 API Token（仅存 SHA-256 哈希；明文只在签发时返回一次）
  * 进程内单例 DB 懒加载；数据源与业务逻辑解耦，service 层零改动。
  */
 
-const DB_PATH = resolve(process.cwd(), 'data', 'users.sqlite')
+// 配置根 .AgentWorkShop/data（repo: <repo>/.AgentWorkShop/data,home: ~/.AgentWorkShop/data;
+// ensureDataDir 统一解析并自动迁移旧 cwd/data 位置）
+const DB_PATH = join(ensureDataDir(), 'users.sqlite')
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -50,7 +55,7 @@ let db: DatabaseSync | null = null
 
 function getDb(): DatabaseSync {
   if (!db) {
-    mkdirSync(resolve(process.cwd(), 'data'), { recursive: true })
+    // 目录由 ensureDataDir 内部创建(含旧位置迁移)
     db = new DatabaseSync(DB_PATH)
     db.exec(SCHEMA_SQL)
     migrateSchema(db)
@@ -105,7 +110,9 @@ function seedIfEmpty(): void {
  * 幂等：按 id 判断已存在则跳过。
  */
 function importLegacyWorkshopUsers(d: DatabaseSync): void {
-  const wsPath = resolve(process.cwd(), 'data', 'workshop.sqlite')
+  // 迁移后配置根已有 workshop.sqlite;旧 cwd/data 位置兜底(仅历史未迁移场景)
+  const migrated = join(ensureDataDir(), 'workshop.sqlite')
+  const wsPath = existsSync(migrated) ? migrated : resolve(process.cwd(), 'data', 'workshop.sqlite')
   if (!existsSync(wsPath)) return
   let wdb: DatabaseSync
   try {

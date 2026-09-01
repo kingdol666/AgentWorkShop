@@ -9,6 +9,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 
 const g = globalThis as typeof globalThis & { __awBackupTimer?: NodeJS.Timeout, __awBackupLastAt?: string }
 
@@ -58,7 +59,7 @@ function backupOnce(dataDir: string): void {
 export default function backupPlugin() {
   if (process.env.BACKUP_DISABLED === '1') return
   if (g.__awBackupTimer) return
-  const dataDir = resolve(process.cwd(), 'data')
+  const dataDir = ensureDataDir()
 
   // 启动 30s 后首备(避开启动风暴),此后每 BACKUP_INTERVAL_HOURS(默认 24h)
   const first = setTimeout(() => {

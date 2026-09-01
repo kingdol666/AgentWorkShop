@@ -7,7 +7,8 @@
  */
 
 import fs from 'node:fs'
-import path from 'node:path'
+import { join } from 'node:path'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 
 export interface CharacterAsset {
   id: string
@@ -28,7 +29,8 @@ export interface CharacterAsset {
   createdAt: string
 }
 
-const DB_PATH = process.cwd().endsWith('server') ? 'data/character-assets.json' : path.join(process.cwd(), 'server', 'data', 'character-assets.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const DB_PATH = join(ensureDataDir(), 'character-assets.json')
 
 function load(): CharacterAsset[] {
   try {
@@ -42,7 +44,7 @@ function load(): CharacterAsset[] {
 }
 
 function save(list: CharacterAsset[]): void {
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
+  fs.mkdirSync(join(DB_PATH, '..'), { recursive: true })
   fs.writeFileSync(DB_PATH, JSON.stringify(list, null, 2), 'utf-8')
 }
 

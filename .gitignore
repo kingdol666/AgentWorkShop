@@ -48,6 +48,16 @@ gui-test-screenshots/
 
 # 运行时数据库(data/ 为程序生成的 sqlite 文件)
 data/
+# 配置根 .AgentWorkShop:prompts 为版本化事实源,运行时产物不入库
+.AgentWorkShop/data/
+.AgentWorkShop/runtime-settings.json
+.AgentWorkShop/.env
+.AgentWorkShop/logs/
+.AgentWorkShop/backups/
+.AgentWorkShop/commands/
+
+# Mimosa 安全扫描历史(会话级)
+.mimosa/
 
 # 测试临时产物(workspace / sqlite 等)
 .tmp-*

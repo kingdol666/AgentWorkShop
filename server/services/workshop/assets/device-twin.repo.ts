@@ -9,7 +9,8 @@
  */
 
 import fs from 'node:fs'
-import path from 'node:path'
+import { join } from 'node:path'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { AppError } from '../../../utils/errors'
 
 export interface DeviceTwin {
@@ -43,7 +44,8 @@ export interface DeviceTwin {
   createdAt: string
 }
 
-const DB_PATH = process.cwd().endsWith('server') ? 'data/device-twins.json' : path.join(process.cwd(), 'server', 'data', 'device-twins.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const DB_PATH = join(ensureDataDir(), 'device-twins.json')
 
 function load(): DeviceTwin[] {
   try {
@@ -56,7 +58,7 @@ function load(): DeviceTwin[] {
   }
 }
 function save(list: DeviceTwin[]): void {
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
+  fs.mkdirSync(join(DB_PATH, '..'), { recursive: true })
   fs.writeFileSync(DB_PATH, JSON.stringify(list, null, 2), 'utf-8')
 }
 

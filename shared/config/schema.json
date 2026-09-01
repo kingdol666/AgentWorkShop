@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "comment": "AgentWorkShop 运行时设置描述符（声明式单一来源）。config.yml 提供默认值（source=config.yml），data/runtime-settings.json 提供运行时覆盖（source=runtime），环境变量提供 env 覆盖（source=env）。applies: live=保存即热重载生效; restart=需重启对应模式（aw dev / pnpm start）后生效。",
+  "settings": [
+    { "key": "server.host", "type": "string", "group": "server", "label": "监听地址", "labelKey": "settings.runtime.server.host", "description": "服务绑定的网络接口，0.0.0.0 = 全网卡", "applies": "restart", "default": "0.0.0.0" },
+    { "key": "server.dev.port", "type": "number", "group": "server", "label": "开发端口", "labelKey": "settings.runtime.server.devPort", "description": "pnpm dev / aw dev 启动时使用的端口", "applies": "restart", "default": 3000, "min": 1, "max": 65535 },
+    { "key": "server.prod.port", "type": "number", "group": "server", "label": "生产端口", "labelKey": "settings.runtime.server.prodPort", "description": "pnpm start / aw start 启动时使用的端口", "applies": "restart", "default": 3001, "min": 1, "max": 65535 },
+
+    { "key": "app.title", "type": "string", "group": "app", "label": "应用标题", "labelKey": "settings.runtime.app.title", "description": "浏览器标题与页面头部展示的应用名", "applies": "live", "default": "AgentWorkShop" },
+    { "key": "app.description", "type": "string", "group": "app", "label": "应用描述", "labelKey": "settings.runtime.app.description", "description": "站点描述（SEO meta），SSR 实时生效", "applies": "live", "default": "" },
+
+    { "key": "api.baseURL", "type": "string", "group": "api", "label": "API 基址", "labelKey": "settings.runtime.api.baseURL", "description": "前端 axios 请求基址，一般保持 /api", "applies": "live", "default": "/api" },
+    { "key": "api.timeout", "type": "number", "group": "api", "label": "API 超时(ms)", "labelKey": "settings.runtime.api.timeout", "description": "HTTP 请求超时毫秒数", "applies": "live", "default": 15000, "min": 500, "max": 120000 },
+    { "key": "api.pageSize", "type": "number", "group": "api", "label": "默认分页大小", "labelKey": "settings.runtime.api.pageSize", "description": "服务端 API 默认分页条数", "applies": "live", "default": 20, "min": 1, "max": 1000 },
+    { "key": "api.maxPageSize", "type": "number", "group": "api", "label": "分页大小上限", "labelKey": "settings.runtime.api.maxPageSize", "description": "服务端 API 分页条数上限", "applies": "live", "default": 100, "min": 1, "max": 10000 },
+
+    { "key": "theme.primaryColor", "type": "color", "group": "theme", "label": "主题色", "labelKey": "settings.runtime.theme.primaryColor", "description": "品牌主色（十六进制），保存后全站实时生效；前端设置页的本地强调色偏好优先于它", "applies": "live", "default": "#35e0a0" },
+    { "key": "theme.mode", "type": "select", "group": "theme", "label": "显示模式", "labelKey": "settings.runtime.theme.mode", "description": "全局默认深浅色；用户本地切换偏好优先", "applies": "live", "default": "light", "options": ["light", "dark"] },
+
+    { "key": "i18n.defaultLocale", "type": "select", "group": "i18n", "label": "默认语言", "labelKey": "settings.runtime.i18n.defaultLocale", "description": "未做本地选择时的界面语言", "applies": "live", "default": "zh-CN", "options": ["zh-CN", "en"] },
+
+    { "key": "security.approvalGate", "type": "boolean", "group": "security", "label": "高危操作双人复核", "labelKey": "settings.runtime.security.approvalGate", "description": "R3：开启后写控/删除等高风险操作需另一位管理员批核", "applies": "live", "default": false },
+
+    { "key": "daq.startInfrastructure", "type": "select", "group": "daq", "label": "数采基础设施拉起策略", "labelKey": "settings.runtime.daq.startInfrastructure", "description": "auto=启动探测，不通且有 Docker 则自动拉起；always=仅 Docker 拉起；never=只直连", "applies": "live", "default": "auto", "options": ["auto", "always", "never"] },
+    { "key": "daq.mqtt.host", "type": "string", "group": "daq", "label": "MQTT Broker 地址", "labelKey": "settings.runtime.daq.mqttHost", "description": "数采事件总线 MQTT 主机", "applies": "restart", "default": "127.0.0.1" },
+    { "key": "daq.mqtt.port", "type": "number", "group": "daq", "label": "MQTT Broker 端口", "labelKey": "settings.runtime.daq.mqttPort", "description": "数采事件总线 MQTT 端口", "applies": "restart", "default": 1883, "min": 1, "max": 65535 },
+    { "key": "daq.timescale.host", "type": "string", "group": "daq", "label": "时序库地址", "labelKey": "settings.runtime.daq.tsHost", "description": "TimescaleDB/PostgreSQL 主机", "applies": "restart", "default": "127.0.0.1" },
+    { "key": "daq.timescale.port", "type": "number", "group": "daq", "label": "时序库端口", "labelKey": "settings.runtime.daq.tsPort", "description": "TimescaleDB/PostgreSQL 端口", "applies": "restart", "default": 5432, "min": 1, "max": 65535 }
+  ]
+}

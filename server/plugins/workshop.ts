@@ -14,6 +14,7 @@
  */
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { openWorkshopDb, initWorkshopDb } from '../services/workshop/db/database'
 import { createChannelRepo } from '../services/workshop/db/channel.repo'
 import { createAgentRepo } from '../services/workshop/db/agent.repo'
@@ -84,8 +85,9 @@ export default function workshopPlugin(nitroApp: {
   // 先检查已设置:避免重复装配覆盖既有单例
   if (globalThis.__workshopManager) return
 
-  // data/ 目录不存在则创建(openWorkshopDb 依赖目录存在)
-  const dataDir = resolve(process.cwd(), 'data')
+  // 数据目录经配置根解析（repo: <repo>/.AgentWorkShop/data;home: ~/.AgentWorkShop/data;
+  // ensureDataDir 自动迁移旧 cwd/data 位置,目录不存在则创建）
+  const dataDir = ensureDataDir()
   mkdirSync(dataDir, { recursive: true })
 
   // 打开(或创建)数据库 → 初始化(建表 + PRAGMA;openWorkshopDb 已内置,显式再调一次保持幂等)

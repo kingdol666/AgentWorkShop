@@ -10,7 +10,8 @@
 import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
-import path from 'node:path'
+import { join } from 'node:path'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 
 const log = createLogger('workshop.node-bindings')
@@ -27,9 +28,9 @@ export interface AgentNodeBinding {
   createdAt: string
 }
 
-const DB_PATH = process.cwd().endsWith('server')
-  ? 'data/agent-node-bindings.json'
-  : path.join(process.cwd(), 'server', 'data', 'agent-node-bindings.json')
+// 配置根 .AgentWorkShop/data（repo: <repo>/.AgentWorkShop/data;home: ~/.AgentWorkShop/data;
+// ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const DB_PATH = join(ensureDataDir(), 'agent-node-bindings.json')
 
 function load(): AgentNodeBinding[] {
   try {

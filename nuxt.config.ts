@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, cpSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, cpSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { loadConfig } from './app/config'
@@ -6,10 +6,14 @@ import { loadConfig } from './app/config'
 // 构建期一次性读取 config.yml，作为整个运行时的单一事实来源
 const config = loadConfig()
 
+// @nuxt/eslint 仅在依赖树内存在时启用 —— 全局安装载荷(用户机)不装 eslint,
+// 构建期模块不可解析会直接炸;仓库开发环境正常启用
+const hasEslintModule = existsSync(join(process.cwd(), 'node_modules', '@nuxt', 'eslint'))
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: [
-    '@nuxt/eslint',
+    ...(hasEslintModule ? ['@nuxt/eslint'] : []),
     '@pinia/nuxt',
     'pinia-plugin-persistedstate/nuxt',
     '@vueuse/nuxt',
@@ -114,6 +118,10 @@ export default defineNuxtConfig({
     // 绝对盘符路径('d:\...')→ ESM loader 报 "protocol 'd:'";外置后由 Node 原生加载。
     externals: {
       external: ['pg', 'mqtt', 'modbus-serial', 'node-opcua', '@serialport/bindings-cpp'],
+      // shared/config/engine.mjs 从 server 树外 import 会被 nitro dev 外部化,且在
+      // Windows 上算错嵌套相对路径('../../..' 溢出盘符根)→ 强制内联进服务端 bundle;
+      // 运行时 engine.loadDescriptors 经 cwd 兜底读 schema.json。
+      inline: ['**/shared/config/engine.mjs'],
     },
     // 服务器侧 rollup 构建:显式外置 node:* 内建模块(如 node:sqlite)。
     // rollup 的内建模块清单不含 node:sqlite,Nitro 的 externals 插件也放行,
