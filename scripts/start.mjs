@@ -2,9 +2,24 @@
 // 生产启动入口（配置驱动）
 // 从根目录 config.yml 读取 server.prod.port / server.host，
 // 注入为 Nitro node-server 识别的 PORT / HOST 环境变量后启动产物。
+// 另在启动前加载根目录 .env（gitignored）：NUXT_SESSION_PASSWORD 等密钥
+// 只经环境变量注入，绝不写入 config.yml/仓库；已导出的真实环境变量优先。
 // ============================================================
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import YAML from 'js-yaml'
+
+// ---- .env 预载（零依赖;KEY=VALUE 行,# 注释;不覆盖已存在的环境变量） ----
+const envPath = new URL('../.env', import.meta.url)
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/)
+    if (!m || line.trim().startsWith('#')) continue
+    const key = m[1]
+    let val = m[2] ?? ''
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith('\'') && val.endsWith('\''))) val = val.slice(1, -1)
+    if (process.env[key] === undefined) process.env[key] = val
+  }
+}
 
 const raw = YAML.load(readFileSync(new URL('../config.yml', import.meta.url), 'utf8'))
 
