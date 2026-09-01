@@ -1,16 +1,42 @@
 /**
- * Dev 稳定性护栏:浏览器断开(WS/keep-alive socket 硬断)会产生 ECONNRESET 类
- * unhandledRejection —— Node v24 默认策略是 throw,直接击穿 dev server,
- * 拖垮所有正在调试/测试的会话。这里仅在 dev 捕获并记日志(生产不挂此护栏,
- * 未处理拒绝仍按 Node 默认策略暴露真实问题)。
+ * Server 稳定性护栏:浏览器断开(WS/keep-alive socket 硬断)产生 ECONNRESET/EPIPE
+ * 类异步异常 —— Node 默认策略直接击穿进程,拖垮所有并发调试/运行会话。
+ *
+ * 严重性过滤(关键设计):只抑制 socket 级断连噪声;其余异常保留致命语义
+ * (记日志后按非零码退出)—— 安全插件的 fail-fast(如生产密钥校验失败拒绝启动)
+ * 依赖异常中止进程,绝不能被护栏吞掉。
  */
+const SOCKET_NOISE = /ECONNRESET|EPIPE|ECONNABORTED|ETIMEDOUT|ERR_STREAM_PREMATURE_CLOSE/
+
+function isSocketNoise(reason: unknown): boolean {
+  if (reason == null) return false
+  const err = reason as NodeJS.ErrnoException
+  if (typeof err.code === 'string') return SOCKET_NOISE.test(err.code)
+  return SOCKET_NOISE.test(String(reason))
+}
+
+function describe(reason: unknown): string {
+  return reason instanceof Error
+    ? `${reason.message}\n${reason.stack?.slice(0, 600) ?? ''}`
+    : String(reason)
+}
+
 export default defineNitroPlugin(() => {
-  if (!import.meta.dev) return
   process.on('unhandledRejection', (reason) => {
-    const msg = reason instanceof Error ? `${reason.message}\n${reason.stack?.slice(0, 600) ?? ''}` : String(reason)
-    console.warn(`[dev-guard] unhandledRejection suppressed: ${msg}`)
+    if (isSocketNoise(reason)) {
+      console.warn(`[stability-guard] socket noise suppressed: ${describe(reason).slice(0, 120)}`)
+      return
+    }
+    console.error(`[stability-guard] fatal unhandledRejection, exiting:\n${describe(reason)}`)
+    process.exit(1)
   })
   process.on('uncaughtException', (err) => {
-    console.warn(`[dev-guard] uncaughtException suppressed: ${err.message}\n${err.stack?.slice(0, 600) ?? ''}`)
+    if (isSocketNoise(err)) {
+      console.warn(`[stability-guard] socket noise suppressed: ${describe(err).slice(0, 120)}`)
+      return
+    }
+    console.error(`[stability-guard] fatal uncaughtException, exiting:\n${describe(err)}`)
+    process.exit(1)
   })
+  console.warn('[stability-guard] armed (socket disconnects → log & continue; real errors → exit 1)')
 })

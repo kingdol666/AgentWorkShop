@@ -51,6 +51,10 @@ export const useUserStore = defineStore('workshop.user', {
   },
   actions: {
     applyCookie(): void {
+      // SSR 阶段直接跳过:登录/登出只发生在客户端,且 refresh() 等异步链在 await 后
+      // 请求上下文已丢失,useCookie 会抛 NUXT_E1001(useNuxtApp outside context);
+      // 请求期写 Set-Cookie 在响应完成后也无实效。客户端 useCookie 不依赖请求上下文。
+      if (import.meta.server) return
       const cookie = useCookie<string | null>('token', { maxAge: 60 * 60 * 24 * 365 })
       cookie.value = this.user?.token ?? null
     },

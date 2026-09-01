@@ -12,9 +12,10 @@ import { useVisibleInterval } from '@/app/composables/workshop/useVisibleInterva
 import AwChart from '@/app/components/AwChart.vue'
 import type { EChartsOption } from 'echarts'
 
+const { t } = useI18n()
+// 注意:useHead 的函数 title 在 prod SSR 下立即求值,必须在 useI18n 之后注册
 useHead({ title: () => t('titles.dashboard') })
 
-const { t } = useI18n()
 const site = useSiteConfig()
 const store = useAppStore()
 const daq = useDaqStream()

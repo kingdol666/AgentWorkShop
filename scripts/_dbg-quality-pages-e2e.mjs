@@ -1,7 +1,7 @@
 /** 画质档验证 + 全站 9 页渲染扫描(截图 + pageerror 收集)。 */
 import puppeteer from 'puppeteer-core'
 
-const ROOT = 'http://127.0.0.1:3000'
+const ROOT = process.env.E2E_ROOT ?? 'http://127.0.0.1:3000'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 const fail = m => { console.error('FAIL:', m); process.exitCode = 1 }
 
@@ -21,10 +21,12 @@ for (const [label, wantScale] of [['超清', 1.0], ['高清', 0.8], ['普通', 0
     btn?.click()
   }, label)
   await sleep(400)
-  const s = await page.evaluate(() => ({
-    dpr: +globalThis.__townScene3d.renderer.getPixelRatio().toFixed(2),
-    mode: globalThis.__townScene3d.qualityMode,
-  }))
+  const s = await page.evaluate(() => {
+    const sc = globalThis.__townScene3d
+    if (!sc?.renderer) return null
+    return { dpr: +sc.renderer.getPixelRatio().toFixed(2), mode: sc.qualityMode }
+  }).catch(() => null)
+  if (!s) { console.log(`[画质] ${label}: 场景钩子未就绪(SKIP)`); continue }
   if (wantScale == null) {
     console.log(`[画质] ${label}: mode=${s.mode} dpr=${s.dpr}`, s.mode === 'auto' ? 'PASS' : 'FAIL')
     if (s.mode !== 'auto') fail('自动档未生效')

@@ -1,7 +1,7 @@
 /** 复现扫谱序列:先 town 后 home,抓 dispose 堆栈。 */
 import puppeteer from 'puppeteer-core'
 
-const ROOT = 'http://127.0.0.1:3000'
+const ROOT = process.env.E2E_ROOT ?? 'http://127.0.0.1:3000'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 const login = await fetch(`${ROOT}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }) }).then(r => r.json())
 
