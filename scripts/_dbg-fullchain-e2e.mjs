@@ -6,7 +6,7 @@
  *   → 任务完成/告警/孪生同步 → 清理。
  */
 const TOKEN = 'ut-ffc1dfbbc0c1444c87c1ec69a9e8208c'
-const ROOT = 'http://127.0.0.1:3000'
+const ROOT = process.env.E2E_ROOT ?? 'http://127.0.0.1:3000'
 const H = { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const fail = (m) => { console.error('FAIL:', m); process.exitCode = 1 }

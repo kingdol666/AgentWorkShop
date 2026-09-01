@@ -763,6 +763,18 @@ export class TownScene3D {
   private clock = new THREE.Clock()
   private frameCount = 0
   private fpsAccum = 0
+  /** 帧预算(ms):渲染节流上限;0 = 不限制。数据消费不走此门控(帧到达即入实时缓冲) */
+  private frameBudgetMs = 1000 / 40
+
+  /** 用户帧率选择(60/120/0=不限制):只影响渲染节流,与数据消费频率无关 */
+  setFpsCap(fps: number): void {
+    this.frameBudgetMs = fps > 0 ? 1000 / fps : 0
+    this.frameAcc = 0
+  }
+
+  private frameAcc = 0
+  /** 动态分辨率基准(初始 dpr):实测帧率过低时降,富余时回升 */
+  private baseDpr = Math.min(window.devicePixelRatio, 2)
   private dirty = true
   /** 频道旗缓存(任务状态) */
   private flagBy = new Map<string, THREE.Mesh>()
@@ -851,7 +863,7 @@ export class TownScene3D {
   // ================================================================
 
   private initRenderer(): void {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.setSize(this.el.clientWidth || 1100, this.el.clientHeight || 700)
     this.renderer.shadowMap.enabled = true
@@ -1079,6 +1091,8 @@ export class TownScene3D {
 
     this.applyGroundTexture()
 
+    // E2E/性能探针钩子:真值验证用(渲染帧计数/质量档/pixelRatio),dispose 时清除
+    ;(globalThis as { __townScene3d?: TownScene3D }).__townScene3d = this
     this.loop()
   }
 
@@ -4142,7 +4156,16 @@ export class TownScene3D {
     const animate = () => {
       if (this.disposed) return
       this.raf = requestAnimationFrame(animate)
-      const dt = this.clock.getDelta()
+      const rawDt = this.clock.getDelta()
+      // 帧预算门控:数据消费与帧率解耦 —— WS 帧直写实时缓冲(消费层,不受此门控),
+      // 渲染循环每帧只取「当前最新值」上屏(展示层);budget 0 = 不限制(用户可选 60/120/∞)。
+      // 后台标签页 rAF 自动停摆;回前台 rawDt 巨大 → 钳制单步 ≤100ms 防动画跳变
+      if (this.frameBudgetMs > 0) {
+        this.frameAcc += rawDt * 1000
+        if (this.frameAcc < this.frameBudgetMs - 0.5) return
+        this.frameAcc = 0
+      }
+      const dt = Math.min(rawDt, 0.1)
       const t = this.clock.elapsedTime
       // 频道信息接收器:FIFO 逐条消费实时消息(每帧检查,展示期满取下一条)
       this.drainReceivers(performance.now())
@@ -4301,11 +4324,107 @@ export class TownScene3D {
       this.fpsAccum += dt * 1000
       if (this.fpsAccum >= 1000) {
         this.emit('fps', this.frameCount)
+        this.adaptQuality(this.frameCount)
         this.frameCount = 0
         this.fpsAccum = 0
       }
     }
     animate()
+  }
+
+  /** 质量阶梯:实测 fps 连续 2s < 17 → 降一档;连续 4s ≥ 27(帧预算附近)→ 升一档。
+   *  档位 = dprScale × 阴影贴图 × Bloom 开关的组合(Bloom+2048² 阴影是两大单项开销,
+   *  重活机器 11fps = 每帧 ~90ms 主线程阻塞)。统一阶梯,避免多套自适应互相打架。 */
+  private static readonly Q_TIERS = [
+    { scale: 1.0, shadow: 2048, bloom: true },
+    { scale: 0.8, shadow: 2048, bloom: true },
+    { scale: 0.65, shadow: 1024, bloom: true },
+    { scale: 0.55, shadow: 1024, bloom: false },
+  ] as const
+
+  private qTier = 0
+
+  private qLowStreak = 0
+
+  private qHighStreak = 0
+
+  /** 画质模式:auto = 质量阶梯自适应;manual 三档由用户固定(渲染配置不再自动变动) */
+  private qualityMode: 'auto' | 'normal' | 'hd' | 'ultra' = 'auto'
+
+  /** 用户画质三档(超清 = WebGL 全配置:满 DPR/2048² 阴影/Bloom/最大各向异性) */
+  private static readonly USER_QUALITY = {
+    ultra: { scale: 1.0, shadow: 2048, bloom: true },
+    hd: { scale: 0.8, shadow: 2048, bloom: true },
+    normal: { scale: 0.6, shadow: 1024, bloom: true },
+  } as const
+
+  setQualityMode(mode: 'auto' | 'normal' | 'hd' | 'ultra'): void {
+    this.qualityMode = mode
+    if (mode === 'auto') {
+      this.applyQuality()
+      return
+    }
+    const q = TownScene3D.USER_QUALITY[mode]
+    this.applyPixelRatio(Math.max(0.5, this.baseDpr * q.scale))
+    const key = this.keyLight
+    if ((key.shadow.mapSize.x ?? 0) !== q.shadow) {
+      key.shadow.mapSize.set(q.shadow, q.shadow)
+      key.shadow.map?.dispose()
+      key.shadow.map = null
+      this.renderer.shadowMap.needsUpdate = true
+    }
+    const bloomPass = this.composer.passes.find(p => p instanceof UnrealBloomPass)
+    if (bloomPass) bloomPass.enabled = q.bloom
+  }
+
+  private adaptQuality(fps: number): void {
+    if (this.qualityMode !== 'auto') return
+    const maxTier = TownScene3D.Q_TIERS.length - 1
+    if (fps < 17 && this.qTier < maxTier) {
+      if (++this.qLowStreak >= 2) {
+        this.qTier++
+        this.applyQuality()
+        this.qLowStreak = 0
+        this.qHighStreak = 0
+      }
+    }
+    else if (fps >= 27 && this.qTier > 0) {
+      if (++this.qHighStreak >= 4) {
+        this.qTier--
+        this.applyQuality()
+        this.qHighStreak = 0
+        this.qLowStreak = 0
+      }
+    }
+    else {
+      this.qLowStreak = 0
+      this.qHighStreak = 0
+    }
+  }
+
+  private applyQuality(): void {
+    const tier = TownScene3D.Q_TIERS[this.qTier]!
+    this.applyPixelRatio(Math.max(0.5, this.baseDpr * tier.scale))
+    // 阴影贴图缩容:置空 map 让 three 按新尺寸重分配(渲染循环按需重绘阴影)
+    const key = this.keyLight
+    if ((key.shadow.mapSize.x ?? 0) !== tier.shadow) {
+      key.shadow.mapSize.set(tier.shadow, tier.shadow)
+      key.shadow.map?.dispose()
+      key.shadow.map = null
+      this.renderer.shadowMap.needsUpdate = true
+    }
+    // Bloom 开关:Pass.enabled=false 跳过该 pass(RenderPass→OutputPass 直通)
+    const bloomPass = this.composer.passes.find(p => p instanceof UnrealBloomPass)
+    if (bloomPass) bloomPass.enabled = tier.bloom
+  }
+
+  private applyPixelRatio(next: number): void {
+    this.renderer.setPixelRatio(next)
+    this.composer.setPixelRatio(next)
+    const w = this.el.clientWidth || 1100
+    const h = this.el.clientHeight || 700
+    this.renderer.setSize(w, h)
+    this.composer.setSize(w, h)
   }
 
   // ================================================================
@@ -4399,6 +4518,7 @@ export class TownScene3D {
   dispose(): void {
     this.disposed = true
     cancelAnimationFrame(this.raf)
+    delete (globalThis as { __townScene3d?: unknown }).__townScene3d
     for (const t of this.pendingSaveTimers.values()) clearTimeout(t)
     this.pendingSaveTimers.clear()
     this.receivers.clear()

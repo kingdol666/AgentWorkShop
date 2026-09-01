@@ -8,6 +8,7 @@
  */
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
+import { useVisibleInterval } from '@/app/composables/workshop/useVisibleInterval'
 import AwChart from '@/app/components/AwChart.vue'
 import type { EChartsOption } from 'echarts'
 
@@ -22,20 +23,16 @@ const dcw = useDcwStream()
 // 数据宪法色板:绿主 / 数据青 / 琥珀 / 紫罗兰(与产线光晕色板同源)
 const PAL = { accent: '#35e0a0', cyan: '#41c8f4', amber: '#f4c542', violet: '#b58cff', danger: '#ff6b6b' }
 
-// ---------- 数据装载(WS 实时 + 5s 兜底) ----------
-let timer: ReturnType<typeof setInterval> | null = null
+// ---------- 数据装载(WS 实时 + 5s 兜底;可见性调度:后台降频 30s,回前台立即补拍) ----------
 onMounted(() => {
   daq.ensureWsFeed()
   dcw.ensureWsFeed()
   void Promise.all([daq.load(), dcw.load()]).then(() => pushTrend())
-  timer = setInterval(() => {
+  useVisibleInterval(() => {
     void daq.load()
     void dcw.load()
     pushTrend()
-  }, 5000)
-})
-onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
+  }, 5000, { bgMs: 30000 })
 })
 
 // ---------- KPI ----------
@@ -61,7 +58,7 @@ const trendNodes = computed(() => daq.nodes
 function pushTrend(): void {
   const m: Record<string, number | null> = {}
   for (const n of trendNodes.value) {
-    m[n.id] = n.value == null ? null : Math.round(((n.value - n.min) / (n.max - n.min)) * 1000)
+    m[n.id] = n.value == null ? null : Math.round(((n.value - n.min) / (n.max - n.min)) * 100)
   }
   trendBuf.value.push({ t: Date.now(), m: m as Record<string, number | null> })
   if (trendBuf.value.length > 36) trendBuf.value.shift()
@@ -102,7 +99,6 @@ const trendOpt = computed<EChartsOption>(() => ({
   },
   series: trendNodes.value.map((n, i) => {
     const color = [PAL.accent, PAL.cyan, PAL.amber, PAL.violet][i % 4]
-    const fill = ['rgba(53,224,160,0.07)', 'rgba(65,200,244,0.07)', 'rgba(244,197,66,0.07)', 'rgba(181,140,255,0.07)'][i % 4]
     return {
       name: n.name,
       type: 'line',
@@ -111,7 +107,6 @@ const trendOpt = computed<EChartsOption>(() => ({
       connectNulls: true,
       lineStyle: { width: 1.6, color },
       itemStyle: { color },
-      areaStyle: { color: fill },
       data: trendBuf.value.map(p => [p.t, p.m[n.id] ?? null]),
     }
   }),
@@ -244,7 +239,7 @@ const nodeStateOpt = computed<EChartsOption>(() => {
   }
 })
 
-// ---------- 产线清单卡 ----------
+// ---------- 产线清单(裁策:清单是导航不是数据库导出) ----------
 const lineCards = computed(() => dcw.lines.map((l) => {
   const st = dcw.lineStateOf(l.id)
   return {
@@ -260,6 +255,12 @@ const lineCards = computed(() => dcw.lines.map((l) => {
     daqCount: daq.nodes.filter(n => n.lineId === l.id).length,
   }
 }))
+/** 运行中优先,其次已打标样本多的(最近活跃),稳定排序 */
+const fleetSorted = computed(() => [...lineCards.value].sort((a, b) =>
+  Number(b.active) - Number(a.active) || b.tagged - a.tagged || a.name.localeCompare(b.name)))
+const FLEET_CAP = 8
+const fleetShown = computed(() => fleetSorted.value.slice(0, FLEET_CAP))
+const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP, 0))
 </script>
 
 <template>
@@ -305,6 +306,11 @@ const lineCards = computed(() => dcw.lines.map((l) => {
           >{{ t('home.kpi.alarms') }} <b>{{ alarmCount }}</b></span>
         </div>
       </div>
+      <!-- 仪表刻度母题(控制室仪器读数;纯装饰,reduced-motion 无关、零动画) -->
+      <div
+        class="hero-scale"
+        aria-hidden="true"
+      />
     </section>
 
     <!-- KPI 行 -->
@@ -405,15 +411,16 @@ const lineCards = computed(() => dcw.lines.map((l) => {
       </section>
     </div>
 
-    <!-- 产线清单 -->
+    <!-- 产线清单(运行中优先,最多 8 卡;余量聚合入口) -->
     <section class="dpanel fleet aw-stagger">
       <header class="dp-hd">
         <h3>{{ t('home.charts.lines') }}</h3>
-        <small class="mono">{{ dcw.lines.length }}</small>
+        <small>{{ t('home.fleetHint') }}</small>
+        <small class="mono fleet-total">{{ dcw.lines.length }}</small>
       </header>
       <div class="fleet-grid">
         <NuxtLink
-          v-for="l in lineCards"
+          v-for="l in fleetShown"
           :key="l.id"
           class="line-card"
           :class="{ on: l.active }"
@@ -439,6 +446,15 @@ const lineCards = computed(() => dcw.lines.map((l) => {
             <span>{{ t('home.nodesUnit') }} {{ l.dcwCount }}</span>
             <span>{{ t('home.daqUnit') }} {{ l.daqCount }}</span>
           </div>
+        </NuxtLink>
+        <NuxtLink
+          v-if="fleetOverflow > 0"
+          class="line-card fleet-all im"
+          to="/dcw"
+        >
+          <span class="fa-n mono">+{{ fleetOverflow }}</span>
+          <span class="fa-label">{{ t('home.fleetAll') }}</span>
+          <span class="i-tabler-arrow-right fa-arrow" />
         </NuxtLink>
         <p
           v-if="lineCards.length === 0"
@@ -478,6 +494,21 @@ const lineCards = computed(() => dcw.lines.map((l) => {
   height: 1px;
   content: '';
   background: linear-gradient(90deg, transparent, rgb(53 224 160 / 45%), transparent);
+}
+/* 仪表刻度母题:底部细刻度尺(控制室仪器读数;纯装饰零动画,两端淡出) */
+.hero-scale {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 9px;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--ink) 26%, transparent) 0 1px, transparent 1px 120px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--ink) 11%, transparent) 0 1px, transparent 1px 24px);
+  opacity: 0.55;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
 }
 .hero-main {
   display: flex;
@@ -646,6 +677,16 @@ const lineCards = computed(() => dcw.lines.map((l) => {
   letter-spacing: 0.04em;
   color: var(--ink);
 }
+/* 工业刻度记号:面板小标前的品牌绿竖标(控制室仪表命名牌语言) */
+.dp-hd h3::before {
+  display: inline-block;
+  width: 3px;
+  height: 11px;
+  margin-right: 8px;
+  content: '';
+  background: var(--accent);
+  border-radius: 1px;
+}
 .dp-hd small {
   font-size: 10px;
   letter-spacing: 0.06em;
@@ -738,6 +779,42 @@ const lineCards = computed(() => dcw.lines.map((l) => {
   color: var(--ink-faint);
   border-top: 1px solid var(--divider-hair);
 }
+.fleet-total {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+/* 全部产线入口:虚线幽灵卡,聚合清单外的余量 */
+.fleet-all {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 86px;
+  color: var(--ink-faint);
+  background: transparent;
+  border-style: dashed;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.fleet-all:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.fa-n {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.fleet-all:hover .fa-n { color: var(--accent); }
+.fa-label { font-size: 12px; }
+.fa-arrow {
+  font-size: 15px;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fleet-all:hover .fa-arrow { transform: translateX(3px); }
 .fleet-empty {
   padding: 18px 0;
   font-size: 12px;

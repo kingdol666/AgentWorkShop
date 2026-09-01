@@ -574,6 +574,9 @@ async function boot3D(): Promise<void> {
   sceneRef.value = scene
   syncSceneModels(scene)
   scene3dRef.value = scene
+  // 应用持久化的帧率上限与画质档(渲染配置;数据消费不受影响)
+  scene.setFpsCap(Number(fpsCap.value))
+  scene.setQualityMode(qualityMode.value)
 
   wireCommon(scene)
 
@@ -1556,35 +1559,84 @@ const daqTwins = computed<DeviceTwinView[]>(() =>
   })))
 
 /**
- * 兼容视图:旧 UI 全部消费 DaqSimState(value/hist/tpl/alarm),保留同形结构,
- * 数据源换成 server 读数流(daq.reading → node.hist 由 useDaqStream 填充)。
+ * 兼容视图:旧 UI 全部消费 DaqSimState(value/hist/tpl/alarm),保留同形结构。
+ *
+ * 双通道数据消费(与渲染帧率彻底解耦):
+ *  - 消费层:WS 读数帧直写 rtcVals/rtcHist(非响应式,帧到即入,零合批延迟),
+ *    告警边沿检测同帧完成(异常事件即时上屏);
+ *  - 展示层:daqSim 计算属性消费 rtc 覆盖 + store hist(趋势),帧计数器作失效信号,
+ *    Vue 渲染管线自行合批 DOM 更新;场景渲染循环每帧只取「当前最新值」。
  */
 interface DaqSimState { value: number, hist: number[], phase: number, tpl: DaqTemplate, alarm?: boolean }
+interface RtcPoint { value: number, state: string, atMs: number }
+const RTC_HIST_CAP = 120
+const liveTick = ref(0)
+const rtcVals = new Map<string, RtcPoint>()
+const rtcHist = new Map<string, number[]>()
+let unsubLiveVals: (() => void) | null = null
+
+/** 读数帧消费:实时缓冲直写 + 状态边沿即时告警(与批量 watch 共享 prevDaqState 去重) */
+function consumeReading(p: { nodeId?: string, value?: number, state?: string, at?: string }): void {
+  if (!p.nodeId || typeof p.value !== 'number' || !Number.isFinite(p.value)) return
+  const nextState = p.state ?? 'ok'
+  rtcVals.set(p.nodeId, { value: p.value, state: nextState, atMs: Date.parse(p.at ?? '') || Date.now() })
+  let h = rtcHist.get(p.nodeId)
+  if (!h) {
+    h = []
+    rtcHist.set(p.nodeId, h)
+  }
+  h.push(p.value)
+  if (h.length > RTC_HIST_CAP) h.shift()
+  // 状态边沿 → 即时告警(prevDaqState 与批量 watch 共享,先到先记,后到去重)
+  const prevState = prevDaqState.get(p.nodeId)
+  if (prevState && prevState !== nextState) stateEdgeAlarm(p.nodeId, prevState, nextState, p.value)
+  if (prevState !== nextState) prevDaqState.set(p.nodeId, nextState)
+  liveTick.value++
+}
+
 const daqSim = computed<Map<string, DaqSimState>>(() => {
+  // 依赖:每条读数帧到达即重算(标注/设备卡真·实时);帧计数器兼作失效信号
+  const tick = liveTick.value
+  void tick
   const m = new Map<string, DaqSimState>()
   for (const n of daq.nodes) {
     const tpl = daqTplOf(n)
-    if (!tpl || n.value == null) continue
-    m.set(n.id, { value: n.value, hist: n.hist, phase: 0, tpl, alarm: n.state === 'alarm' })
+    if (!tpl) continue
+    const lv = rtcVals.get(n.id)
+    // 直通帧仅在比 store 快照新时采用(节点停采后自然回落到权威快照)
+    const fresher = lv && (!n.lastAt || lv.atMs >= Date.parse(n.lastAt))
+    const value = fresher ? lv!.value : n.value
+    if (value == null) continue
+    const state = fresher ? lv!.state : n.state
+    m.set(n.id, { value, hist: rtcHist.get(n.id) ?? n.hist, phase: 0, tpl, alarm: state === 'alarm' })
   }
   return m
 })
 const fmtDaq = (st: DaqSimState): string => st.value.toFixed(st.tpl.decimals)
 
-/** 告警推进(server 派生 state 变化 → 场景告警面板;恢复自动消警语义保持) */
+/** 告警推进(server 派生 state 变化 → 场景告警面板;恢复自动消警语义保持)。
+ *  prevDaqState 为帧通道(即时)与批量 watch(兜底)共享的去重账本 —— 先到先记。 */
 const prevDaqState = new Map<string, string>()
+
+/** 状态边沿 → 告警文案(crit/warn/恢复 info;label 优先绑定设备名) */
+function stateEdgeAlarm(nodeId: string, prevState: string, nextState: string, value: number | null): void {
+  const n = daq.nodeById(nodeId)
+  const tpl = n ? daqTplOf(n) : null
+  const dev = n?.deviceBindingId ? deviceTwins.byId(n.deviceBindingId)?.name : null
+  const label = dev ?? n?.name ?? nodeId.slice(0, 8)
+  const val = `${value?.toFixed(tpl?.decimals ?? 2) ?? '--'} ${tpl?.unit ?? ''}`
+  if (nextState === 'alarm') raiseAlarm(t('townView.k113fir9195', { p0: label, p1: tpl?.ch ?? '', p2: val }), 'crit', label)
+  else if (nextState === 'warn') raiseAlarm(t('townView.k1knv89d196', { p0: label, p1: tpl?.ch ?? '', p2: val }), 'warn', label)
+  else if (prevState !== 'ok' && nextState === 'ok') raiseAlarm(t('townView.ksjancw197', { p0: label, p1: tpl?.ch ?? '' }), 'info', label)
+}
+
+/** 批量兜底:REST 快照收敛时捕捉帧通道未见的边沿(如离线判定);帧通道已记的自动去重 */
 watch(() => daq.nodes.map(n => `${n.id}:${n.state}`).join('|'), () => {
   for (const n of daq.nodes) {
     const prev = prevDaqState.get(n.id)
     prevDaqState.set(n.id, n.state)
     if (!prev || prev === n.state) continue
-    const tpl = daqTplOf(n)
-    const dev = n.deviceBindingId ? deviceTwins.byId(n.deviceBindingId)?.name : null
-    const label = dev ?? n.name
-    const val = `${n.value?.toFixed(tpl?.decimals ?? 2) ?? '--'} ${tpl?.unit ?? ''}`
-    if (n.state === 'alarm') raiseAlarm(t('townView.k113fir9195', { p0: label, p1: tpl?.ch ?? '', p2: val }), 'crit', n.name)
-    else if (n.state === 'warn') raiseAlarm(t('townView.k1knv89d196', { p0: label, p1: tpl?.ch ?? '', p2: val }), 'warn', n.name)
-    else if (prev !== 'ok' && n.state === 'ok') raiseAlarm(t('townView.ksjancw197', { p0: label, p1: tpl?.ch ?? '' }), 'info', n.name)
+    stateEdgeAlarm(n.id, prev, n.state, n.value)
   }
 })
 
@@ -2258,6 +2310,9 @@ const healthPct = computed(() => {
   const healthy = runningCount.value + idleCount.value
   return Math.round((healthy / total) * 100)
 })
+/** 健康分档语义色:中心百分数跟健康走(绿≥90/琥珀≥60/红<60),环保持状态分布语义 */
+const healthTone = computed(() =>
+  healthPct.value >= 90 ? '#35e0a0' : healthPct.value >= 60 ? '#f6c453' : '#ff6b6b')
 const donutCanvas = ref<HTMLCanvasElement | null>(null)
 function drawDonut(): void {
   const cv = donutCanvas.value
@@ -2313,6 +2368,32 @@ function clearAlarms(): void {
 
 /** 告警阈值(设计稿 rThresh 60~120%;>100 收紧,<100 放宽) */
 const threshPct = ref(100)
+
+/** 帧率上限(用户可选 60/120/∞;持久化)。只节流渲染帧,数据消费走帧通道与此无关 */
+const fpsCap = useStorage<'60' | '120' | '0'>('aw.twin.fpsCap', '60')
+const FPS_OPTIONS = [
+  { v: '60', label: '60' },
+  { v: '120', label: '120' },
+  { v: '0', label: '∞' },
+] as const
+function setFpsCap(v: '60' | '120' | '0'): void {
+  fpsCap.value = v
+  scene3dRef.value?.setFpsCap(Number(v))
+}
+
+/** 画质(用户可选 自动/普通/高清/超清;持久化)。auto = 帧率自适应阶梯;三档手动固定 */
+type QualityMode = 'auto' | 'normal' | 'hd' | 'ultra'
+const qualityMode = useStorage<QualityMode>('aw.twin.quality', 'auto')
+const QUALITY_OPTIONS = [
+  { v: 'auto', label: 'townView.qualityAuto' },
+  { v: 'normal', label: 'townView.qualityNormal' },
+  { v: 'hd', label: 'townView.qualityHD' },
+  { v: 'ultra', label: 'townView.qualityUltra' },
+] as const
+function setQualityMode(v: QualityMode): void {
+  qualityMode.value = v
+  scene3dRef.value?.setQualityMode(v)
+}
 /** 量程收紧后的告警上下界(设计稿公式:base ± 按阈值比例的内缩区间) */
 function alarmRange(min: number, max: number): { lo: number, hi: number } {
   const t = threshPct.value / 100
@@ -2362,6 +2443,20 @@ const trendCanvas = ref<HTMLCanvasElement | null>(null)
 const hiddenTrends = ref<Record<string, boolean>>({})
 const TREND_COLORS = ['#35e0a0', '#41c8f4', '#f6c453', '#a78bfa', '#ff6b6b', '#4dd0e1']
 const trendColor = (id: string): string => TREND_COLORS[Math.abs(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % TREND_COLORS.length] ?? '#35e0a0'
+/** 默认只画前 8 路:52 条曲线叠绘成不可读 spaghetti,数据可读性优先;
+ *  用户显式点过 chip 的以 hiddenTrends 覆盖为准 */
+const TREND_VISIBLE_DEFAULT = 8
+function trendOn(id: string, idx?: number): boolean {
+  const v = hiddenTrends.value[id]
+  if (v != null) return !v
+  const i = idx ?? daqTwins.value.findIndex(t => t.id === id)
+  return i < TREND_VISIBLE_DEFAULT
+}
+/** 信号条折叠:收起时只渲染前 8 枚 chip,余量聚合成「+N」(展开/收起) */
+const trendExpanded = ref(false)
+const trendOverflow = computed(() => Math.max(daqTwins.value.length - TREND_VISIBLE_DEFAULT, 0))
+const trendChips = computed(() =>
+  trendExpanded.value ? daqTwins.value : daqTwins.value.slice(0, TREND_VISIBLE_DEFAULT))
 function drawTrend(): void {
   const cv = trendCanvas.value
   if (!cv) return
@@ -2386,23 +2481,26 @@ function drawTrend(): void {
     ctx.lineTo(w, y)
     ctx.stroke()
   }
-  for (const t of daqTwins.value) {
-    if (hiddenTrends.value[t.id]) continue
+  daqTwins.value.forEach((t, idx) => {
+    if (!trendOn(t.id, idx)) return
     const st = daqSim.value.get(t.id)
-    if (!st || st.hist.length < 2) continue
+    if (!st) return
+    // 直方优先:rtc 环形缓冲(帧直写)比 store 批量缓冲新鲜,画出来的就是当前最新轨迹
+    const hist = rtcHist.get(t.id) ?? st.hist
+    if (hist.length < 2) return
     const lo = st.tpl.min
     const hi = st.tpl.max
     ctx.strokeStyle = trendColor(t.id)
     ctx.lineWidth = 1.6
     ctx.beginPath()
-    st.hist.forEach((v, i) => {
-      const x = (i / (120 - 1)) * w
+    hist.forEach((v, i) => {
+      const x = (i / (RTC_HIST_CAP - 1)) * w
       const y = h - ((v - lo) / (hi - lo)) * (h - 8) - 4
       if (i === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     })
     ctx.stroke()
-  }
+  })
 }
 /** 迷你地图/设备孪生轮询定时器(卸载时清理;小地图 150ms 保证镜头居中滑动跟手) */
 let miniTimer: ReturnType<typeof setInterval> | null = null
@@ -2669,7 +2767,7 @@ function onVisChange(): void {
         drawTrend()
         drawBindSparks()
       }
-    }, 1000)
+    }, 200)
   }
   if (!tickerTimer) {
     tickerTimer = setInterval(() => {
@@ -2685,17 +2783,22 @@ onMounted(() => {
   // 数采流:REST 基线 + WS 实时帧(server 权威;进数字孪生空间即建立连接)
   daq.ensureWsFeed()
   void daq.load()
+  // 实时消费层:读数帧零缓冲直写 rtc(标注/设备卡/KPI/趋势全部真·实时;
+  // 渲染循环每帧只读最新值,与帧率选择无关)
+  unsubLiveVals = useTownBus().subscribe((e) => {
+    if (e.type === 'daq.reading') consumeReading(e.payload as { nodeId?: string, value?: number, state?: string, at?: string })
+  })
   // 智控流:同款上电(REST 基线 + dcw.* WS 帧),dcwTwins 投影进 sceneTwinPool
   dcw.ensureWsFeed()
   void dcw.load()
   miniTimer = setInterval(miniTick, 150)
-  // 数采画布重绘节奏(读数帧由 WS 增量到达;这里只负责趋势/火花线绘制)
+  // 趋势/火花线 200ms 重绘(读 rtc 实时缓冲;数据消费在帧通道,这里只负责出图)
   daqTimer = setInterval(() => {
     if (daq.nodes.length) {
       drawTrend()
       drawBindSparks()
     }
-  }, 1000)
+  }, 200)
   tickerTimer = setInterval(() => {
     const s = sceneRef.value
     if (s?.getRecentActivity) ticker.value = s.getRecentActivity()
@@ -2734,6 +2837,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  unsubLiveVals?.()
   const off = (sceneRef as unknown as { _off?: () => void })._off
   off?.()
   scene3dRef.value?.dispose()
@@ -3513,13 +3617,53 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- 底部坞:场景控制 + 趋势分析 -->
+        <!-- 底部坞:场景控制(渲染/环境/操作 三组仪表分区) + 趋势分析 -->
         <div class="dock">
           <section class="dock-card">
             <div class="dock-hd">
               <h3>{{ $t('townView.k1c9iq23060') }}</h3>
               <span class="dock-mode">{{ mode === 'edit' ? $t('townView.k1iipfcs143') : $t('townView.k1l147w1177') }}</span>
             </div>
+            <p class="ctl-sec">
+              {{ $t('townView.secRender') }}
+            </p>
+            <div class="ctl-row">
+              <span
+                class="ctl-name"
+                :title="$t('townView.qualityTip')"
+              >{{ $t('townView.qualityLabel') }}</span>
+              <div class="fps-seg">
+                <button
+                  v-for="o in QUALITY_OPTIONS"
+                  :key="o.v"
+                  :class="{ on: qualityMode === o.v }"
+                  @click="setQualityMode(o.v)"
+                >
+                  {{ $t(o.label) }}
+                </button>
+              </div>
+              <span class="ctl-val" />
+            </div>
+            <div class="ctl-row">
+              <span
+                class="ctl-name"
+                :title="$t('townView.fpsCapTip')"
+              >{{ $t('townView.fpsCapLabel') }}</span>
+              <div class="fps-seg">
+                <button
+                  v-for="o in FPS_OPTIONS"
+                  :key="o.v"
+                  :class="{ on: fpsCap === o.v }"
+                  @click="setFpsCap(o.v)"
+                >
+                  {{ o.label }}
+                </button>
+              </div>
+              <span class="ctl-val" />
+            </div>
+            <p class="ctl-sec">
+              {{ $t('townView.secEnv') }}
+            </p>
             <div class="ctl-row">
               <span class="ctl-name">{{ $t('townView.k1gizopz061') }}</span>
               <input
@@ -3576,6 +3720,9 @@ onBeforeUnmount(() => {
               >
               <span class="ctl-val">{{ calloutNearDist === 0 ? $t('townView.k493s144') : `${calloutNearDist}` }}</span>
             </div>
+            <p class="ctl-sec">
+              {{ $t('townView.secOps') }}
+            </p>
             <div class="ctl-row">
               <span class="ctl-name">{{ $t('townView.k1idc6pa065') }}</span>
               <button
@@ -3616,18 +3763,29 @@ onBeforeUnmount(() => {
             <div class="dock-hd">
               <h3>{{ $t('townView.k1kfoef9067') }}</h3>
               <span class="dock-count mono">{{ daqTwins.length }}</span>
-              <div class="trend-legend">
+              <div
+                class="trend-legend"
+                :class="{ expanded: trendExpanded }"
+              >
                 <button
-                  v-for="t in daqTwins"
+                  v-for="t in trendChips"
                   :key="t.id"
                   class="lg-chip"
-                  :class="{ off: hiddenTrends[t.id] }"
+                  :class="{ off: !trendOn(t.id) }"
                   @click="toggleTrend(t.id)"
                 >
                   <span
                     class="lg-dot"
                     :style="{ background: trendColor(t.id) }"
                   />{{ t.name }}
+                </button>
+                <button
+                  v-if="trendOverflow > 0"
+                  class="lg-chip lg-more mono"
+                  :title="trendExpanded ? $t('townView.trendCollapse') : $t('townView.trendExpandAll', { p0: daqTwins.length })"
+                  @click="trendExpanded = !trendExpanded"
+                >
+                  {{ trendExpanded ? $t('townView.trendCollapse') : `+${trendOverflow}` }}
                 </button>
               </div>
             </div>
@@ -3647,368 +3805,272 @@ onBeforeUnmount(() => {
 
       <!-- 右轨:Inspector / 设备运行状态 / 关键设备 / 实时事件 / 导航 -->
       <aside class="rail rail-right">
-        <section
-          v-if="selected"
-          class="panel inspector"
-        >
-          <div class="panel-hd">
-            <h3>{{ selected.kind === 'device' ? (selectedIsDcw ? $t('townView.k1ekqxlt146') : selectedIsDaq ? $t('townView.k1empnnb178') : $t('townView.k1k6wg8j185')) : selectedAgentRoleLabel }}</h3>
-            <button
-              class="mini-btn"
-              :title="$t('townView.k1bsckft013')"
-              @click="closeScale"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div class="ins-chip-row">
-            <span class="ins-chip mono">{{ selected.id.slice(0, 8) }}</span>
-            <span
-              v-if="selected.kind === 'device' && selectedIsDaq"
-              class="ins-chip accent"
-            >DAQ</span>
-            <span
-              v-else-if="selected.kind === 'device' && selectedIsDcw"
-              class="ins-chip accent"
-            >DCW</span>
-          </div>
-
-          <template v-if="selected.kind === 'device'">
-            <div
-              v-if="selectedIsDcw"
-              class="daq-info"
-            >
-              <div class="daq-info-row">
-                <span>{{ $t('townView.k1deqh0d069') }}</span>
-                <b class="cy">{{ selectedDcwNode?.value != null ? selectedDcwNode.value.toFixed(selectedDcwNode.decimals) : '--' }} {{ selectedDcwNode?.unit }}</b>
-              </div>
-              <div class="daq-info-row">
-                <span>{{ selectedDcwWindow?.src === 'recipe' ? $t('townView.kq2jssk147') : $t('townView.k1iwj796179') }}</span>
-                <b :class="{ amber: selectedDcwWindow?.src === 'recipe' }">{{ dcwWinLabel(selectedDcwNode) }}</b>
-              </div>
-              <div class="daq-info-row">
-                <span>{{ $t('townView.k1i8rtqt070') }}</span>
-                <b>{{ selectedDcwDeviceName || $t('townView.k3own4q148') }}</b>
-              </div>
-              <div class="daq-bind-bar">
-                <input
-                  v-model.number="dcwWriteDrafts[selected.id]"
-                  type="number"
-                  class="bind-select"
-                  :step="10 ** -(selectedDcwNode?.decimals ?? 2)"
-                  :placeholder="dcwWinInputPh(selectedDcwNode)"
-                  @keydown.enter="doWriteSelectedDcw"
-                >
-                <button
-                  class="bind-add-btn"
-                  :disabled="dcwWriteDrafts[selected.id] == null || dcwWriteDrafts[selected.id] === ''"
-                  @click="doWriteSelectedDcw"
-                >
-                  {{ $t('townView.kwrbtn180') }}
-                </button>
-              </div>
-              <p
-                v-if="dcwWriteErrs[selected.id]"
-                class="dcw-err"
+        <Transition name="ins">
+          <section
+            v-if="selected"
+            class="panel inspector"
+          >
+            <div class="panel-hd">
+              <h3>{{ selected.kind === 'device' ? (selectedIsDcw ? $t('townView.k1ekqxlt146') : selectedIsDaq ? $t('townView.k1empnnb178') : $t('townView.k1k6wg8j185')) : selectedAgentRoleLabel }}</h3>
+              <button
+                class="mini-btn"
+                :title="$t('townView.k1bsckft013')"
+                @click="closeScale"
               >
-                {{ dcwWriteErrs[selected.id] }}
-              </p>
-              <div
-                v-if="mode === 'edit'"
-                class="daq-bind-bar"
-              >
-                <select
-                  v-model="dcwBindPick"
-                  class="bind-select"
-                >
-                  <option value="">
-                    {{ $t('townView.kjo6ekr071') }}
-                  </option>
-                  <option
-                    v-for="dv in deviceTwins.twins.filter(x => !isLegacyDaqTwin(x) && x.id !== (selected?.id ?? ''))"
-                    :key="dv.id"
-                    :value="dv.id"
-                  >
-                    {{ dv.name }}
-                  </option>
-                </select>
-                <button
-                  class="bind-add-btn"
-                  :disabled="!selectedDcwDeviceName && !dcwBindPick"
-                  @click="selectedDcwDeviceName ? unbindSelectedDcw() : bindSelectedDcw()"
-                >
-                  {{ selectedDcwDeviceName ? $t('townView.k479eh149') : $t('townView.k452a8102') }}
-                </button>
-              </div>
+                ✕
+              </button>
             </div>
-            <div
-              v-else-if="selectedIsDaq"
-              class="daq-info"
-            >
-              <div class="daq-info-row">
-                <span>{{ $t('townView.k3mv305072') }}</span>
-                <b class="cy">{{ selectedDaqSim ? fmtDaq(selectedDaqSim) : '--' }} {{ selectedDaqSim?.tpl.unit }}</b>
-              </div>
-              <div class="daq-info-row">
-                <span>{{ $t('townView.k1faqmjb073') }}</span>
-                <b>{{ selectedDaqSim?.tpl.min }} ~ {{ selectedDaqSim?.tpl.max }}</b>
-              </div>
-              <div class="daq-info-row">
-                <span>{{ $t('townView.k1i8rtqt070') }}</span>
-                <b>{{ daqBoundDeviceName || $t('townView.k3own4q148') }}</b>
-              </div>
+
+            <div class="ins-chip-row">
+              <span class="ins-chip mono">{{ selected.id.slice(0, 8) }}</span>
+              <span
+                v-if="selected.kind === 'device' && selectedIsDaq"
+                class="ins-chip accent"
+              >DAQ</span>
+              <span
+                v-else-if="selected.kind === 'device' && selectedIsDcw"
+                class="ins-chip accent"
+              >DCW</span>
+            </div>
+
+            <template v-if="selected.kind === 'device'">
               <div
-                v-if="mode === 'edit'"
-                class="daq-bind-bar"
+                v-if="selectedIsDcw"
+                class="daq-info"
               >
-                <select
-                  v-model="bindPick"
-                  class="bind-select"
-                >
-                  <option value="">
-                    {{ $t('townView.kjo6ekr071') }}
-                  </option>
-                  <option
-                    v-for="dv in deviceTwins.twins.filter(x => !isLegacyDaqTwin(x) && x.id !== (selected?.id ?? ''))"
-                    :key="dv.id"
-                    :value="dv.id"
+                <div class="daq-info-row">
+                  <span>{{ $t('townView.k1deqh0d069') }}</span>
+                  <b class="cy">{{ selectedDcwNode?.value != null ? selectedDcwNode.value.toFixed(selectedDcwNode.decimals) : '--' }} {{ selectedDcwNode?.unit }}</b>
+                </div>
+                <div class="daq-info-row">
+                  <span>{{ selectedDcwWindow?.src === 'recipe' ? $t('townView.kq2jssk147') : $t('townView.k1iwj796179') }}</span>
+                  <b :class="{ amber: selectedDcwWindow?.src === 'recipe' }">{{ dcwWinLabel(selectedDcwNode) }}</b>
+                </div>
+                <div class="daq-info-row">
+                  <span>{{ $t('townView.k1i8rtqt070') }}</span>
+                  <b>{{ selectedDcwDeviceName || $t('townView.k3own4q148') }}</b>
+                </div>
+                <div class="daq-bind-bar">
+                  <input
+                    v-model.number="dcwWriteDrafts[selected.id]"
+                    type="number"
+                    class="bind-select"
+                    :step="10 ** -(selectedDcwNode?.decimals ?? 2)"
+                    :placeholder="dcwWinInputPh(selectedDcwNode)"
+                    @keydown.enter="doWriteSelectedDcw"
                   >
-                    {{ dv.name }}
-                  </option>
-                </select>
-                <button
-                  class="bind-add-btn"
-                  :disabled="!daqBoundDeviceName && !bindPick"
-                  @click="daqBoundDeviceName ? unbindDaq(selected.id) : bindDaq(selected.id, bindPick); bindPick = ''"
-                >
-                  {{ daqBoundDeviceName ? $t('townView.k479eh149') : $t('townView.k452a8102') }}
-                </button>
-              </div>
-              <!-- 节点单点控制(server DaqNode 参数:启停/周期/量程/预警带;REST 落库即时生效) -->
-              <div
-                v-if="mode === 'edit' && selectedDaqNode"
-                class="daq-node-ctl"
-              >
-                <div class="daq-info-row">
-                  <span>{{ $t('townView.k1l6g2ga074') }}</span>
-                  <span class="daq-th-inputs">
-                    <input
-                      v-model.number="daqIntervalDraft"
-                      type="number"
-                      min="200"
-                      max="60000"
-                      step="100"
-                      class="daq-num"
-                      @change="onDaqIntervalCommit"
-                    ><small>{{ $t('townView.k1or92b075') }}</small>
-                  </span>
-                </div>
-                <div class="daq-info-row">
-                  <span>{{ $t('townView.k3x5tpx076') }}</span>
-                  <span class="daq-th-inputs">
-                    <input
-                      :value="selectedDaqNode.warnLow"
-                      type="number"
-                      step="any"
-                      class="daq-num"
-                      @change="onDaqThresholdCommit('warnLow', ($event.target as HTMLInputElement).value)"
-                    >
-                    ~
-                    <input
-                      :value="selectedDaqNode.warnHigh"
-                      type="number"
-                      step="any"
-                      class="daq-num"
-                      @change="onDaqThresholdCommit('warnHigh', ($event.target as HTMLInputElement).value)"
-                    >
-                  </span>
-                </div>
-                <div class="daq-info-row">
-                  <span>{{ $t('townView.k1hjj0jf077') }}</span>
-                  <span class="daq-th-inputs">
-                    <input
-                      :value="selectedDaqNode.min"
-                      type="number"
-                      step="any"
-                      class="daq-num"
-                      @change="onDaqThresholdCommit('min', ($event.target as HTMLInputElement).value)"
-                    >
-                    ~
-                    <input
-                      :value="selectedDaqNode.max"
-                      type="number"
-                      step="any"
-                      class="daq-num"
-                      @change="onDaqThresholdCommit('max', ($event.target as HTMLInputElement).value)"
-                    >
-                  </span>
-                </div>
-                <div class="daq-info-row">
-                  <span>{{ $t('townView.k48tki078') }}</span>
                   <button
                     class="bind-add-btn"
-                    :class="{ warn: selectedDaqNode.enabled }"
-                    @click="daq.patchNode(selected.id, { enabled: !selectedDaqNode.enabled })"
+                    :disabled="dcwWriteDrafts[selected.id] == null || dcwWriteDrafts[selected.id] === ''"
+                    @click="doWriteSelectedDcw"
                   >
-                    {{ selectedDaqNode.enabled ? $t('townView.k1wv0nyo150') : $t('townView.kh1586b180') }}
+                    {{ $t('townView.kwrbtn180') }}
                   </button>
+                </div>
+                <p
+                  v-if="dcwWriteErrs[selected.id]"
+                  class="dcw-err"
+                >
+                  {{ dcwWriteErrs[selected.id] }}
+                </p>
+                <div
+                  v-if="mode === 'edit'"
+                  class="daq-bind-bar"
+                >
+                  <select
+                    v-model="dcwBindPick"
+                    class="bind-select"
+                  >
+                    <option value="">
+                      {{ $t('townView.kjo6ekr071') }}
+                    </option>
+                    <option
+                      v-for="dv in deviceTwins.twins.filter(x => !isLegacyDaqTwin(x) && x.id !== (selected?.id ?? ''))"
+                      :key="dv.id"
+                      :value="dv.id"
+                    >
+                      {{ dv.name }}
+                    </option>
+                  </select>
+                  <button
+                    class="bind-add-btn"
+                    :disabled="!selectedDcwDeviceName && !dcwBindPick"
+                    @click="selectedDcwDeviceName ? unbindSelectedDcw() : bindSelectedDcw()"
+                  >
+                    {{ selectedDcwDeviceName ? $t('townView.k479eh149') : $t('townView.k452a8102') }}
+                  </button>
+                </div>
+              </div>
+              <div
+                v-else-if="selectedIsDaq"
+                class="daq-info"
+              >
+                <div class="daq-info-row">
+                  <span>{{ $t('townView.k3mv305072') }}</span>
+                  <b class="cy">{{ selectedDaqSim ? fmtDaq(selectedDaqSim) : '--' }} {{ selectedDaqSim?.tpl.unit }}</b>
                 </div>
                 <div class="daq-info-row">
-                  <span>{{ $t('townView.k3xakp079') }}</span>
-                  <button
-                    class="bind-add-btn danger"
-                    :title="$t('townView.kpwutri014')"
-                    @click="removeSelectedDevice()"
+                  <span>{{ $t('townView.k1faqmjb073') }}</span>
+                  <b>{{ selectedDaqSim?.tpl.min }} ~ {{ selectedDaqSim?.tpl.max }}</b>
+                </div>
+                <div class="daq-info-row">
+                  <span>{{ $t('townView.k1i8rtqt070') }}</span>
+                  <b>{{ daqBoundDeviceName || $t('townView.k3own4q148') }}</b>
+                </div>
+                <div
+                  v-if="mode === 'edit'"
+                  class="daq-bind-bar"
+                >
+                  <select
+                    v-model="bindPick"
+                    class="bind-select"
                   >
-                    {{ $t('townView.k1bpp30k080') }}
+                    <option value="">
+                      {{ $t('townView.kjo6ekr071') }}
+                    </option>
+                    <option
+                      v-for="dv in deviceTwins.twins.filter(x => !isLegacyDaqTwin(x) && x.id !== (selected?.id ?? ''))"
+                      :key="dv.id"
+                      :value="dv.id"
+                    >
+                      {{ dv.name }}
+                    </option>
+                  </select>
+                  <button
+                    class="bind-add-btn"
+                    :disabled="!daqBoundDeviceName && !bindPick"
+                    @click="daqBoundDeviceName ? unbindDaq(selected.id) : bindDaq(selected.id, bindPick); bindPick = ''"
+                  >
+                    {{ daqBoundDeviceName ? $t('townView.k479eh149') : $t('townView.k452a8102') }}
                   </button>
                 </div>
-              </div>
-              <div
-                v-else
-                class="ins-empty"
-              >
-                {{ $t('townView.kzk5dfx081') }}
-              </div>
-            </div>
-            <template v-else>
-              <div class="obj-row">
-                <span class="obj-label">{{ $t('townView.k3xhia082') }}</span>
-                <input
-                  v-model="objNameDraft"
-                  class="obj-input"
-                  :placeholder="$t('townView.k1k6vbaf015')"
-                  :disabled="mode !== 'edit'"
-                  :title="mode === 'edit' ? '设备名称' : '运行模式只读'"
-                  @change="onObjNameCommit"
-                  @keydown.enter="onObjNameCommit"
-                >
-              </div>
-              <div class="obj-row">
-                <span class="obj-label">{{ $t('townView.k41amp083') }}</span>
-                <select
-                  class="obj-select"
-                  :value="scene3dRef?.getDeviceModelRef?.(selected.id) ?? ''"
-                  :disabled="mode !== 'edit'"
-                  @change="bindDeviceModel(($event.target as HTMLSelectElement).value)"
-                >
-                  <option
-                    v-for="m in deviceModels"
-                    :key="m.id"
-                    :value="m.id"
-                  >
-                    {{ m.name }}
-                  </option>
-                </select>
-              </div>
-
-              <!-- 数采绑定(设计稿 bind-row:图标 + 通道 + 实时值 + 迷你折线 + 解绑;运行模式只读展示) -->
-              <div class="sect-hd">
-                {{ $t('townView.k1vtyk05130') }} {{ boundDaqRows.length }} {{ $t('townView.k3vfpz5138') }}
-              </div>
-              <div
-                v-for="r in boundDaqRows"
-                :key="r.daqId"
-                class="bind-row"
-              >
-                <span class="bind-ico">
-                  <svg
-                    class="bind-svg"
-                    viewBox="0 0 24 24"
-                    v-html="daqIcon(r.icon)"
-                  />
-                </span>
-                <span class="bind-meta">
-                  <span class="bind-label">{{ r.ch }}</span>
-                  <span class="bind-val"><b>{{ r.value }}</b> {{ r.unit }} · {{ r.name }}</span>
-                </span>
-                <canvas
-                  :ref="el => setSparkRef(r.daqId, el)"
-                  class="bind-spark"
-                  width="56"
-                  height="20"
-                />
-                <button
-                  v-if="mode === 'edit'"
-                  class="bind-x"
-                  :title="$t('townView.k1k73omv016')"
-                  @click="unbindDaq(r.daqId)"
-                >
-                  ✕
-                </button>
-              </div>
-              <div
-                v-if="!boundDaqRows.length"
-                class="ins-empty"
-              >
-                {{ $t('townView.kgpuqhb084') }}
-              </div>
-              <div
-                v-if="mode === 'edit'"
-                class="bind-add-wrap"
-              >
-                <button
-                  class="bind-add"
-                  @click="toggleBindPop('daq', $event)"
-                >
-                  {{ $t('townView.kvm0lin085') }}
-                </button>
+                <!-- 节点单点控制(server DaqNode 参数:启停/周期/量程/预警带;REST 落库即时生效) -->
                 <div
-                  v-if="bindPopOpen"
-                  class="bind-pop"
-                  :style="{ maxHeight: `${bindPopMaxH}px` }"
+                  v-if="mode === 'edit' && selectedDaqNode"
+                  class="daq-node-ctl"
                 >
-                  <template
-                    v-for="tpl in daqTemplates"
-                    :key="tpl.id"
-                  >
-                    <div
-                      v-if="daqBindChoices[tpl.id]?.length"
-                      class="bp-group"
-                    >
-                      <span class="bp-tpl">{{ tpl.name }} · {{ tpl.ch }}</span>
-                      <button
-                        v-for="c in daqBindChoices[tpl.id]"
-                        :key="c.id"
-                        :data-node-id="c.id"
-                        :title="c.devName ? $t('townView.k2bindr0007', { p0: c.devName }) : $t('townView.k2bindr0008')"
-                        @click="bindDaqChoice(c.id)"
+                  <div class="daq-info-row">
+                    <span>{{ $t('townView.k1l6g2ga074') }}</span>
+                    <span class="daq-th-inputs">
+                      <input
+                        v-model.number="daqIntervalDraft"
+                        type="number"
+                        min="200"
+                        max="60000"
+                        step="100"
+                        class="daq-num"
+                        @change="onDaqIntervalCommit"
+                      ><small>{{ $t('townView.k1or92b075') }}</small>
+                    </span>
+                  </div>
+                  <div class="daq-info-row">
+                    <span>{{ $t('townView.k3x5tpx076') }}</span>
+                    <span class="daq-th-inputs">
+                      <input
+                        :value="selectedDaqNode.warnLow"
+                        type="number"
+                        step="any"
+                        class="daq-num"
+                        @change="onDaqThresholdCommit('warnLow', ($event.target as HTMLInputElement).value)"
                       >
-                        <svg
-                          class="bind-svg"
-                          viewBox="0 0 24 24"
-                          v-html="daqIcon(c.tpl.icon)"
-                        />
-                        <span>{{ c.name }}<i
-                          v-if="c.devName"
-                          class="bp-cur"
-                        >→ {{ c.devName }}</i><i
-                          v-else-if="!c.placed"
-                          class="bp-cur"
-                        >{{ $t('townView.k2bindr0009') }}</i></span>
-                      </button>
-                    </div>
-                  </template>
-                  <div
-                    v-if="!daqBindChoiceCount"
-                    class="bp-empty"
-                  >
-                    {{ $t('townView.k2bindr0010') }}
+                      ~
+                      <input
+                        :value="selectedDaqNode.warnHigh"
+                        type="number"
+                        step="any"
+                        class="daq-num"
+                        @change="onDaqThresholdCommit('warnHigh', ($event.target as HTMLInputElement).value)"
+                      >
+                    </span>
+                  </div>
+                  <div class="daq-info-row">
+                    <span>{{ $t('townView.k1hjj0jf077') }}</span>
+                    <span class="daq-th-inputs">
+                      <input
+                        :value="selectedDaqNode.min"
+                        type="number"
+                        step="any"
+                        class="daq-num"
+                        @change="onDaqThresholdCommit('min', ($event.target as HTMLInputElement).value)"
+                      >
+                      ~
+                      <input
+                        :value="selectedDaqNode.max"
+                        type="number"
+                        step="any"
+                        class="daq-num"
+                        @change="onDaqThresholdCommit('max', ($event.target as HTMLInputElement).value)"
+                      >
+                    </span>
+                  </div>
+                  <div class="daq-info-row">
+                    <span>{{ $t('townView.k48tki078') }}</span>
+                    <button
+                      class="bind-add-btn"
+                      :class="{ warn: selectedDaqNode.enabled }"
+                      @click="daq.patchNode(selected.id, { enabled: !selectedDaqNode.enabled })"
+                    >
+                      {{ selectedDaqNode.enabled ? $t('townView.k1wv0nyo150') : $t('townView.kh1586b180') }}
+                    </button>
+                  </div>
+                  <div class="daq-info-row">
+                    <span>{{ $t('townView.k3xakp079') }}</span>
+                    <button
+                      class="bind-add-btn danger"
+                      :title="$t('townView.kpwutri014')"
+                      @click="removeSelectedDevice()"
+                    >
+                      {{ $t('townView.k1bpp30k080') }}
+                    </button>
                   </div>
                 </div>
+                <div
+                  v-else
+                  class="ins-empty"
+                >
+                  {{ $t('townView.kzk5dfx081') }}
+                </div>
               </div>
+              <template v-else>
+                <div class="obj-row">
+                  <span class="obj-label">{{ $t('townView.k3xhia082') }}</span>
+                  <input
+                    v-model="objNameDraft"
+                    class="obj-input"
+                    :placeholder="$t('townView.k1k6vbaf015')"
+                    :disabled="mode !== 'edit'"
+                    :title="mode === 'edit' ? '设备名称' : '运行模式只读'"
+                    @change="onObjNameCommit"
+                    @keydown.enter="onObjNameCommit"
+                  >
+                </div>
+                <div class="obj-row">
+                  <span class="obj-label">{{ $t('townView.k41amp083') }}</span>
+                  <select
+                    class="obj-select"
+                    :value="scene3dRef?.getDeviceModelRef?.(selected.id) ?? ''"
+                    :disabled="mode !== 'edit'"
+                    @change="bindDeviceModel(($event.target as HTMLSelectElement).value)"
+                  >
+                    <option
+                      v-for="m in deviceModels"
+                      :key="m.id"
+                      :value="m.id"
+                    >
+                      {{ m.name }}
+                    </option>
+                  </select>
+                </div>
 
-              <!-- 智控设定(三段式仪表卡:身份行 / 工艺窗口带 / 下发行) -->
-              <div class="sect-hd">
-                {{ $t('townView.ktzir2t131') }} {{ boundDcwRows.length }} {{ $t('townView.k4l1w042') }}
-              </div>
-              <div
-                v-for="r in boundDcwRows"
-                :key="r.dcwId"
-                class="dcw-row"
-              >
-                <div class="dcw-top">
+                <!-- 数采绑定(设计稿 bind-row:图标 + 通道 + 实时值 + 迷你折线 + 解绑;运行模式只读展示) -->
+                <div class="sect-hd">
+                  {{ $t('townView.k1vtyk05130') }} {{ boundDaqRows.length }} {{ $t('townView.k3vfpz5138') }}
+                </div>
+                <div
+                  v-for="r in boundDaqRows"
+                  :key="r.daqId"
+                  class="bind-row"
+                >
                   <span class="bind-ico">
                     <svg
                       class="bind-svg"
@@ -4016,524 +4078,622 @@ onBeforeUnmount(() => {
                       v-html="daqIcon(r.icon)"
                     />
                   </span>
-                  <span class="dcw-id">
-                    <span class="bind-label">{{ r.ch }}<i
-                      v-if="r.rMin != null || r.rMax != null"
-                      class="dcw-tag"
-                    >{{ $t('townView.k48grv086') }}</i></span>
-                    <span class="dcw-name">{{ r.name }}</span>
+                  <span class="bind-meta">
+                    <span class="bind-label">{{ r.ch }}</span>
+                    <span class="bind-val"><b>{{ r.value }}</b> {{ r.unit }} · {{ r.name }}</span>
                   </span>
-                  <span class="dcw-cur"><b>{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}</b><i>{{ r.unit }}</i></span>
+                  <canvas
+                    :ref="el => setSparkRef(r.daqId, el)"
+                    class="bind-spark"
+                    width="56"
+                    height="20"
+                  />
                   <button
                     v-if="mode === 'edit'"
                     class="bind-x"
                     :title="$t('townView.k1k73omv016')"
-                    @click="unbindDcw(r.dcwId)"
+                    @click="unbindDaq(r.daqId)"
                   >
                     ✕
                   </button>
                 </div>
                 <div
-                  class="dcw-win"
-                  :class="{ recipe: r.rMin != null || r.rMax != null }"
+                  v-if="!boundDaqRows.length"
+                  class="ins-empty"
                 >
-                  <em>{{ r.rMin != null || r.rMax != null ? $t('townView.k1l3m0hx151') : $t('townView.k1bc6rqf181') }}</em>
-                  <span class="dcw-win-num">{{ r.rMin ?? '-∞' }}</span>
-                  <span class="dcw-win-track"><i :style="{ left: `${dcwMarkPct(r)}%` }" /></span>
-                  <span class="dcw-win-num">{{ r.rMax ?? '+∞' }}</span>
+                  {{ $t('townView.kgpuqhb084') }}
                 </div>
-                <div class="dcw-write">
-                  <input
-                    v-model.number="dcwWriteDrafts[r.dcwId]"
-                    type="number"
-                    :step="10 ** -r.decimals"
-                    :placeholder="`${(r.rMin ?? r.gMin)} ~ ${(r.rMax ?? r.gMax)}`"
-                    @keydown.enter="doDcwWrite(dcw.nodeById(r.dcwId)!)"
-                  >
+                <div
+                  v-if="mode === 'edit'"
+                  class="bind-add-wrap"
+                >
                   <button
-                    class="dcw-send"
-                    :disabled="dcwWriteDrafts[r.dcwId] == null || dcwWriteDrafts[r.dcwId] === ''"
-                    :title="$t('townView.k15t7izc017')"
-                    @click="doDcwWrite(dcw.nodeById(r.dcwId)!)"
+                    class="bind-add"
+                    @click="toggleBindPop('daq', $event)"
                   >
-                    write
+                    {{ $t('townView.kvm0lin085') }}
                   </button>
+                  <div
+                    v-if="bindPopOpen"
+                    class="bind-pop"
+                    :style="{ maxHeight: `${bindPopMaxH}px` }"
+                  >
+                    <template
+                      v-for="tpl in daqTemplates"
+                      :key="tpl.id"
+                    >
+                      <div
+                        v-if="daqBindChoices[tpl.id]?.length"
+                        class="bp-group"
+                      >
+                        <span class="bp-tpl">{{ tpl.name }} · {{ tpl.ch }}</span>
+                        <button
+                          v-for="c in daqBindChoices[tpl.id]"
+                          :key="c.id"
+                          :data-node-id="c.id"
+                          :title="c.devName ? $t('townView.k2bindr0007', { p0: c.devName }) : $t('townView.k2bindr0008')"
+                          @click="bindDaqChoice(c.id)"
+                        >
+                          <svg
+                            class="bind-svg"
+                            viewBox="0 0 24 24"
+                            v-html="daqIcon(c.tpl.icon)"
+                          />
+                          <span>{{ c.name }}<i
+                            v-if="c.devName"
+                            class="bp-cur"
+                          >→ {{ c.devName }}</i><i
+                            v-else-if="!c.placed"
+                            class="bp-cur"
+                          >{{ $t('townView.k2bindr0009') }}</i></span>
+                        </button>
+                      </div>
+                    </template>
+                    <div
+                      v-if="!daqBindChoiceCount"
+                      class="bp-empty"
+                    >
+                      {{ $t('townView.k2bindr0010') }}
+                    </div>
+                  </div>
                 </div>
-                <small
-                  v-if="dcwWriteErrs[r.dcwId]"
-                  class="dcw-err"
-                >{{ dcwWriteErrs[r.dcwId] }}</small>
+
+                <!-- 智控设定(三段式仪表卡:身份行 / 工艺窗口带 / 下发行) -->
+                <div class="sect-hd">
+                  {{ $t('townView.ktzir2t131') }} {{ boundDcwRows.length }} {{ $t('townView.k4l1w042') }}
+                </div>
+                <div
+                  v-for="r in boundDcwRows"
+                  :key="r.dcwId"
+                  class="dcw-row"
+                >
+                  <div class="dcw-top">
+                    <span class="bind-ico">
+                      <svg
+                        class="bind-svg"
+                        viewBox="0 0 24 24"
+                        v-html="daqIcon(r.icon)"
+                      />
+                    </span>
+                    <span class="dcw-id">
+                      <span class="bind-label">{{ r.ch }}<i
+                        v-if="r.rMin != null || r.rMax != null"
+                        class="dcw-tag"
+                      >{{ $t('townView.k48grv086') }}</i></span>
+                      <span class="dcw-name">{{ r.name }}</span>
+                    </span>
+                    <span class="dcw-cur"><b>{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}</b><i>{{ r.unit }}</i></span>
+                    <button
+                      v-if="mode === 'edit'"
+                      class="bind-x"
+                      :title="$t('townView.k1k73omv016')"
+                      @click="unbindDcw(r.dcwId)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div
+                    class="dcw-win"
+                    :class="{ recipe: r.rMin != null || r.rMax != null }"
+                  >
+                    <em>{{ r.rMin != null || r.rMax != null ? $t('townView.k1l3m0hx151') : $t('townView.k1bc6rqf181') }}</em>
+                    <span class="dcw-win-num">{{ r.rMin ?? '-∞' }}</span>
+                    <span class="dcw-win-track"><i :style="{ left: `${dcwMarkPct(r)}%` }" /></span>
+                    <span class="dcw-win-num">{{ r.rMax ?? '+∞' }}</span>
+                  </div>
+                  <div class="dcw-write">
+                    <input
+                      v-model.number="dcwWriteDrafts[r.dcwId]"
+                      type="number"
+                      :step="10 ** -r.decimals"
+                      :placeholder="`${(r.rMin ?? r.gMin)} ~ ${(r.rMax ?? r.gMax)}`"
+                      @keydown.enter="doDcwWrite(dcw.nodeById(r.dcwId)!)"
+                    >
+                    <button
+                      class="dcw-send"
+                      :disabled="dcwWriteDrafts[r.dcwId] == null || dcwWriteDrafts[r.dcwId] === ''"
+                      :title="$t('townView.k15t7izc017')"
+                      @click="doDcwWrite(dcw.nodeById(r.dcwId)!)"
+                    >
+                      write
+                    </button>
+                  </div>
+                  <small
+                    v-if="dcwWriteErrs[r.dcwId]"
+                    class="dcw-err"
+                  >{{ dcwWriteErrs[r.dcwId] }}</small>
+                </div>
+                <div
+                  v-if="!boundDcwRows.length"
+                  class="ins-empty"
+                >
+                  {{ $t('townView.k10smf24087') }}
+                </div>
+                <div
+                  v-if="mode === 'edit'"
+                  class="bind-add-wrap"
+                >
+                  <button
+                    class="bind-add"
+                    @click="toggleBindPop('dcw', $event)"
+                  >
+                    {{ $t('townView.kvk1vh5088') }}
+                  </button>
+                  <div
+                    v-if="dcwBindPopOpen"
+                    class="bind-pop"
+                    :style="{ maxHeight: `${bindPopMaxH}px` }"
+                  >
+                    <template
+                      v-for="tpl in dcwTemplates"
+                      :key="tpl.id"
+                    >
+                      <div
+                        v-if="dcwBindChoices[tpl.id]?.length"
+                        class="bp-group"
+                      >
+                        <span class="bp-tpl">{{ tpl.name }} · {{ tpl.ch }}</span>
+                        <button
+                          v-for="c in dcwBindChoices[tpl.id]"
+                          :key="c.id"
+                          :data-node-id="c.id"
+                          :title="c.devName ? $t('townView.k2bindr0007', { p0: c.devName }) : $t('townView.k2bindr0008')"
+                          @click="bindDcwChoice(c.id)"
+                        >
+                          <svg
+                            class="bind-svg"
+                            viewBox="0 0 24 24"
+                            v-html="daqIcon(c.tpl.icon)"
+                          />
+                          <span>{{ c.name }}<i
+                            v-if="c.devName"
+                            class="bp-cur"
+                          >→ {{ c.devName }}</i><i
+                            v-else-if="!c.placed"
+                            class="bp-cur"
+                          >{{ $t('townView.k2bindr0009') }}</i></span>
+                        </button>
+                      </div>
+                    </template>
+                    <div
+                      v-if="!dcwBindChoiceCount"
+                      class="bp-empty"
+                    >
+                      {{ $t('townView.k2bindr0010') }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 变换模式(Blender G/R/S;仅编辑模式) -->
+                <template v-if="mode === 'edit'">
+                  <div class="sect-hd">
+                    变换 · BLENDER
+                  </div>
+                  <div class="xz-seg">
+                    <button
+                      class="seg-btn"
+                      :class="{ on: tMode === 'translate' }"
+                      @click="setTMode('translate')"
+                    >
+                      {{ $t('townView.k1hg3167089') }}
+                    </button>
+                    <button
+                      class="seg-btn"
+                      :class="{ on: tMode === 'rotate' }"
+                      @click="setTMode('rotate')"
+                    >
+                      {{ $t('townView.k1enlg7i090') }}
+                    </button>
+                    <button
+                      class="seg-btn"
+                      :class="{ on: tMode === 'scale' }"
+                      @click="setTMode('scale')"
+                    >
+                      {{ $t('townView.k1ibjg3j091') }}
+                    </button>
+                  </div>
+                  <div class="scale-row">
+                    <span class="scale-min">0.2×</span>
+                    <input
+                      class="scale-range"
+                      type="range"
+                      min="0.2"
+                      max="5"
+                      step="0.05"
+                      :value="selected.scale"
+                      @input="onScaleInput(Number(($event.target as HTMLInputElement).value))"
+                      @change="onScaleCommit(Number(($event.target as HTMLInputElement).value))"
+                    >
+                    <span class="scale-max">5×</span>
+                  </div>
+                  <div class="scale-val">
+                    {{ Math.round(selected.scale * 100) }}%
+                  </div>
+
+                  <div class="ins-foot">
+                    <button
+                      class="btn btn-danger ins-del"
+                      :class="{ armed: deviceDeleteArmed === selected.id }"
+                      @click="removeSelectedDevice"
+                    >
+                      {{ deviceDeleteArmed === selected.id ? $t('townView.k1w10xa5152') : $t('townView.k121kfef182') }}
+                    </button>
+                  </div>
+                </template>
+                <div
+                  v-else
+                  class="ins-empty"
+                >
+                  {{ $t('townView.kt0i3y2092') }}
+                </div>
+              </template>
+            </template>
+
+            <template v-else-if="selected.kind === 'agent'">
+              <div class="chat-id-row">
+                <span
+                  class="chat-badge"
+                  :style="{ '--p-acc': agentChatColor }"
+                >{{ agentChatTitle.slice(0, 1).toUpperCase() }}</span>
+                <div class="chat-nameplate">
+                  <span class="chat-name">{{ agentChatTitle }}</span>
+                  <span class="chat-meta">
+                    <span
+                      class="chat-role"
+                      :class="selectedAgentMeta?.role === 'lead' ? 'r-lead' : 'r-worker'"
+                    >{{ selectedAgentRoleTag }}</span>
+                    <span
+                      class="chat-state"
+                      :class="`s-${selectedAgentMeta?.state ?? 'idle'}`"
+                    >{{ agentChatStateLabel }}</span>
+                    <span
+                      v-if="selectedAgentMeta?.harness"
+                      class="chat-harness"
+                    >{{ selectedAgentMeta.harness.toUpperCase() }}</span>
+                    <span class="chat-count">{{ agentHistory.length + agentChatRows.length }} {{ $t('townView.k4dfq040') }}</span>
+                  </span>
+                </div>
+              </div>
+              <div class="obj-row">
+                <span class="obj-label">{{ $t('townView.k41amp083') }}</span>
+                <select
+                  class="obj-select"
+                  :value="(scene3dRef?.getAgentModel?.(selected.id) ?? '') || 'hero-3d'"
+                  :disabled="mode !== 'edit'"
+                  @change="bindAgentModel(($event.target as HTMLSelectElement).value)"
+                >
+                  <option
+                    v-for="m in agentModels"
+                    :key="m.id"
+                    :value="m.id"
+                  >
+                    {{ m.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="obj-sep" />
+              <div class="obj-row">
+                <span class="obj-label">{{ $t('townView.k1fix3hb093') }}</span>
+                <span class="range-status">{{ agentRangeStatusText }}</span>
+                <button
+                  v-if="mode === 'edit'"
+                  class="obj-mini"
+                  :class="{ on: agentDrawingRange }"
+                  :title="$t('townView.k13enoy3018')"
+                  @click="onToggleRangeDraw"
+                >
+                  {{ agentDrawingRange ? $t('townView.k3slzhc153') : $t('townView.k1f1xmci183') }}
+                </button>
+              </div>
+
+              <!-- 工业节点绑定(数采/数控工具授权 + 控制模式 + 手动确认审批) -->
+              <div class="obj-sep" />
+              <div class="sect-hd">
+                {{ $t('townView.k1p7nru2094') }}
               </div>
               <div
-                v-if="!boundDcwRows.length"
+                v-for="b in agentBindings"
+                :key="b.id"
+                class="bind-row"
+              >
+                <span
+                  class="ins-chip"
+                  :class="b.kind === 'dcw' ? 'accent' : ''"
+                  style="flex: none;"
+                >{{ b.kind === 'dcw' ? $t('townView.k40ifw097') : $t('townView.k40rjw098') }}</span>
+                <span class="bind-meta">
+                  <span class="bind-label">{{ bindingNodeName(b) }}</span>
+                  <select
+                    class="bind-select"
+                    style="margin-top: 3px;"
+                    :value="b.mode"
+                    :title="$t('townView.khqvwix019')"
+                    @change="setBindingMode(b.id, ($event.target as HTMLSelectElement).value as 'auto' | 'manual')"
+                  >
+                    <option value="auto">
+                      {{ $t('townView.k1io1ylm095') }}
+                    </option>
+                    <option value="manual">
+                      {{ $t('townView.k1duyr8q096') }}
+                    </option>
+                  </select>
+                </span>
+                <button
+                  class="bind-x"
+                  :title="$t('townView.k1k73omv016')"
+                  @click="unbindAgentNode(b.id)"
+                >
+                  ✕
+                </button>
+              </div>
+              <div
+                v-if="!agentBindings.length"
                 class="ins-empty"
               >
-                {{ $t('townView.k10smf24087') }}
+                未绑定工业节点 —— 绑定后 Agent 可用 dcw_control / daq_query 工具
               </div>
               <div
                 v-if="mode === 'edit'"
-                class="bind-add-wrap"
+                class="daq-bind-bar"
+                style="margin-bottom: 8px;"
               >
-                <button
-                  class="bind-add"
-                  @click="toggleBindPop('dcw', $event)"
+                <select
+                  v-model="agentBindKind"
+                  class="bind-select"
+                  style="flex: none; width: 62px;"
                 >
-                  {{ $t('townView.kvk1vh5088') }}
-                </button>
-                <div
-                  v-if="dcwBindPopOpen"
-                  class="bind-pop"
-                  :style="{ maxHeight: `${bindPopMaxH}px` }"
+                  <option value="dcw">
+                    {{ $t('townView.k40ifw097') }}
+                  </option>
+                  <option value="daq">
+                    {{ $t('townView.k40rjw098') }}
+                  </option>
+                </select>
+                <select
+                  v-model="agentBindNodeId"
+                  class="bind-select"
                 >
-                  <template
-                    v-for="tpl in dcwTemplates"
-                    :key="tpl.id"
-                  >
-                    <div
-                      v-if="dcwBindChoices[tpl.id]?.length"
-                      class="bp-group"
+                  <option value="">
+                    {{ $t('townView.kurjldk099') }}
+                  </option>
+                  <template v-if="agentBindKind === 'dcw'">
+                    <option
+                      v-for="n in dcw.nodes"
+                      :key="n.id"
+                      :value="n.id"
                     >
-                      <span class="bp-tpl">{{ tpl.name }} · {{ tpl.ch }}</span>
-                      <button
-                        v-for="c in dcwBindChoices[tpl.id]"
-                        :key="c.id"
-                        :data-node-id="c.id"
-                        :title="c.devName ? $t('townView.k2bindr0007', { p0: c.devName }) : $t('townView.k2bindr0008')"
-                        @click="bindDcwChoice(c.id)"
-                      >
-                        <svg
-                          class="bind-svg"
-                          viewBox="0 0 24 24"
-                          v-html="daqIcon(c.tpl.icon)"
-                        />
-                        <span>{{ c.name }}<i
-                          v-if="c.devName"
-                          class="bp-cur"
-                        >→ {{ c.devName }}</i><i
-                          v-else-if="!c.placed"
-                          class="bp-cur"
-                        >{{ $t('townView.k2bindr0009') }}</i></span>
-                      </button>
-                    </div>
+                      {{ n.name }}
+                    </option>
                   </template>
-                  <div
-                    v-if="!dcwBindChoiceCount"
-                    class="bp-empty"
-                  >
-                    {{ $t('townView.k2bindr0010') }}
-                  </div>
-                </div>
+                  <template v-else>
+                    <option
+                      v-for="n in daq.nodes"
+                      :key="n.id"
+                      :value="n.id"
+                    >
+                      {{ n.name }}
+                    </option>
+                  </template>
+                </select>
+                <select
+                  v-model="agentBindMode"
+                  class="bind-select"
+                  style="flex: none; width: 76px;"
+                >
+                  <option value="auto">
+                    {{ $t('townView.k45kpj100') }}
+                  </option>
+                  <option value="manual">
+                    {{ $t('townView.k3zul4101') }}
+                  </option>
+                </select>
+                <button
+                  class="bind-add-btn"
+                  :disabled="!agentBindNodeId"
+                  @click="bindAgentNode"
+                >
+                  {{ $t('townView.k452a8102') }}
+                </button>
               </div>
 
-              <!-- 变换模式(Blender G/R/S;仅编辑模式) -->
-              <template v-if="mode === 'edit'">
-                <div class="sect-hd">
-                  变换 · BLENDER
+              <!-- 手动确认:待审批 -->
+              <template v-if="pendingApprovals.length">
+                <div
+                  class="sect-hd"
+                  style="color: var(--hud-amber);"
+                >
+                  {{ $t('townView.k1gk2jg7132') }} {{ pendingApprovals.length }}
                 </div>
-                <div class="xz-seg">
-                  <button
-                    class="seg-btn"
-                    :class="{ on: tMode === 'translate' }"
-                    @click="setTMode('translate')"
-                  >
-                    {{ $t('townView.k1hg3167089') }}
-                  </button>
-                  <button
-                    class="seg-btn"
-                    :class="{ on: tMode === 'rotate' }"
-                    @click="setTMode('rotate')"
-                  >
-                    {{ $t('townView.k1enlg7i090') }}
-                  </button>
-                  <button
-                    class="seg-btn"
-                    :class="{ on: tMode === 'scale' }"
-                    @click="setTMode('scale')"
-                  >
-                    {{ $t('townView.k1ibjg3j091') }}
-                  </button>
-                </div>
-                <div class="scale-row">
-                  <span class="scale-min">0.2×</span>
+                <div
+                  v-for="ap in pendingApprovals"
+                  :key="ap.id"
+                  class="approval-card"
+                >
+                  <div class="approval-detail">
+                    {{ ap.detail }}
+                  </div>
                   <input
-                    class="scale-range"
+                    v-model="approvalComments[ap.id]"
+                    class="dcw-write input-inline"
+                    style="width: 100%; margin-top: 5px;"
+                    :placeholder="$t('townView.keztqrn020')"
+                  >
+                  <div
+                    class="daq-bind-bar"
+                    style="margin-top: 5px;"
+                  >
+                    <button
+                      class="bind-add-btn"
+                      @click="decideApproval(ap.id, true)"
+                    >
+                      {{ $t('townView.kslcozu103') }}
+                    </button>
+                    <button
+                      class="bind-add-btn danger"
+                      @click="decideApproval(ap.id, false)"
+                    >
+                      {{ $t('townView.k14gu3rd104') }}
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <template v-if="agentRangeDraft && mode === 'edit'">
+                <div class="obj-row">
+                  <span class="obj-label">{{ $t('townView.k3zhy5048') }}</span>
+                  <div class="bp-seg">
+                    <button
+                      class="seg-btn"
+                      :class="{ on: agentRangeDraft.shape === 'ellipse' }"
+                      @click="agentRangeDraft.shape = 'ellipse'; applyAgentRangeDraft()"
+                    >
+                      {{ $t('townView.k414bc049') }}
+                    </button>
+                    <button
+                      class="seg-btn"
+                      :class="{ on: agentRangeDraft.shape === 'rect' }"
+                      @click="agentRangeDraft.shape = 'rect'; applyAgentRangeDraft()"
+                    >
+                      {{ $t('townView.k43u0g050') }}
+                    </button>
+                  </div>
+                </div>
+                <div class="obj-row">
+                  <span class="obj-label">{{ $t('townView.k41lwj105') }}</span>
+                  <input
+                    v-model.number="agentRangeDraft.radiusX"
+                    class="obj-range"
                     type="range"
-                    min="0.2"
-                    max="5"
-                    step="0.05"
-                    :value="selected.scale"
-                    @input="onScaleInput(Number(($event.target as HTMLInputElement).value))"
-                    @change="onScaleCommit(Number(($event.target as HTMLInputElement).value))"
+                    min="40"
+                    max="4000"
+                    step="8"
+                    @input="applyAgentRangeDraft"
+                    @change="onAgentRangeCommit"
                   >
-                  <span class="scale-max">5×</span>
+                  <span class="bp-val">{{ Math.round(agentRangeDraft.radiusX) }}</span>
                 </div>
-                <div class="scale-val">
-                  {{ Math.round(selected.scale * 100) }}%
-                </div>
-
-                <div class="ins-foot">
-                  <button
-                    class="btn btn-danger ins-del"
-                    :class="{ armed: deviceDeleteArmed === selected.id }"
-                    @click="removeSelectedDevice"
+                <div class="obj-row">
+                  <span class="obj-label">{{ $t('townView.k45bta106') }}</span>
+                  <input
+                    v-model.number="agentRangeDraft.radiusZ"
+                    class="obj-range"
+                    type="range"
+                    min="40"
+                    max="4000"
+                    step="8"
+                    @input="applyAgentRangeDraft"
+                    @change="onAgentRangeCommit"
                   >
-                    {{ deviceDeleteArmed === selected.id ? $t('townView.k1w10xa5152') : $t('townView.k121kfef182') }}
-                  </button>
+                  <span class="bp-val">{{ Math.round(agentRangeDraft.radiusZ) }}</span>
                 </div>
+                <button
+                  class="obj-mini danger"
+                  @click="onClearAgentRange"
+                >
+                  {{ $t('townView.k1w45mzc107') }}
+                </button>
               </template>
               <div
                 v-else
                 class="ins-empty"
               >
-                {{ $t('townView.kt0i3y2092') }}
+                {{ $t('townView.k14s8urm108') }}
               </div>
-            </template>
-          </template>
 
-          <template v-else-if="selected.kind === 'agent'">
-            <div class="chat-id-row">
-              <span
-                class="chat-badge"
-                :style="{ '--p-acc': agentChatColor }"
-              >{{ agentChatTitle.slice(0, 1).toUpperCase() }}</span>
-              <div class="chat-nameplate">
-                <span class="chat-name">{{ agentChatTitle }}</span>
-                <span class="chat-meta">
-                  <span
-                    class="chat-role"
-                    :class="selectedAgentMeta?.role === 'lead' ? 'r-lead' : 'r-worker'"
-                  >{{ selectedAgentRoleTag }}</span>
-                  <span
-                    class="chat-state"
-                    :class="`s-${selectedAgentMeta?.state ?? 'idle'}`"
-                  >{{ agentChatStateLabel }}</span>
-                  <span
-                    v-if="selectedAgentMeta?.harness"
-                    class="chat-harness"
-                  >{{ selectedAgentMeta.harness.toUpperCase() }}</span>
-                  <span class="chat-count">{{ agentHistory.length + agentChatRows.length }} {{ $t('townView.k4dfq040') }}</span>
-                </span>
-              </div>
-            </div>
-            <div class="obj-row">
-              <span class="obj-label">{{ $t('townView.k41amp083') }}</span>
-              <select
-                class="obj-select"
-                :value="(scene3dRef?.getAgentModel?.(selected.id) ?? '') || 'hero-3d'"
-                :disabled="mode !== 'edit'"
-                @change="bindAgentModel(($event.target as HTMLSelectElement).value)"
-              >
-                <option
-                  v-for="m in agentModels"
-                  :key="m.id"
-                  :value="m.id"
+              <!-- 会话记录(侧边信息;历史 + 实时,不再悬浮于场景) -->
+              <div class="obj-sep" />
+              <div class="sect-hd chat-sect">
+                {{ $t('townView.k1ghjbfc133') }} {{ agentChatTitle }}
+                <button
+                  class="mini-btn chat-refresh"
+                  :title="$t('townView.k15avt7g021')"
+                  @click="onRefreshHistory"
                 >
-                  {{ m.name }}
-                </option>
-              </select>
-            </div>
-            <div class="obj-sep" />
-            <div class="obj-row">
-              <span class="obj-label">{{ $t('townView.k1fix3hb093') }}</span>
-              <span class="range-status">{{ agentRangeStatusText }}</span>
-              <button
-                v-if="mode === 'edit'"
-                class="obj-mini"
-                :class="{ on: agentDrawingRange }"
-                :title="$t('townView.k13enoy3018')"
-                @click="onToggleRangeDraw"
-              >
-                {{ agentDrawingRange ? $t('townView.k3slzhc153') : $t('townView.k1f1xmci183') }}
-              </button>
-            </div>
-
-            <!-- 工业节点绑定(数采/数控工具授权 + 控制模式 + 手动确认审批) -->
-            <div class="obj-sep" />
-            <div class="sect-hd">
-              {{ $t('townView.k1p7nru2094') }}
-            </div>
-            <div
-              v-for="b in agentBindings"
-              :key="b.id"
-              class="bind-row"
-            >
-              <span
-                class="ins-chip"
-                :class="b.kind === 'dcw' ? 'accent' : ''"
-                style="flex: none;"
-              >{{ b.kind === 'dcw' ? $t('townView.k40ifw097') : $t('townView.k40rjw098') }}</span>
-              <span class="bind-meta">
-                <span class="bind-label">{{ bindingNodeName(b) }}</span>
-                <select
-                  class="bind-select"
-                  style="margin-top: 3px;"
-                  :value="b.mode"
-                  :title="$t('townView.khqvwix019')"
-                  @change="setBindingMode(b.id, ($event.target as HTMLSelectElement).value as 'auto' | 'manual')"
-                >
-                  <option value="auto">
-                    {{ $t('townView.k1io1ylm095') }}
-                  </option>
-                  <option value="manual">
-                    {{ $t('townView.k1duyr8q096') }}
-                  </option>
-                </select>
-              </span>
-              <button
-                class="bind-x"
-                :title="$t('townView.k1k73omv016')"
-                @click="unbindAgentNode(b.id)"
-              >
-                ✕
-              </button>
-            </div>
-            <div
-              v-if="!agentBindings.length"
-              class="ins-empty"
-            >
-              未绑定工业节点 —— 绑定后 Agent 可用 dcw_control / daq_query 工具
-            </div>
-            <div
-              v-if="mode === 'edit'"
-              class="daq-bind-bar"
-              style="margin-bottom: 8px;"
-            >
-              <select
-                v-model="agentBindKind"
-                class="bind-select"
-                style="flex: none; width: 62px;"
-              >
-                <option value="dcw">
-                  {{ $t('townView.k40ifw097') }}
-                </option>
-                <option value="daq">
-                  {{ $t('townView.k40rjw098') }}
-                </option>
-              </select>
-              <select
-                v-model="agentBindNodeId"
-                class="bind-select"
-              >
-                <option value="">
-                  {{ $t('townView.kurjldk099') }}
-                </option>
-                <template v-if="agentBindKind === 'dcw'">
-                  <option
-                    v-for="n in dcw.nodes"
-                    :key="n.id"
-                    :value="n.id"
-                  >
-                    {{ n.name }}
-                  </option>
-                </template>
-                <template v-else>
-                  <option
-                    v-for="n in daq.nodes"
-                    :key="n.id"
-                    :value="n.id"
-                  >
-                    {{ n.name }}
-                  </option>
-                </template>
-              </select>
-              <select
-                v-model="agentBindMode"
-                class="bind-select"
-                style="flex: none; width: 76px;"
-              >
-                <option value="auto">
-                  {{ $t('townView.k45kpj100') }}
-                </option>
-                <option value="manual">
-                  {{ $t('townView.k3zul4101') }}
-                </option>
-              </select>
-              <button
-                class="bind-add-btn"
-                :disabled="!agentBindNodeId"
-                @click="bindAgentNode"
-              >
-                {{ $t('townView.k452a8102') }}
-              </button>
-            </div>
-
-            <!-- 手动确认:待审批 -->
-            <template v-if="pendingApprovals.length">
-              <div
-                class="sect-hd"
-                style="color: var(--hud-amber);"
-              >
-                {{ $t('townView.k1gk2jg7132') }} {{ pendingApprovals.length }}
+                  {{ historyLoading ? '…' : '↻' }}
+                </button>
               </div>
               <div
-                v-for="ap in pendingApprovals"
-                :key="ap.id"
-                class="approval-card"
+                ref="chatScroll"
+                class="rpg-lines chat-embed"
               >
-                <div class="approval-detail">
-                  {{ ap.detail }}
-                </div>
-                <input
-                  v-model="approvalComments[ap.id]"
-                  class="dcw-write input-inline"
-                  style="width: 100%; margin-top: 5px;"
-                  :placeholder="$t('townView.keztqrn020')"
-                >
                 <div
-                  class="daq-bind-bar"
-                  style="margin-top: 5px;"
+                  v-if="historyLoading"
+                  class="rpg-note"
                 >
-                  <button
-                    class="bind-add-btn"
-                    @click="decideApproval(ap.id, true)"
-                  >
-                    {{ $t('townView.kslcozu103') }}
-                  </button>
-                  <button
-                    class="bind-add-btn danger"
-                    @click="decideApproval(ap.id, false)"
-                  >
-                    {{ $t('townView.k14gu3rd104') }}
-                  </button>
+                  {{ $t('townView.kkhlx5h109') }}
                 </div>
-              </div>
-            </template>
-            <template v-if="agentRangeDraft && mode === 'edit'">
-              <div class="obj-row">
-                <span class="obj-label">{{ $t('townView.k3zhy5048') }}</span>
-                <div class="bp-seg">
-                  <button
-                    class="seg-btn"
-                    :class="{ on: agentRangeDraft.shape === 'ellipse' }"
-                    @click="agentRangeDraft.shape = 'ellipse'; applyAgentRangeDraft()"
+                <template v-if="agentHistory.length">
+                  <div class="rpg-divider">
+                    {{ $t('townView.k768cnt134') }} {{ agentHistory.length }}
+                  </div>
+                  <div
+                    v-for="r in agentHistory"
+                    :key="r.id"
+                    class="rpg-line hist"
                   >
-                    {{ $t('townView.k414bc049') }}
-                  </button>
-                  <button
-                    class="seg-btn"
-                    :class="{ on: agentRangeDraft.shape === 'rect' }"
-                    @click="agentRangeDraft.shape = 'rect'; applyAgentRangeDraft()"
-                  >
-                    {{ $t('townView.k43u0g050') }}
-                  </button>
-                </div>
-              </div>
-              <div class="obj-row">
-                <span class="obj-label">{{ $t('townView.k41lwj105') }}</span>
-                <input
-                  v-model.number="agentRangeDraft.radiusX"
-                  class="obj-range"
-                  type="range"
-                  min="40"
-                  max="4000"
-                  step="8"
-                  @input="applyAgentRangeDraft"
-                  @change="onAgentRangeCommit"
+                    <span class="rpg-time">{{ fmtTime(r.at) }}</span>
+                    <div class="rpg-bubble">
+                      <span
+                        v-if="chatKindLabel(r.kind)"
+                        class="rpg-kind"
+                        :class="`k-${r.kind}`"
+                      >{{ chatKindLabel(r.kind) }}</span>
+                      <span class="rpg-text">{{ r.text }}</span>
+                    </div>
+                  </div>
+                </template>
+                <div
+                  v-if="agentChatRows.length"
+                  class="rpg-divider live"
                 >
-                <span class="bp-val">{{ Math.round(agentRangeDraft.radiusX) }}</span>
-              </div>
-              <div class="obj-row">
-                <span class="obj-label">{{ $t('townView.k45bta106') }}</span>
-                <input
-                  v-model.number="agentRangeDraft.radiusZ"
-                  class="obj-range"
-                  type="range"
-                  min="40"
-                  max="4000"
-                  step="8"
-                  @input="applyAgentRangeDraft"
-                  @change="onAgentRangeCommit"
-                >
-                <span class="bp-val">{{ Math.round(agentRangeDraft.radiusZ) }}</span>
-              </div>
-              <button
-                class="obj-mini danger"
-                @click="onClearAgentRange"
-              >
-                {{ $t('townView.k1w45mzc107') }}
-              </button>
-            </template>
-            <div
-              v-else
-              class="ins-empty"
-            >
-              {{ $t('townView.k14s8urm108') }}
-            </div>
-
-            <!-- 会话记录(侧边信息;历史 + 实时,不再悬浮于场景) -->
-            <div class="obj-sep" />
-            <div class="sect-hd chat-sect">
-              {{ $t('townView.k1ghjbfc133') }} {{ agentChatTitle }}
-              <button
-                class="mini-btn chat-refresh"
-                :title="$t('townView.k15avt7g021')"
-                @click="onRefreshHistory"
-              >
-                {{ historyLoading ? '…' : '↻' }}
-              </button>
-            </div>
-            <div
-              ref="chatScroll"
-              class="rpg-lines chat-embed"
-            >
-              <div
-                v-if="historyLoading"
-                class="rpg-note"
-              >
-                {{ $t('townView.kkhlx5h109') }}
-              </div>
-              <template v-if="agentHistory.length">
-                <div class="rpg-divider">
-                  {{ $t('townView.k768cnt134') }} {{ agentHistory.length }}
+                  {{ $t('townView.k1cwz73k135') }} {{ agentChatRows.length }}
                 </div>
                 <div
-                  v-for="r in agentHistory"
+                  v-for="r in agentChatRows"
                   :key="r.id"
-                  class="rpg-line hist"
+                  class="rpg-line live"
                 >
                   <span class="rpg-time">{{ fmtTime(r.at) }}</span>
                   <div class="rpg-bubble">
-                    <span
-                      v-if="chatKindLabel(r.kind)"
-                      class="rpg-kind"
-                      :class="`k-${r.kind}`"
-                    >{{ chatKindLabel(r.kind) }}</span>
                     <span class="rpg-text">{{ r.text }}</span>
                   </div>
                 </div>
-              </template>
-              <div
-                v-if="agentChatRows.length"
-                class="rpg-divider live"
-              >
-                {{ $t('townView.k1cwz73k135') }} {{ agentChatRows.length }}
-              </div>
-              <div
-                v-for="r in agentChatRows"
-                :key="r.id"
-                class="rpg-line live"
-              >
-                <span class="rpg-time">{{ fmtTime(r.at) }}</span>
-                <div class="rpg-bubble">
-                  <span class="rpg-text">{{ r.text }}</span>
+                <div
+                  v-if="selectedAgentMeta?.state === 'busy'"
+                  class="rpg-typing"
+                >
+                  <span class="ty-dot" /><span class="ty-dot" /><span class="ty-dot" />
+                  <span class="ty-label">{{ $t('townView.k3o5tz9110') }}</span>
+                </div>
+                <div
+                  v-if="!historyLoading && !agentHistory.length && !agentChatRows.length"
+                  class="rpg-note"
+                >
+                  {{ $t('townView.k1qkqld7111') }}
                 </div>
               </div>
-              <div
-                v-if="selectedAgentMeta?.state === 'busy'"
-                class="rpg-typing"
-              >
-                <span class="ty-dot" /><span class="ty-dot" /><span class="ty-dot" />
-                <span class="ty-label">{{ $t('townView.k3o5tz9110') }}</span>
-              </div>
-              <div
-                v-if="!historyLoading && !agentHistory.length && !agentChatRows.length"
-                class="rpg-note"
-              >
-                {{ $t('townView.k1qkqld7111') }}
-              </div>
-            </div>
-          </template>
-        </section>
+            </template>
+          </section>
+        </Transition>
 
         <section class="panel">
           <div class="panel-hd">
@@ -4547,7 +4707,7 @@ onBeforeUnmount(() => {
                 height="118"
               />
               <div class="donut-center">
-                <b>{{ healthPct }}%</b>
+                <b :style="{ color: healthTone }">{{ healthPct }}%</b>
                 <span>{{ $t('townView.k7h1nxo113') }}</span>
               </div>
             </div>
@@ -4575,6 +4735,14 @@ onBeforeUnmount(() => {
                 />
                 {{ $t('townView.k3xmid116') }}
                 <span class="n">{{ alarmCount }}</span>
+              </div>
+              <div class="hl-row">
+                <span
+                  class="hl-dot"
+                  :style="{ background: '#3a4a63' }"
+                />
+                {{ $t('townView.statesOffline') }}
+                <span class="n">{{ offlineCount }}</span>
               </div>
             </div>
           </div>
@@ -4638,9 +4806,13 @@ onBeforeUnmount(() => {
             </div>
             <div
               v-if="!alarms.length"
-              class="al-empty"
+              class="rail-empty"
             >
-              {{ $t('townView.kjz544r119') }}
+              <svg
+                class="re-ico"
+                viewBox="0 0 24 24"
+              ><path d="M12 3l7 3v5c0 4.6-3 8.2-7 10-4-1.8-7-5.4-7-10V6l7-3Z" /><path d="m9.2 12.2 2 2 3.6-4" /></svg>
+              <span>{{ $t('townView.kjz544r119') }}</span>
             </div>
           </div>
         </section>
@@ -4668,9 +4840,13 @@ onBeforeUnmount(() => {
             </div>
             <div
               v-if="!ticker.length"
-              class="event-empty"
+              class="rail-empty"
             >
-              {{ $t('townView.k2uk6ua121') }}
+              <svg
+                class="re-ico"
+                viewBox="0 0 24 24"
+              ><path d="M3 12h3l2.5-6 4 12L15 12h6" /></svg>
+              <span>{{ $t('townView.k2uk6ua121') }}</span>
             </div>
           </div>
         </section>
@@ -4950,11 +5126,21 @@ onBeforeUnmount(() => {
 .rail::-webkit-scrollbar-thumb { background: #1c2942; border-radius: 4px; border: 2px solid #080d16; }
 .rail::-webkit-scrollbar-track { background: transparent; }
 
+/* Inspector 入场(occasional;空间一致性 = 面板属于右轨,自右缘滑入;
+ * 退场对称快出;reduced-motion 全局收敛) */
+.ins-enter-active {
+  transition:
+    opacity 200ms var(--hud-ease),
+    transform 200ms var(--hud-ease);
+}
+.ins-leave-active { transition: opacity 120ms ease; }
+.ins-enter-from { opacity: 0; transform: translateX(12px); }
+.ins-leave-to { opacity: 0; }
+
 .panel {
   position: relative;
   background: linear-gradient(180deg, #101827 0%, #0d1420 100%);
-  border: 1px solid var(--hud-line);
-  border-radius: var(--hud-r-lg);
+  border: 1px solid var(--hud-line);  border-radius: var(--hud-r-lg);
   padding: 12px;
   flex: none;
   /* 玻璃光泽:顶部内高光(面板上缘受光)+ 深色外投影(悬浮层次) */
@@ -5539,6 +5725,19 @@ onBeforeUnmount(() => {
   padding: 1px 7px;
 }
 .ctl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+/* 分区微标(仪表铭牌语言):mono 小字 + 极低饱和,组与组之间唯一的结构性装饰 */
+.ctl-sec {
+  margin: 2px 0 7px;
+  padding-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hud-faint);
+  border-top: 1px solid var(--hud-line-soft);
+}
+.ctl-sec:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
 .ctl-name { font-size: 11.5px; color: var(--hud-dim); width: 64px; flex: none; }
 .ctl-val {
   font-family: var(--font-mono);
@@ -5585,6 +5784,23 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 .snap-toggle.on { color: var(--hud-accent); border-color: rgba(53, 224, 160, 0.4); background: rgba(53, 224, 160, 0.08); }
+/* 帧率选择段(60/120/∞):渲染节拍上限;数据消费在帧通道,与选择无关 */
+.fps-seg { display: flex; flex: 1; gap: 4px; }
+.fps-seg button {
+  flex: 1;
+  height: 22px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--hud-dim);
+  background: var(--hud-input);
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.14s var(--hud-ease), color 0.14s var(--hud-ease), background 0.14s var(--hud-ease);
+}
+.fps-seg button:hover { border-color: var(--hud-line-hi); color: var(--hud-text); }
+.fps-seg button.on { color: var(--hud-accent); border-color: rgba(53, 224, 160, 0.4); background: rgba(53, 224, 160, 0.08); }
 .ctl-btns { display: flex; gap: 8px; margin-top: auto; }
 .btn {
   background: transparent;
@@ -5619,8 +5835,9 @@ onBeforeUnmount(() => {
 .btn:disabled:hover, .nav-action:disabled:hover { background: inherit; }
 
 /* 趋势 */
-/* 信号选择条:两行封顶 + 受控细轨滚动 —— 57 路通道不再糊成一堵 chip 墙,
- * 趋势画布高度恒定(容量估算:chip 行高 ~20px × 2 + gap) */
+/* 信号选择条:收起时只渲染前 8 枚 chip + 「+N」聚合钮(至多两行,非 chip 墙);
+ * 展开/收起走 max-height 过渡(240ms ease-out,状态指示预算内),
+ * 画布高度随之联动,trend-wrap flex:1 自适应 */
 .trend-legend {
   display: flex;
   gap: 5px;
@@ -5628,12 +5845,14 @@ onBeforeUnmount(() => {
   align-content: flex-start;
   flex: 1 1 auto;
   min-width: 0;
-  max-height: 45px;
+  max-height: 47px;
   margin-left: 6px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #1c2942 transparent;
+  transition: max-height 240ms cubic-bezier(0.22, 0.68, 0.36, 1);
 }
+.trend-legend.expanded { max-height: 100px; }
 .trend-legend::-webkit-scrollbar { width: 6px; }
 .trend-legend::-webkit-scrollbar-thumb { background: #1c2942; border-radius: 3px; }
 .trend-legend::-webkit-scrollbar-track { background: transparent; }
@@ -5652,6 +5871,14 @@ onBeforeUnmount(() => {
 }
 .lg-chip:hover { border-color: var(--hud-line-hi); color: var(--hud-text); }
 .lg-chip.off { opacity: 0.32; }
+/* 「+N」展开/收起聚合 chip:虚线边界 = 折叠语义 */
+.lg-more {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--hud-faint);
+  border-style: dashed;
+}
+.lg-more:hover { color: var(--hud-accent); border-color: rgba(53, 224, 160, 0.4); }
 .lg-dot { width: 7px; height: 7px; border-radius: 2px; }
 .trend-wrap { flex: 1; min-height: 0; position: relative; }
 .trend-cv { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -5829,6 +6056,29 @@ onBeforeUnmount(() => {
   color: var(--hud-dim);
 }
 .event-empty { padding: 12px; font-family: var(--font-mono); font-size: 9.5px; color: var(--hud-faint); text-align: center; }
+/* 右轨空态构成:徽记 + 单行状态文案(HUD 声部;不编造内容,只给静息态一个视觉锚点) */
+.rail-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: center;
+  padding: 16px 10px 13px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--hud-faint);
+  text-align: center;
+}
+.rail-empty .re-ico {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: var(--hud-faint);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
 
 /* 导航图 */
 .mm-body { display: flex; gap: 8px; align-items: stretch; }
@@ -5882,7 +6132,6 @@ onBeforeUnmount(() => {
 .al-state.s0 { color: var(--hud-danger); background: rgba(255, 107, 107, 0.1); border-color: rgba(255, 107, 107, 0.4); }
 .al-state.s1 { color: var(--hud-amber); background: rgba(246, 196, 83, 0.1); border-color: rgba(246, 196, 83, 0.35); }
 .al-state.s2 { color: var(--hud-dim); background: rgba(143, 160, 181, 0.08); border-color: rgba(143, 160, 181, 0.3); }
-.al-empty { color: var(--hud-faint); font-size: 11.5px; text-align: center; padding: 14px 0; }
 .nav-bell-warn { color: var(--hud-danger); border-color: rgba(255, 107, 107, 0.5); }
 .mm-col { display: flex; flex-direction: column; gap: 6px; }
 .mm-col .vp-tool { width: 30px; height: 30px; border-radius: 8px; }

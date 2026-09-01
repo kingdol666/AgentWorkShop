@@ -67,4 +67,4 @@ daq:
 security:
   # Session cookie 加密密钥（nuxt-auth-utils 使用）
   # 生产环境必须修改为强随机值；可用环境变量 NUXT_SESSION_PASSWORD 覆盖
-  sessionPassword: "awshop-dev-secret-change-me-0123456789"
+  sessionPassword: awshop-dev-secret-change-me-0123456789

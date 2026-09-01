@@ -28,6 +28,19 @@ const unassignedCount = computed(() =>
   dcw.nodes.filter(n => !n.lineId).length + dcw.products.filter(p => !p.lineId).length,
 )
 
+// ---------- 清单筛选(94 条历史线的管理页:导航先于遍历) ----------
+const filterState = ref<'all' | 'running' | 'idle'>('all')
+const searchText = ref('')
+const runningCount = computed(() => cards.value.filter(c => dcw.lineStateOf(c.line.id).active).length)
+const shownCards = computed(() => cards.value.filter((c) => {
+  const active = dcw.lineStateOf(c.line.id).active
+  if (filterState.value === 'running' && !active) return false
+  if (filterState.value === 'idle' && active) return false
+  const q = searchText.value.trim().toLowerCase()
+  if (q && !c.line.name.toLowerCase().includes(q) && !(c.line.description ?? '').toLowerCase().includes(q)) return false
+  return true
+}))
+
 // ---------- 新建产线 ----------
 const createOpen = ref(false)
 const createSaving = ref(false)
@@ -265,10 +278,40 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
       {{ quickErr }}
     </p>
 
+    <!-- 清单筛选:状态分段 + 名称搜索(复用 aw-seg / 页内 inp 语言) -->
+    <div class="fleet-filter">
+      <div class="aw-seg">
+        <button
+          :class="{ on: filterState === 'all' }"
+          @click="filterState = 'all'"
+        >
+          {{ $t('common.all') }} {{ cards.length }}
+        </button>
+        <button
+          :class="{ on: filterState === 'running' }"
+          @click="filterState = 'running'"
+        >
+          {{ $t('dcw.k1eox1el055') }} {{ runningCount }}
+        </button>
+        <button
+          :class="{ on: filterState === 'idle' }"
+          @click="filterState = 'idle'"
+        >
+          {{ $t('dcw.k149r6y7059') }} {{ cards.length - runningCount }}
+        </button>
+      </div>
+      <input
+        v-model="searchText"
+        class="inp fleet-search"
+        type="search"
+        :placeholder="$t('dcw.filterSearchPh')"
+      >
+    </div>
+
     <!-- 产线卡片栅格 -->
     <div class="line-grid">
       <div
-        v-for="c in cards"
+        v-for="c in shownCards"
         :key="c.line.id"
         class="line-card"
         :class="{ idle: !dcw.lineStateOf(c.line.id).active }"
@@ -372,329 +415,343 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
     >
       {{ $t('dcw.k1sk85vs018') }}
     </p>
+    <p
+      v-else-if="dcw.loaded && shownCards.length === 0"
+      class="banner"
+    >
+      {{ $t('dcw.filterEmpty') }}
+    </p>
 
     <!-- 新建产线弹窗 -->
-    <div
-      v-if="createOpen"
-      class="modal-mask"
-      @click.self="createOpen = false"
-    >
-      <div class="modal">
-        <h3 class="m-title">
-          {{ $t('dcw.k1efe391017') }}
-        </h3>
-        <label class="f">
-          <span>{{ $t('dcw.k1b2ioko019') }}<em>*</em></span>
-          <input
-            v-model="createForm.name"
-            class="inp"
-            :placeholder="$t('dcw.kru37i3004')"
+    <Transition name="modal">
+      <div
+        v-if="createOpen"
+        class="modal-mask"
+        @click.self="createOpen = false"
+      >
+        <div class="modal">
+          <h3 class="m-title">
+            {{ $t('dcw.k1efe391017') }}
+          </h3>
+          <label class="f">
+            <span>{{ $t('dcw.k1b2ioko019') }}<em>*</em></span>
+            <input
+              v-model="createForm.name"
+              class="inp"
+              :placeholder="$t('dcw.kru37i3004')"
+            >
+          </label>
+          <label class="f">
+            <span>{{ $t('dcw.k24dxcd020') }}</span>
+            <input
+              v-model="createForm.description"
+              class="inp"
+              :placeholder="$t('dcw.k1f2nwsp005')"
+            >
+          </label>
+          <div class="f">
+            <span>{{ $t('dcw.k1x7nubr021') }}</span>
+            <div class="color-row">
+              <button
+                v-for="c in DCW_LINE_COLORS"
+                :key="c"
+                class="color-dot"
+                :class="{ on: createForm.color === c }"
+                :style="{ background: c }"
+                @click="createForm.color = createForm.color === c ? '' : c"
+              />
+              <small class="dim">{{ createForm.color || $t('dcw.k1qidbpy061', { p0: nextColor }) }}</small>
+            </div>
+          </div>
+          <p
+            v-if="createError"
+            class="m-err"
           >
-        </label>
-        <label class="f">
-          <span>{{ $t('dcw.k24dxcd020') }}</span>
-          <input
-            v-model="createForm.description"
-            class="inp"
-            :placeholder="$t('dcw.k1f2nwsp005')"
-          >
-        </label>
-        <div class="f">
-          <span>{{ $t('dcw.k1x7nubr021') }}</span>
-          <div class="color-row">
+            {{ createError }}
+          </p>
+          <div class="m-actions">
             <button
-              v-for="c in DCW_LINE_COLORS"
-              :key="c"
-              class="color-dot"
-              :class="{ on: createForm.color === c }"
-              :style="{ background: c }"
-              @click="createForm.color = createForm.color === c ? '' : c"
-            />
-            <small class="dim">{{ createForm.color || $t('dcw.k1qidbpy061', { p0: nextColor }) }}</small>
+              class="mini-btn"
+              @click="createOpen = false"
+            >
+              {{ $t('dcw.k3xdnn022') }}
+            </button>
+            <button
+              class="pill-btn"
+              :disabled="createSaving || !createForm.name.trim()"
+              @click="doCreateLine"
+            >
+              {{ $t('dcw.k3wzi2023') }}
+            </button>
           </div>
         </div>
-        <p
-          v-if="createError"
-          class="m-err"
-        >
-          {{ createError }}
-        </p>
-        <div class="m-actions">
-          <button
-            class="mini-btn"
-            @click="createOpen = false"
-          >
-            {{ $t('dcw.k3xdnn022') }}
-          </button>
-          <button
-            class="pill-btn"
-            :disabled="createSaving || !createForm.name.trim()"
-            @click="doCreateLine"
-          >
-            {{ $t('dcw.k3wzi2023') }}
-          </button>
-        </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- 编辑产线弹窗 -->
-    <div
-      v-if="editOpen"
-      class="modal-mask"
-      @click.self="editOpen = false"
-    >
-      <div class="modal">
-        <h3 class="m-title">
-          {{ $t('dcw.k5tq8wc071') }}
-        </h3>
-        <label class="f">
-          <span>{{ $t('dcw.k1b2ioko019') }}<em>*</em></span>
-          <input
-            v-model="editForm.name"
-            class="inp"
-            :placeholder="$t('dcw.kru37i3004')"
+    <Transition name="modal">
+      <div
+        v-if="editOpen"
+        class="modal-mask"
+        @click.self="editOpen = false"
+      >
+        <div class="modal">
+          <h3 class="m-title">
+            {{ $t('dcw.k5tq8wc071') }}
+          </h3>
+          <label class="f">
+            <span>{{ $t('dcw.k1b2ioko019') }}<em>*</em></span>
+            <input
+              v-model="editForm.name"
+              class="inp"
+              :placeholder="$t('dcw.kru37i3004')"
+            >
+          </label>
+          <label class="f">
+            <span>{{ $t('dcw.k24dxcd020') }}</span>
+            <input
+              v-model="editForm.description"
+              class="inp"
+              :placeholder="$t('dcw.k1f2nwsp005')"
+            >
+          </label>
+          <div class="f">
+            <span>{{ $t('dcw.k1x7nubr021') }}</span>
+            <div class="color-row">
+              <button
+                v-for="c in DCW_LINE_COLORS"
+                :key="c"
+                class="color-dot"
+                :class="{ on: editForm.color === c }"
+                :style="{ background: c }"
+                @click="editForm.color = editForm.color === c ? '' : c"
+              />
+              <small class="dim">{{ editForm.color || $t('dcw.k1qidbpy061', { p0: nextColor }) }}</small>
+            </div>
+          </div>
+          <p
+            v-if="editError"
+            class="m-err"
           >
-        </label>
-        <label class="f">
-          <span>{{ $t('dcw.k24dxcd020') }}</span>
-          <input
-            v-model="editForm.description"
-            class="inp"
-            :placeholder="$t('dcw.k1f2nwsp005')"
-          >
-        </label>
-        <div class="f">
-          <span>{{ $t('dcw.k1x7nubr021') }}</span>
-          <div class="color-row">
+            {{ editError }}
+          </p>
+          <div class="m-actions">
             <button
-              v-for="c in DCW_LINE_COLORS"
-              :key="c"
-              class="color-dot"
-              :class="{ on: editForm.color === c }"
-              :style="{ background: c }"
-              @click="editForm.color = editForm.color === c ? '' : c"
-            />
-            <small class="dim">{{ editForm.color || $t('dcw.k1qidbpy061', { p0: nextColor }) }}</small>
+              class="mini-btn"
+              @click="editOpen = false"
+            >
+              {{ $t('dcw.k3xdnn022') }}
+            </button>
+            <button
+              class="pill-btn"
+              :disabled="editSaving || !editForm.name.trim()"
+              @click="doEditLine"
+            >
+              {{ $t('common.save') }}
+            </button>
           </div>
         </div>
-        <p
-          v-if="editError"
-          class="m-err"
-        >
-          {{ editError }}
-        </p>
-        <div class="m-actions">
-          <button
-            class="mini-btn"
-            @click="editOpen = false"
-          >
-            {{ $t('dcw.k3xdnn022') }}
-          </button>
-          <button
-            class="pill-btn"
-            :disabled="editSaving || !editForm.name.trim()"
-            @click="doEditLine"
-          >
-            {{ $t('common.save') }}
-          </button>
-        </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- 删除产线弹窗(两步确认;purge 勾选决定是否级联清理) -->
-    <div
-      v-if="delOpen && delCard"
-      class="modal-mask"
-      @click.self="delOpen = false"
-    >
-      <div class="modal">
-        <h3 class="m-title danger-title">
-          <span class="i-tabler-alert-triangle" />
-          {{ $t('dcw.k7xq2mfd063', { p0: delCard.line.name }) }}
-        </h3>
-        <p class="del-summary">
-          {{ delPurge
-            ? $t('dcw.k4r7nbd073', { p0: delCard.line.name, p1: delCard.nodes, p2: delCard.products, p3: delCard.recipes })
-            : $t('dcw.k1gp649b062', { p0: delCard.line.name, p1: delCard.nodes, p2: delCard.products, p3: delCard.recipes }) }}
-        </p>
-        <label class="del-purge">
-          <input
-            v-model="delPurge"
-            type="checkbox"
+    <Transition name="modal">
+      <div
+        v-if="delOpen && delCard"
+        class="modal-mask"
+        @click.self="delOpen = false"
+      >
+        <div class="modal">
+          <h3 class="m-title danger-title">
+            <span class="i-tabler-alert-triangle" />
+            {{ $t('dcw.k7xq2mfd063', { p0: delCard.line.name }) }}
+          </h3>
+          <p class="del-summary">
+            {{ delPurge
+              ? $t('dcw.k4r7nbd073', { p0: delCard.line.name, p1: delCard.nodes, p2: delCard.products, p3: delCard.recipes })
+              : $t('dcw.k1gp649b062', { p0: delCard.line.name, p1: delCard.nodes, p2: delCard.products, p3: delCard.recipes }) }}
+          </p>
+          <label class="del-purge">
+            <input
+              v-model="delPurge"
+              type="checkbox"
+            >
+            <span>{{ $t('dcw.k9m2vxa072') }}</span>
+          </label>
+          <p
+            v-if="delErr"
+            class="m-err"
           >
-          <span>{{ $t('dcw.k9m2vxa072') }}</span>
-        </label>
-        <p
-          v-if="delErr"
-          class="m-err"
-        >
-          {{ delErr }}
-        </p>
-        <div class="m-actions">
-          <button
-            class="mini-btn"
-            @click="delOpen = false"
-          >
-            {{ $t('dcw.k3xdnn022') }}
-          </button>
-          <button
-            class="pill-btn danger"
-            :disabled="delBusy"
-            @click="doDeleteLine"
-          >
-            {{ $t('dcw.k3xakp026') }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 控制模板管理弹窗 -->
-    <div
-      v-if="tplOpen"
-      class="modal-mask"
-      @click.self="tplOpen = false"
-    >
-      <div class="modal wide">
-        <h3 class="m-title">
-          {{ $t('dcw.k11oadmx024') }} <small class="dim mono">{{ $t('dcw.k3x23c054') }} {{ builtinCount }} · {{ $t('dcw.k3t616a058') }} {{ dcw.templates.length - builtinCount }}</small>
-        </h3>
-        <p class="dim tpl-hint">
-          {{ $t('dcw.k2hlav5025') }}
-        </p>
-        <div class="tpl-list">
-          <div
-            v-for="t in dcw.templates"
-            :key="t.key"
-            class="tpl-row"
-            :title="t.semantics ?? ''"
-          >
-            <b>{{ t.name }}</b>
-            <small class="mono dim">{{ t.code }} · {{ t.min }}~{{ t.max }} {{ t.unit }}</small>
-            <small
-              v-if="t.semantics"
-              class="tpl-sem"
-            >{{ t.semantics.slice(0, 40) }}{{ t.semantics.length > 40 ? '…' : '' }}</small>
-            <span
-              class="tpl-tag"
-              :class="{ builtin: t.builtin }"
-            >{{ t.builtin ? $t('dcw.k3x23c054') : $t('dcw.k3t616a058') }}</span>
+            {{ delErr }}
+          </p>
+          <div class="m-actions">
             <button
-              v-if="!t.builtin"
-              class="mini-btn danger"
-              @click="doRemoveTemplate(t.key)"
+              class="mini-btn"
+              @click="delOpen = false"
+            >
+              {{ $t('dcw.k3xdnn022') }}
+            </button>
+            <button
+              class="pill-btn danger"
+              :disabled="delBusy"
+              @click="doDeleteLine"
             >
               {{ $t('dcw.k3xakp026') }}
             </button>
           </div>
         </div>
-        <p class="sec-label">
-          {{ $t('dcw.k169eb4s027') }}
-        </p>
-        <div class="tpl-form">
-          <label class="f">
-            <span>{{ $t('dcw.k3xhia028') }}<em>*</em></span>
-            <input
-              v-model="tplForm.name"
-              class="inp"
-              :placeholder="$t('dcw.k1tooi3o006')"
+      </div>
+    </Transition>
+
+    <!-- 控制模板管理弹窗 -->
+    <Transition name="modal">
+      <div
+        v-if="tplOpen"
+        class="modal-mask"
+        @click.self="tplOpen = false"
+      >
+        <div class="modal wide">
+          <h3 class="m-title">
+            {{ $t('dcw.k11oadmx024') }} <small class="dim mono">{{ $t('dcw.k3x23c054') }} {{ builtinCount }} · {{ $t('dcw.k3t616a058') }} {{ dcw.templates.length - builtinCount }}</small>
+          </h3>
+          <p class="dim tpl-hint">
+            {{ $t('dcw.k2hlav5025') }}
+          </p>
+          <div class="tpl-list">
+            <div
+              v-for="t in dcw.templates"
+              :key="t.key"
+              class="tpl-row"
+              :title="t.semantics ?? ''"
             >
-          </label>
-          <label class="f">
-            <span>{{ $t('dcw.k1bqk219029') }}</span>
-            <input
-              v-model="tplForm.ch"
-              class="inp"
-              :placeholder="$t('dcw.k698qz0007')"
-            >
-          </label>
-          <label class="f">
-            <span>{{ $t('dcw.k1ayxrqb030') }}</span>
-            <input
-              v-model="tplForm.code"
-              class="inp"
-              placeholder="如 MOTOR · I"
-            >
-          </label>
-          <label class="f">
-            <span>{{ $t('dcw.k3x4ef031') }}</span>
-            <input
-              v-model="tplForm.unit"
-              class="inp"
-              placeholder="如 A"
-            >
-          </label>
-          <label class="f">
-            <span>{{ $t('dcw.k1l9jv5m032') }}<em>*</em></span>
-            <input
-              v-model.number="tplForm.min"
-              type="number"
-              class="inp"
-            >
-          </label>
-          <label class="f">
-            <span>{{ $t('dcw.k1l9jv4p033') }}<em>*</em></span>
-            <input
-              v-model.number="tplForm.max"
-              type="number"
-              class="inp"
-            >
-          </label>
-          <label class="f">
-            <span>{{ $t('dcw.k3mxmcx034') }}</span>
-            <input
-              v-model.number="tplForm.decimals"
-              type="number"
-              class="inp"
-            >
-          </label>
-          <label class="f">
-            <span>{{ $t('dcw.k3xx56035') }}</span>
-            <select
-              v-model="tplForm.icon"
-              class="inp"
-            >
-              <option
-                v-for="ic in tplIcons"
-                :key="ic.key"
-                :value="ic.key"
+              <b>{{ t.name }}</b>
+              <small class="mono dim">{{ t.code }} · {{ t.min }}~{{ t.max }} {{ t.unit }}</small>
+              <small
+                v-if="t.semantics"
+                class="tpl-sem"
+              >{{ t.semantics.slice(0, 40) }}{{ t.semantics.length > 40 ? '…' : '' }}</small>
+              <span
+                class="tpl-tag"
+                :class="{ builtin: t.builtin }"
+              >{{ t.builtin ? $t('dcw.k3x23c054') : $t('dcw.k3t616a058') }}</span>
+              <button
+                v-if="!t.builtin"
+                class="mini-btn danger"
+                @click="doRemoveTemplate(t.key)"
               >
-                {{ ic.label }}
-              </option>
-            </select>
+                {{ $t('dcw.k3xakp026') }}
+              </button>
+            </div>
+          </div>
+          <p class="sec-label">
+            {{ $t('dcw.k169eb4s027') }}
+          </p>
+          <div class="tpl-form">
+            <label class="f">
+              <span>{{ $t('dcw.k3xhia028') }}<em>*</em></span>
+              <input
+                v-model="tplForm.name"
+                class="inp"
+                :placeholder="$t('dcw.k1tooi3o006')"
+              >
+            </label>
+            <label class="f">
+              <span>{{ $t('dcw.k1bqk219029') }}</span>
+              <input
+                v-model="tplForm.ch"
+                class="inp"
+                :placeholder="$t('dcw.k698qz0007')"
+              >
+            </label>
+            <label class="f">
+              <span>{{ $t('dcw.k1ayxrqb030') }}</span>
+              <input
+                v-model="tplForm.code"
+                class="inp"
+                placeholder="如 MOTOR · I"
+              >
+            </label>
+            <label class="f">
+              <span>{{ $t('dcw.k3x4ef031') }}</span>
+              <input
+                v-model="tplForm.unit"
+                class="inp"
+                placeholder="如 A"
+              >
+            </label>
+            <label class="f">
+              <span>{{ $t('dcw.k1l9jv5m032') }}<em>*</em></span>
+              <input
+                v-model.number="tplForm.min"
+                type="number"
+                class="inp"
+              >
+            </label>
+            <label class="f">
+              <span>{{ $t('dcw.k1l9jv4p033') }}<em>*</em></span>
+              <input
+                v-model.number="tplForm.max"
+                type="number"
+                class="inp"
+              >
+            </label>
+            <label class="f">
+              <span>{{ $t('dcw.k3mxmcx034') }}</span>
+              <input
+                v-model.number="tplForm.decimals"
+                type="number"
+                class="inp"
+              >
+            </label>
+            <label class="f">
+              <span>{{ $t('dcw.k3xx56035') }}</span>
+              <select
+                v-model="tplForm.icon"
+                class="inp"
+              >
+                <option
+                  v-for="ic in tplIcons"
+                  :key="ic.key"
+                  :value="ic.key"
+                >
+                  {{ ic.label }}
+                </option>
+              </select>
+            </label>
+          </div>
+          <label class="f">
+            <span>{{ $t('dcw.k1b6qorg036') }}</span>
+            <textarea
+              v-model="tplForm.semantics"
+              class="inp"
+              rows="3"
+              :placeholder="$t('dcw.k1qdnfzc008')"
+            />
           </label>
-        </div>
-        <label class="f">
-          <span>{{ $t('dcw.k1b6qorg036') }}</span>
-          <textarea
-            v-model="tplForm.semantics"
-            class="inp"
-            rows="3"
-            :placeholder="$t('dcw.k1qdnfzc008')"
-          />
-        </label>
-        <p
-          v-if="tplError"
-          class="m-err"
-        >
-          {{ tplError }}
-        </p>
-        <div class="m-actions">
-          <button
-            class="mini-btn"
-            @click="tplOpen = false"
+          <p
+            v-if="tplError"
+            class="m-err"
           >
-            {{ $t('dcw.k3x62t037') }}
-          </button>
-          <button
-            class="pill-btn"
-            :disabled="!tplForm.name.trim() || tplForm.min === '' || tplForm.max === ''"
-            @click="doCreateTemplate"
-          >
-            {{ $t('dcw.k1bg9nga038') }}
-          </button>
+            {{ tplError }}
+          </p>
+          <div class="m-actions">
+            <button
+              class="mini-btn"
+              @click="tplOpen = false"
+            >
+              {{ $t('dcw.k3x62t037') }}
+            </button>
+            <button
+              class="pill-btn"
+              :disabled="!tplForm.name.trim() || tplForm.min === '' || tplForm.max === ''"
+              @click="doCreateTemplate"
+            >
+              {{ $t('dcw.k1bg9nga038') }}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <p
       v-if="dcw.error"
@@ -723,6 +780,31 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 .tpl-btn { color: var(--tone-info-dot); background: var(--tone-info-bg); border-color: color-mix(in srgb, var(--tone-info-dot) 34%, transparent); cursor: pointer; }
 .tpl-btn:hover { border-color: color-mix(in srgb, var(--tone-info-dot) 60%, transparent); }
 
+/* 清单筛选条:状态分段 + 搜索(与页内控件同一语言) */
+.fleet-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.fleet-filter .aw-seg button {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.fleet-search {
+  width: 220px;
+  margin-left: auto;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel-sm);
+}
+.fleet-search:focus { outline: none; border-color: var(--tone-success-dot); box-shadow: 0 0 0 3px var(--accent-soft); }
 .line-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -898,6 +980,14 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   background: var(--scrim);
   backdrop-filter: blur(3px);
 }
+/* 弹窗入退场(occasional 频次;防跳变):遮罩淡入淡出,卡片 fade+上浮 8px 入场;
+ * modal 不锚定触发器,transform-origin 居中豁免;退场对称快出 */
+.modal-enter-active { transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+.modal-leave-active { transition: opacity 130ms ease; }
+.modal-enter-from,
+.modal-leave-to { opacity: 0; }
+.modal-enter-active .modal { transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+.modal-enter-from .modal { transform: translateY(8px) scale(0.96); }
 .modal {
   display: flex;
   flex-direction: column;
