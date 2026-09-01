@@ -8,19 +8,19 @@
 
 import { createLogger } from '../logger'
 import fs from 'node:fs'
-import path from 'node:path'
+import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { DAQ_TEMPLATES, DAQ_TEMPLATE_ICONS, daqTemplateByKey, type DaqTemplateDef, type DaqTemplateIcon, type DaqTemplateInput } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 
 const log = createLogger('daq.templates')
 
 /** 业务错误捷径(经 defineApiHandler 映射为对应 HTTP 状态与消息) */
 const bad = (msg: string): AppError => new AppError(400, ErrorCodes.VALIDATION_ERROR, msg)
 
-const DB_PATH = process.cwd().endsWith('server')
-  ? 'data/daq-templates.json'
-  : path.join(process.cwd(), 'server', 'data', 'daq-templates.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 统一解析 + 旧位置迁移）
+const DB_PATH = join(ensureDataDir(), 'daq-templates.json')
 
 function load(): DaqTemplateDef[] {
   try {
@@ -129,7 +129,7 @@ class DaqTemplateRegistry {
 
   private flush(): void {
     try {
-      fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
+      fs.mkdirSync(join(DB_PATH, '..'), { recursive: true })
       fs.writeFileSync(DB_PATH, JSON.stringify(this.customs, null, 2), 'utf-8')
     }
     catch (err) {
