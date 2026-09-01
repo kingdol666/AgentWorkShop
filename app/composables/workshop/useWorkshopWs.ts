@@ -90,6 +90,11 @@ export function useWorkshopWs() {
     // 控制台卸载不得把对方的时间线/游标抹掉(清了会导致已订阅会话收不到快照重发,实时流静默死亡)
     if (session.refCount(channelId) === 0) events.clear(channelId)
   }
+  /** 建连但不订阅 channel:纯场景事件消费方(daq 实时帧)用。
+   *  服务端在连接层注册 scene peer,连上即收 daq.reading 等无频道广播。 */
+  const ensureConnected = (): void => {
+    session?.ensureConnected()
+  }
 
   let heartbeat: ReturnType<typeof setInterval> | null = null
   onMounted(() => {
@@ -104,5 +109,5 @@ export function useWorkshopWs() {
     if (heartbeat) clearInterval(heartbeat)
   })
 
-  return { subscribe, unsubscribe, conn }
+  return { subscribe, unsubscribe, ensureConnected, conn }
 }

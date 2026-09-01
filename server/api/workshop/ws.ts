@@ -632,6 +632,9 @@ export default defineWebSocketHandler({
       return
     }
     ensureHubBound(manager)
+    // 场景事件(daq.reading / daq.node.changed / dcw.* / device.* 等无频道归属广播)
+    // 在连接层即注册 —— 不依赖 channel 订阅:/daq 等纯遥测页面建连即得实时帧
+    registerScenePeer(peer)
     // 兼容旧路径:?channelId= 连接即订阅(无 lastSeq → 快照对齐)
     const channelId = resolveChannelIdFromUrl(peer)
     if (!channelId) return // 纯上行 sub 模式(多 channel 复用一条连接)

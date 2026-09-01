@@ -137,6 +137,13 @@ export class WorkshopWsSession {
     else if (!this.ws) this.connect()
   }
 
+  /** 建连但不订阅任何 channel:纯场景事件消费方(daq 实时帧)用。
+   *  服务端在连接层注册 scene peer,连上即收 daq.reading 等无频道广播。 */
+  ensureConnected(): void {
+    if (typeof window === 'undefined') return
+    if (!this.ws) this.connect()
+  }
+
   unsubscribe(channelId: string): void {
     const prev = this.refCounts.get(channelId) ?? 0
     // 引用计数归零才真正退订:页面切换时旧页卸载不得拆掉新页仍在用的订阅
