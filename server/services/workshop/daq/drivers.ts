@@ -126,9 +126,11 @@ const modbusPool = new Map<string, ModbusConn>()
 /** 空闲连接回收(10 分钟未用断开;采样周期最长 60s,足够保守) */
 const MODBUS_IDLE_MS = 600_000
 
+export type ModbusTransport = 'tcp' | 'rtu-tcp'
+
 /** 连续故障自愈:关闭并移除池内连接(下次操作重建) */
-export function evictModbusConn(cfg: Record<string, unknown>): void {
-  const key = modbusKey(cfg)
+export function evictModbusConn(cfg: Record<string, unknown>, transport: ModbusTransport = 'tcp'): void {
+  const key = modbusKey(cfg, transport)
   const conn = modbusPool.get(key)
   if (!conn) return
   try {
@@ -152,12 +154,12 @@ export function withModbusConn<R>(conn: ModbusConn, fn: () => Promise<R>): Promi
   return run
 }
 
-export function modbusKey(cfg: Record<string, unknown>): string {
-  return `${cfg.host}:${cfg.port ?? 502}:${cfg.unitId ?? 1}`
+export function modbusKey(cfg: Record<string, unknown>, transport: ModbusTransport = 'tcp'): string {
+  return `${transport}:${cfg.host}:${cfg.port ?? 502}:${cfg.unitId ?? 1}`
 }
 
-export async function getModbusConn(cfg: Record<string, unknown>): Promise<ModbusConn> {
-  const key = modbusKey(cfg)
+export async function getModbusConn(cfg: Record<string, unknown>, transport: ModbusTransport = 'tcp'): Promise<ModbusConn> {
+  const key = modbusKey(cfg, transport)
   const existing = modbusPool.get(key)
   if (existing && existing.client.isOpen) return existing
   if (existing) {
@@ -172,7 +174,11 @@ export async function getModbusConn(cfg: Record<string, unknown>): Promise<Modbu
   const ModbusRTU = (mod.ModbusRTU ?? (mod.default as { ModbusRTU?: unknown } | undefined)?.ModbusRTU ?? mod) as new () => import('modbus-serial').ModbusRTU
   const client = new ModbusRTU()
   client.setTimeout(3000)
-  await client.connectTCP(String(cfg.host), { port: Number(cfg.port ?? 502) })
+  // tcp = Modbus TCP(MBAP 封装);rtu-tcp = RTU over TCP(串口网关透传,CRC16 帧,无 MBAP)
+  if (transport === 'rtu-tcp')
+    await client.connectTcpRTUBuffered(String(cfg.host), { port: Number(cfg.port ?? 502) })
+  else
+    await client.connectTCP(String(cfg.host), { port: Number(cfg.port ?? 502) })
   client.setID(Number(cfg.unitId ?? 1))
   const conn: ModbusConn = { client, lastUsed: Date.now(), tail: Promise.resolve(), pending: 0, errors: 0 }
   modbusPool.set(key, conn)
@@ -209,7 +215,7 @@ export function registerOffset(addr: number, area: string): number {
 
 export const WORDS_OF: Record<string, number> = { int16: 1, uint16: 1, int32: 2, uint32: 2, float32: 2 }
 
-async function modbusRead(conn: ModbusConn, cfg: Record<string, unknown>): Promise<number> {
+async function modbusRead(conn: ModbusConn, cfg: Record<string, unknown>, transport: ModbusTransport = 'tcp'): Promise<number> {
   const area = String(cfg.registerType ?? 'holding')
   const offset = registerOffset(Number(cfg.register ?? 0), area)
   const dataType = String(cfg.dataType ?? 'float32')
@@ -219,6 +225,7 @@ async function modbusRead(conn: ModbusConn, cfg: Record<string, unknown>): Promi
     : await conn.client.readHoldingRegisters(offset, words)
   const raw = decodeRegisters(res.data as number[], dataType, String(cfg.byteOrder ?? 'big'))
   const scale = Number(cfg.scale ?? 1)
+  void transport
   return raw * (Number.isFinite(scale) ? scale : 1)
 }
 
@@ -456,6 +463,253 @@ export const opcUaDriver: DaqDriver = {
 }
 
 // ============================================================
+// Modbus RTU over TCP 真实驱动(串口网关透传;connectTcpRTUBuffered,CRC16 帧)
+// ============================================================
+
+export const modbusRtuDriver: DaqDriver = {
+  kind: 'modbus-rtu',
+  async available() {
+    try {
+      reqNative('modbus-serial')
+      return true
+    }
+    catch {
+      return false
+    }
+  },
+  async sample({ driverConfig }) {
+    const conn = await getModbusConn(driverConfig, 'rtu-tcp')
+    if (conn.pending > 8) return null
+    conn.lastUsed = Date.now()
+    return withModbusConn(conn, async () => {
+      try {
+        const v = await modbusRead(conn, driverConfig)
+        conn.errors = 0
+        return v
+      }
+      catch (err) {
+        conn.errors++
+        if (conn.errors >= 3) evictModbusConn(driverConfig, 'rtu-tcp')
+        throw err
+      }
+    })
+  },
+  async test(driverConfig) {
+    const t0 = Date.now()
+    try {
+      if (!driverConfig.host) return { ok: false, message: '缺少网关地址 host' }
+      if (driverConfig.register == null) return { ok: false, message: '缺少寄存器地址 register' }
+      const conn = await getModbusConn(driverConfig, 'rtu-tcp')
+      const v = await withModbusConn(conn, () => modbusRead(conn, driverConfig))
+      return {
+        ok: true,
+        message: `网关连接成功,读取 ${driverConfig.register} = ${v}`,
+        sampleValue: v,
+        latencyMs: Date.now() - t0,
+      }
+    }
+    catch (err) {
+      try {
+        const conn = modbusPool.get(modbusKey(driverConfig, 'rtu-tcp'))
+        if (conn) {
+          await conn.client.close()
+          modbusPool.delete(modbusKey(driverConfig, 'rtu-tcp'))
+        }
+      }
+      catch { /* ignore */ }
+      return { ok: false, message: `Modbus RTU 连接失败: ${err instanceof Error ? `${err.message}(${JSON.stringify({ ...(err as object), name: err.name })})` : String(err)}` }
+    }
+  },
+}
+
+// ============================================================
+// MQTT 真实驱动(mqtt 包;broker 连接池复用,订阅缓存 topic 最新报文)
+// ============================================================
+
+export interface MqttConn {
+  client: import('mqtt').MqttClient
+  /** topic → 最新原始报文(解析按节点 jsonPath 在采样时进行) */
+  topics: Map<string, { raw: string, at: number }>
+}
+
+const mqttPool = new Map<string, MqttConn>()
+
+function mqttKey(cfg: Record<string, unknown>): string {
+  return `mqtt://${cfg.host}:${cfg.port ?? 1883}|${cfg.username ?? ''}`
+}
+
+async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttConn> {
+  const key = mqttKey(cfg)
+  const existing = mqttPool.get(key)
+  if (existing) return existing
+  const mqtt = reqNative('mqtt') as typeof import('mqtt')
+  const url = `mqtt://${String(cfg.host)}:${Number(cfg.port ?? 1883)}`
+  const client = await new Promise<import('mqtt').MqttClient>((resolve, reject) => {
+    const c = mqtt.connect(url, {
+      username: cfg.username ? String(cfg.username) : undefined,
+      password: cfg.password ? String(cfg.password) : undefined,
+      connectTimeout: 4000,
+      reconnectPeriod: 5000,
+    })
+    c.once('connect', () => resolve(c))
+    c.once('error', (err) => {
+      try {
+        c.end(true)
+      }
+      catch { /* 未连上 */ }
+      reject(new Error(`MQTT 连接失败: ${err.message}`))
+    })
+  })
+  const conn: MqttConn = { client, topics: new Map() }
+  client.on('message', (topic, payload) => {
+    const t = conn.topics.get(topic)
+    if (t) {
+      t.raw = payload.toString()
+      t.at = Date.now()
+    }
+  })
+  client.on('close', () => {
+    // 断线期间清空缓存,避免恢复后消费陈旧值
+    for (const t of conn.topics.values()) {
+      t.raw = ''
+      t.at = 0
+    }
+  })
+  mqttPool.set(key, conn)
+  return conn
+}
+
+/** 从报文提取数值:纯数字直取;JSON 按路径(jsonPath,点分隔含数组下标)取 */
+export function extractNumeric(text: string, jsonPath?: string): number {
+  const trimmed = text.trim()
+  const direct = Number(trimmed)
+  if (Number.isFinite(direct) && trimmed !== '') return direct
+  const parsed: unknown = JSON.parse(trimmed)
+  const target = jsonPath
+    ? jsonPath.split('.').reduce<unknown>((acc, k) => (acc == null ? undefined : (acc as Record<string, unknown>)[k]), parsed)
+    : parsed
+  const num = typeof target === 'number' ? target : Number(target)
+  if (!Number.isFinite(num)) throw new Error(`无法提取数值(jsonPath=${jsonPath || '未配置'};报文 ${trimmed.slice(0, 60)})`)
+  return num
+}
+
+/** HTTP 请求头解析(headersJSON → Record;非法输入给可读错误) */
+export function parseHeaders(headersJSON: unknown): Record<string, string> {
+  if (!headersJSON || !String(headersJSON).trim()) return {}
+  const parsed: unknown = JSON.parse(String(headersJSON))
+  if (typeof parsed !== 'object' || parsed == null || Array.isArray(parsed)) throw new Error('headersJSON 必须是 JSON 对象')
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(parsed)) out[k] = String(v)
+  return out
+}
+
+const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms))
+
+export const mqttDaqDriver: DaqDriver = {
+  kind: 'mqtt',
+  async available() {
+    try {
+      reqNative('mqtt')
+      return true
+    }
+    catch {
+      return false
+    }
+  },
+  async sample({ driverConfig }) {
+    const topic = String(driverConfig.topic ?? '')
+    if (!topic) throw new Error('缺少主题 topic')
+    const conn = await getMqttConn(driverConfig)
+    if (!conn.topics.has(topic)) {
+      conn.topics.set(topic, { raw: '', at: 0 })
+      await new Promise<void>((resolve, reject) => {
+        conn.client.subscribe(topic, (err) => {
+          if (err)
+            reject(new Error(`订阅失败: ${err.message}`))
+          else
+            resolve()
+        })
+      })
+    }
+    // 首帧等待(最多 3s):之后由消息事件持续刷新缓存
+    const entry = conn.topics.get(topic)!
+    const t0 = Date.now()
+    while (!entry.raw && Date.now() - t0 < 3000) await sleep(100)
+    if (!entry.raw) return null
+    return extractNumeric(entry.raw, driverConfig.jsonPath ? String(driverConfig.jsonPath) : undefined)
+  },
+  async test(driverConfig) {
+    const t0 = Date.now()
+    try {
+      if (!driverConfig.host) return { ok: false, message: '缺少 Broker 地址 host' }
+      if (!driverConfig.topic) return { ok: false, message: '缺少主题 topic' }
+      const conn = await getMqttConn(driverConfig)
+      const topic = String(driverConfig.topic)
+      if (!conn.topics.has(topic)) {
+        conn.topics.set(topic, { raw: '', at: 0 })
+        await new Promise<void>((resolve, reject) => {
+          conn.client.subscribe(topic, (err) => {
+            if (err)
+              reject(new Error(`订阅失败: ${err.message}`))
+            else
+              resolve()
+          })
+        })
+      }
+      const entry = conn.topics.get(topic)!
+      const t1 = Date.now()
+      while (!entry.raw && Date.now() - t1 < 4000) await sleep(100)
+      if (entry.raw) {
+        const v = extractNumeric(entry.raw, driverConfig.jsonPath ? String(driverConfig.jsonPath) : undefined)
+        return { ok: true, message: `Broker 连接成功,收到 ${topic} = ${v}`, sampleValue: v, latencyMs: Date.now() - t0 }
+      }
+      return {
+        ok: true,
+        message: `Broker 已连接并订阅 ${topic}(4s 内未收到消息;设备发布后采样即开始)`,
+        latencyMs: Date.now() - t0,
+      }
+    }
+    catch (err) {
+      return { ok: false, message: `MQTT 连接失败: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  },
+}
+
+// ============================================================
+// HTTP/REST 轮询真实驱动(无状态 GET;JSON 路径或纯文本取值)
+// ============================================================
+
+export const httpDaqDriver: DaqDriver = {
+  kind: 'http',
+  async available() {
+    return true
+  },
+  async sample({ driverConfig }) {
+    if (!driverConfig.url) throw new Error('缺少接口地址 url')
+    const headers = parseHeaders(driverConfig.headersJSON)
+    const res = await fetch(String(driverConfig.url), { headers, signal: AbortSignal.timeout(5000) })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const text = await res.text()
+    return extractNumeric(text, driverConfig.jsonPath ? String(driverConfig.jsonPath) : undefined)
+  },
+  async test(driverConfig) {
+    const t0 = Date.now()
+    try {
+      if (!driverConfig.url) return { ok: false, message: '缺少接口地址 url' }
+      const headers = parseHeaders(driverConfig.headersJSON)
+      const res = await fetch(String(driverConfig.url), { headers, signal: AbortSignal.timeout(5000) })
+      if (!res.ok) return { ok: false, message: `接口返回 HTTP ${res.status}` }
+      const text = await res.text()
+      const v = extractNumeric(text, driverConfig.jsonPath ? String(driverConfig.jsonPath) : undefined)
+      return { ok: true, message: `接口可达,取值 = ${v}`, sampleValue: v, latencyMs: Date.now() - t0 }
+    }
+    catch (err) {
+      return { ok: false, message: `HTTP 请求失败: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  },
+}
+
+// ============================================================
 // S7 预留
 // ============================================================
 
@@ -485,12 +739,16 @@ class PlannedProtocolStub implements DaqDriver {
 const REGISTRY: Record<DaqDriverKind, DaqDriver> = {
   'mock': mockDaqDriver,
   'modbus-tcp': modbusTcpDriver,
+  'modbus-rtu': modbusRtuDriver,
   'opcua': opcUaDriver,
+  'mqtt': mqttDaqDriver,
+  'http': httpDaqDriver,
   's7': new PlannedProtocolStub('s7', 'S7comm'),
 }
 
 export function normalizeDriverKind(kind: string): DaqDriverKind {
   if (kind === 'modbus') return 'modbus-tcp'
+  if (kind === 'rtu' || kind === 'modbus-rtu-tcp') return 'modbus-rtu'
   return (kind in REGISTRY ? kind : 'mock') as DaqDriverKind
 }
 

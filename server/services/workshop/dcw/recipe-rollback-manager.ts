@@ -294,7 +294,9 @@ export class RecipeRollBackManager {
     return outcomes
   }
 
-  /** 判定回退的执行入口:关闭原记录(rolled-back)+ 反向下发产生新回退记录 */
+  /** 判定回退的执行入口:关闭原记录(rolled-back)+ 反向下发产生新回退记录。
+   *  状态语义:'rolled-back' 只在回读校验通过后落定;下发期间先置 'judged'(防 afterWrite 误 supersede),
+   *  下发失败则如实停在 'judged' 并把失败原因写进 judge.reason。 */
   private async executeRollbackWrite(
     record: Pick<OptimizationRecord, 'id' | 'nodeId' | 'nodeName' | 'lineId' | 'params'>,
     target: number,
@@ -304,19 +306,34 @@ export class RecipeRollBackManager {
   ): Promise<OptimizationRecord> {
     // 先关原记录(防回退写自身的 afterWrite 把它当 open supersede)
     const orig = this.repo.byId(record.id)
-    if (orig && orig.status === 'open') {
+    const wasOpen = orig?.status === 'open'
+    if (orig && wasOpen) {
       orig.judge ??= { by: 'system', actor, verdict: 'rollback', reason: '执行回退', at: new Date().toISOString() }
       this.closeRecord(orig, 'judged')
+      orig.status = 'judged'
+      this.repo.updateRecord(orig.id, { status: 'judged', judge: orig.judge, closedAt: orig.closedAt, closedBy: orig.closedBy, windowAgg: orig.windowAgg })
+    }
+    try {
+      await this.writeViaController(record.nodeId, target, {
+        source: 'rollback',
+        actor,
+        hypothesis: `回退 ${record.id}:恢复 ${target}`,
+        rollbackOf: record.id.startsWith('node:') ? undefined : record.id,
+      }, approvalId, toAnchorId)
+    }
+    catch (err) {
+      if (orig && wasOpen) {
+        const reason = err instanceof Error ? err.message : String(err)
+        orig.judge = { ...orig.judge!, reason: `${orig.judge!.reason};回退下发失败:${reason}`, at: orig.judge!.at }
+        this.repo.updateRecord(orig.id, { judge: orig.judge })
+      }
+      throw err
+    }
+    if (orig && wasOpen) {
       orig.status = 'rolled-back'
-      this.repo.updateRecord(orig.id, { status: 'rolled-back', judge: orig.judge, closedAt: orig.closedAt, closedBy: orig.closedBy, windowAgg: orig.windowAgg })
+      this.repo.updateRecord(orig.id, { status: 'rolled-back' })
       this.emit('rolled-back', orig)
     }
-    await this.writeViaController(record.nodeId, target, {
-      source: 'rollback',
-      actor,
-      hypothesis: `回退 ${record.id}:恢复 ${target}`,
-      rollbackOf: record.id.startsWith('node:') ? undefined : record.id,
-    }, approvalId, toAnchorId)
     const fresh = this.repo.listRecords({ nodeId: record.nodeId, limit: 1 })[0]
     return fresh!
   }

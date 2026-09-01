@@ -413,6 +413,7 @@ export default {
     k1optst005: 'Superseded by manual',
     k1optst006: 'Closed on line stop',
     k1optst007: 'Failed',
+    k1optst008: 'Judged · rollback not executed',
     k1trnd001: 'Trend',
     k1trnd002: 'Live trend: last 60 readings, dashed = limits',
     k1wrn001: 'above max',

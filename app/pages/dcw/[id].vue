@@ -2127,6 +2127,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   border-radius: 4px;
 }
 .rec-st.open { color: var(--tone-warning-dot); border-color: var(--tone-warning-dot); }
+.rec-st.judged { color: var(--tone-warning-dot); border-color: var(--tone-warning-dot); opacity: 0.85; }
 .rec-st.rolled-back, .rec-st.judged-keep { color: var(--tone-success-dot); border-color: var(--tone-success-dot); }
 .sub { margin: 0; font-size: 12.5px; opacity: 0.6; }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }

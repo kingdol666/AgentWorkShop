@@ -276,17 +276,245 @@ export const opcUaDcwDriver: DcwWriteDriver = {
 }
 
 // ============================================================
+// Modbus RTU over TCP 写驱动(串口网关透传;写保持寄存器 + 同址回读)
+// ============================================================
+
+async function modbusRtuWrite(input: DcwWriteInput): Promise<DcwWriteResult> {
+  const cfg = input.driverConfig
+  if (!cfg.host) throw new AppError(400, 'BAD_REQUEST', '缺少网关地址 host')
+  if (cfg.register == null) throw new AppError(400, 'BAD_REQUEST', '缺少写寄存器地址 register')
+  const dataType = String(cfg.dataType ?? 'float32')
+  const byteOrder = String(cfg.byteOrder ?? 'big')
+  const raw = engToRaw(input.eng, input)
+  const rounded = dataType === 'float32' ? raw : Math.round(raw)
+  const words = encodeWords(rounded, dataType, byteOrder)
+  const offset = registerOffset(Number(cfg.register ?? 0), 'holding')
+  const conn = await getModbusConn(cfg, 'rtu-tcp')
+  conn.lastUsed = Date.now()
+  return withModbusConn(conn, async (): Promise<DcwWriteResult> => {
+    try {
+      await conn.client.writeRegisters(offset, words)
+      const rb = await conn.client.readHoldingRegisters(offset, words.length)
+      const rawBack = decodeRegisters(rb.data as number[], dataType, byteOrder)
+      const engBack = rawToEng(rawBack, input)
+      const ok = Math.abs(engBack - input.eng) <= input.tolerance
+      conn.errors = 0
+      return {
+        ok,
+        message: ok
+          ? `写入并回读一致:${input.eng} → raw ${rounded},回读 ${Number(engBack.toFixed(4))}`
+          : `回读偏差超容差:写 ${input.eng},回读 ${Number(engBack.toFixed(4))}(容差 ${input.tolerance})`,
+        raw: rounded,
+        readback: engBack,
+      }
+    }
+    catch (err) {
+      conn.errors++
+      if (conn.errors >= 3) evictModbusConn(cfg, 'rtu-tcp')
+      throw err
+    }
+  })
+}
+
+export const modbusRtuDcwDriver: DcwWriteDriver = {
+  kind: 'modbus-rtu',
+  async available() {
+    try {
+      reqNative('modbus-serial')
+      return true
+    }
+    catch {
+      return false
+    }
+  },
+  async write(input) {
+    try {
+      return await modbusRtuWrite(input)
+    }
+    catch (err) {
+      if (err instanceof AppError) throw err
+      return { ok: false, message: `Modbus RTU 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+    }
+  },
+  async test(driverConfig) {
+    const t0 = Date.now()
+    try {
+      if (!driverConfig.host) return { ok: false, message: '缺少网关地址 host' }
+      if (driverConfig.register == null) return { ok: false, message: '缺少写寄存器地址 register' }
+      const conn = await getModbusConn(driverConfig, 'rtu-tcp')
+      await withModbusConn(conn, () => conn.client.readHoldingRegisters(registerOffset(Number(driverConfig.register ?? 0), 'holding'), 1))
+      return { ok: true, message: `网关连接成功,写寄存器可访问(${Date.now() - t0}ms)` }
+    }
+    catch (err) {
+      return { ok: false, message: `Modbus RTU 连接失败: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  },
+}
+
+// ============================================================
+// MQTT 写驱动(publish 设定值到 Broker;fire-and-forget,无回读)
+// ============================================================
+
+export const mqttDcwDriver: DcwWriteDriver = {
+  kind: 'mqtt',
+  async available() {
+    try {
+      reqNative('mqtt')
+      return true
+    }
+    catch {
+      return false
+    }
+  },
+  async write(input) {
+    try {
+      const cfg = input.driverConfig
+      if (!cfg.host) throw new AppError(400, 'BAD_REQUEST', '缺少 Broker 地址 host')
+      if (!cfg.topic) throw new AppError(400, 'BAD_REQUEST', '缺少下发主题 topic')
+      const mqtt = reqNative('mqtt') as typeof import('mqtt')
+      const url = `mqtt://${String(cfg.host)}:${Number(cfg.port ?? 1883)}`
+      const payload = cfg.jsonKey
+        ? JSON.stringify({ [String(cfg.jsonKey)]: input.eng })
+        : String(input.eng)
+      // 控制发布用一次性连接(低频关键动作,不复用采样的长连接;发布即断,资源可控)
+      const client = await new Promise<import('mqtt').MqttClient>((resolve, reject) => {
+        const c = mqtt.connect(url, {
+          username: cfg.username ? String(cfg.username) : undefined,
+          password: cfg.password ? String(cfg.password) : undefined,
+          connectTimeout: 4000,
+        })
+        c.once('connect', () => resolve(c))
+        c.once('error', (err) => {
+          try {
+            c.end(true)
+          }
+          catch { /* 未连上 */ }
+          reject(new Error(err.message))
+        })
+      })
+      await new Promise<void>((resolve, reject) => {
+        client.publish(String(cfg.topic), payload, { qos: Math.min(2, Math.max(0, Number(cfg.qos ?? 1))) as 0 | 1 | 2 }, (err) => {
+          if (err)
+            reject(new Error(err.message))
+          else
+            resolve()
+        })
+        // 发布确认超时(QoS1 等 puback):8s 未确认按失败收敛,不悬挂工具调用
+        setTimeout(() => reject(new Error('发布确认超时(8s)')), 8000)
+      })
+      await new Promise<void>((resolve) => {
+        client.end(false, {}, resolve)
+      })
+      return {
+        ok: true,
+        message: `已发布 ${input.eng} → ${String(cfg.topic)}(QoS ${Number(cfg.qos ?? 1)};MQTT 无回读,建议以同主题数采节点验证)`,
+        raw: input.eng,
+        readback: null,
+      }
+    }
+    catch (err) {
+      if (err instanceof AppError) throw err
+      return { ok: false, message: `MQTT 发布失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+    }
+  },
+  async test(driverConfig) {
+    try {
+      if (!driverConfig.host) return { ok: false, message: '缺少 Broker 地址 host' }
+      if (!driverConfig.topic) return { ok: false, message: '缺少下发主题 topic' }
+      const mqtt = reqNative('mqtt') as typeof import('mqtt')
+      await new Promise<import('mqtt').MqttClient>((resolve, reject) => {
+        const c = mqtt.connect(`mqtt://${String(driverConfig.host)}:${Number(driverConfig.port ?? 1883)}`, {
+          username: driverConfig.username ? String(driverConfig.username) : undefined,
+          password: driverConfig.password ? String(driverConfig.password) : undefined,
+          connectTimeout: 4000,
+        })
+        c.once('connect', () => resolve(c))
+        c.once('error', err => reject(new Error(err.message)))
+      }).then(c => new Promise<void>(r => c.end(false, {}, r)))
+      return { ok: true, message: `Broker 连接成功(${String(driverConfig.host)}:${Number(driverConfig.port ?? 1883)});未执行发布,避免误触发真实设备动作` }
+    }
+    catch (err) {
+      return { ok: false, message: `MQTT 连接失败: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  },
+}
+
+// ============================================================
+// HTTP/REST 写驱动(POST JSON 设定值;2xx 视为受理)
+// ============================================================
+
+export const httpDcwDriver: DcwWriteDriver = {
+  kind: 'http',
+  async available() {
+    return true
+  },
+  async write(input) {
+    try {
+      const cfg = input.driverConfig
+      if (!cfg.url) throw new AppError(400, 'BAD_REQUEST', '缺少写接口地址 url')
+      const headers: Record<string, string> = { 'content-type': 'application/json' }
+      if (cfg.headersJSON) {
+        const parsed: unknown = JSON.parse(String(cfg.headersJSON))
+        if (typeof parsed === 'object' && parsed != null && !Array.isArray(parsed)) {
+          for (const [k, v] of Object.entries(parsed)) headers[k] = String(v)
+        }
+      }
+      const body = cfg.bodyKey ? JSON.stringify({ [String(cfg.bodyKey)]: input.eng }) : JSON.stringify({ value: input.eng })
+      const res = await fetch(String(cfg.url), { method: 'POST', headers, body, signal: AbortSignal.timeout(6000) })
+      if (!res.ok) return { ok: false, message: `接口返回 HTTP ${res.status},设定未受理`, raw: null, readback: null }
+      let readback: number | null = null
+      try {
+        const j: unknown = await res.json()
+        const target = cfg.bodyKey
+          ? (j as Record<string, unknown>)?.[String(cfg.bodyKey)]
+          : (j as Record<string, unknown>)?.value
+        const n = Number(target)
+        if (Number.isFinite(n)) readback = n
+      }
+      catch { /* 非 JSON 响应忽略回读 */ }
+      return {
+        ok: true,
+        message: readback != null
+          ? `POST 成功(HTTP ${res.status}),接口回读 ${readback}`
+          : `POST 成功(HTTP ${res.status};接口未回传数值)`,
+        raw: input.eng,
+        readback,
+      }
+    }
+    catch (err) {
+      if (err instanceof AppError) throw err
+      return { ok: false, message: `HTTP 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+    }
+  },
+  async test(driverConfig) {
+    try {
+      if (!driverConfig.url) return { ok: false, message: '缺少写接口地址 url' }
+      // 安全语义:仅探测端点可达性(GET),不执行 POST,避免误触发真实设备动作
+      const res = await fetch(String(driverConfig.url), { method: 'GET', signal: AbortSignal.timeout(5000) })
+      return { ok: true, message: `端点可达(GET → HTTP ${res.status};未执行写入测试,避免误触发真实命令)` }
+    }
+    catch (err) {
+      return { ok: false, message: `HTTP 端点不可达: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  },
+}
+
+// ============================================================
 // 注册表 + 解析
 // ============================================================
 
 const REGISTRY: Record<DcwDriverKind, DcwWriteDriver> = {
   'mock': mockDcwDriver,
   'modbus-tcp': modbusTcpDcwDriver,
+  'modbus-rtu': modbusRtuDcwDriver,
   'opcua': opcUaDcwDriver,
+  'mqtt': mqttDcwDriver,
+  'http': httpDcwDriver,
 }
 
 export function normalizeDcwDriverKind(kind: string): DcwDriverKind {
   if (kind === 'modbus') return 'modbus-tcp'
+  if (kind === 'rtu' || kind === 'modbus-rtu-tcp') return 'modbus-rtu'
   return (kind in REGISTRY ? kind : 'mock') as DcwDriverKind
 }
 

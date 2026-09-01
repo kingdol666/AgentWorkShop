@@ -135,7 +135,7 @@ export function inverseTransform(v: number, t?: DataTransform): number {
 // ============================================================
 
 /** 采集驱动:mock 内置模拟;modbus-tcp/opcua 为真实工业协议实现;s7 预留 */
-export type DaqDriverKind = 'mock' | 'modbus-tcp' | 'opcua' | 's7'
+export type DaqDriverKind = 'mock' | 'modbus-tcp' | 'modbus-rtu' | 'opcua' | 'mqtt' | 'http' | 's7'
 
 /** 驱动连接参数字段定义(前端动态表单的单一事实源;server 侧同源校验) */
 export interface DriverConfigField {
@@ -214,6 +214,57 @@ export const DAQ_DRIVERS: DaqDriverMeta[] = [
       { key: 'password', label: '密码(可选)', type: 'string' },
       { key: 'certificateFile', label: '客户端证书路径(可选)', type: 'string', placeholder: 'certs/client_cert.pem', hint: 'Sign/SignAndEncrypt 时的 PEM 证书;留空自动生成自签' },
       { key: 'privateKeyFile', label: '私钥路径(可选)', type: 'string', placeholder: 'certs/client_key.pem', hint: '与证书配对的 PEM 私钥' },
+    ],
+  },
+  {
+    kind: 'modbus-rtu',
+    label: 'Modbus RTU over TCP(串口网关)',
+    status: 'real',
+    configFields: [
+      { key: 'host', label: '网关地址(host)', type: 'string', required: true, placeholder: '192.168.1.50', hint: '串口服务器/RTU 转 TCP 网关 IP(设备本身走 RS-485)' },
+      { key: 'port', label: '端口', type: 'number', default: 502, hint: '网关透传端口(常见 502 / 8899 / 26)' },
+      { key: 'unitId', label: '从站地址(unitId)', type: 'number', default: 1, hint: 'RS-485 总线上的从站地址' },
+      { key: 'register', label: '寄存器地址', type: 'number', required: true, placeholder: '40001', hint: '4xxxx=保持寄存器(地址-40001 为协议偏移);3xxxx=输入寄存器' },
+      { key: 'registerType', label: '寄存器区', type: 'select', default: 'holding', options: [
+        { value: 'holding', label: '保持寄存器(4x)' },
+        { value: 'input', label: '输入寄存器(3x)' },
+      ] },
+      { key: 'dataType', label: '数据类型', type: 'select', default: 'float32', options: [
+        { value: 'int16', label: 'int16(1 寄存器)' },
+        { value: 'uint16', label: 'uint16(1 寄存器)' },
+        { value: 'int32', label: 'int32(2 寄存器)' },
+        { value: 'uint32', label: 'uint32(2 寄存器)' },
+        { value: 'float32', label: 'float32(2 寄存器,常用)' },
+      ] },
+      { key: 'scale', label: '缩放系数', type: 'number', default: 1, hint: '原始值 × scale = 工程量(如 0.1)' },
+      { key: 'byteOrder', label: '字节序', type: 'select', default: 'big', options: [
+        { value: 'big', label: '大端(AB CD)' },
+        { value: 'little', label: '小端(CD AB)' },
+        { value: 'wordSwap', label: '字交换(CD AB / 交换单字)' },
+      ] },
+    ],
+  },
+  {
+    kind: 'mqtt',
+    label: 'MQTT(网关/边缘采集)',
+    status: 'real',
+    configFields: [
+      { key: 'host', label: 'Broker 地址(host)', type: 'string', required: true, placeholder: '192.168.1.20 或 mqtt.example.com', hint: 'MQTT Broker(EMQX/Mosquitto/Aliyun IoT)地址' },
+      { key: 'port', label: '端口', type: 'number', default: 1883, hint: 'MQTT TCP 标准端口 1883(TLS 8883)' },
+      { key: 'topic', label: '主题(topic)', type: 'string', required: true, placeholder: 'factory/line1/temp', hint: '设备上报数值的主题;支持 +/# 通配' },
+      { key: 'jsonPath', label: '取值路径(可选)', type: 'string', placeholder: 'data.temperature', hint: 'payload 为 JSON 时按路径取数值,如 data.temp;纯数字报文留空' },
+      { key: 'username', label: '用户名(可选)', type: 'string' },
+      { key: 'password', label: '密码(可选)', type: 'string' },
+    ],
+  },
+  {
+    kind: 'http',
+    label: 'HTTP/REST(轮询)',
+    status: 'real',
+    configFields: [
+      { key: 'url', label: '接口地址(URL)', type: 'string', required: true, placeholder: 'http://192.168.1.30/api/sensor', hint: '返回数值或 JSON 的 HTTP 接口' },
+      { key: 'jsonPath', label: '取值路径(可选)', type: 'string', placeholder: 'data.value', hint: '响应为 JSON 时按路径取数值,如 data.value;纯文本留空' },
+      { key: 'headersJSON', label: '请求头(可选)', type: 'string', placeholder: '{"Authorization":"Bearer xxx"}', hint: 'JSON 对象形式的 HTTP 头' },
     ],
   },
   {

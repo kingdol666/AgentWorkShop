@@ -257,7 +257,7 @@ const optRecipeOptions = computed(() =>
   dcw.recipes.filter(r => !optFilterLine.value || r.lineId === optFilterLine.value))
 
 function optStatusKey(s: string): string {
-  const map: Record<string, string> = { 'open': 'daq.k1optst001', 'judged-keep': 'daq.k1optst002', 'rolled-back': 'daq.k1optst003', 'superseded': 'daq.k1optst004', 'superseded-manual': 'daq.k1optst005', 'closed-line-stop': 'daq.k1optst006', 'failed': 'daq.k1optst007' }
+  const map: Record<string, string> = { 'open': 'daq.k1optst001', 'judged': 'daq.k1optst008', 'judged-keep': 'daq.k1optst002', 'rolled-back': 'daq.k1optst003', 'superseded': 'daq.k1optst004', 'superseded-manual': 'daq.k1optst005', 'closed-line-stop': 'daq.k1optst006', 'failed': 'daq.k1optst007' }
   return map[s] ?? 'daq.k1optst001'
 }
 
@@ -1233,8 +1233,8 @@ async function doReconnect(): Promise<void> {
         />
       </button>
       <div
-        v-if="optOpen"
         class="opt-body"
+        :class="{ open: optOpen }"
       >
         <div class="opt-filters">
           <select
@@ -2349,11 +2349,28 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
   transition: transform var(--transition-base);
 }
 .opt-chevron.open { transform: rotate(225deg); }
+/* 手风琴展开/收起(occasional 频次;状态指示;height 豁免 = 手风琴;进出对称 260ms;
+ * 收起态 visibility 联动,内部链接/按钮不可聚焦) */
 .opt-body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 0 16px 14px;
+  max-height: 0;
+  padding: 0 16px;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    max-height 260ms cubic-bezier(0.22, 0.68, 0.36, 1),
+    opacity 200ms ease,
+    visibility 260ms;
+}
+.opt-body.open {
+  max-height: 64vh;
+  padding-bottom: 14px;
+  overflow-y: auto;
+  visibility: visible;
+  opacity: 1;
 }
 .opt-filters { display: flex; gap: 8px; align-items: center; }
 .opt-empty { font-size: 11.5px; color: var(--ink-fainter); }

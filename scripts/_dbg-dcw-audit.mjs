@@ -1,6 +1,6 @@
 /** 一次性:DCW 写控制全链路审计(mock ACK/工程换算/回读校验/量程拒绝/Recipe 隔离/Modbus 真写) */
 import { randomUUID } from 'node:crypto'
-const TOKEN = process.env.DAQ_TOKEN ?? 'ut-ffc1dfbbc0c1444c87c1ec69a9e8208c'
+const TOKEN = process.env.ADMIN_TOKEN ?? process.env.AW_PAGE_TOKEN ?? process.env.DAQ_TOKEN ?? ''
 const BASE = (process.env.DAQ_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop/dcw'
 const H = { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }
 const fail = (m) => { console.error('FAIL:', m); process.exitCode = 1 }

@@ -76,7 +76,7 @@ export interface DcwTemplateInput {
 // 写控制驱动目录(与数采驱动同风格:能力自描述 + 动态参数表单)
 // ============================================================
 
-export type DcwDriverKind = 'mock' | 'modbus-tcp' | 'opcua'
+export type DcwDriverKind = 'mock' | 'modbus-tcp' | 'modbus-rtu' | 'opcua' | 'mqtt' | 'http'
 
 /** 写换算元数据(工程量 ↔ 原始值线性映射;系统封装,用户配置一次) */
 export interface DcwScaleConfig {
@@ -143,6 +143,57 @@ export const DCW_DRIVERS: DcwDriverMeta[] = [
       ] },
       { key: 'username', label: '用户名(可选)', type: 'string' },
       { key: 'password', label: '密码(可选)', type: 'string' },
+    ],
+  },
+  {
+    kind: 'modbus-rtu',
+    label: 'Modbus RTU over TCP(串口网关 写保持寄存器)',
+    status: 'real',
+    configFields: [
+      { key: 'host', label: '网关地址(host)', type: 'string', required: true, placeholder: '192.168.1.50', hint: '串口服务器/RTU 转 TCP 网关 IP' },
+      { key: 'port', label: '端口', type: 'number', default: 502, hint: '网关透传端口(常见 502 / 8899 / 26)' },
+      { key: 'unitId', label: '从站地址(unitId)', type: 'number', default: 1, hint: 'RS-485 总线上的从站地址' },
+      { key: 'register', label: '写寄存器地址', type: 'number', required: true, placeholder: '40021', hint: '4xxxx=保持寄存器(写);回读同址校验' },
+      { key: 'dataType', label: '数据类型', type: 'select', default: 'float32', options: [
+        { value: 'int16', label: 'int16(1 寄存器)' },
+        { value: 'uint16', label: 'uint16(1 寄存器)' },
+        { value: 'int32', label: 'int32(2 寄存器)' },
+        { value: 'uint32', label: 'uint32(2 寄存器)' },
+        { value: 'float32', label: 'float32(2 寄存器,常用)' },
+      ] },
+      { key: 'byteOrder', label: '字节序', type: 'select', default: 'big', options: [
+        { value: 'big', label: '大端(AB CD)' },
+        { value: 'little', label: '小端(CD AB)' },
+        { value: 'wordSwap', label: '字交换(CD AB / 交换单字)' },
+      ] },
+      { key: 'engMin', label: '工程量程下限', type: 'number', hint: '线性换算:eng ∈ [engMin, engMax] ↔ raw ∈ [rawMin, rawMax];float32 且未填原始量程时 raw=eng' },
+      { key: 'engMax', label: '工程量程上限', type: 'number' },
+      { key: 'rawMin', label: '原始值下限', type: 'number' },
+      { key: 'rawMax', label: '原始值上限', type: 'number' },
+    ],
+  },
+  {
+    kind: 'mqtt',
+    label: 'MQTT(发布设定值到 Broker)',
+    status: 'real',
+    configFields: [
+      { key: 'host', label: 'Broker 地址(host)', type: 'string', required: true, placeholder: '192.168.1.20', hint: 'MQTT Broker 地址(与边缘网关约定同一 Broker)' },
+      { key: 'port', label: '端口', type: 'number', default: 1883, hint: 'MQTT TCP 端口 1883' },
+      { key: 'topic', label: '下发主题(topic)', type: 'string', required: true, placeholder: 'factory/line1/setpoint', hint: '网关订阅的控制主题(勿与采集主题相同)' },
+      { key: 'jsonKey', label: 'JSON 键(可选)', type: 'string', placeholder: 'setpoint', hint: '留空 = 纯数字报文;填写 = {"键":值} JSON 报文' },
+      { key: 'qos', label: 'QoS', type: 'number', default: 1, hint: '0=至多一次 1=至少一次(推荐)' },
+      { key: 'username', label: '用户名(可选)', type: 'string' },
+      { key: 'password', label: '密码(可选)', type: 'string' },
+    ],
+  },
+  {
+    kind: 'http',
+    label: 'HTTP/REST(POST 设定值)',
+    status: 'real',
+    configFields: [
+      { key: 'url', label: '写接口地址(URL)', type: 'string', required: true, placeholder: 'http://192.168.1.30/api/setpoint', hint: '接收设定值的 HTTP 接口(POST JSON)' },
+      { key: 'bodyKey', label: 'JSON 键(可选)', type: 'string', placeholder: 'setpoint', hint: '留空 = {"value": 设定值};填写 = {"键": 设定值}' },
+      { key: 'headersJSON', label: '请求头(可选)', type: 'string', placeholder: '{"Authorization":"Bearer xxx"}', hint: 'JSON 对象形式的 HTTP 头' },
     ],
   },
 ]
@@ -452,6 +503,7 @@ export interface OptimizationMetrics {
 
 export type OptimizationStatus
   = 'open'
+    | 'judged'
     | 'judged-keep'
     | 'rolled-back'
     | 'superseded'
