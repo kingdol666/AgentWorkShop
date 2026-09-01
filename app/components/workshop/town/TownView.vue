@@ -1574,6 +1574,16 @@ const liveTick = ref(0)
 const rtcVals = new Map<string, RtcPoint>()
 const rtcHist = new Map<string, number[]>()
 let unsubLiveVals: (() => void) | null = null
+/** 帧计数合批:高频帧流只按渲染帧节拍失效一次(展示层一帧一拍;缓冲仍逐帧入账) */
+let tickQueued = false
+function bumpLiveTick(): void {
+  if (tickQueued) return
+  tickQueued = true
+  requestAnimationFrame(() => {
+    tickQueued = false
+    liveTick.value++
+  })
+}
 
 /** 读数帧消费:实时缓冲直写 + 状态边沿即时告警(与批量 watch 共享 prevDaqState 去重) */
 function consumeReading(p: { nodeId?: string, value?: number, state?: string, at?: string }): void {
@@ -1591,7 +1601,7 @@ function consumeReading(p: { nodeId?: string, value?: number, state?: string, at
   const prevState = prevDaqState.get(p.nodeId)
   if (prevState && prevState !== nextState) stateEdgeAlarm(p.nodeId, prevState, nextState, p.value)
   if (prevState !== nextState) prevDaqState.set(p.nodeId, nextState)
-  liveTick.value++
+  bumpLiveTick()
 }
 
 const daqSim = computed<Map<string, DaqSimState>>(() => {
@@ -1654,7 +1664,13 @@ interface ToolApprovalRow {
   kind: string
   detail: string
   createdAt: string
+  expiresAt: string
   status: string
+}
+
+/** 审批剩余秒数(超时默认拒绝;轮询刷新粒度) */
+function approvalRemainingSec(ap: ToolApprovalRow): number {
+  return Math.max(0, Math.ceil((Date.parse(ap.expiresAt) - Date.now()) / 1000))
 }
 
 const authHeaders = (): Record<string, string> => {
@@ -1731,7 +1747,7 @@ watch(() => selected.value?.id, (id) => {
     void loadPendingApprovals()
     approvalPoll = setInterval(() => {
       void loadPendingApprovals()
-    }, 3000)
+    }, 1000)
   }
 }, { immediate: true })
 onBeforeUnmount(() => {
@@ -4532,6 +4548,12 @@ onBeforeUnmount(() => {
                   <div class="approval-detail">
                     {{ ap.detail }}
                   </div>
+                  <div
+                    class="approval-ttl"
+                    :class="{ urgent: approvalRemainingSec(ap) <= 30 }"
+                  >
+                    ⏱ {{ approvalRemainingSec(ap) }}s {{ $t('townView.hitlAutoReject') }}
+                  </div>
                   <input
                     v-model="approvalComments[ap.id]"
                     class="dcw-write input-inline"
@@ -7037,4 +7059,13 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   border-radius: var(--hud-r-md);
 }
 .approval-detail { font-size: 11px; color: var(--hud-text); }
+/* 超时默认拒绝倒计时:琥珀常态,≤30s 转警示红 */
+.approval-ttl {
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: var(--hud-amber);
+}
+.approval-ttl.urgent { color: var(--hud-danger); }
 </style>

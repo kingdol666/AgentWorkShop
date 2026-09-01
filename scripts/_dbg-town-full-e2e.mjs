@@ -1,7 +1,7 @@
 /** 数字孪生完整 E2E:帧率切换/实时消费/趋势/绑定/数采/数控下发/事件渲染。 */
 import puppeteer from 'puppeteer-core'
 
-const ROOT = 'http://127.0.0.1:3000'
+const ROOT = process.env.E2E_ROOT ?? 'http://127.0.0.1:3000'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 const H = { authorization: 'Bearer ut-ffc1dfbbc0c1444c87c1ec69a9e8208c', 'content-type': 'application/json' }
 const fail = m => { console.error('FAIL:', m); process.exitCode = 1 }

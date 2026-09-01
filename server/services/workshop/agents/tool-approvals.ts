@@ -17,6 +17,8 @@ export interface ToolApproval {
   /** 人读摘要(节点名/物理量/目标值/窗口) */
   detail: string
   createdAt: string
+  /** 到期时刻(createdAt + 超时窗);UI 据此显示自动拒绝倒计时 */
+  expiresAt: string
   status: 'pending' | 'approved' | 'denied' | 'expired'
   comment: string
   decidedAt: string | null
@@ -25,7 +27,8 @@ export interface ToolApproval {
   decidedName: string
 }
 
-const TIMEOUT_MS = 180_000
+/** 审批超时窗(超时默认拒绝,指令不执行);可用环境变量 HITL_TIMEOUT_MS 调整(测试/产线策略) */
+const TIMEOUT_MS = Number(process.env.HITL_TIMEOUT_MS) > 0 ? Number(process.env.HITL_TIMEOUT_MS) : 180_000
 const HISTORY_CAP = 50
 
 class ToolApprovalService {
@@ -46,6 +49,7 @@ class ToolApprovalService {
       kind,
       detail,
       createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + TIMEOUT_MS).toISOString(),
       status: 'pending',
       comment: '',
       decidedAt: null,
@@ -57,7 +61,8 @@ class ToolApprovalService {
         if (!this.pending.has(approval.id)) return
         this.pending.delete(approval.id)
         approval.status = 'expired'
-        approval.comment = '审批超时未处理,指令未执行'
+        approval.decidedAt = new Date().toISOString()
+        approval.comment = '审批超时未处理,默认拒绝,指令未执行'
         this.remember(approval)
         resolve({ approved: false, comment: approval.comment, id: approval.id })
       }, TIMEOUT_MS)
@@ -129,6 +134,8 @@ class ToolApprovalService {
         decidedBy: r.decidedBy,
         decidedName: r.decidedName,
         createdAt: r.createdAt,
+        // 持久化表未存到期时刻:按超时窗从 createdAt 派生(仅展示用)
+        expiresAt: new Date(Date.parse(r.createdAt) + TIMEOUT_MS).toISOString(),
       }))
     }
     return this.history

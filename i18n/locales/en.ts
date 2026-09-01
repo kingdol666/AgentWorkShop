@@ -1494,6 +1494,7 @@ export default {
     secRender: 'Render',
     secEnv: 'Environment',
     secOps: 'Operate',
+    hitlAutoReject: 'to auto-reject (timeout default-deny)',
     k1uht2uv068: 'Drag DAQ nodes from the left; live trends plot here',
     k1deqh0d069: 'Current Setpoint',
     k1i8rtqt070: 'Bound Device',

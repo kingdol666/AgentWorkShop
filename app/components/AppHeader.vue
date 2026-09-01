@@ -229,6 +229,7 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
       </a-tooltip>
 
       <a-select
+        id="hdr-locale"
         :value="locale"
         size="middle"
         :options="localeOptions"
@@ -254,11 +255,22 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 
       <a-dropdown>
         <div class="user-chip">
-          <span class="user-initial aw-avatar">{{ userInitial }}</span>
-          <span class="user-meta">
-            <span class="user-name">{{ userName }}</span>
-            <span class="user-role">{{ userRole }}</span>
-          </span>
+          <!-- 用户身份(session 异步解析)仅客户端可知:SSR 渲染中性占位,挂载后填充
+               —— 消除 hydration mismatch(unhead dispose 噪音的根因) -->
+          <ClientOnly>
+            <span class="user-initial aw-avatar">{{ userInitial }}</span>
+            <span class="user-meta">
+              <span class="user-name">{{ userName }}</span>
+              <span class="user-role">{{ userRole }}</span>
+            </span>
+            <template #fallback>
+              <span class="user-initial aw-avatar">·</span>
+              <span class="user-meta">
+                <span class="user-name">·</span>
+                <span class="user-role">·</span>
+              </span>
+            </template>
+          </ClientOnly>
         </div>
         <template #overlay>
           <a-menu @click="onAvatarMenu">

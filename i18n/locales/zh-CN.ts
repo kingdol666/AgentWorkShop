@@ -1493,6 +1493,7 @@ export default {
     secRender: '渲染',
     secEnv: '环境',
     secOps: '操作',
+    hitlAutoReject: '后自动拒绝(超时默认拒绝)',
     k1uht2uv068: '从左侧拖入数采节点,实时趋势将在此绘制',
     k1deqh0d069: '当前设定',
     k1i8rtqt070: '绑定设备',

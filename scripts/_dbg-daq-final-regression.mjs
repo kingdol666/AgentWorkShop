@@ -1,7 +1,7 @@
 /** 最终回归:点击响应延迟(点击→DOM 生效)+ 筛选/手风琴交互 + 运行时错误。 */
 import puppeteer from 'puppeteer-core'
 
-const ROOT = 'http://127.0.0.1:3000'
+const ROOT = process.env.E2E_ROOT ?? 'http://127.0.0.1:3000'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 const fail = m => { console.error('FAIL:', m); process.exitCode = 1 }
 
