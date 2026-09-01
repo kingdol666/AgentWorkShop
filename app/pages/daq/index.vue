@@ -121,6 +121,57 @@ function clearFilters(): void {
   filters.state = ''
 }
 
+// ---------- Agent 优化记录(调控闭环;数采中心视角) ----------
+const optOpen = ref(false)
+const optFilterLine = ref('')
+const optSeriesOf = ref<Record<string, { channels: Array<{ nodeId: string, nodeName: string, ch: string, unit: string, points: Array<{ at: number, value?: number, avg?: number }> }> }>>({})
+const optSeriesLoading = ref('')
+
+function optStatusKey(s: string): string {
+  const map: Record<string, string> = { 'open': 'daq.k1optst001', 'judged-keep': 'daq.k1optst002', 'rolled-back': 'daq.k1optst003', 'superseded': 'daq.k1optst004', 'superseded-manual': 'daq.k1optst005', 'closed-line-stop': 'daq.k1optst006', 'failed': 'daq.k1optst007' }
+  return map[s] ?? 'daq.k1optst001'
+}
+
+async function toggleOptPanel(): Promise<void> {
+  optOpen.value = !optOpen.value
+  if (optOpen.value)
+    await dcw.loadOptimizations(optFilterLine.value ? { lineId: optFilterLine.value } : undefined)
+}
+
+async function filterOpts(): Promise<void> {
+  await dcw.loadOptimizations(optFilterLine.value ? { lineId: optFilterLine.value } : undefined)
+}
+
+async function showOptSeries(id: string): Promise<void> {
+  optSeriesLoading.value = id
+  try {
+    const s = await dcw.optimizationSeries(id)
+    optSeriesOf.value = { ...optSeriesOf.value, [id]: s }
+  }
+  finally {
+    optSeriesLoading.value = ''
+  }
+}
+
+function seriesPath(points: Array<{ at: number, value?: number, avg?: number }>, w = 240, h = 36): string {
+  const vals = points.map(p => p.value ?? p.avg ?? 0).filter(Number.isFinite)
+  if (vals.length < 2) return ''
+  const min = Math.min(...vals)
+  const max = Math.max(...vals)
+  const span = max - min || 1
+  return vals.map((v, i) => `${(i / (vals.length - 1)) * w},${h - ((v - min) / span) * h}`).join(' ')
+}
+
+async function rollbackRecord(id: string): Promise<void> {
+  await dcw.rollbackOptimization(id)
+  await filterOpts()
+}
+
+/** 序列点换算的小数位(避免 sparkline 抖动) */
+function fmtPoint(v: number | null | undefined): string {
+  return v == null ? '--' : String(Number(v.toFixed(2)))
+}
+
 /** 筛选下拉的设备选项:仅列出至少绑定了一个节点的设备(空设备筛选无意义) */
 const boundDevices = computed<Array<{ id: string, name: string, count: number }>>(() => {
   const used = new Map<string, number>()
@@ -1024,6 +1075,139 @@ async function doReconnect(): Promise<void> {
       </div>
     </div>
 
+    <!-- Agent 优化记录(调控闭环:设定历史 / 判定 / 窗口数采;序列为客户端渲染) -->
+    <section class="aw-tile opt-card">
+      <button
+        class="opt-head"
+        @click="toggleOptPanel"
+      >
+        <span class="i-tabler-flask" />
+        <b>{{ $t('daq.k1optt001') }}</b>
+        <span class="opt-count mono">{{ dcw.optimizations.length }}</span>
+        <span
+          class="opt-chevron"
+          :class="{ open: optOpen }"
+        />
+      </button>
+      <div
+        v-if="optOpen"
+        class="opt-body"
+      >
+        <div class="opt-filters">
+          <select
+            v-model="optFilterLine"
+            class="inp-sel"
+            @change="filterOpts"
+          >
+            <option value="">
+              {{ $t('daq.k1optf001') }}
+            </option>
+            <option
+              v-for="l in dcw.lines"
+              :key="l.id"
+              :value="l.id"
+            >
+              {{ l.name }}
+            </option>
+          </select>
+          <button
+            class="mini-act"
+            @click="filterOpts"
+          >
+            {{ $t('daq.k1optf002') }}
+          </button>
+        </div>
+        <p
+          v-if="dcw.optimizations.length === 0"
+          class="opt-empty"
+        >
+          {{ $t('daq.k1opte001') }}
+        </p>
+        <ul class="opt-list">
+          <li
+            v-for="r in dcw.optimizations.slice(0, 30)"
+            :key="r.id"
+            class="opt-row"
+            :class="r.status"
+          >
+            <div class="opt-line1">
+              <span
+                class="opt-status"
+                :class="r.status"
+              >{{ $t(optStatusKey(r.status)) }}</span>
+              <b class="opt-node">{{ r.nodeName }}</b>
+              <span class="mono opt-params">{{ r.params[0]?.from ?? '?' }} → {{ r.params[0]?.to }}</span>
+              <span class="mono opt-time">{{ r.setAt.slice(5, 16).replace('T', ' ') }}</span>
+              <button
+                v-if="!optSeriesOf[r.id]"
+                class="mini-act"
+                :disabled="optSeriesLoading === r.id"
+                @click="showOptSeries(r.id)"
+              >
+                {{ $t('daq.k1opta001') }}
+              </button>
+              <button
+                v-if="r.status === 'open'"
+                class="mini-act danger"
+                @click="rollbackRecord(r.id)"
+              >
+                {{ $t('daq.k1opta002') }}
+              </button>
+            </div>
+            <div class="opt-line2 mono">
+              <span
+                v-if="r.judge"
+                class="opt-judge"
+                :class="r.judge.verdict"
+              >{{ r.judge.verdict }}({{ r.judge.by }}): {{ r.judge.reason.slice(0, 70) }}</span>
+              <span
+                v-else-if="r.status === 'open'"
+                class="opt-open-hint"
+              >{{ $t('daq.k1opto001') }}</span>
+              <span
+                v-if="r.aggPending"
+                class="opt-agg"
+              >{{ $t('daq.k1optw001') }}</span>
+              <span
+                v-else-if="r.windowAgg && r.windowAgg.channels.length"
+                class="opt-agg"
+              >
+                <template
+                  v-for="c in r.windowAgg.channels"
+                  :key="c.daqNodeId"
+                >{{ c.ch }} {{ fmtPoint(c.min) }}~{{ fmtPoint(c.max) }}({{ $t('daq.k1optw002') }}{{ c.breaches < 0 ? '-' : c.breaches }}) </template>
+              </span>
+            </div>
+            <div
+              v-if="optSeriesOf[r.id]"
+              class="opt-series"
+            >
+              <div
+                v-for="ch in optSeriesOf[r.id].channels"
+                :key="ch.nodeId"
+                class="opt-ch"
+              >
+                <svg
+                  class="opt-spark"
+                  viewBox="0 0 240 36"
+                  preserveAspectRatio="none"
+                >
+                  <polyline :points="seriesPath(ch.points)" />
+                </svg>
+                <span class="mono">{{ ch.ch }} {{ fmtPoint(ch.points.at(-1)?.value ?? ch.points.at(-1)?.avg) }}{{ ch.unit }}</span>
+              </div>
+              <p
+                v-if="optSeriesOf[r.id].channels.length === 0"
+                class="opt-empty"
+              >
+                {{ $t('daq.k1opte002') }}
+              </p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
     <!-- 节点清单:筛选工具条(产线/设备/产线运行/状态) + 节点表 -->
     <a-spin :spinning="!daq.loaded && !daq.error">
       <section class="aw-tile table-card">
@@ -1797,5 +1981,99 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── Agent 优化记录面板(调控闭环;与全站玻璃语言同族) ── */
+.opt-card { padding: 0; }
+.opt-head {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.opt-head > .i-tabler-flask { font-size: 16px; color: var(--tone-info-dot); }
+.opt-count {
+  padding: 1px 8px;
+  font-size: 10.5px;
+  color: var(--tone-info-dot);
+  background: var(--tone-info-bg);
+  border-radius: 999px;
+}
+.opt-chevron {
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 1.5px solid var(--ink-faint);
+  border-bottom: 1.5px solid var(--ink-faint);
+  transform: rotate(45deg);
+  transition: transform var(--transition-base);
+}
+.opt-chevron.open { transform: rotate(225deg); }
+.opt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px 14px;
+}
+.opt-filters { display: flex; gap: 8px; align-items: center; }
+.opt-empty { font-size: 11.5px; color: var(--ink-fainter); }
+.opt-list { display: flex; flex-direction: column; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.opt-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 12px;
+  background: var(--frost-bg);
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+}
+.opt-row.open { border-color: color-mix(in srgb, var(--tone-warning-dot) 36%, var(--glass-line)); }
+.opt-row.rolled-back { border-color: color-mix(in srgb, var(--tone-danger-dot) 30%, var(--glass-line)); }
+.opt-line1 { display: flex; gap: 9px; align-items: center; min-width: 0; }
+.opt-status {
+  flex: none;
+  padding: 1px 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+}
+.opt-status.open { color: var(--tone-warning-dot); border-color: color-mix(in srgb, var(--tone-warning-dot) 45%, transparent); }
+.opt-status.judged-keep { color: var(--tone-success-dot); border-color: color-mix(in srgb, var(--tone-success-dot) 45%, transparent); }
+.opt-status.rolled-back { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 45%, transparent); }
+.opt-node { overflow: hidden; font-size: 12.5px; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
+.opt-params { flex: none; font-size: 11px; color: var(--tone-info-dot); }
+.opt-time { flex: none; margin-left: auto; font-size: 10px; color: var(--ink-fainter); }
+.mini-act {
+  flex: none;
+  padding: 2px 9px;
+  font-size: 10.5px;
+  color: var(--tone-info-dot);
+  background: var(--tone-info-bg);
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mini-act.danger { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+.mini-act:disabled { opacity: 0.5; cursor: default; }
+.opt-line2 { display: flex; flex-wrap: wrap; gap: 8px; font-size: 10.5px; color: var(--ink-faint); }
+.opt-judge.rollback, .opt-judge.keep, .opt-judge.uncertain { color: var(--ink-soft); }
+.opt-judge b { font-weight: 600; }
+.opt-open-hint { color: var(--tone-warning-dot); }
+.opt-agg { color: var(--ink-fainter); }
+.opt-series { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 4px; }
+.opt-ch { display: flex; flex: 1 1 180px; gap: 8px; align-items: center; min-width: 160px; }
+.opt-spark { width: 120px; height: 30px; }
+.opt-spark polyline {
+  fill: none;
+  stroke: var(--tone-info-dot);
+  stroke-width: 1.5;
 }
 </style>

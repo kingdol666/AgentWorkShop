@@ -19,6 +19,10 @@ export interface DcwWriteOutcome {
   message: string
   raw: number | null
   readback: number | null
+  /** 调控闭环:本次写产生的参数锚(入册成功时) */
+  anchorId?: string
+  /** 调控闭环:Agent/回退路径开出的优化记录 id(manual/recipe 路径无) */
+  recordId?: string
 }
 
 export interface DcwRuntimeHost {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { DCW_DRIVERS, type DcwTemplateIcon, type LineQueryResult, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_DRIVERS, type DcwParamLedger, type DcwTemplateIcon, type LineQueryResult, type RecipeRunData } from '#shared/dcw-protocol'
 import type { DriverConfigField } from '#shared/daq-protocol'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
 import { useDaqStream } from '~/composables/workshop/useDaqStream'
@@ -48,6 +48,27 @@ function nodeMax(nodeId: string): number | undefined {
 
 /** 本产线数采节点(配方监控窗口的可选目标) */
 const lineDaqNodes = computed(() => daq.nodes.filter(n => n.lineId === lineId.value))
+
+// ---------- 参数台账(调控闭环:三值对照 + 设定历史 + 优化记录) ----------
+const ledgerNodeId = ref('')
+const ledger = ref<DcwParamLedger | null>(null)
+const ledgerLoading = ref(false)
+async function loadLedger(): Promise<void> {
+  if (!ledgerNodeId.value) return
+  ledgerLoading.value = true
+  try {
+    ledger.value = await dcw.fetchLedger(ledgerNodeId.value)
+  }
+  finally {
+    ledgerLoading.value = false
+  }
+}
+/** 单步回退(经 write() 门控;回退后刷新台账) */
+async function rollbackLedgerNode(): Promise<void> {
+  if (!ledgerNodeId.value) return
+  await dcw.rollbackNode(ledgerNodeId.value)
+  await loadLedger()
+}
 
 /** 监控窗口 chip 显示:数采节点参数语义 */
 function daqNodeCh(nodeId: string): string {
@@ -1963,6 +1984,87 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
     >
       {{ dcw.error }}(<NuxtLink to="/workshop">{{ $t('dcwDetail.k1bhhheq120') }}</NuxtLink>)
     </p>
+
+    <!-- 参数台账(调控闭环:当前值/配方目标/lastGood 三值对照 + 设定历史 + 优化记录) -->
+    <section class="aw-tile ledger-card">
+      <div class="ledger-head">
+        <b>{{ $t('dcwDetail.k1ledgt001') }}</b>
+        <select
+          v-model="ledgerNodeId"
+          class="inp"
+          @change="loadLedger"
+        >
+          <option value="">
+            {{ $t('dcwDetail.k1ledgs001') }}
+          </option>
+          <option
+            v-for="n in lineNodes"
+            :key="n.id"
+            :value="n.id"
+          >
+            {{ n.name }}
+          </option>
+        </select>
+      </div>
+      <template v-if="ledger">
+        <div class="ledger-tri">
+          <div class="tri-cell">
+            <small>{{ $t('dcwDetail.k1ledgv001') }}</small>
+            <b class="mono">{{ ledger.current ?? '--' }}</b>
+          </div>
+          <div class="tri-cell">
+            <small>{{ $t('dcwDetail.k1ledgv002') }}</small>
+            <b class="mono">{{ ledger.recipeTarget ?? '--' }}</b>
+          </div>
+          <div class="tri-cell">
+            <small>{{ $t('dcwDetail.k1ledgv003') }}</small>
+            <b class="mono">{{ ledger.lastGood ?? '--' }}</b>
+          </div>
+          <button
+            class="mini-btn"
+            @click="loadLedger"
+          >
+            {{ $t('dcwDetail.k1ledga001') }}
+          </button>
+          <button
+            class="mini-btn danger"
+            @click="rollbackLedgerNode"
+          >
+            {{ $t('dcwDetail.k1ledga002') }}
+          </button>
+        </div>
+        <div class="ledger-cols">
+          <div class="ledger-col">
+            <small class="sec-t">{{ $t('dcwDetail.k1ledgh001') }}</small>
+            <ul class="ledger-list mono">
+              <li
+                v-for="a in ledger.journal"
+                :key="a.id"
+              >
+                {{ a.at.slice(5, 16).replace('T', ' ') }} [{{ a.source }}] {{ a.prevValue ?? '?' }} → {{ a.newValue }}
+              </li>
+            </ul>
+          </div>
+          <div class="ledger-col">
+            <small class="sec-t">{{ $t('dcwDetail.k1ledgr001') }}</small>
+            <ul class="ledger-list">
+              <li
+                v-for="r in ledger.records"
+                :key="r.id"
+                class="ledger-rec"
+              >
+                <span
+                  class="rec-st"
+                  :class="r.status"
+                >{{ r.status }}</span>
+                <span class="mono">{{ r.params[0]?.from ?? '?' }} → {{ r.params[0]?.to }}</span>
+                <small>{{ r.judge ? `${r.judge.verdict}(${r.judge.by})` : (r.status === 'open' ? 'open' : r.closedBy ?? '') }}</small>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </template>
+    </section>
   </div>
 </template>
 
@@ -1993,6 +2095,39 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
 }
 .page { padding: 4px; }
 h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.015em; }
+
+/* ── 参数台账(调控闭环) ── */
+.ledger-card { padding: 14px 18px; margin-bottom: 14px; }
+.ledger-head { display: flex; gap: 12px; align-items: center; }
+.ledger-head b { font-size: 13.5px; }
+.ledger-tri { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+.tri-cell {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+}
+.tri-cell small { font-size: 10px; color: var(--ink-faint); }
+.tri-cell b { font-size: 17px; color: var(--ink); }
+.ledger-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+.sec-t { display: block; margin-bottom: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: var(--ink-faint); }
+.ledger-list { display: flex; flex-direction: column; gap: 3px; max-height: 200px; margin: 0; padding: 0; overflow: auto; font-size: 11px; color: var(--ink-soft); list-style: none; }
+.ledger-rec { display: flex; gap: 8px; align-items: center; }
+.rec-st {
+  flex: none;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+}
+.rec-st.open { color: var(--tone-warning-dot); border-color: var(--tone-warning-dot); }
+.rec-st.rolled-back, .rec-st.judged-keep { color: var(--tone-success-dot); border-color: var(--tone-success-dot); }
 .sub { margin: 0; font-size: 12.5px; opacity: 0.6; }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .dim { opacity: 0.55; }

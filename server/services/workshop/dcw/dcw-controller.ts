@@ -409,22 +409,25 @@ class DcwController {
     }
     const prevValue = typeof node.value === 'number' ? node.value : null
     const outcome = await rt.write(eng, recipeRunId)
-    // 调控闭环入册:成功写 → 参数锚(+Agent/回退路径开优化记录;窗口聚合异步回填 F2)
-    try {
-      const rbInfo = getRecipeRollBackManager().afterWrite(
-        node,
-        eng,
-        prevValue,
-        meta ?? { source: recipeRunId ? 'recipe' : 'manual', actor: 'user' },
-        recipeRunId,
-      )
-      if (rbInfo) {
-        outcome.recordId = rbInfo.recordId
-        outcome.anchorId = rbInfo.anchorId
+    // 调控闭环入册:仅成功写记锚/开记录(失败写不动账本 —— PLC 值未变更);
+    // 窗口聚合异步回填(F2)
+    if (outcome.ok !== false) {
+      try {
+        const rbInfo = getRecipeRollBackManager().afterWrite(
+          node,
+          eng,
+          prevValue,
+          meta ?? { source: recipeRunId ? 'recipe' : 'manual', actor: 'user' },
+          recipeRunId,
+        )
+        if (rbInfo) {
+          outcome.recordId = rbInfo.recordId
+          outcome.anchorId = rbInfo.anchorId
+        }
       }
-    }
-    catch (err) {
-      console.error('[dcw] 调控闭环入册失败(不影响写结果):', err)
+      catch (err) {
+        console.error('[dcw] 调控闭环入册失败(不影响写结果):', err)
+      }
     }
     return outcome
   }

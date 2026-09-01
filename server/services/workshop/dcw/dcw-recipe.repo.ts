@@ -180,6 +180,9 @@ class DcwRecipeRepo {
       description: String(input.description ?? '').trim(),
       params: normParams(input.params, product.lineId),
       daqWindows: normDaqWindows(input.daqWindows, product.lineId),
+      version: 1,
+      paramsHistory: [],
+      lastGoodRunId: null,
       createdAt: now,
       updatedAt: now,
     }
@@ -202,9 +205,31 @@ class DcwRecipeRepo {
       r.name = name
     }
     if (patch.description !== undefined) r.description = String(patch.description).trim()
-    if (patch.params !== undefined) r.params = normParams(patch.params, r.lineId)
+    if (patch.params !== undefined) {
+      const fresh = normParams(patch.params, r.lineId)
+      // 参数版本化(调控闭环):活动批次外的参数修改 → 版本自增 + 旧版入史(cap 20)
+      const changed = JSON.stringify(fresh) !== JSON.stringify(r.params)
+      if (changed) {
+        r.paramsHistory ??= []
+        r.paramsHistory.push({ version: r.version ?? 1, params: r.params, at: new Date().toISOString() })
+        if (r.paramsHistory.length > 20)
+          r.paramsHistory.splice(0, r.paramsHistory.length - 20)
+        r.version = (r.version ?? 1) + 1
+      }
+      r.params = fresh
+    }
     if (patch.daqWindows !== undefined) r.daqWindows = normDaqWindows(patch.daqWindows, r.lineId)
     r.updatedAt = new Date().toISOString()
+    this.flushRecipes()
+    return r
+  }
+
+  /** 标记已知良好批次(基准恢复的目标;Trial keep / 手动均可调) */
+  markGood(recipeId: string, runId: string): RecipeView {
+    const r = this.byId(recipeId)
+    if (!r) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${recipeId}`)
+    if (!this.runById(runId)) throw new AppError(404, ErrorCodes.NOT_FOUND, `批次不存在: ${runId}`)
+    r.lastGoodRunId = runId
     this.flushRecipes()
     return r
   }
@@ -257,6 +282,8 @@ class DcwRecipeRepo {
       startedAt: new Date().toISOString(),
       endedAt: null,
       results: [],
+      // 参数冻结(调控闭环):配方事后修改不影响本批次的审计与回放
+      paramsSnapshot: recipe.params.map(p => ({ ...p })),
     }
     this.runs.push(run)
     if (this.runs.length > RUNS_CAP) this.runs.splice(0, this.runs.length - RUNS_CAP)

@@ -8,7 +8,7 @@ import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
 import { apiFetch } from './apiClient'
 import type { AepEnvelope } from '#shared/workshop-protocol'
-import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwWritten, type DcwNodeView, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type ProductInput, type ProductView, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwWritten, type DcwNodeView, type DcwParamLedger, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type OptimizationRecord, type OptimizationVerdict, type ProductInput, type ProductView, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
 
 export type { DcwNodeView }
 
@@ -30,6 +30,8 @@ function createStore() {
   const lines = reactive<LineView[]>([])
   /** 逐产线运行状态(lineId → state) */
   const lineStates = reactive<Record<string, LineRunState>>({})
+  /** Agent 优化记录(调控闭环;dcw.optimization.changed 实时收敛) */
+  const optimizations = reactive<OptimizationRecord[]>([])
 
   function upsert(node: DcwNodeView): void {
     const i = nodes.findIndex(x => x.id === node.id)
@@ -66,6 +68,12 @@ function createStore() {
       }
       else if (e.type === 'dcw.node.changed') applyChange(e.payload as AepDcwNodeChange)
       else if (e.type === 'dcw.controller') Object.assign(controller, e.payload as AepDcwControllerState)
+      else if (e.type === 'dcw.optimization.changed') {
+        const p = (e.payload as { event: string, record: OptimizationRecord }).record
+        const i = optimizations.findIndex(x => x.id === p.id)
+        if (i >= 0) optimizations[i] = p
+        else optimizations.unshift(p)
+      }
     })
   }
 
@@ -100,10 +108,49 @@ function createStore() {
     products,
     lines,
     lineStates,
+    optimizations,
     loaded: false,
     error: '',
     ensureWsFeed,
     load,
+    /** Agent 优化记录查询(调控闭环;默认倒序) */
+    loadOptimizations: async (filter?: { lineId?: string, recipeId?: string, nodeId?: string, status?: string, limit?: number }): Promise<void> => {
+      const qs = new URLSearchParams()
+      if (filter?.lineId) qs.set('lineId', filter.lineId)
+      if (filter?.recipeId) qs.set('recipeId', filter.recipeId)
+      if (filter?.nodeId) qs.set('nodeId', filter.nodeId)
+      if (filter?.status) qs.set('status', filter.status)
+      qs.set('limit', String(filter?.limit ?? 100))
+      const data = await api<{ records: OptimizationRecord[] }>(`/optimizations?${qs.toString()}`)
+      optimizations.splice(0, optimizations.length, ...data.records)
+    },
+    /** 节点参数台账(三值对照 + 在册历史) */
+    fetchLedger: async (nodeId: string): Promise<DcwParamLedger> => {
+      const data = await api<{ ledger: DcwParamLedger }>(`/${nodeId}/param-ledger`)
+      return data.ledger
+    },
+    /** 优化记录窗口内数采序列 */
+    optimizationSeries: async (id: string, windowMs?: number): Promise<{ record: OptimizationRecord, from: number, to: number, channels: Array<{ nodeId: string, nodeName: string, ch: string, unit: string, points: Array<{ at: number, value?: number, avg?: number }> }> }> => {
+      return api(`/optimizations/${id}/series${windowMs ? `?windowMs=${windowMs}` : ''}`)
+    },
+    /** 优化记录判定(用户路) */
+    judgeOptimization: async (id: string, verdict: OptimizationVerdict, reason: string): Promise<void> => {
+      await api(`/optimizations/${id}/judge`, { method: 'POST', body: JSON.stringify({ verdict, reason }) })
+    },
+    /** 执行回退(记录级/节点级) */
+    rollbackOptimization: async (id: string): Promise<void> => {
+      await api(`/optimizations/${id}/rollback`, { method: 'POST', body: JSON.stringify({}) })
+    },
+    rollbackNode: async (nodeId: string, to?: string): Promise<void> => {
+      await api(`/journal/node/${nodeId}/rollback`, { method: 'POST', body: JSON.stringify({ to }) })
+    },
+    /** 标记已知良好批次 / 基准恢复 */
+    markGood: async (recipeId: string, runId: string): Promise<void> => {
+      await api(`/recipes/${recipeId}/mark-good`, { method: 'POST', body: JSON.stringify({ runId }) })
+    },
+    rollbackRecipeGood: async (recipeId: string): Promise<void> => {
+      await api(`/recipes/${recipeId}/rollback-good`, { method: 'POST', body: JSON.stringify({}) })
+    },
     createFromTemplate: async (templateRef: string, opts?: Record<string, unknown>): Promise<DcwNodeView> => {
       const data = await api<{ node: DcwNodeView }>('', { method: 'POST', body: JSON.stringify({ templateRef, ...opts }) })
       upsert(data.node)

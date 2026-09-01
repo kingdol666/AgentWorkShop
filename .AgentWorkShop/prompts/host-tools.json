@@ -498,6 +498,14 @@
         "value": {
           "type": "number",
           "description": "目标设定值(真实物理量纲,如 ℃)"
+        },
+        "hypothesis": {
+          "type": "string",
+          "description": "本次调参假设(入优化记录档案):目标 + 预期效果 + 观察计划,如「提温 1℃ 预期张力上升 2%,5 分钟后复测」"
+        },
+        "task_id": {
+          "type": "string",
+          "description": "关联的优化任务 id(可选,入优化记录档案)"
         }
       },
       "required": [
@@ -548,6 +556,74 @@
         "limit": {
           "type": "number",
           "description": "返回点数上限(缺省 500)"
+        }
+      }
+    }
+  },
+  {
+    "name": "dcw_judge",
+    "label": "DCW Judge",
+    "description": "对你发起的优化记录(调控 step)落判定。keep=已验证经验(配方可标 lastGood);rollback=判定应回退(判定入册后必须再调 dcw_rollback 执行,判定不自动改 PLC);uncertain=证据不足保持观察。判定必须引用数采证据(daq_query 窗口数据),禁止无证据判定。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "record_id": {
+          "type": "string",
+          "description": "优化记录 id(dcw_control 下发成功后返回)"
+        },
+        "verdict": {
+          "type": "string",
+          "description": "判定结论:keep / rollback / uncertain",
+          "enum": ["keep", "rollback", "uncertain"]
+        },
+        "reason": {
+          "type": "string",
+          "description": "判定理由(必须引用具体数值/时间窗证据)"
+        }
+      },
+      "required": ["record_id", "verdict", "reason"]
+    }
+  },
+  {
+    "name": "dcw_rollback",
+    "label": "DCW Rollback",
+    "description": "执行参数回退(经与下发相同的安全门控,回退本身入册可审计)。record_id=回退你自己发起的优化记录到其设定前值;node_id=单步撤销到最近稳定锚。回退后必须 daq_query 复测确认恢复。冷却期内同向重写/重复回退会被拒绝。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "record_id": {
+          "type": "string",
+          "description": "要回退的优化记录 id(与 node_id 二选一)"
+        },
+        "node_id": {
+          "type": "string",
+          "description": "节点单步回退(撤销栈栈顶;与 record_id 二选一)"
+        },
+        "to": {
+          "type": "string",
+          "description": "可选:指定目标锚 id(dcw_journal 可查)"
+        }
+      }
+    }
+  },
+  {
+    "name": "dcw_journal",
+    "label": "DCW Journal",
+    "description": "查询参数变更史与优化记录(在册审计):谁/何时/从多少到多少/判定结论/假设声明。优化前先读史可避免重复试错;回退定位也在此查。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "限定数控节点 id(仅限自己绑定的节点)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "按配方过滤优化记录"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回条数上限(缺省 20,最大 100)"
         }
       }
     }

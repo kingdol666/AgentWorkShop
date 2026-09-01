@@ -49,7 +49,7 @@ import {
   loadHostToolDefs,
   renderPrompt,
 } from '../prompts/loader'
-import { toolDaqQuery, toolDcwControl, toolMyIndustrialNodes } from './industrial-tools'
+import { toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolMyIndustrialNodes } from './industrial-tools'
 import { buildIndustrialContext, industrialLoopGuide } from './industrial-context'
 import { extractTaskMode } from '../runtime/execution-mode'
 
@@ -1570,10 +1570,19 @@ export class OmpRpcAgentImpl implements AgentInterface {
           return toolMyIndustrialNodes(this.selfAgentId)
         }
         case 'dcw_control': {
-          return toolDcwControl(this.selfAgentId, req.arguments as { node_id?: string, value?: number | string })
+          return toolDcwControl(this.selfAgentId, req.arguments as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string })
         }
         case 'daq_query': {
           return toolDaqQuery(this.selfAgentId, req.arguments as Parameters<typeof toolDaqQuery>[1])
+        }
+        case 'dcw_judge': {
+          return toolDcwJudge(this.selfAgentId, req.arguments as { record_id?: string, verdict?: string, reason?: string })
+        }
+        case 'dcw_rollback': {
+          return toolDcwRollback(this.selfAgentId, req.arguments as { record_id?: string, node_id?: string, to?: string })
+        }
+        case 'dcw_journal': {
+          return toolDcwJournal(this.selfAgentId, req.arguments as { node_id?: string, recipe_id?: string, limit?: number | string })
         }
         default:
           return { text: `未知工具: ${req.toolName}`, isError: true }

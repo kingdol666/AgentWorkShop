@@ -16,6 +16,7 @@ import { getActiveLineRun } from '../dcw/line-run'
 import { findDcwTemplate } from '../dcw/dcw-templates'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { findDaqTemplate } from '../daq/daq-templates'
+import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
 
 export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: string }> {
   const repo = getAgentNodeBindingRepo()
@@ -33,20 +34,43 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
     ? `
 (另有 ${cards.stale} 条失效绑定已自动清理)`
     : ''
+  // 调控闭环洞察:每个数控节点的 open 优化记录 / lastGood / 最近判定(Agent 驱动的状态面)
+  const rb = getRecipeRollBackManager()
+  const insights: string[] = []
+  for (const b of bindings.filter(x => x.kind === 'dcw')) {
+    try {
+      const ins = rb.nodeInsight(b.nodeId)
+      const parts: string[] = []
+      if (ins.openRecord)
+        parts.push(`进行中优化 ${ins.openRecord.id}: ${ins.openRecord.params[0]?.from ?? '?'}→${ins.openRecord.params[0]?.to}(setAt ${ins.openRecord.setAt.slice(11, 19)},policy=${ins.openRecord.policy})`)
+      if (ins.lastGood != null)
+        parts.push(`上次良好值 ${ins.lastGood}`)
+      for (const j of ins.recentJudges.slice(0, 1))
+        parts.push(`最近判定 ${j.verdict}(${j.by}):${j.reason.slice(0, 60)}`)
+      if (parts.length > 0)
+        insights.push(`- ${b.nodeId}: ${parts.join(';')}`)
+    }
+    catch { /* 节点刚被删等情况忽略 */ }
+  }
+  const insightBlock = insights.length > 0 ? `\n\n调控闭环状态:\n${insights.join('\n')}` : ''
   return {
-    text: `${cards.text}${staleNote}
+    text: `${cards.text}${staleNote}${insightBlock}
 
 ---
 通用规则:
 1. 一个 Agent 可绑定多个节点;先读本清单理解每个节点的物理意义与操作守则,再动手。
 2. 数控下发 dcw_control(node_id, value):目标值必须落在「安全量程 ∩ 活动配方工艺窗口」;单次调幅建议按语义卡的步进指引。
 3. 数据获取 daq_query(不传 node_id = 全部数采节点),支持按产线/产品/配方/时间检索;解读数据时结合语义卡的判读方法。
-4. 改动设定后等待工艺响应(热惯性/传动惯量)再评估,避免连续大幅调整。`,
+4. 改动设定后等待工艺响应(热惯性/传动惯量)再评估,避免连续大幅调整。
+5. 调控闭环:每次下发自动开一条优化记录(open);观察数采后用 dcw_judge 落判定(keep/rollback/uncertain);
+   判 rollback 后用 dcw_rollback 执行回退;dcw_journal 可查节点参数变更史。未判定前再下发,旧记录会被标记 superseded。
+   若节点被他人的 open 记录阻塞(对方已消失),超时(30 分钟)后你可接管:dcw_judge 会带接管标记入册。`,
   }
 }
 
-/** 工具:dcw_control —— 数控下发(鉴权 → 停线守卫 → 手动审批 → 安全联锁 → 回读语义结果) */
-export async function toolDcwControl(agentId: string, args: { node_id?: string, value?: number | string }): Promise<{ text: string, isError?: boolean }> {
+/** 工具:dcw_control —— 数控下发(鉴权 → 停线守卫 → 手动审批 → 安全联锁 → 回读语义结果)。
+ *  调控闭环:下发自动开优化记录;args.hypothesis 声明本次假设(入册),args.task_id 关联任务。 */
+export async function toolDcwControl(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }): Promise<{ text: string, isError?: boolean }> {
   const nodeId = String(args.node_id ?? '').trim()
   const value = Number(args.value)
   const repo = getAgentNodeBindingRepo()
@@ -95,14 +119,31 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
   }
 
   try {
-    const outcome = await getDcwController().write(nodeId, value)
+    const meta = {
+      source: 'agent' as const,
+      actor: agentId,
+      taskId: args.task_id ? String(args.task_id) : undefined,
+      hypothesis: args.hypothesis ? String(args.hypothesis) : '',
+    }
+    const outcome = await getDcwController().write(nodeId, value, null, meta)
     const run = node.lineId ? getActiveLineRun(node.lineId) : null
     const winTxt = run
       ? `当前活动配方「${run.recipeName}」`
       : '当前无活动配方(全局量程约束)'
     if (outcome.ok) {
+      // 调控闭环回包:记录 id + 上一稳定锚 + 策略提示(安全网信息,Agent 据此规划判定)
+      const rb = getRecipeRollBackManager()
+      const stable = rb.journal({ nodeId, limit: 10 }).find(a => a.prevValue != null && a.prevValue !== a.newValue)
+      const policyHint = binding.mode === 'manual'
+        ? '本节点为手动确认模式:判定回退将推请用户确认'
+        : '本节点为自动模式:越配方监控窗将触发系统自动回退'
+      const loopTxt = [
+        outcome.recordId ? `优化记录 ${outcome.recordId} 已开窗(观察数采后 dcw_judge 落判定)` : null,
+        stable ? `上一稳定锚:${stable.prevValue}${node.unit}(可 dcw_rollback 回退)` : null,
+        policyHint,
+      ].filter(Boolean).join(';')
       return {
-        text: `下发成功:${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit} → PLC 原始值 ${outcome.raw ?? '-'};回读 ${outcome.readback != null ? `${outcome.readback}${node.unit}` : '不支持'}一致。${winTxt}。${outcome.message}`,
+        text: `下发成功:${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit} → PLC 原始值 ${outcome.raw ?? '-'};回读 ${outcome.readback != null ? `${outcome.readback}${node.unit}` : '不支持'}一致。${winTxt}。${outcome.message}\n[调控闭环] ${loopTxt}`,
       }
     }
     // 失败文案带自我纠正线索:当前保持原值 + 建议动作(缩小步进/稍后重试)
@@ -229,4 +270,93 @@ export async function toolDaqQuery(agentId: string, args: {
     ? `\n(过滤条件:${lineFilter ? ` 产线 ${lineFilter}` : ''}${args.product_id ? ` 产品 ${args.product_id}` : ''}${args.recipe_id ? ` 配方 ${args.recipe_id}` : ''}${(args.product_id || args.recipe_id) ? ' —— 产品/配方过滤基于活动批次窗口内逐样本打标' : ''})`
     : ''
   return { text: `数采数据查询结果(${targets.length} 个节点):\n\n${sections.join('\n\n')}${prov}\n\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。` }
+}
+
+/** 工具:dcw_judge —— 对自己的优化记录落判定(keep/rollback/uncertain)。
+ *  判定与执行分离:rollback 判定只入册,执行必须再调 dcw_rollback。 */
+export async function toolDcwJudge(agentId: string, args: { record_id?: string, verdict?: string, reason?: string }): Promise<{ text: string, isError?: boolean }> {
+  const recordId = String(args.record_id ?? '').trim()
+  const verdict = String(args.verdict ?? '').trim() as 'keep' | 'rollback' | 'uncertain'
+  const reason = String(args.reason ?? '').trim()
+  if (!recordId)
+    return { text: 'record_id 必填(优化记录 id,dcw_control 下发成功后会返回)。', isError: true }
+  if (!['keep', 'rollback', 'uncertain'].includes(verdict))
+    return { text: 'verdict 必须为 keep / rollback / uncertain。', isError: true }
+  if (!reason)
+    return { text: 'reason 必填:判定必须引用数采证据(建议先 daq_query 取窗口数据再判定)。', isError: true }
+  const rb = getRecipeRollBackManager()
+  const record = rb.recordById(recordId)
+  if (!record)
+    return { text: `优化记录 ${recordId} 不存在。`, isError: true }
+  const takeover = record.agentId !== agentId && rb.isStale(record)
+  if (record.agentId !== agentId && !takeover)
+    return { text: `记录 ${recordId} 不是你发起的优化(发起者:${record.agentId ?? '用户'}),Agent 仅可判定自己的记录;他人记录请请用户在界面判定。`, isError: true }
+  try {
+    const finalReason = takeover ? `[接管孤儿记录,原属主 ${record.agentId ?? '?'} 超时未判定] ${reason}` : reason
+    const updated = rb.judge(recordId, verdict, finalReason, 'agent', agentId, { takeover })
+    const next = verdict === 'rollback'
+      ? '判定已入册;请立即用 dcw_rollback(record_id) 执行回退(判定不自动改 PLC)。'
+      : verdict === 'keep'
+        ? `已定档为已验证经验${updated.recipeId ? '(配方已标记 lastGood)' : ''}。`
+        : '记录保持 open,继续观察或等下次设定关闭。'
+    return { text: `判定已入册:记录 ${recordId} → ${verdict}(${reason})。${next}` }
+  }
+  catch (err) {
+    return { text: `判定失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+}
+
+/** 工具:dcw_rollback —— 执行回退(自己的记录直接执行;他人记录需用户在界面执行)。
+ *  args: record_id(回退该记录到其 from 值)或 node_id(单步撤销到最近稳定锚);to = 指定目标锚。 */
+export async function toolDcwRollback(agentId: string, args: { record_id?: string, node_id?: string, to?: string }): Promise<{ text: string, isError?: boolean }> {
+  const rb = getRecipeRollBackManager()
+  const recordId = String(args.record_id ?? '').trim()
+  const nodeId = String(args.node_id ?? '').trim()
+  const to = String(args.to ?? '').trim() || undefined
+  if (!recordId && !nodeId)
+    return { text: 'record_id 或 node_id 至少提供一个。', isError: true }
+  try {
+    if (recordId) {
+      const record = rb.recordById(recordId)
+      if (!record)
+        return { text: `优化记录 ${recordId} 不存在。`, isError: true }
+      const takeover = record.agentId !== agentId && rb.isStale(record)
+      if (record.agentId !== agentId && !takeover)
+        return { text: `记录 ${recordId} 不是你发起的优化(发起者:${record.agentId ?? '用户'}),回退他人记录请请用户在数采中心/产线详情执行;若原属主已消失(超时未判定),可先 dcw_judge 接管后再回退。`, isError: true }
+      const fresh = await rb.rollbackRecord(recordId, agentId, 'agent')
+      return { text: `回退已执行:记录 ${recordId} 标记 rolled-back;下发恢复值 ${fresh?.params[0]?.to}${'(以回读为准)'};新回退记录 ${fresh?.id} 已入册。请 daq_query 复测确认恢复。` }
+    }
+    const fresh = await rb.rollbackNode(nodeId, agentId, 'agent', to)
+    return { text: `节点单步回退已执行:恢复到最近稳定锚值;新回退记录 ${fresh?.id} 已入册。请 daq_query 复测确认恢复。` }
+  }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return { text: `回退被拒绝:${msg}(回退经与下发相同的安全门控;冷却期内禁止重复回退)`, isError: true }
+  }
+}
+
+/** 工具:dcw_journal —— 参数变更史/优化记录查询(在册审计;谁/何时/从多少到多少/判定) */
+export async function toolDcwJournal(agentId: string, args: { node_id?: string, recipe_id?: string, limit?: number | string }): Promise<{ text: string, isError?: boolean }> {
+  const rb = getRecipeRollBackManager()
+  const nodeId = String(args.node_id ?? '').trim()
+  const recipeId = String(args.recipe_id ?? '').trim()
+  const limit = Math.min(Number(args.limit) || 20, 100)
+  const repo = getAgentNodeBindingRepo()
+  const bound = new Set(repo.byAgent(agentId).map(b => b.nodeId))
+  if (nodeId && !bound.has(nodeId))
+    return { text: `无权查询节点 ${nodeId} 的账本(仅可查自己绑定的节点)。`, isError: true }
+  const records = rb.records({ nodeId: nodeId || undefined, recipeId: recipeId || undefined, limit })
+  if (records.length === 0)
+    return { text: '窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。' }
+  const lines = records.map((r) => {
+    const p = r.params[0]
+    const judge = r.judge ? `${r.judge.verdict}(${r.judge.by}:${r.judge.reason.slice(0, 50)})` : '未判定'
+    const closed = r.closedAt ? `,关闭于 ${r.closedAt.slice(11, 19)}(${r.closedBy})` : ',进行中'
+    return `- ${r.id} [${r.status}] ${r.nodeName}: ${p?.from ?? '?'} → ${p?.to},设定 ${r.setAt.slice(11, 19)},判定 ${judge}${closed}${r.hypothesis ? `\n  假设: ${r.hypothesis.slice(0, 80)}` : ''}`
+  })
+  const anchors = nodeId ? rb.journal({ nodeId, limit }) : []
+  const anchorLines = anchors.slice(0, 10).map(a => `- ${a.at.slice(11, 19)} [${a.source}/${a.actor}] ${a.prevValue ?? '?'} → ${a.newValue}`)
+  return {
+    text: `优化记录(${records.length} 条,含参数/判定/窗口):\n${lines.join('\n')}${nodeId ? `\n\n参数变更锚(最近 ${anchorLines.length} 条):\n${anchorLines.join('\n')}` : ''}\n\n判定与执行分离:rollback 判定后需 dcw_rollback 执行;回退同样入册可审计。`,
+  }
 }
