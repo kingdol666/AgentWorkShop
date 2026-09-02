@@ -1578,6 +1578,33 @@ export class OmpRpcAgentImpl implements AgentInterface {
           }
         }
 
+        case 'list_other_teams': {
+          // 跨团队观察面(仅 lead):其他团队的场景任务概览
+          const teams = await ws.listOtherTeams()
+          if (teams.length === 0) return { text: '当前没有其他团队(或均未启用)。' }
+          const text = teams.map((t) => {
+            const active = t.activeTasks.length > 0
+              ? t.activeTasks.map(x => `「${x.title}」(${x.state})`).join('、')
+              : '无进行中任务'
+            const done = t.recentCompleted.length > 0
+              ? t.recentCompleted.map(x => `「${x.title}」`).join('、')
+              : '无'
+            return `- ${t.name}${t.description ? `(${t.description})` : ''} · lead=${t.leadName ?? '?'}\n  进行中: ${active}\n  近期完成: ${done}\n  channel_id: ${t.channelId}`
+          }).join('\n')
+          return { text: `其他团队概览:\n${text}\n(需要协作时用 send_cross_channel_message 向对应团队 Leader 发信;查具体知识用 search_other_teams_memory)` }
+        }
+
+        case 'search_other_teams_memory': {
+          // 跨团队共享记忆(全员只读):别的团队沉淀的结论/经验,先查再决定是否发信
+          const query = (req.arguments.query as string | undefined) ?? ''
+          if (!query) return { text: '缺少 query', isError: true }
+          const rows = await ws.searchOtherTeamsMemory({ query, limit: Number(req.arguments.limit ?? 5) })
+          if (rows.length === 0) return { text: `其他团队的共享记忆中没有命中「${query}」的内容。` }
+          const text = rows.map(r =>
+            `- [${r.channelName}] 「${r.title}」(${r.createdAt.slice(0, 10)}): ${r.content}`).join('\n')
+          return { text: `其他团队共享记忆命中 ${rows.length} 条:\n${text}` }
+        }
+
         case 'refuse_task': {
           const taskId = req.arguments.task_id as string
           const reason = req.arguments.reason as string

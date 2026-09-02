@@ -978,6 +978,8 @@ export class AgentChannelManager {
       reassignTask: (taskId, toAgentId) => this.reassignTask(channelId, agent.id, taskId, toAgentId),
       sendMessage: input => this.sendA2A(channelId, agent.id, input),
       sendCrossChannelMessage: input => this.sendCrossChannelMessage(channelId, agent.id, input),
+      listOtherTeams: () => this.listOtherTeamsOverview(channelId, agent.id),
+      searchOtherTeamsMemory: input => this.recallOtherTeamsMemory(channelId, agent.id, input),
       refuseTask: (taskId, reason) => this.refuseTask(channelId, agent.id, taskId, reason),
       pollMailbox: limit => this.pollMailbox(channelId, agent.id, limit),
       waitMailbox: (limit, waitMs) => this.waitMailbox(channelId, agent.id, limit ?? 10, waitMs ?? 0),
@@ -2535,6 +2537,126 @@ export class AgentChannelManager {
       toChannelId: target.id,
       toChannelName: target.name,
       toLeadAgentId: targetLead.id,
+    }
+  }
+
+  /**
+   * 跨团队可见性(仅 lead):其他 channel 的场景任务概览(同主、启用)。
+   * 协同工作流的第一步——先看别的团队在做什么/做过什么,再决定是否发信请求协作。
+   */
+  listOtherTeamsOverview(channelId: string, agentId: string): Array<{
+    channelId: string, name: string, description: string, leadName: string | null,
+    activeTasks: Array<{ id: string, title: string, state: string }>,
+    recentCompleted: Array<{ title: string }>,
+  }> {
+    this.requireMember(channelId, agentId)
+    const sender = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+    if (!sender || sender.role !== 'lead') {
+      throw new AppError(403, 'ROLE_FORBIDDEN', `团队任务概览仅限 Leader(${sender?.name ?? agentId} 是 ${sender?.role ?? '非成员'})`)
+    }
+    const terminal = new Set(['COMPLETED', 'FAILED', 'CANCELED'])
+    return this.otherSameOwnerChannels(channelId).map((c) => {
+      const tasks = this.deps.repos.tasks.listByChannel(c.id)
+      const leadRow = c.leadAgentId ? this.deps.repos.channelAgents.findById(c.leadAgentId) : undefined
+      return {
+        channelId: c.id,
+        name: c.name,
+        description: c.description ?? '',
+        leadName: leadRow?.name ?? null,
+        activeTasks: tasks
+          .filter(t => !terminal.has(t.state))
+          .map(t => ({ id: t.id, title: t.title, state: t.state })),
+        recentCompleted: tasks
+          .filter(t => t.state === 'COMPLETED')
+          .slice(0, 3)
+          .map(t => ({ title: t.title })),
+      }
+    })
+  }
+
+  /**
+   * 跨团队共享记忆检索(lead/worker 皆可,只读):其他 channel 的 __team__ 公共域。
+   * 全员可见——worker 由此知道别的团队做过什么;发现相关经验/结论可直接复用,
+   * 无需跨 channel 发信;查无所得而有协作必要时,再由 lead 发起跨 channel 通信。
+   */
+  recallOtherTeamsMemory(channelId: string, agentId: string, input: { query: string, limit?: number }): Array<{
+    channelId: string, channelName: string, title: string, content: string, importance: number, createdAt: string,
+  }> {
+    this.requireMember(channelId, agentId)
+    const q = input.query.trim()
+    if (!q) return []
+    const others = this.otherSameOwnerChannels(channelId)
+    if (others.length === 0) return []
+    const matchQuery = segmentCJK(q).split(/\s+/).filter(Boolean).join(' OR ')
+    const rows = this.deps.repos.memories.searchTeamSharedAcross(
+      matchQuery,
+      others.map(c => c.id),
+      Math.min(Math.max(input.limit ?? 5, 1), 20),
+    )
+    return rows.map(r => ({
+      channelId: r.channelId,
+      channelName: others.find(c => c.id === r.channelId)?.name ?? r.channelId,
+      title: r.title,
+      content: unsegmentCJK(r.content).slice(0, 400),
+      importance: r.importance,
+      createdAt: r.createdAt,
+    }))
+  }
+
+  /** 同主且启用的其他 channel 列表(跨团队可见性的作用域) */
+  private otherSameOwnerChannels(channelId: string): ChannelRow[] {
+    const self = this.deps.repos.channels.findById(channelId)
+    return this.deps.repos.channels.list().filter(c =>
+      c.id !== channelId
+      && c.enabled === 1
+      && (self?.ownerUserId == null || c.ownerUserId == null || c.ownerUserId === self.ownerUserId))
+  }
+
+  /**
+   * 工具桥(协作工具族):按 agentId 定位 channel 并调用其 workspace 方法。
+   * 与工业工具桥同一服务层,供 REST 直调(测试/运维/控制台)。
+   */
+  invokeAgentWorkspaceTool(agentId: string, tool: string, args: Record<string, unknown> = {}): { text: string, isError?: boolean } {
+    const row = this.deps.repos.channelAgents.findById(agentId)
+    if (!row || row.enabled !== 1) throw new AppError(404, 'NOT_FOUND', `agent 不存在或已停用: ${agentId}`)
+    const ws = this.ensureAgentRuntime(row.channelId, agentId)?.workspace
+    if (!ws) throw new AppError(400, 'AGENT_NOT_READY', `agent 运行时未装配: ${agentId}`)
+    switch (tool) {
+      case 'list_other_teams': {
+        const teams = ws.listOtherTeams()
+        if (teams.length === 0) return { text: '当前没有其他团队(或均未启用)。' }
+        const text = teams.map((t) => {
+          const active = t.activeTasks.length > 0
+            ? t.activeTasks.map(x => `「${x.title}」(${x.state})`).join('、')
+            : '无进行中任务'
+          const done = t.recentCompleted.length > 0
+            ? t.recentCompleted.map(x => `「${x.title}」`).join('、')
+            : '无'
+          return `- ${t.name}${t.description ? `(${t.description})` : ''} · lead=${t.leadName ?? '?'}\n  进行中: ${active}\n  近期完成: ${done}\n  channel_id: ${t.channelId}`
+        }).join('\n')
+        return { text: `其他团队概览:\n${text}\n(需要协作时用 send_cross_channel_message 向对应团队 Leader 发信;查具体知识用 search_other_teams_memory)` }
+      }
+      case 'search_other_teams_memory': {
+        const query = String(args.query ?? '')
+        if (!query) return { text: '缺少 query', isError: true }
+        const rows = ws.searchOtherTeamsMemory({ query, limit: Number(args.limit ?? 5) })
+        if (rows.length === 0) return { text: `其他团队的共享记忆中没有命中「${query}」的内容。` }
+        const text = rows.map(r =>
+          `- [${r.channelName}] 「${r.title}」(${r.createdAt.slice(0, 10)}): ${r.content}`).join('\n')
+        return { text: `其他团队共享记忆命中 ${rows.length} 条:\n${text}` }
+      }
+      case 'send_cross_channel_message': {
+        if (!args.to_channel_id || !args.message) return { text: '缺少 to_channel_id 或 message', isError: true }
+        const r = ws.sendCrossChannelMessage({
+          toChannelId: String(args.to_channel_id),
+          parts: [{ text: String(args.message) }],
+          requireReply: args.require_reply === true,
+          inReplyTo: typeof args.in_reply_to === 'string' ? args.in_reply_to : undefined,
+        })
+        return { text: `跨 Channel 消息已送达「${r.toChannelName}」的 Leader(channel=${r.toChannelId}, lead=${r.toLeadAgentId.slice(0, 8)}),消息 id=${r.messageId.slice(0, 8)}。` }
+      }
+      default:
+        throw new AppError(400, 'BAD_REQUEST', `工具桥不支持该协作工具: ${tool}`)
     }
   }
 

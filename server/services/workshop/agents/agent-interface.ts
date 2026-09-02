@@ -69,6 +69,24 @@ export interface AgentWorkspace {
     toChannelName: string
     toLeadAgentId: string
   }>
+  /** (仅 lead)其他团队概览:同主其余 channel 的场景任务(进行中/近期完成)——跨团队协同的观察面 */
+  listOtherTeams(): Promise<Array<{
+    channelId: string
+    name: string
+    description: string
+    leadName: string | null
+    activeTasks: Array<{ id: string, title: string, state: string }>
+    recentCompleted: Array<{ title: string }>
+  }>>
+  /** (全员)跨团队共享记忆检索:其他 channel 的 __team__ 公共域,只读,带团队归属 */
+  searchOtherTeamsMemory(input: { query: string, limit?: number }): Promise<Array<{
+    channelId: string
+    channelName: string
+    title: string
+    content: string
+    importance: number
+    createdAt: string
+  }>>
   /**
    * 拒绝指派给自己的任务(能力/范畴不匹配):任务置 FAILED(调度器改派他人),
    * 并向派发方(任务创建者,缺省 channel lead)回执拒绝原因。

@@ -6,7 +6,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, StatementSync } from 'node:sqlite'
-import type { MemoryRow } from './database'
+import type { MemoryKind, MemoryRow } from './database'
 
 /** 团队共享记忆域 sentinel(单 channel 内全员可读) */
 export const TEAM_AGENT_ID = '__team__'
@@ -14,7 +14,8 @@ export const TEAM_AGENT_ID = '__team__'
 export interface MemoryUpsertInput {
   channelId: string
   agentId: string
-  kind: 'episodic-task' | 'episodic-peer' | 'semantic'
+  /** 语义见 database.ts MemoryKind(harvest 族参与维护;semantic 知识;策展层双免) */
+  kind: MemoryKind
   title: string
   /** title 的 CJK 切分副本(FTS 索引用;调用方经 AgentMemory.segmentCJK 处理,V8) */
   titleFts: string
@@ -75,6 +76,15 @@ export function createMemoryRepo(db: DatabaseSync) {
   const agentIdsStmt = db.prepare(
     `SELECT DISTINCT agent_id FROM agent_memories WHERE agent_id != ?`,
   )
+  const channelIdsStmt = db.prepare(
+    `SELECT DISTINCT channel_id AS channelId FROM agent_memories`,
+  )
+  const getByIdStmt = db.prepare(
+    `SELECT id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
+       importance, task_id AS taskId, access_count AS accessCount,
+       last_accessed_at AS lastAccessedAt, created_at AS createdAt
+     FROM agent_memories WHERE id = ?`,
+  )
   // ===== 向量方法(P1;vec0 分区表 + mem_rowid 辅助列映射)=====
   // 已实测事实:
   // - vec0 分区表不支持显式 rowid 插入 → 以 +mem_rowid 辅助列映射 agent_memories.rowid
@@ -121,6 +131,24 @@ export function createMemoryRepo(db: DatabaseSync) {
     /** bm25 检索(恒含 team 共享行;matchQuery 为 OR 连接切分词) */
     search(agentId: string, matchQuery: string, limit: number): Array<MemoryRow & { bm25: number }> {
       return searchStmt.all(matchQuery, agentId, TEAM_AGENT_ID, limit) as unknown as Array<MemoryRow & { bm25: number }>
+    },
+
+    /**
+     * 跨团队共享域检索(hardening 后的协作扩展;只读):仅 __team__ 行,
+     * 限定目标 channel 集合(调用方保证同主/启用),按 bm25 排序。
+     * matchQuery 为 OR 连接的切分词(与 search 同规约)。
+     */
+    searchTeamSharedAcross(matchQuery: string, channelIds: string[], limit: number): Array<MemoryRow & { bm25: number }> {
+      if (channelIds.length === 0) return []
+      const placeholders = channelIds.map(() => '?').join(', ')
+      const stmt = db.prepare(
+        `SELECT ${COLS}, f.rank AS bm25
+         FROM agent_memories_fts f
+         JOIN agent_memories m ON m.rowid = f.memory_rowid
+         WHERE agent_memories_fts MATCH ? AND m.agent_id = ? AND m.channel_id IN (${placeholders})
+         ORDER BY f.rank LIMIT ?`,
+      )
+      return stmt.all(matchQuery, TEAM_AGENT_ID, ...channelIds, limit) as unknown as Array<MemoryRow & { bm25: number }>
     },
 
     listRecent(agentId: string, limit: number): MemoryRow[] {
@@ -186,6 +214,16 @@ export function createMemoryRepo(db: DatabaseSync) {
     /** 有记忆的 agent 清单(维护任务迭代;排除 team) */
     listMemoryAgentIds(): string[] {
       return (agentIdsStmt.all(TEAM_AGENT_ID) as Array<{ agent_id: string }>).map(r => r.agent_id)
+    },
+
+    /** 有记忆的 channel 清单(team 域行按 channel 迭代维护用) */
+    listChannelIds(): string[] {
+      return (channelIdsStmt.all() as Array<{ channelId: string }>).map(r => r.channelId)
+    },
+
+    /** 按 id 取单行(brief 置顶注入等直取场景;不存在返回 null) */
+    getById(id: string): MemoryRow | null {
+      return (getByIdStmt.get(id) as MemoryRow | undefined) ?? null
     },
 
     // ===== vec:延迟建表(vecInit)/ 刷新写入(vecSet)/ 删除(vecDelete)/ 分区 kNN(vecSearch)=====

@@ -661,5 +661,36 @@
         "message"
       ]
     }
+  },
+  {
+    "name": "list_other_teams",
+    "label": "List Other Teams",
+    "description": "[Leader only] Overview of the OTHER teams (channels) in this workspace: each team name, description, lead, its in-progress scenario tasks and recently completed tasks. Use this BEFORE requesting cross-channel collaboration: if another team is already working on (or has finished) something relevant, message their leader about it; if their shared memory may already contain the answer, search it with search_other_teams_memory first. Workers cannot call this tool.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": []
+    }
+  },
+  {
+    "name": "search_other_teams_memory",
+    "label": "Search Other Teams Memory",
+    "description": "[All members] Read-only search across the SHARED memory of other teams (channels) in this workspace - what other teams have learned/concluded/done. Use it to reuse existing knowledge instead of asking for it: if you find relevant results, apply them directly; if nothing relevant exists but the other team is working on it, ask your leader to message that team leader via send_cross_channel_message. Results are attributed to their team.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "What to look for (keywords of the knowledge/conclusion)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max results (default 5)"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
   }
 ]
