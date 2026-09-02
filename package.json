@@ -1,8 +1,23 @@
 {
   "name": "agentworkshop",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
+  "exports": {
+    ".": {
+      "types": "./sdk/index.d.mts",
+      "default": "./sdk/index.mjs"
+    },
+    "./sdk": {
+      "types": "./sdk/index.d.mts",
+      "default": "./sdk/index.mjs"
+    },
+    "./sdk/client": {
+      "types": "./sdk/client.d.mts",
+      "default": "./sdk/client.mjs"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "aw": "bin/aw.mjs",
     "agentworkshop": "bin/aw.mjs"

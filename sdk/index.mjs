@@ -15,29 +15,15 @@
 // ============================================================
 import { SDK_VERSION, definePlugin, createPluginContext, createRouteTable, validatePluginModule, pluginKvExists } from './context.mjs'
 import { HookBus } from './hooks.mjs'
+import { createPlatformClient } from './api.mjs'
 import { CLIENT_SDK_VERSION, createClientContext } from './client.mjs'
+import { LIFECYCLE_EVENTS, CLIENT_EVENTS } from './lifecycle.mjs'
 
 export { SDK_VERSION, definePlugin, createPluginContext, createRouteTable, validatePluginModule, pluginKvExists } from './context.mjs'
 export { HookBus } from './hooks.mjs'
+export { createPlatformClient } from './api.mjs'
 export { CLIENT_SDK_VERSION, createClientContext } from './client.mjs'
-
-/** 服务端生命周期事件清单(宿主触发;文档见 docs/plugins.md) */
-export const LIFECYCLE_EVENTS = Object.freeze([
-  'plugin:host:init',
-  'event:*',
-  'daq:sample',
-  'dcw:write',
-  'line:start',
-  'line:stop',
-  'server:close',
-])
-
-/** 客户端生命周期事件清单 */
-export const CLIENT_EVENTS = Object.freeze([
-  'client:init',
-  'event:*',
-  'page:change',
-])
+export { LIFECYCLE_EVENTS, CLIENT_EVENTS } from './lifecycle.mjs'
 
 export default {
   SDK_VERSION,
@@ -47,6 +33,7 @@ export default {
   createRouteTable,
   validatePluginModule,
   pluginKvExists,
+  createPlatformClient,
   CLIENT_SDK_VERSION,
   createClientContext,
   LIFECYCLE_EVENTS,

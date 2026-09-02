@@ -60,6 +60,19 @@ const devHost = String(eff.effective['server.host'] ?? '0.0.0.0')
 const portSource = eff.sources['server.dev.port']
 console.log(`[config] 开发端口 -> ${devPort} (source: ${portSource}${hasPort ? ', CLI 显式覆盖生效' : ''})`)
 
+// 端口注入 worker 环境链(PORT):CLI 显式值优先,否则引擎有效值 —— 与实际监听端口一致。
+// 插件宿主(经 PORT env)自环调用 ctx.api 依赖此值;注意 nuxt dev 会自行覆盖 PORT,
+// 因此必须在重入之前于顶层 guard spawn 时就位 —— 见文件头部 guard 块的 env 透传。
+const cliPort = (() => {
+  const i = rest.indexOf('--port')
+  if (i >= 0 && rest[i + 1]) return rest[i + 1]
+  const eq = rest.find(a => a.startsWith('--port='))
+  return eq ? eq.slice(7) : null
+})()
+const effectivePort = cliPort ?? devPort
+process.env.PORT = String(effectivePort)
+console.log(`[config] worker PORT env -> ${effectivePort}`)
+
 const inject = [...rest]
 if (!hasPort) inject.push('--port', String(devPort))
 if (!hasHost) inject.push('--host', devHost)

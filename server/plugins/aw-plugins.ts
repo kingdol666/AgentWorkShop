@@ -11,7 +11,13 @@ import { dirname, resolve } from 'node:path'
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 export default defineNitroPlugin((nitroApp) => {
-  void initPluginHost({ cwd: process.cwd(), packageRoot })
+  void initPluginHost({ cwd: process.cwd(), packageRoot }).then((host) => {
+    // 实际监听端口回填(nitro listen 后 ctx.api 自环 origin 才准确)
+    nitroApp.hooks.hookOnce('listen', (listener: { port?: number }) => {
+      if (listener?.port)
+        host.setSelfOrigin(listener.port)
+    })
+  })
   nitroApp.hooks.hookOnce('close', () => {
     void shutdownPluginHost()
   })

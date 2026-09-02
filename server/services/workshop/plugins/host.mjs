@@ -9,7 +9,7 @@
 // —— ctx 由宿主注入,插件运行时零导入依赖(sdk/ 供类型与显式糖)。
 // 错误隔离:单插件装载/执行失败记入 failures,绝不拖垮主服务。
 // ============================================================
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, watch } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { HookBus, createPluginContext, createRouteTable, validatePluginModule } from '@/sdk/index.mjs'
@@ -75,6 +75,7 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
     }),
     routes: createRouteTable(),
     plugins: new Map(),
+    disposables: new Map(), // name → fn[](setup 内 ctx.onDispose 登记;server:close 时回收)
     failures: [],
     initedAt: null,
     logger,
@@ -83,6 +84,7 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
 
   // 有效配置(只读面;引擎/模式解析从运行根动态加载,js-yaml 由对应 node_modules 解析)
   let config = null
+  let settingsPath = null
   let paths = { home: defaultHome(), configRoot: join(cwd, '.AgentWorkShop'), dataDir: join(cwd, '.AgentWorkShop', 'data') }
   try {
     const homeMod = await import(pathToUrl(join(cwd, 'shared', 'config', 'home.mjs')))
@@ -91,12 +93,58 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
     if (engineRoot && existsSync(join(engineRoot, 'shared', 'config', 'engine.mjs'))) {
       const engine = await import(pathToUrl(join(engineRoot, 'shared', 'config', 'engine.mjs')))
       config = engine.loadEffective({ configPath: rm.configPath, settingsPath: rm.settingsPath, env: process.env })
+      settingsPath = rm.settingsPath
     }
     paths = { home: rm.home, configRoot: rm.configRoot, dataDir: rm.dataDir }
     host.logger.info(`配置根: ${rm.configRoot} (${rm.mode} 模式)`)
   }
   catch (err) {
     host.logger.warn('配置引擎加载降级(插件 ctx.config 将为空):', err?.message)
+  }
+  host.config = config
+  // 自环 origin:PORT env(prod) > argv --port(dev:dev-guard 转发链天然携带) > 配置 dev 端口;
+  // nitro listen 钩子(setSelfOrigin)仍保留为最终兜底
+  const argPort = (() => {
+    const argv = process.argv
+    const i = argv.indexOf('--port')
+    if (i >= 0 && argv[i + 1]) return argv[i + 1]
+    const eq = argv.find(a => a.startsWith('--port='))
+    return eq ? eq.slice(7) : null
+  })()
+  let selfOrigin = `http://127.0.0.1:${process.env.PORT ?? process.env.NITRO_PORT ?? argPort ?? config?.effective?.['server.dev.port'] ?? 3000}`
+  host.setSelfOrigin = (port) => {
+    selfOrigin = `http://127.0.0.1:${port}`
+    host.logger.info(`自环 origin 就绪: ${selfOrigin}`)
+  }
+  host.selfOrigin = () => selfOrigin
+  host.logger.info(`自环 origin: ${selfOrigin} (PORT=${process.env.PORT ?? '∅'} NITRO_PORT=${process.env.NITRO_PORT ?? '∅'} argPort=${argPort ?? '∅'})`)
+
+  // 配置变更监听:runtime-settings.json 变化 → 原地刷新 effective + config:changed 钩子
+  if (settingsPath && existsSync(settingsPath)) {
+    try {
+      let debounce = null
+      watch(settingsPath, () => {
+        clearTimeout(debounce)
+        debounce = setTimeout(async () => {
+          try {
+            if (host.config && existsSync(settingsPath)) {
+              const homeMod = await import(pathToUrl(join(cwd, 'shared', 'config', 'home.mjs')))
+              const rm = homeMod.resolveRunMode({ cwd, packageRoot, env: process.env })
+              const engine = await import(pathToUrl(join((rm.mode === 'repo' ? rm.root : packageRoot ?? rm.root) ?? cwd, 'shared', 'config', 'engine.mjs')))
+              const fresh = engine.loadEffective({ configPath: rm.configPath, settingsPath: rm.settingsPath, env: process.env })
+              Object.assign(host.config.effective, fresh.effective)
+              host.config.sources = fresh.sources
+            }
+            await host.bus.emit('config:changed', { at: new Date().toISOString() })
+            host.logger.info('配置变更已广播(config:changed)')
+          }
+          catch (err) {
+            host.logger.warn('config:changed 处理失败:', err?.message)
+          }
+        }, 300)
+      })
+    }
+    catch { /* fs.watch 不可用时插件可经轮询自行感知 */ }
   }
 
   const entries = discoverPluginDirs(cwd)
@@ -129,12 +177,15 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
           rec.routes.push({ method: String(m).toUpperCase(), path: p })
         },
       }
+      const perPluginDisposables = []
+      host.disposables.set(def.name, perPluginDisposables)
       const ctx = createPluginContext({
         name: def.name,
         scope,
         dir,
         hooks: host.bus,
         logger: {
+          debug: (...a) => logger.info(`[${def.name}][debug]`, ...a),
           info: (...a) => logger.info(`[${def.name}]`, ...a),
           warn: (...a) => logger.warn(`[${def.name}]`, ...a),
           error: (...a) => logger.error(`[${def.name}]`, ...a),
@@ -142,6 +193,11 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
         config,
         paths,
         emitter,
+        onDispose: (fn) => {
+          perPluginDisposables.push(fn)
+          return fn
+        },
+        selfOrigin: host.selfOrigin,
       })
 
       // 声明式 routes + setup 内 ctx.route() 两种形态都支持
@@ -214,10 +270,20 @@ export function pluginManifest() {
   }))
 }
 
-/** 关机钩子(nitro close 时调用) */
+/** 关机钩子(nitro close 时调用):先逐插件回收订阅/定时器,再广播 server:close */
 export async function shutdownPluginHost() {
   const host = getPluginHost()
   if (!host) return
+  for (const [name, list] of host.disposables ?? []) {
+    for (const fn of list.splice(0)) {
+      try {
+        await fn()
+      }
+      catch (err) {
+        host.logger.warn(`[${name}] onDispose 失败:`, err?.message)
+      }
+    }
+  }
   await host.bus.emit('server:close', { at: new Date().toISOString() })
-  host.logger.info('已发出 server:close,插件宿主关闭')
+  host.logger.info('插件清理完成,已发出 server:close')
 }

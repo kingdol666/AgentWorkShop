@@ -1,22 +1,26 @@
 // ============================================================
 // AgentWorkShop SDK — 服务端插件上下文工厂（宿主调用;插件经 setup(ctx) 获得）
 // ------------------------------------------------------------
-// ctx 形态:
-//   ctx.name / ctx.scope('home'|'project') / ctx.dir        — 身份与目录
-//   ctx.hooks    HookBus                                     — 生命周期钩子(on/once/off/emit)
-//   ctx.logger   前缀日志(info/warn/error/debug)             — 插件名自动前缀
-//   ctx.config   { get(key), all() }                         — 有效配置只读(四层引擎)
-//   ctx.dataDir / ctx.kv { get,set,all,bump }                — 插件私有持久化(json 落配置根 data/plugins/<name>)
-//   ctx.route(method, path, handler)                         — 注册插件 API → /api/plugins/<name><path>
-//   ctx.http    { get,post } 带超时 fetch                     — 对外请求(仅 http/https)
-//   ctx.events  { on(type,fn) }                              — scene 实时事件订阅(event:* 桥的糖)
-//   ctx.paths    { home, configRoot, dataDir }               — 配置根信息
+// ctx 形态(运行时完整变量面):
+//   身份    ctx.name / ctx.scope('home'|'project') / ctx.dir / ctx.sdkVersion
+//   钩子    ctx.hooks   HookBus(生命周期 + event:*)                  [SDK]
+//   日志    ctx.logger  { debug, info, warn, error } 插件名前缀      [SDK]
+//   配置    ctx.config  { get(key), all(), onChange(fn) }            [SDK]
+//   存储    ctx.kv      { get,set,all,bump } 内存态+防抖落盘          [SDK]
+//   定时    ctx.timer   { setInterval, setTimeout } 服务关闭自动回收  [SDK]
+//   清理    ctx.onDispose(fn) / ctx.subscriptions                    [SDK]
+//   路由    ctx.route(method, path, handler) → /api/plugins/<name>… [SDK]
+//   平台    ctx.api     平台 REST 客户端(lines/daq/dcw/twins/teams…) [SDK]
+//   网络    ctx.http    { get, post } 带超时 fetch(仅 http/https)    [SDK]
+//   事件    ctx.events  { on(type,fn), off }  scene 实时事件          [SDK]
+//   路径    ctx.paths   { home, configRoot, dataDir }                [SDK]
 // ============================================================
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { HookBus } from './hooks.mjs'
+import { createPlatformClient } from './api.mjs'
 
-export const SDK_VERSION = '0.2.2'
+export const SDK_VERSION = '0.3.0'
 
 /** 允许的对外请求协议守卫(拒绝 file:/data: 等;宿主/插件同守此规则) */
 function safeUrl(raw, timeoutMs = 8000) {
@@ -28,7 +32,7 @@ function safeUrl(raw, timeoutMs = 8000) {
 
 /**
  * 创建服务端插件上下文。
- * @param {{ name, scope, dir, hooks, logger, config, paths, emitter }} opts 宿主装配
+ * @param {{ name, scope, dir, hooks, logger, config, paths, emitter, onDispose, selfOrigin }} opts 宿主装配
  */
 export function createPluginContext(opts) {
   const { name, scope, dir, hooks, config, paths, emitter } = opts
@@ -39,6 +43,29 @@ export function createPluginContext(opts) {
     warn: () => {},
     error: () => {},
     ...(opts.logger ?? {}),
+  }
+
+  // ---- 订阅回收(VSCode subscriptions 范式):服务关闭时宿主逐个调用 ----
+  const disposables = []
+  const onDispose = (fn) => {
+    if (typeof fn === 'function') disposables.push(fn)
+    return fn
+  }
+
+  // ---- 定时器:自动登记回收,杜绝插件定时器泄漏 ----
+  const timer = {
+    setInterval: (fn, ms, ...rest) => {
+      const id = setInterval(fn, ms, ...rest)
+      if (typeof id === 'object' && id !== null && 'unref' in id) id.unref?.()
+      onDispose(() => clearInterval(id))
+      return id
+    },
+    setTimeout: (fn, ms, ...rest) => {
+      const id = setTimeout(fn, ms, ...rest)
+      if (typeof id === 'object' && id !== null && 'unref' in id) id.unref?.()
+      onDispose(() => clearTimeout(id))
+      return id
+    },
   }
 
   // ---- 插件私有持久化:内存态为准 + 200ms 防抖落盘 —— 高频钩子(daq:sample)
@@ -77,6 +104,8 @@ export function createPluginContext(opts) {
     config: {
       get: key => config?.effective?.[key],
       all: () => ({ ...config?.effective }),
+      /** 运行时覆盖变更订阅(runtime-settings.json 变化;宿主 fs.watch 驱动) */
+      onChange: fn => hooks.on('config:changed', fn),
     },
     paths: { ...paths },
     dataDir: kvDir,
@@ -94,7 +123,21 @@ export function createPluginContext(opts) {
         return kvState[key]
       },
     },
+    timer,
+    onDispose,
+    /** 订阅式清理对象({ dispose(){} })集中登记 */
+    subscriptions: {
+      add: (d) => {
+        disposables.push(typeof d === 'function' ? d : (...a) => d.dispose?.(...a))
+        return d
+      },
+    },
     route: (method, path, handler) => emitter?.registerRoute(name, method, path, handler),
+    /** 平台 REST 客户端(自环 origin 延迟解析;鉴权端点请 ctx.api.setToken(token)) */
+    api: createPlatformClient({
+      baseUrl: typeof opts.selfOrigin === 'function' ? opts.selfOrigin : () => opts.selfOrigin,
+      logger,
+    }),
     http: {
       get: (url, opts2 = {}) => fetch(url, { ...safeUrl(url, opts2.timeoutMs), ...opts2 }),
       post: (url, body, opts2 = {}) => fetch(url, {
@@ -165,8 +208,6 @@ export function definePlugin(def) {
 export function pluginKvExists(dataDir, name) {
   return existsSync(join(resolve(dataDir), 'plugins', name, 'kv.json'))
 }
-
-export { dirname }
 
 export default {
   SDK_VERSION,
