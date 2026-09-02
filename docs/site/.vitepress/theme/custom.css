@@ -1,0 +1,347 @@
+/* ============================================================
+   AgentWorkShop docs · 控制室主题
+   令牌与 app/components/workshop/town/TownView.vue --hud-* 同源;
+   母题:轨式 + 刻度 + 设备铭牌。单色板(无明暗切换),绿只做信号色。
+   ============================================================ */
+
+:root {
+  /* Town HUD 令牌 */
+  --aw-bg: #070b13;
+  --aw-panel: #0d1420;
+  --aw-panel-2: #111a2b;
+  --aw-raised: #152034;
+  --aw-line: #1d2a42;
+  --aw-line-hi: #2c4568;
+  --aw-text: #e8eef8;
+  --aw-dim: #8fa0b5;
+  --aw-faint: #5f6e84;
+  --aw-green: #35e0a0;
+  --aw-green-dim: #1f9e6e;
+  --aw-cyan: #41c8f4;
+  --aw-amber: #f6c453;
+  --aw-danger: #ff6b6b;
+  --aw-code-bg: #0a111d;
+  --aw-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'Cascadia Mono',
+    Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* VitePress 变量 → 控制室色板 */
+  --vp-c-bg: var(--aw-bg);
+  --vp-c-bg-alt: var(--aw-bg);
+  --vp-c-bg-elv: var(--aw-panel-2);
+  --vp-c-bg-soft: var(--aw-panel);
+  --vp-c-text-1: var(--aw-text);
+  --vp-c-text-2: var(--aw-dim);
+  --vp-c-text-3: var(--aw-faint);
+  --vp-c-border: var(--aw-line-hi);
+  --vp-c-divider: var(--aw-line);
+  --vp-c-gutter: #16202f;
+  --vp-c-brand-1: var(--aw-green);
+  --vp-c-brand-2: #2fc793;
+  --vp-c-brand-3: var(--aw-green-dim);
+  --vp-c-brand-soft: rgba(53, 224, 160, 0.14);
+  --vp-nav-bg-color: rgba(7, 11, 19, 0.86);
+  --vp-sidebar-bg-color: var(--aw-bg);
+  --vp-code-block-bg: var(--aw-code-bg);
+  --vp-code-color: #6fe3b6;
+  --vp-code-lang-color: var(--aw-faint);
+  --vp-code-line-highlight-color: rgba(65, 200, 244, 0.08);
+  --vp-font-family-mono: var(--aw-mono);
+  --vp-button-brand-bg: var(--aw-green);
+  --vp-button-brand-text: #06251a;
+  --vp-button-brand-border: var(--aw-green);
+  --vp-button-brand-hover-bg: #55ecb6;
+  --vp-button-brand-hover-text: #04120c;
+  --vp-button-brand-hover-border: #55ecb6;
+  --vp-button-brand-active-bg: var(--aw-green-dim);
+  --vp-button-brand-active-border: var(--aw-green-dim);
+  --vp-button-alt-bg: var(--aw-panel);
+  --vp-button-alt-text: #a9b8cc;
+  --vp-button-alt-border: var(--aw-line-hi);
+  --vp-button-alt-hover-bg: var(--aw-panel-2);
+  --vp-button-alt-hover-text: var(--aw-green);
+  --vp-button-alt-hover-border: var(--aw-green-dim);
+  --vp-home-hero-name-color: var(--aw-text);
+  --vp-local-search-bg: var(--aw-panel);
+  --vp-local-search-result-border: var(--aw-line);
+}
+
+::selection {
+  background: rgba(53, 224, 160, 0.28);
+  color: var(--aw-text);
+}
+
+/* ---------- 导航 ---------- */
+.VPNavBar .title {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.VPNavBar .divider-line,
+.VPNavBar.menu-has-page + .VPNavBar .divider-line {
+  background-color: var(--aw-line) !important;
+}
+
+/* ---------- 侧栏:轨式母题 ---------- */
+.VPSidebar {
+  border-right: 1px solid var(--aw-line);
+}
+
+/* 分组标题 = 设备铭牌(等宽大写) */
+.VPSidebar .VPSidebarItem.level-0 > .item .text {
+  font-family: var(--aw-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--aw-faint);
+}
+
+/* 激活项:信号绿 + 轨道段标记 */
+.VPSidebar .VPSidebarItem.level-1 > .item {
+  position: relative;
+}
+
+.VPSidebar .VPSidebarItem.level-1.is-active > .item::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 2px;
+  background: var(--aw-green);
+}
+
+@media (min-width: 960px) {
+  .VPSidebar .VPSidebarItem.level-1.is-active > .item::before {
+    left: -24px;
+  }
+}
+
+/* ---------- 文档正文 ---------- */
+.vp-doc h1 {
+  letter-spacing: -0.02em;
+}
+
+.vp-doc h2 {
+  letter-spacing: -0.01em;
+  border-top: 1px solid var(--aw-line);
+}
+
+.vp-doc p {
+  line-height: 1.75;
+}
+
+/* 行内代码 = 端子 */
+.vp-doc :not(pre) > code {
+  background: rgba(53, 224, 160, 0.09);
+  border: 1px solid rgba(53, 224, 160, 0.16);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+
+/* 代码块 = 接线面板 */
+.vp-doc div[class*='language-'] {
+  border: 1px solid var(--aw-line);
+  border-radius: 10px;
+}
+
+/* 表格 = 数据读数 */
+.vp-doc th {
+  background: var(--aw-panel);
+  font-family: var(--aw-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--aw-dim);
+}
+
+.vp-doc tr {
+  background: transparent;
+}
+
+.vp-doc tr:hover td {
+  background: rgba(17, 26, 43, 0.5);
+}
+
+/* 提示块 */
+.vp-doc .custom-block.tip {
+  background: rgba(53, 224, 160, 0.07);
+  border-color: rgba(53, 224, 160, 0.35);
+}
+
+.vp-doc .custom-block.warning {
+  background: rgba(246, 196, 83, 0.07);
+  border-color: rgba(246, 196, 83, 0.35);
+}
+
+.vp-doc .custom-block.danger {
+  background: rgba(255, 107, 107, 0.07);
+  border-color: rgba(255, 107, 107, 0.35);
+}
+
+.vp-doc .custom-block .custom-block-title {
+  font-family: var(--aw-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* 翻页器 */
+.VPDocFooter .pager-link {
+  border: 1px solid var(--aw-line);
+  background: var(--aw-panel);
+}
+
+.VPDocFooter .pager-link:hover {
+  border-color: var(--aw-green-dim);
+}
+
+.VPDocFooter .pager-link .desc {
+  color: var(--aw-faint);
+}
+
+/* ---------- 首页 hero ---------- */
+/* 关掉默认的径向光晕(反 slop:不加没有信息量的 glow) */
+.VPHomeHero .image-bg {
+  display: none;
+}
+
+.VPHomeHero .image-container img {
+  border: 1px solid var(--aw-line);
+  border-radius: 12px;
+  background: var(--aw-panel);
+  padding: 4px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.VPHomeHero .name {
+  letter-spacing: -0.02em;
+}
+
+/* 无图纯排版 hero:放宽主列与文字列,保证中文标题不拆词换行 */
+.VPHomeHero .container .main {
+  max-width: 960px;
+}
+
+.VPHomeHero .name,
+.VPHomeHero .text,
+.VPHomeHero .tagline {
+  max-width: 960px;
+}
+
+.VPHomeHero .tagline {
+  color: var(--aw-dim);
+}
+
+/* feature 卡 = 机柜面板;图标槽 = 设备铭牌 */
+.VPFeature {
+  background: var(--aw-panel);
+  border: 1px solid var(--aw-line);
+  border-radius: 12px;
+  transition: border-color 0.25s;
+}
+
+.VPFeature:hover {
+  border-color: var(--aw-line-hi);
+}
+
+.VPFeature .details {
+  color: var(--aw-dim);
+  line-height: 1.7;
+}
+
+.aw-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--aw-line-hi);
+  border-radius: 4px;
+  background: var(--aw-code-bg);
+  color: var(--aw-green);
+  font-family: var(--aw-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.18em;
+}
+
+/* 首页页脚 */
+.VPFooter {
+  border-top: 1px solid var(--aw-line) !important;
+  background: transparent !important;
+}
+
+.VPFooter .message {
+  color: var(--aw-dim);
+}
+
+.VPFooter .copyright {
+  color: var(--aw-faint);
+}
+
+/* ---------- 首页内容带(刻度尺 / 截图 / 状态带) ---------- */
+.aw-ruler {
+  height: 14px;
+  margin: 4px 0 44px;
+  background:
+    repeating-linear-gradient(90deg, var(--aw-line-hi) 0 1px, transparent 1px 50px),
+    repeating-linear-gradient(90deg, var(--aw-line) 0 1px, transparent 1px 10px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.aw-shotband img {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--aw-line);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* 文本代码块(协议声明等长行)允许折行 */
+.vp-doc div[class*='language-text'] code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.aw-cap {
+  margin-top: 10px;
+  text-align: center;
+  font-family: var(--aw-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--aw-dim);
+}
+
+.aw-statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 24px;
+  margin: 40px auto 0;
+  padding: 11px 18px;
+  border: 1px solid var(--aw-line);
+  border-radius: 8px;
+  background: var(--aw-panel);
+  font-family: var(--aw-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--aw-dim);
+}
+
+.aw-statusbar span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aw-statusbar span::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--aw-green);
+}

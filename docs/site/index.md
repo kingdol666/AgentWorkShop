@@ -2,13 +2,13 @@
 layout: home
 
 hero:
-  name: AgentWorkShop
-  text: Agent 团队 × 产线 × 数字孪生
+  name: "AgentWorkShop"
+  text: "Agent 团队 × 产线 × 数字孪生"
   tagline: 一个配置驱动的运行时 —— AI Agent 团队读取真实遥测、经人工审批写入设定值,
     每个事件实时流进 3D 孪生小镇。npm 一键安装,SDK 集成,插件增强。
   actions:
     - theme: brand
-      text: 快速开始 →
+      text: 快速开始
       link: /guide/getting-started
     - theme: alt
       text: SDK 开发指南
@@ -18,27 +18,54 @@ hero:
       link: /plugins/
 
 features:
-  - icon: 📦
+  - icon: '<span class="aw-tag">PKG</span>'
     title: 一键安装 · 任意目录启动
     details: npm i -g agentworkshop 后,任意目录 aw start。首次启动自动构建并初始化
       ~/.AgentWorkShop 配置根 —— 与工作目录和环境无关。
-  - icon: 🛠
+  - icon: '<span class="aw-tag">CLI</span>'
     title: aw CLI · 指令注册系统
     details: config / dev / start / build / doctor / update 内置;
       三层指令注册(项目级 > 用户级 > 内建),放入目录即生效。
-  - icon: 🧩
-    title: SDK · 作为项目服务的客户端
+  - icon: '<span class="aw-tag">SDK</span>'
+    title: SDK · 平台 REST 客户端
     details: createPlatformClient 类型化消费产线/数采/写控/孪生 REST 面;
       鉴权、信封解包、超时与协议守卫开箱即用。
-  - icon: 🔌
+  - icon: '<span class="aw-tag">PLG</span>'
     title: 插件 · 前后端双面增强
     details: 服务端钩子(daq:sample / dcw:write / line 生命周期 / scene 全事件)
       + 浏览器增强脚本 + 插件自有 API 路由,放入目录即装载。
-  - icon: 🏭
+  - icon: '<span class="aw-tag">IND</span>'
     title: 真实工业栈
     details: Modbus TCP / OPC UA 数采,安全量程 ∩ 配方窗口联锁,
       HITL 人工审批 → PLC 写入 → 回读校验,逐样本批次打标。
-  - icon: 🏙
+  - icon: '<span class="aw-tag">TWN</span>'
     title: 3D 数字孪生
     details: Three.js 小镇实时呈现产线设备、节点健康、告警与趋势 —— 与 Agent 消费同一事件流。
+
+footer:
+  message: 依据 PolyForm Noncommercial 1.0.0 开源 · 未经许可不得商用
+  copyright: Copyright © 2026 kingdol (kingdol666)
 ---
+
+<div class="aw-ruler" aria-hidden="true"></div>
+
+<div class="aw-shotband">
+
+![产线运营 —— 产线/产品/配方/批次隔离,联锁写控入口](/line-ops.png)
+
+<p class="aw-cap">LINE OPERATIONS · 产线/配方/批次隔离 · 联锁写控 · 逐样本打标</p>
+
+</div>
+
+```bash
+npm i -g agentworkshop
+aw start        # 任意目录启动 → http://localhost:3000
+```
+
+<div class="aw-statusbar">
+
+<span>WS / MCP / A2A / REST</span>
+<span>Nuxt 4 · node:sqlite</span>
+<span>PolyForm NC 1.0</span>
+
+</div>

@@ -1,8 +1,9 @@
-# AgentWorkShop 插件开发指南（SDK）
+# AgentWorkShop 插件开发指南
 
 > 插件 = 配置根 `plugins/<name>/` 下的一个 node 项目。基于内置 SDK 的生命周期钩子,
-> 可以同时增强**服务端**(数据/事件/API)与**浏览器**(面板/遥测/交互)。
+> 同时增强**服务端**(数据/事件/API)与**浏览器**(面板/遥测/交互)。
 > 与 `aw` 指令同哲学:放入目录即装载,约定优于配置。
+> SDK 全部成员的逐项详解见 [sdk.md](./sdk.md)——本文聚焦插件视角的装配与生命周期。
 
 ## 一、快速开始
 
@@ -22,9 +23,26 @@ plugins/my-plugin/
 └── README.md
 ```
 
-## 二、插件契约
+## 二、装载流程(项目启动时自动发现)
 
-`index.mjs` 导出**普通对象**(零导入依赖——ctx 由宿主注入,这是全局安装零解析链约束下的标准形态;TypeScript 作者可 `import type { definePlugin } from 'agentworkshop/sdk'` 获得类型提示,构建期擦除):
+```
+服务启动(nitro 插件 server/plugins/aw-plugins.ts)
+  └─ 宿主扫描(双作用域,同名项目级覆盖用户级)
+       ├─ <检出>/.AgentWorkShop/plugins/*/index.mjs   (project)
+       └─ ~/.AgentWorkShop/plugins/*/index.mjs        (user / AW_HOME 重定向)
+  └─ 逐插件: 动态 import → 形态校验 → createPluginContext → setup(ctx)
+  └─ 注册插件路由(/api/plugins/<name>/**) + 解析客户端入口
+  └─ emit plugin:host:init
+```
+
+- **错误隔离**:单插件装载/执行失败记入 `failures` 并告警,绝不拖垮主服务。
+- **修改插件文件后需重启服务**(插件目录不在热更新监听范围)。
+- 客户端插件由 `app/plugins/aw-plugins.client.ts` loader 在浏览器侧动态装载,互不影响。
+
+## 三、插件契约
+
+`index.mjs` 导出**普通对象**(零导入依赖——`ctx` 由宿主注入;TypeScript 可 type-only
+导入 `agentworkshop/sdk` 获得类型,运行时擦除):
 
 ```js
 export default {
@@ -39,51 +57,89 @@ export default {
 }
 ```
 
-## 三、服务端 ctx(SDK 注入)
+## 四、服务端生命周期(完整)
 
-| 成员 | 说明 |
-|---|---|
-| `ctx.name / scope('project'\|'user') / dir` | 身份 |
-| `ctx.hooks` | 全局 HookBus:`on / once / off / emit`(异步串行、错误隔离、`*` 通配、连续失败熔断) |
-| `ctx.logger` | `debug/info/warn/error`,自动带插件名前缀 |
-| `ctx.config.get(key) / all()` | 有效配置只读(四层引擎) |
-| `ctx.kv` | 插件私有持久化:`get/set/all/bump`(内存态 + 200ms 防抖落盘 `data/plugins/<name>/kv.json`,高频钩子零竞态) |
-| `ctx.route(method, path, handler)` | 注册插件 API → `**/api/plugins/<name><path>**` |
-| `ctx.http.get/post(url, …)` | 带超时 fetch(仅 http/https,拒绝其他协议) |
-| `ctx.events.on(type, fn)` | scene 实时事件订阅(`event:*` 桥的糖) |
-| `ctx.paths` | `{ home, configRoot, dataDir }` |
+装载完成后,以下事件按业务发生顺序流经 `ctx.hooks`(**每个都可直接 `ctx.hooks.on` 消费**):
 
-## 四、生命周期钩子(服务端)
+### 4.1 `plugin:host:init`
+- **时机**:宿主装载完所有插件后(一次性)。
+- **payload**:`{ plugins: string[], failures: number }`。
+- **用途**:就绪自证;延迟初始化(依赖其他插件已注册路由的场景)。
 
-| 钩子 | 触发时机 | payload |
+### 4.2 `daq:sample`
+- **时机**:数采**下发级**采样——与 WS `daq.reading` 同一点、按节点 `publishIntervalMs` 节拍。
+- **payload**:`{ nodeId, templateRef, value, state, at }`。
+- **用途**:越限告警、采样统计、实时联动。
+- **示例**:
+  ```js
+  ctx.hooks.on('daq:sample', (s) => {
+    if (s.value > (ctx.kv.get('threshold') ?? 180)) ctx.kv.bump('alarms')
+  })
+  ```
+
+### 4.3 `dcw:write`
+- **时机**:写控 ACK 之后(与运维入册同点、同 10s 去重节流)——**观察语义,不影响写控决策**。
+- **payload**:`{ nodeId, name, eng, prevValue, ok, source('manual'|'recipe'|'agent'|'rollback'), lineId, at }`。
+- **用途**:写审计、下发趋势、回写记录。
+
+### 4.4 `line:start` / `line:stop`
+- **时机**:产线开跑/停止(批次窗口开/闭)。
+- **payload**:`{ lineId, runId, recipeId?, productName? }` / `{ lineId, runId }`。
+- **用途**:批次开始联动、停线报告。
+
+### 4.5 `event:<type>` / `event:*`
+- **时机**:scene 全部实时事件(`device.created|updated|deleted`、`daq.reading`、
+  `daq.node.changed`、`daq.controller`、`ops.log` …)——与浏览器 WS 完全同源。
+- **消费**:`ctx.events.on('daq.reading', fn)`(糖衣)或 `ctx.hooks.on('event:daq.reading', fn)`。
+- **用途**:任意平台事件的观察与增强,无需自建 WS 连接。
+
+### 4.6 `config:changed`
+- **时机**:`runtime-settings.json` 变化(`aw config set` / 网页设置写入;宿主 fs.watch 防抖 300ms)。
+- **payload**:`{ at }`;配合 `ctx.config.get/all()` 读取新值。
+- **用途**:阈值热更新、联动参数刷新。
+
+### 4.7 `server:close`
+- **时机**:服务关闭——**先逐插件执行 `ctx.onDispose` 队列,再广播本事件**。
+- **payload**:`{ at }`。
+- **用途**:最终落盘、对外通知。
+
+## 五、服务端 ctx 全成员
+
+| 分组 | 成员 | 说明 |
 |---|---|---|
-| `plugin:host:init` | 宿主装载完所有插件后 | `{ plugins, failures }` |
-| `daq:sample` | DAQ 下发级采样(与 WS `daq.reading` 同点、同节拍) | `{ nodeId, templateRef, value, state, at }` |
-| `dcw:write` | 写控 ACK 后观察(与运维入册同点同去重) | `{ nodeId, name, eng, prevValue, ok, source, lineId, at }` |
-| `line:start` / `line:stop` | 产线开跑/停止 | `{ lineId, runId, recipeId? }` |
-| `event:<type>` / `event:*` | **scene 全部实时事件**(device.created · daq.node.changed · ops.log · daq.reading … 与 WS 同源) | 事件 payload |
-| `server:close` | 服务关闭 | `{ at }` |
+| 身份 | `ctx.name / scope / dir / sdkVersion` | 插件名 / `'project'\|'user'` / 目录 / SDK 版本 |
+| 钩子 | `ctx.hooks` | HookBus:`on/once/off/emit`(异步串行、错误隔离、`'*'` 通配、连续失败 8 次熔断) |
+| 日志 | `ctx.logger` | `debug/info/warn/error`,自动前缀 `[插件名]` |
+| 配置 | `ctx.config.get(key)` / `all()` / `onChange(fn)` | 有效配置只读 + 变更订阅 |
+| 存储 | `ctx.kv.get/set/all/bump` | 插件私有 KV(内存态 + 200ms 防抖落盘,高频钩子零竞态) |
+| 定时 | `ctx.timer.setInterval/setTimeout` | **服务关闭自动回收**,杜绝定时器泄漏 |
+| 清理 | `ctx.onDispose(fn)` / `ctx.subscriptions.add(d)` | `server:close` 前逐个执行(先于广播) |
+| 路由 | `ctx.route(method, path, handler)` | 插件 API → `/api/plugins/<name><path>` |
+| 平台 | `ctx.api` | 平台 REST 客户端(自环 origin;鉴权端点 `ctx.api.setToken(token)`) |
+| 网络 | `ctx.http.get/post` | 通用请求(仅 http/https,默认 8s 超时) |
+| 事件 | `ctx.events.on(type, fn)` | scene 实时事件订阅 |
+| 路径 | `ctx.paths` | `{ home, configRoot, dataDir }` |
 
-> v1 钩子为**观察语义**(不改变联锁/写控决策)。veto 类(拦截/改写)钩子在路线图中。
+> **鉴权说明**:`ctx.api` 自环调用遵循平台 REST 鉴权——免鉴权端点(manifest/ping)开箱即用;
+> 鉴权端点需 `ctx.api.setToken(token)`(token 可经 `AW_TOKEN` 环境变量注入插件)。
+> 仅需进程内数据时优先 `ctx.events`/`ctx.hooks`(零鉴权、零开销)。
 
-## 五、浏览器增强(client.mjs)
+## 六、浏览器增强(client.mjs)
 
-`client.mjs` 是**自包含 ESM**(不可用裸导入如 `vue`——浏览器原生动态加载),导出 `setup(ctx)`:
+`client.mjs` 为**自包含 ESM**(无裸导入),导出 `setup(ctx)`。loader
+(`app/plugins/aw-plugins.client.ts`) 启动期经 `/api/plugins/manifest` 发现并动态装载,
+事件与 WS 完全同源:
 
 | 成员 | 说明 |
 |---|---|
-| `ctx.on('daq:sample', fn)` / `ctx.on('event:daq.reading', fn)` / `ctx.on('*', fn)` | 实时事件订阅(与 WS 同源;另支持 `page:change`) |
+| `ctx.on(type, fn)` | `daq:sample` / `event:<type>` / `event:*` / `page:change` 订阅(pagehide 自动回收) |
+| `ctx.fetch(path, opt?)` | 同源平台 API(JSON + 信封解包,非 2xx 抛错) |
 | `ctx.el(tag, attrs, children)` | DOM 构建 |
-| `ctx.root()` | 插件私有挂载点(右下角,懒创建 `#aw-plugin-<name>`) |
-| `ctx.mount(target, node)` | 挂载到任意选择器/元素 |
-| `ctx.hooks` | 客户端本地 HookBus(`client:init` / `event:*` / `page:change`) |
-| `ctx.log` | 前缀 console |
-
-客户端脚本由服务端端点 `/api/plugins/client/<name>` 以 `text/javascript` 提供,应用启动时
-`aw-plugins.client.ts` loader 自动动态 import 并装载。
+| `ctx.root()` / `ctx.mount(target, node)` | 私有挂载点 / 任意位置挂载 |
+| `ctx.hooks` | 本地 HookBus(`client:init` / `page:change` / `client:destroy`) |
+| `ctx.dispose()` | 卸载(回收订阅 + 清空挂载点;pagehide 自动触发) |
 
 ```js
-// client.mjs
 export function setup(ctx) {
   const badge = ctx.el('div', { style: 'color:#35e0a0' }, ['⌁ 0'])
   ctx.root().append(badge)
@@ -92,36 +148,50 @@ export function setup(ctx) {
 }
 ```
 
-## 六、插件 API(增强后端)
+## 七、插件 API(增强后端)
 
 ```js
 ctx.route('GET', '/stats', () => ctx.kv.all())
-ctx.route('POST', '/reset', () => { ctx.kv.set('samples', 0); return { ok: true } })
+ctx.route('POST', '/reset', (event) => {
+  const body = event.awBody          // 宿主已预读 JSON body
+  ctx.kv.reset()
+  return { ok: true }
+})
 ```
 
-→ `GET/POST /api/plugins/my-plugin/stats|reset`。鉴权 v1 由插件自理(可在 handler 内复用
-`resolveUser(event)` 走业务鉴权)。
+→ `/api/plugins/<name><path>`。宿主 catchall 转发(exact-match),body 预读挂 `event.awBody`;
+v1 鉴权由插件自理(可在 handler 内 `resolveUser(event)` 复用业务鉴权)。
 
-## 七、完整示例
+## 八、真实案例:line-sentinel(产线哨兵)
 
-`sdk/examples/sample-insight/` —— 订阅采样计数 + 统计 API + 浏览器徽标:
+用户级安装,展示 SDK 全部能力面——源码 `~/.AgentWorkShop/plugins/line-sentinel/`:
 
-```bash
-cp -r sdk/examples/sample-insight ~/.AgentWorkShop/plugins/
-aw start   # → GET /api/plugins/sample-insight/stats · 浏览器右下角徽标
-```
+- **`ctx.api`**:启动读取平台产线清单(自环 REST)
+- **`ctx.hooks.on('daq:sample')`**:逐样本计数 + 越限告警(阈值可调)
+- **`ctx.hooks.on('line:start'/'line:stop')`**:运行态跟踪
+- **`ctx.config.onChange`**:配置热更新感知
+- **`ctx.timer`**:5s 心跳 + 免鉴权 manifest ping 自证 REST 通道
+- **`ctx.route`**:`GET /report` 综合报告、`POST /threshold` 阈值设置(`event.awBody`)
+- **`client.mjs`**:右下角实时徽标(样本数 + 告警数)
 
-## 八、发布与信任模型
+实测记录(dev 3127 / prod 3601 双形态):8 秒采样计数 288+、12 节点越限告警、
+心跳间隔 ~1s 内新鲜、浏览器徽标挂载零 pageerror。
 
-- 插件是**任意 node 代码**,与 aw commands 同信任模型:只安装/启用你信任的插件。
-- 插件随配置根走:repo 检出内 = `<repo>/.AgentWorkShop/plugins`(团队可 git 版本化);
-  全局安装 = `~/.AgentWorkShop/plugins`(AW_HOME 可重定向)。
-- 服务端生命周期结束(`server:close`)、卸载插件 = 直接删目录重启。
+## 九、调试与陷阱
 
-## 九、SDK 版本对照
+| 现象 | 原因 / 处理 |
+|---|---|
+| 改了插件代码没生效 | 插件目录不在热更新范围——**重启 `aw start` / `aw dev`** |
+| 客户端徽标没出现 | 打开浏览器 console 看 `[aw-plugins]` 告警;确认 manifest 中 `hasClient: true` |
+| 插件路由 404 | 路由为 exact-match;注意 method 与 path 前导 `/` |
+| `ctx.api` 鉴权 401 | 鉴权端点需 `ctx.api.setToken(token)`;免鉴权端点(manifest/ping)无需 |
+| 插件装载失败 | `aw dev/start` 启动日志有 `[aw-plugins] 装载失败` 详情;修复后重启 |
 
-| SDK | 随包 | 说明 |
-|---|---|---|
-| `sdk/hooks.mjs` | `agentworkshop/sdk`(0.2.2+) | HookBus(可独立用于任何 node 项目) |
-| `sdk/context.mjs` | 同上 | 服务端 ctx 工厂 + 路由表 + 插件校验 |
-| `sdk/client.mjs` | 同上 | 浏览器 ctx 工厂 |
+**信任模型**:插件是任意 node 代码,与 aw commands 同级——只安装/启用你信任的插件。
+
+## 十、发布与作用域
+
+- 用户级(全局):`~/.AgentWorkShop/plugins/` —— `AW_HOME` 可重定向。
+- 项目级(检出):`<repo>/.AgentWorkShop/plugins/` —— 团队可 git 版本化共享。
+- 同名指令式覆盖规则与 commands 一致:**项目级 > 用户级 > 内建**。
+- 卸载 = 删除目录后重启。

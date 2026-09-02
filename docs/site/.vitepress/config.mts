@@ -4,14 +4,21 @@ export default defineConfig({
   lang: 'zh-CN',
   title: 'AgentWorkShop',
   description: 'Agent 团队 × 产线 × 数字孪生 —— 配置驱动 · SDK 集成 · 插件增强',
+  // GitHub Pages 项目页路径(https://kingdol666.github.io/AgentWorkShop/)
+  base: '/AgentWorkShop/',
+  // 单一控制室色板,不提供明暗切换(theme/custom.css 以 --hud-* 令牌承载)
+  appearance: false,
+  lastUpdated: true,
   ignoreDeadLinks: true,
   themeConfig: {
     siteTitle: 'AgentWorkShop',
+    logo: '/favicon.svg',
     nav: [
       { text: '指南', link: '/guide/getting-started' },
       { text: 'SDK', link: '/sdk/' },
       { text: '插件', link: '/plugins/' },
       { text: 'CLI', link: '/cli/' },
+      { text: '开源协议', link: '/guide/license' },
       { text: 'GitHub', link: 'https://github.com/kingdol666/AgentWorkShop' },
     ],
     sidebar: {
@@ -22,6 +29,7 @@ export default defineConfig({
             { text: '快速开始', link: '/guide/getting-started' },
             { text: '配置系统', link: '/guide/configuration' },
             { text: '第一次 Agent × 产线会话', link: '/guide/first-session' },
+            { text: '开源协议', link: '/guide/license' },
           ],
         },
       ],
@@ -57,6 +65,10 @@ export default defineConfig({
       ],
     },
     socialLinks: [{ icon: 'github', link: 'https://github.com/kingdol666/AgentWorkShop' }],
+    footer: {
+      message: '依据 PolyForm Noncommercial 1.0.0 开源 · 未经许可不得商用',
+      copyright: 'Copyright © 2026 kingdol (kingdol666)',
+    },
     search: { provider: 'local', options: { translations: { button: { buttonText: '搜索文档' } } } },
     outline: { level: [2, 3], label: '本页目录' },
     docFooter: { prev: '上一页', next: '下一页' },

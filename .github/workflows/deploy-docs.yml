@@ -29,12 +29,16 @@ jobs:
         with:
           node-version: 24
       # 同步单一事实源的完整指南到站点(单页版;站点索引页保留导航形态)
+      # 源文件缺失时回退到站点内已提交副本,避免单文件遗漏导致整个部署失败
       - name: Sync guides into site
         run: |
           mkdir -p docs/site/cli docs/site/plugins docs/site/sdk
-          cp docs/cli.md docs/site/cli/index.md
-          cp docs/plugins.md docs/site/plugins/guide.md
-          cp docs/sdk.md docs/site/sdk/guide.md
+          if [ -f docs/cli.md ]; then cp docs/cli.md docs/site/cli/index.md
+          else echo "::warning::docs/cli.md missing, keep committed copy"; fi
+          if [ -f docs/plugins.md ]; then cp docs/plugins.md docs/site/plugins/guide.md
+          else echo "::warning::docs/plugins.md missing, keep committed copy"; fi
+          if [ -f docs/sdk.md ]; then cp docs/sdk.md docs/site/sdk/guide.md
+          else echo "::warning::docs/sdk.md missing, keep committed copy"; fi
       - name: Build VitePress site
         run: |
           cd docs/site
