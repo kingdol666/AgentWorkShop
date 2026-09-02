@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "exports": {
     ".": {
       "types": "./sdk/index.d.mts",
@@ -41,7 +42,8 @@
     ".env.example",
     "README-zh.md",
     "docs/cli.md",
-    "docs/plugins.md"
+    "docs/plugins.md",
+    "docs/sdk.md"
   ],
   "packageManager": "pnpm@11.9.0",
   "engines": {

@@ -11,8 +11,9 @@
 [![TypeScript 5.7](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Node ≥ 23.4](https://img.shields.io/badge/Node.js-%E2%89%A5%2023.4-3C873A?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite node:sqlite](https://img.shields.io/badge/SQLite-node:sqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm_NC_1.0-8A2BE2?logo=openaccess&logoColor=white)](./LICENSE)
 
-**[English →](./README.md)**
+**[English →](./README.md)** · **[在线文档 →](https://kingdol666.github.io/AgentWorkShop/)**
 
 *一个配置驱动的平台:**AI Agent 团队**与**工业数字孪生**共享同一运行时——Agent 查询真实遥测、经人工审批的写控回路下发监督设定值，每个事件实时推送到 3D 孪生。*
 
@@ -403,13 +404,19 @@ node scripts/_dbg-full-feature-e2e.mjs    # 全功能 live E2E（需服务端运
 | 边缘部署形态：独立 edge-agent + 中心 broker | 规划中 |
 | 报警外送（邮件/webhook）+ 确认工作流 | 规划中 |
 | CI 流水线（typecheck + lint + e2e） | 规划中 |
-| License 文件 | 待定 |
+| License：PolyForm Noncommercial 1.0.0（源码可得 · 禁止商用） | 已交付 |
 
 ## 许可证
 
 AgentWorkShop 是独立项目，**不是 Anthropic 或任何 LLM 厂商的官方产品**。它通过公开接口与 Agent harness（如 `omp`）集成。
 
-**许可证待定**——将在 `v1.0` 发布前补齐。
+**AgentWorkShop 为源码可得（source-available）软件，依据 [PolyForm Noncommercial 1.0.0](./LICENSE) 发布。**
+
+- ✅ **允许** —— 个人学习、科研、兴趣项目、教学，以及非商业组织（公益、教育、公共研究、政府机构）的使用。
+- ❌ **未经版权人事先书面许可不得商用** —— 任何**商业用途**：销售、付费服务、集成进商业产品、服务于经营活动的生产使用均未获授权。商用授权请另行洽谈。
+- 📌 再分发时必须随附本协议条款与 `Required Notice` 版权声明行。
+
+商用授权联系：[GitHub @kingdol666](https://github.com/kingdol666) · kingdol6080@gmail.com
 
 <div align="center">
 

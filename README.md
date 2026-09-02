@@ -11,8 +11,9 @@
 [![TypeScript 5.7](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Node ≥ 23.4](https://img.shields.io/badge/Node.js-%E2%89%A5%2023.4-3C873A?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite node:sqlite](https://img.shields.io/badge/SQLite-node:sqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm_NC_1.0-8A2BE2?logo=openaccess&logoColor=white)](./LICENSE)
 
-**[中文文档 →](./README-zh.md)**
+**[中文文档 →](./README-zh.md)** · **[Online Docs →](https://kingdol666.github.io/AgentWorkShop/)**
 
 *A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to a 3D twin.*
 
@@ -403,13 +404,19 @@ node scripts/_dbg-full-feature-e2e.mjs    # full-feature live E2E (server must b
 | Edge deployment shape: standalone edge-agent + central broker | Planned |
 | Alarm outbound delivery (email/webhook) + ack workflow | Planned |
 | CI pipeline (typecheck + lint + e2e) | Planned |
-| License file | Pending |
+| License: PolyForm Noncommercial 1.0.0 (source-available, non-commercial) | Shipped |
 
 ## License
 
 AgentWorkShop is an independent project and is **not an official product of Anthropic** or any LLM vendor. It integrates with agent harnesses (e.g. `omp`) through their public interfaces.
 
-**License is TBD** — the license file will be added before the `v1.0` release.
+**AgentWorkShop is source-available software, licensed under the [PolyForm Noncommercial 1.0.0](./LICENSE).**
+
+- ✅ **Permitted** — personal study, research, hobby projects, teaching, and use by noncommercial organizations (charities, education, public research, government).
+- ❌ **Not permitted without prior written permission** — any **commercial use**: selling, paid services, integrating into commercial products, or production use serving a business. Commercial licenses are available from the copyright holder.
+- 📌 When you redistribute the software, you must pass through the `Required Notice` line and these terms.
+
+For commercial licensing, contact: [GitHub @kingdol666](https://github.com/kingdol666) · kingdol6080@gmail.com
 
 <div align="center">
 
