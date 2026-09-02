@@ -88,12 +88,19 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   // 首次装载
   await syncPlugins()
 
-  // 页面切换广播(已装载插件均可感知)
+  // 页面切换广播(已装载插件均可感知;防御性隔离——单插件异常不影响路由)
   if (loaded.size) {
     nuxtApp.hooks.hook('page:finish', () => {
-      const route = useRoute()
+      let path = ''
+      try {
+        path = useRoute().path ?? ''
+      }
+      catch { /* 路由上下文不可用时静默 */ }
       for (const { ctx } of loaded.values()) {
-        void ctx.hooks.emit('page:change', { path: route.path })
+        try {
+          ctx?.hooks?.emit('page:change', { path })
+        }
+        catch { /* 单插件广播失败不阻断 */ }
       }
     })
   }
