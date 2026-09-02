@@ -23,10 +23,10 @@ export async function run(argv, ctx) {
   const nodeMajor = Number(process.versions.node.split('.')[0])
   add('Node.js 版本', nodeMajor >= 20, `v${process.versions.node}${nodeMajor < 23.4 ? '（推荐 ≥23.4：node:sqlite）' : ''}`)
   const { spawnSync } = await import('node:child_process')
-  // Windows 下 spawnSync 不带 shell 找不到 pnpm.cmd,按平台补探测
-  const pmBin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
-  const pm = spawnSync(pmBin, ['--version'], { encoding: 'utf8' })
-  add('pnpm 可用', pm.status === 0, pm.status === 0 ? `v${pm.stdout.trim()}` : '未找到 pnpm')
+  // Windows 下需经 shell 才能spawn pnpm.cmd(Node ≥18.20 对无 shell 的 .cmd spawn 返回 EINVAL)
+  const pmBin = 'pnpm'
+  const pm = spawnSync(pmBin, ['--version'], { encoding: 'utf8', shell: process.platform === 'win32' })
+  add('pnpm 可用', pm.status === 0, pm.status === 0 ? `v${(pm.stdout ?? '').trim()}` : '未找到 pnpm')
 
   // ── AW Home（全局安装模式的配置中枢;两种模式都检查） ──
   const home = ctx.home

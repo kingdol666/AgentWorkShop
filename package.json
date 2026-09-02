@@ -1,7 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.2.0",
-  "private": true,
+  "version": "0.2.1",
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
   "bin": {
@@ -24,6 +23,7 @@
     "uno.config.ts",
     "docker-compose.yml",
     ".env.example",
+    "README-zh.md",
     "docs/cli.md"
   ],
   "packageManager": "pnpm@11.9.0",

@@ -109,6 +109,7 @@ $ aw start
 | `aw doctor` | dsk, check-env | 环境/配置/服务健康检查 |
 | `aw status` | st, info | 运行态总览（模式/配置源/服务/指令表） |
 | `aw register` | reg | 注册自定义指令（本地文件/URL/npm 包） |
+| `aw update` | upgrade | 对比 npm 远程最新版本,有新版就地更新全局安装（`--check` 只查不装） |
 | `aw init` | create, new | 脚手架一个新项目检出 |
 | `aw version` | v | 版本信息 |
 
@@ -188,16 +189,17 @@ npm run build               # 本地构建确认
 
 # 2. 版本与可见性
 npm version patch|minor|major
-npm pkg delete private      # 本仓库默认 private:true,发布前移除
+# private 标志已移除;若恢复过可再删: npm pkg delete private
 # (可选)改名/加 scope: npm pkg set name=@yourorg/agentworkshop
 
-# 3. 发布(需 npm 账号,首次加 --access public)
-npm login
-npm publish --access public
+# 3. 发布(需 npm 账号;本机默认 registry 是 npmmirror 只读镜像,发布必须指定官方源)
+npm login --registry=https://registry.npmjs.org
+npm publish --access public --registry=https://registry.npmjs.org
 
 # 4. 用户侧即
 npm i -g agentworkshop && aw start
 npx agentworkshop start
+aw update                   # 或让用户用内置指令自更新
 ```
 
 发布模型说明：tarball 只含源码载荷（**不含** .output/node_modules——nitro 产物含

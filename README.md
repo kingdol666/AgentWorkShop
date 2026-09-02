@@ -8,14 +8,13 @@
 
 [![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)](https://nuxt.com)
 [![Vue 3.5](https://img.shields.io/badge/Vue-3.5-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org)
-[![Node.js ≥ 23.4](https://img.shields.io/badge/Node.js-%E2%89%A5%2023.4-3C873A?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![TypeScript 5.7](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Node ≥ 23.4](https://img.shields.io/badge/Node.js-%E2%89%A5%2023.4-3C873A?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite node:sqlite](https://img.shields.io/badge/SQLite-node:sqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
-[![License TBD](https://img.shields.io/badge/license-TBD-lightgrey)](#license)
 
 **[中文文档 →](./README-zh.md)**
 
-*A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime. Agents query real telemetry, issue supervisory setpoints through human-approved write control — and every event streams live to a 3D twin.*
+*A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to a 3D twin.*
 
 </div>
 
@@ -28,7 +27,7 @@
 
 AgentWorkShop started as a **multi-agent software workshop** — channels of coding agents with a lead-agent scheduler, a 7-state task machine, persistent memory, and four interoperable entry points (WebSocket / MCP / A2A / REST).
 
-It then grew an **industrial half**: a full data-acquisition and write-control stack (Modbus TCP / OPC UA), production lines with recipes and batch runs, a 3D digital-twin town — and the bridge that makes it unique: **agents can be granted bound, permission-scoped access to real industrial nodes**, query their live telemetry with physical semantics attached, and drive write operations through an interlock → human-in-the-loop → readback pipeline.
+It grew an **industrial half**: a full data-acquisition and write-control stack (Modbus TCP / OPC UA), production lines with recipes and batch runs, a 3D digital-twin town — and the bridge that makes it unique: **agents can be granted bound, permission-scoped access to real industrial nodes**, query their live telemetry with physical semantics attached, and drive write operations through an interlock → human-in-the-loop → readback pipeline.
 
 The result: submit a goal like *"analyze the melt temperature trend and optimize the setpoint"* — and an agent team reads real sensor history, computes statistics, proposes a new setpoint, waits for your approval in the HITL panel, writes it to the PLC, verifies the readback, and reports the numbers back. **End to end, verified by automated E2E.**
 
@@ -41,69 +40,34 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 
 ## Highlights
 
-| | |
+| Capability | Why it matters |
 |---|---|
-| 🤖 **Agent teams, industrial scope** | Bind agents to DAQ/DCW nodes. Agents see semantic cards (physical meaning, units, safe range, recipe window) — never raw registers. |
-| 🛡️ **Human-approved write control** | DCW writes flow through **safety range ∩ active recipe window** interlock → optional **HITL approval** → PLC write → **readback verification** → signed write history. |
-| 📡 **Real field buses** | Modbus TCP with per-connection op queues; OPC UA with session pools. Linear calibration hooks (PLC value ↔ engineering unit) on every node. |
-| 🏭 **Line operations** | Lines → products → recipes → batch runs. Recipe windows gate acquisition and interlock writes; every sample is tagged product/recipe/run for per-batch isolation. |
-| 🧑‍💼 **Lead-agent orchestration** | Each channel has one lead: decomposes goals, dispatches to idle workers, reassigns failures, judges goal satisfaction. LLM decisions with a deterministic rule-engine fallback — the system never stalls. |
-| 🎯 **Three execution modes** | `goal` (satisfaction judging) · `loop` (fixed-interval replay) · `pipeline` (ordered stages). 7-state task machine with progress, artifacts and full history. |
-| 🚪 **Four entry points** | One manager behind every door: **WS** (AEP v1 event stream with seq-resume), **MCP** (in-process tools), **A2A** (JSON-RPC 2.0 + AgentCard), **REST**. |
-| 🧠 **Persistent memory** | Private + channel-shared domains; FTS5 with CJK segmentation, optional vector hybrid recall, token-budgeted injection, auto-harvest on completion. |
-| 🧩 **Harness-agnostic** | One `AgentInterface`: `mock` (in-process), `omp` (real agent subprocess via RPC), `claude` (SDK adapter). The platform never knows which one runs. |
-| 🌆 **3D digital twin** | Three.js town: place line equipment and channel territories, watch device health, alarms and live values — driven by the same event bus. |
-
-<div align="center">
-
-| Workshop | Line operations |
-|:---:|:---:|
-| ![Workshop overview](docs/readme-assets/workshop.png) | ![Line operations](docs/readme-assets/dcw.png) |
-
-</div>
+| **Agent teams, industrial scope** | Agents bind to DAQ/DCW nodes and see semantic cards — physical meaning, units, safe range, recipe window — never raw registers. |
+| **Human-approved write control** | DCW writes flow through **safe-range ∩ recipe-window** interlock → optional **HITL approval** → PLC write → **readback verification** → signed write history. |
+| **Real field buses** | Modbus TCP with per-connection op queues; OPC UA with session pools. Linear calibration hooks (PLC value ↔ engineering unit) on every node. |
+| **Line operations** | Lines → products → recipes → batch runs. Recipe windows gate acquisition and interlock writes; every sample is tagged `product/recipe/run` for per-batch isolation. |
+| **Lead-agent orchestration** | Each channel has one lead: decomposes goals, dispatches to idle workers, reassigns failures, judges goal satisfaction. LLM decisions with a deterministic rule-engine fallback — the system never stalls. |
+| **Three execution modes** | `goal` (satisfaction judging) · `loop` (fixed-interval replay) · `pipeline` (ordered stages). 7-state task machine with progress, artifacts and full history. |
+| **Four entry points** | One manager behind every door: **WS** (AEP v1 event stream with seq-resume), **MCP** (in-process tools), **A2A** (JSON-RPC 2.0 + AgentCard), **REST**. |
+| **Persistent memory** | Private + channel-shared domains; FTS5 with CJK segmentation, optional vector hybrid recall, token-budgeted injection. |
+| **Harness-agnostic** | One `AgentInterface`: `mock` (in-process), `omp` (real agent subprocess via RPC), `claude` (SDK adapter). The platform never knows which one runs. |
+| **3D digital twin** | Three.js town: place line equipment and channel territories, watch device health, alarms and live values — driven by the same event bus. |
 
 ---
 
-## Quick start
+## Interface
 
-### Prerequisites
+<div align="center">
 
-```bash
-node -v   # ≥ 23.4.0  (needs built-in node:sqlite)
-pnpm -v   # 11.x
-```
+| Agent Workbench | Line Operations |
+|:---:|:---:|
+| ![Agent workbench](docs/readme-assets/workshop.png) | ![Line operations](docs/readme-assets/dcw.png) |
 
-> The `omp` harness (recommended for real work) requires the `omp` CLI on PATH. The `mock` harness works out of the box for demos and CI.
+| DAQ Center | Digital Twin Town |
+|:---:|:---:|
+| ![DAQ center](docs/readme-assets/daq.png) | ![Digital twin town](docs/readme-assets/town.png) |
 
-### Install & run
-
-```bash
-git clone https://github.com/kingdol666/AgentWorkShop.git && cd AgentWorkShop
-pnpm install
-pnpm dev          # → http://localhost:3000  (port from config.yml)
-```
-
-Production:
-
-```bash
-pnpm build        # nuxt build → .output/
-pnpm start        # node scripts/start.mjs  (port from config.yml → server.prod.port)
-```
-
-Optional DAQ infrastructure (MQTT broker + TimescaleDB — auto-started via Docker when reachable):
-
-```bash
-docker compose up -d
-```
-
-### Your first agent × line session (~2 minutes)
-
-1. **Sign in** — register in the sidebar (or `POST /api/users/register`).
-2. **Build a line** — `Line Operations` → create a line, add DAQ nodes (e.g. `daq-temp-tc`) and control nodes (e.g. `dcw-temp-sp`), create a product + recipe, hit **Start**. Live values start flowing.
-3. **Create a team** — `Agent Workshop` → pick a lead + workers, **deploy** into a channel.
-4. **Bind nodes** — open the agent's detail panel → bind the DAQ node (*auto*) and the control node (*manual* = needs your approval).
-5. **Submit the goal** — *"Analyze the last 5 minutes of melt temperature; if deviation from 182 °C exceeds 1 °C, correct the setpoint (wait for my approval)."*
-6. **Approve** — the agent reads real history, computes the mean, requests the write → approve in the HITL panel → watch the setpoint change and the goal close with a numeric report.
+</div>
 
 ---
 
@@ -154,7 +118,7 @@ messages · memories (FTS5) · events")]
     DAQ & DCW --> BUS
 ```
 
-**The agent × machine bridge** (this is the part worth reading the source for):
+**The agent × machine bridge** (the part worth reading the source for):
 
 ```
 agent ──binds to──▶ node (daq: auto / dcw: manual)
@@ -165,6 +129,123 @@ agent ──binds to──▶ node (daq: auto / dcw: manual)
   │                           ──▶ HITL approval (manual mode, 180 s timeout)
   │                           ──▶ PLC write → readback check → ACK + write history
   ◀── result text with numbers the agent can cite
+```
+
+---
+
+## Quick start
+
+### Prerequisites
+
+```bash
+node -v   # ≥ 23.4.0  (needs built-in node:sqlite)
+```
+
+> The `omp` harness (recommended for real work) requires the `omp` CLI on PATH. The `mock` harness works out of the box for demos and CI. Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts via Docker when reachable (`docker compose up -d`).
+
+### Option A — install from npm (recommended)
+
+```bash
+npm install -g agentworkshop     # → `aw` / `agentworkshop` on PATH
+aw start                         # first run builds once (~2-3 min) → http://localhost:3001
+```
+
+That's it — no checkout, no build tools. On first launch everything initializes into the config root **`~/.AgentWorkShop`**: the default `config.yml`, a generated `.env` holding a random session secret, `runtime-settings.json`, a docker-compose seed and an empty `data/` directory. All runtime data (SQLite, JSON repos, backups, logs) lives there too — config and data stay with the install, not the working directory.
+
+Prefer a one-off run without installing?
+
+```bash
+npx agentworkshop start          # fetch + run, nothing persisted globally
+```
+
+### Option B — from source
+
+```bash
+git clone https://github.com/kingdol666/AgentWorkShop.git && cd AgentWorkShop
+pnpm install
+pnpm dev          # → http://localhost:3000  (port from config.yml)
+```
+
+Production from source:
+
+```bash
+pnpm build        # nuxt build → .output/
+pnpm start        # port from config.yml → server.prod.port
+```
+
+> In a source checkout the config root is the project's **`.AgentWorkShop/`** folder (runtime overrides, data, project-level commands), while `config.yml` / `.env` stay at the checkout root, version-controlled as the factory defaults.
+
+### Updating
+
+```bash
+aw update                              # check + self-update the global install
+aw update --check                      # only report; nothing is installed
+npm install -g agentworkshop@latest    # manual equivalent
+```
+
+Releases follow semver. Every `aw start` verifies the config root and migrates it in place when a new version changes the layout — your data survives upgrades.
+
+### Your first agent × line session (~2 minutes)
+
+1. **Sign in** — register in the sidebar (or `POST /api/users/register`).
+2. **Build a line** — `Line Operations` → create a line, add DAQ nodes (e.g. `daq-temp-tc`) and control nodes (e.g. `dcw-temp-sp`), create a product + recipe, hit **Start**. Live values start flowing.
+3. **Create a team** — `Agent Workshop` → pick a lead + workers, **deploy** into a channel.
+4. **Bind nodes** — open the agent's detail panel → bind the DAQ node (*auto*) and the control node (*manual* = needs your approval).
+5. **Submit the goal** — *"Analyze the last 5 minutes of melt temperature; if deviation from 182 °C exceeds 1 °C, correct the setpoint (wait for my approval)."*
+6. **Approve** — the agent reads real history, computes the mean, requests the write → approve in the HITL panel → watch the setpoint change and the goal close with a numeric report.
+
+---
+
+## Configuration & CLI — config-driven by design
+
+One runtime, one source of truth. **`config.yml`** declares defaults; **`runtime-settings.json`** inside the config root carries runtime overrides; environment variables and CLI flags sit on top. Every editable key is described once in `shared/config/schema.json` (type, range, enum, live-vs-restart) and surfaced through the same descriptors in **both the UI and the CLI**.
+
+```
+config.yml (defaults)  <  .AgentWorkShop/runtime-settings.json (runtime)  <  env vars / CLI flags
+```
+
+The config root is **`~/.AgentWorkShop`** for a global install (`npm i -g`) — wherever you run `aw` from — and **`<repo>/.AgentWorkShop`** in a source checkout (with `config.yml` / `.env` staying at the checkout root as version-controlled factory defaults). `AW_HOME` redirects it; `AW_MODE=home` forces the global shape.
+
+### Live settings, persisted, hot-reloaded
+
+- The **Settings → Runtime config** tab renders every editable key from the descriptors — change server ports, theme, API timeouts, locale or the approval gate, hit save.
+- `live` keys apply instantly (theme, title, timeouts, approval gate…) over a server-sent event stream — no reload, no restart.
+- `restart` keys (ports, hosts) persist to disk and take effect on the next launch of the matching mode (`aw dev` / `aw start`).
+- One channel for every writer: the UI, the CLI and the server's file watcher all converge on the same settings file, so a change made anywhere shows up everywhere.
+
+### The `aw` CLI
+
+| Command | What it does |
+|---|---|
+| `aw start · aw dev · aw build` | Production server / dev server / build — ports from the effective config; first `start` builds once |
+| `aw config list · get · set · unset · reset` | Read & write runtime settings (validated against the schema, atomic writes) |
+| `aw home` | Inspect / initialize the config root `.AgentWorkShop` |
+| `aw init <dir>` | Scaffold a runnable project (full config system + CLI included) |
+| `aw register <path\|url\|npm:pkg>` | Register a new command — project-local or `--global` |
+| `aw update` | Check npm for the latest release and self-update the global install |
+| `aw doctor` | Environment + project health check (node, config, ports, keys) |
+| `aw status` | Live overview: mode, config sources, running server, command table |
+
+Global flags: `--help/-h` · `--version/-v` · `--json` (machine-readable) · `--root <dir>` · `--debug`.
+
+### Command registration
+
+Commands are plain modules exporting `{ meta, run }`. Drop one into a scanned directory and it's live on the next invocation — no registry bookkeeping, convention over configuration:
+
+| Scope (highest wins) | Directory |
+|---|---|
+| project | `<root>/.AgentWorkShop/commands/` |
+| user | `~/.AgentWorkShop/commands/` |
+| built-in | packaged with the CLI (`cli/commands/`) |
+
+`aw register <file|url|npm:pkg>` copies a command into the right scope (`--global` for user scope); `aw help` lists everything that's registered.
+
+```js
+// ~/.AgentWorkShop/commands/hello.mjs
+export const meta = { name: 'hello', group: 'Custom', summary: 'Say hi', usage: 'aw hello [--name <n>]' }
+export async function run(argv, ctx) {
+  console.log(`Hi ${argv.flags.name ?? 'AW'} — mode: ${ctx.mode}`)
+}
 ```
 
 ---
@@ -258,6 +339,7 @@ Reproduce: `node scripts/_dbg-full-feature-e2e.mjs` (against a running server).
 
 ```
 AgentWorkShop/
+├── bin/ · cli/                 # aw CLI — command registry · built-in commands · config engine
 ├── app/                        # Nuxt 4 frontend (srcDir)
 │   ├── pages/                  # / · /workshop · /town · /daq · /dcw · /monitor · /users · /tokens
 │   ├── components/workshop/    # timeline · lanes · task board · memory panel · 3D town
@@ -271,10 +353,12 @@ AgentWorkShop/
 │   │   └── db/                 # repos over node:sqlite
 │   ├── mcp/                    # MCP server (tools)
 │   └── plugins/                # runtime assembly (singletons)
-├── shared/                     # AEP v1 + DAQ/DCW protocols (shared front/back)
-├── config.yml                  # ⚙ single source of truth
-├── data/                       # runtime SQLite (git-ignored)
-└── scripts/                    # E2E · verification suites
+├── shared/
+│   └── config/                 # schema.json (settings descriptors) + engine (merge/validate/persist) + mode/path resolver
+├── config.yml                  # ⚙ single source of truth (factory defaults)
+├── .AgentWorkShop/             # config root — prompts (versioned) + runtime overrides · data · logs · commands (git-ignored)
+├── data/                       # legacy pre-migration location (auto-migrated into the config root)
+└── scripts/                    # launchers · home bootstrap · E2E · verification suites
 ```
 
 ## Tech stack
@@ -284,6 +368,7 @@ AgentWorkShop/
 | Framework | [Nuxt 4](https://nuxt.com) + Nitro (WebSocket) |
 | UI | Vue 3.5 · Pinia · Ant Design Vue · UnoCSS · Three.js · ECharts |
 | Language | TypeScript 5.7 across the stack; `shared/` used by both sides |
+| CLI | Node ESM CLI with a pluggable command registry (`bin/aw.mjs`) |
 | Persistence | `node:sqlite` (zero native deps) + FTS5 + optional `sqlite-vec`; TimescaleDB for time-series |
 | Validation | `zod` at every message boundary |
 | Interop | `@modelcontextprotocol/sdk` · A2A (JSON-RPC 2.0) · AEP v1 (in-house WS protocol) |
@@ -292,34 +377,33 @@ AgentWorkShop/
 ## Development
 
 ```bash
-pnpm dev          # dev server (port from config.yml)
+pnpm dev          # dev server (port from effective config)
+pnpm aw …         # the CLI is available in-repo too: pnpm aw config list
 pnpm build && pnpm start
 pnpm typecheck
 pnpm lint
 node scripts/_dbg-full-feature-e2e.mjs    # full-feature live E2E (server must be running)
 ```
 
-## Configuration
-
-Everything is driven by `config.yml` — ports, i18n, theme, session secret, DAQ infrastructure (MQTT/Timescale endpoints, sampling defaults, retention). Change it, restart, done. `config.yml` is read once at build/start and injected into the runtime; the frontend receives its slice via `runtimeConfig`.
-
 ## Roadmap
 
-| | Item | Status |
-|---|---|---|
-| ✅ | Channel runtime, lead orchestration, 7-state task engine | shipped |
-| ✅ | Four entry points: WS (AEP v1) · MCP · A2A (JSON-RPC 2.0) · REST | shipped |
-| ✅ | Persistent memory (FTS5 + optional vector hybrid) | shipped |
-| ✅ | Industrial stack: DAQ (Modbus TCP/OPC UA) · DCW write control · lines/recipes/runs | shipped |
-| ✅ | Agent ↔ node binding + HITL approval + interlock | shipped |
-| ✅ | 3D digital-twin town · line operations UI · dashboards | shipped |
-| ✅ | Full-feature live E2E (agent reads/writes a real line, 23 checks) | shipped |
-| 🔨 | Claude Agent SDK adapter — full parity with `mock`/`omp` | in progress |
-| 📜 | License file | pending |
-| 🛡️ | Production hardening: TLS, MQTT auth, OPC UA sign+encrypt defaults, structured audit log | planned |
-| 🏭 | Edge deployment shape: standalone edge-agent + central broker | planned |
-| 📣 | Alarm outbound delivery (email/webhook) + ack workflow | planned |
-| ⚙️ | CI pipeline (typecheck + lint + e2e) | planned |
+| Capability | Status |
+|---|---|
+| Channel runtime, lead orchestration, 7-state task engine | Shipped |
+| Four entry points: WS (AEP v1) · MCP · A2A · REST | Shipped |
+| Persistent memory (FTS5 + optional vector hybrid) | Shipped |
+| Industrial stack: DAQ · DCW write control · lines/recipes/runs | Shipped |
+| Agent ↔ node binding + HITL approval + interlock | Shipped |
+| 3D digital-twin town · line operations UI · dashboards | Shipped |
+| Full-feature live E2E (agent reads/writes a real line, 23 checks) | Shipped |
+| Runtime configuration system: settings persistence · hot reload · settings UI | Shipped |
+| `aw` CLI: config · run · init · register · doctor | Shipped |
+| Claude Agent SDK adapter — full parity with `mock`/`omp` | In progress |
+| Production hardening: TLS, MQTT auth, OPC UA sign+encrypt defaults, structured audit log | Planned |
+| Edge deployment shape: standalone edge-agent + central broker | Planned |
+| Alarm outbound delivery (email/webhook) + ack workflow | Planned |
+| CI pipeline (typecheck + lint + e2e) | Planned |
+| License file | Pending |
 
 ## License
 
