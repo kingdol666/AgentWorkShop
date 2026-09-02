@@ -49,13 +49,33 @@ footer:
 
 <div class="aw-ruler" aria-hidden="true"></div>
 
-<div class="aw-shotband">
+<figure class="aw-console">
+  <figcaption class="aw-console-bar">
+    <span class="aw-console-tag">FIG.01</span>
+    <span class="aw-console-title">DIGITAL TWIN · 产线孪生总览</span>
+    <span class="aw-console-meta">THREE.JS · 实时事件流</span>
+  </figcaption>
+  <div class="aw-console-body">
+
+![数字孪生控制室 —— 产线设备、数采通道、趋势分析与设备监控实时同屏](/town.png)
+
+  </div>
+</figure>
+<p class="aw-cap">设备 9 台 · 数采节点 51 · 数采通道 51 —— 与 Agent 消费同一事件流</p>
+
+<figure class="aw-console">
+  <figcaption class="aw-console-bar">
+    <span class="aw-console-tag">FIG.02</span>
+    <span class="aw-console-title">LINE OPERATIONS · 产线运营</span>
+    <span class="aw-console-meta">MODBUS TCP / OPC UA</span>
+  </figcaption>
+  <div class="aw-console-body">
 
 ![产线运营 —— 产线/产品/配方/批次隔离,联锁写控入口](/line-ops.png)
 
-<p class="aw-cap">LINE OPERATIONS · 产线/配方/批次隔离 · 联锁写控 · 逐样本打标</p>
-
-</div>
+  </div>
+</figure>
+<p class="aw-cap">产线/配方/批次隔离 · 联锁写控 · 逐样本批次打标</p>
 
 ```bash
 npm i -g agentworkshop

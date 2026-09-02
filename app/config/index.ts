@@ -57,6 +57,12 @@ function applyRuntimeOverrides(raw: Record<string, unknown>): void {
 export function loadConfig(): AppConfig {
   if (cached) return cached
   const raw = (YAML.load(readFileSync(configPath, 'utf8')) ?? {}) as Record<string, unknown>
+  // 版本号唯一事实来源 = package.json;config.yml 的 app.version 仅作兜底,防止两处漂移
+  if (raw.app == null || typeof raw.app !== 'object') raw.app = {}
+  try {
+    const pkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as { version?: string }
+    if (pkg.version) (raw.app as Record<string, unknown>).version = pkg.version
+  } catch { /* 载荷异常时保留 yml 兜底值 */ }
   applyRuntimeOverrides(raw)
   cached = appConfigSchema.parse(raw)
   return cached

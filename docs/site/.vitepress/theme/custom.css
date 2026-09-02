@@ -1,7 +1,8 @@
 /* ============================================================
-   AgentWorkShop docs · 控制室主题
+   AgentWorkShop docs · 控制室主题 v2 —— 「工程规格书」语言
    令牌与 app/components/workshop/town/TownView.vue --hud-* 同源;
-   母题:轨式 + 刻度 + 设备铭牌。单色板(无明暗切换),绿只做信号色。
+   母题:轨式 + 刻度 + 图纸网格 + FIG 编号面板。
+   单色板(无明暗切换),绿只做信号色,零渐变/emoji/装饰 icon。
    ============================================================ */
 
 :root {
@@ -21,8 +22,8 @@
   --aw-amber: #f6c453;
   --aw-danger: #ff6b6b;
   --aw-code-bg: #0a111d;
-  --aw-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'Cascadia Mono',
-    Menlo, Consolas, 'Liberation Mono', monospace;
+  --aw-mono: 'Cascadia Code', 'JetBrains Mono', ui-monospace, SFMono-Regular,
+    'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
   /* VitePress 变量 → 控制室色板 */
   --vp-c-bg: var(--aw-bg);
@@ -70,15 +71,45 @@
   color: var(--aw-text);
 }
 
+:focus-visible {
+  outline: 1px solid var(--aw-green);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* 细滚动条(工业面板轨道感) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--aw-raised);
+  border: 2px solid var(--aw-bg);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--aw-line-hi);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* ---------- 导航 ---------- */
 .VPNavBar .title {
   font-weight: 650;
   letter-spacing: -0.01em;
 }
 
-.VPNavBar .divider-line,
-.VPNavBar.menu-has-page + .VPNavBar .divider-line {
+.VPNavBar .divider-line {
   background-color: var(--aw-line) !important;
+}
+
+/* 导航当前项:信号绿下划轨 */
+.VPNavBarMenu .VPNavBarMenuLink.active {
+  color: var(--aw-green) !important;
 }
 
 /* ---------- 侧栏:轨式母题 ---------- */
@@ -86,7 +117,7 @@
   border-right: 1px solid var(--aw-line);
 }
 
-/* 分组标题 = 设备铭牌(等宽大写) */
+/* 分组标题 = 设备铭牌(等宽大写,前缀绿刻度) */
 .VPSidebar .VPSidebarItem.level-0 > .item .text {
   font-family: var(--aw-mono);
   font-size: 11px;
@@ -96,7 +127,6 @@
   color: var(--aw-faint);
 }
 
-/* 激活项:信号绿 + 轨道段标记 */
 .VPSidebar .VPSidebarItem.level-1 > .item {
   position: relative;
 }
@@ -118,9 +148,11 @@
   }
 }
 
-/* ---------- 文档正文 ---------- */
+/* ---------- 文档正文排印 ---------- */
 .vp-doc h1 {
   letter-spacing: -0.02em;
+  font-family: var(--aw-mono);
+  font-weight: 700;
 }
 
 .vp-doc h2 {
@@ -128,8 +160,19 @@
   border-top: 1px solid var(--aw-line);
 }
 
+.vp-doc h2::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  margin-right: 12px;
+  vertical-align: 6px;
+  background: var(--aw-green);
+}
+
 .vp-doc p {
-  line-height: 1.75;
+  line-height: 1.8;
+  max-width: 76ch;
 }
 
 /* 行内代码 = 端子 */
@@ -144,6 +187,13 @@
 .vp-doc div[class*='language-'] {
   border: 1px solid var(--aw-line);
   border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* 文本代码块(协议声明等长行)允许折行 */
+.vp-doc div[class*='language-text'] code {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 表格 = 数据读数 */
@@ -192,6 +242,7 @@
 .VPDocFooter .pager-link {
   border: 1px solid var(--aw-line);
   background: var(--aw-panel);
+  transition: border-color 0.2s;
 }
 
 .VPDocFooter .pager-link:hover {
@@ -202,22 +253,46 @@
   color: var(--aw-faint);
 }
 
-/* ---------- 首页 hero ---------- */
-/* 关掉默认的径向光晕(反 slop:不加没有信息量的 glow) */
-.VPHomeHero .image-bg {
-  display: none;
+/* 右侧大纲:轨道 + 信号点 */
+.VPDocOutline .outline-marker {
+  background: var(--aw-green);
 }
 
-.VPHomeHero .image-container img {
-  border: 1px solid var(--aw-line);
-  border-radius: 12px;
-  background: var(--aw-panel);
-  padding: 4px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+/* 最后更新 = 铭牌脚注 */
+.VPDocFooter .last-updated {
+  font-family: var(--aw-mono);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--aw-faint);
 }
 
+/* ---------- 首页 hero:图纸网格 ---------- */
+.VPHero {
+  position: relative;
+}
+
+.VPHero::before {
+  content: '';
+  position: absolute;
+  inset: -8px 0 auto 0;
+  height: 480px;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(44, 69, 104, 0.16) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(90deg, rgba(44, 69, 104, 0.16) 0 1px, transparent 1px 32px);
+  -webkit-mask-image: radial-gradient(ellipse 90% 100% at 50% 0%, #000 30%, transparent 78%);
+  mask-image: radial-gradient(ellipse 90% 100% at 50% 0%, #000 30%, transparent 78%);
+}
+
+/* hero 标题 = 工业终端(Cascadia 等宽粗体) */
 .VPHomeHero .name {
-  letter-spacing: -0.02em;
+  font-family: var(--aw-mono);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.VPHomeHero .text {
+  letter-spacing: -0.015em;
 }
 
 /* 无图纯排版 hero:放宽主列与文字列,保证中文标题不拆词换行 */
@@ -235,16 +310,30 @@
   color: var(--aw-dim);
 }
 
-/* feature 卡 = 机柜面板;图标槽 = 设备铭牌 */
+/* 关掉默认的径向光晕(反 slop:不加没有信息量的 glow) */
+.VPHomeHero .image-bg {
+  display: none;
+}
+
+.VPHomeHero .image-container img {
+  border: 1px solid var(--aw-line);
+  border-radius: 12px;
+  background: var(--aw-panel);
+  padding: 4px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* feature 卡 = 机柜面板;图标槽 = 设备铭牌;悬停 = 面板通电 */
 .VPFeature {
   background: var(--aw-panel);
   border: 1px solid var(--aw-line);
   border-radius: 12px;
-  transition: border-color 0.25s;
+  transition: border-color 0.25s, transform 0.25s;
 }
 
 .VPFeature:hover {
-  border-color: var(--aw-line-hi);
+  border-color: var(--aw-green-dim);
+  transform: translateY(-2px);
 }
 
 .VPFeature .details {
@@ -266,6 +355,11 @@
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.18em;
+  transition: color 0.25s, border-color 0.25s;
+}
+
+.VPFeature:hover .aw-tag {
+  border-color: var(--aw-green-dim);
 }
 
 /* 首页页脚 */
@@ -280,12 +374,14 @@
 
 .VPFooter .copyright {
   color: var(--aw-faint);
+  font-family: var(--aw-mono);
+  font-size: 13px;
 }
 
-/* ---------- 首页内容带(刻度尺 / 截图 / 状态带) ---------- */
+/* ---------- 首页内容带:刻度尺 / FIG 图纸面板 / 状态带 ---------- */
 .aw-ruler {
   height: 14px;
-  margin: 4px 0 44px;
+  margin: 4px 0 48px;
   background:
     repeating-linear-gradient(90deg, var(--aw-line-hi) 0 1px, transparent 1px 50px),
     repeating-linear-gradient(90deg, var(--aw-line) 0 1px, transparent 1px 10px);
@@ -293,22 +389,76 @@
   mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
 
-.aw-shotband img {
-  display: block;
-  width: 100%;
+/* FIG 面板 = 工程图纸编号 + 产品同款面板标题栏 */
+.aw-console {
+  margin: 0 0 40px;
   border: 1px solid var(--aw-line);
   border-radius: 12px;
+  background: var(--aw-panel);
+  overflow: hidden;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
-/* 文本代码块(协议声明等长行)允许折行 */
-.vp-doc div[class*='language-text'] code {
-  white-space: pre-wrap;
-  word-break: break-word;
+.aw-console-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--aw-line);
+  background: var(--aw-panel-2);
+}
+
+.aw-console-tag {
+  flex: none;
+  padding: 3px 8px;
+  border: 1px solid rgba(53, 224, 160, 0.4);
+  border-radius: 4px;
+  color: var(--aw-green);
+  font-family: var(--aw-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  background: rgba(53, 224, 160, 0.08);
+}
+
+.aw-console-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--aw-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--aw-text);
+}
+
+.aw-console-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  margin-right: 10px;
+  vertical-align: -1px;
+  background: var(--aw-green);
+}
+
+.aw-console-meta {
+  flex: none;
+  font-family: var(--aw-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--aw-faint);
+}
+
+.aw-console-body img {
+  display: block;
+  width: 100%;
 }
 
 .aw-cap {
-  margin-top: 10px;
+  margin: -16px 0 44px;
   text-align: center;
   font-family: var(--aw-mono);
   font-size: 12px;
