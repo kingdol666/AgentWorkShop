@@ -85,10 +85,13 @@ export class ChannelRuntime {
   }
 
   /**
-   * 信箱守卫(垃圾信息拦截):三类消息放行,其余直接丢弃(不落库、不投递)——
+   * 信箱守卫(垃圾信息拦截):四类消息放行,其余直接丢弃(不落库、不投递)——
    *  ① 平台任务消息(task-kind + 真实存在的任务);
-   *  ② 声明发送人为本 channel 成员的消息(伪造/已移除成员 → 拒);
-   *  ③ 人类经 REST 注入的消息(x-aw-from-label 必须非空)。
+   *  ② 跨 Channel 消息(x-aw-cross-channel 标记 + 源 channel 注明)——
+   *    manager.sendCrossChannelMessage 发送时已校验「发送方=源 channel lead +
+   *    双方同主 + 目标 lead 在册」并盖服务端标记;REST/工具入参无法伪造;
+   *  ③ 声明发送人为本 channel 成员的消息(伪造/已移除成员 → 拒);
+   *  ④ 人类经 REST 注入的消息(x-aw-from-label 必须非空)。
    * 防脏信息注入:无主消息与未知发送人的消息没有回执对象,处理它们只会
    * 污染 Agent 上下文,因此拦截并删除。
    */
@@ -100,6 +103,11 @@ export class ChannelRuntime {
       if (typeof taskId === 'string' && this.deps.taskEngine.get(taskId)) return true
       log.warn(`[ChannelRuntime:${this.channelId.slice(0, 8)}] 拦截无效任务消息(kind=${String(taskKind)} task=${String(taskId)}),已丢弃`)
       return false
+    }
+    if (meta['x-aw-cross-channel'] === 'true'
+      && typeof meta['x-aw-from-channel'] === 'string'
+      && meta['x-aw-from-channel'] !== this.channelId) {
+      return true
     }
     const from = meta['x-aw-from-agent']
     if (typeof from === 'string' && from.length > 0) {

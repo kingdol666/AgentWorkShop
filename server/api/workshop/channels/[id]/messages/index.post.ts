@@ -15,7 +15,7 @@ import { defineApiHandler } from '../../../../../utils/response'
 import { getWorkshopManager } from '../../../../../plugins/workshop'
 
 const sendMessageSchema = z.object({
-  toAgentId: z.string().min(1, 'toAgentId 必填'),
+  toAgentId: z.string().min(1, 'toAgentId 必填').optional(),
   text: z.string().min(1, 'text 必填'),
   fromAgentId: z.string().optional(),
   /** 人类发送者显示名(时间线 a2a.message 的发送者归属 → x-aw-from-label) */
@@ -23,6 +23,11 @@ const sendMessageSchema = z.object({
   priority: z.enum(['immediate', 'task']).default('task'),
   /** 触发器:要求接收方回执(执行结果 + 所需内容,in_reply_to 关联) */
   requireReply: z.boolean().optional(),
+  /**
+   * 跨 Channel 通信(仅 lead):指定目标 channel(id 或名字)→ 消息直投其 lead mailbox。
+   * 与 toAgentId 二选一;fromAgentId 必填且必须是本 channel 的 lead(worker 拒绝)。
+   */
+  toChannelId: z.string().optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -32,6 +37,26 @@ export default defineApiHandler(async (event) => {
   const manager = getWorkshopManager()
   const channel = manager.getChannelForUser(channelId, user.id)
   manager.requireOwned(channel.ownerUserId, user.id, 'channel')
+
+  // 跨 Channel 分支:lead 专属;目标解析(id/名字)与投递在 manager 内完成
+  if (body.toChannelId) {
+    if (body.toAgentId) {
+      throw new AppError(400, 'BAD_REQUEST', 'toChannelId 与 toAgentId 二选一,不可同时指定')
+    }
+    if (!body.fromAgentId) {
+      throw new AppError(403, 'ROLE_FORBIDDEN', '跨 Channel 通信必须以本 channel Leader 身份发送(fromAgentId 必填)')
+    }
+    const fromAgentId = manager.resolveChannelMember(channelId, body.fromAgentId).id
+    return manager.sendCrossChannelMessage(channelId, fromAgentId, {
+      toChannelId: body.toChannelId,
+      parts: [{ text: body.text }],
+      requireReply: body.requireReply,
+    })
+  }
+
+  if (!body.toAgentId) {
+    throw new AppError(400, 'BAD_REQUEST', 'toAgentId 必填(跨 Channel 请改用 toChannelId)')
+  }
 
   // 目标寻址(容错:精确实例 id / 模板 id / 名字 / 唯一名字前缀)
   const target = manager.resolveChannelMember(channelId, body.toAgentId)

@@ -5,7 +5,7 @@
  * 权威契约见 docs/superpowers/plans/2026-08-13-agent-workshop-multi-agent.md 核心契约块。
  */
 import type { A2AMessage, A2AArtifact, A2AError, ChannelMail, Part } from '../types/a2a'
-import type { WorkspaceTask, AgentTaskQueueView, AgentStatusView } from '../types/task'
+import type { WorkspaceTask, AgentTaskQueueView, AgentStatusView, AgentContextStats } from '../types/task'
 
 /** Agent 元信息:Channel 内成员声明(hook harness 类型与配置) */
 export interface AgentInfo {
@@ -60,6 +60,16 @@ export interface AgentWorkspace {
   /** 点对点发消息给同事 */
   sendMessage(input: { toAgentId: string, parts: Part[], metadata?: Record<string, unknown> }): Promise<A2AMessage>
   /**
+   * (仅 lead)跨 Channel 点对点:直投目标 channel 的 lead mailbox(沿用 mailbox/route 机制)。
+   * 权限:发送方必须是本 channel 的 lead;目标 channel 与本 channel 须同主且启用、有 lead。
+   */
+  sendCrossChannelMessage(input: { toChannelId: string, parts: Part[], requireReply?: boolean, inReplyTo?: string }): Promise<{
+    messageId: string
+    toChannelId: string
+    toChannelName: string
+    toLeadAgentId: string
+  }>
+  /**
    * 拒绝指派给自己的任务(能力/范畴不匹配):任务置 FAILED(调度器改派他人),
    * 并向派发方(任务创建者,缺省 channel lead)回执拒绝原因。
    */
@@ -91,6 +101,11 @@ export interface AgentWorkspace {
    * scope='private' → 本人记忆库;scope='shared' → Channel 公共记忆域(全员可检索)。
    */
   saveMemory(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string }): Promise<{ scope: 'private' | 'shared', dedupKey: string }>
+  /**
+   * 会话压缩摘要入库(harvest 桥;omp compaction 产出的会话摘要 → 本成员持久记忆)。
+   * 平台 70% 主动压缩与 omp 原生 auto-compaction 双路统一经此落库(episodic-session)。
+   */
+  recordSessionMemory?(input: { summary: string, tokensBefore?: number, tokensAfter?: number, reason?: string }): Promise<void>
   /** 订阅同事产出 */
   subscribe(input: { agentIds?: string[] }): Promise<void>
   /** (lead)在本 channel 内新建团队成员(worker):按需建模板并克隆为独立实例 */
@@ -216,4 +231,14 @@ export interface AgentInterface {
    * 探到进程已死时收敛为已退出,让在途回合归位、下一回合自动重生子进程。
    */
   reconcileProcess?(): void
+  /**
+   * 可选:harness 上下文用量快照(omp;被动缓存值,无探测 RPC)。
+   * 进程内 harness(mock/claude)不实现 → getStatus 不透出 context 字段。
+   */
+  getContextStats?(): AgentContextStats | null
+  /**
+   * 可选:回合落定后的后台钩子(post-settle 上下文压缩检查)。
+   * 实现方自守卫(仅回合间隙发起、异常不抛出);调用方 AgentRuntime 在信箱无排队消息时调用。
+   */
+  onTurnSettled?(): Promise<void>
 }

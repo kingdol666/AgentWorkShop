@@ -352,6 +352,18 @@ export class MockAgentImpl implements AgentInterface {
       const text = request.message.parts
         .map(p => ('text' in p ? p.text : 'data' in p ? JSON.stringify(p.data) : ''))
         .join('\n')
+      // 跨 Channel 来信:发送方不是本 channel 成员,回复须走 lead 级跨 Channel 发送(回源 channel)
+      const crossChannel = request.message.metadata?.['x-aw-cross-channel'] === 'true'
+      const fromChannel = request.message.metadata?.['x-aw-from-channel']
+      if (crossChannel && typeof fromChannel === 'string') {
+        await ctx.workspace.sendCrossChannelMessage({
+          toChannelId: fromChannel,
+          parts: [{ text: `mock 跨Channel回复(${ctx.agentId}):已处理「${text.slice(0, 60)}」。执行结果:完成;你所需的内容已包含在本回复中。本回复不需要再响应。` }],
+          inReplyTo: request.message.messageId,
+        })
+        yield { kind: 'done' }
+        return
+      }
       await ctx.workspace.sendMessage({
         toAgentId: fromId,
         parts: [{ text: `mock 回复(${ctx.agentId}):已处理「${text.slice(0, 60)}」。执行结果:完成;你所需的内容已包含在本回复中。本回复不需要再响应。` }],

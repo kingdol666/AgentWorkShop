@@ -28,10 +28,11 @@ import type {
   SupervisionSnapshot,
 } from './agent-interface'
 import type { A2AArtifact, A2AMessage, Part } from '../types/a2a'
-import type { WorkspaceTask } from '../types/task'
+import type { AgentContextStats, WorkspaceTask } from '../types/task'
 import {
   OmpRpcClient,
   type AgentSessionEvent,
+  type CompactionResult,
   type RpcHostToolDefinition,
   type HostToolCallRequest,
 } from './adapters/omp-rpc-client'
@@ -52,6 +53,7 @@ import {
 import { toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolMyIndustrialNodes } from './industrial-tools'
 import { buildIndustrialContext, industrialLoopGuide } from './industrial-context'
 import { extractTaskMode } from '../runtime/execution-mode'
+import { envNum } from '../runtime/memory'
 
 const log = createLogger('workshop.omp')
 
@@ -216,6 +218,194 @@ export class OmpRpcAgentImpl implements AgentInterface {
    * 保证触发器回执关联契约不依赖模型传参纪律。
    */
   private replyContext: { fromId: string, messageId: string } | null = null
+
+  // ===== 上下文治理(70% 无中断压缩环)=====
+  /** 压缩进行中(平台 gate 与 omp 原生压缩共用互斥位) */
+  private compacting = false
+  private lastCompactAt = 0
+  /** omp 不支持 compact 命令(旧版)→ 永久停用平台压缩;原生 auto-compaction 兜底,harvest 照常 */
+  private compactLegacy = false
+  /** 模型上下文窗口(get_state/get_session_stats 探测;null = 未知,percent 不可算) */
+  private contextWindow: number | null = null
+  private sessionId: string | null = null
+  /** harvest 双路去重(compact 响应与 compaction_end 事件可能双达) */
+  private lastHarvestKey = ''
+  private lastHarvestAt = 0
+
+  /** 总开关(AW_OMP_COMPACT_ENABLED=0 显式关闭;envNum 拒 0,故单独解析) */
+  private compactEnabled(): boolean {
+    const v = Number(process.env.AW_OMP_COMPACT_ENABLED)
+    return !(Number.isFinite(v) && v === 0)
+  }
+
+  private compactThreshold(): number {
+    return Math.min(1, envNum('AW_OMP_COMPACT_THRESHOLD', 0.7))
+  }
+
+  private compactMinIntervalMs(): number {
+    return envNum('AW_OMP_COMPACT_MIN_INTERVAL_MS', 300_000)
+  }
+
+  private compactWaitMs(): number {
+    return envNum('AW_OMP_COMPACT_WAIT_MS', 120_000)
+  }
+
+  /** 被动上下文用量快照(无探测 RPC;getStatus 透出用) */
+  getContextStats(): AgentContextStats | null {
+    const usage = this.client?.getContextUsage() ?? null
+    const window = this.contextWindow ?? usage?.contextWindow ?? null
+    if (!usage && window === null) return null
+    const usedTokens = usage?.tokens ?? 0
+    return {
+      usedTokens,
+      contextWindow: window,
+      percent: window && window > 0 ? Math.min(1, usedTokens / window) : null,
+      compacting: this.compacting,
+    }
+  }
+
+  /**
+   * 上下文用量探测:get_session_stats 权威值;不可用退化为被动 usage + 已探测窗口。
+   * percent 归一化到 0-1(omp 可能返回 0-100)。
+   */
+  private async probeUsage(client: OmpRpcClient): Promise<{ tokens: number, contextWindow: number | null, percent: number | null } | null> {
+    try {
+      const resp = await client.send({ type: 'get_session_stats' })
+      const cu = ((resp.data ?? {}) as Record<string, unknown>).contextUsage as
+        | { tokens?: number, contextWindow?: number, percent?: number }
+        | undefined
+      if (cu && typeof cu.tokens === 'number' && cu.tokens > 0) {
+        if (typeof cu.contextWindow === 'number' && cu.contextWindow > 0) {
+          this.contextWindow = cu.contextWindow
+          client.setContextWindow(cu.contextWindow)
+        }
+        const window = this.contextWindow ?? cu.contextWindow ?? null
+        const rawPercent = typeof cu.percent === 'number' ? (cu.percent > 1 ? cu.percent / 100 : cu.percent) : null
+        const percent = rawPercent ?? (window && window > 0 ? Math.min(1, cu.tokens / window) : null)
+        return { tokens: cu.tokens, contextWindow: window, percent }
+      }
+    }
+    catch { /* get_session_stats 不可用 → 被动跟踪 */ }
+    return client.getContextUsage()
+  }
+
+  /**
+   * 上下文治理门控:三条 prompt 路径(worker/peer/supervise)在回合间隙统一调用;
+   * post-settle 经 onTurnSettled 复用同一守卫。任何失败路径都放行——压缩晚一轮
+   * 永远好过中断作业。三重防线:仅回合间隙发起 → get_state 复查 isStreaming/
+   * isCompacting → compacting 互斥位 + 最小间隔防振荡。
+   */
+  private async contextGate(reason: string): Promise<void> {
+    if (!this.compactEnabled() || this.compactLegacy || this.compacting) return
+    const client = this.client
+    if (!client || !client.alive) return
+    try {
+      const usage = await this.probeUsage(client)
+      if (!usage || usage.percent === null || usage.percent < this.compactThreshold()) return
+      if (Date.now() - this.lastCompactAt < this.compactMinIntervalMs()) return
+      // 回合间隙硬校验:流式中/压缩中绝不发起(不中断执行的硬约束)
+      const st = await client.send({ type: 'get_state' })
+      const s = (st.data ?? {}) as Record<string, unknown>
+      if (s.isStreaming === true || s.isCompacting === true) return
+      if (typeof s.sessionId === 'string' && s.sessionId) this.sessionId = s.sessionId
+      this.compacting = true
+      this.lastCompactAt = Date.now()
+      try {
+        const result = await this.runCompaction(client)
+        if (result?.summary) {
+          await this.harvestCompaction(
+            result.summary,
+            result.tokensBefore,
+            result.tokensAfter ?? result.estimatedTokensAfter,
+            reason,
+          )
+        }
+      }
+      finally {
+        this.compacting = false
+      }
+    }
+    catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (/compact/i.test(msg) && /unknown|unsupported|invalid|无效|未知|不支持/i.test(msg)) this.compactLegacy = true
+      log.warn(`[OmpRpcAgent:${this.selfAgentId}] contextGate(${reason}) 失败,放行: ${msg}`)
+    }
+  }
+
+  /**
+   * 发起 compact 并等待 compaction_end(响应内含 result 则立即收口;
+   * 超时放行——压缩在 harness 内后台继续,isCompacting 防后续双发)。
+   */
+  private runCompaction(client: OmpRpcClient): Promise<CompactionResult | null> {
+    return new Promise<CompactionResult | null>((resolve) => {
+      let settled = false
+      const finish = (r: CompactionResult | null): void => {
+        if (settled) return
+        settled = true
+        off()
+        clearTimeout(timer)
+        resolve(r)
+      }
+      const off = client.onEvent((event) => {
+        if (event.type === 'compaction_end') {
+          finish((event as { result?: CompactionResult }).result ?? null)
+        }
+        else if (event.type === '__process_exit__') {
+          finish(null)
+        }
+      })
+      const timer = setTimeout(() => {
+        log.warn(`[OmpRpcAgent:${this.selfAgentId}] compact 等待超时(${this.compactWaitMs()}ms)→ 放行(压缩后台继续)`)
+        finish(null)
+      }, this.compactWaitMs())
+      void client.send({ type: 'compact', customInstructions: this.compactionHints() })
+        .then((resp) => {
+          const result = (resp.data as { result?: CompactionResult } | undefined)?.result
+          if (result?.summary) finish(result)
+          // 响应无 result:等 compaction_end 事件(协议权威语义)
+        })
+        .catch((err) => {
+          const msg = err instanceof Error ? err.message : String(err)
+          if (/compact/i.test(msg)) this.compactLegacy = true
+          log.warn(`[OmpRpcAgent:${this.selfAgentId}] compact 发起失败: ${msg}`)
+          finish(null)
+        })
+    })
+  }
+
+  /** 压缩摘要指令(外置 prompts;缺失时省略,omp 用默认策略) */
+  private compactionHints(): string | undefined {
+    try {
+      return renderPrompt('compaction-hints')
+    }
+    catch {
+      return undefined
+    }
+  }
+
+  /**
+   * 压缩摘要 harvest(三路统一:平台主动 compact / omp 阈值自动 / overflow):
+   * 经 workspace.recordSessionMemory 落库为本人 episodic-session 记忆。
+   * 双路去重:同摘要 60s 内只入库一次。
+   */
+  private async harvestCompaction(summary: string, tokensBefore?: number, tokensAfter?: number, reason?: string): Promise<void> {
+    const key = summary.slice(0, 120)
+    if (key === this.lastHarvestKey && Date.now() - this.lastHarvestAt < 60_000) return
+    this.lastHarvestKey = key
+    this.lastHarvestAt = Date.now()
+    try {
+      await this.workspace?.recordSessionMemory?.({ summary, tokensBefore, tokensAfter, reason })
+      log.info(`[OmpRpcAgent:${this.selfAgentId}] 压缩摘要已入记忆(${summary.length} 字,reason=${reason ?? 'auto'})`)
+    }
+    catch (err) {
+      log.warn(`[OmpRpcAgent:${this.selfAgentId}] 压缩摘要入库失败(不影响会话):`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  /** 回合落定钩子(AgentRuntime 在信箱空时调用):后台压缩检查,自守卫不抛错 */
+  async onTurnSettled(): Promise<void> {
+    await this.contextGate('post-settle')
+  }
 
   constructor(config: Record<string, unknown> = {}) {
     this.config = config as OmpAgentConfig
@@ -449,6 +639,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
     if (!this.client) return []
     if (this.supervising) return [] // 上一轮 supervise 未收口:跳过本拍(节流即正确)
 
+    // 上下文门控(≥70% 先压缩再调度;回合间隙发起,失败放行)
+    await this.contextGate('supervise')
+
     const prompt = await this.buildSupervisePrompt(snapshot, ctx.memory)
     // 150s 上界:supervise 持 lead.execLock 期间信箱消费停顿(更久会拖垮 worker 回执处理);
     // supervise 是一次真实 LLM 回合:omp 冷启动(插件/MCP 加载 30~90s)+ 慢 provider
@@ -589,9 +782,14 @@ export class OmpRpcAgentImpl implements AgentInterface {
     const msgText = partsToText(msg.parts)
     const requireReply = msg.metadata?.['x-aw-require-reply'] === 'true'
     const isReply = typeof msg.metadata?.['x-aw-in-reply-to'] === 'string'
+    // 跨 Channel 来信:发送方是其他 channel 的 lead,回执必须走 send_cross_channel_message
+    const crossChannel = msg.metadata?.['x-aw-cross-channel'] === 'true'
+    const fromChannel = typeof msg.metadata?.['x-aw-from-channel'] === 'string'
+      ? String(msg.metadata['x-aw-from-channel'])
+      : ''
     // 回执自动关联仅对真实 agent 发送者生效(人类无 agentId 可回投;
     // 对人类的回复经事件流/时间线可见)
-    this.replyContext = requireReply && request.fromAgentId
+    this.replyContext = requireReply && request.fromAgentId && !crossChannel
       ? { fromId: request.fromAgentId, messageId: msg.messageId }
       : null
 
@@ -599,11 +797,13 @@ export class OmpRpcAgentImpl implements AgentInterface {
       ? `You are "${this.agentName}", the LEAD coordinator of a multi-agent team (Channel: ${this.channelId}). A team member sent you a direct message.`
       : `You are "${this.agentName}", a worker agent in a multi-agent team (Channel: ${this.channelId}).`
 
-    // 消息应答指令:必复/可选两态 + lead 名册提示(全部外置 prompts/)
-    const respondBlock = renderPrompt(requireReply ? 'peer-reply-required' : 'peer-reply-optional', {
-      fromId,
-      messageId: msg.messageId,
-    })
+    // 消息应答指令:必复/可选/跨 Channel 三态 + lead 名册提示(全部外置 prompts/)
+    const respondBlock = crossChannel
+      ? renderPrompt('peer-reply-cross-channel', { fromId, messageId: msg.messageId, fromChannel })
+      : renderPrompt(requireReply ? 'peer-reply-required' : 'peer-reply-optional', {
+          fromId,
+          messageId: msg.messageId,
+        })
     const peerBody = renderPrompt('peer-message', {
       fromId,
       messageId: msg.messageId,
@@ -647,6 +847,8 @@ export class OmpRpcAgentImpl implements AgentInterface {
     if (!client) {
       throw new Error('omp 客户端未就绪')
     }
+    // 上下文门控(≥70% 时在回合间隙先压缩再发 prompt;等待有界,失败放行)
+    await this.contextGate('pre-prompt')
     const queue: AgentEvent[] = []
     let resolveWait: (() => void) | null = null
     let isDone = false
@@ -929,6 +1131,29 @@ export class OmpRpcAgentImpl implements AgentInterface {
           error: { code: 'OMP_PROCESS_EXIT', message: 'omp 子进程意外退出' },
         }]
 
+      // ===== 上下文治理事件(回合中到达的原生阈值/overflow 压缩;不污染事件流)=====
+      case 'compaction_start':
+        this.compacting = true
+        return []
+
+      case 'compaction_end': {
+        this.compacting = false
+        const result = (event as { result?: CompactionResult }).result
+        if (result?.summary) {
+          void this.harvestCompaction(
+            result.summary,
+            result.tokensBefore,
+            result.tokensAfter ?? result.estimatedTokensAfter,
+            (event as { reason?: string }).reason,
+          )
+        }
+        return []
+      }
+
+      // 回合完全落定(无自动重试/压缩重试/排队续跑):后续压缩检查由 AgentRuntime 驱动
+      case 'agent_settled':
+        return []
+
       case '__error__':
         return [{
           kind: 'error',
@@ -1176,7 +1401,12 @@ export class OmpRpcAgentImpl implements AgentInterface {
       // 只配其一时也显式发送,避免 respawn 后静默回落默认模型)
       if (this.config.provider || this.config.model) {
         try {
-          await client.send({ type: 'set_model', provider: this.config.provider, modelId: this.config.model })
+          // 未配置一侧保持 undefined(JSON 序列化丢键)→ omp 以当前已设值补全
+          await client.send({
+            type: 'set_model',
+            provider: this.config.provider as string,
+            modelId: this.config.model as string,
+          })
         }
         catch {
           // 模型设置失败不致命(用 omp 默认模型)
@@ -1187,9 +1417,28 @@ export class OmpRpcAgentImpl implements AgentInterface {
       client.onHostToolCall(req => this.handleHostTool(req))
       await client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole) })
 
+      // 上下文治理探测(feature-detect 一次;失败退化被动 usage 跟踪)+ 原生压缩兜底保持开启
+      void this.probeContext(client).catch(() => {})
+      void client.send({ type: 'set_auto_compaction', enabled: true }).catch(() => {})
+
       this.client = client
       this.hostToolsRegistered = true
     }
+  }
+
+  /** 上下文状态探测:get_state 取 contextWindow/sessionId(一次;失败仅损失 percent 精度) */
+  private async probeContext(client: OmpRpcClient): Promise<void> {
+    try {
+      const resp = await client.send({ type: 'get_state' })
+      const data = (resp.data ?? {}) as Record<string, unknown>
+      const model = data.model as { contextWindow?: number } | undefined
+      if (typeof model?.contextWindow === 'number' && model.contextWindow > 0) {
+        this.contextWindow = model.contextWindow
+        client.setContextWindow(model.contextWindow)
+      }
+      if (typeof data.sessionId === 'string' && data.sessionId) this.sessionId = data.sessionId
+    }
+    catch { /* get_state 不可用:仅被动 usage */ }
   }
 
   // ===== 内部:host tool handler(workspace 桥接) =====
@@ -1307,6 +1556,26 @@ export class OmpRpcAgentImpl implements AgentInterface {
             ? `(回复 ${inReplyTo.slice(0, 8)}…,已实时推送给对方)`
             : metadata['x-aw-require-reply'] === 'true' ? '(已要求对方回复)' : ''
           return { text: `消息 ${sent.messageId.slice(0, 8)}… 已发送给 ${toAgentId}(priority=${priority})${triggerNote}` }
+        }
+
+        case 'send_cross_channel_message': {
+          // 跨 Channel 通信(仅 lead):直投目标 channel 的 lead mailbox
+          const toChannelId = req.arguments.to_channel_id as string
+          const message = req.arguments.message as string
+          if (!toChannelId || !message) return { text: '缺少 to_channel_id 或 message', isError: true }
+          try {
+            const r = await ws.sendCrossChannelMessage({
+              toChannelId,
+              parts: [{ text: message }],
+              requireReply: req.arguments.require_reply === true,
+              inReplyTo: req.arguments.in_reply_to as string | undefined,
+            })
+            const note = req.arguments.require_reply === true ? '(已要求对方 Leader 回复)' : ''
+            return { text: `跨 Channel 消息 ${r.messageId.slice(0, 8)}… 已送达 channel「${r.toChannelName}」的 Leader(${r.toLeadAgentId.slice(0, 8)}…)${note}。对方将按你的信息需求处理;其回复会经 mailbox 到达你这里。` }
+          }
+          catch (err) {
+            return { text: `跨 Channel 发送失败: ${err instanceof Error ? err.message : String(err)}(仅 Leader 可跨 Channel 通信)`, isError: true }
+          }
         }
 
         case 'refuse_task': {

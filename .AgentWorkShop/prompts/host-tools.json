@@ -299,7 +299,7 @@
   {
     "name": "search_memory",
     "label": "Search Memory",
-    "description": "Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints mention something you need details on. Pass a focused query describing what you want to remember.",
+    "description": "Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Results may include: your task history, the TEAM CHRONICLE (团队编年史 = rolling log of everything the team finished), past SESSION COMPACTION SUMMARIES (会话压缩摘要 = conclusions from earlier context windows), monthly reflections (作业反思), and shared conventions. Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints/brief mention something you need details on. Pass a focused query describing what you want to remember.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -329,7 +329,7 @@
   {
     "name": "save_memory",
     "label": "Save Memory",
-    "description": "Persist a distilled, reusable insight into memory for future tasks. scope=\"private\" saves to YOUR personal memory (only you recall it); scope=\"shared\" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating.",
+    "description": "Persist a distilled, reusable insight into memory for future tasks. scope=\"private\" saves to YOUR personal memory (only you recall it); scope=\"shared\" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating. NOTE: the platform already auto-archives task outcomes, team results, the team chronicle, and session compaction summaries — never save whole task logs or raw session transcripts.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -574,14 +574,22 @@
         "verdict": {
           "type": "string",
           "description": "判定结论:keep / rollback / uncertain",
-          "enum": ["keep", "rollback", "uncertain"]
+          "enum": [
+            "keep",
+            "rollback",
+            "uncertain"
+          ]
         },
         "reason": {
           "type": "string",
           "description": "判定理由(必须引用具体数值/时间窗证据)"
         }
       },
-      "required": ["record_id", "verdict", "reason"]
+      "required": [
+        "record_id",
+        "verdict",
+        "reason"
+      ]
     }
   },
   {
@@ -626,6 +634,32 @@
           "description": "返回条数上限(缺省 20,最大 100)"
         }
       }
+    }
+  },
+  {
+    "name": "send_cross_channel_message",
+    "label": "Cross-Channel Message",
+    "description": "[Leader only] Send a message to the LEADER of another channel, so the two teams can collaborate without being siloed. The message lands directly in the target channel leader mailbox; that leader will read your request and act on it (dispatch tasks in their channel, gather info, etc.) and can reply to you via the mailbox. Params: to_channel_id accepts the target channel id OR its exact name; message is your request to the other leader (state your need, deadline and what you expect back); require_reply=true to demand a response. Only channel leaders may call this tool - workers will be rejected. When replying to a cross-channel request you received, use this same tool addressed to the requester channel.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "to_channel_id": {
+          "type": "string",
+          "description": "Target channel id or exact name (must be another channel, not your own)"
+        },
+        "message": {
+          "type": "string",
+          "description": "Request text for the target channel leader: what you need, why, and what to return"
+        },
+        "require_reply": {
+          "type": "boolean",
+          "description": "true = demand the target leader reply with their result/answer"
+        }
+      },
+      "required": [
+        "to_channel_id",
+        "message"
+      ]
     }
   }
 ]

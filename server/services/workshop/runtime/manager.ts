@@ -304,6 +304,8 @@ export class AgentChannelManager {
   private memoryTimer: NodeJS.Timeout | null = null
   /** 全 manager 共享的 env 向量 provider(未配置 → null 纯 FTS;熔断/维度全体实例共享) */
   private readonly memoryEmbedder = createEnvEmbeddingProvider()
+  /** 反思游标:每 agent 上次聚合的当月任务数(月度幂等增量判定) */
+  private readonly reflectCounts = new Map<string, number>()
 
   constructor(private deps: ManagerDeps) {
     // 记忆衰减清理定时器(失败只记日志,绝不抛出;unref 不阻进程退出;非法/非正 env 回退默认)
@@ -313,6 +315,13 @@ export class AgentChannelManager {
       }
       catch (err) {
         log.error('[memory] 维护任务异常', err)
+      }
+      // 空闲反思(sleep-time compute):busy runtime 存在即整轮跳过,绝不与作业争抢
+      try {
+        this.reflectIdleMemories()
+      }
+      catch (err) {
+        log.error('[memory] 反思任务异常', err)
       }
     }, envNum('AW_MEMORY_MAINTENANCE_MS', 6 * 3600_000))
     this.memoryTimer.unref?.()
@@ -355,8 +364,108 @@ export class AgentChannelManager {
       cr.setLoader(id => this.ensureAgentRuntime(channelId, id))
       this.channels.set(channelId, cr)
       this.buses.set(channelId, this.buildBus(cr))
+      // 团队记忆沉淀(任务终态事件单点收口):team-task 共享行 + 编年史滚动重写。
+      // 事件总线保证每次状态迁移恰好一次通知——worker/lead 各自私有域 harvest 之外
+      // 的团队域写入不存在双写;失败仅记日志,绝不影响任务流。
+      this.buses.get(channelId)!.onTaskEvent(e => this.recordTeamTaskTerminal(channelId, e))
     }
     return cr
+  }
+
+  /**
+   * 团队历史沉淀(任务终态):① team-task 共享行(成果/失败原因,全员可检索);
+   * ② 团队编年史滚动重写(最近 12 条终态任务轨迹)。
+   */
+  private recordTeamTaskTerminal(channelId: string, e: { taskId: string, state?: TaskState, task?: TaskEventTask }): void {
+    if (!e.state || !TERMINAL_TASK_STATES[e.state]) return
+    try {
+      const completed = e.state === 'COMPLETED'
+      const task = e.task
+      const title = task?.title ?? `任务 ${e.taskId.slice(0, 8)}`
+      // 成果提取与 AgentMemory.recordTaskOutcome 同口径(deliverable/summary 优先)
+      const artifacts = (task?.artifacts ?? []) as A2AArtifact[]
+      const preferred = artifacts.filter(a => a.name === 'deliverable' || a.name === 'summary')
+      const source = preferred.length > 0 ? preferred : artifacts
+      const deliverable = source
+        .flatMap(a => a.parts)
+        .map(p => ('text' in p ? p.text : ''))
+        .join(' ')
+        .trim()
+      const content = completed
+        ? (deliverable || title)
+        : `任务「${title}」${e.state === 'CANCELED' ? '已取消' : '未完成'}${deliverable ? `;已有进展: ${deliverable.slice(0, 200)}` : ''}`
+      const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: TEAM_AGENT_ID, embedder: this.memoryEmbedder ?? undefined })
+      void mem.appendTeamTaskRecord({
+        taskId: e.taskId,
+        title,
+        content,
+        importance: completed ? 0.8 : 0.55,
+      }).catch((err) => { log.error('[memory] team-task 沉淀失败:', err) })
+      this.refreshChronicle(channelId)
+    }
+    catch (err) {
+      log.error('[memory] 团队任务沉淀异常:', err)
+    }
+  }
+
+  /** 团队编年史滚动重写(最近 12 条终态任务;chronicle:<channelId> 幂等单行;免向量化) */
+  private refreshChronicle(channelId: string): void {
+    try {
+      const terminal = this.getTaskEngine().list(channelId)
+        .filter(t => TERMINAL_TASK_STATES[t.state])
+        .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+        .slice(0, 12)
+      if (terminal.length === 0) return
+      const entries = terminal.map((t) => {
+        const stamp = t.updatedAt.slice(5, 16).replace('T', ' ')
+        const deliverable = t.artifacts
+          .flatMap(a => a.parts)
+          .map(p => ('text' in p ? p.text : ''))
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 60)
+        const state = t.state === 'COMPLETED' ? '完成' : t.state === 'FAILED' ? '失败' : '取消'
+        return `${stamp} [${state}] ${t.title} — ${t.assigneeId.slice(0, 8)}${deliverable ? `(${deliverable})` : ''}`
+      })
+      new AgentMemory(this.deps.repos.memories, { channelId, agentId: TEAM_AGENT_ID })
+        .upsertChronicle(entries.join('\n'))
+    }
+    catch (err) {
+      log.error('[memory] 编年史刷新失败:', err)
+    }
+  }
+
+  /**
+   * 空闲反思(sleep-time compute,零 LLM):当月 episodic-task 增量 ≥ 阈值时,
+   * 聚合标题+结论成 semantic 反思行(月度 dedupKey 幂等;FTS 可检索,免向量化)。
+   */
+  private reflectIdleMemories(): void {
+    for (const rt of this.agentIndex.values()) {
+      if (rt.getState() === 'busy') return
+    }
+    const trigger = envNum('AW_MEMORY_REFLECT_TRIGGER', 8)
+    const month = new Date().toISOString().slice(0, 7)
+    for (const agentId of this.deps.repos.memories.listMemoryAgentIds()) {
+      const rows = this.deps.repos.memories.listByAgentWithRowid(agentId, 1_000_000)
+        .filter(r => r.kind === 'episodic-task' && r.createdAt.slice(0, 7) === month)
+      const prev = this.reflectCounts.get(agentId) ?? 0
+      if (rows.length < trigger || rows.length <= prev) continue
+      // 行可能跨 channel(历史迁移):按 channel 分组,各组建反思
+      const byChannel = new Map<string, typeof rows>()
+      for (const r of rows) {
+        const list = byChannel.get(r.channelId) ?? []
+        list.push(r)
+        byChannel.set(r.channelId, list)
+      }
+      for (const [channelId, list] of byChannel) {
+        const lines = list.slice(0, 20).map(r => `- ${r.title}:${unsegmentCJK(r.content).slice(0, 60)}`)
+        new AgentMemory(this.deps.repos.memories, { channelId, agentId })
+          .upsertReflection({ month, content: [`当月 ${list.length} 项任务经验聚合:`, ...lines].join('\n') })
+      }
+      this.reflectCounts.set(agentId, rows.length)
+      log.info(`[memory] 反思蒸馏:agent=${agentId.slice(0, 8)} 当月 ${rows.length} 项任务已聚合`)
+    }
   }
 
   private buildBus(cr: ChannelRuntime): ChannelBus {
@@ -868,6 +977,7 @@ export class AgentChannelManager {
       updateTask: (taskId, patch) => this.updateTask(channelId, agent.id, taskId, patch),
       reassignTask: (taskId, toAgentId) => this.reassignTask(channelId, agent.id, taskId, toAgentId),
       sendMessage: input => this.sendA2A(channelId, agent.id, input),
+      sendCrossChannelMessage: input => this.sendCrossChannelMessage(channelId, agent.id, input),
       refuseTask: (taskId, reason) => this.refuseTask(channelId, agent.id, taskId, reason),
       pollMailbox: limit => this.pollMailbox(channelId, agent.id, limit),
       waitMailbox: (limit, waitMs) => this.waitMailbox(channelId, agent.id, limit ?? 10, waitMs ?? 0),
@@ -884,6 +994,11 @@ export class AgentChannelManager {
         const saved = await memory.save(input)
         this.buses.get(channelId)?.notifyMemory({ agentId: agent.id, scope: input.scope, title: input.title, dedupKey: saved.dedupKey })
         return saved
+      },
+      // 会话压缩摘要入库(harvest 桥):omp 压缩产出 → 本成员 episodic-session 记忆
+      recordSessionMemory: async (input) => {
+        const saved = await memory.recordSessionCompaction(input)
+        this.buses.get(channelId)?.notifyMemory({ agentId: agent.id, scope: 'private', title: `会话压缩摘要(${input.summary.length}字)`, dedupKey: saved.dedupKey })
       },
       // 团队成员管理(仅 lead;manager 内二次校验角色,工具面与决策面共用)
       createTeamMember: input => this.createTeamMember(channelId, agent.id, input),
@@ -2347,6 +2462,80 @@ export class AgentChannelManager {
       throw new AppError(502, 'DELIVERY_FAILED', `消息未能投递到 ${input.toAgentId} 的信箱,请重试`)
     }
     return message
+  }
+
+  /**
+   * 跨 Channel 点对点通信(仅 lead):把消息直投目标 channel 的 lead mailbox。
+   * 沿用既有 mailbox/route 机制(投递/唤醒/消费/回执全复用),仅新增跨 channel 路由:
+   *  - 权限:发送方必须是本 channel 启用成员中的 lead(worker/系统拒绝);
+   *  - 同主约束:两个 channel 必须属于同一 owner(用户级隔离不破);
+   *  - 守卫通行:x-aw-cross-channel 标记由服务端在发送时盖章(REST/工具入参不可伪造),
+   *    目标 channel 信箱守卫据此放行非成员发送方的跨 channel 消息;
+   *  - 回执:目标 lead 经同一机制回信(其 send_message_to_agent / 本方法均可,
+   *    in_reply_to 关联触发实时推送)。
+   */
+  async sendCrossChannelMessage(
+    fromChannelId: string,
+    fromAgentId: string,
+    input: { toChannelId: string, parts: Part[], requireReply?: boolean, inReplyTo?: string },
+  ): Promise<{ messageId: string, toChannelId: string, toChannelName: string, toLeadAgentId: string }> {
+    // 权限闸:发送方 = 本 channel 启用成员中的 lead
+    const sender = this.deps.repos.channelAgents.findByChannelAgent(fromChannelId, fromAgentId)
+    if (!sender || sender.enabled !== 1) {
+      throw new AppError(403, 'SCOPE_VIOLATION', '跨 Channel 通信的发送方必须是本 channel 的启用成员')
+    }
+    if (sender.role !== 'lead') {
+      throw new AppError(403, 'ROLE_FORBIDDEN', `跨 Channel 通信仅限 Leader 发起(${sender.name} 是 ${sender.role})`)
+    }
+
+    // 目标 channel 解析(id 精确 > 名字精确 > 名字唯一包含);禁自指/禁停用/须有 lead
+    const needle = input.toChannelId.trim().toLowerCase()
+    const rows = this.deps.repos.channels.list()
+    const target = rows.find(c => c.id === input.toChannelId)
+      ?? rows.find(c => c.name.toLowerCase() === needle)
+      ?? (() => {
+        const partial = rows.filter(c => c.name.toLowerCase().includes(needle))
+        return partial.length === 1 ? partial[0] : undefined
+      })()
+    if (!target || target.id === fromChannelId) {
+      throw new AppError(404, 'CHANNEL_NOT_FOUND', `目标 channel 未命中(且不可为本 channel): ${input.toChannelId}`)
+    }
+    if (target.enabled !== 1) throw new AppError(400, 'CHANNEL_DISABLED', `目标 channel 已停用: ${target.name}`)
+    if (!target.leadAgentId) throw new AppError(400, 'NO_LEAD', `目标 channel 没有 lead,无法接收跨 Channel 消息: ${target.name}`)
+
+    // 同主约束:跨团队协作不越用户边界
+    const sourceChannel = this.deps.repos.channels.findById(fromChannelId)
+    if (sourceChannel && target.ownerUserId !== null && sourceChannel.ownerUserId !== null
+      && sourceChannel.ownerUserId !== target.ownerUserId) {
+      throw new AppError(403, 'SCOPE_VIOLATION', '跨 Channel 通信仅限同一用户的 channel 之间')
+    }
+
+    // 目标 lead 必须是目标 channel 的启用成员(防悬空 leadAgentId)
+    const targetLead = this.deps.repos.channelAgents.findByChannelAgent(target.id, target.leadAgentId)
+    if (!targetLead || targetLead.enabled !== 1) {
+      throw new AppError(400, 'NO_LEAD', `目标 channel 的 lead 成员缺失或已停用: ${target.name}`)
+    }
+
+    const message = buildMessage(target.id, 'ROLE_AGENT', input.parts, {
+      'x-aw-target-agent': targetLead.id,
+      'x-aw-from-agent': fromAgentId,
+      'x-aw-from-channel': fromChannelId,
+      'x-aw-cross-channel': 'true',
+      'x-aw-from-label': `跨Channel:${sourceChannel?.name ?? fromChannelId} / ${sender.name}`,
+      ...(input.requireReply ? { 'x-aw-require-reply': 'true' } : {}),
+      // in_reply_to 关联:channel-runtime 将其视为 realtime,回复即时推送对端
+      ...(input.inReplyTo ? { 'x-aw-in-reply-to': input.inReplyTo } : {}),
+    })
+    const delivered = this.route(target.id, message)
+    if (!delivered.includes(targetLead.id)) {
+      throw new AppError(502, 'DELIVERY_FAILED', `跨 Channel 消息未能投递到「${target.name}」的 lead 信箱,请重试`)
+    }
+    return {
+      messageId: message.messageId,
+      toChannelId: target.id,
+      toChannelName: target.name,
+      toLeadAgentId: targetLead.id,
+    }
   }
 
   /** 阻塞长轮询(poll_messages):到信即时唤醒,250ms 兜底重查 */
