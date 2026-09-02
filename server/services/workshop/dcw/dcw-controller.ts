@@ -22,6 +22,7 @@ import { DcwNodeRuntime } from './dcw-runtime'
 import { getDcwRecipeRepo, type DcwWriteHistoryEntry } from './dcw-recipe.repo'
 import { getDcwProductRepo } from './dcw-product.repo'
 import { getDcwLineRepo } from './dcw-line.repo'
+import { emitDcwWrite } from '@/server/services/workshop/plugins/host.mjs'
 import { clearActiveLineRun, getActiveLineRun, getAllActiveLineRuns, setActiveLineRun } from './line-run'
 import { getRecipeRollBackManager } from './recipe-rollback-manager'
 import { recordOps } from '../ops/ops'
@@ -463,6 +464,8 @@ class DcwController {
             recipeId: runNow?.recipeId ?? recipeRunId ?? '',
             detail: { eng, prevValue, ok: outcome.ok, message: outcome.message, taskId: meta?.taskId ?? null },
           })
+          // 插件钩子:写控 ACK 观察(与运维入册同点同去重节流)
+          emitDcwWrite({ nodeId: id, name: node.name, eng, prevValue, ok: outcome.ok, source: src, lineId: node.lineId ?? '', at: new Date().toISOString() })
         }
       }
       catch {

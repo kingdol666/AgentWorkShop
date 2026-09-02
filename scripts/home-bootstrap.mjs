@@ -40,6 +40,23 @@ export async function run(argv, ctx) {
 也可以用 \`aw register <path|url|npm:pkg> --global\` 自动注册到这里。
 `
 
+const PLUGINS_README = `# AW Home 插件目录
+
+每个子文件夹 = 一个插件(node 项目,入口 index.mjs),重启 aw start / aw dev 自动装载。
+
+\`\`\`
+plugins/
+└── my-plugin/
+    ├── index.mjs    # 服务端: export default { name, setup(ctx) }
+    └── client.mjs   # 浏览器增强(可选): export function setup(ctx)
+\`\`\`
+
+生命周期钩子: daq:sample · dcw:write · line:start|stop · event:*(scene 全事件) · server:close
+插件 API: ctx.route('GET', '/x', handler) → /api/plugins/my-plugin/x
+
+完整指南: docs/plugins.md · 脚手架: aw plugin create <name>
+`
+
 /**
  * 执行引导。返回 { home, created: string[], seeds: string[] }。
  * @param {{ quiet?: boolean, env?: NodeJS.ProcessEnv }} opts
@@ -53,7 +70,7 @@ export function runBootstrap({ quiet = false, env = process.env } = {}) {
   const seeds = []
 
   // 1. 目录骨架
-  for (const dir of [home, join(home, 'data'), join(home, 'logs'), join(home, 'commands')]) {
+  for (const dir of [home, join(home, 'data'), join(home, 'logs'), join(home, 'commands'), join(home, 'plugins')]) {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true })
       created.push(dir)
@@ -95,6 +112,13 @@ export function runBootstrap({ quiet = false, env = process.env } = {}) {
   const readmeDest = join(home, 'commands', 'README.md')
   if (!existsSync(readmeDest)) {
     writeFileSync(readmeDest, COMMANDS_README, 'utf8')
+  }
+
+  // 7. 插件目录说明(插件 = 配置根 plugins/<name>/ 的 node 项目,SDK 驱动,见 docs/plugins.md)
+  const pluginsReadme = join(home, 'plugins', 'README.md')
+  if (!existsSync(pluginsReadme)) {
+    writeFileSync(pluginsReadme, PLUGINS_README, 'utf8')
+    seeds.push('plugins/README.md')
   }
 
   log(`[aw-home] ${home}  ${created.length ? `（新建 ${created.length} 项）` : '（已就绪）'}`)

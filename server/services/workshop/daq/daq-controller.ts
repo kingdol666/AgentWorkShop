@@ -33,6 +33,7 @@ import { getDaqNodeRepo } from './daq-node.repo'
 import { getTsdb, tsdbReady } from './storage'
 import { getDaqQueue } from './bus'
 import { getDaqHostPorts } from './host-ports'
+import { emitDaqSample } from '@/server/services/workshop/plugins/host.mjs'
 import { getOps, recordOps } from '../ops/ops'
 import { notifyAlarm, newAlarmId, startAlarmEscalator } from './alarm-notify'
 import type { DaqSampleEnvelope } from './bus/queue-port'
@@ -193,13 +194,16 @@ class DaqController {
     // 配方级数采监控窗口的越限判定已前移到运行时 onSample(与量程告警共用边沿语义,
     // 越窗即 raise 落库 + 广播);此处 state 已含窗口结论,仅负责管线汇聚。
     if (allowPublish) {
-      this.broadcast?.('daq.reading', {
+      const reading = {
         nodeId: node.id,
         templateRef: node.templateRef,
         value: node.value ?? env.value,
         state: node.state,
         at: env.at,
-      } satisfies AepDaqReading)
+      } satisfies AepDaqReading
+      this.broadcast?.('daq.reading', reading)
+      // 插件钩子:下发级采样观察(与 WS daq.reading 同点同节拍;宿主未装载时零开销 no-op)
+      emitDaqSample(reading)
     }
     this.writeBackTelemetry(node)
 

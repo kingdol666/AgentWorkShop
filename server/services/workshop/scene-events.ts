@@ -8,6 +8,7 @@
  * nitro 打包的循环初始化(TDZ)问题。
  */
 import type { AepEnvelope } from '../../../shared/workshop-protocol'
+import { emitPluginEvent } from './plugins/host.mjs'
 
 const AEP_VERSION = 1
 
@@ -42,6 +43,8 @@ export function sceneEventPeerCount(): number {
  *  信封序列化一次、全 peer 复用:dag 遥测经此出口 N 节点×P 页面/秒高频扇出,
  *  per-peer 重复 stringify 是纯浪费。 */
 export function broadcastSceneEvent(type: string, payload: unknown): void {
+  // 插件宿主事件桥(event:<type> 钩子;宿主未装载时 no-op)——先于 peers 短路,插件不依赖在线页面
+  emitPluginEvent(type, payload)
   if (peers().size === 0) return
   const e: AepEnvelope = {
     v: AEP_VERSION,

@@ -9,6 +9,7 @@ import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/d
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 import { getActiveLineRun } from '@/server/services/workshop/dcw/line-run'
 import { recordOps } from '@/server/services/workshop/ops/ops'
+import { emitLineLifecycle } from '@/server/services/workshop/plugins/host.mjs'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -31,5 +32,6 @@ export default defineApiHandler(async (event) => {
     recipeId: active?.recipeId ?? String(body.recipeId ?? ''),
     detail: { runId: run.id, recipeId: body.recipeId ?? '' },
   })
+  emitLineLifecycle('line:start', { lineId: id, runId: run.id, recipeId: active?.recipeId ?? String(body.recipeId ?? ''), productName: active?.productName ?? '' })
   return { run, line: getDcwController().lineState(id) }
 })
