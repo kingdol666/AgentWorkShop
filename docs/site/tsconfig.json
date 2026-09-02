@@ -1,0 +1,9 @@
+{
+  "//": "阻断 esbuild/vitepress 从 .vitepress/theme 向上解析到根级 Nuxt tsconfig(CI 无 .nuxt/tsconfig.server.json)",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["vitepress"]
+  },
+  "include": [".", "./.vitepress/theme/**/*"]
+}
