@@ -59,13 +59,22 @@ function cmpVersions(a, b) {
   return 0
 }
 
+/** 全局实际安装的版本(npm ls -g);拿不到回退 null */
+function globalVersion(name, registry) {
+  const ls = npmRun(['ls', '-g', '--depth=0', name], { registry })
+  return new RegExp(`${name}@(\\S+)`).exec(ls.stdout ?? '')?.[1] ?? null
+}
+
 export async function run(argv, ctx) {
   const { flags } = argv
   const registry = flags.registry ? String(flags.registry) : undefined
   const name = pkgName(ctx)
-  const current = packageVersion()
+  // 当前版本 = 全局实际安装的版本(即 `aw update` 要更新的对象);
+  // 拿不到(未全局安装)才回退运行中 CLI 版本
+  const global = globalVersion(name, registry)
+  const current = global ?? packageVersion()
 
-  console.log(`${color.cyan('›')} 当前版本: ${color.bold(`v${current}`)}`)
+  console.log(`${color.cyan('›')} 当前版本: ${color.bold(`v${current}`)}${global ? '' : color.dim(' (运行中 CLI;未检测到全局安装)')}`)
   console.log(`${color.cyan('›')} 查询 npm registry${registry ? ` (${registry})` : ''} ...`)
 
   const view = npmRun(['view', name, 'version'], { registry })
@@ -107,8 +116,7 @@ export async function run(argv, ctx) {
   }
 
   // 复核:从全局包清单读回实际安装版本
-  const ls = npmRun(['ls', '-g', '--depth=0', name], { registry })
-  const installed = new RegExp(`${name}@(\\S+)`).exec(ls.stdout ?? '')?.[1]
+  const installed = globalVersion(name, registry)
   if (installed) console.log(`${color.green('✔')} 更新完成: ${color.dim(current)} → ${color.bold(installed)}`)
   else console.log(`${color.green('✔')} 更新完成 → ${color.bold(latest)}`)
   console.log(`${color.dim('›')} 新开 aw 进程即运行新版本(当前进程仍是旧代码)`)
