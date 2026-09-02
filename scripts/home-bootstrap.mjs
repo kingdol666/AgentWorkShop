@@ -146,6 +146,24 @@ export function runBootstrap({ quiet = false, env = process.env } = {}) {
     renameSync(stateTmp, stateFile)
   }
 
+  // 9. prompts 初始化(提示词规约):包内资产(.AgentWorkShop/prompts)→ AW Home/prompts,
+  //    只补缺失文件、绝不覆盖用户定制 —— 运行时目录引导即完整,服务端 loader.ts 另有
+  //    同规则兜底(懒播种),两处幂等互不冲突
+  const promptsSrc = join(packageRoot, '.AgentWorkShop', 'prompts')
+  if (existsSync(promptsSrc)) {
+    const promptsDest = join(home, 'prompts')
+    mkdirSync(promptsDest, { recursive: true })
+    for (const f of readdirSync(promptsSrc)) {
+      const dest = join(promptsDest, f)
+      if (existsSync(dest)) continue
+      try {
+        copyFileSync(join(promptsSrc, f), dest)
+        seeds.push(`prompts/${f}`)
+      }
+      catch { /* 单文件失败不阻断 */ }
+    }
+  }
+
   log(`[aw-home] ${home}  ${created.length ? `（新建 ${created.length} 项）` : '（已就绪）'}`)
   if (seeds.length) log(`[aw-home] 种子文件: ${seeds.join(', ')}`)
   return { home, created, seeds }
