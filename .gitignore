@@ -5,6 +5,8 @@
 .nitro
 cache
 dist
+docs/site/.vitepress/cache
+docs/site/.vitepress/dist
 
 # Dependencies
 node_modules
