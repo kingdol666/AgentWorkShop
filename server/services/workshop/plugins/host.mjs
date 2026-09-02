@@ -1,5 +1,5 @@
 // ============================================================
-// AgentWorkShop 插件宿主 —— 发现 / 装载 / 生命周期 / 路由表
+// AgentWorkShop 插件宿主 —— 发现 / 装载 / 启停状态 / 热重载 / 路由表
 // ------------------------------------------------------------
 // 目录(与 aw commands 同哲学):
 //   project: <repo>/.AgentWorkShop/plugins/<name>/index.mjs
@@ -7,10 +7,15 @@
 // 契约:入口导出普通对象 { name, version?, description?, setup(ctx)?,
 //   client?: './client.mjs', routes?: [{method,path,handler}] }
 // —— ctx 由宿主注入,插件运行时零导入依赖(sdk/ 供类型与显式糖)。
+//
+// 启停状态机:配置根 plugins-state.json { version, updatedAt, disabled: string[] }
+//   · 装载时跳过 disabled 插件(manifest 仍可见,enabled:false)
+//   · 状态文件变化(fs.watch)→ 热重载:全部 dispose/解绑 → 重新装载
+//   · CLI(aw plugin enable/disable) 与 Web 设置页均只写状态文件,服务自感知
 // 错误隔离:单插件装载/执行失败记入 failures,绝不拖垮主服务。
 // ============================================================
-import { existsSync, readdirSync, readFileSync, watch } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, watch, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { HookBus, createPluginContext, createRouteTable, validatePluginModule } from '@/sdk/index.mjs'
 
@@ -18,6 +23,7 @@ const g = globalThis
 
 function log() {
   return {
+    debug: (...a) => console.log('[aw-plugins][debug]', ...a),
     info: (...a) => console.log('[aw-plugins]', ...a),
     warn: (...a) => console.warn('[aw-plugins]', ...a),
     error: (...a) => console.error('[aw-plugins]', ...a),
@@ -35,11 +41,35 @@ function modePaths(cwd) {
   return {
     projectDir: isRepo ? join(cwd, '.AgentWorkShop', 'plugins') : null,
     userDir: join(process.env.AW_HOME && String(process.env.AW_HOME).trim() ? String(process.env.AW_HOME).trim() : defaultHome(), 'plugins'),
+    homeDir: process.env.AW_HOME && String(process.env.AW_HOME).trim() ? String(process.env.AW_HOME).trim() : defaultHome(),
   }
 }
 
 function pathToUrl(p) {
   return pathToFileURL(resolve(p)).href
+}
+
+// ---- 启停状态(单一事实源:<配置根>/plugins-state.json;CLI/Web/宿主三方读写) ----
+export function statePathFor(homeDir) {
+  return join(homeDir, 'plugins-state.json')
+}
+
+export function readDisabledSet(homeDir) {
+  try {
+    const j = JSON.parse(readFileSync(statePathFor(homeDir), 'utf8'))
+    return new Set(Array.isArray(j.disabled) ? j.disabled : [])
+  }
+  catch {
+    return new Set()
+  }
+}
+
+export function writeDisabledSet(homeDir, disabled) {
+  const p = statePathFor(homeDir)
+  mkdirSync(dirname(p), { recursive: true })
+  const tmp = `${p}.${process.pid}.tmp`
+  writeFileSync(tmp, `${JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), disabled: [...disabled] }, null, 2)}\n`, 'utf8')
+  renameSync(tmp, p)
 }
 
 /** 发现两个作用域下的插件入口(project 同名覆盖 user) */
@@ -62,12 +92,11 @@ export function discoverPluginDirs(cwd = process.cwd()) {
 
 /**
  * 装载插件宿主(idempotent;nitro 启动期调用一次)。
- * 装载 = 动态 import 入口 → 形态校验 → createPluginContext → setup(ctx)
- *       → 收集 routes/client → emit plugin:host:init
  */
 export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) {
   if (g.__awPluginHost) return g.__awPluginHost
   const logger = log()
+  const homeDir = modePaths(cwd).homeDir
   const host = {
     bus: new HookBus({
       name: 'aw-plugins',
@@ -75,17 +104,20 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
     }),
     routes: createRouteTable(),
     plugins: new Map(),
-    disposables: new Map(), // name → fn[](setup 内 ctx.onDispose 登记;server:close 时回收)
+    disposables: new Map(), // name → fn[](ctx.onDispose 登记)
+    hookOffs: new Map(), // name → off[](ctx.hooks.on 登记;热重载时解绑)
     failures: [],
     initedAt: null,
+    cwd,
+    packageRoot,
     logger,
   }
   g.__awPluginHost = host
 
-  // 有效配置(只读面;引擎/模式解析从运行根动态加载,js-yaml 由对应 node_modules 解析)
+  // 有效配置(只读面;引擎/模式解析从运行根动态加载)
   let config = null
   let settingsPath = null
-  let paths = { home: defaultHome(), configRoot: join(cwd, '.AgentWorkShop'), dataDir: join(cwd, '.AgentWorkShop', 'data') }
+  let paths = { home: homeDir, configRoot: join(cwd, '.AgentWorkShop'), dataDir: join(cwd, '.AgentWorkShop', 'data') }
   try {
     const homeMod = await import(pathToUrl(join(cwd, 'shared', 'config', 'home.mjs')))
     const rm = homeMod.resolveRunMode({ cwd, packageRoot, env: process.env })
@@ -102,8 +134,9 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
     host.logger.warn('配置引擎加载降级(插件 ctx.config 将为空):', err?.message)
   }
   host.config = config
-  // 自环 origin:PORT env(prod) > argv --port(dev:dev-guard 转发链天然携带) > 配置 dev 端口;
-  // nitro listen 钩子(setSelfOrigin)仍保留为最终兜底
+
+  // 自环 origin:PORT env(prod:start.mjs 注入 / dev:dev-guard 注入 CLI 显式值)权威;
+  // nitro listen 钩子兜底回填
   const argPort = (() => {
     const argv = process.argv
     const i = argv.indexOf('--port')
@@ -117,38 +150,21 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
     host.logger.info(`自环 origin 就绪: ${selfOrigin}`)
   }
   host.selfOrigin = () => selfOrigin
-  host.logger.info(`自环 origin: ${selfOrigin} (PORT=${process.env.PORT ?? '∅'} NITRO_PORT=${process.env.NITRO_PORT ?? '∅'} argPort=${argPort ?? '∅'})`)
+  host.logger.info(`自环 origin: ${selfOrigin}`)
 
-  // 配置变更监听:runtime-settings.json 变化 → 原地刷新 effective + config:changed 钩子
-  if (settingsPath && existsSync(settingsPath)) {
-    try {
-      let debounce = null
-      watch(settingsPath, () => {
-        clearTimeout(debounce)
-        debounce = setTimeout(async () => {
-          try {
-            if (host.config && existsSync(settingsPath)) {
-              const homeMod = await import(pathToUrl(join(cwd, 'shared', 'config', 'home.mjs')))
-              const rm = homeMod.resolveRunMode({ cwd, packageRoot, env: process.env })
-              const engine = await import(pathToUrl(join((rm.mode === 'repo' ? rm.root : packageRoot ?? rm.root) ?? cwd, 'shared', 'config', 'engine.mjs')))
-              const fresh = engine.loadEffective({ configPath: rm.configPath, settingsPath: rm.settingsPath, env: process.env })
-              Object.assign(host.config.effective, fresh.effective)
-              host.config.sources = fresh.sources
-            }
-            await host.bus.emit('config:changed', { at: new Date().toISOString() })
-            host.logger.info('配置变更已广播(config:changed)')
-          }
-          catch (err) {
-            host.logger.warn('config:changed 处理失败:', err?.message)
-          }
-        }, 300)
-      })
-    }
-    catch { /* fs.watch 不可用时插件可经轮询自行感知 */ }
-  }
+  await loadAllPlugins(host, { config, settingsPath, paths })
+  ensureStateWatcher(host)
+  return host
+}
 
-  const entries = discoverPluginDirs(cwd)
-  if (entries.length) host.logger.info(`发现 ${entries.length} 个插件,开始装载 ...`)
+/** 装载/重载全部插件(跳过 disabled;manifest 仍可见) */
+async function loadAllPlugins(host, { config, paths }) {
+  const homeDir = modePaths(host.cwd).homeDir
+  const disabled = readDisabledSet(homeDir)
+  host.disabledSet = disabled
+
+  const entries = discoverPluginDirs(host.cwd)
+  if (entries.length) host.logger.info(`发现 ${entries.length} 个插件(停用 ${disabled.size}),开始装载 ...`)
 
   for (const { dir, scope } of entries) {
     const entry = join(dir, 'index.mjs')
@@ -159,6 +175,22 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
       const def = check.def
 
       if (host.plugins.has(def.name)) throw new Error(`插件重名(后装载者跳过): ${def.name}`)
+      if (disabled.has(def.name)) {
+        host.plugins.set(def.name, {
+          name: def.name,
+          version: String(def.version ?? '0.0.0'),
+          description: String(def.description ?? ''),
+          scope,
+          dir,
+          entry,
+          clientPath: def.client ? resolve(dir, def.client) : null,
+          routes: [],
+          enabled: false,
+          error: null,
+        })
+        host.logger.info(`⊘ 跳过(已停用) [${scope}] ${def.name}`)
+        continue
+      }
 
       const rec = {
         name: def.name,
@@ -169,6 +201,8 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
         entry,
         clientPath: def.client ? resolve(dir, def.client) : null,
         routes: [],
+        enabled: true,
+        error: null,
       }
 
       const emitter = {
@@ -178,17 +212,33 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
         },
       }
       const perPluginDisposables = []
+      const hookOffs = []
       host.disposables.set(def.name, perPluginDisposables)
+      host.hookOffs.set(def.name, hookOffs)
+      const scopedHooks = {
+        on: (t, fn) => {
+          const off = host.bus.on(t, fn)
+          hookOffs.push(off)
+          return off
+        },
+        once: (t, fn) => {
+          const off = host.bus.once(t, fn)
+          hookOffs.push(off)
+          return off
+        },
+        off: (t, fn) => host.bus.off(t, fn),
+        emit: (t, p) => host.bus.emit(t, p),
+      }
       const ctx = createPluginContext({
         name: def.name,
         scope,
         dir,
-        hooks: host.bus,
+        hooks: scopedHooks,
         logger: {
-          debug: (...a) => logger.info(`[${def.name}][debug]`, ...a),
-          info: (...a) => logger.info(`[${def.name}]`, ...a),
-          warn: (...a) => logger.warn(`[${def.name}]`, ...a),
-          error: (...a) => logger.error(`[${def.name}]`, ...a),
+          debug: (...a) => host.logger.info(`[${def.name}][debug]`, ...a),
+          info: (...a) => host.logger.info(`[${def.name}]`, ...a),
+          warn: (...a) => host.logger.warn(`[${def.name}]`, ...a),
+          error: (...a) => host.logger.error(`[${def.name}]`, ...a),
         },
         config,
         paths,
@@ -197,10 +247,9 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
           perPluginDisposables.push(fn)
           return fn
         },
-        selfOrigin: host.selfOrigin,
+        selfOrigin: () => selfOriginRef(host),
       })
 
-      // 声明式 routes + setup 内 ctx.route() 两种形态都支持
       for (const r of (Array.isArray(def.routes) ? def.routes : [])) {
         emitter.registerRoute(def.name, r.method ?? 'GET', r.path, r.handler)
       }
@@ -217,8 +266,85 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
 
   host.initedAt = new Date().toISOString()
   await host.bus.emit('plugin:host:init', { plugins: [...host.plugins.keys()], failures: host.failures.length })
-  host.logger.info(`装载完成: ${host.plugins.size} 成功 / ${host.failures.length} 失败 / 路由 ${host.routes.size} 条`)
+  host.logger.info(`装载完成: ${host.plugins.size} 个(含停用)/ ${host.failures.length} 失败 / 活跃路由 ${host.routes.size} 条`)
+}
+
+function selfOriginRef(host) {
+  return host.selfOrigin()
+}
+
+/** 热重载:全部 dispose/解绑 → 重新装载(跳过停用)→ 广播 plugins.reloaded(并发合并) */
+export async function reloadPluginHost() {
+  const host = getPluginHost()
+  if (!host) return null
+  if (host.reloadInFlight) return host.reloadInFlight
+  host.reloadInFlight = doReload(host).finally(() => {
+    host.reloadInFlight = null
+  })
+  return host.reloadInFlight
+}
+
+async function doReload(host) {
+  host.logger.info('热重载插件宿主 ...')
+  for (const [name, list] of host.disposables ?? []) {
+    for (const fn of list.splice(0)) {
+      try {
+        await fn()
+      }
+      catch (err) {
+        host.logger.warn(`[${name}] onDispose 失败:`, err?.message)
+      }
+    }
+  }
+  for (const offs of (host.hookOffs ?? new Map()).values()) {
+    for (const off of offs.splice(0)) {
+      try {
+        off()
+      }
+      catch { /* 解绑失败忽略 */ }
+    }
+  }
+  host.plugins.clear()
+  host.routes = createRouteTable()
+  host.failures = []
+  await loadAllPlugins(host, { config: host.config, settingsPath: null, paths: { home: modePaths(host.cwd).homeDir, configRoot: join(host.cwd, '.AgentWorkShop'), dataDir: join(host.cwd, '.AgentWorkShop', 'data') } })
+  await host.bus.emit('plugins:reloaded', { plugins: pluginManifest() })
+  try {
+    const m = await import('@/server/services/workshop/scene-events')
+    m.broadcastSceneEvent('plugins.reloaded', { plugins: pluginManifest() })
+  }
+  catch { /* 广播失败不影响重载 */ }
   return host
+}
+
+/** 启停单插件(写状态文件;调用方随后 reloadPluginHost 或由 state watcher 触发) */
+export function setPluginEnabled(name, enabled) {
+  const host = getPluginHost()
+  const homeDir = modePaths(host?.cwd ?? process.cwd()).homeDir
+  const set = readDisabledSet(homeDir)
+  if (enabled) set.delete(name)
+  else set.add(name)
+  writeDisabledSet(homeDir, set)
+  return [...set]
+}
+
+/** 状态文件监视 → 热重载(CLI/Web 只写文件,服务自感知) */
+function ensureStateWatcher(host) {
+  const statePath = statePathFor(modePaths(host.cwd).homeDir)
+  try {
+    mkdirSync(dirname(statePath), { recursive: true })
+    if (!existsSync(statePath)) writeDisabledSet(modePaths(host.cwd).homeDir, new Set())
+    let debounce = null
+    watch(statePath, () => {
+      clearTimeout(debounce)
+      debounce = setTimeout(() => {
+        void reloadPluginHost()
+      }, 400)
+    })
+  }
+  catch (err) {
+    host.logger.warn('状态文件监视不可用(启停需手动重启):', err?.message)
+  }
 }
 
 /** 单例访问(未初始化返回 null —— 桥接点据此快速 no-op) */
@@ -256,7 +382,7 @@ export function readClientScript(name) {
   return { status: 200, code: readFileSync(rec.clientPath, 'utf8'), contentType: 'text/javascript; charset=utf-8' }
 }
 
-/** 清单(非敏感只读:名称/版本/作用域/描述/路由/是否有客户端) */
+/** 清单(非敏感只读;含启停状态与路由) */
 export function pluginManifest() {
   const host = getPluginHost()
   if (!host) return []
@@ -265,8 +391,10 @@ export function pluginManifest() {
     version: r.version,
     description: r.description,
     scope: r.scope,
+    enabled: r.enabled !== false,
     hasClient: Boolean(r.clientPath),
     routes: host.routes.byPlugin(r.name),
+    error: r.error,
   }))
 }
 

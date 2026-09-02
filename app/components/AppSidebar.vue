@@ -22,6 +22,7 @@ const menuItems = computed<MenuItem[]>(() => [
   { key: '/logs', icon: 'i-tabler-list-details', label: t('menu.logs'), motion: 'im-pop' },
   { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users'), motion: 'im-pop' },
   { key: '/monitor', icon: 'i-tabler-cpu', label: t('menu.monitor'), motion: 'im-pulse' },
+  { key: '/plugins', icon: 'i-tabler-puzzle', label: t('menu.plugins'), motion: 'im-pop' },
   { key: '/settings', icon: 'i-tabler-settings', label: t('menu.settings'), motion: 'im-rotate' },
 ])
 

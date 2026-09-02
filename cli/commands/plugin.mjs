@@ -7,7 +7,7 @@
 // 插件契约:入口 index.mjs 导出 { name, version?, description?,
 //   setup(ctx)?, client?: './client.mjs', routes?: [...] } —— 零导入依赖。
 // ============================================================
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { color } from '../core/logger.mjs'
 import { CliError } from '../core/errors.mjs'
@@ -16,8 +16,8 @@ export const meta = {
   name: 'plugin',
   aliases: ['plugins', 'plug'],
   group: '扩展',
-  summary: '插件管理:查看已装插件 / 脚手架新插件',
-  usage: 'aw plugin <list|create> [name] [--project|--global] [--force]',
+  summary: '插件管理:查看/启停(热重载)/脚手架',
+  usage: 'aw plugin <list|create|enable|disable> [name] [--project|--global] [--force]',
   description: [
     '插件 = 配置根 plugins/<name>/ 下的 node 项目:入口 index.mjs 导出',
     '{ name, setup(ctx) } 即自动装载(服务端钩子/API 路由),client.mjs 可选(浏览器增强)。',
@@ -106,7 +106,54 @@ export async function run(argv, ctx) {
   if (sub === 'create' || sub === 'new' || sub === 'add')
     return create(ctx, positionals[1], flags)
 
-  throw new CliError('USAGE', '用法: aw plugin <list|create> [name] [--project|--global]')
+  if (sub === 'enable' || sub === 'disable')
+    return setEnabled(ctx, sub === 'enable', positionals[1])
+
+  throw new CliError('USAGE', '用法: aw plugin <list|create|enable|disable> [name]')
+}
+
+// ---- 启停状态机(单一事实源:<home>/plugins-state.json;服务 fs.watch 热重载) ----
+function stateFile(ctx) {
+  return join(ctx.home, 'plugins-state.json')
+}
+
+function readState(ctx) {
+  try {
+    const j = JSON.parse(readFileSync(stateFile(ctx), 'utf8'))
+    return new Set(Array.isArray(j.disabled) ? j.disabled : [])
+  }
+  catch {
+    return new Set()
+  }
+}
+
+function writeState(ctx, disabledSet) {
+  const p = stateFile(ctx)
+  const tmp = `${p}.${process.pid}.tmp`
+  writeFileSync(tmp, `${JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), disabled: [...disabledSet] }, null, 2)}\n`, 'utf8')
+  renameSync(tmp, p)
+}
+
+function setEnabled(ctx, enabled, name) {
+  if (!name) throw new CliError('USAGE', `用法: aw plugin ${enabled ? 'enable' : 'disable'} <name>`)
+  const dir = findPluginDir(ctx, name)
+  if (!dir) throw new CliError('NOT_FOUND', `未找到插件 "${name}"(aw plugin list 查看)`)
+
+  const disabled = readState(ctx)
+  if (enabled) disabled.delete(name)
+  else disabled.add(name)
+  writeState(ctx, disabled)
+
+  console.log(`${color.green('✔')} 插件 ${color.bold(name)} 已${enabled ? '启用' : '停用'}${color.dim(`(${dir})`)}`)
+  console.log(`  › 运行中的服务会在 1s 内自动热重载;网页「插件管理」页状态同步`)
+  return 0
+}
+
+function findPluginDir(ctx, name) {
+  for (const { dir } of scopes(ctx)) {
+    if (dir && existsSync(join(dir, name, 'index.mjs'))) return join(dir, name)
+  }
+  return null
 }
 
 function scopes(ctx) {
@@ -118,8 +165,9 @@ function scopes(ctx) {
 
 function list(ctx) {
   console.log('')
-  console.log(`${color.bold('AgentWorkShop 插件')}  ${color.dim('— 配置根 plugins/ 目录,重启自动装载')}`)
+  console.log(`${color.bold('AgentWorkShop 插件')}  ${color.dim('— 配置根 plugins/ 目录,自动装载;aw plugin enable/disable 启停')}`)
   let total = 0
+  const disabled = readState(ctx)
   for (const { dir, label } of scopes(ctx)) {
     console.log('')
     console.log(color.bold(`  ${label} ${color.dim(dir)}`))
@@ -135,11 +183,13 @@ function list(ctx) {
     for (const name of dirs) {
       total++
       const hasClient = existsSync(join(dir, name, 'client.mjs'))
-      console.log(`    ${color.green('●')} ${color.cyan(name.padEnd(24))}${hasClient ? `${color.dim(' +client')}` : ''}`)
+      const off = disabled.has(name)
+      const stateText = off ? color.yellow('已停用') : color.green('已启用')
+      console.log(`    ${off ? color.yellow('○') : color.green('●')} ${color.cyan(name.padEnd(24))}${stateText}${hasClient ? color.dim(' +client') : ''}`)
     }
   }
   console.log('')
-  console.log(color.dim(`共 ${total} 个 · 契约: index.mjs 导出 { name, setup(ctx) } · 文档: docs/plugins.md`))
+  console.log(color.dim(`共 ${total} 个 · 启停: aw plugin enable|disable <name>(运行中服务热重载) · 文档: docs/plugins.md`))
   console.log('')
   return 0
 }

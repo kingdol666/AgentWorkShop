@@ -7,7 +7,7 @@
 // 原则：幂等（已存在绝不覆盖）、零依赖、任何失败只告警不阻断安装。
 // ============================================================
 import { randomBytes } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -119,6 +119,31 @@ export function runBootstrap({ quiet = false, env = process.env } = {}) {
   if (!existsSync(pluginsReadme)) {
     writeFileSync(pluginsReadme, PLUGINS_README, 'utf8')
     seeds.push('plugins/README.md')
+  }
+
+  // 8. 官方示例插件随包分发(sdk/examples/*):只复制目标缺失的目录,绝不覆盖用户改动;
+  //    新种子的示例默认**停用**(写入 plugins-state.json),经 aw plugin enable 开启
+  const examplesSrc = join(packageRoot, 'sdk', 'examples')
+  if (existsSync(examplesSrc)) {
+    const pluginsDir2 = join(home, 'plugins')
+    const stateFile = join(home, 'plugins-state.json')
+    let state = { version: 1, updatedAt: new Date().toISOString(), disabled: [] }
+    try {
+      state = JSON.parse(readFileSync(stateFile, 'utf8'))
+    }
+    catch { /* 首次无状态文件 */ }
+    state.disabled ??= []
+    for (const example of readdirSync(examplesSrc)) {
+      const dest = join(pluginsDir2, example)
+      if (existsSync(join(dest, 'index.mjs'))) continue // 已存在(或用户改过)——不动
+      cpSync(join(examplesSrc, example), dest, { recursive: true })
+      if (!state.disabled.includes(example)) state.disabled.push(example) // 默认停用
+      seeds.push(`plugins/${example}(默认停用)`)
+    }
+    state.updatedAt = new Date().toISOString()
+    const stateTmp = `${stateFile}.${process.pid}.tmp`
+    writeFileSync(stateTmp, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
+    renameSync(stateTmp, stateFile)
   }
 
   log(`[aw-home] ${home}  ${created.length ? `（新建 ${created.length} 项）` : '（已就绪）'}`)

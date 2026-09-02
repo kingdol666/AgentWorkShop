@@ -47,10 +47,14 @@ export function createClientContext({ name, eventBridge, baseUrl = '' }) {
       disposables.push(off)
       return off
     },
-    /** 同源平台 API(JSON;自动解 {data} 信封;非 2xx 抛错) */
+    /** 同源平台 API(JSON;自动解 {data} 信封;非 2xx 抛错;自动携带 cookie token) */
     fetch: async (path, opt = {}) => {
+      const headers = { accept: 'application/json', ...(opt.body !== undefined ? { 'content-type': 'application/json' } : {}), ...(opt.headers ?? {}) }
+      // 自动注入 cookie 里的平台 token(Authorization: Bearer)——与全站 $http 拦截器同源
+      const mCookie = document.cookie.match(/(?:^|;\s*)token=([^;]+)/)
+      if (mCookie) headers.authorization = `Bearer ${decodeURIComponent(mCookie[1])}`
       const res = await fetch(`${baseUrl}${path}`, {
-        headers: { accept: 'application/json', ...(opt.body !== undefined ? { 'content-type': 'application/json' } : {}), ...(opt.headers ?? {}) },
+        headers,
         method: opt.method ?? (opt.body !== undefined ? 'POST' : 'GET'),
         body: opt.body !== undefined ? JSON.stringify(opt.body) : undefined,
       })
