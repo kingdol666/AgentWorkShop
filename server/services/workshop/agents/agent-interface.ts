@@ -75,6 +75,8 @@ export interface AgentWorkspace {
     name: string
     description: string
     leadName: string | null
+    /** 团队共享域知识量(>0 表示有可检索的作业结论) */
+    sharedMemories: number
     activeTasks: Array<{ id: string, title: string, state: string }>
     recentCompleted: Array<{ title: string }>
   }>>

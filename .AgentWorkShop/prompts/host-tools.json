@@ -665,7 +665,7 @@
   {
     "name": "list_other_teams",
     "label": "List Other Teams",
-    "description": "[Leader only] Overview of the OTHER teams (channels) in this workspace: each team name, description, lead, its in-progress scenario tasks and recently completed tasks. Use this BEFORE requesting cross-channel collaboration: if another team is already working on (or has finished) something relevant, message their leader about it; if their shared memory may already contain the answer, search it with search_other_teams_memory first. Workers cannot call this tool.",
+    "description": "[Leader only] Overview of the OTHER teams (channels) in this workspace: each team name, description, lead, its in-progress scenario tasks, recently completed tasks, and how many shared memories it has (shared_memories > 0 means searchable knowledge exists - use search_other_teams_memory with that team). Decision flow: found knowledge -> reuse it directly; relevant work in progress but no knowledge yet -> message their leader via send_cross_channel_message; nothing -> consider whether your request justifies starting collaboration. Workers cannot call this tool.",
     "parameters": {
       "type": "object",
       "properties": {},

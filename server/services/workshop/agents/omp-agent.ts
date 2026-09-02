@@ -1589,7 +1589,8 @@ export class OmpRpcAgentImpl implements AgentInterface {
             const done = t.recentCompleted.length > 0
               ? t.recentCompleted.map(x => `「${x.title}」`).join('、')
               : '无'
-            return `- ${t.name}${t.description ? `(${t.description})` : ''} · lead=${t.leadName ?? '?'}\n  进行中: ${active}\n  近期完成: ${done}\n  channel_id: ${t.channelId}`
+            const mem = t.sharedMemories > 0 ? `共享记忆 ${t.sharedMemories} 条(可检索)` : '暂无共享记忆'
+            return `- ${t.name}${t.description ? `(${t.description})` : ''} · lead=${t.leadName ?? '?'} · ${mem}\n  进行中: ${active}\n  近期完成: ${done}\n  channel_id: ${t.channelId}`
           }).join('\n')
           return { text: `其他团队概览:\n${text}\n(需要协作时用 send_cross_channel_message 向对应团队 Leader 发信;查具体知识用 search_other_teams_memory)` }
         }

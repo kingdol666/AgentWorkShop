@@ -151,6 +151,14 @@ export function createMemoryRepo(db: DatabaseSync) {
       return stmt.all(matchQuery, TEAM_AGENT_ID, ...channelIds, limit) as unknown as Array<MemoryRow & { bm25: number }>
     },
 
+    /** 某 channel 团队共享域的行数(跨团队概览的"知识量"指标) */
+    countTeamShared(channelId: string): number {
+      return Number(
+        db.prepare(`SELECT COUNT(*) AS c FROM agent_memories WHERE channel_id = ? AND agent_id = ?`)
+          .get(channelId, TEAM_AGENT_ID)?.c ?? 0,
+      )
+    },
+
     listRecent(agentId: string, limit: number): MemoryRow[] {
       return listRecentStmt.all(agentId, limit) as unknown as MemoryRow[]
     },

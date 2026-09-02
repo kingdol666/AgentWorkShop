@@ -2563,6 +2563,8 @@ export class AgentChannelManager {
         name: c.name,
         description: c.description ?? '',
         leadName: leadRow?.name ?? null,
+        /** 团队共享域知识量:>0 说明该队有可检索的作业结论(search_other_teams_memory) */
+        sharedMemories: this.deps.repos.memories.countTeamShared(c.id),
         activeTasks: tasks
           .filter(t => !terminal.has(t.state))
           .map(t => ({ id: t.id, title: t.title, state: t.state })),
@@ -2593,6 +2595,8 @@ export class AgentChannelManager {
       others.map(c => c.id),
       Math.min(Math.max(input.limit ?? 5, 1), 20),
     )
+    // 触摸命中行(access_count/last_accessed_at):与 recallRows 同信号,强化后续召回排序
+    for (const r of rows) this.deps.repos.memories.touch(r.id)
     return rows.map(r => ({
       channelId: r.channelId,
       channelName: others.find(c => c.id === r.channelId)?.name ?? r.channelId,
@@ -2632,7 +2636,8 @@ export class AgentChannelManager {
           const done = t.recentCompleted.length > 0
             ? t.recentCompleted.map(x => `「${x.title}」`).join('、')
             : '无'
-          return `- ${t.name}${t.description ? `(${t.description})` : ''} · lead=${t.leadName ?? '?'}\n  进行中: ${active}\n  近期完成: ${done}\n  channel_id: ${t.channelId}`
+          const mem = t.sharedMemories > 0 ? `共享记忆 ${t.sharedMemories} 条(可检索)` : '暂无共享记忆'
+          return `- ${t.name}${t.description ? `(${t.description})` : ''} · lead=${t.leadName ?? '?'} · ${mem}\n  进行中: ${active}\n  近期完成: ${done}\n  channel_id: ${t.channelId}`
         }).join('\n')
         return { text: `其他团队概览:\n${text}\n(需要协作时用 send_cross_channel_message 向对应团队 Leader 发信;查具体知识用 search_other_teams_memory)` }
       }
