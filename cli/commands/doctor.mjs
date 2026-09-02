@@ -35,6 +35,23 @@ export async function run(argv, ctx) {
   const homeEnv = join(home, '.env')
   add('AW Home .env 密钥', existsSync(homeEnv), existsSync(homeEnv) ? '已生成(含随机 session 密钥)' : '未生成(aw home 可初始化)')
 
+  // ── Docker 与数采基础设施（MQTT/Timescale 连通性;doctor 只探测不拉起） ──
+  const { detectDocker, probeTcp } = await import('../../cli/infra.mjs')
+  const dockerInfo = detectDocker()
+  add('Docker', dockerInfo.ok, dockerInfo.ok ? dockerInfo.version : '未安装(依赖容器编排不可用,可改配外部依赖)')
+  try {
+    const eff = ctx.config.load().effective ?? {}
+    const mqHost = String(eff['daq.mqtt.host'] ?? '127.0.0.1')
+    const mqPort = Number(eff['daq.mqtt.port'] ?? 1883)
+    const tsHost = String(eff['daq.timescale.host'] ?? '127.0.0.1')
+    const tsPort = Number(eff['daq.timescale.port'] ?? 5432)
+    const mqUp = (await probeTcp(mqPort, mqHost)) === 'online'
+    const tsUp = (await probeTcp(tsPort, tsHost)) === 'online'
+    add('MQTT 连通', mqUp, `${mqHost}:${mqPort}${mqUp ? '' : ' — aw start 可经 Docker 自动拉起'}`)
+    add('TimescaleDB 连通', tsUp, `${tsHost}:${tsPort}${tsUp ? '' : ' — aw start 可经 Docker 自动拉起'}`)
+  }
+  catch { /* 配置不可用(未初始化)时跳过 */ }
+
   // ── 项目上下文 ──
   if (ctx.root) {
     add('项目检测', true, ctx.root)

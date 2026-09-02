@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/readme-assets/hero.png" alt="AgentWorkShop — 让 Agent 运行产线" width="100%" />
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/hero.png" alt="AgentWorkShop — 让 Agent 运行产线" width="100%" />
 
 # AgentWorkShop
 
@@ -19,8 +19,7 @@
 
 </div>
 
-> [!IMPORTANT]
-> **定位声明：监督层。** AgentWorkShop 是面向产线管理、数字孪生、数采与 Agent 编排的**监督层**（SCADA 同位）平台，运行在**秒级软实时**档位。它**不是**硬实时控制器：任何时序关键回路（**< 10 ms**、联锁、安全、伺服）**必须在 PLC 内实现**；本平台下发的值均为建议性设定值，产线侧逻辑可否决。
+> ⚠️ **定位声明：监督层。** AgentWorkShop 是面向产线管理、数字孪生、数采与 Agent 编排的**监督层**（SCADA 同位）平台，运行在**秒级软实时**档位。它**不是**硬实时控制器：任何时序关键回路（**< 10 ms**、联锁、安全、伺服）**必须在 PLC 内实现**；本平台下发的值均为建议性设定值，产线侧逻辑可否决。
 
 ---
 
@@ -33,7 +32,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 最终效果：提交一个目标，比如「分析熔体温度趋势并优化设定值」——Agent 团队读取真实传感器历史、计算统计量、提议新设定值、在 HITL 面板等您批准、写入 PLC、校验回读、带着数值汇报。**端到端，自动化 E2E 已验证。**
 
 <div align="center">
-<img src="docs/readme-assets/town-demo.gif" alt="3D 数字孪生 — 实时产线" width="86%" />
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/town-demo.gif" alt="3D 数字孪生 — 实时产线" width="86%" />
 <br><sub><b>实时 3D 孪生。</b>产线设备、设备健康、数采通道与趋势分析——全部由实时遥测驱动。</sub>
 </div>
 
@@ -62,11 +61,11 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 
 | Agent 工作台 | 产线运营 |
 |:---:|:---:|
-| ![Agent 工作台](docs/readme-assets/workshop.png) | ![产线运营](docs/readme-assets/dcw.png) |
+| ![Agent 工作台](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/workshop.png) | ![产线运营](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/dcw.png) |
 
 | 数采中心 | 数字孪生小镇 |
 |:---:|:---:|
-| ![数采中心](docs/readme-assets/daq.png) | ![数字孪生小镇](docs/readme-assets/town.png) |
+| ![数采中心](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/daq.png) | ![数字孪生小镇](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/town.png) |
 
 </div>
 

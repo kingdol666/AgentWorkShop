@@ -14,13 +14,17 @@ import { join } from 'node:path'
 import { color } from '../core/logger.mjs'
 import { localBypassEnv, preloadDotEnv } from '../core/context.mjs'
 import { runBootstrap } from '../../scripts/home-bootstrap.mjs'
+import { daqPreflight, printInfraGuidance } from '../infra.mjs'
 
 export const meta = {
   name: 'start',
   aliases: ['s', 'prod', 'preview'],
   group: '运行',
   summary: '一键启动生产服务（配置驱动端口,项目检出内外皆可）',
-  usage: 'aw start [--port <n>] [--host <h>]',
+  usage: 'aw start [--port <n>] [--host <h>] [--skip-infra]',
+  options: [
+    { name: 'skip-infra', type: 'boolean', description: '跳过数采基础设施前置检查(compose 拉起/回退引导)' },
+  ],
   needsProject: false,
 }
 
@@ -79,6 +83,26 @@ export async function run(argv, ctx) {
   // HOST 环境变量被 scripts/start.mjs 以最高优先读取(CLI 显式 --host 等效)
   if (flags.host !== undefined) envExtra.HOST = host
 
+  // ---- 数采基础设施前置检查(Docker 编排/回退引导;失败不阻断,服务内自动重连) ----
+  if (flags['skip-infra'] !== true) {
+    try {
+      const infra = await daqPreflight({ daq: eff.effective, configRoot: ctx.paths?.configRoot ?? ctx.configRoot ?? cwd })
+      if (infra.ok) {
+        console.log(`${color.green('✔')} 数采依赖就绪(MQTT ${infra.mqtt.host}:${infra.mqtt.port} · Timescale ${infra.timescale.host}:${infra.timescale.port})`)
+      }
+      else if (infra.pulled) {
+        console.log(`${color.yellow('⚠')} 依赖容器已拉起但端口尚未全部就绪——服务将继续启动,数采自动重连`)
+        printInfraGuidance(infra)
+      }
+      else {
+        printInfraGuidance(infra)
+      }
+    }
+    catch (err) {
+      console.log(`${color.dim('›')} 基础设施前置检查跳过: ${err?.message ?? err}`)
+    }
+  }
+
   console.log(`${color.cyan('›')} 生产服务(${isRepo ? 'repo' : 'home'} 模式) -> http://${host}:${port}  ${color.dim(`(端口来源: ${portSource})`)}`)
   console.log(`${color.cyan('›')} ${color.dim(`配置: ${ctx.configPath} · 数据: ${ctx.dataDir}`)}`)
   console.log(`${color.cyan('›')} 停止: Ctrl+C`)
@@ -86,7 +110,6 @@ export async function run(argv, ctx) {
   const launcher = join(appRoot, 'scripts', 'start.mjs')
   const args = existsSync(launcher) ? [launcher] : [outputEntry]
   if (flags.port !== undefined) args.push('--port', String(port))
-
   const child = spawn(process.execPath, args, {
     cwd,
     stdio: 'inherit',

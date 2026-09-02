@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/readme-assets/hero.png" alt="AgentWorkShop — Agents that run the production line" width="100%" />
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/hero.png" alt="AgentWorkShop — Agents that run the production line" width="100%" />
 
 # AgentWorkShop
 
@@ -19,8 +19,7 @@
 
 </div>
 
-> [!IMPORTANT]
-> **Positioning: supervisory layer.** AgentWorkShop is a *supervisory* (SCADA-adjacent) layer for production-line management, digital twins, DAQ and agent orchestration, operating at **second-level soft real-time**. It is **not** a hard real-time controller: any time-critical loop (**< 10 ms**, interlocks, safety, servo) **must live inside the PLC**. Setpoints written here are advisory — plant-side logic may veto.
+> ⚠️ **Positioning: supervisory layer.** AgentWorkShop is a *supervisory* (SCADA-adjacent) layer for production-line management, digital twins, DAQ and agent orchestration, operating at **second-level soft real-time**. It is **not** a hard real-time controller: any time-critical loop (**< 10 ms**, interlocks, safety, servo) **must live inside the PLC**. Setpoints written here are advisory — plant-side logic may veto.
 
 ---
 
@@ -33,7 +32,7 @@ It grew an **industrial half**: a full data-acquisition and write-control stack 
 The result: submit a goal like *"analyze the melt temperature trend and optimize the setpoint"* — and an agent team reads real sensor history, computes statistics, proposes a new setpoint, waits for your approval in the HITL panel, writes it to the PLC, verifies the readback, and reports the numbers back. **End to end, verified by automated E2E.**
 
 <div align="center">
-<img src="docs/readme-assets/town-demo.gif" alt="3D digital twin — live production line" width="86%" />
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/town-demo.gif" alt="3D digital twin — live production line" width="86%" />
 <br><sub><b>Live 3D twin.</b> Line equipment, device health, DAQ channels and trend analysis — all driven by real-time telemetry.</sub>
 </div>
 
@@ -62,11 +61,11 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 
 | Agent Workbench | Line Operations |
 |:---:|:---:|
-| ![Agent workbench](docs/readme-assets/workshop.png) | ![Line operations](docs/readme-assets/dcw.png) |
+| ![Agent workbench](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/workshop.png) | ![Line operations](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/dcw.png) |
 
 | DAQ Center | Digital Twin Town |
 |:---:|:---:|
-| ![DAQ center](docs/readme-assets/daq.png) | ![Digital twin town](docs/readme-assets/town.png) |
+| ![DAQ center](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/daq.png) | ![Digital twin town](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/town.png) |
 
 </div>
 
