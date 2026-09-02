@@ -39,6 +39,8 @@ let argPort
 }
 
 const rm = resolveRunMode({ cwd: process.cwd(), packageRoot, env: process.env })
+// 包根锚点(随进程环境传给应用):prompts 播种源 = <包根>/.AgentWorkShop/prompts
+process.env.AW_PACKAGE_ROOT = packageRoot
 const eff = loadEffective({
   configPath: rm.configPath,
   settingsPath: rm.settingsPath,

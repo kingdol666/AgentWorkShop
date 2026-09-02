@@ -74,11 +74,11 @@ export async function run(argv, ctx) {
 
   // home 模式:把 AW_HOME/AW_MODE 传给应用与构建子进程
   // (cwd=home 数据自然落盘;AW_MODE=home 防止包目录被误判为项目检出)
-  // prompts 是应用资产(随包升级),注入 AW_PROMPTS_DIR 指向包内唯一事实源
+  // prompts 解析:项目 ./.AgentWorkShop/prompts 优先,否则 ~/.AgentWorkShop/prompts
+  // (服务端首启自动从包内资产播种,见 loader.ts)——不再把 AW_PROMPTS_DIR 钉死在包内
   if (!isRepo) {
     envExtra.AW_HOME = ctx.home
     envExtra.AW_MODE = 'home'
-    envExtra.AW_PROMPTS_DIR = join(appRoot, '.AgentWorkShop', 'prompts')
   }
   // HOST 环境变量被 scripts/start.mjs 以最高优先读取(CLI 显式 --host 等效)
   if (flags.host !== undefined) envExtra.HOST = host

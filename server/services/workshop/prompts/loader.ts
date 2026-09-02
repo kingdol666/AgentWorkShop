@@ -7,11 +7,18 @@
  *  - 缓存:mtime 感知(文件修改即刻生效,dev/HMR 友好;stat 开销可忽略)
  *  - host-tools.json:结构化工具定义(name/label/description/parameters),
  *    JSON 承载 schema,与叙事型 md 并置同一目录统一管理
- *  - 目录解析:AW_PROMPTS_DIR 环境变量 → process.cwd()/.AgentWorkShop/prompts;
+ *  - 目录解析(hardening 后的规约,与配置根优先级同族):
+ *      ① AW_PROMPTS_DIR 环境变量(显式覆盖,兼容旧约定)
+ *      ② 项目内 <cwd 向上>/.AgentWorkShop/prompts 真实存在 → 项目内优先
+ *      ③ 否则 ~/.AgentWorkShop/prompts —— 首次解析时从包内资产播种初始文件
+ *        (只补缺失文件,绝不覆盖已有内容 → 用户在 Home 的定制即权威版本);
+ *        播种源 = AW_PACKAGE_ROOT(启动器注入的包根)/.AgentWorkShop/prompts
  *    启动即校验(缺文件 fail-fast,防静默降级为无 prompt 裸跑)
  */
-import { readFileSync, statSync, existsSync, readdirSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { copyFileSync, existsSync, readdirSync, readFileSync, statSync, mkdirSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { awHome, findLocalConfigRoot } from '../../../../shared/config/home.mjs'
 import { AppError } from '../../../utils/errors'
 
 /** 模板变量值(字符串化注入) */
@@ -24,15 +31,61 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>()
 
-/** prompts 目录(AW_PROMPTS_DIR 覆盖 → cwd 相对) */
-export function promptsDir(): string {
-  const base = process.env.AW_PROMPTS_DIR
-    ? resolve(process.env.AW_PROMPTS_DIR)
-    : resolve(process.cwd(), '.AgentWorkShop', 'prompts')
-  if (!existsSync(base)) {
-    throw new AppError(500, 'PROMPTS_DIR_MISSING', `prompts 目录不存在: ${base}(外置 prompt 为必需;可用 AW_PROMPTS_DIR 指定)`)
+/** 包内资产 prompts 目录(播种源;不存在返回 null) */
+function packagedPromptsDir(): string | null {
+  const packageRoot = process.env.AW_PACKAGE_ROOT
+    ? resolve(process.env.AW_PACKAGE_ROOT)
+    : resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
+  const candidate = join(packageRoot, '.AgentWorkShop', 'prompts')
+  return existsSync(candidate) ? candidate : null
+}
+
+/** 首次解析时把包内初始 prompts 播种到 ~/.AgentWorkShop/prompts(只补缺,不覆盖) */
+function seedHomePrompts(homePrompts: string): void {
+  const src = packagedPromptsDir()
+  if (!src || resolve(src) === resolve(homePrompts)) return
+  mkdirSync(homePrompts, { recursive: true })
+  let seeded = 0
+  for (const f of readdirSync(src)) {
+    const dst = join(homePrompts, f)
+    if (existsSync(dst)) continue
+    try {
+      copyFileSync(join(src, f), dst)
+      seeded++
+    }
+    catch { /* 单文件失败不阻断播种 */ }
   }
-  return base
+  if (seeded > 0) console.log(`[prompts] 已向 ${homePrompts} 播种 ${seeded} 个初始提示词文件`)
+}
+
+/**
+ * prompts 目录解析:显式覆盖 > 项目内(存在即用) > ~/.AgentWorkShop/prompts(自动播种)。
+ * 失败 fail-fast —— 外置 prompt 为必需,防静默降级为无 prompt 裸跑。
+ */
+export function promptsDir(): string {
+  // ① 显式覆盖(兼容既有部署约定)
+  if (process.env.AW_PROMPTS_DIR) {
+    const base = resolve(process.env.AW_PROMPTS_DIR)
+    if (!existsSync(base)) {
+      throw new AppError(500, 'PROMPTS_DIR_MISSING', `prompts 目录不存在: ${base}(AW_PROMPTS_DIR 指定)`)
+    }
+    return base
+  }
+
+  // ~/.AgentWorkShop/prompts:默认兜底目录,首次解析自动播种初始文件(只补缺,不覆盖用户定制)
+  const homePrompts = join(awHome(process.env), 'prompts')
+  if (!existsSync(homePrompts)) seedHomePrompts(homePrompts)
+
+  // ② 项目内 ./.AgentWorkShop/prompts 真实存在 → 项目内优先
+  const localConfigRoot = findLocalConfigRoot(process.cwd())
+  if (localConfigRoot) {
+    const candidate = join(localConfigRoot, 'prompts')
+    if (existsSync(candidate)) return candidate
+  }
+
+  // ③ ~/.AgentWorkShop/prompts
+  if (existsSync(homePrompts)) return homePrompts
+  throw new AppError(500, 'PROMPTS_DIR_MISSING', `prompts 目录不存在(已尝试自动播种): ${homePrompts};可用 AW_PROMPTS_DIR 指定`)
 }
 
 /** 读取 md 原文(mtime 缓存;文件缺失 fail-fast) */
