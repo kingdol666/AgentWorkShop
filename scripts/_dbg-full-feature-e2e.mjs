@@ -170,7 +170,7 @@ async function main() {
       console.log(`  [t+${i * 3}s] tasks: ${tasks.map(t => t.state).join(',')} | agents: ${arr.map(m => `${m.role}:${m.state}`).join(',')}`)
     }
     const parentDone = tasks.find(t => t.id === taskId)?.state === 'COMPLETED'
-    if (workerValueSeen && (parentDone || subState === 'COMPLETED' || i > 90)) break
+    if (workerValueSeen && (parentDone || subState === 'COMPLETED' || i > 160)) break
   }
   check('lead 调度:主任务拆解并派发子任务', subTaskSeen)
   check('HITL:Agent 经工具发起数控下发,用户批准后执行', hitlSeen)

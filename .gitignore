@@ -68,3 +68,4 @@ data/
 .superpowers/
 # 嵌套的第三方 MCP 仓库(独立 git 仓库,不属于本项目)
 claude-talk-to-figma-mcp/
+.npmrc

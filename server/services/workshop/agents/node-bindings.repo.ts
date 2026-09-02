@@ -10,7 +10,7 @@
 import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 
@@ -148,7 +148,7 @@ export class AgentNodeBindingRepo {
 
   private flush(): void {
     try {
-      fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
+      fs.mkdirSync(dirname(DB_PATH), { recursive: true })
       fs.writeFileSync(DB_PATH, JSON.stringify(this.list, null, 2), 'utf-8')
     }
     catch (err) {

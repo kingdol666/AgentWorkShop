@@ -113,15 +113,19 @@ export async function createContext({ cwd = process.cwd(), explicitRoot, json = 
   const home = awHome(process.env)
   const isProject = Boolean(root)
 
-  // 自定义命令目录：项目级(仅 repo 模式,与 prompts 外置约定同目录) + 用户级(=AW Home)
-  const localCommands = root ? join(root, '.AgentWorkShop', 'commands') : null
+  // 自定义命令目录：项目级(仅当项目 ./.AgentWorkShop 真实存在——回退 ~/.AgentWorkShop
+  // 时不得就地创建,见 shared/config/home.mjs 优先级规约) + 用户级(=AW Home)
+  const paths0 = resolveRunMode({ cwd, packageRoot, env: process.env })
+  const localCommands = root && paths0.configRoot === join(root, '.AgentWorkShop')
+    ? join(root, '.AgentWorkShop', 'commands')
+    : null
   const globalCommands = join(home, 'commands')
   for (const dir of [localCommands, globalCommands].filter(Boolean)) {
     mkdirSync(dir, { recursive: true })
   }
 
-  // 路径判定（单一入口）：repo 模式配置/数据在 <repo>/.AgentWorkShop;home 在 ~/.AgentWorkShop
-  const paths = resolveRunMode({ cwd, packageRoot, env: process.env })
+  // 路径判定（单一入口）：项目 ./.AgentWorkShop 显式存在 > 检出内无则回退 ~/.AgentWorkShop > home
+  const paths = paths0
   // 显式 --root 时尊重显式值
   if (explicitRoot && root) {
     paths.configRoot = join(root, '.AgentWorkShop')
