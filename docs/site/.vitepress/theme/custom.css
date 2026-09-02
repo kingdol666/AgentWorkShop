@@ -284,11 +284,22 @@
   mask-image: radial-gradient(ellipse 90% 100% at 50% 0%, #000 30%, transparent 78%);
 }
 
-/* hero 标题 = 工业终端(Cascadia 等宽粗体) */
+/* hero 标题 = 工业终端(Cascadia 等宽粗体)+ 规格书 kicker */
 .VPHomeHero .name {
   font-family: var(--aw-mono);
   font-weight: 700;
   letter-spacing: -0.03em;
+}
+
+.VPHomeHero .name::before {
+  content: 'AGENTWORKSHOP / INDUSTRIAL AGENT RUNTIME';
+  display: block;
+  margin-bottom: 18px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--aw-green);
+  -webkit-text-size-adjust: none;
 }
 
 .VPHomeHero .text {
@@ -325,15 +336,50 @@
 
 /* feature 卡 = 机柜面板;图标槽 = 设备铭牌;悬停 = 面板通电 */
 .VPFeature {
+  position: relative;
   background: var(--aw-panel);
   border: 1px solid var(--aw-line);
   border-radius: 12px;
   transition: border-color 0.25s, transform 0.25s;
 }
 
+/* 工程图纸角标:左上/右下 L 形制图角(极低存在感,悬停通电) */
+.VPFeature::before,
+.VPFeature::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  opacity: 0.4;
+  transition: opacity 0.25s, border-color 0.25s;
+}
+
+.VPFeature::before {
+  top: 7px;
+  left: 7px;
+  border-top: 1px solid var(--aw-line-hi);
+  border-left: 1px solid var(--aw-line-hi);
+  border-top-left-radius: 3px;
+}
+
+.VPFeature::after {
+  bottom: 7px;
+  right: 7px;
+  border-bottom: 1px solid var(--aw-line-hi);
+  border-right: 1px solid var(--aw-line-hi);
+  border-bottom-right-radius: 3px;
+}
+
 .VPFeature:hover {
   border-color: var(--aw-green-dim);
   transform: translateY(-2px);
+}
+
+.VPFeature:hover::before,
+.VPFeature:hover::after {
+  opacity: 1;
+  border-color: var(--aw-green);
 }
 
 .VPFeature .details {

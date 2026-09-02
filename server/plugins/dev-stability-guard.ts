@@ -7,6 +7,9 @@
  * 依赖异常中止进程,绝不能被护栏吞掉。
  */
 const SOCKET_NOISE = /ECONNRESET|EPIPE|ECONNABORTED|ETIMEDOUT|ERR_STREAM_PREMATURE_CLOSE/
+// SQLite 忙/锁(hardening ST-1):多写竞争的瞬态错误,记录并继续;
+// 真正的库损坏/磁盘错误不经此路径,仍走致命语义。
+const SQLITE_BUSY = /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i
 
 function isSocketNoise(reason: unknown): boolean {
   if (reason == null) return false
@@ -22,9 +25,14 @@ function describe(reason: unknown): string {
 }
 
 export default defineNitroPlugin(() => {
+  const isTransientDbBusy = (reason: unknown): boolean => SQLITE_BUSY.test(describe(reason))
   process.on('unhandledRejection', (reason) => {
     if (isSocketNoise(reason)) {
       console.warn(`[stability-guard] socket noise suppressed: ${describe(reason).slice(0, 120)}`)
+      return
+    }
+    if (isTransientDbBusy(reason)) {
+      console.warn(`[stability-guard] sqlite busy(瞬态,不退出): ${describe(reason).slice(0, 120)}`)
       return
     }
     console.error(`[stability-guard] fatal unhandledRejection, exiting:\n${describe(reason)}`)
@@ -35,8 +43,12 @@ export default defineNitroPlugin(() => {
       console.warn(`[stability-guard] socket noise suppressed: ${describe(err).slice(0, 120)}`)
       return
     }
+    if (isTransientDbBusy(err)) {
+      console.warn(`[stability-guard] sqlite busy(瞬态,不退出): ${describe(err).slice(0, 120)}`)
+      return
+    }
     console.error(`[stability-guard] fatal uncaughtException, exiting:\n${describe(err)}`)
     process.exit(1)
   })
-  console.warn('[stability-guard] armed (socket disconnects → log & continue; real errors → exit 1)')
+  console.warn('[stability-guard] armed (socket 断连与 sqlite 瞬态忙 → 记录继续;真实错误 → exit 1)')
 })

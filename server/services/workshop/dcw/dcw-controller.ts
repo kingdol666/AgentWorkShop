@@ -218,10 +218,12 @@ class DcwController {
   }
 
   controllerState() {
+    // 单次遍历(hardening PERF-1):status 高频路径不再对全表多次 all()
+    const nodes = this.repo.all()
     return {
       running: this.running,
-      nodesTotal: this.repo.all().length,
-      nodesOnline: this.running ? this.repo.all().filter(n => n.enabled).length : 0,
+      nodesTotal: nodes.length,
+      nodesOnline: this.running ? nodes.filter(n => n.enabled).length : 0,
       writesTotal: this.writesTotal,
       writesFailed: this.writesFailed,
     }

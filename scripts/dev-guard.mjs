@@ -73,6 +73,39 @@ const effectivePort = cliPort ?? devPort
 process.env.PORT = String(effectivePort)
 console.log(`[config] worker PORT env -> ${effectivePort}`)
 
+// --- 单实例互斥 + 端口占用显式报错(hardening ST-1/ST-4):不再静默换端口 ---
+{
+  const { acquireLock, checkPort } = await import('../shared/config/single-instance.mjs')
+  const lock = acquireLock(resolve(root, '.AgentWorkShop'), { mode: 'dev', port: effectivePort })
+  if (!lock.ok) {
+    const h = lock.holder
+    console.error(`✖ 已有实例在运行(pid=${h.pid}${h.port ? `,端口=${h.port}` : ''},启动于 ${h.startedAt ?? '未知'},模式=${h.mode ?? '未知'})`)
+    console.error(`  › dev/start 共享同一数据目录,禁止双开;如需并行请用 AW_HOME 隔离配置根`)
+    console.error(`  › 如确认是残留锁文件,可删除 ${lock.lockPath} 后重试`)
+    process.exit(2)
+  }
+  const probeHost = devHost === '0.0.0.0' || devHost === '::' ? '127.0.0.1' : devHost
+  const occupied = await checkPort(probeHost, effectivePort)
+  if (occupied) {
+    let pidHint = ''
+    try {
+      const { execSync } = await import('node:child_process')
+      const isWin = process.platform === 'win32'
+      const out = execSync(
+        isWin ? `netstat -ano | findstr :${effectivePort}` : `lsof -ti :${effectivePort} 2>/dev/null | head -1`,
+        { encoding: 'utf8', shell: true },
+      )
+      const m = isWin ? out.split('\n').find(l => l.includes('LISTENING')) : out.trim()
+      pidHint = isWin ? (m?.trim().split(/\s+/).pop() ?? '') : m
+      if (pidHint) pidHint = `(占用 pid=${pidHint})`
+    }
+    catch { /* 探测失败不阻断报错 */ }
+    console.error(`✖ 开发端口 ${effectivePort} 已被占用${pidHint}`)
+    console.error(`  › 可显式指定其他端口: aw dev --port ${effectivePort + 1}`)
+    process.exit(2)
+  }
+}
+
 const inject = [...rest]
 if (!hasPort) inject.push('--port', String(devPort))
 if (!hasHost) inject.push('--host', devHost)

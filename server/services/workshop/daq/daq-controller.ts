@@ -476,12 +476,14 @@ class DaqController {
   controllerState(): AepDaqControllerState & { produced?: number, consumed?: number, dropped?: number, samplesStored?: number, tsdbDropped?: number } {
     // 丢弃 = 队列层真实丢弃(inproc 拥塞/mqtt 断连)+ 消费侧乱序迟到帧(诚实可见)
     const queueLost = g_queueLost()
+    // 单次遍历(hardening PERF-1):status 高频路径不再对全表多次 all()
+    const nodes = this.repo.all()
     return {
       running: this.running,
       defaultIntervalMs: this.defaultIntervalMs,
       defaultPublishIntervalMs: this.defaultPublishIntervalMs,
-      nodesTotal: this.repo.all().length,
-      nodesOnline: this.onlineCount(),
+      nodesTotal: nodes.length,
+      nodesOnline: this.running ? nodes.filter(n => n.enabled).length : 0,
       produced: this.producedCount,
       consumed: this.consumedCount,
       dropped: Math.max(0, this.producedCount - this.consumedCount) + queueLost + this.lateDropped,

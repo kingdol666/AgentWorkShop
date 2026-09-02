@@ -69,3 +69,6 @@ data/
 # 嵌套的第三方 MCP 仓库(独立 git 仓库,不属于本项目)
 claude-talk-to-figma-mcp/
 .npmrc
+
+# 运行时锁与临时产物(单实例互斥)
+.AgentWorkShop/.runtime/

@@ -50,6 +50,17 @@ const host = eff.effective['server.host'] ?? '0.0.0.0'
 const prodPort = eff.effective['server.prod.port'] ?? 3000
 const portSource = eff.sources['server.prod.port']
 
+// ---- 单实例互斥(hardening ST-1):同配置根双开直接退出码 2,防 SQLite 锁崩溃 ----
+const { acquireLock } = await import('../shared/config/single-instance.mjs')
+const lock = acquireLock(rm.configRoot, { mode: `prod:${rm.mode}`, port: argPort ? Number(argPort) : prodPort })
+if (!lock.ok) {
+  const h = lock.holder
+  console.error(`✖ 已有实例在运行(pid=${h.pid}${h.port ? `,端口=${h.port}` : ''},启动于 ${h.startedAt ?? '未知'},模式=${h.mode ?? '未知'})`)
+  console.error(`  › 配置根: ${rm.configRoot}`)
+  console.error(`  › 如确认是残留锁文件,可删除 ${lock.lockPath} 后重试`)
+  process.exit(2)
+}
+
 process.env.HOST = process.env.HOST || process.env.NITRO_HOST || String(host)
 process.env.PORT = process.env.PORT || process.env.NITRO_PORT || String(prodPort)
 process.env.NITRO_HOST = process.env.HOST
