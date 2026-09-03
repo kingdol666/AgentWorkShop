@@ -25,7 +25,7 @@ import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import { daqKeyFromRef, normalizeDataTransform, normalizeSignalKind, DAQ_DRIVERS, type AepDaqControllerState, type AepDaqFrame, type AepDaqReading, type AepDaqNodeChange, type DaqDriverKind, type DaqNodeView, type DataTransform, type DriverTestResult } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
-import { normalizeDriverKind, resolveDaqDriver, probeDriverAvailability, type DaqFrameSample } from './drivers'
+import { normalizeDriverKind, resolveDaqDriver, probeDriverAvailability, listPluginDrivers, type DaqFrameSample } from './drivers'
 import { findDaqTemplate } from './daq-templates'
 import { DaqNode } from './daq-node'
 import { DaqNodeRuntime, type DaqRuntimeHost } from './daq-runtime'
@@ -725,8 +725,8 @@ class DaqController {
   }
 
   /** 后端能力自描述(meta 用) */
-  backends(): { tsdb: string, queue: string, objectstore: string, drivers: typeof DAQ_DRIVERS } {
-    return { tsdb: getTsdb().backend, queue: g_queueBackend ?? 'inproc', objectstore: getObjectStore().backend, drivers: DAQ_DRIVERS }
+  backends(): { tsdb: string, queue: string, objectstore: string, pluginDrivers: string[], drivers: typeof DAQ_DRIVERS } {
+    return { tsdb: getTsdb().backend, queue: g_queueBackend ?? 'inproc', objectstore: getObjectStore().backend, pluginDrivers: listPluginDrivers(), drivers: DAQ_DRIVERS }
   }
 
   // ---------- 控制器全局 ----------
