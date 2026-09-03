@@ -50,11 +50,11 @@ import {
   loadHostToolDefs,
   renderPrompt,
 } from '../prompts/loader'
-import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolMyIndustrialNodes } from './industrial-tools'
+import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolMyIndustrialNodes } from './industrial-tools'
 import { attachOmpPluginBridge, listPluginTools, onPluginToolsChange } from './plugin-tools'
 import { buildIndustrialContext, industrialLoopGuide } from './industrial-context'
+import { ompSettings } from '../settings'
 import { extractTaskMode } from '../runtime/execution-mode'
-import { envNum } from '../runtime/memory'
 
 const log = createLogger('workshop.omp')
 
@@ -261,22 +261,21 @@ export class OmpRpcAgentImpl implements AgentInterface {
   private lastHarvestKey = ''
   private lastHarvestAt = 0
 
-  /** 总开关(AW_OMP_COMPACT_ENABLED=0 显式关闭;envNum 拒 0,故单独解析) */
+  /** 总开关(omp.compact_enabled;env AW_OMP_COMPACT_ENABLED=0 显式关闭兼容) */
   private compactEnabled(): boolean {
-    const v = Number(process.env.AW_OMP_COMPACT_ENABLED)
-    return !(Number.isFinite(v) && v === 0)
+    return ompSettings().compact_enabled
   }
 
   private compactThreshold(): number {
-    return Math.min(1, envNum('AW_OMP_COMPACT_THRESHOLD', 0.7))
+    return ompSettings().compact_threshold
   }
 
   private compactMinIntervalMs(): number {
-    return envNum('AW_OMP_COMPACT_MIN_INTERVAL_MS', 300_000)
+    return ompSettings().compact_min_interval_ms
   }
 
   private compactWaitMs(): number {
-    return envNum('AW_OMP_COMPACT_WAIT_MS', 120_000)
+    return ompSettings().compact_wait_ms
   }
 
   /** 被动上下文用量快照(无探测 RPC;getStatus 透出用) */
@@ -1916,6 +1915,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
         }
         case 'dcw_control': {
           return toolDcwControl(this.selfAgentId, req.arguments as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string })
+        }
+        case 'dcw_read': {
+          return toolDcwRead(this.selfAgentId, req.arguments as { node_id?: string })
         }
         case 'daq_query': {
           return toolDaqQuery(this.selfAgentId, req.arguments as Parameters<typeof toolDaqQuery>[1])

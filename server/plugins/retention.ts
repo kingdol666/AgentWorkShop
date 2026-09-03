@@ -11,6 +11,7 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { runRetentionSweep } from '@/server/services/workshop/db/retention'
 import { ensureDataDir } from '@/shared/config/home.mjs'
+import { retentionSettings } from '../services/workshop/settings'
 
 const g = globalThis as typeof globalThis & { __awRetentionTimer?: NodeJS.Timeout }
 
@@ -30,7 +31,8 @@ function sweepOnce(dataDir: string): void {
 }
 
 export default function retentionPlugin() {
-  if (process.env.RETENTION_DISABLED === '1' || process.env.AW_RETENTION_DISABLED === '1') return
+  // retention.disabled(env RETENTION_DISABLED / AW_RETENTION_DISABLED 兼容别名)
+  if (retentionSettings().disabled) return
   if (g.__awRetentionTimer) return
   const dataDir = ensureDataDir()
 

@@ -8,6 +8,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { getOps } from '../ops/ops'
+import { securityHitlTimeoutMs } from '../settings'
 
 export interface ToolApproval {
   id: string
@@ -27,8 +28,8 @@ export interface ToolApproval {
   decidedName: string
 }
 
-/** 审批超时窗(超时默认拒绝,指令不执行);可用环境变量 HITL_TIMEOUT_MS 调整(测试/产线策略) */
-const TIMEOUT_MS = Number(process.env.HITL_TIMEOUT_MS) > 0 ? Number(process.env.HITL_TIMEOUT_MS) : 180_000
+/** 审批超时窗(超时默认拒绝,指令不执行);security.hitl_timeout_ms(env HITL_TIMEOUT_MS 兼容) */
+const TIMEOUT_MS = (): number => securityHitlTimeoutMs()
 const HISTORY_CAP = 50
 
 class ToolApprovalService {
@@ -49,7 +50,7 @@ class ToolApprovalService {
       kind,
       detail,
       createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + TIMEOUT_MS).toISOString(),
+      expiresAt: new Date(Date.now() + TIMEOUT_MS()).toISOString(),
       status: 'pending',
       comment: '',
       decidedAt: null,
@@ -65,7 +66,7 @@ class ToolApprovalService {
         approval.comment = '审批超时未处理,默认拒绝,指令未执行'
         this.remember(approval)
         resolve({ approved: false, comment: approval.comment, id: approval.id })
-      }, TIMEOUT_MS)
+      }, TIMEOUT_MS())
       timer.unref?.()
       this.pending.set(approval.id, { approval, resolve, timer })
     })
@@ -135,7 +136,7 @@ class ToolApprovalService {
         decidedName: r.decidedName,
         createdAt: r.createdAt,
         // 持久化表未存到期时刻:按超时窗从 createdAt 派生(仅展示用)
-        expiresAt: new Date(Date.parse(r.createdAt) + TIMEOUT_MS).toISOString(),
+        expiresAt: new Date(Date.parse(r.createdAt) + TIMEOUT_MS()).toISOString(),
       }))
     }
     return this.history

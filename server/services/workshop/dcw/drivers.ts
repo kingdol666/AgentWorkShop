@@ -38,6 +38,28 @@ export interface DcwWriteDriver {
   available(): Promise<boolean>
   write(input: DcwWriteInput): Promise<DcwWriteResult>
   test(driverConfig: Record<string, unknown>): Promise<{ ok: boolean, message: string }>
+  /** 读当前 PLC 值(可选原语;不支持读的驱动为 undefined,网关按 supportsRead 收敛) */
+  read?(input: DcwReadInput): Promise<DcwReadResult>
+}
+
+export interface DcwReadInput {
+  /** 节点工艺量程(原始值↔工程量映射缺省域) */
+  domain: { min: number, max: number }
+  driverConfig: Record<string, unknown>
+}
+
+export interface DcwReadResult {
+  ok: boolean
+  message: string
+  /** 工程量(PLC 语义;寄存器驱动 = 原始值解码后映射,直写型驱动 = 节点值本身) */
+  eng: number | null
+  /** 原始值(寄存器解码;非寄存器驱动与 eng 同源) */
+  raw: number | null
+}
+
+/** 读能力判定(网关调度周期读前先收敛,不支持读的驱动不空转) */
+export function supportsDcwRead(kind: DcwDriverKind): boolean {
+  return resolveDcwDriver(kind).read != null
 }
 
 const num = (v: unknown): number | undefined => {
@@ -111,9 +133,51 @@ export const mockDcwDriver: DcwWriteDriver = {
       readback: input.eng,
     }
   },
+  async read(input) {
+    const key = `${input.driverConfig.key ?? 'default'}`
+    const has = mockState.__dcwMockPlc!.has(key)
+    const eng = mockState.__dcwMockPlc!.get(key) ?? null
+    return has
+      ? { ok: true, message: `Mock PLC 读回:${eng}`, eng, raw: eng }
+      : { ok: false, message: `Mock PLC 无设定记录(${key};从未写入)`, eng: null, raw: null }
+  },
   async test() {
     return { ok: true, message: 'Mock 驱动无需连接,写入即模拟 ACK' }
   },
+}
+
+// ============================================================
+// Modbus 读原语(TCP/RTU 共用;读保持寄存器 → 解码 → 工程量映射)
+// ============================================================
+
+function wordsOf(dataType: string): number {
+  return dataType === 'int16' || dataType === 'uint16' ? 1 : 2
+}
+
+async function modbusRead(input: DcwReadInput, transport: 'tcp' | 'rtu-tcp'): Promise<DcwReadResult> {
+  const cfg = input.driverConfig
+  if (!cfg.host) throw new AppError(400, 'BAD_REQUEST', '缺少设备地址 host')
+  if (cfg.register == null) throw new AppError(400, 'BAD_REQUEST', '缺少寄存器地址 register')
+  const dataType = String(cfg.dataType ?? 'float32')
+  const byteOrder = String(cfg.byteOrder ?? 'big')
+  const offset = registerOffset(Number(cfg.register ?? 0), 'holding')
+  const conn = await getModbusConn(cfg, transport)
+  conn.lastUsed = Date.now()
+  return withModbusConn(conn, async (): Promise<DcwReadResult> => {
+    try {
+      const rb = await conn.client.readHoldingRegisters(offset, wordsOf(dataType))
+      const raw = decodeRegisters(rb.data as number[], dataType, byteOrder)
+      // 原始值 → 工程量(与写链路同一映射;engToRaw/rawToEng 对称)
+      const eng = rawToEng(raw, { eng: 0, tolerance: 0, domain: input.domain, driverConfig: cfg })
+      conn.errors = 0
+      return { ok: true, message: `读回 raw ${Number(raw.toFixed(4))} → eng ${Number(eng.toFixed(4))}`, eng, raw }
+    }
+    catch (err) {
+      conn.errors++
+      if (conn.errors >= 3) evictModbusConn(cfg, transport)
+      throw err
+    }
+  })
 }
 
 // ============================================================
@@ -181,6 +245,14 @@ export const modbusTcpDcwDriver: DcwWriteDriver = {
     catch (err) {
       if (err instanceof AppError) throw err
       return { ok: false, message: `Modbus 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+    }
+  },
+  async read(input) {
+    try {
+      return await modbusRead(input, 'tcp')
+    }
+    catch (err) {
+      return { ok: false, message: `Modbus 读取失败: ${err instanceof Error ? err.message : String(err)}`, eng: null, raw: null }
     }
   },
   async test(driverConfig) {
@@ -256,6 +328,24 @@ export const opcUaDcwDriver: DcwWriteDriver = {
     catch (err) {
       if (err instanceof AppError) throw err
       return { ok: false, message: `OPC UA 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+    }
+  },
+  async read(input) {
+    try {
+      const cfg = input.driverConfig
+      if (!cfg.endpoint) throw new AppError(400, 'BAD_REQUEST', '缺少端点 endpoint(opc.tcp://…)')
+      if (!cfg.nodeId) throw new AppError(400, 'BAD_REQUEST', '缺少节点 ID nodeId(ns=…;s=…)')
+      const conn = await getOpcUaConn(cfg)
+      const opcua = reqNative('node-opcua') as typeof import('node-opcua')
+      const dv = await conn.session.read({ nodeId: opcua.coerceNodeId(String(cfg.nodeId)), attributeId: opcua.AttributeIds.Value }) as unknown as { value?: { value?: unknown }, status?: { value?: number }, statusCode?: { value?: number } }
+      const code = dv.status?.value ?? dv.statusCode?.value ?? 0
+      if (code !== 0) return { ok: false, message: `节点读取状态异常: 0x${code.toString(16)}`, eng: null, raw: null }
+      const v = Number(dv.value?.value)
+      if (!Number.isFinite(v)) return { ok: false, message: '节点值为非数值', eng: null, raw: null }
+      return { ok: true, message: `读回 ${Number(v.toFixed(4))}`, eng: v, raw: v }
+    }
+    catch (err) {
+      return { ok: false, message: `OPC UA 读取失败: ${err instanceof Error ? err.message : String(err)}`, eng: null, raw: null }
     }
   },
   async test(driverConfig) {
@@ -334,6 +424,14 @@ export const modbusRtuDcwDriver: DcwWriteDriver = {
     catch (err) {
       if (err instanceof AppError) throw err
       return { ok: false, message: `Modbus RTU 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+    }
+  },
+  async read(input) {
+    try {
+      return await modbusRead(input, 'rtu-tcp')
+    }
+    catch (err) {
+      return { ok: false, message: `Modbus RTU 读取失败: ${err instanceof Error ? err.message : String(err)}`, eng: null, raw: null }
     }
   },
   async test(driverConfig) {

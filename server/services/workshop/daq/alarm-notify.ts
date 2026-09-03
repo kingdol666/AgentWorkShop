@@ -8,6 +8,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import { getOps } from '../ops/ops'
+import { daqRuntimeSettings } from '../settings'
 
 const RETRIES = 3
 const ESCALATE_SWEEP_MS = 60_000
@@ -44,8 +45,9 @@ async function postWebhook(payload: AlarmNotifyPayload, url: string): Promise<bo
 
 /** 外送 + 重试退避(1s/2s/4s);结果记录进 alarm_events.notified_json */
 export function notifyAlarm(payload: AlarmNotifyPayload): void {
-  const url = process.env.ALARM_WEBHOOK_URL
-  if (!url) return // 未配置外送 = 仅 WS/面板可见(合法降级)
+  // daq.alarmWebhookUrl(env ALARM_WEBHOOK_URL 兼容别名);未配置 = 仅 WS/面板可见(合法降级)
+  const url = daqRuntimeSettings().alarmWebhookUrl || undefined
+  if (!url) return
   const repo = getOps()?.alarmEvents
   void (async () => {
     let ok = false
@@ -70,7 +72,7 @@ export function notifyAlarm(payload: AlarmNotifyPayload): void {
 /** 升级扫描器(懒启动;进程内单例) */
 export function startAlarmEscalator(): void {
   if (g.__awAlarmEscalator) return
-  const escalateMin = Math.max(1, Number(process.env.ALARM_ESCALATE_MINUTES) || 15)
+  const escalateMin = Math.max(1, daqRuntimeSettings().alarmEscalateMinutes)
   const timer = setInterval(() => {
     const repo = getOps()?.alarmEvents
     if (!repo) return

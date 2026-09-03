@@ -10,7 +10,7 @@
 app:
   name: AgentWorkShop
   title: AgentWorkShop
-  version: 0.6.1
+  version: 0.7.0
   description: 基于 Nuxt 4 的配置驱动运行范式
 
 # 运行模式（dev/prod 实际由启动命令决定，此处仅作运行时展示）
@@ -75,3 +75,60 @@ security:
   # Session cookie 加密密钥（nuxt-auth-utils 使用）
   # 生产环境必须修改为强随机值；可用环境变量 NUXT_SESSION_PASSWORD 覆盖
   sessionPassword: awshop-dev-secret-change-me-0123456789
+  # HITL 审批超时窗 ms（超时默认拒绝；env HITL_TIMEOUT_MS 兼容）
+  # hitl_timeout_ms: 180000
+
+# ------------------------------------------------------------
+# 以下运行语义组：全部键均可被 env AW_<键>(点转下划线)或历史别名覆盖，
+# 优先级 config.yml < data/runtime-settings.json < 环境变量。缺省即用默认。
+# ------------------------------------------------------------
+
+# Agent 记忆系统(env AW_MEMORY_*)
+memory:
+  primer_tokens: 300        # 记忆引子 token 预算(AW_MEMORY_PRIMER_TOKENS)
+  inject_total: 500         # 单次注入总硬顶(AW_MEMORY_INJECT_TOTAL)
+  maintenance_ms: 21600000  # 维护调度周期(AW_MEMORY_MAINTENANCE_MS)
+  expire_days: 180          # 情景记忆保留天数(AW_MEMORY_EXPIRE_DAYS)
+  expire_session_days: 14   # 会话记忆保留天数(AW_MEMORY_EXPIRE_SESSION_DAYS)
+  cap: 500                  # 条目驱逐上限(AW_MEMORY_CAP)
+  reflect_trigger: 8        # 空闲反思触发阈值(AW_MEMORY_REFLECT_TRIGGER)
+  embed_base_url: ''        # OpenAI 兼容 /embeddings 基址(AW_MEMORY_EMBED_BASE_URL;空=纯 FTS)
+  embed_model: ''           # 向量模型名(AW_MEMORY_EMBED_MODEL)
+  embed_api_key: ''         # Bearer 密钥(AW_MEMORY_EMBED_API_KEY)
+
+# omp Agent Harness(env AW_OMP_COMPACT_*)
+omp:
+  compact_enabled: true       # 上下文自动压缩总开关(AW_OMP_COMPACT_ENABLED=0 可关)
+  compact_threshold: 0.7      # 触发压缩的上下文占用比例(AW_OMP_COMPACT_THRESHOLD)
+  compact_min_interval_ms: 300000  # 两次压缩最小间隔(AW_OMP_COMPACT_MIN_INTERVAL_MS)
+  compact_wait_ms: 120000     # 等待压缩完成超时(AW_OMP_COMPACT_WAIT_MS)
+
+# 数控写控制(env DCW_ROLLBACK_*)
+dcw:
+  rollback_cooldown_ms: 300000     # 回退后同向重写冷却(DCW_ROLLBACK_COOLDOWN_MS)
+  rollback_min_window_ms: 120000   # 判定最小观察窗(DCW_ROLLBACK_MIN_WINDOW_MS)
+  rollback_baseline_ms: 600000     # 基线回看窗(DCW_ROLLBACK_BASELINE_MS)
+  rollback_stale_ms: 1800000       # open 记录接管阈值(DCW_ROLLBACK_STALE_MS)
+
+# 车间运行(env WORKSHOP_IDLE_*)
+workshop:
+  idle_sweep_ms: 30000    # 空闲 agent 扫描周期(WORKSHOP_IDLE_SWEEP_MS)
+  idle_grace_ms: 120000   # 空闲卸载宽限(WORKSHOP_IDLE_GRACE_MS)
+
+# 数据备份(env BACKUP_*)
+backup:
+  disabled: false       # BACKUP_DISABLED=1 关闭
+  interval_hours: 24    # 备份间隔(BACKUP_INTERVAL_HOURS)
+  keep: 7               # 保留份数(BACKUP_KEEP)
+
+# 数据保留清理(env RETENTION_DISABLED / AW_EVENTS_RETENTION_D 等)
+retention:
+  disabled: false     # RETENTION_DISABLED=1 / AW_RETENTION_DISABLED=1 关闭
+  events_days: 7      # WS 事件流保留天数(AW_EVENTS_RETENTION_D)
+  messages_days: 30   # Channel 消息(AW_MESSAGES_RETENTION_D)
+  audit_days: 90      # 审计日志(AW_AUDIT_RETENTION_D)
+  approval_days: 180  # 审批历史(AW_APPROVAL_RETENTION_D)
+
+# 服务端日志(env AWSHOP_LOG_LEVEL)
+log:
+  level: info  # debug | info | warn | error

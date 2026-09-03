@@ -26,6 +26,7 @@ import type { AepEnvelope } from '../../../shared/workshop-protocol'
 import { parseJson } from '../../services/workshop/db/database'
 import { registerScenePeer, unregisterScenePeer } from '../../services/workshop/scene-events'
 import { createLogger } from '../../services/workshop/logger'
+import { retentionSettings } from '../../services/workshop/settings'
 
 const log = createLogger('workshop.ws')
 
@@ -35,8 +36,8 @@ const RING_CAP = 5000
 const RING_BYTES_CAP = 4 * 1024 * 1024
 /** 落库聚合缓冲上限(滞留超限即刷,防库故障时缓冲无限涨) */
 const DB_BUFFER_CAP = 2000
-/** 事件保留期(天;channel_events 周期清理,防磁盘无限涨) */
-const EVENTS_RETENTION_DAYS = Number(process.env.AW_EVENTS_RETENTION_D ?? 7)
+/** 事件保留期(天;retention.events_days,env AW_EVENTS_RETENTION_D 可覆盖) */
+const EVENTS_RETENTION_DAYS = (): number => retentionSettings().events_days
 /** 单 peer 发送预算(字节/秒):超限视为慢消费者断开(1013),客户端重连快照对齐 */
 const PEER_SEND_BUDGET_BYTES = 32 * 1024 * 1024
 
@@ -449,8 +450,9 @@ if (!(hubGlobal as Record<string, unknown>)[RETENTION_TIMER_KEY]) {
   const t = setInterval(() => {
     if (!hub.boundManager) return
     try {
-      const removed = internalsOf(hub.boundManager).deps.repos.channelEvents.sweepRetention(EVENTS_RETENTION_DAYS)
-      if (removed > 0) console.log(`[workshop-ws] 事件保留期清理 ${removed} 行(>${EVENTS_RETENTION_DAYS}d)`)
+      const days = EVENTS_RETENTION_DAYS()
+      const removed = internalsOf(hub.boundManager).deps.repos.channelEvents.sweepRetention(days)
+      if (removed > 0) console.log(`[workshop-ws] 事件保留期清理 ${removed} 行(>${days}d)`)
     }
     catch (err) {
       console.error('[workshop-ws] 事件保留期清理失败:', err)

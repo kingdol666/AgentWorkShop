@@ -27,23 +27,37 @@ export interface DcwWriteOutcome {
 
 export interface DcwRuntimeHost {
   running(): boolean
-  defaults(): { holdIntervalMs: number }
+  defaults(): { holdIntervalMs: number, readIntervalMs: number }
   /** 网关执行写命令(驱动写 + ACK 记账 + 写历史 + WS 广播) */
   executeWrite(node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null): Promise<DcwWriteOutcome>
+  /** 网关执行读数(驱动读 + 读状态记账 + WS 广播;返回物理值) */
+  executeRead(node: DcwNode): Promise<{ ok: boolean, value: number | null, raw: number | null, message: string, at: string }>
+}
+
+export interface DcwReadOutcome {
+  ok: boolean
+  value: number | null
+  raw: number | null
+  message: string
+  at: string
 }
 
 export class DcwNodeRuntime {
   private writing = false
   private lastHoldAt = 0
+  /** 周期读节拍 + 在飞互斥(读事务不与写事务互斥,但同节点读不重入) */
+  private lastReadTick = 0
+  private reading = false
 
   constructor(
     public readonly node: DcwNode,
     private readonly host: DcwRuntimeHost,
   ) {}
 
-  /** 元数据变更后重置保写节拍 */
+  /** 元数据变更后重置保写/周期读节拍 */
   rearm(): void {
     this.lastHoldAt = 0
+    this.lastReadTick = 0
   }
 
   /**
@@ -69,14 +83,37 @@ export class DcwNodeRuntime {
   }
 
   /** 网关 tick:保写心跳(元数据 holdIntervalMs;null = 仅手动下发)。
-   *  对当前设定值周期性重下发(PLC 掉电重启后的设定恢复语义)。 */
+   *  对当前设定值周期性重下发(PLC 掉电重启后的设定恢复语义)。
+   *  周期读(元数据 readIntervalMs):读是被动观测,不受产线运行/写在飞限制
+   *  (仅与在飞读互斥),failures 只记 lastReadError 不改写状态机。 */
   tick(now: number): void {
     const node = this.node
-    if (this.writing || !node.enabled || node.value == null || node.state === 'writing') return
-    const hold = node.holdIntervalMs ?? this.host.defaults().holdIntervalMs
-    if (!hold || hold <= 0) return
-    if (now - this.lastHoldAt < hold) return
-    this.lastHoldAt = now
-    void this.host.executeWrite(node, node.value, writeTolerance(node), null).catch(() => {})
+    // 保写心跳:仅对已设定过的节点生效(尚无设定值无可保持)
+    if (!this.writing && node.enabled && node.value != null && node.state !== 'writing') {
+      const hold = node.holdIntervalMs ?? this.host.defaults().holdIntervalMs
+      if (hold && hold > 0 && now - this.lastHoldAt >= hold) {
+        this.lastHoldAt = now
+        void this.host.executeWrite(node, node.value, writeTolerance(node), null).catch(() => {})
+      }
+    }
+    // 周期读:被动观测,不依赖写过、不与写在飞互斥(仅同节点读串行)
+    if (this.reading || !node.enabled) return
+    const readInt = node.readIntervalMs ?? this.host.defaults().readIntervalMs
+    if (!readInt || readInt <= 0) return
+    if (now - this.lastReadTick < readInt) return
+    this.lastReadTick = now
+    void this.host.executeRead(node).catch(() => {})
+  }
+
+  /** 手动读取(on-demand;REST/Agent 工具共用;与周期读同一在飞互斥) */
+  async readNow(): Promise<DcwReadOutcome> {
+    if (this.reading) throw new AppError(409, ErrorCodes.CONFLICT, `通道「${this.node.name}」读取进行中,请稍后重试`)
+    this.reading = true
+    try {
+      return await this.host.executeRead(this.node)
+    }
+    finally {
+      this.reading = false
+    }
   }
 }

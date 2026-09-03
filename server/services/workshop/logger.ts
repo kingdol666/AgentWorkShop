@@ -1,18 +1,25 @@
 /**
- * 极简结构化日志(R4):级别 + JSON 行,env 开关。
- * - AWSHOP_LOG_LEVEL = debug | info | warn | error(默认 info)
+ * 极简结构化日志(R4):级别 + JSON 行,配置驱动。
+ * - log.level(设置描述符;env AWSHOP_LOG_LEVEL 兼容别名)= debug|info|warn|error(默认 info)
  * - 输出:单行 JSON(t/level/scope/msg/args),error/warn 走 stderr,其余 stdout
  * - 范围收敛:仅替换 server/services/workshop 目录的 console 直出
  *   (request-log、plugins、mcp 的 console 保留,见计划 R4-2,避免全量替换的回归面)
  */
+import { settingOf } from './settings'
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 const LEVELS: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 }
 
 function minLevel(): LogLevel {
-  const v = process.env.AWSHOP_LOG_LEVEL as LogLevel | undefined
-  return v && v in LEVELS ? v : 'info'
+  // 配置未就绪/解析失败回落 info(日志层永不因配置抛错)
+  try {
+    const v = settingOf('log.level') as LogLevel
+    return v && v in LEVELS ? v : 'info'
+  }
+  catch {
+    return 'info'
+  }
 }
 
 /** 安全序列化:Error → stack,循环引用降级为 [Circular],序列化失败降级 String */

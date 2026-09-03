@@ -203,8 +203,12 @@ export function envOverridesFromEnv(env = process.env, descriptors = loadDescrip
   const out = {}
   for (const desc of descriptors) {
     const varName = `AW_${desc.key.toUpperCase().replace(/\./g, '_')}`
-    if (env[varName] !== undefined) {
-      const coerced = coerceValue(desc, env[varName])
+    // aliases:历史环境变量名兼容(迁移前已在用的非 AW_ 前缀/异序名,如 DAQ_FRAME_RETENTION_H;
+    // 优先级 AW_<KEY> > aliases 中声明顺序)
+    const legacy = (desc.aliases ?? []).map(a => env[a]).find(v => v !== undefined)
+    const rawEnv = env[varName] !== undefined ? env[varName] : legacy
+    if (rawEnv !== undefined) {
+      const coerced = coerceValue(desc, rawEnv)
       if (coerced !== null) out[desc.key] = coerced
     }
   }

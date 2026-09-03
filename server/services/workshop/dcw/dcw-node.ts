@@ -32,6 +32,8 @@ interface DcwNodeOptions {
   lineId?: string
   /** 节点级工艺语义备注(覆盖模板 semantics;注入 Agent 上下文) */
   semantics?: string
+  /** 周期读间隔 ms(null = 走网关默认;0 = 关闭周期读,仅手动读取) */
+  readIntervalMs?: number | null
   createdAt?: string
 }
 
@@ -53,6 +55,12 @@ export class DcwNode {
   posZ?: number
   /** 当前设定值(工程量;null = 从未下发) */
   value: number | null = null
+  /** PLC 当前读数(工程量物理值;null = 从未读到或驱动不支持读) */
+  readValue: number | null = null
+  lastReadAt: string | null = null
+  lastReadError: string | null = null
+  /** 周期读间隔 ms(null = 走网关默认;0 = 仅手动读取) */
+  readIntervalMs: number | null = null
   lastAckAt: string | null = null
   lastWriteAt: string | null = null
   state: DcwNodeState = 'idle'
@@ -82,6 +90,7 @@ export class DcwNode {
     if (o.posZ !== undefined) this.posZ = o.posZ
     this.lineId = o.lineId ?? ''
     this.semantics = o.semantics
+    this.readIntervalMs = o.readIntervalMs ?? null
     this.createdAt = o.createdAt ?? new Date().toISOString()
   }
 
@@ -113,6 +122,18 @@ export class DcwNode {
     }
   }
 
+  /** 记录一次读数(成功回填物理值;失败仅记原因,旧读数保留供展示) */
+  applyReadResult(eng: number | null, raw: number | null, ok: boolean, message: string, at: string): void {
+    this.lastReadAt = at
+    if (ok && eng != null) {
+      this.readValue = Number(eng.toFixed(this.decimals))
+      this.lastReadError = null
+    }
+    else {
+      this.lastReadError = message
+    }
+  }
+
   toRow(): Record<string, unknown> {
     return {
       id: this.id,
@@ -121,6 +142,7 @@ export class DcwNode {
       driver: this.driver,
       enabled: this.enabled,
       holdIntervalMs: this.holdIntervalMs,
+      readIntervalMs: this.readIntervalMs,
       unit: this.unit,
       decimals: this.decimals,
       min: this.min,
@@ -133,6 +155,9 @@ export class DcwNode {
       lineId: this.lineId,
       semantics: this.semantics,
       value: this.value,
+      readValue: this.readValue,
+      lastReadAt: this.lastReadAt,
+      lastReadError: this.lastReadError,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
       state: this.state,
@@ -159,10 +184,14 @@ export class DcwNode {
       posX: row.posX == null ? undefined : Number(row.posX),
       lineId: row.lineId == null ? '' : String(row.lineId),
       semantics: row.semantics == null ? undefined : String(row.semantics),
+      readIntervalMs: row.readIntervalMs == null ? null : Number(row.readIntervalMs),
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
     })
     if (row.value != null && !Number.isNaN(Number(row.value))) node.value = Number(row.value)
+    if (row.readValue != null && !Number.isNaN(Number(row.readValue))) node.readValue = Number(row.readValue)
+    if (row.lastReadAt != null) node.lastReadAt = String(row.lastReadAt)
+    if (row.lastReadError != null) node.lastReadError = String(row.lastReadError)
     if (row.lastAckAt != null) node.lastAckAt = String(row.lastAckAt)
     if (row.lastWriteAt != null) node.lastWriteAt = String(row.lastWriteAt)
     if (row.state != null) node.state = String(row.state) as DcwNodeState
@@ -190,6 +219,10 @@ export class DcwNode {
       lineId: this.lineId,
       semantics: this.semantics,
       value: this.value,
+      readValue: this.readValue,
+      lastReadAt: this.lastReadAt,
+      lastReadError: this.lastReadError,
+      readIntervalMs: this.readIntervalMs,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
       state: this.state,

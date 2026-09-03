@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
+import { backupSettings } from '../services/workshop/settings'
 
 const g = globalThis as typeof globalThis & { __awBackupTimer?: NodeJS.Timeout, __awBackupLastAt?: string }
 
@@ -47,8 +48,8 @@ async function backupOnce(dataDir: string): Promise<void> {
       console.error(`[backup] ${file} 快照失败:`, err instanceof Error ? err.message : err)
     }
   }
-  // 轮转:每库仅保留最近 BACKUP_KEEP 份(按文件名内时间戳倒序)
-  const keep = Math.max(1, Number(process.env.BACKUP_KEEP) || 7)
+  // 轮转:每库仅保留最近 backup.keep 份(按文件名内时间戳倒序;env BACKUP_KEEP 兼容)
+  const keep = Math.max(1, backupSettings().keep)
   for (const file of DB_FILES) {
     const own = readdirSync(backupDir)
       .filter(f => f.startsWith(`${file}.`) && f.endsWith('.bak'))
@@ -67,11 +68,12 @@ async function backupOnce(dataDir: string): Promise<void> {
 }
 
 export default function backupPlugin() {
-  if (process.env.BACKUP_DISABLED === '1') return
+  const backupCfg = backupSettings()
+  if (backupCfg.disabled) return
   if (g.__awBackupTimer) return
   const dataDir = ensureDataDir()
 
-  // 启动 30s 后首备(避开启动风暴),此后每 BACKUP_INTERVAL_HOURS(默认 24h)
+  // 启动 30s 后首备(避开启动风暴),此后每 backup.interval_hours(默认 24h)
   const first = setTimeout(() => {
     try {
       backupOnce(dataDir)
@@ -81,7 +83,7 @@ export default function backupPlugin() {
     }
   }, 30_000)
   first.unref?.()
-  const hours = Math.max(1, Number(process.env.BACKUP_INTERVAL_HOURS) || 24)
+  const hours = Math.max(1, backupCfg.interval_hours)
   const timer = setInterval(() => {
     try {
       backupOnce(dataDir)

@@ -2215,6 +2215,9 @@ interface DcwLiveRow {
   name: string
   unit: string
   value: number | null
+  /** PLC 当前读数(读写集成:周期读/手动读回填的物理值) */
+  readValue: number | null
+  lastReadAt: string | null
   decimals: number
   lo: number
   hi: number
@@ -2233,6 +2236,8 @@ const dcwLive = computed<Record<string, DcwLiveRow[]>>(() => {
       name: n.name,
       unit: n.unit,
       value: n.value,
+      readValue: n.readValue,
+      lastReadAt: n.lastReadAt,
       decimals: n.decimals,
       lo: w.lo,
       hi: w.hi,

@@ -9,6 +9,7 @@
 import { createLogger } from '../../logger'
 import { createRequire } from 'node:module'
 import type { MqttClient } from 'mqtt'
+import { daqRuntimeSettings } from '../../settings'
 
 import type { DaqConsumer, DaqQueuePort, DaqSampleEnvelope } from './queue-port'
 
@@ -45,24 +46,22 @@ export class MqttQueueAdapter implements DaqQueuePort {
     if (this.client) return
     // mqtt 包动态导入:未安装时不影响其余链路(工厂已兜底 inproc)
     const mod = requireMqtt('mqtt') as unknown as { connect: (url: string, opts?: Record<string, unknown>) => MqttClient }
-    const qos = Number(process.env.DAQ_MQTT_QOS ?? 0)
-    // S1:凭据(env 优先)与 TLS(mqtts:// + 自签 CA;rejectUnauthorized 默认 true)
-    const username = process.env.DAQ_MQTT_USERNAME
-    const password = process.env.DAQ_MQTT_PASSWORD
-    const caFile = process.env.DAQ_MQTT_CA_FILE
+    // 凭据/QoS/TLS 配置驱动(daq.mqtt.*;legacy DAQ_MQTT_* env 别名兼容,DAQ_MQTT_URL 整串覆盖仍最高优先)
+    const mqttCfg = daqRuntimeSettings().mqtt
+    const qos = mqttCfg.qos
     const opts: Record<string, unknown> = {
       clientId: `aw-daq-${process.pid}-${Math.random().toString(36).slice(2, 6)}`,
       reconnectPeriod: 2000,
       keepalive: 20,
     }
-    if (username) opts.username = username
-    if (password) opts.password = password
-    if (caFile) {
+    if (mqttCfg.username) opts.username = mqttCfg.username
+    if (mqttCfg.password) opts.password = mqttCfg.password
+    if (mqttCfg.caFile) {
       const fs = requireMqtt('node:fs') as typeof import('node:fs')
-      opts.ca = [fs.readFileSync(caFile)]
+      opts.ca = [fs.readFileSync(mqttCfg.caFile)]
     }
-    if (process.env.DAQ_MQTT_REJECT_UNAUTHORIZED === '0') opts.rejectUnauthorized = false
-    if (this.url.startsWith('mqtts://') && !username && process.env.NODE_ENV === 'production') {
+    if (!mqttCfg.rejectUnauthorized) opts.rejectUnauthorized = false
+    if (this.url.startsWith('mqtts://') && !mqttCfg.username && process.env.NODE_ENV === 'production') {
       log.warn('[daq-mqtt] WARN:生产环境 MQTT 连接未配置凭据(mqtts 仅加密传输,建议同时启用 username/password)')
     }
     this.client = mod.connect(this.url, opts)
@@ -100,7 +99,7 @@ export class MqttQueueAdapter implements DaqQueuePort {
       return
     }
     this.published++
-    this.client.publish(TOPIC_SAMPLE(env.nodeId), JSON.stringify(env), { qos: Number(process.env.DAQ_MQTT_QOS ?? 0) })
+    this.client.publish(TOPIC_SAMPLE(env.nodeId), JSON.stringify(env), { qos: daqRuntimeSettings().mqtt.qos })
   }
 
   consume(fn: DaqConsumer): () => void {

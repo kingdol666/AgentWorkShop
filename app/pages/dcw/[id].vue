@@ -131,6 +131,23 @@ async function doWrite(nodeId: string, value: number): Promise<void> {
   }
 }
 
+// ---------- 读取(读写集成的读半边:手动读 PLC 当前值,周期读由服务端调度) ----------
+const readingId = ref('')
+
+async function doRead(nodeId: string): Promise<void> {
+  readingId.value = nodeId
+  writeError.value = ''
+  try {
+    await dcw.readNode(nodeId)
+  }
+  catch (err) {
+    writeError.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    readingId.value = ''
+  }
+}
+
 // ---------- 逐节点 控制开启/暂停 ----------
 const togglingId = ref('')
 /** 开启/暂停单个节点的控制:暂停后服务端拒绝一切下发(409 当前节点暂停),本地即时收敛状态 */
@@ -161,6 +178,7 @@ const addTemplate = ref(dcw.templates[0]?.key ?? '')
 const addDriver = ref<'mock' | 'modbus-tcp' | 'opcua'>('mock')
 const addName = ref('')
 const addHold = ref<number | null>(null)
+const addRead = ref<number | null>(null)
 const addCfg = ref<Record<string, string | number>>({})
 const addTransform = reactive({ kind: 'none' as 'none' | 'linear', scale: 1, offset: 0 })
 const addSemantics = ref('')
@@ -214,6 +232,7 @@ async function doAddNode(): Promise<void> {
       driverConfig: { ...addCfg.value },
       transform,
       holdIntervalMs: addHold.value,
+      readIntervalMs: addRead.value,
       lineId: lineId.value,
       semantics: addSemantics.value.trim() || undefined,
     })
@@ -964,6 +983,18 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               :placeholder="$t('dcwDetail.kb1srz0010')"
             >
           </label>
+          <label class="f">
+            <span>{{ $t('dcwDetail.k9r7d4e016') }}</span>
+            <input
+              v-model.number="addRead"
+              type="number"
+              min="0"
+              max="3600000"
+              step="500"
+              class="inp"
+              :placeholder="$t('dcwDetail.k9r7d4e017')"
+            >
+          </label>
         </div>
 
         <!-- 数据语义标定 encode(物理设定值 → PLC 设定值;mock/真实均可用) -->
@@ -1123,6 +1154,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               <th>{{ $t('dcwDetail.k403cy054') }}</th>
               <th>{{ $t('dcwDetail.k42w8s055') }}</th>
               <th>{{ $t('dcwDetail.k1deqh0d056') }}</th>
+              <th>{{ $t('dcwDetail.k9r7d4e018') }}</th>
               <th>{{ $t('dcwDetail.k1k79ec9057') }}</th>
               <th>{{ $t('dcwDetail.k1dexou6058') }}</th>
               <th>{{ $t('dcwDetail.k1b1nnaa059') }}</th>
@@ -1174,6 +1206,25 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   class="dim"
                 > · {{ n.lastAckAt.slice(11, 19) }}</small>
               </td>
+              <td class="mono val">
+                <span
+                  :title="n.lastReadError ?? $t('dcwDetail.k9r7d4e019')"
+                  :class="{ 'read-stale': n.lastReadError }"
+                >{{ n.readValue != null ? n.readValue.toFixed(n.decimals) : '--' }}</span>
+                <small>{{ n.unit }}</small>
+                <small
+                  v-if="n.lastReadAt"
+                  class="dim"
+                > · {{ n.lastReadAt.slice(11, 19) }}</small>
+                <button
+                  class="mini-btn read-btn"
+                  :disabled="readingId === n.id"
+                  :title="$t('dcwDetail.k9r7d4e020')"
+                  @click="doRead(n.id)"
+                >
+                  {{ readingId === n.id ? '···' : $t('dcwDetail.k9r7d4e021') }}
+                </button>
+              </td>
               <td>
                 <div class="write-row">
                   <input
@@ -1202,6 +1253,10 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               </td>
               <td class="mono">
                 {{ n.holdIntervalMs == null ? $t('dcwDetail.k3zul4160') : `${n.holdIntervalMs}ms` }}
+                <small
+                  class="dim"
+                  :title="$t('dcwDetail.k9r7d4e016')"
+                >· {{ n.readIntervalMs === 0 ? $t('dcwDetail.k9r7d4e022') : (n.readIntervalMs == null ? $t('dcwDetail.k9r7d4e023') : `${n.readIntervalMs}ms`) }}</small>
               </td>
               <td>{{ deviceName(n.deviceBindingId) }}</td>
               <td class="right">
@@ -2157,6 +2212,8 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .right { text-align: right; }
 .val { font-size: 13px; }
 .val small { margin-left: 3px; color: var(--ink-faint); }
+.read-stale { color: var(--tone-danger-dot, #e05a5a); text-decoration: underline dotted; text-underline-offset: 3px; }
+.read-btn { margin-left: 8px; }
 
 .st-pill { display: inline-block; padding: 2px 9px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; border-radius: var(--radius-pill); }
 .st-pill.ok { color: var(--tone-success-dot); background: var(--tone-success-bg); }

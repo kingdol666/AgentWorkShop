@@ -30,11 +30,12 @@ import { getDcwNodeRepo } from './dcw-node.repo'
 import { getActiveLineRun } from './line-run'
 import { getRecipeRollBackRepo, type RecipeRollBackRepo } from './recipe-rollback.repo'
 import { recordOps } from '../ops/ops'
+import { dcwSettings } from '../settings'
 
-/** 回退后同向重写冷却 */
-const COOLDOWN_MS = Number(process.env.DCW_ROLLBACK_COOLDOWN_MS ?? 300_000)
-/** 系统兜底评估的最小观察窗 */
-const MIN_WINDOW_MS = Number(process.env.DCW_ROLLBACK_MIN_WINDOW_MS ?? 120_000)
+/** 回退后同向重写冷却(dcw.rollback_cooldown_ms;env DCW_ROLLBACK_COOLDOWN_MS 兼容) */
+const COOLDOWN_MS = (): number => dcwSettings().rollback_cooldown_ms
+/** 系统兜底评估的最小观察窗(env DCW_ROLLBACK_MIN_WINDOW_MS 兼容) */
+const MIN_WINDOW_MS = (): number => dcwSettings().rollback_min_window_ms
 /** 兜底评估复查间隔(未触发时) */
 const RECHECK_MS = 30_000
 /** 每节点链自动回退上限(超出升级人工) */
@@ -43,10 +44,10 @@ const MAX_AUTO_ROLLBACKS = 2
 const BREACH_THRESHOLD = 3
 /** 锚去重窗口(保写心跳防噪) */
 const ANCHOR_DEDUP_MS = 5_000
-/** 基线回看窗 */
-const BASELINE_MS = Number(process.env.DCW_ROLLBACK_BASELINE_MS ?? 600_000)
-/** open 记录孤儿判定:属主超时未判定 → 后续 Agent 可接管(判定/回退/顶替) */
-const OPEN_RECORD_STALE_MS = Number(process.env.DCW_ROLLBACK_STALE_MS ?? 1_800_000)
+/** 基线回看窗(env DCW_ROLLBACK_BASELINE_MS 兼容) */
+const BASELINE_MS = (): number => dcwSettings().rollback_baseline_ms
+/** open 记录孤儿判定:属主超时未判定 → 后续 Agent 可接管(env DCW_ROLLBACK_STALE_MS 兼容) */
+const OPEN_RECORD_STALE_MS = (): number => dcwSettings().rollback_stale_ms
 
 /** 数值入参钳制(时间/桶宽:有限正整数,防越界透传) */
 function clampMs(v: number | undefined): number | undefined {
@@ -91,12 +92,12 @@ export class RecipeRollBackManager {
     const rb = this.repo.lastRollbackAnchor(node.id)
     if (rb && rb.prevValue != null) {
       const elapsed = Date.now() - Date.parse(rb.at)
-      if (elapsed < COOLDOWN_MS) {
+      if (elapsed < COOLDOWN_MS()) {
         const restored = rb.newValue
         const wrong = rb.prevValue
         // 同向判定:偏离恢复值的方向与原错误方向一致(往回改不受限)
         if (eng !== restored && Math.sign(eng - restored) === Math.sign(wrong - restored)) {
-          throw new AppError(409, ErrorCodes.CONFLICT, `回退冷却中:节点「${node.name}」${Math.ceil((COOLDOWN_MS - elapsed) / 1000)}s 内禁止同向重写(刚从 ${wrong} 回退到 ${restored});如确需调整请先 dcw_judge 复盘或反向操作`)
+          throw new AppError(409, ErrorCodes.CONFLICT, `回退冷却中:节点「${node.name}」${Math.ceil((COOLDOWN_MS() - elapsed) / 1000)}s 内禁止同向重写(刚从 ${wrong} 回退到 ${restored});如确需调整请先 dcw_judge 复盘或反向操作`)
         }
       }
     }
@@ -156,7 +157,7 @@ export class RecipeRollBackManager {
         })
         anchor.recordId = record.id
         this.repo.flushNow()
-        void this.fillMetrics(record, 'baseline', Date.parse(record.setAt) - BASELINE_MS, Date.parse(record.setAt))
+        void this.fillMetrics(record, 'baseline', Date.parse(record.setAt) - BASELINE_MS(), Date.parse(record.setAt))
         this.emit('opened', record)
         recordOps({
           actor: meta.actor,
@@ -196,7 +197,7 @@ export class RecipeRollBackManager {
 
   /** 孤儿判定:open 记录超时未判定(属主可能已消失)→ 可被后续 Agent 接管 */
   isStale(record: OptimizationRecord): boolean {
-    return record.status === 'open' && Date.now() - Date.parse(record.setAt) > OPEN_RECORD_STALE_MS
+    return record.status === 'open' && Date.now() - Date.parse(record.setAt) > OPEN_RECORD_STALE_MS()
   }
 
   judge(recordId: string, verdict: OptimizationVerdict, reason: string, by: 'agent' | 'system' | 'user', actor: string, opts?: { takeover?: boolean }): OptimizationRecord {
@@ -401,8 +402,8 @@ export class RecipeRollBackManager {
     const rb = this.repo.lastRollbackAnchor(nodeId)
     if (rb) {
       const elapsed = Date.now() - Date.parse(rb.at)
-      if (elapsed < COOLDOWN_MS)
-        throw new AppError(409, ErrorCodes.CONFLICT, `回退冷却中:节点 ${Math.ceil((COOLDOWN_MS - elapsed) / 1000)}s 内禁止再次回退`)
+      if (elapsed < COOLDOWN_MS())
+        throw new AppError(409, ErrorCodes.CONFLICT, `回退冷却中:节点 ${Math.ceil((COOLDOWN_MS() - elapsed) / 1000)}s 内禁止再次回退`)
     }
   }
 
@@ -415,7 +416,7 @@ export class RecipeRollBackManager {
       if (record.policy === 'observe_only')
         continue
       const setMs = Date.parse(record.setAt)
-      if (now - setMs < MIN_WINDOW_MS)
+      if (now - setMs < MIN_WINDOW_MS())
         continue
       if (record.evaluatedAt && now - Date.parse(record.evaluatedAt) < RECHECK_MS)
         continue

@@ -515,6 +515,23 @@
     }
   },
   {
+    "name": "dcw_read",
+    "label": "DCW Read",
+    "description": "读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "数控节点 id(见 my_industrial_nodes)"
+        }
+      },
+      "required": [
+        "node_id"
+      ]
+    }
+  },
+  {
     "name": "daq_query",
     "label": "DAQ Query",
     "description": "从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。",

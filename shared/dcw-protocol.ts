@@ -257,6 +257,14 @@ export interface DcwNodeView {
   lineId: string
   /** 当前设定值(工程量;null = 从未下发) */
   value: number | null
+  /** PLC 当前读数(工程量物理值;周期读/手动读回填,null = 从未读到或不支持) */
+  readValue: number | null
+  /** 最近一次读到 PLC 值的时刻 */
+  lastReadAt: string | null
+  /** 最近一次读失败原因(成功后清空) */
+  lastReadError: string | null
+  /** 周期读间隔 ms(null = 走网关默认;0 = 关闭周期读,仅手动读取) */
+  readIntervalMs: number | null
   /** 最近一次成功下发时刻 / 最近一次写尝试时刻 */
   lastAckAt: string | null
   lastWriteAt: string | null
@@ -284,6 +292,19 @@ export interface AepDcwWritten {
 export interface AepDcwNodeChange {
   op: 'added' | 'updated' | 'removed'
   node: DcwNodeView | null
+}
+
+/** dcw.read 帧载荷(每次 PLC 读数直推;周期读 + 手动读共用) */
+export interface AepDcwRead {
+  nodeId: string
+  templateRef: string
+  /** 工程量物理值(读回原始值经换算/标定解码;读失败为 null) */
+  value: number | null
+  /** 原始值(PLC 语义,换算后;非寄存器驱动与 value 同源) */
+  raw: number | null
+  ok: boolean
+  message: string
+  at: string
 }
 
 /** dcw.controller 帧载荷 */

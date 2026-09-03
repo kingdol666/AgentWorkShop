@@ -13,6 +13,7 @@ import type { MemoryRow } from '../db/database'
 import type { WorkspaceTask } from '../types/task'
 import type { A2AMessage, Part } from '../types/a2a'
 import type { EmbeddingProvider } from './embedding-provider'
+import { memorySettings } from '../settings'
 
 const W_RELEVANCE = 0.5
 const W_RECENCY = 0.3
@@ -44,10 +45,16 @@ const RECENCY_HALF_LIFE_DAYS: Record<string, number> = {
 }
 const CONTENT_STORE_LIMIT = 800
 
-/** 环境变量安全数值(非有限/非正数 → fallback;防 NaN/0 破坏预算与定时器) */
+/** 环境变量安全数值(非有限/非正数 → fallback;防 NaN/0 破坏预算与定时器)。
+ *  @deprecated 配置驱动迁移后仅存量测试使用;新代码读 memorySettings().*
 export function envNum(name: string, fallback: number): number {
   const n = Number(process.env[name])
   return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+/** memory 组配置(单次解析,进程缓存;env AW_MEMORY_* 经 schema 描述符通用覆盖) */
+function memoryCfg() {
+  return memorySettings()
 }
 
 export interface AgentMemoryOptions {
@@ -264,10 +271,10 @@ export class AgentMemory {
   async recall(query: string, recallOpts: RecallOptions = {}): Promise<string | null> {
     const doTouch = recallOpts.touch !== false
     // 显式 budgetTokens(实例/调用级)= 整块记忆硬顶(L0 简报+L1 引子+提示全计入);
-    // 未显式设置 = 双预算:L1 引子 ≤ AW_MEMORY_PRIMER_TOKENS(300),整块 ≤ AW_MEMORY_INJECT_TOTAL(500)
+    // 未显式设置 = 双预算:L1 引子 ≤ memory.primer_tokens(300),整块 ≤ memory.inject_total(500)
     const explicit = recallOpts.budgetTokens ?? this.opts.budgetTokens
-    const budget = explicit ?? envNum('AW_MEMORY_PRIMER_TOKENS', 300)
-    const totalBudget = explicit ?? envNum('AW_MEMORY_INJECT_TOTAL', 500)
+    const budget = explicit ?? memoryCfg().primer_tokens
+    const totalBudget = explicit ?? memoryCfg().inject_total
     const scope = recallOpts.scope ?? 'auto'
     const scored = await this.rank(query, scope, { excludeCurated: true, relatedTaskIds: recallOpts.relatedTaskIds })
 
@@ -624,9 +631,9 @@ export function runMemoryMaintenance(
   repo: MemoryRepo,
   opts: { expireDays?: number, cap?: number } = {},
 ): MaintenanceResult {
-  const expireDays = opts.expireDays ?? envNum('AW_MEMORY_EXPIRE_DAYS', 180)
-  const sessionExpireDays = envNum('AW_MEMORY_EXPIRE_SESSION_DAYS', 14)
-  const cap = opts.cap ?? envNum('AW_MEMORY_CAP', 500)
+  const expireDays = opts.expireDays ?? memoryCfg().expire_days
+  const sessionExpireDays = memoryCfg().expire_session_days
+  const cap = opts.cap ?? memoryCfg().cap
   const now = Date.now()
   let deletedExpired = 0
   let evicted = 0

@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import type { DaqQueryOpts, DaqSampleRow, TsdbPoint, TsdbPort } from './tsdb-port'
+import { daqRuntimeSettings } from '../../settings'
 
 const log = createLogger('daq.tsdb.sqlite')
 
@@ -18,8 +19,8 @@ const DB_PATH = join(ensureDataDir(), 'daq-timeseries.sqlite')
 export class SqliteTimeSeriesAdapter implements TsdbPort {
   readonly backend = 'sqlite-emulated'
   private db: DatabaseSync | null = null
-  /** 启动清理水位(默认保留 7 天,环境变量 DAQ_TS_RETENTION_H 可调) */
-  private readonly retentionH = Number(process.env.DAQ_TS_RETENTION_H ?? 168)
+  /** 启动清理水位(daq.tsRetentionH;env DAQ_TS_RETENTION_H 兼容) */
+  private readonly retentionH = daqRuntimeSettings().tsRetentionH
   private retentionTimer: NodeJS.Timeout | null = null
 
   async init(): Promise<void> {
@@ -262,10 +263,10 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     }))
   }
 
-  /** 帧保留期清理(与样本同拍;帧保留期独立可配 DAQ_FRAME_RETENTION_H,默认 720h) */
+  /** 帧保留期清理(与样本同拍;daq.frameRetentionH,env DAQ_FRAME_RETENTION_H 兼容) */
   private sweepFrameRetention(): void {
     if (!this.db) return
-    const cutoff = Date.now() - Number(process.env.DAQ_FRAME_RETENTION_H ?? 720) * 3600_000
+    const cutoff = Date.now() - daqRuntimeSettings().frameRetentionH * 3600_000
     try {
       this.db.prepare('DELETE FROM daq_frames WHERE ts_ms < ?').run(cutoff)
     }

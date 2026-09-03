@@ -39,6 +39,7 @@ import {
   type ManagerDeps,
 } from '../services/workshop/runtime/manager'
 import { AppError } from '../utils/errors'
+import { workshopSettings } from '../services/workshop/settings'
 
 declare global {
 
@@ -130,10 +131,10 @@ export default function workshopPlugin(nitroApp: {
 
   // idle sweeper:空闲 agent 超时自动卸载(释放 omp 子进程与内存)。
   // busy 成员有三重守卫(state!==idle / 信箱 pending / lead 活跃任务)不会被卸载,
-  // "作业期间进程不断开"由守卫保证;空闲宽限可经 env 调整 —— 需要进程更长常驻
-  // (免冷启动 30~90s)时调大 WORKSHOP_IDLE_GRACE_MS。
-  const idleSweepMs = Number(process.env.WORKSHOP_IDLE_SWEEP_MS) || 30_000
-  const idleGraceMs = Number(process.env.WORKSHOP_IDLE_GRACE_MS) || 120_000
+  // "作业期间进程不断开"由守卫保证;空闲宽限可经 workshop.idle_grace_ms 调整 ——
+  // 需要进程更长常驻(免冷启动 30~90s)时调大(env WORKSHOP_IDLE_GRACE_MS 兼容)。
+  const idleSweepMs = workshopSettings().idle_sweep_ms
+  const idleGraceMs = workshopSettings().idle_grace_ms
   const stopSweeper = manager.startIdleSweeper({ intervalMs: idleSweepMs, graceMs: idleGraceMs })
 
   // 关机:完整关闭 manager(sweeper + 调度循环 + agent 运行时),关闭数据库

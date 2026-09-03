@@ -22,6 +22,9 @@ export interface DcwLiveRow {
   unit: string
   /** 当前设定值(工程量;null = 从未下发) */
   value: number | null
+  /** PLC 当前读数(读写集成;null = 从未读到或驱动不支持) */
+  readValue: number | null
+  lastReadAt: string | null
   decimals: number
   /** 生效下/上限(活动配方工艺窗口优先,否则节点全局量程;-∞/+∞ 表示不限定) */
   lo: number
@@ -235,6 +238,18 @@ function doDcwWrite(r: DcwLiveRow): void {
                 class="dcw-src"
               >{{ $t('deviceTwinPanel.k48grv006') }}</i></em>
               <b class="dcw-set">{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}<i>{{ r.unit }}</i></b>
+            </div>
+            <div
+              v-if="r.readValue != null || r.lastReadAt"
+              class="dcw-act"
+              :title="$t('deviceTwinPanel.k9r7d4e030')"
+            >
+              <em>ACT</em>
+              <b>{{ r.readValue != null ? r.readValue.toFixed(r.decimals) : '--' }}<i>{{ r.unit }}</i></b>
+              <i
+                v-if="r.lastReadAt"
+                class="dcw-act-at"
+              >{{ r.lastReadAt.slice(11, 19) }}</i>
             </div>
             <div class="dcw-win">
               <span :title="r.src === 'recipe' ? '当前运行配方工艺窗口' : '节点全局量程'">{{ dcwWinText(r) }}</span>
@@ -545,6 +560,25 @@ function doDcwWrite(r: DcwLiveRow): void {
   margin-left: 2px;
   opacity: 0.75;
 }
+.dcw-act {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--hud-dim);
+}
+.dcw-act em { font-style: normal; font-size: 8px; letter-spacing: 0.08em; color: var(--hud-faint); }
+.dcw-act b {
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--hud-accent, #35e0a0);
+  white-space: nowrap;
+}
+.dcw-act b i { font-style: normal; font-size: 8.5px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
+.dcw-act-at { font-style: normal; font-size: 8px; color: var(--hud-faint); }
 .dcw-win {
   font-family: var(--font-mono);
   font-size: 8.5px;

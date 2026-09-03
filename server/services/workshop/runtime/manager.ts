@@ -37,7 +37,8 @@ import type { ChannelBus, MemberChangeEvent, TaskEngine, TaskEventTask } from '.
 import { ChannelRuntime } from './channel-runtime'
 import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
-import { AgentMemory, envNum, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeMemory, type MaintenanceResult, type MemorySnippet } from './memory'
+import { AgentMemory, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeMemory, type MaintenanceResult, type MemorySnippet } from './memory'
+import { memorySettings } from '../settings'
 import { createEnvEmbeddingProvider } from './embedding-provider'
 import { listHarnessProcesses, listAliveHarnessProcessesByAgent, sweepHarnessProcesses, killHarnessProcess } from '../agents/harness-process'
 import { hasTerminalSession, sweepTerminalSessions } from '../agents/harness-terminal'
@@ -323,7 +324,7 @@ export class AgentChannelManager {
       catch (err) {
         log.error('[memory] 反思任务异常', err)
       }
-    }, envNum('AW_MEMORY_MAINTENANCE_MS', 6 * 3600_000))
+    }, memorySettings().maintenance_ms)
     this.memoryTimer.unref?.()
   }
 
@@ -444,7 +445,7 @@ export class AgentChannelManager {
     for (const rt of this.agentIndex.values()) {
       if (rt.getState() === 'busy') return
     }
-    const trigger = envNum('AW_MEMORY_REFLECT_TRIGGER', 8)
+    const trigger = memorySettings().reflect_trigger
     const month = new Date().toISOString().slice(0, 7)
     for (const agentId of this.deps.repos.memories.listMemoryAgentIds()) {
       const rows = this.deps.repos.memories.listByAgentWithRowid(agentId, 1_000_000)
@@ -2545,9 +2546,12 @@ export class AgentChannelManager {
    * 协同工作流的第一步——先看别的团队在做什么/做过什么,再决定是否发信请求协作。
    */
   listOtherTeamsOverview(channelId: string, agentId: string): Array<{
-    channelId: string, name: string, description: string, leadName: string | null,
-    activeTasks: Array<{ id: string, title: string, state: string }>,
-    recentCompleted: Array<{ title: string }>,
+    channelId: string
+    name: string
+    description: string
+    leadName: string | null
+    activeTasks: Array<{ id: string, title: string, state: string }>
+    recentCompleted: Array<{ title: string }>
   }> {
     this.requireMember(channelId, agentId)
     const sender = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
@@ -2582,7 +2586,12 @@ export class AgentChannelManager {
    * 无需跨 channel 发信;查无所得而有协作必要时,再由 lead 发起跨 channel 通信。
    */
   recallOtherTeamsMemory(channelId: string, agentId: string, input: { query: string, limit?: number }): Array<{
-    channelId: string, channelName: string, title: string, content: string, importance: number, createdAt: string,
+    channelId: string
+    channelName: string
+    title: string
+    content: string
+    importance: number
+    createdAt: string
   }> {
     this.requireMember(channelId, agentId)
     const q = input.query.trim()

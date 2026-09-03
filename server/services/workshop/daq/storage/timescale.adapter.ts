@@ -8,6 +8,7 @@
 import { createRequire } from 'node:module'
 import type { Pool } from 'pg'
 import type { DaqQueryOpts, DaqSampleRow, TsdbPoint, TsdbPort } from './tsdb-port'
+import { daqRuntimeSettings } from '../../settings'
 
 /* nitro(Windows)dev 下对 external 的动态 import 会生成绝对盘符路径 → ESM loader
  * 拒绝 'd:' scheme;用 createRequire 走 CJS require 由 Node 原生解析(生产亦同)。 */
@@ -17,10 +18,10 @@ export class TimescaleAdapter implements TsdbPort {
   readonly backend = 'timescale'
   private pool: Pool | null = null
   private retentionTimer: NodeJS.Timeout | null = null
-  /** 保留期(默认 7 天,DAQ_TS_RETENTION_H 可调) */
-  private readonly retentionH = Number(process.env.DAQ_TS_RETENTION_H ?? 168)
-  /** 帧保留期(默认 30 天,DAQ_FRAME_RETENTION_H 可调;图像元数据体量远小于标量) */
-  private readonly frameRetentionH = Number(process.env.DAQ_FRAME_RETENTION_H ?? 720)
+  /** 保留期(daq.tsRetentionH;env DAQ_TS_RETENTION_H 兼容) */
+  private readonly retentionH = daqRuntimeSettings().tsRetentionH
+  /** 帧保留期(daq.frameRetentionH;env DAQ_FRAME_RETENTION_H 兼容) */
+  private readonly frameRetentionH = daqRuntimeSettings().frameRetentionH
 
   constructor(private readonly url: string) {}
 

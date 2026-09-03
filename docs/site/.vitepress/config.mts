@@ -28,6 +28,7 @@ export default defineConfig({
           items: [
             { text: '快速开始', link: '/guide/getting-started' },
             { text: '配置系统', link: '/guide/configuration' },
+            { text: '数控读写集成', link: '/guide/dcw-read-write' },
             { text: '第一次 Agent × 产线会话', link: '/guide/first-session' },
             { text: '开源协议', link: '/guide/license' },
           ],

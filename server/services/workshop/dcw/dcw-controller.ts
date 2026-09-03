@@ -30,6 +30,9 @@ import { recordOps } from '../ops/ops'
 /** 运维日志写下发防噪:同节点同值 10s 内的心跳重下发不重复入册 */
 const opsWriteMemo = new Map<string, { eng: number, at: number }>()
 
+/** 周期读网关默认间隔(节点 readIntervalMs=null 时生效;真实 PLC 建议按链路承载调整) */
+const DEFAULT_READ_INTERVAL_MS = 5000
+
 /** write() 来源 → 日志来源(user 人工下发 / agent 智能体 / system 配方·回退等系统路径) */
 function opsActorKindOf(source: string): 'user' | 'agent' | 'system' {
   if (source === 'agent') return 'agent'
@@ -47,6 +50,8 @@ export interface DcwCreateInput {
   /** 数据语义标定钩子(encode:物理值 → PLC 设定值) */
   transform?: DataTransform
   holdIntervalMs?: number | null
+  /** 周期读间隔 ms(null = 网关默认;0 = 仅手动读取) */
+  readIntervalMs?: number | null
   unit?: string
   decimals?: number
   min?: number
@@ -68,6 +73,8 @@ export interface DcwPatchInput {
   /** 数据语义标定钩子(encode) */
   transform?: DataTransform
   holdIntervalMs?: number | null
+  /** 周期读间隔 ms(null = 网关默认;0 = 仅手动读取) */
+  readIntervalMs?: number | null
   unit?: string
   decimals?: number
   min?: number
@@ -128,9 +135,10 @@ class DcwController {
 
   private host = {
     running: () => this.running,
-    defaults: () => ({ holdIntervalMs: 0 }),
+    defaults: () => ({ holdIntervalMs: 0, readIntervalMs: DEFAULT_READ_INTERVAL_MS }),
     executeWrite: async (node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null) =>
       this.executeWrite(node, eng, tolerance, recipeRunId),
+    executeRead: async (node: DcwNode) => this.executeRead(node),
   }
 
   /**
@@ -198,6 +206,48 @@ class DcwController {
   private emitNodeChanged(op: AepDcwNodeChange['op'], node: DcwNode | null): void {
     const payload: AepDcwNodeChange = { op, node: node ? node.toView() : null }
     this.broadcast?.('dcw.node.changed', payload)
+  }
+
+  /**
+   * 核心读执行:驱动读(寄存器解码 + 工程量映射在驱动内)→ 标定 decode(PLC 值 → 物理值)
+   * → 读状态记账(节点 readValue/lastReadAt,失败记 lastReadError 不动写状态机)→ WS dcw.read 直推。
+   * 不支持读的驱动(mock 外的 mqtt/http)不产生节点状态噪音,直接返回说明。
+   */
+  private async executeRead(node: DcwNode): Promise<{ ok: boolean, value: number | null, raw: number | null, message: string, at: string }> {
+    const at = new Date().toISOString()
+    const driver = resolveDcwDriver(node.driver)
+    if (!driver.read) {
+      return { ok: false, value: null, raw: null, message: `驱动 ${node.driver} 不支持读取(仅观测型通道)`, at }
+    }
+    let r: { ok: boolean, message: string, eng: number | null, raw: number | null }
+    try {
+      r = await driver.read({ domain: { min: node.min, max: node.max }, driverConfig: node.driverConfig })
+    }
+    catch (err) {
+      r = { ok: false, eng: null, raw: null, message: err instanceof Error ? err.message : String(err) }
+    }
+    // 读回的是 PLC 设定值域 → 经标定 decode 换算物理量(与写链路 inverse 互逆)
+    const value = r.ok && r.eng != null ? applyTransform(r.eng, node.transform) : null
+    node.applyReadResult(value, r.raw, r.ok, r.message, at)
+    this.repo.flushDebounced()
+    this.broadcast?.('dcw.read', {
+      nodeId: node.id,
+      templateRef: node.templateRef,
+      value,
+      raw: r.raw,
+      ok: r.ok,
+      message: r.message,
+      at,
+    })
+    return { ok: r.ok, value, raw: r.raw, message: r.message, at }
+  }
+
+  /** 手动读取(REST/前端「读取」按钮/Agent 工具;走运行时在飞互斥) */
+  async readNow(id: string): Promise<{ ok: boolean, value: number | null, raw: number | null, message: string, at: string }> {
+    this.ensureLoop()
+    const rt = this.runtimes.get(id)
+    if (!rt) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
+    return rt.readNow()
   }
 
   setBroadcast(fn: BroadcastFn | null): void {
@@ -286,6 +336,7 @@ class DcwController {
       transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
       holdIntervalMs: input.holdIntervalMs ?? null,
+      readIntervalMs: input.readIntervalMs ?? null,
       unit: input.unit,
       decimals: input.decimals,
       min: input.min,
@@ -321,6 +372,10 @@ class DcwController {
     if (patch.max !== undefined) node.max = patch.max
     if (patch.holdIntervalMs !== undefined) {
       node.holdIntervalMs = patch.holdIntervalMs == null ? null : Math.max(0, Math.min(3_600_000, Math.round(patch.holdIntervalMs)))
+      rearm = true
+    }
+    if (patch.readIntervalMs !== undefined) {
+      node.readIntervalMs = patch.readIntervalMs == null ? null : Math.max(0, Math.min(3_600_000, Math.round(patch.readIntervalMs)))
       rearm = true
     }
     if (patch.enabled !== undefined) {

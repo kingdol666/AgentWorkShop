@@ -8,7 +8,7 @@ import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
 import { apiFetch } from './apiClient'
 import type { AepEnvelope } from '#shared/workshop-protocol'
-import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwWritten, type DcwNodeView, type DcwParamLedger, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type OptimizationRecord, type OptimizationVerdict, type ProductInput, type ProductView, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwRead, type AepDcwWritten, type DcwNodeView, type DcwParamLedger, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type OptimizationRecord, type OptimizationVerdict, type ProductInput, type ProductView, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
 
 export type { DcwNodeView }
 
@@ -17,6 +17,7 @@ const api = <T>(path: string, init?: RequestInit): Promise<T> =>
   apiFetch<T>({ base: '/api/workshop/dcw', path, init, retries: (init?.method ?? 'GET').toUpperCase() === 'GET' ? 2 : 0 })
 
 export interface DcwWriteOutcomeView { ok: boolean, message: string, raw: number | null, readback: number | null }
+export interface DcwReadOutcomeView { ok: boolean, value: number | null, raw: number | null, message: string, at: string }
 export interface DcwWriteHistoryEntry { id: string, nodeId: string, nodeName: string, param: string, eng: number, raw: number | null, ok: boolean, message: string, recipeRunId: string | null, at: string }
 
 function createStore() {
@@ -65,6 +66,15 @@ function createStore() {
         }
         history.unshift({ id: `${p.nodeId}-${p.at}`, nodeId: p.nodeId, nodeName: n?.name ?? p.nodeId, param: '', eng: p.value, raw: p.raw, ok: p.ok, message: p.message, recipeRunId: p.recipeRunId, at: p.at })
         if (history.length > 60) history.splice(60)
+      }
+      else if (e.type === 'dcw.read') {
+        const p = e.payload as AepDcwRead
+        const n = nodes.find(x => x.id === p.nodeId)
+        if (n) {
+          if (p.ok) n.readValue = p.value
+          n.lastReadAt = p.at
+          n.lastReadError = p.ok ? null : p.message
+        }
       }
       else if (e.type === 'dcw.node.changed') applyChange(e.payload as AepDcwNodeChange)
       else if (e.type === 'dcw.controller') Object.assign(controller, e.payload as AepDcwControllerState)
@@ -171,6 +181,10 @@ function createStore() {
     /** 设定值下发(核心写命令;越界 400/在飞 409 由服务端拒绝) */
     write: async (id: string, value: number): Promise<DcwWriteOutcomeView> => {
       return api<{ outcome: DcwWriteOutcomeView }>(`/${id}/write`, { method: 'POST', body: JSON.stringify({ value }) }).then(r => r.outcome)
+    },
+    /** 手动读取 PLC 当前值(读写集成的读半边;与周期读同源) */
+    readNode: async (id: string): Promise<DcwReadOutcomeView> => {
+      return api<{ read: DcwReadOutcomeView }>(`/${id}/read`, { method: 'POST', body: JSON.stringify({}) }).then(r => r.read)
     },
     testDriver: async (driver: string, driverConfig: Record<string, unknown>): Promise<{ ok: boolean, message: string }> => {
       return api<{ test: { ok: boolean, message: string } }>('/test-driver', { method: 'POST', body: JSON.stringify({ driver, driverConfig }) }).then(r => r.test)

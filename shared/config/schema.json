@@ -20,6 +20,7 @@
     { "key": "i18n.defaultLocale", "type": "select", "group": "i18n", "label": "默认语言", "labelKey": "settings.runtime.i18n.defaultLocale", "description": "未做本地选择时的界面语言", "applies": "live", "default": "zh-CN", "options": ["zh-CN", "en"] },
 
     { "key": "security.approvalGate", "type": "boolean", "group": "security", "label": "高危操作双人复核", "labelKey": "settings.runtime.security.approvalGate", "description": "R3：开启后写控/删除等高风险操作需另一位管理员批核", "applies": "live", "default": false },
+    { "key": "security.hitl_timeout_ms", "type": "number", "group": "security", "label": "HITL 审批超时(ms)", "labelKey": "settings.runtime.security.hitlTimeoutMs", "description": "手动确认模式下发审批的等待超时(超时按拒绝收敛)", "applies": "restart", "default": 180000, "min": 1000, "max": 86400000, "aliases": ["HITL_TIMEOUT_MS"] },
 
     { "key": "daq.startInfrastructure", "type": "select", "group": "daq", "label": "数采基础设施拉起策略", "labelKey": "settings.runtime.daq.startInfrastructure", "description": "auto=启动探测，不通且有 Docker 则自动拉起；always=仅 Docker 拉起；never=只直连", "applies": "live", "default": "auto", "options": ["auto", "always", "never"] },
     { "key": "daq.mqtt.host", "type": "string", "group": "daq", "label": "MQTT Broker 地址", "labelKey": "settings.runtime.daq.mqttHost", "description": "数采事件总线 MQTT 主机", "applies": "restart", "default": "127.0.0.1" },
@@ -30,6 +31,52 @@
     { "key": "daq.objectstore.port", "type": "number", "group": "daq", "label": "对象存储端口", "labelKey": "settings.runtime.daq.osPort", "description": "MinIO S3 API 端口", "applies": "restart", "default": 9000, "min": 1, "max": 65535 },
     { "key": "daq.objectstore.accessKey", "type": "string", "group": "daq", "label": "对象存储 AccessKey", "labelKey": "settings.runtime.daq.osAccess", "description": "MinIO 访问账号", "applies": "restart", "default": "awshop" },
     { "key": "daq.objectstore.secretKey", "type": "string", "group": "daq", "label": "对象存储 SecretKey", "labelKey": "settings.runtime.daq.osSecret", "description": "MinIO 访问密钥", "applies": "restart", "default": "awshop-secret" },
-    { "key": "daq.objectstore.bucket", "type": "string", "group": "daq", "label": "对象存储桶", "labelKey": "settings.runtime.daq.osBucket", "description": "图像帧存储桶(不存在时自动创建)", "applies": "restart", "default": "daq" }
+    { "key": "daq.objectstore.bucket", "type": "string", "group": "daq", "label": "对象存储桶", "labelKey": "settings.runtime.daq.osBucket", "description": "图像帧存储桶(不存在时自动创建)", "applies": "restart", "default": "daq" },
+
+    { "key": "daq.mqtt.qos", "type": "number", "group": "daq", "label": "MQTT QoS", "labelKey": "settings.runtime.daq.mqttQos", "description": "数采事件总线发布 QoS(0/1/2)", "applies": "restart", "default": 0, "min": 0, "max": 2, "aliases": ["DAQ_MQTT_QOS"] },
+    { "key": "daq.mqtt.username", "type": "string", "group": "daq", "label": "MQTT 用户名", "labelKey": "settings.runtime.daq.mqttUsername", "description": "数采事件总线 MQTT 鉴权用户名(空=匿名)", "applies": "restart", "default": "", "aliases": ["DAQ_MQTT_USERNAME"] },
+    { "key": "daq.mqtt.password", "type": "string", "group": "daq", "label": "MQTT 密码", "labelKey": "settings.runtime.daq.mqttPassword", "description": "数采事件总线 MQTT 鉴权密码", "applies": "restart", "default": "", "aliases": ["DAQ_MQTT_PASSWORD"] },
+    { "key": "daq.mqtt.caFile", "type": "string", "group": "daq", "label": "MQTT CA 证书", "labelKey": "settings.runtime.daq.mqttCaFile", "description": "mqtts 自签 CA 证书文件路径", "applies": "restart", "default": "", "aliases": ["DAQ_MQTT_CA_FILE"] },
+    { "key": "daq.mqtt.rejectUnauthorized", "type": "boolean", "group": "daq", "label": "MQTT 校验证书", "labelKey": "settings.runtime.daq.mqttRejectUnauthorized", "description": "mqtts 是否校验服务端证书(自签调试可关)", "applies": "restart", "default": true, "aliases": ["DAQ_MQTT_REJECT_UNAUTHORIZED"] },
+    { "key": "daq.tsRetentionH", "type": "number", "group": "daq", "label": "标量时序保留(h)", "labelKey": "settings.runtime.daq.tsRetentionH", "description": "SQLite 仿真库标量样本保留小时数(Timescale 由 hypertable 策略管理)", "applies": "restart", "default": 168, "min": 1, "max": 8760, "aliases": ["DAQ_TS_RETENTION_H"] },
+    { "key": "daq.frameRetentionH", "type": "number", "group": "daq", "label": "帧元数据保留(h)", "labelKey": "settings.runtime.daq.frameRetentionH", "description": "daq_frames 帧元数据保留小时数", "applies": "restart", "default": 720, "min": 1, "max": 8760, "aliases": ["DAQ_FRAME_RETENTION_H"] },
+    { "key": "daq.alarmWebhookUrl", "type": "string", "group": "daq", "label": "告警 Webhook", "labelKey": "settings.runtime.daq.alarmWebhookUrl", "description": "告警升级推送的 Webhook 地址(空=不推送)", "applies": "restart", "default": "", "aliases": ["ALARM_WEBHOOK_URL"] },
+    { "key": "daq.alarmEscalateMinutes", "type": "number", "group": "daq", "label": "告警升级时限(min)", "labelKey": "settings.runtime.daq.alarmEscalateMinutes", "description": "未确认告警升级通知的时延(分钟)", "applies": "restart", "default": 15, "min": 1, "max": 1440, "aliases": ["ALARM_ESCALATE_MINUTES"] },
+
+    { "key": "memory.primer_tokens", "type": "number", "group": "memory", "label": "记忆引子预算", "labelKey": "settings.runtime.memory.primerTokens", "description": "注入 Agent 上下文的记忆引子 token 预算(AW_MEMORY_PRIMER_TOKENS)", "applies": "restart", "default": 300, "min": 50, "max": 4000 },
+    { "key": "memory.inject_total", "type": "number", "group": "memory", "label": "记忆注入硬顶", "labelKey": "settings.runtime.memory.injectTotal", "description": "单次记忆注入总 token 硬顶(AW_MEMORY_INJECT_TOTAL)", "applies": "restart", "default": 500, "min": 100, "max": 8000 },
+    { "key": "memory.maintenance_ms", "type": "number", "group": "memory", "label": "记忆维护周期(ms)", "labelKey": "settings.runtime.memory.maintenanceMs", "description": "记忆维护(衰减/驱逐/策展)调度周期", "applies": "restart", "default": 21600000, "min": 60000, "max": 604800000 },
+    { "key": "memory.expire_days", "type": "number", "group": "memory", "label": "情景记忆过期(天)", "labelKey": "settings.runtime.memory.expireDays", "description": "情景任务记忆默认保留天数", "applies": "restart", "default": 180, "min": 1, "max": 3650 },
+    { "key": "memory.expire_session_days", "type": "number", "group": "memory", "label": "会话记忆过期(天)", "labelKey": "settings.runtime.memory.expireSessionDays", "description": "会话级记忆保留天数", "applies": "restart", "default": 14, "min": 1, "max": 365 },
+    { "key": "memory.cap", "type": "number", "group": "memory", "label": "记忆条目上限", "labelKey": "settings.runtime.memory.cap", "description": "单通道记忆条目驱逐上限", "applies": "restart", "default": 500, "min": 50, "max": 50000 },
+    { "key": "memory.reflect_trigger", "type": "number", "group": "memory", "label": "反思触发阈值", "labelKey": "settings.runtime.memory.reflectTrigger", "description": "空闲反思(sleep-time compute)的已积压任务数触发阈值", "applies": "restart", "default": 8, "min": 1, "max": 100 },
+    { "key": "memory.embed_base_url", "type": "string", "group": "memory", "label": "Embedding 端点", "labelKey": "settings.runtime.memory.embedBaseUrl", "description": "OpenAI 兼容 /embeddings 基址(空=向量分支关闭,纯 FTS 检索)", "applies": "restart", "default": "" },
+    { "key": "memory.embed_model", "type": "string", "group": "memory", "label": "Embedding 模型", "labelKey": "settings.runtime.memory.embedModel", "description": "向量编码模型名", "applies": "restart", "default": "" },
+    { "key": "memory.embed_api_key", "type": "string", "group": "memory", "label": "Embedding 密钥", "labelKey": "settings.runtime.memory.embedApiKey", "description": "Embedding 端点鉴权密钥(Bearer)", "applies": "restart", "default": "" },
+
+    { "key": "omp.compact_enabled", "type": "boolean", "group": "omp", "label": "上下文自动压缩", "labelKey": "settings.runtime.omp.compactEnabled", "description": "上下文越过阈值时自动压缩(可被 env 显式关闭)", "applies": "restart", "default": true },
+    { "key": "omp.compact_threshold", "type": "number", "group": "omp", "label": "压缩阈值", "labelKey": "settings.runtime.omp.compactThreshold", "description": "触发压缩的上下文占用比例(0~1)", "applies": "restart", "default": 0.7, "min": 0.3, "max": 0.95 },
+    { "key": "omp.compact_min_interval_ms", "type": "number", "group": "omp", "label": "压缩最小间隔(ms)", "labelKey": "settings.runtime.omp.compactMinIntervalMs", "description": "两次自动压缩之间的最小间隔", "applies": "restart", "default": 300000, "min": 30000, "max": 3600000 },
+    { "key": "omp.compact_wait_ms", "type": "number", "group": "omp", "label": "压缩等待超时(ms)", "labelKey": "settings.runtime.omp.compactWaitMs", "description": "等待 compaction_end 完成事件的超时", "applies": "restart", "default": 120000, "min": 10000, "max": 600000 },
+
+    { "key": "dcw.rollback_cooldown_ms", "type": "number", "group": "dcw", "label": "回退冷却(ms)", "labelKey": "settings.runtime.dcw.rollbackCooldownMs", "description": "回退执行后的同向冷却窗", "applies": "restart", "default": 300000, "min": 0, "max": 3600000 },
+    { "key": "dcw.rollback_min_window_ms", "type": "number", "group": "dcw", "label": "回退最小观察窗(ms)", "labelKey": "settings.runtime.dcw.rollbackMinWindowMs", "description": "开记录后允许判定的最小观察窗", "applies": "restart", "default": 120000, "min": 0, "max": 3600000 },
+    { "key": "dcw.rollback_baseline_ms", "type": "number", "group": "dcw", "label": "基线稳定窗(ms)", "labelKey": "settings.runtime.dcw.rollbackBaselineMs", "description": "上一稳定锚的稳定时间要求", "applies": "restart", "default": 600000, "min": 0, "max": 7200000 },
+    { "key": "dcw.rollback_stale_ms", "type": "number", "group": "dcw", "label": "open 记录过期(ms)", "labelKey": "settings.runtime.dcw.rollbackStaleMs", "description": "open 优化记录多久后允许他人接管", "applies": "restart", "default": 1800000, "min": 60000, "max": 14400000 },
+
+    { "key": "workshop.idle_sweep_ms", "type": "number", "group": "workshop", "label": "空产线扫描(ms)", "labelKey": "settings.runtime.workshop.idleSweepMs", "description": "车间空闲产线扫描周期", "applies": "restart", "default": 30000, "min": 5000, "max": 600000 },
+    { "key": "workshop.idle_grace_ms", "type": "number", "group": "workshop", "label": "空闲宽限(ms)", "labelKey": "settings.runtime.workshop.idleGraceMs", "description": "产线空闲判定的宽限时长", "applies": "restart", "default": 120000, "min": 10000, "max": 3600000 },
+
+    { "key": "backup.disabled", "type": "boolean", "group": "backup", "label": "禁用自动备份", "labelKey": "settings.runtime.backup.disabled", "description": "关闭运行数据自动备份", "applies": "restart", "default": false, "aliases": ["BACKUP_DISABLED"] },
+    { "key": "backup.interval_hours", "type": "number", "group": "backup", "label": "备份间隔(h)", "labelKey": "settings.runtime.backup.intervalHours", "description": "自动备份间隔小时数", "applies": "restart", "default": 24, "min": 1, "max": 720, "aliases": ["BACKUP_INTERVAL_HOURS"] },
+    { "key": "backup.keep", "type": "number", "group": "backup", "label": "备份保留份数", "labelKey": "settings.runtime.backup.keep", "description": "保留的最近备份份数", "applies": "restart", "default": 7, "min": 1, "max": 100, "aliases": ["BACKUP_KEEP"] },
+
+    { "key": "retention.disabled", "type": "boolean", "group": "retention", "label": "禁用数据保留策略", "labelKey": "settings.runtime.retention.disabled", "description": "关闭过期数据清理(调试用)", "applies": "restart", "default": false, "aliases": ["RETENTION_DISABLED", "AW_RETENTION_DISABLED"] },
+    { "key": "retention.events_days", "type": "number", "group": "retention", "label": "事件保留(天)", "labelKey": "settings.runtime.retention.eventsDays", "description": "WS 事件流保留天数", "applies": "restart", "default": 7, "min": 1, "max": 365, "aliases": ["AW_EVENTS_RETENTION_D"] },
+    { "key": "retention.messages_days", "type": "number", "group": "retention", "label": "消息保留(天)", "labelKey": "settings.runtime.retention.messagesDays", "description": "Channel 消息保留天数", "applies": "restart", "default": 30, "min": 1, "max": 3650 },
+    { "key": "retention.audit_days", "type": "number", "group": "retention", "label": "审计日志保留(天)", "labelKey": "settings.runtime.retention.auditDays", "description": "审计日志保留天数(合规观察期,从严保留)", "applies": "restart", "default": 90, "min": 1, "max": 3650 },
+    { "key": "retention.approval_days", "type": "number", "group": "retention", "label": "审批历史保留(天)", "labelKey": "settings.runtime.retention.approvalDays", "description": "审批历史保留天数(历史裁决主张不可变,放宽)", "applies": "restart", "default": 180, "min": 1, "max": 3650 },
+
+    { "key": "log.level", "type": "string", "group": "log", "label": "日志级别", "labelKey": "settings.runtime.log.level", "description": "服务端日志级别(debug/info/warn/error)", "applies": "restart", "default": "info", "aliases": ["AWSHOP_LOG_LEVEL"] }
   ]
 }
