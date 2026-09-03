@@ -3,7 +3,7 @@
 宿主在运行时的关键节点触发事件,插件经 `ctx.hooks.on(event, fn)` 消费。
 **全部事件也是配置根事件流的一部分**——`event:*` 可通配订阅。
 
-## 服务端事件(8 个)
+## 服务端事件(9 个)
 
 ### `plugin:host:init`
 - **时机**:宿主装载完所有插件后(一次性)。
@@ -19,6 +19,11 @@
     if (s.value > (ctx.kv.get('threshold') ?? 180)) ctx.kv.bump('alarms')
   })
   ```
+
+### `daq:frame`
+- **时机**:数采**多形态帧**下发级(向量/图像节点;与 WS `daq.frame` 同点、按 `publishIntervalMs` 节拍)。
+- **payload**:`{ nodeId, templateRef, kind: 'vector'|'image', at, preview?, metrics?, thumbUrl? }`——**不含像素 blob**。
+- **消费**:`ctx.daq.onFrame(fn)`(糖衣)或 `ctx.hooks.on('daq:frame', fn)`。
 
 ### `dcw:write`
 - **时机**:写控 ACK 之后观察(与运维入册同点、同 10s 去重)——**不影响写控决策**。

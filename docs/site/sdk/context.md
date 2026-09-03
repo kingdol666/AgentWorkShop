@@ -75,3 +75,34 @@ ctx.config.onChange(() => {                           // runtime-settings 变化
   ctx.logger.info('新阈值', ctx.config.get('api.timeout'))
 })
 ```
+
+## ctx.daq —— 多形态数采扩展(v0.6 帧管线)
+
+```js
+ctx.daq.registerProcessor('vector', 'my-derive', (frame, args) => {
+  // frame = { kind: 'vector'|'image', points? | blob?(仅图像生产侧), metrics }
+  return { ...frame, metrics: { ...frame.metrics, myMetric: 1 } }
+})
+ctx.daq.registerTemplate({ /* DaqTemplateDef:key/signalKind/vector/sink/metrics */ })
+ctx.daq.registerDriver({ kind: 'my-ccd', available, sample, test })
+ctx.daq.onFrame(fn)     // 糖衣 = ctx.hooks.on('daq:frame')
+ctx.daq.onSample(fn)    // 糖衣 = ctx.hooks.on('daq:sample')
+```
+
+模板 `sink.processors` 声明下沉管线(采样后、入库前执行);`metrics` 声明派生指标阈值,
+越限走平台既有告警链路。向量/帧元数据入 Timescale `daq_frames`,图像像素入对象存储。
+
+## ctx.omp —— omp 自定义工具(运行时热注入)
+
+```js
+ctx.omp.registerTool({
+  name: 'sensor_log',
+  description: '查询/登记传感器标定结论',
+  parameters: { type: 'object', properties: { sensor: { type: 'string' } }, required: ['sensor'] },
+  roles: ['lead', 'worker'],                          // 缺省双角色
+  handler: async (args, agent) => ({ text: '...' }),  // agent = { agentId, channelId, role, name }
+})
+```
+
+注册表变更即时热注入全部在跑 omp agent 会话(重发 set_host_tools,不重 spawn);
+与内置 host tool 同名会被忽略(内置优先)。

@@ -32,12 +32,14 @@ features:
       鉴权、信封解包、超时与协议守卫开箱即用。
   - icon: '<span class="aw-tag">PLG</span>'
     title: 插件 · 前后端双面增强
-    details: 服务端钩子(daq:sample / dcw:write / line 生命周期 / scene 全事件)
+    details: 服务端钩子(daq:sample / daq:frame / dcw:write / line 生命周期 / scene 全事件)
       + 浏览器增强脚本 + 插件自有 API 路由,放入目录即装载。
+      v0.6 起可注册自定义数采驱动/下沉处理器/节点模板与 omp 工具(运行时热注入)。
   - icon: '<span class="aw-tag">IND</span>'
-    title: 真实工业栈
+    title: 真实工业栈 · 多形态数采
     details: Modbus TCP / OPC UA 数采,安全量程 ∩ 配方窗口联锁,
       HITL 人工审批 → PLC 写入 → 回读校验,逐样本批次打标。
+      v0.6 支持多点轮廓(vector)与 CCD 图像帧:sink 管线加工后入 Timescale,像素入 MinIO。
   - icon: '<span class="aw-tag">TWN</span>'
     title: 3D 数字孪生
     details: Three.js 小镇实时呈现产线设备、节点健康、告警与趋势 —— 与 Agent 消费同一事件流。

@@ -68,6 +68,8 @@ export default {
 | 平台 | `ctx.api` | 平台 REST 客户端([详见 SDK 指南](/sdk/api-client)) |
 | 网络 | `ctx.http.get / post` | 通用请求(仅 http/https,默认 8s 超时) |
 | 事件 | `ctx.events.on(type, fn)` | scene 实时事件订阅 |
+| 数采扩展 | `ctx.daq.registerDriver / registerProcessor / registerTemplate` | 插件驱动 / 下沉处理器 / 数采节点模板(v0.6 帧管线;同名覆盖) |
+| OMP 工具 | `ctx.omp.registerTool(tool)` | 注册 omp host 工具 → 全部在跑 agent 会话**运行时热注入**(v0.6) |
 
 ## 插件 API(增强后端)
 
@@ -81,6 +83,38 @@ ctx.route('POST', '/reset', (event) => {
 ```
 
 → `/api/plugins/<name><path>`;v1 鉴权由插件自理(handler 内可 `resolveUser(event)`)。
+
+## 多形态数采与 omp 工具扩展(v0.6)
+
+数采不止单点数值:模板可声明 `signalKind: 'vector'`(测厚仪/扫描仪多点轮廓)或 `'image'`(CCD 图像)。
+向量与帧元数据入 Timescale(`daq_frames`),图像像素入对象存储(MinIO,不可达自动降级本地磁盘)。
+
+```js
+// 注册下沉处理器:模板 sink 配置 { name: 'demo-roughness' } 即生效
+ctx.daq.registerProcessor('vector', 'demo-roughness', (frame, args) => ({
+  ...frame, metrics: { ...frame.metrics, roughness: computeRoughness(frame.points) },
+}))
+
+// 注册节点模板(出现在 /daq 模板目录与创建向导;用户建节点即套用自定义管线)
+ctx.daq.registerTemplate({
+  key: 'plug-my-sensor', name: '我的传感器', unit: 'mm',
+  min: 0.4, max: 0.6, base: 0.5, amp: 0.02, decimals: 3, icon: 'tension',
+  signalKind: 'vector', vector: { points: 32, min: 0.4, max: 0.6 },
+  sink: { processors: [{ name: 'resample', args: { n: 32 } }, { name: 'demo-roughness' }] },
+  metrics: [{ key: 'roughness', label: '粗糙度', alarmHigh: 0.05 }],
+})
+
+// 注册 omp host 工具:全部在跑 agent 会话运行时热注入(不重 spawn)
+ctx.omp.registerTool({
+  name: 'sensor_log',
+  description: '查询/登记传感器标定结论',
+  parameters: { type: 'object', properties: { sensor: { type: 'string' } }, required: ['sensor'] },
+  handler: async (args, agent) => ({ text: `...` }),
+})
+```
+
+- 派生指标阈值越限(模板 `metrics` 声明)走平台既有告警链路(落库 + WS + webhook)。
+- 完整 API 语义与示例见仓库 `docs/plugins.md` §八/§九 与示例插件 `daq-vector-demo` / `omp-sensor-tools`。
 
 ## 浏览器增强(client.mjs)
 
