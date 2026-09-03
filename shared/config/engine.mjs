@@ -61,6 +61,14 @@ export function loadDescriptors() {
     resolve(process.cwd(), 'shared', 'config', 'schema.json'),
     resolve(process.cwd(), 'config', 'schema.json'),
   ]
+  // 启动器注入的载荷根(start.mjs / dev-guard 恒设置;全局安装 = 包根,shared/ 随包发布)
+  if (process.env.AW_PACKAGE_ROOT) {
+    candidates.push(join(process.env.AW_PACKAGE_ROOT, 'shared', 'config', 'schema.json'))
+  }
+  // 用户级兜底(home 中枢,AW_HOME 可重定向)
+  if (process.env.AW_HOME) {
+    candidates.push(join(process.env.AW_HOME, 'shared', 'config', 'schema.json'))
+  }
   for (const candidate of candidates) {
     try {
       if (existsSync(candidate)) {
