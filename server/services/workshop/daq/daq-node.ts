@@ -71,6 +71,8 @@ export class DaqNode {
   value: number | null
   state: DaqNodeState = 'offline'
   lastAt: string | null = null
+  /** 最近一次采样失败原因(连接/超时/PLC 异常分类文案;成功采样后清空) */
+  lastError: string | null = null
   /** 去抖候选态(连续 3 帧一致才切换;alarm/offline 立即生效,安全优先) */
   private stateCand: DaqNodeState | null = null
   private stateCandN = 0
@@ -132,6 +134,7 @@ export class DaqNode {
   /** 记录一次采样(controller 采样循环调用):去抖 + 滞回后落状态 */
   applyReading(v: number, at: string): void {
     this.value = v
+    this.lastError = null
     const raw = this.deriveState(v)
     // alarm/offline 立即切换(安全事件不等去抖);ok↔warn 需连续 3 帧一致
     if (raw === 'alarm' || raw === 'offline' || raw === this.state) {
@@ -222,6 +225,7 @@ export class DaqNode {
       node.state = node.deriveState(node.value)
     }
     if (row.lastAt != null) node.lastAt = String(row.lastAt)
+    if (row.lastError != null) node.lastError = String(row.lastError)
     return node
   }
 
@@ -251,6 +255,7 @@ export class DaqNode {
       value: this.value,
       state: this.state,
       lastAt: this.lastAt,
+      lastError: this.lastError,
       createdAt: this.createdAt,
     }
   }

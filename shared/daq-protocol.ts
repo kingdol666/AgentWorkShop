@@ -398,6 +398,8 @@ export interface DaqNodeView {
   value: number | null
   state: DaqNodeState
   lastAt: string | null
+  /** 最近一次采样失败原因(连接/超时/PLC 异常分类;成功后清空) */
+  lastError: string | null
   createdAt: string
 }
 

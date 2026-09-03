@@ -354,6 +354,8 @@ const rowLabel: Record<RowState, string> = {
 function statePillOf(n: DaqNodeView): { key: RowState, label: string, tip: string } {
   const s = rowStateOf(n)
   if (s === 'offline') {
+    // 采样失败优先透出分类错误(连接/超时/PLC 异常 + 处理提示);无错误才给通用提示
+    if (n.lastError) return { key: s, label: rowLabel.offline, tip: n.lastError }
     const tip = !daq.controller.running
       ? tt('daq.k1gateoff140')
       : tt('daq.k1staled129', { p0: Math.round(Math.max((n.intervalMs ?? daq.controller.defaultIntervalMs) * 4, 12_000) / 1000) })

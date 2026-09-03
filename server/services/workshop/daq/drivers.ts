@@ -263,10 +263,20 @@ export async function getModbusConn(cfg: Record<string, unknown>, transport: Mod
   const client = new ModbusRTU()
   client.setTimeout(3000)
   // tcp = Modbus TCP(MBAP 封装);rtu-tcp = RTU over TCP(串口网关透传,CRC16 帧,无 MBAP)
-  if (transport === 'rtu-tcp')
-    await client.connectTcpRTUBuffered(String(cfg.host), { port: Number(cfg.port ?? 502) })
-  else
-    await client.connectTCP(String(cfg.host), { port: Number(cfg.port ?? 502) })
+  // 连接硬超时(3s):connectTCP 无内建超时,PLC 离线/半开连接时 SYN 黑洞会悬挂调用方
+  const connect = transport === 'rtu-tcp'
+    ? client.connectTcpRTUBuffered(String(cfg.host), { port: Number(cfg.port ?? 502) })
+    : client.connectTCP(String(cfg.host), { port: Number(cfg.port ?? 502) })
+  await Promise.race([
+    connect,
+    new Promise((_, rej) => setTimeout(() => rej(new Error(`连接超时(3s)——检查 PLC 电源/IP/端口与防火墙`)), 3000)),
+  ]).catch((err) => {
+    try {
+      void client.close()
+    }
+    catch { /* 未连上 */ }
+    throw err
+  })
   client.setID(Number(cfg.unitId ?? 1))
   const conn: ModbusConn = { client, lastUsed: Date.now(), tail: Promise.resolve(), pending: 0, errors: 0 }
   modbusPool.set(key, conn)
@@ -301,6 +311,33 @@ export function registerOffset(addr: number, area: string): number {
   return addr >= 40001 ? addr - 40001 : addr
 }
 
+/**
+ * 通信故障分类(数采/数控共用):底层异常 → 可操作的中文诊断 + 处理提示。
+ * 前端/Agent/写历史直接透出该文案,运维按提示即可定位问题层级。
+ */
+export function classifyCommError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err)
+  const m = raw.toLowerCase()
+  if (/econnrefused|connection refused|connect etimedout/.test(m) || /port connection failed/.test(m))
+    return `无法建立连接——检查 PLC 电源/IP/端口与防火墙(${raw})`
+  if (/etimedout|timed out|timeout/.test(m))
+    return `PLC 响应超时——网络抖动或从站负载高,稍后自动重连(${raw})`
+  if (/ehostunreach|enetunreach|network unreachable/.test(m))
+    return `网络不可达——检查本机与 PLC 的路由/网段(${raw})`
+  if (/enotfound|eai_again/.test(m))
+    return `主机名无法解析——检查 host 配置(${raw})`
+  if (/crc/.test(m))
+    return `CRC 校验失败——串口线路干扰或波特率/校验位不匹配(${raw})`
+  if (/illegal|exception|function code/.test(m))
+    return `PLC 拒绝该操作——功能码或寄存器地址不被支持,检查地址区配置(${raw})`
+  if (/protocol/.test(m))
+    return `协议响应异常——数据长度/帧格式不符,检查寄存器数量与从站型号(${raw})`
+  if (/not connected|socket|closed|econnreset/.test(m))
+    return `连接已断开——将自动重建连接,若持续失败请检查线缆(${raw})`
+  return raw
+}
+
+/** 4xxxx 保持寄存器 → 协议偏移(40001 → 0);3xxxx 输入寄存器同理 */
 export const WORDS_OF: Record<string, number> = { int16: 1, uint16: 1, int32: 2, uint32: 2, float32: 2 }
 
 async function modbusRead(conn: ModbusConn, cfg: Record<string, unknown>, transport: ModbusTransport = 'tcp'): Promise<number> {

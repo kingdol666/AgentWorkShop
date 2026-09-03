@@ -10,6 +10,7 @@
  */
 
 import { applyTransform } from '../../../../shared/daq-protocol'
+import { classifyCommError } from './drivers'
 import type { DaqNode } from './daq-node'
 import type { DaqFrameSample, DaqSampleEnvelope } from './bus/queue-port'
 
@@ -124,11 +125,14 @@ export class DaqNodeRuntime {
       })
     }
     catch (err) {
-      // 驱动故障(mock 不应发生;PLC 未接入走这里):置 offline + 独立节流广播
+      // 驱动故障(mock 不应发生;PLC 未接入走这里):置 offline + 分类错误落节点(lastError)
+      // + 独立节流广播 —— API/前端/Agent 均可读到失败原因与处理提示
       node.state = 'offline'
+      const msg = classifyCommError(err)
+      node.lastError = msg
       if (now - this.errAt > ERR_THROTTLE_MS) {
         this.errAt = now
-        this.host.broadcastError(node, err instanceof Error ? err.message : String(err))
+        this.host.broadcastError(node, msg)
       }
     }
     finally {

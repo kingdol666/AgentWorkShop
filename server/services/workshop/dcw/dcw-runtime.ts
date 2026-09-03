@@ -77,6 +77,11 @@ export class DcwNodeRuntime {
     try {
       return await this.host.executeWrite(node, eng, writeTolerance(node), recipeRunId)
     }
+    catch (err) {
+      // 执行链抛错(异常不流向 outcome):状态机必须离开 writing,否则通道永久 409
+      if (node.state === 'writing') node.state = 'error'
+      throw err
+    }
     finally {
       this.writing = false
     }
