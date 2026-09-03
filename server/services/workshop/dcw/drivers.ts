@@ -10,7 +10,7 @@
 import { createRequire } from 'node:module'
 import type { DcwDriverKind } from '../../../../shared/dcw-protocol'
 import { AppError } from '../../../utils/errors'
-import { decodeRegisters, evictModbusConn, getModbusConn, getOpcUaConn, modbusKey, registerOffset, withModbusConn } from '../daq/drivers'
+import { classifyCommError, decodeRegisters, evictModbusConn, getModbusConn, getOpcUaConn, modbusKey, registerOffset, withModbusConn } from '../daq/drivers'
 
 const reqNative = createRequire(import.meta.url)
 
@@ -244,7 +244,7 @@ export const modbusTcpDcwDriver: DcwWriteDriver = {
     }
     catch (err) {
       if (err instanceof AppError) throw err
-      return { ok: false, message: `Modbus 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+      return { ok: false, message: `Modbus 写入失败: ${classifyCommError(err)}`, raw: null, readback: null }
     }
   },
   async read(input) {
@@ -252,7 +252,7 @@ export const modbusTcpDcwDriver: DcwWriteDriver = {
       return await modbusRead(input, 'tcp')
     }
     catch (err) {
-      return { ok: false, message: `Modbus 读取失败: ${err instanceof Error ? err.message : String(err)}`, eng: null, raw: null }
+      return { ok: false, message: `Modbus 读取失败: ${classifyCommError(err)}`, eng: null, raw: null }
     }
   },
   async test(driverConfig) {
@@ -272,7 +272,7 @@ export const modbusTcpDcwDriver: DcwWriteDriver = {
         void key
       }
       catch { /* ignore */ }
-      return { ok: false, message: `Modbus 连接失败: ${err instanceof Error ? err.message : String(err)}` }
+      return { ok: false, message: classifyCommError(err) }
     }
   },
 }
@@ -327,7 +327,7 @@ export const opcUaDcwDriver: DcwWriteDriver = {
     }
     catch (err) {
       if (err instanceof AppError) throw err
-      return { ok: false, message: `OPC UA 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+      return { ok: false, message: `OPC UA 写入失败: ${classifyCommError(err)}`, raw: null, readback: null }
     }
   },
   async read(input) {
@@ -345,7 +345,7 @@ export const opcUaDcwDriver: DcwWriteDriver = {
       return { ok: true, message: `读回 ${Number(v.toFixed(4))}`, eng: v, raw: v }
     }
     catch (err) {
-      return { ok: false, message: `OPC UA 读取失败: ${err instanceof Error ? err.message : String(err)}`, eng: null, raw: null }
+      return { ok: false, message: `OPC UA 读取失败: ${classifyCommError(err)}`, eng: null, raw: null }
     }
   },
   async test(driverConfig) {
@@ -360,7 +360,7 @@ export const opcUaDcwDriver: DcwWriteDriver = {
       return { ok: true, message: `会话建立成功,写节点可访问(${String(driverConfig.nodeId)})` }
     }
     catch (err) {
-      return { ok: false, message: `OPC UA 连接失败: ${err instanceof Error ? err.message : String(err)}` }
+      return { ok: false, message: classifyCommError(err) }
     }
   },
 }
@@ -423,7 +423,7 @@ export const modbusRtuDcwDriver: DcwWriteDriver = {
     }
     catch (err) {
       if (err instanceof AppError) throw err
-      return { ok: false, message: `Modbus RTU 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+      return { ok: false, message: `Modbus RTU 写入失败: ${classifyCommError(err)}`, raw: null, readback: null }
     }
   },
   async read(input) {
@@ -431,7 +431,7 @@ export const modbusRtuDcwDriver: DcwWriteDriver = {
       return await modbusRead(input, 'rtu-tcp')
     }
     catch (err) {
-      return { ok: false, message: `Modbus RTU 读取失败: ${err instanceof Error ? err.message : String(err)}`, eng: null, raw: null }
+      return { ok: false, message: `Modbus RTU 读取失败: ${classifyCommError(err)}`, eng: null, raw: null }
     }
   },
   async test(driverConfig) {
@@ -444,7 +444,7 @@ export const modbusRtuDcwDriver: DcwWriteDriver = {
       return { ok: true, message: `网关连接成功,写寄存器可访问(${Date.now() - t0}ms)` }
     }
     catch (err) {
-      return { ok: false, message: `Modbus RTU 连接失败: ${err instanceof Error ? err.message : String(err)}` }
+      return { ok: false, message: classifyCommError(err) }
     }
   },
 }

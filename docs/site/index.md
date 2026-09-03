@@ -40,6 +40,15 @@ features:
     details: Modbus TCP / OPC UA 数采,安全量程 ∩ 配方窗口联锁,
       HITL 人工审批 → PLC 写入 → 回读校验,逐样本批次打标。
       v0.6 支持多点轮廓(vector)与 CCD 图像帧:sink 管线加工后入 Timescale,像素入 MinIO。
+  - icon: '<span class="aw-tag">R/W</span>'
+    title: 数控读写一体(v0.7)
+    details: 每个控制节点沿写链路同一套标定读回 PLC 当前值 —— 周期读/手动读取/Agent
+      dcw_read 三通道,SET 与 ACT 在数控页与孪生面板并排呈现(读为被动观测,免审批)。
+  - icon: '<span class="aw-tag">CFG</span>'
+    title: 全量配置驱动(v0.7)
+    details: 运行语义旋钮全部收编设置描述符(14 组 62 键):config.yml < runtime-settings <
+      env(历史变量名别名兼容),项目级 .AgentWorkShop 优先、~/.AgentWorkShop 用户兜底。
+      通信故障按类给出诊断与处理提示(连接/超时/量程越规/PLC 拒绝)。
   - icon: '<span class="aw-tag">TWN</span>'
     title: 3D 数字孪生
     details: Three.js 小镇实时呈现产线设备、节点健康、告警与趋势 —— 与 Agent 消费同一事件流。
