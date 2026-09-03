@@ -13,8 +13,12 @@ export default defineEventHandler(async (event) => {
   const service = getSystemConfigService()
   const stream = createEventStream(event)
 
+<<<<<<< HEAD
   const listener: ((payload: ConfigEventPayload) => void) | undefined
   listener = (payload) => {
+=======
+  const listener = (payload: ConfigEventPayload): void => {
+>>>>>>> 3c897a0 (fix(settings): 修复 sse 监听器拆分声明导致的构建失败)
     void stream.push(JSON.stringify(payload))
   }
   const unsubscribe = service.subscribe(listener)
