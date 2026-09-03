@@ -11,7 +11,7 @@
 
 import { applyTransform } from '../../../../shared/daq-protocol'
 import type { DaqNode } from './daq-node'
-import type { DaqSampleEnvelope } from './bus/queue-port'
+import type { DaqFrameSample, DaqSampleEnvelope } from './bus/queue-port'
 
 /** 驱动故障广播节流(ms;每运行时独立计时) */
 const ERR_THROTTLE_MS = 30_000
@@ -23,8 +23,9 @@ export const PUBLISH_INTERVAL_MAX = 60_000
 export interface DaqRuntimeHost {
   /** 网关全局缺省(节点元数据为 null 时回退) */
   defaults(): { intervalMs: number, publishIntervalMs: number }
-  /** 生产面:驱动采样一次(网关实现协议解析与模板域) */
-  sample(node: DaqNode, now: number): Promise<number | null>
+  /** 生产面:驱动采样一次(网关实现协议解析与模板域;多形态模板返回帧信封 ——
+   *  驱动原生形态或 controller 生产侧处理形态[图像已落对象存储]) */
+  sample(node: DaqNode, now: number): Promise<number | DaqFrameSample | { frame: NonNullable<DaqSampleEnvelope['frame']> } | null> | number | DaqFrameSample | { frame: NonNullable<DaqSampleEnvelope['frame']> } | null
   /** 生产面:样本帧入队 */
   publishSample(env: DaqSampleEnvelope): void
   /**
@@ -85,13 +86,30 @@ export class DaqNodeRuntime {
     if (now < this.lastSampleAt + node.effectiveInterval(this.host.defaults().intervalMs)) return
     this.sampling = true
     try {
-      let v: number | null = null
+      let v: number | DaqFrameSample | null = null
       try {
         v = await this.host.sample(node, now)
       }
       finally {
         // 采样完成时刻入账:采样耗时计入周期,慢驱动自然降频
         this.lastSampleAt = Date.now()
+      }
+      // 多形态帧(v2):驱动已产出帧信封(vector 点列 / image 已落对象存储的引用);
+      // 值语义 = avg 派生指标(无则 0),状态由网关按指标阈值告警链路派生
+      if (v != null && typeof v === 'object' && 'frame' in v) {
+        const f = v.frame
+        const metrics = f.metrics ?? {}
+        this.host.publishSample({
+          nodeId: node.id,
+          templateRef: node.templateRef,
+          value: Number((metrics.avg ?? 0).toFixed(node.decimals)),
+          state: 'ok',
+          at: new Date(now).toISOString(),
+          frame: f.kind === 'vector'
+            ? { kind: 'vector', points: (f.points ?? []).slice(0, 4096), metrics }
+            : { kind: 'image', objectKey: f.objectKey, thumbKey: f.thumbKey, mime: f.mime, width: f.width, height: f.height, metrics },
+        })
+        return
       }
       if (v == null || Number.isNaN(v)) return
       // 数据语义标定钩子(decoder):PLC 采集值 → 真实物理参数。
@@ -128,6 +146,20 @@ export class DaqNodeRuntime {
     // 乱序防御(broker 多投递者场景):迟到帧直接丢弃
     if (tsMs && tsMs <= this.lastIngestAt) return 'late'
     this.lastIngestAt = tsMs
+
+    // 多形态帧(v2):不走标量量程状态派生(向量/图像无单点值语义);
+    // 指标阈值告警在网关 ingestFrame 按模板 metrics 规则边沿判定,这里只做
+    // 节点活跃度/展示值更新 + WS 下发节拍门控。
+    if (env.frame) {
+      node.state = 'ok'
+      node.touchReading(env.value, env.at)
+      const pubMs = Math.max(0, Math.min(PUBLISH_INTERVAL_MAX, node.publishIntervalMs ?? this.host.defaults().publishIntervalMs))
+      const now = Date.now()
+      const allowPublish = pubMs <= 0 || now - this.lastPublishAt >= pubMs
+      if (allowPublish) this.lastPublishAt = now
+      this.host.ingest(node, env, allowPublish)
+      return 'ok'
+    }
 
     // S5:alarm 进入/恢复沿(边沿触发,非每帧;恢复不自动 ack,仍待人工确认)
     // 配方监控窗口(活动批次)在派生后叠加:越窗视同 alarm,沿语义与量程告警一致

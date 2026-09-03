@@ -549,12 +549,27 @@ export interface TeamMemberRow {
   createdAt: string
 }
 
+/**
+ * 记忆类别:episodic-task/episodic-peer/episodic-session/episodic-team-task(harvest 族,
+ * 参与过期+淘汰)/ semantic(知识,免衰减)/ brief/chronicle/reflection(策展层,
+ * 免向量化免维护)。TEXT 自由列(无 CHECK),联合类型仅约束调用面。
+ */
+export type MemoryKind
+  = | 'episodic-task'
+    | 'episodic-peer'
+    | 'episodic-session'
+    | 'episodic-team-task'
+    | 'semantic'
+    | 'brief'
+    | 'chronicle'
+    | 'reflection'
+
 /** agent_memories 表行(content 为已 CJK 切分存储文本;agentId='__team__' 为团队共享行) */
 export interface MemoryRow {
   id: string
   channelId: string
   agentId: string
-  kind: 'episodic-task' | 'episodic-peer' | 'semantic'
+  kind: MemoryKind
   title: string
   content: string
   importance: number

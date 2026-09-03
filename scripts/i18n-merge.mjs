@@ -28,7 +28,8 @@ function buildEntries(ns, dict, isEn) {
       }
       else v = hit
     }
-    out.push(`    ${k}: '${esc(v).replace(/\\/g, '\\\\').replace(/'/g, '\\\'').replace(/\r?\n/g, '\\n')}',`)
+    const keyLit = /^[A-Za-z0-9_$]+$/.test(k) ? k : JSON.stringify(k)
+    out.push(`    ${keyLit}: '${esc(v).replace(/\\/g, '\\\\').replace(/'/g, '\\\'').replace(/\r?\n/g, '\\n')}',`)
   }
   return out
 }
@@ -48,7 +49,8 @@ for (const [localeFile, isEn] of [['i18n/locales/zh-CN.ts', false], ['i18n/local
       const start = m.index + m[0].length
       const end = src.indexOf('\n  },', start)
       const block = src.slice(start, end)
-      const fresh = entries.filter(e => !block.includes(e.match(/ {4}(\w+):/)[1] + ':'))
+      // 键可能带引号(点号等非 \w 键由 emitter JSON.stringify 加引号)
+      const fresh = entries.filter(e => !block.includes(e.match(/ {4}"?([\w.]+)"?:/)[1] + ':'))
       if (fresh.length) {
         src = src.slice(0, start) + '\n' + fresh.join('\n') + src.slice(start)
         insertedTotal += fresh.length

@@ -25,6 +25,8 @@ export interface DaqInfraConfig {
   startInfrastructure: 'auto' | 'always' | 'never'
   mqtt: { host: string, port: number, username?: string, password?: string, secure?: boolean, caFile?: string }
   timescale: { host: string, port: number, user: string, password: string, database: string }
+  /** 对象存储(v2:图像帧;不可达 → 本地磁盘降级,不阻断采集) */
+  objectstore?: { host: string, port: number, accessKey: string, secretKey: string, bucket: string }
 }
 
 export interface DaqInfraStatus {
@@ -32,6 +34,8 @@ export interface DaqInfraStatus {
   mqttOnline: boolean
   /** Timescale 是否在线(离线 → SQLite 时序仿真降级) */
   tsdbOnline: boolean
+  /** 对象存储是否在线(离线 → 本地磁盘降级;不计入 degraded,采集不中断) */
+  objectStoreOnline: boolean
   /** 任一降级 → 在线采集停用,前端横幅警告 */
   degraded: boolean
   warning: string
@@ -48,7 +52,7 @@ const g = globalThis as typeof globalThis & {
 function state() {
   return g.__daqInfra ??= {
     cfg: { startInfrastructure: 'auto', mqtt: { host: '127.0.0.1', port: 1883 }, timescale: { host: '127.0.0.1', port: 5432, user: 'postgres', password: 'awshop', database: 'awshop' } },
-    status: { mqttOnline: false, tsdbOnline: false, degraded: true, warning: '', startedBy: 'none', lastCheckAt: new Date().toISOString() },
+    status: { mqttOnline: false, tsdbOnline: false, objectStoreOnline: false, degraded: true, warning: '', startedBy: 'none', lastCheckAt: new Date().toISOString() },
   }
 }
 
@@ -78,7 +82,7 @@ async function dockerAvailable(): Promise<boolean> {
 
 async function dockerComposeUp(projectRoot: string): Promise<{ ok: boolean, error?: string }> {
   try {
-    await execFileAsync('docker', ['compose', '-f', join(projectRoot, 'docker-compose.yml'), 'up', '-d', 'daq-mosquitto', 'daq-timescale'], { timeout: 120_000, cwd: projectRoot })
+    await execFileAsync('docker', ['compose', '-f', join(projectRoot, 'docker-compose.yml'), 'up', '-d', 'daq-mosquitto', 'daq-timescale', 'daq-minio'], { timeout: 180_000, cwd: projectRoot })
     return { ok: true }
   }
   catch (err) {
@@ -86,17 +90,19 @@ async function dockerComposeUp(projectRoot: string): Promise<{ ok: boolean, erro
   }
 }
 
-/** 等待两个端口就绪(拉起后服务初始化需要数秒;最长 waitMs) */
-async function waitPorts(cfg: DaqInfraConfig, waitMs: number): Promise<{ mqtt: boolean, tsdb: boolean }> {
+/** 等待三个端口就绪(拉起后服务初始化需要数秒;最长 waitMs) */
+async function waitPorts(cfg: DaqInfraConfig, waitMs: number): Promise<{ mqtt: boolean, tsdb: boolean, os: boolean }> {
   const deadline = Date.now() + waitMs
   let mqtt = false
   let tsdb = false
-  while (Date.now() < deadline && !(mqtt && tsdb)) {
+  let os = false
+  while (Date.now() < deadline && !(mqtt && tsdb && os)) {
     mqtt = mqtt || await probePort(cfg.mqtt.host, cfg.mqtt.port, 1200)
     tsdb = tsdb || await probePort(cfg.timescale.host, cfg.timescale.port, 1200)
-    if (!(mqtt && tsdb)) await new Promise(r => setTimeout(r, 1500))
+    os = os || await probePort(cfg.objectstore?.host ?? '127.0.0.1', cfg.objectstore?.port ?? 9000, 1200)
+    if (!(mqtt && tsdb && os)) await new Promise(r => setTimeout(r, 1500))
   }
-  return { mqtt, tsdb }
+  return { mqtt, tsdb, os }
 }
 
 export function daqInfraStatus(): DaqInfraStatus {
@@ -108,8 +114,8 @@ export function daqInfraConfig(): DaqInfraConfig {
   return state().cfg
 }
 
-/** 配置 → 连接 URL(env 显式覆盖优先,便于外部托管 broker/db;S1:支持凭据/TLS) */
-export function daqUrls(cfg = state().cfg): { mqttUrl: string | null, tsdbUrl: string | null } {
+/** 配置 → 连接 URL(env 显式覆盖优先,便于外部托管 broker/db/对象存储;S1:支持凭据/TLS) */
+export function daqUrls(cfg = state().cfg): { mqttUrl: string | null, tsdbUrl: string | null, objectStoreUrl: string | null } {
   // S1:凭据/TLS 优先 env(DAQ_MQTT_URL 整串覆盖),否则由 config.mqtt 拼(含 user:pass@ 与 mqtts://)
   let mqttUrl: string
   if (process.env.DAQ_MQTT_URL) {
@@ -124,7 +130,13 @@ export function daqUrls(cfg = state().cfg): { mqttUrl: string | null, tsdbUrl: s
   }
   const { user, password, database, host, port } = cfg.timescale
   const tsdbUrl = process.env.DAQ_TSDB_URL ?? `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
-  return { mqttUrl, tsdbUrl }
+  // 对象存储(v2):DAQ_OS_URL 覆盖;未配置 objectstore 段 → null(磁盘降级)
+  const osCfg = cfg.objectstore
+  const objectStoreUrl = process.env.DAQ_OS_URL
+    ?? (osCfg
+      ? `http://${encodeURIComponent(osCfg.accessKey)}:${encodeURIComponent(osCfg.secretKey)}@${osCfg.host}:${osCfg.port}/${osCfg.bucket}`
+      : null)
+  return { mqttUrl, tsdbUrl, objectStoreUrl }
 }
 
 /**
@@ -141,12 +153,11 @@ export async function ensureDaqInfrastructure(cfg: DaqInfraConfig, projectRoot: 
   // 1) 直接探测配置地址
   let probe = await waitPorts(cfg, 3000)
   s.startedBy = 'none'
-
   // 2) 不通 → 按策略 Docker 拉起
   if (!(probe.mqtt && probe.tsdb) && cfg.startInfrastructure !== 'never') {
     const canDocker = await dockerAvailable()
     if (canDocker) {
-      log.info('[daq-infra] 配置地址未就绪,经 Docker Compose 拉起(daq-mosquitto + daq-timescale)…')
+      log.info('[daq-infra] 配置地址未就绪,经 Docker Compose 拉起(daq-mosquitto + daq-timescale + daq-minio)…')
       const up = await dockerComposeUp(projectRoot)
       if (up.ok) {
         probe = await waitPorts(cfg, 60_000)
@@ -168,6 +179,7 @@ export async function ensureDaqInfrastructure(cfg: DaqInfraConfig, projectRoot: 
 
   s.mqttOnline = probe.mqtt
   s.tsdbOnline = probe.tsdb
+  s.objectStoreOnline = probe.os
   s.degraded = !(probe.mqtt && probe.tsdb)
 
   if (s.degraded) {
@@ -178,8 +190,10 @@ export async function ensureDaqInfrastructure(cfg: DaqInfraConfig, projectRoot: 
     log.warn(`[daq-infra] 降级运行 — ${s.warning}`)
   }
   else {
-    s.warning = ''
-    log.info(`[daq-infra] 真实链路就绪(mqtt=${cfg.mqtt.host}:${cfg.mqtt.port}, timescale=${cfg.timescale.host}:${cfg.timescale.port}, 来源=${s.startedBy})`)
+    s.warning = probe.os
+      ? ''
+      : `对象存储(MinIO)不可达:图像帧已降级本地磁盘(data/daq-objects/),采集不中断。`
+    log.info(`[daq-infra] 真实链路就绪(mqtt=${cfg.mqtt.host}:${cfg.mqtt.port}, timescale=${cfg.timescale.host}:${cfg.timescale.port}, objectstore=${probe.os ? `${cfg.objectstore?.host}:${cfg.objectstore?.port}` : 'disk-degraded'}, 来源=${s.startedBy})`)
   }
   return daqInfraStatus()
 }

@@ -63,6 +63,13 @@ daq:
     user: postgres
     password: awshop
     database: awshop
+  # 对象存储(图像帧;MinIO,S3 兼容)。不可达时自动降级本地磁盘 data/daq-objects/,采集不中断。
+  objectstore:
+    host: 127.0.0.1
+    port: 9000
+    accessKey: awshop
+    secretKey: awshop-secret
+    bucket: daq
 
 security:
   # Session cookie 加密密钥（nuxt-auth-utils 使用）

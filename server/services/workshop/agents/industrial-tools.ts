@@ -158,6 +158,38 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
   }
 }
 
+/**
+ * 数采目标集解析(工具共用鉴权面):Agent 绑定(kind=daq)为权限边界 ——
+ * node_id/line_id 只能缩小范围,不能放大(越权节点一律拒绝)。
+ */
+function daqTargetsOf(agentId: string, nodeIdArg: unknown, lineIdArg: unknown):
+  { targets: string[], daqBindings: ReturnType<ReturnType<typeof getAgentNodeBindingRepo>['byAgent']> }
+  | { error: { text: string, isError: true } } {
+  const repo = getAgentNodeBindingRepo()
+  const daqBindings = repo.byAgent(agentId).filter(b => b.kind === 'daq')
+  if (daqBindings.length === 0) {
+    return { error: { text: '你尚未绑定任何数采节点,无权查询采集数据。请在数字孪生界面绑定数采节点。', isError: true } }
+  }
+  const wanted = nodeIdArg ? String(nodeIdArg) : ''
+  if (wanted && !daqBindings.some(b => b.nodeId === wanted)) {
+    return { error: { text: `无权查询节点 ${wanted}。你有权访问的数采节点:${daqBindings.map(b => b.nodeId).join(', ')}`, isError: true } }
+  }
+  const lineFilter = lineIdArg ? String(lineIdArg).trim() : ''
+  const lineOf = (id: string): string => getDaqNodeRepo().byId(id)?.lineId ?? ''
+  if (lineFilter && wanted && lineOf(wanted) !== lineFilter) {
+    return { error: { text: `节点 ${wanted} 不属于产线 ${lineFilter}(实际归属:${lineOf(wanted) || '未分配'}),line_id 与 node_id 过滤冲突。`, isError: true } }
+  }
+  let targets = wanted ? [wanted] : daqBindings.map(b => b.nodeId)
+  if (lineFilter && !wanted) {
+    const onLine = targets.filter(id => lineOf(id) === lineFilter)
+    if (onLine.length === 0) {
+      return { error: { text: `你绑定的数采节点中没有归属产线 ${lineFilter} 的(各节点归属:${daqBindings.map(b => `${b.nodeId}=${lineOf(b.nodeId) || '未分配'}`).join('; ')})。`, isError: true } }
+    }
+    targets = onLine
+  }
+  return { targets, daqBindings }
+}
+
 /** 工具:daq_query —— 数采数据检索(产线/产品/配方/时间/节点;结果带物理语义) */
 export async function toolDaqQuery(agentId: string, args: {
   node_id?: string
@@ -170,35 +202,10 @@ export async function toolDaqQuery(agentId: string, args: {
   bucket_ms?: number | string
   limit?: number | string
 }): Promise<{ text: string, isError?: boolean }> {
-  const repo = getAgentNodeBindingRepo()
-  const daqBindings = repo.byAgent(agentId).filter(b => b.kind === 'daq')
-  if (daqBindings.length === 0) {
-    return { text: '你尚未绑定任何数采节点,无权查询采集数据。请在数字孪生界面绑定数采节点。', isError: true }
-  }
-  const wanted = args.node_id ? String(args.node_id) : ''
-  if (wanted && !daqBindings.some(b => b.nodeId === wanted)) {
-    return { text: `无权查询节点 ${wanted}。你有权访问的数采节点:${daqBindings.map(b => b.nodeId).join(', ')}`, isError: true }
-  }
-  // line_id 过滤(工具契约声明了该参数):按节点归属产线收敛目标集;
-  // 权限仍以绑定为先 —— line_id 只能缩小范围,不能放大
+  const auth = daqTargetsOf(agentId, args.node_id, args.line_id)
+  if ('error' in auth) return auth.error
+  const { targets } = auth
   const lineFilter = args.line_id ? String(args.line_id).trim() : ''
-  const lineOf = (id: string): string => getDaqNodeRepo().byId(id)?.lineId ?? ''
-  if (lineFilter && wanted && lineOf(wanted) !== lineFilter) {
-    return {
-      text: `节点 ${wanted} 不属于产线 ${lineFilter}(实际归属:${lineOf(wanted) || '未分配'}),line_id 与 node_id 过滤冲突。`,
-      isError: true,
-    }
-  }
-  let targets = wanted ? [wanted] : daqBindings.map(b => b.nodeId)
-  if (lineFilter && !wanted) {
-    const onLine = targets.filter(id => lineOf(id) === lineFilter)
-    if (onLine.length === 0) {
-      return {
-        text: `你绑定的数采节点中没有归属产线 ${lineFilter} 的(各节点归属:${daqBindings.map(b => `${b.nodeId}=${lineOf(b.nodeId) || '未分配'}`).join('; ')})。`,
-      }
-    }
-    targets = onLine
-  }
 
   const toMs = Number(args.to_ms) || Date.now()
   const fromMs = Number(args.from_ms) || toMs - (Number(args.last_minutes) || 30) * 60_000
@@ -359,4 +366,63 @@ export async function toolDcwJournal(agentId: string, args: { node_id?: string, 
   return {
     text: `优化记录(${records.length} 条,含参数/判定/窗口):\n${lines.join('\n')}${nodeId ? `\n\n参数变更锚(最近 ${anchorLines.length} 条):\n${anchorLines.join('\n')}` : ''}\n\n判定与执行分离:rollback 判定后需 dcw_rollback 执行;回退同样入册可审计。`,
   }
+}
+
+/** 工具:daq_frames —— 多形态帧检索(v2:测厚/扫描仪多点轮廓与 CCD 图像元数据)。
+ *  向量返回点列摘要(≤16 点预览 + 派生指标);图像返回对象引用与内容 URL(像素不入 LLM)。 */
+export async function toolDaqFrames(agentId: string, args: {
+  node_id?: string
+  line_id?: string
+  kind?: string
+  last_minutes?: number | string
+  from_ms?: number | string
+  to_ms?: number | string
+  limit?: number | string
+}): Promise<{ text: string, isError?: boolean }> {
+  const auth = daqTargetsOf(agentId, args.node_id, args.line_id)
+  if ('error' in auth) return auth.error
+  const { targets } = auth
+  const kind = args.kind === 'vector' || args.kind === 'image' ? args.kind : undefined
+  const toMs = Number(args.to_ms) || Date.now()
+  const fromMs = Number(args.from_ms) || toMs - (Number(args.last_minutes) || 30) * 60_000
+  const limit = Math.min(Number(args.limit) || 20, 100)
+  const { getTsdb, tsdbReady } = await import('../daq/storage')
+  await tsdbReady
+  const tsdb = getTsdb()
+
+  const sections: string[] = []
+  for (const nodeId of targets) {
+    const node = getDaqNodeRepo().byId(nodeId)
+    if (!node) continue
+    const tpl = findDaqTemplate(node.templateKey)
+    const signalKind = tpl?.signalKind ?? 'scalar'
+    if (signalKind === 'scalar') {
+      sections.push(`■ ${node.name}:单点标量节点(模板 ${node.templateKey}),无帧数据 —— 请用 daq_query 查时序数值。`)
+      continue
+    }
+    try {
+      const frames = await tsdb.queryFrames(nodeId, { fromMs, toMs, kind, limit })
+      if (frames.length === 0) {
+        sections.push(`■ ${node.name}(${tpl?.ch ?? node.templateKey}):窗口内无帧(产线未运行或过滤条件不匹配;仅产线运行中的帧被持久化)`)
+        continue
+      }
+      const head = `■ ${node.name}(${tpl?.ch ?? node.templateKey})形态 ${signalKind},帧数 ${frames.length},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}`
+      const lines = frames.slice(0, 10).map((f) => {
+        const at = new Date(f.at).toISOString().slice(11, 19)
+        if (f.kind === 'vector') {
+          const pts = f.points ?? []
+          const preview = pts.slice(0, 16).map(p => Number(p.toFixed(3))).join(',')
+          return `  ${at} 轮廓 ${pts.length} 点[${preview}${pts.length > 16 ? ',…' : ''}] 指标 {${Object.entries(f.metrics).slice(0, 6).map(([k, v]) => `${k}=${v}`).join(', ')}}`
+        }
+        const width = f.meta.width ?? '?'
+        const height = f.meta.height ?? '?'
+        return `  ${at} 图像 ${width}x${height} ${f.meta.mime ?? 'image/png'} 对象=${String(f.meta.objectKey ?? '-').slice(-24)} 指标 {${Object.entries(f.metrics).slice(0, 4).map(([k, v]) => `${k}=${v}`).join(', ')}}(像素不入上下文;前端画廊可看)`
+      })
+      sections.push(`${head}\n${lines.join('\n')}${frames.length > 10 ? `\n  (仅展示最近 10 帧)` : ''}`)
+    }
+    catch (err) {
+      sections.push(`■ ${node.name}:帧查询失败 ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+  return { text: `数采帧查询结果(${targets.length} 个节点):\n\n${sections.join('\n\n')}\n\n向量=多点工程量轮廓(完整点列前端可查);图像=像素在对象存储,指标供判读(brightness 过低=曝光不足/遮挡)。` }
 }

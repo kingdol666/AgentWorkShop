@@ -50,7 +50,8 @@ import {
   loadHostToolDefs,
   renderPrompt,
 } from '../prompts/loader'
-import { toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolMyIndustrialNodes } from './industrial-tools'
+import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolMyIndustrialNodes } from './industrial-tools'
+import { attachOmpPluginBridge, listPluginTools, onPluginToolsChange } from './plugin-tools'
 import { buildIndustrialContext, industrialLoopGuide } from './industrial-context'
 import { extractTaskMode } from '../runtime/execution-mode'
 import { envNum } from '../runtime/memory'
@@ -113,11 +114,39 @@ const LEAD_ONLY_TOOL_NAMES = new Set([
   'remove_team_agent',
 ])
 
-/** 按角色装配 host tools:lead = 全量;worker = 剔除 lead 专属(执行面 + 通信面 + 记忆面) */
+/** 按角色装配 host tools:lead = 全量;worker = 剔除 lead 专属(执行面 + 通信面 + 记忆面);
+ *  尾部合并插件注册工具(ctx.omp.registerTool;roles 过滤,缺省双角色可用) */
 export function hostToolsForRole(role: 'lead' | 'worker'): RpcHostToolDefinition[] {
-  if (role === 'lead') return HOST_TOOLS
-  return HOST_TOOLS.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
+  const base = role === 'lead'
+    ? HOST_TOOLS
+    : HOST_TOOLS.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
+  const out = [...base]
+  for (const [name, tool] of listPluginTools()) {
+    if (out.some(t => t.name === name)) continue
+    if (tool.roles && !tool.roles.includes(role)) continue
+    out.push({ name, label: tool.label ?? name, description: tool.description, parameters: tool.parameters ?? {} })
+  }
+  return out
 }
+
+// 插件桥接管(host.mjs ctx.omp 排队注册的工具在此回放;幂等)
+attachOmpPluginBridge()
+
+/** 在跑 agent 实例表(工具注册表变更 → 热重发 set_host_tools,运行时注入无需重spawn) */
+const gLive = globalThis as typeof globalThis & { __ompLiveAgents?: Set<OmpRpcAgentImpl> }
+function liveAgents(): Set<OmpRpcAgentImpl> {
+  return gLive.__ompLiveAgents ??= new Set()
+}
+
+// 工具注册表变更 → 全部在跑会话热更新工具面
+onPluginToolsChange(() => {
+  for (const impl of liveAgents()) {
+    try {
+      impl.refreshPluginTools()
+    }
+    catch { /* 单实例失败不影响其他 */ }
+  }
+})
 
 // ===== 辅助函数 =====
 
@@ -414,6 +443,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
     this.agentName = this.config.name ?? 'agent'
     this.agentRole = this.config.role ?? 'worker'
     this.channelId = this.config.channelId ?? ''
+    liveAgents().add(this) // 在跑实例表:插件工具热注入的目标集
   }
 
   // ===== 生命周期 =====
@@ -427,6 +457,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
   }
 
   async dispose(): Promise<void> {
+    liveAgents().delete(this)
     if (this.client) {
       const pid = this.client.pid
       await this.client.dispose()
@@ -437,6 +468,13 @@ export class OmpRpcAgentImpl implements AgentInterface {
       }
     }
     this.hostToolsRegistered = false
+  }
+
+  /** 工具注册表变更 → 热重发 set_host_tools(在跑会话立即获得插件新工具,无需重spawn) */
+  refreshPluginTools(): void {
+    const client = this.client
+    if (!client || !client.alive) return
+    void client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole) }).catch(() => {})
   }
 
   /** harness 进程资源信息(运行时资源监控;进程未 spawn/已回收 → null) */
@@ -1444,6 +1482,16 @@ export class OmpRpcAgentImpl implements AgentInterface {
   // ===== 内部:host tool handler(workspace 桥接) =====
 
   private async handleHostTool(req: HostToolCallRequest): Promise<{ text: string, isError?: boolean }> {
+    // 插件工具分发(ctx.omp.registerTool;不依赖 workspace,优先于内置面;异常由外层 catch 收口)
+    const pluginTool = listPluginTools().get(req.toolName)
+    if (pluginTool) {
+      return await pluginTool.handler(req.arguments ?? {}, {
+        agentId: this.selfAgentId,
+        channelId: this.channelId,
+        role: this.agentRole,
+        name: this.agentName,
+      })
+    }
     const ws = this.workspace
     if (!ws) {
       return { text: 'workspace 未就绪', isError: true }
@@ -1872,6 +1920,9 @@ export class OmpRpcAgentImpl implements AgentInterface {
         case 'daq_query': {
           return toolDaqQuery(this.selfAgentId, req.arguments as Parameters<typeof toolDaqQuery>[1])
         }
+        case 'daq_frames': {
+          return toolDaqFrames(this.selfAgentId, req.arguments as Parameters<typeof toolDaqFrames>[1])
+        }
         case 'dcw_judge': {
           return toolDcwJudge(this.selfAgentId, req.arguments as { record_id?: string, verdict?: string, reason?: string })
         }
@@ -1881,9 +1932,18 @@ export class OmpRpcAgentImpl implements AgentInterface {
         case 'dcw_journal': {
           return toolDcwJournal(this.selfAgentId, req.arguments as { node_id?: string, recipe_id?: string, limit?: number | string })
         }
-        default:
-          return { text: `未知工具: ${req.toolName}`, isError: true }
       }
+      // 插件工具分发(ctx.omp.registerTool 注册的自定义工具)
+      const pluginTool = listPluginTools().get(req.toolName)
+      if (pluginTool) {
+        return await pluginTool.handler(req.arguments ?? {}, {
+          agentId: this.selfAgentId,
+          channelId: this.channelId,
+          role: this.agentRole,
+          name: this.agentName,
+        })
+      }
+      return { text: `未知工具: ${req.toolName}`, isError: true }
     }
     catch (err) {
       return {

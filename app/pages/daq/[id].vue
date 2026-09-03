@@ -7,7 +7,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
-import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
+import { useDaqStream, type DaqFrameLive } from '@/app/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 import { daqKeyFromRef, DAQ_DRIVERS, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult } from '#shared/daq-protocol'
 
@@ -42,8 +42,45 @@ onMounted(() => {
   unsub = daq.ensureWsFeed()
   void daq.load()
   void deviceTwins.load()
+  if (isFrameNode.value) void loadFrames()
 })
 onBeforeUnmount(() => unsub?.())
+
+// ---------- 帧视图(v2 多形态信号:向量轮廓 / 图像画廊;scalar 节点不渲染) ----------
+
+const signalKind = computed(() => tpl.value?.signalKind ?? 'scalar')
+const isFrameNode = computed(() => signalKind.value !== 'scalar')
+const frames = computed(() => daq.framesOf(nodeId.value))
+
+async function loadFrames(): Promise<void> {
+  if (!nodeId.value) return
+  await daq.fetchFrames(nodeId.value, { limit: 24 }).catch(() => {})
+}
+watch(nodeId, () => {
+  if (isFrameNode.value) void loadFrames()
+})
+
+const timeOf = (at: number): string => new Date(at).toLocaleTimeString('zh-CN', { hour12: false })
+const metricsBrief = (f: DaqFrameLive): string =>
+  Object.entries(f.metrics ?? {}).slice(0, 3).map(([k, v]) => `${k}=${v}`).join(' ')
+
+/* 向量轮廓(最近一帧预览;SVG polyline,免 canvas 绘制循环) */
+const VEC_W = 320
+const VEC_H = 84
+const latestVector = computed(() => frames.value.find(f => f.kind === 'vector' && f.points?.length))
+const vecPath = computed(() => {
+  const pts = latestVector.value?.points ?? []
+  if (pts.length < 2) return ''
+  const min = Math.min(...pts)
+  const max = Math.max(...pts)
+  const span = max - min || 1
+  return pts
+    .map((p, i) => `${((i / (pts.length - 1)) * VEC_W).toFixed(1)},${(VEC_H - 6 - ((p - min) / span) * (VEC_H - 12)).toFixed(1)}`)
+    .join(' ')
+})
+
+/* 图像大图查看(点击缩略图;contentUrl 同源 cookie 鉴权直出) */
+const fullFrame = ref<DaqFrameLive | null>(null)
 
 /** WS 下发节拍展示(null=跟随全局;0=每帧;>0 独立间隔) */
 function publishLabel(v: number | null): string {
@@ -682,6 +719,97 @@ watch(bucketMs, () => void loadHistory())
         </table>
       </section>
     </div>
+
+    <!-- 帧视图(v2 多形态信号:向量轮廓 / 图像画廊;scalar 节点不渲染) -->
+    <section
+      v-if="isFrameNode"
+      class="aw-tile pad frames-tile"
+    >
+      <div class="hist-hd">
+        <h3 class="sec">
+          {{ signalKind === 'image' ? $t('daqDetail.kfrm0001') : $t('daqDetail.kfrm0002') }}
+          <span class="mono frames-n">{{ frames.length }}</span>
+        </h3>
+        <button
+          class="pill-btn"
+          @click="loadFrames"
+        >
+          {{ $t('daqDetail.k3x1jg022') }}
+        </button>
+      </div>
+
+      <!-- 向量:最近帧轮廓 + 帧表 -->
+      <template v-if="signalKind === 'vector'">
+        <svg
+          class="vec-svg"
+          :viewBox="`0 0 ${VEC_W} ${VEC_H}`"
+          preserveAspectRatio="none"
+        >
+          <polyline
+            :points="vecPath"
+            fill="none"
+            stroke="var(--accent)"
+            stroke-width="1.5"
+          />
+        </svg>
+        <table class="raw-table mono">
+          <thead>
+            <tr><th>{{ $t('daqDetail.k40vsf023') }}</th><th>{{ $t('daqDetail.kfrm0004') }}</th><th>{{ $t('daqDetail.kfrm0005') }}</th></tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="f in frames.filter(x => x.kind === 'vector').slice(0, 12)"
+              :key="f.at"
+            >
+              <td>{{ timeOf(f.at) }}</td>
+              <td>{{ f.points?.length ?? 0 }}</td>
+              <td>{{ metricsBrief(f) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
+
+      <!-- 图像:缩略图画gallery(懒加载;点击看原图) -->
+      <template v-else>
+        <div
+          v-if="frames.length"
+          class="gal"
+        >
+          <figure
+            v-for="f in frames"
+            :key="f.at"
+            class="gal-item"
+            :title="$t('daqDetail.kfrm0006')"
+            @click="fullFrame = f"
+          >
+            <img
+              :src="f.thumbUrl"
+              loading="lazy"
+              alt="daq frame"
+            >
+            <figcaption class="mono">
+              {{ timeOf(f.at) }} · {{ metricsBrief(f) }}
+            </figcaption>
+          </figure>
+        </div>
+        <p
+          v-else
+          class="frames-empty"
+        >
+          {{ $t('daqDetail.kfrm0003') }}
+        </p>
+        <div
+          v-if="fullFrame"
+          class="gal-full"
+          @click="fullFrame = null"
+        >
+          <img
+            :src="fullFrame.contentUrl ?? fullFrame.thumbUrl"
+            alt="daq frame full"
+          >
+        </div>
+      </template>
+    </section>
   </div>
 </template>
 
@@ -793,4 +921,16 @@ watch(bucketMs, () => void loadHistory())
 .st-pill.warn { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
 .st-pill.alarm { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
 .st-pill.offline { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); }
+
+/* 帧视图(v2 多形态) */
+.frames-tile { margin-top: 14px; }
+.frames-n { margin-left: 8px; color: var(--ink-faint); }
+.vec-svg { width: 100%; height: 96px; display: block; background: var(--tone-neutral-bg); border-radius: 6px; margin-bottom: 10px; }
+.gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.gal-item { margin: 0; cursor: zoom-in; }
+.gal-item img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 6px; display: block; background: var(--tone-neutral-bg); }
+.gal-item figcaption { margin-top: 4px; font-size: 11px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.frames-empty { margin: 8px 0; font-size: 13px; color: var(--ink-faint); }
+.gal-full { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgb(0 0 0 / 72%); cursor: zoom-out; }
+.gal-full img { max-width: 92vw; max-height: 92vh; border-radius: 8px; }
 </style>

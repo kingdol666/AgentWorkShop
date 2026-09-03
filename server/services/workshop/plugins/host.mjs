@@ -249,6 +249,63 @@ async function loadAllPlugins(host, { config, paths }) {
         },
         selfOrigin: () => selfOriginRef(host),
       })
+      // DAQ 扩展面(v2 帧管线):插件注册自定义驱动与下沉处理器。
+      // 桥经 globalThis 排队 —— daq 模块晚于插件宿主装载时,注册项先排队、
+      // daq 侧 plugin-bridge 接管后回放;重复装载由同名覆盖语义兜底。
+      const daqExt = (globalThis.__daqPluginExt ??= {
+        pendingDrivers: [],
+        pendingProcessors: [],
+        pendingTemplates: [],
+        registerDriver(d) {
+          this.pendingDrivers.push(d)
+          this._drain?.()
+        },
+        registerProcessor(kind, name, fn) {
+          this.pendingProcessors.push({ kind, name, fn })
+          this._drain?.()
+        },
+        registerTemplate(def) {
+          this.pendingTemplates.push(def)
+          this._drain?.()
+        },
+        drain(onDriver, onProcessor, onTemplate) {
+          this._drain = () => {
+            for (const d of this.pendingDrivers.splice(0)) onDriver(d)
+            for (const p of this.pendingProcessors.splice(0)) onProcessor(p.kind, p.name, p.fn)
+            for (const t of this.pendingTemplates.splice(0)) onTemplate(t)
+          }
+          this._drain()
+        },
+      })
+      ctx.daq = {
+        registerDriver: d => daqExt.registerDriver(d),
+        registerProcessor: (kind, name, fn) => daqExt.registerProcessor(kind, name, fn),
+        /** 注册数采节点模板(signalKind/sink.processors/metrics 全量可用;同名覆盖) */
+        registerTemplate: def => daqExt.registerTemplate(def),
+        /** 帧消费便捷别名(= hooks.on('daq:frame') / hooks.on('daq:sample')) */
+        onFrame: fn => scopedHooks.on('daq:frame', fn),
+        onSample: fn => scopedHooks.on('daq:sample', fn),
+      }
+      // OMP 工具扩展面:插件注册自定义 host 工具 → omp 会话运行时热注入
+      const ompExt = (globalThis.__ompPluginToolsBridge ??= {
+        pending: [],
+        register(plugin, tool) {
+          this.pending.push({ plugin, tool })
+          this._drain?.()
+        },
+        drain(onTool) {
+          this._drain = () => {
+            for (const def of this.pending.splice(0)) onTool(def)
+          }
+          this._drain()
+        },
+      })
+      ctx.omp = {
+        registerTool: (tool) => {
+          ompExt.register(def.name, tool)
+          ctx.logger.info(`已注册 omp 工具:「${tool?.name}」`)
+        },
+      }
 
       for (const r of (Array.isArray(def.routes) ? def.routes : [])) {
         emitter.registerRoute(def.name, r.method ?? 'GET', r.path, r.handler)
@@ -360,6 +417,11 @@ export function emitPluginEvent(type, payload) {
 /** DAQ 下发级采样钩子(与 WS daq.reading 同点、同节拍语义) */
 export function emitDaqSample(payload) {
   void g.__awPluginHost?.bus.emit('daq:sample', payload)
+}
+
+/** 帧观察钩子(v2 多形态信号;载荷只含元数据/指标/预览,不含 blob) */
+export function emitDaqFrame(payload) {
+  void g.__awPluginHost?.bus.emit('daq:frame', payload)
 }
 
 /** 写控 ACK 后观察钩子 */

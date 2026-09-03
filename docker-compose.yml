@@ -2,9 +2,10 @@
 # AgentWorkShop 数采基础设施(DAQ infrastructure)
 # ------------------------------------------------------------
 # 与 config.yml `daq:` 段默认一致;项目启动时若端口不通且存在 Docker,
-# 服务端自动执行 `docker compose up -d daq-mosquitto daq-timescale`。
+# 服务端自动执行 `docker compose up -d daq-mosquitto daq-timescale daq-minio`。
 #   - daq-mosquitto:标准 MQTT 3.1.1/5 broker(数采下沉队列)
-#   - daq-timescale:TimescaleDB(时序数据持久化;named volume 常驻)
+#   - daq-timescale:TimescaleDB(时序数据/帧元数据持久化;named volume 常驻)
+#   - daq-minio:    S3 兼容对象存储(图像帧像素;named volume 常驻)
 # 手动启动:docker compose up -d
 # ============================================================
 services:
@@ -30,5 +31,21 @@ services:
       - awshop-daq-tsdata:/var/lib/postgresql/data
     restart: unless-stopped
 
+  daq-minio:
+    image: minio/minio:latest
+    container_name: awshop-daq-minio
+    # S3 兼容对象存储:图像帧像素落这里,Timescale 只存元数据(daq_frames.meta.objectKey)
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: awshop            # config.yml daq.objectstore.accessKey
+      MINIO_ROOT_PASSWORD: awshop-secret # config.yml daq.objectstore.secretKey
+    ports:
+      - "9000:9000"                  # S3 API(与 config.yml daq.objectstore.port 一致)
+      - "9001:9001"                  # Web 控制台(开发态观察用)
+    volumes:
+      - awshop-daq-objdata:/data
+    restart: unless-stopped
+
 volumes:
   awshop-daq-tsdata:
+  awshop-daq-objdata:

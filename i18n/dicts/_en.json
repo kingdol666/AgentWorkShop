@@ -1093,5 +1093,10 @@
   "{p0}{p1} 月 {p2} 日": "{p0}{p1}-{p2}",
   "{p0} 角色已调整为 {p1}": "{p0} role changed to {p1}",
   "{p0} 已{p1}": "{p0} {p1}",
-  "已删除 {p0}": "Deleted {p0}"
+  "已删除 {p0}": "Deleted {p0}",
+  "图像帧画廊": "Image frame gallery",
+  "多点轮廓帧": "Profile frames",
+  "暂无帧(产线运行中才有数据)": "No frames yet (data flows only while the line is running)",
+  "指标": "Metrics",
+  "点击查看原图": "Click to view full image"
 }

@@ -27,6 +27,27 @@ export type RpcCommand
     | { id?: string, type: 'set_model', provider: string, modelId: string }
     | { id?: string, type: 'get_state' }
     | { id?: string, type: 'new_session' }
+    // ===== 上下文治理(70% 压缩环;协议权威 omp://rpc.md)=====
+    | { id?: string, type: 'get_session_stats' }
+    | { id?: string, type: 'compact', customInstructions?: string }
+    | { id?: string, type: 'set_auto_compaction', enabled: boolean }
+
+/** compaction 结果(compaction_end 事件 / compact 响应 data.result 共用形状) */
+export interface CompactionResult {
+  summary?: string
+  tokensBefore?: number
+  tokensAfter?: number
+  estimatedTokensAfter?: number
+}
+
+/** provider 用量(被动上下文跟踪源;message_update 等帧携带的累计值) */
+export interface RpcUsage {
+  /** input tokens ≈ 当前上下文长度(本回合 LLM 调用的 prompt 规模) */
+  input: number
+  output?: number
+  cacheRead?: number
+  at: number
+}
 /** host 工具定义(omp 端可见的工具 schema) */
 export interface RpcHostToolDefinition {
   name: string
@@ -137,6 +158,11 @@ export class OmpRpcClient {
   private readonly pending = new Map<string, PendingRequest>()
   private seq = 0
 
+  /** 被动上下文跟踪:最近一次帧携带的累计 provider usage(get_session_stats 不可用时的兜底源) */
+  private lastUsage: RpcUsage | null = null
+  /** 上下文窗口大小(外部经 get_state 探测后注入;null = 未知,percent 不可算) */
+  private contextWindow: number | null = null
+
   private readonly eventListeners = new Set<(event: AgentSessionEvent) => void>()
   /** 原始帧 tap(chunk 重组后的每一帧,含 response/host_tool_call/extension_ui_request) */
   private readonly rawFrameListeners = new Set<(frame: Record<string, unknown>) => void>()
@@ -155,6 +181,41 @@ export class OmpRpcClient {
   /** 子进程是否存活(spawn 前或已退出 → false) */
   get alive(): boolean {
     return !!this.child && !this.exited
+  }
+
+  /** 注入上下文窗口大小(get_state 探测 model.contextWindow 后调用;幂等) */
+  setContextWindow(tokens: number): void {
+    if (Number.isFinite(tokens) && tokens > 0) this.contextWindow = tokens
+  }
+
+  /** 被动上下文用量快照(无探测 RPC;数据来自最近一次携带 usage 的帧) */
+  getContextUsage(): { tokens: number, contextWindow: number | null, percent: number | null } | null {
+    if (!this.lastUsage) return null
+    const window = this.contextWindow
+    return {
+      tokens: this.lastUsage.input,
+      contextWindow: window,
+      percent: window && window > 0 ? Math.min(1, this.lastUsage.input / window) : null,
+    }
+  }
+
+  /**
+   * 从帧中防御性提取累计 usage(顶层 frame.usage 或 frame.message.usage;
+   * input 兼容 input/inputTokens/promptTokens 命名;无有效 input 返回 null)。
+   */
+  private extractUsage(frame: Record<string, unknown>): RpcUsage | null {
+    const raw = (frame.usage ?? (frame.message as Record<string, unknown> | undefined)?.usage) as Record<string, unknown> | undefined
+    if (!raw || typeof raw !== 'object') return null
+    const input = Number(raw.input ?? raw.inputTokens ?? raw.promptTokens)
+    if (!Number.isFinite(input) || input <= 0) return null
+    const output = Number(raw.output ?? raw.outputTokens)
+    const cacheRead = Number(raw.cacheRead)
+    return {
+      input,
+      output: Number.isFinite(output) ? output : undefined,
+      cacheRead: Number.isFinite(cacheRead) ? cacheRead : undefined,
+      at: Date.now(),
+    }
   }
 
   /**
@@ -365,6 +426,10 @@ export class OmpRpcClient {
   /** 分发单个 JSON 帧 */
   private dispatchFrame(frame: Record<string, unknown>): void {
     const type = frame.type as string
+
+    // 被动上下文跟踪:任何帧携带累计 usage 都刷新最近值(零额外请求)
+    const usage = this.extractUsage(frame)
+    if (usage) this.lastUsage = usage
 
     // 原始帧镜像(终端 hub;listener 异常不影响协议处理)
     for (const fn of this.rawFrameListeners) {

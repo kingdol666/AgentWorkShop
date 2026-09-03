@@ -50,10 +50,30 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       CREATE INDEX IF NOT EXISTS idx_daq_tag ON daq_samples (product_id, recipe_id, ts_ms DESC);
       CREATE INDEX IF NOT EXISTS idx_daq_run ON daq_samples (run_id, ts_ms DESC);
     `)
+    // 帧表(v2:向量/图像;meta/metrics JSON 序列化 TEXT,与 Timescale 契约对齐)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS daq_frames (
+        node_id TEXT    NOT NULL,
+        ts_ms   INTEGER NOT NULL,
+        kind    TEXT    NOT NULL,
+        template_key TEXT,
+        device_binding_id TEXT,
+        line_id TEXT, product_id TEXT, recipe_id TEXT, run_id TEXT,
+        points  INTEGER NOT NULL DEFAULT 0,
+        meta    TEXT    NOT NULL DEFAULT '{}',
+        metrics TEXT    NOT NULL DEFAULT '{}',
+        PRIMARY KEY (node_id, ts_ms)
+      )
+    `)
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_daq_frames_node_ts ON daq_frames (node_id, ts_ms DESC)')
     // 保留窗口:启动清一次 + 后台周期任务(30min,防长会话磁盘无限涨)
     this.sweepRetention()
+    this.sweepFrameRetention()
     if (!this.retentionTimer) {
-      this.retentionTimer = setInterval(() => this.sweepRetention(), 30 * 60_000)
+      this.retentionTimer = setInterval(() => {
+        this.sweepRetention()
+        this.sweepFrameRetention()
+      }, 30 * 60_000)
       this.retentionTimer.unref?.()
     }
   }
@@ -190,6 +210,70 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     return out
   }
 
+  // ===== 帧(daq_frames;与 Timescale 同契约)=====
+
+  async writeFrames(rows: import('./tsdb-port').DaqFrameRow[]): Promise<void> {
+    if (!this.db || rows.length === 0) return
+    const ins = this.db.prepare(
+      'INSERT OR IGNORE INTO daq_frames (node_id, ts_ms, kind, template_key, device_binding_id, line_id, product_id, recipe_id, run_id, points, meta, metrics) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    )
+    this.db.exec('BEGIN')
+    try {
+      for (const r of rows) {
+        ins.run(r.nodeId, r.tsMs, r.kind, r.templateKey ?? null, r.deviceBindingId ?? null, r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null, r.points, JSON.stringify(r.meta ?? {}), JSON.stringify(r.metrics ?? {}))
+      }
+      this.db.exec('COMMIT')
+    }
+    catch (err) {
+      try {
+        this.db.exec('ROLLBACK')
+      }
+      catch { /* 事务已终结 */ }
+      throw err
+    }
+  }
+
+  async queryFrames(nodeId: string, opts: import('./tsdb-port').DaqFrameQueryOpts): Promise<import('./tsdb-port').DaqFrameRecord[]> {
+    if (!this.db) return []
+    const limit = Math.min(opts.limit ?? 100, 1000)
+    const rows = this.db.prepare(`
+      SELECT ts_ms, kind, meta, metrics, device_binding_id, line_id, product_id, recipe_id, run_id
+      FROM daq_frames
+      WHERE node_id = :id AND (:kind IS NULL OR kind = :kind) AND ts_ms >= :from AND ts_ms <= :to
+      ORDER BY ts_ms DESC LIMIT :lim
+    `).all({
+      ':id': nodeId,
+      ':kind': opts.kind ?? null,
+      ':from': opts.fromMs ?? 0,
+      ':to': opts.toMs ?? Date.now(),
+      ':lim': limit,
+    }) as Array<{ ts_ms: number, kind: string, meta: string, metrics: string, device_binding_id: string | null, line_id: string | null, product_id: string | null, recipe_id: string | null, run_id: string | null }>
+    return rows.map(r => ({
+      at: Number(r.ts_ms),
+      kind: String(r.kind) as 'vector' | 'image',
+      points: r.kind === 'vector' ? pointsFromMeta(asObject(r.meta)) : undefined,
+      metrics: asObject(r.metrics) as Record<string, number>,
+      meta: asObject(r.meta),
+      deviceBindingId: r.device_binding_id,
+      lineId: r.line_id,
+      productId: r.product_id,
+      recipeId: r.recipe_id,
+      runId: r.run_id,
+    }))
+  }
+
+  /** 帧保留期清理(与样本同拍;帧保留期独立可配 DAQ_FRAME_RETENTION_H,默认 720h) */
+  private sweepFrameRetention(): void {
+    if (!this.db) return
+    const cutoff = Date.now() - Number(process.env.DAQ_FRAME_RETENTION_H ?? 720) * 3600_000
+    try {
+      this.db.prepare('DELETE FROM daq_frames WHERE ts_ms < ?').run(cutoff)
+    }
+    catch (err) {
+      log.error('[daq-tsdb] 帧保留期清理失败:', err instanceof Error ? err.message : err)
+    }
+  }
+
   close(): Promise<void> | void {
     this.sweepRetentionTimerStop()
     this.db?.close()
@@ -202,4 +286,23 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       this.retentionTimer = null
     }
   }
+}
+
+/** 向量点列从 meta JSON 还原(非数组/越界防御) */
+function pointsFromMeta(meta: Record<string, unknown>): number[] | undefined {
+  const p = meta.points
+  if (!Array.isArray(p) || p.length === 0 || p.length > 4096) return undefined
+  return p.every(x => Number.isFinite(Number(x))) ? p.map(Number) : undefined
+}
+
+function asObject(v: unknown): Record<string, unknown> {
+  if (typeof v === 'string') {
+    try {
+      return JSON.parse(v) as Record<string, unknown>
+    }
+    catch {
+      return {}
+    }
+  }
+  return (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
 }

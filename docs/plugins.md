@@ -77,6 +77,12 @@ export default {
   })
   ```
 
+### 4.2b `daq:frame`
+- **时机**:数采**多形态帧**下发级(向量/图像节点;与 WS `daq.frame` 同点、按 `publishIntervalMs` 节拍)。
+- **payload**:`{ nodeId, templateRef, kind: 'vector'|'image', at, preview?, metrics?, thumbUrl? }`。
+  **不含像素 blob**——图像只有缩略图 URL 与派生指标(brightness/contrast…),防止插件侧内存放大。
+- **用途**:帧级质检、缺陷计数、图像指标联动。
+
 ### 4.3 `dcw:write`
 - **时机**:写控 ACK 之后(与运维入册同点、同 10s 去重节流)——**观察语义,不影响写控决策**。
 - **payload**:`{ nodeId, name, eng, prevValue, ok, source('manual'|'recipe'|'agent'|'rollback'), lineId, at }`。
@@ -118,6 +124,7 @@ export default {
 | 平台 | `ctx.api` | 平台 REST 客户端(自环 origin;鉴权端点 `ctx.api.setToken(token)`) |
 | 网络 | `ctx.http.get/post` | 通用请求(仅 http/https,默认 8s 超时) |
 | 事件 | `ctx.events.on(type, fn)` | scene 实时事件订阅 |
+| DAQ 扩展 | `ctx.daq.registerDriver(driver)` / `registerProcessor(kind, name, fn)` | 注册自定义采集驱动 / 下沉处理器(同名覆盖内置;详见 §九) |
 | 路径 | `ctx.paths` | `{ home, configRoot, dataDir }` |
 
 > **鉴权说明**:`ctx.api` 自环调用遵循平台 REST 鉴权——免鉴权端点(manifest/ping)开箱即用;
@@ -162,7 +169,74 @@ ctx.route('POST', '/reset', (event) => {
 → `/api/plugins/<name><path>`。宿主 catchall 转发(exact-match),body 预读挂 `event.awBody`;
 v1 鉴权由插件自理(可在 handler 内 `resolveUser(event)` 复用业务鉴权)。
 
-## 八、真实案例:line-sentinel(产线哨兵)
+## 八、多形态数采扩展(v2 帧管线)
+
+数采不止单点数值:模板可声明 `signalKind: 'vector'`(测厚仪/扫描仪多点轮廓)或 `'image'`(CCD 图像)。
+向量/元数据入 Timescale(`daq_frames`),图像像素入对象存储(MinIO,disk 降级)。插件两种扩展点:
+
+```js
+// ① 自定义下沉处理器(推荐入口):模板 sink 配置 { name: 'demo-roughness', args: { window: 8 } } 即生效
+ctx.daq.registerProcessor('vector', 'demo-roughness', (frame, args) => {
+  // frame = { kind, points? | blob?(仅图像生产侧), metrics }
+  // 返回变换后的 frame;单步异常被网关捕获(保留原帧,不阻塞采集)
+  return { ...frame, metrics: { ...frame.metrics, roughness: computeRoughness(frame.points) } }
+})
+
+// ② 注册自定义节点模板(出现在 /daq 模板目录与创建向导;用户可即刻建节点使用)
+ctx.daq.registerTemplate({
+  key: 'plug-my-sensor',              // 必填,建议 plug-<name>-<信号> 命名;同名覆盖(热重载幂等)
+  name: '我的传感器', code: 'MY · SNS', ch: '自定义信号', unit: 'mm',
+  base: 0.5, amp: 0.02, min: 0.4, max: 0.6, decimals: 3, icon: 'tension',
+  signalKind: 'vector',               // scalar(缺省)/ vector / image
+  vector: { points: 32, min: 0.4, max: 0.6 },
+  sink: { processors: [{ name: 'resample', args: { n: 32 } }, { name: 'my-derive' }] },   // 下沉管线(入库+下发前加工)
+  metrics: [{ key: 'avg', label: '均值', unit: 'mm', alarmHigh: 0.55 }],                    // 派生指标阈值告警
+})
+
+// ③ 自定义采集驱动(任意协议/设备):实现与内置驱动同契约
+ctx.daq.registerDriver({
+  kind: 'my-ccd',                       // 节点 driver 字段引用;与内置同名会覆盖并告警
+  available: async () => true,
+  sample: async ({ ctx, config, driverConfig, signalKind, vector }) => {
+    if (signalKind === 'image') {
+      const blob = await grabJpeg(driverConfig.url)   // Buffer
+      return { frame: { kind: 'image', blob, mime: 'image/jpeg', width: 640, height: 480 } }
+    }
+    if (signalKind === 'vector') {
+      return { frame: { kind: 'vector', points: readProfile(), metrics: {} } }
+    }
+    return readScalar()
+  },
+  test: async () => ({ ok: true, message: 'ok' }),
+})
+```
+
+- 处理器内置件:`resample` / `derive-metric` / `zones` / `thumbnail` / `quality-gate`;
+- 指标阈值在模板 `metrics` 声明(如 `{ key: 'roughness', alarmHigh: 0.05 }`),越限走平台既有告警链路;
+- 帧消费:`ctx.daq.onFrame(fn)` / `ctx.daq.onSample(fn)`(分别对应 daq:frame / daq:sample 钩子别名);
+- 完整示例见 `.AgentWorkShop/plugins/daq-vector-demo/`(处理器+模板,project 作用域,可直接改)。
+
+## 九、omp 自定义工具(运行时热注入)
+
+插件经 `ctx.omp.registerTool(tool)` 注册 omp host 工具:工具 schema 自动并入 agent 工具面
+(随 `set_host_tools` 下发),**注册表变更即时热注入全部在跑 agent 会话**(无需重启/重spawn);
+`handleHostTool` 对插件工具名分发执行,handler 收到 `(args, agent={agentId,channelId,role,name})`。
+
+```js
+ctx.omp.registerTool({
+  name: 'sensor_calibration_log',     // 与内置 host tool 同名会被忽略(内置优先)
+  label: '标定记录本',
+  description: '查询/登记各传感器的标定结论…',
+  parameters: { type: 'object', properties: { action: { type: 'string', enum: ['get','put','list'] } }, required: ['action'] },
+  roles: ['lead', 'worker'],          // 缺省双角色;['lead'] = 仅 lead 工具面
+  handler: async (args, agent) => ({ text: `结果…` }),   // isError: true 按工具错误呈现
+})
+```
+
+- 示例插件:`.AgentWorkShop/plugins/omp-sensor-tools/`(传感器标定记录本)。
+- 热注入语义:插件装载/停用/重载 → 工具面变更 → 全部在跑 omp 子进程收到新的 set_host_tools。
+
+## 十、真实案例:line-sentinel(产线哨兵)
 
 用户级安装,展示 SDK 全部能力面——源码 `~/.AgentWorkShop/plugins/line-sentinel/`:
 
@@ -177,7 +251,7 @@ v1 鉴权由插件自理(可在 handler 内 `resolveUser(event)` 复用业务鉴
 实测记录(dev 3127 / prod 3601 双形态):8 秒采样计数 288+、12 节点越限告警、
 心跳间隔 ~1s 内新鲜、浏览器徽标挂载零 pageerror。
 
-## 九、调试与陷阱
+## 十一、调试与陷阱
 
 | 现象 | 原因 / 处理 |
 |---|---|
@@ -189,7 +263,7 @@ v1 鉴权由插件自理(可在 handler 内 `resolveUser(event)` 复用业务鉴
 
 **信任模型**:插件是任意 node 代码,与 aw commands 同级——只安装/启用你信任的插件。
 
-## 十、发布与作用域
+## 十二、发布与作用域
 
 - 用户级(全局):`~/.AgentWorkShop/plugins/` —— `AW_HOME` 可重定向。
 - 项目级(检出):`<repo>/.AgentWorkShop/plugins/` —— 团队可 git 版本化共享。

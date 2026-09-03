@@ -89,7 +89,9 @@ console.log('\n--- 记忆引子 primer(小预算注入)---')
   const block = await memA1.recall('限流 令牌桶 部署', { touch: false })
   check('primer 返回记忆块', block !== null)
   check('primer 含按需抓取工具提示', block !== null && block.includes('search_memory'), block?.slice(-80))
-  check('primer 小预算(默认300 tokens,行数受限)', block !== null && block.split('\n').length < 10, `lines=${block?.split('\n').length}`)
+  // v2 三层注入:L0 简报(save(shared) 后自动存在)+ L1 引子 + 提示,同在 300 tok 引子预算 + 500 tok 总预算内
+  check('primer 含 L0 会话简报', block !== null && block.includes('会话简报'))
+  check('primer 小预算(行数受限)', block !== null && block.split('\n').length < 16, `lines=${block?.split('\n').length}`)
 
   const memTiny = new AgentMemory(repo, { channelId: 'ch1', agentId: 'a1', budgetTokens: 5 })
   check('极小预算 primer 无行则 null', (await memTiny.recall('限流')) === null)

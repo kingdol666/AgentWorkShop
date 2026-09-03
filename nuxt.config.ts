@@ -117,7 +117,7 @@ export default defineNuxtConfig({
     // pg/mqtt/modbus-serial/node-opcua 被 bundle 后,Windows 下动态 import 会变成
     // 绝对盘符路径('d:\...')→ ESM loader 报 "protocol 'd:'";外置后由 Node 原生加载。
     externals: {
-      external: ['pg', 'mqtt', 'modbus-serial', 'node-opcua', '@serialport/bindings-cpp'],
+      external: ['pg', 'mqtt', 'modbus-serial', 'node-opcua', '@serialport/bindings-cpp', 'minio'],
       // shared/config/engine.mjs 从 server 树外 import 会被 nitro dev 外部化,且在
       // Windows 上算错嵌套相对路径('../../..' 溢出盘符根)→ 强制内联进服务端 bundle;
       // 运行时 engine.loadDescriptors 经 cwd 兜底读 schema.json。

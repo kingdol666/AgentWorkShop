@@ -72,3 +72,6 @@ claude-talk-to-figma-mcp/
 
 # 运行时锁与临时产物(单实例互斥)
 .AgentWorkShop/.runtime/
+
+# 系统设置运行时覆盖(程序生成)
+runtime-settings.json

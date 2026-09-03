@@ -69,6 +69,52 @@ export interface TsdbPort {
   queryTagged(q: TsdbTagQuery): Promise<Map<string, TsdbPoint[]>>
   /** 各节点最近一个样本(列表页值列兜底) */
   latest(): Promise<Map<string, DaqSampleRow>>
+  // ===== 多形态帧(v2:向量/图像;像素 blob 在对象存储,这里只存元数据+派生指标)=====
+  writeFrames(rows: DaqFrameRow[]): Promise<void>
+  queryFrames(nodeId: string, opts: DaqFrameQueryOpts): Promise<DaqFrameRecord[]>
   /** 释放底层连接池/句柄(rebuild 换池时由工厂调用;可选) */
   close?(): Promise<void> | void
+}
+
+// ===== 帧(daq_frames;Timescale 元数据 + JSONB 向量/指标,图像只存对象键)=====
+
+export interface DaqFrameRow {
+  nodeId: string
+  tsMs: number
+  kind: 'vector' | 'image'
+  templateKey?: string | null
+  deviceBindingId?: string | null
+  lineId?: string | null
+  productId?: string | null
+  recipeId?: string | null
+  runId?: string | null
+  /** 向量点数(图像为 0) */
+  points: number
+  /** 图像元数据 { objectKey, thumbKey, mime, width, height };向量 {} */
+  meta: Record<string, unknown>
+  /** 派生指标(avg/max/brightness/zone_*…) */
+  metrics: Record<string, number>
+}
+
+export interface DaqFrameQueryOpts {
+  fromMs?: number
+  toMs?: number
+  kind?: 'vector' | 'image'
+  limit?: number
+}
+
+/** 帧查询记录(REST 返回形态;blob 按需经对象存储取) */
+export interface DaqFrameRecord {
+  at: number
+  kind: 'vector' | 'image'
+  /** 向量完整点列(图像缺省) */
+  points?: number[]
+  metrics: Record<string, number>
+  /** 图像元数据(objectKey/thumbKey/mime/width/height) */
+  meta: Record<string, unknown>
+  deviceBindingId?: string | null
+  lineId?: string | null
+  productId?: string | null
+  recipeId?: string | null
+  runId?: string | null
 }

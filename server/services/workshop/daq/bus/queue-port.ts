@@ -20,6 +20,24 @@ export interface DaqSampleEnvelope {
   state: string
   /** ISO 时间 */
   at: string
+  /**
+   * 多形态帧(v2;缺省 undefined = 标量样本,既有链路零感知):
+   * vector 携带点列(≤4096,JSON 安全);image 只携带对象存储引用与元数据
+   * (blob 已在生产侧落对象存储 —— 不进队列,MQTT 256KB 上限不可承载像素)。
+   */
+  frame?: {
+    kind: 'vector' | 'image'
+    /** vector:工程量点列(完整;WS 下发时截断为 64 点预览) */
+    points?: number[]
+    /** image:对象存储键(主图/缩略图) */
+    objectKey?: string
+    thumbKey?: string
+    mime?: string
+    width?: number
+    height?: number
+    /** 下沉管线派生指标(avg/max/brightness/zone_*…) */
+    metrics?: Record<string, number>
+  }
 }
 
 export type DaqConsumer = (env: DaqSampleEnvelope) => void

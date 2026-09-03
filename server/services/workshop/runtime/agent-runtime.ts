@@ -17,7 +17,7 @@ import type {
   SupervisionSnapshot,
 } from '../agents/agent-interface'
 import type { A2AMessage, A2AArtifact, Part } from '../types/a2a'
-import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
+import type { AgentContextStats, AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
 import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentMemory } from './memory'
 import type { Mailbox } from './mailbox'
@@ -58,6 +58,8 @@ export interface ChannelBus {
     currentTaskProgress?: number | null
     queuedCount?: number
     completedCount?: number
+    /** harness 上下文用量(omp 有;进程内 harness 缺省) */
+    context?: AgentContextStats | null
   }): void
   onAgentStatus(fn: (e: {
     agentId: string
@@ -67,6 +69,7 @@ export interface ChannelBus {
     currentTaskProgress?: number | null
     queuedCount?: number
     completedCount?: number
+    context?: AgentContextStats | null
   }) => void): () => void
   /** channel 内消息投递通知(route 汇流点触发;AEP a2a.message 事件源) */
   notifyMessage(message: A2AMessage): void
@@ -205,10 +208,11 @@ export class AgentRuntime {
     return this.state
   }
 
-  /** 实时状态视图:idle/busy/stopped + 当前任务 + 队列上下文(实时追踪的单一入口) */
+  /** 实时状态视图:idle/busy/stopped + 当前任务 + 队列 + harness 上下文用量 */
   getStatus(): AgentStatusView {
     const queue = this.getQueueView()
     const current = queue.current ?? (this.currentTaskId ? this.deps.taskEngine.get(this.currentTaskId) : undefined)
+    const context = this.impl.getContextStats?.() ?? undefined
     return {
       agentId: this.agentId,
       channelId: this.channelId,
@@ -221,6 +225,7 @@ export class AgentRuntime {
       currentTaskProgress: current?.progress != null ? current.progress : null,
       queuedCount: queue.queued.length,
       completedCount: queue.completed.length,
+      ...(context ? { context } : {}),
     }
   }
 
@@ -448,6 +453,8 @@ export class AgentRuntime {
     }
     finally {
       if (this.superviseController === controller) this.superviseController = null
+      // 调度回合落定:lead 的 supervise 是上下文膨胀大户,同样走 post-settle 压缩检查
+      this.maybePostSettle()
     }
   }
 
@@ -522,10 +529,12 @@ export class AgentRuntime {
       }
       // 每次 run 新建 AbortController;abort 后事件流终止
       this.abortController = new AbortController()
-      // 记忆召回(异常不阻塞)
+      // 记忆召回(异常不阻塞):查询=消息原文(title 首词天然显著)+ 任务关联加权
       let memoryBlock: string | undefined
       try {
-        memoryBlock = (await this.deps.memory?.recall(partsToText(msg.parts))) ?? undefined
+        memoryBlock = (await this.deps.memory?.recall(partsToText(msg.parts), {
+          relatedTaskIds: this.relatedTaskIdsOf(taskId),
+        })) ?? undefined
       }
       catch (err) {
         log.error(`[AgentRuntime:${this.agentId}] 记忆召回失败:`, err)
@@ -666,11 +675,13 @@ export class AgentRuntime {
         this.runErrorRetries.delete(msg.messageId)
         this.deps.mailbox.markConsumed(msg.messageId)
       }
+      // 回合落定:信箱空 → 后台压缩检查(post-settle 路径;impl 自守卫不阻塞)
+      this.maybePostSettle()
     }
   }
 
-  /** 状态通知的队列上下文(实时:当前任务/待执行数/已完成数) */
-  private queueContext(): Pick<AgentStatusView, 'currentTaskId' | 'currentTaskTitle' | 'currentTaskProgress' | 'queuedCount' | 'completedCount'> {
+  /** 状态通知的队列上下文(实时:当前任务/待执行数/已完成数/harness 上下文用量) */
+  private queueContext(): Pick<AgentStatusView, 'currentTaskId' | 'currentTaskTitle' | 'currentTaskProgress' | 'queuedCount' | 'completedCount'> & { context?: AgentContextStats | null } {
     const status = this.getStatus()
     return {
       currentTaskId: status.currentTaskId,
@@ -678,7 +689,42 @@ export class AgentRuntime {
       currentTaskProgress: status.currentTaskProgress,
       queuedCount: status.queuedCount,
       completedCount: status.completedCount,
+      context: status.context ?? null,
     }
+  }
+
+  /**
+   * 任务关联集(自身+父+兄弟,≤20):related-task boost 数据源。
+   * 同父兄弟任务的记忆(前几个子任务做了什么)在引子中必然置顶——
+   * 纯内存 id 判断,零检索开销。
+   */
+  private relatedTaskIdsOf(taskId: string | undefined): string[] | undefined {
+    if (!taskId) return undefined
+    const task = this.deps.taskEngine.get(taskId)
+    if (!task) return undefined
+    const ids = new Set<string>([taskId])
+    if (task.parentId) {
+      ids.add(task.parentId)
+      for (const t of this.deps.taskEngine.list(this.channelId)) {
+        if (t.parentId === task.parentId) ids.add(t.id)
+        if (ids.size >= 20) break
+      }
+    }
+    return [...ids]
+  }
+
+  /**
+   * post-settle 压缩检查:仅信箱无排队消息时触发(排队消息的 pre-prompt gate 兜底)。
+   * impl 自守卫(回合间隙才压缩、异常不抛出);本方法自身也不阻塞消费循环。
+   */
+  private maybePostSettle(): void {
+    if (!this.impl.onTurnSettled) return
+    void this.deps.mailbox.peek(1)
+      .then((pending) => {
+        if (pending.length > 0) return undefined
+        return this.impl.onTurnSettled?.()
+      })
+      .catch(() => {})
   }
 
   private toRequest(msg: A2AMessage, memory?: string): AgentRunRequest {

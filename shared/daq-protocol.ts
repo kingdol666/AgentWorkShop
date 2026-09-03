@@ -32,7 +32,42 @@ export interface DaqTemplateDef {
   telemetryKey?: string
   /** 用户自定义模板(server 落盘可增删改);undefined = 内置 */
   builtin?: boolean
+  /** 插件注册模板(内存态,REST 不可增删改;值为来源插件名) */
+  plugin?: string
+  // ===== 多形态信号(v2 帧管线;缺省 scalar = 既有单点链路,零行为变化)=====
+  /** 信号形态:scalar 单点(缺省)/ vector 多点轮廓(测厚仪/扫描仪)/ image 图像帧(CCD) */
+  signalKind?: DaqSignalKind
+  /** vector 声明(驱动生成/校验点列的依据) */
+  vector?: { points: number, min: number, max: number }
+  /** 实时下沉处理管线(采样后、入库前按序执行;处理器实现 server 注册表,插件可扩展) */
+  sink?: { processors: DaqSinkStep[] }
+  /** 派生指标阈值(帧 metrics 越限 → 既有告警链路,边沿触发) */
+  metrics?: DaqMetricRule[]
 }
+
+/** 信号形态 */
+export type DaqSignalKind = 'scalar' | 'vector' | 'image'
+
+/** 下沉处理器步骤(模板配置;处理器实现在 server 注册表,插件可扩展) */
+export interface DaqSinkStep {
+  name: string
+  args?: Record<string, unknown>
+}
+
+/** 派生指标阈值规则(帧 metrics 越限告警;alarmLow/High 硬限,warnLow/High 预警带) */
+export interface DaqMetricRule {
+  key: string
+  label: string
+  unit?: string
+  warnLow?: number
+  warnHigh?: number
+  alarmLow?: number
+  alarmHigh?: number
+}
+
+/** 模板 signalKind 归一(undefined/非法 → scalar) */
+export const normalizeSignalKind = (k?: string): DaqSignalKind =>
+  k === 'vector' || k === 'image' ? k : 'scalar'
 
 /** 模板图标(设计稿 ICONS 键;自定义模板从中选取) */
 export const DAQ_TEMPLATE_ICONS = ['thermo', 'pressure', 'tension', 'encoder', 'camera', 'gateway'] as const
@@ -59,6 +94,14 @@ export interface DaqTemplateInput {
   /** 小数位 0..4,缺省 2 */
   decimals?: number
   icon?: DaqTemplateIcon
+  /** 信号形态(缺省 scalar) */
+  signalKind?: DaqSignalKind
+  /** vector 声明(signalKind=vector 时:points 必填 1~4096) */
+  vector?: { points: number, min: number, max: number }
+  /** 下沉处理管线(signalKind=image 时自动前置 thumbnail/quality-gate) */
+  sink?: { processors: DaqSinkStep[] }
+  /** 派生指标阈值规则 */
+  metrics?: DaqMetricRule[]
 }
 
 /** daq.template.changed 帧载荷(自定义模板 CRUD 收敛帧) */
@@ -74,6 +117,36 @@ export const DAQ_TEMPLATES: DaqTemplateDef[] = [
   { key: 'line-encoder', name: '速度编码器', code: 'LINE · ENCODER', ch: '产线速度', unit: 'm/min', base: 318, amp: 7, min: 280, max: 360, decimals: 0, icon: 'encoder', semantics: '产线速度:产能直接观测量。判读:实际速度对设定值的跟随滞后反映传动惯量;速度波动会传导至张力与厚度。' },
   { key: 'vision-cam', name: '视觉检测相机', code: 'VISION · CAM', ch: '表面缺陷率', unit: '‰', base: 0.42, amp: 0.09, min: 0.1, max: 0.9, decimals: 2, icon: 'camera' },
   { key: 'power-meter', name: '电参采集器', code: 'POWER · METER', ch: '运行功率', unit: 'kW', base: 45.2, amp: 2.6, min: 38, max: 55, decimals: 1, icon: 'gateway' },
+  // ===== 多形态信号模板(v2 帧管线)=====
+  {
+    key: 'thickness-scan', name: '测厚扫描仪', code: 'THK · SCAN', ch: '厚度轮廓', unit: 'mm',
+    base: 0.52, amp: 0.018, min: 0.4, max: 0.65, decimals: 3, icon: 'tension',
+    signalKind: 'vector',
+    vector: { points: 64, min: 0.4, max: 0.65 },
+    sink: { processors: [
+      { name: 'resample', args: { n: 64 } },
+      { name: 'derive-metric', args: { name: 'avg', op: 'avg' } },
+      { name: 'derive-metric', args: { name: 'max', op: 'max' } },
+    ] },
+    metrics: [
+      { key: 'max', label: '最大厚度', unit: 'mm', alarmHigh: 0.62 },
+      { key: 'avg', label: '平均厚度', unit: 'mm', warnLow: 0.47, warnHigh: 0.57 },
+    ],
+    semantics: '测厚仪横向扫描轮廓:多点厚度分布。判读:平均值漂移=工艺整体偏移;单点尖峰=局部缺陷(夹杂/气泡);max 越硬限=超差,须联动分切剔除。',
+  },
+  {
+    key: 'ccd-image', name: 'CCD 视觉相机', code: 'CCD · IMG', ch: '表面图像', unit: '灰度',
+    base: 128, amp: 0, min: 0, max: 255, decimals: 0, icon: 'camera',
+    signalKind: 'image',
+    sink: { processors: [
+      { name: 'thumbnail', args: { width: 256 } },
+      { name: 'quality-gate' },
+    ] },
+    metrics: [
+      { key: 'brightness', label: '平均亮度', unit: 'gray', alarmLow: 30, alarmHigh: 230 },
+    ],
+    semantics: 'CCD 图像帧:像素数据入对象存储,Timescale 仅存元数据与派生指标。判读:brightness 过低=曝光不足/镜头遮挡,过高=过曝;缺陷识别算法经插件处理器扩展。',
+  },
 ]
 
 export const daqTemplateByKey = (key: string): DaqTemplateDef | undefined =>
@@ -335,6 +408,21 @@ export interface AepDaqReading {
   value: number
   state: DaqNodeState
   at: string
+}
+
+/** daq.frame 帧载荷(向量/图像帧实时下发;不含原始 blob —— 向量仅 ≤64 点预览,图像仅缩略图 URL) */
+export interface AepDaqFrame {
+  nodeId: string
+  templateRef: string
+  kind: 'vector' | 'image'
+  at: string
+  /** 向量降采样预览(≤64 点;完整点列经 REST frames 查询) */
+  preview?: number[]
+  /** 派生指标(resample/derive-metric/quality-gate 等下沉处理器产出) */
+  metrics?: Record<string, number>
+  /** 图像缩略图内容 URL(服务端鉴权流式输出;原图加 &thumb=0) */
+  thumbUrl?: string
+  state?: DaqNodeState
 }
 
 /** daq.node.changed 帧载荷(CRUD/绑定/参数变更收敛帧) */

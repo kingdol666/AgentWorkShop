@@ -23,22 +23,30 @@
 
 import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
-import { daqKeyFromRef, normalizeDataTransform, DAQ_DRIVERS, type AepDaqControllerState, type AepDaqReading, type AepDaqNodeChange, type DaqDriverKind, type DaqNodeView, type DataTransform, type DriverTestResult } from '../../../../shared/daq-protocol'
+import { daqKeyFromRef, normalizeDataTransform, normalizeSignalKind, DAQ_DRIVERS, type AepDaqControllerState, type AepDaqFrame, type AepDaqReading, type AepDaqNodeChange, type DaqDriverKind, type DaqNodeView, type DataTransform, type DriverTestResult } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
-import { normalizeDriverKind, resolveDaqDriver, probeDriverAvailability } from './drivers'
+import { normalizeDriverKind, resolveDaqDriver, probeDriverAvailability, type DaqFrameSample } from './drivers'
 import { findDaqTemplate } from './daq-templates'
 import { DaqNode } from './daq-node'
 import { DaqNodeRuntime, type DaqRuntimeHost } from './daq-runtime'
 import { getDaqNodeRepo } from './daq-node.repo'
 import { getTsdb, tsdbReady } from './storage'
+import type { DaqFrameRow } from './storage/tsdb-port'
 import { getDaqQueue } from './bus'
 import { getDaqHostPorts } from './host-ports'
-import { emitDaqSample } from '@/server/services/workshop/plugins/host.mjs'
+import { runSinkPipeline, type DaqFrameWorking } from './frames'
+import { getObjectStore } from './objectstore'
+import { daqObjectKey } from './objectstore/objectstore-port'
+import { emitDaqSample, emitDaqFrame } from '@/server/services/workshop/plugins/host.mjs'
 import { getOps, recordOps } from '../ops/ops'
 import { notifyAlarm, newAlarmId, startAlarmEscalator } from './alarm-notify'
+import { attachDaqPluginBridge } from './plugin-bridge'
 import type { DaqSampleEnvelope } from './bus/queue-port'
 
 const log = createLogger('daq.controller')
+
+// 插件桥接管(host.mjs ctx.daq 排队注册的驱动/处理器在此回放;幂等)
+attachDaqPluginBridge()
 
 export interface DaqCreateInput {
   templateRef?: string
@@ -96,8 +104,12 @@ type BroadcastFn = (type: string, payload: unknown) => void
 const TSDB_FLUSH_MS = 500
 /** TSDB 攒批缓冲上限(背压:满则丢最旧并计数,防慢库拖爆内存) */
 const TSDB_BUFFER_CAP = 5000
+/** 帧攒批缓冲上限(向量/图像元数据;量级远小于标量) */
+const FRAME_BUFFER_CAP = 2000
 /** TSDB 写失败重试次数(有限重试后丢弃并计数,不阻塞消费) */
 const TSDB_WRITE_RETRIES = 3
+/** WS 帧预览点数上限(AepDaqFrame.preview;完整点列经 REST frames 查询) */
+const FRAME_PREVIEW_POINTS = 64
 
 class DaqController {
   private repo = getDaqNodeRepo()
@@ -107,6 +119,10 @@ class DaqController {
   private runtimes = new Map<string, DaqNodeRuntime>()
   /** TSDB 批量缓冲(consumer 攒批 → 定窗刷盘;上限背压,满丢最旧;产线窗口内逐样本打标) */
   private tsdbBuffer: Array<{ nodeId: string, tsMs: number, value: number, state: string, lineId?: string | null, productId?: string | null, recipeId?: string | null, runId?: string | null }> = []
+  /** 帧攒批缓冲(v2:向量/图像元数据;与样本同窗刷盘) */
+  private frameBuffer: DaqFrameRow[] = []
+  /** 帧指标告警态(nodeId::metricKey → ok/warn/alarm;边沿触发) */
+  private metricStates = new Map<string, 'ok' | 'warn' | 'alarm'>()
   private tsdbFlushTimer: NodeJS.Timeout | null = null
   /** 单 in-flight 写:写库中不叠写(promise 链串行化) */
   private tsdbWriting = false
@@ -127,6 +143,8 @@ class DaqController {
   private producedCount = 0
   private consumedCount = 0
   private storedCount = 0
+  /** 帧入库计数(v2:daq_frames 行数) */
+  private framesStored = 0
 
   // ---------- 生命周期 ----------
 
@@ -154,10 +172,13 @@ class DaqController {
     return { intervalMs: this.defaultIntervalMs, publishIntervalMs: this.defaultPublishIntervalMs }
   }
 
-  /** 生产面:驱动采样一次(模板域 + 协议参数解析;mock/PLC 统一走驱动注册表) */
-  private async sampleNode(node: DaqNode, now: number): Promise<number | null> {
+  /** 生产面:驱动采样一次(模板域 + 协议参数解析;mock/PLC 统一走驱动注册表)。
+   *  多形态模板(vector/image)在采样后执行 sink 下沉管线;图像 blob 就地落
+   *  对象存储(blob 不进队列 —— MQTT 256KB 上限不可承载像素,队列只传引用)。 */
+  private async sampleNode(node: DaqNode, now: number): Promise<number | DaqFrameSample | { frame: NonNullable<DaqSampleEnvelope['frame']> } | null> {
     const tpl = findDaqTemplate(node.templateKey)
-    return resolveDaqDriver(node.driver).sample({
+    const signalKind = normalizeSignalKind(tpl?.signalKind)
+    const res = await resolveDaqDriver(node.driver).sample({
       ctx: { nodeId: node.id, now, ageMs: now - Date.parse(node.createdAt || new Date(now).toISOString()) },
       config: {
         base: tpl?.base ?? (node.min + node.max) / 2,
@@ -166,7 +187,39 @@ class DaqController {
         max: node.max,
       },
       driverConfig: node.driverConfig,
+      signalKind,
+      vector: tpl?.vector,
     })
+    if (res == null || typeof res !== 'object' || !('frame' in res) || res.frame == null) return res
+    // 下沉管线(生产侧;单步失败保留原帧,永不抛出 —— 见 frames.ts runSinkPipeline)
+    const raw = res.frame
+    let wf: DaqFrameWorking = raw.kind === 'vector'
+      ? { kind: 'vector', points: raw.points, metrics: raw.metrics }
+      : { kind: 'image', blob: raw.blob, mime: raw.mime, width: raw.width, height: raw.height, metrics: raw.metrics }
+    wf = runSinkPipeline(wf, tpl?.sink?.processors, node.id)
+    if (wf.kind === 'vector') {
+      return { frame: { kind: 'vector', points: (wf.points ?? []).slice(0, 4096), metrics: wf.metrics } }
+    }
+    // 图像:主图 + 缩略图落对象存储(失败抛出 → tick 按驱动故障节流,采集不中断)
+    const os = getObjectStore()
+    const objectKey = daqObjectKey(node.id, now, '.png')
+    await os.put(objectKey, wf.blob!, wf.mime ?? 'image/png')
+    let thumbKey: string | undefined
+    if (wf.thumbBlob) {
+      thumbKey = daqObjectKey(node.id, now, '.thumb.png')
+      await os.put(thumbKey, wf.thumbBlob, 'image/png')
+    }
+    return {
+      frame: {
+        kind: 'image',
+        objectKey,
+        thumbKey,
+        mime: wf.mime ?? 'image/png',
+        width: wf.width,
+        height: wf.height,
+        metrics: wf.metrics,
+      },
+    }
   }
 
   /** 生产面:样本帧入队 */
@@ -191,6 +244,11 @@ class DaqController {
   }
 
   private ingestNode(node: DaqNode, env: DaqSampleEnvelope, allowPublish: boolean): void {
+    // 多形态帧(v2):向量/图像走独立帧管线(不入 daq_samples,标量表零污染)
+    if (env.frame) {
+      this.ingestFrame(node, env, allowPublish)
+      return
+    }
     // 配方级数采监控窗口的越限判定已前移到运行时 onSample(与量程告警共用边沿语义,
     // 越窗即 raise 落库 + 广播);此处 state 已含窗口结论,仅负责管线汇聚。
     if (allowPublish) {
@@ -226,6 +284,11 @@ class DaqController {
       this.tsdbBuffer.splice(0, this.tsdbBuffer.length - TSDB_BUFFER_CAP)
       this.tsdbDropped += 1
     }
+    this.scheduleTsdbFlush()
+  }
+
+  /** 刷盘调度(样本与帧共用同一定窗;写库中不重复排程) */
+  private scheduleTsdbFlush(): void {
     if (!this.tsdbFlushTimer && !this.tsdbWriting) {
       this.tsdbFlushTimer = setTimeout(() => {
         this.tsdbFlushTimer = null
@@ -237,6 +300,97 @@ class DaqController {
 
   private broadcastDriverError(node: DaqNode, message: string): void {
     this.broadcast?.('error', { code: 'DAQ_DRIVER', message: `[${node.name}] ${message}` })
+  }
+
+  // ---------- 帧管线(v2:向量/图像;打标与告警复用标量链路同源机制)----------
+
+  /** 帧消费:元数据攒批落 daq_frames + 指标阈值告警(边沿)+ WS daq.frame(预览/缩略图引用) */
+  private ingestFrame(node: DaqNode, env: DaqSampleEnvelope, allowPublish: boolean): void {
+    const f = env.frame!
+    const tpl = findDaqTemplate(node.templateKey)
+    const tsMs = Date.parse(env.at)
+    // 产线批次打标(与标量样本同源取值)
+    const lineRun = getDaqHostPorts()?.lineRun.activeRun(node.lineId) ?? null
+    if (lineRun) getDaqHostPorts()?.lineRun.bumpTaggedSamples(node.lineId)
+    const metrics = f.metrics ?? {}
+    this.frameBuffer.push({
+      nodeId: node.id,
+      tsMs,
+      kind: f.kind,
+      templateKey: node.templateKey,
+      deviceBindingId: node.deviceBindingId,
+      lineId: lineRun?.lineId ?? null,
+      productId: lineRun?.productId ?? null,
+      recipeId: lineRun?.recipeId ?? null,
+      runId: lineRun?.runId ?? null,
+      points: f.kind === 'vector' ? (f.points?.length ?? 0) : 0,
+      meta: f.kind === 'image'
+        ? { objectKey: f.objectKey, thumbKey: f.thumbKey, mime: f.mime, width: f.width, height: f.height }
+        : { points: f.points ?? [] },
+      metrics,
+    })
+    if (this.frameBuffer.length > FRAME_BUFFER_CAP) {
+      this.frameBuffer.splice(0, this.frameBuffer.length - FRAME_BUFFER_CAP)
+      this.tsdbDropped += 1
+    }
+    this.scheduleTsdbFlush()
+    // 指标阈值告警(模板 metrics 规则;alarm 硬限边沿 → 既有告警链路)
+    this.evaluateMetricAlarms(node, tpl, metrics)
+    if (!allowPublish) return
+    const payload: AepDaqFrame = {
+      nodeId: node.id,
+      templateRef: node.templateRef,
+      kind: f.kind,
+      at: env.at,
+      preview: f.kind === 'vector' ? DaqController.previewOf(f.points ?? [], FRAME_PREVIEW_POINTS) : undefined,
+      metrics,
+      thumbUrl: f.kind === 'image' && f.objectKey
+        ? `/api/workshop/daq/${node.id}/frames/content?ts=${tsMs}&thumb=1`
+        : undefined,
+      state: node.state,
+    }
+    this.broadcast?.('daq.frame', payload)
+    // 插件钩子:帧观察(只含元数据/指标/预览,不含 blob —— 防插件侧内存放大)
+    emitDaqFrame(payload)
+  }
+
+  /** 模板 metrics 规则评估:alarm 硬限沿 → handleAlarm/handleAlarmRecover;warn 只置节点态 */
+  private evaluateMetricAlarms(node: DaqNode, tpl: ReturnType<typeof findDaqTemplate>, metrics: Record<string, number>): void {
+    for (const rule of tpl?.metrics ?? []) {
+      const v = metrics[rule.key]
+      if (v == null || !Number.isFinite(v)) continue
+      const key = `${node.id}::${rule.key}`
+      const prev = this.metricStates.get(key) ?? 'ok'
+      let level: 'ok' | 'warn' | 'alarm' = 'ok'
+      if ((rule.alarmLow != null && v < rule.alarmLow) || (rule.alarmHigh != null && v > rule.alarmHigh)) level = 'alarm'
+      else if ((rule.warnLow != null && v < rule.warnLow) || (rule.warnHigh != null && v > rule.warnHigh)) level = 'warn'
+      this.metricStates.set(key, level)
+      if (level === 'alarm' && prev !== 'alarm') {
+        const gtMax = rule.alarmHigh != null && v > rule.alarmHigh
+        node.state = 'alarm'
+        this.handleAlarm(node, v, gtMax ? 'gt-max' : 'lt-min', gtMax ? rule.alarmHigh! : rule.alarmLow!, `${node.templateKey}.${rule.key}`)
+      }
+      else if (level !== 'alarm' && prev === 'alarm') {
+        node.state = level === 'warn' ? 'warn' : 'ok'
+        this.handleAlarmRecover(node, v)
+      }
+      else if (level === 'warn' && node.state === 'ok') {
+        node.state = 'warn'
+      }
+      else if (level === 'ok' && prev !== 'ok' && node.state !== 'alarm') {
+        node.state = 'ok'
+      }
+    }
+  }
+
+  /** WS 帧预览:均匀抽点 ≤max(线性抽点,保形) */
+  private static previewOf(points: number[], max: number): number[] {
+    if (points.length <= max) return points
+    const out: number[] = []
+    for (let i = 0; i < max; i++) {
+      out.push(points[Math.floor((i * (points.length - 1)) / (max - 1))]!)
+    }
+    return out
   }
 
   /** 网关统一调度:250ms 扫描,到期判定与互斥由各运行时私有节拍自治(单节点慢/停不波及邻居)。
@@ -300,16 +454,18 @@ class DaqController {
   /** 累计报警次数(R4 指标暴露) */
   alarmsRaised = 0
 
-  /** alarm 进入沿:落库(同节点同量未确认幂等)→ WS 广播 → webhook 外送;失败绝不影响采集 */
-  private handleAlarm(node: DaqNode, value: number, rule: 'lt-min' | 'gt-max', threshold: number): void {
+  /** alarm 进入沿:落库(同节点同量未确认幂等)→ WS 广播 → webhook 外送;失败绝不影响采集。
+   *  metricKey:帧派生指标告警的键(模板 metrics 规则;缺省 = 模板 key,标量越限) */
+  private handleAlarm(node: DaqNode, value: number, rule: 'lt-min' | 'gt-max', threshold: number, metricKey?: string): void {
     this.alarmsRaised++
     const repo = getOps()?.alarmEvents
     let id = newAlarmId()
     const createdAt = new Date().toISOString()
+    const metric = metricKey ?? node.templateKey
     if (repo) {
       try {
         const raised = repo.raise({
-          id, nodeId: node.id, nodeName: node.name, metric: node.templateKey,
+          id, nodeId: node.id, nodeName: node.name, metric,
           value, rule, threshold, createdAt,
         })
         if (!raised) id = '' // 已有同源未确认报警:不重复广播/外送
@@ -320,7 +476,7 @@ class DaqController {
     }
     if (!id) return
     const payload = {
-      id, nodeId: node.id, nodeName: node.name, metric: node.templateKey,
+      id, nodeId: node.id, nodeName: node.name, metric,
       value, rule, threshold, escalation: 0, createdAt,
     }
     this.broadcast?.('daq.alarm', payload)
@@ -335,9 +491,9 @@ class DaqController {
       kind: 'alarm',
       targetKind: 'daq-node',
       targetId: node.id,
-      summary: `告警:「${node.name}」${zh}阈值 ${threshold}(当前 ${value})`,
+      summary: `告警:「${node.name}」${metric} ${zh}阈值 ${threshold}(当前 ${value})`,
       lineId: node.lineId ?? '',
-      detail: { alarmId: id, metric: node.templateKey, value, rule, threshold },
+      detail: { alarmId: id, metric, value, rule, threshold },
     })
   }
 
@@ -401,6 +557,27 @@ class DaqController {
             if (attempt === TSDB_WRITE_RETRIES - 1) {
               this.tsdbDropped += batch.length
               log.error('[daq] 时序库写入失败(已重试,丢弃计数):', err instanceof Error ? err.message : err)
+            }
+            else {
+              await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+            }
+          }
+        }
+      }
+      // 帧批(v2:daq_frames;与样本同窗同重试语义)
+      while (this.frameBuffer.length > 0) {
+        const batch = this.frameBuffer.splice(0, this.frameBuffer.length)
+        let ok = false
+        for (let attempt = 0; attempt < TSDB_WRITE_RETRIES && !ok; attempt++) {
+          try {
+            await getTsdb().writeFrames(batch)
+            this.framesStored += batch.length
+            ok = true
+          }
+          catch (err) {
+            if (attempt === TSDB_WRITE_RETRIES - 1) {
+              this.tsdbDropped += batch.length
+              log.error('[daq] 帧写入失败(已重试,丢弃计数):', err instanceof Error ? err.message : err)
             }
             else {
               await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
@@ -490,6 +667,7 @@ class DaqController {
       samplesStored: this.storedCount,
       tsdbDropped: this.tsdbDropped,
       alarmsRaised: this.alarmsRaised,
+      framesStored: this.framesStored,
     }
   }
 
@@ -522,9 +700,33 @@ class DaqController {
     return getTsdb().query(id, opts)
   }
 
+  /** 节点帧历史(v2:向量/图像元数据;像素按需经 frameContent 从对象存储取) */
+  async frames(id: string, opts: { fromMs?: number, toMs?: number, kind?: 'vector' | 'image', limit?: number }) {
+    this.ensureLoop()
+    await tsdbReady
+    const node = this.repo.byId(id)
+    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    return getTsdb().queryFrames(id, opts)
+  }
+
+  /** 帧内容(图像主图/缩略图;从对象存储读取后由 REST 流式返回) */
+  async frameContent(id: string, tsMs: number, thumb: boolean): Promise<{ data: Buffer, mime: string }> {
+    this.ensureLoop()
+    await tsdbReady
+    const node = this.repo.byId(id)
+    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    const rows = await getTsdb().queryFrames(id, { fromMs: tsMs - 1, toMs: tsMs + 1, limit: 5 })
+    const row = rows.find(r => r.at === tsMs)
+    if (!row || row.kind !== 'image') throw Object.assign(new Error(`帧不存在: ${id}@${tsMs}`), { status: 404 })
+    const key = (thumb ? row.meta.thumbKey : row.meta.objectKey) as string | undefined
+    if (!key) throw Object.assign(new Error(`帧对象缺失: ${id}@${tsMs}`), { status: 404 })
+    const data = await getObjectStore().get(String(key))
+    return { data, mime: typeof row.meta.mime === 'string' ? row.meta.mime : 'image/png' }
+  }
+
   /** 后端能力自描述(meta 用) */
-  backends(): { tsdb: string, queue: string, drivers: typeof DAQ_DRIVERS } {
-    return { tsdb: getTsdb().backend, queue: g_queueBackend ?? 'inproc', drivers: DAQ_DRIVERS }
+  backends(): { tsdb: string, queue: string, objectstore: string, drivers: typeof DAQ_DRIVERS } {
+    return { tsdb: getTsdb().backend, queue: g_queueBackend ?? 'inproc', objectstore: getObjectStore().backend, drivers: DAQ_DRIVERS }
   }
 
   // ---------- 控制器全局 ----------

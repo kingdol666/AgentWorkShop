@@ -10,10 +10,23 @@ import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
 import { apiFetch } from './apiClient'
 import type { AepEnvelope } from '#shared/workshop-protocol'
-import { DAQ_TEMPLATES, type AepDaqControllerState, type AepDaqReading, type AepDaqNodeChange, type AepDaqTemplateChange, type DaqNodeView, type DaqTemplateDef, type DaqTemplateInput } from '#shared/daq-protocol'
+import { DAQ_TEMPLATES, type AepDaqControllerState, type AepDaqFrame, type AepDaqReading, type AepDaqNodeChange, type AepDaqTemplateChange, type DaqNodeView, type DaqTemplateDef, type DaqTemplateInput } from '#shared/daq-protocol'
 
 /** 历史缓冲长度(1s 默认周期 ≈ 最近 5 分钟趋势) */
 const HIST_CAP = 60
+/** 每节点帧缓冲上限(图像/向量元数据;画廊分页走 REST) */
+const FRAMES_CAP = 30
+
+/** 帧展示态(WS daq.frame / REST frames 同构) */
+export interface DaqFrameLive {
+  at: number
+  kind: 'vector' | 'image'
+  points?: number[]
+  metrics: Record<string, number>
+  /** 图像内容 URL(同源 cookie 鉴权,<img> 直用) */
+  thumbUrl?: string
+  contentUrl?: string
+}
 
 /** 展示态:本地追加"实时性"字段(view 同构 + 趋势缓冲) */
 export interface DaqNodeLive extends DaqNodeView {
@@ -93,6 +106,8 @@ const createStore = () => {
   })
   // 模板目录:内置 6 种先行(SEO 首帧即有),REST 快照与 WS 帧收敛为 server 权威
   const templates = reactive<DaqTemplateDef[]>(DAQ_TEMPLATES.map(t => ({ ...t })))
+  // 帧缓冲(v2 多形态信号:nodeId → 最近 FRAMES_CAP 帧,新帧头插)
+  const frames = reactive<Record<string, DaqFrameLive[]>>({})
 
   function upsert(node: DaqNodeView): void {
     const i = nodes.findIndex(x => x.id === node.id)
@@ -164,6 +179,31 @@ const createStore = () => {
     else templates.push({ ...p.template })
   }
 
+  /** 帧入账(v2:新帧头插,容量裁剪;图像只存引用 URL,像素按需经 URL 加载)。
+   *  同时驱动节点 value/state/lastAt(向量=avg 展示值)——帧节点的实时链路与
+   *  标量 daq.reading 同源,列表页/数字孪生面板因此零轮询可见。 */
+  function applyFrame(p: AepDaqFrame): void {
+    const at = Date.parse(p.at)
+    const list = frames[p.nodeId] ?? (frames[p.nodeId] = [])
+    if (!list.some(f => f.at === at)) {
+      list.unshift({
+        at,
+        kind: p.kind,
+        points: p.preview,
+        metrics: p.metrics ?? {},
+        thumbUrl: p.thumbUrl,
+        contentUrl: p.thumbUrl ? p.thumbUrl.replace('thumb=1', 'thumb=0') : undefined,
+      })
+      if (list.length > FRAMES_CAP) list.splice(FRAMES_CAP)
+    }
+    const n = nodes.find(x => x.id === p.nodeId)
+    if (n) {
+      n.value = p.metrics?.avg ?? n.value
+      if (p.state) n.state = p.state
+      n.lastAt = p.at
+    }
+  }
+
   /** 挂 WS 帧(townBus);幂等(globalThis 防重复订阅)。返回退订函数。 */
   function ensureWsFeed(): () => void {
     const g = globalThis as typeof globalThis & { __daqBusFed?: boolean }
@@ -171,6 +211,7 @@ const createStore = () => {
     g.__daqBusFed = true
     return useTownBus().subscribe((e: AepEnvelope) => {
       if (e.type === 'daq.reading') applyReading(e.payload as AepDaqReading)
+      else if (e.type === 'daq.frame') applyFrame(e.payload as unknown as AepDaqFrame)
       else if (e.type === 'daq.node.changed') applyChange(e.payload as AepDaqNodeChange)
       else if (e.type === 'daq.controller') Object.assign(controller, e.payload as AepDaqControllerState)
       else if (e.type === 'daq.template.changed') applyTemplateChange(e.payload as AepDaqTemplateChange)
@@ -310,6 +351,18 @@ const createStore = () => {
     return data.points ?? []
   }
 
+  /** 帧历史(REST 分页;WS daq.frame 只补增量,刷新后由此重建基线) */
+  async function fetchFrames(id: string, opts: { fromMs?: number, toMs?: number, kind?: 'vector' | 'image', limit?: number } = {}): Promise<DaqFrameLive[]> {
+    const qs = new URLSearchParams()
+    if (opts.fromMs != null) qs.set('from', String(opts.fromMs))
+    if (opts.toMs != null) qs.set('to', String(opts.toMs))
+    if (opts.kind) qs.set('kind', opts.kind)
+    if (opts.limit != null) qs.set('limit', String(opts.limit))
+    const data = await api<{ frames: DaqFrameLive[] }>(`/${id}/frames?${qs.toString()}`)
+    frames[id] = data.frames ?? []
+    return frames[id]!
+  }
+
   // ---------- 自定义模板 CRUD(server 权威;WS daq.template.changed 收敛其余客户端) ----------
 
   async function createTemplate(input: DaqTemplateInput): Promise<DaqTemplateDef> {
@@ -361,6 +414,11 @@ const createStore = () => {
     ackAlarm,
     nodeById: (id: string): DaqNodeLive | undefined => nodes.find(n => n.id === id),
     samplesOf,
+    fetchFrames,
+    frames,
+    framesOf: (id: string): DaqFrameLive[] => frames[id] ?? [],
+    templateOf: (templateRef: string): DaqTemplateDef | undefined =>
+      templates.find(t => t.key === templateRef || `daq-${t.key}` === templateRef),
     ofDevice: (deviceId: string | null): DaqNodeLive[] =>
       deviceId ? nodes.filter(n => n.deviceBindingId === deviceId) : [],
   })

@@ -153,6 +153,16 @@ export class DaqNode {
     this.lastAt = at
   }
 
+  /**
+   * 帧触活(v2 多形态信号):只更新展示值(avg 派生指标)与活跃时点,
+   * 不做标量量程状态派生(向量/图像无单点越限语义;帧告警由模板
+   * metrics 规则在网关侧边沿判定)。告警态由网关显式置位/恢复。
+   */
+  touchReading(displayValue: number, at: string): void {
+    this.value = Number.isFinite(displayValue) ? displayValue : null
+    this.lastAt = at
+  }
+
   /** 对象快照(磁盘形态:配置 + 最近读数;无运行时缓冲) */
   toRow(): Record<string, unknown> {
     return {

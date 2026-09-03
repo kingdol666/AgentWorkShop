@@ -379,6 +379,7 @@ function bindStreamSubscriptions(manager: AgentChannelManager, stream: ChannelSt
     currentTaskProgress: e.currentTaskProgress ?? null,
     queued: e.queuedCount ?? 0,
     completed: e.completedCount ?? 0,
+    context: e.context ?? null,
   }, { agentId: e.agentId })))
   // harness 事件流(message/artifact/status.message/error)
   stream.unsubs.push(manager.subscribeChannelEvents(channelId, (event, source) => mapAgentEvent(manager, stream, event, source)))

@@ -8,6 +8,7 @@
 import { useRuntimeConfig } from '#imports'
 import { daqUrls, ensureDaqInfrastructure, scheduleAutoReconnect, type DaqInfraConfig } from '../services/workshop/daq/infra'
 import { rebuildTsdb } from '../services/workshop/daq/storage'
+import { rebuildObjectStore } from '../services/workshop/daq/objectstore'
 import { rebuildDaqQueue } from '../services/workshop/daq/bus'
 import { getDaqController } from '../services/workshop/daq/daq-controller'
 
@@ -16,6 +17,7 @@ async function applyInfra(cfg: DaqInfraConfig): Promise<void> {
   const status = await ensureDaqInfrastructure(cfg, process.cwd())
   const urls = daqUrls(cfg)
   await rebuildTsdb(status.tsdbOnline, urls.tsdbUrl)
+  await rebuildObjectStore(status.objectStoreOnline, urls.objectStoreUrl)
   await rebuildDaqQueue(status.mqttOnline, urls.mqttUrl)
   const ctrl = getDaqController()
   await ctrl.reattachQueue()
@@ -49,6 +51,15 @@ export default async function daqPlugin() {
       password: raw?.timescale?.password ?? 'awshop',
       database: raw?.timescale?.database ?? 'awshop',
     },
+    objectstore: raw?.objectstore
+      ? {
+          host: raw.objectstore.host ?? '127.0.0.1',
+          port: Number(raw.objectstore.port ?? 9000),
+          accessKey: raw.objectstore.accessKey ?? 'awshop',
+          secretKey: raw.objectstore.secretKey ?? 'awshop-secret',
+          bucket: raw.objectstore.bucket ?? 'daq',
+        }
+      : undefined,
   }
   try {
     await applyInfra(cfg)

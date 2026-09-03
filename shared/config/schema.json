@@ -25,6 +25,11 @@
     { "key": "daq.mqtt.host", "type": "string", "group": "daq", "label": "MQTT Broker 地址", "labelKey": "settings.runtime.daq.mqttHost", "description": "数采事件总线 MQTT 主机", "applies": "restart", "default": "127.0.0.1" },
     { "key": "daq.mqtt.port", "type": "number", "group": "daq", "label": "MQTT Broker 端口", "labelKey": "settings.runtime.daq.mqttPort", "description": "数采事件总线 MQTT 端口", "applies": "restart", "default": 1883, "min": 1, "max": 65535 },
     { "key": "daq.timescale.host", "type": "string", "group": "daq", "label": "时序库地址", "labelKey": "settings.runtime.daq.tsHost", "description": "TimescaleDB/PostgreSQL 主机", "applies": "restart", "default": "127.0.0.1" },
-    { "key": "daq.timescale.port", "type": "number", "group": "daq", "label": "时序库端口", "labelKey": "settings.runtime.daq.tsPort", "description": "TimescaleDB/PostgreSQL 端口", "applies": "restart", "default": 5432, "min": 1, "max": 65535 }
+    { "key": "daq.timescale.port", "type": "number", "group": "daq", "label": "时序库端口", "labelKey": "settings.runtime.daq.tsPort", "description": "TimescaleDB/PostgreSQL 端口", "applies": "restart", "default": 5432, "min": 1, "max": 65535 },
+    { "key": "daq.objectstore.host", "type": "string", "group": "daq", "label": "对象存储地址", "labelKey": "settings.runtime.daq.osHost", "description": "S3 兼容对象存储(MinIO)主机;图像帧像素落这里,不可达自动降级本地磁盘", "applies": "restart", "default": "127.0.0.1" },
+    { "key": "daq.objectstore.port", "type": "number", "group": "daq", "label": "对象存储端口", "labelKey": "settings.runtime.daq.osPort", "description": "MinIO S3 API 端口", "applies": "restart", "default": 9000, "min": 1, "max": 65535 },
+    { "key": "daq.objectstore.accessKey", "type": "string", "group": "daq", "label": "对象存储 AccessKey", "labelKey": "settings.runtime.daq.osAccess", "description": "MinIO 访问账号", "applies": "restart", "default": "awshop" },
+    { "key": "daq.objectstore.secretKey", "type": "string", "group": "daq", "label": "对象存储 SecretKey", "labelKey": "settings.runtime.daq.osSecret", "description": "MinIO 访问密钥", "applies": "restart", "default": "awshop-secret" },
+    { "key": "daq.objectstore.bucket", "type": "string", "group": "daq", "label": "对象存储桶", "labelKey": "settings.runtime.daq.osBucket", "description": "图像帧存储桶(不存在时自动创建)", "applies": "restart", "default": "daq" }
   ]
 }

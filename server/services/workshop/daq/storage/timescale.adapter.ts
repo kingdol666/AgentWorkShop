@@ -19,6 +19,8 @@ export class TimescaleAdapter implements TsdbPort {
   private retentionTimer: NodeJS.Timeout | null = null
   /** 保留期(默认 7 天,DAQ_TS_RETENTION_H 可调) */
   private readonly retentionH = Number(process.env.DAQ_TS_RETENTION_H ?? 168)
+  /** 帧保留期(默认 30 天,DAQ_FRAME_RETENTION_H 可调;图像元数据体量远小于标量) */
+  private readonly frameRetentionH = Number(process.env.DAQ_FRAME_RETENTION_H ?? 720)
 
   constructor(private readonly url: string) {}
 
@@ -49,6 +51,11 @@ export class TimescaleAdapter implements TsdbPort {
       await this.pool.query(ddl).catch(() => {})
     }
     await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_tag ON daq_samples (product_id, recipe_id, ts DESC)`).catch(() => {})
+    // 帧表(v2:向量/图像元数据;像素 blob 在对象存储,JSONB 承载点列与派生指标;
+    // DDL 为静态字面量,零外部输入)
+    await this.pool.query('CREATE TABLE IF NOT EXISTS daq_frames (node_id text NOT NULL, ts timestamptz NOT NULL, kind text NOT NULL, template_key text, device_binding_id text, line_id text, product_id text, recipe_id text, run_id text, points integer NOT NULL DEFAULT 0, meta jsonb NOT NULL DEFAULT \'{}\'::jsonb, metrics jsonb NOT NULL DEFAULT \'{}\'::jsonb, PRIMARY KEY (node_id, ts))').catch(() => {})
+    await this.pool.query(`SELECT create_hypertable('daq_frames', 'ts', if_not_exists => TRUE, migrate_data => TRUE)`).catch(() => {})
+    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_frames_node_ts ON daq_frames (node_id, ts DESC)`).catch(() => {})
     // 保留期:drop_chunks 周期执行(30min;未装扩展时静默跳过)
     void this.sweepRetention()
     if (!this.retentionTimer) {
@@ -63,6 +70,10 @@ export class TimescaleAdapter implements TsdbPort {
       await this.pool.query(
         `SELECT drop_chunks('daq_samples', older_than => now() - ($1 || ' hours')::interval)`,
         [this.retentionH],
+      )
+      await this.pool.query(
+        `SELECT drop_chunks('daq_frames', older_than => now() - ($1 || ' hours')::interval)`,
+        [this.frameRetentionH],
       )
     }
     catch { /* 非 hypertable(扩展缺失)→ 静默 */ }
@@ -110,7 +121,7 @@ export class TimescaleAdapter implements TsdbPort {
        ORDER BY ts DESC LIMIT $4`,
       [nodeId, new Date(opts.fromMs ?? 0).toISOString(), new Date(opts.toMs ?? Date.now()).toISOString(), limit],
     )
-    return rows.map(r => ({ at: Date.parse(r.ts), value: Number(r.value), state: String(r.state) }))
+    return rows.map(r => ({ at: tsToMs(r.ts), value: Number(r.value), state: String(r.state) }))
   }
 
   async queryTagged(q: import('./tsdb-port').TsdbTagQuery): Promise<Map<string, import('./tsdb-port').TsdbPoint[]>> {
@@ -154,7 +165,7 @@ export class TimescaleAdapter implements TsdbPort {
       )
       for (const r of rows as Array<{ node_id: string, b_at: string, avg: string, min: string, max: string, cnt: string }>) {
         const list = out.get(String(r.node_id)) ?? []
-        list.push({ at: Date.parse(r.b_at), avg: Number(r.avg), min: Number(r.min), max: Number(r.max), cnt: Number(r.cnt) })
+        list.push({ at: tsToMs(r.b_at), avg: Number(r.avg), min: Number(r.min), max: Number(r.max), cnt: Number(r.cnt) })
         out.set(String(r.node_id), list)
       }
       return out
@@ -165,7 +176,7 @@ export class TimescaleAdapter implements TsdbPort {
     )
     for (const r of rows as Array<{ node_id: string, ts: string, value: number }>) {
       const list = out.get(String(r.node_id)) ?? []
-      list.push({ at: Date.parse(r.ts), value: Number(r.value) })
+      list.push({ at: tsToMs(r.ts), value: Number(r.value) })
       out.set(String(r.node_id), list)
     }
     return out
@@ -178,8 +189,88 @@ export class TimescaleAdapter implements TsdbPort {
       `SELECT DISTINCT ON (node_id) node_id, ts, value, state FROM daq_samples ORDER BY node_id, ts DESC`,
     )
     for (const r of rows) {
-      out.set(String(r.node_id), { nodeId: String(r.node_id), tsMs: Date.parse(r.ts), value: Number(r.value), state: String(r.state) })
+      out.set(String(r.node_id), { nodeId: String(r.node_id), tsMs: tsToMs(r.ts), value: Number(r.value), state: String(r.state) })
     }
     return out
   }
+
+  // ===== 帧(daq_frames;元数据+JSONB,像素在对象存储)=====
+
+  async writeFrames(rows: import('./tsdb-port').DaqFrameRow[]): Promise<void> {
+    if (!this.pool || rows.length === 0) return
+    // 固定占位符逐行插入 + 客户端事务(帧量级 ≤ 每节点每周期 1 条,无需动态 VALUES)
+    const client = await this.pool.connect()
+    try {
+      await client.query('BEGIN')
+      for (const r of rows) {
+        await client.query(
+          `INSERT INTO daq_frames (node_id, ts, kind, template_key, device_binding_id, line_id, product_id, recipe_id, run_id, points, meta, metrics)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb)
+           ON CONFLICT (node_id, ts) DO NOTHING`,
+          [
+            r.nodeId, new Date(r.tsMs).toISOString(), r.kind, r.templateKey ?? null, r.deviceBindingId ?? null,
+            r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null,
+            r.points, JSON.stringify(r.meta ?? {}), JSON.stringify(r.metrics ?? {}),
+          ],
+        )
+      }
+      await client.query('COMMIT')
+    }
+    catch (err) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw err
+    }
+    finally {
+      client.release()
+    }
+  }
+
+  async queryFrames(nodeId: string, opts: import('./tsdb-port').DaqFrameQueryOpts): Promise<import('./tsdb-port').DaqFrameRecord[]> {
+    if (!this.pool) return []
+    const limit = Math.min(opts.limit ?? 100, 1000)
+    const { rows } = await this.pool.query(
+      `SELECT ts, kind, points, meta, metrics, device_binding_id, line_id, product_id, recipe_id, run_id
+       FROM daq_frames WHERE node_id = $1 AND ($2::text IS NULL OR kind = $2) AND ts >= $3 AND ts <= $4
+       ORDER BY ts DESC LIMIT $5`,
+      [nodeId, opts.kind ?? null, new Date(opts.fromMs ?? 0).toISOString(), new Date(opts.toMs ?? Date.now()).toISOString(), limit],
+    )
+    return rows.map(r => ({
+      at: tsToMs(r.ts),
+      kind: String(r.kind) as 'vector' | 'image',
+      points: String(r.kind) === 'vector' ? pointsFromMeta(r.meta) : undefined,
+      metrics: asObject(r.metrics),
+      meta: asObject(r.meta),
+      deviceBindingId: r.device_binding_id ?? null,
+      lineId: r.line_id ?? null,
+      productId: r.product_id ?? null,
+      recipeId: r.recipe_id ?? null,
+      runId: r.run_id ?? null,
+    }))
+  }
+}
+
+/** 向量点列从 meta.points 还原(非数组/越界防御) */
+function pointsFromMeta(meta: unknown): number[] | undefined {
+  const p = asObject(meta).points
+  if (!Array.isArray(p) || p.length === 0 || p.length > 4096) return undefined
+  return p.every(x => Number.isFinite(Number(x))) ? p.map(Number) : undefined
+}
+
+function asObject(v: unknown): Record<string, unknown> {
+  if (typeof v === 'string') {
+    try {
+      return JSON.parse(v) as Record<string, unknown>
+    }
+    catch {
+      return {}
+    }
+  }
+  return (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+}
+
+/** timestamptz → epoch ms(pg 返回 Date 对象;Date.parse(Date) 会经本地时区字符串丢毫秒) */
+function tsToMs(v: unknown): number {
+  if (v instanceof Date) return v.getTime()
+  if (typeof v === 'number') return v
+  return Date.parse(String(v))
 }

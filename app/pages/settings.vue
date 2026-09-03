@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/app/stores/workshop/user'
+import { useRuntimeConfigStore } from '@/app/stores/runtime-config'
 
 const { t, locale, locales, setLocale } = useI18n()
 const store = useAppStore()
@@ -9,6 +10,86 @@ const config = useRuntimeConfig().public
 const userStore = useUserStore()
 
 const activeTab = ref('appearance')
+
+/* ================= 运行配置（服务端持久化 + 热重载） ================= */
+const rcStore = useRuntimeConfigStore()
+const draft = ref<Record<string, unknown>>({})
+const dirtyKeys = ref<Set<string>>(new Set())
+const savingRuntime = ref(false)
+const runtimeNotice = ref<{ type: 'success' | 'warning' | 'error', text: string } | null>(null)
+
+function syncRuntimeDraft() {
+  draft.value = { ...rcStore.effective }
+  dirtyKeys.value = new Set()
+}
+watch(() => rcStore.loaded, (v) => {
+  if (v) syncRuntimeDraft()
+})
+watch(() => rcStore.effective, () => {
+  // 外部写入(CLI/其他窗口/文件监听)推来的变化,未编辑时才回填草稿
+  if (dirtyKeys.value.size === 0) syncRuntimeDraft()
+}, { deep: true })
+
+function markDirty(key: string) {
+  dirtyKeys.value.add(key)
+  runtimeNotice.value = null
+}
+
+async function saveRuntime() {
+  if (!dirtyKeys.value.size) return
+  savingRuntime.value = true
+  runtimeNotice.value = null
+  try {
+    const patchMap: Record<string, unknown> = {}
+    for (const k of dirtyKeys.value) patchMap[k] = draft.value[k]
+    const res = await rcStore.patch(patchMap)
+    syncRuntimeDraft()
+    const restart = res.restartRequired ?? []
+    runtimeNotice.value = restart.length
+      ? { type: 'warning', text: t('settings.runtime.restartNotice', { keys: restart.join(', ') }) }
+      : { type: 'success', text: t('settings.runtime.savedLive') }
+  }
+  catch (e) {
+    runtimeNotice.value = { type: 'error', text: e?.response?.data?.message || e?.message || String(e) }
+  }
+  finally {
+    savingRuntime.value = false
+  }
+}
+
+async function resetRuntimeKey(key: string) {
+  try {
+    await rcStore.patch({ [key]: null })
+    syncRuntimeDraft()
+    runtimeNotice.value = { type: 'success', text: t('settings.runtime.keyReset', { key }) }
+  }
+  catch (e) {
+    runtimeNotice.value = { type: 'error', text: e?.response?.data?.message || e?.message || String(e) }
+  }
+}
+
+async function resetAllRuntime() {
+  try {
+    await rcStore.resetAll()
+    syncRuntimeDraft()
+    runtimeNotice.value = { type: 'success', text: t('settings.runtime.resetAllDone') }
+  }
+  catch (e) {
+    runtimeNotice.value = { type: 'error', text: e?.response?.data?.message || e?.message || String(e) }
+  }
+}
+
+function groupLabel(group: string): string {
+  return ({ server: t('settings.runtime.groupServer'), app: t('settings.runtime.groupApp'), api: 'API', theme: t('settings.runtime.groupTheme'), i18n: t('settings.runtime.groupI18n'), security: t('settings.runtime.groupSecurity'), daq: t('settings.runtime.groupDaq') })[group] ?? group
+}
+function sourceClass(s: string): string {
+  return s === 'runtime' ? 'src-runtime' : s === 'env' ? 'src-env' : 'src-yaml'
+}
+function itemLabel(item: { label: string, labelKey?: string }): string {
+  const k = item.labelKey
+  return (k && t(k) !== k) ? t(k) : item.label
+}
+/* ============================================================= */
 
 /** 强调色预设(控制室低饱和族;默认 = 品牌绿,跟随 config.yml) */
 const defaultAccent = String(config.primaryColor)
@@ -62,6 +143,7 @@ const systemRows = computed(() => [
 
 const tabs = computed(() => [
   { key: 'appearance', icon: 'i-tabler-palette', label: t('settings.theme') },
+  { key: 'runtime', icon: 'i-tabler-settings', label: t('settings.runtimeTab') },
   { key: 'system', icon: 'i-tabler-server-2', label: t('settings.systemTab') },
 ])
 </script>
@@ -179,6 +261,123 @@ const tabs = computed(() => [
                 style="width: 140px"
                 @change="switchLocale"
               />
+            </div>
+          </div>
+
+          <!-- 运行配置:服务端持久化 + live 热重载/restart 重启生效 -->
+          <div v-show="activeTab === 'runtime'">
+            <h3 class="section-title">
+              {{ t('settings.runtimeTab') }}
+            </h3>
+            <p class="section-desc">
+              {{ t('settings.runtime.desc') }}
+            </p>
+
+            <a-alert
+              v-if="runtimeNotice"
+              :type="runtimeNotice.type"
+              show-icon
+              class="rt-notice"
+              :message="runtimeNotice.text"
+            />
+
+            <template
+              v-for="g in rcStore.groups"
+              :key="g.group"
+            >
+              <h4 class="rt-group-title">
+                {{ groupLabel(g.group) }}
+              </h4>
+              <div
+                v-for="item in g.items"
+                :key="item.key"
+                class="rt-row"
+              >
+                <div class="rt-main">
+                  <div class="rt-title">
+                    {{ itemLabel(item) }}
+                    <span
+                      class="rt-tag"
+                      :class="sourceClass(rcStore.sourceOf(item.key))"
+                    >{{ rcStore.sourceOf(item.key) }}</span>
+                    <span
+                      class="rt-tag"
+                      :class="item.applies"
+                    >{{ item.applies === 'live' ? t('settings.runtime.live') : t('settings.runtime.restart') }}</span>
+                  </div>
+                  <div class="rt-sub">
+                    {{ item.description }}
+                  </div>
+                </div>
+                <div class="rt-ctrl">
+                  <a-input-number
+                    v-if="item.type === 'number'"
+                    v-model:value="draft[item.key]"
+                    :min="item.min"
+                    :max="item.max"
+                    @change="markDirty(item.key)"
+                  />
+                  <a-switch
+                    v-else-if="item.type === 'boolean'"
+                    v-model:checked="draft[item.key]"
+                    @change="markDirty(item.key)"
+                  />
+                  <a-select
+                    v-else-if="item.type === 'select'"
+                    v-model:value="draft[item.key]"
+                    style="width: 160px"
+                    :options="(item.options ?? []).map(o => ({ label: o, value: o }))"
+                    @change="markDirty(item.key)"
+                  />
+                  <span
+                    v-else-if="item.type === 'color'"
+                    class="rt-color"
+                  >
+                    <input
+                      type="color"
+                      :value="String(draft[item.key] ?? '#35e0a0')"
+                      @input="draft[item.key] = ($event.target as HTMLInputElement).value; markDirty(item.key)"
+                    >
+                    <a-input
+                      :value="String(draft[item.key] ?? '')"
+                      style="width: 110px"
+                      class="aw-mono"
+                      @change="draft[item.key] = ($event.target as HTMLInputElement).value; markDirty(item.key)"
+                    />
+                  </span>
+                  <a-input
+                    v-else
+                    v-model:value="draft[item.key]"
+                    style="width: 220px"
+                    @change="markDirty(item.key)"
+                  />
+                  <button
+                    class="aw-pill outline rt-reset"
+                    :title="t('settings.runtime.resetKey')"
+                    @click="resetRuntimeKey(item.key)"
+                  >
+                    <span class="i-tabler-rotate" />
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <div class="rt-actions">
+              <button
+                class="aw-pill primary"
+                :disabled="!dirtyKeys.size || savingRuntime"
+                @click="saveRuntime"
+              >
+                <span class="i-tabler-device-floppy" />
+                {{ savingRuntime ? '…' : t('settings.runtime.save') }}
+              </button>
+              <button
+                class="aw-pill outline"
+                @click="resetAllRuntime"
+              >
+                {{ t('settings.runtime.resetAll') }}
+              </button>
+              <span class="rt-path aw-mono">{{ rcStore.settingsPath }}</span>
             </div>
           </div>
 
@@ -417,7 +616,141 @@ const tabs = computed(() => [
   color: var(--ink-faint);
 }
 
+/* ============ 运行配置标签 ============ */
+.rt-notice {
+  margin: 0 0 14px;
+}
+
+.rt-group-title {
+  margin: 20px 0 2px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink-soft);
+}
+
+.rt-group-title:first-of-type {
+  margin-top: 4px;
+}
+
+.rt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rt-main {
+  min-width: 0;
+}
+
+.rt-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.rt-sub {
+  max-width: 46ch;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.rt-tag {
+  padding: 1px 7px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+}
+
+.rt-tag.src-runtime {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.rt-tag.src-env {
+  color: #c9963f;
+  border-color: rgb(201 150 63 / 45%);
+}
+
+.rt-tag.live {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.rt-tag.restart {
+  color: #c9963f;
+  border-color: rgb(201 150 63 / 45%);
+}
+
+.rt-ctrl {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+}
+
+.rt-color {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rt-color input[type='color'] {
+  width: 36px;
+  height: 32px;
+  padding: 2px;
+  cursor: pointer;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+
+.rt-reset {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.rt-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.rt-path {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
 @media (max-width: 768px) {
+  .rt-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .rt-actions {
+    flex-wrap: wrap;
+  }
+  .rt-path {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
   .settings-layout { flex-direction: column; }
   .settings-nav {
     flex-direction: row;

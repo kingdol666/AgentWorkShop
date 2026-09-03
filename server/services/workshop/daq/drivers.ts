@@ -16,6 +16,7 @@
  */
 import { createLogger } from '../logger'
 import { createRequire } from 'node:module'
+import { encodePng } from './png-enc'
 import type { DaqDriverKind, DriverTestResult } from '../../../../shared/daq-protocol'
 
 const log = createLogger('daq.drivers')
@@ -36,13 +37,38 @@ export interface DaqDriverInput {
   config: { base: number, amp: number, min: number, max: number }
   /** 节点保存的协议连接参数(host/register/endpoint/nodeId...) */
   driverConfig: Record<string, unknown>
+  /** 模板信号形态(v2 帧管线;缺省 scalar —— 既有驱动零感知) */
+  signalKind?: 'scalar' | 'vector' | 'image'
+  /** vector 声明(模板;mock 生成点列/校验依据) */
+  vector?: { points: number, min: number, max: number }
+}
+
+/**
+ * 帧采样值(v2 多形态信号):驱动 sample() 可返回标量(既有契约)或帧信封。
+ *  - vector:多点工程量轮廓(≤4096 点,经队列 JSON 传输)
+ *  - image :像素 blob(仅生产侧管线内存续;controller 落对象存储后剥离为 objectKey)
+ */
+export type DaqFrameSample = {
+  frame:
+    | { kind: 'vector', points: number[], metrics?: Record<string, number> }
+    | {
+      kind: 'image'
+      blob: Buffer
+      mime: string
+      width: number
+      height: number
+      metrics?: Record<string, number>
+      /** 驱动侧通常未设;controller 落对象存储后回填引用(队列信封只传引用) */
+      objectKey?: string
+      thumbKey?: string
+    }
 }
 
 export interface DaqDriver {
   readonly kind: DaqDriverKind
   /** 协议栈是否可用(包缺失时 false,节点测试连接给出可行动提示) */
   available(): Promise<boolean>
-  sample(input: DaqDriverInput): Promise<number | null> | number | null
+  sample(input: DaqDriverInput): Promise<number | DaqFrameSample | null> | number | DaqFrameSample | null
   test(driverConfig: Record<string, unknown>): Promise<DriverTestResult>
 }
 
@@ -75,37 +101,99 @@ export const mockDaqDriver: DaqDriver = {
   async available() {
     return true
   },
-  sample({ ctx, config }) {
-    const states = mockStates()
-    let st = states.get(ctx.nodeId)
-    if (!st) {
-      st = { phase: hashPhase(ctx.nodeId), value: null, excursionLeft: 0, excursionDir: 0, excursionDepth: 0, lastAt: ctx.now }
-      states.set(ctx.nodeId, st)
-    }
-    const dt = Math.max(0, Math.min(ctx.now - st.lastAt, 60_000))
-    st.lastAt = ctx.now
-    if (st.excursionLeft <= 0 && Math.random() < 0.008 * Math.max(1, dt / 1000)) {
-      st.excursionLeft = 6 + Math.floor(Math.random() * 9)
-      st.excursionDir = Math.random() < 0.5 ? -1 : 1
-      st.excursionDepth = (config.max - config.min) * (0.08 + Math.random() * 0.1)
-    }
-    const t = (ctx.ageMs + st.phase * 100) / 1000
-    const sine = Math.sin(t * 0.35) * config.amp * 0.55 + Math.sin(t * 0.11 + 1.3) * config.amp * 0.3
-    let v = config.base + sine
-    if (st.value != null) v += (config.base - st.value) * 0.06 + (Math.random() - 0.5) * config.amp * 0.5
-    if (st.excursionLeft > 0) {
-      st.excursionLeft -= 1
-      const ramp = Math.min(1, (10 - st.excursionLeft) / 4)
-      v += st.excursionDir * st.excursionDepth * (0.4 + 0.6 * ramp)
-      if (st.excursionLeft === 0) st.excursionDir = 0
-    }
-    v = Math.min(config.max + config.amp * 2.2, Math.max(config.min - config.amp * 2.2, v))
-    st.value = v
-    return v
+  sample({ ctx, config, signalKind, vector }) {
+    // 多形态分支(v2 帧管线):vector=多点波形轮廓;image=程序化灰度 PNG;scalar=既有单点波形
+    if (signalKind === 'vector') return mockVectorSample(ctx, config, vector)
+    if (signalKind === 'image') return mockImageSample(ctx, config)
+    return mockScalarSample(ctx, config)
   },
   async test() {
     return { ok: true, message: 'Mock 驱动无需连接,采样即模拟波形' }
   },
+}
+
+/** 既有单点波形(原 sample() 主体,零行为变化) */
+function mockScalarSample(ctx: DaqSampleCtx, config: { base: number, amp: number, min: number, max: number }): number {
+  const states = mockStates()
+  let st = states.get(ctx.nodeId)
+  if (!st) {
+    st = { phase: hashPhase(ctx.nodeId), value: null, excursionLeft: 0, excursionDir: 0, excursionDepth: 0, lastAt: ctx.now }
+    states.set(ctx.nodeId, st)
+  }
+  const dt = Math.max(0, Math.min(ctx.now - st.lastAt, 60_000))
+  st.lastAt = ctx.now
+  if (st.excursionLeft <= 0 && Math.random() < 0.008 * Math.max(1, dt / 1000)) {
+    st.excursionLeft = 6 + Math.floor(Math.random() * 9)
+    st.excursionDir = Math.random() < 0.5 ? -1 : 1
+    st.excursionDepth = (config.max - config.min) * (0.08 + Math.random() * 0.1)
+  }
+  const t = (ctx.ageMs + st.phase * 100) / 1000
+  const sine = Math.sin(t * 0.35) * config.amp * 0.55 + Math.sin(t * 0.11 + 1.3) * config.amp * 0.3
+  let v = config.base + sine
+  if (st.value != null) v += (config.base - st.value) * 0.06 + (Math.random() - 0.5) * config.amp * 0.5
+  if (st.excursionLeft > 0) {
+    st.excursionLeft -= 1
+    const ramp = Math.min(1, (10 - st.excursionLeft) / 4)
+    v += st.excursionDir * st.excursionDepth * (0.4 + 0.6 * ramp)
+    if (st.excursionLeft === 0) st.excursionDir = 0
+  }
+  v = Math.min(config.max + config.amp * 2.2, Math.max(config.min - config.amp * 2.2, v))
+  st.value = v
+  return v
+}
+
+/** 多点波形轮廓(测厚仪/扫描仪语义:横向 n 点,带漂移与偶发局部尖峰) */
+function mockVectorSample(
+  ctx: DaqSampleCtx,
+  config: { base: number, amp: number, min: number, max: number },
+  vector?: { points: number, min: number, max: number },
+): { frame: { kind: 'vector', points: number[], metrics: Record<string, number> } } {
+  const n = Math.max(2, Math.min(4096, vector?.points ?? 64))
+  const vMin = vector?.min ?? config.min
+  const vMax = vector?.max ?? config.max
+  const span = vMax - vMin
+  const t = (ctx.ageMs + hashPhase(ctx.nodeId) * 100) / 1000
+  const points: number[] = []
+  // 横向轮廓:慢波(工艺整体偏移)+ 位置抛物面(边缘偏厚)+ 噪声 + 偶发局部尖峰(缺陷)
+  const drift = Math.sin(t * 0.21) * config.amp
+  const spikePos = Math.floor((Math.sin(t * 0.07) * 0.5 + 0.5) * n)
+  for (let i = 0; i < n; i++) {
+    const rel = i / (n - 1)
+    const crown = -4 * (rel - 0.5) ** 2 * span * 0.03 // 边缘略薄(负抛物面)
+    let v = config.base + drift + crown + (Math.random() - 0.5) * config.amp * 0.4
+    if (Math.abs(i - spikePos) <= 1) v += span * 0.06 // 偶发局部尖峰
+    points.push(Math.round(Math.min(vMax, Math.max(vMin, v)) * 1e6) / 1e6)
+  }
+  return { frame: { kind: 'vector', points, metrics: {} } }
+}
+
+/** 程序化灰度图像(CCD 语义:纹理背景 + 移动暗斑;零外部依赖 zlib PNG) */
+function mockImageSample(
+  ctx: DaqSampleCtx,
+  config: { base: number, amp: number, min: number, max: number },
+): { frame: { kind: 'image', blob: Buffer, mime: string, width: number, height: number, metrics: Record<string, number> } } {
+  // 偶发"曝光异常"帧(低亮度)驱动 quality-gate 告警链路可观测
+  const dark = Math.random() < 0.03
+  const baseGray = dark ? 22 : Math.round(Math.min(230, Math.max(60, config.base)))
+  const w = 320
+  const h = 240
+  const px = new Uint8Array(w * h)
+  const t = (ctx.ageMs + hashPhase(ctx.nodeId) * 100) / 1000
+  const spotX = Math.floor(((Math.sin(t * 0.4) + 1) / 2) * (w - 60)) + 30
+  const spotY = Math.floor(((Math.cos(t * 0.3) + 1) / 2) * (h - 60)) + 30
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      // 编织纹理 + 随机噪声 + 移动暗斑(表面缺陷模拟)
+      let v = baseGray + Math.sin(x * 0.35) * 8 + Math.sin(y * 0.22 + 1.7) * 6 + (Math.random() - 0.5) * 10
+      const dx = x - spotX
+      const dy = y - spotY
+      const d2 = dx * dx + dy * dy
+      if (d2 < 400) v -= (1 - d2 / 400) * 90
+      px[y * w + x] = Math.max(0, Math.min(255, Math.round(v)))
+    }
+  }
+  const blob = encodePng(w, h, px)
+  return { frame: { kind: 'image', blob, mime: 'image/png', width: w, height: h, metrics: {} } }
 }
 
 // ============================================================
@@ -746,14 +834,30 @@ const REGISTRY: Record<DaqDriverKind, DaqDriver> = {
   's7': new PlannedProtocolStub('s7', 'S7comm'),
 }
 
+/** 插件注册的驱动(经 ctx.daq.registerDriver;热重载重复注册幂等覆盖) */
+const g_plugins = globalThis as typeof globalThis & { __daqPluginDrivers?: Map<string, DaqDriver> }
+function pluginRegistry(): Map<string, DaqDriver> {
+  return g_plugins.__daqPluginDrivers ??= new Map()
+}
+
+/** 插件驱动注册(kind 与内置冲突时覆盖并告警;resolveDaqDriver 插件优先) */
+export function registerPluginDriver(driver: DaqDriver): void {
+  if (driver.kind in REGISTRY) log.warn(`[daq-drivers] 插件驱动覆盖内置:「${driver.kind}」`)
+  pluginRegistry().set(driver.kind, driver)
+}
+
+export function listPluginDrivers(): string[] {
+  return [...pluginRegistry().keys()]
+}
+
 export function normalizeDriverKind(kind: string): DaqDriverKind {
   if (kind === 'modbus') return 'modbus-tcp'
   if (kind === 'rtu' || kind === 'modbus-rtu-tcp') return 'modbus-rtu'
-  return (kind in REGISTRY ? kind : 'mock') as DaqDriverKind
+  return (kind in REGISTRY || pluginRegistry().has(kind) ? kind : 'mock') as DaqDriverKind
 }
 
 export function resolveDaqDriver(kind: DaqDriverKind): DaqDriver {
-  return REGISTRY[kind] ?? mockDaqDriver
+  return pluginRegistry().get(kind) ?? REGISTRY[kind] ?? mockDaqDriver
 }
 
 /** 驱动可用性探测(meta 报告:包缺失时 UI 显示"未安装"而非硬失败) */

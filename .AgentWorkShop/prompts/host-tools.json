@@ -692,5 +692,47 @@
         "query"
       ]
     }
+  },
+  {
+    "name": "daq_frames",
+    "label": "DAQ Frames",
+    "description": "Query multi-modal DAQ frames for your BOUND daq nodes: multi-point profiles (thickness scanners, profile scanners — returns point-count summary, a point preview and derived metrics) and camera image frames (CCD — returns resolution, object reference and derived metrics like brightness/contrast; pixels are NOT loaded into context, view them in the frontend gallery). Supports kind=vector|image filter and time windows. Use BEFORE judging surface quality or profile measurements.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "Limit to one bound daq node id (optional; default all your bound daq nodes)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "Filter by line id (can only narrow, never widen your access)"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "vector",
+            "image"
+          ],
+          "description": "Frame kind filter (optional)"
+        },
+        "last_minutes": {
+          "type": "number",
+          "description": "Time window in minutes back from now (default 30)"
+        },
+        "from_ms": {
+          "type": "number",
+          "description": "Window start (epoch ms; overrides last_minutes)"
+        },
+        "to_ms": {
+          "type": "number",
+          "description": "Window end (epoch ms; default now)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max frames per node (default 20, max 100)"
+        }
+      }
+    }
   }
 ]

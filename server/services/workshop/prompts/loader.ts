@@ -18,7 +18,7 @@
 import { copyFileSync, existsSync, readdirSync, readFileSync, statSync, mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { awHome, findLocalConfigRoot } from '../../../../shared/config/home.mjs'
+import { awHome, findLocalConfigRoot } from '@/shared/config/home.mjs'
 import { AppError } from '../../../utils/errors'
 
 /** 模板变量值(字符串化注入) */
@@ -40,7 +40,8 @@ function packagedPromptsDir(): string | null {
   return existsSync(candidate) ? candidate : null
 }
 
-/** 首次解析时把包内初始 prompts 播种到 ~/.AgentWorkShop/prompts(只补缺,不覆盖) */
+/** 首次/每次解析把包内初始 prompts 补种到 ~/.AgentWorkShop/prompts(逐文件只补缺,不覆盖)。
+ *  每次解析都执行:包升级新增的提示词文件能进入已存在的 Home(用户已定制文件不回写)。 */
 function seedHomePrompts(homePrompts: string): void {
   const src = packagedPromptsDir()
   if (!src || resolve(src) === resolve(homePrompts)) return
@@ -55,7 +56,7 @@ function seedHomePrompts(homePrompts: string): void {
     }
     catch { /* 单文件失败不阻断播种 */ }
   }
-  if (seeded > 0) console.log(`[prompts] 已向 ${homePrompts} 播种 ${seeded} 个初始提示词文件`)
+  if (seeded > 0) console.log(`[prompts] 已向 ${homePrompts} 补种 ${seeded} 个提示词文件`)
 }
 
 /**
@@ -72,9 +73,9 @@ export function promptsDir(): string {
     return base
   }
 
-  // ~/.AgentWorkShop/prompts:默认兜底目录,首次解析自动播种初始文件(只补缺,不覆盖用户定制)
+  // ~/.AgentWorkShop/prompts:默认兜底目录,解析时自动补种初始文件(只补缺,不覆盖用户定制)
   const homePrompts = join(awHome(process.env), 'prompts')
-  if (!existsSync(homePrompts)) seedHomePrompts(homePrompts)
+  seedHomePrompts(homePrompts)
 
   // ② 项目内 ./.AgentWorkShop/prompts 真实存在 → 项目内优先
   const localConfigRoot = findLocalConfigRoot(process.cwd())

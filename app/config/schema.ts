@@ -62,6 +62,14 @@ export const appConfigSchema = z.object({
       password: z.string().default('awshop'),
       database: z.string().default('awshop'),
     }),
+    // 对象存储(v2 帧管线:图像帧像素;MinIO S3 兼容。不可达 → 本地磁盘降级,采集不中断)
+    objectstore: z.object({
+      host: z.string().default('127.0.0.1'),
+      port: z.number().int().min(1).max(65535).default(9000),
+      accessKey: z.string().default('awshop'),
+      secretKey: z.string().default('awshop-secret'),
+      bucket: z.string().default('daq'),
+    }).optional(),
   }).default({ startInfrastructure: 'auto', mqtt: { host: '127.0.0.1', port: 1883 }, timescale: { host: '127.0.0.1', port: 5432, user: 'postgres', password: 'awshop', database: 'awshop' } }),
 })
 

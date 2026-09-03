@@ -65,6 +65,18 @@ export interface AgentTaskQueueView {
   completed: WorkspaceTask[]
 }
 
+/** harness 上下文用量快照(omp harness 有;进程内 harness 无 → 字段缺省) */
+export interface AgentContextStats {
+  /** 最近已知上下文 tokens(≈ prompt 规模) */
+  usedTokens: number
+  /** 模型上下文窗口(未知为 null,percent 同为 null) */
+  contextWindow: number | null
+  /** 占窗口比例 0-1(窗口未知为 null) */
+  percent: number | null
+  /** harness 正在压缩会话 */
+  compacting: boolean
+}
+
 /** Agent 实时状态视图(状态管理机制:idle/busy/stopped + 队列上下文) */
 export interface AgentStatusView {
   agentId: string
@@ -82,4 +94,6 @@ export interface AgentStatusView {
   queuedCount: number
   /** 已完成任务数 */
   completedCount: number
+  /** harness 上下文用量(omp 有;进程内 harness/未知时缺省) */
+  context?: AgentContextStats
 }

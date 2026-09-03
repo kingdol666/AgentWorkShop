@@ -6,6 +6,7 @@ import enUS from 'ant-design-vue/es/locale/en_US'
 const { locale } = useI18n()
 const store = useAppStore()
 const config = useRuntimeConfig().public
+const runtimeCfg = useRuntimeConfigStore()
 
 const antdLocale = computed(() => (locale.value.startsWith('en') ? enUS : zhCN))
 
@@ -32,8 +33,8 @@ function mixBlack(hex: string, ratio: number): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
 }
 
-/** 当前强调色:设置页偏好 > config.yml 默认(品牌绿 #35e0a0,与 TownView 控制室同源) */
-const accentBase = computed(() => store.accent ?? String(config.primaryColor))
+/** 当前强调色:设置页本地偏好 > 运行时有效主题色(热重载) > config.yml 构建默认 */
+const accentBase = computed(() => store.accent ?? String(runtimeCfg.effective['theme.primaryColor'] ?? config.primaryColor))
 
 /**
  * Agent Harness · Digital Twin 主题:

@@ -10,7 +10,7 @@ import { createLogger } from '../logger'
 import fs from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { DAQ_TEMPLATES, DAQ_TEMPLATE_ICONS, daqTemplateByKey, type DaqTemplateDef, type DaqTemplateIcon, type DaqTemplateInput } from '../../../../shared/daq-protocol'
+import { DAQ_TEMPLATES, DAQ_TEMPLATE_ICONS, daqTemplateByKey, normalizeSignalKind, type DaqMetricRule, type DaqSinkStep, type DaqTemplateDef, type DaqTemplateIcon, type DaqTemplateInput } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 
@@ -62,6 +62,25 @@ function normalize(input: Partial<DaqTemplateInput>, prev?: DaqTemplateDef): Daq
     ? iconRaw as DaqTemplateIcon
     : 'thermo'
 
+  // 多形态信号(v2 帧管线):signalKind/vector/sink/metrics 归一(缺省 scalar 零行为变化)
+  const signalKind = normalizeSignalKind(input.signalKind ?? prev?.signalKind)
+  let vector: DaqTemplateDef['vector']
+  if (signalKind === 'vector') {
+    const points = Math.round(Number(input.vector?.points ?? prev?.vector?.points ?? 64))
+    if (!Number.isInteger(points) || points < 2 || points > 4096) {
+      throw bad('vector.points 需为 2~4096 的整数')
+    }
+    const vmin = Number(input.vector?.min ?? prev?.vector?.min ?? min)
+    const vmax = Number(input.vector?.max ?? prev?.vector?.max ?? max)
+    if (!Number.isFinite(vmin) || !Number.isFinite(vmax) || vmin >= vmax) throw bad('vector 量程非法')
+    vector = { points, min: vmin, max: vmax }
+  }
+  const sink = input.sink ?? prev?.sink
+  if (sink && (!Array.isArray(sink.processors) || sink.processors.some(p => !p || typeof p.name !== 'string'))) {
+    throw bad('sink.processors 非法:需为 { name, args? } 数组')
+  }
+  const metrics = (input.metrics ?? prev?.metrics)?.filter(r => r && typeof r.key === 'string' && r.key.trim()) as DaqMetricRule[] | undefined
+
   return {
     key: prev?.key ?? `ct-${randomUUID().slice(0, 8)}`,
     name,
@@ -77,23 +96,54 @@ function normalize(input: Partial<DaqTemplateInput>, prev?: DaqTemplateDef): Daq
     semantics: String(input.semantics ?? prev?.semantics ?? '').trim() || undefined,
     telemetryKey: String(input.telemetryKey ?? prev?.telemetryKey ?? '').trim() || undefined,
     builtin: false,
+    signalKind,
+    vector,
+    sink: sink && sink.processors.length > 0 ? { processors: sink.processors as DaqSinkStep[] } : undefined,
+    metrics: metrics && metrics.length > 0 ? metrics : undefined,
   }
 }
 
 class DaqTemplateRegistry {
   private customs: DaqTemplateDef[]
+  /** 插件注册模板(内存态,键 = 模板 key;插件热重载同名覆盖;不经 REST 增删) */
+  private pluginTpls = new Map<string, DaqTemplateDef>()
 
   constructor() {
     this.customs = load()
   }
 
-  /** 全目录:内置在前(统一打 builtin 标记,前端据此分区),自定义在后 */
+  /** 全目录:内置在前(统一打 builtin 标记),插件模板居中(打 plugin 标记),自定义在后 */
   all(): DaqTemplateDef[] {
-    return [...DAQ_TEMPLATES.map(t => ({ ...t, builtin: true })), ...this.customs]
+    return [
+      ...DAQ_TEMPLATES.map(t => ({ ...t, builtin: true })),
+      ...[...this.pluginTpls.values()].map(t => ({ ...t, plugin: t.plugin ?? 'plugin' })),
+      ...this.customs,
+    ]
   }
 
   byKey(key: string): DaqTemplateDef | undefined {
-    return daqTemplateByKey(key) ?? this.customs.find(t => t.key === key)
+    return daqTemplateByKey(key) ?? this.pluginTpls.get(key) ?? this.customs.find(t => t.key === key)
+  }
+
+  /**
+   * 插件模板注册(同名 key 覆盖 → 插件热重载幂等;REST 不可增删改)。
+   * def.key 必填(建议 `plug-<plugin>-<sig>` 命名);signalKind/sink/metrics 全量可用。
+   */
+  registerPlugin(def: DaqTemplateDef): DaqTemplateDef {
+    if (!def?.key || !/^[\w-]+$/.test(def.key)) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `插件模板 key 非法: ${def?.key}(需 [\\w-]+)`)
+    }
+    if (daqTemplateByKey(def.key)) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `插件模板 key 与内置模板冲突: ${def.key}`)
+    }
+    const merged: DaqTemplateDef = { ...def, plugin: def.plugin ?? 'plugin' }
+    this.pluginTpls.set(def.key, merged)
+    log.info(`[daq] 插件模板注册:「${merged.name}」(${def.key},插件=${merged.plugin})`)
+    return merged
+  }
+
+  isPlugin(key: string): boolean {
+    return this.pluginTpls.has(key)
   }
 
   create(input: DaqTemplateInput): DaqTemplateDef {
@@ -107,6 +157,9 @@ class DaqTemplateRegistry {
   }
 
   update(key: string, patch: Partial<DaqTemplateInput>): DaqTemplateDef {
+    if (this.pluginTpls.has(key)) {
+      throw new AppError(400, ErrorCodes.BAD_REQUEST, '插件模板不可经 REST 修改(由插件自身管理)')
+    }
     const prev = this.customs.find(t => t.key === key)
     if (!prev) {
       throw new AppError(400, ErrorCodes.BAD_REQUEST, daqTemplateByKey(key) ? '内置模板不可修改(可复制为自定义)' : `自定义模板不存在: ${key}`)
@@ -118,6 +171,9 @@ class DaqTemplateRegistry {
   }
 
   remove(key: string): DaqTemplateDef {
+    if (this.pluginTpls.has(key)) {
+      throw new AppError(400, ErrorCodes.BAD_REQUEST, '插件模板不可经 REST 删除(由插件自身管理)')
+    }
     const prev = this.customs.find(t => t.key === key)
     if (!prev) {
       throw new AppError(400, ErrorCodes.BAD_REQUEST, daqTemplateByKey(key) ? '内置模板不可删除' : `自定义模板不存在: ${key}`)

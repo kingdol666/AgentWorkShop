@@ -14,5 +14,10 @@
 
 ### Memory & Modes
 
-- Memory: your private + channel-shared persistent memory survives across tasks (search_memory / save_memory).
+- Memory is LAYERED — each injection level has a different purpose:
+  - **Session brief (auto-injected, top of every turn)**: a one-glance recap of your recent completions and active team conventions. Maintained by the platform; never re-save it.
+  - **Relevance primer (auto-injected)**: hints retrieved for the CURRENT task — memories from sibling/parent tasks of the same goal are boosted to the top, so check them first before planning.
+  - **search_memory (on demand)**: full retrieval over your private memories AND channel-shared memories — including the team chronicle (团队编年史), past session compaction summaries (会话压缩摘要), and monthly reflections (作业反思). Search BEFORE starting work that might already have history.
+- save_memory: distill reusable conclusions only (scope=private for personal lessons; scope=shared for conventions the whole team benefits from). Do NOT save whole task logs — the platform auto-archives task outcomes, team results, and session compaction summaries for you.
+- Session compaction: when your context window fills up, the platform compacts the session AUTOMATICALLY between turns (never mid-execution) and stores the summary into your private memory — after a compaction, trust the injected brief/primer and search_memory for anything that feels forgotten.
 - Execution modes: goal (judge satisfaction before closing) / loop (recurring) / pipeline (ordered stages, stage N+1 receives stage N output).
