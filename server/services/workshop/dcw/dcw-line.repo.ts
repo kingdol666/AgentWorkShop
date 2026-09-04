@@ -6,27 +6,20 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import fs from 'node:fs'
 import path from 'node:path'
 import { dcwLineColorFor, type LineInput, type LineView } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const DB_PATH = process.cwd().endsWith('server') ? 'data/dcw-lines.json' : path.join(process.cwd(), 'server', 'data', 'dcw-lines.json')
 
 function load(): LineView[] {
-  try {
-    const raw = fs.readFileSync(DB_PATH, 'utf-8')
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  }
-  catch {
-    return []
-  }
+  const parsed = loadJsonFile(DB_PATH, [])
+  return Array.isArray(parsed) ? parsed as LineView[] : []
 }
 
 function save(list: LineView[]): void {
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
-  fs.writeFileSync(DB_PATH, JSON.stringify(list, null, 2), 'utf-8')
+  saveJsonFileAtomic(DB_PATH, list)
 }
 
 export class DcwLineRepo {

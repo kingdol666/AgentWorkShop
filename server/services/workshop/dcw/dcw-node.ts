@@ -194,7 +194,19 @@ export class DcwNode {
     if (row.lastReadError != null) node.lastReadError = String(row.lastReadError)
     if (row.lastAckAt != null) node.lastAckAt = String(row.lastAckAt)
     if (row.lastWriteAt != null) node.lastWriteAt = String(row.lastWriteAt)
-    if (row.state != null) node.state = String(row.state) as DcwNodeState
+    if (row.state != null) {
+      const restored = String(row.state)
+      // 持久化恢复消毒:'writing' 是进程内瞬态(写事务在飞)。若被快照带出后进程
+      // 硬杀重启,原样恢复会让该节点所有写永久 409(startAll 只复位 offline)。
+      // 归一为 error:写路径放行,同时显式提示"上次写入结果未知,需核销"。
+      if (restored === 'writing') {
+        node.state = 'error'
+        node.lastError = node.lastError || '进程中断于写入,状态已复位为 error(上次写入结果未知,请回读核销)'
+      }
+      else {
+        node.state = restored as DcwNodeState
+      }
+    }
     if (row.lastError != null) node.lastError = String(row.lastError)
     return node
   }

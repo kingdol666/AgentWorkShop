@@ -4,11 +4,11 @@
  */
 
 import { createLogger } from '../logger'
-import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { ProductInput, ProductView } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('dcw.product-repo')
 
@@ -18,7 +18,7 @@ const DB_PATH = process.cwd().endsWith('server')
 
 function load(): ProductView[] {
   try {
-    const parsed = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'))
+    const parsed = loadJsonFile(DB_PATH, null)
     return Array.isArray(parsed) ? parsed as ProductView[] : []
   }
   catch {
@@ -78,8 +78,7 @@ class DcwProductRepo {
 
   private flush(): void {
     try {
-      fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
-      fs.writeFileSync(DB_PATH, JSON.stringify(this.list, null, 2), 'utf-8')
+      saveJsonFileAtomic(DB_PATH, this.list)
     }
     catch (err) {
       log.error('[dcw-product] 落盘失败:', err)

@@ -7,12 +7,12 @@
  */
 
 import { createLogger } from '../logger'
-import fs from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { DAQ_TEMPLATES, DAQ_TEMPLATE_ICONS, daqTemplateByKey, normalizeSignalKind, type DaqMetricRule, type DaqSinkStep, type DaqTemplateDef, type DaqTemplateIcon, type DaqTemplateInput } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { ensureDataDir } from '@/shared/config/home.mjs'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('daq.templates')
 
@@ -24,8 +24,7 @@ const DB_PATH = join(ensureDataDir(), 'daq-templates.json')
 
 function load(): DaqTemplateDef[] {
   try {
-    const raw = fs.readFileSync(DB_PATH, 'utf-8')
-    const parsed = JSON.parse(raw)
+    const parsed = loadJsonFile(DB_PATH, null)
     return Array.isArray(parsed) ? parsed as DaqTemplateDef[] : []
   }
   catch {
@@ -185,8 +184,7 @@ class DaqTemplateRegistry {
 
   private flush(): void {
     try {
-      fs.mkdirSync(join(DB_PATH, '..'), { recursive: true })
-      fs.writeFileSync(DB_PATH, JSON.stringify(this.customs, null, 2), 'utf-8')
+      saveJsonFileAtomic(DB_PATH, this.customs)
     }
     catch (err) {
       log.error('[daq] 模板落盘失败:', err)

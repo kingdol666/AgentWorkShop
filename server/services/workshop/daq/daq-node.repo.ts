@@ -5,9 +5,9 @@
  */
 
 import { createLogger } from '../logger'
-import fs from 'node:fs'
 import path from 'node:path'
 import { DaqNode } from './daq-node'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('daq.node-repo')
 
@@ -17,8 +17,7 @@ const DB_PATH = process.cwd().endsWith('server')
 
 function load(): DaqNode[] {
   try {
-    const raw = fs.readFileSync(DB_PATH, 'utf-8')
-    const parsed = JSON.parse(raw)
+    const parsed = loadJsonFile(DB_PATH, null)
     return Array.isArray(parsed) ? parsed.map(r => DaqNode.fromRow(r as Record<string, unknown>)) : []
   }
   catch {
@@ -69,8 +68,7 @@ class DaqNodeRepo {
       this.flushTimer = null
     }
     try {
-      fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
-      fs.writeFileSync(DB_PATH, JSON.stringify(this.list.map(n => n.toRow()), null, 2), 'utf-8')
+      saveJsonFileAtomic(DB_PATH, this.list.map(n => n.toRow()))
     }
     catch (err) {
       log.error('[daq] 快照落盘失败:', err)

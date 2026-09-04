@@ -4,13 +4,13 @@
  */
 
 import { createLogger } from '../logger'
-import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { DCW_TEMPLATES, DCW_TEMPLATE_ICONS, dcwTemplateByKey, type DcwTemplateDef, type DcwTemplateIcon, type DcwTemplateInput } from '../../../../shared/dcw-protocol'
 
 // dcwTemplateByKey 用于内置判别
 import { AppError, ErrorCodes } from '../../../utils/errors'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('dcw.templates')
 
@@ -20,8 +20,7 @@ const DB_PATH = process.cwd().endsWith('server')
 
 function load(): DcwTemplateDef[] {
   try {
-    const raw = fs.readFileSync(DB_PATH, 'utf-8')
-    const parsed = JSON.parse(raw)
+    const parsed = loadJsonFile(DB_PATH, null)
     return Array.isArray(parsed) ? parsed as DcwTemplateDef[] : []
   }
   catch {
@@ -113,8 +112,7 @@ class DcwTemplateRegistry {
 
   private flush(): void {
     try {
-      fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
-      fs.writeFileSync(DB_PATH, JSON.stringify(this.customs, null, 2), 'utf-8')
+      saveJsonFileAtomic(DB_PATH, this.customs)
     }
     catch (err) {
       log.error('[dcw] 模板落盘失败:', err)

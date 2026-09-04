@@ -10,9 +10,9 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import fs from 'node:fs'
 import path from 'node:path'
 import type { DcwJournalAnchor, OptimizationRecord } from '../../../../shared/dcw-protocol'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const DATA_DIR = process.cwd().endsWith('server')
   ? 'data'
@@ -27,13 +27,8 @@ interface RollbackDb {
 }
 
 function loadDb(): RollbackDb {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(ROLLBACK_PATH, 'utf-8')) as Partial<RollbackDb>
-    return { anchors: parsed.anchors ?? [], records: parsed.records ?? [] }
-  }
-  catch {
-    return { anchors: [], records: [] }
-  }
+  const parsed = loadJsonFile(ROLLBACK_PATH, { anchors: [], records: [] }) as Partial<RollbackDb>
+  return { anchors: parsed.anchors ?? [], records: parsed.records ?? [] }
 }
 
 export class RecipeRollBackRepo {
@@ -64,8 +59,7 @@ export class RecipeRollBackRepo {
 
   flushNow(): void {
     try {
-      fs.mkdirSync(path.dirname(ROLLBACK_PATH), { recursive: true })
-      fs.writeFileSync(ROLLBACK_PATH, JSON.stringify(this.db, null, 2), 'utf-8')
+      saveJsonFileAtomic(ROLLBACK_PATH, this.db)
     }
     catch (err) {
       console.error('[recipe-rollback] 落盘失败:', err)

@@ -9,10 +9,10 @@
 
 import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
-import fs from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { AppError, ErrorCodes } from '../../../utils/errors'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('workshop.node-bindings')
 
@@ -34,7 +34,7 @@ const DB_PATH = join(ensureDataDir(), 'agent-node-bindings.json')
 
 function load(): AgentNodeBinding[] {
   try {
-    const parsed = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'))
+    const parsed = loadJsonFile(DB_PATH, null)
     return Array.isArray(parsed) ? parsed as AgentNodeBinding[] : []
   }
   catch {
@@ -148,8 +148,7 @@ export class AgentNodeBindingRepo {
 
   private flush(): void {
     try {
-      fs.mkdirSync(dirname(DB_PATH), { recursive: true })
-      fs.writeFileSync(DB_PATH, JSON.stringify(this.list, null, 2), 'utf-8')
+      saveJsonFileAtomic(DB_PATH, this.list)
     }
     catch (err) {
       log.error('[agent-node-bindings] 落盘失败:', err)

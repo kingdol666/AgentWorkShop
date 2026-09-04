@@ -9,8 +9,8 @@
  * 应用级单例,写入 server/data/scene-layouts.json,进程内缓存,启动读盘。
  */
 
-import fs from 'node:fs'
 import path from 'node:path'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 export interface SceneLayout {
   channelId: string
@@ -44,18 +44,11 @@ const DB_PATH = process.cwd().endsWith('server')
   : path.join(process.cwd(), 'server', 'data', 'scene-layouts.json')
 
 function load(): SceneLayout[] {
-  try {
-    const raw = fs.readFileSync(DB_PATH, 'utf-8')
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  }
-  catch {
-    return []
-  }
+  const parsed = loadJsonFile(DB_PATH, [])
+  return Array.isArray(parsed) ? parsed as SceneLayout[] : []
 }
 function save(list: SceneLayout[]): void {
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
-  fs.writeFileSync(DB_PATH, JSON.stringify(list, null, 2), 'utf-8')
+  saveJsonFileAtomic(DB_PATH, list)
 }
 
 class SceneLayoutRepo {

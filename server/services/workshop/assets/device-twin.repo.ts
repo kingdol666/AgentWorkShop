@@ -8,10 +8,10 @@
  * 应用级单例,写入 server/data/device-twins.json,进程内缓存,启动读盘。
  */
 
-import fs from 'node:fs'
 import { join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { AppError } from '../../../utils/errors'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 export interface DeviceTwin {
   id: string
@@ -49,8 +49,7 @@ const DB_PATH = join(ensureDataDir(), 'device-twins.json')
 
 function load(): DeviceTwin[] {
   try {
-    const raw = fs.readFileSync(DB_PATH, 'utf-8')
-    const parsed = JSON.parse(raw)
+    const parsed = loadJsonFile(DB_PATH, null)
     return Array.isArray(parsed) ? parsed : []
   }
   catch {
@@ -58,8 +57,7 @@ function load(): DeviceTwin[] {
   }
 }
 function save(list: DeviceTwin[]): void {
-  fs.mkdirSync(join(DB_PATH, '..'), { recursive: true })
-  fs.writeFileSync(DB_PATH, JSON.stringify(list, null, 2), 'utf-8')
+  saveJsonFileAtomic(DB_PATH, list)
 }
 
 export class DeviceTwinRepo {

@@ -5,8 +5,6 @@
  * 按批次时间窗归属产品;写历史追加式落盘(上限 3000 条,超出丢最旧)。
  */
 
-import { createLogger } from '../logger'
-import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { RecipeDaqWindow, RecipeInput, RecipeParam, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
@@ -15,8 +13,7 @@ import { AppError, ErrorCodes } from '../../../utils/errors'
 import { getDcwProductRepo } from './dcw-product.repo'
 import { getDcwNodeRepo } from './dcw-node.repo'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
-
-const log = createLogger('dcw.recipe-repo')
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const DATA_DIR = process.cwd().endsWith('server')
   ? 'data'
@@ -29,24 +26,11 @@ const RUNS_CAP = 200
 const WRITES_CAP = 3000
 
 function loadJson<T>(file: string, fallback: T): T {
-  try {
-    const raw = fs.readFileSync(file, 'utf-8')
-    const parsed = JSON.parse(raw)
-    return parsed ?? fallback
-  }
-  catch {
-    return fallback
-  }
+  return loadJsonFile(file, fallback) as T
 }
 
 function saveJson(file: string, data: unknown): void {
-  try {
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8')
-  }
-  catch (err) {
-    log.error('[dcw-recipe] 落盘失败:', file, err)
-  }
+  saveJsonFileAtomic(file, data)
 }
 
 export interface DcwWriteHistoryEntry {

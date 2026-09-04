@@ -6,9 +6,9 @@
  * 引删保护:appliedTo 里仍有 agent 绑定时,删除改为"停用"而非硬删。
  */
 
-import fs from 'node:fs'
 import { join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 export interface CharacterAsset {
   id: string
@@ -34,8 +34,7 @@ const DB_PATH = join(ensureDataDir(), 'character-assets.json')
 
 function load(): CharacterAsset[] {
   try {
-    const raw = fs.readFileSync(DB_PATH, 'utf-8')
-    const parsed = JSON.parse(raw)
+    const parsed = loadJsonFile(DB_PATH, null)
     return Array.isArray(parsed) ? parsed : []
   }
   catch {
@@ -44,8 +43,7 @@ function load(): CharacterAsset[] {
 }
 
 function save(list: CharacterAsset[]): void {
-  fs.mkdirSync(join(DB_PATH, '..'), { recursive: true })
-  fs.writeFileSync(DB_PATH, JSON.stringify(list, null, 2), 'utf-8')
+  saveJsonFileAtomic(DB_PATH, list)
 }
 
 class CharacterAssetRepo {

@@ -11,8 +11,8 @@
  * 落盘(写放大),恢复时从最近一次结构变更的值继续。
  */
 
-import fs from 'node:fs'
 import path from 'node:path'
+import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 export interface ActiveLineRun {
   lineId: string
@@ -40,8 +40,7 @@ function restore(): void {
   if (g.__lineRunsLoaded) return
   g.__lineRunsLoaded = true
   try {
-    const raw = fs.readFileSync(PERSIST_PATH, 'utf-8')
-    const arr: unknown = JSON.parse(raw)
+    const arr: unknown = loadJsonFile(PERSIST_PATH, null)
     if (!Array.isArray(arr)) return
     for (const run of arr as ActiveLineRun[]) {
       if (run?.lineId && run.runId && run.recipeId) registry().set(run.lineId, run)
@@ -55,8 +54,7 @@ function restore(): void {
 /** 结构性变更落盘(开跑/停线;非热路径) */
 function persist(): void {
   try {
-    fs.mkdirSync(path.dirname(PERSIST_PATH), { recursive: true })
-    fs.writeFileSync(PERSIST_PATH, JSON.stringify(getAllActiveLineRuns(), null, 2), 'utf-8')
+    saveJsonFileAtomic(PERSIST_PATH, getAllActiveLineRuns())
   }
   catch {
     // 落盘失败不阻断主流程:内存窗口仍是权威;下次结构性变更再试
