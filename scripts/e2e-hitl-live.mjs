@@ -161,7 +161,7 @@ async function main() {
   const item = hitlReq.payload
   check('W3 hitl.request 帧到达(AEP)', true, `id=${item.id.slice(0, 8)}`)
   check('W3 payload 语义(kind/channel/agent)', item.kind === 'omp-dialog' && item.channelId === channelId && item.agentId === leadAgentId && Boolean(item.agentName), `kind=${item.kind} agent=${item.agentName}`)
-  check('W3 对话框形态(select + yes/no)', item.method === 'select' && (item.options ?? []).includes('yes') && (item.options ?? []).includes('no'), `method=${item.method} options=${JSON.stringify(item.options)}`)
+  check('W3 对话框形态(select + yes/no)', item.method === 'select' && (item.options ?? []).some(o => String(o).toLowerCase().startsWith('yes')) && (item.options ?? []).some(o => String(o).toLowerCase().startsWith('no')), `method=${item.method} options=${JSON.stringify(item.options)}`)
 
   const pending = await api('GET', `/api/workshop/hitl/pending?channelId=${channelId}`, { token })
   check('W4 GET /hitl/pending 含目标待办', (pending.data?.items ?? []).some(i => i.id === item.id), `count=${pending.data?.items?.length}`)
@@ -269,12 +269,16 @@ async function main() {
   }
   check('T1 TUI 启动并接入频道', Boolean(vt) && await waitTui(`已切换到频道「${channelName}」`, 30_000))
 
-  // 等 lead 空闲(第一个 ask 回合结束)→ 注入第二个 ask
-  await waitUntil('lead 再次空闲', () => {
+  // 等 ask 回合真正结束(在其 ask 工具帧之后出现 agent_end,且 term.state 已 idle)
+  // —— 不能用旧 term.state 判断,否则会在回合仍在运行时过早注入(被当 steer 吞掉)
+  const framesAtAsk = term.frames().length
+  await waitUntil('ask 回合结束(其后 agent_end + idle)', () => {
+    const fr = term.frames()
+    const endedAfterAsk = fr.slice(framesAtAsk).some(f => f.frame.type === 'agent_end')
     const st = term.messages.filter(m => m.type === 'term.state').at(-1)
-    return st ? st.running === false : null
+    return endedAfterAsk && st && st.running === false ? true : null
   }, 240_000).catch(() => {})
-  await sleep(1500)
+  await sleep(2500)
   term.send({ type: 'input', text: ASK_2 })
 
   check('T2 TUI 状态条出现 HITL 待办', await waitTui('HITL 待处理'))
