@@ -13,12 +13,18 @@ const trail = useRouteTrailStore()
 const userStore = useUserStore()
 const { metaFor } = useRouteMeta()
 
-// ── HITL 全局待办(omp ask 对话框 + dcw 审批统一徽标;页头保底建连,
-//    全员直推帧不依赖 channel 订阅;快照对齐兜底实时帧丢失) ──
+// ── HITL 全局待办(omp ask 对话框 + dcw 审批统一徽标;页头保底建连 ——
+//    hitl 全员直推帧只达已连 peer,不建连的页面收不到提醒;快照兜底刷新前待办) ──
 const hitl = useHitlStore()
-useWorkshopWs()
+const wsSession = useWorkshopWs()
+const ensureHitlLive = () => {
+  if (userStore.isLoggedIn) wsSession.ensureConnected()
+}
 watch(() => userStore.token, (t2) => {
-  if (t2) void hitl.loadSnapshot()
+  if (t2) {
+    ensureHitlLive()
+    void hitl.loadSnapshot()
+  }
   else hitl.clear()
 }, { immediate: true })
 const hitlKindLabel = (kind: AepHitlItem['kind']) =>
