@@ -7,7 +7,7 @@
  * (备份无副作用,始终开启;BACKUP_DISABLED=1 可关)。
  */
 import { DatabaseSync } from 'node:sqlite'
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { backupSettings } from '../services/workshop/settings'
@@ -25,7 +25,20 @@ async function backupOne(src: string, target: string): Promise<void> {
   const db = new DatabaseSync(src)
   try {
     const image = db.serialize()
-    writeFileSync(target, image)
+    // 原子落盘:快照写一半被杀会留下截断 .bak(轮转后还被当作有效备份)
+    const tmp = `${target}.tmp`
+    writeFileSync(tmp, image)
+    try {
+      renameSync(tmp, target)
+    }
+    catch {
+      // rename 失败(目标被占用等):退回直写,可用性优先
+      writeFileSync(target, image)
+      try {
+        rmSync(tmp)
+      }
+      catch { /* ignore */ }
+    }
   }
   finally {
     db.close()
@@ -76,7 +89,11 @@ export default function backupPlugin() {
   // 启动 30s 后首备(避开启动风暴),此后每 backup.interval_hours(默认 24h)
   const first = setTimeout(() => {
     try {
-      backupOnce(dataDir)
+      // backupOnce 是 async:同步 try/catch 接不住内部 rejection(会变成 unhandled
+      // rejection 触发 dev-stability-guard 退进程),必须显式 .catch
+      backupOnce(dataDir).catch((err: unknown) => {
+        console.error('[backup] 首备失败:', err instanceof Error ? err.message : err)
+      })
     }
     catch (err) {
       console.error('[backup] 首备失败:', err instanceof Error ? err.message : err)
@@ -85,12 +102,9 @@ export default function backupPlugin() {
   first.unref?.()
   const hours = Math.max(1, backupCfg.interval_hours)
   const timer = setInterval(() => {
-    try {
-      backupOnce(dataDir)
-    }
-    catch (err) {
+    backupOnce(dataDir).catch((err: unknown) => {
       console.error('[backup] 定时备份失败:', err instanceof Error ? err.message : err)
-    }
+    })
   }, hours * 3_600_000)
   timer.unref?.()
   g.__awBackupTimer = timer

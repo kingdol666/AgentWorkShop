@@ -226,6 +226,19 @@ function flushDbBuffer(manager: AgentChannelManager, stream: ChannelStream): voi
     const g = globalThis as typeof globalThis & { __wsDbFlushFails?: number }
     g.__wsDbFlushFails = (g.__wsDbFlushFails ?? 0) + 1
     log.error('[workshop-ws] 事件批量落库失败:', err)
+    // 帧 回队 + 稍后重试:retention/backup 持写锁的 SQLITE_BUSY 窗口不应永久丢帧
+    // (带上限,防止库长期不可用时缓冲无限膨胀)
+    const WS_DB_BUFFER_MAX = 5000
+    if (buffered.length <= WS_DB_BUFFER_MAX) {
+      stream.dbBuffer = [...buffered, ...stream.dbBuffer]
+      if (!stream.dbFlushTimer) {
+        stream.dbFlushTimer = setTimeout(() => flushDbBuffer(manager, stream), DB_FLUSH_MS)
+        stream.dbFlushTimer.unref?.()
+      }
+    }
+    else {
+      log.error(`[workshop-ws] 落库缓冲超出上限(${WS_DB_BUFFER_MAX}),丢弃 ${buffered.length} 帧`)
+    }
   }
 }
 

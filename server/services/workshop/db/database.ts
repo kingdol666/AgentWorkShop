@@ -642,6 +642,8 @@ export interface TaskRow {
 export function openWorkshopDb(path: string): DatabaseSync {
   // allowExtension + 尝试加载 sqlite-vec(向量检索);失败静默降级纯 FTS(受控环境可能禁扩展)
   const db = new DatabaseSync(path, { allowExtension: true })
+  // busy_timeout:retention/backup 等第二连接持写锁时,主连接等待而非立即 SQLITE_BUSY
+  db.exec('PRAGMA busy_timeout = 5000')
   try {
     const { getLoadablePath } = require('sqlite-vec') as typeof sqliteVec
     db.loadExtension(getLoadablePath())

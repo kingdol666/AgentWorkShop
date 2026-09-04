@@ -10,7 +10,7 @@
 import { createRequire } from 'node:module'
 import type { DcwDriverKind } from '../../../../shared/dcw-protocol'
 import { AppError } from '../../../utils/errors'
-import { classifyCommError, decodeRegisters, evictModbusConn, getModbusConn, getOpcUaConn, modbusKey, registerOffset, withModbusConn } from '../daq/drivers'
+import { classifyCommError, decodeRegisters, evictModbusConn, evictOpcUaConn, getModbusConn, getOpcUaConn, modbusKey, registerOffset, withModbusConn } from '../daq/drivers'
 
 const reqNative = createRequire(import.meta.url)
 
@@ -286,6 +286,20 @@ async function opcuaWrite(input: DcwWriteInput): Promise<DcwWriteResult> {
   if (!cfg.endpoint) throw new AppError(400, 'BAD_REQUEST', '缺少端点 endpoint(opc.tcp://…)')
   if (!cfg.nodeId) throw new AppError(400, 'BAD_REQUEST', '缺少节点 ID nodeId(ns=…;s=…)')
   const conn = await getOpcUaConn(cfg)
+  // 会话死亡自愈:连续 3 次故障驱逐重建(与数采采样路径同策略)。此前纯写控节点
+  // 会拿同一个死 session 反复失败,直到 10 分钟空闲 sweep 才可能重建。
+  try {
+    return await opcuaWriteOnce(conn, input)
+  }
+  catch (err) {
+    conn.errors++
+    if (conn.errors >= 3) void evictOpcUaConn(cfg)
+    throw err
+  }
+}
+
+async function opcuaWriteOnce(conn: { session: import('node-opcua').ClientSession, errors: number }, input: DcwWriteInput): Promise<DcwWriteResult> {
+  const cfg = input.driverConfig
   const opcua = reqNative('node-opcua') as typeof import('node-opcua')
   const node = opcua.coerceNodeId(String(cfg.nodeId))
   const writeResult = await conn.session.write({
@@ -480,6 +494,8 @@ export const mqttDcwDriver: DcwWriteDriver = {
           username: cfg.username ? String(cfg.username) : undefined,
           password: cfg.password ? String(cfg.password) : undefined,
           connectTimeout: 4000,
+          // 一次性连接:发布即断,绝不能让 mqtt.js 默认的 1s 无限重连在后台空转
+          reconnectPeriod: 0,
         })
         c.once('connect', () => resolve(c))
         c.once('error', (err) => {
@@ -490,19 +506,27 @@ export const mqttDcwDriver: DcwWriteDriver = {
           reject(new Error(err.message))
         })
       })
-      await new Promise<void>((resolve, reject) => {
-        client.publish(String(cfg.topic), payload, { qos: Math.min(2, Math.max(0, Number(cfg.qos ?? 1))) as 0 | 1 | 2 }, (err) => {
-          if (err)
-            reject(new Error(err.message))
-          else
-            resolve()
+      const qos = Math.min(2, Math.max(0, Number(cfg.qos ?? 1))) as 0 | 1 | 2
+      try {
+        await new Promise<void>((resolve, reject) => {
+          client.publish(String(cfg.topic), payload, { qos }, (err) => {
+            if (err)
+              reject(new Error(err.message))
+            else
+              resolve()
+          })
+          // 发布确认超时(QoS1 等 puback):8s 未确认按失败收敛,不悬挂工具调用
+          const timer = setTimeout(() => reject(new Error('发布确认超时(8s)')), 8000)
+          timer.unref?.()
         })
-        // 发布确认超时(QoS1 等 puback):8s 未确认按失败收敛,不悬挂工具调用
-        setTimeout(() => reject(new Error('发布确认超时(8s)')), 8000)
-      })
-      await new Promise<void>((resolve) => {
-        client.end(false, {}, resolve)
-      })
+      }
+      finally {
+        // 失败/超时路径同样关闭连接(此前只在成功后 end,超时会泄漏 client +
+        // broker session),已关闭的 client 重复 end 幂等安全
+        await new Promise<void>((resolve) => {
+          client.end(false, {}, resolve)
+        })
+      }
       return {
         ok: true,
         message: `已发布 ${input.eng} → ${String(cfg.topic)}(QoS ${Number(cfg.qos ?? 1)};MQTT 无回读,建议以同主题数采节点验证)`,

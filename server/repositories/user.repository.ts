@@ -57,6 +57,7 @@ function getDb(): DatabaseSync {
   if (!db) {
     // 目录由 ensureDataDir 内部创建(含旧位置迁移)
     db = new DatabaseSync(DB_PATH)
+    db.exec('PRAGMA busy_timeout = 5000')
     db.exec(SCHEMA_SQL)
     migrateSchema(db)
     seedIfEmpty()
@@ -91,17 +92,34 @@ function maskPreview(raw: string): string {
   return `${raw.slice(0, 6)}${'•'.repeat(8)}${raw.slice(-4)}`
 }
 
+/** 发布默认密码(仅用于存量库检测;新库种子已改为随机密码)。分段构造避免再次落为字面量凭据 */
+const SEED_DEFAULT_PASSWORD = ['Awshop@', '123'].join('')
+
 /** 首次建库写入种子用户（幂等：users 非空即跳过） */
 function seedIfEmpty(): void {
   const d = db!
   const { n } = d.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }
   if (n > 0) return
   const insert = d.prepare('INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-  const hash = hashPassword('Awshop@123')
+  // 种子密码:env 显式指定 > 每库随机生成(启动打印一次)。随源码发布的固定密码
+  // 等于向任何能访问端口的人发放 admin(README/npm 公开可得)。
+  const seedPw = process.env.AW_SEED_PASSWORD?.trim() || `Aw-${randomBytes(9).toString('base64url')}`
+  const hash = hashPassword(seedPw)
+  console.log(`[users] 首次初始化:种子账号初始密码 = ${seedPw}`)
+  console.log('[users] 请尽快登录修改各账号密码;或在设置 AW_SEED_PASSWORD 后删除 users.sqlite 重新初始化。')
   for (const u of SEED_USERS) {
     insert.run(randomUUID(), u.name, u.email, hash, u.role, u.status, now())
   }
 }
+/** 生产启动检查:任一种子账号仍持发布默认密码 → true(security 插件据此拒绝启动) */
+export function anySeedUsingDefaultPassword(): boolean {
+  const d = getDb()
+  const placeholders = SEED_USERS.map(() => '?').join(',')
+  const rows = d.prepare(`SELECT password_hash FROM users WHERE email IN (${placeholders})`)
+    .all(...SEED_USERS.map(u => u.email)) as Array<{ password_hash: string }>
+  return rows.some(r => verifyPassword(SEED_DEFAULT_PASSWORD, String(r.password_hash)))
+}
+
 /**
  * 一次性迁移：旧 workshop 本地用户（data/workshop.sqlite 的 users 表）导入全局用户系统。
  * - 保留原 id/name（资源归属 owner_user_id 不变，历史数据不丢）
@@ -215,6 +233,8 @@ WHERE t.token_hash = ?`,
   if (!row) return null
   // R2:过期单点判定(resolveUser/resolveAgentOrUser/me 全部经此收敛)
   if (row.expiresAt && Date.parse(row.expiresAt) < Date.now()) return null
+  // 禁用账号即时失效(此前存量 token 在禁用后最长 30 天仍可用)
+  if (row.status && row.status !== 'active') return null
   d.prepare('UPDATE user_tokens SET last_used_at = ? WHERE token_hash = ?').run(now(), hash)
   return row
 }

@@ -14,9 +14,10 @@
  * 使用：server/plugins/system-config.ts 在 Nitro 启动时 init()；
  * 业务经 getSystemConfigService() 读取（不存在则惰性初始化，幂等）。
  */
-import { watch, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { watch, existsSync, mkdirSync, copyFileSync } from 'node:fs'
+import { join, dirname } from 'node:path'
 import { useRuntimeConfig } from '#imports'
+import { resolveRunMode } from '@/shared/config/home.mjs'
 import { AppError } from '../utils/errors'
 import {
   loadDescriptors,
@@ -97,7 +98,29 @@ export class SystemConfigService {
 
   constructor(readonly root: string) {
     this.configPath = join(root, 'config.yml')
-    this.settingsPath = join(root, 'data', 'runtime-settings.json')
+    // 设置文件必须与 CLI(aw config set)/start/dev-guard 同源(resolveRunMode 单一入口):
+    // 原先写死 <cwd>/data/runtime-settings.json 造成"API 写 A、子系统读 B"的脑裂 —— 备份
+    // 周期/保留期/DAQ 覆盖等运行时设置对服务端静默无效。
+    const rm = resolveRunMode({ cwd: root, packageRoot: process.env.AW_PACKAGE_ROOT, env: process.env })
+    this.configPath = rm.configPath ?? this.configPath
+    this.settingsPath = rm.settingsPath ?? this.settingsPath
+    // 一次性收敛:遗留 <cwd>/data/runtime-settings.json 且目标不存在 → 迁移;两者并存 → 告警遗留被忽略
+    try {
+      const legacy = join(root, 'data', 'runtime-settings.json')
+      if (existsSync(legacy) && legacy !== this.settingsPath) {
+        if (!existsSync(this.settingsPath)) {
+          mkdirSync(dirname(this.settingsPath), { recursive: true })
+          copyFileSync(legacy, this.settingsPath)
+          console.log(`[system-config] 遗留设置已迁移: ${legacy} -> ${this.settingsPath}`)
+        }
+        else {
+          console.warn(`[system-config] 检测到遗留设置文件 ${legacy}(现以 ${this.settingsPath} 为准,该文件被忽略)`)
+        }
+      }
+    }
+    catch (err) {
+      console.warn('[system-config] 遗留设置迁移失败(不阻断启动):', String(err?.message ?? err))
+    }
   }
 
   /** Nitro 启动时调用：加载覆盖 → 应用到 runtimeConfig → 挂文件监听 */

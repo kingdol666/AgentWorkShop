@@ -520,6 +520,22 @@ export async function getOpcUaConn(cfg: Record<string, unknown>): Promise<OpcUaC
   return conn
 }
 
+/** 驱逐 OPC UA 连接(采样/写控共享池;连续故障后触发,下次调用重建) */
+export async function evictOpcUaConn(cfg: Record<string, unknown>): Promise<void> {
+  const key = opcuaKey(cfg)
+  const conn = opcuaPool.get(key)
+  if (!conn) return
+  opcuaPool.delete(key)
+  try {
+    await conn.session.close()
+  }
+  catch { /* ignore */ }
+  try {
+    await conn.client.disconnect()
+  }
+  catch { /* ignore */ }
+}
+
 async function opcuaRead(conn: OpcUaConn, cfg: Record<string, unknown>): Promise<number> {
   const opcua = reqNative('node-opcua') as typeof import('node-opcua')
   const node = opcua.coerceNodeId(String(cfg.nodeId ?? ''))
@@ -553,17 +569,7 @@ export const opcUaDriver: DaqDriver = {
     }
     catch (err) {
       conn.errors++
-      if (conn.errors >= 3) {
-        try {
-          await conn.session.close()
-        }
-        catch { /* ignore */ }
-        try {
-          await conn.client.disconnect()
-        }
-        catch { /* ignore */ }
-        opcuaPool.delete(opcuaKey(driverConfig))
-      }
+      if (conn.errors >= 3) await evictOpcUaConn(driverConfig)
       throw err
     }
   },
@@ -666,7 +672,16 @@ function mqttKey(cfg: Record<string, unknown>): string {
 async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttConn> {
   const key = mqttKey(cfg)
   const existing = mqttPool.get(key)
-  if (existing) return existing
+  // 池命中必须验证活性:一次 error 事件后 client.end(true) 的"死连接"若留在池里,
+  // 该 broker 下所有节点会静默永久停采(空 raw → sample 全部 null 被当跳帧)
+  if (existing) {
+    if (existing.client.connected) return existing
+    try {
+      existing.client.end(true)
+    }
+    catch { /* 已死 */ }
+    mqttPool.delete(key)
+  }
   const mqtt = reqNative('mqtt') as typeof import('mqtt')
   const url = `mqtt://${String(cfg.host)}:${Number(cfg.port ?? 1883)}`
   const client = await new Promise<import('mqtt').MqttClient>((resolve, reject) => {
@@ -678,6 +693,7 @@ async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttConn> {
     })
     c.once('connect', () => resolve(c))
     c.once('error', (err) => {
+      // 仅首次建连阶段的 error 走 reject;连接成功后的运行期 error 由下方 error 监听驱逐
       try {
         c.end(true)
       }
@@ -693,6 +709,19 @@ async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttConn> {
       t.at = Date.now()
     }
   })
+  // 运行期错误/关闭:从池中驱逐并强制终止(含 mqtt.js 自动重连),下次采样自动重建。
+  // 此前一次 error 即"永久打死整池"——死连接留在池里,该 broker 下全部节点静默停采。
+  const evict = () => {
+    if (mqttPool.get(key) === conn) {
+      mqttPool.delete(key)
+      try {
+        client.end(true)
+      }
+      catch { /* 已死 */ }
+    }
+  }
+  client.on('error', evict)
+  client.on('close', evict)
   client.on('close', () => {
     // 断线期间清空缓存,避免恢复后消费陈旧值
     for (const t of conn.topics.values()) {

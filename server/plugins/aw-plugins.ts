@@ -17,6 +17,9 @@ export default defineNitroPlugin((nitroApp) => {
       if (listener?.port)
         host.setSelfOrigin(listener.port)
     })
+  }).catch((err: unknown) => {
+    // 插件发现/装载失败不应成为 unhandled rejection(dev-stability-guard 会因此退进程)
+    console.error('[aw-plugins] 插件宿主初始化失败(服务继续运行):', err instanceof Error ? err.message : err)
   })
   nitroApp.hooks.hookOnce('close', () => {
     void shutdownPluginHost()

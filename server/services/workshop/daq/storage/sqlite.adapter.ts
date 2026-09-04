@@ -26,6 +26,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   async init(): Promise<void> {
     this.db = new DatabaseSync(DB_PATH)
     this.db.exec('PRAGMA journal_mode = WAL')
+    this.db.exec('PRAGMA busy_timeout = 5000')
     // WAL + NORMAL:批写单事务一次 fsync,兼顾持久性与事件循环停顿
     this.db.exec('PRAGMA synchronous = NORMAL')
     this.db.exec(`

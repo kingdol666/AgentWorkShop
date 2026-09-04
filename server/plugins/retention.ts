@@ -19,6 +19,7 @@ function sweepOnce(dataDir: string): void {
   const dbPath = resolve(dataDir, 'workshop.sqlite')
   if (!existsSync(dbPath)) return
   const db = new DatabaseSync(dbPath)
+  db.exec('PRAGMA busy_timeout = 5000')
   try {
     const results = runRetentionSweep(db)
     for (const r of results) {
