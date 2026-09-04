@@ -55,6 +55,7 @@ data/
 .AgentWorkShop/runtime-settings.json
 .AgentWorkShop/.env
 .AgentWorkShop/logs/
+.AgentWorkShop/tui-auth.json
 .AgentWorkShop/backups/
 .AgentWorkShop/commands/
 

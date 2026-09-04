@@ -7,7 +7,6 @@
  * 路由改为从本模块导入广播函数 —— 避免"路由文件被当库静态导入"引发
  * nitro 打包的循环初始化(TDZ)问题。
  */
-import type { AepEnvelope } from '../../../shared/workshop-protocol'
 import { emitPluginEvent } from './plugins/host.mjs'
 
 const AEP_VERSION = 1
@@ -46,15 +45,26 @@ export function broadcastSceneEvent(type: string, payload: unknown): void {
   // 插件宿主事件桥(event:<type> 钩子;宿主未装载时 no-op)——先于 peers 短路,插件不依赖在线页面
   emitPluginEvent(type, payload)
   if (peers().size === 0) return
-  const e: AepEnvelope = {
-    v: AEP_VERSION,
-    type,
-    seq: 0,
-    at: new Date().toISOString(),
-    channelId: '',
-    payload: payload as AepEnvelope['payload'],
+  const frame = JSON.stringify({ v: AEP_VERSION, type, seq: 0, at: new Date().toISOString(), channelId: '', payload })
+  for (const peer of peers()) {
+    try {
+      peer.send(frame)
+    }
+    catch {
+      peers().delete(peer)
+    }
   }
-  const frame = JSON.stringify(e)
+}
+
+/**
+ * 全员直推(不触发插件宿主事件桥):给已有频道归属、但需要"全局主动提醒"
+ * 语义的低频事件用(hitl.request/hitl.resolved —— WebUI 徽标/TUI 状态条不依赖
+ * channel 订阅即达)。与 broadcastSceneEvent 的差别仅在不二次 emitPluginEvent
+ * (频道流 publish 路径已各发一次,避免插件钩子重复触发)。
+ */
+export function broadcastPeerEvent(type: string, payload: unknown): void {
+  if (peers().size === 0) return
+  const frame = JSON.stringify({ v: AEP_VERSION, type, seq: 0, at: new Date().toISOString(), channelId: '', payload })
   for (const peer of peers()) {
     try {
       peer.send(frame)

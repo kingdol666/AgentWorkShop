@@ -24,7 +24,8 @@ import type { AgentEvent } from '../../services/workshop/agents/agent-interface'
 import type { A2AMessage } from '../../services/workshop/types/a2a'
 import type { AepEnvelope } from '../../../shared/workshop-protocol'
 import { parseJson } from '../../services/workshop/db/database'
-import { registerScenePeer, unregisterScenePeer } from '../../services/workshop/scene-events'
+import { registerScenePeer, unregisterScenePeer, broadcastPeerEvent } from '../../services/workshop/scene-events'
+import { subscribeHitlEvents } from '../../services/workshop/agents/hitl-registry'
 import { createLogger } from '../../services/workshop/logger'
 import { retentionSettings } from '../../services/workshop/settings'
 
@@ -56,6 +57,12 @@ interface ChannelStream {
   ringBytes: number
   peers: Set<WsPeer>
   unsubs: Array<() => void>
+  /**
+   * HITL 待办事件订阅(hitl-registry 模块级总线 → 频道流)。
+   * 单独存放、不进 unsubs:rebindStreamIfStale 会整体清空 unsubs 重订总线,
+   * 而 registry 订阅与总线生命周期无关,只在建流/回收时挂接一次。
+   */
+  hitlUnsub: (() => void) | null
   /** 当前已订阅的 channel 总线对象(总线生命期短于 stream:空闲卸载会重建 bus → 需重订) */
   busRef: object | null
   /**
@@ -399,6 +406,17 @@ function bindStreamSubscriptions(manager: AgentChannelManager, stream: ChannelSt
   }))
 }
 
+/** HITL 待办事件挂接(建流时一次;closeStream 回收;与总线 rebind 解耦,见 ChannelStream.hitlUnsub)。
+ *  双水路:频道流 publish(seq/环形缓冲/落库,时间线可回放)+ 全员直推
+ *  (channelId='',WebUI 全局徽标/TUI 状态条不依赖 channel 订阅即达;快照恢复走 REST)。 */
+function bindHitlSubscription(manager: AgentChannelManager, stream: ChannelStream): void {
+  stream.hitlUnsub?.()
+  stream.hitlUnsub = subscribeHitlEvents(stream.channelId, (e) => {
+    publish(manager, stream, e.type, e.payload, { agentId: e.agentId })
+    broadcastPeerEvent(e.type, e.payload)
+  })
+}
+
 /** 自愈:stream 已订阅的总线 ≠ 管理器当前总线(空闲卸载销毁/重建)或 manager 更替 → 重订 */
 function rebindStreamIfStale(manager: AgentChannelManager, stream: ChannelStream): void {
   const currentBus = internalsOf(manager).buses.get(stream.channelId) ?? null
@@ -480,6 +498,13 @@ function closeStream(manager: AgentChannelManager, channelId: string): void {
     }
     catch { /* 尽力清理 */ }
   }
+  if (stream.hitlUnsub) {
+    try {
+      stream.hitlUnsub()
+    }
+    catch { /* 尽力清理 */ }
+    stream.hitlUnsub = null
+  }
   streams.delete(channelId)
   for (const peer of stream.peers) {
     peerChannels.get(peer)?.delete(channelId)
@@ -500,6 +525,8 @@ export function ensureStream(manager: AgentChannelManager, channelId: string): C
   if (existing) {
     // 订阅入口处即时自愈(不等 sweep):bus 已重建 → 立即重订到当前总线
     rebindStreamIfStale(manager, existing)
+    // manager 更替(HMR)时 hitl 订阅闭包持旧 manager → 幂等重挂(bind 内先退订)
+    bindHitlSubscription(manager, existing)
     return existing
   }
   // seq 从持久层续接(重启后继续递增;INSERT OR IGNORE 幂等兜底)
@@ -511,11 +538,13 @@ export function ensureStream(manager: AgentChannelManager, channelId: string): C
     ringBytes: 0,
     peers: new Set(),
     unsubs: [],
+    hitlUnsub: null,
     busRef: internalsOf(manager).buses.get(channelId) ?? null,
     dbBuffer: [],
     dbFlushTimer: null,
   }
   bindStreamSubscriptions(manager, stream)
+  bindHitlSubscription(manager, stream)
   // bind 过程可能懒创建 bus:同步真实 busRef,否则 stale 检查会误判重绑
   stream.busRef = internalsOf(manager).buses.get(channelId) ?? null
   streams.set(channelId, stream)

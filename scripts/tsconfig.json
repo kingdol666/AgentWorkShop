@@ -1,0 +1,14 @@
+{
+  // tsx 直跑 scripts/*.ts 的解析配置(nuxt 根 tsconfig 是 references 组合,无 paths)。
+  // 用法:npx tsx --tsconfig scripts/tsconfig.json scripts/<test>.ts
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["*"]
+    }
+  }
+}

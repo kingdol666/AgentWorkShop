@@ -1850,6 +1850,9 @@ export default {
     kwsdot0002: 'Syncing in real time…',
     kwsdot0003: 'Connecting…',
     kwsdot0004: 'Connection lost',
+    hitlBadge: 'Needs human input',
+    hitlKindOmp: 'omp dialog',
+    hitlKindDcw: 'write approval',
   },
   ompTerminalPanel: {
     k14jk3nu001: '  {p0}· 对话框已撤销({p1}){p2}',

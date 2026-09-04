@@ -9,6 +9,7 @@
 import { randomUUID } from 'node:crypto'
 import { getOps } from '../ops/ops'
 import { securityHitlTimeoutMs } from '../settings'
+import { getHitlRegistry } from './hitl-registry'
 
 export interface ToolApproval {
   id: string
@@ -57,6 +58,17 @@ class ToolApprovalService {
       decidedBy: '',
       decidedName: '',
     }
+    // 全局 HITL 待办登记(channelId/agentName 由插件注入的 resolver 补全;
+    // expiresAt 与审批超时窗同源,前端可显示倒计时)
+    getHitlRegistry().register({
+      kind: 'dcw-approval',
+      id: approval.id,
+      agentId: approval.agentId,
+      title: `${approval.kind.toUpperCase()} 下发审批`,
+      detail: approval.detail,
+      createdAt: approval.createdAt,
+      expiresAt: approval.expiresAt,
+    })
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         if (!this.pending.has(approval.id)) return
@@ -65,6 +77,7 @@ class ToolApprovalService {
         approval.decidedAt = new Date().toISOString()
         approval.comment = '审批超时未处理,默认拒绝,指令未执行'
         this.remember(approval)
+        getHitlRegistry().resolve('dcw-approval', approval.id, 'expired')
         resolve({ approved: false, comment: approval.comment, id: approval.id })
       }, TIMEOUT_MS())
       timer.unref?.()
@@ -83,6 +96,7 @@ class ToolApprovalService {
     entry.approval.decidedBy = decidedBy
     entry.approval.decidedName = decidedName
     this.remember(entry.approval)
+    getHitlRegistry().resolve('dcw-approval', id, 'answered', decidedBy || undefined)
     entry.resolve({ approved, comment: entry.approval.comment, id })
     return entry.approval
   }
@@ -105,6 +119,7 @@ class ToolApprovalService {
       entry.approval.comment = '绑定已解除,审批失效'
       entry.approval.decidedAt = new Date().toISOString()
       this.remember(entry.approval)
+      getHitlRegistry().resolve('dcw-approval', id, 'cancelled')
       entry.resolve({ approved: false, comment: entry.approval.comment, id })
       n++
     }

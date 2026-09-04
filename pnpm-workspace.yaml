@@ -7,4 +7,3 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@vue/language-core@3.3.10'
   - vue-tsc@3.3.10
-

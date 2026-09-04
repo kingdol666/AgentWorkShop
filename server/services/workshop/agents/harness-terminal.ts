@@ -9,13 +9,18 @@
  *
  * HITL 语义:extension_ui_request(select/confirm/input/editor)到达时
  *  - 有 WS 订阅者(有人在看终端)→ 等待人类应答,无超时(真 HITL);
- *  - 无订阅者 → 自动 cancelled(等价 TUI 按 Esc;agent 的 ask 回合中止),
- *    并落一条 notice 帧让事后接入的观众可见。
+ *  - 无订阅者 → park 至 hitl-registry 并启动倒计时(security.hitl_timeout_ms,
+ *    默认 180s;倒计时仅在零订阅期间进行,任一客户端接入终端即暂停)——
+ *    到期自动 cancelled(等价 TUI 按 Esc;agent 的 ask 回合中止),并落一条
+ *    notice 帧让事后接入的观众可见。TTL 配 0 恢复旧的"无人即秒取消"行为。
+ *    待办全局可见性/应答路由由 hitl-registry + /api/workshop/hitl/* 承接。
  *
  * 定位:模块级单例(globalThis 跨 HMR 存活,与 workshop ws hub 同风格);
  * omp-agent 装配时 attach,manager 监控层读取 hasTerminalSession 标记进程行。
  */
 import { createLogger } from '../logger'
+import { securityHitlTimeoutMs } from '../settings'
+import { getHitlRegistry } from './hitl-registry'
 import type { OmpRpcClient } from './adapters/omp-rpc-client'
 import {
   TERM_FRAME_TEXT_PREVIEW_MAX,
@@ -43,6 +48,8 @@ interface TerminalSession {
   alive: boolean
   exitCode: number | null
   pendingHitl: TerminalHitlDialog | null
+  /** 零订阅 park 倒计时(有人接入即清除;到期自动取消待答对话框) */
+  parkTimer: NodeJS.Timeout | null
   unsubRaw: (() => void) | null
   /** 微批缓冲 + 定时器(50ms 合并 delta 帧,防 WS 洪泛) */
   batch: TermFrame[]
@@ -234,27 +241,81 @@ function hitlViewOf(frame: Record<string, unknown> | null): TerminalHitlDialog |
   }
 }
 
-/** HITL 对话框到达:登记 pending;无订阅者 → 自动 cancelled */
+/** HITL 对话框到达:登记 pending + hitl-registry;零订阅时进入 park 倒计时 */
 function handleUiRequest(session: TerminalSession, frame: Record<string, unknown>): void {
   const method = frame.method as string
   if (method === 'cancel') {
-    // omp 主动撤销对话框(如回合中止):清 pending
+    // omp 主动撤销对话框(如回合中止):清 pending + 落定全局待办
     const targetId = String(frame.targetId ?? '')
-    if (session.pendingHitl && session.pendingHitl.id === targetId) session.pendingHitl = null
+    if (session.pendingHitl && session.pendingHitl.id === targetId) {
+      session.pendingHitl = null
+      clearParkTimer(session)
+      getHitlRegistry().resolve('omp-dialog', targetId, 'cancelled')
+    }
     return
   }
   const view = hitlViewOf(frame)
   if (!view) return
   session.pendingHitl = view
-  if (session.listeners.size === 0) {
-    // 无人观看:自动取消(Esc 语义),事后观众通过 notice 帧可见
-    respondUi(session, { id: view.id, cancelled: true })
-    pushFrame(session, {
-      type: '__terminal_notice',
-      level: 'warning',
-      message: `HITL 对话框(${view.method} "${view.title.slice(0, 40)}")无人接入,已自动取消`,
-    })
+  getHitlRegistry().register({
+    kind: 'omp-dialog',
+    id: view.id,
+    agentId: session.meta.agentId,
+    agentName: session.meta.name,
+    channelId: session.meta.channelId,
+    pid: session.meta.pid,
+    method: view.method,
+    title: view.title,
+    options: view.options,
+    message: view.message,
+  })
+  if (session.listeners.size === 0) armParkTimer(session)
+}
+
+// ===== park 倒计时(无人观看时挂起等待;有人接入暂停) =====
+
+/** 零订阅 park 窗口(security.hitl_timeout_ms;0 = 恢复旧的"无人即秒取消") */
+const HITL_PARK_MS = (): number => securityHitlTimeoutMs()
+
+function clearParkTimer(session: TerminalSession): void {
+  if (session.parkTimer) {
+    clearTimeout(session.parkTimer)
+    session.parkTimer = null
   }
+}
+
+/** 进入 park(仅零订阅且有待答对话框时生效;TTL<=0 立即取消 = 旧行为) */
+function armParkTimer(session: TerminalSession): void {
+  clearParkTimer(session)
+  if (!session.pendingHitl || session.listeners.size > 0) return
+  const ttl = HITL_PARK_MS()
+  if (ttl <= 0) {
+    expirePendingHitl(session, true)
+    return
+  }
+  getHitlRegistry().setParkDeadline('omp-dialog', session.pendingHitl.id, new Date(Date.now() + ttl).toISOString())
+  session.parkTimer = setTimeout(() => {
+    session.parkTimer = null
+    if (session.pendingHitl && session.listeners.size === 0) expirePendingHitl(session)
+  }, ttl)
+  session.parkTimer.unref?.()
+}
+
+/** park 到期(或 TTL=0 立即):超时收敛 —— 先落定 expired,再走 cancelled 应答写 omp stdin */
+function expirePendingHitl(session: TerminalSession, immediate = false): void {
+  const hitl = session.pendingHitl
+  if (!hitl) return
+  session.pendingHitl = null
+  clearParkTimer(session)
+  getHitlRegistry().resolve('omp-dialog', hitl.id, 'expired')
+  respondUi(session, { id: hitl.id, cancelled: true })
+  pushFrame(session, {
+    type: '__terminal_notice',
+    level: 'warning',
+    message: immediate
+      ? `HITL 对话框(${hitl.method} "${hitl.title.slice(0, 40)}")无人接入,已自动取消`
+      : `HITL 对话框(${hitl.method} "${hitl.title.slice(0, 40)}")park 超时无人处理,已自动取消`,
+  })
 }
 
 // ===== 对外 API =====
@@ -287,6 +348,7 @@ export function attachTerminalTap(
     alive: true,
     exitCode: null,
     pendingHitl: null,
+    parkTimer: null,
     unsubRaw: null,
     batch: [],
     batchTimer: null,
@@ -337,7 +399,11 @@ export function markTerminalSessionExit(pid: number, exitCode: number | null): v
   detachTerminalTap(pid)
   session.alive = false
   session.exitCode = exitCode
-  session.pendingHitl = null
+  if (session.pendingHitl) {
+    getHitlRegistry().resolve('omp-dialog', session.pendingHitl.id, 'cancelled')
+    session.pendingHitl = null
+  }
+  clearParkTimer(session)
   session.running = false
   session.streaming = false
   flushNow(session)
@@ -442,19 +508,17 @@ export function subscribeTerminal(
 ): (() => void) | null {
   const session = sessions.get(pid)
   if (!session) return null
+  const wasEmpty = session.listeners.size === 0
   session.listeners.add(listener)
+  if (wasEmpty && session.pendingHitl) {
+    // 有人观看:暂停 park 倒计时(真 HITL 等待无上限;观看者离开后重新计时)
+    clearParkTimer(session)
+    getHitlRegistry().setParkDeadline('omp-dialog', session.pendingHitl.id, null)
+  }
   return () => {
     session.listeners.delete(listener)
-    // 订阅者归零时若还有待应答对话框 → 自动取消(观看者离开 = 放弃应答权)
-    if (session.listeners.size === 0 && session.pendingHitl) {
-      const hitl = session.pendingHitl
-      respondUi(session, { id: hitl.id, cancelled: true })
-      pushFrame(session, {
-        type: '__terminal_notice',
-        level: 'warning',
-        message: `观看者已全部离开,HITL 对话框(${hitl.method} "${hitl.title.slice(0, 40)}")自动取消`,
-      })
-    }
+    // 订阅者归零时若还有待应答对话框:park 倒计时(超时自动取消;不再是秒取消)
+    if (session.listeners.size === 0 && session.pendingHitl) armParkTimer(session)
   }
 }
 
@@ -526,6 +590,7 @@ function respondUi(
   response: { id: string, value?: string, confirmed?: boolean, cancelled?: boolean },
 ): void {
   if (session.pendingHitl && session.pendingHitl.id === response.id) session.pendingHitl = null
+  clearParkTimer(session)
   const frame: Record<string, unknown> = { type: 'extension_ui_response', id: response.id }
   if (response.cancelled) {
     frame.cancelled = true
@@ -542,4 +607,6 @@ function respondUi(
   catch (err) {
     log.error(`[harness-terminal] extension_ui_response 写入失败(pid=${session.meta.pid}):`, err)
   }
+  // 全局待办落定(expired 收敛路径已先行 resolve,此处幂等 no-op)
+  getHitlRegistry().resolve('omp-dialog', response.id, response.cancelled ? 'cancelled' : 'answered')
 }

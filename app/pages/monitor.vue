@@ -67,6 +67,7 @@ interface MonitorSnapshot {
 interface ApiEnvelope<T> { code: number | string, message: string, data: T | null }
 
 const { t } = useI18n()
+const route = useRoute()
 const userStore = useUserStore()
 const isAdmin = computed(() => userStore.isAdmin)
 
@@ -112,7 +113,9 @@ watch(() => userStore.token, () => {
 })
 
 onMounted(() => {
-  if (userStore.token) void poll()
+  if (userStore.token) {
+    void poll().then(() => openFromQuery())
+  }
   applyTimer()
 })
 onBeforeUnmount(() => {
@@ -167,6 +170,19 @@ const openTerminal = (pid: number, name: string | null, role: string | null): vo
   terminalPid.value = pid
   terminalSubtitle.value = [name, role].filter(Boolean).join(' · ') || 'omp harness'
   terminalOpen.value = true
+}
+
+// HITL 徽标跳转定位:?agentId=&channelId= → 自动打开该 agent 的终端面板(omp 未
+// spawn 时无进程行,保持关闭;用后即清 query,刷新/再进不重复弹开)
+const openFromQuery = (): void => {
+  const agentId = route.query.agentId
+  if (typeof agentId !== 'string' || !agentId) return
+  const channelId = typeof route.query.channelId === 'string' ? route.query.channelId : ''
+  const proc = snapshot.value?.processes.find(p => p.agentId === agentId && (!channelId || p.channelId === channelId))
+  if (proc?.pid) {
+    openTerminal(proc.pid, proc.name, proc.role)
+    void navigateTo({ path: '/monitor' }, { replace: true })
+  }
 }
 
 // ===== 展示辅助 =====

@@ -1849,6 +1849,9 @@ export default {
     kwsdot0002: '实时同步中…',
     kwsdot0003: '连接中…',
     kwsdot0004: '连接已断开',
+    hitlBadge: '待人工处理',
+    hitlKindOmp: 'omp 对话框',
+    hitlKindDcw: '下发审批',
   },
   ompTerminalPanel: {
     k14jk3nu001: '  {p0}· 对话框已撤销({p1}){p2}',

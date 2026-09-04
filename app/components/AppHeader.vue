@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { MenuProps, SelectProps } from 'ant-design-vue'
+import type { AepHitlItem } from '#shared/workshop-protocol'
 import { useUserStore } from '@/app/stores/workshop/user'
 import { useWsConnectionStore } from '@/app/stores/workshop/connection'
+import { useHitlStore } from '@/app/stores/workshop/hitl'
+import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
 
 const { t, locale, locales, setLocale } = useI18n()
 const store = useAppStore()
@@ -9,6 +12,20 @@ const route = useRoute()
 const trail = useRouteTrailStore()
 const userStore = useUserStore()
 const { metaFor } = useRouteMeta()
+
+// ── HITL 全局待办(omp ask 对话框 + dcw 审批统一徽标;页头保底建连,
+//    全员直推帧不依赖 channel 订阅;快照对齐兜底实时帧丢失) ──
+const hitl = useHitlStore()
+useWorkshopWs()
+watch(() => userStore.token, (t2) => {
+  if (t2) void hitl.loadSnapshot()
+  else hitl.clear()
+}, { immediate: true })
+const hitlKindLabel = (kind: AepHitlItem['kind']) =>
+  kind === 'omp-dialog' ? t('appHeader.hitlKindOmp') : t('appHeader.hitlKindDcw')
+const hitlGo = (item: AepHitlItem) => {
+  navigateTo({ path: '/monitor', query: { agentId: item.agentId, channelId: item.channelId } })
+}
 
 const localeOptions = computed(() =>
   (locales.value as Array<{ code: string, name: string }>).map(l => ({
@@ -205,6 +222,40 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 
     <!-- 右侧:功能集群 -->
     <div class="header-right">
+      <!-- HITL 待办铃标(有待办才出现;点击下拉 → 进入对应 agent 终端处理) -->
+      <ClientOnly>
+        <a-dropdown
+          v-if="hitl.count > 0"
+          placement="bottomRight"
+        >
+          <button
+            class="icon-btn hitl-bell"
+            :title="t('appHeader.hitlBadge')"
+          >
+            <span class="i-tabler-bell-ringing" />
+            <span class="hitl-count">{{ hitl.count }}</span>
+          </button>
+          <template #overlay>
+            <div class="hitl-menu">
+              <div class="hitl-menu-title">
+                {{ t('appHeader.hitlBadge') }} · {{ hitl.count }}
+              </div>
+              <button
+                v-for="item in hitl.items"
+                :key="`${item.kind}:${item.id}`"
+                class="hitl-item"
+                @click="hitlGo(item)"
+              >
+                <span class="hitl-item-top">
+                  <span class="hitl-item-agent">{{ item.agentName }}</span>
+                  <span class="hitl-item-kind">{{ hitlKindLabel(item.kind) }}</span>
+                </span>
+                <span class="hitl-item-title">{{ item.title }}</span>
+              </button>
+            </div>
+          </template>
+        </a-dropdown>
+      </ClientOnly>
       <!-- 实时连接状态点(WS 会话全局单例;未用过 WS 的会话不显示) -->
       <span
         v-if="wsVisible"
@@ -658,6 +709,87 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 }
 @keyframes ws-pulse {
   50% { opacity: 0.45; }
+}
+
+/* ── HITL 待办铃标(琥珀警示;角标数字极简,无装饰堆砌) ── */
+.hitl-bell {
+  position: relative;
+  color: var(--tone-warning-dot, #d4a017);
+}
+.hitl-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 15px;
+  color: var(--on-accent, #fff);
+  text-align: center;
+  background: var(--tone-danger-dot, #e05252);
+  border-radius: 8px;
+}
+.hitl-menu {
+  min-width: 260px;
+  max-width: 340px;
+  padding: 6px;
+  background: var(--paper, #fff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel-sm, 10px);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
+}
+.hitl-menu-title {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--line);
+}
+.hitl-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-panel-sm, 8px);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.hitl-item:hover {
+  background: var(--paper-deep);
+  border-color: var(--line);
+}
+.hitl-item-top {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.hitl-item-agent {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.hitl-item-kind {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--tone-warning-dot, #d4a017);
+}
+.hitl-item-title {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

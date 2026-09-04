@@ -30,6 +30,7 @@ import { createUserRepo } from '../services/workshop/db/user.repo'
 import { createChannelEventRepo } from '../services/workshop/db/channel-event.repo'
 import { createApprovalHistoryRepo, createAlarmEventRepo, createAuditRepo, createApprovalRequestRepo } from '../services/workshop/db/ops.repo'
 import { bindOpsRepos } from '../services/workshop/ops/ops'
+import { configureHitlResolver } from '../services/workshop/agents/hitl-registry'
 import { ensureAllEventRecorders } from '../api/workshop/ws'
 import { createAgentImpl } from '../services/workshop/agents/factory'
 import {
@@ -122,6 +123,12 @@ export default function workshopPlugin(nitroApp: {
   // 创建 manager → 挂全局单例(后续 REST/A2A/WS 经 getWorkshopManager() 读取)
   const manager = createAgentChannelManager(deps)
   globalThis.__workshopManager = manager
+
+  // HITL 全局待办:agentId → channelId/agentName 解析器(避免 registry 反向依赖 manager)
+  configureHitlResolver((agentId) => {
+    const row = repos.channelAgents.findById(agentId)
+    return row ? { channelId: row.channelId, agentName: row.name } : null
+  })
 
   // 懒加载恢复:仅激活有待办任务的 channel(装配 lead + 调度循环);其余纯持久化
   manager.restore()

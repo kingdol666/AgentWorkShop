@@ -229,6 +229,7 @@ The config root is **`~/.AgentWorkShop`** for a global install (`npm i -g`) — 
 | `aw update` | Check npm for the latest release and self-update the global install |
 | `aw doctor` | Environment + project health check (node, config, ports, keys) |
 | `aw status` | Live overview: mode, config sources, running server, command table |
+| `aw tui` | Terminal workbench: channel/agent management, task submission, live monitor pane, HITL answering (see `tui/README.md`) |
 
 Global flags: `--help/-h` · `--version/-v` · `--json` (machine-readable) · `--root <dir>` · `--debug`.
 

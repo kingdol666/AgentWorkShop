@@ -118,6 +118,40 @@ export interface AepSceneLayout {
   rotationY: number
 }
 
+/** hitl.request payload:待人工处理条目(omp ask 对话框与 dcw 工具审批的统一视图) */
+export interface AepHitlItem {
+  kind: 'omp-dialog' | 'dcw-approval'
+  /** omp:对话框 id;dcw:审批 id(ap-*) */
+  id: string
+  channelId: string
+  agentId: string
+  agentName: string
+  /** omp 子进程 pid(应答路由 respondTerminalUi 用) */
+  pid?: number
+  /** omp-dialog 专属:对话框形态 */
+  method?: 'select' | 'confirm' | 'input' | 'editor'
+  title: string
+  /** dcw-approval 专属:人读摘要(节点/物理量/目标值) */
+  detail?: string
+  /** select 的选项列表 */
+  options?: string[]
+  message?: string
+  createdAt: string
+  /** park 截止时刻(omp 对话框零订阅倒计时;null = 有订阅者,计时暂停) */
+  expiresAt?: string | null
+}
+
+/** hitl.resolved payload:待办落定(answered=已答复/cancelled=放弃或撤销/expired=超时) */
+export interface AepHitlResolved {
+  kind: AepHitlItem['kind']
+  id: string
+  channelId: string
+  agentId: string
+  outcome: 'answered' | 'cancelled' | 'expired'
+  /** 落定方(user id / system) */
+  by?: string
+}
+
 export type AepEvent
   = | { type: 'channel.snapshot', payload: AepSnapshot }
     | { type: 'agent.status', payload: { agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, queued?: number, completed?: number } }
@@ -135,6 +169,8 @@ export type AepEvent
     | { type: 'device.deleted', payload: { id: string, name: string } }
     | { type: 'scene.layout.saved', payload: AepSceneLayout }
     | { type: 'scene.layout.removed', payload: { channelId: string } }
+    | { type: 'hitl.request', payload: AepHitlItem }
+    | { type: 'hitl.resolved', payload: AepHitlResolved }
     | { type: 'daq.reading', payload: AepDaqReading }
     | { type: 'daq.node.changed', payload: AepDaqNodeChange }
     | { type: 'daq.controller', payload: AepDaqControllerState }
@@ -192,6 +228,7 @@ export const AEP_GROUPS: Record<string, string[]> = {
   team: ['agent.member'],
   devices: ['device.created', 'device.updated', 'device.deleted'],
   scene: ['scene.layout.saved', 'scene.layout.removed'],
+  hitl: ['hitl.request', 'hitl.resolved'],
   daq: ['daq.reading', 'daq.node.changed', 'daq.controller', 'daq.template.changed', 'daq.alarm', 'daq.alarm.changed'],
   dcw: ['dcw.node.changed', 'dcw.written', 'dcw.controller', 'dcw.optimization.changed'],
   ops: ['ops.log'],

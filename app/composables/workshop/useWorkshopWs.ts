@@ -8,6 +8,7 @@ import { useUserStore } from '../../stores/workshop/user'
 import { WorkshopWsSession, useWsConnectionStore } from '../../stores/workshop/connection'
 import { useEventsStore } from '../../stores/workshop/events'
 import { useEntitiesStore } from '../../stores/workshop/entities'
+import { useHitlStore } from '../../stores/workshop/hitl'
 import { useTownBus } from './useTownBus'
 import type { AepEnvelope, AepSnapshot } from '#shared/workshop-protocol'
 
@@ -16,6 +17,7 @@ export function useWorkshopWs() {
   const userStore = useUserStore()
   const events = useEventsStore()
   const entities = useEntitiesStore()
+  const hitl = useHitlStore()
   const townBus = useTownBus()
 
   // 模块级单例:多组件共享一条连接
@@ -48,6 +50,8 @@ export function useWorkshopWs() {
           events.ingest(e)
           entities.applyEvent(e)
         }
+        // HITL 全局待办(频道帧 + channelId='' 全员直推各到一次,store 内 kind+id 幂等)
+        if (e.type === 'hitl.request' || e.type === 'hitl.resolved') hitl.applyEnvelope(e)
         if (typeof e.seq === 'number' && e.seq > 0 && e.channelId) {
           conn.cursors[e.channelId] = e.seq
           s.updateCursor(e.channelId, e.seq) // 推进重连续传游标
