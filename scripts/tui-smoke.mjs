@@ -46,9 +46,14 @@ const type = async (text) => {
 }
 
 check('TUI 启动就绪横幅', await waitText('TUI 已就绪'))
-// 启动频道选择器(新交互):Esc → 自动进入第一个频道
-if (await waitText('选择要进入的频道', 8000)) vt.emitInput('\x1b')
-check('启动自动接入首个频道', await waitText('已切换到频道「', 12_000))
+// 启动频道选择器(新交互):有频道 → Esc 自动进第一个;空账户 → 提示创建
+if (await waitText('选择要进入的频道', 8000)) {
+  vt.emitInput('\x1b')
+  check('启动自动接入首个频道', await waitText('已切换到频道「', 12_000))
+}
+else {
+  check('空账户提示创建频道', await waitText('尚无频道', 12_000))
+}
 
 await type('/channels')
 check('/channels 列出频道(计数行)', await waitText('个:'))
@@ -85,9 +90,11 @@ try {
 }
 catch { /* 清理失败不判失败 */ }
 
-console.log(failures === 0 ? '\n[tui-smoke] 全部通过,/quit 退出' : `\n[tui-smoke] ${failures} 项失败,/quit 退出`)
+// 退出码必须反映断言结果:失败时直接非零退出(不走 /quit 的 process.exit(0))
 const ok = failures === 0
+console.log(ok ? '\n[tui-smoke] 全部通过,/quit 退出' : `\n[tui-smoke] ${failures} 项失败,直接退出`)
+if (!ok) process.exit(1)
 await type('/quit')
 // /quit 内部 process.exit(0);若未退出(异常)则在此兜底收口
 console.log('[tui-smoke] /quit 未按预期退出进程(异常),兜底退出')
-process.exit(ok ? 0 : 1)
+process.exit(0)
