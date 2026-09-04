@@ -39,6 +39,7 @@ function mockCtx() {
     tasks: [],
     hitl: [],
     hitlAnswering: null,
+    target: null,
     log: [],
     userName: '张伟',
   }
@@ -122,6 +123,22 @@ ctx = mockCtx()
 ctx.state.hitl = [{ kind: 'omp-dialog', id: 'd1', method: 'confirm', title: '确认?', agentName: '调度长' }]
 await dispatchCommand(ctx, '/hitl 1')
 check('/hitl 进入作答模式', ctx.state.hitlAnswering?.id === 'd1')
+
+ctx = mockCtx()
+await dispatchCommand(ctx, '/msg 心跳检查,请确认')
+const msg = ctx.calls.find(c => c.send)
+check('/msg 缺省路由 lead(immediate)', msg?.send?.toAgentId === 'agt-1' && msg?.send?.priority === 'immediate')
+
+ctx = mockCtx()
+await dispatchCommand(ctx, '/msg 调度长 收到请回答')
+const msg2 = ctx.calls.find(c => c.send)
+check('/msg 指定成员', msg2?.send?.toAgentId === 'agt-1')
+
+ctx = mockCtx()
+ctx.state.target = { agentId: 'agt-1', name: '调度长' }
+await dispatchCommand(ctx, '/task 检查设备')
+const tsk = ctx.calls.find(c => c.task)
+check('/task 目标成员自动成为 assignee', tsk?.task?.assigneeId === 'agt-1')
 
 ctx = mockCtx()
 await dispatchCommand(ctx, '/quit')

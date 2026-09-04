@@ -28,6 +28,12 @@ export function createState() {
     /** 正在作答的条目(index → /hitl <n>;null = 常规输入) */
     hitlAnswering: null,
 
+    /** 对话目标:null = 频道(普通文本=发布任务);{agentId,name} = 成员(普通文本=通信消息) */
+    target: null,
+    /** 浮层开关(按键路由用:Tab 呼出目标选择;启动/`/channel` 呼出频道选择) */
+    channelPickerOpen: false,
+    targetPickerOpen: false,
+
     monitor: {
       agentId: null,
       name: null,

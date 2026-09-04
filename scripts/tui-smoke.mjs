@@ -46,6 +46,8 @@ const type = async (text) => {
 }
 
 check('TUI 启动就绪横幅', await waitText('TUI 已就绪'))
+// 启动频道选择器(新交互):Esc → 自动进入第一个频道
+if (await waitText('选择要进入的频道', 8000)) vt.emitInput('\x1b')
 check('启动自动接入首个频道', await waitText('已切换到频道「', 12_000))
 
 await type('/channels')
@@ -61,7 +63,7 @@ await type('/agents')
 check('/agents 成员面渲染(lead 成员行)', await waitText('smoke-调度长(lead)'))
 
 await type('你好,这是一条 smoke 测试任务')
-check('普通文本发送(服务端回显用户章)', await waitText('◆ 你', 12_000))
+check('普通文本 = 发布正式任务(回执)', await waitText('✔ 任务已发布', 12_000))
 
 await type('/hitl')
 check('/hitl 无待办提示', await waitText('没有待人工处理'))

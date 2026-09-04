@@ -17,6 +17,8 @@ const BASE = (() => {
   const i = process.argv.indexOf('--base')
   return i > 0 ? process.argv[i + 1] : 'http://127.0.0.1:3000'
 })()
+// --repo:加载仓库源码的 tui(开发验证新交互);默认加载全局安装包(用户真实路径)
+const USE_REPO = process.argv.includes('--repo')
 const WS_BASE = BASE.replace(/^http/, 'ws')
 const TAG = Date.now().toString(36)
 const ASK_INSTRUCTION = 'Use the ask tool NOW to ask me: Deploy? with options go and abort. After I answer, call complete_task with the deliverable set to my answer.'
@@ -64,19 +66,23 @@ function openTerm(agentId, channelId, token) {
   return { ws, messages, frames: () => messages.filter(m => m.type === 'term.frames').flatMap(m => m.frames) }
 }
 
-/** 解析全局安装包的 tui 入口(用户 `aw tui` 的真实加载路径) */
-function globalTuiEntry() {
+/** 解析 TUI 入口:--repo = 仓库源码;默认 = 全局安装包(用户 `aw tui` 的真实加载路径) */
+function tuiEntry() {
+  if (USE_REPO) {
+    const entry = join(process.cwd(), 'tui', 'aw-tui.mjs')
+    return { entry, ok: existsSync(entry), repo: true }
+  }
   const root = execSync('npm root -g', { encoding: 'utf8' }).trim()
   const entry = join(root, 'agentworkshop', 'tui', 'aw-tui.mjs')
-  return { root, entry, ok: existsSync(entry) }
+  return { entry, ok: existsSync(entry), repo: false }
 }
 
 async function main() {
   console.log(`\n━━━ 全局 aw tui 完整 E2E @ ${BASE} ━━━`)
 
-  // 0. 全局包完整性:入口文件存在(0.7.4 发布包含 tui/)
-  const g = globalTuiEntry()
-  check('0.1 全局包 tui 入口存在', g.ok, g.entry)
+  // 0. 入口存在(全局包 = 0.7.4 发布包含 tui/;repo = 源码)
+  const g = tuiEntry()
+  check(`0.1 TUI 入口存在(${g.repo ? '仓库源码' : '全局包'})`, g.ok, g.entry)
   if (!g.ok) process.exit(1)
 
   // 登录
@@ -86,7 +92,14 @@ async function main() {
   const token = reg.data?.token
   if (!token) throw new Error(`注册失败: ${JSON.stringify(reg).slice(0, 160)}`)
 
-  // 1. 加载【全局包】的 TUI(与用户 `aw tui` 同一路径),headless 驱动
+  // 0.2 预建一个频道(启动频道选择器需要至少一个可选项;全局包模式同样受益)
+  const bootCh = (await api('POST', '/api/workshop/channels', {
+    body: { name: `awtui-boot-${TAG}`, description: '启动选择器测试频道' },
+    token,
+  })).data
+  check('0.2 预建启动频道', Boolean(bootCh?.channelId), `id=${bootCh?.channelId?.slice(0, 8)}`)
+
+  // 1. 加载 TUI,headless 驱动
   const mod = await import(pathToFileURL(g.entry).href)
   await mod.main(['--headless', '--url', BASE, '--token', token, '--channel', ''])
   const vt = globalThis.__tuiSmokeTerminal
@@ -104,7 +117,19 @@ async function main() {
     }
     return false
   }
-  check('1.1 全局 TUI 启动就绪', await waitTui('TUI 已就绪', 30_000), g.entry.slice(-60))
+  check('1.1 TUI 启动就绪', await waitTui('TUI 已就绪', 30_000), g.entry.slice(-60))
+
+  // 1.2 [新交互] 启动频道选择器:↑↓ + Enter 选择预建频道;Esc 自动进第一个
+  if (USE_REPO) {
+    check('1.2 启动弹出频道选择器', await waitTui('选择要进入的频道', 20_000))
+    vt.emitInput('\x1b[B') // 下移一次,选中第二个(证明方向键导航)
+    await sleep(200)
+    vt.emitInput('\r')
+    check('1.3 Enter 进入所选频道', await waitTui('已切换到频道「', 30_000))
+  }
+  else {
+    check('1.2 (全局包)自动接入频道', await waitTui('已切换到频道「', 30_000))
+  }
 
   // 2. Channel 操作:列表 + 创建(内联 omp lead)+ 自动切换
   await type('/channels')
@@ -114,9 +139,31 @@ async function main() {
   check('2.2 /channel new 创建成功', await waitTui('✔ 频道已创建', 30_000))
   check('2.3 自动切换到新频道', await waitTui(`已切换到频道「${channelName}」`, 30_000))
 
-  // 3. Agent 操作:成员列表出现内联建的 omp lead
-  await type('/agents')
-  check('3.1 /agents 出现 lead 成员', await waitTui('领航员(lead)', 20_000))
+  // 2.4 [新交互] /channel use 无参 → 频道选择器 → 方向键导航到目标频道 → Enter
+  // (SelectList 的可打印字符过滤不生效,导航用方向键;序号按 REST 顺序计算)
+  if (USE_REPO) {
+    await type('/channel use')
+    check('2.4 /channel use 弹出频道选择器', await waitTui('选择要进入的频道', 20_000))
+    const order = (await api('GET', '/api/workshop/channels', { token })).data ?? []
+    const downTimes = Math.max(0, order.findIndex(c => c.name === channelName))
+    for (let i = 0; i < downTimes; i++) {
+      vt.emitInput('\x1b[B')
+      await sleep(150)
+    }
+    await sleep(200)
+    vt.emitInput('\r')
+    await sleep(800)
+    check('2.5 方向键选择后频道正确', await waitTui(`已切换到频道「${channelName}」`, 20_000))
+  }
+
+  // 3. Agent 操作:成员列表出现内联建的 omp lead(选择器切换后刷新有竞态,轮询重发)
+  {
+    const ok = await waitUntil('3.1 /agents 出现 lead 成员', async () => {
+      await type('/agents')
+      return vt.text().includes('领航员(lead)') ? true : null
+    }, 30_000).catch(() => null)
+    check('3.1 /agents 出现 lead 成员', ok === true)
+  }
 
   // 4. 任务下发:普通文本 → lead(触发 omp spawn)
   await type('请保持待命,等待操作员通过终端下达进一步指令。')
@@ -168,6 +215,7 @@ async function main() {
   check('6.6 进入作答卡', await waitTui('HITL 作答', 20_000))
   await type('1')
   check('6.7 应答提交回执(选项 1 = go)', await waitTui('应答已提交', 30_000))
+  if (failures > 0) console.log('[diag 6.7 tail]', JSON.stringify(vt.text().slice(-700)))
 
   const cleared = await waitUntil('6.8 REST 待办不再含 Deploy?', async () => {
     const p = await api('GET', `/api/workshop/hitl/pending?channelId=${channelId}`, { token })
@@ -184,9 +232,28 @@ async function main() {
   }, 120_000).catch(() => null)
   check('6.9 闭环:答案回传 agent(ask 结果含 go)', Boolean(askFed))
 
+  // 6.10-6.14 [新交互] Tab 目标选择器 + 通信/任务分流(仓库源码特性)
+  if (USE_REPO) {
+    vt.emitInput('\t')
+    check('6.10 Tab 呼出目标选择器', await waitTui('选择对话目标', 20_000))
+    vt.emitInput('\x1b[B')
+    await sleep(200)
+    vt.emitInput('\r')
+    check('6.11 选成员 → 通信模式 + 自动开监控', await waitTui('监控已开启:领航员', 20_000) && await waitTui('@领航员(通信)', 20_000))
+    await type('你在吗?看到请回应')
+    check('6.12 普通文本按通信直发目标', await waitTui('通信消息已发 → @领航员', 30_000))
+    vt.emitInput('\t')
+    await waitTui('选择对话目标', 20_000)
+    vt.emitInput('\r')
+    await sleep(400)
+    check('6.13 选频道 → 重置任务模式', await waitTui('频道(任务)', 20_000))
+    await type('/msg 心跳检查,请确认收到')
+    check('6.14 /msg 通信消息(目标重置后路由 lead)', await waitTui('通信消息已发 → @', 30_000))
+  }
+
   // 7. 正式任务 + 任务列表
   await type('/task 汇报当前待命状态')
-  check('7.1 /task 正式任务提交', await waitTui('✔ 任务已提交', 30_000))
+  check('7.1 /task 正式任务提交', await waitTui('✔ 任务已发布', 30_000))
   await type('/tasks')
   check('7.2 /tasks 列表出现任务', await waitTui('汇报当前待命状态', 30_000))
 
@@ -194,6 +261,7 @@ async function main() {
   await type('/monitor off')
   check('8.1 /monitor off 关闭', await waitTui('监控面板已关闭', 20_000))
   await api('DELETE', `/api/workshop/channels/${channelId}?purge=1`, { token }).catch(() => {})
+  await api('DELETE', `/api/workshop/channels/${bootCh.channelId}?purge=1`, { token }).catch(() => {})
 
   console.log(`\n━━━ 结果: ${passed} passed / ${failures} failed ━━━`)
   console.log('(经 /quit 退出全局 TUI 进程)')

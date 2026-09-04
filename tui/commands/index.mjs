@@ -34,7 +34,7 @@ export const commands = [
     description: '命令列表',
     handler(ctx) {
       const rows = commands.map(c => `  /${c.name}${c.usage ? ` ${c.usage}` : ''}  — ${c.description}`)
-      ctx.echo('system', `可用命令:\n${rows.join('\n')}\n普通文本 = 发送任务到当前频道(lead);以 Agent 身份发信走 /send。`)
+      ctx.echo('system', `可用命令:\n${rows.join('\n')}\n普通文本按当前目标发送:频道 → 发布正式任务;@成员(Tab 选择) → 通信消息。/msg /task 可显式指定。`)
     },
   },
   {
@@ -51,8 +51,8 @@ export const commands = [
   },
   {
     name: 'channel',
-    usage: 'new <name> [--desc …] [--lead <名>] | use <名|序号> | add <模板|名> [--role lead] [--harness omp] [--config JSON]',
-    description: '创建/切换频道、向频道放置 Agent',
+    usage: 'new <name> [--desc …] [--lead <名>] | use [名|序号] | add <模板|名> [--role lead] [--harness omp] [--config JSON]',
+    description: '创建/切换频道(use 不带参数 = 交互选择)、向频道放置 Agent',
     async handler(ctx, args, flags) {
       const sub = args.shift()
       if (sub === 'new') {
@@ -69,7 +69,11 @@ export const commands = [
       }
       else if (sub === 'use') {
         const key = args.shift()
-        if (!key) return ctx.echo('error', '用法:/channel use <名|序号>(/channels 查看列表)')
+        if (!key) {
+          // 交互式选择(浮层)
+          ctx.actions.pickChannel?.()
+          return
+        }
         const ch = resolveChannel(ctx.state, key)
         if (!ch) return ctx.echo('error', `频道不存在:${key}`)
         await ctx.actions.switchChannel(ch.id)
@@ -127,9 +131,32 @@ export const commands = [
     },
   },
   {
+    name: 'msg',
+    usage: '[<agent>] <文本…>',
+    description: '发布通信消息(即时送达,忙碌时 steer 注入;缺省收件人 = 当前对话目标或 lead)',
+    async handler(ctx, args) {
+      let target = ctx.state.target
+      const first = args[0]
+      if (first && !ctx.state.agents.some(a => a.name === first || a.id === first) && !/^\d+$/.test(first)) {
+        // 首参不是成员 → 整段是文本
+      }
+      else if (first) {
+        const key = args.shift()
+        target = resolveAgent(ctx.state, key)
+        if (!target) return ctx.echo('error', `成员不存在:${key}(/agents 查看)`)
+      }
+      const text = args.join(' ')
+      if (!text) return ctx.echo('error', '用法:/msg [<agent>] <文本…>')
+      const to = target ?? leadOf(ctx.state)
+      if (!to) return ctx.echo('error', '频道没有 lead,请指定收件人:/msg <agent> <文本…>')
+      await ctx.api.sendMessage(ctx.state.activeChannelId, { toAgentId: to.id, text, priority: 'immediate', requireReply: true, fromLabel: ctx.state.userName || '用户' })
+      ctx.echo('system', `✔ 通信消息已发 → @${to.name}`)
+    },
+  },
+  {
     name: 'task',
     usage: '<标题…> [--mode goal|loop|pipeline] [--assignee <agent>]',
-    description: '提交正式任务(缺省路由 lead,状态经 /tasks 跟踪)',
+    description: '发布正式任务(缺省路由 lead,状态经 /tasks 跟踪)',
     async handler(ctx, args, flags) {
       const title = args.join(' ')
       if (!title) return ctx.echo('error', '用法:/task <标题…> [--mode goal|loop|pipeline] [--assignee <agent>]')
@@ -139,8 +166,11 @@ export const commands = [
         if (!a) return ctx.echo('error', `assignee 不存在:${flags.assignee}`)
         body.assigneeId = a.id
       }
+      else if (ctx.state.target) {
+        body.assigneeId = ctx.state.target.agentId
+      }
       const task = await ctx.api.submitTask(ctx.state.activeChannelId, body)
-      ctx.echo('system', `✔ 任务已提交:${task?.id?.slice(0, 8) ?? ''}「${title}」`)
+      ctx.echo('system', `✔ 任务已发布:${task?.id?.slice(0, 8) ?? ''}「${title}」`)
     },
   },
   {
@@ -213,6 +243,13 @@ function resolveChannel(state, key) {
 function resolveAgent(state, key) {
   const byIdx = state.agents[Number.parseInt(key, 10) - 1]
   return state.agents.find(a => a.name === key || a.id === key) ?? (Number.isInteger(Number.parseInt(key, 10)) ? byIdx : undefined)
+}
+
+/** 当前对话目标的收件人解析:目标成员 → lead */
+function leadOf(state) {
+  const ch = state.channels.find(c => c.id === state.activeChannelId)
+  const leadId = ch?.leadAgentId ?? state.agents.find(a => a.role === 'lead')?.id
+  return state.agents.find(a => a.id === leadId) ?? null
 }
 
 function parseConfigFlag(raw) {

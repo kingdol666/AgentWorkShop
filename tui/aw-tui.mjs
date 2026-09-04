@@ -16,6 +16,7 @@ import { createApi } from './lib/api.mjs'
 import { connectAep, connectTerm } from './lib/ws.mjs'
 import { createState, pushLog, withLog } from './lib/state.mjs'
 import { reduceEnvelope, reduceTermFrame } from './lib/reducers.mjs'
+import { openChannelPicker, openTargetPicker } from './lib/pickers.mjs'
 import { dispatchCommand, slashCommandCompletions } from './commands/index.mjs'
 import { ChatLog } from './components/chat-log.mjs'
 import { StatusBar } from './components/status-bar.mjs'
@@ -244,10 +245,24 @@ export async function main(argv = process.argv.slice(2)) {
       tui.stop()
       process.exit(0)
     },
+    /** 交互式频道选择(启动/`/channel use` 无参) */
+    pickChannel() {
+      openChannelPicker(tui, state, {
+        onSelect: async (id) => {
+          tui.setFocus(editor)
+          await actions.switchChannel(id)
+        },
+        onCancel: async () => {
+          tui.setFocus(editor)
+          // Esc 兜底:未进入任何频道时自动进第一个
+          if (!state.activeChannelId && state.channels[0]) await actions.switchChannel(state.channels[0].id)
+        },
+      })
+    },
   }
   const ctx = { state, store, api, echo, push, actions }
 
-  // ── 编辑器提交路由:HITL 作答 → 命令 → 普通文本发任务 ──
+  // ── 编辑器提交路由:HITL 作答 → 命令 → 普通文本按目标分流 ──
   editor.onSubmit = async (text) => {
     const trimmed = text.trim()
     editor.setText('')
@@ -263,24 +278,52 @@ export async function main(argv = process.argv.slice(2)) {
       return
     }
     if (!state.activeChannelId) {
-      push('error', '未选择频道:先 /channels + /channel use <名|序号>')
+      push('error', '未选择频道:Tab 或 /channel use 打开选择器')
       return
     }
-    // messages 端点要求 toAgentId:普通文本缺省路由 lead
-    const ch = state.channels.find(c => c.id === state.activeChannelId)
-    const leadId = ch?.leadAgentId ?? state.agents.find(a => a.role === 'lead')?.id
-    if (!leadId) {
-      push('error', '当前频道没有 lead:用 /channel new --lead <名> 重建,或 /send <成员> 指定收件人。')
+    // 普通文本按目标分流:选定了成员 = 通信消息(immediate);频道 = 发布正式任务
+    if (state.target) {
+      const to = state.agents.find(a => a.id === state.target.agentId)
+      if (!to) {
+        state.target = null
+        push('error', '对话目标已失效(成员被移除),已重置为频道模式')
+        store.notify()
+        return
+      }
+      try {
+        await api.sendMessage(state.activeChannelId, { toAgentId: to.id, text: trimmed, priority: 'immediate', requireReply: true, fromLabel: state.userName || '用户' })
+        push('system', `✔ 通信消息已发 → @${to.name}`)
+      }
+      catch (err) {
+        push('error', `发送失败:${err.message}`)
+      }
+      store.notify()
       return
     }
+    // 频道模式 = 发布正式任务(状态经 /tasks 跟踪)
     try {
-      await api.sendMessage(state.activeChannelId, { toAgentId: leadId, text: trimmed, priority: 'task', fromLabel: state.userName || '用户' })
+      const task = await api.submitTask(state.activeChannelId, { title: trimmed, mode: 'goal' })
+      push('system', `✔ 任务已发布:${task?.id?.slice(0, 8) ?? ''}「${trimmed}」`)
     }
     catch (err) {
-      push('error', `发送失败:${err.message}`)
+      push('error', `任务发布失败:${err.message}`)
     }
     store.notify()
   }
+
+  // ── Tab:呼出对话目标选择器(成员 + 频道模式;选定成员自动开独立监控) ──
+  tui.addInputListener((data) => {
+    if (data !== '\t' || state.targetPickerOpen) return undefined
+    openTargetPicker(tui, state, {
+      onPick: (agent) => {
+        tui.setFocus(editor)
+        if (agent) actions.openMonitor(agent)
+        store.notify()
+      },
+      onCancel: () => tui.setFocus(editor),
+    })
+    return { consume: true }
+  })
 
   // ── AEP 事件流 ──
   const seqCursor = new Map()
@@ -311,14 +354,17 @@ export async function main(argv = process.argv.slice(2)) {
   push('system', `AgentWorkShop TUI 已就绪 ${state.baseUrl}`)
   push('system', '普通文本 = 发任务到当前频道;/help 命令列表;/hitl 处理待办。')
 
-  // ── 启动:频道自动选择 → 订阅 ──
+  // ── 启动:显式 --channel 直接进入;否则 TUI 就绪后弹出频道选择器 ──
+  let needPick = false
   try {
     const channels = await api.listChannels()
     state.channels = channels
-    // 空字符串 --channel 视为未指定('' 非 nullish,?? 不会走右侧)
-    const target = (opts.channel ? channels.find(c => c.name === opts.channel || c.id === opts.channel) : undefined)
-      ?? channels[0]
-    if (target) await actions.switchChannel(target.id)
+    if (opts.channel) {
+      const target = channels.find(c => c.name === opts.channel || c.id === opts.channel)
+      if (target) await actions.switchChannel(target.id)
+      else push('warn', `频道不存在:${opts.channel}(/channels 查看)`)
+    }
+    else if (channels.length > 0) needPick = true
     else push('warn', '尚无频道:/channel new <名称> 创建一个。')
     const me = await api.get('/api/workshop/users/me').catch(() => null)
     state.userName = me?.user?.name ?? me?.name ?? '用户'
@@ -328,6 +374,10 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   tui.start()
+  if (needPick) {
+    push('system', '↑↓ 选择要进入的频道,Enter 确认(Esc 自动进入第一个)。')
+    actions.pickChannel()
+  }
   return tui
 }
 

@@ -21,9 +21,17 @@ aw tui --url http://127.0.0.1:3000 --token ut-xxxx --channel <名>
 ┌ 会话时间线(左)                          ┌ 监控面板(右,/monitor 开启)
 │ ◆ 你 消息 · ◆ Agent 回复 · 任务状态行    │ ┌─ 监控 <agent> · 流式中
 ├ HITL 作答卡(/hitl <n> 进入作答时出现)
-├ 状态条:频道 · 成员(忙 n) · HITL 待处理 n · 连接态
+├ 状态条:频道 · 输入目标 · 成员(忙 n) · HITL 待处理 n · 连接态
 └ 输入框(/ 命令补全 · ↑↓ 历史)
 ```
+
+## 交互
+
+- **启动频道选择器**:TUI 就绪后弹出频道列表(↑↓ 移动 · Enter 进入 · Esc 自动进第一个);
+  随时可用 `/channel use`(无参)再次呼出。
+- **Tab 选择对话目标**:呼出成员选择器 —— 选「频道(发布任务)」= 普通文本发布正式任务;
+  选某成员 = 切换为**通信对话**并自动打开其独立监控面板。状态条实时显示当前输入目标。
+- **输入框语义**:普通文本按目标分流(频道 → 任务 / 成员 → 通信);`/task`、`/msg` 可显式指定。
 
 ## 命令
 
@@ -32,9 +40,10 @@ aw tui --url http://127.0.0.1:3000 --token ut-xxxx --channel <名>
 | `/help` | 命令列表 |
 | `/channels` | 列出我的频道 |
 | `/channel new <名> [--desc …] [--lead <名>]` | 创建频道(可选内联建 lead) |
-| `/channel use <名\|序号>` | 切换频道(WS 断点续传) |
+| `/channel use [名\|序号]` | 切换频道(无参 = 交互选择器;WS 断点续传) |
 | `/channel add <模板\|名> [--role lead\|worker] [--harness omp] [--config JSON]` | 放置 Agent 实例 |
 | `/agents` | 当前频道成员与实时状态 |
+| `/msg [<agent>] <文本…>` | 发布通信消息(缺省收件人 = 当前目标或 lead) |
 | `/send <agent\|序号> <文本…>` | 向指定 Agent 直发(忙碌时 steer 注入) |
 | `/task <标题…> [--mode goal\|loop\|pipeline] [--assignee <agent>]` | 提交正式任务 |
 | `/tasks` | 任务列表与七态/进度 |
