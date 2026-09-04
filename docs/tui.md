@@ -37,7 +37,7 @@ WebUI 侧:`app/stores/workshop/hitl.ts` 消费帧 → `AppHeader` 铃标 → 点
 
 | 命令 | 覆盖 |
 |---|---|
-| `npx tsx scripts/test-hitl-registry.ts` | registry 登记/落定/订阅/park 暂停与超时(22 断言) |
+| `npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/test-hitl-registry.ts` | registry 登记/落定/订阅/park 暂停与超时(22 断言);根 tsconfig 为 solution-style,tsx 须显式指定含 `@/*` 映射的子配置 |
 | `node scripts/test-tui-reducers.mjs` | AEP 帧 → 会话状态归约(15 断言) |
 | `node scripts/test-tui-commands.mjs` | 命令解析/分发(21 断言) |
 | `node scripts/tui-smoke.mjs` | 无头 e2e:虚拟终端驱动真实 TUI ↔ 真实 dev server(12 断言) |

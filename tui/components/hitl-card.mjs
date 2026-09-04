@@ -30,7 +30,10 @@ export class HitlCard {
     if (item.method === 'select' && Array.isArray(item.options)) {
       item.options.forEach((opt, i) => lines.push(`  ${theme.accent(`${i + 1}.`)} ${opt}`))
     }
-    lines.push(theme.faint(`${HINT[item.method] ?? '输入回答'} · /hitl off 放弃`))
+    // 下发审批(dcw-approval)无 method 字段,必须显式告知 y/n 约定,
+    // 否则中文确认词会触发"非 y 即拒绝"的静默拒绝。
+    const hint = item.kind === 'omp-dialog' ? (HINT[item.method] ?? '输入回答') : '输入 y 批准 / n 拒绝'
+    lines.push(theme.faint(`${hint} · /hitl off 放弃`))
     return lines.map(l => truncateToWidth(l, Math.max(width, 20)))
   }
 }

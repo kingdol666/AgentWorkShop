@@ -9,7 +9,7 @@
 // 命令系统(/help)+ 监控面板(终端 WS)+ HITL 统一作答(/hitl)。
 // --headless:VirtualTerminal 驱动(无 TTY;scripts/tui-smoke.mjs 用)。
 // ============================================================
-import { TuiMainScreen, Editor, CombinedAutocompleteProvider, ProcessTerminal } from '@earendil-works/pi-tui'
+import { TuiMainScreen, Editor, CombinedAutocompleteProvider, ProcessTerminal, truncateToWidth } from '@earendil-works/pi-tui'
 import { theme } from './theme.mjs'
 import { loadAuth, saveAuth, configRoot } from './lib/config.mjs'
 import { createApi } from './lib/api.mjs'
@@ -221,10 +221,14 @@ export async function main(argv = process.argv.slice(2)) {
         }
       }
       else {
-        // dcw-approval:confirm 语义(y=批准/n=拒绝)+ 备注
+        // dcw-approval:显式 y/n。此前"非 y 开头一律落定为拒绝"对中文用户是逆向
+        // 陷阱(输入"同意/ok/批准"全部变成静默拒绝高危下发),必须重输。
         const norm = text.trim().toLowerCase()
+        if (!['y', 'n', 'yes', 'no'].includes(norm)) {
+          push('error', '下发审批请输入 y(批准)或 n(拒绝)')
+          return true
+        }
         body.confirmed = norm.startsWith('y')
-        if (norm.length > 1) body.comment = text
       }
       try {
         await api.hitlRespond(body)
@@ -234,7 +238,11 @@ export async function main(argv = process.argv.slice(2)) {
       }
       catch (err) {
         push('error', `应答失败:${err.message}`)
-        if (String(err.code) === 'ALREADY_RESOLVED') state.hitlAnswering = null
+        if (String(err.code) === 'ALREADY_RESOLVED') {
+          // 该待办已在别处(WebUI/另一端)解决:同步清除列表项,避免幽灵待办
+          state.hitl = state.hitl.filter(i => !(i.kind === item.kind && i.id === item.id))
+          state.hitlAnswering = null
+        }
       }
       store.notify()
       return true
@@ -262,19 +270,21 @@ export async function main(argv = process.argv.slice(2)) {
   }
   const ctx = { state, store, api, echo, push, actions }
 
-  // ── 编辑器提交路由:HITL 作答 → 命令 → 普通文本按目标分流 ──
+  // ── 编辑器提交路由:命令 → HITL 作答 → 普通文本按目标分流 ──
   editor.onSubmit = async (text) => {
     const trimmed = text.trim()
     editor.setText('')
     editor.addToHistory?.(text)
     if (!trimmed) return
-    if (state.hitlAnswering) {
-      await actions.submitHitlAnswer(trimmed)
-      return
-    }
+    // 斜杠命令优先于作答分支:否则作答卡里输入 /hitl off(卡片提示的放弃方式)
+    // 会被当作答案文本提交给 Agent —— 与文档承诺行为相反。
     if (trimmed.startsWith('/')) {
       await dispatchCommand(ctx, trimmed)
       store.notify()
+      return
+    }
+    if (state.hitlAnswering) {
+      await actions.submitHitlAnswer(trimmed)
       return
     }
     if (!state.activeChannelId) {
@@ -346,8 +356,16 @@ export async function main(argv = process.argv.slice(2)) {
 
   store.onChange(() => tui.requestRender())
 
+  // 兜底:未处理的 rejection 只记日志,不让 TUI 进程静默死亡(重连窗口内
+  // ws.send 之类的瞬态异常不应终止整个工作台)。
+  process.on('unhandledRejection', (err) => {
+    push('error', `未处理的异步错误:${err?.message ?? err}`)
+  })
+
   // ── 组装视图 ──
-  tui.addChild({ render: width => [...stack.render(width), '', ...editor.render(width)] })
+  // 出口统一按终端宽度夹断:pi-tui 对超宽行直接 stop()+throw(进程崩溃),
+  // 组合行(左栏+44 列监控右栏)在窄终端必然溢出,必须在进入渲染前截断。
+  tui.addChild({ render: width => [...stack.render(width), '', ...editor.render(width)].map(l => truncateToWidth(l, width)) })
   editor.setAutocompleteProvider?.(new CombinedAutocompleteProvider(slashCommandCompletions(), process.cwd()))
   tui.setFocus(editor)
 

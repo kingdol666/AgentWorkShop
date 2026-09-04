@@ -72,7 +72,8 @@ export function connectAep({ baseUrl, token, onEvent, onState }) {
     },
     unsubscribe(channelId) {
       subscribed.delete(channelId)
-      ws?.send(JSON.stringify({ type: 'unsub', channelId }))
+      // CONNECTING 态 send() 会同步抛 InvalidStateError(重连窗口内切频道即触发)
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'unsub', channelId }))
     },
     /** 游标推进(onEvent 内按信封 seq 调用;重连续传依据) */
     cursor(channelId, seq) {
