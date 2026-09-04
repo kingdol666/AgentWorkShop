@@ -42,6 +42,8 @@ import { memorySettings } from '../settings'
 import { createEnvEmbeddingProvider } from './embedding-provider'
 import { listHarnessProcesses, listAliveHarnessProcessesByAgent, sweepHarnessProcesses, killHarnessProcess } from '../agents/harness-process'
 import { hasTerminalSession, sweepTerminalSessions } from '../agents/harness-terminal'
+import { knownHarnesses } from '../agents/registry'
+import { hostToolsForRole } from '../agents/host-tool-bridge'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 import type { UserRepo } from '../db/user.repo'
 import type { ChannelEventRepo } from '../db/channel-event.repo'
@@ -205,8 +207,8 @@ function runtimeKey(channelId: string, agentId: string): string {
   return `${channelId}\u0000${agentId}`
 }
 
-/** factory 支持的 harness 集(lead 建成员时校验;与 agents/factory.ts 对齐) */
-const KNOWN_HARNESSES = new Set(['mock', 'omp', 'claude'])
+/** factory 支持的 harness 集(registry 单一事实源;lead 建成员时校验) */
+const KNOWN_HARNESSES = new Set(knownHarnesses())
 
 /** 全局用户名解析(带 60s 缓存;owner 归属呈现用,解析失败返回 null) */
 const ownerNameCache = new Map<string, { name: string | null, at: number }>()
@@ -2672,6 +2674,60 @@ export class AgentChannelManager {
       default:
         throw new AppError(400, 'BAD_REQUEST', `工具桥不支持该协作工具: ${tool}`)
     }
+  }
+
+  /**
+   * harness 无关全量工具直调(agent token 鉴权;stdio MCP 桥回程的唯一入口)。
+   * impl.dispatchHostTool(全引擎共享 host-tool-bridge)优先;未实现回退协作工具族。
+   */
+  async invokeHostTool(input: { agentId: string, token?: string, tool: string, args?: Record<string, unknown> }): Promise<{ text: string, isError?: boolean }> {
+    const row = this.deps.repos.channelAgents.findById(input.agentId)
+    if (!row || row.enabled !== 1) throw new AppError(404, 'NOT_FOUND', `agent 不存在或已停用: ${input.agentId}`)
+    // token 鉴权(MCP 桥路径必带;缺省视为服务端内部调用,走 REST 已有用户鉴权)
+    if (input.token !== undefined && input.token !== row.token) {
+      throw new AppError(401, 'UNAUTHORIZED', 'agent token 校验失败')
+    }
+    const runtime = this.ensureAgentRuntime(row.channelId, input.agentId)
+    if (runtime) {
+      const viaImpl = await runtime.dispatchHostTool(input.tool, input.args ?? {})
+      if (viaImpl) return viaImpl
+    }
+    // 回退:impl 未实现工具面(如 mock)→ 协作工具族直调
+    return this.invokeAgentWorkspaceTool(input.agentId, input.tool, input.args ?? {})
+  }
+
+  /** 按 token 解析 agent(桥侧只需 token 的自证路径;未命中返回 null) */
+  resolveAgentByToken(token: string): { agentId: string, channelId: string } | null {
+    if (!token) return null
+    const row = this.deps.repos.channelAgents.findByToken(token)
+    if (!row || row.enabled !== 1) return null
+    return { agentId: row.id, channelId: row.channelId }
+  }
+
+  /** 工具面 schema(MCP 桥 tools/list):按 agent 角色装配,与 omp 注入面同源 */
+  hostToolDefsFor(agentId: string): Array<{ name: string, label?: string, description: string, parameters: Record<string, unknown> }> {
+    const row = this.deps.repos.channelAgents.findById(agentId)
+    if (!row) throw new AppError(404, 'NOT_FOUND', `agent 不存在: ${agentId}`)
+    return hostToolsForRole(row.role === 'lead' ? 'lead' : 'worker')
+  }
+
+  /**
+   * HITL 应答传导(codex/opencode/dsh 审批;omp-dialog 走 terminal 通道不经此)。
+   * 找不到运行时或 impl 未实现 → 409(条目不可应答)。
+   */
+  async respondHarnessHitl(agentId: string, kind: string, id: string, outcome: {
+    confirmed?: boolean
+    cancelled?: boolean
+    value?: string
+    response?: string
+    comment?: string
+  }): Promise<void> {
+    const row = this.deps.repos.channelAgents.findById(agentId)
+    if (!row) throw new AppError(404, 'NOT_FOUND', `agent 不存在: ${agentId}`)
+    const runtime = this.ensureAgentRuntime(row.channelId, agentId)
+    if (!runtime) throw new AppError(409, 'NOT_RESPONDABLE', 'agent 运行时未装配,无法应答')
+    const ok = await runtime.respondHitl(kind, id, outcome)
+    if (!ok) throw new AppError(409, 'NOT_RESPONDABLE', '该 harness 不支持程序化应答')
   }
 
   /** 阻塞长轮询(poll_messages):到信即时唤醒,250ms 兜底重查 */

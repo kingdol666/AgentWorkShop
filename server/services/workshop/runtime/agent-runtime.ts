@@ -406,6 +406,28 @@ export class AgentRuntime {
     }
   }
 
+  /**
+   * harness 无关工具直调面(REST agent-tools / stdio MCP 桥回程)。
+   * impl 未实现(老引擎/进程内 mock)返回 null,调用方回退协作工具族。
+   */
+  async dispatchHostTool(toolName: string, args: Record<string, unknown>): Promise<{ text: string, isError?: boolean } | null> {
+    if (!this.impl.dispatchHostTool) return null
+    return await this.impl.dispatchHostTool(toolName, args)
+  }
+
+  /** HITL 应答传导:impl 未实现返回 false(上层据此 409);异常上抛由 HTTP 层收口 */
+  async respondHitl(kind: string, id: string, outcome: {
+    confirmed?: boolean
+    cancelled?: boolean
+    value?: string
+    response?: string
+    comment?: string
+  }): Promise<boolean> {
+    if (!this.impl.respondHitl) return false
+    await this.impl.respondHitl(kind, id, outcome)
+    return true
+  }
+
   /** 暴露 TaskEngine(供 SchedulerLoop 收集快照与执行调度决策) */
   get taskEngine(): TaskEngine {
     return this.deps.taskEngine

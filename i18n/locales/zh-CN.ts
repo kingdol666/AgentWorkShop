@@ -1852,6 +1852,11 @@ export default {
     hitlBadge: '待人工处理',
     hitlKindOmp: 'omp 对话框',
     hitlKindDcw: '下发审批',
+    hitlKindCodex: 'codex 审批',
+    hitlKindOpencode: 'opencode 权限',
+    hitlKindDsh: 'dsh 权限',
+    hitlApprove: '批准',
+    hitlReject: '拒绝',
   },
   ompTerminalPanel: {
     k14jk3nu001: '  {p0}· 对话框已撤销({p1}){p2}',

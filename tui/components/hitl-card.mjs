@@ -13,6 +13,14 @@ const HINT = {
   editor: '输入回答文本',
 }
 
+const KIND_LABEL = {
+  'omp-dialog': 'omp 对话框',
+  'dcw-approval': '下发审批',
+  'codex-approval': 'codex 审批',
+  'opencode-permission': 'opencode 权限',
+  'dsh-permission': 'dsh 权限',
+}
+
 export class HitlCard {
   constructor(state) {
     this.state = state
@@ -23,7 +31,7 @@ export class HitlCard {
     if (!item) return []
     const w = Math.max(width - 4, 20)
     const lines = []
-    lines.push(theme.warn(`⏸ HITL 作答 · ${item.agentName} · ${item.kind === 'omp-dialog' ? 'omp 对话框' : '下发审批'}`))
+    lines.push(theme.warn(`⏸ HITL 作答 · ${item.agentName} · ${KIND_LABEL[item.kind] ?? '引擎待办'}`))
     lines.push(truncateToWidth(theme.bold(String(item.title ?? '')), w))
     if (item.detail) lines.push(...wrapTextWithAnsi(theme.faint(item.detail), w))
     if (item.message) lines.push(...wrapTextWithAnsi(String(item.message), w))

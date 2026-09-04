@@ -69,6 +69,12 @@ export interface OmpSettings {
   compact_min_interval_ms: number
   compact_wait_ms: number
 }
+export interface HarnessSettings {
+  opencode_command: string
+  codex_command: string
+  dsh_command: string
+  hitl_timeout_ms: number
+}
 export interface DcwSettings {
   rollback_cooldown_ms: number
   rollback_min_window_ms: number
@@ -113,6 +119,7 @@ export interface DaqRuntimeSettings {
 
 export const memorySettings = (): MemorySettings => section<MemorySettings>('memory')
 export const ompSettings = (): OmpSettings => section<OmpSettings>('omp')
+export const harnessSettings = (): HarnessSettings => section<HarnessSettings>('harness')
 export const dcwSettings = (): DcwSettings => section<DcwSettings>('dcw')
 export const workshopSettings = (): WorkshopSettings => section<WorkshopSettings>('workshop')
 export const backupSettings = (): BackupSettings => section<BackupSettings>('backup')

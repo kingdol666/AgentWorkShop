@@ -5,7 +5,7 @@
  * admin:全量视图(含他人私有),附创建者;可改删任意非内置模板。
  */
 import { message } from 'ant-design-vue'
-import { useWorkshopApi, type AgentTemplateDto } from '../../composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type AgentTemplateDto, type HarnessMetaDto } from '../../composables/workshop/useWorkshopApi'
 import { useUserStore } from '../../stores/workshop/user'
 
 const { t: tt } = useI18n()
@@ -63,6 +63,37 @@ const visTag = (t: AgentTemplateDto): { text: string, color: string, icon?: stri
   if (t.visibility === 'public') return { text: tt('agents.k3wv1t018'), color: 'green' }
   return { text: tt('agents.k447jj019'), color: 'default' }
 }
+
+// ===== harness 选项(引擎注册表动态拉取;失败回退静态表) =====
+const harnesses = ref<HarnessMetaDto[]>([])
+const harnessOptions = computed(() =>
+  (harnesses.value.length > 0
+    ? harnesses.value
+    : [
+        { id: 'mock', label: 'mock(测试)', description: '', capabilities: { steer: true, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
+        { id: 'omp', label: 'omp(真实 LLM)', description: '', capabilities: { steer: true, supervise: true, hitl: true, terminal: true, contextStats: true, compact: true } },
+        { id: 'claude', label: 'claude', description: '', capabilities: { steer: false, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
+      ] as HarnessMetaDto[]).map(h => ({ value: h.id, label: h.label })),
+)
+const capBadges = (id: string): string[] => {
+  const caps = harnesses.value.find(h => h.id === id)?.capabilities
+  if (!caps) return []
+  const out: string[] = []
+  if (caps.steer) out.push('steer')
+  if (caps.supervise) out.push('lead')
+  if (caps.hitl) out.push('HITL')
+  if (caps.compact) out.push('compact')
+  return out
+}
+const loadHarnesses = async (): Promise<void> => {
+  try {
+    const res = await api.listHarnesses()
+    const list = (res as unknown as { data?: { harnesses?: HarnessMetaDto[] } })?.data?.harnesses
+    if (Array.isArray(list) && list.length > 0) harnesses.value = list
+  }
+  catch { /* 回退静态表 */ }
+}
+void loadHarnesses()
 
 const editOpen = ref(false)
 const editing = ref<AgentTemplateDto | null>(null)
@@ -313,8 +344,18 @@ useHead({ title: () => tt('titles.agents') })
         <a-form-item label="harness">
           <a-select
             v-model:value="form.harness"
-            :options="[{ value: 'mock', label: 'mock(测试)' }, { value: 'omp', label: 'omp(真实 LLM)' }, { value: 'claude', label: 'claude' }]"
+            :options="harnessOptions"
           />
+          <div
+            v-if="capBadges(form.harness).length"
+            class="harness-caps"
+          >
+            <span
+              v-for="b in capBadges(form.harness)"
+              :key="b"
+              class="harness-cap"
+            >{{ b }}</span>
+          </div>
         </a-form-item>
         <a-form-item :label="$t('agents.k3lrqn0002')">
           <a-radio-group v-model:value="form.visibility">
@@ -338,6 +379,15 @@ useHead({ title: () => tt('titles.agents') })
 </template>
 
 <style scoped>
+.harness-caps { margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
+.harness-cap {
+  font-size: 11px;
+  line-height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--border, #2a3a4a);
+  border-radius: 3px;
+  opacity: 0.75;
+}
 .page { padding: 4px; }
 .head {
   display: flex;

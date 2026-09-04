@@ -261,4 +261,21 @@ export interface AgentInterface {
    * 实现方自守卫(仅回合间隙发起、异常不抛出);调用方 AgentRuntime 在信箱无排队消息时调用。
    */
   onTurnSettled?(): Promise<void>
+  /**
+   * 可选:harness 无关工具直调面(REST agent-tools / stdio MCP 桥回程)。
+   * 实现方走共享 host-tool-bridge 分发;未实现时上层回退 workspace 协作工具族。
+   */
+  dispatchHostTool?(toolName: string, args: Record<string, unknown>): Promise<{ text: string, isError?: boolean }>
+  /**
+   * 可选:HITL 应答传导(人类经 /api/workshop/hitl/respond 裁决引擎侧审批/权限请求)。
+   * outcome:confirmed=true 应答通过 / cancelled=true 人工放弃 / value=文本应答 /
+   * response=引擎原生选项(如 opencode once|always|reject)。未实现 → 上层 409。
+   */
+  respondHitl?(kind: string, id: string, outcome: {
+    confirmed?: boolean
+    cancelled?: boolean
+    value?: string
+    response?: string
+    comment?: string
+  }): Promise<void>
 }

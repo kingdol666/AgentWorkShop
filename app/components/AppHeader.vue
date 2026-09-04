@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { message } from 'ant-design-vue'
 import type { MenuProps, SelectProps } from 'ant-design-vue'
 import type { AepHitlItem } from '#shared/workshop-protocol'
 import { useUserStore } from '@/app/stores/workshop/user'
 import { useWsConnectionStore } from '@/app/stores/workshop/connection'
 import { useHitlStore } from '@/app/stores/workshop/hitl'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
+import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
 
 const { t, locale, locales, setLocale } = useI18n()
 const store = useAppStore()
@@ -27,10 +29,35 @@ watch(() => userStore.token, (t2) => {
   }
   else hitl.clear()
 }, { immediate: true })
-const hitlKindLabel = (kind: AepHitlItem['kind']) =>
-  kind === 'omp-dialog' ? t('appHeader.hitlKindOmp') : t('appHeader.hitlKindDcw')
+const HITL_ANSWERABLE = new Set(['codex-approval', 'opencode-permission', 'dsh-permission'])
+const hitlKindLabel = (kind: AepHitlItem['kind']) => {
+  switch (kind) {
+    case 'omp-dialog': return t('appHeader.hitlKindOmp')
+    case 'dcw-approval': return t('appHeader.hitlKindDcw')
+    case 'codex-approval': return t('appHeader.hitlKindCodex')
+    case 'opencode-permission': return t('appHeader.hitlKindOpencode')
+    case 'dsh-permission': return t('appHeader.hitlKindDsh')
+    default: return kind
+  }
+}
 const hitlGo = (item: AepHitlItem) => {
   navigateTo({ path: '/monitor', query: { agentId: item.agentId, channelId: item.channelId } })
+}
+// 引擎审批(codex/opencode/dsh)页头内联应答:批准/拒绝直接回传引擎,无需进终端
+const hitlApi = useWorkshopApi()
+const hitlAnswering = ref<string | null>(null)
+const hitlAnswer = async (item: AepHitlItem, confirmed: boolean): Promise<void> => {
+  hitlAnswering.value = `${item.kind}:${item.id}`
+  try {
+    await hitlApi.respondHitl({ kind: item.kind, id: item.id, confirmed, cancelled: !confirmed })
+    await hitl.loadSnapshot()
+  }
+  catch (e) {
+    message.error(e instanceof Error ? e.message : String(e))
+  }
+  finally {
+    hitlAnswering.value = null
+  }
 }
 
 const localeOptions = computed(() =>
@@ -257,6 +284,28 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
                   <span class="hitl-item-kind">{{ hitlKindLabel(item.kind) }}</span>
                 </span>
                 <span class="hitl-item-title">{{ item.title }}</span>
+                <span
+                  v-if="HITL_ANSWERABLE.has(item.kind)"
+                  class="hitl-item-actions"
+                  @click.stop
+                >
+                  <a-button
+                    size="small"
+                    type="primary"
+                    :loading="hitlAnswering === `${item.kind}:${item.id}`"
+                    @click="hitlAnswer(item, true)"
+                  >
+                    {{ t('appHeader.hitlApprove') }}
+                  </a-button>
+                  <a-button
+                    size="small"
+                    danger
+                    :disabled="hitlAnswering === `${item.kind}:${item.id}`"
+                    @click="hitlAnswer(item, false)"
+                  >
+                    {{ t('appHeader.hitlReject') }}
+                  </a-button>
+                </span>
               </button>
             </div>
           </template>
@@ -796,6 +845,11 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   color: var(--ink-soft);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.hitl-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {

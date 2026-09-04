@@ -59,6 +59,11 @@
     { "key": "omp.compact_min_interval_ms", "type": "number", "group": "omp", "label": "压缩最小间隔(ms)", "labelKey": "settings.runtime.omp.compactMinIntervalMs", "description": "两次自动压缩之间的最小间隔", "applies": "restart", "default": 300000, "min": 30000, "max": 3600000 },
     { "key": "omp.compact_wait_ms", "type": "number", "group": "omp", "label": "压缩等待超时(ms)", "labelKey": "settings.runtime.omp.compactWaitMs", "description": "等待 compaction_end 完成事件的超时", "applies": "restart", "default": 120000, "min": 10000, "max": 600000 },
 
+    { "key": "harness.opencode_command", "type": "string", "group": "harness", "label": "opencode 命令", "labelKey": "settings.runtime.harness.opencodeCommand", "description": "OpenCode 引擎可执行文件(PATH 解析)", "applies": "restart", "default": "opencode" },
+    { "key": "harness.codex_command", "type": "string", "group": "harness", "label": "codex 命令", "labelKey": "settings.runtime.harness.codexCommand", "description": "OpenAI Codex CLI 可执行文件(app-server 模式)", "applies": "restart", "default": "codex" },
+    { "key": "harness.dsh_command", "type": "string", "group": "harness", "label": "dsh 命令", "labelKey": "settings.runtime.harness.dshCommand", "description": "DeepSeek Harness 可执行文件(ACP 模式)", "applies": "restart", "default": "dsh" },
+    { "key": "harness.hitl_timeout_ms", "type": "number", "group": "harness", "label": "引擎审批超时(ms)", "labelKey": "settings.runtime.harness.hitlTimeoutMs", "description": "codex/opencode/dsh 权限审批无人应答的自动拒绝时限(0=无限等待)", "applies": "restart", "default": 300000, "min": 0, "max": 3600000 },
+
     { "key": "dcw.rollback_cooldown_ms", "type": "number", "group": "dcw", "label": "回退冷却(ms)", "labelKey": "settings.runtime.dcw.rollbackCooldownMs", "description": "回退执行后的同向冷却窗", "applies": "restart", "default": 300000, "min": 0, "max": 3600000 },
     { "key": "dcw.rollback_min_window_ms", "type": "number", "group": "dcw", "label": "回退最小观察窗(ms)", "labelKey": "settings.runtime.dcw.rollbackMinWindowMs", "description": "开记录后允许判定的最小观察窗", "applies": "restart", "default": 120000, "min": 0, "max": 3600000 },
     { "key": "dcw.rollback_baseline_ms", "type": "number", "group": "dcw", "label": "基线稳定窗(ms)", "labelKey": "settings.runtime.dcw.rollbackBaselineMs", "description": "上一稳定锚的稳定时间要求", "applies": "restart", "default": 600000, "min": 0, "max": 7200000 },

@@ -1853,6 +1853,11 @@ export default {
     hitlBadge: 'Needs human input',
     hitlKindOmp: 'omp dialog',
     hitlKindDcw: 'write approval',
+    hitlKindCodex: 'codex approval',
+    hitlKindOpencode: 'opencode permission',
+    hitlKindDsh: 'dsh permission',
+    hitlApprove: 'Approve',
+    hitlReject: 'Reject',
   },
   ompTerminalPanel: {
     k14jk3nu001: '  {p0}· 对话框已撤销({p1}){p2}',

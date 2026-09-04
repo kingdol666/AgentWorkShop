@@ -118,20 +118,26 @@ export interface AepSceneLayout {
   rotationY: number
 }
 
-/** hitl.request payload:待人工处理条目(omp ask 对话框与 dcw 工具审批的统一视图) */
+/**
+ * hitl.request payload:待人工处理条目的统一视图。
+ * kind:omp 对话框(rpc-ui ask)/ dcw 工具审批 / codex 命令与文件审批 /
+ * opencode 权限与提问 / dsh 权限请求。
+ */
+export type AepHitlKind = 'omp-dialog' | 'dcw-approval' | 'codex-approval' | 'opencode-permission' | 'dsh-permission'
+
 export interface AepHitlItem {
-  kind: 'omp-dialog' | 'dcw-approval'
-  /** omp:对话框 id;dcw:审批 id(ap-*) */
+  kind: AepHitlKind
+  /** omp:对话框 id;dcw:审批 id(ap-*);其余:引擎请求 id(应答路由用) */
   id: string
   channelId: string
   agentId: string
   agentName: string
   /** omp 子进程 pid(应答路由 respondTerminalUi 用) */
   pid?: number
-  /** omp-dialog 专属:对话框形态 */
+  /** 对话框形态(codex requestUserInput/opencode question 为 input/select;权限类为 confirm) */
   method?: 'select' | 'confirm' | 'input' | 'editor'
   title: string
-  /** dcw-approval 专属:人读摘要(节点/物理量/目标值) */
+  /** dcw-approval 专属:人读摘要(节点/物理量/目标值);其余:命令/路径/权限详情 */
   detail?: string
   /** select 的选项列表 */
   options?: string[]

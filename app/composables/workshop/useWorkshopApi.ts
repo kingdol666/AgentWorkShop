@@ -31,6 +31,21 @@ export interface AgentInfoDto {
   enabled?: number
 }
 
+/** harness 注册表元信息(GET /workshop/harnesses) */
+export interface HarnessMetaDto {
+  id: string
+  label: string
+  description: string
+  capabilities: {
+    steer: boolean
+    supervise: boolean
+    hitl: boolean
+    terminal: boolean
+    contextStats: boolean
+    compact: boolean
+  }
+}
+
 export interface TaskDto {
   id: string
   channelId: string
@@ -109,11 +124,16 @@ export function useWorkshopApi() {
     // queue / runtime
     queueOverview: (id: string) => http.get<{ data: Array<{ agentId: string, name: string, state: string, currentTaskId: string | null, queuedCount: number, completedCount: number }> }>(`/workshop/channels/${id}/queue`),
     runtimeStatus: () => http.get<{ data: { wiredAgents: string[], activeChannels: string[] } }>('/workshop/runtime'),
+    /** harness 注册表(引擎下拉/能力徽标;与 factory/manager 校验同源) */
+    listHarnesses: () => http.get<{ data: { harnesses: HarnessMetaDto[] } }>('/workshop/harnesses'),
     // tasks detail / lifecycle(P1 抽屉)
     getTask: (taskId: string) => http.get<{ data: TaskDto }>(`/workshop/tasks/${taskId}`),
     cancelTask: (taskId: string) => http.post<{ data: TaskDto }>(`/workshop/tasks/${taskId}/cancel`, {}),
     /** HITL:重试 FAILED 任务(优先原 assignee,否则队列最短空闲 worker) */
     retryTask: (taskId: string) => http.post<{ data: TaskDto }>(`/workshop/tasks/${taskId}/retry`, {}),
+    /** HITL:统一应答路由(omp-dialog/dcw-approval/codex-approval/opencode-permission/dsh-permission) */
+    respondHitl: (body: { kind: string, id: string, confirmed?: boolean, cancelled?: boolean, value?: string, response?: string, comment?: string }) =>
+      http.post<{ data: { ok: boolean, kind: string, id: string } }>('/workshop/hitl/respond', body),
     // agent 模板库(P1;v10 用户隔离:private 仅本人,public 全员可用,内置只读)
     listTemplates: () => http.get<{ data: AgentTemplateDto[] }>('/workshop/agents'),
     createTemplate: (body: { name: string, harness: string, config?: Record<string, unknown>, visibility?: 'private' | 'public' }) =>
