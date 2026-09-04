@@ -43,9 +43,13 @@ if (existsSync(envPath)) {
 
 // --- 共享配置引擎：计算有效开发端口/主机 ---
 const { loadEffective } = await import('../shared/config/engine.mjs')
+// 模式感知路径单一入口:settings/锁根必须与 start/CLI 同源,
+// 否则"检出内无 .AgentWorkShop"场景下 dev 写 data/、start 锁 home,互斥与设置双双失效。
+const { resolveRunMode } = await import('../shared/config/home.mjs')
+const rmDev = resolveRunMode({ cwd: process.cwd(), packageRoot: root, env: process.env })
 const eff = loadEffective({
-  configPath: resolve(root, 'config.yml'),
-  settingsPath: resolve(root, 'data', 'runtime-settings.json'),
+  configPath: rmDev.configPath,
+  settingsPath: rmDev.settingsPath,
   env: process.env,
   mode: 'dev',
 })
@@ -76,7 +80,7 @@ console.log(`[config] worker PORT env -> ${effectivePort}`)
 // --- 单实例互斥 + 端口占用显式报错(hardening ST-1/ST-4):不再静默换端口 ---
 {
   const { acquireLock, checkPort } = await import('../shared/config/single-instance.mjs')
-  const lock = acquireLock(resolve(root, '.AgentWorkShop'), { mode: 'dev', port: effectivePort })
+  const lock = acquireLock(rmDev.configRoot, { mode: 'dev', port: effectivePort })
   if (!lock.ok) {
     const h = lock.holder
     console.error(`✖ 已有实例在运行(pid=${h.pid}${h.port ? `,端口=${h.port}` : ''},启动于 ${h.startedAt ?? '未知'},模式=${h.mode ?? '未知'})`)

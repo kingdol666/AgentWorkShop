@@ -113,12 +113,16 @@ export function acquireLock(configRoot, { mode = 'prod', port = null } = {}) {
   return { ok: true, lockPath, release }
 }
 
-/** 端口占用探测:返回占用进程 PID(未占用返回 null)。TCP try-listen 后立刻释放。 */
+/** 端口占用探测:TCP try-listen 后立刻释放。EADDRINUSE → 端口号;其余 error code →
+ *  绑定状态未知(Windows 保留段 EACCES 等),按"未占用"放行但显式告警,不静默。 */
 export async function checkPort(host, port) {
   const net = await import('node:net')
   return new Promise((resolveProbe) => {
     const srv = net.createServer()
     srv.once('error', (err) => {
+      if (err?.code !== 'EADDRINUSE') {
+        console.warn(`[checkPort] 端口 ${port} 探测异常(${err?.code ?? err}),绑定状态未知,按未占用继续`)
+      }
       resolveProbe(err?.code === 'EADDRINUSE' ? port : null)
       srv.close()
     })

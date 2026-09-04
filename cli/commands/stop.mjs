@@ -6,6 +6,7 @@ import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { color } from '../core/logger.mjs'
+import { isTruthy } from '../core/args.mjs'
 
 export const meta = {
   name: 'stop',
@@ -50,11 +51,16 @@ function killTree(pid) {
 }
 
 export async function run(argv, ctx) {
-  const forceHome = (argv ?? []).some(a => a === '--home')
+  // argv 为 parseArgs 结果({ flags, positionals, unknown });兼容裸数组调用
+  const flags = argv?.flags ?? {}
+  const positionals = Array.isArray(argv?.positionals) ? argv.positionals : (Array.isArray(argv) ? argv : [])
+  // --home 接受布尔与字符串赋值两种形态(--home=true 走 parseArgs 是字符串)
+  const forceHome = isTruthy(flags.home) || positionals.includes('--home')
 
-  const configRoot = forceHome
-    ? ctx.home
-    : (ctx.mode === 'repo' ? join(ctx.root, '.AgentWorkShop') : ctx.home)
+  // 配置根必须与启动侧(start.mjs / dev-guard)同源:ctx.configRoot 已按
+  // resolveRunMode 解析(检出内无 .AgentWorkShop 时回退 home),硬编码
+  // <repo>/.AgentWorkShop 会对 home 模式运行实例失明。
+  const configRoot = forceHome ? ctx.home : (ctx.configRoot ?? ctx.home)
   const lockPath = join(configRoot, '.runtime', 'aw.lock')
 
   if (!existsSync(lockPath)) {

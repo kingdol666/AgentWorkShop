@@ -116,7 +116,10 @@ export async function main(argv = process.argv.slice(2), { cwd = process.cwd() }
     return EXIT.OK
   }
 
-  const ctx = await createContext({ cwd, explicitRoot: root ?? undefined, json, debug, registry })
+  // explicitRoot 只接受用户显式 --root:把自动探测的 root 冒充 explicitRoot 会在
+  // context 内强制 configRoot=<root>/.AgentWorkShop,旁路 resolveRunMode 的
+  // "检出内无 .AgentWorkShop → 回退 ~/.AgentWorkShop"规则(aw stop 因此停不掉 home 实例)
+  const ctx = await createContext({ cwd, explicitRoot, json, debug, registry })
 
   // 无指令 → 帮助（用法错误码）
   if (!commandName) {

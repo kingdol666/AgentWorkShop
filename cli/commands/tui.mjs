@@ -14,6 +14,15 @@ export const meta = {
 
 export async function run(argv) {
   const { main } = await import('../../tui/aw-tui.mjs')
-  await main(argv)
+  // 分发器传入 parseArgs 结果({ flags, positionals });aw-tui.main 自带
+  // 数组形态的参数解析 —— 这里还原为等价数组,直接传对象会因无 .length 被静默丢弃。
+  const flags = argv?.flags ?? {}
+  const positionals = Array.isArray(argv?.positionals) ? argv.positionals : (Array.isArray(argv) ? argv : [])
+  const legacy = [...positionals]
+  for (const [key, value] of Object.entries(flags)) {
+    if (value === true) legacy.push(`--${key}`)
+    else if (value !== undefined && value !== false) legacy.push(`--${key}`, String(value))
+  }
+  await main(legacy)
   return 0
 }

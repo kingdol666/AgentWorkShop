@@ -99,12 +99,14 @@ export class CommandRegistry {
   }
 }
 
-/** 拼接指令扫描目录清单（内建 → 用户级 → 项目级;配合同名后者覆盖,项目级优先级最高） */
+/** 拼接指令扫描目录清单（内建 → 用户级 → 项目级;配合同名后者覆盖,项目级优先级最高）
+ *  目录名与 shared/config/home.mjs 的 HOME_DIRNAME 保持一致(.AgentWorkShop):
+ *  Windows 大小写不敏感无感,Linux/macOS 下小写目录会导致注册的指令永远扫描不到。 */
 export function commandDirs({ packageRoot, projectRoot, homeDir }) {
   const dirs = []
   if (packageRoot) dirs.push(join(packageRoot, 'cli', 'commands'))
-  if (homeDir) dirs.push(join(homeDir, '.agentworkshop', 'commands'))
-  if (projectRoot) dirs.push(join(projectRoot, '.agentworkshop', 'commands'))
+  if (homeDir) dirs.push(join(homeDir, '.AgentWorkShop', 'commands'))
+  if (projectRoot) dirs.push(join(projectRoot, '.AgentWorkShop', 'commands'))
   return dirs
 }
 

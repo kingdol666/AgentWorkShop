@@ -7,7 +7,7 @@
 // 另在启动前预载 .env（cwd 的 .env;NUXT_SESSION_PASSWORD 等密钥只经环境
 // 注入,绝不写入 config.yml/仓库;已导出的真实环境变量优先）。
 // ============================================================
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveRunMode } from '../shared/config/home.mjs'
@@ -22,6 +22,8 @@ for (const envPath of [resolve(process.cwd(), '.env'), join(packageRoot, '.env')
     if (!m || line.trim().startsWith('#')) continue
     const key = m[1]
     let val = m[2] ?? ''
+    // 行内注释剥离(未加引号时):`KEY=value # 说明` 不应把 " # 说明" 烧进密钥
+    if (hashIdx(val) >= 0) val = val.slice(0, hashIdx(val)).trim()
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith('\'') && val.endsWith('\''))) val = val.slice(1, -1)
     if (process.env[key] === undefined) process.env[key] = val
   }
@@ -29,6 +31,12 @@ for (const envPath of [resolve(process.cwd(), '.env'), join(packageRoot, '.env')
 
 // 共享配置引擎：config.yml + runtime-settings + env（模式感知路径）
 const { loadEffective } = await import('../shared/config/engine.mjs')
+
+/** 未加引号值中行内注释的起始下标(` #` 起算,避开 URL hash 等无空格场景) */
+function hashIdx(val) {
+  const i = val.indexOf(' #')
+  return i
+}
 
 // CLI 传参优先（node scripts/start.mjs --port 8080）
 let argPort
@@ -56,6 +64,11 @@ const portSource = eff.sources['server.prod.port']
 // ---- 单实例互斥 + 自动顶替:同配置根已有实例 → 自动停止后重启新实例(防 SQLite 锁崩溃) ----
 const { acquireLock, checkPort, terminatePid } = await import('../shared/config/single-instance.mjs')
 let requestedPort = argPort ? Number(argPort) : prodPort
+// CLI 传参校验:--port -1 之类会被 parseArgs 弄成怪值,这里显式拒绝而非绑定到端口 1
+if (!Number.isInteger(requestedPort) || requestedPort < 1 || requestedPort > 65535) {
+  console.error(`✖ 无效端口:${argPort ?? requestedPort}(须为 1-65535 的整数)`)
+  process.exit(1)
+}
 let lock = acquireLock(rm.configRoot, { mode: `prod:${rm.mode}`, port: requestedPort })
 if (!lock.ok) {
   const h = lock.holder
@@ -84,7 +97,18 @@ if (bumped >= 10) {
   console.error(`✖ ${host} 上 ${requestedPort}-${port} 全部被占用,无法启动`)
   process.exit(1)
 }
-if (bumped > 0) console.log(`✔ 使用顺延端口 ${port}(配置端口 ${requestedPort} 被占用)`)
+if (bumped > 0) {
+  console.log(`✔ 使用顺延端口 ${port}(配置端口 ${requestedPort} 被占用)`)
+  // 顺延结果回写锁文件:aw stop 的展示、aw status/TUI 的端口发现都读锁
+  try {
+    const cur = JSON.parse(readFileSync(lock.lockPath, 'utf8'))
+    if (cur?.pid === process.pid) {
+      cur.port = port
+      writeFileSync(lock.lockPath, JSON.stringify(cur, null, 2), 'utf-8')
+    }
+  }
+  catch { /* 锁自清/被接管等场景:展示值回退为配置端口,可接受 */ }
+}
 
 process.env.HOST = process.env.HOST || process.env.NITRO_HOST || String(host)
 process.env.PORT = process.env.PORT || process.env.NITRO_PORT || String(port)
