@@ -17,7 +17,7 @@ import { color } from './core/logger.mjs'
 
 /** 本机 Docker 可用性(docker -v) */
 export function detectDocker() {
-  const r = spawnSync('docker', ['-v'], { encoding: 'utf8', shell: process.platform === 'win32' })
+  const r = spawnSync('docker', ['-v'], { encoding: 'utf8' })
   if (r.status === 0) return { ok: true, version: (r.stdout ?? '').trim().replace(/^Docker version\s*/i, '') }
   return { ok: false, version: null }
 }
@@ -42,7 +42,6 @@ export function composeUp(composeDir) {
   const r = spawnSync('docker', ['compose', 'up', '-d'], {
     cwd: composeDir,
     stdio: 'inherit',
-    shell: process.platform === 'win32',
   })
   return r.status === 0
 }

@@ -20,6 +20,39 @@ function pidAlive(pid) {
   }
 }
 
+const waitSync = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+
+/**
+ * 终止进程树并等待其死亡(供 `aw stop` 与 start 的"顶掉旧实例"共用)。
+ * Windows:taskkill /T /F;POSIX:SIGTERM 宽限 5s → SIGKILL。
+ * @returns {Promise<boolean>} 是否已确认死亡
+ */
+export async function terminatePid(pid) {
+  if (!pidAlive(pid)) return true
+  if (process.platform === 'win32') {
+    const { spawnSync } = await import('node:child_process')
+    const r = spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { encoding: 'utf8' })
+    if (r.status !== 0) return !pidAlive(pid)
+  }
+  else {
+    try {
+      process.kill(pid, 'SIGTERM')
+    }
+    catch { /* 已死 */ }
+    const deadline = Date.now() + 5000
+    while (Date.now() < deadline && pidAlive(pid)) waitSync(200)
+    if (pidAlive(pid)) {
+      try {
+        process.kill(pid, 'SIGKILL')
+      }
+      catch { /* 已死 */ }
+    }
+  }
+  const deadline = Date.now() + 5000
+  while (Date.now() < deadline && pidAlive(pid)) waitSync(200)
+  return !pidAlive(pid)
+}
+
 /**
  * 尝试获取单实例锁。
  * @returns {{ ok: true, lockPath: string, release: () => void }
@@ -38,7 +71,10 @@ export function acquireLock(configRoot, { mode = 'prod', port = null } = {}) {
     if (holder && pidAlive(holder.pid)) {
       return { ok: false, lockPath, holder: { ...holder, port: holder.port ?? null } }
     }
-    try { rmSync(lockPath) } catch { /* 抢不掉则下方 wx 再失败 */ }
+    try {
+      rmSync(lockPath)
+    }
+    catch { /* 抢不掉则下方 wx 再失败 */ }
   }
   const me = { pid: process.pid, startedAt: new Date().toISOString(), mode, port }
   try {
@@ -47,7 +83,10 @@ export function acquireLock(configRoot, { mode = 'prod', port = null } = {}) {
   catch (err) {
     // 与并发启动者竞态:按冲突处理
     let holder = null
-    try { holder = JSON.parse(readFileSync(lockPath, 'utf8')) } catch { /* ignore */ }
+    try {
+      holder = JSON.parse(readFileSync(lockPath, 'utf8'))
+    }
+    catch { /* ignore */ }
     if (holder && pidAlive(holder.pid)) {
       return { ok: false, lockPath, holder: { ...holder, port: holder.port ?? null } }
     }
@@ -64,9 +103,13 @@ export function acquireLock(configRoot, { mode = 'prod', port = null } = {}) {
     }
     catch { /* 已不存在/损坏,忽略 */ }
   }
+  const releaseAndExit = (code) => {
+    release()
+    process.exit(code)
+  }
   process.once('exit', release)
-  process.once('SIGINT', () => { release(); process.exit(130) })
-  process.once('SIGTERM', () => { release(); process.exit(143) })
+  process.once('SIGINT', () => releaseAndExit(130))
+  process.once('SIGTERM', () => releaseAndExit(143))
   return { ok: true, lockPath, release }
 }
 

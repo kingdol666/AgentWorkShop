@@ -53,21 +53,44 @@ const prodPort = eff.effective['server.prod.port'] ?? 3000
 const portSource = eff.sources['server.prod.port']
 
 // ---- 单实例互斥(hardening ST-1):同配置根双开直接退出码 2,防 SQLite 锁崩溃 ----
-const { acquireLock } = await import('../shared/config/single-instance.mjs')
-const lock = acquireLock(rm.configRoot, { mode: `prod:${rm.mode}`, port: argPort ? Number(argPort) : prodPort })
+// ---- 单实例互斥 + 自动顶替:同配置根已有实例 → 自动停止后重启新实例(防 SQLite 锁崩溃) ----
+const { acquireLock, checkPort, terminatePid } = await import('../shared/config/single-instance.mjs')
+let requestedPort = argPort ? Number(argPort) : prodPort
+let lock = acquireLock(rm.configRoot, { mode: `prod:${rm.mode}`, port: requestedPort })
 if (!lock.ok) {
   const h = lock.holder
-  console.error(`✖ 已有实例在运行(pid=${h.pid}${h.port ? `,端口=${h.port}` : ''},启动于 ${h.startedAt ?? '未知'},模式=${h.mode ?? '未知'})`)
-  console.error(`  › 配置根: ${rm.configRoot}`)
-  console.error(`  › 如确认是残留锁文件,可删除 ${lock.lockPath} 后重试`)
-  process.exit(2)
+  console.log(`› 发现已运行实例(pid=${h.pid}${h.port ? `,端口=${h.port}` : ''},启动于 ${h.startedAt ?? '未知'})— 自动停止后重启 ...`)
+  const stopped = await terminatePid(h.pid).catch(() => false)
+  if (!stopped) {
+    console.error(`✖ 旧实例(pid=${h.pid})自动停止失败,请手动执行 aw stop 或 taskkill /PID ${h.pid} /T /F`)
+    process.exit(2)
+  }
+  lock = acquireLock(rm.configRoot, { mode: `prod:${rm.mode}`, port: requestedPort })
+  if (!lock.ok) {
+    console.error(`✖ 旧实例已停止但锁仍被占用(可能并发启动):pid=${lock.holder?.pid ?? '?'}`)
+    process.exit(2)
+  }
 }
 
+// ---- 端口顺延:配置端口被任意进程占用(含其他配置根的实例)→ 逐个 +1(最多 10 次) ----
+let port = requestedPort
+let bumped = 0
+while (bumped < 10 && await checkPort(host, port)) {
+  console.log(`› 端口 ${port} 被占用,顺延至 ${port + 1} ...`)
+  port += 1
+  bumped += 1
+}
+if (bumped >= 10) {
+  console.error(`✖ ${host} 上 ${requestedPort}-${port} 全部被占用,无法启动`)
+  process.exit(1)
+}
+if (bumped > 0) console.log(`✔ 使用顺延端口 ${port}(配置端口 ${requestedPort} 被占用)`)
+
 process.env.HOST = process.env.HOST || process.env.NITRO_HOST || String(host)
-process.env.PORT = process.env.PORT || process.env.NITRO_PORT || String(prodPort)
+process.env.PORT = process.env.PORT || process.env.NITRO_PORT || String(port)
 process.env.NITRO_HOST = process.env.HOST
 process.env.NITRO_PORT = process.env.PORT
 
-console.log(`[config] 生产服务启动 -> http://${process.env.HOST}:${process.env.PORT}  (模式: ${rm.mode}, port source: ${portSource})`)
+console.log(`[config] 生产服务启动 -> http://${process.env.HOST}:${process.env.PORT}  (模式: ${rm.mode}, port source: ${portSource}${bumped > 0 ? ' + 顺延' : ''})`)
 
 await import('../.output/server/index.mjs')

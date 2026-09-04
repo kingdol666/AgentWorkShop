@@ -19,10 +19,14 @@ function findUp(startDir, filename) {
   }
 }
 
-/** 配置根(repo 内 cwd → <repo>/.AgentWorkShop;否则 ~/.AgentWorkShop) */
+/** 配置根(与服务端同策略):仅当用户自建了 <检出根>/.AgentWorkShop 时优先使用;
+ *  否则一律回落 ~/.AgentWorkShop(绝不在 pwd 下自动创建)。 */
 export function configRoot(cwd = process.cwd()) {
   const marker = findUp(cwd, 'config.yml')
-  if (marker) return join(dirname(marker), '.AgentWorkShop')
+  if (marker) {
+    const candidate = join(dirname(marker), '.AgentWorkShop')
+    if (existsSync(candidate)) return candidate
+  }
   return join(homedir(), '.AgentWorkShop')
 }
 
