@@ -129,14 +129,17 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     const from = opts.fromMs ?? 0
     const to = opts.toMs ?? Date.now()
     if (opts.bucketMs && opts.bucketMs >= 100) {
-      const bucket = opts.bucketMs
+      // 桶宽是服务端 clamp 后的整数(Number.isInteger 由调用方保证);必须内插:
+      // node:sqlite 把整数值参数绑为 REAL 时 ts_ms/:b 走浮点除,同桶样本得到互不
+      // 相同的浮点桶键,GROUP BY 塌不了(输出≈原始点)。整数字面量保证整数除法。
+      const bucket = Math.round(Number(opts.bucketMs))
       const rows = this.db.prepare(`
-        SELECT (ts_ms / :b) * :b AS b_at,
+        SELECT (ts_ms / ${bucket}) * ${bucket} AS b_at,
                AVG(value) AS avg, MIN(value) AS min, MAX(value) AS max, COUNT(*) AS cnt
         FROM daq_samples
         WHERE node_id = :id AND ts_ms >= :from AND ts_ms <= :to
         GROUP BY b_at ORDER BY b_at DESC LIMIT :lim
-      `).all({ ':id': nodeId, ':from': from, ':to': to, ':b': bucket, ':lim': limit }) as Array<{ b_at: number, avg: number, min: number, max: number, cnt: number }>
+      `).all({ ':id': nodeId, ':from': from, ':to': to, ':lim': limit }) as Array<{ b_at: number, avg: number, min: number, max: number, cnt: number }>
       return rows.map(r => ({ at: Number(r.b_at), avg: r.avg, min: r.min, max: r.max, cnt: Number(r.cnt) }))
     }
     const rows = this.db.prepare(`
@@ -178,11 +181,13 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     params.push(q.toMs ?? Date.now())
     const limit = Math.min(q.limit ?? 2000, 10_000)
     if (q.bucketMs && q.bucketMs >= 100) {
+      // 桶宽内插(整数,同 query():绑定参数会走 REAL 浮点除,塌不了桶)
+      const bucket = Math.round(Number(q.bucketMs))
       const rows2 = (this.db.prepare(`
-        SELECT node_id, (ts_ms / ?) * ? AS b_at, AVG(value) AS avg, MIN(value) AS min, MAX(value) AS max, COUNT(*) AS cnt
+        SELECT node_id, (ts_ms / ${bucket}) * ${bucket} AS b_at, AVG(value) AS avg, MIN(value) AS min, MAX(value) AS max, COUNT(*) AS cnt
         FROM daq_samples WHERE ${where.join(' AND ')}
         GROUP BY node_id, b_at ORDER BY b_at ASC LIMIT ?
-      `).all(q.bucketMs, q.bucketMs, ...params, limit)) as Array<{ node_id: string, b_at: number, avg: number, min: number, max: number, cnt: number }>
+      `).all(...params, limit)) as Array<{ node_id: string, b_at: number, avg: number, min: number, max: number, cnt: number }>
       for (const r of rows2) {
         const list = out.get(r.node_id) ?? []
         list.push({ at: Number(r.b_at), avg: r.avg, min: r.min, max: r.max, cnt: Number(r.cnt) })

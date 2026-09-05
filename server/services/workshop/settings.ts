@@ -19,6 +19,16 @@ let cache: { at: number, effective: Record<string, unknown> } | null = null
 const TTL_MS = 3000
 
 function effective(): Record<string, unknown> {
+  // 首选:SystemConfigService 内存权威(设置页/CLI/文件监听三路写入的同一份即时状态,
+  // 热重载零延迟)。未装配(restart 键生效前的极早期/单测)回落文件链 + 3s TTL 缓存。
+  try {
+    const svc = (globalThis as { __systemConfig?: { ready?: boolean, snapshot?: () => { effective: Record<string, unknown> } } }).__systemConfig
+    if (svc?.ready && svc.snapshot) {
+      const snap = svc.snapshot()
+      if (Object.keys(snap.effective).length > 0) return snap.effective
+    }
+  }
+  catch { /* 服务不可用 → 文件链 */ }
   if (cache && Date.now() - cache.at < TTL_MS) return cache.effective
   const runMode = resolveRunMode({
     cwd: process.cwd(),
