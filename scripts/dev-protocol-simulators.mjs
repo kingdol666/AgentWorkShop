@@ -8,6 +8,8 @@
 import net from 'node:net'
 import http from 'node:http'
 import { createRequire } from 'node:module'
+import { appendFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 const reqRoot = createRequire(import.meta.url)
 // pnpm 严格布局:mqtt-packet 是 mqtt 的传递依赖,从 mqtt 包入口路径解析
@@ -31,6 +33,14 @@ const clients = new Set()
 
 function brokerPublish(topic, payload) {
   const frame = mqttPacket.generate({ cmd: 'publish', topic, payload, qos: 0 })
+  console.log(`[mqtt-sim] route topic=${topic} clients=${clients.size} filters=[${[...clients].map(c => c.filters.join('|')).join(' ; ')}]`)
+  // 控制下行审计:broker 真实收到的路由落盘(供 e2e 做确定性验收,不依赖订阅端时序)
+  if (topic.startsWith('aw/sim/setpoint')) {
+    try {
+      appendFileSync(join(process.env.AW_SIM_AUDIT_DIR ?? '.AgentWorkShop/data', 'sim-setpoint-routes.log'), `${new Date().toISOString()} ${topic} ${payload.toString()}\n`)
+    }
+    catch { /* 审计失败不影响路由 */ }
+  }
   for (const c of clients) {
     if (c.filters.some(f => topicMatch(f, topic))) {
       try {
@@ -45,7 +55,20 @@ const mqttServer = net.createServer((sock) => {
   const client = { sock, filters: [] }
   clients.add(client)
   const parser = mqttPacket.parser({ protocolVersion: 4 })
-  sock.on('data', d => parser.parse(d))
+  sock.on('data', (d) => {
+    // 畸形帧(截断/坏头字节)只弃帧断该链,不许杀掉整个模拟工况
+    try {
+      parser.parse(d)
+    }
+    catch (err) {
+      console.error('[mqtt-sim] 弃帧(解析异常):', err instanceof Error ? err.message : err)
+      try {
+        sock.destroy()
+      }
+      catch { /* 已断 */ }
+      clients.delete(client)
+    }
+  })
   sock.on('error', () => clients.delete(client))
   sock.on('close', () => clients.delete(client))
   parser.on('packet', (packet) => {

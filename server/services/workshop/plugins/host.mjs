@@ -169,7 +169,8 @@ async function loadAllPlugins(host, { config, paths }) {
   for (const { dir, scope } of entries) {
     const entry = join(dir, 'index.mjs')
     try {
-      const mod = await import(pathToUrl(entry))
+      // cache-busting:热重载时 ESM 按 URL 缓存,不带 query 永远拿到旧模块(插件改代码不生效)
+      const mod = await import(`${pathToUrl(entry)}?t=${Date.now()}`)
       const check = validatePluginModule(mod, entry)
       if (!check.ok) throw new Error(check.error)
       const def = check.def

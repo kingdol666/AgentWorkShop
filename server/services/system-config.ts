@@ -83,7 +83,8 @@ declare global {
 
 export class SystemConfigService {
   private descriptors: SettingsDescriptor[] = []
-  private map = new Map<string, SettingsDescriptor>()
+  /** key → 描述符(loadDescriptorMap 返回普通对象,非 Map;下标访问) */
+  private map: Record<string, SettingsDescriptor> = {}
   private overrides: Record<string, unknown> = {}
   private envOverrides: Record<string, unknown> = {}
   private effective: Record<string, unknown> = {}
@@ -206,7 +207,7 @@ export class SystemConfigService {
     const validated: Record<string, unknown> = {}
     const changed: string[] = []
     for (const [key, value] of Object.entries(raw)) {
-      const desc = this.map.get(key)
+      const desc = this.map[key]
       if (!desc) continue // 未知键：忽略（schema 演进容错）
       const errs = validateValue(desc, value)
       if (errs.length) {
@@ -272,7 +273,7 @@ export class SystemConfigService {
     const next = { ...this.overrides }
     const changed: string[] = []
     for (const [key, rawValue] of Object.entries(patch)) {
-      const desc = this.map.get(key)
+      const desc = this.map[key]
       if (!desc) {
         errors[key] = ['未知设置项（不在 shared/config/schema.json 中）']
         continue

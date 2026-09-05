@@ -137,7 +137,8 @@ class DaqController {
   private pipelineReady = false
 
   running = true
-  defaultIntervalMs = 1000
+  /** 全局缺省采集间隔(节点 intervalMs=null 跟随;规范:默认 5s,下限 1s) */
+  defaultIntervalMs = 5000
   /** 全局缺省 WS 下发间隔(节点 publishIntervalMs=null 跟随;0 = 随采样节拍) */
   defaultPublishIntervalMs = 0
   private producedCount = 0
@@ -193,6 +194,9 @@ class DaqController {
     if (res == null || typeof res !== 'object' || !('frame' in res) || res.frame == null) return res
     // 下沉管线(生产侧;单步失败保留原帧,永不抛出 —— 见 frames.ts runSinkPipeline)
     const raw = res.frame
+    // 契约守卫:帧联合只有 vector/image;驱动返回未知 kind(如误包 scalar)直接丢帧,
+    // 绝不蒙成 image 走 blob 管线(会在 sink 派生处炸出 undefined.length)
+    if (raw.kind !== 'vector' && raw.kind !== 'image') return null
     let wf: DaqFrameWorking = raw.kind === 'vector'
       ? { kind: 'vector', points: raw.points, metrics: raw.metrics }
       : { kind: 'image', blob: raw.blob, mime: raw.mime, width: raw.width, height: raw.height, metrics: raw.metrics }
@@ -764,7 +768,7 @@ class DaqController {
 
   configure(opts: { defaultIntervalMs?: number, defaultPublishIntervalMs?: number }): AepDaqControllerState {
     let changed = false
-    if (typeof opts.defaultIntervalMs === 'number' && opts.defaultIntervalMs >= 120) {
+    if (typeof opts.defaultIntervalMs === 'number' && opts.defaultIntervalMs >= 1000) {
       this.defaultIntervalMs = Math.min(60_000, Math.round(opts.defaultIntervalMs))
       changed = true
     }
@@ -802,7 +806,7 @@ class DaqController {
       driverConfig: input.driverConfig ?? {},
       transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
-      intervalMs: input.intervalMs ?? null,
+      intervalMs: input.intervalMs == null ? null : Math.max(1000, Math.min(60_000, Math.round(input.intervalMs))),
       publishIntervalMs: input.publishIntervalMs ?? null,
       unit: input.unit,
       decimals: input.decimals,
@@ -842,7 +846,7 @@ class DaqController {
     if (patch.warnHigh !== undefined) node.warnHigh = patch.warnHigh
     let rearm = false
     if (patch.intervalMs !== undefined) {
-      node.intervalMs = patch.intervalMs == null ? null : Math.max(120, Math.min(60_000, patch.intervalMs))
+      node.intervalMs = patch.intervalMs == null ? null : Math.max(1000, Math.min(60_000, Math.round(patch.intervalMs)))
       rearm = true
     }
     if (patch.publishIntervalMs !== undefined) {
