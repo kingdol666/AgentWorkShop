@@ -11,6 +11,10 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveRunMode } from '../shared/config/home.mjs'
+import { installLocalIso } from '../shared/local-time.mjs'
+
+// 生产进程时间输出统一本地时区(先于 .env 预载与 worker 启动)
+installLocalIso()
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 

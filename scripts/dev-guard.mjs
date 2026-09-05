@@ -29,6 +29,10 @@ const { existsSync, readFileSync } = await import('node:fs')
 const { dirname, resolve } = await import('node:path')
 const { fileURLToPath: u2f } = await import('node:url')
 
+// dev 进程时间输出统一本地时区(重入实例同样生效;nitro worker 由 00-local-time 插件覆盖)
+const { installLocalIso } = await import('../shared/local-time.mjs')
+installLocalIso()
+
 const root = resolve(dirname(u2f(import.meta.url)), '..')
 
 // --- 预载 .env（与 start.mjs 同策略；已导出环境变量优先） ---

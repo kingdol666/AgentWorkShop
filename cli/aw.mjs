@@ -19,6 +19,10 @@ import { parseArgs } from './core/args.mjs'
 import { renderHelp, renderCommandHelp } from './core/help.mjs'
 import { logger, color } from './core/logger.mjs'
 import { CliError, isUsageError } from './core/errors.mjs'
+import { installLocalIso } from '../shared/local-time.mjs'
+
+// 全 CLI 时间输出统一本地时区(先于任何命令逻辑)
+installLocalIso()
 
 export { CliError }
 
