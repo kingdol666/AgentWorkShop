@@ -45,8 +45,10 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 | **Agent teams, industrial scope** | Agents bind to DAQ/DCW nodes and see semantic cards — physical meaning, units, safe range, recipe window — never raw registers. |
 | **Human-approved write control** | DCW writes flow through **safe-range ∩ recipe-window** interlock → optional **HITL approval** → PLC write → **readback verification** → signed write history. |
 | **Read-write DCW channels (v0.7)** | Every control node also **reads its PLC value back** through the same calibration path it writes with: periodic + on-demand + agent reads surface **SET vs ACT** side by side in the DCW console, the twin panel (green ACT row) and a new `dcw_read` agent tool — passive observation, never blocked by write interlocks. |
+| **Five field protocols** | Modbus TCP, Modbus RTU-over-TCP (serial gateway), OPC UA, MQTT and HTTP/REST — acquisition and write-control drivers with connection pools, classified error messages and per-driver connection tests. `mock` covers demos/CI; the driver registry accepts plugin-registered protocols. |
+| **Per-channel LLM selection** | Each channel picks a **harness → provider → model (+effort)** triple from the harness's live catalog (e.g. `zhipu-coding-plan/glm-5.3-flash` on omp, `ustc/glm-5.3-flash` on dsh). Members inherit it unless they override — mixing harnesses in one team is a first-class setup, not a workaround. |
+| **Configurable cadences (v0.7.7)** | Sampling default & floor and Timescale query bucket default & floor are **live settings** (`daq.sampling.*`, `daq.query.*`): change them in `config.yml`, the Settings UI or via `aw config set` — hot-reloaded, clamped on node create/patch, and the injected agent tool descriptions always carry the current values. |
 | **Fully config-driven runtime (v0.7)** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — legacy env names kept as aliases, no hardcoded defaults left in code. Project-level `.AgentWorkShop` wins; `~/.AgentWorkShop` is the user-level fallback (auto-seeded on install). |
-| **Real field buses** | Modbus TCP with per-connection op queues; OPC UA with session pools. Linear calibration hooks (PLC value ↔ engineering unit) on every node. |
 | **Multi-modal DAQ frame pipeline (v0.6)** | Multi-point profiles (thickness/scanner) and CCD image frames are processed through template sink pipelines before storage: vectors & metadata into Timescale (`daq_frames`), pixels into object storage (MinIO, auto disk fallback); derived-metric thresholds ride the existing alarm chain. |
 | **Plugin extension API (v0.6)** | `ctx.daq.registerDriver / registerProcessor / registerTemplate` for custom acquisition and sink algorithms (drop into `plugins/`); `ctx.omp.registerTool` for custom agent tools, hot-injected into every running session on registry change. |
 | **Line operations** | Lines → products → recipes → batch runs. Recipe windows gate acquisition and interlock writes; every sample is tagged `product/recipe/run` for per-batch isolation. |
@@ -54,7 +56,7 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 | **Three execution modes** | `goal` (satisfaction judging) · `loop` (fixed-interval replay) · `pipeline` (ordered stages). 7-state task machine with progress, artifacts and full history. |
 | **Four entry points** | One manager behind every door: **WS** (AEP v1 event stream with seq-resume), **MCP** (in-process tools), **A2A** (JSON-RPC 2.0 + AgentCard), **REST**. |
 | **Persistent memory** | Private + channel-shared domains; FTS5 with CJK segmentation, optional vector hybrid recall, token-budgeted injection; session compaction summaries auto-archived, team chronicle and idle reflections keep accumulating (v0.6). |
-| **Harness-agnostic** | One `AgentInterface`: `mock` (in-process), `omp` (real agent subprocess via RPC), `claude` (SDK adapter). The platform never knows which one runs. |
+| **Harness-agnostic** | One `AgentInterface` — `mock` (in-process), `omp` / `codex` / `dsh` / `opencode` (real engine subprocesses over RPC/ACP/JSON-RPC) and a Claude SDK adapter. The platform never knows which one runs. |
 | **3D digital twin** | Three.js town: place line equipment and channel territories, watch device health, alarms and live values — driven by the same event bus. |
 
 ---
@@ -104,7 +106,10 @@ flowchart TB
         end
         subgraph HB["Harness adapters"]
             MOCK["mock"]
-            OMP["omp — real subprocess"]
+            OMP["omp — RPC subprocess"]
+            CDX["codex — app-server"]
+            DSH["dsh — ACP"]
+            OC["opencode — serve"]
             CLD["claude — SDK"]
         end
         DB[("SQLite — channels · agents · tasks
@@ -115,7 +120,7 @@ messages · memories (FTS5) · events")]
     REST & A2A & MCP --> MGR
     MGR --> SCH & TE & AR
     AR --> MEM
-    AR --> MOCK & OMP & CLD
+    AR --> MOCK & OMP & CDX & DSH & OC & CLD
     MGR & TE & MEM & BUS --> DB
     DAQ <--> BR --> TSDB
     DCW --> BR
@@ -145,7 +150,7 @@ agent ──binds to──▶ node (daq: auto / dcw: manual)
 node -v   # ≥ 23.4.0  (needs built-in node:sqlite)
 ```
 
-> The `omp` harness (recommended for real work) requires the `omp` CLI on PATH. The `mock` harness works out of the box for demos and CI. Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts via Docker when reachable (`docker compose up -d`).
+> The real-agent harnesses require their CLI on PATH — `omp`, `codex`, `opencode` or `dsh` (any subset; each channel can mix harnesses). The `mock` harness works out of the box for demos and CI. Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts via Docker when reachable (`docker compose up -d`).
 
 ### Option A — install from npm (recommended)
 
@@ -213,9 +218,20 @@ The config root is **`~/.AgentWorkShop`** for a global install (`npm i -g`) — 
 ### Live settings, persisted, hot-reloaded
 
 - The **Settings → Runtime config** tab renders every editable key from the descriptors — change server ports, theme, API timeouts, locale or the approval gate, hit save.
-- `live` keys apply instantly (theme, title, timeouts, approval gate…) over a server-sent event stream — no reload, no restart.
+- `live` keys apply instantly (theme, title, timeouts, approval gate, DAQ sampling cadences, TSDB query buckets…) over a server-sent event stream — no reload, no restart.
 - `restart` keys (ports, hosts) persist to disk and take effect on the next launch of the matching mode (`aw dev` / `aw start`).
 - One channel for every writer: the UI, the CLI and the server's file watcher all converge on the same settings file, so a change made anywhere shows up everywhere.
+
+Example — retune the acquisition and query cadences live:
+
+```bash
+aw config set daq.sampling.defaultIntervalMs 2000   # new nodes sample every 2 s
+aw config set daq.sampling.minIntervalMs 500        # per-node floor (create/patch clamp)
+aw config set daq.query.defaultBucketMs 3000        # TSDB reads default to a 3 s bucket
+aw config set daq.query.minBucketMs 500             # query floor (samples/line query/agent tool)
+```
+
+Agent tool descriptions are re-rendered with the current values on every injection, so an LLM always sees the floor and default that will actually apply to its `daq_query` calls.
 
 ### The `aw` CLI
 
@@ -259,7 +275,8 @@ export async function run(argv, ctx) {
 
 ### Data acquisition (DAQ)
 
-- **Per-node edge runtimes**: independent sampling cadence, publish cadence, in-flight mutex per node — one slow driver never blocks its neighbors.
+- **Five protocol drivers**: Modbus TCP, Modbus RTU-over-TCP (serial gateway), OPC UA, MQTT, HTTP/REST — connection pools, classified error messages, per-driver connection tests; the driver registry accepts plugin-registered protocols.
+- **Per-node edge runtimes**: independent sampling cadence, publish cadence, in-flight mutex per node — one slow driver never blocks its neighbors. Sampling and query defaults/floors are driven by the live `daq.sampling.*` / `daq.query.*` settings.
 - **Pipeline**: driver → queue (in-process or MQTT, offline buffer on disconnect) → consumer with out-of-order defense → three-way fan-out: WS live push (gated), TSDB batch write, device-twin writeback.
 - **Robustness**: TSDB single-in-flight writes with bounded retries, buffer backpressure with drop counters, real loss metrics exposed on `daq.controller` frames.
 - **Alarms**: recipe-scoped monitoring windows with **2 % hysteresis + 3-tick debounce**; alarm/offline transitions are instant (safety first).
@@ -353,7 +370,7 @@ AgentWorkShop/
 │   ├── api/                    # REST + WS + A2A + MCP routes
 │   ├── services/workshop/
 │   │   ├── runtime/            # manager · scheduler-loop · task-engine · memory · mailbox
-│   │   ├── agents/             # AgentInterface: mock · omp · claude (+ industrial tools)
+│   │   ├── agents/             # AgentInterface: mock · omp · codex · dsh · opencode · claude (+ industrial tools)
 │   │   ├── daq/ dcw/           # edge runtimes · drivers · bus · storage
 │   │   └── db/                 # repos over node:sqlite
 │   ├── mcp/                    # MCP server (tools)
@@ -403,6 +420,9 @@ node scripts/_dbg-full-feature-e2e.mjs    # full-feature live E2E (server must b
 | Full-feature live E2E (agent reads/writes a real line, 23 checks) | Shipped |
 | Runtime configuration system: settings persistence · hot reload · settings UI | Shipped |
 | `aw` CLI: config · run · init · register · doctor | Shipped |
+| Multi-harness registry: omp · codex · dsh · opencode subprocess engines | Shipped |
+| Per-channel LLM provider/model selection from live harness catalogs | Shipped |
+| Configurable DAQ/TSDB cadences (sampling & query defaults + floors, live) | Shipped |
 | Claude Agent SDK adapter — full parity with `mock`/`omp` | In progress |
 | Production hardening: TLS, MQTT auth, OPC UA sign+encrypt defaults, structured audit log | Planned |
 | Edge deployment shape: standalone edge-agent + central broker | Planned |

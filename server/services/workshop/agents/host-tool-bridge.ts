@@ -20,6 +20,7 @@ import type { A2AArtifact, Part } from '../types/a2a'
 import type { WorkspaceTask } from '../types/task'
 import type { RpcHostToolDefinition } from './adapters/omp-rpc-client'
 import { loadHostToolDefs } from '../prompts/loader'
+import { daqRuntimeSettings } from '../settings'
 import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolMyIndustrialNodes } from './industrial-tools'
 import { listPluginTools } from './plugin-tools'
 import { extractTaskMode } from '../runtime/execution-mode'
@@ -39,6 +40,25 @@ export const LEAD_ONLY_TOOL_NAMES = new Set([
   'remove_team_agent',
 ])
 
+/** 占位符动态注入:工具描述里的运行时配置值(每次装配实时计算,配置热重载后 Agent 拿到新值) */
+function applyDescriptionPlaceholders(tools: RpcHostToolDefinition[]): RpcHostToolDefinition[] {
+  let q: { defaultBucketMs: number, minBucketMs: number } | null = null
+  try {
+    q = daqRuntimeSettings().query
+  }
+  catch { /* 设置系统不可用(单测) → 保留原始描述 */ }
+  if (!q) return tools
+  const map: Record<string, string> = {
+    queryDefaultBucketMs: String(q.defaultBucketMs),
+    queryMinBucketMs: String(q.minBucketMs),
+  }
+  return tools.map(t => ({
+    ...t,
+    description: t.description.replace(/\{(queryDefaultBucketMs|queryMinBucketMs)\}/g, (_, k) => map[k] ?? _),
+    parameters: JSON.parse(JSON.stringify(t.parameters ?? {}).replace(/\{(queryDefaultBucketMs|queryMinBucketMs)\}/g, (_m: string, k: string) => map[k] ?? _m)),
+  }))
+}
+
 /**
  * 按角色装配 host tools:lead = 全量;worker = 剔除 lead 专属(执行面 + 通信面 + 记忆面);
  * 尾部合并插件注册工具(roles 过滤,缺省双角色可用)。
@@ -54,7 +74,7 @@ export function hostToolsForRole(role: 'lead' | 'worker'): RpcHostToolDefinition
     if (tool.roles && !tool.roles.includes(role)) continue
     out.push({ name, label: tool.label ?? name, description: tool.description, parameters: tool.parameters ?? {} })
   }
-  return out
+  return applyDescriptionPlaceholders(out)
 }
 
 /** 工具调用请求(与引擎协议解耦的规范化形状) */

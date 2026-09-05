@@ -26,6 +26,7 @@ import { emitDcwWrite } from '@/server/services/workshop/plugins/host.mjs'
 import { clearActiveLineRun, getActiveLineRun, getAllActiveLineRuns, setActiveLineRun } from './line-run'
 import { getRecipeRollBackManager } from './recipe-rollback-manager'
 import { recordOps } from '../ops/ops'
+import { daqRuntimeSettings } from '../settings'
 
 /** 运维日志写下发防噪:同节点同值 10s 内的心跳重下发不重复入册 */
 const opsWriteMemo = new Map<string, { eng: number, at: number }>()
@@ -770,8 +771,9 @@ class DcwController {
     await tsdbReady
     const { getDaqNodeRepo } = await import('../daq/daq-node.repo')
     const { findDaqTemplate } = await import('../daq/daq-templates')
-    // 时间间隔参数(bucketMs):缺省 15s;可调,下限 1s(降采样桶聚合)
-    const bucketMs = opts.bucketMs == null ? 15_000 : Math.max(1000, Math.min(3_600_000, Math.round(opts.bucketMs)))
+    // 时间间隔参数(bucketMs):缺省与下限来自 daq.query.*(live 配置,热重载)
+    const { defaultBucketMs, minBucketMs } = daqRuntimeSettings().query
+    const bucketMs = opts.bucketMs == null ? defaultBucketMs : Math.max(minBucketMs, Math.min(3_600_000, Math.round(opts.bucketMs)))
     const nodeFilter = opts.nodeId ? opts.nodeId.split(',').map(x => x.trim()).filter(Boolean) : []
     const nodes = getDaqNodeRepo().all().filter((n) => {
       if (opts.paramKey && n.templateKey !== opts.paramKey) return false

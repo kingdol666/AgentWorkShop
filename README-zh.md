@@ -46,7 +46,9 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **人工审批的写控** | 数控下发经过「**安全量程 ∩ 活动配方窗口**」联锁 → 可选 **HITL 审批** → PLC 写入 → **回读校验** → 写历史记账。 |
 | **数控读写一体（v0.7）** | 每个控制节点都能沿写链路同一套标定**读回 PLC 当前值**：周期读 + 手动读取 + Agent `dcw_read` 工具，SET 与 ACT 在数控页、孪生面板（绿色 ACT 行）并排呈现 —— 读是被动观测，不受写联锁限制。 |
 | **全量配置驱动运行时（v0.7）** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env** —— 历史 env 名作别名兼容，代码零硬编码默认。项目级 `.AgentWorkShop` 优先，`~/.AgentWorkShop` 用户级兜底（安装即种子初始化）。 |
-| **真实现场总线** | Modbus TCP（连接级操作队列）；OPC UA（会话池）。每个节点带线性标定钩子（PLC 值 ↔ 工程量）。 |
+| **五协议现场总线** | Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST —— 数采与写控双驱动带连接池、分类错误文案与逐驱动连接测试；`mock` 覆盖演示/CI；驱动注册表接受插件注册新协议。 |
+| **Channel 级 LLM 选择** | 每个 Channel 从 Harness 实时目录中选 **harness → provider → model（+effort）**（如 omp 的 `zhipu-coding-plan/glm-5.3-flash`、dsh 的 `ustc/glm-5.3-flash`）。成员未显式覆盖即继承 —— 一个团队混用多种 harness 是一等公民设定，不是绕行。 |
+| **可配置节拍（v0.7.7）** | 采样默认间隔与下限、时序查询默认桶宽与下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：config.yml、设置页或 `aw config set` 三路同源 —— 热重载、create/patch 钳制，注入 Agent 的工具描述实时携带当前值。 |
 | **多形态数采帧管线（v0.6）** | 测厚仪/扫描仪的多点轮廓与 CCD 图像经模板 sink 处理器加工后入库：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达自动降级本地磁盘）；派生指标越限走既有告警链路。 |
 | **插件扩展 API（v0.6）** | `ctx.daq.registerDriver / registerProcessor / registerTemplate` 自定义采集与下沉算法（放入 `plugins/` 即生效）；`ctx.omp.registerTool` 自定义 agent 工具，注册表变更运行时热注入全部在跑会话。 |
 | **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现产品级数据隔离。 |
@@ -104,7 +106,10 @@ flowchart TB
         end
         subgraph HB["Harness 适配器"]
             MOCK["mock"]
-            OMP["omp — 真实子进程"]
+            OMP["omp — RPC 子进程"]
+            CDX["codex — app-server"]
+            DSH["dsh — ACP"]
+            OC["opencode — serve"]
             CLD["claude — SDK"]
         end
         DB[("SQLite — channels · agents · tasks
@@ -115,7 +120,7 @@ messages · memories (FTS5) · events")]
     REST & A2A & MCP --> MGR
     MGR --> SCH & TE & AR
     AR --> MEM
-    AR --> MOCK & OMP & CLD
+    AR --> MOCK & OMP & CDX & DSH & OC & CLD
     MGR & TE & MEM & BUS --> DB
     DAQ <--> BR --> TSDB
     DCW --> BR
@@ -145,7 +150,7 @@ agent ──绑定──▶ 节点 (daq: auto / dcw: manual)
 node -v   # ≥ 23.4.0（需要内置 node:sqlite）
 ```
 
-> `omp` harness（真实作业推荐）需要在 PATH 中安装 `omp` CLI。`mock` harness 开箱即用，适合演示与 CI。可选数采基础设施（MQTT broker + TimescaleDB）在 Docker 可达时自动拉起（`docker compose up -d`）。
+> 真实 Agent harness 需要对应 CLI 在 PATH 中 —— `omp`、`codex`、`opencode`、`dsh`（任选子集；同一 Channel 可混用多种 harness）。`mock` harness 开箱即用，适合演示与 CI。可选数采基础设施（MQTT broker + TimescaleDB）在 Docker 可达时自动拉起（`docker compose up -d`）。
 
 ### 方式 A —— 从 npm 安装（推荐）
 
@@ -213,9 +218,20 @@ config.yml（默认值）  <  .AgentWorkShop/runtime-settings.json（运行时�
 ### 设置持久化与热重载
 
 - **系统设置 → 运行配置**标签页按描述符渲染每个可编辑键——改服务端口、主题、API 超时、语言或高危复核闸门，点保存即可。
-- `live` 键立即生效（主题、标题、超时、审批闸门……），经服务端事件流推送，**无需刷新、无需重启**。
+- `live` 键立即生效（主题、标题、超时、审批闸门、数采采样节拍、时序查询桶宽……），经服务端事件流推送，**无需刷新、无需重启**。
 - `restart` 键（端口、主机）落盘持久化，在下一次以对应模式启动时生效（`aw dev` / `aw start`）。
 - 所有写入方共用一条通道：**设置页、CLI、服务端文件监听**最终都收敛到同一个设置文件——任何一端改，处处生效。
+
+示例——在线调节数采与查询节拍：
+
+```bash
+aw config set daq.sampling.defaultIntervalMs 2000   # 新节点每 2s 采样
+aw config set daq.sampling.minIntervalMs 500        # 节点级下限（create/patch 钳制）
+aw config set daq.query.defaultBucketMs 3000        # 时序查询缺省 3s 桶
+aw config set daq.query.minBucketMs 500             # 查询下限（samples/产线查询/Agent 工具共用）
+```
+
+注入 Agent 的工具描述会在每次装配时以当前配置值重新渲染——LLM 永远看到对自己 `daq_query` 调用真正生效的下限与缺省值。
 
 ### `aw` CLI
 
@@ -258,7 +274,8 @@ export async function run(argv, ctx) {
 
 ### 数据采集（DAQ）
 
-- **逐节点边缘运行时**：独立采样节拍、下发节拍、节点级在飞互斥——一个慢驱动绝不拖累邻居。
+- **五协议驱动**：Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST——连接池、分类错误文案、逐驱动连接测试；驱动注册表接受插件注册新协议。
+- **逐节点边缘运行时**：独立采样节拍、下发节拍、节点级在飞互斥——一个慢驱动绝不拖累邻居。采样与查询的默认值/下限由 `daq.sampling.*`、`daq.query.*` live 配置驱动。
 - **管线**：驱动 → 队列（进程内 / MQTT，断连离线缓冲）→ 消费泵乱序防御 → 三路分发：WS 实时直推（节拍门控）、TSDB 批量落库、设备孪生回写。
 - **鲁棒性**：TSDB 单 in-flight 写 + 有界重试，缓冲背压带丢弃计数，真实丢失指标随 `daq.controller` 帧暴露。
 - **报警**：配方级监控窗口，**2% 滞回 + 3 拍去抖**；alarm/offline 切换即时生效（安全优先）。
@@ -352,7 +369,7 @@ AgentWorkShop/
 │   ├── api/                    # REST + WS + A2A + MCP 路由
 │   ├── services/workshop/
 │   │   ├── runtime/            # manager · scheduler-loop · task-engine · memory · mailbox
-│   │   ├── agents/             # AgentInterface: mock · omp · claude（+ 工业工具）
+│   │   ├── agents/             # AgentInterface: mock · omp · codex · dsh · opencode · claude（+ 工业工具）
 │   │   ├── daq/ dcw/           # 边缘运行时 · 驱动 · 队列 · 存储
 │   │   └── db/                 # node:sqlite 仓储层
 │   ├── mcp/                    # MCP 服务（工具）
@@ -402,6 +419,9 @@ node scripts/_dbg-full-feature-e2e.mjs    # 全功能 live E2E（需服务端运
 | 全功能 live E2E（Agent 读写真实产线，23 项检查） | 已交付 |
 | 运行时配置系统：设置持久化 · 热重载 · 设置页 UI | 已交付 |
 | `aw` CLI：config · run · init · register · doctor | 已交付 |
+| 多 Harness 注册表：omp · codex · dsh · opencode 子进程引擎 | 已交付 |
+| Channel 级 LLM provider/model 选择（实时 Harness 目录） | 已交付 |
+| 可配置数采/时序节拍（采样与查询的默认值+下限，live 热重载） | 已交付 |
 | Claude Agent SDK 适配器——与 `mock`/`omp` 完全对齐 | 进行中 |
 | 生产硬化：TLS、MQTT 鉴权、OPC UA 签名+加密缺省、结构化审计日志 | 规划中 |
 | 边缘部署形态：独立 edge-agent + 中心 broker | 规划中 |

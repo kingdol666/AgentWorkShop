@@ -222,6 +222,8 @@ export class SystemConfigService {
     }
     this.overrides = validated
     this.recompute()
+    // 运行语义设置读取层(settings.ts effective 3s TTL)即时失效:live 键热重载零延迟
+    void import('./workshop/settings').then(m => m.invalidateRuntimeSettingsCache()).catch(() => {})
     return { changed }
   }
 

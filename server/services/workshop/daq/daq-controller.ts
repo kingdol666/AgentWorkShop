@@ -23,6 +23,8 @@
 
 import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
+import { daqRuntimeSettings } from '../settings'
+import { getSystemConfigService } from '../../system-config'
 import { daqKeyFromRef, normalizeDataTransform, normalizeSignalKind, DAQ_DRIVERS, type AepDaqControllerState, type AepDaqFrame, type AepDaqReading, type AepDaqNodeChange, type DaqDriverKind, type DaqNodeView, type DataTransform, type DriverTestResult } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { normalizeDriverKind, resolveDaqDriver, probeDriverAvailability, listPluginDrivers, type DaqFrameSample } from './drivers'
@@ -135,10 +137,15 @@ class DaqController {
   private queueUnsub: (() => void) | null = null
   /** 管线就绪前生产者静默(队列/消费必须先在位) */
   private pipelineReady = false
+  /** 配置同步/订阅状态(daq.sampling live 配置 → 网关节拍;仅挂一次) */
+  private settingsSynced = false
+  private settingsUnsub: (() => void) | null = null
 
   running = true
-  /** 全局缺省采集间隔(节点 intervalMs=null 跟随;规范:默认 5s,下限 1s) */
+  /** 全局缺省采集间隔(节点 intervalMs=null 跟随;来源 = daq.sampling 配置,live 可调) */
   defaultIntervalMs = 5000
+  /** 采样节拍下限(create/patch/存量收敛统一钳制;来源 = daq.sampling.minIntervalMs) */
+  minIntervalMs = 1000
   /** 全局缺省 WS 下发间隔(节点 publishIntervalMs=null 跟随;0 = 随采样节拍) */
   defaultPublishIntervalMs = 0
   private producedCount = 0
@@ -150,6 +157,7 @@ class DaqController {
   // ---------- 生命周期 ----------
 
   private ensureLoop(): void {
+    this.applyRuntimeSettings()
     this.syncRuntimes()
     if (!this.queueInit) {
       this.queueInit = (async () => {
@@ -169,8 +177,27 @@ class DaqController {
 
   // ---------- 网关服务面(runtime host 实现;运行时只依赖此接口) ----------
 
-  private runtimeDefaults(): { intervalMs: number, publishIntervalMs: number } {
-    return { intervalMs: this.defaultIntervalMs, publishIntervalMs: this.defaultPublishIntervalMs }
+  /** 从运行时设置(daq.sampling.*)同步采样节拍默认值与下限。
+   *  live 配置链:config.yml < runtime-settings.json < 环境变量 < 设置页/CLI;
+   *  设置变更经 system-config 订阅即时回流到这里(热重载,无需重启)。 */
+  applyRuntimeSettings(): void {
+    if (!this.settingsSynced) {
+      this.settingsSynced = true
+      try {
+        this.settingsUnsub = getSystemConfigService().subscribe(() => this.applyRuntimeSettings())
+      }
+      catch { /* 设置系统不可用(单测) → 用字段默认值 */ }
+    }
+    try {
+      const s = daqRuntimeSettings().sampling
+      if (Number.isFinite(s.defaultIntervalMs) && s.defaultIntervalMs > 0) this.defaultIntervalMs = Math.min(60_000, s.defaultIntervalMs)
+      if (Number.isFinite(s.minIntervalMs) && s.minIntervalMs > 0) this.minIntervalMs = Math.max(100, Math.min(this.defaultIntervalMs, s.minIntervalMs))
+    }
+    catch { /* settings 未就绪 → 保持当前值 */ }
+  }
+
+  private runtimeDefaults(): { intervalMs: number, publishIntervalMs: number, minIntervalMs: number } {
+    return { intervalMs: this.defaultIntervalMs, publishIntervalMs: this.defaultPublishIntervalMs, minIntervalMs: this.minIntervalMs }
   }
 
   /** 生产面:驱动采样一次(模板域 + 协议参数解析;mock/PLC 统一走驱动注册表)。
@@ -662,6 +689,7 @@ class DaqController {
     return {
       running: this.running,
       defaultIntervalMs: this.defaultIntervalMs,
+      minIntervalMs: this.minIntervalMs,
       defaultPublishIntervalMs: this.defaultPublishIntervalMs,
       nodesTotal: nodes.length,
       nodesOnline: this.running ? nodes.filter(n => n.enabled).length : 0,
@@ -768,7 +796,7 @@ class DaqController {
 
   configure(opts: { defaultIntervalMs?: number, defaultPublishIntervalMs?: number }): AepDaqControllerState {
     let changed = false
-    if (typeof opts.defaultIntervalMs === 'number' && opts.defaultIntervalMs >= 1000) {
+    if (typeof opts.defaultIntervalMs === 'number' && opts.defaultIntervalMs >= this.minIntervalMs) {
       this.defaultIntervalMs = Math.min(60_000, Math.round(opts.defaultIntervalMs))
       changed = true
     }
@@ -806,7 +834,7 @@ class DaqController {
       driverConfig: input.driverConfig ?? {},
       transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
-      intervalMs: input.intervalMs == null ? null : Math.max(1000, Math.min(60_000, Math.round(input.intervalMs))),
+      intervalMs: input.intervalMs == null ? null : Math.max(this.minIntervalMs, Math.min(60_000, Math.round(input.intervalMs))),
       publishIntervalMs: input.publishIntervalMs ?? null,
       unit: input.unit,
       decimals: input.decimals,
@@ -846,7 +874,7 @@ class DaqController {
     if (patch.warnHigh !== undefined) node.warnHigh = patch.warnHigh
     let rearm = false
     if (patch.intervalMs !== undefined) {
-      node.intervalMs = patch.intervalMs == null ? null : Math.max(1000, Math.min(60_000, Math.round(patch.intervalMs)))
+      node.intervalMs = patch.intervalMs == null ? null : Math.max(this.minIntervalMs, Math.min(60_000, Math.round(patch.intervalMs)))
       rearm = true
     }
     if (patch.publishIntervalMs !== undefined) {

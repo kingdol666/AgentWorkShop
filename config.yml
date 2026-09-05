@@ -10,7 +10,7 @@
 app:
   name: AgentWorkShop
   title: AgentWorkShop
-  version: 0.7.7
+  version: 0.7.8
   description: 基于 Nuxt 4 的配置驱动运行范式
 
 # 运行模式（dev/prod 实际由启动命令决定，此处仅作运行时展示）
@@ -70,6 +70,16 @@ daq:
     accessKey: awshop
     secretKey: awshop-secret
     bucket: daq
+  # 采样节拍(live 可调,热重载):节点未显式指定 intervalMs 时的采集周期与可配置下限。
+  # 下限同时钳制 create/patch/存量节点;设置页/`aw config set daq.sampling.*` 均可改。
+  sampling:
+    defaultIntervalMs: 5000   # 默认 5s
+    minIntervalMs: 1000       # 下限 1s(绝对硬底 200ms)
+  # 时序查询节拍(live 可调,热重载):查询未指定 bucketMs 时的降采样桶宽与下限。
+  # samples / 产线数据查询 / Agent daq_query 三处共用;Agent 工具描述实时携带当前值。
+  query:
+    defaultBucketMs: 15000    # 缺省 15s
+    minBucketMs: 1000         # 下限 1s(绝对硬底 100ms)
 
 security:
   # Session cookie 加密密钥（nuxt-auth-utils 使用）

@@ -34,6 +34,11 @@ function effective(): Record<string, unknown> {
   return eff.effective
 }
 
+/** 主动失效进程内缓存:settings 写路径(PATCH/CLI/文件监听)变更后调用,使 live 键即时可见 */
+export function invalidateRuntimeSettingsCache(): void {
+  cache = null
+}
+
 /** 按描述符键读单值(键必已注册 schema.json;缺键 = 描述符默认) */
 export function settingOf(key: string): unknown {
   return effective()[key]
@@ -111,6 +116,16 @@ export interface DaqRuntimeSettings {
     qos: number
     rejectUnauthorized: boolean
   }
+  /** 采样节拍(节点 intervalMs 未显式指定时的默认值与可配置下限;live 可调) */
+  sampling: {
+    defaultIntervalMs: number
+    minIntervalMs: number
+  }
+  /** 时序查询节拍(bucketMs 缺省值与下限;samples/产线查询/Agent daq_query 共用) */
+  query: {
+    defaultBucketMs: number
+    minBucketMs: number
+  }
   tsRetentionH: number
   frameRetentionH: number
   alarmWebhookUrl: string
@@ -143,6 +158,14 @@ export function daqRuntimeSettings(): DaqRuntimeSettings {
     frameRetentionH: Number(get('frameRetentionH', 720)),
     alarmWebhookUrl: String(get('alarmWebhookUrl', '')),
     alarmEscalateMinutes: Number(get('alarmEscalateMinutes', 15)),
+    sampling: {
+      defaultIntervalMs: Number(get('sampling.defaultIntervalMs', 5000)),
+      minIntervalMs: Number(get('sampling.minIntervalMs', 1000)),
+    },
+    query: {
+      defaultBucketMs: Number(get('query.defaultBucketMs', 15000)),
+      minBucketMs: Number(get('query.minBucketMs', 1000)),
+    },
   }
 }
 export function securityHitlTimeoutMs(): number {

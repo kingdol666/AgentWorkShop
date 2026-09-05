@@ -14,6 +14,7 @@ import { nodeSemanticCards } from './industrial-context'
 import { getDcwController } from '../dcw/dcw-controller'
 import { getActiveLineRun } from '../dcw/line-run'
 import { findDcwTemplate } from '../dcw/dcw-templates'
+import { daqRuntimeSettings } from '../settings'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { findDaqTemplate } from '../daq/daq-templates'
 import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
@@ -258,11 +259,12 @@ export async function toolDaqQuery(agentId: string, args: {
 
   const toMs = Number(args.to_ms) || Date.now()
   const fromMs = Number(args.from_ms) || toMs - (Number(args.last_minutes) || 30) * 60_000
-  // 时间间隔参数(bucket_ms 降采样桶宽):缺省 15s;可调,下限 1s
+  // 时间间隔参数(bucket_ms 降采样桶宽):缺省与下限来自 daq.query.*(live 配置,热重载)
+  const qCfg = daqRuntimeSettings().query
   const rawBucket = Number(args.bucket_ms)
   const bucketMs = Number.isFinite(rawBucket) && rawBucket > 0
-    ? Math.max(1000, Math.min(3_600_000, Math.round(rawBucket)))
-    : 15_000
+    ? Math.max(qCfg.minBucketMs, Math.min(3_600_000, Math.round(rawBucket)))
+    : qCfg.defaultBucketMs
   const limit = Math.min(Number(args.limit) || 500, 2000)
   const { getTsdb, tsdbReady } = await import('../daq/storage')
   await tsdbReady

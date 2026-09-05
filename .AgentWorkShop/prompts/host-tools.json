@@ -568,7 +568,7 @@
         },
         "bucket_ms": {
           "type": "number",
-          "description": "时间间隔(降采样桶宽 ms):缺省 15000(15s);可调范围 1000~3600000,下限 1s"
+          "description": "时间间隔(降采样桶宽 ms):缺省 {queryDefaultBucketMs}(15s);可调,下限 {queryMinBucketMs}。不传即用缺省;系统配置变更后以新值为准"
         },
         "limit": {
           "type": "number",

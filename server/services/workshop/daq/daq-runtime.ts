@@ -22,8 +22,8 @@ export const PUBLISH_INTERVAL_MAX = 60_000
 
 /** 网关注入的服务面(运行时只依赖此接口;管线汇聚在网关侧) */
 export interface DaqRuntimeHost {
-  /** 网关全局缺省(节点元数据为 null 时回退) */
-  defaults(): { intervalMs: number, publishIntervalMs: number }
+  /** 网关全局缺省(节点元数据为 null 时回退);minIntervalMs = 采样节拍下限(daq.sampling 配置) */
+  defaults(): { intervalMs: number, publishIntervalMs: number, minIntervalMs?: number }
   /** 生产面:驱动采样一次(网关实现协议解析与模板域;多形态模板返回帧信封 ——
    *  驱动原生形态或 controller 生产侧处理形态[图像已落对象存储]) */
   sample(node: DaqNode, now: number): Promise<number | DaqFrameSample | { frame: NonNullable<DaqSampleEnvelope['frame']> } | null> | number | DaqFrameSample | { frame: NonNullable<DaqSampleEnvelope['frame']> } | null
@@ -84,7 +84,8 @@ export class DaqNodeRuntime {
   async tick(now: number): Promise<void> {
     const node = this.node
     if (this.sampling || !node.enabled) return
-    if (now < this.lastSampleAt + node.effectiveInterval(this.host.defaults().intervalMs)) return
+    const defs = this.host.defaults()
+    if (now < this.lastSampleAt + node.effectiveInterval(defs.intervalMs, defs.minIntervalMs)) return
     this.sampling = true
     try {
       let v: number | DaqFrameSample | null = null
