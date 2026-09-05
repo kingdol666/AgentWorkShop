@@ -117,11 +117,33 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       }
     }
   }
+  const args = req.arguments ?? {}
+
+  // 工业工具族不依赖 workspace(只按 agentId 查绑定与节点),先于 workspace 门控执行 ——
+  // 否则 worker 首回合前的 REST/MCP 直调(my_industrial_nodes 等)会被误拒
+  switch (req.toolName) {
+    case 'my_industrial_nodes':
+      return toolMyIndustrialNodes(identity.agentId)
+    case 'dcw_control':
+      return toolDcwControl(identity.agentId, args as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string })
+    case 'dcw_read':
+      return toolDcwRead(identity.agentId, args as { node_id?: string })
+    case 'daq_query':
+      return toolDaqQuery(identity.agentId, args as Parameters<typeof toolDaqQuery>[1])
+    case 'daq_frames':
+      return toolDaqFrames(identity.agentId, args as Parameters<typeof toolDaqFrames>[1])
+    case 'dcw_judge':
+      return toolDcwJudge(identity.agentId, args as { record_id?: string, verdict?: string, reason?: string })
+    case 'dcw_rollback':
+      return toolDcwRollback(identity.agentId, args as { record_id?: string, node_id?: string, to?: string })
+    case 'dcw_journal':
+      return toolDcwJournal(identity.agentId, args as { node_id?: string, recipe_id?: string, limit?: number | string })
+  }
+
   const ws = ctx.getWorkspace()
   if (!ws) {
     return { text: 'workspace 未就绪', isError: true }
   }
-  const args = req.arguments ?? {}
 
   try {
     switch (req.toolName) {
@@ -199,6 +221,18 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
         const description = args.description as string | undefined
         const parentTaskId = args.parent_task_id as string | undefined
         const routeReason = args.route_reason as string | undefined
+        // 重复派发守卫(真实场景实测:lead 模型可能对同一目标重复派发,引发协调风暴):
+        // 同父任务下已存在同标题非终态子任务 → 不再创建,直接指路既有任务
+        const dup = await ws.listTasks()
+        const existing = dup.find(t =>
+          t.parentId === parentTaskId
+          && t.title === title
+          && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
+        if (existing) {
+          return {
+            text: `未创建:同父任务下已存在同标题进行中子任务 ${existing.id}("${existing.title}",state=${existing.state},assignee=${existing.assigneeId})。请勿重复派发;若需跟进请对该任务 notify 或 reassign。`,
+          }
+        }
         const task = await ws.dispatchTask({ assigneeId, title, description, parentTaskId, routeReason })
         return { text: `子任务 ${task.id} 已创建并指派 → ${assigneeId}(父任务 ${parentTaskId ?? '无'},标题: ${title}${routeReason ? `,路由理由: ${routeReason}` : ''})` }
       }

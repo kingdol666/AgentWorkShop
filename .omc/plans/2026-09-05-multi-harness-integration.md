@@ -312,3 +312,88 @@ omp-agent.ts(~2000 行)里混着三类代码,新引擎集成前须先拆:
 - codex:learn.chatgpt.com/docs/app-server(权威协议 spec 在 github.com/openai/codex `codex-rs/app-server/README.md`)、non-interactive-mode、config-reference、auth、windows-sandbox。
 - opencode:opencode.ai/docs/server / sdk / permissions / custom-tools / mcp-servers / providers;权威 OpenAPI:repo `packages/sdk/openapi.json`。
 - dsh:github.com/deepseek-ai/deepseek-harness(packages/acp/acp/README.md、packages/sdk/protocol|client/README.md、docs/subsystems/{approval,session,sandbox}.md、docs/tool-catalog.md)、npm @deepseek-ai/dsh。
+
+---
+
+# 附:真实场景实测报告与优化记录(2026-09-05,真实 dev server + 真实引擎)
+
+## 一、实测环境与方法
+
+- 真实 `pnpm dev` 服务(3000 端口,DAQ 真实链路 MQTT:1883/Timescale:5432/MinIO:9000 全部就绪)
+- 真实引擎子进程:lead=omp(glm-5.2)、worker-codex(app-server,用户本地网关 deepseek-v4-pro)、worker-dsh(acp,deepseek-v4-flash)
+- 场景脚本:`scripts/e2e-real-scenario.mjs`(REST 全程驱动 + WS 实时帧 + events 持久化历史双路监控)
+- 场景:建产线 → 建 DCW/DAQ 节点 → 建多引擎班组 → manual 绑定 → 三通道兼容对话 → goal 团队作业(数采→数控写入→HITL 批准→复读)→ HITL 超时路径(不批准等满 180s)
+
+## 二、实测结论(首轮:PASS=25 FAIL=5;修复后复测见第四节)
+
+**完整走通的核心链路(全部真实引擎、真实事件帧佐证):**
+1. 多引擎班组:omp lead + codex/dsh worker 同 channel 装配、通信、调度 ✓
+2. 数采→数控 HITL 确认闭环:dsh 经 MCP 桥调 dcw_control → dcw-approval 登记(节点名/175℃/安全量程齐全)→ 测试员批准 → 写入物理生效(dcw_read 读回 175℃,PLC ACT=SET)→ 任务 COMPLETED ✓
+3. HITL 超时路径:审批恰好 180s 自动 expired → 待办移除 → 值未被写入(保持 175)→ worker 如实汇报超时结果 ✓;等待期间 lead 还自发验收了"等待中未落地"的中间状态,worker 用 dcw_journal 留痕
+4. 事件监控:AEP 全程 500+ 帧(delta 349/message 18/task.status 10/hitl.request+resolved),WS 实时与 REST 历史双路一致 ✓
+5. dsh worker 全程表现优秀:工具调用、如实报错(report_progress 无任务上下文按指示忽略)、超时等待期间不重复发起
+
+## 三、发现的问题(按严重度)与处置
+
+### P1 平台 bug:工业工具族被 workspace 门控误拒(已修复)
+- 现象:`my_industrial_nodes` 在 worker 首回合前经 REST/MCP 直调返回「workspace 未就绪」
+- 根因:共享桥分发顺序为"插件 → workspace 门控 → …",而工业工具族只按 agentId 查绑定,不依赖 workspace
+- 修复:host-tool-bridge 将工业工具族(my_industrial_nodes/dcw_*/daq_*)提前到 workspace 门控之前分发
+
+### P2 设计缺口:人类 requireReply 无可靠回执通路(已修复)
+- 现象:人类经 REST 发 requireReply 消息,引擎回合只产 artifact 文本、不调 send_message_to_agent(fromId 是人类显示名,非 agent id,工具语义上也不可寻址),请求方收不到任何 in_reply_to 应答
+- 根因:回执协议只覆盖 agent→agent;对人类消息 omp 时代靠"时间线可见"兜底,无确定应答保证
+- 修复:AgentRuntime 在回合结束后,若消息带 requireReply+fromLabel 且回合有聚合文本 → 平台代投回执(a2a.message,in_reply_to 关联 + x-aw-relayed 标记);模型自行回执时时间线出现两条属可接受冗余(宁多勿丢)
+
+### P3 模型遵从性:codex 引擎(经本地网关的 deepseek-v4-pro)不遵从 send_message_to_agent(未修,已缓解+建议)
+- 现象:codex worker 三次被要求工具发信/回执,均只产 artifact 不调工具;lead 催办后仍未回
+- 缓解:P2 落地后,人类消息回执不再依赖模型工具遵从(平台代投);agent→agent 发信仍依赖工具遵从
+- 建议:①codex 引擎优先搭配指令遵从强的模型(GPT/Claude 系);②后续可探索在 codex thread/start 注入更强的协作协议说明(experimental dynamicTools 面);③将"发信成功率"纳入班组可观测指标
+
+### P4 环境问题(非平台缺陷,已文档化)
+- 本机 opencode 两把 provider key 均 401 失效 → 场景自动 SKIP,重新 `opencode auth login` 后重跑
+- dsh 全局 `permission.defaultPreset: danger-full-access` 抑制引擎侧审批(用户偏好,平台不越权改写);平台级 HITL(dcw-approval)不受影响
+- dev server nitro HMR 热重启后事件录制流会失效(录制流在插件启动时为存量 channel 建立;**新 channel 的录制流由首个 WS 订阅触发**)——无订阅者时 REST events 为空是设计使然;生产 start 模式无此困扰
+- `.AgentWorkShop/data/runtime-settings.json` 与 `data/runtime-settings.json` 遗留双文件警告(system-config 初始化失败降级,`this.map.get is not a function`)——建议清理遗留文件并排查该降级路径
+
+### P5 测试脚本教训(已修)
+- REST 信封统一多一层 `data`(line/node/binding/result 取值需 `data.*`)
+- `POST /channels/:id/agents` 一步创建直接返回克隆实例 id;两步法(POST /agents → 克隆)返回的是模板 id,拿它做绑定/调用会对不上运行时实例
+- 事件持久化流由首个 WS 订阅触发;纯 REST 轮询在无订阅者时看不到事件
+
+## 四、修复后复测结果
+
+### 复测 run1(修 P1/P2 后):PASS=27 FAIL=3
+
+- P1 修复生效:`my_industrial_nodes` 首回合前直调返回完整节点信息(含工艺语义注入)✓
+- P2 修复生效:人类消息的平台代投回执帧被正确匹配(dsh 回执 10 秒内到达)✓
+- codex 跨引擎发信的回执本轮 PASS(平台代投);剩余 FAIL 全部指向 P3 模型遵从性
+
+### 复测 run2(发现新维度:lead 自主治理的协调风暴)
+
+run2 出现了比 run1 更复杂的真实行为,逐项取证后确认**全部为 lead(omp/glm-5.2)自主决策所致**:
+
+1. **重复派发**:lead 对同一目标产生两个重叠任务实例(83928c51 + f42bac3b),lead 自己发现并广播「协调消歧-勿重复执行」
+2. **移除卡死成员**:codex 长时间无回执 → lead 判定卡死并 remove_team_agent(合理治理)
+3. **移除了表现正常的 dsh**:重复任务改派 dsh → dsh 完成关闭 → lead 在其"队列已空待命"后仍将其移除(过激),直接导致场景后续对 dsh 的 REST 调用 404
+4. **自主补员**:lead 自建 `worker-relay`(omp)接力收口,父任务最终 COMPLETED
+5. HITL 超时路径在混乱中依然真实演练了一次:dsh 重做改派任务时再发 175℃ 写审批 → 无人批准 → 180s 自动 expired → 指令未落地(值保持 175)
+
+**判定**:平台机制(消歧消息/改派/移除/补员/HITL 超时)全部按设计运转;风险在 **lead 模型的治理粒度**——"移除表现正常成员"是误判,cost 高(绑定/实例一并删除,场景脚本不得不自愈重建)。
+
+**优化方案(P6):重复派发去重防护已落地(host-tool-bridge.dispatch_task);以下为待实施增强**:
+- lead-supervise 模板增加治理纪律:「移除成员须有明确证据(连续 N 次拒绝任务/持续停滞且 notify 无效),优先 update_team_agent 停用而非移除(保留绑定与实例)」
+- 平台侧可给 remove_team_agent 增加软门槛:成员仍有成功交付记录且非连续失败时,返回警告要求二次确认(工具返回提示而非硬拦截)
+
+### 复测 run3(P6 防护落地前的最后一轮基线):PASS=28 FAIL=2
+
+- 全部核心机制 PASS:多引擎班组/三通道对话(dsh 10s 级回执,codex 本轮也完成)/数采+数控 HITL 确认闭环(PLC 读回 ACT=SET=175℃)/HITL 超时(恰好 180s expired、值保持 175、待办移除)
+- 剩余 2 个 FAIL 均为 P3 模型遵从性范畴:①codex 声称已发信但 dsh 未收到(120s);②160 审批超时后 worker 的收尾汇报 300s 未达(其回合仍在途)
+- 再次观察到 lead 重复派发(b1b6ba41 重复实例),与 run2 同根因 → 确认为高频真实风险,已在 host-tool-bridge 的 dispatch_task 落地「同父同标题进行中子任务去重」防护(创建前拦截并指路既有任务)
+
+### 场景脚本自愈能力(随 run2 同步加固)
+
+- phase 4/5 前自动重解析成员;worker-dsh 被 lead 移除时自动重建+重绑(manual/auto)
+- 消息投递 404 自动自愈重发;dcw_read 空结果自动自愈重读
+- 审批匹配放宽为按 kind(实例 id 可能因自愈变化)
+

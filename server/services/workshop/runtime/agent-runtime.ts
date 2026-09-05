@@ -593,6 +593,28 @@ export class AgentRuntime {
         sawRunError = true
         log.error(`[AgentRuntime:${this.agentId}] 回合异常:`, err)
       }
+      // 人类 requireReply 的平台兜底回执:实测部分引擎/模型不遵从 send_message_to_agent
+      // (回合只产 artifact 文本),请求方将收不到任何应答。平台把回合聚合文本代投回
+      // 时间线(in_reply_to 关联 + x-aw-relayed 标记),保证"要求回复"必有确定应答;
+      // 模型已自行回执时时间线会出现两条,属可接受的冗余(宁多勿丢)。
+      if (msg.metadata?.['x-aw-require-reply'] === 'true'
+        && typeof msg.metadata?.['x-aw-from-label'] === 'string'
+        && replyText.trim()) {
+        this.emitExternal({
+          kind: 'message',
+          message: {
+            messageId: randomUUID(),
+            contextId: this.channelId,
+            role: 'ROLE_AGENT',
+            parts: [{ text: replyText }],
+            metadata: {
+              'x-aw-in-reply-to': msg.messageId,
+              'x-aw-to-label': String(msg.metadata['x-aw-from-label']),
+              'x-aw-relayed': 'true',
+            },
+          },
+        })
+      }
       // 交付兜底(harness 回合结束 ≠ 任务完成):
       //  - 回合产出过实质 artifact(LLM 完成了工作但跳过 complete_task 工具)→ 隐式完成,
       //    交付物即回合规避的输出,平台代为收口(进度 100)。
