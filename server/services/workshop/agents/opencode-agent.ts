@@ -54,8 +54,10 @@ export interface OpenCodeAgentConfig {
   model?: string
   /** opencode agent 名(默认 build) */
   agent?: string
-  /** provider 推理档位(variant) */
+  /** provider 推理档位(variant;effort 为统一注入入口的别名) */
   variant?: string
+  /** 思考 effort(统一注入面;等价 variant) */
+  effort?: string
   /** 权限策略(session 级;缺省 edit/bash/webfetch 全 ask → HITL) */
   permission?: unknown
   /** 数据目录覆盖(XDG_DATA_HOME;实例隔离/绕开损坏的全局库) */
@@ -83,6 +85,8 @@ export interface OpenCodeAgentConfig {
   /** MCP 桥脚本路径(默认 <packageRoot>/server/harness/aw-mcp-bridge.mjs) */
   mcpBridgePath?: string
 }
+
+const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms))
 
 const DEFAULT_PERMISSION = [
   { permission: 'edit', pattern: '*', action: 'ask' },
@@ -316,7 +320,15 @@ export class OpenCodeAgentImpl implements AgentInterface {
   private supervising = false
 
   async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
-    await this.ensureServer(ctx)
+    // 引擎/会话不可用 → 本轮监督降级为空(调度器回退规则引擎);绝不让引擎故障
+    // 以 unhandledRejection 形态逃逸(dev-stability-guard 会据此杀掉整个服务端)
+    try {
+      await this.ensureServer(ctx)
+    }
+    catch (err) {
+      log.warn(`[OpenCodeAgent:${this.selfAgentId}] supervise 引擎不可用,跳过本轮:`, err instanceof Error ? err.message : err)
+      return []
+    }
     if (!this.sessionId) return []
     if (this.supervising) return []
     const prompt = supervisePrompt({
@@ -834,18 +846,33 @@ export class OpenCodeAgentImpl implements AgentInterface {
       log.warn(`[OpenCodeAgent:${this.selfAgentId}] MCP 桥注册失败(host tools 不可用):`, err instanceof Error ? err.message : err)
     }
 
-    // 建会话(权限策略缺省全 ask;引擎版本不认 permission 字段时降级重试)
+    // 建会话(权限策略缺省全 ask;部分版本不认 permission/model 字段时降级重试;
+    // model 按回合在 prompt_async 里传 —— session 创建面不接受它)
     const body: Record<string, unknown> = {
       title: `${this.agentName}@${this.channelId || 'channel'}`,
-      ...(this.config.model ? { model: this.modelRef() } : {}),
     }
-    const createWith = async (permission: unknown): Promise<Record<string, unknown>> =>
-      this.api('POST', '/session', { ...body, ...(permission !== undefined ? { permission } : {}) })
+    const createWith = async (extra: Record<string, unknown> | undefined): Promise<Record<string, unknown>> =>
+      this.api('POST', '/session', { ...body, ...(extra ?? {}) })
     const created = await (this.config.permission ?? DEFAULT_PERMISSION)
-      ? createWith(this.config.permission ?? DEFAULT_PERMISSION).catch(() => createWith(undefined))
+      ? createWith({ permission: this.config.permission ?? DEFAULT_PERMISSION }).catch(() => createWith(undefined))
       : createWith(undefined)
     this.sessionId = String(created?.id ?? '')
-    if (!this.sessionId) throw new Error('opencode 会话创建失败(无 session id)')
+    if (!this.sessionId) {
+      // 瞬态失败(实例刚起/内部分配竞态/权限规则不兼容)→ 无附加字段重试,最多 3 次
+      for (let i = 0; i < 3 && !this.sessionId; i++) {
+        await sleep(2500)
+        const retry = await createWith(undefined).catch(() => null)
+        this.sessionId = String(retry?.id ?? '')
+      }
+    }
+    if (!this.sessionId) {
+      // 会话建不出来(版本/参数不兼容):回收 serve 子进程与句柄后抛错,防泄漏
+      const detail = this.stderrTail ? ` stderr: ${this.stderrTail.slice(-300)}` : ''
+      killHarnessProcess(this.child?.pid ?? -1)
+      this.child = null
+      this.exited = true
+      throw new Error(`opencode 会话创建失败(无 session id)${detail}`)
+    }
 
     // 订阅全局事件流
     this.openEventStream()
@@ -954,7 +981,7 @@ export class OpenCodeAgentImpl implements AgentInterface {
       parts: [{ type: 'text', text }],
       ...(this.config.agent ? { agent: this.config.agent } : {}),
       ...(this.config.model ? { model: this.modelRef() } : {}),
-      ...(this.config.variant ? { variant: this.config.variant } : {}),
+      ...(this.config.variant ? { variant: this.config.variant } : (this.config.effort ? { variant: this.config.effort } : {})),
     })
   }
 }

@@ -7,7 +7,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { ChannelRow } from './database'
 
 /** 查询列(蛇形列名 → 驼峰行字段) */
-const COLS = 'id, name, description, scenario_prompt AS scenarioPrompt, lead_agent_id AS leadAgentId, workspace, enabled, owner_user_id AS ownerUserId, created_at AS createdAt, updated_at AS updatedAt'
+const COLS = 'id, name, description, scenario_prompt AS scenarioPrompt, llm_json AS llmJson, lead_agent_id AS leadAgentId, workspace, enabled, owner_user_id AS ownerUserId, created_at AS createdAt, updated_at AS updatedAt'
 
 export interface ChannelCreateInput {
   name: string
@@ -26,6 +26,8 @@ export interface ChannelPatch {
   leadAgentId?: string | null
   workspace?: string
   enabled?: number
+  /** channel 级默认 LLM(v11;null=清除);成员 config 未显式指定 model/provider 时注入 */
+  llm?: { provider?: string, model?: string, effort?: string } | null
 }
 
 export type ChannelRepo = ReturnType<typeof createChannelRepo>
@@ -39,7 +41,7 @@ export function createChannelRepo(db: DatabaseSync) {
   const selectByOwner = db.prepare(`SELECT ${COLS} FROM channels WHERE owner_user_id = ? OR owner_user_id IS NULL ORDER BY createdAt ASC`)
   const selectById = db.prepare(`SELECT ${COLS} FROM channels WHERE id = ?`)
   const updateStmt = db.prepare(
-    `UPDATE channels SET name = ?, description = ?, scenario_prompt = ?, lead_agent_id = ?, workspace = ?, enabled = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE channels SET name = ?, description = ?, scenario_prompt = ?, llm_json = ?, lead_agent_id = ?, workspace = ?, enabled = ?, updated_at = ? WHERE id = ?`,
   )
   const removeStmt = db.prepare(`DELETE FROM channels WHERE id = ?`)
 
@@ -85,12 +87,13 @@ export function createChannelRepo(db: DatabaseSync) {
         name: patch.name ?? current.name,
         description: patch.description ?? current.description,
         scenarioPrompt: patch.scenarioPrompt ?? current.scenarioPrompt,
+        llmJson: patch.llm !== undefined ? JSON.stringify(patch.llm) : current.llmJson,
         leadAgentId: patch.leadAgentId !== undefined ? patch.leadAgentId : current.leadAgentId,
         workspace: patch.workspace ?? current.workspace,
         enabled: patch.enabled ?? current.enabled,
         updatedAt: new Date().toISOString(),
       }
-      updateStmt.run(next.name, next.description, next.scenarioPrompt, next.leadAgentId, next.workspace, next.enabled, next.updatedAt, id)
+      updateStmt.run(next.name, next.description, next.scenarioPrompt, next.llmJson, next.leadAgentId, next.workspace, next.enabled, next.updatedAt, id)
       return next
     },
 

@@ -143,6 +143,49 @@ const unmount = (channelId: string): void => {
 const settingsOpen = ref(false)
 const settingsChannelId = ref<string>('')
 const settingsForm = reactive({ name: '', scenarioPrompt: '', workspace: '' })
+
+// ===== Channel 级默认 LLM(harness → provider/model/effort;空 = 用引擎默认) =====
+interface CatalogProvider {
+  id: string
+  models: Array<{ id: string, efforts: string[], defaultEffort?: string }>
+}
+const llmForm = reactive({ harness: 'omp', provider: '', model: '', effort: '', enabled: false })
+const llmProviders = ref<CatalogProvider[]>([])
+const llmEffortMode = ref<'levels' | 'freetext' | 'unsupported'>('levels')
+const llmLoading = ref(false)
+const llmProviderOptions = computed(() => llmProviders.value.map(p => ({ value: p.id, label: p.id })))
+const llmModelOptions = computed(() =>
+  (llmProviders.value.find(p => p.id === llmForm.provider)?.models ?? []).map(m => ({ value: m.id, label: m.id })),
+)
+const llmEffortOptions = computed(() => {
+  const m = llmProviders.value.find(p => p.id === llmForm.provider)?.models.find(x => x.id === llmForm.model)
+  return (m?.efforts ?? []).map(e => ({ value: e, label: e + (m?.defaultEffort === e ? '(默认)' : '') }))
+})
+const loadLlmCatalog = async (harness: string): Promise<void> => {
+  llmLoading.value = true
+  llmProviders.value = []
+  try {
+    const res = await api.listHarnessProviders(harness)
+    const cat = (res as unknown as { data?: { catalog?: { providers?: CatalogProvider[], effortMode?: 'levels' | 'freetext' | 'unsupported' } } })?.data?.catalog
+    llmProviders.value = cat?.providers ?? []
+    llmEffortMode.value = cat?.effortMode ?? 'unsupported'
+  }
+  catch { /* 目录拉取失败保留空表 */ }
+  finally { llmLoading.value = false }
+}
+const onLlmHarnessChange = async (): Promise<void> => {
+  llmForm.provider = ''
+  llmForm.model = ''
+  llmForm.effort = ''
+  await loadLlmCatalog(llmForm.harness)
+}
+const onLlmProviderChange = (): void => {
+  llmForm.model = ''
+  llmForm.effort = ''
+}
+const onLlmModelChange = (): void => {
+  llmForm.effort = ''
+}
 const settingsSaving = ref(false)
 const fileSelectorOpen2 = ref(false)
 const openSettings = (channelId: string): void => {
@@ -151,7 +194,20 @@ const openSettings = (channelId: string): void => {
   settingsForm.name = meta?.name ?? ''
   settingsForm.scenarioPrompt = meta?.scenarioPrompt ?? ''
   settingsForm.workspace = meta?.workspace ?? ''
+  // 预填 channel 默认 LLM(llmJson 由列表接口透传)
+  let saved: { provider?: string, model?: string, effort?: string } | null = null
+  try {
+    const metaAny = meta as unknown as { llmJson?: string } | undefined
+    saved = metaAny?.llmJson ? JSON.parse(metaAny.llmJson) as typeof saved : null
+  }
+  catch { saved = null }
+  llmForm.enabled = !!saved?.model
+  llmForm.harness = 'omp'
+  llmForm.provider = saved?.provider ?? ''
+  llmForm.model = saved?.model ?? ''
+  llmForm.effort = saved?.effort ?? ''
   settingsOpen.value = true
+  if (llmForm.enabled) void loadLlmCatalog(llmForm.harness)
 }
 const saveSettings = async (): Promise<void> => {
   settingsSaving.value = true
@@ -159,6 +215,9 @@ const saveSettings = async (): Promise<void> => {
     await api.patchChannel(settingsChannelId.value, {
       scenarioPrompt: settingsForm.scenarioPrompt,
       workspace: settingsForm.workspace.trim() || undefined,
+      llm: llmForm.enabled && llmForm.model
+        ? { ...(llmForm.provider ? { provider: llmForm.provider } : {}), model: llmForm.model, ...(llmForm.effort ? { effort: llmForm.effort } : {}) }
+        : null,
     })
     message.success(t('channelSessionList.kvsxlu6031'))
     settingsOpen.value = false
@@ -400,6 +459,57 @@ const saveAsTemplate = async (): Promise<void> => {
               {{ $t('channelSessionList.k3pz0ma018') }}
             </a-button>
           </a-input-group>
+        </a-form-item>
+        <a-form-item label="默认模型(可选;留空用各 Harness 默认)">
+          <a-space>
+            <a-switch
+              v-model:checked="llmForm.enabled"
+              size="small"
+              @change="(v: any) => { if (v) void loadLlmCatalog(llmForm.harness) }"
+            />
+            <a-select
+              v-model:value="llmForm.harness"
+              style="width: 130px"
+              :options="[{ value: 'omp', label: 'omp' }, { value: 'codex', label: 'codex' }, { value: 'opencode', label: 'opencode' }, { value: 'dsh', label: 'dsh' }]"
+              :disabled="!llmForm.enabled"
+              @change="onLlmHarnessChange"
+            />
+            <a-select
+              v-model:value="llmForm.provider"
+              style="width: 170px"
+              :placeholder="llmLoading ? '目录加载中…' : 'provider'"
+              :options="llmProviderOptions"
+              :disabled="!llmForm.enabled || llmLoading"
+              show-search
+              @change="onLlmProviderChange"
+            />
+            <a-select
+              v-model:value="llmForm.model"
+              style="width: 210px"
+              placeholder="model"
+              :options="llmModelOptions"
+              :disabled="!llmForm.enabled || !llmForm.provider"
+              show-search
+              @change="onLlmModelChange"
+            />
+            <a-select
+              v-if="llmEffortMode === 'levels'"
+              v-model:value="llmForm.effort"
+              style="width: 130px"
+              placeholder="effort(可选)"
+              :options="llmEffortOptions"
+              :disabled="!llmForm.enabled || !llmForm.model"
+              allow-clear
+            />
+            <a-input
+              v-else-if="llmEffortMode === 'freetext'"
+              v-model:value="llmForm.effort"
+              style="width: 130px"
+              placeholder="variant(可选)"
+              :disabled="!llmForm.enabled || !llmForm.model"
+              allow-clear
+            />
+          </a-space>
         </a-form-item>
         <a-form-item>
           <a-button

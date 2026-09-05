@@ -203,6 +203,19 @@ function buildMessage(
 }
 
 /** 运行时实例复合键(channel, 实例) */
+/** channel llm_json 解析(容错;空/坏 JSON 返回 null) */
+function parseChannelLlm(json: string | undefined): { provider?: string, model?: string, effort?: string } | null {
+  if (!json) return null
+  try {
+    const v = JSON.parse(json) as { provider?: string, model?: string, effort?: string }
+    if (!v || typeof v !== 'object') return null
+    return v
+  }
+  catch {
+    return null
+  }
+}
+
 function runtimeKey(channelId: string, agentId: string): string {
   return `${channelId}\u0000${agentId}`
 }
@@ -633,6 +646,15 @@ export class AgentChannelManager {
     const configWithCtx: Record<string, unknown> = { ...agent.config }
     if (scenarioPrompt) configWithCtx.scenarioPrompt = scenarioPrompt
     if (chWorkspace.length > 0) configWithCtx.cwd = chWorkspace
+    // channel 级默认 LLM(v11):成员 config 未显式指定 model/provider 时按引擎注入;
+    // effort 语义按引擎映射(omp thinkingLevel / opencode variant / codex effort / dsh 暂不支持)
+    const chRow = this.deps.repos.channels.findById(m.channelId)
+    const chLlm = parseChannelLlm(chRow?.llmJson)
+    if (chLlm) {
+      if (!configWithCtx.model && chLlm.model) configWithCtx.model = chLlm.model
+      if (!configWithCtx.provider && chLlm.provider) configWithCtx.provider = chLlm.provider
+      if (!configWithCtx.effort && chLlm.effort) configWithCtx.effort = chLlm.effort
+    }
     const agentWithCtx: AgentInfo = { ...agent, config: configWithCtx }
     const runtime = new AgentRuntime(agent, this.deps.implFactory(agentWithCtx), {
       mailbox,
@@ -1179,7 +1201,7 @@ export class AgentChannelManager {
     return { ...channel, agents }
   }
 
-  async updateChannel(channelId: string, patch: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number }): Promise<ChannelRow> {
+  async updateChannel(channelId: string, patch: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null }): Promise<ChannelRow> {
     const channel = this.deps.repos.channels.findById(channelId)
     if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
     if (patch.workspace !== undefined && patch.workspace !== channel.workspace) {
@@ -1194,9 +1216,16 @@ export class AgentChannelManager {
     if (patch.scenarioPrompt !== undefined && patch.scenarioPrompt !== channel.scenarioPrompt) {
       await this.unloadChannelAgents(channelId)
     }
+    // channel 默认 LLM 变更 → 同样回收成员运行时(下次装配注入新默认;成员 config
+    // 显式指定的 model/provider 优先,不受影响)
+    const prevLlm = channel.llmJson
+    const nextLlm = patch.llm !== undefined ? JSON.stringify(patch.llm) : undefined
+    if (nextLlm !== undefined && nextLlm !== prevLlm) {
+      await this.unloadChannelAgents(channelId)
+    }
     const updated = this.deps.repos.channels.update(channelId, patch)
     // 卸载后 channel 需重新激活(懒装配 lead + 恢复调度驱动)
-    if (updated && updated.leadAgentId && (patch.scenarioPrompt !== undefined || patch.workspace !== undefined)) {
+    if (updated && updated.leadAgentId && (patch.scenarioPrompt !== undefined || patch.workspace !== undefined || (nextLlm !== undefined && nextLlm !== prevLlm))) {
       this.ensureChannelActive(channelId)
     }
     return updated!

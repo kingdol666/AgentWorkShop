@@ -6,6 +6,7 @@
  * 生产环境配置 DAQ_TSDB_URL 即切换 Timescale,业务代码零改动。
  */
 import { createLogger } from '../../logger'
+import { backupRegistry } from '../../db/backup-registry'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { ensureDataDir } from '@/shared/config/home.mjs'
@@ -25,6 +26,8 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
 
   async init(): Promise<void> {
     this.db = new DatabaseSync(DB_PATH)
+    // 主连接登记(备份 serialize 用)
+    backupRegistry.register(DB_PATH, this.db)
     this.db.exec('PRAGMA journal_mode = WAL')
     this.db.exec('PRAGMA busy_timeout = 5000')
     // WAL + NORMAL:批写单事务一次 fsync,兼顾持久性与事件循环停顿

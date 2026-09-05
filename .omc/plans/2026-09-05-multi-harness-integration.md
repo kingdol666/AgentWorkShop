@@ -397,3 +397,49 @@ run2 出现了比 run1 更复杂的真实行为,逐项取证后确认**全部为
 - 消息投递 404 自动自愈重发;dcw_read 空结果自动自愈重读
 - 审批匹配放宽为按 kind(实例 id 可能因自愈变化)
 
+
+
+---
+
+# 附二:LLM 供应商选择功能与第三轮实测(2026-09-05)
+
+## 新功能(已实现)
+
+1. **四引擎模型目录**:`GET /api/workshop/harnesses/:id/providers`(harness-models.ts,5 分钟缓存)
+   - omp:`omp models list` 解析(provider 分组 + thinking 级别列)
+   - codex:app-server `model/list`(supportedReasoningEfforts + 默认档)
+   - opencode:`opencode models`(provider/model 行;effort=variant 自由串)
+   - dsh:内置 deepseek 目录 + ~/.dsh/settings.yaml 自定义网关解析
+2. **Channel 级默认 LLM**:channels.llm_json(v11 迁移);PATCH /channels 接受
+   `llm: {provider, model, effort} | null`;变更回收成员运行时;wireMember 注入
+   (成员 config 显式指定 model/provider 时优先;空 = 引擎默认,符合需求)
+3. **effort 通道**:omp `--thinking` 级别;opencode `variant`;codex `model_reasoning_effort`
+   (无 codexHome 时自动种子化 per-agent 目录);dsh 经 AW_ACP_PROVIDER/MODEL 环境注入
+   profile patch(本版 ACP 无 set_config_option,effort 不可设——如实声明)
+4. **前端**:Channel 设置弹窗「默认模型」区(harness→provider→model→effort 四级联动,
+   留空 = 引擎默认);composable `listHarnessProviders`
+
+## 第三轮真实测试(生产构建 3001 + 四引擎班组)
+
+结果:PASS=6 FAIL=3,定位如下(全部取证):
+- ✓ 产线/节点/绑定/班组/goal 派发全通;lead 重复派发被 P6 防护拦截(不再风暴)
+- ✓ dsh 数采闭环(opencode 读数任务亦完成);codex 两次真实发起 dcw_control
+  → dcw-approval 触发(WS 帧佐证)→ 180s 无人批准自动 expired(超时语义正确)
+- ✗ 演练脚本审批盲区:脚本只批准第一个审批后即退出等待循环,lead 重试产生的
+  后续审批无人应答而超时 → 脚本级缺陷(平台无责);定点探针已证明 pending 可见性/
+  批准/写入 172℃/回读一致/优化记录落库 全链路真实可用
+- ✗ opencode 会话创建 400:该版本 session 创建面不接受 model 字段(model 只能
+  按 prompt 传)→ 已修复为「创建不带 model + prompt 带 model」(impl 修复)
+- ⚠ 环境事故两起(dev-only):备份 serialize 使主连接语句全部失效(已改
+  checkpoint+文件拷贝,backup-registry.md 有事故记录);僵尸 dev 进程持 3000 端口
+  导致打旧代码(已建立「杀端口属主进程」的清场流程)
+- ⚠ codex 引擎工具遵从性仍是薄弱点(用户已兜底网关;本轮两次真实发起审批说明
+  写入链路本身已通,遵从性随模型/网关质量波动)
+
+## 结论
+
+四引擎(omp/codex/dsh/opencode)均已真实接入并各有实测证据:
+- 数采(daq_query)、数控读写(dcw_read/dcw_control)、HITL 审批(批准继续/超时拒绝)
+- LLM 供应商目录/按 channel 选模型/effort:API 全部打通并有目录冒烟佐证
+- 已知残余:opencode 模型在 session 面不可选(按 prompt 传,已修);dsh effort 本版
+  协议不支持;codex 工具遵从性随网关模型质量波动

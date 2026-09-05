@@ -30,6 +30,7 @@ console.log(`channel=${cid} worker=${w?.data?.id} harness=${harness}`)
 
 // 事件录制流由首个 WS 订阅触发(无订阅者不落库),故先接 WS 再触发事件
 const { createRequire } = await import('node:module')
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const { WebSocket } = createRequire(import.meta.url)('D:/codes/ABO/AgentWorkShop/node_modules/.pnpm/ws@8.21.3/node_modules/ws')
 const ws = new WebSocket(BASE.replace(/^http/, 'ws') + '/api/workshop/ws')
 ws.on('open', () => ws.send(JSON.stringify({ type: 'sub', channelId: cid, token: T })))

@@ -8,6 +8,8 @@ export interface ChannelDto {
   id: string
   name: string
   description?: string
+  /** channel 级默认 LLM JSON(透传 llmJson;前端解析) */
+  llmJson?: string
   /** channel 级作业场景 prompt(设置弹窗可编辑) */
   scenarioPrompt?: string
   leadAgentId: string | null
@@ -126,6 +128,9 @@ export function useWorkshopApi() {
     runtimeStatus: () => http.get<{ data: { wiredAgents: string[], activeChannels: string[] } }>('/workshop/runtime'),
     /** harness 注册表(引擎下拉/能力徽标;与 factory/manager 校验同源) */
     listHarnesses: () => http.get<{ data: { harnesses: HarnessMetaDto[] } }>('/workshop/harnesses'),
+    /** harness 已配置的 LLM provider/model 目录(引擎官方目录面,5 分钟缓存) */
+    listHarnessProviders: (harness: string) =>
+      http.get<{ data: { catalog: { providers: Array<{ id: string, models: Array<{ id: string, efforts: string[], defaultEffort?: string }> }>, effortMode: 'levels' | 'freetext' | 'unsupported', note?: string } } }>(`/workshop/harnesses/${harness}/providers`),
     // tasks detail / lifecycle(P1 抽屉)
     getTask: (taskId: string) => http.get<{ data: TaskDto }>(`/workshop/tasks/${taskId}`),
     cancelTask: (taskId: string) => http.post<{ data: TaskDto }>(`/workshop/tasks/${taskId}/cancel`, {}),

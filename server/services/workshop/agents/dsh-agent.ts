@@ -64,8 +64,10 @@ export interface DshAgentConfig {
   /** 额外 CLI 参数(默认 ['--profile','acp']) */
   args?: string[]
   cwd?: string
-  /** 模型(如 deepseek-v4-flash;经 initialize/session 配置面传递,不可用则引擎默认) */
+  /** 模型(如 deepseek-v4-flash;经进程环境传给 profile patch 的 acp provider/model) */
   model?: string
+  /** provider(如 deepseek-official;经进程环境传给 profile patch) */
+  provider?: string
   /** 推理档位(off|low|high|max) */
   reasoningEffort?: string
   /** 审批策略(ask=默认,触发 HITL;never=引擎侧全拒) */
@@ -574,6 +576,9 @@ export class DshAgentImpl implements AgentInterface {
         // 此 dsh 版本 session/new 不支持 mcpServers 参数,挂载走 profile 配置。
         ...generateMcpBridgeEnv({ agentId: this.selfAgentId, token: this.config.token, baseUrl: this.config.baseUrl, bridgePath: this.config.mcpBridgePath }).bridgeEnv,
         AW_BRIDGE_PATH: generateMcpBridgeEnv({ agentId: this.selfAgentId, token: this.config.token, baseUrl: this.config.baseUrl, bridgePath: this.config.mcpBridgePath }).bridgePath,
+        // provider/model 经环境传给 profile patch(!!js 读取):channel/agent config 驱动
+        ...(this.config.provider ? { AW_ACP_PROVIDER: this.config.provider } : {}),
+        ...(this.config.model ? { AW_ACP_MODEL: this.config.model } : {}),
         ...(this.config.dshHome ? { DSH_HOME: this.config.dshHome } : {}),
         ...(this.config.apiKey ? { DEEPSEEK_API_KEY: this.config.apiKey } : {}),
       },

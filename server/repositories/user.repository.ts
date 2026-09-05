@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs'
+import { backupRegistry } from '../services/workshop/db/backup-registry'
 import { join, resolve } from 'node:path'
 import { randomBytes, randomUUID, scryptSync, createHash, timingSafeEqual } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
@@ -57,6 +58,8 @@ function getDb(): DatabaseSync {
   if (!db) {
     // 目录由 ensureDataDir 内部创建(含旧位置迁移)
     db = new DatabaseSync(DB_PATH)
+    // 主连接登记(备份 serialize 用;见 backup-registry 说明)
+    backupRegistry.register(DB_PATH, db)
     db.exec('PRAGMA busy_timeout = 5000')
     db.exec(SCHEMA_SQL)
     migrateSchema(db)

@@ -10,12 +10,20 @@ const SOCKET_NOISE = /ECONNRESET|EPIPE|ECONNABORTED|ETIMEDOUT|ERR_STREAM_PREMATU
 // SQLite 忙/锁(hardening ST-1):多写竞争的瞬态错误,记录并继续;
 // 真正的库损坏/磁盘错误不经此路径,仍走致命语义。
 const SQLITE_BUSY = /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i
+// Agent 引擎边界错误(harness 容错):opencode/omp/codex/dsh 等外部引擎 RPC 失败
+// (HTTP 4xx/5xx、连接拒绝)只影响对应 agent 会话,应降级重试而非退进程 ——
+// 服务端同时承载 DAQ 数采/DCW 写控,引擎故障带走监控平台属于可用性事故。
+const ENGINE_BOUNDARY = /\b(opencode|omp|codex|dsh) API\b/i
 
 function isSocketNoise(reason: unknown): boolean {
   if (reason == null) return false
   const err = reason as NodeJS.ErrnoException
-  if (typeof err.code === 'string') return SOCKET_NOISE.test(err.code)
-  return SOCKET_NOISE.test(String(reason))
+  // code 命中即噪声(经典 errno 形态)
+  if (typeof err.code === 'string' && SOCKET_NOISE.test(err.code)) return true
+  // undici 等包装错误:code 可能是 UND_ERR_*/undefined,但 message/stack 仍带
+  // "read ECONNRESET" 文本 —— 全文兜底再测一次(四引擎并发下 keep-alive socket
+  // 复位是高频瞬态,不可判死进程)
+  return SOCKET_NOISE.test(describe(reason))
 }
 
 function describe(reason: unknown): string {
@@ -26,7 +34,9 @@ function describe(reason: unknown): string {
 
 export default defineNitroPlugin(() => {
   const isTransientDbBusy = (reason: unknown): boolean => SQLITE_BUSY.test(describe(reason))
-  process.on('unhandledRejection', (reason) => {
+  const isEngineBoundary = (reason: unknown): boolean => ENGINE_BOUNDARY.test(describe(reason).split('\n')[0] ?? '')
+  let engineFaults = 0
+  const onFatalCandidate = (kind: string, reason: unknown): void => {
     if (isSocketNoise(reason)) {
       console.warn(`[stability-guard] socket noise suppressed: ${describe(reason).slice(0, 120)}`)
       return
@@ -35,20 +45,19 @@ export default defineNitroPlugin(() => {
       console.warn(`[stability-guard] sqlite busy(瞬态,不退出): ${describe(reason).slice(0, 120)}`)
       return
     }
-    console.error(`[stability-guard] fatal unhandledRejection, exiting:\n${describe(reason)}`)
+    if (isEngineBoundary(reason)) {
+      engineFaults += 1
+      console.error(`[stability-guard] 引擎边界错误(累计 ${engineFaults},不退出): ${describe(reason).slice(0, 400)}`)
+      return
+    }
+    console.error(`[stability-guard] fatal ${kind}, exiting:\n${describe(reason)}`)
     process.exit(1)
+  }
+  process.on('unhandledRejection', (reason) => {
+    onFatalCandidate('unhandledRejection', reason)
   })
   process.on('uncaughtException', (err) => {
-    if (isSocketNoise(err)) {
-      console.warn(`[stability-guard] socket noise suppressed: ${describe(err).slice(0, 120)}`)
-      return
-    }
-    if (isTransientDbBusy(err)) {
-      console.warn(`[stability-guard] sqlite busy(瞬态,不退出): ${describe(err).slice(0, 120)}`)
-      return
-    }
-    console.error(`[stability-guard] fatal uncaughtException, exiting:\n${describe(err)}`)
-    process.exit(1)
+    onFatalCandidate('uncaughtException', err)
   })
-  console.warn('[stability-guard] armed (socket 断连与 sqlite 瞬态忙 → 记录继续;真实错误 → exit 1)')
+  console.warn('[stability-guard] armed (socket 断连/sqlite 瞬态忙/引擎边界错误 → 记录继续;其余真实错误 → exit 1)')
 })

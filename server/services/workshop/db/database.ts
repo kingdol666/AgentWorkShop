@@ -27,6 +27,7 @@ const SCHEMA_SQL = `CREATE TABLE IF NOT EXISTS channels (
   name           TEXT NOT NULL,
   description    TEXT NOT NULL DEFAULT '',
   scenario_prompt TEXT NOT NULL DEFAULT '',  -- v6:channel 级作业场景 prompt(全员注入)
+  llm_json       TEXT NOT NULL DEFAULT '',  -- v11:channel 级默认 LLM({provider,model,effort};空=用引擎默认)
   lead_agent_id  TEXT,
   workspace      TEXT NOT NULL DEFAULT '',
   enabled        INTEGER NOT NULL DEFAULT 1,
@@ -456,6 +457,8 @@ export interface ChannelRow {
   description: string
   /** channel 级作业场景 prompt(注入全部成员 harness;空串 = 无场景) */
   scenarioPrompt: string
+  /** channel 级默认 LLM JSON({provider,model,effort};空串 = 用引擎默认) */
+  llmJson: string
   leadAgentId: string | null
   /** channel 独立工作目录(omp 子进程 cwd;空串表示未设置) */
   workspace: string
@@ -664,6 +667,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   db.exec(SCHEMA_SQL)
   migrateLegacySchema(db)
   migrateAddColumn(db, 'channels', 'scenario_prompt', 'TEXT NOT NULL DEFAULT \'\'')
+  // v11:channel 级默认 LLM(四引擎统一注入面;成员 config 显式指定时优先)
+  migrateAddColumn(db, 'channels', 'llm_json', 'TEXT NOT NULL DEFAULT \'\'')
   // 派发路由理由(koda RouteDecision 借鉴):lead 派发留痕"为什么派给他",供审计与前端呈现
   migrateAddColumn(db, 'tasks', 'route_reason', 'TEXT NOT NULL DEFAULT \'\'')
   // v10:模板可见性列(既有库补列;默认 private,仅属主可见)

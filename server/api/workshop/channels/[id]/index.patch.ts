@@ -11,12 +11,20 @@ import { zValidator } from '../../../../utils/validate'
 import { defineApiHandler } from '../../../../utils/response'
 import { getWorkshopManager } from '../../../../plugins/workshop'
 
+const channelLlmSchema = z.object({
+  provider: z.string().min(1).optional(),
+  model: z.string().min(1).optional(),
+  effort: z.string().min(1).optional(),
+}).optional()
+
 const patchChannelSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
   scenarioPrompt: z.string().optional(),
   workspace: z.string().min(1).optional(),
   enabled: z.number().int().min(0).max(1).optional(),
+  /** channel 级默认 LLM(不传 = 不变;null = 清除回引擎默认) */
+  llm: channelLlmSchema.nullable(),
 })
 
 export default defineApiHandler(async (event) => {

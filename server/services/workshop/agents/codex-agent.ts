@@ -18,7 +18,8 @@
 import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { mkdirSync, writeFileSync, appendFileSync, existsSync, readFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, readFileSync, copyFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import type {
   AgentEvent,
   AgentInterface,
@@ -60,8 +61,10 @@ export interface CodexAgentConfig {
   approvalPolicy?: 'untrusted' | 'on-request' | 'never'
   /** 沙箱(默认 workspace-write) */
   sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access'
-  /** CODEX_HOME(缺省进程环境;配置隔离/多账户时按 agent 指定) */
+  /** CODEX_HOME(缺省进程环境;配置隔离/多账户时按 agent 指定;effort 未指定 home 时自动种子化) */
   codexHome?: string
+  /** 思考 effort(model_reasoning_effort;需 CODEX_HOME 配置面,未指定 home 时自动种子化) */
+  effort?: string
   /** 上下文窗口(usage 百分比计算) */
   contextWindow?: number
   /** 压缩阈值(0-1,默认 0.7) */
@@ -759,7 +762,20 @@ export class CodexAgentImpl implements AgentInterface {
    * 配置,自定义网关/密钥不丢失);全新目录 → 独立写入。
    */
   private writeCodexHomeConfig(): void {
-    const home = this.config.codexHome
+    let home = this.config.codexHome
+    if (!home && this.config.effort) {
+      // effort 需要配置文件面(model_reasoning_effort):自动种子化 per-agent CODEX_HOME
+      // (拷贝全局凭据/网关配置,保登录与自定义 provider;追加 MCP 段 + 顶部 effort)
+      home = join(tmpdir(), `aw-codex-${this.selfAgentId.slice(0, 8)}`)
+      this.config.codexHome = home
+      for (const f of ['auth.json', 'config.toml', 'cc-switch-model-catalog.json']) {
+        try {
+          const src = join(process.env.HOME ?? process.env.USERPROFILE ?? '', '.codex', f)
+          if (existsSync(src)) copyFileSync(src, join(home, f))
+        }
+        catch { /* 单文件缺失忽略 */ }
+      }
+    }
     if (!home) return
     try {
       mkdirSync(home, { recursive: true })
@@ -777,13 +793,26 @@ export class CodexAgentImpl implements AgentInterface {
         envLines,
         ``,
       ].join('\n')
+      // effort 走 TOML 顶层键(model_reasoning_effort):必须位于任何 [table] 之前 → 顶部插入
+      const effortLine = this.config.effort
+        ? `model_reasoning_effort = ${JSON.stringify(this.config.effort)}
+`
+        : ''
       if (existsSync(configFile)) {
         const existing = readFileSync(configFile, 'utf-8')
-        if (existing.includes('[mcp_servers.aw]')) return
-        appendFileSync(configFile, section, 'utf-8')
+        const withoutDup = this.config.effort
+          ? existing.replace(/^model_reasoning_effort = .*\n?/m, '')
+          : existing
+        if (withoutDup.includes('[mcp_servers.aw]')) {
+          if (effortLine && !withoutDup.startsWith(effortLine.trim())) {
+            writeFileSync(configFile, effortLine + withoutDup, 'utf-8')
+          }
+          return
+        }
+        writeFileSync(configFile, effortLine + withoutDup + section, 'utf-8')
       }
       else {
-        writeFileSync(configFile, section, 'utf-8')
+        writeFileSync(configFile, effortLine + section, 'utf-8')
       }
     }
     catch (err) {

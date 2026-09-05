@@ -6,42 +6,47 @@
  * setInterval + globalThis key 防 HMR 重复 + unref()。dev 与生产均生效
  * (备份无副作用,始终开启;BACKUP_DISABLED=1 可关)。
  */
-import { DatabaseSync } from 'node:sqlite'
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { backupSettings } from '../services/workshop/settings'
+import { backupRegistry } from '../services/workshop/db/backup-registry'
 
 const g = globalThis as typeof globalThis & { __awBackupTimer?: NodeJS.Timeout, __awBackupLastAt?: string }
 
 const DB_FILES = ['workshop.sqlite', 'users.sqlite', 'daq-timeseries.sqlite'] as const
 
 /**
- * 单库在线快照(hardening ST-2):node:sqlite serialize() 一致性数据库镜像 → 落盘。
- * 纯读操作,不与主写者抢锁(VACUUM INTO 会与写事务竞争 SQLITE_BUSY,已实测);
- * 产物为标准 SQLite 文件,与历史 .bak 结构兼容。失败只记录不抛出。
+ * 单库在线快照(hardening ST-2 终版:零侵入文件拷贝)。
+ *
+ * 真实事故两连(Windows + node:sqlite):
+ *  1) 对活库开第二连接 serialize/close → 主连接 prepared statements 全部失效;
+ *  2) 对主连接 serialize() → 该连接上全部语句被 finalize(20 分钟后 Mailbox 一用即炸)。
+ * 结论:node:sqlite 上 serialize 路线对常驻服务不可行。终版:PASSIVE checkpoint
+ * (尽力把 WAL 并回主文件,失败不影响服务)→ 拷贝主文件。得到的是「最后一次
+ * checkpoint 时刻」的有效 SQLite 镜像;备份语义为日级韧性的兜底,允许略旧。
  */
 async function backupOne(src: string, target: string): Promise<void> {
-  const db = new DatabaseSync(src)
-  try {
-    const image = db.serialize()
-    // 原子落盘:快照写一半被杀会留下截断 .bak(轮转后还被当作有效备份)
-    const tmp = `${target}.tmp`
-    writeFileSync(tmp, image)
+  const db = backupRegistry.get(src)
+  if (db) {
     try {
-      renameSync(tmp, target)
+      db.exec('PRAGMA wal_checkpoint(PASSIVE)')
     }
-    catch {
-      // rename 失败(目标被占用等):退回直写,可用性优先
-      writeFileSync(target, image)
-      try {
-        rmSync(tmp)
-      }
-      catch { /* ignore */ }
-    }
+    catch { /* 忙时跳过 checkpoint,拷出的镜像退回上次 checkpoint 点,仍有效 */ }
   }
-  finally {
-    db.close()
+  // 原子落盘:快照写一半被杀会留下截断 .bak(轮转后还被当作有效备份)
+  const tmp = `${target}.tmp`
+  copyFileSync(src, tmp)
+  try {
+    renameSync(tmp, target)
+  }
+  catch {
+    // rename 失败(目标被占用等):退回直写,可用性优先
+    copyFileSync(src, target)
+    try {
+      rmSync(tmp)
+    }
+    catch { /* ignore */ }
   }
 }
 
@@ -51,7 +56,7 @@ async function backupOnce(dataDir: string): Promise<void> {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
   for (const file of DB_FILES) {
     const src = resolve(dataDir, file)
-    if (!existsSync(src)) continue
+    if (!existsSync(src) || !backupRegistry.has(src)) continue
     const target = resolve(backupDir, `${file}.${stamp}.bak`)
     try {
       await backupOne(src, target)

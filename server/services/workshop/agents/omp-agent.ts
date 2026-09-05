@@ -355,6 +355,10 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
   constructor(config: Record<string, unknown> = {}) {
     this.config = config as OmpAgentConfig
+    // effort 统一入口(channel 默认 LLM 注入 config.effort)→ omp thinking 级别
+    if (!this.config.thinkingLevel && typeof config.effort === 'string' && config.effort) {
+      this.config.thinkingLevel = config.effort
+    }
     // factory 注入的 agent 身份(无需等待 init())
     this.selfAgentId = this.config.agentId ?? ''
     this.agentName = this.config.name ?? 'agent'
@@ -1090,6 +1094,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
       const client = new OmpRpcClient({
         command,
         mode: this.rpcMode,
+        args: [...(this.config.thinkingLevel ? ['--thinking', this.config.thinkingLevel] : [])],
         args: this.config.args,
         cwd: this.config.cwd ?? process.cwd(),
         // 进程退出 → 注册表标记(供运行时资源监控);pid=-1 表示无法取得,忽略

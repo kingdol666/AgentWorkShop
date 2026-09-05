@@ -16,6 +16,7 @@ import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { openWorkshopDb, initWorkshopDb } from '../services/workshop/db/database'
+import { backupRegistry } from '../services/workshop/db/backup-registry'
 import { createChannelRepo } from '../services/workshop/db/channel.repo'
 import { createAgentRepo } from '../services/workshop/db/agent.repo'
 import { createChannelAgentRepo } from '../services/workshop/db/channel-agent.repo'
@@ -95,6 +96,8 @@ export default function workshopPlugin(nitroApp: {
   // 打开(或创建)数据库 → 初始化(建表 + PRAGMA;openWorkshopDb 已内置,显式再调一次保持幂等)
   const db = openWorkshopDb(resolve(dataDir, 'workshop.sqlite'))
   initWorkshopDb(db)
+  // 登记主连接(备份插件 serialize 跑在主连接上,杜绝第二连接失效语句的事故)
+  backupRegistry.register(resolve(dataDir, 'workshop.sqlite'), db)
 
   // 装配 repos + Agent impl 工厂
   const repos: AllRepos = {
