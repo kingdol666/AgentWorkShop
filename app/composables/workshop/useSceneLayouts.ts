@@ -9,6 +9,7 @@
  * 单例挂 globalThis,跨组件安全;store 为 reactive(驱动频道坞/选中面板重渲染)。
  */
 import { reactive } from 'vue'
+import { nowLocalIso } from './useLocalTime'
 
 export interface SceneLayoutView {
   channelId: string
@@ -83,7 +84,7 @@ function createStore(): SceneLayoutStore {
         radiusZ: input.radiusZ,
         shape: input.shape ?? 'ellipse',
         rotationY: input.rotationY ?? 0,
-        updatedAt: new Date().toISOString(),
+        updatedAt: nowLocalIso(),
       }
       store.rev++
       let lastErr: Error | null = null

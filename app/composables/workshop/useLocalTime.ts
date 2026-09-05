@@ -31,3 +31,19 @@ export function formatLocalStamp(iso: string | undefined | null): string {
   const mi = String(d.getMinutes()).padStart(2, '0')
   return `${y}-${mo}-${da} ${hh}:${mi}`
 }
+
+/**
+ * 当前时刻 → 本地偏移 ISO(与服务端 00-local-time 补丁同格式,如 +08:00)。
+ * 用于浏览器上报服务端的时间戳字段:与库内新数据格式一致,保证字符串排序稳定。
+ */
+export function nowLocalIso(): string {
+  const d = new Date()
+  const pad = (n: number, w: number): string => String(n).padStart(w, '0')
+  const offMin = -d.getTimezoneOffset()
+  const sign = offMin >= 0 ? '+' : '-'
+  const abs = Math.abs(offMin)
+  const shifted = new Date(d.getTime() + offMin * 60_000)
+  return `${pad(shifted.getUTCFullYear(), 4)}-${pad(shifted.getUTCMonth() + 1, 2)}-${pad(shifted.getUTCDate(), 2)}`
+    + `T${pad(shifted.getUTCHours(), 2)}:${pad(shifted.getUTCMinutes(), 2)}:${pad(shifted.getUTCSeconds(), 2)}`
+    + `.${pad(d.getMilliseconds(), 3)}${sign}${pad(Math.floor(abs / 60), 2)}:${pad(abs % 60, 2)}`
+}

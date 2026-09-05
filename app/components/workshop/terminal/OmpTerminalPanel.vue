@@ -18,6 +18,7 @@ import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/app/stores/workshop/user'
+import { nowLocalIso } from '~/composables/workshop/useLocalTime'
 import type {
   TerminalHitlDialog,
   TerminalServerMessage,
@@ -285,7 +286,7 @@ function renderFrame(f: TermFrame): void {
           message: typeof frame.message === 'string' ? frame.message : undefined,
           placeholder: typeof frame.placeholder === 'string' ? frame.placeholder : undefined,
           prefill: typeof frame.prefill === 'string' ? frame.prefill : undefined,
-          at: new Date().toISOString(),
+          at: nowLocalIso(),
         }
       }
       // 其余 UI 方法(setStatus/setWidget/…)静默
