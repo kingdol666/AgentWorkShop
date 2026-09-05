@@ -568,7 +568,7 @@
         },
         "bucket_ms": {
           "type": "number",
-          "description": "降采样桶宽 ms(长窗口建议 1000~60000)"
+          "description": "时间间隔(降采样桶宽 ms):缺省 15000(15s);可调范围 1000~3600000,下限 1s"
         },
         "limit": {
           "type": "number",

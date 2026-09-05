@@ -95,7 +95,7 @@ const form = reactive({
   driver: 'mock' as DaqDriverKind,
   lineId: '',
   followGlobal: true,
-  intervalMs: 1000,
+  intervalMs: 5000,
   calKind: 'none' as 'none' | 'linear',
   calScale: 1,
   calOffset: 0,
@@ -172,7 +172,7 @@ async function saveParams(): Promise<void> {
       driver: form.driver,
       lineId: form.lineId,
       driverConfig: { ...driverCfg.value },
-      intervalMs: form.followGlobal ? null : Math.max(120, Math.min(60_000, Math.round(form.intervalMs))),
+      intervalMs: form.followGlobal ? null : Math.max(1000, Math.min(60_000, Math.round(form.intervalMs))),
       publishIntervalMs: form.publishFollow
         ? null
         : (form.publishEveryFrame ? 0 : Math.max(0, Math.min(60_000, Math.round(form.publishMs)))),
@@ -211,13 +211,14 @@ const availableDevices = computed(() =>
 // ---------- 历史(时序库) ----------
 type ChartRow = { at: number, value?: number, avg?: number, min?: number, max?: number }
 const historyPoints = ref<ChartRow[]>([])
-const bucketMs = ref<number>(5000)
+const bucketMs = ref<number>(15000)
 const histLoading = ref(false)
 const BUCKETS = [
-  { label: t('daqDetail.k3lha20031'), ms: 0 },
   { label: '1s 桶', ms: 1000 },
   { label: '5s 桶', ms: 5000 },
+  { label: '15s 桶(默认)', ms: 15000 },
   { label: '30s 桶', ms: 30000 },
+  { label: '1min 桶', ms: 60000 },
 ]
 async function loadHistory(): Promise<void> {
   if (!nodeId.value) return
@@ -470,9 +471,9 @@ watch(bucketMs, () => void loadHistory())
             <input
               v-model.number="form.intervalMs"
               type="number"
-              min="200"
+              min="1000"
               max="60000"
-              step="100"
+              step="500"
               class="input"
               :disabled="form.followGlobal"
             ><small>ms</small>

@@ -258,7 +258,11 @@ export async function toolDaqQuery(agentId: string, args: {
 
   const toMs = Number(args.to_ms) || Date.now()
   const fromMs = Number(args.from_ms) || toMs - (Number(args.last_minutes) || 30) * 60_000
-  const bucketMs = Number(args.bucket_ms) || undefined
+  // 时间间隔参数(bucket_ms 降采样桶宽):缺省 15s;可调,下限 1s
+  const rawBucket = Number(args.bucket_ms)
+  const bucketMs = Number.isFinite(rawBucket) && rawBucket > 0
+    ? Math.max(1000, Math.min(3_600_000, Math.round(rawBucket)))
+    : 15_000
   const limit = Math.min(Number(args.limit) || 500, 2000)
   const { getTsdb, tsdbReady } = await import('../daq/storage')
   await tsdbReady

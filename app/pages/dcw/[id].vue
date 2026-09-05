@@ -396,7 +396,7 @@ const query = reactive({
   paramKey: '',
   nodeId: '',
   lastMin: 30,
-  bucketMs: 0,
+  bucketMs: 15000,
 })
 const queryResult = ref<LineQueryResult | null>(null)
 const queryBusy = ref(false)
@@ -1880,8 +1880,8 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           <input
             v-model.number="query.bucketMs"
             type="number"
-            min="0"
-            step="100"
+            min="1000"
+            step="500"
             class="inp"
           >
         </label>

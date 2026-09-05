@@ -770,6 +770,8 @@ class DcwController {
     await tsdbReady
     const { getDaqNodeRepo } = await import('../daq/daq-node.repo')
     const { findDaqTemplate } = await import('../daq/daq-templates')
+    // 时间间隔参数(bucketMs):缺省 15s;可调,下限 1s(降采样桶聚合)
+    const bucketMs = opts.bucketMs == null ? 15_000 : Math.max(1000, Math.min(3_600_000, Math.round(opts.bucketMs)))
     const nodeFilter = opts.nodeId ? opts.nodeId.split(',').map(x => x.trim()).filter(Boolean) : []
     const nodes = getDaqNodeRepo().all().filter((n) => {
       if (opts.paramKey && n.templateKey !== opts.paramKey) return false
@@ -785,7 +787,7 @@ class DcwController {
       nodeIds: nodes.map(n => n.id),
       fromMs: opts.fromMs,
       toMs: opts.toMs,
-      bucketMs: opts.bucketMs,
+      bucketMs,
       limit: opts.limit,
     })
     const channels: LineQueryResult['channels'] = []

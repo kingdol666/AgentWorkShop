@@ -110,9 +110,9 @@ export class DaqNode {
     return daqKeyFromRef(this.templateRef)
   }
 
-  /** 有效采样周期(ms):节点覆盖 > 全局缺省 */
+  /** 有效采样周期(ms):节点覆盖 > 全局缺省;硬下限 1s(存量 <1s 配置一并收敛) */
   effectiveInterval(defaultIntervalMs: number): number {
-    return Math.max(120, this.intervalMs ?? defaultIntervalMs)
+    return Math.max(1000, this.intervalMs ?? defaultIntervalMs)
   }
 
   /** 越限派生:硬限外 = alarm;预警带 2% 滞回(退出需越过内缩边界,防临界抖动)。

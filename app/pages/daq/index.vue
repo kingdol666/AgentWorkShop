@@ -910,9 +910,9 @@ async function doReconnect(): Promise<void> {
             <input
               v-model.number="addInterval"
               type="number"
-              min="200"
+              min="1000"
               max="60000"
-              step="100"
+              step="500"
               class="inp"
               :placeholder="$t('daq.k1eg1000a136')"
             >
