@@ -1119,7 +1119,7 @@ export default {
     ke16e53026: '\'s resources (user-isolated; persisted server-side)',
     k41ds5027: 'Template',
     k1ggoa45028: 'Members / Busy',
-    k48h2c001: 'Email',
+    k48h2c001: 'Email or username',
     k3yvgs002: 'Password',
     kwgbai9003: 'Username (unique)',
     kizjkbo004: 'Email (unique)',

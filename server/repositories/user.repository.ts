@@ -319,10 +319,11 @@ export const userRepository = {
     return new Map(rows.map(r => [r.lineId, r.mode]))
   },
 
-  /** 内部：取密码哈希（仅认证路径使用，不参与领域对象外泄） */
-  getPasswordHash(email: string): { id: string, hash: string } | null {
+  /** 内部：取密码哈希（仅认证路径使用，不参与领域对象外泄）。
+   *  登录账号:邮箱或用户名均可(用户名注册时唯一;参数绑定防注入) */
+  getPasswordHash(account: string): { id: string, hash: string } | null {
     const d = getDb()
-    const row = d.prepare('SELECT id, password_hash AS hash FROM users WHERE LOWER(email) = LOWER(?)').get(email) as { id: string, hash: string } | undefined
+    const row = d.prepare('SELECT id, password_hash AS hash FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(name) = LOWER(?)').get(account, account) as { id: string, hash: string } | undefined
     return row ?? null
   },
 

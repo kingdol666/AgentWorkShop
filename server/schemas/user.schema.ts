@@ -42,9 +42,9 @@ export const userRegisterSchema = z.object({
   password: passwordSchema,
 })
 
-/** 登录请求体（email + password） */
+/** 登录请求体（account = 邮箱或用户名均可;字段名保留 email 兼容既有客户端） */
 export const userLoginSchema = z.object({
-  email: z.string().trim().email('邮箱格式不正确').max(128, '邮箱过长'),
+  email: z.string().trim().min(1, '请输入邮箱或用户名').max(128, '过长'),
   password: z.string().min(1, '密码不能为空').max(128, '密码过长'),
 })
 
