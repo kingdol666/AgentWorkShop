@@ -271,3 +271,24 @@ LOWER(email) OR LOWER(name) 匹配。发布:agentworkshop@0.7.13(npm latest)。
 ## 结论
 
 五协议数采/数控、Agent 节点绑定、闭环控制、HITL 审批、Recipe 版本管理与参数账本回退在真实模拟产线通信下全部可用,达到可落地真实产线的验收状态。
+
+---
+
+# 附录 · v0.7.20 增量(多 Harness 真实端到端)
+
+## 场景
+
+四引擎(omp/codex/dsh/opencode)并行,各自独立 Channel/Worker,共享真实 Modbus TCP 模拟产线(开跑批次 + 真实寄存器):每引擎一个专属工具场景,服务端状态断言 + 交付标记双验证。
+
+## 结果(E2E 21/21,`scripts/_dbg-multiharness-live-e2e.mjs`)
+
+- **omp 闭环控制**:dcw_control(真写 Modbus)→ daq_query(真实采样)→ dcw_judge keep,交付 OMP-CLOSEDLOOP-OK。
+- **codex 数据控制**:dcw_control 真实寄存器写入 + dcw_journal 账本,交付 CODEX-WRITE-OK。
+- **dsh 数据采集**:line_context 归属确认 + daq_query 真实采样,交付 DSH-DAQ-OK。
+- **opencode Recipe 写入回退**:recipe_update 保存(v2,归因 Agent「Channel/成员」)→ recipe_rollback 回退(v3),版本净增 2,交付 OC-RECIPE-OK。
+- **产线管理生命周期**:开跑(绑定批次)→ 数采真实值流入(0.74MPa)→ 停线 → 节点 offline(采集门控生效)。
+- 过程问题:E2E 脚本任务 id 提取字段错误(响应为 data.id),修正后全绿;无产品代码缺陷。
+
+## 结论
+
+四 Harness 在真实产线协议通信下稳定完成各自工具场景,服务端状态与 Agent 交付双重验证一致;系统可投入真实场景使用。
