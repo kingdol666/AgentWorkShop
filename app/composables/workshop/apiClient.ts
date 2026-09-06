@@ -40,9 +40,17 @@ function isIdempotent(init?: RequestInit): boolean {
 async function attemptOnce<T>(base: string, path: string, init?: RequestInit): Promise<T> {
   let res: Response
   try {
-    res = await fetch(base + path, { ...init, headers: { ...authHeaders(!!init?.body), ...init?.headers } })
+    // 超时防挂起:无 AbortSignal 的 fetch 在连接黑洞时 promise 永不 settle,loading 永卡
+    res = await fetch(base + path, {
+      ...init,
+      headers: { ...authHeaders(!!init?.body), ...init?.headers },
+      signal: init?.signal ?? AbortSignal.timeout(init?.method && init.method.toUpperCase() !== 'GET' ? 30_000 : 15_000),
+    })
   }
-  catch {
+  catch (err) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      throw new ApiError('TIMEOUT', 0, '请求超时,请检查网络或服务状态')
+    }
     throw new ApiError('NETWORK', 0, '无法连接服务器，请检查网络或服务状态')
   }
   let json: { code?: string | number, message?: string, data?: T } | null = null

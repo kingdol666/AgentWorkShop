@@ -4,6 +4,7 @@
  */
 import { getRouterParam, readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
@@ -15,6 +16,8 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   bindDcwBroadcast(broadcastSceneEvent)
   const id = getRouterParam(event, 'id')!
+  // 产线权限:开跑会向真实 PLC 下发全部配方参数,需「可操控」
+  requireLineMode(user, id, 'operate')
   const body = await readBody<{ recipeId?: string }>(event) ?? {}
   const run = await getDcwController().lineStart(id, String(body.recipeId ?? ''))
   const active = getActiveLineRun(id)

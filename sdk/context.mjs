@@ -81,18 +81,27 @@ export function createPluginContext(opts) {
     }
   })()
   let kvFlushTimer = null
+  const flushKvNow = () => {
+    try {
+      mkdirSync(kvDir, { recursive: true })
+      const tmp = `${kvFile}.${process.pid}.tmp`
+      writeFileSync(tmp, `${JSON.stringify(kvState, null, 2)}\n`, 'utf8')
+      renameSync(tmp, kvFile)
+    }
+    catch (err) {
+      // 磁盘异常不阻断插件,但不再静默:持久化失败至少要可见
+      console.warn('[sdk] kv 落盘失败:', err?.message ?? err)
+    }
+  }
   const kvFlush = () => {
     clearTimeout(kvFlushTimer)
-    kvFlushTimer = setTimeout(() => {
-      try {
-        mkdirSync(kvDir, { recursive: true })
-        const tmp = `${kvFile}.${process.pid}.tmp`
-        writeFileSync(tmp, `${JSON.stringify(kvState, null, 2)}\n`, 'utf8')
-        renameSync(tmp, kvFile)
-      }
-      catch { /* 磁盘异常不阻断插件 */ }
-    }, 200)
+    kvFlushTimer = setTimeout(flushKvNow, 200)
   }
+  // 关停兜底:取消挂起防抖并同步落盘(否则进程退出前 200ms 内的 kv.set 全部丢失)
+  onDispose(() => {
+    clearTimeout(kvFlushTimer)
+    flushKvNow()
+  })
 
   const ctx = {
     name,

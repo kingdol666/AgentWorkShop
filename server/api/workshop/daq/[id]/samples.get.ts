@@ -4,13 +4,16 @@
  */
 import { getQuery, getRouterParam } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 import { daqRuntimeSettings } from '@/server/services/workshop/settings'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   const id = getRouterParam(event, 'id') ?? ''
+  // 产线权限:历史采样需「仅查看」及以上
+  requireLineMode(user, getDaqController().byId(id)?.lineId, 'readonly')
   const q = getQuery(event)
   const num = (k: string): number | undefined => (q[k] != null && !Number.isNaN(Number(q[k])) ? Number(q[k]) : undefined)
   // 时间间隔参数(bucketMs):缺省与下限来自 daq.query.*(live 配置,热重载)

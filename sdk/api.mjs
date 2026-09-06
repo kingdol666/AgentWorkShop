@@ -33,8 +33,18 @@ export function createPlatformClient({ baseUrl = '', token, logger, timeoutMs = 
       if (logger) logger.warn(`API ${method} ${path} → ${res.status}`)
       throw err
     }
-    // 平台统一信封 { code, message, data } → 解包 data;非信封原样返回
-    return json && typeof json === 'object' && 'data' in json ? json.data : json
+    // 平台统一信封 { code, message, data }:HTTP 200 但业务 code 非 0 也是错误
+    // (不做此检查插件会把 error 信封解包成 null 当成功用)
+    if (json && typeof json === 'object' && 'code' in json && json.code !== 0) {
+      const err = new Error(json.message ?? `业务错误 ${json.code} ${path}`)
+      err.status = res.status
+      err.code = json.code
+      err.body = json
+      if (logger) logger.warn(`API ${method} ${path} → code ${json.code}`)
+      throw err
+    }
+    // 非信封原样返回
+    return json && typeof json === 'object' && 'data' in json && 'code' in json ? json.data : json
   }
 
   const resource = root => ({

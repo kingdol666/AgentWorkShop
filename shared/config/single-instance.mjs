@@ -23,12 +23,36 @@ function pidAlive(pid) {
 const waitSync = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 
 /**
+ * 校验目标 pid 是否真属本应用(锁文件 stale 后 PID 可能被无关进程复用,
+ * taskkill /T /F 打错目标是不可逆事故)。按进程命令行指纹匹配。
+ */
+async function pidLooksLikeAw(pid) {
+  try {
+    if (process.platform === 'win32') {
+      const { spawnSync } = await import('node:child_process')
+      const r = spawnSync('powershell', ['-NoProfile', '-Command',
+        `(Get-CimInstance Win32_Process -Filter 'ProcessId=${Number(pid)}').CommandLine`], { encoding: 'utf8', timeout: 8000 })
+      const line = String(r.stdout ?? '')
+      return /node|aw|agentworkshop/i.test(line) && /start\.mjs|aw\.mjs|\.output/i.test(line)
+    }
+    const fs = await import('node:fs')
+    const line = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ')
+    return /node|aw|agentworkshop/i.test(line)
+  }
+  catch {
+    return false // 无法确认:宁可放弃顶替,不冒杀错风险
+  }
+}
+
+/**
  * 终止进程树并等待其死亡(供 `aw stop` 与 start 的"顶掉旧实例"共用)。
  * Windows:taskkill /T /F;POSIX:SIGTERM 宽限 5s → SIGKILL。
+ * PID 复用防护:强杀前校验目标命令行确实属于本应用,不像则拒绝并交由调用方报错。
  * @returns {Promise<boolean>} 是否已确认死亡
  */
 export async function terminatePid(pid) {
   if (!pidAlive(pid)) return true
+  if (!(await pidLooksLikeAw(pid))) return false
   if (process.platform === 'win32') {
     const { spawnSync } = await import('node:child_process')
     const r = spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { encoding: 'utf8' })

@@ -16,9 +16,14 @@ export default defineNuxtPlugin(async () => {
   const token = cookie.value
   if (!token) return
   try {
-    await store.loginWithToken(token)
+    // 超时竞速:慢 auth API 不应阻塞整站首绘
+    await Promise.race([
+      store.loginWithToken(token),
+      new Promise(r => setTimeout(r, 5000)),
+    ])
   }
   catch {
-    /* token 已失效(吊销/用户删除):静默停留未登录态 */
+    // token 已失效(吊销/用户删除/过期):清死 cookie,避免每次刷新重复必然失败的校验
+    useCookie<string | null>('token').value = null
   }
 })

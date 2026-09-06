@@ -108,4 +108,17 @@ export class MqttQueueAdapter implements DaqQueuePort {
       this.consumers.delete(fn)
     }
   }
+
+  /** 断开 MQTT 连接并清理订阅(rebuild 换装前调用,防 socket/keepalive 泄漏) */
+  async close(): Promise<void> {
+    this.consumers.clear()
+    const c = this.client
+    this.client = null
+    if (c) {
+      try {
+        await new Promise<void>(r => c.end(false, () => r()))
+      }
+      catch { /* 已断连等场景:尽力而为 */ }
+    }
+  }
 }

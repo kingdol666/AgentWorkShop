@@ -3,7 +3,7 @@
  * 缺省光晕色按创建序取色板(1号蓝 2号黄…);可显式指定 color。
  */
 import { readBody } from 'h3'
-import { resolveUser } from '@/server/api/workshop/caller'
+import { requireRole } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
@@ -11,7 +11,7 @@ import { recordOps } from '@/server/services/workshop/ops/ops'
 import type { LineInput } from '#shared/dcw-protocol'
 
 export default defineApiHandler(async (event) => {
-  const user = resolveUser(event)
+  requireRole(event, ['admin', 'editor'])
   bindDcwBroadcast(broadcastSceneEvent)
   const body = await readBody<LineInput>(event) ?? { name: '' }
   const line = getDcwController().createLine(body)

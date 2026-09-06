@@ -193,6 +193,7 @@ class DcwController {
     this.broadcast?.('dcw.written', {
       nodeId: node.id,
       templateRef: node.templateRef,
+      lineId: node.lineId ?? null,
       value: node.value ?? eng,
       raw: outcome.raw,
       ok: outcome.ok,
@@ -234,6 +235,7 @@ class DcwController {
     this.broadcast?.('dcw.read', {
       nodeId: node.id,
       templateRef: node.templateRef,
+      lineId: node.lineId ?? null,
       value,
       raw: r.raw,
       ok: r.ok,
@@ -864,9 +866,16 @@ class DcwController {
     await tsdbReady
     const bucketMs = endMs - startMs > 60_000 ? Math.max(1000, Math.round((endMs - startMs) / 200)) : undefined
     const daq = [] as Array<{ templateRef: string, nodeId: string, nodeName: string, ch: string, unit: string, latest: number | null, avg: number | null, min: number | null, max: number | null, cnt: number }>
-    for (const node of getDaqNodeRepo().all()) {
+    // 并行查询(tsdb 往返一次/节点,互不依赖):N+1 串行会让 50 节点产线的批次视图放大 50 倍时延
+    const results = await Promise.all(getDaqNodeRepo().all().map(async (node) => {
       try {
         const points = await getTsdb().query(node.id, { fromMs: startMs, toMs: endMs, bucketMs, limit: 500 })
+        return { node, points }
+      }
+      catch { return { node, points: [] } } // 单节点查询失败不阻塞整体
+    }))
+    for (const { node, points } of results) {
+      {
         if (points.length === 0) continue
         const values = points.map(p => p.value ?? p.avg ?? 0).filter(v => Number.isFinite(v))
         if (values.length === 0) continue
@@ -884,7 +893,6 @@ class DcwController {
           cnt: values.length,
         })
       }
-      catch { /* 单节点查询失败不阻塞整体 */ }
     }
     return { run, daq, writes }
   }

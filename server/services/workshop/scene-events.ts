@@ -26,6 +26,27 @@ function peers(): Set<WsPeer> {
   return g.__sceneEventPeers ??= new Set()
 }
 
+/**
+ * per-peer 产线可见集(鉴权后由 ws 路由写入):
+ *   undefined/null = 不限(admin/editor 或无产线维度帧场景)
+ *   Set<lineId>    = 仅授权产线的 scene 帧可见(数据面强制,与 REST 同口径)
+ */
+export function setPeerVisibleLines(peer: WsPeer, visible: Set<string> | null): void {
+  (peer as WsPeer & { __awVisibleLines?: Set<string> | null }).__awVisibleLines = visible
+}
+
+function peerSeesLine(peer: WsPeer, lineId: string): boolean {
+  const visible = (peer as WsPeer & { __awVisibleLines?: Set<string> | null }).__awVisibleLines
+  if (visible == null) return true
+  return visible.has(lineId)
+}
+
+/** 帧产线归属:payload.lineId(daع.reading/frame、dcw.written/read 等);undefined = 线无关帧 */
+function payloadLineId(payload: unknown): string | undefined {
+  const lid = (payload as { lineId?: unknown } | null)?.lineId
+  return typeof lid === 'string' && lid !== '' ? lid : undefined
+}
+
 export function registerScenePeer(peer: WsPeer): void {
   peers().add(peer)
 }
@@ -40,13 +61,16 @@ export function sceneEventPeerCount(): number {
 
 /** 全员直推(channelId='' 不落库;死连接静默剔除)。
  *  信封序列化一次、全 peer 复用:dag 遥测经此出口 N 节点×P 页面/秒高频扇出,
- *  per-peer 重复 stringify 是纯浪费。 */
+ *  per-peer 重复 stringify 是纯浪费。
+ *  鉴权扇出:带 lineId 的帧按 peer 可见集过滤(未鉴权 peer 不会注册到本表)。 */
 export function broadcastSceneEvent(type: string, payload: unknown): void {
   // 插件宿主事件桥(event:<type> 钩子;宿主未装载时 no-op)——先于 peers 短路,插件不依赖在线页面
   emitPluginEvent(type, payload)
   if (peers().size === 0) return
+  const lineId = payloadLineId(payload)
   const frame = JSON.stringify({ v: AEP_VERSION, type, seq: 0, at: new Date().toISOString(), channelId: '', payload })
   for (const peer of peers()) {
+    if (lineId !== undefined && !peerSeesLine(peer, lineId)) continue
     try {
       peer.send(frame)
     }

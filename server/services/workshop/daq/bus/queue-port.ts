@@ -51,4 +51,6 @@ export interface DaqQueuePort {
   publish(env: DaqSampleEnvelope): void
   /** 消费者:注册处理函数;返回退订 */
   consume(fn: DaqConsumer): () => void
+  /** 释放底层资源(mqtt 连接 / inproc 泵);rebuild 换装前必须调用,防 socket/定时器泄漏 */
+  close?(): Promise<void> | void
 }

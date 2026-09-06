@@ -6,7 +6,8 @@
  * setInterval + globalThis key 防 HMR 重复 + unref()。dev 与生产均生效
  * (备份无副作用,始终开启;BACKUP_DISABLED=1 可关)。
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs'
+import { copyFile as copyFileAsync } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { backupSettings } from '../services/workshop/settings'
@@ -35,14 +36,16 @@ async function backupOne(src: string, target: string): Promise<void> {
     catch { /* 忙时跳过 checkpoint,拷出的镜像退回上次 checkpoint 点,仍有效 */ }
   }
   // 原子落盘:快照写一半被杀会留下截断 .bak(轮转后还被当作有效备份)
+  // 异步拷贝:daq-timeseries 可达数百 MB,copyFileSync 会同步冻结事件循环数秒
+  // (期间 WS 扇出/采样 sweep/API 全部停摆)
   const tmp = `${target}.tmp`
-  copyFileSync(src, tmp)
+  await copyFileAsync(src, tmp)
   try {
     renameSync(tmp, target)
   }
   catch {
     // rename 失败(目标被占用等):退回直写,可用性优先
-    copyFileSync(src, target)
+    await copyFileAsync(src, target)
     try {
       rmSync(tmp)
     }

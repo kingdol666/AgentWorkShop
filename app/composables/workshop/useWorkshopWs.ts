@@ -12,6 +12,11 @@ import { useHitlStore } from '../../stores/workshop/hitl'
 import { useTownBus } from './useTownBus'
 import type { AepEnvelope, AepSnapshot } from '#shared/workshop-protocol'
 
+// 心跳单例(模块作用域):所有 useWorkshopWs() 调用方共享一个 15s 定时器,
+// 避免每组件实例一份冗余 ping 打向同一会话
+let heartbeat: ReturnType<typeof setInterval> | null = null
+let heartbeatUsers = 0
+
 export function useWorkshopWs() {
   const conn = useWsConnectionStore()
   const userStore = useUserStore()
@@ -100,8 +105,9 @@ export function useWorkshopWs() {
     session?.ensureConnected()
   }
 
-  let heartbeat: ReturnType<typeof setInterval> | null = null
   onMounted(() => {
+    heartbeatUsers++
+    if (heartbeat) return
     // 15s 心跳:pong 停止后 checkStale 的断线感知最坏 ~20-35s(服务强杀的半开连接
     // 无 RST,靠 pong 超时发现);ping 发送失败立即关闭走重连,不等 stale 检测
     heartbeat = setInterval(() => {
@@ -110,7 +116,10 @@ export function useWorkshopWs() {
     }, 15_000)
   })
   onBeforeUnmount(() => {
-    if (heartbeat) clearInterval(heartbeat)
+    if (--heartbeatUsers <= 0 && heartbeat) {
+      clearInterval(heartbeat)
+      heartbeat = null
+    }
   })
 
   return { subscribe, unsubscribe, ensureConnected, conn }

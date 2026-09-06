@@ -74,21 +74,34 @@ const createStore = () => {
   const loading = reactive({ list: false, posting: false })
   const error = reactive({ list: '', post: '' })
 
-  /** 挂 WS 帧(townBus);幂等。返回退订函数。 */
+  /** 挂 WS 帧(townBus)。引用计数(同 useDaqStream):归零才退订。 */
+  let feedConsumers = 0
+  let feedUnsub: (() => void) | null = null
   function ensureLive(): () => void {
-    const g = globalThis as typeof globalThis & { __opsLogFed?: boolean }
-    if (g.__opsLogFed) return () => {}
-    g.__opsLogFed = true
-    void seedRecent()
-    return useTownBus().subscribe((e: AepEnvelope) => {
-      if (e.type === 'ops.log') {
-        const row = ingestFrame(e.payload as AepOpsLog)
-        if (!recent.some(r => r.at === row.at && r.actor === row.actor && r.action === row.action)) {
-          recent.unshift(row)
-          if (recent.length > RECENT_CAP) recent.splice(RECENT_CAP)
-        }
+    feedConsumers++
+    if (feedConsumers === 1) {
+      void seedRecent()
+      feedUnsub = useTownBus().subscribe(handler)
+    }
+    let done = false
+    return () => {
+      if (done) return
+      done = true
+      if (--feedConsumers === 0) {
+        feedUnsub?.()
+        feedUnsub = null
       }
-    })
+    }
+  }
+
+  function handler(e: AepEnvelope) {
+    if (e.type === 'ops.log') {
+      const row = ingestFrame(e.payload as AepOpsLog)
+      if (!recent.some(r => r.at === row.at && r.actor === row.actor && r.action === row.action)) {
+        recent.unshift(row)
+        if (recent.length > RECENT_CAP) recent.splice(RECENT_CAP)
+      }
+    }
   }
 
   /** 首屏预填:最近 15 条历史摘要(实时轨不必从零等事件) */

@@ -50,11 +50,27 @@ function createStore() {
     upsert(p.node)
   }
 
+  /** 引用计数订阅(同 useDaqStream):首个调用建订阅,归零才退订 */
+  let feedConsumers = 0
+  let feedUnsub: (() => void) | null = null
   function ensureWsFeed(): () => void {
-    const g = globalThis as typeof globalThis & { __dcwBusFed?: boolean }
-    if (g.__dcwBusFed) return () => {}
-    g.__dcwBusFed = true
-    return useTownBus().subscribe((e: AepEnvelope) => {
+    feedConsumers++
+    if (feedConsumers === 1) {
+      feedUnsub = useTownBus().subscribe(handler)
+    }
+    let done = false
+    return () => {
+      if (done) return
+      done = true
+      if (--feedConsumers === 0) {
+        feedUnsub?.()
+        feedUnsub = null
+      }
+    }
+  }
+
+  function handler(e: AepEnvelope) {
+    {
       if (e.type === 'dcw.written') {
         const p = e.payload as AepDcwWritten
         const n = nodes.find(x => x.id === p.nodeId)
@@ -83,8 +99,9 @@ function createStore() {
         const i = optimizations.findIndex(x => x.id === p.id)
         if (i >= 0) optimizations[i] = p
         else optimizations.unshift(p)
+        if (optimizations.length > 200) optimizations.length = 200
       }
-    })
+    }
   }
 
   async function load(): Promise<void> {

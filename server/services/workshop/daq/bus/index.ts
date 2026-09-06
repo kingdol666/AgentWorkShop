@@ -22,6 +22,8 @@ export async function getDaqQueue(): Promise<DaqQueuePort> {
 
 /** 重连/初始装配:按 infra 判定结果(重新)构建 MQTT 或进程内队列 */
 export async function rebuildDaqQueue(online: boolean, url?: string | null): Promise<DaqQueuePort> {
+  // 换装前释放旧 adapter(mqtt 连接 / inproc 泵),防重建泄漏
+  await g.__daqQueue?.close?.()
   if (!online || !url) {
     if (g.__daqQueue?.backend !== 'inproc') {
       g.__daqQueue = new InProcQueueAdapter()

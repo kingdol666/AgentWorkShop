@@ -289,6 +289,7 @@ class DaqController {
         value: node.value ?? env.value,
         state: node.state,
         at: env.at,
+        lineId: node.lineId ?? null,
       } satisfies AepDaqReading
       this.broadcast?.('daq.reading', reading)
       // 插件钩子:下发级采样观察(与 WS daq.reading 同点同节拍;宿主未装载时零开销 no-op)
@@ -373,6 +374,7 @@ class DaqController {
       templateRef: node.templateRef,
       kind: f.kind,
       at: env.at,
+      lineId: node.lineId ?? null,
       preview: f.kind === 'vector' ? DaqController.previewOf(f.points ?? [], FRAME_PREVIEW_POINTS) : undefined,
       metrics,
       thumbUrl: f.kind === 'image' && f.objectKey
@@ -619,6 +621,9 @@ class DaqController {
     }
     finally {
       this.tsdbWriting = false
+      // 尾批自愈:flush 期间新样本/帧到达时 schedule 被跳过(tsdbWriting 守卫),
+      // 若此处不留 timer,停线后的残余批次将无定时器可触发,驻留内存直至进程重启
+      if (this.tsdbBuffer.length > 0 || this.frameBuffer.length > 0) this.scheduleTsdbFlush()
     }
   }
 
@@ -626,13 +631,25 @@ class DaqController {
    *  状态随行:节点 alarm 派生自用户设置的量程/预警带(数据驱动),透传给孪生而非让孪生按硬编码阈值猜 */
   private pendingBackfill = new Map<string, Record<string, number | string | boolean>>()
 
+  /** 同绑定 siblings 缓存(1s TTL):回写热路径不再逐样本全量 scan,O(N²)→O(N)/周期 */
+  private siblingsCache = new Map<string, { at: number, list: DaqNode[] }>()
+
+  private siblingsOf(bindingId: string): DaqNode[] {
+    const hit = this.siblingsCache.get(bindingId)
+    if (hit && Date.now() - hit.at < 1000) return hit.list
+    const list = this.repo.all().filter(n => n.deviceBindingId === bindingId)
+    if (this.siblingsCache.size > 500) this.siblingsCache.clear()
+    this.siblingsCache.set(bindingId, { at: Date.now(), list })
+    return list
+  }
+
   private writeBackTelemetry(node: DaqNode): void {
     if (!node.deviceBindingId || node.value == null) return
     const host = getDaqHostPorts()
     if (!host) return // 端口未装配(边缘独立/装配前):不攒积压,直接跳过回写
     const key = findDaqTemplate(node.templateKey)?.telemetryKey ?? node.templateKey
     // 同设备多节点绑定:取最严重节点态(alarm > warn > ok/offline),避免"最近写者定态"抖动
-    const siblings = this.repo.all().filter(n => n.deviceBindingId === node.deviceBindingId)
+    const siblings = this.siblingsOf(node.deviceBindingId)
     const worst = siblings.some(n => n.state === 'alarm')
       ? 'alarm'
       : siblings.some(n => n.state === 'warn') ? 'warn' : 'ok'

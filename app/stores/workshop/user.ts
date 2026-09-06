@@ -55,7 +55,8 @@ export const useUserStore = defineStore('workshop.user', {
       // 请求上下文已丢失,useCookie 会抛 NUXT_E1001(useNuxtApp outside context);
       // 请求期写 Set-Cookie 在响应完成后也无实效。客户端 useCookie 不依赖请求上下文。
       if (import.meta.server) return
-      const cookie = useCookie<string | null>('token', { maxAge: 60 * 60 * 24 * 365 })
+      // maxAge 与服务端 token TTL(30 天)对齐:365 天会让浏览器带着必死 token 往返
+      const cookie = useCookie<string | null>('token', { maxAge: 60 * 60 * 24 * 30 })
       cookie.value = this.user?.token ?? null
     },
     /** 以 me 响应补全 tokenId（注册/登录签发的新 token 尚未绑定 id） */
@@ -171,6 +172,18 @@ export const useUserStore = defineStore('workshop.user', {
     },
   },
   persist: {
+    // localStorage 不持久化 token(长命明文凭据,XSS 可读且跨标签页漂移):
+    // token 真源是 30 天 cookie;hydration 后从 cookie 回填,无 cookie 即回登出态
     pick: ['user'],
+    afterHydrate: (ctx) => {
+      const store = ctx.store as { user?: { token?: string } | null, user?: CurrentUser | null, applyCookie?: () => void }
+      if (!store.user) return
+      try {
+        const cookie = useCookie<string | null>('token')
+        if (cookie.value) store.user.token = cookie.value
+        else (store as { user?: CurrentUser | null }).user = null
+      }
+      catch { /* SSR 上下文:跳过(session-restore.client 负责) */ }
+    },
   },
 })

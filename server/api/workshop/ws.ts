@@ -24,7 +24,8 @@ import type { AgentEvent } from '../../services/workshop/agents/agent-interface'
 import type { A2AMessage } from '../../services/workshop/types/a2a'
 import type { AepEnvelope } from '../../../shared/workshop-protocol'
 import { parseJson } from '../../services/workshop/db/database'
-import { registerScenePeer, unregisterScenePeer, broadcastPeerEvent } from '../../services/workshop/scene-events'
+import { registerScenePeer, setPeerVisibleLines, unregisterScenePeer, broadcastPeerEvent } from '../../services/workshop/scene-events'
+import { visibleLineIds } from '../../services/workshop/permissions'
 import { subscribeHitlEvents } from '../../services/workshop/agents/hitl-registry'
 import { createLogger } from '../../services/workshop/logger'
 import { retentionSettings } from '../../services/workshop/settings'
@@ -165,6 +166,12 @@ function resolveQueryParam(peer: WsPeer, name: string): string | undefined {
 
 function resolveChannelIdFromUrl(peer: WsPeer): string | undefined {
   return resolveQueryParam(peer, 'channelId') ?? resolveQueryParam(peer, 'channel_id')
+}
+
+/** 场景事件注册(鉴权后):按用户产线可见集挂 per-peer 过滤,未经鉴权的 peer 不注册 */
+function attachScenePeer(peer: WsPeer, user: { id: string, role: string }): void {
+  setPeerVisibleLines(peer, visibleLineIds(user))
+  registerScenePeer(peer)
 }
 
 /** 安全发送控制帧(error/pong/snapshot;死连接静默丢弃) */
@@ -589,8 +596,8 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
     return
   }
   stream.peers.add(peer)
-  // 共享场景事件注册表:daq 等无频道归属广播由此直达该 peer
-  registerScenePeer(peer)
+  // 共享场景事件注册表:daq 等无频道归属广播由此直达该 peer(sub 鉴权成功后补挂)
+  attachScenePeer(peer, user)
   let channels = peerChannels.get(peer)
   if (!channels) {
     channels = new Set()
@@ -677,9 +684,14 @@ export default defineWebSocketHandler({
       return
     }
     ensureHubBound(manager)
-    // 场景事件(daq.reading / daq.node.changed / dcw.* / device.* 等无频道归属广播)
-    // 在连接层即注册 —— 不依赖 channel 订阅:/daq 等纯遥测页面建连即得实时帧
-    registerScenePeer(peer)
+    // 场景事件(daq.reading / dcw.* / device.* 等无频道归属广播)鉴权扇出:
+    // ?token= 有效才注册 scene peer(按用户产线可见集过滤);无/坏 token 的连接
+    // 收不到任何 scene 帧(sub 帧鉴权成功后补注册)。前端全部连接携带 ?token=。
+    const qpUser = (() => {
+      const t = resolveQueryParam(peer, 'token')
+      return t ? resolveUserByToken(t) : null
+    })()
+    if (qpUser) attachScenePeer(peer, qpUser)
     // 兼容旧路径:?channelId= 连接即订阅(无 lastSeq → 快照对齐)
     const channelId = resolveChannelIdFromUrl(peer)
     if (!channelId) return // 纯上行 sub 模式(多 channel 复用一条连接)

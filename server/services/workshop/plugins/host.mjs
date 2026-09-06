@@ -427,7 +427,10 @@ function ensureStateWatcher(host) {
     mkdirSync(dirname(statePath), { recursive: true })
     if (!existsSync(statePath)) writeDisabledSet(modePaths(host.cwd).homeDir, new Set())
     let debounce = null
-    watch(statePath, () => {
+    // watch 目录而非文件:writeDisabledSet 用 rename 原子替换,POSIX 的文件级
+    // watch 挂在旧 inode 上,首次启停后静默失效;目录监听对 rename 稳定
+    watch(dirname(statePath), (_event, filename) => {
+      if (filename && filename !== 'plugins-state.json') return
       clearTimeout(debounce)
       debounce = setTimeout(() => {
         void reloadPluginHost()

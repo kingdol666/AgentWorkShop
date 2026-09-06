@@ -7,11 +7,14 @@
  */
 import { createError, defineEventHandler, getQuery, getRouterParam, setResponseHeader } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 
 export default defineEventHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   const id = getRouterParam(event, 'id') ?? ''
+  // 产线权限:帧内容需「仅查看」及以上
+  requireLineMode(user, getDaqController().byId(id)?.lineId, 'readonly')
   const q = getQuery(event)
   const ts = Number(q.ts)
   if (!Number.isFinite(ts) || ts <= 0) {

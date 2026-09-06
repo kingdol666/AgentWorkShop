@@ -45,6 +45,15 @@ export class InProcQueueAdapter implements DaqQueuePort {
     }
   }
 
+  /** 释放消费泵(rebuild 换装前调用,防定时器泄漏) */
+  close(): void {
+    if (this.pump) {
+      clearInterval(this.pump)
+      this.pump = null
+    }
+    this.consumers.clear()
+  }
+
   private drain(): void {
     if (this.queue.length === 0 || this.consumers.size === 0) return
     const batch = this.queue.splice(0, this.queue.length)

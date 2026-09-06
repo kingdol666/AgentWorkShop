@@ -204,30 +204,44 @@ const createStore = () => {
     }
   }
 
-  /** 挂 WS 帧(townBus);幂等(globalThis 防重复订阅)。返回退订函数。 */
+  /** 挂 WS 帧(townBus)。引用计数:首个调用建立真实订阅,计数归零才退订
+   *  (修复一次性守卫导致首个页面卸载后实时流永久死亡的缺陷)。返回退订函数。 */
+  let feedConsumers = 0
+  let feedUnsub: (() => void) | null = null
   function ensureWsFeed(): () => void {
-    const g = globalThis as typeof globalThis & { __daqBusFed?: boolean }
-    if (g.__daqBusFed) return () => {}
-    g.__daqBusFed = true
-    return useTownBus().subscribe((e: AepEnvelope) => {
-      if (e.type === 'daq.reading') applyReading(e.payload as AepDaqReading)
-      else if (e.type === 'daq.frame') applyFrame(e.payload as unknown as AepDaqFrame)
-      else if (e.type === 'daq.node.changed') applyChange(e.payload as AepDaqNodeChange)
-      else if (e.type === 'daq.controller') Object.assign(controller, e.payload as AepDaqControllerState)
-      else if (e.type === 'daq.template.changed') applyTemplateChange(e.payload as AepDaqTemplateChange)
-      // S5 实时告警:server 权威事件直推(报警进入轨插入;ack 确认后移出未确认列表)
-      else if (e.type === 'daq.alarm') {
-        const p = e.payload as unknown as DaqAlarmRow
-        if (!alarms.some(a => a.id === p.id)) alarms.unshift(p)
+    feedConsumers++
+    if (feedConsumers === 1) {
+      feedUnsub = useTownBus().subscribe(handler)
+    }
+    let done = false
+    return () => {
+      if (done) return
+      done = true
+      if (--feedConsumers === 0) {
+        feedUnsub?.()
+        feedUnsub = null
       }
-      else if (e.type === 'daq.alarm.changed') {
-        const p = e.payload as unknown as { id: string, ackedAt?: string, recovered?: boolean }
-        if (p.ackedAt) {
-          const i = alarms.findIndex(a => a.id === p.id)
-          if (i >= 0) alarms.splice(i, 1)
-        }
+    }
+  }
+
+  function handler(e: AepEnvelope) {
+    if (e.type === 'daq.reading') applyReading(e.payload as AepDaqReading)
+    else if (e.type === 'daq.frame') applyFrame(e.payload as unknown as AepDaqFrame)
+    else if (e.type === 'daq.node.changed') applyChange(e.payload as AepDaqNodeChange)
+    else if (e.type === 'daq.controller') Object.assign(controller, e.payload as AepDaqControllerState)
+    else if (e.type === 'daq.template.changed') applyTemplateChange(e.payload as AepDaqTemplateChange)
+    // S5 实时告警:server 权威事件直推(报警进入轨插入;ack 确认后移出未确认列表)
+    else if (e.type === 'daq.alarm') {
+      const p = e.payload as unknown as DaqAlarmRow
+      if (!alarms.some(a => a.id === p.id)) alarms.unshift(p)
+    }
+    else if (e.type === 'daq.alarm.changed') {
+      const p = e.payload as unknown as { id: string, ackedAt?: string, recovered?: boolean }
+      if (p.ackedAt) {
+        const i = alarms.findIndex(a => a.id === p.id)
+        if (i >= 0) alarms.splice(i, 1)
       }
-    })
+    }
   }
 
   async function load(): Promise<void> {

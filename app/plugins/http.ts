@@ -5,6 +5,9 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios'
 import { message } from 'ant-design-vue'
+import { useUserStore } from '~/stores/workshop/user'
+
+const g = globalThis as typeof globalThis & { __awShown401?: boolean }
 
 /**
  * HTTP 请求层（基于 axios 封装）
@@ -12,7 +15,7 @@ import { message } from 'ant-design-vue'
  * - 统一请求/响应拦截：注入 token、统一错误提示
  * - 通过 nuxt provide 暴露 $http，并提供 useHttp 组合式入口
  */
-export default defineNuxtPlugin(() => {
+export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig().public
 
   const instance: AxiosInstance = axios.create({
@@ -40,7 +43,20 @@ export default defineNuxtPlugin(() => {
       const msg = error?.response?.data?.message || error.message || '请求失败'
 
       if (status === 401) {
-        message.error('登录已过期，请重新登录')
+        // 死 token 收尾:清登录态(cookie+pinia)防 401 toast 风暴;toast 3s 去重
+        try {
+          const cookie = useCookie<string | null>('token')
+          cookie.value = null
+          useUserStore(nuxtApp.$pinia).$reset()
+        }
+        catch { /* 无 pinia 上下文(极端时序) */ }
+        if (!g.__awShown401) {
+          g.__awShown401 = true
+          message.error('登录已过期,请重新登录')
+          setTimeout(() => {
+            g.__awShown401 = false
+          }, 3000)
+        }
       }
       else if (status >= 500) {
         message.error('服务器异常，请稍后重试')

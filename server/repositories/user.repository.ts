@@ -58,6 +58,9 @@ function getDb(): DatabaseSync {
     db = new DatabaseSync(DB_PATH)
     // 主连接登记(备份 serialize 用;见 backup-registry 说明)
     backupRegistry.register(DB_PATH, db)
+    // WAL:认证读路径不再与写互斥(rollback 模式每请求写锁+fsync 串行化全部 API)
+    db.exec('PRAGMA journal_mode = WAL')
+    db.exec('PRAGMA synchronous = NORMAL')
     db.exec('PRAGMA busy_timeout = 5000')
     db.exec(SCHEMA_SQL)
     migrateSchema(db)
@@ -77,6 +80,8 @@ function migrateSchema(d: DatabaseSync): void {
   if (!cols.some(c => c.name === 'expires_at')) {
     d.exec('ALTER TABLE user_tokens ADD COLUMN expires_at TEXT')
   }
+  // 安全迁移:清空存量明文 token——库中只保留哈希,备份/文件拷贝不再等于凭据泄漏
+  d.exec('UPDATE user_tokens SET token_plain = NULL WHERE token_plain IS NOT NULL')
   // 存量 token 宽限 30 天(从部署时刻起算,避免升级即全员掉线)
   d.prepare('UPDATE user_tokens SET expires_at = ? WHERE expires_at IS NULL').run(isoInDays(TOKEN_TTL_DAYS))
 }
@@ -176,7 +181,7 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
 
-/** 签发新 token：明文返回一次并存档（token_plain，支持随时查看），库中另存哈希用于认证比对 */
+/** 签发新 token：明文仅此一次返回,库中只存 SHA-256 哈希(0.7.10 起不再存档明文) */
 function issueToken(userId: string, label: string): { raw: string, row: UserToken } {
   const raw = `ut-${randomUUID().replace(/-/g, '')}`
   const hash = hashToken(raw)
@@ -187,13 +192,17 @@ function issueToken(userId: string, label: string): { raw: string, row: UserToke
     createdAt: now(),
     lastUsedAt: null,
     preview: maskPreview(raw),
-    hasPlain: true,
+    hasPlain: false,
   }
   const d = getDb()
-  d.prepare('INSERT INTO user_tokens (id, user_id, label, token_hash, token_plain, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(row.id, userId, label, hash, raw, row.createdAt, isoInDays(TOKEN_TTL_DAYS))
+  d.prepare('INSERT INTO user_tokens (id, user_id, label, token_hash, token_plain, created_at, expires_at) VALUES (?, ?, ?, ?, NULL, ?, ?)')
+    .run(row.id, userId, label, hash, row.createdAt, isoInDays(TOKEN_TTL_DAYS))
   return { raw, row }
 }
+
+/** last_used_at 写节流:每 tokenId 60s 最多落库一次(高频认证路径不再逐请求写锁) */
+const lastUsedSeen = new Map<string, number>()
+const LAST_USED_THROTTLE_MS = 60_000
 
 /** 按 token 明文查用户（命中且未过期则刷新 last_used_at）；无效/已过期返回 null。tokenId 供前端识别当前会话 token。 */
 export function findByToken(token: string): (User & { tokenId: string }) | null {
@@ -209,7 +218,11 @@ WHERE t.token_hash = ?`,
   if (row.expiresAt && Date.parse(row.expiresAt) < Date.now()) return null
   // 禁用账号即时失效(此前存量 token 在禁用后最长 30 天仍可用)
   if (row.status && row.status !== 'active') return null
-  d.prepare('UPDATE user_tokens SET last_used_at = ? WHERE token_hash = ?').run(now(), hash)
+  const seenAt = lastUsedSeen.get(row.tokenId) ?? 0
+  if (Date.now() - seenAt >= LAST_USED_THROTTLE_MS) {
+    lastUsedSeen.set(row.tokenId, Date.now())
+    d.prepare('UPDATE user_tokens SET last_used_at = ? WHERE token_hash = ?').run(now(), hash)
+  }
   return row
 }
 
@@ -239,6 +252,19 @@ export const userRepository = {
        ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     ).all(...params, pageSize, (page - 1) * pageSize) as Array<Record<string, unknown>>
     return { items: rows.map(toUser), total, page, pageSize }
+  },
+
+  /** 全量用户(不分页;管理面授权矩阵用,避免分页截断) */
+  listAll(): User[] {
+    const d = getDb()
+    const rows = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt FROM users ORDER BY created_at DESC').all() as Array<Record<string, unknown>>
+    return rows.map(toUser)
+  },
+
+  /** 全部产线授权(单查询;管理面按 userId 分组,替代逐用户 N+1) */
+  allGrants(): Array<{ userId: string, lineId: string, mode: string, grantedBy: string | null, grantedAt: string }> {
+    const d = getDb()
+    return d.prepare('SELECT user_id AS userId, line_id AS lineId, mode, granted_by AS grantedBy, granted_at AS grantedAt FROM user_line_grants').all() as Array<{ userId: string, lineId: string, mode: string, grantedBy: string | null, grantedAt: string }>
   },
 
   findById(id: string): User | undefined {
@@ -313,6 +339,25 @@ export const userRepository = {
     d.prepare('INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(user.id, user.name, user.email, hashPassword(input.password), user.role, user.status, user.createdAt)
     return user
+  },
+
+  /** 原子注册(IMMEDIATE 事务内判定管理员空缺):并发注册不会产生第二个 bootstrap admin */
+  createWithRoleBootstrap(input: UserCreate & { password: string }): { user: User, bootstrap: boolean } {
+    const d = getDb()
+    d.exec('BEGIN IMMEDIATE')
+    try {
+      const bootstrap = !this.hasActiveAdmin()
+      const user = this.create({ ...input, role: bootstrap ? 'admin' : input.role })
+      d.exec('COMMIT')
+      return { user, bootstrap }
+    }
+    catch (err) {
+      try {
+        d.exec('ROLLBACK')
+      }
+      catch { /* 事务已自滚 */ }
+      throw err
+    }
   },
 
   update(id: string, input: UserUpdate): User | undefined {

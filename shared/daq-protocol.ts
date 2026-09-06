@@ -410,6 +410,8 @@ export interface AepDaqReading {
   value: number
   state: DaqNodeState
   at: string
+  /** 所属产线(WS 鉴权扇出按线过滤;未挂线 = null,全员可见) */
+  lineId?: string | null
 }
 
 /** daq.frame 帧载荷(向量/图像帧实时下发;不含原始 blob —— 向量仅 ≤64 点预览,图像仅缩略图 URL) */

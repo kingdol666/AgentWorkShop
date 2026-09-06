@@ -4,6 +4,7 @@
  */
 import { getRouterParam } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
@@ -15,6 +16,8 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   bindDcwBroadcast(broadcastSceneEvent)
   const id = getRouterParam(event, 'id')!
+  // 产线权限:停线属操控能力
+  requireLineMode(user, id, 'operate')
   const active = getActiveLineRun(id)
   const run = getDcwController().lineStop(id)
   recordOps({

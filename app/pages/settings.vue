@@ -60,7 +60,9 @@ async function saveRuntime() {
 async function resetRuntimeKey(key: string) {
   try {
     await rcStore.patch({ [key]: null })
-    syncRuntimeDraft()
+    // 只收敛被重置的键:整表 sync 会静默丢弃用户其他未保存编辑
+    dirtyKeys.value.delete(key)
+    draft.value[key] = rcStore.effective[key]
     runtimeNotice.value = { type: 'success', text: t('settings.runtime.keyReset', { key }) }
   }
   catch (e) {

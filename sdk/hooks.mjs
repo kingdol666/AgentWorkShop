@@ -74,7 +74,9 @@ export class HookBus {
 
   async #invoke(type, l, payload) {
     try {
-      return await l.fn(payload)
+      const r = await l.fn(payload)
+      l.fails = 0 // 仅"连续失败"触发熔断:成功即清零,偶发失败不累积驱逐
+      return r
     }
     catch (err) {
       l.fails++

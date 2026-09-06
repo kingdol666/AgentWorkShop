@@ -5,12 +5,15 @@
  */
 import { getQuery, getRouterParam } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   const id = getRouterParam(event, 'id') ?? ''
+  // 产线权限:帧数据需「仅查看」及以上
+  requireLineMode(user, getDaqController().byId(id)?.lineId, 'readonly')
   const q = getQuery(event)
   const num = (k: string): number | undefined => (q[k] != null && !Number.isNaN(Number(q[k])) ? Number(q[k]) : undefined)
   const kind = q.kind === 'vector' || q.kind === 'image' ? q.kind : undefined
