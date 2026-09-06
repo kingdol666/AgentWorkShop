@@ -32,6 +32,7 @@ import { createChannelEventRepo } from '../services/workshop/db/channel-event.re
 import { createApprovalHistoryRepo, createAlarmEventRepo, createAuditRepo, createApprovalRequestRepo } from '../services/workshop/db/ops.repo'
 import { bindOpsRepos } from '../services/workshop/ops/ops'
 import { configureHitlResolver } from '../services/workshop/agents/hitl-registry'
+import { configureAgentBadgeResolver } from '../services/workshop/agents/agent-badge'
 import { ensureAllEventRecorders } from '../api/workshop/ws'
 import { createAgentImpl } from '../services/workshop/agents/factory'
 import {
@@ -131,6 +132,14 @@ export default function workshopPlugin(nitroApp: {
   configureHitlResolver((agentId) => {
     const row = repos.channelAgents.findById(agentId)
     return row ? { channelId: row.channelId, agentName: row.name } : null
+  })
+
+  // 运维日志徽标:agentId → 「Channel名/成员名」(Agent 下发/判定/回退入册的操作者展示)
+  configureAgentBadgeResolver((agentId) => {
+    const row = repos.channelAgents.findById(agentId)
+    if (!row) return null
+    const ch = repos.channels.findById(row.channelId)
+    return { name: row.name, channelName: ch?.name ?? row.channelId.slice(0, 8) }
   })
 
   // 懒加载恢复:仅激活有待办任务的 channel(装配 lead + 调度循环);其余纯持久化

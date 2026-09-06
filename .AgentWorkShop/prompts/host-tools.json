@@ -1,755 +1,819 @@
 [
-  {
-    "name": "report_progress",
-    "label": "Report Progress",
-    "description": "Report your current task progress as a percentage (0-100). Call this whenever you make meaningful progress on your task.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "progress": {
-          "type": "number",
-          "description": "Progress percentage 0-100"
-        },
-        "message": {
-          "type": "string",
-          "description": "Brief status message describing what you are doing"
-        }
-      },
-      "required": [
-        "progress"
-      ]
+ {
+  "name": "report_progress",
+  "label": "Report Progress",
+  "description": "Report your current task progress as a percentage (0-100). Call this whenever you make meaningful progress on your task.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "progress": {
+     "type": "number",
+     "description": "Progress percentage 0-100"
+    },
+    "message": {
+     "type": "string",
+     "description": "Brief status message describing what you are doing"
     }
-  },
-  {
-    "name": "complete_task",
-    "label": "Complete Task",
-    "description": "Mark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "summary": {
-          "type": "string",
-          "description": "Summary of what was accomplished"
-        },
-        "deliverable": {
-          "type": "string",
-          "description": "Final deliverable: code, analysis result, document content, etc."
-        },
-        "task_id": {
-          "type": "string",
-          "description": "Task ID to complete. If omitted, completes your current assigned task."
-        }
-      },
-      "required": [
-        "summary"
-      ]
-    }
-  },
-  {
-    "name": "dispatch_task",
-    "label": "Dispatch Task",
-    "description": "(Lead only) Create a subtask under a submitted parent task and assign it to a worker. Always provide parent_task_id so the parent task tracks completion. Always state route_reason: why THIS agent (specialty fit / shortest queue / past success evidence from the member capability table) — it is kept on the task as an auditable routing decision.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "assignee_id": {
-          "type": "string",
-          "description": "ID of the worker agent to assign this task to"
-        },
-        "title": {
-          "type": "string",
-          "description": "Short task title"
-        },
-        "route_reason": {
-          "type": "string",
-          "description": "Why this agent was chosen (specialty fit / load / past success evidence) — one short line, kept as the auditable routing decision"
-        },
-        "description": {
-          "type": "string",
-          "description": "Detailed task description with requirements"
-        },
-        "parent_task_id": {
-          "type": "string",
-          "description": "The ID of the submitted parent task this subtask belongs to (from the task list)"
-        }
-      },
-      "required": [
-        "assignee_id",
-        "title",
-        "parent_task_id"
-      ]
-    }
-  },
-  {
-    "name": "send_message_to_agent",
-    "label": "Send Message",
-    "description": "Send a message to another agent (lead or worker) in the same channel via the channel mailbox (routed to the recipient's own mailbox). Use priority \"immediate\" for urgent real-time messages that the recipient sees instantly during work; use \"task\" (default) for messages that queue until the recipient finishes their current task. Set require_reply=true to demand a response: the recipient must reply with their result via this same tool. When replying to a message, pass its message_id as in_reply_to — replies are auto-upgraded to real-time delivery and pushed straight into the recipient's running session, so the answer reaches a waiting sender instantly.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "to_agent_id": {
-          "type": "string",
-          "description": "Recipient agent ID"
-        },
-        "message": {
-          "type": "string",
-          "description": "Message content (when replying: your execution result + the content they asked for)"
-        },
-        "priority": {
-          "type": "string",
-          "enum": [
-            "immediate",
-            "task"
-          ],
-          "description": "Message priority: \"immediate\" = inject into recipient's running session instantly; \"task\" = queue for later consumption (default)"
-        },
-        "require_reply": {
-          "type": "boolean",
-          "description": "Trigger: true = recipient MUST reply with result/content (default false)"
-        },
-        "in_reply_to": {
-          "type": "string",
-          "description": "Message ID this reply refers to (set when replying to a trigger message)"
-        }
-      },
-      "required": [
-        "to_agent_id",
-        "message"
-      ]
-    }
-  },
-  {
-    "name": "poll_messages",
-    "label": "Poll Inbox",
-    "description": "Check your own mailbox for unread messages from other agents. When waiting for a reply, pass wait_seconds (e.g. 90) to block until it arrives or the wait expires — one blocking call replaces repeated empty polling. Returned collaboration messages are acknowledged on read (removed from the queue); task assignments are left for execution. Replies to your trigger messages are also pushed into your running session in real time — if you already saw an injected \"[实时消息 from X]\", that IS the reply, no need to poll again.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "limit": {
-          "type": "number",
-          "description": "Max messages to return (default 10)"
-        },
-        "wait_seconds": {
-          "type": "number",
-          "description": "Block up to N seconds (0-180) waiting for a message before returning empty (default 0 = immediate check)"
-        }
-      }
-    }
-  },
-  {
-    "name": "read_channel_mail",
-    "label": "Read Channel Mail",
-    "description": "(Lead only) Read the FULL channel mail log: every message routed through the channel mailbox (peer messages, real-time replies with in_reply_to chains, and task deliveries), newest first, with read/unread state. Pass agent_id to inspect a specific member's mailbox. Use this BEFORE dispatching a task whose result may already exist — if a worker already computed/delivered the value via mail, do NOT re-dispatch it; reference the concrete result from the mail instead.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "limit": {
-          "type": "number",
-          "description": "Max mails to return (default 50, max 500)"
-        },
-        "agent_id": {
-          "type": "string",
-          "description": "Optional: only show mails involving this agent (as sender or recipient)"
-        }
-      }
-    }
-  },
-  {
-    "name": "broadcast_message",
-    "label": "Broadcast",
-    "description": "Broadcast a message to ALL agents in the channel (lead + all workers). Useful for announcements.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "message": {
-          "type": "string",
-          "description": "Message content to broadcast"
-        },
-        "priority": {
-          "type": "string",
-          "enum": [
-            "immediate",
-            "task"
-          ],
-          "description": "Message priority (default \"task\")"
-        }
-      },
-      "required": [
-        "message"
-      ]
-    }
-  },
-  {
-    "name": "list_channel_tasks",
-    "label": "List Tasks",
-    "description": "List all tasks in the current channel, including their status, progress, and assignee.",
-    "parameters": {
-      "type": "object",
-      "properties": {}
-    }
-  },
-  {
-    "name": "list_team_agents",
-    "label": "List Team",
-    "description": "List all agents in the current channel (lead + workers) with their roles and names.",
-    "parameters": {
-      "type": "object",
-      "properties": {}
-    }
-  },
-  {
-    "name": "get_task_details",
-    "label": "Get Task",
-    "description": "Get detailed information about a specific task, including artifacts and history.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "task_id": {
-          "type": "string",
-          "description": "Task ID"
-        }
-      },
-      "required": [
-        "task_id"
-      ]
-    }
-  },
-  {
-    "name": "get_my_task_queue",
-    "label": "My Queue",
-    "description": "View your own task queue: pending tasks (FIFO order), the task you are currently executing, and completed tasks. Use this to check if you have unfinished work.",
-    "parameters": {
-      "type": "object",
-      "properties": {}
-    }
-  },
-  {
-    "name": "get_queue_overview",
-    "label": "Queue Overview",
-    "description": "(Lead only) Real-time overview of every team member: status (idle/busy), current task, pending queue length, completed count. Use this to make optimal scheduling and rebalancing decisions.",
-    "parameters": {
-      "type": "object",
-      "properties": {}
-    }
-  },
-  {
-    "name": "reassign_task",
-    "label": "Reassign Task",
-    "description": "(Lead only) Move a pending (not yet started) or failed task from one worker to another. Use for load rebalancing or when a worker is stuck. The old worker's queued delivery is revoked automatically.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "task_id": {
-          "type": "string",
-          "description": "Task ID to move"
-        },
-        "to_agent_id": {
-          "type": "string",
-          "description": "Worker agent ID to receive the task"
-        }
-      },
-      "required": [
-        "task_id",
-        "to_agent_id"
-      ]
-    }
-  },
-  {
-    "name": "update_task",
-    "label": "Update Task",
-    "description": "(Lead only) Modify the title/description of a pending (queued, not started) task. The assignee's queued delivery is refreshed with the new content automatically.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "task_id": {
-          "type": "string",
-          "description": "Task ID to update"
-        },
-        "title": {
-          "type": "string",
-          "description": "New title (optional)"
-        },
-        "description": {
-          "type": "string",
-          "description": "New description (optional)"
-        }
-      },
-      "required": [
-        "task_id"
-      ]
-    }
-  },
-  {
-    "name": "cancel_task",
-    "label": "Cancel Task",
-    "description": "Cancel a task and remove it from the assignee's queue (lead can cancel any; assignee can cancel own). Pending queued deliveries are revoked automatically.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "task_id": {
-          "type": "string",
-          "description": "Task ID to cancel"
-        }
-      },
-      "required": [
-        "task_id"
-      ]
-    }
-  },
-  {
-    "name": "search_memory",
-    "label": "Search Memory",
-    "description": "Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Results may include: your task history, the TEAM CHRONICLE (团队编年史 = rolling log of everything the team finished), past SESSION COMPACTION SUMMARIES (会话压缩摘要 = conclusions from earlier context windows), monthly reflections (作业反思), and shared conventions. Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints/brief mention something you need details on. Pass a focused query describing what you want to remember.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "query": {
-          "type": "string",
-          "description": "What you want to recall, e.g. \"数据库连接池配置结论\" or \"previous deployment checklist\""
-        },
-        "scope": {
-          "type": "string",
-          "enum": [
-            "auto",
-            "private",
-            "shared"
-          ],
-          "description": "Which memory domain to search: \"auto\" = your private + channel shared (default), \"private\" = only your own, \"shared\" = only channel-wide shared memories"
-        },
-        "limit": {
-          "type": "number",
-          "description": "Max results (default 5, max 20)"
-        }
-      },
-      "required": [
-        "query"
-      ]
-    }
-  },
-  {
-    "name": "save_memory",
-    "label": "Save Memory",
-    "description": "Persist a distilled, reusable insight into memory for future tasks. scope=\"private\" saves to YOUR personal memory (only you recall it); scope=\"shared\" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating. NOTE: the platform already auto-archives task outcomes, team results, the team chronicle, and session compaction summaries — never save whole task logs or raw session transcripts.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "title": {
-          "type": "string",
-          "description": "Short topic title, e.g. \"API 网关限流方案结论\""
-        },
-        "content": {
-          "type": "string",
-          "description": "The distilled reusable knowledge/conclusion (plain text)"
-        },
-        "importance": {
-          "type": "number",
-          "description": "0-1 importance (default 0.7 private / 0.85 shared)"
-        },
-        "scope": {
-          "type": "string",
-          "enum": [
-            "private",
-            "shared"
-          ],
-          "description": "\"private\" = your memory only; \"shared\" = channel-wide shared memory for all teammates"
-        },
-        "dedup_key": {
-          "type": "string",
-          "description": "Stable key for idempotent update (same key overwrites instead of duplicating)"
-        }
-      },
-      "required": [
-        "title",
-        "content",
-        "scope"
-      ]
-    }
-  },
-  {
-    "name": "create_team_agent",
-    "label": "Create Team Agent",
-    "description": "(Lead only) Create a NEW worker agent and add it to your channel's team, on the fly. Use ONLY when all workers stay busy with a persistent backlog, or when a task clearly needs a specialist that doesn't exist yet — not for routine tasks the current team can handle. The new member starts idle, appears in list_team_agents immediately, and can receive dispatch_task assignments right away. Give it a clear name and a system_prompt describing its specialty.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Short, descriptive member name, e.g. \"db-migrator\" or \"test-writer\""
-        },
-        "harness": {
-          "type": "string",
-          "enum": [
-            "omp",
-            "mock",
-            "claude"
-          ],
-          "description": "Agent harness: \"omp\" = full LLM agent with native work tools (default, use this for real work), \"mock\" = scripted test agent, \"claude\" = claude harness"
-        },
-        "system_prompt": {
-          "type": "string",
-          "description": "System prompt prefix defining this member's specialty, working style, and conventions (maps to its systemPromptPrefix config)"
-        },
-        "reason": {
-          "type": "string",
-          "description": "Why this member is being added (shown to the user in the team event timeline)"
-        }
-      },
-      "required": [
-        "name"
-      ]
-    }
-  },
-  {
-    "name": "update_team_agent",
-    "label": "Update Team Agent",
-    "description": "(Lead only) Update an existing team member (worker): rename it, revise its system prompt (e.g. to specialize or correct its behavior), or enable/disable it. The member's runtime reloads with the new config on its next assignment. You cannot update yourself.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "agent_id": {
-          "type": "string",
-          "description": "ID of the worker agent to update (from list_team_agents)"
-        },
-        "name": {
-          "type": "string",
-          "description": "New name (optional)"
-        },
-        "system_prompt": {
-          "type": "string",
-          "description": "New system prompt prefix defining its specialty/conventions (optional)"
-        },
-        "enabled": {
-          "type": "boolean",
-          "description": "true = activate member, false = disable member (disabled members receive no new tasks; default true)"
-        },
-        "reason": {
-          "type": "string",
-          "description": "Why this change is made (shown in the team event timeline)"
-        }
-      },
-      "required": [
-        "agent_id"
-      ]
-    }
-  },
-  {
-    "name": "remove_team_agent",
-    "label": "Remove Team Agent",
-    "description": "(Lead only) Remove a worker from your channel's team. Its queued tasks are automatically re-dispatched to the remaining worker with the shortest queue (or failed for retry if it was mid-execution), so no work is lost — but the member's context is. Use ONLY for sustained idle surplus or persistent underperformance; never as an experiment, and avoid removing members with active work. You cannot remove yourself.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "agent_id": {
-          "type": "string",
-          "description": "ID of the worker agent to remove"
-        },
-        "reason": {
-          "type": "string",
-          "description": "Why this member is removed (shown in the team event timeline)"
-        }
-      },
-      "required": [
-        "agent_id"
-      ]
-    }
-  },
-  {
-    "name": "refuse_task",
-    "label": "Refuse Task",
-    "description": "Reject a task assigned to you because it is outside your capability or work scope (wrong recipient, unrelated domain, or missing prerequisites). The task is marked FAILED with your reason and a rejection notice is immediately sent back to the dispatcher (task creator, or the channel lead), who should reassign it to a fitting member. Use this INSTEAD of silently ignoring the task or doing unrelated work; do NOT use it for tasks you are able to do, and do NOT use cancel_task for refusals.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "task_id": {
-          "type": "string",
-          "description": "ID of the task you are refusing (must be assigned to you)"
-        },
-        "reason": {
-          "type": "string",
-          "description": "Why the task is out of your scope: capability mismatch / wrong recipient / prerequisites missing. Be specific so the dispatcher can reassign properly."
-        }
-      },
-      "required": [
-        "task_id",
-        "reason"
-      ]
-    }
-  },
-  {
-    "name": "my_industrial_nodes",
-    "label": "My Industrial Nodes",
-    "description": "列出你绑定的全部数采/数控节点及其物理含义(参数含义/单位/安全量程/活动配方工艺窗口/控制模式)。在进行任何工业操作前必须先调用本工具理解节点语义与设定规则。",
-    "parameters": {
-      "type": "object",
-      "properties": {}
-    }
-  },
-  {
-    "name": "dcw_control",
-    "label": "DCW Control",
-    "description": "对绑定的数控节点下发工艺设定值(真实物理量纲)。仅限你有权控制的节点;设定值会被安全量程与活动配方工艺窗口联锁校验,越窗直接拒绝。手动确认模式下需等待用户批准,用户备注会随结果返回。下发前先调用 my_industrial_nodes 理解节点物理含义。",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "node_id": {
-          "type": "string",
-          "description": "数控节点 id(见 my_industrial_nodes)"
-        },
-        "value": {
-          "type": "number",
-          "description": "目标设定值(真实物理量纲,如 ℃)"
-        },
-        "hypothesis": {
-          "type": "string",
-          "description": "本次调参假设(入优化记录档案):目标 + 预期效果 + 观察计划,如「提温 1℃ 预期张力上升 2%,5 分钟后复测」"
-        },
-        "task_id": {
-          "type": "string",
-          "description": "关联的优化任务 id(可选,入优化记录档案)"
-        }
-      },
-      "required": [
-        "node_id",
-        "value"
-      ]
-    }
-  },
-  {
-    "name": "dcw_read",
-    "label": "DCW Read",
-    "description": "读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "node_id": {
-          "type": "string",
-          "description": "数控节点 id(见 my_industrial_nodes)"
-        }
-      },
-      "required": [
-        "node_id"
-      ]
-    }
-  },
-  {
-    "name": "daq_query",
-    "label": "DAQ Query",
-    "description": "从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "node_id": {
-          "type": "string",
-          "description": "限定单个数采节点 id(缺省 = 全部绑定节点)"
-        },
-        "line_id": {
-          "type": "string",
-          "description": "按产线过滤(数据归属产线)"
-        },
-        "product_id": {
-          "type": "string",
-          "description": "按产品过滤(逐样本打标)"
-        },
-        "recipe_id": {
-          "type": "string",
-          "description": "按配方/批次过滤(逐样本打标)"
-        },
-        "last_minutes": {
-          "type": "number",
-          "description": "最近 N 分钟(缺省 30)"
-        },
-        "from_ms": {
-          "type": "number",
-          "description": "起始 epoch ms(与 to_ms 配合,优先于 last_minutes)"
-        },
-        "to_ms": {
-          "type": "number",
-          "description": "结束 epoch ms"
-        },
-        "bucket_ms": {
-          "type": "number",
-          "description": "时间间隔(降采样桶宽 ms):缺省 {queryDefaultBucketMs}(15s);可调,下限 {queryMinBucketMs}。不传即用缺省;系统配置变更后以新值为准"
-        },
-        "limit": {
-          "type": "number",
-          "description": "返回点数上限(缺省 500)"
-        }
-      }
-    }
-  },
-  {
-    "name": "dcw_judge",
-    "label": "DCW Judge",
-    "description": "对你发起的优化记录(调控 step)落判定。keep=已验证经验(配方可标 lastGood);rollback=判定应回退(判定入册后必须再调 dcw_rollback 执行,判定不自动改 PLC);uncertain=证据不足保持观察。判定必须引用数采证据(daq_query 窗口数据),禁止无证据判定。",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "record_id": {
-          "type": "string",
-          "description": "优化记录 id(dcw_control 下发成功后返回)"
-        },
-        "verdict": {
-          "type": "string",
-          "description": "判定结论:keep / rollback / uncertain",
-          "enum": [
-            "keep",
-            "rollback",
-            "uncertain"
-          ]
-        },
-        "reason": {
-          "type": "string",
-          "description": "判定理由(必须引用具体数值/时间窗证据)"
-        }
-      },
-      "required": [
-        "record_id",
-        "verdict",
-        "reason"
-      ]
-    }
-  },
-  {
-    "name": "dcw_rollback",
-    "label": "DCW Rollback",
-    "description": "执行参数回退(经与下发相同的安全门控,回退本身入册可审计)。record_id=回退你自己发起的优化记录到其设定前值;node_id=单步撤销到最近稳定锚。回退后必须 daq_query 复测确认恢复。冷却期内同向重写/重复回退会被拒绝。",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "record_id": {
-          "type": "string",
-          "description": "要回退的优化记录 id(与 node_id 二选一)"
-        },
-        "node_id": {
-          "type": "string",
-          "description": "节点单步回退(撤销栈栈顶;与 record_id 二选一)"
-        },
-        "to": {
-          "type": "string",
-          "description": "可选:指定目标锚 id(dcw_journal 可查)"
-        }
-      }
-    }
-  },
-  {
-    "name": "dcw_journal",
-    "label": "DCW Journal",
-    "description": "查询参数变更史与优化记录(在册审计):谁/何时/从多少到多少/判定结论/假设声明。优化前先读史可避免重复试错;回退定位也在此查。",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "node_id": {
-          "type": "string",
-          "description": "限定数控节点 id(仅限自己绑定的节点)"
-        },
-        "recipe_id": {
-          "type": "string",
-          "description": "按配方过滤优化记录"
-        },
-        "limit": {
-          "type": "number",
-          "description": "返回条数上限(缺省 20,最大 100)"
-        }
-      }
-    }
-  },
-  {
-    "name": "send_cross_channel_message",
-    "label": "Cross-Channel Message",
-    "description": "[Leader only] Send a message to the LEADER of another channel, so the two teams can collaborate without being siloed. The message lands directly in the target channel leader mailbox; that leader will read your request and act on it (dispatch tasks in their channel, gather info, etc.) and can reply to you via the mailbox. Params: to_channel_id accepts the target channel id OR its exact name; message is your request to the other leader (state your need, deadline and what you expect back); require_reply=true to demand a response. Only channel leaders may call this tool - workers will be rejected. When replying to a cross-channel request you received, use this same tool addressed to the requester channel.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "to_channel_id": {
-          "type": "string",
-          "description": "Target channel id or exact name (must be another channel, not your own)"
-        },
-        "message": {
-          "type": "string",
-          "description": "Request text for the target channel leader: what you need, why, and what to return"
-        },
-        "require_reply": {
-          "type": "boolean",
-          "description": "true = demand the target leader reply with their result/answer"
-        }
-      },
-      "required": [
-        "to_channel_id",
-        "message"
-      ]
-    }
-  },
-  {
-    "name": "list_other_teams",
-    "label": "List Other Teams",
-    "description": "[Leader only] Overview of the OTHER teams (channels) in this workspace: each team name, description, lead, its in-progress scenario tasks, recently completed tasks, and how many shared memories it has (shared_memories > 0 means searchable knowledge exists - use search_other_teams_memory with that team). Decision flow: found knowledge -> reuse it directly; relevant work in progress but no knowledge yet -> message their leader via send_cross_channel_message; nothing -> consider whether your request justifies starting collaboration. Workers cannot call this tool.",
-    "parameters": {
-      "type": "object",
-      "properties": {},
-      "required": []
-    }
-  },
-  {
-    "name": "search_other_teams_memory",
-    "label": "Search Other Teams Memory",
-    "description": "[All members] Read-only search across the SHARED memory of other teams (channels) in this workspace - what other teams have learned/concluded/done. Use it to reuse existing knowledge instead of asking for it: if you find relevant results, apply them directly; if nothing relevant exists but the other team is working on it, ask your leader to message that team leader via send_cross_channel_message. Results are attributed to their team.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "query": {
-          "type": "string",
-          "description": "What to look for (keywords of the knowledge/conclusion)"
-        },
-        "limit": {
-          "type": "number",
-          "description": "Max results (default 5)"
-        }
-      },
-      "required": [
-        "query"
-      ]
-    }
-  },
-  {
-    "name": "daq_frames",
-    "label": "DAQ Frames",
-    "description": "Query multi-modal DAQ frames for your BOUND daq nodes: multi-point profiles (thickness scanners, profile scanners — returns point-count summary, a point preview and derived metrics) and camera image frames (CCD — returns resolution, object reference and derived metrics like brightness/contrast; pixels are NOT loaded into context, view them in the frontend gallery). Supports kind=vector|image filter and time windows. Use BEFORE judging surface quality or profile measurements.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "node_id": {
-          "type": "string",
-          "description": "Limit to one bound daq node id (optional; default all your bound daq nodes)"
-        },
-        "line_id": {
-          "type": "string",
-          "description": "Filter by line id (can only narrow, never widen your access)"
-        },
-        "kind": {
-          "type": "string",
-          "enum": [
-            "vector",
-            "image"
-          ],
-          "description": "Frame kind filter (optional)"
-        },
-        "last_minutes": {
-          "type": "number",
-          "description": "Time window in minutes back from now (default 30)"
-        },
-        "from_ms": {
-          "type": "number",
-          "description": "Window start (epoch ms; overrides last_minutes)"
-        },
-        "to_ms": {
-          "type": "number",
-          "description": "Window end (epoch ms; default now)"
-        },
-        "limit": {
-          "type": "number",
-          "description": "Max frames per node (default 20, max 100)"
-        }
-      }
-    }
+   },
+   "required": [
+    "progress"
+   ]
   }
+ },
+ {
+  "name": "complete_task",
+  "label": "Complete Task",
+  "description": "Mark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "summary": {
+     "type": "string",
+     "description": "Summary of what was accomplished"
+    },
+    "deliverable": {
+     "type": "string",
+     "description": "Final deliverable: code, analysis result, document content, etc."
+    },
+    "task_id": {
+     "type": "string",
+     "description": "Task ID to complete. If omitted, completes your current assigned task."
+    }
+   },
+   "required": [
+    "summary"
+   ]
+  }
+ },
+ {
+  "name": "dispatch_task",
+  "label": "Dispatch Task",
+  "description": "(Lead only) Create a subtask under a submitted parent task and assign it to a worker. Always provide parent_task_id so the parent task tracks completion. Always state route_reason: why THIS agent (specialty fit / shortest queue / past success evidence from the member capability table) — it is kept on the task as an auditable routing decision.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "assignee_id": {
+     "type": "string",
+     "description": "ID of the worker agent to assign this task to"
+    },
+    "title": {
+     "type": "string",
+     "description": "Short task title"
+    },
+    "route_reason": {
+     "type": "string",
+     "description": "Why this agent was chosen (specialty fit / load / past success evidence) — one short line, kept as the auditable routing decision"
+    },
+    "description": {
+     "type": "string",
+     "description": "Detailed task description with requirements"
+    },
+    "parent_task_id": {
+     "type": "string",
+     "description": "The ID of the submitted parent task this subtask belongs to (from the task list)"
+    }
+   },
+   "required": [
+    "assignee_id",
+    "title",
+    "parent_task_id"
+   ]
+  }
+ },
+ {
+  "name": "send_message_to_agent",
+  "label": "Send Message",
+  "description": "Send a message to another agent (lead or worker) in the same channel via the channel mailbox (routed to the recipient's own mailbox). Use priority \"immediate\" for urgent real-time messages that the recipient sees instantly during work; use \"task\" (default) for messages that queue until the recipient finishes their current task. Set require_reply=true to demand a response: the recipient must reply with their result via this same tool. When replying to a message, pass its message_id as in_reply_to — replies are auto-upgraded to real-time delivery and pushed straight into the recipient's running session, so the answer reaches a waiting sender instantly.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "to_agent_id": {
+     "type": "string",
+     "description": "Recipient agent ID"
+    },
+    "message": {
+     "type": "string",
+     "description": "Message content (when replying: your execution result + the content they asked for)"
+    },
+    "priority": {
+     "type": "string",
+     "enum": [
+      "immediate",
+      "task"
+     ],
+     "description": "Message priority: \"immediate\" = inject into recipient's running session instantly; \"task\" = queue for later consumption (default)"
+    },
+    "require_reply": {
+     "type": "boolean",
+     "description": "Trigger: true = recipient MUST reply with result/content (default false)"
+    },
+    "in_reply_to": {
+     "type": "string",
+     "description": "Message ID this reply refers to (set when replying to a trigger message)"
+    }
+   },
+   "required": [
+    "to_agent_id",
+    "message"
+   ]
+  }
+ },
+ {
+  "name": "poll_messages",
+  "label": "Poll Inbox",
+  "description": "Check your own mailbox for unread messages from other agents. When waiting for a reply, pass wait_seconds (e.g. 90) to block until it arrives or the wait expires — one blocking call replaces repeated empty polling. Returned collaboration messages are acknowledged on read (removed from the queue); task assignments are left for execution. Replies to your trigger messages are also pushed into your running session in real time — if you already saw an injected \"[实时消息 from X]\", that IS the reply, no need to poll again.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "limit": {
+     "type": "number",
+     "description": "Max messages to return (default 10)"
+    },
+    "wait_seconds": {
+     "type": "number",
+     "description": "Block up to N seconds (0-180) waiting for a message before returning empty (default 0 = immediate check)"
+    }
+   }
+  }
+ },
+ {
+  "name": "read_channel_mail",
+  "label": "Read Channel Mail",
+  "description": "(Lead only) Read the FULL channel mail log: every message routed through the channel mailbox (peer messages, real-time replies with in_reply_to chains, and task deliveries), newest first, with read/unread state. Pass agent_id to inspect a specific member's mailbox. Use this BEFORE dispatching a task whose result may already exist — if a worker already computed/delivered the value via mail, do NOT re-dispatch it; reference the concrete result from the mail instead.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "limit": {
+     "type": "number",
+     "description": "Max mails to return (default 50, max 500)"
+    },
+    "agent_id": {
+     "type": "string",
+     "description": "Optional: only show mails involving this agent (as sender or recipient)"
+    }
+   }
+  }
+ },
+ {
+  "name": "broadcast_message",
+  "label": "Broadcast",
+  "description": "Broadcast a message to ALL agents in the channel (lead + all workers). Useful for announcements.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "message": {
+     "type": "string",
+     "description": "Message content to broadcast"
+    },
+    "priority": {
+     "type": "string",
+     "enum": [
+      "immediate",
+      "task"
+     ],
+     "description": "Message priority (default \"task\")"
+    }
+   },
+   "required": [
+    "message"
+   ]
+  }
+ },
+ {
+  "name": "list_channel_tasks",
+  "label": "List Tasks",
+  "description": "List all tasks in the current channel, including their status, progress, and assignee.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "name": "list_team_agents",
+  "label": "List Team",
+  "description": "List all agents in the current channel (lead + workers) with their roles and names.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "name": "get_task_details",
+  "label": "Get Task",
+  "description": "Get detailed information about a specific task, including artifacts and history.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "task_id": {
+     "type": "string",
+     "description": "Task ID"
+    }
+   },
+   "required": [
+    "task_id"
+   ]
+  }
+ },
+ {
+  "name": "get_my_task_queue",
+  "label": "My Queue",
+  "description": "View your own task queue: pending tasks (FIFO order), the task you are currently executing, and completed tasks. Use this to check if you have unfinished work.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "name": "get_queue_overview",
+  "label": "Queue Overview",
+  "description": "(Lead only) Real-time overview of every team member: status (idle/busy), current task, pending queue length, completed count. Use this to make optimal scheduling and rebalancing decisions.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "name": "reassign_task",
+  "label": "Reassign Task",
+  "description": "(Lead only) Move a pending (not yet started) or failed task from one worker to another. Use for load rebalancing or when a worker is stuck. The old worker's queued delivery is revoked automatically.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "task_id": {
+     "type": "string",
+     "description": "Task ID to move"
+    },
+    "to_agent_id": {
+     "type": "string",
+     "description": "Worker agent ID to receive the task"
+    }
+   },
+   "required": [
+    "task_id",
+    "to_agent_id"
+   ]
+  }
+ },
+ {
+  "name": "update_task",
+  "label": "Update Task",
+  "description": "(Lead only) Modify the title/description of a pending (queued, not started) task. The assignee's queued delivery is refreshed with the new content automatically.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "task_id": {
+     "type": "string",
+     "description": "Task ID to update"
+    },
+    "title": {
+     "type": "string",
+     "description": "New title (optional)"
+    },
+    "description": {
+     "type": "string",
+     "description": "New description (optional)"
+    }
+   },
+   "required": [
+    "task_id"
+   ]
+  }
+ },
+ {
+  "name": "cancel_task",
+  "label": "Cancel Task",
+  "description": "Cancel a task and remove it from the assignee's queue (lead can cancel any; assignee can cancel own). Pending queued deliveries are revoked automatically.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "task_id": {
+     "type": "string",
+     "description": "Task ID to cancel"
+    }
+   },
+   "required": [
+    "task_id"
+   ]
+  }
+ },
+ {
+  "name": "search_memory",
+  "label": "Search Memory",
+  "description": "Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Results may include: your task history, the TEAM CHRONICLE (团队编年史 = rolling log of everything the team finished), past SESSION COMPACTION SUMMARIES (会话压缩摘要 = conclusions from earlier context windows), monthly reflections (作业反思), and shared conventions. Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints/brief mention something you need details on. Pass a focused query describing what you want to remember.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "query": {
+     "type": "string",
+     "description": "What you want to recall, e.g. \"数据库连接池配置结论\" or \"previous deployment checklist\""
+    },
+    "scope": {
+     "type": "string",
+     "enum": [
+      "auto",
+      "private",
+      "shared"
+     ],
+     "description": "Which memory domain to search: \"auto\" = your private + channel shared (default), \"private\" = only your own, \"shared\" = only channel-wide shared memories"
+    },
+    "limit": {
+     "type": "number",
+     "description": "Max results (default 5, max 20)"
+    }
+   },
+   "required": [
+    "query"
+   ]
+  }
+ },
+ {
+  "name": "save_memory",
+  "label": "Save Memory",
+  "description": "Persist a distilled, reusable insight into memory for future tasks. scope=\"private\" saves to YOUR personal memory (only you recall it); scope=\"shared\" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating. NOTE: the platform already auto-archives task outcomes, team results, the team chronicle, and session compaction summaries — never save whole task logs or raw session transcripts.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "title": {
+     "type": "string",
+     "description": "Short topic title, e.g. \"API 网关限流方案结论\""
+    },
+    "content": {
+     "type": "string",
+     "description": "The distilled reusable knowledge/conclusion (plain text)"
+    },
+    "importance": {
+     "type": "number",
+     "description": "0-1 importance (default 0.7 private / 0.85 shared)"
+    },
+    "scope": {
+     "type": "string",
+     "enum": [
+      "private",
+      "shared"
+     ],
+     "description": "\"private\" = your memory only; \"shared\" = channel-wide shared memory for all teammates"
+    },
+    "dedup_key": {
+     "type": "string",
+     "description": "Stable key for idempotent update (same key overwrites instead of duplicating)"
+    }
+   },
+   "required": [
+    "title",
+    "content",
+    "scope"
+   ]
+  }
+ },
+ {
+  "name": "create_team_agent",
+  "label": "Create Team Agent",
+  "description": "(Lead only) Create a NEW worker agent and add it to your channel's team, on the fly. Use ONLY when all workers stay busy with a persistent backlog, or when a task clearly needs a specialist that doesn't exist yet — not for routine tasks the current team can handle. The new member starts idle, appears in list_team_agents immediately, and can receive dispatch_task assignments right away. Give it a clear name and a system_prompt describing its specialty.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "name": {
+     "type": "string",
+     "description": "Short, descriptive member name, e.g. \"db-migrator\" or \"test-writer\""
+    },
+    "harness": {
+     "type": "string",
+     "enum": [
+      "omp",
+      "mock",
+      "claude"
+     ],
+     "description": "Agent harness: \"omp\" = full LLM agent with native work tools (default, use this for real work), \"mock\" = scripted test agent, \"claude\" = claude harness"
+    },
+    "system_prompt": {
+     "type": "string",
+     "description": "System prompt prefix defining this member's specialty, working style, and conventions (maps to its systemPromptPrefix config)"
+    },
+    "reason": {
+     "type": "string",
+     "description": "Why this member is being added (shown to the user in the team event timeline)"
+    }
+   },
+   "required": [
+    "name"
+   ]
+  }
+ },
+ {
+  "name": "update_team_agent",
+  "label": "Update Team Agent",
+  "description": "(Lead only) Update an existing team member (worker): rename it, revise its system prompt (e.g. to specialize or correct its behavior), or enable/disable it. The member's runtime reloads with the new config on its next assignment. You cannot update yourself.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "agent_id": {
+     "type": "string",
+     "description": "ID of the worker agent to update (from list_team_agents)"
+    },
+    "name": {
+     "type": "string",
+     "description": "New name (optional)"
+    },
+    "system_prompt": {
+     "type": "string",
+     "description": "New system prompt prefix defining its specialty/conventions (optional)"
+    },
+    "enabled": {
+     "type": "boolean",
+     "description": "true = activate member, false = disable member (disabled members receive no new tasks; default true)"
+    },
+    "reason": {
+     "type": "string",
+     "description": "Why this change is made (shown in the team event timeline)"
+    }
+   },
+   "required": [
+    "agent_id"
+   ]
+  }
+ },
+ {
+  "name": "remove_team_agent",
+  "label": "Remove Team Agent",
+  "description": "(Lead only) Remove a worker from your channel's team. Its queued tasks are automatically re-dispatched to the remaining worker with the shortest queue (or failed for retry if it was mid-execution), so no work is lost — but the member's context is. Use ONLY for sustained idle surplus or persistent underperformance; never as an experiment, and avoid removing members with active work. You cannot remove yourself.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "agent_id": {
+     "type": "string",
+     "description": "ID of the worker agent to remove"
+    },
+    "reason": {
+     "type": "string",
+     "description": "Why this member is removed (shown in the team event timeline)"
+    }
+   },
+   "required": [
+    "agent_id"
+   ]
+  }
+ },
+ {
+  "name": "refuse_task",
+  "label": "Refuse Task",
+  "description": "Reject a task assigned to you because it is outside your capability or work scope (wrong recipient, unrelated domain, or missing prerequisites). The task is marked FAILED with your reason and a rejection notice is immediately sent back to the dispatcher (task creator, or the channel lead), who should reassign it to a fitting member. Use this INSTEAD of silently ignoring the task or doing unrelated work; do NOT use it for tasks you are able to do, and do NOT use cancel_task for refusals.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "task_id": {
+     "type": "string",
+     "description": "ID of the task you are refusing (must be assigned to you)"
+    },
+    "reason": {
+     "type": "string",
+     "description": "Why the task is out of your scope: capability mismatch / wrong recipient / prerequisites missing. Be specific so the dispatcher can reassign properly."
+    }
+   },
+   "required": [
+    "task_id",
+    "reason"
+   ]
+  }
+ },
+ {
+  "name": "my_industrial_nodes",
+  "label": "My Industrial Nodes",
+  "description": "列出你绑定的全部数采/数控节点及其物理含义(参数含义/单位/安全量程/活动配方工艺窗口/控制模式)。在进行任何工业操作前必须先调用本工具理解节点语义与设定规则。",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "name": "dcw_control",
+  "label": "DCW Control",
+  "description": "对绑定的数控节点下发工艺设定值(真实物理量纲)。仅限你有权控制的节点;设定值会被安全量程与活动配方工艺窗口联锁校验,越窗直接拒绝。手动确认模式下需等待用户批准,用户备注会随结果返回。下发前先调用 my_industrial_nodes 理解节点物理含义。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "node_id": {
+     "type": "string",
+     "description": "数控节点 id(见 my_industrial_nodes)"
+    },
+    "value": {
+     "type": "number",
+     "description": "目标设定值(真实物理量纲,如 ℃)"
+    },
+    "hypothesis": {
+     "type": "string",
+     "description": "本次调参假设(入优化记录档案):目标 + 预期效果 + 观察计划,如「提温 1℃ 预期张力上升 2%,5 分钟后复测」"
+    },
+    "task_id": {
+     "type": "string",
+     "description": "关联的优化任务 id(可选,入优化记录档案)"
+    }
+   },
+   "required": [
+    "node_id",
+    "value"
+   ]
+  }
+ },
+ {
+  "name": "dcw_read",
+  "label": "DCW Read",
+  "description": "读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "node_id": {
+     "type": "string",
+     "description": "数控节点 id(见 my_industrial_nodes)"
+    }
+   },
+   "required": [
+    "node_id"
+   ]
+  }
+ },
+ {
+  "name": "daq_query",
+  "label": "DAQ Query",
+  "description": "从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "node_id": {
+     "type": "string",
+     "description": "限定单个数采节点 id(缺省 = 全部绑定节点)"
+    },
+    "line_id": {
+     "type": "string",
+     "description": "按产线过滤(数据归属产线)"
+    },
+    "product_id": {
+     "type": "string",
+     "description": "按产品过滤(逐样本打标)"
+    },
+    "recipe_id": {
+     "type": "string",
+     "description": "按配方/批次过滤(逐样本打标)"
+    },
+    "last_minutes": {
+     "type": "number",
+     "description": "最近 N 分钟(缺省 30)"
+    },
+    "from_ms": {
+     "type": "number",
+     "description": "起始 epoch ms(与 to_ms 配合,优先于 last_minutes)"
+    },
+    "to_ms": {
+     "type": "number",
+     "description": "结束 epoch ms"
+    },
+    "bucket_ms": {
+     "type": "number",
+     "description": "时间间隔(降采样桶宽 ms):缺省 {queryDefaultBucketMs}(15s);可调,下限 {queryMinBucketMs}。不传即用缺省;系统配置变更后以新值为准"
+    },
+    "limit": {
+     "type": "number",
+     "description": "返回点数上限(缺省 500)"
+    }
+   }
+  }
+ },
+ {
+  "name": "dcw_judge",
+  "label": "DCW Judge",
+  "description": "对你发起的优化记录(调控 step)落判定。keep=已验证经验(配方可标 lastGood);rollback=判定应回退(判定入册后必须再调 dcw_rollback 执行,判定不自动改 PLC);uncertain=证据不足保持观察。判定必须引用数采证据(daq_query 窗口数据),禁止无证据判定。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "record_id": {
+     "type": "string",
+     "description": "优化记录 id(dcw_control 下发成功后返回)"
+    },
+    "verdict": {
+     "type": "string",
+     "description": "判定结论:keep / rollback / uncertain",
+     "enum": [
+      "keep",
+      "rollback",
+      "uncertain"
+     ]
+    },
+    "reason": {
+     "type": "string",
+     "description": "判定理由(必须引用具体数值/时间窗证据)"
+    }
+   },
+   "required": [
+    "record_id",
+    "verdict",
+    "reason"
+   ]
+  }
+ },
+ {
+  "name": "dcw_rollback",
+  "label": "DCW Rollback",
+  "description": "执行参数回退(经与下发相同的安全门控,回退本身入册可审计)。record_id=回退你自己发起的优化记录到其设定前值;node_id=单步撤销到最近稳定锚。回退后必须 daq_query 复测确认恢复。冷却期内同向重写/重复回退会被拒绝。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "record_id": {
+     "type": "string",
+     "description": "要回退的优化记录 id(与 node_id 二选一)"
+    },
+    "node_id": {
+     "type": "string",
+     "description": "节点单步回退(撤销栈栈顶;与 record_id 二选一)"
+    },
+    "to": {
+     "type": "string",
+     "description": "可选:指定目标锚 id(dcw_journal 可查)"
+    }
+   }
+  }
+ },
+ {
+  "name": "dcw_journal",
+  "label": "DCW Journal",
+  "description": "查询参数变更史与优化记录(在册审计):谁/何时/从多少到多少/判定结论/假设声明。优化前先读史可避免重复试错;回退定位也在此查。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "node_id": {
+     "type": "string",
+     "description": "限定数控节点 id(仅限自己绑定的节点)"
+    },
+    "recipe_id": {
+     "type": "string",
+     "description": "按配方过滤优化记录"
+    },
+    "limit": {
+     "type": "number",
+     "description": "返回条数上限(缺省 20,最大 100)"
+    }
+   }
+  }
+ },
+ {
+  "name": "send_cross_channel_message",
+  "label": "Cross-Channel Message",
+  "description": "[Leader only] Send a message to the LEADER of another channel, so the two teams can collaborate without being siloed. The message lands directly in the target channel leader mailbox; that leader will read your request and act on it (dispatch tasks in their channel, gather info, etc.) and can reply to you via the mailbox. Params: to_channel_id accepts the target channel id OR its exact name; message is your request to the other leader (state your need, deadline and what you expect back); require_reply=true to demand a response. Only channel leaders may call this tool - workers will be rejected. When replying to a cross-channel request you received, use this same tool addressed to the requester channel.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "to_channel_id": {
+     "type": "string",
+     "description": "Target channel id or exact name (must be another channel, not your own)"
+    },
+    "message": {
+     "type": "string",
+     "description": "Request text for the target channel leader: what you need, why, and what to return"
+    },
+    "require_reply": {
+     "type": "boolean",
+     "description": "true = demand the target leader reply with their result/answer"
+    }
+   },
+   "required": [
+    "to_channel_id",
+    "message"
+   ]
+  }
+ },
+ {
+  "name": "list_other_teams",
+  "label": "List Other Teams",
+  "description": "[Leader only] Overview of the OTHER teams (channels) in this workspace: each team name, description, lead, its in-progress scenario tasks, recently completed tasks, and how many shared memories it has (shared_memories > 0 means searchable knowledge exists - use search_other_teams_memory with that team). Decision flow: found knowledge -> reuse it directly; relevant work in progress but no knowledge yet -> message their leader via send_cross_channel_message; nothing -> consider whether your request justifies starting collaboration. Workers cannot call this tool.",
+  "parameters": {
+   "type": "object",
+   "properties": {},
+   "required": []
+  }
+ },
+ {
+  "name": "search_other_teams_memory",
+  "label": "Search Other Teams Memory",
+  "description": "[All members] Read-only search across the SHARED memory of other teams (channels) in this workspace - what other teams have learned/concluded/done. Use it to reuse existing knowledge instead of asking for it: if you find relevant results, apply them directly; if nothing relevant exists but the other team is working on it, ask your leader to message that team leader via send_cross_channel_message. Results are attributed to their team.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "query": {
+     "type": "string",
+     "description": "What to look for (keywords of the knowledge/conclusion)"
+    },
+    "limit": {
+     "type": "number",
+     "description": "Max results (default 5)"
+    }
+   },
+   "required": [
+    "query"
+   ]
+  }
+ },
+ {
+  "name": "daq_frames",
+  "label": "DAQ Frames",
+  "description": "Query multi-modal DAQ frames for your BOUND daq nodes: multi-point profiles (thickness scanners, profile scanners — returns point-count summary, a point preview and derived metrics) and camera image frames (CCD — returns resolution, object reference and derived metrics like brightness/contrast; pixels are NOT loaded into context, view them in the frontend gallery). Supports kind=vector|image filter and time windows. Use BEFORE judging surface quality or profile measurements.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "node_id": {
+     "type": "string",
+     "description": "Limit to one bound daq node id (optional; default all your bound daq nodes)"
+    },
+    "line_id": {
+     "type": "string",
+     "description": "Filter by line id (can only narrow, never widen your access)"
+    },
+    "kind": {
+     "type": "string",
+     "enum": [
+      "vector",
+      "image"
+     ],
+     "description": "Frame kind filter (optional)"
+    },
+    "last_minutes": {
+     "type": "number",
+     "description": "Time window in minutes back from now (default 30)"
+    },
+    "from_ms": {
+     "type": "number",
+     "description": "Window start (epoch ms; overrides last_minutes)"
+    },
+    "to_ms": {
+     "type": "number",
+     "description": "Window end (epoch ms; default now)"
+    },
+    "limit": {
+     "type": "number",
+     "description": "Max frames per node (default 20, max 100)"
+    }
+   }
+  }
+ },
+ {
+  "name": "ops_log",
+  "label": "Ops Log",
+  "description": "查询你负责产线的运维日志(数控下发/优化判定/回退/配方下发/产线事件,新→旧)。来源区分 Agent/用户/系统:Agent 的操作者格式为「Channel名/成员名」。用于作业前后自查:你对节点做过哪些操作、他人或系统做过哪些干预。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "line_id": {
+     "type": "string",
+     "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
+    },
+    "node_id": {
+     "type": "string",
+     "description": "限定数控/数采节点 id(须为你绑定的节点)"
+    },
+    "kind": {
+     "type": "string",
+     "description": "按分类过滤:write(下发)/recipe(配方)/rollback(回退)/daq(采集)/line(产线)"
+    },
+    "actor_kind": {
+     "type": "string",
+     "description": "按来源过滤:agent/user/system"
+    },
+    "minutes": {
+     "type": "number",
+     "description": "回看窗口(分钟,缺省 1440=24 小时)"
+    },
+    "limit": {
+     "type": "number",
+     "description": "返回条数上限(缺省 20,最大 100)"
+    },
+    "mine": {
+     "type": "boolean",
+     "description": "true=只看你自己发起的操作"
+    }
+   }
+  }
+ },
+ {
+  "name": "recipe_log",
+  "label": "Recipe Change Log",
+  "description": "查询你负责产线的 Recipe 变更史:配方一键下发(recipe.apply)、优化开窗、判定、回退执行(新→旧)。你据此知道配方层面对当前节点做过哪些下发变更、由谁执行、是否已回退。节点级参数值逐笔历史用 dcw_journal。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "line_id": {
+     "type": "string",
+     "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
+    },
+    "recipe_id": {
+     "type": "string",
+     "description": "按配方 id 过滤"
+    },
+    "minutes": {
+     "type": "number",
+     "description": "回看窗口(分钟,缺省 1440=24 小时)"
+    },
+    "limit": {
+     "type": "number",
+     "description": "返回条数上限(缺省 20,最大 100)"
+    }
+   }
+  }
+ }
 ]

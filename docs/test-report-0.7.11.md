@@ -175,3 +175,27 @@ LOWER(email) OR LOWER(name) 匹配。发布:agentworkshop@0.7.13(npm latest)。
 - 公网侧(Cloudflare 边缘回源):`/` 200、`/api/health` 200、用户名密码登录 API 200。
 - 浏览器经公网地址:登录表单渲染 → 登录 200 → 进入系统 → 仪表盘 6 引擎面板完整渲染(WS/实时链路经隧道可用)。
 - 运维注意:本机并行会话共用单实例锁,他处 `aw stop` 可能终止本地实例(本轮复现一次并重启恢复);隧道进程不受影响,实例重启后映射自动恢复。
+
+---
+
+# 附录 · v0.7.16 增量(Agent 操作归属 + 日志/Recipe 自查工具)
+
+## 功能
+
+- **Agent 操作归属**:Agent 经 dcw_control 下发 / dcw_judge 判定 / dcw_rollback 回退,运维日志「来源」=Agent、「操作者」=「Channel名/成员名」(此前为 agentId UUID)。解析器 `agent-badge.ts` 由 plugins/workshop 装配注入(同 configureHitlResolver 防循环依赖模式);与用户(用户名)、系统(system)三条来源在 /logs 清晰区分。
+- **Recipe 变更记录**:recipe.apply(一键下发)/ optimization.open(单次设定开窗,含 Agent 假设)/ judge(三路判定)/ rollback(回退执行)全部入册 audit_log 并实时广播,Recipe 维度可追溯谁在何时对节点做了什么、是否已回退。
+- **Agent 自查工具**(注入 lead/worker 全体,host-tools.json + host-tool-bridge 分发):
+  - `ops_log`:负责产线的运维日志查询。参数 line_id/node_id/kind(write|recipe|rollback|daq|line)/actor_kind(agent|user|system)/minutes/limit/mine(只看自己)。
+  - `recipe_log`:配方下发与回退历史(recipe.apply + 优化开窗/判定/回退)。参数 line_id/recipe_id/minutes/limit。
+  - 权限 scoped:仅可查自己绑定节点覆盖的产线与节点;未绑定一律拒绝。
+- my_industrial_nodes 通用规则新增第 6 条,引导 Agent 作业前后自查。
+
+## 验证(隔离实例 :3021,AW_MODE=home)
+
+- E2E 38/39(`scripts/_dbg-opslog-agent-e2e.mjs`):
+  - 审计归属:Agent 下发后 audit 出现 `dcw.write.agent`,actorKind=agent,actorName=`opslog-omp-xxx/ops-omp-xxx` ✓
+  - 工具注入:omp/codex/dsh/opencode/mock 五引擎 worker 工具面均含 ops_log+recipe_log ✓
+  - 直调查询:ops_log 看到「来源=Agent」+人话操作者;recipe_log 看到配方下发/优化开窗;未绑定节点查询被拒 ✓
+  - **真实 LLM 任务 ×4 引擎**:omp/codex/dsh/opencode 全部自主调用两工具,交付引用日志与 Recipe 摘要并回带 LOGCHECK-OK/RECIPECHECK-OK 标记 ✓(mock 无 LLM 回合,由注入+直调覆盖)
+  - 唯一失败:dsh 任务终态被置 CANCELED(交付完整、标记齐全)——引擎收尾时序问题,与本功能无关,已记录。
+- /logs 页浏览器验证:来源列 用户/Agent/系统 三色徽标,操作者列 Channel/成员名,摘要含「(Agent)」后缀,截图 `.e2e-shots/opslog-logs-page.png`。

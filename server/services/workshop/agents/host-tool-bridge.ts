@@ -21,7 +21,7 @@ import type { WorkspaceTask } from '../types/task'
 import type { RpcHostToolDefinition } from './adapters/omp-rpc-client'
 import { loadHostToolDefs } from '../prompts/loader'
 import { daqRuntimeSettings } from '../settings'
-import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolMyIndustrialNodes } from './industrial-tools'
+import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolMyIndustrialNodes, toolOpsLog, toolRecipeLog } from './industrial-tools'
 import { listPluginTools } from './plugin-tools'
 import { extractTaskMode } from '../runtime/execution-mode'
 
@@ -158,6 +158,10 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       return toolDcwRollback(identity.agentId, args as { record_id?: string, node_id?: string, to?: string })
     case 'dcw_journal':
       return toolDcwJournal(identity.agentId, args as { node_id?: string, recipe_id?: string, limit?: number | string })
+    case 'ops_log':
+      return toolOpsLog(identity.agentId, args as Parameters<typeof toolOpsLog>[1])
+    case 'recipe_log':
+      return toolRecipeLog(identity.agentId, args as Parameters<typeof toolRecipeLog>[1])
   }
 
   const ws = ctx.getWorkspace()
@@ -599,6 +603,12 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       }
       case 'dcw_journal': {
         return toolDcwJournal(identity.agentId, args as { node_id?: string, recipe_id?: string, limit?: number | string })
+      }
+      case 'ops_log': {
+        return toolOpsLog(identity.agentId, args as Parameters<typeof toolOpsLog>[1])
+      }
+      case 'recipe_log': {
+        return toolRecipeLog(identity.agentId, args as Parameters<typeof toolRecipeLog>[1])
       }
     }
     return { text: `未知工具: ${req.toolName}`, isError: true }

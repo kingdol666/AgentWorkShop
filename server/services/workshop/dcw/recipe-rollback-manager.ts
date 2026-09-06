@@ -200,7 +200,7 @@ export class RecipeRollBackManager {
     return record.status === 'open' && Date.now() - Date.parse(record.setAt) > OPEN_RECORD_STALE_MS()
   }
 
-  judge(recordId: string, verdict: OptimizationVerdict, reason: string, by: 'agent' | 'system' | 'user', actor: string, opts?: { takeover?: boolean }): OptimizationRecord {
+  judge(recordId: string, verdict: OptimizationVerdict, reason: string, by: 'agent' | 'system' | 'user', actor: string, opts?: { takeover?: boolean, actorName?: string }): OptimizationRecord {
     const record = this.repo.byId(recordId)
     if (!record)
       throw new AppError(404, ErrorCodes.NOT_FOUND, `优化记录不存在: ${recordId}`)
@@ -218,7 +218,7 @@ export class RecipeRollBackManager {
     this.emit('judged', record)
     recordOps({
       actor,
-      actorName: actor,
+      actorName: opts?.actorName ?? actor,
       actorKind: by,
       action: 'optimization.judge',
       kind: 'rollback',
@@ -237,7 +237,7 @@ export class RecipeRollBackManager {
   // ================================================================
 
   /** 回退一条优化记录:目标 = 该记录的 from 值(设定前基线) */
-  async rollbackRecord(recordId: string, actor: string, by: 'agent' | 'user' | 'system', approvalId?: string): Promise<OptimizationRecord> {
+  async rollbackRecord(recordId: string, actor: string, by: 'agent' | 'user' | 'system', approvalId?: string, opts?: { actorName?: string }): Promise<OptimizationRecord> {
     const record = this.repo.byId(recordId)
     if (!record)
       throw new AppError(404, ErrorCodes.NOT_FOUND, `优化记录不存在: ${recordId}`)
@@ -246,11 +246,11 @@ export class RecipeRollBackManager {
       throw new AppError(409, ErrorCodes.CONFLICT, `记录 ${recordId} 无基线值(首写无 prevValue),无法回退`)
     if (by === 'agent')
       this.checkRollbackAllowed(record.nodeId)
-    return this.executeRollbackWrite(record, from, actor, approvalId, undefined, by)
+    return this.executeRollbackWrite(record, from, actor, approvalId, undefined, by, opts?.actorName)
   }
 
   /** 节点级单步回退:目标 = 最近稳定锚的 prevValue(撤销栈栈顶) */
-  async rollbackNode(nodeId: string, actor: string, by: 'agent' | 'user' | 'system', toAnchorId?: string): Promise<OptimizationRecord> {
+  async rollbackNode(nodeId: string, actor: string, by: 'agent' | 'user' | 'system', toAnchorId?: string, opts?: { actorName?: string }): Promise<OptimizationRecord> {
     const node = getDcwNodeRepo().byId(nodeId)
     if (!node)
       throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${nodeId}`)
@@ -274,6 +274,7 @@ export class RecipeRollBackManager {
       undefined,
       toAnchorId,
       by,
+      opts?.actorName,
     )
   }
 
@@ -336,6 +337,7 @@ export class RecipeRollBackManager {
     approvalId?: string,
     toAnchorId?: string,
     by: 'agent' | 'user' | 'system' = 'system',
+    actorName?: string,
   ): Promise<OptimizationRecord> {
     // 先关原记录(防回退写自身的 afterWrite 把它当 open supersede)
     const orig = this.repo.byId(record.id)
@@ -368,7 +370,7 @@ export class RecipeRollBackManager {
       this.emit('rolled-back', orig)
       recordOps({
         actor,
-        actorName: actor,
+        actorName: actorName ?? actor,
         actorKind: by === 'agent' ? 'agent' : by === 'user' ? 'user' : 'system',
         action: 'optimization.rollback',
         kind: 'rollback',

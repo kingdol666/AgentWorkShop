@@ -11,6 +11,7 @@ import type { AgentNodeBinding } from './node-bindings.repo'
 import { getAgentNodeBindingRepo } from './node-bindings.repo'
 import { getToolApprovals } from './tool-approvals'
 import { nodeSemanticCards } from './industrial-context'
+import { agentBadgeLabel } from './agent-badge'
 import { getDcwController } from '../dcw/dcw-controller'
 import { getActiveLineRun } from '../dcw/line-run'
 import { findDcwTemplate } from '../dcw/dcw-templates'
@@ -18,6 +19,7 @@ import { daqRuntimeSettings } from '../settings'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { findDaqTemplate } from '../daq/daq-templates'
 import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
+import { getOps } from '../ops/ops'
 
 export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: string }> {
   const repo = getAgentNodeBindingRepo()
@@ -65,7 +67,11 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
 4. 改动设定后等待工艺响应(热惯性/传动惯量)再评估,避免连续大幅调整。
 5. 调控闭环:每次下发自动开一条优化记录(open);观察数采后用 dcw_judge 落判定(keep/rollback/uncertain);
    判 rollback 后用 dcw_rollback 执行回退;dcw_journal 可查节点参数变更史。未判定前再下发,旧记录会被标记 superseded。
-   若节点被他人的 open 记录阻塞(对方已消失),超时(30 分钟)后你可接管:dcw_judge 会带接管标记入册。`,
+   若节点被他人的 open 记录阻塞(对方已消失),超时(30 分钟)后你可接管:dcw_judge 会带接管标记入册。
+6. 自查面:ops_log 查你负责产线的运维日志(谁/何时做了什么,来源区分 Agent/用户/系统;
+   参数 line_id/node_id/kind/actor_kind/minutes/limit/mine);recipe_log 查配方下发与回退历史
+   (recipe.apply/优化开窗/判定/回退,参数 line_id/recipe_id/minutes/limit)。
+   作业前后各查一次,即可完整知道自己与团队对当前节点做过哪些操作、Recipe 有过哪些变更。`,
   }
 }
 
@@ -123,6 +129,8 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
     const meta = {
       source: 'agent' as const,
       actor: agentId,
+      // 人话操作者:「Channel名/成员名」——/logs 来源=Agent 与用户/系统操作可区分追溯
+      actorName: agentBadgeLabel(agentId),
       taskId: args.task_id ? String(args.task_id) : undefined,
       hypothesis: args.hypothesis ? String(args.hypothesis) : '',
     }
@@ -355,7 +363,7 @@ export async function toolDcwJudge(agentId: string, args: { record_id?: string, 
     return { text: `记录 ${recordId} 不是你发起的优化(发起者:${record.agentId ?? '用户'}),Agent 仅可判定自己的记录;他人记录请请用户在界面判定。`, isError: true }
   try {
     const finalReason = takeover ? `[接管孤儿记录,原属主 ${record.agentId ?? '?'} 超时未判定] ${reason}` : reason
-    const updated = rb.judge(recordId, verdict, finalReason, 'agent', agentId, { takeover })
+    const updated = rb.judge(recordId, verdict, finalReason, 'agent', agentId, { takeover, actorName: agentBadgeLabel(agentId) })
     const next = verdict === 'rollback'
       ? '判定已入册;请立即用 dcw_rollback(record_id) 执行回退(判定不自动改 PLC)。'
       : verdict === 'keep'
@@ -385,10 +393,10 @@ export async function toolDcwRollback(agentId: string, args: { record_id?: strin
       const takeover = record.agentId !== agentId && rb.isStale(record)
       if (record.agentId !== agentId && !takeover)
         return { text: `记录 ${recordId} 不是你发起的优化(发起者:${record.agentId ?? '用户'}),回退他人记录请请用户在数采中心/产线详情执行;若原属主已消失(超时未判定),可先 dcw_judge 接管后再回退。`, isError: true }
-      const fresh = await rb.rollbackRecord(recordId, agentId, 'agent')
+      const fresh = await rb.rollbackRecord(recordId, agentId, 'agent', undefined, { actorName: agentBadgeLabel(agentId) })
       return { text: `回退已执行:记录 ${recordId} 标记 rolled-back;下发恢复值 ${fresh?.params[0]?.to}${'(以回读为准)'};新回退记录 ${fresh?.id} 已入册。请 daq_query 复测确认恢复。` }
     }
-    const fresh = await rb.rollbackNode(nodeId, agentId, 'agent', to)
+    const fresh = await rb.rollbackNode(nodeId, agentId, 'agent', to, { actorName: agentBadgeLabel(agentId) })
     return { text: `节点单步回退已执行:恢复到最近稳定锚值;新回退记录 ${fresh?.id} 已入册。请 daq_query 复测确认恢复。` }
   }
   catch (err) {
@@ -480,4 +488,131 @@ export async function toolDaqFrames(agentId: string, args: {
     }
   }
   return { text: `数采帧查询结果(${targets.length} 个节点):\n\n${sections.join('\n\n')}\n\n向量=多点工程量轮廓(完整点列前端可查);图像=像素在对象存储,指标供判读(brightness 过低=曝光不足/遮挡)。` }
+}
+
+// ================================================================
+// 运维日志 / Recipe 变更史查询(Agent 自查面:负责产线 scoped)
+// ================================================================
+
+/** Agent 负责范围 = 绑定节点的全集(节点 id 集 + 这些节点所属产线集);无绑定 = 无范围 */
+function agentOpsScope(agentId: string): { lineIds: string[], nodeIds: Set<string> } | null {
+  const bindings = getAgentNodeBindingRepo().byAgent(agentId)
+  if (bindings.length === 0) return null
+  const lineIds = new Set<string>()
+  const nodeIds = new Set<string>()
+  for (const b of bindings) {
+    nodeIds.add(b.nodeId)
+    try {
+      const n = b.kind === 'dcw' ? getDcwController().byId(b.nodeId) : getDaqNodeRepo().byId(b.nodeId)
+      if (n?.lineId) lineIds.add(n.lineId)
+    }
+    catch { /* 节点刚被删等情况忽略 */ }
+  }
+  return { lineIds: [...lineIds], nodeIds }
+}
+
+const OPS_ACTOR_LABEL: Record<string, string> = { agent: 'Agent', user: '用户', system: '系统' }
+
+function fmtAuditAt(iso: string): string {
+  return iso.length >= 19 ? iso.slice(5, 19).replace('T', ' ') : iso
+}
+
+/** 工具:ops_log —— 负责产线的运维/审计日志查询(全部下发/判定/回退/配方/产线事件)。
+ *  权限:仅自己绑定节点所覆盖的产线;node_id 须为绑定节点。来源(actor_kind)区分 Agent/用户/系统。 */
+export async function toolOpsLog(agentId: string, args: {
+  line_id?: string
+  node_id?: string
+  kind?: string
+  actor_kind?: string
+  minutes?: number | string
+  limit?: number | string
+  mine?: boolean | string
+}): Promise<{ text: string, isError?: boolean }> {
+  const audit = getOps()?.audit
+  if (!audit) return { text: '审计仓储未装配(服务未就绪),请稍后重试。', isError: true }
+  const scope = agentOpsScope(agentId)
+  if (!scope) return { text: '你尚未绑定任何工业节点,无日志可查(日志权限跟随节点绑定)。', isError: true }
+  const nodeId = String(args.node_id ?? '').trim()
+  const lineId = String(args.line_id ?? '').trim()
+  if (nodeId && !scope.nodeIds.has(nodeId))
+    return { text: `无权查询节点 ${nodeId} 的日志(仅可查自己绑定的节点;用 my_industrial_nodes 查看绑定)。`, isError: true }
+  if (lineId && !scope.lineIds.includes(lineId))
+    return { text: `无权查询产线 ${lineId} 的日志(你的负责产线:${scope.lineIds.join(', ') || '(绑定节点均未分配产线)'})。`, isError: true }
+  const kind = String(args.kind ?? '').trim() || undefined
+  const actorKind = String(args.actor_kind ?? '').trim() || undefined
+  const mine = args.mine === true || args.mine === 'true'
+  const minutes = Number(args.minutes) || 1440
+  const limit = Math.min(Number(args.limit) || 20, 100)
+  const from = new Date(Date.now() - minutes * 60_000).toISOString()
+
+  const lines = lineId ? [lineId] : scope.lineIds
+  const byId = new Map<string, Record<string, unknown>>()
+  for (const lid of lines) {
+    for (const r of audit.query({ lineId: lid, kind, actorKind, actor: mine ? agentId : undefined, from, limit }))
+      byId.set(String(r.id), r)
+  }
+  let rows = [...byId.values()]
+  if (nodeId) rows = rows.filter(r => r.targetId === nodeId)
+  rows.sort((a, b) => String(b.at).localeCompare(String(a.at)))
+  rows = rows.slice(0, limit)
+  if (rows.length === 0) return { text: `窗口(近 ${minutes} 分钟)内无匹配日志。可调大 minutes,或放宽 kind/actor_kind/node_id 过滤。` }
+
+  const body = rows.map((r) => {
+    const src = OPS_ACTOR_LABEL[String(r.actorKind)] ?? String(r.actorKind)
+    return `- [${fmtAuditAt(String(r.at))}] 来源=${src} 操作者=${String(r.actorName) || String(r.actor)} | ${String(r.action)} | ${String(r.summary)}`
+  })
+  const scopeNote = lineId ? `产线 ${lineId}` : `负责产线 ${scope.lineIds.length} 条`
+  return {
+    text: `运维日志(${scopeNote},近 ${minutes} 分钟,${rows.length} 条,新→旧):\n${body.join('\n')}\n\n说明:来源=Agent 的操作者格式为「Channel名/成员名」;需要节点级参数值变更史用 dcw_journal,配方下发/回退专门视图用 recipe_log。`,
+  }
+}
+
+/** 工具:recipe_log —— 负责产线的配方下发与回退历史(recipe.apply + 优化开窗/判定/回退)。
+ *  Agent 据此知道 Recipe 层面发生过哪些下发变更、谁做的、是否已回退。 */
+export async function toolRecipeLog(agentId: string, args: {
+  line_id?: string
+  recipe_id?: string
+  minutes?: number | string
+  limit?: number | string
+}): Promise<{ text: string, isError?: boolean }> {
+  const audit = getOps()?.audit
+  if (!audit) return { text: '审计仓储未装配(服务未就绪),请稍后重试。', isError: true }
+  const scope = agentOpsScope(agentId)
+  if (!scope) return { text: '你尚未绑定任何工业节点,无 Recipe 历史可查(权限跟随节点绑定)。', isError: true }
+  const lineId = String(args.line_id ?? '').trim()
+  if (lineId && !scope.lineIds.includes(lineId))
+    return { text: `无权查询产线 ${lineId} 的 Recipe 历史(你的负责产线:${scope.lineIds.join(', ') || '(无)'})。`, isError: true }
+  const recipeId = String(args.recipe_id ?? '').trim() || undefined
+  const minutes = Number(args.minutes) || 1440
+  const limit = Math.min(Number(args.limit) || 20, 100)
+  const from = new Date(Date.now() - minutes * 60_000).toISOString()
+
+  const lines = lineId ? [lineId] : scope.lineIds
+  const byId = new Map<string, Record<string, unknown>>()
+  for (const lid of lines) {
+    for (const kind of ['recipe', 'rollback']) {
+      for (const r of audit.query({ lineId: lid, kind, recipeId, from, limit }))
+        byId.set(String(r.id), r)
+    }
+  }
+  const rows = [...byId.values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, limit)
+  if (rows.length === 0) return { text: `窗口(近 ${minutes} 分钟)内无配方下发/回退记录。可调大 minutes 或换 line_id。` }
+
+  const body = rows.map((r) => {
+    const src = OPS_ACTOR_LABEL[String(r.actorKind)] ?? String(r.actorKind)
+    const action = String(r.action)
+    const tag = action === 'recipe.apply'
+      ? '配方下发'
+      : action === 'optimization.open'
+        ? '优化开窗'
+        : action === 'optimization.judge'
+          ? '优化判定'
+          : action === 'optimization.rollback'
+            ? '回退执行'
+            : action
+    return `- [${fmtAuditAt(String(r.at))}] ${tag} 来源=${src} 操作者=${String(r.actorName) || String(r.actor)} | ${String(r.summary)}${r.recipeId ? `(配方 ${String(r.recipeId).slice(0, 8)})` : ''}`
+  })
+  return {
+    text: `Recipe 变更史(${lineId ? `产线 ${lineId}` : `负责产线 ${scope.lineIds.length} 条`},近 ${minutes} 分钟,${rows.length} 条,新→旧):\n${body.join('\n')}\n\n说明:配方下发=整批参数写命令;优化开窗=单次设定变更(含 Agent 假设);回退执行=已恢复基线值。节点级参数值逐笔历史用 dcw_journal(node_id)。`,
+  }
 }
