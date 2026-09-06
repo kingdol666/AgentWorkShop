@@ -815,5 +815,110 @@
     }
    }
   }
+ },
+ {
+  "name": "line_context",
+  "label": "Line Context",
+  "description": "查看你控制的产线/产品/配方全景:产线名与运行态、活动批次(产品、配方名/版本/逐参数目标 vs PLC 当前值)、你绑定的节点、已知良好批次。动手前必读,确认自己操控的是哪条产线、哪个产品、哪个配方。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "line_id": {
+     "type": "string",
+     "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
+    }
+   }
+  }
+ },
+ {
+  "name": "recipe_versions",
+  "label": "Recipe Versions",
+  "description": "查看配方参数版本史(旧→新):每版的来源(user/agent/system)、操作者(用户名或 Channel名/成员名)、变更原因、参数 diff。回退定位与审计必查。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "recipe_id": {
+     "type": "string",
+     "description": "配方 id(必填;line_context 可看到)"
+    },
+    "limit": {
+     "type": "number",
+     "description": "返回最近 N 条(缺省 20,最大 50)"
+    }
+   }
+  }
+ },
+ {
+  "name": "recipe_update",
+  "label": "Recipe Update",
+  "description": "把验证过的最佳工艺参数保存进配方(部分合并,生成新版本并记录你的名字与原因)。只改配方定义,下一批次生效;不改运行中 PLC 当前值(用 dcw_control)。必须提供 reason(数采证据/判定结论)。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "recipe_id": {
+     "type": "string",
+     "description": "配方 id(必填)"
+    },
+    "params": {
+     "type": "array",
+     "description": "要更新的参数列表(部分合并,只列要改的节点)",
+     "items": {
+      "type": "object",
+      "properties": {
+       "node_id": {
+        "type": "string",
+        "description": "数控节点 id(须为你绑定 dcw 的节点)"
+       },
+       "value": {
+        "type": "number",
+        "description": "新的目标值"
+       },
+       "min": {
+        "type": "number",
+        "description": "可选:新配方窗口下限"
+       },
+       "max": {
+        "type": "number",
+        "description": "可选:新配方窗口上限"
+       }
+      }
+     }
+    },
+    "reason": {
+     "type": "string",
+     "description": "保存原因(必填;写明依据)"
+    },
+    "task_id": {
+     "type": "string",
+     "description": "关联任务 id(可选)"
+    }
+   }
+  }
+ },
+ {
+  "name": "recipe_rollback",
+  "label": "Recipe Rollback",
+  "description": "回退配方参数到稳定版本:指定历史版本(version)或已知良好批次冻结(to_last_good=true)。生成新版本(非破坏,历史保留);不改运行中 PLC。必须提供 reason。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "recipe_id": {
+     "type": "string",
+     "description": "配方 id(必填)"
+    },
+    "version": {
+     "type": "number",
+     "description": "回退到该历史版本(version 与 to_last_good 二选一)"
+    },
+    "to_last_good": {
+     "type": "boolean",
+     "description": "true=回退到已知良好批次参数冻结"
+    },
+    "reason": {
+     "type": "string",
+     "description": "回退原因(必填)"
+    }
+   }
+  }
  }
 ]

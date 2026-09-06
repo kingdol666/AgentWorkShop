@@ -199,3 +199,25 @@ LOWER(email) OR LOWER(name) 匹配。发布:agentworkshop@0.7.13(npm latest)。
   - **真实 LLM 任务 ×4 引擎**:omp/codex/dsh/opencode 全部自主调用两工具,交付引用日志与 Recipe 摘要并回带 LOGCHECK-OK/RECIPECHECK-OK 标记 ✓(mock 无 LLM 回合,由注入+直调覆盖)
   - 唯一失败:dsh 任务终态被置 CANCELED(交付完整、标记齐全)——引擎收尾时序问题,与本功能无关,已记录。
 - /logs 页浏览器验证:来源列 用户/Agent/系统 三色徽标,操作者列 Channel/成员名,摘要含「(Agent)」后缀,截图 `.e2e-shots/opslog-logs-page.png`。
+
+---
+
+# 附录 · v0.7.17 增量(Recipe 版本管理 + Agent 操控闭环)
+
+## 功能
+
+- **Recipe 归因版本史**:`paramsHistory` 每条扩展 `by(user/agent/system)/actorName(人话操作者)/actor/description`;PATCH 界面编辑自动归因当前用户。
+- **REST**:`GET /recipes/:id/versions`(旧→新+当前版);`POST /recipes/:id/revert`(version 或 toLastGood,生成新版本,非破坏);运维日志新增 `recipe.update(.agent)`/`recipe.revert` 入册。
+- **Agent 工具 ×4**(全 harness 注入):
+  - `line_context`:我控制的产线/产品/配方全景(运行态、活动批次、逐参数目标 vs PLC 当前值、我的绑定、lastGood;未开跑时列配方定义)。
+  - `recipe_versions`:版本史(谁/何时/为什么/参数 diff)。
+  - `recipe_update`:最佳参数保存进配方(部分合并;逐节点 dcw 绑定鉴权;reason 必填;生成新版本;只改定义不改运行中 PLC)。
+  - `recipe_rollback`:回退到指定版本或 lastGood 冻结(reason 必填;非破坏)。
+- **前端**:产品与配方模块配方卡显示 vN 徽标 + 「版本历史」面板(来源徽标 用户/Agent/系统、操作者、原因、参数 diff、逐版「回退到此版」)。
+
+## 验证(隔离实例 :3021,E2E 24/24 `scripts/_dbg-recipe-e2e.mjs`)
+
+- REST 版本流:PATCH→v2(admin 归因)→ Agent recipe_update→v3(Channel/成员归因)→ REST revert→v4 → Agent rollback→v5,参数值逐版断言全过。
+- 工具注入:4 新工具在 omp worker 工具清单;负向(无 reason/未绑定节点/不存在版本)全拒。
+- **真实 LLM 闭环任务(omp)**:Agent 自主 line_context 确认归属 → recipe_update 保存 92(v6,归因 agent)→ recipe_versions 复核,交付回带 CONTEXT-OK/SAVED-OK/HIST-OK,服务端参数值断言 92 ✓。
+- 浏览器:版本历史面板渲染 + 界面回退生成 v4,截图 `.e2e-shots/recipe-history-panel.png`。

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { DCW_DRIVERS, type DcwParamLedger, type DcwTemplateIcon, type LineQueryResult, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_DRIVERS, type DcwParamLedger, type DcwTemplateIcon, type LineQueryResult, type RecipeRunData, type RecipeView } from '#shared/dcw-protocol'
 import type { DriverConfigField } from '#shared/daq-protocol'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
 import { useDaqStream } from '~/composables/workshop/useDaqStream'
@@ -388,6 +388,63 @@ const visibleRecipes = computed(() =>
     : lineRecipesAll.value,
 )
 const productName = (id: string): string => dcw.products.find(p => p.id === id)?.name ?? id
+
+// ---------- 配方版本历史(整体修改变更记录;来源=用户/Agent/系统 + 操作者 + 回退) ----------
+interface RecipeVersionRow {
+  version: number
+  at: string
+  by?: string
+  actorName?: string
+  description?: string
+  params: Array<{ nodeId: string, value: number, min?: number, max?: number }>
+  current?: boolean
+}
+const verOpen = ref(false)
+const verRecipe = ref<RecipeView | null>(null)
+const verRows = ref<RecipeVersionRow[]>([])
+const verLoading = ref(false)
+const verMsg = ref('')
+
+async function openRecipeHistory(id: string): Promise<void> {
+  verRecipe.value = dcw.recipes.find(r => r.id === id) ?? null
+  verOpen.value = true
+  verMsg.value = ''
+  verLoading.value = true
+  try {
+    verRows.value = await dcw.recipeVersions(id)
+  }
+  catch (err) {
+    verMsg.value = apiErrorMessage(err)
+  }
+  finally {
+    verLoading.value = false
+  }
+}
+
+const verSrcLabel = (by?: string): string => (by === 'agent' ? 'Agent' : by === 'system' ? t('dcwDetail.srcSystem') : t('dcwDetail.srcUser'))
+
+function verDiff(row: RecipeVersionRow, idx: number): string {
+  if (idx === 0) return t('dcwDetail.histInit')
+  const prev = verRows.value[idx - 1]!
+  const changed = row.params
+    .map(p => ({ p, old: prev.params.find(x => x.nodeId === p.nodeId) }))
+    .filter(({ p, old }) => !old || old.value !== p.value)
+    .map(({ p, old }) => `${dcw.nodes.find(n => n.id === p.nodeId)?.name ?? p.nodeId}: ${old?.value ?? t('dcwDetail.histAdded')} → ${p.value}`)
+  return changed.length > 0 ? changed.join('；') : t('dcwDetail.histNoChange')
+}
+
+async function doRevert(version: number): Promise<void> {
+  if (!verRecipe.value) return
+  verMsg.value = ''
+  try {
+    const recipe = await dcw.revertRecipe(verRecipe.value.id, { version, reason: t('dcwDetail.revertReasonUi') })
+    verMsg.value = t('dcwDetail.revertOk', { p0: recipe.version ?? 0 })
+    verRows.value = await dcw.recipeVersions(verRecipe.value.id)
+  }
+  catch (err) {
+    verMsg.value = apiErrorMessage(err)
+  }
+}
 
 // ---------- 产线数据查询(产品/配方/参数/时间/间隔;限定本产线通道) ----------
 const query = reactive({
@@ -1352,6 +1409,11 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         >
           <div class="recipe-name">
             <b>{{ r.name }}</b>
+            <span
+              v-if="r.version"
+              class="param-chip mono"
+              :title="t('dcwDetail.histTitle')"
+            >v{{ r.version }}</span>
             <small class="dim">{{ productName(r.productId) }}</small>
             <small class="mono dim">{{ r.id }}</small>
           </div>
@@ -1390,6 +1452,15 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               @click="openRecipeEdit(r.id)"
             >
               {{ $t('dcwDetail.k45eb0072') }}
+            </button>
+            <button
+              class="mini-btn"
+              @click="openRecipeHistory(r.id)"
+            >
+              {{ t('dcwDetail.histBtn') }}<span
+                v-if="r.version"
+                class="mono"
+              >·v{{ r.version }}</span>
             </button>
             <button
               class="mini-btn danger"
@@ -1781,6 +1852,86 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           >
             {{ recipeSaving ? $t('dcwDetail.k1b38d59164') : $t('dcwDetail.k1b3kwg0177') }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 配方版本历史(整体修改变更记录:来源/操作者/原因/参数 diff + 回退) -->
+    <div
+      v-if="verOpen"
+      class="modal-mask"
+      @click.self="verOpen = false"
+    >
+      <div
+        class="modal"
+        style="max-width: 760px;"
+      >
+        <div class="modal-head">
+          <h3>
+            {{ t('dcwDetail.histTitle') }}<span
+              v-if="verRecipe"
+              class="dim"
+              style="margin-left: 8px; font-size: 12px;"
+            >{{ verRecipe.name }} · v{{ verRecipe.version }}</span>
+          </h3>
+          <button
+            class="mini-btn"
+            @click="verOpen = false"
+          >
+            ✕
+          </button>
+        </div>
+        <p
+          v-if="verMsg"
+          class="banner good"
+          style="margin: 6px 0;"
+        >
+          {{ verMsg }}
+        </p>
+        <p
+          v-if="verLoading"
+          class="dim"
+        >
+          {{ t('dcwDetail.histLoading') }}
+        </p>
+        <div
+          v-else-if="verRows.length === 0"
+          class="pane-empty"
+        >
+          {{ t('dcwDetail.histEmpty') }}
+        </div>
+        <div
+          v-for="(row, i) in verRows"
+          v-else
+          :key="row.version"
+          class="ver-row"
+          :class="{ cur: row.current }"
+        >
+          <div class="ver-head">
+            <span class="mono ver-v">v{{ row.version }}</span>
+            <span
+              class="ver-src"
+              :class="row.by ?? (row.current ? 'cur' : '')"
+            >{{ row.current ? t('dcwDetail.histCurrent') : verSrcLabel(row.by) }}</span>
+            <span class="mono dim">{{ row.at.slice(0, 19).replace('T', ' ') }}</span>
+            <span class="ver-actor">{{ row.actorName || '—' }}</span>
+            <button
+              v-if="!row.current"
+              class="mini-btn"
+              @click="doRevert(row.version)"
+            >
+              {{ t('dcwDetail.revertTo') }}
+            </button>
+          </div>
+          <p
+            v-if="row.description"
+            class="ver-desc"
+          >
+            {{ row.description }}
+          </p>
+          <p class="ver-diff mono">
+            {{ verDiff(row, i) }}
+          </p>
         </div>
       </div>
     </div>
@@ -2282,6 +2433,19 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .recipe-params { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .param-chip { padding: 2px 8px; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: var(--radius-chip); }
 .recipe-actions { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+/* ---------- 配方版本历史 ---------- */
+.ver-row { padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--divider-hair); border-radius: 10px; }
+.ver-row.cur { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.ver-head { display: flex; gap: 10px; align-items: center; }
+.ver-v { font-weight: 700; font-size: 13px; }
+.ver-src { padding: 1px 8px; font-size: 10.5px; border: 1px solid var(--line-strong); border-radius: var(--radius-pill); }
+.ver-src.agent { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.ver-src.user { color: var(--ink-soft); }
+.ver-src.system { color: var(--ink-faint); }
+.ver-src.cur { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); border-color: transparent; }
+.ver-actor { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+.ver-desc { margin: 6px 0 0; font-size: 12px; color: var(--ink); }
+.ver-diff { margin: 4px 0 0; font-size: 11px; color: var(--ink-faint); }
 .sec-label { margin: 14px 0 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); }
 .runs { margin-top: 6px; }
 .pill-btn { padding: 6px 14px; font-size: 12.5px; cursor: pointer; color: var(--paper-raised); background: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius-pill); }

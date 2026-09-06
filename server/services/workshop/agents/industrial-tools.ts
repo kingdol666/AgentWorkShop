@@ -20,6 +20,9 @@ import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { findDaqTemplate } from '../daq/daq-templates'
 import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
 import { getOps } from '../ops/ops'
+import { getDcwLineRepo } from '../dcw/dcw-line.repo'
+import { getDcwProductRepo } from '../dcw/dcw-product.repo'
+import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
 
 export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: string }> {
   const repo = getAgentNodeBindingRepo()
@@ -68,10 +71,13 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
 5. 调控闭环:每次下发自动开一条优化记录(open);观察数采后用 dcw_judge 落判定(keep/rollback/uncertain);
    判 rollback 后用 dcw_rollback 执行回退;dcw_journal 可查节点参数变更史。未判定前再下发,旧记录会被标记 superseded。
    若节点被他人的 open 记录阻塞(对方已消失),超时(30 分钟)后你可接管:dcw_judge 会带接管标记入册。
-6. 自查面:ops_log 查你负责产线的运维日志(谁/何时做了什么,来源区分 Agent/用户/系统;
-   参数 line_id/node_id/kind/actor_kind/minutes/limit/mine);recipe_log 查配方下发与回退历史
-   (recipe.apply/优化开窗/判定/回退,参数 line_id/recipe_id/minutes/limit)。
-   作业前后各查一次,即可完整知道自己与团队对当前节点做过哪些操作、Recipe 有过哪些变更。`,
+6. 自查面:line_context 看你控制的产线/产品/配方全景(动手前必读,确认归属);
+   ops_log 查你负责产线的运维日志(谁/何时做了什么,来源区分 Agent/用户/系统;
+   参数 line_id/node_id/kind/actor_kind/minutes/limit/mine);recipe_log 查配方下发与回退事件;
+   recipe_versions 查配方参数版本史(谁改的/为什么/参数 diff)。
+7. 配方操控闭环(在线优化框架):验证过参数更优 → recipe_update 保存进配方(记录你的名字与原因,
+   生成新版本);发现优化有问题 → recipe_rollback 回退到稳定版本(version)或已知良好批次
+   (to_last_good=true);运行中 PLC 当前值用 dcw_control 下发,配方定义供后续批次生效。`,
   }
 }
 
@@ -614,5 +620,217 @@ export async function toolRecipeLog(agentId: string, args: {
   })
   return {
     text: `Recipe 变更史(${lineId ? `产线 ${lineId}` : `负责产线 ${scope.lineIds.length} 条`},近 ${minutes} 分钟,${rows.length} 条,新→旧):\n${body.join('\n')}\n\n说明:配方下发=整批参数写命令;优化开窗=单次设定变更(含 Agent 假设);回退执行=已恢复基线值。节点级参数值逐笔历史用 dcw_journal(node_id)。`,
+  }
+}
+
+// ================================================================
+// 产线上下文 + Recipe 版本管理(Agent 操控闭环:知道改什么 → 保存 → 可回退)
+// ================================================================
+
+/** 工具:line_context —— 我控制的产线/产品/Recipe 全景(归属认知 + 完整参数面)。
+ *  逐产线输出:产线名/运行态、活动批次(产品/配方/版本/参数)、我的节点绑定、
+ *  配方目标 vs PLC 当前值对照、lastGood 批次。 */
+export async function toolLineContext(agentId: string, args: { line_id?: string } = {}): Promise<{ text: string, isError?: boolean }> {
+  const scope = agentOpsScope(agentId)
+  if (!scope) return { text: '你尚未绑定任何工业节点,暂无产线上下文(请先在数字孪生界面绑定节点)。' }
+  const wanted = String(args.line_id ?? '').trim()
+  const lineIds = wanted ? [wanted] : scope.lineIds
+  if (wanted && !scope.lineIds.includes(wanted)) {
+    return { text: `产线 ${wanted} 不在你的负责范围(你绑定节点覆盖的产线:${scope.lineIds.join(', ') || '无'})。`, isError: true }
+  }
+  if (lineIds.length === 0) return { text: '你绑定的节点均未分配产线(未挂线的节点没有产线/产品/配方上下文)。' }
+
+  const sections: string[] = []
+  for (const lid of lineIds) {
+    const line = getDcwLineRepo().byId(lid)
+    const run = getActiveLineRun(lid)
+    const recipe = run?.recipeId ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
+    const parts: string[] = []
+    parts.push(`■ 产线 ${line?.name ?? lid}(${lid})· 状态:${run ? '运行中' : '待机/停线'}`)
+    if (run) {
+      parts.push(`  活动批次 ${run.runId.slice(0, 8)} · 产品「${run.productName}」(${run.productId}) · 开跑 ${run.startedAt.slice(11, 19)} · 已打标 ${run.taggedSamples} 样本`)
+    }
+    const myDcw = getAgentNodeBindingRepo().byAgent(agentId)
+      .filter(b => b.kind === 'dcw')
+      .map(b => getDcwController().byId(b.nodeId))
+      .filter(n => n?.lineId === lid)
+    const myDaq = getAgentNodeBindingRepo().byAgent(agentId)
+      .filter(b => b.kind === 'daq')
+      .map(b => getDaqNodeRepo().byId(b.nodeId))
+      .filter(n => n?.lineId === lid)
+    parts.push(`  我绑定的节点:数控 [${myDcw.map(n => n!.name).join(', ') || '无'}];数采 [${myDaq.map(n => n!.name).join(', ') || '无'}]`)
+    if (recipe) {
+      parts.push(`  配方「${recipe.name}」(${recipe.id}) v${recipe.version ?? 1}${recipe.description ? ` — ${recipe.description}` : ''}`)
+      for (const p of recipe.params) {
+        const node = getDcwController().byId(p.nodeId)
+        const mine = myDcw.some(n => n!.id === p.nodeId)
+        const cur = node?.value != null ? node.value : '?'
+        const win = p.min != null || p.max != null ? `(窗口 ${p.min ?? '-∞'}~${p.max ?? '+∞'})` : ''
+        parts.push(`    · ${node?.name ?? p.nodeId} = ${p.value}${node?.unit ?? ''}${win} | PLC 当前 ${cur}${node?.unit ?? ''}${mine ? ' [我负责]' : ''}`)
+      }
+      const good = recipe.lastGoodRunId ? getDcwRecipeRepo().runById(recipe.lastGoodRunId) : undefined
+      parts.push(`  已知良好批次:${good ? `${good.id.slice(0, 8)}(${good.startedAt.slice(0, 19).replace('T', ' ')})` : '未标记'};当前参数版本 v${recipe.version ?? 1}`)
+    }
+    else {
+      // 无活动批次:列出该产线的配方定义(产线未开跑也有配方上下文)
+      const lineRecipes = getDcwController().listRecipes().filter(r => r.lineId === lid).slice(0, 3)
+      if (lineRecipes.length === 0) {
+        parts.push('  当前无活动配方(产线未开跑;该产线也暂无配方定义)')
+      }
+      else {
+        parts.push(`  当前无活动批次;产线已有 ${lineRecipes.length} 个配方定义(开跑时绑定):`)
+        for (const r of lineRecipes) {
+          const product = r.productId ? getDcwProductRepo().byId(r.productId) : undefined
+          const pp = r.params.map((p) => {
+            const node = getDcwController().byId(p.nodeId)
+            const cur = node?.value != null ? node.value : '?'
+            return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}(PLC 当前 ${cur})`
+          }).join(', ')
+          parts.push(`    · 配方「${r.name}」(${r.id}) v${r.version ?? 1} · 产品「${product?.name ?? r.productId}」: ${pp}${r.lastGoodRunId ? ` [良好批次 ${r.lastGoodRunId.slice(0, 8)}]` : ''}`)
+        }
+      }
+    }
+    sections.push(parts.join('\n'))
+  }
+  return {
+    text: `你控制的产线全景(${sections.length} 条):\n\n${sections.join('\n\n')}\n\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时读数。把验证过的最佳参数固化到配方用 recipe_update;回退配方到稳定版本用 recipe_rollback;逐节点参数变更史用 dcw_journal;配方版本史用 recipe_versions。`,
+  }
+}
+
+/** 工具:recipe_versions —— 配方参数版本史(谁/何时/为什么改了什么;旧→新)。
+ *  每条含 by(user/agent/system)、操作者人话名、变更描述、参数 diff。 */
+export async function toolRecipeVersions(agentId: string, args: { recipe_id?: string, limit?: number | string }): Promise<{ text: string, isError?: boolean }> {
+  const recipeId = String(args.recipe_id ?? '').trim()
+  if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方的 id)。', isError: true }
+  const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+  if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  const scope = agentOpsScope(agentId)
+  if (!scope || !recipe.lineId || !scope.lineIds.includes(recipe.lineId)) {
+    return { text: `无权查看配方 ${recipeId} 的版本史(该配方不在你负责的产线上)。`, isError: true }
+  }
+  const rows = getDcwController().recipeVersions(recipeId)
+  const limit = Math.min(Number(args.limit) || 20, 50)
+  const shown = rows.slice(-limit)
+  const srcLabel: Record<string, string> = { user: '用户', agent: 'Agent', system: '系统' }
+  const lines = shown.map((v, i) => {
+    const prev = shown[i - 1]
+    let diff = '初始版本'
+    if (prev) {
+      const changed = v.params
+        .map(p => ({ p, old: prev.params.find(x => x.nodeId === p.nodeId) }))
+        .filter(({ p, old }) => !old || old.value !== p.value)
+        .map(({ p, old }) => `${getDcwController().byId(p.nodeId)?.name ?? p.nodeId} ${old?.value ?? '新增'}→${p.value}`)
+      const removed = prev.params.filter(o => !v.params.some(x => x.nodeId === o.nodeId)).map(o => `${o.nodeId} 移除`)
+      const all = [...changed, ...removed]
+      diff = all.length > 0 ? `变更:${all.join(';')}` : '参数未变'
+    }
+    const src = v.by ? (srcLabel[v.by] ?? v.by) : '—'
+    return `- v${v.version} [${v.at.slice(0, 19).replace('T', ' ')}] 来源=${src} 操作者=${v.actorName ?? '—'}${v.description ? ` | ${v.description}` : ''}\n    ${diff}`
+  })
+  return {
+    text: `配方「${recipe.name}」版本史(当前 v${recipe.version ?? 1},共 ${rows.length} 条,旧→新):\n${lines.join('\n')}\n\n回退用 recipe_rollback(recipe_id + version 或 to_last_good=true);保存新参数用 recipe_update。`,
+  }
+}
+
+/** 工具:recipe_update —— 把验证过的最佳参数保存进配方(生成新版本,带归因与原因)。
+ *  只改配方定义(下一批次生效);不改运行中 PLC 当前值(那用 dcw_control 逐节点下发)。 */
+export async function toolRecipeUpdate(agentId: string, args: {
+  recipe_id?: string
+  params?: Array<{ node_id?: string, value?: number | string, min?: number | string, max?: number | string }>
+  reason?: string
+  task_id?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const recipeId = String(args.recipe_id ?? '').trim()
+  const reason = String(args.reason ?? '').trim()
+  if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方的 id)。', isError: true }
+  if (!reason) return { text: 'reason 必填:保存参数必须说明依据(如数采证据/判定结论),便于版本史追溯。', isError: true }
+  const list = (args.params ?? []).filter(p => p && String(p.node_id ?? '').trim() && Number.isFinite(Number(p.value)))
+  if (list.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字)。', isError: true }
+  const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+  if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  const repo = getAgentNodeBindingRepo()
+  for (const p of list) {
+    const nodeId = String(p.node_id).trim()
+    const node = getDcwController().byId(nodeId)
+    if (!node) return { text: `节点 ${nodeId} 不存在。`, isError: true }
+    if (node.lineId !== recipe.lineId) return { text: `节点「${node.name}」不属于配方「${recipe.name}」所在产线,不可混入。`, isError: true }
+    if (!repo.find(agentId, nodeId, 'dcw')) {
+      return { text: `无权修改节点「${node.name}」的配方参数(仅可改自己绑定 dcw 的节点)。`, isError: true }
+    }
+  }
+  // 部分合并:只更新提供的节点,其余参数保持不变
+  const merged = recipe.params.map((p) => {
+    const patch = list.find(x => String(x.node_id).trim() === p.nodeId)
+    if (!patch) return { nodeId: p.nodeId, templateRef: p.templateRef, value: p.value, min: p.min, max: p.max }
+    const out: { nodeId: string, templateRef?: string, value: number, min?: number, max?: number } = { nodeId: p.nodeId, templateRef: p.templateRef, value: Number(patch.value) }
+    if (p.min != null) out.min = p.min
+    if (patch.min != null && Number.isFinite(Number(patch.min))) out.min = Number(patch.min)
+    if (p.max != null) out.max = p.max
+    if (patch.max != null && Number.isFinite(Number(patch.max))) out.max = Number(patch.max)
+    return out
+  })
+  const extra = list.filter(p => !recipe.params.some(x => x.nodeId === String(p.node_id).trim()))
+  for (const p of extra) merged.push({ nodeId: String(p.node_id).trim(), value: Number(p.value) })
+  try {
+    const updated = getDcwController().updateRecipe(recipeId, { params: merged }, {
+      by: 'agent',
+      actorName: agentBadgeLabel(agentId),
+      actor: agentId,
+      description: reason,
+    })
+    const changedNodes = list.map((p) => {
+      const node = getDcwController().byId(String(p.node_id).trim())
+      const before = recipe.params.find(x => x.nodeId === String(p.node_id).trim())?.value
+      return `${node?.name ?? p.node_id} ${before ?? '?'}→${Number(p.value)}`
+    }).join(';')
+    return {
+      text: `已保存为 v${updated.version ?? 1}:「${updated.name}」参数 ${changedNodes};原因:${reason}。\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产,新参数从下次开跑/一键下发生效;要把新值写入运行中的 PLC,用 dcw_control 逐节点下发(走安全联锁)。回退用 recipe_rollback。`,
+    }
+  }
+  catch (err) {
+    return { text: `保存失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+}
+
+/** 工具:recipe_rollback —— 回退配方参数到稳定版本(指定历史版本或已知良好批次快照)。
+ *  生成新版本(非破坏,历史保留);不改运行中 PLC 当前值。 */
+export async function toolRecipeRollback(agentId: string, args: {
+  recipe_id?: string
+  version?: number | string
+  to_last_good?: boolean | string
+  reason?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const recipeId = String(args.recipe_id ?? '').trim()
+  const reason = String(args.reason ?? '').trim()
+  const toLastGood = args.to_last_good === true || args.to_last_good === 'true'
+  const version = Number(args.version)
+  if (!recipeId) return { text: 'recipe_id 必填。', isError: true }
+  if (!reason) return { text: 'reason 必填:回退必须说明原因(如优化翻车/越限),便于版本史追溯。', isError: true }
+  if (!toLastGood && !Number.isFinite(version)) return { text: '需提供 version(历史版本号)或 to_last_good=true。', isError: true }
+  const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+  if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  const scope = agentOpsScope(agentId)
+  if (!scope || !recipe.lineId || !scope.lineIds.includes(recipe.lineId)) {
+    return { text: `无权回退配方 ${recipeId}(该配方不在你负责的产线上)。`, isError: true }
+  }
+  if (!toLastGood && Number.isFinite(version) && version >= (recipe.version ?? 1)) {
+    return { text: `不能回退到 v${version}(当前已是 v${recipe.version ?? 1};回退目标是更早的版本)。`, isError: true }
+  }
+  try {
+    const updated = getDcwController().revertRecipe(recipeId, {
+      version: toLastGood ? undefined : version,
+      toLastGood,
+    }, {
+      by: 'agent',
+      actorName: agentBadgeLabel(agentId),
+      actor: agentId,
+      description: reason,
+    })
+    return {
+      text: `回退完成:配方「${updated.name}」已生成 v${updated.version ?? 1},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`});原因:${reason}。\n运行中批次不受影响(仍按开跑冻结参数);新参数下次开跑生效。版本史用 recipe_versions 复核。`,
+    }
+  }
+  catch (err) {
+    return { text: `回退失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
   }
 }

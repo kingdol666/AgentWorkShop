@@ -377,8 +377,20 @@ export interface RecipeView {
   daqWindows: RecipeDaqWindow[]
   /** 参数版本(活动批次外的 params 修改自增;回退/审计定位用) */
   version?: number
-  /** 参数版本历史(cap 20:每次活动批次外的 params 修改存旧版) */
-  paramsHistory?: Array<{ version: number, params: RecipeParam[], at: string }>
+  /** 参数版本历史(cap 20:每次活动批次外的 params 修改存旧版;by/actorName/actor/description 为变更归因) */
+  paramsHistory?: Array<{
+    version: number
+    params: RecipeParam[]
+    at: string
+    /** 变更来源:user/agent/system */
+    by?: string
+    /** 人话操作者(用户名或「Channel名/成员名」) */
+    actorName?: string
+    /** 原始 id(userId/agentId/'system') */
+    actor?: string
+    /** 变更描述/原因 */
+    description?: string
+  }>
   /** 已知良好批次(判定 keep / 手动标记;基准恢复的目标) */
   lastGoodRunId?: string | null
   createdAt: string

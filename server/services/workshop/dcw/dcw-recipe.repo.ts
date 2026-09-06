@@ -29,6 +29,14 @@ function loadJson<T>(file: string, fallback: T): T {
   return loadJsonFile(file, fallback) as T
 }
 
+/** 配方变更归因(版本历史/运维日志共用):by=来源,actorName=人话操作者 */
+export interface RecipeUpdateMeta {
+  by: 'user' | 'agent' | 'system'
+  actorName: string
+  actor: string
+  description: string
+}
+
 function saveJson(file: string, data: unknown): void {
   saveJsonFileAtomic(file, data)
 }
@@ -175,7 +183,7 @@ class DcwRecipeRepo {
     return recipe
   }
 
-  update(id: string, patch: Partial<RecipeInput>): RecipeView {
+  update(id: string, patch: Partial<RecipeInput>, meta?: RecipeUpdateMeta): RecipeView {
     const r = this.byId(id)
     if (!r) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${id}`)
     if (patch.productId !== undefined && patch.productId !== r.productId) {
@@ -191,11 +199,20 @@ class DcwRecipeRepo {
     if (patch.description !== undefined) r.description = String(patch.description).trim()
     if (patch.params !== undefined) {
       const fresh = normParams(patch.params, r.lineId)
-      // 参数版本化(调控闭环):活动批次外的参数修改 → 版本自增 + 旧版入史(cap 20)
+      // 参数版本化(调控闭环):活动批次外的参数修改 → 版本自增 + 旧版入史(cap 20);
+      // 归因元数据(by/actorName/actor/description)随版本入史,前端/Agent 可查谁改的为什么改
       const changed = JSON.stringify(fresh) !== JSON.stringify(r.params)
       if (changed) {
         r.paramsHistory ??= []
-        r.paramsHistory.push({ version: r.version ?? 1, params: r.params, at: new Date().toISOString() })
+        r.paramsHistory.push({
+          version: r.version ?? 1,
+          params: r.params,
+          at: new Date().toISOString(),
+          by: meta?.by ?? 'user',
+          actorName: meta?.actorName ?? meta?.actor ?? 'user',
+          actor: meta?.actor ?? '',
+          description: meta?.description ?? '',
+        })
         if (r.paramsHistory.length > 20)
           r.paramsHistory.splice(0, r.paramsHistory.length - 20)
         r.version = (r.version ?? 1) + 1
@@ -206,6 +223,67 @@ class DcwRecipeRepo {
     r.updatedAt = new Date().toISOString()
     this.flushRecipes()
     return r
+  }
+
+  /**
+   * 回退配方参数到指定历史版本(或已知良好批次快照),生成新版本(非破坏,历史完整保留)。
+   * target: { version: N } = 回到 vN 的参数;{ toLastGood: true } = 回到 lastGood 批次的参数冻结。
+   */
+  revertToVersion(id: string, target: { version?: number, toLastGood?: boolean }, meta: RecipeUpdateMeta): RecipeView {
+    const r = this.byId(id)
+    if (!r) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${id}`)
+    let snapshot: RecipeParam[] | undefined
+    let desc: string
+    if (target.toLastGood) {
+      const run = r.lastGoodRunId ? this.runById(r.lastGoodRunId) : undefined
+      if (!run?.paramsSnapshot?.length) {
+        throw new AppError(409, ErrorCodes.CONFLICT, `配方「${r.name}」无可回退的良好批次(先标记 lastGood 或指定 version)`)
+      }
+      snapshot = normParams(run.paramsSnapshot, r.lineId)
+      desc = `回退到已知良好批次 ${run.id.slice(0, 8)} 的参数冻结`
+    }
+    else {
+      const v = Number(target.version)
+      if (!Number.isFinite(v)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'version 必须为数字版本号')
+      const hit = (r.paramsHistory ?? []).find(h => h.version === v)
+      if (!hit) {
+        const avail = (r.paramsHistory ?? []).map(h => h.version).sort((a, b) => b - a)
+        throw new AppError(404, ErrorCodes.NOT_FOUND, `版本 v${v} 不存在(可用历史版本:${avail.length ? avail.map(n => `v${n}`).join(', ') : '无'};当前 v${r.version ?? 1})`)
+      }
+      snapshot = hit.params
+      desc = `回退到 v${v}(该版变更于 ${hit.at.slice(0, 19).replace('T', ' ')}${hit.actorName ? `,原操作者 ${hit.actorName}` : ''})`
+    }
+    if (JSON.stringify(snapshot) === JSON.stringify(r.params)) {
+      throw new AppError(409, ErrorCodes.CONFLICT, `目标版本参数与当前 v${r.version ?? 1} 完全一致,无需回退`)
+    }
+    const out = this.update(id, {
+      params: snapshot.map(p => ({ nodeId: p.nodeId, templateRef: p.templateRef, value: p.value, min: p.min, max: p.max })),
+    }, { ...meta, description: `${meta.description ? `${meta.description};` : ''}${desc}` })
+    return out
+  }
+
+  /** 参数版本历史(旧→新;含当前版尾部) */
+  versions(id: string): Array<{ version: number, at: string, by?: string, actorName?: string, description?: string, params: RecipeParam[], current?: boolean }> {
+    const r = this.byId(id)
+    if (!r) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${id}`)
+    const rows: Array<{ version: number, at: string, by?: string, actorName?: string, description?: string, params: RecipeParam[], current?: boolean }> = (r.paramsHistory ?? []).map(h => ({
+      version: h.version,
+      at: h.at,
+      by: h.by,
+      actorName: h.actorName,
+      description: h.description,
+      params: h.params,
+    }))
+    rows.push({
+      version: r.version ?? 1,
+      at: r.updatedAt,
+      by: undefined,
+      actorName: undefined,
+      description: '当前版本',
+      params: r.params,
+      current: true,
+    })
+    return rows
   }
 
   /** 标记已知良好批次(基准恢复的目标;Trial keep / 手动均可调) */

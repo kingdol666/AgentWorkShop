@@ -556,8 +556,56 @@ class DcwController {
     return getDcwRecipeRepo().create(input)
   }
 
-  updateRecipe(id: string, patch: Partial<RecipeInput>) {
-    return getDcwRecipeRepo().update(id, patch)
+  updateRecipe(id: string, patch: Partial<RecipeInput>, meta?: { by: 'user' | 'agent' | 'system', actorName: string, actor: string, description: string }) {
+    const recipe = getDcwRecipeRepo().update(id, patch, meta)
+    // 配方参数版本变更 → 运维日志(版本号 + 归因;与版本历史同点入册)
+    if (patch.params !== undefined) {
+      try {
+        recordOps({
+          actor: meta?.actor ?? 'user',
+          actorName: meta?.actorName ?? meta?.actor ?? 'user',
+          actorKind: meta?.by ?? 'user',
+          action: meta?.by === 'agent' ? 'recipe.update.agent' : 'recipe.update',
+          kind: 'recipe',
+          targetKind: 'recipe',
+          targetId: id,
+          summary: `更新配方「${recipe.name}」→ v${recipe.version ?? 1}${meta?.description ? `:${meta.description.slice(0, 80)}` : ''}`,
+          lineId: recipe.lineId ?? '',
+          productId: recipe.productId ?? '',
+          recipeId: id,
+          detail: { version: recipe.version ?? 1, description: meta?.description ?? '' },
+        })
+      }
+      catch { /* 日志失败不影响更新 */ }
+    }
+    return recipe
+  }
+
+  /** 回退配方参数到历史版本/lastGood(生成新版本;非破坏) */
+  revertRecipe(id: string, target: { version?: number, toLastGood?: boolean }, meta: { by: 'user' | 'agent' | 'system', actorName: string, actor: string, description: string }) {
+    const recipe = getDcwRecipeRepo().revertToVersion(id, target, meta)
+    try {
+      recordOps({
+        actor: meta.actor,
+        actorName: meta.actorName,
+        actorKind: meta.by,
+        action: 'recipe.revert',
+        kind: 'recipe',
+        targetKind: 'recipe',
+        targetId: id,
+        summary: `回退配方「${recipe.name}」→ v${recipe.version ?? 1}${meta.description ? `:${meta.description.slice(0, 80)}` : ''}`,
+        lineId: recipe.lineId ?? '',
+        productId: recipe.productId ?? '',
+        recipeId: id,
+        detail: { version: recipe.version ?? 1, description: meta.description },
+      })
+    }
+    catch { /* 日志失败不影响回退 */ }
+    return recipe
+  }
+
+  recipeVersions(id: string) {
+    return getDcwRecipeRepo().versions(id)
   }
 
   removeRecipe(id: string): void {

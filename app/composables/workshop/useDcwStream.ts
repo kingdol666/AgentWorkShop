@@ -239,6 +239,18 @@ function createStore() {
       runs.push(data.run)
       return data.run
     },
+    /** 配方参数版本历史(旧→新,尾行=当前版;含来源/操作者/描述) */
+    recipeVersions: async (id: string): Promise<Array<{ version: number, at: string, by?: string, actorName?: string, description?: string, params: RecipeParam[], current?: boolean }>> => {
+      const data = await api<{ versions: Array<{ version: number, at: string, by?: string, actorName?: string, description?: string, params: RecipeParam[], current?: boolean }> }>(`/recipes/${id}/versions`)
+      return data.versions ?? []
+    },
+    /** 回退配方参数到历史版本/lastGood(生成新版本) */
+    revertRecipe: async (id: string, body: { version?: number, toLastGood?: boolean, reason: string }): Promise<RecipeView> => {
+      const data = await api<{ recipe: RecipeView }>(`/recipes/${id}/revert`, { method: 'POST', body: JSON.stringify(body) })
+      const i = recipes.findIndex(r => r.id === id)
+      if (i >= 0) recipes[i] = data.recipe
+      return data.recipe
+    },
     closeRun: async (id: string): Promise<RecipeRunView> => {
       const data = await api<{ run: RecipeRunView }>(`/runs/${id}/close`, { method: 'POST' })
       const i = runs.findIndex(r => r.id === id)

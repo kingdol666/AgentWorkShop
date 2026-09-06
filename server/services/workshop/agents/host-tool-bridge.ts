@@ -21,7 +21,7 @@ import type { WorkspaceTask } from '../types/task'
 import type { RpcHostToolDefinition } from './adapters/omp-rpc-client'
 import { loadHostToolDefs } from '../prompts/loader'
 import { daqRuntimeSettings } from '../settings'
-import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolMyIndustrialNodes, toolOpsLog, toolRecipeLog } from './industrial-tools'
+import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions } from './industrial-tools'
 import { listPluginTools } from './plugin-tools'
 import { extractTaskMode } from '../runtime/execution-mode'
 
@@ -162,6 +162,14 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       return toolOpsLog(identity.agentId, args as Parameters<typeof toolOpsLog>[1])
     case 'recipe_log':
       return toolRecipeLog(identity.agentId, args as Parameters<typeof toolRecipeLog>[1])
+    case 'line_context':
+      return toolLineContext(identity.agentId, args as { line_id?: string })
+    case 'recipe_versions':
+      return toolRecipeVersions(identity.agentId, args as { recipe_id?: string, limit?: number | string })
+    case 'recipe_update':
+      return toolRecipeUpdate(identity.agentId, args as Parameters<typeof toolRecipeUpdate>[1])
+    case 'recipe_rollback':
+      return toolRecipeRollback(identity.agentId, args as Parameters<typeof toolRecipeRollback>[1])
   }
 
   const ws = ctx.getWorkspace()
@@ -609,6 +617,18 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       }
       case 'recipe_log': {
         return toolRecipeLog(identity.agentId, args as Parameters<typeof toolRecipeLog>[1])
+      }
+      case 'line_context': {
+        return toolLineContext(identity.agentId, args as { line_id?: string })
+      }
+      case 'recipe_versions': {
+        return toolRecipeVersions(identity.agentId, args as { recipe_id?: string, limit?: number | string })
+      }
+      case 'recipe_update': {
+        return toolRecipeUpdate(identity.agentId, args as Parameters<typeof toolRecipeUpdate>[1])
+      }
+      case 'recipe_rollback': {
+        return toolRecipeRollback(identity.agentId, args as Parameters<typeof toolRecipeRollback>[1])
       }
     }
     return { text: `未知工具: ${req.toolName}`, isError: true }
