@@ -7,6 +7,7 @@
  */
 import { AppError } from '../../../utils/errors'
 import type { AgentInfo, AgentInterface } from './agent-interface'
+import { harnessSettings } from '../settings'
 import { MockAgentImpl } from './mock-agent'
 import { OmpRpcAgentImpl } from './omp-agent'
 import { ClaudeSdkAgentImpl } from './claude-agent'
@@ -36,6 +37,16 @@ export interface HarnessDef {
   description: string
   capabilities: HarnessCapabilities
   create(config: Record<string, unknown>, agent: AgentInfo): AgentInterface
+  /** 可用性探测面(harness-availability.ts 消费;缺省 = 进程内引擎,恒可用) */
+  probe?: HarnessProbe
+}
+
+/** 引擎环境探测声明:进程内引擎无外部依赖;进程型引擎声明将拉起的命令(与真实 spawn 同源) */
+export interface HarnessProbe {
+  /** 进程内引擎(mock/claude SDK 骨架):无外部 CLI,恒可用 */
+  inprocess?: boolean
+  /** 解析将拉起的可执行命令(实例 config.command 覆盖 → 运行时设置缺省 → 内置默认) */
+  command?: (config?: Record<string, unknown>) => string
 }
 
 const mockCaps: HarnessCapabilities = {
@@ -57,12 +68,17 @@ const claudeCaps: HarnessCapabilities = {
   steer: false, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false,
 }
 
+/** 实例 config.command 覆盖提取(与各 impl 的 `config.command ?? 缺省` 同规则;空串回缺省) */
+const cmdFrom = (config: Record<string, unknown> | undefined): string =>
+  typeof config?.command === 'string' && config.command.trim() !== '' ? config.command.trim() : ''
+
 export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
   mock: {
     id: 'mock',
     label: 'mock(测试)',
     description: '进程内模拟引擎:联调/测试,无 LLM 调用',
     capabilities: mockCaps,
+    probe: { inprocess: true },
     create: (config, agent) => new MockAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
   omp: {
@@ -70,6 +86,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     label: 'omp(真实 LLM)',
     description: 'omp 子进程(RPC 模式),默认推荐引擎',
     capabilities: ompCaps,
+    probe: { command: c => cmdFrom(c) || 'omp' },
     create: (config, agent) => new OmpRpcAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
   opencode: {
@@ -77,6 +94,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     label: 'opencode',
     description: 'OpenCode 引擎(serve 进程 + HTTP/SSE),权限审批走 HITL',
     capabilities: opencodeCaps,
+    probe: { command: c => cmdFrom(c) || harnessSettings().opencode_command },
     create: (config, agent) => new OpenCodeAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
   codex: {
@@ -84,6 +102,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     label: 'codex',
     description: 'OpenAI Codex CLI(app-server JSON-RPC),命令审批走 HITL',
     capabilities: codexCaps,
+    probe: { command: c => cmdFrom(c) || harnessSettings().codex_command },
     create: (config, agent) => new CodexAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
   dsh: {
@@ -91,6 +110,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     label: 'dsh(DeepSeek)',
     description: 'DeepSeek Harness(ACP 协议);无同轮 steer,审批走 HITL',
     capabilities: dshCaps,
+    probe: { command: c => cmdFrom(c) || harnessSettings().dsh_command },
     create: (config, agent) => new DshAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
   claude: {
@@ -98,6 +118,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     label: 'claude',
     description: 'Claude Agent SDK(骨架,待接入)',
     capabilities: claudeCaps,
+    probe: { inprocess: true },
     create: config => new ClaudeSdkAgentImpl(config),
   },
 }

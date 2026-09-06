@@ -81,6 +81,11 @@ export default {
     fleetAll: '查看全部产线',
     fleetHint: '运行中优先 · 最多展示 8 条',
     writesFailed: '失败',
+    harness: {
+      title: '执行引擎',
+      sub: 'Harness CLI 环境探测 · 就绪即可派工',
+      missing: '未安装',
+    },
     fields: {
       name: '应用名称',
       version: '版本',
@@ -342,6 +347,8 @@ export default {
     hitlSubmit: '提交',
   },
   agents: {
+    notInstalled: '未安装',
+    harnessInprocess: '进程内引擎 · 恒可用',
     k3pa5h4025: '模板库',
     k3xhia001: '名称',
     k3lrqn0002: '可见性',

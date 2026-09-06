@@ -33,7 +33,7 @@ export interface AgentInfoDto {
   enabled?: number
 }
 
-/** harness 注册表元信息(GET /workshop/harnesses) */
+/** harness 注册表元信息(GET /workshop/harnesses;含环境可用性探测结果) */
 export interface HarnessMetaDto {
   id: string
   label: string
@@ -46,6 +46,16 @@ export interface HarnessMetaDto {
     contextStats: boolean
     compact: boolean
   }
+  /** 环境探测:引擎可立即使用(进程内引擎恒 true;进程型引擎 = CLI 在 PATH 中) */
+  available?: boolean
+  /** 进程内引擎(无外部 CLI) */
+  inprocess?: boolean
+  /** 进程型引擎声明将拉起的命令 */
+  command?: string | null
+  /** PATH 解析出的可执行文件绝对路径 */
+  resolvedPath?: string | null
+  /** 不可用原因(available=false 时的人话提示) */
+  error?: string | null
 }
 
 export interface TaskDto {

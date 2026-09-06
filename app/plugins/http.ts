@@ -52,17 +52,18 @@ export default defineNuxtPlugin((nuxtApp) => {
         catch { /* 无 pinia 上下文(极端时序) */ }
         if (!g.__awShown401) {
           g.__awShown401 = true
-          message.error('登录已过期,请重新登录')
+          // SSR 安全:ant-design message 依赖 DOM,服务端调用会炸掉渲染进程
+          if (import.meta.client) message.error('登录已过期,请重新登录')
           setTimeout(() => {
             g.__awShown401 = false
           }, 3000)
         }
       }
       else if (status >= 500) {
-        message.error('服务器异常，请稍后重试')
+        if (import.meta.client) message.error('服务器异常，请稍后重试')
       }
       else {
-        message.error(msg)
+        if (import.meta.client) message.error(msg)
       }
 
       return Promise.reject(error)

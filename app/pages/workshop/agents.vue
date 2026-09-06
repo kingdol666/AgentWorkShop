@@ -26,7 +26,9 @@ const load = async (): Promise<void> => {
     loading.value = false
   }
 }
-void load()
+// SSR 安全:setup 期 $http(axios)无法在服务端发相对地址请求,拒绝会变成未处理
+// rejection 直杀渲染进程;页面数据一律客户端装载
+if (import.meta.client) void load()
 
 // ===== 过滤(全部/我的/公开/内置;admin 另有"他人私有") =====
 type Filter = 'all' | 'mine' | 'public' | 'builtin' | 'others'
@@ -64,8 +66,10 @@ const visTag = (t: AgentTemplateDto): { text: string, color: string, icon?: stri
   return { text: tt('agents.k447jj019'), color: 'default' }
 }
 
-// ===== harness 选项(引擎注册表动态拉取;失败回退静态表) =====
+// ===== harness 选项(引擎注册表动态拉取,含环境可用性探测;失败回退静态表) =====
 const harnesses = ref<HarnessMetaDto[]>([])
+const harnessById = computed(() => new Map(harnesses.value.map(h => [h.id, h])))
+const isUnavailable = (id: string): boolean => harnessById.value.get(id)?.available === false
 const harnessOptions = computed(() =>
   (harnesses.value.length > 0
     ? harnesses.value
@@ -73,7 +77,10 @@ const harnessOptions = computed(() =>
         { id: 'mock', label: 'mock(测试)', description: '', capabilities: { steer: true, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
         { id: 'omp', label: 'omp(真实 LLM)', description: '', capabilities: { steer: true, supervise: true, hitl: true, terminal: true, contextStats: true, compact: true } },
         { id: 'claude', label: 'claude', description: '', capabilities: { steer: false, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
-      ] as HarnessMetaDto[]).map(h => ({ value: h.id, label: h.label })),
+      ] as HarnessMetaDto[]).map((h) => {
+    const unavailable = h.available === false
+    return { value: h.id, label: unavailable ? `${h.label}(${tt('agents.notInstalled')})` : h.label, disabled: unavailable }
+  }),
 )
 const capBadges = (id: string): string[] => {
   const caps = harnesses.value.find(h => h.id === id)?.capabilities
@@ -93,7 +100,7 @@ const loadHarnesses = async (): Promise<void> => {
   }
   catch { /* 回退静态表 */ }
 }
-void loadHarnesses()
+if (import.meta.client) void loadHarnesses()
 
 const editOpen = ref(false)
 const editing = ref<AgentTemplateDto | null>(null)
@@ -121,6 +128,11 @@ const save = async (): Promise<void> => {
   }
   catch {
     message.error('config 不是合法 JSON')
+    return
+  }
+  // 前端兜底:引擎未安装禁止保存(与后端 assertHarnessUsable 同判据)
+  if (isUnavailable(form.harness)) {
+    message.error(harnessById.value.get(form.harness)?.error ?? tt('agents.notInstalled'))
     return
   }
   try {
@@ -220,8 +232,21 @@ useHead({ title: () => tt('titles.agents') })
       <a-table-column
         title="harness"
         data-index="harness"
-        :width="100"
-      />
+        :width="120"
+      >
+        <template #default="{ record }">
+          <span
+            class="h-cell"
+            :class="{ off: isUnavailable(record.harness) }"
+            :title="isUnavailable(record.harness) ? (harnessById.get(record.harness)?.error ?? '') : (harnessById.get(record.harness)?.resolvedPath ?? '')"
+          >
+            <span class="h-dot" />{{ record.harness }}<span
+              v-if="isUnavailable(record.harness)"
+              class="h-miss"
+            >({{ tt('agents.notInstalled') }})</span>
+          </span>
+        </template>
+      </a-table-column>
       <a-table-column
         :title="$t('agents.k3lrqn0002')"
         :width="120"
@@ -347,6 +372,21 @@ useHead({ title: () => tt('titles.agents') })
             :options="harnessOptions"
           />
           <div
+            v-if="harnesses.length > 0"
+            class="harness-status"
+            :class="{ off: isUnavailable(form.harness) }"
+          >
+            <template v-if="isUnavailable(form.harness)">
+              <span class="i-tabler-plug-off" /> {{ harnessById.get(form.harness)?.error }}
+            </template>
+            <template v-else-if="harnessById.get(form.harness)?.inprocess">
+              <span class="i-tabler-plug-connected" /> {{ tt('agents.harnessInprocess') }}
+            </template>
+            <template v-else-if="harnessById.get(form.harness)?.resolvedPath">
+              <span class="i-tabler-plug-connected" /> <span class="mono">{{ harnessById.get(form.harness)?.resolvedPath }}</span>
+            </template>
+          </div>
+          <div
             v-if="capBadges(form.harness).length"
             class="harness-caps"
           >
@@ -388,6 +428,31 @@ useHead({ title: () => tt('titles.agents') })
   border-radius: 3px;
   opacity: 0.75;
 }
+.harness-status {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.harness-status.off { color: var(--danger, #c25a4e); }
+.h-cell {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.h-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok, #4a6b57);
+}
+.h-cell.off .h-dot { background: var(--danger, #c25a4e); }
+.h-cell.off { opacity: 0.75; }
+.h-miss { color: var(--danger, #c25a4e); font-family: var(--font-sans); font-size: 11px; }
 .page { padding: 4px; }
 .head {
   display: flex;

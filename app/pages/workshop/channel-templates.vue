@@ -31,7 +31,8 @@ const load = async (): Promise<void> => {
     loading.value = false
   }
 }
-void load()
+// SSR 安全:setup 期 $http(axios)无法在服务端发相对地址请求(同 agents 页注释)
+if (import.meta.client) void load()
 
 type Filter = 'all' | 'mine' | 'public' | 'builtin'
 const filter = ref<Filter>('all')

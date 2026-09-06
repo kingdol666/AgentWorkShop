@@ -133,3 +133,27 @@
 
 变更:登录 schema 去除 email 格式强制(账号字段,键名兼容保留);getPasswordHash 按
 LOWER(email) OR LOWER(name) 匹配。发布:agentworkshop@0.7.13(npm latest)。
+
+---
+
+# 附录 · v0.7.14 增量(Harness 可用性检查)
+
+## 功能
+
+- **环境探测**:`GET /api/workshop/harnesses` 返回每引擎 `available/inprocess/command/resolvedPath/error`;进程内引擎(mock/claude)恒可用,进程型(omp/opencode/codex/dsh)按 PATH/PATHEXT 探测外部 CLI,探测结果 30s 缓存,`?refresh=1` 强制重探。
+- **执行前强校验**:模板创建/更新、克隆入 channel(deploy/lead 建员)、实例改引擎、任务直发、lead 派发子任务——七处入口统一 `assertHarnessUsable`;未知 harness 400 `UNKNOWN_HARNESS`,未安装 409 `HARNESS_UNAVAILABLE`(人话报错含命令名)。
+- **前端渲染**:仪表盘新增「执行引擎」面板(6 引擎药丸,未安装灰化 + 未安装标记 + 就绪计数);agents 模板下拉禁用未安装项并附(未安装)后缀与解析路径提示;teams 加成员选择同步禁用。
+
+## 验证(隔离实例 :3021,AW_MODE=home)
+
+- API E2E 26/26:探测元数据/refresh/负向 409(报错含命令名)/settings 热改命令联动 available 翻转/未知 400/未认证 401。
+- 浏览器 E2E 10/10:用户名登录 → 仪表盘面板(6 条目/1 灰化/5-6 计数)→ agents 下拉禁用 dsh → 恢复后全可选。
+- **连带修复两枚存量 SSR 地雷**(直链访问生产实例必崩,与本功能无关、被本轮直链验证踩响):
+  1. `app/plugins/http.ts` axios 拦截器在服务端调 ant-design `message.error` → `createElement` 崩溃;补 `import.meta.client` 守卫。
+  2. agents/teams/channel-templates 页 setup 期 `void load()`(axios 相对地址 SSR 无法解析 `Invalid URL`)→ 未处理 rejection 直杀渲染进程(stability-guard exit 1);改客户端装载。
+- SSR 直链全页面扫描(10 页带 cookie)全部 200 且服务存活。
+
+## 产物
+
+- 脚本:`scripts/_dbg-harness-e2e.mjs`(API 26 断言)、`scripts/_dbg-harness-ui-e2e.py`(浏览器 10 断言)。
+- 截图:`.e2e-shots/harness-1-dashboard-off.png`(灰化面板)、`harness-2-agent-select-disabled.png`(禁用下拉)。

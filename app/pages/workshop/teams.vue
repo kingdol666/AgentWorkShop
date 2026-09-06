@@ -31,7 +31,29 @@ const load = async (): Promise<void> => {
     loading.value = false
   }
 }
-void load()
+// SSR 安全:setup 期 $http(axios)无法在服务端发相对地址请求(同 agents 页注释)
+if (import.meta.client) void load()
+
+// ===== harness 可用性(成员选择禁用引擎未安装的模板;deploy 由后端 assert 兜底) =====
+const harnessAvail = ref<Record<string, boolean>>({})
+const loadHarnessAvail = async (): Promise<void> => {
+  try {
+    const res = await api.listHarnesses()
+    const list = (res as unknown as { data?: { harnesses?: Array<{ id: string, available?: boolean }> } })?.data?.harnesses
+    if (Array.isArray(list)) {
+      const m: Record<string, boolean> = {}
+      for (const h of list) m[h.id] = h.available !== false
+      harnessAvail.value = m
+    }
+  }
+  catch { /* 探测不可得时不限制选项(后端仍有强校验) */ }
+}
+if (import.meta.client) void loadHarnessAvail()
+const tplUnavailable = (tpl: AgentTemplateDto): boolean => harnessAvail.value[tpl.harness] === false
+const memberOptions = computed(() => templates.value.map((t) => {
+  const un = tplUnavailable(t)
+  return { value: t.id, label: un ? `${t.name}(${t.harness} · ${t('agents.notInstalled')})` : `${t.name}(${t.harness})`, disabled: un }
+}))
 
 // ===== 过滤 =====
 type Filter = 'all' | 'mine' | 'public' | 'builtin'
@@ -323,7 +345,7 @@ useHead({ title: () => t('titles.teams') })
         <a-form-item :label="$t('teams.k41ds5006')">
           <a-select
             v-model:value="addTemplateId"
-            :options="templates.map(t => ({ value: t.id, label: `${t.name}(${t.harness})` }))"
+            :options="memberOptions"
           />
         </a-form-item>
         <a-form-item :label="$t('teams.k479op007')">

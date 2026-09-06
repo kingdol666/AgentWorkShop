@@ -24,8 +24,9 @@ export function assertPlainExecutable(command: string): string {
   return command
 }
 
-/** PATH + PATHEXT 解析裸命令名 → 绝对路径(win32;非 Windows 返回 null)。带扩展名优先,裸名(sh 脚本)最后 */
-function resolveOnPath(command: string): string | null {
+/** PATH + PATHEXT 解析裸命令名 → 绝对路径(win32;非 Windows 返回 null)。带扩展名优先,裸名(sh 脚本)最后。
+ *  导出:harness 可用性探测(harness-availability.ts)复用同一解析规则,保证「探测可用」与「真实拉起」同源。 */
+export function resolveOnPath(command: string): string | null {
   if (process.platform !== 'win32') return null
   const isFile = (p: string): boolean => {
     try {

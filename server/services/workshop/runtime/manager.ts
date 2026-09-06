@@ -43,6 +43,7 @@ import { createEnvEmbeddingProvider } from './embedding-provider'
 import { listHarnessProcesses, listAliveHarnessProcessesByAgent, sweepHarnessProcesses, killHarnessProcess } from '../agents/harness-process'
 import { hasTerminalSession, sweepTerminalSessions } from '../agents/harness-terminal'
 import { knownHarnesses } from '../agents/registry'
+import { assertHarnessUsable } from '../agents/harness-availability'
 import { hostToolsForRole } from '../agents/host-tool-bridge'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 import type { UserRepo } from '../db/user.repo'
@@ -1291,6 +1292,8 @@ export class AgentChannelManager {
     visibility?: string
     ownerUserId?: string | null
   }): Promise<AgentTemplateDetail> {
+    // 执行前强校验:引擎未安装的模板不允许落库(前端下拉已禁用未安装项,此处兜底)
+    assertHarnessUsable(input.harness, input.config)
     const row = this.deps.repos.agents.create({ name: input.name, harness: input.harness, config: input.config, visibility: input.visibility, ownerUserId: input.ownerUserId ?? null })
     return this.templateDetailOf(row)
   }
@@ -1324,6 +1327,7 @@ export class AgentChannelManager {
   async updateAgent(agentId: string, patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number, visibility?: string }): Promise<AgentTemplateDetail> {
     const row = this.deps.repos.agents.findById(agentId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${agentId}`)
+    if (patch.harness) assertHarnessUsable(patch.harness, patch.config ?? parseJson<Record<string, unknown>>(row.configJson, {}))
     const updated = this.deps.repos.agents.update(agentId, patch)
     if (!updated) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${agentId}`)
     return this.templateDetailOf(updated)
@@ -1367,6 +1371,9 @@ export class AgentChannelManager {
   }): Promise<AgentInfo> {
     const tpl = this.deps.repos.agents.findById(input.agentId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${input.agentId}`)
+    const instConfig = { ...parseJson<Record<string, unknown>>(tpl.configJson, {}), ...input.configOverride }
+    // 绑定即执行入口:引擎未安装的模板不许入 channel(deploy/加成员在此失败,不产生半成品实例)
+    assertHarnessUsable(tpl.harness, instConfig)
     if (input.role === 'lead') {
       const channel = this.deps.repos.channels.findById(input.channelId)
       if (channel && channel.leadAgentId) {
@@ -1378,7 +1385,7 @@ export class AgentChannelManager {
       templateId: tpl.id,
       name: tpl.name,
       harness: tpl.harness,
-      config: { ...parseJson<Record<string, unknown>>(tpl.configJson, {}), ...input.configOverride },
+      config: instConfig,
       role: input.role,
     })
     if (input.role === 'lead') {
@@ -1560,6 +1567,7 @@ export class AgentChannelManager {
   ): Promise<AgentInfo> {
     const m = this.deps.repos.channelAgents.findById(instanceId)
     if (!m) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
+    if (patch.harness) assertHarnessUsable(patch.harness, patch.config ?? parseJson<Record<string, unknown>>(m.configJson, {}))
     const updated = this.deps.repos.channelAgents.update(instanceId, patch)
     if (!updated) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
     await this.unloadAgent(updated.channelId, instanceId)
@@ -1624,6 +1632,8 @@ export class AgentChannelManager {
       if (!KNOWN_HARNESSES.has(harness)) {
         throw new AppError(400, 'UNKNOWN_HARNESS', `未知 harness: ${harness}(可选 ${[...KNOWN_HARNESSES].join('/')})`)
       }
+      // 先校验引擎可用再落模板,防断言失败遗留孤儿模板行
+      assertHarnessUsable(harness, input.config)
       const tpl = this.deps.repos.agents.create({
         name,
         harness,
@@ -2056,6 +2066,9 @@ export class AgentChannelManager {
     if (input.assigneeId && input.assigneeId !== channel.leadAgentId) {
       assigneeId = this.resolveMemberRef(input.channelId, input.assigneeId).id
     }
+    // 任务执行前强校验:收件引擎不可用直接 409(不留「已创建即失败」的幽灵任务)
+    const assigneeRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, assigneeId)
+    if (assigneeRow) assertHarnessUsable(assigneeRow.harness, parseJson<Record<string, unknown>>(assigneeRow.configJson, {}))
     const description = input.mode
       ? encodeTaskMode(input.mode, input.modeConfig ?? {}, input.description ?? '')
       : input.description
@@ -2109,6 +2122,8 @@ export class AgentChannelManager {
     if (!assignee) {
       throw new AppError(403, 'SCOPE_VIOLATION', 'assignee 不在本 channel')
     }
+    // 执行前强校验:worker 引擎未安装 → 报错回 lead(可改派),不产生必败子任务
+    assertHarnessUsable(assignee.harness, parseJson<Record<string, unknown>>(assignee.configJson, {}))
     let task: WorkspaceTask
     if (input.parentTaskId) {
       const parent = this.getTaskEngine().get(input.parentTaskId)

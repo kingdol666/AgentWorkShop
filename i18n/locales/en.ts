@@ -81,6 +81,11 @@ export default {
     fleetAll: 'View all lines',
     fleetHint: 'Running first · top 8 shown',
     writesFailed: 'failed',
+    harness: {
+      title: 'Agent Harnesses',
+      sub: 'CLI availability probe · ready to dispatch',
+      missing: 'not installed',
+    },
     fields: {
       name: 'App Name',
       version: 'Version',
@@ -342,6 +347,8 @@ export default {
     hitlSubmit: 'Submit',
   },
   agents: {
+    notInstalled: 'not installed',
+    harnessInprocess: 'In-process engine · always available',
     k3pa5h4025: 'Templates',
     k3xhia001: 'Name',
     k3lrqn0002: 'Visibility',

@@ -9,6 +9,7 @@
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useVisibleInterval } from '@/app/composables/workshop/useVisibleInterval'
+import { useWorkshopApi, type HarnessMetaDto } from '@/app/composables/workshop/useWorkshopApi'
 import AwChart from '@/app/components/AwChart.vue'
 import type { EChartsOption } from 'echarts'
 
@@ -30,12 +31,26 @@ onMounted(() => {
   daq.ensureWsFeed()
   dcw.ensureWsFeed()
   void Promise.all([daq.load(), dcw.load()]).then(() => pushTrend())
+  void loadHarnesses()
   useVisibleInterval(() => {
     void daq.load()
     void dcw.load()
+    void loadHarnesses()
     pushTrend()
   }, 5000, { bgMs: 30000 })
 })
+
+// ---------- Harness 可用性(引擎 CLI 环境探测;服务端 30s 探测缓存,随兜底节拍刷新) ----------
+const api = useWorkshopApi()
+const harnesses = ref<HarnessMetaDto[]>([])
+const loadHarnesses = async (): Promise<void> => {
+  try {
+    const res = await api.listHarnesses()
+    harnesses.value = (res as unknown as { data?: { harnesses?: HarnessMetaDto[] } })?.data?.harnesses ?? []
+  }
+  catch { /* 探测不可得时面板留空,不阻塞大屏 */ }
+}
+const harnessOk = computed(() => harnesses.value.filter(h => h.available !== false).length)
 
 // ---------- KPI ----------
 const linesActive = computed(() => dcw.lines.filter(l => dcw.lineStateOf(l.id).active))
@@ -351,6 +366,31 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
     </div>
 
     <!-- 大屏图阵 -->
+    <!-- 执行引擎可用性(Harness CLI 环境探测;未安装不可选,派工前强校验) -->
+    <section
+      v-if="harnesses.length > 0"
+      class="dpanel harness aw-stagger"
+    >
+      <header class="dp-hd">
+        <h3>{{ t('home.harness.title') }}</h3>
+        <small>{{ t('home.harness.sub') }}</small>
+        <small class="mono fleet-total">{{ harnessOk }}/{{ harnesses.length }}</small>
+      </header>
+      <div class="harness-row">
+        <div
+          v-for="h in harnesses"
+          :key="h.id"
+          class="h-item"
+          :class="{ off: h.available === false }"
+          :title="h.available === false ? (h.error ?? '') : (h.resolvedPath ?? h.command ?? '')"
+        >
+          <span class="h-dot" />
+          <span class="h-name">{{ h.label }}</span>
+          <span class="h-cmd mono">{{ h.available === false ? t('home.harness.missing') : (h.inprocess ? 'in-process' : h.command) }}</span>
+        </div>
+      </div>
+    </section>
+
     <div class="grid aw-stagger">
       <section class="dpanel span8">
         <header class="dp-hd">
@@ -790,6 +830,38 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
   font-size: 11px;
   color: var(--ink-faint);
 }
+/* ---------- Harness 可用性条:墨色药丸式引擎清单,未安装灰化 ---------- */
+.harness-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0 6px;
+}
+.h-item {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  cursor: default;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  border: 1px solid var(--divider-hair);
+  border-radius: var(--radius-pill);
+  transition: border-color 0.15s, background 0.15s;
+}
+.h-item:hover { border-color: var(--line-strong); }
+.h-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone-success-dot, #4a6b57);
+}
+.h-item.off { opacity: 0.55; }
+.h-item.off .h-dot { background: var(--tone-danger-dot, #c25a4e); }
+.h-name { font-weight: 600; color: var(--ink); }
+.h-item.off .h-name { color: var(--ink-soft); }
+.h-cmd { font-size: 10px; color: var(--ink-faint); }
 /* 全部产线入口:虚线幽灵卡,聚合清单外的余量 */
 .fleet-all {
   display: flex;
