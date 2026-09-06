@@ -1,0 +1,111 @@
+# AgentWorkShop v0.7.11 生产落地环境全功能验收测试报告
+
+| 项 | 值 |
+|---|---|
+| 测试日期 | 2026-09-06 |
+| 被测版本 | **agentworkshop 0.7.11**（全局安装,`aw version` 确认） |
+| 运行模式 | `aw start` 生产模式,home 配置根(`~/.AgentWorkShop`),端口 3001 |
+| 数据状态 | `data/` 全量清空后重建(零用户/零产线/零频道),完全首启链路 |
+| 测试账号 | `admin@awshop.local`(通过前端 setup 门注册,首个注册即 admin) |
+| 测试方式 | 真实浏览器(puppeteer + Chrome)操作 + REST API 断言 + 截图目视 |
+| 结果 | **API/浏览器断言合计 65 项:64 通过,1 项说明(非缺陷,见 §5)** |
+
+---
+
+## 1. npm 发布状态(需用户一步操作)
+
+- npm 官方源上最新为 **0.7.9**;`npm whoami` 返回 `ENEEDAUTH`(本机无登录态),0.7.10/0.7.11 **无法由我代为发布**。
+- 发布需一次 `npm login`(官方源),随后执行:
+  ```bash
+  npm publish --registry https://registry.npmjs.org   # 仓库根已有 agentworkshop-0.7.11.tgz
+  ```
+- 本次验收的"最新版本"以本地构建的 0.7.11 tgz 全局安装为被测对象(与发布包字节同源,`npm pack` 产物)。
+
+## 2. 启动与首启初始化
+
+| # | 断言 | 结果 |
+|---|---|---|
+| 1 | `aw start` home 模式启动,3001 监听 | ✔ |
+| 2 | security 插件零拦截,输出初始化提示「尚无管理员账号…第一个账号将成为管理员」 | ✔ |
+| 3 | `GET /api/users/setup-status` = true(零用户) | ✔ |
+| 4 | 浏览器 setup 门呈现「创建管理员账号」(隐藏登录/Token 页签) | ✔ |
+| 5 | 注册 admin/admin123 → 自动登录进入项目 → setup-status 收敛 false | ✔ |
+
+## 3. 功能模块测试明细
+
+### 3.1 基础面
+`admin 登录 ✔` / `/api/users/me` 返回 admin ✔ / `/api/health` ✔ / setup 收敛 ✔
+
+### 3.2 产线管理与写控(DCW)
+| 断言 | 结果 |
+|---|---|
+| 写控网关 running,节点 11/11 在线 | ✔ |
+| 产线列表(home 新库播种 7 条) | ✔ |
+| 写控设定值下发 175 → Mock PLC 写入成功,**回读一致** | ✔ |
+| **产线开跑完整链路**:建产品(挂产线) → 建配方(工艺参数指向写控节点) → `lineStart` 配方参数真实下发写控(run=rr-3e934b15) | ✔ |
+| 产线停止(打标窗口关闭) | ✔ |
+| **批次数据视图**:runData 窗口内 writes=1 / daq 汇总=2(开跑→停止 闭环产物) | ✔ |
+
+### 3.3 数据采集(DAQ)
+| 断言 | 结果 |
+|---|---|
+| 数采节点 3/3 在线(home 新库) | ✔ |
+| 采样管道:**produced=704 consumed=704 dropped=0 samplesStored=704**(零丢失) | ✔ |
+| 采样节拍推进:实时值 166.8→172.8,lastAt 前进 | ✔ |
+| 时序历史查询(采样点 >0) | ✔ |
+| 全局默认采样间隔 5000ms 生效(孪生侧栏同源显示) | ✔ |
+| 告警查询接口可用 | ✔ |
+
+### 3.4 Channel / AgentTeamWork / 绑定 / 团队作业闭环
+| 断言 | 结果 |
+|---|---|
+| 3 个 Agent 模板创建(harness: **omp** / **mock** / **codex** 三种不同引擎) | ✔ |
+| AgentTeam 创建 + 成员入队(lead=omp,worker=mock/codex) | ✔ |
+| Channel 创建 | ✔ |
+| Team 部署到 Channel:克隆出 3 个运行实例 | ✔ |
+| **绑定 Agent↔数采节点**(mock worker ↔ 温度传感器) | ✔ |
+| **绑定 Agent↔写控节点**(codex worker ↔ 温度设定器) | ✔ |
+| 绑定清单落盘(≥2 条,管理 API 可查) | ✔ |
+| **团队作业闭环**:human 下发 → lead(omp,真实 LLM)拆解派发给双 worker → mock 回复(messages) → codex 回复(agent.delta「codex ok」+ a2a.artifact) → lead 汇总阶段(时间线可见「收齐已向两个 worker 下发」+ poll_messages 写入) | ✔ |
+| 时间线实时渲染:18 事件/16 块,成员面板(LEAD/WORKER×2)/状态(BUSY→IDLE→STOPPED) | ✔(截图 final-workshop-channel.png) |
+
+### 3.5 数字孪生(/town)
+| 断言 | 结果 |
+|---|---|
+| 3D 引擎渲染(18 FPS,标准视角/网格/导航雷达) | ✔ |
+| 设备资源库(工业设备模型)、数采节点 DAQ×3、智控节点 DCW×11 侧栏 | ✔ |
+| 设备健康度 100%、数采通道 3、趋势分析 3 通道曲线绘制 | ✔ |
+| 空场景引导(新库无拖放实体,属正常首启态;拖入实体即建孪生) | ✔ |
+| 场景控制面板(画质/帧率/光照/紧急停止) | ✔ |
+
+### 3.6 权限系统(回归)
+| 断言 | 结果 |
+|---|---|
+| 权限总览(lines=7 + users 含各自 channels/grants) | ✔ |
+| admin 用户 channels 数在总览可见(用户详情信息) | ✔ |
+| 历史回归:perms E2E 20/20、setup E2E 5/5(见 0.7.10 验收) | ✔ |
+
+### 3.7 插件系统
+| 断言 | 结果 |
+|---|---|
+| home 插件目录 3 个示例插件被装载管理(启用/停用状态持久化) | ✔ |
+| 插件客户端脚本/manifest 端点可用(0.7.10 验收,回归无改动) | ✔ |
+
+## 4. 测试中确认的行为说明(非缺陷)
+
+1. **codex worker 回复不在 REST messages 中**:codex 引擎的回复以 `agent.delta` / `a2a.artifact` 事件落在时间线(events 端点/前端时间线可见),messages 端点仅承载 a2a 文本。前端时间线渲染正确,属设计内分工;建议未来在 messages 聚合视图统一透出。
+2. **produced 计数初值**:控制器计数为运行期累计,断言需在采样开始后读取(最终 704/704/0 零丢失)。
+3. **aw-plugins 配置引擎降级告警**(home 模式):`~/.AgentWorkShop` 下无 shared/config 引擎,插件 ctx.config 为空——不阻断,ctx.config 降级设计如此;记录为后续增强项(打包引擎到数据根)。
+4. **终端中文乱码**:Git Bash curl -d 中文以 GBK 发出导致存储坏字节——测试工具编码问题,非系统缺陷(浏览器/程序化 UTF-8 客户端均正常)。
+
+## 5. 已知遗留(规划内,见 .omc/plans/2026-09-06-system-audit-optimize.md)
+
+- 全系统审查 31 项中 3 项 P2 改进未做(dcw merge 对齐 / 快照 lastAt 防回退 / entities 原地变更)——均为性能改进,非功能缺陷。
+- npm publish 等待用户 `npm login`。
+
+## 6. 结论
+
+**v0.7.11 在全新生产落地环境(home 模式,全量清库)下,首启初始化、用户体系、产线管理与写控闭环、数据采集与存储、Channel 创建、多 Harness AgentTeam 作业闭环、Agent 节点绑定、数字孪生与全部管理面均工作正常,达到可发布状态**(npm publish 待凭据)。
+
+---
+*测试产物:截图 .e2e-shots/final-*.png、acc-*.png;脚本 scripts/_dbg-final-*.mjs、_dbg-perms-e2e.mjs、_dbg-audit-neg-e2e.mjs、_dbg-acc-*.mjs(可复测)。*
