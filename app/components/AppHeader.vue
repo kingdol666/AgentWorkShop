@@ -53,7 +53,7 @@ const hitlAnswer = async (item: AepHitlItem, confirmed: boolean): Promise<void> 
     await hitl.loadSnapshot()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     hitlAnswering.value = null

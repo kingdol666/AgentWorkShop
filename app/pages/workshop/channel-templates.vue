@@ -104,7 +104,7 @@ const create = async (): Promise<void> => {
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
 }
 
@@ -116,7 +116,7 @@ const toggleVisibility = async (t: ChannelTemplateDto, pub: boolean): Promise<vo
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
 }
 
@@ -130,7 +130,7 @@ const instantiate = async (t: ChannelTemplateDto): Promise<void> => {
     message.success(tt('ctpl.kefkfnl030', { p0: t.name, p1: data?.agentCount ?? 0 }))
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     instantiating.value = null

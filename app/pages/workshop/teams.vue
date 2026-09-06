@@ -79,7 +79,7 @@ const toggleVisibility = async (team: TeamDto, pub: boolean): Promise<void> => {
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
 }
 
@@ -105,7 +105,7 @@ const addMember = async (): Promise<void> => {
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
 }
 const removeMember = async (team: TeamDto, templateId: string): Promise<void> => {
@@ -135,7 +135,7 @@ const deploy = async (): Promise<void> => {
     deployOpen.value = false
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     deploying.value = false
