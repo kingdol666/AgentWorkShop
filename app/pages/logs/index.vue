@@ -3,8 +3,10 @@
     <!-- 页头:标题 + 手动记录入口 -->
     <header class="head">
       <div>
+        <p class="aw-kicker">
+          agentworkshop / audit log
+        </p>
         <h1 class="h1">
-          <span class="i-tabler-list-details" />
           {{ $t('logs.title') }}
         </h1>
         <p class="sub">

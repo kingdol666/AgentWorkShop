@@ -26,6 +26,11 @@ export function useRouteMeta() {
     '/workshop/channel-templates': { key: 'meta.ctpl', icon: 'i-tabler-layout-grid-add' },
     '/town': { key: 'menu.town', icon: 'i-tabler-map-2' },
     '/tokens': { key: 'menu.tokens', icon: 'i-tabler-key' },
+    '/daq': { key: 'menu.daq', icon: 'i-tabler-activity' },
+    '/dcw': { key: 'menu.dcw', icon: 'i-tabler-settings-automation' },
+    '/logs': { key: 'menu.logs', icon: 'i-tabler-list-details' },
+    '/permissions': { key: 'menu.permissions', icon: 'i-tabler-shield-lock' },
+    '/plugins': { key: 'menu.plugins', icon: 'i-tabler-puzzle' },
     '/users': { key: 'menu.users', icon: 'i-tabler-users-group' },
     '/monitor': { key: 'menu.monitor', icon: 'i-tabler-cpu' },
     '/settings': { key: 'menu.settings', icon: 'i-tabler-settings' },
@@ -43,7 +48,9 @@ export function useRouteMeta() {
       return { title: name ?? `${t('header.workspace')} ${id.slice(0, 6)}`, icon: 'i-tabler-console' }
     }
 
-    return { title: path.split('/').filter(Boolean).pop() ?? '·', icon: 'i-tabler-point' }
+    // 单段动态路径(daqs/dcws 等)取末段;纯 slug 至少首字母大写,不再裸显示
+    const last = path.split('/').filter(Boolean).pop() ?? '·'
+    return { title: last.charAt(0).toUpperCase() + last.slice(1), icon: 'i-tabler-point' }
   }
 
   return { metaFor }

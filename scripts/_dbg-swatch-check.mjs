@@ -1,0 +1,10 @@
+import puppeteer from 'puppeteer-core'
+const browser = await puppeteer.launch({ executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', headless: 'new', args: ['--no-sandbox', '--no-proxy-server'] })
+const page = await browser.newPage()
+await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1.25 })
+const login = await fetch('http://127.0.0.1:3001/api/users/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'admin@awshop.local', password: 'admin123' }) }).then(r => r.json())
+await page.setCookie({ name: 'token', value: login.data.token, domain: '127.0.0.1', path: '/' })
+await page.goto('http://127.0.0.1:3001/settings', { waitUntil: 'networkidle2' })
+await new Promise(r => setTimeout(r, 2000))
+console.log('swatch labels:', await page.evaluate(() => [...document.querySelectorAll('.swatch-label')].map(e => e.textContent.trim()).join(' | ')))
+await browser.close()

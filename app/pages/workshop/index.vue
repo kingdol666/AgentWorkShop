@@ -415,9 +415,11 @@ useHead({ title: () => t('titles.workshop') })
 
           <div
             v-if="wsStore.workspaces.length === 0 && ready"
-            class="card placeholder"
+            class="card placeholder aw-empty"
             @click="createOpen = true"
           >
+            <span class="aw-empty-title">从一条产线、一个 Agent 开始</span>
+            <span class="aw-empty-sub">Workspace 是频道与任务的容器 —— 建立第一个工作区后,你的 Agent 团队即可上线作业。</span>
             <span class="i-tabler-plus big" />
             <span>新建第一个 Workspace</span>
           </div>

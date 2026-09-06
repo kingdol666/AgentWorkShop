@@ -90,6 +90,9 @@ onMounted(load)
   <div class="plugins-page">
     <header class="pg-head">
       <div>
+        <p class="aw-kicker">
+          agentworkshop / plugins
+        </p>
         <h1 class="pg-title">
           {{ $t('plugins.title') }}
         </h1>
@@ -136,11 +139,11 @@ onMounted(load)
       {{ $t('plugins.empty') }}
     </div>
 
-    <div class="pg-grid">
+    <div class="pg-grid aw-stagger">
       <article
         v-for="p in plugins"
         :key="`${p.scope}:${p.name}`"
-        class="pg-card"
+        class="pg-card aw-liftable"
         :class="{ 'is-off': !p.enabled }"
         @click="openDetail(p)"
       >
@@ -254,7 +257,7 @@ onMounted(load)
 .tag.user { border-color: rgba(65, 200, 244, .5); color: #41c8f4; }
 .tag.on { border-color: rgba(53, 224, 160, .5); color: #35e0a0; }
 .tag.off { border-color: rgba(255, 107, 107, .4); color: #ff6b6b; }
-.tag.client { border-color: rgba(181, 140, 255, .5); color: #b58cff; }
+.tag.client { border-color: color-mix(in srgb, var(--ink) 24%, transparent); color: var(--ink-soft); }
 .card-routes { display: flex; flex-direction: column; gap: 2px; }
 .card-routes code { font-size: 10px; opacity: .65; }
 .detail dt { margin-top: 10px; font-size: 11px; opacity: .5; }

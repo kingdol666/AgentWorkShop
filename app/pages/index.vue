@@ -21,8 +21,9 @@ const store = useAppStore()
 const daq = useDaqStream()
 const dcw = useDcwStream()
 
-// 数据宪法色板:绿主 / 数据青 / 琥珀 / 紫罗兰(与产线光晕色板同源)
-const PAL = { accent: '#35e0a0', cyan: '#41c8f4', amber: '#f4c542', violet: '#b58cff', danger: '#ff6b6b' }
+// 落地页图表色序:Warm Editorial 编辑色板(main.css --chart-* 同源)——
+// Town 控制室荧光色(#35e0a0/#41c8f4)只属于 3D 孪生场景,不进暖纸编辑体系
+const PAL = { accent: '#4a6b57', cyan: '#6f8296', amber: '#c9a26a', violet: '#b3714f', danger: '#c25a4e' }
 
 // ---------- 数据装载(WS 实时 + 5s 兜底;可见性调度:后台降频 30s,回前台立即补拍) ----------
 onMounted(() => {
@@ -80,6 +81,10 @@ const baseTooltip = computed(() => ({
 // ---------- 图 1:实时工况趋势(多通道量程归一化) ----------
 const trendOpt = computed<EChartsOption>(() => ({
   backgroundColor: 'transparent',
+  // 冷启动空窗:首帧前不给「开天窗」观感,给一行等待提示
+  graphic: trendBuf.value.length === 0
+    ? [{ type: 'text', left: 'center', top: 'middle', style: { text: t('home.trendWaiting'), fill: dimC.value, fontSize: 12 } }]
+    : undefined,
   tooltip: { trigger: 'axis', ...baseTooltip.value },
   legend: {
     top: 0, right: 4, icon: 'roundRect', itemWidth: 10, itemHeight: 4,

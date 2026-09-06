@@ -131,6 +131,9 @@ onMounted(load)
   <div class="perm-page">
     <header class="pg-head">
       <div>
+        <p class="aw-kicker">
+          agentworkshop / permissions
+        </p>
         <h1 class="pg-title">
           {{ $t('permissions.title') }}
         </h1>

@@ -1255,3 +1255,164 @@ ul.task-list {
     animation-duration: 200ms !important;
   }
 }
+
+/* ============================================================
+ * Warm Editorial · v2 polish(0.7.12)
+ * 评审驱动的五笔:图表色板归位 / 表格系统细化 / 空态组件 / 页眉归队 / 动效补全。
+ * 原则不变:transform/opacity only;reduced-motion 收敛;反 AI 味。
+ * ============================================================ */
+
+:root {
+  /* 图表调色板:暖纸体系的同类色序(替代 ECharts 默认荧光绿/蓝绿琥珀三连) */
+  --chart-1: #4a6b57; /* 墨绿 —— 首序 */
+  --chart-2: #8aa07c; /* 苔绿 */
+  --chart-3: #c9a26a; /* 琥珀纸 */
+  --chart-4: #b3714f; /* 陶赭 */
+  --chart-5: #6f8296; /* 青灰 */
+  --chart-track: color-mix(in srgb, var(--ink) 8%, transparent);
+
+  /* 动效时长刻度(animate 规范:UI <300ms;hover 100-160;浮层 150-250) */
+  --dur-press: 120ms;
+  --dur-control: 160ms;
+  --dur-overlay: 220ms;
+}
+
+/* ── 图表:坐标轴/图例融入油墨体系;数据序用暖纸色板 ── */
+.aw-chart .ant-table,
+.aw-chart text {
+  font-family: var(--font-body);
+}
+
+/* ── 表格系统细化:数字等宽 / 行内操作渐显 / 表头字距 ── */
+.ant-table .ant-table-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+.ant-table .ant-table-tbody > tr {
+  transition: background-color var(--transition-fast);
+}
+
+/* 行内操作默认半隐,行悬停渐显(降低常驻视觉噪音;触屏/键盘可达性不受影响) */
+@media (hover: hover) and (pointer: fine) {
+  .ant-table .ant-table-tbody .row-quiet {
+    opacity: 0.45;
+    transition: opacity var(--transition-fast);
+  }
+
+  .ant-table .ant-table-tbody > tr:hover .row-quiet,
+  .ant-table .ant-table-tbody > tr:focus-within .row-quiet {
+    opacity: 1;
+  }
+}
+
+/* ── 空态:细线一道 + 衬线一句 + 导语(拒绝大块剪影图形) ── */
+.aw-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: 72px 0;
+  text-align: center;
+}
+
+.aw-empty::before {
+  content: '';
+  width: 44px;
+  height: 1px;
+  background: var(--ink-fainter);
+}
+
+.aw-empty .aw-empty-title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--ink-soft);
+}
+
+.aw-empty .aw-empty-sub {
+  max-width: 46ch;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+/* ── 状态呼吸点:运行中/live 信号(2s 缓呼吸;reduced-motion 静止) ── */
+.aw-live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  border-radius: 50%;
+  background: var(--tone-live-dot, #b9770e);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .aw-live-dot {
+    animation: aw-breathe 2.2s ease-in-out infinite;
+  }
+
+  @keyframes aw-breathe {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+}
+
+/* ── 卡片悬停抬升:统一递给所有 .aw-liftable(4px 上移 + hairline 转墨) ── */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .aw-liftable {
+    transition:
+      transform var(--dur-control) var(--ease-out-quart),
+      border-color var(--transition-fast),
+      box-shadow var(--dur-control) var(--ease-out-quart);
+  }
+
+  .aw-liftable:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--ink) 24%, transparent);
+    box-shadow: 0 6px 18px rgb(12 10 9 / 7%);
+  }
+}
+
+/* ── 页面进场编排的网格扩展:stagger 之前只覆盖 6 个子元素,补到 12(卡片墙/表格页) ── */
+@media (prefers-reduced-motion: no-preference) {
+  .aw-stagger > :nth-child(7) { animation-delay: 0.3s; }
+  .aw-stagger > :nth-child(8) { animation-delay: 0.35s; }
+  .aw-stagger > :nth-child(9) { animation-delay: 0.4s; }
+  .aw-stagger > :nth-child(10) { animation-delay: 0.45s; }
+  .aw-stagger > :nth-child(11) { animation-delay: 0.5s; }
+  .aw-stagger > :nth-child(12) { animation-delay: 0.55s; }
+}
+
+/* ── 表头对齐:左对齐与正文一致(数字列右对齐由页面按列声明) ── */
+.ant-table .ant-table-thead > tr > th {
+  text-align: left;
+}
+
+/* ── 空表占位:替换 ant 默认黑色团状图形为细线风格 ── */
+.ant-empty-image {
+  display: flex;
+  justify-content: center;
+}
+
+.ant-empty-image svg {
+  width: 44px;
+  height: 44px;
+  fill: none;
+  stroke: var(--ink-fainter);
+  stroke-width: 1.25;
+  opacity: 0.8;
+}
+
+.ant-empty-description {
+  color: var(--ink-faint);
+  font-size: 12.5px;
+}
+
+/* ── tokens 吊销:安静墨灰,悬停转红(红色只留给确认瞬间) ── */
+.tok-revoke {
+  color: var(--ink-faint) !important;
+  transition: color var(--transition-fast);
+}
+
+.tok-revoke:hover {
+  color: var(--tone-danger-dot, #c25a4e) !important;
+}

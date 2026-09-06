@@ -309,11 +309,11 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
     </div>
 
     <!-- 产线卡片栅格 -->
-    <div class="line-grid">
+    <div class="line-grid aw-stagger">
       <div
         v-for="c in shownCards"
         :key="c.line.id"
-        class="line-card"
+        class="line-card aw-liftable"
         :class="{ idle: !dcw.lineStateOf(c.line.id).active }"
         :style="{ '--lc': c.line.color }"
       >
@@ -405,7 +405,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
       >
         <span class="i-tabler-plus" />
         {{ $t('dcw.k1efe391017') }}
-        <small>{{ $t('dcw.k19dlbli053') }}{{ nextColor }})</small>
+        <small>{{ $t('dcw.k19dlbli053') }}</small>
       </button>
     </div>
 

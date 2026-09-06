@@ -272,6 +272,9 @@ useHead({ title: () => tt('titles.tokens') })
     <template v-else>
       <div class="head">
         <div>
+          <p class="aw-kicker">
+            agentworkshop / api tokens
+          </p>
           <h2>API Token</h2>
           <p class="sub">
             {{ userStore.user?.name }} · {{ $t('tokens.k1upppaw026') }}
@@ -319,37 +322,31 @@ useHead({ title: () => tt('titles.tokens') })
                 <code
                   class="tok-val"
                   :class="{ revealed: isRevealed(record.id) }"
-                  :title="isRevealed(record.id) ? '已显示明文,点击眼睛遮回' : '掩码预览,点击眼睛查看明文'"
+                  :title="isRevealed(record.id) ? '已显示明文,点击眼睛遮回' : '掩码预览'"
                 >{{ rowDisplay(record as TokenMeta) }}</code>
                 <a-button
+                  v-if="record.hasPlain"
                   type="text"
                   size="small"
                   class="tok-op"
                   :loading="revealingId === record.id"
-                  :disabled="!record.hasPlain"
-                  :title="!record.hasPlain ? '旧版本 token 未存档明文,不可查看' : (isRevealed(record.id) ? '遮回' : '查看明文')"
+                  :title="isRevealed(record.id) ? '遮回' : '查看明文'"
                   @click="toggleRowReveal(record as TokenMeta)"
                 >
                   <span :class="isRevealed(record.id) ? 'i-tabler-eye-off' : 'i-tabler-eye'" />
                 </a-button>
                 <a-button
+                  v-if="record.hasPlain"
                   type="text"
                   size="small"
                   class="tok-op"
                   :class="{ ok: copyId === record.id }"
-                  :disabled="!record.hasPlain"
                   :title="copyId === record.id ? '已复制' : '复制明文'"
                   @click="copyRow(record as TokenMeta)"
                 >
                   <span :class="copyId === record.id ? 'i-tabler-check' : 'i-tabler-copy'" />
                 </a-button>
-                <a-tag
-                  v-if="!record.hasPlain"
-                  class="legacy-tag"
-                  color="orange"
-                >
-                  {{ $t('tokens.kyelqk1008') }}
-                </a-tag>
+                <!-- 0.7.10 起 token 只存哈希:无明文是常态,不再打「旧版不可见」标签 -->
               </div>
             </template>
             <template v-else-if="column.key === 'createdAt'">
@@ -374,10 +371,11 @@ useHead({ title: () => tt('titles.tokens') })
                   :cancel-text="'取消'"
                   @confirm="doRevoke(record)"
                 >
+                  <!-- 安静文本按钮:常态墨灰,悬停转红 —— 红色只留给真实确认瞬间,不再整行批发 -->
                   <a-button
-                    type="link"
+                    type="text"
                     size="small"
-                    danger
+                    class="tok-revoke"
                   >
                     <span class="i-tabler-trash" />
                     {{ $t('tokens.k3xmrz010') }}
