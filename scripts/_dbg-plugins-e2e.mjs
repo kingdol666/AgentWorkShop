@@ -8,7 +8,7 @@ import puppeteer from 'puppeteer-core'
 import { mkdirSync } from 'node:fs'
 
 const BASE = process.argv[2] ?? 'http://127.0.0.1:3021'
-const ADMIN = { email: 'admin@awshop.local', password: 'Awshop2026' }
+const ADMIN = { email: 'admin@awshop.local', password: process.argv[3] ?? 'admin123' }
 const PLAIN = { name: `plain-${Date.now().toString(36)}`, email: `plain-${Date.now().toString(36)}@awshop.local`, password: 'Plain2026' }
 const SHOT_DIR = '.e2e-shots'
 mkdirSync(SHOT_DIR, { recursive: true })

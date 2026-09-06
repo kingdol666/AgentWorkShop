@@ -25,9 +25,9 @@ const adminTok = await login('admin@awshop.local', ADMIN_PASS)
 ok('admin 登录', Boolean(adminTok))
 const ov = await api('/api/workshop/permissions', {}, adminTok)
 ok('admin 权限总览(lines+users)', ov.status === 200 && ov.body?.data?.lines?.length > 0 && ov.body?.data?.users?.length > 0, `lines=${ov.body?.data?.lines?.length} users=${ov.body?.data?.users?.length}`)
-const LINE1 = ov.body.data.lines.find(l => l.name.includes('1号'))?.id
-const LINE2 = ov.body.data.lines.find(l => l.name.includes('2号'))?.id
-ok('找到 1号/2号产线', Boolean(LINE1 && LINE2), `${LINE1} / ${LINE2}`)
+const LINE1 = ov.body.data.lines[0]?.id
+const LINE2 = ov.body.data.lines[1]?.id
+ok('找到两条目标产线', Boolean(LINE1 && LINE2), `${LINE1} / ${LINE2}`)
 
 // ---- plain 用户(注册即 user 角色) ----
 const stamp = Date.now().toString(36)

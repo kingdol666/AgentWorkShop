@@ -12,14 +12,22 @@
 
 ---
 
-## 1. npm 发布状态(需用户一步操作)
+## 1. npm 发布状态(已完成 ✅)
 
-- npm 官方源上最新为 **0.7.9**;`npm whoami` 返回 `ENEEDAUTH`(本机无登录态),0.7.10/0.7.11 **无法由我代为发布**。
-- 发布需一次 `npm login`(官方源),随后执行:
-  ```bash
-  npm publish --registry https://registry.npmjs.org   # 仓库根已有 agentworkshop-0.7.11.tgz
-  ```
-- 本次验收的"最新版本"以本地构建的 0.7.11 tgz 全局安装为被测对象(与发布包字节同源,`npm pack` 产物)。
+- **agentworkshop@0.7.11 已发布到 npm 官方源**(tag latest),发布回执 `+ agentworkshop@0.7.11`。
+- `npm view agentworkshop version` → **0.7.11**。
+- 全局已从 npm 官方源拉取最新:`npm i -g agentworkshop@latest --registry https://registry.npmjs.org` → `aw version` = 0.7.11。
+- 凭据管理:token 经用户级 ~/.npmrc 的 `${NPM_TOKEN}` 环境变量引用发布,未落仓库/源码/提交。
+
+## 1.1 发布后生产回归(aw start + npm 拉取版本,§3 全部断言复跑)
+
+| 套件 | 结果 |
+|---|---|
+| 产线权限 E2E(授权/可见性/写控/绑定/撤销) | 21/21 ✔ |
+| 审计负向断言(越权启停/历史读取/无 token WS 零帧) | 9/9 ✔ |
+| 插件页 E2E(徽标/启停/403 人话) | 9/9 ✔ |
+| 产线开跑闭环(产品→配方→start 写 PLC→停止→批次视图) | 9/9 ✔ |
+| 浏览器目视(workshop 时间线/permissions/town) | ✔ |
 
 ## 2. 启动与首启初始化
 
