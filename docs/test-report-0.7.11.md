@@ -157,3 +157,21 @@ LOWER(email) OR LOWER(name) 匹配。发布:agentworkshop@0.7.13(npm latest)。
 
 - 脚本:`scripts/_dbg-harness-e2e.mjs`(API 26 断言)、`scripts/_dbg-harness-ui-e2e.py`(浏览器 10 断言)。
 - 截图:`.e2e-shots/harness-1-dashboard-off.png`(灰化面板)、`harness-2-agent-select-disabled.png`(禁用下拉)。
+
+---
+
+# 附录 · v0.7.15 增量(Cloudflare 公网映射)
+
+## 功能:`scripts/aw-expose.mjs`
+
+- 一条命令把本机实例映射到公网:`node scripts/aw-expose.mjs [--port 3001] [--token <TUNNEL_TOKEN>] [--start]`。
+- 自动定位 cloudflared(PATH → Windows 默认安装位 → ~/.AgentWorkShop/bin);本地实例探活 `/api/health`,`--start` 自动拉起 `aw start`(120s 就绪窗)。
+- 默认快速隧道(免账号,trycloudflare.com 随机域名);`--token`/`CLOUDFLARE_TUNNEL_TOKEN` 切具名隧道(固定域名,生产推荐,配合 Cloudflare Access 做外层鉴权)。
+- 隧道进程崩溃 10s 自动重启;Ctrl+C 一并收尾。
+
+## 验证(生产实例 :3002)
+
+- 安装 cloudflared 2026.8.3(winget),快速隧道建立:`https://taxes-exec-state-icq.trycloudflare.com`。
+- 公网侧(Cloudflare 边缘回源):`/` 200、`/api/health` 200、用户名密码登录 API 200。
+- 浏览器经公网地址:登录表单渲染 → 登录 200 → 进入系统 → 仪表盘 6 引擎面板完整渲染(WS/实时链路经隧道可用)。
+- 运维注意:本机并行会话共用单实例锁,他处 `aw stop` 可能终止本地实例(本轮复现一次并重启恢复);隧道进程不受影响,实例重启后映射自动恢复。

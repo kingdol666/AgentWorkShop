@@ -1,9 +1,11 @@
 """Harness 可用性 UI E2E:用户名登录 → 仪表盘 Harness 面板(dsh=未安装灰化) → agents 模板选择禁用 → teams 页截图。
-dsh 未安装态由外部脚本预置;恢复也由外部执行(本脚本不发起 HTTP)。"""
-import asyncio, sys
+dsh 未安装态由外部脚本预置;恢复也由外部执行(本脚本不发起 HTTP)。
+AW_BASE 环境变量切换目标实例(默认 :3021);EXPECT_OFF=1 时断言恰好 1 条灰化。"""
+import asyncio, os, sys
 from playwright.async_api import async_playwright
 
-BASE = 'http://127.0.0.1:3021'
+BASE = os.environ.get('AW_BASE', 'http://127.0.0.1:3021')
+EXPECT_OFF = os.environ.get('EXPECT_OFF', '1') == '1'
 SHOT = '.e2e-shots'
 
 async def main():
@@ -49,12 +51,17 @@ async def main():
         ok(items == 6, f'仪表盘 6 引擎条目(实际 {items})')
         off = page.locator('.harness-row .h-item.off')
         off_n = await off.count()
-        ok(off_n == 1, f'未安装灰化条目=1(实际 {off_n})')
-        if off_n == 1:
-            txt = await off.first.inner_text()
-            ok('未安装' in txt and 'dsh' in txt, f'灰化条目为 dsh:{txt!r}')
-        total = await page.locator('.dp-hd:has-text("执行引擎") .fleet-total').inner_text()
-        ok('5/6' in total, f'就绪计数 5/6(实际 {total!r})')
+        if EXPECT_OFF:
+            ok(off_n == 1, f'未安装灰化条目=1(实际 {off_n})')
+            if off_n == 1:
+                txt = await off.first.inner_text()
+                ok('未安装' in txt and 'dsh' in txt, f'灰化条目为 dsh:{txt!r}')
+            total = await page.locator('.dp-hd:has-text("执行引擎") .fleet-total').inner_text()
+            ok('5/6' in total, f'就绪计数 5/6(实际 {total!r})')
+        else:
+            print(f'  · 灰化条目={off_n}(当前环境探测结果;全部安装时为 0)', flush=True)
+            total = await page.locator('.dp-hd:has-text("执行引擎") .fleet-total').inner_text()
+            print(f'  · 就绪计数={total!r}', flush=True)
         await page.screenshot(path=f'{SHOT}/harness-1-dashboard-off.png', full_page=False)
 
         # ---- 3. agents 模板页:选择器禁用未安装项 ----
@@ -64,12 +71,15 @@ async def main():
         await page.click('.ant-modal .ant-select')
         await page.wait_for_selector('.ant-select-dropdown .ant-select-item-option', timeout=10000)
         opts = await page.locator('.ant-select-dropdown .ant-select-item-option').all_inner_texts()
-        ok(any('未安装' in o for o in opts), f'下拉含(未安装)标记:{[o for o in opts if "未安装" in o]!r}')
         disabled = page.locator('.ant-select-dropdown .ant-select-item-option-disabled')
         dis_n = await disabled.count()
-        ok(dis_n == 1, f'禁用选项=1(实际 {dis_n})')
-        if dis_n == 1:
-            ok('dsh' in (await disabled.first.inner_text()), '禁用项为 dsh')
+        if EXPECT_OFF:
+            ok(any('未安装' in o for o in opts), f'下拉含(未安装)标记:{[o for o in opts if "未安装" in o]!r}')
+            ok(dis_n == 1, f'禁用选项=1(实际 {dis_n})')
+            if dis_n == 1:
+                ok('dsh' in (await disabled.first.inner_text()), '禁用项为 dsh')
+        else:
+            print(f'  · 下拉选项={len(opts)},禁用={dis_n}(全部安装时为 0)', flush=True)
         await page.screenshot(path=f'{SHOT}/harness-2-agent-select-disabled.png', full_page=False)
         await page.keyboard.press('Escape')
 
