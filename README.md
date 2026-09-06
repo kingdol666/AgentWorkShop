@@ -310,6 +310,26 @@ curl http://localhost:3000/api/workshop/channels \
   -H 'authorization: Bearer <token>'
 ```
 
+### Line-level permissions
+
+Industrial data is gated **per production line** with three states, managed by an admin
+in the built-in **Permissions** page (`/permissions`, admin-only in the sidebar):
+
+| State | DAQ nodes | DCW (write) nodes | Visibility |
+| --- | --- | --- | --- |
+| **none** (default for regular users) | hidden | hidden | line data withheld server-side — invisible in Line Ops, DAQ center and the digital twin |
+| **read-only** | read | ✕ | line visible, values stream, no writes / dispatch / device binding |
+| **operate** | read | read + write | full access incl. setpoint writes, dispatch, binding |
+
+- `admin` / `editor` roles are unrestricted (operations roles).
+- Regular users **default to none** — they see no line data until granted.
+- Enforcement lives in the data plane: list endpoints filter by grant, write/dispatch
+  endpoints return a human-readable 403, and Agent↔node bindings validate the line grant
+  (DAQ needs read-only+, DCW needs operate).
+- Plugins get the same surface via `ctx.permissions` (`lineMode` / `visibleLineIds` /
+  `listGrants` / `setGrants`) plus a `permissions:changed` lifecycle hook; the SDK REST
+  client exposes `client.permissions.overview()` / `client.permissions.set(...)`.
+
 ### Execution modes
 
 Prefix the task description (or pick in the composer UI):

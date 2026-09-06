@@ -309,6 +309,21 @@ curl http://localhost:3000/api/workshop/channels \
   -H 'authorization: Bearer <token>'
 ```
 
+### 产线级权限
+
+工业数据按**产线**三态管控，由管理员在内置「权限管理」页（`/permissions`，仅 admin 侧栏可见）维护：
+
+| 状态 | 数采节点 | 数控(写控)节点 | 可见性 |
+|---|---|---|---|
+| **无权**（普通用户默认） | 隐藏 | 隐藏 | 后端不返回该产线数据——产线运营/数采中心/数字孪生均不可见 |
+| **仅查看** | 只读 | ✕ | 产线可见、实时值可看，但不可写/不可下发/不可绑定设备 |
+| **可操控** | 读取 | 读取+写入 | 全量能力：设定值下发、参数下发、设备绑定 |
+
+- `admin` / `editor` 为运营角色，不受授权约束（全量全权）。
+- 普通用户**默认无权**——未授权前看不到任何产线数据。
+- 强制点在数据面：列表接口按授权过滤，写控/下发接口返回人话 403，Agent↔节点绑定校验产线授权（数采需仅查看+，写控需可操控）。
+- 插件经 `ctx.permissions`（`lineMode` / `visibleLineIds` / `listGrants` / `setGrants`）获得同一能力面，并有 `permissions:changed` 生命周期钩子；SDK REST 客户端提供 `client.permissions.overview()` / `client.permissions.set(...)`。
+
 ### 执行模式
 
 在任务描述中使用模式前缀（或在 composer UI 中选择）：

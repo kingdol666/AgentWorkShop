@@ -3,6 +3,7 @@
  * 首访触发存量 device-twins(kind=daq)的幂等升格供给,此后渲染完全由本列表驱动。
  */
 import { resolveUser } from '@/server/api/workshop/caller'
+import { filterByLine } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
 import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
@@ -13,7 +14,7 @@ import { daqInfraStatus } from '@/server/services/workshop/daq/infra'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   // ws.ts 出口装配 + 管线上电(幂等;路由模块加载即绑定)
   bindDaqHost(broadcastSceneEvent)
   await Promise.all([tsdbReady, getDaqQueue()])
@@ -22,7 +23,8 @@ export default defineApiHandler(async (event) => {
   const state = ctrl.controllerState()
   return {
     controller: state,
-    nodes: ctrl.listViews(),
+    // 产线级权限:普通用户仅见授权产线的节点(admin/editor 全量)
+    nodes: filterByLine(user, ctrl.listViews(), n => n.lineId),
     meta: {
       ...ctrl.backends(),
       produced: state.produced ?? 0,

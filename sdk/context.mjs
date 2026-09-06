@@ -125,6 +125,18 @@ export function createPluginContext(opts) {
     },
     timer,
     onDispose,
+    /** 产线权限面(宿主注入;未提供时降级为不可用占位):
+     *  lineMode(user,lineId) → 'none'|'readonly'|'operate'
+     *  visibleLineIds(user)  → Set<lineId>|null(全量)
+     *  listGrants(userId)    → [{lineId,mode,grantedBy,grantedAt}]
+     *  setGrants(userId, [{lineId,mode}]) → 写授权(需 admin 上下文)
+     *  变更事件: hooks.on('permissions:changed', { userId }) */
+    permissions: opts.permissions ?? {
+      lineMode: () => 'none',
+      visibleLineIds: () => new Set(),
+      listGrants: () => [],
+      setGrants: () => { throw new Error('[sdk] ctx.permissions 未由宿主注入') },
+    },
     /** 订阅式清理对象({ dispose(){} })集中登记 */
     subscriptions: {
       add: (d) => {

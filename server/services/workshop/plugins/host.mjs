@@ -19,6 +19,23 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { HookBus, createPluginContext, createRouteTable, validatePluginModule } from '@/sdk/index.mjs'
 
+// 延迟解析的产线权限服务(esbuild/别名下避免 nitro 打包循环导入;失败降级为拒绝一切)
+let permissions = null
+let userRepository = null
+async function loadPermissions() {
+  if (permissions) return
+  try {
+    permissions = await import('@/server/services/workshop/permissions')
+    userRepository = await import('@/server/repositories/user.repository').then(m => m.userRepository)
+  }
+  catch (err) {
+    hostLoggerFallback()?.warn('权限服务加载失败(插件 ctx.permissions 降级):', err?.message)
+  }
+}
+function hostLoggerFallback() {
+  return globalThis.__awPluginHost?.logger ?? console
+}
+
 const g = globalThis
 
 function log() {
@@ -163,6 +180,9 @@ async function loadAllPlugins(host, { config, paths }) {
   const disabled = readDisabledSet(homeDir)
   host.disabledSet = disabled
 
+  // 产线权限服务(ctx.permissions 注入用;失败降级)
+  await loadPermissions()
+
   const entries = discoverPluginDirs(host.cwd)
   if (entries.length) host.logger.info(`发现 ${entries.length} 个插件(停用 ${disabled.size}),开始装载 ...`)
 
@@ -249,6 +269,20 @@ async function loadAllPlugins(host, { config, paths }) {
           return fn
         },
         selfOrigin: () => selfOriginRef(host),
+        // 产线权限拓展面(SDK ctx.permissions):插件可查询/管理用户×产线授权
+        permissions: {
+          lineMode: (user, lineId) => permissions.lineMode(user, lineId),
+          visibleLineIds: user => permissions.visibleLineIds(user),
+          listGrants: userId => userRepository.listGrants(userId),
+          setGrants: (userId, entries, grantedBy = 'plugin') => {
+            for (const g of (entries ?? [])) {
+              if (!g?.lineId) continue
+              userRepository.setGrant(userId, String(g.lineId), (g.mode ?? null), grantedBy)
+            }
+            permissions.notifyGrantsChanged(userId)
+            return userRepository.listGrants(userId)
+          },
+        },
       })
       // DAQ 扩展面(v2 帧管线):插件注册自定义驱动与下沉处理器。
       // 桥经 globalThis 排队 —— daq 模块晚于插件宿主装载时,注册项先排队、

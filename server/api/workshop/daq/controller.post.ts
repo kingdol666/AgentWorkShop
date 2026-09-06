@@ -45,6 +45,8 @@ export default defineApiHandler(async (event) => {
       return { controller }
     }
     case 'config':
+      // 全局采集参数(默认采样/下发间隔)属控制面:admin/editor 才可改
+      requireRole(event, ['admin', 'editor'])
       return { controller: ctrl.configure({ defaultIntervalMs: body.defaultIntervalMs, defaultPublishIntervalMs: body.defaultPublishIntervalMs }) }
     default:
       return { controller: ctrl.controllerState() }

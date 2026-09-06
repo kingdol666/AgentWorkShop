@@ -5,6 +5,7 @@
  */
 import { getRouterParam, readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
@@ -14,6 +15,8 @@ export default defineApiHandler(async (event) => {
   bindDcwBroadcast(broadcastSceneEvent)
   const id = getRouterParam(event, 'id') ?? ''
   const body = await readBody<{ value?: number }>(event) ?? {}
+  // 产线权限:写控设定值需「可操控」(readonly/无权用户 403)
+  requireLineMode(user, getDcwController().byId(id)?.lineId, 'operate')
   const outcome = await getDcwController().write(id, Number(body.value), null, { source: 'manual', actor: user.id, actorName: user.name })
   return { outcome }
 })

@@ -85,6 +85,12 @@ export function createPlatformClient({ baseUrl = '', token, logger, timeoutMs = 
     teams: resource('/api/workshop/teams'),
     agents: resource('/api/workshop/agents'),
     channels: resource('/api/workshop/channels'),
+    permissions: {
+      /** admin:全量产线 + 用户(含 channels/grants)总览 */
+      overview: () => call('GET', '/api/workshop/permissions'),
+      /** admin:批量设置用户产线授权 { userId, grants: [{ lineId, mode: 'readonly'|'operate'|null }] } */
+      set: payload => call('PUT', '/api/workshop/permissions', payload),
+    },
     plugins: {
       manifest: () => call('GET', '/api/plugins/manifest'),
     },

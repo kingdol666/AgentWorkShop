@@ -3,6 +3,7 @@
  */
 import { getRouterParam, readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
 import { getDaqController, type DaqPatchInput } from '@/server/services/workshop/daq/daq-controller'
@@ -14,6 +15,8 @@ export default defineApiHandler(async (event) => {
   bindDaqHost(broadcastSceneEvent)
   const id = getRouterParam(event, 'id') ?? ''
   const body = await readBody<DaqPatchInput>(event) ?? {}
+  // 产线权限:参数下发=操控能力(readonly/无权用户 403)
+  requireLineMode(user, getDaqController().byId(id)?.lineId, 'operate')
   const node = getDaqController().patch(id, body)
   recordOps({
     actor: user.id,

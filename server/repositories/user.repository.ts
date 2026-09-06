@@ -40,6 +40,14 @@ CREATE TABLE IF NOT EXISTS user_tokens (
   last_used_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id);
+CREATE TABLE IF NOT EXISTS user_line_grants (
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  line_id     TEXT NOT NULL,
+  mode        TEXT NOT NULL,
+  granted_by  TEXT,
+  granted_at  TEXT NOT NULL,
+  PRIMARY KEY (user_id, line_id)
+);
 `
 
 let db: DatabaseSync | null = null
@@ -256,6 +264,33 @@ export const userRepository = {
     const d = getDb()
     const { n } = d.prepare('SELECT COUNT(*) AS n FROM users WHERE role = \'admin\' AND status = \'active\'').get() as { n: number }
     return n > 0
+  },
+
+  // ===== 产线授权(user_line_grants;admin/editor 不查此表,全量全权)=====
+
+  /** 某用户全部产线授权 */
+  listGrants(userId: string): Array<{ lineId: string, mode: string, grantedBy: string | null, grantedAt: string }> {
+    const d = getDb()
+    return d.prepare('SELECT line_id AS lineId, mode, granted_by AS grantedBy, granted_at AS grantedAt FROM user_line_grants WHERE user_id = ?').all(userId) as Array<{ lineId: string, mode: string, grantedBy: string | null, grantedAt: string }>
+  },
+
+  /** 单条授权(mode 非 readonly/operate → 撤销);返回是否发生变化 */
+  setGrant(userId: string, lineId: string, mode: string | null, grantedBy: string | null): boolean {
+    const d = getDb()
+    if (mode !== 'readonly' && mode !== 'operate') {
+      return d.prepare('DELETE FROM user_line_grants WHERE user_id = ? AND line_id = ?').run(userId, lineId).changes > 0
+    }
+    d.prepare(`INSERT INTO user_line_grants (user_id, line_id, mode, granted_by, granted_at) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, line_id) DO UPDATE SET mode = excluded.mode, granted_by = excluded.granted_by, granted_at = excluded.granted_at`)
+      .run(userId, lineId, mode, grantedBy, now())
+    return true
+  },
+
+  /** 用户 → 产线访问映射(lineId → 'readonly'|'operate');无记录 = 无权 */
+  lineAccessMap(userId: string): Map<string, string> {
+    const d = getDb()
+    const rows = d.prepare('SELECT line_id AS lineId, mode FROM user_line_grants WHERE user_id = ?').all(userId) as Array<{ lineId: string, mode: string }>
+    return new Map(rows.map(r => [r.lineId, r.mode]))
   },
 
   /** 内部：取密码哈希（仅认证路径使用，不参与领域对象外泄） */

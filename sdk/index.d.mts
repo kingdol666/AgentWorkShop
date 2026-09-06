@@ -77,6 +77,13 @@ export interface PluginContext {
   onDispose(fn: () => any): () => void
   subscriptions: { add(d: { dispose(): any } | (() => any)): any }
   route(method: string, path: string, handler: (event: any) => any): boolean
+  /** 产线权限拓展面(用户 × 产线三态授权: none / readonly / operate) */
+  permissions: {
+    lineMode(user: { id: string, role: string }, lineId: string | null | undefined): 'none' | 'readonly' | 'operate'
+    visibleLineIds(user: { id: string, role: string }): Set<string> | null
+    listGrants(userId: string): Array<{ lineId: string, mode: string, grantedBy: string | null, grantedAt: string }>
+    setGrants(userId: string, grants: Array<{ lineId: string, mode: 'readonly' | 'operate' | null }>, grantedBy?: string): Array<{ lineId: string, mode: string }>
+  }
   api: PlatformClient
   http: PluginHttp
   events: { on(type: string, fn: (payload: any) => any): () => void, off(type: string, fn: (payload: any) => any): void }

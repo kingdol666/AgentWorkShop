@@ -6,6 +6,7 @@
 export const LIFECYCLE_EVENTS = Object.freeze([
   'plugin:host:init',
   'config:changed',
+  'permissions:changed',
   'event:*',
   'daq:sample',
   'dcw:write',
