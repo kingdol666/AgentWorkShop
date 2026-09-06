@@ -15,6 +15,8 @@
 
 **[中文文档 →](./README-zh.md)** · **[Online Docs →](https://kingdol666.github.io/AgentWorkShop/)**
 
+> 📖 Docs are bilingual — the [VitePress site](https://kingdol666.github.io/AgentWorkShop/) ships a language switcher (简体中文 / English) across guides, SDK and plugin references.
+
 *A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to a 3D twin.*
 
 </div>
@@ -47,6 +49,10 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 | **Read-write DCW channels (v0.7)** | Every control node also **reads its PLC value back** through the same calibration path it writes with: periodic + on-demand + agent reads surface **SET vs ACT** side by side in the DCW console, the twin panel (green ACT row) and a new `dcw_read` agent tool — passive observation, never blocked by write interlocks. |
 | **Five field protocols** | Modbus TCP, Modbus RTU-over-TCP (serial gateway), OPC UA, MQTT and HTTP/REST — acquisition and write-control drivers with connection pools, classified error messages and per-driver connection tests. `mock` covers demos/CI; the driver registry accepts plugin-registered protocols. |
 | **Per-channel LLM selection** | Each channel picks a **harness → provider → model (+effort)** triple from the harness's live catalog (e.g. `zhipu-coding-plan/glm-5.3-flash` on omp, `ustc/glm-5.3-flash` on dsh). Members inherit it unless they override — mixing harnesses in one team is a first-class setup, not a workaround. |
+| **Harness availability check** | `GET /api/workshop/harnesses` probes each engine's CLI on PATH (`available` / `command` / `resolvedPath`). The UI disables not-installed engines, and dispatch is hard-checked at every entry point — you can no longer assign an agent to an engine that isn't there. |
+| **HITL + control loop, protocol-real** | Agent dispatches pend for human approval, then write over Modbus/OPC UA with readback verification; the closed loop (control → sample → judge → keep/rollback) runs against real simulators — verified end to end with four harnesses in parallel. |
+| **Recipe versioning & governance** | Parameter changes are versioned with attribution (user/agent/system + operator + reason). Roll back to any revision or the last-good batch — non-destructively. Agents save best parameters and roll back through tools; stale-node params are skipped and clearly marked. |
+| **Agent self-audit tools** | `line_context`, `ops_log`, `recipe_log`, `recipe_versions`, `dcw_journal` — agents see exactly which line/product/recipe they control, who did what, and how every value changed. Operations are attributed to "Channel/Member" in the ops log, distinct from users and the system. |
 | **Configurable cadences (v0.7.7)** | Sampling default & floor and Timescale query bucket default & floor are **live settings** (`daq.sampling.*`, `daq.query.*`): change them in `config.yml`, the Settings UI or via `aw config set` — hot-reloaded, clamped on node create/patch, and the injected agent tool descriptions always carry the current values. |
 | **Fully config-driven runtime (v0.7)** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — legacy env names kept as aliases, no hardcoded defaults left in code. Project-level `.AgentWorkShop` wins; `~/.AgentWorkShop` is the user-level fallback (auto-seeded on install). |
 | **Multi-modal DAQ frame pipeline (v0.6)** | Multi-point profiles (thickness/scanner) and CCD image frames are processed through template sink pipelines before storage: vectors & metadata into Timescale (`daq_frames`), pixels into object storage (MinIO, auto disk fallback); derived-metric thresholds ride the existing alarm chain. |
@@ -361,19 +367,17 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 ## Verified end-to-end
 
-The repo ships live E2E that exercises the full loop against a running server — the numbers below are from an actual run:
+The repo ships live E2E suites that run against a production instance over **simulated real
+plant protocols** (Modbus TCP/RTU, OPC UA, MQTT, HTTP + MQTT/Timescale pipelines). Latest
+acceptance run — **156 assertions, 0 failures** ([full report](./docs/audit/e2e-2026-09-07.md)):
 
-| Check | Result |
-|---|---|
-| Line start → recipe writes setpoint (180 °C) | ✅ |
-| Interlock: write 170 (<176) and 200 (>188) → **400 rejected** | ✅ |
-| Team deploy → goal dispatch (lead → omp worker) | ✅ t + 3 s |
-| Worker reads real history: **mean 168.05 °C, 96 samples, min/max/latest** | ✅ |
-| HITL approval → setpoint **180 → 182 °C** written & read back | ✅ |
-| Goal closes with structured summary | ✅ |
-| Batch tagging: samples carry product/recipe/run | ✅ |
+| Suite | Checks | Covers |
+|---|---|---|
+| Five-protocol live line | 37 ✅ | protocol connectivity, DAQ sampling (5 protocols) into Timescale, DCW dispatch + readback per protocol, agent closed loop, HITL approval with a real OPC UA write, recipe update/rollback, param-ledger rollback |
+| Multi-harness parallel | 21 ✅ | omp closed loop · codex real register write · dsh real acquisition · opencode recipe write+rollback — each engine COMPLETED on a running line |
+| Permissions / audit-neg / harness availability / stale-node guard / recipe versions | 98 ✅ | line grants, WS auth, engine probing, three-state stale params, versioned history with attribution |
 
-Reproduce: `node scripts/_dbg-full-feature-e2e.mjs` (against a running server).
+Reproduce: `node scripts/_dbg-live-line-e2e.mjs` · `node scripts/_dbg-multiharness-live-e2e.mjs` (against a running server).
 
 ---
 
@@ -441,6 +445,13 @@ node scripts/_dbg-full-feature-e2e.mjs    # full-feature live E2E (server must b
 | Runtime configuration system: settings persistence · hot reload · settings UI | Shipped |
 | `aw` CLI: config · run · init · register · doctor | Shipped |
 | Multi-harness registry: omp · codex · dsh · opencode subprocess engines | Shipped |
+| Five field protocols: Modbus RTU-over-TCP · MQTT · HTTP (acquisition + write control) | Shipped |
+| Harness availability probing + dispatch-time engine checks (UI disable + 409) | Shipped |
+| Recipe versioning with attribution + non-destructive rollback (UI + agent tools) | Shipped |
+| Agent self-audit: line_context / ops_log / recipe_log / recipe_versions / dcw_journal | Shipped |
+| Multi-harness parallel live E2E on a real protocol line (four engines, one line) | Shipped |
+| HITL approval flow verified over real OPC UA writes | Shipped |
+| Bilingual docs (简体中文 / English) with VitePress language switcher | Shipped |
 | Per-channel LLM provider/model selection from live harness catalogs | Shipped |
 | Configurable DAQ/TSDB cadences (sampling & query defaults + floors, live) | Shipped |
 | Claude Agent SDK adapter — full parity with `mock`/`omp` | In progress |

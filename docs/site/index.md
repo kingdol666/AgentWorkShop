@@ -22,33 +22,36 @@ features:
     title: 一键安装 · 任意目录启动
     details: npm i -g agentworkshop 后,任意目录 aw start。首次启动自动构建并初始化
       ~/.AgentWorkShop 配置根 —— 与工作目录和环境无关。
-  - icon: '<span class="aw-tag">CLI</span>'
-    title: aw CLI · 指令注册系统
-    details: config / dev / start / build / doctor / update 内置;
-      三层指令注册(项目级 > 用户级 > 内建),放入目录即生效。
-  - icon: '<span class="aw-tag">SDK</span>'
-    title: SDK · 平台 REST 客户端
-    details: createPlatformClient 类型化消费产线/数采/写控/孪生 REST 面;
-      鉴权、信封解包、超时与协议守卫开箱即用。
-  - icon: '<span class="aw-tag">PLG</span>'
-    title: 插件 · 前后端双面增强
-    details: 服务端钩子(daq:sample / daq:frame / dcw:write / line 生命周期 / scene 全事件)
-      + 浏览器增强脚本 + 插件自有 API 路由,放入目录即装载。
-      v0.6 起可注册自定义数采驱动/下沉处理器/节点模板与 omp 工具(运行时热注入)。
-  - icon: '<span class="aw-tag">IND</span>'
-    title: 真实工业栈 · 多形态数采
-    details: Modbus TCP / OPC UA 数采,安全量程 ∩ 配方窗口联锁,
-      HITL 人工审批 → PLC 写入 → 回读校验,逐样本批次打标。
-      v0.6 支持多点轮廓(vector)与 CCD 图像帧:sink 管线加工后入 Timescale,像素入 MinIO。
+  - icon: '<span class="aw-tag">PLC</span>'
+    title: 五协议数采与数控
+    details: Modbus TCP / Modbus RTU(串口网关透传)/ OPC UA / MQTT / HTTP 双向驱动
+      —— 连接池、故障分类诊断、逐驱动连接测试;真实协议下完成数采与写控全链 E2E。
+  - icon: '<span class="aw-tag">HITL</span>'
+    title: 人机协同写控(HITL)
+    details: 安全量程 ∩ 配方窗口联锁 → HITL 人工审批 → PLC 写入 → 回读校验 → 签名写历史;
+      Agent 下发挂起待审,批准即执行,裁决人留痕审计。
+  - icon: '<span class="aw-tag">RCT</span>'
+    title: Recipe 版本化治理
+    details: 配方参数按版本入史(来源 用户/Agent/系统 + 操作者 + 原因),一键回退到任意
+      历史版本或已知良好批次;Agent 可经工具保存最佳参数、查询版本 diff、执行回退。
+  - icon: '<span class="aw-tag">HRN</span>'
+    title: 多 Harness Agent 团队
+    details: omp / codex / dsh / opencode / mock / claude 一个 AgentInterface —— 每频道可选
+      harness → provider → model;环境可用性探测(未安装禁选)+ 执行前强校验,四引擎
+      并行真实产线作业 E2E 验证。
   - icon: '<span class="aw-tag">R/W</span>'
-    title: 数控读写一体(v0.7)
+    title: 数控读写一体
     details: 每个控制节点沿写链路同一套标定读回 PLC 当前值 —— 周期读/手动读取/Agent
       dcw_read 三通道,SET 与 ACT 在数控页与孪生面板并排呈现(读为被动观测,免审批)。
-  - icon: '<span class="aw-tag">CFG</span>'
-    title: 全量配置驱动(v0.7)
-    details: 运行语义旋钮全部收编设置描述符(14 组 62 键):config.yml < runtime-settings <
-      env(历史变量名别名兼容),项目级 .AgentWorkShop 优先、~/.AgentWorkShop 用户兜底。
-      通信故障按类给出诊断与处理提示(连接/超时/量程越规/PLC 拒绝)。
+  - icon: '<span class="aw-tag">OPS</span>'
+    title: 全操作运维日志
+    details: 用户 / Agent / 系统三源归属,操作者落到「Channel名/成员名」;按产线/产品/
+      Recipe/来源/分类/关键词检索,WS 实时推送;Agent 可经工具自查负责产线的日志与
+      Recipe 变更史。
+  - icon: '<span class="aw-tag">PLG</span>'
+    title: 插件 · 前后端双面增强
+    details: 服务端钩子(daq:sample / dcw:write / scene 全事件)+ 自定义数采驱动/处理器/
+      节点模板 + omp 工具热注入;SDK 提供类型化 REST 客户端与权限感知上下文。
   - icon: '<span class="aw-tag">TWN</span>'
     title: 3D 数字孪生
     details: Three.js 小镇实时呈现产线设备、节点健康、告警与趋势 —— 与 Agent 消费同一事件流。

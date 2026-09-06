@@ -15,6 +15,8 @@
 
 **[English →](./README.md)** · **[在线文档 →](https://kingdol666.github.io/AgentWorkShop/)**
 
+> 📖 文档双语 —— [VitePress 文档站](https://kingdol666.github.io/AgentWorkShop/)内置语言切换(简体中文 / English),指南、SDK 与插件参考全覆盖。
+
 *一个配置驱动的平台:**AI Agent 团队**与**工业数字孪生**共享同一运行时——Agent 查询真实遥测、经人工审批的写控回路下发监督设定值，每个事件实时推送到 3D 孪生。*
 
 </div>
@@ -48,6 +50,10 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **全量配置驱动运行时（v0.7）** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env** —— 历史 env 名作别名兼容，代码零硬编码默认。项目级 `.AgentWorkShop` 优先，`~/.AgentWorkShop` 用户级兜底（安装即种子初始化）。 |
 | **五协议现场总线** | Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST —— 数采与写控双驱动带连接池、分类错误文案与逐驱动连接测试；`mock` 覆盖演示/CI；驱动注册表接受插件注册新协议。 |
 | **Channel 级 LLM 选择** | 每个 Channel 从 Harness 实时目录中选 **harness → provider → model（+effort）**（如 omp 的 `zhipu-coding-plan/glm-5.3-flash`、dsh 的 `ustc/glm-5.3-flash`）。成员未显式覆盖即继承 —— 一个团队混用多种 harness 是一等公民设定，不是绕行。 |
+| **Harness 可用性检查** | `GET /api/workshop/harnesses` 逐引擎探测 PATH 上的 CLI(`available`/`command`/`resolvedPath`);前端禁用未安装项,执行前七处入口强校验 —— 不会再把 Agent 派给一个不存在的引擎。 |
+| **HITL + 调控闭环(真实协议验证)** | Agent 下发挂起待人工批准,批准后经 Modbus/OPC UA 真写并回读校验;闭环(下发→采样→判定→keep/回退)在真实模拟器上四引擎并行 E2E 验证。 |
+| **Recipe 版本化治理** | 参数修改按版本入史(归因 用户/Agent/系统 + 操作者 + 原因),一键回退任意版本或已知良好批次(非破坏);Agent 经工具保存最佳参数与回退,失效节点参数跳过并明确标识。 |
+| **Agent 自查工具** | `line_context` / `ops_log` / `recipe_log` / `recipe_versions` / `dcw_journal` —— Agent 清楚自己操控的产线/产品/配方,谁做过什么、每个值怎么变。运维日志操作者归属「Channel名/成员名」,与用户和系统天然区分。 |
 | **可配置节拍（v0.7.7）** | 采样默认间隔与下限、时序查询默认桶宽与下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：config.yml、设置页或 `aw config set` 三路同源 —— 热重载、create/patch 钳制，注入 Agent 的工具描述实时携带当前值。 |
 | **多形态数采帧管线（v0.6）** | 测厚仪/扫描仪的多点轮廓与 CCD 图像经模板 sink 处理器加工后入库：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达自动降级本地磁盘）；派生指标越限走既有告警链路。 |
 | **插件扩展 API（v0.6）** | `ctx.daq.registerDriver / registerProcessor / registerTemplate` 自定义采集与下沉算法（放入 `plugins/` 即生效）；`ctx.omp.registerTool` 自定义 agent 工具，注册表变更运行时热注入全部在跑会话。 |
@@ -355,19 +361,15 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 ## 端到端验证
 
-仓库自带 live E2E，对运行中的服务端跑通全链路——以下数值来自真实一次运行：
+仓库自带 live E2E 套件,在生产实例上对**模拟真实产线协议**(Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线)做全链路验收。最新一轮:**156 断言,0 失败**([完整报告](./docs/audit/e2e-2026-09-07.md)):
 
-| 检查项 | 结果 |
-|---|---|
-| 产线开跑 → 配方下发设定值（180℃） | ✅ |
-| 联锁：写 170（<176）与 200（>188）→ **400 拒绝** | ✅ |
-| 团队部署 → goal 派发（lead → omp worker） | ✅ t + 3s |
-| Worker 读真实历史：**均值 168.05℃，96 采样点，min/max/latest** | ✅ |
-| HITL 审批 → 设定值 **180 → 182℃** 写入且回读 | ✅ |
-| goal 收口，结构化总结 | ✅ |
-| 批次打标：样本携带 product/recipe/run | ✅ |
+| 套件 | 断言 | 覆盖 |
+|---|---|---|
+| 五协议真实产线 | 37 ✅ | 协议连通、五协议数采入 Timescale、逐协议数控下发回读、Agent 闭环、HITL 批准后 OPC UA 真写、Recipe 保存/回退、参数账本回退 |
+| 多 Harness 并行 | 21 ✅ | omp 闭环 · codex 真实寄存器写入 · dsh 真实数采 · opencode Recipe 写入+回退,四引擎在开跑产线上全部 COMPLETED |
+| 权限 / 审计负向 / Harness 可用性 / 失效节点 / Recipe 版本 | 98 ✅ | 产线三态授权、WS 鉴权、引擎探测、三态失效参数、归因版本史 |
 
-复现：`node scripts/_dbg-full-feature-e2e.mjs`（对运行中的服务端）。
+复现:`node scripts/_dbg-live-line-e2e.mjs` · `node scripts/_dbg-multiharness-live-e2e.mjs`（对运行中的服务端）。
 
 ---
 
@@ -435,6 +437,13 @@ node scripts/_dbg-full-feature-e2e.mjs    # 全功能 live E2E（需服务端运
 | 运行时配置系统：设置持久化 · 热重载 · 设置页 UI | 已交付 |
 | `aw` CLI：config · run · init · register · doctor | 已交付 |
 | 多 Harness 注册表：omp · codex · dsh · opencode 子进程引擎 | 已交付 |
+| 五种现场协议:Modbus RTU-over-TCP · MQTT · HTTP(数采+数控双向) | 已交付 |
+| Harness 可用性探测 + 执行前引擎强校验(UI 禁选 + 409) | 已交付 |
+| Recipe 归因版本史 + 非破坏回退(界面 + Agent 工具) | 已交付 |
+| Agent 自查工具:line_context / ops_log / recipe_log / recipe_versions / dcw_journal | 已交付 |
+| 多 Harness 并行真实产线 E2E(四引擎一条产线) | 已交付 |
+| HITL 审批流经真实 OPC UA 写入验证 | 已交付 |
+| 双语文档(简体中文 / English,VitePress 语言切换) | 已交付 |
 | Channel 级 LLM provider/model 选择（实时 Harness 目录） | 已交付 |
 | 可配置数采/时序节拍（采样与查询的默认值+下限，live 热重载） | 已交付 |
 | Claude Agent SDK 适配器——与 `mock`/`omp` 完全对齐 | 进行中 |
