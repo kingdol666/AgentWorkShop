@@ -27,6 +27,19 @@ const authPassword = ref('')
 const authTokenInput = ref('')
 const authLoading = ref(false)
 
+// 首启初始化:系统尚无管理员 → 登录门切换为"注册管理员"模式(首个注册账号自动成为 admin)
+const needsSetup = ref(false)
+onMounted(async () => {
+  try {
+    const res = await $fetch<{ code: number, data?: { needsSetup: boolean } }>('/api/users/setup-status')
+    if (res.code === 0 && res.data?.needsSetup) {
+      needsSetup.value = true
+      authTab.value = 'register'
+    }
+  }
+  catch { /* 探测失败按常规登录门呈现 */ }
+})
+
 const doRegister = async (): Promise<void> => {
   if (!authName.value.trim()) {
     message.warning(t('wsHome.k1vnhyks019'))
@@ -43,13 +56,14 @@ const doRegister = async (): Promise<void> => {
   authLoading.value = true
   try {
     const user = await userStore.register(authName.value, authEmail.value, authPassword.value)
-    message.success(t('wsHome.k1mbatbh030', { p0: user.name }))
+    message.success(needsSetup.value ? `管理员账号创建成功:${user.name} 已进入系统` : t('wsHome.k1mbatbh030', { p0: user.name }))
+    needsSetup.value = false
     authName.value = ''
     authEmail.value = ''
     authPassword.value = ''
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     authLoading.value = false
@@ -64,10 +78,11 @@ const doLogin = async (): Promise<void> => {
   try {
     const user = await userStore.login(authEmail.value, authPassword.value)
     message.success(t('wsHome.kwixbdl031', { p0: user.name }))
+    needsSetup.value = false
     authPassword.value = ''
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     authLoading.value = false
@@ -78,10 +93,11 @@ const doLoginWithToken = async (): Promise<void> => {
   try {
     const user = await userStore.loginWithToken(authTokenInput.value)
     message.success(t('wsHome.kwixbdl031', { p0: user.name }))
+    needsSetup.value = false
     authTokenInput.value = ''
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     authLoading.value = false
@@ -141,7 +157,7 @@ const create = async (): Promise<void> => {
     navigateTo(`/workshop/w/${ws.id}`)
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     createLoading.value = false
@@ -181,13 +197,15 @@ useHead({ title: () => t('titles.workshop') })
         <p class="aw-kicker">
           agentworkshop / sign in
         </p>
-        <h2>{{ $t('wsHome.kr0vzqu008') }}</h2>
+        <h2>{{ needsSetup ? '创建管理员账号' : $t('wsHome.kr0vzqu008') }}</h2>
         <p class="sub">
-          全局用户系统统管身份;每个用户可管理多个 API Token,
-          管理 API 需用户 token(Authorization: Bearer)。
+          {{ needsSetup
+            ? '系统尚无任何用户:首个注册的账号将成为管理员,创建后自动进入系统。'
+            : '全局用户系统统管身份;每个用户可管理多个 API Token,管理 API 需用户 token(Authorization: Bearer)。' }}
         </p>
         <a-tabs v-model:active-key="authTab">
           <a-tab-pane
+            v-if="!needsSetup"
             key="login"
             tab="账号登录"
           >
@@ -221,7 +239,7 @@ useHead({ title: () => t('titles.workshop') })
           </a-tab-pane>
           <a-tab-pane
             key="register"
-            tab="注册新用户"
+            :tab="needsSetup ? '注册管理员' : '注册新用户'"
           >
             <a-space
               direction="vertical"
@@ -247,7 +265,7 @@ useHead({ title: () => t('titles.workshop') })
                 :loading="authLoading"
                 @click="doRegister"
               >
-                {{ $t('wsHome.k1so6a0v011') }}
+                {{ needsSetup ? '创建管理员并进入' : $t('wsHome.k1so6a0v011') }}
               </a-button>
               <p class="hint">
                 {{ $t('wsHome.k1r0a4u3012') }}
@@ -255,6 +273,7 @@ useHead({ title: () => t('titles.workshop') })
             </a-space>
           </a-tab-pane>
           <a-tab-pane
+            v-if="!needsSetup"
             key="token"
             tab="Token 登录"
           >

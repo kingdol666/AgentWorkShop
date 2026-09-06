@@ -83,7 +83,8 @@ export const userService = {
 
   // ===== 认证（公开端点）=====
 
-  /** 注册：创建账号 + 签发首个 token（邮箱/用户名占用 → 409） */
+  /** 注册：创建账号 + 签发首个 token（邮箱/用户名占用 → 409）。
+   * 首启初始化:系统尚无活跃管理员时,首个注册账号授予 admin(空库自注册建站) */
   register(input: UserRegister): AuthResult {
     if (userRepository.findByEmail(input.email)) {
       throw new AppError(409, ErrorCodes.CONFLICT, '邮箱已被注册')
@@ -91,8 +92,12 @@ export const userService = {
     if (userRepository.findByName(input.name)) {
       throw new AppError(409, 'USER_EXISTS', `用户名已存在: ${input.name}`)
     }
-    const user = userRepository.create({ ...input, role: 'user', status: 'active' })
-    const { raw } = userRepository.createToken(user.id, 'default')
+    const needsBootstrap = !userRepository.hasActiveAdmin()
+    if (needsBootstrap) {
+      console.log(`[users] 初始化:尚无管理员账号,首个注册账号授予管理员角色(${input.email})`)
+    }
+    const user = userRepository.create({ ...input, role: needsBootstrap ? 'admin' : 'user', status: 'active' })
+    const { raw } = userRepository.createToken(user.id, needsBootstrap ? 'bootstrap-admin' : 'default')
     return { user: this.publicProfile(user), token: raw }
   },
 

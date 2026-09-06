@@ -42,16 +42,6 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id);
 `
 
-/** 种子用户（首次建库时写入；默认密码 Awshop@123，便于开箱登录） */
-const SEED_USERS = [
-  { name: '张伟', email: 'zhangwei@awshop.io', role: 'admin', status: 'active' },
-  { name: '王芳', email: 'wangfang@awshop.io', role: 'editor', status: 'active' },
-  { name: '李娜', email: 'lina@awshop.io', role: 'user', status: 'disabled' },
-  { name: '刘洋', email: 'liuyang@awshop.io', role: 'editor', status: 'active' },
-  { name: '陈静', email: 'chenjing@awshop.io', role: 'user', status: 'active' },
-  { name: 'Michael Chen', email: 'michael@awshop.io', role: 'user', status: 'active' },
-]
-
 let db: DatabaseSync | null = null
 
 function getDb(): DatabaseSync {
@@ -63,7 +53,8 @@ function getDb(): DatabaseSync {
     db.exec('PRAGMA busy_timeout = 5000')
     db.exec(SCHEMA_SQL)
     migrateSchema(db)
-    seedIfEmpty()
+    // 首启零用户:不播种任何账号,由使用者在登录页注册第一个账号(自动成为管理员,
+    // 见 user.service.register 的初始化判定)
     importLegacyWorkshopUsers(db)
   }
   return db
@@ -93,34 +84,6 @@ function isoInDays(days: number): string {
 /** 掩码预览：前 6 后 4（token 形如 ut-xxxxxxxx…，前 6 含前缀可辨识） */
 function maskPreview(raw: string): string {
   return `${raw.slice(0, 6)}${'•'.repeat(8)}${raw.slice(-4)}`
-}
-
-/** 发布默认密码(仅用于存量库检测;新库种子已改为随机密码)。分段构造避免再次落为字面量凭据 */
-const SEED_DEFAULT_PASSWORD = ['Awshop@', '123'].join('')
-
-/** 首次建库写入种子用户（幂等：users 非空即跳过） */
-function seedIfEmpty(): void {
-  const d = db!
-  const { n } = d.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }
-  if (n > 0) return
-  const insert = d.prepare('INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-  // 种子密码:env 显式指定 > 每库随机生成(启动打印一次)。随源码发布的固定密码
-  // 等于向任何能访问端口的人发放 admin(README/npm 公开可得)。
-  const seedPw = process.env.AW_SEED_PASSWORD?.trim() || `Aw-${randomBytes(9).toString('base64url')}`
-  const hash = hashPassword(seedPw)
-  console.log(`[users] 首次初始化:种子账号初始密码 = ${seedPw}`)
-  console.log('[users] 请尽快登录修改各账号密码;或在设置 AW_SEED_PASSWORD 后删除 users.sqlite 重新初始化。')
-  for (const u of SEED_USERS) {
-    insert.run(randomUUID(), u.name, u.email, hash, u.role, u.status, now())
-  }
-}
-/** 生产启动检查:任一种子账号仍持发布默认密码 → true(security 插件据此拒绝启动) */
-export function anySeedUsingDefaultPassword(): boolean {
-  const d = getDb()
-  const placeholders = SEED_USERS.map(() => '?').join(',')
-  const rows = d.prepare(`SELECT password_hash FROM users WHERE email IN (${placeholders})`)
-    .all(...SEED_USERS.map(u => u.email)) as Array<{ password_hash: string }>
-  return rows.some(r => verifyPassword(SEED_DEFAULT_PASSWORD, String(r.password_hash)))
 }
 
 /**
@@ -286,6 +249,13 @@ export const userRepository = {
     const d = getDb()
     const row = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt FROM users WHERE name = ?').get(name) as Record<string, unknown> | undefined
     return row ? toUser(row) : undefined
+  },
+
+  /** 是否存在活跃管理员(初始化判定:false → 系统处于首启注册模式,首个注册账号将成为管理员) */
+  hasActiveAdmin(): boolean {
+    const d = getDb()
+    const { n } = d.prepare('SELECT COUNT(*) AS n FROM users WHERE role = \'admin\' AND status = \'active\'').get() as { n: number }
+    return n > 0
   },
 
   /** 内部：取密码哈希（仅认证路径使用，不参与领域对象外泄） */
