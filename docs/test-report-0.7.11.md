@@ -117,3 +117,19 @@
 
 ---
 *测试产物:截图 .e2e-shots/final-*.png、acc-*.png;脚本 scripts/_dbg-final-*.mjs、_dbg-perms-e2e.mjs、_dbg-audit-neg-e2e.mjs、_dbg-acc-*.mjs(可复测)。*
+
+
+---
+
+# 附录 · v0.7.13 增量(用户名登录)
+
+| 断言 | 结果 |
+|---|---|
+| 登录 placeholder 更新为「邮箱 / 用户名」 | ✔ |
+| 用户名 admin + 密码登录(浏览器真实操作) | ✔ |
+| 邮箱 admin@awshop.local 登录(向后兼容) | ✔ |
+| 权限 E2E 回归 | 21/21 ✔ |
+| 审计负向断言回归(含无 token WS 零帧) | 9/9 ✔ |
+
+变更:登录 schema 去除 email 格式强制(账号字段,键名兼容保留);getPasswordHash 按
+LOWER(email) OR LOWER(name) 匹配。发布:agentworkshop@0.7.13(npm latest)。
