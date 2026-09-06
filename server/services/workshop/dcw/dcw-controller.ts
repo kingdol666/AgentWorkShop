@@ -630,7 +630,17 @@ class DcwController {
     for (const param of recipe.params) {
       const node = param.nodeId ? this.repo.byId(param.nodeId) : undefined
       if (!node) {
-        results.push({ templateRef: param.templateRef ?? param.nodeId, nodeId: null, ok: false, message: `目标控制节点不存在(${param.nodeId}),参数未下发`, value: param.value })
+        results.push({ templateRef: param.templateRef ?? param.nodeId, nodeId: null, ok: false, message: `已跳过:节点 ${param.nodeId} 已删除,参数未下发`, value: param.value })
+        continue
+      }
+      // 停用/解绑守卫:节点已停用或已不在配方所属产线(被解绑/改挂)→ 不下发,
+      // 明确记因(run.results 可见),其余参数照常
+      if (!node.enabled) {
+        results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: `已跳过:节点「${node.name}」已停用,参数未下发`, value: param.value })
+        continue
+      }
+      if (node.lineId !== recipe.lineId) {
+        results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: `已跳过:节点「${node.name}」已取消绑定(${node.lineId ? '已改挂其他产线' : '已从产线移除'}),参数未下发`, value: param.value })
         continue
       }
       try {

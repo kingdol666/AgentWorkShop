@@ -106,6 +106,10 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
     repo.removeAgentNode(agentId, nodeId, 'dcw')
     return { text: `数控节点 ${nodeId} 已不存在(可能被删除),原绑定已自动清理,请重新绑定。`, isError: true }
   }
+  // 停用/解绑守卫:停用节点拒绝下发(与手动/配方同源语义,给出恢复路径)
+  if (!node.enabled) {
+    return { text: `节点「${node.name}」已停用(控制已暂停),无法下发。请先让用户在产线/数采界面恢复该节点的控制,或改派其他节点。`, isError: true }
+  }
   // 停线守卫:产线未开跑时手动写允许(调试),但提示当前无配方窗口约束
   const tpl = findDcwTemplate(node.templateKey)
 
@@ -517,6 +521,15 @@ function agentOpsScope(agentId: string): { lineIds: string[], nodeIds: Set<strin
   return { lineIds: [...lineIds], nodeIds }
 }
 
+/** 配方参数的节点失效态(数据一致性展示/Agent 提示共用):null=正常 */
+function nodeRefStatus(nodeId: string, lineId: string): { code: 'deleted' | 'disabled' | 'unbound', label: string } | null {
+  const node = getDcwController().byId(nodeId)
+  if (!node) return { code: 'deleted', label: '已删除' }
+  if (!node.enabled) return { code: 'disabled', label: '已停用' }
+  if (node.lineId !== lineId) return { code: 'unbound', label: '已取消绑定' }
+  return null
+}
+
 const OPS_ACTOR_LABEL: Record<string, string> = { agent: 'Agent', user: '用户', system: '系统' }
 
 function fmtAuditAt(iso: string): string {
@@ -664,9 +677,11 @@ export async function toolLineContext(agentId: string, args: { line_id?: string 
       for (const p of recipe.params) {
         const node = getDcwController().byId(p.nodeId)
         const mine = myDcw.some(n => n!.id === p.nodeId)
+        const stale = nodeRefStatus(p.nodeId, recipe.lineId)
+        const staleTag = stale ? ` [${stale.label},参数不下发]` : ''
         const cur = node?.value != null ? node.value : '?'
         const win = p.min != null || p.max != null ? `(窗口 ${p.min ?? '-∞'}~${p.max ?? '+∞'})` : ''
-        parts.push(`    · ${node?.name ?? p.nodeId} = ${p.value}${node?.unit ?? ''}${win} | PLC 当前 ${cur}${node?.unit ?? ''}${mine ? ' [我负责]' : ''}`)
+        parts.push(`    · ${node?.name ?? p.nodeId} = ${p.value}${node?.unit ?? ''}${win} | PLC 当前 ${cur}${node?.unit ?? ''}${mine ? ' [我负责]' : ''}${staleTag}`)
       }
       const good = recipe.lastGoodRunId ? getDcwRecipeRepo().runById(recipe.lastGoodRunId) : undefined
       parts.push(`  已知良好批次:${good ? `${good.id.slice(0, 8)}(${good.startedAt.slice(0, 19).replace('T', ' ')})` : '未标记'};当前参数版本 v${recipe.version ?? 1}`)
@@ -684,7 +699,9 @@ export async function toolLineContext(agentId: string, args: { line_id?: string 
           const pp = r.params.map((p) => {
             const node = getDcwController().byId(p.nodeId)
             const cur = node?.value != null ? node.value : '?'
-            return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}(PLC 当前 ${cur})`
+            const stale = nodeRefStatus(p.nodeId, r.lineId)
+            const tag = stale ? `[${stale.label},参数不下发]` : ''
+            return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}(PLC 当前 ${cur})${tag}`
           }).join(', ')
           parts.push(`    · 配方「${r.name}」(${r.id}) v${r.version ?? 1} · 产品「${product?.name ?? r.productId}」: ${pp}${r.lastGoodRunId ? ` [良好批次 ${r.lastGoodRunId.slice(0, 8)}]` : ''}`)
         }
@@ -716,11 +733,15 @@ export async function toolRecipeVersions(agentId: string, args: { recipe_id?: st
     const prev = shown[i - 1]
     let diff = '初始版本'
     if (prev) {
+      const nodeName = (id: string): string => {
+        const n = getDcwController().byId(id)
+        return n ? n.name : `${id}(已删除)`
+      }
       const changed = v.params
         .map(p => ({ p, old: prev.params.find(x => x.nodeId === p.nodeId) }))
         .filter(({ p, old }) => !old || old.value !== p.value)
-        .map(({ p, old }) => `${getDcwController().byId(p.nodeId)?.name ?? p.nodeId} ${old?.value ?? '新增'}→${p.value}`)
-      const removed = prev.params.filter(o => !v.params.some(x => x.nodeId === o.nodeId)).map(o => `${o.nodeId} 移除`)
+        .map(({ p, old }) => `${nodeName(p.nodeId)} ${old?.value ?? '新增'}→${p.value}`)
+      const removed = prev.params.filter(o => !v.params.some(x => x.nodeId === o.nodeId)).map(o => `${nodeName(o.nodeId)} 移除`)
       const all = [...changed, ...removed]
       diff = all.length > 0 ? `变更:${all.join(';')}` : '参数未变'
     }
@@ -752,23 +773,35 @@ export async function toolRecipeUpdate(agentId: string, args: {
   for (const p of list) {
     const nodeId = String(p.node_id).trim()
     const node = getDcwController().byId(nodeId)
-    if (!node) return { text: `节点 ${nodeId} 不存在。`, isError: true }
-    if (node.lineId !== recipe.lineId) return { text: `节点「${node.name}」不属于配方「${recipe.name}」所在产线,不可混入。`, isError: true }
+    if (!node) return { text: `节点 ${nodeId} 已删除,不能作为配方参数保存。请改用仍在线的节点。`, isError: true }
+    if (node.lineId !== recipe.lineId) return { text: `节点「${node.name}」已取消绑定(不在配方「${recipe.name}」所在产线),不可混入。`, isError: true }
+    if (!node.enabled) return { text: `节点「${node.name}」已停用,参数保存被拒。请先让用户恢复节点控制,或保存到其他节点。`, isError: true }
     if (!repo.find(agentId, nodeId, 'dcw')) {
       return { text: `无权修改节点「${node.name}」的配方参数(仅可改自己绑定 dcw 的节点)。`, isError: true }
     }
   }
-  // 部分合并:只更新提供的节点,其余参数保持不变
-  const merged = recipe.params.map((p) => {
-    const patch = list.find(x => String(x.node_id).trim() === p.nodeId)
-    if (!patch) return { nodeId: p.nodeId, templateRef: p.templateRef, value: p.value, min: p.min, max: p.max }
-    const out: { nodeId: string, templateRef?: string, value: number, min?: number, max?: number } = { nodeId: p.nodeId, templateRef: p.templateRef, value: Number(patch.value) }
-    if (p.min != null) out.min = p.min
-    if (patch.min != null && Number.isFinite(Number(patch.min))) out.min = Number(patch.min)
-    if (p.max != null) out.max = p.max
-    if (patch.max != null && Number.isFinite(Number(patch.max))) out.max = Number(patch.max)
-    return out
-  })
+  // 部分合并:只更新提供的节点,其余参数保持不变;
+  // 基线中的失效参数(节点已删除/已解绑/已改挂)自动剪除并如实告知 —— 否则整次保存会被归一化拒绝
+  const dropped: string[] = []
+  const merged = recipe.params
+    .filter((p) => {
+      const node = getDcwController().byId(p.nodeId)
+      if (!node || node.lineId !== recipe.lineId) {
+        dropped.push(node?.name ?? p.nodeId)
+        return false
+      }
+      return true
+    })
+    .map((p) => {
+      const patch = list.find(x => String(x.node_id).trim() === p.nodeId)
+      if (!patch) return { nodeId: p.nodeId, templateRef: p.templateRef, value: p.value, min: p.min, max: p.max }
+      const out: { nodeId: string, templateRef?: string, value: number, min?: number, max?: number } = { nodeId: p.nodeId, templateRef: p.templateRef, value: Number(patch.value) }
+      if (p.min != null) out.min = p.min
+      if (patch.min != null && Number.isFinite(Number(patch.min))) out.min = Number(patch.min)
+      if (p.max != null) out.max = p.max
+      if (patch.max != null && Number.isFinite(Number(patch.max))) out.max = Number(patch.max)
+      return out
+    })
   const extra = list.filter(p => !recipe.params.some(x => x.nodeId === String(p.node_id).trim()))
   for (const p of extra) merged.push({ nodeId: String(p.node_id).trim(), value: Number(p.value) })
   try {
@@ -783,8 +816,9 @@ export async function toolRecipeUpdate(agentId: string, args: {
       const before = recipe.params.find(x => x.nodeId === String(p.node_id).trim())?.value
       return `${node?.name ?? p.node_id} ${before ?? '?'}→${Number(p.value)}`
     }).join(';')
+    const droppedNote = dropped.length > 0 ? `\n注意:已自动剔除失效参数(${dropped.join('、')}:节点已删除或改挂其他产线),这些参数不再属于本配方。` : ''
     return {
-      text: `已保存为 v${updated.version ?? 1}:「${updated.name}」参数 ${changedNodes};原因:${reason}。\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产,新参数从下次开跑/一键下发生效;要把新值写入运行中的 PLC,用 dcw_control 逐节点下发(走安全联锁)。回退用 recipe_rollback。`,
+      text: `已保存为 v${updated.version ?? 1}:「${updated.name}」参数 ${changedNodes};原因:${reason}。${droppedNote}\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产,新参数从下次开跑/一键下发生效;要把新值写入运行中的 PLC,用 dcw_control 逐节点下发(走安全联锁)。回退用 recipe_rollback。`,
     }
   }
   catch (err) {

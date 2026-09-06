@@ -221,3 +221,26 @@ LOWER(email) OR LOWER(name) 匹配。发布:agentworkshop@0.7.13(npm latest)。
 - 工具注入:4 新工具在 omp worker 工具清单;负向(无 reason/未绑定节点/不存在版本)全拒。
 - **真实 LLM 闭环任务(omp)**:Agent 自主 line_context 确认归属 → recipe_update 保存 92(v6,归因 agent)→ recipe_versions 复核,交付回带 CONTEXT-OK/SAVED-OK/HIST-OK,服务端参数值断言 92 ✓。
 - 浏览器:版本历史面板渲染 + 界面回退生成 v4,截图 `.e2e-shots/recipe-history-panel.png`。
+
+---
+
+# 附录 · v0.7.18 增量(配方失效节点一致性)
+
+## 背景
+
+配方参数引用的数控节点可能被停用(enabled=false)、解绑(lineId 改空/改挂其他产线)或删除。修复前:一键下发仍尝试给解绑节点写值;删除节点会让配方编辑/回退整体被归一化拒绝;界面对失效参数无任何标识。
+
+## 修复
+
+- **下发跳过(单点)**:`writeRecipeParams` 逐参数前置三态守卫 —— 已删除 / 已停用 / 已取消绑定(解绑或改挂),各自跳过并在 `run.results` 记明原因(如「已跳过:节点「X」已停用,参数未下发」);正常参数照常下发。停用拒发与手动/Agent 共用 `controller.write` 既有 409 门控。
+- **编辑/回退解卡**:`revertToVersion` 对目标快照先剪枝失效参数(剔除动作记入版本描述);`recipe_update` 工具同理(基线剪除 + 回执告知);解绑节点不再被归一化自动收编(尊重显式解绑)。
+- **Agent 明确报错**:`dcw_control` 停用节点 →「已停用(控制已暂停),无法下发」;`recipe_update` 触到停用/解绑/删除节点分别给出精确拒因;`line_context`/`recipe_versions` 参数与 diff 带 [已停用/已取消绑定/已删除] 标记。
+- **前端**:产品与配方模块参数芯片灰化 + 红色徽标(已停用/已取消绑定/已删除);数采窗口芯片同步;编辑表单自动剔除已删除节点参数行并显示横幅告知,停用/解绑行内联徽标。
+
+## 验证(E2E 19/19 `scripts/_dbg-recipe-stale-e2e.mjs`)
+
+- 一键下发:正常节点照常;停用/解绑/删除三类参数逐一跳过且原因正确入 run.results。
+- 写入拒止:手动 REST 409;Agent dcw_control 明确报错。
+- recipe_update:停用/解绑触雷被拒;正常保存自动剪除失效参数并告知;回退含失效节点的历史版本剪枝成功且描述留痕;line_context 带状态标记。
+- 浏览器:配方卡三态芯片灰化+徽标渲染(截图 `.e2e-shots/recipe-stale-chips.png`)。
+- 回归:recipe E2E 24/24、权限 20/20、审计负向 9/9 全过。

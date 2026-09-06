@@ -840,6 +840,10 @@ export default {
     k1bphrb3048: 'Delete failed',
   },
   dcwDetail: {
+    staleDeleted: 'deleted',
+    staleDisabled: 'disabled',
+    staleUnbound: 'unbound',
+    staleDropped: 'Removed {p0} stale param(s) (node deleted); re-add with a live node if needed',
     histBtn: 'History',
     histTitle: 'Recipe Version History',
     histLoading: 'Loading…',

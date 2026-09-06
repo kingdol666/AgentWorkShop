@@ -839,6 +839,10 @@ export default {
     k1bphrb3048: '删除失败',
   },
   dcwDetail: {
+    staleDeleted: '已删除',
+    staleDisabled: '已停用',
+    staleUnbound: '已取消绑定',
+    staleDropped: '已自动移除 {p0} 条失效参数(节点已删除);如需恢复请重新添加有效节点',
     histBtn: '版本历史',
     histTitle: '配方版本历史',
     histLoading: '加载中…',

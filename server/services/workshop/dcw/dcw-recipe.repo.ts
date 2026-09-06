@@ -228,18 +228,20 @@ class DcwRecipeRepo {
   /**
    * 回退配方参数到指定历史版本(或已知良好批次快照),生成新版本(非破坏,历史完整保留)。
    * target: { version: N } = 回到 vN 的参数;{ toLastGood: true } = 回到 lastGood 批次的参数冻结。
+   * 失效参数剪枝:目标快照里已删除/已改挂其他产线的节点参数先剔除(否则归一化整体失败),
+   * 剔除动作如实记录进版本描述。
    */
   revertToVersion(id: string, target: { version?: number, toLastGood?: boolean }, meta: RecipeUpdateMeta): RecipeView {
     const r = this.byId(id)
     if (!r) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${id}`)
-    let snapshot: RecipeParam[] | undefined
+    let snapshot: RecipeParam[]
     let desc: string
     if (target.toLastGood) {
       const run = r.lastGoodRunId ? this.runById(r.lastGoodRunId) : undefined
       if (!run?.paramsSnapshot?.length) {
         throw new AppError(409, ErrorCodes.CONFLICT, `配方「${r.name}」无可回退的良好批次(先标记 lastGood 或指定 version)`)
       }
-      snapshot = normParams(run.paramsSnapshot, r.lineId)
+      snapshot = run.paramsSnapshot
       desc = `回退到已知良好批次 ${run.id.slice(0, 8)} 的参数冻结`
     }
     else {
@@ -256,10 +258,23 @@ class DcwRecipeRepo {
     if (JSON.stringify(snapshot) === JSON.stringify(r.params)) {
       throw new AppError(409, ErrorCodes.CONFLICT, `目标版本参数与当前 v${r.version ?? 1} 完全一致,无需回退`)
     }
-    const out = this.update(id, {
-      params: snapshot.map(p => ({ nodeId: p.nodeId, templateRef: p.templateRef, value: p.value, min: p.min, max: p.max })),
-    }, { ...meta, description: `${meta.description ? `${meta.description};` : ''}${desc}` })
-    return out
+    // 失效参数剪枝:已删除节点、已解绑/已改挂其他产线的节点参数剔除(不自动收编,尊重显式解绑)
+    const stale = snapshot.filter((p) => {
+      const node = getDcwNodeRepo().byId(p.nodeId)
+      return !node || node.lineId !== r.lineId
+    })
+    const usable = snapshot.filter(p => !stale.some(s => s.nodeId === p.nodeId))
+    if (usable.length === 0) {
+      throw new AppError(409, ErrorCodes.CONFLICT, '目标版本的全部参数节点均已删除或解绑,无可恢复内容')
+    }
+    let fullDesc = `${meta.description ? `${meta.description};` : ''}${desc}`
+    if (stale.length > 0) {
+      const names = stale.map(s => getDcwNodeRepo().byId(s.nodeId)?.name ?? s.nodeId).join('、')
+      fullDesc += `;已剔除失效参数(${names}:节点已删除或解绑)`
+    }
+    return this.update(id, {
+      params: usable.map(p => ({ nodeId: p.nodeId, templateRef: p.templateRef, value: p.value, min: p.min, max: p.max })),
+    }, { ...meta, description: fullDesc })
   }
 
   /** 参数版本历史(旧→新;含当前版尾部) */

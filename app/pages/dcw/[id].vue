@@ -389,6 +389,26 @@ const visibleRecipes = computed(() =>
 )
 const productName = (id: string): string => dcw.products.find(p => p.id === id)?.name ?? id
 
+// ---------- 配方参数节点失效态(已删除/已停用/已取消绑定;灰化 + 徽标) ----------
+interface StaleRef { code: 'deleted' | 'disabled' | 'unbound', label: string }
+function paramStatus(nodeId: string, lineId: string): StaleRef | null {
+  const node = dcw.nodes.find(n => n.id === nodeId)
+  if (!node) return { code: 'deleted', label: t('dcwDetail.staleDeleted') }
+  if (!node.enabled) return { code: 'disabled', label: t('dcwDetail.staleDisabled') }
+  if (lineId && node.lineId !== lineId) return { code: 'unbound', label: t('dcwDetail.staleUnbound') }
+  return null
+}
+function paramNodeName(nodeId: string): string {
+  return dcw.nodes.find(n => n.id === nodeId)?.name ?? nodeId
+}
+function daqWindowStatus(nodeId: string, lineId: string): StaleRef | null {
+  const node = daq.nodes.find(n => n.id === nodeId)
+  if (!node) return { code: 'deleted', label: t('dcwDetail.staleDeleted') }
+  if (!node.enabled) return { code: 'disabled', label: t('dcwDetail.staleDisabled') }
+  if (lineId && node.lineId !== lineId) return { code: 'unbound', label: t('dcwDetail.staleUnbound') }
+  return null
+}
+
 // ---------- 配方版本历史(整体修改变更记录;来源=用户/Agent/系统 + 操作者 + 回退) ----------
 interface RecipeVersionRow {
   version: number
@@ -493,6 +513,7 @@ const recipeOpen = ref(false)
 const recipeEditing = ref<string | null>(null)
 const recipeSaving = ref(false)
 const recipeError = ref('')
+const recipeStaleNote = ref('')
 const recipeForm = reactive({
   productId: '',
   name: '',
@@ -520,10 +541,15 @@ function openRecipeEdit(id: string): void {
   if (!r) return
   recipeEditing.value = id
   recipeError.value = ''
+  // 失效参数自动清理:节点已删除的参数行直接剔除(保存会被后端归一化拒绝);
+  // 停用/解绑节点参数保留可编辑,状态由 select 旁徽标标示
+  const live = r.params.filter(p => dcw.nodes.some(n => n.id === p.nodeId))
+  const dropped = r.params.length - live.length
+  recipeStaleNote.value = dropped > 0 ? t('dcwDetail.staleDropped', { p0: dropped }) : ''
   recipeForm.productId = r.productId
   recipeForm.name = r.name
   recipeForm.description = r.description
-  recipeForm.params = r.params.map(p => ({
+  recipeForm.params = live.map(p => ({
     nodeId: p.nodeId,
     value: p.value,
     min: p.min ?? '',
@@ -1428,16 +1454,25 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               v-for="(p, i) in r.params"
               :key="i"
               class="param-chip"
+              :class="{ stale: paramStatus(p.nodeId, r.lineId) }"
+              :title="paramStatus(p.nodeId, r.lineId)?.label ?? ''"
             >
-              {{ (dcw.templates.find(t => t.key === (p.templateRef ?? '').replace('dcw-', ''))?.ch ?? p.templateRef) }} = {{ p.value }}
+              {{ paramNodeName(p.nodeId) }} = {{ p.value }}<span
+                v-if="paramStatus(p.nodeId, r.lineId)"
+                class="chip-stale-tag"
+              >{{ paramStatus(p.nodeId, r.lineId)!.label }}</span>
             </span>
             <span
               v-for="(w, i) in r.daqWindows"
               :key="`w-${i}`"
               class="param-chip daqwin"
-              :title="$t('dcwDetail.k1l11api013')"
+              :class="{ stale: daqWindowStatus(w.nodeId, r.lineId) }"
+              :title="daqWindowStatus(w.nodeId, r.lineId)?.label ?? $t('dcwDetail.k1l11api013')"
             >
-              ◎ {{ daqNodeCh(w.nodeId) }} ∈ [{{ w.min ?? '-∞' }}, {{ w.max ?? '+∞' }}]
+              ◎ {{ daqNodeCh(w.nodeId) }} ∈ [{{ w.min ?? '-∞' }}, {{ w.max ?? '+∞' }}]<span
+                v-if="daqWindowStatus(w.nodeId, r.lineId)"
+                class="chip-stale-tag"
+              >{{ daqWindowStatus(w.nodeId, r.lineId)!.label }}</span>
             </span>
           </div>
           <div class="recipe-actions">
@@ -1733,6 +1768,10 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                 {{ n.name }}({{ dcwTemplateRefCh(n.templateRef) }} · {{ n.min }}~{{ n.max }} {{ n.unit }})
               </option>
             </select>
+            <span
+              v-if="paramStatus(p.nodeId, lineId)"
+              class="row-stale"
+            >{{ paramStatus(p.nodeId, lineId)!.label }}</span>
           </label>
           <label class="f">
             <span>{{ $t('dcwDetail.k3renp2098') }}<em>*</em></span>
@@ -1832,6 +1871,12 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         >
           {{ $t('dcwDetail.kv1de1p105') }}
         </button>
+        <p
+          v-if="recipeStaleNote"
+          class="m-note"
+        >
+          {{ recipeStaleNote }}
+        </p>
         <p
           v-if="recipeError"
           class="m-err"
@@ -2471,6 +2516,11 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .test-result.good { color: var(--tone-success-dot); }
 .test-result.bad { color: var(--tone-danger-dot); }
 .m-err { margin: 8px 0 0; font-size: 12px; color: var(--tone-danger-dot); }
+.m-note { margin: 8px 0 0; font-size: 12px; color: var(--ink-faint); }
+/* 失效配方参数:灰化 + 徽标 */
+.param-chip.stale { color: var(--ink-faint); background: color-mix(in srgb, var(--ink) 5%, transparent); border-color: var(--divider-hair); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink-faint) 60%, transparent); }
+.chip-stale-tag { margin-left: 5px; padding: 0 5px; font-size: 9.5px; font-style: normal; color: var(--tone-danger-dot); background: color-mix(in srgb, var(--tone-danger-dot) 8%, transparent); border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 30%, transparent); border-radius: var(--radius-chip); text-decoration: none; }
+.row-stale { flex: none; padding: 1px 7px; font-size: 10.5px; color: var(--tone-danger-dot); border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 30%, transparent); border-radius: var(--radius-chip); }
 .m-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 .aw-pill.outline { color: var(--ink); background: var(--paper-raised); border-color: var(--line-strong); }
 .err { margin-top: 14px; font-size: 13px; color: var(--tone-danger-dot); }
