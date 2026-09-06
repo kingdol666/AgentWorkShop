@@ -143,7 +143,7 @@ function createStore(): SceneLayoutStore {
           return
         }
         catch (err) {
-          lastErr = err instanceof Error ? err.message : String(err)
+          lastErr = apiErrorMessage(err)
           if (attempt < 2) await sleep(400 * (attempt + 1))
         }
       }

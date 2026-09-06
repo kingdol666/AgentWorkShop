@@ -72,7 +72,7 @@ const cancel = async (): Promise<void> => {
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     cancelling.value = false
@@ -90,7 +90,7 @@ const retry = async (): Promise<void> => {
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     retrying.value = false

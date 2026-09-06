@@ -190,7 +190,7 @@ async function saveChannelLayout(): Promise<void> {
   }
   catch (err) {
     saveState.value = { state: 'error', at: Date.now() }
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   }
 }
 /** 从场景移除频道(其 Agent 一并撤出) */
@@ -202,7 +202,7 @@ async function removeChannelFromScene(): Promise<void> {
     onSelectChannel(null)
   }
   catch (err) {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   }
 }
 /** 边界编辑输入 → 场景即时生效(草稿) */
@@ -332,7 +332,7 @@ function onObjNameCommit(): void {
   if (!name) return
   scene3dRef.value?.renameDevice(id, name)
   void deviceTwins.update(id, { name }).catch((err) => {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   })
 }
 /** 角色独立换模型(选中角色 → character 模型下拉即时换装 + 持久化) */
@@ -353,7 +353,7 @@ async function bindAgentModel(modelRef: string): Promise<void> {
     scene3dRef.value?.swapAgentModel(agentId, modelRef)
   }
   catch (err) {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   }
 }
 /** 设备独立换模型(下拉选择设备模型 → 重挂 + 落库,广播后其他客户端同步) */
@@ -365,7 +365,7 @@ async function bindDeviceModel(modelRef: string): Promise<void> {
     await deviceTwins.update(sel.id, { modelRef })
   }
   catch (err) {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   }
 }
 /** 删除选中设备实例(移除孪生 + 场景节点);两步确认:首击布防 3s,再击执行 */
@@ -384,7 +384,7 @@ function removeSelectedDevice(): void {
   void scene3dRef.value?.removeDevice(sel.id)
     .then(() => closeScale())
     .catch((err: unknown) => {
-      errorText.value = err instanceof Error ? err.message : String(err)
+      errorText.value = apiErrorMessage(err)
     })
 }
 
@@ -403,7 +403,7 @@ async function bindMemberModel(agentId: string, modelRef: string): Promise<void>
     scene3dRef.value?.swapAgentModel(agentId, modelRef)
   }
   catch (err) {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   }
 }
 /** 频道管理面板 tab 切换 */
@@ -620,7 +620,7 @@ async function boot3D(): Promise<void> {
     scene.hydrate(buildTownInput(), Object.values(sceneLayouts.layouts), sceneTwinPool.value)
     syncChannelDock()
   }).catch((err) => {
-    errorText.value = t('townView.k1hmf2ut192', { p0: err instanceof Error ? err.message : String(err) })
+    errorText.value = t('townView.k1hmf2ut192', { p0: apiErrorMessage(err) })
     window.setTimeout(() => {
       void sceneLayouts.load()
     }, 2500)
@@ -734,7 +734,7 @@ function wireCommon(scene: CommonTownScene): void {
       scene.handleTownEvent(e)
     }
     catch (err) {
-      errorText.value = err instanceof Error ? err.message : String(err)
+      errorText.value = apiErrorMessage(err)
     }
   })
   ;(sceneRef as unknown as { _off?: () => void })._off = off
@@ -945,7 +945,7 @@ function bindSceneInput3D(scene: TownScene3D): void {
             if (near) bindDaq(daqNodeId, near.id)
           }
         }).catch((err: unknown) => {
-          errorText.value = err instanceof Error ? err.message : String(err)
+          errorText.value = apiErrorMessage(err)
         })
       }
       return
@@ -961,13 +961,13 @@ function bindSceneInput3D(scene: TownScene3D): void {
             const near = nearestDeviceTwin(world.x, world.z, 95)
             if (near) {
               void dcw.bindNode(dcwNodeId, near.id).catch((err: unknown) => {
-                errorText.value = err instanceof Error ? err.message : String(err)
+                errorText.value = apiErrorMessage(err)
               })
             }
           }
           if (sceneRef.value) syncSceneDevices(sceneRef.value)
         }).catch((err: unknown) => {
-          errorText.value = err instanceof Error ? err.message : String(err)
+          errorText.value = apiErrorMessage(err)
         })
       }
       return
@@ -1439,7 +1439,7 @@ async function createDaqFromTemplate(tpl: DaqTemplate): Promise<void> {
     treeOpen.value[`daq:${tpl.id}`] = true
   }
   catch (err: unknown) {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   }
 }
 async function createDcwFromTemplate(tpl: { id: string }): Promise<void> {
@@ -1448,7 +1448,7 @@ async function createDcwFromTemplate(tpl: { id: string }): Promise<void> {
     treeOpen.value[`dcw:${tpl.id}`] = true
   }
   catch (err: unknown) {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   }
 }
 /** 节点叶子拖拽(编辑模式):载荷 = server 节点 id,投放走 PATCH 落位。
@@ -1765,12 +1765,12 @@ const daqOfDevice = (deviceId: string): string[] =>
   deviceId ? daq.nodes.filter(n => n.deviceBindingId === deviceId).map(n => n.id) : []
 function bindDaq(daqId: string, deviceId: string): void {
   void daq.bindNode(daqId, deviceId).catch((err: unknown) => {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   })
 }
 function unbindDaq(daqId: string): void {
   void daq.bindNode(daqId, null).catch((err: unknown) => {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   })
 }
 
@@ -2031,7 +2031,7 @@ function doDcwWrite(node: DcwNodeView): void {
   void dcw.write(node.id, Number(raw)).then((out) => {
     if (!out.ok) dcwWriteErrs[node.id] = out.message
   }).catch((err: unknown) => {
-    dcwWriteErrs[node.id] = err instanceof Error ? err.message : String(err)
+    dcwWriteErrs[node.id] = apiErrorMessage(err)
   })
 }
 
@@ -2063,14 +2063,14 @@ function bindDcwChoice(nodeId: string): void {
   const devId = selected.value?.kind === 'device' ? selected.value.id : ''
   if (!devId) return
   void dcw.bindNode(nodeId, devId).catch((err: unknown) => {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   })
   dcwBindPopOpen.value = false
 }
 
 function unbindDcw(dcwId: string): void {
   void dcw.bindNode(dcwId, null).catch((err: unknown) => {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   })
 }
 
@@ -2096,7 +2096,7 @@ function bindSelectedDcw(): void {
   const n = selectedDcwNode.value
   if (!n || !dcwBindPick.value) return
   void dcw.bindNode(n.id, dcwBindPick.value).catch((err: unknown) => {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   })
   dcwBindPick.value = ''
 }
@@ -2104,7 +2104,7 @@ function unbindSelectedDcw(): void {
   const n = selectedDcwNode.value
   if (!n) return
   void dcw.bindNode(n.id, null).catch((err: unknown) => {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   })
 }
 function doWriteSelectedDcw(): void {
@@ -2140,14 +2140,14 @@ function onDaqIntervalCommit(): void {
   const n = selectedDaqNode.value
   if (!n || daqIntervalDraft.value == null) return
   void daq.patchNode(n.id, { intervalMs: Math.max(120, Math.min(60_000, Math.round(daqIntervalDraft.value))) }).catch((err: unknown) => {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   })
 }
 function onDaqThresholdCommit(key: 'min' | 'max' | 'warnLow' | 'warnHigh', raw: string): void {
   const v = Number(raw)
   if (!Number.isFinite(v)) return
   void daq.patchNode(selectedDaqNode.value!.id, { [key]: key.startsWith('warn') ? v : v }).catch((err: unknown) => {
-    errorText.value = err instanceof Error ? err.message : String(err)
+    errorText.value = apiErrorMessage(err)
   })
 }
 

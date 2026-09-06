@@ -136,7 +136,7 @@ const save = async (): Promise<void> => {
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
 }
 const remove = async (t: AgentTemplateDto): Promise<void> => {
@@ -158,7 +158,7 @@ const toggleVisibility = async (t: AgentTemplateDto, pub: boolean): Promise<void
     void load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
 }
 

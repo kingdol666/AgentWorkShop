@@ -154,7 +154,7 @@ async function doTest(): Promise<void> {
     testResult.value = await daq.testNode(nodeId.value)
   }
   catch (err) {
-    testResult.value = { ok: false, message: err instanceof Error ? err.message : String(err) }
+    testResult.value = { ok: false, message: apiErrorMessage(err) }
   }
   finally {
     testing.value = false

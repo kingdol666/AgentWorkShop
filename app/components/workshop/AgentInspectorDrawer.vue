@@ -54,7 +54,7 @@ const toggleEnabled = async (checked: string | number | boolean): Promise<void> 
     message.success(checked === true ? t('agentInspectorDrawer.k3n5z7y016') : t('agentInspectorDrawer.k1dst50d017'))
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     toggling.value = false
@@ -73,7 +73,7 @@ const removeMember = async (): Promise<void> => {
     emit('removed', props.agentId)
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     removing.value = false
@@ -129,7 +129,7 @@ const send = async (): Promise<void> => {
     sendText.value = ''
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     sending.value = false

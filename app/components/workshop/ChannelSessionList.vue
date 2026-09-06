@@ -105,7 +105,7 @@ const createAndMount = async (): Promise<void> => {
     message.success(t('channelSessionList.kn89jvs028'))
   }
   catch (e) {
-    message.error(t('channelSessionList.k1x2th9e041', { p0: e instanceof Error ? e.message : String(e) }))
+    message.error(t('channelSessionList.k1x2th9e041', { p0: apiErrorMessage(e) }))
   }
   finally {
     mountSubmitting.value = false
@@ -127,7 +127,7 @@ const mountFromTemplate = async (): Promise<void> => {
   }
   catch (e) {
     const err = e as { data?: { message?: string }, message?: string }
-    message.error(err?.data?.message ?? err?.message ?? t('channelSessionList.k97xi7u029'))
+    message.error(apiErrorMessage(err, t('channelSessionList.k97xi7u029')))
   }
   finally {
     templateMounting.value = false
@@ -136,7 +136,7 @@ const mountFromTemplate = async (): Promise<void> => {
 
 const unmount = (channelId: string): void => {
   wsStore.unmountChannel(props.wsId, channelId)
-    .catch((e: { data?: { message?: string }, message?: string }) => { message.error(e?.data?.message ?? e?.message ?? t('channelSessionList.k1hgfvdc030')) })
+    .catch((e: { data?: { message?: string }, message?: string }) => { message.error(apiErrorMessage(e, t('channelSessionList.k1hgfvdc030'))) })
 }
 
 // ===== Channel 实例设置(场景/工作目录热更新)+ 保存为模板 =====
@@ -224,7 +224,7 @@ const saveSettings = async (): Promise<void> => {
     void refreshChannels()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     settingsSaving.value = false
@@ -259,7 +259,7 @@ const saveAsTemplate = async (): Promise<void> => {
     void refreshChannels()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     saveTplSubmitting.value = false

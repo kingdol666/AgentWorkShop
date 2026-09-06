@@ -80,7 +80,7 @@ async function resetAllRuntime() {
 }
 
 function groupLabel(group: string): string {
-  const known: Record<string, string> = { server: t('settings.runtime.groupServer'), app: t('settings.runtime.groupApp'), api: 'API', theme: t('settings.runtime.groupTheme'), i18n: t('settings.runtime.groupI18n'), security: t('settings.runtime.groupSecurity'), daq: t('settings.runtime.groupDaq'), memory: t('settings.runtime.groupMemory'), omp: t('settings.runtime.groupOmp'), dcw: t('settings.runtime.groupDcw'), workshop: t('settings.runtime.groupWorkshop'), backup: t('settings.runtime.groupBackup'), retention: t('settings.runtime.groupRetention'), log: t('settings.runtime.groupLog') }
+  const known: Record<string, string> = { server: t('settings.runtime.groupServer'), app: t('settings.runtime.groupApp'), api: t('settings.runtime.groupApi'), theme: t('settings.runtime.groupTheme'), i18n: t('settings.runtime.groupI18n'), security: t('settings.runtime.groupSecurity'), daq: t('settings.runtime.groupDaq'), memory: t('settings.runtime.groupMemory'), omp: t('settings.runtime.groupOmp'), harness: t('settings.runtime.groupHarness'), dcw: t('settings.runtime.groupDcw'), workshop: t('settings.runtime.groupWorkshop'), backup: t('settings.runtime.groupBackup'), retention: t('settings.runtime.groupRetention'), log: t('settings.runtime.groupLog') }
   return known[group] ?? group
 }
 function sourceClass(s: string): string {

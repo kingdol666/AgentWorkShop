@@ -436,7 +436,7 @@ async function submitManual(): Promise<void> {
     doQuery()
   }
   catch (err) {
-    message.error(err instanceof Error ? err.message : String(err))
+    message.error(apiErrorMessage(err))
   }
 }
 

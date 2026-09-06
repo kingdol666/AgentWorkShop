@@ -1,0 +1,12 @@
+// town 截图(WS 常驻连接下不能等 networkidle)
+import puppeteer from 'puppeteer-core'
+const browser = await puppeteer.launch({ executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', headless: 'new', args: ['--no-sandbox', '--disable-gpu', '--no-proxy-server', '--window-size=1600,1000'] })
+const page = await browser.newPage()
+await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1.25 })
+const login = await fetch('http://127.0.0.1:3021/api/users/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'admin@awshop.local', password: 'admin123' }) }).then(r => r.json())
+await page.setCookie({ name: 'token', value: login.data.token, domain: '127.0.0.1', path: '/' })
+await page.goto('http://127.0.0.1:3021/town', { waitUntil: 'domcontentloaded', timeout: 60000 })
+await new Promise(r => setTimeout(r, 14000))
+await page.screenshot({ path: '.e2e-shots/acc-5-town-2.png' })
+console.log('📷 town-2')
+await browser.close()

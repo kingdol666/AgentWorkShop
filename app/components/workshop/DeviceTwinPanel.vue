@@ -77,7 +77,7 @@ async function removeTwin(t: { id: string, name: string }): Promise<void> {
     await twins.remove(t.id)
   }
   catch (err) {
-    ctrlMsg.value = err instanceof Error ? err.message : String(err)
+    ctrlMsg.value = apiErrorMessage(err)
   }
   finally {
     busyId.value = ''
@@ -118,7 +118,7 @@ function doDcwWrite(r: DcwLiveRow): void {
   void dcw.write(r.id, v).then((out) => {
     if (!out.ok) dcwErrs[r.id] = out.message
   }).catch((err: unknown) => {
-    dcwErrs[r.id] = err instanceof Error ? err.message : String(err)
+    dcwErrs[r.id] = apiErrorMessage(err)
   }).finally(() => {
     dcwBusy.value = ''
   })

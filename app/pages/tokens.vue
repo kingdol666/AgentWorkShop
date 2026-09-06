@@ -62,7 +62,7 @@ const doCreate = async (): Promise<void> => {
     await load()
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     createLoading.value = false
@@ -84,7 +84,7 @@ const doRename = async (): Promise<void> => {
     message.success(tt('tokens.k3n9aij015'))
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     renameLoading.value = false
@@ -103,7 +103,7 @@ const doRevoke = (t: { id?: string }): void => {
       await load()
     }
     catch (e) {
-      message.error(e instanceof Error ? e.message : String(e))
+      message.error(apiErrorMessage(e))
     }
   })()
 }

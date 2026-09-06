@@ -117,7 +117,7 @@ const createStore = () => {
       results.splice(0, results.length, ...(data.logs ?? []))
     }
     catch (err) {
-      error.list = err instanceof Error ? err.message : String(err)
+      error.list = apiErrorMessage(err)
     }
     finally {
       loading.list = false
@@ -132,7 +132,7 @@ const createStore = () => {
       await api('', { method: 'POST', body: JSON.stringify(input) })
     }
     catch (err) {
-      error.post = err instanceof Error ? err.message : String(err)
+      error.post = apiErrorMessage(err)
       throw err
     }
     finally {

@@ -115,7 +115,7 @@ const submitEditMember = async (): Promise<void> => {
     editModalOpen.value = false
   }
   catch (err) {
-    message.error(t('agentLanesView.k3jmrw1045', { p0: err instanceof Error ? err.message : String(err) }))
+    message.error(t('agentLanesView.k3jmrw1045', { p0: apiErrorMessage(err) }))
   }
   finally {
     editSubmitting.value = false
@@ -155,7 +155,7 @@ const submitMember = async (): Promise<void> => {
       memberModalOpen.value = false
     }
     catch (err) {
-      message.error(t('agentLanesView.k1j97j74047', { p0: err instanceof Error ? err.message : String(err) }))
+      message.error(t('agentLanesView.k1j97j74047', { p0: apiErrorMessage(err) }))
     }
     finally {
       memberSubmitting.value = false
@@ -181,7 +181,7 @@ const submitMember = async (): Promise<void> => {
       memberModalOpen.value = false
     }
     catch (err) {
-      const text = err instanceof Error ? err.message : String(err)
+      const text = apiErrorMessage(err)
       message.error(`模板克隆失败${text.includes('LEAD_EXISTS') ? '(已有 lead,不能再添加 lead)' : `: ${text}`}`)
     }
     finally {
@@ -202,7 +202,7 @@ const submitMember = async (): Promise<void> => {
     memberModalOpen.value = false
   }
   catch (err) {
-    const text = err instanceof Error ? err.message : String(err)
+    const text = apiErrorMessage(err)
     message.error(`编组部署失败${text.includes('LEAD_EXISTS') ? '(channel 已有 lead,编组内 lead 成员冲突;请先移除现有 lead 或选用无 lead 编组)' : `: ${text}`}`)
   }
   finally {
@@ -218,7 +218,7 @@ const removeMember = async (agentId: string, name: string): Promise<void> => {
     message.success(t('agentLanesView.k1n3o03a052', { p0: name }))
   }
   catch (err) {
-    message.error(t('agentLanesView.k13dsp10053', { p0: err instanceof Error ? err.message : String(err) }))
+    message.error(t('agentLanesView.k13dsp10053', { p0: apiErrorMessage(err) }))
   }
   finally {
     removing.value = null
@@ -234,7 +234,7 @@ const stopMember = async (agentId: string, name: string): Promise<void> => {
     message.success(t('agentLanesView.kcpbv47054', { p0: name }))
   }
   catch (err) {
-    message.error(t('agentLanesView.k139ec5j055', { p0: err instanceof Error ? err.message : String(err) }))
+    message.error(t('agentLanesView.k139ec5j055', { p0: apiErrorMessage(err) }))
   }
   finally {
     stopping.value = null

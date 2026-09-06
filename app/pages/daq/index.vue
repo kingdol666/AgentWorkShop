@@ -36,7 +36,7 @@ async function setNodeLine(id: string, e: Event): Promise<void> {
     if (n) n.lineId = lineId
   }
   catch (err) {
-    message.error(err instanceof Error ? err.message : String(err))
+    message.error(apiErrorMessage(err))
   }
 }
 
@@ -47,7 +47,7 @@ async function setNodeDevice(id: string, e: Event): Promise<void> {
     await daq.bindNode(id, deviceId || null)
   }
   catch (err) {
-    message.error(err instanceof Error ? err.message : String(err))
+    message.error(apiErrorMessage(err))
   }
 }
 
@@ -61,7 +61,7 @@ async function toggleNodeEnabled(n: { id: string, enabled: boolean, state: strin
     message.success(next ? tt('daq.k1nodestart147') : tt('daq.k1nodestop146'))
   }
   catch (err) {
-    message.error(err instanceof Error ? err.message : String(err))
+    message.error(apiErrorMessage(err))
   }
 }
 
@@ -135,7 +135,7 @@ async function ackOne(id: string): Promise<void> {
     message.success(tt('daq.k1acked144'))
   }
   catch (err) {
-    message.error(err instanceof Error ? err.message : String(err))
+    message.error(apiErrorMessage(err))
   }
 }
 
@@ -459,7 +459,7 @@ async function doTestConnection(): Promise<void> {
     addTest.value = await daq.testDriver(addDriver.value, addCfg.value)
   }
   catch (err) {
-    addTest.value = { ok: false, message: err instanceof Error ? err.message : String(err) }
+    addTest.value = { ok: false, message: apiErrorMessage(err) }
   }
   finally {
     addTesting.value = false
@@ -504,7 +504,7 @@ async function doAddNode(): Promise<void> {
     addTest.value = null
   }
   catch (err) {
-    addError.value = err instanceof Error ? err.message : String(err)
+    addError.value = apiErrorMessage(err)
   }
   finally {
     addSaving.value = false
@@ -592,7 +592,7 @@ async function saveTpl(): Promise<void> {
     resetTplForm()
   }
   catch (err) {
-    tplError.value = err instanceof Error ? err.message : String(err)
+    tplError.value = apiErrorMessage(err)
   }
   finally {
     tplSaving.value = false
@@ -609,7 +609,7 @@ async function askDelTpl(t: DaqTemplateDef): Promise<void> {
     await daq.removeTemplate(t.key)
   }
   catch (err) {
-    tplError.value = err instanceof Error ? err.message : String(err)
+    tplError.value = apiErrorMessage(err)
   }
   finally {
     confirmingDel.value = ''

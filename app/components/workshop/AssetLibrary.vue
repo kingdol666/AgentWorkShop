@@ -71,7 +71,7 @@ async function doUpload(): Promise<void> {
     uploadError.value = t('assetLibrary.k8nv3or016', { p0: model.name })
   }
   catch (err) {
-    uploadError.value = err instanceof Error ? err.message : String(err)
+    uploadError.value = apiErrorMessage(err)
   }
   finally {
     uploading.value = false
@@ -89,7 +89,7 @@ async function doRemove(id: string): Promise<void> {
     deleteMsg.value = t('assetLibrary.k8n918k013')
   }
   catch (err) {
-    deleteMsg.value = err instanceof Error ? err.message : String(err)
+    deleteMsg.value = apiErrorMessage(err)
   }
   finally {
     deletingId.value = ''

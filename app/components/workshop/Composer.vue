@@ -216,7 +216,7 @@ const send = async (): Promise<void> => {
     emit('submitted')
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
+    message.error(apiErrorMessage(e))
   }
   finally {
     sendLoading.value = false

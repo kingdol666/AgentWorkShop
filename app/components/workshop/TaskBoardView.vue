@@ -150,7 +150,7 @@ const applyMove = async (taskId: string, action: 'cancel' | 'retry'): Promise<vo
     revert.set(taskId, prev)
     optimistic.value = revert
     const err = e as { data?: { message?: string }, message?: string }
-    message.error(err?.data?.message ?? err?.message ?? t('taskBoardView.k1e7zwuc015'))
+    message.error(apiErrorMessage(err, t('taskBoardView.k1e7zwuc015')))
   }
   finally {
     acting.value.delete(taskId)

@@ -131,7 +131,7 @@ const run = async (): Promise<void> => {
     }
   }
   catch (e) {
-    append(`✖ ${e instanceof Error ? e.message : String(e)}`)
+    append(`✖ ${apiErrorMessage(e)}`)
   }
   finally {
     running.value = false

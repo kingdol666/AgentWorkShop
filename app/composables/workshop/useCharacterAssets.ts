@@ -202,7 +202,7 @@ function createStore(): CharacterAssetStore {
       }
       catch (err) {
         store.loaded = false
-        store.error = err instanceof Error ? err.message : String(err)
+        store.error = apiErrorMessage(err)
       }
       finally {
         store.loading = false

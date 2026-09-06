@@ -69,7 +69,7 @@ async function doCreateLine(): Promise<void> {
     createOpen.value = false
   }
   catch (err) {
-    createError.value = err instanceof Error ? err.message : String(err)
+    createError.value = apiErrorMessage(err)
   }
   finally {
     createSaving.value = false
@@ -90,7 +90,7 @@ async function quickStart(card: LineCard): Promise<void> {
     await dcw.startLine(card.line.id, rid)
   }
   catch (err) {
-    quickErr.value = err instanceof Error ? err.message : String(err)
+    quickErr.value = apiErrorMessage(err)
   }
   finally {
     quickBusy.value = ''
@@ -104,7 +104,7 @@ async function quickStop(card: LineCard): Promise<void> {
     await dcw.stopLine(card.line.id)
   }
   catch (err) {
-    quickErr.value = err instanceof Error ? err.message : String(err)
+    quickErr.value = apiErrorMessage(err)
   }
   finally {
     quickBusy.value = ''
@@ -140,7 +140,7 @@ async function doDeleteLine(): Promise<void> {
     delOpen.value = false
   }
   catch (err) {
-    delErr.value = err instanceof Error ? err.message : String(err)
+    delErr.value = apiErrorMessage(err)
   }
   finally {
     delBusy.value = false
@@ -174,7 +174,7 @@ async function doEditLine(): Promise<void> {
     editOpen.value = false
   }
   catch (err) {
-    editError.value = err instanceof Error ? err.message : String(err)
+    editError.value = apiErrorMessage(err)
   }
   finally {
     editSaving.value = false
@@ -218,7 +218,7 @@ async function doCreateTemplate(): Promise<void> {
     tplForm.max = ''
   }
   catch (err) {
-    tplError.value = err instanceof Error ? err.message : String(err)
+    tplError.value = apiErrorMessage(err)
   }
 }
 
@@ -236,7 +236,7 @@ async function doRemoveTemplate(key: string): Promise<void> {
     if (i >= 0) dcw.templates.splice(i, 1)
   }
   catch (err) {
-    tplError.value = err instanceof Error ? err.message : String(err)
+    tplError.value = apiErrorMessage(err)
   }
 }
 

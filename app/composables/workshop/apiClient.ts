@@ -84,7 +84,7 @@ export async function apiFetch<T>(opts: { base: string, path?: string, init?: Re
     catch (err) {
       const apiErr = err instanceof ApiError
         ? err
-        : new ApiError('INTERNAL_ERROR', 0, err instanceof Error ? err.message : String(err))
+        : new ApiError('INTERNAL_ERROR', 0, apiErrorMessage(err))
       const retryable = idempotent && (apiErr.code === 'NETWORK' || apiErr.status >= 500)
       lastError = apiErr
       if (!retryable || attempt === attempts - 1) throw apiErr

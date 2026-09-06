@@ -124,7 +124,7 @@ async function doWrite(nodeId: string, value: number): Promise<void> {
     }
   }
   catch (err) {
-    writeError.value = err instanceof Error ? err.message : String(err)
+    writeError.value = apiErrorMessage(err)
   }
   finally {
     writingId.value = ''
@@ -141,7 +141,7 @@ async function doRead(nodeId: string): Promise<void> {
     await dcw.readNode(nodeId)
   }
   catch (err) {
-    writeError.value = err instanceof Error ? err.message : String(err)
+    writeError.value = apiErrorMessage(err)
   }
   finally {
     readingId.value = ''
@@ -164,7 +164,7 @@ async function toggleControl(nodeId: string, enabled: boolean): Promise<void> {
     }
   }
   catch (err) {
-    writeError.value = err instanceof Error ? err.message : String(err)
+    writeError.value = apiErrorMessage(err)
   }
   finally {
     togglingId.value = ''
@@ -207,7 +207,7 @@ async function doTestConnection(): Promise<void> {
     addTest.value = await dcw.testDriver(addDriver.value, addCfg.value)
   }
   catch (err) {
-    addTest.value = { ok: false, message: err instanceof Error ? err.message : String(err) }
+    addTest.value = { ok: false, message: apiErrorMessage(err) }
   }
   finally {
     addTesting.value = false
@@ -241,7 +241,7 @@ async function doAddNode(): Promise<void> {
     addSemantics.value = ''
   }
   catch (err) {
-    addError.value = err instanceof Error ? err.message : String(err)
+    addError.value = apiErrorMessage(err)
   }
   finally {
     addSaving.value = false
@@ -304,7 +304,7 @@ async function doCreateTemplate(): Promise<void> {
     tplForm.semantics = ''
   }
   catch (err) {
-    tplError.value = err instanceof Error ? err.message : String(err)
+    tplError.value = apiErrorMessage(err)
   }
   finally {
     tplSaving.value = false
@@ -332,7 +332,7 @@ async function doLineStart(): Promise<void> {
     lineMsg.value = t('dcwDetail.k17jteb9186', { p0: ls.value.productName, p1: ls.value.recipeName, p2: ls.value.runId })
   }
   catch (err) {
-    lineErr.value = err instanceof Error ? err.message : String(err)
+    lineErr.value = apiErrorMessage(err)
   }
   finally {
     lineBusy.value = false
@@ -349,7 +349,7 @@ async function doLineStop(): Promise<void> {
     lineMsg.value = t('dcwDetail.kzl49pd187', { p0: was })
   }
   catch (err) {
-    lineErr.value = err instanceof Error ? err.message : String(err)
+    lineErr.value = apiErrorMessage(err)
   }
   finally {
     lineBusy.value = false
@@ -375,7 +375,7 @@ async function doCreateProduct(): Promise<void> {
     productForm.description = ''
   }
   catch (err) {
-    productError.value = err instanceof Error ? err.message : String(err)
+    productError.value = apiErrorMessage(err)
   }
   finally {
     productSaving.value = false
@@ -421,7 +421,7 @@ async function doQuery(): Promise<void> {
     if (queryResult.value.channels.length === 0) queryError.value = t('dcwDetail.kszv5sq136')
   }
   catch (err) {
-    queryError.value = err instanceof Error ? err.message : String(err)
+    queryError.value = apiErrorMessage(err)
   }
   finally {
     queryBusy.value = false
@@ -509,7 +509,7 @@ async function saveRecipe(): Promise<void> {
     recipeOpen.value = false
   }
   catch (err) {
-    recipeError.value = err instanceof Error ? err.message : String(err)
+    recipeError.value = apiErrorMessage(err)
   }
   finally {
     recipeSaving.value = false
@@ -526,7 +526,7 @@ async function doApplyRecipe(id: string): Promise<void> {
     if (ok < run.results.length) writeError.value = t('dcwDetail.ks7szkt188', { p0: run.results.filter(r => !r.ok).map(r => r.message).join(';') })
   }
   catch (err) {
-    writeError.value = err instanceof Error ? err.message : String(err)
+    writeError.value = apiErrorMessage(err)
   }
 }
 
@@ -537,7 +537,7 @@ async function doViewRun(id: string): Promise<void> {
     runDataView.value = { runId: id, data }
   }
   catch (err) {
-    writeError.value = err instanceof Error ? err.message : String(err)
+    writeError.value = apiErrorMessage(err)
   }
   finally {
     runDataLoading.value = false

@@ -259,7 +259,7 @@ const createStore = () => {
       store.error = ''
     }
     catch (err) {
-      store.error = err instanceof Error ? err.message : String(err)
+      store.error = apiErrorMessage(err)
     }
   }
 

@@ -83,7 +83,7 @@ function createStore(): DeviceTwinStore {
         catch (err) {
           // 失败不再静默清空:保留旧数据 + 置错误态(apiFetch 归一化网络/HTTP/业务错误)
           store.loaded = false
-          store.error = err instanceof Error ? err.message : String(err)
+          store.error = apiErrorMessage(err)
         }
         finally {
           store.__loading = null
