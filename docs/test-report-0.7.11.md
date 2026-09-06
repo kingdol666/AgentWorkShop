@@ -244,3 +244,30 @@ LOWER(email) OR LOWER(name) 匹配。发布:agentworkshop@0.7.13(npm latest)。
 - recipe_update:停用/解绑触雷被拒;正常保存自动剪除失效参数并告知;回退含失效节点的历史版本剪枝成功且描述留痕;line_context 带状态标记。
 - 浏览器:配方卡三态芯片灰化+徽标渲染(截图 `.e2e-shots/recipe-stale-chips.png`)。
 - 回归:recipe E2E 24/24、权限 20/20、审计负向 9/9 全过。
+
+---
+
+# 附录 · v0.7.19 增量(模拟真实产线全栈 E2E)
+
+## 场景
+
+模拟器栈全开(modbus-sim:1502 双 float32 寄存器组 / opcua-sim:4840 ns=2 AW.Temp/AW.SetTemp / protocol-sim:1883 极简 MQTT broker + 1889 HTTP 端点 / rtu-mini-slave:15030 FC03+FC10)+ Docker mosquitto/timescale/minio。生产实例(aw start,0.7.18)下重建「模拟产线」:5 数采节点(MBTCP/RTU/MQTT/OPC UA/HTTP)+ 5 数控节点(同五协议)+ 产品/配方。
+
+## 结果(E2E 37/37,`scripts/_dbg-live-line-e2e.mjs`)
+
+- **协议连通**:5 数采节点驱动 test 全部真连成功。
+- **数采**:开跑后 5 协议节点全部有实时值(压力 0.93MPa/RTU 42.5/OPC 183.8/MQTT 54.8/HTTP 42.1),管线 produced 持续增长,样本经 MQTT 队列入 Timescale。
+- **数控五协议下发+回读**:modbus-tcp 写 0.95(回读 0.95)、modbus-rtu FC10 写 500(回读 500)、opcua 写 88(回读 88)、http POST setpoint(回读 66.6)、mqtt 发布路由捕获(payload 含 55.5)。
+- **Agent 闭环**:绑定 → LLM 任务自主 dcw_control(真实 Modbus 下发)→ daq_query(采样证据)→ dcw_judge keep,交付 CLOSEDLOOP-OK。
+- **HITL**:manual 绑定的 OPC UA 节点,Agent 下发 → 待审批 → 管理员批准 → 真实写入生效(SetTemp 回读 92)。
+- **Recipe/账本**:Agent recipe_update(v2)→ 界面回退(v3)→ dcw_journal 账本查询 → dcw_rollback 节点级回退入册。
+
+## 过程中发现并处理的问题(均非产品代码缺陷)
+
+1. **Timescale 容器端口转发楔死**:容器健康(容器内 psql 正常)但主机 TCP 连接握手即断 → `docker restart` 恢复;应用侧按设计降级(sqlite-emulated)+ `POST /daq/infra/reconnect` 成功重建 mqtt+timescale 真实管线,验证了降级-恢复韧性。
+2. **E2E 脚本三处修正**(非产品缺陷):daq 创建 driverConfig 须嵌套传递;**HITL invoke 会挂起等待裁决**(300s)——验证脚本须后台发起+轮询审批+收结果;read 端点回读字段为 `read.value`。
+3. **数采采样门控确认**:lineId 空 = 未分配不采集(设计语义),节点必须挂产线且产线开跑才采样。
+
+## 结论
+
+五协议数采/数控、Agent 节点绑定、闭环控制、HITL 审批、Recipe 版本管理与参数账本回退在真实模拟产线通信下全部可用,达到可落地真实产线的验收状态。
