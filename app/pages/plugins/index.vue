@@ -17,6 +17,8 @@ interface PluginInfo {
   version: string
   description: string
   scope: 'project' | 'user'
+  /** 内置示例插件(随项目检出提供);false/undefined = 用户级扩展 */
+  builtin?: boolean
   enabled: boolean
   hasClient: boolean
   routes: PluginRoute[]
@@ -43,8 +45,8 @@ async function load() {
     plugins.value = d.plugins ?? []
     failures.value = d.failures ?? []
   }
-  catch {
-    message.error(t('plugins.enableFail'))
+  catch (err) {
+    message.error(apiErrorMessage(err, t('plugins.loadFail')))
   }
   finally {
     loading.value = false
@@ -54,13 +56,15 @@ async function load() {
 async function toggle(p: PluginInfo) {
   busyName.value = p.name
   try {
-    const d = await $fetch<{ enabled: boolean }>(`/api/workshop/plugins/${p.name}/${p.enabled ? 'disable' : 'enable'}`, { method: 'POST', headers: authHeaders() })
-    p.enabled = d.enabled
-    message.success(`${p.name} · ${d.enabled ? t('plugins.enabled') : t('plugins.disabled')}`)
+    const d = await $fetch<{ code: number, data?: { enabled: boolean } }>(`/api/workshop/plugins/${p.name}/${p.enabled ? 'disable' : 'enable'}`, { method: 'POST', headers: authHeaders() })
+    if (d.code !== 0 || !d.data) throw new Error(t('plugins.enableFail'))
+    p.enabled = d.data.enabled
+    message.success(`${p.name} · ${d.data.enabled ? t('plugins.enabled') : t('plugins.disabled')}`)
     setTimeout(load, 800) // 热重载完成后刷新路由/客户端状态
   }
   catch (err) {
-    message.error(`${t('plugins.enableFail')}: ${(err as Error)?.message ?? ''}`)
+    // 403 权限不足/404 插件不存在等:信封 message 直出人话,不再渲染码式文本
+    message.error(apiErrorMessage(err, t('plugins.enableFail')))
   }
   finally {
     busyName.value = ''
@@ -189,6 +193,9 @@ onMounted(load)
         <dl class="detail">
           <dt>version</dt><dd>{{ current.version }}</dd>
           <dt>scope</dt><dd>{{ scopeLabel(current.scope) }}</dd>
+          <dd class="scope-hint">
+            {{ current.scope === 'project' ? $t('plugins.scopeBuiltinHint') : $t('plugins.scopeUserHint') }}
+          </dd>
           <dt>enabled</dt><dd>{{ current.enabled }}</dd>
           <dt>client</dt><dd>{{ current.hasClient ? '✓' : '—' }}</dd>
           <dt v-if="current.error">
@@ -252,6 +259,7 @@ onMounted(load)
 .card-routes code { font-size: 10px; opacity: .65; }
 .detail dt { margin-top: 10px; font-size: 11px; opacity: .5; }
 .detail dd { margin: 2px 0 0; font-family: ui-monospace, monospace; font-size: 12px; }
+.detail .scope-hint { font-family: inherit; font-size: 11px; opacity: .6; margin-bottom: 6px; }
 .detail-route { display: block; font-size: 11px; opacity: .8; margin-bottom: 4px; }
 h4 { margin: 16px 0 6px; }
 .dim { opacity: .45; }

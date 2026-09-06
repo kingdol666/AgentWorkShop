@@ -445,7 +445,7 @@ export function readClientScript(name) {
   return { status: 200, code: readFileSync(rec.clientPath, 'utf8'), contentType: 'text/javascript; charset=utf-8' }
 }
 
-/** 清单(非敏感只读;含启停状态与路由) */
+/** 清单(非敏感只读;含启停状态与路由)。builtin = 随项目检出提供的内置示例插件 */
 export function pluginManifest() {
   const host = getPluginHost()
   if (!host) return []
@@ -454,6 +454,7 @@ export function pluginManifest() {
     version: r.version,
     description: r.description,
     scope: r.scope,
+    builtin: r.scope === 'project',
     enabled: r.enabled !== false,
     hasClient: Boolean(r.clientPath),
     routes: host.routes.byPlugin(r.name),

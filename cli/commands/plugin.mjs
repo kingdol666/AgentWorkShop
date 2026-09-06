@@ -158,8 +158,8 @@ function findPluginDir(ctx, name) {
 
 function scopes(ctx) {
   return [
-    { scope: 'project', dir: ctx.root ? join(ctx.root, '.AgentWorkShop', 'plugins') : null, label: '项目级' },
-    { scope: 'user', dir: ctx.commandsDir?.global ? join(ctx.home, 'plugins') : join(ctx.home, 'plugins'), label: '用户级' },
+    { scope: 'project', dir: ctx.root ? join(ctx.root, '.AgentWorkShop', 'plugins') : null, label: '内置示例' },
+    { scope: 'user', dir: ctx.commandsDir?.global ? join(ctx.home, 'plugins') : join(ctx.home, 'plugins'), label: '用户级扩展' },
   ]
 }
 
