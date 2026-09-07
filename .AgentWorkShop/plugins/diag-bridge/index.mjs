@@ -264,8 +264,11 @@ async function ingestCompleted(ctx, runId, meta, st) {
     const runName = String(st.name || meta.name || '')
     if (!base || !runName) throw new Error(`缺少诊断服务 base 或 run name(${runName})`)
 
-    // 1) 报告全文(3210;/api/files/workspace/report/<name>)
-    const rep = await jget(ctx, `${base}/api/files/workspace/report/${encodeURIComponent(runName)}`, 10000)
+    // 1) 报告全文。报告端点按「目录名」索引(时间戳_scene),而 status.name 是显示名
+    //    (scene_runId)——优先用 report_path 反推目录名,缺失时回退显示名。
+    const rp = String(st.report_path || meta.reportPath || '')
+    const repDir = rp.split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || runName
+    const rep = await jget(ctx, `${base}/api/files/workspace/report/${encodeURIComponent(repDir)}`, 10000)
     const content = String(rep.data?.content ?? '')
     if (!content) throw new Error('报告内容为空')
 
@@ -306,7 +309,11 @@ async function ingestCompleted(ctx, runId, meta, st) {
 // ── 轮询器:15s 扫描 kv 中 running 的 run → 更新状态 → 完成则入库 ──────────
 
 async function sweepOnce(ctx) {
-  const running = kvRuns(ctx).filter(r => r.meta?.status === 'running')
+  // running:常规轮询;completed 未入库:30 分钟内重试入库(入库管线曾失败时自愈)
+  const running = kvRuns(ctx).filter(r =>
+    r.meta?.status === 'running'
+    || (r.meta?.status === 'completed' && r.meta?.stored !== true
+      && Date.now() - (r.meta?.completedAt ?? 0) < 120 * MIN))
   if (!running.length) return
   const base = baseOf(ctx)
   if (!base) {
@@ -321,14 +328,16 @@ async function sweepOnce(ctx) {
         ctx.kv.set(runKey(id), {
           ...meta,
           status: 'completed',
-          completedAt: Date.now(),
+          completedAt: meta.completedAt ?? Date.now(), // 重试路径不续期,保证重试窗口会收敛
           name: st.name ?? meta.name,
           score: st.score ?? null,
           verdict: st.judge_verdict ?? null,
           reportPath: st.report_path ?? null,
         })
-        // 入库为独立异步管线,失败仅 warn,不影响轮询
-        ingestCompleted(ctx, id, ctx.kv.get(runKey(id)), st).catch(() => {})
+        // 入库为独立异步管线,失败仅 warn,不影响轮询(未入库的下轮重试)
+        if (ctx.kv.get(runKey(id))?.stored !== true) {
+          ingestCompleted(ctx, id, ctx.kv.get(runKey(id)), st).catch(() => {})
+        }
       }
       else if (status === 'failed' || status === 'stopped') {
         ctx.kv.set(runKey(id), {
