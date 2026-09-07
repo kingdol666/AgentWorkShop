@@ -243,9 +243,21 @@ async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source
 
 async function ingestCompleted(ctx, runId, meta, st) {
   try {
-    const kbId = String(ctx.kv.get('kb.id') || '').trim()
+    // kv 按插件命名空间隔离:rag-bridge 建的库不在本插件 kv 里,需自行从 catalog 幂等解析
+    const webBase = String(ctx.kv.get('kb.web_url') || 'http://127.0.0.1:6789').replace(/\/+$/, '')
+    let kbId = String(ctx.kv.get('kb.id') || '').trim()
     if (!kbId) {
-      ctx.logger.warn(`诊断 ${runId} 已完成但未配置 kb.id,跳过知识库入库`)
+      const cat = await ctx.http.get(`${webBase}/api/kb/catalog`, { timeoutMs: 15000 })
+        .then(r => r.json()).catch(() => null)
+      const hit = (Array.isArray(cat?.knowledgeBases) ? cat.knowledgeBases : [])
+        .find(kb => kb?.name === 'aw-industrial')
+      if (hit?.kbId) {
+        ctx.kv.set('kb.id', String(hit.kbId))
+        kbId = String(hit.kbId)
+      }
+    }
+    if (!kbId) {
+      ctx.logger.warn(`诊断 ${runId} 已完成但找不到知识库 aw-industrial(rag-bridge 未初始化?),跳过入库`)
       return
     }
     const base = baseOf(ctx)
@@ -257,7 +269,6 @@ async function ingestCompleted(ctx, runId, meta, st) {
     const content = String(rep.data?.content ?? '')
     if (!content) throw new Error('报告内容为空')
 
-    const webBase = String(ctx.kv.get('kb.web_url') || 'http://127.0.0.1:6789').replace(/\/+$/, '')
     const apiBase = String(ctx.kv.get('kb.base_url') || 'http://127.0.0.1:8770').replace(/\/+$/, '')
 
     // 2) web 建文档(响应 {success, document:{path,…}},path 供索引用)
