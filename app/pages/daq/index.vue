@@ -2225,7 +2225,7 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 .infra-banner .txt a { color: var(--accent); text-decoration: underline; }
 .infra-banner .txt b { font-weight: 600; }
 .infra-banner .txt small { margin-left: 8px; font-size: 10.5px; opacity: 0.75; }
-.infra-banner .pill-btn { flex: 0 0 auto; color: var(--paper-raised); text-decoration: none; }
+.infra-banner .pill-btn { flex: 0 0 auto; }
 
 /* ---------- 未确认报警条(S5) ---------- */
 .alarm-bar {
@@ -2351,16 +2351,6 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 }
 .hint { font-size: 10px; color: var(--ink-fainter); }
 .test-row { display: flex; gap: 10px; align-items: center; margin: 6px 0 4px; }
-.pill-btn {
-  padding: 7px 14px;
-  font-size: 12.5px;
-  cursor: pointer;
-  color: var(--paper-raised);
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-pill);
-}
-.pill-btn:disabled { opacity: 0.5; cursor: default; }
 .test-result { font-family: var(--font-mono); font-size: 11px; }
 .test-result.ok { color: var(--tone-success-dot); }
 .test-result.bad { color: var(--tone-danger-dot); }
@@ -2383,17 +2373,6 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 .tpl-table .range { font-size: 11.5px; color: var(--ink-soft); }
 .tpl-table .empty { color: var(--ink-fainter); font-size: 12px; text-align: center; padding: 14px 0; }
 .tpl-table .actions { white-space: nowrap; }
-.mini-btn {
-  padding: 3px 10px;
-  font-size: 11.5px;
-  cursor: pointer;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
-}
-.mini-btn.danger { color: var(--tone-danger-dot); }
-.mini-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ---------- 节点筛选工具条 ---------- */
 .tbl-toolbar {

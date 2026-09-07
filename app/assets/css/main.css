@@ -617,6 +617,151 @@ ul.task-list {
   border-color: var(--line-strong);
 }
 
+/* ── 页面按钮词汇(全局唯一权威定义,原各页散落定义已收编)──
+ * pill-btn 主操作(accent 药丸)/ outline 次级 / danger·stop 危险;
+ * ghost-btn 取消/次要;mini-btn 轻量紧凑。形态语言与 aw-pill 同族。 */
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 15px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--on-accent);
+  cursor: pointer;
+  user-select: none;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pill-btn:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 14px var(--accent-soft);
+}
+
+.pill-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.pill-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pill-btn.outline {
+  color: var(--ink);
+  background: var(--paper-raised);
+  border-color: var(--line-strong);
+}
+
+.pill-btn.outline:hover:not(:disabled) {
+  background: var(--paper-deep);
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+
+.pill-btn.danger,
+.pill-btn.stop {
+  color: var(--tone-danger-dot);
+  background: var(--tone-danger-bg);
+  border-color: transparent;
+}
+
+.pill-btn.danger:hover:not(:disabled),
+.pill-btn.stop:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tone-danger-dot) 26%, transparent);
+  box-shadow: none;
+}
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ink-soft);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ghost-btn:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--hover-tint);
+}
+
+.ghost-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.ghost-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 11px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--ink-soft);
+  cursor: pointer;
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mini-btn:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--hover-tint);
+  border-color: var(--ink-fainter);
+}
+
+.mini-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.mini-btn.danger {
+  color: var(--tone-danger-dot);
+}
+
+.mini-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* 幽灵图标钮(28px 方,hover 浮 surface;按压缩放反馈) */
 .aw-ghost {
   display: inline-flex;

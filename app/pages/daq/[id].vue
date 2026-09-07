@@ -875,29 +875,10 @@ watch(bucketMs, () => void loadHistory())
 }
 .toggle.on { color: var(--tone-success-dot); background: var(--tone-success-bg); }
 .toggle.slim { padding: 6px 10px; font-size: 11.5px; }
-.pill-btn {
-  padding: 7px 14px;
-  font-size: 12.5px;
-  cursor: pointer;
-  color: var(--paper-raised);
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-pill);
-}
 .bind-row { display: flex; gap: 8px; }
 .driver-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .field em { margin-left: 2px; font-style: normal; color: var(--tone-danger-dot); }
 .test-row { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
-.pill-btn {
-  padding: 7px 14px;
-  font-size: 12.5px;
-  cursor: pointer;
-  color: var(--paper-raised);
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-pill);
-}
-.pill-btn:disabled { opacity: 0.5; }
 .test-out { font-size: 11px; }
 .test-out.ok { color: var(--tone-success-dot); }
 .test-out.bad { color: var(--tone-danger-dot); }

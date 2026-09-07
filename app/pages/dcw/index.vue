@@ -925,25 +925,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   border-radius: var(--radius-panel-sm);
 }
 .lc-ctl .inp:focus { outline: none; border-color: var(--tone-success-dot); box-shadow: 0 0 0 3px var(--accent-soft); }
-.pill-btn {
-  flex: none;
-  height: 30px;
-  padding: 0 14px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--on-accent);
-  background: var(--accent);
-  border: 0;
-  border-radius: var(--radius-panel-sm);
-  cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
-}
-.pill-btn:hover:not(:disabled) { background: var(--accent-strong); box-shadow: 0 0 14px var(--accent-soft); }
-.pill-btn:disabled { opacity: 0.4; cursor: default; }
-.pill-btn.danger,
-.pill-btn.stop { background: var(--tone-danger-bg); color: var(--tone-danger-dot); }
-.pill-btn.danger:hover:not(:disabled),
-.pill-btn.stop:hover:not(:disabled) { background: color-mix(in srgb, var(--tone-danger-dot) 26%, transparent); box-shadow: none; }
+.lc-ctl .pill-btn { flex: none; }
 .lc-manage {
   font-size: 11.5px;
   font-weight: 600;
@@ -1065,15 +1047,4 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 .tpl-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tpl-sem { flex: 1; color: var(--ink-faint); }
 textarea.inp { height: auto; padding: 6px 9px; font-size: 11.5px; resize: vertical; }
-.mini-btn {
-  padding: 4px 10px;
-  font-size: 10.5px;
-  color: var(--ink-faint);
-  background: var(--paper-deep);
-  border: 1px solid var(--line-strong);
-  border-radius: 7px;
-  cursor: pointer;
-}
-.mini-btn:hover { border-color: var(--ink-faint); color: var(--ink); }
-.mini-btn.danger { color: var(--tone-danger-dot); }
 </style>

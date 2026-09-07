@@ -1,14 +1,12 @@
 <template>
   <div class="page">
-    <!-- 页头:标题 + 手动记录入口 -->
-    <header class="head">
+    <!-- 页头(aw-page-head 规范:kicker + 大标题 + 描述)+ 手动记录入口 -->
+    <header class="aw-page-head">
       <div>
         <p class="aw-kicker">
           agentworkshop / audit log
         </p>
-        <h1 class="h1">
-          {{ $t('logs.title') }}
-        </h1>
+        <h1>{{ $t('logs.title') }}</h1>
         <p class="sub">
           {{ $t('logs.sub') }}
         </p>
@@ -182,67 +180,78 @@
           </tr>
         </thead>
         <tbody>
-          <tr
+          <template
             v-for="row in opsLog.results"
-            :key="`${row.id}-${row.at}`"
+            :key="row.id"
           >
-            <td class="mono dim">
-              {{ fmtTime(row.at) }}
-            </td>
-            <td>
-              <span
-                class="src-badge"
-                :class="row.actorKind"
-              >{{ srcLabel(row.actorKind) }}</span>
-            </td>
-            <td class="actor">
-              {{ row.actorName || row.actor || '—' }}
-            </td>
-            <td>
-              <span
-                class="kind-chip"
-                :class="row.kind"
-              >{{ kindLabel(row.kind) }}</span>
-            </td>
-            <td class="summary">
-              {{ row.summary }}
-              <small class="mono dim action">{{ row.action }}</small>
-            </td>
-            <td class="scope">
-              <span
-                v-if="lineName(row.lineId)"
-                class="scope-chip"
-                :title="$t('logs.fLine')"
-              >{{ lineName(row.lineId) }}</span>
-              <span
-                v-if="productName(row.productId)"
-                class="scope-chip"
-                :title="$t('logs.fProduct')"
-              >{{ productName(row.productId) }}</span>
-              <span
-                v-if="recipeName(row.recipeId)"
-                class="scope-chip"
-                :title="'Recipe'"
-              >{{ recipeName(row.recipeId) }}</span>
-              <span
-                v-if="!row.lineId && !row.productId && !row.recipeId"
-                class="dim"
-              >—</span>
-            </td>
-            <td class="detail-cell">
-              <button
-                v-if="row.detailJson && row.detailJson !== '{}'"
-                class="mini-btn"
-                @click="toggle(row)"
+            <tr>
+              <td class="mono dim">
+                {{ fmtTime(row.at) }}
+              </td>
+              <td>
+                <span
+                  class="src-badge"
+                  :class="row.actorKind"
+                >{{ srcLabel(row.actorKind) }}</span>
+              </td>
+              <td class="actor">
+                {{ row.actorName || row.actor || '—' }}
+              </td>
+              <td>
+                <span
+                  class="kind-chip"
+                  :class="row.kind"
+                >{{ kindLabel(row.kind) }}</span>
+              </td>
+              <td class="summary">
+                {{ row.summary }}
+                <small class="mono dim action">{{ row.action }}</small>
+              </td>
+              <td class="scope">
+                <span
+                  v-if="lineName(row.lineId)"
+                  class="scope-chip"
+                  :title="$t('logs.fLine')"
+                >{{ lineName(row.lineId) }}</span>
+                <span
+                  v-if="productName(row.productId)"
+                  class="scope-chip"
+                  :title="$t('logs.fProduct')"
+                >{{ productName(row.productId) }}</span>
+                <span
+                  v-if="recipeName(row.recipeId)"
+                  class="scope-chip"
+                  :title="'Recipe'"
+                >{{ recipeName(row.recipeId) }}</span>
+                <span
+                  v-if="!row.lineId && !row.productId && !row.recipeId"
+                  class="dim"
+                >—</span>
+              </td>
+              <td class="detail-cell">
+                <button
+                  v-if="hasDetail(row)"
+                  class="mini-btn"
+                  @click="toggle(row)"
+                >
+                  {{ expandedId === row.id ? $t('logs.fold') : $t('logs.expand') }}
+                </button>
+                <span
+                  v-else
+                  class="dim"
+                >{{ $t('logs.noDetail') }}</span>
+              </td>
+            </tr>
+            <!-- 详情行内展开:紧贴事件行,点击即见(不再沉到表尾) -->
+            <tr v-if="expandedId === row.id">
+              <td
+                colspan="7"
+                class="detail-td"
               >
-                {{ expanded === row ? $t('logs.fold') : $t('logs.expand') }}
-              </button>
-              <span
-                v-else
-                class="dim"
-              >—</span>
-            </td>
-          </tr>
+                <pre class="detail-box mono">{{ pretty(row.detailJson) }}</pre>
+              </td>
+            </tr>
+          </template>
           <tr>
             <td
               v-if="opsLog.results.length === 0"
@@ -259,10 +268,6 @@
           </tr>
         </tbody>
       </table>
-      <pre
-        v-if="expanded"
-        class="detail-box mono"
-      >{{ pretty(expanded.detailJson) }}</pre>
     </section>
 
     <!-- 人工记录弹窗 -->
@@ -282,6 +287,14 @@
               v-model="manual.summary"
               rows="3"
               :placeholder="$t('logs.mSummaryPh')"
+            />
+          </label>
+          <label class="m-f">
+            <span>{{ $t('logs.mDetail') }}</span>
+            <textarea
+              v-model="manual.detail"
+              rows="2"
+              :placeholder="$t('logs.mDetailPh')"
             />
           </label>
           <div class="m-grid">
@@ -385,9 +398,10 @@ const opsLog = useOpsLog()
 const KINDS = ['write', 'manual', 'alarm', 'line', 'recipe', 'rollback', 'daq', 'system'] as const
 
 const q = reactive({ lineId: '', productId: '', recipeId: '', actorKind: '', kind: '', text: '' })
-const expanded = ref<OpsLogRow | null>(null)
+/** 当前展开详情的行(audit_log 行 id;null = 全部收起) */
+const expandedId = ref<number | null>(null)
 const manualOpen = ref(false)
-const manual = reactive({ summary: '', lineId: '', productId: '', recipeId: '' })
+const manual = reactive({ summary: '', detail: '', lineId: '', productId: '', recipeId: '' })
 
 const hasFilter = computed(() => !!(q.lineId || q.productId || q.recipeId || q.actorKind || q.kind || q.text.trim()))
 const productsOfLine = computed(() => dcw.products.filter(p => !q.lineId || p.lineId === q.lineId))
@@ -404,7 +418,7 @@ function doQuery(): void {
     q: q.text.trim(),
     limit: 300,
   })
-  expanded.value = null
+  expandedId.value = null
 }
 
 function resetFilters(): void {
@@ -419,6 +433,7 @@ function resetFilters(): void {
 
 function openManual(): void {
   manual.summary = ''
+  manual.detail = ''
   manual.lineId = q.lineId
   manual.productId = q.productId
   manual.recipeId = q.recipeId
@@ -427,11 +442,13 @@ function openManual(): void {
 
 async function submitManual(): Promise<void> {
   try {
+    const note = manual.detail.trim()
     await opsLog.postManual({
       summary: manual.summary.trim(),
       lineId: manual.lineId,
       productId: manual.productId,
       recipeId: manual.recipeId,
+      ...(note ? { detail: { note } } : {}),
     })
     message.success(tt('logs.mOk'))
     manualOpen.value = false
@@ -442,8 +459,13 @@ async function submitManual(): Promise<void> {
   }
 }
 
+/** 该行是否带结构化详情(空对象 = 无) */
+function hasDetail(row: OpsLogRow): boolean {
+  return !!row.detailJson && row.detailJson !== '{}'
+}
+
 function toggle(row: OpsLogRow): void {
-  expanded.value = expanded.value === row ? null : row
+  expandedId.value = expandedId.value === row.id ? null : row.id
 }
 
 function pretty(json: string): string {
@@ -496,10 +518,8 @@ export default { name: 'OpsLogsPage' }
 
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 12px; }
-.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-.h1 { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 20px; font-weight: 700; color: var(--ink); }
-.sub { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-faint); }
-.head-actions { display: flex; gap: 10px; align-items: center; }
+.head-actions { display: flex; gap: 10px; align-items: center; padding-bottom: 4px; }
+.sub { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-faint); }
 .live-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--tone-success-dot);
@@ -530,12 +550,6 @@ export default { name: 'OpsLogsPage' }
   border: 1px solid var(--glass-line); border-radius: 7px; outline: none;
 }
 .inp-sel:focus { border-color: color-mix(in srgb, var(--tone-info-dot) 55%, transparent); }
-.mini-btn {
-  padding: 6px 11px; font-size: 12px; color: var(--ink-soft);
-  background: var(--frost-bg); border: 1px solid var(--glass-line); border-radius: 7px;
-  cursor: pointer;
-}
-.mini-btn:hover { border-color: color-mix(in srgb, var(--tone-info-dot) 45%, transparent); }
 
 .table-card {
   background: var(--surface-glass);
@@ -569,10 +583,12 @@ export default { name: 'OpsLogsPage' }
 }
 .detail-cell { white-space: nowrap; }
 .empty { padding: 22px 0 !important; color: var(--ink-faint); text-align: center; }
+/* 详情行内展开:紧贴事件行的整行 pre 面板 */
+.detail-td { padding: 0 !important; }
 .detail-box {
   max-height: 260px; margin: 0; padding: 10px 14px; overflow: auto;
-  font-size: 11.5px; color: var(--ink-soft);
-  background: var(--frost-bg); border-top: 1px solid var(--glass-line);
+  font-size: 11.5px; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word;
+  background: var(--paper-deep); border-top: 1px solid var(--glass-line);
 }
 .src-badge {
   display: inline-block; padding: 1px 8px; font-size: 10.5px;
@@ -616,8 +632,4 @@ export default { name: 'OpsLogsPage' }
 .m-f textarea:focus, .m-f .inp-sel:focus { border-color: color-mix(in srgb, var(--tone-info-dot) 55%, transparent); }
 .m-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
 .m-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
-.ghost-btn {
-  padding: 7px 14px; font-size: 12.5px; color: var(--ink-soft);
-  background: transparent; border: 1px solid var(--glass-line); border-radius: 8px; cursor: pointer;
-}
 </style>

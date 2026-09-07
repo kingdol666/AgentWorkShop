@@ -748,6 +748,7 @@ export default {
     'thDetail': 'Detail',
     'expand': 'Detail',
     'fold': 'Fold',
+    'noDetail': 'None',
     'loading': 'Querying…',
     'empty': 'No matching log entries',
     'src': {
@@ -766,6 +767,8 @@ export default {
     },
     'mSummary': 'Entry content',
     'mSummaryPh': 'e.g. Replaced heater coil of oven #3; extended soaking for current batch by 10 min',
+    'mDetail': 'Detail (optional)',
+    'mDetailPh': 'Context, handling notes, related ticket… (stored in the log detail)',
     'mSubmit': 'Record',
     'mOk': 'Recorded',
   },
