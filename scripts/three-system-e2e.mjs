@@ -344,12 +344,21 @@ let runId = ''
   }
   const text = resultText(r)
   runId = (text.match(/runId=([a-z0-9-]+)/i) ?? [])[1] ?? ''
-  ok(Boolean(runId), 'diag_run 异步发起并返回 runId', runId || `resp=${JSON.stringify(r.json).slice(0, 260)}`)
+  if (!runId) {
+    // 产线上已有在跑诊断(如事件自动触发)→ 收养它继续验证,而非报错
+    const adopted = (text.match(/run_id=([a-z0-9-]+)/i) ?? [])[1] ?? ''
+    if (adopted) {
+      runId = adopted
+      console.log(`  · 产线已有在跑诊断,收养 run_id=${adopted} 继续验证`)
+    }
+  }
+  ok(Boolean(runId), 'diag_run 异步发起(或收养在跑诊断)拿到 runId', runId || `resp=${JSON.stringify(r.json).slice(0, 260)}`)
 
   if (FULL && runId) {
     let done = false
     let lastText = ''
-    for (let i = 0; i < 135 && !done; i++) { // ≤45min
+    const maxIter = Math.round(Number(process.env.FULL_WAIT_MIN ?? 45) * 3) // 每 20s 一轮
+    for (let i = 0; i < maxIter && !done; i++) {
       await sleep(20_000)
       const s = await invoke(toolInvoker, 'diag_status', { run_id: runId }, 30000)
       lastText = resultText(s)
