@@ -4,11 +4,12 @@
 #   3) 页头 aw-page-head 规范(标题30px + 描述间距)
 # 附带:daq/dcw 页按钮抽查截图。产物 → .e2e-shots/
 import json
+import os
 import sys
 from playwright.sync_api import sync_playwright
 
-BASE = 'http://127.0.0.1:3000'
-SHOT = '.e2e-shots'
+BASE = os.environ.get('BASE', 'http://127.0.0.1:3000')
+SHOT = os.environ.get('SHOT_PREFIX', '') or '.e2e-shots'
 passed = 0
 failed = 0
 
