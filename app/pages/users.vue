@@ -116,9 +116,12 @@ useHead({ title: () => t('titles.users') })
 
 <template>
   <div class="page-wrap">
-    <div class="page-head">
+    <div class="aw-page-head">
       <div>
-        <h2 class="page-title">
+        <p class="aw-kicker">
+          agentworkshop / identity
+        </p>
+        <h1>
           {{ t('users.title') }}
           <a-tag
             color="volcano"
@@ -127,8 +130,8 @@ useHead({ title: () => t('titles.users') })
             <span class="i-tabler-shield-check" />
             admin
           </a-tag>
-        </h2>
-        <p class="page-sub">
+        </h1>
+        <p class="sub">
           {{ $t('users.k1flpho5002') }}
         </p>
       </div>
@@ -228,21 +231,10 @@ useHead({ title: () => t('titles.users') })
   max-width: 1080px;
   margin: 0 auto;
 }
-.page-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 16px;
+.admin-tag {
+  transform: translateY(-3px);
 }
-.page-title {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin: 0 0 4px;
-  font-size: 24px;
-}
-.admin-tag { transform: translateY(-2px); }
-.page-sub { margin: 0; font-size: 12.5px; opacity: 0.55; }
+.sub { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-faint); }
 .gate-card {
   display: flex;
   flex-direction: column;

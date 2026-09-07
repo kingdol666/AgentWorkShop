@@ -293,73 +293,50 @@ const processColumns = computed(() => [
     </a-card>
 
     <template v-else>
-      <!-- 概要统计 -->
-      <a-row
-        :gutter="[16, 16]"
-        class="summary"
-      >
-        <a-col
-          :xs="12"
-          :md="6"
-        >
-          <a-card class="aw-panel stat">
-            <p class="stat-label">
-              {{ t('monitor.channels') }}
-            </p>
-            <p class="stat-value aw-mono">
-              {{ snapshot?.counts.channels ?? '–' }}
-            </p>
-          </a-card>
-        </a-col>
-        <a-col
-          :xs="12"
-          :md="6"
-        >
-          <a-card class="aw-panel stat">
-            <p class="stat-label">
-              {{ t('monitor.agents') }}
-            </p>
-            <p class="stat-value aw-mono">
-              {{ snapshot?.counts.agents ?? '–' }}
-            </p>
-          </a-card>
-        </a-col>
-        <a-col
-          :xs="12"
-          :md="6"
-        >
-          <a-card class="aw-panel stat">
-            <p class="stat-label">
-              {{ t('monitor.aliveProcesses') }}
-            </p>
-            <p class="stat-value aw-mono">
-              {{ snapshot?.counts.aliveProcesses ?? '–' }}
-              <span
-                v-if="(snapshot?.counts.orphanProcesses ?? 0) > 0"
-                class="orphan-badge"
-              >
-                +{{ snapshot?.counts.orphanProcesses }} {{ t('monitor.orphan') }}
-              </span>
-            </p>
-          </a-card>
-        </a-col>
-        <a-col
-          :xs="12"
-          :md="6"
-        >
-          <a-card class="aw-panel stat">
-            <p class="stat-label">
-              {{ t('monitor.server') }}
-            </p>
-            <p class="stat-value aw-mono small">
-              PID {{ snapshot?.serverPid ?? '–' }} · {{ snapshot ? uptimeText(snapshot.uptimeMs) : '' }}
-            </p>
-            <p class="stat-updated">
-              {{ lastUpdated }} · {{ t('monitor.updated') }} {{ snapshot?.generatedAt ?? '' }}
-            </p>
-          </a-card>
-        </a-col>
-      </a-row>
+      <!-- 概要统计(CSS grid:antd Grid 样式在部分构建下缺失,col 会退化 100% 宽) -->
+      <div class="stat-grid">
+        <a-card class="aw-panel stat">
+          <p class="stat-label">
+            {{ t('monitor.channels') }}
+          </p>
+          <p class="stat-value aw-mono">
+            {{ snapshot?.counts.channels ?? '–' }}
+          </p>
+        </a-card>
+        <a-card class="aw-panel stat">
+          <p class="stat-label">
+            {{ t('monitor.agents') }}
+          </p>
+          <p class="stat-value aw-mono">
+            {{ snapshot?.counts.agents ?? '–' }}
+          </p>
+        </a-card>
+        <a-card class="aw-panel stat">
+          <p class="stat-label">
+            {{ t('monitor.aliveProcesses') }}
+          </p>
+          <p class="stat-value aw-mono">
+            {{ snapshot?.counts.aliveProcesses ?? '–' }}
+            <span
+              v-if="(snapshot?.counts.orphanProcesses ?? 0) > 0"
+              class="orphan-badge"
+            >
+              +{{ snapshot?.counts.orphanProcesses }} {{ t('monitor.orphan') }}
+            </span>
+          </p>
+        </a-card>
+        <a-card class="aw-panel stat">
+          <p class="stat-label">
+            {{ t('monitor.server') }}
+          </p>
+          <p class="stat-value aw-mono small">
+            PID {{ snapshot?.serverPid ?? '–' }} · {{ snapshot ? uptimeText(snapshot.uptimeMs) : '' }}
+          </p>
+          <p class="stat-updated">
+            {{ lastUpdated }} · {{ t('monitor.updated') }} {{ snapshot?.generatedAt ?? '' }}
+          </p>
+        </a-card>
+      </div>
 
       <!-- ChannelRuntime 表 -->
       <a-card
@@ -603,8 +580,19 @@ const processColumns = computed(() => [
   align-items: center;
 }
 
-.summary {
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
   margin-bottom: 16px;
+}
+
+@media (max-width: 1100px) {
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .stat-grid { grid-template-columns: 1fr; }
 }
 
 .stat {

@@ -270,17 +270,17 @@ useHead({ title: () => tt('titles.tokens') })
     </div>
 
     <template v-else>
-      <div class="head">
+      <div class="aw-page-head">
         <div>
           <p class="aw-kicker">
             agentworkshop / api tokens
           </p>
-          <h2>API Token</h2>
+          <h1>API Token</h1>
           <p class="sub">
             {{ userStore.user?.name }} · {{ $t('tokens.k1upppaw026') }}
           </p>
         </div>
-        <a-space>
+        <a-space class="head-actions">
           <a-tag
             v-if="userStore.user?.tokenId"
             color="green"
@@ -297,95 +297,100 @@ useHead({ title: () => tt('titles.tokens') })
         </a-space>
       </div>
 
-      <a-spin :spinning="loading">
-        <a-table
-          :columns="columns"
-          :data-source="tokens"
-          :pagination="false"
-          row-key="id"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'label'">
-              <a-space>
-                <span class="i-tabler-key text-primary" />
-                <span class="font-medium">{{ record.label || $t('tokens.kj3mklm028') }}</span>
-                <a-tag
-                  v-if="record.id === userStore.user?.tokenId"
-                  color="green"
-                >
-                  {{ $t('tokens.k1defr98007') }}
-                </a-tag>
-              </a-space>
-            </template>
-            <template v-else-if="column.key === 'token'">
-              <div class="tok-cell">
-                <code
-                  class="tok-val"
-                  :class="{ revealed: isRevealed(record.id) }"
-                  :title="isRevealed(record.id) ? '已显示明文,点击眼睛遮回' : '掩码预览'"
-                >{{ rowDisplay(record as TokenMeta) }}</code>
-                <a-button
-                  v-if="record.hasPlain"
-                  type="text"
-                  size="small"
-                  class="tok-op"
-                  :loading="revealingId === record.id"
-                  :title="isRevealed(record.id) ? '遮回' : '查看明文'"
-                  @click="toggleRowReveal(record as TokenMeta)"
-                >
-                  <span :class="isRevealed(record.id) ? 'i-tabler-eye-off' : 'i-tabler-eye'" />
-                </a-button>
-                <a-button
-                  v-if="record.hasPlain"
-                  type="text"
-                  size="small"
-                  class="tok-op"
-                  :class="{ ok: copyId === record.id }"
-                  :title="copyId === record.id ? '已复制' : '复制明文'"
-                  @click="copyRow(record as TokenMeta)"
-                >
-                  <span :class="copyId === record.id ? 'i-tabler-check' : 'i-tabler-copy'" />
-                </a-button>
-                <!-- 0.7.10 起 token 只存哈希:无明文是常态,不再打「旧版不可见」标签 -->
-              </div>
-            </template>
-            <template v-else-if="column.key === 'createdAt'">
-              {{ fmt(record.createdAt) }}
-            </template>
-            <template v-else-if="column.key === 'lastUsedAt'">
-              {{ fmt(record.lastUsedAt) }}
-            </template>
-            <template v-else-if="column.key === 'action'">
-              <a-space>
-                <a-button
-                  type="link"
-                  size="small"
-                  @click="openRename(record)"
-                >
-                  <span class="i-tabler-edit" />
-                  {{ $t('tokens.k3vrpcs009') }}
-                </a-button>
-                <a-popconfirm
-                  :title="record.id === userStore.user?.tokenId ? '吊销当前会话 token 将退出登录' : '吊销后立即失效'"
-                  :ok-text="'吊销'"
-                  :cancel-text="'取消'"
-                  @confirm="doRevoke(record)"
-                >
-                  <!-- 安静文本按钮:常态墨灰,悬停转红 —— 红色只留给真实确认瞬间,不再整行批发 -->
+      <a-card
+        :bordered="false"
+        class="table-card"
+      >
+        <a-spin :spinning="loading">
+          <a-table
+            :columns="columns"
+            :data-source="tokens"
+            :pagination="false"
+            row-key="id"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'label'">
+                <a-space>
+                  <span class="i-tabler-key text-primary" />
+                  <span class="font-medium">{{ record.label || $t('tokens.kj3mklm028') }}</span>
+                  <a-tag
+                    v-if="record.id === userStore.user?.tokenId"
+                    color="green"
+                  >
+                    {{ $t('tokens.k1defr98007') }}
+                  </a-tag>
+                </a-space>
+              </template>
+              <template v-else-if="column.key === 'token'">
+                <div class="tok-cell">
+                  <code
+                    class="tok-val"
+                    :class="{ revealed: isRevealed(record.id) }"
+                    :title="isRevealed(record.id) ? '已显示明文,点击眼睛遮回' : '掩码预览'"
+                  >{{ rowDisplay(record as TokenMeta) }}</code>
                   <a-button
+                    v-if="record.hasPlain"
                     type="text"
                     size="small"
-                    class="tok-revoke"
+                    class="tok-op"
+                    :loading="revealingId === record.id"
+                    :title="isRevealed(record.id) ? '遮回' : '查看明文'"
+                    @click="toggleRowReveal(record as TokenMeta)"
                   >
-                    <span class="i-tabler-trash" />
-                    {{ $t('tokens.k3xmrz010') }}
+                    <span :class="isRevealed(record.id) ? 'i-tabler-eye-off' : 'i-tabler-eye'" />
                   </a-button>
-                </a-popconfirm>
-              </a-space>
+                  <a-button
+                    v-if="record.hasPlain"
+                    type="text"
+                    size="small"
+                    class="tok-op"
+                    :class="{ ok: copyId === record.id }"
+                    :title="copyId === record.id ? '已复制' : '复制明文'"
+                    @click="copyRow(record as TokenMeta)"
+                  >
+                    <span :class="copyId === record.id ? 'i-tabler-check' : 'i-tabler-copy'" />
+                  </a-button>
+                <!-- 0.7.10 起 token 只存哈希:无明文是常态,不再打「旧版不可见」标签 -->
+                </div>
+              </template>
+              <template v-else-if="column.key === 'createdAt'">
+                {{ fmt(record.createdAt) }}
+              </template>
+              <template v-else-if="column.key === 'lastUsedAt'">
+                {{ fmt(record.lastUsedAt) }}
+              </template>
+              <template v-else-if="column.key === 'action'">
+                <a-space>
+                  <a-button
+                    type="link"
+                    size="small"
+                    @click="openRename(record)"
+                  >
+                    <span class="i-tabler-edit" />
+                    {{ $t('tokens.k3vrpcs009') }}
+                  </a-button>
+                  <a-popconfirm
+                    :title="record.id === userStore.user?.tokenId ? '吊销当前会话 token 将退出登录' : '吊销后立即失效'"
+                    :ok-text="'吊销'"
+                    :cancel-text="'取消'"
+                    @confirm="doRevoke(record)"
+                  >
+                    <!-- 安静文本按钮:常态墨灰,悬停转红 —— 红色只留给真实确认瞬间,不再整行批发 -->
+                    <a-button
+                      type="text"
+                      size="small"
+                      class="tok-revoke"
+                    >
+                      <span class="i-tabler-trash" />
+                      {{ $t('tokens.k3xmrz010') }}
+                    </a-button>
+                  </a-popconfirm>
+                </a-space>
+              </template>
             </template>
-          </template>
-        </a-table>
-      </a-spin>
+          </a-table>
+        </a-spin>
+      </a-card>
 
       <!-- 创建 Token -->
       <a-modal
@@ -477,16 +482,9 @@ useHead({ title: () => tt('titles.tokens') })
 
 .auth-card { width: 460px; max-width: 92vw; }
 .auth-card h2 { margin: 0 0 8px; font-family: var(--font-display); }
-.sub { margin: 0 0 12px; font-size: 12px; opacity: 0.6; }
-
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-h2 { margin: 0 0 4px; font-family: var(--font-display); }
+.sub { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-faint); }
+.head-actions { padding-bottom: 4px; }
+.table-card { margin-bottom: 16px; }
 
 .once-banner {
   display: flex;

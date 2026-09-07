@@ -88,12 +88,12 @@ onMounted(load)
 
 <template>
   <div class="plugins-page">
-    <header class="pg-head">
+    <header class="aw-page-head">
       <div>
         <p class="aw-kicker">
           agentworkshop / plugins
         </p>
-        <h1 class="pg-title">
+        <h1>
           {{ $t('plugins.title') }}
         </h1>
         <p class="pg-sub">
@@ -136,7 +136,10 @@ onMounted(load)
       v-if="!plugins.length && !loading"
       class="pg-empty"
     >
-      {{ $t('plugins.empty') }}
+      <span class="i-tabler-puzzle pg-empty-ico" />
+      <p class="pg-empty-t">
+        {{ $t('plugins.empty') }}
+      </p>
     </div>
 
     <div class="pg-grid aw-stagger">
@@ -232,14 +235,16 @@ onMounted(load)
 
 <style scoped lang="css">
 .plugins-page { max-width: 1080px; margin: 0 auto; padding: 24px 20px 48px; }
-.pg-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-.pg-title { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: .5px; }
-.pg-sub { margin: 4px 0 0; opacity: .6; font-size: 12px; }
+.pg-sub { margin: 8px 0 0; opacity: .6; font-size: 12.5px; }
 .pg-stats { display: flex; align-items: center; gap: 14px; font-size: 12px; opacity: .85; }
 .pg-stats b { font-size: 15px; }
 .pg-failures { margin-bottom: 16px; }
 .fail-line { font-family: ui-monospace, monospace; font-size: 11px; }
-.pg-empty { padding: 48px 0; text-align: center; opacity: .55; }
+.pg-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 56px 24px;
+  text-align: center; border: 1px dashed var(--line-strong); border-radius: var(--radius-panel);
+  background: var(--paper-deep); }
+.pg-empty-ico { font-size: 30px; color: var(--ink-fainter); }
+.pg-empty-t { margin: 0; font-size: 12.5px; color: var(--ink-faint); }
 .pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
 .pg-card { position: relative; padding: 14px 16px; border: 1px solid var(--aw-border, rgba(128, 152, 199, .25));
   border-radius: 12px; background: var(--aw-card, rgba(255, 255, 255, .04)); cursor: pointer;

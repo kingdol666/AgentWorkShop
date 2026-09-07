@@ -129,12 +129,12 @@ onMounted(load)
 
 <template>
   <div class="perm-page">
-    <header class="pg-head">
+    <header class="aw-page-head">
       <div>
         <p class="aw-kicker">
           agentworkshop / permissions
         </p>
-        <h1 class="pg-title">
+        <h1>
           {{ $t('permissions.title') }}
         </h1>
         <p class="pg-sub">
@@ -149,85 +149,90 @@ onMounted(load)
       />
     </header>
 
-    <a-table
-      :data-source="filteredUsers"
-      :loading="loading"
-      row-key="id"
-      size="middle"
-      :pagination="{ pageSize: 12, showSizeChanger: false }"
+    <a-card
+      :bordered="false"
+      class="table-card"
     >
-      <a-table-column
-        :title="$t('permissions.colUser')"
-        data-index="name"
+      <a-table
+        :data-source="filteredUsers"
+        :loading="loading"
+        row-key="id"
+        size="middle"
+        :pagination="{ pageSize: 12, showSizeChanger: false }"
       >
-        <template #default="{ record }">
-          <a @click.prevent="openDetail(record)">{{ record.name }}</a>
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('permissions.colEmail')"
-        data-index="email"
-      />
-      <a-table-column
-        :title="$t('permissions.colRole')"
-        data-index="role"
-      >
-        <template #default="{ record }">
-          <a-tag :color="record.role === 'admin' ? 'green' : record.role === 'editor' ? 'blue' : 'default'">
-            {{ record.role }}
-          </a-tag>
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('permissions.colStatus')"
-        data-index="status"
-      >
-        <template #default="{ record }">
-          <a-tag :color="record.status === 'active' ? 'cyan' : 'red'">
-            {{ record.status === 'active' ? $t('permissions.active') : record.status }}
-          </a-tag>
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('permissions.colChannels')"
-        data-index="channels"
-      >
-        <template #default="{ record }">
-          {{ record.channels.length }}
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('permissions.colGrants')"
-        data-index="grants"
-      >
-        <template #default="{ record }">
-          <a-tag
-            v-for="g in record.grants"
-            :key="g.lineId"
-            style="margin-bottom: 2px"
-          >
-            {{ (lines.find(l => l.id === g.lineId)?.name ?? g.lineId).slice(0, 14) }} · {{ modeTag(g.mode) }}
-          </a-tag>
-          <span
-            v-if="!record.grants.length"
-            class="dim"
-          >—</span>
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('permissions.colOps')"
-        :width="90"
-      >
-        <template #default="{ record }">
-          <a-button
-            size="small"
-            @click="openDetail(record)"
-          >
-            {{ $t('permissions.manage') }}
-          </a-button>
-        </template>
-      </a-table-column>
-    </a-table>
+        <a-table-column
+          :title="$t('permissions.colUser')"
+          data-index="name"
+        >
+          <template #default="{ record }">
+            <a @click.prevent="openDetail(record)">{{ record.name }}</a>
+          </template>
+        </a-table-column>
+        <a-table-column
+          :title="$t('permissions.colEmail')"
+          data-index="email"
+        />
+        <a-table-column
+          :title="$t('permissions.colRole')"
+          data-index="role"
+        >
+          <template #default="{ record }">
+            <a-tag :color="record.role === 'admin' ? 'green' : record.role === 'editor' ? 'blue' : 'default'">
+              {{ record.role }}
+            </a-tag>
+          </template>
+        </a-table-column>
+        <a-table-column
+          :title="$t('permissions.colStatus')"
+          data-index="status"
+        >
+          <template #default="{ record }">
+            <a-tag :color="record.status === 'active' ? 'cyan' : 'red'">
+              {{ record.status === 'active' ? $t('permissions.active') : record.status }}
+            </a-tag>
+          </template>
+        </a-table-column>
+        <a-table-column
+          :title="$t('permissions.colChannels')"
+          data-index="channels"
+        >
+          <template #default="{ record }">
+            {{ record.channels.length }}
+          </template>
+        </a-table-column>
+        <a-table-column
+          :title="$t('permissions.colGrants')"
+          data-index="grants"
+        >
+          <template #default="{ record }">
+            <a-tag
+              v-for="g in record.grants"
+              :key="g.lineId"
+              style="margin-bottom: 2px"
+            >
+              {{ (lines.find(l => l.id === g.lineId)?.name ?? g.lineId).slice(0, 14) }} · {{ modeTag(g.mode) }}
+            </a-tag>
+            <span
+              v-if="!record.grants.length"
+              class="dim"
+            >—</span>
+          </template>
+        </a-table-column>
+        <a-table-column
+          :title="$t('permissions.colOps')"
+          :width="90"
+        >
+          <template #default="{ record }">
+            <a-button
+              size="small"
+              @click="openDetail(record)"
+            >
+              {{ $t('permissions.manage') }}
+            </a-button>
+          </template>
+        </a-table-column>
+      </a-table>
+    </a-card>
 
     <a-drawer
       v-model:open="drawerOpen"
@@ -313,9 +318,8 @@ onMounted(load)
 
 <style scoped lang="css">
 .perm-page { max-width: 1180px; margin: 0 auto; padding: 24px 20px 48px; }
-.pg-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-.pg-title { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: .5px; }
-.pg-sub { margin: 4px 0 0; opacity: .6; font-size: 12px; }
+.pg-sub { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-faint); }
+.table-card { margin-bottom: 16px; }
 .dim { opacity: .45; }
 .sec { margin: 20px 0 8px; font-size: 13px; font-weight: 700; }
 .detail dt { margin-top: 8px; font-size: 11px; opacity: .5; }

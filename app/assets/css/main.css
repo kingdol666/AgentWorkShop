@@ -1219,7 +1219,7 @@ ul.task-list {
   border-radius: var(--radius-chip);
 }
 
-/* 表格:表头 Inter 小标(caption-uppercase),行线 hairline */
+/* 表格:表头 Inter 小标(caption-uppercase),行线 hairline;禁止竖向格线(操作台横向扫描语言) */
 .ant-table {
   background: transparent;
 }
@@ -1234,12 +1234,23 @@ ul.task-list {
   border-bottom: 1px solid var(--line-strong) !important;
 }
 
+.ant-table .ant-table-thead > tr > th,
+.ant-table .ant-table-tbody > tr > td {
+  border-inline-end: none !important;
+}
+
 .ant-table .ant-table-tbody > tr > td {
   border-bottom-color: var(--divider-hair);
+  font-variant-numeric: tabular-nums;
 }
 
 .ant-table .ant-table-tbody > tr:hover > td {
   background: var(--hover-tint) !important;
+}
+
+/* 空态:收敛默认内边距,与玻璃卡同族 */
+.ant-table .ant-table-placeholder {
+  background: transparent;
 }
 
 /* 描述列表:标签 Inter 小标、值等宽 */

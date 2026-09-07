@@ -1921,7 +1921,7 @@ export default {
     loadFail: 'Failed to load plugin list',
     hasClient: 'Client enhancer',
     routes: 'API routes',
-    empty: 'No plugins yet — aw plugin create <name>, or aw plugin enable to turn on examples',
+    empty: 'No plugins yet — run aw plugin create my-plugin, or aw plugin enable to turn on examples',
     failures: 'Load failures',
     loadFailures: '{n} plugin(s) failed to load, see server startup log',
     enableFail: 'Toggle failed',

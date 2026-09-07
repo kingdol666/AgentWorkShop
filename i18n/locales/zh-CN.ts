@@ -1922,7 +1922,7 @@ export default {
     loadFail: '插件列表加载失败',
     hasClient: '浏览器增强',
     routes: 'API 路由',
-    empty: '暂无插件 —— aw plugin create <name> 创建,或 aw plugin enable 开启示例',
+    empty: '暂无插件 —— 执行 aw plugin create my-plugin 创建,或 aw plugin enable 开启内置示例',
     failures: '装载失败',
     loadFailures: '{n} 个插件装载失败,详情见服务启动日志',
     enableFail: '启停操作失败',

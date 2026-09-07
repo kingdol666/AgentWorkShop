@@ -8,6 +8,13 @@ const store = useAppStore()
 const config = useRuntimeConfig().public
 const runtimeCfg = useRuntimeConfigStore()
 
+// SSR 首帧 antd token 跟随服务端 theme.mode:store 默认深色,若服务端配置为浅色而客户端
+// 挂载后才翻转,cssinjs 的 hash 相同样式不会重新注入,浅色下组件会缺 padding/格线等基础样式。
+const site = useSiteConfig()
+if (import.meta.server) {
+  store.isDark = (site.themeMode ?? 'dark') !== 'light'
+}
+
 const antdLocale = computed(() => (locale.value.startsWith('en') ? enUS : zhCN))
 
 /** 将 hex 向白混合(lighten),供暗色模式强调色提亮 */
