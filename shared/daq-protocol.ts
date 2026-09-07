@@ -384,6 +384,8 @@ export interface DaqNodeView {
   warnHigh: number | null
   /** 绑定的设备孪生 id(null = 未绑定) */
   deviceBindingId: string | null
+  /** 多对多设备绑定(权威;去重有序;deviceBindingId=首个,兼容别名) */
+  deviceIds: string[]
   /** 数据语义标定钩子(decoder:PLC 采集值 → 物理值) */
   transform?: DataTransform
   /** 节点级采集语义备注(覆盖模板 semantics) */

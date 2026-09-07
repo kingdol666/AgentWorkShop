@@ -25,6 +25,10 @@ void dcw.load()
 const unsubDcw = dcw.ensureWsFeed()
 onUnmounted(() => unsubDcw())
 
+const nodeDeviceNames = (n: { deviceIds?: string[], deviceBindingId?: string | null }): string =>
+  (n.deviceIds ?? (n.deviceBindingId ? [n.deviceBindingId] : []))
+    .map(id => deviceName(id))
+    .join(' / ') || '—'
 const deviceName = (id: string | null): string =>
   id ? (deviceTwins.twins.find(t => t.id === id)?.name ?? id) : t('dcwDetail.k3own4q121')
 
@@ -1341,7 +1345,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   :title="$t('dcwDetail.k9r7d4e016')"
                 >· {{ n.readIntervalMs === 0 ? $t('dcwDetail.k9r7d4e022') : (n.readIntervalMs == null ? $t('dcwDetail.k9r7d4e023') : `${n.readIntervalMs}ms`) }}</small>
               </td>
-              <td>{{ deviceName(n.deviceBindingId) }}</td>
+              <td>{{ nodeDeviceNames(n) }}</td>
               <td class="right">
                 <button
                   class="mini-btn danger"

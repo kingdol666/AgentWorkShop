@@ -1,6 +1,6 @@
 /**
- * POST /api/workshop/daq/:id/bind —— 数采节点 ↔ 设备孪生绑定(端到端集成可视化)。
- * body: { deviceId: string | null }(null = 解绑;绑定后通道值实时回写设备 telemetry)
+ * PUT /api/workshop/daq/:id/bindings —— 整体设定数采节点的绑定设备列表(多对多)。
+ * body: { deviceIds: string[] }(全量替换,去重,逐一校验设备存在;(节点,设备)对唯一)
  */
 import { getRouterParam, readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
@@ -14,12 +14,9 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   bindDaqHost(broadcastSceneEvent)
   const id = getRouterParam(event, 'id') ?? ''
-  // 产线权限:数采设备绑定=操控能力(绑定后通道值回写设备)
+  // 产线权限:设备绑定=操控能力(绑定后通道值回写设备)
   requireLineMode(user, getDaqController().byId(id)?.lineId, 'operate')
-  const body = await readBody<{ deviceId?: string | null, deviceIds?: string[] }>(event) ?? {}
-  // 两种形态:{ deviceId } 排他设置(兼容旧客户端);{ deviceIds: [...] } 整体设定多对多
-  const node = Array.isArray(body.deviceIds)
-    ? getDaqController().setDeviceBindings(id, body.deviceIds)
-    : getDaqController().bind(id, body.deviceId ?? null)
+  const body = await readBody<{ deviceIds?: string[] }>(event) ?? {}
+  const node = getDaqController().setDeviceBindings(id, Array.isArray(body.deviceIds) ? body.deviceIds : [])
   return { node: node.toView() }
 })

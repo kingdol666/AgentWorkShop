@@ -197,9 +197,10 @@ function driverPlanned(kind: string): boolean {
 // ---------- 设备绑定 ----------
 const bindDeviceId = ref('')
 const boundDeviceName = computed(() => {
-  const id = node.value?.deviceBindingId
-  if (!id) return ''
-  return deviceTwins.twins.find(t => t.id === id)?.name ?? `${id.slice(0, 8)}…`
+  const ids = node.value?.deviceIds ?? (node.value?.deviceBindingId ? [node.value.deviceBindingId] : [])
+  return ids
+    .map(id => deviceTwins.twins.find(t => t.id === id)?.name ?? `${id.slice(0, 8)}…`)
+    .join(' / ')
 })
 function onBindToggle(): void {
   void daq.bindNode(nodeId.value, node.value?.deviceBindingId ? null : (bindDeviceId.value || null))

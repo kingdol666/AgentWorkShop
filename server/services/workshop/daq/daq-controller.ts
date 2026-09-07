@@ -637,35 +637,40 @@ class DaqController {
   private siblingsOf(bindingId: string): DaqNode[] {
     const hit = this.siblingsCache.get(bindingId)
     if (hit && Date.now() - hit.at < 1000) return hit.list
-    const list = this.repo.all().filter(n => n.deviceBindingId === bindingId)
+    const list = this.repo.all().filter(n => n.deviceIds.includes(bindingId))
     if (this.siblingsCache.size > 500) this.siblingsCache.clear()
     this.siblingsCache.set(bindingId, { at: Date.now(), list })
     return list
   }
 
   private writeBackTelemetry(node: DaqNode): void {
-    if (!node.deviceBindingId || node.value == null) return
+    if (node.deviceIds.length === 0 || node.value == null) return
     const host = getDaqHostPorts()
     if (!host) return // 端口未装配(边缘独立/装配前):不攒积压,直接跳过回写
     const key = findDaqTemplate(node.templateKey)?.telemetryKey ?? node.templateKey
-    // 同设备多节点绑定:取最严重节点态(alarm > warn > ok/offline),避免"最近写者定态"抖动
-    const siblings = this.siblingsOf(node.deviceBindingId)
-    const worst = siblings.some(n => n.state === 'alarm')
-      ? 'alarm'
-      : siblings.some(n => n.state === 'warn') ? 'warn' : 'ok'
-    const acc = this.pendingBackfill.get(node.deviceBindingId) ?? {}
-    acc[key] = node.value
-    this.pendingBackfill.set(node.deviceBindingId, acc)
-    const res = host.telemetry.applyTelemetry(node.deviceBindingId, acc, worst)
-    if (!res.ok) {
-      // 目标设备已被删除:解绑自身,链路自愈
-      this.pendingBackfill.delete(node.deviceBindingId)
-      node.deviceBindingId = null
-      this.emitNodeChanged('updated', node)
-      return
+    // 多对多绑定:向每台绑定设备回写通道值;同设备多节点取最严重节点态
+    // (alarm > warn > ok/offline),避免"最近写者定态"抖动
+    for (const deviceId of node.deviceIds) {
+      const siblings = this.siblingsOf(deviceId)
+      const worst = siblings.some(n => n.state === 'alarm')
+        ? 'alarm'
+        : siblings.some(n => n.state === 'warn') ? 'warn' : 'ok'
+      const acc = this.pendingBackfill.get(deviceId) ?? {}
+      acc[key] = node.value
+      this.pendingBackfill.set(deviceId, acc)
+      const res = host.telemetry.applyTelemetry(deviceId, acc, worst)
+      if (!res.ok) {
+        // 目标设备已被删除:从本节点解绑该设备(其余绑定保留),链路自愈
+        this.pendingBackfill.delete(deviceId)
+        node.deviceIds = node.deviceIds.filter(d => d !== deviceId)
+        node.deviceBindingId = node.deviceIds[0] ?? null
+        this.repo.flushNow()
+        this.emitNodeChanged('updated', node)
+        continue
+      }
+      this.pendingBackfill.delete(deviceId)
+      if (res.twinId) this.pushTwinTelemetry(res.twinId)
     }
-    this.pendingBackfill.delete(node.deviceBindingId)
-    if (res.twinId) this.pushTwinTelemetry(res.twinId)
   }
 
   /** 遥测 WS 推送(1s/设备节流):孪生状态/遥测事件化直推,前端全量轮询降级为断线兜底 */
@@ -935,11 +940,57 @@ class DaqController {
 
   bind(id: string, deviceId: string | null): DaqNode {
     const node = this.repo.byId(id)
-    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `数采节点不存在: ${id}`)
     if (deviceId && !getDaqHostPorts()?.telemetry.deviceExists(deviceId)) {
-      throw Object.assign(new Error(`目标设备不存在: ${deviceId}`), { status: 404 })
+      throw new AppError(404, ErrorCodes.NOT_FOUND, `目标设备不存在: ${deviceId}`)
     }
+    // 排他语义保留(deviceId=null 清空全部);多对多增删用 bindDevice/unbindDeviceNode/setDeviceBindings
+    node.deviceIds = deviceId ? [deviceId] : []
     node.deviceBindingId = deviceId
+    this.repo.flushNow()
+    this.emitNodeChanged('updated', node)
+    return node
+  }
+
+  /** 追加一台绑定设备((节点,设备)对唯一;已绑定则幂等返回) */
+  bindDevice(id: string, deviceId: string): DaqNode {
+    const node = this.repo.byId(id)
+    if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `数采节点不存在: ${id}`)
+    if (!getDaqHostPorts()?.telemetry.deviceExists(deviceId)) {
+      throw new AppError(404, ErrorCodes.NOT_FOUND, `目标设备不存在: ${deviceId}`)
+    }
+    if (node.deviceIds.includes(deviceId)) return node
+    node.deviceIds = [...node.deviceIds, deviceId]
+    node.deviceBindingId = node.deviceIds[0] ?? null
+    this.repo.flushNow()
+    this.emitNodeChanged('updated', node)
+    return node
+  }
+
+  /** 解绑一台设备(其余绑定保留) */
+  unbindDeviceNode(id: string, deviceId: string): DaqNode {
+    const node = this.repo.byId(id)
+    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node.deviceIds.includes(deviceId)) return node
+    node.deviceIds = node.deviceIds.filter(d => d !== deviceId)
+    node.deviceBindingId = node.deviceIds[0] ?? null
+    this.repo.flushNow()
+    this.emitNodeChanged('updated', node)
+    return node
+  }
+
+  /** 整体设定绑定设备列表(去重、校验存在性;全量替换) */
+  setDeviceBindings(id: string, deviceIds: string[]): DaqNode {
+    const node = this.repo.byId(id)
+    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    const unique = [...new Set(deviceIds.map(String).filter(Boolean))]
+    for (const d of unique) {
+      if (!getDaqHostPorts()?.telemetry.deviceExists(d)) {
+        throw new AppError(404, ErrorCodes.NOT_FOUND, `目标设备不存在: ${d}`)
+      }
+    }
+    node.deviceIds = unique
+    node.deviceBindingId = unique[0] ?? null
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)
     return node
@@ -948,9 +999,11 @@ class DaqController {
   /** 设备删除级联:解绑其全部 DAQ 节点 + 清回写积压 + 广播(链路不再依赖下次回写失败自愈) */
   unbindDevice(deviceId: string): void {
     this.pendingBackfill.delete(deviceId)
+    this.siblingsCache.delete(deviceId)
     for (const node of this.repo.all()) {
-      if (node.deviceBindingId !== deviceId) continue
-      node.deviceBindingId = null
+      if (!node.deviceIds.includes(deviceId)) continue
+      node.deviceIds = node.deviceIds.filter(d => d !== deviceId)
+      node.deviceBindingId = node.deviceIds[0] ?? null
       this.repo.flushNow()
       this.emitNodeChanged('updated', node)
     }

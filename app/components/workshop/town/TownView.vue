@@ -1632,7 +1632,8 @@ const prevDaqState = new Map<string, string>()
 function stateEdgeAlarm(nodeId: string, prevState: string, nextState: string, value: number | null): void {
   const n = daq.nodeById(nodeId)
   const tpl = n ? daqTplOf(n) : null
-  const dev = n?.deviceBindingId ? deviceTwins.byId(n.deviceBindingId)?.name : null
+  const devIds = n?.deviceIds ?? (n?.deviceBindingId ? [n.deviceBindingId] : [])
+  const dev = devIds.length ? devIds.map(id => deviceTwins.byId(id)?.name ?? id.slice(0, 8)).join(' / ') : null
   const label = dev ?? n?.name ?? nodeId.slice(0, 8)
   const val = `${value?.toFixed(tpl?.decimals ?? 2) ?? '--'} ${tpl?.unit ?? ''}`
   if (nextState === 'alarm') raiseAlarm(t('townView.k113fir9195', { p0: label, p1: tpl?.ch ?? '', p2: val }), 'crit', label)
@@ -1760,9 +1761,14 @@ function bindingNodeName(b: AgentNodeBindingRow): string {
 }
 
 /** 数采 → 设备绑定(server 权威:node.deviceBindingId;REST bind 落库 + WS 收敛) */
-const boundDeviceOf = (daqId: string): string | null => daq.nodeById(daqId)?.deviceBindingId ?? null
+const boundDeviceOf = (daqId: string): string | null => daq.nodeById(daqId)?.deviceIds?.[0] ?? daq.nodeById(daqId)?.deviceBindingId ?? null
+const _boundDevicesOf = (daqId: string): string[] => {
+  const n = daq.nodeById(daqId)
+  return n?.deviceIds ?? (n?.deviceBindingId ? [n.deviceBindingId] : [])
+}
+void _boundDevicesOf
 const daqOfDevice = (deviceId: string): string[] =>
-  deviceId ? daq.nodes.filter(n => n.deviceBindingId === deviceId).map(n => n.id) : []
+  deviceId ? daq.nodes.filter(n => (n.deviceIds ?? (n.deviceBindingId ? [n.deviceBindingId] : [])).includes(deviceId)).map(n => n.id) : []
 function bindDaq(daqId: string, deviceId: string): void {
   void daq.bindNode(daqId, deviceId).catch((err: unknown) => {
     errorText.value = apiErrorMessage(err)

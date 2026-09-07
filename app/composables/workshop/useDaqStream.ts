@@ -308,6 +308,15 @@ const createStore = () => {
     upsert(data.node)
   }
 
+  /** 多对多绑定:整体设定节点的绑定设备列表(服务端去重+校验) */
+  async function setNodeBindings(id: string, deviceIds: string[]): Promise<void> {
+    const data = await api<{ node: DaqNodeView }>(`/${id}/bindings`, {
+      method: 'PUT',
+      body: JSON.stringify({ deviceIds }),
+    })
+    upsert(data.node)
+  }
+
   async function testDriver(driver: string, driverConfig: Record<string, string | number | boolean>): Promise<DaqDriverTestResult> {
     const data = await api<{ test: DaqDriverTestResult }>('/test-driver', {
       method: 'POST',
@@ -422,6 +431,7 @@ const createStore = () => {
     saveTransform,
     removeNode,
     bindNode,
+    setNodeBindings,
     controllerAction,
     alarms,
     fetchAlarms,

@@ -40,16 +40,37 @@ async function setNodeLine(id: string, e: Event): Promise<void> {
   }
 }
 
-/** 节点绑定设备(bind REST server 落库;与数字孪生/节点检查器同一条 deviceBindingId 链路) */
-async function setNodeDevice(id: string, e: Event): Promise<void> {
+/** 节点绑定设备(多对多:add 挂新设备 / remove 摘除一台;server 落库,与数字孪生同一 deviceIds 链路) */
+async function addNodeDevice(id: string, e: Event): Promise<void> {
   const deviceId = (e.target as HTMLSelectElement).value
+  if (!deviceId) return
+  const node = daq.nodes.find(n => n.id === id)
+  if (!node) return
+  if (node.deviceIds?.includes(deviceId)) return
   try {
-    await daq.bindNode(id, deviceId || null)
+    await daq.setNodeBindings(id, [...(node.deviceIds ?? []), deviceId])
+  }
+  catch (err) {
+    message.error(apiErrorMessage(err))
+  }
+  ;(e.target as HTMLSelectElement).value = ''
+}
+
+async function removeNodeDevice(id: string, deviceId: string): Promise<void> {
+  const node = daq.nodes.find(n => n.id === id)
+  if (!node) return
+  try {
+    await daq.setNodeBindings(id, (node.deviceIds ?? []).filter(d => d !== deviceId))
   }
   catch (err) {
     message.error(apiErrorMessage(err))
   }
 }
+
+const nodeDeviceIds = (n: DaqNodeView): string[] =>
+  n.deviceIds ?? (n.deviceBindingId ? [n.deviceBindingId] : [])
+const deviceNameById = (id: string): string =>
+  nodeDevices.get(id) ?? deviceTwins.twins.find(t => t.id === id)?.name ?? id
 
 /** 单节点独立 启动/停止采集(PATCH enabled;server 权威,本地乐观翻转 + WS/轮询收敛) */
 async function toggleNodeEnabled(n: { id: string, enabled: boolean, state: string }): Promise<void> {
@@ -295,7 +316,9 @@ function fmtPoint(v: number | null | undefined): string {
 const boundDevices = computed<Array<{ id: string, name: string, count: number }>>(() => {
   const used = new Map<string, number>()
   for (const n of daq.nodes) {
-    if (n.deviceBindingId) used.set(n.deviceBindingId, (used.get(n.deviceBindingId) ?? 0) + 1)
+    for (const d of n.deviceIds ?? (n.deviceBindingId ? [n.deviceBindingId] : [])) {
+      used.set(d, (used.get(d) ?? 0) + 1)
+    }
   }
   return deviceTwins.twins
     .filter(t => used.has(t.id))
@@ -371,7 +394,8 @@ function statePillOf(n: DaqNodeView): { key: RowState, label: string, tip: strin
 
 const filteredNodes = computed<DaqNodeView[]>(() => daq.nodes.filter((n) => {
   if (filters.lineId && (filters.lineId === 'none' ? !!n.lineId : (n.lineId ?? '') !== filters.lineId)) return false
-  if (filters.deviceId && (filters.deviceId === 'none' ? !!n.deviceBindingId : n.deviceBindingId !== filters.deviceId)) return false
+  const nodeDevIds = n.deviceIds ?? (n.deviceBindingId ? [n.deviceBindingId] : [])
+  if (filters.deviceId && (filters.deviceId === 'none' ? nodeDevIds.length > 0 : !nodeDevIds.includes(filters.deviceId))) return false
   if (filters.template && n.templateRef !== filters.template) return false
   if (filters.driver && n.driver !== filters.driver) return false
   if (!lineRunMatch(n)) return false
@@ -1771,23 +1795,39 @@ async function doReconnect(): Promise<void> {
                 >--</span>
               </td>
               <td>
-                <select
-                  class="line-sel"
-                  :value="n.deviceBindingId ?? ''"
-                  :title="$t('daq.k2bindtip137')"
-                  @change="setNodeDevice(n.id, $event)"
-                >
-                  <option value="">
-                    {{ $t('daq.k3own4q056') }}
-                  </option>
-                  <option
-                    v-for="d in bindableDeviceTwins"
-                    :key="d.id"
-                    :value="d.id"
+                <div class="dev-binds">
+                  <span
+                    v-for="did in nodeDeviceIds(n)"
+                    :key="did"
+                    class="dev-bind-chip"
+                    :title="$t('daq.k2bindtip137')"
                   >
-                    {{ nodeDevices.get(d.id) ?? d.name }}
-                  </option>
-                </select>
+                    {{ deviceNameById(did) }}
+                    <span
+                      class="dev-unbind"
+                      title="unbind"
+                      @click="removeNodeDevice(n.id, did)"
+                    >✕</span>
+                  </span>
+                  <select
+                    class="line-sel dev-add"
+                    :value="''"
+                    :title="$t('daq.k2bindtip137')"
+                    @change="addNodeDevice(n.id, $event)"
+                  >
+                    <option value="">
+                      {{ $t('daq.k3own4q056') }}
+                    </option>
+                    <option
+                      v-for="d in bindableDeviceTwins"
+                      :key="d.id"
+                      :value="d.id"
+                      :disabled="(n.deviceIds ?? []).includes(d.id)"
+                    >
+                      {{ nodeDevices.get(d.id) ?? d.name }}
+                    </option>
+                  </select>
+                </div>
               </td>
               <td class="right">
                 <button
@@ -2395,6 +2435,11 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 .flt-search::placeholder { color: var(--ink-fainter); }
 .count { padding-bottom: 4px; font-size: 11px; color: var(--ink-faint); }
 
+.dev-binds { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.dev-bind-chip { display: inline-flex; gap: 4px; align-items: center; padding: 1px 7px; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: var(--radius-chip); }
+.dev-unbind { cursor: pointer; opacity: 0.55; font-size: 10px; }
+.dev-unbind:hover { opacity: 1; color: var(--tone-danger-dot); }
+.dev-add { max-width: 130px; font-size: 11px; }
 .line-sel {
   max-width: 120px;
   padding: 3px 6px;

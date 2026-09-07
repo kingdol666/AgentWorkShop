@@ -23,6 +23,8 @@ interface DcwNodeOptions {
   min?: number
   max?: number
   deviceBindingId?: string | null
+  /** 多对多绑定(权威):deviceIds 去重列表 */
+  deviceIds?: string[]
   driverConfig?: Record<string, string | number | boolean>
   /** 数据语义标定钩子(encode:物理值 → PLC 设定值;回读经 decoder 校验) */
   transform?: DataTransform
@@ -49,6 +51,8 @@ export class DcwNode {
   min: number
   max: number
   deviceBindingId: string | null
+  /** 多对多设备绑定(权威字段;去重有序) */
+  deviceIds: string[]
   driverConfig: Record<string, string | number | boolean>
   transform?: DataTransform
   posX?: number
@@ -83,7 +87,9 @@ export class DcwNode {
     this.decimals = o.decimals ?? tpl?.decimals ?? 2
     this.min = o.min ?? tpl?.min ?? 0
     this.max = o.max ?? tpl?.max ?? 100
-    this.deviceBindingId = o.deviceBindingId ?? null
+    const legacyD = o.deviceBindingId ?? null
+    this.deviceIds = [...new Set([...(o.deviceIds ?? []), ...(legacyD ? [legacyD] : [])])].filter(Boolean)
+    this.deviceBindingId = this.deviceIds[0] ?? legacyD ?? null
     this.driverConfig = o.driverConfig ?? {}
     if (o.transform) this.transform = o.transform
     if (o.posX !== undefined) this.posX = o.posX
@@ -148,6 +154,7 @@ export class DcwNode {
       min: this.min,
       max: this.max,
       deviceBindingId: this.deviceBindingId,
+      deviceIds: this.deviceIds,
       driverConfig: this.driverConfig,
       transform: this.transform,
       posX: this.posX,
@@ -179,6 +186,7 @@ export class DcwNode {
       min: row.min != null ? Number(row.min) : undefined,
       max: row.max != null ? Number(row.max) : undefined,
       deviceBindingId: row.deviceBindingId === undefined ? undefined : (row.deviceBindingId == null ? null : String(row.deviceBindingId)),
+      deviceIds: Array.isArray(row.deviceIds) ? row.deviceIds.map(String).filter(Boolean) : undefined,
       driverConfig: (row.driverConfig as Record<string, string | number | boolean>) ?? {},
       transform: (row.transform as DataTransform | undefined) ?? undefined,
       posX: row.posX == null ? undefined : Number(row.posX),
@@ -224,6 +232,7 @@ export class DcwNode {
       min: this.min,
       max: this.max,
       deviceBindingId: this.deviceBindingId,
+      deviceIds: this.deviceIds,
       driverConfig: this.driverConfig,
       transform: this.transform,
       posX: this.posX,

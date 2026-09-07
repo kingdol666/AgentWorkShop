@@ -25,6 +25,12 @@ function describeTwin(bindId: string | null | undefined): string | null {
   return `${t.name}(id=${t.id},state=${t.state},telemetry=${JSON.stringify(t.telemetry)})`
 }
 
+/** 多对多绑定:节点全部绑定设备的描述(deviceIds 权威;legacy 别名兜底) */
+function describeTwins(node: { deviceIds?: string[], deviceBindingId?: string | null }): string[] {
+  const ids = node.deviceIds?.length ? node.deviceIds : (node.deviceBindingId ? [node.deviceBindingId] : [])
+  return ids.map(id => describeTwin(id)).filter((x): x is string => Boolean(x))
+}
+
 /** 数控节点语义卡:模板 semantics(或节点覆盖)× 实时数据合成 */
 function dcwSemanticCard(nodeId: string, mode: string): string | null {
   const node = getDcwController().byId(nodeId)
@@ -35,7 +41,7 @@ function dcwSemanticCard(nodeId: string, mode: string): string | null {
   const run = node.lineId ? getActiveLineRun(node.lineId) : null
   const recipe = run ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
   const param = recipe?.params.find(p => p.nodeId === nodeId)
-  const twinDesc = describeTwin(node.deviceBindingId)
+  const twinDesc = describeTwins(node).join(' | ') || null
   const step = Math.max(10 ** -node.decimals, (node.max - node.min) * 0.02)
 
   const lines = [
@@ -66,7 +72,7 @@ function daqSemanticCard(nodeId: string, mode: string): string | null {
   const run = node.lineId ? getActiveLineRun(node.lineId) : null
   const recipe = run ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
   const win = recipe?.daqWindows?.find(w => w.nodeId === nodeId)
-  const twinDesc = describeTwin(node.deviceBindingId)
+  const twinDesc = describeTwins(node).join(' | ') || null
   const fresh = node.lastAt ? Math.round((Date.now() - Date.parse(node.lastAt)) / 1000) : null
 
   const lines = [
@@ -143,9 +149,12 @@ export function buildIndustrialContext(agentId: string): string {
     }
     const twinNames = new Set<string>()
     for (const id of [...dcwIds, ...daqIds]) {
-      const bindId = getDcwController().byId(id)?.deviceBindingId ?? getDaqNodeRepo().byId(id)?.deviceBindingId ?? null
-      const desc = describeTwin(bindId)
-      if (desc) twinNames.add(desc)
+      for (const desc of [
+        ...describeTwins(getDcwController().byId(id) ?? {}),
+        ...describeTwins(getDaqNodeRepo().byId(id) ?? {}),
+      ]) {
+        if (desc) twinNames.add(desc)
+      }
     }
     if (twinNames.size > 0) lines.push(`- 关联设备孪生: ${Array.from(twinNames).join(' | ')}`)
     // 当前报警透出(只报本 Agent 绑定的数采节点):越限即报警是工况里最需要

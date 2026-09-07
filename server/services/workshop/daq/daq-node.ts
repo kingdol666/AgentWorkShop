@@ -29,6 +29,8 @@ interface DaqNodeOptions {
   warnLow?: number | null
   warnHigh?: number | null
   deviceBindingId?: string | null
+  /** 多对多绑定(权威):deviceIds 去重列表;deviceBindingId 为兼容别名(首个) */
+  deviceIds?: string[]
   /** 数据语义标定钩子(decoder:采集值 → 物理值) */
   transform?: DataTransform
   posX?: number
@@ -60,6 +62,8 @@ export class DaqNode {
   warnLow: number | null
   warnHigh: number | null
   deviceBindingId: string | null
+  /** 多对多设备绑定(权威字段;去重有序) */
+  deviceIds: string[]
   driverConfig: Record<string, string | number | boolean>
   transform?: DataTransform
   posX?: number
@@ -94,7 +98,10 @@ export class DaqNode {
     // 预警带缺省 = 量程两端各收 8%(越带即 warn,越硬限即 alarm)
     this.warnLow = o.warnLow !== undefined ? o.warnLow : this.min !== undefined && tpl ? +(this.min + (this.max - this.min) * 0.08).toFixed(this.decimals) : null
     this.warnHigh = o.warnHigh !== undefined ? o.warnHigh : tpl ? +(this.max - (this.max - this.min) * 0.08).toFixed(this.decimals) : null
-    this.deviceBindingId = o.deviceBindingId ?? null
+    // 多对多迁移:legacy deviceBindingId(单绑)→ deviceIds 首位;去重保序
+    const legacy = o.deviceBindingId ?? null
+    this.deviceIds = [...new Set([...(o.deviceIds ?? []), ...(legacy ? [legacy] : [])])].filter(Boolean)
+    this.deviceBindingId = this.deviceIds[0] ?? legacy ?? null
     this.driverConfig = o.driverConfig ?? {}
     if (o.transform) this.transform = o.transform
     if (o.posX !== undefined) this.posX = o.posX
@@ -183,6 +190,7 @@ export class DaqNode {
       warnLow: this.warnLow,
       warnHigh: this.warnHigh,
       deviceBindingId: this.deviceBindingId,
+      deviceIds: this.deviceIds,
       driverConfig: this.driverConfig,
       transform: this.transform,
       posX: this.posX,
@@ -212,6 +220,7 @@ export class DaqNode {
       warnLow: row.warnLow === undefined ? undefined : (row.warnLow == null ? null : Number(row.warnLow)),
       warnHigh: row.warnHigh === undefined ? undefined : (row.warnHigh == null ? null : Number(row.warnHigh)),
       deviceBindingId: row.deviceBindingId === undefined ? undefined : (row.deviceBindingId == null ? null : String(row.deviceBindingId)),
+      deviceIds: Array.isArray(row.deviceIds) ? row.deviceIds.map(String).filter(Boolean) : undefined,
       driverConfig: (row.driverConfig as Record<string, string | number | boolean>) ?? {},
       transform: (row.transform as DataTransform | undefined) ?? undefined,
       posX: row.posX == null ? undefined : Number(row.posX),
@@ -246,6 +255,7 @@ export class DaqNode {
       warnLow: this.warnLow,
       warnHigh: this.warnHigh,
       deviceBindingId: this.deviceBindingId,
+      deviceIds: this.deviceIds,
       driverConfig: this.driverConfig,
       transform: this.transform,
       posX: this.posX,

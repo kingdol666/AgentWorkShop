@@ -250,6 +250,8 @@ export interface DcwNodeView {
   min: number
   max: number
   deviceBindingId: string | null
+  /** 多对多设备绑定(权威;去重有序;deviceBindingId=首个,兼容别名) */
+  deviceIds: string[]
   driverConfig: Record<string, string | number | boolean>
   posX?: number
   posZ?: number
