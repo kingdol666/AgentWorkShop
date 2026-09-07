@@ -201,6 +201,7 @@ async function loadAllPlugins(host, { config, paths }) {
           name: def.name,
           version: String(def.version ?? '0.0.0'),
           description: String(def.description ?? ''),
+          auth: String(def.auth ?? 'none'),
           scope,
           dir,
           entry,
@@ -217,6 +218,7 @@ async function loadAllPlugins(host, { config, paths }) {
         name: def.name,
         version: String(def.version ?? '0.0.0'),
         description: String(def.description ?? ''),
+        auth: String(def.auth ?? 'none'),
         scope,
         dir,
         entry,
@@ -320,6 +322,16 @@ async function loadAllPlugins(host, { config, paths }) {
         /** 帧消费便捷别名(= hooks.on('daq:frame') / hooks.on('daq:sample')) */
         onFrame: fn => scopedHooks.on('daq:frame', fn),
         onSample: fn => scopedHooks.on('daq:sample', fn),
+        /** 时序查询直通(queryTagged):插件免鉴权拉取产线/节点窗口样本(bucket/raw),诊断取数用 */
+        query: async (q) => {
+          const m = await import('@/server/services/workshop/daq/storage/index')
+          return m.getTsdb().queryTagged(q)
+        },
+        /** 数采节点元数据快照(含产线归属,插件定位某产线的全部节点) */
+        nodes: async () => {
+          const m = await import('@/server/services/workshop/daq/daq-node.repo')
+          return m.getDaqNodeRepo().snapshot()
+        },
       }
       // OMP 工具扩展面:插件注册自定义 host 工具 → omp 会话运行时热注入
       const ompExt = (globalThis.__ompPluginToolsBridge ??= {
@@ -396,10 +408,28 @@ async function doReload(host) {
       catch { /* 解绑失败忽略 */ }
     }
   }
+  const prevNames = [...host.plugins.keys()]
+  // 卸载即注销其注册的全部 agent 工具(否则停用插件后工具仍残留在注册表、可被继续调用)
+  const ompTools = await import('@/server/services/workshop/agents/plugin-tools').catch(() => null)
+  for (const prev of prevNames) {
+    try {
+      ompTools?.unregisterPluginTools(prev)
+    }
+    catch { /* 注销失败不阻断重载 */ }
+  }
   host.plugins.clear()
   host.routes = createRouteTable()
   host.failures = []
   await loadAllPlugins(host, { config: host.config, settingsPath: null, paths: { home: modePaths(host.cwd).homeDir, configRoot: join(host.cwd, '.AgentWorkShop'), dataDir: join(host.cwd, '.AgentWorkShop', 'data') } })
+  // 装载中途失败(setup 抛错)的插件可能留下半注册工具,兜底再清一次
+  for (const prev of prevNames) {
+    if (!host.plugins.has(prev)) {
+      try {
+        ompTools?.unregisterPluginTools(prev)
+      }
+      catch { /* 忽略 */ }
+    }
+  }
   await host.bus.emit('plugins:reloaded', { plugins: pluginManifest() })
   try {
     const m = await import('@/server/services/workshop/scene-events')

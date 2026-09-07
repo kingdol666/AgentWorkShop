@@ -2675,7 +2675,7 @@ export class AgentChannelManager {
    * 工具桥(协作工具族):按 agentId 定位 channel 并调用其 workspace 方法。
    * 与工业工具桥同一服务层,供 REST 直调(测试/运维/控制台)。
    */
-  invokeAgentWorkspaceTool(agentId: string, tool: string, args: Record<string, unknown> = {}): { text: string, isError?: boolean } {
+  async invokeAgentWorkspaceTool(agentId: string, tool: string, args: Record<string, unknown> = {}): Promise<{ text: string, isError?: boolean }> {
     const row = this.deps.repos.channelAgents.findById(agentId)
     if (!row || row.enabled !== 1) throw new AppError(404, 'NOT_FOUND', `agent 不存在或已停用: ${agentId}`)
     const ws = this.ensureAgentRuntime(row.channelId, agentId)?.workspace
@@ -2707,7 +2707,7 @@ export class AgentChannelManager {
       }
       case 'send_cross_channel_message': {
         if (!args.to_channel_id || !args.message) return { text: '缺少 to_channel_id 或 message', isError: true }
-        const r = ws.sendCrossChannelMessage({
+        const r = await ws.sendCrossChannelMessage({
           toChannelId: String(args.to_channel_id),
           parts: [{ text: String(args.message) }],
           requireReply: args.require_reply === true,
@@ -2731,13 +2731,21 @@ export class AgentChannelManager {
     if (input.token !== undefined && input.token !== row.token) {
       throw new AppError(401, 'UNAUTHORIZED', 'agent token 校验失败')
     }
-    const runtime = this.ensureAgentRuntime(row.channelId, input.agentId)
-    if (runtime) {
-      const viaImpl = await runtime.dispatchHostTool(input.tool, input.args ?? {})
-      if (viaImpl) return viaImpl
+    // 工具执行错误(业务约束/目标不存在等)一律降级为 isError 文本——
+    // 绝不让 AppError 以 unhandledRejection 逃逸拖垮 worker(stability-guard 会因此退出整进程)
+    try {
+      const runtime = this.ensureAgentRuntime(row.channelId, input.agentId)
+      if (runtime) {
+        const viaImpl = await runtime.dispatchHostTool(input.tool, input.args ?? {})
+        if (viaImpl) return viaImpl
+      }
+      // 回退:impl 未实现工具面(如 mock)→ 协作工具族直调
+      return await this.invokeAgentWorkspaceTool(input.agentId, input.tool, input.args ?? {})
     }
-    // 回退:impl 未实现工具面(如 mock)→ 协作工具族直调
-    return this.invokeAgentWorkspaceTool(input.agentId, input.tool, input.args ?? {})
+    catch (err) {
+      const reason = err instanceof Error ? err.message : String(err)
+      return { text: `工具「${input.tool}」调用失败: ${reason}`, isError: true }
+    }
   }
 
   /** 按 token 解析 agent(桥侧只需 token 的自证路径;未命中返回 null) */
