@@ -22,6 +22,8 @@ export interface DcwWriteHistoryEntry { id: string, nodeId: string, nodeName: st
 
 function createStore() {
   const nodes = reactive<DcwNodeView[]>([])
+  // id→节点 O(1) 索引(存 reactive 代理;仅在 push/splice/load 身份变化点维护,读帧热路径免全表 find)
+  const nodeIndex = new Map<string, DcwNodeView>()
   const controller = reactive<AepDcwControllerState>({ running: true, nodesTotal: 0, nodesOnline: 0, writesTotal: 0, writesFailed: 0 })
   const templates = reactive<DcwTemplateDef[]>(DCW_TEMPLATES.map(t => ({ ...t })))
   const recipes = reactive<RecipeView[]>([])
@@ -37,7 +39,10 @@ function createStore() {
   function upsert(node: DcwNodeView): void {
     const i = nodes.findIndex(x => x.id === node.id)
     if (i >= 0) nodes[i] = Object.assign(nodes[i]!, node)
-    else nodes.push(node)
+    else {
+      nodes.push(node)
+      nodeIndex.set(node.id, nodes[nodes.length - 1]!)
+    }
   }
 
   function applyChange(p: AepDcwNodeChange): void {
@@ -45,6 +50,7 @@ function createStore() {
     if (p.op === 'removed') {
       const i = nodes.findIndex(x => x.id === p.node!.id)
       if (i >= 0) nodes.splice(i, 1)
+      nodeIndex.delete(p.node.id)
       return
     }
     upsert(p.node)
@@ -73,7 +79,7 @@ function createStore() {
     {
       if (e.type === 'dcw.written') {
         const p = e.payload as AepDcwWritten
-        const n = nodes.find(x => x.id === p.nodeId)
+        const n = nodeIndex.get(p.nodeId)
         if (n) {
           n.value = p.value
           n.state = p.ok ? 'ok' : 'error'
@@ -85,7 +91,7 @@ function createStore() {
       }
       else if (e.type === 'dcw.read') {
         const p = e.payload as AepDcwRead
-        const n = nodes.find(x => x.id === p.nodeId)
+        const n = nodeIndex.get(p.nodeId)
         if (n) {
           if (p.ok) n.readValue = p.value
           n.lastReadAt = p.at
@@ -108,6 +114,8 @@ function createStore() {
     try {
       const data = await api<{ controller: AepDcwControllerState, nodes: DcwNodeView[], templates?: DcwTemplateDef[], recipes?: RecipeView[], runs?: RecipeRunView[], history?: DcwWriteHistoryEntry[], products?: ProductView[], lines?: LineView[], lineStates?: LineRunState[] }>('')
       nodes.splice(0, nodes.length, ...data.nodes)
+      nodeIndex.clear()
+      for (const n of nodes) nodeIndex.set(n.id, n)
       Object.assign(controller, data.controller)
       if (data.templates?.length) templates.splice(0, templates.length, ...data.templates.map(t => ({ ...t })))
       recipes.splice(0, recipes.length, ...(data.recipes ?? []))
@@ -190,6 +198,7 @@ function createStore() {
       await api(`/${id}`, { method: 'DELETE' })
       const i = nodes.findIndex(x => x.id === id)
       if (i >= 0) nodes.splice(i, 1)
+      nodeIndex.delete(id)
     },
     bindNode: async (id: string, deviceId: string | null): Promise<void> => {
       const data = await api<{ node: DcwNodeView }>(`/${id}/bind`, { method: 'POST', body: JSON.stringify({ deviceId }) })
@@ -258,7 +267,7 @@ function createStore() {
       return data.run
     },
     runData: (id: string): Promise<RecipeRunData> => api(`/runs/${id}/data`),
-    nodeById: (id: string): DcwNodeView | undefined => nodes.find(n => n.id === id),
+    nodeById: (id: string): DcwNodeView | undefined => nodeIndex.get(id) ?? nodes.find(n => n.id === id),
     // ---------- 产品 ----------
     createProduct: async (input: ProductInput): Promise<ProductView> => {
       const data = await api<{ product: ProductView }>('/products', { method: 'POST', body: JSON.stringify(input) })

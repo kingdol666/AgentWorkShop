@@ -777,6 +777,9 @@ export class TownScene3D {
   private clock = new THREE.Clock()
   private frameCount = 0
   private fpsAccum = 0
+  /** 墙钟 FPS 窗口起点与 rAF 回调计数(徽标/自适应质量的真实输入;原 dt 累计会漂移) */
+  private fpsWinT0 = 0
+  private rafCount = 0
   /** 帧预算(ms):渲染节流上限;0 = 不限制。数据消费不走此门控(帧到达即入实时缓冲) */
   private frameBudgetMs = 1000 / 40
 
@@ -889,6 +892,9 @@ export class TownScene3D {
     // 电影级色调映射:高光滚降 + 中间调层次,GLB 材质不再"平板曝光"
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
     this.renderer.toneMappingExposure = 1.12
+    // 统计跨 pass 累计(composer 多 pass 直渲染时 info 每次自动清零,只会读到末 pass 的 1 次调用):
+    // 每帧渲染前手动 reset,render() 累加,__townStats 拿到的才是整帧真实 drawCalls/triangles
+    this.renderer.info.autoReset = false
     this.el.appendChild(this.renderer.domElement)
     // 舞台尺寸跟随宿主(网格布局/抽屉/全屏切换都会改变宿主尺寸)
     this.resizeOb = new ResizeObserver(() => {
@@ -2797,6 +2803,14 @@ export class TownScene3D {
         if ((o as THREE.Mesh).isMesh) o.castShadow = true
       })
       this.enhancePbrMaterials(gltf.scene, 'device')
+      // 静态子树矩阵冻结:设备模型加载后局部变换恒定,子孙 matrixAutoUpdate=false +
+      // 一次性 updateMatrix,免每帧全树 updateMatrix 合成(拖拽/缩放只改祖先链,
+      // world 矩阵经 force 传播仍正确;设备无动画,mixer 仅角色路径使用)
+      gltf.scene.traverse((o) => {
+        if (o === gltf.scene) return
+        o.matrixAutoUpdate = false
+        o.updateMatrix()
+      })
       group.add(gltf.scene)
     }
     catch {
@@ -4170,6 +4184,7 @@ export class TownScene3D {
     const animate = () => {
       if (this.disposed) return
       this.raf = requestAnimationFrame(animate)
+      this.rafCount += 1
       const rawDt = this.clock.getDelta()
       // 帧预算门控:数据消费与帧率解耦 —— WS 帧直写实时缓冲(消费层,不受此门控),
       // 渲染循环每帧只取「当前最新值」上屏(展示层);budget 0 = 不限制(用户可选 60/120/∞)。
@@ -4331,16 +4346,35 @@ export class TownScene3D {
       }
       this.renderer.shadowMap.needsUpdate = this.dirty || shadowAnimated
       // 后处理管线出图(RenderPass → Bloom → OutputPass;替代直渲染)
+      this.renderer.info.reset()
       this.composer.render(dt)
       this.dirty = false
-      // FPS
+      // FPS(墙钟 1000ms 窗口:performance.now 真实时钟;原 dt 累计在长任务饿死 rAF 时虚高)
       this.frameCount += 1
-      this.fpsAccum += dt * 1000
-      if (this.fpsAccum >= 1000) {
-        this.emit('fps', this.frameCount)
-        this.adaptQuality(this.frameCount)
+      const wallNow = performance.now()
+      if (this.fpsWinT0 === 0) this.fpsWinT0 = wallNow
+      if (wallNow - this.fpsWinT0 >= 1000) {
+        const fps = Math.round((this.frameCount * 1000) / (wallNow - this.fpsWinT0))
+        this.emit('fps', fps)
+        this.adaptQuality(fps)
+        // 仪表化快照(1Hz;e2e/性能回归经 window.__townStats 读取,免再猜渲染真相)
+        const info = this.renderer.info
+        ;(globalThis as typeof globalThis & { __townStats?: Record<string, number> }).__townStats = {
+          fps,
+          rafHz: this.rafCount,
+          drawCalls: info.render.calls,
+          triangles: info.render.triangles,
+          geometries: info.memory.geometries,
+          textures: info.memory.textures,
+          tier: this.qTier,
+          dpr: +this.renderer.getPixelRatio().toFixed(2),
+          frameBudgetMs: +this.frameBudgetMs.toFixed(2),
+          agents: this.agents.size,
+          devices: this.deviceNodes.size,
+        }
         this.frameCount = 0
-        this.fpsAccum = 0
+        this.rafCount = 0
+        this.fpsWinT0 = wallNow
       }
     }
     animate()

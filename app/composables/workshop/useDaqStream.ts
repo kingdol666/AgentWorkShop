@@ -97,6 +97,9 @@ const api = <T>(path: string, init?: RequestInit): Promise<T> =>
 
 const createStore = () => {
   const nodes = reactive<DaqNodeLive[]>([])
+  // id→节点 O(1) 索引(存 reactive 代理,消费方走索引读取仍被依赖追踪);
+  // 身份仅在 push/splice/load 时变化,故仅在这些点维护,热路径(读数合批/帧入账)免全表 find
+  const nodeIndex = new Map<string, DaqNodeLive>()
   const alarms = reactive<DaqAlarmRow[]>([]) // S5:未确认报警(轮询 + ack 后刷新)
   const controller = reactive<DaqControllerState>({ running: true, defaultIntervalMs: 1000, defaultPublishIntervalMs: 0, nodesTotal: 0, nodesOnline: 0 })
   const meta = reactive<DaqBackendMeta>({
@@ -109,6 +112,12 @@ const createStore = () => {
   // 帧缓冲(v2 多形态信号:nodeId → 最近 FRAMES_CAP 帧,新帧头插)
   const frames = reactive<Record<string, DaqFrameLive[]>>({})
 
+  /** 重建 O(1) 索引(load 级联重建;push/splice 单键维护) */
+  function rebuildIndex(): void {
+    nodeIndex.clear()
+    for (const n of nodes) nodeIndex.set(n.id, n)
+  }
+
   function upsert(node: DaqNodeView): void {
     const i = nodes.findIndex(x => x.id === node.id)
     if (i >= 0) {
@@ -117,6 +126,7 @@ const createStore = () => {
     }
     else {
       nodes.push({ ...node, hist: [] })
+      nodeIndex.set(node.id, nodes[nodes.length - 1]!)
     }
   }
 
@@ -134,13 +144,13 @@ const createStore = () => {
     const latest = new Map<string, AepDaqReading>()
     for (const r of batch) {
       latest.set(r.nodeId, r)
-      const n = nodes.find(x => x.id === r.nodeId)
+      const n = nodeIndex.get(r.nodeId)
       if (!n) continue
       n.hist.push(r.value)
       if (n.hist.length > HIST_CAP) n.hist.splice(0, n.hist.length - HIST_CAP)
     }
     for (const r of latest.values()) {
-      const n = nodes.find(x => x.id === r.nodeId)
+      const n = nodeIndex.get(r.nodeId)
       if (!n) continue
       n.value = r.value
       n.state = r.state
@@ -158,6 +168,9 @@ const createStore = () => {
       if (p.op === 'removed') {
         const i = nodes.findIndex(x => x.id === p.node!.id)
         if (i >= 0) nodes.splice(i, 1)
+        nodeIndex.delete(p.node.id)
+        // 孤儿帧缓冲同步清理(每节点 ≤30 帧 × 预览点;不清理则常驻内存)
+        Reflect.deleteProperty(frames, p.node.id)
         return
       }
       upsert(p.node)
@@ -196,7 +209,7 @@ const createStore = () => {
       })
       if (list.length > FRAMES_CAP) list.splice(FRAMES_CAP)
     }
-    const n = nodes.find(x => x.id === p.nodeId)
+    const n = nodeIndex.get(p.nodeId)
     if (n) {
       n.value = p.metrics?.avg ?? n.value
       if (p.state) n.state = p.state
@@ -262,8 +275,12 @@ const createStore = () => {
           next.push({ ...raw, hist: [] })
         }
       }
-      // 服务端权威:本轮未出现的节点移除(其 hist 随之丢弃,与原语义一致)
+      // 服务端权威:本轮未出现的节点移除(其 hist 随之丢弃,与原语义一致);孤儿帧缓冲同拍清理
       nodes.splice(0, nodes.length, ...next)
+      rebuildIndex()
+      for (const k of Object.keys(frames)) {
+        if (!nodeIndex.has(k)) Reflect.deleteProperty(frames, k)
+      }
       Object.assign(controller, data.controller)
       Object.assign(meta, data.meta ?? {})
       meta.driverAvailable = data.driverAvailable ?? {}
@@ -298,6 +315,8 @@ const createStore = () => {
     await api(`/${id}`, { method: 'DELETE' })
     const i = nodes.findIndex(x => x.id === id)
     if (i >= 0) nodes.splice(i, 1)
+    nodeIndex.delete(id)
+    Reflect.deleteProperty(frames, id)
   }
 
   async function bindNode(id: string, deviceId: string | null): Promise<void> {
@@ -436,7 +455,7 @@ const createStore = () => {
     alarms,
     fetchAlarms,
     ackAlarm,
-    nodeById: (id: string): DaqNodeLive | undefined => nodes.find(n => n.id === id),
+    nodeById: (id: string): DaqNodeLive | undefined => nodeIndex.get(id) ?? nodes.find(n => n.id === id),
     samplesOf,
     fetchFrames,
     frames,

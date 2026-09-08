@@ -38,6 +38,9 @@ interface Slot {
   w: number
   h: number
   speed: number
+  /** 可见性门控:面板收起/滚出视口/已卸载的槽位零渲染(IntersectionObserver 维护) */
+  visible: boolean
+  io: IntersectionObserver | null
 }
 
 interface SharedRig {
@@ -57,13 +60,19 @@ function acquireRig(): SharedRig {
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.15
   const rig: SharedRig = { renderer, slots: new Set(), raf: 0, clock: new THREE.Clock() }
+  let acc = 0
   const tick = (): void => {
     rig.raf = requestAnimationFrame(tick)
     const dt = rig.clock.getDelta()
-    // 逐槽渲染(76px 卡 × ~20 槽 = 极小开销);槽画布不在文档中(卸载竞态)则跳过
+    // 30fps 封顶:预览旋转 30fps 与满帧视觉无差,渲染+blit 开销按比例下降
+    acc += dt * 1000
+    if (acc < 1000 / 30) return
+    const step = acc / 1000
+    acc = 0
+    // 逐槽渲染;不可见/已卸载槽位跳过(原实现仅跳过「断连且零尺寸」,面板收起照烧)
     for (const s of rig.slots) {
-      if (!s.canvas.isConnected && s.canvas.width === 0) continue
-      if (s.group) s.group.rotation.y += dt * s.speed
+      if (!s.canvas.isConnected || !s.visible) continue
+      if (s.group) s.group.rotation.y += step * s.speed
       rig.renderer.setSize(s.w, s.h, false)
       rig.renderer.render(s.scene, s.camera)
       s.ctx.clearRect(0, 0, s.w, s.h)
@@ -145,7 +154,19 @@ function mountScene(source: string): void {
   const group = new THREE.Group()
   scene.add(group)
 
-  slot = { canvas, ctx, scene, camera, group, w: canvas.width, h: canvas.height, speed: 0.6 }
+  slot = { canvas, ctx, scene, camera, group, w: canvas.width, h: canvas.height, speed: 0.6, visible: false, io: null }
+  // 可见性门控:视口外(含面板收起/滚动)不渲染;重新入屏自动恢复
+  if (typeof IntersectionObserver !== 'undefined') {
+    slot.io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (slot) slot.visible = e.isIntersecting
+      }
+    })
+    slot.io.observe(canvas)
+  }
+  else {
+    slot.visible = true
+  }
   rig.slots.add(slot)
 
   loading.value = true
@@ -174,6 +195,7 @@ function dispose(): void {
   objectUrl = ''
   if (slot) {
     const rig = rigGlobal.__modelPreviewRig
+    slot.io?.disconnect()
     rig?.slots.delete(slot)
     // 显存释放:几何/材质/纹理逐项 dispose(场景小,遍历即可)
     slot.scene.traverse((c) => {

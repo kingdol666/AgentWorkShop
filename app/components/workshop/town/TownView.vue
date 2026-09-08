@@ -1574,15 +1574,16 @@ const liveTick = ref(0)
 const rtcVals = new Map<string, RtcPoint>()
 const rtcHist = new Map<string, number[]>()
 let unsubLiveVals: (() => void) | null = null
-/** 帧计数合批:高频帧流只按渲染帧节拍失效一次(展示层一帧一拍;缓冲仍逐帧入账) */
+/** 帧计数合批:高频帧流按 200ms 定时节拍失效(原 rAF 合批在 60-220Hz rAF 下每秒
+ *  重建 60-220 次 227 条目的 daqSim Map,是实测长任务主源;200ms 展示延迟不可感知) */
 let tickQueued = false
 function bumpLiveTick(): void {
   if (tickQueued) return
   tickQueued = true
-  requestAnimationFrame(() => {
+  setTimeout(() => {
     tickQueued = false
     liveTick.value++
-  })
+  }, 200)
 }
 
 /** 读数帧消费:实时缓冲直写 + 状态边沿即时告警(与批量 watch 共享 prevDaqState 去重) */

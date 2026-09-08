@@ -291,13 +291,18 @@ function drawChart(): void {
   ctx.stroke()
 }
 
-/** live 趋势(WS hist 环形缓冲;独立小画布,与历史图互补) */
+/** live 趋势(WS hist 环形缓冲;独立小画布,与历史图互补)。
+ *  绘制门控:hist 未变化跳过重绘;后台标签页暂停;容器 resize 后补绘(免错位模糊)。 */
 const liveCanvas = ref<HTMLCanvasElement | null>(null)
 let uiTimer: ReturnType<typeof setInterval> | null = null
+let liveSig = ''
 function drawLive(): void {
   const cv = liveCanvas.value
   const n = node.value
   if (!cv || !n || n.hist.length < 2) return
+  const sig = `${n.hist.length}:${n.hist[n.hist.length - 1]}:${n.hist[0]}`
+  if (sig === liveSig) return
+  liveSig = sig
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   const w = cv.clientWidth
   const h = cv.clientHeight
@@ -323,15 +328,34 @@ function drawLive(): void {
   })
   ctx.stroke()
 }
+/** resize 后历史图与 live 图都需补绘(尺寸变化不触发数据变化,原实现会错位) */
+let resizeObs: ResizeObserver | null = null
+let liveHidden = false
+function onVisChange(): void {
+  liveHidden = document.hidden
+  if (!liveHidden) drawLive()
+}
 onMounted(() => {
   void loadHistory()
-  // live 趋势重绘循环(仅浏览器;SSR 安全)
+  // live 趋势重绘循环(仅浏览器;SSR 安全;绘制由 liveSig 门控,数据未变零开销)
   uiTimer = setInterval(() => {
-    drawLive()
+    if (!liveHidden) drawLive()
   }, 800)
+  document.addEventListener('visibilitychange', onVisChange)
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObs = new ResizeObserver(() => {
+      liveSig = ''
+      drawLive()
+      drawChart()
+    })
+    if (liveCanvas.value) resizeObs.observe(liveCanvas.value)
+  }
 })
 onBeforeUnmount(() => {
   if (uiTimer) clearInterval(uiTimer)
+  document.removeEventListener('visibilitychange', onVisChange)
+  resizeObs?.disconnect()
+  resizeObs = null
 })
 
 watch(bucketMs, () => void loadHistory())
