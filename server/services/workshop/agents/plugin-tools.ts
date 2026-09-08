@@ -96,6 +96,14 @@ export function listPluginTools(): Map<string, OmpPluginTool> {
   return state().byName
 }
 
+/** 工具名 → 注册方插件名(团队级插件开关过滤用;非插件工具返回 null) */
+export function pluginOfTool(name: string): string | null {
+  for (const [k, tool] of state().byPlugin.entries()) {
+    if (tool.name === name) return k.slice(0, k.lastIndexOf(':')) || null
+  }
+  return null
+}
+
 /** 注册表变更订阅(omp-agent 模块加载时接管 pending 并订阅热注入) */
 export function onPluginToolsChange(fn: () => void): () => void {
   const st = state()
@@ -103,7 +111,8 @@ export function onPluginToolsChange(fn: () => void): () => void {
   return () => st.listeners.delete(fn)
 }
 
-function notifyToolChange(): void {
+/** 变更通知(团队级插件开关切换后调用,在跑 agent 热刷新工具清单) */
+export function notifyToolChange(): void {
   for (const fn of state().listeners) {
     try {
       fn()

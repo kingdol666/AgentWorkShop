@@ -5,7 +5,7 @@
  * admin:全量视图(含他人私有),附创建者;可改删任意非内置编组。
  */
 import { message } from 'ant-design-vue'
-import { useWorkshopApi, type TeamDto, type AgentTemplateDto, type ChannelDto } from '../../composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type TeamDto, type AgentTemplateDto, type ChannelDto, type WorkshopPluginDto, type ChannelPluginStateDto } from '../../composables/workshop/useWorkshopApi'
 import { useUserStore } from '../../stores/workshop/user'
 
 const { t } = useI18n()
@@ -79,17 +79,49 @@ const visTag = (team: TeamDto): { text: string, color: string, icon?: string } =
 
 const createOpen = ref(false)
 const createForm = reactive({ name: '', description: '', visibility: 'private' as 'private' | 'public' })
+
+// ===== 插件(创建时勾选启用哪些;平台清单中 enabled 的插件,默认全选) =====
+const platformPlugins = ref<WorkshopPluginDto[]>([])
+const createPluginSel = ref<Record<string, boolean>>({})
+const loadPlatformPlugins = async (): Promise<void> => {
+  try {
+    const res = await api.listPlugins()
+    // 顶层 plugins key(非信封);兼容 {code,data} 信封;只取平台已启用的插件
+    const list = res?.plugins ?? (res as { data?: { plugins?: WorkshopPluginDto[] } })?.data?.plugins ?? []
+    const enabled = (Array.isArray(list) ? list : []).filter(p => p.enabled !== false)
+    platformPlugins.value = enabled
+    const sel: Record<string, boolean> = {}
+    for (const p of enabled) sel[p.name] = true
+    createPluginSel.value = sel
+  }
+  catch { /* 清单不可得时隐藏插件多选(创建仍可走默认) */ }
+}
+if (import.meta.client) void loadPlatformPlugins()
+
+/** checkbox-group 双向绑定(勾选集 ↔ plugins 开关视图) */
+const pluginChecked = computed({
+  get: () => Object.entries(createPluginSel.value).filter(([, v]) => v).map(([k]) => k),
+  set: (vals: Array<string>) => {
+    const next: Record<string, boolean> = {}
+    for (const p of platformPlugins.value) next[p.name] = vals.includes(p.name)
+    createPluginSel.value = next
+  },
+})
+
 const create = async (): Promise<void> => {
   if (!createForm.name.trim()) {
     message.warning(t('teams.k1bvcdo2021'))
     return
   }
-  await api.createTeam({ name: createForm.name.trim(), description: createForm.description || undefined, visibility: createForm.visibility })
+  // 勾选结果作为 plugins:[{name,enabled}] 附加(后端创建时写入该团队的插件开关)
+  const plugins = Object.entries(createPluginSel.value).map(([name, enabled]) => ({ name, enabled }))
+  await api.createTeam({ name: createForm.name.trim(), description: createForm.description || undefined, visibility: createForm.visibility, plugins })
   message.success(t('teams.k3n5hak022'))
   createOpen.value = false
   createForm.name = ''
   createForm.description = ''
   createForm.visibility = 'private'
+  createPluginSel.value = Object.fromEntries(Object.entries(createPluginSel.value).map(([k]) => [k, true]))
   void load()
 }
 
@@ -170,6 +202,56 @@ const removeTeam = async (team: TeamDto): Promise<void> => {
   void load()
 }
 
+// ===== 团队级插件开关(GET → 展示各插件开关;切换即 PUT) =====
+const plugOpen = ref(false)
+const plugTeamRef = ref<TeamDto | null>(null)
+const plugRows = ref<ChannelPluginStateDto[]>([])
+const plugSource = ref<'explicit' | 'default'>('default')
+const plugLoading = ref(false)
+const plugSaving = ref<string | null>(null)
+const openPlugins = (team: TeamDto): void => {
+  plugTeamRef.value = team
+  plugRows.value = []
+  plugSource.value = 'default'
+  plugOpen.value = true
+  void loadTeamPlugins(team)
+}
+const loadTeamPlugins = async (team: TeamDto): Promise<void> => {
+  plugLoading.value = true
+  try {
+    const res = await api.listChannelPlugins(team.id)
+    const data = res?.data ?? {}
+    plugRows.value = data.plugins ?? []
+    plugSource.value = data.source === 'explicit' ? 'explicit' : 'default'
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e))
+  }
+  finally {
+    plugLoading.value = false
+  }
+}
+const toggleTeamPlugin = async (row: ChannelPluginStateDto, next: boolean): Promise<void> => {
+  if (!plugTeamRef.value || plugSaving.value) return
+  const teamId = plugTeamRef.value.id
+  plugSaving.value = row.name
+  try {
+    // PUT 全量提交当前开关视图(仅翻转目标行)
+    const payload = plugRows.value.map(r => ({ name: r.name, enabled: r.name === row.name ? next : r.enabled }))
+    const res = await api.putChannelPlugins(teamId, { plugins: payload })
+    const data = res?.data ?? {}
+    plugRows.value = data.plugins ?? payload.map(p => ({ ...p }))
+    plugSource.value = data.source === 'explicit' ? 'explicit' : 'default'
+    message.success(t('teams.k1plugon043'))
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e))
+  }
+  finally {
+    plugSaving.value = null
+  }
+}
+
 useHead({ title: () => t('titles.teams') })
 </script>
 
@@ -245,6 +327,9 @@ useHead({ title: () => t('titles.teams') })
                 <a-menu>
                   <a-menu-item @click="openDeploy(team)">
                     部署到 Channel…
+                  </a-menu-item>
+                  <a-menu-item @click="openPlugins(team)">
+                    {{ $t('teams.k1plugon047') }}
                   </a-menu-item>
                   <a-menu-item
                     danger
@@ -331,6 +416,30 @@ useHead({ title: () => t('titles.teams') })
             </a-radio>
           </a-radio-group>
         </a-form-item>
+        <a-form-item
+          v-if="platformPlugins.length"
+          :label="$t('teams.k1plugon041')"
+        >
+          <a-checkbox-group
+            v-model:value="pluginChecked"
+            class="plug-create-group"
+          >
+            <a-checkbox
+              v-for="p in platformPlugins"
+              :key="p.name"
+              :value="p.name"
+            >
+              <span class="aw-mono">{{ p.name }}</span>
+              <span
+                v-if="p.builtin"
+                class="plug-builtin-tag"
+              >{{ $t('teams.k3x23c018') }}</span>
+            </a-checkbox>
+          </a-checkbox-group>
+          <div class="plug-hint">
+            {{ $t('teams.k1plugon042') }}
+          </div>
+        </a-form-item>
       </a-form>
     </a-modal>
 
@@ -377,6 +486,53 @@ useHead({ title: () => t('titles.teams') })
           />
         </a-form-item>
       </a-form>
+    </a-modal>
+
+    <a-modal
+      v-model:open="plugOpen"
+      :title="$t('teams.k1plugon040', { p0: plugTeamRef?.name ?? '' })"
+      :footer="null"
+    >
+      <a-spin :spinning="plugLoading">
+        <p class="plug-source">
+          <template v-if="plugSource === 'explicit'">
+            {{ $t('teams.k1plugon045') }}
+          </template>
+          <template v-else>
+            {{ $t('teams.k1plugon044') }}
+          </template>
+        </p>
+        <div
+          v-for="row in plugRows"
+          :key="row.name"
+          class="plug-row"
+        >
+          <div class="plug-text">
+            <div class="plug-name">
+              <span class="aw-mono">{{ row.name }}</span>
+              <span
+                v-if="row.builtin"
+                class="plug-builtin-tag"
+              >{{ $t('teams.k3x23c018') }}</span>
+            </div>
+            <div class="plug-desc">
+              {{ row.description || '—' }}
+            </div>
+          </div>
+          <a-switch
+            :checked="row.enabled"
+            size="small"
+            :loading="plugSaving === row.name"
+            @change="(v: unknown) => toggleTeamPlugin(row, v === true)"
+          />
+        </div>
+        <div
+          v-if="plugRows.length === 0 && !plugLoading"
+          class="plug-hint"
+        >
+          {{ $t('teams.k1plugon046') }}
+        </div>
+      </a-spin>
     </a-modal>
   </div>
 </template>
@@ -467,4 +623,58 @@ h2 { margin: 0 0 4px; }
   border-style: dashed;
 }
 .big { font-size: 28px; }
+
+/* ===== 插件开关(创建勾选 + 团队弹层) ===== */
+.plug-create-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.plug-builtin-tag {
+  margin-left: 6px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill, 999px);
+}
+.plug-hint {
+  margin-top: 6px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+.plug-source {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.plug-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.plug-row:last-of-type {
+  border-bottom: 0;
+}
+.plug-text {
+  min-width: 0;
+}
+.plug-name {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+}
+.plug-desc {
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
 </style>

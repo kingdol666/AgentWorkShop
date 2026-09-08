@@ -5,10 +5,18 @@
  */
 import { initPluginHost, shutdownPluginHost } from '@/server/services/workshop/plugins/host.mjs'
 import { fileURLToPath } from 'node:url'
+import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
-// packageRoot = 本包根(nitro 打包后由运行 cwd 提供事实源,此处兜底)
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
+// packageRoot = 本包根。nitro 打包后 import.meta.url 位于 .output/server/chunks/ 内,
+// '..','..' 解析到 .output(不含源码);内置插件目录以「真实存在」为准逐级探测:
+// 包根(源码运行)→ .output 上一级(repo 部署,源码同树)→ cwd。
+const candidates = [
+  resolve(dirname(fileURLToPath(import.meta.url)), '..', '..'),
+  resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..'),
+  process.cwd(),
+]
+const packageRoot = candidates.find(r => existsSync(resolve(r, 'server', 'plugins-builtin'))) ?? process.cwd()
 
 export default defineNitroPlugin((nitroApp) => {
   void initPluginHost({ cwd: process.cwd(), packageRoot }).then((host) => {

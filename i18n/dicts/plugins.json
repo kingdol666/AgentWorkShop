@@ -1,0 +1,10 @@
+{
+  "desc": "平台插件清单:启停(admin,热重载生效)与连接健康检测。",
+  "needLogin": "登录后可查看与管理插件",
+  "builtin": "内置",
+  "adminRequired": "该操作需要管理员权限",
+  "healthCheck": "检测连接",
+  "healthChecking": "检测中…",
+  "healthOk": "正常",
+  "healthBad": "异常"
+}

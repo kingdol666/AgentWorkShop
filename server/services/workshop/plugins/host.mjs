@@ -55,7 +55,11 @@ function defaultHome() {
 /** 运行模式路径(cwd 为检出根时启用 project 作用域) */
 function modePaths(cwd) {
   const isRepo = existsSync(join(cwd, 'config.yml')) && existsSync(join(cwd, 'nuxt.config.ts'))
+  // packageRoot:宿主运行时取 initPluginHost 注入值;冒烟/单测(cwd 在包根)回退 cwd
+  const packageRoot = g.__awPluginHost?.packageRoot ?? (isRepo ? cwd : null)
+  const builtinDir = packageRoot ? join(packageRoot, 'server', 'plugins-builtin') : null
   return {
+    builtinDir: builtinDir && existsSync(builtinDir) ? builtinDir : null,
     projectDir: isRepo ? join(cwd, '.AgentWorkShop', 'plugins') : null,
     userDir: join(process.env.AW_HOME && String(process.env.AW_HOME).trim() ? String(process.env.AW_HOME).trim() : defaultHome(), 'plugins'),
     homeDir: process.env.AW_HOME && String(process.env.AW_HOME).trim() ? String(process.env.AW_HOME).trim() : defaultHome(),
@@ -89,12 +93,12 @@ export function writeDisabledSet(homeDir, disabled) {
   renameSync(tmp, p)
 }
 
-/** 发现两个作用域下的插件入口(project 同名覆盖 user) */
+/** 发现插件入口,三作用域(builtin 同名被 project 覆盖,project 同名被 user 覆盖) */
 export function discoverPluginDirs(cwd = process.cwd()) {
-  const { projectDir, userDir } = modePaths(cwd)
+  const { builtinDir, projectDir, userDir } = modePaths(cwd)
   const out = []
   const seen = new Set()
-  for (const [dir, scope] of [[projectDir, 'project'], [userDir, 'user']]) {
+  for (const [dir, scope] of [[builtinDir, 'builtin'], [projectDir, 'project'], [userDir, 'user']]) {
     if (!dir || !existsSync(dir)) continue
     for (const name of readdirSync(dir)) {
       const sub = join(dir, name)
@@ -149,6 +153,20 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
   }
   catch (err) {
     host.logger.warn('配置引擎加载降级(插件 ctx.config 将为空):', err?.message)
+  }
+  // 配置热更新:system-config 变化(设置页 PATCH / runtime-settings 文件监听)即刷新
+  // effective —— 插件 ctx.config.get 每次调用实时读到新值(插件 API 地址等改配置即生效,无需重启)
+  try {
+    const { getSystemConfigService } = await import('@/server/services/system-config')
+    getSystemConfigService().subscribe((tail) => {
+      try {
+        if (config?.effective && tail?.effective) Object.assign(config.effective, tail.effective)
+      }
+      catch { /* 刷新失败保留旧值 */ }
+    })
+  }
+  catch (err) {
+    host.logger.warn('配置热更新订阅失败(插件 ctx.config 为装载时快照):', err?.message)
   }
   host.config = config
 
@@ -521,7 +539,7 @@ export function pluginManifest() {
     version: r.version,
     description: r.description,
     scope: r.scope,
-    builtin: r.scope === 'project',
+    builtin: r.scope === 'project' || r.scope === 'builtin',
     enabled: r.enabled !== false,
     hasClient: Boolean(r.clientPath),
     routes: host.routes.byPlugin(r.name),

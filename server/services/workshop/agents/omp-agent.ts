@@ -405,7 +405,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
   refreshPluginTools(): void {
     const client = this.client
     if (!client || !client.alive) return
-    void client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole) }).catch(() => {})
+    void client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole, this.channelId) }).catch(() => {})
   }
 
   /** harness 进程资源信息(运行时资源监控;进程未 spawn/已回收 → null) */
@@ -1150,7 +1150,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
       // 注册 host tools(按角色差异化:lead 全量,worker 剔除调度/团队管理专属工具)
       client.onHostToolCall(req => this.handleHostTool(req))
-      await client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole) })
+      await client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole, this.channelId) })
 
       // 上下文治理探测(feature-detect 一次;失败退化被动 usage 跟踪)+ 原生压缩兜底保持开启
       void this.probeContext(client).catch(() => {})

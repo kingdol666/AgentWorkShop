@@ -17,6 +17,13 @@ const createChannelSchema = z.object({
   scenarioPrompt: z.string().optional(),
   /** channel 独立工作目录(omp 子进程 cwd);缺省 data/workspaces/<channelId> */
   workspace: z.string().optional(),
+  /** 团队级插件开关(创建时即写入;未选中的插件其工具不注入该团队 Agent) */
+  plugins: z
+    .array(z.object({
+      name: z.string().min(1),
+      enabled: z.boolean(),
+    }))
+    .optional(),
   leadAgent: z
     .object({
       name: z.string().min(1, 'leadAgent.name 必填'),
@@ -38,6 +45,16 @@ export default defineApiHandler(async (event) => {
     leadAgent: body.leadAgent,
     ownerUserId: user.id,
   })
+  // 团队级插件开关:创建时即写入(未选中的插件其工具不注入该团队 Agent)
+  if (Array.isArray(body.plugins) && body.plugins.length) {
+    const { getPluginHost, pluginManifest } = await import('@/server/services/workshop/plugins/host.mjs')
+    const registered = new Set(getPluginHost() ? pluginManifest().filter(p => p.enabled).map(p => p.name) : [])
+    const { getChannelPluginsRepo } = await import('@/server/services/workshop/db/channel-plugins.repo')
+    getChannelPluginsRepo().setMany(
+      result.channelId,
+      body.plugins.filter(p => p && typeof p.name === 'string' && registered.has(p.name)),
+    )
+  }
   // 全时事件录制:新 channel 即时建立常驻流(server 驱动落库,与订阅者无关)
   const { ensureStream } = await import('./ws')
   ensureStream(manager, result.channelId)

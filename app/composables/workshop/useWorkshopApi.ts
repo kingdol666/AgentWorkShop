@@ -158,7 +158,7 @@ export function useWorkshopApi() {
     deleteTemplate: (id: string) => http.delete<{ data: unknown }>(`/workshop/agents/${id}`),
     // teams(P1 编组库;v10 可见性)
     listTeams: () => http.get<{ data: TeamDto[] }>('/workshop/teams'),
-    createTeam: (body: { name: string, description?: string, visibility?: 'private' | 'public' }) => http.post<{ data: TeamDto }>('/workshop/teams', body),
+    createTeam: (body: { name: string, description?: string, visibility?: 'private' | 'public', plugins?: Array<{ name: string, enabled: boolean }> }) => http.post<{ data: TeamDto }>('/workshop/teams', body),
     updateTeam: (id: string, body: { name?: string, description?: string, visibility?: 'private' | 'public' }) =>
       http.request<{ data: TeamDto }>({ method: 'PATCH', url: `/workshop/teams/${id}`, data: body }),
     deleteTeam: (id: string) => http.delete<{ data: unknown }>(`/workshop/teams/${id}`),
@@ -182,7 +182,42 @@ export function useWorkshopApi() {
       http.post<{ data: { channelId: string, workspace: string, agentCount: number, leadAgentId?: string } }>(`/workshop/workspaces/${wsId}/channel-templates/${tplId}`, { name }),
     // channel 成员的 harness 终端会话(rpc-ui 镜像;lanes 控制面板数据源)
     listChannelTerminals: (id: string) => http.get<{ data: TerminalSessionDto[] }>(`/workshop/channels/${id}/terminals`),
+    // plugins(插件管理:清单为顶层 plugins key,非信封;启停 admin + 热重载;健康走插件自注册 /health)
+    listPlugins: () => http.get<{ plugins?: WorkshopPluginDto[], data?: { plugins?: WorkshopPluginDto[] } }>('/workshop/plugins'),
+    enablePlugin: (name: string) => http.post<{ data?: { ok?: boolean, enabled?: boolean } }>(`/workshop/plugins/${name}/enable`, {}),
+    disablePlugin: (name: string) => http.post<{ data?: { ok?: boolean, enabled?: boolean } }>(`/workshop/plugins/${name}/disable`, {}),
+    /** 插件健康检测(原始返回,非信封:rag-bridge 看 backend.ok && web.ok,diag-bridge 看 remote.status==='ok') */
+    pluginHealth: (name: string) => http.get<Record<string, unknown>>(`/plugins/${name}/health`),
+    // 团队(Channel)级插件开关(channel_plugins 表;source=default 表示未显式配置,默认全启用)
+    listChannelPlugins: (id: string) =>
+      http.get<{ data?: { plugins?: ChannelPluginStateDto[], source?: 'explicit' | 'default' } }>(`/workshop/channels/${id}/plugins`),
+    putChannelPlugins: (id: string, body: { plugins: Array<{ name: string, enabled: boolean }> }) =>
+      http.put<{ data?: { plugins?: ChannelPluginStateDto[], source?: 'explicit' | 'default' } }>(`/workshop/channels/${id}/plugins`, body),
   }
+}
+
+/** 平台插件清单条目(GET /workshop/plugins;顶层 plugins key,兼容 {code,data} 信封) */
+export interface WorkshopPluginDto {
+  name: string
+  version?: string
+  description?: string
+  scope?: string
+  /** 内置插件(桥接插件) */
+  builtin?: boolean
+  enabled?: boolean
+  hasClient?: boolean
+  routes?: Array<{ method: string, path: string }>
+  /** 装载失败原因 */
+  error?: string | null
+}
+
+/** 团队(Channel)插件开关条目(GET/PUT /workshop/channels/:id/plugins) */
+export interface ChannelPluginStateDto {
+  name: string
+  description?: string
+  builtin?: boolean
+  /** 该团队对此插件的开关 */
+  enabled: boolean
 }
 
 /** harness 终端会话视图(GET /workshop/channels/:id/terminals) */

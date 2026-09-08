@@ -2760,7 +2760,7 @@ export class AgentChannelManager {
   hostToolDefsFor(agentId: string): Array<{ name: string, label?: string, description: string, parameters: Record<string, unknown> }> {
     const row = this.deps.repos.channelAgents.findById(agentId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `agent 不存在: ${agentId}`)
-    return hostToolsForRole(row.role === 'lead' ? 'lead' : 'worker')
+    return hostToolsForRole(row.role === 'lead' ? 'lead' : 'worker', row.channelId)
   }
 
   /**

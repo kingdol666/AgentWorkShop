@@ -22,7 +22,8 @@ import type { RpcHostToolDefinition } from './adapters/omp-rpc-client'
 import { loadHostToolDefs } from '../prompts/loader'
 import { daqRuntimeSettings } from '../settings'
 import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions } from './industrial-tools'
-import { listPluginTools } from './plugin-tools'
+import { listPluginTools, pluginOfTool } from './plugin-tools'
+import { getChannelPluginsRepo } from '../db/channel-plugins.repo'
 import { extractTaskMode } from '../runtime/execution-mode'
 
 /** host tool 定义(外置 .AgentWorkShop/prompts/host-tools.json;加载器缓存) */
@@ -61,17 +62,24 @@ function applyDescriptionPlaceholders(tools: RpcHostToolDefinition[]): RpcHostTo
 
 /**
  * 按角色装配 host tools:lead = 全量;worker = 剔除 lead 专属(执行面 + 通信面 + 记忆面);
- * 尾部合并插件注册工具(roles 过滤,缺省双角色可用)。
+ * 尾部合并插件注册工具(roles 过滤,缺省双角色可用;channelId 给定且该团队有显式
+ * 插件开关时,关闭的插件其工具不注入 —— 防不需要插件的 channel 上下文被污染)。
  * 全 harness 共用:omp 经 set_host_tools 下发;其余引擎经 MCP 桥 tools/list 拉取。
  */
-export function hostToolsForRole(role: 'lead' | 'worker'): RpcHostToolDefinition[] {
+export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string): RpcHostToolDefinition[] {
   const base = role === 'lead'
     ? HOST_TOOLS
     : HOST_TOOLS.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
   const out = [...base]
+  // 团队级插件开关:显式配置过的 channel 按行过滤;未配置(无行)= 全启用,向后兼容
+  const channelOff = channelId
+    ? getChannelPluginsRepo().explicitFor(channelId)
+    : null
   for (const [name, tool] of listPluginTools()) {
     if (out.some(t => t.name === name)) continue
     if (tool.roles && !tool.roles.includes(role)) continue
+    const owner = pluginOfTool(name)
+    if (channelOff && owner && channelOff.get(owner) === false) continue
     out.push({ name, label: tool.label ?? name, description: tool.description, parameters: tool.parameters ?? {} })
   }
   return applyDescriptionPlaceholders(out)
@@ -127,6 +135,15 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
   // 插件工具分发(ctx.omp.registerTool 注册的自定义工具;不依赖 workspace,优先于内置面)
   const pluginTool = listPluginTools().get(req.toolName)
   if (pluginTool) {
+    // 团队级插件开关:显式关闭的插件,其工具在该团队拒绝执行(与注入过滤同源)
+    const channelOff = getChannelPluginsRepo().explicitFor(identity.channelId)
+    const owner = pluginOfTool(req.toolName)
+    if (channelOff && owner && channelOff.get(owner) === false) {
+      return {
+        text: `该团队未启用插件「${owner}」,${req.toolName} 不可用。可在团队设置→插件中开启。`,
+        isError: true,
+      }
+    }
     try {
       return await pluginTool.handler(req.arguments ?? {}, identity)
     }

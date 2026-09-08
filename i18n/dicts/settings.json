@@ -3,6 +3,7 @@
   "runtime.groupOmp": "Agent Harness",
   "runtime.groupDcw": "数控写控",
   "runtime.groupWorkshop": "车间运行",
+  "runtime.groupPlugins": "插件",
   "runtime.groupBackup": "数据备份",
   "runtime.groupRetention": "数据保留",
   "runtime.groupLog": "日志",

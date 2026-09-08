@@ -2,12 +2,15 @@
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/app/stores/workshop/user'
 import { useRuntimeConfigStore } from '@/app/stores/runtime-config'
+import { useWorkshopApi, type WorkshopPluginDto } from '@/app/composables/workshop/useWorkshopApi'
+import { apiErrorMessage } from '@/app/utils/api-error'
 
 const { t, locale, locales, setLocale } = useI18n()
 const store = useAppStore()
 const site = useSiteConfig()
 const config = useRuntimeConfig().public
 const userStore = useUserStore()
+const api = useWorkshopApi()
 
 const activeTab = ref('appearance')
 
@@ -82,7 +85,7 @@ async function resetAllRuntime() {
 }
 
 function groupLabel(group: string): string {
-  const known: Record<string, string> = { server: t('settings.runtime.groupServer'), app: t('settings.runtime.groupApp'), api: t('settings.runtime.groupApi'), theme: t('settings.runtime.groupTheme'), i18n: t('settings.runtime.groupI18n'), security: t('settings.runtime.groupSecurity'), daq: t('settings.runtime.groupDaq'), memory: t('settings.runtime.groupMemory'), omp: t('settings.runtime.groupOmp'), harness: t('settings.runtime.groupHarness'), dcw: t('settings.runtime.groupDcw'), workshop: t('settings.runtime.groupWorkshop'), backup: t('settings.runtime.groupBackup'), retention: t('settings.runtime.groupRetention'), log: t('settings.runtime.groupLog') }
+  const known: Record<string, string> = { server: t('settings.runtime.groupServer'), app: t('settings.runtime.groupApp'), api: t('settings.runtime.groupApi'), theme: t('settings.runtime.groupTheme'), i18n: t('settings.runtime.groupI18n'), security: t('settings.runtime.groupSecurity'), daq: t('settings.runtime.groupDaq'), memory: t('settings.runtime.groupMemory'), omp: t('settings.runtime.groupOmp'), harness: t('settings.runtime.groupHarness'), dcw: t('settings.runtime.groupDcw'), workshop: t('settings.runtime.groupWorkshop'), backup: t('settings.runtime.groupBackup'), retention: t('settings.runtime.groupRetention'), log: t('settings.runtime.groupLog'), plugins: t('settings.runtime.groupPlugins') }
   return known[group] ?? group
 }
 function sourceClass(s: string): string {
@@ -92,6 +95,105 @@ function itemLabel(item: { label: string, labelKey?: string }): string {
   const k = item.labelKey
   return (k && t(k) !== k) ? t(k) : item.label
 }
+/* ============================================================= */
+
+/* ================= 插件管理(清单/启停/健康检测) ================= */
+interface PluginHealth {
+  ok: boolean
+  reason?: string
+}
+
+const plugins = ref<WorkshopPluginDto[]>([])
+const pluginsLoading = ref(false)
+const pluginsLoaded = ref(false)
+const togglingPlugins = ref<Set<string>>(new Set())
+const healthMap = ref<Record<string, PluginHealth | 'checking'>>({})
+
+const hasHealthRoute = (p: WorkshopPluginDto): boolean =>
+  (p.routes ?? []).some(r => String(r.path || '').endsWith('/health'))
+
+async function loadPlugins() {
+  pluginsLoading.value = true
+  try {
+    const res = await api.listPlugins()
+    // 顶层 plugins key(非信封);兼容 {code,data} 信封
+    const list = res?.plugins ?? (res as { data?: { plugins?: WorkshopPluginDto[] } })?.data?.plugins ?? []
+    plugins.value = Array.isArray(list) ? list : []
+    pluginsLoaded.value = true
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e, t('plugins.loadFail')))
+  }
+  finally {
+    pluginsLoading.value = false
+  }
+}
+
+async function togglePlugin(p: WorkshopPluginDto, next: boolean) {
+  if (togglingPlugins.value.has(p.name)) return
+  togglingPlugins.value.add(p.name)
+  try {
+    if (next) await api.enablePlugin(p.name)
+    else await api.disablePlugin(p.name)
+    p.enabled = next
+    message.success(next ? t('plugins.enabled') : t('plugins.disabled'))
+  }
+  catch (e) {
+    // 普通用户 403 → 需要管理员权限
+    message.error(apiErrorMessage(e, t('plugins.adminRequired')))
+  }
+  finally {
+    togglingPlugins.value.delete(p.name)
+  }
+}
+
+async function checkPluginHealth(p: WorkshopPluginDto) {
+  if (!hasHealthRoute(p)) return
+  healthMap.value = { ...healthMap.value, [p.name]: 'checking' }
+  try {
+    const res = await api.pluginHealth(p.name)
+    healthMap.value = { ...healthMap.value, [p.name]: judgePluginHealth(p.name, res) }
+  }
+  catch (e) {
+    healthMap.value = { ...healthMap.value, [p.name]: { ok: false, reason: apiErrorMessage(e, t('plugins.loadFail')) } }
+  }
+}
+
+/** 健康判定:rag-bridge 看 backend.ok && web.ok;diag-bridge 看 remote.status==='ok';未知形状回退无报错即视为正常 */
+function judgePluginHealth(name: string, res: Record<string, unknown>): PluginHealth {
+  if (name === 'rag-bridge') {
+    const backend = res.backend as { ok?: boolean, error?: string, status?: string } | undefined
+    const web = res.web as { ok?: boolean, error?: string, status?: string } | undefined
+    const ok = Boolean(backend?.ok) && Boolean(web?.ok)
+    const reason = !backend?.ok
+      ? (backend?.error || backend?.status || 'backend')
+      : (web?.error || web?.status || 'web')
+    return ok ? { ok: true } : { ok: false, reason }
+  }
+  if (name === 'diag-bridge') {
+    const remote = res.remote as { status?: string } | undefined
+    const ok = remote?.status === 'ok'
+    return ok ? { ok: true } : { ok: false, reason: remote?.status || 'remote' }
+  }
+  return { ok: true }
+}
+
+/** 模板辅助:检测中 / 检测结果(避免模板内窄化) */
+function isCheckingHealth(name: string): boolean {
+  return healthMap.value[name] === 'checking'
+}
+function healthOf(name: string): PluginHealth | null {
+  const h = healthMap.value[name]
+  return (h && h !== 'checking') ? h : null
+}
+function isToggling(name: string): boolean {
+  return togglingPlugins.value.has(name)
+}
+
+// 进入运行配置 Tab 时懒加载插件清单(端点需登录)
+watch(activeTab, (v) => {
+  if (v === 'runtime' && !pluginsLoaded.value && !pluginsLoading.value && userStore.isLoggedIn) void loadPlugins()
+}, { immediate: true })
 /* ============================================================= */
 
 /** 强调色预设(控制室低饱和族;默认 = 品牌绿,跟随 config.yml) */
@@ -382,6 +484,94 @@ const tabs = computed(() => [
               </button>
               <span class="rt-path aw-mono">{{ rcStore.settingsPath }}</span>
             </div>
+
+            <!-- 插件管理:清单 / 启停(admin) / 健康检测 -->
+            <h4 class="rt-group-title plugin-group-title">
+              {{ t('plugins.title') }}
+            </h4>
+            <p class="section-desc">
+              {{ t('plugins.desc') }}
+            </p>
+
+            <div
+              v-if="!userStore.isLoggedIn"
+              class="identity-note"
+            >
+              {{ t('plugins.needLogin') }}
+            </div>
+            <a-spin
+              v-else
+              :spinning="pluginsLoading"
+            >
+              <div
+                v-for="p in plugins"
+                :key="p.name"
+                class="plugin-row"
+                :class="{ off: p.enabled === false }"
+              >
+                <div class="plugin-main">
+                  <div class="rt-title">
+                    <span class="aw-mono">{{ p.name }}</span>
+                    <span
+                      v-if="p.version"
+                      class="rt-tag"
+                    >v{{ p.version }}</span>
+                    <span
+                      v-if="p.builtin"
+                      class="rt-tag src-runtime"
+                    >{{ t('plugins.builtin') }}</span>
+                    <span
+                      v-if="p.error"
+                      class="rt-tag restart"
+                    >{{ p.error }}</span>
+                  </div>
+                  <div class="rt-sub">
+                    {{ p.description || '—' }}
+                  </div>
+                </div>
+                <div class="rt-ctrl">
+                  <span
+                    v-if="isCheckingHealth(p.name)"
+                    class="plugin-health faint"
+                  >
+                    <span class="i-tabler-loader-2 spin" />
+                    {{ t('plugins.healthChecking') }}
+                  </span>
+                  <span
+                    v-else-if="healthOf(p.name)"
+                    class="plugin-health"
+                    :class="healthOf(p.name)!.ok ? 'ok' : 'bad'"
+                  >
+                    <span :class="healthOf(p.name)!.ok ? 'i-tabler-circle-check' : 'i-tabler-alert-circle'" />
+                    {{ healthOf(p.name)!.ok ? t('plugins.healthOk') : `${t('plugins.healthBad')}: ${healthOf(p.name)!.reason ?? ''}` }}
+                  </span>
+                  <button
+                    v-if="hasHealthRoute(p)"
+                    class="aw-pill outline rt-reset"
+                    @click="checkPluginHealth(p)"
+                  >
+                    <span class="i-tabler-heartbeat" />
+                    {{ t('plugins.healthCheck') }}
+                  </button>
+                  <button
+                    class="switch"
+                    :class="{ on: p.enabled !== false }"
+                    role="switch"
+                    :aria-checked="p.enabled !== false"
+                    :disabled="isToggling(p.name)"
+                    @click="togglePlugin(p, p.enabled === false)"
+                  >
+                    <span class="knob" />
+                  </button>
+                </div>
+              </div>
+              <div
+                v-if="plugins.length === 0 && !pluginsLoading"
+                class="identity-note"
+              >
+                {{ t('plugins.empty') }}
+              </div>
+            </a-spin>
           </div>
 
           <!-- 系统:只读运行参数 -->
@@ -739,8 +929,69 @@ const tabs = computed(() => [
   color: var(--ink-faint);
 }
 
+/* ============ 插件管理 ============ */
+.plugin-group-title {
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.plugin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  transition: opacity var(--transition-fast);
+}
+
+.plugin-row.off {
+  opacity: 0.55;
+}
+
+.plugin-main {
+  min-width: 0;
+}
+
+.plugin-health {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  max-width: 320px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.plugin-health.ok {
+  color: #2e9e6b;
+}
+
+.plugin-health.bad {
+  color: #c2554a;
+}
+
+.plugin-health.faint {
+  color: var(--ink-faint);
+}
+
+.plugin-health .spin {
+  animation: plugin-spin 0.9s linear infinite;
+}
+
+@keyframes plugin-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plugin-health .spin {
+    animation: none;
+  }
+}
+
 @media (max-width: 768px) {
-  .rt-row {
+  .rt-row,
+  .plugin-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
