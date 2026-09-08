@@ -78,6 +78,7 @@ function createStore(): CharacterAssetStore {
     { id: 'mage', name: '紫晶法师', file: '/assets/game/character/mage.png', frames: 4, frameWidth: 48, frameHeight: 88, kind: 'sheet', builtin: true, applied: false },
     { id: 'bot', name: '青枢机械', file: '/assets/game/character/bot.png', frames: 4, frameWidth: 48, frameHeight: 88, kind: 'sheet', builtin: true, applied: false },
     { id: 'hero-3d', name: '标准员工模型', file: '/assets/game/character/hero-3d.glb', frames: 1, frameWidth: 0, frameHeight: 0, kind: 'glb', builtin: true, applied: false, hint: '默认员工 3D 模型' },
+    { id: 'yangyang-walk', name: '杨杨(走路)', file: '/assets/game/character/yangyang-walk.glb', frames: 1, frameWidth: 0, frameHeight: 0, kind: 'glb', builtin: true, applied: false, hint: '自定义角色:骨骼走路动画(剪辑 WALK;文件较大,建议少量绑定)' },
     { id: 'device-3d', name: '工业泵设备', file: '/assets/game/character/device-3d.glb', frames: 1, frameWidth: 0, frameHeight: 0, kind: 'dev', builtin: true, applied: false, hint: '数字孪生实体模型(拖入场景生成设备)' },
   ]
 

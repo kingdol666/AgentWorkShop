@@ -523,8 +523,8 @@ class Agent3D {
       this.animState = next
       this.host.notifyMotion(this)
     }
-    if (this.clips.length === 0) {
-      // 无动画 clip → 程序化动作绑定(model 局部,色环/名牌保持贴地稳定):
+    const bob = () => {
+      // 程序化动作绑定(model 局部,色环/名牌保持贴地稳定):
       //  待机呼吸浮动 + 行走跳跃颠簸 + 行走左右微摆
       const t = performance.now()
       const breathe = 1.2 + Math.sin(t * 0.0016) * 1.6
@@ -532,13 +532,27 @@ class Agent3D {
       this.model.position.y = moving ? hop : breathe
       const swayTarget = moving ? Math.sin(t * 0.006) * 0.07 : 0
       this.model.rotation.z += (swayTarget - this.model.rotation.z) * 0.12
+    }
+    if (this.clips.length === 0) {
+      bob()
       return
     }
-    // 有动画 clip:按移动状态切换 idle/walk,crossfade 平滑过渡(避免双 action 叠加)
+    // 有动画 clip:名字感知选择(剪辑命名各异:WALK/Walk、idle/stand/breath...),
+    // 先按语义匹配,找不到回退索引(idle→0,walk→1);仅含走路剪辑的模型待机时
+    // 回退程序化 bob,避免原地播放走路。crossfade 平滑过渡(避免双 action 叠加)。
     if (!this.mixer) return
-    const idx = moving ? (this.clips.length > 1 ? 1 : 0) : 0
-    const clip = this.clips[idx]
-    if (!clip) return
+    const lower = (c: THREE.AnimationClip) => c.name.toLowerCase()
+    const clip = moving
+      ? (this.clips.find(c => /walk|run|move/.test(lower(c))) ?? this.clips[Math.min(1, this.clips.length - 1)])
+      : (this.clips.find(c => /idle|stand|breath/.test(lower(c))) ?? (this.clips.length > 1 ? this.clips[0] : null))
+    if (!clip) {
+      if (this.activeAction) {
+        this.activeAction.fadeOut(0.15)
+        this.activeAction = null
+      }
+      bob()
+      return
+    }
     const nextAction = this.mixer.clipAction(clip)
     if (this.activeAction === nextAction) {
       nextAction.timeScale = moving ? 1.3 : 0.9
