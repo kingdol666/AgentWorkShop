@@ -88,7 +88,7 @@ async function main() {
   })
   await page.reload()
   await sleep(1500)
-  await login(page, 'zhangwei@awshop.io', 'Awshop@123')
+  await login(page, process.env.E2E_USER ?? 'zhangwei@awshop.io', process.env.E2E_PASS ?? 'Awshop@123')
 
   await page.goto(`${BASE}/monitor`, { waitUntil: 'domcontentloaded' })
   await sleep(3500)

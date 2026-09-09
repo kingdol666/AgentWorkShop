@@ -14,7 +14,7 @@ let failed = 0
 const check = (name, ok, detail = '') => { console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); if (!ok) failed++ }
 
 const ctx = JSON.parse(readFileSync('.e2e-plugin-ctx.json', 'utf-8'))
-const login = await fetch(`${ROOT}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }) }).then(r => r.json())
+const login = await fetch(`${ROOT}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: process.env.E2E_USER ?? 'zhangwei@awshop.io', password: process.env.E2E_PASS ?? 'Awshop@123' }) }).then(r => r.json())
 const H = { authorization: `Bearer ${login.data.token}`, 'content-type': 'application/json' }
 const cookie = { name: 'token', value: login.data.token, domain: '127.0.0.1', path: '/' }
 const j = (u, m = 'GET', b) => fetch(ROOT + u, { method: m, headers: H, body: b ? JSON.stringify(b) : undefined }).then(r => r.json())

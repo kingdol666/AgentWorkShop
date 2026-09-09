@@ -13,7 +13,7 @@ const api = async (path, opts = {}) => {
 let TOKEN = ''
 
 // ===== 1. 管理员登录(种子用户) + 注册一个新用户(admin 权限创建) =====
-const login = await fetch(`${ROOT}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }) }).then(r => r.json())
+const login = await fetch(`${ROOT}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: process.env.E2E_USER ?? 'zhangwei@awshop.io', password: process.env.E2E_PASS ?? 'Awshop@123' }) }).then(r => r.json())
 if (login?.data?.token) { TOKEN = login.data.token; ok(`管理员登录: ${login.data.user?.name ?? login.data.user?.email}`) }
 else fail(`管理员登录失败: ${JSON.stringify(login).slice(0, 120)}`)
 

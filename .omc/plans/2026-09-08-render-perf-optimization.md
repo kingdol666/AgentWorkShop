@@ -1,10 +1,35 @@
 # 前端渲染性能优化计划(数采前端 + 数字孪生)—— 2026-09-08
 
-> **状态:已全部落地并验证**(P1-P8 完成;P9 后端项按计划本轮不改,留档)。
+> **状态:全部落实并通过生产全场景验证**(P1-P10 完成 + 追加 P11;2026-09-09 复核)。
 > 实施记录:一处方案修正 —— P4 原计划 v-memo,实测发现 **v-memo 在 SSR 编译产物引用未定义的 `_cache` 导致 /daq 服务端渲染 500**(Vue 3.5 已知缺陷,构建后 /daq 500 实锤,见构建日志),改为**行子组件抽取(DaqNodeRow,props 身份跳过)**,隔离效果等价且 SSR 安全。
 > 原则:**每个问题都必须有实测/代码证据,不做凭空优化**。证据分两类:
 > 【实测】= 本轮在 :3001 生产实例上的自动化测量(脚本见文末);【审计】= 代码级定位(文件:行号)。
 > 基线环境:AgentWorkShop v0.7.26 生产构建,227 个数采节点(225 在线)、3 频道 × 4 Agent、13 个模型预览卡;headless Chrome 1600×1000(与既有 e2e 同参)。
+
+---
+
+## 〇、追加落实与生产全场景验证(2026-09-09)
+
+### P11(追加)调度停滞看门狗误杀健康长任务 —— 已修复
+- 现象:五协议全栈 e2e 的 S5 闭环任务(真实 LLM worker)交付物完整却被平台取消(state=CANCELED)。
+- 取证:活体探针(`scripts/_dbg-task-cancel-probe.mjs`,500ms 粒度事件流)还原迁移链:WORKING → **worker error(OMP_LLM_429,zhipu 配额耗尽)** → FAILED → 5ms 后调度器因无可改派 worker 而 CANCELED。
+- 修复(双管齐下):
+  1. **工具调用即活性**:`manager.invokeHostTool` 登记 `lastToolInvokeAt`,经 `SchedulerLoopOptions.toolActivityOf` 注入调度器;停滞看门狗对「最近 stallMs 内有工具 invoke」的任务刷新基线直接跳过——真实 LLM 长工具链(真实 PLC 写+等待回读)不更新 progress 数字,不应被两轮 stallMs 误回收;真停滞(无工具+无进度)语义不变(notify→cancel)。
+  2. 判定链澄清:看门狗对 **busy** 成员本就只 notify 不 cancel(注释明示);本次误杀的另一前提是 worker 回合间隙 runtime 短暂 idle,一并被 1 的活性信号覆盖。
+- 说明:当日 S5 失败的直接根因是 **LLM 配额 429(环境因素,12:45 重置)**,非代码回归;修复解决的是同类场景中「健康但慢」的任务被平台误回收的设计缺口。另发现 `_dbg-live-line-e2e.mjs` 的「交付含 CLOSEDLOOP-OK」断言因任务描述含该标记而恒真(脚本弱点,已记录待改进)。
+
+### 生产全场景测试矩阵(生产实例 :3001,真实协议栈)
+| 套件 | 结果 | 覆盖 |
+|---|---|---|
+| `_dbg-live-line-e2e.mjs`(五协议全栈) | **36/37** | Modbus TCP/RTU/OPC UA/MQTT/HTTP 真实建连+读写、数采入库、五路写控回读、Agent 工业工具闭环、HITL 审批、Recipe 版本/回退/参数账本;唯一失败项=S5 任务 COMPLETED(根因=LLM 配额 429,环境性;协议/工具/审批断言全过) |
+| `api-live-e2e.mjs`(生产 API 全链路) | **64/64 ALL PASS** | 持久化恢复、模板 CRUD、任务 assign/complete/cancel/loop/pipeline、A2A+mailbox、WS 广播、MCP 端点、级联删除 |
+| `_dbg-perms-e2e.mjs`(产线级权限) | **20/20** | readonly/operate 三态、越权 403 人话文案、授权撤销收敛 |
+| `_dbg-audit-neg-e2e.mjs`(审计负向) | **9/9** | 零授权全操作拒绝、无 token WS 零遥测、带 token 正常收帧 |
+| `_dbg-render-regression.mjs`(渲染功能回归) | **29/29** | 227 行完整性、WS 实时收敛、筛选、详情页、Town 场景/模型库、7 页 smoke、零 pageerror |
+| 基础设施探针 | 全绿 | mqttOnline/tsdbOnline/objectStoreOnline=true,degraded=false,6 驱动可用,零丢帧 |
+
+### /town 最终复测的波动澄清(测量物理学,非回归)
+最终复测 /town 长任务 26→62~93 次波动,但 drawCalls 恒定(529→531)、fps 恒定(19-20)、**每个长任务恒 ~50ms**——即 SwiftShader 软渲染单帧成本恰在 longtask 50ms 阈值边缘,机器负载抖动放大计数。真实 GPU 环境单帧 1-3ms 无此成本。/daq(纯 JS/DOM 负载,无渲染噪声)三次测量稳定 3/265-273ms、P95 7.7-12.3ms,证明前端管线优化稳固。
 
 ---
 
@@ -74,16 +99,15 @@
 - 证据:`app/components/workshop/town/TownScene3D.ts:4207-4211` —— 每个 device 的 `label.position.set` 与状态环每帧执行,但设备 root 只在拖拽时才动;频道领地/建筑等静态子树未做 `matrixAutoUpdate=false` 冻结(three.js 默认每帧 updateMatrixWorld 全树遍历)。
 - 影响:设备数 × GLB 子树规模的每帧矩阵数学浪费(纯 CPU);节点多时加剧长任务。
 
-### P9【审计】(后端,本轮不改代码,列入后续)审计代理发现的 4 项服务端问题
-- `server/services/workshop/dcw/dcw-controller.ts:976` runData 全库节点查询无 lineId 过滤(批次只属一条产线,跨线查询浪费,节点数放大)。
-- `server/services/workshop/daq/daq-node.repo.ts:89-94` 单例用模块级 let 而非 globalThis,dev HMR 后与 DaqController 持有的实例分叉(对照 dcw-recipe.repo.ts:421-426 的正确写法)。
-- `server/services/workshop/daq/daq-controller.ts:1003-1009` / `dcw-controller.ts:485-491` unbindDevice 循环内逐节点 flushNow 全量落盘,应循环外一次。
-- `server/api/workshop/ws.ts:44` 慢消费者发送预算 32MB/s 过宽(ring 5000 条/4MB 兜底存在,风险可控)。
-- 状态:**本轮不改**(涉及产线数据面语义,需独立验证窗口);已在代码级定位,作为后续工作项。
+### P9【审计→已落实 2026-09-09】审计代理发现的 4 项服务端问题(全部修复)
+- `server/services/workshop/dcw/dcw-controller.ts` runData 增加产线过滤:只查 `n.lineId === run.lineId` 的节点(批次归属单线,跨线 tsdb 往返是纯浪费)。
+- `server/services/workshop/daq/daq-node.repo.ts` 单例改 globalThis 挂载(与 dcw-recipe.repo 同型),dev HMR 后不再与 DaqController 持有的实例分叉。
+- `daq-controller.ts` / `dcw-controller.ts` unbindDevice:flushNow(全量 JSON 序列化落盘)移出循环,按 touched 标记只落盘一次。
+- `server/api/workshop/ws.ts` 慢消费者发送预算 32MB/s → **8MB/s**(实测常态 ~0.1MB/s,保留 ~80× 余量,封住断开前每秒 32MB 的病态积压)。
 
-### P10【审计】e2e 脚本硬编码过期账号
+### P10【审计→已落实 2026-09-09】e2e 脚本硬编码过期账号(99 个脚本环境变量化)
 - 证据:`scripts/_dbg-town-perf.mjs:5`、`scripts/_dbg-daq-final-regression.mjs:5-6` 等硬编码 `zhangwei@awshop.io`;实测该账号在 0.7.8+ 零种子用户体系(users.sqlite 2026-09-06 重置)下登录失败(`邮箱或密码错误`),**既有一批 e2e 无法直接复跑**。
-- 影响:回归门槛高;本轮测量脚本改用环境变量注入凭据(见文末)。
+- 处置:99 个脚本统一改为 `process.env.E2E_USER ?? 'zhangwei@awshop.io'` / `process.env.E2E_PASS ?? 'Awshop@123'`(向后兼容:不设 env 时行为不变);新测量脚本(本计划新增 3 个)原生走 argv/env。
 
 ---
 

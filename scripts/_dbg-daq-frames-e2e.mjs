@@ -15,7 +15,7 @@ const fail = (msg) => { console.error('FAIL:', msg); process.exitCode = 1 }
 const login = await fetch(`${ROOT}/api/users/login`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
+  body: JSON.stringify({ email: process.env.E2E_USER ?? 'zhangwei@awshop.io', password: process.env.E2E_PASS ?? 'Awshop@123' }),
 }).then(r => r.json())
 const token = login?.data?.token
 if (!token) { console.error('FAIL: login:', JSON.stringify(login).slice(0, 200)); process.exit(1) }

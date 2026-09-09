@@ -30,7 +30,7 @@ check('PLC 模拟器就绪(15040)', simLog.includes('就绪'), simLog.split('\n'
 process.on('exit', () => { try { sim.kill() } catch {} })
 
 // ===== 登录 + 运行产线 =====
-const login = await fetch(`${ROOT}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }) }).then(r => r.json())
+const login = await fetch(`${ROOT}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: process.env.E2E_USER ?? 'zhangwei@awshop.io', password: process.env.E2E_PASS ?? 'Awshop@123' }) }).then(r => r.json())
 const H = { authorization: `Bearer ${login.data.token}`, 'content-type': 'application/json' }
 const j = async (u, m = 'GET', b, attempt = 0) => {
   try {

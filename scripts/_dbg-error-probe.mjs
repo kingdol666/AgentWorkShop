@@ -5,7 +5,7 @@ const okIf = (m, c) => { if (c) console.log(`PASS ${m}`); else { console.log(`FA
 const login = await fetch(`${BASE}/api/users/login`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
+  body: JSON.stringify({ email: process.env.E2E_USER ?? 'zhangwei@awshop.io', password: process.env.E2E_PASS ?? 'Awshop@123' }),
 }).then(r => r.json())
 const H = { authorization: `Bearer ${login.data.token}`, 'content-type': 'application/json' }
 const probe = async (name, url, init, expectStatus, expectCode) => {
@@ -32,7 +32,7 @@ await probe('③ 未匹配路由 404', '/api/workshop/daq/dn-notexist/write', { 
 await probe('⑤ 越权 channel', '/api/workshop/channels/00000000-0000-0000-0000-000000000000/tasks', { headers: H }, 404, 'NOT_FOUND')
 // ⑥ Agent 工具:未绑定节点 → 工具级权限拒绝文本
 {
-  const login2 = await fetch(`${BASE}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }) }).then(r => r.json())
+  const login2 = await fetch(`${BASE}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: process.env.E2E_USER ?? 'zhangwei@awshop.io', password: process.env.E2E_PASS ?? 'Awshop@123' }) }).then(r => r.json())
   const H2 = { authorization: `Bearer ${login2.data.token}`, 'content-type': 'application/json' }
   const ch = await fetch(`${BASE}/api/workshop/channels`, { headers: H2 }).then(r => r.json())
   const channels = Array.isArray(ch.data) ? ch.data : ch.data?.channels ?? []

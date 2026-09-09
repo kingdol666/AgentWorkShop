@@ -44,7 +44,7 @@ Plugins export `{ name, setup(ctx) }` — no imports:
 
 ## 4. Lifecycle events
 
-`daq:sample`, `daq:frame`, `daq:alarm`, `dcw:write`, `line:start`, `line:stop`, `scene:*`.
+`daq:sample`, `daq:frame`, `dcw:write`, `line:start`, `line:stop`, `scene:*`.
 Sequential per event; failures are contained (a plugin can never break sampling or write
 control). See [Lifecycle](./lifecycle).
 

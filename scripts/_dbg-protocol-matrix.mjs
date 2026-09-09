@@ -161,6 +161,22 @@ async function main() {
   const line = (await api('POST', '/api/workshop/dcw/lines', { body: { name: `全协议产线-${TAG}` }, token })).data?.line
   check('0.1', '建产线', Boolean(line?.id))
 
+  // ── 0.2 产线级权限(新版权限模型:普通用户默认无权,admin 逐线授 operate) ──
+  const ADMIN_PASS = process.env.AW_ADMIN_PASS ?? 'admin123'
+  const adminLogin = await api('POST', '/api/users/login', {
+    body: { email: 'admin@awshop.local', password: ADMIN_PASS },
+  }).catch(() => null)
+  const adminTok = adminLogin?.data?.token
+  if (adminTok) {
+    const granted = await api('PUT', '/api/workshop/permissions', {
+      body: { userId: reg.data?.user?.id, grants: [{ lineId: line.id, mode: 'operate' }] }, token: adminTok,
+    }).catch(() => null)
+    check('0.2', 'admin 授予测试用户产线 operate 权限', Boolean(granted?.data?.userId), granted?.message ?? '')
+  }
+  else {
+    console.log('  [skip] admin 登录失败(可设 AW_ADMIN_PASS),以普通用户无权态继续(写入段将按权限模型拒绝)')
+  }
+
   // ── 1. DAQ 五协议节点(配置连接 + 连接测试) ──
   const daqDefs = [
     { id: 'mqtt', driver: 'mqtt', templateRef: 'daq-temp-tc', name: `MQTT温度-${TAG}`, expect: [30, 75],

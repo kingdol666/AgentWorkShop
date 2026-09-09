@@ -104,13 +104,16 @@ $ aw start
 | `aw start` | s, prod, preview | **一键启动**生产服务（检出内外皆可;缺产物自动构建） |
 | `aw dev` | d | 启动开发服务器（检出内;断连守卫 + .env 预载） |
 | `aw build` | b, compile | 生产构建 → .output/ |
+| `aw stop` | — | 依单实例锁终止运行中的 aw 服务实例 |
 | `aw config` | cfg, c | `list/get/set/unset/reset/validate` 运行配置 |
+| `aw plugin` | plugins, plug | `list/create/enable/disable` 插件管理(双作用域查看/脚手架/启停) |
 | `aw home` | hw | 查看/初始化 AW Home |
 | `aw doctor` | dsk, check-env | 环境/配置/服务健康检查 |
 | `aw status` | st, info | 运行态总览（模式/配置源/服务/指令表） |
 | `aw register` | reg | 注册自定义指令（本地文件/URL/npm 包） |
 | `aw update` | upgrade | 对比 npm 远程最新版本,有新版就地更新全局安装（`--check` 只查不装） |
 | `aw init` | create, new | 脚手架一个新项目检出 |
+| `aw tui` | tui | 终端工作台:频道/成员管理、任务下发、实时监控、HITL 作答 |
 | `aw version` | v | 版本信息 |
 
 全局参数：`--help/-h`、`--version/-v`、`--json`（机器可读）、`--root <dir>`、`--debug`。
@@ -121,11 +124,15 @@ $ aw start
 aw config set server.prod.port 8080     # 改生产端口(重启生效)
 aw config set theme.primaryColor '#41c8f4'
 aw config get server.dev.port           # 值 + 来源
-aw config list                          # 62 个设置项(14 组)+ 来源 + 生效方式
+aw config list                          # 73 个设置项(16 组)+ 来源 + 生效方式
 aw config validate                      # 校验 config.yml 与覆盖合法性
 aw start --port 3002                    # CLI 参数最高优先
 aw doctor                               # 体检:Node/pnpm/AW Home/端口/密钥/产物
 aw status --json                        # 机器可读运行态
+aw plugin list                          # 双作用域插件清单(项目级 + 用户级,含启停态)
+aw plugin create my-plugin              # 脚手架一个新插件到 ~/.AgentWorkShop/plugins/
+aw plugin disable my-plugin             # 停用(写状态文件,运行中服务自感知,重装载即跳过)
+aw stop                                 # 依单实例锁停掉正在跑的 aw 服务
 ```
 
 ## 五、指令注册系统（可扩展机制）

@@ -34,7 +34,7 @@ export default {
 
 ## 3. Hooks
 
-`daq:sample`, `daq:frame`, `daq:alarm`, `dcw:write`, `line:start`, `line:stop`, `scene:*`.
+`daq:sample`, `daq:frame`, `dcw:write`, `line:start`, `line:stop`, `scene:*`.
 Sequential per event, failures contained. See [Lifecycle](/en/plugins/lifecycle).
 
 ## 4. Registration APIs

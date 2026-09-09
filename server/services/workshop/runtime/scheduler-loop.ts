@@ -51,6 +51,9 @@ export interface SchedulerLoopOptions {
   stallMs?: number
   /** 调度快照邮件提供者(manager 注入;返回最新在前);未注入则快照 mail 为空 */
   supervisionMail?: (limit: number) => ChannelMail[]
+  /** agent 最近一次工具调用时刻(manager 注入;停滞看门狗的活性信号:
+   *  真实 LLM 长工具链不更新 progress 数字,健康工作不能被两轮 stallMs 误回收) */
+  toolActivityOf?: (agentId: string) => number | null
 }
 
 /** 空闲退避上限(指纹不变时 tick 间隔指数退避至此;事件 wake 立即恢复) */
@@ -60,6 +63,7 @@ export class SchedulerLoop {
   private readonly tickMs: number
   private readonly stallMs: number
   private readonly supervisionMail: ((limit: number) => ChannelMail[]) | null
+  private readonly toolActivityOf: ((agentId: string) => number | null) | null
   /** supervise 节流:最小间隔与最近一次执行时刻/信号指纹(token 效率) */
   private lastSuperviseAt = 0
   private lastFingerprint = ''
@@ -101,6 +105,7 @@ export class SchedulerLoop {
     this.tickMs = options.tickMs ?? 1000
     this.stallMs = options.stallMs ?? 300000
     this.supervisionMail = options.supervisionMail ?? null
+    this.toolActivityOf = options.toolActivityOf ?? null
   }
 
   /** 空闲退避:快照指纹连续不变的轮数(决定下次 tick 间隔) */
@@ -439,6 +444,18 @@ export class SchedulerLoop {
     const assigneeState = new Map(this.channelRuntime.getAgents().map(a => [a.agentId, a.getState()]))
     for (const task of tasks) {
       if (task.state !== 'WORKING') continue
+      // 工具调用即活性:最近 stallMs 内有工具invoke的任务视为健康推进,刷新基线并跳过看门狗。
+      // 真实 LLM worker 的长工具链(真实 PLC 写+等待回读)不更新 progress 数字,且回合间隙
+      // runtime 会短暂 idle——仅凭 progress 停滞会把健康任务误回收(实测 live-line 闭环任务
+      // 交付物已含 CLOSEDLOOP-OK 却被Canceled)。真停滞(无工具活动+无进度)仍走 notify→cancel。
+      const lastTool = this.toolActivityOf?.(task.assigneeId) ?? 0
+      const toolActive = lastTool > 0 && now - lastTool <= this.stallMs
+      if (toolActive) {
+        this.lastProgress.set(task.id, { progress: task.progress, at: now })
+        this.progressSeen.set(task.id, { progress: task.progress, at: now })
+        this.notified.delete(task.id)
+        continue
+      }
       if (assigneeState.get(task.assigneeId) === 'busy') {
         // busy 且 progress 长期不变:催一次 lead 介入(notify 到 assignee 本人,请其推进/汇报);
         // 尚未到基准时间或 progress 已变 → 刷新基线

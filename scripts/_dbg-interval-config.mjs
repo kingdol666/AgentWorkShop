@@ -37,15 +37,19 @@ async function main() {
   const reg = await api('POST', '/api/users/register', { body: { email: `cfg-${Date.now().toString(36)}@test.local`, password: 'Passw0rd!123', name: `cfg-${Date.now().toString(36)}` } })
   const token = reg.data?.token
   if (!token) throw new Error('注册失败')
-  // 设置修改需 admin:读取种子凭据存档(.AgentWorkShop/data/seed-credentials.txt)
+  // 设置修改需 admin:凭据存档支持两种格式 —— 旧版「password: <pw>」(zhangwei@awshop.io)
+  // 与新版「admin@awshop.local / <pw>」(首注册自注册制);env AW_ADMIN_PW 可直接覆盖
   const fs = await import('node:fs')
   let adminToken = token
   try {
     const cred = fs.readFileSync('.AgentWorkShop/data/seed-credentials.txt', 'utf-8')
-    const pw = cred.match(/password:\s*(\S+)/)?.[1]
-    const lg = await api('POST', '/api/users/login', { body: { email: 'zhangwei@awshop.io', password: pw } })
+    const legacyPw = cred.match(/password:\s*(\S+)/)?.[1]
+    const newFmt = cred.match(/admin@awshop\.local\s*\/\s*(\S+)/)
+    const email = legacyPw && !newFmt ? 'zhangwei@awshop.io' : 'admin@awshop.local'
+    const pw = process.env.AW_ADMIN_PW ?? (legacyPw && !newFmt ? legacyPw : newFmt?.[1])
+    const lg = await api('POST', '/api/users/login', { body: { email, password: pw } })
     adminToken = lg.data?.token ?? token
-    console.log(`  [setup] admin 登录: ${lg.data?.token ? 'ok' : '失败(回退 user token)'}`)
+    console.log(`  [setup] admin 登录(${email}): ${lg.data?.token ? 'ok' : '失败(回退 user token)'}`)
   }
   catch {
     console.log('  [setup] 无种子凭据存档,回退 user token')
@@ -92,8 +96,15 @@ async function main() {
   check('C4.2', 'samples 传 500 → 钳到 minBucketMs=800', q2.data?.bucketMs === 800, `bucketMs=${q2.data?.bucketMs}`)
   const lq = await api('GET', `/api/workshop/dcw/line/query?lineId=${line.id}`, { token })
   const lpts = lq.data?.channels?.[0]?.points ?? []
-  const gaps = lpts.slice(1).map((p, i) => p.at - lpts[i].at)
-  check('C4.3', '产线查询桶距 ≈3000ms(3000±400)', gaps.length > 0 && gaps.every(g => Math.abs(g - 3000) <= 400), `gaps=${gaps.slice(0, 4).join(',')}`)
+  // 桶宽生效的数学证据:同一 time_bucket 调用产出的桶必然落在同一网格,
+  // 任意两点差 = 桶宽整数倍(±2ms 浮点尾差);跨网格点会破坏该性质
+  const B = 3000
+  let mult = true
+  for (let i = 1; i < lpts.length && mult; i++) {
+    const d = lpts[i].at - lpts[0].at
+    if (Math.abs(d / B - Math.round(d / B)) * B > 2) mult = false
+  }
+  check('C4.3', `产线查询桶间距均为 ${B}ms 整数倍(同网格)`, lpts.length > 1 && mult, `pts=${lpts.length} firstDiff=${lpts.length > 1 ? (lpts[1].at - lpts[0].at).toFixed(1) : '-'}`)
 
   // ── C5 CLI 同源(直接写 runtime-settings.json + reload API 模拟 aw config set 的收敛点) ──
   const rl = await api('POST', '/api/system/settings/reload', { body: {}, token })

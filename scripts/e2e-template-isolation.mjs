@@ -11,8 +11,8 @@
  *  E. 监控隔离:user 只见本人;admin 全量 + ownerName;用户管理接口 admin 门
  */
 const BASE = process.env.BASE_URL ?? 'http://localhost:3001'
-const ADMIN_EMAIL = 'zhangwei@awshop.io'
-const ADMIN_PASSWORD = 'Awshop@123'
+const ADMIN_EMAIL = process.env.E2E_USER ?? 'zhangwei@awshop.io'
+const ADMIN_PASSWORD = process.env.E2E_PASS ?? 'Awshop@123'
 
 let pass = 0
 let fail = 0

@@ -8,7 +8,7 @@ const fail = m => { console.error('FAIL:', m); process.exitCode = 1 }
 const jget = u => fetch(ROOT + u, { headers: H }).then(r => r.json())
 const jpatch = (u, b) => fetch(ROOT + u, { method: 'PATCH', headers: H, body: JSON.stringify(b) }).then(r => r.json())
 
-const login = await fetch(`${ROOT}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }) }).then(r => r.json())
+const login = await fetch(`${ROOT}/api/users/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: process.env.E2E_USER ?? 'zhangwei@awshop.io', password: process.env.E2E_PASS ?? 'Awshop@123' }) }).then(r => r.json())
 const browser = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--disable-gpu', '--window-size=1600,1000'] })
 const page = await browser.newPage()
 await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 })

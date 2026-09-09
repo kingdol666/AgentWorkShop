@@ -52,9 +52,16 @@ features:
     title: 插件 · 前后端双面增强
     details: 服务端钩子(daq:sample / dcw:write / scene 全事件)+ 自定义数采驱动/处理器/
       节点模板 + omp 工具热注入;SDK 提供类型化 REST 客户端与权限感知上下文。
+  - icon: '<span class="aw-tag">TEA</span>'
+    title: 团队级插件开关
+    details: 建队勾选或团队弹层随时切换(每 Channel 独立,channel_plugins 表承载);
+      被关闭插件的工具不注入该团队 Agent、派发同源拒绝。插件本体支持热管理
+      (/plugins 管理页 + aw plugin list/enable/disable)。
   - icon: '<span class="aw-tag">TWN</span>'
     title: 3D 数字孪生
-    details: Three.js 小镇实时呈现产线设备、节点健康、告警与趋势 —— 与 Agent 消费同一事件流。
+    details: Three.js 小镇实时呈现产线设备、节点健康、告警与趋势 —— 与 Agent 消费同一
+      事件流。自适应画质阶梯(DPR/阴影/Bloom 分档 + 墙钟 FPS 预算)自动匹配机器,
+      window.__townStats 暴露 fps/drawCalls/tier 等真实渲染指标。
 
 footer:
   message: 依据 PolyForm Noncommercial 1.0.0 开源 · 未经许可不得商用

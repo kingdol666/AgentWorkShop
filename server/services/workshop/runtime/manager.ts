@@ -323,6 +323,8 @@ export class AgentChannelManager {
   private readonly memoryEmbedder = createEnvEmbeddingProvider()
   /** 反思游标:每 agent 上次聚合的当月任务数(月度幂等增量判定) */
   private readonly reflectCounts = new Map<string, number>()
+  /** agent 最近一次工具 invoke 时刻(调度器停滞看门狗的活性源;工具调用即健康推进) */
+  private readonly lastToolInvokeAt = new Map<string, number>()
 
   constructor(private deps: ManagerDeps) {
     // 记忆衰减清理定时器(失败只记日志,绝不抛出;unref 不阻进程退出;非法/非正 env 回退默认)
@@ -694,6 +696,8 @@ export class AgentChannelManager {
     if (!lead) return
     const loop = new SchedulerLoop(cr, lead, {
       ...options,
+      // 停滞看门狗活性源:agent 最近一次工具 invoke 时刻(工具调用即健康推进)
+      toolActivityOf: (agentId: string) => this.lastToolInvokeAt.get(agentId) ?? null,
       // 调度快照的邮件上下文(lead 观察 worker 间通信的唯一来源;DB 为事实源)
       supervisionMail: limit => this.deps.repos.messages
         .listRecentByChannel(channelId, limit)
@@ -2734,6 +2738,8 @@ export class AgentChannelManager {
     // 工具执行错误(业务约束/目标不存在等)一律降级为 isError 文本——
     // 绝不让 AppError 以 unhandledRejection 逃逸拖垮 worker(stability-guard 会因此退出整进程)
     try {
+      // 活性登记:调度器停滞看门狗以「最近工具调用」为健康信号(见 SchedulerLoopOptions.toolActivityOf)
+      this.lastToolInvokeAt.set(input.agentId, Date.now())
       const runtime = this.ensureAgentRuntime(row.channelId, input.agentId)
       if (runtime) {
         const viaImpl = await runtime.dispatchHostTool(input.tool, input.args ?? {})

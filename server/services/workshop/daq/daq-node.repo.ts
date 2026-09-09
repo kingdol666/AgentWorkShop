@@ -86,9 +86,11 @@ class DaqNodeRepo {
   }
 }
 
-let singleton: DaqNodeRepo | null = null
+// 单例挂 globalThis(与 dcw-recipe.repo 同型):dev HMR 重建模块时保住实例,
+// 否则 nitro 重建后的 DaqController 仍持旧 repo,运行时内存态分叉
+const g = globalThis as typeof globalThis & { __daqNodeRepo?: DaqNodeRepo }
 
 export function getDaqNodeRepo(): DaqNodeRepo {
-  singleton ??= new DaqNodeRepo()
-  return singleton
+  g.__daqNodeRepo ??= new DaqNodeRepo()
+  return g.__daqNodeRepo
 }

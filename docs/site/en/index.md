@@ -59,10 +59,18 @@ features:
     details: Server hooks (daq:sample / dcw:write / scene events) + custom DAQ drivers,
       processors, node templates + hot-injected agent tools; the SDK ships a typed REST
       client and a permission-aware plugin context.
+  - icon: '<span class="aw-tag">TEA</span>'
+    title: Team-scoped plugin switches
+    details: Pick plugins at team creation or toggle them later in the team dialog — each
+      channel keeps its own switch set (channel_plugins). A disabled plugin's tools are not
+      injected into that team's agents and dispatch rejects them. Plugins themselves are
+      hot-managed via the /plugins page and `aw plugin enable/disable`.
   - icon: '<span class="aw-tag">TWN</span>'
     title: 3D digital twin
     details: A Three.js town renders line equipment, node health, alarms and trends in real
-      time — fed by the same event bus the agents consume.
+      time — fed by the same event bus the agents consume. An adaptive quality ladder
+      (DPR / shadow / bloom tiers with a wall-clock FPS budget) matches the machine, and
+      window.__townStats exposes real render metrics (fps / drawCalls / tier / dpr).
 
 footer:
   message: Licensed under PolyForm Noncommercial 1.0.0

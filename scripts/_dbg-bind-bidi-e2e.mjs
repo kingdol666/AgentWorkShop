@@ -15,7 +15,7 @@ const H = () => ({ 'authorization': `Bearer ${TOKEN}`, 'content-type': 'applicat
 const login = await fetch(`${BASE}/api/users/login`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
+  body: JSON.stringify({ email: process.env.E2E_USER ?? 'zhangwei@awshop.io', password: process.env.E2E_PASS ?? 'Awshop@123' }),
 }).then(r => r.json())
 TOKEN = login.data.token
 const OUT = 'docs/audit/screenshots/ui-polish-0831'

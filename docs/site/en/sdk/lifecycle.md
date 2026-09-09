@@ -1,18 +1,22 @@
 # Lifecycle events
 
 Plugins subscribe through `ctx.hooks.on(event, handler)` and return optionally — thrown
-errors are contained by the platform and never break the main path.
+errors are contained by the platform and never break the main path. The authoritative
+list is the SDK-exported `LIFECYCLE_EVENTS` (`sdk/lifecycle.mjs`).
 
 ## Server-side events
 
 | Event | Payload highlights | Use |
 |---|---|---|
+| `plugin:host:init` | `{ plugins, failures }` after the host loads all plugins | readiness, deferred init |
 | `daq:sample` | node snapshot after a sample lands | inline enrichment, thresholds |
-| `daq:frame` | vector/image frame envelopes | custom sinks and derived metrics |
-| `daq:alarm` | alarm raised/recovered | paging, webhook fan-out |
+| `daq:frame` | vector/image frame envelopes (no pixel blobs) | custom sinks and derived metrics |
 | `dcw:write` | write outcome (node, eng, prev, ok, source, lineId) | audit mirrors, downstream sync |
 | `line:start` / `line:stop` | active run (product/recipe/run) | batch bookkeeping |
+| `permissions:changed` | `{ userId }` after line grants change | refresh cached grant views |
+| `config:changed` | `{ at }` when runtime settings change | re-read `ctx.config` |
 | `scene:*` | full platform scene stream (node changed, tasks, members…) | twin/panel sync |
+| `server:close` | `{ at }` after per-plugin dispose queues ran | final flush |
 
 ## Ordering & guarantees
 

@@ -39,6 +39,32 @@ export default {
 }
 ```
 
+## 插件热管理(`aw plugin` + /plugins 页)
+
+```bash
+aw plugin list                  # 双作用域清单(项目级 + 用户级,含启停态)
+aw plugin create my-plugin      # 脚手架(默认用户级;--project 进检出)
+aw plugin disable my-plugin     # 停用(写 plugins-state.json,服务自感知)
+aw plugin enable my-plugin      # 重新启用
+```
+
+- 状态文件 = 配置根 `plugins-state.json { version, updatedAt, disabled: [...] }`;
+  CLI 与 Web 端(/plugins 管理页)写同一文件,服务端装载/重装载时跳过 disabled 项
+  (manifest 仍可见,`enabled: false`),**无需改代码、无需重启进程即可完成启停闭环**。
+- 文件级修改(改 index.mjs 代码)仍需重启——状态开关与代码热更不是一回事。
+
+## 团队级插件开关(channel × 插件)
+
+全局启停之外,每个团队(Channel)还有**独立的插件开关组**(`channel_plugins` 表承载):
+
+- **建队时勾选**:团队创建表单可勾选要启用的插件,写入该团队的开关行;
+- **团队弹层随时切换**:Agent 工作台 → 团队设置,切换即 PUT 生效;
+- **语义**:无显式行 = 未配置 → 全部启用插件对该团队可见(向后兼容,存量频道不受影响);
+  显式行写入后按行过滤——**被关闭插件的工具不注入该团队的 Agent,dispatch 同源拒绝**,
+  防止不需要插件的团队上下文被污染。
+- 前端管理面:/workshop teams 页(创建勾选 + 团队弹层);REST:`/api/workshop/plugins`
+  manifest 与团队开关接口;字典命名空间 `teamPlugins.json`(i18n)。
+
 ## 装载流程(项目启动时自动发现)
 
 ```

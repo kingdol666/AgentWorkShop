@@ -996,17 +996,20 @@ class DaqController {
     return node
   }
 
-  /** 设备删除级联:解绑其全部 DAQ 节点 + 清回写积压 + 广播(链路不再依赖下次回写失败自愈) */
+  /** 设备删除级联:解绑其全部 DAQ 节点 + 清回写积压 + 广播(链路不再依赖下次回写失败自愈)。
+   *  flushNow(全量 JSON 序列化落盘)移出循环:逐节点落盘会随匹配数重复序列化整库 */
   unbindDevice(deviceId: string): void {
     this.pendingBackfill.delete(deviceId)
     this.siblingsCache.delete(deviceId)
+    let touched = false
     for (const node of this.repo.all()) {
       if (!node.deviceIds.includes(deviceId)) continue
       node.deviceIds = node.deviceIds.filter(d => d !== deviceId)
       node.deviceBindingId = node.deviceIds[0] ?? null
-      this.repo.flushNow()
+      touched = true
       this.emitNodeChanged('updated', node)
     }
+    if (touched) this.repo.flushNow()
   }
 
   /** 连接测试:按协议参数建连 + 读一次(前端"测试连接"按钮直达) */

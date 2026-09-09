@@ -40,8 +40,10 @@ const RING_BYTES_CAP = 4 * 1024 * 1024
 const DB_BUFFER_CAP = 2000
 /** 事件保留期(天;retention.events_days,env AW_EVENTS_RETENTION_D 可覆盖) */
 const EVENTS_RETENTION_DAYS = (): number => retentionSettings().events_days
-/** 单 peer 发送预算(字节/秒):超限视为慢消费者断开(1013),客户端重连快照对齐 */
-const PEER_SEND_BUDGET_BYTES = 32 * 1024 * 1024
+/** 单 peer 发送预算(字节/秒):超限视为慢消费者断开(1013),客户端重连快照对齐。
+ *  实测常态 ~85 帧/秒 ≈ 0.1MB/s,8MB/s 保留 ~80× 余量,同时封住病态积压
+ *  (原 32MB/s 过宽:慢客户端断开前每秒可积压 32MB 序列化帧) */
+const PEER_SEND_BUDGET_BYTES = 8 * 1024 * 1024
 
 /** 最小 peer 接口(h3 2.x 未 re-export crossws 类型,duck typing;与 game/ws.ts 同风格) */
 interface WsPeer {

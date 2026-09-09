@@ -480,15 +480,17 @@ class DcwController {
     return node
   }
 
-  /** 设备删除级联解绑(device-twins 删除路由调用) */
+  /** 设备删除级联解绑(device-twins 删除路由调用)。flushNow 移出循环(同 daq 侧) */
   unbindDevice(deviceId: string): void {
+    let touched = false
     for (const node of this.repo.all()) {
       if (!node.deviceIds.includes(deviceId)) continue
       node.deviceIds = node.deviceIds.filter(d => d !== deviceId)
       node.deviceBindingId = node.deviceIds[0] ?? null
-      this.repo.flushNow()
+      touched = true
       this.emitNodeChanged('updated', node)
     }
+    if (touched) this.repo.flushNow()
   }
 
   // ---------- 写命令(上位机核心操作)----------
@@ -972,8 +974,10 @@ class DcwController {
     await tsdbReady
     const bucketMs = endMs - startMs > 60_000 ? Math.max(1000, Math.round((endMs - startMs) / 200)) : undefined
     const daq = [] as Array<{ templateRef: string, nodeId: string, nodeName: string, ch: string, unit: string, latest: number | null, avg: number | null, min: number | null, max: number | null, cnt: number }>
-    // 并行查询(tsdb 往返一次/节点,互不依赖):N+1 串行会让 50 节点产线的批次视图放大 50 倍时延
-    const results = await Promise.all(getDaqNodeRepo().all().map(async (node) => {
+    // 并行查询(tsdb 往返一次/节点,互不依赖):N+1 串行会让 50 节点产线的批次视图放大 50 倍时延。
+    // 只查本批次产线的节点:批次归属单线,跨线节点的 tsdb 往返是纯浪费(节点数增长线性放大)
+    const lineNodes = getDaqNodeRepo().all().filter(n => !run.lineId || n.lineId === run.lineId)
+    const results = await Promise.all(lineNodes.map(async (node) => {
       try {
         const points = await getTsdb().query(node.id, { fromMs: startMs, toMs: endMs, bucketMs, limit: 500 })
         return { node, points }

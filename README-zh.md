@@ -54,6 +54,8 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **HITL + 调控闭环(真实协议验证)** | Agent 下发挂起待人工批准,批准后经 Modbus/OPC UA 真写并回读校验;闭环(下发→采样→判定→keep/回退)在真实模拟器上四引擎并行 E2E 验证。 |
 | **Recipe 版本化治理** | 参数修改按版本入史(归因 用户/Agent/系统 + 操作者 + 原因),一键回退任意版本或已知良好批次(非破坏);Agent 经工具保存最佳参数与回退,失效节点参数跳过并明确标识。 |
 | **Agent 自查工具** | `line_context` / `ops_log` / `recipe_log` / `recipe_versions` / `dcw_journal` —— Agent 清楚自己操控的产线/产品/配方,谁做过什么、每个值怎么变。运维日志操作者归属「Channel名/成员名」,与用户和系统天然区分。 |
+| **团队级插件开关（v0.7.26）** | 插件热管理（`aw plugin list/enable/disable` + `/plugins` 管理页）之外,每个团队（Channel）还有**独立插件开关组**——建队勾选或团队弹层随时切换（`channel_plugins`）。被关闭插件的工具不注入该团队 Agent、派发同源拒绝,无关团队不再继承工具噪音。 |
+| **停滞看门狗·工具活性感知（v0.7.27）** | Lead 监督看门狗把 **Agent 工具调用当作活性信号**:真实 PLC 长工具链不会刷进度条,但不会再被误判停滞回收(notify → cancel 仅在「既无工具活动也无进度」时发生)。健康但慢的工业任务活下来,真停滞仍会呈报 lead。 |
 | **可配置节拍（v0.7.7）** | 采样默认间隔与下限、时序查询默认桶宽与下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：config.yml、设置页或 `aw config set` 三路同源 —— 热重载、create/patch 钳制，注入 Agent 的工具描述实时携带当前值。 |
 | **多形态数采帧管线（v0.6）** | 测厚仪/扫描仪的多点轮廓与 CCD 图像经模板 sink 处理器加工后入库：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达自动降级本地磁盘）；派生指标越限走既有告警链路。 |
 | **插件扩展 API（v0.6）** | `ctx.daq.registerDriver / registerProcessor / registerTemplate` 自定义采集与下沉算法（放入 `plugins/` 即生效）；`ctx.omp.registerTool` 自定义 agent 工具，注册表变更运行时热注入全部在跑会话。 |
@@ -62,8 +64,8 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **三种执行模式** | `goal`（满意度判定）· `loop`（定间隔重放）· `pipeline`（顺序阶段）。7 状态任务机带进度、产物与完整历史。 |
 | **四个入口** | 一个 manager 坐在每扇门后：**WS**（AEP v1 事件流，seq 续传）、**MCP**（进程内工具）、**A2A**（JSON-RPC 2.0 + AgentCard）、**REST**。 |
 | **持久记忆** | 私有 + Channel 共享双域；FTS5 CJK 切分，可选向量混合检索，token 预算注入；会话压缩摘要自动入库、团队编年史与空闲反思持续沉淀（v0.6）。 |
-| **Harness 无关** | 一个 `AgentInterface`：`mock`（进程内）、`omp`（真实 Agent 子进程经 RPC）、`claude`（SDK 适配器）。平台永远不知道跑的是哪个。 |
-| **3D 数字孪生** | Three.js 小镇：放置产线设备与 Channel 领地，实时查看设备健康、告警与数值——由同一事件总线驱动。 |
+| **Harness 无关** | 一个 `AgentInterface`：`mock`（进程内）、`omp` / `codex` / `dsh` / `opencode`（真实引擎子进程,经 RPC/ACP/JSON-RPC）、`claude`（SDK 适配器）。平台永远不知道跑的是哪个。 |
+| **3D 数字孪生** | Three.js 小镇：放置产线设备与 Channel 领地，实时查看设备健康、告警与数值——由同一事件总线驱动。渲染跑在自适应画质阶梯上(DPR/阴影/Bloom 分档 + 墙钟 FPS 预算),并暴露 `window.__townStats` 仪表(fps / rafHz / drawCalls / triangles / tier / dpr)供性能回归探针;模型库预览共享单 WebGL rig + 可见性门控,不再一卡一上下文。 |
 
 ---
 
@@ -244,13 +246,16 @@ aw config set daq.query.minBucketMs 500             # 查询下限（samples/产
 | 指令 | 作用 |
 |---|---|
 | `aw start · aw dev · aw build` | 生产服务 / 开发服务器 / 构建——端口取自有效配置；首次 `start` 自动构建一次 |
+| `aw stop` | 依单实例锁终止运行中的 aw 服务实例 |
 | `aw config list · get · set · unset · reset` | 读写运行时设置（schema 校验 + 原子写盘） |
+| `aw plugin list · create · enable · disable` | 插件管理:双作用域查看/脚手架/启停（写状态文件,运行中服务自感知热生效） |
 | `aw home` | 查看/初始化配置根 `.AgentWorkShop` |
 | `aw init <dir>` | 脚手架一个可运行的新项目（含完整配置系统与 CLI） |
 | `aw register <路径\|URL\|npm:包名>` | 注册一条新指令——项目级或 `--global` 用户级 |
 | `aw update` | 对比 npm 远程最新版本,有新版就就地更新全局安装 |
 | `aw doctor` | 环境 + 项目健康检查（node、配置、端口、密钥） |
 | `aw status` | 运行态总览：模式、配置来源、运行中服务、指令表 |
+| `aw tui` | 终端工作台:频道/成员管理、任务下发、实时监控、HITL 作答（见 `tui/README.md`） |
 
 全局参数：`--help/-h` · `--version/-v` · `--json`（机器可读） · `--root <dir>` · `--debug`。
 
@@ -361,15 +366,16 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 ## 端到端验证
 
-仓库自带 live E2E 套件,在生产实例上对**模拟真实产线协议**(Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线)做全链路验收。最新一轮:**156 断言,0 失败**([完整报告](./docs/audit/e2e-2026-09-07.md)):
+仓库自带 live E2E 套件,在生产实例上对**模拟真实产线协议**(Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线)做全链路验收。完整验收基线:**156 断言,0 失败**([完整报告](./docs/audit/e2e-2026-09-07.md));渲染与后端优化后的 2026-09-09 生产复跑:
 
 | 套件 | 断言 | 覆盖 |
 |---|---|---|
-| 五协议真实产线 | 37 ✅ | 协议连通、五协议数采入 Timescale、逐协议数控下发回读、Agent 闭环、HITL 批准后 OPC UA 真写、Recipe 保存/回退、参数账本回退 |
-| 多 Harness 并行 | 21 ✅ | omp 闭环 · codex 真实寄存器写入 · dsh 真实数采 · opencode Recipe 写入+回退,四引擎在开跑产线上全部 COMPLETED |
-| 权限 / 审计负向 / Harness 可用性 / 失效节点 / Recipe 版本 | 98 ✅ | 产线三态授权、WS 鉴权、引擎探测、三态失效参数、归因版本史 |
+| 五协议真实产线 | 36/37 ✅ | 协议连通、五协议数采入 Timescale、逐协议数控下发回读、Agent 闭环、HITL 批准后 OPC UA 真写、Recipe 保存/回退、参数账本回退 —— 唯一失败项是 Agent 任务终态,根因为上游 **LLM 供应商 429 配额**(环境因素非回归);协议/工具/审批断言全过 |
+| 生产 API 全链路(api-live-e2e) | 64/64 ✅ | 跨重启持久化、模板 CRUD、任务 assign/complete/cancel/loop/pipeline、A2A+mailbox、WS 广播、MCP 端点、级联删除 |
+| 产线权限 / 审计负向 | 20/20 + 9/9 ✅ | 三态授权 + 人话 403、授权撤销收敛、无 token WS 零遥测 |
+| 渲染功能回归(_dbg-render-regression) | 29/29 ✅ | 227 行表格完整性、WS 驱动行更新、筛选、详情页、3D 小镇 + 模型库、7 页 smoke、零 pageerror |
 
-复现:`node scripts/_dbg-live-line-e2e.mjs` · `node scripts/_dbg-multiharness-live-e2e.mjs`（对运行中的服务端）。
+复现(凭据走环境变量 `E2E_USER`/`E2E_PASS`,老套件走 argv):`node scripts/_dbg-live-line-e2e.mjs` · `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` · `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` · 性能:`scripts/_dbg-render-perf.mjs`。
 
 ---
 
@@ -446,6 +452,9 @@ node scripts/_dbg-full-feature-e2e.mjs    # 全功能 live E2E（需服务端运
 | 双语文档(简体中文 / English,VitePress 语言切换) | 已交付 |
 | Channel 级 LLM provider/model 选择（实时 Harness 目录） | 已交付 |
 | 可配置数采/时序节拍（采样与查询的默认值+下限，live 热重载） | 已交付 |
+| 团队级插件开关（建队勾选 + 团队弹层,按 Channel 过滤工具注入） | 已交付 |
+| 插件热管理:/plugins 管理页 + aw plugin list/enable/disable | 已交付 |
+| 渲染性能专项(v0.7.27):数采主线程阻塞 −90%、孪生 −69%,自适应画质回升最高档;`window.__townStats` 仪表化 | 已交付 |
 | Claude Agent SDK 适配器——与 `mock`/`omp` 完全对齐 | 进行中 |
 | 生产硬化：TLS、MQTT 鉴权、OPC UA 签名+加密缺省、结构化审计日志 | 规划中 |
 | 边缘部署形态：独立 edge-agent + 中心 broker | 规划中 |

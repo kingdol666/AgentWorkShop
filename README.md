@@ -53,6 +53,8 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 | **HITL + control loop, protocol-real** | Agent dispatches pend for human approval, then write over Modbus/OPC UA with readback verification; the closed loop (control → sample → judge → keep/rollback) runs against real simulators — verified end to end with four harnesses in parallel. |
 | **Recipe versioning & governance** | Parameter changes are versioned with attribution (user/agent/system + operator + reason). Roll back to any revision or the last-good batch — non-destructively. Agents save best parameters and roll back through tools; stale-node params are skipped and clearly marked. |
 | **Agent self-audit tools** | `line_context`, `ops_log`, `recipe_log`, `recipe_versions`, `dcw_journal` — agents see exactly which line/product/recipe they control, who did what, and how every value changed. Operations are attributed to "Channel/Member" in the ops log, distinct from users and the system. |
+| **Team-scoped plugin switches (v0.7.26)** | Plugins are hot-manageable (`aw plugin list/enable/disable`, the `/plugins` page) and each team (channel) gets an **independent plugin switch set** — picked at team creation or toggled later in the team dialog (`channel_plugins`). A disabled plugin's tools are not injected into that team's agents and dispatch rejects them, so unrelated teams never inherit tool noise. |
+| **Stall watchdog with tool-activity liveness (v0.7.27)** | The lead's supervision watchdog treats **agent tool invocations as a liveness signal**: long real-PLC tool chains never update a progress bar, yet are no longer reclaimed as stalled (notify → cancel only when there is neither tool activity nor progress). Healthy-but-slow industrial tasks survive; genuinely stuck ones still surface to the lead. |
 | **Configurable cadences (v0.7.7)** | Sampling default & floor and Timescale query bucket default & floor are **live settings** (`daq.sampling.*`, `daq.query.*`): change them in `config.yml`, the Settings UI or via `aw config set` — hot-reloaded, clamped on node create/patch, and the injected agent tool descriptions always carry the current values. |
 | **Fully config-driven runtime (v0.7)** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — legacy env names kept as aliases, no hardcoded defaults left in code. Project-level `.AgentWorkShop` wins; `~/.AgentWorkShop` is the user-level fallback (auto-seeded on install). |
 | **Multi-modal DAQ frame pipeline (v0.6)** | Multi-point profiles (thickness/scanner) and CCD image frames are processed through template sink pipelines before storage: vectors & metadata into Timescale (`daq_frames`), pixels into object storage (MinIO, auto disk fallback); derived-metric thresholds ride the existing alarm chain. |
@@ -63,7 +65,7 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 | **Four entry points** | One manager behind every door: **WS** (AEP v1 event stream with seq-resume), **MCP** (in-process tools), **A2A** (JSON-RPC 2.0 + AgentCard), **REST**. |
 | **Persistent memory** | Private + channel-shared domains; FTS5 with CJK segmentation, optional vector hybrid recall, token-budgeted injection; session compaction summaries auto-archived, team chronicle and idle reflections keep accumulating (v0.6). |
 | **Harness-agnostic** | One `AgentInterface` — `mock` (in-process), `omp` / `codex` / `dsh` / `opencode` (real engine subprocesses over RPC/ACP/JSON-RPC) and a Claude SDK adapter. The platform never knows which one runs. |
-| **3D digital twin** | Three.js town: place line equipment and channel territories, watch device health, alarms and live values — driven by the same event bus. |
+| **3D digital twin** | Three.js town: place line equipment and channel territories, watch device health, alarms and live values — driven by the same event bus. Renders behind an adaptive quality ladder (DPR/shadow/bloom tiers) with a wall-clock FPS budget and a `window.__townStats` instrumentation hook (fps / rafHz / drawCalls / triangles / tier / dpr) for perf regression probes; model previews share one WebGL rig with visibility gating instead of one context per card. |
 
 ---
 
@@ -244,7 +246,9 @@ Agent tool descriptions are re-rendered with the current values on every injecti
 | Command | What it does |
 |---|---|
 | `aw start · aw dev · aw build` | Production server / dev server / build — ports from the effective config; first `start` builds once |
+| `aw stop` | Stop a running `aw` service instance via the single-instance lock |
 | `aw config list · get · set · unset · reset` | Read & write runtime settings (validated against the schema, atomic writes) |
+| `aw plugin list · create · enable · disable` | Manage plugins: inspect both scopes, scaffold, enable/disable (state file, hot-applied on the running server) |
 | `aw home` | Inspect / initialize the config root `.AgentWorkShop` |
 | `aw init <dir>` | Scaffold a runnable project (full config system + CLI included) |
 | `aw register <path\|url\|npm:pkg>` | Register a new command — project-local or `--global` |
@@ -369,15 +373,19 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 The repo ships live E2E suites that run against a production instance over **simulated real
 plant protocols** (Modbus TCP/RTU, OPC UA, MQTT, HTTP + MQTT/Timescale pipelines). Latest
-acceptance run — **156 assertions, 0 failures** ([full report](./docs/audit/e2e-2026-09-07.md)):
+full-acceptance run — **156 assertions, 0 failures** ([full report](./docs/audit/e2e-2026-09-07.md));
+the 2026-09-09 production re-run after the rendering/optimization pass:
 
 | Suite | Checks | Covers |
 |---|---|---|
-| Five-protocol live line | 37 ✅ | protocol connectivity, DAQ sampling (5 protocols) into Timescale, DCW dispatch + readback per protocol, agent closed loop, HITL approval with a real OPC UA write, recipe update/rollback, param-ledger rollback |
-| Multi-harness parallel | 21 ✅ | omp closed loop · codex real register write · dsh real acquisition · opencode recipe write+rollback — each engine COMPLETED on a running line |
-| Permissions / audit-neg / harness availability / stale-node guard / recipe versions | 98 ✅ | line grants, WS auth, engine probing, three-state stale params, versioned history with attribution |
+| Five-protocol live line | 36/37 ✅ | protocol connectivity, DAQ sampling (5 protocols) into Timescale, DCW dispatch + readback per protocol, agent closed loop, HITL approval with a real OPC UA write, recipe update/rollback, param-ledger rollback — the single failed check was the agent task's terminal state, caused by an upstream **LLM provider 429 quota** during the run (environmental, not a regression); all protocol/tool/approval assertions passed |
+| Production API live (`api-live-e2e`) | 64/64 ✅ | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete |
+| Line permissions / audit-negative | 20/20 + 9/9 ✅ | three-state line grants with human-readable 403s, grant revocation convergence, unauthenticated WS receives zero telemetry |
+| Render regression (`_dbg-render-regression`) | 29/29 ✅ | 227-row DAQ table integrity, WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors |
 
-Reproduce: `node scripts/_dbg-live-line-e2e.mjs` · `node scripts/_dbg-multiharness-live-e2e.mjs` (against a running server).
+Reproduce (credentials via env — `E2E_USER` / `E2E_PASS`, argv for older suites):
+`node scripts/_dbg-live-line-e2e.mjs` · `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` ·
+`node scripts/_dbg-render-regression.mjs <base> <email> <pass>` · perf: `scripts/_dbg-render-perf.mjs`.
 
 ---
 
@@ -454,6 +462,9 @@ node scripts/_dbg-full-feature-e2e.mjs    # full-feature live E2E (server must b
 | Bilingual docs (简体中文 / English) with VitePress language switcher | Shipped |
 | Per-channel LLM provider/model selection from live harness catalogs | Shipped |
 | Configurable DAQ/TSDB cadences (sampling & query defaults + floors, live) | Shipped |
+| Team-scoped plugin switches (create-time pick + team dialog, per-channel tool injection) | Shipped |
+| Plugin hot management: `/plugins` page + `aw plugin list/enable/disable` | Shipped |
+| Rendering perf pass (v0.7.27): DAQ main-thread blocking −90%, twin −69%, adaptive quality restored to top tier; `window.__townStats` instrumentation | Shipped |
 | Claude Agent SDK adapter — full parity with `mock`/`omp` | In progress |
 | Production hardening: TLS, MQTT auth, OPC UA sign+encrypt defaults, structured audit log | Planned |
 | Edge deployment shape: standalone edge-agent + central broker | Planned |

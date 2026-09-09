@@ -7,7 +7,7 @@ const BASE = 'http://127.0.0.1:3000'
 const loginRes = await fetch(`${BASE}/api/users/login`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'zhangwei@awshop.io', password: 'Awshop@123' }),
+  body: JSON.stringify({ email: process.env.E2E_USER ?? 'zhangwei@awshop.io', password: process.env.E2E_PASS ?? 'Awshop@123' }),
 }).then(r => r.json())
 const token = loginRes?.data?.token
 if (!token) throw new Error(`login failed: ${JSON.stringify(loginRes).slice(0, 200)}`)
