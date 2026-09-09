@@ -920,5 +920,319 @@
     }
    }
   }
+ },
+ {
+  "name": "aml_node_catalog",
+  "label": "AML Node Catalog",
+  "description": "列出你可用的 AML 建模节点(全部 daq 绑定):节点 id/名称/物理语义/单位/量程/所属产线/近 24h 是否有批次打标数据。开始任何自动建模前先调用本工具选节点(control=可控输入/target=预测目标/feature=仅历史特征);无绑定会给出指引。",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "name": "aml_dataset_build",
+  "label": "AML Dataset Build",
+  "description": "构建 AML 训练数据集:按隔离三元组(产线/产品/配方,防配方串味)拉取批次打标数据,清洗(状态/量程/Hampel)后对齐到 beat_ms 网格,按批次滑窗切分 train/val/test。鉴权:每个 node_id 都必须有你的 daq 绑定且归属 line_id(绑定只缩不放)。返回 dataset_id、行数、窗口计数、逐节点清洗摘要、控制→目标滞后估计。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "line_id": {
+     "type": "string",
+     "description": "产线 id(必填;line_context 可查)"
+    },
+    "product_id": {
+     "type": "string",
+     "description": "产品 id(必填)"
+    },
+    "recipe_id": {
+     "type": "string",
+     "description": "配方 id(必填)"
+    },
+    "nodes": {
+     "type": "array",
+     "description": "节点与角色列表(≥2 项,必须含 1 个 target)",
+     "items": {
+      "type": "object",
+      "properties": {
+       "node_id": {
+        "type": "string",
+        "description": "数采节点 id(须有你的 daq 绑定)"
+       },
+       "role": {
+        "type": "string",
+        "enum": [
+         "control",
+         "feature",
+         "target"
+        ],
+        "description": "control=可控输入(未来轨迹已知)/ target=预测目标 / feature=仅历史特征"
+       }
+      },
+      "required": [
+       "node_id",
+       "role"
+      ]
+     }
+    },
+    "beat_ms": {
+     "type": "number",
+     "description": "数据对齐节拍(ms,≥1000,常用 5000~15000)"
+    },
+    "history_steps": {
+     "type": "number",
+     "description": "历史窗口步数(1~2048;覆盖主要滞后即可)"
+    },
+    "horizon_steps": {
+     "type": "number",
+     "description": "预测步长(1~512;mpc_surrogate 建议覆盖调控响应期)"
+    },
+    "split_seed": {
+     "type": "number",
+     "description": "切分随机种子(缺省 42)"
+    },
+    "val_ratio": {
+     "type": "number",
+     "description": "验证集比例(缺省 0.15)"
+    },
+    "test_ratio": {
+     "type": "number",
+     "description": "测试集比例(缺省 0.15)"
+    },
+    "purpose": {
+     "type": "string",
+     "enum": [
+      "mpc_surrogate",
+      "quality_predict"
+     ],
+     "description": "建模目的:mpc_surrogate=代理模型(缺省)/ quality_predict=质量预测"
+    },
+    "note": {
+     "type": "string",
+     "description": "数据集备注(为什么建这个数据集)"
+    },
+    "run_ids": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "限定批次 id 列表(缺省 = 该配方全部已完结批次)"
+    },
+    "from_ms": {
+     "type": "number",
+     "description": "起始 epoch ms(可选)"
+    },
+    "to_ms": {
+     "type": "number",
+     "description": "结束 epoch ms(可选)"
+    }
+   },
+   "required": [
+    "line_id",
+    "product_id",
+    "recipe_id",
+    "nodes",
+    "beat_ms",
+    "history_steps",
+    "horizon_steps"
+   ]
+  }
+ },
+ {
+  "name": "aml_dataset_stats",
+  "label": "AML Dataset Stats",
+  "description": "查看数据集完整统计报告:逐节点 mean/std/p05/p50/p95/缺失率/清洗率、控制→目标滞后估计、逐批次目标均值轮廓(漂移检测)、train/val/test 窗口计数。提交训练前用它确认数据质量。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "dataset_id": {
+     "type": "string",
+     "description": "数据集 id(aml_dataset_build 返回)"
+    }
+   },
+   "required": [
+    "dataset_id"
+   ]
+  }
+ },
+ {
+  "name": "aml_job_submit",
+  "label": "AML Job Submit",
+  "description": "提交训练作业(内联 train.py 全文,≤500KB)。代码契约:必须 import amlkit;amlkit.load_bundle(datasetPath) 加载数据集;amlkit.report_progress(pct, note) 上报进度(防停摆误杀);amlkit.export_torch_onnx(model, manifest) 导出模型到 artifacts/model.onnx(契约缺失=永久失败);模型接口=one-step:输入 [batch, history_steps, 全节点数](归一化)→ 输出 [batch, 目标数](归一化)。change_note 遵守单组件改动纪律:每次实验只改一个组件(网络/特征/超参之一)并写明。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "dataset_id": {
+     "type": "string",
+     "description": "数据集 id(aml_dataset_build 返回)"
+    },
+    "code": {
+     "type": "string",
+     "description": "train.py 全文(≤500KB,须 import amlkit 并导出 artifacts/model.onnx)"
+    },
+    "change_note": {
+     "type": "string",
+     "description": "本次实验改动说明(必填;单组件改动纪律:只改一个组件,写明改了什么与预期)"
+    },
+    "params": {
+     "type": "object",
+     "description": "超参数字典(如 {\"epochs\": 50, \"lr\": 0.001};传入训练代码的 job.json.params)"
+    },
+    "seed": {
+     "type": "number",
+     "description": "随机种子(缺省 42)"
+    },
+    "purpose": {
+     "type": "string",
+     "enum": [
+      "mpc_surrogate",
+      "quality_predict"
+     ],
+     "description": "建模目的(缺省继承数据集 spec)"
+    },
+    "parent_experiment_id": {
+     "type": "string",
+     "description": "父实验 id(谱系对照:本次是在哪个实验基础上改的)"
+    }
+   },
+   "required": [
+    "dataset_id",
+    "code",
+    "change_note"
+   ]
+  }
+ },
+ {
+  "name": "aml_job_status",
+  "label": "AML Job Status",
+  "description": "查看训练作业状态:状态/阶段(provision→train→evaluate)/进度/平台门禁逐项(G1 单步/G2 滚动 NRMSE 等)/错误。不带 job_id 列出最近 10 个;带 job_id 看单作业详情。训练中建议 30~60 秒轮询一次。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "job_id": {
+     "type": "string",
+     "description": "作业 id(缺省 = 列最近 10 个)"
+    }
+   }
+  }
+ },
+ {
+  "name": "aml_job_logs",
+  "label": "AML Job Logs",
+  "description": "查看训练作业日志尾(平台 ##AML 协议行 + 训练输出)。失败定位/进度细节用这个。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "job_id": {
+     "type": "string",
+     "description": "作业 id"
+    },
+    "lines": {
+     "type": "number",
+     "description": "返回行数(缺省 80,上限 400)"
+    }
+   },
+   "required": [
+    "job_id"
+   ]
+  }
+ },
+ {
+  "name": "aml_job_cancel",
+  "label": "AML Job Cancel",
+  "description": "取消排队/运行中的训练作业(运行中的会终止进程树;取消动作入册可审计)。数据集不受影响,可复用重训。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "job_id": {
+     "type": "string",
+     "description": "作业 id"
+    }
+   },
+   "required": [
+    "job_id"
+   ]
+  }
+ },
+ {
+  "name": "aml_leaderboard",
+  "label": "AML Leaderboard",
+  "description": "查看数据集的实验谱系表(新→旧):每条实验的 change_note/父实验/状态/G1 单步与 G2 滚动 NRMSE/门禁通过情况,并标注当前最优(门禁通过且 G1 最小);同时列出已登记模型(model_id,晋升对象)。优化前先读榜,避免重复试错。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "dataset_id": {
+     "type": "string",
+     "description": "数据集 id"
+    }
+   },
+   "required": [
+    "dataset_id"
+   ]
+  }
+ },
+ {
+  "name": "aml_model_promote",
+  "label": "AML Model Promote",
+  "description": "(Lead only) 晋升模型阶段:to_stage=shadow(影子观测)或 production(生产生效)。必须经人工审批(HITL 挂起,用户批准/拒绝/超时);批准晋升 production 时同组旧生产模型自动退役。worker 无此工具;模型 id 从 aml_leaderboard 查。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "model_id": {
+     "type": "string",
+     "description": "模型 id(aml_leaderboard 的已登记模型段)"
+    },
+    "to_stage": {
+     "type": "string",
+     "enum": [
+      "shadow",
+      "production"
+     ],
+     "description": "目标阶段:shadow=影子观测 / production=生产生效"
+    }
+   },
+   "required": [
+    "model_id",
+    "to_stage"
+   ]
+  }
+ },
+ {
+  "name": "aml_model_reference",
+  "label": "AML Model Reference",
+  "description": "影子模型参考(调参前先问影子模型):拉取最近历史数据组装生产模型输入,按当前/指定控制轨迹预测未来每拍的目标值(物理量纲)。用于 dcw_control 下发前对比不同设定方案的目标响应;预测仅供参考,真实下发仍走安全联锁。product/recipe 缺省时取你绑定节点所属产线的唯一活动批次。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "line_id": {
+     "type": "string",
+     "description": "限定产线 id(须为你绑定节点所属产线;多产线绑定且未给全 product/recipe 时必传以消歧)"
+    },
+    "product_id": {
+     "type": "string",
+     "description": "产品 id(缺省 = 活动批次)"
+    },
+    "recipe_id": {
+     "type": "string",
+     "description": "配方 id(缺省 = 活动批次)"
+    },
+    "purpose": {
+     "type": "string",
+     "enum": [
+      "mpc_surrogate",
+      "quality_predict"
+     ],
+     "description": "建模目的(缺省 mpc_surrogate)"
+    },
+    "controls": {
+     "type": "object",
+     "description": "控制节点设定值映射 {node_id: value}(候选方案;缺省 = 持最后观测)"
+    },
+    "steps": {
+     "type": "number",
+     "description": "滚动预测步数(≤ 模型 horizon;缺省 = 全 horizon)"
+    }
+   }
+  }
  }
 ]

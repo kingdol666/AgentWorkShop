@@ -70,6 +70,8 @@ function resolveExecutable(command: string): { file: string, needsCmd: boolean }
 export interface LineSpawnOptions {
   cwd?: string
   env?: Record<string, string>
+  /** true = 完全替换环境变量(白名单语义,不继承 process.env —— Agent 可控代码的子进程必须用) */
+  cleanEnv?: boolean
 }
 
 /** .cmd 包装时的逐参数校验(引号/控制字符会改变 cmd 解析,拒绝) */
@@ -83,7 +85,9 @@ function assertCmdSafeArg(arg: string): string {
 /** 拉起逐行 stdio 子进程(命令已经 resolveExecutable 校验) */
 export function spawnLineProcess(command: string, args: string[], options: LineSpawnOptions = {}): ChildProcess {
   const { file, needsCmd } = resolveExecutable(command)
-  const env = { ...process.env, ...options.env }
+  const env = options.cleanEnv
+    ? { ...options.env }
+    : { ...process.env, ...options.env }
   if (needsCmd) {
     // Windows .cmd shim:固定包装器 'cmd.exe' + /d /s /c。
     // 可执行文件路径无条件引号包裹:无空格路径裸奔时,/s 模式的 cmd 会吞掉

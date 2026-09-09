@@ -42,8 +42,8 @@ class ToolApprovalService {
 
   private history: ToolApproval[] = []
 
-  /** 挂起一次执行审批(工具侧 await;批准/拒绝/超时三向落定) */
-  request(agentId: string, nodeId: string, kind: 'dcw' | 'daq', detail: string): Promise<{ approved: boolean, comment: string, id: string }> {
+  /** 挂起一次执行审批(工具侧 await;批准/拒绝/超时三向落定);opts.title 覆盖 HITL 待办标题(缺省 = 既有「XX 下发审批」,默认行为不变) */
+  request(agentId: string, nodeId: string, kind: 'dcw' | 'daq', detail: string, opts?: { title?: string }): Promise<{ approved: boolean, comment: string, id: string }> {
     const approval: ToolApproval = {
       id: `ap-${randomUUID().slice(0, 8)}`,
       agentId,
@@ -64,7 +64,7 @@ class ToolApprovalService {
       kind: 'dcw-approval',
       id: approval.id,
       agentId: approval.agentId,
-      title: `${approval.kind.toUpperCase()} 下发审批`,
+      title: opts?.title ?? `${approval.kind.toUpperCase()} 下发审批`,
       detail: approval.detail,
       createdAt: approval.createdAt,
       expiresAt: approval.expiresAt,

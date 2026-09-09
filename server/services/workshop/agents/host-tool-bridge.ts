@@ -21,7 +21,7 @@ import type { WorkspaceTask } from '../types/task'
 import type { RpcHostToolDefinition } from './adapters/omp-rpc-client'
 import { loadHostToolDefs } from '../prompts/loader'
 import { daqRuntimeSettings } from '../settings'
-import { toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions } from './industrial-tools'
+import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions } from './industrial-tools'
 import { listPluginTools, pluginOfTool } from './plugin-tools'
 import { getChannelPluginsRepo } from '../db/channel-plugins.repo'
 import { extractTaskMode } from '../runtime/execution-mode'
@@ -29,7 +29,7 @@ import { extractTaskMode } from '../runtime/execution-mode'
 /** host tool 定义(外置 .AgentWorkShop/prompts/host-tools.json;加载器缓存) */
 export const HOST_TOOLS: RpcHostToolDefinition[] = loadHostToolDefs()
 
-/** 仅 lead 可见的工具名(dispatch/调度/团队管理面;worker 注册时剔除,压缩工具上下文) */
+/** 仅 lead 可见的工具名(dispatch/调度/团队管理面 + AML 模型治理面;worker 注册时剔除,压缩工具上下文) */
 export const LEAD_ONLY_TOOL_NAMES = new Set([
   'dispatch_task',
   'get_queue_overview',
@@ -39,6 +39,7 @@ export const LEAD_ONLY_TOOL_NAMES = new Set([
   'create_team_agent',
   'update_team_agent',
   'remove_team_agent',
+  'aml_model_promote',
 ])
 
 /** 占位符动态注入:工具描述里的运行时配置值(每次装配实时计算,配置热重载后 Agent 拿到新值) */
@@ -161,6 +162,26 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
   switch (req.toolName) {
     case 'my_industrial_nodes':
       return toolMyIndustrialNodes(identity.agentId)
+    case 'aml_node_catalog':
+      return toolAmlNodeCatalog(identity.agentId)
+    case 'aml_dataset_build':
+      return toolAmlDatasetBuild(identity.agentId, args as Parameters<typeof toolAmlDatasetBuild>[1])
+    case 'aml_dataset_stats':
+      return toolAmlDatasetStats(identity.agentId, args as Parameters<typeof toolAmlDatasetStats>[1])
+    case 'aml_job_submit':
+      return toolAmlJobSubmit(identity.agentId, args as Parameters<typeof toolAmlJobSubmit>[1])
+    case 'aml_job_status':
+      return toolAmlJobStatus(identity.agentId, args as Parameters<typeof toolAmlJobStatus>[1])
+    case 'aml_job_logs':
+      return toolAmlJobLogs(identity.agentId, args as Parameters<typeof toolAmlJobLogs>[1])
+    case 'aml_job_cancel':
+      return toolAmlJobCancel(identity.agentId, args as Parameters<typeof toolAmlJobCancel>[1])
+    case 'aml_leaderboard':
+      return toolAmlLeaderboard(identity.agentId, args as Parameters<typeof toolAmlLeaderboard>[1])
+    case 'aml_model_promote':
+      return toolAmlModelPromote(identity.agentId, args as Parameters<typeof toolAmlModelPromote>[1])
+    case 'aml_model_reference':
+      return toolAmlModelReference(identity.agentId, args as Parameters<typeof toolAmlModelReference>[1])
     case 'dcw_control':
       return toolDcwControl(identity.agentId, args as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string })
     case 'dcw_read':
@@ -607,6 +628,36 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
 
       case 'my_industrial_nodes': {
         return toolMyIndustrialNodes(identity.agentId)
+      }
+      case 'aml_node_catalog': {
+        return toolAmlNodeCatalog(identity.agentId)
+      }
+      case 'aml_dataset_build': {
+        return toolAmlDatasetBuild(identity.agentId, args as Parameters<typeof toolAmlDatasetBuild>[1])
+      }
+      case 'aml_dataset_stats': {
+        return toolAmlDatasetStats(identity.agentId, args as Parameters<typeof toolAmlDatasetStats>[1])
+      }
+      case 'aml_job_submit': {
+        return toolAmlJobSubmit(identity.agentId, args as Parameters<typeof toolAmlJobSubmit>[1])
+      }
+      case 'aml_job_status': {
+        return toolAmlJobStatus(identity.agentId, args as Parameters<typeof toolAmlJobStatus>[1])
+      }
+      case 'aml_job_logs': {
+        return toolAmlJobLogs(identity.agentId, args as Parameters<typeof toolAmlJobLogs>[1])
+      }
+      case 'aml_job_cancel': {
+        return toolAmlJobCancel(identity.agentId, args as Parameters<typeof toolAmlJobCancel>[1])
+      }
+      case 'aml_leaderboard': {
+        return toolAmlLeaderboard(identity.agentId, args as Parameters<typeof toolAmlLeaderboard>[1])
+      }
+      case 'aml_model_promote': {
+        return toolAmlModelPromote(identity.agentId, args as Parameters<typeof toolAmlModelPromote>[1])
+      }
+      case 'aml_model_reference': {
+        return toolAmlModelReference(identity.agentId, args as Parameters<typeof toolAmlModelReference>[1])
       }
       case 'dcw_control': {
         return toolDcwControl(identity.agentId, args as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string })

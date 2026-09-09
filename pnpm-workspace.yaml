@@ -2,6 +2,8 @@ allowBuilds:
   '@serialport/bindings-cpp': false
   core-js: true
   esbuild: true
+  # onnxruntime-node 自带预编译二进制,postinstall 跳过即可用(AML 预测服务可选依赖)
+  onnxruntime-node: false
   unrs-resolver: true
   vue-demi: true
 minimumReleaseAgeExclude:

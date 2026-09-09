@@ -126,6 +126,9 @@
     "vue-router": "^4.5.0",
     "zod": "^3.24.1"
   },
+  "optionalDependencies": {
+    "onnxruntime-node": "^1.20.1"
+  },
   "devDependencies": {
     "@commitlint/cli": "^19.6.1",
     "@commitlint/config-conventional": "^19.6.0",

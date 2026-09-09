@@ -142,3 +142,27 @@ retention:
 # 服务端日志(env AWSHOP_LOG_LEVEL)
 log:
   level: info  # debug | info | warn | error
+
+# AML 自动建模平台(Python 训练运行时/作业限额/GC 保留/评测门禁;全部键见 shared/config/schema.json)
+aml:
+  python:
+    pythonBin: ''   # 空=自动探测 python / py -3
+    uvBin: ''       # 空=自动探测 uv(存在则优先)
+    indexUrl: ''    # PyPI 兼容镜像,空=默认源;仅 venv 供给阶段联网,训练进程不联网
+  job:
+    timeoutMs: 1800000
+    maxConcurrent: 2
+    diskQuotaMb: 2048
+    stallMs: 600000
+  dataset:
+    maxRows: 200000
+    retentionDays: 30
+    allowCrossRecipe: false
+  model:
+    retiredKeepDays: 90
+  gates:
+    nrmse: 0.10
+    rolloutNrmse: 0.25
+    valTestGap: 0.20
+    minRows: 500
+    minRuns: 3

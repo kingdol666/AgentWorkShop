@@ -43,6 +43,9 @@ import {
 } from '../services/workshop/runtime/manager'
 import { AppError } from '../utils/errors'
 import { workshopSettings } from '../services/workshop/settings'
+import { configureAmlRuntime } from '../services/workshop/aml/runtime'
+import { recoverInterruptedJobs, shutdownOrchestrator } from '../services/workshop/aml/job-orchestrator'
+import { startAmlRetentionTimer, stopAmlRetentionTimer } from '../services/workshop/aml/retention'
 
 declare global {
 
@@ -124,6 +127,11 @@ export default function workshopPlugin(nitroApp: {
   })
   const deps: ManagerDeps = { repos, implFactory: createAgentImpl, db }
 
+  // AML 自动建模平台:装配仓储 + 中断作业恢复 + GC 定时器(见 services/workshop/aml)
+  configureAmlRuntime(db, dataDir)
+  recoverInterruptedJobs()
+  startAmlRetentionTimer()
+
   // 创建 manager → 挂全局单例(后续 REST/A2A/WS 经 getWorkshopManager() 读取)
   const manager = createAgentChannelManager(deps)
   globalThis.__workshopManager = manager
@@ -158,6 +166,8 @@ export default function workshopPlugin(nitroApp: {
 
   // 关机:完整关闭 manager(sweeper + 调度循环 + agent 运行时),关闭数据库
   nitroApp.hooks.hook('close', async () => {
+    stopAmlRetentionTimer()
+    shutdownOrchestrator()
     stopSweeper()
     await manager.shutdown()
     db.close()

@@ -19,10 +19,20 @@ import { daqRuntimeSettings } from '../settings'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { findDaqTemplate } from '../daq/daq-templates'
 import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
-import { getOps } from '../ops/ops'
+import { getOps, recordOps } from '../ops/ops'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { getDcwProductRepo } from '../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { getAmlRuntime } from '../aml/runtime'
+import { parseDatasetSpec } from '../aml/spec'
+import { buildDataset, type AmlDatasetReport } from '../aml/dataset-builder'
+import { cancelJob, jobLogsTail, runtimeStatus, submitJob } from '../aml/job-orchestrator'
+import { transitionModel } from '../aml/model-registry'
+import { predictProduction, readIoSpecFor } from '../aml/predictor'
+import { alignToGrid } from '../aml/clean'
+import type { AmlDatasetRow, AmlJobRow } from '../aml/aml.repo'
 
 export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: string }> {
   const repo = getAgentNodeBindingRepo()
@@ -866,5 +876,588 @@ export async function toolRecipeRollback(agentId: string, args: {
   }
   catch (err) {
     return { text: `回退失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+}
+
+// ================================================================
+// AML 自动建模工具族(aml_*):数据集 → 训练作业 → 实验谱系 → 模型晋升 → 影子参考
+// 权限模型:数据集构建节点级鉴权(daq 绑定,只缩不放)+ 归属产线一致;晋升走 HITL 人工审批;
+// 作业提交/取消按 agentId 归因( submitJob 内部已记 ops,工具层不重复记提交动作)。
+// ================================================================
+
+/** recordOps 的 AML 分类(与 job-orchestrator/model-registry 的 kind='aml' 同源;仓储联合类型暂未列 'aml',此处收口断言) */
+const AML_AUDIT_KIND = 'aml' as unknown as 'system'
+
+function amlErr(text: string): { text: string, isError: true } {
+  return { text, isError: true }
+}
+
+/** 数值展示(4 位有效小数;空值统一 '-') */
+function fmtAmlNum(v: number | null | undefined, digits = 4): string {
+  if (v == null || !Number.isFinite(v)) return '-'
+  return String(Number(v.toFixed(digits)))
+}
+
+function amlNodeName(nodeId: string): string {
+  return getDaqNodeRepo().byId(nodeId)?.name ?? nodeId
+}
+
+function amlNodeUnit(nodeId: string): string {
+  const n = getDaqNodeRepo().byId(nodeId)
+  return n?.unit ?? findDaqTemplate(n?.templateKey ?? '')?.unit ?? ''
+}
+
+/** 数据集构建报告惰性读(report.json 与 manifest 同目录) */
+function amlReportOf(dataset: AmlDatasetRow): AmlDatasetReport | null {
+  try {
+    return JSON.parse(readFileSync(join(dataset.path, 'report.json'), 'utf8')) as AmlDatasetReport
+  }
+  catch {
+    return null
+  }
+}
+
+/** 门禁报告 → 逐项文本(解析失败降级为原始串) */
+function amlGatesLines(gatesJson: string | null): string {
+  if (!gatesJson) return ''
+  try {
+    const g = JSON.parse(gatesJson) as { checks?: Array<{ id: string, name: string, value: number | null, threshold: number | null, pass: boolean, detail: string }> }
+    if (!g.checks?.length) return ''
+    return g.checks
+      .map(c => `    ${c.id} ${c.pass ? '✓' : '✗'} ${c.name}: ${c.detail}`)
+      .join('\n')
+  }
+  catch {
+    return `    (门禁数据解析失败) ${gatesJson.slice(0, 120)}`
+  }
+}
+
+/** 作业行 → 详情卡片(状态/阶段/进度/指标/门禁逐项/错误) */
+function amlJobCard(job: AmlJobRow): string {
+  const gates = amlGatesLines(job.gatesJson)
+  let metrics = ''
+  try {
+    const m = JSON.parse(job.metricsJson ?? '{}') as { oneStepVal?: { windows?: number, nrmse?: number } | null, oneStepTest?: { windows?: number, nrmse?: number } | null, rolloutTest?: { windows?: number, nrmse?: number, horizon?: number } | null }
+    const parts: string[] = []
+    if (m.oneStepVal) parts.push(`单步验证 NRMSE=${fmtAmlNum(m.oneStepVal.nrmse)}(${m.oneStepVal.windows ?? '?'} 窗)`)
+    if (m.oneStepTest) parts.push(`单步测试 NRMSE=${fmtAmlNum(m.oneStepTest.nrmse)}(${m.oneStepTest.windows ?? '?'} 窗)`)
+    if (m.rolloutTest) parts.push(`滚动测试 NRMSE=${fmtAmlNum(m.rolloutTest.nrmse)}(horizon=${m.rolloutTest.horizon ?? '?'})`)
+    metrics = parts.join(' | ')
+  }
+  catch { /* 无指标 */ }
+  return [
+    `■ 作业 ${job.id}`,
+    `  状态 ${job.status} | 阶段 ${job.stage || '-'} | 进度 ${job.progress}% | purpose=${job.purpose}`,
+    `  dataset: ${job.datasetId} | 提交者: ${job.agentId || '-'} | 重试 ${job.retryCount}/2`,
+    `  创建 ${job.createdAt.slice(0, 19).replace('T', ' ')}${job.startedAt ? ` | 开跑 ${job.startedAt.slice(0, 19).replace('T', ' ')}` : ''}${job.endedAt ? ` | 结束 ${job.endedAt.slice(0, 19).replace('T', ' ')}` : ''}`,
+    metrics ? `  指标: ${metrics}` : null,
+    gates ? `  门禁逐项:\n${gates}` : '  门禁: 未产出(作业未完成评估)',
+    job.error ? `  错误: ${job.error}` : null,
+  ].filter(x => x !== null).join('\n')
+}
+
+/** 工具:aml_node_catalog —— 我可用的 AML 建模节点(daq 绑定面;物理语义 + 近 24h 批次数据可用性) */
+export async function toolAmlNodeCatalog(agentId: string): Promise<{ text: string }> {
+  const bindings = getAgentNodeBindingRepo().byAgent(agentId).filter(b => b.kind === 'daq')
+  if (bindings.length === 0) {
+    return { text: '你尚未绑定任何数采节点,AML 自动建模工具不可用(数据集构建要求所用节点均有你的 daq 绑定,绑定只缩不放)。请在数字孪生界面绑定数采节点后重试。' }
+  }
+  const { getTsdb, tsdbReady } = await import('../daq/storage')
+  await tsdbReady
+  const tsdb = getTsdb()
+  const from24h = Date.now() - 24 * 3_600_000
+  const cards: string[] = []
+  for (const b of bindings) {
+    const node = getDaqNodeRepo().byId(b.nodeId)
+    if (!node) continue
+    const tpl = findDaqTemplate(node.templateKey)
+    let dataTag = '近 24h 无批次数据(产线未运行?建模前先确认采集)'
+    try {
+      const pts = await tsdb.query(b.nodeId, { fromMs: from24h, toMs: Date.now(), limit: 1 })
+      if (pts.length > 0) dataTag = '近 24h 有批次打标数据(可建模)'
+    }
+    catch { /* 时序库异常按无数据处理 */ }
+    const lineTxt = node.lineId
+      ? `${getDcwLineRepo().byId(node.lineId)?.name ?? node.lineId}(${node.lineId})`
+      : '未分配产线(无批次打标,不能参与建模)'
+    cards.push(
+      `■ ${node.name} · node_id=${node.id}\n`
+      + `  物理量 ${tpl?.ch ?? node.templateKey} | 单位 ${node.unit} | 正常量程 ${node.min}~${node.max}${node.unit}\n`
+      + `  产线: ${lineTxt} | 数据: ${dataTag}${tpl?.semantics ? `\n  语义: ${tpl.semantics.slice(0, 160)}` : ''}`,
+    )
+  }
+  return {
+    text: `你可用的 AML 建模节点(${cards.length} 个 daq 绑定):\n\n${cards.join('\n\n')}\n\n---\n建模路径:aml_dataset_build(选 control/target 节点组数据集)→ aml_job_submit(提交训练代码)→ aml_job_status / aml_job_logs 轮询 → aml_leaderboard 看实验谱系 → aml_model_promote(lead 专属,人工审批)→ aml_model_reference(调参前查影子参考)。\nrole 语义:control=可控输入(未来轨迹已知)/ target=预测目标(必选 ≥1)/ feature=仅历史特征。`,
+  }
+}
+
+/** 工具:aml_dataset_build —— 组建训练数据集(节点级鉴权:daq 绑定 + 归属产线一致;隔离三元组防配方串味) */
+export async function toolAmlDatasetBuild(agentId: string, args: {
+  line_id?: string
+  product_id?: string
+  recipe_id?: string
+  nodes?: Array<{ node_id?: string, role?: string }>
+  beat_ms?: number | string
+  history_steps?: number | string
+  horizon_steps?: number | string
+  split_seed?: number | string
+  val_ratio?: number | string
+  test_ratio?: number | string
+  purpose?: string
+  note?: string
+  run_ids?: string[]
+  from_ms?: number | string
+  to_ms?: number | string
+}): Promise<{ text: string, isError?: boolean }> {
+  const lineId = String(args.line_id ?? '').trim()
+  const productId = String(args.product_id ?? '').trim()
+  const recipeId = String(args.recipe_id ?? '').trim()
+  if (!lineId || !productId || !recipeId) {
+    return amlErr('line_id / product_id / recipe_id 必填(隔离三元组,防配方串味;line_context 可查看当前批次的三个 id)。')
+  }
+  const beatMs = Number(args.beat_ms)
+  const historySteps = Number(args.history_steps)
+  const horizonSteps = Number(args.horizon_steps)
+  if (!Number.isInteger(beatMs) || beatMs < 1000) return amlErr('beat_ms 必须为 ≥1000 的整数(数据对齐节拍,ms)。')
+  if (!Number.isInteger(historySteps) || historySteps < 1 || historySteps > 2048) return amlErr('history_steps 必须为 1~2048 的整数(历史窗口步数)。')
+  if (!Number.isInteger(horizonSteps) || horizonSteps < 1 || horizonSteps > 512) return amlErr('horizon_steps 必须为 1~512 的整数(预测步长)。')
+  const nodes = (Array.isArray(args.nodes) ? args.nodes : [])
+    .map(n => ({ nodeId: String(n?.node_id ?? '').trim(), role: String(n?.role ?? '').trim() }))
+    .filter(n => n.nodeId)
+  if (nodes.length < 2) return amlErr('nodes 至少 2 项({node_id, role}),且必须含 1 个 target(预测目标)。')
+  if (nodes.some(n => !['control', 'feature', 'target'].includes(n.role))) return amlErr('nodes 的 role 必须为 control / feature / target。')
+  if (!nodes.some(n => n.role === 'target')) return amlErr('nodes 必须含至少 1 个 target 节点(预测目标)。')
+  // 鉴权:每个节点都要有该 Agent 的 daq 绑定,且归属参数给定的产线(绑定只缩不放)
+  const repo = getAgentNodeBindingRepo()
+  const daqBound = repo.byAgent(agentId).filter(b => b.kind === 'daq')
+  for (const n of nodes) {
+    if (!daqBound.some(b => b.nodeId === n.nodeId)) {
+      return amlErr(`无权使用节点 ${n.nodeId}(无你的 daq 绑定;绑定只缩不放)。你有权访问的数采节点:${daqBound.map(b => b.nodeId).join(', ') || '(无)'},可先 aml_node_catalog 查看语义。`)
+    }
+    const nodeLine = getDaqNodeRepo().byId(n.nodeId)?.lineId ?? ''
+    if (nodeLine !== lineId) {
+      return amlErr(`节点 ${amlNodeName(n.nodeId)}(${n.nodeId})归属产线 ${nodeLine || '未分配'},与 line_id=${lineId} 不一致;数据集节点必须全部归属同一条产线(绑定只缩不放)。`)
+    }
+  }
+  const purpose = args.purpose === 'quality_predict' ? 'quality_predict' : 'mpc_surrogate'
+  try {
+    const spec = parseDatasetSpec({
+      lineId,
+      productId,
+      recipeId,
+      runIds: Array.isArray(args.run_ids) ? args.run_ids.map(r => String(r)).filter(Boolean) : undefined,
+      nodes: nodes.map(n => ({ nodeId: n.nodeId, role: n.role as 'control' | 'feature' | 'target' })),
+      fromMs: Number(args.from_ms) || undefined,
+      toMs: Number(args.to_ms) || undefined,
+      beatMs,
+      window: { historySteps, horizonSteps },
+      split: {
+        valRatio: Number.isFinite(Number(args.val_ratio)) ? Number(args.val_ratio) : 0.15,
+        testRatio: Number.isFinite(Number(args.test_ratio)) ? Number(args.test_ratio) : 0.15,
+        seed: Number.isFinite(Number(args.split_seed)) ? Math.trunc(Number(args.split_seed)) : 42,
+      },
+      purpose,
+      note: args.note ? String(args.note) : undefined,
+    })
+    const { dataset, report } = await buildDataset(spec, { id: agentId, kind: 'agent' })
+    recordOps({
+      actor: agentId,
+      actorName: agentBadgeLabel(agentId),
+      actorKind: 'agent',
+      action: 'aml.dataset.build',
+      kind: AML_AUDIT_KIND,
+      summary: `构建数据集 ${dataset.id}(行数 ${dataset.rowCount},批次 ${report.runsUsed.length},窗口 train/val/test ${report.windowCount.train}/${report.windowCount.val}/${report.windowCount.test})`,
+      targetKind: 'aml_dataset',
+      targetId: dataset.id,
+      lineId: dataset.lineId,
+      productId: dataset.productId,
+      recipeId: dataset.recipeId,
+    })
+    const cleanLines = report.nodeSummaries.map((s) => {
+      const c = report.cleaning[s.nodeId]
+      return `- ${amlNodeName(s.nodeId)}(${s.nodeId},${s.role}):样本 ${fmtAmlNum(s.count, 0)},剔除率 ${(100 * s.cleanedRatio).toFixed(1)}%(状态 ${c?.droppedState ?? 0}/量程 ${c?.droppedRange ?? 0}/尖峰 ${c?.droppedHampel ?? 0}),插值 ${c?.interpolated ?? 0} 点,缺失率 ${(100 * s.missingRatio).toFixed(1)}%`
+    })
+    const lagLines = report.lagEstimates.map(l =>
+      `- ${amlNodeName(l.controlId)} → ${amlNodeName(l.targetId)}:滞后 ${l.lagSteps} 拍(≈${fmtAmlNum((l.lagSteps * beatMs) / 1000, 1)}s),互相关 ${l.corr.toFixed(2)}`)
+    const dropLines = report.runsDropped.map(d => `- ${d.runId}: ${d.reason}`)
+    return {
+      text: [
+        `数据集构建完成:`,
+        `  dataset_id: ${dataset.id}`,
+        `  三元组: 产线 ${dataset.lineId} / 产品 ${getDcwProductRepo().byId(dataset.productId)?.name ?? dataset.productId} / 配方 ${getDcwRecipeRepo().byId(dataset.recipeId)?.name ?? dataset.recipeId}(purpose=${purpose},beat=${beatMs}ms,history=${historySteps},horizon=${horizonSteps})`,
+        `  行数 ${dataset.rowCount} | 窗口 train ${report.windowCount.train} / val ${report.windowCount.val} / test ${report.windowCount.test} | 批次 ${report.runsUsed.length} 个参与构建`,
+        cleanLines.length ? `\n逐节点清洗摘要:\n${cleanLines.join('\n')}` : null,
+        lagLines.length ? `\n滞后估计(控制→目标,正 = 控制领先;训练/调参时参考):\n${lagLines.join('\n')}` : null,
+        dropLines.length ? `\n丢弃批次(${dropLines.length}):\n${dropLines.join('\n')}` : null,
+        `\n下一步:aml_dataset_stats { dataset_id: "${dataset.id}" } 看完整统计;确认后 aml_job_submit 提交训练(训练代码契约见该工具说明)。`,
+      ].filter(x => x !== null).join('\n'),
+    }
+  }
+  catch (err) {
+    return { text: `数据集构建失败:${err instanceof Error ? err.message : String(err)}(常见原因:窗口内无批次打标数据/节点数据缺失率过高;可先 daq_query 确认目标时段数据)。`, isError: true }
+  }
+}
+
+/** 工具:aml_dataset_stats —— 数据集完整统计报告(逐节点统计/滞后/run 轮廓/窗口计数) */
+export async function toolAmlDatasetStats(_agentId: string, args: { dataset_id?: string }): Promise<{ text: string, isError?: boolean }> {
+  const datasetId = String(args.dataset_id ?? '').trim()
+  if (!datasetId) return amlErr('dataset_id 必填(aml_dataset_build 返回的 id)。')
+  const rt = getAmlRuntime()
+  const dataset = rt.repo.dataset.get(datasetId)
+  if (!dataset) return amlErr(`数据集 ${datasetId} 不存在(aml_node_catalog → aml_dataset_build 先建数据集)。`)
+  const spec = (() => {
+    try {
+      return JSON.parse(dataset.specJson) as { window?: { historySteps?: number, horizonSteps?: number }, beatMs?: number, purpose?: string }
+    }
+    catch { return {} }
+  })()
+  const report = amlReportOf(dataset)
+  if (!report) {
+    return { text: `数据集 ${datasetId} 元数据:行数 ${dataset.rowCount},批次 ${dataset.runIds.length} 个,创建于 ${dataset.createdAt.slice(0, 19).replace('T', ' ')}(统计报告文件缺失,可能为旧版数据集)。` }
+  }
+  const beatMs = spec.beatMs ?? 1000
+  const statLines = report.nodeSummaries.map(s =>
+    `- ${amlNodeName(s.nodeId)}(${s.nodeId},${s.role}):n=${fmtAmlNum(s.count, 0)} 均值 ${fmtAmlNum(s.mean)} std ${fmtAmlNum(s.std)} | p05 ${fmtAmlNum(s.p05)} / p50 ${fmtAmlNum(s.p50)} / p95 ${fmtAmlNum(s.p95)} | 缺失率 ${(100 * s.missingRatio).toFixed(1)}% 清洗率 ${(100 * s.cleanedRatio).toFixed(1)}%`)
+  const lagLines = report.lagEstimates.map(l =>
+    `- ${amlNodeName(l.controlId)} → ${amlNodeName(l.targetId)}:滞后 ${l.lagSteps} 拍(≈${fmtAmlNum((l.lagSteps * beatMs) / 1000, 1)}s),互相关 ${l.corr.toFixed(2)}`)
+  const profileLines = report.runProfiles.map(p =>
+    `- ${p.runId.slice(0, 8)}: ${p.steps} 拍,目标均值 {${Object.entries(p.targetMeans).map(([k, v]) => `${amlNodeName(k)}=${fmtAmlNum(v, 3)}`).join(', ')}}`)
+  return {
+    text: [
+      `数据集 ${datasetId} 统计报告(beat=${beatMs}ms,history=${spec.window?.historySteps ?? '?'} 拍,horizon=${spec.window?.horizonSteps ?? '?'} 拍,purpose=${spec.purpose ?? '-'})`,
+      `  三元组: ${dataset.lineId} / ${dataset.productId} / ${dataset.recipeId} | 行数 ${dataset.rowCount} | 批次 ${dataset.runIds.length}(${report.runsUsed.length} 参与构建)| 创建 ${dataset.createdAt.slice(0, 19).replace('T', ' ')}`,
+      statLines.length ? `\n逐节点统计(train 切分):\n${statLines.join('\n')}` : null,
+      lagLines.length ? `\n控制→目标滞后(互相关峰值,正 = 控制领先):\n${lagLines.join('\n')}` : null,
+      profileLines.length ? `\nrun 轮廓(逐批次目标均值,漂移检测):\n${profileLines.join('\n')}` : null,
+      `\n窗口计数:train ${report.windowCount.train} / val ${report.windowCount.val} / test ${report.windowCount.test}(byRun 分层切分,防同批泄漏)`,
+      report.runsDropped.length > 0 ? `丢弃批次:\n${report.runsDropped.map(d => `- ${d.runId}: ${d.reason}`).join('\n')}` : null,
+      `\n下一步:aml_job_submit { dataset_id: "${datasetId}", code } 提交训练。`,
+    ].filter(x => x !== null).join('\n'),
+  }
+}
+
+/** 工具:aml_job_submit —— 提交训练作业(train.py 全文内联;归因 agentId;队列 FIFO) */
+export async function toolAmlJobSubmit(agentId: string, args: {
+  dataset_id?: string
+  code?: string
+  change_note?: string
+  params?: Record<string, unknown>
+  seed?: number | string
+  purpose?: string
+  parent_experiment_id?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const datasetId = String(args.dataset_id ?? '').trim()
+  const code = typeof args.code === 'string' ? args.code : ''
+  if (!datasetId) return amlErr('dataset_id 必填(aml_dataset_build 返回的 id)。')
+  if (!code.trim()) return amlErr('code 必填:train.py 全文(单文件;契约见工具说明)。')
+  if (code.length > 512_000) return amlErr(`code 过大(${Math.round(code.length / 1024)}KB),上限 500KB;精简训练代码(模型定义/训练循环拆薄)后重试。`)
+  if (!/\bimport\s+amlkit\b/.test(code)) {
+    return amlErr('code 必须 import amlkit(平台数据/进度/导出契约):amlkit.load_bundle(datasetPath) 取数、amlkit.report_progress(pct, note) 报进度、amlkit.export_torch_onnx(model, manifest) 导出。缺契约的作业必然失败。')
+  }
+  const purpose = args.purpose === 'quality_predict' ? 'quality_predict' : args.purpose === 'mpc_surrogate' ? 'mpc_surrogate' : undefined
+  const changeNote = String(args.change_note ?? '').trim()
+  if (!changeNote) return amlErr('change_note 必填:单组件改动纪律 —— 每次实验只改一个组件(网络结构/特征/超参之一),写清改了什么与预期,实验谱系靠它归因。')
+  try {
+    const job = submitJob({
+      datasetId,
+      purpose,
+      changeNote,
+      params: args.params && typeof args.params === 'object' && !Array.isArray(args.params) ? args.params : undefined,
+      seed: Number.isInteger(Number(args.seed)) ? Number(args.seed) : undefined,
+      parentExperimentId: String(args.parent_experiment_id ?? '').trim() || undefined,
+      code,
+      agent: { id: agentId },
+    })
+    const st = await runtimeStatus()
+    return {
+      text: [
+        `训练作业已提交:`,
+        `  job_id: ${job.id}`,
+        `  dataset: ${job.datasetId} | purpose=${job.purpose} | seed=${fmtAmlNum(Number(job.budget.seed ?? 42), 0)} | change_note: ${changeNote}`,
+        `  队列: 排队 ${st.queued} 个(含本作业)/ 在跑 ${st.running} 个 | python ${st.python.ok ? (st.python.version ?? 'ok') : `不可用(${st.python.reason ?? '?'};作业会失败,请联系用户修复环境)`}`,
+        `\n用 aml_job_status { job_id: "${job.id}" } 看状态/阶段/门禁,aml_job_logs { job_id: "${job.id}" } 看日志尾;训练完成后 aml_leaderboard 看谱系与门禁。`,
+      ].join('\n'),
+    }
+  }
+  catch (err) {
+    return { text: `提交失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+}
+
+/** 工具:aml_job_status —— 作业状态(单作业详情 / 缺省列最近 10 个) */
+export async function toolAmlJobStatus(_agentId: string, args: { job_id?: string }): Promise<{ text: string, isError?: boolean }> {
+  const rt = getAmlRuntime()
+  const jobId = String(args.job_id ?? '').trim()
+  if (jobId) {
+    const job = rt.repo.job.get(jobId)
+    if (!job) return amlErr(`作业 ${jobId} 不存在(aml_job_status 不带参数可列出最近 10 个)。`)
+    return { text: `${amlJobCard(job)}\n\n轮询建议:training 阶段 30~60s 查一次;终态(done/failed)后看门禁与错误,失败原因可 in aml_job_logs 定位。` }
+  }
+  const jobs = rt.repo.job.list({ limit: 10 })
+  if (jobs.length === 0) {
+    return { text: '尚无训练作业。路径:aml_node_catalog 确认节点 → aml_dataset_build 组数据集 → aml_job_submit 提交训练。' }
+  }
+  const rows = jobs.map(j => `- ${j.id} [${j.status}] ${j.stage || '-'} ${j.progress}% dataset=${j.datasetId}${j.error ? ` | 错误: ${j.error.slice(0, 100)}` : ''}`)
+  return { text: `最近 ${jobs.length} 个作业(新→旧):\n${rows.join('\n')}\n\n传 job_id 查看单作业详情(指标/门禁逐项/错误)。` }
+}
+
+/** 工具:aml_job_logs —— 作业日志尾随(平台 ##AML 协议行 + 训练输出) */
+export async function toolAmlJobLogs(_agentId: string, args: { job_id?: string, lines?: number | string }): Promise<{ text: string, isError?: boolean }> {
+  const jobId = String(args.job_id ?? '').trim()
+  if (!jobId) return amlErr('job_id 必填(aml_job_status 不带参数可列出最近作业)。')
+  const job = getAmlRuntime().repo.job.get(jobId)
+  if (!job) return amlErr(`作业 ${jobId} 不存在。`)
+  const n = Math.min(Math.max(Number(args.lines) || 80, 5), 400)
+  const rows = jobLogsTail(jobId, n)
+  if (rows.length === 0) {
+    return { text: `作业 ${jobId} 暂无日志(${job.status === 'queued' ? '仍在排队,开跑后产生日志' : '日志未落盘或已被清理'});稍后重试或用 aml_job_status 看状态。` }
+  }
+  return { text: `作业 ${jobId} 日志尾(最近 ${rows.length} 行,时间正序;##AML 前缀行 = 平台协议事件):\n${rows.join('\n')}` }
+}
+
+/** 工具:aml_job_cancel —— 取消排队/运行中的作业(归因入册) */
+export async function toolAmlJobCancel(agentId: string, args: { job_id?: string }): Promise<{ text: string, isError?: boolean }> {
+  const jobId = String(args.job_id ?? '').trim()
+  if (!jobId) return amlErr('job_id 必填。')
+  const rt = getAmlRuntime()
+  const job = rt.repo.job.get(jobId)
+  if (!job) return amlErr(`作业 ${jobId} 不存在。`)
+  if (['done', 'failed', 'cancelled', 'timeout'].includes(job.status)) {
+    return amlErr(`作业 ${jobId} 已是终态(${job.status}),无需取消;aml_job_status 复核。`)
+  }
+  const ok = cancelJob(jobId, { id: agentId, kind: 'agent' })
+  if (!ok) return amlErr(`取消失败:作业 ${jobId} 不在排队/运行中(可能恰好结束);aml_job_status 复核。`)
+  const dataset = rt.repo.dataset.get(job.datasetId)
+  recordOps({
+    actor: agentId,
+    actorName: agentBadgeLabel(agentId),
+    actorKind: 'agent',
+    action: 'aml.job.cancel',
+    kind: AML_AUDIT_KIND,
+    summary: `取消训练作业 ${jobId}(原状态 ${job.status})`,
+    targetKind: 'aml_job',
+    targetId: jobId,
+    lineId: dataset?.lineId,
+    productId: dataset?.productId,
+    recipeId: dataset?.recipeId,
+  })
+  return { text: `作业 ${jobId} 已取消(运行中的会终止进程树)。数据集 ${job.datasetId} 仍可复用;需要重训直接 aml_job_submit。` }
+}
+
+/** 工具:aml_leaderboard —— 数据集的实验谱系与门禁对照(标当前最优) */
+export async function toolAmlLeaderboard(_agentId: string, args: { dataset_id?: string }): Promise<{ text: string, isError?: boolean }> {
+  const datasetId = String(args.dataset_id ?? '').trim()
+  if (!datasetId) return amlErr('dataset_id 必填(aml_dataset_build 返回的 id)。')
+  const rt = getAmlRuntime()
+  const dataset = rt.repo.dataset.get(datasetId)
+  if (!dataset) return amlErr(`数据集 ${datasetId} 不存在。`)
+  const exps = rt.repo.experiment.listByDataset(datasetId, 50)
+  if (exps.length === 0) {
+    return { text: `数据集 ${datasetId}(${dataset.rowCount} 行)尚无实验:aml_job_submit 提交训练后,此处给出谱系与门禁对照。` }
+  }
+  const parsed = exps.map((e) => {
+    let metrics: { oneStepTest?: { nrmse?: number }, rolloutTest?: { nrmse?: number } } = {}
+    let gates: { passed?: boolean } = {}
+    try {
+      metrics = JSON.parse(e.metricsJson)
+    }
+    catch { /* 无指标 */ }
+    try {
+      gates = JSON.parse(e.gatesJson)
+    }
+    catch { /* 无门禁 */ }
+    return { e, g1: metrics.oneStepTest?.nrmse ?? null, g2: metrics.rolloutTest?.nrmse ?? null, passed: gates.passed === true || e.status === 'gates_passed' }
+  })
+  const passers = parsed.filter(p => p.passed && p.g1 != null)
+  const bestId = passers.length > 0 ? passers.reduce((a, b) => ((a.g1 ?? Infinity) <= (b.g1 ?? Infinity) ? a : b)).e.id : null
+  const rows = parsed.map(p =>
+    `- ${p.e.id} [${p.e.status}] ${p.e.changeNote ? `「${p.e.changeNote.slice(0, 60)}」` : '(无备注)'}${p.e.parentExperimentId ? ` ← 父 ${p.e.parentExperimentId}` : ''} | G1=${fmtAmlNum(p.g1)}${p.g2 != null ? ` G2=${fmtAmlNum(p.g2)}` : ''} | 门禁 ${p.passed ? '通过' : '未通过'}${p.e.id === bestId ? ' ★当前最优' : ''}`)
+  const models = rt.repo.model.list({ limit: 100 }).filter(m => m.datasetId === datasetId)
+  const modelLines = models.map(m => `- ${m.id} [${m.stage}] purpose=${m.purpose}(实验 ${m.experimentId})`)
+  return {
+    text: [
+      `实验谱系(数据集 ${datasetId} · ${dataset.productId}/${dataset.recipeId} · ${exps.length} 条,新→旧):`,
+      ...rows,
+      modelLines.length > 0 ? `\n已登记模型(晋升对象;aml_leaderboard 最优 = 门禁通过且 G1 最小):` : null,
+      ...modelLines,
+      `\nG1=单步测试 NRMSE,G2=多步滚动 NRMSE(越小越好)。优化纪律:每次只改一个组件,change_note 写明;把最优模型推上生产用 aml_model_promote(lead 专属,需人工审批)。`,
+    ].filter(x => x !== null).join('\n'),
+  }
+}
+
+/** 工具:aml_model_promote —— 模型晋升 shadow/production(lead 专属;HITL 人工审批;流转入册由 transitionModel 内部完成) */
+export async function toolAmlModelPromote(agentId: string, args: { model_id?: string, to_stage?: string }): Promise<{ text: string, isError?: boolean }> {
+  const modelId = String(args.model_id ?? '').trim()
+  const toStage = String(args.to_stage ?? '').trim()
+  if (!modelId) return amlErr('model_id 必填(aml_leaderboard 的「已登记模型」段可查)。')
+  if (toStage !== 'shadow' && toStage !== 'production') return amlErr('to_stage 必须为 \'shadow\'(影子观测)或 \'production\'(生产生效)。')
+  const rt = getAmlRuntime()
+  const model = rt.repo.model.get(modelId)
+  if (!model) return amlErr(`模型 ${modelId} 不存在。`)
+  if (model.stage === toStage) return amlErr(`模型 ${modelId} 已是 ${toStage},无需流转。`)
+  // production 预检:同组 (product, recipe, purpose) 旧生产将被退役
+  let oldProdId: string | undefined
+  if (toStage === 'production') {
+    oldProdId = rt.repo.model
+      .list({ stage: 'production', productId: model.productId, recipeId: model.recipeId, limit: 50 })
+      .find(m => m.id !== modelId && m.purpose === model.purpose)?.id
+  }
+  // 同模型挂起审批去重(防审批面板堆积,与 dcw_control 同纪律)
+  const approvals = getToolApprovals()
+  if (approvals.hasPendingFor(agentId, modelId)) {
+    return amlErr(`模型 ${modelId} 已有一条待审批的晋升请求,请等待用户处理后再发起新请求。`)
+  }
+  const detail = `AML 模型晋升:${modelId} ${model.stage} → ${toStage}(产品 ${model.productId} / 配方 ${model.recipeId} / purpose=${model.purpose}${oldProdId ? `;批准后原生产模型 ${oldProdId} 将自动退役` : ''})`
+  const ap = await approvals.request(agentId, modelId, 'dcw', detail, { title: 'AML 模型晋升审批' })
+  if (!ap.approved) {
+    return { text: `人工未批准:模型 ${modelId} 保持 ${model.stage} 阶段。用户备注:${ap.comment || '(无)'}。可回炉重训(aml_job_submit)或换候选模型后再申请。` }
+  }
+  try {
+    const r = transitionModel(modelId, toStage, agentBadgeLabel(agentId), 'agent')
+    // 归属审计已由 transitionModel 内部 recordOps(aml.model.promote)完成,此处不重复记录
+    return {
+      text: `晋升完成:${modelId} ${r.from} → ${toStage}。${r.retiredId ? `原生产模型 ${r.retiredId} 已自动退役。` : ''}${toStage === 'shadow'
+        ? '影子阶段:用 aml_model_reference 观测其预测与实际偏差,积累证据后再申请 production。'
+        : '该模型已作为生产模型生效:aml_model_reference 的影子参考即来自它;调控 Agent 调参前请先查它。'}`,
+    }
+  }
+  catch (err) {
+    return { text: `晋升失败:${err instanceof Error ? err.message : String(err)}(审批已通过;若为并发竞态可刷新状态重试)。`, isError: true }
+  }
+}
+
+/** 工具:aml_model_reference —— 生产模型影子参考:拉最近历史组装模型输入 → 预测未来目标轨迹(调参前先问影子模型) */
+export async function toolAmlModelReference(agentId: string, args: {
+  line_id?: string
+  product_id?: string
+  recipe_id?: string
+  purpose?: string
+  controls?: Record<string, number | string>
+  steps?: number | string
+}): Promise<{ text: string, isError?: boolean }> {
+  // 0. 绑定面:至少一个 daq 绑定;line_id 只缩不放
+  const repo = getAgentNodeBindingRepo()
+  const daqBindings = repo.byAgent(agentId).filter(b => b.kind === 'daq')
+  if (daqBindings.length === 0) {
+    return amlErr('你尚未绑定任何数采节点,无法组装影子参考所需的历史输入;请先绑定数采节点。')
+  }
+  const lineOf = (id: string): string => getDaqNodeRepo().byId(id)?.lineId ?? ''
+  const scopeLines = [...new Set(daqBindings.map(b => lineOf(b.nodeId)).filter(Boolean))]
+  const lineFilter = String(args.line_id ?? '').trim()
+  if (lineFilter && !scopeLines.includes(lineFilter)) {
+    return amlErr(`产线 ${lineFilter} 不在你的负责范围(你绑定节点覆盖:${scopeLines.join(', ') || '无'};绑定只缩不放)。`)
+  }
+  const purpose = args.purpose === 'quality_predict' ? 'quality_predict' : 'mpc_surrogate'
+
+  // 1. 解析 (productId, recipeId):参数给全用参数;缺省回退到候选产线的唯一活动批次
+  let productId = String(args.product_id ?? '').trim()
+  let recipeId = String(args.recipe_id ?? '').trim()
+  let resolveHow = '参数指定'
+  if (!productId || !recipeId) {
+    const candidateLines = lineFilter ? [lineFilter] : scopeLines
+    const runs = candidateLines
+      .map(lid => getActiveLineRun(lid))
+      .filter((r): r is NonNullable<ReturnType<typeof getActiveLineRun>> => !!r && !!r.productId && !!r.recipeId)
+    if (runs.length === 1) {
+      const run = runs[0]!
+      if (!productId) productId = run.productId
+      if (!recipeId) recipeId = run.recipeId
+      resolveHow = `产线 ${run.lineId} 唯一活动批次 ${run.runId.slice(0, 8)}(产品「${run.productName}」/配方「${run.recipeName}」)`
+    }
+    else if (runs.length === 0) {
+      return { text: `无法确定产品/配方:${candidateLines.length > 0 ? `产线 ${candidateLines.join(', ')}` : '你绑定节点所属产线'}当前无活动批次,且 product_id/recipe_id 未给全。请开跑后重试,或显式传 product_id 与 recipe_id(line_context 可查)。`, isError: true }
+    }
+    else {
+      return { text: `无法确定产品/配方:候选产线存在多个活动批次(${runs.map(r => `${r.lineId} → ${r.productName}/${r.recipeName}`).join('; ')})。请传 line_id 缩小范围,或显式传 product_id 与 recipe_id。`, isError: true }
+    }
+  }
+
+  // 2. 生产模型(无则指引建模范式)
+  const rt = getAmlRuntime()
+  const model = rt.repo.model.productionOf(productId, recipeId, purpose)
+  if (!model) {
+    const cands = rt.repo.model.list({ productId, recipeId, limit: 20 })
+    return { text: `尚无生产模型:(${productId}, ${recipeId}, ${purpose}) 下没有 stage=production 的模型。${cands.length > 0 ? `现有候选:${cands.map(m => `${m.id}(${m.stage})`).join(', ')} —— 请 lead 用 aml_model_promote 晋升(需人工审批)。` : '该三元组下还没有任何模型:aml_dataset_build → aml_job_submit 训练,门禁通过后申请晋升。在此之前调参请依据 dcw_journal 历史经验与 daq_query 证据。'}` }
+  }
+  // 3. 产线归属鉴权(绑定只缩不放;模型归属线经数据集追溯)
+  const ds = rt.repo.dataset.get(model.datasetId)
+  const modelLine = ds?.lineId ?? ''
+  if (modelLine && !scopeLines.includes(modelLine)) {
+    return amlErr(`模型 ${model.id} 归属产线 ${modelLine},不在你绑定节点覆盖的产线(${scopeLines.join(', ')})内;绑定只缩不放。`)
+  }
+
+  // 4. io 契约 → 拉最近历史 → 网格对齐 → 组 [H][nAll](原始物理量,顺序 = allNodes)
+  const io = readIoSpecFor(model.id)
+  const H = io.historySteps
+  const beatMs = io.beatMs
+  const now = Date.now()
+  const fromMs = now - H * beatMs - 5 * beatMs
+  const { getTsdb, tsdbReady } = await import('../daq/storage')
+  await tsdbReady
+  const tsdb = getTsdb()
+  const columns = new Map<string, number[]>()
+  const shortage: string[] = []
+  for (const nodeId of io.allNodes) {
+    try {
+      const pts = await tsdb.query(nodeId, { fromMs, toMs: now, limit: Math.min(Math.max(H * 10, 600), 5000) })
+      const { grid } = alignToGrid(
+        pts.map(p => ({ at: p.at, value: p.value ?? p.avg ?? 0 })).filter(p => Number.isFinite(p.value)),
+        { beatMs, maxInterpMs: beatMs * 2 },
+      )
+      const tail = grid.slice(-H).map(g => g.value)
+      if (tail.length < H) {
+        shortage.push(`${amlNodeName(nodeId)}(${nodeId})仅 ${tail.length}/${H} 格点`)
+        continue
+      }
+      columns.set(nodeId, tail)
+    }
+    catch (err) {
+      shortage.push(`${amlNodeName(nodeId)}(${nodeId})查询失败:${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+  if (shortage.length > 0) {
+    return { text: `历史数据不足,无法组装模型输入:${shortage.join(';')}。需要从 ${new Date(fromMs).toISOString().slice(0, 16)} 起连续约 ${(H * beatMs / 60_000).toFixed(0)} 分钟的运行数据(产线须在跑);等数据积累后重试,或缩短 steps/换更短 history 的模型。`, isError: true }
+  }
+  const history: number[][] = []
+  for (let i = 0; i < H; i++) history.push(io.allNodes.map(n => columns.get(n)![i]!))
+
+  // 5. 控制轨迹:controls 映射(节点 id → 值,常数外推 steps 行);缺省行持最后观测
+  const steps = Math.max(1, Math.min(Number(args.steps) || io.horizonSteps, io.horizonSteps))
+  const lastRow = history[history.length - 1]!
+  const unknownKeys = args.controls ? Object.keys(args.controls).filter(k => !io.controlNodes.includes(k)) : []
+  const controlRow = io.controlNodes.map((c) => {
+    const provided = args.controls?.[c]
+    const v = provided != null ? Number(provided) : Number.NaN
+    return Number.isFinite(v) ? v : lastRow[io.allNodes.indexOf(c)]!
+  })
+  const controls: number[][] = Array.from({ length: steps }, () => [...controlRow])
+
+  // 6. 预测 + 人话报告
+  try {
+    const r = await predictProduction(productId, recipeId, purpose, { history, controls, steps })
+    const header = `步 | ${r.targetNodes.map(t => `${amlNodeName(t)}(${amlNodeUnit(t)})`).join(' | ')}`
+    const forecastLines = r.forecast.map((row, i) =>
+      `  ${i + 1}(+${fmtAmlNum(((i + 1) * r.beatMs) / 1000, 0)}s) | ${row.map(v => fmtAmlNum(v, 3)).join(' | ')}`)
+    const ctrlTxt = io.controlNodes.length > 0
+      ? io.controlNodes.map((c) => {
+          const provided = args.controls?.[c]
+          return `${amlNodeName(c)}=${Number.isFinite(Number(provided)) ? Number(provided) : `${fmtAmlNum(lastRow[io.allNodes.indexOf(c)], 3)}(持最后观测)`}${amlNodeUnit(c)}`
+        }).join(', ')
+      : '无控制节点'
+    return {
+      text: [
+        `影子模型参考(调参前先问影子模型;预测≠承诺,真实下发仍走 dcw_control 安全联锁):`,
+        `  模型 ${r.modelId}(stage=${r.stage},purpose=${purpose})| 三元组:产品 ${getDcwProductRepo().byId(productId)?.name ?? productId} / 配方 ${getDcwRecipeRepo().byId(recipeId)?.name ?? recipeId}(解析:${resolveHow})`,
+        `  输入:最近 ${H} 拍 × ${io.allNodes.length} 节点(beat=${beatMs}ms),截至 ${new Date(now).toISOString().slice(11, 19)};控制轨迹(共 ${steps} 步):${ctrlTxt}${unknownKeys.length > 0 ? `(已忽略非控制节点的键:${unknownKeys.join(', ')})` : ''}`,
+        `  预测(steps=${steps},每拍 ${beatMs / 1000}s):`,
+        `    ${header}`,
+        ...forecastLines,
+        `  假设: ${r.assumptions}`,
+        `\n用法:把候选设定值作为 controls 传入(键 = 控制节点 id)对比不同方案的预测轨迹;选定后 dcw_control 下发并 daq_query 复测。`,
+      ].join('\n'),
+    }
+  }
+  catch (err) {
+    return { text: `预测失败:${err instanceof Error ? err.message : String(err)}(模型 ${model.id};若为工件缺失可重训同规格数据集)。`, isError: true }
   }
 }

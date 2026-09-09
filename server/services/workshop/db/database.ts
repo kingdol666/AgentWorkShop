@@ -15,6 +15,7 @@
 import { createRequire } from 'node:module'
 import { DatabaseSync } from 'node:sqlite'
 import type * as sqliteVec from 'sqlite-vec'
+import { AML_AGENT_TEMPLATES, AML_TEAM } from './aml-team-seeds'
 
 const require = createRequire(import.meta.url)
 
@@ -279,7 +280,83 @@ CREATE TABLE IF NOT EXISTS approval_requests (
   decided_at    TEXT,
   comment       TEXT NOT NULL DEFAULT ''
 );
-CREATE INDEX IF NOT EXISTS idx_approval_requests_status ON approval_requests(status, requested_at DESC);`
+CREATE INDEX IF NOT EXISTS idx_approval_requests_status ON approval_requests(status, requested_at DESC);
+-- v15:AML 自动建模平台(数据集快照 / 训练作业 / 实验谱系 / 模型注册表)
+-- 级联:删数据集连带作业与实验行(模型挂实验下随之消失);GC 删除前代码层先查引用,
+-- CASCADE 仅作 FK 兜底(杜绝 ws.ts FK 毒化式永久错误)。
+CREATE TABLE IF NOT EXISTS aml_datasets (
+  id            TEXT PRIMARY KEY,
+  line_id       TEXT NOT NULL,
+  product_id    TEXT NOT NULL,
+  recipe_id     TEXT NOT NULL,
+  run_ids_json  TEXT NOT NULL DEFAULT '[]',
+  spec_json     TEXT NOT NULL,
+  sha256        TEXT NOT NULL,
+  row_count     INTEGER NOT NULL DEFAULT 0,
+  from_ms       INTEGER,
+  to_ms         INTEGER,
+  path          TEXT NOT NULL,
+  created_by    TEXT NOT NULL DEFAULT '',
+  created_by_kind TEXT NOT NULL DEFAULT 'user',
+  note          TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_aml_datasets_recipe ON aml_datasets(recipe_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS aml_jobs (
+  id            TEXT PRIMARY KEY,
+  dataset_id    TEXT NOT NULL REFERENCES aml_datasets(id) ON DELETE CASCADE,
+  purpose       TEXT NOT NULL DEFAULT 'mpc_surrogate',
+  status        TEXT NOT NULL DEFAULT 'queued', -- queued|provisioning|training|evaluating|done|failed|cancelled|timeout|interrupted
+  stage         TEXT NOT NULL DEFAULT '',
+  progress      INTEGER NOT NULL DEFAULT 0,
+  budget_json   TEXT NOT NULL DEFAULT '{}',
+  metrics_json  TEXT,
+  gates_json    TEXT,
+  artifacts_path TEXT,
+  error         TEXT,
+  retry_count   INTEGER NOT NULL DEFAULT 0,
+  agent_id      TEXT NOT NULL DEFAULT '',
+  channel_id    TEXT NOT NULL DEFAULT '',
+  task_id       TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL,
+  started_at    TEXT,
+  ended_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_aml_jobs_status ON aml_jobs(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_aml_jobs_dataset ON aml_jobs(dataset_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS aml_experiments (
+  id            TEXT PRIMARY KEY,
+  job_id        TEXT NOT NULL REFERENCES aml_jobs(id) ON DELETE CASCADE,
+  dataset_id    TEXT NOT NULL REFERENCES aml_datasets(id) ON DELETE CASCADE,
+  parent_experiment_id TEXT,
+  change_note   TEXT NOT NULL DEFAULT '',
+  config_json   TEXT NOT NULL DEFAULT '{}',
+  metrics_json  TEXT NOT NULL DEFAULT '{}',
+  gates_json    TEXT NOT NULL DEFAULT '{}',
+  status        TEXT NOT NULL DEFAULT 'running', -- running|gates_passed|gates_failed|failed
+  seed          INTEGER,
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_aml_experiments_dataset ON aml_experiments(dataset_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS aml_models (
+  id            TEXT PRIMARY KEY,
+  experiment_id TEXT NOT NULL REFERENCES aml_experiments(id) ON DELETE CASCADE,
+  dataset_id    TEXT NOT NULL REFERENCES aml_datasets(id) ON DELETE CASCADE,
+  product_id    TEXT NOT NULL,
+  recipe_id     TEXT NOT NULL,
+  purpose       TEXT NOT NULL DEFAULT 'mpc_surrogate',
+  stage         TEXT NOT NULL DEFAULT 'candidate', -- candidate|shadow|production|retired
+  io_spec_json  TEXT NOT NULL DEFAULT '{}',
+  metrics_json  TEXT NOT NULL DEFAULT '{}',
+  path          TEXT NOT NULL DEFAULT '',
+  artifacts_pruned INTEGER NOT NULL DEFAULT 0,
+  created_by    TEXT NOT NULL DEFAULT '',
+  promoted_by   TEXT,
+  promoted_at   TEXT,
+  note          TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_aml_models_lookup ON aml_models(product_id, recipe_id, purpose, stage);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 
@@ -430,6 +507,10 @@ function seedDefaultWorkshopData(db: DatabaseSync): void {
   for (const t of DEFAULT_AGENT_TEMPLATES) {
     insertAgent.run(t.id, t.name, t.harness, JSON.stringify(t.config), now, now)
   }
+  // v15:AML 自动建模团队种子(内置公共,同款 INSERT OR IGNORE 幂等)
+  for (const t of AML_AGENT_TEMPLATES) {
+    insertAgent.run(t.id, t.name, t.harness, JSON.stringify(t.config), now, now)
+  }
   const insertTeam = db.prepare(
     'INSERT OR IGNORE INTO teams (id, name, description, visibility, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, \'public\', NULL, ?, ?)',
   )
@@ -437,6 +518,13 @@ function seedDefaultWorkshopData(db: DatabaseSync): void {
     'INSERT OR IGNORE INTO team_members (team_id, template_id, role, created_at) VALUES (?, ?, ?, ?)',
   )
   for (const team of DEFAULT_TEAMS) {
+    insertTeam.run(team.id, team.name, team.description, now, now)
+    for (const m of team.members) {
+      insertMember.run(team.id, m.templateId, m.role, now)
+    }
+  }
+  // v15:AML 编组种子(team + team_members 同款幂等注入)
+  for (const team of [AML_TEAM]) {
     insertTeam.run(team.id, team.name, team.description, now, now)
     for (const m of team.members) {
       insertMember.run(team.id, m.templateId, m.role, now)

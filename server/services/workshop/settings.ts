@@ -189,3 +189,43 @@ export function daqRuntimeSettings(): DaqRuntimeSettings {
 export function securityHitlTimeoutMs(): number {
   return Number(effective()['security.hitl_timeout_ms'] ?? 180_000)
 }
+
+export interface AmlSettings {
+  python: { pythonBin: string, uvBin: string, indexUrl: string }
+  job: { timeoutMs: number, maxConcurrent: number, diskQuotaMb: number, stallMs: number, logTailLines: number }
+  dataset: { maxRows: number, retentionDays: number, allowCrossRecipe: boolean }
+  model: { retiredKeepDays: number }
+  gates: { nrmse: number, rolloutNrmse: number, valTestGap: number, minRows: number, minRuns: number }
+}
+/** AML 自动建模平台运行语义(live 键热生效;logTailLines 非描述符键,固定缺省) */
+export function amlSettings(): AmlSettings {
+  const e = effective()
+  const get = (k: string, dflt: unknown): unknown => (e[`aml.${k}`] === undefined ? dflt : e[`aml.${k}`])
+  return {
+    python: {
+      pythonBin: String(get('python.pythonBin', '')),
+      uvBin: String(get('python.uvBin', '')),
+      indexUrl: String(get('python.indexUrl', '')),
+    },
+    job: {
+      timeoutMs: Number(get('job.timeoutMs', 1_800_000)),
+      maxConcurrent: Number(get('job.maxConcurrent', 2)),
+      diskQuotaMb: Number(get('job.diskQuotaMb', 2048)),
+      stallMs: Number(get('job.stallMs', 600_000)),
+      logTailLines: 500,
+    },
+    dataset: {
+      maxRows: Number(get('dataset.maxRows', 200_000)),
+      retentionDays: Number(get('dataset.retentionDays', 30)),
+      allowCrossRecipe: Boolean(get('dataset.allowCrossRecipe', false)),
+    },
+    model: { retiredKeepDays: Number(get('model.retiredKeepDays', 90)) },
+    gates: {
+      nrmse: Number(get('gates.nrmse', 0.10)),
+      rolloutNrmse: Number(get('gates.rolloutNrmse', 0.25)),
+      valTestGap: Number(get('gates.valTestGap', 0.20)),
+      minRows: Number(get('gates.minRows', 500)),
+      minRuns: Number(get('gates.minRuns', 3)),
+    },
+  }
+}
