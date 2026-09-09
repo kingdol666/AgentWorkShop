@@ -370,7 +370,16 @@ useHead({ title: () => tt('titles.agents') })
           <a-select
             v-model:value="form.harness"
             :options="harnessOptions"
-          />
+          >
+            <template #option="{ value, label }">
+              <span
+                class="h-opt"
+                :class="{ off: isUnavailable(String(value)) }"
+              >
+                <span class="h-opt-dot" /> {{ label }}
+              </span>
+            </template>
+          </a-select>
           <div
             v-if="harnesses.length > 0"
             class="harness-status"
@@ -378,6 +387,13 @@ useHead({ title: () => tt('titles.agents') })
           >
             <template v-if="isUnavailable(form.harness)">
               <span class="i-tabler-plug-off" /> {{ harnessById.get(form.harness)?.error }}
+              <a
+                v-if="harnessById.get(form.harness)?.homepage"
+                class="h-install"
+                :href="harnessById.get(form.harness)?.homepage"
+                target="_blank"
+                rel="noopener"
+              >{{ tt('agents.installLink') }}</a>
             </template>
             <template v-else-if="harnessById.get(form.harness)?.inprocess">
               <span class="i-tabler-plug-connected" /> {{ tt('agents.harnessInprocess') }}
@@ -428,6 +444,12 @@ useHead({ title: () => tt('titles.agents') })
   border-radius: 3px;
   opacity: 0.75;
 }
+.h-opt { display: inline-flex; align-items: center; gap: 7px; }
+.h-opt-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--tone-success-dot, #4a6b57); }
+.h-opt.off .h-opt-dot { background: var(--tone-danger-dot, #c25a4e); }
+.h-opt.off { opacity: 0.6; }
+.h-install { margin-left: 8px; color: var(--accent); text-decoration: none; }
+.h-install:hover { text-decoration: underline; }
 .harness-status {
   display: flex;
   gap: 6px;

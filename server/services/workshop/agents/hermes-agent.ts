@@ -1,24 +1,23 @@
 /**
- * DshAgentImpl — DeepSeek Harness(`dsh --profile acp`)的 AgentInterface 实现。
+ * HermesAgentImpl — Hermes Agent(NousResearch,`hermes acp`)的 AgentInterface 实现。
  *
- * 进程模型:每 Agent 一个 `dsh --profile acp` 子进程(ACP v1:JSON-RPC over stdio,
- * lazy spawn 跨消息复用);session/new 建会话(挂 stdio MCP 桥),session/prompt
- * 驱动回合(单飞,响应在回合终点返回 stopReason)。
+ * 进程模型:每 Agent 一个 `hermes acp` 子进程(标准 ACP:JSON-RPC over stdio,lazy spawn
+ * 跨消息复用),与 dsh 同型:session/new 建会话,session/prompt 驱动回合(单飞,响应在
+ * 回合终点返回 stopReason)。
  *
- *  - prompt/工具面与 omp 全引擎同源(prompt-builder / host-tool-bridge);
- *    工具经 stdio MCP 桥以 session/new mcpServers 挂载(工具名 mcp__aw__* 由引擎加前缀)
+ *  - 鉴权/provider:模型面来自 hermes 自身配置(config.yaml 的 model.provider/model.default
+ *    /model.base_url,`hermes model` 交互配置);config.apiKey → GLM_API_KEY env(zai provider);
+ *    config.provider/config.model → HERMES_PROVIDER/HERMES_MODEL env(若版本支持)
  *  - 事件映射:session/update(agent_message_chunk/tool_call/tool_call_update/contextUsage)
  *    → AgentEvent;session/prompt 响应(stopReason)→ done/error
- *  - HITL:session/request_permission(server→client 请求)→ hitl-registry 登记 →
- *    respondHitl 应答(allow 选项 / reject 选项 / cancelled;fail-closed)
- *  - steer:ACP 无同轮注入 → 恒 'deferred'(能力面如实声明 steer:false)
- *  - 上下文:引擎原生 auto-compaction;usage 随事件被动跟踪(平台不主动压缩)
- *
- * 风险:pre-1.0(developer preview),协议方法名集中本文件;版本 pin + 契约测试兜底。
- * 协议权威:github.com/deepseek-ai/deepseek-harness packages/acp/acp/README.md。
+ *  - HITL:session/request_permission → hitl-registry(kind 'hermes-permission') →
+ *    respondHitl(allow/reject 选项,fail-closed)
+ *  - steer:ACP 单飞无同轮注入 → 恒 'deferred'
+ *  - 工具:hermes 自身 MCP 体系(`hermes mcp add aw ...` 用户级配置一次;aw 桥身份经
+ *    hermes 进程 env 继承到桥子进程)
  */
-import { createLogger } from '../logger'
 import { randomUUID } from 'node:crypto'
+import { createLogger } from '../logger'
 import type { AgentEvent, AgentInterface, AgentInfo, AgentRunContext, AgentRunRequest } from './agent-interface'
 import type { AgentContextStats } from '../types/task'
 import { registerHarnessProcess, bindHarnessProcess, markHarnessProcessExit, killHarnessProcess } from './harness-process'
@@ -29,10 +28,9 @@ import { StdioJsonRpcClient, type JsonRpcRequestIncoming } from './adapters/stdi
 import { BaseAgentImpl } from './base-agent'
 import { generateMcpBridgeEnv } from './harness-env'
 
-const log = createLogger('workshop.dsh')
+const log = createLogger('workshop.hermes')
 
-/** ACP 协议方法名集中地(pre-1.0 变更时改这一处) */
-export const DSH_ACP_METHODS = {
+export const HERMES_ACP_METHODS = {
   initialize: 'initialize',
   sessionNew: 'session/new',
   sessionPrompt: 'session/prompt',
@@ -41,27 +39,13 @@ export const DSH_ACP_METHODS = {
   requestPermission: 'session/request_permission',
 } as const
 
-export interface DshAgentConfig {
-  /** dsh 可执行文件(默认取 harness.dsh_command 设置) */
+export interface HermesAgentConfig {
   command?: string
-  /** 额外 CLI 参数(默认 ['--profile','acp']) */
   args?: string[]
   cwd?: string
-  /** 模型(如 deepseek-v4-flash;经进程环境传给 profile patch 的 acp provider/model) */
   model?: string
-  /** provider(如 deepseek-official;经进程环境传给 profile patch) */
   provider?: string
-  /** 推理档位(off|low|high|max) */
-  reasoningEffort?: string
-  /** 审批策略(ask=默认,触发 HITL;never=引擎侧全拒) */
-  approvalPolicy?: 'ask' | 'never'
-  /** 沙箱预设(read-only|workspace-write|danger-full-access) */
-  sandboxPreset?: string
-  /** DSH_HOME(缺省继承用户环境,保留其凭据) */
-  dshHome?: string
-  /** DEEPSEEK_API_KEY(缺省继承进程环境) */
   apiKey?: string
-  /** 上下文窗口(usage 百分比;默认 1_000_000,deepseek v4 系) */
   contextWindow?: number
   promptTimeoutMs?: number
   superviseTimeoutMs?: number
@@ -74,25 +58,18 @@ export interface DshAgentConfig {
   token?: string
   baseUrl?: string
   mcpBridgePath?: string
+  [key: string]: unknown
 }
 
-export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
-  private readonly config: DshAgentConfig
-  private agentInfo: AgentInfo | null = null
-  private readonly bridgeCtx = {
-    identity: { agentId: '', channelId: '', role: 'worker' as 'lead' | 'worker', name: 'agent' },
-    state: this.toolState,
-    getWorkspace: () => this.workspace,
-  }
+export class HermesAgentImpl extends BaseAgentImpl implements AgentInterface {
+  private readonly config: HermesAgentConfig
 
   private agentRole: 'lead' | 'worker' = 'worker'
   private client: StdioJsonRpcClient | null = null
   private clientStarting: Promise<void> | null = null
   private sessionId: string | null = null
-  /** ACP 会话回合锁(一 session 一 in-flight prompt) */
   private turnActive = false
   private lastUsage: { input: number, at: number } | null = null
-  /** 待应答权限(permission request id → rpc id) */
   private pendingPermissions = new Map<string, { rpcId: string | number, options: Array<Record<string, unknown>>, timer: ReturnType<typeof setTimeout> | null }>()
 
   constructor(config: Record<string, unknown> = {}) {
@@ -102,16 +79,18 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
       role: config.role === 'lead' ? 'lead' : 'worker',
       channelId: typeof config.channelId === 'string' ? config.channelId : '',
     })
-    this.config = config as DshAgentConfig
+    this.config = config as HermesAgentConfig
   }
 
   protected get harnessId(): string {
-    return 'dsh'
+    return 'hermes'
   }
 
   protected configRecord(): Record<string, unknown> {
     return this.config
   }
+
+  private agentInfo: AgentInfo | null = null
 
   async dispose(): Promise<void> {
     const client = this.client
@@ -129,10 +108,9 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
   }
 
   getProcessInfo(): { pid: number, alive: boolean, command: string } | null {
-    const client = this.client
-    const pid = client?.pid
-    if (!pid || !client) return null
-    return { pid, alive: client.alive, command: 'dsh --profile acp' }
+    const pid = this.client?.pid
+    if (!pid || !this.client) return null
+    return { pid, alive: this.client.alive, command: 'hermes acp' }
   }
 
   killProcess(): void {
@@ -147,39 +125,33 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
 
   getContextStats(): AgentContextStats | null {
     if (!this.lastUsage) return null
-    const window = this.config.contextWindow ?? 1_000_000
+    const window = this.config.contextWindow ?? 200_000
     return {
       usedTokens: this.lastUsage.input,
       contextWindow: window,
       percent: window > 0 ? Math.min(1, this.lastUsage.input / window) : null,
-      compacting: false, // 压缩由引擎原生驱动,平台无主动 compact 面
+      compacting: false,
     }
   }
 
-  /** ACP 无同轮注入:恒 'deferred'(消息保持 pending,消费循环处理;能力面如实声明) */
   async steer(_text: string): Promise<'steer' | 'deferred'> {
     return 'deferred'
   }
 
-  /** HITL 应答:session/request_permission → allow/reject/cancelled(fail-closed) */
   async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
-    value?: string
-    response?: string
-    comment?: string
   }): Promise<void> {
-    if (kind !== 'dsh-permission') return
+    if (kind !== 'hermes-permission') return
     const pending = this.pendingPermissions.get(id)
     if (!pending) throw new Error(`待办不存在或已处理: ${id}`)
     const client = this.client
-    if (!client) throw new Error('dsh 会话已关闭')
+    if (!client) throw new Error('hermes 会话已关闭')
     let result: Record<string, unknown>
     if (outcome.cancelled === true) {
       result = { outcome: { outcome: 'cancelled' } }
     }
     else if (outcome.confirmed === true) {
-      // 选第一个 allow 语义选项(kind: allow_once/allow_always 或 name 含 allow)
       const allow = pending.options.find(o => String(o.kind ?? '').startsWith('allow') || /allow/i.test(String(o.name ?? '')))
       if (!allow) {
         client.respondError(pending.rpcId, -32602, '无可用 allow 选项')
@@ -207,7 +179,7 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
     const p = this.pendingPermissions.get(id)
     if (p?.timer) clearTimeout(p.timer)
     this.pendingPermissions.delete(id)
-    getHitlRegistry().resolve('dsh-permission', id, resolution)
+    getHitlRegistry().resolve('hermes-permission', id, resolution)
   }
 
   // ===== run / supervise =====
@@ -279,19 +251,14 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
 
   // ===== 回合执行 =====
 
-  /**
-   * ACP 回合:session/prompt(响应在回合终点返回)+ session/update 通知流。
-   * 通知由 client 级 handler 转 turnSettlers;abort → session/cancel 通知。
-   */
   private async* streamTurn(prompt: string, taskId: string | undefined, timeoutMs: number, signal?: AbortSignal): AsyncGenerator<AgentEvent, void, unknown> {
     const client = this.client
     if (!client || !this.sessionId) {
-      yield { kind: 'error', error: { code: 'DSH_NOT_READY', message: 'dsh 会话未就绪' } }
+      yield { kind: 'error', error: { code: 'HERMES_NOT_READY', message: 'hermes 会话未就绪' } }
       return
     }
     if (this.turnActive) {
-      // 单飞约束:上一回合未收口(理论不可达,run/supervise 互斥在上层保证)
-      yield { kind: 'error', error: { code: 'DSH_TURN_BUSY', message: 'dsh 上一回合尚未收口' } }
+      yield { kind: 'error', error: { code: 'HERMES_TURN_BUSY', message: 'hermes 上一回合尚未收口' } }
       return
     }
     this.turnActive = true
@@ -323,7 +290,6 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
       resolveWait = null
     }
 
-    // 引擎事件 → 队列(session/update 映射)
     const pushUpdate = (params: unknown): void => {
       lastActivity = Date.now()
       const p = (params ?? {}) as Record<string, unknown>
@@ -362,7 +328,6 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
         }
         return
       }
-      // contextUsage / config / 其他通知:仅刷新活动时间
       const usage = (p.contextUsage ?? update.contextUsage ?? update.usage) as Record<string, unknown> | undefined
       if (usage) {
         const input = Number(usage.usedTokens ?? usage.inputTokens ?? usage.input ?? usage.totalTokens)
@@ -371,13 +336,12 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
     }
 
     const unsub = client.onNotification((method, params) => {
-      if (method === DSH_ACP_METHODS.sessionUpdate) pushUpdate(params)
+      if (method === HERMES_ACP_METHODS.sessionUpdate) pushUpdate(params)
     })
 
-    // abort:session/cancel 通知 → 引擎终结 prompt(响应 stopReason=cancelled)
     const onAbort = (): void => {
-      log.warn(`[DshAgent:${this.selfAgentId}] run 被 abort → session/cancel,taskId=${taskId ?? '-'}`)
-      client.notify(DSH_ACP_METHODS.sessionCancel, { sessionId: this.sessionId })
+      log.warn(`[HermesAgent:${this.selfAgentId}] run 被 abort → session/cancel,taskId=${taskId ?? '-'}`)
+      client.notify(HERMES_ACP_METHODS.sessionCancel, { sessionId: this.sessionId })
       setTimeout(() => {
         if (!isDone) enqueue({ kind: 'done', final: taskId ? { taskId } : undefined })
       }, 5000)
@@ -385,18 +349,16 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
     if (signal?.aborted) onAbort()
     else signal?.addEventListener('abort', onAbort, { once: true })
 
-    // 投递 prompt(响应在回合终点返回 → 异步挂接,回合内事件由生成器边到边 yield)
-    void client.request(DSH_ACP_METHODS.sessionPrompt, {
+    void client.request(HERMES_ACP_METHODS.sessionPrompt, {
       sessionId: this.sessionId,
       prompt: [{ type: 'text', text: prompt }],
     }, timeoutMs + 30_000)
       .then((result) => {
         const stopReason = String((result as Record<string, unknown>)?.stopReason ?? 'end_turn')
         if (stopReason === 'refusal') {
-          enqueue({ kind: 'error', error: { code: 'DSH_REFUSAL', message: 'dsh 回合被引擎拒绝(refusal)' } })
+          enqueue({ kind: 'error', error: { code: 'HERMES_REFUSAL', message: 'hermes 回合被引擎拒绝(refusal)' } })
         }
         else {
-          // end_turn / cancelled / 其他:中断按 done 收口(消息按已处理落账)
           enqueue({ kind: 'done', final: taskId ? { taskId } : undefined })
         }
       })
@@ -404,8 +366,8 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
         enqueue({
           kind: 'error',
           error: {
-            code: 'DSH_PROMPT_FAILED',
-            message: `dsh session/prompt 失败: ${err instanceof Error ? err.message : String(err)}`,
+            code: 'HERMES_PROMPT_FAILED',
+            message: `hermes session/prompt 失败: ${err instanceof Error ? err.message : String(err)}`,
           },
         })
       })
@@ -415,10 +377,10 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
         if (queue.length === 0 && !isDone) {
           const remaining = timeoutMs - (Date.now() - lastActivity)
           if (remaining <= 0) {
-            client.notify(DSH_ACP_METHODS.sessionCancel, { sessionId: this.sessionId })
+            client.notify(HERMES_ACP_METHODS.sessionCancel, { sessionId: this.sessionId })
             enqueue({
               kind: 'error',
-              error: { code: 'DSH_TURN_STALLED', message: `回合停滞 ${Math.round(timeoutMs / 1000)}s 无事件,已取消` },
+              error: { code: 'HERMES_TURN_STALLED', message: `回合停滞 ${Math.round(timeoutMs / 1000)}s 无事件,已取消` },
             })
             continue
           }
@@ -442,7 +404,6 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
     }
   }
 
-  /** supervise 用:收齐整个回合 */
   protected async collectTurnEvents(prompt: string, timeoutMs: number, signal?: AbortSignal): Promise<AgentEvent[]> {
     const events: AgentEvent[] = []
     for await (const e of this.streamTurn(prompt, undefined, timeoutMs, signal)) {
@@ -473,73 +434,64 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
   }
 
   private async startClient(): Promise<void> {
-    const command = this.config.command ?? harnessSettings().dsh_command
-    const env = generateMcpBridgeEnv({
+    const command = this.config.command ?? harnessSettings().hermes_command
+    const bridge = generateMcpBridgeEnv({
       agentId: this.selfAgentId,
       token: this.config.token,
       baseUrl: this.config.baseUrl,
       bridgePath: this.config.mcpBridgePath,
-      extra: {
-        // 桥身份随进程环境注入:profile 级 mcp-client(patch 层)经 !!js 读取;
-        // 此 dsh 版本 session/new 不支持 mcpServers 参数,挂载走 profile 配置。
-        ...generateMcpBridgeEnv({ agentId: this.selfAgentId, token: this.config.token, baseUrl: this.config.baseUrl, bridgePath: this.config.mcpBridgePath }).bridgeEnv,
-        AW_BRIDGE_PATH: generateMcpBridgeEnv({ agentId: this.selfAgentId, token: this.config.token, baseUrl: this.config.baseUrl, bridgePath: this.config.mcpBridgePath }).bridgePath,
-        // provider/model 经环境传给 profile patch(!!js 读取):channel/agent config 驱动
-        ...(this.config.provider ? { AW_ACP_PROVIDER: this.config.provider } : {}),
-        ...(this.config.model ? { AW_ACP_MODEL: this.config.model } : {}),
-        ...(this.config.dshHome ? { DSH_HOME: this.config.dshHome } : {}),
-        ...(this.config.apiKey ? { DEEPSEEK_API_KEY: this.config.apiKey } : {}),
-      },
     })
+    const env = {
+      ...bridge.bridgeEnv,
+      ...(this.config.apiKey ? { GLM_API_KEY: this.config.apiKey } : {}),
+      ...(this.config.provider ? { HERMES_PROVIDER: this.config.provider } : {}),
+      ...(this.config.model ? { HERMES_MODEL: this.config.model } : {}),
+    }
+    const args = this.config.args ?? ['acp']
     const client = new StdioJsonRpcClient({
-      name: 'dsh',
+      name: 'hermes',
       command,
-      args: this.config.args ?? ['--profile', 'acp'],
+      args,
       cwd: this.config.cwd ?? process.cwd(),
-      env: env.engineEnv,
+      env,
       requestTimeoutMs: 60_000,
     })
     const pidRef = { pid: undefined as number | undefined }
     client.onExit((code) => {
       if (pidRef.pid) markHarnessProcessExit(pidRef.pid, code)
       this.sessionId = null
-      log.warn(`[DshAgent:${this.selfAgentId}] dsh acp 进程退出(code=${code});下回合自动重生`)
+      log.warn(`[HermesAgent:${this.selfAgentId}] hermes acp 进程退出(code=${code});下回合自动重生`)
     })
     await client.start()
     pidRef.pid = client.pid
     if (client.pid) {
-      registerHarnessProcess(client.pid, { harness: 'dsh', command, args: ['--profile', 'acp'] })
+      registerHarnessProcess(client.pid, { harness: 'hermes', command, args })
       bindHarnessProcess(client.pid, { agentId: this.selfAgentId, channelId: this.channelId, name: this.agentName, role: this.agentRole })
     }
 
-    // 服务端→客户端请求(权限)→ HITL
     client.onRequest((req: JsonRpcRequestIncoming) => {
-      if (req.method === DSH_ACP_METHODS.requestPermission) {
+      if (req.method === HERMES_ACP_METHODS.requestPermission) {
         this.registerPermissionHitl(req)
         return
       }
       client.respondError(req.id, -32601, `方法不存在: ${req.method}`)
     })
 
-    // ACP 握手
-    await client.request(DSH_ACP_METHODS.initialize, {
+    await client.request(HERMES_ACP_METHODS.initialize, {
       protocolVersion: 1,
       clientCapabilities: {},
     }, 30_000).catch(async (err: Error) => {
-      // 协议版本协商失败 → 显式版本重试一次
-      await client.request(DSH_ACP_METHODS.initialize, { protocolVersion: '2025-06-01', clientCapabilities: {} }, 30_000)
+      await client.request(HERMES_ACP_METHODS.initialize, { protocolVersion: '2025-06-01', clientCapabilities: {} }, 30_000)
         .catch(() => { throw err })
     })
 
-    // 建会话(此版本不接受自定义 mcpServers;工具经 profile 级 mcp-client 挂载;
-    // ACP schema 要求 mcpServers 字段存在,传空数组)
-    const created = await client.request(DSH_ACP_METHODS.sessionNew, {
+    const created = await client.request(HERMES_ACP_METHODS.sessionNew, {
       cwd: this.config.cwd ?? process.cwd(),
       mcpServers: [],
     }, 60_000) as Record<string, unknown>
     const sid = created?.sessionId ?? created?.id
     this.sessionId = typeof sid === 'string' ? sid : null
-    if (!this.sessionId) throw new Error('dsh session/new 未返回 sessionId')
+    if (!this.sessionId) throw new Error('hermes session/new 未返回 sessionId')
 
     this.client = client
   }
@@ -550,17 +502,16 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
     const p = (req.params ?? {}) as Record<string, unknown>
     const options = Array.isArray(p.options) ? p.options as Array<Record<string, unknown>> : []
     const toolCall = (p.toolCall ?? {}) as Record<string, unknown>
-    const id = `dsh-${randomUUID().slice(0, 8)}`
-    const registry = getHitlRegistry()
-    registry.register({
-      kind: 'dsh-permission',
+    const id = `hermes-${randomUUID().slice(0, 8)}`
+    getHitlRegistry().register({
+      kind: 'hermes-permission',
       id,
       agentId: this.selfAgentId,
       agentName: this.agentName,
       channelId: this.channelId,
       pid: client.pid,
       method: 'confirm',
-      title: `dsh 权限请求:${String(toolCall.title ?? toolCall.toolName ?? p.toolName ?? '操作').slice(0, 200)}`,
+      title: `hermes 权限请求:${String(toolCall.title ?? toolCall.toolName ?? p.toolName ?? '操作').slice(0, 200)}`,
       detail: String(toolCall.kind ?? p.kind ?? ''),
       options: options.map(o => String(o.name ?? o.optionId ?? '')),
       createdAt: new Date().toISOString(),
@@ -569,8 +520,7 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
     const timeoutMs = harnessSettings().hitl_timeout_ms
     const timer = timeoutMs > 0
       ? setTimeout(() => {
-          // fail-closed:超时按拒绝应答(引擎默认语义)
-          void this.respondHitl('dsh-permission', id, { confirmed: false }).catch(() => {})
+          void this.respondHitl('hermes-permission', id, { confirmed: false }).catch(() => {})
         }, timeoutMs)
       : null
     this.pendingPermissions.set(id, { rpcId: req.id, options, timer })

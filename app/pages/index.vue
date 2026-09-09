@@ -377,17 +377,24 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
         <small class="mono fleet-total">{{ harnessOk }}/{{ harnesses.length }}</small>
       </header>
       <div class="harness-row">
-        <div
+        <a
           v-for="h in harnesses"
           :key="h.id"
           class="h-item"
-          :class="{ off: h.available === false }"
+          :class="{ off: h.available === false, link: h.available === false && h.homepage }"
+          :href="h.available === false && h.homepage ? h.homepage : undefined"
+          target="_blank"
+          rel="noopener"
           :title="h.available === false ? (h.error ?? '') : (h.resolvedPath ?? h.command ?? '')"
         >
           <span class="h-dot" />
           <span class="h-name">{{ h.label }}</span>
           <span class="h-cmd mono">{{ h.available === false ? t('home.harness.missing') : (h.inprocess ? 'in-process' : h.command) }}</span>
-        </div>
+          <span
+            v-if="h.available === false && h.homepage"
+            class="h-go"
+          >↗</span>
+        </a>
       </div>
     </section>
 
@@ -850,6 +857,10 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
   transition: border-color 0.15s, background 0.15s;
 }
 .h-item:hover { border-color: var(--line-strong); }
+.h-item.link { cursor: pointer; }
+.h-item.link:hover { border-color: var(--accent); color: var(--accent); }
+.h-go { flex: none; font-size: 10px; color: var(--ink-faint); }
+.h-item.link:hover .h-go { color: var(--accent); }
 .h-dot {
   flex: none;
   width: 6px;

@@ -121,9 +121,9 @@ export interface AepSceneLayout {
 /**
  * hitl.request payload:待人工处理条目的统一视图。
  * kind:omp 对话框(rpc-ui ask)/ dcw 工具审批 / codex 命令与文件审批 /
- * opencode 权限与提问 / dsh 权限请求。
+ * opencode 权限与提问 / dsh 权限请求 / claude canUseTool / qwen 工具确认。
  */
-export type AepHitlKind = 'omp-dialog' | 'dcw-approval' | 'codex-approval' | 'opencode-permission' | 'dsh-permission'
+export type AepHitlKind = 'omp-dialog' | 'dcw-approval' | 'codex-approval' | 'opencode-permission' | 'dsh-permission' | 'claude-permission' | 'qwen-permission' | 'hermes-permission'
 
 export interface AepHitlItem {
   kind: AepHitlKind

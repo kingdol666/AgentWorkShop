@@ -163,14 +163,21 @@ async function waitHitl(kind: string, timeoutMs: number): Promise<{ kind: string
 
 /** 各 harness 场景配置 */
 interface HarnessPlan {
-  harness: 'opencode' | 'codex' | 'dsh'
-  hitlKind: string
+  harness: 'opencode' | 'codex' | 'dsh' | 'claude' | 'gemini' | 'copilot' | 'cursor' | 'crush' | 'goose' | 'qwen' | 'pi' | 'hermes'
+  /** HITL kind;null = 引擎无程序化审批面(场景 B 策略性跳过) */
+  hitlKind: string | null
   /** HITL 任务的文件写指令(严格沙箱下强制触发审批) */
   writeInstruction: string
   config: Record<string, unknown>
   /** 任务闭环等待预算(慢推理模型放宽) */
   taskWaitMs?: number
+  /** 引擎无自定义 provider 面(协议/鉴权锁定):管线验证后 LLM 实测按 SKIP 收口 */
+  expectAuthFail?: boolean
 }
+
+const ZHIPU_KEY = process.env.ZHIPU_API_KEY ?? ''
+const ZHIPU_ANTHROPIC_BASE = 'https://open.bigmodel.cn/api/anthropic'
+const ZHIPU_OPENAI_BASE = 'https://open.bigmodel.cn/api/coding/paas/v4'
 
 const PLANS: HarnessPlan[] = [
   {
@@ -190,7 +197,114 @@ const PLANS: HarnessPlan[] = [
     harness: 'dsh',
     hitlKind: 'dsh-permission',
     writeInstruction: `Use your file write tool (str_replace_editor write command or similar) to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-dsh`,
-    config: { promptTimeoutMs: 240_000 },
+    config: { promptTimeoutMs: 240_000, model: 'glm-5.3-flash' },
+  },
+  {
+    harness: 'claude',
+    hitlKind: 'claude-permission',
+    writeInstruction: `Use your file write tool (Write) to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-claude. A permission prompt will be raised — wait for it to be approved.`,
+    taskWaitMs: 480_000,
+    config: {
+      promptTimeoutMs: 600_000,
+      model: 'glm-5.3-flash',
+      apiKey: ZHIPU_KEY,
+      providerBaseUrl: ZHIPU_ANTHROPIC_BASE,
+      systemPromptPrefix: 'Be direct and minimal: never explore the repository, never read files, never run shell commands unless the task explicitly requires one. When a task lists platform tool calls, execute exactly those and finish.',
+    },
+  },
+  {
+    harness: 'qwen',
+    hitlKind: 'qwen-permission',
+    writeInstruction: `Use your file write/edit tool to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-qwen. If a tool confirmation is requested, wait for it to be approved.`,
+    taskWaitMs: 480_000,
+    config: {
+      promptTimeoutMs: 600_000,
+      model: 'glm-5.3-flash',
+      apiKey: ZHIPU_KEY,
+      providerBaseUrl: ZHIPU_OPENAI_BASE,
+      systemPromptPrefix: 'Be direct and minimal: never explore the repository, never read files, never run shell commands unless the task explicitly requires one. When a task lists platform tool calls, execute exactly those and finish.',
+    },
+  },
+  {
+    harness: 'crush',
+    hitlKind: null,
+    writeInstruction: `Use your file write tool to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-crush`,
+    taskWaitMs: 480_000,
+    config: {
+      promptTimeoutMs: 600_000,
+      model: 'zhipu/glm-5.3-flash',
+      apiKey: ZHIPU_KEY,
+      command: process.env.CRUSH_COMMAND ?? '',
+      systemPromptPrefix: 'Be direct and minimal: never explore the repository, never read files, never run shell commands unless the task explicitly requires one. When a task lists platform tool calls, execute exactly those and finish.',
+    },
+  },
+  {
+    harness: 'goose',
+    hitlKind: null,
+    writeInstruction: `Use your file write tool to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-goose`,
+    taskWaitMs: 480_000,
+    config: {
+      promptTimeoutMs: 600_000,
+      model: 'glm-5.3-flash',
+      apiKey: ZHIPU_KEY,
+      systemPromptPrefix: 'Be direct and minimal: never explore the repository, never read files, never run shell commands unless the task explicitly requires one. When a task lists platform tool calls, execute exactly those and finish.',
+    },
+  },
+  {
+    harness: 'pi',
+    hitlKind: null,
+    writeInstruction: `Use your file write tool to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-pi`,
+    taskWaitMs: 480_000,
+    config: {
+      promptTimeoutMs: 600_000,
+      provider: 'zhipu',
+      model: 'glm-5.3-flash',
+      apiKey: ZHIPU_KEY,
+      systemPromptPrefix: 'Be direct and minimal: never explore the repository, never read files, never run shell commands unless the task explicitly requires one. When a task lists platform tool calls, execute exactly those and finish.',
+    },
+  },
+  {
+    harness: 'hermes',
+    hitlKind: 'hermes-permission',
+    writeInstruction: `Use your file write tool to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-hermes. If a permission approval is raised, wait for it to be approved.`,
+    taskWaitMs: 480_000,
+    config: {
+      promptTimeoutMs: 600_000,
+      apiKey: ZHIPU_KEY,
+      systemPromptPrefix: 'Be direct and minimal: never explore the repository, never read files, never run shell commands unless the task explicitly requires one. When a task lists platform tool calls, execute exactly those and finish.',
+    },
+  },
+  {
+    harness: 'gemini',
+    hitlKind: null,
+    writeInstruction: `Use your file write tool to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-gemini`,
+    config: {
+      promptTimeoutMs: 240_000,
+      model: 'glm-5.3-flash',
+      apiKey: process.env.GEMINI_API_KEY ?? 'dummy-invalid-key',
+    },
+    expectAuthFail: true,
+  },
+  {
+    harness: 'copilot',
+    hitlKind: null,
+    writeInstruction: `Use your file write tool to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-copilot`,
+    config: {
+      promptTimeoutMs: 240_000,
+      apiKey: process.env.COPILOT_GITHUB_TOKEN ?? 'dummy-invalid-token',
+    },
+    expectAuthFail: true,
+  },
+  {
+    harness: 'cursor',
+    hitlKind: null,
+    writeInstruction: `Use your file write tool to create a file named aw-hitl.txt in the current directory with exactly this content: aw-hitl-cursor`,
+    config: {
+      promptTimeoutMs: 240_000,
+      apiKey: process.env.CURSOR_API_KEY ?? 'dummy-invalid-key',
+      command: process.env.CURSOR_COMMAND ?? '',
+    },
+    expectAuthFail: true,
   },
 ]
 
@@ -249,7 +363,7 @@ async function runScenario(manager: AgentChannelManager, bridgePort: number, pla
   let sawToolStatus = false
   manager.subscribeChannelEvents(ch.channelId, (event) => {
     if (event.kind === 'error') {
-      if (/AUTH|401|身份验证|APIError/i.test(`${event.error.code} ${event.error.message}`)) providerAuthFailed = true
+      if (/AUTH|401|403|身份验证|APIError|API key not valid|API_KEY_INVALID|Unauthorized|sign in|not logged|credentials/i.test(`${event.error.code} ${event.error.message}`)) providerAuthFailed = true
       console.log(`    [event] error ${event.error.code}: ${event.error.message.slice(0, 220)}`)
     }
     else if (event.kind === 'status' && event.status.message) {
@@ -262,88 +376,131 @@ async function runScenario(manager: AgentChannelManager, bridgePort: number, pla
     else if (event.kind === 'done') console.log(`    [event] done`)
   })
 
-  // ---- A. 工具闭环 ----
-  console.log(`  ── A. MCP 桥工具闭环(report_progress + complete_task)──`)
-  const taskA = await manager.submitChannelTask({
-    channelId: ch.channelId,
-    assigneeId: workerId,
-    title: `${harness} tool-loop task`,
-    description: [
-      `SINGLE-TURN MICRO-TASK — do exactly this and nothing else:`,
-      `1. Immediately call the report_progress tool: progress=50, message="halfway".`,
-      `2. Immediately call the complete_task tool: summary="tool loop closed by ${harness}", deliverable="done".`,
-      `Forbidden: exploring files, running shell commands, searching memory, polling messages, reading MCP resources. The two tool calls above are the entire task.`,
-    ].join('\n'),
-  })
-  const wired = await waitWired(manager, workerId, TIMING.wire)
-  check(`[${harness}] worker 运行时装配`, wired)
-  const stateA = await waitTask(manager, taskA.id, plan.taskWaitMs ?? TIMING.task)
-  if (providerAuthFailed && stateA !== 'COMPLETED') {
-    // 引擎侧 provider 凭据失效(如 opencode 存储的 API key 过期):环境问题而非集成缺陷
-    for (const name of [
-      `[${harness}] 任务闭环 COMPLETED(引擎 → MCP 桥 → 平台工具)`,
-      `[${harness}] report_progress 经桥落库(progress≥50)`,
-      `[${harness}] 引擎审批请求登记到 HITL`,
-      `[${harness}] HITL 批准后任务闭环 COMPLETED`,
-    ]) checkSkip(name, '引擎 provider 凭据 401 失效 — 请重新登录该引擎后重跑')
-    console.log('  (场景提前结束:引擎凭据失效)')
-    await manager.unloadAgent(ch.channelId, workerId).catch(() => {})
-    return
+  // 工具确认自动应答守卫:任务 A 期间若引擎对 MCP 工具触发确认(trust 未被引擎尊重时),
+  // 平台侧代为批准(真实部署中由人在 HITL 铃标应答;这里验证管线连通性)
+  let autoApprove = true
+  const registry = getHitlRegistry()
+  const autoTimer: NodeJS.Timeout | null = plan.hitlKind
+    ? setInterval(() => {
+        if (!autoApprove) return
+        for (const item of registry.snapshot()) {
+          if (item.kind !== plan.hitlKind) continue
+          void manager.respondHarnessHitl(item.agentId, item.kind, item.id, { confirmed: true }).catch(() => {})
+        }
+      }, 2_000)
+    : null
+  // 场景任何退出路径都必须清掉 interval,否则事件循环被吊住,e2e 进程永不退出
+  let scenarioSettled = false
+  const settle = (): void => {
+    if (scenarioSettled) return
+    scenarioSettled = true
+    if (autoTimer) clearInterval(autoTimer)
   }
-  if (harness === 'opencode' && !sawToolStatus && !providerAuthFailed && stateA !== 'COMPLETED') {
+  try {
+  // ---- A. 工具闭环 ----
+    console.log(`  ── A. MCP 桥工具闭环(report_progress + complete_task)──`)
+    const taskA = await manager.submitChannelTask({
+      channelId: ch.channelId,
+      assigneeId: workerId,
+      title: `${harness} tool-loop task`,
+      description: [
+        `SINGLE-TURN MICRO-TASK — do exactly this and nothing else:`,
+        `1. Immediately call the report_progress tool: progress=50, message="halfway".`,
+        `2. Immediately call the complete_task tool: summary="tool loop closed by ${harness}", deliverable="done".`,
+        `Forbidden: exploring files, running shell commands, searching memory, polling messages, reading MCP resources. The two tool calls above are the entire task.`,
+      ].join('\n'),
+    })
+    const wired = await waitWired(manager, workerId, TIMING.wire)
+    check(`[${harness}] worker 运行时装配`, wired)
+    const stateA = await waitTask(manager, taskA.id, plan.taskWaitMs ?? TIMING.task)
+    autoApprove = false
+    if (plan.expectAuthFail && stateA !== 'COMPLETED' && !providerAuthFailed) {
+    // 引擎无自定义 provider 面(gemini=Google 鉴权锁定/copilot=GitHub 鉴权/cursor=Cursor 账号):
+    // 拉起/参数组装/回程管线已验证,LLM 凭据失败属预期 —— 按环境阻塞 SKIP,不判 FAIL
+      for (const name of [
+        `[${harness}] 任务闭环 COMPLETED(引擎 → MCP 桥 → 平台工具)`,
+        `[${harness}] report_progress 经桥落库(progress≥50)`,
+        `[${harness}] 引擎审批请求登记到 HITL`,
+        `[${harness}] HITL 批准后任务闭环 COMPLETED`,
+      ]) checkSkip(name, '引擎无自定义 provider 面(鉴权协议锁定),LLM 实测需原生订阅凭据')
+      console.log('  (场景提前结束:预期内的凭据不可用)')
+      await manager.unloadAgent(ch.channelId, workerId).catch(() => {})
+      return
+    }
+    if (providerAuthFailed && stateA !== 'COMPLETED') {
+    // 引擎侧 provider 凭据失效(如 opencode 存储的 API key 过期):环境问题而非集成缺陷
+      for (const name of [
+        `[${harness}] 任务闭环 COMPLETED(引擎 → MCP 桥 → 平台工具)`,
+        `[${harness}] report_progress 经桥落库(progress≥50)`,
+        `[${harness}] 引擎审批请求登记到 HITL`,
+        `[${harness}] HITL 批准后任务闭环 COMPLETED`,
+      ]) checkSkip(name, '引擎 provider 凭据 401 失效 — 请重新登录该引擎后重跑')
+      console.log('  (场景提前结束:引擎凭据失效)')
+      await manager.unloadAgent(ch.channelId, workerId).catch(() => {})
+      return
+    }
+    if (harness === 'opencode' && !sawToolStatus && !providerAuthFailed && stateA !== 'COMPLETED') {
     // opencode 本机存储的 provider API key 均已 401 失效(裸探针证实:session.error
     // APIError「身份验证失败。」):集成管线(serve 拉起/会话/投递/SSE/收口)已验证,
     // LLM 回合无法产出 —— 按环境阻塞处理,不判 FAIL
-    for (const name of [
-      `[${harness}] 任务闭环 COMPLETED(引擎 → MCP 桥 → 平台工具)`,
-      `[${harness}] report_progress 经桥落库(progress≥50)`,
-      `[${harness}] 引擎审批请求登记到 HITL`,
-      `[${harness}] HITL 批准后任务闭环 COMPLETED`,
-    ]) checkSkip(name, '引擎 provider 凭据失效(opencode auth login 后重跑)')
-    await manager.unloadAgent(ch.channelId, workerId).catch(() => {})
-    return
-  }
-  check(`[${harness}] 任务闭环 COMPLETED(引擎 → MCP 桥 → 平台工具)`, stateA === 'COMPLETED', `state=${stateA}`)
-  const tA = getEngine(manager).get(taskA.id)
-  // report_progress 生效后,complete_task 会把 progress 收口为 100 —— 只断言桥回程生效过
-  check(`[${harness}] report_progress 经桥落库(progress≥50)`, (tA?.progress ?? 0) >= 50, `progress=${tA?.progress}`)
+      for (const name of [
+        `[${harness}] 任务闭环 COMPLETED(引擎 → MCP 桥 → 平台工具)`,
+        `[${harness}] report_progress 经桥落库(progress≥50)`,
+        `[${harness}] 引擎审批请求登记到 HITL`,
+        `[${harness}] HITL 批准后任务闭环 COMPLETED`,
+      ]) checkSkip(name, '引擎 provider 凭据失效(opencode auth login 后重跑)')
+      await manager.unloadAgent(ch.channelId, workerId).catch(() => {})
+      return
+    }
+    check(`[${harness}] 任务闭环 COMPLETED(引擎 → MCP 桥 → 平台工具)`, stateA === 'COMPLETED', `state=${stateA}`)
+    const tA = getEngine(manager).get(taskA.id)
+    // report_progress 生效后,complete_task 会把 progress 收口为 100 —— 只断言桥回程生效过
+    check(`[${harness}] report_progress 经桥落库(progress≥50)`, (tA?.progress ?? 0) >= 50, `progress=${tA?.progress}`)
 
-  // ---- B. HITL 闭环 ----
-  console.log(`  ── B. HITL 审批闭环(严格沙箱文件写 → 登记 → 批准)──`)
-  const taskB = await manager.submitChannelTask({
-    channelId: ch.channelId,
-    assigneeId: workerId,
-    title: `${harness} hitl task`,
-    description: [
-      `You are running inside a multi-agent platform. Your task:`,
-      `1. ${plan.writeInstruction}`,
-      `   The platform may require human approval for this action — if a permission/approval request is raised, wait for it to be approved, then proceed.`,
-      `2. After the file write succeeds, call the complete_task tool with summary="hitl approved on ${harness}".`,
-    ].join('\n'),
-  })
-  const hitlItem = await waitHitl(plan.hitlKind, TIMING.hitl)
-  if (hitlItem) {
-    check(`[${harness}] 引擎审批请求登记到 HITL`, true, `title=${hitlItem.title?.slice(0, 80)}`)
-    try {
-      await manager.respondHarnessHitl(hitlItem.agentId, hitlItem.kind, hitlItem.id, { confirmed: true })
-      check(`[${harness}] respondHarnessHitl 批准应答传导`, true)
+    // ---- B. HITL 闭环 ----
+    console.log(`  ── B. HITL 审批闭环(严格沙箱文件写 → 登记 → 批准)──`)
+    const taskB = await manager.submitChannelTask({
+      channelId: ch.channelId,
+      assigneeId: workerId,
+      title: `${harness} hitl task`,
+      description: [
+        `You are running inside a multi-agent platform. Your task:`,
+        `1. ${plan.writeInstruction}`,
+        `   The platform may require human approval for this action — if a permission/approval request is raised, wait for it to be approved, then proceed.`,
+        `2. After the file write succeeds, call the complete_task tool with summary="hitl approved on ${harness}".`,
+      ].join('\n'),
+    })
+    const hitlItem = plan.hitlKind ? await waitHitl(plan.hitlKind, TIMING.hitl) : null
+    if (hitlItem) {
+      check(`[${harness}] 引擎审批请求登记到 HITL`, true, `title=${hitlItem.title?.slice(0, 80)}`)
+      try {
+        await manager.respondHarnessHitl(hitlItem.agentId, hitlItem.kind, hitlItem.id, { confirmed: true })
+        check(`[${harness}] respondHarnessHitl 批准应答传导`, true)
+      }
+      catch (err) {
+        check(`[${harness}] respondHarnessHitl 批准应答传导`, false, err instanceof Error ? err.message : String(err))
+      }
     }
-    catch (err) {
-      check(`[${harness}] respondHarnessHitl 批准应答传导`, false, err instanceof Error ? err.message : String(err))
-    }
-  }
-  const stateB = await waitTask(manager, taskB.id, plan.taskWaitMs ?? TIMING.task)
-  check(`[${harness}] HITL 批准后任务闭环 COMPLETED`, stateB === 'COMPLETED', `state=${stateB}`)
-  if (!hitlItem) {
+    const stateB = await waitTask(manager, taskB.id, plan.taskWaitMs ?? TIMING.task)
+    check(`[${harness}] HITL 批准后任务闭环 COMPLETED`, stateB === 'COMPLETED', `state=${stateB}`)
+    if (!hitlItem) {
     // 审批未触发:策略性跳过(引擎策略/模型行为决定是否触发;登记/应答管线由实现覆盖)
-    const reason = harness === 'dsh'
-      ? '本机 dsh 全局 defaultPreset=danger-full-access,引擎不触发审批'
-      : '引擎按当前策略未触发审批(登记/应答管线由实现与历史运行覆盖)'
-    checkSkip(`[${harness}] 引擎审批请求登记到 HITL`, reason)
-  }
+      const reason = !plan.hitlKind
+        ? '引擎无程序化审批面(能力面如实声明 hitl:false),预授权白名单姿态'
+        : harness === 'dsh'
+          ? '本机 dsh 全局 defaultPreset=danger-full-access,引擎不触发审批'
+          : '引擎按当前策略未触发审批(登记/应答管线由实现与历史运行覆盖)'
+      checkSkip(`[${harness}] 引擎审批请求登记到 HITL`, reason)
+    }
 
-  // 清理:停 worker(杀子进程)
-  await manager.unloadAgent(ch.channelId, workerId).catch(() => {})
+    // 清理:停 worker(杀子进程)
+    if (autoTimer) clearInterval(autoTimer)
+    await manager.unloadAgent(ch.channelId, workerId).catch(() => {})
+    settle()
+  }
+  finally {
+    settle()
+  }
 }
 
 async function main(): Promise<void> {

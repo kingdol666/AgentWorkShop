@@ -48,7 +48,7 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 |---|---|
 | **Lead-agent orchestration** | Each channel has one lead: decomposes goals, dispatches to idle workers, reassigns failures, judges goal satisfaction. LLM decisions with a deterministic rule-engine fallback — the system never stalls. |
 | **Three execution modes** | `goal` (satisfaction judging) · `loop` (fixed-interval replay) · `pipeline` (ordered stages). 7-state task machine with progress, artifacts and full history. |
-| **Harness-agnostic** | One `AgentInterface` — `mock` (in-process), `omp` / `codex` / `dsh` / `opencode` (real engine subprocesses over RPC/ACP/JSON-RPC) and a Claude SDK adapter. The platform never knows which one runs. |
+| **Harness-agnostic** | One `AgentInterface` — 14 engines: `mock` (in-process), `omp` / `codex` / `dsh` / `opencode` / `claude` (persistent sessions over RPC/JSON-RPC/ACP/SDK) and `gemini` / `qwen` / `copilot` / `cursor` / `crush` / `goose` / `pi` / `hermes` (headless CLI family with structured event streams). The platform never knows which one runs. |
 | **Per-channel LLM selection** | Each channel picks a **harness → provider → model (+effort)** triple from the harness's live catalog (e.g. `zhipu-coding-plan/glm-5.3-flash` on omp). Members inherit it unless they override — mixing harnesses in one team is a first-class setup, not a workaround. |
 | **Harness availability check** | `GET /api/workshop/harnesses` probes each engine's CLI on PATH. The UI disables not-installed engines, and dispatch is hard-checked at every entry point. |
 | **Stall-safe supervision** | Task reclaim distinguishes *stuck* from *slow*: the watchdog treats agent tool invocations as a liveness signal, so healthy long-running industrial work survives while genuinely stalled tasks surface to the lead. |
@@ -136,6 +136,7 @@ flowchart TB
             CDX["codex — app-server"]
             DSH["dsh — ACP"]
             OC["opencode — serve"]
+            FAM["gemini / qwen / copilot / cursor / crush / goose / pi / hermes — headless CLI family"]
             CLD["claude — SDK"]
         end
         DB[("SQLite — channels · agents · tasks
@@ -146,7 +147,7 @@ messages · memories (FTS5) · events")]
     REST & A2A & MCP --> MGR
     MGR --> SCH & TE & AR
     AR --> MEM
-    AR --> MOCK & OMP & CDX & DSH & OC & CLD
+    AR --> MOCK & OMP & CDX & DSH & OC & CLD & FAM
     MGR & TE & MEM & BUS --> DB
     DAQ <--> BR --> TSDB
     DCW --> BR
@@ -176,7 +177,7 @@ agent ──binds to──▶ node (daq: auto / dcw: manual)
 node -v   # ≥ 23.4.0  (needs built-in node:sqlite)
 ```
 
-> The real-agent harnesses require their CLI on PATH — `omp`, `codex`, `opencode` or `dsh` (any subset; each channel can mix harnesses). The `mock` harness works out of the box for demos and CI. Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts via Docker when reachable (`docker compose up -d`).
+> Real-agent harnesses require their CLI on PATH — `omp`, `codex`, `dsh`, `opencode`, `gemini`, `qwen`, `copilot`, `cursor`, `crush`, `goose`, `pi` or `hermes` (any subset; each channel can mix harnesses). `mock` and `claude` (SDK) work without a PATH CLI. The dashboard "execution engines" panel shows per-engine readiness with a green/grey dot; uninstalled engines link to their official install page. Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts via Docker when reachable (`docker compose up -d`).
 
 ### Option A — install from npm (recommended)
 

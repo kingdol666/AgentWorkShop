@@ -356,6 +356,7 @@ export default {
   },
   agents: {
     notInstalled: 'not installed',
+    installLink: 'Open official site to install ↗',
     harnessInprocess: 'In-process engine · always available',
     k3pa5h4025: 'Templates',
     k3xhia001: 'Name',

@@ -229,17 +229,56 @@ export function evictModbusConn(cfg: Record<string, unknown>, transport: ModbusT
 }
 
 /**
+ * 安全关闭:半开 socket(对端断电)时 modbus-serial close() 等待 FIN 永不返回,
+ * 一律 500ms 超时保护(fire-and-forget 底层 close,调用方不阻塞)。
+ */
+export async function closeModbusSafely(client: import('modbus-serial').ModbusRTU): Promise<void> {
+  await Promise.race([
+    Promise.resolve()
+      .then(() => client.close())
+      .catch(() => { /* 已断 */ }),
+    new Promise(r => setTimeout(r, 500)),
+  ])
+}
+
+/**
  * 连接级排队执行:操作串行入队,完成后链路归还。
  * 数控写入等当前采样读完成再执行(不再 409 快速失败);数采采样忙时仍跳帧让路防堆积。
+ * per-request 3s 硬超时:半开连接(对端断电/SYN 黑洞)时底层请求永不 settle,
+ * 超时后作废连接并重置 tail 链,防止单条死连接堵死该 host:port 的全部后续请求。
  */
 export function withModbusConn<R>(conn: ModbusConn, fn: () => Promise<R>): Promise<R> {
   conn.pending++
   const run = conn.tail.then(() => fn(), () => fn())
-  conn.tail = run.then(
-    () => { conn.pending-- },
-    () => { conn.pending-- },
-  )
-  return run
+  let timer: NodeJS.Timeout | undefined
+  let dead = false
+  const guarded = Promise.race([
+    run,
+    new Promise<never>((_, rej) => {
+      timer = setTimeout(() => {
+        dead = true
+        try {
+          void conn.client.close()
+        }
+        catch { /* 已断 */ }
+        rej(new Error('Modbus 响应超时(3s)——连接可能半开,已作废重连'))
+      }, 3000)
+    }),
+  ] as Promise<R>)
+  void guarded.catch(() => { /* 超时分支先 reject,防 unhandled */ })
+  conn.tail = guarded.then(
+    () => {
+      clearTimeout(timer)
+      conn.pending--
+    },
+    () => {
+      clearTimeout(timer)
+      conn.pending--
+    },
+  ).then(() => {
+    if (dead) conn.tail = Promise.resolve()
+  })
+  return guarded
 }
 
 export function modbusKey(cfg: Record<string, unknown>, transport: ModbusTransport = 'tcp'): string {
@@ -252,7 +291,7 @@ export async function getModbusConn(cfg: Record<string, unknown>, transport: Mod
   if (existing && existing.client.isOpen) return existing
   if (existing) {
     try {
-      await existing.client.close()
+      await closeModbusSafely(existing.client)
     }
     catch { /* 已断 */ }
     modbusPool.delete(key)
@@ -278,6 +317,11 @@ export async function getModbusConn(cfg: Record<string, unknown>, transport: Mod
     throw err
   })
   client.setID(Number(cfg.unitId ?? 1))
+  // 吸收底层 socket 错误(write-after-end / ECONNRESET 等):超时作废重连路径关闭 socket 后,
+  // 队列中滞留的写入会触发 modbus-serial 内部 socket.write 异步错误 —— 若不挂 error 处理器,
+  // 会以 unhandledRejection 打崩进程(stability-guard fatal)。池层已有 evict 自愈,这里只需静默。
+  const sock = (client as unknown as { port?: { client?: { on?: (ev: string, cb: (e: Error) => void) => void } } }).port?.client
+  sock?.on?.('error', () => {})
   const conn: ModbusConn = { client, lastUsed: Date.now(), tail: Promise.resolve(), pending: 0, errors: 0 }
   modbusPool.set(key, conn)
   return conn
@@ -405,7 +449,7 @@ export const modbusTcpDriver: DaqDriver = {
         const key = modbusKey(driverConfig)
         const conn = modbusPool.get(key)
         if (conn) {
-          await conn.client.close()
+          await closeModbusSafely(conn.client)
           modbusPool.delete(key)
         }
       }
@@ -643,7 +687,7 @@ export const modbusRtuDriver: DaqDriver = {
       try {
         const conn = modbusPool.get(modbusKey(driverConfig, 'rtu-tcp'))
         if (conn) {
-          await conn.client.close()
+          await closeModbusSafely(conn.client)
           modbusPool.delete(modbusKey(driverConfig, 'rtu-tcp'))
         }
       }

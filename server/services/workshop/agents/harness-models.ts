@@ -245,6 +245,18 @@ async function dshCatalog(): Promise<HarnessCatalog> {
   return { providers: providers.filter(p => p.models.length > 0), effortMode: 'levels' }
 }
 
+// ── 静态目录族:gemini/qwen/copilot/cursor/crush/goose/claude ──
+// 这些 CLI 无机器可读的模型枚举面(或需交互登录后才有);目录以「已配置 provider 的
+// 常用模型」静态给出,config.model 自由串始终可用。zhipu-coding-plan 条目对应
+// 自定义网关(智谱 coding plan OpenAI/Anthropic 兼容端点)缺省模型。
+function staticZhipuCatalog(models: string[], note?: string): HarnessCatalog {
+  return {
+    providers: [{ id: 'zhipu-coding-plan', models: models.map(id => ({ id, efforts: [] })) }],
+    effortMode: 'unsupported',
+    note: note ?? '模型 id 为自由串:引擎按 provider 网关解析(如智谱 coding plan glm-5.3-flash)',
+  }
+}
+
 /** 目录发现入口(5 分钟缓存;未知 harness 返回空目录) */
 export async function harnessModelCatalog(id: string): Promise<HarnessCatalog> {
   const hit = getCached(id)
@@ -262,6 +274,29 @@ export async function harnessModelCatalog(id: string): Promise<HarnessCatalog> {
       break
     case 'dsh':
       catalog = await dshCatalog()
+      break
+    case 'gemini':
+    case 'qwen':
+      catalog = staticZhipuCatalog(['glm-5.3-flash', 'auto'], id === 'qwen' ? 'qwen 走 OPENAI_BASE_URL 网关;model 为自由串' : undefined)
+      break
+    case 'copilot':
+      catalog = staticZhipuCatalog(['glm-5.3-flash'], 'copilot 走 GitHub 鉴权;--model 仅在订阅模型面内有效')
+      break
+    case 'cursor':
+      catalog = staticZhipuCatalog(['glm-5.3-flash'], 'cursor 走 Cursor 账号鉴权;--model 为其托管模型面')
+      break
+    case 'crush':
+    case 'goose':
+      catalog = staticZhipuCatalog(['glm-5.3-flash'])
+      break
+    case 'claude':
+      catalog = staticZhipuCatalog(['glm-5.3-flash'], 'claude SDK 走 ANTHROPIC_BASE_URL 网关;model 为自由串')
+      break
+    case 'pi':
+      catalog = staticZhipuCatalog(['glm-5.3-flash'], 'pi 走 ~/.pi/agent/models.json 自定义 provider')
+      break
+    case 'hermes':
+      catalog = staticZhipuCatalog(['glm-5.3-flash'], 'hermes 走 config.yaml model.provider=zai + GLM_API_KEY')
       break
     default:
       catalog = { providers: [], effortMode: 'unsupported', note: '该 harness 未提供模型目录面' }

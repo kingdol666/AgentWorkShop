@@ -88,6 +88,14 @@ export interface HarnessSettings {
   opencode_command: string
   codex_command: string
   dsh_command: string
+  gemini_command: string
+  qwen_command: string
+  copilot_command: string
+  cursor_command: string
+  crush_command: string
+  goose_command: string
+  pi_command: string
+  hermes_command: string
   hitl_timeout_ms: number
 }
 export interface DcwSettings {

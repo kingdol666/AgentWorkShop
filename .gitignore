@@ -76,3 +76,5 @@ claude-talk-to-figma-mcp/
 
 # 系统设置运行时覆盖(程序生成)
 runtime-settings.json
+.crushrc
+.gemini/

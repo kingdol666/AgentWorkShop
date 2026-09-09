@@ -28,20 +28,11 @@ import type {
 } from './agent-interface'
 import type { AgentContextStats } from '../types/task'
 import { registerHarnessProcess, bindHarnessProcess, markHarnessProcessExit, killHarnessProcess, isProcessAlive } from './harness-process'
-import { createSessionState, dispatchHostTool } from './host-tool-bridge'
-import {
-  contextPrefix as buildContextPrefix,
-  createRosterCache,
-  extractJsonArray,
-  peerPrompt,
-  supervisePrompt,
-  systemManual,
-  toolArgsPreview,
-  workerPrompt,
-} from './prompt-builder'
+import { extractJsonArray, peerPrompt, supervisePrompt, systemManual, toolArgsPreview, workerPrompt } from './prompt-builder'
 import { getHitlRegistry } from './hitl-registry'
 import { harnessSettings } from '../settings'
 import { spawnLineProcess } from './adapters/line-spawn'
+import { BaseAgentImpl } from './base-agent'
 import { resolveBridgePath, resolvePlatformBaseUrl } from './harness-env'
 
 const log = createLogger('workshop.opencode')
@@ -116,23 +107,16 @@ interface PendingHitl {
   timer: ReturnType<typeof setTimeout> | null
 }
 
-export class OpenCodeAgentImpl implements AgentInterface {
+export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
   private readonly config: OpenCodeAgentConfig
-  private workspace: AgentRunContext['workspace'] | null = null
   private agentInfo: AgentInfo | null = null
-  private readonly toolState = createSessionState()
   private readonly bridgeCtx = {
     identity: { agentId: '', channelId: '', role: 'worker' as 'lead' | 'worker', name: 'agent' },
     state: this.toolState,
     getWorkspace: () => this.workspace,
   }
 
-  private roster = createRosterCache({ selfAgentId: '', listAgents: async () => [] })
-
-  private selfAgentId = ''
-  private agentName = 'agent'
   private agentRole: 'lead' | 'worker' = 'worker'
-  private channelId = ''
 
   // 服务进程与 API 面
   private child: ReturnType<typeof spawnLineProcess> | null = null
@@ -157,29 +141,21 @@ export class OpenCodeAgentImpl implements AgentInterface {
   private pendingHitl = new Map<string, PendingHitl>()
 
   constructor(config: Record<string, unknown> = {}) {
-    this.config = config as OpenCodeAgentConfig
-    this.selfAgentId = this.config.agentId ?? ''
-    this.agentName = this.config.name ?? 'agent'
-    this.agentRole = this.config.role ?? 'worker'
-    this.channelId = this.config.channelId ?? ''
-    this.refreshIdentity()
-  }
-
-  private refreshIdentity(): void {
-    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName }
-    this.roster = createRosterCache({
-      selfAgentId: this.selfAgentId,
-      listAgents: async () => this.workspace?.listAgents() ?? [],
+    super({
+      agentId: typeof config.agentId === 'string' ? config.agentId : '',
+      name: typeof config.name === 'string' ? config.name : undefined,
+      role: config.role === 'lead' ? 'lead' : 'worker',
+      channelId: typeof config.channelId === 'string' ? config.channelId : '',
     })
+    this.config = config as OpenCodeAgentConfig
   }
 
-  async init(input: { agent: AgentInfo, channelId: string }): Promise<void> {
-    this.agentInfo = input.agent
-    this.channelId = input.channelId
-    this.agentName = input.agent.name
-    this.agentRole = input.agent.role
-    this.selfAgentId = input.agent.id
-    this.refreshIdentity()
+  protected get harnessId(): string {
+    return 'opencode'
+  }
+
+  protected configRecord(): Record<string, unknown> {
+    return this.config
   }
 
   // ===== 生命周期 / 进程面 =====
@@ -219,10 +195,6 @@ export class OpenCodeAgentImpl implements AgentInterface {
   }
 
   // ===== 引擎无关面 =====
-
-  dispatchHostTool(toolName: string, args: Record<string, unknown>): Promise<{ text: string, isError?: boolean }> {
-    return dispatchHostTool(this.bridgeCtx, { toolName, arguments: args })
-  }
 
   getContextStats(): AgentContextStats | null {
     if (!this.lastUsage) return null
@@ -303,20 +275,6 @@ export class OpenCodeAgentImpl implements AgentInterface {
     }
   }
 
-  // ===== run / supervise =====
-
-  async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
-    const kind = request.message.metadata?.['x-aw-task-kind']
-    if (kind === 'assign' && ctx.role === 'worker') {
-      yield* this.workerRun(request, ctx)
-      return
-    }
-    if (!kind && (request.fromAgentId || request.message.metadata?.['x-aw-from-label'])) {
-      yield* this.peerMessageRun(request, ctx)
-      return
-    }
-  }
-
   private supervising = false
 
   async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
@@ -365,7 +323,7 @@ export class OpenCodeAgentImpl implements AgentInterface {
     })
   }
 
-  private async* workerRun(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+  protected async* workerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
     const taskId = request.taskId ?? (request.message.metadata?.['x-aw-task-id'] as string | undefined)
     if (!taskId) return
     this.toolState.currentTaskId = taskId
@@ -397,7 +355,7 @@ export class OpenCodeAgentImpl implements AgentInterface {
     }
   }
 
-  private async* peerMessageRun(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+  protected async* peerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
     await this.ensureServer(ctx)
     const msg = request.message
     const fromId = request.fromAgentId
@@ -431,15 +389,6 @@ export class OpenCodeAgentImpl implements AgentInterface {
       msgText,
     })
     yield* this.runTurn(prompt, undefined, { timeoutMs: this.config.promptTimeoutMs ?? 600_000, signal: ctx.signal })
-  }
-
-  private async contextPrefix(): Promise<string> {
-    return buildContextPrefix({
-      scenarioPrompt: this.config.scenarioPrompt,
-      systemPromptPrefix: this.config.systemPromptPrefix,
-      agentId: this.selfAgentId,
-      roster: await this.roster.roster(),
-    })
   }
 
   // ===== 回合执行(prompt → SSE 事件 → AgentEvent)=====

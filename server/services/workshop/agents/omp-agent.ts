@@ -18,6 +18,7 @@
  * 与 codex/dsh/opencode impl 全引擎一致。协议权威:omp://rpc.md。
  */
 import { createLogger } from '../logger'
+import { BaseAgentImpl } from './base-agent'
 import { randomUUID } from 'node:crypto'
 import type {
   AgentEvent,
@@ -46,13 +47,8 @@ import {
   attachTerminalTap,
   markTerminalSessionExit,
 } from './harness-terminal'
+import { hostToolsForRole } from './host-tool-bridge'
 import {
-  createSessionState,
-  dispatchHostTool,
-  hostToolsForRole,
-} from './host-tool-bridge'
-import {
-  contextPrefix as buildContextPrefix,
   createRosterCache,
   extractJsonArray,
   parseSteerBanner,
@@ -130,21 +126,11 @@ onPluginToolsChange(() => {
 
 // ===== OmpRpcAgentImpl =====
 
-export class OmpRpcAgentImpl implements AgentInterface {
+export class OmpRpcAgentImpl extends BaseAgentImpl implements AgentInterface {
   private readonly config: OmpAgentConfig
   private client: OmpRpcClient | null = null
-  private workspace: AgentRunContext['workspace'] | null = null
   private agentInfo: AgentInfo | null = null
   private hostToolsRegistered = false
-  /** host tool 会话态(当前任务 + 待回执上下文;与共享桥共用) */
-  private readonly toolState = createSessionState()
-  /** 工具桥上下文(分发唯一入口) */
-  private readonly bridgeCtx = {
-    identity: { agentId: '', channelId: '', role: 'worker' as 'lead' | 'worker', name: 'agent' },
-    state: this.toolState,
-    getWorkspace: () => this.workspace,
-  }
-
   /**
    * 会话回合状态(steer 可靠注入的依据):
    * omp 的 steer 仅在回合 streaming 中生效——prompt 已入列但尚未开始输出时,
@@ -156,15 +142,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
   /** 当前回合产生的 assistant 文本(供诊断) */
   private turnText = ''
   /** agent 身份信息(factory 注入;无需等待 init()) */
-  private selfAgentId = ''
-  private agentName = 'agent'
   private agentRole: 'lead' | 'worker' = 'worker'
-  private channelId = ''
-  /** 团队名册缓存(共享 prompt-builder) */
-  private roster = createRosterCache({
-    selfAgentId: '',
-    listAgents: () => this.workspace!.listAgents(),
-  })
 
   // ===== 上下文治理(70% 无中断压缩环)=====
   /** 压缩进行中(平台 gate 与 omp 原生压缩共用互斥位) */
@@ -354,6 +332,12 @@ export class OmpRpcAgentImpl implements AgentInterface {
   }
 
   constructor(config: Record<string, unknown> = {}) {
+    super({
+      agentId: typeof config.agentId === 'string' ? config.agentId : '',
+      name: typeof config.name === 'string' ? config.name : undefined,
+      role: config.role === 'lead' ? 'lead' : 'worker',
+      channelId: typeof config.channelId === 'string' ? config.channelId : '',
+    })
     this.config = config as OmpAgentConfig
     // effort 统一入口(channel 默认 LLM 注入 config.effort)→ omp thinking 级别
     if (!this.config.thinkingLevel && typeof config.effort === 'string' && config.effort) {
@@ -445,10 +429,6 @@ export class OmpRpcAgentImpl implements AgentInterface {
   // ===== 工具桥(共享分发)=====
 
   /** 引擎无关工具面:REST/MCP 桥直调与 omp 内部 host_tool_call 共用同一实现 */
-  dispatchHostTool(toolName: string, args: Record<string, unknown>): Promise<{ text: string, isError?: boolean }> {
-    return dispatchHostTool(this.bridgeCtx, { toolName, arguments: args })
-  }
-
   private async handleHostTool(req: HostToolCallRequest): Promise<{ text: string, isError?: boolean }> {
     return this.dispatchHostTool(req.toolName, req.arguments ?? {})
   }
@@ -456,15 +436,6 @@ export class OmpRpcAgentImpl implements AgentInterface {
   // ===== prompt 组合 =====
 
   /** 前置上下文(场景 × 身份 × 工业简报 × 名册;共享 prompt-builder) */
-  private async contextPrefix(): Promise<string> {
-    return buildContextPrefix({
-      scenarioPrompt: this.config.scenarioPrompt,
-      systemPromptPrefix: this.config.systemPromptPrefix,
-      agentId: this.selfAgentId,
-      roster: await this.roster.roster(),
-    })
-  }
-
   private systemManual(): string {
     return systemManual()
   }
@@ -512,25 +483,6 @@ export class OmpRpcAgentImpl implements AgentInterface {
       log.error(`[OmpRpcAgent:${this.selfAgentId}] steer 注入失败(消息保持 pending):`, err instanceof Error ? err.message : err)
       return 'deferred'
     }
-  }
-
-  async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
-    const kind = request.message.metadata?.['x-aw-task-kind']
-
-    // worker: assign 消息 → 执行任务
-    if (kind === 'assign' && ctx.role === 'worker') {
-      yield* this.workerRun(request, ctx)
-      return
-    }
-
-    // worker/lead: 同事点对点消息(含实时通信触发器)→ 按触发器语义处理并回复;
-    // 人类经 REST 注入的消息(from 空 + x-aw-from-label)同样进入应答流
-    if (!kind && (request.fromAgentId || request.message.metadata?.['x-aw-from-label'])) {
-      yield* this.peerMessageRun(request, ctx)
-      return
-    }
-
-    // 其余消息(lead 的 assign/child-completed 等):no-op(调度由 supervise() 处理)
   }
 
   // ===== supervise() =====
@@ -624,7 +576,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
 
   // ===== 内部:worker 执行 =====
 
-  private async* workerRun(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+  protected async* workerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
     const taskId = request.taskId
       ?? (request.message.metadata?.['x-aw-task-id'] as string | undefined)
     if (!taskId) return
@@ -677,7 +629,7 @@ export class OmpRpcAgentImpl implements AgentInterface {
    * 触发器语义:metadata['x-aw-require-reply']='true' → 必须经 send_message_to_agent
    * 回给发送者:执行结果 + 对方所需内容,in_reply_to 关联原消息,并声明是否需再响应。
    */
-  private async* peerMessageRun(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+  protected async* peerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
     try {
       await this.ensureClient(ctx)
     }

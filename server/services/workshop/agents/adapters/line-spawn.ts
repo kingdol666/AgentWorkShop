@@ -88,12 +88,17 @@ export function spawnLineProcess(command: string, args: string[], options: LineS
     // Windows .cmd shim:固定包装器 'cmd.exe' + /d /s /c。
     // 可执行文件路径无条件引号包裹:无空格路径裸奔时,/s 模式的 cmd 会吞掉
     // 路径中的反斜杠(C:\Users\... → C:Users...),引擎进程立即退出(code=1)。
+    // 整条命令行再包一层引号:/s 语义下 cmd 剥离最外层引号后执行剩余部分,
+    // 内层引号(带空格的参数)原样保留 —— 否则「尾带引号参数」会让 cmd 把
+    // 整行误解析为一个命令名(典型报错:不是内部或外部命令)。
     // 参数仍逐个经 assertCmdSafeArg 校验(拒绝引号与控制字符),引号包裹不引入注入面。
-    const line = [`"${file}"`, ...args.map(a => assertCmdSafeArg(a)).map((token) => {
-      token = token.replace(/[\];&`<>$]/g, '^$1')
-      return token.includes(' ') ? `"${token}"` : token
-    })].join(' ')
-    return launchChildProcess('cmd.exe', ['/d', '/s', '/c', line], {
+    const line = [
+      `"${[`"${file}"`, ...args.map(a => assertCmdSafeArg(a)).map((token) => {
+        token = token.replace(/[\];&`<>$]/g, '^$1')
+        return token.includes(' ') ? `"${token}"` : token
+      })].join(' ')}"`,
+    ]
+    return launchChildProcess('cmd.exe', ['/d', '/s', '/c', ...line], {
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: options.cwd ?? process.cwd(),
       env,

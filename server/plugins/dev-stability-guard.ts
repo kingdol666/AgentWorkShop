@@ -6,7 +6,7 @@
  * (记日志后按非零码退出)—— 安全插件的 fail-fast(如生产密钥校验失败拒绝启动)
  * 依赖异常中止进程,绝不能被护栏吞掉。
  */
-const SOCKET_NOISE = /ECONNRESET|EPIPE|ECONNABORTED|ETIMEDOUT|ERR_STREAM_PREMATURE_CLOSE/
+const SOCKET_NOISE = /ECONNRESET|EPIPE|ECONNABORTED|ETIMEDOUT|ERR_STREAM_PREMATURE_CLOSE|ERR_STREAM_WRITE_AFTER_END/
 // SQLite 忙/锁(hardening ST-1):多写竞争的瞬态错误,记录并继续;
 // 真正的库损坏/磁盘错误不经此路径,仍走致命语义。
 const SQLITE_BUSY = /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i

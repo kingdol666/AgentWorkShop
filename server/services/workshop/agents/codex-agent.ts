@@ -20,31 +20,14 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { mkdirSync, writeFileSync, existsSync, readFileSync, copyFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import type {
-  AgentEvent,
-  AgentInterface,
-  AgentInfo,
-  AgentRunContext,
-  AgentRunRequest,
-  SupervisionDecision,
-  SupervisionSnapshot,
-} from './agent-interface'
+import type { AgentEvent, AgentInterface, AgentInfo, AgentRunContext, AgentRunRequest } from './agent-interface'
 import type { AgentContextStats } from '../types/task'
 import { registerHarnessProcess, bindHarnessProcess, markHarnessProcessExit, killHarnessProcess } from './harness-process'
-import { createSessionState, dispatchHostTool } from './host-tool-bridge'
-import {
-  contextPrefix as buildContextPrefix,
-  createRosterCache,
-  extractJsonArray,
-  peerPrompt,
-  supervisePrompt,
-  systemManual,
-  toolArgsPreview,
-  workerPrompt,
-} from './prompt-builder'
+import { peerPrompt, systemManual, toolArgsPreview, workerPrompt } from './prompt-builder'
 import { getHitlRegistry } from './hitl-registry'
 import { harnessSettings } from '../settings'
 import { StdioJsonRpcClient } from './adapters/stdio-jsonrpc'
+import { BaseAgentImpl } from './base-agent'
 import { generateMcpBridgeEnv } from './harness-env'
 
 const log = createLogger('workshop.codex')
@@ -82,23 +65,16 @@ export interface CodexAgentConfig {
   mcpBridgePath?: string
 }
 
-export class CodexAgentImpl implements AgentInterface {
+export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
   private readonly config: CodexAgentConfig
-  private workspace: AgentRunContext['workspace'] | null = null
   private agentInfo: AgentInfo | null = null
-  private readonly toolState = createSessionState()
   private readonly bridgeCtx = {
     identity: { agentId: '', channelId: '', role: 'worker' as 'lead' | 'worker', name: 'agent' },
     state: this.toolState,
     getWorkspace: () => this.workspace,
   }
 
-  private roster = createRosterCache({ selfAgentId: '', listAgents: async () => [] })
-
-  private selfAgentId = ''
-  private agentName = 'agent'
   private agentRole: 'lead' | 'worker' = 'worker'
-  private channelId = ''
 
   private client: StdioJsonRpcClient | null = null
   private clientStarting: Promise<void> | null = null
@@ -116,29 +92,21 @@ export class CodexAgentImpl implements AgentInterface {
   private pendingApprovals = new Map<string, { rpcId: string | number, timer: ReturnType<typeof setTimeout> | null }>()
 
   constructor(config: Record<string, unknown> = {}) {
-    this.config = config as CodexAgentConfig
-    this.selfAgentId = this.config.agentId ?? ''
-    this.agentName = this.config.name ?? 'agent'
-    this.agentRole = this.config.role ?? 'worker'
-    this.channelId = this.config.channelId ?? ''
-    this.refreshIdentity()
-  }
-
-  private refreshIdentity(): void {
-    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName }
-    this.roster = createRosterCache({
-      selfAgentId: this.selfAgentId,
-      listAgents: async () => this.workspace?.listAgents() ?? [],
+    super({
+      agentId: typeof config.agentId === 'string' ? config.agentId : '',
+      name: typeof config.name === 'string' ? config.name : undefined,
+      role: config.role === 'lead' ? 'lead' : 'worker',
+      channelId: typeof config.channelId === 'string' ? config.channelId : '',
     })
+    this.config = config as CodexAgentConfig
   }
 
-  async init(input: { agent: AgentInfo, channelId: string }): Promise<void> {
-    this.agentInfo = input.agent
-    this.channelId = input.channelId
-    this.agentName = input.agent.name
-    this.agentRole = input.agent.role
-    this.selfAgentId = input.agent.id
-    this.refreshIdentity()
+  protected get harnessId(): string {
+    return 'codex'
+  }
+
+  protected configRecord(): Record<string, unknown> {
+    return this.config
   }
 
   async dispose(): Promise<void> {
@@ -171,10 +139,6 @@ export class CodexAgentImpl implements AgentInterface {
 
   reconcileProcess(): void {
     this.client?.reconcile()
-  }
-
-  dispatchHostTool(toolName: string, args: Record<string, unknown>): Promise<{ text: string, isError?: boolean }> {
-    return dispatchHostTool(this.bridgeCtx, { toolName, arguments: args })
   }
 
   getContextStats(): AgentContextStats | null {
@@ -249,55 +213,7 @@ export class CodexAgentImpl implements AgentInterface {
     }
   }
 
-  // ===== run / supervise =====
-
-  async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
-    const kind = request.message.metadata?.['x-aw-task-kind']
-    if (kind === 'assign' && ctx.role === 'worker') {
-      yield* this.workerRun(request, ctx)
-      return
-    }
-    if (!kind && (request.fromAgentId || request.message.metadata?.['x-aw-from-label'])) {
-      yield* this.peerMessageRun(request, ctx)
-      return
-    }
-  }
-
-  private supervising = false
-
-  async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
-    await this.ensureClient(ctx)
-    if (!this.client || !this.threadId) return []
-    if (this.supervising) return []
-    const prompt = supervisePrompt({
-      snapshot,
-      agentName: this.agentName,
-      channelId: this.channelId,
-      ctxPrefix: await this.contextPrefix(),
-      manual: systemManual(),
-      memory: ctx.memory,
-    })
-    this.supervising = true
-    try {
-      const events = await this.collectTurn(prompt, this.config.superviseTimeoutMs ?? 150_000, opts?.signal)
-      let text = ''
-      for (const e of events) {
-        if (e.kind === 'artifact') {
-          text += e.artifact.parts.map(p => 'text' in p ? p.text : '').join('')
-        }
-      }
-      const parsed = extractJsonArray(text)
-      return parsed && parsed.length > 0 ? parsed as SupervisionDecision[] : []
-    }
-    catch {
-      return []
-    }
-    finally {
-      this.supervising = false
-    }
-  }
-
-  private async* workerRun(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+  protected async* workerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
     const taskId = request.taskId ?? (request.message.metadata?.['x-aw-task-id'] as string | undefined)
     if (!taskId) return
     this.toolState.currentTaskId = taskId
@@ -326,7 +242,7 @@ export class CodexAgentImpl implements AgentInterface {
     }
   }
 
-  private async* peerMessageRun(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+  protected async* peerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
     await this.ensureClient(ctx)
     const msg = request.message
     const fromId = request.fromAgentId
@@ -360,15 +276,6 @@ export class CodexAgentImpl implements AgentInterface {
       msgText,
     })
     yield* this.streamTurn(prompt, undefined, this.config.promptTimeoutMs ?? 600_000, ctx.signal)
-  }
-
-  private async contextPrefix(): Promise<string> {
-    return buildContextPrefix({
-      scenarioPrompt: this.config.scenarioPrompt,
-      systemPromptPrefix: this.config.systemPromptPrefix,
-      agentId: this.selfAgentId,
-      roster: await this.roster.roster(),
-    })
   }
 
   // ===== 回合执行 =====
@@ -584,7 +491,7 @@ export class CodexAgentImpl implements AgentInterface {
   }
 
   /** supervise 用:收齐整个回合的事件流(supervise 决策解析在调用方) */
-  private async collectTurn(prompt: string, timeoutMs: number, signal?: AbortSignal): Promise<AgentEvent[]> {
+  protected async collectTurnEvents(prompt: string, timeoutMs: number, signal?: AbortSignal): Promise<AgentEvent[]> {
     const events: AgentEvent[] = []
     for await (const e of this.streamTurn(prompt, undefined, timeoutMs, signal)) {
       events.push(e)

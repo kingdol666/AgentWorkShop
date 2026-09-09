@@ -48,7 +48,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 |---|---|
 | **Lead 编排** | 每个 Channel 一名 lead：分解目标、派发空闲 worker、失败重派、判定目标满足度。LLM 决策 + 确定性规则引擎兜底——系统永不停滞。 |
 | **三种执行模式** | `goal`（满意度判定）· `loop`（定间隔重放）· `pipeline`（顺序阶段）。7 状态任务机带进度、产物与完整历史。 |
-| **Harness 无关** | 一个 `AgentInterface`：`mock`（进程内）、`omp` / `codex` / `dsh` / `opencode`（真实引擎子进程，经 RPC/ACP/JSON-RPC）、`claude`（SDK 适配器）。平台永远不知道跑的是哪个。 |
+| **Harness 无关** | 一个 `AgentInterface`：14 个引擎——`mock`（进程内）、`omp` / `codex` / `dsh` / `opencode` / `claude`（常驻会话，RPC/JSON-RPC/ACP/SDK）、`gemini` / `qwen` / `copilot` / `cursor` / `crush` / `goose` / `pi` / `hermes`（无头 CLI 家族，结构化事件流）。平台永远不知道跑的是哪个。 |
 | **Channel 级 LLM 选择** | 每个 Channel 从 Harness 实时目录中选 **harness → provider → model（+effort）**（如 omp 的 `zhipu-coding-plan/glm-5.3-flash`）。成员未显式覆盖即继承——一个团队混用多种 harness 是一等公民设定，不是绕行。 |
 | **Harness 可用性检查** | `GET /api/workshop/harnesses` 逐引擎探测 PATH 上的 CLI；前端禁用未安装项，执行前逐入口强校验——不会再把 Agent 派给一个不存在的引擎。 |
 | **停滞安全的监督** | 任务回收区分「卡死」与「慢」：看门狗把 Agent 工具调用当作活性信号，健康的长工业作业不会被误回收，真停滞仍会呈报 lead。 |
@@ -136,6 +136,7 @@ flowchart TB
             CDX["codex — app-server"]
             DSH["dsh — ACP"]
             OC["opencode — serve"]
+            FAM["gemini / qwen / copilot / cursor / crush / goose / pi / hermes — 无头 CLI 家族"]
             CLD["claude — SDK"]
         end
         DB[("SQLite — channels · agents · tasks
@@ -146,7 +147,7 @@ messages · memories (FTS5) · events")]
     REST & A2A & MCP --> MGR
     MGR --> SCH & TE & AR
     AR --> MEM
-    AR --> MOCK & OMP & CDX & DSH & OC & CLD
+    AR --> MOCK & OMP & CDX & DSH & OC & CLD & FAM
     MGR & TE & MEM & BUS --> DB
     DAQ <--> BR --> TSDB
     DCW --> BR
@@ -176,7 +177,7 @@ agent ──绑定──▶ 节点 (daq: auto / dcw: manual)
 node -v   # ≥ 23.4.0（需要内置 node:sqlite）
 ```
 
-> 真实 Agent harness 需要对应 CLI 在 PATH 中 —— `omp`、`codex`、`opencode`、`dsh`（任选子集；同一 Channel 可混用多种 harness）。`mock` harness 开箱即用，适合演示与 CI。可选数采基础设施（MQTT broker + TimescaleDB）在 Docker 可达时自动拉起（`docker compose up -d`）。
+> 真实 Agent harness 需要对应 CLI 在 PATH 中 —— `omp`、`codex`、`dsh`、`opencode`、`gemini`、`qwen`、`copilot`、`cursor`、`crush`、`goose`、`pi`、`hermes`（任选子集；同一 Channel 可混用）。`mock` 与 `claude`（SDK）无需 PATH 上的 CLI。仪表盘「执行引擎」面板以绿/灰状态点展示每个引擎的就绪度，未安装引擎可点击跳转官网安装。可选数采基础设施（MQTT broker + TimescaleDB）在 Docker 可达时自动拉起（`docker compose up -d`）。
 
 ### 方式 A —— 从 npm 安装（推荐）
 

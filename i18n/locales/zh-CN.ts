@@ -356,6 +356,7 @@ export default {
   },
   agents: {
     notInstalled: '未安装',
+    installLink: '前往官网安装 ↗',
     harnessInprocess: '进程内引擎 · 恒可用',
     k3pa5h4025: '模板库',
     k3xhia001: '名称',

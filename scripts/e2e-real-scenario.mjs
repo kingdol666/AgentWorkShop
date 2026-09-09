@@ -41,16 +41,27 @@ const check = (name, ok, detail = '') => {
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 // ---------- 用户与 API ----------
-const reg = await fetch(`${BASE}/api/workshop/users/register`, {
-  method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ name: 'live-scen-' + Math.random().toString(36).slice(2, 8) }),
-}).then(r => r.json()).catch(() => null)
-const TOKEN = reg?.data?.token
+// 优先用既有管理员登录(对已初始化系统,新注册用户无 editor 权限);
+// SCEN_USER/SCEN_PASS 可覆盖,默认 admin/admin123,失败回退注册新用户。
+const TOKEN = await (async () => {
+  const user = process.env.SCEN_USER ?? 'admin'
+  const pass = process.env.SCEN_PASS ?? 'admin123'
+  const login = await fetch(`${BASE}/api/users/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: user, password: pass }),
+  }).then(r => r.json()).catch(() => null)
+  if (login?.data?.token) return login.data.token
+  const reg = await fetch(`${BASE}/api/workshop/users/register`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'live-scen-' + Math.random().toString(36).slice(2, 8) }),
+  }).then(r => r.json()).catch(() => null)
+  return reg?.data?.token ?? null
+})()
 if (!TOKEN) {
-  console.error('用户注册失败 — 服务未启动或接口不可用:', JSON.stringify(reg))
+  console.error('登录/注册失败 — 服务未启动或凭据不可用')
   process.exit(1)
 }
-log(`测试用户已注册(token=${TOKEN.slice(0, 8)}…)BASE=${BASE}`)
+log(`测试凭据就绪(token=${TOKEN.slice(0, 8)}…)BASE=${BASE}`)
 
 async function api(method, path, body) {
   const res = await fetch(`${BASE}${path}`, {
@@ -262,8 +273,11 @@ const b3 = await api('POST', '/api/workshop/agent-tools/bindings', { agentId: co
 check('绑定 codex↔DCW(manual)', !!b3?.data?.binding?.id)
 
 // dsh 引擎侧工具可见性验证(my_industrial_nodes 直调;worker 实际经 MCP 桥)
-const mine = await invokeTool(dsh.agentId, 'my_industrial_nodes', {})
-check('dsh 工具面可见绑定节点(my_industrial_nodes)', /温度设定器|联调温度/.test(String(mine?.data?.result?.text ?? '')), String(mine?.data?.result?.text ?? '').replace(/\n/g, ' ').slice(0, 120))
+const mineVisible = await waitUntil('my_industrial_nodes 可见绑定', async () => {
+  const r = await invokeTool(dsh.agentId, 'my_industrial_nodes', {})
+  return /温度设定器|联调温度/.test(String(r?.data?.result?.text ?? ''))
+}, 15_000)
+check('dsh 工具面可见绑定节点(my_industrial_nodes)', !!mineVisible)
 
 // ============================================================
 console.log('\n━━━ 3. 兼容性对话(三通道)━━━')

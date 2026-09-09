@@ -7,6 +7,8 @@
  *  - codex-approval      → impl.respondHitl:JSON-RPC 应答回 app-server(accept/decline)
  *  - opencode-permission → impl.respondHitl:POST permissions {once|always|reject} / question 回答
  *  - dsh-permission      → impl.respondHitl:ACP session/request_permission 应答(allow/reject)
+ *  - claude-permission   → impl.respondHitl:SDK canUseTool 裁决(allow/deny)
+ *  - qwen-permission     → impl.respondHitl:旧版 ACP requestToolCallConfirmation 应答
  *
  * 幂等:待办不在登记处(已被他端处理/超时/撤销)→ 409 ALREADY_RESOLVED。
  * 鉴权:用户 token + channel 所有权(与 pending.get 同口径)。
@@ -21,7 +23,7 @@ import { getToolApprovals } from '@/server/services/workshop/agents/tool-approva
 import { respondTerminalUi } from '@/server/services/workshop/agents/harness-terminal'
 import { audit } from '@/server/services/workshop/ops/ops'
 
-const RESPONDABLE_KINDS = ['omp-dialog', 'dcw-approval', 'codex-approval', 'opencode-permission', 'dsh-permission'] as const
+const RESPONDABLE_KINDS = ['omp-dialog', 'dcw-approval', 'codex-approval', 'opencode-permission', 'dsh-permission', 'claude-permission', 'qwen-permission', 'hermes-permission'] as const
 
 interface RespondBody {
   kind?: string

@@ -38,6 +38,8 @@ export interface HarnessMetaDto {
   id: string
   label: string
   description: string
+  /** 官网/安装入口(未安装态跳转) */
+  homepage?: string
   capabilities: {
     steer: boolean
     supervise: boolean
