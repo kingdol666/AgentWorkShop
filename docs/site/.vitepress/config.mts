@@ -123,7 +123,7 @@ export default defineConfig({
     logo: '/favicon.svg',
     socialLinks: [{ icon: 'github', link: 'https://github.com/kingdol666/AgentWorkShop' }],
     footer: {
-      message: '依据 PolyForm Noncommercial 1.0.0 开源 · Licensed under PolyForm Noncommercial 1.0.0',
+      message: '依据 PolyForm Noncommercial 1.0.0 开源 · Source-available, noncommercial',
       copyright: 'Copyright © 2026 kingdol (kingdol666)',
     },
   },

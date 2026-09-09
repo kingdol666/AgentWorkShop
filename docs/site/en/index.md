@@ -1,121 +1,247 @@
 ---
 layout: home
 
-hero:
-  name: "AgentWorkShop"
-  text: "Agent teams × production lines × digital twin"
-  tagline: A configuration-driven runtime where AI agent teams read real telemetry and write
-    setpoints through human-approved control — every event streaming into a 3D twin.
-    Install with npm, extend with an SDK and plugins.
-  actions:
-    - theme: brand
-      text: Get started
-      link: /en/guide/getting-started
-    - theme: alt
-      text: SDK guide
-      link: /en/sdk/
-    - theme: alt
-      text: Plugin guide
-      link: /en/plugins/
-
-features:
-  - icon: '<span class="aw-tag">PKG</span>'
-    title: One-command install
-    details: npm i -g agentworkshop, then `aw start` from any directory. First run builds and
-      initializes the ~/.AgentWorkShop config root — independent of cwd and environment.
-  - icon: '<span class="aw-tag">PLC</span>'
-    title: Five-protocol DAQ & control
-    details: Modbus TCP / Modbus RTU (serial gateway) / OPC UA / MQTT / HTTP — bidirectional
-      drivers with connection pools, classified error diagnostics and per-driver connection
-      tests. Full acquisition + write-control E2E runs over the real protocols.
-  - icon: '<span class="aw-tag">HITL</span>'
-    title: Human-approved write control
-    details: Safe-range ∩ recipe-window interlock → HITL approval → PLC write → readback
-      verification → signed write history. Agent dispatches pend for review; approving
-      executes for real, and every decision is audited.
-  - icon: '<span class="aw-tag">RCT</span>'
-    title: Recipe versioning & governance
-    details: Every parameter change is versioned with attribution (user/agent/system,
-      operator, reason). Roll back to any revision or the last-known-good batch. Agents
-      save best parameters, inspect diffs and roll back through tools.
-  - icon: '<span class="aw-tag">HRN</span>'
-    title: Multi-harness agent teams
-    details: omp / codex / dsh / opencode / mock / claude behind one AgentInterface — each
-      channel picks harness → provider → model. Environment availability probing disables
-      not-installed engines; dispatch is hard-checked before execution. Four engines run
-      real line scenarios in parallel, verified by E2E.
-  - icon: '<span class="aw-tag">R/W</span>'
-    title: Read-write control nodes
-    details: Every control node reads its PLC value back through the same calibration path
-      it writes with — periodic, on-demand and agent reads surface SET vs ACT side by side
-      (reads are passive and never interlocked).
-  - icon: '<span class="aw-tag">OPS</span>'
-    title: Full-operation audit log
-    details: Three provenance sources (user / agent / system); operators recorded as
-      "Channel/Member". Query by line, product, recipe, source, kind or keyword — streamed
-      live over WS. Agents self-audit their lines through tools.
-  - icon: '<span class="aw-tag">PLG</span>'
-    title: Plugins on both sides
-    details: Server hooks (daq:sample / dcw:write / scene events) + custom DAQ drivers,
-      processors, node templates + hot-injected agent tools; the SDK ships a typed REST
-      client and a permission-aware plugin context.
-  - icon: '<span class="aw-tag">TEA</span>'
-    title: Team-scoped plugin switches
-    details: Pick plugins at team creation or toggle them later in the team dialog — each
-      channel keeps its own switch set (channel_plugins). A disabled plugin's tools are not
-      injected into that team's agents and dispatch rejects them. Plugins themselves are
-      hot-managed via the /plugins page and `aw plugin enable/disable`.
-  - icon: '<span class="aw-tag">TWN</span>'
-    title: 3D digital twin
-    details: A Three.js town renders line equipment, node health, alarms and trends in real
-      time — fed by the same event bus the agents consume. An adaptive quality ladder
-      (DPR / shadow / bloom tiers with a wall-clock FPS budget) matches the machine, and
-      window.__townStats exposes real render metrics (fps / drawCalls / tier / dpr).
-
-footer:
-  message: Licensed under PolyForm Noncommercial 1.0.0
-  copyright: Copyright © 2026 kingdol (kingdol666)
 ---
 
-<div class="aw-ruler" aria-hidden="true"></div>
+<div class="hw-hero">
+  <div class="hw-wrap">
+    <p class="hw-kicker">AGENTWORKSHOP · INDUSTRIAL AGENT RUNTIME</p>
+    <h1 class="hw-title">Agent teams<span class="x">×</span>the line<span class="x">×</span>the twin</h1>
+    <p class="hw-sub">
+      A configuration-driven runtime where <b>AI agent teams</b> read real telemetry and write
+      setpoints through human approval — every event streaming live into a <b>3D digital twin</b>.
+      Supervisory by design, second-level soft real-time, protocol-real and assertion-verifiable.
+    </p>
+    <div class="hw-cta">
+      <a class="hw-btn primary" href="/AgentWorkShop/en/guide/getting-started">Get started <span class="arr">→</span></a>
+      <a class="hw-btn" href="/AgentWorkShop/en/guide/first-session">Your first agent × line session</a>
+      <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub ↗</a>
+    </div>
 
-<figure class="aw-console">
-  <figcaption class="aw-console-bar">
-    <span class="aw-console-tag">FIG.01</span>
-    <span class="aw-console-title">DIGITAL TWIN · LINE OVERVIEW</span>
-    <span class="aw-console-meta">THREE.JS · LIVE EVENT STREAM</span>
-  </figcaption>
-  <div class="aw-console-body">
-
-![Digital-twin control room — line equipment, DAQ channels, trends and device monitoring on one screen](/town.png)
-
+<div class="hw-rail-sec">
+      <div class="hw-rail-cap">
+        <span>FIG.00 · THE DATA PIPELINE — THE PRODUCT IS THIS CHAIN</span>
+        <span>SAMPLING → STORAGE → STREAM → AGENT</span>
+      </div>
+      <div class="hw-rail">
+        <div class="hw-pulse"></div>
+        <div class="hw-node"><span class="n">Field devices</span><span class="d">PLC / SENSORS</span></div>
+        <div class="hw-node"><span class="n">Drivers ×5</span><span class="d">MODBUS·OPC UA·MQTT·HTTP</span></div>
+        <div class="hw-node"><span class="n">Queue</span><span class="d">INPROC / MQTT</span></div>
+        <div class="hw-node"><span class="n">TSDB</span><span class="d">TIMESCALE</span></div>
+        <div class="hw-node"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ RESUME</span></div>
+        <div class="hw-node hot"><span class="n">Agent / Twin</span><span class="d">SAME EVENT STREAM</span></div>
+      </div>
+      <div class="hw-stats">
+        <div class="hw-stat"><span class="v">5</span><span class="k">FIELD PROTOCOLS</span></div>
+        <div class="hw-stat"><span class="v">4</span><span class="k">ENTRY POINTS</span></div>
+        <div class="hw-stat"><span class="v">6</span><span class="k">ENGINES</span></div>
+        <div class="hw-stat"><span class="v">73</span><span class="k">SETTINGS · 16 GROUPS</span></div>
+        <div class="hw-stat"><span class="v">156<i>*</i></span><span class="k">ACCEPTANCE CHECKS PASS</span></div>
+      </div>
+    </div>
   </div>
-</figure>
-<p class="aw-cap">9 devices · 51 DAQ nodes · 51 channels — fed by the same event stream the agents consume</p>
+</div>
 
-<figure class="aw-console">
-  <figcaption class="aw-console-bar">
-    <span class="aw-console-tag">FIG.02</span>
-    <span class="aw-console-title">LINE OPERATIONS</span>
-    <span class="aw-console-meta">MODBUS TCP / OPC UA</span>
-  </figcaption>
-  <div class="aw-console-body">
+<div class="hw-wrap">
 
-![Line operations — lines/products/recipes/batch isolation with an interlocked write-control entry](/line-ops.png)
+  <figure class="aw-console">
+    <figcaption class="aw-console-bar">
+      <span class="aw-console-tag">FIG.01</span>
+      <span class="aw-console-title">DIGITAL TWIN · LINE OVERVIEW</span>
+      <span class="aw-console-meta">THREE.JS · LIVE EVENT STREAM</span>
+    </figcaption>
+    <div class="aw-console-body">
 
-  </div>
-</figure>
-<p class="aw-cap">Lines / recipes / batch isolation · interlocked write control · per-sample batch tagging</p>
+![Digital twin control room — line equipment, DAQ channels, trends and device monitoring on one screen](/town.png)
 
-```bash
-npm i -g agentworkshop
-aw start        # any directory → http://localhost:3001
-```
+</div>
+  </figure>
+  <p class="aw-cap">Real running system · equipment health · alarms · trends · DAQ channels, fed by the same event stream the agents consume</p>
 
-<div class="aw-statusbar">
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">01</span>
+      <h2 class="hw-sec-title">Architecture</h2>
+      <span class="hw-sec-en">ARCHITECTURE</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <p class="hw-lead">
+      One manager behind every door: four entry points converge into one runtime; the industrial
+      stack and the agent runtime share the same event bus. Every cell below is a real module you
+      can open in the repository.
+    </p>
+    <div class="hw-arch">
+      <div class="hw-layer">
+        <div class="hw-layer-tag"><span class="l1">Entry</span><span class="l2">ENTRY</span></div>
+        <div class="hw-cells">
+          <div class="hw-cell"><span class="c1">WS</span><span class="c2">AEP v1 stream · seq resume</span></div>
+          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">~25 in-process tools</span></div>
+          <div class="hw-cell"><span class="c1">A2A</span><span class="c2">JSON-RPC 2.0 + AgentCard</span></div>
+          <div class="hw-cell"><span class="c1">REST</span><span class="c2">/api/workshop/**</span></div>
+        </div>
+      </div>
+      <div class="hw-layer">
+        <div class="hw-layer-tag"><span class="l1">Runtime</span><span class="l2">RUNTIME</span></div>
+        <div class="hw-cells">
+          <div class="hw-cell"><span class="c1">AgentChannelManager</span><span class="c2">channel & instance orchestration</span></div>
+          <div class="hw-cell"><span class="c1">SchedulerLoop</span><span class="c2">lead supervision · rule fallback</span></div>
+          <div class="hw-cell"><span class="c1">TaskEngine</span><span class="c2">7-state task machine</span></div>
+          <div class="hw-cell"><span class="c1">AgentMemory</span><span class="c2">FTS5 + optional vectors</span></div>
+        </div>
+      </div>
+      <div class="hw-layer">
+        <div class="hw-layer-tag"><span class="l1">Industrial</span><span class="l2">INDUSTRIAL</span></div>
+        <div class="hw-cells">
+          <div class="hw-cell"><span class="c1">DAQ gateway</span><span class="c2">per-node edge runtimes</span></div>
+          <div class="hw-cell"><span class="c1">DCW write control</span><span class="c2">interlock → HITL → readback</span></div>
+          <div class="hw-cell"><span class="c1">Queue</span><span class="c2">inproc / MQTT · offline buffer</span></div>
+          <div class="hw-cell"><span class="c1">TSDB</span><span class="c2">SQLite / Timescale</span></div>
+        </div>
+      </div>
+      <div class="hw-layer">
+        <div class="hw-layer-tag"><span class="l1">Engines</span><span class="l2">HARNESS</span></div>
+        <div class="hw-cells c6col">
+          <div class="hw-cell"><span class="c1">mock</span></div>
+          <div class="hw-cell"><span class="c1">omp</span></div>
+          <div class="hw-cell"><span class="c1">codex</span></div>
+          <div class="hw-cell"><span class="c1">dsh</span></div>
+          <div class="hw-cell"><span class="c1">opencode</span></div>
+          <div class="hw-cell"><span class="c1">claude</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="hw-flow-note">
+      Sampling: <i>driver → queue → consumer</i> three-way fan-out (WS push · TSDB write · twin writeback)&nbsp;&nbsp;|&nbsp;&nbsp;
+      Write: <i>interlock → approval → PLC write → readback</i>&nbsp;&nbsp;|&nbsp;&nbsp;Storage: <i>SQLite (channels · agents · tasks · messages · events)</i>
+    </p>
+  </section>
 
-<span>WS / MCP / A2A / REST</span>
-<span>Nuxt 4 · node:sqlite</span>
-<span>PolyForm NC 1.0</span>
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">02</span>
+      <h2 class="hw-sec-title">Design principles</h2>
+      <span class="hw-sec-en">DESIGN PRINCIPLES</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <div class="hw-prin">
+      <div class="hw-p">
+        <span class="no">01</span>
+        <h3>Server-authoritative</h3>
+        <p>The UI renders facts; it is not their source. Nodes, tasks and grants live server-side — as many DAQ points as the server holds, that is exactly what the screen shows.</p>
+      </div>
+      <div class="hw-p">
+        <span class="no">02</span>
+        <h3>Enforced in the data plane</h3>
+        <p>Line permissions (none / read-only / operate) are enforced in the data plane: unauthorized line data never leaves the server, rather than being hidden by the frontend.</p>
+      </div>
+      <div class="hw-p">
+        <span class="no">03</span>
+        <h3>Honest observability</h3>
+        <p>Drop counters, loss metrics and pipeline watermarks are exposed as they are; the ops log attributes every action to "Channel/Member". Even <code>window.__townStats</code> refuses to lie about rendering.</p>
+      </div>
+      <div class="hw-p">
+        <span class="no">04</span>
+        <h3>Config-driven</h3>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 73 settings across 16 groups, zero hardcoded defaults.</p>
+      </div>
+      <div class="hw-p">
+        <span class="no">05</span>
+        <h3>Protocol-real verification</h3>
+        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. 156 acceptance assertions, all passing.</p>
+      </div>
+      <div class="hw-p">
+        <span class="no">06</span>
+        <h3>Human in the loop</h3>
+        <p>Agents propose, humans approve, the system executes, everything is audited. Manual-mode writes pend for review; approving performs a real, readback-verified PLC write.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">03</span>
+      <h2 class="hw-sec-title">Capabilities</h2>
+      <span class="hw-sec-en">CAPABILITIES</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <div class="hw-feats">
+      <div class="hw-f"><span class="tag">PROTOCOL</span><h3>Five-protocol DAQ & control</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP, both directions — connection pools, classified errors, per-driver connection tests; plugins register new protocols.</p></div>
+      <div class="hw-f"><span class="tag">R/W</span><h3>Read-write control nodes</h3><p>Every control node reads its PLC value back through the same calibration path it writes with — SET vs ACT side by side, passive and never interlocked.</p></div>
+      <div class="hw-f"><span class="tag">HITL</span><h3>Human-approved writes</h3><p>Safe-range ∩ recipe-window interlock → approval → PLC write → readback → signed history; every decision audited.</p></div>
+      <div class="hw-f"><span class="tag">RCT</span><h3>Recipe versioning</h3><p>Parameter changes versioned with attribution (source + operator + reason); roll back to any revision or last-good batch, non-destructively.</p></div>
+      <div class="hw-f"><span class="tag">HRN</span><h3>Multi-harness teams</h3><p>Six engines behind one contract; each channel picks harness → provider → model, with availability probing and dispatch-time checks.</p></div>
+      <div class="hw-f"><span class="tag">TEAM</span><h3>Team-scoped plugins</h3><p>Each channel keeps its own plugin switch set — a disabled plugin's tools never enter that team; plugins themselves are hot-managed.</p></div>
+      <div class="hw-f"><span class="tag">PERM</span><h3>Line-level permissions</h3><p>Three-state grants enforced in the data plane; agent bindings validate line grants too.</p></div>
+      <div class="hw-f"><span class="tag">OPS</span><h3>Full-operation audit log</h3><p>User / agent / system actions attributed to "Channel/Member", queryable by line, recipe, source and kind — streamed live.</p></div>
+      <div class="hw-f"><span class="tag">MEM</span><h3>Persistent memory</h3><p>Private + shared domains, FTS5 with CJK segmentation, optional vector hybrid recall; team chronicle and idle reflections accrue.</p></div>
+    </div>
+  </section>
+
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">04</span>
+      <h2 class="hw-sec-title">Where it fits</h2>
+      <span class="hw-sec-en">APPLICATIONS</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <div class="hw-scenes">
+      <div class="hw-sc">
+        <span class="ico">S.1</span>
+        <div class="bd">
+          <h3>Line supervision & twin ops</h3>
+          <p>Multi-line equipment, DAQ channels, alarms and trends on one 3D overview — second-level soft real-time, reachable from any browser.</p>
+        </div>
+      </div>
+      <div class="hw-sc">
+        <span class="ico">S.2</span>
+        <div class="bd">
+          <h3>Agent-assisted optimization</h3>
+          <p>The controlled loop: analyze trends → propose a setpoint → human approval → write & readback → numeric verdict. Auditable and reversible at every step.</p>
+        </div>
+      </div>
+      <div class="hw-sc">
+        <span class="ico">S.3</span>
+        <div class="bd">
+          <h3>Industrial AI research & teaching</h3>
+          <p>Five-protocol acquisition/write-control and multi-engine orchestration out of the box — an experiment bed with protocol-real verification.</p>
+        </div>
+      </div>
+      <div class="hw-sc">
+        <span class="ico">S.4</span>
+        <div class="bd">
+          <h3>Platform & ecosystem</h3>
+          <p>Typed REST SDK plus plugins that register drivers, processors and agent tools; four entry points open the platform to external systems.</p>
+        </div>
+      </div>
+    </div>
+    <div class="hw-note">
+      <span class="t">SCOPE</span>
+      <p>AgentWorkShop is a supervisory (SCADA-adjacent) layer running at second-level soft real-time. It is not a hard real-time controller: any &lt;10 ms critical loop (interlocks, safety, servo) must live inside the PLC — setpoints written here are advisory and plant-side logic may veto.</p>
+    </div>
+  </section>
+
+  <section class="hw-cta-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">05</span>
+      <h2 class="hw-sec-title">Up and running in a minute</h2>
+      <span class="hw-sec-en">QUICK START</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <div class="hw-term">
+      <div class="hw-term-bar"><i>●</i> aw · zsh — repo / home dual mode</div>
+      <div class="hw-term-body">
+        <span class="cm"># install globally, run from any directory (first start builds once)</span><br>
+        <span class="pr">$</span> npm i -g agentworkshop<br>
+        <span class="pr">$</span> aw start&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm"># → http://localhost:3001 · config root ~/.AgentWorkShop</span>
+      </div>
+    </div>
+    <p class="hw-lead" style="margin-top:18px">
+      Go deeper: <a href="/AgentWorkShop/en/guide/first-session">your first agent × line session</a> (about 2 minutes) ·
+      <a href="/AgentWorkShop/en/sdk/">SDK guide</a> ·
+      <a href="/AgentWorkShop/en/plugins/">Plugin guide</a> ·
+      <a href="/AgentWorkShop/en/cli/">aw CLI manual</a>
+    </p>
+  </section>
 
 </div>
