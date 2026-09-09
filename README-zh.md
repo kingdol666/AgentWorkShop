@@ -42,30 +42,48 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 
 ## 特性总览
 
+#### Agent 团队运行时
+
 | 能力 | 为何重要 |
 |---|---|
-| **Agent 团队 × 工业作用域** | 把 Agent 绑定到数采/数控节点。Agent 看到的是语义卡（物理含义、单位、安全量程、配方窗口）——而不是裸寄存器。 |
-| **人工审批的写控** | 数控下发经过「**安全量程 ∩ 活动配方窗口**」联锁 → 可选 **HITL 审批** → PLC 写入 → **回读校验** → 写历史记账。 |
-| **数控读写一体（v0.7）** | 每个控制节点都能沿写链路同一套标定**读回 PLC 当前值**：周期读 + 手动读取 + Agent `dcw_read` 工具，SET 与 ACT 在数控页、孪生面板（绿色 ACT 行）并排呈现 —— 读是被动观测，不受写联锁限制。 |
-| **全量配置驱动运行时（v0.7）** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env** —— 历史 env 名作别名兼容，代码零硬编码默认。项目级 `.AgentWorkShop` 优先，`~/.AgentWorkShop` 用户级兜底（安装即种子初始化）。 |
-| **五协议现场总线** | Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST —— 数采与写控双驱动带连接池、分类错误文案与逐驱动连接测试；`mock` 覆盖演示/CI；驱动注册表接受插件注册新协议。 |
-| **Channel 级 LLM 选择** | 每个 Channel 从 Harness 实时目录中选 **harness → provider → model（+effort）**（如 omp 的 `zhipu-coding-plan/glm-5.3-flash`、dsh 的 `ustc/glm-5.3-flash`）。成员未显式覆盖即继承 —— 一个团队混用多种 harness 是一等公民设定，不是绕行。 |
-| **Harness 可用性检查** | `GET /api/workshop/harnesses` 逐引擎探测 PATH 上的 CLI(`available`/`command`/`resolvedPath`);前端禁用未安装项,执行前七处入口强校验 —— 不会再把 Agent 派给一个不存在的引擎。 |
-| **HITL + 调控闭环(真实协议验证)** | Agent 下发挂起待人工批准,批准后经 Modbus/OPC UA 真写并回读校验;闭环(下发→采样→判定→keep/回退)在真实模拟器上四引擎并行 E2E 验证。 |
-| **Recipe 版本化治理** | 参数修改按版本入史(归因 用户/Agent/系统 + 操作者 + 原因),一键回退任意版本或已知良好批次(非破坏);Agent 经工具保存最佳参数与回退,失效节点参数跳过并明确标识。 |
-| **Agent 自查工具** | `line_context` / `ops_log` / `recipe_log` / `recipe_versions` / `dcw_journal` —— Agent 清楚自己操控的产线/产品/配方,谁做过什么、每个值怎么变。运维日志操作者归属「Channel名/成员名」,与用户和系统天然区分。 |
-| **团队级插件开关（v0.7.26）** | 插件热管理（`aw plugin list/enable/disable` + `/plugins` 管理页）之外,每个团队（Channel）还有**独立插件开关组**——建队勾选或团队弹层随时切换（`channel_plugins`）。被关闭插件的工具不注入该团队 Agent、派发同源拒绝,无关团队不再继承工具噪音。 |
-| **停滞看门狗·工具活性感知（v0.7.27）** | Lead 监督看门狗把 **Agent 工具调用当作活性信号**:真实 PLC 长工具链不会刷进度条,但不会再被误判停滞回收(notify → cancel 仅在「既无工具活动也无进度」时发生)。健康但慢的工业任务活下来,真停滞仍会呈报 lead。 |
-| **可配置节拍（v0.7.7）** | 采样默认间隔与下限、时序查询默认桶宽与下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：config.yml、设置页或 `aw config set` 三路同源 —— 热重载、create/patch 钳制，注入 Agent 的工具描述实时携带当前值。 |
-| **多形态数采帧管线（v0.6）** | 测厚仪/扫描仪的多点轮廓与 CCD 图像经模板 sink 处理器加工后入库：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达自动降级本地磁盘）；派生指标越限走既有告警链路。 |
-| **插件扩展 API（v0.6）** | `ctx.daq.registerDriver / registerProcessor / registerTemplate` 自定义采集与下沉算法（放入 `plugins/` 即生效）；`ctx.omp.registerTool` 自定义 agent 工具，注册表变更运行时热注入全部在跑会话。 |
-| **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现产品级数据隔离。 |
 | **Lead 编排** | 每个 Channel 一名 lead：分解目标、派发空闲 worker、失败重派、判定目标满足度。LLM 决策 + 确定性规则引擎兜底——系统永不停滞。 |
 | **三种执行模式** | `goal`（满意度判定）· `loop`（定间隔重放）· `pipeline`（顺序阶段）。7 状态任务机带进度、产物与完整历史。 |
-| **四个入口** | 一个 manager 坐在每扇门后：**WS**（AEP v1 事件流，seq 续传）、**MCP**（进程内工具）、**A2A**（JSON-RPC 2.0 + AgentCard）、**REST**。 |
-| **持久记忆** | 私有 + Channel 共享双域；FTS5 CJK 切分，可选向量混合检索，token 预算注入；会话压缩摘要自动入库、团队编年史与空闲反思持续沉淀（v0.6）。 |
-| **Harness 无关** | 一个 `AgentInterface`：`mock`（进程内）、`omp` / `codex` / `dsh` / `opencode`（真实引擎子进程,经 RPC/ACP/JSON-RPC）、`claude`（SDK 适配器）。平台永远不知道跑的是哪个。 |
-| **3D 数字孪生** | Three.js 小镇：放置产线设备与 Channel 领地，实时查看设备健康、告警与数值——由同一事件总线驱动。渲染跑在自适应画质阶梯上(DPR/阴影/Bloom 分档 + 墙钟 FPS 预算),并暴露 `window.__townStats` 仪表(fps / rafHz / drawCalls / triangles / tier / dpr)供性能回归探针;模型库预览共享单 WebGL rig + 可见性门控,不再一卡一上下文。 |
+| **Harness 无关** | 一个 `AgentInterface`：`mock`（进程内）、`omp` / `codex` / `dsh` / `opencode`（真实引擎子进程，经 RPC/ACP/JSON-RPC）、`claude`（SDK 适配器）。平台永远不知道跑的是哪个。 |
+| **Channel 级 LLM 选择** | 每个 Channel 从 Harness 实时目录中选 **harness → provider → model（+effort）**（如 omp 的 `zhipu-coding-plan/glm-5.3-flash`）。成员未显式覆盖即继承——一个团队混用多种 harness 是一等公民设定，不是绕行。 |
+| **Harness 可用性检查** | `GET /api/workshop/harnesses` 逐引擎探测 PATH 上的 CLI；前端禁用未安装项，执行前逐入口强校验——不会再把 Agent 派给一个不存在的引擎。 |
+| **停滞安全的监督** | 任务回收区分「卡死」与「慢」：看门狗把 Agent 工具调用当作活性信号，健康的长工业作业不会被误回收，真停滞仍会呈报 lead。 |
+| **持久记忆** | 私有 + Channel 共享双域；FTS5 CJK 切分，可选向量混合检索，token 预算注入；团队编年史与空闲反思持续沉淀。 |
+| **四个入口** | 一个 manager 坐在每扇门后：**WS**（AEP v1 事件流，seq 续传）、**MCP**（约 25 个进程内工具）、**A2A**（JSON-RPC 2.0 + AgentCard）、**REST**。 |
+
+#### 工业栈
+
+| 能力 | 为何重要 |
+|---|---|
+| **五协议现场总线** | Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST——数采**与**写控双驱动带连接池、分类错误文案与逐驱动连接测试；`mock` 覆盖演示/CI；插件可注册新协议。 |
+| **Agent 团队 × 工业作用域** | 把 Agent 绑定到数采/数控节点。Agent 看到的是语义卡（物理含义、单位、安全量程、配方窗口）——而不是裸寄存器。 |
+| **人工审批的写控** | 数控下发经过「**安全量程 ∩ 活动配方窗口**」联锁 → 可选 **HITL 审批** → PLC 写入 → **回读校验** → 写历史记账。 |
+| **数控读写一体** | 每个控制节点都能沿写链路同一套标定**读回 PLC 当前值**：周期读 + 手动读取 + Agent `dcw_read` 工具，SET 与 ACT 在数控页、孪生面板并排呈现——读是被动观测，不受写联锁限制。 |
+| **Recipe 版本化治理** | 参数修改按版本入史（归因 用户/Agent/系统 + 操作者 + 原因），一键回退任意版本或已知良好批次（非破坏）；失效节点参数跳过并明确标识。 |
+| **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现产品级数据隔离。 |
+| **多形态数采帧管线** | 测厚仪/扫描仪的多点轮廓与 CCD 图像经模板 sink 处理器加工后入库：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达自动降级本地磁盘）；派生指标越限走既有告警链路。 |
+| **Agent 自查工具** | `line_context` / `ops_log` / `recipe_log` / `recipe_versions` / `dcw_journal`——Agent 清楚自己操控的产线/产品/配方，谁做过什么、每个值怎么变。 |
+
+#### 治理、配置与扩展
+
+| 能力 | 为何重要 |
+|---|---|
+| **产线级权限** | 工业数据按**产线**三态门控（无权/仅查看/可操控），强制点在数据面——普通用户未授权前看不到任何产线数据。 |
+| **全操作运维日志** | 用户 / Agent / 系统三源动作落同一份可检索日志；操作者归属「Channel名/成员名」，与用户和系统天然区分；WS 实时推送。 |
+| **团队级插件开关** | 每个团队（Channel）持有**独立插件开关组**（`channel_plugins`）：被关闭插件的工具不注入该团队 Agent。插件本体经 `aw plugin` 与 `/plugins` 页热管理。 |
+| **插件扩展 API** | `ctx.daq.registerDriver / registerProcessor / registerTemplate` 自定义采集与下沉算法；`ctx.omp.registerTool` 自定义 agent 工具，运行时热注入全部在跑会话。 |
+| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——73 个设置项、16 组，代码零硬编码默认。 |
+| **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 钳制，注入 Agent 的工具描述实时携带当前值。 |
+
+#### 数字孪生
+
+| 能力 | 为何重要 |
+|---|---|
+| **3D 数字孪生** | Three.js 小镇：放置产线设备与 Channel 领地，实时查看设备健康、告警与数值——由同一事件总线驱动。自适应画质阶梯（DPR/阴影/Bloom 分档 + 墙钟 FPS 预算）自动匹配机器，`window.__townStats` 暴露真实渲染指标供性能探针使用。 |
 
 ---
 
@@ -366,14 +384,15 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 ## 端到端验证
 
-仓库自带 live E2E 套件,在生产实例上对**模拟真实产线协议**(Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线)做全链路验收。完整验收基线:**156 断言,0 失败**([完整报告](./docs/audit/e2e-2026-09-07.md));渲染与后端优化后的 2026-09-09 生产复跑:
+仓库自带 live E2E 套件,在生产实例上对**模拟真实产线协议**(Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线)做全链路验收。完整验收基线:**156 断言,0 失败**([完整报告](./docs/audit/e2e-2026-09-07.md));2026-09-09 经 `aw start` 启动的生产实例复跑:
 
 | 套件 | 断言 | 覆盖 |
 |---|---|---|
-| 五协议真实产线 | 36/37 ✅ | 协议连通、五协议数采入 Timescale、逐协议数控下发回读、Agent 闭环、HITL 批准后 OPC UA 真写、Recipe 保存/回退、参数账本回退 —— 唯一失败项是 Agent 任务终态,根因为上游 **LLM 供应商 429 配额**(环境因素非回归);协议/工具/审批断言全过 |
-| 生产 API 全链路(api-live-e2e) | 64/64 ✅ | 跨重启持久化、模板 CRUD、任务 assign/complete/cancel/loop/pipeline、A2A+mailbox、WS 广播、MCP 端点、级联删除 |
-| 产线权限 / 审计负向 | 20/20 + 9/9 ✅ | 三态授权 + 人话 403、授权撤销收敛、无 token WS 零遥测 |
-| 渲染功能回归(_dbg-render-regression) | 29/29 ✅ | 227 行表格完整性、WS 驱动行更新、筛选、详情页、3D 小镇 + 模型库、7 页 smoke、零 pageerror |
+| 五协议真实产线 | **37/37** ✅ | 协议连通、五协议数采入 Timescale、逐协议数控下发回读、Agent 闭环（真实 LLM）、HITL 批准后 OPC UA 真写、Recipe 保存/回退、参数账本回退 |
+| 生产 API 全链路(api-live-e2e) | **64/64** ✅ | 跨重启持久化、模板 CRUD、任务 assign/complete/cancel/loop/pipeline、A2A+mailbox、WS 广播、MCP 端点、级联删除 |
+| 产线权限 / 审计负向 | **20/20 + 9/9** ✅ | 三态授权 + 人话 403、授权撤销收敛、无 token WS 零遥测 |
+| 渲染功能回归(_dbg-render-regression) | **29/29** ✅ | 227 行表格完整性、WS 驱动行更新、筛选、详情页、3D 小镇 + 模型库、7 页 smoke、零 pageerror |
+| 多 Harness 并行 | 21 ✅ | omp 闭环 · codex 真实寄存器写入 · dsh 真实数采 · opencode Recipe 写入+回退,四引擎在开跑产线上全部 COMPLETED（[报告](./docs/audit/e2e-2026-09-07.md)） |
 
 复现(凭据走环境变量 `E2E_USER`/`E2E_PASS`,老套件走 argv):`node scripts/_dbg-live-line-e2e.mjs` · `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` · `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` · 性能:`scripts/_dbg-render-perf.mjs`。
 

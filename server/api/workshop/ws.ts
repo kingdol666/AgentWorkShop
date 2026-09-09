@@ -231,6 +231,16 @@ function flushDbBuffer(manager: AgentChannelManager, stream: ChannelStream): voi
     })))
   }
   catch (err) {
+    // 频道已被删除(FOREIGN KEY 约束失败 = 永久性错误,常见于 e2e/用户 purge 频道后
+    // hub 缓冲仍有其在途事件):缓冲事件无处可落,丢弃并计数 —— 重试语义只服务瞬态
+    // 故障(SQLITE_BUSY 等),对永久 FK 失败重试只会每 400ms 刷一条错误直到进程结束
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('FOREIGN KEY constraint failed')) {
+      const gDropped = globalThis as typeof globalThis & { __wsDbFlushDropped?: number }
+      gDropped.__wsDbFlushDropped = (gDropped.__wsDbFlushDropped ?? 0) + buffered.length
+      log.warn(`[workshop-ws] 频道 ${stream.channelId.slice(0, 8)} 已不存在,丢弃 ${buffered.length} 条缓冲事件(落库无主)`)
+      return
+    }
     // R4:失败计数暴露到 /api/metrics(落库异常静默重试,不能无观测)
     const g = globalThis as typeof globalThis & { __wsDbFlushFails?: number }
     g.__wsDbFlushFails = (g.__wsDbFlushFails ?? 0) + 1

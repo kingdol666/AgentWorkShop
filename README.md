@@ -42,30 +42,48 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 
 ## Highlights
 
+#### Agent team runtime
+
 | Capability | Why it matters |
 |---|---|
-| **Agent teams, industrial scope** | Agents bind to DAQ/DCW nodes and see semantic cards — physical meaning, units, safe range, recipe window — never raw registers. |
-| **Human-approved write control** | DCW writes flow through **safe-range ∩ recipe-window** interlock → optional **HITL approval** → PLC write → **readback verification** → signed write history. |
-| **Read-write DCW channels (v0.7)** | Every control node also **reads its PLC value back** through the same calibration path it writes with: periodic + on-demand + agent reads surface **SET vs ACT** side by side in the DCW console, the twin panel (green ACT row) and a new `dcw_read` agent tool — passive observation, never blocked by write interlocks. |
-| **Five field protocols** | Modbus TCP, Modbus RTU-over-TCP (serial gateway), OPC UA, MQTT and HTTP/REST — acquisition and write-control drivers with connection pools, classified error messages and per-driver connection tests. `mock` covers demos/CI; the driver registry accepts plugin-registered protocols. |
-| **Per-channel LLM selection** | Each channel picks a **harness → provider → model (+effort)** triple from the harness's live catalog (e.g. `zhipu-coding-plan/glm-5.3-flash` on omp, `ustc/glm-5.3-flash` on dsh). Members inherit it unless they override — mixing harnesses in one team is a first-class setup, not a workaround. |
-| **Harness availability check** | `GET /api/workshop/harnesses` probes each engine's CLI on PATH (`available` / `command` / `resolvedPath`). The UI disables not-installed engines, and dispatch is hard-checked at every entry point — you can no longer assign an agent to an engine that isn't there. |
-| **HITL + control loop, protocol-real** | Agent dispatches pend for human approval, then write over Modbus/OPC UA with readback verification; the closed loop (control → sample → judge → keep/rollback) runs against real simulators — verified end to end with four harnesses in parallel. |
-| **Recipe versioning & governance** | Parameter changes are versioned with attribution (user/agent/system + operator + reason). Roll back to any revision or the last-good batch — non-destructively. Agents save best parameters and roll back through tools; stale-node params are skipped and clearly marked. |
-| **Agent self-audit tools** | `line_context`, `ops_log`, `recipe_log`, `recipe_versions`, `dcw_journal` — agents see exactly which line/product/recipe they control, who did what, and how every value changed. Operations are attributed to "Channel/Member" in the ops log, distinct from users and the system. |
-| **Team-scoped plugin switches (v0.7.26)** | Plugins are hot-manageable (`aw plugin list/enable/disable`, the `/plugins` page) and each team (channel) gets an **independent plugin switch set** — picked at team creation or toggled later in the team dialog (`channel_plugins`). A disabled plugin's tools are not injected into that team's agents and dispatch rejects them, so unrelated teams never inherit tool noise. |
-| **Stall watchdog with tool-activity liveness (v0.7.27)** | The lead's supervision watchdog treats **agent tool invocations as a liveness signal**: long real-PLC tool chains never update a progress bar, yet are no longer reclaimed as stalled (notify → cancel only when there is neither tool activity nor progress). Healthy-but-slow industrial tasks survive; genuinely stuck ones still surface to the lead. |
-| **Configurable cadences (v0.7.7)** | Sampling default & floor and Timescale query bucket default & floor are **live settings** (`daq.sampling.*`, `daq.query.*`): change them in `config.yml`, the Settings UI or via `aw config set` — hot-reloaded, clamped on node create/patch, and the injected agent tool descriptions always carry the current values. |
-| **Fully config-driven runtime (v0.7)** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — legacy env names kept as aliases, no hardcoded defaults left in code. Project-level `.AgentWorkShop` wins; `~/.AgentWorkShop` is the user-level fallback (auto-seeded on install). |
-| **Multi-modal DAQ frame pipeline (v0.6)** | Multi-point profiles (thickness/scanner) and CCD image frames are processed through template sink pipelines before storage: vectors & metadata into Timescale (`daq_frames`), pixels into object storage (MinIO, auto disk fallback); derived-metric thresholds ride the existing alarm chain. |
-| **Plugin extension API (v0.6)** | `ctx.daq.registerDriver / registerProcessor / registerTemplate` for custom acquisition and sink algorithms (drop into `plugins/`); `ctx.omp.registerTool` for custom agent tools, hot-injected into every running session on registry change. |
-| **Line operations** | Lines → products → recipes → batch runs. Recipe windows gate acquisition and interlock writes; every sample is tagged `product/recipe/run` for per-batch isolation. |
 | **Lead-agent orchestration** | Each channel has one lead: decomposes goals, dispatches to idle workers, reassigns failures, judges goal satisfaction. LLM decisions with a deterministic rule-engine fallback — the system never stalls. |
 | **Three execution modes** | `goal` (satisfaction judging) · `loop` (fixed-interval replay) · `pipeline` (ordered stages). 7-state task machine with progress, artifacts and full history. |
-| **Four entry points** | One manager behind every door: **WS** (AEP v1 event stream with seq-resume), **MCP** (in-process tools), **A2A** (JSON-RPC 2.0 + AgentCard), **REST**. |
-| **Persistent memory** | Private + channel-shared domains; FTS5 with CJK segmentation, optional vector hybrid recall, token-budgeted injection; session compaction summaries auto-archived, team chronicle and idle reflections keep accumulating (v0.6). |
 | **Harness-agnostic** | One `AgentInterface` — `mock` (in-process), `omp` / `codex` / `dsh` / `opencode` (real engine subprocesses over RPC/ACP/JSON-RPC) and a Claude SDK adapter. The platform never knows which one runs. |
-| **3D digital twin** | Three.js town: place line equipment and channel territories, watch device health, alarms and live values — driven by the same event bus. Renders behind an adaptive quality ladder (DPR/shadow/bloom tiers) with a wall-clock FPS budget and a `window.__townStats` instrumentation hook (fps / rafHz / drawCalls / triangles / tier / dpr) for perf regression probes; model previews share one WebGL rig with visibility gating instead of one context per card. |
+| **Per-channel LLM selection** | Each channel picks a **harness → provider → model (+effort)** triple from the harness's live catalog (e.g. `zhipu-coding-plan/glm-5.3-flash` on omp). Members inherit it unless they override — mixing harnesses in one team is a first-class setup, not a workaround. |
+| **Harness availability check** | `GET /api/workshop/harnesses` probes each engine's CLI on PATH. The UI disables not-installed engines, and dispatch is hard-checked at every entry point. |
+| **Stall-safe supervision** | Task reclaim distinguishes *stuck* from *slow*: the watchdog treats agent tool invocations as a liveness signal, so healthy long-running industrial work survives while genuinely stalled tasks surface to the lead. |
+| **Persistent memory** | Private + channel-shared domains; FTS5 with CJK segmentation, optional vector hybrid recall, token-budgeted injection; team chronicle and idle reflections keep accumulating. |
+| **Four entry points** | One manager behind every door: **WS** (AEP v1 event stream with seq-resume), **MCP** (~25 in-process tools), **A2A** (JSON-RPC 2.0 + AgentCard), **REST**. |
+
+#### Industrial stack
+
+| Capability | Why it matters |
+|---|---|
+| **Five field protocols** | Modbus TCP, Modbus RTU-over-TCP (serial gateway), OPC UA, MQTT and HTTP/REST — acquisition **and** write-control drivers with connection pools, classified error messages and per-driver connection tests. `mock` covers demos/CI; plugins can register new protocols. |
+| **Agent teams, industrial scope** | Agents bind to DAQ/DCW nodes and see semantic cards — physical meaning, units, safe range, recipe window — never raw registers. |
+| **Human-approved write control** | DCW writes flow through **safe-range ∩ recipe-window** interlock → optional **HITL approval** → PLC write → **readback verification** → signed write history. |
+| **Read-write DCW channels** | Every control node also **reads its PLC value back** through the same calibration path it writes with: periodic + on-demand + agent reads surface **SET vs ACT** side by side — passive observation, never blocked by write interlocks. |
+| **Recipe versioning & governance** | Parameter changes are versioned with attribution (user/agent/system + operator + reason). Roll back to any revision or the last-good batch — non-destructively. Stale-node params are skipped and clearly marked. |
+| **Line operations** | Lines → products → recipes → batch runs. Recipe windows gate acquisition and interlock writes; every sample is tagged `product/recipe/run` for per-batch isolation. |
+| **Multi-modal DAQ frame pipeline** | Multi-point profiles (thickness/scanner) and CCD image frames flow through template sink pipelines: vectors & metadata into Timescale (`daq_frames`), pixels into object storage (MinIO, auto disk fallback); derived-metric thresholds ride the existing alarm chain. |
+| **Agent self-audit tools** | `line_context`, `ops_log`, `recipe_log`, `recipe_versions`, `dcw_journal` — agents see exactly which line/product/recipe they control, who did what, and how every value changed. |
+
+#### Governance, configuration & extension
+
+| Capability | Why it matters |
+|---|---|
+| **Line-level permissions** | Industrial data is gated **per production line** with three states (none / read-only / operate), enforced in the data plane — regular users see no line data until granted. |
+| **Full-operation audit log** | Every user / agent / system action lands in one queryable log; operators are attributed to "Channel/Member", distinct from users and the system. Streamed live over WS. |
+| **Team-scoped plugin switches** | Each team (channel) keeps an **independent plugin switch set** (`channel_plugins`): a disabled plugin's tools are not injected into that team's agents. Plugins themselves are hot-managed via `aw plugin` and the `/plugins` page. |
+| **Plugin extension API** | `ctx.daq.registerDriver / registerProcessor / registerTemplate` for custom acquisition and sink algorithms; `ctx.omp.registerTool` for agent tools, hot-injected into every running session. |
+| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — 73 settings across 16 groups, no hardcoded defaults in code. |
+| **Configurable cadences** | Sampling and query defaults/floors are **live settings** (`daq.sampling.*`, `daq.query.*`): hot-reloaded, clamped on node create/patch, and agent tool descriptions always carry the current values. |
+
+#### Digital twin
+
+| Capability | Why it matters |
+|---|---|
+| **3D digital twin** | Three.js town: place line equipment and channel territories, watch device health, alarms and live values — driven by the same event bus. An adaptive quality ladder (DPR / shadow / bloom tiers, wall-clock FPS budget) matches the machine, and `window.__townStats` exposes real render metrics for perf probes. |
 
 ---
 
@@ -372,16 +390,17 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 ## Verified end-to-end
 
 The repo ships live E2E suites that run against a production instance over **simulated real
-plant protocols** (Modbus TCP/RTU, OPC UA, MQTT, HTTP + MQTT/Timescale pipelines). Latest
-full-acceptance run — **156 assertions, 0 failures** ([full report](./docs/audit/e2e-2026-09-07.md));
-the 2026-09-09 production re-run after the rendering/optimization pass:
+plant protocols** (Modbus TCP/RTU, OPC UA, MQTT, HTTP + MQTT/Timescale pipelines). Full
+acceptance baseline — **156 assertions, 0 failures** ([full report](./docs/audit/e2e-2026-09-07.md));
+latest production re-run on 2026-09-09 via `aw start`:
 
 | Suite | Checks | Covers |
 |---|---|---|
-| Five-protocol live line | 36/37 ✅ | protocol connectivity, DAQ sampling (5 protocols) into Timescale, DCW dispatch + readback per protocol, agent closed loop, HITL approval with a real OPC UA write, recipe update/rollback, param-ledger rollback — the single failed check was the agent task's terminal state, caused by an upstream **LLM provider 429 quota** during the run (environmental, not a regression); all protocol/tool/approval assertions passed |
-| Production API live (`api-live-e2e`) | 64/64 ✅ | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete |
-| Line permissions / audit-negative | 20/20 + 9/9 ✅ | three-state line grants with human-readable 403s, grant revocation convergence, unauthenticated WS receives zero telemetry |
-| Render regression (`_dbg-render-regression`) | 29/29 ✅ | 227-row DAQ table integrity, WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors |
+| Five-protocol live line | **37/37** ✅ | protocol connectivity, DAQ sampling (5 protocols) into Timescale, DCW dispatch + readback per protocol, agent closed loop (real LLM), HITL approval with a real OPC UA write, recipe update/rollback, param-ledger rollback |
+| Production API live (`api-live-e2e`) | **64/64** ✅ | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete |
+| Line permissions / audit-negative | **20/20 + 9/9** ✅ | three-state line grants with human-readable 403s, grant revocation convergence, unauthenticated WS receives zero telemetry |
+| Render regression (`_dbg-render-regression`) | **29/29** ✅ | 227-row DAQ table integrity, WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors |
+| Multi-harness parallel | 21 ✅ | omp closed loop · codex real register write · dsh real acquisition · opencode recipe write+rollback — four engines on one running line ([report](./docs/audit/e2e-2026-09-07.md)) |
 
 Reproduce (credentials via env — `E2E_USER` / `E2E_PASS`, argv for older suites):
 `node scripts/_dbg-live-line-e2e.mjs` · `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` ·
