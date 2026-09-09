@@ -1,0 +1,298 @@
+{
+  "tag": "cfB",
+  "base": "http://127.0.0.1:3001",
+  "sim": "http://127.0.0.1:4010",
+  "startedAt": "2026-09-10T03:13:59.708+08:00",
+  "finishedAt": "2026-09-09T19:50:01.400Z",
+  "seed": 42,
+  "timeScale": 6,
+  "optimum": {
+    "zoneTemp": 212.5,
+    "screw": 55,
+    "lineSpeed": 40,
+    "meltTemp": 212.5,
+    "pressure": 6.961,
+    "thickness": 49.18,
+    "defect": 0.055,
+    "score": 89.894,
+    "computedAt": "2026-09-09T19:12:46.616Z"
+  },
+  "start": {
+    "zone": 200,
+    "screw": 150,
+    "lineSpeed": 95,
+    "dieGap": 1
+  },
+  "convergence": {
+    "convLine": "CONVERGED h=50.38 defect=0.75 press=17.36 N=144 v=98",
+    "auditLine": "AUDIT PASS h=49.97 defect=0.63 press=17.37",
+    "approvals": {
+      "count": 2,
+      "latencies": []
+    }
+  },
+  "finalSetpoints": {
+    "screw": 144,
+    "lineSpeed": 98
+  },
+  "windows": {
+    "thickness": {
+      "n": 232,
+      "avg": 50.06336206896552,
+      "min": 48.69,
+      "max": 51.96
+    },
+    "defect": {
+      "n": 155,
+      "avg": 0.7923225806451619,
+      "min": 0.41,
+      "max": 1.17
+    },
+    "pressure": {
+      "n": 77,
+      "avg": 17.36558441558441,
+      "min": 17.2,
+      "max": 17.55
+    }
+  },
+  "scores": {
+    "agentJ": 86.22732526881721,
+    "optimumJ": 89.894,
+    "ratio": 0.9592111294281843
+  },
+  "checks": [
+    {
+      "name": "调参 goal 任务下发(tuner)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "绑定完成(tuner: dcw×6 manual + daq×7 auto;inspector: daq×7 auto)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "双 worker 入队",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "双 worker Agent 创建(omp × glm-5.3-flash)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "Channel 创建(lead=omp)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "标量时序入库(膜厚 6 桶)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "图像帧落库( 0×0 image/png)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "向量帧落库(轮廓 50.08,50.501,50.164,50.426,51.159,51.068,51.119,51.209,51.995,51.927,52.024,51.716,51.581,52.374,52.708,52.159,52.961,53.153,52.801,52.697,52.971,53.305,53.581,52.765,53.167,52.874,53.78,53.713,53.031,52.581,53.29,54.012,53.189,53.999,53.524,54.21,53.091,54.258,52.748,53.481,52.612,53.354,52.612,52.997,53.263,53.484,52.767,52.557,53.012,52.459,52.446,52.243,51.236,51.596,51.21,51.144,52.077,50.436,51.026,51.248,50.745,50.295,50.093,50.131 点)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "数采流入:7/7 节点有实时值 — 熔体温度-cfB=197.9 熔体压力-cfB=17.96 平均膜厚-cfB=53.3 厚度横向轮廓-cfB=52.288 CCD表面图像-cfB=0 缺陷率-cfB=0.71 晶点计数-cfB=5",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "产线开跑(绑定配方批次) — ok",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "配方创建(v1 起点工况:zone=200 N=150 v=95)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[dcw] 模口间隙设定(http)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[dcw] 牵引线速设定(mqtt)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[dcw] 螺杆转速设定(opcua)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[dcw] 加热区3设定(modbus-tcp)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[dcw] 加热区2设定(modbus-tcp)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[dcw] 加热区1设定(modbus-tcp)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[daq] 晶点计数(modbus-rtu,连通) — 网关连接成功,读取 40001 = 3",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[daq] 缺陷率(http,连通) — 接口可达,取值 = 1.336",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[daq] CCD表面图像(http,连通) — 接口可达,image 帧 234B(image/png)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[daq] 厚度横向轮廓(http,连通) — 接口可达,vector 帧 64 点",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[daq] 平均膜厚(mqtt,连通) — Broker 连接成功,收到 aw/sim/thick = 53.13",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[daq] 熔体压力(opcua,连通) — 会话建立成功,读取 ns=2;s=AW.P = 17.667",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "[daq] 熔体温度(modbus-tcp,连通) — 连接成功,读取 40001 = 196.0500030517578",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "产线/产品创建(line=ln-cbba5)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "自定义模板(晶点仪:ct-98c4621f)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "自定义模板(测厚仪:ct-43dff605)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "admin 登录",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "预热完成(熔体温度到达工艺窗口,耗时 57s)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "离线最优 W*(T=212.5℃, N=55rpm, v=40m/min, h*=49.18μm, J*=89.894)",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "cast-film-physics 预设应用",
+      "ok": true,
+      "extra": "",
+      "front": true
+    },
+    {
+      "name": "调参任务状态 COMPLETED(progress 100%)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "成员实例(tuner=f2cfd074,inspector=022ae4db)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[闭环] 收敛交付: CONVERGED h=50.38 defect=0.75 press=17.36 N=144 v=98",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[数控] 参数账本 8 条真实协议写(undefined 节点,含 HITL approvalId 0 条)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[稽核] inspector 复核 AUDIT PASS h=49.97 defect=0.63 press=17.37",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "膜厚窗均值 50.06μm ∈ 50±2 [48.7~52.0]",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "缺陷率窗均值 0.792% < 2",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "压力窗峰值 17.55MPa ≤ 22",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "工艺目标函数 J(W_agent)=86.23 达 W*(J=89.894) 的 95.9%(N=144 v=98)",
+      "ok": true,
+      "extra": ""
+    }
+  ],
+  "pass": 40,
+  "fail": 0
+}

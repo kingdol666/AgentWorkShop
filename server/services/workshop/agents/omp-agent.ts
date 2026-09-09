@@ -128,6 +128,69 @@ onPluginToolsChange(() => {
 
 export class OmpRpcAgentImpl extends BaseAgentImpl implements AgentInterface {
   private readonly config: OmpAgentConfig
+
+  protected get harnessId(): string {
+    return 'omp'
+  }
+
+  protected configRecord(): Record<string, unknown> {
+    return this.config as unknown as Record<string, unknown>
+  }
+
+  /**
+   * supervise 用:收齐整个回合的事件。omp 的 supervise() 已整体覆盖(直接解析
+   * 决策/执行语义),本实现作为抽象成员的兜底:prompt → text deltas → agent_end,
+   * 文本装进单个 artifact 事件(与基类 extractJsonArray 消费形状一致)。
+   */
+  protected collectTurnEvents(prompt: string, timeoutMs: number, signal?: AbortSignal): Promise<AgentEvent[]> {
+    return new Promise((resolve) => {
+      if (!this.client) {
+        resolve([])
+        return
+      }
+      let text = ''
+      let settled = false
+      const finish = (): void => {
+        if (settled) return
+        settled = true
+        unsub()
+        clearTimeout(timer)
+        signalUnsub?.()
+        resolve(text.trim()
+          ? [{
+              kind: 'artifact',
+              artifact: { artifactId: randomUUID(), name: 'output', parts: [{ text }] },
+              lastChunk: true,
+              totalChunks: 1,
+            } as AgentEvent]
+          : [])
+      }
+      const abortTurn = (): void => {
+        void this.client?.send({ type: 'abort' }).catch(() => {})
+        finish()
+      }
+      const unsub = this.client.onEvent((event) => {
+        if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
+          text += event.assistantMessageEvent.delta ?? ''
+        }
+        if (event.type === 'agent_end' && event.isTerminal !== false) finish()
+        if (event.type === '__process_exit__' || event.type === '__error__') finish()
+      })
+      const timer = setTimeout(abortTurn, Math.max(timeoutMs, 1_000))
+      let signalUnsub: (() => void) | undefined
+      if (signal) {
+        if (signal.aborted) {
+          finish()
+          return
+        }
+        const onAbort = (): void => abortTurn()
+        signal.addEventListener('abort', onAbort, { once: true })
+        signalUnsub = () => signal.removeEventListener('abort', onAbort)
+      }
+      this.client.send({ type: 'prompt', message: prompt }).catch(() => finish())
+    })
+  }
+
   private client: OmpRpcClient | null = null
   private agentInfo: AgentInfo | null = null
   private hostToolsRegistered = false
