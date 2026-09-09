@@ -1,7 +1,9 @@
 # Your first "agent × line" session (~2 minutes)
 
-1. **Sign in** — open `http://localhost:3001`, register/sign in from the sidebar
-   (seeded admin: `zhangwei@awshop.io` / `Awshop@123`; change it on first login).
+1. **Sign in** — open `http://localhost:3001`, register/sign in from the sidebar.
+   Zero-seed design: no accounts ship with the system — **the first registered account
+   automatically becomes admin** (the sign-in gate shows a "create admin" form;
+   `GET /api/users/setup-status` reports initialization state).
 2. **Build a line** — "Line Operations" → new line → add a **DCW node** (template `temp-sp`)
    and a **DAQ node** (template `temp-tc`) → create a **product** (on the line) → create a
    **recipe** (parameter bound to the DCW node, e.g. target 120) → press **Start**.

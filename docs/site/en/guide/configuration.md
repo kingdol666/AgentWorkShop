@@ -23,7 +23,7 @@ Inside the root: `runtime-settings.json`, `data/` (SQLite / JSON repos / backups
 ## CLI
 
 ```bash
-aw config list                       # 62 settings (14 groups): effective value + source + effect
+aw config list                       # 73 settings (16 groups): effective value + source + effect
 aw config get server.prod.port       # single key (value + source)
 aw config set server.prod.port 8080  # schema-validated, atomic write
 aw config set theme.primaryColor '#41c8f4'

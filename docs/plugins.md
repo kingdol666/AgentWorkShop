@@ -128,7 +128,7 @@ export default {
 | 路径 | `ctx.paths` | `{ home, configRoot, dataDir }` |
 
 > **鉴权说明**:`ctx.api` 自环调用遵循平台 REST 鉴权——免鉴权端点(manifest/ping)开箱即用;
-> 鉴权端点需 `ctx.api.setToken(token)`(token 可经 `AW_TOKEN` 环境变量注入插件)。
+> 鉴权端点需 `ctx.api.setToken(token)`。
 > 仅需进程内数据时优先 `ctx.events`/`ctx.hooks`(零鉴权、零开销)。
 
 ## 六、浏览器增强(client.mjs)

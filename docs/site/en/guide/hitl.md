@@ -28,7 +28,7 @@ curl -X POST $API/api/workshop/agent-tools/approvals/$ID/decide \
 ```
 
 > Note: in manual mode the agent-side `dcw_control` call **blocks until decided**
-> (timeout `harness.hitl_timeout_ms`, default 5 minutes, then auto-reject) — by design.
+> (timeout `security.hitl_timeout_ms`, default 180000 ms = 3 minutes, then auto-reject) — by design.
 
 ## Relation to the control loop
 

@@ -20,14 +20,14 @@ const ctx = createClientContext({
 
 | 成员 | 说明 |
 |---|---|
-| `ctx.on(type, fn)` | 订阅事件:`daq:sample` / `event:<type>` / `event:*` / `page:change`;返回退订函数,**pagehide 自动回收** |
-| `ctx.fetch(path, opt?)` | 同源平台 API(JSON;自动解 `{data}` 信封;非 2xx 抛错) |
+| `ctx.on(type, fn)` | 订阅 **scene 实时事件**(与浏览器 WS 同源):`daq.reading` / `daq.frame` / `device.updated` / `ops.log` / `task.status` …(内部转 `event:<type>`,`'*'` 通配);返回退订函数,**pagehide 自动回收**。注意:`daq:sample` 等带冒号的是**服务端钩子**,客户端收不到 |
+| `ctx.fetch(path, opt?)` | 同源平台 API(JSON;自动解 `{data}` 信封;非 2xx 抛错;自动携带 cookie token) |
 | `ctx.el(tag, attrs, children)` | DOM 构建(`style`/`class`/`on*` 事件 attrs 特判) |
 | `ctx.root()` | 插件私有挂载点 `#aw-plugin-<name>`(右下角,懒创建) |
 | `ctx.mount(target, node)` | 挂载到任意选择器/元素(缺失时落到 root) |
-| `ctx.hooks` | 本地 HookBus(`client:init` / `event:*` / `page:change` / `client:destroy`) |
+| `ctx.hooks` | 本地 HookBus:`client:init` / `page:change` / `client:destroy` 走这里**直订**(无 `event:` 前缀);scene 事件经 `ctx.on` 订阅 |
 | `ctx.log` | 前缀 console(info/warn/error) |
-| `ctx.dispose()` | 卸载:回收全部订阅 + 清空挂载点 + 广播 `client:destroy`(幂等) |
+| `ctx.dispose()` | 卸载:回收全部订阅 + 清空挂载点 + 广播 `client:destroy`(幂等;页面隐藏也触发) |
 
 ## 完整示例
 
@@ -39,9 +39,9 @@ export function setup(ctx) {
   ctx.root().append(badge)
 
   let n = 0
-  ctx.on('daq:sample', () => { badge.textContent = `⌁ ${++n}` })
+  ctx.on('daq.reading', () => { badge.textContent = `⌁ ${++n}` })   // scene 事件
 
-  ctx.on('page:change', ({ path }) => ctx.log.info('page →', path))
+  ctx.hooks.on('page:change', ({ path }) => ctx.log.info('page →', path))   // 页面生命周期
 
   // 消费平台 API(同源;登录用户 Cookie 鉴权)
   ctx.fetch('/api/workshop/dcw/lines').then(d => ctx.log.info('产线', d.length))

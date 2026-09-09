@@ -122,9 +122,9 @@ export default {
 | OMP 工具 | `ctx.omp.registerTool(tool)` | 注册 omp host 工具 → 全部在跑 agent 会话运行时热注入 |
 | 路径 | `ctx.paths` | `{ home, configRoot, dataDir }` |
 
-> **鉴权说明**:`ctx.api` 自环调用遵循平台 REST 鉴权——免鉴权端点(manifest/ping)开箱即用;
-> 鉴权端点需 `ctx.api.setToken(token)`(token 可经 `AW_TOKEN` 环境变量注入插件)。
-> 仅需进程内数据时优先 `ctx.events`/`ctx.hooks`(零鉴权、零开销)。
+> 鉴权说明:`ctx.api` 自环调用遵循平台 REST 鉴权——免鉴权端点(manifest/ping)开箱即用;
+> 鉴权端点需 `ctx.api.setToken(token)` 后再调用。仅需进程内数据时优先 `ctx.events`/`ctx.hooks`
+> (零鉴权、零开销)。
 
 ## 六、浏览器增强(client.mjs)
 
@@ -134,11 +134,11 @@ export default {
 
 | 成员 | 说明 |
 |---|---|
-| `ctx.on(type, fn)` | `daq:sample` / `event:<type>` / `event:*` / `page:change` 订阅(pagehide 自动回收) |
+| `ctx.on(type, fn)` | **scene 实时事件**订阅(与 WS 同源):`daq.reading` / `daq.frame` / `device.updated` / `ops.log` …(内部转 `event:<type>`;pagehide 自动回收) |
 | `ctx.fetch(path, opt?)` | 同源平台 API(JSON + 信封解包,非 2xx 抛错) |
 | `ctx.el(tag, attrs, children)` | DOM 构建 |
 | `ctx.root()` / `ctx.mount(target, node)` | 私有挂载点 / 任意位置挂载 |
-| `ctx.hooks` | 本地 HookBus(`client:init` / `page:change` / `client:destroy`) |
+| `ctx.hooks` | 本地 HookBus:`client:init` / `page:change` / `client:destroy` 走这里直订 |
 | `ctx.dispose()` | 卸载(回收订阅 + 清空挂载点;pagehide 自动触发) |
 
 ```js
@@ -146,7 +146,7 @@ export function setup(ctx) {
   const badge = ctx.el('div', { style: 'color:#35e0a0' }, ['⌁ 0'])
   ctx.root().append(badge)
   let n = 0
-  ctx.on('daq:sample', () => { badge.textContent = `⌁ ${++n}` })
+  ctx.on('daq.reading', () => { badge.textContent = `⌁ ${++n}` })   // scene 事件(与 WS 同源)
 }
 ```
 

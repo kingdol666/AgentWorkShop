@@ -29,6 +29,6 @@ list is the SDK-exported `LIFECYCLE_EVENTS` (`sdk/lifecycle.mjs`).
 
 ```js
 ctx.hooks.on('dcw:write', (e) => {
-  if (!e.ok) ctx.log.warn(`write failed on ${e.nodeId}: ${e.message}`)
+  if (!e.ok) ctx.logger.warn(`write failed on ${e.nodeId}: ${e.message}`)
 })
 ```

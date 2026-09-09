@@ -27,7 +27,7 @@ curl -X POST $API/api/workshop/agent-tools/approvals/$ID/decide \
 ```
 
 > 注意:Agent 侧的 `dcw_control` 调用在 manual 模式下会**挂起直到裁决**
-> (超时按 `harness.hitl_timeout_ms`,默认 5 分钟自动拒绝)——这是设计语义。
+> (超时按 `security.hitl_timeout_ms`,默认 180000ms = 3 分钟,超时自动拒绝)——这是设计语义。
 
 ## 与调控闭环的关系
 

@@ -195,7 +195,7 @@ ctx.route('POST', '/reset', (event) => {
 | 对**实时流**做反应（采样、告警、启停） | `ctx.events` / `ctx.hooks.on` | 进程内直连，零 HTTP 开销 |
 
 > 鉴权说明：`ctx.api` 自环调用遵循平台 REST 鉴权策略——免鉴权端点（manifest/ping）
-> 开箱即用；鉴权端点需 `ctx.api.setToken(token)`（token 可来自环境变量，如 `AW_TOKEN`）。
+> 开箱即用；鉴权端点需 `ctx.api.setToken(token)`（登录后调用的 token）。
 > 服务端插件若仅需进程内数据，优先用 `ctx.events` 与 `ctx.hooks`（零鉴权、零开销）。
 
 ---
@@ -226,19 +226,19 @@ export function setup(ctx) {
   const badge = ctx.el('div', { style: 'color:#35e0a0' }, ['⌁ 0'])
   ctx.root().append(badge)                       // 私有挂载点(右下角)
   let n = 0
-  ctx.on('daq:sample', () => { badge.textContent = `⌁ ${++n}` })
-  ctx.on('page:change', ({ path }) => ctx.log.info('page →', path))
+  ctx.on('daq.reading', () => { badge.textContent = `⌁ ${++n}` })   // scene 事件(与 WS 同源)
+  ctx.hooks.on('page:change', ({ path }) => ctx.log.info('page →', path))   // 页面生命周期
 }
 ```
 
 | 成员 | 说明 |
 |---|---|
-| `ctx.on(type, fn)` | 实时事件订阅（`daq:sample` / `event:<type>` / `event:*` / `page:change`），**pagehide 自动回收** |
-| `ctx.fetch(path, opt?)` | 同源平台 API 助手（自动 JSON + 信封解包；非 2xx 抛错） |
+| `ctx.on(type, fn)` | **scene 实时事件**订阅（`daq.reading` / `daq.frame` / `device.updated` / `ops.log` …，内部转 `event:<type>`；`'*'` 通配），**pagehide 自动回收**。注意 `daq:sample` 等带冒号的是服务端钩子，客户端收不到 |
+| `ctx.fetch(path, opt?)` | 同源平台 API 助手（自动 JSON + 信封解包；非 2xx 抛错；自动携带 cookie token） |
 | `ctx.el(tag, attrs, children)` | DOM 构建（style/class/事件 attrs 特判） |
 | `ctx.root()` | 插件私有挂载点 `#aw-plugin-<name>`（懒创建） |
 | `ctx.mount(target, node)` | 挂载到任意选择器/元素 |
-| `ctx.hooks` | 本地 HookBus（`client:init` / `page:change` / `client:destroy`） |
+| `ctx.hooks` | 本地 HookBus（`client:init` / `page:change` / `client:destroy` 走这里直订，无前缀） |
 | `ctx.dispose()` | 卸载：回收订阅 + 清空挂载点 + 广播 `client:destroy`（pagehide 自动触发，幂等） |
 
 ---

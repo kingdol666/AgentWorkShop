@@ -151,7 +151,7 @@ export function setup(ctx) {
   const badge = ctx.el('div', { style: 'color:#35e0a0' }, ['⌁ 0'])
   ctx.root().append(badge)
   let n = 0
-  ctx.on('daq:sample', () => { badge.textContent = `⌁ ${++n}` })
+  ctx.on('daq.reading', () => { badge.textContent = `⌁ ${++n}` })   // scene 事件(与 WS 同源)
 }
 ```
 

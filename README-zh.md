@@ -350,7 +350,7 @@ curl http://localhost:3000/api/workshop/channels \
 | 入口 | 端点 | 面向 |
 |---|---|---|
 | **WS** | `/api/workshop/ws?channelId=…` | 仪表盘 / UI——AEP v1 信封，per-channel 单调 `seq`，5000 事件环形缓冲，`lastSeq` 续传，快照兜底。 |
-| **MCP** | 进程内服务，约 20 个工具 | Agent（omp host tools）——管理面 + 作业面工具，Channel 作用域。 |
+| **MCP** | 进程内服务，约 25 个工具 | Agent（omp host tools）——管理面 + 作业面工具，Channel 作用域。 |
 | **A2A** | `POST /api/workshop/a2a/:agentId/rpc` | 外部 Agent——JSON-RPC 2.0，`AgentCard` 在 `/card`，`tasks/sendSubscribe` SSE。 |
 | **REST** | `/api/workshop/**` | 人 / 脚本——完整管理面。 |
 

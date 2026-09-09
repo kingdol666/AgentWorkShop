@@ -195,7 +195,7 @@ ctx.route('POST', '/reset', (event) => {
 | 对**实时流**做反应（采样、告警、启停） | `ctx.events` / `ctx.hooks.on` | 进程内直连，零 HTTP 开销 |
 
 > 鉴权说明：`ctx.api` 自环调用遵循平台 REST 鉴权策略——免鉴权端点（manifest/ping）
-> 开箱即用；鉴权端点需 `ctx.api.setToken(token)`（token 可来自环境变量，如 `AW_TOKEN`）。
+> 开箱即用；鉴权端点需 `ctx.api.setToken(token)`（登录后调用的 token）。
 > 服务端插件若仅需进程内数据，优先用 `ctx.events` 与 `ctx.hooks`（零鉴权、零开销）。
 
 ---

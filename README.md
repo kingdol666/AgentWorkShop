@@ -355,7 +355,7 @@ Prefix the task description (or pick in the composer UI):
 | Entry | Endpoint | Audience |
 |---|---|---|
 | **WS** | `/api/workshop/ws?channelId=…` | Dashboards / UI — AEP v1 envelopes, per-channel monotonic `seq`, 5 000-event ring, `lastSeq` resume, snapshot fallback. |
-| **MCP** | in-process server, ~20 tools | Agents (omp host tools) — management + job-face tools, channel-scoped. |
+| **MCP** | in-process server, ~25 tools | Agents (omp host tools) — management + job-face tools, channel-scoped. |
 | **A2A** | `POST /api/workshop/a2a/:agentId/rpc` | External agents — JSON-RPC 2.0, `AgentCard` at `/card`, `tasks/sendSubscribe` SSE. |
 | **REST** | `/api/workshop/**` | Humans / scripts — full management face. |
 

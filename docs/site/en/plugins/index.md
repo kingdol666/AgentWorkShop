@@ -1,40 +1,31 @@
 # Plugin guide
 
 Plugins are folders dropped into the config root's `plugins/` directory. Each plugin is a
-module exporting `{ name, setup(ctx) }` (or an array of such modules) plus an optional
-`plugin.json` manifest declaring permissions and browser enhancements.
+module exporting `{ name, setup(ctx) }` plus an optional `client.mjs` browser enhancement.
+No manifest file, no imports — the host injects everything through `ctx`.
 
 ## Layout
 
 ```
 plugins/
   my-plugin/
-    plugin.json        # manifest (optional but recommended)
-    index.mjs          # export default { name, setup(ctx) }
-    browser.mjs        # optional browser enhancement
-```
-
-```json
-{
-  "name": "my-plugin",
-  "version": "1.0.0",
-  "description": "what it does",
-  "permissions": { "lines": "read", "dcw": "audit" },
-  "browser": "browser.mjs"
-}
+    index.mjs          # export default { name, setup(ctx) }  (required)
+    client.mjs         # optional browser enhancement: export function setup(ctx)
+    README.md
 ```
 
 ## What plugins can do
 
 | Surface | Examples |
 |---|---|
-| server hooks | `daq:sample`, `daq:frame`, `dcw:write`, `line:start/stop`, `scene:*` |
-| custom DAQ drivers | `ctx.daq.registerDriver(kind, impl)` — joins the same registry as the built-in five protocols |
-| custom sink processors | `ctx.daq.registerProcessor(key, fn)` — transform frames before storage |
+| server hooks | `daq:sample`, `daq:frame`, `dcw:write`, `line:start/stop`, `permissions:changed`, `config:changed`, `event:*` (scene stream) |
+| custom DAQ drivers | `ctx.daq.registerDriver({ kind, available, sample, test })` — joins the same registry as the built-in five protocols |
+| custom sink processors | `ctx.daq.registerProcessor(kind, key, fn)` — transform frames before storage |
 | node templates | `ctx.daq.registerTemplate(def)` — appear in the create wizard |
 | agent tools | `ctx.omp.registerTool(def)` — hot-injected into every running harness session |
-| own API routes | `ctx.routes.post('/threshold', handler)` → `/api/plugins/my-plugin/threshold` |
-| KV + log | `ctx.kv` (flushed on dispose), `ctx.log` (scoped logger) |
+| own API routes | `ctx.route('POST', '/threshold', handler)` → `/api/plugins/my-plugin/threshold` |
+| KV + logger | `ctx.kv` (debounced flush to `data/plugins/<name>/kv.json`), `ctx.logger` |
+| line grants | `ctx.permissions.lineMode / visibleLineIds / listGrants / setGrants` |
 
 ## Loading & lifecycle
 
@@ -42,7 +33,7 @@ plugins/
   `~/.AgentWorkShop/plugins/`; project wins on name conflicts;
 - the Plugins page in the UI shows manifests, enable/disable state and load errors;
 - tool/driver/template registry changes hot-inject into running sessions — no restart;
-- `dispose()` (if exported) runs on unload for cleanup.
+- `ctx.onDispose(fn)` registrations run on server close for cleanup.
 
 ## Hot management (`aw plugin` + the /plugins page)
 
