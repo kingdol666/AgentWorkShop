@@ -13,7 +13,7 @@ import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
 import { recordOps } from '../../../services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
-  requireRole(event, ['admin', 'editor'])
+  const user = requireRole(event, ['admin', 'editor'])
   bindDaqHost(broadcastSceneEvent)
   const body = await readBody<DaqCreateInput>(event) ?? {}
   const node = getDaqController().create(body)

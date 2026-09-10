@@ -97,6 +97,11 @@ export class SystemConfigService {
   private disposed = false
   private applyWarned = false
 
+  /** 是否已完成 init()(descriptors 装载完毕;settings.ts 据此决定消费内存权威还是文件链) */
+  get ready(): boolean {
+    return this.descriptors.length > 0
+  }
+
   constructor(readonly root: string) {
     this.configPath = join(root, 'config.yml')
     // 设置文件必须与 CLI(aw config set)/start/dev-guard 同源(resolveRunMode 单一入口):

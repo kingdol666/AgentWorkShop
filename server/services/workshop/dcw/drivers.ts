@@ -10,7 +10,7 @@
 import { createRequire } from 'node:module'
 import type { DcwDriverKind } from '../../../../shared/dcw-protocol'
 import { AppError } from '../../../utils/errors'
-import { classifyCommError, decodeRegisters, evictModbusConn, evictOpcUaConn, getModbusConn, getOpcUaConn, modbusKey, registerOffset, withModbusConn } from '../daq/drivers'
+import { classifyCommError, closeModbusSafely, decodeRegisters, evictModbusConn, evictOpcUaConn, getModbusConn, getOpcUaConn, modbusKey, registerOffset, withModbusConn } from '../daq/drivers'
 
 const reqNative = createRequire(import.meta.url)
 
@@ -268,7 +268,7 @@ export const modbusTcpDcwDriver: DcwWriteDriver = {
       try {
         const key = modbusKey(driverConfig)
         const conn = await getModbusConn(driverConfig).catch(() => null)
-        if (conn) await conn.client.close()
+        if (conn) await closeModbusSafely(conn.client)
         void key
       }
       catch { /* ignore */ }

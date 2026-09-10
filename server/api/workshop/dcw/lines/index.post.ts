@@ -11,7 +11,7 @@ import { recordOps } from '@/server/services/workshop/ops/ops'
 import type { LineInput } from '#shared/dcw-protocol'
 
 export default defineApiHandler(async (event) => {
-  requireRole(event, ['admin', 'editor'])
+  const user = requireRole(event, ['admin', 'editor'])
   bindDcwBroadcast(broadcastSceneEvent)
   const body = await readBody<LineInput>(event) ?? { name: '' }
   const line = getDcwController().createLine(body)

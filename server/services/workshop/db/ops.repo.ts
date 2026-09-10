@@ -103,6 +103,12 @@ export function createAlarmEventRepo(db: DatabaseSync) {
   )
 
   return {
+    /** 按 id 取报警关联节点(产线权限判定用);不存在返回 undefined */
+    nodeIdById(id) {
+      const r = db.prepare('SELECT node_id FROM alarm_events WHERE id = ?').get(id)
+      return r?.node_id
+    },
+
     /** 报警产生(同 node+metric 未确认报警幂等去重,防止高频越限刷表) */
     raise(a: {
       id: string
