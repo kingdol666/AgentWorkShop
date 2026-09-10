@@ -54,6 +54,8 @@ Agent 读熔温(diag/daq)→ 写新 SP(DCW)→ 熔温跟随 → 闭环。
 | P9 | **fs.watch rename 事件在 Windows 间歇性丢失**:tmp+rename 写 plugins-state.json 后 watch 有时不触发 → 启停/热重载静默失效(生产级缺陷) | Windows 目录 watch 对 rename 原子替换的事件名/事件数不稳定 | ensureStateWatcher 加 10s mtime 轮询兜底(watch + poll 双通道;reloadPluginHost 幂等且并发合并) | ✅ 复测中 |
 | P10 | production-closed-loop Stage C/D 数据依赖误报:①auto 触发等待窗(120s)短于 重载+采样+上传 链路;②dcw_control 3% 步长越出活动配方工艺窗口被联锁拒绝 | ①mock 引擎可能在窗内跑完,旧断言只认 running;②配方窗口(1.0MPa)随批次变化,盲写必被正确联锁拒绝 | ①窗扩到 4 分钟+基线过滤(只认启用后新 auto run);②按拒绝消息解析工艺上/下限自适应重试(与真实 Agent 调参同构)——顺带把「安全联锁拒绝越窗写入」变成被验证的正向能力 | ✅ 复测中 |
 | P11 | 本机环境周期性杀死长驻 node 进程(AW/模拟器/RAG 引擎均曾倒下),长战役反复中断 | 会话沙箱/内存压力;**生产部署必须进程守护** | AW 改由 Windows 计划任务承载(schtasks 服务级,脱离会话树);计划文档登记部署要求(systemd/NSSM/supervisor) | ✅ 计划任务承载后未再中断 |
+| P12 | **打包产物全新安装必失败**:依赖 `@anthropic-ai/claude-agent-sdk` 用 `file:C:/…/Temp/claude-sdk.tgz` 引用,临时文件被清理后 `npm i -g` 直接 ENOENT | 依赖用了指向 Temp 的 file: 引用 | 改 pin registry 版本 0.3.266;`npm i -g agentworkshop-0.7.29.tgz` 实测安装成功 | ✅ 全局 aw 0.7.29 |
+| P13 | npmmirror 镜像缺 `node-opcua-basic-types@2.183.0`,装包报 ETARGET | 镜像同步滞后 | 安装时 `--registry https://registry.npmjs.org`(已验证);生产部署脚本应显式指定官方源 | ✅ |
 
 ## 环境风险登记(非代码缺陷,生产部署注意)
 
@@ -71,6 +73,15 @@ Agent 读熔温(diag/daq)→ 写新 SP(DCW)→ 熔温跟随 → 闭环。
 | T2 真实 PLC 闭环(loop9) | ✅ 66/66:真实 Modbus 供给/采样/交叉核对、HITL 写控 210℃ 真实写穿+物理跟随、judge keep、知识沉淀检索、诊断 96 分自动入库、插件参数回归、Channel 开关回归、Harness 集成 |
 | T3 生产闭环增强 | ✅(camp-8,见上方复测记录) |
 | T5 api-live | ✅ 64/64 ALL PASS |
+| T6 发布验证(v0.7.29) | ✅ 版本 bump→build→npm pack→push→`npm i -g tgz` 全局安装 0.7.29→`aw update --check` 已是最新→`aw start`(计划任务,repo 模式)启动 |
+| T7 **公网隧道端到端** | ✅ Cloudflare quick tunnel:公网 URL health/UI/i18n 全通;**完整 Agent 闭环(52 断言)全程经公网隧道执行全绿** |
+
+## 发布与外网访问记录
+
+- 版本:v0.7.29(commit 3f0f738 版本号、4045712 打包修复、ac79937 测试加固)
+- 发布物:agentworkshop-0.7.29.tgz(37MB,含 production .output);全局安装后 `aw version` = 0.7.29
+- 运行:计划任务 `aw-prod-3001` 承载 `aw start --port 3001`(repo 模式,配置根 <repo>/.AgentWorkShop)
+- 公网:https://believes-cleared-private-radar.trycloudflare.com(quick tunnel,重启换址;长期公开建议具名隧道+Cloudflare Access,见 scripts/aw-expose.mjs)
 
 ## 提交纪律
 
