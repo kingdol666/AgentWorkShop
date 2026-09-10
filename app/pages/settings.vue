@@ -572,6 +572,12 @@ const tabs = computed(() => [
                 {{ t('plugins.empty') }}
               </div>
             </a-spin>
+
+            <!-- 插件 UI 注入区:client 面板经 ctx.ui.registerPanel({slot:'settings.plugins'}) 注入 -->
+            <workshop-plugin-slot
+              v-if="plugins.length"
+              slot-name="settings.plugins"
+            />
           </div>
 
           <!-- 系统:只读运行参数 -->

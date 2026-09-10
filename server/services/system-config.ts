@@ -83,7 +83,9 @@ declare global {
 
 export class SystemConfigService {
   private descriptors: SettingsDescriptor[] = []
-  /** key → 描述符(loadDescriptorMap 返回普通对象,非 Map;下标访问) */
+  /** 插件贡献的设置描述符(host 装载/热重载后注入;key 编址 plugins.<plugin>.<key>) */
+  private pluginDescriptors: SettingsDescriptor[] = []
+  /** key → 描述符(loadDescriptorMap 返回普通对象,非 Map;下标访问;含插件描述符) */
   private map: Record<string, SettingsDescriptor> = {}
   private overrides: Record<string, unknown> = {}
   private envOverrides: Record<string, unknown> = {}
@@ -100,6 +102,11 @@ export class SystemConfigService {
   /** 是否已完成 init()(descriptors 装载完毕;settings.ts 据此决定消费内存权威还是文件链) */
   get ready(): boolean {
     return this.descriptors.length > 0
+  }
+
+  /** 全量描述符 = 全局 schema + 插件声明(插件项以 plugins.<plugin>.<key> 编址,不与全局键冲突) */
+  private get allDescriptors(): SettingsDescriptor[] {
+    return this.pluginDescriptors.length ? [...this.descriptors, ...this.pluginDescriptors] : this.descriptors
   }
 
   constructor(readonly root: string) {
@@ -132,10 +139,69 @@ export class SystemConfigService {
   /** Nitro 启动时调用：加载覆盖 → 应用到 runtimeConfig → 挂文件监听 */
   init(): void {
     this.descriptors = loadDescriptors()
-    this.map = loadDescriptorMap(this.descriptors)
+    this.rebuildMap()
     this.envOverrides = envOverridesFromEnv(process.env, this.descriptors)
     this.reloadFromDisk()
+    // 插件设置若在 host 装载先于本服务 init 时已登记 → 此刻补跑旧键迁移
+    this.migrateLegacyPluginKeys()
     this.watchFiles()
+  }
+
+  /** 重建 key → 描述符映射(全局 + 插件;插件键在 plugins.<plugin>.<key> 命名空间,天然不冲突) */
+  private rebuildMap(): void {
+    this.map = loadDescriptorMap(this.allDescriptors)
+  }
+
+  /**
+   * 插件宿主装载/热重载后注入插件设置描述符。
+   * 合并进 map/snapshot/effective 后,前端设置页自动渲染、PATCH 自动校验、
+   * 保存即热生效(与全局设置同一条链路);并触发一次遗留键迁移(plugins.kb.* 等)。
+   */
+  setPluginDescriptors(descs: SettingsDescriptor[]): void {
+    this.pluginDescriptors = Array.isArray(descs) ? descs : []
+    this.rebuildMap()
+    if (!this.ready) return // init 尚未执行:init() 末尾会补跑迁移与重载
+    const { changed } = this.migrateLegacyPluginKeys()
+    const { changed: reloaded } = this.reloadFromDisk()
+    this.broadcast({ type: 'config:reloaded', changed: [...changed, ...reloaded, 'plugin-settings'], ...this.eventTail() })
+  }
+
+  /** 一次性迁移:0.7.28 前写死在 schema.json 的 plugins.kb / plugins.diag 键 → 插件命名空间键 */
+  private migrateLegacyPluginKeys(): { changed: string[] } {
+    const legacyMap: Record<string, string> = {
+      'plugins.kb.base_url': 'plugins.rag-bridge.base_url',
+      'plugins.kb.web_url': 'plugins.rag-bridge.web_url',
+      'plugins.kb.token': 'plugins.rag-bridge.token',
+      'plugins.diag.base_url': 'plugins.diag-bridge.base_url',
+      'plugins.diag.token': 'plugins.diag-bridge.token',
+      'plugins.diag.harness': 'plugins.diag-bridge.harness',
+      'plugins.diag.max_turns': 'plugins.diag-bridge.max_turns',
+      'plugins.diag.max_minutes': 'plugins.diag-bridge.max_minutes',
+      'plugins.diag.auto_enabled': 'plugins.diag-bridge.auto_enabled',
+      'plugins.diag.auto_rules': 'plugins.diag-bridge.auto_rules',
+    }
+    const raw = readSettings(this.settingsPath) as Record<string, unknown>
+    const moved: Record<string, unknown> = {}
+    const removed: string[] = []
+    for (const [oldKey, newKey] of Object.entries(legacyMap)) {
+      if (raw[oldKey] === undefined) continue
+      // 新键已注册才搬移并删旧键;否则保留旧键等下一次 pass(插件宿主装载后再触发),
+      // 绝不抢先删数据 —— nitro 插件顺序里本服务可能先于插件宿主初始化
+      if (raw[newKey] === undefined && this.map[newKey]) {
+        moved[newKey] = raw[oldKey]
+        removed.push(oldKey)
+      }
+    }
+    if (!removed.length) return { changed: [] }
+    const next: Record<string, unknown> = { ...raw }
+    for (const k of removed) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- 迁移语义:旧键必须从覆盖文件移除
+      delete next[k]
+    }
+    Object.assign(next, moved)
+    saveSettings(next, this.settingsPath)
+    console.log(`[system-config] 插件设置键已迁移: ${removed.join(', ')} → ${Object.keys(moved).join(', ') || '(丢弃,新键未注册)'}`)
+    return { changed: [...removed, ...Object.keys(moved)] }
   }
 
   /* ---------------- 私有:base / apply ---------------- */
@@ -181,7 +247,7 @@ export class SystemConfigService {
   private recompute({ applyLive = true } = {}): void {
     const effective: Record<string, unknown> = {}
     const sources: Record<string, 'config.yml' | 'runtime' | 'env'> = {}
-    for (const desc of this.descriptors) {
+    for (const desc of this.allDescriptors) {
       let value: unknown
       let source: 'config.yml' | 'runtime' | 'env'
       if (this.envOverrides[desc.key] !== undefined) {
@@ -261,7 +327,7 @@ export class SystemConfigService {
 
   snapshot(): PublicSnapshot {
     return {
-      descriptors: this.descriptors,
+      descriptors: this.allDescriptors,
       effective: { ...this.effective },
       overrides: { ...this.overrides },
       sources: { ...this.sources },
@@ -349,7 +415,7 @@ export class SystemConfigService {
   }
 
   private restartRequiredKeys(): string[] {
-    return this.descriptors.filter(d => d.applies === 'restart' && this.overrides[d.key] !== undefined).map(d => d.key)
+    return this.allDescriptors.filter(d => d.applies === 'restart' && this.overrides[d.key] !== undefined).map(d => d.key)
   }
 
   private broadcast(payload: ConfigEventPayload): void {

@@ -219,7 +219,7 @@ const openPlugins = (team: TeamDto): void => {
 const loadTeamPlugins = async (team: TeamDto): Promise<void> => {
   plugLoading.value = true
   try {
-    const res = await api.listChannelPlugins(team.id)
+    const res = await api.listTeamPlugins(team.id)
     const data = res?.data ?? {}
     plugRows.value = data.plugins ?? []
     plugSource.value = data.source === 'explicit' ? 'explicit' : 'default'
@@ -238,7 +238,7 @@ const toggleTeamPlugin = async (row: ChannelPluginStateDto, next: boolean): Prom
   try {
     // PUT 全量提交当前开关视图(仅翻转目标行)
     const payload = plugRows.value.map(r => ({ name: r.name, enabled: r.name === row.name ? next : r.enabled }))
-    const res = await api.putChannelPlugins(teamId, { plugins: payload })
+    const res = await api.putTeamPlugins(teamId, { plugins: payload })
     const data = res?.data ?? {}
     plugRows.value = data.plugins ?? payload.map(p => ({ ...p }))
     plugSource.value = data.source === 'explicit' ? 'explicit' : 'default'

@@ -14,6 +14,11 @@ export default {
   },
   menu: {
     system: 'AgentWorkShop',
+    groups: {
+      console: 'Console',
+      ops: 'Operations',
+      system: 'System',
+    },
     dashboard: 'Dashboard',
     workshop: 'Agent Harness',
     town: 'AgentWorkShop',
@@ -1060,6 +1065,14 @@ export default {
     k1kw4rtj025: 'Select Template',
     k3n5hzw026: 'Added',
     k1oxjrxx027: 'Group deleted',
+    k1plugon040: 'Plugin switches · {p0}',
+    k1plugon041: 'Plugins to enable for this team; propagated to the target Channel on deploy',
+    k1plugon042: 'Checked plugins take effect for members after the team deploys to a Channel; tools of unchecked plugins stay hidden from that team',
+    k1plugon043: 'Team plugin switches saved',
+    k1plugon044: 'Not explicitly configured — all enabled by default; toggling any switch applies per-row',
+    k1plugon045: 'Explicitly configured (per the switches below)',
+    k1plugon046: 'No registered plugins',
+    k1plugon047: 'Plugin switches…',
   },
   tokens: {
     k1upppaw026: 'Each token can be revoked independently; plaintext is archived server-side and can be viewed/copied anytime',
@@ -1312,6 +1325,9 @@ export default {
     kvsxlu6031: 'Updated; member runtimes will be recycled and re-assembled with the new settings',
     k1i0ji0y032: 'Template name is required',
     kjpguxw033: 'Captured as a Channel template (scenario/directory/team snapshot)',
+    k1plugon044: 'Plugin switches saved; tool lists of running agents in this Channel refresh immediately',
+    k1pluglbl045: 'Plugins (per-Channel switches; disabled tools are hidden from and rejected for this team\'s agents)',
+    k1plugsrc046: 'Not explicitly configured (all enabled by default); applies per-row after first toggle',
   },
   clusterArtifact: {
     kyh87lw001: 'Deliverable body matches the reply above',
@@ -1936,16 +1952,6 @@ export default {
   error: {
     backHome: 'Back to Home',
     lost: 'Page lost',
-  },
-  teamPlugins: {
-    k1plugon040: 'Plugin switches · {p0}',
-    k1plugon041: 'Enable plugins',
-    k1plugon042: 'Tools of unchecked plugins are not injected into this team\'s agents, avoiding context pollution',
-    k1plugon043: 'Saved',
-    k1plugon044: 'All enabled by default (not yet configured)',
-    k1plugon045: 'Explicitly configured',
-    k1plugon046: 'All plugins are disabled',
-    k1plugon047: 'Plugin switches…',
   },
   aml: {
     k1amlx001: 'AML Auto-Modeling',

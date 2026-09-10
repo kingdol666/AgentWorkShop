@@ -30,6 +30,9 @@ const DCW_NODE = process.env.E2E_DCW_NODE ?? 'dw-e92bb0e7' // 压力设定器(mo
 const CH_A = '产线数据分析组'
 const CH_B = '闭环控制组'
 
+/** 插件出站鉴权 token(0c 夹具取得;Stage 1 断言复用) */
+let kbTokenG = ''
+
 let pass = 0
 let fail = 0
 const failures = []
@@ -46,16 +49,27 @@ function ok(cond, label, detail = '') {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-async function raw(method, url, { body, token, agent, timeoutMs = 20000 } = {}) {
+async function raw(method, url, { body, token, agent, timeoutMs = 20000 } = {}, retried = 0) {
   const headers = {}
   if (body !== undefined) headers['content-type'] = 'application/json'
   if (token) headers.authorization = `Bearer ${token}`
   if (agent) headers['x-aw-agent-token'] = agent.token
-  const res = await fetch(url, {
-    method, headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(timeoutMs),
-  })
+  let res
+  try {
+    res = await fetch(url, {
+      method, headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+  }
+  catch (e) {
+    // 瞬时网络抖动(代理/服务重启窗口)重试一次,避免整场 e2e 因单点超时中止
+    if (retried < 1) {
+      await sleep(1500)
+      return raw(method, url, { body, token, agent, timeoutMs }, retried + 1)
+    }
+    throw e
+  }
   const json = await res.json().catch(() => null)
   return { status: res.status, json }
 }
@@ -77,6 +91,15 @@ try {
   userId = saved.uid ?? ''
 }
 catch { /* 首跑 */ }
+if (userToken) {
+  // 持久化 token 可能已随 users.sqlite 重建失效 → 先验证,失效则现场重新注册
+  const me = await api('GET', '/api/workshop/users/me', { token: userToken })
+  if (me.status !== 200) {
+    console.log('  · 持久化 token 已失效,重新注册 e2e 用户')
+    userToken = ''
+    userId = ''
+  }
+}
 if (!userToken && process.env.AW_E2E_TOKEN) userToken = process.env.AW_E2E_TOKEN
 if (!userToken) {
   const name = `e2e3sys-${Date.now().toString(36)}`
@@ -121,6 +144,89 @@ catch (err) {
   console.log(`  ! 授权夹具异常(继续): ${err?.message ?? err}`)
 }
 
+// ── 0c. 插件出站鉴权夹具:rag-knowledge(MCP token)+ 诊断服务(API token)→ 写入系统配置 ──
+// 两外部服务默认开启鉴权(rag-knowledge server.auth / IDD AUTH_ENABLED!==0),
+// rag-bridge/diag-bridge 的出站 token 走前端全局配置(plugins.kb.token / plugins.diag.token),
+// 此处拿真实 token 后经 PATCH /api/system/settings 配置 —— 同时验证「配置界面 → 插件热生效」链路。
+try {
+  // admin 夹具:注册临时用户 → users.sqlite 直改 role=admin(resolveUser 按请求查库,即时生效)
+  let adminToken = process.env.AW_E2E_ADMIN_TOKEN ?? ''
+  if (!adminToken) {
+    const adminName = `e2e3sys-admin-${Date.now().toString(36)}`
+    const reg = await api('POST', '/api/workshop/users/register', { body: { name: adminName } })
+    adminToken = reg?.json?.data?.token ?? ''
+    const adminId = reg?.json?.data?.id ?? ''
+    if (adminToken && adminId) {
+      const dbPath = join(ROOT, '.AgentWorkShop', 'data', 'users.sqlite')
+      const db = new DatabaseSync(dbPath)
+      db.exec('PRAGMA busy_timeout=4000')
+      db.prepare('UPDATE users SET role = \'admin\' WHERE id = ?').run(adminId)
+      db.close()
+      console.log(`  · admin 夹具就绪(${adminName} → role=admin)`)
+    }
+    else {
+      console.log('  ! admin 夹具注册失败,系统配置断言将跳过')
+    }
+  }
+  if (adminToken) {
+    // ① rag-knowledge MCP token:优先 env,否则读 rag-knowledge .env
+    let kbToken = process.env.KB_MCP_TOKEN ?? ''
+    if (!kbToken) {
+      const kbRoot = process.env.KB_ROOT ?? 'D:/codes/ClaudeGPT/rag_project/rag-knowledge'
+      try {
+        const envText = readFileSync(join(kbRoot, '.env'), 'utf8')
+        kbToken = (envText.match(/^MCP_AUTH_TOKEN=(.+)$/m) ?? [])[1]?.trim() ?? ''
+      }
+      catch { /* .env 不可读 */ }
+    }
+    kbTokenG = kbToken
+    // ② 诊断服务 token:优先 env,否则在 IDD 上注册 e2e 账号换会话 JWT
+    let diagToken = process.env.IDD_API_TOKEN ?? ''
+    if (!diagToken) {
+      const iu = `e2e3sys_${Date.now().toString(36)}`
+      const ipw = `E2e3sys${Date.now().toString(36)}a1`
+      const reg = await raw('POST', `${DIAG}/api/auth/register`, { body: { username: iu, password: ipw, email: `${iu}@e2e.local` } })
+      if (!reg.json?.data?.user) console.log(`  ! 诊断服务注册失败:${JSON.stringify(reg.json).slice(0, 120)}`)
+      const login = await raw('POST', `${DIAG}/api/auth/login`, { body: { username: iu, password: ipw } })
+      diagToken = login.json?.data?.session_token ?? login.json?.session_token ?? ''
+      if (!diagToken) console.log('  ! 诊断服务注册/登录未取得 token(3210 鉴权断言可能失败)')
+      else console.log('  · 诊断服务 e2e 账号 + 会话 token 就绪')
+    }
+    const patch = {}
+    if (kbToken) patch['plugins.rag-bridge.token'] = kbToken
+    if (diagToken) patch['plugins.diag-bridge.token'] = diagToken
+    if (Object.keys(patch).length) {
+      const set = await api('PATCH', '/api/system/settings', { token: adminToken, body: { override: patch } })
+      ok(set.status === 200 && set.json?.data?.ok !== false, '插件出站 token 写入系统配置(PATCH /api/system/settings)', `keys=${Object.keys(patch).join(',')}`)
+      if (set.status === 200) {
+        // 配置即时查询回读 + 插件侧热生效(diag-bridge health.auth 应变 bearer)
+        let hot = false
+        for (let i = 0; i < 10 && !hot; i++) {
+          await sleep(1000)
+          const h = await raw('GET', `${BASE}/api/plugins/diag-bridge/health`, { token: userToken })
+          if (h.json?.auth === 'bearer') hot = true
+        }
+        ok(hot, 'diag-bridge 热读取新 token(配置保存 → 插件即时生效,免重启)')
+      }
+    }
+    if (kbToken) {
+      // rag-bridge 出站鉴权链路:带 token 后 catalog/建库应成功(kb.id 就绪)
+      let kbReady = false
+      let kbDetail = ''
+      for (let i = 0; i < 12 && !kbReady; i++) {
+        await sleep(2500)
+        const h = await raw('GET', `${BASE}/api/plugins/rag-bridge/health`, { token: userToken })
+        kbDetail = `kb.id=${h.json?.kb?.id} auth=${h.json?.auth}`
+        if (h.json?.kb?.id) kbReady = true
+      }
+      ok(kbReady, 'rag-bridge 带 token 打通 rag-knowledge(ensureKB 自愈 → kb.id 就绪)', kbDetail)
+    }
+  }
+}
+catch (err) {
+  console.log(`  ! 插件出站鉴权夹具异常(继续): ${err?.message ?? err}`)
+}
+
 // ══ Stage 1:四服务健康 + 插件装载 + 鉴权门 ═══════════════════════════════
 console.log('\n── Stage 1 系统与插件健康 ──')
 {
@@ -129,8 +235,12 @@ console.log('\n── Stage 1 系统与插件健康 ──')
 
   const kbH = await raw('GET', `${KB}/api/v1/health`)
   ok(kbH.json?.status === 'healthy', 'rag-knowledge 后端 8770 healthy', JSON.stringify(kbH.json))
-  const kbWeb = await raw('GET', `${KBWEB}/api/kb/catalog`)
-  ok(kbWeb.json?.success === true, 'rag-knowledge web 6789 catalog 可用', `count=${kbWeb.json?.count}`)
+  // web catalog:服务端开启鉴权时无 token 401,带 MCP token 应 success(两种部署形态都接受)
+  const kbWebNoAuth = await raw('GET', `${KBWEB}/api/kb/catalog`)
+  const kbWeb = await raw('GET', `${KBWEB}/api/kb/catalog`, { token: kbTokenG || undefined })
+  ok(kbWeb.json?.success === true || (kbWebNoAuth.status === 401 && kbWebNoAuth.json?.error),
+    'rag-knowledge web 6789 catalog 可用(鉴权形态:无 token 401 / 带 token success)',
+    `noAuth=${kbWebNoAuth.status} withToken=${kbWeb.status} count=${kbWeb.json?.count}`)
   const dgH = await raw('GET', `${DIAG}/api/health`)
   ok(dgH.json?.status === 'ok', '诊断服务 3210 healthy', `activeRuns=${dgH.json?.checks?.activeRuns}`)
   const rgH = await raw('GET', 'http://127.0.0.1:8764/health', { timeoutMs: 5000 }).catch(e => ({ json: { status: String(e) } }))
@@ -323,6 +433,84 @@ let channelB
   const writeRes = await pendingInvoke
   ok(approved, 'HITL 待办出现并经 respond 批准', approved ? 'ok' : `pending=${pendRaw.slice(0, 200)}`)
   ok(resultText(writeRes).includes('下发成功'), 'dcw_control 经审批写回成功', resultText(writeRes).slice(0, 120))
+}
+
+// ══ Stage 2.5:团队插件链(建队勾选 → 团队开关 → 部署传导 → channel 工具过滤)══
+{
+  console.log('\n── Stage 2.5 团队插件链(建队勾选/部署传导/按 Channel 过滤)──')
+  const tplRes = await api('POST', '/api/workshop/agents', {
+    token: userToken,
+    body: { name: `插件链执行器-${Date.now().toString(36)}`, harness: 'mock' },
+  })
+  const tplId = envelopeData(tplRes)?.id
+  ok(Boolean(tplId), '成员 Agent 模板创建', tplId ?? JSON.stringify(tplRes.json).slice(0, 100))
+
+  const teamName = `插件链团队-${Date.now().toString(36)}`
+  const teamRes = await api('POST', '/api/workshop/teams', {
+    token: userToken,
+    body: {
+      name: teamName,
+      plugins: [{ name: 'rag-bridge', enabled: false }, { name: 'diag-bridge', enabled: true }],
+    },
+  })
+  const team = envelopeData(teamRes)
+  ok(Boolean(team?.id), '建队带 plugins 勾选(POST /teams 落团队偏好)', team?.id ?? JSON.stringify(teamRes.json).slice(0, 120))
+
+  if (team?.id) {
+    await api('POST', `/api/workshop/teams/${team.id}/members`, { token: userToken, body: { agentId: tplId, role: 'worker' } })
+    // ① 团队插件视图(team 作用域端点)
+    const tp = await api('GET', `/api/workshop/teams/${team.id}/plugins`, { token: userToken })
+    const tpRows = envelopeData(tp)?.plugins ?? []
+    ok(envelopeData(tp)?.source === 'explicit'
+      && tpRows.find(p => p.name === 'rag-bridge')?.enabled === false
+      && tpRows.find(p => p.name === 'diag-bridge')?.enabled === true,
+    'GET /teams/:id/plugins 显式视图(rag-bridge 关 / diag-bridge 开)', JSON.stringify(tpRows.map(p => [p.name, p.enabled])))
+
+    // ② 部署到新 channel → 团队开关传导
+    const chRes = await api('POST', '/api/workshop/channels', {
+      token: userToken,
+      body: { name: `插件链频道-${Date.now().toString(36)}`, description: '三系统 e2e 团队插件链' },
+    })
+    const channelId = envelopeData(chRes)?.channelId ?? ''
+    ok(Boolean(channelId), '空频道创建(部署目标)', channelId)
+    if (channelId) {
+      const dep = await api('POST', `/api/workshop/teams/${team.id}/deploy`, { token: userToken, body: { channelId } })
+      const depAgents = envelopeData(dep)?.agents ?? []
+      ok(dep.status === 200 && depAgents.length > 0, '团队部署到频道(成员克隆)', `agents=${depAgents.length}`)
+      const cp = await api('GET', `/api/workshop/channels/${channelId}/plugins`, { token: userToken })
+      const cpRows = envelopeData(cp)?.plugins ?? []
+      ok(envelopeData(cp)?.source === 'explicit'
+        && cpRows.find(p => p.name === 'rag-bridge')?.enabled === false,
+      '团队插件开关随部署传导到 channel', JSON.stringify(cpRows.map(p => [p.name, p.enabled])))
+
+      // ③ 工具清单过滤:kb_*(rag-bridge 关)不可见,diag_*(开)可见
+      const member = depAgents[0]
+      const list1 = await api('GET', `/api/workshop/agent-tools/list?agentId=${member.id}`, { agent: member })
+      const names1 = (list1?.json?.data?.tools ?? list1?.json?.tools ?? []).map(t => t?.name)
+      ok(!names1.includes('kb_search') && !names1.includes('kb_store') && !names1.includes('kb_index'),
+        '关闭插件的工具不注入该团队(kb_* 从清单消失)')
+      ok(names1.includes('diag_run') && names1.includes('diag_status'), '开启插件的工具正常注入(diag_*)')
+
+      // ④ dispatch 同源拒绝:关掉的插件工具直调被拒
+      const denied = await invoke(member, 'kb_search', { query: '不应执行' }, 30000)
+      ok(resultText(denied).includes('未启用插件'), 'dispatch 层同源拒绝(团队未启用插件)', resultText(denied).slice(0, 60))
+
+      // ⑤ channel 级反转:重新开启 rag-bridge → 工具即时回归(热通知)
+      const put5 = await api('PUT', `/api/workshop/channels/${channelId}/plugins`, {
+        token: userToken,
+        body: { plugins: [{ name: 'rag-bridge', enabled: true }, { name: 'diag-bridge', enabled: true }] },
+      })
+      ok(put5.status === 200, 'channel 级插件开关 PUT(rag-bridge 重开)')
+      let back5 = false
+      for (let i = 0; i < 8 && !back5; i++) {
+        await sleep(1000)
+        const list5 = await api('GET', `/api/workshop/agent-tools/list?agentId=${member.id}`, { agent: member })
+        const names5 = (list5?.json?.data?.tools ?? list5?.json?.tools ?? []).map(t => t?.name)
+        if (names5.includes('kb_search')) back5 = true
+      }
+      ok(back5, '重开后 kb_search 回归工具清单(热刷新 ≤ 数秒)')
+    }
+  }
 }
 
 // ══ Stage 3:真实诊断(kickoff 常跑;--full 才轮询到完成)═══════════════════

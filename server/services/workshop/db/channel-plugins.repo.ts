@@ -4,6 +4,8 @@
  * 语义:无显式行 = 未配置 → 全部启用插件对团队可见(向后兼容,存量 channel 不受影响);
  * 显式行(建队勾选/团队设置切换)写入后按行过滤 —— 关闭的插件其工具不注入该团队
  * Agent,dispatch 同源拒绝,防止不需要插件的 channel 上下文被污染。
+ * 主键列同时承载两种作用域 id:channel id(部署实例)与 team id(团队偏好,部署时传导),
+ * 故不设外键(migrateDropOwnerFks 同理:列仅存 id 引用;悬挂行无行为影响,读取即忽略)。
  * 自持连接(user.repository.ts 同模式):workshop.sqlite 单文件 WAL。
  */
 import { DatabaseSync } from 'node:sqlite'
@@ -18,14 +20,38 @@ function getDb(): DatabaseSync {
     db = new DatabaseSync(DB_PATH)
     db.exec('PRAGMA busy_timeout=4000')
     db.exec(`CREATE TABLE IF NOT EXISTS channel_plugins (
-      channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+      channel_id TEXT NOT NULL,
       plugin     TEXT NOT NULL,
       enabled    INTEGER NOT NULL DEFAULT 1,
       updated_at TEXT NOT NULL,
       PRIMARY KEY (channel_id, plugin)
     )`)
+    migrateDropChannelFk(db)
   }
   return db
+}
+
+/** 早期建表带 REFERENCES channels(id):team 作用域 id 写入会触发 FK 拒绝 → 重建剥壳 */
+function migrateDropChannelFk(db: DatabaseSync): void {
+  const fks = db.prepare('PRAGMA foreign_key_list(channel_plugins)').all() as Array<{ table: string }>
+  if (!fks.some(f => f.table === 'channels')) return
+  db.exec('PRAGMA foreign_keys = OFF;')
+  try {
+    db.exec(`CREATE TABLE channel_plugins_new (
+      channel_id TEXT NOT NULL,
+      plugin     TEXT NOT NULL,
+      enabled    INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (channel_id, plugin)
+    );
+    INSERT OR IGNORE INTO channel_plugins_new (channel_id, plugin, enabled, updated_at)
+      SELECT channel_id, plugin, enabled, updated_at FROM channel_plugins;
+    DROP TABLE channel_plugins;
+    ALTER TABLE channel_plugins_new RENAME TO channel_plugins;`)
+  }
+  finally {
+    db.exec('PRAGMA foreign_keys = ON;')
+  }
 }
 
 export interface ChannelPluginToggle {

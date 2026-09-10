@@ -28,6 +28,9 @@ const ctx = createClientContext({
 | `ctx.hooks` | 本地 HookBus:`client:init` / `page:change` / `client:destroy` 走这里**直订**(无 `event:` 前缀);scene 事件经 `ctx.on` 订阅 |
 | `ctx.log` | 前缀 console(info/warn/error) |
 | `ctx.dispose()` | 卸载:回收全部订阅 + 清空挂载点 + 广播 `client:destroy`(幂等;页面隐藏也触发) |
+| `ctx.ui.registerPanel(entry)` | **UI 注入(v2)**:向命名插槽注册面板 `{slot, name, title?, titleKey?, order?, mount(el)}`;`mount` 返回清理函数则在卸载时调用;返回注销函数,`ctx.dispose` 自动回收。内置插槽:`plugins.page` / `settings.plugins` / `dashboard.widgets` |
+| `ctx.t(key, params?)` | **插件命名空间翻译(v2)**:`ctx.t('panel.title')` → `plugin.<name>.panel.title`(消息来自插件根目录 i18n.json;未命中回落声明键) |
+| `ctx.locale` | 当前界面语言;语言切换广播 `i18n:changed` 钩子(`ctx.hooks.on('i18n:changed', fn)`) |
 
 ## 完整示例
 

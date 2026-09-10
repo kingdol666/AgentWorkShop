@@ -14,10 +14,10 @@
 //   · CLI(aw plugin enable/disable) 与 Web 设置页均只写状态文件,服务自感知
 // 错误隔离:单插件装载/执行失败记入 failures,绝不拖垮主服务。
 // ============================================================
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, watch, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, watch, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { HookBus, createPluginContext, createRouteTable, validatePluginModule } from '@/sdk/index.mjs'
+import { HookBus, createPluginContext, createRouteTable, validatePluginModule, validatePluginSettings } from '@/sdk/index.mjs'
 
 // 延迟解析的产线权限服务(esbuild/别名下避免 nitro 打包循环导入;失败降级为拒绝一切)
 let permissions = null
@@ -68,6 +68,95 @@ function modePaths(cwd) {
 
 function pathToUrl(p) {
   return pathToFileURL(resolve(p)).href
+}
+
+/** 插件根目录 i18n.json 路径(存在才返回;多语言消息包,按 plugin.<name> 命名空间注入前端) */
+function pluginI18nPath(dir) {
+  const p = join(dir, 'i18n.json')
+  return existsSync(p) ? p : null
+}
+
+/** 读取并解析插件 i18n.json(形态 { "<locale>": { key: value } };坏文件返回 null 不阻断) */
+export function readPluginI18n(rec) {
+  if (!rec?.i18nPath || !existsSync(rec.i18nPath)) return null
+  try {
+    const obj = JSON.parse(readFileSync(rec.i18nPath, 'utf8'))
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null
+    const out = {}
+    for (const [locale, messages] of Object.entries(obj)) {
+      if (messages && typeof messages === 'object' && !Array.isArray(messages)) out[locale] = messages
+    }
+    return Object.keys(out).length ? out : null
+  }
+  catch {
+    return null
+  }
+}
+
+/**
+ * 全部插件的 i18n 消息包(免鉴权只读端点用;仅 UI 文案,插件作者不得放置敏感信息):
+ * { "<plugin>": { "<locale>": { key: value } } }
+ */
+export function pluginI18nBundle() {
+  const host = getPluginHost()
+  if (!host) return {}
+  const out = {}
+  for (const rec of host.plugins.values()) {
+    if (rec.enabled === false) continue
+    const bundle = readPluginI18n(rec)
+    if (bundle) out[rec.name] = bundle
+  }
+  return out
+}
+
+// ---- 后端运行时服务面(ctx.services;只读取数优先,跨插件服务带 <plugin>. 前缀) ----
+const servicesExt = (g.__awPluginServices ??= {
+  registry: new Map(),
+  /** 核心服务注册(name → 惰性 getter);宿主启动期 seed */
+  register(name, get) {
+    this.registry.set(String(name), get)
+  },
+  /** 插件供服务(自动加 `<plugin>.` 前缀;同前缀同名覆盖) */
+  provide(plugin, name, get) {
+    this.registry.set(`${plugin}.${String(name)}`, get)
+  },
+  names() {
+    return [...this.registry.keys()]
+  },
+  /** 取运行时服务对象(惰性求值并缓存;失败抛错由调用方兜底) */
+  async get(name) {
+    const get = this.registry.get(String(name))
+    if (!get) throw new Error(`未知运行时服务: ${name}(可用: ${this.names().join(', ')})`)
+    get._cache ??= get()
+    return await get._cache
+  },
+})
+
+/** 插件可获取的后端运行时对象(只读取数面;懒加载避免循环导入,失败即抛由插件兜底) */
+async function seedRuntimeServices() {
+  if (servicesExt.registry.has('daq')) return
+  servicesExt.register('daq', async () => {
+    const storage = await import('@/server/services/workshop/daq/storage/index')
+    const nodes = await import('@/server/services/workshop/daq/daq-node.repo')
+    return {
+      query: q => storage.getTsdb().queryTagged(q),
+      nodes: () => nodes.getDaqNodeRepo().snapshot(),
+    }
+  })
+  servicesExt.register('lines', async () => {
+    const m = await import('@/server/services/workshop/dcw/dcw-line.repo')
+    const repo = m.getDcwLineRepo()
+    return { list: () => repo.all(), byId: id => repo.byId(id) }
+  })
+  servicesExt.register('channels', async () => {
+    const m = await import('@/server/plugins/workshop')
+    const mgr = m.getWorkshopManager()
+    return {
+      list: () => mgr.deps.repos.channels.list(),
+      agents: channelId => mgr.deps.repos.channelAgents.listByChannel(channelId),
+    }
+  })
+  servicesExt.register('plugins', async () => pluginManifest())
 }
 
 // ---- 启停状态(单一事实源:<配置根>/plugins-state.json;CLI/Web/宿主三方读写) ----
@@ -188,6 +277,7 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
   host.logger.info(`自环 origin: ${selfOrigin}`)
 
   await loadAllPlugins(host, { config, settingsPath, paths })
+  await syncPluginSettings()
   ensureStateWatcher(host)
   return host
 }
@@ -197,9 +287,11 @@ async function loadAllPlugins(host, { config, paths }) {
   const homeDir = modePaths(host.cwd).homeDir
   const disabled = readDisabledSet(homeDir)
   host.disabledSet = disabled
+  host.lastDisabledSnapshot = new Set(disabled) // 重装载竞态检测基线(见 reloadPluginHost)
 
   // 产线权限服务(ctx.permissions 注入用;失败降级)
   await loadPermissions()
+  await seedRuntimeServices()
 
   const entries = discoverPluginDirs(host.cwd)
   if (entries.length) host.logger.info(`发现 ${entries.length} 个插件(停用 ${disabled.size}),开始装载 ...`)
@@ -224,6 +316,8 @@ async function loadAllPlugins(host, { config, paths }) {
           dir,
           entry,
           clientPath: def.client ? resolve(dir, def.client) : null,
+          i18nPath: pluginI18nPath(dir),
+          settings: [],
           routes: [],
           enabled: false,
           error: null,
@@ -231,6 +325,10 @@ async function loadAllPlugins(host, { config, paths }) {
         host.logger.info(`⊘ 跳过(已停用) [${scope}] ${def.name}`)
         continue
       }
+
+      // 插件设置声明 → 平台设置描述符(key 编址 plugins.<name>.<key>;校验失败仅告警跳过条目)
+      const settingsCheck = validatePluginSettings(def.name, def.settings)
+      for (const e of settingsCheck.errors) host.logger.warn(`[${def.name}] 设置声明已跳过: ${e}`)
 
       const rec = {
         name: def.name,
@@ -241,6 +339,8 @@ async function loadAllPlugins(host, { config, paths }) {
         dir,
         entry,
         clientPath: def.client ? resolve(dir, def.client) : null,
+        i18nPath: pluginI18nPath(dir),
+        settings: settingsCheck.descriptors,
         routes: [],
         enabled: true,
         error: null,
@@ -371,6 +471,13 @@ async function loadAllPlugins(host, { config, paths }) {
           ctx.logger.info(`已注册 omp 工具:「${tool?.name}」`)
         },
       }
+      // 后端运行时对象面:ctx.services.get('daq'|'lines'|'channels'|'plugins') /
+      // ctx.services.provide(name, getter) 跨插件供服务(自动 <plugin>. 前缀)
+      ctx.services = {
+        names: () => servicesExt.names(),
+        get: name => servicesExt.get(name),
+        provide: (name, get) => servicesExt.provide(def.name, name, get),
+      }
 
       for (const r of (Array.isArray(def.routes) ? def.routes : [])) {
         emitter.registerRoute(def.name, r.method ?? 'GET', r.path, r.handler)
@@ -395,13 +502,41 @@ function selfOriginRef(host) {
   return host.selfOrigin()
 }
 
-/** 热重载:全部 dispose/解绑 → 重新装载(跳过停用)→ 广播 plugins.reloaded(并发合并) */
+/** 插件设置声明 → SystemConfigService(合并进平台描述符:前端设置页渲染 + PATCH 校验 + 热生效) */
+async function syncPluginSettings() {
+  try {
+    const { getSystemConfigService } = await import('@/server/services/system-config')
+    const host = getPluginHost()
+    const descs = []
+    for (const rec of host?.plugins.values() ?? []) {
+      if (rec.enabled !== false) descs.push(...(rec.settings ?? []))
+    }
+    getSystemConfigService().setPluginDescriptors(descs)
+  }
+  catch (err) {
+    hostLoggerFallback()?.warn('插件设置同步失败(设置页将不渲染插件配置):', err?.message)
+  }
+}
+
+/** 热重载:全部 dispose/解绑 → 重新装载(跳过停用)→ 广播 plugins.reloaded(并发合并)。
+ *  竞态防护:重装载期间状态文件再变化(如 disable→enable 连击)时,去抖回调会撞上
+ *  in-flight 守卫被吞 —— 装载结束后比对禁用集快照,有差异自动补跑一次,事件绝不丢失。 */
 export async function reloadPluginHost() {
   const host = getPluginHost()
   if (!host) return null
   if (host.reloadInFlight) return host.reloadInFlight
   host.reloadInFlight = doReload(host).finally(() => {
     host.reloadInFlight = null
+    try {
+      const current = readDisabledSet(modePaths(host.cwd).homeDir)
+      const prev = host.lastDisabledSnapshot
+      const drifted = prev
+        ? (current.size !== prev.size || [...current].some(x => !prev.has(x)))
+        : false
+      host.lastDisabledSnapshot = current
+      if (drifted) void reloadPluginHost()
+    }
+    catch { /* 快照比对失败忽略(下个事件兜底) */ }
   })
   return host.reloadInFlight
 }
@@ -449,6 +584,7 @@ async function doReload(host) {
     }
   }
   await host.bus.emit('plugins:reloaded', { plugins: pluginManifest() })
+  await syncPluginSettings()
   try {
     const m = await import('@/server/services/workshop/scene-events')
     m.broadcastSceneEvent('plugins.reloaded', { plugins: pluginManifest() })
@@ -468,26 +604,46 @@ export function setPluginEnabled(name, enabled) {
   return [...set]
 }
 
-/** 状态文件监视 → 热重载(CLI/Web 只写文件,服务自感知) */
+/** 状态文件监视 → 热重载(CLI/Web 只写文件,服务自感知)。
+ *  双保险:fs.watch 的 rename 事件在 Windows 上可能丢名字/丢事件(tmp+rename 原子写
+ *  尤其如此)→ 另设 10s 轮询比对 mtime,确保启停/热重载事件绝不丢失。 */
 function ensureStateWatcher(host) {
   const statePath = statePathFor(modePaths(host.cwd).homeDir)
+  let lastMtime = 0
+  let debounce = null
+  const onChange = () => {
+    clearTimeout(debounce)
+    debounce = setTimeout(() => {
+      void reloadPluginHost()
+    }, 400)
+  }
   try {
     mkdirSync(dirname(statePath), { recursive: true })
     if (!existsSync(statePath)) writeDisabledSet(modePaths(host.cwd).homeDir, new Set())
-    let debounce = null
+    lastMtime = existsSync(statePath) ? statSync(statePath).mtimeMs : 0
     // watch 目录而非文件:writeDisabledSet 用 rename 原子替换,POSIX 的文件级
     // watch 挂在旧 inode 上,首次启停后静默失效;目录监听对 rename 稳定
     watch(dirname(statePath), (_event, filename) => {
       if (filename && filename !== 'plugins-state.json') return
-      clearTimeout(debounce)
-      debounce = setTimeout(() => {
-        void reloadPluginHost()
-      }, 400)
+      onChange()
     })
   }
   catch (err) {
     host.logger.warn('状态文件监视不可用(启停需手动重启):', err?.message)
   }
+  // 轮询兜底(与 watch 互冗余;reloadPluginHost 幂等且并发合并)
+  const poll = setInterval(() => {
+    try {
+      if (!existsSync(statePath)) return
+      const m = statSync(statePath).mtimeMs
+      if (m !== lastMtime) {
+        lastMtime = m
+        onChange()
+      }
+    }
+    catch { /* 文件正被替换:下一轮再看 */ }
+  }, 10_000)
+  poll.unref?.()
 }
 
 /** 单例访问(未初始化返回 null —— 桥接点据此快速 no-op) */
@@ -542,6 +698,8 @@ export function pluginManifest() {
     builtin: r.scope === 'project' || r.scope === 'builtin',
     enabled: r.enabled !== false,
     hasClient: Boolean(r.clientPath),
+    hasI18n: Boolean(r.i18nPath),
+    settingsCount: Array.isArray(r.settings) ? r.settings.length : 0,
     routes: host.routes.byPlugin(r.name),
     error: r.error,
   }))

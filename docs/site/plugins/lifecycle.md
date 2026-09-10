@@ -81,7 +81,17 @@ nitro close
 | `client:init` | `setup(ctx)` 完成 | `{ name }` |
 | `event:<scene-type>` / `event:*` | WS 实时事件(经 TownBus 桥) | 事件 payload |
 | `page:change` | Vue Router 页面切换完成 | `{ path }` |
+| `i18n:changed` | 界面语言切换(v2;面板据此重渲染) | `{ locale }` |
 | `client:destroy` | 页面隐藏/卸载,`ctx.dispose()` 回收前 | `{ name }` |
+
+### 面板生命周期(v2 UI 注入)
+
+`ctx.ui.registerPanel({slot,name,mount})` 注册的面板:
+
+- **注入**:宿主页面 `<PluginSlot slot-name>` 感知注册表变化,挂载容器并调用
+  `mount(el)`;`mount` 返回的清理函数在卸载时调用。
+- **卸载**:插件 `ctx.dispose()`(停用/热重载/页面隐藏)自动注销其全部面板。
+- **隔离**:单面板 `mount` 抛错只影响自身,其余面板与页面不受影响。
 
 ## 错误隔离与熔断
 
@@ -89,9 +99,15 @@ nitro close
 - 同一监听器**连续失败 ≥ 8 次**自动摘除——病态插件不会刷垮事件流。
 - 插件装载失败(语法错误/缺 name)只记入 `host.failures`,`aw plugin list` 与启动日志可见。
 
-## 已知边界(v1)
+## 热重载竞态防护(v2)
+
+重装载进行期间状态文件再次变化(如 disable→enable 连击):去抖回调撞上 in-flight
+守卫会被吞——装载结束后宿主比对**禁用集快照**,有差异自动补跑一次重装载,启停事件
+绝不丢失。
+
+## 已知边界(v2)
 
 - 钩子为**观察语义**,无 veto(拦截/改写)能力——写控联锁完整性优先,拦截钩子在路线图。
-- 插件目录不在热更新监听范围——修改后重启服务生效。
+- 插件目录不在热更新监听范围——修改后触碰 `plugins-state.json`(或 Web 启停开关)触发重装载;核心代码(server/ shared/)改动需重启。
 - `server:close` / `onDispose` 依赖优雅关闭信号(Windows 强杀进程不触发;
   KV 防抖落盘 200ms,数据丢失窗口极小)。

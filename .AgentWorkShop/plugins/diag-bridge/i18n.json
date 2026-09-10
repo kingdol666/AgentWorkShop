@@ -1,0 +1,60 @@
+{
+  "zh-CN": {
+    "settings": {
+      "base_url": "诊断服务地址",
+      "token": "诊断 API Token",
+      "harness": "诊断引擎",
+      "max_turns": "诊断最大轮数",
+      "max_minutes": "诊断超时(分钟)",
+      "auto_enabled": "自动诊断",
+      "auto_rules": "自动诊断规则"
+    },
+    "panel": {
+      "title": "深度诊断(industrial-deep-diagnostic)",
+      "runs": "诊断记录",
+      "none": "暂无诊断记录;Agent 经 diag_run 工具发起",
+      "run": "Run",
+      "line": "产线",
+      "status": "状态",
+      "score": "评分",
+      "stored": "入库",
+      "refresh": "刷新",
+      "st_running": "运行中",
+      "st_completed": "已完成",
+      "st_failed": "失败",
+      "st_stopped": "已停止",
+      "st_other": "其他",
+      "yes": "是",
+      "no": "否"
+    }
+  },
+  "en": {
+    "settings": {
+      "base_url": "Diagnosis service URL",
+      "token": "Diagnosis API token",
+      "harness": "Diagnosis harness",
+      "max_turns": "Max turns",
+      "max_minutes": "Timeout (minutes)",
+      "auto_enabled": "Auto diagnosis",
+      "auto_rules": "Auto diagnosis rules"
+    },
+    "panel": {
+      "title": "Deep diagnosis (industrial-deep-diagnostic)",
+      "runs": "Diagnosis runs",
+      "none": "No runs yet; agents start one via the diag_run tool",
+      "run": "Run",
+      "line": "Line",
+      "status": "Status",
+      "score": "Score",
+      "stored": "Stored",
+      "refresh": "Refresh",
+      "st_running": "Running",
+      "st_completed": "Completed",
+      "st_failed": "Failed",
+      "st_stopped": "Stopped",
+      "st_other": "Other",
+      "yes": "Yes",
+      "no": "No"
+    }
+  }
+}

@@ -517,6 +517,11 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
         </p>
       </div>
     </section>
+
+    <!-- 插件 UI 注入区:client 面板经 ctx.ui.registerPanel({slot:'dashboard.widgets'}) 注入 -->
+    <ClientOnly>
+      <workshop-plugin-slot slot-name="dashboard.widgets" />
+    </ClientOnly>
   </div>
 </template>
 

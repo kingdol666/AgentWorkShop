@@ -1512,5 +1512,14 @@
   "返回首页": "Back to Home",
   "页面走失了": "Page lost",
   "插件开关 · {p0}": "Plugin switches · {p0}",
-  "插件开关…": "Plugin switches…"
+  "插件开关…": "Plugin switches…",
+  "插件(该编组启用哪些;部署时传导到目标 Channel)": "Plugins to enable for this team; propagated to the target Channel on deploy",
+  "勾选的插件在编组部署到 Channel 后对其成员生效;未勾选的插件工具对该团队隐藏": "Checked plugins take effect for members after the team deploys to a Channel; tools of unchecked plugins stay hidden from that team",
+  "团队插件开关已保存": "Team plugin switches saved",
+  "未显式配置 —— 当前默认全启用;切换任一开关后按行生效": "Not explicitly configured — all enabled by default; toggling any switch applies per-row",
+  "已显式配置(按下方开关生效)": "Explicitly configured (per the switches below)",
+  "暂无已注册插件": "No registered plugins",
+  "插件开关已保存;该 Channel 在跑 Agent 的工具清单即时刷新": "Plugin switches saved; tool lists of running agents in this Channel refresh immediately",
+  "插件(本 Channel 独立开关;关闭后其工具对本团队 Agent 隐藏并拒绝调用)": "Plugins (per-Channel switches; disabled tools are hidden from and rejected for this team's agents)",
+  "未显式配置(默认全启用);首次切换后按行生效": "Not explicitly configured (all enabled by default); applies per-row after first toggle"
 }

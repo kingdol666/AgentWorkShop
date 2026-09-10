@@ -92,6 +92,31 @@ ctx.daq.onSample(fn)    // 糖衣 = ctx.hooks.on('daq:sample')
 模板 `sink.processors` 声明下沉管线(采样后、入库前执行);`metrics` 声明派生指标阈值,
 越限走平台既有告警链路。向量/帧元数据入 Timescale `daq_frames`,图像像素入对象存储。
 
+## ctx.services —— 后端运行时对象面(v2)
+
+```js
+const daq = await ctx.services.get('daq')          // { query(q), nodes() }
+const lines = await ctx.services.get('lines')      // { list(), byId(id) }
+const channels = await ctx.services.get('channels')// { list(), agents(channelId) }
+const plugins = await ctx.services.get('plugins')  // pluginManifest()
+ctx.services.names()                               // 可用服务名(含插件提供的)
+ctx.services.provide('my-data', async () => ({…})) // 跨插件供服务 → '<插件名>.my-data'
+```
+
+- 惰性求值并缓存;未知名抛错(错误由调用方兜底)。
+- 只读取数优先;`provide` 强制 `<插件名>.` 前缀,避免跨插件命名冲突。
+
+## 插件设置声明(v2;index.mjs 顶层 `settings:`)
+
+```js
+settings: [{ key: 'base_url', type: 'string', default: 'http://…',
+             labelKey: 'plugin.<name>.settings.base_url', label: '回退文案' }]
+```
+
+- 键强制编址 `plugins.<插件名>.<key>`;装载后并入 SystemConfigService —— 前端设置页
+  「插件」分组自动渲染,PATCH `/api/system/settings` 同源校验,保存即热生效。
+- 读取:`ctx.config.get('plugins.<name>.base_url')`;声明校验失败条目跳过并告警。
+
 ## ctx.omp —— omp 自定义工具(运行时热注入)
 
 ```js

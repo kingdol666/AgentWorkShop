@@ -13,13 +13,13 @@
 //           → server:close
 //   客户端: client.mjs setup(ctx) → client:init → event:*/page:change
 // ============================================================
-import { SDK_VERSION, definePlugin, createPluginContext, createRouteTable, validatePluginModule, pluginKvExists } from './context.mjs'
+import { SDK_VERSION, definePlugin, createPluginContext, createRouteTable, validatePluginModule, validatePluginSettings, pluginKvExists } from './context.mjs'
 import { HookBus } from './hooks.mjs'
 import { createPlatformClient } from './api.mjs'
 import { CLIENT_SDK_VERSION, createClientContext } from './client.mjs'
 import { LIFECYCLE_EVENTS, CLIENT_EVENTS } from './lifecycle.mjs'
 
-export { SDK_VERSION, definePlugin, createPluginContext, createRouteTable, validatePluginModule, pluginKvExists } from './context.mjs'
+export { SDK_VERSION, definePlugin, createPluginContext, createRouteTable, validatePluginModule, validatePluginSettings, pluginKvExists } from './context.mjs'
 export { HookBus } from './hooks.mjs'
 export { createPlatformClient } from './api.mjs'
 export { CLIENT_SDK_VERSION, createClientContext } from './client.mjs'
@@ -32,6 +32,7 @@ export default {
   createPluginContext,
   createRouteTable,
   validatePluginModule,
+  validatePluginSettings,
   pluginKvExists,
   createPlatformClient,
   CLIENT_SDK_VERSION,

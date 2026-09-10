@@ -208,6 +208,41 @@ const openSettings = (channelId: string): void => {
   llmForm.effort = saved?.effort ?? ''
   settingsOpen.value = true
   if (llmForm.enabled) void loadLlmCatalog(llmForm.harness)
+  void loadChannelPlugins(channelId)
+}
+
+// ===== Channel 级插件开关(设置弹窗内嵌;切换即 PUT,该 channel 在跑 Agent 工具清单热刷新) =====
+interface ChannelPluginRow { name: string, description?: string, builtin?: boolean, enabled: boolean }
+const pluginRows = ref<ChannelPluginRow[]>([])
+const pluginSource = ref<'explicit' | 'default'>('default')
+const pluginSaving = ref<string | null>(null)
+const loadChannelPlugins = async (channelId: string): Promise<void> => {
+  try {
+    const res = await api.listChannelPlugins(channelId)
+    const data = res?.data ?? {}
+    pluginRows.value = data.plugins ?? []
+    pluginSource.value = data.source === 'explicit' ? 'explicit' : 'default'
+  }
+  catch { /* 插件视图不可得(未登录/网络)时留空,不阻塞设置弹窗 */ }
+}
+const toggleChannelPlugin = async (row: ChannelPluginRow, next: boolean): Promise<void> => {
+  if (pluginSaving.value) return
+  pluginSaving.value = row.name
+  try {
+    // 全量提交当前开关视图(仅翻转目标行),与 teams 页插件开关同语义
+    const payload = pluginRows.value.map(r => ({ name: r.name, enabled: r.name === row.name ? next : r.enabled }))
+    const res = await api.putChannelPlugins(settingsChannelId.value, { plugins: payload })
+    const data = res?.data ?? {}
+    pluginRows.value = data.plugins ?? payload.map(p => ({ ...p }))
+    pluginSource.value = data.source === 'explicit' ? 'explicit' : 'default'
+    message.success(t('channelSessionList.k1plugon044'))
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e))
+  }
+  finally {
+    pluginSaving.value = null
+  }
 }
 const saveSettings = async (): Promise<void> => {
   settingsSaving.value = true
@@ -511,6 +546,44 @@ const saveAsTemplate = async (): Promise<void> => {
             />
           </a-space>
         </a-form-item>
+        <a-form-item :label="t('channelSessionList.k1pluglbl045')">
+          <div
+            v-if="pluginRows.length"
+            class="ch-plugin-list"
+          >
+            <div
+              v-for="p in pluginRows"
+              :key="p.name"
+              class="ch-plugin-row"
+            >
+              <div class="ch-plugin-main">
+                <span class="aw-mono">{{ p.name }}</span>
+                <span
+                  v-if="p.builtin"
+                  class="ws-hint"
+                >内置</span>
+                <span
+                  v-if="p.description"
+                  class="ws-hint ch-plugin-desc"
+                >{{ p.description }}</span>
+              </div>
+              <a-switch
+                :checked="p.enabled"
+                size="small"
+                :loading="pluginSaving === p.name"
+                @change="(v: any) => toggleChannelPlugin(p, !!v)"
+              />
+            </div>
+            <span
+              v-if="pluginSource !== 'explicit'"
+              class="ws-hint"
+            >{{ t('channelSessionList.k1plugsrc046') }}</span>
+          </div>
+          <span
+            v-else
+            class="ws-hint"
+          >—</span>
+        </a-form-item>
         <a-form-item>
           <a-button
             size="small"
@@ -573,6 +646,32 @@ const saveAsTemplate = async (): Promise<void> => {
 </template>
 
 <style scoped>
+.ch-plugin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.ch-plugin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  border-radius: 6px;
+}
+.ch-plugin-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.ch-plugin-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .channel-list {
   display: flex;
   flex-direction: column;

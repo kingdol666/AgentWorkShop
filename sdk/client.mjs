@@ -11,8 +11,12 @@
 //   ctx.el(tag, attrs, children)   DOM 助手(挂到任意面板/宿主节点)
 //   ctx.mount(selector|el, node)   挂载节点(缺失时挂 body 角落)
 //   ctx.root  插件 UI 挂载点(懒创建,自动附加到 body,#aw-plugin-<name>)
+//   ctx.ui    UI 注入面:registerPanel({slot,name,title?,titleKey?,order?,mount(el)})
+//             向页面 <PluginSlot slot-name> 命名插槽注入面板;dispose 自动回收
+//   ctx.t(key, params?)      插件命名空间翻译(→ plugin.<name>.<key>;消息来自插件 i18n.json)
+//   ctx.locale               当前界面语言;i18n:changed 钩子在语言切换时广播
 //   ctx.log   前缀 console
-//   ctx.dispose()  卸载:清空挂载点 + 回收订阅 + 广播 client:destroy(pagehide 自动触发)
+//   ctx.dispose()  卸载:清空挂载点 + 回收订阅/面板 + 广播 client:destroy(pagehide 自动触发)
 // ============================================================
 import { HookBus } from './hooks.mjs'
 
@@ -32,7 +36,7 @@ function el(tag, attrs = {}, children = []) {
   return node
 }
 
-export function createClientContext({ name, eventBridge, baseUrl = '' }) {
+export function createClientContext({ name, eventBridge, baseUrl = '', ui, t, getLocale } = {}) {
   const hooks = new HookBus({ name: `client:${name}`, onError: err => console.warn(`[aw-plugin:${name}]`, err) })
   const disposables = []
   let rootEl = null
@@ -86,6 +90,22 @@ export function createClientContext({ name, eventBridge, baseUrl = '' }) {
       const host = typeof target === 'string' ? document.querySelector(target) : target
       ;(host ?? ctx.root()).append(node)
       return node
+    },
+    /**
+     * UI 注入面(loader 注入;脱离宿主环境时为告警桩):
+     *   ui.registerPanel({ slot, name, title?, titleKey?, order?, mount(el) })
+     *     → 向命名插槽注册面板,返回注销函数;ctx.dispose 自动回收
+     *   ui.slots → 已知插槽名
+     */
+    ui: ui ?? {
+      registerPanel: () => console.warn(`[aw-plugin:${name}] ui 注入面不可用(宿主未提供)`),
+      slots: [],
+    },
+    /** 插件命名空间翻译:ctx.t('settings.title') → plugin.<name>.settings.title */
+    t: t ?? (key => `plugin.${name}.${key}`),
+    /** 当前界面语言(loader 维护;i18n:changed 钩子在切换时广播) */
+    get locale() {
+      return getLocale?.() ?? ''
     },
     /** 卸载:回收订阅 + 清空挂载点 + 广播 client:destroy(幂等) */
     dispose: () => {

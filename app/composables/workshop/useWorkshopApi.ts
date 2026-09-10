@@ -195,6 +195,11 @@ export function useWorkshopApi() {
       http.get<{ data?: { plugins?: ChannelPluginStateDto[], source?: 'explicit' | 'default' } }>(`/workshop/channels/${id}/plugins`),
     putChannelPlugins: (id: string, body: { plugins: Array<{ name: string, enabled: boolean }> }) =>
       http.put<{ data?: { plugins?: ChannelPluginStateDto[], source?: 'explicit' | 'default' } }>(`/workshop/channels/${id}/plugins`, body),
+    // AgentTeam 级插件开关(同表 team 作用域;部署 deploy 时传导到目标 channel)
+    listTeamPlugins: (id: string) =>
+      http.get<{ data?: { plugins?: ChannelPluginStateDto[], source?: 'explicit' | 'default' } }>(`/workshop/teams/${id}/plugins`),
+    putTeamPlugins: (id: string, body: { plugins: Array<{ name: string, enabled: boolean }> }) =>
+      http.put<{ data?: { plugins?: ChannelPluginStateDto[], source?: 'explicit' | 'default' } }>(`/workshop/teams/${id}/plugins`, body),
   }
 }
 

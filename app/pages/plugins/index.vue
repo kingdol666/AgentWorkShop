@@ -142,6 +142,12 @@ onMounted(load)
       </p>
     </div>
 
+    <!-- 插件 UI 注入区:client 面板经 ctx.ui.registerPanel({slot:'plugins.page'}) 注入 -->
+    <workshop-plugin-slot
+      v-if="plugins.length"
+      slot-name="plugins.page"
+    />
+
     <div class="pg-grid aw-stagger">
       <article
         v-for="p in plugins"

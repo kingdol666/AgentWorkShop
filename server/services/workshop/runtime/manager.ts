@@ -45,10 +45,12 @@ import { hasTerminalSession, sweepTerminalSessions } from '../agents/harness-ter
 import { knownHarnesses } from '../agents/registry'
 import { assertHarnessUsable } from '../agents/harness-availability'
 import { hostToolsForRole } from '../agents/host-tool-bridge'
+import { listPluginTools, pluginOfTool } from '../agents/plugin-tools'
 import { TEAM_AGENT_ID, type MemoryRepo } from '../db/memory.repo'
 import type { UserRepo } from '../db/user.repo'
 import type { ChannelEventRepo } from '../db/channel-event.repo'
 import type { ChannelTemplateRepo, ChannelTemplateMember } from '../db/channel-template.repo'
+import { getChannelPluginsRepo, type ChannelPluginToggle } from '../db/channel-plugins.repo'
 
 const log = createLogger('workshop.manager')
 
@@ -1756,8 +1758,11 @@ export class AgentChannelManager {
   // ===== AgentTeam 管理面(模板编组 + 批量部署;v10 可见性隔离) =====
 
   /** 创建 AgentTeam */
-  async createTeam(input: { name: string, description?: string, visibility?: string, ownerUserId?: string | null }): Promise<AgentTeamDetail> {
+  async createTeam(input: { name: string, description?: string, visibility?: string, ownerUserId?: string | null, plugins?: ChannelPluginToggle[] }): Promise<AgentTeamDetail> {
     const row = this.deps.repos.teams.create({ name: input.name, description: input.description, visibility: input.visibility, ownerUserId: input.ownerUserId ?? null })
+    // 建队时的插件勾选:以 team id 为键落 channel_plugins(team 作用域偏好),
+    // 部署 deployTeamToChannel 时传导到目标 channel(未配置 = 全启用,向后兼容)
+    if (input.plugins?.length) getChannelPluginsRepo().setMany(row.id, input.plugins)
     return this.teamDetailOf(row)
   }
 
@@ -1851,6 +1856,12 @@ export class AgentChannelManager {
         role: m.role === 'lead' ? 'lead' : 'worker',
       })
       agents.push(inst)
+    }
+    // 团队插件开关传导:建队/团队设置显式配置过的开关随部署落到目标 channel
+    // (以 team id 为键的偏好 → 以 channel id 为键;工具注入与 dispatch 同源过滤)
+    const teamPlugins = getChannelPluginsRepo().explicitFor(input.teamId)
+    if (teamPlugins && teamPlugins.size) {
+      getChannelPluginsRepo().setMany(input.channelId, [...teamPlugins].map(([name, enabled]) => ({ name, enabled })))
     }
     return { channelId: input.channelId, teamId: input.teamId, agents }
   }
@@ -2726,7 +2737,9 @@ export class AgentChannelManager {
 
   /**
    * harness 无关全量工具直调(agent token 鉴权;stdio MCP 桥回程的唯一入口)。
-   * impl.dispatchHostTool(全引擎共享 host-tool-bridge)优先;未实现回退协作工具族。
+   * 插件工具最先(与 host-tool-bridge 同源过滤,不依赖引擎运行时 —— mock 等无引擎
+   * 工具面的成员经 REST invoke 同样可用);其余 impl.dispatchHostTool 优先,未实现
+   * 回退协作工具族。
    */
   async invokeHostTool(input: { agentId: string, token?: string, tool: string, args?: Record<string, unknown> }): Promise<{ text: string, isError?: boolean }> {
     const row = this.deps.repos.channelAgents.findById(input.agentId)
@@ -2740,6 +2753,25 @@ export class AgentChannelManager {
     try {
       // 活性登记:调度器停滞看门狗以「最近工具调用」为健康信号(见 SchedulerLoopOptions.toolActivityOf)
       this.lastToolInvokeAt.set(input.agentId, Date.now())
+      // 插件工具:团队开关过滤 + handler 直调(ctx.omp 注册的自定义工具全 harness 同源)
+      const pluginTool = listPluginTools().get(input.tool)
+      if (pluginTool) {
+        const channelOff = getChannelPluginsRepo().explicitFor(row.channelId)
+        const owner = pluginOfTool(input.tool)
+        if (channelOff && owner && channelOff.get(owner) === false) {
+          return {
+            text: `该团队未启用插件「${owner}」,${input.tool} 不可用。可在团队设置→插件中开启。`,
+            isError: true,
+          }
+        }
+        const identity = {
+          agentId: row.id,
+          channelId: row.channelId,
+          role: (row.role === 'lead' ? 'lead' : 'worker') as 'lead' | 'worker',
+          name: row.name,
+        }
+        return await pluginTool.handler(input.args ?? {}, identity)
+      }
       const runtime = this.ensureAgentRuntime(row.channelId, input.agentId)
       if (runtime) {
         const viaImpl = await runtime.dispatchHostTool(input.tool, input.args ?? {})

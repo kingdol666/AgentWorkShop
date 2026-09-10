@@ -1,253 +1,181 @@
-# AgentWorkShop 插件开发指南
+# AgentWorkShop 插件开发指南(完整版)
 
-> 插件 = 配置根 `plugins/<name>/` 下的一个 node 项目。基于内置 SDK 的生命周期钩子,
-> 同时增强**服务端**(数据/事件/API)与**浏览器**(面板/遥测/交互)。
-> 与 `aw` 指令同哲学:放入目录即装载,约定优于配置。
-> SDK 全部成员的逐项详解见 [sdk.md](./sdk.md)——本文聚焦插件视角的装配与生命周期。
+> 本文为「完整指南(单页)」;分主题页见 [总览](/plugins/)与[生命周期](/plugins/lifecycle)。SDK 逐项详解见 [SDK 文档](/sdk/)。
 
-## 一、快速开始
+> 插件 = 配置根 `plugins/<name>/` 下的一个自包含目录。一个目录同时增强**服务端**
+> (工具/API/数据/事件)与**浏览器**(面板组件/多语言/设置 UI),放入即装载,
+> 启停即热重载。本文是唯一权威参考;`docs/site/plugins/` 的分页文档与本文同源。
+>
+> 适用版本:v0.7.29+(插件系统 v2:前端组件注入 / 插件设置 / 插件 i18n / 运行时服务面)
+
+## 一、目录结构与快速开始
 
 ```bash
 aw plugin create my-plugin            # 脚手架到 ~/.AgentWorkShop/plugins/(用户级)
 aw plugin create my-plugin --project  # 或项目级 <repo>/.AgentWorkShop/plugins/
-aw plugin list                        # 查看两处已装插件
-aw start                              # 重启即自动装载
+aw plugin list                        # 查看已装插件
 ```
-
-目录结构(标准 node 项目形态):
 
 ```
 plugins/my-plugin/
-├── index.mjs      # 服务端入口(必需): export default { name, setup(ctx) }
+├── index.mjs      # 服务端入口(必需): export default { name, setup(ctx), … }
 ├── client.mjs     # 浏览器增强(可选): export function setup(ctx)
-└── README.md
+├── i18n.json      # 多语言消息包(可选): { "zh-CN": {...}, "en": {...} }
+└── kv.json        # 运行态存储(自动生成,勿手改)
 ```
 
-## 二、装载流程(项目启动时自动发现)
+三作用域发现:builtin(`<包根>/server/plugins-builtin`)→ project(`<repo>/.AgentWorkShop/plugins`)→ user(`~/.AgentWorkShop/plugins`),同名先到先得(builtin 优先)。启停状态在 `<配置根>/plugins-state.json`,Web 设置页 / `aw plugin enable|disable` 写入后服务自感知热重载。
 
-```
-服务启动(nitro 插件 server/plugins/aw-plugins.ts)
-  └─ 宿主扫描(双作用域,同名项目级覆盖用户级)
-       ├─ <检出>/.AgentWorkShop/plugins/*/index.mjs   (project)
-       └─ ~/.AgentWorkShop/plugins/*/index.mjs        (user / AW_HOME 重定向)
-  └─ 逐插件: 动态 import → 形态校验 → createPluginContext → setup(ctx)
-  └─ 注册插件路由(/api/plugins/<name>/**) + 解析客户端入口
-  └─ emit plugin:host:init
-```
-
-- **错误隔离**:单插件装载/执行失败记入 `failures` 并告警,绝不拖垮主服务。
-- **修改插件文件后需重启服务**(插件目录不在热更新监听范围)。
-- 客户端插件由 `app/plugins/aw-plugins.client.ts` loader 在浏览器侧动态装载,互不影响。
-
-## 三、插件契约
-
-`index.mjs` 导出**普通对象**(零导入依赖——`ctx` 由宿主注入;TypeScript 可 type-only
-导入 `agentworkshop/sdk` 获得类型,运行时擦除):
+## 二、插件契约(index.mjs)
 
 ```js
 export default {
-  name: 'my-plugin',            // 必填,全局唯一
-  version: '1.0.0',
+  name: 'my-plugin',         // 必填,全局唯一
+  version: '1.1.0',
   description: '…',
-  client: './client.mjs',       // 可选:浏览器增强入口(相对路径)
-  routes: [                     // 可选:声明式 API(也可在 setup 里 ctx.route())
+  auth: 'user',              // 插件 API 转发层鉴权:none(默认)|user|admin|agent-or-user
+  client: './client.mjs',    // 可选:浏览器入口(loader 动态 import)
+  settings: [ /* 可选:插件设置声明(见 §4) */ ],
+  routes: [                  // 可选:声明式路由,挂 /api/plugins/<name>/**
     { method: 'GET', path: '/health', handler: () => ({ ok: true }) },
   ],
-  async setup(ctx) { /* 服务端生命周期 */ },
+  async setup(ctx) { /* 服务端生命周期(见 §3) */ },
 }
 ```
 
-## 四、服务端生命周期(完整)
+装载期宿主做形态校验(`validatePluginModule` + `validatePluginSettings`);设置声明校验失败的条目跳过并告警,不阻断装载。装载失败进 `failures`(GET /api/workshop/plugins 可见),错误隔离绝不拖垮主服务。
 
-装载完成后,以下事件按业务发生顺序流经 `ctx.hooks`(**每个都可直接 `ctx.hooks.on` 消费**):
+## 三、生命周期(全周期注入矩阵)
 
-### 4.1 `plugin:host:init`
-- **时机**:宿主装载完所有插件后(一次性)。
-- **payload**:`{ plugins: string[], failures: number }`。
-- **用途**:就绪自证;延迟初始化(依赖其他插件已注册路由的场景)。
-
-### 4.2 `daq:sample`
-- **时机**:数采**下发级**采样——与 WS `daq.reading` 同一点、按节点 `publishIntervalMs` 节拍。
-- **payload**:`{ nodeId, templateRef, value, state, at }`。
-- **用途**:越限告警、采样统计、实时联动。
-- **示例**:
-  ```js
-  ctx.hooks.on('daq:sample', (s) => {
-    if (s.value > (ctx.kv.get('threshold') ?? 180)) ctx.kv.bump('alarms')
-  })
-  ```
-
-### 4.3 `dcw:write`
-- **时机**:写控 ACK 之后(与运维入册同点、同 10s 去重节流)——**观察语义,不影响写控决策**。
-- **payload**:`{ nodeId, name, eng, prevValue, ok, source('manual'|'recipe'|'agent'|'rollback'), lineId, at }`。
-- **用途**:写审计、下发趋势、回写记录。
-
-### 4.4 `line:start` / `line:stop`
-- **时机**:产线开跑/停止(批次窗口开/闭)。
-- **payload**:`{ lineId, runId, recipeId?, productName? }` / `{ lineId, runId }`。
-- **用途**:批次开始联动、停线报告。
-
-### 4.5 `event:<type>` / `event:*`
-- **时机**:scene 全部实时事件(`device.created|updated|deleted`、`daq.reading`、
-  `daq.node.changed`、`daq.controller`、`ops.log` …)——与浏览器 WS 完全同源。
-- **消费**:`ctx.events.on('daq.reading', fn)`(糖衣)或 `ctx.hooks.on('event:daq.reading', fn)`。
-- **用途**:任意平台事件的观察与增强,无需自建 WS 连接。
-
-### 4.6 `config:changed`
-- **时机**:`runtime-settings.json` 变化(`aw config set` / 网页设置写入;宿主 fs.watch 防抖 300ms)。
-- **payload**:`{ at }`;配合 `ctx.config.get/all()` 读取新值。
-- **用途**:阈值热更新、联动参数刷新。
-
-### 4.7 `server:close`
-- **时机**:服务关闭——**先逐插件执行 `ctx.onDispose` 队列,再广播本事件**。
-- **payload**:`{ at }`。
-- **用途**:最终落盘、对外通知。
-
-## 五、服务端 ctx 全成员
-
-| 分组 | 成员 | 说明 |
+| 阶段 | 服务端 | 浏览器 |
 |---|---|---|
-| 身份 | `ctx.name / scope / dir / sdkVersion` | 插件名 / `'project'\|'user'` / 目录 / SDK 版本 |
-| 钩子 | `ctx.hooks` | HookBus:`on/once/off/emit`(异步串行、错误隔离、`'*'` 通配、连续失败 8 次熔断) |
-| 日志 | `ctx.logger` | `debug/info/warn/error`,自动前缀 `[插件名]` |
-| 配置 | `ctx.config.get(key)` / `all()` / `onChange(fn)` | 有效配置只读 + 变更订阅 |
-| 存储 | `ctx.kv.get/set/all/bump` | 插件私有 KV(内存态 + 200ms 防抖落盘,高频钩子零竞态) |
-| 定时 | `ctx.timer.setInterval/setTimeout` | **服务关闭自动回收**,杜绝定时器泄漏 |
-| 清理 | `ctx.onDispose(fn)` / `ctx.subscriptions.add(d)` | `server:close` 前逐个执行(先于广播) |
-| 路由 | `ctx.route(method, path, handler)` | 插件 API → `/api/plugins/<name><path>` |
-| 平台 | `ctx.api` | 平台 REST 客户端(自环 origin;鉴权端点 `ctx.api.setToken(token)`) |
-| 网络 | `ctx.http.get/post` | 通用请求(仅 http/https,默认 8s 超时) |
-| 事件 | `ctx.events.on(type, fn)` | scene 实时事件订阅 |
-| 数采扩展 | `ctx.daq.registerDriver / registerProcessor / registerTemplate` + `onFrame / onSample` | 插件驱动 / 下沉处理器 / 节点模板注册(v0.6 帧管线;同名覆盖) |
-| OMP 工具 | `ctx.omp.registerTool(tool)` | 注册 omp host 工具 → 全部在跑 agent 会话运行时热注入 |
-| 路径 | `ctx.paths` | `{ home, configRoot, dataDir }` |
+| 装载 | 动态 import(`?t=` 防缓存)→ 校验 → `setup(ctx)` | loader(`app/plugins/aw-plugins.client.ts`)拉 manifest → 拉 i18n 包 → 动态 import client → `setup(ctx)` |
+| 注入 | 路由/工具/驱动/模板/处理器即时生效;设置描述符并入 SystemConfigService | `client:init` 钩子;面板经 `ctx.ui.registerPanel` 注入页面插槽 |
+| 运行 | `event:*` / `daq:sample` / `daq:frame` / `dcw:write` / `line:start|stop` / `plugins:reloaded` | `event:*`(与 WS 同源) / `page:change`(路由切换) / `i18n:changed`(语言切换) |
+| 卸载 | 状态文件变化 → 全量 dispose(`ctx.onDispose`)→ 解绑 hooks → 注销工具 → 重装载 | `plugins.reloaded` WS + 15s 轮询 diff → `ctx.dispose()`(订阅回收 + 面板注销 + `client:destroy`) |
+| 关机 | `server:close` 钩子 + 逐插件 dispose | 页面 `pagehide` 自动 dispose |
 
-> 鉴权说明:`ctx.api` 自环调用遵循平台 REST 鉴权——免鉴权端点(manifest/ping)开箱即用;
-> 鉴权端点需 `ctx.api.setToken(token)` 后再调用。仅需进程内数据时优先 `ctx.events`/`ctx.hooks`
-> (零鉴权、零开销)。
+热重载语义:修改插件目录文件后,触碰 `plugins-state.json`(或 Web 启停开关)即触发全量重装载;重装载期间的状态再变化(如 disable→enable 连击)由禁用集快照比对自动补跑,事件不丢失。核心代码(server/ shared/)改动需重启。浏览器侧新启用插件 ≤15s(或 WS 即时)注入。
 
-## 六、浏览器增强(client.mjs)
+## 四、插件设置(前端设置页自动渲染)
 
-`client.mjs` 为**自包含 ESM**(无裸导入),导出 `setup(ctx)`。loader
-(`app/plugins/aw-plugins.client.ts`) 启动期经 `/api/plugins/manifest` 发现并动态装载,
-事件与 WS 完全同源:
+在 `index.mjs` 导出 `settings` 声明数组,宿主装载后并入 `SystemConfigService`:
 
-| 成员 | 说明 |
-|---|---|
-| `ctx.on(type, fn)` | **scene 实时事件**订阅(与 WS 同源):`daq.reading` / `daq.frame` / `device.updated` / `ops.log` …(内部转 `event:<type>`;pagehide 自动回收) |
-| `ctx.fetch(path, opt?)` | 同源平台 API(JSON + 信封解包,非 2xx 抛错) |
-| `ctx.el(tag, attrs, children)` | DOM 构建 |
-| `ctx.root()` / `ctx.mount(target, node)` | 私有挂载点 / 任意位置挂载 |
-| `ctx.hooks` | 本地 HookBus:`client:init` / `page:change` / `client:destroy` 走这里直订 |
-| `ctx.dispose()` | 卸载(回收订阅 + 清空挂载点;pagehide 自动触发) |
+```js
+settings: [
+  { key: 'base_url', type: 'string',  default: 'http://127.0.0.1:8770',
+    labelKey: 'plugin.my-plugin.settings.base_url',   // i18n 键(见 §5)
+    label: '服务地址(回退文案)', description: '保存即热生效' },
+  { key: 'max_turns', type: 'number', default: 0, min: 0, max: 2000, label: '最大轮数' },
+  { key: 'auto_enabled', type: 'boolean', default: false, label: '自动模式' },
+  { key: 'mode', type: 'select', default: 'a', options: ['a', 'b'], label: '模式' },
+],
+```
+
+- **键编址**:强制 `plugins.<插件名>.<key>`,与全局 schema 键同一编址空间;插件停用即从设置页消失。
+- **渲染**:系统设置 → 运行配置 →「插件」分组自动出现(admin/editor 可见),来源标签(config.yml/runtime)与重置按钮与其他设置一致。
+- **读取**:`ctx.config.get('plugins.my-plugin.base_url')`(保存即热生效;可再落 kv 兜底)。运行时覆盖持久化在 `<配置根>/runtime-settings.json`,PATCH `/api/system/settings` 按同一份描述符校验。
+- **迁移**:0.7.28 前写死在 `shared/config/schema.json` 的 `plugins.kb.*`/`plugins.diag.*` 已由插件声明取代;服务启动时一次性搬移旧覆盖到新键(新键未注册时保留旧键等下一次 pass,绝不丢数据)。
+
+## 五、插件 i18n(根目录 i18n.json)
+
+```json
+{
+  "zh-CN": { "settings": { "base_url": "服务地址" }, "panel": { "title": "我的面板" } },
+  "en":    { "settings": { "base_url": "Service URL" }, "panel": { "title": "My panel" } }
+}
+```
+
+- 装载期宿主解析 `i18n.json`(坏文件忽略不阻断),`GET /api/plugins/i18n` 汇编全部启用插件的消息包(免鉴权;**只放 UI 文案,严禁放敏感信息**)。
+- 浏览器 loader 拉取后:① 合并进 vue-i18n 命名空间 `plugin.<插件名>` —— 宿主组件(设置页标签 labelKey、面板标题 titleKey)直接解析;② `ctx.t(key)` 提供自解析翻译(`ctx.t('panel.title')` → `plugin.my-plugin.panel.title`,未命中回落声明键)。
+- 语言切换广播 `i18n:changed` 钩子,面板监听它重渲染(宿主渲染的标题自动跟随)。
+- manifest 暴露 `hasI18n`/`settingsCount`/`hasClient` 供前端展示。
+
+## 六、服务端 ctx 全参考
+
+| 面 | 签名 | 说明 |
+|---|---|---|
+| 身份 | `ctx.name/scope/dir/sdkVersion` | 插件身份 |
+| 钩子 | `ctx.hooks.on/once/off/emit` | 宿主生命周期 + 平台事件;热重载自动解绑 |
+| 日志 | `ctx.logger.debug/info/warn/error` | 插件名前缀 |
+| 配置 | `ctx.config.get(key)/all()/onChange(fn)` | 系统配置(含本插件 settings)热生效读取 |
+| 存储 | `ctx.kv.get/set/all/bump` | 运行态,防抖落盘 `data/plugins/<name>/kv.json` |
+| 定时 | `ctx.timer.setInterval/setTimeout` | 关机自动回收 |
+| 清理 | `ctx.onDispose(fn)` / `ctx.subscriptions.add` | 卸载回收 |
+| 路由 | `ctx.route(method, path, handler)` | 挂 `/api/plugins/<name>/**`,鉴权按 `auth` 声明 |
+| 平台 | `ctx.api` | 平台 REST 客户端(自环 origin;自动解信封) |
+| 网络 | `ctx.http.get/post(url, {timeoutMs, headers})` | 出站守卫(仅 http/https);headers 透传可带鉴权 |
+| 事件 | `ctx.events.on/off(type, fn)` | scene 实时事件糖(=hooks `event:<type>`) |
+| 工具 | `ctx.omp.registerTool({name,label,description,parameters,roles,handler})` | Agent 工具注入(全 harness 共享;受团队/Channel 插件开关过滤) |
+| 数采 | `ctx.daq.registerDriver/registerProcessor/registerTemplate/onFrame/onSample/query/nodes` | 驱动/处理器/模板注册 + 时序查询 + 节点元数据 |
+| 权限 | `ctx.permissions.lineMode/visibleLineIds/listGrants/setGrants` | 产线授权查询与管理 |
+| **服务** | `ctx.services.get('daq'\|'lines'\|'channels'\|'plugins')` / `.provide(name, getter)` / `.names()` | **后端运行时对象面**:惰性取数(daq 查询/产线/频道与成员/插件清单);`provide` 以 `<插件名>.<name>` 前缀跨插件供服务 |
+
+## 七、浏览器 client.mjs(ctx 面参考)
 
 ```js
 export function setup(ctx) {
-  const badge = ctx.el('div', { style: 'color:#35e0a0' }, ['⌁ 0'])
-  ctx.root().append(badge)
-  let n = 0
-  ctx.on('daq.reading', () => { badge.textContent = `⌁ ${++n}` })   // scene 事件(与 WS 同源)
+  ctx.ui.registerPanel({
+    slot: 'plugins.page',        // 插槽名(见下)
+    name: 'my-panel',            // 同插件内唯一
+    titleKey: 'panel.title',     // 解析 plugin.my-plugin.panel.title(或静态 title)
+    order: 10,
+    mount(el) {                  // el = 面板容器(标题由插槽渲染)
+      el.append(ctx.el('p', {}, [ctx.t('panel.hello')]))
+      const timer = setInterval(refresh, 30_000)
+      return () => clearInterval(timer)   // 清理函数(卸载时调用)
+    },
+  })
 }
 ```
 
-## 七、插件 API(增强后端)
-
-```js
-ctx.route('GET', '/stats', () => ctx.kv.all())
-ctx.route('POST', '/reset', (event) => {
-  const body = event.awBody          // 宿主已预读 JSON body
-  ctx.kv.reset()
-  return { ok: true }
-})
-```
-
-→ `/api/plugins/<name><path>`。宿主 catchall 转发(exact-match),body 预读挂 `event.awBody`;
-v1 鉴权由插件自理(可在 handler 内 `resolveUser(event)` 复用业务鉴权)。
-
-## 八、多形态数采与 omp 工具(v0.6 帧管线)
-
-数采不止单点数值:模板可声明 `signalKind: 'vector'`(测厚仪/扫描仪多点轮廓)或 `'image'`(CCD 图像)。
-向量与帧元数据入 Timescale(`daq_frames` hypertable,产线/产品/配方/批次打标),图像像素入对象存储
-(MinIO,`daq-minio` 容器;不可达自动降级本地磁盘)。插件两种扩展点:
-
-```js
-// ① 注册自定义下沉处理器:模板 sink 配置 { name: 'demo-roughness', args: { window: 8 } } 即生效
-ctx.daq.registerProcessor('vector', 'demo-roughness', (frame, args) => {
-  // frame = { kind, points? | blob?(仅图像生产侧), metrics }
-  // 单步异常被网关捕获(保留原帧,不阻塞采集)
-  return { ...frame, metrics: { ...frame.metrics, roughness: computeRoughness(frame.points) } }
-})
-
-// ② 注册自定义节点模板(出现在 /daq 模板目录与创建向导)
-ctx.daq.registerTemplate({
-  key: 'plug-my-sensor', name: '我的传感器', unit: 'mm',
-  min: 0.4, max: 0.6, base: 0.5, amp: 0.02, decimals: 3, icon: 'tension',
-  signalKind: 'vector', vector: { points: 32, min: 0.4, max: 0.6 },
-  sink: { processors: [{ name: 'resample', args: { n: 32 } }, { name: 'my-derive' }] },
-  metrics: [{ key: 'avg', label: '均值', unit: 'mm', alarmHigh: 0.55 }],
-})
-
-// ③ 注册自定义采集驱动(任意协议/设备)
-ctx.daq.registerDriver({
-  kind: 'my-ccd',                       // 节点 driver 字段引用;与内置同名会覆盖并告警
-  available: async () => true,
-  sample: async ({ config, driverConfig, signalKind, vector }) => {
-    if (signalKind === 'image') {
-      const blob = await grabJpeg(driverConfig.url)   // Buffer(生产侧落对象存储,不进队列)
-      return { frame: { kind: 'image', blob, mime: 'image/jpeg', width: 640, height: 480 } }
-    }
-    if (signalKind === 'vector')
-      return { frame: { kind: 'vector', points: readProfile(), metrics: {} } }
-    return readScalar()
-  },
-  test: async () => ({ ok: true, message: 'ok' }),
-})
-
-// ④ 注册 omp 自定义工具:运行时热注入全部在跑 agent 会话(不重 spawn)
-ctx.omp.registerTool({
-  name: 'sensor_calibration_log',
-  description: '查询/登记各传感器的标定结论',
-  parameters: { type: 'object', properties: { sensor: { type: 'string' } }, required: ['sensor'] },
-  roles: ['lead', 'worker'],
-  handler: async (args, agent) => ({ text: `...` }),   // isError: true 按工具错误呈现
-})
-```
-
-- 处理器内置件:`resample` / `derive-metric` / `zones` / `thumbnail` / `quality-gate`;
-- 帧消费钩子:`ctx.daq.onFrame(fn)`(payload 只含元数据/指标/预览,不含像素 blob);
-- 指标阈值在模板 `metrics` 声明,越限走平台既有告警链路(落库 + WS `daq.alarm` + webhook);
-- 示例插件:`daq-vector-demo`(处理器 + 模板)/ `omp-sensor-tools`(omp 工具),均在项目 `.AgentWorkShop/plugins/`。
-
-## 九、真实案例:line-sentinel(产线哨兵)
-
-用户级安装,展示 SDK 全部能力面——源码 `~/.AgentWorkShop/plugins/line-sentinel/`:
-
-- **`ctx.api`**:启动读取平台产线清单(自环 REST)
-- **`ctx.hooks.on('daq:sample')`**:逐样本计数 + 越限告警(阈值可调)
-- **`ctx.hooks.on('line:start'/'line:stop')`**:运行态跟踪
-- **`ctx.config.onChange`**:配置热更新感知
-- **`ctx.timer`**:5s 心跳 + 免鉴权 manifest ping 自证 REST 通道
-- **`ctx.route`**:`GET /report` 综合报告、`POST /threshold` 阈值设置(`event.awBody`)
-- **`client.mjs`**:右下角实时徽标(样本数 + 告警数)
-
-实测记录(dev 3127 / prod 3601 双形态):8 秒采样计数 288+、12 节点越限告警、
-心跳间隔 ~1s 内新鲜、浏览器徽标挂载零 pageerror。
-
-## 十、调试与陷阱
-
-| 现象 | 原因 / 处理 |
+| 面 | 说明 |
 |---|---|
-| 改了插件代码没生效 | 插件目录不在热更新范围——**重启 `aw start` / `aw dev`** |
-| 客户端徽标没出现 | 打开浏览器 console 看 `[aw-plugins]` 告警;确认 manifest 中 `hasClient: true` |
-| 插件路由 404 | 路由为 exact-match;注意 method 与 path 前导 `/` |
-| `ctx.api` 鉴权 401 | 鉴权端点需 `ctx.api.setToken(token)`;免鉴权端点(manifest/ping)无需 |
-| 插件装载失败 | `aw dev/start` 启动日志有 `[aw-plugins] 装载失败` 详情;修复后重启 |
+| `ctx.ui.registerPanel(entry)` | 向命名插槽注册面板;返回注销函数;`ctx.dispose` 自动回收 |
+| `ctx.t(key, params?)` | 插件命名空间翻译(i18n.json 消息树) |
+| `ctx.locale` / `i18n:changed` | 当前语言 / 语言切换广播 |
+| `ctx.fetch(path, opt)` | 平台 API 助手(自动带 cookie token、解信封) |
+| `ctx.on(type, fn)` | scene 事件订阅(`*` 通配;pagehide 自动回收) |
+| `ctx.el / ctx.mount / ctx.root / ctx.log` | DOM 助手 / 挂载 / 兜底根节点 / 日志 |
+| `ctx.dispose()` | 卸载:订阅回收 + 面板注销 + `client:destroy` |
 
-**信任模型**:插件是任意 node 代码,与 aw commands 同级——只安装/启用你信任的插件。
+**内置插槽**:页面在任意位置放 `<PluginSlot slot-name="…" />` 即接收注入;当前宿主已接入:
+- `plugins.page` —— 插件管理页卡片上方(默认落点)
+- `settings.plugins` —— 系统设置 → 插件管理区下方
+- `dashboard.widgets` —— 仪表盘页尾
 
-## 十一、发布与作用域
+新增插槽只需在页面放 `<workshop-plugin-slot slot-name="my.slot" />`(注册表 `usePluginPanels()` 全局单例,无需改动)。
 
-- 用户级(全局):`~/.AgentWorkShop/plugins/` —— `AW_HOME` 可重定向。
-- 项目级(检出):`<repo>/.AgentWorkShop/plugins/` —— 团队可 git 版本化共享。
-- 同名指令式覆盖规则与 commands 一致:**项目级 > 用户级 > 内建**。
-- 卸载 = 删除目录后重启。
+## 八、工具与团队开关
+
+`ctx.omp.registerTool` 注册的工具出现在全部 harness 的工具面(omp RPC 下发 / 其余引擎经 MCP 桥 tools/list / pi 工具文件 / mock 经 REST invoke 直调)。Channel/AgentTeam 级插件开关(`GET|PUT /api/workshop/channels/:id/plugins`、`/api/workshop/teams/:id/plugins`)关闭的插件:工具不注入该团队、dispatch 同源拒绝;建队 `POST /teams` 可带 `plugins` 勾选,部署时传导到 Channel。
+
+## 九、完整示例(rag-bridge 摘录)
+
+```js
+// index.mjs(服务端)
+export default {
+  name: 'rag-bridge', version: '1.1.0', auth: 'user',
+  client: './client.mjs',
+  settings: [
+    { key: 'base_url', type: 'string', default: 'http://127.0.0.1:8770',
+      labelKey: 'plugin.rag-bridge.settings.base_url', label: 'rag-knowledge 后端地址' },
+    { key: 'token', type: 'string', default: '',
+      labelKey: 'plugin.rag-bridge.settings.token', label: 'API Token' },
+  ],
+  async setup(ctx) {
+    const base = () => ctx.config.get('plugins.rag-bridge.base_url')
+    ctx.omp.registerTool({ name: 'kb_search', /* … */ handler: async () => ({ text: '…' }) })
+    ctx.route('GET', '/health', async () => ({ ok: true }))
+  },
+}
+
+// client.mjs(浏览器)—— 见 §7;i18n.json —— 见 §5
+```
+
+## 十、验证清单(发布前)
+
+1. `aw plugin list` 可见、无 failures;启停开关往返后路由/工具/面板同步生灭(连击不丢事件)。
+2. 设置页出现本插件设置,改值后 `ctx.config.get` 立即读到新值。
+3. 语言切换:面板标题/文案跟随;`i18n:changed` 清理函数无泄漏。
+4. 工具经 agent-tools/list 可见、参数无 url/host 注入口;团队开关关闭后工具消失且 dispatch 拒绝。

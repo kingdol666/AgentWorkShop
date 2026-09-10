@@ -19,7 +19,7 @@ const startingLines = new Set()
 
 /** 诊断服务 base(kv diag.base_url;只允许 http/https 且 host 为 127.0.0.1/localhost) */
 function baseOf(ctx) {
-  const raw = String(ctx.kv.get('diag.base_url') || DEFAULT_BASE).trim()
+  const raw = String(ctx.config?.get?.('plugins.diag-bridge.base_url') || ctx.kv.get('diag.base_url') || DEFAULT_BASE).trim()
   try {
     const u = new URL(raw)
     const okProto = u.protocol === 'http:' || u.protocol === 'https:'
@@ -31,6 +31,33 @@ function baseOf(ctx) {
     return null
   }
 }
+
+/** 诊断服务鉴权 token(系统配置 plugins.diag-bridge.token 优先,kv diag.token 兜底;空=匿名)。
+ *  诊断服务 v4 起默认强制 Bearer(AUTH_ENABLED!==0),401 AUTH_REQUIRED 时先查这里。 */
+function diagTokenOf(ctx) {
+  return String(ctx.config?.get?.('plugins.diag-bridge.token') || ctx.kv.get('diag.token') || '').trim()
+}
+
+function authHeadersOf(ctx) {
+  const t = diagTokenOf(ctx)
+  return t ? { authorization: `Bearer ${t}` } : {}
+}
+
+/** rag-knowledge 出站鉴权(系统配置 plugins.rag-bridge.token 优先,kv kb.token;与 rag-bridge 同源。
+ *  入库管线要打 web 6789 / api 8770,服务端开启鉴权时缺头会 401 → catalog 查不到库 → 跳过入库) */
+function kbHeadersOf(ctx) {
+  const t = String(ctx.config?.get?.('plugins.rag-bridge.token') || ctx.kv.get('kb.token') || '').trim()
+  return t ? { 'authorization': `Bearer ${t}`, 'x-kb-token': t } : {}
+}
+
+// ── 配置读取(系统配置优先,kv 兜底;前端全局设置→运行配置→插件组可改,保存即热生效) ──
+
+const harnessOf = ctx => String(ctx.config?.get?.('plugins.diag-bridge.harness') || ctx.kv.get('diag.harness') || 'omp')
+const maxTurnsOf = ctx => Number(ctx.config?.get?.('plugins.diag-bridge.max_turns')) || Number(ctx.kv.get('diag.max_turns')) || 220
+const maxMinutesOf = ctx => Number(ctx.config?.get?.('plugins.diag-bridge.max_minutes')) || Number(ctx.kv.get('diag.max_minutes')) || 40
+/** 自动诊断开关:系统配置布尔或 kv 'true'(kv 为历史字符串语义) */
+const autoEnabledOf = ctx => ctx.config?.get?.('plugins.diag-bridge.auto_enabled') === true || ctx.kv.get('auto_diag_enabled') === 'true'
+const autoRulesOf = ctx => String(ctx.config?.get?.('plugins.diag-bridge.auto_rules') || ctx.kv.get('auto_rules') || '')
 
 const runKey = id => `run:${id}`
 
@@ -58,20 +85,26 @@ function short(body) {
   }
 }
 
+/** 401 时给可操作的修复指引(生产最常见故障:会话 token 随诊断服务重启失效) */
+function authHint(status, msg) {
+  if (status !== 401) return msg
+  return `${msg};修复:在 系统设置→运行配置→插件 更新「诊断 API Token」(推荐使用诊断服务侧的持久化 API Token,idd_ 前缀,服务重启不失效)`
+}
+
 /** JSON GET:断言 HTTP ok 且 body.success===true,返回 body */
 async function jget(ctx, url, timeoutMs = 8000) {
-  const res = await ctx.http.get(url, { timeoutMs })
+  const res = await ctx.http.get(url, { timeoutMs, headers: authHeadersOf(ctx) })
   const body = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${short(body)}`)
+  if (!res.ok) throw new Error(authHint(res.status, `HTTP ${res.status} ${short(body)}`))
   if (!body || body.success !== true) throw new Error(`success!=true ${short(body)}`)
   return body
 }
 
-/** JSON POST:断言 HTTP ok 且 body.success===true,返回 body */
-async function jpost(ctx, url, body, timeoutMs = 15000) {
-  const res = await ctx.http.post(url, body, { timeoutMs })
+/** JSON POST:断言 HTTP ok 且 body.success===true,返回 body(extraHeaders 供 KB 端点叠加鉴权) */
+async function jpost(ctx, url, body, timeoutMs = 15000, extraHeaders = {}) {
+  const res = await ctx.http.post(url, body, { timeoutMs, headers: { ...authHeadersOf(ctx), ...extraHeaders } })
   const out = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${short(out)}`)
+  if (!res.ok) throw new Error(authHint(res.status, `HTTP ${res.status} ${short(out)}`))
   if (!out || out.success !== true) throw new Error(`success!=true ${short(out)}`)
   return out
 }
@@ -181,7 +214,7 @@ async function snapshotCore(ctx, line, fromMs, toMs) {
     const fd = new FormData()
     fd.append('folder', UPLOAD_FOLDER)
     fd.append('files', new Blob([csv], { type: 'text/csv' }), safeName(line, toMs))
-    const res = await fetch(`${base}/api/files/data/upload`, { method: 'POST', body: fd, signal: ac.signal })
+    const res = await fetch(`${base}/api/files/data/upload`, { method: 'POST', body: fd, signal: ac.signal, headers: authHeadersOf(ctx) })
     const body = await res.json().catch(() => null)
     if (!res.ok) throw new Error(`HTTP ${res.status} ${short(body)}`)
     if (!body || body.success !== true) throw new Error(`success!=true ${short(body)}`)
@@ -215,11 +248,11 @@ async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source
       dataPath: snap.csvPath,
       sceneName,
       userQuestion: q,
-      harness: String(ctx.kv.get('diag.harness') || 'omp'), // 缺省落 claude 引擎会因无 key 失败,必须显式
+      harness: harnessOf(ctx), // 缺省落 claude 引擎会因无 key 失败,必须显式(系统配置 plugins.diag-bridge.harness → kv → omp)
       enhancement: 'off',
       reportLanguage: 'zh',
-      maxTurns: Number(ctx.kv.get('diag.max_turns')) || 220, // 修复循环会加转数;150 不够走完全管线
-      timeoutMinutes: Number(ctx.kv.get('diag.max_minutes')) || 40,
+      maxTurns: maxTurnsOf(ctx), // 修复循环会加转数;150 不够走完全管线
+      timeoutMinutes: maxMinutesOf(ctx),
     })
     const runId = String(started.data?.runId ?? '')
     const name = String(started.data?.name ?? '')
@@ -244,10 +277,10 @@ async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source
 async function ingestCompleted(ctx, runId, meta, st) {
   try {
     // kv 按插件命名空间隔离:rag-bridge 建的库不在本插件 kv 里,需自行从 catalog 幂等解析
-    const webBase = String(ctx.kv.get('kb.web_url') || 'http://127.0.0.1:6789').replace(/\/+$/, '')
+    const webBase = String(ctx.config?.get?.('plugins.rag-bridge.web_url') || ctx.kv.get('kb.web_url') || 'http://127.0.0.1:6789').replace(/\/+$/, '')
     let kbId = String(ctx.kv.get('kb.id') || '').trim()
     if (!kbId) {
-      const cat = await ctx.http.get(`${webBase}/api/kb/catalog`, { timeoutMs: 15000 })
+      const cat = await ctx.http.get(`${webBase}/api/kb/catalog`, { timeoutMs: 15000, headers: kbHeadersOf(ctx) })
         .then(r => r.json()).catch(() => null)
       const hit = (Array.isArray(cat?.knowledgeBases) ? cat.knowledgeBases : [])
         .find(kb => kb?.name === 'aw-industrial')
@@ -272,10 +305,10 @@ async function ingestCompleted(ctx, runId, meta, st) {
     const content = String(rep.data?.content ?? '')
     if (!content) throw new Error('报告内容为空')
 
-    const apiBase = String(ctx.kv.get('kb.base_url') || 'http://127.0.0.1:8770').replace(/\/+$/, '')
+    const apiBase = String(ctx.config?.get?.('plugins.rag-bridge.base_url') || ctx.kv.get('kb.base_url') || 'http://127.0.0.1:8770').replace(/\/+$/, '')
 
     // 2) web 建文档(响应 {success, document:{path,…}},path 供索引用)
-    const doc = await jpost(ctx, `${webBase}/api/kb/documents/create`, { kbId, name: `${runName}.md`, content }, 15000)
+    const doc = await jpost(ctx, `${webBase}/api/kb/documents/create`, { kbId, name: `${runName}.md`, content }, 15000, kbHeadersOf(ctx))
     const docPath = String(doc.document?.path ?? '')
     if (!docPath) throw new Error(`documents/create 响应缺少 document.path: ${short(doc)}`)
 
@@ -285,7 +318,7 @@ async function ingestCompleted(ctx, runId, meta, st) {
       doc_path: docPath,
       content,
       tags: [meta.line, '诊断', 'source:diag-bridge'].filter(Boolean),
-    }, 30000)
+    }, 30000, kbHeadersOf(ctx))
 
     // 4) backend 经验沉淀
     const q = String(meta.question || '')
@@ -296,7 +329,7 @@ async function ingestCompleted(ctx, runId, meta, st) {
       solution: content.slice(0, 800),
       result: 'success',
       tags: [meta.line, meta.scene].filter(Boolean),
-    }, 30000)
+    }, 30000, kbHeadersOf(ctx))
 
     ctx.kv.set(runKey(runId), { ...ctx.kv.get(runKey(runId)), stored: true, storedAt: Date.now() })
     ctx.logger.info(`诊断 ${runId}(产线 ${meta.line})报告已入库: ${docPath}`)
@@ -363,9 +396,20 @@ async function sweepOnce(ctx) {
 
 export default {
   name: 'diag-bridge',
-  version: '1.0.0',
+  version: '1.1.0',
   description: '深度诊断桥接:导出 DAQ 时序快照 CSV,发起 industrial-deep-diagnostic 深度诊断并跟踪状态,完成后报告自动入知识库。',
   auth: 'user',
+  client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
+  // 插件设置声明(key 编址 plugins.diag-bridge.<key>;labelKey 解析 i18n.json)
+  settings: [
+    { key: 'base_url', type: 'string', default: DEFAULT_BASE, labelKey: 'plugin.diag-bridge.settings.base_url', label: '诊断服务地址', description: 'industrial-deep-diagnostic 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
+    { key: 'token', type: 'string', default: '', labelKey: 'plugin.diag-bridge.settings.token', label: '诊断 API Token', description: '诊断服务开启鉴权时(v4 起默认强制)的 API Token(Authorization: Bearer);空=匿名;保存即热生效' },
+    { key: 'harness', type: 'string', default: '', labelKey: 'plugin.diag-bridge.settings.harness', label: '诊断引擎', description: 'diag_run 用的引擎 id(omp/claude/mock 等;空=取 kv/omp);无 Anthropic key 的机器请用 omp' },
+    { key: 'max_turns', type: 'number', default: 0, min: 0, max: 2000, labelKey: 'plugin.diag-bridge.settings.max_turns', label: '诊断最大轮数', description: 'diagnosis/start 的 maxTurns(0=取 kv/内置默认 220)' },
+    { key: 'max_minutes', type: 'number', default: 0, min: 0, max: 720, labelKey: 'plugin.diag-bridge.settings.max_minutes', label: '诊断超时(分钟)', description: 'diagnosis/start 的 timeoutMinutes(0=取 kv/内置默认 40)' },
+    { key: 'auto_enabled', type: 'boolean', default: false, labelKey: 'plugin.diag-bridge.settings.auto_enabled', label: '自动诊断', description: 'daq:sample 越限命中规则时自动发起深度诊断(每产线冷却 30 分钟)' },
+    { key: 'auto_rules', type: 'string', default: '', labelKey: 'plugin.diag-bridge.settings.auto_rules', label: '自动诊断规则', description: 'JSON: {"节点id":{"op":"gt|lt","value":数值}};命中即触发自动诊断(空=无规则)' },
+  ],
   setup(ctx) {
     // 轮询器(15s)+ setup 重水化:恢复对 kv 中 running run 的跟踪(热重载安全)
     const sweep = () => sweepOnce(ctx).catch(err => ctx.logger.warn(`诊断轮询异常(继续): ${err?.message ?? err}`))
@@ -375,9 +419,9 @@ export default {
     // 自动诊断(默认关):daq:sample 命中规则 → 冷却 30min → 同管线发起(source:'auto')
     ctx.hooks.on('daq:sample', (s) => {
       try {
-        if (ctx.kv.get('auto_diag_enabled') !== 'true') return
+        if (!autoEnabledOf(ctx)) return
         if (!s || typeof s.value !== 'number' || !s.nodeId || !s.lineId) return
-        const rule = parseAutoRules(ctx.kv.get('auto_rules'))[s.nodeId]
+        const rule = parseAutoRules(autoRulesOf(ctx))[s.nodeId]
         if (!rule || typeof rule?.value !== 'number' || !['gt', 'lt'].includes(rule.op)) return
         const hit = rule.op === 'lt' ? s.value < rule.value : s.value > rule.value
         if (!hit) return
@@ -524,7 +568,14 @@ export default {
       else {
         remote = { status: 'bad_base_url' }
       }
-      return { plugin: ctx.name, base: base ?? String(ctx.kv.get('diag.base_url') || DEFAULT_BASE), remote, runs: { total: runs.length, byStatus } }
+      return {
+        plugin: ctx.name,
+        base: base ?? String(ctx.kv.get('diag.base_url') || DEFAULT_BASE),
+        harness: harnessOf(ctx),
+        auth: diagTokenOf(ctx) ? 'bearer' : 'anonymous',
+        remote,
+        runs: { total: runs.length, byStatus },
+      }
     })
 
     ctx.route('GET', '/runs', () => ({

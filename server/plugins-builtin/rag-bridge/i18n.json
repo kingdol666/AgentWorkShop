@@ -1,0 +1,52 @@
+{
+  "zh-CN": {
+    "settings": {
+      "base_url": "rag-knowledge 后端地址",
+      "web_url": "rag-knowledge Web 地址",
+      "token": "rag-knowledge API Token"
+    },
+    "panel": {
+      "title": "工业知识库(rag-knowledge)",
+      "backend": "后端",
+      "web": "Web",
+      "kb": "知识库",
+      "counters": "累计",
+      "store": "经验沉淀",
+      "index": "文档入库",
+      "searchPlaceholder": "检索工业知识(诊断报告/经验/规范)…",
+      "searchBtn": "检索",
+      "searching": "检索中…",
+      "empty": "未检索到相关内容",
+      "refresh": "刷新",
+      "ok": "正常",
+      "bad": "不可达",
+      "anonymous": "匿名",
+      "bearer": "鉴权"
+    }
+  },
+  "en": {
+    "settings": {
+      "base_url": "rag-knowledge backend URL",
+      "web_url": "rag-knowledge Web URL",
+      "token": "rag-knowledge API token"
+    },
+    "panel": {
+      "title": "Industrial knowledge base (rag-knowledge)",
+      "backend": "Backend",
+      "web": "Web",
+      "kb": "Knowledge base",
+      "counters": "Total",
+      "store": "Experiences",
+      "index": "Documents",
+      "searchPlaceholder": "Search industrial knowledge (reports/lessons/specs)…",
+      "searchBtn": "Search",
+      "searching": "Searching…",
+      "empty": "No results",
+      "refresh": "Refresh",
+      "ok": "Up",
+      "bad": "Down",
+      "anonymous": "Anonymous",
+      "bearer": "Auth"
+    }
+  }
+}

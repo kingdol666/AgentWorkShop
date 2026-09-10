@@ -14,6 +14,11 @@ export default {
   },
   menu: {
     system: 'AgentWorkShop',
+    groups: {
+      console: '控制台',
+      ops: '运维',
+      system: '系统',
+    },
     dashboard: '仪表盘',
     workshop: 'Agent 工作台',
     town: 'AgentWorkShop',
@@ -1060,6 +1065,14 @@ export default {
     k1kw4rtj025: '选择模板',
     k3n5hzw026: '已加入',
     k1oxjrxx027: '已删除编组',
+    k1plugon040: '插件开关 · {p0}',
+    k1plugon041: '插件(该编组启用哪些;部署时传导到目标 Channel)',
+    k1plugon042: '勾选的插件在编组部署到 Channel 后对其成员生效;未勾选的插件工具对该团队隐藏',
+    k1plugon043: '团队插件开关已保存',
+    k1plugon044: '未显式配置 —— 当前默认全启用;切换任一开关后按行生效',
+    k1plugon045: '已显式配置(按下方开关生效)',
+    k1plugon046: '暂无已注册插件',
+    k1plugon047: '插件开关…',
   },
   tokens: {
     k1upppaw026: '每个 token 可独立吊销;明文存档于服务端,可随时查看复制',
@@ -1312,6 +1325,9 @@ export default {
     kvsxlu6031: '已更新;成员运行时将按新设置回收重装配',
     k1i0ji0y032: '模板名必填',
     kjpguxw033: '已捕获为 Channel 模板(场景/目录/团队快照)',
+    k1plugon044: '插件开关已保存;该 Channel 在跑 Agent 的工具清单即时刷新',
+    k1pluglbl045: '插件(本 Channel 独立开关;关闭后其工具对本团队 Agent 隐藏并拒绝调用)',
+    k1plugsrc046: '未显式配置(默认全启用);首次切换后按行生效',
   },
   clusterArtifact: {
     kyh87lw001: '交付物正文与上方回复一致',
@@ -1936,16 +1952,6 @@ export default {
   error: {
     backHome: '返回首页',
     lost: '页面走失了',
-  },
-  teamPlugins: {
-    k1plugon040: '插件开关 · {p0}',
-    k1plugon041: '启用插件',
-    k1plugon042: '未选中的插件其工具不会注入该团队 Agent,避免上下文污染',
-    k1plugon043: '已保存',
-    k1plugon044: '默认全启用(尚未单独配置)',
-    k1plugon045: '已单独配置',
-    k1plugon046: '插件已全部停用',
-    k1plugon047: '插件开关…',
   },
   aml: {
     k1amlx001: 'AML 自动建模',

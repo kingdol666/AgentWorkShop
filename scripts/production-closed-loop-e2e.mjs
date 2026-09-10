@@ -42,12 +42,22 @@ function ok(cond, label, detail = '') {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-async function raw(method, url, { body, token, agent, timeoutMs = 20000 } = {}) {
+async function raw(method, url, { body, token, agent, timeoutMs = 20000 } = {}, retried = 0) {
   const headers = {}
   if (body !== undefined) headers['content-type'] = 'application/json'
   if (token) headers.authorization = `Bearer ${token}`
   if (agent) headers['x-aw-agent-token'] = agent.token
-  const res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(timeoutMs) })
+  let res
+  try {
+    res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(timeoutMs) })
+  }
+  catch (e) {
+    if (retried < 1) {
+      await sleep(1500)
+      return raw(method, url, { body, token, agent, timeoutMs }, retried + 1)
+    }
+    throw e
+  }
   return { status: res.status, json: await res.json().catch(() => null) }
 }
 const api = (method, path, opts = {}) => raw(method, `${BASE}${path}`, opts)
@@ -75,6 +85,18 @@ const chsRaw = await api('GET', '/api/workshop/channels', { token: userToken }).
 const chs = Array.isArray(chsRaw?.json?.data) ? chsRaw.json.data : []
 const chA = chs.find(c => c?.name?.startsWith('产线数据分析组'))
 const chB = chs.find(c => c?.name?.startsWith('闭环控制组'))
+// 插件宿主稳定门控:前序 e2e 的 Stage4 启停可能留下二次热重载在途 —— 等清单稳定再断言
+{
+  let stable = 0
+  for (let i = 0; i < 30 && stable < 3; i++) {
+    const plugsNow = await api('GET', '/api/workshop/plugins', { token: userToken }).catch(() => null)
+    const listNow = plugsNow?.json?.plugins ?? plugsNow?.json?.data?.plugins ?? []
+    const bothOn = listNow.filter(p => ['rag-bridge', 'diag-bridge'].includes(p?.name) && p?.enabled !== false).length
+    stable = bothOn === 2 ? stable + 1 : 0
+    if (stable < 3) await sleep(1500)
+  }
+  console.log(`  · 插件宿主已稳定(连续 3 次双桥接启用)`)
+}
 const membersOf = async id => (await api('GET', `/api/workshop/channels/${id}/agents`, { token: userToken })).json?.data ?? []
 const mA = await membersOf(chA.id)
 const mB = await membersOf(chB.id)
@@ -145,16 +167,23 @@ let autoRunId = ''
     renameSync(`${statePath}.tmp`, statePath)
   }
   const kv = JSON.parse(readFileSync(kvPath, 'utf8'))
+  // 基线:启用前已存在的 auto run(历史遗留)不算新触发
+  const runs0 = await api('GET', '/api/plugins/diag-bridge/runs', { token: userToken })
+  const preAuto = new Set((runs0.json?.runs ?? []).filter(x => x.source === 'auto').map(x => x.runId))
+  // 清本线冷却(测试夹具语义:历史战役的 auto 触发会留 30 分钟冷却,不清则本次必不触发)
+  delete kv[`cooldown:${LINE}`]
   kv.auto_diag_enabled = 'true'
   kv.auto_rules = JSON.stringify({ [freshNode]: { op: 'gt', value: 0 } }) // 阈值 0 → 下一拍样本必命中(确定性触发)
   writeFileSync(kvPath, JSON.stringify(kv, null, 2))
   touchReload()
   console.log('  · 已启用 auto_diag(规则:节点 ' + freshNode + ' > 0)并触发热重载')
 
-  for (let i = 0; i < 24 && !autoRunId; i++) {
+  // 等待窗 4 分钟:重装载(~20s)+ 下一采样拍 + 上传/启动;mock 引擎可能在窗内就跑完,
+  // 所以 running/completed 均算命中
+  for (let i = 0; i < 48 && !autoRunId; i++) {
     await sleep(5000)
     const runs = await api('GET', '/api/plugins/diag-bridge/runs', { token: userToken })
-    const hit = (runs.json?.runs ?? []).find(x => x.source === 'auto' && x.status === 'running' && !x.runId?.startsWith('f2ce66b4'))
+    const hit = (runs.json?.runs ?? []).find(x => x.source === 'auto' && !preAuto.has(x.runId) && (x.status === 'running' || x.status === 'completed'))
     if (hit) autoRunId = hit.runId
   }
   ok(Boolean(autoRunId), 'daq:sample 越限命中 → 插件自动发起深度诊断(source=auto)', `runId=${autoRunId}`)
@@ -184,32 +213,49 @@ console.log('\n── Stage D 知识辅助决策与优化闭环 ──')
   let target = Number(node?.value) + step
   if (target > Number(node?.max) - span * 0.05) target = Number(node?.value) - step
 
-  // 发起写控(manual → HITL 挂起),脚本扮演人类在待办出现后批准
-  const pendingInvoke = invoke(execB, 'dcw_control', {
-    node_id: DCW_NODE,
-    value: Number(target.toFixed(4)),
-    hypothesis: `依据知识库历史经验(${resultText(hist).split('\n')[1]?.slice(0, 60) ?? '历史经验'})与数采趋势,优化设定至 ${target.toFixed(4)}`,
-  }, 300000)
-  let approved = false
-  let pendRaw = '[]'
-  for (let i = 0; i < 30 && !approved; i++) {
-    await sleep(2000)
-    const pend = await api('GET', '/api/workshop/hitl/pending', { token: userToken })
-    const pd = pend?.json?.data
-    const arr = Array.isArray(pd) ? pd : (pd?.items ?? pd?.pending ?? [])
-    pendRaw = JSON.stringify(arr)
-    const item = arr.find(x => x?.kind === 'dcw-approval' && x?.agentId === execB.id)
-    if (item?.id) {
-      const resp = await api('POST', '/api/workshop/hitl/respond', {
-        token: userToken,
-        body: { kind: 'dcw-approval', id: item.id, confirmed: true, comment: 'production-e2e 批准' },
-      })
-      approved = resp.status === 200
+  // 发起写控(manual → HITL 挂起),脚本扮演人类在待办出现后批准。
+  // 配方工艺窗口联锁是生产语义:3% 步长越出活动配方窗口时,按拒绝消息回读的工艺
+  // 上/下限取界内值自适应重试 —— 与真实 Agent 的调参行为同构
+  const attemptWrite = async (value) => {
+    const pendingInvoke = invoke(execB, 'dcw_control', {
+      node_id: DCW_NODE,
+      value: Number(value.toFixed(4)),
+      hypothesis: `依据知识库历史经验(${resultText(hist).split('\n')[1]?.slice(0, 60) ?? '历史经验'})与数采趋势,优化设定至 ${Number(value).toFixed(4)}`,
+    }, 300000)
+    let approved = false
+    let pendRaw = '[]'
+    for (let i = 0; i < 30 && !approved; i++) {
+      await sleep(2000)
+      const pend = await api('GET', '/api/workshop/hitl/pending', { token: userToken })
+      const pd = pend?.json?.data
+      const arr = Array.isArray(pd) ? pd : (pd?.items ?? pd?.pending ?? [])
+      pendRaw = JSON.stringify(arr)
+      const item = arr.find(x => x?.kind === 'dcw-approval' && x?.agentId === execB.id)
+      if (item?.id) {
+        const resp = await api('POST', '/api/workshop/hitl/respond', {
+          token: userToken,
+          body: { kind: 'dcw-approval', id: item.id, confirmed: true, comment: 'production-e2e 批准' },
+        })
+        approved = resp.status === 200
+      }
     }
+    const w = await pendingInvoke
+    return { approved, pendRaw, wText: resultText(w) }
   }
-  const w = await pendingInvoke
-  const wText = resultText(w)
-  ok(approved, 'HITL 待办出现并经 respond 批准', approved ? 'ok' : `pending=${pendRaw.slice(0, 160)}`)
+
+  let attempt = await attemptWrite(target)
+  ok(attempt.approved, 'HITL 待办出现并经 respond 批准', attempt.approved ? 'ok' : `pending=${attempt.pendRaw.slice(0, 160)}`)
+  const capMatch = attempt.wText.match(/工艺上限 ([\d.]+)/)
+  const floorMatch = attempt.wText.match(/工艺下限 ([\d.]+)/)
+  if (!attempt.wText.includes('下发成功') && capMatch) {
+    target = Number(capMatch[1]) * 0.98
+    attempt = await attemptWrite(target)
+  }
+  else if (!attempt.wText.includes('下发成功') && floorMatch) {
+    target = Number(floorMatch[1]) * 1.02
+    attempt = await attemptWrite(target)
+  }
+  const wText = attempt.wText
   ok(wText.includes('下发成功'), '优化设定经 HITL 批准并写回成功', wText.split('\n')[0].slice(0, 110))
   const recordId = (wText.match(/优化记录 (\S+) 已开窗/) ?? [])[1] ?? ''
 

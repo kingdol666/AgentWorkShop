@@ -1,8 +1,8 @@
 # 插件开发指南
 
-> 插件 = 配置根 `plugins/<name>/` 下的一个 node 项目。基于内置 SDK 的生命周期钩子,
-> 同时增强**服务端**(数据/事件/API)与**浏览器**(面板/遥测/交互)。
-> 与 `aw` 指令同哲学:放入目录即装载,约定优于配置。
+> 插件 = 配置根 `plugins/<name>/` 下的一个自包含目录。一个目录同时增强**服务端**
+> (工具/API/数据/事件)与**浏览器**(面板组件/多语言/设置 UI),放入即装载,
+> 启停即热重载。完整权威参考见 [完整指南(单页)](/plugins/guide)。
 
 ## 快速开始
 
@@ -17,10 +17,20 @@ aw start                              # 重启即自动装载
 
 ```
 plugins/my-plugin/
-├── index.mjs      # 服务端入口(必需): export default { name, setup(ctx) }
-├── client.mjs     # 浏览器增强(可选): export function setup(ctx)
+├── index.mjs      # 服务端入口(必需): export default { name, setup(ctx), settings?, … }
+├── client.mjs     # 浏览器增强(可选): export function setup(ctx) —— UI 面板注入
+├── i18n.json      # 多语言消息包(可选): { "zh-CN": {...}, "en": {...} }
 └── README.md
 ```
+
+## 插件系统 v2 四大能力
+
+| 能力 | 用法 | 落点 |
+|---|---|---|
+| **前端组件注入** | client.mjs 里 `ctx.ui.registerPanel({slot, name, mount(el)})` | 页面 `<PluginSlot slot-name>` 插槽:插件页 / 设置页 / 仪表盘 |
+| **插件设置** | index.mjs `settings: [{key,type,default,…}]` 声明 | 系统设置→运行配置→「插件」分组自动渲染,保存即热生效 |
+| **插件 i18n** | 根目录 `i18n.json`({zh-CN,en});`ctx.t(key)` / labelKey / titleKey | vue-i18n 命名空间 `plugin.<name>`,语言切换即时跟随 |
+| **运行时服务面** | `ctx.services.get('daq'\|'lines'\|'channels'\|'plugins')` / `.provide()` | 后端运行时对象只读取数 + 跨插件供服务 |
 
 ## 插件契约
 

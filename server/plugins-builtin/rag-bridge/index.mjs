@@ -9,20 +9,36 @@
  */
 const KB_NAME = 'aw-industrial'
 const CATEGORIES = ['best_practice', 'troubleshooting', 'lesson_learned', 'optimization', 'tip', 'workflow', 'decision']
+const SEVERITIES = ['critical', 'important', 'normal', 'tip'] // rag-knowledge ExperienceCreate.severity 枚举
 const DEFAULT_BASE = 'http://127.0.0.1:8770' // FastAPI 后端
 const DEFAULT_WEB = 'http://127.0.0.1:6789' // Nuxt web(文档写盘)
 
 export default {
   name: 'rag-bridge',
-  version: '1.0.0',
+  version: '1.1.0',
   description: 'rag-knowledge 知识库桥接:工业知识检索/经验沉淀/文档入库三工具',
   auth: 'user', // 平台转发层按此声明统一校验(缺省 'none' 开放)
+  client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
+  // 插件设置声明:key 强制编址 plugins.rag-bridge.<key>,进 SystemConfigService 后
+  // 前端设置页自动渲染(labelKey 解析 i18n.json 的 plugin.rag-bridge.settings.*)
+  settings: [
+    { key: 'base_url', type: 'string', default: DEFAULT_BASE, labelKey: 'plugin.rag-bridge.settings.base_url', label: 'rag-knowledge 后端地址', description: 'FastAPI 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
+    { key: 'web_url', type: 'string', default: DEFAULT_WEB, labelKey: 'plugin.rag-bridge.settings.web_url', label: 'rag-knowledge Web 地址', description: 'Nuxt Web(文档写盘/目录);保存即热生效' },
+    { key: 'token', type: 'string', default: '', labelKey: 'plugin.rag-bridge.settings.token', label: 'rag-knowledge API Token', description: '服务端开启鉴权时的 MCP/API Token(Authorization: Bearer);空=匿名;保存即热生效' },
+  ],
   async setup(ctx) {
     // ---- 运行态 ----
     const state = { outbound: true } // base_url 非法时禁用全部出站调用
-    const base = () => trimSlash(String(ctx.config?.get?.('plugins.kb.base_url') || ctx.kv.get('kb.base_url') || DEFAULT_BASE))
-    const web = () => trimSlash(String(ctx.config?.get?.('plugins.kb.web_url') || ctx.kv.get('kb.web_url') || DEFAULT_WEB))
+    const base = () => trimSlash(String(ctx.config?.get?.('plugins.rag-bridge.base_url') || ctx.kv.get('kb.base_url') || DEFAULT_BASE))
+    const web = () => trimSlash(String(ctx.config?.get?.('plugins.rag-bridge.web_url') || ctx.kv.get('kb.web_url') || DEFAULT_WEB))
     const kbId = () => String(ctx.kv.get('kb.id') || '')
+    // 鉴权 token(系统配置优先,kv 兜底):rag-knowledge 开启 server.auth 时所有 /api/*
+    // 要求 Bearer;backend 与 web 都认 Authorization: Bearer / X-KB-Token 两种头
+    const kbToken = () => String(ctx.config?.get?.('plugins.rag-bridge.token') || ctx.kv.get('kb.token') || '').trim()
+    const authHeaders = () => {
+      const t = kbToken()
+      return t ? { 'authorization': `Bearer ${t}`, 'x-kb-token': t } : {}
+    }
 
     // ---- kv 默认值(幂等) ----
     if (ctx.kv.get('kb.base_url') == null) ctx.kv.set('kb.base_url', DEFAULT_BASE)
@@ -58,14 +74,15 @@ export default {
     }
 
     /** 单次 JSON 请求;429/网络错误按 1s*重试次数退避,最多重试 2 次;检索类调用方传 timeoutMs:30000 */
-    async function callJson(method, url, body, { timeoutMs = 15000, retries = 2 } = {}) {
+    async function callJson(method, url, body, { timeoutMs = 15000, retries = 2, headers = {} } = {}) {
       let lastErr = ''
+      const h = { ...authHeaders(), ...headers }
       for (let attempt = 0; attempt <= retries; attempt++) {
         if (attempt > 0) await sleep(1000 * attempt) // 退避 1s*n
         try {
           const res = method === 'GET'
-            ? await ctx.http.get(url, { timeoutMs })
-            : await ctx.http.post(url, body ?? {}, { timeoutMs })
+            ? await ctx.http.get(url, { timeoutMs, headers: h })
+            : await ctx.http.post(url, body ?? {}, { timeoutMs, headers: h })
           if (res.status === 429) {
             lastErr = `HTTP 429(限流)`
             continue
@@ -191,7 +208,7 @@ export default {
           solution: { type: 'string', description: '解决方案/操作步骤' },
           key_lessons: { type: 'array', items: { type: 'string' }, description: '关键教训(条目列表,可选)' },
           tags: { type: 'array', items: { type: 'string' }, description: '标签(可选)' },
-          severity: { type: 'string', description: '严重程度(如 info/normal/critical,可选)' },
+          severity: { type: 'string', enum: SEVERITIES, description: '严重程度(critical/important/normal/tip,可选,缺省 normal)' },
         },
         required: ['title', 'category'],
       },
@@ -221,7 +238,13 @@ export default {
         const tags = (Array.isArray(args.tags) ? args.tags : []).map(s => String(s).trim()).filter(Boolean)
         if (tags.length) body.tags = tags
         const severity = String(args.severity ?? '').trim()
-        if (severity) body.severity = severity
+        if (severity) {
+          // rag-knowledge ExperienceCreate.severity 是枚举,非法值会被 422 拒收——先在本侧校验
+          if (!SEVERITIES.includes(severity)) {
+            return { text: `severity 必须是以下之一:${SEVERITIES.join('/')}`, isError: true }
+          }
+          body.severity = severity
+        }
         const r = await ragCall('POST', `${base()}/api/v1/experience/${kb}`, body, { timeoutMs: 30000 })
         if (!r.ok) {
           return { text: `经验沉淀失败:${r.error}。请确认 rag 后端(${base()})已启动后重试。`, isError: true }
@@ -296,7 +319,7 @@ export default {
       return q
     }
 
-    // 健康:后端 + web 存活、kb.id、出站开关
+    // 健康:后端 + web 存活、kb.id(缺失时按需自愈 ensureKB,token 后配的场景)、出站开关
     ctx.route('GET', '/health', async () => {
       const backend = state.outbound
         ? await callJson('GET', `${base()}/api/v1/health`, null, { timeoutMs: 5000, retries: 0 })
@@ -304,9 +327,13 @@ export default {
       const webR = state.outbound
         ? await callJson('GET', `${web()}/api/kb/catalog`, null, { timeoutMs: 5000, retries: 0 })
         : { ok: false, error: '出站已禁用' }
+      if (!kbId() && state.outbound && backend.ok && webR.ok) {
+        await ensureKB().catch(() => {}) // 装载期 401/不可达导致 kb.id 缺失 → 探活时自愈
+      }
       return {
         plugin: 'rag-bridge',
         outbound: state.outbound,
+        auth: kbToken() ? 'bearer' : 'anonymous',
         kb: { name: KB_NAME, id: kbId() || null },
         backend: { url: base(), ok: backend.ok, ...(backend.ok ? { status: backend.body?.status ?? null } : { error: backend.error }) },
         web: { url: web(), ok: webR.ok, ...(webR.ok ? { knowledgeBases: webR.body?.count ?? null } : { error: webR.error }) },

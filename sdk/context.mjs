@@ -215,7 +215,66 @@ export function validatePluginModule(mod, source) {
   if (def.client && typeof def.client !== 'string') {
     return { ok: false, error: `插件 client 必须是相对路径字符串: ${def.name}` }
   }
+  if (def.settings !== undefined && !Array.isArray(def.settings)) {
+    return { ok: false, error: `插件 settings 必须是声明数组: ${def.name}` }
+  }
   return { ok: true, def }
+}
+
+const SETTING_TYPES = new Set(['string', 'number', 'boolean', 'select'])
+
+/**
+ * 校验并规范化插件设置声明(宿主装载期调用)。
+ * 声明:{ key, type: 'string'|'number'|'boolean'|'select', default, label?, labelKey?,
+ *         description?, min?, max?, options? }
+ * 规范化为平台设置描述符:key 强制命名空间 `plugins.<plugin>.<key>`(与全局 schema 键
+ * 同一编址,进 SystemConfigService 后即可被前端设置页渲染、PATCH 校验、热生效)。
+ * 校验失败的条目跳过并返回 errors(宿主告警,不阻断装载)。
+ */
+export function validatePluginSettings(pluginName, defs) {
+  const out = []
+  const errors = []
+  for (const s of (Array.isArray(defs) ? defs : [])) {
+    const tag = `plugins.${pluginName}.${s?.key ?? '?'}`
+    if (!s || typeof s.key !== 'string' || !/^[A-Za-z0-9_-]+$/.test(s.key)) {
+      errors.push(`${tag}: key 缺失或含非法字符(仅字母数字_-)`)
+      continue
+    }
+    if (!SETTING_TYPES.has(s.type)) {
+      errors.push(`${tag}: type 必须是 ${[...SETTING_TYPES].join('/')}`)
+      continue
+    }
+    if (s.default === undefined) {
+      errors.push(`${tag}: 缺少 default(插件设置必须声明默认值)`)
+      continue
+    }
+    if (s.type === 'select') {
+      if (!Array.isArray(s.options) || s.options.length === 0 || !s.options.map(String).includes(String(s.default))) {
+        errors.push(`${tag}: select 必须给 options 数组且 default 在其中`)
+        continue
+      }
+    }
+    const desc = {
+      key: `plugins.${pluginName}.${s.key}`,
+      group: 'plugins',
+      type: s.type,
+      label: String(s.label ?? s.key),
+      description: String(s.description ?? ''),
+      applies: 'live',
+      default: s.default,
+      plugin: pluginName,
+    }
+    if (s.labelKey) desc.labelKey = String(s.labelKey)
+    if (s.type === 'number') {
+      if (s.min !== undefined) desc.min = Number(s.min)
+      if (s.max !== undefined) desc.max = Number(s.max)
+      desc.default = Number(s.default)
+    }
+    if (s.type === 'boolean') desc.default = s.default === true
+    if (s.type === 'select') desc.options = s.options.map(o => String(o))
+    out.push(desc)
+  }
+  return { descriptors: out, errors }
 }
 
 /** 便捷:SDK 侧 definePlugin(纯类型糖;宿主同样接受裸对象) */
