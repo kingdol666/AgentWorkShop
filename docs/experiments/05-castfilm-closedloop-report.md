@@ -18,7 +18,7 @@
 | **命名场景隔离** | `PUT/POST/DELETE /api/scenarios/:name`:整机快照(设备+协议映射+工艺模型)存取,工况一键切换;节点级启停 `POST /api/nodes/:id/start\|stop` |
 | **离线最优 W\*** | `GET /api/plant/optimum`:稳态代数解网格搜索(55·厚度窗 + 25·品质 + 8·能耗 + 7·产能,约束 Tm∈[195,225]、P≤22) |
 | **cast-film-physics 预设** | 6 DCW(Modbus TCP×3 区/OPC UA 螺杆/MQTT 线速/HTTP 模口)+ 7 DAQ(温度/压力/膜厚/轮廓向量/CCD 图像/缺陷率/晶点)跨五协议,次优起点 zone=200℃/N=150rpm/v=95m/min(理论 h≈53.9μm 偏厚) |
-| **物理一致性测试** | `tests/plant-model.test.ts` 18 断言:阶跃收敛+超调、幅值=解析解±2%、滞后反比于 v、停加热 P 先升后降(粘度滞后)、同 seed 复现、稳态代数解≡积分值、W* 可行、hook 四态 —— **全部通过**;全套件 56 断言绿 |
+| **物理一致性测试** | `tests/plant-model.test.ts` 18 断言:阶跃收敛+超调、幅值=解析解±2%、滞后反比于 v、停加热 P 先升后降(粘度滞后)、同 seed 复现、稳态代数解≡积分值、W* 可行、hook 四态 —— **全部通过**;全套件 53 断言绿(引擎 19 + 物理 18 + 四协议 16,OPC UA 会话上限放宽后复验通过) |
 
 ### 1.2 AgentWorkShop 主项目
 
