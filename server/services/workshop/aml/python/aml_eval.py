@@ -80,9 +80,13 @@ def main():
         p_raw = denorm_targets(preds)
         t_raw = denorm_targets(truths)
         per_target = []
+        # NRMSE 分母 = train 切分的目标 std(manifest 归一化统计,固定口径):
+        # 用 test 切分局部 std 会在"整批 settle 后近常量"的切片上把指标放大数十倍,
+        # 且同一模型跨切分不可比。与 rollout 指标同口径。
+        train_y_std = np.array(manifest["norm"]["y"]["std"], dtype=np.float64)
         for j in range(n_tgt):
             rmse = float(np.sqrt(np.mean((p_raw[:, j] - t_raw[:, j]) ** 2)))
-            std = float(np.std(t_raw[:, j])) or 1e-9
+            std = float(train_y_std[j]) or 1e-9
             per_target.append({
                 "rmse": rmse,
                 "mae": float(np.mean(np.abs(p_raw[:, j] - t_raw[:, j]))),

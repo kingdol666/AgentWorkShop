@@ -1287,6 +1287,11 @@ export async function toolAmlLeaderboard(_agentId: string, args: { dataset_id?: 
 
 /** 工具:aml_model_promote —— 模型晋升 shadow/production(lead 专属;HITL 人工审批;流转入册由 transitionModel 内部完成) */
 export async function toolAmlModelPromote(agentId: string, args: { model_id?: string, to_stage?: string }): Promise<{ text: string, isError?: boolean }> {
+  // 治理硬守卫:晋升仅限 lead 实例(注入层过滤 + 分发层双重校验,HTTP 直调不可绕过)
+  const roleRow = getAmlRuntime().db.prepare('SELECT role FROM channel_agents WHERE id = ? AND enabled = 1').get(agentId) as { role?: string } | undefined
+  if (roleRow?.role !== 'lead') {
+    return amlErr(`aml_model_promote 为 lead 专属工具:实例 ${agentId}(role=${roleRow?.role ?? '未知'})无权晋升模型。请由团队 lead 发起,晋升需人工 HITL 批准。`)
+  }
   const modelId = String(args.model_id ?? '').trim()
   const toStage = String(args.to_stage ?? '').trim()
   if (!modelId) return amlErr('model_id 必填(aml_leaderboard 的「已登记模型」段可查)。')

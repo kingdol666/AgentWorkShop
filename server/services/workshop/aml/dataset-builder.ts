@@ -108,7 +108,9 @@ function meanStd(cols: number[][]): { mean: number[], std: number[] } {
     if (c.length < 2) return 1
     const m = mean[i] ?? 0
     const v = c.reduce((a, b) => a + (b - m) * (b - m), 0) / (c.length - 1)
-    return Math.max(1e-8, Math.sqrt(v))
+    // 近常量特征(如训练期 SP 恒定)std 兜底 1.0(恒等缩放):1e-8 级兜底会让
+    // 测试期偏离均值数百的输入爆炸成 1e9 级,模型输出天文数字(实测教训)
+    return Math.sqrt(v) < 1.0 ? 1.0 : Math.sqrt(v)
   })
   return { mean, std }
 }
@@ -327,8 +329,13 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
     if (a === undefined || b === undefined) continue
     ;[runIds[i], runIds[j]] = [b, a]
   }
-  const nTest = Math.min(Math.floor(runIds.length * spec.split.testRatio), Math.max(0, runIds.length - 1))
-  const nVal = Math.min(Math.floor(runIds.length * spec.split.valRatio), Math.max(0, runIds.length - 1 - nTest))
+  // 切分配额:ratio>0 时至少 1 个 run(防 3 批次×0.33 取整为 0 → test 切分为空);train 保底
+  const nTest = spec.split.testRatio > 0
+    ? Math.min(Math.max(1, Math.round(runIds.length * spec.split.testRatio)), Math.max(0, runIds.length - 1))
+    : 0
+  const nVal = spec.split.valRatio > 0
+    ? Math.min(Math.max(1, Math.round(runIds.length * spec.split.valRatio)), Math.max(0, runIds.length - 1 - nTest))
+    : 0
   const split = {
     train: 0, val: 0, test: 0,
     trainRunIds: runIds.slice(nTest + nVal),

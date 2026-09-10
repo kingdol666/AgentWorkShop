@@ -90,7 +90,7 @@ async function main(): Promise<void> {
   section('门禁阈值放宽(幂等;无权限则降级;测试后恢复)')
   const keysToRelax = ['aml.gates.minRows', 'aml.gates.minRuns', 'aml.gates.nrmse', 'aml.gates.rolloutNrmse', 'aml.gates.valTestGap'] as const
   const relaxedValues: Record<string, unknown> = {
-    'aml.gates.minRows': 10,
+    'aml.gates.minRows': 50,
     'aml.gates.minRuns': 2,
     'aml.gates.nrmse': 0.99,
     'aml.gates.rolloutNrmse': 0.99,
@@ -112,14 +112,17 @@ async function main(): Promise<void> {
 
   section('产线 fixtures')
   const line = await api('POST', '/api/workshop/dcw/lines', { token, body: { name: `AML-E2E 线 ${suffix}` } })
-  const lineId: string = line.json?.data?.id
-  check('创建产线', line.ok, lineId)
+  const lineId: string = line.json?.data?.line?.id
+  check('创建产线', line.ok && !!lineId, lineId ?? line.json?.message)
   const product = await api('POST', '/api/workshop/dcw/products', { token, body: { lineId, name: `AML-E2E 产品 ${suffix}` } })
-  const productId: string = product.json?.data?.id
-  check('创建产品', product.ok, productId)
-  const dcwNode = await api('POST', '/api/workshop/dcw', { token, body: { name: `aml-e2e-dcw-${suffix}`, driver: 'mock', lineId } })
-  const dcwNodeId: string = dcwNode.json?.data?.node?.id ?? dcwNode.json?.data?.id
-  check('创建数控节点(mock)', dcwNode.ok, dcwNodeId)
+  const productId: string = product.json?.data?.product?.id
+  check('创建产品', product.ok && !!productId, productId ?? product.json?.message)
+  const dcwNode = await api('POST', '/api/workshop/dcw', {
+    token,
+    body: { name: `aml-e2e-dcw-${suffix}`, driver: 'mock', lineId, templateRef: 'temp-sp' },
+  })
+  const dcwNodeId: string = dcwNode.json?.data?.node?.id
+  check('创建数控节点(mock)', dcwNode.ok && !!dcwNodeId, dcwNodeId ?? dcwNode.json?.message)
   const recipe = await api('POST', '/api/workshop/dcw/recipes', {
     token,
     body: {
@@ -127,8 +130,8 @@ async function main(): Promise<void> {
       params: [{ nodeId: dcwNodeId, value: 60, min: 0, max: 100 }],
     },
   })
-  const recipeId: string = recipe.json?.data?.id
-  check('创建配方(节点级绑定)', recipe.ok, recipeId)
+  const recipeId: string = recipe.json?.data?.recipe?.id
+  check('创建配方(节点级绑定)', recipe.ok && !!recipeId, recipeId ?? recipe.json?.message)
 
   section('数采节点 ×2')
   const mkDaq = async (name: string, templateRef: string) => api('POST', '/api/workshop/daq', {
@@ -150,17 +153,17 @@ async function main(): Promise<void> {
       check(`批次 ${i + 1} 开跑`, false, JSON.stringify(start.json)?.slice(0, 120))
       break
     }
-    await sleep(9000)
+    await sleep(20000)
     await api('POST', `/api/workshop/dcw/lines/${lineId}/stop`, { token, body: {} })
-    check(`批次 ${i + 1} 采集完成(9s)`, true)
+    check(`批次 ${i + 1} 采集完成(20s)`, true)
   }
 
   section('数据集构建(隔离三元组)')
   const dsSpec = {
     lineId, productId, recipeId,
     nodes: [{ nodeId: ctrlId, role: 'control' }, { nodeId: tmpId, role: 'target' }],
-    beatMs: 2000, window: { historySteps: 6, horizonSteps: 3 },
-    cleaning: { hampelK: 5, maxInterpMs: 6000, maxDropRatio: 0.5 },
+    beatMs: 1000, window: { historySteps: 3, horizonSteps: 2 },
+    cleaning: { hampelK: 5, maxInterpMs: 3000, maxDropRatio: 0.5 },
     split: { valRatio: 0.25, testRatio: 0.25, seed: 42 },
     purpose: 'mpc_surrogate',
     note: 'e2e',
@@ -217,9 +220,19 @@ async function main(): Promise<void> {
   if (stubDone && cand) {
     check('候选模型已登记(门禁通过)', true, cand.id)
     const promote = await api('POST', `/api/workshop/aml/models/${cand.id}/promote`, { token, body: { toStage: 'production' } })
-    // 存根工件(STUB 标记/无真实 onnx)必须被深检拦下 —— 这是守卫,不是缺陷
-    check('无效工件被生产晋升深检拦截', promote.status === 422 && String(promote.json?.code ?? '').includes('ARTIFACT'),
-      `status=${promote.status} code=${promote.json?.code}`)
+    if (REAL) {
+      // 真实工件:深检(onnxruntime 试推理)应通过 → 晋升成功 → production 在册
+      check('真实工件通过深检并晋升 production', promote.ok && promote.json?.data?.ok === true,
+        `status=${promote.status} code=${promote.json?.code} ${promote.json?.message ?? ''}`)
+      const prods = await api('GET', `/api/workshop/aml/models?recipeId=${recipeId}&stage=production`, { token })
+      check('production 模型在册(唯一)', (prods.json?.data?.models?.length ?? 0) === 1,
+        `n=${prods.json?.data?.models?.length}`)
+    }
+    else {
+      // 存根工件(STUB 标记/无真实 onnx)必须被深检拦下 —— 这是守卫,不是缺陷
+      check('无效工件被生产晋升深检拦截', promote.status === 422 && String(promote.json?.code ?? '').includes('ARTIFACT'),
+        `status=${promote.status} code=${promote.json?.code}`)
+    }
   }
   else {
     check('门禁未过 → 注册表无候选模型(干净)', !cand, `models=${models.json?.data?.models?.length}`)
@@ -230,8 +243,8 @@ async function main(): Promise<void> {
   check('未知模型预测 404', noProd.status === 404, `status=${noProd.status}`)
 
   section('审计归属(ops_log)')
-  const ops = await api('POST', '/api/workshop/ops-logs', { token, body: { limit: 300 } })
-  const opsRows: any[] = ops.json?.data?.entries ?? ops.json?.data?.logs ?? (Array.isArray(ops.json?.data) ? ops.json.data : [])
+  const ops = await api('GET', '/api/workshop/ops-logs?limit=300', { token })
+  const opsRows: any[] = ops.json?.data?.logs ?? []
   const amlOps = opsRows.filter(r => String(r.action ?? '').startsWith('aml.'))
   check('aml.* 操作已入审计', amlOps.length >= 1, `n=${amlOps.length} actions=${[...new Set(amlOps.map(r => r.action))].slice(0, 5).join(',')}`)
 
