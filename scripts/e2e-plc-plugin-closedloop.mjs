@@ -356,7 +356,7 @@ console.log('\n── E 知识闭环(经验沉淀/检索 + 诊断自动入库)�
   const prevHarness = env(adminSnap)?.effective?.['plugins.diag-bridge.harness'] ?? ''
   await api('PATCH', '/api/system/settings', { token: userToken, body: { override: { 'plugins.diag-bridge.harness': 'mock' } } })
   let runId = ''
-  let r = await invoke(exec, 'diag_run', { line: LINE, from_ms: Date.now() - 30 * 60_000, to_ms: Date.now(), question: `${LINE} PLC 闭环实测时窗诊断(plc-e2e)`, scene: 'plc_e2e' }, 120000)
+  let r = await invoke(exec, 'diag_run', { line: lineId ?? LINE, from_ms: Date.now() - 30 * 60_000, to_ms: Date.now(), question: `${LINE} PLC 闭环实测时窗诊断(plc-e2e)`, scene: 'plc_e2e' }, 120000)
   runId = (resultText(r).match(/runId=([a-z0-9-]+)/i) ?? [])[1] ?? ''
   if (!runId) {
     const adopted = (resultText(r).match(/run_id=([a-z0-9-]+)/i) ?? [])[1] ?? ''

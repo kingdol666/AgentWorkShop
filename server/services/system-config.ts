@@ -479,6 +479,11 @@ export class SystemConfigService {
     return this.groupsPath
   }
 
+  /** 生效的运行时设置文件路径(启动日志/排障用;经 resolveRunMode 解析,非写死的 <cwd>/data) */
+  get effectiveSettingsPath(): string {
+    return this.settingsPath
+  }
+
   /**
    * 应用一批覆盖（PATCH 语义）。
    * @param patch { [key]: value }  value === null 表示清除该键覆盖（回落 config.yml/base）
