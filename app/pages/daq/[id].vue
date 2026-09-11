@@ -333,7 +333,36 @@ let resizeObs: ResizeObserver | null = null
 let liveHidden = false
 function onVisChange(): void {
   liveHidden = document.hidden
-  if (!liveHidden) drawLive()
+  if (!liveHidden) {
+    drawLive()
+    // 后台期间暂停的自动刷新在回到前台时立即补一次拉取(免等待下一个节拍)
+    if (effectiveRefreshMs.value) void loadHistory()
+  }
+}
+
+// ---------- 趋势图自动刷新(时序库拉取展示间隔;与采集/WS 下发三个节拍互相独立) ----------
+/** 用户覆盖值(ms;0 = 跟随服务端 daq.query.displayIntervalMs) */
+const refreshOverrideMs = ref<number>(0)
+/** 实际生效的拉取间隔:用户覆盖优先,否则取服务端缺省;统一下钳到服务端下限 */
+const effectiveRefreshMs = computed(() => {
+  const min = daq.controller.minQueryDisplayIntervalMs ?? 500
+  const base = refreshOverrideMs.value > 0 ? refreshOverrideMs.value : (daq.controller.queryDisplayIntervalMs ?? 0)
+  return base > 0 ? Math.max(min, base) : 0
+})
+let histTimer: ReturnType<typeof setInterval> | null = null
+/** 重挂拉取定时器:间隔变化(用户改值/服务端配置热更)即刻生效 */
+function armHistTimer(): void {
+  if (histTimer) {
+    clearInterval(histTimer)
+    histTimer = null
+  }
+  const ms = effectiveRefreshMs.value
+  if (!import.meta.client || !ms) return
+  histTimer = setInterval(() => {
+    // 后台标签页不查库(省时序库连接);上一拍未结束则跳过(防堆积)
+    if (document.hidden || histLoading.value) return
+    void loadHistory()
+  }, ms)
 }
 onMounted(() => {
   void loadHistory()
@@ -350,15 +379,18 @@ onMounted(() => {
     })
     if (liveCanvas.value) resizeObs.observe(liveCanvas.value)
   }
+  armHistTimer()
 })
 onBeforeUnmount(() => {
   if (uiTimer) clearInterval(uiTimer)
+  if (histTimer) clearInterval(histTimer)
   document.removeEventListener('visibilitychange', onVisChange)
   resizeObs?.disconnect()
   resizeObs = null
 })
 
 watch(bucketMs, () => void loadHistory())
+watch(effectiveRefreshMs, () => armHistTimer())
 </script>
 
 <template>
@@ -716,6 +748,20 @@ watch(bucketMs, () => void loadHistory())
                 {{ b.label }}
               </option>
             </select>
+            <label
+              class="refresh-ctl"
+              :title="$t('daqDetail.k1rfrshint001', { p0: daq.controller.minQueryDisplayIntervalMs ?? 500 })"
+            >
+              <span class="i-tabler-refresh" />
+              <input
+                v-model.number="refreshOverrideMs"
+                type="number"
+                :min="0"
+                max="600000"
+                step="500"
+                :placeholder="String(daq.controller.queryDisplayIntervalMs ?? 5000)"
+              >ms
+            </label>
             <button
               class="pill-btn"
               @click="loadHistory"
@@ -910,7 +956,19 @@ watch(bucketMs, () => void loadHistory())
 /* 历史 */
 .col-hist { min-width: 0; }
 .hist-hd { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.hist-ctl { display: flex; gap: 6px; }
+.hist-ctl { display: flex; gap: 6px; align-items: center; }
+/* 趋势图拉取间隔(ms;0/空 = 跟随服务端 daq.query.displayIntervalMs) */
+.refresh-ctl { display: inline-flex; gap: 3px; align-items: center; font-size: 11px; color: var(--ink-soft); }
+.refresh-ctl input {
+  width: 62px;
+  padding: 3px 6px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+}
+.refresh-ctl input:focus { outline: none; border-color: var(--accent); }
 .hist-canvas { width: 100%; height: 130px; border: 1px solid var(--line); border-radius: var(--radius-chip); background: var(--paper-deep); }
 .raw-table { width: 100%; margin-top: 10px; font-size: 11px; border-collapse: collapse; }
 .raw-table th, .raw-table td { padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--divider-hair); }

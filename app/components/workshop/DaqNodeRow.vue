@@ -396,3 +396,159 @@ async function removeNodeDevice(deviceId: string): Promise<void> {
     </td>
   </tr>
 </template>
+
+<style scoped>
+/* 行组件是渲染隔离单元:父页 scoped 选择器不穿透到这里的元素,故行内全部样式
+   随组件内聚在本块。仅表格单元格的 padding/边框由父页 :deep(td) 统一供给。 */
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.dim { opacity: 0.55; }
+
+.ch { display: block; margin-top: 2px; font-size: 10px; color: var(--ink-faint); }
+
+.val { font-size: 13px; }
+.val small { margin-left: 3px; color: var(--ink-faint); }
+/* 数据静默(停用/未运行/采不到数据):最后值置灰呈现,不再冒充实时值 */
+.val.stale { opacity: 0.45; }
+/* 越限实时值:红字(与行红底叠加仍可读) */
+.val.val-alarm { color: var(--tone-danger-dot); font-weight: 700; }
+
+/* ── 行内实时趋势(WS 读数流直驱;上下限虚线参考) ── */
+.trend-cell { width: 128px; }
+.trend { display: block; width: 120px; height: 26px; }
+.trend .trace {
+  fill: none;
+  stroke: var(--tone-info-dot);
+  stroke-width: 1.4;
+}
+.trend .trace.alarm { stroke: var(--tone-danger-dot); }
+.trend .lim {
+  stroke: color-mix(in srgb, var(--tone-warning-dot) 62%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.trend .lim.max { stroke: color-mix(in srgb, var(--tone-danger-dot) 55%, transparent); }
+
+.st-pill {
+  display: inline-block;
+  padding: 2px 9px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-pill);
+}
+.st-pill.ok { color: var(--tone-success-dot); background: var(--tone-success-bg); }
+.st-pill.warn { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
+.st-pill.alarm { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+/* 配方越限行:整行淡红底 + 左缘警示条 */
+tr.row-recipe-alarm { background: color-mix(in srgb, var(--tone-danger-dot, #ff6b6b) 8%, transparent); }
+tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger-dot, #ff6b6b); }
+.st-pill.offline { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); }
+/* 非故障的静止态(停用/未分配/未运行):同为中性灰,与故障离线区分靠文案与提示 */
+.st-pill.idle, .st-pill.disabled, .st-pill.unassigned { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); }
+
+.drv-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  color: var(--ink-soft);
+}
+.drv-tag.planned { opacity: 0.55; border-style: dashed; }
+
+.console-link { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; color: var(--accent); }
+
+/* 单节点 启动/停止采集(R:独立节点控制) */
+.node-toggle {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  margin-right: 12px;
+  padding: 2px 9px;
+  font-size: 11.5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.node-toggle:hover { border-color: var(--accent); background: var(--hover-tint); }
+.node-toggle.off { color: var(--ink-soft); border-style: dashed; opacity: 0.8; }
+
+.dev-binds { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.dev-bind-chip { display: inline-flex; gap: 4px; align-items: center; padding: 1px 7px; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: var(--radius-chip); }
+.dev-unbind { cursor: pointer; opacity: 0.55; font-size: 10px; }
+.dev-unbind:hover { opacity: 1; color: var(--tone-danger-dot); }
+.dev-add { max-width: 130px; font-size: 11px; }
+.line-sel {
+  max-width: 120px;
+  padding: 3px 6px;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  transition: border-color 0.15s;
+}
+.line-sel:focus { outline: none; border-color: var(--accent); }
+
+/* 产线运行列:空心点=未运行(中性) / 呼吸绿点=运行中 —— 与产线状态带同一套点语义 */
+.run-pill {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 9px;
+  font-size: 10.5px;
+  color: var(--ink-fainter);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+}
+.run-pill .rp-dot {
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+.run-pill.na {
+  border-style: dashed;
+  opacity: 0.75;
+}
+.run-pill.on {
+  color: var(--tone-success-dot);
+  border-color: color-mix(in srgb, var(--tone-success-dot) 40%, transparent);
+  background: var(--tone-success-bg);
+}
+.run-pill.on .rp-dot {
+  background: var(--tone-success-dot);
+  border-color: transparent;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .run-pill.on .rp-dot { animation: rpPulse 1.8s ease-in-out infinite; }
+}
+@keyframes rpPulse {
+  0%, 100% { box-shadow: 0 0 2px color-mix(in srgb, var(--tone-success-dot) 55%, transparent); }
+  50% { box-shadow: 0 0 7px color-mix(in srgb, var(--tone-success-dot) 85%, transparent); }
+}
+
+/* 产品 / Recipe 列:产品主行 + Recipe 副行(两行紧凑,超长省略) */
+.prod-cell { max-width: 170px; }
+.prod-cell b {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prod-cell small {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

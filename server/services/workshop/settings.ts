@@ -139,10 +139,20 @@ export interface DaqRuntimeSettings {
     defaultIntervalMs: number
     minIntervalMs: number
   }
+  /** WS 实时下发节拍(节点 publishIntervalMs 未显式指定时的默认值与下限;
+   *  与采样间隔解耦 —— 采集可以很快而前端仅按此节拍刷新) */
+  publish: {
+    defaultIntervalMs: number
+    minIntervalMs: number
+  }
   /** 时序查询节拍(bucketMs 缺省值与下限;samples/产线查询/Agent daq_query 共用) */
   query: {
     defaultBucketMs: number
     minBucketMs: number
+    /** 前端趋势图自动重新拉取(查询+重绘)间隔默认值 */
+    displayIntervalMs: number
+    /** 前端趋势图刷新间隔下限(前端钳制用) */
+    minDisplayIntervalMs: number
   }
   tsRetentionH: number
   frameRetentionH: number
@@ -180,9 +190,15 @@ export function daqRuntimeSettings(): DaqRuntimeSettings {
       defaultIntervalMs: Number(get('sampling.defaultIntervalMs', 5000)),
       minIntervalMs: Number(get('sampling.minIntervalMs', 1000)),
     },
+    publish: {
+      defaultIntervalMs: Number(get('publish.defaultIntervalMs', 1000)),
+      minIntervalMs: Number(get('publish.minIntervalMs', 0)),
+    },
     query: {
       defaultBucketMs: Number(get('query.defaultBucketMs', 15000)),
       minBucketMs: Number(get('query.minBucketMs', 1000)),
+      displayIntervalMs: Number(get('query.displayIntervalMs', 5000)),
+      minDisplayIntervalMs: Number(get('query.minDisplayIntervalMs', 500)),
     },
   }
 }

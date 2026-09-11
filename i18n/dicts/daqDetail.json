@@ -21,6 +21,7 @@
   "k1ie6qju020": "设备绑定(端到端集成)",
   "kjobzu3021": "选择设备孪生…",
   "k3x1jg022": "刷新",
+  "k1rfrshint001": "趋势图自动拉取间隔(ms);留空或 0 = 跟随服务端默认(daq.query.displayIntervalMs),最小 {p0}ms",
   "k40vsf023": "时间",
   "k48v5024": "值",
   "k4bza025": "态",

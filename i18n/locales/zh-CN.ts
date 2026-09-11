@@ -259,6 +259,10 @@ export default {
         mqttPort: 'MQTT Broker 端口',
         tsHost: '时序库地址',
         tsPort: '时序库端口',
+        publishDefaultIntervalMs: 'WS 下发默认间隔(ms)',
+        publishMinIntervalMs: 'WS 下发下限(ms)',
+        queryDisplayIntervalMs: '趋势图刷新间隔(ms)',
+        queryMinDisplayIntervalMs: '趋势图刷新下限(ms)',
       },
       aml: {
         pythonBin: 'Python 解释器',
@@ -691,6 +695,7 @@ export default {
     k44c2n029: '离线',
     k1m1zwux030: '每帧(随采样)',
     k3lha20031: '原始点',
+    k1rfrshint001: '趋势图自动拉取间隔(ms);留空或 0 = 跟随服务端默认(daq.query.displayIntervalMs),最小 {p0}ms',
   },
   logs: {
     title: '运维日志',
@@ -2115,5 +2120,15 @@ export default {
     k1amlx159: 'AML 自动建模平台',
     k1amlx160: 'AML 自动建模 · AgentWorkShop',
     k1amlx161: '请补全:产线 / 产品 / 配方 ID 均为必填',
+  },
+  teamPlugins: {
+    k1plugon040: '插件开关 · {p0}',
+    k1plugon041: '启用插件',
+    k1plugon042: '未选中的插件其工具不会注入该团队 Agent,避免上下文污染',
+    k1plugon043: '已保存',
+    k1plugon044: '默认全启用(尚未单独配置)',
+    k1plugon045: '已单独配置',
+    k1plugon046: '插件已全部停用',
+    k1plugon047: '插件开关…',
   },
 }

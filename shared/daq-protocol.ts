@@ -443,6 +443,12 @@ export interface AepDaqControllerState {
   defaultIntervalMs: number
   /** 全局缺省 WS 下发间隔(节点 publishIntervalMs=null 时跟随;0 = 随采样节拍) */
   defaultPublishIntervalMs: number
+  /** WS 下发节拍下限(节点 publishIntervalMs 钳制;0 = 允许每帧) */
+  minPublishIntervalMs?: number
+  /** 前端趋势图自动拉取(时序库查询+重绘)间隔默认值 */
+  queryDisplayIntervalMs?: number
+  /** 前端趋势图刷新间隔下限 */
+  minQueryDisplayIntervalMs?: number
   nodesTotal: number
   nodesOnline: number
   /** 管线指标:生产/消费/队列丢失(produced-consumed)/时序库入库数 */

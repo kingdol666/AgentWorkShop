@@ -38,6 +38,13 @@ interface DaqControllerState {
   defaultIntervalMs: number
   /** 全局缺省 WS 下发间隔(节点 null 跟随;0=随采样节拍) */
   defaultPublishIntervalMs: number
+  /** WS 下发节拍下限(节点 publishIntervalMs 钳制;0=允许每帧) */
+  minPublishIntervalMs?: number
+  /** 全局缺省采集下限(节点 intervalMs 钳制) */
+  minIntervalMs?: number
+  /** 趋势图自动拉取(时序库查询+重绘)间隔默认值/下限 */
+  queryDisplayIntervalMs?: number
+  minQueryDisplayIntervalMs?: number
   nodesTotal: number
   nodesOnline: number
   produced?: number
@@ -101,7 +108,7 @@ const createStore = () => {
   // 身份仅在 push/splice/load 时变化,故仅在这些点维护,热路径(读数合批/帧入账)免全表 find
   const nodeIndex = new Map<string, DaqNodeLive>()
   const alarms = reactive<DaqAlarmRow[]>([]) // S5:未确认报警(轮询 + ack 后刷新)
-  const controller = reactive<DaqControllerState>({ running: true, defaultIntervalMs: 1000, defaultPublishIntervalMs: 0, nodesTotal: 0, nodesOnline: 0 })
+  const controller = reactive<DaqControllerState>({ running: true, defaultIntervalMs: 1000, defaultPublishIntervalMs: 0, queryDisplayIntervalMs: 5000, nodesTotal: 0, nodesOnline: 0 })
   const meta = reactive<DaqBackendMeta>({
     tsdb: '…', queue: '…', drivers: [], driverAvailable: {},
     infra: undefined,

@@ -25,9 +25,11 @@ function syncRuntimeDraft() {
   draft.value = { ...rcStore.effective }
   dirtyKeys.value = new Set()
 }
+// immediate:store 由启动插件在应用初始化时拉取,进入本页时通常已 loaded=true,
+// 非 immediate 的 watch 永不触发 → 草稿恒空、所有值输入框显示为空(表单不可用)。
 watch(() => rcStore.loaded, (v) => {
   if (v) syncRuntimeDraft()
-})
+}, { immediate: true })
 watch(() => rcStore.effective, () => {
   // 外部写入(CLI/其他窗口/文件监听)推来的变化,未编辑时才回填草稿
   if (dirtyKeys.value.size === 0) syncRuntimeDraft()

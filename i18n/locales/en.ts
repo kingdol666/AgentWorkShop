@@ -259,6 +259,10 @@ export default {
         mqttPort: 'MQTT broker port',
         tsHost: 'Timescale host',
         tsPort: 'Timescale port',
+        publishDefaultIntervalMs: 'Default WS push interval (ms)',
+        publishMinIntervalMs: 'WS push floor (ms)',
+        queryDisplayIntervalMs: 'Trend refresh interval (ms)',
+        queryMinDisplayIntervalMs: 'Trend refresh floor (ms)',
       },
       aml: {
         pythonBin: 'Python interpreter',
@@ -691,6 +695,7 @@ export default {
     k44c2n029: 'Offline',
     k1m1zwux030: 'Every frame (with sampling)',
     k3lha20031: 'Raw points',
+    k1rfrshint001: 'Trend auto-pull interval (ms); empty or 0 = follow server default (daq.query.displayIntervalMs), min {p0}ms',
   },
   logs: {
     title: '运维日志',
@@ -2115,5 +2120,15 @@ export default {
     k1amlx159: 'AML auto-modeling studio',
     k1amlx160: 'AML Auto-Modeling · AgentWorkShop',
     k1amlx161: 'Line, product and recipe IDs are all required',
+  },
+  teamPlugins: {
+    k1plugon040: 'Plugin switches · {p0}',
+    k1plugon041: 'Enable plugins',
+    k1plugon042: 'Tools of unchecked plugins are not injected into this team\'s agents, avoiding context pollution',
+    k1plugon043: 'Saved',
+    k1plugon044: 'All enabled by default (not yet configured)',
+    k1plugon045: 'Explicitly configured',
+    k1plugon046: 'All plugins are disabled',
+    k1plugon047: 'Plugin switches…',
   },
 }

@@ -33,9 +33,13 @@ import { DaqNode } from './daq-node'
 import { DaqNodeRuntime, type DaqRuntimeHost } from './daq-runtime'
 import { getDaqNodeRepo } from './daq-node.repo'
 import { getTsdb, tsdbReady } from './storage'
-import type { DaqFrameRow } from './storage/tsdb-port'
+import type { DaqFrameRecord, DaqFrameRow } from './storage/tsdb-port'
 import { getDaqQueue } from './bus'
 import { getDaqHostPorts } from './host-ports'
+// 有界 LRU(shared/lru.mjs):siblingsCache 必须用 LRU 而非「超 500 整体 clear()」——
+// 后者会造成周期性全量缓存穿透。必须走 @ 别名:裸相对路径在 nitro dev 的服务端
+// bundle 里按输出目录重算,Windows 上会溢出盘符根(生产侧另有 inline 兜底)。
+import { LruMap } from '@/shared/lru.mjs'
 import { runSinkPipeline, type DaqFrameWorking } from './frames'
 import { getObjectStore } from './objectstore'
 import { daqObjectKey } from './objectstore/objectstore-port'
@@ -112,6 +116,15 @@ const FRAME_BUFFER_CAP = 2000
 const TSDB_WRITE_RETRIES = 3
 /** WS 帧预览点数上限(AepDaqFrame.preview;完整点列经 REST frames 查询) */
 const FRAME_PREVIEW_POINTS = 64
+/**
+ * sweep 采样并发闸门。
+ * 早先 sweep 对每个到期运行时直接 void rt.tick() —— 节点自互斥只防「同节点重入」,
+ * 不防「N 个节点同拍齐发」。250ms 扫描 + 相同 intervalMs 会让大量节点在同一个 tick 到期,
+ * 瞬时并发打满 Modbus/OPC UA/MQTT 连接,既拖慢本拍也冲击 PLC。
+ * 限量后超出的节点顺延到下一拍(250ms 后),到期判定用 lastSampleAt,不会丢采样、
+ * 只会把洪峰摊平成稳定节拍。
+ */
+const SWEEP_MAX_CONCURRENCY = 8
 
 class DaqController {
   private repo = getDaqNodeRepo()
@@ -135,6 +148,8 @@ class DaqController {
   private queueInit: Promise<unknown> | null = null
   /** 当前队列的消费退订(rebuild 后重挂) */
   private queueUnsub: (() => void) | null = null
+  /** 在飞采样数(sweep 并发闸门;防同拍 N 节点齐发打爆驱动连接) */
+  private samplingInFlight = 0
   /** 管线就绪前生产者静默(队列/消费必须先在位) */
   private pipelineReady = false
   /** 配置同步/订阅状态(daq.sampling live 配置 → 网关节拍;仅挂一次) */
@@ -147,7 +162,13 @@ class DaqController {
   /** 采样节拍下限(create/patch/存量收敛统一钳制;来源 = daq.sampling.minIntervalMs) */
   minIntervalMs = 1000
   /** 全局缺省 WS 下发间隔(节点 publishIntervalMs=null 跟随;0 = 随采样节拍) */
-  defaultPublishIntervalMs = 0
+  defaultPublishIntervalMs = 1000
+  /** WS 下发节拍下限(create/patch 钳制;来源 = daq.publish.minIntervalMs,0=允许每帧) */
+  minPublishIntervalMs = 0
+  /** 前端趋势图自动拉取(时序库查询+重绘)间隔默认值(来源 = daq.query.displayIntervalMs) */
+  queryDisplayIntervalMs = 5000
+  /** 前端趋势图刷新间隔下限(来源 = daq.query.minDisplayIntervalMs,前端钳制) */
+  minQueryDisplayIntervalMs = 500
   private producedCount = 0
   private consumedCount = 0
   private storedCount = 0
@@ -177,7 +198,8 @@ class DaqController {
 
   // ---------- 网关服务面(runtime host 实现;运行时只依赖此接口) ----------
 
-  /** 从运行时设置(daq.sampling.*)同步采样节拍默认值与下限。
+  /** 从运行时设置(daq.sampling.* / daq.publish.* / daq.query.* )同步三个独立节拍:
+   *  采集周期(publish 与 sampling 解耦)、WS 下发间隔、趋势图拉取间隔,以及各自下限。
    *  live 配置链:config.yml < runtime-settings.json < 环境变量 < 设置页/CLI;
    *  设置变更经 system-config 订阅即时回流到这里(热重载,无需重启)。 */
   applyRuntimeSettings(): void {
@@ -188,12 +210,27 @@ class DaqController {
       }
       catch { /* 设置系统不可用(单测) → 用字段默认值 */ }
     }
+    const before = `${this.defaultIntervalMs}|${this.minIntervalMs}|${this.defaultPublishIntervalMs}|${this.minPublishIntervalMs}|${this.queryDisplayIntervalMs}|${this.minQueryDisplayIntervalMs}`
     try {
-      const s = daqRuntimeSettings().sampling
-      if (Number.isFinite(s.defaultIntervalMs) && s.defaultIntervalMs > 0) this.defaultIntervalMs = Math.min(60_000, s.defaultIntervalMs)
-      if (Number.isFinite(s.minIntervalMs) && s.minIntervalMs > 0) this.minIntervalMs = Math.max(100, Math.min(this.defaultIntervalMs, s.minIntervalMs))
+      const s = daqRuntimeSettings()
+      if (Number.isFinite(s.sampling.defaultIntervalMs) && s.sampling.defaultIntervalMs > 0) this.defaultIntervalMs = Math.min(60_000, s.sampling.defaultIntervalMs)
+      if (Number.isFinite(s.sampling.minIntervalMs) && s.sampling.minIntervalMs > 0) this.minIntervalMs = Math.max(100, Math.min(this.defaultIntervalMs, s.sampling.minIntervalMs))
+      // WS 下发节拍:与采集间隔解耦的独立缺省/下限(live 可调)
+      if (Number.isFinite(s.publish.minIntervalMs) && s.publish.minIntervalMs >= 0) this.minPublishIntervalMs = Math.min(60_000, s.publish.minIntervalMs)
+      if (Number.isFinite(s.publish.defaultIntervalMs) && s.publish.defaultIntervalMs >= 0) {
+        this.defaultPublishIntervalMs = Math.max(this.minPublishIntervalMs, Math.min(60_000, s.publish.defaultIntervalMs))
+      }
+      // 趋势图刷新节拍(仅下发前端;服务端不参与调度)
+      if (Number.isFinite(s.query.minDisplayIntervalMs) && s.query.minDisplayIntervalMs > 0) this.minQueryDisplayIntervalMs = Math.max(100, s.query.minDisplayIntervalMs)
+      if (Number.isFinite(s.query.displayIntervalMs) && s.query.displayIntervalMs > 0) {
+        this.queryDisplayIntervalMs = Math.max(this.minQueryDisplayIntervalMs, Math.min(600_000, s.query.displayIntervalMs))
+      }
     }
     catch { /* settings 未就绪 → 保持当前值 */ }
+    // 节拍变化经 daq.controller 帧回流前端(前端据此重排「趋势图刷新/WS 展示」节拍)
+    if (`${this.defaultIntervalMs}|${this.minIntervalMs}|${this.defaultPublishIntervalMs}|${this.minPublishIntervalMs}|${this.queryDisplayIntervalMs}|${this.minQueryDisplayIntervalMs}` !== before) {
+      this.emitController()
+    }
   }
 
   private runtimeDefaults(): { intervalMs: number, publishIntervalMs: number, minIntervalMs: number } {
@@ -432,11 +469,19 @@ class DaqController {
     if (!this.pipelineReady || !this.running) return
     const host = getDaqHostPorts()
     if (!host || !host.lineRun.hasAnyActiveRun()) return
+    // 在飞闸门:上一拍未消化的并发额度不叠加(避免积压 tick 雪崩)
+    const budget = SWEEP_MAX_CONCURRENCY - this.samplingInFlight
+    if (budget <= 0) return
     const now = Date.now()
+    let started = 0
     for (const rt of this.runtimes.values()) {
+      if (started >= budget) break
       // 逐产线门控:节点只在其所属产线的活动批次窗口内采集(lineId 空 = 未分配,不采集)
       if (!host.lineRun.activeRun(rt.node.lineId)) continue
-      void rt.tick(now)
+      this.samplingInFlight += 1
+      started += 1
+      void rt.tick(now).catch(() => { /* 单节点采样异常已在 runtime 内隔离 */ })
+        .finally(() => { this.samplingInFlight -= 1 })
     }
   }
 
@@ -631,14 +676,14 @@ class DaqController {
    *  状态随行:节点 alarm 派生自用户设置的量程/预警带(数据驱动),透传给孪生而非让孪生按硬编码阈值猜 */
   private pendingBackfill = new Map<string, Record<string, number | string | boolean>>()
 
-  /** 同绑定 siblings 缓存(1s TTL):回写热路径不再逐样本全量 scan,O(N²)→O(N)/周期 */
-  private siblingsCache = new Map<string, { at: number, list: DaqNode[] }>()
+  /** 同绑定 siblings 缓存(1s TTL):回写热路径不再逐样本全量 scan,O(N²)→O(N)/周期。
+   *  用有界 LRU 而非「超 500 整体 clear()」——后者会造成周期性全量缓存穿透。 */
+  private siblingsCache = new LruMap<string, { at: number, list: DaqNode[] }>(500)
 
   private siblingsOf(bindingId: string): DaqNode[] {
     const hit = this.siblingsCache.get(bindingId)
     if (hit && Date.now() - hit.at < 1000) return hit.list
     const list = this.repo.all().filter(n => n.deviceIds.includes(bindingId))
-    if (this.siblingsCache.size > 500) this.siblingsCache.clear()
     this.siblingsCache.set(bindingId, { at: Date.now(), list })
     return list
   }
@@ -713,6 +758,9 @@ class DaqController {
       defaultIntervalMs: this.defaultIntervalMs,
       minIntervalMs: this.minIntervalMs,
       defaultPublishIntervalMs: this.defaultPublishIntervalMs,
+      minPublishIntervalMs: this.minPublishIntervalMs,
+      queryDisplayIntervalMs: this.queryDisplayIntervalMs,
+      minQueryDisplayIntervalMs: this.minQueryDisplayIntervalMs,
       nodesTotal: nodes.length,
       nodesOnline: this.running ? nodes.filter(n => n.enabled).length : 0,
       produced: this.producedCount,
@@ -754,13 +802,55 @@ class DaqController {
     return getTsdb().query(id, opts)
   }
 
+  /** 帧查询的「内存读穿透」:帧先入 frameBuffer 再广播 thumbUrl(contentUrl),
+   *  TSDB 为 500ms 防抖异步刷盘 —— 收到 WS 立刻回查会在落库前 404。
+   *  故查询侧按 (nodeId, tsMs) 先看 buffer 命中;与 TSDB 返回形态逐字段对齐
+   *  (points 从 meta.points 还原,规则同 tsdb adapter 的 pointsFromMeta)。
+   *  注:刷盘 splice 与查询同一 JS 线程,不存在「既不在 buffer 又没落库」的空窗。 */
+  private framesFromBuffer(id: string, tsMs: number): DaqFrameRecord[] {
+    const out: DaqFrameRecord[] = []
+    for (const r of this.frameBuffer) {
+      if (r.nodeId !== id || r.tsMs !== tsMs) continue
+      out.push({
+        at: r.tsMs,
+        kind: r.kind,
+        points: r.kind === 'vector' ? DaqController.pointsFromMeta(r.meta) : undefined,
+        metrics: r.metrics,
+        meta: r.meta,
+        deviceBindingId: r.deviceBindingId ?? null,
+        lineId: r.lineId ?? null,
+        productId: r.productId ?? null,
+        recipeId: r.recipeId ?? null,
+        runId: r.runId ?? null,
+      })
+    }
+    return out
+  }
+
+  /** 向量点列从 meta.points 还原(与 TSDB adapter 同规则:非数组/空/越界/非数值 → undefined) */
+  private static pointsFromMeta(meta: Record<string, unknown>): number[] | undefined {
+    const p = meta.points
+    if (!Array.isArray(p) || p.length === 0 || p.length > 4096) return undefined
+    return p.every(x => Number.isFinite(Number(x))) ? p.map(Number) : undefined
+  }
+
   /** 节点帧历史(v2:向量/图像元数据;像素按需经 frameContent 从对象存储取) */
   async frames(id: string, opts: { fromMs?: number, toMs?: number, kind?: 'vector' | 'image', limit?: number }) {
     this.ensureLoop()
     await tsdbReady
     const node = this.repo.byId(id)
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
-    return getTsdb().queryFrames(id, opts)
+    const rows = await getTsdb().queryFrames(id, opts)
+    // 未刷盘的帧补进结果集:同 (nodeId, tsMs) 以落库行为准(去重),按 at 降序
+    const seen = new Set(rows.map(r => r.at))
+    const pending = this.frameBuffer.filter(r => r.nodeId === id
+      && (opts.kind == null || r.kind === opts.kind)
+      && r.tsMs >= (opts.fromMs ?? 0) && r.tsMs <= (opts.toMs ?? Date.now()))
+      .filter(r => !seen.has(r.tsMs))
+      .sort((a, b) => b.tsMs - a.tsMs)
+      .map(r => this.framesFromBuffer(id, r.tsMs)[0] ?? null)
+      .filter((r): r is DaqFrameRecord => r != null)
+    return [...rows, ...pending].slice(0, Math.min(Math.max(opts.limit ?? 100, 1), 1000))
   }
 
   /** 帧内容(图像主图/缩略图;从对象存储读取后由 REST 流式返回) */
@@ -769,7 +859,9 @@ class DaqController {
     await tsdbReady
     const node = this.repo.byId(id)
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
-    const rows = await getTsdb().queryFrames(id, { fromMs: tsMs - 1, toMs: tsMs + 1, limit: 5 })
+    // 读穿透:先查内存攒批缓冲(帧刚 ingest、尚未刷盘时命中),未命中再查 TSDB
+    const rows = this.framesFromBuffer(id, tsMs)
+    if (rows.length === 0) rows.push(...await getTsdb().queryFrames(id, { fromMs: tsMs - 1, toMs: tsMs + 1, limit: 5 }))
     const row = rows.find(r => r.at === tsMs)
     if (!row || row.kind !== 'image') throw Object.assign(new Error(`帧不存在: ${id}@${tsMs}`), { status: 404 })
     const key = (thumb ? row.meta.thumbKey : row.meta.objectKey) as string | undefined
@@ -822,7 +914,7 @@ class DaqController {
       this.defaultIntervalMs = Math.min(60_000, Math.round(opts.defaultIntervalMs))
       changed = true
     }
-    if (typeof opts.defaultPublishIntervalMs === 'number' && opts.defaultPublishIntervalMs >= 0) {
+    if (typeof opts.defaultPublishIntervalMs === 'number' && opts.defaultPublishIntervalMs >= this.minPublishIntervalMs) {
       this.defaultPublishIntervalMs = Math.min(60_000, Math.round(opts.defaultPublishIntervalMs))
       changed = true
     }
@@ -857,7 +949,9 @@ class DaqController {
       transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
       intervalMs: input.intervalMs == null ? null : Math.max(this.minIntervalMs, Math.min(60_000, Math.round(input.intervalMs))),
-      publishIntervalMs: input.publishIntervalMs ?? null,
+      publishIntervalMs: input.publishIntervalMs == null
+        ? null
+        : Math.max(this.minPublishIntervalMs, Math.min(60_000, Math.round(input.publishIntervalMs))),
       unit: input.unit,
       decimals: input.decimals,
       min: input.min,
@@ -900,10 +994,11 @@ class DaqController {
       rearm = true
     }
     if (patch.publishIntervalMs !== undefined) {
-      // 下发节拍:null=跟随全局;0=每帧;否则 120ms~60s
+      // 下发节拍:null=跟随全局;否则钳到 [minPublishIntervalMs, 60s]
+      // (minPublishIntervalMs 默认 0 → 0 仍表示「每帧随采样」语义)
       node.publishIntervalMs = patch.publishIntervalMs == null
         ? null
-        : Math.max(0, Math.min(60_000, Math.round(patch.publishIntervalMs)))
+        : Math.max(this.minPublishIntervalMs, Math.min(60_000, Math.round(patch.publishIntervalMs)))
       rearm = true
     }
     if (patch.enabled !== undefined) {
@@ -931,6 +1026,12 @@ class DaqController {
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
     this.repo.remove(id)
     this.runtimes.delete(id) // 运行时随节点注销
+    // 键为 `${nodeId}::${metricKey}` 的告警态:节点删除后必须一并清理,
+    // 否则「建-删节点」循环会让该 Map 单调增长(长跑内存泄漏),且重建同名节点会继承陈旧告警态。
+    const prefix = `${id}::`
+    for (const key of this.metricStates.keys()) {
+      if (key.startsWith(prefix)) this.metricStates.delete(key)
+    }
     // 级联清理:该节点的 Agent 绑定移除
     void import('../agents/node-bindings.repo').then(({ getAgentNodeBindingRepo }) => {
       getAgentNodeBindingRepo().removeNode(id)
@@ -1001,6 +1102,8 @@ class DaqController {
   unbindDevice(deviceId: string): void {
     this.pendingBackfill.delete(deviceId)
     this.siblingsCache.delete(deviceId)
+    // twinPushAt 以 twinId 为键:设备删除后同样要清,否则节流表随设备增删单调增长
+    this.twinPushAt.delete(deviceId)
     let touched = false
     for (const node of this.repo.all()) {
       if (!node.deviceIds.includes(deviceId)) continue
