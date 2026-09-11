@@ -220,8 +220,12 @@ class DaqController {
     const before = `${this.defaultIntervalMs}|${this.minIntervalMs}|${this.defaultPublishIntervalMs}|${this.minPublishIntervalMs}|${this.queryDisplayIntervalMs}|${this.minQueryDisplayIntervalMs}`
     try {
       const s = daqRuntimeSettings()
-      if (Number.isFinite(s.sampling.defaultIntervalMs) && s.sampling.defaultIntervalMs > 0) this.defaultIntervalMs = Math.min(60_000, s.sampling.defaultIntervalMs)
-      if (Number.isFinite(s.sampling.minIntervalMs) && s.sampling.minIntervalMs > 0) this.minIntervalMs = Math.max(100, Math.min(this.defaultIntervalMs, s.sampling.minIntervalMs))
+      // 三组节拍统一「下限优先」:缺省低于下限时抬到下限(下限被配置成下限才成立),
+      // 三组各自独立——改一组的下限不影响另一组的缺省,反之亦然。
+      if (Number.isFinite(s.sampling.minIntervalMs) && s.sampling.minIntervalMs > 0) this.minIntervalMs = Math.max(100, Math.min(60_000, s.sampling.minIntervalMs))
+      if (Number.isFinite(s.sampling.defaultIntervalMs) && s.sampling.defaultIntervalMs > 0) {
+        this.defaultIntervalMs = Math.max(this.minIntervalMs, Math.min(60_000, s.sampling.defaultIntervalMs))
+      }
       // WS 下发节拍:与采集间隔解耦的独立缺省/下限(live 可调)
       if (Number.isFinite(s.publish.minIntervalMs) && s.publish.minIntervalMs >= 0) this.minPublishIntervalMs = Math.min(60_000, s.publish.minIntervalMs)
       if (Number.isFinite(s.publish.defaultIntervalMs) && s.publish.defaultIntervalMs >= 0) {
