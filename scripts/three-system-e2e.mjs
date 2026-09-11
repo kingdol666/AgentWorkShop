@@ -25,7 +25,7 @@ const BASE = process.env.AW_BASE ?? 'http://localhost:3021'
 const KB = process.env.KB_BASE ?? 'http://127.0.0.1:8770'
 const KBWEB = process.env.KB_WEB ?? 'http://127.0.0.1:6789'
 const DIAG = process.env.DIAG_BASE ?? 'http://127.0.0.1:3210'
-const LINE = process.env.E2E_LINE ?? 'ln-af002514' // 1号产线(6 个 mock 数采节点)
+let LINE = process.env.E2E_LINE ?? 'ln-af002514' // 1号产线(6 个 mock 数采节点)
 const DCW_NODE = process.env.E2E_DCW_NODE ?? 'dw-e92bb0e7' // 压力设定器(mock 驱动)
 const CH_A = '产线数据分析组'
 const CH_B = '闭环控制组'
@@ -114,6 +114,32 @@ if (!userToken) {
   if (!userToken) process.exit(1)
 }
 else { console.log('  · 复用持久化演示账号 token') }
+
+// ── 0a2. 目标产线自适应:未显式指定 E2E_LINE 时,自动选「最近 10 分钟有采样」且节点最多的产线 ──
+// 数采按产线批次门控:无活动批次的产线没有样本,写死的默认线会随环境漂移而误报
+// (快照导出 rows=0 / diag_run「该时窗内无数采样本」)。
+if (!process.env.E2E_LINE) {
+  try {
+    const daq = await api('GET', '/api/workshop/daq', { token: userToken })
+    const nodes = daq?.json?.data?.nodes ?? []
+    const now = Date.now()
+    const byLine = new Map()
+    for (const n of nodes) {
+      if (!n.lineId || n.lastAt == null) continue
+      if (now - Date.parse(n.lastAt) > 10 * 60_000) continue
+      byLine.set(n.lineId, (byLine.get(n.lineId) ?? 0) + 1)
+    }
+    const best = [...byLine.entries()].sort((a, b) => b[1] - a[1])[0]
+    if (best) {
+      LINE = best[0]
+      console.log(`  · 自动选定采样中的产线 ${LINE}(新鲜节点 ${best[1]} 个)`)
+    }
+    else {
+      console.log('  ! 未发现采样中的产线,沿用默认线(相关采样断言可能失败)')
+    }
+  }
+  catch { /* 探测失败保持默认线 */ }
+}
 
 // ── 0b. 夹具种子:e2e 用户对目标产线 operate 授权(users.sqlite 直插,测试专用)──
 try {
