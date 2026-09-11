@@ -19,12 +19,20 @@ export default {
   description: 'rag-knowledge 知识库桥接:工业知识检索/经验沉淀/文档入库三工具',
   auth: 'user', // 平台转发层按此声明统一校验(缺省 'none' 开放)
   client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
+  // 插件配置分组:插件调用平台 API 增加自己的设置分区(设置页独立成区、可折叠)。
+  // id 由宿主收敛进 plugin-rag-bridge* 命名空间,不会与其它插件/平台分组撞车;
+  // 插件卸载或停用时这两个分区随之消失,不残留空区块。
+  configGroups: [
+    { id: 'default', labelKey: 'plugin.rag-bridge.group.conn', label: 'rag-knowledge 连接', description: '后端与 Web 地址(保存即热生效)', order: 400 },
+    { id: 'auth', labelKey: 'plugin.rag-bridge.group.auth', label: 'rag-knowledge 鉴权', description: '服务端开启鉴权时所需 Token', order: 410, collapsed: true },
+  ],
   // 插件设置声明:key 强制编址 plugins.rag-bridge.<key>,进 SystemConfigService 后
-  // 前端设置页自动渲染(labelKey 解析 i18n.json 的 plugin.rag-bridge.settings.*)
+  // 前端设置页自动渲染(labelKey 解析 i18n.json 的 plugin.rag-bridge.settings.*);
+  // group 指向上面声明的分区 → 字段按分区隔离展示
   settings: [
-    { key: 'base_url', type: 'string', default: DEFAULT_BASE, labelKey: 'plugin.rag-bridge.settings.base_url', label: 'rag-knowledge 后端地址', description: 'FastAPI 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
-    { key: 'web_url', type: 'string', default: DEFAULT_WEB, labelKey: 'plugin.rag-bridge.settings.web_url', label: 'rag-knowledge Web 地址', description: 'Nuxt Web(文档写盘/目录);保存即热生效' },
-    { key: 'token', type: 'string', default: '', labelKey: 'plugin.rag-bridge.settings.token', label: 'rag-knowledge API Token', description: '服务端开启鉴权时的 MCP/API Token(Authorization: Bearer);空=匿名;保存即热生效' },
+    { key: 'base_url', type: 'string', default: DEFAULT_BASE, group: 'default', labelKey: 'plugin.rag-bridge.settings.base_url', label: 'rag-knowledge 后端地址', description: 'FastAPI 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
+    { key: 'web_url', type: 'string', default: DEFAULT_WEB, group: 'default', labelKey: 'plugin.rag-bridge.settings.web_url', label: 'rag-knowledge Web 地址', description: 'Nuxt Web(文档写盘/目录);保存即热生效' },
+    { key: 'token', type: 'string', default: '', group: 'auth', labelKey: 'plugin.rag-bridge.settings.token', label: 'rag-knowledge API Token', description: '服务端开启鉴权时的 MCP/API Token(Authorization: Bearer);空=匿名;保存即热生效' },
   ],
   async setup(ctx) {
     // ---- 运行态 ----
@@ -45,18 +53,24 @@ export default {
     if (ctx.kv.get('kb.web_url') == null) ctx.kv.set('kb.web_url', DEFAULT_WEB)
     ctx.kv.set('kb.name', KB_NAME)
 
-    // base_url 守卫:仅 http/https 且 host 必须是 127.0.0.1/localhost(不合法则禁用出站)
-    try {
-      const u = new URL(base())
-      if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !['127.0.0.1', 'localhost'].includes(u.hostname)) {
-        throw new Error(`base_url 必须是 http(s)://127.0.0.1|localhost,实际 ${base()}`)
+    // base_url 守卫:仅 http/https 且 host 必须是 127.0.0.1/localhost(不合法则禁用出站)。
+    // 每次配置变更都重算 —— 否则改错地址后旧判定会一直沿用,「独立配置即时生效」不成立。
+    const applyOutboundGuard = () => {
+      try {
+        const u = new URL(base())
+        if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !['127.0.0.1', 'localhost'].includes(u.hostname)) {
+          throw new Error(`base_url 必须是 http(s)://127.0.0.1|localhost,实际 ${base()}`)
+        }
+        state.outbound = true
       }
-      state.outbound = true
+      catch (err) {
+        state.outbound = false
+        ctx.logger.error(`出站调用已禁用:${err?.message ?? err}(修正 rag-bridge 的「后端地址」后即恢复)`)
+      }
     }
-    catch (err) {
-      state.outbound = false
-      ctx.logger.error(`出站调用已禁用:${err?.message ?? err}(修正 kv['kb.base_url'] 后重启生效)`)
-    }
+    applyOutboundGuard()
+    // 配置热更新(runtime-settings 变更)→ 立即重算出站开关与下次探活
+    ctx.config.onChange(() => applyOutboundGuard())
 
     // ---- ensureKB:幂等初始化(失败仅告警,不阻塞装载) ----
     try {
@@ -334,8 +348,14 @@ export default {
         plugin: 'rag-bridge',
         outbound: state.outbound,
         auth: kbToken() ? 'bearer' : 'anonymous',
+        // token 配置与「实测是否被接受」分开呈现:401/403 = 明确被拒(运维一眼看出 token 配错),
+        // 网络不通/超时为 null(未知),2xx 或非鉴权类失败为 true(未被拒)
+        token: {
+          configured: Boolean(kbToken()),
+          accepted: backend.ok ? true : (backend.status === 401 || backend.status === 403 ? false : null),
+        },
         kb: { name: KB_NAME, id: kbId() || null },
-        backend: { url: base(), ok: backend.ok, ...(backend.ok ? { status: backend.body?.status ?? null } : { error: backend.error }) },
+        backend: { url: base(), ok: backend.ok, ...(backend.ok ? { status: backend.body?.status ?? null } : { status: backend.status ?? null, error: backend.error }) },
         web: { url: web(), ok: webR.ok, ...(webR.ok ? { knowledgeBases: webR.body?.count ?? null } : { error: webR.error }) },
         counters: { store: ctx.kv.get('store.count') ?? 0, index: ctx.kv.get('index.count') ?? 0 },
       }

@@ -86,9 +86,27 @@ async function resetAllRuntime() {
   }
 }
 
-function groupLabel(group: string): string {
-  const known: Record<string, string> = { server: t('settings.runtime.groupServer'), app: t('settings.runtime.groupApp'), api: t('settings.runtime.groupApi'), theme: t('settings.runtime.groupTheme'), i18n: t('settings.runtime.groupI18n'), security: t('settings.runtime.groupSecurity'), daq: t('settings.runtime.groupDaq'), memory: t('settings.runtime.groupMemory'), omp: t('settings.runtime.groupOmp'), harness: t('settings.runtime.groupHarness'), dcw: t('settings.runtime.groupDcw'), workshop: t('settings.runtime.groupWorkshop'), backup: t('settings.runtime.groupBackup'), retention: t('settings.runtime.groupRetention'), log: t('settings.runtime.groupLog'), plugins: t('settings.runtime.groupPlugins') }
-  return known[group] ?? group
+/** 内置分组的 i18n 标签(id → i18n key);插件/自建分组走自己的 label */
+const KNOWN_GROUP_LABELS: Record<string, string> = { server: 'settings.runtime.groupServer', app: 'settings.runtime.groupApp', api: 'settings.runtime.groupApi', theme: 'settings.runtime.groupTheme', i18n: 'settings.runtime.groupI18n', security: 'settings.runtime.groupSecurity', daq: 'settings.runtime.groupDaq', memory: 'settings.runtime.groupMemory', omp: 'settings.runtime.groupOmp', harness: 'settings.runtime.groupHarness', dcw: 'settings.runtime.groupDcw', workshop: 'settings.runtime.groupWorkshop', backup: 'settings.runtime.groupBackup', retention: 'settings.runtime.groupRetention', log: 'settings.runtime.groupLog', plugins: 'settings.runtime.groupPlugins' }
+
+/**
+ * 分组标题解析优先级:
+ *  1) 分组自带 labelKey(插件可本地化自己分区的标题)
+ *  2) 服务端下发的 label 与 id 不同 —— 管理员改过名 / 插件声明的展示名
+ *  3) 内置分组的 i18n 映射(注册表里内置组 label 就是 id,需要前端补语言)
+ *  4) 兜底用 id
+ */
+function groupLabel(g: { id: string, label?: string, labelKey?: string }): string {
+  if (g.labelKey && t(g.labelKey) !== g.labelKey) return t(g.labelKey)
+  if (g.label && g.label !== g.id) return g.label
+  const known = KNOWN_GROUP_LABELS[g.id]
+  if (known) return t(known)
+  return g.label || g.id
+}
+function groupSourceBadge(g: { source: string, plugin?: string }): string {
+  if (g.source === 'plugin') return g.plugin ? `${t('settings.groups.srcPlugin')}: ${g.plugin}` : t('settings.groups.srcPlugin')
+  if (g.source === 'user') return t('settings.groups.srcUser')
+  return t('settings.groups.srcBuiltin')
 }
 function sourceClass(s: string): string {
   return s === 'runtime' ? 'src-runtime' : s === 'env' ? 'src-env' : 'src-yaml'
@@ -96,6 +114,152 @@ function sourceClass(s: string): string {
 function itemLabel(item: { label: string, labelKey?: string }): string {
   const k = item.labelKey
   return (k && t(k) !== k) ? t(k) : item.label
+}
+
+/* ---------------- 分组折叠 + 分组管理(后端为权威,本地只管展开偏好) ---------------- */
+const GROUP_COLLAPSE_KEY = 'aw.settings.groups.collapsed'
+/** 本地展开/收起偏好:{ [groupId]: collapsed } */
+const groupCollapsed = ref<Record<string, boolean>>({})
+function loadCollapsePref(): void {
+  try {
+    groupCollapsed.value = JSON.parse(localStorage.getItem(GROUP_COLLAPSE_KEY) ?? '{}') ?? {}
+  }
+  catch {
+    groupCollapsed.value = {}
+  }
+}
+function saveCollapsePref(): void {
+  try {
+    localStorage.setItem(GROUP_COLLAPSE_KEY, JSON.stringify(groupCollapsed.value))
+  }
+  catch { /* 隐私模式等场景忽略 */ }
+}
+function isCollapsed(g: { id: string, collapsed: boolean }): boolean {
+  const local = groupCollapsed.value[g.id]
+  return local === undefined ? g.collapsed : local
+}
+function toggleGroup(g: { id: string, collapsed: boolean, collapsible: boolean }): void {
+  if (!g.collapsible) return
+  groupCollapsed.value = { ...groupCollapsed.value, [g.id]: !isCollapsed(g) }
+  saveCollapsePref()
+}
+/** 全部展开/收起(一键;按当前是否已全展开决定方向) */
+function toggleAllGroups(): void {
+  const list = rcStore.groups.filter(g => g.collapsible)
+  const anyExpanded = list.some(g => !isCollapsed(g))
+  const next = { ...groupCollapsed.value }
+  for (const g of list) next[g.id] = anyExpanded
+  groupCollapsed.value = next
+  saveCollapsePref()
+}
+const allExpanded = computed(() => rcStore.groups.filter(g => g.collapsible).some(g => !isCollapsed(g)))
+
+/* 分组 CRUD(admin):内联表单 + 行内改名,避免引入全局弹窗依赖 */
+const isAdmin = computed(() => userStore.isAdmin)
+const groupFormOpen = ref(false)
+const groupForm = reactive({ label: '', description: '', collapsed: false })
+const groupBusy = ref('')
+const renamingId = ref('')
+const renameDraft = ref('')
+
+async function submitGroupForm(): Promise<void> {
+  if (!groupForm.label.trim()) return
+  groupBusy.value = 'create'
+  try {
+    await rcStore.createGroup({ label: groupForm.label.trim(), description: groupForm.description.trim(), collapsed: groupForm.collapsed })
+    groupFormOpen.value = false
+    groupForm.label = ''
+    groupForm.description = ''
+    groupForm.collapsed = false
+    message.success(t('settings.groups.created'))
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e, t('settings.groups.createFail')))
+  }
+  finally {
+    groupBusy.value = ''
+  }
+}
+
+function startRename(g: { id: string, label: string }): void {
+  renamingId.value = g.id
+  renameDraft.value = g.label
+}
+async function commitRename(id: string): Promise<void> {
+  const label = renameDraft.value.trim()
+  renamingId.value = ''
+  if (!label) return
+  groupBusy.value = id
+  try {
+    await rcStore.updateGroup(id, { label })
+    message.success(t('settings.groups.renamed'))
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e, t('settings.groups.updateFail')))
+  }
+  finally {
+    groupBusy.value = ''
+  }
+}
+
+/** 排序:与相邻同源分组交换 order(通过各自的 order 值互换实现稳定重排) */
+async function moveGroup(id: string, dir: -1 | 1): Promise<void> {
+  const list = [...rcStore.groups]
+  const i = list.findIndex(g => g.id === id)
+  const j = i + dir
+  if (i < 0 || j < 0 || j >= list.length) return
+  const a = list[i]!
+  const b = list[j]!
+  groupBusy.value = id
+  try {
+    // 顺序值可能相等(插件组同 order)→ 用「重排后的显式序号」写回,保证结果确定
+    const ordered = [...list]
+    ordered.splice(i, 1)
+    ordered.splice(j, 0, a)
+    const patchA = (j + 1) * 10
+    const patchB = (i + 1) * 10
+    await rcStore.updateGroup(a.id, { order: patchA })
+    await rcStore.updateGroup(b.id, { order: patchB })
+    void b
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e, t('settings.groups.updateFail')))
+  }
+  finally {
+    groupBusy.value = ''
+  }
+}
+
+async function setGroupDefaultCollapsed(g: { id: string, collapsed: boolean }): Promise<void> {
+  groupBusy.value = g.id
+  try {
+    await rcStore.updateGroup(g.id, { collapsed: !g.collapsed })
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e, t('settings.groups.updateFail')))
+  }
+  finally {
+    groupBusy.value = ''
+  }
+}
+
+async function removeGroup(g: { id: string, label: string, fieldCount?: number }): Promise<void> {
+  const count = g.fieldCount ?? 0
+  if (count > 0) {
+    message.warning(t('settings.groups.deleteHasFields', { p0: groupLabel(g), p1: count }))
+    return
+  }
+  groupBusy.value = g.id
+  try {
+    await rcStore.deleteGroup(g.id)
+    message.success(t('settings.groups.deleted'))
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e, t('settings.groups.deleteFail')))
+  }
+  finally {
+    groupBusy.value = ''
+  }
 }
 /* ============================================================= */
 
@@ -196,6 +360,9 @@ function isToggling(name: string): boolean {
 watch(activeTab, (v) => {
   if (v === 'runtime' && !pluginsLoaded.value && !pluginsLoading.value && userStore.isLoggedIn) void loadPlugins()
 }, { immediate: true })
+
+// 折叠偏好只在浏览器侧读写(localStorage);SSR 首帧用服务端默认折叠态,水合后无缝接管
+onMounted(loadCollapsePref)
 /* ============================================================= */
 
 /** 强调色预设(控制室低饱和族;默认 = 品牌绿,跟随 config.yml) */
@@ -388,86 +555,248 @@ const tabs = computed(() => [
               :message="runtimeNotice.text"
             />
 
-            <template
-              v-for="g in rcStore.groups"
-              :key="g.group"
-            >
-              <h4 class="rt-group-title">
-                {{ groupLabel(g.group) }}
-              </h4>
-              <div
-                v-for="item in g.items"
-                :key="item.key"
-                class="rt-row"
+            <!-- 分组工具条:一键展开/收起 + (admin) 新建分组 -->
+            <div class="rt-groups-bar">
+              <button
+                class="aw-pill outline rt-groups-toggle"
+                :title="t('settings.groups.toggleAll')"
+                @click="toggleAllGroups"
               >
-                <div class="rt-main">
-                  <div class="rt-title">
-                    {{ itemLabel(item) }}
-                    <span
-                      class="rt-tag"
-                      :class="sourceClass(rcStore.sourceOf(item.key))"
-                    >{{ rcStore.sourceOf(item.key) }}</span>
-                    <span
-                      class="rt-tag"
-                      :class="item.applies"
-                    >{{ item.applies === 'live' ? t('settings.runtime.live') : t('settings.runtime.restart') }}</span>
-                  </div>
-                  <div class="rt-sub">
-                    {{ item.description }}
-                  </div>
-                </div>
-                <div class="rt-ctrl">
-                  <a-input-number
-                    v-if="item.type === 'number'"
-                    v-model:value="draft[item.key]"
-                    :min="item.min"
-                    :max="item.max"
-                    @change="markDirty(item.key)"
-                  />
-                  <a-switch
-                    v-else-if="item.type === 'boolean'"
-                    v-model:checked="draft[item.key]"
-                    @change="markDirty(item.key)"
-                  />
-                  <a-select
-                    v-else-if="item.type === 'select'"
-                    v-model:value="draft[item.key]"
-                    style="width: 160px"
-                    :options="(item.options ?? []).map(o => ({ label: o, value: o }))"
-                    @change="markDirty(item.key)"
-                  />
-                  <span
-                    v-else-if="item.type === 'color'"
-                    class="rt-color"
+                <span :class="allExpanded ? 'i-tabler-chevrons-up' : 'i-tabler-chevrons-down'" />
+                {{ allExpanded ? t('settings.groups.collapseAll') : t('settings.groups.expandAll') }}
+              </button>
+              <span class="rt-groups-count">{{ t('settings.groups.count', { p0: rcStore.groups.length }) }}</span>
+              <button
+                v-if="isAdmin"
+                class="aw-pill outline rt-groups-add"
+                @click="groupFormOpen = !groupFormOpen"
+              >
+                <span class="i-tabler-plus" />
+                {{ t('settings.groups.newGroup') }}
+              </button>
+            </div>
+
+            <!-- 新建分组(内联表单;id 由服务端按 label 派生,创建后即可用 API 归属字段) -->
+            <div
+              v-if="isAdmin && groupFormOpen"
+              class="rt-group-form"
+            >
+              <a-input
+                v-model:value="groupForm.label"
+                :placeholder="t('settings.groups.namePlaceholder')"
+                style="width: 220px"
+                @press-enter="submitGroupForm"
+              />
+              <a-input
+                v-model:value="groupForm.description"
+                :placeholder="t('settings.groups.descPlaceholder')"
+                style="width: 320px"
+                @press-enter="submitGroupForm"
+              />
+              <a-checkbox v-model:checked="groupForm.collapsed">
+                {{ t('settings.groups.defaultCollapsed') }}
+              </a-checkbox>
+              <button
+                class="aw-pill primary"
+                :disabled="!groupForm.label.trim() || groupBusy === 'create'"
+                @click="submitGroupForm"
+              >
+                {{ groupBusy === 'create' ? '…' : t('settings.groups.create') }}
+              </button>
+              <button
+                class="aw-pill outline"
+                @click="groupFormOpen = false"
+              >
+                {{ t('settings.groups.cancel') }}
+              </button>
+            </div>
+
+            <!-- 分组分区:顺序/标题/折叠态全部来自后端 groups 接口 -->
+            <section
+              v-for="g in rcStore.groups"
+              :key="g.id"
+              class="rt-group"
+              :class="{ 'collapsed': isCollapsed(g), 'grp-plugin': g.source === 'plugin' }"
+            >
+              <header
+                class="rt-group-head"
+                :role="g.collapsible ? 'button' : undefined"
+                :tabindex="g.collapsible ? 0 : undefined"
+                @click="toggleGroup(g)"
+                @keydown.enter.prevent="toggleGroup(g)"
+                @keydown.space.prevent="toggleGroup(g)"
+              >
+                <span
+                  v-if="g.collapsible"
+                  class="rt-caret"
+                  :class="isCollapsed(g) ? 'i-tabler-chevron-right' : 'i-tabler-chevron-down'"
+                />
+                <span
+                  v-if="g.icon"
+                  class="rt-group-icon"
+                  :class="g.icon"
+                />
+                <template v-if="renamingId === g.id">
+                  <input
+                    v-model="renameDraft"
+                    class="rt-rename aw-mono"
+                    @click.stop
+                    @keydown.enter.prevent="commitRename(g.id)"
+                    @keydown.esc.prevent="renamingId = ''"
                   >
-                    <input
-                      type="color"
-                      :value="String(draft[item.key] ?? '#35e0a0')"
-                      @input="draft[item.key] = ($event.target as HTMLInputElement).value; markDirty(item.key)"
-                    >
-                    <a-input
-                      :value="String(draft[item.key] ?? '')"
-                      style="width: 110px"
-                      class="aw-mono"
-                      @change="draft[item.key] = ($event.target as HTMLInputElement).value; markDirty(item.key)"
-                    />
-                  </span>
-                  <a-input
-                    v-else
-                    v-model:value="draft[item.key]"
-                    style="width: 220px"
-                    @change="markDirty(item.key)"
-                  />
                   <button
-                    class="aw-pill outline rt-reset"
-                    :title="t('settings.runtime.resetKey')"
-                    @click="resetRuntimeKey(item.key)"
+                    class="mini-btn"
+                    @click.stop="commitRename(g.id)"
                   >
-                    <span class="i-tabler-rotate" />
+                    {{ t('settings.groups.ok') }}
                   </button>
+                </template>
+                <h4
+                  v-else
+                  class="rt-group-title"
+                >
+                  {{ groupLabel(g) }}
+                </h4>
+                <span class="rt-group-badge">{{ groupSourceBadge(g) }}</span>
+                <span class="rt-group-fields">{{ t('settings.groups.fields', { p0: g.fieldCount ?? 0 }) }}</span>
+                <span
+                  v-if="g.description"
+                  class="rt-group-desc"
+                >{{ g.description }}</span>
+                <!-- 分组操作(admin):插件声明的分组由插件权威,不提供改名/删除 -->
+                <span
+                  v-if="isAdmin && g.source !== 'plugin'"
+                  class="rt-group-ops"
+                  @click.stop
+                >
+                  <button
+                    class="mini-btn"
+                    :disabled="groupBusy === g.id"
+                    :title="t('settings.groups.moveUp')"
+                    @click="moveGroup(g.id, -1)"
+                  >
+                    <span class="i-tabler-arrow-up" />
+                  </button>
+                  <button
+                    class="mini-btn"
+                    :disabled="groupBusy === g.id"
+                    :title="t('settings.groups.moveDown')"
+                    @click="moveGroup(g.id, 1)"
+                  >
+                    <span class="i-tabler-arrow-down" />
+                  </button>
+                  <button
+                    class="mini-btn"
+                    :disabled="groupBusy === g.id"
+                    :title="t('settings.groups.rename')"
+                    @click="startRename(g)"
+                  >
+                    <span class="i-tabler-pencil" />
+                  </button>
+                  <button
+                    class="mini-btn"
+                    :disabled="groupBusy === g.id"
+                    :title="t('settings.groups.defaultCollapsed')"
+                    @click="setGroupDefaultCollapsed(g)"
+                  >
+                    <span :class="g.collapsed ? 'i-tabler-fold' : 'i-tabler-unfold'" />
+                  </button>
+                  <button
+                    v-if="g.source === 'user'"
+                    class="mini-btn"
+                    :disabled="groupBusy === g.id"
+                    :title="t('settings.groups.delete')"
+                    @click="removeGroup(g)"
+                  >
+                    <span class="i-tabler-trash" />
+                  </button>
+                </span>
+              </header>
+
+              <div
+                v-show="!isCollapsed(g)"
+                class="rt-group-body"
+              >
+                <p
+                  v-if="!(g.fieldCount ?? 0)"
+                  class="rt-group-empty"
+                >
+                  {{ t('settings.groups.emptyHint') }}
+                </p>
+                <div
+                  v-for="item in rcStore.fieldsOf(g.id)"
+                  :key="item.key"
+                  class="rt-row"
+                >
+                  <div class="rt-main">
+                    <div class="rt-title">
+                      {{ itemLabel(item) }}
+                      <span
+                        class="rt-tag"
+                        :class="sourceClass(rcStore.sourceOf(item.key))"
+                      >{{ rcStore.sourceOf(item.key) }}</span>
+                      <span
+                        class="rt-tag"
+                        :class="item.applies"
+                      >{{ item.applies === 'live' ? t('settings.runtime.live') : t('settings.runtime.restart') }}</span>
+                    </div>
+                    <div class="rt-sub">
+                      {{ item.description }}
+                    </div>
+                  </div>
+                  <div class="rt-ctrl">
+                    <a-input-number
+                      v-if="item.type === 'number'"
+                      v-model:value="draft[item.key]"
+                      :min="item.min"
+                      :max="item.max"
+                      @change="markDirty(item.key)"
+                    />
+                    <a-switch
+                      v-else-if="item.type === 'boolean'"
+                      v-model:checked="draft[item.key]"
+                      @change="markDirty(item.key)"
+                    />
+                    <a-select
+                      v-else-if="item.type === 'select'"
+                      v-model:value="draft[item.key]"
+                      style="width: 160px"
+                      :options="(item.options ?? []).map(o => ({ label: o, value: o }))"
+                      @change="markDirty(item.key)"
+                    />
+                    <span
+                      v-else-if="item.type === 'color'"
+                      class="rt-color"
+                    >
+                      <input
+                        type="color"
+                        :value="String(draft[item.key] ?? '#35e0a0')"
+                        @input="draft[item.key] = ($event.target as HTMLInputElement).value; markDirty(item.key)"
+                      >
+                      <a-input
+                        :value="String(draft[item.key] ?? '')"
+                        style="width: 110px"
+                        class="aw-mono"
+                        @change="draft[item.key] = ($event.target as HTMLInputElement).value; markDirty(item.key)"
+                      />
+                    </span>
+                    <a-input
+                      v-else
+                      v-model:value="draft[item.key]"
+                      style="width: 220px"
+                      @change="markDirty(item.key)"
+                    />
+                    <button
+                      class="aw-pill outline rt-reset"
+                      :title="t('settings.runtime.resetKey')"
+                      @click="resetRuntimeKey(item.key)"
+                    >
+                      <span class="i-tabler-rotate" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </template>
+            </section>
 
             <div class="rt-actions">
               <button
@@ -822,17 +1151,157 @@ const tabs = computed(() => [
   margin: 0 0 14px;
 }
 
-.rt-group-title {
-  margin: 20px 0 2px;
-  font-family: var(--font-display);
+/* ── 分组分区(后端 groups 接口驱动:顺序/标题/折叠态均来自服务端) ── */
+.rt-groups-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 10px;
+}
+
+.rt-groups-count {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.rt-groups-add {
+  margin-left: auto;
+}
+
+.rt-group-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--frost-bg);
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+}
+
+.rt-group {
+  margin: 0 0 10px;
+  background: var(--surface-glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+}
+
+/* 插件声明的分区:左侧一道强调色,与平台内置分区一眼可分 */
+.rt-group.grp-plugin {
+  border-left: 3px solid color-mix(in srgb, var(--tone-info-dot) 55%, transparent);
+}
+
+.rt-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+.rt-group.collapsed .rt-group-head {
+  border-radius: 10px;
+}
+
+.rt-group-head[role='button'] {
+  cursor: pointer;
+}
+
+.rt-group-head[role='button']:hover {
+  background: var(--hover-tint);
+}
+
+.rt-caret {
+  flex: none;
   font-size: 15px;
+  color: var(--ink-faint);
+}
+
+.rt-group-icon {
+  flex: none;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.rt-rename {
+  width: 200px;
+  padding: 2px 8px;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-chip);
+}
+
+.rt-group-badge {
+  flex: none;
+  padding: 1px 7px;
+  font-size: 10px;
+  color: var(--ink-faint);
+  border: 1px solid var(--glass-line);
+  border-radius: 99px;
+}
+
+.rt-group.grp-plugin .rt-group-badge {
+  color: var(--tone-info-dot);
+  border-color: color-mix(in srgb, var(--tone-info-dot) 40%, transparent);
+}
+
+.rt-group-fields {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--ink-fainter);
+}
+
+.rt-group-desc {
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rt-group-ops {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.rt-group-head:hover .rt-group-ops,
+.rt-group-ops:focus-within {
+  opacity: 1;
+}
+
+.rt-group-body {
+  padding: 0 14px 6px;
+  border-top: 1px solid var(--line);
+}
+
+.rt-group-empty {
+  margin: 10px 0 4px;
+  font-size: 12px;
+  color: var(--ink-fainter);
+}
+
+.rt-group-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 14.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--ink-soft);
 }
 
-.rt-group-title:first-of-type {
-  margin-top: 4px;
+/* 插件管理页的同名标题保留旧观感(独立于分组分区) */
+.rt-group-title.plugin-group-title {
+  margin: 20px 0 2px;
+  font-size: 15px;
 }
 
 .rt-row {

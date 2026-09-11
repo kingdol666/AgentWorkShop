@@ -5,6 +5,10 @@
       "web_url": "rag-knowledge Web 地址",
       "token": "rag-knowledge API Token"
     },
+    "group": {
+      "conn": "rag-knowledge 连接",
+      "auth": "rag-knowledge 鉴权"
+    },
     "panel": {
       "title": "工业知识库(rag-knowledge)",
       "backend": "后端",
@@ -29,6 +33,10 @@
       "base_url": "rag-knowledge backend URL",
       "web_url": "rag-knowledge Web URL",
       "token": "rag-knowledge API token"
+    },
+    "group": {
+      "conn": "rag-knowledge connection",
+      "auth": "rag-knowledge auth"
     },
     "panel": {
       "title": "Industrial knowledge base (rag-knowledge)",

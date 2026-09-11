@@ -16,7 +16,7 @@
 //   路径    ctx.paths   { home, configRoot, dataDir }                [SDK]
 // ============================================================
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { HookBus } from './hooks.mjs'
 import { createPlatformClient } from './api.mjs'
 
@@ -115,6 +115,24 @@ export function createPluginContext(opts) {
       all: () => ({ ...config?.effective }),
       /** 运行时覆盖变更订阅(runtime-settings.json 变化;宿主 fs.watch 驱动) */
       onChange: fn => hooks.on('config:changed', fn),
+      /**
+       * 声明式注册「本插件专属的配置分组」——插件调用 API 增加自己的分组。
+       * 分组 id 收敛进本插件命名空间(plugin-<name>[-<suffix>]),不会与别的插件撞车;
+       * 插件卸载/热重载时宿主自动摘除该分组,设置页不残留空分区。
+       * @example ctx.config.defineGroup({ id: 'conn', label: '连接', collapsed: true })
+       */
+      defineGroup: def => opts.registerGroup?.(def),
+      /**
+       * 声明式注册配置字段(等价于 manifest 的 settings[],但可在 setup 里按条件注册)。
+       * 不给 group 时落入本插件默认分组;key 自动编址 plugins.<name>.<key>。
+       * @example ctx.config.defineField({ key: 'token', type: 'string', default: '', group: 'conn' })
+       */
+      defineField: decl => opts.registerField?.(decl),
+      removeGroup: id => opts.removeGroup?.(id),
+      removeField: key => opts.removeField?.(key),
+      /** 本插件当前已注册的分组 / 字段(只读快照) */
+      groups: () => [...(opts.groups?.() ?? [])],
+      fields: () => [...(opts.fields?.() ?? [])],
     },
     paths: { ...paths },
     dataDir: kvDir,
@@ -197,6 +215,18 @@ export function createRouteTable() {
       }
       return out
     },
+    /** 卸下某插件的全部路由(装载失败回滚 / 热重载清理);返回移除条数 */
+    unregisterPlugin(name) {
+      let removed = 0
+      for (const key of [...table.keys()]) {
+        const [, n] = key.split(' ')
+        if (n === name) {
+          table.delete(key)
+          removed += 1
+        }
+      }
+      return removed
+    },
     get size() {
       return table.size
     },
@@ -221,17 +251,88 @@ export function validatePluginModule(mod, source) {
   return { ok: true, def }
 }
 
+/**
+ * 路径包含判定 —— 必须用 relative() 而非 startsWith():
+ * `resolve(p).startsWith(resolve(dir))` 对兄弟同前缀目录(…/foo 与 …/foo-evil)会误判为在内,
+ * 使插件用 `client: '../foo-evil/x.mjs'` 逃逸出自身目录。返回 true 表示 p 确实位于 dir 之内。
+ */
+export function isPathInside(dir, p) {
+  const rel = relative(resolve(dir), resolve(p))
+  if (rel === '') return true
+  if (isAbsolute(rel)) return false
+  return rel !== '..' && !rel.startsWith('..' + sep)
+}
+
 const SETTING_TYPES = new Set(['string', 'number', 'boolean', 'select'])
+
+/** 分组 id 合法性(与 shared/config/groups.mjs 的 ID_RE 同规约) */
+const GROUP_ID_RE = /^[A-Za-z0-9_-]{1,48}$/
+
+/** 插件分组 id 命名空间(与 shared/config/groups.mjs 的 pluginGroupId 同规约) */
+function pluginGroupIdOf(pluginName, suffix) {
+  const ns = String(pluginName).replace(/[^A-Za-z0-9_-]/g, '-')
+  const sub = suffix == null || suffix === '' ? '' : `-${String(suffix).replace(/[^A-Za-z0-9_-]/g, '-')}`
+  return `plugin-${ns}${sub}`.slice(0, 48)
+}
+
+/** 插件声明的 group 名 → 命名空间内 id(default/插件名 → 插件主分组) */
+export function resolvePluginGroupId(pluginName, declaredId) {
+  const raw = String(declaredId ?? '').trim()
+  if (!raw || raw === 'default' || raw === String(pluginName)) return pluginGroupIdOf(pluginName)
+  if (GROUP_ID_RE.test(raw)) return pluginGroupIdOf(pluginName, raw)
+  return pluginGroupIdOf(pluginName)
+}
+
+/**
+ * 校验并规范化「插件配置分组」声明。
+ * 声明:{ id?, label, labelKey?, description?, order?, collapsed?, collapsible?, icon? }
+ * 分组 id 强制收敛进 `plugin-<name>[-<suffix>]` 命名空间。
+ * @returns {{ groups: object[], errors: string[] }}
+ */
+export function validatePluginGroups(pluginName, defs) {
+  const groups = []
+  const errors = []
+  const list = Array.isArray(defs) ? defs : []
+  list.forEach((g, i) => {
+    const tag = `plugin ${pluginName} 分组#${i}`
+    if (!g || typeof g !== 'object') {
+      errors.push(`${tag}: 不是对象`)
+      return
+    }
+    const label = String(g.label ?? g.labelKey ?? '').trim()
+    if (!label) {
+      errors.push(`${tag}: label 缺失`)
+      return
+    }
+    const id = resolvePluginGroupId(pluginName, g.id)
+    const group = {
+      id,
+      label,
+      description: String(g.description ?? ''),
+      order: Number.isFinite(Number(g.order)) ? Number(g.order) : 500,
+      collapsed: g.collapsed === true,
+      collapsible: g.collapsible !== false,
+      icon: g.icon ? String(g.icon) : '',
+      source: 'plugin',
+      plugin: pluginName,
+    }
+    if (g.labelKey) group.labelKey = String(g.labelKey)
+    groups.push(group)
+  })
+  return { groups, errors }
+}
 
 /**
  * 校验并规范化插件设置声明(宿主装载期调用)。
- * 声明:{ key, type: 'string'|'number'|'boolean'|'select', default, label?, labelKey?,
+ * 声明:{ key, type: 'string'|'number'|'boolean'|'select', default, group?, label?, labelKey?,
  *         description?, min?, max?, options? }
  * 规范化为平台设置描述符:key 强制命名空间 `plugins.<plugin>.<key>`(与全局 schema 键
  * 同一编址,进 SystemConfigService 后即可被前端设置页渲染、PATCH 校验、热生效)。
+ * 分组:group 缺省时落入本插件专属分组 `plugin-<name>` —— 每个插件的配置天然独立成区,
+ * 不与其他插件混在一个「plugins」大分组里。显式给 group 时收敛进本插件命名空间。
  * 校验失败的条目跳过并返回 errors(宿主告警,不阻断装载)。
  */
-export function validatePluginSettings(pluginName, defs) {
+export function validatePluginSettings(pluginName, defs, { defaultGroup } = {}) {
   const out = []
   const errors = []
   for (const s of (Array.isArray(defs) ? defs : [])) {
@@ -256,7 +357,7 @@ export function validatePluginSettings(pluginName, defs) {
     }
     const desc = {
       key: `plugins.${pluginName}.${s.key}`,
-      group: 'plugins',
+      group: s.group ? resolvePluginGroupId(pluginName, s.group) : (defaultGroup ?? pluginGroupIdOf(pluginName)),
       type: s.type,
       label: String(s.label ?? s.key),
       description: String(s.description ?? ''),

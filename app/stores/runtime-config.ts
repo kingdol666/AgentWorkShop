@@ -26,8 +26,26 @@ export interface SettingsDescriptor {
   options?: string[]
 }
 
+/** 配置分组(服务端权威;前端只按序渲染分区,不自行猜分组) */
+export interface ConfigGroup {
+  id: string
+  label: string
+  labelKey?: string
+  description: string
+  order: number
+  /** 服务端默认折叠态(用户本地展开偏好优先,见设置页 aw.settings.groups) */
+  collapsed: boolean
+  collapsible: boolean
+  icon: string
+  source: 'builtin' | 'user' | 'plugin'
+  plugin?: string
+  /** 组内字段数(服务端实时统计) */
+  fieldCount?: number
+}
+
 interface Snapshot {
   descriptors: SettingsDescriptor[]
+  groups?: ConfigGroup[]
   effective: Record<string, unknown>
   overrides: Record<string, unknown>
   sources: Record<string, string>
@@ -45,6 +63,8 @@ interface SettingsEvent {
 
 export const useRuntimeConfigStore = defineStore('runtime-config', () => {
   const descriptors = ref<SettingsDescriptor[]>([])
+  /** 服务端下发的有序分组(唯一渲染权威);为空时退化为「按描述符出现顺序就地分组」 */
+  const groupsRaw = ref<ConfigGroup[]>([])
   const effective = ref<Record<string, unknown>>({})
   const overrides = ref<Record<string, unknown>>({})
   const sources = ref<Record<string, string>>({})
@@ -53,16 +73,58 @@ export const useRuntimeConfigStore = defineStore('runtime-config', () => {
   const loading = ref(false)
   const lastEvent = ref<SettingsEvent | null>(null)
 
-  // 分组后的设置项（computed：按 schema.json group 保持声明顺序）
-  const groups = computed(() => {
-    const out: Array<{ group: string, items: SettingsDescriptor[] }> = []
+  /**
+   * 渲染用分组(后端驱动):
+   *  - 服务端给了 groups → 完全按它的顺序与元数据(标签/说明/折叠态)渲染;
+   *  - 没给(旧服务端) → 按描述符首次出现顺序就地分组,保证不丢字段。
+   * 两种情况下,描述符引用了分组列表里没有的 id 时自动补一个兜底分组。
+   */
+  const groups = computed<ConfigGroup[]>(() => {
+    const byId = new Map<string, ConfigGroup>()
+    for (const g of groupsRaw.value) byId.set(g.id, g)
+    const items = new Map<string, SettingsDescriptor[]>()
     for (const d of descriptors.value) {
-      const g = out.find(x => x.group === d.group)
-      if (g) g.items.push(d)
-      else out.push({ group: d.group, items: [d] })
+      const gid = d.group || '__ungrouped__'
+      const list = items.get(gid)
+      if (list) list.push(d)
+      else items.set(gid, [d])
     }
-    return out
+    if (!groupsRaw.value.length) {
+      return [...items.entries()].map(([id, list], i) => ({
+        id,
+        label: id,
+        description: '',
+        order: i * 10,
+        collapsed: false,
+        collapsible: true,
+        icon: '',
+        source: 'builtin' as const,
+        fieldCount: list.length,
+      }))
+    }
+    const out = groupsRaw.value.map(g => ({ ...g, fieldCount: g.fieldCount ?? items.get(g.id)?.length ?? 0 }))
+    const known = new Set(out.map(g => g.id))
+    for (const [id, list] of items) {
+      if (known.has(id)) continue
+      out.push({
+        id,
+        label: id === '__ungrouped__' ? '其他' : id,
+        description: '',
+        order: 9999,
+        collapsed: false,
+        collapsible: true,
+        icon: '',
+        source: 'builtin',
+        fieldCount: list.length,
+      })
+    }
+    return out.sort((a, b) => (a.order - b.order) || a.id.localeCompare(b.id))
   })
+
+  /** 某分组内的字段(保持描述符声明顺序) */
+  function fieldsOf(groupId: string): SettingsDescriptor[] {
+    return descriptors.value.filter(d => (d.group || '__ungrouped__') === groupId)
+  }
 
   function sourceOf(key: string): string {
     return sources.value[key] ?? 'config.yml'
@@ -91,11 +153,44 @@ export const useRuntimeConfigStore = defineStore('runtime-config', () => {
 
   function applySnapshot(snap: Snapshot): void {
     descriptors.value = snap.descriptors ?? []
+    groupsRaw.value = snap.groups ?? []
     effective.value = snap.effective ?? {}
     overrides.value = snap.overrides ?? {}
     sources.value = snap.sources ?? {}
     settingsPath.value = snap.settingsPath ?? ''
     loaded.value = true
+  }
+
+  /** 重新拉取分组(仅分组,不重拉描述符/值;分组 CRUD 后调用) */
+  async function fetchGroups(): Promise<ConfigGroup[]> {
+    const http = useHttp()
+    const env = await http.get<{ data: { groups: ConfigGroup[] } }>('/system/config-groups')
+    const res = ((env as { data?: { groups: ConfigGroup[] } }).data ?? (env as unknown as { groups: ConfigGroup[] }))
+    groupsRaw.value = res.groups ?? []
+    return groupsRaw.value
+  }
+
+  /** 新建分组(admin) */
+  async function createGroup(def: Partial<ConfigGroup> & { label: string }): Promise<ConfigGroup> {
+    const http = useHttp()
+    const env = await http.post<{ data: { group: ConfigGroup } }>('/system/config-groups', def)
+    const res = ((env as { data?: { group: ConfigGroup } }).data ?? (env as unknown as { group: ConfigGroup }))
+    await fetchGroups()
+    return res.group
+  }
+
+  /** 更新分组(admin;标题/说明/排序/默认折叠/图标) */
+  async function updateGroup(id: string, patchMap: Partial<ConfigGroup>): Promise<void> {
+    const http = useHttp()
+    await http.request({ method: 'PATCH', url: `/system/config-groups/${encodeURIComponent(id)}`, data: patchMap })
+    await fetchGroups()
+  }
+
+  /** 删除分组(admin;仅自建组) */
+  async function deleteGroup(id: string, reassignTo?: string): Promise<void> {
+    const http = useHttp()
+    await http.request({ method: 'DELETE', url: `/system/config-groups/${encodeURIComponent(id)}${reassignTo ? `?reassignTo=${encodeURIComponent(reassignTo)}` : ''}` })
+    await fetchGroups()
   }
 
   /**
@@ -182,6 +277,11 @@ export const useRuntimeConfigStore = defineStore('runtime-config', () => {
     if (ev.effective) effective.value = ev.effective
     if (ev.sources) sources.value = ev.sources
     if (ev.overrides) overrides.value = ev.overrides
+    // 分组结构变更(管理员 CRUD / 插件装载或卸载声明了分组)→ 重拉分组,
+    // 让其它已打开设置页的会话即时看到新分区/分区消失
+    if (Array.isArray(ev.changed) && ev.changed.includes('config-groups')) {
+      void fetchGroups().catch(() => { /* 拉取失败保持现状 */ })
+    }
   }
 
   function stopEvents(): void {
@@ -193,6 +293,7 @@ export const useRuntimeConfigStore = defineStore('runtime-config', () => {
 
   return {
     descriptors,
+    groupsRaw,
     effective,
     overrides,
     sources,
@@ -201,9 +302,14 @@ export const useRuntimeConfigStore = defineStore('runtime-config', () => {
     loading,
     lastEvent,
     groups,
+    fieldsOf,
     sourceOf,
     valueOf,
     fetchAll,
+    fetchGroups,
+    createGroup,
+    updateGroup,
+    deleteGroup,
     patch,
     resetAll,
     startEvents,

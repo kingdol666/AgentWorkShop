@@ -400,17 +400,41 @@ export default {
   description: '深度诊断桥接:导出 DAQ 时序快照 CSV,发起 industrial-deep-diagnostic 深度诊断并跟踪状态,完成后报告自动入知识库。',
   auth: 'user',
   client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
+  // 插件配置分组(声明式):连接 / 执行 / 自动化 三个独立分区
+  configGroups: [
+    { id: 'default', labelKey: 'plugin.diag-bridge.group.conn', label: '诊断服务连接', description: '后端地址与鉴权 Token', order: 420 },
+    { id: 'run', labelKey: 'plugin.diag-bridge.group.run', label: '诊断执行参数', description: 'diag_run 的引擎与预算', order: 430 },
+    { id: 'auto', labelKey: 'plugin.diag-bridge.group.auto', label: '自动诊断', description: '越限自动发起诊断(DAQ 采样事件驱动)', order: 440, collapsed: true },
+  ],
   // 插件设置声明(key 编址 plugins.diag-bridge.<key>;labelKey 解析 i18n.json)
   settings: [
-    { key: 'base_url', type: 'string', default: DEFAULT_BASE, labelKey: 'plugin.diag-bridge.settings.base_url', label: '诊断服务地址', description: 'industrial-deep-diagnostic 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
-    { key: 'token', type: 'string', default: '', labelKey: 'plugin.diag-bridge.settings.token', label: '诊断 API Token', description: '诊断服务开启鉴权时(v4 起默认强制)的 API Token(Authorization: Bearer);空=匿名;保存即热生效' },
-    { key: 'harness', type: 'string', default: '', labelKey: 'plugin.diag-bridge.settings.harness', label: '诊断引擎', description: 'diag_run 用的引擎 id(omp/claude/mock 等;空=取 kv/omp);无 Anthropic key 的机器请用 omp' },
-    { key: 'max_turns', type: 'number', default: 0, min: 0, max: 2000, labelKey: 'plugin.diag-bridge.settings.max_turns', label: '诊断最大轮数', description: 'diagnosis/start 的 maxTurns(0=取 kv/内置默认 220)' },
-    { key: 'max_minutes', type: 'number', default: 0, min: 0, max: 720, labelKey: 'plugin.diag-bridge.settings.max_minutes', label: '诊断超时(分钟)', description: 'diagnosis/start 的 timeoutMinutes(0=取 kv/内置默认 40)' },
-    { key: 'auto_enabled', type: 'boolean', default: false, labelKey: 'plugin.diag-bridge.settings.auto_enabled', label: '自动诊断', description: 'daq:sample 越限命中规则时自动发起深度诊断(每产线冷却 30 分钟)' },
-    { key: 'auto_rules', type: 'string', default: '', labelKey: 'plugin.diag-bridge.settings.auto_rules', label: '自动诊断规则', description: 'JSON: {"节点id":{"op":"gt|lt","value":数值}};命中即触发自动诊断(空=无规则)' },
+    { key: 'base_url', type: 'string', default: DEFAULT_BASE, group: 'default', labelKey: 'plugin.diag-bridge.settings.base_url', label: '诊断服务地址', description: 'industrial-deep-diagnostic 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
+    { key: 'token', type: 'string', default: '', group: 'default', labelKey: 'plugin.diag-bridge.settings.token', label: '诊断 API Token', description: '诊断服务开启鉴权时(v4 起默认强制)的 API Token(Authorization: Bearer);空=匿名;保存即热生效' },
+    { key: 'harness', type: 'string', default: '', group: 'run', labelKey: 'plugin.diag-bridge.settings.harness', label: '诊断引擎', description: 'diag_run 用的引擎 id(omp/claude/mock 等;空=取 kv/omp);无 Anthropic key 的机器请用 omp' },
+    { key: 'max_turns', type: 'number', default: 0, min: 0, max: 2000, group: 'run', labelKey: 'plugin.diag-bridge.settings.max_turns', label: '诊断最大轮数', description: 'diagnosis/start 的 maxTurns(0=取 kv/内置默认 220)' },
+    { key: 'max_minutes', type: 'number', default: 0, min: 0, max: 720, group: 'run', labelKey: 'plugin.diag-bridge.settings.max_minutes', label: '诊断超时(分钟)', description: 'diagnosis/start 的 timeoutMinutes(0=取 kv/内置默认 40)' },
+    { key: 'auto_enabled', type: 'boolean', default: false, group: 'auto', labelKey: 'plugin.diag-bridge.settings.auto_enabled', label: '自动诊断', description: 'daq:sample 越限命中规则时自动发起深度诊断(每产线冷却 30 分钟)' },
   ],
   setup(ctx) {
+    // 运行时追加分区与字段(ctx.config.defineGroup / defineField):
+    // 字段 key 与声明式完全等价(plugins.diag-bridge.auto_rules),已保存的值不丢;
+    // 这里演示「插件在 setup 里按条件调用平台 API 扩展自己的配置面」。
+    ctx.config.defineGroup({
+      id: 'rules',
+      labelKey: 'plugin.diag-bridge.group.rules',
+      label: '自动诊断规则',
+      description: 'JSON 规则;命中即触发自动诊断(仅 auto_enabled=true 时生效)',
+      order: 450,
+    })
+    ctx.config.defineField({
+      key: 'auto_rules',
+      type: 'string',
+      default: '',
+      group: 'rules',
+      labelKey: 'plugin.diag-bridge.settings.auto_rules',
+      label: '自动诊断规则',
+      description: 'JSON: {"节点id":{"op":"gt|lt","value":数值}};命中即触发自动诊断(空=无规则)',
+    })
     // 轮询器(15s)+ setup 重水化:恢复对 kv 中 running run 的跟踪(热重载安全)
     const sweep = () => sweepOnce(ctx).catch(err => ctx.logger.warn(`诊断轮询异常(继续): ${err?.message ?? err}`))
     ctx.timer.setInterval(sweep, 15000)
@@ -552,14 +576,42 @@ export default {
       for (const { meta } of runs) byStatus[meta?.status ?? 'unknown'] = (byStatus[meta?.status ?? 'unknown'] ?? 0) + 1
       const base = baseOf(ctx)
       let remote
+      let tokenState = { configured: Boolean(diagTokenOf(ctx)), accepted: null }
       if (base) {
         try {
-          // /api/health 响应无 success 字段,单独取(不套 jget 断言)
+          // 连通性:/api/health 是公开端点(无鉴权),只回答「服务在不在」。
           const res = await ctx.http.get(`${base}/api/health`, { timeoutMs: 5000 })
           const body = await res.json().catch(() => null)
           remote = res.ok && body
             ? { status: body.status ?? 'ok', activeRuns: body.checks?.activeRuns ?? null }
             : { status: `HTTP ${res.status}`, activeRuns: null }
+          // Token 有效性:/api/health 不校验鉴权,必须另打一个受保护端点,
+          // 否则 token 配错时健康面依旧 ok —— 配置错误完全不可见(实测踩过)。
+          if (tokenState.configured) {
+            try {
+              const auth = await ctx.http.get(`${base}/api/files/workspace`, {
+                timeoutMs: 5000,
+                headers: authHeadersOf(ctx),
+              })
+              if (auth.status === 401 || auth.status === 403) {
+                tokenState = { configured: true, accepted: false, hint: authHint(auth.status, 'Token 被上游拒绝') }
+                remote = { ...remote, auth: `HTTP ${auth.status}(鉴权被拒)`, hint: tokenState.hint }
+              }
+              else if (auth.ok) {
+                tokenState = { configured: true, accepted: true }
+                remote = { ...remote, auth: 'ok' }
+              }
+              else {
+                remote = { ...remote, auth: `HTTP ${auth.status}` }
+              }
+            }
+            catch (err) {
+              remote = { ...remote, auth: 'unreachable', authError: String(err?.message ?? err) }
+            }
+          }
+          else {
+            tokenState = { configured: false, accepted: null }
+          }
         }
         catch (err) {
           remote = { status: 'unreachable', error: String(err?.message ?? err) }
@@ -573,6 +625,8 @@ export default {
         base: base ?? String(ctx.kv.get('diag.base_url') || DEFAULT_BASE),
         harness: harnessOf(ctx),
         auth: diagTokenOf(ctx) ? 'bearer' : 'anonymous',
+        /** Token 配置态 + 实测是否被上游接受(401/403 → false;网络不通 → null) */
+        token: tokenState,
         remote,
         runs: { total: runs.length, byStatus },
       }

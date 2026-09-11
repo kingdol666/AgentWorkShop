@@ -30,6 +30,32 @@ import {
   setPath,
   type SettingsDescriptor,
 } from '@/shared/config/engine.mjs'
+import {
+  mergeGroups,
+  normalizeGroup,
+  readGroups,
+  saveGroups,
+  groupsPathFor,
+} from '@/shared/config/groups.mjs'
+
+/** 配置分组(设置页分区:后端下发元数据,前端只负责渲染) */
+export interface ConfigGroup {
+  id: string
+  label: string
+  labelKey?: string
+  description: string
+  /** 排序权重(小在前);内置分组按 schema 声明顺序 ×10 */
+  order: number
+  /** 前端默认折叠态(用户本地展开偏好优先) */
+  collapsed: boolean
+  collapsible: boolean
+  icon: string
+  source: 'builtin' | 'user' | 'plugin'
+  /** source=plugin 时的插件名 */
+  plugin?: string
+  /** 该分组下的字段数(只读,由服务端按当前描述符实时计算) */
+  fieldCount?: number
+}
 
 /* ---------- 描述符 key → runtimeConfig 字段映射 ----------
  * nuxt.config runtimeConfig 的结构：
@@ -57,6 +83,8 @@ const DAQ_PREFIX = 'daq.'
 
 export interface PublicSnapshot {
   descriptors: SettingsDescriptor[]
+  /** 有序分组(后端权威;前端据此渲染分区、顺序、折叠态) */
+  groups: ConfigGroup[]
   effective: Record<string, unknown>
   overrides: Record<string, unknown>
   sources: Record<string, 'config.yml' | 'runtime' | 'env'>
@@ -85,6 +113,12 @@ export class SystemConfigService {
   private descriptors: SettingsDescriptor[] = []
   /** 插件贡献的设置描述符(host 装载/热重载后注入;key 编址 plugins.<plugin>.<key>) */
   private pluginDescriptors: SettingsDescriptor[] = []
+  /** 插件声明的配置分组(host 装载/热重载后注入;卸载即摘除) */
+  private pluginGroups: ConfigGroup[] = []
+  /** 插件名 → 展示名(自动生成插件分组标题用) */
+  private pluginLabels = new Map<string, string>()
+  /** 管理员定制 + 自建分组的持久化副本 */
+  private userGroups: ConfigGroup[] = []
   /** key → 描述符(loadDescriptorMap 返回普通对象,非 Map;下标访问;含插件描述符) */
   private map: Record<string, SettingsDescriptor> = {}
   private overrides: Record<string, unknown> = {}
@@ -94,6 +128,7 @@ export class SystemConfigService {
   private listeners = new Set<Listener>()
   private configPath = ''
   private settingsPath = ''
+  private groupsPath = ''
   private watcher: ReturnType<typeof watch>[] = []
   private reloadTimer: NodeJS.Timeout | null = null
   private disposed = false
@@ -117,6 +152,8 @@ export class SystemConfigService {
     const rm = resolveRunMode({ cwd: root, packageRoot: process.env.AW_PACKAGE_ROOT, env: process.env })
     this.configPath = rm.configPath ?? this.configPath
     this.settingsPath = rm.settingsPath ?? this.settingsPath
+    // 分组注册表与 runtime-settings.json 同目录(同为运行时状态,随配置根走)
+    this.groupsPath = groupsPathFor(dirname(this.settingsPath))
     // 一次性收敛:遗留 <cwd>/data/runtime-settings.json 且目标不存在 → 迁移;两者并存 → 告警遗留被忽略
     try {
       const legacy = join(root, 'data', 'runtime-settings.json')
@@ -139,6 +176,7 @@ export class SystemConfigService {
   /** Nitro 启动时调用：加载覆盖 → 应用到 runtimeConfig → 挂文件监听 */
   init(): void {
     this.descriptors = loadDescriptors()
+    this.userGroups = readGroups(this.groupsPath)
     this.rebuildMap()
     this.envOverrides = envOverridesFromEnv(process.env, this.descriptors)
     this.reloadFromDisk()
@@ -153,17 +191,116 @@ export class SystemConfigService {
   }
 
   /**
-   * 插件宿主装载/热重载后注入插件设置描述符。
+   * 当前生效的有序分组(唯一渲染权威)。
+   * 每次读取都重新合并:描述符/插件声明/持久化定制三者任一变化即刻反映,无需缓存失效。
+   */
+  listGroups(): ConfigGroup[] {
+    const groups = mergeGroups({
+      descriptors: this.allDescriptors,
+      persisted: this.userGroups,
+      pluginGroups: this.pluginGroups,
+      pluginLabelById: this.pluginLabels,
+    }) as ConfigGroup[]
+    // fieldCount 实时统计(空分组前端可隐藏/提示)
+    const counts = new Map<string, number>()
+    for (const d of this.allDescriptors) {
+      const g = String(d.group ?? '')
+      if (g) counts.set(g, (counts.get(g) ?? 0) + 1)
+    }
+    return groups.map(g => ({ ...g, fieldCount: counts.get(g.id) ?? 0 }))
+  }
+
+  private persistUserGroups(): void {
+    // 只持久化「非插件」来源:插件分组的权威是插件声明,落盘会与卸载摘除打架
+    const toSave = this.userGroups.filter(g => g.source !== 'plugin')
+    try {
+      saveGroups(toSave, this.groupsPath)
+    }
+    catch (err) {
+      console.warn('[system-config] 分组注册表落盘失败(本次仅内存生效):', String(err?.message ?? err))
+    }
+  }
+
+  private broadcastGroups(): void {
+    this.broadcast({ type: 'config:reloaded', changed: ['config-groups'], ...this.eventTail() })
+  }
+
+  /** 创建分组(source=user;插件请走 setPluginDescriptors 的声明式通道) */
+  createGroup(def: Record<string, unknown>): ConfigGroup {
+    const n = normalizeGroup(def, { source: 'user', fallbackOrder: this.nextGroupOrder() })
+    if (!n.ok) throw new AppError(400, 'VALIDATION_ERROR', n.error)
+    if (this.listGroups().some(g => g.id === n.group.id)) {
+      throw new AppError(409, 'CONFLICT', `分组已存在: ${n.group.id}`)
+    }
+    this.userGroups = [...this.userGroups, n.group]
+    this.persistUserGroups()
+    this.broadcastGroups()
+    return n.group
+  }
+
+  /** 更新分组(内置组允许改标题/说明/排序/折叠;source 不可改) */
+  updateGroup(id: string, patch: Record<string, unknown>): ConfigGroup {
+    const existing = this.listGroups().find(g => g.id === id)
+    if (!existing) throw new AppError(404, 'NOT_FOUND', `分组不存在: ${id}`)
+    if (existing.source === 'plugin') {
+      throw new AppError(409, 'CONFLICT', `分组 ${id} 由插件「${existing.plugin ?? '?'}」声明,请在插件侧修改`)
+    }
+    const merged = { ...existing, ...patch, id }
+    const n = normalizeGroup(merged, { source: existing.source, fallbackOrder: existing.order })
+    if (!n.ok) throw new AppError(400, 'VALIDATION_ERROR', n.error)
+    const next = { ...n.group, source: existing.source }
+    const idx = this.userGroups.findIndex(g => g.id === id)
+    if (idx >= 0) this.userGroups = this.userGroups.map(g => (g.id === id ? next : g))
+    else this.userGroups = [...this.userGroups, next]
+    this.persistUserGroups()
+    this.broadcastGroups()
+    return next
+  }
+
+  /**
+   * 删除分组。仅允许删 user 组,且组内必须无字段(除非 reassignTo 指定迁往的分组)。
+   * @param reassignTo 把组内字段迁到该分组后再删(字段的 group 由描述符声明,不可运行时改,
+   *                   故这里只做「拒绝 + 提示」,不静默丢字段)
+   */
+  deleteGroup(id: string, reassignTo?: string): { removed: string, moved: number } {
+    const existing = this.listGroups().find(g => g.id === id)
+    if (!existing) throw new AppError(404, 'NOT_FOUND', `分组不存在: ${id}`)
+    if (existing.source !== 'user') {
+      throw new AppError(409, 'CONFLICT', `分组「${existing.label}」来源为 ${existing.source},不可删除`)
+    }
+    const owned = this.allDescriptors.filter(d => String(d.group) === id)
+    if (owned.length && !reassignTo) {
+      throw new AppError(409, 'CONFLICT', `分组「${existing.label}」仍有 ${owned.length} 个字段,请先移走或改用 reassignTo(字段的分组由描述符声明,运行时不可改写)`)
+    }
+    if (reassignTo && !this.listGroups().some(g => g.id === reassignTo)) {
+      throw new AppError(404, 'NOT_FOUND', `目标分组不存在: ${reassignTo}`)
+    }
+    this.userGroups = this.userGroups.filter(g => g.id !== id)
+    this.persistUserGroups()
+    this.broadcastGroups()
+    return { removed: id, moved: 0 }
+  }
+
+  /** 下一个可用排序权重(自建分组追加到末尾) */
+  private nextGroupOrder(): number {
+    const orders = this.userGroups.map(g => Number(g.order) || 0)
+    return (orders.length ? Math.max(...orders) : 900) + 10
+  }
+
+  /**
+   * 插件宿主装载/热重载后注入插件设置描述符 + 插件声明的配置分组。
    * 合并进 map/snapshot/effective 后,前端设置页自动渲染、PATCH 自动校验、
    * 保存即热生效(与全局设置同一条链路);并触发一次遗留键迁移(plugins.kb.* 等)。
    */
-  setPluginDescriptors(descs: SettingsDescriptor[]): void {
+  setPluginDescriptors(descs: SettingsDescriptor[], groups?: ConfigGroup[], labels?: Map<string, string>): void {
     this.pluginDescriptors = Array.isArray(descs) ? descs : []
+    if (Array.isArray(groups)) this.pluginGroups = groups
+    if (labels instanceof Map) this.pluginLabels = labels
     this.rebuildMap()
     if (!this.ready) return // init 尚未执行:init() 末尾会补跑迁移与重载
     const { changed } = this.migrateLegacyPluginKeys()
     const { changed: reloaded } = this.reloadFromDisk()
-    this.broadcast({ type: 'config:reloaded', changed: [...changed, ...reloaded, 'plugin-settings'], ...this.eventTail() })
+    this.broadcast({ type: 'config:reloaded', changed: [...changed, ...reloaded, 'plugin-settings', 'config-groups'], ...this.eventTail() })
   }
 
   /** 一次性迁移:0.7.28 前写死在 schema.json 的 plugins.kb / plugins.diag 键 → 插件命名空间键 */
@@ -328,12 +465,18 @@ export class SystemConfigService {
   snapshot(): PublicSnapshot {
     return {
       descriptors: this.allDescriptors,
+      groups: this.listGroups(),
       effective: { ...this.effective },
       overrides: { ...this.overrides },
       sources: { ...this.sources },
       settingsPath: this.settingsPath,
       configPath: this.configPath,
     }
+  }
+
+  /** 分组注册文件路径(设置页展示用) */
+  get groupRegistryPath(): string {
+    return this.groupsPath
   }
 
   /**

@@ -9,6 +9,12 @@
       "auto_enabled": "自动诊断",
       "auto_rules": "自动诊断规则"
     },
+    "group": {
+      "conn": "诊断服务连接",
+      "run": "诊断执行参数",
+      "auto": "自动诊断",
+      "rules": "自动诊断规则"
+    },
     "panel": {
       "title": "深度诊断(industrial-deep-diagnostic)",
       "runs": "诊断记录",
@@ -37,6 +43,12 @@
       "max_minutes": "Timeout (minutes)",
       "auto_enabled": "Auto diagnosis",
       "auto_rules": "Auto diagnosis rules"
+    },
+    "group": {
+      "conn": "Diagnosis service connection",
+      "run": "Diagnosis run parameters",
+      "auto": "Auto diagnosis",
+      "rules": "Auto diagnosis rules"
     },
     "panel": {
       "title": "Deep diagnosis (industrial-deep-diagnostic)",

@@ -17,7 +17,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, watch, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { HookBus, createPluginContext, createRouteTable, validatePluginModule, validatePluginSettings } from '@/sdk/index.mjs'
+import { HookBus, createPluginContext, createRouteTable, isPathInside, validatePluginModule, validatePluginGroups, validatePluginSettings } from '@/sdk/index.mjs'
 
 // 延迟解析的产线权限服务(esbuild/别名下避免 nitro 打包循环导入;失败降级为拒绝一切)
 let permissions = null
@@ -221,6 +221,7 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
     cwd,
     packageRoot,
     logger,
+    configRelayOff: null,
   }
   g.__awPluginHost = host
 
@@ -278,8 +279,33 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
 
   await loadAllPlugins(host, { config, settingsPath, paths })
   await syncPluginSettings()
+  relayConfigEvents(host)
   ensureStateWatcher(host)
   return host
+}
+
+/**
+ * 平台设置变更 → 转发到插件总线。
+ *
+ * SDK 的 `ctx.config.onChange(fn)` 订阅的是 `config:changed`,而该事件此前只广播给
+ * SystemConfigService 自己的 listeners —— 插件永远收不到,「配置变更即时生效」对插件
+ * 是空承诺(实测:改 base_url 后插件的出站守卫仍沿用装载期判定)。这里做一次桥接。
+ * 只在宿主初始化时挂一次(热重载不会重复订阅)。
+ */
+function relayConfigEvents(host) {
+  if (host.configRelayOff) return
+  void import('@/server/services/system-config')
+    .then(({ getSystemConfigService }) => {
+      host.configRelayOff = getSystemConfigService().subscribe((payload) => {
+        host.bus.emit('config:changed', {
+          type: payload.type,
+          changed: payload.changed ?? [],
+          effective: payload.effective,
+          sources: payload.sources,
+        })
+      })
+    })
+    .catch(err => host.logger.warn('设置变更转发到插件总线失败(插件收不到 config:changed):', err?.message ?? err))
 }
 
 /** 装载/重载全部插件(跳过 disabled;manifest 仍可见) */
@@ -298,12 +324,14 @@ async function loadAllPlugins(host, { config, paths }) {
 
   for (const { dir, scope } of entries) {
     const entry = join(dir, 'index.mjs')
+    // 提到 try 外:catch 回滚需要知道插件名(def 在 try 内声明时 catch 不可见)
+    let def = null
     try {
       // cache-busting:热重载时 ESM 按 URL 缓存,不带 query 永远拿到旧模块(插件改代码不生效)
       const mod = await import(`${pathToUrl(entry)}?t=${Date.now()}`)
       const check = validatePluginModule(mod, entry)
       if (!check.ok) throw new Error(check.error)
-      const def = check.def
+      def = check.def
 
       if (host.plugins.has(def.name)) throw new Error(`插件重名(后装载者跳过): ${def.name}`)
       if (disabled.has(def.name)) {
@@ -318,6 +346,7 @@ async function loadAllPlugins(host, { config, paths }) {
           clientPath: def.client ? resolve(dir, def.client) : null,
           i18nPath: pluginI18nPath(dir),
           settings: [],
+          groups: [],
           routes: [],
           enabled: false,
           error: null,
@@ -329,6 +358,8 @@ async function loadAllPlugins(host, { config, paths }) {
       // 插件设置声明 → 平台设置描述符(key 编址 plugins.<name>.<key>;校验失败仅告警跳过条目)
       const settingsCheck = validatePluginSettings(def.name, def.settings)
       for (const e of settingsCheck.errors) host.logger.warn(`[${def.name}] 设置声明已跳过: ${e}`)
+      // 插件配置分组声明(manifest.configGroups;setup 里还可经 ctx.config.defineGroup 动态增加)
+      const groupsCheck = validatePluginGroups(def.name, def.configGroups ?? [])
 
       const rec = {
         name: def.name,
@@ -341,10 +372,13 @@ async function loadAllPlugins(host, { config, paths }) {
         clientPath: def.client ? resolve(dir, def.client) : null,
         i18nPath: pluginI18nPath(dir),
         settings: settingsCheck.descriptors,
+        /** 本插件声明的配置分组(独占命名空间;卸载时随插件一起摘除) */
+        groups: groupsCheck.groups,
         routes: [],
         enabled: true,
         error: null,
       }
+      for (const e of groupsCheck.errors) host.logger.warn(`[${def.name}] 分组声明已跳过: ${e}`)
 
       const emitter = {
         registerRoute: (n, m, p, h) => {
@@ -389,6 +423,46 @@ async function loadAllPlugins(host, { config, paths }) {
           return fn
         },
         selfOrigin: () => selfOriginRef(host),
+        // 插件配置分组/字段注册面(SDK ctx.config.defineGroup / defineField):
+        // 插件可在 setup 里按条件增加自己的配置分区与字段,登记后立即回流设置页。
+        registerGroup: (g) => {
+          const chk = validatePluginGroups(def.name, [g])
+          // validatePluginGroups 返回 { groups, errors }(无 ok 字段)——只认 groups 长度
+          if (!chk.groups.length) {
+            for (const e of chk.errors) host.logger.warn(`[${def.name}] ctx.config.defineGroup 失败: ${e}`)
+            return null
+          }
+          const group = chk.groups[0]
+          rec.groups = [...rec.groups.filter(x => x.id !== group.id), group]
+          void syncPluginSettings()
+          return group
+        },
+        registerField: (decl) => {
+          const chk = validatePluginSettings(def.name, [decl])
+          if (!chk.descriptors.length) {
+            for (const e of chk.errors) host.logger.warn(`[${def.name}] ctx.config.defineField 失败: ${e}`)
+            return null
+          }
+          const d = chk.descriptors[0]
+          rec.settings = [...rec.settings.filter(x => x.key !== d.key), d]
+          void syncPluginSettings()
+          return d
+        },
+        removeGroup: (id) => {
+          const before = rec.groups.length
+          rec.groups = rec.groups.filter(x => x.id !== String(id))
+          if (rec.groups.length !== before) void syncPluginSettings()
+          return rec.groups.length !== before
+        },
+        removeField: (key) => {
+          const full = `plugins.${def.name}.${String(key)}`
+          const before = rec.settings.length
+          rec.settings = rec.settings.filter(x => x.key !== full)
+          if (rec.settings.length !== before) void syncPluginSettings()
+          return rec.settings.length !== before
+        },
+        groups: () => rec.groups,
+        fields: () => rec.settings,
         // 产线权限拓展面(SDK ctx.permissions):插件可查询/管理用户×产线授权
         permissions: {
           lineMode: (user, lineId) => permissions.lineMode(user, lineId),
@@ -479,15 +553,19 @@ async function loadAllPlugins(host, { config, paths }) {
         provide: (name, get) => servicesExt.provide(def.name, name, get),
       }
 
+      // 先 setup 再注册路由:反过来会在 setup 抛错时留下"路由活着、host.plugins 无记录"的幽灵路由,
+      // 而 doReload 的清退以 host.plugins.keys() 为准 → 该插件的 omp 工具与路由永久泄漏(不可回收)。
+      await def.setup?.(ctx)
       for (const r of (Array.isArray(def.routes) ? def.routes : [])) {
         emitter.registerRoute(def.name, r.method ?? 'GET', r.path, r.handler)
       }
-      await def.setup?.(ctx)
 
       host.plugins.set(def.name, rec)
       host.logger.info(`✔ 已装载 [${scope}] ${def.name}@${rec.version}${rec.clientPath ? ' (+client)' : ''}`)
     }
     catch (err) {
+      // setup/注册失败:逐项回滚已产生的半注册状态,保证"要么完整装载,要么完全无痕"
+      rollbackPartialLoad(host, def?.name)
       host.failures.push({ source: entry, error: err?.message ?? String(err) })
       host.logger.error(`装载失败 ${entry}:`, err?.message ?? err)
     }
@@ -498,20 +576,68 @@ async function loadAllPlugins(host, { config, paths }) {
   host.logger.info(`装载完成: ${host.plugins.size} 个(含停用)/ ${host.failures.length} 失败 / 活跃路由 ${host.routes.size} 条`)
 }
 
+/**
+ * 回滚一次失败的插件装载 —— 保证「要么完整装载,要么完全无痕」。
+ * 覆盖 setup 抛错 / 路由注册抛错两条路径:路由、disposables、hookOffs、omp 待注入工具、服务注册
+ * 全部按插件名回收,避免出现「路由活着但 host.plugins 无记录」的幽灵态
+ * (doReload 以 host.plugins.keys() 为清退依据,漏掉即永久泄漏)。
+ */
+function rollbackPartialLoad(host, name) {
+  if (!name) return
+  try {
+    const removed = host.routes.unregisterPlugin?.(name) ?? 0
+    const disposables = host.disposables.get(name) ?? []
+    for (const d of disposables.splice(0)) {
+      try {
+        d?.()
+      }
+      catch (e) {
+        host.logger.warn(`[插件回滚] dispose 失败 ${name}:`, e?.message ?? e)
+      }
+    }
+    host.disposables.delete(name)
+    for (const off of (host.hookOffs.get(name) ?? []).splice(0)) {
+      try {
+        off?.()
+      }
+      catch { /* 解绑失败不影响回滚 */ }
+    }
+    host.hookOffs.delete(name)
+    // omp 桥:把已入 pending 未注入的工具摘掉(bridge 未挂载时为空操作)
+    const bridge = globalThis.__ompPluginToolsBridge
+    if (bridge?.pending) {
+      bridge.pending = bridge.pending.filter(p => p.plugin !== name)
+    }
+    host.plugins.delete(name)
+    // 设置的描述符与配置分组都挂在 rec 上 → 随 rec 一并消失;重算一次让设置页立即收敛
+    void syncPluginSettings()
+    if (removed > 0) host.logger.warn(`[插件回滚] ${name}:已卸下 ${removed} 条半注册路由`)
+  }
+  catch (e) {
+    host.logger.error(`[插件回滚] ${name} 回滚自身异常:`, e?.message ?? e)
+  }
+}
+
 function selfOriginRef(host) {
   return host.selfOrigin()
 }
 
-/** 插件设置声明 → SystemConfigService(合并进平台描述符:前端设置页渲染 + PATCH 校验 + 热生效) */
+/** 插件设置声明 + 配置分组声明 → SystemConfigService
+ *  (合并进平台描述符:前端设置页渲染 + PATCH 校验 + 热生效;分组供设置页分区渲染) */
 async function syncPluginSettings() {
   try {
     const { getSystemConfigService } = await import('@/server/services/system-config')
     const host = getPluginHost()
     const descs = []
+    const groups = []
+    const labels = new Map()
     for (const rec of host?.plugins.values() ?? []) {
-      if (rec.enabled !== false) descs.push(...(rec.settings ?? []))
+      if (rec.enabled === false) continue
+      labels.set(rec.name, rec.label ?? rec.name)
+      descs.push(...(rec.settings ?? []))
+      groups.push(...(rec.groups ?? []))
     }
-    getSystemConfigService().setPluginDescriptors(descs)
+    getSystemConfigService().setPluginDescriptors(descs, groups, labels)
   }
   catch (err) {
     hostLoggerFallback()?.warn('插件设置同步失败(设置页将不渲染插件配置):', err?.message)
@@ -682,7 +808,8 @@ export function readClientScript(name) {
   const rec = host?.plugins.get(name)
   if (!host || !rec) return { status: 404 }
   if (!rec.clientPath || !existsSync(rec.clientPath)) return { status: 404 }
-  if (!resolve(rec.clientPath).startsWith(resolve(rec.dir))) return { status: 400 }
+  // 必须用 isPathInside:startsWith 会把兄弟同前缀目录(…/foo-evil)判为在内,可被 ../ 逃逸
+  if (!isPathInside(rec.dir, rec.clientPath)) return { status: 400 }
   return { status: 200, code: readFileSync(rec.clientPath, 'utf8'), contentType: 'text/javascript; charset=utf-8' }
 }
 
@@ -700,6 +827,12 @@ export function pluginManifest() {
     hasClient: Boolean(r.clientPath),
     hasI18n: Boolean(r.i18nPath),
     settingsCount: Array.isArray(r.settings) ? r.settings.length : 0,
+    /** 本插件声明的配置分组(设置页独立分区;id 已收敛进 plugin-<name> 命名空间) */
+    configGroups: (Array.isArray(r.groups) ? r.groups : []).map(g => ({
+      id: g.id,
+      label: g.label,
+      fieldCount: (r.settings ?? []).filter(d => d.group === g.id).length,
+    })),
     routes: host.routes.byPlugin(r.name),
     error: r.error,
   }))
