@@ -98,12 +98,13 @@ const baseTooltip = computed(() => ({
 }))
 
 // ---------- 图 1:实时工况趋势(多通道量程归一化) ----------
+/** 趋势是否真有数值可画(采样被活动批次门控:未开跑时缓冲里只有 null 占位) */
+const trendHasData = computed(() =>
+  trendNodes.value.length > 0
+  && trendBuf.value.some(p => trendNodes.value.some(n => typeof p.m[n.id] === 'number')))
+
 const trendOpt = computed<EChartsOption>(() => ({
   backgroundColor: 'transparent',
-  // 冷启动空窗:首帧前不给「开天窗」观感,给一行等待提示
-  graphic: trendBuf.value.length === 0
-    ? [{ type: 'text', left: 'center', top: 'middle', style: { text: t('home.trendWaiting'), fill: dimC.value, fontSize: 12 } }]
-    : undefined,
   tooltip: { trigger: 'axis', ...baseTooltip.value },
   legend: {
     top: 0, right: 4, icon: 'roundRect', itemWidth: 10, itemHeight: 4,
@@ -447,10 +448,27 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
           </span>
         </header>
         <ClientOnly>
+          <!-- 空态判据必须看「有没有**数值**」,而不是「缓冲里有没有点」:
+               采样由活动批次门控(无开跑产线时不采样),此时缓冲里可能有携带 null 的
+               占位点 —— 旧写法据此判为"有数据",于是跳过 graphic 提示,
+               渲染出一张只有坐标系+图例、X 轴回落到 00:00~24:00 的空图。
+               那比一句明确的空态更难理解(实测被评审直接判为"趋势面全是空的")。 -->
           <AwChart
+            v-if="trendHasData"
             :option="trendOpt"
             class="chart h280"
           />
+          <div
+            v-else
+            class="aw-empty chart h280"
+          >
+            <p class="aw-empty-title">
+              {{ t('home.trendWaiting') }}
+            </p>
+            <p class="aw-empty-sub">
+              {{ t('home.trendNeedRun') }}
+            </p>
+          </div>
         </ClientOnly>
       </section>
       <section class="aw-bench span4">
@@ -735,7 +753,7 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
   overflow: hidden;
   font-size: 11px;
   letter-spacing: 0.02em;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -835,7 +853,7 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
   font-size: 11.5px;
   color: color-mix(in srgb, var(--lc) 70%, var(--ink));
 }
-.lc-run small { font-size: 10px; color: var(--ink-fainter); }
+.lc-run small { font-size: 10px; color: var(--ink-faint); }
 .lc-meta {
   display: flex;
   gap: 14px;

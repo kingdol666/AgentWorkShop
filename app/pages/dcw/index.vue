@@ -774,7 +774,6 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   border: 1px solid var(--glass-line);
   border-radius: 999px;
   backdrop-filter: var(--frost-blur);
-  -webkit-backdrop-filter: var(--frost-blur);
 }
 .warn-badge { color: var(--tone-warning-dot); background: var(--tone-warning-bg); border-color: color-mix(in srgb, var(--tone-warning-dot) 32%, transparent); }
 .tpl-btn { color: var(--tone-info-dot); background: var(--tone-info-bg); border-color: color-mix(in srgb, var(--tone-info-dot) 34%, transparent); cursor: pointer; }
@@ -821,7 +820,6 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   text-align: left;
   background: var(--surface-glass);
   backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
   box-shadow: var(--glass-edge);
@@ -871,7 +869,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   flex: none;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .lc-state.on { color: var(--tone-success-dot); }
 /* 头部图标钮:编辑/删除,悬停语义色染色 */
@@ -884,7 +882,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   height: 22px;
   padding: 0;
   font-size: 13px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   background: transparent;
   border: 0;
   border-radius: 6px;
@@ -902,7 +900,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 .lc-act.danger:hover { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
 .lc-act:active { transform: scale(0.9); }
 .lc-run { font-size: 10.5px; color: var(--tone-info-dot); }
-.lc-run.dim { color: var(--ink-fainter); }
+.lc-run.dim { color: var(--ink-faint); }
 /* 无描述时的兜底提示进一步退后(77 张卡同文反复出现即是噪音;不压到 0.55 以下,保浅色可读) */
 .lc-run.dim.ph { opacity: 0.75; }
 .lc-stats {
@@ -944,11 +942,10 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   border: 1px dashed var(--line-strong);
   box-shadow: none;
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   cursor: pointer;
 }
 .new-card:hover { color: var(--tone-success-dot); border-color: var(--tone-success-dot); transform: none; }
-.new-card small { font-weight: 400; font-size: 10px; color: var(--ink-fainter); }
+.new-card small { font-weight: 400; font-size: 10px; color: var(--ink-faint); }
 
 .banner { padding: 8px 12px; font-size: 12px; border-radius: 10px; }
 .banner.bad { color: var(--tone-danger-dot); background: var(--tone-danger-bg); border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 30%, transparent); }
@@ -980,7 +977,6 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   overflow: auto;
   background: var(--surface-glass-strong);
   backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
   box-shadow: var(--glass-edge), var(--shadow-float);
@@ -1011,8 +1007,8 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 .color-dot.on { border-color: var(--ink); box-shadow: 0 0 10px currentColor; }
 .m-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .m-err { font-size: 11px; color: var(--tone-danger-dot); }
-.dim { color: var(--ink-fainter); }
-.sec-label { font-size: 10px; font-weight: 700; color: var(--ink-fainter); letter-spacing: 0.16em; }
+.dim { color: var(--ink-faint); }
+.sec-label { font-size: 10px; font-weight: 700; color: var(--ink-faint); letter-spacing: 0.16em; }
 /* 删除确认:摘要行 + 级联勾选 */
 .del-summary { font-size: 12px; line-height: 1.6; color: var(--ink-soft); }
 .del-purge { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink); cursor: pointer; }
@@ -1043,7 +1039,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   border: 1px solid color-mix(in srgb, var(--tone-info-dot) 40%, transparent);
   border-radius: 5px;
 }
-.tpl-tag.builtin { color: var(--ink-fainter); border-color: var(--line-strong); }
+.tpl-tag.builtin { color: var(--ink-faint); border-color: var(--line-strong); }
 .tpl-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tpl-sem { flex: 1; color: var(--ink-faint); }
 textarea.inp { height: auto; padding: 6px 9px; font-size: 11.5px; resize: vertical; }

@@ -1252,7 +1252,7 @@ const tabs = computed(() => [
 .rt-group-fields {
   flex: none;
   font-size: 10.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 .rt-group-desc {
@@ -1286,7 +1286,7 @@ const tabs = computed(() => [
 .rt-group-empty {
   margin: 10px 0 4px;
   font-size: 12px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 .rt-group-title {

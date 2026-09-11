@@ -72,11 +72,6 @@ export class DaqNodeRuntime {
     this.lastIngestAt = 0
   }
 
-  /** 仅重置下发游标(全局下发间隔变更时,让新缺省立刻可观测) */
-  republish(): void {
-    this.lastPublishAt = 0
-  }
-
   /**
    * 是否已到采样时点(网关调度用)。
    * 网关每拍派发额度有限,先判到期再占用额度:未到期的节点零成本跳过,

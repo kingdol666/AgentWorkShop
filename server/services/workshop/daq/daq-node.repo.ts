@@ -74,16 +74,6 @@ class DaqNodeRepo {
       log.error('[daq] 快照落盘失败:', err)
     }
   }
-
-  /** 读数落盘防抖(采样循环每帧调用;5s 合并一次磁盘写) */
-  flushDebounced(ms = 5000): void {
-    if (this.flushTimer) return
-    this.flushTimer = setTimeout(() => {
-      this.flushTimer = null
-      this.flushNow()
-    }, ms)
-    this.flushTimer.unref?.()
-  }
 }
 
 // 单例挂 globalThis(与 dcw-recipe.repo 同型):dev HMR 重建模块时保住实例,

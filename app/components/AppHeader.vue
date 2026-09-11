@@ -435,15 +435,16 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-/* 顶栏玻璃:透出极光画布;下缘发丝线 + 微暗渐变保对比 */
+/* 顶栏玻璃:透出极光画布;下缘发丝线 + 微暗渐变保对比
+ * v4:与侧栏同属壳层材质(同一观察窗),底部内阴影替代原先的顶部渐变 —— 玻璃的"厚度"来自遮蔽而非压暗 */
 .app-header-glass {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: linear-gradient(180deg, var(--frost-bg), color-mix(in srgb, var(--frost-bg) 72%, transparent));
-  backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
+  background: var(--mat-chrome-bg);
+  backdrop-filter: var(--vibrancy-chrome);
   border-bottom: 1px solid var(--glass-line);
+  box-shadow: var(--glass-specular);
 }
 
 .header-left,

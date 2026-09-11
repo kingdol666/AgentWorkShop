@@ -5476,7 +5476,6 @@ onBeforeUnmount(() => {
   border-radius: var(--hud-r-md);
   padding: 8px 12px;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 .vp-title h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
 .vp-id {
@@ -5501,7 +5500,6 @@ onBeforeUnmount(() => {
   background: rgba(13, 20, 32, 0.85);
   border: 1px solid #223050;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   font-size: 12px;
   font-weight: 600;
   transition: color 0.15s var(--hud-ease), border-color 0.15s var(--hud-ease), background 0.15s var(--hud-ease);
@@ -5535,7 +5533,6 @@ onBeforeUnmount(() => {
   border-radius: var(--hud-r-sm);
   padding: 5px 8px;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   font-size: 11.5px;
   color: var(--hud-dim);
 }
@@ -5569,7 +5566,6 @@ onBeforeUnmount(() => {
   padding: 9px 12px 8px;
   box-shadow: var(--hud-shadow);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   transition: opacity 0.22s var(--hud-ease), transform 0.22s var(--hud-ease), border-color 0.15s var(--hud-ease);
 }
 /* 越近越亮:相机进入阈值半径后淡入上浮(数据只属于走近的人) */
@@ -5640,7 +5636,6 @@ onBeforeUnmount(() => {
   border: 1px solid #1e2c46;
   border-radius: var(--hud-r-md);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   /* 玻璃光泽:上缘内高光 + 悬浮投影,与 .panel 同族 */
   box-shadow:
     inset 0 1px 0 rgba(143, 176, 220, 0.08),
@@ -6328,7 +6323,6 @@ onBeforeUnmount(() => {
   border-radius: var(--hud-r-lg);
   box-shadow: var(--hud-shadow);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   pointer-events: auto;
 }
 .bp-title { display: flex; gap: 8px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--hud-line); cursor: grab; touch-action: none; }
@@ -6435,7 +6429,6 @@ onBeforeUnmount(() => {
   border-radius: var(--hud-r-md);
   box-shadow: var(--hud-shadow);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   max-width: 70%;
   overflow: hidden;
   text-overflow: ellipsis;

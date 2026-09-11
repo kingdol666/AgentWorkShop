@@ -474,7 +474,7 @@ useHead({ title: () => t('titles.workshop') })
 }
 
 .sub { margin: 0 0 14px; font-size: 12.5px; color: var(--ink-faint); }
-.hint { margin: 8px 0 0; font-size: 11px; color: var(--ink-fainter); }
+.hint { margin: 8px 0 0; font-size: 11px; color: var(--ink-faint); }
 
 .head-acts {
   display: flex;
@@ -584,7 +584,7 @@ useHead({ title: () => t('titles.workshop') })
   background: var(--hover-tint);
   border-color: var(--ink-fainter);
 }
-.ws-empty-ico { font-size: 34px; color: var(--ink-fainter); }
+.ws-empty-ico { font-size: 34px; color: var(--ink-faint); }
 .aw-empty-title { font-size: 16px; font-weight: 600; color: var(--ink); }
 .aw-empty-sub { max-width: 420px; font-size: 12.5px; line-height: 1.7; color: var(--ink-faint); }
 .ws-empty-cta { margin-top: 6px; pointer-events: none; }

@@ -72,6 +72,7 @@ export default {
     },
     trendY: 'Range %',
     trendWaiting: 'Waiting for live data…',
+    trendNeedRun: 'Sampling is gated on an active batch run. Start a line run under Line Operations to see live trends here.',
     runNow: 'Running',
     standBy: 'Standby',
     pipelineSeries: { produced: 'Produced', consumed: 'Consumed', stored: 'Stored' },

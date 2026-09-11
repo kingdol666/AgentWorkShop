@@ -72,6 +72,7 @@ export default {
     },
     trendY: '量程占比 %',
     trendWaiting: '正在等待实时数据流…',
+    trendNeedRun: '数采由活动批次门控:产线未开跑时不采样。在「产线运营」开跑后,此处显示实时趋势。',
     runNow: '运行中',
     standBy: '待机',
     pipelineSeries: { produced: '已发布', consumed: '已消费', stored: '已入库' },

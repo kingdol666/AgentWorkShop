@@ -2499,7 +2499,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .runs { margin-top: 6px; }
 
 .modal-mask { position: fixed; z-index: 50; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--scrim); backdrop-filter: blur(2px); }
-.modal { width: 680px; max-width: 94vw; max-height: 88vh; overflow-y: auto; padding: 22px 24px; background: var(--surface-glass-strong); backdrop-filter: var(--aurora-blur); -webkit-backdrop-filter: var(--aurora-blur); border: 1px solid var(--glass-line); border-radius: var(--radius-panel); box-shadow: var(--glass-edge), var(--shadow-float); }
+.modal { width: 680px; max-width: 94vw; max-height: 88vh; overflow-y: auto; padding: 22px 24px; background: var(--surface-glass-strong); backdrop-filter: var(--aurora-blur); border: 1px solid var(--glass-line); border-radius: var(--radius-panel); box-shadow: var(--glass-edge), var(--shadow-float); }
 .m-title { margin: 0 0 14px; font-size: 17px; }
 .seg-row { display: flex; gap: 8px; margin-bottom: 14px; }
 .seg { flex: 1; padding: 8px 0; font-size: 13px; cursor: pointer; color: var(--ink-faint); background: var(--paper-deep); border: 1px solid var(--line); border-radius: var(--radius-chip); }
@@ -2511,7 +2511,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .param-del { margin-bottom: 2px; }
 .f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }
 .f em { margin-left: 3px; font-style: normal; }
-.hint { font-size: 10px; color: var(--ink-fainter); }
+.hint { font-size: 10px; color: var(--ink-faint); }
 .test-row { display: flex; gap: 10px; align-items: center; margin: 6px 0 4px; }
 .test-result { font-family: var(--font-mono); font-size: 11px; }
 .test-result.good { color: var(--tone-success-dot); }

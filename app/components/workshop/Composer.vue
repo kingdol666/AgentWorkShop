@@ -549,7 +549,7 @@ const placeholder = computed(() =>
 .chip-hint {
   margin-left: auto;
   padding-left: 8px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 /* 可达性提示 chip:ok 绿 / info 蓝 / warn 琥珀 —— 状态不只靠颜色(附文字) */
@@ -587,7 +587,7 @@ const placeholder = computed(() =>
   border: 0;
   outline: none;
 }
-.composer-input::placeholder { color: var(--ink-fainter); }
+.composer-input::placeholder { color: var(--ink-faint); }
 
 .composer-bar {
   display: flex;
@@ -700,7 +700,7 @@ const placeholder = computed(() =>
 .mention-role {
   flex: none;
   font-size: 10.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -711,7 +711,7 @@ const placeholder = computed(() =>
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 /* 成员状态点:busy = 暖橙脉冲,idle = 静灰 */

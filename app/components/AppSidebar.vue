@@ -164,10 +164,11 @@ const go = (key: string) => {
   top: 0;
   height: 100vh;
   overflow: hidden auto;
-  background: var(--frost-bg);
-  backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
+  /* v4 壳层材质:最透的一档 + 强振动(能看见背后的极光在缓慢流动) */
+  background: var(--mat-chrome-bg);
+  backdrop-filter: var(--vibrancy-chrome);
   border-right: 1px solid var(--glass-line);
+  box-shadow: var(--glass-specular);
   z-index: 20;
 }
 
@@ -374,7 +375,7 @@ const go = (key: string) => {
 }
 
 .footer-line .sep {
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 .slide-fade-enter-active,

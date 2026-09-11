@@ -273,9 +273,21 @@ async function removeNodeDevice(deviceId: string): Promise<void> {
           :y2="ctx.limMax"
         />
         <polyline
+          v-if="ctx.trend"
           class="trace"
           :class="{ alarm: n.state === 'alarm' || ctx.alarm }"
           :points="ctx.trend"
+        />
+        <!-- 无足够样本(<2 个有效值)时给一道基线,而不是留一条 points="" 的空 polyline:
+             空 polyline 不渲染任何东西,单元格看上去是"坏了"而不是"还没有数据"。
+             采样由活动批次门控,未开跑时这一列**本来就应该**是空的 —— 需要看得出是"待数据"。 -->
+        <line
+          v-else
+          class="trace-idle"
+          x1="0"
+          :y1="TREND_H / 2"
+          x2="120"
+          :y2="TREND_H / 2"
         />
       </svg>
     </td>
@@ -421,6 +433,13 @@ async function removeNodeDevice(deviceId: string): Promise<void> {
   stroke-width: 1.4;
 }
 .trend .trace.alarm { stroke: var(--tone-danger-dot); }
+/* 待数据基线:一条极淡的中线(仅装饰 → 用 ink-fainter;非文字无对比度要求) */
+.trend .trace-idle {
+  stroke: var(--ink-fainter);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  opacity: 0.55;
+}
 .trend .lim {
   stroke: color-mix(in srgb, var(--tone-warning-dot) 62%, transparent);
   stroke-width: 1;
@@ -500,7 +519,7 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
   align-items: center;
   padding: 2px 9px;
   font-size: 10.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
 }

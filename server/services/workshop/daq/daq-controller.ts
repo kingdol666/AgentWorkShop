@@ -393,7 +393,7 @@ class DaqController {
     const lineRun = getDaqHostPorts()?.lineRun.activeRun(node.lineId) ?? null
     if (lineRun) getDaqHostPorts()?.lineRun.bumpTaggedSamples(node.lineId)
     const metrics = f.metrics ?? {}
-    this.frameBuffer.push({
+    this.pushFrame({
       nodeId: node.id,
       tsMs,
       kind: f.kind,
@@ -410,8 +410,7 @@ class DaqController {
       metrics,
     })
     if (this.frameBuffer.length > FRAME_BUFFER_CAP) {
-      this.frameBuffer.splice(0, this.frameBuffer.length - FRAME_BUFFER_CAP)
-      this.tsdbDropped += 1
+      if (this.evictFrames(FRAME_BUFFER_CAP) > 0) this.tsdbDropped += 1
     }
     this.scheduleTsdbFlush()
     // 指标阈值告警(模板 metrics 规则;alarm 硬限边沿 → 既有告警链路)
@@ -511,14 +510,6 @@ class DaqController {
   markLineOffline(lineId: string): void {
     for (const n of this.repo.all()) {
       if (n.enabled && n.lineId === lineId) n.state = 'offline'
-    }
-    this.emitController()
-  }
-
-  /** 网关停止:全部节点置 offline */
-  markAllOffline(): void {
-    for (const n of this.repo.all()) {
-      if (n.enabled) n.state = 'offline'
     }
     this.emitController()
   }
@@ -665,8 +656,10 @@ class DaqController {
         }
       }
       // 帧批(v2:daq_frames;与样本同窗同重试语义)
-      while (this.frameBuffer.length > 0) {
-        const batch = this.frameBuffer.splice(0, this.frameBuffer.length)
+      // drainFrames 一次性取走并清空索引 —— 索引与缓冲必须同生命周期,否则查询会命中已刷盘的行
+      let pendingFrames = this.drainFrames()
+      while (pendingFrames.length > 0) {
+        const batch = pendingFrames
         let ok = false
         for (let attempt = 0; attempt < TSDB_WRITE_RETRIES && !ok; attempt++) {
           try {
@@ -684,6 +677,7 @@ class DaqController {
             }
           }
         }
+        pendingFrames = this.drainFrames()
       }
     }
     finally {
@@ -765,11 +759,6 @@ class DaqController {
     this.broadcast = fn
   }
 
-  onlineCount(): number {
-    if (!this.running) return 0
-    return this.repo.all().filter(n => n.enabled).length
-  }
-
   controllerState(): AepDaqControllerState & { produced?: number, consumed?: number, dropped?: number, samplesStored?: number, tsdbDropped?: number } {
     // 丢弃 = 队列层真实丢弃(inproc 拥塞/mqtt 断连)+ 消费侧乱序迟到帧(诚实可见)
     const queueLost = g_queueLost()
@@ -824,29 +813,83 @@ class DaqController {
     return getTsdb().query(id, opts)
   }
 
-  /** 帧查询的「内存读穿透」:帧先入 frameBuffer 再广播 thumbUrl(contentUrl),
-   *  TSDB 为 500ms 防抖异步刷盘 —— 收到 WS 立刻回查会在落库前 404。
-   *  故查询侧按 (nodeId, tsMs) 先看 buffer 命中;与 TSDB 返回形态逐字段对齐
-   *  (points 从 meta.points 还原,规则同 tsdb adapter 的 pointsFromMeta)。
-   *  注:刷盘 splice 与查询同一 JS 线程,不存在「既不在 buffer 又没落库」的空窗。 */
-  private framesFromBuffer(id: string, tsMs: number): DaqFrameRecord[] {
-    const out: DaqFrameRecord[] = []
-    for (const r of this.frameBuffer) {
-      if (r.nodeId !== id || r.tsMs !== tsMs) continue
-      out.push({
-        at: r.tsMs,
-        kind: r.kind,
-        points: r.kind === 'vector' ? DaqController.pointsFromMeta(r.meta) : undefined,
-        metrics: r.metrics,
-        meta: r.meta,
-        deviceBindingId: r.deviceBindingId ?? null,
-        lineId: r.lineId ?? null,
-        productId: r.productId ?? null,
-        recipeId: r.recipeId ?? null,
-        runId: r.runId ?? null,
-      })
+  /**
+   * 帧查询的「内存读穿透」索引 —— 帧先入 frameBuffer 再广播 thumbUrl(contentUrl),
+   * TSDB 为 500ms 防抖异步刷盘,收到 WS 立刻回查会在落库前 404,故查询侧先看 buffer。
+   *
+   * 为什么要有索引:早先 frameContent 直接线性扫 frameBuffer,而 frames() 更糟 ——
+   * 它对每个 pending 行都调一次 framesFromBuffer(),即**在 O(n) 的外层里再套 O(n) 的全扫**
+   * (n = FRAME_BUFFER_CAP = 2000):突发写入后缓冲全满时,单次 REST 查询 ≈ 4×10⁶ 次迭代
+   * + 2000 次多余对象构造,而它和 250ms 采样 sweep 跑在同一个事件循环上。
+   *
+   * 现在:byNode 按节点分桶(范围查询只扫该节点的行),byKey 给出 (nodeId, tsMs) 的 O(1) 命中。
+   * 两个索引与 frameBuffer 严格同生命周期 —— 所有 push/淘汰/flush 都必须经下面的私有方法,
+   * 不允许直接操作 frameBuffer,否则索引会与缓冲漂移(表现为"刚采到的帧查不到")。
+   */
+  private readonly frameByNode = new Map<string, DaqFrameRow[]>()
+  private readonly frameByKey = new Map<string, DaqFrameRow>()
+
+  /** 帧索引键((nodeId, tsMs) 唯一:同一节点同一毫秒只会有一帧) */
+  private static frameKey(nodeId: string, tsMs: number): string {
+    return `${nodeId}@${tsMs}`
+  }
+
+  /** 入缓冲 + 同步三处索引 */
+  private pushFrame(row: DaqFrameRow): void {
+    this.frameBuffer.push(row)
+    const key = DaqController.frameKey(row.nodeId, row.tsMs)
+    this.frameByKey.set(key, row)
+    const bucket = this.frameByNode.get(row.nodeId)
+    if (bucket) bucket.push(row)
+    else this.frameByNode.set(row.nodeId, [row])
+  }
+
+  /** 淘汰最旧若干行,并同步清理索引(避免索引持有已淘汰行的强引用 → 内存泄漏) */
+  private evictFrames(keepLast: number): number {
+    const excess = this.frameBuffer.length - keepLast
+    if (excess <= 0) return 0
+    const dropped = this.frameBuffer.splice(0, excess)
+    for (const row of dropped) {
+      const key = DaqController.frameKey(row.nodeId, row.tsMs)
+      // 同键只可能有一行;但仍比对引用,防同毫秒重采覆盖后误删新行
+      if (this.frameByKey.get(key) === row) this.frameByKey.delete(key)
+      const bucket = this.frameByNode.get(row.nodeId)
+      if (!bucket) continue
+      const idx = bucket.indexOf(row)
+      if (idx >= 0) bucket.splice(idx, 1)
+      if (bucket.length === 0) this.frameByNode.delete(row.nodeId)
     }
-    return out
+    return dropped.length
+  }
+
+  /** 取走全部帧(刷盘用)并清空索引 */
+  private drainFrames(): DaqFrameRow[] {
+    if (this.frameBuffer.length === 0) return []
+    const batch = this.frameBuffer.splice(0, this.frameBuffer.length)
+    this.frameByNode.clear()
+    this.frameByKey.clear()
+    return batch
+  }
+
+  /** 单行 → 对外记录(纯映射,不做任何扫描) */
+  private static toFrameRecord(r: DaqFrameRow): DaqFrameRecord {
+    return {
+      at: r.tsMs,
+      kind: r.kind,
+      points: r.kind === 'vector' ? DaqController.pointsFromMeta(r.meta) : undefined,
+      metrics: r.metrics,
+      meta: r.meta,
+      deviceBindingId: r.deviceBindingId ?? null,
+      lineId: r.lineId ?? null,
+      productId: r.productId ?? null,
+      recipeId: r.recipeId ?? null,
+      runId: r.runId ?? null,
+    }
+  }
+
+  /** (nodeId, tsMs) 精确命中未刷盘帧;O(1) */
+  private bufferedFrameAt(id: string, tsMs: number): DaqFrameRow | undefined {
+    return this.frameByKey.get(DaqController.frameKey(id, tsMs))
   }
 
   /** 向量点列从 meta.points 还原(与 TSDB adapter 同规则:非数组/空/越界/非数值 → undefined) */
@@ -865,13 +908,15 @@ class DaqController {
     const rows = await getTsdb().queryFrames(id, opts)
     // 未刷盘的帧补进结果集:同 (nodeId, tsMs) 以落库行为准(去重),按 at 降序
     const seen = new Set(rows.map(r => r.at))
-    const pending = this.frameBuffer.filter(r => r.nodeId === id
-      && (opts.kind == null || r.kind === opts.kind)
-      && r.tsMs >= (opts.fromMs ?? 0) && r.tsMs <= (opts.toMs ?? Date.now()))
-      .filter(r => !seen.has(r.tsMs))
+    const toMs = opts.toMs ?? Date.now()
+    const fromMs = opts.fromMs ?? 0
+    // 只扫本节点的桶(而非整条缓冲),再按范围/类型过滤;映射用纯函数,无二次扫描
+    const pending = (this.frameByNode.get(id) ?? [])
+      .filter(r => (opts.kind == null || r.kind === opts.kind)
+        && r.tsMs >= fromMs && r.tsMs <= toMs
+        && !seen.has(r.tsMs))
       .sort((a, b) => b.tsMs - a.tsMs)
-      .map(r => this.framesFromBuffer(id, r.tsMs)[0] ?? null)
-      .filter((r): r is DaqFrameRecord => r != null)
+      .map(DaqController.toFrameRecord)
     return [...rows, ...pending].slice(0, Math.min(Math.max(opts.limit ?? 100, 1), 1000))
   }
 
@@ -882,7 +927,10 @@ class DaqController {
     const node = this.repo.byId(id)
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
     // 读穿透:先查内存攒批缓冲(帧刚 ingest、尚未刷盘时命中),未命中再查 TSDB
-    const rows = this.framesFromBuffer(id, tsMs)
+    const buffered = this.bufferedFrameAt(id, tsMs)
+    const rows = buffered
+      ? [DaqController.toFrameRecord(buffered)]
+      : await getTsdb().queryFrames(id, { fromMs: tsMs - 1, toMs: tsMs + 1, limit: 5 })
     if (rows.length === 0) rows.push(...await getTsdb().queryFrames(id, { fromMs: tsMs - 1, toMs: tsMs + 1, limit: 5 }))
     const row = rows.find(r => r.at === tsMs)
     if (!row || row.kind !== 'image') throw Object.assign(new Error(`帧不存在: ${id}@${tsMs}`), { status: 404 })

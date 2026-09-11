@@ -923,7 +923,7 @@ onBeforeUnmount(() => {
 }
 .empty-icon {
   font-size: 22px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .empty-title {
   margin: 0;
@@ -933,7 +933,7 @@ onBeforeUnmount(() => {
 .empty-hint {
   margin: 0;
   font-size: 11px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .member-form { margin-top: 8px; }
 .mode-switch { margin-top: 4px; }

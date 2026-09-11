@@ -246,7 +246,7 @@ const hasMore = computed(() => rows.value.length > MAX)
 
 .to-arrow {
   font-size: 11px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 .who-broadcast {
@@ -297,14 +297,14 @@ const hasMore = computed(() => rows.value.length > MAX)
 }
 .route-badge.reply-link {
   font-size: 9.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   background: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 
 .chat-time {
   margin-left: auto;
   font-size: 9.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 /* 正文:聊天正文排版(无高度封顶,消息流自然展开) */

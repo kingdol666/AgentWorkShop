@@ -249,7 +249,7 @@ onMounted(load)
 .pg-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 56px 24px;
   text-align: center; border: 1px dashed var(--line-strong); border-radius: var(--radius-panel);
   background: var(--paper-deep); }
-.pg-empty-ico { font-size: 30px; color: var(--ink-fainter); }
+.pg-empty-ico { font-size: 30px; color: var(--ink-faint); }
 .pg-empty-t { margin: 0; font-size: 12.5px; color: var(--ink-faint); }
 .pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
 .pg-card { position: relative; padding: 14px 16px; border: 1px solid var(--aw-border, rgba(128, 152, 199, .25));

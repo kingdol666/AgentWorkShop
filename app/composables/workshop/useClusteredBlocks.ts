@@ -27,6 +27,8 @@ import { BlockClusterer, buildStreamText, type EventBlock } from './useEventBloc
 
 /** 聚合窗:过程帧突发合并为一次呈现(ms) */
 const FLUSH_MS = 160
+/** 稳定空数组(无频道/无数据时同一引用,避免下游 computed 每帧产出新数组) */
+const EMPTY: AepEnvelope[] = Object.freeze([]) as unknown as AepEnvelope[]
 /** 尾部流块最小可见文本(字符):不足则暂缓一拍,避免 1-2 字符的"准空白"块闪现 */
 const MIN_STREAM_PREVIEW = 8
 /** 即时呈现的终局/外显帧:结果类与状态翻转类内容不合批 */
@@ -52,6 +54,15 @@ export function useClusteredBlocks(
     resetKey?: MaybeRefOrGetter<unknown>
     /** raw 源:绕过 timeline 的 filter/focus(lanes 场景),用 ring items + predicate */
     raw?: boolean
+    /**
+     * lane 专用:按 agentId 直接取增量索引(events.agentEvents),**跳过谓词全量过滤**。
+     *
+     * 为什么:lane 场景下 predicate 就是 `e.agentId === id`,而每个成员 lane 各有一份
+     * 实例 —— 每帧 L×R 次谓词调用 + L 次数组分配(L=成员数,R=ring≤5000)。
+     * 传入 agentId 后改为读 store 里已维护好的子序列 → 每帧 O(1)。
+     * 与 predicate 互斥:给了 agentId 就不再跑 predicate(索引语义等价于该谓词)。
+     */
+    agentId?: MaybeRefOrGetter<string | null | undefined>
   } = {},
 ) {
   const events = useEventsStore()
@@ -63,14 +74,22 @@ export function useClusteredBlocks(
   const focusVal = computed(() => events.focusAgents[cid.value] ?? null)
   const resetKeyVal = computed(() => toValue(opts.resetKey))
   const predRaw = computed(() => opts.predicate ?? null)
+  const laneAgentId = computed(() => toValue(opts.agentId) ?? '')
 
   const list = computed(() => {
-    if (opts.raw) return cid.value ? events.ring(cid.value).items : []
-    return cid.value ? events.timeline(cid.value) : []
+    if (opts.raw) {
+      if (!cid.value) return EMPTY
+      // lane 快路径:索引已按 agentId 分桶,无需再过滤
+      if (opts.agentId) return events.agentEvents(cid.value, laneAgentId.value)
+      return events.ring(cid.value).items
+    }
+    return cid.value ? events.timeline(cid.value) : EMPTY
   })
   const source = computed(() => {
     // resetKey(外部捕获上下文)列入依赖:变化时 source 重算,配合下方重置重建
     void resetKeyVal.value
+    // agentId 快路径已由索引完成归属过滤,不再叠加 predicate(否则又退化成 O(R)/帧)
+    if (opts.agentId) return list.value
     return predRaw.value ? list.value.filter(predRaw.value) : list.value
   })
 
@@ -121,7 +140,7 @@ export function useClusteredBlocks(
 
   if (opts.raw) {
     // raw 模式:filter/focus 不影响源,重置仅由 cid / predicate / 上下文驱动
-    watch([cid, predRaw, resetKeyVal], () => {
+    watch([cid, predRaw, resetKeyVal, laneAgentId], () => {
       clusterer.reset()
       rebuildPending = true
     }, { immediate: true })

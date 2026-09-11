@@ -415,7 +415,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
 .count {
   overflow: hidden;
   font-size: 11.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -463,7 +463,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
 .sec-cnt {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .st-dot {
   flex: none;
@@ -506,7 +506,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
 }
 .tk-num {
   font-variant-numeric: tabular-nums;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .tk-title {
   display: -webkit-box;
@@ -534,7 +534,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
 .col-empty {
   padding: 14px 8px;
   font-size: 11.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   text-align: center;
   border: 1.5px dashed var(--line-strong);
   border-radius: var(--radius-panel);
@@ -597,7 +597,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
 .meta {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 /* 状态菜单 */

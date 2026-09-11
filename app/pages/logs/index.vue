@@ -539,8 +539,7 @@ export default { name: 'OpsLogsPage' }
   background: var(--surface-glass);
   border: 1px solid var(--glass-line);
   border-radius: 10px;
-  backdrop-filter: blur(var(--aurora-blur)) saturate(1.15);
-  -webkit-backdrop-filter: blur(var(--aurora-blur)) saturate(1.15);
+  backdrop-filter: var(--aurora-blur) saturate(1.15);
 }
 .flt { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }
 .flt-grow { flex: 1 1 180px; }
@@ -556,8 +555,7 @@ export default { name: 'OpsLogsPage' }
   border: 1px solid var(--glass-line);
   border-radius: 10px;
   overflow: hidden;
-  backdrop-filter: blur(var(--aurora-blur)) saturate(1.15);
-  -webkit-backdrop-filter: blur(var(--aurora-blur)) saturate(1.15);
+  backdrop-filter: var(--aurora-blur) saturate(1.15);
 }
 .err { margin: 0; padding: 8px 14px; font-size: 12px; color: var(--tone-danger-dot); }
 .log-table { width: 100%; font-size: 12.5px; border-collapse: collapse; }
@@ -612,7 +610,6 @@ export default { name: 'OpsLogsPage' }
   padding: 20px;
   background: color-mix(in srgb, var(--ink) 32%, transparent);
   backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
 }
 .modal {
   width: min(560px, 94vw);
@@ -621,7 +618,6 @@ export default { name: 'OpsLogsPage' }
   border: 1px solid var(--glass-line);
   border-radius: 12px;
   backdrop-filter: blur(calc(var(--aurora-blur) * 1.4)) saturate(1.2);
-  -webkit-backdrop-filter: blur(calc(var(--aurora-blur) * 1.4)) saturate(1.2);
 }
 .m-f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }
 .m-f textarea, .m-f .inp-sel {

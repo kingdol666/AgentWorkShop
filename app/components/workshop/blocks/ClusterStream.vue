@@ -206,7 +206,7 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
   padding-left: 1px;
 }
 .prose :deep(li::marker) {
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .prose :deep(code) {
   padding: 1px 5px;

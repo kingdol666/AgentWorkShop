@@ -171,7 +171,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
 }
 .mini-event.clickable { cursor: pointer; }
 .mini-event.clickable:hover { background: var(--hover-tint); }
-.me-time { flex: 0 0 auto; color: var(--ink-fainter); }
+.me-time { flex: 0 0 auto; color: var(--ink-faint); }
 .me-agent { flex: 0 0 auto; color: var(--ink-faint); }
 .me-text {
   flex: 1 1 auto;

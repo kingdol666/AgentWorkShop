@@ -122,7 +122,6 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
   color: var(--ink-faint);
   background: var(--frost-bg);
   backdrop-filter: var(--frost-blur);
-  -webkit-backdrop-filter: var(--frost-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
 }
@@ -138,7 +137,6 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
   color: var(--ink-faint);
   background: var(--frost-bg);
   backdrop-filter: var(--frost-blur);
-  -webkit-backdrop-filter: var(--frost-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
 }

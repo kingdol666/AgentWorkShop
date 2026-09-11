@@ -972,7 +972,7 @@ watch(effectiveRefreshMs, () => armHistTimer())
 .hist-canvas { width: 100%; height: 130px; border: 1px solid var(--line); border-radius: var(--radius-chip); background: var(--paper-deep); }
 .raw-table { width: 100%; margin-top: 10px; font-size: 11px; border-collapse: collapse; }
 .raw-table th, .raw-table td { padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--divider-hair); }
-.raw-table th { font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-fainter); }
+.raw-table th { font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); }
 
 .st-pill {
   display: inline-block;

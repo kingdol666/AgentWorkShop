@@ -468,7 +468,7 @@ const quoteToComposer = (): void => {
   overflow: hidden;
   font-family: var(--font-body);
   font-size: 10.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -483,7 +483,7 @@ const quoteToComposer = (): void => {
   font-size: 9px;
   letter-spacing: 0.06em;
   line-height: 14px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .head-right {
   display: flex;
@@ -525,7 +525,7 @@ const quoteToComposer = (): void => {
   font-family: var(--font-mono);
   font-size: 9px;
   font-variant-numeric: tabular-nums;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   pointer-events: none;
   opacity: 0;
   background: var(--paper-raised);

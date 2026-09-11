@@ -243,7 +243,7 @@ useHead({ title: () => t('titles.users') })
   padding: 56px 24px;
   text-align: center;
 }
-.gate-icon { font-size: 32px; color: var(--ink-fainter); }
+.gate-icon { font-size: 32px; color: var(--ink-faint); }
 .gate-title { margin: 0; font-size: 15px; font-weight: 600; }
 .gate-hint { margin: 0; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); }
 </style>

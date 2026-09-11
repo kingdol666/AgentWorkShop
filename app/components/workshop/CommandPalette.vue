@@ -186,7 +186,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   overflow: hidden;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
   box-shadow: var(--glass-highlight), var(--shadow-float);
@@ -210,7 +209,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   border: none;
   outline: none;
 }
-.palette-input::placeholder { color: var(--ink-fainter); }
+.palette-input::placeholder { color: var(--ink-faint); }
 .palette-list {
   max-height: 320px;
   overflow-y: auto;

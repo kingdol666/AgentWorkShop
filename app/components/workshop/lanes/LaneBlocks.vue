@@ -28,6 +28,9 @@ const events = useEventsStore()
 const { blocks } = useClusteredBlocks(
   () => props.channelId,
   {
+    // agentId 走 store 的增量索引(每帧 O(1));predicate 仅作为语义声明保留 ——
+    // 给了 agentId 后 composable 不再跑 predicate,否则每个成员 lane 仍会各扫一遍整条 ring
+    agentId: () => props.agentId,
     predicate: (e: AepEnvelope) => e.agentId === props.agentId,
     resetKey: () => props.agentId,
     raw: true,
@@ -103,13 +106,13 @@ const loadLaneEarlier = async (): Promise<void> => {
   align-items: center;
   padding: 28px 8px;
   font-size: 11.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   text-align: center;
 }
 
 .lane-empty-icon {
   font-size: 16px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   animation: lane-sync-spin 1.2s linear infinite;
 }
 

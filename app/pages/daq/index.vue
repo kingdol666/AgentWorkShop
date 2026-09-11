@@ -1601,7 +1601,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   font-size: 10.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .strip-label small { font-size: 10px; color: var(--ink-faint); }
 .strip-scroll {
@@ -1639,7 +1639,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   opacity: 0.55;
 }
 .line-pill b { font-weight: 600; }
-.line-pill small { font-size: 10.5px; color: var(--ink-fainter); }
+.line-pill small { font-size: 10.5px; color: var(--ink-faint); }
 .line-pill:hover { border-color: var(--lc, var(--accent)); color: var(--ink); }
 .line-pill.on {
   color: var(--ink);
@@ -1693,8 +1693,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   background: var(--surface-glass);
   border: 1px solid var(--glass-line);
   border-radius: 10px;
-  backdrop-filter: blur(var(--aurora-blur)) saturate(1.15);
-  -webkit-backdrop-filter: blur(var(--aurora-blur)) saturate(1.15);
+  backdrop-filter: var(--aurora-blur) saturate(1.15);
 }
 .ops-panel.alarm-panel.live { border-color: color-mix(in srgb, var(--tone-danger-dot) 40%, var(--glass-line)); }
 .panel-head {
@@ -1898,7 +1897,6 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   padding: 22px 24px;
   background: var(--surface-glass-strong);
   backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
   box-shadow: var(--glass-edge), var(--shadow-float);
@@ -1935,7 +1933,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-chip);
 }
-.hint { font-size: 10px; color: var(--ink-fainter); }
+.hint { font-size: 10px; color: var(--ink-faint); }
 .test-row { display: flex; gap: 10px; align-items: center; margin: 6px 0 4px; }
 .test-result { font-family: var(--font-mono); font-size: 11px; }
 .test-result.ok { color: var(--tone-success-dot); }
@@ -1957,7 +1955,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .tpl-table td { padding: 7px 8px; border-bottom: 1px solid var(--divider-hair); }
 .tpl-table td b { margin-right: 8px; }
 .tpl-table .range { font-size: 11.5px; color: var(--ink-soft); }
-.tpl-table .empty { color: var(--ink-fainter); font-size: 12px; text-align: center; padding: 14px 0; }
+.tpl-table .empty { color: var(--ink-faint); font-size: 12px; text-align: center; padding: 14px 0; }
 .tpl-table .actions { white-space: nowrap; }
 
 /* ---------- 节点筛选工具条 ---------- */
@@ -1978,7 +1976,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   font-size: 10px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .inp-sel {
   min-width: 112px;
@@ -1997,7 +1995,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   width: 168px;
   min-width: 0;
 }
-.flt-search::placeholder { color: var(--ink-fainter); }
+.flt-search::placeholder { color: var(--ink-faint); }
 .count { padding-bottom: 4px; font-size: 11px; color: var(--ink-faint); }
 
 /* ── 行内产线/绑定/运行态样式见 DaqNodeRow.vue scoped 块 ── */
@@ -2058,7 +2056,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   opacity: 1;
 }
 .opt-filters { display: flex; gap: 8px; align-items: center; }
-.opt-empty { font-size: 11.5px; color: var(--ink-fainter); }
+.opt-empty { font-size: 11.5px; color: var(--ink-faint); }
 .opt-list { display: flex; flex-direction: column; gap: 7px; margin: 0; padding: 0; list-style: none; }
 .opt-row {
   display: flex;
@@ -2086,7 +2084,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .opt-status.rolled-back { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 45%, transparent); }
 .opt-node { overflow: hidden; font-size: 12.5px; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
 .opt-params { flex: none; font-size: 11px; color: var(--tone-info-dot); }
-.opt-time { flex: none; margin-left: auto; font-size: 10px; color: var(--ink-fainter); }
+.opt-time { flex: none; margin-left: auto; font-size: 10px; color: var(--ink-faint); }
 .mini-act {
   flex: none;
   padding: 2px 9px;
@@ -2103,7 +2101,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .opt-judge.rollback, .opt-judge.keep, .opt-judge.uncertain { color: var(--ink-soft); }
 .opt-judge b { font-weight: 600; }
 .opt-open-hint { color: var(--tone-warning-dot); }
-.opt-agg { color: var(--ink-fainter); }
+.opt-agg { color: var(--ink-faint); }
 .opt-series { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 4px; }
 .opt-ch { display: flex; flex: 1 1 180px; gap: 8px; align-items: center; min-width: 160px; }
 .opt-spark { width: 120px; height: 30px; }

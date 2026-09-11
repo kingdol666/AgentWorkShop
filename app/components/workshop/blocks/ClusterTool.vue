@@ -85,7 +85,7 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   font-family: var(--font-mono);
   font-size: 9.5px;
   font-variant-numeric: tabular-nums;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .tool-node {
   flex: 0 0 7px;

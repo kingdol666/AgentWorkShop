@@ -373,7 +373,7 @@ const blockDayFlags = computed(() => {
   font-size: 11px;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 /* 连接诚实态 chip:同步中琥珀脉搏 / 在线绿点+最后数据时间 / 离线灰 */
 .sync-chip {
@@ -474,7 +474,7 @@ const blockDayFlags = computed(() => {
   font-family: var(--font-mono);
   font-size: 9.5px;
   text-align: center;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 /* 空态:编辑部式 serif 标题(pane-empty 声部) */
 .empty {
@@ -487,7 +487,7 @@ const blockDayFlags = computed(() => {
 }
 .empty-icon {
   font-size: 28px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .empty-title {
   margin: 0;

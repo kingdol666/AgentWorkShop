@@ -755,7 +755,7 @@ const saveAsTemplate = async (): Promise<void> => {
   height: 20px;
   padding: 0;
   font-size: 13px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   cursor: pointer;
   background: transparent;
   border: 0;
@@ -781,7 +781,7 @@ const saveAsTemplate = async (): Promise<void> => {
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   text-align: left;
   cursor: copy; /* 点击复制完整路径(title 提示) */
   background: transparent;
@@ -796,7 +796,7 @@ const saveAsTemplate = async (): Promise<void> => {
 .tpl-hint {
   padding: 5px 2px 0;
   font-size: 10.5px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 .ws-hint { font-size: 11px; color: var(--ink-faint); }
 </style>

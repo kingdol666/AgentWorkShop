@@ -18,8 +18,8 @@ const HISTORY_EXCLUDE_TYPES = ['agent.delta']
 
 export type EventFilter = 'all' | 'messages' | 'tasks' | 'team' | 'errors' | 'key'
 
-/** 过滤器 → 允许的事件类型集合(key = 档位过滤:只看注意级+终局级,open-tag deliveryTier) */
-const FILTER_TYPES: Record<EventFilter, string[] | null> = {
+/** 过滤器 → 允许的事件类型集合(key = 档位过滤:只看注意级+终局级,open-tag deliveryTier)。导出供回归测试复用。 */
+export const FILTER_TYPES: Record<EventFilter, string[] | null> = {
   all: null,
   messages: ['agent.message', 'agent.delta', 'agent.status.message', 'a2a.message'],
   tasks: ['task.status', 'task.progress', 'a2a.artifact'],
@@ -28,36 +28,51 @@ const FILTER_TYPES: Record<EventFilter, string[] | null> = {
   key: null,
 }
 
-/** 时间线过滤纯函数(记忆化缓存的真实计算体) */
+/**
+ * 单帧是否命中时间线过滤 —— **唯一事实源**。
+ * 全量重算(computeTimeline)与增量追加(timeline getter)必须共用本函数,
+ * 否则两条路径的语义会悄悄分叉(表现为"刷新后少了/多了几条")。
+ *
+ * 导出供回归测试使用:测试要验证的是「增量维护 ⊆ 与全量重算等价」,
+ * 参照实现必须调用同一个谓词,否则测的是参照写得对不对,而不是实现是否等价。
+ *
+ * 注意 `filter === 'key'` 是**提前返回**:该档位只看注意级/终局级,
+ * 刻意不受 focus 影响(聚焦是"看某人的流",key 是"只看需要我介入的",两者正交)。
+ */
+export function matchesTimeline(
+  e: AepEnvelope,
+  filter: EventFilter,
+  allow: string[] | null,
+  focus: string | null,
+): boolean {
+  if (e.type === 'channel.snapshot') return false
+  // key 过滤:只看注意级 + 终局级(open-tag deliveryTier —— agent 噪声让路)
+  if (filter === 'key') {
+    const t = envelopeTier(e)
+    return t === 'attention' || t === 'terminal'
+  }
+  if (allow && !allow.includes(e.type)) return false
+  if (focus && e.type !== 'task.status' && e.type !== 'task.progress') {
+    if (e.agentId === focus) return true
+    // 消息归属发送方,但发给聚焦 Agent 的消息(a2a.message target)仍属其流
+    if (e.type === 'a2a.message') {
+      const target = (e.payload as { metadata?: { 'x-aw-target-agent'?: string } }).metadata?.['x-aw-target-agent']
+      return target === focus
+    }
+    return false
+  }
+  return true
+}
+
+/** 时间线过滤纯函数(全量重算路径;增量路径见 matchesTimeline) */
 function computeTimeline(
   items: AepEnvelope[],
   filter: EventFilter,
   allow: string[] | null,
   focus: string | null,
 ): AepEnvelope[] {
-  return items.filter((e) => {
-    if (e.type === 'channel.snapshot') return false
-    // key 过滤:只看注意级 + 终局级(open-tag deliveryTier —— agent 噪声让路)
-    if (filter === 'key') {
-      const t = envelopeTier(e)
-      return t === 'attention' || t === 'terminal'
-    }
-    if (allow && !allow.includes(e.type)) return false
-    if (focus && e.type !== 'task.status' && e.type !== 'task.progress') {
-      if (e.agentId === focus) return true
-      // 消息归属发送方,但发给聚焦 Agent 的消息(a2a.message target)仍属其流
-      if (e.type === 'a2a.message') {
-        const target = (e.payload as { metadata?: { 'x-aw-target-agent'?: string } }).metadata?.['x-aw-target-agent']
-        return target === focus
-      }
-      return false
-    }
-    return true
-  })
+  return items.filter(e => matchesTimeline(e, filter, allow, focus))
 }
-
-/** per-channel 时间线记忆化(key 含 lastSeq/条数/过滤态;原 getter 每访问全量过滤 5000 帧) */
-const timelineCache = new Map<string, { key: string, result: AepEnvelope[] }>()
 
 interface ChannelRing {
   lastSeq: number
@@ -69,7 +84,90 @@ interface ChannelRing {
   consumed: Set<number>
 }
 
-const EMPTY_RING = (): ChannelRing => ({ lastSeq: 0, items: [], consumed: new Set() })
+/** 稳定空数组:让"无数据"返回同一引用,避免下游 computed 每帧产出新数组触发重渲染 */
+const EMPTY_ITEMS: AepEnvelope[] = Object.freeze([]) as unknown as AepEnvelope[]
+
+/**
+ * 时间线增量缓存。
+ *
+ * 为什么不再用「key 含 lastSeq 的全量记忆化」:lastSeq 每帧递增 → 每帧必然 miss →
+ * 每帧对整条 ring(≤5000)全量过滤一次。改为增量:filter/focus 未变时只并入**新增尾巴**,
+ * 已淘汰的头部条目从结果前部摘除。
+ *
+ * ⚠️ 游标必须用 **seq** 而不是数组下标。ring 满之后是「push 一条 + 头部淘汰一条」,
+ * `items.length` 恒等于 RING_CAP 不变,而所有元素整体左移一位 ——
+ * 用下标做游标的实现会认为"没有新元素",**静默漏掉每一个新帧**
+ * (本仓库的等价性测试正是先在 messages+a1 上抓到这个 off-by-one 才改成 seq 的)。
+ */
+interface TimelineMemo {
+  filter: EventFilter
+  focus: string | null
+  /** 已并入结果的最大 seq;ring 被重建(快照)时回退为 -1 */
+  lastSeq: number
+  result: AepEnvelope[]
+}
+
+const timelineCache = new Map<string, TimelineMemo>()
+
+/** 在按 seq 升序的数组里找第一个 seq > 目标值 的下标(二分,O(log n)) */
+function firstIndexAfterSeq(items: AepEnvelope[], seq: number): number {
+  let lo = 0
+  let hi = items.length
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1
+    if ((items[mid]?.seq ?? 0) > seq) hi = mid
+    else lo = mid + 1
+  }
+  return lo
+}
+
+interface ChannelRing {
+  lastSeq: number
+  items: AepEnvelope[]
+  /**
+   * 已消费过的全部 seq(含被 delta 合并吃掉的中间 seq)——loadHistory 的
+   * 去重依据:按 item.seq 精确匹配会漏掉合并帧,导致同段 delta 重复插入。
+   */
+  consumed: Set<number>
+  /**
+   * agentId → 该 agent 的事件子序列(与 items 同生命周期,增量维护)。
+   *
+   * 为什么需要:lane 视图对**每个成员**各跑一遍 `items.filter(e => e.agentId === id)`,
+   * 即每帧 O(L×R) 次谓词调用并分配 L 个新数组(L=成员数、R=ring 长度≤5000)。
+   * 取 L=8、R=2000、30 帧/s ≈ 4.8×10⁵ 次谓词/秒,且随会话时长线性劣化(越看越卡)。
+   * 有了索引,lane 每帧只读一个已备好的数组 → O(1)。
+   * 桶内元素与 items 中**同一个对象引用**(delta 合并是原地改 payload,索引自动可见)。
+   */
+  byAgent: Map<string, AepEnvelope[]>
+}
+
+const EMPTY_RING = (): ChannelRing => ({ lastSeq: 0, items: [], consumed: new Set(), byAgent: new Map() })
+
+/** 尾部追加建档(与 items.push 配对) */
+function indexAppend(ring: ChannelRing, e: AepEnvelope): void {
+  const key = e.agentId
+  if (!key) return
+  const bucket = ring.byAgent.get(key)
+  if (bucket) bucket.push(e)
+  else ring.byAgent.set(key, [e])
+}
+
+/** 头部淘汰出档(与 items.splice(0, n) 配对);按引用查找,防同 seq 重放误删 */
+function indexEvict(ring: ChannelRing, dropped: AepEnvelope[]): void {
+  for (const e of dropped) {
+    const bucket = ring.byAgent.get(e.agentId ?? '')
+    if (!bucket) continue
+    const idx = bucket.indexOf(e)
+    if (idx >= 0) bucket.splice(idx, 1)
+    if (bucket.length === 0) ring.byAgent.delete(e.agentId ?? '')
+  }
+}
+
+/** 全量重建索引(排序/批量合并后调用;这类路径每次频道/成员只走一次,成本可接受) */
+function reindex(ring: ChannelRing): void {
+  ring.byAgent.clear()
+  for (const e of ring.items) indexAppend(ring, e)
+}
 
 /** 历史接口响应壳(全局/lane 同构) */
 interface EventsHistoryRes {
@@ -92,7 +190,10 @@ function mergeHistory(ring: ChannelRing, items: AepEnvelope[], ceiling: number):
   }
   if (added > 0) {
     ring.items.sort((a, b) => a.seq - b.seq)
-    if (ring.items.length > RING_CAP) ring.items.splice(0, ring.items.length - RING_CAP)
+    const overflow = ring.items.length - RING_CAP
+    if (overflow > 0) ring.items.splice(0, overflow)
+    // 排序打乱了插入序 → 索引必须整体重建(批量历史路径,非热路径)
+    reindex(ring)
   }
   return added
 }
@@ -111,19 +212,64 @@ export const useEventsStore = defineStore('workshop.events', {
       return (channelId: string): ChannelRing =>
         state.rings[channelId] ?? EMPTY_RING()
     },
-    /** 应用过滤 + agent 聚焦后的时间线(虚拟滚动/自动吸底消费;per-channel 记忆化) */
+    /** 应用过滤 + agent 聚焦后的时间线(虚拟滚动/自动吸底消费;per-channel 增量缓存) */
     timeline(state) {
       return (channelId: string): AepEnvelope[] => {
         const ring = state.rings[channelId]
-        if (!ring) return []
+        if (!ring) return EMPTY_ITEMS
         const filter = state.filters[channelId] ?? 'all'
         const focus = state.focusAgents[channelId] ?? null
-        const memoKey = `${filter}:${focus ?? ''}:${ring.lastSeq}:${ring.items.length}`
-        const hit = timelineCache.get(channelId)
-        if (hit && hit.key === memoKey) return hit.result
-        const result = computeTimeline(ring.items, filter, FILTER_TYPES[filter], focus)
-        timelineCache.set(channelId, { key: memoKey, result })
-        return result
+        const items = ring.items
+        const allow = FILTER_TYPES[filter]
+        const maxSeq = items.length > 0 ? (items[items.length - 1]?.seq ?? 0) : -1
+        const prev = timelineCache.get(channelId)
+
+        // 需要全量重算的三种情况:
+        //  ① 首次 / 过滤态变化 —— 增量无从谈起
+        //  ② ring 被重建(channel.snapshot):maxSeq 反而变小(甚至为空)
+        //  ③ 缓存里的游标超过当前最大 seq(同上,防御性)
+        const needRebuild = !prev
+          || prev.filter !== filter
+          || prev.focus !== focus
+          || (items.length === 0 && prev.result.length > 0)
+          || prev.lastSeq > maxSeq
+        if (needRebuild) {
+          const result = computeTimeline(items, filter, allow, focus)
+          timelineCache.set(channelId, { filter, focus, lastSeq: maxSeq, result })
+          return result
+        }
+
+        // 摘除已淘汰的头部条目(结果与 items 同按 seq 升序 → 只可能从前往后连续失效)
+        const headSeq = items[0]?.seq ?? 0
+        const res = prev.result
+        if (res.length > 0 && (res[0]?.seq ?? 0) < headSeq) {
+          let drop = 0
+          while (drop < res.length && (res[drop]?.seq ?? 0) < headSeq) drop++
+          res.splice(0, drop)
+        }
+
+        // 并入新增尾巴:按 seq 定位起点(不能用下标 —— 见 TimelineMemo 的说明)
+        if (maxSeq > prev.lastSeq) {
+          const from = firstIndexAfterSeq(items, prev.lastSeq)
+          for (let i = from; i < items.length; i++) {
+            const e = items[i]!
+            if (matchesTimeline(e, filter, allow, focus)) res.push(e)
+          }
+          prev.lastSeq = maxSeq
+        }
+        return res
+      }
+    },
+    /**
+     * 某 agent 的事件子序列(增量索引,O(1) 取用)。
+     * lane 视图用它替代 `items.filter(e => e.agentId === id)` —— 后者每帧对每个成员
+     * 各扫一遍整条 ring(见 ChannelRing.byAgent 的说明)。
+     * 无数据时返回**同一个冻结空数组**,避免下游 computed 每帧产出新引用而触发重渲染。
+     */
+    agentEvents(state) {
+      return (channelId: string, agentId: string): AepEnvelope[] => {
+        if (!agentId) return EMPTY_ITEMS
+        return state.rings[channelId]?.byAgent.get(agentId) ?? EMPTY_ITEMS
       }
     },
     lastSeq(state) {
@@ -137,7 +283,7 @@ export const useEventsStore = defineStore('workshop.events', {
       const ring = this.rings[e.channelId] ?? EMPTY_RING()
       if (e.type === 'channel.snapshot') {
         // 全量对齐:清空 ring,游标对齐快照 seq
-        this.rings[e.channelId] = { lastSeq: e.seq, items: [], consumed: new Set([e.seq]) }
+        this.rings[e.channelId] = { lastSeq: e.seq, items: [], consumed: new Set([e.seq]), byAgent: new Map() }
         return
       }
       if (typeof e.seq === 'number' && e.seq > ring.lastSeq) {
@@ -158,7 +304,11 @@ export const useEventsStore = defineStore('workshop.events', {
           }
         }
         ring.items.push(e)
-        if (ring.items.length > RING_CAP) ring.items.splice(0, ring.items.length - RING_CAP)
+        indexAppend(ring, e)
+        if (ring.items.length > RING_CAP) {
+          // 淘汰与索引清理必须同拍,否则索引会持有已出窗条目(查询命中"已看不见"的事件)
+          indexEvict(ring, ring.items.splice(0, ring.items.length - RING_CAP))
+        }
         ring.lastSeq = e.seq
         // 防泄漏:超限后从现存 items 重建(合并掉的旧 seq 允许短暂失忆——远早于 ring 窗口)
         if (ring.consumed.size > 20_000) ring.consumed = new Set(ring.items.map(i => i.seq))

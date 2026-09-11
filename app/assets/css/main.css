@@ -34,9 +34,16 @@
   /* 油墨与纸张(亮:暖纸 —— editorial light;画布与油墨同为暖族,禁冷灰) */
   --ink: #0c0a09;
   --ink-soft: #4b463f;
+  /* 文字最淡一档(实测 5.0:1 @暖纸 / 5.45:1 @raised,达 AA) */
   --ink-faint: #6f6860;
+  /* ⚠️ --ink-fainter 是**纯装饰**令牌(分隔发丝线/刻度点/装饰底),
+   * **不得用作 color** —— 它的对比度(亮 2.53:1 / 暗 3.37:1)不达 WCAG AA 的 4.5:1。
+   * 全站文字用法已收敛到 --ink-faint;此处保留令牌是因为"装饰线就该淡",
+   * 把发丝线拉到 4.5:1 会让界面布满抢眼的线条(装饰变噪音)。 */
   --ink-fainter: #a29a90;
   --paper: #f6f4f1;
+  /* 键盘焦点环:画在元素外侧(outline-offset:2px),对比度取决于环绕背景 → 5.78:1 @暖纸 */
+  --focus-ring: #3f6094;
   --paper-raised: #fffefc;
   --paper-deep: #efebe5;
   --paper-tint: #e6e1d9;
@@ -141,6 +148,48 @@
   --aurora-c: rgb(200 184 224 / 12%);
   --aurora-veil: transparent;
 
+  /* ── v4 · 材质阶梯(Instrument Glass —— 对齐 macOS NSVisualEffectView 的三档语义)。
+   *    为什么分档:玻璃的"高级感"来自**同一屏上有明确的材质层级**,而不是每块都糊一样厚的模糊。
+   *    壳层最透(能看见背后的极光在流动)→ 面板中等(不启用 backdrop,见下)→ 浮层最实(要压住内容)。
+   *    chrome = 侧栏/顶栏/页脚(常驻,占屏比小,值得付模糊成本)
+   *    panel  = 内容面板(数量多 × 面积大 → **不付 backdrop 成本**,靠半透底 + 折射边获得同一观感)
+   *    float  = 模态/抽屉/下拉/气泡(数量少,必须"浮起来") */
+  /* 不透明度经过**实测反推**(不是拍脑袋):玻璃是否"看得出来"取决于背后极光能透多少。
+   * 62% 时开/关玻璃的渲染差异只有 Δ亮度≈11(亮阶)/ ≈0.5(暗阶,几乎无感)→ 等于白做。
+   * 降到 44% 后极光清晰可见,同时文字对比度仍达标(极光本身是低饱和 9-14% alpha,
+   * 复合底色仍贴近纸面,--ink-faint 仍 ≈5:1)。 */
+  --mat-chrome-bg: color-mix(in srgb, var(--paper-raised) 44%, transparent);
+  --mat-panel-bg: color-mix(in srgb, var(--paper-raised) 78%, transparent);
+  --mat-float-bg: color-mix(in srgb, var(--paper-raised) 88%, transparent);
+
+  /* 振动(vibrancy):macOS 的毛玻璃不是"模糊",是"模糊 + 提饱和 + 提亮"。
+   * 只 blur 不 saturate 会发灰发脏 —— 这是廉价毛玻璃与系统级毛玻璃的分水岭。 */
+  --vibrancy-chrome: blur(30px) saturate(1.9) brightness(1.06);
+  --vibrancy-float: blur(26px) saturate(1.7) brightness(1.04);
+  --aurora-blur-legacy: blur(22px) saturate(1.1);
+
+  /* 玻璃物理三件套:顶部镜面高光 / 底部环境遮蔽 / 边缘折射发丝线。
+   * 只有高光没有遮蔽 = 塑料片;两者都有 = 有厚度的玻璃。 */
+  --glass-specular:
+    inset 0 1px 0 color-mix(in srgb, white 68%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--ink) 7%, transparent);
+  --glass-specular-soft:
+    inset 0 1px 0 color-mix(in srgb, white 52%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--ink) 5%, transparent);
+
+  /* 分层投影(接触层 + 环境层):单层大模糊投影是"网页感",两层叠加才是"物件感" */
+  --shadow-lift-1: 0 1px 2px rgb(12 10 9 / 5%), 0 4px 12px rgb(12 10 9 / 5%);
+  --shadow-lift-2: 0 2px 4px rgb(12 10 9 / 6%), 0 12px 32px rgb(12 10 9 / 10%);
+  --shadow-lift-3: 0 4px 8px rgb(12 10 9 / 7%), 0 24px 60px rgb(12 10 9 / 14%);
+
+  /* 弹簧动效:macOS 的交互反馈是弹簧不是缓动曲线。
+   * 前缀用 cubic-bezier 兜底(所有浏览器),linear() 版本给出真实过冲与回弹。 */
+  --spring-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-soft: cubic-bezier(0.32, 0.72, 0, 1);
+  --spring-glide: cubic-bezier(0.22, 1, 0.36, 1);
+  /* 按压反馈位移(按钮按下去的"物理量";0.97 是 macOS 控件的量级) */
+  --press-scale: 0.972;
+
   /* 全局噪点(抵消数字平面的冷感;固定 pointer-events-none 覆盖,不进滚动容器) */
   --noise-opacity: 0.028;
 
@@ -160,7 +209,10 @@ html.dark {
   --ink: #e8eef8;
   --ink-soft: #b9c6d8;
   --ink-faint: #8fa0b5;
+  /* 与亮阶同规约:--ink-fainter 仅作装饰,不得用作 color(原 3.37:1 不达 AA) */
   --ink-fainter: #5f6e84;
+  /* 键盘焦点环:暗阶背景是深海军蓝,取高亮蓝保证可辨(8.68:1) */
+  --focus-ring: #6fb3ff;
   --paper: #070b13;
   --paper-raised: #0d1420;
   --paper-deep: #0a111d;
@@ -227,6 +279,28 @@ html.dark {
   --tick-c-fine: rgb(184 199 216 / 16%);
   --bench-edge: inset 0 1px 0 rgb(255 255 255 / 7%);
   --bench-top-rule: linear-gradient(90deg, var(--accent) 0 34px, rgb(232 238 248 / 18%) 34px, transparent 100%);
+
+  /* ── v4 · 材质阶梯(暗阶):同样按实测反推 —— 46% 时玻璃几乎不可见(Δ亮度≈0.5),
+   *    降到 32% 让深海军蓝画布上的极光真正透出来;文字层仍用 --ink-faint(7.0:1)保底。 */
+  --mat-chrome-bg: color-mix(in srgb, var(--paper-raised) 32%, transparent);
+  --mat-panel-bg: color-mix(in srgb, var(--paper-raised) 66%, transparent);
+  --mat-float-bg: color-mix(in srgb, var(--paper-raised) 82%, transparent);
+
+  /* 暗阶振动:不明亮化(brightness>1 会把深海军蓝洗成灰),改提饱和 + 极轻提亮 */
+  --vibrancy-chrome: blur(30px) saturate(1.8) brightness(1.06);
+  --vibrancy-float: blur(26px) saturate(1.5) brightness(1.02);
+
+  --glass-specular:
+    inset 0 1px 0 rgb(255 255 255 / 13%),
+    inset 0 -1px 0 rgb(0 0 0 / 26%);
+  --glass-specular-soft:
+    inset 0 1px 0 rgb(255 255 255 / 9%),
+    inset 0 -1px 0 rgb(0 0 0 / 20%);
+
+  /* 深色下投影要更黑更实才看得出层次 */
+  --shadow-lift-1: 0 1px 2px rgb(0 0 0 / 34%), 0 4px 12px rgb(0 0 0 / 26%);
+  --shadow-lift-2: 0 2px 4px rgb(0 0 0 / 40%), 0 12px 32px rgb(0 0 0 / 38%);
+  --shadow-lift-3: 0 4px 8px rgb(0 0 0 / 46%), 0 24px 60px rgb(0 0 0 / 46%);
 }
 
 /* 暗色选区:数据青底 + 墨字(替换亮色蜜桃纸;同一控制室语言) */
@@ -444,7 +518,7 @@ ul.task-list {
 }
 
 .task-item.done .task-text {
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   text-decoration: line-through;
 }
 
@@ -802,7 +876,6 @@ ul.task-list {
 .aw-glass {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-line);
   box-shadow: var(--glass-highlight), var(--shadow-float);
   border-radius: var(--radius-panel);
@@ -812,7 +885,6 @@ ul.task-list {
 .aw-frost {
   background: var(--frost-bg);
   backdrop-filter: var(--frost-blur);
-  -webkit-backdrop-filter: var(--frost-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel-sm);
 }
@@ -833,7 +905,6 @@ ul.task-list {
   .aw-frost {
     background: var(--paper-raised);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 }
 
@@ -843,7 +914,6 @@ ul.task-list {
   position: relative;
   background: var(--surface-glass);
   backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel-sm);
   box-shadow: var(--glass-edge);
@@ -864,7 +934,6 @@ ul.task-list {
   .aw-tile {
     background: var(--paper-raised);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 }
 
@@ -989,7 +1058,7 @@ ul.task-list {
 
 .pane-empty .pe-icon {
   font-size: 28px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 .pane-empty .pe-title {
@@ -1040,7 +1109,7 @@ ul.task-list {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   background: var(--paper-raised);
 }
 
@@ -1164,7 +1233,6 @@ ul.task-list {
 .ant-card {
   background: var(--surface-glass);
   backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
   border-color: var(--glass-line) !important;
   border-radius: var(--radius-panel) !important;
   box-shadow: var(--glass-edge);
@@ -1294,7 +1362,6 @@ ul.task-list {
   border-radius: var(--radius-panel) !important;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-line);
 }
 
@@ -1379,11 +1446,14 @@ ul.task-list {
  * 交互基线:focus-visible / 动效收敛
  * ============================================================ */
 
-/* 键盘焦点:墨色描边(仅键盘导航时出现) */
+/* 键盘焦点:墨色描边(仅键盘导航时出现)
+ * ⚠️ 这里**不能**设 border-radius —— 本选择器与 .aw-pill 同特异度(0,1,0)且位置更靠后,
+ * 早先写的 `border-radius: 1px` 会在聚焦时把 9999px 的药丸压成方角(形状锁被破坏)。
+ * 焦点环画在元素**外侧**(outline-offset),因此对比度取决于环绕背景而非按钮自身底色;
+ * 用独立的 --focus-ring(而非 --accent):墨色药丸 + 墨色环 = 环不可见。 */
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-  border-radius: 1px;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* 面板拖拽调宽进行中(PaneSplitter 挂载):禁文本选中/统一列宽光标,防拖动误触 */
@@ -1681,7 +1751,7 @@ ul.task-list {
   font-size: var(--fs-micro);
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 /* ── 仪表面板(aw-bench):全站面板统一形态 ── */
@@ -1690,7 +1760,6 @@ ul.task-list {
   padding: var(--pad-panel);
   background: var(--surface-glass);
   backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
   box-shadow: var(--bench-edge);
@@ -1729,7 +1798,6 @@ ul.task-list {
   .aw-gauge-band {
     background: var(--paper-raised);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 }
 
@@ -1748,7 +1816,7 @@ ul.task-list {
   font-size: var(--fs-micro);
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 .aw-bench-title {
@@ -1769,7 +1837,7 @@ ul.task-list {
   font-family: var(--font-mono);
   font-size: var(--fs-micro);
   letter-spacing: 0.05em;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   white-space: nowrap;
 }
 
@@ -1811,7 +1879,6 @@ ul.task-list {
   overflow: hidden;
   background: var(--surface-glass);
   backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius-panel);
   box-shadow: var(--bench-edge);
@@ -1860,7 +1927,7 @@ ul.task-list {
   font-weight: 500;
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1921,7 +1988,7 @@ ul.task-list {
   font-size: var(--fs-micro);
   font-weight: 400;
   letter-spacing: 0.05em;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
 }
 
 .aw-row-val {
@@ -1962,4 +2029,244 @@ html.dark .aw-bench--marked::after {
   .aw-bench,
   .aw-gauge-band { animation: none; }
 }
+
+/* ============================================================
+ * v4 · Instrument Glass —— 材质落地 + 玻璃物理 + 弹簧动效
+ * ------------------------------------------------------------
+ * 视觉母题(form 来自内容的哪里):这是一间**产线控制室**,屏上每块面板都是仪表。
+ * 因此玻璃不是"iOS 磨砂贴纸",而是**仪表玻璃罩**:壳层是观察窗(能看见背后的极光在流动),
+ * 面板是有厚度的玻璃面板(顶缘镜面高光 + 底缘环境遮蔽 + 发丝折射边),浮层是压在台面上的玻璃板。
+ * 与既有 aw-bench / 量程刻度 / 读数码同源,不是新贴一层装饰。
+ *
+ * 三条纪律(决定"高级"还是"廉价"):
+ *  ① 振动 = 模糊 + 提饱和 + 提亮。只 blur 不 saturate 会发灰发脏。
+ *  ② 玻璃要有物理:只有高光没有遮蔽 = 塑料片;只有模糊没有边缘 = 糊。
+ *  ③ **backdrop-filter 只给壳层与浮层**。面板数量多 × 面积大,逐个付模糊成本会拖垮滚动 ——
+ *     面板用半透底 + 折射边拿到同一观感(背后是平滑极光,肉眼几乎无差),这是刻意的性能取舍。
+ * ============================================================ */
+
+/* ── 壳层材质:侧栏 / 顶栏 / 页脚(常驻观察窗;最透 + 最强振动)── */
+.aw-chrome-glass {
+  background: var(--mat-chrome-bg);
+  backdrop-filter: var(--vibrancy-chrome);
+  box-shadow: var(--glass-specular);
+}
+
+/* ── 面板材质:内容面板(不付 backdrop 成本)──
+ * aw-bench 原本逐个 backdrop-filter,面板一多就是成片的合成层;
+ * 这里收回为半透底 + 折射边 —— 观感一致,滚动成本显著下降。 */
+.aw-bench,
+.aw-gauge-band {
+  background: var(--mat-panel-bg);
+  backdrop-filter: none;
+  box-shadow: var(--glass-specular-soft);
+}
+
+html.dark .aw-bench,
+html.dark .aw-gauge-band {
+  box-shadow: var(--glass-specular-soft);
+}
+
+/* ── 浮层材质:模态 / 抽屉 / 下拉 / 气泡(数量少,必须"浮起来")──
+ * 内缘折射 + 分层投影 + 最强振动;这是全站唯一允许"厚玻璃"的地方。 */
+.ant-modal-content,
+.ant-drawer-content,
+.ant-dropdown-menu,
+.ant-select-dropdown,
+.ant-picker-dropdown,
+.ant-popover-inner,
+.ant-tooltip-inner,
+.ant-message-notice-content,
+.ant-notification-notice {
+  background: var(--mat-float-bg) !important;
+  backdrop-filter: var(--vibrancy-float);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-specular), var(--shadow-lift-2) !important;
+}
+
+/* 模态是全站最高一层:投影再厚一档 */
+.ant-modal-content {
+  box-shadow: var(--glass-specular), var(--shadow-lift-3) !important;
+}
+
+.ant-modal-mask,
+.ant-drawer-mask {
+  background: color-mix(in srgb, var(--scrim) 78%, transparent) !important;
+  backdrop-filter: blur(3px);
+}
+
+/* 浮层里的分隔线别用实色,否则把玻璃"切"成两块 */
+.ant-dropdown-menu-item-divider,
+.ant-popover-inner .ant-popover-title {
+  border-color: var(--glass-line) !important;
+}
+
+/* ── 玻璃物理:可复用的折射边工具类(给自定义浮层/卡片用)── */
+.aw-glass-chrome { background: var(--mat-chrome-bg); box-shadow: var(--glass-specular); }
+.aw-glass-panel { background: var(--mat-panel-bg); box-shadow: var(--glass-specular-soft); }
+.aw-glass-float { background: var(--mat-float-bg); box-shadow: var(--glass-specular), var(--shadow-lift-2); }
+
+/* ── 弹簧交互:按压反馈(全站按钮/药丸/卡片可点区)──
+ * 瞬时压下(60ms)+ 弹簧回弹(320ms)。位移只有 2.8%,但这是"控件有物理"的关键信号 ——
+ * 缺了它,再好看的静态界面点起来都像网页。 */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .aw-pill,
+  .aw-btn,
+  .aw-mini-btn,
+  .ant-btn,
+  .ant-pagination-item,
+  .ant-tag,
+  .aw-liftable,
+  .row-main {
+    transition:
+      transform 320ms var(--spring-snap),
+      box-shadow var(--transition-base),
+      background var(--transition-fast),
+      border-color var(--transition-fast);
+  }
+
+  .aw-pill:active:not(:disabled),
+  .aw-btn:active:not(:disabled),
+  .aw-mini-btn:active:not(:disabled),
+  .ant-btn:active:not(:disabled),
+  .ant-pagination-item:active,
+  .aw-liftable:active {
+    transform: scale(var(--press-scale));
+    transition-duration: 60ms;
+    transition-timing-function: ease-out;
+  }
+
+  /* 悬停抬升:接触层 + 环境层双投影,不是单层大模糊 */
+  .aw-liftable:hover,
+  .row-main:hover {
+    box-shadow: var(--shadow-lift-1);
+  }
+}
+
+/* ── 路由过渡 v2(page-glide):macOS 窗口式的"连续性",不是硬切淡入 ──
+ * 出:轻微下沉 + 收缩(80ms);进:从 0.985 浮起 → 清晰(180ms 弹簧收尾)。
+ * 幅度刻意极小(位移 3px / 缩放 1.5%)—— 可感知但不抢戏,这是"顺手"与"浮夸"的分界。
+ * ⚠️ 刻意**不做 filter:blur()**:整页模糊会让每帧重绘整棵子树(daq/aml 这类长页面直接掉帧),
+ *    而 scale+opacity 是纯合成层操作(0 重绘)。观感差异极小,代价差一个数量级。 */
+.page-fade-enter-active {
+  transition:
+    opacity 180ms var(--spring-glide),
+    transform 260ms var(--spring-soft);
+}
+
+.page-fade-leave-active {
+  transition:
+    opacity 80ms ease-in,
+    transform 80ms ease-in;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 3px, 0) scale(0.985);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -2px, 0) scale(0.992);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-fade-enter-active,
+  .page-fade-leave-active {
+    transition: opacity 120ms ease;
+  }
+
+  .page-fade-enter-from,
+  .page-fade-leave-to {
+    transform: none;
+    filter: none;
+  }
+}
+
+/* ── View Transitions(渐进增强):支持该 API 的浏览器走真正的跨路由共享形变 ──
+ * 与上面的 Vue 过渡共存:不支持时自动退回 page-fade,不产生双重动画。 */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: aw-vt-out 140ms ease-in both;
+}
+
+::view-transition-new(root) {
+  animation: aw-vt-in 260ms var(--spring-soft) both;
+}
+
+@keyframes aw-vt-out {
+  to { opacity: 0; transform: scale(0.992); }
+}
+
+@keyframes aw-vt-in {
+  from { opacity: 0; transform: scale(0.988) translateY(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none; }
+}
+
+/* ── 列表/卡片进场编排:把既有 stagger 的曲线换成弹簧,并补齐到 16 子项 ── */
+@media (prefers-reduced-motion: no-preference) {
+  .aw-stagger > * {
+    animation: aw-rise 0.46s var(--spring-soft) backwards;
+  }
+
+  .aw-stagger > :nth-child(1) { animation-delay: 0ms; }
+  .aw-stagger > :nth-child(2) { animation-delay: 26ms; }
+  .aw-stagger > :nth-child(3) { animation-delay: 52ms; }
+  .aw-stagger > :nth-child(4) { animation-delay: 78ms; }
+  .aw-stagger > :nth-child(5) { animation-delay: 104ms; }
+  .aw-stagger > :nth-child(6) { animation-delay: 130ms; }
+  .aw-stagger > :nth-child(7) { animation-delay: 152ms; }
+  .aw-stagger > :nth-child(8) { animation-delay: 174ms; }
+  .aw-stagger > :nth-child(9) { animation-delay: 196ms; }
+  .aw-stagger > :nth-child(10) { animation-delay: 218ms; }
+  .aw-stagger > :nth-child(11) { animation-delay: 238ms; }
+  .aw-stagger > :nth-child(12) { animation-delay: 258ms; }
+  .aw-stagger > :nth-child(n+13) { animation-delay: 276ms; }
+}
+
+/* ── 数字滚动/读数码的"仪器感"微动:值变化时短暂提亮(不位移,避免表格跳动)── */
+@media (prefers-reduced-motion: no-preference) {
+  .aw-readout.is-tick {
+    animation: aw-readout-tick 560ms var(--spring-glide);
+  }
+}
+
+@keyframes aw-readout-tick {
+  0% { color: var(--accent); }
+  100% { color: inherit; }
+}
+
+/* ── 降级:用户要求降低透明度时,所有材质一律回退为实色(无障碍硬要求)── */
+@media (prefers-reduced-transparency: reduce) {
+  .aw-chrome-glass,
+  .aw-glass-chrome {
+    background: var(--paper-raised);
+    backdrop-filter: none;
+  }
+
+  .aw-glass-panel,
+  .aw-glass-float,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-popover-inner,
+  .ant-tooltip-inner {
+    background: var(--paper-raised) !important;
+    backdrop-filter: none;
+  }
+
+  .ant-modal-mask,
+  .ant-drawer-mask {
+    backdrop-filter: none;
+  }
+}
+
 
