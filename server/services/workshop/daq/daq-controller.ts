@@ -123,8 +123,13 @@ const FRAME_PREVIEW_POINTS = 64
  * 瞬时并发打满 Modbus/OPC UA/MQTT 连接,既拖慢本拍也冲击 PLC。
  * 限量后超出的节点顺延到下一拍(250ms 后),到期判定用 lastSampleAt,不会丢采样、
  * 只会把洪峰摊平成稳定节拍。
+ *
+ * 额度取值:只约束「本拍真正派发多少个到期采样」。现场 282 节点、周期 1~5s 时
+ * 稳态需求约 110 采样/秒(≈28/拍),8 会让大量到期节点永远排不上队 —— 实测只有
+ * 最先入表的 5 个节点在采(其余长期 lastAt 不动)。64/拍 = 256/拍秒,留 2 倍余量;
+ * 且 sweep 已按到期预判派发,未到期节点不占额度,故提高额度不会放大瞬时洪峰。
  */
-const SWEEP_MAX_CONCURRENCY = 8
+const SWEEP_MAX_CONCURRENCY = 64
 
 class DaqController {
   private repo = getDaqNodeRepo()
@@ -169,6 +174,8 @@ class DaqController {
   queryDisplayIntervalMs = 5000
   /** 前端趋势图刷新间隔下限(来源 = daq.query.minDisplayIntervalMs,前端钳制) */
   minQueryDisplayIntervalMs = 500
+  /** sweep 轮转游标(派发额度有限时保证全表轮转,避免表尾节点饿死) */
+  private sweepCursor = 0
   private producedCount = 0
   private consumedCount = 0
   private storedCount = 0
@@ -473,16 +480,27 @@ class DaqController {
     const budget = SWEEP_MAX_CONCURRENCY - this.samplingInFlight
     if (budget <= 0) return
     const now = Date.now()
+    const defs = this.runtimeDefaults()
+    const rts = [...this.runtimes.values()]
+    const total = rts.length
+    if (!total) return
     let started = 0
-    for (const rt of this.runtimes.values()) {
-      if (started >= budget) break
+    let examined = 0
+    // 轮转游标 + 到期预判:派发额度有限时,固定从表头遍历会让表尾节点永久饿死
+    // (新入表节点排在最后 → 永远轮不到)。游标保证有限拍内覆盖全表,isDue 保证
+    // 未到期节点不占用额度(否则表头节点每拍吃满额度,即便它们无样本可采)。
+    for (let i = 0; i < total && started < budget; i++) {
+      const rt = rts[(this.sweepCursor + i) % total]!
+      examined = i + 1
       // 逐产线门控:节点只在其所属产线的活动批次窗口内采集(lineId 空 = 未分配,不采集)
       if (!host.lineRun.activeRun(rt.node.lineId)) continue
+      if (!rt.isDue(now, defs)) continue
       this.samplingInFlight += 1
       started += 1
       void rt.tick(now).catch(() => { /* 单节点采样异常已在 runtime 内隔离 */ })
         .finally(() => { this.samplingInFlight -= 1 })
     }
+    this.sweepCursor = (this.sweepCursor + examined) % total
   }
 
   /** 产线停止:该产线全部节点置 offline(开跑后由采样自然恢复) */

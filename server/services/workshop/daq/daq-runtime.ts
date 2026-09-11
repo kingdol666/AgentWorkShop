@@ -78,6 +78,17 @@ export class DaqNodeRuntime {
   }
 
   /**
+   * 是否已到采样时点(网关调度用)。
+   * 网关每拍派发额度有限,先判到期再占用额度:未到期的节点零成本跳过,
+   * 否则表头节点会每拍吃满额度,把表尾节点永久挤在队列外(实测 282 节点时
+   * 只有最先入表的 5 个节点在采)。
+   */
+  isDue(now: number, defaults: { intervalMs: number, minIntervalMs: number }): boolean {
+    if (this.sampling || !this.node.enabled) return false
+    return now >= this.lastSampleAt + this.node.effectiveInterval(defaults.intervalMs, defaults.minIntervalMs)
+  }
+
+  /**
    * 生产面 tick(网关 250ms 扫描驱动):到期判定 → 驱动采样 → 样本入队。
    * 到期/互斥/启停判定基于本运行时私有状态;lastSampleAt 取采样完成时刻(慢驱动周期顺延)。
    */
