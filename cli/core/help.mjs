@@ -38,7 +38,9 @@ export function renderHelp({ registry, root, version }) {
   lines.push('    --debug           调试日志')
   lines.push('')
   lines.push(color.dim('设置优先级:') + '  config.yml 默认 < data/runtime-settings.json 运行时覆盖 < 环境变量 / CLI 参数')
-  lines.push(color.dim('指令注册:') + '    内建(随包) + 用户 ~/.agentworkshop/commands + 项目 .agentworkshop/commands（同名的后者覆盖前者）')
+  // 目录名必须与 registry.mjs / home.mjs 的 HOME_DIRNAME 一致(.AgentWorkShop)。
+  // Linux/macOS 大小写敏感,小写写法会让用户把指令放进永远扫不到的目录。
+  lines.push(color.dim('指令注册:') + '    内建(随包) + 用户 ~/.AgentWorkShop/commands + 项目 .AgentWorkShop/commands(同名的后者覆盖前者)')
   lines.push(color.dim('新指令:') + `        ${color.cyan('aw register <path|url|npm:pkg>')}  或直接放入上述目录(导出 {meta, run})`)
   lines.push('')
   return lines.join('\n')

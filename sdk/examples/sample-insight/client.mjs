@@ -10,12 +10,14 @@ export function setup(ctx) {
   ctx.root().append(badge)
 
   let n = 0
-  ctx.on('daq:sample', () => {
+  // scene 事件名直传('daq.reading' 是 DAQ 采样对浏览器广播的真实事件名)
+  ctx.on('daq.reading', () => {
     n++
     badge.textContent = `⌁ sample-insight · ${n} 样本`
   })
 
-  ctx.on('page:change', ({ path }) => {
+  // 生命周期钩子(含 page:change)不走 ctx.on —— 它只装 scene 事件。走 ctx.hooks 直订。
+  ctx.hooks.on('page:change', ({ path }) => {
     ctx.log.info('page →', path)
   })
 

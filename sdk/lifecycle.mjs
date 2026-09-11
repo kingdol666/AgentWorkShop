@@ -4,11 +4,15 @@
 
 /** 服务端生命周期事件清单(宿主触发;文档见 docs/plugins.md 与文档站 /sdk/lifecycle)。
  *  daq:frame 与 daq:sample 同由数采管线发射(host.mjs emitDaqFrame,帧入账路径),
- *  入册使清单与实际发射面一致。 */
+ *  入册使清单与实际发射面一致。
+ *  plugins:reloaded 由宿主热重载收尾时发射(host.mjs 重装载流程),
+ *  permissions:changed 经 emitPluginEvent 前缀化后实际是 `event:permissions:changed`
+ *  —— 订阅要走 ctx.events.on('permissions:changed')(它会补 `event:` 前缀)。 */
 export const LIFECYCLE_EVENTS = Object.freeze([
   'plugin:host:init',
+  'plugins:reloaded',
   'config:changed',
-  'permissions:changed',
+  'event:permissions:changed',
   'event:*',
   'daq:sample',
   'daq:frame',
@@ -18,11 +22,12 @@ export const LIFECYCLE_EVENTS = Object.freeze([
   'server:close',
 ])
 
-/** 客户端生命周期事件清单 */
+/** 客户端生命周期事件清单(宿主 loader / 客户端 HookBus 触发) */
 export const CLIENT_EVENTS = Object.freeze([
   'client:init',
   'event:*',
   'page:change',
+  'i18n:changed',
   'client:destroy',
 ])
 

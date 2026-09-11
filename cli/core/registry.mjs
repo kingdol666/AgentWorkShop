@@ -100,12 +100,15 @@ export class CommandRegistry {
 }
 
 /** 拼接指令扫描目录清单（内建 → 用户级 → 项目级;配合同名后者覆盖,项目级优先级最高）
- *  目录名与 shared/config/home.mjs 的 HOME_DIRNAME 保持一致(.AgentWorkShop):
- *  Windows 大小写不敏感无感,Linux/macOS 下小写目录会导致注册的指令永远扫描不到。 */
+ *  `homeDir` 语义 = **已解析的 AW Home**(= shared/config/home.mjs 的 `awHome(env)`,
+ *  即 `$AW_HOME` 或 `~/.AgentWorkShop`),用户级指令目录是它的 `commands/` 子目录。
+ *  以前这里收的是 OS 家目录再自己拼 `.AgentWorkShop`,与 `aw register --global`
+ *  (写 `join(awHome(), 'commands')`)只在 AW_HOME 未设置时巧合一致 —— 设了 AW_HOME,
+ *  注册的指令会落到扫描器永远不看的地方。 */
 export function commandDirs({ packageRoot, projectRoot, homeDir }) {
   const dirs = []
   if (packageRoot) dirs.push(join(packageRoot, 'cli', 'commands'))
-  if (homeDir) dirs.push(join(homeDir, '.AgentWorkShop', 'commands'))
+  if (homeDir) dirs.push(join(homeDir, 'commands'))
   if (projectRoot) dirs.push(join(projectRoot, '.AgentWorkShop', 'commands'))
   return dirs
 }

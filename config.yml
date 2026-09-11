@@ -1,16 +1,18 @@
 # ============================================================
-# AgentWorkShop 运行配置 —— 单一事实来源（Single Source of Truth）
+# AgentWorkShop 运行配置 —— 运行时默认值的单一事实来源
 # ------------------------------------------------------------
 # 本文件由 nuxt.config.ts（构建/开发期）与 scripts/start.mjs（生产启动期）
 # 读取并解析，驱动整个运行时。修改后重启对应模式即可生效：
 #   开发：pnpm dev     -> 读取 server.dev
 #   生产：pnpm start   -> 读取 server.prod
+# 例外：app.version 的权威值在 package.json（nuxt.config.ts 以包版本优先，
+#   本字段仅作回退）—— 长期不同步过（曾停在 0.7.9 而包已 0.7.35），勿再依赖它。
 # ============================================================
 
 app:
   name: AgentWorkShop
   title: AgentWorkShop
-  version: 0.7.9
+  version: 0.7.36
   description: 基于 Nuxt 4 的配置驱动运行范式
 
 # 运行模式（dev/prod 实际由启动命令决定，此处仅作运行时展示）

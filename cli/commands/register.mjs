@@ -22,7 +22,9 @@ export const meta = {
   aliases: ['reg', 'install-cmd'],
   group: '指令',
   summary: '注册一条新指令（项目级或用户级）',
-  usage: 'aw register <path|url|npm:pkg> [--name <n>] [--global|-g] [--force]',
+  usage: 'aw register <path|url|npm:pkg> [--name <n>] [--global|-g] [--force|-f]',
+  // 短选项需显式登记(cli/aw.mjs 只认 meta.short);否则 `-g` 被静默丢弃 → 注册到错误的层级
+  short: { g: 'global', f: 'force' },
   description: [
     '指令文件只需导出 { meta, run }：',
     '  export const meta = { name, summary, usage, group, aliases?, needsProject? }',

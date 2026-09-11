@@ -28,6 +28,13 @@
 ```bash
 aw config get server.prod.port          # 端口来源
 aw status                               # 运行态总览
+aw plugin enable line-sentinel          # 示例插件默认停用:先启用,否则其路由不注册
 curl -X POST http://localhost:3001/api/plugins/line-sentinel/threshold \
-  -H 'content-type: application/json' -d '{"threshold":100}'   # 插件 API(如已安装示例)
+  -H 'content-type: application/json' -d '{"threshold":100}'   # 插件 API(示例插件 line-sentinel)
 ```
+
+> 首启引导会把 `line-sentinel` / `ops-notifier` / `sample-insight` 等示例插件种子到
+> `~/.AgentWorkShop/plugins`,并在 `plugins-state.json` 中**记为停用**;被停用的插件路由
+> 根本不注册,直接 curl 会 404 —— 先 `aw plugin enable line-sentinel`(约 1s 热重载生效)。
+> 插件作用域优先级为 builtin > project > user;`aw plugin create` 默认落 project 级,
+> `--global` / `-g` 落 user 级。

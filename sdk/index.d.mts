@@ -33,30 +33,120 @@ export interface PluginHttp {
   post(url: string, body?: unknown, opts?: { timeoutMs?: number, headers?: Record<string, string> }): Promise<Response>
 }
 
-/** 平台 REST 客户端(SDK 作为项目服务 client 的门面) */
+/** 资源面公共形状 —— 对应 sdk/api.mjs 的 `resource(root)`,每个资源都有完整五项。
+ *  (旧版声明只写了 list/create,导致 `api.products.update()` 等运行时可用、TS 却报错。) */
+export interface CrudResource {
+  list(query?: Record<string, unknown>): Promise<any>
+  get(id: string): Promise<any>
+  create(body: unknown): Promise<any>
+  update(id: string, patch: unknown): Promise<any>
+  remove(id: string): Promise<any>
+}
+
+/** 平台 REST 客户端(SDK 作为项目服务 client 的门面)
+ *  自动携带 Bearer token、自动解信封 `{code,message,data} → data`;
+ *  非 2xx 或信封 `code !== 0` 均抛错(错误上带 `status` / `code` / `body`)。 */
 export interface PlatformClient {
-  call<T = any>(method: string, path: string, body?: unknown): Promise<T>
+  call<T = any>(method: string, path: string, body?: unknown, opt?: { timeoutMs?: number, headers?: Record<string, string> }): Promise<T>
   get<T = any>(path: string, query?: Record<string, unknown>): Promise<T>
   post<T = any>(path: string, body?: unknown): Promise<T>
   patch<T = any>(path: string, body?: unknown): Promise<T>
   delete<T = any>(path: string): Promise<T>
   setToken(token: string | null): PlatformClient
+  /** 存活探测(免鉴权;GET /api/plugins/manifest) */
   ping(): Promise<any>
-  users: { list(q?: any): Promise<any>, get(id: string): Promise<any>, create(b: any): Promise<any>, login(email: string, password: string): Promise<any>, me(): Promise<any> }
-  lines: { list(q?: any): Promise<any>, get(id: string): Promise<any>, create(b: any): Promise<any>, update(id: string, p: any): Promise<any>, remove(id: string): Promise<any>, start(id: string, recipeId?: string): Promise<any>, stop(id: string): Promise<any> }
-  products: { list(q?: any): Promise<any>, create(b: any): Promise<any> }
-  recipes: { list(q?: any): Promise<any>, create(b: any): Promise<any> }
-  dcwNodes: { list(q?: any): Promise<any>, create(b: any): Promise<any> }
-  daqNodes: { list(q?: any): Promise<any>, create(b: any): Promise<any>, alarms(): Promise<any> }
+  users: CrudResource & { login(email: string, password: string): Promise<any>, me(): Promise<any> }
+  lines: CrudResource & { start(id: string, recipeId?: string): Promise<any>, stop(id: string): Promise<any> }
+  products: CrudResource
+  recipes: CrudResource
+  dcwNodes: CrudResource
+  daqNodes: CrudResource & { alarms(): Promise<any> }
   templates: { daq(): Promise<any[]>, dcw(): Promise<any[]> }
-  twins: { list(q?: any): Promise<any>, create(b: any): Promise<any> }
-  teams: { list(q?: any): Promise<any>, create(b: any): Promise<any> }
-  agents: { list(q?: any): Promise<any>, create(b: any): Promise<any> }
-  channels: { list(q?: any): Promise<any> }
+  twins: CrudResource
+  teams: CrudResource
+  agents: CrudResource
+  channels: CrudResource
+  /** 产线授权面(admin):overview() 全量总览,set() 批量写 { userId, grants:[{lineId,mode}] } */
+  permissions: { overview(): Promise<any>, set(payload: unknown): Promise<any> }
   plugins: { manifest(): Promise<any> }
 }
 
-export interface PluginContext {
+/** `config:changed` 载荷(host.mjs relayConfigEvents) */
+export interface ConfigChangedPayload {
+  type: 'config:changed'
+  /** 变更的顶层键 */
+  changed?: string[]
+  /** 合并后的有效配置快照 */
+  effective?: Record<string, any>
+  /** 各键来源(config.yml / runtime / env) */
+  sources?: Record<string, string>
+}
+
+/** 插件自带设置字段声明(manifest `settings[]`,等价于运行时 ctx.config.defineField)
+ *  校验规则(host.mjs setPluginSettings / context.mjs validatePluginSettings):
+ *  key 需匹配 /^[A-Za-z0-9_-]+$/;type 必须是下列四种之一;**default 必填**,否则整条跳过并告警;
+ *  select 的 options 必须包含 default;min/max 仅对 number 生效;label 与 labelKey 至少给一个。 */
+export interface PluginSettingDecl {
+  key: string
+  type: 'string' | 'number' | 'boolean' | 'select'
+  /** 必填:缺失的条目会被静默跳过(仅告警),不会出现在设置页 */
+  default: unknown
+  min?: number
+  max?: number
+  options?: string[]
+  /** i18n 键(形如 plugin.<name>.<key>);与 label 至少给一个 */
+  labelKey?: string
+  label?: string
+  description?: string
+  /** 归属分组 id(引用同一 manifest 的 configGroups[].id) */
+  group?: string
+}
+
+/** 插件自带配置分组声明 —— **manifest 字段名是 `configGroups`**(host.mjs `def.configGroups`),
+ *  写成 `groups` 会被静默忽略。两个内置插件(rag-bridge / diag-bridge)均用 `configGroups`。 */
+export interface PluginGroupDecl {
+  id: string
+  /** 与 labelKey 至少给一个(validatePluginGroups 取 label ?? labelKey) */
+  label?: string
+  labelKey?: string
+  description?: string
+  order?: number
+  collapsed?: boolean
+}
+
+/** 宿主注入的扩展面 —— 不在 sdk/context.mjs 内,由插件宿主 host.mjs 在 setup 前挂载。
+ *  类型在此内联声明,使 TS 插件作者无需宿主类型包即可获得提示。 */
+export interface PluginHostExtensions {
+  /** 数采扩展面(host.mjs):注册驱动/处理器/模板 + 帧订阅 + 免鉴权时序查询 */
+  daq?: {
+    registerDriver(driver: unknown): boolean
+    registerProcessor(kind: string, name: string, fn: (frame: any) => any): boolean
+    registerTemplate(def: unknown): boolean
+    onFrame(fn: (payload: any) => any): () => void
+    onSample(fn: (payload: any) => any): () => void
+    query(q: { nodeIds?: string[], lineId?: string, from?: number, to?: number, bucketMs?: number }): Promise<any>
+    nodes(): Promise<any>
+  }
+  /** Agent 工具注入面:注册的 host 工具热注入全部 harness 的会话(受团队插件开关过滤) */
+  omp?: {
+    registerTool(tool: {
+      name: string
+      label?: string
+      description?: string
+      parameters?: Record<string, unknown>
+      roles?: string[]
+      handler: (args: any, ctx?: any) => any
+    }): void
+  }
+  /** 后端运行时对象面:只读取数 + 跨插件服务(provide 自动加 `<plugin>.` 前缀) */
+  services?: {
+    names(): string[]
+    get<T = any>(name: string): Promise<T>
+    provide(name: string, getter: () => any): void
+  }
+}
+
+export interface PluginContext extends PluginHostExtensions {
   name: string
   /** 插件来源作用域(host.mjs discoverPluginDirs:builtin / project / user) */
   scope: 'builtin' | 'project' | 'user'
@@ -67,7 +157,16 @@ export interface PluginContext {
   config: {
     get(key: string): any
     all(): Record<string, any>
-    onChange(fn: (payload?: { at: string }) => any): () => void
+    onChange(fn: (payload?: ConfigChangedPayload) => any): () => void
+    /** 声明式注册本插件专属配置分组(id 收敛进 plugin-<name> 命名空间,卸载自动摘除) */
+    defineGroup(def: PluginGroupDecl): void
+    /** 声明式注册配置字段(等价 manifest settings[],key 自动编址 plugins.<name>.<key>) */
+    defineField(decl: PluginSettingDecl): void
+    removeGroup(id: string): void
+    removeField(key: string): void
+    /** 本插件当前已注册的分组 / 字段(只读快照) */
+    groups(): PluginGroupDecl[]
+    fields(): PluginSettingDecl[]
   }
   paths: { home: string, configRoot: string, dataDir: string }
   dataDir: string
@@ -101,6 +200,13 @@ export interface PluginDef {
   name: string
   version?: string
   description?: string
+  /** 插件 API 转发层鉴权:none(默认)| user | admin | agent-or-user(host.mjs registerRoute) */
+  auth?: 'none' | 'user' | 'admin' | 'agent-or-user' | string
+  /** 自带设置声明:宿主并入 SystemConfigService,设置页按分组渲染 */
+  settings?: PluginSettingDecl[]
+  /** 自带配置分组声明(settings[].group 引用其 id)。
+   *  ⚠️ 字段名就是 configGroups —— 宿主读的是 def.configGroups,写 `groups` 无效。 */
+  configGroups?: PluginGroupDecl[]
   setup?(ctx: PluginContext): void | Promise<void>
   client?: string
   routes?: PluginRouteDef[]
@@ -119,13 +225,24 @@ export declare function createRouteTable(): {
 export declare function validatePluginModule(mod: any, source: string): { ok: boolean, def?: PluginDef, error?: string }
 export declare function pluginKvExists(dataDir: string, name: string): boolean
 
+/** 路径包含判定(插件目录越界防护;同前缀兄弟目录不会被误放行) */
+export declare function isPathInside(dir: string, p: string): boolean
+/** 把插件声明的分组 id 收敛进 plugin-<name>[-<suffix>] 命名空间;非法 id 回落到主分组 */
+export declare function resolvePluginGroupId(pluginName: string, declaredId?: string): string
+/** 校验 manifest.configGroups;返回 { groups, errors }(无 ok 字段 —— 只看 groups.length) */
+export declare function validatePluginGroups(pluginName: string, defs: unknown): { groups: PluginGroupDecl[], errors: string[] }
+/** 校验 manifest.settings;default 缺失的条目会被跳过并记入 errors */
+export declare function validatePluginSettings(pluginName: string, defs: unknown, opts?: { defaultGroup?: string }): { descriptors: PluginSettingDecl[], errors: string[] }
+
 export declare function createPlatformClient(opts?: { baseUrl?: string, token?: string, logger?: PluginLogger, timeoutMs?: number }): PlatformClient
 
-export declare const LIFECYCLE_EVENTS: readonly ['plugin:host:init', 'config:changed', 'permissions:changed', 'event:*', 'daq:sample', 'daq:frame', 'dcw:write', 'line:start', 'line:stop', 'server:close']
-export declare const CLIENT_EVENTS: readonly ['client:init', 'event:*', 'page:change', 'client:destroy']
+export declare const LIFECYCLE_EVENTS: readonly ['plugin:host:init', 'plugins:reloaded', 'config:changed', 'event:permissions:changed', 'event:*', 'daq:sample', 'daq:frame', 'dcw:write', 'line:start', 'line:stop', 'server:close']
+export declare const CLIENT_EVENTS: readonly ['client:init', 'event:*', 'page:change', 'i18n:changed', 'client:destroy']
 
 /** 客户端插件上下文(sdk/client.mjs);完整声明见 agentworkshop/sdk/client */
 export declare const CLIENT_SDK_VERSION: string
+/** DOM 构建助手(client.mjs 的具名导出,经本包再导出) */
+export declare function el(tag: string, attrs?: Record<string, unknown>, children?: Array<Node | string> | Node | string): HTMLElement
 
 /** ctx.ui.registerPanel 入参(命名插槽 -> 宿主容器挂载) */
 export interface ClientPanelEntry {

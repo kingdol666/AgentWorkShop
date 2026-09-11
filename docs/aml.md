@@ -43,7 +43,10 @@ aml/
   README.md         目录自述   .gitignore  忽略运行时资产
 ```
 
-根解析优先级:`AW_AML_DIR` 环境变量 > 检出根 `./aml`(repo 模式)> `~/.AgentWorkShop/aml`(home 模式)。
+根解析优先级(源码 `shared/config/home.mjs` 的 `resolveAmlRoot`,五级):
+`AW_AML_DIR` 环境变量(显式覆盖)> 检出根 `./aml`(cwd 向上找到 `config.yml` + `nuxt.config.ts`)
+> `<awHome>/aml`(`AW_MODE=home`;`AW_HOME` 可重定向,不是写死 `~/.AgentWorkShop`)
+> cwd 向上真实存在的 `.AgentWorkShop/aml`(不越过 `$HOME`)> `<cwd>/aml` 兜底。
 `GET /api/workshop/aml/env` 返回实际生效路径与来源,UI「运行环境」面板直接展示。
 
 ## 元数据 CRUD

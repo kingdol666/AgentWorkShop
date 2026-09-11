@@ -31,6 +31,14 @@ goal ──▶ lead decomposes ──▶ worker reads real TSDB history (semanti
 ```bash
 aw config get server.prod.port          # where the port comes from
 aw status                               # runtime overview
+aw plugin enable line-sentinel          # example plugins are disabled by default: enable first, or its routes are never registered
 curl -X POST http://localhost:3001/api/plugins/line-sentinel/threshold \
-  -H 'content-type: application/json' -d '{"threshold":100}'   # plugin API (if the example is installed)
+  -H 'content-type: application/json' -d '{"threshold":100}'   # plugin API (the line-sentinel example plugin)
 ```
+
+> First-start bootstrap seeds the example plugins (`line-sentinel` / `ops-notifier` /
+> `sample-insight`) into `~/.AgentWorkShop/plugins` and records them as **disabled** in
+> `plugins-state.json`; a disabled plugin's routes are not registered at all, so the curl
+> above 404s until you run `aw plugin enable line-sentinel` (hot reload lands in about 1 s).
+> Plugin scope precedence is builtin > project > user; `aw plugin create` lands in the
+> project scope by default and `--global` / `-g` selects the user scope.

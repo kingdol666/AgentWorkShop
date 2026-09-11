@@ -20,6 +20,8 @@ export const meta = {
   group: '配置',
   summary: '读取 / 写入 / 校验运行配置',
   usage: 'aw config [list|get|set|unset|reset|validate] [key] [value] [--json]',
+  // reset 的确认短选项:未登记时 `-y` 会被静默丢弃,reset 变成无确认的破坏性操作
+  short: { y: 'yes' },
   description: [
     '以 config.yml 为默认、runtime-settings.json 为运行时覆盖、环境变量为最高优先级。',
     '双模式:项目检出内写 <项目>/data/runtime-settings.json;全局安装(任意目录)写 ~/.AgentWorkShop/runtime-settings.json。',

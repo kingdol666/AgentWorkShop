@@ -8,7 +8,9 @@ export function setup(ctx) {
   ctx.root().prepend(toast)
 
   let timer = null
-  ctx.on('dcw:write', (w) => {
+  // scene 事件名是 'dcw.written'(写控 ACK 后对浏览器广播);服务端钩子 'dcw:write'
+  // 不过桥到浏览器,在这里订阅它只会得到永不触发的空订阅。
+  ctx.on('dcw.written', (w) => {
     toast.textContent = w.ok
       ? `✔ 写入 ${w.name} → ${w.eng}${w.source ? `(${w.source})` : ''}`
       : `✖ 写入失败 ${w.name}`

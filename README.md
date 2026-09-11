@@ -13,15 +13,41 @@
 [![SQLite node:sqlite](https://img.shields.io/badge/SQLite-node:sqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
 [![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm_NC_1.0-8A2BE2?logo=openaccess&logoColor=white)](./LICENSE)
 
-**[中文文档 →](./README-zh.md)** · **[Online Docs →](https://kingdol666.github.io/AgentWorkShop/)**
+**[中文文档 →](./README-zh.md)** · **[Online Docs →](https://kingdol666.github.io/AgentWorkShop/)** · **[Releases →](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog →](./changelog.md)**
 
-> 📖 Docs are bilingual — the [VitePress site](https://kingdol666.github.io/AgentWorkShop/) ships a language switcher (简体中文 / English) across guides, SDK and plugin references.
+*Current version: **v0.7.36** · 14 agent engines · 5 field protocols · 98 runtime settings · bilingual docs (简体中文 / English)*
 
 *A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to a 3D twin.*
 
 </div>
 
-> ⚠️ **Positioning: supervisory layer.** AgentWorkShop is a *supervisory* (SCADA-adjacent) layer for production-line management, digital twins, DAQ and agent orchestration, operating at **second-level soft real-time**. It is **not** a hard real-time controller: any time-critical loop (**< 10 ms**, interlocks, safety, servo) **must live inside the PLC**. Setpoints written here are advisory — plant-side logic may veto.
+> **Positioning: supervisory layer.** AgentWorkShop is a *supervisory* (SCADA-adjacent) layer for production-line management, digital twins, DAQ and agent orchestration, operating at **second-level soft real-time**. It is **not** a hard real-time controller: any time-critical loop (**< 10 ms**, interlocks, safety, servo) **must live inside the PLC**. Setpoints written here are advisory — plant-side logic may veto.
+
+---
+
+## Contents
+
+| | | |
+|---|---|---|
+| [What is this?](#what-is-this) | [Highlights](#highlights) | [Interface](#interface) |
+| [Architecture](#architecture) | [Quick start](#quick-start) | [Configuration & CLI](#configuration--cli--config-driven-by-design) |
+| [Industrial stack](#the-industrial-stack-in-detail) | [Usage](#usage) | [Verification](#verified-end-to-end) |
+| [Project layout](#project-layout) | [Tech stack](#tech-stack) | [Development](#development) |
+| [Roadmap](#roadmap) | [License](#license) | |
+
+## Documentation
+
+Docs are bilingual — the [VitePress site](https://kingdol666.github.io/AgentWorkShop/) ships a language switcher (简体中文 / English) across every section. Deep-dive pages ship in this repo too, and the CLI copies them into the published tarball:
+
+| Topic | Online | In-repo | What it covers |
+|---|---|---|---|
+| **Getting started** | [Guide](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) | `docs/site/guide/` | install → first run → first agent × line session, configuration, DAQ protocols, DCW read/write, HITL, recipe versioning, multi-harness teams, line permissions, AML |
+| **Plugin development** | [Plugin guide](https://kingdol666.github.io/AgentWorkShop/plugins/) | [`docs/plugins.md`](./docs/plugins.md) | the full extension contract: three scopes, `index.mjs` manifest, `ctx` server/browser surface, `settings`/`groups` declarations, lifecycle events, i18n, panels, team-scoped switches, a real example |
+| **SDK** | [SDK guide](https://kingdol666.github.io/AgentWorkShop/sdk/) | [`docs/sdk.md`](./docs/sdk.md) | `agentworkshop/sdk` as a programming client (platform REST client with envelope handling) and as the plugin extension base; TypeScript types; browser-side SDK |
+| **CLI** | [CLI manual](https://kingdol666.github.io/AgentWorkShop/cli/) | [`docs/cli.md`](./docs/cli.md) | all 14 `aw` commands, global options, exit codes, dual-mode path model, the command-registration system, maintainer publish guide |
+| **AML** | [AML guide](https://kingdol666.github.io/AgentWorkShop/guide/aml) | [`docs/aml.md`](./docs/aml.md) | auto-modeling lab: dataset build, job orchestration, model registry, promotion gates, agent tools |
+| **TUI** | — | [`docs/tui.md`](./docs/tui.md) · [`tui/README.md`](./tui/README.md) | terminal workbench: channels, agents, tasks, live monitor, HITL answering |
+| **Multi-harness architecture** | — | [`docs/multi-harness-architecture.md`](./docs/multi-harness-architecture.md) | engine taxonomy, normalized session contract, provider/model catalog, failure modes |
 
 ---
 
@@ -29,7 +55,9 @@
 
 AgentWorkShop started as a **multi-agent software workshop** — channels of coding agents with a lead-agent scheduler, a 7-state task machine, persistent memory, and four interoperable entry points (WebSocket / MCP / A2A / REST).
 
-It grew an **industrial half**: a full data-acquisition and write-control stack (Modbus TCP / OPC UA), production lines with recipes and batch runs, a 3D digital-twin town — and the bridge that makes it unique: **agents can be granted bound, permission-scoped access to real industrial nodes**, query their live telemetry with physical semantics attached, and drive write operations through an interlock → human-in-the-loop → readback pipeline.
+It grew an **industrial half**: a full data-acquisition and write-control stack (Modbus TCP / OPC UA), production lines with recipes and batch runs, a 3D digital-twin town, an **auto-modeling lab** (dataset → training job → leaderboard → gated promotion) — and the bridge that makes it unique: **agents can be granted bound, permission-scoped access to real industrial nodes**, query their live telemetry with physical semantics attached, and drive write operations through an interlock → human-in-the-loop → readback pipeline.
+
+It is also **extensible by design**: a self-contained plugin can enhance the server (hooks, routes, agent tools, DAQ drivers, config groups) and the browser (panels, i18n) at the same time, and the same surfaces are available to ordinary programs through the SDK — see [`docs/plugins.md`](./docs/plugins.md) and [`docs/sdk.md`](./docs/sdk.md).
 
 The result: submit a goal like *"analyze the melt temperature trend and optimize the setpoint"* — and an agent team reads real sensor history, computes statistics, proposes a new setpoint, waits for your approval in the HITL panel, writes it to the PLC, verifies the readback, and reports the numbers back. **End to end, verified by automated E2E.**
 
@@ -48,7 +76,7 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 |---|---|
 | **Lead-agent orchestration** | Each channel has one lead: decomposes goals, dispatches to idle workers, reassigns failures, judges goal satisfaction. LLM decisions with a deterministic rule-engine fallback — the system never stalls. |
 | **Three execution modes** | `goal` (satisfaction judging) · `loop` (fixed-interval replay) · `pipeline` (ordered stages). 7-state task machine with progress, artifacts and full history. |
-| **Harness-agnostic** | One `AgentInterface` — 14 engines: `mock` (in-process), `omp` / `codex` / `dsh` / `opencode` / `claude` (persistent sessions over RPC/JSON-RPC/ACP/SDK) and `gemini` / `qwen` / `copilot` / `cursor` / `crush` / `goose` / `pi` / `hermes` (headless CLI family with structured event streams). The platform never knows which one runs. |
+| **Harness-agnostic** | One `AgentInterface`, **14 engines** in three transport classes: **in-process** — `mock` (no LLM), `claude` (Claude Agent SDK, resident session, same-turn steer); **persistent session over a protocol** — `omp` (RPC subprocess), `codex` (app-server JSON-RPC), `dsh` / `qwen` / `hermes` (ACP), `opencode` (serve + HTTP/SSE); **headless CLI with a structured event stream** — `gemini` (stream-json), `copilot` (JSONL), `cursor` (stream-json), `crush` (non-interactive run), `goose` (stream-json), `pi` (`-p --mode json`). The platform never knows which one runs. |
 | **Per-channel LLM selection** | Each channel picks a **harness → provider → model (+effort)** triple from the harness's live catalog (e.g. `zhipu-coding-plan/glm-5.3-flash` on omp). Members inherit it unless they override — mixing harnesses in one team is a first-class setup, not a workaround. |
 | **Harness availability check** | `GET /api/workshop/harnesses` probes each engine's CLI on PATH. The UI disables not-installed engines, and dispatch is hard-checked at every entry point. |
 | **Stall-safe supervision** | Task reclaim distinguishes *stuck* from *slow*: the watchdog treats agent tool invocations as a liveness signal, so healthy long-running industrial work survives while genuinely stalled tasks surface to the lead. |
@@ -75,8 +103,9 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 | **Line-level permissions** | Industrial data is gated **per production line** with three states (none / read-only / operate), enforced in the data plane — regular users see no line data until granted. |
 | **Full-operation audit log** | Every user / agent / system action lands in one queryable log; operators are attributed to "Channel/Member", distinct from users and the system. Streamed live over WS. |
 | **Team-scoped plugin switches** | Each team (channel) keeps an **independent plugin switch set** (`channel_plugins`): a disabled plugin's tools are not injected into that team's agents. Plugins themselves are hot-managed via `aw plugin` and the `/plugins` page. |
-| **Plugin extension API** | `ctx.daq.registerDriver / registerProcessor / registerTemplate` for custom acquisition and sink algorithms; `ctx.omp.registerTool` for agent tools, hot-injected into every running session. |
-| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — 73 settings across 16 groups, no hardcoded defaults in code. |
+| **Plugin extension API** | A self-contained directory under `plugins/<name>/` enhances **both halves at once**: `index.mjs` (server: hooks, routes, agent tools, DAQ drivers/processors/templates, config groups, KV, timers) and `client.mjs` (browser: panels injected into named slots, i18n, settings UI). Three scopes — `builtin` (shipped) > `project` (checkout) > `user` (`~/.AgentWorkShop`) — with ~1 s hot reload on enable/disable **and on code edits**. Full contract in [`docs/plugins.md`](./docs/plugins.md). |
+| **AML — auto-modeling lab** | Dataset build → training job → leaderboard → promotion gates → model reference, all driven from `/aml` or by agents through 10 `aml_*` tools. Python runtime bootstrapped with `uv` into an `./aml` asset root; artifacts and metadata stay under the config root. |
+| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **98 settings across 16 groups**, no hardcoded defaults in code. |
 | **Configurable cadences** | Sampling and query defaults/floors are **live settings** (`daq.sampling.*`, `daq.query.*`): hot-reloaded, clamped on node create/patch, and agent tool descriptions always carry the current values. |
 
 #### Digital twin
@@ -98,6 +127,10 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 | DAQ Center | Digital Twin Town |
 |:---:|:---:|
 | ![DAQ center](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/daq.png) | ![Digital twin town](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/town.png) |
+
+| Dashboard | Monitor & HITL |
+|:---:|:---:|
+| ![Dashboard](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/dashboard.png) | ![Monitor and HITL](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/monitor.png) |
 
 </div>
 
@@ -130,14 +163,13 @@ flowchart TB
             BR["Bus — inproc / MQTT"]
             TSDB["TSDB — SQLite / Timescale"]
         end
-        subgraph HB["Harness adapters"]
-            MOCK["mock"]
+        subgraph HB["Harness adapters — 14 engines"]
+            MOCK["mock · claude — in-process"]
             OMP["omp — RPC subprocess"]
             CDX["codex — app-server"]
-            DSH["dsh — ACP"]
+            DSH["dsh · qwen · hermes — ACP"]
             OC["opencode — serve"]
-            FAM["gemini / qwen / copilot / cursor / crush / goose / pi / hermes — headless CLI family"]
-            CLD["claude — SDK"]
+            FAM["gemini · copilot · cursor · crush · goose · pi — headless CLI"]
         end
         DB[("SQLite — channels · agents · tasks
 messages · memories (FTS5) · events")]
@@ -147,7 +179,7 @@ messages · memories (FTS5) · events")]
     REST & A2A & MCP --> MGR
     MGR --> SCH & TE & AR
     AR --> MEM
-    AR --> MOCK & OMP & CDX & DSH & OC & CLD & FAM
+    AR --> MOCK & OMP & CDX & DSH & OC & FAM
     MGR & TE & MEM & BUS --> DB
     DAQ <--> BR --> TSDB
     DCW --> BR
@@ -177,22 +209,24 @@ agent ──binds to──▶ node (daq: auto / dcw: manual)
 node -v   # ≥ 23.4.0  (needs built-in node:sqlite)
 ```
 
-> Real-agent harnesses require their CLI on PATH — `omp`, `codex`, `dsh`, `opencode`, `gemini`, `qwen`, `copilot`, `cursor`, `crush`, `goose`, `pi` or `hermes` (any subset; each channel can mix harnesses). `mock` and `claude` (SDK) work without a PATH CLI. The dashboard "execution engines" panel shows per-engine readiness with a green/grey dot; uninstalled engines link to their official install page. Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts via Docker when reachable (`docker compose up -d`).
+> Real-agent harnesses require their CLI on PATH — `omp`, `codex`, `dsh`, `opencode`, `gemini`, `qwen`, `copilot`, `cursor`, `crush`, `goose`, `pi` or `hermes` (any subset; each channel can mix harnesses). `mock` and `claude` (SDK) run in-process and need no PATH CLI. The dashboard "execution engines" panel shows per-engine readiness with a green/grey dot; uninstalled engines link to their official install page. Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts via Docker when reachable (`docker compose up -d`).
 
 ### Option A — install from npm (recommended)
 
 ```bash
 npm install -g agentworkshop     # → `aw` / `agentworkshop` on PATH
-aw start                         # first run builds once (~2-3 min) → http://localhost:3001
+aw start                         # → http://localhost:3001
 ```
 
-That's it — no checkout, no build tools. On first launch everything initializes into the config root **`~/.AgentWorkShop`**: the default `config.yml`, a generated `.env` holding a random session secret, `runtime-settings.json`, a docker-compose seed and an empty `data/` directory. All runtime data (SQLite, JSON repos, backups, logs) lives there too — config and data stay with the install, not the working directory.
+The published tarball ships a **prebuilt production bundle** (`.output/`), so an npm install boots straight away — no build step, no build tools. On first launch everything initializes into the config root **`~/.AgentWorkShop`**: the default `config.yml`, a generated `.env` holding a random session secret, `runtime-settings.json`, a docker-compose seed, `prompts/`, `commands/`, `plugins/` (seeded from the SDK examples, **disabled** by default) and an empty `data/` directory. All runtime data (SQLite, JSON repos, backups, logs) lives there too — config and data stay with the install, not the working directory.
 
-Prefer a one-off run without installing?
+Prefer a one-off run without installing globally?
 
 ```bash
-npx agentworkshop start          # fetch + run, nothing persisted globally
+npx agentworkshop start          # no global npm install required
 ```
+
+> `npx` still creates `~/.AgentWorkShop` — running without a global install is not the same as leaving no trace on disk.
 
 ### Option B — from source
 
@@ -219,7 +253,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. Every `aw start` verifies the config root and migrates it in place when a new version changes the layout — your data survives upgrades.
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.36** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
@@ -267,16 +301,19 @@ Agent tool descriptions are re-rendered with the current values on every injecti
 | `aw start · aw dev · aw build` | Production server / dev server / build — ports from the effective config; first `start` builds once |
 | `aw stop` | Stop a running `aw` service instance via the single-instance lock |
 | `aw config list · get · set · unset · reset` | Read & write runtime settings (validated against the schema, atomic writes) |
-| `aw plugin list · create · enable · disable` | Manage plugins: inspect both scopes, scaffold, enable/disable (state file, hot-applied on the running server) |
+| `aw plugin list · create · enable · disable` | Manage plugins across all three scopes: inspect, scaffold (project scope; `--global` for user scope), enable/disable (state file, ~1 s hot reload on the running server) |
 | `aw home` | Inspect / initialize the config root `.AgentWorkShop` |
 | `aw init <dir>` | Scaffold a runnable project (full config system + CLI included) |
 | `aw register <path\|url\|npm:pkg>` | Register a new command — project-local or `--global` |
 | `aw update` | Check npm for the latest release and self-update the global install |
 | `aw doctor` | Environment + project health check (node, config, ports, keys) |
 | `aw status` | Live overview: mode, config sources, running server, command table |
-| `aw tui` | Terminal workbench: channel/agent management, task submission, live monitor pane, HITL answering (see `tui/README.md`) |
+| `aw tui` | Terminal workbench: channel/agent management, task submission, live monitor pane, HITL answering (see [`docs/tui.md`](./docs/tui.md) · [`tui/README.md`](./tui/README.md)) |
+| `aw version` | Print the CLI/package version (alias `v`) |
 
 Global flags: `--help/-h` · `--version/-v` · `--json` (machine-readable) · `--root <dir>` · `--debug`.
+
+Exit codes: **0** success · **1** runtime error · **2** usage error. With `--json`, failures come back as an envelope carrying `{ ok: false, error: 'unknown-command' \| 'no-project' \| 'usage' \| 'internal' \| <code> }`, so automation can branch without parsing stderr.
 
 ### Command registration
 
@@ -319,6 +356,14 @@ export async function run(argv, ctx) {
 ### Recipe & batch
 
 `Line → Product → Recipe → Run`. Starting a run applies recipe params node-by-node (each write verified), gates acquisition per line, and tags every sample with `line/product/recipe/run` — per-product data isolation with five-dimension queries (line × product × recipe × time × node).
+
+### AML — auto-modeling lab
+
+The modeling half of the loop: `/aml` builds **datasets** out of tagged telemetry, submits **training jobs** to a `uv`-managed Python runtime, ranks runs on a **leaderboard**, and promotes a model only when it clears the configured **gates** (NRMSE, rollout NRMSE, validation/test gap, minimum rows and runs). Promoted models are referenced by id, so an MPC or shadow-twin controller can consume a versioned artifact instead of a vague "latest".
+
+- Agents do the same work through 10 tools (`aml_dataset_build`, `aml_job_submit`, `aml_job_status`, `aml_leaderboard`, `aml_model_promote`, …) — submit a goal and let the team train and report.
+- The Python runtime bootstraps itself with `uv` into an `./aml` asset root inside the config root; dataset/artifact/metadata paths, disk quota, job timeout, concurrency and retention are all **settings** (16 in the `aml` group), not constants.
+- Governance defaults are conservative: cross-recipe datasets are refused unless explicitly allowed, and every job is attributed.
 
 ---
 
@@ -390,22 +435,26 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 ## Verified end-to-end
 
-The repo ships live E2E suites that run against a production instance over **simulated real
-plant protocols** (Modbus TCP/RTU, OPC UA, MQTT, HTTP + MQTT/Timescale pipelines). Full
-acceptance baseline — **156 assertions, 0 failures** ([full report](./docs/audit/e2e-2026-09-07.md));
-latest production re-run on 2026-09-09 via `aw start`:
+Every claim above is backed by a suite you can re-run. The closed-loop suite drives a
+**production instance over real simulated plant protocols** (Modbus TCP/RTU, OPC UA, MQTT,
+HTTP + an MQTT/Timescale pipeline) with a real LLM agent, and asserts on the database,
+the event stream and the HTTP API — not on mocks.
 
-| Suite | Checks | Covers |
-|---|---|---|
-| Five-protocol live line | **37/37** ✅ | protocol connectivity, DAQ sampling (5 protocols) into Timescale, DCW dispatch + readback per protocol, agent closed loop (real LLM), HITL approval with a real OPC UA write, recipe update/rollback, param-ledger rollback |
-| Production API live (`api-live-e2e`) | **64/64** ✅ | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete |
-| Line permissions / audit-negative | **20/20 + 9/9** ✅ | three-state line grants with human-readable 403s, grant revocation convergence, unauthenticated WS receives zero telemetry |
-| Render regression (`_dbg-render-regression`) | **29/29** ✅ | 227-row DAQ table integrity, WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors |
-| Multi-harness parallel | 21 ✅ | omp closed loop · codex real register write · dsh real acquisition · opencode recipe write+rollback — four engines on one running line ([report](./docs/audit/e2e-2026-09-07.md)) |
+| Suite | Latest result | What it covers | Reproduce |
+|---|---|---|---|
+| `e2e-full-closedloop.mjs` | **124 PASS / 0 FAIL** (2026-09-12, v0.7.36) | registration → login → line/product/recipe → DAQ sampling → agent bound to nodes → `daq_query` → `dcw_control` → HITL approval → PLC write → readback → recipe rollback → cascade delete → data-root isolation | `node scripts/e2e-full-closedloop.mjs http://127.0.0.1:3111` |
+| `e2e-aml.ts --real` | 0 failures (2026-09-11) | AML datasets → job submit → status/logs → leaderboard → promotion gates, against the real Python runtime | `node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json scripts/e2e-aml.ts --real` |
+| Five-protocol live line | 37/37 | driver connectivity, sampling into Timescale, DCW dispatch + readback per protocol, agent closed loop, HITL over a real OPC UA write, recipe + param-ledger rollback | `node scripts/_dbg-live-line-e2e.mjs` |
+| Production API live | 64/64 | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
+| Line permissions / audit-negative | 20/20 + 9/9 | three-state line grants with human-readable 403s, revocation convergence, unauthenticated WS receives zero telemetry | `scripts/e2e-auth-matrix.mjs` |
+| Render regression | 29/29 | 227-row DAQ table integrity, WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
+| Multi-harness parallel | 21 | omp closed loop · codex real register write · dsh real acquisition · opencode recipe write+rollback — four engines on one running line | `node scripts/e2e-multiharness-team.mjs` |
+| Offline unit/property suites | all green | AEP event index (`test-events-index`), LRU, data-root split (`test-data-root`), log flooding, rollback index, plugin hardening, memory month query, CLI exit codes (`test-cli-exit`), SDK surface (`test-sdk-surface`) | `node scripts/test-<name>.mjs` |
 
-Reproduce (credentials via env — `E2E_USER` / `E2E_PASS`, argv for older suites):
-`node scripts/_dbg-live-line-e2e.mjs` · `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` ·
-`node scripts/_dbg-render-regression.mjs <base> <email> <pass>` · perf: `scripts/_dbg-render-perf.mjs`.
+The five-protocol and API-live rows are the historical **v0.7.20** acceptance baseline —
+*156 assertions, 0 failures*, full report in [`docs/audit/e2e-2026-09-07.md`](./docs/audit/e2e-2026-09-07.md).
+The closed-loop and AML rows are the current-head runs. Perf probing:
+`scripts/_dbg-render-perf.mjs`.
 
 ---
 
@@ -415,22 +464,29 @@ Reproduce (credentials via env — `E2E_USER` / `E2E_PASS`, argv for older suite
 AgentWorkShop/
 ├── bin/ · cli/                 # aw CLI — command registry · built-in commands · config engine
 ├── app/                        # Nuxt 4 frontend (srcDir)
-│   ├── pages/                  # / · /workshop · /town · /daq · /dcw · /monitor · /users · /tokens
+│   ├── pages/                  # / · /workshop · /workshop/agents · /workshop/teams
+│   │                           # /workshop/channel-templates · /workshop/w/:id
+│   │                           # /town · /daq · /daq/:id · /dcw · /dcw/:id
+│   │                           # /aml · /monitor · /logs · /permissions
+│   │                           # /plugins · /users · /tokens · /settings
 │   ├── components/workshop/    # timeline · lanes · task board · memory panel · 3D town
 │   └── stores/composables/     # Pinia + AEP client
 ├── server/
 │   ├── api/                    # REST + WS + A2A + MCP routes
 │   ├── services/workshop/
 │   │   ├── runtime/            # manager · scheduler-loop · task-engine · memory · mailbox
-│   │   ├── agents/             # AgentInterface: mock · omp · codex · dsh · opencode · claude (+ industrial tools)
-│   │   ├── daq/ dcw/           # edge runtimes · drivers · bus · storage
+│   │   ├── agents/             # AgentInterface: 14 engines (+ industrial tools)
+│   │   ├── daq/ dcw/ aml/      # edge runtimes · drivers · bus · storage · modeling lab
 │   │   └── db/                 # repos over node:sqlite
-│   ├── mcp/                    # MCP server (tools)
+│   ├── mcp/                    # MCP server (25 tools)
+│   ├── plugins-builtin/        # plugins shipped with the package (diag-bridge · rag-bridge)
 │   └── plugins/                # runtime assembly (singletons)
+├── sdk/                        # agentworkshop/sdk — plugin context, hook bus, REST client, browser SDK
+├── tui/                        # terminal workbench (aw tui)
 ├── shared/
-│   └── config/                 # schema.json (settings descriptors) + engine (merge/validate/persist) + mode/path resolver
-├── config.yml                  # ⚙ single source of truth (factory defaults)
-├── .AgentWorkShop/             # config root — prompts (versioned) + runtime overrides · data · logs · commands (git-ignored)
+│   └── config/                 # schema.json (98 setting descriptors) + engine (merge/validate/persist) + path resolver
+├── config.yml                  # factory defaults (read at build/start; version comes from package.json)
+├── .AgentWorkShop/             # config root in a checkout — prompts (versioned) + runtime overrides · data · logs · commands (git-ignored)
 ├── data/                       # legacy pre-migration location (auto-migrated into the config root)
 └── scripts/                    # launchers · home bootstrap · E2E · verification suites
 ```
@@ -452,12 +508,26 @@ AgentWorkShop/
 
 ```bash
 pnpm dev          # dev server (port from effective config)
-pnpm aw …         # the CLI is available in-repo too: pnpm aw config list
+pnpm cli …        # the CLI in-repo: pnpm cli config list
+pnpm tui          # terminal workbench against a running instance
 pnpm build && pnpm start
 pnpm typecheck
 pnpm lint
-node scripts/_dbg-full-feature-e2e.mjs    # full-feature live E2E (server must be running)
+pnpm test:api-live                        # API suite against a running server
+node scripts/e2e-full-closedloop.mjs      # full closed loop (server must be running)
+node scripts/test-sdk-surface.mjs         # SDK export-surface guard
 ```
+
+The docs site lives in `docs/site/` (VitePress) and is deployed to GitHub Pages by
+[`.github/workflows/deploy-docs.yml`](./.github/workflows/deploy-docs.yml):
+
+```bash
+cd docs/site && npx vitepress dev        # preview locally
+cd docs/site && npx vitepress build      # production build → .vitepress/dist
+```
+
+The workflow syncs `docs/{cli,plugins,sdk}.md` (and their `.en.md` twins) into the site before
+building, so those files are the single source of truth for the single-page guides.
 
 ## Roadmap
 
@@ -485,11 +555,15 @@ node scripts/_dbg-full-feature-e2e.mjs    # full-feature live E2E (server must b
 | Team-scoped plugin switches (create-time pick + team dialog, per-channel tool injection) | Shipped |
 | Plugin hot management: `/plugins` page + `aw plugin list/enable/disable` | Shipped |
 | Rendering perf pass (v0.7.27): DAQ main-thread blocking −90%, twin −69%, adaptive quality restored to top tier; `window.__townStats` instrumentation | Shipped |
-| Claude Agent SDK adapter — full parity with `mock`/`omp` | In progress |
+| Plugin system v2: browser panel injection, plugin-scoped settings/groups, plugin i18n, host runtime services (`ctx.services`/`ctx.daq`/`ctx.omp`) | Shipped |
+| Instrument Glass material layer (v0.7.36): three-tier translucent materials, vibrancy, specular edges, spring motion, per-page route transitions | Shipped |
+| Realtime pipeline optimizations: DAQ frame indexing O(n²)→O(n), incremental per-agent event index, chart in-place updates, size-aware JSON persistence | Shipped |
+| AML auto-modeling lab: dataset build · job orchestration (uv-managed Python) · leaderboard · promotion gates · 10 agent tools | Shipped |
+| Claude Agent SDK adapter — resident sessions with same-turn steer and `canUseTool` HITL | Shipped |
 | Production hardening: TLS, MQTT auth, OPC UA sign+encrypt defaults, structured audit log | Planned |
 | Edge deployment shape: standalone edge-agent + central broker | Planned |
 | Alarm outbound delivery (email/webhook) + ack workflow | Planned |
-| CI pipeline (typecheck + lint + e2e) | Planned |
+| CI pipeline (typecheck + lint + e2e) — docs deployment already runs on GitHub Actions | Planned |
 | License: PolyForm Noncommercial 1.0.0 (source-available, non-commercial) | Shipped |
 
 ## License
@@ -498,9 +572,9 @@ AgentWorkShop is an independent project and is **not an official product of Anth
 
 **AgentWorkShop is source-available software, licensed under the [PolyForm Noncommercial 1.0.0](./LICENSE).**
 
-- ✅ **Permitted** — personal study, research, hobby projects, teaching, and use by noncommercial organizations (charities, education, public research, government).
-- ❌ **Not permitted without prior written permission** — any **commercial use**: selling, paid services, integrating into commercial products, or production use serving a business. Commercial licenses are available from the copyright holder.
-- 📌 When you redistribute the software, you must pass through the `Required Notice` line and these terms.
+- **Permitted** — personal study, research, hobby projects, teaching, and use by noncommercial organizations (charities, education, public research, government).
+- **Not permitted without prior written permission** — any **commercial use**: selling, paid services, integrating into commercial products, or production use serving a business. Commercial licenses are available from the copyright holder.
+- **When you redistribute** the software, you must pass through the `Required Notice` line and these terms.
 
 For commercial licensing, contact: [GitHub @kingdol666](https://github.com/kingdol666) · kingdol6080@gmail.com
 

@@ -6,8 +6,11 @@ on:
     paths:
       - 'docs/site/**'
       - 'docs/cli.md'
+      - 'docs/cli.en.md'
       - 'docs/plugins.md'
+      - 'docs/plugins.en.md'
       - 'docs/sdk.md'
+      - 'docs/sdk.en.md'
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
 
@@ -28,17 +31,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # 同步单一事实源的完整指南到站点(单页版;站点索引页保留导航形态)
+      # 同步单一事实源的完整指南到站点(中英各一份;站点索引页保留导航形态)
       # 源文件缺失时回退到站点内已提交副本,避免单文件遗漏导致整个部署失败
+      # 注意:中英必须成对同步 —— 只同步中文会让英文单页指南与事实源长期漂移。
       - name: Sync guides into site
         run: |
-          mkdir -p docs/site/cli docs/site/plugins docs/site/sdk
+          mkdir -p docs/site/cli docs/site/plugins docs/site/sdk docs/site/en/cli docs/site/en/plugins docs/site/en/sdk
           if [ -f docs/cli.md ]; then cp docs/cli.md docs/site/cli/index.md
           else echo "::warning::docs/cli.md missing, keep committed copy"; fi
+          if [ -f docs/cli.en.md ]; then cp docs/cli.en.md docs/site/en/cli/index.md
+          else echo "::warning::docs/cli.en.md missing, keep committed copy"; fi
           if [ -f docs/plugins.md ]; then cp docs/plugins.md docs/site/plugins/guide.md
           else echo "::warning::docs/plugins.md missing, keep committed copy"; fi
+          if [ -f docs/plugins.en.md ]; then cp docs/plugins.en.md docs/site/en/plugins/guide.md
+          else echo "::warning::docs/plugins.en.md missing, keep committed copy"; fi
           if [ -f docs/sdk.md ]; then cp docs/sdk.md docs/site/sdk/guide.md
           else echo "::warning::docs/sdk.md missing, keep committed copy"; fi
+          if [ -f docs/sdk.en.md ]; then cp docs/sdk.en.md docs/site/en/sdk/guide.md
+          else echo "::warning::docs/sdk.en.md missing, keep committed copy"; fi
       - name: Build VitePress site
         run: |
           cd docs/site

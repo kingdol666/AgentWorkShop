@@ -8,7 +8,10 @@
 //   client?: './client.mjs', routes?: [{method,path,handler}] }
 // —— ctx 由宿主注入,插件运行时零导入依赖(sdk/ 供类型与显式糖)。
 //
-// 启停状态机:配置根 plugins-state.json { version, updatedAt, disabled: string[] }
+// 启停状态机:<home>/plugins-state.json { version, updatedAt, disabled: string[] }
+//   ⚠️ home = $AW_HOME 或 ~/.AgentWorkShop —— **不是**配置根。源码检出下两者不同:
+//   configRoot=<repo>/.AgentWorkShop(数据/kv 在这里),home=~/.AgentWorkShop(状态在这里)。
+//   全局安装两者重合,所以旧注释写"配置根"时看不出问题。
 //   · 装载时跳过 disabled 插件(manifest 仍可见,enabled:false)
 //   · 状态文件变化(fs.watch)→ 热重载:全部 dispose/解绑 → 重新装载
 //   · CLI(aw plugin enable/disable) 与 Web 设置页均只写状态文件,服务自感知
@@ -159,7 +162,8 @@ async function seedRuntimeServices() {
   servicesExt.register('plugins', async () => pluginManifest())
 }
 
-// ---- 启停状态(单一事实源:<配置根>/plugins-state.json;CLI/Web/宿主三方读写) ----
+// ---- 启停状态(单一事实源:<home>/plugins-state.json;CLI/Web/宿主三方读写) ----
+//  入参 homeDir 由 modePaths().homeDir 给出($AW_HOME 优先),**不是配置根**。
 export function statePathFor(homeDir) {
   return join(homeDir, 'plugins-state.json')
 }
@@ -182,7 +186,10 @@ export function writeDisabledSet(homeDir, disabled) {
   renameSync(tmp, p)
 }
 
-/** 发现插件入口,三作用域(builtin 同名被 project 覆盖,project 同名被 user 覆盖) */
+/** 发现插件入口,三作用域。**同名 builtin 优先**(先扫先占,`seen` 去重),
+ *  即优先级 builtin > project > user —— 与 CLI 指令注册表(cli/core/registry.mjs,
+ *  后扫覆盖 → project > user > builtin)方向相反,勿照搬。
+ *  实现见下方循环顺序 [builtin, project, user] + `if (seen.has(name)) continue`。 */
 export function discoverPluginDirs(cwd = process.cwd()) {
   const { builtinDir, projectDir, userDir } = modePaths(cwd)
   const out = []
@@ -381,9 +388,11 @@ async function loadAllPlugins(host, { config, paths }) {
       for (const e of groupsCheck.errors) host.logger.warn(`[${def.name}] 分组声明已跳过: ${e}`)
 
       const emitter = {
+        /** @returns {boolean} 注册结果(SDK 契约 `ctx.route(...) → boolean`,勿丢返回值) */
         registerRoute: (n, m, p, h) => {
-          host.routes.register(n, m, p, h)
-          rec.routes.push({ method: String(m).toUpperCase(), path: p })
+          const ok = host.routes.register(n, m, p, h)
+          if (ok) rec.routes.push({ method: String(m).toUpperCase(), path: p })
+          return ok
         },
       }
       const perPluginDisposables = []

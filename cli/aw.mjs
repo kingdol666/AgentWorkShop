@@ -11,7 +11,6 @@
 // ============================================================
 import { existsSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
-import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { CommandRegistry, commandDirs } from './core/registry.mjs'
 import { createContext, EXIT } from './core/context.mjs'
@@ -20,6 +19,7 @@ import { renderHelp, renderCommandHelp } from './core/help.mjs'
 import { logger, color } from './core/logger.mjs'
 import { CliError, isUsageError } from './core/errors.mjs'
 import { packageRoot, packageVersion } from './core/meta.mjs'
+import { awHome } from '../shared/config/home.mjs'
 import { installLocalIso } from '../shared/local-time.mjs'
 
 // 全 CLI 时间输出统一本地时区(先于任何命令逻辑)
@@ -78,7 +78,9 @@ export async function main(argv = process.argv.slice(2), { cwd = process.cwd() }
         return p ? dirname(p) : null
       })()
 
-  const homeDir = homedir()
+  // 用户级指令目录必须与 `aw register --global` / createContext 用同一个 AW Home 解析
+  // (awHome 认 $AW_HOME);用 OS 家目录会在 AW_HOME 生效时扫到错误的目录。
+  const homeDir = awHome(process.env)
   const pkgRoot = packageRoot()
 
   // 指令注册：内建(本包 cli/commands) → 用户级 → 项目级(同名单后者覆盖)

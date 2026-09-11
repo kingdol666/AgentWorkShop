@@ -6,7 +6,12 @@
 // ctx 形态(浏览器侧,自包含、零框架依赖):
 //   ctx.name / ctx.sdkVersion
 //   ctx.hooks   客户端本地 HookBus(client:init / event:* / page:change / client:destroy)
-//   ctx.on(type, fn)      scene 实时事件订阅(与 WS 同源;'*' 通配)——自动登记 pagehide 回收
+//   ctx.on(type, fn)      scene 实时事件订阅 —— type 传 **scene 事件名本身**(如
+//                         'daq.reading' / 'line.start'),内部装到 `event:<type>`;
+//                         要收全部 scene 事件请传字面量 'event:*'(唯一通配写法)。
+//                         ⚠️ 生命周期钩子(client:init / page:change / i18n:changed /
+//                         client:destroy)不走这里,用 ctx.hooks.on(...) 直订。
+//                         pagehide 时自动回收。
 //   ctx.fetch(path, …)    同源平台 API 助手(JSON;自动解信封 data)
 //   ctx.el(tag, attrs, children)   DOM 助手(挂到任意面板/宿主节点)
 //   ctx.mount(selector|el, node)   挂载节点(缺失时挂 body 角落)
@@ -22,7 +27,10 @@ import { HookBus } from './hooks.mjs'
 
 export const CLIENT_SDK_VERSION = '0.3.0'
 
-function el(tag, attrs = {}, children = []) {
+/** DOM 构建助手。**具名导出** —— client.d.mts 早就声明了 `export function el(...)`,
+ *  但运行时只放进 default 对象,`import { el } from 'agentworkshop/sdk/client'` 会拿到
+ *  undefined。这里补成真具名导出,让类型声明与运行时一致。 */
+export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag)
   for (const [k, v] of Object.entries(attrs)) {
     if (k === 'style') node.style.cssText = v
@@ -131,11 +139,12 @@ export function createClientContext({ name, eventBridge, baseUrl = '', ui, t, ge
     disposables.push(offBridge)
   }
 
-  // 页面卸载自动回收(pagehide 覆盖 bfcache 场景)
-  if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') ctx.dispose()
-    }, { once: true })
+  // 页面真正离开时回收。**用 pagehide 而不是 visibilitychange→hidden**:
+  // 后者在"切标签页/最小化"时就会触发,而 dispose() 是一次性的(disposed 标志不可回退),
+  // 于是用户切一次标签页 → 所有客户端插件永久失效,直到刷新页面。
+  // pagehide 覆盖「导航离开 + bfcache 入栈」两种真实卸载,切标签页不受影响。
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', () => ctx.dispose(), { once: true })
   }
 
   return ctx

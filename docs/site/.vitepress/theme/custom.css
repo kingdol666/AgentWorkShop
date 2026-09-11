@@ -15,7 +15,11 @@
   --aw-line-hi: #2c4568;
   --aw-text: #e8eef8;
   --aw-dim: #8fa0b5;
-  --aw-faint: #5f6e84;
+  /* 微标签/脚注/代码语言标:旧值 #5f6e84 对 --aw-bg 只有 3.80:1,正文级不达 AA。
+     提到 #7a8ba3(5.68:1)会让"很淡"的层级感消失,故取 4.83:1 的折中值。 */
+  --aw-faint: #6f7f96;
+  /* 纯装饰色(分隔线点阵/禁用态):**不得用作文字颜色** */
+  --aw-ghost: #5f6e84;
   --aw-green: #35e0a0;
   --aw-green-dim: #1f9e6e;
   --aw-cyan: #41c8f4;
@@ -23,7 +27,17 @@
   --aw-danger: #ff6b6b;
   --aw-code-bg: #0a111d;
   --aw-mono: 'Cascadia Code', 'JetBrains Mono', ui-monospace, SFMono-Regular,
-    'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', 'Sarasa Mono SC',
+    'Noto Sans Mono CJK SC', 'Microsoft YaHei', monospace;
+
+  /* 正文族:VitePress 的 zh 默认栈只有 'Punctuation SC'(仅标点)+ Inter(无 CJK),
+     中文全靠系统隐式 fallback —— 在部分环境会落到度量不匹配的字体上,出现字距重叠、
+     几乎不可读。这里显式补上各平台 CJK 族,并把 emoji 族留在末尾。
+     Latin 仍由 Inter 提供,'Punctuation SC' 在最前保证中文标点形态正确。 */
+  --vp-font-family-base: 'Punctuation SC', 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
+    'Source Han Sans SC', 'WenQuanYi Micro Hei', sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
   /* VitePress 变量 → 控制室色板 */
   --vp-c-bg: var(--aw-bg);
@@ -1162,4 +1176,530 @@
   border-top: none;
   padding-top: 0;
   margin: 0;
+}
+
+/* ============================================================
+   v3 —— 材质 / 动效 / 可读性
+   ------------------------------------------------------------
+   与主应用 v4「Instrument Glass」同语言、不同表面:
+     · 应用是暖色纸面 + 极光,文档站是单一暗阶控制室 —— 玻璃在这里是
+       **仪表玻璃罩**(冷、薄、只提亮一档),不是磨砂贴纸。
+     · 三级材质:chrome(导航/侧栏,常驻) · panel(卡片/代码块,静止)
+       · float(浮层,带镜面高光)。
+     · 动效只做 transform / opacity(纯合成层);不做整页 filter,
+       那会每帧重绘整棵子树。
+   ⚠️ 不要手写 -webkit-backdrop-filter:压缩器只保留手写前缀版本,
+      而 Chromium 152 已不支持该前缀 → 玻璃在生产构建里会整体失效。
+      只写标准属性,让构建工具自行补前缀。
+   ============================================================ */
+
+:root {
+  /* 材质(冷玻璃:低饱和、低不透明度,靠 saturate+brightness 提"厚度") */
+  --aw-glass-chrome: rgba(10, 15, 25, 0.72);
+  --aw-glass-panel: rgba(17, 26, 43, 0.55);
+  --aw-glass-float: rgba(13, 20, 32, 0.86);
+  --aw-vib-chrome: blur(18px) saturate(1.6) brightness(1.08);
+  --aw-vib-float: blur(28px) saturate(1.7) brightness(1.1);
+  /* 镜面(顶缘高光 / 底缘遮蔽)—— 一层 inset 阴影就是"这块有厚度"的全部秘密 */
+  --aw-specular: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --aw-specular-soft: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  /* 分层投影:接触层(近、紧)+ 环境层(远、散)。单一阴影永远像贴纸 */
+  --aw-lift-1: 0 1px 2px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.32);
+  --aw-lift-2: 0 2px 4px rgba(0, 0, 0, 0.5), 0 18px 48px rgba(0, 0, 0, 0.42);
+  /* 弹簧缓动:快出慢收,末端不"撞墙" */
+  --aw-spring-snap: cubic-bezier(0.22, 1, 0.36, 1);
+  --aw-spring-soft: cubic-bezier(0.34, 1.16, 0.64, 1);
+  /* 焦点环:独立配色,不与品牌绿混淆(绿=信号,蓝=焦点) */
+  --aw-focus: #6fb3ff;
+}
+
+::selection {
+  background: rgba(53, 224, 160, 0.26);
+}
+
+/* 焦点环 —— 全局统一。⚠️ 不得在这里写 border-radius:该规则(0,1,0)与 .hw-btn 同特异度
+   且更靠后,会把 8px 圆角按钮在聚焦瞬间压成方角 —— 正是它声称要修的那个 bug。
+   outline 本身会跟随元素自身圆角,不需要额外声明。 */
+:focus-visible {
+  outline: 2px solid var(--aw-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- 导航 = 常驻玻璃条 ---------- */
+/* 不加镜面 inset:阅读进度条固定在视口最顶两行,会正好压住这条 1px 高光,两者互相打架。
+   导航本身贴着视口上沿,上方没有任何内容,顶缘高光在这里本来也没有表达力。 */
+.VPNavBar {
+  background: var(--aw-glass-chrome) !important;
+  backdrop-filter: var(--aw-vib-chrome);
+  border-bottom: 1px solid var(--aw-line);
+}
+
+/* ---------- 侧栏 = 玻璃栏 + 轨式激活标记 ---------- */
+/* 桌面端侧栏**不用玻璃**:它旁边没有内容滚过,backdrop-filter 采样到的是纯平背景
+   (实测背景 sd=0,开关 blur 的像素差 ≈0)—— 570k px² 的模糊什么也折射不到。
+   玻璃只在 ≤959px 的抽屉形态生效,那时正文确实从它下面穿过。 */
+.VPSidebar {
+  background: var(--aw-bg) !important;
+}
+
+@media (max-width: 959px) {
+  .VPSidebar {
+    background: var(--aw-glass-chrome) !important;
+    backdrop-filter: var(--aw-vib-chrome);
+  }
+}
+
+.VPSidebarItem .item {
+  transition: color 0.18s var(--aw-spring-snap), background-color 0.18s var(--aw-spring-snap);
+}
+
+.VPSidebarItem.level-1 .item {
+  border-radius: 6px;
+  padding-left: 8px;
+  margin-left: -8px;
+}
+
+.VPSidebarItem.level-1 .item:hover {
+  background: rgba(53, 224, 160, 0.06);
+}
+
+/* 激活项:刻度线从 8px 生长到 16px,把"当前页"做成一个动效而非静态改色 */
+.VPSidebarItem.level-1.is-active > .item::before {
+  transform: translateY(-50%) scaleX(1);
+  transform-origin: left center;
+  transition: transform 0.32s var(--aw-spring-soft);
+  width: 16px;
+}
+
+.VPSidebarItem.level-1 > .item::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  width: 16px;
+  height: 2px;
+  background: var(--aw-green);
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.24s var(--aw-spring-snap);
+}
+
+.VPSidebarItem.level-1 > .item:hover::before {
+  transform: translateY(-50%) scaleX(0.5);
+}
+
+/* ---------- 正文:标题锚点 + 链接动效 + kbd ---------- */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3 {
+  position: relative;
+}
+
+.vp-doc .header-anchor {
+  opacity: 0;
+  color: var(--aw-faint);
+  transition: opacity 0.2s var(--aw-spring-snap), color 0.2s var(--aw-spring-snap);
+}
+
+.vp-doc h1:hover .header-anchor,
+.vp-doc h2:hover .header-anchor,
+.vp-doc h3:hover .header-anchor,
+.vp-doc .header-anchor:focus-visible {
+  opacity: 1;
+}
+
+.vp-doc .header-anchor:hover {
+  color: var(--aw-green);
+}
+
+/* 正文链接:下划线从 0 长出(不改变布局,不用 border-bottom)
+   ⚠️ 必须排除 .hw-btn:落地页的 CTA 也是 .vp-doc 里的 <a>,不排除就会在每个按钮
+   底部画一条 1px 绿色横线(悬浮变 2px),看起来像渲染瑕疵。 */
+.vp-doc a:not(.header-anchor):not(.VPButton):not(.hw-btn) {
+  text-decoration: none;
+  background-image: linear-gradient(var(--aw-green-dim), var(--aw-green-dim));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 1px;
+  transition: background-size 0.26s var(--aw-spring-snap), color 0.2s var(--aw-spring-snap);
+}
+
+.vp-doc a:not(.header-anchor):not(.VPButton):not(.hw-btn):hover {
+  color: var(--aw-green);
+  background-image: linear-gradient(var(--aw-green), var(--aw-green));
+  background-size: 100% 2px;
+}
+
+.vp-doc kbd {
+  font-family: var(--aw-mono);
+  font-size: 0.82em;
+  padding: 2px 6px;
+  border: 1px solid var(--aw-line-hi);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--aw-panel-2);
+  color: var(--aw-text);
+}
+
+/* ---------- 代码块 = 接线面板(加顶缘镜面 + 环境投影) ---------- */
+.vp-doc div[class*='language-'] {
+  background: var(--aw-code-bg);
+  box-shadow: var(--aw-specular-soft), var(--aw-lift-1);
+  transition: box-shadow 0.3s var(--aw-spring-snap), border-color 0.3s var(--aw-spring-snap);
+}
+
+.vp-doc div[class*='language-']:hover {
+  border-color: var(--aw-line-hi);
+  box-shadow: var(--aw-specular-soft), var(--aw-lift-2);
+}
+
+/* 语言标签 = 设备铭牌。用 --aw-faint(4.83:1)而不是 --aw-ghost —— 后者是本文件
+   明文规定的"纯装饰色,不得用作文字颜色"(3.80:1,11px 字号不达 AA)。 */
+.vp-doc div[class*='language-'] > span.lang {
+  font-family: var(--aw-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--aw-faint);
+  transition: color 0.24s var(--aw-spring-snap);
+}
+
+.vp-doc div[class*='language-']:hover > span.lang {
+  color: var(--aw-dim);
+}
+
+/* 复制按钮:静默,悬浮才现身 */
+.vp-doc div[class*='language-'] > button.copy {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background-color: transparent;
+  transition: opacity 0.24s var(--aw-spring-snap), border-color 0.24s var(--aw-spring-snap), background-color 0.24s var(--aw-spring-snap);
+}
+
+.vp-doc div[class*='language-']:hover > button.copy {
+  border-color: var(--aw-line-hi);
+  background-color: var(--aw-panel);
+}
+
+/* 行内代码 = 端子(悬浮提亮一档) */
+.vp-doc :not(pre) > code {
+  transition: background-color 0.2s var(--aw-spring-snap), border-color 0.2s var(--aw-spring-snap);
+}
+
+.vp-doc :not(pre) > code:hover {
+  background: rgba(53, 224, 160, 0.14);
+  border-color: rgba(53, 224, 160, 0.28);
+}
+
+/* ---------- 表格 = 数据读数(首列加重 + 行悬浮轨) ---------- */
+.vp-doc table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--aw-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.vp-doc th,
+.vp-doc td {
+  border: 0;
+  border-bottom: 1px solid var(--aw-line);
+}
+
+.vp-doc tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.vp-doc tbody td:first-child {
+  color: var(--aw-text);
+  font-weight: 500;
+}
+
+.vp-doc tr {
+  transition: background-color 0.2s var(--aw-spring-snap);
+}
+
+.vp-doc tr:hover td {
+  background: rgba(65, 200, 244, 0.05);
+}
+
+/* ---------- 提示块 = 带色条的仪表注释 ---------- */
+.vp-doc .custom-block {
+  border: 1px solid var(--aw-line);
+  border-left-width: 3px;
+  border-radius: 10px;
+  box-shadow: var(--aw-specular-soft);
+  transition: box-shadow 0.28s var(--aw-spring-snap), transform 0.28s var(--aw-spring-snap);
+}
+
+.vp-doc .custom-block:hover {
+  box-shadow: var(--aw-specular-soft), var(--aw-lift-1);
+}
+
+/* ---------- 翻页器 = 两块可抬起的玻璃板 ---------- */
+.VPDocFooter .pager-link {
+  background: var(--aw-glass-panel);
+  backdrop-filter: var(--aw-vib-chrome);
+  box-shadow: var(--aw-specular-soft);
+  transition: border-color 0.24s var(--aw-spring-snap), transform 0.24s var(--aw-spring-snap), box-shadow 0.24s var(--aw-spring-snap);
+}
+
+.VPDocFooter .pager-link:hover {
+  border-color: var(--aw-green-dim);
+  transform: translateY(-2px);
+  box-shadow: var(--aw-specular-soft), var(--aw-lift-1);
+}
+
+/* 右侧大纲:激活刻度 */
+.VPDocOutlineItem a {
+  transition: color 0.2s var(--aw-spring-snap);
+}
+
+.VPDocOutlineItem a:hover {
+  color: var(--aw-green);
+}
+
+/* ---------- 浮层(本地搜索)= float 材质 ---------- */
+.VPLocalSearchBox .shell {
+  background: var(--aw-glass-float);
+  backdrop-filter: var(--aw-vib-float);
+  border: 1px solid var(--aw-line-hi);
+  box-shadow: var(--aw-specular), var(--aw-lift-2);
+}
+
+.VPLocalSearchBox .search-bar {
+  border: 1px solid var(--aw-line);
+  background: var(--aw-panel);
+}
+
+.VPLocalSearchBox .result {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: border-color 0.2s var(--aw-spring-snap), background-color 0.2s var(--aw-spring-snap);
+}
+
+.VPLocalSearchBox .result.selected {
+  border-color: var(--aw-green-dim);
+  background: rgba(53, 224, 160, 0.08);
+}
+
+.VPNavBarMenuGroup .VPMenu,
+.VPNavBarTranslations .VPMenu {
+  background: var(--aw-glass-float);
+  backdrop-filter: var(--aw-vib-float);
+  border: 1px solid var(--aw-line-hi);
+  box-shadow: var(--aw-specular), var(--aw-lift-2);
+}
+
+/* ---------- 阅读进度:滚动驱动动画(无 JS;不支持的浏览器静默降级) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0 auto auto 0;
+      z-index: 100;
+      width: 100%;
+      height: 2px;
+      transform-origin: left center;
+      transform: scaleX(0);
+      background: linear-gradient(90deg, var(--aw-green-dim), var(--aw-green));
+      animation: aw-progress linear both;
+      animation-timeline: scroll(root block);
+      pointer-events: none;
+    }
+  }
+}
+
+@keyframes aw-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* ---------- 内容入场:一次性的淡入上移(纯 transform/opacity) ---------- */
+/* ⚠️ 必须用 `.vp-doc > div > …`:VitePress 把整页内容包在一个**无 class 的 wrapper div**
+   里,`.vp-doc > :is(…)` 只会命中那一个 wrapper —— 原写法匹配 0 个元素,整段动画是死代码。 */
+@media (prefers-reduced-motion: no-preference) {
+  .vp-doc > div > :is(h1, h2, h3, p, ul, ol, table, div[class*='language-'], .custom-block, figure) {
+    animation: aw-rise 0.44s var(--aw-spring-snap) both;
+  }
+
+  /* 仅前 8 个块错峰,避免长页面尾部也被拖慢 */
+  .vp-doc > div > :nth-child(1) { animation-delay: 0.01s; }
+  .vp-doc > div > :nth-child(2) { animation-delay: 0.04s; }
+  .vp-doc > div > :nth-child(3) { animation-delay: 0.07s; }
+  .vp-doc > div > :nth-child(4) { animation-delay: 0.1s; }
+  .vp-doc > div > :nth-child(5) { animation-delay: 0.13s; }
+  .vp-doc > div > :nth-child(6) { animation-delay: 0.16s; }
+  .vp-doc > div > :nth-child(7) { animation-delay: 0.19s; }
+  .vp-doc > div > :nth-child(n + 8) { animation-delay: 0.22s; }
+}
+
+@keyframes aw-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- 首页:hw-* 交互升级 ---------- */
+.hw-btn {
+  transition: transform 0.24s var(--aw-spring-soft), background-color 0.24s var(--aw-spring-snap),
+    border-color 0.24s var(--aw-spring-snap), color 0.24s var(--aw-spring-snap), box-shadow 0.24s var(--aw-spring-snap);
+}
+
+.hw-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--aw-lift-1);
+}
+
+.hw-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.hw-cell,
+.hw-f,
+.hw-p,
+.hw-sc,
+.hw-node,
+.hw-stat {
+  transition: transform 0.28s var(--aw-spring-soft), border-color 0.28s var(--aw-spring-snap),
+    box-shadow 0.28s var(--aw-spring-snap), background-color 0.28s var(--aw-spring-snap);
+}
+
+.hw-cell:hover,
+.hw-f:hover,
+.hw-p:hover,
+.hw-sc:hover,
+.hw-node:hover {
+  transform: translateY(-3px);
+  border-color: var(--aw-line-hi);
+  box-shadow: var(--aw-lift-1);
+}
+
+/* .hw-stat 不加悬浮反馈:它是静态读数带,没有任何可点/可聚焦的东西,
+   给它绿色反馈等于凭空发明交互含义(违反"绿只做信号色")。 */
+
+/* 控制台截图框 = panel 材质。这里刻意**不用** float 玻璃:整块 1104×517 ≈ 57 万 px²,
+   背景是纯平的 --aw-bg(实测 sd=0、单一色簇),模糊没有任何可折射内容,只是白付合成开销。
+   float 留给真正的浮层(本地搜索、导航下拉)。 */
+.aw-console {
+  border: 1px solid var(--aw-line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--aw-panel);
+  box-shadow: var(--aw-specular-soft), var(--aw-lift-1);
+  transition: transform 0.4s var(--aw-spring-soft), box-shadow 0.4s var(--aw-spring-snap);
+}
+
+.aw-console:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--aw-specular-soft), var(--aw-lift-2);
+}
+
+/* 分节标题的编号刻度:悬浮时点亮 */
+.hw-sec:hover .hw-sec-no {
+  color: var(--aw-green);
+  border-color: var(--aw-green-dim);
+}
+
+.hw-sec-no {
+  transition: color 0.3s var(--aw-spring-snap), border-color 0.3s var(--aw-spring-snap);
+}
+
+/* ---------- 页脚:与导航同一块玻璃 ---------- */
+.VPFooter {
+  background: var(--aw-glass-chrome) !important;
+  backdrop-filter: var(--aw-vib-chrome);
+  border-top: 1px solid var(--aw-line);
+  box-shadow: var(--aw-specular);
+}
+
+/* ---------- 执行引擎:一个组,三行子类 ---------- */
+/* 14 个引擎按接入形态分三行,后两行是 HARNESS ×14 的**子分类**而非同级层。
+   基线层给每行都配了同款 hw-layer-tag,读者会把"常驻会话/无头 CLI"误读成与
+   "入口/运行时/工业栈"平级的第四、五层;这里用左侧连接轨 + 降调标签表达从属。 */
+.hw-layer.hw-sub {
+  position: relative;
+  padding-left: 20px;
+}
+
+.hw-layer.hw-sub::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--aw-line-hi);
+}
+
+.hw-layer.hw-sub .hw-layer-tag .l1 {
+  font-size: 12px;
+  color: var(--aw-dim);
+}
+
+.hw-layer.hw-sub .hw-layer-tag .l2 {
+  color: var(--aw-ghost);
+}
+
+@media (max-width: 640px) {
+  .hw-layer.hw-sub { padding-left: 12px; }
+}
+
+/* ---------- v3 响应式补丁 ---------- */
+@media (max-width: 640px) {
+  /* 控制台标题栏:tag(66px) + meta(144px) 固定宽会把 title 挤到 23px 可用宽度,
+     整条标题只剩一个省略号 —— 而 meta 是三者里最不重要的信息,该让位。 */
+  .aw-console-meta { display: none; }
+
+  /* 中文标题不得在词内断行(基线层宣称无图 hero 就是为了这个;
+     实测 390px 下 "数字孪生" 曾被拆成两行)。 */
+  .hw-title {
+    word-break: keep-all;
+    font-size: 30px;
+  }
+
+  /* 5 个读数格在 2 列里会留下半行空格;让落单的第 5 格横跨两列 */
+  .hw-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+@media (max-width: 420px) {
+  .hw-title { font-size: 26px; }
+}
+
+/* ---------- 动效偏好:一处总闸,关掉本层新增的全部动画 ---------- */
+/* ⚠️ 这里**不能**给侧栏刻度 ::before 加 `transform: none !important`:
+   刻度可见性的唯一开关就是 `transform: scaleX(0)`,置 none 会让**每一个**侧栏条目
+   都长出绿色刻度(实测 1/11 → 11/11),当前页标记反而被淹没。
+   这类伪元素只关过渡,保留自身 transform。 */
+@media (prefers-reduced-motion: reduce) {
+  .vp-doc > div > *,
+  .hw-btn,
+  .hw-cell,
+  .hw-f,
+  .hw-p,
+  .hw-sc,
+  .hw-node,
+  .hw-stat,
+  .aw-console,
+  .VPDocFooter .pager-link,
+  .VPSidebarItem .item {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .VPSidebarItem.level-1 > .item::before,
+  .VPSidebarItem.level-1.is-active > .item::before {
+    transition: none !important;
+  }
+
+  body::before {
+    display: none;
+  }
 }

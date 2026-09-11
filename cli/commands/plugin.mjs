@@ -1,27 +1,39 @@
 // ============================================================
-// 指令:plugin — 插件管理(list / create 脚手架)
+// 指令:plugin — 插件管理(list / create / enable / disable)
 // ------------------------------------------------------------
-// 插件目录(与配置根一致):
-//   project: <repo>/.AgentWorkShop/plugins/<name>/
-//   user:    ~/.AgentWorkShop/plugins/<name>/
+// 插件目录(三作用域,与宿主 host.mjs discoverPluginDirs 一致):
+//   builtin: <packageRoot>/server/plugins-builtin/<name>/   ← 随包发布,永远存在
+//   project: <repo>/.AgentWorkShop/plugins/<name>/          ← aw plugin create 默认落点
+//   user:    ~/.AgentWorkShop/plugins/<name>/               ← aw plugin create --global
+//   ⚠️ 同名优先级 builtin > project > user(宿主先扫先占),与 scopes() 的返回顺序一致。
 // 插件契约:入口 index.mjs 导出 { name, version?, description?,
 //   setup(ctx)?, client?: './client.mjs', routes?: [...] } —— 零导入依赖。
 // ============================================================
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { color } from '../core/logger.mjs'
 import { CliError } from '../core/errors.mjs'
+
+/** 本文件位于 <packageRoot>/cli/commands/,故包根 = 上两级 */
+const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 export const meta = {
   name: 'plugin',
   aliases: ['plugins', 'plug'],
   group: '扩展',
   summary: '插件管理:查看/启停(热重载)/脚手架',
-  usage: 'aw plugin <list|create|enable|disable> [name] [--project|--global] [--force]',
+  usage: 'aw plugin <list|create|enable|disable> [name] [--global|-g] [--project] [--force|-f]',
+  // 短选项必须在这里登记:cli/aw.mjs 只把 meta.short 声明过的短名映射成长名,
+  // 未登记的 `-g` 会被 args.mjs 丢进 unknown 且**不报错** —— 插件会静默落到 project 级。
+  short: { g: 'global', f: 'force' },
   description: [
-    '插件 = 配置根 plugins/<name>/ 下的 node 项目:入口 index.mjs 导出',
-    '{ name, setup(ctx) } 即自动装载(服务端钩子/API 路由),client.mjs 可选(浏览器增强)。',
-    '服务端钩子:daq:sample / dcw:write / line:start|stop / event:*(scene 全事件)/ server:close。',
+    '插件 = plugins/<name>/ 下的自包含目录:入口 index.mjs 导出 { name, setup(ctx) }',
+    '即自动装载(服务端钩子/API 路由/Agent 工具/数采扩展),client.mjs 可选(浏览器增强)。',
+    '作用域:builtin(随包) > project(仓库 .AgentWorkShop/plugins) > user(~/.AgentWorkShop/plugins)。',
+    'create 默认落 project 级,--global/-g 落 user 级。',
+    '服务端钩子:daq:sample / daq:frame / dcw:write / line:start|stop / config:changed /',
+    'plugins:reloaded / event:*(scene 全事件) / server:close —— 通配写法是 \'*\'(裸星号)。',
   ],
   needsProject: false,
 }
@@ -70,7 +82,11 @@ export default {
 `
 
 const CLIENT_TEMPLATE = name => `// ${name} — 客户端增强(可选;自包含 ESM,无裸导入)
-// ctx: on(type,fn) 事件订阅 / el() DOM 助手 / root() 私有挂载点 / log
+// ctx: on(type,fn) scene 事件订阅 / el() DOM 助手 / root() 私有挂载点 / log
+// ⚠️ ctx.on 只装 **scene 事件**(type 传事件名本身,如 'daq.reading' / 'daq.alarm';
+//    收全部用字面量 'event:*')。服务端钩子(daq:sample / dcw:write / line:start…)
+//    不会过桥到浏览器;浏览器侧生命周期钩子(client:init / page:change / i18n:changed)
+//    要走 ctx.hooks.on(...)。
 export function setup(ctx) {
   const badge = ctx.el('div', {
     style: 'padding:6px 10px;border:1px solid #2de0a0;border-radius:8px;color:#2de0a0;background:rgba(0,0,0,.55)',
@@ -78,7 +94,7 @@ export function setup(ctx) {
   ctx.root().append(badge)
 
   let n = 0
-  ctx.on('daq:sample', () => {
+  ctx.on('daq.reading', () => {
     n++
     badge.textContent = \`\${ctx.name} · \${n} 样本\`
   })
@@ -89,11 +105,17 @@ export function setup(ctx) {
 
 const PLUGIN_README = name => `# ${name}
 
-AgentWorkShop 插件。重启 \`aw start\` / \`aw dev\` 自动装载。
+AgentWorkShop 插件。
 
 - \`index.mjs\` — 服务端入口(setup(ctx))
 - \`client.mjs\` — 浏览器增强(可选)
 - API:GET /api/plugins/${name}/stats
+
+装载无需重启:运行中的服务监听 <home>/plugins-state.json(fs.watch + 10s 轮询兜底),
+启用/停用会在 ~1s 内热重载。**改插件源码不会自动触发重载** —— 重载时宿主会用带
+时间戳的 dynamic import 破缓存重新加载模块,所以改完代码触碰一下 plugins-state.json
+(或 Web 端切一次开关)即生效,不必重启进程。
+完整契约见 docs/plugins.md。
 `
 
 export async function run(argv, ctx) {
@@ -157,15 +179,18 @@ function findPluginDir(ctx, name) {
 }
 
 function scopes(ctx) {
+  // 顺序 = 宿主 host.mjs 的发现顺序(builtin → project → user);
+  // findPluginDir 取首个命中,故顺序必须与宿主同名优先级一致,否则启停会打到另一个同名插件上。
   return [
-    { scope: 'project', dir: ctx.root ? join(ctx.root, '.AgentWorkShop', 'plugins') : null, label: '内置示例' },
-    { scope: 'user', dir: ctx.commandsDir?.global ? join(ctx.home, 'plugins') : join(ctx.home, 'plugins'), label: '用户级扩展' },
+    { scope: 'builtin', dir: join(PACKAGE_ROOT, 'server', 'plugins-builtin'), label: '内置插件(随包发布)' },
+    { scope: 'project', dir: ctx.root ? join(ctx.root, '.AgentWorkShop', 'plugins') : null, label: '项目级(仓库 .AgentWorkShop/plugins)' },
+    { scope: 'user', dir: join(ctx.home, 'plugins'), label: '用户级(~/.AgentWorkShop/plugins)' },
   ]
 }
 
 function list(ctx) {
   console.log('')
-  console.log(`${color.bold('AgentWorkShop 插件')}  ${color.dim('— 配置根 plugins/ 目录,自动装载;aw plugin enable/disable 启停')}`)
+  console.log(`${color.bold('AgentWorkShop 插件')}  ${color.dim('— 三作用域自动装载;aw plugin enable/disable 启停(热重载)')}`)
   let total = 0
   const disabled = readState(ctx)
   for (const { dir, label } of scopes(ctx)) {
@@ -196,8 +221,9 @@ function list(ctx) {
 
 function create(ctx, name, flags) {
   if (!name || !/^[a-z][a-z0-9-]{1,31}$/.test(name)) {
-    throw new CliError('USAGE', '用法: aw plugin create <name> [--project|--global](name: 小写字母开头,2-32 位 a-z0-9-)')
+    throw new CliError('USAGE', '用法: aw plugin create <name> [--global|-g] [--project] [--force|-f](name: 小写字母开头,2-32 位 a-z0-9-)')
   }
+  // 默认落 project 级;--global/-g 落 user 级。--project 是显式写法(与默认等价,保留以符合直觉)。
   const global = Boolean(flags.global ?? flags.g)
   const force = Boolean(flags.force ?? flags.f)
   const target = global
@@ -213,7 +239,8 @@ function create(ctx, name, flags) {
   writeFileSync(join(target, 'README.md'), PLUGIN_README(name), 'utf8')
 
   console.log(`${color.green('✔')} 插件已创建: ${color.bold(name)} → ${target}`)
-  console.log(`  › 重启服务自动装载;API 示例: ${color.cyan(`GET /api/plugins/${name}/stats`)}`)
-  console.log(`  › 查看列表: ${color.cyan('aw plugin list')}`)
+  console.log(`  › 作用域: ${global ? 'user(用户级,~/.AgentWorkShop/plugins)' : 'project(项目级,<repo>/.AgentWorkShop/plugins)'}`)
+  console.log(`  › 装载: 运行中的服务在 plugins-state.json 变化后 ~1s 内热重载;改代码后触碰该文件即生效(无需重启进程)`)
+  console.log(`  › 查看列表: ${color.cyan('aw plugin list')}    API 示例: ${color.cyan(`GET /api/plugins/${name}/stats`)}`)
   return 0
 }

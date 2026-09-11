@@ -316,6 +316,24 @@ console.log('[4] start / dev / build 已接入统一生命周期（静态断言�
       return /from '\.\.\/aw\.mjs'/.test(s) || /import\('\.\.\/aw\.mjs'\)/.test(s)
     })
   check('命令模块不反向 import 入口（无循环依赖）', cyclic.length === 0, `违规=${cyclic.join(',') || '无'}`)
+
+  // 每个内建指令都必须能真正 import 且导出 { meta.name, run }。
+  // 动机:registry.scanDirs → registerFile 会把 import 失败**吞进 failures**,
+  // 结果是一条指令静默消失(`aw plugin` 报"未知指令"),而静态文本检查完全看不出来
+  // —— 实际踩坑:插件指令的模板字符串里漏转义一个反引号,整个模块就废了。
+  for (const n of readdirSync(cmdDir).filter(x => /\.(mjs|js)$/.test(x) && !x.startsWith('_'))) {
+    const name = `cli/commands/${n}`
+    try {
+      const mod = await import(pathToFileURL(join(cmdDir, n)).href)
+      const m = mod.meta
+      check(`${name} 可 import 且导出 meta.name + run()`,
+        Boolean(m?.name) && typeof mod.run === 'function',
+        `meta.name=${m?.name ?? '(缺失)'} run=${typeof mod.run}`)
+    }
+    catch (err) {
+      check(`${name} 可 import 且导出 meta.name + run()`, false, `import 抛错: ${err?.message ?? err}`)
+    }
+  }
 }
 
 console.log(`\n${failures === 0 ? '✔ 全部通过' : '✖ 存在失败'} : ${checks - failures}/${checks}`)

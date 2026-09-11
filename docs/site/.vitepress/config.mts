@@ -25,6 +25,7 @@ const zhGuide = [
   { text: 'HITL 人机协同审批', link: '/guide/hitl' },
   { text: 'Recipe 版本管理', link: '/guide/recipe-versions' },
   { text: '多 Harness Agent 团队', link: '/guide/multi-harness' },
+  { text: 'AML 自动建模', link: '/guide/aml' },
   { text: '产线级权限', link: '/guide/line-permissions' },
   { text: '第一次 Agent × 产线会话', link: '/guide/first-session' },
   { text: '开源协议', link: '/guide/license' },
@@ -37,6 +38,7 @@ const enGuide = [
   { text: 'HITL approvals', link: '/en/guide/hitl' },
   { text: 'Recipe versioning', link: '/en/guide/recipe-versions' },
   { text: 'Multi-harness agent teams', link: '/en/guide/multi-harness' },
+  { text: 'AML auto-modeling', link: '/en/guide/aml' },
   { text: 'Line-level permissions', link: '/en/guide/line-permissions' },
   { text: 'Your first agent × line session', link: '/en/guide/first-session' },
   { text: 'License', link: '/en/guide/license' },
@@ -77,6 +79,12 @@ export default defineConfig({
   base: '/AgentWorkShop/',
   // 单一控制室色板,不提供明暗切换(theme/custom.css 以 --hud-* 令牌承载)
   appearance: false,
+  // ⚠️ 必须显式声明 markdown 语法高亮主题:VitePress 默认按明暗切换注入两套 Shiki 主题,
+  // 而本站 appearance:false 只保留暗色 —— 不声明时它注入的是 **浅色** 调色板,
+  // 结果在 #0a111d 的代码底上出现 1.49:1 的字符串色(#032f62),正文级不可读。
+  // 选 github-dark-default 而非 github-dark:后者的注释色 #6A737D 只有 3.93:1,
+  // 前者为 #8B949E(实测 ≥6:1),整块代码无低于 AA 的 token。
+  markdown: { theme: 'github-dark-default' },
   lastUpdated: true,
   ignoreDeadLinks: true,
   locales: {

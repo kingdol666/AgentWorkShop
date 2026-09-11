@@ -16,13 +16,13 @@
 import { SDK_VERSION, definePlugin, createPluginContext, createRouteTable, validatePluginModule, validatePluginSettings, validatePluginGroups, resolvePluginGroupId, pluginKvExists } from './context.mjs'
 import { HookBus } from './hooks.mjs'
 import { createPlatformClient } from './api.mjs'
-import { CLIENT_SDK_VERSION, createClientContext } from './client.mjs'
+import { CLIENT_SDK_VERSION, createClientContext, el } from './client.mjs'
 import { LIFECYCLE_EVENTS, CLIENT_EVENTS } from './lifecycle.mjs'
 
 export { SDK_VERSION, definePlugin, createPluginContext, createRouteTable, validatePluginModule, validatePluginSettings, validatePluginGroups, resolvePluginGroupId, pluginKvExists, isPathInside } from './context.mjs'
 export { HookBus } from './hooks.mjs'
 export { createPlatformClient } from './api.mjs'
-export { CLIENT_SDK_VERSION, createClientContext } from './client.mjs'
+export { CLIENT_SDK_VERSION, createClientContext, el } from './client.mjs'
 export { LIFECYCLE_EVENTS, CLIENT_EVENTS } from './lifecycle.mjs'
 
 export default {
@@ -39,6 +39,7 @@ export default {
   createPlatformClient,
   CLIENT_SDK_VERSION,
   createClientContext,
+  el,
   LIFECYCLE_EVENTS,
   CLIENT_EVENTS,
 }

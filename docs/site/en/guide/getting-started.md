@@ -6,16 +6,26 @@
 node -v   # ≥ 23.4.0 (built-in node:sqlite required)
 ```
 
-> The `omp` harness (recommended for real agent work) expects the `omp` CLI on PATH;
-> the `mock` harness works out of the box. Optional DAQ infrastructure (MQTT broker +
-> TimescaleDB) is started automatically via `docker compose up -d` when reachable.
+> Real agent work needs an execution engine. **14 engines** ship with the platform, in three
+> transport classes: in-process (`mock` / `claude`), persistent session
+> (`omp` / `codex` / `dsh` / `qwen` / `hermes` / `opencode`) and headless CLI (`gemini` /
+> `copilot` / `cursor` / `crush` / `goose` / `pi`). `mock` works out of the box; the rest
+> need their CLI on PATH (or, for `claude`, the SDK dependency) — see
+> [multi-harness agent teams](/en/guide/multi-harness) for selection and credentials.
+> Optional DAQ infrastructure (MQTT broker + TimescaleDB) is started automatically via
+> `docker compose up -d` when reachable.
 
 ## Option A — install from npm (recommended)
 
 ```bash
 npm install -g agentworkshop     # → `aw` / `agentworkshop` on PATH
-aw start                         # first run builds once (2–3 min) → http://localhost:3001
+aw start                         # the published tarball ships a prebuilt .output/ → http://localhost:3001
 ```
+
+The tarball published to npm already contains the production build (`prepublishOnly` builds
+once before packing), so `aw start` from an npm install **does not rebuild** and needs no
+`pnpm install`. Only a **source checkout** without `.output/` builds once on first start
+(about 2–3 minutes).
 
 The first start initializes everything into the **`~/.AgentWorkShop`** config root:
 default `config.yml`, `.env` with a generated session secret, `runtime-settings.json`,
@@ -26,7 +36,7 @@ not your working directory**.
 Just want to try it once?
 
 ```bash
-npx agentworkshop start          # runs in place, nothing left behind
+npx agentworkshop start          # runs without installing (it still bootstraps the ~/.AgentWorkShop config root)
 ```
 
 ## Option B — from source

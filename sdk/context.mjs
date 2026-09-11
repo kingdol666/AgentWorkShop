@@ -2,14 +2,16 @@
 // AgentWorkShop SDK — 服务端插件上下文工厂（宿主调用;插件经 setup(ctx) 获得）
 // ------------------------------------------------------------
 // ctx 形态(运行时完整变量面):
-//   身份    ctx.name / ctx.scope('home'|'project') / ctx.dir / ctx.sdkVersion
-//   钩子    ctx.hooks   HookBus(生命周期 + event:*)                  [SDK]
+//   身份    ctx.name / ctx.scope('builtin'|'project'|'user') / ctx.dir / ctx.sdkVersion
+//   钩子    ctx.hooks   HookBus 门面(生命周期 + event:*)             [SDK]
 //   日志    ctx.logger  { debug, info, warn, error } 插件名前缀      [SDK]
-//   配置    ctx.config  { get(key), all(), onChange(fn) }            [SDK]
+//   配置    ctx.config  { get,all,onChange,defineGroup,defineField,
+//                         removeGroup,removeField,groups,fields }    [SDK]
 //   存储    ctx.kv      { get,set,all,bump } 内存态+防抖落盘          [SDK]
 //   定时    ctx.timer   { setInterval, setTimeout } 服务关闭自动回收  [SDK]
 //   清理    ctx.onDispose(fn) / ctx.subscriptions                    [SDK]
-//   路由    ctx.route(method, path, handler) → /api/plugins/<name>… [SDK]
+//   路由    ctx.route(method, path, handler) → boolean               [SDK]
+//           /api/plugins/<name><path>;鉴权由插件入口 auth 字段声明
 //   平台    ctx.api     平台 REST 客户端(lines/daq/dcw/twins/teams…) [SDK]
 //   网络    ctx.http    { get, post } 带超时 fetch(仅 http/https)    [SDK]
 //   事件    ctx.events  { on(type,fn), off }  scene 实时事件          [SDK]
@@ -36,6 +38,10 @@ function safeUrl(raw, timeoutMs = 8000) {
  */
 export function createPluginContext(opts) {
   const { name, scope, dir, hooks, config, paths, emitter } = opts
+  // 宿主回收登记口(host.mjs perPluginDisposables)。**必须转发**:此前这里漏接
+  // opts.onDispose,导致 ctx.onDispose / ctx.timer.* / ctx.subscriptions.add 登记的
+  // 清理永不执行 —— 定时器泄漏 + 退出前 200ms 的 kv 写入丢失,而文档承诺"自动回收"。
+  const hostOnDispose = typeof opts.onDispose === 'function' ? opts.onDispose : null
   // 规范化 logger:宿主实现缺级时兜底 no-op(插件可用全套 debug/info/warn/error)
   const logger = {
     debug: () => {},
@@ -45,10 +51,14 @@ export function createPluginContext(opts) {
     ...(opts.logger ?? {}),
   }
 
-  // ---- 订阅回收(VSCode subscriptions 范式):服务关闭时宿主逐个调用 ----
+  // ---- 订阅回收(VSCode subscriptions 范式):服务关闭/热重载时宿主逐个调用 ----
+  //  有宿主注入口 → 直接进宿主回收队列(唯一事实源,避免两处各存一份被调用两次);
+  //  无宿主(单测/独立装配)→ 留在本地数组兜底。
   const disposables = []
   const onDispose = (fn) => {
-    if (typeof fn === 'function') disposables.push(fn)
+    if (typeof fn !== 'function') return fn
+    if (hostOnDispose) hostOnDispose(fn)
+    else disposables.push(fn)
     return fn
   }
 
@@ -157,17 +167,19 @@ export function createPluginContext(opts) {
      *  visibleLineIds(user)  → Set<lineId>|null(全量)
      *  listGrants(userId)    → [{lineId,mode,grantedBy,grantedAt}]
      *  setGrants(userId, [{lineId,mode}]) → 写授权(需 admin 上下文)
-     *  变更事件: hooks.on('permissions:changed', { userId }) */
+     *  变更事件:ctx.events.on('permissions:changed', fn)
+     *  ——宿主把平台事件统一加 `event:` 前缀,故订阅要走 ctx.events(它会补前缀),
+     *    直接 ctx.hooks.on('permissions:changed') 永远不触发。 */
     permissions: opts.permissions ?? {
       lineMode: () => 'none',
       visibleLineIds: () => new Set(),
       listGrants: () => [],
       setGrants: () => { throw new Error('[sdk] ctx.permissions 未由宿主注入') },
     },
-    /** 订阅式清理对象({ dispose(){} })集中登记 */
+    /** 订阅式清理对象({ dispose(){} })集中登记(与 ctx.onDispose 同一回收队列) */
     subscriptions: {
       add: (d) => {
-        disposables.push(typeof d === 'function' ? d : (...a) => d.dispose?.(...a))
+        onDispose(typeof d === 'function' ? d : (...a) => d.dispose?.(...a))
         return d
       },
     },

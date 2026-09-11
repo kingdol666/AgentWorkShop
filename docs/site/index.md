@@ -28,7 +28,7 @@ footer:
       <div class="hw-rail">
         <div class="hw-pulse"></div>
         <div class="hw-node"><span class="n">现场设备</span><span class="d">PLC / 传感器</span></div>
-        <div class="hw-node"><span class="n">驱动 ×5</span><span class="d">MODBUS·OPC UA·MQTT·HTTP</span></div>
+        <div class="hw-node"><span class="n">驱动 ×5</span><span class="d">MODBUS TCP/RTU·OPC UA·MQTT·HTTP</span></div>
         <div class="hw-node"><span class="n">队列</span><span class="d">INPROC / MQTT</span></div>
         <div class="hw-node"><span class="n">时序库</span><span class="d">TIMESCALE</span></div>
         <div class="hw-node"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ 续传</span></div>
@@ -37,9 +37,9 @@ footer:
       <div class="hw-stats">
         <div class="hw-stat"><span class="v">5</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
-        <div class="hw-stat"><span class="v">6</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">73</span><span class="k">设置项 · 16 组</span></div>
-        <div class="hw-stat"><span class="v">156<i>*</i></span><span class="k">验收断言 全过</span></div>
+        <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
+        <div class="hw-stat"><span class="v">98</span><span class="k">设置项 · 16 组</span></div>
+        <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">验收断言 全过</span></div>
       </div>
     </div>
   </div>
@@ -101,14 +101,32 @@ footer:
         </div>
       </div>
       <div class="hw-layer">
-        <div class="hw-layer-tag"><span class="l1">执行引擎</span><span class="l2">HARNESS</span></div>
+        <div class="hw-layer-tag"><span class="l1">执行引擎</span><span class="l2">HARNESS ×14</span></div>
+        <div class="hw-cells c2col">
+          <div class="hw-cell"><span class="c1">mock</span><span class="c2">进程内 · 剧本</span></div>
+          <div class="hw-cell"><span class="c1">claude</span><span class="c2">进程内 · Agent SDK</span></div>
+        </div>
+      </div>
+      <div class="hw-layer hw-sub">
+        <div class="hw-layer-tag"><span class="l1">常驻会话</span><span class="l2">PERSISTENT SESSION · 6</span></div>
         <div class="hw-cells c6col">
-          <div class="hw-cell"><span class="c1">mock</span></div>
-          <div class="hw-cell"><span class="c1">omp</span></div>
-          <div class="hw-cell"><span class="c1">codex</span></div>
-          <div class="hw-cell"><span class="c1">dsh</span></div>
-          <div class="hw-cell"><span class="c1">opencode</span></div>
-          <div class="hw-cell"><span class="c1">claude</span></div>
+          <div class="hw-cell"><span class="c1">omp</span><span class="c2">stdio RPC</span></div>
+          <div class="hw-cell"><span class="c1">codex</span><span class="c2">app-server JSON-RPC</span></div>
+          <div class="hw-cell"><span class="c1">dsh</span><span class="c2">ACP v1</span></div>
+          <div class="hw-cell"><span class="c1">qwen</span><span class="c2">ACP(旧版 Zed)</span></div>
+          <div class="hw-cell"><span class="c1">hermes</span><span class="c2">ACP v1</span></div>
+          <div class="hw-cell"><span class="c1">opencode</span><span class="c2">serve + HTTP/SSE</span></div>
+        </div>
+      </div>
+      <div class="hw-layer hw-sub">
+        <div class="hw-layer-tag"><span class="l1">无头 CLI</span><span class="l2">HEADLESS CLI · 6</span></div>
+        <div class="hw-cells c6col">
+          <div class="hw-cell"><span class="c1">gemini</span><span class="c2">stream-json</span></div>
+          <div class="hw-cell"><span class="c1">copilot</span><span class="c2">JSONL</span></div>
+          <div class="hw-cell"><span class="c1">cursor</span><span class="c2">stream-json</span></div>
+          <div class="hw-cell"><span class="c1">crush</span><span class="c2">run -q</span></div>
+          <div class="hw-cell"><span class="c1">goose</span><span class="c2">stream-json</span></div>
+          <div class="hw-cell"><span class="c1">pi</span><span class="c2">-p --mode json</span></div>
         </div>
       </div>
     </div>
@@ -144,12 +162,12 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>配置驱动</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——73 个设置项,代码零硬编码默认。</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——98 个设置项(32 live / 66 restart),代码零硬编码默认。</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
         <h3>协议真实验证</h3>
-        <p>E2E 跑在真实 Modbus/OPC UA/MQTT/HTTP 栈上:真写 PLC、真回读、真审批——不是 mock 自证。156 项验收断言全过。</p>
+        <p>E2E 跑在真实 Modbus/OPC UA/MQTT/HTTP 栈上:真写 PLC、真回读、真审批——不是 mock 自证。当前 head 上 124 项验收断言全过(v0.7.20 历史基线 156 项)。</p>
       </div>
       <div class="hw-p">
         <span class="no">06</span>
@@ -171,7 +189,7 @@ footer:
       <div class="hw-f"><span class="tag">R/W</span><h3>数控读写一体</h3><p>每个控制节点沿写链路同一套标定读回 PLC 当前值——SET 与 ACT 并排呈现,读为被动观测,免审批。</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>人机协同写控</h3><p>安全量程 ∩ 配方窗口联锁 → 人工审批 → PLC 写入 → 回读校验 → 签名写历史;裁决人留痕审计。</p></div>
       <div class="hw-f"><span class="tag">RCT</span><h3>Recipe 版本化治理</h3><p>参数按版本入史(来源+操作者+原因),一键回退任意版本或已知良好批次——非破坏,历史完整。</p></div>
-      <div class="hw-f"><span class="tag">HRN</span><h3>多引擎 Agent 团队</h3><p>六引擎一个契约,每频道可选 harness → provider → model;可用性探测 + 执行前强校验。</p></div>
+      <div class="hw-f"><span class="tag">HRN</span><h3>多引擎 Agent 团队</h3><p>十四个引擎一个契约(进程内 / 常驻会话 / 无头 CLI 三类),每频道可选 harness → provider → model;可用性探测 + 执行前强校验。</p></div>
       <div class="hw-f"><span class="tag">TEAM</span><h3>团队级插件开关</h3><p>每 Channel 独立插件开关组——被关闭插件的工具不注入该团队;插件本体热管理。</p></div>
       <div class="hw-f"><span class="tag">PERM</span><h3>产线级权限</h3><p>三态授权在数据面强制,无权产线信息不离开服务端;Agent 绑定校验产线授权。</p></div>
       <div class="hw-f"><span class="tag">OPS</span><h3>全操作运维日志</h3><p>用户/Agent/系统三源归属「Channel/成员」,按产线/Recipe/来源检索,WS 实时推送。</p></div>
@@ -232,7 +250,7 @@ footer:
     <div class="hw-term">
       <div class="hw-term-bar"><i>●</i> aw · zsh — repo / home 双模式</div>
       <div class="hw-term-body">
-        <span class="cm"># 全局安装,任意目录启动(首次启动自动构建一次)</span><br>
+        <span class="cm"># 全局安装,任意目录启动(发布包自带预构建产物,无需再构建)</span><br>
         <span class="pr">$</span> npm i -g agentworkshop<br>
         <span class="pr">$</span> aw start&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm"># → http://localhost:3001 · 配置根 ~/.AgentWorkShop</span>
       </div>

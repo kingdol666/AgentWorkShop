@@ -26,7 +26,7 @@ layout: home
       <div class="hw-rail">
         <div class="hw-pulse"></div>
         <div class="hw-node"><span class="n">Field devices</span><span class="d">PLC / SENSORS</span></div>
-        <div class="hw-node"><span class="n">Drivers ×5</span><span class="d">MODBUS·OPC UA·MQTT·HTTP</span></div>
+        <div class="hw-node"><span class="n">Drivers ×5</span><span class="d">MODBUS TCP/RTU·OPC UA·MQTT·HTTP</span></div>
         <div class="hw-node"><span class="n">Queue</span><span class="d">INPROC / MQTT</span></div>
         <div class="hw-node"><span class="n">TSDB</span><span class="d">TIMESCALE</span></div>
         <div class="hw-node"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ RESUME</span></div>
@@ -35,9 +35,9 @@ layout: home
       <div class="hw-stats">
         <div class="hw-stat"><span class="v">5</span><span class="k">FIELD PROTOCOLS</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">ENTRY POINTS</span></div>
-        <div class="hw-stat"><span class="v">6</span><span class="k">ENGINES</span></div>
-        <div class="hw-stat"><span class="v">73</span><span class="k">SETTINGS · 16 GROUPS</span></div>
-        <div class="hw-stat"><span class="v">156<i>*</i></span><span class="k">ACCEPTANCE CHECKS PASS</span></div>
+        <div class="hw-stat"><span class="v">14</span><span class="k">ENGINES</span></div>
+        <div class="hw-stat"><span class="v">98</span><span class="k">SETTINGS · 16 GROUPS</span></div>
+        <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">ACCEPTANCE CHECKS PASS</span></div>
       </div>
     </div>
   </div>
@@ -100,14 +100,32 @@ layout: home
         </div>
       </div>
       <div class="hw-layer">
-        <div class="hw-layer-tag"><span class="l1">Engines</span><span class="l2">HARNESS</span></div>
+        <div class="hw-layer-tag"><span class="l1">Engines</span><span class="l2">HARNESS ×14</span></div>
+        <div class="hw-cells c2col">
+          <div class="hw-cell"><span class="c1">mock</span><span class="c2">in-process · scripted</span></div>
+          <div class="hw-cell"><span class="c1">claude</span><span class="c2">in-process · Agent SDK</span></div>
+        </div>
+      </div>
+      <div class="hw-layer hw-sub">
+        <div class="hw-layer-tag"><span class="l1">Persistent</span><span class="l2">PERSISTENT SESSION · 6</span></div>
         <div class="hw-cells c6col">
-          <div class="hw-cell"><span class="c1">mock</span></div>
-          <div class="hw-cell"><span class="c1">omp</span></div>
-          <div class="hw-cell"><span class="c1">codex</span></div>
-          <div class="hw-cell"><span class="c1">dsh</span></div>
-          <div class="hw-cell"><span class="c1">opencode</span></div>
-          <div class="hw-cell"><span class="c1">claude</span></div>
+          <div class="hw-cell"><span class="c1">omp</span><span class="c2">stdio RPC</span></div>
+          <div class="hw-cell"><span class="c1">codex</span><span class="c2">app-server JSON-RPC</span></div>
+          <div class="hw-cell"><span class="c1">dsh</span><span class="c2">ACP v1</span></div>
+          <div class="hw-cell"><span class="c1">qwen</span><span class="c2">ACP (legacy Zed)</span></div>
+          <div class="hw-cell"><span class="c1">hermes</span><span class="c2">ACP v1</span></div>
+          <div class="hw-cell"><span class="c1">opencode</span><span class="c2">serve + HTTP/SSE</span></div>
+        </div>
+      </div>
+      <div class="hw-layer hw-sub">
+        <div class="hw-layer-tag"><span class="l1">Headless CLI</span><span class="l2">HEADLESS CLI · 6</span></div>
+        <div class="hw-cells c6col">
+          <div class="hw-cell"><span class="c1">gemini</span><span class="c2">stream-json</span></div>
+          <div class="hw-cell"><span class="c1">copilot</span><span class="c2">JSONL</span></div>
+          <div class="hw-cell"><span class="c1">cursor</span><span class="c2">stream-json</span></div>
+          <div class="hw-cell"><span class="c1">crush</span><span class="c2">run -q</span></div>
+          <div class="hw-cell"><span class="c1">goose</span><span class="c2">stream-json</span></div>
+          <div class="hw-cell"><span class="c1">pi</span><span class="c2">-p --mode json</span></div>
         </div>
       </div>
     </div>
@@ -143,12 +161,12 @@ layout: home
       <div class="hw-p">
         <span class="no">04</span>
         <h3>Config-driven</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 73 settings across 16 groups, zero hardcoded defaults.</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 98 settings across 16 groups (32 live / 66 restart), zero hardcoded defaults.</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
         <h3>Protocol-real verification</h3>
-        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. 156 acceptance assertions, all passing.</p>
+        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. 124 acceptance assertions pass at current head (156 was the v0.7.20 baseline).</p>
       </div>
       <div class="hw-p">
         <span class="no">06</span>
@@ -170,7 +188,7 @@ layout: home
       <div class="hw-f"><span class="tag">R/W</span><h3>Read-write control nodes</h3><p>Every control node reads its PLC value back through the same calibration path it writes with — SET vs ACT side by side, passive and never interlocked.</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>Human-approved writes</h3><p>Safe-range ∩ recipe-window interlock → approval → PLC write → readback → signed history; every decision audited.</p></div>
       <div class="hw-f"><span class="tag">RCT</span><h3>Recipe versioning</h3><p>Parameter changes versioned with attribution (source + operator + reason); roll back to any revision or last-good batch, non-destructively.</p></div>
-      <div class="hw-f"><span class="tag">HRN</span><h3>Multi-harness teams</h3><p>Six engines behind one contract; each channel picks harness → provider → model, with availability probing and dispatch-time checks.</p></div>
+      <div class="hw-f"><span class="tag">HRN</span><h3>Multi-harness teams</h3><p>Fourteen engines behind one contract, in three transport classes (in-process / persistent session / headless CLI); each channel picks harness → provider → model, with availability probing and dispatch-time checks.</p></div>
       <div class="hw-f"><span class="tag">TEAM</span><h3>Team-scoped plugins</h3><p>Each channel keeps its own plugin switch set — a disabled plugin's tools never enter that team; plugins themselves are hot-managed.</p></div>
       <div class="hw-f"><span class="tag">PERM</span><h3>Line-level permissions</h3><p>Three-state grants enforced in the data plane; agent bindings validate line grants too.</p></div>
       <div class="hw-f"><span class="tag">OPS</span><h3>Full-operation audit log</h3><p>User / agent / system actions attributed to "Channel/Member", queryable by line, recipe, source and kind — streamed live.</p></div>
@@ -231,7 +249,7 @@ layout: home
     <div class="hw-term">
       <div class="hw-term-bar"><i>●</i> aw · zsh — repo / home dual mode</div>
       <div class="hw-term-body">
-        <span class="cm"># install globally, run from any directory (first start builds once)</span><br>
+        <span class="cm"># install globally, run from any directory (the published tarball ships a prebuilt .output/)</span><br>
         <span class="pr">$</span> npm i -g agentworkshop<br>
         <span class="pr">$</span> aw start&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm"># → http://localhost:3001 · config root ~/.AgentWorkShop</span>
       </div>

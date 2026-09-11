@@ -14,17 +14,24 @@ export function setup(ctx) {
   let n = 0
   let alarms = 0
 
-  ctx.on('daq:sample', () => {
+  // ctx.on(type) 的 type 是 **scene 事件名本身**(浏览器可见的那一类),内部装到 `event:<type>`。
+  // 真实 scene 事件清单见 daq-controller.ts 的 broadcast 调用点:
+  //   daq.reading / daq.frame / daq.alarm / daq.alarm.changed / daq.node.changed /
+  //   daq.controller / device.updated / error
+  // ⚠️ 服务端生命周期钩子(daq:sample / line:start / line:stop)不会过桥到浏览器,
+  //    在客户端订阅它们只会得到永不触发的静默空订阅。
+  ctx.on('daq.reading', () => {
     n++
     badge.textContent = `🛡 line-sentinel · ${n} 样本 · ${alarms} 告警`
   })
 
-  // 服务端告警状态变化经 event 桥可见(ops.log 或轮询 stats;此处演示事件订阅)
-  ctx.on('event:line.start', () => {
-    badge.style.borderColor = '#35e0a0'
+  ctx.on('daq.alarm', () => {
+    alarms++
+    badge.style.borderColor = '#ff6b6b'
+    badge.textContent = `🛡 line-sentinel · ${n} 样本 · ${alarms} 告警`
   })
-  ctx.on('event:line.stop', () => {
-    badge.style.borderColor = 'rgba(53,224,160,.35)'
+  ctx.on('daq.alarm.changed', () => {
+    badge.style.borderColor = 'rgba(53,224,160,.5)'
   })
 
   ctx.log.info('哨兵徽标已挂载(右下角)')

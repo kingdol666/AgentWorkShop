@@ -38,10 +38,13 @@ await client.permissions.set({ userId, grants: [{ lineId, mode: 'operate' }] })
 // 插件 ctx.permissions（宿主注入）
 const mode = ctx.permissions.lineMode(user, lineId)          // 'none' | 'readonly' | 'operate'
 const visible = ctx.permissions.visibleLineIds(user)          // Set<lineId> | null(全量)
+const grants = ctx.permissions.listGrants(userId)             // [{ lineId, mode, grantedBy, grantedAt }]
 await ctx.permissions.setGrants(userId, [{ lineId, mode }])   // 写授权(自动广播)
 
-// 生命周期钩子
-ctx.hooks.on('permissions:changed', ({ userId }) => { /* 刷新缓存 */ })
+// 授权变更：前端消费 scene 事件，插件订阅 permissions:changed
+ctx.events.on('permissions:changed', ({ userId }) => { /* 刷新缓存 */ })
 ```
 
-授权变更会广播 `permissions.changed`（scene 实时事件）与 `permissions:changed`（插件钩子），前端与插件据此即时刷新。
+授权变更会广播 `permissions.changed`（scene 实时事件，前端经 WS 消费）与
+`permissions:changed`（插件事件）。插件侧订阅必须走 `ctx.events.on(...)` ——
+宿主给平台事件统一加 `event:` 前缀，`ctx.hooks.on('permissions:changed')` 永远不触发。

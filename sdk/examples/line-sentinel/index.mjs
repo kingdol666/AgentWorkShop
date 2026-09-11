@@ -19,7 +19,9 @@ export default {
 
     // 平台服务消费:启动时经 SDK API 客户端读取产线清单(自环调用)
     try {
-      const lines = await ctx.api.lines.list()
+      // ⚠️ GET /api/workshop/dcw/lines 返回的是 { lines, states } —— **不是数组**。
+      // 旧写法 Array.isArray(lines) 恒为 false,linesTotal 永远是 0(静默错误)。
+      const { lines } = await ctx.api.lines.list()
       ctx.kv.set('linesTotal', Array.isArray(lines) ? lines.length : 0)
       ctx.logger.info(`平台产线清单: ${ctx.kv.get('linesTotal')} 条`)
     }
@@ -81,7 +83,8 @@ export default {
         .map(([k, v]) => ({ nodeId: k.slice(6), ...v }))
       return {
         plugin: ctx.name,
-        version: ctx.version,
+        // ctx 上没有 version(插件版本由 manifest 记录);这里报 SDK 版本才有意义
+        sdkVersion: ctx.sdkVersion,
         running: ctx.kv.get('running') ?? false,
         runningCount: ctx.kv.get('runningCount') ?? 0,
         heartbeat: ctx.kv.get('heartbeat'),

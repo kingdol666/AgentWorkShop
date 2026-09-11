@@ -6,6 +6,18 @@ import { loadConfig } from './app/config'
 // 构建期一次性读取 config.yml，作为整个运行时的单一事实来源
 const config = loadConfig()
 
+// 版本号的事实源是 package.json —— config.yml 的 app.version 只是历史遗留副本,
+// 长期不同步(config.yml 停在 0.7.9 而包已到 0.7.35),且 /api/health 直接回显它。
+// 这里以包版本优先,config.yml 仅作回退,消除"发版后版本号两处不一致"。
+const PKG_VERSION = (() => {
+  try {
+    return JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')).version as string
+  }
+  catch {
+    return null
+  }
+})()
+
 // @nuxt/eslint 仅在依赖树内存在时启用 —— 全局安装载荷(用户机)不装 eslint,
 // 构建期模块不可解析会直接炸;仓库开发环境正常启用
 const hasEslintModule = existsSync(join(process.cwd(), 'node_modules', '@nuxt', 'eslint'))
@@ -78,7 +90,7 @@ export default defineNuxtConfig({
     public: {
       appName: config.app.name,
       appTitle: config.app.title,
-      version: config.app.version,
+      version: PKG_VERSION ?? config.app.version,
       description: config.app.description,
       mode: config.mode,
       apiBase: config.api.baseURL,
