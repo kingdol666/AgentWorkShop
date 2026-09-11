@@ -32,6 +32,13 @@ import { generateMcpBridgeEnv } from './harness-env'
 
 const log = createLogger('workshop.codex')
 
+/**
+ * 默认回合停滞上限:整轮无任何事件(含推理模型的静默思考期)达到该时长才中止。
+ * 600s 会误杀健康的沉默推理(实测推理档静默 >10 分钟后被打断,任务 FAILED→重试→CANCELED);
+ * 事件到达即刷新计时,真实卡死仍会在该窗口内被发现。
+ */
+const CODEX_TURN_STALL_MS = 1_800_000
+
 export interface CodexAgentConfig {
   /** codex 可执行文件(默认取 harness.codex_command 设置) */
   command?: string
@@ -52,6 +59,12 @@ export interface CodexAgentConfig {
   contextWindow?: number
   /** 压缩阈值(0-1,默认 0.7) */
   compactThreshold?: number
+  /**
+   * 回合停滞上限(ms):整轮无任何事件(推理模型静默思考也不产 delta)达到该时长才中止。
+   * 默认 1800000(30 分钟):codex 0.154 的推理档在负载下可静默思考 >10 分钟,
+   * 600s 会把健康的沉默推理误杀为 CODEX_TURN_STALLED(任务 FAILED→重试→CANCELED)。
+   * 有事件(delta/status/工具轨迹)即刷新计时,不放大真实卡死的发现延迟。
+   */
   promptTimeoutMs?: number
   superviseTimeoutMs?: number
   systemPromptPrefix?: string
@@ -235,7 +248,7 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
         ctxPrefix: await this.contextPrefix(),
         manual: systemManual(),
       })
-      yield* this.streamTurn(prompt, taskId, this.config.promptTimeoutMs ?? 600_000, ctx.signal)
+      yield* this.streamTurn(prompt, taskId, this.config.promptTimeoutMs ?? CODEX_TURN_STALL_MS, ctx.signal)
     }
     finally {
       this.toolState.currentTaskId = null
@@ -275,7 +288,7 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
       fromChannel: typeof msg.metadata?.['x-aw-from-channel'] === 'string' ? String(msg.metadata['x-aw-from-channel']) : '',
       msgText,
     })
-    yield* this.streamTurn(prompt, undefined, this.config.promptTimeoutMs ?? 600_000, ctx.signal)
+    yield* this.streamTurn(prompt, undefined, this.config.promptTimeoutMs ?? CODEX_TURN_STALL_MS, ctx.signal)
   }
 
   // ===== 回合执行 =====
@@ -667,12 +680,17 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
    * per-agent CODEX_HOME config.toml:注册 MCP 桥(required=true,桥挂了宁可失败)。
    * 已有 config.toml(从全局目录种子化复制)→ 追加本段(保留用户的 provider/model
    * 配置,自定义网关/密钥不丢失);全新目录 → 独立写入。
+   *
+   * 无条件种子化(不再仅当 effort 配置时才挂桥):MCP 桥是 codex worker 的 host
+   * 工具面(complete_task/ops_log/…)唯一入口;不挂桥的实例模型只能拿自带 shell
+   * 乱翻工作区,永远调不到 complete_task → 任务停滞被看门狗回收
+   * (实测 codex 任务终态 CANCELED、交付物却只落在频道消息里的根因)。
    */
   private writeCodexHomeConfig(): void {
     let home = this.config.codexHome
-    if (!home && this.config.effort) {
-      // effort 需要配置文件面(model_reasoning_effort):自动种子化 per-agent CODEX_HOME
-      // (拷贝全局凭据/网关配置,保登录与自定义 provider;追加 MCP 段 + 顶部 effort)
+    if (!home) {
+      // 自动种子化 per-agent CODEX_HOME(拷贝全局凭据/网关配置,保登录与自定义
+      // provider;追加 MCP 段 + 顶部 effort)
       home = join(tmpdir(), `aw-codex-${this.selfAgentId.slice(0, 8)}`)
       this.config.codexHome = home
       for (const f of ['auth.json', 'config.toml', 'cc-switch-model-catalog.json']) {
@@ -683,7 +701,6 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
         catch { /* 单文件缺失忽略 */ }
       }
     }
-    if (!home) return
     try {
       mkdirSync(home, { recursive: true })
       const configFile = join(home, 'config.toml')

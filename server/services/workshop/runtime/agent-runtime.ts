@@ -197,6 +197,11 @@ export class AgentRuntime {
     this.role = agent.role
     this.channelId = agent.channelId
     this.name = agent.name
+    // 工作区即时可用:impl 的 workspace 原本在首个 run() 才注入,此前 REST 直调
+    // host 工具(agent-tools/invoke)会拿到 null →「workspace 未就绪」。
+    // 装配期即绑定(与 run() 注入的是同一对象,语义等价)。
+    const attach = (this.impl as { attachWorkspace?: (ws: AgentWorkspace) => void }).attachWorkspace
+    if (typeof attach === 'function') attach.call(this.impl, deps.workspace)
   }
 
   /** 投递消息;idle 时立即唤醒消费 */
@@ -582,6 +587,13 @@ export class AgentRuntime {
           // LLM 流式增量:只走事件流(AEP agent.delta),不进任务引擎/交付兜底管道
           if (event.kind === 'delta') continue
           if (event.kind === 'error') sawRunError = true
+          // 无原生工具面的 harness(codex/dsh 等)以 shell/文本方式作业:回合 error 收束
+          // 但已有实质输出时,不落入 FAILED(交由回合结束后的交付兜底按最终输出隐式收口)——
+          // 否则「工作已做完、流断在收尾」的任务全部 FAILED→重试→CANCELED(实测 dsh)。
+          if (event.kind === 'error' && taskId && replyText.trim().length >= 40) {
+            const cur = this.deps.taskEngine.get(taskId)
+            if (cur && cur.state === 'WORKING') continue
+          }
           if (taskId) await this.deps.taskEngine.applyEvent(taskId, event)
           if (event.kind === 'message') cap(partsToText(event.message.parts))
           else if (event.kind === 'status' && event.status.message) cap(partsToText(event.status.message.parts))
@@ -618,13 +630,30 @@ export class AgentRuntime {
       // 交付兜底(harness 回合结束 ≠ 任务完成):
       //  - 回合产出过实质 artifact(LLM 完成了工作但跳过 complete_task 工具)→ 隐式完成,
       //    交付物即回合规避的输出,平台代为收口(进度 100)。
-      //  - 无任何产出(LLM 空转)→ FAILED 交给调度器 retry/reassign。
+      //  - 无 artifact 但回合有最终文本输出(部分 harness 不支持回合内调工具,只能把
+      //    结果写在答复里,如 codex/dsh 的 MCP 桥未就绪/未被模型使用)→ 同样隐式完成,
+      //    最终文本作为交付物;否则这类引擎的所有任务都会「工作做完了却停滞被回收」。
+      //  - 两者皆无(LLM 空转)→ FAILED 交给调度器 retry/reassign。
       // 仅 worker 的 assign 执行消息生效:lead 由 supervise 协调;WAITING 父任务不属此列。
       if (taskId && this.role === 'worker' && msg.metadata?.['x-aw-task-kind'] === 'assign') {
         const after = this.deps.taskEngine.get(taskId)
         if (after && after.assigneeId === this.agentId && after.state === 'WORKING') {
           const deliverable = after.artifacts.find(a => a.name !== 'input' && a.parts.some(p => ('text' in p ? p.text.trim().length : 1) > 0))
-          if (deliverable) {
+          const fallbackText = deliverable ? '' : replyText.trim()
+          if (deliverable || fallbackText) {
+            if (!deliverable) {
+              // 回合最终文本 → 平台代录交付物(与 complete_task 的 deliverable 同构)
+              await this.deps.taskEngine.applyEvent(taskId, {
+                kind: 'artifact',
+                artifact: {
+                  artifactId: randomUUID(),
+                  name: 'deliverable',
+                  parts: [{ text: fallbackText.slice(0, 20_000) }],
+                },
+                lastChunk: true,
+                totalChunks: 1,
+              })
+            }
             const completed = await this.deps.taskEngine.complete(taskId)
             this.emitExternal({
               kind: 'status',
@@ -634,7 +663,7 @@ export class AgentRuntime {
                   messageId: randomUUID(),
                   contextId: this.channelId,
                   role: 'ROLE_AGENT',
-                  parts: [{ text: `任务 ${taskId} 回合已产出交付物但未调用完成工具,平台隐式收口为 COMPLETED` }],
+                  parts: [{ text: `任务 ${taskId} 回合已产出交付物但未调用完成工具,平台隐式收口为 COMPLETED${deliverable ? '' : '(交付物取自回合最终输出)'}` }],
                 },
                 timestamp: new Date().toISOString(),
               },

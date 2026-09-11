@@ -111,6 +111,15 @@ export abstract class BaseAgentImpl implements AgentInterface {
 
   // ===== run:消息分流(平台语义,全引擎一致) =====
 
+  /**
+   * 装配期注入工作区(AgentRuntime 构造时调用):使 host 工具在首个 run() 之前
+   * 即可直调 —— 否则 REST agent-tools/invoke 在实例未处理过任何消息时会得到
+   * 「workspace 未就绪」(实测生产闭环 Stage D 的 kb_store 偶发因此失败)。
+   */
+  attachWorkspace(ws: AgentRunContext['workspace']): void {
+    if (ws && !this.workspace) this.workspace = ws
+  }
+
   async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
     if (!this.workspace) this.workspace = ctx.workspace
     const kind = request.message.metadata?.['x-aw-task-kind']

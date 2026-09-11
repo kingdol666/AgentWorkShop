@@ -140,6 +140,7 @@ async function main() {
     ok(Boolean(tasks[e.key]), `[${e.key}] 任务下发`)
   }
   const states = {}
+  const lastSeen = {}
   const pollTask = async (id) => {
     for (let i = 0; i < 3; i++) {
       try {
@@ -151,11 +152,13 @@ async function main() {
     return undefined
   }
   const deadline = Date.now() + 20 * 60_000
+  const t0 = Date.now()
   while (Date.now() < deadline && Object.keys(states).length < ENGINES.length) {
     for (const e of ENGINES) {
       if (states[e.key]) continue
       const st = await pollTask(tasks[e.key])
-      if (st && ['COMPLETED', 'FAILED', 'CANCELED'].includes(st)) states[e.key] = st
+      if (st && st !== lastSeen[e.key]) console.log(`  · t+${Math.round((Date.now()-t0)/1000)}s [${e.key}] ${st}`)
+      if (st && ['COMPLETED', 'FAILED', 'CANCELED'].includes(st)) { states[e.key] = st; lastSeen[e.key] = st }
     }
     if (Object.keys(states).length < ENGINES.length) await sleep(6000)
   }
@@ -171,7 +174,7 @@ async function main() {
   }
 
   // ── 清理 ──
-  for (const m of Object.values(members)) await api('DELETE', `/api/workshop/channels/${m.channelId}?purge=1`, { token }).catch(() => {})
+  if (process.env.KEEP) console.log('KEEP=1 保留现场: ' + JSON.stringify(Object.fromEntries(Object.entries(members).map(([k,v])=>[k,v.channelId]))))
   for (const e of [...ENGINES, { key: 'mock' }]) {
     const list = await api('GET', '/api/workshop/agents', { token })
     const tpl = (list.data ?? []).find(x => x.name === `ops-${e.key}-${TAG}`)
