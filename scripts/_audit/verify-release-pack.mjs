@@ -1,6 +1,7 @@
 /**
- * 发布包验收:解包 0.7.35 tarball → 用解包后的产物做 CLI 与资产自检。
+ * 发布包验收:解包 tarball → 用解包后的产物做 CLI 与资产自检。
  * 不安装依赖(上游 registry 偶发缺版本),只验证产物本身是否自洽可启动。
+ * 版本号从 package.json 读取,不写死 —— 写死的话每次发版这个脚本自己先坏掉。
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
@@ -9,7 +10,9 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolve(HERE, '..', '..')
-const TGZ = join(REPO, 'agentworkshop-0.7.35.tgz')
+const VERSION = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version
+const TGZ_NAME = `agentworkshop-${VERSION}.tgz`
+const TGZ = join(REPO, TGZ_NAME)
 const WORK = resolve(REPO, '..', 'aw-pack-verify')
 
 let pass = 0
@@ -23,7 +26,7 @@ rmSync(WORK, { recursive: true, force: true })
 mkdirSync(WORK, { recursive: true })
 check('tarball 存在', existsSync(TGZ), TGZ)
 // 在仓库根解包:用相对文件名,避开 GNU tar 把 "D:\..." 当远程主机解析
-execFileSync('tar', ['-xzf', 'agentworkshop-0.7.35.tgz'], { cwd: REPO, stdio: 'inherit' })
+execFileSync('tar', ['-xzf', TGZ_NAME], { cwd: REPO, stdio: 'inherit' })
 const PKG = join(WORK, 'package')
 const extracted = join(REPO, 'package')
 execFileSync('cmd', ['/c', 'move', extracted, PKG], { stdio: 'inherit' })
@@ -38,7 +41,7 @@ for (const rel of [
   check(rel, existsSync(join(PKG, rel)))
 }
 const ver = JSON.parse(readFileSync(join(PKG, 'package.json'), 'utf8')).version
-check('包内版本 = 0.7.35', ver === '0.7.35', ver)
+check(`包内版本 = package.json 版本(${VERSION})`, ver === VERSION, ver)
 
 console.log('\n=== CLI 冒烟(管道 stdio:验证退出码与输出都不丢)===')
 const bin = join(PKG, 'bin', 'aw.mjs')
@@ -48,7 +51,7 @@ const bin = join(PKG, 'bin', 'aw.mjs')
 const hasDeps = existsSync(join(PKG, 'node_modules', 'js-yaml'))
 if (!hasDeps) console.log('  · 未安装依赖(node_modules 缺失):跳过需要配置引擎的用例')
 const CASES = [
-  ['aw --version → 0 + 版本号', ['--version'], 0, /0\.7\.35/, false],
+  ['aw --version → 0 + 版本号', ['--version'], 0, new RegExp(VERSION.replace(/\./g, '\\.')), false],
   ['aw --help → 0 + 帮助正文', ['--help'], 0, /AgentWorkShop CLI/, false],
   ['aw(无指令)→ 2 用法错误', [], 2, /AgentWorkShop CLI/, true],
   ['aw 未知指令 → 2', ['definitely-not-a-command'], 2, /未知指令/, true],
