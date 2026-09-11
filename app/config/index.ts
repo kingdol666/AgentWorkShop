@@ -62,7 +62,8 @@ export function loadConfig(): AppConfig {
   try {
     const pkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as { version?: string }
     if (pkg.version) (raw.app as Record<string, unknown>).version = pkg.version
-  } catch { /* 载荷异常时保留 yml 兜底值 */ }
+  }
+  catch { /* 载荷异常时保留 yml 兜底值 */ }
   applyRuntimeOverrides(raw)
   cached = appConfigSchema.parse(raw)
   return cached

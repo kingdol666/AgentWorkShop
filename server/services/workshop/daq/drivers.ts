@@ -514,6 +514,13 @@ if (!opcuaSweepGlobal.__daqOpcUaSweep) {
   opcuaSweepGlobal.__daqOpcUaSweep.unref?.()
 }
 
+/** 已告警过的 OPC UA 端点(进程内,按 `类别|安全模式|endpoint` 键;同端点重连风暴只告警一次)。
+ *  与 logger 的同指纹限流互补:Set 管「同端点反复重连」,限流器管「大量不同端点」的同形文本。 */
+const gOpcUaSecWarned = globalThis as typeof globalThis & { __daqOpcUaSecWarned?: Set<string> }
+function opcUaSecWarned(): Set<string> {
+  return gOpcUaSecWarned.__daqOpcUaSecWarned ??= new Set()
+}
+
 export function opcuaKey(cfg: Record<string, unknown>): string {
   // S3:证书/安全模式必须纳入池 key——不同证书/安全策略绝不能复用同一连接
   return `${cfg.endpoint}|${cfg.username ?? ''}|${cfg.securityMode ?? 'None'}|${cfg.certificateFile ?? ''}|${cfg.privateKeyFile ?? ''}`
@@ -531,7 +538,13 @@ export async function getOpcUaConn(cfg: Record<string, unknown>): Promise<OpcUaC
     ? (cfg.securityMode as 'None')
     : 'None'
   if (securityMode === 'None' && process.env.NODE_ENV === 'production') {
-    log.warn(`[daq-opcua] WARN:节点 endpoint=${String(cfg.endpoint)} 使用 securityMode=None(匿名/明文),仅限测试环境;生产请配置 Sign/SignAndEncrypt + 证书`)
+    // P0:该告警原先每次建连都写一行(实测把生产日志灌到 18MB 且全是同一句)。
+    // 去重键 = endpoint:同端点反复重连只告警一次;warnThrottled 再兜一层同形文本洪水。
+    const noneKey = `none|${String(cfg.endpoint)}`
+    if (!opcUaSecWarned().has(noneKey)) {
+      opcUaSecWarned().add(noneKey)
+      log.warnThrottled(`[daq-opcua] WARN:节点 endpoint=${String(cfg.endpoint)} 使用 securityMode=None(匿名/明文),仅限测试环境;生产请配置 Sign/SignAndEncrypt + 证书`)
+    }
   }
   const clientOpts: Record<string, unknown> = {
     endpointMustExist: false,
@@ -551,7 +564,12 @@ export async function getOpcUaConn(cfg: Record<string, unknown>): Promise<OpcUaC
     }
     else {
       // 无证书时由 node-opcua 自动生成自签证书(仍加密,但身份不可信);生产建议显式证书
-      log.warn(`[daq-opcua] WARN:securityMode=${securityMode} 但未配置 certificateFile/privateKeyFile,将使用自动生成自签证书`)
+      // 同端点同模式只告警一次(重连不再重复);限流器兜同形文本洪水
+      const noCertKey = `nocert|${securityMode}|${String(cfg.endpoint)}`
+      if (!opcUaSecWarned().has(noCertKey)) {
+        opcUaSecWarned().add(noCertKey)
+        log.warnThrottled(`[daq-opcua] WARN:securityMode=${securityMode} 但未配置 certificateFile/privateKeyFile,将使用自动生成自签证书`)
+      }
     }
   }
   const client = opcua.OPCUAClient.create(clientOpts as Parameters<typeof opcua.OPCUAClient.create>[0])

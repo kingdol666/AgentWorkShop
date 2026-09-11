@@ -13,14 +13,18 @@ export default defineEventHandler(async (event) => {
   const service = getSystemConfigService()
   const stream = createEventStream(event)
 
-  const listener = (payload: ConfigEventPayload): void => {
-    void stream.push(JSON.stringify(payload))
+  // push 是对已断开 socket 的写:浏览器换页/关标签时必然失败。
+  // 不吞掉这个 rejection,它会以 unhandledRejection 逃逸 —— dev 下 nuxt CLI 的处理器
+  // 会据此结束整个 dev server(实测:审计浏览器翻页即把 dev server 打死)。
+  // 断流是这里的正常终态,不是错误。
+  const safePush = (payload: ConfigEventPayload): void => {
+    stream.push(JSON.stringify(payload)).catch(() => {})
   }
-  const unsubscribe = service.subscribe(listener)
+  const unsubscribe = service.subscribe(safePush)
 
   stream.onClosed(async () => {
     unsubscribe()
-    await stream.close()
+    await stream.close().catch(() => {})
   })
 
   return stream.send()

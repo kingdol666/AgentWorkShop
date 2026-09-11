@@ -1,5 +1,6 @@
 // AgentWorkShop SDK 类型声明(agentworkshop/sdk)
-import type { HookBus } from './hooks.mjs'
+// 注意:此处的 HookBus 为本文件内联声明(对应运行时 sdk/hooks.mjs),
+// 不存在 sdk/hooks.d.mts,故不得 import type from './hooks.mjs'(悬空引用)。
 
 export declare const SDK_VERSION: string
 
@@ -57,7 +58,8 @@ export interface PlatformClient {
 
 export interface PluginContext {
   name: string
-  scope: 'project' | 'user'
+  /** 插件来源作用域(host.mjs discoverPluginDirs:builtin / project / user) */
+  scope: 'builtin' | 'project' | 'user'
   dir: string
   sdkVersion: string
   hooks: HookBus
@@ -119,11 +121,28 @@ export declare function pluginKvExists(dataDir: string, name: string): boolean
 
 export declare function createPlatformClient(opts?: { baseUrl?: string, token?: string, logger?: PluginLogger, timeoutMs?: number }): PlatformClient
 
-export declare const LIFECYCLE_EVENTS: readonly ['plugin:host:init', 'config:changed', 'event:*', 'daq:sample', 'dcw:write', 'line:start', 'line:stop', 'server:close']
+export declare const LIFECYCLE_EVENTS: readonly ['plugin:host:init', 'config:changed', 'permissions:changed', 'event:*', 'daq:sample', 'daq:frame', 'dcw:write', 'line:start', 'line:stop', 'server:close']
 export declare const CLIENT_EVENTS: readonly ['client:init', 'event:*', 'page:change', 'client:destroy']
 
-/** 客户端插件上下文(sdk/client.mjs) */
+/** 客户端插件上下文(sdk/client.mjs);完整声明见 agentworkshop/sdk/client */
 export declare const CLIENT_SDK_VERSION: string
+
+/** ctx.ui.registerPanel 入参(命名插槽 -> 宿主容器挂载) */
+export interface ClientPanelEntry {
+  slot: string
+  name: string
+  title?: string
+  titleKey?: string
+  order?: number
+  mount(el: HTMLElement): void
+}
+
+/** ctx.ui:UI 注入面(宿主未提供时为告警桩) */
+export interface ClientUi {
+  registerPanel(entry: ClientPanelEntry): () => void
+  readonly slots: readonly string[]
+}
+
 export interface ClientContext {
   name: string
   sdkVersion: string
@@ -133,10 +152,23 @@ export interface ClientContext {
   el(tag: string, attrs?: Record<string, unknown>, children?: Array<Node | string>): HTMLElement
   mount(target: string | Element, node: Node): Node
   root(): HTMLElement
+  /** UI 注入面:registerPanel / slots */
+  ui: ClientUi
+  /** 插件命名空间翻译:ctx.t('settings.title') -> plugin.<name>.settings.title */
+  t(key: string, params?: Record<string, unknown>): string
+  /** 当前界面语言(i18n:changed 钩子在切换时广播;未注入时 '') */
+  readonly locale: string
   log: PluginLogger
   dispose(): void
 }
-export declare function createClientContext(opts: { name: string, eventBridge?: (fn: (type: string, payload: any) => void) => (() => void), baseUrl?: string }): ClientContext
+export declare function createClientContext(opts?: {
+  name: string
+  eventBridge?: (fn: (type: string, payload: any) => void) => (() => void)
+  baseUrl?: string
+  ui?: ClientUi
+  t?: (key: string, params?: Record<string, unknown>) => string
+  getLocale?: () => string
+}): ClientContext
 
 declare const _default: Record<string, unknown>
 export default _default

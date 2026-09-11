@@ -467,9 +467,11 @@ export class AgentChannelManager {
     }
     const trigger = memorySettings().reflect_trigger
     const month = new Date().toISOString().slice(0, 7)
-    for (const agentId of this.deps.repos.memories.listMemoryAgentIds()) {
-      const rows = this.deps.repos.memories.listByAgentWithRowid(agentId, 1_000_000)
-        .filter(r => r.kind === 'episodic-task' && r.createdAt.slice(0, 7) === month)
+    const memories = this.deps.repos.memories
+    for (const agentId of memories.listMemoryAgentIds()) {
+      // 条件下推到 SQL:原先拉 limit=1_000_000 全量再 JS filter,代价随记忆总量无上限增长。
+      // 这里按 (agent, kind, 当月) 精确取行 —— 返回量与实际增量同阶,且内存不随历史膨胀。
+      const rows = memories.listByAgentKindMonth(agentId, 'episodic-task', month)
       const prev = this.reflectCounts.get(agentId) ?? 0
       if (rows.length < trigger || rows.length <= prev) continue
       // 行可能跨 channel(历史迁移):按 channel 分组,各组建反思
@@ -1115,16 +1117,13 @@ export class AgentChannelManager {
   // ===== Workspace(服务端持久化;按 owner 隔离)=====
 
   listWorkspaces(userId: string): Array<WorkspaceRow & { channelIds: string[] }> {
+    // 纯读:挂载引用的失效清理已下沉到 removeChannel 的级联
+    // (unmountChannelEverywhere)。早先这里在 .filter() 回调里 DELETE 挂载行,
+    // 使 GET /api/workshop/workspaces 与 GET /users/me 成为**有副作用的读** ——
+    // 读路径必须可重放、可缓存、可并发,不写库。
     return this.deps.repos.users.listWorkspaces(userId).map(ws => ({
       ...ws,
-      // 挂载引用自愈:channel 删除(removeChannel)不级联清理 workspace_channels,
-      // 死引用会让前端订阅永不到达(左栏"幽灵频道"+ 右栏空数据假象)——
-      // 读取时过滤并顺手删除挂载行,历史脏数据随读取收敛
-      channelIds: this.deps.repos.users.listMountedChannels(ws.id).filter((id) => {
-        if (this.deps.repos.channels.findById(id)) return true
-        this.deps.repos.users.unmountChannel(ws.id, id)
-        return false
-      }),
+      channelIds: this.deps.repos.users.listMountedChannels(ws.id),
     }))
   }
 
@@ -1285,6 +1284,9 @@ export class AgentChannelManager {
     }
     // 记忆级联清理:成员私有行 + team 公共行(防残留行污染他 channel 的 FTS/team 检索域)
     this.deps.repos.memories.deleteByChannel(channelId)
+    // workspace 挂载级联:不清理会留下"幽灵频道"(左栏有条目、右栏永空)——
+    // 这是 listWorkspaces 读路径兜底要解决的问题,现在在删除侧一次性收敛
+    this.deps.repos.users.unmountChannelEverywhere(channelId)
     this.deps.repos.channels.remove(channelId)
   }
 

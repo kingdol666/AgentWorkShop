@@ -4,19 +4,19 @@
  */
 
 import { createLogger } from '../logger'
-import path from 'node:path'
+import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { DCW_TEMPLATES, DCW_TEMPLATE_ICONS, dcwTemplateByKey, type DcwTemplateDef, type DcwTemplateIcon, type DcwTemplateInput } from '../../../../shared/dcw-protocol'
 
 // dcwTemplateByKey 用于内置判别
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('dcw.templates')
 
-const DB_PATH = process.cwd().endsWith('server')
-  ? 'data/dcw-templates.json'
-  : path.join(process.cwd(), 'server', 'data', 'dcw-templates.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const DB_PATH = join(ensureDataDir(), 'dcw-templates.json')
 
 function load(): DcwTemplateDef[] {
   try {

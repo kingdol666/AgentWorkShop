@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { theme } from 'ant-design-vue'
+import { message, theme } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import enUS from 'ant-design-vue/es/locale/en_US'
 
@@ -11,11 +11,26 @@ const runtimeCfg = useRuntimeConfigStore()
 // SSR 首帧 antd token 跟随服务端 theme.mode:store 默认深色,若服务端配置为浅色而客户端
 // 挂载后才翻转,cssinjs 的 hash 相同样式不会重新注入,浅色下组件会缺 padding/格线等基础样式。
 const site = useSiteConfig()
+// 主题首帧一致性:用户偏好以 localStorage 为准,但服务端读不到 localStorage ——
+// 用一枚一年期 cookie 做只读镜像(theme.client 写入),让 SSR 与客户端算出同一个算法。
+// 否则服务端按 config.yml 渲浅色、客户端首帧翻深色,antd cssinjs 不会为同 hash 重注入,
+// 深色下 a-radio-group / a-select 等会掉回默认样式(实测:模板库筛选器塌成竖排单选框)。
+const themeCookie = useCookie<'dark' | 'light' | undefined>('aw-theme', {
+  maxAge: 60 * 60 * 24 * 365,
+  sameSite: 'lax',
+  path: '/',
+})
 if (import.meta.server) {
-  store.isDark = (site.themeMode ?? 'dark') !== 'light'
+  store.isDark = themeCookie.value ? themeCookie.value === 'dark' : (site.themeMode ?? 'dark') !== 'light'
 }
 
 const antdLocale = computed(() => (locale.value.startsWith('en') ? enUS : zhCN))
+
+// 全局消息落点:antd 默认 top:8px 会压在 56px 页头上,遮住当前页名与右侧操作簇。
+// 下移到页头之下,并限量 3 条,避免连续操作时叠成一片盖住整个画布。
+if (import.meta.client) {
+  message.config({ top: '70px', maxCount: 3 })
+}
 
 /** 将 hex 向白混合(lighten),供暗色模式强调色提亮 */
 function mixWhite(hex: string, ratio: number): string {

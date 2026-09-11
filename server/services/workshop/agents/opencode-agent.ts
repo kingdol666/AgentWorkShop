@@ -110,13 +110,11 @@ interface PendingHitl {
 export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
   private readonly config: OpenCodeAgentConfig
   private agentInfo: AgentInfo | null = null
-  private readonly bridgeCtx = {
-    identity: { agentId: '', channelId: '', role: 'worker' as 'lead' | 'worker', name: 'agent' },
-    state: this.toolState,
-    getWorkspace: () => this.workspace,
-  }
-
-  private agentRole: 'lead' | 'worker' = 'worker'
+  // 注意:不要在本类重新声明 bridgeCtx / agentRole —— 它们由 BaseAgentImpl 持有。
+  // 子类字段初始化器在 super() **之后**执行,会用一个空的 identity 覆盖基类已装配好的
+  // bridgeCtx(class field 遮蔽),导致 host tool 桥拿到的 agentId 恒为 '' ——
+  // 所有按 agentId 的鉴权(节点绑定/工业工具)都会误判为"未绑定"。
+  // 同理 agentRole 被重置为 'worker',lead 身份传不到桥里。
 
   // 服务进程与 API 面
   private child: ReturnType<typeof spawnLineProcess> | null = null

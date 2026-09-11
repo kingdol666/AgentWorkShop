@@ -403,6 +403,10 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
     beatMs: beat,
   }
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2))
+  // spec.json:取数规格随实体落盘。元数据行里本来就有 spec_json,但那是**索引**;
+  // 把规格同时写进实体目录,./aml 才是自描述、可整体拷贝的资产 ——
+  // 拷到另一台机器(或 sqlite 丢了)时,仅凭 datasets/<id>/ 仍能还原"这份数据是怎么取的"。
+  writeFileSync(join(dir, 'spec.json'), JSON.stringify(spec, null, 2))
 
   // 7. 统计报告(基于 train 网格序列)
   const nodeSummaries: SeriesSummary[] = []

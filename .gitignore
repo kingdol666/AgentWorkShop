@@ -80,3 +80,28 @@ claude-talk-to-figma-mcp/
 runtime-settings.json
 .crushrc
 .gemini/
+
+# AML 资产根(项目内 ./aml):.venv 与模型工件体积大且与机器绑定。
+# 目录内的 .gitignore(构建/运行时自动生成)已忽略各子目录,这里兜底防误提交。
+aml/.venv/
+aml/tools/
+aml/runtime/
+aml/datasets/
+aml/jobs/
+aml/models/
+
+# 打包产物与本地探针(发布脚本生成;体积大,不入库)
+agentworkshop-*.tgz
+npm-codex.json
+# 端到端测试运行目录与截图(脚本生成)
+.aw-e2e-run/
+.AgentWorkShop-test/
+.e2e-shots/
+.e2e-plugin-ctx.json
+.e2e-plugin-ui-node.json
+
+# CLI harness 运行时配置快照(会话级;每台机器不同)
+.AgentWorkShop/harness-config/
+# 工具链会话 scratch(非项目产物)
+.omo/
+.zcode/

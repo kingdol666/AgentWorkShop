@@ -65,6 +65,12 @@ export function registerModelFromJob(jobId: string, gates: GateReport, metricsJs
     writeFileSync(join(modelDir, 'REGISTERED'), now)
   }
   const ioSpec = buildIoSpec(dataset.path, job.purpose)
+  // io_spec.json 同步落到模型实体目录:元数据行的 io_spec_json 是索引,实体自带契约
+  // 才能让 ./aml 单独拷贝后仍可被预测服务装配(与 dataset 的 spec.json 同一范式)
+  try {
+    writeFileSync(join(modelDir, 'io_spec.json'), JSON.stringify(ioSpec, null, 2))
+  }
+  catch { /* 契约文件落盘失败不阻断注册(元数据行仍持有同一份) */ }
   rt.repo.model.insert({
     id: modelId,
     experimentId: expId,

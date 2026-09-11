@@ -9,16 +9,17 @@
 //   4. 组装运行上下文 ctx（含有效配置 API）并执行指令
 //   5. 统一错误处理与退出码（0 成功 / 1 错误 / 2 用法错误）
 // ============================================================
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { CommandRegistry, commandDirs } from './core/registry.mjs'
 import { createContext, EXIT } from './core/context.mjs'
-import { parseArgs } from './core/args.mjs'
+import { parseArgs, stripGlobals, extractCommandName, globalNames, globalValueNames } from './core/args.mjs'
 import { renderHelp, renderCommandHelp } from './core/help.mjs'
 import { logger, color } from './core/logger.mjs'
 import { CliError, isUsageError } from './core/errors.mjs'
+import { packageRoot, packageVersion } from './core/meta.mjs'
 import { installLocalIso } from '../shared/local-time.mjs'
 
 // 全 CLI 时间输出统一本地时区(先于任何命令逻辑)
@@ -26,22 +27,11 @@ installLocalIso()
 
 export { CliError }
 
-/** 本包版本（cli/aw.mjs → ../package.json） */
-export function packageVersion() {
-  try {
-    return JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version ?? '0.0.0'
-  }
-  catch {
-    return '0.0.0'
-  }
-}
-
-/** 本包根目录（全局安装副本同样成立;必须走 fileURLToPath,Windows 下
- *  URL pathname 是 '/D:/...' 形态,直接 path.resolve 会得到 'D:\D:\...' 垃圾路径,
- *  导致内建指令目录扫描全部静默失败 —— 指令注册失效的根因） */
-export function packageRoot() {
-  return resolve(dirname(fileURLToPath(import.meta.url)), '..')
-}
+/** 本包版本/包根:实现下沉到叶子模块 cli/core/meta.mjs。
+ *  命令模块要复用它们,若继续定义在本文件会让 cli/commands/* → ../aw.mjs 形成
+ *  循环依赖,并在 **cli/aw.mjs 自任入口**时死锁(顶层 await main() 等 scanDirs,
+ *  scanDirs 等命令模块,命令模块等 aw.mjs 求值完成)→ 退出码 13 且无输出。 */
+export { packageRoot, packageVersion } from './core/meta.mjs'
 
 /** 向上查找文件（与 shared/config/engine.mjs 的 findUp 等价,避免顶层依赖引擎） */
 function findUp(startDir, filename) {
@@ -55,19 +45,10 @@ function findUp(startDir, filename) {
   }
 }
 
-/** 从命令行提取指令名（首个非选项 token） */
+/** 从命令行提取指令名（首个位置 token;跳过全局选项及其取值）
+ *  实现在 args.mjs —— 与 stripGlobals 共用同一张取值边界表,避免两处各自猜。 */
 function extractCommand(argv) {
-  let afterDash = false
-  for (const tok of argv) {
-    if (afterDash) return tok
-    if (tok === '--') {
-      afterDash = true
-      continue
-    }
-    if (tok.startsWith('-')) continue
-    return tok
-  }
-  return null
+  return extractCommandName(argv)
 }
 
 function toBool(v, fallback = false) {
@@ -152,8 +133,16 @@ export async function main(argv = process.argv.slice(2), { cwd = process.cwd() }
   }
 
   // 指令参数（剥离指令名与全局项）
+  // 必须按 token 逐个定位全局选项的取值边界;旧实现用
+  //   .filter(a => a !== '--json' && a !== '--debug')
+  // 按字面量剔除,会把出现在「值」位置的同名 token 一并删掉:
+  //   aw foo --name --json      → --json 是 --name 的值,却被删 → --name 变布尔 true(值丢失)
+  //   aw foo --title=b --json   → 同理
+  // 取值边界由 GLOBAL_OPTS 声明(--root 带值,--json/--debug 为布尔):
+  //   aw build --json x         → x 是位置参数,不得被 --json 吞掉
+  //   aw --root /p build        → --root 连 /p 一起剥离
   const idx = argv.indexOf(commandName)
-  const cmdArgv = argv.slice(idx >= 0 ? idx + 1 : 0).filter(a => a !== '--json' && a !== '--debug')
+  const cmdArgv = stripGlobals(argv.slice(idx >= 0 ? idx + 1 : 0), globalNames(), { valueNames: globalValueNames() })
   const local = parseArgs(cmdArgv, { shortMap: { h: 'help', ...(cmd.meta.short ?? {}) } })
 
   if (local.flags.help) {
@@ -183,9 +172,16 @@ export async function main(argv = process.argv.slice(2), { cwd = process.cwd() }
 }
 
 // 仅当直接以 cli/aw.mjs 作为入口时自动运行（bin/aw.mjs 会显式调用 main）
+//
+// 必须用 process.exit(code) 而非 process.exitCode = await main():
+// 当 stdout/stderr 是管道(fd 为 socket,如重定向、CI、父进程 spawn 捕获)且仍有
+// 未 flush 的挂起写入时,句柄会一直保活事件循环;Node 在 TLA 下因此以
+// **退出码 13**(ERR_UNSETTLED_TOP_LEVEL_AWAIT)收场,把 aw --help / aw version 这类
+// 纯诊断指令的成功退出写成 13。process.exit 会同步 flush 已排队的 stdio 写入
+// (writev 直写 fd),因此既保住输出又保住退出码。
 const thisEntry = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))
 if (thisEntry) {
-  process.exitCode = await main()
+  process.exit(await main())
 }
 
 export default main

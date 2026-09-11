@@ -119,6 +119,15 @@ export class MqttQueueAdapter implements DaqQueuePort {
         await new Promise<void>(r => c.end(false, () => r()))
       }
       catch { /* 已断连等场景:尽力而为 */ }
+      finally {
+        // end() 回调在某些断连路径下不触发,旧 client 的 connect/message/error 监听器
+        // 会连同 socket 一起滞留(client 对象被闭包引用,GC 不可达)。
+        // rebuildDaqQueue 反复换装时会累积;显式摘除是唯一确定性的清理点。
+        try {
+          c.removeAllListeners()
+        }
+        catch { /* 已销毁等场景:尽力而为 */ }
+      }
     }
   }
 }

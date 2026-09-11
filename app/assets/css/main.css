@@ -31,19 +31,24 @@
   --accent-soft: rgb(41 37 36 / 8%);
   --on-accent: #ffffff;
 
-  /* 油墨与纸张(亮:暖石色 stone —— editorial light) */
+  /* 油墨与纸张(亮:暖纸 —— editorial light;画布与油墨同为暖族,禁冷灰) */
   --ink: #0c0a09;
-  --ink-soft: #4e4e4e;
-  --ink-faint: #777169;
-  --ink-fainter: #a8a29e;
-  --paper: #f5f5f5;
-  --paper-raised: #ffffff;
-  --paper-deep: #f0efed;
-  --paper-tint: #e7e5e4;
-  --line: #e7e5e4;
-  --line-strong: #d6d3d1;
-  --divider-hair: rgb(12 10 9 / 6%);
-  --hover-tint: rgb(12 10 9 / 4%);
+  --ink-soft: #4b463f;
+  --ink-faint: #6f6860;
+  --ink-fainter: #a29a90;
+  --paper: #f6f4f1;
+  --paper-raised: #fffefc;
+  --paper-deep: #efebe5;
+  --paper-tint: #e6e1d9;
+  --line: #e8e3db;
+  --line-strong: #d7d0c5;
+  --divider-hair: rgb(12 10 9 / 7%);
+  --hover-tint: rgb(12 10 9 / 4.5%);
+  /* 仪表台量规(刻度尺 / 注册角标 / 内缘折光 —— 控制室仪器语言) */
+  --tick-c: color-mix(in srgb, var(--ink) 30%, transparent);
+  --tick-c-fine: color-mix(in srgb, var(--ink) 13%, transparent);
+  --bench-edge: inset 0 1px 0 color-mix(in srgb, white 55%, transparent);
+  --bench-top-rule: linear-gradient(90deg, var(--accent) 0 34px, color-mix(in srgb, var(--ink) 16%, transparent) 34px, transparent 100%);
 
   /* 氛围粉彩光斑(签名令牌:仅作 radial 渐变装饰,永不作前景色) */
   --g-mint: #a7e5d3;
@@ -139,9 +144,9 @@
   /* 全局噪点(抵消数字平面的冷感;固定 pointer-events-none 覆盖,不进滚动容器) */
   --noise-opacity: 0.028;
 
-  --sider-bg: #fafafa;
-  --sider-ink: #4e4e4e;
-  --sider-ink-faint: #777169;
+  --sider-bg: #fbf9f6;
+  --sider-ink: #4b463f;
+  --sider-ink-faint: #6f6860;
 }
 
 html.dark {
@@ -215,7 +220,13 @@ html.dark {
 
   --sider-bg: #0a101a;
   --sider-ink: #b9c6d8;
-  --sider-ink-faint: #64778f;
+  --sider-ink-faint: #7b8ca3;
+
+  /* 控制室量规:刻度在暗阶提亮一档,hairline 更具金属感 */
+  --tick-c: rgb(184 199 216 / 42%);
+  --tick-c-fine: rgb(184 199 216 / 16%);
+  --bench-edge: inset 0 1px 0 rgb(255 255 255 / 7%);
+  --bench-top-rule: linear-gradient(90deg, var(--accent) 0 34px, rgb(232 238 248 / 18%) 34px, transparent 100%);
 }
 
 /* 暗色选区:数据青底 + 墨字(替换亮色蜜桃纸;同一控制室语言) */
@@ -1543,24 +1554,30 @@ ul.task-list {
   text-align: left;
 }
 
-/* ── 空表占位:替换 ant 默认黑色团状图形为细线风格 ── */
-.ant-empty-image {
-  display: flex;
-  justify-content: center;
+/* ── 空态:antd 默认插画里有硬编码 fill,父级 fill:none 传不下去,改不掉 ──
+ * 与其和它的 svg 内部较劲,不如整块撤掉,换成系统自己的"一道细线 + 一句"
+ * (与 .aw-empty 同语言:空态是留白问题,不是插画问题)。 */
+.ant-empty-image,
+.ant-empty .ant-empty-image {
+  display: none;
 }
 
-.ant-empty-image svg {
-  width: 44px;
-  height: 44px;
-  fill: none;
-  stroke: var(--ink-fainter);
-  stroke-width: 1.25;
-  opacity: 0.8;
-}
-
-.ant-empty-description {
-  color: var(--ink-faint);
+.ant-empty .ant-empty-description {
+  margin-top: 0;
+  padding-top: 12px;
+  font-family: var(--font-body);
   font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+.ant-empty .ant-empty-description::before {
+  display: block;
+  width: 34px;
+  height: 1px;
+  margin: 0 auto 12px;
+  content: '';
+  background: var(--ink-fainter);
+  opacity: 0.7;
 }
 
 /* ── tokens 吊销:安静墨灰,悬停转红(红色只留给确认瞬间) ── */
@@ -1572,3 +1589,377 @@ ul.task-list {
 .tok-revoke:hover {
   color: var(--tone-danger-dot, #c25a4e) !important;
 }
+
+/* ============================================================
+ * Warm Editorial · v3「校准仪表台 / Instrument Bench」
+ * ------------------------------------------------------------
+ * 母题来自产品本身,不是风格标签:这是一间产线控制室——
+ * 屏上每块面板都是"仪表",读数要能一眼扫、刻度要能对齐。
+ *   1) 刻度尺(aw-rule / aw-gauge-band::after):分节即"量程"分隔,
+ *      疏密两档刻度、两端淡出 —— 全站唯一重复出现的签名装饰。
+ *   2) 读数码(aw-readout):tabular-nums + 单位降一档,列列对齐不跳。
+ *   3) 注册角标(aw-bench--marked):四角 L 形细线,只给 hero/主仪表,
+ *      是"这块要紧"的语气,不是贴纸。
+ *   4) 面板统一为 aw-bench:上缘 34px 品牌短线 + 内缘折光 + hairline。
+ * 与既有系统同源:色彩锁 / 形状锁 / 动效锁一律不动,只补"秩序"与"签字"。
+ * ============================================================ */
+
+:root {
+  /* 排版尺度(编辑部声部 + 仪表读数码) */
+  --fs-micro: 10px;
+  --fs-label: 11px;
+  --fs-title: 15px;
+  --fs-readout: 27px;
+  --track-micro: 0.1em;
+  --track-label: 0.08em;
+
+  /* 节奏:面板/卡片共用同一组内距 */
+  --pad-panel: 16px 18px 14px;
+  --gap-block: 14px;
+}
+
+/* ── 分节刻度尺:贯穿 hairline + 右端渐隐的疏密刻度 ── */
+.aw-rule {
+  position: relative;
+  height: 13px;
+  margin: 26px 0 14px;
+}
+
+/* ── 页头归队:全站页面头共用同一条"量程线"(扫视时知道自己还在同一台仪器上) ── */
+.aw-page-head {
+  position: relative;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.aw-page-head::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 6px;
+  pointer-events: none;
+  content: '';
+  background:
+    repeating-linear-gradient(90deg, var(--tick-c) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(90deg, var(--tick-c-fine) 0 1px, transparent 1px 11px);
+  -webkit-mask-image: linear-gradient(90deg, #000 0 38%, transparent 86%);
+  mask-image: linear-gradient(90deg, #000 0 38%, transparent 86%);
+}
+
+.aw-rule::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  content: '';
+  background: var(--line);
+}
+
+.aw-rule::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 7px;
+  content: '';
+  background:
+    repeating-linear-gradient(90deg, var(--tick-c) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(90deg, var(--tick-c-fine) 0 1px, transparent 1px 11px);
+  -webkit-mask-image: linear-gradient(90deg, #000 0 42%, transparent 92%);
+  mask-image: linear-gradient(90deg, #000 0 42%, transparent 92%);
+}
+
+.aw-rule > .aw-rule-label {
+  position: absolute;
+  top: -7px;
+  right: 0;
+  padding-left: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
+  color: var(--ink-fainter);
+}
+
+/* ── 仪表面板(aw-bench):全站面板统一形态 ── */
+.aw-bench {
+  position: relative;
+  padding: var(--pad-panel);
+  background: var(--surface-glass);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--bench-edge);
+}
+
+/* 上缘品牌短线:34px 实色 + 余段渐隐 hairline(比整条渐变光带克制) */
+.aw-bench::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  content: '';
+  background: var(--bench-top-rule);
+  pointer-events: none;
+}
+
+/* 注册角标:四角 L 形(仅 --marked 面板:hero / 主仪表) */
+.aw-bench--marked::after {
+  position: absolute;
+  inset: 7px;
+  pointer-events: none;
+  content: '';
+  opacity: 0.75;
+  background:
+    linear-gradient(var(--tick-c), var(--tick-c)) 0 0 / 9px 1px no-repeat,
+    linear-gradient(var(--tick-c), var(--tick-c)) 0 0 / 1px 9px no-repeat,
+    linear-gradient(var(--tick-c), var(--tick-c)) 100% 0 / 9px 1px no-repeat,
+    linear-gradient(var(--tick-c), var(--tick-c)) 100% 0 / 1px 9px no-repeat,
+    linear-gradient(var(--tick-c), var(--tick-c)) 0 100% / 9px 1px no-repeat,
+    linear-gradient(var(--tick-c), var(--tick-c)) 0 100% / 1px 9px no-repeat,
+    linear-gradient(var(--tick-c), var(--tick-c)) 100% 100% / 9px 1px no-repeat,
+    linear-gradient(var(--tick-c), var(--tick-c)) 100% 100% / 1px 9px no-repeat;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .aw-bench,
+  .aw-gauge-band {
+    background: var(--paper-raised);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* ── 面板头:仪器小标(mono) + 衬线题 + 右侧元信息 ── */
+.aw-bench-hd {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-height: 20px;
+  margin-bottom: 10px;
+}
+
+.aw-bench-kicker {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
+  color: var(--ink-fainter);
+}
+
+.aw-bench-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+
+.aw-bench-meta {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.05em;
+  color: var(--ink-fainter);
+  white-space: nowrap;
+}
+
+.aw-bench-meta b {
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* 面板头下 hairline:题与体之间分界 */
+.aw-bench-hd--ruled {
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--divider-hair);
+}
+
+/* ── 读数:mono + tabular,单位降一档 ── */
+.aw-readout {
+  font-family: var(--font-mono);
+  font-size: var(--fs-readout);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.aw-readout small {
+  margin-left: 3px;
+  font-size: 0.46em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+/* ── 统计带(aw-gauge-band):KPI 是一块仪表盘,不是一排散卡 ── */
+.aw-gauge-band {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr));
+  overflow: hidden;
+  background: var(--surface-glass);
+  backdrop-filter: var(--aurora-blur);
+  -webkit-backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--bench-edge);
+}
+
+/* 底部量程刻度:统计带的签名(与 hero 同源) */
+.aw-gauge-band::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 9px;
+  pointer-events: none;
+  content: '';
+  background:
+    repeating-linear-gradient(90deg, var(--tick-c) 0 1px, transparent 1px 120px),
+    repeating-linear-gradient(90deg, var(--tick-c-fine) 0 1px, transparent 1px 24px);
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.aw-gauge {
+  position: relative;
+  padding: 15px 20px 17px;
+  transition: background-color var(--transition-fast);
+}
+
+.aw-gauge + .aw-gauge {
+  box-shadow: inset 1px 0 0 var(--divider-hair);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .aw-gauge:hover {
+    background: var(--hover-tint);
+  }
+}
+
+/* 量规小标:mono 微字 + 密字距(仪表命名牌) */
+.aw-gauge-label {
+  display: block;
+  margin-bottom: 7px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
+  color: var(--ink-fainter);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aw-gauge-value {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+/* 告警读数:转红 + 左缘一道细标(颜色只表语义) */
+.aw-gauge.is-alarm .aw-readout {
+  color: var(--tone-danger-dot);
+}
+
+.aw-gauge.is-alarm::before {
+  position: absolute;
+  top: 15px;
+  bottom: 17px;
+  left: 0;
+  width: 2px;
+  content: '';
+  background: var(--tone-danger-dot);
+  border-radius: 0 2px 2px 0;
+}
+
+/* ── 安静的设置行:label 左、值右,行间 hairline ── */
+.aw-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.aw-row {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 13px 0;
+  border-top: 1px solid var(--divider-hair);
+}
+
+.aw-row:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.aw-row-key {
+  flex: 0 0 auto;
+  min-width: 132px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.aw-row-key small {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: var(--ink-fainter);
+}
+
+.aw-row-val {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/* ── 暗阶:画布加一道极轻的上亮下暗,消除"平板蓝"的平铺感 ── */
+html.dark body {
+  background-image: linear-gradient(180deg, #0a1120 0%, #070b13 46%, #05080f 100%);
+  background-attachment: fixed;
+}
+
+/* 暗阶:面板边框收敛到 line(避免玻璃线过亮像霓虹描边) */
+html.dark .aw-bench,
+html.dark .aw-gauge-band {
+  border-color: var(--line);
+}
+
+html.dark .aw-bench--marked::after {
+  opacity: 0.45;
+}
+
+/* 面板进场沿用既有 aw-rise,不另起一套动画 */
+@media (prefers-reduced-motion: no-preference) {
+  .aw-bench,
+  .aw-gauge-band {
+    animation: aw-rise 0.4s cubic-bezier(0.22, 0.68, 0.36, 1) backwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-bench,
+  .aw-gauge-band { animation: none; }
+}
+

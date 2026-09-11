@@ -8,7 +8,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve, basename } from 'node:path'
 import { color } from '../core/logger.mjs'
-import { CliError } from '../aw.mjs'
+import { CliError } from '../core/errors.mjs'
 
 export const meta = {
   name: 'init',

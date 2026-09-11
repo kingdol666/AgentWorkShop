@@ -9,7 +9,8 @@
  * 应用级单例,写入 server/data/scene-layouts.json,进程内缓存,启动读盘。
  */
 
-import path from 'node:path'
+import { join } from 'node:path'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 export interface SceneLayout {
@@ -39,9 +40,8 @@ export interface SceneLayoutInput {
   workspaceId?: string
 }
 
-const DB_PATH = process.cwd().endsWith('server')
-  ? 'data/scene-layouts.json'
-  : path.join(process.cwd(), 'server', 'data', 'scene-layouts.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const DB_PATH = join(ensureDataDir(), 'scene-layouts.json')
 
 function load(): SceneLayout[] {
   const parsed = loadJsonFile(DB_PATH, [])

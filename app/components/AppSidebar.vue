@@ -17,20 +17,51 @@ interface MenuItem {
   adminOnly?: boolean
 }
 
-const menuItems = computed<MenuItem[]>(() => [
-  { key: '/', icon: 'i-tabler-layout-dashboard', label: t('menu.dashboard'), motion: 'im-pop' },
-  { key: '/workshop', icon: 'i-tabler-box', label: t('menu.workshop'), motion: 'im-pop' },
-  { key: '/town', icon: 'i-tabler-map-2', label: t('menu.town'), motion: 'im-pop' },
-  { key: '/tokens', icon: 'i-tabler-key', label: t('menu.tokens'), motion: 'im-nudge-up' },
-  { key: '/daq', icon: 'i-tabler-activity', label: t('menu.daq'), motion: 'im-pop' },
-  { key: '/dcw', icon: 'i-tabler-settings-automation', label: t('menu.dcw'), motion: 'im-pop' },
-  { key: '/logs', icon: 'i-tabler-list-details', label: t('menu.logs'), motion: 'im-pop' },
-  { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users'), motion: 'im-pop' },
-  { key: '/permissions', icon: 'i-tabler-shield-lock', label: t('menu.permissions'), motion: 'im-pop', adminOnly: true },
-  { key: '/monitor', icon: 'i-tabler-cpu', label: t('menu.monitor'), motion: 'im-pulse' },
-  { key: '/plugins', icon: 'i-tabler-puzzle', label: t('menu.plugins'), motion: 'im-pop' },
-  { key: '/settings', icon: 'i-tabler-settings', label: t('menu.settings'), motion: 'im-rotate' },
-].filter(m => !m.adminOnly || userStore.isAdmin))
+interface MenuGroup {
+  id: string
+  label: string
+  items: MenuItem[]
+}
+
+/**
+ * 导航信息架构:12 个平铺条目 → 三组语义分区(控制台 / 运维 / 系统)。
+ * 分组的价值不在多一层容器,而在"扫视成本":同组内的入口是同一件事的不同面,
+ * 组与组之间才是真正的语境切换。空组自动折叠,权限过滤后不残留空标题。
+ */
+const menuGroups = computed<MenuGroup[]>(() => [
+  {
+    id: 'console',
+    label: t('menu.groups.console'),
+    items: [
+      { key: '/', icon: 'i-tabler-layout-dashboard', label: t('menu.dashboard'), motion: 'im-pop' },
+      { key: '/workshop', icon: 'i-tabler-box', label: t('menu.workshop'), motion: 'im-pop' },
+      { key: '/town', icon: 'i-tabler-map-2', label: t('menu.town'), motion: 'im-pop' },
+      { key: '/daq', icon: 'i-tabler-activity', label: t('menu.daq'), motion: 'im-pop' },
+      { key: '/dcw', icon: 'i-tabler-settings-automation', label: t('menu.dcw'), motion: 'im-pop' },
+    ],
+  },
+  {
+    id: 'ops',
+    label: t('menu.groups.ops'),
+    items: [
+      { key: '/monitor', icon: 'i-tabler-cpu', label: t('menu.monitor'), motion: 'im-pulse' },
+      { key: '/logs', icon: 'i-tabler-list-details', label: t('menu.logs'), motion: 'im-pop' },
+    ],
+  },
+  {
+    id: 'system',
+    label: t('menu.groups.system'),
+    items: [
+      { key: '/tokens', icon: 'i-tabler-key', label: t('menu.tokens'), motion: 'im-nudge-up' },
+      { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users'), motion: 'im-pop' },
+      { key: '/permissions', icon: 'i-tabler-shield-lock', label: t('menu.permissions'), motion: 'im-pop', adminOnly: true },
+      { key: '/plugins', icon: 'i-tabler-puzzle', label: t('menu.plugins'), motion: 'im-pop' },
+      { key: '/settings', icon: 'i-tabler-settings', label: t('menu.settings'), motion: 'im-rotate' },
+    ],
+  },
+]
+  .map(g => ({ ...g, items: g.items.filter(m => !m.adminOnly || userStore.isAdmin) }))
+  .filter(g => g.items.length > 0))
 
 const isActive = (key: string): boolean =>
   key === '/' ? route.path === '/' : route.path.startsWith(key)
@@ -69,39 +100,55 @@ const go = (key: string) => {
       </transition>
     </div>
 
-    <div
-      v-show="!store.sidebarCollapsed"
-      class="sider-section-label"
-    >
-      {{ t('menu.system') }}
-    </div>
-
     <nav class="app-menu">
-      <button
-        v-for="item in menuItems"
-        :key="item.key"
-        type="button"
-        class="menu-item im"
-        :class="{ active: isActive(item.key) }"
-        :title="store.sidebarCollapsed ? item.label : undefined"
-        @click="go(item.key)"
+      <div
+        v-for="group in menuGroups"
+        :key="group.id"
+        class="menu-group"
       >
-        <span
-          class="menu-icon"
-          :class="[item.icon, item.motion]"
-        />
-        <span
+        <!-- 分组标:mono 微字 + 收尾 hairline(仪器命名牌 + 刻度线的同一语言) -->
+        <div
           v-show="!store.sidebarCollapsed"
-          class="menu-label"
-        >{{ item.label }}</span>
-      </button>
+          class="menu-group-label"
+        >
+          <span class="menu-group-text">{{ group.label }}</span>
+          <span
+            class="menu-group-rule"
+            aria-hidden="true"
+          />
+        </div>
+        <div
+          v-show="store.sidebarCollapsed"
+          class="menu-group-sep"
+          aria-hidden="true"
+        />
+        <button
+          v-for="item in group.items"
+          :key="item.key"
+          type="button"
+          class="menu-item im"
+          :class="{ active: isActive(item.key) }"
+          :title="store.sidebarCollapsed ? item.label : undefined"
+          @click="go(item.key)"
+        >
+          <span
+            class="menu-icon"
+            :class="[item.icon, item.motion]"
+          />
+          <span
+            v-show="!store.sidebarCollapsed"
+            class="menu-label"
+          >{{ item.label }}</span>
+        </button>
+      </div>
     </nav>
 
-    <!-- 底部铭牌:版本与运行模式 -->
+    <!-- 底部铭牌:版本与运行模式(上缘刻度收边,与画布分节同语言) -->
     <div
       v-show="!store.sidebarCollapsed"
       class="sider-footer"
     >
+      <div class="footer-rule" />
       <div class="footer-line">
         <span>v{{ site.version }}</span>
         <span class="sep">/</span>
@@ -146,7 +193,7 @@ const go = (key: string) => {
   justify-content: center;
   width: 32px;
   height: 36px;
-  filter: drop-shadow(0 0 6px rgb(53 224 160 / 30%));
+  filter: drop-shadow(0 0 6px rgb(53 224 160 / 26%));
 }
 
 .logo-text {
@@ -158,9 +205,9 @@ const go = (key: string) => {
 
 .logo-title {
   font-family: var(--font-mono);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -168,35 +215,68 @@ const go = (key: string) => {
 .logo-sub {
   font-family: var(--font-mono);
   font-size: 8.5px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--sider-ink-faint);
 }
 
-.sider-section-label {
-  padding: 18px 20px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sider-ink-faint);
-}
-
+/* ---------- 分组导航 ---------- */
 .app-menu {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+  padding: 16px 10px 0;
+}
+
+.menu-group {
+  display: flex;
+  flex-direction: column;
   gap: 1px;
-  padding: 2px 10px 0;
+}
+
+/* 分组标:11px 微字 + 右侧收尾刻度线;缩进与条目文字对齐 */
+.menu-group-label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  margin-bottom: 3px;
+}
+
+.menu-group-text {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sider-ink-faint);
+}
+
+.menu-group-rule {
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, var(--divider-hair), transparent);
+}
+
+/* 折叠态:用一道短刻度代替文字分组标(保留分区语义) */
+.menu-group-sep {
+  width: 18px;
+  height: 1px;
+  margin: 6px 0 6px 13px;
+  background: var(--line-strong);
 }
 
 .menu-item {
+  position: relative;
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 36px;
+  min-height: 34px;
   padding: 0 10px;
   font-family: var(--font-body);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--sider-ink);
   text-align: left;
@@ -204,25 +284,35 @@ const go = (key: string) => {
   background: transparent;
   border: 0;
   border-radius: var(--radius-panel-sm);
-  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    padding-left var(--transition-fast),
+    transform var(--transition-fast);
 }
 
-.menu-item:hover {
-  color: var(--ink);
-  background: var(--paper-deep);
+@media (hover: hover) and (pointer: fine) {
+  .menu-item:hover {
+    padding-left: 13px;
+    color: var(--ink);
+    background: var(--paper-deep);
+  }
 }
 
 .menu-item:active {
-  transform: scale(0.98);
+  transform: scale(0.985);
 }
 
 /* 当前页:控制室绿洗 + 左缘品牌绿标记(导航定位态,替代旧墨色药丸) */
 .menu-item.active {
+  font-weight: 600;
   color: var(--accent-strong);
   background: var(--accent-soft);
   box-shadow: inset 2px 0 0 var(--accent);
 }
+
 .menu-item.active:hover {
+  padding-left: 10px;
   background: var(--tone-success-bg);
 }
 
@@ -233,6 +323,7 @@ const go = (key: string) => {
 
 .menu-item .menu-icon {
   color: var(--sider-ink-faint);
+  transition: color var(--transition-fast);
 }
 
 .menu-item:hover .menu-icon {
@@ -248,11 +339,8 @@ const go = (key: string) => {
   overflow: hidden;
   padding-left: 10px;
   white-space: nowrap;
+  text-overflow: ellipsis;
   transition: opacity var(--transition-fast);
-}
-
-.menu-item.active .menu-label {
-  font-weight: 600;
 }
 
 .sider-footer {
@@ -260,7 +348,18 @@ const go = (key: string) => {
   bottom: 0;
   left: 0;
   width: 100%;
-  padding: 14px 18px 18px;
+  padding: 0 18px 18px;
+  background: linear-gradient(180deg, transparent, var(--frost-bg) 42%);
+}
+
+/* 底部收边刻度:把侧栏内容与铭牌分开(与画布分节同语言) */
+.footer-rule {
+  height: 1px;
+  margin-bottom: 12px;
+  background:
+    repeating-linear-gradient(90deg, var(--tick-c-fine) 0 1px, transparent 1px 9px),
+    var(--divider-hair);
+  opacity: 0.9;
 }
 
 .footer-line {

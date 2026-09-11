@@ -12,25 +12,15 @@ export default defineNuxtPlugin(() => {
   const store = useRuntimeConfigStore()
   const appStore = useAppStore()
 
-  let darkTouched = false
-  let lastDarkFromRuntime: boolean | null = null
-
-  // 用户手动切换过暗色后，禁止运行时主题覆盖（尊重本地偏好）
-  watch(
-    () => appStore.isDark,
-    (v) => {
-      if (lastDarkFromRuntime !== null && v !== lastDarkFromRuntime) darkTouched = true
-    },
-  )
-
-  // 主题模式:runtime 默认 → 应用首次暗态（仅当用户未手动切换）
+  // 主题模式:服务端 runtime 默认只对"从未显式选择过"的会话生效。
+  // 一旦用户在设置页/页头切过一次(toggleDark 置 themeTouched),本地偏好即锁定,
+  // 服务端 theme.mode 的热更新不再夺走控制权 —— 否则每次刷新都被默认值冲掉。
   watch(
     () => store.effective['theme.mode'],
     (v) => {
       if (v !== 'light' && v !== 'dark') return
-      if (darkTouched) return
+      if (appStore.themeTouched) return
       const target = v === 'dark'
-      lastDarkFromRuntime = target
       if (appStore.isDark !== target) appStore.isDark = target
     },
     { immediate: true },

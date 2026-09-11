@@ -414,7 +414,9 @@ export class RecipeRollBackManager {
   // ================================================================
 
   evaluateOpenRecords(now: number): void {
-    for (const record of this.repo.listRecords({ status: 'open', limit: 500 })) {
+    // 走 open 索引(O(open))而非 listRecords 的「全量倒序 + limit 500」:
+    // 后者在 open 记录 >500 时会**静默漏评估**,且每次 sweep 都对全量 records 做一次拷贝。
+    for (const record of this.repo.listOpenRecords()) {
       if (record.policy === 'observe_only')
         continue
       const setMs = Date.parse(record.setAt)

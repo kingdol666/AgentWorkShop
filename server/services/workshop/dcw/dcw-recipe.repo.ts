@@ -5,22 +5,21 @@
  * 按批次时间窗归属产品;写历史追加式落盘(上限 3000 条,超出丢最旧)。
  */
 
-import path from 'node:path'
+import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { RecipeDaqWindow, RecipeInput, RecipeParam, RecipeRunView, RecipeView } from '../../../../shared/dcw-protocol'
 import { dcwKeyFromRef } from '../../../../shared/dcw-protocol'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { getDcwProductRepo } from './dcw-product.repo'
 import { getDcwNodeRepo } from './dcw-node.repo'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
-const DATA_DIR = process.cwd().endsWith('server')
-  ? 'data'
-  : path.join(process.cwd(), 'server', 'data')
-const RECIPES_PATH = path.join(DATA_DIR, 'dcw-recipes.json')
-const RUNS_PATH = path.join(DATA_DIR, 'dcw-runs.json')
-const WRITES_PATH = path.join(DATA_DIR, 'dcw-writes.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const RECIPES_PATH = join(ensureDataDir(), 'dcw-recipes.json')
+const RUNS_PATH = join(ensureDataDir(), 'dcw-runs.json')
+const WRITES_PATH = join(ensureDataDir(), 'dcw-writes.json')
 
 const RUNS_CAP = 200
 const WRITES_CAP = 3000

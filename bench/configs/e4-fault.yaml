@@ -1,0 +1,22 @@
+# E4 故障注入鲁棒性：F1–F6 全谱系
+# 论文角色：§6.4 鲁棒性表（TII 审稿人最看重的"系统在坏条件下怎么办"）
+hypothesis: "系统在六类故障下数据不丢、状态可恢复；离线缓冲与乱序防御使数据完整性 ≥99.9%（F3/F4/F6）"
+seed_base: 300
+repeats: 20
+harness: mock
+workloads:
+  - { id: W2, daq_nodes: 8, dcw_nodes: 4, interval_ms: 1000, teams: 1 }   # 高频采样放大故障窗口
+governance_arms: [full]
+tasks: [T1]
+fault_matrix:          # 每个故障单独一轮（不叠加，保证归因清晰）
+  - { fault: F1, params: { drift_k: 2.5 } }
+  - { fault: F2 }
+  - { fault: F3, params: { dropout_s: 30 } }
+  - { fault: F4, params: { reorder_ratio: 0.05 } }
+  - { fault: F4, params: { reorder_ratio: 0.20 } }
+  - { fault: F5, params: { attempts: 50 } }     # 50 次越界写尝试（含配方窗边缘试探）
+  - { fault: F6, params: { outage_s: 60 } }
+metrics_primary: [MTTR, intercept_rate, data_completeness, drop_counter_delta, readback_failure_catch_rate]
+outputs:
+  - "table-e4-robustness.csv   # 7 行故障 × 5 指标"
+  - "figure-e4-recovery.svg    # F3/F6 的恢复时间线（值序列 + 注入/恢复竖线）"

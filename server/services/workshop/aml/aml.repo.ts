@@ -209,6 +209,10 @@ export function createAmlRepo(db: DatabaseSync) {
       remove(id: string): void {
         db.prepare('DELETE FROM aml_datasets WHERE id = ?').run(id)
       },
+      /** 元数据局部更新(备注;CRUD 的 U) */
+      updateNote(id: string, note: string): void {
+        db.prepare('UPDATE aml_datasets SET note = ? WHERE id = ?').run(note, id)
+      },
     },
 
     // ----- jobs -----
@@ -267,6 +271,14 @@ export function createAmlRepo(db: DatabaseSync) {
       },
       requeue(id: string): void {
         jobRetryBump.run(id)
+      },
+      remove(id: string): void {
+        db.prepare('DELETE FROM aml_jobs WHERE id = ?').run(id)
+      },
+      /** 删除作业时级联清实验谱系(否则实验行成为悬挂元数据) */
+      removeExperimentsOf(jobId: string): number {
+        const r = db.prepare('DELETE FROM aml_experiments WHERE job_id = ?').run(jobId)
+        return Number(r.changes)
       },
     },
 
@@ -360,6 +372,12 @@ export function createAmlRepo(db: DatabaseSync) {
       },
       markPruned(id: string): void {
         modelPrune.run(id)
+      },
+      remove(id: string): void {
+        db.prepare('DELETE FROM aml_models WHERE id = ?').run(id)
+      },
+      updateNote(id: string, note: string): void {
+        db.prepare('UPDATE aml_models SET note = ? WHERE id = ?').run(note, id)
       },
     },
   }

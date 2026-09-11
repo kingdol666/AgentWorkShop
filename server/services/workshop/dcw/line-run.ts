@@ -11,7 +11,8 @@
  * 落盘(写放大),恢复时从最近一次结构变更的值继续。
  */
 
-import path from 'node:path'
+import { join } from 'node:path'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 export interface ActiveLineRun {
@@ -26,9 +27,8 @@ export interface ActiveLineRun {
   taggedSamples: number
 }
 
-const PERSIST_PATH = process.cwd().endsWith('server')
-  ? path.join('data', 'line-runs.json')
-  : path.join(process.cwd(), 'server', 'data', 'line-runs.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const PERSIST_PATH = join(ensureDataDir(), 'line-runs.json')
 
 const g = globalThis as typeof globalThis & {
   __activeLineRuns?: Map<string, ActiveLineRun>

@@ -93,12 +93,26 @@ export class DcwNodeRuntime {
    *  (仅与在飞读互斥),failures 只记 lastReadError 不改写状态机。 */
   tick(now: number): void {
     const node = this.node
-    // 保写心跳:仅对已设定过的节点生效(尚无设定值无可保持)
+    // 保写心跳:仅对已设定过的节点生效(尚无设定值无可保持)。
+    // 必须与手动/配方写共享同一在飞闸门 —— 早先此处直调 host.executeWrite 绕过了 write() 的
+    // writing 互斥,心跳可与用户下发并发落到同一通道:驱动层交错、后到者覆盖先到者,
+    // 且 dcw-controller 的 prevValue 采样跨 await,会把过期值记进回滚账本导致回滚点错位。
+    // 语义:写冲突时心跳**跳过本拍**(不排队、不补发),下一拍自然重试 —— 保写是幂等重下发。
     if (!this.writing && node.enabled && node.value != null && node.state !== 'writing') {
       const hold = node.holdIntervalMs ?? this.host.defaults().holdIntervalMs
       if (hold && hold > 0 && now - this.lastHoldAt >= hold) {
         this.lastHoldAt = now
-        void this.host.executeWrite(node, node.value, writeTolerance(node), null).catch(() => {})
+        this.writing = true
+        node.state = 'writing'
+        // tick 是同步节拍(由 sweep 同步调用),这里 fire-and-forget 但**全程持锁**,
+        // 保证与 write() 互斥;finally 里收敛状态并释放闸门。
+        void Promise.resolve()
+          .then(() => this.host.executeWrite(node, node.value!, writeTolerance(node), null))
+          .catch(() => { /* 保写失败不抛出:下一拍重试 */ })
+          .finally(() => {
+            this.writing = false
+            if (node.state === 'writing') node.state = 'error'
+          })
       }
     }
     // 周期读:被动观测,不依赖写过、不与写在飞互斥(仅同节点读串行)

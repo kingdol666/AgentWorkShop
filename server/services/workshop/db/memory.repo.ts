@@ -11,6 +11,12 @@ import type { MemoryKind, MemoryRow } from './database'
 /** 团队共享记忆域 sentinel(单 channel 内全员可读) */
 export const TEAM_AGENT_ID = '__team__'
 
+/** '2026-09' → '2026-10'(跨年安全);用于半开区间 [本月1日, 下月1日) 查询 */
+function nextMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return m === 12 ? `${(y ?? 0) + 1}-01` : `${y}-${String((m ?? 0) + 1).padStart(2, '0')}`
+}
+
 export interface MemoryUpsertInput {
   channelId: string
   agentId: string
@@ -192,6 +198,31 @@ export function createMemoryRepo(db: DatabaseSync) {
     /** listByAgent + rowid(维护专用:过期/淘汰删除需联动 vec 行) */
     listByAgentWithRowid(agentId: string, limit: number): Array<MemoryRow & { rowid: number }> {
       return listByAgentRowidStmt.all(agentId, limit) as unknown as Array<MemoryRow & { rowid: number }>
+    },
+
+    /**
+     * 按 (agent, kind, 年月) 精确取行 —— 供空闲反思使用。
+     * 替代原先「limit=1_000_000 拉全量再由 JS filter」的退化作法:
+     * 过滤条件下推到 SQL(走 agent_id+kind 前缀),返回量与实际增量同阶,
+     * 不再随记忆总量线性放大内存与 CPU。
+     * month 形如 '2026-09'(与 createdAt 的 ISO 前 7 位一致)。
+     */
+    listByAgentKindMonth(agentId: string, kind: MemoryKind, month: string): MemoryRow[] {
+      return db.prepare(
+        `SELECT ${COLS} FROM agent_memories m
+          WHERE m.agent_id = ? AND m.kind = ?
+            AND m.created_at >= ? AND m.created_at < ?
+          ORDER BY m.created_at ASC`,
+      ).all(agentId, kind, `${month}-01`, `${nextMonth(month)}-01`) as unknown as MemoryRow[]
+    },
+
+    /** 当月某 kind 的计数(反思触发阈值判断用;不取行体,零拷贝) */
+    countByAgentKindMonth(agentId: string, kind: MemoryKind, month: string): number {
+      const row = db.prepare(
+        `SELECT COUNT(*) AS c FROM agent_memories
+          WHERE agent_id = ? AND kind = ? AND created_at >= ? AND created_at < ?`,
+      ).get(agentId, kind, `${month}-01`, `${nextMonth(month)}-01`) as { c: number } | undefined
+      return Number(row?.c ?? 0)
     },
 
     touch(id: string): void {

@@ -13,7 +13,9 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join, basename, resolve } from 'node:path'
 import { color } from '../core/logger.mjs'
-import { CliError } from '../aw.mjs'
+// 从叶子模块取 CliError(而非 '../aw.mjs'):命令模块反向依赖入口会形成循环依赖,
+// 在 cli/aw.mjs 自任入口时死锁(详见 cli/core/meta.mjs 文件头说明)
+import { CliError } from '../core/errors.mjs'
 
 export const meta = {
   name: 'register',

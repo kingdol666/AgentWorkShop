@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, cpSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, cpSync, copyFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { loadConfig } from './app/config'
@@ -121,7 +121,9 @@ export default defineNuxtConfig({
       // shared/config/engine.mjs 从 server 树外 import 会被 nitro dev 外部化,且在
       // Windows 上算错嵌套相对路径('../../..' 溢出盘符根)→ 强制内联进服务端 bundle;
       // 运行时 engine.loadDescriptors 经 cwd 兜底读 schema.json。
-      inline: ['**/shared/config/engine.mjs'],
+      // shared/lru.mjs 同理(daq-controller 的 siblingsCache 使用有界 LRU);
+      // 漏内联的后果是构建产物里留下未绑定的 new LruMap(...) → 运行时 ReferenceError。
+      inline: ['**/shared/config/engine.mjs', '**/shared/lru.mjs', '**/shared/config/home.mjs'],
     },
     // 服务器侧 rollup 构建:显式外置 node:* 内建模块(如 node:sqlite)。
     // rollup 的内建模块清单不含 node:sqlite,Nitro 的 externals 插件也放行,
@@ -176,6 +178,32 @@ export default defineNuxtConfig({
         }
         catch (err) {
           console.error('[build] prompts copy failed:', err)
+        }
+        // 配置描述符同样必须随产物分发:shared/config/schema.json 定义了全部 98 个
+        // 设置项,engine.loadDescriptors() 在**没有 AW_PACKAGE_ROOT** 的启动方式下
+        // (直接 node .output/server/index.mjs,或任何未注入载荷根的场景)找不到它就会
+        // 在 SqliteTimeSeriesAdapter 构造期抛 `[config] 找不到 schema.json` 并整进程退出。
+        try {
+          const schemaSrc = join(process.cwd(), 'shared', 'config', 'schema.json')
+          const schemaOut = join(process.cwd(), '.output', '.AgentWorkShop', 'schema.json')
+          copyFileSync(schemaSrc, schemaOut)
+          console.log('[build] schema.json copied →', schemaOut)
+        }
+        catch (err) {
+          console.error('[build] schema.json copy failed:', err)
+        }
+        // AML Python 运行时资产同样随产物分发:这些 .py/.txt 是运行时经 fs 读取的
+        // (requirementsHash 读 requirements.txt、jobEnv 把 amlkit.py 所在目录塞进
+        // PYTHONPATH),nitro 不会打包它们。缺了它们的后果不是启动失败,而是
+        // **训练作业在供给 venv 时才炸**,且报错指向空文件摘要,很难定位。
+        try {
+          const pySrc = join(process.cwd(), 'server', 'services', 'workshop', 'aml', 'python')
+          const pyOut = join(process.cwd(), '.output', '.AgentWorkShop', 'aml-python')
+          cpSync(pySrc, pyOut, { recursive: true })
+          console.log('[build] aml python assets copied →', pyOut)
+        }
+        catch (err) {
+          console.error('[build] aml python assets copy failed:', err)
         }
       },
     },

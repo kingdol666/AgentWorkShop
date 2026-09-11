@@ -41,6 +41,9 @@ export function createUserRepo(db: DatabaseSync) {
   const deleteMount = db.prepare(
     `DELETE FROM workspace_channels WHERE workspace_id = ? AND channel_id = ?`,
   )
+  const deleteMountsByChannel = db.prepare(
+    `DELETE FROM workspace_channels WHERE channel_id = ?`,
+  )
   const listMounts = db.prepare(
     `SELECT channel_id AS channelId FROM workspace_channels WHERE workspace_id = ? ORDER BY created_at ASC`,
   )
@@ -92,6 +95,12 @@ export function createUserRepo(db: DatabaseSync) {
     },
     unmountChannel(workspaceId: string, channelId: string): void {
       deleteMount.run(workspaceId, channelId)
+    },
+    /** channel 删除级联:清掉所有 workspace 对它的挂载引用(返回清理行数)。
+     *  早先没有这个级联,只能靠 listWorkspaces 在**读路径**里顺手 DELETE 兜底 ——
+     *  那让 GET /workspaces 变成有副作用的写操作。改为删除时主动收敛。 */
+    unmountChannelEverywhere(channelId: string): number {
+      return Number(deleteMountsByChannel.run(channelId).changes ?? 0)
     },
     listMountedChannels(workspaceId: string): string[] {
       return (listMounts.all(workspaceId) as Array<{ channelId: string }>).map(r => r.channelId)

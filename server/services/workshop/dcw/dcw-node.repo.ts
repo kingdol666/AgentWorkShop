@@ -5,15 +5,15 @@
  */
 
 import { createLogger } from '../logger'
-import path from 'node:path'
+import { join } from 'node:path'
 import { DcwNode } from './dcw-node'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('dcw.node-repo')
 
-const DB_PATH = process.cwd().endsWith('server')
-  ? 'data/dcws.json'
-  : path.join(process.cwd(), 'server', 'data', 'dcws.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const DB_PATH = join(ensureDataDir(), 'dcws.json')
 
 function load(): DcwNode[] {
   try {

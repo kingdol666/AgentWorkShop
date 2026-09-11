@@ -6,12 +6,14 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import path from 'node:path'
+import { join } from 'node:path'
 import { dcwLineColorFor, type LineInput, type LineView } from '../../../../shared/dcw-protocol'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
-const DB_PATH = process.cwd().endsWith('server') ? 'data/dcw-lines.json' : path.join(process.cwd(), 'server', 'data', 'dcw-lines.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const DB_PATH = join(ensureDataDir(), 'dcw-lines.json')
 
 function load(): LineView[] {
   const parsed = loadJsonFile(DB_PATH, [])

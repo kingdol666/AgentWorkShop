@@ -2,7 +2,7 @@
 // 指令:version — 版本信息
 // ============================================================
 import { color } from '../core/logger.mjs'
-import { packageVersion } from '../aw.mjs'
+import { packageVersion } from '../core/meta.mjs'
 
 export const meta = {
   name: 'version',

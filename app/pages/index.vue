@@ -22,9 +22,13 @@ const store = useAppStore()
 const daq = useDaqStream()
 const dcw = useDcwStream()
 
-// 落地页图表色序:Warm Editorial 编辑色板(main.css --chart-* 同源)——
-// Town 控制室荧光色(#35e0a0/#41c8f4)只属于 3D 孪生场景,不进暖纸编辑体系
-const PAL = { accent: '#4a6b57', cyan: '#6f8296', amber: '#c9a26a', violet: '#b3714f', danger: '#c25a4e' }
+// 图表色序随主题切换(两套声部,同一语义序):
+//   亮 = Warm Editorial 编辑色板(main.css --chart-* 同源,墨绿→苔绿→琥珀→陶赭)
+//   暗 = 控制室 tone 系统(绿=运行/成功 · 青=数据 · 琥珀=需关注 · 紫=重试 · 红=告警)
+// —— 亮阶把品牌绿当"墨"用,暗阶把同一抹绿当"信号"用,各自在自己的画布上才成立。
+const PAL = computed(() => (store.isDark
+  ? { accent: '#3fe4ab', cyan: '#41c8f4', amber: '#f6c453', violet: '#a795ff', danger: '#ff8080' }
+  : { accent: '#4a6b57', cyan: '#6f8296', amber: '#c9a26a', violet: '#b3714f', danger: '#c25a4e' }))
 
 // ---------- 数据装载(WS 实时 + 5s 兜底;可见性调度:后台降频 30s,回前台立即补拍) ----------
 onMounted(() => {
@@ -113,13 +117,13 @@ const trendOpt = computed<EChartsOption>(() => ({
     splitLine: { show: false },
   },
   yAxis: {
+    // 轴名移到面板头 meta:贴在轴端会和刻度数字挤在一起(见 aw-bench-meta)
     type: 'value', min: 0, max: 100,
-    name: t('home.trendY'), nameTextStyle: { color: dimC.value, fontSize: 10, align: 'left' },
     axisLabel: { color: dimC.value, fontSize: 10 },
     splitLine: { lineStyle: { color: splitC.value } },
   },
   series: trendNodes.value.map((n, i) => {
-    const color = [PAL.accent, PAL.cyan, PAL.amber, PAL.violet][i % 4]
+    const color = [PAL.value.accent, PAL.value.cyan, PAL.value.amber, PAL.value.violet][i % 4]
     return {
       name: n.name,
       type: 'line',
@@ -148,7 +152,7 @@ const lineStateOpt = computed<EChartsOption>(() => ({
     label: { show: false },
     silent: false,
     data: [
-      { value: linesActive.value.length, name: t('home.runNow'), itemStyle: { color: PAL.accent } },
+      { value: linesActive.value.length, name: t('home.runNow'), itemStyle: { color: PAL.value.accent } },
       { value: Math.max(dcw.lines.length - linesActive.value.length, 0), name: t('home.standBy'), itemStyle: { color: splitC.value } },
     ],
   }],
@@ -174,9 +178,9 @@ const pipelineOpt = computed<EChartsOption>(() => ({
     type: 'bar',
     barWidth: 10,
     data: [
-      { value: daq.meta.samplesStored ?? 0, itemStyle: { color: PAL.amber } },
-      { value: daq.meta.consumed ?? 0, itemStyle: { color: PAL.cyan } },
-      { value: daq.meta.produced ?? 0, itemStyle: { color: PAL.accent } },
+      { value: daq.meta.samplesStored ?? 0, itemStyle: { color: PAL.value.amber } },
+      { value: daq.meta.consumed ?? 0, itemStyle: { color: PAL.value.cyan } },
+      { value: daq.meta.produced ?? 0, itemStyle: { color: PAL.value.accent } },
     ],
     itemStyle: { borderRadius: [0, 5, 5, 0] },
   }],
@@ -193,7 +197,7 @@ const writeOpt = computed<EChartsOption>(() => ({
     max: 100,
     radius: '92%',
     center: ['50%', '58%'],
-    progress: { show: true, width: 12, itemStyle: { color: PAL.accent } },
+    progress: { show: true, width: 12, itemStyle: { color: PAL.value.accent } },
     axisLine: { lineStyle: { width: 12, color: [[1, splitC.value]] } },
     axisTick: { show: false },
     splitLine: { show: false },
@@ -214,22 +218,22 @@ const writeOpt = computed<EChartsOption>(() => ({
 }))
 
 // ---------- 图 5:节点状态分布(数采/控制 堆叠) ----------
-const NODE_STATES = [
-  { key: 'ok', color: PAL.accent },
-  { key: 'warn', color: PAL.amber },
-  { key: 'alarm', color: PAL.danger },
-  { key: 'writing', color: PAL.cyan },
-  { key: 'idle', color: '#8fa0b5' },
+const nodeStates = computed(() => [
+  { key: 'ok', color: PAL.value.accent },
+  { key: 'warn', color: PAL.value.amber },
+  { key: 'alarm', color: PAL.value.danger },
+  { key: 'writing', color: PAL.value.cyan },
+  { key: 'idle', color: store.isDark ? '#5f6e84' : '#8fa0b5' },
   { key: 'error', color: '#ff8a5c' },
-  { key: 'offline', color: 'rgba(143,160,181,0.35)' },
-] as const
+  { key: 'offline', color: store.isDark ? 'rgba(95,110,132,0.38)' : 'rgba(143,160,181,0.35)' },
+])
 
 const nodeStateOpt = computed<EChartsOption>(() => {
   const daqCount = new Map<string, number>()
   for (const n of daq.nodes) daqCount.set(n.state, (daqCount.get(n.state) ?? 0) + 1)
   const dcwCount = new Map<string, number>()
   for (const n of dcw.nodes) dcwCount.set(n.state, (dcwCount.get(n.state) ?? 0) + 1)
-  const states = NODE_STATES.filter(s => daqCount.get(s.key) || dcwCount.get(s.key))
+  const states = nodeStates.value.filter(s => daqCount.get(s.key) || dcwCount.get(s.key))
   return {
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, ...baseTooltip.value },
@@ -286,10 +290,10 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
 
 <template>
   <div class="home">
-    <!-- Hero:产线运营中枢(暗夜航仪;右侧 LIVE 实况) -->
-    <section class="hero aw-stagger">
+    <!-- Hero:产线运营中枢(校准仪表台母题;右侧 LIVE 实况仪表簇) -->
+    <section class="hero aw-bench aw-bench--marked aw-stagger">
       <div class="hero-main">
-        <p class="aw-kicker">
+        <p class="aw-bench-kicker">
           {{ t('home.kicker') }} · {{ site.mode }}
         </p>
         <h1 class="hero-title">
@@ -316,52 +320,81 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
           </button>
         </div>
       </div>
-      <div class="hero-live mono">
+
+      <!-- 实况仪表簇:LIVE 徽标 + 三条带刻度的读数行(读数比句子更快被扫到) -->
+      <div class="hero-live">
         <span class="live-badge"><span class="live-dot" />{{ t('home.live') }}</span>
-        <div class="live-rows">
-          <span>{{ t('home.runNow') }} <b>{{ linesActive.length }}</b>/{{ dcw.lines.length }} {{ t('home.kpi.lines') }}</span>
-          <span>{{ t('home.kpi.samples') }} <b>{{ daq.meta.samplesStored ?? 0 }}</b></span>
-          <span
-            class="live-alarms"
-            :class="{ on: alarmCount > 0 }"
-          >{{ t('home.kpi.alarms') }} <b>{{ alarmCount }}</b></span>
-        </div>
+        <dl class="live-rows">
+          <div class="live-row">
+            <dt>{{ t('home.kpi.lines') }}</dt>
+            <dd class="mono">
+              <b>{{ linesActive.length }}</b><small>/{{ dcw.lines.length }}</small>
+            </dd>
+          </div>
+          <div class="live-row">
+            <dt>{{ t('home.kpi.samples') }}</dt>
+            <dd class="mono">
+              <b>{{ daq.meta.samplesStored ?? 0 }}</b>
+            </dd>
+          </div>
+          <div
+            class="live-row"
+            :class="{ 'is-alarm': alarmCount > 0 }"
+          >
+            <dt>{{ t('home.kpi.alarms') }}</dt>
+            <dd class="mono">
+              <b>{{ alarmCount }}</b>
+            </dd>
+          </div>
+        </dl>
       </div>
-      <!-- 仪表刻度母题(控制室仪器读数;纯装饰,reduced-motion 无关、零动画) -->
+      <!-- 仪表刻度母题(控制室仪器读数;纯装饰,零动画) -->
       <div
         class="hero-scale"
         aria-hidden="true"
       />
     </section>
 
-    <!-- KPI 行 -->
-    <div class="kpi-row aw-stagger">
-      <div class="kpi">
-        <span class="kpi-label">{{ t('home.kpi.lines') }}</span>
-        <span class="kpi-value">{{ linesActive.length }}<small>/{{ dcw.lines.length }}</small></span>
+    <!-- 量规统计带:一块仪表盘,不是一排各自为政的卡(底部量程刻度是签名) -->
+    <div class="aw-gauge-band aw-stagger">
+      <div class="aw-gauge">
+        <span class="aw-gauge-label">{{ t('home.kpi.lines') }}</span>
+        <span class="aw-gauge-value">
+          <span class="aw-readout">{{ linesActive.length }}<small>/{{ dcw.lines.length }}</small></span>
+        </span>
       </div>
-      <div class="kpi">
-        <span class="kpi-label">{{ t('home.kpi.dcwNodes') }}</span>
-        <span class="kpi-value">{{ dcw.controller.nodesOnline }}<small>/{{ dcw.controller.nodesTotal }}</small></span>
+      <div class="aw-gauge">
+        <span class="aw-gauge-label">{{ t('home.kpi.dcwNodes') }}</span>
+        <span class="aw-gauge-value">
+          <span class="aw-readout">{{ dcw.controller.nodesOnline }}<small>/{{ dcw.controller.nodesTotal }}</small></span>
+        </span>
       </div>
-      <div class="kpi">
-        <span class="kpi-label">{{ t('home.kpi.daqNodes') }}</span>
-        <span class="kpi-value">{{ daqOnline }}<small>/{{ daqTotal }}</small></span>
+      <div class="aw-gauge">
+        <span class="aw-gauge-label">{{ t('home.kpi.daqNodes') }}</span>
+        <span class="aw-gauge-value">
+          <span class="aw-readout">{{ daqOnline }}<small>/{{ daqTotal }}</small></span>
+        </span>
       </div>
-      <div class="kpi">
-        <span class="kpi-label">{{ t('home.kpi.samples') }}</span>
-        <span class="kpi-value mono">{{ daq.meta.samplesStored ?? 0 }}</span>
+      <div class="aw-gauge">
+        <span class="aw-gauge-label">{{ t('home.kpi.samples') }}</span>
+        <span class="aw-gauge-value">
+          <span class="aw-readout">{{ daq.meta.samplesStored ?? 0 }}</span>
+        </span>
       </div>
-      <div class="kpi">
-        <span class="kpi-label">{{ t('home.kpi.writeRate') }}</span>
-        <span class="kpi-value">{{ writeRate }}<small>%</small></span>
+      <div class="aw-gauge">
+        <span class="aw-gauge-label">{{ t('home.kpi.writeRate') }}</span>
+        <span class="aw-gauge-value">
+          <span class="aw-readout">{{ writeRate }}<small>%</small></span>
+        </span>
       </div>
       <div
-        class="kpi"
-        :class="{ alarm: alarmCount > 0 }"
+        class="aw-gauge"
+        :class="{ 'is-alarm': alarmCount > 0 }"
       >
-        <span class="kpi-label">{{ t('home.kpi.alarms') }}</span>
-        <span class="kpi-value">{{ alarmCount }}</span>
+        <span class="aw-gauge-label">{{ t('home.kpi.alarms') }}</span>
+        <span class="aw-gauge-value">
+          <span class="aw-readout">{{ alarmCount }}</span>
+        </span>
       </div>
     </div>
 
@@ -369,12 +402,16 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
     <!-- 执行引擎可用性(Harness CLI 环境探测;未安装不可选,派工前强校验) -->
     <section
       v-if="harnesses.length > 0"
-      class="dpanel harness aw-stagger"
+      class="harness aw-bench aw-stagger"
     >
-      <header class="dp-hd">
-        <h3>{{ t('home.harness.title') }}</h3>
-        <small>{{ t('home.harness.sub') }}</small>
-        <small class="mono fleet-total">{{ harnessOk }}/{{ harnesses.length }}</small>
+      <header class="aw-bench-hd">
+        <h3 class="aw-bench-title">
+          {{ t('home.harness.title') }}
+        </h3>
+        <small class="aw-bench-sub">{{ t('home.harness.sub') }}</small>
+        <span class="aw-bench-meta">
+          <span><b>{{ harnessOk }}</b>/{{ harnesses.length }}</span>
+        </span>
       </header>
       <div class="harness-row">
         <a
@@ -399,10 +436,15 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
     </section>
 
     <div class="grid aw-stagger">
-      <section class="dpanel span8">
-        <header class="dp-hd">
-          <h3>{{ t('home.charts.trend') }}</h3>
-          <small>{{ t('home.charts.trendSub') }}</small>
+      <section class="aw-bench span8">
+        <header class="aw-bench-hd">
+          <h3 class="aw-bench-title">
+            {{ t('home.charts.trend') }}
+          </h3>
+          <small class="aw-bench-sub">{{ t('home.charts.trendSub') }}</small>
+          <span class="aw-bench-meta">
+            <span>{{ t('home.trendY') }}</span>
+          </span>
         </header>
         <ClientOnly>
           <AwChart
@@ -411,9 +453,14 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
           />
         </ClientOnly>
       </section>
-      <section class="dpanel span4">
-        <header class="dp-hd">
-          <h3>{{ t('home.charts.lineState') }}</h3>
+      <section class="aw-bench span4">
+        <header class="aw-bench-hd">
+          <h3 class="aw-bench-title">
+            {{ t('home.charts.lineState') }}
+          </h3>
+          <span class="aw-bench-meta">
+            <span><b>{{ linesActive.length }}</b>/{{ dcw.lines.length }} {{ t('home.kpi.lines') }}</span>
+          </span>
         </header>
         <div class="donut-wrap">
           <div class="donut-center mono">
@@ -428,9 +475,11 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
           </ClientOnly>
         </div>
       </section>
-      <section class="dpanel span4">
-        <header class="dp-hd">
-          <h3>{{ t('home.charts.pipeline') }}</h3>
+      <section class="aw-bench span4">
+        <header class="aw-bench-hd">
+          <h3 class="aw-bench-title">
+            {{ t('home.charts.pipeline') }}
+          </h3>
         </header>
         <ClientOnly>
           <AwChart
@@ -439,10 +488,14 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
           />
         </ClientOnly>
       </section>
-      <section class="dpanel span4">
-        <header class="dp-hd">
-          <h3>{{ t('home.charts.writeCtl') }}</h3>
-          <small class="mono">{{ dcw.controller.writesTotal }} {{ t('home.writesFailed') }} {{ dcw.controller.writesFailed }}</small>
+      <section class="aw-bench span4">
+        <header class="aw-bench-hd">
+          <h3 class="aw-bench-title">
+            {{ t('home.charts.writeCtl') }}
+          </h3>
+          <span class="aw-bench-meta">
+            <span><b>{{ dcw.controller.writesTotal }}</b> {{ t('home.writesFailed') }} {{ dcw.controller.writesFailed }}</span>
+          </span>
         </header>
         <ClientOnly>
           <AwChart
@@ -451,9 +504,11 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
           />
         </ClientOnly>
       </section>
-      <section class="dpanel span4">
-        <header class="dp-hd">
-          <h3>{{ t('home.charts.nodeState') }}</h3>
+      <section class="aw-bench span4">
+        <header class="aw-bench-hd">
+          <h3 class="aw-bench-title">
+            {{ t('home.charts.nodeState') }}
+          </h3>
         </header>
         <ClientOnly>
           <AwChart
@@ -465,11 +520,15 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
     </div>
 
     <!-- 产线清单(运行中优先,最多 8 卡;余量聚合入口) -->
-    <section class="dpanel fleet aw-stagger">
-      <header class="dp-hd">
-        <h3>{{ t('home.charts.lines') }}</h3>
-        <small>{{ t('home.fleetHint') }}</small>
-        <small class="mono fleet-total">{{ dcw.lines.length }}</small>
+    <section class="fleet aw-bench aw-stagger">
+      <header class="aw-bench-hd">
+        <h3 class="aw-bench-title">
+          {{ t('home.charts.lines') }}
+        </h3>
+        <small class="aw-bench-sub">{{ t('home.fleetHint') }}</small>
+        <span class="aw-bench-meta">
+          <span><b>{{ dcw.lines.length }}</b></span>
+        </span>
       </header>
       <div class="fleet-grid">
         <NuxtLink
@@ -528,30 +587,16 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
 <style scoped>
 .home { padding: 4px; }
 
-/* ---------- Hero:中枢横幅 + LIVE 实况 ---------- */
+/* ---------- Hero:中枢横幅 + LIVE 实况(基座 = aw-bench,此处只写专属节奏) ---------- */
 .hero {
-  position: relative;
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 24px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
-  padding: 30px 34px;
+  margin-bottom: var(--gap-block);
+  padding: 30px 34px 32px;
   overflow: hidden;
-  background: var(--surface-glass);
-  backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--glass-edge);
-}
-.hero::after {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1px;
-  content: '';
-  background: linear-gradient(90deg, transparent, rgb(53 224 160 / 45%), transparent);
 }
 /* 仪表刻度母题:底部细刻度尺(控制室仪器读数;纯装饰零动画,两端淡出) */
 .hero-scale {
@@ -596,15 +641,17 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
   gap: 10px;
   margin-top: 4px;
 }
+/* 实况仪表簇:左缘一道品牌刻度,与画布分节同语言 */
 .hero-live {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-width: 210px;
-  padding: 16px 18px;
+  gap: 10px;
+  min-width: 224px;
+  padding: 15px 18px 13px;
   background: var(--frost-bg);
   border: 1px solid var(--glass-line);
-  border-radius: var(--radius-chip);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--radius-panel-sm) var(--radius-panel-sm) 0;
 }
 .live-badge {
   display: inline-flex;
@@ -634,121 +681,66 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
 .live-rows {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  margin: 0;
+}
+.live-row {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid var(--divider-hair);
+}
+.live-row:first-child { padding-top: 2px; border-top: 0; }
+.live-row dt {
   font-size: 11.5px;
   color: var(--ink-faint);
 }
-.live-rows b { color: var(--ink); }
-.live-alarms.on { color: var(--tone-danger-dot); }
-.live-alarms.on b { color: var(--tone-danger-dot); }
-
-/* ---------- KPI 行 ---------- */
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 12px;
-  margin-bottom: 14px;
-}
-@media (max-width: 1100px) {
-  .kpi-row { grid-template-columns: repeat(3, 1fr); }
-}
-.kpi {
-  position: relative;
-  padding: 14px 18px;
-  overflow: hidden;
-  background: var(--surface-glass);
-  backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--glass-edge);
-  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
-}
-.kpi:hover {
-  border-color: color-mix(in srgb, var(--line-strong) 70%, var(--accent) 30%);
-  transform: translateY(-1px);
-  box-shadow: var(--glass-edge), var(--shadow-float);
-}
-.kpi-label {
-  display: block;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-fainter);
-}
-.kpi-value {
-  margin-top: 5px;
-  font-size: 26px;
-  line-height: 1.1;
+.live-row dd {
+  margin: 0;
+  font-size: 13.5px;
   color: var(--ink);
-  font-variant-numeric: tabular-nums;
 }
-.kpi-value small {
-  margin-left: 2px;
-  font-size: 13px;
-  color: var(--ink-faint);
+.live-row dd b { font-weight: 500; }
+.live-row dd small { font-size: 11px; color: var(--ink-faint); }
+.live-row.is-alarm dt,
+.live-row.is-alarm dd { color: var(--tone-danger-dot); }
+
+/* ---------- 量规统计带:列数按可用宽度收敛(6 → 3 → 2,永不挤成一条) ---------- */
+.aw-gauge-band {
+  --cols: 6;
+  margin-bottom: var(--gap-block);
 }
-.kpi.alarm .kpi-value { color: var(--tone-danger-dot); }
+@media (max-width: 1240px) {
+  .aw-gauge-band { --cols: 3; }
+}
+@media (max-width: 720px) {
+  .aw-gauge-band { --cols: 2; }
+}
 
 /* ---------- 大屏图阵 ---------- */
 .grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: var(--gap-block);
+  margin-bottom: var(--gap-block);
 }
 .span8 { grid-column: span 8; }
 .span4 { grid-column: span 4; }
 @media (max-width: 1100px) {
   .span8, .span4 { grid-column: span 12; }
 }
-.dpanel {
-  position: relative;
-  padding: 14px 16px 10px;
+/* 面板题注:一句话说明这张图在看什么;窄屏让位给读数本身 */
+.aw-bench-sub {
   overflow: hidden;
-  background: var(--surface-glass);
-  backdrop-filter: var(--aurora-blur);
-  -webkit-backdrop-filter: var(--aurora-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--glass-edge);
-}
-.dpanel::before {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1px;
-  content: '';
-  background: linear-gradient(90deg, rgb(53 224 160 / 40%), rgb(65 200 244 / 18%) 40%, transparent 75%);
-  pointer-events: none;
-}
-.dp-hd {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  margin-bottom: 6px;
-}
-.dp-hd h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--ink);
-}
-/* 工业刻度记号:面板小标前的品牌绿竖标(控制室仪表命名牌语言) */
-.dp-hd h3::before {
-  display: inline-block;
-  width: 3px;
-  height: 11px;
-  margin-right: 8px;
-  content: '';
-  background: var(--accent);
-  border-radius: 1px;
-}
-.dp-hd small {
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  letter-spacing: 0.02em;
   color: var(--ink-fainter);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 1500px) {
+  .aw-bench-sub { display: none; }
 }
 .chart { width: 100%; }
 .h280 { height: 280px; }
@@ -765,25 +757,41 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
   transform: translateY(-50%);
   pointer-events: none;
 }
-.donut-center b { font-size: 24px; color: var(--ink); }
+.donut-center b {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
 .donut-center small { font-size: 11px; color: var(--ink-faint); }
 
-/* ---------- 产线清单 ---------- */
-.fleet { padding-bottom: 16px; }
+/* ---------- 产线清单(基座 = aw-bench) ---------- */
+.fleet { margin-bottom: var(--gap-block); }
 .fleet-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
 }
 .line-card {
-  padding: 12px 14px;
+  padding: 13px 15px;
   cursor: pointer;
   background: var(--frost-bg);
   border: 1px solid var(--glass-line);
-  border-radius: var(--radius-chip);
-  transition: border-color 0.15s, background 0.15s;
+  border-radius: var(--radius-panel-sm);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    transform var(--transition-base),
+    box-shadow var(--transition-base);
 }
-.line-card:hover { border-color: var(--lc, var(--accent)); }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .line-card:hover {
+    border-color: var(--lc, var(--accent));
+    transform: translateY(-1px);
+    box-shadow: var(--glass-edge), var(--shadow-float);
+  }
+}
 .line-card.on {
   background: color-mix(in srgb, var(--lc) 7%, var(--paper-deep));
   border-color: color-mix(in srgb, var(--lc) 45%, transparent);
@@ -837,17 +845,15 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
   color: var(--ink-faint);
   border-top: 1px solid var(--divider-hair);
 }
-.fleet-total {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--ink-faint);
-}
 /* ---------- Harness 可用性条:墨色药丸式引擎清单,未安装灰化 ---------- */
+.harness {
+  margin-bottom: var(--gap-block);
+}
 .harness-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 4px 0 6px;
+  padding: 2px 0 4px;
 }
 .h-item {
   display: flex;

@@ -15,8 +15,8 @@ importers:
         specifier: ^7.0.1
         version: 7.0.1(vue@3.5.41(typescript@5.9.3))
       '@anthropic-ai/claude-agent-sdk':
-        specifier: file:C:/Users/87287/AppData/Local/Temp/claude-sdk.tgz
-        version: file:C:/Users/87287/AppData/Local/Temp/claude-sdk.tgz(@anthropic-ai/sdk@0.124.0(zod@3.25.76))(@modelcontextprotocol/sdk@1.30.0(zod@3.25.76))(zod@3.25.76)
+        specifier: 0.3.266
+        version: 0.3.266(@anthropic-ai/sdk@0.124.0(zod@3.25.76))(@modelcontextprotocol/sdk@1.30.0(zod@3.25.76))(zod@3.25.76)
       '@earendil-works/pi-tui':
         specifier: ^0.84.4
         version: 0.84.4
@@ -271,9 +271,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@anthropic-ai/claude-agent-sdk@file:C:/Users/87287/AppData/Local/Temp/claude-sdk.tgz':
-    resolution: {integrity: sha512-GVTLf3QwmtqUcFbrH/gzCWleGQ0RBSCMfVbdciTGdu7eiYeRu0seYNE3T8awmRl3nL63z7CkKbnWnpy4te5y4g==, tarball: file:C:/Users/87287/AppData/Local/Temp/claude-sdk.tgz}
-    version: 0.3.266
+  '@anthropic-ai/claude-agent-sdk@0.3.266':
+    resolution: {integrity: sha512-GVTLf3QwmtqUcFbrH/gzCWleGQ0RBSCMfVbdciTGdu7eiYeRu0seYNE3T8awmRl3nL63z7CkKbnWnpy4te5y4g==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       '@anthropic-ai/sdk': '>=0.93.0'
@@ -7072,7 +7071,7 @@ snapshots:
   '@anthropic-ai/claude-agent-sdk-win32-x64@0.3.266':
     optional: true
 
-  '@anthropic-ai/claude-agent-sdk@file:C:/Users/87287/AppData/Local/Temp/claude-sdk.tgz(@anthropic-ai/sdk@0.124.0(zod@3.25.76))(@modelcontextprotocol/sdk@1.30.0(zod@3.25.76))(zod@3.25.76)':
+  '@anthropic-ai/claude-agent-sdk@0.3.266(@anthropic-ai/sdk@0.124.0(zod@3.25.76))(@modelcontextprotocol/sdk@1.30.0(zod@3.25.76))(zod@3.25.76)':
     dependencies:
       '@anthropic-ai/sdk': 0.124.0(zod@3.25.76)
       '@modelcontextprotocol/sdk': 1.30.0(zod@3.25.76)

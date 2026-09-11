@@ -8,11 +8,11 @@
 //   · 端口/主机取自有效配置（config.yml < runtime-settings < env < CLI 参数）
 // 子进程统一注入 NO_PROXY（本机代理不再劫持 localhost 回环）。
 // ============================================================
-import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { color } from '../core/logger.mjs'
 import { localBypassEnv } from '../core/context.mjs'
+import { runChild } from '../core/child-lifecycle.mjs'
 
 export const meta = {
   name: 'dev',
@@ -55,20 +55,12 @@ export async function run(argv, ctx) {
   console.log(`${color.cyan('›')} 开发服务器 -> http://${host}:${port}  ${color.dim(`(端口来源: ${portSource})`)}`)
   console.log(`${color.cyan('›')} 停止: Ctrl+C`)
 
-  const child = spawn(cmd, args, {
+  // 统一生命周期:转发 SIGINT/SIGTERM + 等待退出 + 5s 后 SIGKILL 强杀
+  // + 退出码传播(Ctrl+C 时子进程 code===null → 130,不再误报 0)
+  return await runChild(cmd, args, {
     cwd: root,
     stdio: 'inherit',
     env: localBypassEnv(),
-  })
-  const shutdown = () => child.kill('SIGTERM')
-  process.on('SIGINT', shutdown)
-  process.on('SIGTERM', shutdown)
-
-  return await new Promise((resolve2) => {
-    child.on('close', code => resolve2(code ?? 0))
-    child.on('error', (err) => {
-      console.log(`${color.red('✖')} dev 进程启动失败: ${err.message}`)
-      resolve2(1)
-    })
+    onSpawnError: err => console.log(`${color.red('✖')} dev 进程启动失败: ${err.message}`),
   })
 }

@@ -17,7 +17,7 @@ import { amlSettings } from '../settings'
 import { broadcastSceneEvent } from '../scene-events'
 import { recordOps } from '../ops/ops'
 import { spawnLineProcess } from '../agents/adapters/line-spawn'
-import { ensureVenv, jobEnv, platformPythonDir, killHarnessProcess, probePython, requirementsHash } from './python-runtime'
+import { ensureVenv, isVenvReady, jobEnv, platformPythonDir, killHarnessProcess, probePython } from './python-runtime'
 import { hashDatasetDir, loadManifest } from './dataset-builder'
 import { evaluateGates, type PlatformMetrics } from './gates'
 import { registerModelFromJob } from './model-registry'
@@ -625,26 +625,15 @@ function wsProgress(row: AmlJobRow, progress: number, note: string): void {
 }
 
 /** 探针(python 缺失时给 UI/工具明确状态) */
-export async function runtimeStatus(): Promise<{ python: { ok: boolean, version?: string, reason?: string }, venvReady: boolean, queued: number, running: number }> {
+export async function runtimeStatus(): Promise<{ python: { ok: boolean, version?: string, reason?: string }, venvReady: boolean, amlRoot: string, queued: number, running: number }> {
   const probe = await probePython()
   const rt = getAmlRuntime()
   const st = state()
   return {
     python: { ok: probe.ok, version: probe.version, reason: probe.reason },
-    venvReady: probe.ok ? existsSync(join(venvDirOf(rt), `.aml-ok-${requirementsHashOf()}`)) : false,
+    venvReady: probe.ok ? isVenvReady(rt) : false,
+    amlRoot: rt.root,
     queued: st.queue.length + rt.repo.job.list({ status: 'queued' }).length,
     running: st.running.size,
   }
-}
-
-function venvDirOf(rt: { root: string }): string {
-  return join(rt.root, 'runtime', 'venv')
-}
-
-function requirementsHashOf(): string {
-  // 与 python-runtime.requirementsHash 同源(marker 摘要探测;异常时容错取空)
-  try {
-    return requirementsHash()
-  }
-  catch { return '' }
 }

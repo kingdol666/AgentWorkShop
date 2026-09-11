@@ -12,7 +12,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { color } from '../core/logger.mjs'
 import { CliError } from '../core/errors.mjs'
-import { packageVersion } from '../aw.mjs'
+import { packageVersion } from '../core/meta.mjs'
 
 export const meta = {
   name: 'update',

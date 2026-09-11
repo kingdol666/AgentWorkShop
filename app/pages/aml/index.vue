@@ -26,11 +26,62 @@ function api<T>(path: string, init?: RequestInit): Promise<T> {
 interface AmlRuntimeStatus {
   python: { ok: boolean, version?: string, reason?: string }
   venvReady: boolean
+  amlRoot?: string
   queued: number
   running: number
 }
+/** uv 探测结果(与 server aml/python-runtime.UvProbe 同形) */
+interface AmlUvProbe {
+  ok: boolean
+  path?: string
+  version?: string
+  source?: 'config' | 'project' | 'state' | 'path'
+  reason?: string
+}
+/** 环境异步任务(一键安装 uv / 创建 venv);进度经轮询 GET /env */
+interface AmlEnvTask {
+  id: string
+  kind: 'install-uv' | 'create-venv'
+  status: 'running' | 'done' | 'failed'
+  startedAt: string
+  endedAt: string | null
+  log: string[]
+  error: string | null
+}
+/** 完整环境自检(与 server aml/env-manager.AmlEnvStatus 同形) */
+interface AmlEnvStatus {
+  amlRoot: string
+  amlRootMode: string
+  amlRootSource: string
+  projectRoot: string | null
+  dirs: { datasets: string, jobs: string, models: string, venv: string, tools: string, runtime: string }
+  uv: AmlUvProbe
+  python: { ok: boolean, pythonPath?: string, version?: string, reason?: string }
+  venv: { ready: boolean, dir: string, pythonPath: string, requirementsHash: string, sizeMb: number }
+  disk: { usedMb: number, quotaMb: number }
+  canInstallUv: boolean
+  task: AmlEnvTask | null
+  preflight: { canRunJobs: boolean, blockers: string[] }
+}
+/** 元数据 ↔ 实体 对账结果 */
+interface AmlInventory {
+  root: string
+  counts: { datasets: number, jobs: number, models: number }
+  entities: { datasets: number, jobs: number, models: number }
+  issues: Array<{ kind: string, id: string, problem: string, path: string, detail: string }>
+  ok: boolean
+}
 interface AmlOverview {
   runtime: AmlRuntimeStatus
+  env?: {
+    amlRoot: string
+    amlRootSource: string
+    uv: AmlUvProbe
+    venv: AmlEnvStatus['venv']
+    disk: AmlEnvStatus['disk']
+    preflight: AmlEnvStatus['preflight']
+    task: { id: string, kind: string, status: string } | null
+  }
   counts: { datasets: number, models: number, productions: number }
 }
 interface AmlDatasetRow {
@@ -143,9 +194,16 @@ onMounted(() => {
   ws.ensureConnected()
   unsubFeed = aml.ensure()
   void loadOverview()
+  void loadEnv()
+  void loadInventory()
   void loadDatasets()
   void loadJobs()
   void loadModels()
+  // 进入页面时若已有环境任务在跑(例如上一次安装刚发起),自动接续进度轮询
+  if ((env.value?.task?.status ?? overview.value?.env?.task?.status) === 'running') {
+    envBusy.value = true
+    startEnvPoll()
+  }
   // 低频兜底轮询(WS 直推收敛状态,轮询只兜丢帧):可见性调度,后台自动降频
   useVisibleInterval(() => {
     void loadOverview()
@@ -162,6 +220,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   unsubFeed?.()
   if (logTimer) clearInterval(logTimer)
+  stopEnvPoll()
 })
 
 // 作业终态帧 → 立即收敛列表(不等轮询拍);模型晋升帧 → 注册表即时刷新
@@ -238,8 +297,133 @@ const pythonText = computed(() => {
 const venvText = computed(() =>
   overview.value ? (overview.value.runtime.venvReady ? tt('aml.k1amlx007') : tt('aml.k1amlx008')) : '--')
 
+// ---------- 1b. 运行环境(uv 检测 / 一键安装 / .venv 供给) ----------
+
+/** 完整环境状态(GET /env);比 overview.env 多出任务日志与目录明细 */
+const env = ref<AmlEnvStatus | null>(null)
+const envOpen = ref(false)
+const envBusy = ref(false)
+const envLogOpen = ref(false)
+
+const uvText = computed(() => {
+  const u = env.value?.uv ?? overview.value?.env?.uv
+  if (!u) return '--'
+  return u.ok ? (u.version ?? tt('aml.k1amlx164')) : tt('aml.k1amlx165')
+})
+/** uv 来源的中文标签(排障:是配置指定、项目本地装的,还是系统 PATH 上的) */
+const uvSourceText = computed(() => {
+  const s = (env.value?.uv ?? overview.value?.env?.uv)?.source
+  const m: Record<string, string> = {
+    config: 'aml.python.uvBin',
+    project: './aml/tools',
+    state: './aml/runtime/uv.json',
+    path: 'PATH',
+  }
+  return s ? (m[s] ?? s) : ''
+})
+
+async function loadEnv(): Promise<void> {
+  try {
+    env.value = await api<AmlEnvStatus>('/env')
+  }
+  catch { /* 概览条已呈现错误;环境面板静默保持旧值 */ }
+}
+
+/** 环境任务进行中 → 轮询刷新(安装 uv / 建 venv 都是分钟级,不能靠用户手点刷新) */
+let envPollTimer: ReturnType<typeof setInterval> | null = null
+function stopEnvPoll(): void {
+  if (envPollTimer != null) {
+    clearInterval(envPollTimer)
+    envPollTimer = null
+  }
+}
+function startEnvPoll(): void {
+  stopEnvPoll()
+  envPollTimer = setInterval(() => {
+    void (async () => {
+      await loadEnv()
+      await loadOverview()
+      if (env.value?.task == null || env.value.task.status !== 'running') {
+        stopEnvPoll()
+        envBusy.value = false
+      }
+    })()
+  }, 1500)
+}
+
+async function runEnvAction(path: string, body?: Record<string, unknown>): Promise<void> {
+  envBusy.value = true
+  envLogOpen.value = true
+  try {
+    await api(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body ?? {}),
+    })
+    await loadEnv()
+    startEnvPoll()
+  }
+  catch (err) {
+    envBusy.value = false
+    message.error(`${tt('aml.k1amlx203')}:${apiErrorMessage(err)}`)
+  }
+}
+
+/** 一键安装 uv(装到 ./aml/tools,免管理员、不改 PATH) */
+async function installUv(): Promise<void> {
+  await runEnvAction('/env/uv')
+}
+
+/** 创建/重建训练环境 ./aml/.venv */
+async function createVenv(force = false): Promise<void> {
+  await runEnvAction('/env/venv', { force })
+}
+
+/** 重新探测(用户在系统里手工装了 uv/Python 后免重启生效) */
+async function recheckEnv(): Promise<void> {
+  envBusy.value = true
+  try {
+    env.value = await api<AmlEnvStatus>('/env/recheck', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+    await loadOverview()
+  }
+  catch (err) {
+    message.error(`${tt('aml.k1amlx203')}:${apiErrorMessage(err)}`)
+  }
+  finally {
+    envBusy.value = false
+  }
+}
+
+// ---------- 1c. 元数据 ↔ 实体 对账 ----------
+
+const inventory = ref<AmlInventory | null>(null)
+
+async function loadInventory(): Promise<void> {
+  try {
+    inventory.value = await api<AmlInventory>('/entities')
+  }
+  catch { /* 静默 */ }
+}
+
+async function pruneOrphans(): Promise<void> {
+  try {
+    const r = await api<{ removed: string[], kept: number }>('/entities/prune', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ dryRun: false }),
+    })
+    message.success(`${tt('aml.k1amlx188')}:${r.removed.length}`)
+    await loadInventory()
+  }
+  catch (err) {
+    message.error(`${tt('aml.k1amlx203')}:${apiErrorMessage(err)}`)
+  }
+}
+
 function reloadAll(): void {
   void loadOverview()
+  void loadEnv()
+  void loadInventory()
   void loadDatasets()
   void loadJobs()
   void loadModels()
@@ -256,6 +440,74 @@ async function loadDatasets(): Promise<void> {
     datasets.value = data.datasets
   }
   catch { /* 概览条已呈现错误,列表静默保持旧值 */ }
+}
+
+// ---------- 2b. 元数据 CRUD(备注更新 / 删除;删除同时清理 ./aml 下实体目录) ----------
+
+/** 行内备注编辑态:key = 实体 id */
+const noteEditing = ref('')
+const noteDraft = ref('')
+
+function startEditNote(id: string, current: string): void {
+  noteEditing.value = id
+  noteDraft.value = current ?? ''
+}
+function cancelEditNote(): void {
+  noteEditing.value = ''
+  noteDraft.value = ''
+}
+async function saveNote(kind: 'datasets' | 'models', id: string): Promise<void> {
+  try {
+    await api(`/${kind}/${id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ note: noteDraft.value }),
+    })
+    message.success(tt('aml.k1amlx192'))
+    cancelEditNote()
+    if (kind === 'datasets') await loadDatasets()
+    else await loadModels()
+  }
+  catch (err) {
+    message.error(`${tt('aml.k1amlx203')}:${apiErrorMessage(err)}`)
+  }
+}
+
+/** 删除实体(元数据 + ./aml 下目录);被引用/生产阶段的会被服务端拒绝并给出原因 */
+async function removeEntity(kind: 'datasets' | 'models' | 'jobs', id: string, confirmText: string): Promise<void> {
+  const okToDelete = await confirmDialog(confirmText)
+  if (!okToDelete) return
+  try {
+    await api(`/${kind}/${id}`, { method: 'DELETE' })
+    message.success(tt('aml.k1amlx193'))
+    if (kind === 'datasets') await loadDatasets()
+    else if (kind === 'models') await loadModels()
+    else await loadJobs()
+    await loadOverview()
+    await loadInventory()
+  }
+  catch (err) {
+    message.error(`${tt('aml.k1amlx203')}:${apiErrorMessage(err)}`)
+  }
+}
+
+/** 确认对话框:antd Modal.confirm(带样式);动态 import 失败时退化为放行(服务端仍有二次校验) */
+async function confirmDialog(text: string): Promise<boolean> {
+  try {
+    const { Modal } = await import('ant-design-vue')
+    return await new Promise<boolean>((resolve) => {
+      Modal.confirm({
+        title: text,
+        okText: tt('aml.k1amlx190'),
+        cancelText: tt('aml.k1amlx202'),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      })
+    })
+  }
+  catch {
+    return true
+  }
 }
 
 interface DsDetail { loading: boolean, error: string, report: AmlDatasetReport | null }
@@ -618,6 +870,11 @@ async function doPredict(): Promise<void> {
           class="badge"
           :class="{ bad: overview != null && !overview.runtime.venvReady }"
         >VENV · {{ venvText }}</span>
+        <span
+          class="badge"
+          :class="{ bad: env != null && !env.uv.ok }"
+          :title="env?.uv.reason ?? env?.uv.path ?? ''"
+        >UV · {{ uvText }}</span>
       </div>
     </div>
 
@@ -668,6 +925,207 @@ async function doPredict(): Promise<void> {
     >
       {{ $t('aml.k1amlx015') }}:{{ overviewError }}
     </p>
+
+    <!-- 1b. 运行环境:uv 检测 / 一键安装 / ./aml/.venv 供给 / 元数据↔实体对账 -->
+    <section
+      v-if="env"
+      class="aw-tile zone env-zone"
+    >
+      <div class="zone-head">
+        <h2>{{ $t('aml.k1amlx162') }}</h2>
+        <div class="zone-actions">
+          <button
+            class="mini-btn"
+            :disabled="envBusy"
+            @click="recheckEnv"
+          >
+            {{ $t('aml.k1amlx175') }}
+          </button>
+          <button
+            class="mini-btn"
+            @click="envOpen = !envOpen"
+          >
+            {{ envOpen ? $t('aml.k1amlx181') : $t('aml.k1amlx180') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 前置条件未满足 → 醒目提示 + 直接给修复入口(不让用户等作业失败才知道) -->
+      <div
+        v-if="!env.preflight.canRunJobs"
+        class="infra-banner"
+      >
+        <span class="i-tabler-alert-triangle" />
+        <span class="txt">
+          {{ $t('aml.k1amlx178') }}:<b class="mono">{{ env.preflight.blockers.join(' / ') }}</b>
+        </span>
+      </div>
+
+      <div class="env-grid">
+        <!-- uv:未安装才显示一键安装按钮 -->
+        <div
+          class="env-card"
+          :class="env.uv.ok ? 'ok' : 'bad'"
+        >
+          <div class="ec-head">
+            <span :class="env.uv.ok ? 'i-tabler-circle-check' : 'i-tabler-alert-triangle'" />
+            <b>{{ $t('aml.k1amlx163') }}</b>
+            <span class="ec-state">{{ uvText }}</span>
+          </div>
+          <p
+            v-if="env.uv.ok"
+            class="ec-detail mono"
+          >
+            {{ env.uv.path }}<template v-if="uvSourceText">
+              · {{ uvSourceText }}
+            </template>
+          </p>
+          <p
+            v-else
+            class="ec-detail"
+          >
+            {{ $t('aml.k1amlx177') }}
+          </p>
+          <div class="ec-actions">
+            <button
+              v-if="!env.uv.ok"
+              class="mini-btn primary"
+              :disabled="envBusy"
+              :title="$t('aml.k1amlx176')"
+              @click="installUv"
+            >
+              <span class="i-tabler-download" />
+              {{ env.task?.kind === 'install-uv' && env.task.status === 'running' ? $t('aml.k1amlx167') : $t('aml.k1amlx166') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- .venv 训练环境 -->
+        <div
+          class="env-card"
+          :class="env.venv.ready ? 'ok' : 'bad'"
+        >
+          <div class="ec-head">
+            <span :class="env.venv.ready ? 'i-tabler-circle-check' : 'i-tabler-alert-triangle'" />
+            <b>{{ $t('aml.k1amlx168') }}</b>
+            <span class="ec-state">{{ env.venv.ready ? $t('aml.k1amlx007') : $t('aml.k1amlx008') }}</span>
+          </div>
+          <p class="ec-detail mono">
+            {{ env.venv.dir }}
+            <template v-if="env.venv.ready">
+              · {{ env.venv.sizeMb }} MB
+            </template>
+          </p>
+          <div class="ec-actions">
+            <button
+              class="mini-btn primary"
+              :disabled="envBusy || !env.python.ok"
+              :title="env.python.ok ? '' : (env.python.reason ?? '')"
+              @click="createVenv(false)"
+            >
+              <span class="i-tabler-plus" />
+              {{ env.task?.kind === 'create-venv' && env.task.status === 'running' ? $t('aml.k1amlx170') : $t('aml.k1amlx168') }}
+            </button>
+            <button
+              v-if="env.venv.ready"
+              class="mini-btn"
+              :disabled="envBusy"
+              @click="createVenv(true)"
+            >
+              {{ $t('aml.k1amlx169') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 资产根与磁盘 -->
+        <div class="env-card">
+          <div class="ec-head">
+            <span class="i-tabler-folder" />
+            <b>{{ $t('aml.k1amlx171') }}</b>
+          </div>
+          <p class="ec-detail mono">
+            {{ env.amlRoot }}
+          </p>
+          <p class="ec-detail dim">
+            {{ $t('aml.k1amlx201') }}
+          </p>
+          <p class="ec-detail">
+            {{ $t('aml.k1amlx174') }}:
+            <b class="mono">{{ env.disk.usedMb }} / {{ env.disk.quotaMb }} MB</b>
+            <span class="dim"> · {{ env.amlRootSource }}</span>
+          </p>
+        </div>
+
+        <!-- 元数据 ↔ 实体对账 -->
+        <div
+          class="env-card"
+          :class="inventory == null ? '' : (inventory.ok ? 'ok' : 'bad')"
+        >
+          <div class="ec-head">
+            <span :class="inventory?.ok === false ? 'i-tabler-alert-triangle' : 'i-tabler-database'" />
+            <b>{{ $t('aml.k1amlx182') }}</b>
+            <span
+              v-if="inventory"
+              class="ec-state"
+            >{{ inventory.ok ? $t('aml.k1amlx183') : $t('aml.k1amlx184') }}</span>
+          </div>
+          <p
+            v-if="inventory"
+            class="ec-detail mono"
+          >
+            {{ $t('aml.k1amlx011') }} {{ inventory.counts.datasets }}/{{ inventory.entities.datasets }}
+            · {{ $t('aml.k1amlx010') }} {{ inventory.counts.jobs }}/{{ inventory.entities.jobs }}
+            · {{ $t('aml.k1amlx012') }} {{ inventory.counts.models }}/{{ inventory.entities.models }}
+          </p>
+          <ul
+            v-if="inventory && inventory.issues.length > 0"
+            class="ec-issues mono"
+          >
+            <li
+              v-for="is in inventory.issues.slice(0, 5)"
+              :key="`${is.kind}:${is.id}:${is.problem}`"
+              :title="is.detail"
+            >
+              <span class="tag">{{ is.problem === 'entity_missing' ? $t('aml.k1amlx185') : is.problem === 'orphan_dir' ? $t('aml.k1amlx186') : $t('aml.k1amlx187') }}</span>
+              {{ is.kind }} {{ shortId(is.id) }}
+            </li>
+          </ul>
+          <div class="ec-actions">
+            <button
+              v-if="inventory && inventory.issues.some(i => i.problem === 'orphan_dir')"
+              class="mini-btn"
+              @click="pruneOrphans"
+            >
+              <span class="i-tabler-trash" />
+              {{ $t('aml.k1amlx188') }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 环境任务进度(安装 uv / 建 venv 都是分钟级动作,必须可见可等) -->
+      <div
+        v-if="env.task && envOpen"
+        class="env-task"
+      >
+        <div class="et-head mono">
+          <span :class="env.task.status === 'running' ? 'i-tabler-loader-2 spin' : env.task.status === 'done' ? 'i-tabler-circle-check' : 'i-tabler-alert-triangle'" />
+          <b>{{ env.task.kind }}</b>
+          <span class="dim">{{ env.task.status }}</span>
+          <span
+            v-if="env.task.status === 'running'"
+            class="dim"
+          >· {{ $t('aml.k1amlx179') }}</span>
+        </div>
+        <pre class="et-log mono">{{ env.task.log.slice(-40).join('\n') }}</pre>
+        <p
+          v-if="env.task.error"
+          class="err"
+        >
+          {{ env.task.error }}
+        </p>
+      </div>
+    </section>
 
     <!-- 2. 数据集快照:注册表 + 行内展开(清洗报告/滞后估计/run 概览)+ 新建 -->
     <section class="aw-tile zone">
@@ -743,11 +1201,52 @@ async function doPredict(): Promise<void> {
                   :class="d.createdByKind"
                 >{{ d.createdByKind === 'agent' ? 'Agent' : $t('aml.k1amlx049') }}</small>
               </td>
-              <td class="note-cell">
+              <td
+                class="note-cell"
+                @click.stop
+              >
+                <div
+                  v-if="noteEditing === d.id"
+                  class="note-edit"
+                >
+                  <input
+                    v-model="noteDraft"
+                    :placeholder="$t('aml.k1amlx189')"
+                    @keyup.enter="saveNote('datasets', d.id)"
+                    @keyup.esc="cancelEditNote"
+                  >
+                  <button
+                    class="mini-btn"
+                    @click="saveNote('datasets', d.id)"
+                  >
+                    {{ $t('aml.k1amlx191') }}
+                  </button>
+                  <button
+                    class="mini-btn"
+                    @click="cancelEditNote"
+                  >
+                    {{ $t('aml.k1amlx202') }}
+                  </button>
+                </div>
                 <span
-                  class="note"
-                  :title="d.note"
-                >{{ d.note || '--' }}</span>
+                  v-else
+                  class="note-text"
+                >
+                  <span
+                    class="note"
+                    :title="d.note"
+                  >{{ d.note || '--' }}</span>
+                  <span
+                    class="i-tabler-pencil edit-i"
+                    :title="$t('aml.k1amlx189')"
+                    @click="startEditNote(d.id, d.note)"
+                  />
+                  <span
+                    class="i-tabler-trash edit-i"
+                    :title="$t('aml.k1amlx190')"
+                    @click="removeEntity('datasets', d.id, $t('aml.k1amlx198'))"
+                  />
+                </span>
               </td>
             </tr>
             <tr
@@ -1007,6 +1506,12 @@ async function doPredict(): Promise<void> {
                 >
                   {{ confirmRetry === j.id ? $t('aml.k1amlx096') : $t('aml.k1amlx095') }}
                 </button>
+                <span
+                  v-if="!isActiveStatus(j.status)"
+                  class="i-tabler-trash edit-i"
+                  :title="$t('aml.k1amlx190')"
+                  @click.stop="removeEntity('jobs', j.id, $t('aml.k1amlx200'))"
+                />
               </td>
             </tr>
             <tr
@@ -1263,6 +1768,7 @@ async function doPredict(): Promise<void> {
               {{ $t('aml.k1amlx099') }}
             </th>
             <th>{{ $t('aml.k1amlx020') }}</th>
+            <th>{{ $t('aml.k1amlx026') }}</th>
             <th class="right">
               {{ $t('aml.k1amlx127') }}
             </th>
@@ -1294,6 +1800,48 @@ async function doPredict(): Promise<void> {
             <td class="mono dim">
               {{ fmtTime(m.createdAt) }}
             </td>
+            <td
+              class="note-cell"
+              @click.stop
+            >
+              <div
+                v-if="noteEditing === m.id"
+                class="note-edit"
+              >
+                <input
+                  v-model="noteDraft"
+                  :placeholder="$t('aml.k1amlx189')"
+                  @keyup.enter="saveNote('models', m.id)"
+                  @keyup.esc="cancelEditNote"
+                >
+                <button
+                  class="mini-btn"
+                  @click="saveNote('models', m.id)"
+                >
+                  {{ $t('aml.k1amlx191') }}
+                </button>
+                <button
+                  class="mini-btn"
+                  @click="cancelEditNote"
+                >
+                  {{ $t('aml.k1amlx202') }}
+                </button>
+              </div>
+              <span
+                v-else
+                class="note-text"
+              >
+                <span
+                  class="note"
+                  :title="m.note"
+                >{{ m.note || '--' }}</span>
+                <span
+                  class="i-tabler-pencil edit-i"
+                  :title="$t('aml.k1amlx189')"
+                  @click="startEditNote(m.id, m.note)"
+                />
+              </span>
+            </td>
             <td class="right acts">
               <template
                 v-for="a in promoteActionOf(m)"
@@ -1312,6 +1860,11 @@ async function doPredict(): Promise<void> {
                 v-if="promoteActionOf(m).length === 0"
                 class="dim"
               >--</span>
+              <span
+                class="i-tabler-trash edit-i"
+                :title="$t('aml.k1amlx190')"
+                @click="removeEntity('models', m.id, $t('aml.k1amlx199'))"
+              />
             </td>
           </tr>
         </tbody>
@@ -1730,6 +2283,75 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .zone-head h2 { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
 .zone-head h2 .cnt { font-size: 11px; font-weight: 400; color: var(--ink-faint); }
 .zone-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ── 1b. 运行环境面板 ── */
+.env-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+.env-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface-sunken, color-mix(in srgb, var(--ink) 3%, transparent));
+  border: 1px solid var(--divider-hair);
+  border-radius: var(--radius-chip);
+}
+.env-card.ok { border-color: color-mix(in srgb, var(--tone-success-dot) 35%, transparent); }
+.env-card.bad { border-color: color-mix(in srgb, var(--tone-warning-dot) 40%, transparent); }
+.env-card .ec-head { display: flex; gap: 6px; align-items: center; font-size: 12.5px; }
+.env-card .ec-head .ec-state { margin-left: auto; font-size: 11px; color: var(--ink-faint); }
+.env-card.ok .ec-head > span:first-child { color: var(--tone-success-dot); }
+.env-card.bad .ec-head > span:first-child { color: var(--tone-warning-dot); }
+.env-card .ec-detail { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--ink-soft); overflow-wrap: anywhere; }
+.env-card .ec-detail.dim { color: var(--ink-faint); }
+.env-card .ec-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 4px; }
+.env-card .ec-issues { max-height: 96px; margin: 0; padding: 0; overflow-y: auto; list-style: none; font-size: 11px; }
+.env-card .ec-issues li { display: flex; gap: 6px; align-items: center; padding: 1px 0; color: var(--ink-soft); }
+.env-card .ec-issues .tag {
+  flex: none;
+  padding: 0 5px;
+  font-size: 10px;
+  color: var(--tone-warning-dot);
+  background: var(--tone-warning-bg);
+  border-radius: 3px;
+}
+
+.env-task { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--divider-hair); }
+.env-task .et-head { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.env-task .et-head .dim { color: var(--ink-faint); font-weight: 400; }
+.env-task .et-log {
+  max-height: 220px;
+  padding: 8px 10px;
+  margin: 6px 0 0;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  background: var(--surface-sunken, color-mix(in srgb, var(--ink) 4%, transparent));
+  border-radius: var(--radius-chip);
+}
+.mini-btn.primary { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+@keyframes amlSpin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: amlSpin 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+}
+.note-edit { display: flex; gap: 6px; align-items: center; }
+.note-edit input {
+  min-width: 120px;
+  padding: 3px 6px;
+  font-size: 12px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+}
+.note-text { display: inline-flex; gap: 6px; align-items: center; }
+.note-text .edit-i { cursor: pointer; opacity: 0.5; }
+.note-text .edit-i:hover { opacity: 1; }
 .live-dot {
   width: 7px;
   height: 7px;

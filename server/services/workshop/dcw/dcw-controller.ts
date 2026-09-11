@@ -372,9 +372,31 @@ class DcwController {
       node.transform = normalizeDataTransform(patch.transform)
     }
     if (patch.unit !== undefined) node.unit = patch.unit
-    if (patch.decimals !== undefined) node.decimals = patch.decimals
-    if (patch.min !== undefined) node.min = patch.min
-    if (patch.max !== undefined) node.max = patch.max
+    // decimals 必须 0..6 整数:它同时喂给 toFixed() —— 越界值会在**驱动已经写进 PLC 之后**
+    // 由 applyWriteResult/applyReadResult 抛 RangeError,造成「硬件已改、账本无记录、
+    // 调用方吃 500」(审计实测:decimals=101 → PLC 写入成功、无锚点、无写历史)。
+    // 在校验入口一次性拒掉,别让脏值走到写路径。
+    if (patch.decimals !== undefined) {
+      const d = Number(patch.decimals)
+      if (!Number.isInteger(d) || d < 0 || d > 6) {
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `decimals 必须为 0..6 的整数(当前: ${String(patch.decimals)})`)
+      }
+      node.decimals = d
+    }
+    if (patch.min !== undefined) {
+      const v = Number(patch.min)
+      if (!Number.isFinite(v)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `min 必须为有限数字(当前: ${String(patch.min)})`)
+      node.min = v
+    }
+    if (patch.max !== undefined) {
+      const v = Number(patch.max)
+      if (!Number.isFinite(v)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `max 必须为有限数字(当前: ${String(patch.max)})`)
+      node.max = v
+    }
+    // 量程交叉校验放在两者都应用之后:min>max 会让 writeTolerance 变负、越界判定恒真
+    if (node.max < node.min) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `量程无效:max(${node.max}) 不得小于 min(${node.min})`)
+    }
     if (patch.holdIntervalMs !== undefined) {
       node.holdIntervalMs = patch.holdIntervalMs == null ? null : Math.max(0, Math.min(3_600_000, Math.round(patch.holdIntervalMs)))
       rearm = true

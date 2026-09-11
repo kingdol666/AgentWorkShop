@@ -1,0 +1,18 @@
+# E3 记忆消融：none / fts / rrf / rrf+mmr 四臂
+# 锚点：memory.ts 的 RRF(k=60)+排序(0.5/0.3/0.2)+MMR(λ=0.7)；
+# none = AW_MEMORY_INJECT_TOTAL=0；fts = 关闭 embed（embed_base_url=''）；
+# rrf = 开 embed；rrf+mmr = rrf + MMR 开关（P3 开发项 D5：AW_MEMORY_MMR 环境开关）
+hypothesis: "记忆机制对下游闭环任务的 goal 成功率与收敛迭代数有可测提升；RRF+MMR 相对纯 FTS 的增益可量化（当前权重从未被验证）"
+seed_base: 200
+repeats: 20
+harness: mock
+workloads:
+  - { id: W2, daq_nodes: 8, dcw_nodes: 4, interval_ms: 5000, teams: 1 }
+memory_arms: [none, fts, rrf, rrf-mmr]
+# 关键设计：任务间存在依赖——T4 依赖 T1 留下的参数记忆（同 channel 顺序执行）
+sequence_per_channel: [T1, T3, T4, T1]   # 第二次 T1 检验记忆是否帮助更快收敛
+tasks: [T1, T3, T4]
+metrics_primary: [goal_success_rate, loop_iterations, convergence_time, tokens_per_task, memory_recall_precision]
+outputs:
+  - "table-e3-memory.csv"
+  - "figure-e3-ablation.svg   # 四臂柱状图 + 95% CI 误差线"

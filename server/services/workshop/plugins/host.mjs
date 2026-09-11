@@ -688,14 +688,11 @@ async function doReload(host) {
     }
   }
   const prevNames = [...host.plugins.keys()]
-  // 卸载即注销其注册的全部 agent 工具(否则停用插件后工具仍残留在注册表、可被继续调用)
+  // 工具注销延后:先装载新集、后清「本轮未再装载」的旧插件工具。
+  // 原先在装载前就全部注销 → 重载窗口内(秒级~数十秒)所有插件工具"未知工具",
+  // 期间到达的 Agent 工具调用(daq:sample 自动诊断/kb_store 等)被误拒
+  // (实测生产闭环 Stage D 撞窗失败)。同名工具装载时按"后注册者胜"覆盖,无残留。
   const ompTools = await import('@/server/services/workshop/agents/plugin-tools').catch(() => null)
-  for (const prev of prevNames) {
-    try {
-      ompTools?.unregisterPluginTools(prev)
-    }
-    catch { /* 注销失败不阻断重载 */ }
-  }
   host.plugins.clear()
   host.routes = createRouteTable()
   host.failures = []

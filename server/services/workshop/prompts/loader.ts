@@ -31,13 +31,34 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>()
 
-/** 包内资产 prompts 目录(播种源;不存在返回 null) */
+/** 包内资产 prompts 目录(播种源;不存在返回 null)
+ *
+ *  解析顺序(不可依赖 import.meta.url 的层数 —— 产物里本模块被内联进
+ *  `.output/server/chunks/_/nitro.mjs`,相对层数与源码布局不同,早先写死
+ *  `../../../..` 会算到 `<root>` 而不是 `<root>/.output`,导致直接
+ *  `node .output/server/index.mjs` 启动时播种源为 null → 回退路径又不存在
+ *  → 启动即 `PROMPTS_DIR_MISSING`):
+ *    ① AW_PACKAGE_ROOT(scripts/start.mjs 注入的包根)
+ *    ② <cwd>/.output/.AgentWorkShop/prompts(产物自带副本;与 schema.json 同址)
+ *    ③ 源码布局回退:本文件 ../../../../.AgentWorkShop/prompts
+ */
 function packagedPromptsDir(): string | null {
-  const packageRoot = process.env.AW_PACKAGE_ROOT
-    ? resolve(process.env.AW_PACKAGE_ROOT)
-    : resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
-  const candidate = join(packageRoot, '.AgentWorkShop', 'prompts')
-  return existsSync(candidate) ? candidate : null
+  const candidates: string[] = []
+  if (process.env.AW_PACKAGE_ROOT) {
+    candidates.push(resolve(process.env.AW_PACKAGE_ROOT))
+  }
+  candidates.push(resolve(process.cwd()))
+  candidates.push(resolve(dirname(fileURLToPath(import.meta.url)), '../../../..'))
+  // cwd 与源码布局两种锚点 × { 产物内路径, 检出根路径 }
+  const dirs: string[] = []
+  for (const base of candidates) {
+    dirs.push(join(base, '.output', '.AgentWorkShop', 'prompts'))
+    dirs.push(join(base, '.AgentWorkShop', 'prompts'))
+  }
+  for (const candidate of dirs) {
+    if (existsSync(candidate)) return candidate
+  }
+  return null
 }
 
 /** 首次/每次解析把包内初始 prompts 补种到 ~/.AgentWorkShop/prompts(逐文件只补缺,不覆盖)。
@@ -83,6 +104,11 @@ export function promptsDir(): string {
     const candidate = join(localConfigRoot, 'prompts')
     if (existsSync(candidate)) return candidate
   }
+
+  // ②b 产物自带副本(直接 node .output/server/index.mjs 启动,无 AW_PACKAGE_ROOT、
+  //     也无 cwd 内 ./.AgentWorkShop 时,这是唯一可用的本地目录)
+  const bundled = join(resolve(process.cwd()), '.output', '.AgentWorkShop', 'prompts')
+  if (existsSync(bundled)) return bundled
 
   // ③ ~/.AgentWorkShop/prompts
   if (existsSync(homePrompts)) return homePrompts

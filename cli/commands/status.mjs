@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { color } from '../core/logger.mjs'
 import { findRunningServer } from '../core/context.mjs'
+import { packageVersion } from '../core/meta.mjs'
 
 export const meta = {
   name: 'status',
@@ -38,7 +39,7 @@ export async function run(argv, ctx) {
       mode: ctx.mode,
       root: ctx.root,
       home: ctx.home,
-      package: { version: (await import('../aw.mjs')).packageVersion() },
+      package: { version: packageVersion() },
       config: { path: ctx.configPath, effective, sources, runtimeOverrides },
       server: server ? { running: true, port: server.port } : { running: false },
       build: { outputExists: ctx.root ? existsSync(join(ctx.root, '.output', 'server', 'index.mjs')) : existsSync(join(ctx.packageRoot, '.output', 'server', 'index.mjs')) },

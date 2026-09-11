@@ -5,15 +5,15 @@
  */
 
 import { createLogger } from '../logger'
-import path from 'node:path'
+import { join } from 'node:path'
 import { DaqNode } from './daq-node'
+import { ensureDataDir } from '@/shared/config/home.mjs'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('daq.node-repo')
 
-const DB_PATH = process.cwd().endsWith('server')
-  ? 'data/daqs.json'
-  : path.join(process.cwd(), 'server', 'data', 'daqs.json')
+// 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
+const DB_PATH = join(ensureDataDir(), 'daqs.json')
 
 function load(): DaqNode[] {
   try {

@@ -8,11 +8,11 @@
 // home 模式首启若无构建产物会自动构建一次(需依赖已安装)。
 // 子进程统一注入 NO_PROXY（本机代理不再劫持 localhost 回环）。
 // ============================================================
-import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { color } from '../core/logger.mjs'
 import { localBypassEnv, preloadDotEnv } from '../core/context.mjs'
+import { runChild } from '../core/child-lifecycle.mjs'
 import { runBootstrap } from '../../scripts/home-bootstrap.mjs'
 import { daqPreflight, printInfraGuidance } from '../infra.mjs'
 
@@ -48,10 +48,11 @@ export async function run(argv, ctx) {
       return 1
     }
     console.log(`${color.cyan('›')} 首次启动:正在构建生产产物(约 2-5 分钟,仅一次) ...`)
-    const buildCode = await new Promise((resolve2) => {
-      const c = spawn(process.execPath, [nuxtBin, 'build'], { cwd: appRoot, stdio: 'inherit', env: localBypassEnv() })
-      c.on('close', code => resolve2(code ?? 1))
-      c.on('error', () => resolve2(1))
+    // 同 build.mjs:转发信号 + 退出码传播(信号终止 → 128+N)
+    const buildCode = await runChild(process.execPath, [nuxtBin, 'build'], {
+      cwd: appRoot,
+      stdio: 'inherit',
+      env: localBypassEnv(),
     })
     if (buildCode !== 0 || !existsSync(outputEntry)) {
       console.log(`${color.red('✖')} 构建失败(exit=${buildCode})`)
@@ -110,20 +111,12 @@ export async function run(argv, ctx) {
   const launcher = join(appRoot, 'scripts', 'start.mjs')
   const args = existsSync(launcher) ? [launcher] : [outputEntry]
   if (flags.port !== undefined) args.push('--port', String(port))
-  const child = spawn(process.execPath, args, {
+  // 统一生命周期:转发 SIGINT/SIGTERM + 等待退出 + 5s 后 SIGKILL 强杀
+  // + 退出码传播(Ctrl+C 时子进程 code===null → 130,不再误报 0)
+  return await runChild(process.execPath, args, {
     cwd,
     stdio: 'inherit',
     env: localBypassEnv(envExtra),
-  })
-  const shutdown = () => child.kill('SIGTERM')
-  process.on('SIGINT', shutdown)
-  process.on('SIGTERM', shutdown)
-
-  return await new Promise((resolve2) => {
-    child.on('close', code => resolve2(code ?? 0))
-    child.on('error', (err) => {
-      console.log(`${color.red('✖')} start 进程启动失败: ${err.message}`)
-      resolve2(1)
-    })
+    onSpawnError: err => console.log(`${color.red('✖')} start 进程启动失败: ${err.message}`),
   })
 }

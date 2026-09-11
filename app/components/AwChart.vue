@@ -4,6 +4,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, GaugeChart, LineChart, PieChart } from 'echarts/charts'
 import {
   DataZoomComponent,
+  GraphicComponent,
   GridComponent,
   LegendComponent,
   TitleComponent,
@@ -26,6 +27,8 @@ use([
   LegendComponent,
   TitleComponent,
   DataZoomComponent,
+  // 冷启动"等待首帧"文字挂在 graphic 上;不注册会静默丢图并打控制台错误
+  GraphicComponent,
 ])
 
 /** Warm Editorial 图表色序(替代 ECharts 默认荧光绿/蓝;与 main.css --chart-* 同源) */

@@ -19,4 +19,15 @@ export default withNuxt(
   {
     ignores: ['scripts/_dbg-*.mjs'],
   },
+  // 审计取证脚本(scripts/_audit/**):为 docs/audit/*.md 的结论提供可复现证据,
+  // 写成密集单行是刻意选择(单文件自包含、便于对照报告逐条运行),不是产品代码。
+  // 因此只豁免风格类规则,语义/正确性规则(no-undef / no-unused-vars 等)仍然生效。
+  {
+    files: ['scripts/_audit/**/*.{mjs,ts}'],
+    rules: {
+      '@stylistic/max-statements-per-line': 'off',
+      '@stylistic/brace-style': 'off',
+      'no-empty': 'off',
+    },
+  },
 )

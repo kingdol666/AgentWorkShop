@@ -81,13 +81,10 @@ export interface CodexAgentConfig {
 export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
   private readonly config: CodexAgentConfig
   private agentInfo: AgentInfo | null = null
-  private readonly bridgeCtx = {
-    identity: { agentId: '', channelId: '', role: 'worker' as 'lead' | 'worker', name: 'agent' },
-    state: this.toolState,
-    getWorkspace: () => this.workspace,
-  }
-
-  private agentRole: 'lead' | 'worker' = 'worker'
+  // 不要重新声明 bridgeCtx / agentRole(由 BaseAgentImpl 持有)。
+  // 子类字段初始化器在 super() 之后执行,会用空 identity 遮蔽基类已装配好的 bridgeCtx,
+  // 使 host tool 桥的 agentId 恒为 '' → 按 agentId 的鉴权全部误判(节点绑定/工业工具)。
+  // 同理 agentRole 会被重置为 'worker',lead 身份丢失。
 
   private client: StdioJsonRpcClient | null = null
   private clientStarting: Promise<void> | null = null

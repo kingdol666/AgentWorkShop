@@ -1,0 +1,15 @@
+# E6 硬件在环（HIL）案例研究 + Safe-BO 闭环（可选高档贡献）
+# HIL：一台真实 OPC UA/Modbus 设备（树莓派+温控外设或二手 PLC），node-opcua 直连
+# Safe-BO：P4 开发项 D9 —— dcw_control 提议值经 trust-region + 高斯代理生成，联锁作硬约束投影
+hypothesis: "HIL 上治理管线行为与模拟器一致（时延 +X ms 内）；Safe-BO 相对 LLM 直接提议，越界率为 0 且收敛步数更少"
+seed_base: 500
+repeats: 10           # HIL 成本高，N=10 + 显著性说明
+workloads:
+  - { id: HIL, daq_nodes: 1, dcw_nodes: 1, interval_ms: 1000, teams: 1, device: opcua-real }
+tasks: [T1, T2]
+closedloop_arms: [llm-direct, safe-bo]   # T1 上对比两种设定值生成方式
+metrics_primary: [write_latency_p95, goal_success_rate, out_of_range_writes, loop_iterations]
+outputs:
+  - "table-e6-hil.csv"
+  - "figure-e6-hil-timeline.svg   # HIL 真机温度曲线 + Agent 干预标注"
+notes: "HIL 目的是消灭 'simulation-only' 标签，案例研究性质即可；Safe-BO 若超支，降级为 trust-region+简单代理，仍可成文"

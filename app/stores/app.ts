@@ -6,6 +6,12 @@ export const useAppStore = defineStore('app', () => {
   const isDark = ref(true)
   const sidebarCollapsed = ref(false)
   /**
+   * 用户是否在设置页/页头显式切换过明暗。
+   * 只有"显式选择"才锁死主题,阻止服务端 theme.mode 的运行时跟随——
+   * 否则每次刷新都会被服务端默认值冲掉本地偏好(设置项形同虚设)。
+   */
+  const themeTouched = ref(false)
+  /**
    * 主题强调色(warm-editorial:默认墨色药丸;设置页可换 muted 预设,实时生效并持久化)。
    * null = 跟随 config.yml 默认(config.primaryColor 注入的 --color-primary)。
    */
@@ -13,6 +19,7 @@ export const useAppStore = defineStore('app', () => {
 
   function toggleDark() {
     isDark.value = !isDark.value
+    themeTouched.value = true
   }
 
   function toggleSidebar() {
@@ -23,10 +30,10 @@ export const useAppStore = defineStore('app', () => {
     accent.value = color
   }
 
-  return { isDark, sidebarCollapsed, accent, toggleDark, toggleSidebar, setAccent }
+  return { isDark, sidebarCollapsed, accent, themeTouched, toggleDark, toggleSidebar, setAccent }
 }, {
   persist: {
-    pick: ['isDark', 'sidebarCollapsed', 'accent'],
+    pick: ['isDark', 'sidebarCollapsed', 'accent', 'themeTouched'],
     storage: piniaPluginPersistedstate.localStorage(),
   },
 })

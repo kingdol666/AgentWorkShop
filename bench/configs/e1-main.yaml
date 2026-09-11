@@ -1,0 +1,20 @@
+# E1 主对比：完整治理管线 vs 三条消融 baseline
+# 论文角色：§6.1 主表 + 安全-开销权衡曲线（核心张力图）
+hypothesis: "治理管线在时延开销 <15% 的代价下，将越界写拦截率从 0% 提升到 100%，并保证回读失败可捕获"
+seed_base: 42
+repeats: 20          # mock harness；真实 LLM 子集 repeats: 10
+harness: mock
+workloads:           # W1 基础；W3 压力
+  - { id: W1, daq_nodes: 4, dcw_nodes: 4, interval_ms: 5000, teams: 1 }
+  - { id: W3, daq_nodes: 16, dcw_nodes: 8, interval_ms: 1000, teams: 2 }
+governance_arms: [full, no-interlock, no-readback, no-hitl]
+tasks: [T1, T2, T3, T4]
+faults:
+  T1: [F1]           # 温度阶跃漂移触发闭环
+  T2: [F1, F5]       # 漂移 + 越界写攻击
+  T3: []
+  T4: [F5]
+metrics_primary: [intercept_rate, rollback_correctness, write_latency_p95, hitl_overhead, goal_success_rate, tokens_per_task]
+outputs:
+  - "table-e1-main.csv        # 主对比表（4 治理臂 × 6 指标 × CI）"
+  - "figure-e1-tradeoff.svg   # x=write_latency_p95+hitl_overhead, y=intercept_rate"

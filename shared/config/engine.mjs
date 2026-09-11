@@ -60,6 +60,11 @@ export function loadDescriptors() {
     join(here, 'schema.json'),
     resolve(process.cwd(), 'shared', 'config', 'schema.json'),
     resolve(process.cwd(), 'config', 'schema.json'),
+    // 产物自带副本:nuxt 构建把 shared/config/schema.json 复制到
+    // .output/.AgentWorkShop/schema.json。直接 node .output/server/index.mjs
+    // 启动(无 scripts/start.mjs 注入 AW_PACKAGE_ROOT)时,这是唯一能找到描述符
+    // 的路径 —— 缺了它启动即 `找不到 schema.json` 崩,且报错只说"尝试了哪些路径"。
+    resolve(process.cwd(), '.output', '.AgentWorkShop', 'schema.json'),
   ]
   // 启动器注入的载荷根(start.mjs / dev-guard 恒设置;全局安装 = 包根,shared/ 随包发布)
   if (process.env.AW_PACKAGE_ROOT) {
