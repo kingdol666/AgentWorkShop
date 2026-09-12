@@ -20,7 +20,8 @@
 - Bash 写源码/配置会被 Mimosa hook 拒绝 → 用 Write/Edit 工具；git add 源码路径同样被拒。
 - commitlint：subject 首字符不得大写（中文开头最稳），body 每行 ≤100 字符。本仓库有并行会话共享 git index：commit 必须 pathspec 限定，提交后 `git log` 核对没被卷走。
 - 共享实例有累积脏数据（数百产线/未结批次）：判断「数采没采」前先确认产线批次门控（见 §8 排障表）。
-- **长跑服务别挂在 agent 工具的后台作业里**：这类作业在回合结束/被回收时会连子进程一起终止，而 `aw start` 的 stdout 缓冲区随之丢失 —— 表现就是「日志停在半路、无 fatal、端口释放、退出码 1」,极易误判成服务自己崩了。要做长跑验收请**真分离**:`Start-Process -WindowStyle Hidden`（或 `cmd /c start /b`）后台拉起，日志写文件，之后只靠 `/api/health` 与日志文件判断存活。实测踩过两次：两次「静默退出」都是作业回收所致，`[stability-guard]` 一行 fatal 都没有。
+- **长跑服务别挂在 agent 工具的后台作业里**：这类作业在回合结束/被回收时会连子进程一起终止，而 `aw start` 的 stdout 缓冲区随之丢失 —— 表现就是「日志停在半路、无 fatal、端口释放、退出码 1」,极易误判成服务自己崩了。要做长跑验收请**真分离**:`node scripts/_audit/detached-start.mjs --port 3001`（spawn + detached + stdio 落文件；`--status` 看健康与日志尾，`--stop` 停），之后只靠 `/api/health` 与日志文件判断存活。实测踩过三次「静默退出」，`[stability-guard]` 一行 fatal 都没有。
+- **被强杀会留下陈旧单实例锁**：`aw start` 被外部终止后来不及释放 `.AgentWorkShop/.runtime/aw.lock`，下一次启动会以退出码 2 直接退出（日志只有一行 `__AW_START_EXIT=2`，没有报错正文）。`aw stop` 会清理它（即使锁里的 pid 属于**另一个**模式）；`detached-start.mjs` 也内置了这步。
 
 **报告产物**：`docs/test-report-<版本>.md`，逐阶段列脚本 → 断言数 → 结果 → 失败详情与处置。
 
