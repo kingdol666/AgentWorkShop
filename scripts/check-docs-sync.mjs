@@ -279,7 +279,57 @@ walkTemplate('docs/site/en/index.md')
   else ok('正文裸尖括号检查通过(占位符都在行内代码里)')
 }
 
-section('[6/6] 表格单元格内联代码不得含未转义竖线')// 表格里的 `a|b` 会**先**被 markdown-it 按单元格切开,行内代码失效;
+section('[6b/6] 文档里宣称的设置项数量必须等于 schema.json')
+// 数字型断言最容易腐烂:新增/删除一个设置项,README、首页、CLI 手册、配置指南里的
+// "N 个设置项"会同时过期,而散落在 10 个文件里手工同步必漏(本次加 workshop.stall_ms
+// 就从 98 变 99,当场验证了这一点)。这里把总数、组数、live/restart 拆分一起钉住。
+{
+  const schema = JSON.parse(read('shared/config/schema.json') ?? '{"settings":[]}')
+  const all = Array.isArray(schema.settings) ? schema.settings : Object.values(schema.settings ?? {})
+  const total = all.length
+  const groups = new Set(all.map(s => s.group)).size
+  const live = all.filter(s => (s.applies ?? 'live') === 'live').length
+  const restart = all.filter(s => s.applies === 'restart').length
+  // 只在"带语义词"的位置断言,避免误伤端口号/版本号
+  const CLAIMS = []
+  for (const [src] of SYNC_PAIRS) CLAIMS.push(src)
+  CLAIMS.push('README.md', 'README-zh.md', 'docs/site/index.md', 'docs/site/en/index.md',
+    'docs/site/guide/configuration.md', 'docs/site/en/guide/configuration.md')
+  // 只匹配**表示总数**的写法。踩过的坑:宽松的 `(\d+)\s*settings` 会把
+  // "16 settings in the `aml` group"(AML 分组的设置数)误判成总数断言。
+  const TOTAL_SHAPES = [
+    /(\d+)\s*个设置项/g,
+    /(\d+)\s*个运行时设置项/g,
+    /(\d+)\s*setting descriptors/g,
+    /(\d+)\s*settings across\s+\d+\s+groups/g,
+    /(\d+)\s*settings\s*\(\d+\s+groups?\)/g,
+    /prints exactly\s+(\d+)\s+rows/g,
+  ]
+  for (const file of [...new Set(CLAIMS)]) {
+    const text = read(file)
+    if (text === null) continue
+    const nums = []
+    for (const re of TOTAL_SHAPES) {
+      for (const m of text.matchAll(re)) nums.push(Number(m[1]))
+    }
+    const mismatched = nums.filter(n => n !== total)
+    if (!nums.length) ok(`${file} 未硬编码设置项总数`)
+    else if (mismatched.length) bad(`${file} 宣称 ${[...new Set(mismatched)].join('/')} 个设置项,而 schema.json 是 ${total}`)
+    else ok(`${file} 设置项总数 = ${total}(${nums.length} 处断言)`)
+  }
+  for (const file of ['README.md', 'README-zh.md', 'docs/site/index.md', 'docs/site/en/index.md', 'docs/site/guide/configuration.md', 'docs/site/en/guide/configuration.md']) {
+    const text = read(file)
+    if (text === null) continue
+    const m = /(\d+)\s*live\s*[/·]\s*(\d+)\s*restart/.exec(text)
+    if (!m) continue
+    if (Number(m[1]) === live && Number(m[2]) === restart) ok(`${file} live/restart = ${live}/${restart}`)
+    else bad(`${file} 宣称 ${m[1]} live / ${m[2]} restart,而 schema.json 是 ${live}/${restart}`)
+  }
+  ok(`schema.json 基准:${total} 项 / ${groups} 组 / live ${live} · restart ${restart}`)
+}
+
+section('[6/6] 表格单元格内联代码不得含未转义竖线')
+// 表格里的 `a|b` 会**先**被 markdown-it 按单元格切开,行内代码失效;
 // 之后 <type> 这类占位符就裸露成 HTML,再次触发上面的 Vue 模板错误。
 // 真实踩坑:`| \`event:<type>\` |` 让 en/plugins/guide.md 整个构建失败。
 {

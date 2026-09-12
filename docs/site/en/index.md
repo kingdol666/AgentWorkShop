@@ -161,7 +161,7 @@ layout: home
       <div class="hw-p">
         <span class="no">04</span>
         <h3>Config-driven</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 98 settings across 16 groups (32 live / 66 restart), zero hardcoded defaults.</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 99 settings across 16 groups (32 live / 67 restart), zero hardcoded defaults.</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>

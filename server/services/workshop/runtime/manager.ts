@@ -38,7 +38,7 @@ import { ChannelRuntime } from './channel-runtime'
 import { SchedulerLoop, type SchedulerLoopOptions } from './scheduler-loop'
 import { TaskEngine as TaskEngineImpl } from './task-engine'
 import { AgentMemory, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeMemory, type MaintenanceResult, type MemorySnippet } from './memory'
-import { memorySettings } from '../settings'
+import { memorySettings, workshopSettings } from '../settings'
 import { createEnvEmbeddingProvider } from './embedding-provider'
 import { listHarnessProcesses, listAliveHarnessProcessesByAgent, sweepHarnessProcesses, killHarnessProcess } from '../agents/harness-process'
 import { hasTerminalSession, sweepTerminalSessions } from '../agents/harness-terminal'
@@ -155,6 +155,10 @@ function instanceToAgentInfo(m: ChannelAgentRow): AgentInfo {
     config: parseJson<Record<string, unknown>>(m.configJson, {}),
     token: m.token,
     enabled: m.enabled,
+    /** 来源 Agent 模板 id(手工成员为 null)。
+     *  外部调用方需要它把「模板 → 已部署实例」对上 —— Agent↔节点绑定必须落到实例 id,
+     *  而绑定接口只回一个实例 id;不暴露这个字段时调用方只能靠名字猜(实测踩过)。 */
+    templateId: m.templateId ?? null,
   }
 }
 
@@ -699,6 +703,10 @@ export class AgentChannelManager {
     const lead = this.ensureAgentRuntime(channelId, channel.leadAgentId)
     if (!lead) return
     const loop = new SchedulerLoop(cr, lead, {
+      // 停滞窗口默认取 workshop.stall_ms(默认 5 分钟,可经设置调整):
+      // 它决定"多久算停滞"以及"多久之后收口",是运维最需要按现场调的一个值;
+      // 以前写死在 SchedulerLoop 构造默认值里,mock/规则引擎路径上最长要 10 分钟才可见。
+      ...(Number.isFinite(workshopSettings().stall_ms) ? { stallMs: workshopSettings().stall_ms } : {}),
       ...options,
       // 停滞看门狗活性源:agent 最近一次工具 invoke 时刻(工具调用即健康推进)
       toolActivityOf: (agentId: string) => this.lastToolInvokeAt.get(agentId) ?? null,
@@ -2495,6 +2503,25 @@ export class AgentChannelManager {
       throw new AppError(502, 'DELIVERY_FAILED', `消息未能投递到 ${target.name} 的信箱(成员装配失败),请重试或改投其他成员`)
     }
     return message
+  }
+
+  /**
+   * 按主键查 Channel 成员实例(跨频道)。
+   * 用途:校验「Agent ↔ 工业节点绑定」的主体 —— 运行时持绑定做鉴权的是**成员实例**,
+   * 不是 Agent 模板;绑到模板 id 上会得到一条永远不生效的静默绑定(实测踩过)。
+   */
+  findChannelAgentById(channelAgentId: string): { id: string, channelId: string, templateId: string } | undefined {
+    const row = this.deps.repos.channelAgents.findById(channelAgentId)
+    return row ? { id: row.id, channelId: row.channelId, templateId: row.templateId } : undefined
+  }
+
+  /** 某 Agent 模板已部署到哪些频道(用于把"绑错主体"的报错变成可执行提示) */
+  listChannelAgentInstances(templateId: string): Array<{ id: string, channelId: string, name: string }> {
+    return this.deps.repos.channelAgents.listByTemplate(templateId).map(r => ({
+      id: r.id,
+      channelId: r.channelId,
+      name: this.deps.repos.channels.findById(r.channelId)?.name ?? r.channelId,
+    }))
   }
 
   /**

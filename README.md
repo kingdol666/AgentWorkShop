@@ -15,7 +15,7 @@
 
 **[中文文档 →](./README-zh.md)** · **[Online Docs →](https://kingdol666.github.io/AgentWorkShop/)** · **[Releases →](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog →](./changelog.md)**
 
-*Current version: **v0.7.36** · 14 agent engines · 5 field protocols · 98 runtime settings · bilingual docs (简体中文 / English)*
+*Current version: **v0.7.36** · 14 agent engines · 5 field protocols · 99 runtime settings · bilingual docs (简体中文 / English)*
 
 *A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to a 3D twin.*
 
@@ -105,7 +105,7 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 | **Team-scoped plugin switches** | Each team (channel) keeps an **independent plugin switch set** (`channel_plugins`): a disabled plugin's tools are not injected into that team's agents. Plugins themselves are hot-managed via `aw plugin` and the `/plugins` page. |
 | **Plugin extension API** | A self-contained directory under `plugins/<name>/` enhances **both halves at once**: `index.mjs` (server: hooks, routes, agent tools, DAQ drivers/processors/templates, config groups, KV, timers) and `client.mjs` (browser: panels injected into named slots, i18n, settings UI). Three scopes — `builtin` (shipped) > `project` (checkout) > `user` (`~/.AgentWorkShop`) — with ~1 s hot reload on enable/disable **and on code edits**. Full contract in [`docs/plugins.md`](./docs/plugins.md). |
 | **AML — auto-modeling lab** | Dataset build → training job → leaderboard → promotion gates → model reference, all driven from `/aml` or by agents through 10 `aml_*` tools. Python runtime bootstrapped with `uv` into an `./aml` asset root; artifacts and metadata stay under the config root. |
-| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **98 settings across 16 groups**, no hardcoded defaults in code. |
+| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **99 settings across 16 groups**, no hardcoded defaults in code. |
 | **Configurable cadences** | Sampling and query defaults/floors are **live settings** (`daq.sampling.*`, `daq.query.*`): hot-reloaded, clamped on node create/patch, and agent tool descriptions always carry the current values. |
 
 #### Digital twin
@@ -484,7 +484,7 @@ AgentWorkShop/
 ├── sdk/                        # agentworkshop/sdk — plugin context, hook bus, REST client, browser SDK
 ├── tui/                        # terminal workbench (aw tui)
 ├── shared/
-│   └── config/                 # schema.json (98 setting descriptors) + engine (merge/validate/persist) + path resolver
+│   └── config/                 # schema.json (99 setting descriptors) + engine (merge/validate/persist) + path resolver
 ├── config.yml                  # factory defaults (read at build/start; version comes from package.json)
 ├── .AgentWorkShop/             # config root in a checkout — prompts (versioned) + runtime overrides · data · logs · commands (git-ignored)
 ├── data/                       # legacy pre-migration location (auto-migrated into the config root)

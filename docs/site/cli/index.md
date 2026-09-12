@@ -241,7 +241,7 @@ $ aw start
 aw config set server.prod.port 8080     # 改生产端口(重启生效)
 aw config set theme.primaryColor '#41c8f4'
 aw config get server.dev.port           # 值 + 来源
-aw config list                          # 98 个设置项(16 组) + 来源 + 生效方式
+aw config list                          # 99 个设置项(16 组) + 来源 + 生效方式
 aw config validate                      # 校验 config.yml 与运行时覆盖合法性
 aw start --port 3002                    # CLI 参数最高优先(输出标注 端口来源: CLI)
 aw doctor                               # 体检:Node/pnpm/AW Home/Docker/MQTT/端口/密钥/产物

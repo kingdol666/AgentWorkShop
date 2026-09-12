@@ -301,22 +301,35 @@ async function main() {
   check(`P7.2 工艺员 Agent 入队(harness=${harness})`, Boolean(workerId), workerId?.slice(0, 8))
 
   // 数采 auto / 数控 manual(manual = 下发需人工审批,生产上就应该这么配)
+  // ⚠️ 绑定必须用**频道成员实例 id**,不是 Agent 模板 id:
+  // 运行时持绑定做工具鉴权的是成员实例;绑到模板 id 上成员侧一律报"尚未绑定节点",
+  // 是一条静默失效的授权(实测踩过 —— 任务被真实 LLM 正当地拒绝)。接口现已显式拒绝模板 id。
+  const membersRaw = data(await api('GET', `/api/workshop/channels/${channelId}/agents`))
+  const memberList = Array.isArray(membersRaw) ? membersRaw : (membersRaw.agents ?? [])
+  const member = memberList.find(m => m.role === 'worker' && (m.templateId === workerId || m.id === workerId))
+  const bindAgentId = member?.id ?? workerId
+  check('P7.2b 取到 worker 的频道成员 id(绑定的正确主体)', Boolean(member?.id), `member=${String(bindAgentId).slice(0, 8)} template=${String(workerId).slice(0, 8)}`)
+
+  // 数采 auto / 数控 manual(manual = 下发需人工审批,生产上就应该这么配)
+  let bound = 0
   for (const c of CIRCUITS) {
     for (const [kind, id, mode] of [['daq', state.circuits[c.key].daq, 'auto'], ['dcw', state.circuits[c.key].dcw, 'manual']]) {
-      const b = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: workerId, nodeId: id, kind, mode } })
-      if (!ok(b)) check(`P7.3 ${c.label} ${kind} 绑定(${mode})`, false, JSON.stringify(b).slice(0, 120))
+      const b = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: bindAgentId, nodeId: id, kind, mode } })
+      if (ok(b)) bound++
+      else check(`P7.3 ${c.label} ${kind} 绑定(${mode})`, false, JSON.stringify(b).slice(0, 160))
     }
   }
-  const bindings = data(await api('GET', `/api/workshop/agent-tools/bindings?agentId=${workerId}`))
+  const bindings = data(await api('GET', `/api/workshop/agent-tools/bindings?agentId=${bindAgentId}`))
   const bList = Array.isArray(bindings) ? bindings : (bindings.bindings ?? [])
-  check('P7.3 六个节点绑定完成(3 数采 auto + 3 数控 manual)', bList.length >= 6, `bindings=${bList.length}`)
+  check('P7.3 六个节点绑定完成且成员侧可见(3 数采 auto + 3 数控 manual)',
+    bound === 6 && bList.length === 6, `创建 ${bound}/6 · 成员侧可见 ${bList.length}`)
 
-  if (!SKIP_AGENT && workerId) {
+  if (!SKIP_AGENT && member?.id) {
     const task = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
       body: {
         title: `烘干线工艺巡检-${TAG}`,
         parts: [{ text: `用 daq_query 读取「烘箱温度采集-${TAG}」「产线速度采集-${TAG}」「膜张力采集-${TAG}」最近 5 分钟数据,汇总三者的均值与波动,判断是否处于稳态,然后把结论写入 complete_task。` }],
-        assigneeId: workerId,
+        assigneeId: member.id,
       },
     })
     const taskId = data(task).task?.id ?? data(task).id
@@ -400,7 +413,8 @@ async function main() {
     product: { id: prod.id, name: prod.name },
     recipe: { id: recipe.id, name: recipe.name },
     channel: { id: channelId, name: chName },
-    workerId,
+    workerId: bindAgentId,
+    workerTemplateId: workerId,
     counts: { rawSamples: rawCount, buckets: samplePts.length, anchors: anchors.length, manualWrites: manualWrites.length, ledgerRows: ledRows.length, versions: versions.length, opsLogs: opsLogs.length, lineLogs: lineLogs.length, runs: runs.length, twins: twins.length },
     ledger: { current: led.current, recipeTarget: led.recipeTarget },
   })

@@ -18,6 +18,9 @@ export interface AgentInfo {
   token?: string
   /** 实例启停(1 启用 / 0 禁用;模板视图无此字段) */
   enabled?: number
+  /** 来源 Agent 模板 id(成员实例专有;手工创建的成员为 null)。
+   *  Agent↔工业节点绑定必须以实例 id 为主体,调用方靠它把模板映射到已部署实例。 */
+  templateId?: string | null
 }
 
 /** 运行请求:平台向 Agent 投递的一次消息输入 */

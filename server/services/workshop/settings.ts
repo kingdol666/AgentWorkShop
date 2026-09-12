@@ -107,6 +107,8 @@ export interface DcwSettings {
 export interface WorkshopSettings {
   idle_sweep_ms: number
   idle_grace_ms: number
+  /** 运行中任务的停滞判定窗口(ms):先催办一次,再过同样时长按有无产出收口 */
+  stall_ms: number
 }
 export interface BackupSettings {
   disabled: boolean

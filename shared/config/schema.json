@@ -87,6 +87,7 @@
 
     { "key": "workshop.idle_sweep_ms", "type": "number", "group": "workshop", "label": "空产线扫描(ms)", "labelKey": "settings.runtime.workshop.idleSweepMs", "description": "车间空闲产线扫描周期", "applies": "restart", "default": 30000, "min": 5000, "max": 600000 },
     { "key": "workshop.idle_grace_ms", "type": "number", "group": "workshop", "label": "空闲宽限(ms)", "labelKey": "settings.runtime.workshop.idleGraceMs", "description": "产线空闲判定的宽限时长", "applies": "restart", "default": 120000, "min": 10000, "max": 3600000 },
+    { "key": "workshop.stall_ms", "type": "number", "group": "workshop", "label": "任务停滞判定(ms)", "labelKey": "settings.runtime.workshop.stallMs", "description": "运行中任务进度停滞超过该时长先催办一次;再过同样时长仍无变化则收口:有产出保留成果(COMPLETED),完全无产出才取消。默认 5 分钟", "applies": "restart", "default": 300000, "min": 10000, "max": 7200000 },
 
     { "key": "backup.disabled", "type": "boolean", "group": "backup", "label": "禁用自动备份", "labelKey": "settings.runtime.backup.disabled", "description": "关闭运行数据自动备份", "applies": "restart", "default": false, "aliases": ["BACKUP_DISABLED"] },
     { "key": "backup.interval_hours", "type": "number", "group": "backup", "label": "备份间隔(h)", "labelKey": "settings.runtime.backup.intervalHours", "description": "自动备份间隔小时数", "applies": "restart", "default": 24, "min": 1, "max": 720, "aliases": ["BACKUP_INTERVAL_HOURS"] },

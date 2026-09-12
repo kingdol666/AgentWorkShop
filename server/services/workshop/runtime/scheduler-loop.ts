@@ -495,7 +495,16 @@ export class SchedulerLoop {
       else {
         this.notified.delete(task.id)
         this.lastProgress.delete(task.id)
-        decisions.push({ kind: 'cancel', taskId: task.id })
+        // 交回裁决:这里**不能无条件 cancel**。
+        // 直接派发给 worker 的任务(无父任务)是由 worker 自己调 complete_task 收口的;
+        // 它的回合结束时若漏了这一步,任务会停在 WORKING,assignee 也不再 busy ——
+        // 旧实现直接 cancel,把**已经产出的交付物一起作废**(实测:omp worker 干到
+        // progress=90、产物齐全,却因没走收口动作被整单取消;换成真实 harness lead 时
+        // 由 lead 的监督回合兜住,所以只在 mock/规则引擎这条路径上暴露)。
+        // 现在按"有没有真干过活"分流:干过 → 收口(成果保留);没干过 → 仍然取消(防永挂)。
+        const didWork = task.progress > 0
+          || (task.artifacts ?? []).some(a => a.name !== 'input' && (a.parts ?? []).length > 0)
+        decisions.push(didWork ? { kind: 'complete', taskId: task.id } : { kind: 'cancel', taskId: task.id })
       }
     }
 

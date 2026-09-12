@@ -91,11 +91,95 @@
 7. **脚本收尾用 `process.exit()` 会在 Windows 上触发 `UV_HANDLE_CLOSING` 断言**,
    表现为"打印 ✅ 却退出码 1"。改用 `process.exitCode` 后退出码可信(已修)。
 
-## 已知问题(如实记录,未修)
+## 已知问题
 
-- **`mock` 调度长 + `omp` 工艺员的任务被取消**:任务 90s 后变 `CANCELED`、
-  `progress=0`,且服务日志里**没有任何 spawn / dispatch 记录**(omp 根本没被拉起)。
-  单独验证 `omp -p 'reply with exactly: PONG'` 能正常返回,说明 harness 本身可用 ——
-  问题出在这套 lead 组合的派发/回收判定上。改用同一 Channel 里的 `mock` 工人后,
-  同样的任务路径 **COMPLETED / progress=100**。建议单独排查 mock lead 下的任务 reclaim 逻辑。
+### ① 上一轮报告的诊断是错的(已更正)
+
+原文写的是「`mock` 调度长 + `omp` 工艺员的任务被取消 …… 建议排查 mock lead 下的任务
+reclaim 逻辑」。**归因错了**。逐层复现后的真实链条是:
+
+1. 隔离环境把 `HOME`/`USERPROFILE` 指到独立根,而 `omp` 的模型与凭据在
+   `~/.omp/agent/{models.yml,.env}` —— 于是 **omp 起来就退出 1**:
+   `No models available. Use /login or set an API key environment variable.`
+2. worker 秒失败 → 任务 `FAILED` → 规则引擎找不到第二个空闲 worker 重试 → `cancel`。
+   (这条路径**不写 task history**,所以现象是"无 spawn、无记录、瞬时 CANCELED"。)
+3. 把 `models.yml` / `.env` 放进隔离 home 后 omp 正常,任务随即进入 WORKING。
+
+也就是说:**harness 凭据缺失**,不是 reclaim 逻辑的问题。教训:隔离环境覆盖 HOME 时,
+任何把配置放在 `$HOME` 下的 harness CLI 都会失去凭据,而失败现象与"平台 bug"几乎无法区分 ——
+`aw doctor` 若能把「harness CLI 可执行但无可用模型/凭据」单独报出来,这类误判会少很多。
+
+### ② lead 组合的真实结论(lead × worker 矩阵)
+
+同任务文案、同服务器,只换 harness 组合(脚本 `scripts/_audit/lead-matrix-test.mjs`):
+
+| 组合 | lead | worker | 结果 |
+|---|---|---|---|
+| A | **omp** | omp | **✅ COMPLETED / progress=100**(154s) |
+| B | mock | omp | ✖ 停在 `WORKING progress=90`,无人收口 |
+| C | mock | mock | ✅ COMPLETED(2s) |
+| D | omp | mock | ✅ COMPLETED(3s) |
+
+**用户的猜想成立**:换成真实 harness 的 lead,同一个 omp worker 就能跑完。
+原因是**直接派发给 worker 的任务由 worker 自己调 `complete_task` 收口**;
+它的回合结束时若漏了这一步,`mock` lead 的 `supervise()` **会跳过所有
+`assigneeId !== lead` 的任务**(mock-agent.ts:96-97),没人兜住 → 任务永挂 WORKING,
+最后由停滞看门狗处理。
+
+### ③ 已修:看门狗不再丢弃已完成的成果
+
+改动 `scheduler-loop.ts` 的 WORKING 停滞裁决:`notify` 一次仍无变化后,旧实现**无条件
+`cancel`**,把 `progress=90`、交付物齐全的任务整单作废。现按"有没有真干过活"分流:
+
+- `progress > 0` 或存在 `input` 以外的交付物 → **`complete`**(成果保留);
+- 完全没有产出 → 仍然 `cancel`(防永挂)。
+
+这与仓库既有原则一致("已有 COMPLETED 交付的父任务不自动取消")。
+
+### ④ 已修:绑定主体错用 Agent 模板 id 会静默失效
+
+`POST /agent-tools/bindings` 原样接受任何 `agentId`。但运行时持绑定做工具鉴权的是
+**频道成员实例**,而 `/api/workshop/agents` 返回的是**模板 id** —— 照它绑定会得到一条
+成员侧永远查不到的静默绑定(agent 的工具一律报"尚未绑定节点")。实测踩了两次:
+一次是本报告的 P7,一次是矩阵首轮。
+
+现在:
+- 传模板 id → `400 AGENT_ID_NOT_MEMBER`,并直接把该模板**已部署实例的 id 与频道名**列出来;
+- 传未知 id → `404 NOT_FOUND`,附获取成员 id 的端点;
+- 频道成员列表新增 `templateId` 字段,调用方不必再靠名字猜模板→实例的对应关系。
+
+### ⑤ 已修:看门狗不再丢弃已完成的成果(代码级加固,未做端到端复现)
+
+`scheduler-loop.ts` 的 WORKING 停滞裁决:notify 一次仍无变化后,旧实现**无条件 `cancel`**,
+会把 `progress>0`、交付物齐全的任务整单作废。现按"有没有真干过活"分流:有产出 →
+`complete`(成果保留);完全无产出 → 仍然 `cancel`(防永挂)。
+
+**证据等级说明(不夸大)**:这条改动只做过**代码级推理 + 类型/静态检查**,
+没有拿到端到端复现 —— 两次尝试构造"干过活但成员已 idle"的状态都失败了,原因本身值得记录:
+
+1. 看门狗**不回收 busy 成员**(设计如此,避免取消忙碌中的回合)。用 `delayMs=600s` 的 mock
+   worker 让任务停在 progress=0 时,成员始终 busy,裁决分支根本不会走到。
+2. `report_progress` 是**运行期工具**,参数只有 `{progress, message}`(**没有 task id**),
+   脱离回合调用是空操作 —— 无法用它从外部把任务推进到"有产出"。
+3. 试图用 `delayMs=1000` 的 mock worker 抢在它收口前打断:它比预期快,1.5s 时任务已经
+   COMPLETED,窗口太窄。
+
+要确定性地复现,需要给 mock harness 加一个「只上报进度、不收口」的剧本开关,
+或让 `report_progress` 接受显式 task id。两者都属于测试基建,本次未做。
+
+### ⑥ 新发现:`POST /channels/:id/agents/:agentId/stop` 会阻塞数分钟
+
+上一条的尝试中暴露:`stop` 端点在带一个 `delayMs=600s` 的 mock worker 的频道上,
+**实测阻塞 308 秒才返回**(服务日志:`... /agents/<id>/stop - 308143ms`),
+调用方(UI/脚本)fetch 直接超时。
+
+"立即中断这个成员"是 HITL 控制面的动作,UI 上表现为点击后长时间无响应。
+怀疑是 `runtime.stop()` 在等待在飞回合的 abort/收尾,而不是先摘运行态再异步清理。
+**未修**(本次无预算验证),建议:停止动作先同步摘除运行态并立刻返回,收尾放后台,
+并把"正在中断"作为成员状态广播出去。
+
+### ⑦ 其余
+
+- `stallMs` 原为 `SchedulerLoop` 构造写死的 300000,不可经设置调整 —— 一次停滞回收最长
+  10 分钟才可见。现已接入设置面 `workshop.stall_ms`(10s–2h,默认 5 分钟)。
 - MinIO 因宿主机与容器时钟偏差自动降级本地磁盘(功能不受影响,但对象存储未走真链路)。
