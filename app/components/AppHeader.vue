@@ -204,17 +204,6 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 
       <span class="rail-mark i-tabler-route" />
 
-      <!-- AML 建模入口:固定导航点(航迹由访问历史生成,/aml 需常驻入口) -->
-      <NuxtLink
-        class="trail-node aml-entry"
-        :class="{ active: route.path.startsWith('/aml') }"
-        to="/aml"
-        :title="t('aml.k1amlx159')"
-      >
-        <span class="node-icon i-tabler-flask" />
-        <span class="node-title">{{ t('aml.k1amlx158') }}</span>
-      </NuxtLink>
-
       <nav
         class="trail"
         :aria-label="t('header.trail')"
@@ -460,12 +449,6 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   flex: 0 0 auto;
   font-size: 15px;
   color: var(--ink-faint);
-}
-
-/* AML 固定入口:复用航点 chip 语言,紧贴 rail-mark 常驻 */
-.aml-entry {
-  flex: 0 0 auto;
-  margin-right: 2px;
 }
 
 .trail {

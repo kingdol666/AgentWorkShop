@@ -25,6 +25,7 @@ export default {
     tokens: 'API Tokens',
     daq: 'DAQ Console',
     dcw: 'Line Ops',
+    aml: 'Modeling',
     logs: 'Logs',
     users: 'Users',
     monitor: 'Runtime Monitor',

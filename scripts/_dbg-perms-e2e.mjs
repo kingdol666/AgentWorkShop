@@ -70,13 +70,20 @@ const wr2 = await api(`/api/workshop/dcw/${w2.id}/write`, { method: 'POST', body
 ok('operate 产线写控放行', wr2.status === 200 && wr2.body?.data?.outcome != null, `ack=${JSON.stringify(wr2.body?.data?.outcome)?.slice(0, 60)}`)
 
 // ---- 绑定校验(daq 需 readonly+,dcw 需 operate) ----
+// 绑定主体是频道成员实例 id(0.7.37 绑定主体校验):plain 用户自建频道+成员,取实例 id
+const bindCh = await api('/api/workshop/channels', { method: 'POST', body: JSON.stringify({ name: `e2e-perms-ch-${Date.now()}`, leadAgent: { name: 'e2e-perms-lead', harness: 'mock' } }) }, plainTok)
+const bindTpl = await api('/api/workshop/agents', { method: 'POST', body: JSON.stringify({ name: 'e2e-perms-worker', harness: 'mock' }) }, plainTok)
+const bindJoin = await api(`/api/workshop/channels/${bindCh.body?.data?.channelId}/agents`, { method: 'POST', body: JSON.stringify({ agentId: bindTpl.body?.data?.id, role: 'worker' }) }, plainTok)
+const bindAgentId = bindJoin.body?.data?.id
+ok('plain 自建频道成员(绑定主体)', Boolean(bindAgentId), bindJoin.body?.message ?? '')
+
 const daqNodes = q1.body.data.nodes
 const dq1 = daqNodes.find(n => n.lineId === LINE1)
-const bindD = await api('/api/workshop/agent-tools/bindings', { method: 'POST', body: JSON.stringify({ agentId: 'e2e-perms-agent', nodeId: dq1.id, kind: 'daq' }) }, plainTok)
+const bindD = await api('/api/workshop/agent-tools/bindings', { method: 'POST', body: JSON.stringify({ agentId: bindAgentId, nodeId: dq1.id, kind: 'daq' }) }, plainTok)
 ok('绑定 daq 节点(readonly 线)放行', bindD.status === 200, JSON.stringify(bindD.body?.message ?? ''))
-const bindW1 = await api('/api/workshop/agent-tools/bindings', { method: 'POST', body: JSON.stringify({ agentId: 'e2e-perms-agent', nodeId: w1.id, kind: 'dcw' }) }, plainTok)
+const bindW1 = await api('/api/workshop/agent-tools/bindings', { method: 'POST', body: JSON.stringify({ agentId: bindAgentId, nodeId: w1.id, kind: 'dcw' }) }, plainTok)
 ok('绑定 dcw 节点(readonly 线)被拒', bindW1.status === 403, bindW1.body?.message)
-const bindW2 = await api('/api/workshop/agent-tools/bindings', { method: 'POST', body: JSON.stringify({ agentId: 'e2e-perms-agent', nodeId: w2.id, kind: 'dcw' }) }, plainTok)
+const bindW2 = await api('/api/workshop/agent-tools/bindings', { method: 'POST', body: JSON.stringify({ agentId: bindAgentId, nodeId: w2.id, kind: 'dcw' }) }, plainTok)
 ok('绑定 dcw 节点(operate 线)放行', bindW2.status === 200)
 
 // ---- 越权访问无权产线节点(直接按 id 打,数据面不因列表隐藏而放行) ----

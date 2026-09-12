@@ -38,7 +38,7 @@ footer:
         <div class="hw-stat"><span class="v">5</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">98</span><span class="k">设置项 · 16 组</span></div>
+        <div class="hw-stat"><span class="v">99</span><span class="k">设置项 · 16 组</span></div>
         <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">验收断言 全过</span></div>
       </div>
     </div>

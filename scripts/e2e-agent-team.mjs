@@ -8,6 +8,8 @@
  * 运行: node scripts/e2e-agent-team.mjs [--base http://127.0.0.1:3000]
  */
 const BASE = (process.argv.find(a => a.startsWith('--base='))?.slice(7) ?? 'http://127.0.0.1:3000') + '/api/workshop'
+// 注册走平台 origin 的 /api/users/register(不在 /api/workshop 下;注册现要求 email+password)
+const ORIGIN = BASE.slice(0, BASE.indexOf('/api'))
 
 let pass = 0
 let fail = 0
@@ -21,9 +23,9 @@ function check(name, ok, detail = '') {
 }
 
 // 用户级隔离:注册测试用户;管理面 API 全程携带用户 token
-const __user = await fetch(BASE + '/users/register', {
+const __user = await fetch(ORIGIN + '/api/users/register', {
   method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
+  body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10), email: `e2e-team-${Date.now()}@test.local`, password: 'Passw0rd!123' }),
 }).then(r => r.json()).catch(() => null)
 const __userToken = __user?.data?.token
 if (!__userToken) {

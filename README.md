@@ -15,7 +15,7 @@
 
 **[中文文档 →](./README-zh.md)** · **[Online Docs →](https://kingdol666.github.io/AgentWorkShop/)** · **[Releases →](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog →](./changelog.md)**
 
-*Current version: **v0.7.38** · 14 agent engines · 5 field protocols · 99 runtime settings · bilingual docs (简体中文 / English)*
+*Current version: **v0.7.39** · 14 agent engines · 5 field protocols · 99 runtime settings · bilingual docs (简体中文 / English)*
 
 *A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to a 3D twin.*
 
@@ -253,7 +253,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.38** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.39** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
@@ -444,10 +444,10 @@ the event stream and the HTTP API — not on mocks.
 |---|---|---|---|
 | `e2e-full-closedloop.mjs` | **124 PASS / 0 FAIL** (2026-09-12, v0.7.36) | registration → login → line/product/recipe → DAQ sampling → agent bound to nodes → `daq_query` → `dcw_control` → HITL approval → PLC write → readback → recipe rollback → cascade delete → data-root isolation | `node scripts/e2e-full-closedloop.mjs http://127.0.0.1:3111` |
 | `e2e-aml.ts --real` | 0 failures (2026-09-11) | AML datasets → job submit → status/logs → leaderboard → promotion gates, against the real Python runtime | `node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json scripts/e2e-aml.ts --real` |
-| Five-protocol live line | 37/37 | driver connectivity, sampling into Timescale, DCW dispatch + readback per protocol, agent closed loop, HITL over a real OPC UA write, recipe + param-ledger rollback | `node scripts/_dbg-live-line-e2e.mjs` |
-| Production API live | 64/64 | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
-| Line permissions / audit-negative | 20/20 + 9/9 | three-state line grants with human-readable 403s, revocation convergence, unauthenticated WS receives zero telemetry | `scripts/e2e-auth-matrix.mjs` |
-| Render regression | 29/29 | 227-row DAQ table integrity, WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
+| Five-protocol live line | 37/37 (re-verified 2026-09-12 on a clean instance) | driver connectivity, sampling into Timescale, DCW dispatch + readback per protocol, agent closed loop, HITL over a real OPC UA write, recipe + param-ledger rollback | `node scripts/_dbg-live-line-e2e.mjs` |
+| Production API live | 64/64 (re-verified 2026-09-12 on a clean instance) | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
+| Line permissions / audit-negative | 21/21 + 9/9 | three-state line grants with human-readable 403s, binding-subject validation, revocation convergence, unauthenticated WS receives zero telemetry | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
+| Render regression | 30/30 | DAQ table integrity (row count aligned with the API), WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
 | Multi-harness parallel | 21 | omp closed loop · codex real register write · dsh real acquisition · opencode recipe write+rollback — four engines on one running line | `node scripts/e2e-multiharness-team.mjs` |
 | Offline unit/property suites | all green | AEP event index (`test-events-index`), LRU, data-root split (`test-data-root`), log flooding, rollback index, plugin hardening, memory month query, CLI exit codes (`test-cli-exit`), SDK surface (`test-sdk-surface`) | `node scripts/test-<name>.mjs` |
 

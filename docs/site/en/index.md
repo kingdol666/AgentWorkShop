@@ -36,7 +36,7 @@ layout: home
         <div class="hw-stat"><span class="v">5</span><span class="k">FIELD PROTOCOLS</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">ENTRY POINTS</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">ENGINES</span></div>
-        <div class="hw-stat"><span class="v">98</span><span class="k">SETTINGS · 16 GROUPS</span></div>
+        <div class="hw-stat"><span class="v">99</span><span class="k">SETTINGS · 16 GROUPS</span></div>
         <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">ACCEPTANCE CHECKS PASS</span></div>
       </div>
     </div>

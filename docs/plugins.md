@@ -497,6 +497,7 @@ export default {
 | 现象 | 原因 / 处理 |
 |---|---|
 | 改了插件代码没生效 | 宿主没有插件目录 watcher:触碰 `<home>/plugins-state.json` 或 `aw plugin enable/disable` 往返一次触发重载(重载会带 `?t=` 破缓存);核心 `server/`、`shared/` 改动仍需重启进程 |
+| 重建同名插件后路由 404 | 此前 disable 过的插件名在 `<home>/plugins-state.json` 里留有禁用标记,重建目录不会自动恢复装载 —— 重建后必须显式 `aw plugin enable <name>`(实测踩过) |
 | 装载失败看不到 | `aw plugin list` **不显示**装载失败。用 `GET /api/workshop/plugins`(返回 `{ plugins, failures, initedAt }`,**没有 `{code,data}` 信封**),或看启动日志里的 `[aw-plugins] 装载失败 …` |
 | 插件路由 404 | exact-match;检查 method 与 path 前导 `/`,以及插件是否处于启用态(停用插件的路由已从路由表移除) |
 | 插件路由 401 | 入口声明了 `auth: 'user' \| 'admin' \| 'agent-or-user'`,请求未带有效凭据;开放接口才用 `auth: 'none'` |

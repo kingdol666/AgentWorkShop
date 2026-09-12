@@ -158,6 +158,18 @@ async function main() {
   const token = reg.data?.token
   if (!token) throw new Error(`注册失败: ${JSON.stringify(reg).slice(0, 200)}`)
 
+  // 角色前置:建线/建节点需 admin/editor(0.7.x 权限硬化);admin 把测试用户提为 editor
+  const admLogin = await api('POST', '/api/users/login', {
+    body: { email: 'admin@awshop.local', password: process.env.AW_ADMIN_PASS ?? 'admin123' },
+  }).catch(() => null)
+  const admTok = admLogin?.data?.token
+  const regId = reg.data?.user?.id
+  if (admTok && regId) {
+    const promoted = await api('PUT', `/api/users/${regId}`, { body: { role: 'editor' }, token: admTok }).catch(() => null)
+    check('0.0b', 'admin 提升测试用户为 editor', promoted?.data?.role === 'editor', promoted?.message ?? '')
+  }
+  else { console.log('  [skip] admin 不可用,建线可能被 403(设 AW_ADMIN_PASS)') }
+
   const line = (await api('POST', '/api/workshop/dcw/lines', { body: { name: `全协议产线-${TAG}` }, token })).data?.line
   check('0.1', '建产线', Boolean(line?.id))
 
@@ -268,7 +280,7 @@ async function main() {
   // ── 4. DAQ 采样落库 + 数值域 + WS 帧 ──
   const aep = openAep(token)
   await aep.ready
-  await sleep(9000)
+  await sleep(21000) // 采样缺省 5000ms:9s 只攒 ~3 点,21s 保证 n>=4
   for (const d of daqDefs) {
     const node = daqNodes[d.id]
     const s = await api('GET', `/api/workshop/daq/${node.id}/samples?bucketMs=1000`, { token })
@@ -288,7 +300,7 @@ async function main() {
   check('5.1', 'DCW Modbus 读 SP 寄存器', rPlc.code === 0 && Number.isFinite(plcRead), `value=${plcRead} ${JSON.stringify(rPlc.data ?? {}).slice(0, 120)} ${rPlc.message ?? ''}`)
   const rOpc = await api('POST', `/api/workshop/dcw/${dcwNodes.ocusp.id}/read`, { token })
   const opcRead = Number(rOpc.data?.read?.value ?? rOpc.data?.value ?? NaN)
-  check('5.2', 'DCW OPC UA 读节点', rOpc.code === 0 && Number.isFinite(opcRead), `value=${opcRead} ${rOpc.message ?? ''}`)
+  check('5.2', 'DCW OPC UA 读节点', rOpc.code === 0 && Number.isFinite(opcRead), `value=${opcRead} data=${JSON.stringify(rOpc.data ?? {}).slice(0, 160)} ${rOpc.message ?? ''}`)
   const rMq = await api('POST', `/api/workshop/dcw/${dcwNodes.mqsp.id}/read`, { token })
   const mqReadVal = rMq.data?.read?.value ?? rMq.data?.value
   check('5.3', 'DCW MQTT 读=能力外优雅报错(仅下行)', !Number.isFinite(Number(mqReadVal)) && (rMq.code !== 0 || rMq.data?.read?.ok === false || rMq.data?.ok === false), `code=${rMq.code} read=${JSON.stringify(rMq.data?.read ?? {}).slice(0, 100)}`)

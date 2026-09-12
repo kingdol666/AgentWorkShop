@@ -38,6 +38,7 @@ const menuGroups = computed<MenuGroup[]>(() => [
       { key: '/town', icon: 'i-tabler-map-2', label: t('menu.town'), motion: 'im-pop' },
       { key: '/daq', icon: 'i-tabler-activity', label: t('menu.daq'), motion: 'im-pop' },
       { key: '/dcw', icon: 'i-tabler-settings-automation', label: t('menu.dcw'), motion: 'im-pop' },
+      { key: '/aml', icon: 'i-tabler-flask', label: t('menu.aml'), motion: 'im-pop' },
     ],
   },
   {

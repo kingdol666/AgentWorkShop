@@ -15,7 +15,7 @@
 
 **[English →](./README.md)** · **[在线文档 →](https://kingdol666.github.io/AgentWorkShop/)** · **[版本发布 →](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志 →](./changelog.md)**
 
-*当前版本：**v0.7.38** · 14 个执行引擎 · 5 种现场协议 · 99 个运行时设置项 · 双语文档（简体中文 / English）*
+*当前版本：**v0.7.39** · 14 个执行引擎 · 5 种现场协议 · 99 个运行时设置项 · 双语文档（简体中文 / English）*
 
 *一个配置驱动的平台：**AI Agent 团队**与**工业数字孪生**共享同一运行时——Agent 查询真实遥测、经人工审批的写控回路下发监督设定值，每个事件实时推送到 3D 孪生。*
 
@@ -253,7 +253,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（最新文件胜出），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.38**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（最新文件胜出），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.39**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -436,10 +436,10 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 |---|---|---|---|
 | `e2e-full-closedloop.mjs` | **124 PASS / 0 FAIL**（2026-09-12，v0.7.36） | 注册 → 登录 → 产线/产品/配方 → 数采采样 → Agent 绑定节点 → `daq_query` → `dcw_control` → HITL 审批 → PLC 写入 → 回读 → 配方回退 → 级联删除 → 数据根隔离 | `node scripts/e2e-full-closedloop.mjs http://127.0.0.1:3111` |
 | `e2e-aml.ts --real` | 0 失败（2026-09-11） | AML 数据集 → 作业提交 → 状态/日志 → 排行榜 → 晋级门禁，跑在真实 Python 运行时上 | `node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json scripts/e2e-aml.ts --real` |
-| 五协议真实产线 | 37/37 | 逐协议连通、数采入 Timescale、逐协议数控下发 + 回读、Agent 闭环、HITL 经真实 OPC UA 写入、配方 + 参数账本回退 | `node scripts/_dbg-live-line-e2e.mjs` |
-| 生产 API 全链路 | 64/64 | 跨重启持久化、模板 CRUD、任务 assign/complete/cancel/loop/pipeline、A2A + mailbox、WS 广播、MCP 端点、级联删除 | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
-| 产线权限 / 审计负向 | 20/20 + 9/9 | 三态产线授权 + 人话 403、授权撤销收敛、无 token WS 零遥测 | `scripts/e2e-auth-matrix.mjs` |
-| 渲染回归 | 29/29 | 227 行数采表完整性、WS 驱动行更新、筛选、详情页、3D 小镇 + 模型库、7 页 smoke、零 pageerror | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
+| 五协议真实产线 | 37/37（2026-09-12 干净环境复验） | 逐协议连通、数采入 Timescale、逐协议数控下发 + 回读、Agent 闭环、HITL 经真实 OPC UA 写入、配方 + 参数账本回退 | `node scripts/_dbg-live-line-e2e.mjs` |
+| 生产 API 全链路 | 64/64（2026-09-12 干净环境复验） | 跨重启持久化、模板 CRUD、任务 assign/complete/cancel/loop/pipeline、A2A + mailbox、WS 广播、MCP 端点、级联删除 | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
+| 产线权限 / 审计负向 | 21/21 + 9/9 | 三态产线授权 + 人话 403、绑定主体校验、授权撤销收敛、无 token WS 零遥测 | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
+| 渲染回归 | 30/30 | 数采表完整性（行数与 API 动态对齐）、WS 驱动行更新、筛选、详情页、3D 小镇 + 模型库、7 页 smoke、零 pageerror | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
 | 多 Harness 并行 | 21 | omp 闭环 · codex 真实寄存器写入 · dsh 真实数采 · opencode 配方写入+回退——四引擎在一条开跑产线上 | `node scripts/e2e-multiharness-team.mjs` |
 | 离线单元/属性套件 | 全绿 | AEP 事件索引（`test-events-index`）、LRU、数据根拆分（`test-data-root`）、日志洪泛、回退索引、插件加固、记忆按月查询、CLI 退出码（`test-cli-exit`）、SDK 能力面（`test-sdk-surface`） | `node scripts/test-<name>.mjs` |
 

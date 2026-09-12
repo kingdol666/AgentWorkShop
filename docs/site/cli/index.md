@@ -156,7 +156,7 @@ $ aw start
 
 - 优先级（CLI 与网页设置页、dev/prod 启动脚本共用同一引擎 `shared/config/engine.mjs`）：
   `config.yml 默认 < runtime-settings.json 运行时覆盖 < 环境变量 / CLI 显式参数`。
-- 设置描述符共 **98 项、16 组**（`aw config list` 即打印 98 行）：
+- 设置描述符共 **99 项、16 组**（`aw config list` 即打印 99 行）：
 
 | 组 | 项数 | 组 | 项数 | 组 | 项数 | 组 | 项数 |
 |---|---|---|---|---|---|---|---|

@@ -500,6 +500,7 @@ export default {
 | Symptom | Cause / fix |
 |---|---|
 | Plugin code edits have no effect | the host has no plugin-directory watcher: touch `<home>/plugins-state.json`, or toggle `aw plugin enable/disable` once, to trigger a reload (the reload imports with `?t=` to defeat the cache); core `server/` and `shared/` changes still need a process restart |
+ | Recreated a same-named plugin but routes 404 | a name previously disabled keeps its flag in `<home>/plugins-state.json`; recreating the directory does not reload it — run `aw plugin enable <name>` explicitly after recreating (verified in practice) |
 | Load failures are invisible | `aw plugin list` does **not** show them. Use `GET /api/workshop/plugins` (returns `{ plugins, failures, initedAt }`, **no `{code,data}` envelope**) or read `[aw-plugins] 装载失败 …` in the startup log |
 | Plugin route 404 | matching is exact; check the method and the leading `/` of the path, and whether the plugin is enabled (a disabled plugin's routes are dropped from the table) |
 | Plugin route 401 | the entry declared `auth: 'user' \| 'admin' \| 'agent-or-user'` and the request carried no valid credential; use `auth: 'none'` only for open endpoints |
