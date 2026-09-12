@@ -157,6 +157,7 @@
 | codex/dsh 终态 CANCELED 但交付物完整 | 已根修（codex 无条件 CODEX_HOME 种子+停滞 1800s；dsh 交付兜底收口）。复现即回归，查是否有新提交动过 agents/runtime |
 | 工具调用报「未知工具」集中在插件重载窗口 | 插件热重载空窗（已修：注销延后）；复现即回归 |
 | agent-tools/invoke 404 或参数不识别 | body 键是 **args**（非 arguments）；agentId 用 channel 成员**实例 id**（非模板 id） |
+| `aw-start-smoke` 报「Agent dcw_control 下发 178」FAIL、文本是「工具桥不支持该协作工具: dcw_control」 | 该成员用的是**无自有工具面的 harness**（mock 等），REST 直调只会落到协作工具族，够不到工业工具族。`invokeHostTool` 的回退链是 `impl.dispatchHostTool` → `invokeAgentWorkspaceTool`，缺 `host-tool-bridge.dispatchHostTool` 这一跳（见 `manager.ts:2810` 附近）。真实引擎成员自带工具面，不受影响；要补需给回退链加 workspace 上下文，并统一 manual 模式的 HITL 语义 —— 未修，勿当回归 |
 | api-live 持久化段被清 | 脚本预清理吞 `api-e2e-*` 前缀频道；夹具勿用该前缀 |
 | 双绑定 15030 竞态 / 3002 全局包陷阱 / mini-slave 须回显事务 id | 协议模拟器纪律，见协议驱动记忆 |
 | npm publish/install 被 7890 拦 | `--no-proxy --https-proxy=null --proxy=null`；git push 用 `-c http.proxy=` |

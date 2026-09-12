@@ -202,6 +202,11 @@ section('[4/6] 文档里宣称的版本号必须等于 package.json')
     ['docs/cli.en.md', new RegExp(`current version${GAP}([0-9]+\\.[0-9]+\\.[0-9]+)`, 'i')],
     ['docs/sdk.md', new RegExp(`npm\\s*包版本${GAP}([0-9]+\\.[0-9]+\\.[0-9]+)`)],
     ['docs/sdk.en.md', new RegExp(`npm package version${GAP}([0-9]+\\.[0-9]+\\.[0-9]+)`, 'i')],
+    // 插件开发指南开头也写死了"本文档对应当前版本 vX.Y.Z":发版时会一起腐烂,
+    // 且文档站点的孪生文件(docs/site/plugins/guide.md、docs/site/en/plugins/guide.md)
+    // 由 deploy-docs 工作流直接复制,漏改就是站点与仓库不一致。
+    ['docs/plugins.md', new RegExp(`对应当前版本${GAP}([0-9]+\\.[0-9]+\\.[0-9]+)`)],
+    ['docs/plugins.en.md', new RegExp(`describes${GAP}v([0-9]+\\.[0-9]+\\.[0-9]+)`, 'i')],
   ]
   for (const [file, re] of VERSION_CLAIMS) {
     const text = read(file)

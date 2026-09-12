@@ -1,6 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.7.36",
+  "version": "0.7.37",
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
   "license": "PolyForm-Noncommercial-1.0.0",
@@ -51,6 +51,7 @@
     "docs/sdk.en.md",
     "docs/aml.md",
     "docs/tui.md",
+    "docs/full-test-plan.md",
     "docs/multi-harness-architecture.md",
     "tui"
   ],

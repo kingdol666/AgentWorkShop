@@ -7,7 +7,7 @@
 
 **SDK version constants**: server-side `SDK_VERSION = '0.3.0'`, browser-side `CLIENT_SDK_VERSION = '0.3.0'`.
 These two constants are the **interface version of the SDK itself** and evolve **independently**
-from the npm package version (the `version` field in `package.json`, currently 0.7.36) —
+from the npm package version (the `version` field in `package.json`, currently 0.7.37) —
 them being out of sync is expected. Never use `SDK_VERSION` to infer the package version, or the reverse.
 **Module format**: ESM only (only `import` / `export`; there is no CJS entry).
 **Types**: `sdk/index.d.mts` and `sdk/client.d.mts` ship with the package, so TypeScript projects

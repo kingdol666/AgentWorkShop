@@ -5,7 +5,7 @@
 > 零第三方运行时依赖,Node ≥ 23.4 与现代浏览器双端可用。
 
 **SDK 版本常量**:服务端 `SDK_VERSION = '0.3.0'`,浏览器端 `CLIENT_SDK_VERSION = '0.3.0'`。
-这两个常量是 **SDK 自身接口的版本号**,与 npm 包版本(`package.json` 的 `version`,当前 0.7.36)
+这两个常量是 **SDK 自身接口的版本号**,与 npm 包版本(`package.json` 的 `version`,当前 0.7.37)
 **各自独立演进** —— 常数不同步是预期行为,不要拿 `SDK_VERSION` 去推断包版本,反之亦然。
 **模块形态**:ESM only(只有 `import` / `export`,没有 CJS 入口)。
 **类型**:`sdk/index.d.mts`、`sdk/client.d.mts` 随包发布,TS 项目零配置获得提示(覆盖范围见 §7)。

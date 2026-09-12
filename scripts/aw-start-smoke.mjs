@@ -70,12 +70,22 @@ async function main() {
   const recipe = (recipes?.data?.recipes ?? []).filter(r => r.name?.startsWith('烘干温度配方') && r.lineId === lineId).pop()
   const start = await api('POST', `/api/workshop/dcw/lines/${spDaq.lineId}/start`, { body: { recipeId: recipe?.id } })
   check('产线开跑(激活 LineRun → 数采节拍启动;已在运行=幂等通过)', start?.code === 0 || /已在运行/.test(String(start?.message ?? '')), start?.message ?? '')
-  await sleep(4000)
+  // 采样节拍默认 5s(config.yml daq.defaultIntervalMs),固定 sleep(4000) 只能攒到 1 个桶,
+  // 于是「持续流入」判据会在慢机上偶发 FAIL(实测同环境复跑 1↔26 桶)。改为轮询到齐。
+  const waitPoints = async (min, budgetMs) => {
+    const t0 = Date.now()
+    let pts = []
+    while (Date.now() - t0 < budgetMs) {
+      await sleep(2500)
+      const s = await api('GET', `/api/workshop/daq/${pvDaq.id}/samples?from=${Date.now() - 30_000}&bucketMs=1000&limit=60`)
+      pts = s?.data?.points ?? []
+      if (pts.length >= min) break
+    }
+    return pts
+  }
 
   console.log('━━━ 4. 数采(真实 Modbus 读) ━━━')
-  const now = Date.now()
-  const samples = await api('GET', `/api/workshop/daq/${pvDaq.id}/samples?from=${now - 30_000}&bucketMs=1000&limit=60`)
-  const pts = samples?.data?.points ?? []
+  const pts = await waitPoints(3, 30_000)
   const lastPv = pts[pts.length - 1]?.avg ?? pts[pts.length - 1]?.value
   check('PV 数采持续流入(开跑后有数据)', pts.length >= 3, `n=${pts.length} 最新 PV=${Number(lastPv ?? 0).toFixed(1)}℃`)
   check('PV 数值物理合理(100~250℃ 范围)', lastPv > 100 && lastPv < 250, `PV=${Number(lastPv ?? 0).toFixed(1)}`)
@@ -102,15 +112,23 @@ async function main() {
     body: { agentId: agentRow.id, tool: 'dcw_control', args: { node_id: dwNodeId, value: 178, hypothesis: '冒烟:Agent 提升设定值验证数控链路' } },
   })
   const ctrlText = String(ctrl?.data?.result?.text ?? '')
-  check('Agent dcw_control 下发 178', ctrlText.length > 20 && !ctrlText.includes('无权'), ctrlText.slice(0, 70).replace(/\n/g, ' '))
+  // 断言必须能区分"真下发"与"工具面报错":此前只看文本长度 + 不含「无权」,
+  // 于是「工具桥不支持该协作工具」这类错误文本反而被判 PASS(假绿)。
+  const ctrlErr = ctrl?.data?.result?.isError === true
+  check('Agent dcw_control 下发 178(未报错)', !ctrlErr && ctrlText.length > 20, ctrlText.slice(0, 70).replace(/\n/g, ' '))
   await sleep(9000)
   const readback2 = await api('GET', `/api/workshop/daq/${spDaq.id}/samples?from=${Date.now() - 15_000}&bucketMs=1000&limit=30`)
   const spPts2 = readback2?.data?.points ?? []
   const spNow2 = spPts2[spPts2.length - 1]?.avg ?? spPts2[spPts2.length - 1]?.value
-  check('数采回读确认 Agent 下发生效 SP≈178(爬升动态中)', Number(spNow2) > 150 && Number(spNow2) < 200, `回读=${Number(spNow2 ?? 0).toFixed(1)}℃`)
+  check('数采回读确认 SP 落在下发区间(150~200℃)', Number(spNow2) > 150 && Number(spNow2) < 200, `回读=${Number(spNow2 ?? 0).toFixed(1)}℃`)
   const ops = await api('GET', '/api/workshop/ops-logs?limit=50')
-  const lastOp = (ops?.data?.logs ?? []).find(l => String(l.action ?? '').startsWith('dcw.write'))
-  check('Agent 下发入审计(来源=Agent)', !!lastOp && lastOp.actorKind === 'agent', `${lastOp?.action ?? ''} ${lastOp?.actorName ?? ''} ${lastOp?.summary?.slice(0, 40) ?? ''}`)
+  // 断言的是"上一次 dcw.write 写手是 Agent",因此必须**先按来源过滤**再取最近一条:
+  // 取全体最近一条会被同脚本上一段的 REST 手动写(actorKind=user)稳定命中,永远 FAIL。
+  const dcwOps = (ops?.data?.logs ?? []).filter(l => String(l.action ?? '').startsWith('dcw.write'))
+  const agentOp = dcwOps.find(l => l.actorKind === 'agent')
+  check('Agent 下发入审计(来源=Agent)', !!agentOp, agentOp
+    ? `${agentOp.action} ${agentOp.actorName ?? ''} ${agentOp.summary?.slice(0, 40) ?? ''}`
+    : `未见 agent 来源的 dcw.write(最近 ${dcwOps.length} 条均为手动/其他来源:${dcwOps.slice(0, 2).map(l => l.actorKind).join(',') || '无'})`)
 
   console.log('━━━ 6. AML 影子模型(生产模型持续可用) ━━━')
   const prods = await api('GET', '/api/workshop/aml/models?stage=production')
@@ -119,6 +137,7 @@ async function main() {
   if (prod) {
     const io = prod.ioSpec
     const h = io?.historySteps ?? 10
+    const now = Date.now()
     const spS = await api('GET', `/api/workshop/daq/${spDaq.id}/samples?from=${now - (h + 2) * 1000}&bucketMs=1000&limit=${h}`)
     const pvS = await api('GET', `/api/workshop/daq/${pvDaq.id}/samples?from=${now - (h + 2) * 1000}&bucketMs=1000&limit=${h}`)
     const spV = (spS?.data?.points ?? []).map(p => p.avg ?? p.value)

@@ -62,7 +62,7 @@ pnpm tui             # the terminal workbench
 ### 3. Quick use via npx (no global install)
 
 ```bash
-npx agentworkshop start            # fetch and start (pin a version with: npx agentworkshop@0.7.36 start)
+npx agentworkshop start            # fetch and start (pin a version with: npx agentworkshop@0.7.37 start)
 npx agentworkshop doctor           # subcommands work as usual
 npx -p agentworkshop aw doctor     # use -p when you want the name aw
 ```
@@ -79,7 +79,7 @@ npx -p agentworkshop aw doctor     # use -p when you want the name aw
 | Package manager | `pnpm@11.9.0` (`packageManager`, needed only for source development) |
 | Module format | ESM (`type: module`) |
 | License | `PolyForm-Noncommercial-1.0.0` |
-| Current version | `0.7.36` (`package.json`) |
+| Current version | `0.7.37` (`package.json`) |
 
 ## 2. First start (the Claude Code experience)
 
