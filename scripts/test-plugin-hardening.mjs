@@ -46,5 +46,37 @@ console.log('\n━━━ 2. 路由表按插件卸下(P0-1 回滚所需) ━━�
   check('unregisterPlugin 幂等(再调返回 0)', t.unregisterPlugin('alpha') === 0)
 }
 
+console.log('\n━━━ 3. 稳定性护栏的严重性判定(哪类异常不该退进程) ━━━')
+{
+  const { classifyFatalCandidate } = await import('../server/utils/stability-severity.ts')
+  const err = (code, message = 'boom') => Object.assign(new Error(message), { code })
+
+  // 外部设备不可达 → 不退进程。实测事故:一台 Modbus TCP 设备未启动
+  // (connect ECONNREFUSED 127.0.0.1:1502)使整个生产实例 exit 1。
+  check('ECONNREFUSED(设备未启动)→ upstream', classifyFatalCandidate(err('ECONNREFUSED')) === 'upstream')
+  check('ENOTFOUND(DNS 解析失败)→ upstream', classifyFatalCandidate(err('ENOTFOUND')) === 'upstream')
+  check('EHOSTUNREACH → upstream', classifyFatalCandidate(err('EHOSTUNREACH')) === 'upstream')
+  check('ENETUNREACH → upstream', classifyFatalCandidate(err('ENETUNREACH')) === 'upstream')
+  check('undici UND_ERR_CONNECT_TIMEOUT → upstream', classifyFatalCandidate(err('UND_ERR_CONNECT_TIMEOUT')) === 'upstream')
+  check('无 code 但 message 带 ECONNREFUSED → upstream',
+    classifyFatalCandidate(new Error('connect ECONNREFUSED 127.0.0.1:1502')) === 'upstream')
+
+  // 其余既有分级不得回退
+  check('ECONNRESET(客户端硬断)→ socket', classifyFatalCandidate(err('ECONNRESET')) === 'socket')
+  check('EPIPE → socket', classifyFatalCandidate(err('EPIPE')) === 'socket')
+  check('SQLITE_BUSY → db-busy', classifyFatalCandidate(err('SQLITE_BUSY')) === 'db-busy')
+  check('database is locked(无 code)→ db-busy', classifyFatalCandidate(new Error('database is locked')) === 'db-busy')
+  check('omp API 4xx → engine', classifyFatalCandidate(new Error('omp API 500: upstream failed')) === 'engine')
+
+  // fail-fast 语义必须保住:真实缺陷仍要退进程
+  check('密钥校验失败 → fatal(安全插件 fail-fast 依赖)', classifyFatalCandidate(new Error('生产环境必须设置 NUXT_SESSION_PASSWORD')) === 'fatal')
+  check('任意未分类异常 → fatal', classifyFatalCandidate(new Error('unexpected token in JSON at position 0')) === 'fatal')
+  check('null → fatal(不放过未知形态)', classifyFatalCandidate(null) === 'fatal')
+  check('非 Error 值(字符串)→ fatal', classifyFatalCandidate('something odd') === 'fatal')
+  // 引擎名只允许出现在首行:stack 里偶然含引擎名不得把真实错误降级
+  check('引擎名仅在 stack 中 → 不降级',
+    classifyFatalCandidate(Object.assign(new Error('TypeError: x is not a function'), { stack: 'TypeError: x is not a function\n  at omp API (x.ts:1)' })) === 'fatal')
+}
+
 console.log(`\n━━━ 结果:${pass} passed, ${fail} failed ━━━\n`)
 process.exit(fail === 0 ? 0 : 1)

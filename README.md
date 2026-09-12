@@ -15,7 +15,7 @@
 
 **[中文文档 →](./README-zh.md)** · **[Online Docs →](https://kingdol666.github.io/AgentWorkShop/)** · **[Releases →](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog →](./changelog.md)**
 
-*Current version: **v0.7.37** · 14 agent engines · 5 field protocols · 99 runtime settings · bilingual docs (简体中文 / English)*
+*Current version: **v0.7.38** · 14 agent engines · 5 field protocols · 99 runtime settings · bilingual docs (简体中文 / English)*
 
 *A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to a 3D twin.*
 
@@ -253,7 +253,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.37** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.38** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 

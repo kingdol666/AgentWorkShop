@@ -1,6 +1,6 @@
 # AgentWorkShop 全功能测试流程 Plan
 
-> 版本无关的常备测试手册（撰写时基线 v0.7.36）。用途：后续直接指令 agent
+> 版本无关的常备测试手册（撰写时基线 v0.7.37）。用途：后续直接指令 agent
 > 「按 docs/full-test-plan.md 执行 Phase 0–N」即可完成全功能测试。
 > 断言数为历史全绿基线（2026-09 上旬各轮验收），以脚本实际输出为准；括号内数字仅用于识别明显回退。
 > 最后核对：2026-09-12（脚本清单逐一经 `scripts/` 实存核对）。
@@ -163,6 +163,8 @@
 | npm publish/install 被 7890 拦 | `--no-proxy --https-proxy=null --proxy=null`；git push 用 `-c http.proxy=` |
 | dev 起服务 500 找不到 `D:\shared\*.mjs` | nitro 相对导入打包坑：须 `@/` 别名（勿用裸相对路径） |
 | tsx 报类型/import 错 | 必须带 `--tsconfig .nuxt/tsconfig.server.json` |
+| 长跑中途服务**静默消失**、端口释放、日志里**没有** fatal 行 | 两种可能，靠"日志有无 `[stability-guard] fatal`"区分：① 被外部强杀（`taskkill`/句柄回收）—— 退出码 1 且 stdout 缓冲区丢失，属进程外因素；② 走到 fatal 分支 —— 会有 `fatal <kind>, exiting:` 加完整错误文本。护栏只有四类异常**不退进程**：`socket`（ECONNRESET/EPIPE）/`db-busy`（SQLITE_BUSY）/`upstream`（ECONNREFUSED/ENOTFOUND/EHOSTUNREACH/ENETUNREACH/连接超时）/`engine`（omp·codex·dsh·opencode API），其余一律 fatal。判据集中在 `server/utils/stability-severity.ts`，可被纯 node 直接断言（`test-plugin-hardening.mjs` 第 3 节，16 条）|
+| 一台设备没开就带走了整个平台（数采/数控/孪生全挂） | 曾实测：Modbus TCP 设备未启动（`connect ECONNREFUSED 127.0.0.1:1502`）触发 `unhandledRejection` 走到 fatal → 生产实例 `exit 1`。`ECONNREFUSED` 等**外部设备/上游不可达**已归入 `upstream`（只记录 + 计数，不退进程）—— 设备离线是运维常态，DAQ 驱动本来就把失败记为节点 `lastError`/`state=offline` 并继续轮询。回归验证：`node scripts/_audit/guard-upstream-liveness.mjs --port 1502`（建一条指向死端口的节点 → 断言服务仍健康）|
 
 ---
 
