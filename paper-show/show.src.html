@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentWorkShop · 系统全景与论文发表路线 — Control Room Briefing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   AgentWorkShop · Control Room Briefing
+   设计令牌单一来源 = app/assets/css/main.css html.dark 段（项目真实品牌）
+   母题：刻度标尺 · 轨道 · 信号灯 · 等宽字数据
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --paper:#070b13; --raised:#0d1420; --deep:#0a111d; --tint:#152034;
+  --line:#1d2a42; --line2:#2c4568;
+  --acc:#3fe4ab; --acc-ink:#08130d;
+  --cyan:#41c8f4; --amber:#f6c453; --red:#ff8080; --vio:#a795ff;
+  --ink:#e8eef8; --ink2:#b9c6d8; --ink3:#8fa0b5; --ink4:#5f6e84;
+  --mono:'IBM Plex Mono',ui-monospace,'Cascadia Code',Consolas,monospace;
+  --disp:'Space Grotesk','Noto Sans SC',system-ui,sans-serif;
+  --sans:'Noto Sans SC','Space Grotesk',system-ui,'Microsoft YaHei',sans-serif;
+  --s:1;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scrollbar-width:thin;scrollbar-color:var(--line2) var(--paper)}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--line2)}::-webkit-scrollbar-track{background:var(--paper)}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);overflow:hidden}
+
+/* ── deck：纵向 snap 滚动 ─────────────────────────── */
+.deck{height:100vh;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth}
+.slide{height:100vh;display:grid;place-items:center;scroll-snap-align:start;position:relative}
+.frame{width:calc(1920px * var(--s));height:calc(1080px * var(--s));position:relative;overflow:hidden;background:var(--paper)}
+.stage{width:1920px;height:1080px;position:absolute;top:0;left:0;transform:scale(var(--s));transform-origin:top left;
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(65,200,244,.05), transparent 60%),
+    radial-gradient(1400px 700px at -10% 110%, rgba(63,228,171,.05), transparent 60%),
+    var(--paper)}
+
+/* ── HUD：轨道页码 + 计数器 + 品牌角标 ─────────────── */
+.hud-rail{position:fixed;right:22px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:14px;z-index:50}
+.hud-rail button{width:26px;height:8px;border:1px solid var(--line2);background:transparent;cursor:pointer;padding:0;position:relative}
+.hud-rail button.on{background:var(--acc);border-color:var(--acc)}
+.hud-rail button:hover{border-color:var(--acc)}
+.hud-count{position:fixed;right:22px;bottom:18px;font-family:var(--mono);font-size:12px;color:var(--ink3);letter-spacing:.12em;z-index:50}
+.hud-count b{color:var(--acc);font-weight:600}
+.hud-brand{position:fixed;left:22px;bottom:18px;font-family:var(--mono);font-size:11px;color:var(--ink4);letter-spacing:.14em;z-index:50}
+.hud-brand i{font-style:normal;color:var(--acc)}
+
+/* ── 舞台通用：页头 / 刻度 / 页脚 ─────────────────── */
+.ticks{position:absolute;left:64px;right:64px;bottom:34px;height:8px;
+  background:repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 24px);
+  -webkit-mask:linear-gradient(90deg,#000 88%,transparent);mask:linear-gradient(90deg,#000 88%,transparent)}
+.ticks::after{content:"";position:absolute;left:0;top:0;height:8px;width:160px;
+  background:repeating-linear-gradient(90deg, var(--acc) 0 1px, transparent 1px 24px)}
+.s-head{position:absolute;top:56px;left:64px;right:64px}
+.kicker{font-family:var(--mono);font-size:13px;letter-spacing:.28em;color:var(--acc);display:flex;align-items:center;gap:12px}
+.kicker::before{content:"";width:9px;height:9px;background:var(--acc);box-shadow:0 0 12px rgba(63,228,171,.8)}
+.kicker .kx{color:var(--ink4)}
+.s-head h2{font-family:var(--disp);font-weight:700;font-size:44px;letter-spacing:.01em;margin-top:14px;color:var(--ink)}
+.s-head h2 em{font-style:normal;color:var(--ink3);font-weight:500;font-size:30px}
+.s-head .rule{margin-top:20px;height:1px;background:linear-gradient(90deg,var(--line2),var(--line) 40%,transparent)}
+.mono{font-family:var(--mono)}
+.g{color:var(--acc)}.c{color:var(--cyan)}.a{color:var(--amber)}.r{color:var(--red)}.v{color:var(--vio)}
+
+/* 入场动效（IntersectionObserver 触发一次） */
+.rise{opacity:0;transform:translateY(18px)}
+.slide.in .rise{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
+.slide.in .d1{animation-delay:.08s}.slide.in .d2{animation-delay:.18s}.slide.in .d3{animation-delay:.28s}
+.slide.in .d4{animation-delay:.38s}.slide.in .d5{animation-delay:.48s}.slide.in .d6{animation-delay:.58s}
+@keyframes rise{to{opacity:1;transform:none}}
+
+/* ── 信号灯 / 徽章 / 芯片 ─────────────────────────── */
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.g{background:var(--acc);box-shadow:0 0 10px rgba(63,228,171,.9);animation:blink 2.2s infinite}
+.dot.c{background:var(--cyan);box-shadow:0 0 10px rgba(65,200,244,.8);animation:blink 2.8s infinite}
+.dot.a{background:var(--amber);box-shadow:0 0 10px rgba(246,196,83,.8)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+.chipv{font-family:var(--mono);font-size:12px;color:var(--ink3);border:1px solid var(--line2);padding:5px 12px;letter-spacing:.08em}
+
+/* ═══════════ SLIDE 01 · 封面 ═══════════ */
+#s1 .wrap{position:absolute;inset:64px;display:grid;grid-template-columns:880px 1fr;gap:70px;align-items:center}
+#s1 .topline{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:13px;letter-spacing:.22em;color:var(--ink3)}
+#s1 .topline .ln{flex:0 0 64px;height:1px;background:var(--acc)}
+#s1 h1{font-family:var(--disp);font-weight:700;font-size:96px;line-height:1.02;letter-spacing:.005em;margin:26px 0 8px}
+#s1 h1 .thin{color:var(--ink3);font-weight:500}
+#s1 .sub{font-size:26px;color:var(--ink2);line-height:1.6;margin-top:18px;max-width:840px}
+#s1 .sub b{color:var(--acc);font-weight:700}
+#s1 .sub i{font-style:normal;color:var(--cyan)}
+#s1 .pos{margin-top:22px;font-family:var(--mono);font-size:13.5px;color:var(--ink3);line-height:1.6;max-width:880px;display:flex;flex-direction:column;gap:8px}
+#s1 .pos span{white-space:nowrap}
+#s1 .pos i{font-style:normal;color:var(--ink4);padding-right:10px}
+#s1 .stats{margin-top:44px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+#s1 .stats>div{background:var(--deep);padding:20px 22px}
+#s1 .stats .n{font-family:var(--disp);font-size:40px;font-weight:700;color:var(--ink)}
+#s1 .stats .n small{font-size:20px;color:var(--ink3);font-weight:500}
+#s1 .stats .t{font-family:var(--mono);font-size:12.5px;color:var(--ink3);margin-top:6px;letter-spacing:.1em}
+#s1 .meta{margin-top:26px;display:flex;gap:12px;flex-wrap:wrap}
+/* 封面右侧：真实产品截屏 + 监视器框 */
+.monitor{position:relative;border:1px solid var(--line2);background:var(--deep);padding:14px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.monitor::before{content:"";position:absolute;inset:0;background:
+  repeating-linear-gradient(0deg, rgba(232,238,248,.022) 0 1px, transparent 1px 3px);pointer-events:none}
+.monitor .cap{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:12px;color:var(--ink3);letter-spacing:.14em;margin-bottom:12px}
+.monitor img{display:block;width:100%;border:1px solid var(--line)}
+.monitor .scan{position:absolute;left:14px;right:14px;top:44px;height:56px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(63,228,171,.10),transparent);
+  animation:scan 6.5s cubic-bezier(.4,0,.6,1) infinite}
+@keyframes scan{0%{transform:translateY(0);opacity:0}8%{opacity:1}88%{opacity:1}100%{transform:translateY(560px);opacity:0}}
+.monitor .corner{position:absolute;width:18px;height:18px;border-color:var(--acc);border-style:solid;border-width:0}
+.monitor .c1{top:-1px;left:-1px;border-top-width:2px;border-left-width:2px}
+.monitor .c2{top:-1px;right:-1px;border-top-width:2px;border-right-width:2px}
+.monitor .c3{bottom:-1px;left:-1px;border-bottom-width:2px;border-left-width:2px}
+.monitor .c4{bottom:-1px;right:-1px;border-bottom-width:2px;border-right-width:2px}
+#s1 .mini{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#s1 .mini .monitor{padding:10px}
+#s1 .mini .cap{margin-bottom:8px;font-size:11px}
+#s1 .mini .scan{display:none}
+
+/* ═══════════ SLIDE 02 · 系统全景流程图 ═══════════ */
+#s2 .flow{position:absolute;top:196px;left:64px;right:64px;bottom:96px;display:grid;
+  grid-template-columns:216px minmax(0,1fr) 296px;column-gap:20px;
+  grid-template-rows:1fr 26px 1fr 26px 1fr 26px 1fr 26px 1fr 26px 1fr}
+.spine-line{grid-column:1;grid-row:1/-1;position:relative;min-width:0}
+.spine-line::before{content:"";position:absolute;left:6px;top:24px;bottom:24px;width:2px;
+  background:linear-gradient(180deg,var(--acc),var(--cyan) 55%,var(--amber))}
+.sp{grid-column:1;align-self:center;position:relative;padding-left:30px;z-index:1}
+.sp::before{content:"";position:absolute;left:2px;top:50%;transform:translateY(-50%);width:10px;height:10px;background:var(--paper);border:2px solid var(--acc)}
+.sp .no{display:block;font-family:var(--mono);font-size:12px;color:var(--acc);letter-spacing:.18em}
+.sp .nm{display:block;font-size:19px;font-weight:700;color:var(--ink);margin-top:2px}
+.sp .en{display:block;font-family:var(--mono);font-size:10.5px;color:var(--ink4);letter-spacing:.16em;margin-top:3px}
+.lane{grid-column:2;display:flex;gap:10px;align-items:stretch;position:relative;min-width:0}
+.lane::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line);z-index:0}
+.chip{position:relative;z-index:1;flex:1 1 0;background:var(--raised);border:1px solid var(--line);padding:10px 13px 9px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.chip b{font-size:15px;font-weight:700;color:var(--ink);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-top:5px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.chip.hot{border-color:rgba(63,228,171,.55);background:linear-gradient(180deg,rgba(63,228,171,.10),rgba(63,228,171,.03)),var(--raised)}
+.chip.hot b{color:var(--acc)}
+.chip.data{border-color:rgba(65,200,244,.45)}
+.chip.data b{color:var(--cyan)}
+.chip.field{background:var(--deep)}
+.chip.field b{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.02em}
+.chip.field i{color:var(--ink4)}
+.r1{grid-row:1}.r2{grid-row:2}.r3{grid-row:3}.r4{grid-row:4}.r5{grid-row:5}.r6{grid-row:6}
+.r7{grid-row:7}.r8{grid-row:8}.r9{grid-row:9}.r10{grid-row:10}.r11{grid-row:11}
+.dn{grid-column:2;position:relative;min-width:0}
+.dn::before{content:"";position:absolute;left:50%;top:-1px;bottom:-1px;width:1px;background:var(--line2)}
+.dn .pl{position:absolute;left:50%;top:0;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);animation:travel 2.4s linear infinite;z-index:1}
+.dn .pl.p2{animation-delay:.8s;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.dn .pl.p3{animation-delay:1.6s}
+@keyframes travel{0%{transform:translate(0,0);opacity:0}12%{opacity:1}85%{opacity:1}100%{transform:translate(0,26px);opacity:0}}
+/* 审计侧轨 */
+.audit{grid-column:3;grid-row:1/-1;position:relative;min-width:0;border:1px solid var(--line2);background:
+  linear-gradient(180deg,rgba(246,196,83,.05),transparent 30%),var(--deep);padding:20px 22px;display:flex;flex-direction:column}
+.audit .ah{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12.5px;letter-spacing:.2em;color:var(--amber)}
+.audit .ah::before{content:"";width:22px;height:2px;background:var(--amber)}
+.audit .at{font-size:19px;font-weight:700;margin-top:8px}
+.audit .steps{margin-top:12px;display:flex;flex-direction:column;gap:0;flex:1;justify-content:space-evenly}
+.audit .st{position:relative;padding:10px 0 10px 24px;border-left:1px dashed rgba(246,196,83,.4)}
+.audit .st::before{content:"";position:absolute;left:-5px;top:16px;width:9px;height:9px;background:var(--amber);transform:rotate(45deg)}
+.audit .st b{font-size:14.5px;font-weight:700;color:var(--ink);display:block}
+.audit .st i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink3);display:block;margin-top:4px;line-height:1.5}
+.audit .foot{margin-top:10px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink3);line-height:1.7}
+#s2 .legend{position:absolute;left:64px;right:64px;bottom:52px;display:flex;gap:26px;align-items:center;font-family:var(--mono);font-size:12px;color:var(--ink3);letter-spacing:.06em}
+#s2 .legend .lg{display:flex;align-items:center;gap:8px}
+#s2 .legend .sw{width:22px;height:12px;border:1px solid var(--line2);background:var(--raised)}
+#s2 .legend .sw.hot{border-color:rgba(63,228,171,.55);background:rgba(63,228,171,.12)}
+#s2 .legend .sw.data{border-color:rgba(65,200,244,.45);background:rgba(65,200,244,.10)}
+#s2 .legend .dash{width:22px;height:0;border-top:1px dashed var(--amber)}
+
+/* ═══════════ SLIDE 03 · 读 / 写数据流 ═══════════ */
+#s3 .cols{position:absolute;top:196px;left:64px;right:64px;bottom:170px;display:grid;grid-template-columns:1fr 1fr;gap:26px}
+.path{border:1px solid var(--line);background:var(--deep);padding:22px 28px 18px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.path .ph{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.path .ph b{font-size:24px;font-weight:700}
+.path .ph .tag{font-family:var(--mono);font-size:12px;letter-spacing:.2em}
+.path .ph .rt{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink4)}
+.path.read .ph b{color:var(--acc)} .path.read .ph .tag{color:var(--acc)}
+.path.write .ph b{color:var(--amber)} .path.write .ph .tag{color:var(--amber)}
+.steps2{display:grid;grid-template-columns:1fr 1fr;column-gap:26px;grid-template-rows:repeat(4,1fr);flex:1}
+.steps2 .stp{position:relative;padding:8px 0 8px 40px;display:flex;flex-direction:column;justify-content:center}
+.steps2 .stp::before{content:attr(data-n);position:absolute;left:0;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:12px;color:var(--ink4)}
+.steps2 .stp::after{content:"";position:absolute;left:16px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.steps2 .stp b{display:block;font-size:15.5px;font-weight:700;color:var(--ink)}
+.steps2 .stp i{display:block;font-style:normal;font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:3px;line-height:1.4}
+.path .pf{border-top:1px solid var(--line);padding-top:12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em}
+.path.read .pf{color:var(--acc)} .path.write .pf{color:var(--amber)}
+.auditstrip{position:absolute;left:64px;right:64px;bottom:96px;border:1px dashed rgba(246,196,83,.45);background:rgba(246,196,83,.04);
+  display:flex;align-items:center;gap:0;padding:16px 26px;font-size:14.5px;color:var(--ink2)}
+.auditstrip .lab{font-family:var(--mono);font-size:12px;letter-spacing:.2em;color:var(--amber);flex:0 0 auto;margin-right:24px;display:flex;align-items:center;gap:10px}
+.auditstrip .lab::before{content:"";width:8px;height:8px;background:var(--amber);transform:rotate(45deg)}
+.auditstrip .hop{display:flex;align-items:center;gap:12px}
+.auditstrip .hop b{color:var(--ink);font-weight:700;font-size:15px}
+.auditstrip .arr{color:var(--ink4);font-family:var(--mono)}
+
+/* ═══════════ SLIDE 04 · 能力全景 ═══════════ */
+#s4 .grid{position:absolute;top:196px;left:64px;right:64px;bottom:96px;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:1fr 1fr;gap:14px}
+.cap{border:1px solid var(--line);background:var(--raised);padding:18px 18px 16px;position:relative;display:flex;flex-direction:column;transition:transform .25s,border-color .25s}
+.cap:hover{transform:translateY(-4px);border-color:var(--line2)}
+.cap .tk{height:5px;margin-bottom:12px;background:repeating-linear-gradient(90deg,var(--line2) 0 1px,transparent 1px 8px)}
+.cap .no{font-family:var(--mono);font-size:11px;color:var(--ink4);letter-spacing:.16em;position:absolute;top:18px;right:16px}
+.cap b{font-size:18px;font-weight:700;line-height:1.3}
+.cap b i{font-style:normal;color:var(--cyan);font-family:var(--mono);font-size:12px;display:block;margin-top:3px;font-weight:500;letter-spacing:.06em}
+.cap p{font-size:13.5px;color:var(--ink2);line-height:1.62;margin-top:9px}
+.cap .key{margin-top:auto;padding-top:10px;font-family:var(--mono);font-size:11px;color:var(--acc);letter-spacing:.04em}
+
+/* ═══════════ SLIDE 05 · 真实界面 ═══════════ */
+#s5 .shots{position:absolute;top:196px;left:64px;right:64px;bottom:160px;display:grid;grid-template-columns:1.35fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:16px}
+#s5 .shot{border:1px solid var(--line2);background:var(--deep);padding:10px;display:flex;flex-direction:column;position:relative;min-height:0}
+#s5 .shot .cap{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;color:var(--ink3);letter-spacing:.1em;margin-bottom:8px;white-space:nowrap;overflow:hidden}
+#s5 .shot img{width:100%;flex:1;object-fit:cover;object-position:top left;border:1px solid var(--line);min-height:0}
+#s5 .shot .cap b{color:var(--ink);font-weight:600}
+#s5 .shot.f{grid-row:1/-1}
+#s5 .shot.f img{object-fit:cover;object-position:left top}
+#s5 .stack{position:absolute;left:64px;right:64px;bottom:56px;display:flex;gap:9px;flex-wrap:nowrap;overflow:hidden}
+#s5 .stack .chipv{font-size:11.5px;padding:5px 11px;white-space:nowrap;flex:0 0 auto;letter-spacing:.05em}
+
+/* ═══════════ SLIDE 06 · 论文可行性 ═══════════ */
+#s6 .verdict{position:absolute;top:186px;left:64px;right:64px;border:1px solid rgba(63,228,171,.5);background:
+  linear-gradient(90deg,rgba(63,228,171,.10),rgba(63,228,171,.02)),var(--deep);padding:22px 30px;display:flex;align-items:center;gap:26px}
+#s6 .verdict .vk{flex:0 0 auto;display:flex;flex-direction:column;gap:4px}
+#s6 .verdict .vk .big{font-family:var(--disp);font-size:34px;font-weight:700;color:var(--acc)}
+#s6 .verdict .vk .sm{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--ink3)}
+#s6 .verdict .vd{font-size:16.5px;color:var(--ink2);line-height:1.65;border-left:1px solid var(--line2);padding-left:26px}
+#s6 .verdict .vd b{color:var(--ink)}
+#s6 .tri{position:absolute;top:392px;left:64px;right:64px;bottom:96px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.tri .col{border:1px solid var(--line);background:var(--raised);padding:22px 24px;display:flex;flex-direction:column}
+.tri .col .ch{font-family:var(--mono);font-size:12px;letter-spacing:.22em;display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.tri .col .ch::before{content:"";width:8px;height:8px;transform:rotate(45deg)}
+.tri .col.c1 .ch{color:var(--acc)} .tri .col.c1 .ch::before{background:var(--acc)}
+.tri .col.c2 .ch{color:var(--cyan)} .tri .col.c2 .ch::before{background:var(--cyan)}
+.tri .col.c3 .ch{color:var(--amber)} .tri .col.c3 .ch::before{background:var(--amber)}
+.tri .col ul{list-style:none;margin-top:6px;flex:1;display:flex;flex-direction:column;justify-content:space-evenly}
+.tri .col li{padding:12px 0 11px;border-bottom:1px solid var(--line);font-size:14px;color:var(--ink2);line-height:1.55}
+.tri .col li:last-child{border-bottom:none}
+.tri .col li b{color:var(--ink);display:block;font-size:14.5px;margin-bottom:2px}
+.tri .col li i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--ink4)}
+.tri .col .cf{border-top:1px solid var(--line2);padding-top:12px;font-family:var(--mono);font-size:11px;letter-spacing:.08em}
+.tri .col.c1 .cf{color:var(--acc)} .tri .col.c2 .cf{color:var(--cyan)} .tri .col.c3 .cf{color:var(--amber)}
+
+/* ═══════════ SLIDE 07 · 相似论文 ═══════════ */
+#s7 .papers{position:absolute;top:186px;left:64px;right:64px;bottom:284px;display:flex;flex-direction:column}
+.pap{display:grid;grid-template-columns:190px 110px 1fr 200px;gap:20px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--line);flex:1}
+.pap .id{font-family:var(--mono);font-size:14px;color:var(--cyan);letter-spacing:.02em}
+.pap .dt{font-family:var(--mono);font-size:13px;color:var(--ink3)}
+.pap .tt b{font-size:15.5px;color:var(--ink);font-weight:600;display:block;line-height:1.4}
+.pap .tt i{font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--ink4);display:block;margin-top:3px}
+.pap .rel{justify-self:end}
+.pap .rel span{font-family:var(--mono);font-size:11px;letter-spacing:.1em;border:1px solid var(--line2);color:var(--ink3);padding:4px 10px;white-space:nowrap}
+.pap.hot{background:linear-gradient(90deg,rgba(63,228,171,.07),transparent);border-left:2px solid var(--acc)}
+.pap.hot .rel span{border-color:rgba(63,228,171,.6);color:var(--acc)}
+#s7 .diff{position:absolute;left:64px;right:64px;bottom:96px;height:168px;border:1px solid var(--line2);background:var(--deep);padding:20px 28px;display:flex;gap:30px;align-items:center;box-sizing:border-box}
+#s7 .diff .dt1{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--acc);flex:0 0 auto;line-height:1.9}
+#s7 .diff .items{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;flex:1}
+#s7 .diff .it b{display:block;font-size:15px;color:var(--ink);font-weight:700}
+#s7 .diff .it p{font-size:13px;color:var(--ink2);line-height:1.6;margin-top:4px}
+
+/* ═══════════ SLIDE 08 · 期刊推荐 ═══════════ */
+#s8 .pick{position:absolute;top:186px;left:64px;right:64px;border:1px solid rgba(63,228,171,.5);background:
+  linear-gradient(90deg,rgba(63,228,171,.10),rgba(63,228,171,.02)),var(--deep);padding:22px 30px;display:grid;grid-template-columns:auto 1fr auto;gap:30px;align-items:center}
+#s8 .pick .pk1 .l1{font-family:var(--mono);font-size:12px;letter-spacing:.24em;color:var(--acc)}
+#s8 .pick .pk1 .l2{font-family:var(--disp);font-size:38px;font-weight:700;margin-top:6px}
+#s8 .pick .pk1 .l3{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-top:8px;letter-spacing:.06em}
+#s8 .pick .why{font-size:15px;color:var(--ink2);line-height:1.7;border-left:1px solid var(--line2);padding-left:26px}
+#s8 .pick .why b{color:var(--ink)}
+#s8 .pick .why i{font-style:italic;color:var(--acc)}
+#s8 .pick .fit{text-align:center}
+#s8 .pick .fit .fn{font-family:var(--disp);font-size:46px;font-weight:700;color:var(--acc)}
+#s8 .pick .fit .ft{font-family:var(--mono);font-size:11px;color:var(--ink3);letter-spacing:.18em;margin-top:2px}
+#s8 .jt{position:absolute;top:400px;left:64px;right:64px}
+#s8 .jcap{font-family:var(--mono);font-size:11.5px;color:var(--ink4);letter-spacing:.14em;margin-bottom:6px}
+.jrow{display:grid;grid-template-columns:210px 120px 1fr 170px;gap:22px;align-items:center;padding:17px 10px;border-bottom:1px solid var(--line)}
+.jrow .jn b{font-size:16.5px;font-weight:700;color:var(--ink);display:block;line-height:1.3}
+.jrow .jn i{font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--ink3);display:block;margin-top:4px;letter-spacing:.04em}
+.jrow .jpub{font-family:var(--mono);font-size:12px;color:var(--ink3)}
+.jrow .jsc{font-size:13.5px;color:var(--ink2);line-height:1.55}
+.jrow .jsc b{color:var(--ink)}
+.jrow .jfit{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.jrow .bar{width:150px;height:6px;background:var(--tint);position:relative}
+.jrow .bar em{position:absolute;left:0;top:0;bottom:0;background:var(--cyan)}
+.jrow .jfit span{font-family:var(--mono);font-size:10.5px;color:var(--ink4);letter-spacing:.14em}
+.jrow.top .jn b{color:var(--acc)}
+.jrow.top .bar em{background:var(--acc)}
+.jrow.top{background:linear-gradient(90deg,rgba(63,228,171,.06),transparent)}
+#s8 .note{position:absolute;left:64px;right:64px;bottom:88px;border:1px dashed rgba(65,200,244,.4);background:rgba(65,200,244,.04);padding:14px 22px;font-family:var(--mono);font-size:11.5px;color:var(--ink2);line-height:1.75}
+#s8 .note b{color:var(--cyan)}
+
+/* ═══════════ SLIDE 09 · 写作框架 ═══════════ */
+#s9 .skeleton{position:absolute;top:186px;left:64px;width:1130px;bottom:96px;display:flex;flex-direction:column}
+.sec{display:grid;grid-template-columns:56px 300px 1fr 120px;gap:18px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);flex:1}
+.sec .sn{font-family:var(--mono);font-size:13px;color:var(--acc)}
+.sec .st b{font-size:16px;font-weight:700;color:var(--ink);display:block}
+.sec .st i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink4);display:block;margin-top:2px;letter-spacing:.06em}
+.sec .sd{font-size:12.5px;color:var(--ink3);line-height:1.5}
+.sec .sp2{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.sec .sp2 .pg{font-family:var(--mono);font-size:12px;color:var(--ink2);white-space:nowrap}
+.sec .sp2 .pb{width:80px;height:5px;background:var(--tint);position:relative}
+.sec .sp2 .pb em{position:absolute;left:0;top:0;bottom:0;background:var(--acc)}
+.sec.core .st b{color:var(--acc)}
+.sec.core .sp2 .pg{color:var(--amber)}
+.sec.core .sp2 .pb em{background:var(--amber)}
+#s9 .bnote{font-family:var(--mono);font-size:11px;color:var(--ink4);padding-top:10px;letter-spacing:.04em}
+#s9 .side{position:absolute;right:64px;top:186px;width:590px;bottom:96px;display:flex;flex-direction:column;gap:14px}
+#s9 .titlebar{border:1px solid rgba(63,228,171,.5);background:linear-gradient(90deg,rgba(63,228,171,.08),transparent),var(--deep);padding:14px 18px}
+#s9 .titlebar span{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--acc)}
+#s9 .titlebar p{font-family:var(--disp);font-size:16.5px;font-weight:600;color:var(--ink);line-height:1.45;margin-top:6px}
+#s9 .logic{border:1px solid var(--line);background:var(--raised);padding:18px 22px}
+#s9 .logic .lh{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--cyan);display:flex;gap:10px;align-items:center}
+#s9 .logic .lh::before{content:"";width:8px;height:8px;background:var(--cyan);transform:rotate(45deg)}
+#s9 .lgx{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#s9 .lgx .nd{font-size:14px;font-weight:700;color:var(--ink);border:1px solid var(--line2);padding:6px 13px;background:var(--deep)}
+#s9 .lgx .ar{color:var(--acc);font-family:var(--mono)}
+#s9 .logic p{font-size:13px;color:var(--ink2);line-height:1.7;margin-top:12px}
+#s9 .layout{border:1px solid var(--line);background:var(--raised);padding:18px 22px;flex:1;display:flex;flex-direction:column}
+#s9 .layout .lh{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--amber);display:flex;gap:10px;align-items:center}
+#s9 .layout .lh::before{content:"";width:8px;height:8px;background:var(--amber);transform:rotate(45deg)}
+#s9 .layout ul{list-style:none;margin-top:8px;flex:1;display:flex;flex-direction:column;justify-content:space-evenly}
+#s9 .layout li{font-size:13px;color:var(--ink2);line-height:1.55;padding:8px 0 8px 20px;position:relative;border-bottom:1px solid var(--line)}
+#s9 .layout li:last-child{border-bottom:none}
+#s9 .layout li::before{content:"";position:absolute;left:2px;top:17px;width:8px;height:2px;background:var(--line2)}
+#s9 .layout li b{color:var(--ink)}
+
+/* ═══════════ SLIDE 10 · 行动路线 ═══════════ */
+#s10 .road{position:absolute;top:220px;left:64px;right:64px;bottom:352px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.rd{border:1px solid var(--line);background:var(--raised);padding:26px 26px 20px;position:relative;display:flex;flex-direction:column}
+.rd .rn{font-family:var(--mono);font-size:13px;color:var(--acc);letter-spacing:.2em}
+.rd b.t{display:block;font-size:23px;font-weight:700;margin-top:10px}
+.rd .wk{font-family:var(--mono);font-size:12px;color:var(--cyan);margin-top:6px;letter-spacing:.1em}
+.rd ul{list-style:none;margin-top:14px;flex:1;display:flex;flex-direction:column;justify-content:space-evenly}
+.rd li{font-size:13.5px;color:var(--ink2);line-height:1.6;padding:6px 0 6px 18px;position:relative}
+.rd li::before{content:"";position:absolute;left:0;top:15px;width:8px;height:2px;background:var(--acc)}
+.rd::after{content:"";position:absolute;top:26px;right:-21px;width:20px;height:2px;background:var(--line2);z-index:2}
+.rd:last-child::after{display:none}
+#s10 .close{position:absolute;left:64px;right:64px;bottom:150px;height:182px;border:1px solid var(--line2);background:var(--deep);padding:30px 36px;display:flex;align-items:center;gap:40px;box-sizing:border-box}
+#s10 .close .cl1{flex:0 0 auto;font-family:var(--disp);font-size:30px;font-weight:700;line-height:1.35}
+#s10 .close .cl1 i{font-style:normal;color:var(--acc)}
+#s10 .close .cl2{font-size:15px;color:var(--ink2);line-height:1.8;border-left:1px solid var(--line2);padding-left:36px}
+#s10 .close .cl2 b{color:var(--ink)}
+#s10 .foot{position:absolute;left:64px;right:64px;bottom:96px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:12.5px;color:var(--ink4);letter-spacing:.08em}
+#s10 .foot a{color:var(--cyan);text-decoration:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<nav class="hud-rail" id="rail" aria-label="页面导航"></nav>
+<div class="hud-count" id="cnt"><b>01</b> / 10</div>
+<div class="hud-brand">AGENTWORKSHOP <i>·</i> CONTROL ROOM BRIEFING <i>·</i> v0.7.24</div>
+
+<main class="deck" id="deck">
+
+<!-- ═══════════ SLIDE 01 · 封面 ═══════════ -->
+<section class="slide" id="s1">
+  <div class="stage">
+    <div class="wrap">
+      <div>
+        <div class="topline rise d1"><span class="ln"></span>SYSTEM BRIEFING · 论文发表评估 · 2026-09</div>
+        <h1 class="rise d2">AgentWorkShop<br><span class="thin">当 AI Agent 团队</span><br>走上产线<span class="g">_</span></h1>
+        <p class="sub rise d3">一个配置驱动的<b>监督层平台</b>：多引擎 Agent 团队与工业数字孪生共享同一运行时——Agent 读取真实遥测，经<i>人工批准的写控管线</i>下发设定值，每个事件实时流入 3D 孪生。</p>
+        <p class="pos rise d4"><span><i>READ</i>五协议采集 · Timescale/MinIO · AEP v1 实时流</span><span><i>WRITE</i>联锁 ∩ HITL ∩ 回读校验 —— 人批准的写控管线</span><span><i>GOVERN</i>参数台账 · 版本回退 · 全链路归因审计</span></p>
+        <div class="stats rise d5">
+          <div><div class="n">40<small> K</small></div><div class="t">行 TS/VUE 源码</div></div>
+          <div><div class="n">18<small> 页</small></div><div class="t">前端页面 · 207 API 路由</div></div>
+          <div><div class="n">5<small> 协议</small></div><div class="t">Modbus TCP/RTU · OPC UA · MQTT · HTTP</div></div>
+          <div><div class="n">6<small> 引擎</small></div><div class="t">mock · omp · codex · dsh · opencode · claude</div></div>
+          <div><div class="n">4<small> 入口</small></div><div class="t">WS(AEP v1) · MCP · A2A · REST</div></div>
+          <div><div class="n">156<small> 断言</small></div><div class="t">E2E 验收 · 0 失败 · 7 套件</div></div>
+        </div>
+        <div class="meta rise d6">
+          <span class="chipv">v0.7.24</span>
+          <span class="chipv">NUXT 4 · NITRO</span>
+          <span class="chipv">TYPESCRIPT 5.7</span>
+          <span class="chipv">NODE:SQLITE + TIMESCALE</span>
+          <span class="chipv">POLYFORM NC 1.0</span>
+        </div>
+      </div>
+      <div class="rise d3">
+        <div class="monitor">
+          <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+          <div class="cap"><span><span class="dot g"></span>&nbsp; LIVE · /town 3D DIGITAL TWIN</span><span>CH-01</span></div>
+          <img src="@@IMG_town@@" alt="3D 数字孪生小镇 — 实时产线">
+          <div class="scan"></div>
+        </div>
+        <div class="mini">
+          <div class="monitor"><div class="cap"><span>AGENT WORKBENCH</span><span>CH-02</span></div><img src="@@IMG_workshop@@" alt="Agent 工作台"></div>
+          <div class="monitor"><div class="cap"><span>LINE OPERATIONS</span><span>CH-03</span></div><img src="@@IMG_dcw@@" alt="产线运营"></div>
+        </div>
+      </div>
+    </div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══════════ SLIDE 02 · 系统全景流程图 ═══════════ -->
+<section class="slide" id="s2">
+  <div class="stage">
+    <header class="s-head rise d1">
+      <div class="kicker">SECTION 02 · SYSTEM OVERVIEW <span class="kx">— 全系统一张图</span></div>
+      <h2>系统全景 <em>· 从传感器到已验证执行的闭环管线</em></h2>
+      <div class="rule"></div>
+    </header>
+    <div class="flow rise d2">
+      <div class="spine-line"></div>
+      <div class="sp r1"><span class="no">LANE 01</span><span class="nm">现场层</span><span class="en">FIELD BUS</span></div>
+      <div class="sp r3"><span class="no">LANE 02</span><span class="nm">采集层</span><span class="en">DAQ EDGE</span></div>
+      <div class="sp r5"><span class="no">LANE 03</span><span class="nm">存储与分发</span><span class="en">STORE &amp; FAN-OUT</span></div>
+      <div class="sp r7"><span class="no">LANE 04</span><span class="nm">智能体编排</span><span class="en">AGENT ORCHESTRATION</span></div>
+      <div class="sp r9"><span class="no">LANE 05</span><span class="nm">写控回路</span><span class="en">WRITE CONTROL</span></div>
+      <div class="sp r11"><span class="no">LANE 06</span><span class="nm">表现层</span><span class="en">SURFACES</span></div>
+      <div class="lane r1">
+        <div class="chip field"><b>传感器 · 变送器</b><i>温度 / 厚度 / CCD 图像</i></div>
+        <div class="chip field"><b>PLC · 串口网关</b><i>硬实时联锁留在 PLC</i></div>
+        <div class="chip field"><b>Modbus TCP</b><i>modbus-serial</i></div>
+        <div class="chip field"><b>Modbus RTU</b><i>RTU-over-TCP</i></div>
+        <div class="chip field"><b>OPC UA</b><i>node-opcua</i></div>
+        <div class="chip field"><b>MQTT</b><i>mqtt 5</i></div>
+        <div class="chip field"><b>HTTP/REST</b><i>轮询 · webhook</i></div>
+        <div class="chip field"><b>mock</b><i>演示 / CI</i></div>
+      </div>
+      <div class="dn r2"><span class="pl"></span><span class="pl p2"></span><span class="pl p3"></span></div>
+      <div class="lane r3">
+        <div class="chip"><b>节点边缘运行时 ×N</b><i>独立采样/下发双节拍 · 邻节点互不阻塞</i></div>
+        <div class="chip"><b>队列端口</b><i>inproc / MQTT broker · 断连离线缓冲</i></div>
+        <div class="chip"><b>消费泵</b><i>乱序防御 · 丢包计数上报</i></div>
+        <div class="chip"><b>告警派生</b><i>配方域监视窗 · 2% 迟滞 + 3 拍消抖 · 离线瞬时</i></div>
+      </div>
+      <div class="dn r4"><span class="pl"></span><span class="pl p2"></span><span class="pl p3"></span></div>
+      <div class="lane r5">
+        <div class="chip data"><b>TimescaleDB / SQLite</b><i>标量批量写 500ms · 5000 背压 · 3 重试</i></div>
+        <div class="chip data"><b>MinIO / 磁盘</b><i>图像帧 daq_frames · 自动降级</i></div>
+        <div class="chip data"><b>AEP v1 WS 下发</b><i>节点级节流门控 · seq 断点续传</i></div>
+        <div class="chip data"><b>设备孪生回写</b><i>多对多绑定 · 遥测直写孪生</i></div>
+      </div>
+      <div class="dn r6"><span class="pl"></span><span class="pl p2"></span><span class="pl p3"></span></div>
+      <div class="lane r7">
+        <div class="chip"><b>六引擎注册表</b><i>mock · omp · codex · dsh · opencode · claude</i></div>
+        <div class="chip"><b>Lead 调度循环</b><i>goal / loop / pipeline · 规则兜底</i></div>
+        <div class="chip"><b>7 态任务机</b><i>SUBMITTED→WORKING→…· 重试≤3</i></div>
+        <div class="chip"><b>持久邮箱</b><i>FIFO · 阻塞出队 · A2A 跨渠道回信</i></div>
+        <div class="chip"><b>MCP 桥 · 工具注入</b><i>daq_query / dcw_control / 自审计 · 热加载</i></div>
+      </div>
+      <div class="dn r8"><span class="pl"></span><span class="pl p2"></span><span class="pl p3"></span></div>
+      <div class="lane r9">
+        <div class="chip"><b>语义卡注入</b><i>物理含义 · 单位 · 安全区 · 配方窗 · 非裸寄存器</i></div>
+        <div class="chip hot"><b>联锁 INTERLOCK</b><i>安全区 ∩ 活动配方窗（运行时替换全局范围）</i></div>
+        <div class="chip hot"><b>HITL 人工审批</b><i>manual 绑定挂起 · 180 s 超时 · 审批时复验权限</i></div>
+        <div class="chip hot"><b>PLC 写入</b><i>线性标定 eng↔raw · 写历史 ACK</i></div>
+        <div class="chip hot"><b>回读校验</b><i>deadband 容差 · SET vs ACT 并显</i></div>
+        <div class="chip hot"><b>参数台账 · 回退</b><i>节点级 / 配方版本 / 批次级 · 非破坏</i></div>
+      </div>
+      <div class="dn r10"><span class="pl"></span><span class="pl p2"></span><span class="pl p3"></span></div>
+      <div class="lane r11">
+        <div class="chip"><b>仪表盘 /</b><i>ECharts 实时趋势</i></div>
+        <div class="chip"><b>3D 孪生 /town</b><i>Three.js 2.5D · Phaser 兜底</i></div>
+        <div class="chip"><b>DAQ 控制台 /daq</b><i>自述能力 · 节拍控制</i></div>
+        <div class="chip"><b>写控台 /dcw</b><i>SET vs ACT · 配方治理</i></div>
+        <div class="chip"><b>审计 /logs</b><i>多维查询 · 实时帧</i></div>
+        <div class="chip"><b>aw tui</b><i>终端工作台 · HITL 卡片</i></div>
+      </div>
+      <aside class="audit">
+        <div class="ah">AUDIT RAIL · 侧轨</div>
+        <div class="at">全链路归因审计</div>
+        <div class="steps">
+          <div class="st"><b>audit_log 中央埋点</b><i>维度：线/产品/配方/来源/类别 · 10 s 心跳去重</i></div>
+          <div class="st"><b>三源归因</b><i>user / agent / system + 操作者徽章（Channel/成员）</i></div>
+          <div class="st"><b>ops.log WS 帧</b><i>实时推送 /logs 控制台 · approve/deny 全留痕</i></div>
+          <div class="st"><b>Agent 自审计工具</b><i>line_context · ops_log · recipe_log · recipe_versions · dcw_journal</i></div>
+        </div>
+        <div class="foot">每一次写入、审批、回退都可追溯到「谁 · 何时 · 为何 · 依据哪个配方」。</div>
+      </aside>
+    </div>
+    <div class="legend rise d5">
+      <span class="lg"><span class="sw hot"></span>写控闭环核心（论文主章）</span>
+      <span class="lg"><span class="sw data"></span>数据资产</span>
+      <span class="lg"><span class="sw"></span>常规组件</span>
+      <span class="lg"><span class="dash"></span>审计归因流（旁路全量采集）</span>
+      <span class="lg mono" style="margin-left:auto;color:var(--ink4)">节拍可配置：daq.sampling.* · daq.query.* —— config.yml &lt; runtime-settings &lt; env，热加载</span>
+    </div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══════════ SLIDE 03 · 读 / 写数据流 ═══════════ -->
+<section class="slide" id="s3">
+  <div class="stage">
+    <header class="s-head rise d1">
+      <div class="kicker">SECTION 03 · DATA PATHS <span class="kx">— 两条管线的逐步解剖</span></div>
+      <h2>读路径 × 写路径 <em>· 一次闭环里数据到底怎么流</em></h2>
+      <div class="rule"></div>
+    </header>
+    <div class="cols">
+      <div class="path read rise d2">
+        <div class="ph"><b>读路径 · DAQ</b><span class="tag">READ / ACQUISITION</span><span class="rt">第二级软实时 · 监督层</span></div>
+        <div class="steps2">
+          <div class="stp" data-n="01"><b>驱动采样</b><i>五协议 driver · 每节点独立 cadence</i></div>
+          <div class="stp" data-n="02"><b>队列入队</b><i>inproc / MQTT · 断连离线缓冲</i></div>
+          <div class="stp" data-n="03"><b>消费泵</b><i>乱序防御 · 迟到帧丢弃计数</i></div>
+          <div class="stp" data-n="04"><b>告警派生</b><i>2% 迟滞 + 3 拍消抖 · 告警/离线瞬时</i></div>
+          <div class="stp" data-n="05"><b>WS 实时下发</b><i>节点级 publishInterval 门控</i></div>
+          <div class="stp" data-n="06"><b>TSDB 批量入库</b><i>500ms 窗 · 5000 背压上限 · 3 重试</i></div>
+          <div class="stp" data-n="07"><b>孪生回写</b><i>多对多绑定 · 全部绑定孪生同步</i></div>
+          <div class="stp" data-n="08"><b>多模态帧管线</b><i>向量帧→Timescale · 图像帧→MinIO</i></div>
+        </div>
+        <div class="pf">全程只读 · 不经过任何写控门 · 第二级软实时（硬实时在 PLC）</div>
+      </div>
+      <div class="path write rise d3">
+        <div class="ph"><b>写路径 · DCW</b><span class="tag">WRITE / CONTROL</span><span class="rt">层层设防 · 逐步验真</span></div>
+        <div class="steps2">
+          <div class="stp" data-n="01"><b>发起</b><i>REST /dcw/[id]/write 或 Agent dcw_control</i></div>
+          <div class="stp" data-n="02"><b>行权限门</b><i>三态授权 none/read-only/operate · 服务端执行</i></div>
+          <div class="stp" data-n="03"><b>工程量校验</b><i>物理单位安全验证</i></div>
+          <div class="stp" data-n="04"><b>联锁 INTERLOCK</b><i>安全区 ∩ 活动配方窗 · 运行线替换全局范围</i></div>
+          <div class="stp" data-n="05"><b>HITL 挂起等批</b><i>manual 绑定 · 180 s 超时 · 审批时复验权限</i></div>
+          <div class="stp" data-n="06"><b>驱动写入</b><i>线性标定 eng→raw · 写历史 ACK 状态</i></div>
+          <div class="stp" data-n="07"><b>回读校验</b><i>deadband 容差 · 不符即失败可见</i></div>
+          <div class="stp" data-n="08"><b>台账 + 广播</b><i>参数台账 · WS dcw.written · 审计归因</i></div>
+        </div>
+        <div class="pf">任一门拒绝即失败可见 · 全程留痕 · 支持节点/配方/批次三级非破坏回退</div>
+      </div>
+    </div>
+    <div class="auditstrip rise d4">
+      <span class="lab">AUDIT 侧轨</span>
+      <div class="hop">
+        <span>每一次读写 · 审批 · 回退</span><span class="arr">──▶</span>
+        <span><b>audit_log</b> 归因（用户 / Agent / 系统 + 操作者徽章）</span><span class="arr">──▶</span>
+        <span><b>ops.log</b> WS 实时帧</span><span class="arr">──▶</span>
+        <span><b>/logs</b> 控制台</span><span class="arr">──▶</span>
+        <span>Agent <b>自审计工具</b>（line_context · ops_log · recipe_log · dcw_journal）</span>
+      </div>
+    </div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══════════ SLIDE 04 · 能力全景 ═══════════ -->
+<section class="slide" id="s4">
+  <div class="stage">
+    <header class="s-head rise d1">
+      <div class="kicker">SECTION 04 · CAPABILITY MAP <span class="kx">— 十个可演示、可验证的子系统能力</span></div>
+      <h2>能力全景 <em>· 每一格都有对应实现与验证</em></h2>
+      <div class="rule"></div>
+    </header>
+    <div class="grid">
+      <div class="cap rise d1"><span class="tk"></span><span class="no">C-01</span><b>多引擎互操作<i>HARNESS REGISTRY</i></b><p>统一 AgentInterface 适配六引擎；UI 动态拉取引擎目录，未安装引擎 UI 灰化 + 派发时 409 硬校验。</p><div class="key">PATH 探测 · 每渠道可混编</div></div>
+      <div class="cap rise d2"><span class="tk"></span><span class="no">C-02</span><b>人批准写控<i>HITL APPROVAL</i></b><p>manual 绑定挂起写入，WebUI/TUI 审批卡统一路由；按 Agent+节点去重，批准时重新校验权限。</p><div class="key">180 s 超时 · 审批可追溯</div></div>
+      <div class="cap rise d3"><span class="tk"></span><span class="no">C-03</span><b>配方版本治理<i>RECIPE GOVERNANCE</i></b><p>Line→Product→Recipe→Run 四级；参数变更全归因（用户/Agent/系统 + 操作者 + 理由），mark-good / 版本回退 / 批次回退，全部非破坏。</p><div class="key">五维查询：线×产品×配方×时间×节点</div></div>
+      <div class="cap rise d4"><span class="tk"></span><span class="no">C-04</span><b>五协议驱动栈<i>FIELD DRIVERS</i></b><p>采集与写控共用连接池；分类错误消息、逐驱动连接测试；插件可注册新协议。</p><div class="key">Modbus TCP/RTU · OPC UA · MQTT · HTTP</div></div>
+      <div class="cap rise d5"><span class="tk"></span><span class="no">C-05</span><b>多模态帧管线<i>FRAME PIPELINE</i></b><p>多点剖面（测厚/扫描仪）向量帧与 CCD 图像帧走模板汇入管线：向量入 Timescale，像素入 MinIO 自动磁盘兜底。</p><div class="key">阈值派生指标复用告警链</div></div>
+      <div class="cap rise d2"><span class="tk"></span><span class="no">C-06</span><b>行级权限三态<i>LINE PERMISSIONS</i></b><p>none / read-only / operate 按产线授权；数据面服务端过滤，绑定校验行权限；普通用户默认不可见。</p><div class="key">隐藏≠前端遮罩 · 服务端执行</div></div>
+      <div class="cap rise d3"><span class="tk"></span><span class="no">C-07</span><b>持久记忆<i>MEMORY</i></b><p>私有 + 渠道共享域；FTS5 中文分词 + sqlite-vec 向量混合召回（RRF/MMR）；令牌预算注入；压缩摘要归档。</p><div class="key">CJK 分词 · 团队编年史</div></div>
+      <div class="cap rise d4"><span class="tk"></span><span class="no">C-08</span><b>四入口一运行时<i>ENTRY POINTS</i></b><p>WS（AEP v1：5000 事件环 + seq 断点续传）· MCP（约 20 工具）· A2A（JSON-RPC 2.0 + AgentCard）· REST 全管理面。</p><div class="key">跨渠道 A2A 仅 Lead · 服务端盖章</div></div>
+      <div class="cap rise d5"><span class="tk"></span><span class="no">C-09</span><b>aw CLI + TUI<i>COMMAND SYSTEM</i></b><p>14 条内建命令；命令即模块（{meta,run}）三层扫描自动注册（内置&lt;用户&lt;项目）；aw tui 终端工作台含 HITL 应答。</p><div class="key">config list/get/set · doctor · tui</div></div>
+      <div class="cap rise d6"><span class="tk"></span><span class="no">C-10</span><b>配置驱动运行时<i>CONFIG-DRIVEN</i></b><p>每个运行时旋钮在 schema.json 描述一次，UI 与 CLI 同源渲染；live 键 SSE 热加载，restart 键落盘下次生效。</p><div class="key">config.yml &lt; runtime-settings &lt; env</div></div>
+    </div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══════════ SLIDE 05 · 真实界面 ═══════════ -->
+<section class="slide" id="s5">
+  <div class="stage">
+    <header class="s-head rise d1">
+      <div class="kicker">SECTION 05 · REAL SURFACES <span class="kx">— 全部为本仓库实际运行画面</span></div>
+      <h2>真实界面 <em>· 18 个页面中的五个关键面</em></h2>
+      <div class="rule"></div>
+    </header>
+    <div class="shots">
+      <div class="shot f rise d2"><div class="cap"><b>/monitor — 运行时监控</b><span>引擎进程 · 终端镜像</span></div><img src="@@IMG_monitortall@@" alt="运行时监控"></div>
+      <div class="shot rise d3"><div class="cap"><b>/workshop — 工作区入口</b><span>全局导航</span></div><img src="@@IMG_workshop@@" alt="工作区入口"></div>
+      <div class="shot rise d4"><div class="cap"><b>/dcw — 写控台</b><span>SET vs ACT</span></div><img src="@@IMG_dcw@@" alt="写控台"></div>
+      <div class="shot rise d5"><div class="cap"><b>/daq — 采集控制台</b><span>自述能力</span></div><img src="@@IMG_daq@@" alt="采集控制台"></div>
+      <div class="shot rise d6"><div class="cap"><b>/town — 3D 数字孪生</b><span>实时事件流驱动</span></div><img src="@@IMG_town@@" alt="3D 数字孪生"></div>
+    </div>
+    <div class="stack rise d6">
+      <span class="chipv">NUXT 4.5 + NITRO 2.13</span><span class="chipv">VUE 3.5 · PINIA 3</span><span class="chipv">THREE.JS 0.185 · PHASER 4</span><span class="chipv">ECHARTS 5.6</span><span class="chipv">NODE:SQLITE 零原生依赖</span><span class="chipv">TIMESCALEDB + PG 8</span><span class="chipv">MINIO 8</span><span class="chipv">MODBUS-SERIAL · NODE-OPCUA · MQTT 5</span><span class="chipv">ZOD 3 全边界校验</span><span class="chipv">MCP SDK 1.30</span>
+    </div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══════════ SLIDE 06 · 论文可行性 ═══════════ -->
+<section class="slide" id="s6">
+  <div class="stage">
+    <header class="s-head rise d1">
+      <div class="kicker">SECTION 06 · PUBLICATION AUDIT <span class="kx">— 可发性三栏审计</span></div>
+      <h2>论文可行性 <em>· 结论：可以发表——按系统/应用型论文投稿</em></h2>
+      <div class="rule"></div>
+    </header>
+    <div class="verdict rise d2">
+      <div class="vk"><span class="big">可以发表</span><span class="sm">VERDICT · SYSTEM / APPLICATION PAPER</span></div>
+      <div class="vd"><b>定位一句话：</b>面向产线监督场景的<b>多引擎 LLM Agent 平台</b>，贡献了「联锁 ∩ 人工审批 ∩ 回读校验」的<b>人批准写控管线</b>与全链路归因治理，并在五协议模拟产线上以 <b>156 项 E2E 断言 + 四引擎并行闭环</b>完成验证。差异化在<b>可运行的系统完整性</b>，而非单点算法——这是期刊系统论文的标准打法。</div>
+    </div>
+    <div class="tri">
+      <div class="col c1 rise d3">
+        <div class="ch">可发表贡献 · CONTRIBUTIONS</div>
+        <ul>
+          <li><b>元数据驱动的采集—写控统一运行时</b><i>每节点边缘运行时 · 双节拍 · 邻节点互不阻塞</i></li>
+          <li><b>人批准写控管线（核心）</b><i>语义卡注入 → 联锁 → HITL → 写入 → 回读 → 台账</i></li>
+          <li><b>多引擎互操作架构</b><i>6 引擎注册表 · 四入口 · MCP 回程 · 可用性硬校验</i></li>
+          <li><b>全链路归因审计</b><i>三源归因 + Agent 自审计工具闭环</i></li>
+        </ul>
+        <div class="cf">→ 支撑 §3 架构章 + §4 核心章</div>
+      </div>
+      <div class="col c2 rise d4">
+        <div class="ch">已有证据 · EVIDENCE</div>
+        <ul>
+          <li><b>156 断言 / 0 失败 / 7 套件</b><i>37 五协议实线 · 21 多引擎并行 · 20 权限 · 9 审计负例<br>26 引擎可用性 · 19 陈旧参数 · 24 配方版本</i></li>
+          <li><b>四引擎并行实协议闭环</b><i>omp / codex / dsh / opencode 在同一条运行线上全部 COMPLETED</i></li>
+          <li><b>真实协议栈验证</b><i>Modbus TCP/RTU · OPC UA · MQTT · HTTP + mosquitto / timescale / minio</i></li>
+          <li><b>系统规模</b><i>~4.0 万行源码 · 18 页面 · 207 API 路由 · 103 服务模块</i></li>
+        </ul>
+        <div class="cf">→ 支撑 §6.1 功能正确性 + §6.2 案例研究</div>
+      </div>
+      <div class="col c3 rise d5">
+        <div class="ch">投稿前必须补 · GAPS</div>
+        <ul>
+          <li><b>量化对比实验（最关键）</b><i>与「无治理直写」「单引擎」基线比：写入时延 / 闭环收敛 / 令牌成本 / 故障恢复</i></li>
+          <li><b>真实产线或半实物案例</b><i>目前为模拟产线（协议真实、设备模拟）；补一条 OPC UA 真设备线即可大幅增强</i></li>
+          <li><b>方法学提炼</b><i>把工程机制抽象成可迁移的治理模型（形式化联锁/审批语义）</i></li>
+          <li><b>操作员维度评估</b><i>审批负荷、信任校准、误报率</i></li>
+        </ul>
+        <div class="cf">→ 支撑 §6.3/6.4 性能与故障注入 · 决定投稿档位</div>
+      </div>
+    </div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══════════ SLIDE 07 · 相似论文 ═══════════ -->
+<section class="slide" id="s7">
+  <div class="stage">
+    <header class="s-head rise d1">
+      <div class="kicker">SECTION 07 · RELATED WORK SCAN <span class="kx">— arXiv 实检 · 2026 在线检索核对</span></div>
+      <h2>相似文章 <em>· 领域正在成形，全栈闭环实现仍是空位</em></h2>
+      <div class="rule"></div>
+    </header>
+    <div class="papers rise d2">
+      <div class="pap hot">
+        <span class="id">arXiv:2606.20761</span><span class="dt">2026-06</span>
+        <span class="tt"><b>Integrating Large Language Model Agents with Digital Twins for Industrial Autonomous Systems</b><i>LLM Agent × 数字孪生 × 工业自治 — 与本文主题最重叠</i></span>
+        <span class="rel"><span>最相近 · 须正面对比</span></span>
+      </div>
+      <div class="pap">
+        <span class="id">arXiv:2605.02592</span><span class="dt">2026-05</span>
+        <span class="tt"><b>Foundation-Model-Based Agents in Industrial Automation: Purposes, Capabilities, and Open Challenges</b><i>领域综述/立场文 — 证明方向成立，可作为 Related Work 锚点</i></span>
+        <span class="rel"><span>领域锚点 · 综述</span></span>
+      </div>
+      <div class="pap">
+        <span class="id">arXiv:2608.07148</span><span class="dt">2026-08</span>
+        <span class="tt"><b>A MARL Centered Reference Architecture for Large Language Model Augmentation in Smart Manufacturing</b><i>参考架构提案 — 有架构无全栈实现与 E2E 验证</i></span>
+        <span class="rel"><span>架构提案</span></span>
+      </div>
+      <div class="pap">
+        <span class="id">arXiv:2608.24039</span><span class="dt">2026-08</span>
+        <span class="tt"><b>Design-to-Plan: A Large Language Model-Based Multi-Agent Framework for Manufacturing Process Planning from 3D Models</b><i>单任务多智能体（工艺规划）— 任务窄，无产线运行时</i></span>
+        <span class="rel"><span>单任务框架</span></span>
+      </div>
+      <div class="pap">
+        <span class="id">arXiv:2603.21523</span><span class="dt">2026-03</span>
+        <span class="tt"><b>SafePilot: A Framework for Assuring LLM-enabled Cyber-Physical Systems</b><i>安全保障视角 — 与联锁/HITL 章节构成对话</i></span>
+        <span class="rel"><span>安全保障</span></span>
+      </div>
+      <div class="pap">
+        <span class="id">arXiv:2608.19281</span><span class="dt">2026-08</span>
+        <span class="tt"><b>APPROVE: Visual End-User-in-the-Loop Robot Programming with LLMs</b><i>人在环路（机器人域）— HITL 交互参照</i></span>
+        <span class="rel"><span>HITL · 机器人</span></span>
+      </div>
+    </div>
+    <div class="diff rise d4">
+      <div class="dt1">差异化<br>POSITIONING</div>
+      <div class="items">
+        <div class="it"><b>它们是「说」，我们是「跑」</b><p>现存工作以综述、参考架构与单任务框架为主；本项目是全栈可运行系统 + 156 断言 E2E 验收。</p></div>
+        <div class="it"><b>写控治理无同类完整实现</b><p>「联锁 ∩ HITL ∩ 回读校验 ∩ 归因台账」的完整闭环管线，在检索范围内未见同深度公开实现。</p></div>
+        <div class="it"><b>多引擎互操作是独有轴</b><p>六引擎混编 + 四入口 + 服务端守卫盖章，Agent 团队异构性本身即是贡献点。</p></div>
+      </div>
+    </div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══════════ SLIDE 08 · 期刊推荐 ═══════════ -->
+<section class="slide" id="s8">
+  <div class="stage">
+    <header class="s-head rise d1">
+      <div class="kicker">SECTION 08 · VENUE ANALYSIS <span class="kx">— 范围原文核对自 ScienceDirect 官方页</span></div>
+      <h2>期刊推荐 <em>· 首选 Computers in Industry</em></h2>
+      <div class="rule"></div>
+    </header>
+    <div class="pick rise d2">
+      <div class="pk1">
+        <div class="l1">最推荐 · FIRST CHOICE</div>
+        <div class="l2">Computers in Industry</div>
+        <div class="l3">Elsevier · ISSN 0166-3615 · 应用导向研究刊</div>
+      </div>
+      <div class="why">
+        Aims &amp; Scope 原文自证对口：「…design, engineering, <b>manufacturing, purchasing, production management</b>…」；并明确欢迎使能技术——<i>“Demonstration of enabling capabilities of … <b>intelligence agents</b> are also welcomed.”</i><br>
+        系统型 + 应用导向 + 智能体入工业，三个关键词全部命中；拒绝「纯 ICT 或纯工艺」的论文——本文恰在交界带上。
+      </div>
+      <div class="fit"><div class="fn">S·A</div><div class="ft">SCOPE FIT · 范围命中</div></div>
+    </div>
+    <div class="jt rise d3">
+      <div class="jcap">按推荐优先级排序 · FIT = 范围契合度（定性评估） · 分区/影响因子以投稿当年官方数据为准</div>
+      <div class="jrow top">
+        <span class="jn"><b>Computers in Industry</b><i>ISSN 0166-3615 · 中科院 2 区（以当年为准）</i></span>
+        <span class="jpub">ELSEVIER</span>
+        <span class="jsc"><b>工业 ICT 应用导向</b>，覆盖制造/生产管理/供应链中的 ICT 集成，明确欢迎 intelligence agents —— 与本文定位完全一致。</span>
+        <span class="jfit"><span class="bar"><em style="width:96%"></em></span><span>FIT 96 · 首选</span></span>
+      </div>
+      <div class="jrow">
+        <span class="jn"><b>IEEE Trans. Industrial Informatics</b><i>中科院 1 区 TOP · 竞争最烈</i></span>
+        <span class="jpub">IEEE</span>
+        <span class="jsc"><b>冲高档</b>：工业信息学旗舰；需把第 6 页「缺口」全部补齐（厚量化评估+方法学）再冲。</span>
+        <span class="jfit"><span class="bar"><em style="width:82%"></em></span><span>FIT 82 · 冲高</span></span>
+      </div>
+      <div class="jrow">
+        <span class="jn"><b>J. Industrial Information Integration</b><i>ISSN 2452-414X</i></span>
+        <span class="jpub">ELSEVIER</span>
+        <span class="jsc"><b>集成视角对口</b>：软硬一体 + 信息集成叙事（Agent 运行时 × 五协议 × 孪生）讲述顺畅，新刊上升期。</span>
+        <span class="jfit"><span class="bar"><em style="width:84%"></em></span><span>FIT 84 · 备选</span></span>
+      </div>
+      <div class="jrow">
+        <span class="jn"><b>J. Manufacturing Systems</b><i>制造系统方向</i></span>
+        <span class="jpub">ELSEVIER</span>
+        <span class="jsc"><b>案例向</b>：需强化制造科学问题（工艺闭环收益），弱化平台工程叙事。</span>
+        <span class="jfit"><span class="bar"><em style="width:70%"></em></span><span>FIT 70 · 可投</span></span>
+      </div>
+      <div class="jrow">
+        <span class="jn"><b>IEEE Access</b><i>快速开放获取 · 保底档</i></span>
+        <span class="jpub">IEEE</span>
+        <span class="jsc"><b>保底</b>：审稿快、容量大；作为时间风险兜底，或被拒后快速转出的落点。</span>
+        <span class="jfit"><span class="bar"><em style="width:58%"></em></span><span>FIT 58 · 保底</span></span>
+      </div>
+    </div>
+    <div class="note rise d5"><b>投稿策略</b>：① 先挂 arXiv 预印本占优先权——上一页相似论文全部是 2026 年预印本，赛道拥挤宜早 ② 主投 Computers in Industry；若审稿反馈偏「集成系统」→ 转 J. Industrial Information Integration ③ 会议快车道：IEEE ETFA / INDIN ④ 影响因子与分区以投稿当年 JCR / 中科院分区表官方数据为准，本页不做无依据的精确数值断言。</div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══════════ SLIDE 09 · 写作框架 ═══════════ -->
+<section class="slide" id="s9">
+  <div class="stage">
+    <header class="s-head rise d1">
+      <div class="kicker">SECTION 09 · PAPER SKELETON <span class="kx">— 8 节 · 双栏 12–14 页 · 页数预算制</span></div>
+      <h2>写作框架 <em>· 每节卡页数预算，核心章加厚</em></h2>
+      <div class="rule"></div>
+    </header>
+    <div class="skeleton rise d2">
+      <div class="sec"><span class="sn">§1</span><span class="st"><b>Introduction</b><i>INTRO · 动机漏斗</i></span><span class="sd">LLM Agent 能力 → 工业接入缺口（安全/审计/真实协议）→ 四条贡献清单</span><span class="sp2"><span class="pb"><em style="width:52%"></em></span><span class="pg">1.25 页</span></span></div>
+      <div class="sec"><span class="sn">§2</span><span class="st"><b>Related Work</b><i>相关工作 · 三线交汇</i></span><span class="sd">LLM 工业智能体（第 7 页 6 篇）· 数字孪生 × Agent · HITL 与安全联锁</span><span class="sp2"><span class="pb"><em style="width:40%"></em></span><span class="pg">1 页</span></span></div>
+      <div class="sec"><span class="sn">§3</span><span class="st"><b>System Architecture</b><i>架构 · 图 1 = 本 show 第 2 页</i></span><span class="sd">六层管线 + 设计原则：监督层定位 / 元数据驱动 / 配置驱动 / 服务端守卫</span><span class="sp2"><span class="pb"><em style="width:100%"></em></span><span class="pg">2.5 页</span></span></div>
+      <div class="sec core"><span class="sn">§4</span><span class="st"><b>Write-Control Pipeline &amp; Safety</b><i>核心章 · 图 2 = 写控时序</i></span><span class="sd">语义卡 → 联锁 → HITL → 写入 → 回读 → 台账/回退；归因审计语义</span><span class="sp2"><span class="pb"><em style="width:80%"></em></span><span class="pg">2 页</span></span></div>
+      <div class="sec"><span class="sn">§5</span><span class="st"><b>Implementation</b><i>实现 · 规模与互操作</i></span><span class="sd">技术栈 · ~4.0 万行 · 六引擎桥（RPC/ACP/JSON-RPC）· 部署形态</span><span class="sp2"><span class="pb"><em style="width:40%"></em></span><span class="pg">1 页</span></span></div>
+      <div class="sec core"><span class="sn">§6</span><span class="st"><b>Evaluation</b><i>实证 · 决定档位的章节</i></span><span class="sd">6.1 功能正确性（156 断言）· 6.2 案例：设定值优化闭环 ~55 s · 6.3 性能（时延/吞吐/令牌）· 6.4 故障注入</span><span class="sp2"><span class="pb"><em style="width:100%"></em></span><span class="pg">2.5 页</span></span></div>
+      <div class="sec"><span class="sn">§7</span><span class="st"><b>Discussion &amp; Limitations</b><i>边界 · 诚实划定</i></span><span class="sd">第二级软实时（硬实时在 PLC）· 模拟产线 · 单机运行时边界</span><span class="sp2"><span class="pb"><em style="width:30%"></em></span><span class="pg">0.75 页</span></span></div>
+      <div class="sec"><span class="sn">§8</span><span class="st"><b>Conclusion</b><i>结论 · 回扣贡献</i></span><span class="sd">四贡献回扣 + 路线图（边缘形态 / TLS / 告警外发）</span><span class="sp2"><span class="pb"><em style="width:20%"></em></span><span class="pg">0.5 页</span></span></div>
+      <div class="bnote">§1–§8 预算合计 11.5 页 + 图表与参考文献约 1–1.5 页 ≈ 全文 12–14 页</div>
+    </div>
+    <div class="side">
+      <div class="titlebar rise d2"><span>PROPOSED TITLE · 建议标题</span><p>AgentWorkShop: Multi-Harness LLM Agents with Human-Approved Write Control for Production-Line Supervision</p></div>
+      <div class="logic rise d3">
+        <div class="lh">WRITING LOGIC · 写作逻辑</div>
+        <div class="lgx"><span class="nd">动机</span><span class="ar">→</span><span class="nd">缺口</span><span class="ar">→</span><span class="nd">架构</span><span class="ar">→</span><span class="nd">机制</span><span class="ar">→</span><span class="nd">实证</span><span class="ar">→</span><span class="nd">边界</span></div>
+        <p>每个设计章按同一节拍：<b>挑战 → 设计原则 → 机制 → 流程印证</b>；评估章与四条贡献一一对应，审稿人按图索骥。摘要模板（150–250 词）：背景 1 句 → 缺口 1 句 → 系统与三机制 2 句 → 证据（156 断言/四引擎/五协议）1 句 → 意义 1 句。</p>
+      </div>
+      <div class="layout rise d4">
+        <div class="lh">LAYOUT · 排版布局</div>
+        <ul>
+          <li><b>双栏（Elsevier/IEEE 模板）</b>，全文 12–14 页；投稿语言为英文，图表先行设计。</li>
+          <li><b>图 1</b> 系统全景（本 show 第 2 页改绘）· <b>图 2</b> 写控时序 · <b>图 3</b> E2E 拓扑 · <b>图 4</b> 案例时间线。</li>
+          <li><b>表 1</b> 与相关系统对比（第 7 页 6 篇为行）· <b>表 2</b> 协议/引擎能力矩阵。</li>
+          <li>引言末尾用 <b>bullet 列四条贡献</b>，正文各节标题与之呼应，审稿人按图索骥。</li>
+          <li>图放<b>栏顶或整栏</b>，避免跨栏碎图；术语（联锁/HITL/回读）首次出现给脚注定义。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══════════ SLIDE 10 · 行动路线 ═══════════ -->
+<section class="slide" id="s10">
+  <div class="stage">
+    <header class="s-head rise d1">
+      <div class="kicker">SECTION 10 · NEXT ACTIONS <span class="kx">— 从今天到投稿</span></div>
+      <h2>行动路线 <em>· 系统能力已就位，档位由评估厚度决定</em></h2>
+      <div class="rule"></div>
+    </header>
+    <div class="road">
+      <div class="rd rise d2"><span class="rn">STEP 01</span><b class="t">补量化评估</b><div class="wk">EST. 2–3 周</div>
+        <ul><li>基线对比：无治理直写 / 单引擎 / 无回读</li><li>指标：写入时延 · 闭环收敛 · 令牌成本 · 故障恢复</li><li>故障注入清单：断连缓冲 · 乱序 · 半开连接</li><li>产出：§6.3/6.4 的全部图表数据</li></ul></div>
+      <div class="rd rise d3"><span class="rn">STEP 02</span><b class="t">写初稿</b><div class="wk">EST. 4–6 周</div>
+        <ul><li>按第 9 页 8 节骨架，图表先行（图 1–4 / 表 1–2）</li><li>§4 写控管线先写——核心贡献先固化</li><li>双栏模板排版，每节卡页数预算</li><li>内部评审一轮：贡献/证据/边界三对齐</li></ul></div>
+      <div class="rd rise d4"><span class="rn">STEP 03</span><b class="t">预印本 + 投稿</b><div class="wk">EST. 1 周</div>
+        <ul><li>arXiv 预印本占优先权（赛道拥挤宜早）</li><li>主投 Computers in Industry（第 8 页范围自证）</li><li>备选链：JIII → IEEE Access；会议：ETFA / INDIN</li><li>审稿期同步准备 rebuttal 与补充实验</li></ul></div>
+    </div>
+    <div class="close rise d5">
+      <div class="cl1">系统已经会跑闭环，<br>论文要证明的是<i>治理为什么值得</i>。</div>
+      <div class="cl2"><b>本简报的每一个数字都可复查</b>：规模统计来自 git ls-files · E2E 结果来自 docs/audit/e2e-2026-09-07.md · 期刊范围摘自 ScienceDirect 官方 Aims &amp; Scope · 相似论文取自 arXiv API 实检（2026-09-07）。发论文不缺素材，缺的只是第 6 页右栏那四件事。</div>
+    </div>
+    <div class="foot">
+      <span>AGENTWORKSHOP · v0.7.24 · POLYFORM NC 1.0.0</span>
+      <span>REPO github.com/kingdol666/AgentWorkShop · DOCS kingdol666.github.io/AgentWorkShop</span>
+    </div>
+    <div class="ticks"></div>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ── 舞台缩放：1920×1080 等比适配视口（contain，留边与底色同色无感）──
+(function(){
+  const fit=()=>{const s=Math.min(innerWidth/1920,innerHeight/1080);
+    document.documentElement.style.setProperty('--s',s);};
+  addEventListener('resize',fit);fit();
+})();
+// ── 页码计数 + 轨道高亮 ──
+(function(){
+  const slides=[...document.querySelectorAll('.slide')];
+  const rail=document.getElementById('rail');
+  const cnt=document.getElementById('cnt');
+  slides.forEach((s,i)=>{
+    const b=document.createElement('button');
+    b.title='第 '+(i+1)+' 页';
+    b.addEventListener('click',()=>s.scrollIntoView({behavior:'smooth'}));
+    rail.appendChild(b);
+  });
+  const dots=[...rail.children];
+  const io=new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        const i=slides.indexOf(e.target);
+        dots.forEach((d,j)=>d.classList.toggle('on',j===i));
+        cnt.innerHTML='<b>'+String(i+1).padStart(2,'0')+'</b> / '+String(slides.length).padStart(2,'0');
+        e.target.classList.add('in');
+      }
+    });
+  },{threshold:.55});
+  slides.forEach(s=>io.observe(s));
+  // 键盘导航
+  let cur=0;
+  const go=i=>{cur=Math.max(0,Math.min(slides.length-1,i));slides[cur].scrollIntoView({behavior:'smooth'});};
+  addEventListener('keydown',e=>{
+    const i=slides.findIndex(s=>{const r=s.getBoundingClientRect();return r.top>-innerHeight/2&&r.top<innerHeight/2;});
+    if(i>=0)cur=i;
+    if(['ArrowDown','PageDown',' '].includes(e.key)){e.preventDefault();go(cur+1);}
+    if(['ArrowUp','PageUp'].includes(e.key)){e.preventDefault();go(cur-1);}
+    if(e.key==='Home'){e.preventDefault();go(0);}
+    if(e.key==='End'){e.preventDefault();go(slides.length-1);}
+  });
+})();
+</script>
+</body>
+</html>

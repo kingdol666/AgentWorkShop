@@ -60,6 +60,14 @@ console.log('\n━━━ 3. 稳定性护栏的严重性判定(哪类异常不该
   check('undici UND_ERR_CONNECT_TIMEOUT → upstream', classifyFatalCandidate(err('UND_ERR_CONNECT_TIMEOUT')) === 'upstream')
   check('无 code 但 message 带 ECONNREFUSED → upstream',
     classifyFatalCandidate(new Error('connect ECONNREFUSED 127.0.0.1:1502')) === 'upstream')
+  // 实测事故 2:工业驱动库(Modbus/OPC UA 客户端)超时时只给可读 message、不带 errno code,
+  // 旧实现据此判 fatal → 生产实例运行中 exit 1(平台带着数采/数控一起挂掉)。
+  check('无 code,message "TCP Connection Timed Out" → upstream',
+    classifyFatalCandidate(new Error('TCP Connection Timed Out')) === 'upstream')
+  check('无 code,message "connection timed out" → upstream',
+    classifyFatalCandidate(new Error('connect error: connection timed out')) === 'upstream')
+  check('无 code,message "socket hang up" → upstream',
+    classifyFatalCandidate(new Error('socket hang up')) === 'upstream')
 
   // 其余既有分级不得回退
   check('ECONNRESET(客户端硬断)→ socket', classifyFatalCandidate(err('ECONNRESET')) === 'socket')

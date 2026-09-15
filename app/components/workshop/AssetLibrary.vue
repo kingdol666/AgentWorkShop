@@ -262,7 +262,7 @@ async function doRemove(id: string): Promise<void> {
 .head-hint {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 10px;
   color: var(--hud-faint, #5b6c7b);
   white-space: nowrap;
 }
@@ -384,7 +384,9 @@ async function doRemove(id: string): Promise<void> {
 }
 .model-badge {
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  /* 8.5px 在这套 HUD 里是"看得见读不了"的下限之外(实测被审计稳定判为不可读);
+     10px 是同类铭牌(--hud 微字)在 1440 下的地板。 */
+  font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--hud-faint, #5b6c7b);
   text-align: left;

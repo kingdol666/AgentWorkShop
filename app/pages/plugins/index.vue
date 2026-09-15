@@ -264,10 +264,13 @@ onMounted(load)
 .card-desc { margin: 8px 0; font-size: 12px; opacity: .75; min-height: 18px; }
 .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .tag { padding: 2px 8px; border-radius: 999px; font-size: 10px; border: 1px solid rgba(128, 152, 199, .3); }
-.tag.project { border-color: rgba(53, 224, 160, .5); color: #35e0a0; }
-.tag.user { border-color: rgba(65, 200, 244, .5); color: #41c8f4; }
-.tag.on { border-color: rgba(53, 224, 160, .5); color: #35e0a0; }
-.tag.off { border-color: rgba(255, 107, 107, .4); color: #ff6b6b; }
+/* 标签文字色用 color-mix 向 --ink 收:品牌绿/青/红是**亮色画布上的浅色**,
+   直接当文字色在亮色档只有 1.5–2.5:1(实测)。向墨色混合后暗色档几乎不变
+   (墨色本身就是浅色),亮色档自动压深到 AA —— 一处改动同时服务两套主题。 */
+.tag.project { border-color: rgba(53, 224, 160, .5); color: color-mix(in srgb, #35e0a0 42%, var(--ink)); }
+.tag.user { border-color: rgba(65, 200, 244, .5); color: color-mix(in srgb, #41c8f4 46%, var(--ink)); }
+.tag.on { border-color: rgba(53, 224, 160, .5); color: color-mix(in srgb, #35e0a0 42%, var(--ink)); }
+.tag.off { border-color: rgba(255, 107, 107, .4); color: color-mix(in srgb, #ff6b6b 55%, var(--ink)); }
 .tag.client { border-color: color-mix(in srgb, var(--ink) 24%, transparent); color: var(--ink-soft); }
 .card-routes { display: flex; flex-direction: column; gap: 2px; }
 .card-routes code { font-size: 10px; opacity: .65; }
@@ -277,4 +280,32 @@ onMounted(load)
 .detail-route { display: block; font-size: 11px; opacity: .8; margin-bottom: 4px; }
 h4 { margin: 16px 0 6px; }
 .dim { opacity: .45; }
+
+/* ══ 窄屏(v9):页面收边 / 统计带换行 / 卡片单列(去掉 320px 硬下限) ══════ */
+@media (max-width: 900px) {
+  .plugins-page {
+    max-width: 100%;
+    padding: 16px 12px 40px;
+  }
+
+  .pg-stats {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    width: 100%;
+    font-size: 11.5px;
+  }
+
+  .pg-grid { grid-template-columns: 1fr; }
+  .card-head { flex-wrap: wrap; }
+  .card-routes code { overflow-wrap: anywhere; }
+  .detail-route { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 640px) {
+  .plugins-page { padding: 12px 8px 40px; }
+  .pg-sub { font-size: 11.5px; line-height: 1.5; }
+  .tag { font-size: 11.5px; }
+  .card-desc { font-size: 12.5px; }
+  .pg-stats :deep(.ant-btn) { min-height: 40px; }
+}
 </style>

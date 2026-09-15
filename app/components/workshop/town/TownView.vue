@@ -16,6 +16,7 @@ import { useCharacterAssets } from '@/app/composables/workshop/useCharacterAsset
 import { useDeviceTwins, type DeviceTwinView } from '@/app/composables/workshop/useDeviceTwins'
 import { useSceneLayouts } from '@/app/composables/workshop/useSceneLayouts'
 import { useHttp } from '@/app/composables/useHttp'
+import { useResponsive } from '@/app/composables/useResponsive'
 import type { TownScene, TownEntityInput } from './TownScene'
 import type { TownScene3D, ChannelLayout, AgentRangeLayout } from './TownScene3D'
 // 频道身份色(与 3D 场景同源:同一 hashHue,UI 用 CSS 色)
@@ -52,6 +53,34 @@ const characterAssets = useCharacterAssets()
 const deviceTwins = useDeviceTwins()
 const sceneLayouts = useSceneLayouts()
 const http = useHttp()
+
+/* ── 窄屏形态:左右轨折成底部抽屉(sheet),底部坞折成可收起横条 ──
+ * 断点判据只用 useResponsive(全站唯一出处),不自己监听 innerWidth;
+ * DOM 结构不随档位增删(形态切换全部交给 CSS 媒体查询),
+ * 避免 SSR/水合不一致。抽屉协议与 AppSidebar 一致:遮罩 + Esc 关闭。 */
+const { isDesktop } = useResponsive()
+/** 当前打开的抽屉:'left' | 'right' | null */
+const sheetOpen = ref<'left' | 'right' | null>(null)
+/** 窄屏底部坞是否展开(默认收起,舞台优先) */
+const dockOpen = ref(false)
+function toggleSheet(side: 'left' | 'right') {
+  sheetOpen.value = sheetOpen.value === side ? null : side
+}
+function closeSheet() {
+  sheetOpen.value = null
+}
+function onSheetKey(e: KeyboardEvent) {
+  if (e.key === 'Escape' && sheetOpen.value) closeSheet()
+}
+onMounted(() => window.addEventListener('keydown', onSheetKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onSheetKey))
+/** 回到桌面档必须清空抽屉状态,否则遮罩会滞留在屏幕上 */
+watch(isDesktop, (d) => {
+  if (d) {
+    sheetOpen.value = null
+    dockOpen.value = false
+  }
+})
 
 const hostRef = ref<HTMLDivElement | null>(null)
 /** 当前渲染器(TownScene / TownScene3D 之一) */
@@ -2879,7 +2908,10 @@ onBeforeUnmount(() => {
 <template>
   <div class="town-view">
     <!-- ================= 顶部导航 ================= -->
-    <header class="topnav">
+    <header
+      class="topnav"
+      :class="{ 'sheet-on': sheetOpen }"
+    >
       <div class="brand">
         <svg
           class="brand-glyph"
@@ -2958,9 +2990,9 @@ onBeforeUnmount(() => {
           :class="{ 'nav-bell-warn': activeAlarmCount > 0 }"
           :title="$t('townView.k1fsi3ir002')"
         >◉ {{ activeAlarmCount }}</span>
-        <span class="nav-chip mono">{{ fps }} FPS</span>
+        <span class="nav-chip mono nav-fps">{{ fps }} FPS</span>
         <div
-          class="avatar-chip"
+          class="avatar-chip nav-user"
           :title="$t('townView.k1demf38003')"
         >
           <div class="avatar-fallback">
@@ -2968,13 +3000,67 @@ onBeforeUnmount(() => {
           </div>
           <span>{{ userStore.user?.name || $t('townView.k1pub99m139') }}</span>
         </div>
+
+        <!-- 窄屏:左/右轨开合(≥1024 由 CSS 隐藏) -->
+        <button
+          type="button"
+          class="sheet-btn"
+          :class="{ on: sheetOpen === 'left' }"
+          aria-controls="town-rail-left"
+          :aria-expanded="sheetOpen === 'left' ? 'true' : 'false'"
+          :title="$t('townView.k1k75lzy030')"
+          @click="toggleSheet('left')"
+        >
+          <svg
+            class="sheet-ico"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          ><path d="M4 6h16M4 12h11M4 18h16" /></svg>
+          <span class="sheet-btn-t">{{ $t('townView.k1k75lzy030') }}</span>
+        </button>
+        <button
+          type="button"
+          class="sheet-btn"
+          :class="{ on: sheetOpen === 'right' }"
+          aria-controls="town-rail-right"
+          :aria-expanded="sheetOpen === 'right' ? 'true' : 'false'"
+          :title="$t('townView.k17dkhgd112')"
+          @click="toggleSheet('right')"
+        >
+          <svg
+            class="sheet-ico"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          ><path d="M20 6H4M20 12H9M20 18H4" /></svg>
+          <span class="sheet-btn-t">{{ $t('townView.k17dkhgd112') }}</span>
+        </button>
       </div>
     </header>
 
     <!-- ================= 三栏应用区 ================= -->
     <div class="app">
       <!-- 左轨:设备资源 / 数采节点 / 场景管理 -->
-      <aside class="rail rail-left">
+      <aside
+        id="town-rail-left"
+        class="rail rail-left"
+        :class="{ 'sheet-open': sheetOpen === 'left' }"
+      >
+        <!-- 窄屏抽屉头(桌面档 CSS 隐藏):抓手 + 标题 + 关闭 -->
+        <div class="sheet-hd">
+          <span
+            class="sheet-grip"
+            aria-hidden="true"
+          />
+          <span class="sheet-hd-t">{{ $t('townView.k1k75lzy030') }}</span>
+          <button
+            type="button"
+            class="sheet-x"
+            aria-label="关闭"
+            @click="closeSheet"
+          >
+            ✕
+          </button>
+        </div>
         <section class="panel">
           <div class="panel-hd">
             <h3>{{ $t('townView.k1k75lzy030') }}</h3>
@@ -3646,8 +3732,29 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- 底部坞:场景控制(渲染/环境/操作 三组仪表分区) + 趋势分析 -->
-        <div class="dock">
-          <section class="dock-card">
+        <div
+          class="dock"
+          :class="{ 'dock-open': dockOpen }"
+        >
+          <!-- 窄屏:底部坞折成可收起横条(桌面档 CSS 隐藏),默认收起让舞台占满 -->
+          <button
+            type="button"
+            class="dock-toggle"
+            aria-controls="town-dock-controls"
+            :aria-expanded="dockOpen ? 'true' : 'false'"
+            @click="dockOpen = !dockOpen"
+          >
+            <span class="dock-toggle-t">{{ $t('townView.k1c9iq23060') }}</span>
+            <span class="dock-toggle-hint mono">{{ mode === 'edit' ? $t('townView.k1iipfcs143') : $t('townView.k1l147w1177') }}</span>
+            <span
+              class="dock-caret"
+              aria-hidden="true"
+            >▾</span>
+          </button>
+          <section
+            id="town-dock-controls"
+            class="dock-card"
+          >
             <div class="dock-hd">
               <h3>{{ $t('townView.k1c9iq23060') }}</h3>
               <span class="dock-mode">{{ mode === 'edit' ? $t('townView.k1iipfcs143') : $t('townView.k1l147w1177') }}</span>
@@ -3832,7 +3939,27 @@ onBeforeUnmount(() => {
       </main>
 
       <!-- 右轨:Inspector / 设备运行状态 / 关键设备 / 实时事件 / 导航 -->
-      <aside class="rail rail-right">
+      <aside
+        id="town-rail-right"
+        class="rail rail-right"
+        :class="{ 'sheet-open': sheetOpen === 'right' }"
+      >
+        <!-- 窄屏抽屉头(桌面档 CSS 隐藏) -->
+        <div class="sheet-hd">
+          <span
+            class="sheet-grip"
+            aria-hidden="true"
+          />
+          <span class="sheet-hd-t">{{ $t('townView.k17dkhgd112') }}</span>
+          <button
+            type="button"
+            class="sheet-x"
+            aria-label="关闭"
+            @click="closeSheet"
+          >
+            ✕
+          </button>
+        </div>
         <Transition name="ins">
           <section
             v-if="selected"
@@ -4970,6 +5097,13 @@ onBeforeUnmount(() => {
         © 2026 ABO · DIGITAL TWIN · {{ $t('townView.k1h5gxpf137') }}</span>
     </footer>
 
+    <!-- 窄屏抽屉遮罩:点击空白关闭(与 AppSidebar 同一套抽屉协议) -->
+    <div
+      v-if="sheetOpen"
+      class="sheet-mask"
+      @click="closeSheet"
+    />
+
     <!-- 加载遮罩(全页) -->
     <div
       v-if="!ready"
@@ -5104,6 +5238,14 @@ onBeforeUnmount(() => {
   background: #0e1626;
 }
 .avatar-chip span { font-size: 12px; color: var(--hud-text); }
+/* ── 孪生 HUD 字号地板(桌面档) ────────────────────────────────────────────
+ * 孪生面板是"仪表铭牌",8.5–9px 的 mono 微字在 1440 下也被审计稳定判为不可读
+ * (实测每页 ~400 个节点)。10px 起是这套密度还能承受的下限:观感几乎不变,
+ * 但从"看得见"变成"读得了"。窄屏另有更严格的 11.5px 档(见下方媒体查询)。 */
+.town-view small {
+  font-size: 11px;
+}
+
 .avatar-fallback {
   width: 24px;
   height: 24px;
@@ -5141,7 +5283,9 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 250px minmax(540px, 1fr) 342px;
+  /* 轨道随视口收缩(clamp):1440 下仍是 250 / 342(外观不变),
+   * 1024–1131 区间不再因 minmax(540px) 把右轨挤出视口 */
+  grid-template-columns: clamp(212px, 19vw, 250px) minmax(0, 1fr) clamp(284px, 26vw, 342px);
 }
 .rail {
   min-height: 0;
@@ -5266,11 +5410,11 @@ onBeforeUnmount(() => {
 .daq-svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .daq-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .daq-name { font-size: 12px; font-weight: 600; color: var(--hud-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.daq-code { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--hud-faint); }
+.daq-code { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--hud-faint); }
 .daq-count {
   flex: none;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--hud-accent);
   background: rgba(53, 224, 160, 0.1);
   border: 1px solid rgba(53, 224, 160, 0.28);
@@ -5421,7 +5565,7 @@ onBeforeUnmount(() => {
 .scene-row.active .scene-ico { box-shadow: 0 0 10px color-mix(in srgb, var(--ch, var(--hud-accent)) 40%, transparent); }
 .scene-meta-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .scene-name { font-size: 12px; font-weight: 600; color: var(--hud-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.scene-meta { font-family: var(--font-mono); font-size: 9px; color: var(--hud-faint); }
+.scene-meta { font-family: var(--font-mono); font-size: 10px; color: var(--hud-faint); }
 .scene-cur, .scene-add {
   margin-left: auto;
   flex: none;
@@ -5746,7 +5890,7 @@ onBeforeUnmount(() => {
 .dock-mode {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.1em;
   color: var(--hud-faint);
   border: 1px solid var(--hud-line);
@@ -5759,7 +5903,7 @@ onBeforeUnmount(() => {
   margin: 2px 0 7px;
   padding-top: 7px;
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -6012,7 +6156,7 @@ onBeforeUnmount(() => {
 .xz-seg { display: flex; gap: 6px; margin-bottom: 8px; }
 .xz-seg .seg-btn { flex: 1; }
 .scale-row { display: flex; gap: 8px; align-items: center; }
-.scale-min, .scale-max { font-family: var(--font-mono); font-size: 9px; color: var(--hud-faint); }
+.scale-min, .scale-max { font-family: var(--font-mono); font-size: 10px; color: var(--hud-faint); }
 .scale-range { flex: 1; accent-color: var(--hud-accent); }
 .scale-val {
   text-align: center;
@@ -6063,7 +6207,7 @@ onBeforeUnmount(() => {
   transition: background 0.13s var(--hud-ease);
 }
 .event-row:hover { background: rgba(53, 224, 160, 0.05); }
-.ev-time { flex: none; font-family: var(--font-mono); font-size: 9px; font-variant-numeric: tabular-nums; color: var(--hud-faint); }
+.ev-time { flex: none; font-family: var(--font-mono); font-size: 10px; font-variant-numeric: tabular-nums; color: var(--hud-faint); }
 .ev-name {
   flex: none;
   max-width: 70px;
@@ -6213,7 +6357,7 @@ onBeforeUnmount(() => {
 .chat-meta { display: flex; gap: 6px; align-items: center; }
 .chat-state {
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 10px;
   letter-spacing: 0.1em;
   color: var(--hud-dim);
   padding: 1px 6px;
@@ -6223,7 +6367,7 @@ onBeforeUnmount(() => {
 /* 职务章:Leader(琥珀=指挥)/ Worker(青=执行),与 KPI 语义色同源 */
 .chat-role {
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
   padding: 1px 7px;
@@ -6233,8 +6377,8 @@ onBeforeUnmount(() => {
 .chat-role.r-worker { color: var(--hud-cyan); background: rgba(65, 200, 244, 0.1); border: 1px solid rgba(65, 200, 244, 0.4); }
 .chat-state.s-busy { color: var(--hud-amber); border-color: rgba(246, 196, 83, 0.5); }
 .chat-state.s-stopped { color: var(--hud-danger); border-color: rgba(255, 107, 107, 0.5); }
-.chat-harness { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.1em; color: var(--hud-faint); }
-.chat-count { font-family: var(--font-mono); font-size: 8.5px; color: var(--hud-faint); }
+.chat-harness { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--hud-faint); }
+.chat-count { font-family: var(--font-mono); font-size: 10px; color: var(--hud-faint); }
 .chat-refresh {
   flex: none;
   width: 22px;
@@ -6259,7 +6403,7 @@ onBeforeUnmount(() => {
   padding: 10px 12px 12px;
   overflow: hidden auto;
 }
-.rpg-divider { margin: 4px 0 2px; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.2em; color: var(--hud-faint); }
+.rpg-divider { margin: 4px 0 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--hud-faint); }
 .rpg-divider.live { color: var(--hud-amber); }
 .rpg-line { display: flex; gap: 8px; align-items: flex-start; }
 .rpg-time {
@@ -6268,7 +6412,7 @@ onBeforeUnmount(() => {
   text-align: right;
   margin-top: 5px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--hud-faint);
 }
@@ -6304,7 +6448,7 @@ onBeforeUnmount(() => {
 }
 .ty-dot:nth-child(2) { animation-delay: 0.15s; }
 .ty-dot:nth-child(3) { animation-delay: 0.3s; }
-.ty-label { margin-left: 5px; font-family: var(--font-mono); font-size: 9px; color: var(--hud-faint); }
+.ty-label { margin-left: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--hud-faint); }
 .rpg-note { font-family: var(--font-mono); font-size: 10px; color: var(--hud-dim); text-align: center; padding: 14px 0; }
 
 /* 频道边界编辑(浮动) */
@@ -6328,7 +6472,7 @@ onBeforeUnmount(() => {
 .bp-title { display: flex; gap: 8px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--hud-line); cursor: grab; touch-action: none; }
 .bp-title:active { cursor: grabbing; }
 .bp-name { font-size: 13px; font-weight: 700; color: var(--hud-text); }
-.bp-sub { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.12em; color: var(--hud-faint); }
+.bp-sub { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; color: var(--hud-faint); }
 .bp-tabs { display: flex; gap: 4px; margin-left: auto; }
 .bp-tab {
   padding: 3px 10px;
@@ -6407,7 +6551,7 @@ onBeforeUnmount(() => {
 }
 .member-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .member-name { font-size: 11px; font-weight: 600; color: var(--hud-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.member-role { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.06em; color: var(--hud-faint); }
+.member-role { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; color: var(--hud-faint); }
 .member-role.r-lead { color: var(--hud-amber); }
 .member-role.r-worker { color: var(--hud-cyan); }
 .member-select { flex: 1; min-width: 0; font-size: 10px; color: var(--hud-text); background: var(--hud-input); border: 1px solid var(--hud-line); border-radius: 6px; padding: 3px 6px; }
@@ -6541,7 +6685,7 @@ onBeforeUnmount(() => {
 .bp-tpl {
   padding: 6px 10px 3px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--hud-faint);
@@ -6593,7 +6737,7 @@ onBeforeUnmount(() => {
   padding: 0 5px;
   font-style: normal;
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--hud-amber);
@@ -6634,7 +6778,7 @@ onBeforeUnmount(() => {
 .dcw-win em {
   flex: none;
   font-style: normal;
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--hud-faint);
@@ -7046,14 +7190,305 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   .rpg-line.live .rpg-bubble, .ty-dot, .loading-spinner { animation: none; }
 }
 
-/* 窄屏:轨道收为抽屉 */
-@media (max-width: 1180px) {
-  .app { grid-template-columns: 0 1fr 0; }
-  .rail { position: fixed; top: 50px; bottom: 30px; z-index: 70; width: 288px; background: #0a101b; transition: transform 0.22s var(--hud-ease); box-shadow: var(--hud-shadow); }
-  .rail-left { left: 0; transform: translateX(-104%); }
-  .rail-right { right: 0; transform: translateX(104%); }
-  .dock { grid-template-columns: 1fr; }
-  .stage-dock { grid-template-columns: 1fr; }
+/* ============================================================
+ * 窄屏形态零件(≥1024 桌面一律不出现:形态由下面的媒体查询切换)
+ * ============================================================ */
+.sheet-btn,
+.dock-toggle,
+.sheet-hd { display: none; }
+.sheet-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 69;
+  background: rgba(3, 6, 12, 0.62);
+  backdrop-filter: blur(1.5px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * 窄屏(≤1023)= 手持巡检终端,而不是"缩小的控制室":
+ *   · 3D 舞台占满视口宽度,纵向吃满顶栏/状态栏之间的全部高度;
+ *   · 左右轨从固定侧栏改为底部抽屉页(sheet),顶栏两个按钮开合
+ *     (遮罩 / Esc / 点空白关闭,协议与 AppSidebar 抽屉一致);
+ *   · 底部坞折成可收起的横条,默认收起,不再压舞台;
+ *   · 刻度字号地板:标签 ≥11.5px、正文 ≥13px;可点目标 ≥40px。
+ * 断点与 useResponsive(≥1024 桌面)同源;形态全部由 CSS 决定。
+ * ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+  /* 窄屏对比度地板:--hud-faint(#5f6e84)在深面板上只有 3.6:1,
+   * 窄屏(强光/手持)抬到 ≥7:1;桌面配色不动 */
+  .town-view { --hud-faint: #8b9bb0; }
+
+  /* ── 顶栏:折两行(品牌 + 告警 + 抽屉开关 / 模式段) ── */
+  .topnav {
+    height: auto;
+    min-height: 46px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 6px 10px 8px;
+  }
+  .brand { order: 0; flex: 1 1 auto; min-width: 0; gap: 8px; }
+  .brand > div { min-width: 0; overflow: hidden; }
+  .brand-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-right { order: 1; flex: none; margin-left: 0; gap: 6px; }
+  /* 模式段整行:不再绝对定位居中(那会与品牌/开关互相压字) */
+  .nav-tabs { order: 2; flex: 1 1 100%; position: static; transform: none; gap: 8px; }
+  .seg button { padding: 0 14px; font-size: 13px; }
+  .nav-action { height: 40px; padding: 0 12px; font-size: 13px; }
+  .save-chip { font-size: 11.5px; }
+  .nav-chip { font-size: 11.5px; padding: 5px 8px; }
+  .avatar-chip { padding: 3px 8px 3px 3px; }
+  .avatar-chip span { font-size: 13px; }
+  .avatar-fallback { width: 26px; height: 26px; font-size: 11.5px; }
+  /* 抽屉开关:图标 + 名称,≥40px 触摸目标 */
+  .sheet-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: var(--hud-r-sm);
+    border: 1px solid #27395c;
+    background: #101a2b;
+    color: var(--hud-dim);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .sheet-btn.on {
+    color: #04120c;
+    background: var(--hud-accent);
+    border-color: var(--hud-accent);
+    box-shadow: 0 0 12px rgba(53, 224, 160, 0.3);
+  }
+  .sheet-ico {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ── 三栏 → 单栏:舞台全宽、吃满高度 ── */
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .stage-col { min-height: 0; }
+  .stage { min-height: 0; }
+  .stage-top { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .vp-title { padding: 6px 10px; gap: 8px; }
+  .vp-title h2 { font-size: 14px; }
+  .vp-id { font-size: 11.5px; }
+  .vp-tool { width: 40px; height: 40px; }
+  .vp-svg { width: 17px; height: 17px; }
+  .angle-chip { top: 58px; left: 12px; min-height: 40px; padding: 4px 10px; font-size: 13px; }
+  .angle-chip select { font-size: 13px; }
+  /* KPI 条:一行横滑,不再折成多行压住场景 */
+  .kpi-strip {
+    bottom: 10px;
+    gap: 8px;
+    padding: 0 12px;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .kpi-strip::-webkit-scrollbar { display: none; }
+  .kpi { flex: none; padding: 6px 10px; gap: 8px; }
+  .kpi-ico { width: 28px; height: 28px; }
+  .kpi-label { font-size: 11.5px; }
+  .kpi-val { font-size: 13px; }
+  .kpi-val small { font-size: 11.5px; }
+
+  /* ── 左右轨 → 底部抽屉页(sheet) ── */
+  .rail {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    z-index: 70;
+    width: auto;
+    max-height: min(76dvh, 640px);
+    padding: 0 10px 12px;
+    gap: 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    border-top: 1px solid var(--hud-line-hi);
+    border-radius: 16px 16px 0 0;
+    background: linear-gradient(180deg, #0c1420 0%, #080d16 46%);
+    box-shadow: 0 -18px 46px rgba(0, 0, 0, 0.6);
+    transform: translateY(103%);
+    visibility: hidden;
+    /* 关门:位移走完再隐藏(离散属性用延时);开门:立即可见 */
+    transition: transform 0.26s var(--hud-ease), visibility 0s linear 0.26s;
+  }
+  .rail.sheet-open {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.26s var(--hud-ease), visibility 0s;
+  }
+  .topnav.sheet-on { z-index: 71; }
+  .rail-left,
+  .rail-right { border-right: 0; border-left: 0; }
+  .rail .panel { flex: none; }
+  .sheet-hd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: 0 -10px 2px;
+    padding: 13px 12px 9px;
+    background: linear-gradient(180deg, #0e1725, #0c1420);
+    border-bottom: 1px solid var(--hud-line-soft);
+  }
+  .sheet-grip {
+    position: absolute;
+    left: 50%;
+    top: 6px;
+    width: 40px;
+    height: 3px;
+    margin-left: -20px;
+    border-radius: 2px;
+    background: #2c4568;
+  }
+  .sheet-hd-t { font-size: 13px; font-weight: 700; color: var(--hud-text); letter-spacing: 0.04em; }
+  .sheet-x {
+    margin-left: auto;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 8px;
+    border: 1px solid var(--hud-line);
+    background: #101a2b;
+    color: var(--hud-dim);
+    font-size: 15px;
+  }
+
+  /* ── 底部坞:可收起横条(默认收起,舞台优先) ── */
+  .dock { display: block; padding: 0; }
+  .dock-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-top: 1px solid var(--hud-line-soft);
+    background: linear-gradient(180deg, #101827, #0c131f);
+    color: var(--hud-text);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+  }
+  .dock-toggle-t { flex: none; }
+  .dock-toggle-hint {
+    font-size: 11.5px;
+    color: var(--hud-faint);
+    letter-spacing: 0.08em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dock-caret { margin-left: auto; flex: none; color: var(--hud-dim); transition: transform 0.2s var(--hud-ease); }
+  .dock.dock-open .dock-caret { transform: rotate(180deg); }
+  .dock .dock-card { display: none; }
+  .dock.dock-open { padding: 8px; max-height: 52dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .dock.dock-open .dock-card { display: flex; min-height: 0; margin-bottom: 8px; }
+  .dock.dock-open .dock-card:last-child { margin-bottom: 0; }
+  .dock-card { padding: 12px; }
+  .dock-hd h3 { font-size: 13px; }
+  .dock-count,
+  .dock-mode { font-size: 11.5px; }
+  .ctl-sec { font-size: 11.5px; }
+  .ctl-row { flex-wrap: wrap; gap: 6px 10px; }
+  .ctl-name { width: auto; min-width: 62px; font-size: 13px; }
+  .ctl-val { width: auto; min-width: 38px; font-size: 12.5px; }
+  .fps-seg { flex-wrap: wrap; }
+  .fps-seg button { font-size: 13px; padding: 0 10px; }
+  .snap-toggle { font-size: 11.5px; }
+  .lg-chip { font-size: 11.5px; }
+  .trend-empty { font-size: 11.5px; }
+
+  /* ── 状态栏:留连接态 + 统计,FPS 贴右,版权行收起 ── */
+  .statusbar {
+    height: auto;
+    min-height: 30px;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 5px 10px;
+    font-size: 11.5px;
+  }
+  .statusbar .copy { display: none; }
+  .sb-lat { position: static; transform: none; margin-left: auto; }
+
+  /* ── 触摸目标:窄屏所有可点元件 ≥40px 高 ── */
+  .town-view button { min-height: 40px; }
+
+  /* ── 刻度字号地板:标签 ≥11.5px(窄屏不允许 8.5–10px 徽标字) ── */
+  .town-view :where(
+    .panel-tag, .daq-code, .daq-count, .daq-caret, .node-val, .node-dev, .daq-empty-hint,
+    .scene-meta, .scene-cur, .scene-add, .scene-hint, .co-label, .co-range, .lg-chip, .lg-more,
+    .ins-chip, .sect-hd, .obj-label, .range-status, .obj-mini, .bp-val, .seg-btn, .scale-min,
+    .scale-max, .scale-val, .ins-empty, .donut-center span, .ev-time, .ev-name, .ev-text,
+    .event-empty, .rail-empty, .al-src, .al-state, .mm-meta, .chat-state, .chat-role,
+    .chat-harness, .chat-count, .rpg-divider, .rpg-time, .rpg-kind, .ty-label, .rpg-note,
+    .bp-sub, .bp-tab, .bp-label, .bp-hint, .bp-btn, .member-ava, .member-role, .member-select,
+    .bind-label, .bind-val, .bp-tpl, .bp-cur, .bp-empty, .dcw-name, .dcw-tag, .dcw-win-num,
+    .dcw-send, .dcw-err, .bind-select, .bind-add-btn, .daq-ctl-cycle, .daq-num, .daq-th-inputs,
+    .approval-ttl, .approval-detail, .dcw-write input::placeholder
+  ) { font-size: 11.5px; }
+  .town-view .statusbar .copy,
+  .town-view .dock .dock-count,
+  .town-view .dock .dock-mode,
+  .town-view .dock .ctl-sec,
+  .town-view .dock .ctl-val,
+  .town-view .dock .dock-toggle-hint { font-size: 11.5px; }
+  .town-view .dock .ctl-val { font-size: 12.5px; }
+  .town-view .dock-hd h3 { font-size: 13px; }
+  .town-view .bind-val b { font-size: 12px; }
+  .town-view .avatar-chip span { font-size: 13px; }
+  .town-view .save-chip { font-size: 11.5px; }
+  .town-view .nav-chip { font-size: 11.5px; }
+  .town-view .vp-id { font-size: 11.5px; }
+  .town-view .loading-text { font-size: 12px; }
+  /* ── 正文 ≥13px ── */
+  .town-view :where(
+    .daq-name, .scene-name, .al-txt, .ev-text, .chat-name, .co-val, .rpg-text, .daq-info-row,
+    .daq-ctl-btn, .rail-empty, .rpg-note, .member-name, .bind-label, .dcw-cur
+  ) { font-size: 13px; }
+  .town-view .statusbar { font-size: 12px; }
+  .town-view .vd-name { font-size: 13px; }
+}
+
+/* ── <640 单列档:进一步让位给舞台(品牌文字收成徽记,名字收进头像) ── */
+@media (max-width: 639px) {
+  .brand { flex: none; }
+  .brand > div { display: none; }
+  .brand-glyph { width: 28px; height: 28px; }
+  .nav-fps { display: none; }
+  .nav-user span { display: none; }
+  .avatar-chip { padding: 3px; }
+  .sheet-btn-t { display: none; }
+  .sheet-btn { padding: 0 10px; }
+  .stage-top { padding: 8px 10px; }
+  .vp-tools { gap: 6px; }
+  .vp-tool { width: 40px; height: 40px; }
+  .angle-chip { top: 54px; left: 10px; }
+  .kpi-strip { padding: 0 10px; }
+  .dock.dock-open { max-height: 58dvh; }
+}
+
+/* ── 减少动态偏好:抽屉位移直接切换,不做过渡 ── */
+@media (prefers-reduced-motion: reduce) {
+  .rail { transition: none; }
+  .dock-caret { transition: none; }
 }
 
 .approval-card {

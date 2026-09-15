@@ -261,12 +261,13 @@ useHead({ title: () => tt('titles.agents') })
               :class="visTag(record).icon"
             />{{ visTag(record).text }}
           </a-tag>
+          <!-- 开关**不带文字**:左边那枚 tag 已经在说"公开/私有"了。
+               两处同时显示同一个词,是同一列里把一条信息讲了两遍(实测桌面版每行都这样)。
+               开关只负责"可切换"这个动作,语义由 tag + title 承载。 -->
           <a-switch
             v-if="!record.isBuiltin && canWrite(record)"
             :checked="record.visibility === 'public'"
             size="small"
-            checked-children="公开"
-            un-checked-children="私有"
             :title="record.visibility === 'public' ? '点击转为私有' : '点击公开(全员可读可用)'"
             @change="(v: unknown) => toggleVisibility(record, v === true)"
           />
@@ -516,4 +517,93 @@ h2 { margin: 0 0 4px; }
 .inst-id,
 .inst-ch { font-family: var(--font-mono); opacity: 0.6; }
 .empty { padding: 6px 0; font-size: 12px; opacity: 0.4; }
+
+/* ══ 窄屏(v9):页头纵向堆叠 / 筛选条换行 / 表格横向卷轴 + 首列可读 ═════════ */
+@media (max-width: 900px) {
+  .head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .head > div { min-width: 0; }
+  .head h2 { font-size: 21px; line-height: 1.25; }
+
+  .head :deep(.ant-space) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .head :deep(.ant-space-item) { width: 100%; }
+  .head :deep(.ant-btn) { width: 100%; min-height: 40px; }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .toolbar :deep(.ant-segmented) {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .admin-note {
+    flex: 1 1 100%;
+    min-width: 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
+  /* 整表给出可读下限:横向卷轴交给全局 v5 的 .ant-table-content */
+  .page :deep(.ant-table-content) table { min-width: 828px; }
+
+  /* 有 expandedRowRender 时 antd 会把"展开图标列"放在第一列,而全局 v5 钉住的正是第一列。
+     auto 布局下没有显式宽度的列会吃掉全部余量 → 展开列白占 ~115px,真正的身份列还会被卷走。
+     这里把展开列收成 44px,并让身份列(模板名)紧随其后一起钉住:横扫时始终知道这一行是谁。 */
+  .page :deep(.ant-table colgroup col:first-child) { width: 44px; }
+
+  .page :deep(.ant-table-thead > tr > th:first-child),
+  .page :deep(.ant-table-tbody > tr > td:first-child) {
+    width: 44px;
+    min-width: 44px;
+    padding-right: 2px;
+    padding-left: 6px;
+  }
+
+  .page :deep(.ant-table-thead > tr > th:nth-child(2)),
+  .page :deep(.ant-table-tbody > tr > td:nth-child(2)) {
+    position: sticky;
+    left: 44px;
+    z-index: 2;
+    min-width: 132px;
+    background: var(--paper-raised);
+    box-shadow: 1px 0 0 var(--line);
+  }
+
+  .page :deep(.ant-table-thead > tr > th:nth-child(2)) { z-index: 3; }
+}
+
+@media (max-width: 640px) {
+  .page { padding: 0; }
+  .head h2 { font-size: 19px; }
+  .sub { font-size: 11.5px; line-height: 1.5; }
+  .tpl-name { min-width: 120px; }
+  .page :deep(.ant-table) .ant-btn-sm { min-height: 34px; }
+}
+
+/* 触摸命中区:antd 小开关本体只有 28×16(手指点不中),视觉尺寸保持不变,
+   用伪元素把命中区外扩到 ~40×40 —— 与全局 v5 给展开图标做的事同一手法。
+   行内没有相邻可点元素(可见性列是 tag+switch,启用列只有 switch),不会误伤。 */
+@media (max-width: 900px) {
+  .page :deep(.ant-switch) { position: relative; }
+
+  .page :deep(.ant-switch)::after {
+    position: absolute;
+    inset: -12px -6px;
+    content: '';
+  }
+}
 </style>

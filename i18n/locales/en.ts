@@ -36,6 +36,8 @@ export default {
   header: {
     collapse: 'Collapse menu',
     expand: 'Expand menu',
+    openNav: 'Open navigation',
+    closeNav: 'Close navigation',
     language: 'Language',
     theme: 'Theme',
     fullscreen: 'Fullscreen',

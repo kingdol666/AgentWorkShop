@@ -454,4 +454,57 @@ h2 { margin: 0 0 4px; }
   border-style: dashed;
 }
 .big { font-size: 28px; }
+
+/* ══ 窄屏(v9):页头纵向堆叠 / 筛选条换行 / 卡片单列 + 卡片底栏换行 ═══════ */
+@media (max-width: 900px) {
+  .head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .head > div { min-width: 0; }
+  .head h2 { font-size: 21px; line-height: 1.25; }
+
+  .head :deep(.ant-space) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .head :deep(.ant-space-item) { width: 100%; }
+  .head :deep(.ant-btn) { width: 100%; min-height: 40px; }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .toolbar :deep(.ant-segmented) {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .admin-note {
+    flex: 1 1 100%;
+    min-width: 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
+  .grid { grid-template-columns: 1fr; }
+  .card-head { flex-wrap: wrap; }
+  .member-line { flex-wrap: wrap; }
+  .card-foot { flex-wrap: wrap; }
+  .ws { max-width: 100%; }
+}
+
+@media (max-width: 640px) {
+  .page { padding: 0; }
+  .head h2 { font-size: 19px; }
+  .sub { font-size: 11.5px; line-height: 1.5; }
+  .scenario { font-size: 11.5px; }
+}
 </style>

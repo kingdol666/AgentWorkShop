@@ -728,4 +728,100 @@ const placeholder = computed(() =>
   background: var(--tone-live-dot);
   opacity: 1;
 }
+
+/* ── 窄屏(≤1023):输入区是手持设备的"主操作面",键盘弹出时它必须还在 ──
+   桌面工具栏是「一行左簇右钮」;390px 下这行会折成一列竖排字,
+   所以窄屏改为「模式行 → 目标行 → 发送行」三段堆叠,发送占满一行且 ≥44px。 */
+@media (max-width: 1023.98px) {
+  .composer {
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .composer-box {
+    padding: 8px 10px;
+  }
+
+  /* 状态 chip:桌面宽度自适应内容,窄屏必须允许折行,否则顶破输入卡 */
+  .composer-status-chip {
+    width: auto;
+    flex-wrap: wrap;
+    row-gap: 2px;
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+
+  .chip-hint {
+    flex: 1 1 100%;
+    padding-left: 0;
+    margin-left: 0;
+  }
+
+  .reach-chip,
+  .mention-role,
+  .mention-title {
+    font-size: 11.5px;
+  }
+
+  /* 16px 是 iOS 不缩放输入框的下限(小于它聚焦时整页被放大) */
+  .composer-input {
+    min-height: 42px;
+    max-height: 30dvh;
+    font-size: 16px;
+  }
+
+  .composer-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .cb-left {
+    flex: 1 1 100%;
+    row-gap: 8px;
+  }
+
+  .cb-right {
+    flex: 1 1 100%;
+  }
+
+  /* 主操作:整行墨色药丸(触摸目标 44px) */
+  .send-btn {
+    width: 100%;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  .aw-seg button {
+    min-height: 40px;
+    padding: 0 12px;
+  }
+
+  .chip-toggle {
+    min-height: 40px;
+  }
+
+  .target {
+    flex: 1 1 130px;
+    width: auto;
+  }
+
+  .composer-bar :deep(.ant-select-selector) {
+    min-height: 40px;
+    align-items: center;
+  }
+
+  .loop-number,
+  .loop-number.iterations {
+    flex: 1 1 96px;
+    width: auto;
+  }
+
+  .composer-bar :deep(.ant-input-number) {
+    min-height: 40px;
+  }
+
+  .mention-opt {
+    min-height: 44px;
+  }
+}
 </style>

@@ -490,6 +490,17 @@ export interface OpcUaConn {
 
 const opcuaPool = new Map<string, OpcUaConn>()
 
+/**
+ * 在飞建连去重表（同池 key → 尚未 settle 的建连任务）。
+ *
+ * 修复动因(实测事故):同端点**并发首连**此前无去重——两条采样/写控请求同时进入时
+ * 各建一条 OPCUAClient,而后一条的 `opcuaPool.set` 会**覆盖**前一条:
+ * 被覆盖的 session 与 TCP 连接从此无人持有,空闲 sweep 也扫不到 → **永久泄漏**;
+ * 重连 churn(断链演练/反复建节点)下还会触发 node-opcua 内部
+ * `_internal_create_secure_channel failed, this._secureChannel is supposed to be null`。
+ */
+const opcuaInflight = new Map<string, Promise<OpcUaConn>>()
+
 // OPC UA 会话空闲回收(对照 modbus 池 sweep;节点删除/端点弃用后不再有读取
 // 路径触发 3 错误驱逐,无 sweep 会话与 TCP 连接会永久驻留)
 const OPCUA_IDLE_MS = 600_000
@@ -533,6 +544,20 @@ export async function getOpcUaConn(cfg: Record<string, unknown>): Promise<OpcUaC
     existing.lastUsed = Date.now()
     return existing
   }
+  // 在飞去重:同 key 并发首连复用同一条建连任务(否则后写覆盖 pool → 前一条 session/socket 永久泄漏)
+  const pending = opcuaInflight.get(key)
+  if (pending) return pending
+  const task = createOpcUaConn(cfg, key)
+  opcuaInflight.set(key, task)
+  try {
+    return await task
+  }
+  finally {
+    opcuaInflight.delete(key)
+  }
+}
+
+async function createOpcUaConn(cfg: Record<string, unknown>, key: string): Promise<OpcUaConn> {
   const opcua = reqNative('node-opcua') as typeof import('node-opcua')
   const securityMode = (['None', 'Sign', 'SignAndEncrypt'] as const).includes(cfg.securityMode as 'None')
     ? (cfg.securityMode as 'None')
@@ -574,15 +599,32 @@ export async function getOpcUaConn(cfg: Record<string, unknown>): Promise<OpcUaC
   }
   const client = opcua.OPCUAClient.create(clientOpts as Parameters<typeof opcua.OPCUAClient.create>[0])
   await client.connect(String(cfg.endpoint))
-  const session = cfg.username
+  // 显式标注:await 三元会把类型收窄成 `ClientSession | (Promise<ClientSession> & void)`，
+  // 导致 conn.session 赋值与 session.close() 两处既有类型错误
+  const session = (cfg.username
     ? await client.createSession({ userName: String(cfg.username), password: String(cfg.password ?? '') })
-    : await client.createSession()
+    : await client.createSession()) as import('node-opcua').ClientSession
   const conn: OpcUaConn = { session, client, lastUsed: Date.now(), errors: 0 }
+  // 竞态二次校验:建连期间若已有连接入池(并发首连的另一方完成),关闭本次新建并复用既有,
+  // 避免 opcuaPool.set 覆盖导致 session/socket 永久泄漏。
+  const raced = opcuaPool.get(key)
+  if (raced) {
+    try {
+      await session.close()
+    }
+    catch { /* 清理失败不覆盖原始错误 */ }
+    try {
+      await client.disconnect()
+    }
+    catch { /* 清理失败不覆盖原始错误 */ }
+    return raced
+  }
   opcuaPool.set(key, conn)
   return conn
 }
 
-/** 驱逐 OPC UA 连接(采样/写控共享池;连续故障后触发,下次调用重建) */
+/** 驱逐 OPC UA 连接(采样/写控共享池;连续故障后触发,下次调用重建)。
+ *  只作用于**已入池**的连接:在飞建连本身就是新建的,交由竞态二次校验处理。 */
 export async function evictOpcUaConn(cfg: Record<string, unknown>): Promise<void> {
   const key = opcuaKey(cfg)
   const conn = opcuaPool.get(key)

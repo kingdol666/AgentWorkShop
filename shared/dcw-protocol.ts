@@ -497,6 +497,8 @@ export interface DcwWriteMeta {
   taskId?: string
   /** Agent 判定假设(作业环第 3 步声明) */
   hypothesis?: string
+  /** D8 基准消融臂(仅 AW_BENCH_MODE=1 时被 write() 识别;生产模式恒忽略) */
+  benchArm?: 'no-interlock' | 'no-readback' | 'ungated'
 }
 
 /** 参数变更锚点(append-only 账本;参数全量在册的最小单元) */

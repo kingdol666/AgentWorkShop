@@ -359,4 +359,38 @@ const open = (a: LiveAgent) => {
 @media (prefers-reduced-motion: reduce) {
   .live-pip::after { animation: none; opacity: 0; }
 }
+
+/* ── 窄屏(≤1023):活动条在抽屉/窄列里同样要点得中、读得清 ── */
+@media (max-width: 1023.98px) {
+  .live-main {
+    min-height: 44px;
+  }
+
+  .live-more {
+    min-height: 40px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .idle-text,
+  .live-detail,
+  .live-pop-detail,
+  .live-pop-title {
+    font-size: 11.5px;
+  }
+
+  .live-pop-item {
+    min-height: 44px;
+  }
+
+  .live-avatar-sm {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  .live-pop {
+    max-height: 46dvh;
+  }
+}
 </style>

@@ -944,4 +944,55 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, currentColor 5%, transparent);
   border-radius: var(--radius-chip);
 }
+
+/* ── 窄屏(≤1023):泳道从"并排仪表"改为"一次一泳道"的横向卡片流 ──
+   桌面 min-width 240px 的泳道在 390px 下并排 = 每列都被压到极限;
+   改为 88% 宽 + scroll-snap:一屏一路信号,横扫切换成员。 */
+@media (max-width: 1023.98px) {
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px 6px;
+  }
+
+  .ts-label,
+  .ts-unit,
+  .ts-detail,
+  .lane-meta,
+  .empty-hint {
+    font-size: 11.5px;
+  }
+
+  .lanes {
+    padding: 8px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .lane {
+    flex: 0 0 88%;
+    min-width: 0;
+    scroll-snap-align: center;
+  }
+
+  .lane-name {
+    font-size: 14px;
+  }
+
+  .lane-chip,
+  .lane-role,
+  .term-badge {
+    font-size: 11.5px;
+    line-height: 18px;
+  }
+
+  .lane-actions .ant-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .empty-title {
+    font-size: 13px;
+  }
+}
 </style>

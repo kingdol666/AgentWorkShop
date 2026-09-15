@@ -1,53 +1,103 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/hero.png" alt="AgentWorkShop — 让 Agent 运行产线" width="100%" />
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/hero.png" alt="AgentWorkShop —— 让 Agent 团队运行真实产线" width="100%" />
+
+<br />
 
 # AgentWorkShop
 
 **AI Agent 团队与产线在此交汇。**
 
+[![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://github.com/kingdol666/AgentWorkShop)
+[![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://github.com/kingdol666/AgentWorkShop)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases)
+[![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
+[![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
+[![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
+[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-8A2BE2?logo=openaccess&logoColor=white)](./LICENSE)
+
 [![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)](https://nuxt.com)
 [![Vue 3.5](https://img.shields.io/badge/Vue-3.5-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org)
 [![TypeScript 5.7](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Node ≥ 23.4](https://img.shields.io/badge/Node.js-%E2%89%A5%2023.4-3C873A?logo=nodedotjs&logoColor=white)](https://nodejs.org)
-[![SQLite node:sqlite](https://img.shields.io/badge/SQLite-node:sqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
-[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm_NC_1.0-8A2BE2?logo=openaccess&logoColor=white)](./LICENSE)
+[![SQLite node:sqlite](https://img.shields.io/badge/SQLite-node%3Asqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
+[![Modbus · OPC UA · MQTT · HTTP](https://img.shields.io/badge/%E7%8E%B0%E5%9C%BA%E6%80%BB%E7%BA%BF-Modbus%20%C2%B7%20OPC%20UA%20%C2%B7%20MQTT%20%C2%B7%20HTTP-41c8f4?logo=siemens&logoColor=white)](./docs/site/guide/daq-protocols.md)
+[![Plugins](https://img.shields.io/badge/%E6%8F%92%E4%BB%B6-%E7%83%AD%E9%87%8D%E8%BD%BD-8b5cf6?logo=puzzle&logoColor=white)](./docs/plugins.md)
+[![Docs](https://img.shields.io/badge/%E6%96%87%E6%A1%A3-VitePress%20%C2%B7%20%E4%B8%AD%2FEN-ffd75e?logo=vitepress&logoColor=black)](https://kingdol666.github.io/AgentWorkShop)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4?logo=git&logoColor=white)](https://github.com/kingdol666/AgentWorkShop/pulls)
 
-**[English →](./README.md)** · **[在线文档 →](https://kingdol666.github.io/AgentWorkShop/)** · **[版本发布 →](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志 →](./changelog.md)**
+**[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-*当前版本：**v0.7.39** · 14 个执行引擎 · 5 种现场协议 · 99 个运行时设置项 · 双语文档（简体中文 / English）*
+<sub><b>v0.7.39</b> · 14 个执行引擎 · 5 种现场协议 · 99 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+
+<br />
 
 *一个配置驱动的平台：**AI Agent 团队**与**工业数字孪生**共享同一运行时——Agent 查询真实遥测、经人工审批的写控回路下发监督设定值，每个事件实时推送到 3D 孪生。*
 
 </div>
 
-> **定位声明：监督层。** AgentWorkShop 是面向产线管理、数字孪生、数采与 Agent 编排的**监督层**（SCADA 同位）平台，运行在**秒级软实时**档位。它**不是**硬实时控制器：任何时序关键回路（**< 10 ms**、联锁、安全、伺服）**必须在 PLC 内实现**。本平台下发的设定值均为建议性——产线侧逻辑可否决。
+> [!IMPORTANT]
+> **定位声明：监督层。** AgentWorkShop 是面向产线管理、数字孪生、数采与 Agent 编排的**监督层**（SCADA 同位）平台，运行在**秒级软实时**档位。
+> 它**不是**硬实时控制器：任何时序关键回路（**< 10 ms**、联锁、安全、伺服）**必须在 PLC 内实现**。本平台下发的设定值均为建议性——产线侧逻辑可否决。
 
 ---
 
-## 目录
+<table>
+<tr>
+<td width="33%" valign="top">
 
-| | | |
-|---|---|---|
-| [这是什么？](#这是什么) | [特性总览](#特性总览) | [界面一览](#界面一览) |
-| [设计架构](#设计架构) | [快速开始](#快速开始) | [配置与 CLI](#配置与-cli--真正的配置驱动) |
-| [工业栈详解](#工业栈详解) | [使用说明](#使用说明) | [端到端验证](#端到端验证) |
-| [项目结构](#项目结构) | [技术栈](#技术栈) | [开发指南](#开发指南) |
-| [路线图](#路线图) | [许可证](#许可证) | |
+**图例索引**
+
+`图 01` 闭环全流程<br/>
+`图 02` 数采中心<br/>
+`图 03` 产线运营<br/>
+`图 04` 数字孪生<br/>
+`图 05` 仪表盘<br/>
+`图 06` 自适应布局
+
+</td>
+<td width="33%" valign="top">
+
+**快速跳转**
+
+[这是什么？](#这是什么) · [特性总览](#特性总览)<br/>
+[界面一览](#界面一览) · [设计架构](#设计架构)<br/>
+[快速开始](#快速开始) · [配置与 CLI](#配置与-cli--真正的配置驱动)<br/>
+[工业栈详解](#工业栈详解) · [使用说明](#使用说明)<br/>
+[端到端验证](#端到端验证) · [项目结构](#项目结构)<br/>
+[技术栈](#技术栈) · [开发指南](#开发指南)<br/>
+[路线图](#路线图) · [许可证](#许可证)
+
+</td>
+<td width="33%" valign="top">
+
+**一眼看懂**
+
+监督层，秒级软实时<br/>
+14 个执行引擎 · 4 个接入入口<br/>
+5 种现场协议（读 + 写）<br/>
+7 状态任务机 · FTS5 + 向量记忆<br/>
+插件热重载 · SDK · CLI · TUI
+
+</td>
+</tr>
+</table>
+
+---
 
 ## 文档
 
-文档双语——[VitePress 文档站](https://kingdol666.github.io/AgentWorkShop/)的每个板块都提供语言切换（简体中文 / English）。深度文档同样随仓库发布，CLI 还会把它们一并复制进发布包：
+文档为双语——[VitePress 站点](https://kingdol666.github.io/AgentWorkShop) 在全站范围内提供语言切换（简体中文 / English）。深度页面同样随仓库发布，CLI 会把它们复制进发布的 tarball：
 
-| 主题 | 在线 | 仓库内 | 覆盖内容 |
+| 主题 | 在线 | 仓库内 | 内容 |
 |---|---|---|---|
-| **快速上手** | [指南](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) | `docs/site/guide/` | 安装 → 首次运行 → 第一次「Agent × 产线」会话、配置、数采协议、数控读写、HITL、配方版本化、多 Harness 团队、产线级权限、AML |
-| **插件开发** | [插件指南](https://kingdol666.github.io/AgentWorkShop/plugins/) | [`docs/plugins.md`](./docs/plugins.md) | 完整扩展契约：三种作用域、`index.mjs` 清单、`ctx` 服务端/浏览器能力面、`settings`/`groups` 声明、生命周期事件、i18n、面板、团队级开关、一个真实示例 |
-| **SDK** | [SDK 指南](https://kingdol666.github.io/AgentWorkShop/sdk/) | [`docs/sdk.md`](./docs/sdk.md) | `agentworkshop/sdk` 既是编程客户端（带信封处理的平台 REST 客户端），也是插件扩展基座；TypeScript 类型；浏览器侧 SDK |
-| **CLI** | [CLI 手册](https://kingdol666.github.io/AgentWorkShop/cli/) | [`docs/cli.md`](./docs/cli.md) | 全部 14 条 `aw` 指令、全局参数、退出码、双模式路径模型、指令注册系统、维护者发布指南 |
+| **上手指南** | [指南](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) | `docs/site/guide/` | 安装 → 首次运行 → 第一次「Agent × 产线」会话、配置系统、数采协议、数控读写、HITL、配方版本、多 Harness 团队、产线权限、AML |
+| **插件开发** | [插件指南](https://kingdol666.github.io/AgentWorkShop/plugins/) | [`docs/plugins.md`](./docs/plugins.md) | 完整扩展契约：三种作用域、`index.mjs` 清单、`ctx` 服务端/浏览器能力面、`settings`/`groups` 声明、生命周期事件、i18n、面板、团队级开关、一个真实案例 |
+| **SDK** | [SDK 指南](https://kingdol666.github.io/AgentWorkShop/sdk/) | [`docs/sdk.md`](./docs/sdk.md) | `agentworkshop/sdk` 作为编程客户端（带信封处理的平台 REST 客户端）与插件扩展基座；TypeScript 类型；浏览器端 SDK |
+| **CLI** | [CLI 手册](https://kingdol666.github.io/AgentWorkShop/cli/) | [`docs/cli.md`](./docs/cli.md) | 全部 14 个 `aw` 指令、全局选项、退出码、双模式路径模型、指令注册系统、维护者发布指引 |
 | **AML** | [AML 指南](https://kingdol666.github.io/AgentWorkShop/guide/aml) | [`docs/aml.md`](./docs/aml.md) | 自动建模实验室：数据集构建、作业编排、模型注册表、晋级门禁、Agent 工具 |
-| **TUI** | — | [`docs/tui.md`](./docs/tui.md) · [`tui/README.md`](./tui/README.md) | 终端工作台：频道、Agent、任务、实时监控、HITL 作答 |
-| **多 Harness 架构** | — | [`docs/multi-harness-architecture.md`](./docs/multi-harness-architecture.md) | 引擎分类、归一化会话契约、provider/model 目录、失效模式 |
+| **TUI** | — | [`docs/tui.md`](./docs/tui.md) · [`tui/README.md`](./tui/README.md) | 终端工作台：频道、Agent、任务、实时监控、HITL 应答 |
+| **多 Harness 架构** | — | [`docs/multi-harness-architecture.md`](./docs/multi-harness-architecture.md) | 引擎分类、归一化会话契约、供应商/模型目录、失败模式 |
 
 ---
 
@@ -62,12 +112,21 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 最终效果：提交一个目标，比如「分析熔体温度趋势并优化设定值」——Agent 团队读取真实传感器历史、计算统计量、提议新设定值、在 HITL 面板等您批准、写入 PLC、校验回读、带着数值汇报。**端到端，自动化 E2E 已验证。**
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/town-demo.gif" alt="3D 数字孪生 — 实时产线" width="86%" />
-<br><sub><b>实时 3D 孪生。</b>产线设备、设备健康、数采通道与趋势分析——全部由实时遥测驱动。</sub>
+
+### 图 01 — 闭环全流程
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-01-closedloop.gif" alt="Agent 团队读取实时遥测、提议设定值、等待审批、写入 PLC 并校验回读" width="88%" />
+
+<sub><b>目标 → 读取 → 计算 → 审批 → 写控 → 回读 → 汇报。</b><br/>
+录制自运行中的实例：真实数采历史、真实写控、真实 HITL 审批。</sub>
+
 </div>
 
----
+> [!NOTE]
+> 本 README 中的每一张图都是**运行中实例**的录屏或截图，没有一张是效果图。
+> 屏幕上的数字来自流经产品同一套代码路径的工业数据。
 
+---
 ## 特性总览
 
 #### Agent 团队运行时
@@ -118,21 +177,74 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 
 ## 界面一览
 
+下面每一屏都是真实界面，1440×900，录制自正在运行的实例。
+
 <div align="center">
 
-| Agent 工作台 | 产线运营 |
-|:---:|:---:|
-| ![Agent 工作台](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/workshop.png) | ![产线运营](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/dcw.png) |
+### 图 01 — 闭环全流程
 
-| 数采中心 | 数字孪生小镇 |
-|:---:|:---:|
-| ![数采中心](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/daq.png) | ![数字孪生小镇](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/town.png) |
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-01-closedloop.gif" alt="Agent 团队读取实时遥测、提议设定值、等待审批、写入 PLC 并校验回读" width="88%" />
 
-| 仪表盘 | 实时监控与 HITL |
-|:---:|:---:|
-| ![仪表盘](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/dashboard.png) | ![监控与 HITL](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/monitor.png) |
+<sub><b>目标 → 读取 → 计算 → 审批 → 写控 → 回读 → 汇报。</b><br/>
+录制自运行中的实例：真实数采历史、真实写控、真实 HITL 审批。</sub>
+
+<br />
+
+### 图 02 — 数采中心
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-02-daq.gif" alt="数采中心：节点台账、实时趋势、报警横条与事件流" width="92%" />
+
+<sub><b>端到端的采集链路。</b>量规统计带之下的节点台账与健康度、随样本落库而生长趋势曲线、
+只保留真正未确认项的报警横条，以及滚动的事件流。</sub>
+
+<br />
+
+### 图 03 — 产线运营
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-03-dcw.gif" alt="产线运营：产线、产品、配方与写控制" width="92%" />
+
+<sub><b>产线 / 产品 / 配方 / 批次。</b>开跑产线即用配方窗口为采集设门，并给每个样本打上
+<code>产品/配方/批次</code> 标识；控制节点通过它写入时用的同一条标定路径呈现 <b>SET vs ACT</b>。</sub>
+
+<br />
+
+### 图 04 — 数字孪生
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-04-town.gif" alt="由实时遥测驱动的 3D 数字孪生小镇" width="92%" />
+
+<sub><b>孪生就是同一条事件总线的渲染结果。</b>设备、频道领地、报警与实时数值——自适应画质阶梯
+（DPR / 阴影 / 泛光，墙钟 FPS 预算）让它在中端机器上也保持诚实。</sub>
+
+<br />
+
+### 图 05 — 仪表盘
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-05-dashboard.gif" alt="带 KPI 量规与趋势的运行仪表盘" width="92%" />
+
+<sub><b>一屏看全工作坊。</b>频道、Agent、任务、数采吞吐与报警——读的是 API 服务的同一份状态，
+不是另建一套指标存储。</sub>
+
+<br />
+
+### 图 06 — 自适应布局
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-06-responsive.gif" alt="同一套界面从桌面到平板再到手机的形态变化" width="92%" />
+
+<sub><b>桌面 → 平板 → 手机。</b>刻度轨先收成图标轨、再变成抽屉；页头纵向堆叠，
+高密度表格变成可横扫的「账页条」，并把身份列钉在左缘。</sub>
 
 </div>
+
+<table>
+<tr>
+<td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-workshop.png" alt="Agent 工作台" width="100%" /><br/><sub><b>Agent 工作台。</b>频道时间线、lane、任务、记忆与 HITL 收在同一张工作台。</sub></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="运行时监控" width="100%" /><br/><sub><b>运行时监控。</b>每条已接线频道、成员数、依赖环与归属用户。</sub></td>
+</tr>
+<tr>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>16 组 99 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="插件管理" width="100%" /><br/><sub><b>插件管理。</b>三种作用域、改代码即热重载、按团队开关。</sub></td>
+</tr>
+</table>
 
 ---
 
@@ -313,7 +425,7 @@ aw config set daq.query.minBucketMs 500             # 查询下限（samples/产
 
 全局参数：`--help/-h` · `--version/-v` · `--json`（机器可读） · `--root <dir>` · `--debug`。
 
-退出码：**0** 成功 · **1** 运行时错误 · **2** 用法错误。带 `--json` 时，失败会以信封返回 `{ ok: false, error: 'unknown-command' \| 'no-project' \| 'usage' \| 'internal' \| <code> }`，自动化无需解析 stderr 即可分支。
+退出码：**0** 成功 · **1** 运行时错误 · **2** 用法错误。带 `--json` 时，失败会以信封返回 `{ ok: false, error: 'unknown-command' \| 'no-project' \| 'usage' \| 'internal' \| … }`，自动化无需解析 stderr 即可分支。
 
 ### 指令注册
 
@@ -574,5 +686,57 @@ AgentWorkShop 是独立项目，**不是 Anthropic 或任何 LLM 厂商的官方
     <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" width="80%" />
   </picture>
 </a>
+
+</div>
+
+---
+
+## 参与贡献
+
+欢迎提交 Issue 与 Pull Request。提 PR 之前请先：
+
+1. **先读你要改的那份契约**——扩展面见 [`docs/plugins.md`](./docs/plugins.md)，编程客户端见 [`docs/sdk.md`](./docs/sdk.md)，指令注册见 [`docs/cli.md`](./docs/cli.md)。
+2. **本地跑一遍门禁**：
+
+```bash
+pnpm typecheck                            # vue-tsc 覆盖 app + server + shared
+pnpm lint                                 # eslint 9，期望 0 warning
+node scripts/e2e-full-closedloop.mjs      # 全闭环 E2E，需要服务在跑
+node scripts/test-sdk-surface.mjs         # SDK 导出面不允许漂移
+node scripts/check-docs-sync.mjs          # docs/site 与 docs/*.md 保持同步
+```
+
+3. **提交信息走约定式**——`commit-msg` 钩子跑 `commitlint`（`feat:` / `fix:` / `docs:` / `refactor:` / `perf:` / `test:` / `chore:`），`lint-staged` 会在提交时自动修复暂存的 JS/TS/Vue。
+4. **改了行为就补测试。** 本仓库以 `scripts/` 下的**真实 E2E 脚本**为主，而不是 mock——一条新的工业链路应该能被证明可跑通。
+
+> [!TIP]
+> 报 bug 之前先跑 `aw doctor`：它会端到端体检环境（Node 版本、配置根、端口占用、SQLite、可选的 Docker 服务），大多数「起不来」在这一步就有答案。
+
+## 安全
+
+发现漏洞请**不要**开公开 Issue，而应通过 [GitHub Security Advisories](https://github.com/kingdol666/AgentWorkShop/security/advisories/new) 私下报告，并附上复现步骤与受影响版本。
+
+当你把 AgentWorkShop 指向真实设备时，它就在驱动真实设备：接入现场 PLC 之前，请先复核 `config.yml` 里的联锁、安全量程与 HITL 设置。默认姿态是建议性的——写操作要过联锁、要经审批、要回读校验——但产线侧逻辑始终拥有最终否决权。
+
+---
+
+<div align="center">
+
+**如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
+
+<a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" width="80%" />
+  </picture>
+</a>
+
+<br />
+
+**[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[上手指南](https://kingdol666.github.io/AgentWorkShop/guide/getting-started)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)** · **[CLI](./docs/cli.md)** · **[English](./README.md)**
+
+<sub>基于 Nuxt 4 · Vue 3 · TypeScript · <code>node:sqlite</code> 构建 —— 监督层，秒级软实时。<br />
+时序关键回路请留在 PLC 内。</sub>
 
 </div>

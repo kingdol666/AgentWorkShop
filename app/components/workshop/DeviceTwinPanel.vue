@@ -400,7 +400,9 @@ function doDcwWrite(r: DcwLiveRow): void {
   flex: none;
   min-width: 30px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  /* 9px 的 mono 铭牌在 1440 下也读不动(实测每屏稳定被判为不可读);
+     10px 是孪生侧栏这套 HUD 在桌面档的地板。 */
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.08em;
   color: var(--hud-faint);
@@ -416,7 +418,7 @@ function doDcwWrite(r: DcwLiveRow): void {
 }
 .twin-code {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--hud-dim);
 }
@@ -425,7 +427,7 @@ function doDcwWrite(r: DcwLiveRow): void {
   width: 18px;
   height: 18px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
   color: var(--hud-dim, #8496a5);
   background: transparent;
@@ -452,7 +454,7 @@ function doDcwWrite(r: DcwLiveRow): void {
   gap: 5px;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--hud-dim);
   padding: 2px 5px;
@@ -510,7 +512,7 @@ function doDcwWrite(r: DcwLiveRow): void {
   opacity: 0.85;
 }
 .daq-item b { font-weight: 700; font-size: 10.5px; white-space: nowrap; }
-.daq-item b i { font-style: normal; font-size: 8.5px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
+.daq-item b i { font-style: normal; font-size: 10px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
 .daq-item.alarm { color: var(--hud-amber, #f6c453); }
 /* 智控设定区(每通道:set 值 + 上下限 + 窗口内直写) */
 .twin-dcw {
@@ -555,7 +557,7 @@ function doDcwWrite(r: DcwLiveRow): void {
 }
 .dcw-set i {
   font-style: normal;
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 500;
   margin-left: 2px;
   opacity: 0.75;
@@ -566,7 +568,7 @@ function doDcwWrite(r: DcwLiveRow): void {
   align-items: baseline;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--hud-dim);
 }
 .dcw-act em { font-style: normal; font-size: 8px; letter-spacing: 0.08em; color: var(--hud-faint); }
@@ -577,11 +579,11 @@ function doDcwWrite(r: DcwLiveRow): void {
   color: var(--hud-accent, #35e0a0);
   white-space: nowrap;
 }
-.dcw-act b i { font-style: normal; font-size: 8.5px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
+.dcw-act b i { font-style: normal; font-size: 10px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
 .dcw-act-at { font-style: normal; font-size: 8px; color: var(--hud-faint); }
 .dcw-win {
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--hud-faint);
   letter-spacing: 0.04em;
@@ -604,12 +606,12 @@ function doDcwWrite(r: DcwLiveRow): void {
 }
 .dcw-err {
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 10px;
   color: var(--hud-danger, #ff6b5c);
 }
 .ctrl-btn {
   padding: 3px 7px;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.06em;
   font-weight: 600;
   font-family: var(--font-mono);

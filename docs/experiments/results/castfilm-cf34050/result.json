@@ -1,0 +1,270 @@
+{
+  "tag": "cf34050",
+  "base": "http://127.0.0.1:3001",
+  "sim": "http://127.0.0.1:4010",
+  "startedAt": "2026-09-12T09:35:34.051Z",
+  "durationS": 1673,
+  "seed": 42,
+  "timeScale": 6,
+  "optimum": {
+    "zoneTemp": 212.5,
+    "screw": 55,
+    "lineSpeed": 40,
+    "meltTemp": 212.5,
+    "pressure": 6.961,
+    "thickness": 49.18,
+    "defect": 0.055,
+    "score": 89.894,
+    "computedAt": "2026-09-12T09:35:34.911Z"
+  },
+  "start": {
+    "zone": 200,
+    "screw": 150,
+    "lineSpeed": 95,
+    "dieGap": 1
+  },
+  "convergence": {
+    "convLine": "CONVERGED h=<膜厚> defect=<缺陷率> press=<压力> N=<转速> v=<线速> zone=<区3温度>",
+    "auditLine": "AUDIT <PASS|FAIL> h=<值> defect=<值> press=<值>。完成后调用 complete_task。",
+    "approvals": {
+      "count": 10,
+      "latencies": [
+        7,
+        6,
+        7,
+        5,
+        6,
+        4,
+        5,
+        5,
+        4,
+        19
+      ],
+      "on": false
+    }
+  },
+  "windows": {
+    "thickness": {
+      "n": 87,
+      "avg": 55.32999999999995,
+      "min": 55.33,
+      "max": 55.33
+    },
+    "defect": {
+      "n": 58,
+      "avg": 0.7970689655172414,
+      "min": 0.47,
+      "max": 1.24
+    },
+    "pressure": {
+      "n": 7,
+      "avg": 18.14,
+      "min": 18.06,
+      "max": 18.2
+    }
+  },
+  "scores": {
+    "agentJ": 68.25249281609224,
+    "optimumJ": 89.894,
+    "ratio": 0.7592552652690083
+  },
+  "checks": [
+    {
+      "name": "cast-film-physics 预设应用",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "离线最优 W*(T=212.5℃, N=55rpm, v=40m/min, h*=49.18μm, J*=89.894)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "预热完成(熔体温度到达工艺窗口,耗时 60s)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "admin 登录",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "自定义模板(测厚仪:ct-43dff605)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "自定义模板(晶点仪:ct-98c4621f)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "产线/产品创建(line=ln-a504c)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[daq] 熔体温度(modbus-tcp,连通)",
+      "ok": true,
+      "extra": "连接成功,读取 40001 = 195.63999938964844"
+    },
+    {
+      "name": "[daq] 熔体压力(opcua,失败)",
+      "ok": false,
+      "extra": "OPC UA 连接失败: The connection may have been rejected by server,\n Err = (ERROR in w"
+    },
+    {
+      "name": "[daq] 平均膜厚(mqtt,连通)",
+      "ok": true,
+      "extra": "Broker 连接成功,收到 aw/sim/thick = 55.33"
+    },
+    {
+      "name": "[daq] 厚度横向轮廓(http,连通)",
+      "ok": true,
+      "extra": "接口可达,vector 帧 64 点"
+    },
+    {
+      "name": "[daq] CCD表面图像(http,连通)",
+      "ok": true,
+      "extra": "接口可达,image 帧 233B(image/png)"
+    },
+    {
+      "name": "[daq] 缺陷率(http,连通)",
+      "ok": true,
+      "extra": "接口可达,取值 = 1.565"
+    },
+    {
+      "name": "[daq] 晶点计数(modbus-rtu,连通)",
+      "ok": true,
+      "extra": "网关连接成功,读取 40001 = 3"
+    },
+    {
+      "name": "[dcw] 加热区1设定(modbus-tcp)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[dcw] 加热区2设定(modbus-tcp)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[dcw] 加热区3设定(modbus-tcp)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[dcw] 螺杆转速设定(opcua)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[dcw] 牵引线速设定(mqtt)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[dcw] 模口间隙设定(http)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "配方创建(v1 起点工况:zone=200 N=150 v=95)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "产线开跑(绑定配方批次)",
+      "ok": true,
+      "extra": "ok"
+    },
+    {
+      "name": "数采流入:7/7 节点有实时值",
+      "ok": true,
+      "extra": "熔体温度-cf34050=197.5 熔体压力-cf34050=17.87 平均膜厚-cf34050=55.33 厚度横向轮廓-cf34050=52.251 CCD表面图像-cf34050=0 缺陷率-cf34050=0.9 晶点计数-cf34050=3"
+    },
+    {
+      "name": "向量帧落库(轮廓 49.87,50.523,50.408,50.193,51.361,50.845,51.306,51.644,51.191,51.58,51.486,51.408,51.712,52.423,52.26,52.666,52.604,53.004,53.097,53.105,52.27,53.422,52.791,53.505,53.547,53.374,52.904,53.766,53.566,53.956,51.945,52.952,53.055,53.066,53.108,54.085,54.212,53.183,53.158,52.918,52.933,53.134,53.161,53.021,53.1,53.345,52.479,52.425,52.194,52.427,52.97,51.863,52.002,51.686,51.454,52,51.385,50.785,51.243,50.854,50.478,50.66,50.369,50.622 点)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "图像帧落库( 96×32 image/png)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "标量时序入库(膜厚 7 桶)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "Channel 创建(lead=omp)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "双 worker Agent 创建(omp × glm-5.3-flash)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "双 worker 入队",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "绑定完成(tuner: dcw×6 manual + daq×7 auto;inspector: daq×7 auto)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "调参 goal 任务下发(tuner)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[闭环] 调参任务 COMPLETED(state=COMPLETED)",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[闭环] 收敛交付: CONVERGED h=<膜厚> defect=<缺陷率> press=<压力> N=<转速> v=<线速> zone=<区3温度>",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[数控] dcw-writes 账本 15 条真实协议写",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "[稽核] inspector 复核 AUDIT <PASS|FAIL> h=<值> defect=<值> press=<值>。完成后调用 complete_task。",
+      "ok": false,
+      "extra": ""
+    },
+    {
+      "name": "膜厚窗均值 55.33μm ∈ 50±2 [55.3~55.3]",
+      "ok": false,
+      "extra": ""
+    },
+    {
+      "name": "缺陷率窗均值 0.797% < 2",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "压力窗峰值 18.20MPa ≤ 22",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "工艺目标函数 J(W_agent)=68.25 达到 W*(J=89.894) 的 75.9%",
+      "ok": false,
+      "extra": ""
+    }
+  ],
+  "pass": 35,
+  "fail": 4
+}

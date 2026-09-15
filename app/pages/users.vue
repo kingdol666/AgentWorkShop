@@ -246,4 +246,27 @@ useHead({ title: () => t('titles.users') })
 .gate-icon { font-size: 32px; color: var(--ink-faint); }
 .gate-title { margin: 0; font-size: 15px; font-weight: 600; }
 .gate-hint { margin: 0; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); }
+
+/* ══ 窄屏(v9):页头搜索框占满行 / 表格横向卷轴 + 首列可读 ═════════════════ */
+@media (max-width: 900px) {
+  .page-wrap { max-width: 100%; }
+
+  /* 模板里写死了 width:240px 的内联样式,窄屏必须让位给整行 */
+  .aw-page-head :deep(.ant-input-search) {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .page-wrap :deep(.ant-table-content) table { min-width: 780px; }
+
+  .page-wrap :deep(.ant-table-thead > tr > th:first-child),
+  .page-wrap :deep(.ant-table-tbody > tr > td:first-child) { min-width: 128px; }
+}
+
+@media (max-width: 640px) {
+  .admin-tag { transform: none; }
+  .sub { font-size: 11.5px; line-height: 1.5; }
+  .page-wrap :deep(.ant-table) .ant-btn-sm { min-height: 34px; }
+  .page-wrap :deep(.ant-table) .ant-select-single { min-width: 84px; }
+}
 </style>

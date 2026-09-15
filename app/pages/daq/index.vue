@@ -1570,9 +1570,15 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   align-items: center;
   justify-content: space-between;
 }
-.ctrl-left { display: flex; gap: 14px; align-items: center; }
+/* 窄屏前先写死「不可压缩」:药丸/周期项被 flex 收缩到 min-content → 中文退化成单列竖排。
+   保持自然宽度,由外层 flex-wrap 决定换行位置。 */
+.ctrl-left { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; min-width: 0; }
+.ctrl-left > *, .ctrl-right > * { flex: 0 0 auto; }
+.aw-pill { flex: 0 0 auto; white-space: nowrap; }
+/* 行内小按钮(确认/筛选/回滚…)同族:窄屏禁止中文折成两行 */
+.mini-btn, .mini-act, .pill-btn, .node-toggle { white-space: nowrap; }
 .aw-pill.running { background: var(--accent); }
-.cycle { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--ink-faint); }
+.cycle { display: inline-flex; flex: 0 0 auto; gap: 6px; align-items: center; font-size: 12px; white-space: nowrap; color: var(--ink-faint); }
 .cycle input {
   width: 84px;
   padding: 4px 8px;
@@ -1581,7 +1587,8 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-chip);
 }
-.ctrl-metrics { display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: var(--ink-soft); }
+.ctrl-metrics { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; font-size: 11.5px; color: var(--ink-soft); }
+.ctrl-metrics > span { white-space: nowrap; }
 .ctrl-metrics .sep { opacity: 0.4; }
 .ctrl-metrics .warn { color: var(--tone-warning-dot); }
 
@@ -1815,6 +1822,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 /* ---------- 未确认报警条(S5) ---------- */
 .alarm-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
   padding: 8px 14px;
@@ -1877,8 +1885,8 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .alarm-item .ack:hover { opacity: 0.85; border-color: transparent; color: var(--paper-raised); }
 
 /* ---------- 添加节点向导 ---------- */
-.ctrl-right { display: flex; gap: 12px; align-items: center; }
-.add-btn { padding: 8px 16px; font-size: 13px; }
+.ctrl-right { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; min-width: 0; }
+.add-btn { padding: 8px 16px; font-size: 13px; white-space: nowrap; }
 .modal-mask {
   position: fixed;
   z-index: 50;
@@ -2109,5 +2117,100 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   fill: none;
   stroke: var(--tone-info-dot);
   stroke-width: 1.5;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   页面级自适应加固(375 / 768 / 1440 三档)
+   根因统一:flex 子项被压缩到 min-content → 中文按钮退化成「单列竖排」,
+   左右两组控件抢同一行 → 右边缘越界。策略:先禁止压缩(nowrap),
+   再在窄屏把控制条改成「整行 / 两列」分层排布;筛选区单列堆叠 → 两列网格。
+   ══════════════════════════════════════════════════════════════════════════ */
+/* —— 标签字号地板(全档位,不只是窄屏)——
+   本页所有自有小标签原为 9.5–11px,低于「标签 ≥11.5px」验收线;统一抬到 11.5px。
+   注:节点表行内 10/10.5px 徽标在 app/components/workshop/DaqNodeRow.vue,不在本页职责内。 —— */
+.badge, .sec-label, .flt, .hint, .strip-label, .strip-label small,
+.line-pill small, .opt-status, .opt-time, .opt-line2, .mini-act,
+.src-badge, .kind-chip, .evt-row .t, .opt-count,
+.infra-banner .txt small { font-size: 11.5px; }
+.sub { font-size: 13px; }
+.alarm-item small, .alarm-row small { font-size: 11.5px; }
+
+@media (max-width: 900px) {
+  /* —— 兜底字号地板:本页任何 small/mono 小字在手持档不得低于 11.5px ——
+     逐类点名容易漏(实测 infra-banner 的配方名、line-pill 的 mono 小字都漏过),
+     这里用元素级兜底把整页收口;它放在本媒体块的**最后面**,
+     同特异度时后写者胜,所以不会破坏上面更细的排版意图。 */
+  .page small,
+  .page small.mono,
+  .page small.mono b {
+    font-size: 11.5px;
+  }
+
+  /* —— 触摸目标:报警「确认」在窄屏只有 44×22,手指点不中 —— */
+  .alarm-item { padding: 6px 10px; }
+  .alarm-item .ack, .mini-btn.ack { min-height: 32px; padding: 4px 12px; white-space: nowrap; }
+  .alarm-row { flex-wrap: wrap; }
+
+  /* —— 窄屏字号地板(正文 ≥12.5px / 标签 ≥11.5px)——
+     注:侧栏 8.5px/9.5px 属全局层(main.css / AppSidebar.vue),不在本页职责内 —— */
+  .flt, .sec-label, .hint { font-size: 11.5px; }
+  .inp-sel { font-size: 12.5px; }
+  .badge, .strip-label, .line-pill small { font-size: 11.5px; }
+  .ctrl-metrics { font-size: 12px; }
+  .evt-row { font-size: 12.5px; }
+  .evt-row .t, .src-badge, .kind-chip { font-size: 11.5px; }
+  .panel-head { font-size: 13px; }
+  .alarm-item, .alarm-item small, .alarm-row small, .opt-status, .mini-act,
+  .opt-time, .opt-line2, .clear-btn, .opt-count, .strip-label small { font-size: 11.5px; }
+  .tpl-table .range, .opt-empty, .panel-empty { font-size: 12px; }
+  .infra-banner .txt small { font-size: 11.5px; }
+  .m-title { font-size: 16px; }
+  .sub { font-size: 13px; }
+}
+
+@media (max-width: 700px) {
+  /* —— 控制器总控条:暂停全部采集 整行;两个周期项两列;两个 CTA 两列 —— */
+  .ctrl-card { padding: 12px 14px 11px; }
+  .ctrl-row { flex-direction: column; align-items: stretch; gap: 12px; }
+  .ctrl-left { gap: 10px; }
+  .ctrl-left > .aw-pill { flex: 1 1 100%; }
+  .ctrl-left > .cycle { flex: 1 1 calc(50% - 5px); justify-content: space-between; }
+  .cycle input { width: 62px; }
+  .ctrl-right { gap: 10px; }
+  .ctrl-metrics { flex: 1 1 100%; }
+  .ctrl-right > .add-btn { flex: 1 1 calc(50% - 5px); }
+
+  /* —— 未确认报警横条:标题独占一行,滚动轨吃满整宽(右侧内容不再被挤掉) —— */
+  .alarm-bar { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; }
+  .bar-label { justify-content: flex-start; }
+  .alarm-scroll { width: 100%; padding-bottom: 3px; }
+  .alarm-item { max-width: 100%; }
+
+  /* —— 节点筛选工具条:单列下拉堆叠 → 两列网格 —— */
+  .tbl-toolbar { flex-direction: column; align-items: stretch; gap: 8px; padding: 11px 12px; }
+  .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .filters > .flt { min-width: 0; }
+  .inp-sel { width: 100%; min-width: 0; }
+  .flt-search { width: 100%; }
+  .clear-btn { grid-column: 1 / -1; min-height: 34px; }
+  .count { padding-bottom: 0; }
+
+  /* —— Agent 优化记录:筛选区两列网格;记录行允许换行,长节点名不再被切 —— */
+  .opt-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .opt-filters > .mini-act { grid-column: 1 / -1; min-height: 34px; }
+  .opt-line1 { flex-wrap: wrap; }
+  .opt-node { flex: 1 1 100%; overflow: visible; white-space: normal; }
+  .opt-time { margin-left: 0; }
+  .opt-ch { flex: 1 1 100%; }
+  .opt-spark { flex: 1 1 auto; width: auto; min-width: 96px; }
+
+  /* —— 主表:压缩单元格内边距,缩短横向滚动距离(表格横滚 + 首列 sticky 是全局层设计) —— */
+  .nodes-table th, .nodes-table :deep(td) { padding: 7px 8px; }
+  .table-card { -webkit-overflow-scrolling: touch; }
+  .opt-body.open { max-height: 70vh; }
+
+  /* —— 实时事件行:摘要原来只剩 141px 被省略号切掉 → 换行后独占整宽 —— */
+  .evt-row { flex-wrap: wrap; }
+  .evt-row .txt { flex: 1 1 100%; white-space: normal; overflow: visible; }
 }
 </style>

@@ -243,7 +243,10 @@
               </td>
             </tr>
             <!-- 详情行内展开:紧贴事件行,点击即见(不再沉到表尾) -->
-            <tr v-if="expandedId === row.id">
+            <tr
+              v-if="expandedId === row.id"
+              class="log-detail-row"
+            >
               <td
                 colspan="7"
                 class="detail-td"
@@ -252,7 +255,7 @@
               </td>
             </tr>
           </template>
-          <tr>
+          <tr class="log-empty-row">
             <td
               v-if="opsLog.results.length === 0"
               colspan="7"
@@ -519,7 +522,7 @@ export default { name: 'OpsLogsPage' }
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 12px; }
 .head-actions { display: flex; gap: 10px; align-items: center; padding-bottom: 4px; }
-.sub { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-faint); }
+.sub { margin: 8px 0 0; font-size: 13px; color: var(--ink-faint); }
 .live-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--tone-success-dot);
@@ -531,7 +534,7 @@ export default { name: 'OpsLogsPage' }
   70% { box-shadow: 0 0 0 8px transparent; }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
-.live-txt { font-size: 11px; color: var(--ink-faint); }
+.live-txt { font-size: 11.5px; color: var(--ink-faint); }
 
 .filter-card {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
@@ -541,10 +544,27 @@ export default { name: 'OpsLogsPage' }
   border-radius: 10px;
   backdrop-filter: var(--aurora-blur) saturate(1.15);
 }
+/* 窄屏:6 个筛选维度从"一行一个"改成两列网格。
+ * 单列时筛选区独占整整一屏,用户要滚过 6 个下拉才看到第一条日志(实测 390)。 */
+@media (max-width: 640px) {
+  .filter-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-items: end;
+  }
+
+  /* 关键词是"宽输入",跨两列;两个动作按钮也跨两列,各自成行 */
+  .filter-card .flt-grow,
+  .filter-card > button {
+    grid-column: 1 / -1;
+  }
+}
+
 .flt { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }
 .flt-grow { flex: 1 1 180px; }
 .inp-sel {
-  min-width: 0; padding: 6px 9px; font-size: 12.5px; color: var(--ink);
+  min-width: 0; padding: 6px 9px; font-size: 13px; color: var(--ink);
   background: var(--frost-bg);
   border: 1px solid var(--glass-line); border-radius: 7px; outline: none;
 }
@@ -557,8 +577,8 @@ export default { name: 'OpsLogsPage' }
   overflow: hidden;
   backdrop-filter: var(--aurora-blur) saturate(1.15);
 }
-.err { margin: 0; padding: 8px 14px; font-size: 12px; color: var(--tone-danger-dot); }
-.log-table { width: 100%; font-size: 12.5px; border-collapse: collapse; }
+.err { margin: 0; padding: 8px 14px; font-size: 13px; color: var(--tone-danger-dot); }
+.log-table { width: 100%; font-size: 13px; border-collapse: collapse; }
 .log-table th {
   position: sticky; top: 0; z-index: 1;
   padding: 8px 10px; text-align: left; font-weight: 600; color: var(--ink-soft);
@@ -573,10 +593,10 @@ export default { name: 'OpsLogsPage' }
 .th-time, .th-src, .th-kind { white-space: nowrap; }
 .th-detail { width: 72px; }
 .actor { white-space: nowrap; }
-.summary .action { display: block; font-size: 10px; color: var(--ink-faint); }
+.summary .action { display: block; font-size: 11.5px; color: var(--ink-faint); }
 .scope { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
 .scope-chip {
-  padding: 1px 7px; font-size: 10.5px; color: var(--ink-soft);
+  padding: 1px 7px; font-size: 11.5px; color: var(--ink-soft);
   background: var(--frost-bg); border-radius: 99px; white-space: nowrap;
 }
 .detail-cell { white-space: nowrap; }
@@ -585,17 +605,17 @@ export default { name: 'OpsLogsPage' }
 .detail-td { padding: 0 !important; }
 .detail-box {
   max-height: 260px; margin: 0; padding: 10px 14px; overflow: auto;
-  font-size: 11.5px; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word;
+  font-size: 12.5px; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word;
   background: var(--paper-deep); border-top: 1px solid var(--glass-line);
 }
 .src-badge {
-  display: inline-block; padding: 1px 8px; font-size: 10.5px;
+  display: inline-block; padding: 1px 8px; font-size: 11.5px;
   border: 1px solid var(--glass-line); border-radius: 99px; color: var(--ink-faint);
 }
 .src-badge.agent { color: var(--tone-info-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 40%, transparent); }
 .src-badge.user { color: var(--tone-success-dot); border-color: color-mix(in srgb, var(--tone-success-dot) 40%, transparent); }
 .kind-chip {
-  display: inline-block; padding: 1px 7px; font-size: 10.5px;
+  display: inline-block; padding: 1px 7px; font-size: 11.5px;
   color: var(--ink-soft); background: var(--frost-bg); border-radius: 5px; white-space: nowrap;
 }
 .kind-chip.alarm { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
@@ -621,11 +641,125 @@ export default { name: 'OpsLogsPage' }
 }
 .m-f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }
 .m-f textarea, .m-f .inp-sel {
-  padding: 7px 9px; font-size: 12.5px; color: var(--ink);
+  padding: 7px 9px; font-size: 13px; color: var(--ink);
   background: var(--frost-bg); border: 1px solid var(--glass-line); border-radius: 7px; outline: none;
   font-family: inherit; resize: vertical;
 }
 .m-f textarea:focus, .m-f .inp-sel:focus { border-color: color-mix(in srgb, var(--tone-info-dot) 55%, transparent); }
 .m-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
 .m-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+
+/* ══ 窄屏(≤899px):7 列表格在 375px 上被卡片裁掉四列(实测只剩"时间/来源/操作者"),
+   每行高达 154px,字号被压到 10px。窄屏不再横向拖动"账页",
+   而是把每行折成一张事件卡 —— 三段堆叠,一条日志一眼读完:
+     ① 时间戳 · 来源徽标 · 分类 chip · [展开]
+     ② 消息摘要(整行,可换行,13px)
+     ③ 操作者 + 归属维度(产线/产品/Recipe)
+   表格语义(thead)在窄屏隐藏,列身份由"位置 + chip 颜色"承担。 */
+@media (max-width: 899px) {
+  .log-table {
+    display: block;
+    font-size: 13px;
+  }
+
+  .log-table thead {
+    display: none;
+  }
+
+  .log-table tbody {
+    display: block;
+  }
+
+  .log-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--glass-line) 55%, transparent);
+  }
+
+  .log-table td {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .log-table td.mono.dim {
+    order: 1;
+    font-size: 11.5px;
+  }
+
+  .log-table td:nth-child(2) { order: 2; }
+
+  .log-table td:nth-child(4) { order: 3; }
+
+  .log-table td.actor {
+    order: 4;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  .log-table td.detail-cell {
+    order: 5;
+    margin-left: auto;
+    white-space: normal;
+  }
+
+  .log-table td.summary {
+    order: 6;
+    flex: 1 1 100%;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .log-table td.scope {
+    order: 7;
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+
+  /* 详情行 / 空态行不参与"事件卡"排布 */
+  .log-table tr.log-detail-row {
+    display: block;
+    padding: 0;
+  }
+
+  .log-table tr.log-detail-row td {
+    display: block;
+  }
+
+  .log-table tr.log-empty-row td,
+  .log-table td.empty {
+    flex: 1 1 100%;
+    width: 100%;
+    text-align: center;
+  }
+
+  /* 手指命中区:表格内的 mini-btn 原始高度只有 ~24px */
+  .log-table .mini-btn,
+  .filter-card .mini-btn,
+  .filter-card .pill-btn,
+  .head-actions .pill-btn,
+  .m-actions .pill-btn,
+  .m-actions .ghost-btn {
+    min-height: 40px;
+    padding: 8px 14px;
+  }
+
+  /* 筛选条:窄屏一项一行,不再两列互挤 */
+  .filter-card {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .flt,
+  .flt-grow,
+  .flt .inp-sel {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+}
 </style>

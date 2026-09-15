@@ -68,7 +68,10 @@ const accentBase = computed(() => store.accent ?? String(runtimeCfg.effective['t
 const themeConfig = computed(() => {
   const dark = store.isDark
   // 暗:品牌绿保持饱和(仅微提亮);亮:压深保证白字对比
-  const accent = dark ? mixWhite(accentBase.value, 0.16) : mixBlack(accentBase.value, 0.36)
+  // 亮色档主色压深系数 0.36 → 0.46:实测 mixBlack(0.36) 得到的 #228f66
+  // 作为**按钮底色**配白字只有 4.05:1、作为**链接文字**配暖纸底同样 4.02:1,
+  // 都差一点点达不到 AA。0.46 后两处都过 5:1,色相不变(仍是同一支品牌绿)。
+  const accent = dark ? mixWhite(accentBase.value, 0.16) : mixBlack(accentBase.value, 0.46)
   const paper = dark ? '#070b13' : '#f5f5f5' // colorBgLayout(canvas)
   const raised = dark ? '#0d1420' : '#ffffff' // colorBgContainer(surface card)
   const elevated = dark ? '#111a2b' : '#ffffff' // 弹层
@@ -84,6 +87,9 @@ const themeConfig = computed(() => {
     token: {
       colorPrimary: accent,
       colorInfo: dark ? '#41c8f4' : '#3f6094',
+      // antd 默认 error 色 #ff4d4f 在暖纸底上只有 3.27:1(实测 danger 文字按钮)
+      // —— 亮色档改用同色相的深红,暗色档反相提亮。
+      colorError: dark ? '#ff8080' : '#c0261f',
       colorLink: accent,
       borderRadius: 8,
       // 与 main.css --font-body 同源:Geist Variable(实际加载的字体;中文回退系统栈)
@@ -133,7 +139,7 @@ const themeConfig = computed(() => {
 // 强调色注入为 CSS 变量,供自定义样式消费(实时响应设置页换色);
 // lang 透传 i18n locale(保持 <html lang> 响应式)
 const accentStrong = computed(() =>
-  store.isDark ? mixWhite(accentBase.value, 0.3) : mixBlack(accentBase.value, 0.5),
+  store.isDark ? mixWhite(accentBase.value, 0.3) : mixBlack(accentBase.value, 0.58),
 )
 
 useHead({
@@ -141,7 +147,7 @@ useHead({
     lang: locale,
     style: computed(() => [
       `--color-primary: ${accentBase.value}`,
-      `--accent: ${store.isDark ? mixWhite(accentBase.value, 0.16) : mixBlack(accentBase.value, 0.36)}`,
+      `--accent: ${store.isDark ? mixWhite(accentBase.value, 0.16) : mixBlack(accentBase.value, 0.46)}`,
       `--accent-strong: ${accentStrong.value}`,
       `--on-accent: ${store.isDark ? '#08130d' : '#ffffff'}`,
     ]),

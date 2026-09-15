@@ -105,3 +105,10 @@ npm-codex.json
 # 工具链会话 scratch(非项目产物)
 .omo/
 .zcode/
+# 会话级运行时/工具目录(非项目产物)
+.AgentWorkShop/data-backup-*/
+.AgentWorkShop/plugins-state.json
+.puppeteer-profile/
+.workbuddy/
+.omc/
+

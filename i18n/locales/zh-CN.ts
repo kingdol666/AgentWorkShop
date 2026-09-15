@@ -36,6 +36,8 @@ export default {
   header: {
     collapse: '折叠菜单',
     expand: '展开菜单',
+    openNav: '打开导航',
+    closeNav: '关闭导航',
     language: '语言',
     theme: '主题',
     fullscreen: '全屏',

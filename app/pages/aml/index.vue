@@ -1151,258 +1151,260 @@ async function doPredict(): Promise<void> {
           </button>
         </div>
       </div>
-      <table
+      <div
         v-if="datasets.length"
-        class="tbl"
+        class="tbl-scroll"
       >
-        <thead>
-          <tr>
-            <th>{{ $t('aml.k1amlx020') }}</th>
-            <th>{{ $t('aml.k1amlx021') }}</th>
-            <th>{{ $t('aml.k1amlx022') }}</th>
-            <th class="num">
-              {{ $t('aml.k1amlx023') }}
-            </th>
-            <th class="num">
-              {{ $t('aml.k1amlx024') }}
-            </th>
-            <th>{{ $t('aml.k1amlx025') }}</th>
-            <th>{{ $t('aml.k1amlx026') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template
-            v-for="d in datasets"
-            :key="d.id"
-          >
-            <tr
-              class="row-main"
-              :class="{ open: expandedDs === d.id }"
-              @click="toggleDs(d.id)"
+        <table class="tbl tbl-datasets">
+          <thead>
+            <tr>
+              <th>{{ $t('aml.k1amlx020') }}</th>
+              <th>{{ $t('aml.k1amlx021') }}</th>
+              <th>{{ $t('aml.k1amlx022') }}</th>
+              <th class="num">
+                {{ $t('aml.k1amlx023') }}
+              </th>
+              <th class="num">
+                {{ $t('aml.k1amlx024') }}
+              </th>
+              <th>{{ $t('aml.k1amlx025') }}</th>
+              <th>{{ $t('aml.k1amlx026') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template
+              v-for="d in datasets"
+              :key="d.id"
             >
-              <td class="mono dim">
-                {{ fmtTime(d.createdAt) }}
-              </td>
-              <td class="mono">
-                {{ shortId(d.productId) }}
-              </td>
-              <td class="mono">
-                {{ shortId(d.recipeId) }}
-              </td>
-              <td class="mono num">
-                {{ d.rowCount }}
-              </td>
-              <td class="mono num">
-                {{ d.runIds.length }}
-              </td>
-              <td>
-                {{ d.createdBy }}<small
-                  class="kind"
-                  :class="d.createdByKind"
-                >{{ d.createdByKind === 'agent' ? 'Agent' : $t('aml.k1amlx049') }}</small>
-              </td>
-              <td
-                class="note-cell"
-                @click.stop
+              <tr
+                class="row-main"
+                :class="{ open: expandedDs === d.id }"
+                @click="toggleDs(d.id)"
               >
-                <div
-                  v-if="noteEditing === d.id"
-                  class="note-edit"
+                <td class="mono dim">
+                  {{ fmtTime(d.createdAt) }}
+                </td>
+                <td class="mono">
+                  {{ shortId(d.productId) }}
+                </td>
+                <td class="mono">
+                  {{ shortId(d.recipeId) }}
+                </td>
+                <td class="mono num">
+                  {{ d.rowCount }}
+                </td>
+                <td class="mono num">
+                  {{ d.runIds.length }}
+                </td>
+                <td>
+                  {{ d.createdBy }}<small
+                    class="kind"
+                    :class="d.createdByKind"
+                  >{{ d.createdByKind === 'agent' ? 'Agent' : $t('aml.k1amlx049') }}</small>
+                </td>
+                <td
+                  class="note-cell"
+                  @click.stop
                 >
-                  <input
-                    v-model="noteDraft"
-                    :placeholder="$t('aml.k1amlx189')"
-                    @keyup.enter="saveNote('datasets', d.id)"
-                    @keyup.esc="cancelEditNote"
+                  <div
+                    v-if="noteEditing === d.id"
+                    class="note-edit"
                   >
-                  <button
-                    class="mini-btn"
-                    @click="saveNote('datasets', d.id)"
-                  >
-                    {{ $t('aml.k1amlx191') }}
-                  </button>
-                  <button
-                    class="mini-btn"
-                    @click="cancelEditNote"
-                  >
-                    {{ $t('aml.k1amlx202') }}
-                  </button>
-                </div>
-                <span
-                  v-else
-                  class="note-text"
-                >
-                  <span
-                    class="note"
-                    :title="d.note"
-                  >{{ d.note || '--' }}</span>
-                  <span
-                    class="i-tabler-pencil edit-i"
-                    :title="$t('aml.k1amlx189')"
-                    @click="startEditNote(d.id, d.note)"
-                  />
-                  <span
-                    class="i-tabler-trash edit-i"
-                    :title="$t('aml.k1amlx190')"
-                    @click="removeEntity('datasets', d.id, $t('aml.k1amlx198'))"
-                  />
-                </span>
-              </td>
-            </tr>
-            <tr
-              v-if="expandedDs === d.id"
-              class="detail-row"
-            >
-              <td colspan="7">
-                <div
-                  v-if="dsDetails[d.id]?.loading"
-                  class="dim pad"
-                >
-                  {{ $t('aml.k1amlx030') }}
-                </div>
-                <div
-                  v-else-if="dsDetails[d.id]?.error"
-                  class="err pad"
-                >
-                  {{ $t('aml.k1amlx031') }}:{{ dsDetails[d.id]?.error }}
-                </div>
-                <div
-                  v-else-if="dsDetails[d.id]?.report"
-                  class="det-grid"
-                >
-                  <div>
-                    <p class="det-title">
-                      {{ $t('aml.k1amlx027') }}
-                    </p>
-                    <table class="sub-tbl">
-                      <thead>
-                        <tr>
-                          <th>{{ $t('aml.k1amlx033') }}</th>
-                          <th>{{ $t('aml.k1amlx034') }}</th>
-                          <th class="num">
-                            {{ $t('aml.k1amlx035') }}
-                          </th>
-                          <th class="num">
-                            {{ $t('aml.k1amlx036') }}
-                          </th>
-                          <th class="num">
-                            {{ $t('aml.k1amlx037') }}
-                          </th>
-                          <th class="num">
-                            {{ $t('aml.k1amlx038') }}
-                          </th>
-                          <th class="num">
-                            {{ $t('aml.k1amlx039') }}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="s in dsDetails[d.id]?.report?.nodeSummaries"
-                          :key="s.nodeId"
-                        >
-                          <td class="mono">
-                            {{ s.nodeId }}
-                          </td>
-                          <td>
-                            <small class="role-chip">{{ s.role }}</small>
-                          </td>
-                          <td class="mono num">
-                            {{ fmtPct(s.cleanedRatio) }}
-                          </td>
-                          <td class="mono num">
-                            {{ fmtPct(s.missingRatio) }}
-                          </td>
-                          <td class="mono num">
-                            {{ fmtNum(s.mean, 3) }}
-                          </td>
-                          <td class="mono num">
-                            {{ fmtNum(s.std, 3) }}
-                          </td>
-                          <td class="mono num">
-                            {{ fmtNum(s.min, 2) }}~{{ fmtNum(s.max, 2) }}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <input
+                      v-model="noteDraft"
+                      :placeholder="$t('aml.k1amlx189')"
+                      @keyup.enter="saveNote('datasets', d.id)"
+                      @keyup.esc="cancelEditNote"
+                    >
+                    <button
+                      class="mini-btn"
+                      @click="saveNote('datasets', d.id)"
+                    >
+                      {{ $t('aml.k1amlx191') }}
+                    </button>
+                    <button
+                      class="mini-btn"
+                      @click="cancelEditNote"
+                    >
+                      {{ $t('aml.k1amlx202') }}
+                    </button>
                   </div>
-                  <div>
-                    <p class="det-title">
-                      {{ $t('aml.k1amlx028') }}
-                    </p>
-                    <table
-                      v-if="dsDetails[d.id]?.report?.lagEstimates.length"
-                      class="sub-tbl"
-                    >
-                      <thead>
-                        <tr>
-                          <th>{{ $t('aml.k1amlx040') }}</th>
-                          <th>{{ $t('aml.k1amlx041') }}</th>
-                          <th class="num">
-                            {{ $t('aml.k1amlx042') }}
-                          </th>
-                          <th class="num">
-                            {{ $t('aml.k1amlx043') }}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="l in dsDetails[d.id]?.report?.lagEstimates"
-                          :key="`${l.controlId}->${l.targetId}`"
-                        >
-                          <td class="mono">
-                            {{ l.controlId }}
-                          </td>
-                          <td class="mono">
-                            {{ l.targetId }}
-                          </td>
-                          <td class="mono num">
-                            {{ l.lagSteps }}
-                          </td>
-                          <td class="mono num">
-                            {{ fmtNum(l.corr, 3) }}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    <p
-                      v-else
-                      class="dim"
-                    >
-                      {{ $t('aml.k1amlx032') }}
-                    </p>
-                    <p class="det-title">
-                      {{ $t('aml.k1amlx029') }}
-                    </p>
-                    <p class="mono dim run-line">
-                      {{ $t('aml.k1amlx044') }}
-                      <b>{{ dsDetails[d.id]?.report?.runsUsed.length ?? 0 }}</b>
-                      · {{ $t('aml.k1amlx045') }}
-                      <b>{{ dsDetails[d.id]?.report?.runsDropped.length ?? 0 }}</b>
-                      · {{ $t('aml.k1amlx046') }}
-                      <b>{{ dsDetails[d.id]?.report?.windowCount.train }}/{{ dsDetails[d.id]?.report?.windowCount.val }}/{{ dsDetails[d.id]?.report?.windowCount.test }}</b>
-                    </p>
-                    <p
-                      v-for="r in dsDetails[d.id]?.report?.runsDropped"
-                      :key="r.runId"
-                      class="mono drop-line"
-                    >
-                      ✗ {{ shortId(r.runId) }} — {{ r.reason }}
-                    </p>
+                  <span
+                    v-else
+                    class="note-text"
+                  >
+                    <span
+                      class="note"
+                      :title="d.note"
+                    >{{ d.note || '--' }}</span>
+                    <span
+                      class="i-tabler-pencil edit-i"
+                      :title="$t('aml.k1amlx189')"
+                      @click="startEditNote(d.id, d.note)"
+                    />
+                    <span
+                      class="i-tabler-trash edit-i"
+                      :title="$t('aml.k1amlx190')"
+                      @click="removeEntity('datasets', d.id, $t('aml.k1amlx198'))"
+                    />
+                  </span>
+                </td>
+              </tr>
+              <tr
+                v-if="expandedDs === d.id"
+                class="detail-row"
+              >
+                <td colspan="7">
+                  <div
+                    v-if="dsDetails[d.id]?.loading"
+                    class="dim pad"
+                  >
+                    {{ $t('aml.k1amlx030') }}
                   </div>
-                </div>
-                <p
-                  v-else
-                  class="dim pad"
-                >
-                  {{ $t('aml.k1amlx047') }}
-                </p>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
+                  <div
+                    v-else-if="dsDetails[d.id]?.error"
+                    class="err pad"
+                  >
+                    {{ $t('aml.k1amlx031') }}:{{ dsDetails[d.id]?.error }}
+                  </div>
+                  <div
+                    v-else-if="dsDetails[d.id]?.report"
+                    class="det-grid"
+                  >
+                    <div>
+                      <p class="det-title">
+                        {{ $t('aml.k1amlx027') }}
+                      </p>
+                      <table class="sub-tbl">
+                        <thead>
+                          <tr>
+                            <th>{{ $t('aml.k1amlx033') }}</th>
+                            <th>{{ $t('aml.k1amlx034') }}</th>
+                            <th class="num">
+                              {{ $t('aml.k1amlx035') }}
+                            </th>
+                            <th class="num">
+                              {{ $t('aml.k1amlx036') }}
+                            </th>
+                            <th class="num">
+                              {{ $t('aml.k1amlx037') }}
+                            </th>
+                            <th class="num">
+                              {{ $t('aml.k1amlx038') }}
+                            </th>
+                            <th class="num">
+                              {{ $t('aml.k1amlx039') }}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="s in dsDetails[d.id]?.report?.nodeSummaries"
+                            :key="s.nodeId"
+                          >
+                            <td class="mono">
+                              {{ s.nodeId }}
+                            </td>
+                            <td>
+                              <small class="role-chip">{{ s.role }}</small>
+                            </td>
+                            <td class="mono num">
+                              {{ fmtPct(s.cleanedRatio) }}
+                            </td>
+                            <td class="mono num">
+                              {{ fmtPct(s.missingRatio) }}
+                            </td>
+                            <td class="mono num">
+                              {{ fmtNum(s.mean, 3) }}
+                            </td>
+                            <td class="mono num">
+                              {{ fmtNum(s.std, 3) }}
+                            </td>
+                            <td class="mono num">
+                              {{ fmtNum(s.min, 2) }}~{{ fmtNum(s.max, 2) }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div>
+                      <p class="det-title">
+                        {{ $t('aml.k1amlx028') }}
+                      </p>
+                      <table
+                        v-if="dsDetails[d.id]?.report?.lagEstimates.length"
+                        class="sub-tbl"
+                      >
+                        <thead>
+                          <tr>
+                            <th>{{ $t('aml.k1amlx040') }}</th>
+                            <th>{{ $t('aml.k1amlx041') }}</th>
+                            <th class="num">
+                              {{ $t('aml.k1amlx042') }}
+                            </th>
+                            <th class="num">
+                              {{ $t('aml.k1amlx043') }}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="l in dsDetails[d.id]?.report?.lagEstimates"
+                            :key="`${l.controlId}->${l.targetId}`"
+                          >
+                            <td class="mono">
+                              {{ l.controlId }}
+                            </td>
+                            <td class="mono">
+                              {{ l.targetId }}
+                            </td>
+                            <td class="mono num">
+                              {{ l.lagSteps }}
+                            </td>
+                            <td class="mono num">
+                              {{ fmtNum(l.corr, 3) }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p
+                        v-else
+                        class="dim"
+                      >
+                        {{ $t('aml.k1amlx032') }}
+                      </p>
+                      <p class="det-title">
+                        {{ $t('aml.k1amlx029') }}
+                      </p>
+                      <p class="mono dim run-line">
+                        {{ $t('aml.k1amlx044') }}
+                        <b>{{ dsDetails[d.id]?.report?.runsUsed.length ?? 0 }}</b>
+                        · {{ $t('aml.k1amlx045') }}
+                        <b>{{ dsDetails[d.id]?.report?.runsDropped.length ?? 0 }}</b>
+                        · {{ $t('aml.k1amlx046') }}
+                        <b>{{ dsDetails[d.id]?.report?.windowCount.train }}/{{ dsDetails[d.id]?.report?.windowCount.val }}/{{ dsDetails[d.id]?.report?.windowCount.test }}</b>
+                      </p>
+                      <p
+                        v-for="r in dsDetails[d.id]?.report?.runsDropped"
+                        :key="r.runId"
+                        class="mono drop-line"
+                      >
+                        ✗ {{ shortId(r.runId) }} — {{ r.reason }}
+                      </p>
+                    </div>
+                  </div>
+                  <p
+                    v-else
+                    class="dim pad"
+                  >
+                    {{ $t('aml.k1amlx047') }}
+                  </p>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
       <p
         v-else
         class="empty"
@@ -1431,193 +1433,195 @@ async function doPredict(): Promise<void> {
           {{ $t('aml.k1amlx017') }}
         </button>
       </div>
-      <table
+      <div
         v-if="jobRows.length"
-        class="tbl"
+        class="tbl-scroll"
       >
-        <thead>
-          <tr>
-            <th>{{ $t('aml.k1amlx076') }}</th>
-            <th>{{ $t('aml.k1amlx011') }}</th>
-            <th>{{ $t('aml.k1amlx066') }}</th>
-            <th>{{ $t('aml.k1amlx077') }}</th>
-            <th>{{ $t('aml.k1amlx078') }}</th>
-            <th class="prog-th">
-              {{ $t('aml.k1amlx079') }}
-            </th>
-            <th>{{ $t('aml.k1amlx020') }}</th>
-            <th class="right">
-              {{ $t('aml.k1amlx127') }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <template
-            v-for="j in jobRows"
-            :key="j.id"
-          >
-            <tr
-              class="row-main"
-              :class="{ open: expandedJob === j.id }"
-              @click="toggleJob(j.id)"
-            >
-              <td class="mono">
-                {{ shortId(j.id) }}
-              </td>
-              <td class="mono dim">
-                {{ shortId(j.datasetId) }}
-              </td>
-              <td class="mono dim">
-                {{ j.purpose }}
-              </td>
-              <td>
-                <span
-                  class="st-pill"
-                  :class="j.status"
-                >{{ statusLabel(j.status) }}</span>
-              </td>
-              <td class="mono dim">
-                {{ j.stage || '--' }}
-              </td>
-              <td class="prog-cell">
-                <span class="prog"><i
-                  :style="{ width: `${Math.max(0, Math.min(100, j.progress))}%` }"
-                  :class="{ done: j.status === 'done', bad: j.status === 'failed' }"
-                /></span>
-                <span class="mono prog-num">{{ Math.round(j.progress) }}%</span>
-              </td>
-              <td class="mono dim">
-                {{ fmtTime(j.createdAt) }}
-              </td>
-              <td class="right acts">
-                <button
-                  v-if="isActiveStatus(j.status)"
-                  class="mini-btn danger"
-                  :disabled="cancelling === j.id"
-                  @click.stop="onCancelJob(j.id)"
-                >
-                  {{ confirmCancel === j.id ? $t('aml.k1amlx094') : (cancelling === j.id ? $t('aml.k1amlx093') : $t('aml.k1amlx071')) }}
-                </button>
-                <button
-                  v-if="canRetry(j.status)"
-                  class="mini-btn"
-                  :disabled="retrying === j.id"
-                  @click.stop="onRetryJob(j.id)"
-                >
-                  {{ confirmRetry === j.id ? $t('aml.k1amlx096') : $t('aml.k1amlx095') }}
-                </button>
-                <span
-                  v-if="!isActiveStatus(j.status)"
-                  class="i-tabler-trash edit-i"
-                  :title="$t('aml.k1amlx190')"
-                  @click.stop="removeEntity('jobs', j.id, $t('aml.k1amlx200'))"
-                />
-              </td>
+        <table class="tbl tbl-jobs">
+          <thead>
+            <tr>
+              <th>{{ $t('aml.k1amlx076') }}</th>
+              <th>{{ $t('aml.k1amlx011') }}</th>
+              <th>{{ $t('aml.k1amlx066') }}</th>
+              <th>{{ $t('aml.k1amlx077') }}</th>
+              <th>{{ $t('aml.k1amlx078') }}</th>
+              <th class="prog-th">
+                {{ $t('aml.k1amlx079') }}
+              </th>
+              <th>{{ $t('aml.k1amlx020') }}</th>
+              <th class="right">
+                {{ $t('aml.k1amlx127') }}
+              </th>
             </tr>
-            <tr
-              v-if="expandedJob === j.id"
-              class="detail-row"
+          </thead>
+          <tbody>
+            <template
+              v-for="j in jobRows"
+              :key="j.id"
             >
-              <td colspan="8">
-                <div
-                  v-if="jobDetails[j.id]?.loading"
-                  class="dim pad"
-                >
-                  {{ $t('aml.k1amlx030') }}
-                </div>
-                <div
-                  v-else-if="jobDetails[j.id]?.error"
-                  class="err pad"
-                >
-                  {{ jobDetails[j.id]?.error }}
-                </div>
-                <div
-                  v-else
-                  class="det-grid"
-                >
-                  <div>
-                    <p class="det-title">
-                      {{ $t('aml.k1amlx083') }}
-                    </p>
-                    <table
-                      v-if="jobDetails[j.id]?.gates?.checks.length"
-                      class="sub-tbl"
-                    >
-                      <thead>
-                        <tr>
-                          <th>{{ $t('aml.k1amlx084') }}</th>
-                          <th class="num">
-                            {{ $t('aml.k1amlx085') }}
-                          </th>
-                          <th class="num">
-                            {{ $t('aml.k1amlx086') }}
-                          </th>
-                          <th>{{ $t('aml.k1amlx118') }}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="g in jobDetails[j.id]?.gates?.checks"
-                          :key="g.id"
-                        >
-                          <td>
-                            <b class="mono gate-id">{{ g.id }}</b>
-                            <small class="dim"> {{ g.name }}</small>
-                          </td>
-                          <td class="mono num">
-                            {{ fmtNum(g.value) }}
-                          </td>
-                          <td class="mono num dim">
-                            {{ fmtNum(g.threshold) }}
-                          </td>
-                          <td>
-                            <span
-                              class="verdict"
-                              :class="g.pass ? 'pass' : 'fail'"
-                            >{{ g.pass ? $t('aml.k1amlx087') : $t('aml.k1amlx088') }}</span>
-                            <small class="dim gate-detail">{{ g.detail }}</small>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    <p
-                      v-else
-                      class="dim"
-                    >
-                      {{ $t('aml.k1amlx082') }}
-                    </p>
-                    <p
-                      v-if="jobDetails[j.id]?.metrics?.oneStepTest"
-                      class="mono dim gate-detail"
-                    >
-                      {{ $t('aml.k1amlx099') }}: {{ $t('aml.k1amlx116') }} {{ fmtNum(jobDetails[j.id]?.metrics?.oneStepTest?.nrmse) }}
-                      <template v-if="jobDetails[j.id]?.metrics?.rolloutTest">
-                        · {{ $t('aml.k1amlx117') }} {{ fmtNum(jobDetails[j.id]?.metrics?.rolloutTest?.nrmse) }}
-                      </template>
-                    </p>
-                    <p
-                      v-if="j.error"
-                      class="err gate-detail"
-                    >
-                      {{ $t('aml.k1amlx092') }}:{{ j.error }}
-                    </p>
+              <tr
+                class="row-main"
+                :class="{ open: expandedJob === j.id }"
+                @click="toggleJob(j.id)"
+              >
+                <td class="mono">
+                  {{ shortId(j.id) }}
+                </td>
+                <td class="mono dim">
+                  {{ shortId(j.datasetId) }}
+                </td>
+                <td class="mono dim">
+                  {{ j.purpose }}
+                </td>
+                <td>
+                  <span
+                    class="st-pill"
+                    :class="j.status"
+                  >{{ statusLabel(j.status) }}</span>
+                </td>
+                <td class="mono dim">
+                  {{ j.stage || '--' }}
+                </td>
+                <td class="prog-cell">
+                  <span class="prog"><i
+                    :style="{ width: `${Math.max(0, Math.min(100, j.progress))}%` }"
+                    :class="{ done: j.status === 'done', bad: j.status === 'failed' }"
+                  /></span>
+                  <span class="mono prog-num">{{ Math.round(j.progress) }}%</span>
+                </td>
+                <td class="mono dim">
+                  {{ fmtTime(j.createdAt) }}
+                </td>
+                <td class="right acts">
+                  <button
+                    v-if="isActiveStatus(j.status)"
+                    class="mini-btn danger"
+                    :disabled="cancelling === j.id"
+                    @click.stop="onCancelJob(j.id)"
+                  >
+                    {{ confirmCancel === j.id ? $t('aml.k1amlx094') : (cancelling === j.id ? $t('aml.k1amlx093') : $t('aml.k1amlx071')) }}
+                  </button>
+                  <button
+                    v-if="canRetry(j.status)"
+                    class="mini-btn"
+                    :disabled="retrying === j.id"
+                    @click.stop="onRetryJob(j.id)"
+                  >
+                    {{ confirmRetry === j.id ? $t('aml.k1amlx096') : $t('aml.k1amlx095') }}
+                  </button>
+                  <span
+                    v-if="!isActiveStatus(j.status)"
+                    class="i-tabler-trash edit-i"
+                    :title="$t('aml.k1amlx190')"
+                    @click.stop="removeEntity('jobs', j.id, $t('aml.k1amlx200'))"
+                  />
+                </td>
+              </tr>
+              <tr
+                v-if="expandedJob === j.id"
+                class="detail-row"
+              >
+                <td colspan="8">
+                  <div
+                    v-if="jobDetails[j.id]?.loading"
+                    class="dim pad"
+                  >
+                    {{ $t('aml.k1amlx030') }}
                   </div>
-                  <div>
-                    <p class="det-title">
-                      {{ $t('aml.k1amlx089') }}
-                      <span
-                        v-if="isActiveStatus(j.status)"
-                        class="mono live-hint"
-                      >{{ $t('aml.k1amlx091') }}</span>
-                    </p>
-                    <pre class="logs">{{ (jobDetails[j.id]?.logs ?? []).join('\n') || $t('aml.k1amlx090') }}</pre>
+                  <div
+                    v-else-if="jobDetails[j.id]?.error"
+                    class="err pad"
+                  >
+                    {{ jobDetails[j.id]?.error }}
                   </div>
-                </div>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
+                  <div
+                    v-else
+                    class="det-grid"
+                  >
+                    <div>
+                      <p class="det-title">
+                        {{ $t('aml.k1amlx083') }}
+                      </p>
+                      <table
+                        v-if="jobDetails[j.id]?.gates?.checks.length"
+                        class="sub-tbl"
+                      >
+                        <thead>
+                          <tr>
+                            <th>{{ $t('aml.k1amlx084') }}</th>
+                            <th class="num">
+                              {{ $t('aml.k1amlx085') }}
+                            </th>
+                            <th class="num">
+                              {{ $t('aml.k1amlx086') }}
+                            </th>
+                            <th>{{ $t('aml.k1amlx118') }}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="g in jobDetails[j.id]?.gates?.checks"
+                            :key="g.id"
+                          >
+                            <td>
+                              <b class="mono gate-id">{{ g.id }}</b>
+                              <small class="dim"> {{ g.name }}</small>
+                            </td>
+                            <td class="mono num">
+                              {{ fmtNum(g.value) }}
+                            </td>
+                            <td class="mono num dim">
+                              {{ fmtNum(g.threshold) }}
+                            </td>
+                            <td>
+                              <span
+                                class="verdict"
+                                :class="g.pass ? 'pass' : 'fail'"
+                              >{{ g.pass ? $t('aml.k1amlx087') : $t('aml.k1amlx088') }}</span>
+                              <small class="dim gate-detail">{{ g.detail }}</small>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p
+                        v-else
+                        class="dim"
+                      >
+                        {{ $t('aml.k1amlx082') }}
+                      </p>
+                      <p
+                        v-if="jobDetails[j.id]?.metrics?.oneStepTest"
+                        class="mono dim gate-detail"
+                      >
+                        {{ $t('aml.k1amlx099') }}: {{ $t('aml.k1amlx116') }} {{ fmtNum(jobDetails[j.id]?.metrics?.oneStepTest?.nrmse) }}
+                        <template v-if="jobDetails[j.id]?.metrics?.rolloutTest">
+                          · {{ $t('aml.k1amlx117') }} {{ fmtNum(jobDetails[j.id]?.metrics?.rolloutTest?.nrmse) }}
+                        </template>
+                      </p>
+                      <p
+                        v-if="j.error"
+                        class="err gate-detail"
+                      >
+                        {{ $t('aml.k1amlx092') }}:{{ j.error }}
+                      </p>
+                    </div>
+                    <div>
+                      <p class="det-title">
+                        {{ $t('aml.k1amlx089') }}
+                        <span
+                          v-if="isActiveStatus(j.status)"
+                          class="mono live-hint"
+                        >{{ $t('aml.k1amlx091') }}</span>
+                      </p>
+                      <pre class="logs">{{ (jobDetails[j.id]?.logs ?? []).join('\n') || $t('aml.k1amlx090') }}</pre>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
       <p
         v-else
         class="empty"
@@ -1660,71 +1664,73 @@ async function doPredict(): Promise<void> {
           </button>
         </div>
       </div>
-      <table
+      <div
         v-if="experiments.length"
-        class="tbl"
+        class="tbl-scroll"
       >
-        <thead>
-          <tr>
-            <th>{{ $t('aml.k1amlx113') }}</th>
-            <th>{{ $t('aml.k1amlx020') }}</th>
-            <th>{{ $t('aml.k1amlx114') }}</th>
-            <th>{{ $t('aml.k1amlx115') }}</th>
-            <th
-              class="num"
-              :title="$t('aml.k1amlx121')"
+        <table class="tbl tbl-exp">
+          <thead>
+            <tr>
+              <th>{{ $t('aml.k1amlx113') }}</th>
+              <th>{{ $t('aml.k1amlx020') }}</th>
+              <th>{{ $t('aml.k1amlx114') }}</th>
+              <th>{{ $t('aml.k1amlx115') }}</th>
+              <th
+                class="num"
+                :title="$t('aml.k1amlx121')"
+              >
+                {{ $t('aml.k1amlx116') }}
+              </th>
+              <th
+                class="num"
+                :title="$t('aml.k1amlx122')"
+              >
+                {{ $t('aml.k1amlx117') }}
+              </th>
+              <th>{{ $t('aml.k1amlx118') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="e in experiments"
+              :key="e.id"
+              :class="{ best: e.id === bestExpId }"
             >
-              {{ $t('aml.k1amlx116') }}
-            </th>
-            <th
-              class="num"
-              :title="$t('aml.k1amlx122')"
-            >
-              {{ $t('aml.k1amlx117') }}
-            </th>
-            <th>{{ $t('aml.k1amlx118') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="e in experiments"
-            :key="e.id"
-            :class="{ best: e.id === bestExpId }"
-          >
-            <td class="mono">
-              <span
-                v-if="e.id === bestExpId"
-                class="best-tag"
-              >{{ $t('aml.k1amlx120') }}</span>
-              {{ shortId(e.id) }}
-            </td>
-            <td class="mono dim">
-              {{ fmtTime(e.createdAt) }}
-            </td>
-            <td class="note-cell">
-              <span
-                class="note"
-                :title="e.changeNote"
-              >{{ e.changeNote || '--' }}</span>
-            </td>
-            <td class="mono dim">
-              {{ e.parentExperimentId ? shortId(e.parentExperimentId) : '--' }}
-            </td>
-            <td class="mono num">
-              {{ fmtNum(e.metrics?.oneStepTest?.nrmse) }}
-            </td>
-            <td class="mono num">
-              {{ fmtNum(e.metrics?.rolloutTest?.nrmse) }}
-            </td>
-            <td>
-              <span
-                class="st-pill"
-                :class="e.status"
-              >{{ expStatusLabel(e.status) }}</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <td class="mono">
+                <span
+                  v-if="e.id === bestExpId"
+                  class="best-tag"
+                >{{ $t('aml.k1amlx120') }}</span>
+                {{ shortId(e.id) }}
+              </td>
+              <td class="mono dim">
+                {{ fmtTime(e.createdAt) }}
+              </td>
+              <td class="note-cell">
+                <span
+                  class="note"
+                  :title="e.changeNote"
+                >{{ e.changeNote || '--' }}</span>
+              </td>
+              <td class="mono dim">
+                {{ e.parentExperimentId ? shortId(e.parentExperimentId) : '--' }}
+              </td>
+              <td class="mono num">
+                {{ fmtNum(e.metrics?.oneStepTest?.nrmse) }}
+              </td>
+              <td class="mono num">
+                {{ fmtNum(e.metrics?.rolloutTest?.nrmse) }}
+              </td>
+              <td>
+                <span
+                  class="st-pill"
+                  :class="e.status"
+                >{{ expStatusLabel(e.status) }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p
         v-else
         class="empty"
@@ -1754,121 +1760,123 @@ async function doPredict(): Promise<void> {
           {{ $t('aml.k1amlx017') }}
         </button>
       </div>
-      <table
+      <div
         v-if="models.length"
-        class="tbl"
+        class="tbl-scroll"
       >
-        <thead>
-          <tr>
-            <th>{{ $t('aml.k1amlx125') }}</th>
-            <th>{{ $t('aml.k1amlx021') }}</th>
-            <th>{{ $t('aml.k1amlx022') }}</th>
-            <th>{{ $t('aml.k1amlx078') }}</th>
-            <th :title="$t('aml.k1amlx126')">
-              {{ $t('aml.k1amlx099') }}
-            </th>
-            <th>{{ $t('aml.k1amlx020') }}</th>
-            <th>{{ $t('aml.k1amlx026') }}</th>
-            <th class="right">
-              {{ $t('aml.k1amlx127') }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="m in models"
-            :key="m.id"
-          >
-            <td class="mono">
-              {{ shortId(m.id) }}
-            </td>
-            <td class="mono dim">
-              {{ shortId(m.productId) }}
-            </td>
-            <td class="mono dim">
-              {{ shortId(m.recipeId) }}
-            </td>
-            <td>
-              <span
-                class="stage-pill"
-                :class="m.stage"
-              >{{ m.stage }}</span>
-            </td>
-            <td class="mono dim">
-              {{ $t('aml.k1amlx116') }} {{ fmtNum(m.metrics?.oneStepTest?.nrmse) }} · {{ $t('aml.k1amlx117') }} {{ fmtNum(m.metrics?.rolloutTest?.nrmse) }}
-            </td>
-            <td class="mono dim">
-              {{ fmtTime(m.createdAt) }}
-            </td>
-            <td
-              class="note-cell"
-              @click.stop
+        <table class="tbl tbl-models">
+          <thead>
+            <tr>
+              <th>{{ $t('aml.k1amlx125') }}</th>
+              <th>{{ $t('aml.k1amlx021') }}</th>
+              <th>{{ $t('aml.k1amlx022') }}</th>
+              <th>{{ $t('aml.k1amlx078') }}</th>
+              <th :title="$t('aml.k1amlx126')">
+                {{ $t('aml.k1amlx099') }}
+              </th>
+              <th>{{ $t('aml.k1amlx020') }}</th>
+              <th>{{ $t('aml.k1amlx026') }}</th>
+              <th class="right">
+                {{ $t('aml.k1amlx127') }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="m in models"
+              :key="m.id"
             >
-              <div
-                v-if="noteEditing === m.id"
-                class="note-edit"
-              >
-                <input
-                  v-model="noteDraft"
-                  :placeholder="$t('aml.k1amlx189')"
-                  @keyup.enter="saveNote('models', m.id)"
-                  @keyup.esc="cancelEditNote"
-                >
-                <button
-                  class="mini-btn"
-                  @click="saveNote('models', m.id)"
-                >
-                  {{ $t('aml.k1amlx191') }}
-                </button>
-                <button
-                  class="mini-btn"
-                  @click="cancelEditNote"
-                >
-                  {{ $t('aml.k1amlx202') }}
-                </button>
-              </div>
-              <span
-                v-else
-                class="note-text"
-              >
+              <td class="mono">
+                {{ shortId(m.id) }}
+              </td>
+              <td class="mono dim">
+                {{ shortId(m.productId) }}
+              </td>
+              <td class="mono dim">
+                {{ shortId(m.recipeId) }}
+              </td>
+              <td>
                 <span
-                  class="note"
-                  :title="m.note"
-                >{{ m.note || '--' }}</span>
+                  class="stage-pill"
+                  :class="m.stage"
+                >{{ m.stage }}</span>
+              </td>
+              <td class="mono dim">
+                {{ $t('aml.k1amlx116') }} {{ fmtNum(m.metrics?.oneStepTest?.nrmse) }} · {{ $t('aml.k1amlx117') }} {{ fmtNum(m.metrics?.rolloutTest?.nrmse) }}
+              </td>
+              <td class="mono dim">
+                {{ fmtTime(m.createdAt) }}
+              </td>
+              <td
+                class="note-cell"
+                @click.stop
+              >
+                <div
+                  v-if="noteEditing === m.id"
+                  class="note-edit"
+                >
+                  <input
+                    v-model="noteDraft"
+                    :placeholder="$t('aml.k1amlx189')"
+                    @keyup.enter="saveNote('models', m.id)"
+                    @keyup.esc="cancelEditNote"
+                  >
+                  <button
+                    class="mini-btn"
+                    @click="saveNote('models', m.id)"
+                  >
+                    {{ $t('aml.k1amlx191') }}
+                  </button>
+                  <button
+                    class="mini-btn"
+                    @click="cancelEditNote"
+                  >
+                    {{ $t('aml.k1amlx202') }}
+                  </button>
+                </div>
                 <span
-                  class="i-tabler-pencil edit-i"
-                  :title="$t('aml.k1amlx189')"
-                  @click="startEditNote(m.id, m.note)"
+                  v-else
+                  class="note-text"
+                >
+                  <span
+                    class="note"
+                    :title="m.note"
+                  >{{ m.note || '--' }}</span>
+                  <span
+                    class="i-tabler-pencil edit-i"
+                    :title="$t('aml.k1amlx189')"
+                    @click="startEditNote(m.id, m.note)"
+                  />
+                </span>
+              </td>
+              <td class="right acts">
+                <template
+                  v-for="a in promoteActionOf(m)"
+                  :key="a.to"
+                >
+                  <button
+                    class="mini-btn"
+                    :class="{ danger: a.to === 'retired' }"
+                    :disabled="promoting === `${m.id}:${a.to}`"
+                    @click="onPromote(m, a.to)"
+                  >
+                    {{ confirmPromote === `${m.id}:${a.to}` ? $t('aml.k1amlx131') : $t(a.key) }}
+                  </button>
+                </template>
+                <span
+                  v-if="promoteActionOf(m).length === 0"
+                  class="dim"
+                >--</span>
+                <span
+                  class="i-tabler-trash edit-i"
+                  :title="$t('aml.k1amlx190')"
+                  @click="removeEntity('models', m.id, $t('aml.k1amlx199'))"
                 />
-              </span>
-            </td>
-            <td class="right acts">
-              <template
-                v-for="a in promoteActionOf(m)"
-                :key="a.to"
-              >
-                <button
-                  class="mini-btn"
-                  :class="{ danger: a.to === 'retired' }"
-                  :disabled="promoting === `${m.id}:${a.to}`"
-                  @click="onPromote(m, a.to)"
-                >
-                  {{ confirmPromote === `${m.id}:${a.to}` ? $t('aml.k1amlx131') : $t(a.key) }}
-                </button>
-              </template>
-              <span
-                v-if="promoteActionOf(m).length === 0"
-                class="dim"
-              >--</span>
-              <span
-                class="i-tabler-trash edit-i"
-                :title="$t('aml.k1amlx190')"
-                @click="removeEntity('models', m.id, $t('aml.k1amlx199'))"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p
         v-else
         class="empty"
@@ -2244,7 +2252,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .badges { display: flex; gap: 8px; }
 .badge {
   padding: 3px 10px;
-  font-size: 11px;
+  font-size: 11.5px;
   letter-spacing: 0.05em;
   color: var(--ink-soft);
   border: 1px solid var(--line-strong);
@@ -2256,13 +2264,21 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .infra-banner {
   display: flex;
   gap: 10px;
-  align-items: center;
+  /* 顶端对齐,不是居中:文案换行成 3 行时,居中的图标会停在**第二行**行首,
+   * 看起来像一个走错位置的孤零零的三角(实测 /aml)。图标永远该跟第一行文字对齐。 */
+  align-items: flex-start;
   padding: 10px 14px;
   margin-bottom: 14px;
   color: var(--tone-warning-dot);
   background: var(--tone-warning-bg);
   border: 1px solid color-mix(in srgb, var(--tone-warning-dot) 40%, transparent);
-  border-radius: var(--radius-chip);
+  /* 多行横幅用面板圆角:chip 圆角是给单行药丸的,套在三行块上会显得没画完 */
+  border-radius: var(--radius-panel-sm, 10px);
+}
+
+.infra-banner > span:first-child {
+  flex: none;
+  margin-top: 2px;
 }
 .infra-banner .txt { flex: 1 1 auto; font-size: 12.5px; line-height: 1.5; }
 
@@ -2278,10 +2294,12 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .ov-row .reload { margin-left: auto; }
 
 /* ── 通用区块 ── */
-.zone { padding: 12px 18px 14px; margin-bottom: 14px; overflow-x: auto; }
-.zone-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.zone-head h2 { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
-.zone-head h2 .cnt { font-size: 11px; font-weight: 400; color: var(--ink-faint); }
+/* 区块不再整块横扫 —— 那会让区块标题跟着一起滚走,也顺手豁免了
+   内部元素的越界检测。滚动权下放给 .tbl-scroll(只裹表格本体)。 */
+.zone { padding: 12px 18px 14px; margin-bottom: 14px; }
+.zone-head { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.zone-head h2 { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
+.zone-head h2 .cnt { font-size: 11.5px; font-weight: 400; color: var(--ink-faint); }
 .zone-actions { display: flex; gap: 8px; align-items: center; }
 
 /* ── 1b. 运行环境面板 ── */
@@ -2302,18 +2320,18 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .env-card.ok { border-color: color-mix(in srgb, var(--tone-success-dot) 35%, transparent); }
 .env-card.bad { border-color: color-mix(in srgb, var(--tone-warning-dot) 40%, transparent); }
 .env-card .ec-head { display: flex; gap: 6px; align-items: center; font-size: 12.5px; }
-.env-card .ec-head .ec-state { margin-left: auto; font-size: 11px; color: var(--ink-faint); }
+.env-card .ec-head .ec-state { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); }
 .env-card.ok .ec-head > span:first-child { color: var(--tone-success-dot); }
 .env-card.bad .ec-head > span:first-child { color: var(--tone-warning-dot); }
 .env-card .ec-detail { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--ink-soft); overflow-wrap: anywhere; }
 .env-card .ec-detail.dim { color: var(--ink-faint); }
 .env-card .ec-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 4px; }
-.env-card .ec-issues { max-height: 96px; margin: 0; padding: 0; overflow-y: auto; list-style: none; font-size: 11px; }
+.env-card .ec-issues { max-height: 96px; margin: 0; padding: 0; overflow-y: auto; list-style: none; font-size: 11.5px; }
 .env-card .ec-issues li { display: flex; gap: 6px; align-items: center; padding: 1px 0; color: var(--ink-soft); }
 .env-card .ec-issues .tag {
   flex: none;
   padding: 0 5px;
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--tone-warning-dot);
   background: var(--tone-warning-bg);
   border-radius: 3px;
@@ -2327,7 +2345,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   padding: 8px 10px;
   margin: 6px 0 0;
   overflow: auto;
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.5;
   white-space: pre-wrap;
   background: var(--surface-sunken, color-mix(in srgb, var(--ink) 4%, transparent));
@@ -2370,7 +2388,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .tbl th, .tbl td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--divider-hair); }
 .tbl th {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2391,7 +2409,7 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .kind {
   margin-left: 6px;
   padding: 1px 6px;
-  font-size: 10px;
+  font-size: 11.5px;
   border: 1px solid var(--line);
   border-radius: 99px;
   color: var(--ink-faint);
@@ -2404,23 +2422,24 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 @media (max-width: 1100px) {
   .det-grid { grid-template-columns: 1fr; }
 }
-.det-title { margin: 10px 0 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.det-title { margin: 10px 0 6px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
 .det-title:first-child { margin-top: 10px; }
 .sub-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
 .sub-tbl th, .sub-tbl td { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--divider-hair); }
-.sub-tbl th { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); }
+.sub-tbl th { font-size: 11.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); }
 .sub-tbl .num { text-align: right; }
-.role-chip { padding: 1px 6px; font-family: var(--font-mono); font-size: 10px; background: var(--paper-deep); border-radius: 5px; color: var(--ink-soft); }
-.run-line { margin: 4px 0; font-size: 11.5px; }
+.role-chip { padding: 1px 6px; font-family: var(--font-mono); font-size: 11.5px; background: var(--paper-deep); border-radius: 5px; color: var(--ink-soft); }
+.run-line { margin: 4px 0; font-size: 11.5px; overflow-wrap: anywhere; }
 .run-line b { color: var(--ink); }
-.drop-line { margin: 2px 0; overflow: hidden; font-size: 11px; color: var(--tone-danger-dot); text-overflow: ellipsis; white-space: nowrap; }
+/* 丢弃原因整行可见:窄屏不再 ellipsis 硬裁(审计的 text-clipped 来源之一) */
+.drop-line { margin: 2px 0; font-size: 11.5px; color: var(--tone-danger-dot); overflow-wrap: anywhere; }
 
 /* 作业状态 pill / 进度条 */
 .st-pill {
   display: inline-block;
-  padding: 2px 9px;
+  padding: 3px 9px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11.5px;
   letter-spacing: 0.04em;
   border-radius: var(--radius-pill);
 }
@@ -2444,15 +2463,15 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .prog i { display: block; height: 100%; background: var(--tone-info-dot); border-radius: 3px; transition: width 0.4s ease; }
 .prog i.done { background: var(--tone-success-dot); }
 .prog i.bad { background: var(--tone-danger-dot); }
-.prog-num { margin-left: 7px; font-size: 11px; color: var(--ink-soft); }
+.prog-num { margin-left: 7px; font-size: 11.5px; color: var(--ink-soft); }
 
 /* 门禁 */
 .gate-id { font-weight: 700; }
 .gate-detail { display: block; margin-top: 3px; font-size: 11px; }
-.verdict { padding: 1px 7px; font-size: 10.5px; border-radius: 99px; }
+.verdict { padding: 1px 7px; font-size: 11.5px; border-radius: 99px; }
 .verdict.pass { color: var(--tone-success-dot); background: var(--tone-success-bg); }
 .verdict.fail { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
-.live-hint { margin-left: 8px; font-size: 10px; font-weight: 400; letter-spacing: 0; color: var(--tone-info-dot); text-transform: none; }
+.live-hint { margin-left: 8px; font-size: 11.5px; font-weight: 400; letter-spacing: 0; color: var(--tone-info-dot); text-transform: none; }
 .logs {
   max-height: 260px;
   margin: 0;
@@ -2475,7 +2494,7 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .best-tag {
   margin-right: 6px;
   padding: 1px 7px;
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--on-accent);
   background: var(--accent);
   border-radius: 99px;
@@ -2484,9 +2503,9 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 /* 模型阶段徽标 */
 .stage-pill {
   display: inline-block;
-  padding: 2px 9px;
+  padding: 3px 9px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11.5px;
   letter-spacing: 0.04em;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill);
@@ -2568,4 +2587,74 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .m-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
 
 .empty { margin: 6px 0; padding: 18px 0; font-size: 12.5px; color: var(--ink-faint); text-align: center; }
+
+/* ══ 窄屏自适应层(≤900 手持/平板竖)═════════════════════════════════════
+   作业/实验/数据集/模型四张表在 355px 画布里被压成"每列 40px",
+   单元格文字会折成单字竖排 —— 保留列语义,给表一条可横扫的卷轴,
+   并把首列(身份列)钉在左缘,横扫时始终知道"这一行是谁"。 */
+.tbl-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 900px) {
+  .tbl-scroll {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  /* 列不再被压扁:按各自列数给一个诚实的最小宽度,超出即横扫 */
+  .tbl-datasets { min-width: 720px; }
+  .tbl-jobs { min-width: 860px; }
+  .tbl-exp { min-width: 700px; }
+  .tbl-models { min-width: 780px; }
+
+  .tbl th,
+  .tbl td { white-space: nowrap; }
+
+  /* 身份列钉在左缘(与 main.css 对 .ant-table 的处理同一套语言) */
+  .tbl thead > tr > th:first-child,
+  .tbl tbody > tr > td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--paper-raised);
+    box-shadow: 1px 0 0 var(--line);
+  }
+
+  .tbl thead > tr > th:first-child { z-index: 3; }
+
+  /* 展开详情行跨列,不能跟着首列 sticky */
+  .detail-row > td:first-child { position: static; box-shadow: none; background: var(--frost-bg); }
+
+  /* 触摸目标:手持命中区 ≥40px(main.css 只在 pointer:coarse 下兜底) */
+  .mini-btn,
+  .pill-btn,
+  .inp,
+  .inp-sel,
+  .note-edit input {
+    min-height: 40px;
+  }
+
+  .tbl .acts .mini-btn + .mini-btn { margin-left: 8px; }
+  .note-cell { max-width: 200px; }
+  .note-edit { flex-wrap: wrap; }
+  .zone { padding: 12px 12px 14px; }
+  .f-grid { grid-template-columns: 1fr; }
+  .det-grid { grid-template-columns: 1fr; }
+  .mx-actions,
+  .m-actions { flex-wrap: wrap; }
+  .modal { padding: 16px; }
+  .node-row { flex-wrap: wrap; }
+  .node-row .sel { flex: 1 1 100%; }
+  .modal-mask { padding: 4vh 10px 12px; }
+}
+
+@media (max-width: 640px) {
+  .zone-head { gap: 8px; }
+  .zone-head h2 { font-size: 14px; }
+  .zone-actions { flex-wrap: wrap; }
+  .ov-card { padding: 10px 12px; }
+}
 </style>

@@ -1034,7 +1034,7 @@ const tabs = computed(() => [
   align-items: center;
   padding: 8px 14px;
   font-family: var(--font-body);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ink-soft);
   cursor: pointer;
@@ -1094,7 +1094,7 @@ const tabs = computed(() => [
 .set-sub {
   max-width: 52ch;
   margin-top: 3px;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--ink-faint);
 }
@@ -1142,7 +1142,7 @@ const tabs = computed(() => [
 
 .identity-note {
   margin: 14px 0 0;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--ink-faint);
 }
 
@@ -1238,7 +1238,7 @@ const tabs = computed(() => [
 .rt-group-badge {
   flex: none;
   padding: 1px 7px;
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--ink-faint);
   border: 1px solid var(--glass-line);
   border-radius: 99px;
@@ -1251,7 +1251,7 @@ const tabs = computed(() => [
 
 .rt-group-fields {
   flex: none;
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--ink-faint);
 }
 
@@ -1285,7 +1285,7 @@ const tabs = computed(() => [
 
 .rt-group-empty {
   margin: 10px 0 4px;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--ink-faint);
 }
 
@@ -1329,7 +1329,7 @@ const tabs = computed(() => [
 .rt-sub {
   max-width: 46ch;
   margin-top: 3px;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--ink-faint);
 }
@@ -1337,7 +1337,7 @@ const tabs = computed(() => [
 .rt-tag {
   padding: 1px 7px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 500;
   line-height: 1.5;
   color: var(--ink-faint);
@@ -1402,7 +1402,7 @@ const tabs = computed(() => [
 
 .rt-path {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--ink-faint);
 }
 
@@ -1436,7 +1436,7 @@ const tabs = computed(() => [
   gap: 5px;
   align-items: center;
   max-width: 320px;
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1.4;
 }
 
@@ -1481,13 +1481,79 @@ const tabs = computed(() => [
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .settings-layout { flex-direction: column; }
+/* ══ 窄屏(≤899px,对齐 useResponsive 的 drawer 档)═══════════════════════
+   桌面是"左栏菜单 180px + 右栏内容"的双栏仪表台。窄屏若仍并排,
+   内容区只剩 ~170px,描述文字被压成"一次一个字"的竖排长条(375px 实测)。
+   窄屏改为:菜单在上,收成一条可横扫的标签带;内容在下,占满整宽。
+   注:原先把这段堆叠规则误写在 prefers-reduced-motion 里 ——
+   那样只有"减少动效"的用户才看到正确布局,是反的,已移到宽度断点。 */
+@media (max-width: 899px) {
+  .settings-layout {
+    flex-direction: column;
+    min-height: 0;
+  }
+
   .settings-nav {
-    flex-direction: row;
     flex: none;
+    flex-direction: row;
+    gap: 6px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
     border-right: 0;
     border-bottom: 1px solid var(--line);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .settings-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-item {
+    flex: none;
+    width: auto;
+    min-height: 40px;
+    padding: 8px 14px;
+    white-space: nowrap;
+  }
+
+  .settings-body {
+    padding: 16px 12px;
+  }
+
+  /* 卡片内边距在窄屏收边,把宽度让给内容 */
+  .settings-card :deep(.ant-card-body) {
+    padding: 12px;
+  }
+
+  /* 正文说明文字窄屏抬到 13px 地板 */
+  .set-sub,
+  .rt-sub,
+  .section-desc,
+  .identity-note,
+  .rt-group-empty,
+  .plugin-health {
+    font-size: 13px;
+  }
+
+  .rt-group-desc {
+    flex: 1 1 100%;
+  }
+
+  /* 手指命中区:分组操作按钮只有 24px 高 */
+  .rt-group-ops .mini-btn,
+  .rt-group-head .mini-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 6px 10px;
+  }
+}
+
+/* 无 hover 的设备(手机/平板):分组操作不能只在 hover 时才出现 */
+@media (hover: none) {
+  .rt-group-ops {
+    opacity: 1;
   }
 }
 </style>

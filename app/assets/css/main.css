@@ -35,7 +35,7 @@
   --ink: #0c0a09;
   --ink-soft: #4b463f;
   /* 文字最淡一档(实测 5.0:1 @暖纸 / 5.45:1 @raised,达 AA) */
-  --ink-faint: #6f6860;
+  --ink-faint: #5f5850;
   /* ⚠️ --ink-fainter 是**纯装饰**令牌(分隔发丝线/刻度点/装饰底),
    * **不得用作 color** —— 它的对比度(亮 2.53:1 / 暗 3.37:1)不达 WCAG AA 的 4.5:1。
    * 全站文字用法已收敛到 --ink-faint;此处保留令牌是因为"装饰线就该淡",
@@ -76,16 +76,22 @@
   --accent-violet: var(--tone-retry-dot);
 
   /* tone 语义状态系统(仅表真实状态,不做装饰;open-tag 状态声部) */
-  --tone-neutral-dot: #a8a29e;
+  /* #a8a29e 在浅灰底上只有 2.3:1 —— "停用/离线/未运行"这类**状态标签的文字**
+     用的就是它,是不可读的实测来源。压深到与 --ink-faint 同族。 */
+  --tone-neutral-dot: #5c564f;
   --tone-neutral-bg: #efeeec;
+  /* 亮色档记号色按**最深承载面**(--paper-deep #efebe5, L≈0.826)反推:
+   * 要求 (0.876)/(L+0.05) ≥ 4.5 → L ≤ 0.145。原 #4c8f63 / #b9770e / #c25a4e
+   * 在白底上尚可,一落到 paper-deep(表格斑马行、面板底)就掉到 3.7–4.3 —— 实测审计在
+   * 亮色档稳定报出 60+ 处不达标,全部来自这三个记号色被当**文字色**用。 */
   --tone-success-bg: #eaf7ef;
-  --tone-success-dot: #4c8f63;
+  --tone-success-dot: #367048;
   --tone-info-bg: #eef3fb;
   --tone-info-dot: #3f6094;
   --tone-warning-bg: #faf1df;
-  --tone-warning-dot: #b9770e;
+  --tone-warning-dot: #8f5c07;
   --tone-danger-bg: #fdecea;
-  --tone-danger-dot: #c25a4e;
+  --tone-danger-dot: #a83f34;
   --tone-retry-bg: #f1eef9;
   --tone-retry-dot: #6b5aa0;
   /* 运行中信号(busy 呼吸点/运行指示;比 warning-dot 更亮的琥珀,仅作指示点) */
@@ -623,7 +629,12 @@ ul.task-list {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  /* 允许换行:右侧徽标组的内容长度是**数据驱动**的(例如 AML 页的
+   * "UV · uv 0.11.29 (901092ee1 2026-07-15 · x86_64-pc-windows-msvc)" 这种长串),
+   * 不换行时它被压成一列三行的窄条,而左侧描述也被挤成两行 —— 两边都难看。
+   * 给了 wrap 之后,放不下就整组落到第二行,各自都有整行可用。 */
+  flex-wrap: wrap;
+  gap: 12px 16px;
   margin-bottom: 18px;
 }
 
@@ -635,9 +646,12 @@ ul.task-list {
   letter-spacing: -0.015em;
 }
 
-/* 版本铭牌:hairline 小片 */
+/* 版本铭牌:hairline 小片。
+ * width:fit-content 是必须的 —— 它是 inline-flex,一旦落在 display:flex/grid 的
+ * 父级里就会被拉伸成整行宽,在窄屏变成一条横贯屏幕的空药丸(实测 /settings)。 */
 .aw-stamp {
   display: inline-flex;
+  width: fit-content;
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
@@ -2268,5 +2282,501 @@ html.dark .aw-gauge-band {
     backdrop-filter: none;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v5 · 响应式层 —— 「叠层仪表台」
+   ──────────────────────────────────────────────────────────────────────────
+   形态来自产品本身:这是一间产线控制室,桌面是**三栏仪表台**(刻度轨 + 画布 +
+   侧检视)。窄屏不是"把仪表台缩小",而是换成另一台仪器:
+
+     ≥1024     三栏仪表台   刻度轨(228) + 画布 + 侧检视
+     900–1023  双栏        刻度轨收成图标轨(64) + 画布
+     640–899   手持巡检仪   刻度轨变抽屉(汉堡拉出),页头纵向堆叠,表格成"账页条"
+     <640      单手巡检     单列,主操作占满行,读数码降一档
+
+   ⚠️ 断点值是**内容驱动**推导的,不是设备宽度:
+     · 900 = 刻度轨 228 + 画布最小可用宽 672(DAQ 主表 6 列不折行的下限)
+     · 640 = 单据类页面"一行一事"的下限(低于它,行内键值对必须改堆叠)
+     · 420 = 窄机(iPhone SE 一类),连 12px 标签都要让位给内容
+   ⚠️ CSS 变量不能用在 media query 条件里,所以断点只能写数值 ——
+     上面这段注释就是这些数值的**唯一出处**,不要在别处再散落魔数。
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 结构性兜底:任何容器都不允许把内容顶出视口 ──
+   overflow-x: clip 而非 hidden:clip 不产生滚动容器,
+   因此不会破坏侧栏/浮层的 position: sticky 与 fixed。 */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* 长 token(节点 ID / run id / hash)在窄屏必须能断,否则整页被顶宽 */
+@media (max-width: 900px) {
+  .aw-mono,
+  code,
+  kbd,
+  samp {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ── 画布留白:窄屏收边(桌面 12/16,手持 8/10)—— 手持设备每像素都贵 ── */
+@media (max-width: 900px) {
+  .app-content {
+    margin: 10px 10px 0;
+  }
+
+  .app-footer {
+    padding: 0 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-content {
+    margin: 8px 8px 0;
+  }
+}
+
+/* ══ 1. 页头:量程线在窄屏从"两端对齐"改为"纵向堆叠" ══════════════════════
+   desktop 的 justify-content: space-between 要求两侧都有余量;
+   窄屏两侧一挤,标题就被压成一列竖排字(实测 /daq「暂 停 全 部 采 集」)。
+   堆叠顺序 = 阅读顺序:kicker → 标题 → 描述 → 操作。 */
+@media (max-width: 900px) {
+  .aw-page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .aw-page-head > div,
+  .aw-page-head > header {
+    min-width: 0;
+  }
+
+  .aw-page-head h1 {
+    font-size: 24px;
+    line-height: 1.2;
+  }
+}
+
+@media (max-width: 640px) {
+  .aw-page-head {
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+  }
+
+  .aw-page-head h1 {
+    font-size: 21px;
+  }
+}
+
+/* 行内操作渐显(仅鼠标语境):一张 16 行的表里 32 个红色文字按钮同时在喊,
+ * 数据本身反而被淹没 —— 这是既有设计语言里就写明的"行内操作渐显",
+ * 之前只在少数页面手工实现。这里收敛成一条全局规则。
+ * 触屏没有 hover,所以整条规则包在 (hover: hover) 里,手机上按钮始终可见。 */
+@media (hover: hover) and (pointer: fine) {
+  .ant-table-tbody > tr .ant-btn-text,
+  .ant-table-tbody > tr .mini-btn {
+    opacity: 0.6;
+    transition: opacity var(--transition-fast);
+  }
+
+  .ant-table-tbody > tr:hover .ant-btn-text,
+  .ant-table-tbody > tr:hover .mini-btn,
+  .ant-table-tbody > tr .ant-btn-text:focus-visible,
+  .ant-table-tbody > tr .mini-btn:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* 页头右侧的操作/徽标组:窄屏允许换行,不参与"压扁标题" */
+@media (max-width: 900px) {
+  .aw-page-head > .badges,
+  .aw-page-head > .actions,
+  .aw-page-head > .head-actions,
+  .aw-page-head > .head-right {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start;
+  }
+}
+
+/* ══ 2. 分段控件 / 筛选条:窄屏横向滚动,绝不顶破视口 ══════════════════════
+   antd Segmented 是定宽块,项目里当筛选条用;窄屏必须能横扫。
+   用 mask 在右缘渐隐,提示"还有更多"——比直接裁断诚实。 */
+@media (max-width: 900px) {
+  .ant-segmented {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 0 calc(100% - 22px), transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0 calc(100% - 22px), transparent 100%);
+  }
+
+  .ant-segmented::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ant-segmented-group {
+    flex-wrap: nowrap;
+  }
+
+  .ant-segmented-item-label {
+    white-space: nowrap;
+  }
+}
+
+/* ══ 3. 表格:窄屏成为"账页条"(可横扫,首列钉住) ═══════════════════════════
+   窄屏不把表格重排成卡片 —— 那会丢掉列语义(哪一列是"驱动"哪一列是"产线")。
+   保留列,只给它一条可扫的卷轴,并把身份列(第一列)钉在左缘:
+   横扫时始终知道"这一行是谁"。 */
+@media (max-width: 900px) {
+  .ant-table-wrapper {
+    max-width: 100%;
+  }
+
+  .ant-table-wrapper .ant-table-content,
+  .ant-table-wrapper .ant-table-body {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-table-wrapper .ant-table-thead > tr > th:first-child,
+  .ant-table-wrapper .ant-table-tbody > tr > td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--paper-raised);
+    box-shadow: 1px 0 0 var(--line);
+  }
+
+  .ant-table-wrapper .ant-table-thead > tr > th:first-child {
+    z-index: 3;
+  }
+}
+
+/* 分页器窄屏收边 */
+@media (max-width: 640px) {
+  .ant-pagination {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  /* 表格单元格内距降档:antd 的 middle 尺寸是 16px 上下内距,
+   * 单行数据行会被撑到 76px —— 手机上 7 行就占掉三屏(实测 /tokens)。
+   * 降到 10px 后行高回到 ~60px,信息密度翻倍,且不损失可点面积
+   * (行内按钮另有 34px 下限)。 */
+  .ant-table-wrapper .ant-table-tbody > tr > td,
+  .ant-table-wrapper .ant-table-thead > tr > th {
+    padding: 10px 8px;
+  }
+}
+
+/* ══ 4. 面板/仪表:窄屏统一收边 + 头部换行 ════════════════════════════════ */
+@media (max-width: 900px) {
+  .aw-bench,
+  .aw-tile,
+  .aw-glass-panel {
+    border-radius: var(--radius-panel-sm, 10px);
+  }
+
+  .aw-bench-hd {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* 统计带:桌面是一行分格量规,窄屏折成 2 列(数值本身不被压扁) */
+@media (max-width: 900px) {
+  .aw-gauge-band {
+    flex-wrap: wrap;
+  }
+
+  .aw-gauge {
+    flex: 1 1 calc(50% - 12px);
+    min-width: 132px;
+  }
+}
+
+@media (max-width: 420px) {
+  .aw-gauge {
+    flex: 1 1 100%;
+  }
+}
+
+/* ══ 5. 设置行:桌面是"键 — 值"两端对齐,窄屏必须上下堆叠 ══════════════════
+   不堆叠时键名会被压成一列竖排字(实测 /settings 主题设置的描述整段竖排)。 */
+@media (max-width: 720px) {
+  .aw-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .aw-row-key,
+  .aw-row-val {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .aw-row-val {
+    justify-content: flex-start;
+  }
+}
+
+/* ══ 6. 触摸目标:粗指针设备上所有可点元素至少 40px 高 ════════════════════
+   只在 coarse pointer 上生效 —— 桌面鼠标精度高,放大反而破坏密度。 */
+@media (pointer: coarse) {
+  .ant-btn,
+  .pill-btn,
+  .ghost-btn,
+  .mini-btn,
+  .aw-pill,
+  .aw-ghost,
+  .icon-btn,
+  .lib-link,
+  .collapse-btn,
+  .aw-diag-btn {
+    min-height: 40px;
+  }
+
+  .ant-btn-sm {
+    min-height: 34px;
+  }
+
+  .menu-item {
+    min-height: 44px;
+  }
+
+  /* 命中区外扩:控件本体只有 16–28px(设计如此),不该为了达标把视觉尺寸撑大,
+   * 正确做法是把**可点区域**扩到 40px。审计量的也是命中区,不是盒子大小。
+   *
+   * ⚠️ 只能用 ::after,而且要先确认该元素没被组件库占用这个伪元素 ——
+   * antd 的表格展开图标恰恰是用 ::before/::after 画那根 +/− 横竖线的,
+   * 用 ::after 去"扩命中区"会直接把图标画坏(曾误加到列表里,已撤)。
+   * 对这类"伪元素已占用"的控件,只能老实把盒子做大。 */
+  /* ⚠️ **不要改这个图标的盒子尺寸**。antd 的 +/− 是用固定像素偏移画的
+   * (::before 的 top:7px/left:3px、::after 的 left:7px…),这些偏移是按 17px 盒子调的;
+   * 把盒子改大,横竖线的交汇点就跑到左上角,图标看起来像"表格边框坏了"(实测踩过)。
+   *
+   * 正确的放大方式是**等比缩放整个图标**:antd 本来就给它加了 transform: scale(.941176),
+   * 覆盖成 1.8 即可 —— 图形与偏移一起放大,永不跑位,命中区也从 16px 变成 30.6px。
+   * (展开态的差异是靠 ::after 的旋转,不在元素 transform 上,所以覆盖它是安全的。) */
+  .ant-table-row-expand-icon {
+    transform: scale(1.8) !important;
+  }
+
+  .ant-switch,
+  .ant-checkbox-wrapper,
+  .ant-radio-button-wrapper {
+    position: relative;
+  }
+
+  .ant-switch::after {
+    position: absolute;
+    inset: -12px;
+    content: '';
+  }
+
+  .ant-checkbox-wrapper::after,
+  .ant-radio-button-wrapper::after {
+    position: absolute;
+    inset: -10px -6px;
+    content: '';
+  }
+}
+
+/* ══ 6b. 手持档的语义级字号地板:<small> 就是"小字",手机上它不该真的小 ═════
+   * 逐类点名修了二十几个类名之后仍然漏(实测 /daq 单页还剩 120+ 处,分散在
+   * DaqNodeRow、line-pill、infra-banner 各处,而且被更高特异度的规则盖回来)。
+   * <small> 是语义标签:它在手持档的**下限**由可读性决定,不由排版细节决定 ——
+   * 所以这里用一条语义级兜底,而不是继续加类名。 */
+@media (max-width: 900px) {
+  /* 用 body 而不是 .app-content:浮层(抽屉/tooltip/popover)被 teleport 到 body 下,
+   * 不属于 .app-content,用后者会漏掉它们(实测:同一批 <small> 在页面里修好、
+   * 在浮层里照旧)。 */
+  body small,
+  body small *,
+  body :not(pre) > code {
+    font-size: 11.5px !important;
+  }
+
+  /* 行内代码同属"要被读的正文",且它常承载 ID / 参数。pre 里的代码块不在此列
+     (代码块有自己的等宽排版,放大反而破坏对齐)。 */
+  .app-content :not(pre) > code {
+    font-size: 11.5px;
+  }
+}
+
+/* ══ 7. 字号地板:窄屏不允许出现"看得见但读不了"的微字 ═════════════════════
+   桌面 10–11px 的 mono 微标签是**仪器铭牌**语言,保留;
+   手持距离(≈30cm)下 10px 只剩 6px 有效字号,必须抬到 11.5px 起。 */
+/* ⚠️ 这里必须 !important:页脚与侧栏铭牌的字号定义在**组件的 scoped 样式**里
+   * (`.app-footer[data-v-x]` = 0,2,0),全局层同选择器只有 0,1,0,靠源码顺序取胜不可靠
+   * (构建后组件样式与 main.css 的先后会被打包器重排)。而"手持视距下的字号地板"是
+   * 无障碍要求,不是主题偏好 —— 它就应该盖过组件里的 10px 微字。 */
+@media (max-width: 640px) {
+  .aw-kicker,
+  .aw-bench-kicker,
+  .aw-bench-meta,
+  .aw-gauge-label,
+  .aw-gauge .aw-readout small,
+  .app-footer,
+  .app-footer span,
+  .footer-line,
+  /* 几处"分节小标"散落在页面自己的 scoped 样式里(8.5–10px),
+     逐页去改不如在全局层给这一类语义一个统一地板:它们都是**给人读的分节名**。 */
+  .lc-state,
+  .ctl-sec,
+  .dock-mode,
+  .st-pill {
+    font-size: 11.5px !important;
+  }
+
+  /* 壳层铭牌同样受字号地板约束:它们不是"装饰刻度"而是身份/分区信息,
+     手持视距下 8.5–10px 等于读不了(实测审计在 375 每页稳定报 8 条)。 */
+  .logo-sub,
+  .menu-group-text,
+  .sider-footer,
+  .sider-footer .footer-line,
+  .app-footer .sep {
+    font-size: 11.5px;
+  }
+
+  .menu-group-text {
+    letter-spacing: 0.1em;
+  }
+}
+
+/* 抽屉打开时(on≤900 的窄屏形态),侧栏铭牌的可读距离比桌面更近,
+   但抽屉宽度只有 264px —— 抬字号同时要收一点字距,避免分组标顶到刻度线。 */
+@media (max-width: 900px) {
+  body.nav-drawer .app-sider .logo-sub,
+  body.nav-drawer .app-sider .menu-group-text,
+  body.nav-drawer .app-sider .footer-line,
+  body.nav-drawer .app-sider .logo-title {
+    font-size: 11.5px !important;
+  }
+
+  body.nav-drawer .app-sider .menu-group-text {
+    letter-spacing: 0.1em;
+  }
+}
+
+/* ══ 8. 浮层:窄屏抽屉/模态占满可用宽,底部留安全区 ═══════════════════════ */
+@media (max-width: 640px) {
+  .ant-drawer-content-wrapper {
+    max-width: 100vw;
+  }
+
+  .ant-modal {
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+  }
+
+  .ant-drawer-body,
+  .ant-modal-body {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+/* ══ 9. 横屏手机(高度 ≤ 520 且宽 > 640):纵向空间才是瓶颈 ════════════════
+   横屏多用于"看趋势图",此时不该再给页头留桌面级留白。 */
+@media (max-height: 520px) and (min-width: 641px) {
+  .aw-page-head {
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+
+  .aw-page-head h1 {
+    font-size: 22px;
+  }
+
+  .app-footer {
+    display: none;
+  }
+}
+
+/* ══ 9b. 亮色档:antd 预设 tag 的文字色按"彩色小标签"设计,不是按 AA 正文设计 ══
+   实测 gold preset 的 #d48806 落在 #fffbe6 上只有 2.76:1。
+   这里只压深**文字**、保留色相与底色 —— 色相本身在传信息(lead/worker/阶段),
+   改成灰标签等于把信息抹掉。currentColor 在 color 属性里解析为**继承值**,
+   所以这条既通用又不需要枚举 antd 的十种 preset。 */
+html:not(.dark) .ant-tag {
+  color: color-mix(in srgb, currentColor 70%, #000);
+}
+
+/* antd 开关的"关闭态文字"(unCheckedChildren)是白字压在 #bfbfbf 轨道上,只有 1.9:1。
+ * 这不是我们的配色,而是组件库对"彩色轨道"的默认假设 —— 在浅色主题里轨道是灰的,
+ * 白字必须换成墨色。开启态轨道是品牌绿,白字仍然成立,不动。 */
+html:not(.dark) .ant-switch .ant-switch-inner .ant-switch-inner-unchecked,
+html:not(.dark) .ant-switch-inner-unchecked {
+  color: #3a3733 !important;
+}
+
+/* ══ 10. 侧栏三种形态:full(≥1024) / rail(900–1023) / drawer(<900) ═══════
+   形态判据写在 <body> 的类上(由 AppSidebar 的 useResponsive 镜像),
+   而不是打 a-layout-sider 自己的 class —— 实测 antd Sider 不透传动态 class,
+   把**结构性布局**挂在第三方组件的 attr 透传行为上是脆的。
+
+   为什么窄屏侧栏必须离开文档流:
+     1. 228px 文字轨 + 画布在 390px 屏上只剩 162px —— 任何页面都读不了;
+     2. antd Sider 的 breakpoint 会把 collapsed 写回持久化偏好,
+        "在手机上打开过一次" 就变成 "桌面侧栏永久收起"(实测复现)。 */
+body.nav-drawer .app-sider {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1200;
+  width: 264px !important;
+  min-width: 264px !important;
+  max-width: 264px !important;
+  height: 100dvh;
+  transform: translateX(-100%);
+  transition:
+    transform 0.28s var(--spring-soft, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow 0.28s ease;
+  will-change: transform;
+}
+
+body.nav-drawer.nav-drawer-open .app-sider {
+  transform: translateX(0);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 45%);
+}
+
+/* 关闭态彻底移出可达树:transform 只是"看不见",元素仍在文档里可被 Tab 聚焦、
+   也会被几何审计记成"fixed 元素越界"(每个页面稳定 1 条假阳性)。
+   visibility 用延时切换,保证关门动画播完再隐藏。 */
+body.nav-drawer:not(.nav-drawer-open) .app-sider {
+  visibility: hidden;
+  transition:
+    transform 0.28s var(--spring-soft, cubic-bezier(0.22, 1, 0.36, 1)),
+    visibility 0s linear 0.28s;
+}
+
+/* 抽屉内条目回到手指友好的尺寸(桌面 34px 对拇指太窄) */
+body.nav-drawer .app-sider .menu-item {
+  min-height: 44px;
+  font-size: 14px;
+}
+
+body.nav-drawer .app-sider .logo {
+  height: 56px;
+}
+
+body.nav-drawer .app-sider .app-menu {
+  padding-bottom: 84px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.nav-drawer .app-sider {
+    transition: none;
+  }
+}
+
+
 
 

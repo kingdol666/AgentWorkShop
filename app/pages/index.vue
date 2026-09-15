@@ -47,6 +47,21 @@ onMounted(() => {
 // ---------- Harness 可用性(引擎 CLI 环境探测;服务端 30s 探测缓存,随兜底节拍刷新) ----------
 const api = useWorkshopApi()
 const harnesses = ref<HarnessMetaDto[]>([])
+
+/**
+ * 引擎卡片第二行的命令名。
+ * 返回空串表示"这一行没有新信息":标签已经以命令名开头时
+ * (omp(真实 LLM) / omp、opencode / opencode、codex / codex…),
+ * 再写一遍只是把同一件事讲两遍 —— 实测 14 张卡里有 9 张是重复的。
+ * 真正有信息量的只有:不可用状态、in-process、以及与标签不同的真实二进制名。
+ */
+const harnessCmd = (h: HarnessMetaDto): string => {
+  if (h.available === false) return t('home.harness.missing')
+  if (h.inprocess) return 'in-process'
+  const cmd = String(h.command ?? '')
+  if (!cmd) return ''
+  return h.label.startsWith(cmd) ? '' : cmd
+}
 const loadHarnesses = async (): Promise<void> => {
   try {
     const res = await api.listHarnesses()
@@ -427,7 +442,10 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
         >
           <span class="h-dot" />
           <span class="h-name">{{ h.label }}</span>
-          <span class="h-cmd mono">{{ h.available === false ? t('home.harness.missing') : (h.inprocess ? 'in-process' : h.command) }}</span>
+          <span
+            v-if="harnessCmd(h)"
+            class="h-cmd mono"
+          >{{ harnessCmd(h) }}</span>
           <span
             v-if="h.available === false && h.homepage"
             class="h-go"
@@ -901,7 +919,23 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
 .h-item.off .h-dot { background: var(--tone-danger-dot, #c25a4e); }
 .h-name { font-weight: 600; color: var(--ink); }
 .h-item.off .h-name { color: var(--ink-soft); }
+/* 引擎命令名是"铭牌"级信息:桌面 10px 尚可,手持档必须让位给可读性
+   * (实测 / 在 390 下稳定报出 54 条 <11px,全部来自这里与 .aw-gauge-label) */
 .h-cmd { font-size: 10px; color: var(--ink-faint); }
+
+/* 手持档字号地板:本页所有"铭牌级"微字(引擎命令名、产线状态、产线指标行、
+   跳转箭头)统一抬到 11.5px。它们在桌面是仪器铭牌语言,在手机上就是读不了的小字。 */
+@media (max-width: 900px) {
+  .h-cmd,
+  .h-go,
+  .lc-state,
+  .lc-run small,
+  .lc-meta,
+  .lc-meta span,
+  .fleet-all small {
+    font-size: 11.5px;
+  }
+}
 /* 全部产线入口:虚线幽灵卡,聚合清单外的余量 */
 .fleet-all {
   display: flex;

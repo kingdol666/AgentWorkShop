@@ -1,49 +1,102 @@
 ---
 layout: home
 
+footer:
+  message: Licensed under PolyForm Noncommercial 1.0.0 · Source-available, noncommercial
+  copyright: Copyright © 2026 kingdol (kingdol666)
 ---
+
+<!--
+  ⚠️ HTML indentation here is constrained by markdown-it's HTML block rule:
+  a line indented ≥4 spaces that follows a blank line becomes an *indented code
+  block* and is emitted escaped ("Element is missing end tag" at build time).
+  So block-level elements indent at most 2 spaces; deeper indentation may only
+  appear inside the same chunk (i.e. with no blank line above it).
+-->
 
 <div class="hw-hero">
   <div class="hw-wrap">
     <p class="hw-kicker">AGENTWORKSHOP · INDUSTRIAL AGENT RUNTIME</p>
     <h1 class="hw-title">Agent teams<span class="x">×</span>the line<span class="x">×</span>the twin</h1>
     <p class="hw-sub">
-      A configuration-driven runtime where <b>AI agent teams</b> read real telemetry and write
-      setpoints through human approval — every event streaming live into a <b>3D digital twin</b>.
-      Supervisory by design, second-level soft real-time, protocol-real and assertion-verifiable.
+      A configuration-driven industrial agent runtime: agent teams read real telemetry and write
+      setpoints through human approval — every event streaming live into a 3D twin.
+      Protocol-real, and assertion-reproducible.
     </p>
+    <div class="hw-trio">
+      <div>
+        <span class="k">WHAT<i>是什么</i></span>
+        <span class="v">A supervisory runtime, SCADA-adjacent · second-level soft real-time</span>
+      </div>
+      <div>
+        <span class="k">FOR WHOM<i>给谁用</i></span>
+        <span class="v">Line engineers · process &amp; ops · industrial AI research &amp; teaching · platform builders</span>
+      </div>
+      <div>
+        <span class="k">WHY<i>凭什么值</i></span>
+        <span class="v">Real read/write on 5 protocols · interlock→approval→readback, audited · 14 engines, one contract</span>
+      </div>
+    </div>
     <div class="hw-cta">
       <a class="hw-btn primary" href="/AgentWorkShop/en/guide/getting-started">Get started <span class="arr">→</span></a>
-      <a class="hw-btn" href="/AgentWorkShop/en/guide/first-session">Your first agent × line session</a>
-      <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub ↗</a>
+      <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub <span class="arr">↗</span></a>
+      <span class="hw-cta-sep"></span>
+      <a class="hw-btn quiet" href="/AgentWorkShop/en/guide/first-session">Your first agent × line session <span class="arr">→</span></a>
     </div>
-
-<div class="hw-rail-sec">
+    <div class="hw-rail-sec">
       <div class="hw-rail-cap">
-        <span>FIG.00 · THE DATA PIPELINE — THE PRODUCT IS THIS CHAIN</span>
+        <span>FIG.00 · THE DATA PIPELINE — THE PRODUCT IS THIS CHAIN (SCHEMATIC)</span>
         <span>SAMPLING → STORAGE → STREAM → AGENT</span>
       </div>
       <div class="hw-rail">
         <div class="hw-pulse"></div>
-        <div class="hw-node"><span class="n">Field devices</span><span class="d">PLC / SENSORS</span></div>
-        <div class="hw-node"><span class="n">Drivers ×5</span><span class="d">MODBUS TCP/RTU·OPC UA·MQTT·HTTP</span></div>
-        <div class="hw-node"><span class="n">Queue</span><span class="d">INPROC / MQTT</span></div>
-        <div class="hw-node"><span class="n">TSDB</span><span class="d">TIMESCALE</span></div>
-        <div class="hw-node"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ RESUME</span></div>
-        <div class="hw-node hot"><span class="n">Agent / Twin</span><span class="d">SAME EVENT STREAM</span></div>
+        <div class="hw-flow"></div>
+        <div class="hw-node" style="--i:0"><span class="n">Field devices</span><span class="d">PLC / SENSORS</span></div>
+        <div class="hw-node" style="--i:1"><span class="n">Drivers ×5</span><span class="d">MODBUS TCP/RTU · OPC UA · MQTT · HTTP</span></div>
+        <div class="hw-node" style="--i:2"><span class="n">Queue</span><span class="d">INPROC / MQTT · OFFLINE BUFFER</span></div>
+        <div class="hw-node" style="--i:3"><span class="n">TSDB</span><span class="d">SQLITE / TIMESCALE</span></div>
+        <div class="hw-node" style="--i:4"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ RESUME</span></div>
+        <div class="hw-node hot" style="--i:5"><span class="n">Agent / Twin</span><span class="d">SAME EVENT STREAM</span></div>
       </div>
       <div class="hw-stats">
-        <div class="hw-stat"><span class="v">5</span><span class="k">FIELD PROTOCOLS</span></div>
-        <div class="hw-stat"><span class="v">4</span><span class="k">ENTRY POINTS</span></div>
-        <div class="hw-stat"><span class="v">14</span><span class="k">ENGINES</span></div>
-        <div class="hw-stat"><span class="v">99</span><span class="k">SETTINGS · 16 GROUPS</span></div>
-        <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">ACCEPTANCE CHECKS PASS</span></div>
+        <div class="hw-stat"><span class="v">5</span><span class="k">field protocols</span></div>
+        <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
+        <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
+        <div class="hw-stat"><span class="v">99</span><span class="k">runtime settings</span></div>
+        <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">acceptance checks</span></div>
+        <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
+      </div>
+      <p class="hw-stat-note">
+        * Full closed-loop E2E on a real protocol stack (124 PASS / 0 FAIL, 2026-09-12, v0.7.36).
+        The rest are countable facts: 5 driver classes / 4 entry points (WS · MCP · A2A · REST) /
+        14 harnesses (<code>agents/registry.ts</code>) / 99 settings in 16 groups (<code>aw config list</code>) / 7 task states.
+      </p>
+      <div class="aw-statusbar">
+        <span>Version <i>v0.7.39</i></span>
+        <span>License <i>PolyForm Noncommercial 1.0.0</i></span>
+        <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
+        <span>Docs <i>简体中文 / English</i></span>
       </div>
     </div>
   </div>
 </div>
 
 <div class="hw-wrap">
+
+  <div class="aw-ruler"></div>
+
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">01</span>
+      <h2 class="hw-sec-title">Interface</h2>
+      <span class="hw-sec-en">INTERFACE</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <p class="hw-lead">
+      Every screen below was recorded from a running instance, not a render. The three share one
+      event bus — a sample written by a DAQ channel is at once the twin's input, a point on the
+      trend curve, and the row an agent reads.
+    </p>
 
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
@@ -56,12 +109,60 @@ layout: home
 ![Digital twin control room — line equipment, DAQ channels, trends and device monitoring on one screen](/town.png)
 
 </div>
+    <p class="aw-console-cap">
+      <b>The twin is a render of the same event bus.</b>
+      Equipment ledger, DAQ channels, live trends, alarm strip and device health on one screen; the
+      real render readout sits top-right (129 FPS) and the quality ladder (DPR / shadows / bloom)
+      tracks a wall-clock frame budget, so mid-range machines stay honest too.
+    </p>
   </figure>
-  <p class="aw-cap">Real running system · equipment health · alarms · trends · DAQ channels, fed by the same event stream the agents consume</p>
+
+  <div class="aw-figs">
+
+  <figure class="aw-console">
+    <figcaption class="aw-console-bar">
+      <span class="aw-console-tag">FIG.02</span>
+      <span class="aw-console-title">DAQ CONSOLE · ACQUISITION</span>
+      <span class="aw-console-meta">51 NODES · WS FAN-OUT</span>
+    </figcaption>
+    <div class="aw-console-body">
+
+![DAQ centre — gauge strip, per-node ledger, sampling period and WS fan-out state](/daq.png)
+
+</div>
+    <p class="aw-console-cap">
+      <b>The acquisition chain, end to end.</b>
+      Under the gauge strip (nodes / published / consumed / lost / stored) sits the per-node ledger:
+      live value, sampling period, WS fan-out state, driver type — and for control nodes the
+      SET / ACT pair read back through the very calibration path used to write.
+    </p>
+  </figure>
+
+  <figure class="aw-console">
+    <figcaption class="aw-console-bar">
+      <span class="aw-console-tag">FIG.03</span>
+      <span class="aw-console-title">LINE OPERATIONS · LINE OPS</span>
+      <span class="aw-console-meta">LINES · PRODUCTS · RECIPES</span>
+    </figcaption>
+    <div class="aw-console-body">
+
+![Line operations — line cards, recipe binding, control-node counts and start entry](/line-ops.png)
+
+</div>
+    <p class="aw-console-cap">
+      <b>Starting a line = gating acquisition with its recipe window.</b>
+      From then on every sample carries product / recipe / batch; control nodes only declare
+      classification parameters and process ranges — the actual write still passes interlock and approval.
+    </p>
+  </figure>
+
+  </div>
+
+  </section>
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">01</span>
+      <span class="hw-sec-no">02</span>
       <h2 class="hw-sec-title">Architecture</h2>
       <span class="hw-sec-en">ARCHITECTURE</span>
     </div>
@@ -84,7 +185,7 @@ layout: home
       <div class="hw-layer">
         <div class="hw-layer-tag"><span class="l1">Runtime</span><span class="l2">RUNTIME</span></div>
         <div class="hw-cells">
-          <div class="hw-cell"><span class="c1">AgentChannelManager</span><span class="c2">channel & instance orchestration</span></div>
+          <div class="hw-cell"><span class="c1">AgentChannelManager</span><span class="c2">channel &amp; instance orchestration</span></div>
           <div class="hw-cell"><span class="c1">SchedulerLoop</span><span class="c2">lead supervision · rule fallback</span></div>
           <div class="hw-cell"><span class="c1">TaskEngine</span><span class="c2">7-state task machine</span></div>
           <div class="hw-cell"><span class="c1">AgentMemory</span><span class="c2">FTS5 + optional vectors</span></div>
@@ -107,7 +208,7 @@ layout: home
         </div>
       </div>
       <div class="hw-layer hw-sub">
-        <div class="hw-layer-tag"><span class="l1">Persistent</span><span class="l2">PERSISTENT SESSION · 6</span></div>
+        <div class="hw-layer-tag"><span class="l1">Persistent</span><span class="l2">PERSISTENT · 6</span></div>
         <div class="hw-cells c6col">
           <div class="hw-cell"><span class="c1">omp</span><span class="c2">stdio RPC</span></div>
           <div class="hw-cell"><span class="c1">codex</span><span class="c2">app-server JSON-RPC</span></div>
@@ -118,7 +219,7 @@ layout: home
         </div>
       </div>
       <div class="hw-layer hw-sub">
-        <div class="hw-layer-tag"><span class="l1">Headless CLI</span><span class="l2">HEADLESS CLI · 6</span></div>
+        <div class="hw-layer-tag"><span class="l1">Headless CLI</span><span class="l2">HEADLESS · 6</span></div>
         <div class="hw-cells c6col">
           <div class="hw-cell"><span class="c1">gemini</span><span class="c2">stream-json</span></div>
           <div class="hw-cell"><span class="c1">copilot</span><span class="c2">JSONL</span></div>
@@ -137,7 +238,7 @@ layout: home
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">02</span>
+      <span class="hw-sec-no">03</span>
       <h2 class="hw-sec-title">Design principles</h2>
       <span class="hw-sec-en">DESIGN PRINCIPLES</span>
     </div>
@@ -178,13 +279,13 @@ layout: home
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">03</span>
+      <span class="hw-sec-no">04</span>
       <h2 class="hw-sec-title">Capabilities</h2>
       <span class="hw-sec-en">CAPABILITIES</span>
     </div>
     <div class="hw-sec-rule"></div>
     <div class="hw-feats">
-      <div class="hw-f"><span class="tag">PROTOCOL</span><h3>Five-protocol DAQ & control</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP, both directions — connection pools, classified errors, per-driver connection tests; plugins register new protocols.</p></div>
+      <div class="hw-f"><span class="tag">PROTOCOL</span><h3>Five-protocol DAQ &amp; control</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP, both directions — connection pools, classified errors, per-driver connection tests; plugins register new protocols.</p></div>
       <div class="hw-f"><span class="tag">R/W</span><h3>Read-write control nodes</h3><p>Every control node reads its PLC value back through the same calibration path it writes with — SET vs ACT side by side, passive and never interlocked.</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>Human-approved writes</h3><p>Safe-range ∩ recipe-window interlock → approval → PLC write → readback → signed history; every decision audited.</p></div>
       <div class="hw-f"><span class="tag">RCT</span><h3>Recipe versioning</h3><p>Parameter changes versioned with attribution (source + operator + reason); roll back to any revision or last-good batch, non-destructively.</p></div>
@@ -198,7 +299,7 @@ layout: home
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">04</span>
+      <span class="hw-sec-no">05</span>
       <h2 class="hw-sec-title">Where it fits</h2>
       <span class="hw-sec-en">APPLICATIONS</span>
     </div>
@@ -207,7 +308,7 @@ layout: home
       <div class="hw-sc">
         <span class="ico">S.1</span>
         <div class="bd">
-          <h3>Line supervision & twin ops</h3>
+          <h3>Line supervision &amp; twin ops</h3>
           <p>Multi-line equipment, DAQ channels, alarms and trends on one 3D overview — second-level soft real-time, reachable from any browser.</p>
         </div>
       </div>
@@ -215,20 +316,20 @@ layout: home
         <span class="ico">S.2</span>
         <div class="bd">
           <h3>Agent-assisted optimization</h3>
-          <p>The controlled loop: analyze trends → propose a setpoint → human approval → write & readback → numeric verdict. Auditable and reversible at every step.</p>
+          <p>The controlled loop: analyze trends → propose a setpoint → human approval → write &amp; readback → numeric verdict. Auditable and reversible at every step.</p>
         </div>
       </div>
       <div class="hw-sc">
         <span class="ico">S.3</span>
         <div class="bd">
-          <h3>Industrial AI research & teaching</h3>
+          <h3>Industrial AI research &amp; teaching</h3>
           <p>Five-protocol acquisition/write-control and multi-engine orchestration out of the box — an experiment bed with protocol-real verification.</p>
         </div>
       </div>
       <div class="hw-sc">
         <span class="ico">S.4</span>
         <div class="bd">
-          <h3>Platform & ecosystem</h3>
+          <h3>Platform &amp; ecosystem</h3>
           <p>Typed REST SDK plus plugins that register drivers, processors and agent tools; four entry points open the platform to external systems.</p>
         </div>
       </div>
@@ -241,25 +342,39 @@ layout: home
 
   <section class="hw-cta-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">05</span>
+      <span class="hw-sec-no">06</span>
       <h2 class="hw-sec-title">Up and running in a minute</h2>
       <span class="hw-sec-en">QUICK START</span>
     </div>
     <div class="hw-sec-rule"></div>
-    <div class="hw-term">
-      <div class="hw-term-bar"><i>●</i> aw · zsh — repo / home dual mode</div>
-      <div class="hw-term-body">
-        <span class="cm"># install globally, run from any directory (the published tarball ships a prebuilt .output/)</span><br>
-        <span class="pr">$</span> npm i -g agentworkshop<br>
-        <span class="pr">$</span> aw start&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm"># → http://localhost:3001 · config root ~/.AgentWorkShop</span>
-      </div>
-    </div>
-    <p class="hw-lead" style="margin-top:18px">
-      Go deeper: <a href="/AgentWorkShop/en/guide/first-session">your first agent × line session</a> (about 2 minutes) ·
-      <a href="/AgentWorkShop/en/sdk/">SDK guide</a> ·
-      <a href="/AgentWorkShop/en/plugins/">Plugin guide</a> ·
-      <a href="/AgentWorkShop/en/cli/">aw CLI manual</a>
+
+```bash
+# install globally, run from any directory (the published tarball ships a prebuilt .output/)
+npm i -g agentworkshop
+aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
+```
+
+  <p class="hw-lead" style="margin-top:22px">
+    Go deeper: <a href="/AgentWorkShop/en/guide/first-session">your first agent × line session</a> (the whole chain in ~2 minutes) ·
+    <a href="/AgentWorkShop/en/sdk/">SDK guide</a> ·
+    <a href="/AgentWorkShop/en/plugins/">plugin guide</a> ·
+    <a href="/AgentWorkShop/en/cli/">aw CLI manual</a>
+  </p>
+
+  </section>
+
+  <section class="hw-final">
+    <h2>Put an agent team on a real production line</h2>
+    <p>
+      14 engines, 5 field protocols, 99 runtime settings and 124 re-runnable acceptance assertions are
+      already in the repository. Supervisory by design, second-level soft real-time;
+      protocol-real, assertion-reproducible.
     </p>
+    <div class="hw-cta">
+      <a class="hw-btn primary" href="/AgentWorkShop/en/guide/getting-started">Get started <span class="arr">→</span></a>
+      <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">View on GitHub <span class="arr">↗</span></a>
+      <a class="hw-btn quiet" href="/AgentWorkShop/en/guide/license">License <span class="arr">→</span></a>
+    </div>
   </section>
 
 </div>

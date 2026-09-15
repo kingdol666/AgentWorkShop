@@ -291,7 +291,7 @@ onBeforeUnmount(dispose)
   display: grid;
   place-items: center;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.12em;
   color: var(--hud-dim, #7f919e);
 }

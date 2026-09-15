@@ -11,6 +11,7 @@ import { useEntitiesStore } from '../../../stores/workshop/entities'
 import { useWorkshopWs } from '../../../composables/workshop/useWorkshopWs'
 import { useUserStore } from '../../../stores/workshop/user'
 import { useStorage } from '@vueuse/core'
+import { useResponsive } from '../../../composables/useResponsive'
 
 const { t } = useI18n()
 
@@ -35,6 +36,10 @@ onMounted(() => {
 })
 const entities = useEntitiesStore()
 const { subscribe, unsubscribe, conn } = useWorkshopWs()
+
+// 视口档位(唯一判据;SSR 期返回桌面档)——
+// 窄屏(≤1023)三栏仪表台只剩 ~460px 画布,必须换成「单通道示波器」形态
+const { isDesktop } = useResponsive()
 
 const workspace = computed(() => wsStore.workspaces.find(w => w.id === wsId.value))
 // 聚焦 channel:activeChannelId 须在挂载清单内(陈旧持久化/竞态下回退首频道),
@@ -77,7 +82,8 @@ const lastSeq = computed(() => (channelId.value ? conn.cursors[channelId.value] 
 
 // 视图切换(P1 三视图 + P2 多通道同屏 + P5 RPG 小镇)
 // 深链:?view=lanes/board/split/town 直达指定视图(可分享/收藏)
-type CenterView = 'timeline' | 'lanes' | 'board' | 'split' | 'town'
+// inspector 只在窄屏出现(桌面它是右侧常驻栏),故不进深链白名单
+type CenterView = 'timeline' | 'lanes' | 'board' | 'split' | 'town' | 'inspector'
 const VIEW_KEYS: Record<string, CenterView> = {
   1: 'timeline',
   2: 'lanes',
@@ -90,15 +96,24 @@ const initView = route.query.view
 const view = ref<CenterView>(
   typeof initView === 'string' && VIEW_VALUES.has(initView) ? initView as CenterView : 'timeline',
 )
-const viewOptions = [
-  { value: 'timeline', label: t('wsView.k3otu32010') },
-  { value: 'lanes', label: 'Agent lanes' },
-  { value: 'board', label: t('wsView.k3ko7a8011') },
-  { value: 'split', label: t('wsView.k3xbmo012') },
-  { value: 'town', label: t('wsView.k1cz0pbw013') },
-]
+const viewOptions = computed(() => {
+  const base = [
+    { value: 'timeline', label: t('wsView.k3otu32010') },
+    { value: 'lanes', label: 'Agent lanes' },
+    { value: 'board', label: t('wsView.k3ko7a8011') },
+    { value: 'split', label: t('wsView.k3xbmo012') },
+    { value: 'town', label: t('wsView.k1cz0pbw013') },
+  ]
+  // 窄屏「一次一区」:检查器不占侧栏,并入切换条(四区都由同一条承载)
+  return narrowUI.value ? [...base, { value: 'inspector', label: '检查器' }] : base
+})
 // 数字快捷键 1-5 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向)
 const onViewKey = (ev: KeyboardEvent): void => {
+  // 窄屏抽屉:Esc 收起(与全站侧栏抽屉一致)
+  if (ev.key === 'Escape' && narrowUI.value && leftOpen.value) {
+    leftOpen.value = false
+    return
+  }
   if (ev.metaKey || ev.ctrlKey || ev.altKey) return
   const t = ev.target as HTMLElement | null
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
@@ -111,8 +126,31 @@ onMounted(() => window.addEventListener('keydown', onViewKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onViewKey))
 
 // 侧栏折叠(现代 harness 布局:左会话栏 / 右检查器可按需收起)
+// 形态差异只在挂载后生效:SSR/首帧一律按桌面结构渲染,客户端接管后才翻档,
+// 否则服务端 5 项切换条 vs 客户端 6 项会触发水合告警
+const mounted = ref(false)
+onMounted(() => {
+  mounted.value = true
+})
+const narrowUI = computed(() => mounted.value && !isDesktop.value)
+
 const leftOpen = ref(true)
 const rightOpen = ref(true)
+/** 窄屏:左右侧栏都不再占位(收成覆盖式抽屉 / 并入切换条) */
+const applyTier = (desktop: boolean): void => {
+  leftOpen.value = desktop
+  rightOpen.value = desktop
+  // 检查器只是窄屏的第 4 区:回桌面后它回到右栏,中部得有自己的区(否则中部空白)
+  if (desktop && view.value === 'inspector') view.value = 'timeline'
+}
+onMounted(() => {
+  if (!isDesktop.value) applyTier(false)
+})
+watch(isDesktop, d => applyTier(d))
+// 抽屉里选中频道后自动收起(窄屏少一次手动关闭)
+watch(channelId, (next, prev) => {
+  if (prev !== undefined && next !== prev && narrowUI.value) leftOpen.value = false
+})
 
 // 侧栏宽度拖拽调节(PaneSplitter;localStorage 持久化,双击复位到默认值)
 const LEFT_W_DEFAULT = 248
@@ -192,8 +230,18 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         />
       </div>
       <div class="right">
+        <!-- 窄屏:频道会话列表入口(覆盖式抽屉;该页一次只看一区) -->
         <button
-          class="pane-toggle im"
+          v-if="narrowUI"
+          class="pane-toggle im toggle-left-narrow"
+          :class="{ off: !leftOpen }"
+          title="频道会话列表"
+          @click="leftOpen = !leftOpen"
+        >
+          <span class="i-tabler-list-details im-pop" />
+        </button>
+        <button
+          class="pane-toggle im toggle-left-desk"
           :class="{ off: !leftOpen }"
           :title="$t('wsView.k1tsy2e4002')"
           @click="leftOpen = !leftOpen"
@@ -201,7 +249,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
           <span class="i-tabler-layout-sidebar-left-collapse im-pop" />
         </button>
         <button
-          class="pane-toggle im"
+          class="pane-toggle im toggle-right-desk"
           :class="{ off: !rightOpen }"
           :title="$t('wsView.k1tx0ppf003')"
           @click="rightOpen = !rightOpen"
@@ -236,10 +284,16 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
 
     <!-- 主体三栏(左/右侧栏可折叠 + 拖拽调宽;分隔条 hairline 即面板边界) -->
     <div class="main">
+      <!-- 窄屏抽屉遮罩:点空白收起(不盖住底部 Composer,输入不被"锁在"抽屉后) -->
+      <div
+        v-if="narrowUI && leftOpen"
+        class="drawer-scrim"
+        @click="leftOpen = false"
+      />
       <div
         v-if="leftOpen"
         class="left-pane"
-        :style="{ flexBasis: `${leftWidth}px` }"
+        :style="{ flexBasis: narrowUI ? 'auto' : `${leftWidth}px` }"
       >
         <div class="left-scroll">
           <workshop-channel-session-list :ws-id="wsId" />
@@ -250,7 +304,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         />
       </div>
       <workshop-pane-splitter
-        v-if="leftOpen"
+        v-if="leftOpen && !narrowUI"
         :label="$t('wsView.k1fkfvra005')"
         @resize="resizeLeft"
         @reset="leftWidth = LEFT_W_DEFAULT"
@@ -279,6 +333,13 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
             v-else-if="view === 'town'"
             :channel-id="channelId"
           />
+          <!-- 窄屏第 4 区:检查器并入切换条(桌面仍是右侧常驻栏) -->
+          <workshop-inspector-panel
+            v-else-if="view === 'inspector' && narrowUI"
+            :channel-id="channelId"
+            @open-agent="openAgent"
+            @open-task="openTask"
+          />
         </template>
         <div
           v-else
@@ -294,13 +355,13 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         </div>
       </div>
       <workshop-pane-splitter
-        v-if="rightOpen"
+        v-if="rightOpen && !narrowUI"
         :label="$t('wsView.kwqb0st006')"
         @resize="resizeRight"
         @reset="rightWidth = RIGHT_W_DEFAULT"
       />
       <div
-        v-if="rightOpen"
+        v-if="rightOpen && !narrowUI"
         class="right-pane"
         :class="{ empty: wsStore.loaded && !channelId }"
         :style="{ flexBasis: `${rightWidth}px` }"
@@ -513,4 +574,131 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
   color: var(--ink-faint);
 }
 .composer-pane { flex: 0 0 auto; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   窄屏形态 · 单通道示波器(≤1023px) —— 一次只看一路信号
+   ──────────────────────────────────────────────────────────────────────────
+   桌面是「三栏仪表台」:会话栏 248 + 画布 + 检查器 300 + 两条分隔条。
+   到了 ≤1023,画布只剩 ~460px(900–1023 还要再让 64px 图标轨),
+   硬塞的结果是三栏互相压扁。所以窄屏换一台仪器,而不是把仪表台缩小:
+
+     · 中部视图(时间线 / lanes / 任务板 / 检查器)→ 由顶栏切换条承载,
+       一次只挂载一区,顶部切换条独占一行、可横扫;
+     · 频道会话列表 → 覆盖式抽屉(点遮罩/Esc/选中频道收起),不再占位;
+     · 拖拽分隔条在窄屏没有意义(没有第二栏可分配宽度)→ 隐藏;
+     · 触摸目标 ≥40px、标签 ≥11.5px(手持 30cm 距离下 10px 只剩 6px 有效字号)。
+
+   ⚠️ 断点数值与 main.css v5 / useResponsive.ts 一致(1024 = 三栏仪表台下限),
+      此处不再引入新魔数。桌面(≥1024)样式完全不受影响。
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1023.98px) {
+  .harness {
+    /* 窄屏收掉壳体外留白,把纵向像素让给内容与底部 Composer */
+    height: calc(100dvh - var(--app-header-h, 56px) - var(--app-footer-h, 46px) - 8px);
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 8px 10px;
+  }
+
+  .topbar .left {
+    row-gap: 8px;
+  }
+
+  .ws-name {
+    max-width: 40vw;
+    font-size: 15px;
+  }
+
+  .chan-chip {
+    max-width: 34vw;
+    font-size: 12px;
+  }
+
+  /* 切换条独占一行:五个视图名不再挤掉工作区名(channel 名仍可见) */
+  .view-switch {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  .ws-state,
+  .seq {
+    font-size: 11.5px;
+  }
+
+  /* 触摸目标:26px 的幽灵图标钮在手持设备上点不中 */
+  .pane-toggle {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .toggle-left-desk,
+  .toggle-right-desk {
+    display: none;
+  }
+
+  .main {
+    position: relative;
+  }
+
+  .left-pane {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    width: min(86vw, 320px);
+    border-right: 1px solid var(--line);
+    box-shadow: var(--shadow-float);
+    animation: pane-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .drawer-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    background: color-mix(in srgb, var(--ink) 34%, transparent);
+  }
+
+  /* 窄屏没有第二栏可分宽度,拖拽条只会白占 9px */
+  .pane-splitter {
+    display: none;
+  }
+
+  .pane-loading {
+    font-size: 13px;
+  }
+}
+
+/* 窄屏专属入口在桌面不出现(响应式形态差异不用 JS 表达,避免水合抖动) */
+.toggle-left-narrow {
+  display: none;
+}
+
+@media (max-width: 1023.98px) {
+  .toggle-left-narrow {
+    display: inline-flex;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .left-pane {
+    animation: none;
+  }
+}
+
+@keyframes pane-in {
+  from {
+    opacity: 0.5;
+    transform: translateX(-16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 </style>

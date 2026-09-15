@@ -1,43 +1,93 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/hero.png" alt="AgentWorkShop — Agents that run the production line" width="100%" />
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/hero.png" alt="AgentWorkShop — agent teams driving a real production line" width="100%" />
+
+<br />
 
 # AgentWorkShop
 
 **Where AI agent teams meet the production line.**
 
+[![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://github.com/kingdol666/AgentWorkShop)
+[![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://github.com/kingdol666/AgentWorkShop)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases)
+[![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
+[![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
+[![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
+[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-8A2BE2?logo=openaccess&logoColor=white)](./LICENSE)
+
 [![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)](https://nuxt.com)
 [![Vue 3.5](https://img.shields.io/badge/Vue-3.5-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org)
 [![TypeScript 5.7](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Node ≥ 23.4](https://img.shields.io/badge/Node.js-%E2%89%A5%2023.4-3C873A?logo=nodedotjs&logoColor=white)](https://nodejs.org)
-[![SQLite node:sqlite](https://img.shields.io/badge/SQLite-node:sqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
-[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm_NC_1.0-8A2BE2?logo=openaccess&logoColor=white)](./LICENSE)
+[![SQLite node:sqlite](https://img.shields.io/badge/SQLite-node%3Asqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
+[![Modbus · OPC UA · MQTT · HTTP](https://img.shields.io/badge/field%20bus-Modbus%20%C2%B7%20OPC%20UA%20%C2%B7%20MQTT%20%C2%B7%20HTTP-41c8f4?logo=siemens&logoColor=white)](./docs/site/guide/daq-protocols.md)
+[![Plugins](https://img.shields.io/badge/plugins-hot%20reload-8b5cf6?logo=puzzle&logoColor=white)](./docs/plugins.md)
+[![Docs](https://img.shields.io/badge/docs-VitePress%20%C2%B7%20%E4%B8%AD%2FEN-ffd75e?logo=vitepress&logoColor=black)](https://kingdol666.github.io/AgentWorkShop)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4?logo=git&logoColor=white)](https://github.com/kingdol666/AgentWorkShop/pulls)
 
-**[中文文档 →](./README-zh.md)** · **[Online Docs →](https://kingdol666.github.io/AgentWorkShop/)** · **[Releases →](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog →](./changelog.md)**
+**[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-*Current version: **v0.7.39** · 14 agent engines · 5 field protocols · 99 runtime settings · bilingual docs (简体中文 / English)*
+<sub><b>v0.7.39</b> · 14 agent engines · 5 field protocols · 99 runtime settings · bilingual docs (简体中文 / English)</sub>
+
+<br />
 
 *A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to a 3D twin.*
 
 </div>
 
-> **Positioning: supervisory layer.** AgentWorkShop is a *supervisory* (SCADA-adjacent) layer for production-line management, digital twins, DAQ and agent orchestration, operating at **second-level soft real-time**. It is **not** a hard real-time controller: any time-critical loop (**< 10 ms**, interlocks, safety, servo) **must live inside the PLC**. Setpoints written here are advisory — plant-side logic may veto.
+> [!IMPORTANT]
+> **Positioning: supervisory layer.** AgentWorkShop is a *supervisory* (SCADA-adjacent) layer for production-line management, digital twins, DAQ and agent orchestration, operating at **second-level soft real-time**.
+> It is **not** a hard real-time controller: any time-critical loop (**< 10 ms**, interlocks, safety, servo) **must live inside the PLC**. Setpoints written here are advisory — plant-side logic may veto.
 
 ---
 
-## Contents
+<table>
+<tr>
+<td width="33%" valign="top">
 
-| | | |
-|---|---|---|
-| [What is this?](#what-is-this) | [Highlights](#highlights) | [Interface](#interface) |
-| [Architecture](#architecture) | [Quick start](#quick-start) | [Configuration & CLI](#configuration--cli--config-driven-by-design) |
-| [Industrial stack](#the-industrial-stack-in-detail) | [Usage](#usage) | [Verification](#verified-end-to-end) |
-| [Project layout](#project-layout) | [Tech stack](#tech-stack) | [Development](#development) |
-| [Roadmap](#roadmap) | [License](#license) | |
+**FIGURE INDEX**
+
+`FIG.01` closed loop ·<br/>
+`FIG.02` DAQ console ·<br/>
+`FIG.03` line operations ·<br/>
+`FIG.04` digital twin ·<br/>
+`FIG.05` dashboard ·<br/>
+`FIG.06` responsive
+
+</td>
+<td width="33%" valign="top">
+
+**JUMP TO**
+
+[What is this?](#what-is-this) · [Highlights](#highlights)<br/>
+[Interface](#the-interface) · [Architecture](#architecture)<br/>
+[Quick start](#quick-start) · [Configuration & CLI](#configuration--cli--config-driven-by-design)<br/>
+[Industrial stack](#the-industrial-stack-in-detail) · [Usage](#usage)<br/>
+[Verification](#verified-end-to-end) · [Project layout](#project-layout)<br/>
+[Tech stack](#tech-stack) · [Development](#development)<br/>
+[Roadmap](#roadmap) · [License](#license)
+
+</td>
+<td width="33%" valign="top">
+
+**AT A GLANCE**
+
+Supervisory layer, second-level soft real-time<br/>
+14 harness engines · 4 entry points<br/>
+5 field protocols (read + write)<br/>
+7-state task machine · FTS5 + vector memory<br/>
+Hot-reloadable plugins · SDK · CLI · TUI
+
+</td>
+</tr>
+</table>
+
+---
 
 ## Documentation
 
-Docs are bilingual — the [VitePress site](https://kingdol666.github.io/AgentWorkShop/) ships a language switcher (简体中文 / English) across every section. Deep-dive pages ship in this repo too, and the CLI copies them into the published tarball:
+Docs are bilingual — the [VitePress site](https://kingdol666.github.io/AgentWorkShop) ships a language switcher (简体中文 / English) across every section. Deep-dive pages ship in this repo too, and the CLI copies them into the published tarball:
 
 | Topic | Online | In-repo | What it covers |
 |---|---|---|---|
@@ -62,9 +112,18 @@ It is also **extensible by design**: a self-contained plugin can enhance the ser
 The result: submit a goal like *"analyze the melt temperature trend and optimize the setpoint"* — and an agent team reads real sensor history, computes statistics, proposes a new setpoint, waits for your approval in the HITL panel, writes it to the PLC, verifies the readback, and reports the numbers back. **End to end, verified by automated E2E.**
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/town-demo.gif" alt="3D digital twin — live production line" width="86%" />
-<br><sub><b>Live 3D twin.</b> Line equipment, device health, DAQ channels and trend analysis — all driven by real-time telemetry.</sub>
+
+### FIG.01 — The closed loop
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-01-closedloop.gif" alt="An agent team reads live telemetry, proposes a setpoint, waits for approval, writes to the PLC and verifies the readback" width="88%" />
+
+<sub><b>Goal → read → compute → approve → write → readback → report.</b><br/>
+Recorded against a running instance: real DAQ history, real write control, real HITL approval.</sub>
+
 </div>
+
+> [!NOTE]
+> Every figure in this README is a recording or screenshot of a **running** instance — not a mockup. The numbers on screen come from seeded industrial data flowing through the same code paths the product ships.
 
 ---
 
@@ -116,26 +175,69 @@ The result: submit a goal like *"analyze the melt temperature trend and optimize
 
 ---
 
-## Interface
+## The interface
+
+Every panel below is the real UI, at 1440×900, recorded from a running instance.
 
 <div align="center">
 
-| Agent Workbench | Line Operations |
-|:---:|:---:|
-| ![Agent workbench](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/workshop.png) | ![Line operations](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/dcw.png) |
+### FIG.02 — DAQ console
 
-| DAQ Center | Digital Twin Town |
-|:---:|:---:|
-| ![DAQ center](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/daq.png) | ![Digital twin town](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/town.png) |
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-02-daq.gif" alt="DAQ console: node inventory, live trends, alarm strip and event stream" width="92%" />
 
-| Dashboard | Monitor & HITL |
-|:---:|:---:|
-| ![Dashboard](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/dashboard.png) | ![Monitor and HITL](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/monitor.png) |
+<sub><b>Acquisition, end to end.</b> Node inventory and health under a live gauge band, trends that fill as samples land,
+an alarm strip that only holds what is actually unacknowledged, and a tailing event stream.</sub>
+
+<br />
+
+### FIG.03 — Line operations
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-03-dcw.gif" alt="Line operations: production lines, products, recipes and write control" width="92%" />
+
+<sub><b>Lines, products, recipes, batches.</b> Starting a line gates acquisition through its recipe window and tags every
+sample with <code>product/recipe/run</code>; control nodes expose <b>SET vs ACT</b> through the same calibration path they write with.</sub>
+
+<br />
+
+### FIG.04 — Digital twin
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-04-town.gif" alt="3D digital twin town driven by live telemetry" width="92%" />
+
+<sub><b>The twin is the same event bus, rendered.</b> Equipment, channel territories, alarms and live values — an adaptive
+quality ladder (DPR / shadow / bloom, wall-clock FPS budget) keeps it honest on modest hardware.</sub>
+
+<br />
+
+### FIG.05 — Dashboard
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-05-dashboard.gif" alt="Runtime dashboard with KPI gauges and trends" width="92%" />
+
+<sub><b>One screen for the whole workshop.</b> Channels, agents, tasks, DAQ throughput and alarms — read from the same
+state the API serves, not a separate metrics store.</sub>
+
+<br />
+
+### FIG.06 — Responsive
+
+<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-06-responsive.gif" alt="The same interface adapting from desktop to tablet to phone" width="92%" />
+
+<sub><b>Desktop → tablet → phone.</b> The instrument rail collapses to an icon rail, then to an off-canvas drawer;
+page headers stack, dense tables become scrollable ledgers with a pinned identity column.</sub>
 
 </div>
 
----
+<table>
+<tr>
+<td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-workshop.png" alt="Agent workshop" width="100%" /><br/><sub><b>Agent workshop.</b> Channel timeline, lanes, tasks, memory and HITL in one workbench.</sub></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="Runtime monitor" width="100%" /><br/><sub><b>Runtime monitor.</b> Every wired channel, member count, dependency cycle and owner.</sub></td>
+</tr>
+<tr>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 99 keys across 16 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="Plugins" width="100%" /><br/><sub><b>Plugins.</b> Three scopes, hot reload on edit, per-team switches.</sub></td>
+</tr>
+</table>
 
+---
 ## Architecture
 
 ```mermaid
@@ -313,7 +415,7 @@ Agent tool descriptions are re-rendered with the current values on every injecti
 
 Global flags: `--help/-h` · `--version/-v` · `--json` (machine-readable) · `--root <dir>` · `--debug`.
 
-Exit codes: **0** success · **1** runtime error · **2** usage error. With `--json`, failures come back as an envelope carrying `{ ok: false, error: 'unknown-command' \| 'no-project' \| 'usage' \| 'internal' \| <code> }`, so automation can branch without parsing stderr.
+Exit codes: **0** success · **1** runtime error · **2** usage error. With `--json`, failures come back as an envelope carrying `{ ok: false, error: 'unknown-command' \| 'no-project' \| 'usage' \| 'internal' \| … }`, so automation can branch without parsing stderr.
 
 ### Command registration
 
@@ -587,5 +689,51 @@ For commercial licensing, contact: [GitHub @kingdol666](https://github.com/kingd
     <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" width="80%" />
   </picture>
 </a>
+
+</div>
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome. Before opening a PR:
+
+1. **Read the contract you are touching** — [`docs/plugins.md`](./docs/plugins.md) for the extension surface, [`docs/sdk.md`](./docs/sdk.md) for the programming client, [`docs/cli.md`](./docs/cli.md) for the command registry.
+2. **Run the guards locally**:
+
+```bash
+pnpm typecheck                            # vue-tsc across app + server + shared
+pnpm lint                                 # eslint 9, zero warnings expected
+node scripts/e2e-full-closedloop.mjs      # full closed loop, server must be running
+node scripts/test-sdk-surface.mjs         # SDK export surface must not drift
+node scripts/check-docs-sync.mjs          # docs/site pages stay in sync with docs/*.md
+```
+
+3. **Keep commits conventional** — `commitlint` runs on `commit-msg` (`feat:`, `fix:`, `docs:`, `refactor:`, `perf:`, `test:`, `chore:`), and `lint-staged` fixes staged JS/TS/Vue on commit.
+4. **Add a test for behaviour you change.** The repo leans on live E2E scripts under `scripts/` rather than mocks — a new industrial path should be provable against a running instance.
+
+> [!TIP]
+> `aw doctor` checks your environment end to end (Node version, config root, port availability, SQLite, optional Docker services) before you file a bug — it answers most "it does not start" reports immediately.
+
+## Security
+
+Please **do not** open a public issue for a vulnerability. Report it privately through [GitHub Security Advisories](https://github.com/kingdol666/AgentWorkShop/security/advisories/new) with a reproduction and the affected version.
+
+AgentWorkShop drives real equipment when you point it at real equipment: review `config.yml` interlocks, safe ranges and HITL settings before connecting a live PLC. The default posture is advisory — writes are interlocked, approved and read back — but the plant-side logic is always the final veto.
+
+---
+
+<div align="center">
+
+**If this project is useful to you, a ⭐ helps other people find it.**
+
+[![Star History Chart](https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date)](https://star-history.com/#kingdol666/AgentWorkShop&Date)
+
+<br />
+
+**[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Guide](https://kingdol666.github.io/AgentWorkShop/guide/getting-started)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)** · **[CLI](./docs/cli.md)** · **[中文](./README-zh.md)**
+
+<sub>Built with Nuxt 4 · Vue 3 · TypeScript · <code>node:sqlite</code> — supervisory layer, second-level soft real-time.<br />
+Time-critical loops stay in the PLC.</sub>
 
 </div>

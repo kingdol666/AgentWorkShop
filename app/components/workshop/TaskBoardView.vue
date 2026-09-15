@@ -633,4 +633,54 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
 }
 .st-menu button:hover { background: var(--paper-deep); color: var(--ink); }
 .st-menu button.danger { color: var(--tone-danger-dot); }
+
+/* ── 窄屏(≤1023):看板列从"全高等宽四列"改为"一次一列"的横向卷轴 ──
+   300px 定宽列在 390px 下只能露出半列 + 半列,状态语义读不出来;
+   改为 86% 宽 + scroll-snap:一屏一个状态列。列表视图行允许折行,不竖排。 */
+@media (max-width: 1023.98px) {
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .count,
+  .sec-cnt,
+  .tk-route,
+  .meta,
+  .st-pill {
+    font-size: 11.5px;
+  }
+
+  .board {
+    padding: 10px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .task-col {
+    flex: 0 0 86%;
+    min-width: 0;
+    scroll-snap-align: center;
+  }
+
+  /* 行内四项(标题/成员/ID/状态)在 370px 下必然挤:允许折行,不允许压成竖排 */
+  .list-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+    min-height: 44px;
+  }
+
+  .list-row .grow {
+    flex: 1 1 60%;
+  }
+
+  .st-pill-btn {
+    min-height: 40px;
+  }
+
+  .st-menu button {
+    min-height: 44px;
+  }
+}
 </style>

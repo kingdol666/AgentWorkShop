@@ -5,6 +5,8 @@ export const useAppStore = defineStore('app', () => {
   // 默认暗色 = Digital Twin 控制室是产品首态(可切换亮色,选择被持久化)
   const isDark = ref(true)
   const sidebarCollapsed = ref(false)
+  /** 窄屏抽屉导航是否展开(不持久化:每次进入页面都应关闭) */
+  const mobileNavOpen = ref(false)
   /**
    * 用户是否在设置页/页头显式切换过明暗。
    * 只有"显式选择"才锁死主题,阻止服务端 theme.mode 的运行时跟随——
@@ -26,11 +28,41 @@ export const useAppStore = defineStore('app', () => {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
 
+  /**
+   * 抽屉式导航(窄屏,<900px)。与 sidebarCollapsed 分开的原因:
+   * 折叠是**桌面用户的持久偏好**(图标轨),抽屉是**窄屏的临时浮层**——
+   * 两者语义不同,共用一个状态会让"手机上开过一次抽屉"变成
+   * "桌面侧栏永久收起"(实测:antd Sider 的 breakpoint 就会这么干)。
+   */
+  function openMobileNav() {
+    mobileNavOpen.value = true
+  }
+
+  function closeMobileNav() {
+    mobileNavOpen.value = false
+  }
+
+  function toggleMobileNav() {
+    mobileNavOpen.value = !mobileNavOpen.value
+  }
+
   function setAccent(color: string | null) {
     accent.value = color
   }
 
-  return { isDark, sidebarCollapsed, accent, themeTouched, toggleDark, toggleSidebar, setAccent }
+  return {
+    isDark,
+    sidebarCollapsed,
+    mobileNavOpen,
+    accent,
+    themeTouched,
+    toggleDark,
+    toggleSidebar,
+    openMobileNav,
+    closeMobileNav,
+    toggleMobileNav,
+    setAccent,
+  }
 }, {
   persist: {
     pick: ['isDark', 'sidebarCollapsed', 'accent', 'themeTouched'],

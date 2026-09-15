@@ -378,16 +378,16 @@ let channelB
 
   // KB 回环:kb_index 入库独特自然语句 → kb_search 命中(嵌入/分词对自然语句才可靠);kb_store 沉淀经验
   const marker = `三系统验证密语${Date.now().toString(36)}:青花瓷泵站三十七号叶片于黄昏完成校准`
-  const idx = await invoke(toolInvoker, 'kb_index', {
+  const idx = await invoke(toolInvoker, 'kb_index', { // rag 负载下事件循环停顿可达 60s+,放宽超时
     title: `三系统集成验证 ${Date.now().toString(36)}`,
     content: `# 三系统集成验证\n\n${marker}。\n\n本文由 three-system-e2e 经 rag-bridge 插件写入,验证 文档写盘 → 向量索引 → kb_search 检索 全链路。\n`,
     tags: ['e2e'],
-  })
+  }, 120000)
   ok(resultText(idx).includes('已入库'), 'kb_index 文档入库成功', resultText(idx).slice(0, 80))
   let hit = ''
-  for (let i = 0; i < 10; i++) { // 首次检索可能触发 BGE-M3 模型加载,放宽到 10×3s
+  for (let i = 0; i < 20; i++) { // 首次检索可能触发 BGE-M3 加载/异步索引落盘,放宽到 20×3s
     await sleep(3000)
-    const s = await invoke(toolInvoker, 'kb_search', { query: marker })
+    const s = await invoke(toolInvoker, 'kb_search', { query: marker }, 120000)
     hit = resultText(s)
     if (hit.includes(marker)) break
   }
@@ -400,7 +400,7 @@ let channelB
     solution: '先查产线 LineRun 是否活动、节点 publishIntervalMs 是否在节拍上,再缩窗重试。',
     key_lessons: ['空窗先查打标窗口', 'bucket 5s 可对齐多节点'],
     tags: ['e2e', 'daq'],
-  })
+  }, 120000)
   ok(resultText(store).includes('已沉淀'), 'kb_store 经验沉淀成功', resultText(store).slice(0, 80))
 
   // 跨通道:分析组长 → 控制组长(require_reply;用频道 ID 定向,避免跨账号同名频道歧义)
@@ -628,7 +628,7 @@ let runId = ''
       return (envelopeData(members) ?? []).find(m => m?.role === 'lead') ?? leadA
     }
     let gone = false
-    for (let i = 0; i < 20 && !gone; i++) {
+    for (let i = 0; i < 40 && !gone; i++) { // 共享实例 agent 运行时重建慢,60s 窗
       await sleep(1500)
       const fl = await freshLead()
       const h = await raw('GET', `${BASE}/api/plugins/diag-bridge/health`, { token: userToken })

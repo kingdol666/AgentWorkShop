@@ -483,6 +483,20 @@ useHead({ title: () => t('titles.workshop') })
   align-items: flex-end;
 }
 
+/* 窄屏:页头已经纵向堆叠(见 main.css v5),这一组也必须改成"左对齐 + 按钮满行"。
+ * 否则会出现"文字链居中、主按钮靠右"的错位 —— 两行不同对齐轴,读起来像两组东西(实测 /workshop)。 */
+@media (max-width: 900px) {
+  .head-acts {
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .lib-links {
+    justify-content: flex-start;
+    gap: 8px 16px;
+  }
+}
+
 /* 库链接行:安静文字链(降噪,主 CTA 只剩一个) */
 .lib-links { display: inline-flex; flex-wrap: wrap; gap: 2px 14px; justify-content: flex-end; }
 

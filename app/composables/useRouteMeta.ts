@@ -28,6 +28,9 @@ export function useRouteMeta() {
     '/tokens': { key: 'menu.tokens', icon: 'i-tabler-key' },
     '/daq': { key: 'menu.daq', icon: 'i-tabler-activity' },
     '/dcw': { key: 'menu.dcw', icon: 'i-tabler-settings-automation' },
+    // ⚠️ 漏了这条时 /aml 会落到 slug 兜底,顶栏标题显示成「Aml」—— 实测破相。
+    // 新增路由必须同时登记进这张表,否则标题就是"路径首字母大写"。
+    '/aml': { key: 'menu.aml', icon: 'i-tabler-flask' },
     '/logs': { key: 'menu.logs', icon: 'i-tabler-list-details' },
     '/permissions': { key: 'menu.permissions', icon: 'i-tabler-shield-lock' },
     '/plugins': { key: 'menu.plugins', icon: 'i-tabler-puzzle' },

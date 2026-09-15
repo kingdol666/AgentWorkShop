@@ -15,9 +15,12 @@
   --aw-line-hi: #2c4568;
   --aw-text: #e8eef8;
   --aw-dim: #8fa0b5;
-  /* 微标签/脚注/代码语言标:旧值 #5f6e84 对 --aw-bg 只有 3.80:1,正文级不达 AA。
-     提到 #7a8ba3(5.68:1)会让"很淡"的层级感消失,故取 4.83:1 的折中值。 */
-  --aw-faint: #6f7f96;
+  /* 微标签/脚注/代码语言标。取值必须同时满足**三个承载面**:
+     旧值 #6f7f96 对 --aw-bg 4.92:1、对 --aw-panel 4.61:1 尚可,但对 --aw-panel-2
+     只有 **4.35:1** —— 而 hw-node / 控制台标题栏 / 侧栏激活态都是 panel-2,
+     于是"最淡的一级文字"恰好在它最常出现的表面上不达 AA。改为 #7a8ba3:
+     bg 5.67 / panel 5.31 / panel-2 5.01,三面全过,对比三级层次(--aw-text > --aw-dim > --aw-faint)依然成立。 */
+  --aw-faint: #7a8ba3;
   /* 纯装饰色(分隔线点阵/禁用态):**不得用作文字颜色** */
   --aw-ghost: #5f6e84;
   --aw-green: #35e0a0;
@@ -26,6 +29,16 @@
   --aw-amber: #f6c453;
   --aw-danger: #ff6b6b;
   --aw-code-bg: #0a111d;
+  /* 大号装饰序号(设计原则 01..06)。22px/700 属 WCAG「大文本」,只需 3:1,
+     但 --aw-line-hi(#2c4568)在该面板上只有 1.90:1 —— 等于不可见。
+     #55719a 对 --aw-panel = 3.70:1,是"看得见但仍退居内容之后"的落点。 */
+  --aw-num: #55719a;
+  /* 展示衬线:与产品(app/assets/css/main.css --font-display)同一声部。
+     不下载任何字体(不在中国网络环境下失效、不新增依赖),按本地可用性逐级回退:
+     本机命中 Noto Serif SC(中英文字形同族,不会出现中西混排断裂),
+     macOS 落到 Songti SC、Windows 老环境落到 SimSun、Linux 落到系统 serif。 */
+  --aw-serif: 'EB Garamond', 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC',
+    STSong, 'SimSun', Georgia, 'Times New Roman', serif;
   --aw-mono: 'Cascadia Code', 'JetBrains Mono', ui-monospace, SFMono-Regular,
     'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', 'Sarasa Mono SC',
     'Noto Sans Mono CJK SC', 'Microsoft YaHei', monospace;
@@ -517,15 +530,6 @@
   width: 100%;
 }
 
-.aw-cap {
-  margin: -16px 0 44px;
-  text-align: center;
-  font-family: var(--aw-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  color: var(--aw-dim);
-}
-
 .aw-statusbar {
   display: flex;
   flex-wrap: wrap;
@@ -971,7 +975,7 @@
   font-family: var(--aw-mono);
   font-size: 22px;
   font-weight: 700;
-  color: var(--aw-line-hi);
+  color: var(--aw-num);
 }
 
 .hw-p h3 {
@@ -1112,41 +1116,6 @@
 }
 
 .hw-cta-sec { padding: 72px 0 8px; }
-
-.hw-term {
-  border: 1px solid var(--aw-line-hi);
-  border-radius: 10px;
-  background: var(--aw-code-bg);
-  overflow: hidden;
-}
-
-.hw-term-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--aw-line);
-  font-family: var(--aw-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: var(--aw-faint);
-}
-
-.hw-term-bar i {
-  font-style: normal;
-  color: var(--aw-green);
-}
-
-.hw-term-body {
-  padding: 20px 22px;
-  font-family: var(--aw-mono);
-  font-size: 14px;
-  line-height: 2.1;
-  color: var(--aw-text);
-}
-
-.hw-term-body .cm { color: var(--aw-faint); }
-.hw-term-body .pr { color: var(--aw-cyan); }
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 960px) {
@@ -1643,8 +1612,11 @@
   color: var(--aw-dim);
 }
 
+/* ⚠️ 这里原本写的是 --aw-ghost —— 而本文件第 21 行明确定义它是"纯装饰色,
+   不得用作文字颜色"。它确实只是一行 10px 的英文副标,但它**是文字**:
+   实测 #5f6e84 on #070b13 = 3.80:1,不达 4.5:1。改回 --aw-faint。 */
 .hw-layer.hw-sub .hw-layer-tag .l2 {
-  color: var(--aw-ghost);
+  color: var(--aw-faint);
 }
 
 @media (max-width: 640px) {
@@ -1703,3 +1675,909 @@
     display: none;
   }
 }
+
+/* ============================================================
+   v4 —— 首页「控制室规格书」深化
+   ------------------------------------------------------------
+   1) 第一屏说清「是什么 / 给谁用 / 凭什么值」:定位三连 + 主/次 CTA;
+   2) 主视觉(数据管线)在**示意层面**动起来:信号脉冲 + 流光 + 节点逐个通电。
+      全部动画写在 prefers-reduced-motion: no-preference 之内 ——
+      衰减是"选择加入",而不是"记得关掉";
+   3) 真实界面截图成节,以仪表框呈现:发丝边 + 四角注册角标 + 说明题。
+   声部(与产品 app/assets/css/main.css 同源):
+     标题衬线 --aw-serif · 正文无衬线 --vp-font-family-base · 数字/铭牌 mono --aw-mono。
+   ============================================================ */
+
+/* ---------- 全幅画布 ---------- */
+/* 默认 .vp-doc.container 在 1440 下是 1280 宽 / 64px 内边距,蓝图网格与
+   FIG 面板都被裁在"文档正文"的宽度里。首页不是文档,是控制室主入口:
+   放开容器让网格与面板贴到视口边,正文列宽交给 .hw-wrap 统一约束。
+   ⚠️ 不给 .hw-hero 用 100vw 做 full-bleed —— 竖直滚动条存在时 100vw 比
+   clientWidth 宽,会凭空造出约 15px 的横向滚动。 */
+.VPHome .vp-doc.container:has(.hw-hero) {
+  max-width: none;
+  padding: 0;
+}
+
+.hw-wrap {
+  max-width: 1200px;
+}
+
+/* ---------- HERO 第一屏 ---------- */
+.hw-hero {
+  padding: 76px 0 52px;
+}
+
+.hw-hero::before {
+  height: 620px;
+}
+
+/* 展示标题 = 衬线(--font-display 同族)。
+   基线层把 h1 设成 --aw-mono:拉丁部分确实是工业终端气质,但中文根本不进
+   Cascadia 的字形表,实际落到 'Microsoft YaHei' —— 所谓"等宽大标题"其实
+   只有 "Agent" 五个字母是等宽的;而且等宽空格(1ch ≈ 0.6em)把「Agent」与
+   「团队」之间撑开一个大洞。换衬线后中西文同族(本机命中 Noto Serif SC),间距自然。 */
+.hw-title {
+  font-family: var(--aw-serif);
+  font-size: clamp(32px, 4.3vw, 58px);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: 0;
+  max-width: 860px;
+}
+
+.hw-title .x {
+  font-weight: 400;
+  padding: 0 0.12em;
+}
+
+.hw-sub {
+  margin-top: 20px;
+  max-width: 700px;
+  font-size: 17.5px;
+  line-height: 1.72;
+}
+
+/* 定位三连:是什么 / 给谁用 / 凭什么值 -------------------------------- */
+.hw-trio {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 940px;
+  margin: 30px 0 0;
+  border: 1px solid var(--aw-line);
+  border-radius: 10px;
+  background: var(--aw-panel);
+  overflow: hidden;
+}
+
+.hw-trio > div {
+  padding: 15px 18px 16px;
+  border-left: 1px solid var(--aw-line);
+}
+
+.hw-trio > div:first-child {
+  border-left: 0;
+}
+
+.hw-trio .k {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--aw-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--aw-green);
+}
+
+.hw-trio .k i {
+  margin-left: 8px;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--aw-faint);
+}
+
+.hw-trio .v {
+  display: block;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--aw-text);
+}
+
+/* 三级 CTA:实心绿(主)/ 面板(次)/ 安静文字(第三) --------------------- */
+.hw-cta {
+  margin-top: 28px;
+}
+
+.hw-btn.quiet {
+  padding: 0 6px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--aw-dim);
+  font-weight: 500;
+}
+
+.hw-btn.quiet:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--aw-green);
+  transform: none;
+  box-shadow: none;
+}
+
+.hw-btn.quiet .arr {
+  color: var(--aw-green);
+  opacity: 1;
+}
+
+.hw-cta-sep {
+  width: 1px;
+  height: 22px;
+  align-self: center;
+  margin: 0 6px;
+  background: var(--aw-line);
+}
+
+/* ---------- FIG.00 数据管线:轨道 / 刻度 / 脉冲 / 流光 ---------- */
+.hw-rail-sec {
+  margin-top: 52px;
+}
+
+.hw-rail-cap {
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+
+.hw-rail {
+  padding: 30px 18px 26px;
+  /* ⚠️ 流光/脉冲都在轨道内跑,但它们的 ::after 扫描线有 130px 自身宽度:
+     走到终点时右缘会探出轨道约 150px,而 transform 同样计入 scrollWidth ——
+     实测 390/768/1024/1440 四档的文档宽度全被撑大 6px(横向溢出)。
+     轨道自己剪掉即可,内部元素的投影不受影响(节点离轨道边缘还有 18px 内边距)。 */
+  overflow: hidden;
+}
+
+.hw-node .n {
+  font-size: 13.5px;
+}
+
+.hw-node .d {
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+}
+
+/* 脉冲改成**只做 transform** 的行走器:0 高度的全轨道宽容器从 0 平移到
+   (100% - 7px),圆点画在它的 ::after 上。位移精确落回轨道两端,
+   不需要 container query 单位,也没有基线层 animating-left 的逐帧布局。 */
+.hw-pulse {
+  left: 4%;
+  right: 4%;
+  top: 50%;
+  width: auto;
+  height: 0;
+  margin: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  transform: translateY(-50%);
+  animation: hw-run 7s linear infinite;
+}
+
+.hw-pulse::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -3.5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--aw-green);
+  box-shadow: 0 0 10px rgba(53, 224, 160, 0.65);
+}
+
+@keyframes hw-run {
+  0% { transform: translate(0, -50%); opacity: 0; }
+  6% { opacity: 1; }
+  94% { opacity: 1; }
+  100% { transform: translate(calc(100% - 7px), -50%); opacity: 0; }
+}
+
+/* 流光:同一轨道上追赶脉冲的一道青色扫描线 */
+.hw-flow {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 50%;
+  height: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  animation: hw-sheen 7s linear infinite;
+}
+
+.hw-flow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -0.5px;
+  width: 130px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--aw-cyan), transparent);
+  opacity: 0.9;
+}
+
+@keyframes hw-sheen {
+  0% { transform: translate(-150px, -50%); opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { transform: translate(calc(100% + 20px), -50%); opacity: 0; }
+}
+
+/* 节点逐个「通电」:脉冲走到谁,谁亮一下。--i 由页面内联给出。
+   只动 box-shadow —— 不动 border-color,否则 .hw-node.hot 的绿边会在周期里被抹掉。 */
+.hw-node {
+  animation: hw-live 7s linear infinite;
+  animation-delay: calc(var(--i, 0) * 1.1666s);
+}
+
+@keyframes hw-live {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(53, 224, 160, 0); }
+  5% { box-shadow: 0 0 0 1px rgba(53, 224, 160, 0.22), 0 0 22px -8px rgba(53, 224, 160, 0.8); }
+  24% { box-shadow: 0 0 0 0 rgba(53, 224, 160, 0); }
+}
+
+/* 轨道终点(Agent / 孪生)常亮一圈,读作"信号落在这里" */
+.hw-node.hot {
+  box-shadow: 0 0 0 1px rgba(53, 224, 160, 0.16);
+}
+
+/* ---------- 真实数字带 ---------- */
+/* 基线层用 border-left + nth-child 手工擦边:列数一改就要重算一遍。
+   改成 1px gap + 线色底 —— 列数只剩一句 grid-template-columns。
+   6 格是刻意的:1 / 2 / 3 / 6 列全部整除,任何断点都不会留下空槽。 */
+.hw-stats {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--aw-line);
+  border: 1px solid var(--aw-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.hw-stat {
+  border: 0;
+  background: var(--aw-panel);
+  padding: 18px 12px 16px;
+}
+
+.hw-stat:last-child:nth-child(odd) {
+  grid-column: auto;
+}
+
+.hw-stat .v {
+  font-size: 30px;
+  letter-spacing: -0.01em;
+}
+
+.hw-stat .k {
+  margin-top: 6px;
+  font-size: 12.5px;
+  letter-spacing: 0.1em;
+  color: var(--aw-faint);
+}
+
+/* 行内 code 的基准是 .vp-doc :not(pre) > code(0,1,2)的 0.875em,12.5px 下掉到
+   10.9px。要压过它得取 (0,2,1)。 */
+.vp-doc .hw-stat-note code {
+  font-family: var(--aw-mono);
+  font-size: 1em;
+}
+
+.hw-stat-note {
+  margin: 14px 0 0;
+  font-family: var(--aw-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+  color: var(--aw-faint);
+}
+
+/* 机柜状态灯带(承载真实信息:许可 / 运行时 / 文档语言) */
+.aw-statusbar {
+  justify-content: flex-start;
+  margin-top: 30px;
+  font-size: 12.5px;
+}
+
+.aw-statusbar i {
+  font-style: normal;
+  color: var(--aw-text);
+}
+
+.aw-statusbar .sep {
+  color: var(--aw-line-hi);
+}
+
+.aw-statusbar span::before {
+  background: var(--aw-green-dim);
+}
+
+/* ---------- 刻度尺:分节之间的制图分隔 ---------- */
+.aw-ruler {
+  margin: 0;
+}
+
+/* ============================================================
+   FIG 仪表框 —— 真实界面截图的呈现语言
+   复用基线层 .aw-console 家族的类名(不留死 CSS),补齐:
+   四角注册角标 + 框内说明题(不再靠负 margin 悬空)
+   ============================================================ */
+.aw-console {
+  position: relative;
+  margin: 0;
+  /* ⚠️ 两个都必须显式写:
+     · position:relative —— 角标用 right:-6px 定位,没有定位祖先时它们会锚到
+       初始包含块(视口),四角跑到文档最外缘,文档宽度被撑大 6px(实测 1446/1440);
+     · overflow:visible —— 基线层为了裁图片写了 overflow:hidden,会把角标整条剪掉。
+       裁切改由 .aw-console-body 自己负责。 */
+  overflow: visible;
+}
+
+.aw-console-bar {
+  border-radius: 11px 11px 0 0;
+}
+
+.aw-console-tag {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.aw-console-meta {
+  font-size: 12.5px;
+  color: var(--aw-dim);
+}
+
+.aw-console-body {
+  position: relative;
+  overflow: hidden;
+  background: var(--aw-code-bg);
+}
+
+/* 说明题:题在框内。基线层把它做成框外段落 + margin:-16px 悬空,
+   一旦框高变化就会与边框错位。 */
+.aw-console-cap {
+  margin: 0;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--aw-line);
+  border-radius: 0 0 11px 11px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--aw-dim);
+}
+
+.aw-console-cap b {
+  color: var(--aw-text);
+  font-weight: 600;
+}
+
+/* 注册角标(制图裁切角):四条 L,画在框外 5px 处。
+   挂在 bar / cap 的伪元素上而不是 .aw-console 本身 —— fig 只有两个伪元素,
+   而且 bar 是 flex 容器,只有 absolute 定位才能让它不参与 flex 布局。 */
+.aw-console-bar::before,
+.aw-console-bar::after,
+.aw-console-cap::before,
+.aw-console-cap::after {
+  content: '';
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+  opacity: 0.55;
+  border-color: var(--aw-line-hi);
+  transition: opacity 0.3s var(--aw-spring-snap), border-color 0.3s var(--aw-spring-snap);
+}
+
+.aw-console-bar::before {
+  top: -6px;
+  left: -6px;
+  border-top: 1px solid;
+  border-left: 1px solid;
+}
+
+.aw-console-bar::after {
+  top: -6px;
+  right: -6px;
+  border-top: 1px solid;
+  border-right: 1px solid;
+}
+
+.aw-console-cap::before {
+  bottom: -6px;
+  left: -6px;
+  border-bottom: 1px solid;
+  border-left: 1px solid;
+}
+
+.aw-console-cap::after {
+  bottom: -6px;
+  right: -6px;
+  border-bottom: 1px solid;
+  border-right: 1px solid;
+}
+
+.aw-console:hover .aw-console-bar::before,
+.aw-console:hover .aw-console-bar::after,
+.aw-console:hover .aw-console-cap::before,
+.aw-console:hover .aw-console-cap::after {
+  opacity: 1;
+  border-color: var(--aw-green);
+}
+
+/* 截图两列带 */
+.aw-figs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* ---------- 分节排印:标题衬线,正文落到 14–15.5px ---------- */
+.hw-sec {
+  padding: 68px 0 8px;
+}
+
+.hw-sec-title {
+  font-family: var(--aw-serif);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.hw-sec-no {
+  font-size: 13.5px;
+}
+
+.hw-sec-en {
+  font-size: 12px;
+}
+
+.hw-lead {
+  max-width: 760px;
+  font-size: 15.5px;
+  line-height: 1.78;
+}
+
+/* 铭牌列从 132px 放到 152px:「PERSISTENT · 6」在 12px mono + .08em 字距下
+   约需 139px,132px 会把它断成"PERSISTENT ·" / "6" 两行。
+   ⚠️ 必须限定 min-width:641px —— 这条规则在文件里晚于基线层 ≤640 的
+   「.hw-layer → 单列」,而媒体查询不增加特异性:不加限定就会在 390 下
+   把铭牌列重新撑回 152px,把文档宽度顶到 506(横向溢出 116px)。 */
+@media (min-width: 641px) {
+  .hw-layer {
+    grid-template-columns: 152px 1fr;
+  }
+}
+
+.hw-layer-tag .l1 {
+  font-size: 12.5px;
+}
+
+.hw-layer-tag .l2 {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.hw-layer.hw-sub .hw-layer-tag .l2 {
+  font-size: 12px;
+}
+
+.hw-cell .c1 {
+  font-size: 13px;
+}
+
+.hw-cell .c2 {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.hw-flow-note {
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+.hw-p h3 {
+  font-family: var(--aw-serif);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.hw-p p {
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.hw-f h3 {
+  font-family: var(--aw-serif);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.hw-f p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.hw-f .tag {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.hw-sc h3 {
+  font-family: var(--aw-serif);
+  font-size: 16.5px;
+  font-weight: 600;
+}
+
+.hw-sc p {
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.hw-sc .ico {
+  font-size: 13px;
+}
+
+.hw-note .t {
+  font-size: 12.5px;
+}
+
+.hw-note p {
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+/* ---------- 快速开始 + 页脚 CTA ---------- */
+/* 快速开始用**真实围栏代码块**而不是手搓终端皮肤:拿到复制按钮、Shiki 高亮,
+   并与文档内页共用同一套"接线面板"样式 —— 首页与文档不再是两套代码外观。 */
+.hw-cta-sec {
+  padding: 68px 0 0;
+}
+
+.hw-final {
+  position: relative;
+  margin: 18px 0 8px;
+  padding: 40px 32px 36px;
+  border: 1px solid var(--aw-line);
+  border-radius: 14px;
+  background:
+    linear-gradient(var(--aw-panel), var(--aw-panel)) padding-box,
+    repeating-linear-gradient(90deg, var(--aw-line) 0 1px, transparent 1px 12px) border-box;
+  text-align: center;
+  overflow: hidden;
+}
+
+.hw-final::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--aw-green), transparent);
+  opacity: 0.5;
+}
+
+.hw-final h2 {
+  margin: 0 0 12px;
+  font-family: var(--aw-serif);
+  font-size: 27px;
+  font-weight: 600;
+  color: var(--aw-text);
+}
+
+.hw-final p {
+  max-width: 660px;
+  margin: 0 auto;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--aw-dim);
+}
+
+.hw-final .hw-cta {
+  justify-content: center;
+  margin-top: 26px;
+}
+
+/* ============================================================
+   动效偏好
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  .hw-pulse,
+  .hw-flow {
+    will-change: transform, opacity;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 停走但保留"信号已抵达终点"的静态读数,不把装饰整个删掉。 */
+  .hw-pulse {
+    animation: none;
+    left: auto;
+    right: 4%;
+    top: calc(50% - 3.5px);
+    width: 7px;
+    height: 7px;
+    transform: none;
+    background: var(--aw-green);
+    box-shadow: 0 0 10px rgba(53, 224, 160, 0.5);
+    opacity: 0.6;
+  }
+
+  .hw-pulse::after {
+    display: none;
+  }
+
+  .hw-flow {
+    display: none;
+  }
+
+  .hw-node,
+  .hw-node.hot {
+    animation: none;
+    box-shadow: none;
+  }
+}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media (max-width: 1100px) {
+  .hw-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ≤960:轨道从横向 6 列改为纵向列表。
+   基线层在 ≤960 直接把轨道线、刻度、脉冲 display:none —— 母题就此断掉
+   (剩下 2×3 个悬浮小方块)。改成竖轨 + 竖直行走的脉冲,母题在小屏继续成立。 */
+@media (max-width: 960px) {
+  .hw-rail {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 22px 16px 22px 34px;
+  }
+
+  .hw-rail::before {
+    display: block;
+    left: 17px;
+    right: auto;
+    top: 30px;
+    bottom: 30px;
+    width: 1px;
+    height: auto;
+  }
+
+  .hw-rail::after {
+    display: none;
+  }
+
+  .hw-pulse {
+    display: block;
+    left: 17px;
+    right: auto;
+    top: 30px;
+    bottom: 30px;
+    width: 0;
+    height: auto;
+    margin: 0;
+    transform: none;
+    background: none;
+    box-shadow: none;
+    animation-name: hw-run-v;
+  }
+
+  .hw-pulse::after {
+    display: block;
+    left: -3.5px;
+    top: 0;
+  }
+
+  .hw-flow {
+    left: 17px;
+    right: auto;
+    top: 30px;
+    bottom: 30px;
+    width: 0;
+    height: auto;
+    transform: none;
+    animation-name: hw-sheen-v;
+  }
+
+  .hw-flow::after {
+    left: -0.5px;
+    top: 0;
+    width: 1px;
+    height: 120px;
+    background: linear-gradient(180deg, transparent, var(--aw-cyan), transparent);
+  }
+
+  .hw-node {
+    text-align: left;
+    padding: 12px 14px;
+  }
+
+  .hw-node .d {
+    margin-top: 3px;
+  }
+}
+
+@keyframes hw-run-v {
+  0% { transform: translateY(0); opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translateY(calc(100% - 7px)); opacity: 0; }
+}
+
+@keyframes hw-sheen-v {
+  0% { transform: translateY(-130px); opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { transform: translateY(calc(100% + 20px)); opacity: 0; }
+}
+
+/* ≤880:定位三连与截图带转单列 */
+@media (max-width: 880px) {
+  .hw-trio {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+
+  .hw-trio > div {
+    border-left: 0;
+    border-top: 1px solid var(--aw-line);
+  }
+
+  .hw-trio > div:first-child {
+    border-top: 0;
+  }
+
+  .aw-figs {
+    grid-template-columns: 1fr;
+  }
+
+  .hw-final {
+    padding: 34px 22px 30px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hw-wrap {
+    padding: 0 18px;
+  }
+
+  /* VitePress 在 ≤639px 给代码块挂 margin:16px -24px(配它自己 24px 的容器内边距
+     做整幅出血)。首页的容器内边距已被放开、正文列改由 .hw-wrap 的 18px 收边,
+     于是这条 -24px 会净溢出 6px:实测 390 下 div.language-bash 左 -6 / 右 396,
+     文档宽度被撑到 396。把出血量对齐成 .hw-wrap 的 18px 即回到视口边。 */
+  .VPHome .vp-doc div[class*='language-'] {
+    margin-left: -18px;
+    margin-right: -18px;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+
+  .hw-hero {
+    padding-top: 52px;
+  }
+
+  .hw-title {
+    font-size: 31px;
+    word-break: keep-all;
+  }
+
+  .hw-sub {
+    font-size: 16px;
+  }
+
+  .hw-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hw-stat .v {
+    font-size: 26px;
+  }
+
+  .hw-sec-title {
+    font-size: 24px;
+  }
+
+  .aw-statusbar {
+    gap: 8px 14px;
+  }
+}
+
+/* ≤420:数字带 1 列。6 格竖排太高,所以改成"名左 / 值右"的读数行。 */
+@media (max-width: 420px) {
+  .hw-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .hw-stat {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: left;
+    padding: 13px 16px;
+  }
+
+  .hw-stat .k {
+    order: 1;
+    margin-top: 0;
+  }
+
+  .hw-stat .v {
+    order: 2;
+    font-size: 24px;
+  }
+
+  .hw-title {
+    font-size: 27px;
+  }
+}
+
+/* 纵向轨 + 减弱动效:脉冲停在竖轨末端(放在最后,覆盖上面的横向停放) */
+@media (prefers-reduced-motion: reduce) and (max-width: 960px) {
+  .hw-pulse {
+    left: 13px;
+    right: auto;
+    top: auto;
+    bottom: 30px;
+    width: 7px;
+    height: 7px;
+  }
+}
+
+/* ---------- 文档正文:与产品同一声部(标题衬线) ---------- */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4 {
+  font-family: var(--aw-serif);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.vp-doc h1 {
+  line-height: 1.28;
+}
+
+.vp-doc h2 {
+  line-height: 1.32;
+}
+
+.vp-doc th {
+  font-size: 12.5px;
+}
+
+.vp-doc div[class*='language-'] > span.lang {
+  font-size: 12px;
+}
+
+.VPSidebar .VPSidebarItem.level-0 > .item .text {
+  font-size: 12px;
+}
+
+/* 行内代码的 0.875em 在 14px 的表格里会掉到 12.3px(低于"说明 ≥13px")。
+   给一个绝对下限:正文 16px 时 0.875em = 14px 不受影响,只有小字号容器被托底。 */
+.vp-doc :not(pre) > code {
+  font-size: max(13px, 0.875em);
+}
+
+/* 翻页器的"上一页/下一页"是说明级文字 */
+.VPDocFooter .pager-link .desc {
+  font-size: 13px;
+}
+

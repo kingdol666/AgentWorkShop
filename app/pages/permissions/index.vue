@@ -331,4 +331,38 @@ onMounted(load)
 .matrix .row { display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 8px 12px; border: 1px solid var(--aw-border, rgba(128, 152, 199, .25)); border-radius: 10px; }
 .line-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ══ 窄屏(v9):页面收边 / 搜索框占满行 / 矩阵表横向卷轴 + 首列可读 ═══════ */
+@media (max-width: 900px) {
+  .perm-page {
+    max-width: 100%;
+    padding: 16px 12px 40px;
+  }
+
+  .aw-page-head :deep(.ant-input-search) {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .perm-page :deep(.ant-table-content) table { min-width: 820px; }
+
+  .perm-page :deep(.ant-table-thead > tr > th:first-child),
+  .perm-page :deep(.ant-table-tbody > tr > td:first-child) { min-width: 120px; }
+
+  /* 抽屉里的授权矩阵:窄屏"线名 — 三态"必须上下堆叠,否则线名被压成竖排 */
+  .matrix .row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .line-name { white-space: normal; }
+  .detail dd { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 640px) {
+  .perm-page { padding: 12px 8px 40px; }
+  .pg-sub { font-size: 11.5px; line-height: 1.5; }
+  .hint { font-size: 11.5px; }
+}
 </style>

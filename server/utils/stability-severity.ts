@@ -28,7 +28,18 @@
 export const SOCKET_NOISE = /ECONNRESET|EPIPE|ECONNABORTED|ETIMEDOUT|ERR_STREAM_PREMATURE_CLOSE|ERR_STREAM_WRITE_AFTER_END/
 
 /** 外部设备/上游不可达(运维常态,非程序缺陷) */
-export const UPSTREAM_UNREACHABLE = /ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|ERR_SOCKET_CONNECTION_TIMEOUT|UND_ERR_CONNECT_TIMEOUT/
+export const UPSTREAM_UNREACHABLE = /ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|ERR_SOCKET_CONNECTION_TIMEOUT|UND_ERR_CONNECT_TIMEOUT/i
+
+/**
+ * 人类可读的"设备不可达"文本兜底。
+ *
+ * 修复动因(实测事故):部分工业驱动库(Modbus/OPC UA 客户端)在链路超时时
+ * **不抛 errno code**,只给可读 message("TCP Connection Timed Out")。
+ * 旧实现只认 errno token / ERR_SOCKET_CONNECTION_TIMEOUT,该 message 一路落到
+ * `fatal` → 整个生产实例 exit 1(实测 13 分钟内即发生一次),与守卫自述的
+ * "设备下电/模拟器未启不该带走平台"直接矛盾。
+ */
+export const UPSTREAM_UNREACHABLE_TEXT = /TCP Connection Timed Out|connection timed out|connect(?:ion)? timeout|socket hang ?up/i
 
 /** SQLite 忙/锁(hardening ST-1) */
 export const SQLITE_BUSY = /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i
@@ -58,7 +69,7 @@ export function classifyFatalCandidate(reason: unknown): FatalSeverity {
 
   if (SOCKET_NOISE.test(text)) return 'socket'
   if (SQLITE_BUSY.test(text)) return 'db-busy'
-  if (UPSTREAM_UNREACHABLE.test(text)) return 'upstream'
+  if (UPSTREAM_UNREACHABLE.test(text) || UPSTREAM_UNREACHABLE_TEXT.test(text)) return 'upstream'
   // 引擎边界只看首行:避免 stack 里偶然出现的引擎名把真实错误降级
   const head = describeReason(reason).split('\n')[0] ?? ''
   if (ENGINE_BOUNDARY.test(head)) return 'engine'

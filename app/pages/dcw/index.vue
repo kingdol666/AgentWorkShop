@@ -768,7 +768,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 /* 状态徽章 = 玻璃芯片:双主题令牌化,浅色不再发白发黄 */
 .badge {
   padding: 3px 10px;
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--ink-faint);
   background: var(--glass-bg);
   border: 1px solid var(--glass-line);
@@ -848,7 +848,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 .line-card.idle .lc-name {
   color: var(--ink-faint);
 }
-.lc-head { display: flex; gap: 8px; align-items: center; }
+.lc-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .lc-dot {
   width: 10px;
   height: 10px;
@@ -857,18 +857,19 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   border-radius: 4px;
   box-shadow: 0 0 10px color-mix(in srgb, var(--lc) 70%, transparent);
 }
+/* 名称不再用 ellipsis 硬裁:窄屏改用换行,长名不消失(审计的 text-clipped 根因) */
 .lc-name {
-  overflow: hidden;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 14.5px;
   color: var(--ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .lc-state {
   margin-left: auto;
   flex: none;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--ink-faint);
 }
 .lc-state.on { color: var(--tone-success-dot); }
@@ -899,14 +900,15 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 .lc-act:hover { color: var(--tone-info-dot); background: var(--tone-info-bg); }
 .lc-act.danger:hover { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
 .lc-act:active { transform: scale(0.9); }
-.lc-run { font-size: 10.5px; color: var(--tone-info-dot); }
+.lc-run { font-size: 11.5px; color: var(--tone-info-dot); }
 .lc-run.dim { color: var(--ink-faint); }
 /* 无描述时的兜底提示进一步退后(77 张卡同文反复出现即是噪音;不压到 0.55 以下,保浅色可读) */
 .lc-run.dim.ph { opacity: 0.75; }
 .lc-stats {
   display: flex;
-  gap: 14px;
-  font-size: 10.5px;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 11.5px;
   color: var(--ink-faint);
 }
 .lc-stats b { color: var(--ink); font-weight: 600; }
@@ -945,7 +947,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
   cursor: pointer;
 }
 .new-card:hover { color: var(--tone-success-dot); border-color: var(--tone-success-dot); transform: none; }
-.new-card small { font-weight: 400; font-size: 10px; color: var(--ink-faint); }
+.new-card small { font-weight: 400; font-size: 11.5px; color: var(--ink-faint); }
 
 .banner { padding: 8px 12px; font-size: 12px; border-radius: 10px; }
 .banner.bad { color: var(--tone-danger-dot); background: var(--tone-danger-bg); border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 30%, transparent); }
@@ -1008,7 +1010,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 .m-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .m-err { font-size: 11px; color: var(--tone-danger-dot); }
 .dim { color: var(--ink-faint); }
-.sec-label { font-size: 10px; font-weight: 700; color: var(--ink-faint); letter-spacing: 0.16em; }
+.sec-label { font-size: 11.5px; font-weight: 700; color: var(--ink-faint); letter-spacing: 0.14em; }
 /* 删除确认:摘要行 + 级联勾选 */
 .del-summary { font-size: 12px; line-height: 1.6; color: var(--ink-soft); }
 .del-purge { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink); cursor: pointer; }
@@ -1034,7 +1036,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 .tpl-tag {
   padding: 1px 8px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11.5px;
   color: var(--tone-info-dot);
   border: 1px solid color-mix(in srgb, var(--tone-info-dot) 40%, transparent);
   border-radius: 5px;
@@ -1043,4 +1045,62 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
 .tpl-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tpl-sem { flex: 1; color: var(--ink-faint); }
 textarea.inp { height: auto; padding: 6px 9px; font-size: 11.5px; resize: vertical; }
+
+/* ══ 窄屏自适应层(≤900 手持/平板竖,≤640 单列)════════════════════════════
+   本页 375px 下的三类实测缺陷:可点元素 <40px(每张卡一个主操作)、
+   卡片微标签 10~10.5px、卡片头把长产线名硬裁成省略号。 */
+@media (max-width: 900px) {
+  /* 1. 触摸目标:手持命中区 ≥40px(与 main.css 的 coarse-pointer 地板同值,
+        但那层只认 pointer:coarse,窄视口下也必须成立) */
+  .line-card .pill-btn,
+  .fleet-filter .aw-seg button,
+  .badge.tpl-btn,
+  .m-actions .pill-btn,
+  .m-actions .mini-btn,
+  .tpl-row .mini-btn,
+  .lc-ctl .inp,
+  .fleet-search {
+    min-height: 40px;
+  }
+
+  /* 卡片头的编辑/删除原本只在 hover 才显形 —— 触屏没有 hover,等于功能消失 */
+  .lc-act {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+    opacity: 1;
+  }
+
+  .lc-ctl { flex-wrap: wrap; }
+  .lc-ctl .inp { flex: 1 1 150px; }
+  .lc-ctl .pill-btn { flex: 1 1 auto; }
+
+  /* 「产线管理 →」是 <a>:17px 行高在触屏上点不中,给它一条 40px 的整行命中区 */
+  .lc-manage {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
+
+  /* 弹窗内的可点色块/勾选同样抬到 40 命中 */
+  .color-row { flex-wrap: wrap; }
+  .color-dot { width: 40px; height: 40px; }
+  .del-purge input { width: 20px; height: 20px; }
+  .modal { width: min(440px, calc(100vw - 20px)); padding: 14px; }
+  .modal.wide { width: min(640px, calc(100vw - 20px)); }
+  .tpl-form { grid-template-columns: 1fr; }
+  .tpl-row { flex-wrap: wrap; }
+  .m-actions { flex-wrap: wrap; }
+  .m-actions > * { flex: 1 1 auto; }
+
+  /* 筛选条:分段可横扫,搜索占满整行 */
+  .fleet-filter { gap: 10px; }
+  .fleet-search { flex: 1 1 100%; width: 100%; margin-left: 0; }
+}
+
+/* 2. 窄屏产线网格:显式单列(不再依赖 auto-fill 的隐式收敛) */
+@media (max-width: 640px) {
+  .line-grid { grid-template-columns: 1fr; }
+  .line-card { padding: 12px; }
+}
 </style>

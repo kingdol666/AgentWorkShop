@@ -3,7 +3,7 @@
  * 工程量安全校验 → 驱动换算/写/回读校验 → ACK。越界 400;在飞 409。
  * R1 留痕由 write() 中央埋点统一完成(manual 来源携带真实用户身份)。
  */
-import { getRouterParam, readBody } from 'h3'
+import { getRouterParam, readBody, getRequestHeader } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
@@ -17,6 +17,14 @@ export default defineApiHandler(async (event) => {
   const body = await readBody<{ value?: number }>(event) ?? {}
   // 产线权限:写控设定值需「可操控」(readonly/无权用户 403)
   requireLineMode(user, getDcwController().byId(id)?.lineId, 'operate')
-  const outcome = await getDcwController().write(id, Number(body.value), null, { source: 'manual', actor: user.id, actorName: user.name })
+  // D8 基准消融臂透传(仅 AW_BENCH_MODE=1 时生效;生产模式恒 undefined=full 臂)
+
+  const benchArm = process.env.AW_BENCH_MODE === '1'
+
+    ? (getRequestHeader(event, 'x-aw-bench-arm') || undefined) as 'no-interlock' | 'no-readback' | 'ungated' | undefined
+
+    : undefined
+
+  const outcome = await getDcwController().write(id, Number(body.value), null, { source: 'manual', actor: user.id, actorName: user.name, benchArm })
   return { outcome }
 })

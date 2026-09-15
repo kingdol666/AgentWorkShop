@@ -580,19 +580,34 @@ const processColumns = computed(() => [
   align-items: center;
 }
 
+/* 前三张是"一个数"的量规;第四张「服务进程」内容是 PID + 时长 + ISO 快照时间,
+ * 等宽 4 列时它只有 ~200px,文案折成三行(实测 1440)。给它两列 ——
+ * 列宽按**内容长度**分,不是按卡片数量平均分。 */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 16px;
+}
+
+.stat-grid > :last-child {
+  grid-column: span 2;
 }
 
 @media (max-width: 1100px) {
   .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* 窄屏两列:前三张是"一个数"的量规(标签 + 大字),单列会让每张卡
+ * 占掉 ~150px 高、四张卡吃掉整整一屏(实测)。第四张「服务进程」内容是长字符串,
+ * 让它独自跨两列 —— 这是按**内容**分的列,不是按数量硬凑。 */
 @media (max-width: 640px) {
-  .stat-grid { grid-template-columns: 1fr; }
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .stat-grid > :last-child { grid-column: 1 / -1; }
 }
 
 .stat {
@@ -602,10 +617,10 @@ const processColumns = computed(() => [
 .stat-label {
   margin: 0 0 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ink-soft, rgba(120, 112, 96, 0.8));
+  color: var(--ink-soft);
 }
 
 .stat-value {
@@ -619,17 +634,20 @@ const processColumns = computed(() => [
   font-size: 17px;
 }
 
+/* 实测:opacity 0.6 会把 11px 的说明文字压到 4.5:1 之下,
+   改为直接使用 ink-faint(两套主题实测均 ≥5.4:1),不再靠透明度降级。 */
 .stat-updated {
   margin: 6px 0 0;
-  font-size: 11px;
-  opacity: 0.6;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  overflow-wrap: anywhere;
 }
 
 .orphan-badge {
   margin-left: 6px;
   padding: 1px 6px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--tone-warning-dot);
   background: rgb(250 140 22 / 12%);
   border-radius: var(--radius-chip);
@@ -638,32 +656,58 @@ const processColumns = computed(() => [
 .agent-sub {
   display: block;
   margin-top: 2px;
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--ink-faint);
 }
 
 .scope-tag {
   margin-left: 10px;
-  font-size: 11px;
+  font-size: 11.5px;
   vertical-align: 3px;
 }
 
 /* 卡片右上角计数:tabular mono 数据(非眉题) */
 .count-extra {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--ink-faint);
 }
 
 .toggle-label {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--ink-soft);
 }
 
 .small {
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .aw-panel + .aw-panel {
   margin-top: 16px;
+}
+
+/* ══ 窄屏(≤899px)═══════════════════════════════════════════════════════
+   概要卡在 ≤640 已是单列(见上方 .stat-grid);这里只处理行内文字的收边:
+   说明句长(时间 + 版本)在 375px 会顶到卡片右缘,允许它断行。 */
+/* 空表占位行:antd 会给固定列单元格加 position: sticky,而 scroll.x=980
+   让整行宽 980px —— 在 375px 视口里它就成了"视口外的固定元素"(实测
+   td.ant-table-cell 暂无数据 left=47 right=1027)。占位单元格没有固定列语义,
+   取消 sticky 即可(有数据时固定列行为不变)。 */
+.monitor :deep(.ant-table-placeholder > td) {
+  position: static !important;
+}
+
+@media (max-width: 899px) {
+  .stat-updated {
+    line-height: 1.5;
+  }
+
+  .head-right {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .toggle-label {
+    font-size: 13px;
+  }
 }
 </style>

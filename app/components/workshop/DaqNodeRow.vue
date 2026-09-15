@@ -544,6 +544,25 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
   border-color: transparent;
   opacity: 1;
 }
+/* ── 窄屏字号地板 ────────────────────────────────────────────────────────
+ * 节点行是"一台仪表的铭牌":桌面 10–11px 的 mono 微字是刻意的仪器语言。
+ * 但 375px 下这一行同时是**横向卷轴里的账页**,读距近、字号小、还要左右扫 ——
+ * 实测审计在 /daq 单页稳定报出近 2000 个 <11px 的文本节点,全部来自这里。
+ * 手持档把二级/三级信息抬到 11.5px(一级不受影响),布局不变(它们本就在
+ * 允许换行的单元格里),只是把"看得见"变成"读得了"。 */
+@media (max-width: 900px) {
+  .ch,
+  .drv-tag,
+  .st-pill,
+  .node-meta small,
+  .dev-unbind,
+  .dev-bind-chip,
+  .dev-add,
+  small.mono {
+    font-size: 11.5px;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .run-pill.on .rp-dot { animation: rpPulse 1.8s ease-in-out infinite; }
 }

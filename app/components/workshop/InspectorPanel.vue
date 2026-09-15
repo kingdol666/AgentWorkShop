@@ -262,4 +262,40 @@ const stateDot: Record<string, string> = {
 }
 .task-meta { font-size: 11px; font-family: var(--font-mono); color: var(--ink-faint); }
 .empty { padding: 16px 8px; font-size: 12px; color: var(--ink-faint); }
+
+/* ── 窄屏(≤1023):本面板在窄屏不再是右侧常驻栏,而是切换条上的第 4 区 ──
+   因此要能占满整宽、行高够手指点、铭牌字号抬到可读。 */
+@media (max-width: 1023.98px) {
+  .inspector {
+    width: 100%;
+    padding: 0 10px;
+  }
+
+  .tabs :deep(.ant-tabs-tab) {
+    min-height: 44px;
+  }
+
+  .member,
+  .task {
+    padding: 10px;
+    min-height: 44px;
+  }
+
+  .member-meta,
+  .task-meta,
+  .member-cap,
+  .role-chip,
+  .state-chip {
+    font-size: 11.5px;
+  }
+
+  .role-chip,
+  .state-chip {
+    line-height: 18px;
+  }
+
+  .empty {
+    font-size: 13px;
+  }
+}
 </style>

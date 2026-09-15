@@ -542,4 +542,60 @@ const blockDayFlags = computed(() => {
 @media (prefers-reduced-motion: reduce) {
   .skel-row { animation: none; }
 }
+
+/* ── 窄屏(≤1023):阅读列收边 + 富文本/代码/终端块横向滚动而非顶破视口 ──
+   消息体由 workshop-event-block(及其内部的 prose/code-block)渲染,
+   这里用 :deep 给它们一条自己的卷轴:代码不折行(折行会毁掉缩进语义),
+   改为在自己块内横扫;图片/画布一律不超列宽。 */
+@media (max-width: 1023.98px) {
+  .filter-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 10px;
+  }
+
+  .filter-bar :deep(.ant-segmented) {
+    flex: 1 1 100%;
+  }
+
+  .count,
+  .sync-chip,
+  .earlier-done {
+    font-size: 11.5px;
+  }
+
+  .column {
+    padding: 8px 8px 22px;
+  }
+
+  .column :deep(pre),
+  .column :deep(table),
+  .column :deep(.code-block),
+  .column :deep(.st-text) {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .column :deep(img),
+  .column :deep(video),
+  .column :deep(canvas) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .empty-hint {
+    font-size: 13px;
+  }
+
+  .earlier-btn,
+  .jump-latest {
+    min-height: 40px;
+  }
+
+  .jump-latest {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+}
 </style>

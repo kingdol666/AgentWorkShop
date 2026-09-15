@@ -538,8 +538,14 @@ class DcwController {
     // 调控闭环护栏(F1/F8):Agent 互斥(open 记录他人持有)+ 回退冷却方向性
     getRecipeRollBackManager().beforeWrite(node, eng, meta)
     // 写联锁按产线:仅当**本节点所属产线**在跑时,叠加该批次配方的工艺窗口
+    // D8 基准消融:仅 AW_BENCH_MODE=1 且 meta.benchArm='no-interlock' 时旁路软联锁;
+    // 硬量程校验(驱动层工程量安全校验)结构性不可旁路;生产模式(env 缺省)恒为 full 臂。
+    const benchNoInterlock = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-interlock' || meta?.benchArm === 'ungated')
+    // D8: no-readback / ungated 臂 → 容差置 MAX,回读差异不致败(假成功语义,供 I2 消融)
+    const benchNoReadback = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-readback' || meta?.benchArm === 'ungated')
+    const benchToleranceOverride = benchNoReadback ? Number.MAX_VALUE : undefined
     const run = getActiveLineRun(node.lineId)
-    if (run && recipeRunId == null) {
+    if (!benchNoInterlock && run && recipeRunId == null) {
       const recipe = getDcwRecipeRepo().byId(run.recipeId)
       const param = recipe?.params.find(p => p.nodeId === id)
       if (param) {
@@ -552,7 +558,7 @@ class DcwController {
       }
     }
     const prevValue = typeof node.value === 'number' ? node.value : null
-    const outcome = await rt.write(eng, recipeRunId)
+    const outcome = await rt.write(eng, recipeRunId, benchToleranceOverride)
     // 调控闭环入册:仅成功写记锚/开记录(失败写不动账本 —— PLC 值未变更);
     // 窗口聚合异步回填(F2)
     if (outcome.ok !== false) {

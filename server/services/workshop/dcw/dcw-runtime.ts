@@ -64,7 +64,7 @@ export class DcwNodeRuntime {
    * 用户/Recipe 设定值(核心写命令入口)。
    * 工艺安全量程硬校验(越界拒绝)+ 在飞互斥(同一通道同时只允许一个写事务)。
    */
-  async write(eng: number, recipeRunId: string | null = null): Promise<DcwWriteOutcome> {
+  async write(eng: number, recipeRunId: string | null = null, toleranceOverride?: number): Promise<DcwWriteOutcome> {
     const node = this.node
     const invalid = node.validateEng(eng)
     if (invalid) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, invalid)
@@ -75,7 +75,8 @@ export class DcwNodeRuntime {
     node.state = 'writing'
     node.lastWriteAt = new Date().toISOString()
     try {
-      return await this.host.executeWrite(node, eng, writeTolerance(node), recipeRunId)
+      // D8 基准消融:no-readback/ungated 臂由 write() 传入 MAX 容差 → 回读差异不再致败(假成功语义)
+      return await this.host.executeWrite(node, eng, toleranceOverride ?? writeTolerance(node), recipeRunId)
     }
     catch (err) {
       // 执行链抛错(异常不流向 outcome):状态机必须离开 writing,否则通道永久 409

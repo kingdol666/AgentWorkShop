@@ -603,4 +603,27 @@ useHead({ title: () => tt('titles.tokens') })
 }
 
 .text-primary { color: var(--accent); }
+
+/* ══ 窄屏(v9):页头操作占满行 / token 表格横向卷轴 + 首列可读 ═════════════ */
+@media (max-width: 900px) {
+  .head-actions { width: 100%; }
+  .head-actions :deep(.ant-btn) {
+    flex: 1 1 100%;
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .page :deep(.ant-table-content) table { min-width: 880px; }
+
+  .page :deep(.ant-table-thead > tr > th:first-child),
+  .page :deep(.ant-table-tbody > tr > td:first-child) { min-width: 132px; }
+}
+
+@media (max-width: 640px) {
+  .sub { font-size: 11.5px; line-height: 1.5; }
+  .once-meta { flex-direction: column; gap: 4px; }
+  .page :deep(.ant-table) .ant-btn-sm { min-height: 32px; }
+  .tok-op { min-width: 32px; }
+  .raw-op { width: 44px; min-height: 44px; }
+}
 </style>

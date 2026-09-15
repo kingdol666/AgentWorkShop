@@ -6,46 +6,94 @@ footer:
   copyright: Copyright © 2026 kingdol (kingdol666)
 ---
 
+<!--
+  ⚠️ 本文件的 HTML 缩进受 markdown-it 的 HTML block 规则约束:
+  空行之后出现的行若带 ≥4 空格缩进,会被当作**缩进代码块**并原样转义输出
+  (构建期报 "Element is missing end tag")。所以:块级元素最多缩进到 2 空格,
+  更深的缩进只能出现在同一块内(即其前方没有空行)。
+-->
+
 <div class="hw-hero">
   <div class="hw-wrap">
-    <p class="hw-kicker">AGENTWORKSHOP · INDUSTRIAL AGENT RUNTIME</p>
+    <p class="hw-kicker">AGENTWORKSHOP · 工业 AGENT 运行时</p>
     <h1 class="hw-title">Agent 团队<span class="x">×</span>产线<span class="x">×</span>数字孪生</h1>
     <p class="hw-sub">
-      一个配置驱动的运行时——<b>AI Agent 团队</b>读取真实遥测、经人工审批写入设定值,
-      每个事件实时流进 <b>3D 孪生小镇</b>。监督层定位,秒级软实时;协议真实,断言可复跑。
+      一个配置驱动的工业 Agent 运行时:Agent 团队读取真实遥测、经人工审批写入设定值,
+      每个事件实时流进 3D 孪生。协议是真的,断言是可复跑的。
     </p>
+    <div class="hw-trio">
+      <div>
+        <span class="k">是什么<i>WHAT</i></span>
+        <span class="v">与 SCADA 同位的监督层运行时 · 秒级软实时</span>
+      </div>
+      <div>
+        <span class="k">给谁用<i>FOR WHOM</i></span>
+        <span class="v">产线工程师 · 工艺与运维 · 工业 AI 教研 · 平台二开</span>
+      </div>
+      <div>
+        <span class="k">凭什么值<i>WHY</i></span>
+        <span class="v">5 协议真机读写 · 联锁→审批→回读留痕 · 14 引擎一个契约</span>
+      </div>
+    </div>
     <div class="hw-cta">
       <a class="hw-btn primary" href="/AgentWorkShop/guide/getting-started">快速开始 <span class="arr">→</span></a>
-      <a class="hw-btn" href="/AgentWorkShop/guide/first-session">第一次 Agent × 产线会话</a>
-      <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub ↗</a>
+      <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub <span class="arr">↗</span></a>
+      <span class="hw-cta-sep"></span>
+      <a class="hw-btn quiet" href="/AgentWorkShop/guide/first-session">第一次 Agent × 产线会话 <span class="arr">→</span></a>
     </div>
-
-<div class="hw-rail-sec">
+    <div class="hw-rail-sec">
       <div class="hw-rail-cap">
-        <span>FIG.00 · 数据管线 —— 产品即这条链路</span>
+        <span>FIG.00 · 数据管线 —— 产品就是这条链路(走向示意)</span>
         <span>SAMPLING → STORAGE → STREAM → AGENT</span>
       </div>
       <div class="hw-rail">
         <div class="hw-pulse"></div>
-        <div class="hw-node"><span class="n">现场设备</span><span class="d">PLC / 传感器</span></div>
-        <div class="hw-node"><span class="n">驱动 ×5</span><span class="d">MODBUS TCP/RTU·OPC UA·MQTT·HTTP</span></div>
-        <div class="hw-node"><span class="n">队列</span><span class="d">INPROC / MQTT</span></div>
-        <div class="hw-node"><span class="n">时序库</span><span class="d">TIMESCALE</span></div>
-        <div class="hw-node"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ 续传</span></div>
-        <div class="hw-node hot"><span class="n">Agent / 孪生</span><span class="d">同一事件流</span></div>
+        <div class="hw-flow"></div>
+        <div class="hw-node" style="--i:0"><span class="n">现场设备</span><span class="d">PLC / 传感器</span></div>
+        <div class="hw-node" style="--i:1"><span class="n">驱动 ×5</span><span class="d">MODBUS TCP/RTU · OPC UA · MQTT · HTTP</span></div>
+        <div class="hw-node" style="--i:2"><span class="n">队列</span><span class="d">INPROC / MQTT · 离线缓冲</span></div>
+        <div class="hw-node" style="--i:3"><span class="n">时序库</span><span class="d">SQLITE / TIMESCALE</span></div>
+        <div class="hw-node" style="--i:4"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ 续传</span></div>
+        <div class="hw-node hot" style="--i:5"><span class="n">Agent / 孪生</span><span class="d">同一事件流</span></div>
       </div>
       <div class="hw-stats">
         <div class="hw-stat"><span class="v">5</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">99</span><span class="k">设置项 · 16 组</span></div>
-        <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">验收断言 全过</span></div>
+        <div class="hw-stat"><span class="v">99</span><span class="k">运行时设置项</span></div>
+        <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">验收断言</span></div>
+        <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
+      </div>
+      <p class="hw-stat-note">
+        * 全闭环 E2E 在真实协议栈上的跑批结果(124 PASS / 0 FAIL,2026-09-12,v0.7.36)。
+        其余是可数出来的静态事实:5 类驱动 / 4 个入口(WS · MCP · A2A · REST) /
+        14 个 harness(<code>agents/registry.ts</code>)/ 99 个设置项分 16 组(<code>aw config list</code>)/ 7 态任务机。
+      </p>
+      <div class="aw-statusbar">
+        <span>版本 <i>v0.7.39</i></span>
+        <span>许可 <i>PolyForm Noncommercial 1.0.0</i></span>
+        <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
+        <span>文档 <i>简体中文 / English</i></span>
       </div>
     </div>
   </div>
 </div>
 
 <div class="hw-wrap">
+
+  <div class="aw-ruler"></div>
+
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">01</span>
+      <h2 class="hw-sec-title">真实界面</h2>
+      <span class="hw-sec-en">INTERFACE</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <p class="hw-lead">
+      下面每一屏都录自正在运行的实例,不是渲染稿。三屏共用同一条事件总线——
+      数采通道写进去的样本,同时是孪生画面的输入、趋势曲线上的点、以及 Agent 读到的那一行。
+    </p>
 
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
@@ -58,12 +106,58 @@ footer:
 ![数字孪生控制室 —— 产线设备、数采通道、趋势分析与设备监控实时同屏](/town.png)
 
 </div>
+    <p class="aw-console-cap">
+      <b>孪生就是同一条事件总线的渲染结果。</b>
+      设备台账、数采通道、实时趋势、报警横条与设备健康同屏;右上角是实时渲染读数(129 FPS),
+      画质阶梯(DPR / 阴影 / 泛光)按墙钟帧预算自适应,中端机器上也保持诚实。
+    </p>
   </figure>
-  <p class="aw-cap">真实运行画面 · 设备健康 · 告警 · 趋势 · 数采通道同屏,与 Agent 消费同一事件流</p>
+
+  <div class="aw-figs">
+
+  <figure class="aw-console">
+    <figcaption class="aw-console-bar">
+      <span class="aw-console-tag">FIG.02</span>
+      <span class="aw-console-title">DAQ CONSOLE · 数采中心</span>
+      <span class="aw-console-meta">51 节点 · WS 下发</span>
+    </figcaption>
+    <div class="aw-console-body">
+
+![数采中心 —— 量规统计带、逐节点台账、采样周期与 WS 下发状态](/daq.png)
+
+</div>
+    <p class="aw-console-cap">
+      <b>端到端的采集链路。</b>
+      量规统计带(节点 / 发布 / 消费 / 丢失 / 入库)之下是逐节点台账:实时值、采样周期、
+      WS 下发状态、驱动类型,以及控制节点沿写链路同一套标定读回的 SET / ACT。
+    </p>
+  </figure>
+
+  <figure class="aw-console">
+    <figcaption class="aw-console-bar">
+      <span class="aw-console-tag">FIG.03</span>
+      <span class="aw-console-title">LINE OPERATIONS · 产线运营</span>
+      <span class="aw-console-meta">产线 · 产品 · 配方 · 批次</span>
+    </figcaption>
+    <div class="aw-console-body">
+
+![产线运营 —— 产线卡片、配方绑定、控制节点计数与开跑入口](/line-ops.png)
+
+</div>
+    <p class="aw-console-cap">
+      <b>开跑一条产线 = 用配方窗口为采集设门。</b>
+      此后每个样本都自动打上「产品 / 配方 / 批次」标识;控制节点只定义分类参数与工艺量程,
+      真正下发仍要过联锁与审批。
+    </p>
+  </figure>
+
+  </div>
+
+  </section>
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">01</span>
+      <span class="hw-sec-no">02</span>
       <h2 class="hw-sec-title">架构</h2>
       <span class="hw-sec-en">ARCHITECTURE</span>
     </div>
@@ -108,7 +202,7 @@ footer:
         </div>
       </div>
       <div class="hw-layer hw-sub">
-        <div class="hw-layer-tag"><span class="l1">常驻会话</span><span class="l2">PERSISTENT SESSION · 6</span></div>
+        <div class="hw-layer-tag"><span class="l1">常驻会话</span><span class="l2">PERSISTENT · 6</span></div>
         <div class="hw-cells c6col">
           <div class="hw-cell"><span class="c1">omp</span><span class="c2">stdio RPC</span></div>
           <div class="hw-cell"><span class="c1">codex</span><span class="c2">app-server JSON-RPC</span></div>
@@ -119,7 +213,7 @@ footer:
         </div>
       </div>
       <div class="hw-layer hw-sub">
-        <div class="hw-layer-tag"><span class="l1">无头 CLI</span><span class="l2">HEADLESS CLI · 6</span></div>
+        <div class="hw-layer-tag"><span class="l1">无头 CLI</span><span class="l2">HEADLESS · 6</span></div>
         <div class="hw-cells c6col">
           <div class="hw-cell"><span class="c1">gemini</span><span class="c2">stream-json</span></div>
           <div class="hw-cell"><span class="c1">copilot</span><span class="c2">JSONL</span></div>
@@ -138,7 +232,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">02</span>
+      <span class="hw-sec-no">03</span>
       <h2 class="hw-sec-title">设计思路</h2>
       <span class="hw-sec-en">DESIGN PRINCIPLES</span>
     </div>
@@ -179,7 +273,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">03</span>
+      <span class="hw-sec-no">04</span>
       <h2 class="hw-sec-title">能力全景</h2>
       <span class="hw-sec-en">CAPABILITIES</span>
     </div>
@@ -199,7 +293,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">04</span>
+      <span class="hw-sec-no">05</span>
       <h2 class="hw-sec-title">应用前景</h2>
       <span class="hw-sec-en">WHERE IT FITS</span>
     </div>
@@ -242,25 +336,38 @@ footer:
 
   <section class="hw-cta-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">05</span>
+      <span class="hw-sec-no">06</span>
       <h2 class="hw-sec-title">一分钟上手</h2>
       <span class="hw-sec-en">QUICK START</span>
     </div>
     <div class="hw-sec-rule"></div>
-    <div class="hw-term">
-      <div class="hw-term-bar"><i>●</i> aw · zsh — repo / home 双模式</div>
-      <div class="hw-term-body">
-        <span class="cm"># 全局安装,任意目录启动(发布包自带预构建产物,无需再构建)</span><br>
-        <span class="pr">$</span> npm i -g agentworkshop<br>
-        <span class="pr">$</span> aw start&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm"># → http://localhost:3001 · 配置根 ~/.AgentWorkShop</span>
-      </div>
-    </div>
-    <p class="hw-lead" style="margin-top:18px">
-      深入一步:<a href="/AgentWorkShop/guide/first-session">第一次 Agent × 产线会话</a>(约 2 分钟跑通全链) ·
-      <a href="/AgentWorkShop/sdk/">SDK 开发指南</a> ·
-      <a href="/AgentWorkShop/plugins/">插件开发指南</a> ·
-      <a href="/AgentWorkShop/cli/">aw CLI 手册</a>
+
+```bash
+# 全局安装,任意目录启动(发布包自带预构建产物,无需再构建)
+npm i -g agentworkshop
+aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
+```
+
+  <p class="hw-lead" style="margin-top:22px">
+    深入一步:<a href="/AgentWorkShop/guide/first-session">第一次 Agent × 产线会话</a>(约 2 分钟跑通全链) ·
+    <a href="/AgentWorkShop/sdk/">SDK 开发指南</a> ·
+    <a href="/AgentWorkShop/plugins/">插件开发指南</a> ·
+    <a href="/AgentWorkShop/cli/">aw CLI 手册</a>
+  </p>
+
+  </section>
+
+  <section class="hw-final">
+    <h2>把 Agent 接到真实产线上</h2>
+    <p>
+      14 个执行引擎、5 种现场协议、99 个运行时设置项和 124 项可复跑的验收断言都已经在仓库里。
+      监督层,秒级软实时;协议真实,断言可复查。
     </p>
+    <div class="hw-cta">
+      <a class="hw-btn primary" href="/AgentWorkShop/guide/getting-started">快速开始 <span class="arr">→</span></a>
+      <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">在 GitHub 上查看 <span class="arr">↗</span></a>
+      <a class="hw-btn quiet" href="/AgentWorkShop/guide/license">开源协议 <span class="arr">→</span></a>
+    </div>
   </section>
 
 </div>

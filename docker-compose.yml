@@ -21,6 +21,12 @@ services:
   daq-timescale:
     image: timescale/timescaledb:latest-pg16
     container_name: awshop-daq-timescale
+    # ⚠️ 必须显式放大 /dev/shm:Docker 默认只给 64MB,而 PostgreSQL 的并行查询
+    # 会按需扩容共享内存段 —— 不够时报的错是
+    #   could not resize shared memory segment "...": No space left on device
+    # 这句话看起来像"磁盘满了",实际是 shm 满了,极难排查(实测在回退账本的
+    # 兜底评估查询上稳定复现,而宿主机还剩 230GB)。512MB 是 Postgres 官方镜像文档的建议值。
+    shm_size: 512mb
     environment:
       POSTGRES_USER: postgres        # config.yml daq.timescale.user
       POSTGRES_PASSWORD: awshop      # config.yml daq.timescale.password

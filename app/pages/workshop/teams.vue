@@ -312,12 +312,12 @@ useHead({ title: () => t('titles.teams') })
                 :class="visTag(team).icon"
               />{{ visTag(team).text }}
             </a-tag>
+            <!-- 开关不带文字:左边那枚 tag 已经在说"公开/私有"了(与模板库同一条规则) -->
             <a-switch
               v-if="!team.isBuiltin && canWrite(team)"
               :checked="team.visibility === 'public'"
               size="small"
-              checked-children="公开"
-              un-checked-children="私有"
+              :title="team.visibility === 'public' ? '点击转为私有' : '点击公开(全员可部署)'"
               @change="(v: unknown) => toggleVisibility(team, v === true)"
             />
             <span class="owner">{{ team.ownerName ?? '-' }}</span>
@@ -340,10 +340,13 @@ useHead({ title: () => t('titles.teams') })
                 </a-menu>
               </template>
             </a-dropdown>
+            <!-- 用 outlined 而不是 text:text 按钮在卡片头上与旁边的 owner 文本
+                 长得一模一样,用户看不出这里是**唯一的主操作**(实测三张卡片都如此)。 -->
             <a-button
               v-else
+              class="deploy-btn"
               size="small"
-              type="text"
+              type="default"
               :title="$t('teams.kxheuf1001')"
               @click="openDeploy(team)"
             >
@@ -591,6 +594,12 @@ h2 { margin: 0 0 4px; }
   font-size: 11px;
   color: var(--ink-faint);
 }
+.deploy-btn {
+  flex: none;
+  font-size: 11.5px;
+  border-color: var(--line-strong);
+}
+
 .op { cursor: pointer; opacity: 0.4; }
 .op:hover { opacity: 1; }
 .members {
@@ -676,5 +685,56 @@ h2 { margin: 0 0 4px; }
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--ink-faint);
+}
+
+/* ══ 窄屏(v9):页头纵向堆叠 / 筛选条换行 / 卡片单列 ══════════════════════ */
+@media (max-width: 900px) {
+  .head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .head > div { min-width: 0; }
+  .head h2 { font-size: 21px; line-height: 1.25; }
+
+  .head :deep(.ant-space) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .head :deep(.ant-space-item) { width: 100%; }
+  .head :deep(.ant-btn) { width: 100%; min-height: 40px; }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .toolbar :deep(.ant-segmented) {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .admin-note {
+    flex: 1 1 100%;
+    min-width: 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
+  .grid { grid-template-columns: 1fr; }
+  .card-head { flex-wrap: wrap; }
+  .member { flex-wrap: wrap; }
+  .member-harness { font-size: 11.5px; }
+}
+
+@media (max-width: 640px) {
+  .page { padding: 0; }
+  .head h2 { font-size: 19px; }
+  .sub { font-size: 11.5px; line-height: 1.5; }
 }
 </style>

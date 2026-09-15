@@ -349,10 +349,17 @@ export default {
         outbound: state.outbound,
         auth: kbToken() ? 'bearer' : 'anonymous',
         // token 配置与「实测是否被接受」分开呈现:401/403 = 明确被拒(运维一眼看出 token 配错),
-        // 网络不通/超时为 null(未知),2xx 或非鉴权类失败为 true(未被拒)
+        // 网络不通/超时为 null(未知),2xx 或非鉴权类失败为 true(未被拒)。
+        // 实测打受保护 GET /api/v1/auth/me —— rag 后端 GET 只读端点公开(/health 匿名可过,
+        // 测不出 token 对错),/auth/me 无 token/错 token 均 401。
         token: {
           configured: Boolean(kbToken()),
-          accepted: backend.ok ? true : (backend.status === 401 || backend.status === 403 ? false : null),
+          accepted: await (async () => {
+            if (!state.outbound) return null
+            if (!kbToken()) return backend.ok ? true : null
+            const me = await callJson('GET', `${base()}/api/v1/auth/me`, null, { timeoutMs: 5000, retries: 0 })
+            return me.ok ? true : (me.status === 401 || me.status === 403 ? false : null)
+          })(),
         },
         kb: { name: KB_NAME, id: kbId() || null },
         backend: { url: base(), ok: backend.ok, ...(backend.ok ? { status: backend.body?.status ?? null } : { status: backend.status ?? null, error: backend.error }) },

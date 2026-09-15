@@ -60,9 +60,13 @@ const hitlAnswer = async (item: AepHitlItem, confirmed: boolean): Promise<void> 
   }
 }
 
+/* 语言选择器在窄屏显示"短名":完整语言名(简体中文=56px @14px)配上
+ * antd 给箭头预留的 24px 内距,92px 的选择器只剩 46px 文本位 ——
+ * 实测被截成「简 体…」,这是每页都出现的破相。
+ * 窄屏用 2 字标签,桌面保留完整语言名。 */
 const localeOptions = computed(() =>
   (locales.value as Array<{ code: string, name: string }>).map(l => ({
-    label: l.name,
+    label: isMobile.value ? l.code.split('-')[0]!.toUpperCase() : l.name,
     value: l.code,
   })),
 )
@@ -75,6 +79,26 @@ const switchLocale: SelectProps['onChange'] = (value) => {
     window.location.reload()
   }
 }
+
+/* ── 响应式:窄屏顶栏不是"缩小版顶栏",而是换一套信息优先级 ─────────────
+ * 桌面:航迹页签是主角(多页并行来回切)。
+ * 窄屏:页签轨与右侧功能簇争抢横向空间 —— 实测 390px 下页签被右侧图标
+ *       逐个压过去,最后连用户铭牌都被推出视口(顶栏 overflow:hidden 直接裁掉)。
+ *       所以窄屏撤掉页签轨,用**当前页标题**替代:窄屏用户要的是"我在哪",
+ *       不是"我刚才还开过哪 5 个页面"。 */
+const { isDrawer, isMobile } = useResponsive()
+
+const navToggleLabel = computed(() =>
+  isDrawer.value
+    ? (store.mobileNavOpen ? t('header.closeNav') : t('header.openNav'))
+    : (store.sidebarCollapsed ? t('header.expand') : t('header.collapse')))
+
+const toggleNav = () => {
+  if (isDrawer.value) store.toggleMobileNav()
+  else store.toggleSidebar()
+}
+
+const currentTitle = computed(() => metaFor(route.path).title)
 
 // ── 航迹导航:路由变化 → 记录航点;切换时进度线扫过 ──
 const hydrated = ref(false)
@@ -196,11 +220,15 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
     <div class="header-left">
       <button
         class="collapse-btn"
-        :aria-label="store.sidebarCollapsed ? t('header.expand') : t('header.collapse')"
-        @click="store.toggleSidebar()"
+        :aria-label="navToggleLabel"
+        :aria-expanded="isDrawer ? store.mobileNavOpen : !store.sidebarCollapsed"
+        @click="toggleNav()"
       >
         <span class="i-tabler-menu-2" />
       </button>
+
+      <!-- 窄屏:当前页标题(替代被撤掉的页签轨) -->
+      <span class="mobile-title">{{ currentTitle }}</span>
 
       <span class="rail-mark i-tabler-route" />
 
@@ -313,14 +341,14 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
       </ClientOnly>
       <!-- 实时连接状态点(WS 会话全局单例;未用过 WS 的会话不显示) -->
       <span
-        v-if="wsVisible"
+        v-if="hydrated && wsVisible"
         class="ws-dot"
         :class="wsClass"
         :title="wsLabel"
       />
       <a-tooltip :title="t('header.fullscreen')">
         <button
-          class="icon-btn"
+          class="icon-btn hdr-fullscreen"
           @click="toggleFullscreen"
         >
           <span
@@ -734,10 +762,73 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 
 .user-role {
   font-family: var(--font-mono);
-  font-size: 8.5px;
-  letter-spacing: 0.18em;
+  /* 8.5px 是"看得见读不了"的下限之外(实测常驻被审计标红);
+     角色是身份信息,不是装饰刻度,抬到 9.5px 仍保持铭牌声部 */
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--app-text-secondary, var(--ink-faint));
+}
+
+/* 移动端当前页标题:桌面不存在(那里有页签轨) */
+.mobile-title {
+  display: none;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text, var(--ink));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ══ 顶栏响应式:按信息优先级逐级卸载,而不是让它们互相挤压 ═══════════════
+ * 卸载顺序(从最可省到最不可省):页签轨 → 全屏钮 → 用户双行铭牌 → 语言文字。
+ * 留下的核心是:HITL 铃标(有待办必须看得见)、连接状态点、主题、语言、身份。 */
+@media (max-width: 899px) {
+  .rail-mark,
+  .trail {
+    display: none;
+  }
+
+  .mobile-title {
+    display: block;
+    margin-left: 2px;
+  }
+
+  .app-header {
+    padding: 0 12px 0 8px;
+  }
+}
+
+@media (max-width: 639px) {
+  .hdr-fullscreen {
+    display: none;
+  }
+
+  .user-chip {
+    height: 38px;
+    padding: 0 6px;
+  }
+
+  .user-meta {
+    display: none;
+  }
+
+  /* 窄屏标签已换成 2 字符(ZH / EN),选择器只需容纳标签 + 箭头 + 内距 */
+  .lang-select {
+    width: 76px;
+  }
+
+  .lang-select :deep(.ant-select-selection-item) {
+    padding-inline-end: 16px;
+    font-size: 12.5px;
+  }
+
+  .header-left,
+  .header-right {
+    gap: 4px;
+  }
 }
 
 .hidden {
