@@ -1,0 +1,108 @@
+/**
+ * bench/lib/report-pipeline.mjs —— 集成流水线的评分 MD 报告（与 run.mjs 的 report.mjs 分工对称）：
+ * 同一套透明评分语义（加权维度分 + 等级 + 硬门禁），数据来自 pipeline.mjs 的 checks/phases。
+ *
+ * 评分模型（透明、可审计）：
+ *   - 每阶段分 = (pass + 0.5×warn) / 该阶段检查数 × 100（skip 不计分不扣分）；
+ *   - 总分 = Σ(阶段权重 × 阶段分) / Σ权重；等级 A≥90 / B≥75 / C≥60，否则 D；
+ *   - 硬门禁：任一检查 fail 或任一阶段 fail → 总评直接 FAIL（分数只作参考，门禁优先）；
+ *   - 判定复现命令写入指纹段，任何人按命令重跑可与本报告对照。
+ */
+
+const PHASE_WEIGHTS = {
+  P0: 1, P1: 1, P2: 2, P3: 3, P4: 3, P4b: 2, P4c: 2, P4d: 1, P4e: 2,
+  P6: 3, P7: 1, P8: 3, P8b: 3, P9: 1,
+}
+const PHASE_TITLES = {
+  P0: 'Bootstrap simulator & platform', P1: 'Plant model + offline optimum W*',
+  P2: 'Multi-protocol line provisioning', P3: 'DAQ + governed write + F5 interlock',
+  P4: 'Agent-tool closed loop (3-cycle convergence)', P4b: 'Rollback & optimization records',
+  P4c: 'HITL approval gate', P4d: 'Audit / ledger read surfaces',
+  P4e: 'Recipe lifecycle', P6: 'Closed-loop optimization benchmark (3 seeds)',
+  P7: 'Multimodal acquisition (vector/image)', P8: 'Cross-scenario portability',
+  P8b: 'System backstop drill (I3 dynamic)', P9: 'Platform subsystems (team/memory/registry)',
+}
+
+const grade = (score) => (score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : 'D')
+
+export function renderReportMd({ env, phases, checks, kpis, metrics }) {
+  const byPhase = new Map()
+  for (const c of checks) {
+    if (!byPhase.has(c.phase)) byPhase.set(c.phase, [])
+    byPhase.get(c.phase).push(c)
+  }
+  const phaseRows = []
+  let wSum = 0, sSum = 0
+  for (const ph of [...byPhase.keys()].sort()) {
+    const list = byPhase.get(ph)
+    const pass = list.filter(c => c.status === 'pass').length
+    const warn = list.filter(c => c.status === 'warn').length
+    const fail = list.filter(c => c.status === 'fail').length
+    const skip = list.filter(c => c.status === 'skip').length
+    const scored = pass + warn + fail
+    const score = scored ? ((pass + 0.5 * warn) / scored) * 100 : null
+    const w = PHASE_WEIGHTS[ph] ?? 1
+    if (score != null) { wSum += w; sSum += w * score }
+    phaseRows.push({ phase: ph, title: PHASE_TITLES[ph] ?? '', pass, warn, fail, skip, score, w })
+  }
+  const overall = wSum ? sSum / wSum : 0
+  const anyFail = checks.some(c => c.status === 'fail') || phases.some(p => p.status === 'fail')
+  const verdict = anyFail ? 'FAIL' : checks.length === 0 ? 'FAIL (no checks)' : 'PASS'
+  const effectiveGrade = anyFail ? 'F' : grade(overall)
+
+  const L = []
+  L.push(`# AW-IndustrialBench · Integrated Pipeline Scored Report`)
+  L.push('')
+  L.push(`> Verdict: **${verdict}** · Score: **${overall.toFixed(1)}** / 100 · Grade: **${effectiveGrade}**`)
+  L.push(`> Hard gate: ${anyFail ? 'at least one check/phase FAILED — score is informational only, the gate rules' : 'no failed checks; every gate green'}`)
+  L.push('')
+  L.push('## Fingerprint')
+  L.push('')
+  L.push(`| Field | Value |`)
+  L.push(`|---|---|`)
+  L.push(`| runId | \`${env.runId}\` |`)
+  L.push(`| seed | ${env.seed} |`)
+  L.push(`| harness hash | \`${String(env.harnessHash ?? '').slice(0, 8)}\` (over ${env.harnessFiles} checker sources) |`)
+  L.push(`| git commit | \`${env.gitCommit}\` |`)
+  L.push(`| node / platform | ${env.node} · ${env.platform} |`)
+  L.push(`| platform / simulator | ${env.base} · ${env.simBase} |`)
+  L.push(`| scenario preset | \`${env.preset}\` (second scenario in P8: \`${env.portability?.preset ?? '—'}\`) |`)
+  L.push(`| repro command | \`${env.reproCmd}\` |`)
+  L.push('')
+  L.push('## KPI Summary')
+  L.push('')
+  L.push(`| KPI | Value | Note |`)
+  L.push(`|---|---|---|`)
+  for (const k of kpis) L.push(`| ${k.label} | ${k.value}${k.unit ? ' ' + k.unit : ''} | ${k.note ?? ''} |`)
+  L.push('')
+  L.push('## Phase Scores (weighted)')
+  L.push('')
+  L.push(`| Phase | Title | Pass | Warn | Fail | Skip | Score | Weight |`)
+  L.push(`|---|---|---|---|---|---|---|---|`)
+  for (const r of phaseRows) {
+    L.push(`| ${r.phase} | ${r.title} | ${r.pass} | ${r.warn} | ${r.fail} | ${r.skip} | ${r.score == null ? '—' : r.score.toFixed(1)} | ${r.w} |`)
+  }
+  L.push(`| **Overall** | | | | | | **${overall.toFixed(1)}** | ${wSum} |`)
+  L.push('')
+  L.push('## Check Details')
+  L.push('')
+  for (const [ph, list] of [...byPhase.entries()].sort()) {
+    L.push(`### ${ph} — ${PHASE_TITLES[ph] ?? ''}`)
+    L.push('')
+    for (const c of list) {
+      const mark = c.status === 'pass' ? '✔' : c.status === 'warn' ? '▲' : c.status === 'skip' ? '↓' : '✘'
+      L.push(`- ${mark} **${c.id}** (${c.status})`)
+      for (const e of (c.evidence ?? []).slice(0, 4)) L.push(`  - ${String(e).replace(/\n/g, ' ').slice(0, 220)}`)
+    }
+    L.push('')
+  }
+  L.push('## Metric Registry')
+  L.push('')
+  L.push(`| Group | Metric | Value | Unit | Note |`)
+  L.push(`|---|---|---|---|---|`)
+  for (const m of (metrics ?? [])) L.push(`| ${m.group} | ${m.name ?? m.key ?? ''} | ${m.value} | ${m.unit ?? ''} | ${m.note ?? ''} |`)
+  L.push('')
+  L.push('---')
+  L.push(`_Scored benchmark report generated by bench/pipeline.mjs (verdict ${verdict}, grade ${effectiveGrade}); the HTML panel is dashboard.html in the same directory. Re-run with the repro command above under the same seed to compare judge-class outcomes; bench/compare.mjs gives the machine verdict against an archived baseline._`)
+  return L.join('\n')
+}

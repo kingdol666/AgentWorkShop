@@ -1,0 +1,143 @@
+{
+  "runId": "20260914144850-1bhw",
+  "env": {
+    "runId": "20260914144850-1bhw",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "simBase": "http://127.0.0.1:4010",
+    "simDir": "D:\\codes\\ABO\\plc-node-simulator",
+    "lines": 0,
+    "ownLines": 0,
+    "satelliteDaq": 0,
+    "protocols": "",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-09-14T14:49:03.025Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "harnessHash": "e6a127e685802ef6",
+    "gitCommit": "d6c824d",
+    "harnessFiles": 8,
+    "closedloop": null,
+    "portability": null,
+    "backstop": {
+      "fired": false,
+      "restored": false,
+      "latencyS": null,
+      "recordId": null,
+      "from": null,
+      "to": null
+    },
+    "verdict": {
+      "pass": 3,
+      "warn": 0,
+      "fail": 0,
+      "ok": true
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3"
+  },
+  "verdict": {
+    "pass": 3,
+    "warn": 0,
+    "fail": 0,
+    "ok": true
+  },
+  "kpis": [
+    {
+      "label": "Provisionable lines",
+      "value": 0,
+      "unit": "",
+      "note": "+0 satellite DAQ · ",
+      "tone": "good"
+    },
+    {
+      "label": "DAQ samples total",
+      "value": 0,
+      "unit": "",
+      "note": "0/0 nodes sampling",
+      "tone": "good"
+    },
+    {
+      "label": "Governance interception (pooled)",
+      "value": "—",
+      "unit": "%",
+      "note": "F5 attacks",
+      "tone": "good"
+    },
+    {
+      "label": "Write p50 (all protocols)",
+      "value": null,
+      "unit": "ms",
+      "note": "incl. real protocol transactions"
+    },
+    {
+      "label": "Closed-loop J/J*",
+      "value": "off",
+      "unit": "",
+      "note": "--cl-seeds 3 enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Tool-level loops",
+      "value": 0,
+      "unit": "",
+      "note": "dcw→daq→judge ×3 convergence"
+    },
+    {
+      "label": "System backstop",
+      "value": "not fired",
+      "unit": "",
+      "note": "P8b drill requires scenario 2",
+      "tone": "warn"
+    },
+    {
+      "label": "Scenario portability",
+      "value": "off",
+      "unit": "",
+      "note": "P8 runs in integrated profile",
+      "tone": "warn"
+    },
+    {
+      "label": "LLM agent loop",
+      "value": "off",
+      "unit": "",
+      "note": "--agent omp enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Checks",
+      "value": "3/3",
+      "unit": "",
+      "note": "warn 0 · fail 0",
+      "tone": "good"
+    }
+  ],
+  "perLine": [],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "offline grid-search optimum (benchmark ground truth)"
+    },
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 0,
+      "unit": "",
+      "note": "real driver produced samples"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": null,
+      "unit": "",
+      "note": "全协议合并"
+    }
+  ],
+  "portability": null,
+  "closedloop": null
+}

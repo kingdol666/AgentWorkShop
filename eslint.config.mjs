@@ -31,4 +31,21 @@ export default withNuxt(
       'no-empty': 'off',
     },
   },
+  // bench 测评流水线与论文配图工具:与 _audit 同性质的证据/图表生成脚本,
+  // 同样只豁免风格类规则,语义/正确性规则仍然生效。
+  // 注意:bench/lib/checks 与 pipeline.mjs 的字节被 harnessHash 指纹覆盖,
+  // 其运行结果已按冻结基线出 REPRODUCIBLE 判定——未用变量等卫生问题刻意不修,
+  // 避免为过 lint 而改动已验证的证据代码(改一次就要全量重跑重验)。
+  {
+    files: ['bench/**/*.{mjs,ts}', 'scripts/capture-walkthrough.mjs', 'scripts/render-walkthrough-figure.mjs'],
+    rules: {
+      '@stylistic/max-statements-per-line': 'off',
+      '@stylistic/arrow-parens': 'off',
+      '@stylistic/brace-style': 'off',
+      'no-unused-vars': 'off',
+      'no-useless-assignment': 'off',
+      'no-empty': 'off',
+      'import/no-duplicates': 'off',
+    },
+  },
 )

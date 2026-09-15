@@ -1,0 +1,55 @@
+{
+  "env": {
+    "runId": "20260914094001-1j88",
+    "tier": "plc",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "startedAt": "2026-09-14T09:40:01.212Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "configHash": "4b40f3b026be5cb1",
+    "harnessHash": "f50938f98319b655",
+    "gitCommit": "d6c824d",
+    "harnessFiles": 13,
+    "reps": [
+      {
+        "rep": 1,
+        "pass": 0,
+        "fail": 0,
+        "skip": 0
+      }
+    ],
+    "total": {
+      "got": 0,
+      "w": 0,
+      "pass": 0,
+      "fail": 0,
+      "warn": 0,
+      "skip": 1,
+      "overall": 0
+    }
+  },
+  "dims": [],
+  "results": [
+    {
+      "rep": 0,
+      "id": "plc-1-realpath",
+      "title": "五协议真实连通(导出配置→test-driver)",
+      "tier": "plc",
+      "dims": [
+        "D1",
+        "D6"
+      ],
+      "weight": 2,
+      "requires": [
+        "sim",
+        "server"
+      ],
+      "status": "skip",
+      "score": 0,
+      "metrics": {},
+      "evidence": [],
+      "note": "需要运行中的平台实例（api-0 preflight 未通过）——本层诚实跳过，不影响静态层结论"
+    }
+  ]
+}

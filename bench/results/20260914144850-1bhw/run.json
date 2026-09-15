@@ -1,0 +1,326 @@
+{
+  "env": {
+    "runId": "20260914144850-1bhw",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "simBase": "http://127.0.0.1:4010",
+    "simDir": "D:\\codes\\ABO\\plc-node-simulator",
+    "lines": 0,
+    "ownLines": 0,
+    "satelliteDaq": 0,
+    "protocols": "",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-09-14T14:49:03.025Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "harnessHash": "e6a127e685802ef6",
+    "gitCommit": "d6c824d",
+    "harnessFiles": 8,
+    "closedloop": null,
+    "portability": null,
+    "backstop": {
+      "fired": false,
+      "restored": false,
+      "latencyS": null,
+      "recordId": null,
+      "from": null,
+      "to": null
+    },
+    "verdict": {
+      "pass": 3,
+      "warn": 0,
+      "fail": 0,
+      "ok": true
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3"
+  },
+  "phases": [
+    {
+      "id": "P0·preflight",
+      "phase": "P0",
+      "title": "Bootstrap simulator & platform",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 27
+    },
+    {
+      "id": "P1·plant-model",
+      "phase": "P1",
+      "title": "plant model preset + offline optimum W*",
+      "status": "pass",
+      "note": "",
+      "durationMs": 2831
+    },
+    {
+      "id": "P2·provision",
+      "phase": "P2",
+      "title": "multi-protocol multi-line provisioning（≤5 ）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 2
+    },
+    {
+      "id": "P3·integration",
+      "phase": "P3",
+      "title": "multi-protocol DAQ + governed write/read + F5 interception",
+      "status": "pass",
+      "note": "0/0 Linesampling",
+      "durationMs": 7010
+    },
+    {
+      "id": "P3b·recipe-lifecycle",
+      "phase": "P3b",
+      "title": "配方管理全生命周期（版本·已知良好·回退·基准恢复·一键下发）",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4·tool-loop",
+      "phase": "P4",
+      "title": "数采→数控→判定 工具级闭环（harness=opencode，不经 LLM）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 3
+    },
+    {
+      "id": "P4b·rollback-records",
+      "phase": "P4b",
+      "title": "Rollback & optimization records (node rollback · verdict/execution separation · param ledger)",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4c·hitl",
+      "phase": "P4c",
+      "title": "HITL 审批闭环（挂起→面板可见→批准→真实写生效）",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4d·audit-surfaces",
+      "phase": "P4d",
+      "title": "治理只读面（参数账本·审计·运维日志·报警）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 10
+    },
+    {
+      "id": "P6·closedloop",
+      "phase": "P6",
+      "title": "闭环优化参数 benchmark（3 seed · 写路径=governed · ≤8 迭代/seed）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 5
+    },
+    {
+      "id": "P7·frames",
+      "phase": "P7",
+      "title": "多形态数采：向量轮廓与图像帧落库",
+      "status": "skip",
+      "note": "",
+      "durationMs": 14
+    },
+    {
+      "id": "P8·portability",
+      "phase": "P8",
+      "title": "Cross-scenario portability (re-commission on a second plant preset, config-only)",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 2772
+    },
+    {
+      "id": "P8b·backstop",
+      "phase": "P8b",
+      "title": "System backstop drill (PV frozen out of window → system-judged bounded rollback)",
+      "status": "skip",
+      "note": "",
+      "durationMs": 1
+    },
+    {
+      "id": "P9·subsystems",
+      "phase": "P9",
+      "title": "Platform subsystems (team dispatch · team memory idempotency · harness registry)",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 1
+    }
+  ],
+  "checks": [
+    {
+      "phase": "P1",
+      "id": "preset-applied",
+      "title": "预设 cast-film-physics 已应用",
+      "status": "pass",
+      "evidence": [
+        "devices 5 ",
+        "协议 modbus-tcp, modbus-rtu, opcua, mqtt, http"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "offline-optimum",
+      "title": "offline optimum W* (ground truth) available",
+      "status": "pass",
+      "evidence": [
+        "W* = {\"zoneTemp\":212.5,\"screw\":55,\"lineSpeed\":40,\"meltTemp\":212.5,\"pressure\":6.961,\"thickness\":49.18,\"defect\":0.055,\"score\":89.894,\"computedAt\":\"2026-09-14T14:48:53.190Z\"}"
+      ]
+    },
+    {
+      "phase": "P3b",
+      "id": "recipe-lifecycle",
+      "title": "recipe lifecycle",
+      "status": "skip",
+      "evidence": [
+        "无可开跑Line"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "rollback-records",
+      "title": "回退与优化记录",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P4c",
+      "id": "hitl",
+      "title": "HITL 审批",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P7",
+      "id": "frames",
+      "title": "多形态数采",
+      "status": "skip",
+      "evidence": [
+        "无 http devices或Line"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "scenario-switch",
+      "title": "second plant scenario applied: film-line",
+      "status": "pass",
+      "evidence": [
+        "devices 5 · protocols modbus-tcp, modbus-rtu, opcua, mqtt, http",
+        "信号域/动力学与第一场景（cast-film-physics）完全不同 —— 框架代码零改动"
+      ]
+    },
+    {
+      "phase": "P8b",
+      "id": "backstop",
+      "title": "系统兜底 drilling",
+      "status": "skip",
+      "evidence": [
+        "P8 场景或 P4 夹具未就绪"
+      ]
+    }
+  ],
+  "lines": [],
+  "kpis": [
+    {
+      "label": "Provisionable lines",
+      "value": 0,
+      "unit": "",
+      "note": "+0 satellite DAQ · ",
+      "tone": "good"
+    },
+    {
+      "label": "DAQ samples total",
+      "value": 0,
+      "unit": "",
+      "note": "0/0 nodes sampling",
+      "tone": "good"
+    },
+    {
+      "label": "Governance interception (pooled)",
+      "value": "—",
+      "unit": "%",
+      "note": "F5 attacks",
+      "tone": "good"
+    },
+    {
+      "label": "Write p50 (all protocols)",
+      "value": null,
+      "unit": "ms",
+      "note": "incl. real protocol transactions"
+    },
+    {
+      "label": "Closed-loop J/J*",
+      "value": "off",
+      "unit": "",
+      "note": "--cl-seeds 3 enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Tool-level loops",
+      "value": 0,
+      "unit": "",
+      "note": "dcw→daq→judge ×3 convergence"
+    },
+    {
+      "label": "System backstop",
+      "value": "not fired",
+      "unit": "",
+      "note": "P8b drill requires scenario 2",
+      "tone": "warn"
+    },
+    {
+      "label": "Scenario portability",
+      "value": "off",
+      "unit": "",
+      "note": "P8 runs in integrated profile",
+      "tone": "warn"
+    },
+    {
+      "label": "LLM agent loop",
+      "value": "off",
+      "unit": "",
+      "note": "--agent omp enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Checks",
+      "value": "3/3",
+      "unit": "",
+      "note": "warn 0 · fail 0",
+      "tone": "good"
+    }
+  ],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "offline grid-search optimum (benchmark ground truth)"
+    },
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 0,
+      "unit": "",
+      "note": "real driver produced samples"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": null,
+      "unit": "",
+      "note": "全协议合并"
+    }
+  ],
+  "closedloop": null,
+  "portability": null
+}

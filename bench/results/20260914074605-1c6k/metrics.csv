@@ -1,0 +1,9 @@
+phase,line,protocol,daq_samples,write_p50_ms,write_p95_ms,readback_delta,f5_rejected,f5_total,false_block,loop_iterations,convergence_s
+P3,1,modbus-tcp,9,32.202,48.121,0.04,6,6,0,,
+P3,2,opcua,10,5.362,6.395,0,6,6,0,,
+P3,3,mqtt,11,,,,,,,,
+P3,4,http,10,4.539,4.938,,6,6,0,,
+P3,5,modbus-rtu,12,,,,,,,,
+P4,1,modbus-tcp,,,,,,,,1,1.297
+P4,2,opcua,,,,,,,,1,1.279
+P4,4,http,,,,,,,,1,1.282

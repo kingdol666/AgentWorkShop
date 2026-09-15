@@ -1,0 +1,10 @@
+phase,line,protocol,daq_samples,write_p50_ms,write_p95_ms,readback_delta,f5_rejected,f5_total,false_block,recipe_versions,recipe_lastgood,recipe_applied_run,loop_iterations,convergence_s,node_rollback,rollback_before,rollback_after
+P3,1,modbus-tcp,9,33.485,41.907,0.04,6,6,0,,,,,,,,
+P3,2,opcua,11,7.467,9.041,0,6,6,0,,,,,,,,
+P3,3,mqtt,11,8.377,11.002,,6,6,0,,,,,,,,
+P3b,1,modbus-tcp,,,,,,,,3,rr-2ad43b84,rr-c1fcee6f,,,,,
+P3b,2,opcua,,,,,,,,3,rr-7ae9341b,rr-1eb1449f,,,,,
+P4,1,modbus-tcp,,,,,,,,,,,1,1.294,,,
+P4,2,opcua,,,,,,,,,,,1,1.311,,,
+P4,3,mqtt,,,,,,,,,,,1,1.281,,,
+P4b,1,modbus-tcp,,,,,,,,,,,,,true,195.8000030517578,195.8000030517578

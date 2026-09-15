@@ -1,0 +1,245 @@
+{
+  "runId": "20260914080801-1rhg",
+  "env": {
+    "runId": "20260914080801-1rhg",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "simBase": "http://127.0.0.1:4010",
+    "simDir": "D:\\codes\\ABO\\plc-node-simulator",
+    "lines": 3,
+    "ownLines": 3,
+    "satelliteDaq": 0,
+    "protocols": "modbus-tcp/opcua/mqtt",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-09-14T08:08:46.322Z",
+    "node": "v22.22.2",
+    "platform": "win32 x64",
+    "harnessHash": "34b23f1cc300061b",
+    "gitCommit": "d6c824d",
+    "harnessFiles": 8,
+    "closedloop": null,
+    "verdict": {
+      "pass": 21,
+      "warn": 1,
+      "fail": 0,
+      "ok": true
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42 --lines 3"
+  },
+  "verdict": {
+    "pass": 21,
+    "warn": 1,
+    "fail": 0,
+    "ok": true
+  },
+  "kpis": [
+    {
+      "label": "可开跑产线",
+      "value": 3,
+      "unit": "条",
+      "note": "+0 卫星数采 · modbus-tcp/opcua/mqtt",
+      "tone": "good"
+    },
+    {
+      "label": "数采采样合计",
+      "value": 31,
+      "unit": "点",
+      "note": "3/3 节点在采",
+      "tone": "good"
+    },
+    {
+      "label": "治理拦截率（合并）",
+      "value": "100.0",
+      "unit": "%",
+      "note": "F5 攻击",
+      "tone": "good"
+    },
+    {
+      "label": "写时延 p50（全协议）",
+      "value": 16.443,
+      "unit": "ms",
+      "note": "含真实协议事务"
+    },
+    {
+      "label": "闭环优化 J/J*",
+      "value": "未启用",
+      "unit": "",
+      "note": "--cl-seeds 3 可启用",
+      "tone": "warn"
+    },
+    {
+      "label": "工具级闭环",
+      "value": 3,
+      "unit": "条",
+      "note": "dcw→daq→judge"
+    },
+    {
+      "label": "LLM Agent 闭环",
+      "value": "未启用",
+      "unit": "",
+      "note": "--agent omp 可启用",
+      "tone": "warn"
+    },
+    {
+      "label": "检查结果",
+      "value": "21/22",
+      "unit": "",
+      "note": "warn 1 · fail 0",
+      "tone": "good"
+    }
+  ],
+  "perLine": [
+    {
+      "index": 1,
+      "protocol": "modbus-tcp",
+      "simDevice": "dev-extruder-mbtcp",
+      "daqSamples": 9,
+      "writeP50": 33.485,
+      "writeP95": 41.907,
+      "readbackDelta": 0.04,
+      "f5": "6/6",
+      "falseBlock": 0,
+      "loopIterations": 1,
+      "convergenceS": 1.294,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    },
+    {
+      "index": 2,
+      "protocol": "opcua",
+      "simDevice": "dev-extruder-opcua",
+      "daqSamples": 11,
+      "writeP50": 7.467,
+      "writeP95": 9.041,
+      "readbackDelta": 0,
+      "f5": "6/6",
+      "falseBlock": 0,
+      "loopIterations": 1,
+      "convergenceS": 1.311,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    },
+    {
+      "index": 3,
+      "protocol": "mqtt",
+      "simDevice": "dev-gauge-mqtt",
+      "daqSamples": 11,
+      "writeP50": 8.377,
+      "writeP95": 11.002,
+      "readbackDelta": null,
+      "f5": "6/6",
+      "falseBlock": 0,
+      "loopIterations": 1,
+      "convergenceS": 1.281,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    }
+  ],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "离线网格搜索最优（评测基准 ground truth）"
+    },
+    {
+      "section": "provision",
+      "key": "lines_created",
+      "value": 3,
+      "unit": "条",
+      "note": "可开跑产线（另有 0 条卫星数采）"
+    },
+    {
+      "section": "provision",
+      "key": "daq_nodes",
+      "value": 3,
+      "unit": "个",
+      "note": "真实协议数采节点"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_modbus-tcp",
+      "value": 1,
+      "unit": "",
+      "note": "治理拦截率"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_opcua",
+      "value": 1,
+      "unit": "",
+      "note": "治理拦截率"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_mqtt",
+      "value": 1,
+      "unit": "",
+      "note": "治理拦截率"
+    },
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 3,
+      "unit": "条",
+      "note": "真实驱动采到数据"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": 1,
+      "unit": "",
+      "note": "全协议合并"
+    },
+    {
+      "section": "recipe",
+      "key": "recipe_lifecycles_ok",
+      "value": 2,
+      "unit": "条产线",
+      "note": "版本/回退/基准恢复/下发 全链通过"
+    },
+    {
+      "section": "loop",
+      "key": "tool_loops_ok",
+      "value": 3,
+      "unit": "条产线",
+      "note": "工具级闭环达成"
+    },
+    {
+      "section": "gov",
+      "key": "record_keep_rollback_ok",
+      "value": 0,
+      "unit": "",
+      "note": "优化记录判定/执行分离"
+    },
+    {
+      "section": "audit",
+      "key": "journal_anchors",
+      "value": 6,
+      "unit": "条",
+      "note": "本产线参数变更账本"
+    },
+    {
+      "section": "audit",
+      "key": "audit_entries",
+      "value": 200,
+      "unit": "条",
+      "note": "全局审计条目"
+    },
+    {
+      "section": "audit",
+      "key": "ops_logs",
+      "value": 200,
+      "unit": "条",
+      "note": "全局运维日志"
+    }
+  ],
+  "closedloop": null
+}

@@ -1,0 +1,647 @@
+{
+  "env": {
+    "runId": "20260914074541-1gmk",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "simBase": "http://127.0.0.1:4010",
+    "simDir": "D:\\codes\\ABO\\plc-node-simulator",
+    "lines": 5,
+    "ownLines": 3,
+    "satelliteDaq": 2,
+    "protocols": "modbus-tcp/opcua/mqtt/http/modbus-rtu",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-09-14T07:46:03.563Z",
+    "node": "v22.22.2",
+    "platform": "win32 x64",
+    "harnessHash": "1df5b4e543201436",
+    "gitCommit": "d6c824d",
+    "harnessFiles": 6,
+    "verdict": {
+      "pass": 20,
+      "warn": 0,
+      "fail": 0,
+      "ok": true
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42"
+  },
+  "phases": [
+    {
+      "id": "P0·preflight",
+      "phase": "P0",
+      "title": "自举模拟器与平台",
+      "status": "pass",
+      "note": "已在线（复用）",
+      "durationMs": 86
+    },
+    {
+      "id": "P1·plant-model",
+      "phase": "P1",
+      "title": "工艺模型预设 + 离线最优窗口 W*",
+      "status": "pass",
+      "note": "",
+      "durationMs": 2980
+    },
+    {
+      "id": "P2·provision",
+      "phase": "P2",
+      "title": "多协议多产线供给（≤5 条）",
+      "status": "pass",
+      "note": "5/5 设备就绪 · 3 条产线",
+      "durationMs": 2862
+    },
+    {
+      "id": "P3·integration",
+      "phase": "P3",
+      "title": "多协议数采+数控写读+治理拦截",
+      "status": "pass",
+      "note": "5/5 产线在采",
+      "durationMs": 11528
+    },
+    {
+      "id": "P4·tool-loop",
+      "phase": "P4",
+      "title": "数采→数控→判定 工具级闭环（harness=opencode，不经 LLM）",
+      "status": "pass",
+      "note": "3 条闭环",
+      "durationMs": 4275
+    }
+  ],
+  "checks": [
+    {
+      "phase": "P0",
+      "id": "platform-reachable",
+      "title": "平台实例可达且鉴权成功",
+      "status": "pass",
+      "evidence": [
+        "平台 http://127.0.0.1:3001",
+        "鉴权 OK (login)",
+        "模拟器 http://127.0.0.1:4010：已在线（复用）"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "preset-applied",
+      "title": "预设 cast-film-physics 已应用",
+      "status": "pass",
+      "evidence": [
+        "设备 5 个",
+        "协议 modbus-tcp, modbus-rtu, opcua, mqtt, http"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "offline-optimum",
+      "title": "离线最优窗口 W*（ground truth）可用",
+      "status": "pass",
+      "evidence": [
+        "W* = {\"zoneTemp\":212.5,\"screw\":55,\"lineSpeed\":40,\"meltTemp\":212.5,\"pressure\":6.961,\"thickness\":49.18,\"defect\":0.055,\"score\":89.894,\"computedAt\":\"2026-09-14T07:45:44.497Z\"}"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "gateway",
+      "title": "采集网关总控 start（幂等）",
+      "status": "pass",
+      "evidence": [
+        "POST /api/workshop/daq/controller {action:start}",
+        "采样仍受「活动产线批次」门控，故每台有 SP 的设备自成一条可开跑产线"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-1-modbus-tcp",
+      "title": "产线1 [modbus-tcp] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-0a90115a daq=dn-9f6c405d dcw=dw-fe7b5b51 recipe=rc-fe69b7a8",
+        "DAQ 驱动实测 ✔ 信号「熔体温度」：连接成功,读取 40001 = 31.329999923706055",
+        "SP 中心 200 窗口 [191.6, 208.4]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-2-opcua",
+      "title": "产线2 [opcua] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-8ced2ecb daq=dn-03d53afb dcw=dw-0992a0ee recipe=rc-fd588322",
+        "DAQ 驱动实测 ✔ 信号「MeltPressure」：会话建立成功,读取 ns=2;s=AW.P = 6.137",
+        "SP 中心 150 窗口 [141, 159]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-3-mqtt",
+      "title": "产线3 [mqtt] 供给（卫星数采）",
+      "status": "pass",
+      "evidence": [
+        "line=ln-8ced2ecb daq=dn-1a919196 dcw=✘ recipe=rc-fd588322 ↪挂靠产线2",
+        "DAQ 驱动实测 ✔ 信号「thick」：Broker 连接成功,收到 aw/sim/thick = 19.1",
+        "（该设备无可用 DCW 导出，作为卫星数采随宿主批次采样）"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-4-http",
+      "title": "产线4 [http] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-9476818f daq=dn-81caf285 dcw=dw-fe8df621 recipe=rc-a0751889",
+        "DAQ 驱动实测 ✔ 信号「defect」：接口可达,取值 = 100",
+        "SP 中心 1 窗口 [0.91, 1.09]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-5-modbus-rtu",
+      "title": "产线5 [modbus-rtu] 供给（卫星数采）",
+      "status": "pass",
+      "evidence": [
+        "line=ln-9476818f daq=dn-80bd0fe3 dcw=✘ recipe=rc-a0751889 ↪挂靠产线4",
+        "DAQ 驱动实测 ✔ 信号「晶点计数」：网关连接成功,读取 40001 = 4",
+        "（该设备无可用 DCW 导出，作为卫星数采随宿主批次采样）"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-1-io",
+      "title": "产线1 [modbus-tcp] 集成检查",
+      "status": "pass",
+      "evidence": [
+        "✔ 数采落库 9 点（modbus-tcp 真实驱动）",
+        "✔ 约6次写 p50=32.327ms p95=33.013ms，回读偏差 0.04",
+        "✔ 治理 F5: 6/6 拒绝（modbus-tcp 真实链路），合法写受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-2-io",
+      "title": "产线2 [opcua] 集成检查",
+      "status": "pass",
+      "evidence": [
+        "✔ 数采落库 11 点（opcua 真实驱动）",
+        "✔ 约6次写 p50=5.771ms p95=6.107ms，回读偏差 0",
+        "✔ 治理 F5: 6/6 拒绝（opcua 真实链路），合法写受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-3-io",
+      "title": "产线3 [mqtt] 集成检查",
+      "status": "pass",
+      "evidence": [
+        "✔ 数采落库 12 点（mqtt 真实驱动）",
+        "— 该设备无 SP 写点，跳过数控/治理子检"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-4-io",
+      "title": "产线4 [http] 集成检查",
+      "status": "pass",
+      "evidence": [
+        "✔ 数采落库 11 点（http 真实驱动）",
+        "✔ 约6次写 p50=4.793ms p95=6.635ms，回读偏差 null",
+        "✔ 治理 F5: 6/6 拒绝（http 真实链路），合法写受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-5-io",
+      "title": "产线5 [modbus-rtu] 集成检查",
+      "status": "pass",
+      "evidence": [
+        "✔ 数采落库 11 点（modbus-rtu 真实驱动）",
+        "— 该设备无 SP 写点，跳过数控/治理子检"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "tool-loop-setup",
+      "title": "闭环夹具（channel+agent）",
+      "status": "pass",
+      "evidence": [
+        "channel=f73cf58e-7ded-4d13-b58a-0ed434ccad45",
+        "agent=766dd9de-0de4-4de5-8893-72d54bf1f0e7",
+        "harness=opencode"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "tool-bridge",
+      "title": "opencode 的 host 工具直调面可用",
+      "status": "pass",
+      "evidence": [
+        "探测 my_industrial_nodes → 你尚未绑定任何工业节点。请在数字孪生界面的 Agent 详情面板中绑定数控/数采节点后再调用工业工具。"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-1-loop",
+      "title": "产线1 [modbus-tcp] 工具闭环",
+      "status": "pass",
+      "evidence": [
+        "1) dcw_control ✔ → 优化记录 opt-82b5d2d5 · 下发成功:L1-DCW-modbus-tcp ip16ust8(烘箱温度设定)设定 195.8℃ → PLC 原始值 195.8;回读 19",
+        "2) daq_query ✔ · 数采数据查询结果(1 个节点):  ■ L1-DAQ-modbus-tcp ip16ust8(熔体/箱体温度)单位 ℃,正常量程 0~400",
+        "3) dcw_judge ✔ · 判定已入册:记录 opt-82b5d2d5 → keep(集成流水线:dcw_control 回读校验通过)。已定档为已验证经验(配方已标记 lastGood)",
+        "闭环三步耗时 1.446s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-2-loop",
+      "title": "产线2 [opcua] 工具闭环",
+      "status": "pass",
+      "evidence": [
+        "1) dcw_control ✔ → 优化记录 opt-d24ec6ba · 下发成功:L2-DCW-opcua ip16ust8(烘箱温度设定)设定 145.5rpm → PLC 原始值 145.5;回读 145.5",
+        "2) daq_query ✔ · 数采数据查询结果(1 个节点):  ■ L2-DAQ-opcua ip16ust8(熔体/箱体温度)单位 MPa,正常量程 0~45MPa,",
+        "3) dcw_judge ✔ · 判定已入册:记录 opt-d24ec6ba → keep(集成流水线:dcw_control 回读校验通过)。已定档为已验证经验(配方已标记 lastGood)",
+        "闭环三步耗时 1.269s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-4-loop",
+      "title": "产线4 [http] 工具闭环",
+      "status": "pass",
+      "evidence": [
+        "1) dcw_control ✔ → 优化记录 opt-19fd3935 · 下发成功:L4-DCW-http ip16ust8(烘箱温度设定)设定 0.955mm → PLC 原始值 0.955;回读 0.95mm一",
+        "2) daq_query ✔ · 数采数据查询结果(1 个节点):  ■ L4-DAQ-http ip16ust8(熔体/箱体温度)单位 μm,正常量程 0~400μm,当前",
+        "3) dcw_judge ✔ · 判定已入册:记录 opt-19fd3935 → keep(集成流水线:dcw_control 回读校验通过)。已定档为已验证经验(配方已标记 lastGood)",
+        "闭环三步耗时 1.33s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "plant-response",
+      "title": "工艺模型响应（SP→plant truth 随动）",
+      "status": "pass",
+      "evidence": [
+        "真值样本 6 → 43",
+        "plant state: {\"enabled\":true,\"running\":true,\"phase\":\"steady\",\"disturbances\":{\"heaterDecay\":1,\"feedDriftPerMin\":0.15},\"seed\":42,\"timeScale\":6,\"elapsedS\":129,\"defect\":21.108}"
+      ]
+    }
+  ],
+  "lines": [
+    {
+      "index": 1,
+      "protocol": "modbus-tcp",
+      "simDeviceId": "dev-extruder-mbtcp",
+      "simDeviceName": "挤出主机PLC(Modbus TCP)",
+      "dcwSignal": "zone1-sp",
+      "daqSignal": "熔体温度",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "连接成功,读取 40001 = 31.329999923706055"
+      },
+      "exports": {
+        "daq": {
+          "host": "127.0.0.1",
+          "port": 16040,
+          "unitId": 1,
+          "register": 40001,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        },
+        "dcw": {
+          "host": "127.0.0.1",
+          "port": 16040,
+          "unitId": 1,
+          "register": 40021,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-0a90115a",
+        "product": "pd-14c41365",
+        "daq": "dn-9f6c405d",
+        "dcw": "dw-fe7b5b51",
+        "recipe": "rc-fe69b7a8"
+      },
+      "window": {
+        "min": 191.6,
+        "max": 208.4
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 120,
+        "hi": 260,
+        "center": 200,
+        "decimals": 1
+      },
+      "started": true,
+      "daqSamples": 9,
+      "writeP50": 32.327,
+      "writeP95": 33.013,
+      "writeMean": 28.398,
+      "readbackDelta": 0.04,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "loopIterations": 1,
+      "recordId": "opt-82b5d2d5",
+      "convergenceS": 1.446
+    },
+    {
+      "index": 2,
+      "protocol": "opcua",
+      "simDeviceId": "dev-extruder-opcua",
+      "simDeviceName": "熔体泵送单元(OPC UA)",
+      "dcwSignal": "screw-sp",
+      "daqSignal": "MeltPressure",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "会话建立成功,读取 ns=2;s=AW.P = 6.137"
+      },
+      "exports": {
+        "daq": {
+          "endpoint": "opc.tcp://127.0.0.1:5840",
+          "nodeId": "ns=2;s=AW.P"
+        },
+        "dcw": {
+          "endpoint": "opc.tcp://127.0.0.1:5840",
+          "nodeId": "ns=2;s=AW.N.Sp"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-8ced2ecb",
+        "product": "pd-a509de82",
+        "daq": "dn-03d53afb",
+        "dcw": "dw-0992a0ee",
+        "recipe": "rc-fd588322"
+      },
+      "window": {
+        "min": 141,
+        "max": 159
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 50,
+        "hi": 200,
+        "center": 150,
+        "decimals": 0
+      },
+      "started": true,
+      "daqSamples": 11,
+      "writeP50": 5.771,
+      "writeP95": 6.107,
+      "writeMean": 5.457,
+      "readbackDelta": 0,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "loopIterations": 1,
+      "recordId": "opt-d24ec6ba",
+      "convergenceS": 1.269
+    },
+    {
+      "index": 3,
+      "protocol": "mqtt",
+      "simDeviceId": "dev-gauge-mqtt",
+      "simDeviceName": "在线测厚仪(MQTT)",
+      "dcwSignal": "linespeed-sp",
+      "daqSignal": "thick",
+      "satellite": true,
+      "hostLineIndex": 2,
+      "driverTest": {
+        "ok": true,
+        "message": "Broker 连接成功,收到 aw/sim/thick = 19.1"
+      },
+      "exports": {
+        "daq": {
+          "host": "127.0.0.1",
+          "port": 18830,
+          "topic": "aw/sim/thick",
+          "jsonPath": "data.thick"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-8ced2ecb",
+        "product": "pd-a509de82",
+        "recipe": "rc-fd588322",
+        "daq": "dn-1a919196"
+      },
+      "window": null,
+      "errors": [],
+      "started": true,
+      "daqSamples": 12
+    },
+    {
+      "index": 4,
+      "protocol": "http",
+      "simDeviceId": "dev-inspect-http",
+      "simDeviceName": "CCD检测站(HTTP)",
+      "dcwSignal": "diegap-sp",
+      "daqSignal": "defect",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "接口可达,取值 = 100"
+      },
+      "exports": {
+        "daq": {
+          "url": "http://127.0.0.1:4010/sim-http/dev-inspect-http/api/defect",
+          "jsonPath": "value"
+        },
+        "dcw": {
+          "url": "http://127.0.0.1:4010/sim-http/dev-inspect-http/api/control/diegap"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-9476818f",
+        "product": "pd-9f867fae",
+        "daq": "dn-81caf285",
+        "dcw": "dw-fe8df621",
+        "recipe": "rc-a0751889"
+      },
+      "window": {
+        "min": 0.91,
+        "max": 1.09
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 0.5,
+        "hi": 2,
+        "center": 1,
+        "decimals": 2
+      },
+      "started": true,
+      "daqSamples": 11,
+      "writeP50": 4.793,
+      "writeP95": 6.635,
+      "writeMean": 4.916,
+      "readbackDelta": null,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "loopIterations": 1,
+      "recordId": "opt-19fd3935",
+      "convergenceS": 1.33
+    },
+    {
+      "index": 5,
+      "protocol": "modbus-rtu",
+      "simDeviceId": "dev-gels-rtu",
+      "simDeviceName": "晶点计数从站(Modbus RTU)",
+      "dcwSignal": null,
+      "daqSignal": "晶点计数",
+      "satellite": true,
+      "hostLineIndex": 4,
+      "driverTest": {
+        "ok": true,
+        "message": "网关连接成功,读取 40001 = 4"
+      },
+      "exports": {
+        "daq": {
+          "host": "127.0.0.1",
+          "port": 15041,
+          "unitId": 1,
+          "register": 40001,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-9476818f",
+        "product": "pd-9f867fae",
+        "recipe": "rc-a0751889",
+        "daq": "dn-80bd0fe3"
+      },
+      "window": null,
+      "errors": [],
+      "started": true,
+      "daqSamples": 11
+    }
+  ],
+  "kpis": [
+    {
+      "label": "可开跑产线",
+      "value": 3,
+      "unit": "条",
+      "note": "+2 卫星数采 · modbus-tcp/opcua/mqtt/http/modbus-rtu",
+      "tone": "good"
+    },
+    {
+      "label": "数采采样合计",
+      "value": 54,
+      "unit": "点",
+      "note": "5/5 节点在采",
+      "tone": "good"
+    },
+    {
+      "label": "治理拦截率（合并）",
+      "value": "100.0",
+      "unit": "%",
+      "note": "F5 攻击",
+      "tone": "good"
+    },
+    {
+      "label": "写时延 p50（全协议）",
+      "value": 14.297,
+      "unit": "ms",
+      "note": "含真实协议事务"
+    },
+    {
+      "label": "工具级闭环",
+      "value": 3,
+      "unit": "条",
+      "note": "dcw→daq→judge"
+    },
+    {
+      "label": "LLM Agent 闭环",
+      "value": "未启用",
+      "unit": "",
+      "note": "--agent omp 可启用",
+      "tone": "warn"
+    },
+    {
+      "label": "检查结果",
+      "value": "20/20",
+      "unit": "",
+      "note": "warn 0 · fail 0",
+      "tone": "good"
+    }
+  ],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "离线网格搜索最优（评测基准 ground truth）"
+    },
+    {
+      "section": "provision",
+      "key": "lines_created",
+      "value": 3,
+      "unit": "条",
+      "note": "可开跑产线（另有 2 条卫星数采）"
+    },
+    {
+      "section": "provision",
+      "key": "daq_nodes",
+      "value": 5,
+      "unit": "个",
+      "note": "真实协议数采节点"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_modbus-tcp",
+      "value": 1,
+      "unit": "",
+      "note": "治理拦截率"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_opcua",
+      "value": 1,
+      "unit": "",
+      "note": "治理拦截率"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_http",
+      "value": 1,
+      "unit": "",
+      "note": "治理拦截率"
+    },
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 5,
+      "unit": "条",
+      "note": "真实驱动采到数据"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": 1,
+      "unit": "",
+      "note": "全协议合并"
+    },
+    {
+      "section": "loop",
+      "key": "tool_loops_ok",
+      "value": 3,
+      "unit": "条产线",
+      "note": "工具级闭环达成"
+    }
+  ]
+}

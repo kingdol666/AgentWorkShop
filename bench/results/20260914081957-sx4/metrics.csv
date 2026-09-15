@@ -1,0 +1,17 @@
+phase,line,protocol,daq_samples,write_p50_ms,write_p95_ms,readback_delta,f5_rejected,f5_total,false_block,recipe_versions,recipe_lastgood,recipe_applied_run,loop_iterations,convergence_s,node_rollback,rollback_before,rollback_after,hitl_ok,hitl_latency_ms,seed,J0,Jend,Jstar,ratio,iters,writes,rejected,converged,wall_s
+P3,1,modbus-tcp,8,32.793,101.015,0.04,6,6,0,,,,,,,,,,,,,,,,,,,,
+P3,2,opcua,11,6.737,69.072,0,6,6,0,,,,,,,,,,,,,,,,,,,,
+P3,3,mqtt,12,7.13,11.395,,6,6,0,,,,,,,,,,,,,,,,,,,,
+P3,4,http,12,5.807,16.099,,6,6,0,,,,,,,,,,,,,,,,,,,,
+P3,5,modbus-rtu,13,,,,,,,,,,,,,,,,,,,,,,,,,,
+P3b,1,modbus-tcp,,,,,,,,3,rr-4004a83e,rr-65acb112,,,,,,,,,,,,,,,,,
+P3b,2,opcua,,,,,,,,3,rr-aa91de55,rr-14b8dbbd,,,,,,,,,,,,,,,,,
+P4,1,modbus-tcp,,,,,,,,,,,1,1.312,,,,,,,,,,,,,,,
+P4,2,opcua,,,,,,,,,,,1,1.282,,,,,,,,,,,,,,,
+P4,3,mqtt,,,,,,,,,,,1,1.288,,,,,,,,,,,,,,,
+P4,4,http,,,,,,,,,,,1,1.309,,,,,,,,,,,,,,,
+P4b,1,modbus-tcp,,,,,,,,,,,,,true,199.1999969482422,199.1999969482422,,,,,,,,,,,,
+P4c,1,modbus-tcp,,,,,,,,,,,,,,,,true,9,,,,,,,,,,
+P6,,castfilm,,,,,,,,,,,,,,,,,,42,,75.598,89.894,0.841,5,8,0,false,60.594
+P6,,castfilm,,,,,,,,,,,,,,,,,,43,73.938,50.388,89.894,0.561,5,6,0,false,60.445
+P6,,castfilm,,,,,,,,,,,,,,,,,,44,,78.233,89.894,0.87,5,8,0,false,60.592

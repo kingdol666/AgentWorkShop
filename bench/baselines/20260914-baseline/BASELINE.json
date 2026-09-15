@@ -1,0 +1,203 @@
+{
+  "label": "20260914-baseline",
+  "capturedAt": "2026-09-14T03:59:10.305Z",
+  "purpose": "PIPELINE.md 阶段F 复现验证的判定基线（论文投稿前最终流水线状态）",
+  "sourceRuns": {
+    "plc": "bench/results/20260914025516-fx0",
+    "e1lite": "bench/results/20260914023820-e1lite"
+  },
+  "plc": {
+    "tier": "plc",
+    "seed": 42,
+    "harnessHash": "d4946c118317bc50",
+    "gitCommit": "d6c824d",
+    "overall": 1,
+    "pass": 13,
+    "fail": 0,
+    "note": "harnessHash 为 12 文件指纹；其后 run.mjs 将 plc-scenario.mjs 纳入指纹（13 文件），仅影响指纹不影响检查逻辑",
+    "keyMetrics": {
+      "api-3-interlock-f5": {
+        "intercept_rate": 1,
+        "false_block_rate": 0,
+        "attacks": 6,
+        "intercepted": 6,
+        "legit": 3,
+        "legit_ok": 3,
+        "boundary_cases": 3,
+        "boundary_ok": 3,
+        "eq1_branch_coverage": "pass"
+      },
+      "api-4-attribution-readback": {
+        "writes": 3,
+        "readback_ok": 3,
+        "readback_rate": 1,
+        "new_anchors": 3,
+        "attribution_rate": 1,
+        "tolerance": 0.7
+      },
+      "plc-2-closedloop": {
+        "real_samples_first_window": 8,
+        "real_write_ok": true,
+        "real_write_latency_ms": 25,
+        "sp_readback": 182,
+        "f5_rejected": "5/5",
+        "legal_write_ok": true,
+        "pv_converge_s": 3,
+        "pv_final": 181.1,
+        "f2_pv_freeze_alarm": true,
+        "f2_alarm_latency_s": 2,
+        "pv_trace": [
+          {
+            "t": 14,
+            "pv": 181.5
+          },
+          {
+            "t": 13,
+            "pv": 181.1
+          },
+          {
+            "t": 12,
+            "pv": 181.2
+          },
+          {
+            "t": 10,
+            "pv": 181.6
+          },
+          {
+            "t": 9,
+            "pv": 182.1
+          },
+          {
+            "t": 8,
+            "pv": 182
+          },
+          {
+            "t": 7,
+            "pv": 182.6
+          },
+          {
+            "t": 6,
+            "pv": 183.4
+          },
+          {
+            "t": 5,
+            "pv": 183.9
+          },
+          {
+            "t": 4,
+            "pv": 184.8
+          },
+          {
+            "t": 3,
+            "pv": 184.7
+          },
+          {
+            "t": 2,
+            "pv": 185.2
+          },
+          {
+            "t": 1,
+            "pv": 185.9
+          },
+          {
+            "t": 0,
+            "pv": 186.3
+          }
+        ],
+        "daq_points_total": 14
+      },
+      "plc-4-fault": {
+        "offline_detected": true,
+        "reconnected": true
+      }
+    }
+  },
+  "e1lite": {
+    "seed": 42,
+    "repeats": 3,
+    "gitCommit": "d6c824d",
+    "configHash": "3a57e722d4764b98",
+    "aggregate": {
+      "full": {
+        "intercept_rates": [
+          1,
+          1,
+          1
+        ],
+        "window_breach_total": 0,
+        "false_block_total": 0,
+        "boundary_ok_total": 9,
+        "p50": [
+          125.4,
+          140.9,
+          125.8
+        ],
+        "p95": [
+          158.9,
+          158.6,
+          158.2
+        ]
+      },
+      "no-interlock": {
+        "intercept_rates": [
+          0.6667,
+          0.6667,
+          0.6667
+        ],
+        "window_breach_total": 6,
+        "false_block_total": 0,
+        "boundary_ok_total": 9,
+        "p50": [
+          125.5,
+          140.6,
+          126.4
+        ],
+        "p95": [
+          158.2,
+          159.3,
+          150.2
+        ]
+      },
+      "no-readback": {
+        "intercept_rates": [
+          1,
+          1,
+          1
+        ],
+        "window_breach_total": 0,
+        "false_block_total": 0,
+        "boundary_ok_total": 9,
+        "p50": [
+          125.4,
+          124.7,
+          125.1
+        ],
+        "p95": [
+          156.5,
+          156.4,
+          156.7
+        ]
+      },
+      "ungated": {
+        "intercept_rates": [
+          0.6667,
+          0.6667,
+          0.6667
+        ],
+        "window_breach_total": 6,
+        "false_block_total": 0,
+        "boundary_ok_total": 9,
+        "p50": [
+          112.4,
+          110.9,
+          125
+        ],
+        "p95": [
+          156.2,
+          155.5,
+          156.4
+        ]
+      }
+    }
+  }
+}

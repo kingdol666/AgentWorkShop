@@ -1,0 +1,85 @@
+{
+  "runId": "20260914072932-1q8k",
+  "env": {
+    "runId": "20260914072932-1q8k",
+    "profile": "quick",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "simBase": "http://127.0.0.1:4010",
+    "simDir": "D:\\codes\\ABO\\plc-node-simulator",
+    "lines": 0,
+    "protocols": "",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "startedAt": "2026-09-14T07:29:32.044Z",
+    "node": "v22.22.2",
+    "platform": "win32 x64",
+    "harnessHash": "e7359ff87e53b68c",
+    "gitCommit": "d6c824d",
+    "harnessFiles": 6,
+    "verdict": {
+      "pass": 0,
+      "warn": 0,
+      "fail": 0,
+      "ok": true
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile quick --seed 42 --lines 2"
+  },
+  "verdict": {
+    "pass": 0,
+    "warn": 0,
+    "fail": 0,
+    "ok": true
+  },
+  "kpis": [
+    {
+      "label": "集成产线",
+      "value": 0,
+      "unit": "条",
+      "note": "",
+      "tone": "good"
+    },
+    {
+      "label": "数采采样合计",
+      "value": 0,
+      "unit": "点",
+      "note": "真实驱动落库",
+      "tone": "good"
+    },
+    {
+      "label": "治理拦截率（合并）",
+      "value": "—",
+      "unit": "%",
+      "note": "F5 攻击",
+      "tone": "good"
+    },
+    {
+      "label": "写时延 p50（全协议）",
+      "value": null,
+      "unit": "ms",
+      "note": "含真实协议事务"
+    },
+    {
+      "label": "工具级闭环",
+      "value": 0,
+      "unit": "条",
+      "note": "dcw→daq→judge"
+    },
+    {
+      "label": "LLM Agent 闭环",
+      "value": "未启用",
+      "unit": "",
+      "note": "--agent omp 可启用",
+      "tone": "warn"
+    },
+    {
+      "label": "检查结果",
+      "value": "0/0",
+      "unit": "",
+      "note": "warn 0 · fail 0",
+      "tone": "good"
+    }
+  ],
+  "perLine": [],
+  "metrics": []
+}

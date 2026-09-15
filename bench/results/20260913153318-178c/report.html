@@ -1,0 +1,213 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>AW-IndustrialBench · 20260913153318-178c</title><style>
+  :root{--bg:#0b1526;--panel:#101f35;--line:#1c3350;--tx:#dbe7f4;--sub:#8fb0d0;--grn:#35e0a0;--cyn:#41c8f4;--amb:#f4b941;--red:#f45c5c}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.6 "Segoe UI",system-ui,sans-serif;padding:28px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}h1 .badge{color:var(--grn)}
+  .meta{color:var(--sub);font-size:12px;margin-bottom:22px}.mono{font-family:Consolas,Menlo,monospace;font-size:12px}
+  .hero{display:flex;gap:18px;align-items:center;background:linear-gradient(135deg,#0f2138,#0c1a2e);border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin-bottom:22px}
+  .score-big{font-size:56px;font-weight:800;color:var(--grn);line-height:1}
+  .score-cap{color:var(--sub);font-size:12px;letter-spacing:2px}
+  .grade{font-size:30px;font-weight:800;color:var(--cyn);border:2px solid var(--cyn);border-radius:12px;padding:4px 14px;margin-left:auto}
+  .stats{display:flex;gap:16px;margin-left:26px}
+  .stat{text-align:center}.stat b{display:block;font-size:20px}.stat span{font-size:11px;color:var(--sub)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+  .dim-id{color:var(--cyn);font-weight:800;font-size:15px}.dim-name{color:var(--sub);font-size:11px;min-height:16px}
+  .dim-score{font-size:30px;font-weight:800;margin:4px 0}.dim-checks{color:var(--sub);font-size:11px;margin-top:6px}
+  .radar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;justify-content:center}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:22px}
+  th{background:#13253f;color:var(--sub);font-size:12px;text-align:left;padding:10px 12px;letter-spacing:1px}
+  td{border-top:1px solid var(--line);padding:10px 12px;vertical-align:top}
+  .row-fail{background:rgba(244,92,92,.07)}.row-warn{background:rgba(244,185,65,.05)}
+  .pill{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11px;font-weight:700}
+  .pill-static{background:#12325a;color:var(--cyn)}.pill-api{background:#0f3a2c;color:var(--grn)}.pill-full{background:#3a2a10;color:var(--amb)}
+  .sub{color:var(--sub);font-size:12px}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+  summary{cursor:pointer}ul{margin:8px 0 2px}li{margin:3px 0;color:#b9cde3}
+  .foot{color:var(--sub);font-size:12px;margin-top:18px}.foot code{color:var(--grn)}
+</style></head><body><div class="wrap">
+  <h1>AW-IndustrialBench <span class="badge">评测报告</span></h1>
+  <div class="meta mono">run 20260913153318-178c · tier=plc · seed=42 · hash=61e1a1119d6f3ff2 · 2026-09-13T15:33:53.720Z · Node v24.19.0 · win32 x64</div>
+  <div class="hero">
+    <div><div class="score-big">100.0</div><div class="score-cap">OVERALL SCORE / 100</div></div>
+    <div class="grade">A</div>
+    <div class="stats" style="margin-left:0">
+      <div class="stat"><b style="color:var(--grn)">13</b><span>通过</span></div>
+      <div class="stat"><b style="color:var(--amb)">0</b><span>警告</span></div>
+      <div class="stat"><b style="color:var(--red)">0</b><span>失败</span></div>
+      <div class="stat"><b style="color:var(--sub)">0</b><span>跳过</span></div>
+    </div>
+    <div class="radar" style="margin-left:auto"><svg width="260" height="260" viewBox="0 0 260 260"><polygon points="130.0,108.0 147.2,116.3 151.4,134.9 139.5,149.8 120.5,149.8 108.6,134.9 112.8,116.3" fill="none" stroke="#1a2f4a" stroke-width="1"/><polygon points="130.0,86.0 164.4,102.6 172.9,139.8 149.1,169.6 110.9,169.6 87.1,139.8 95.6,102.6" fill="none" stroke="#1a2f4a" stroke-width="1"/><polygon points="130.0,64.0 181.6,88.8 194.3,144.7 158.6,189.5 101.4,189.5 65.7,144.7 78.4,88.8" fill="none" stroke="#1a2f4a" stroke-width="1"/><polygon points="130.0,42.0 198.8,75.1 215.8,149.6 168.2,209.3 91.8,209.3 44.2,149.6 61.2,75.1" fill="none" stroke="#1a2f4a" stroke-width="1"/><line x1="130" y1="130" x2="130.0" y2="42.0" stroke="#233b5c" stroke-width="1"/>
+      <text x="130.0" y="26.0" fill="#8fb0d0" font-size="10" text-anchor="middle" dominant-baseline="middle">D1 100</text>
+      <circle cx="130.0" cy="42.0" r="2" fill="#233b5c"/><line x1="130" y1="130" x2="198.8" y2="75.1" stroke="#233b5c" stroke-width="1"/>
+      <text x="211.3" y="65.2" fill="#8fb0d0" font-size="10" text-anchor="middle" dominant-baseline="middle">D2 100</text>
+      <circle cx="198.8" cy="75.1" r="2" fill="#233b5c"/><line x1="130" y1="130" x2="215.8" y2="149.6" stroke="#233b5c" stroke-width="1"/>
+      <text x="231.4" y="153.1" fill="#8fb0d0" font-size="10" text-anchor="middle" dominant-baseline="middle">D3 100</text>
+      <circle cx="215.8" cy="149.6" r="2" fill="#233b5c"/><line x1="130" y1="130" x2="168.2" y2="209.3" stroke="#233b5c" stroke-width="1"/>
+      <text x="175.1" y="223.7" fill="#8fb0d0" font-size="10" text-anchor="middle" dominant-baseline="middle">D6 100</text>
+      <circle cx="168.2" cy="209.3" r="2" fill="#233b5c"/><line x1="130" y1="130" x2="91.8" y2="209.3" stroke="#233b5c" stroke-width="1"/>
+      <text x="84.9" y="223.7" fill="#8fb0d0" font-size="10" text-anchor="middle" dominant-baseline="middle">D7 100</text>
+      <circle cx="91.8" cy="209.3" r="2" fill="#233b5c"/><line x1="130" y1="130" x2="44.2" y2="149.6" stroke="#233b5c" stroke-width="1"/>
+      <text x="28.6" y="153.1" fill="#8fb0d0" font-size="10" text-anchor="middle" dominant-baseline="middle">D8 100</text>
+      <circle cx="44.2" cy="149.6" r="2" fill="#233b5c"/><line x1="130" y1="130" x2="61.2" y2="75.1" stroke="#233b5c" stroke-width="1"/>
+      <text x="48.7" y="65.2" fill="#8fb0d0" font-size="10" text-anchor="middle" dominant-baseline="middle">D0 100</text>
+      <circle cx="61.2" cy="75.1" r="2" fill="#233b5c"/><polygon points="130.0,42.0 198.8,75.1 215.8,149.6 168.2,209.3 91.8,209.3 44.2,149.6 61.2,75.1" fill="rgba(53,224,160,0.22)" stroke="#35e0a0" stroke-width="2"/></svg></div>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="dim-id">D1</div><div class="dim-name">数据采集面</div>
+    <div class="dim-score" style="color:#35e0a0">100</div>
+    <svg width="100%" viewBox="0 0 190 12" preserveAspectRatio="none" style="display:block;margin-top:6px"><rect width="190" height="12" rx="6" fill="#142640"/><rect width="190.0" height="12" rx="6" fill="#35e0a0"/></svg><div class="dim-checks">7 项检查</div></div>
+    <div class="card"><div class="dim-id">D2</div><div class="dim-name">写控治理面</div>
+    <div class="dim-score" style="color:#35e0a0">100</div>
+    <svg width="100%" viewBox="0 0 190 12" preserveAspectRatio="none" style="display:block;margin-top:6px"><rect width="190" height="12" rx="6" fill="#142640"/><rect width="190.0" height="12" rx="6" fill="#35e0a0"/></svg><div class="dim-checks">7 项检查</div></div>
+    <div class="card"><div class="dim-id">D3</div><div class="dim-name">智能体面</div>
+    <div class="dim-score" style="color:#35e0a0">100</div>
+    <svg width="100%" viewBox="0 0 190 12" preserveAspectRatio="none" style="display:block;margin-top:6px"><rect width="190" height="12" rx="6" fill="#142640"/><rect width="190.0" height="12" rx="6" fill="#35e0a0"/></svg><div class="dim-checks">1 项检查</div></div>
+    <div class="card"><div class="dim-id">D6</div><div class="dim-name">互操作面</div>
+    <div class="dim-score" style="color:#35e0a0">100</div>
+    <svg width="100%" viewBox="0 0 190 12" preserveAspectRatio="none" style="display:block;margin-top:6px"><rect width="190" height="12" rx="6" fill="#142640"/><rect width="190.0" height="12" rx="6" fill="#35e0a0"/></svg><div class="dim-checks">2 项检查</div></div>
+    <div class="card"><div class="dim-id">D7</div><div class="dim-name">审计归因面</div>
+    <div class="dim-score" style="color:#35e0a0">100</div>
+    <svg width="100%" viewBox="0 0 190 12" preserveAspectRatio="none" style="display:block;margin-top:6px"><rect width="190" height="12" rx="6" fill="#142640"/><rect width="190.0" height="12" rx="6" fill="#35e0a0"/></svg><div class="dim-checks">3 项检查</div></div>
+    <div class="card"><div class="dim-id">D8</div><div class="dim-name">性能伸缩面</div>
+    <div class="dim-score" style="color:#35e0a0">100</div>
+    <svg width="100%" viewBox="0 0 190 12" preserveAspectRatio="none" style="display:block;margin-top:6px"><rect width="190" height="12" rx="6" fill="#142640"/><rect width="190.0" height="12" rx="6" fill="#35e0a0"/></svg><div class="dim-checks">2 项检查</div></div>
+    <div class="card"><div class="dim-id">D0</div><div class="dim-name">论文-代码一致性</div>
+    <div class="dim-score" style="color:#35e0a0">100</div>
+    <svg width="100%" viewBox="0 0 190 12" preserveAspectRatio="none" style="display:block;margin-top:6px"><rect width="190" height="12" rx="6" fill="#142640"/><rect width="190.0" height="12" rx="6" fill="#35e0a0"/></svg><div class="dim-checks">1 项检查</div></div></div>
+  <table><thead><tr><th style="width:22%">检查项</th><th>层</th><th>状态</th><th>得分</th><th style="width:30%">指标</th><th>说明</th></tr></thead><tbody>
+    <tr class="row-pass">
+      <td><b>s1-inventory</b><div class="sub">能力清单核查（路由/引擎/工具/表/驱动）</div></td>
+      <td><span class="pill pill-static">static</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">subchecks=<b>9</b> · ok=<b>9</b> · routes=<b>208</b> · mcpTools=<b>25</b> · engines=<b>14</b> · tables=<b>22</b> · tools=<b>10</b></td>
+      <td class="sub">全部能力组件在源码中核实</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>s2-paper-consistency</b><div class="sub">论文-代码常量一致性</div></td>
+      <td><span class="pill pill-static">static</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">anchors=<b>19</b> · found=<b>19</b> · missing=<b>0</b></td>
+      <td class="sub">论文全部常量锚点在源码中核实</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>s3-governance-pipeline</b><div class="sub">治理管线阶段顺序锚定</div></td>
+      <td><span class="pill pill-static">static</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">chainsOk=<b>2</b> · chainTotal=<b>2</b></td>
+      <td class="sub">治理管线六阶段结构与顺序核实（Algorithm 1 的源码对应物）</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>api-0-preflight</b><div class="sub">实例连通与鉴权</div></td>
+      <td><span class="pill pill-api">api</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">how=<b>login</b> · role=<b>admin</b></td>
+      <td class="sub">实例 http://127.0.0.1:3001 可用</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>api-1-fixture</b><div class="sub">基准夹具（产线+配方窗+数采）</div></td>
+      <td><span class="pill pill-api">api</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">created=<b>8</b> · steps=<b>8</b> · lineId=<b>ln-50d69d4f</b> · window=<b>175-205℃</b></td>
+      <td class="sub">夹具就绪，软联锁窗口已激活</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>api-2-semantic-card</b><div class="sub">语义卡字段与账本面</div></td>
+      <td><span class="pill pill-api">api</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">ok=<b>6</b> · total=<b>6</b></td>
+      <td class="sub">语义卡=Agent 的物理语义地基（论文 §III-D），缺失即治理失效</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>api-3-interlock-f5</b><div class="sub">F5 越界写攻击（联锁拦截率）</div></td>
+      <td><span class="pill pill-api">api</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">intercept_rate=<b>1</b> · false_block_rate=<b>0</b> · attacks=<b>6</b> · intercepted=<b>6</b> · legit=<b>3</b> · legit_ok=<b>3</b> · boundary_cases=<b>3</b> · boundary_ok=<b>3</b> · eq1_branch_coverage=<b>pass</b></td>
+      <td class="sub">I1 动态成立 + 决策边界覆盖 + Eq.(1) 双分支覆盖</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>api-4-attribution-readback</b><div class="sub">回读闭环与写入归因</div></td>
+      <td><span class="pill pill-api">api</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">writes=<b>3</b> · readback_ok=<b>3</b> · readback_rate=<b>1</b> · new_anchors=<b>3</b> · attribution_rate=<b>1</b> · tolerance=<b>0.7</b></td>
+      <td class="sub">回读闭环与全链路归因成立（I2 + 可追溯性）</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>api-5-daq-freshness</b><div class="sub">数采新鲜度与查询时延</div></td>
+      <td><span class="pill pill-api">api</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">points=<b>17</b> · latest_age_s=<b>17.5</b> · samples_api_p50_ms=<b>20</b> · samples_api_p95_ms=<b>21</b></td>
+      <td class="sub">采集链路活性与查询面性能抽样</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>plc-0-simulator</b><div class="sub">PLC 模拟器就绪+薄膜产线预设</div></td>
+      <td><span class="pill pill-plc">plc</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">protocols=<b>5</b> · sim=<b>http://127.0.0.1:4010</b></td>
+      <td class="sub">模拟器就绪(film-line 预设)</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>plc-1-realpath</b><div class="sub">五协议真实连通(导出配置→test-driver)</div></td>
+      <td><span class="pill pill-plc">plc</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">protocols_ok=<b>5</b> · total=<b>5</b></td>
+      <td class="sub">五协议真实栈全部连通</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>plc-2-closedloop</b><div class="sub">真实采样+SP→PV 物理闭环+真实链路治理</div></td>
+      <td><span class="pill pill-plc">plc</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">real_samples_first_window=<b>9</b> · real_write_ok=<b>true</b> · real_write_latency_ms=<b>25</b> · sp_readback=<b>182</b> · f5_rejected=<b>5/5</b> · legal_write_ok=<b>true</b> · pv_converge_s=<b>3</b> · pv_final=<b>180.4</b> · daq_points_total=<b>12</b></td>
+      <td class="sub">真实协议工况闭环: 写控→Modbus→物理引擎→数采回读→治理拦截</td>
+    </tr>
+    <tr class="row-pass">
+      <td><b>plc-4-fault</b><div class="sub">断链-恢复演练</div></td>
+      <td><span class="pill pill-plc">plc</span></td>
+      <td style="color:#35e0a0;font-weight:700">✔ 通过</td>
+      <td>100</td>
+      <td class="mono">offline_detected=<b>true</b> · reconnected=<b>true</b></td>
+      <td class="sub">断链演练: 故障被感知且可恢复(F3 微缩版, 真实 TCP)</td>
+    </tr></tbody></table>
+  <h3 style="margin:0 0 10px">证据明细</h3>
+  
+    <details ><summary><b>s1-inventory</b> 能力清单核查（路由/引擎/工具/表/驱动） <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ REST 路由文件 ≥ 200 — 实际 208</li><li class="mono">✔ MCP 工具 ≥ 25 — 实际 25</li><li class="mono">✔ Harness 引擎 = 14 — 找到 14/14</li><li class="mono">✔ SQLite 表 ≥ 20 — 实际 22</li><li class="mono">✔ FTS5 记忆索引 — agent_memories_fts</li><li class="mono">✔ 协议驱动 = 5 族 (modbus-tcp/rtu/opcua/mqtt/http) — 找到 modbus, rtu, opcua, mqtt, http</li><li class="mono">✔ 治理工具面 ≥ 10 — 10/10</li><li class="mono">✔ audit_log 14 列 schema — ops.repo.ts</li><li class="mono">✔ 审计 8 类事件枚举 — kind ∈ write/manual/alarm/…</li></ul></details>
+    <details ><summary><b>s2-paper-consistency</b> 论文-代码常量一致性 <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ sweep 并发配额 64（server/services/workshop/daq/daq-controller.ts · 论文 §III-B2）</li><li class="mono">✔ sweep 周期 250ms（server/services/workshop/daq/daq-controller.ts · 论文 §III-B2）</li><li class="mono">✔ 回退重检周期 30s（server/services/workshop/dcw/recipe-rollback-manager.ts · 论文 §IV-D）</li><li class="mono">✔ 自动回退链上限 K=2（server/services/workshop/dcw/recipe-rollback-manager.ts · 论文 §IV-D / 不变式 I3）</li><li class="mono">✔ 越限判定阈值 B=3（server/services/workshop/dcw/recipe-rollback-manager.ts · 论文 §IV-D）</li><li class="mono">✔ 记忆 RRF k=60（server/services/workshop/runtime/memory.ts · 论文 §V-A）</li><li class="mono">✔ 记忆 MMR λ=0.7（server/services/workshop/runtime/memory.ts · 论文 §V-A）</li><li class="mono">✔ 记忆权重 0.5/0.3/0.2（server/services/workshop/runtime/memory.ts · 论文 §V-A 式(3)）</li><li class="mono">✔ 上下文压缩阈值 70%（app/config/schema.ts · 论文 §V-A）</li><li class="mono">✔ 记录过期接管 30min（app/config/schema.ts · 论文 §IV-B）</li><li class="mono">✔ WS 推送上限 60s（server/services/workshop/daq/daq-runtime.ts · 论文 §III-B1）</li><li class="mono">✔ 报警滞回 2% 量程（server/services/workshop/daq/daq-node.ts · 论文 §III-B3）</li><li class="mono">✔ 报警 warn 带 8% 量程（server/services/workshop/daq/daq-node.ts · 论文 §III-B3）</li><li class="mono">✔ 去抖 3 连续帧（server/services/workshop/daq/daq-node.ts · 论文 §III-B3）</li><li class="mono">✔ 写控账本条目类型（server/services/workshop/dcw/dcw-controller.ts · 论文 §IV-B 阶段5）</li><li class="mono">✔ 回读死区公式（server/services/workshop/dcw/dcw-runtime.ts · 论文 §IV 式(2)）</li><li class="mono">✔ AEP 协议版本 v1（shared/workshop-protocol.ts · 论文 §III-E）</li><li class="mono">✔ 调度空闲退避上限 8s（server/services/workshop/runtime/scheduler-loop.ts · 论文 §V-B）</li><li class="mono">✔ 停滞看门狗 300s（server/services/workshop/runtime/scheduler-loop.ts · 论文 §V-B）</li></ul></details>
+    <details ><summary><b>s3-governance-pipeline</b> 治理管线阶段顺序锚定 <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ write() 编排链顺序成立: beforeWrite(护栏) → param.min(软联锁) → rt.write(执行) → afterWrite(闭环入册) → dcw.write.(审计)</li><li class="mono">✔ executeWrite() 执行链顺序成立: inverseTransform(编码) → readback(回读) → DcwWriteHistoryEntry(账本)</li><li class="mono">✔ 回读死区 writeTolerance() 存在（论文式(2)）</li></ul></details>
+    <details ><summary><b>api-0-preflight</b> 实例连通与鉴权 <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">登录成功（login，role=admin）</li></ul></details>
+    <details ><summary><b>api-1-fixture</b> 基准夹具（产线+配方窗+数采） <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ 产线 — ok</li><li class="mono">✔ 产品 — ok</li><li class="mono">✔ 数控模板 — ok</li><li class="mono">✔ 数控节点 ×2 — dw-ef1d86f9/dw-23c51933</li><li class="mono">✔ 配方（软联锁窗） — ok</li><li class="mono">✔ 数采节点 — ok</li><li class="mono">✔ 采集已启动 — gateway+node start</li><li class="mono">✔ 批次开跑（软联锁激活） — ok</li></ul></details>
+    <details ><summary><b>api-2-semantic-card</b> 语义卡字段与账本面 <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ 数控节点可列出 — found</li><li class="mono">✔ 硬联锁量程字段 — min=120 max=260</li><li class="mono">✔ 显示精度字段 — decimals=1</li><li class="mono">✔ 产线归属（五维打标） — ln-50d69d4f</li><li class="mono">✔ 写控账本可查询 — anchors=2</li><li class="mono">✔ 数采节点可列出 — found</li></ul></details>
+    <details ><summary><b>api-3-interlock-f5</b> F5 越界写攻击（联锁拦截率） <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">拦截 below-global(v=107) → HTTP 400 VALIDATION_ERROR 设定值 107℃ 低于当前配方「Bench工艺 awb16148wv」的工艺下限 175℃(节点全局量程 120~260</li><li class="mono">拦截 above-global(v=269) → HTTP 400 VALIDATION_ERROR 设定值 269℃ 超出当前配方「Bench工艺 awb16148wv」的工艺上限 205℃(节点全局量程 120~260</li><li class="mono">拦截 above-window(v=219) → HTTP 400 VALIDATION_ERROR 设定值 219℃ 超出当前配方「Bench工艺 awb16148wv」的工艺上限 205℃(节点全局量程 120~260</li><li class="mono">拦截 below-window(v=163) → HTTP 400 VALIDATION_ERROR 设定值 163℃ 低于当前配方「Bench工艺 awb16148wv」的工艺下限 175℃(节点全局量程 120~260</li><li class="mono">拦截 extreme(v=1000000) → HTTP 400 VALIDATION_ERROR 设定值 1000000℃ 超出当前配方「Bench工艺 awb16148wv」的工艺上限 205℃(节点全局量程 120</li><li class="mono">拦截 negative(v=-25) → HTTP 400 VALIDATION_ERROR 设定值 -25℃ 低于当前配方「Bench工艺 awb16148wv」的工艺下限 175℃(节点全局量程 120~260</li><li class="mono">成功 in-window-low(v=180) → HTTP 200 ok</li><li class="mono">成功 in-window-mid(v=190) → HTTP 200 ok</li><li class="mono">成功 in-window-high(v=200) → HTTP 200 ok</li><li class="mono">符合 边界 edge-max-accept(v=205) 期望accept → HTTP 200</li><li class="mono">符合 边界 above-edge-reject(v=205.1) 期望reject → HTTP 400</li><li class="mono">符合 边界 below-edge-reject(v=174.9) 期望reject → HTTP 400</li><li class="mono">符合 无批次分支: 越全局 300 → HTTP 400（应拒）</li><li class="mono">符合 无批次分支: 窗外全局内 130 → HTTP 200（应受理,全局量程接管）</li></ul></details>
+    <details ><summary><b>api-4-attribution-readback</b> 回读闭环与写入归因 <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ 写 v=182 回读(outcome)=182 → read=182 (τ=0.7)</li><li class="mono">✔ 写 v=191 回读(outcome)=191 → read=191 (τ=0.7)</li><li class="mono">✔ 写 v=197 回读(outcome)=197 → read=197 (τ=0.7)</li><li class="mono">账本新增锚点 3 条（四项判据齐全 3）</li></ul></details>
+    <details ><summary><b>api-5-daq-freshness</b> 数采新鲜度与查询时延 <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ 时序数据点 17 个（最新距 now 17.5s）</li><li class="mono">samples API p50=20ms p95=21ms（20 次抽样）</li><li class="mono">注：API 侧抽样，非 daq_e2e_latency（后者由 E4 对账实验给出）</li></ul></details>
+    <details ><summary><b>plc-0-simulator</b> PLC 模拟器就绪+薄膜产线预设 <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">五协议设备: modbus-tcp, modbus-rtu, opcua, mqtt, http</li></ul></details>
+    <details ><summary><b>plc-1-realpath</b> 五协议真实连通(导出配置→test-driver) <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ modbus-tcp 真实连通 ok (28ms)</li><li class="mono">✔ modbus-rtu 真实连通 ok (17ms)</li><li class="mono">✔ opcua 真实连通 ok (17ms)</li><li class="mono">✔ mqtt 真实连通 ok (16ms)</li><li class="mono">✔ http 真实连通 ok (32ms)</li></ul></details>
+    <details ><summary><b>plc-2-closedloop</b> 真实采样+SP→PV 物理闭环+真实链路治理 <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ 真实 Modbus TCP 采样落库 9 点(~895ms 节拍)</li><li class="mono">✔ 真实 SP 写 182℃ → HTTP 200 (25ms, 含 Modbus 事务)</li><li class="mono">✔ 真实链路治理: 攻击 5/5 拒绝(200/400/150/188.1/175.9), 合法 180 受理</li><li class="mono">✔ SP→PV 物理闭环收敛 |PV-182|≤3℃ 用时 3s(一阶惯性)</li><li class="mono">闭环期间时序库持续采集: 累计 12 点</li></ul></details>
+    <details ><summary><b>plc-4-fault</b> 断链-恢复演练 <span style="color:#35e0a0">✔</span></summary>
+    <ul><li class="mono">✔ 断链后主项目驱动失败被感知(test-driver ok=false)</li><li class="mono">✔ 模拟器重启后重连成功(test-driver ok=true)</li></ul></details>
+  <div class="foot">复现命令：<code>node bench/run.mjs --tier plc --seed 42 --base http://127.0.0.1:3001</code><br>产物：bench/results/20260913153318-178c/（run.json · report.md · report.html）· 结果永不覆盖，可直接作为论文实验存档。</div>
+</div></body></html>

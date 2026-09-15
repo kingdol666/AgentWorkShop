@@ -1,0 +1,202 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>AgentWorkShop · 集成流水线报告 20260914073006-1f9s</title>
+<style>
+  :root{--bg:#0b1220;--card:#111d2e;--card2:#152539;--line:#1e3550;--fg:#e8f1fa;--sub:#8ba3bd;
+        --grn:#35e0a0;--cyn:#41c8f4;--amb:#e6b23c;--red:#ff6b6b;--pur:#a78bfa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 "Segoe UI",system-ui,-apple-system,"Noto Sans SC",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 64px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:22px}
+  h1{font-size:21px;margin:0 0 6px}
+  h3{font-size:13px;margin:0 0 12px;color:var(--sub);font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+  .meta{color:var(--sub);font-size:12px;font-family:ui-monospace,Consolas,monospace}
+  .verdict{font-size:13px;font-weight:700;padding:9px 16px;border-radius:999px;letter-spacing:.5px}
+  .verdict.ok{background:rgba(53,224,160,.14);color:var(--grn);border:1px solid rgba(53,224,160,.4)}
+  .verdict.bad{background:rgba(255,107,107,.14);color:var(--red);border:1px solid rgba(255,107,107,.4)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:14px;margin-bottom:20px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .kpi .kv{font-size:26px;font-weight:800;color:var(--cyn);font-variant-numeric:tabular-nums}
+  .kpi.good .kv{color:var(--grn)} .kpi.warn .kv{color:var(--amb)} .kpi.bad .kv{color:var(--red)}
+  .ku{font-size:13px;color:var(--sub);margin-left:4px;font-weight:500}
+  .kl{color:var(--sub);font-size:12px;margin-top:6px}
+  .kn{color:#6f8aa6;font-size:11px;margin-top:3px;font-family:ui-monospace,monospace}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:880px){.grid2{grid-template-columns:1fr}}
+  svg .bl{fill:var(--sub);font-size:12px;font-family:ui-monospace,monospace}
+  svg .bv{fill:var(--fg);font-size:12px;font-family:ui-monospace,monospace}
+  .phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+  .ph{background:var(--card2);border-radius:10px;padding:13px;border-left:3px solid var(--sub)}
+  .ph.pass{border-left-color:var(--grn)} .ph.warn{border-left-color:var(--amb)}
+  .ph.fail{border-left-color:var(--red)} .ph.skip{border-left-color:#4a5f78;opacity:.7}
+  .ph-id{font-family:ui-monospace,monospace;font-size:11px;color:var(--sub)}
+  .ph-t{font-size:13px;font-weight:600;margin:3px 0}
+  .ph-m{font-size:11px;color:#7f97b0}
+  .ph-d{font-size:11px;color:var(--cyn);margin-top:5px;font-family:ui-monospace,monospace}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;color:var(--sub);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);font-size:11.5px}
+  td{padding:8px 10px;border-bottom:1px solid rgba(30,53,80,.5);font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  code{background:#0f1c2c;padding:1px 6px;border-radius:4px;font-size:12px;color:var(--cyn)}
+  .ck{font-family:ui-monospace,monospace;font-size:12px}
+  .ck.pass{color:var(--grn)} .ck.fail{color:var(--red)} .ck.warn{color:var(--amb)} .ck.skip{color:var(--sub)}
+  .ev{color:#7f97b0;font-size:11.5px;margin:2px 0 0}
+  footer{color:#5d7590;font-size:11.5px;margin-top:30px;border-top:1px solid var(--line);padding-top:14px;
+    font-family:ui-monospace,monospace;white-space:pre-wrap}
+</style></head><body><div class="wrap">
+  <header>
+    <div>
+      <h1>AgentWorkShop · 集成流水线报告</h1>
+      <div class="meta">run 20260914073006-1f9s · profile quick · seed 42 · 2 产线 / modbus-tcp/modbus-rtu 协议</div>
+      <div class="meta">platform http://127.0.0.1:3001 · simulator http://127.0.0.1:4010 · harness 3d4b7998 · git d6c824d</div>
+      <div class="meta">started 2026-09-14T07:30:20.277Z · node v22.22.2 · win32 x64</div>
+    </div>
+    <div class="verdict ok">ALL CHECKS PASS · pass 7 / warn 3 / fail 0</div>
+  </header>
+  <div class="kpis">
+    <div class="kpi good">
+      <div class="kv">2<span class="ku">条</span></div>
+      <div class="kl">集成产线</div>
+      <div class="kn">modbus-tcp/modbus-rtu</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">7<span class="ku">点</span></div>
+      <div class="kl">数采采样合计</div>
+      <div class="kn">真实驱动落库</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">100.0<span class="ku">%</span></div>
+      <div class="kl">治理拦截率（合并）</div>
+      <div class="kn">F5 攻击</div>
+    </div>
+    <div class="kpi ">
+      <div class="kv">32.821<span class="ku">ms</span></div>
+      <div class="kl">写时延 p50（全协议）</div>
+      <div class="kn">含真实协议事务</div>
+    </div>
+    <div class="kpi ">
+      <div class="kv">0<span class="ku">条</span></div>
+      <div class="kl">工具级闭环</div>
+      <div class="kn">dcw→daq→judge</div>
+    </div>
+    <div class="kpi warn">
+      <div class="kv">未启用<span class="ku"></span></div>
+      <div class="kl">LLM Agent 闭环</div>
+      <div class="kn">--agent omp 可启用</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">7/10<span class="ku"></span></div>
+      <div class="kl">检查结果</div>
+      <div class="kn">warn 3 · fail 0</div>
+    </div></div>
+  <div class="card"><h3>流水线阶段</h3><div class="phases">
+    <div class="ph pass">
+      <div class="ph-id">P0·preflight</div>
+      <div class="ph-t">自举模拟器与平台</div>
+      <div class="ph-m">已在线（复用）</div>
+      <div class="ph-d">0.07s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P1·plant-model</div>
+      <div class="ph-t">工艺模型预设 + 离线最优窗口 W*</div>
+      <div class="ph-m"></div>
+      <div class="ph-d">3.17s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P2·provision</div>
+      <div class="ph-t">多协议多产线供给（≤2 条）</div>
+      <div class="ph-m">2/2 产线就绪</div>
+      <div class="ph-d">0.89s</div>
+    </div>
+    <div class="ph warn">
+      <div class="ph-id">P3·integration</div>
+      <div class="ph-t">多协议数采+数控写读+治理拦截</div>
+      <div class="ph-m">1/2 产线在采</div>
+      <div class="ph-d">8.63s</div>
+    </div>
+    <div class="ph fail">
+      <div class="ph-id">P4·tool-loop</div>
+      <div class="ph-t">数采→数控→判定 工具级闭环（确定性）</div>
+      <div class="ph-m">0 条闭环</div>
+      <div class="ph-d">1.32s</div>
+    </div></div></div>
+  <div class="grid2"><div class="card"><h3>写时延 p50（ms · 每产线/协议）</h3>
+    <svg viewBox="0 0 560 46" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="320" height="26" rx="4" fill="#41c8f4" opacity="0.85"/>
+      <text x="460" y="23" class="bv">32.82ms</text></svg></div><div class="card"><h3>数据采集采样点数（真实驱动落库）</h3>
+    <svg viewBox="0 0 560 82" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="320.00000000000006" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="460.00000000000006" y="23" class="bv">7.00</text>
+      <text x="0" y="59" class="bl">L2 modbus-rtu</text>
+      <rect x="132" y="42" width="2" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="142" y="59" class="bv">0.00</text></svg></div><div class="card"><h3>治理 F5 拦截率（%）</h3>
+    <svg viewBox="0 0 560 46" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="368" height="26" rx="4" fill="#e6b23c" opacity="0.85"/>
+      <text x="508" y="23" class="bv">100%</text></svg></div><div class="card"><h3>Agent 闭环收敛时长（s）</h3>
+    <svg viewBox="0 0 560 46" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="320.00000000000006" height="26" rx="4" fill="#a78bfa" opacity="0.85"/>
+      <text x="460.00000000000006" y="23" class="bv">1.22s</text></svg></div></div>
+  <div class="card"><h3>多产线明细</h3>
+    <table><thead><tr>
+      <th>#</th><th>协议</th><th>模拟器设备</th><th>DAQ 采样</th><th>写时延 p50 (ms)</th>
+      <th>回读偏差</th><th>F5 拦截</th><th>闭环轮次</th><th>收敛 (s)</th><th>Agent</th>
+    </tr></thead><tbody>
+      <tr>
+        <td>1</td><td><code>modbus-tcp</code></td><td>挤出主机PLC(Modbus TCP)</td>
+        <td>7.00</td><td>32.82</td><td>0.00</td>
+        <td>6/6</td>
+        <td>0.00</td><td>1.22</td><td>—</td>
+      </tr><tr>
+        <td>2</td><td><code>modbus-rtu</code></td><td>晶点计数从站(Modbus RTU)</td>
+        <td>0.00</td><td>—</td><td>—</td>
+        <td>—</td>
+        <td>—</td><td>—</td><td>—</td>
+      </tr>
+    </tbody></table>
+  </div>
+  <div class="card"><h3>检查明细</h3>
+    <div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P0] platform-reachable · 平台实例可达且鉴权成功</div>
+      <div class="ev">平台 http://127.0.0.1:3001</div><div class="ev">鉴权 OK (login)</div><div class="ev">模拟器 http://127.0.0.1:4010：已在线（复用）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P1] preset-applied · 预设 cast-film-physics 已应用</div>
+      <div class="ev">设备 5 个</div><div class="ev">协议 modbus-tcp, modbus-rtu, opcua, mqtt, http</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck warn">▲ [P1] offline-optimum · 离线最优窗口 W*（ground truth）可用</div>
+      <div class="ev">W* = {&quot;zoneTemp&quot;:212.5,&quot;screw&quot;:55,&quot;lineSpeed&quot;:40,&quot;meltTemp&quot;:212.5,&quot;pressure&quot;:6.961,&quot;thickness&quot;:49.18,&quot;defect&quot;:0.055,&quot;score&quot;:89.894,&quot;computedAt&quot;:&quot;2026-09-14T07:30:09.</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P2] line-1-modbus-tcp · 产线1 [modbus-tcp] 供给</div>
+      <div class="ev">line=ln-71f9adb9 daq=dn-69600450 dcw=dw-3316c6f1 recipe=rc-c9f7d22a</div><div class="ev">SP 中心 200 窗口 [191.6, 208.4]</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P2] line-2-modbus-rtu · 产线2 [modbus-rtu] 供给</div>
+      <div class="ev">line=ln-404e1647 daq=dn-03c2049c dcw=✘ recipe=—</div><div class="ev">（该设备无 SP，仅采集）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P3] line-1-io · 产线1 [modbus-tcp] 集成检查</div>
+      <div class="ev">✔ 数采落库 7 点（modbus-tcp 真实驱动）</div><div class="ev">✔ 约6次写 p50=32.821ms p95=63.186ms，回读偏差 0</div><div class="ev">✔ 治理 F5: 6/6 拒绝（modbus-tcp 真实链路），合法写受理</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck warn">▲ [P3] line-2-io · 产线2 [modbus-rtu] 集成检查</div>
+      <div class="ev">✘ 数采落库 0 点（modbus-rtu 真实驱动）</div><div class="ev">— 该设备无 SP 写点，跳过数控/治理子检</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4] tool-loop-setup · 闭环夹具（channel+agent）</div>
+      <div class="ev">channel=90eee4c3-63a6-422e-9feb-311a4db57244</div><div class="ev">agent=ec892da1-0ae1-4dbb-8398-c6536f99c431</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck warn">▲ [P4] line-1-loop · 产线1 [modbus-tcp] 工具闭环</div>
+      <div class="ev">✔ dcw_control → daq_query → dcw_judge 全通（1.215s）</div><div class="ev">写回执: 工具「dcw_control」调用失败: 工具桥不支持该协作工具: dcw_control</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4] plant-response · 工艺模型响应（SP→plant truth 随动）</div>
+      <div class="ev">真值样本 6 → 27</div><div class="ev">plant state: {&quot;enabled&quot;:true,&quot;running&quot;:true,&quot;phase&quot;:&quot;steady&quot;,&quot;disturbances&quot;:{&quot;heaterDecay&quot;:1,&quot;feedDriftPerMin&quot;:0.15},&quot;seed&quot;:42,&quot;timeScale&quot;:6,&quot;elapsedS&quot;:81,&quot;defect&quot;:52.729}</div>
+    </div>
+  </div>
+  <div class="card"><h3>指标登记表（供论文/审计引用）</h3>
+    <table><thead><tr><th>分区</th><th>指标</th><th>值</th><th>单位</th><th>备注</th></tr></thead><tbody>
+    <tr><td>provision</td><td><code>lines_created</code></td><td>2.00</td><td>条</td><td>2 协议设备</td></tr><tr><td>gov</td><td><code>intercept_modbus-tcp</code></td><td>1.00</td><td></td><td>治理拦截率</td></tr><tr><td>provision</td><td><code>lines_sampling</code></td><td>1.00</td><td>条</td><td>真实驱动采到数据</td></tr><tr><td>gov</td><td><code>intercept_rate_all</code></td><td>1.00</td><td></td><td>全协议合并</td></tr><tr><td>loop</td><td><code>tool_loops_ok</code></td><td>0.00</td><td>条产线</td><td>工具级闭环达成</td></tr>
+    </tbody></table></div>
+  <footer>复现: node bench/pipeline.mjs --profile quick --seed 42 --lines 2
+产物: run.json / metrics.csv / summary.json / dashboard.html（永不覆盖）
+判定类指标在固定 seed 下应逐位一致；时延类允许环境性波动。</footer>
+</div></body></html>

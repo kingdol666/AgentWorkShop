@@ -1,0 +1,166 @@
+{
+  "env": {
+    "runId": "20260914073835-1cxs",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "simBase": "http://127.0.0.1:4010",
+    "simDir": "D:\\codes\\ABO\\plc-node-simulator",
+    "lines": 0,
+    "ownLines": 0,
+    "satelliteDaq": 0,
+    "protocols": "",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-09-14T07:38:54.961Z",
+    "node": "v22.22.2",
+    "platform": "win32 x64",
+    "harnessHash": "2b33bd26ae5c1aa1",
+    "gitCommit": "d6c824d",
+    "harnessFiles": 6,
+    "verdict": {
+      "pass": 2,
+      "warn": 0,
+      "fail": 0,
+      "ok": true
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42"
+  },
+  "phases": [
+    {
+      "id": "P0·preflight",
+      "phase": "P0",
+      "title": "自举模拟器与平台",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 8834
+    },
+    {
+      "id": "P1·plant-model",
+      "phase": "P1",
+      "title": "工艺模型预设 + 离线最优窗口 W*",
+      "status": "pass",
+      "note": "",
+      "durationMs": 3412
+    },
+    {
+      "id": "P2·provision",
+      "phase": "P2",
+      "title": "多协议多产线供给（≤5 条）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 2
+    },
+    {
+      "id": "P3·integration",
+      "phase": "P3",
+      "title": "多协议数采+数控写读+治理拦截",
+      "status": "pass",
+      "note": "0/0 产线在采",
+      "durationMs": 7014
+    },
+    {
+      "id": "P4·tool-loop",
+      "phase": "P4",
+      "title": "数采→数控→判定 工具级闭环（harness=opencode，不经 LLM）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 3
+    }
+  ],
+  "checks": [
+    {
+      "phase": "P1",
+      "id": "preset-applied",
+      "title": "预设 cast-film-physics 已应用",
+      "status": "pass",
+      "evidence": [
+        "设备 5 个",
+        "协议 modbus-tcp, modbus-rtu, opcua, mqtt, http"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "offline-optimum",
+      "title": "离线最优窗口 W*（ground truth）可用",
+      "status": "pass",
+      "evidence": [
+        "W* = {\"zoneTemp\":212.5,\"screw\":55,\"lineSpeed\":40,\"meltTemp\":212.5,\"pressure\":6.961,\"thickness\":49.18,\"defect\":0.055,\"score\":89.894,\"computedAt\":\"2026-09-14T07:38:47.912Z\"}"
+      ]
+    }
+  ],
+  "lines": [],
+  "kpis": [
+    {
+      "label": "可开跑产线",
+      "value": 0,
+      "unit": "条",
+      "note": "+0 卫星数采 · ",
+      "tone": "good"
+    },
+    {
+      "label": "数采采样合计",
+      "value": 0,
+      "unit": "点",
+      "note": "0/0 节点在采",
+      "tone": "good"
+    },
+    {
+      "label": "治理拦截率（合并）",
+      "value": "—",
+      "unit": "%",
+      "note": "F5 攻击",
+      "tone": "good"
+    },
+    {
+      "label": "写时延 p50（全协议）",
+      "value": null,
+      "unit": "ms",
+      "note": "含真实协议事务"
+    },
+    {
+      "label": "工具级闭环",
+      "value": 0,
+      "unit": "条",
+      "note": "dcw→daq→judge"
+    },
+    {
+      "label": "LLM Agent 闭环",
+      "value": "未启用",
+      "unit": "",
+      "note": "--agent omp 可启用",
+      "tone": "warn"
+    },
+    {
+      "label": "检查结果",
+      "value": "2/2",
+      "unit": "",
+      "note": "warn 0 · fail 0",
+      "tone": "good"
+    }
+  ],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "离线网格搜索最优（评测基准 ground truth）"
+    },
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 0,
+      "unit": "条",
+      "note": "真实驱动采到数据"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": null,
+      "unit": "",
+      "note": "全协议合并"
+    }
+  ]
+}

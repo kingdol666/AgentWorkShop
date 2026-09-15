@@ -1,0 +1,520 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>AgentWorkShop — Integrated Pipeline Report 20260914150526-h5w</title>
+<style>
+  :root{--bg:#0b1220;--card:#111d2e;--card2:#152539;--line:#1e3550;--fg:#e8f1fa;--sub:#8ba3bd;
+        --grn:#35e0a0;--cyn:#41c8f4;--amb:#e6b23c;--red:#ff6b6b;--pur:#a78bfa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 "Segoe UI",system-ui,-apple-system,"Noto Sans SC",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 64px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:22px}
+  h1{font-size:21px;margin:0 0 6px}
+  h3{font-size:13px;margin:0 0 12px;color:var(--sub);font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+  .meta{color:var(--sub);font-size:12px;font-family:ui-monospace,Consolas,monospace}
+  .verdict{font-size:13px;font-weight:700;padding:9px 16px;border-radius:999px;letter-spacing:.5px}
+  .verdict.ok{background:rgba(53,224,160,.14);color:var(--grn);border:1px solid rgba(53,224,160,.4)}
+  .verdict.bad{background:rgba(255,107,107,.14);color:var(--red);border:1px solid rgba(255,107,107,.4)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:14px;margin-bottom:20px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .kpi .kv{font-size:26px;font-weight:800;color:var(--cyn);font-variant-numeric:tabular-nums}
+  .kpi.good .kv{color:var(--grn)} .kpi.warn .kv{color:var(--amb)} .kpi.bad .kv{color:var(--red)}
+  .ku{font-size:13px;color:var(--sub);margin-left:4px;font-weight:500}
+  .kl{color:var(--sub);font-size:12px;margin-top:6px}
+  .kn{color:#6f8aa6;font-size:11px;margin-top:3px;font-family:ui-monospace,monospace}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:880px){.grid2{grid-template-columns:1fr}}
+  svg .bl{fill:var(--sub);font-size:12px;font-family:ui-monospace,monospace}
+  svg .bv{fill:var(--fg);font-size:12px;font-family:ui-monospace,monospace}
+  .phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+  .ph{background:var(--card2);border-radius:10px;padding:13px;border-left:3px solid var(--sub)}
+  .ph.pass{border-left-color:var(--grn)} .ph.warn{border-left-color:var(--amb)}
+  .ph.fail{border-left-color:var(--red)} .ph.skip{border-left-color:#4a5f78;opacity:.7}
+  .ph-id{font-family:ui-monospace,monospace;font-size:11px;color:var(--sub)}
+  .ph-t{font-size:13px;font-weight:600;margin:3px 0}
+  .ph-m{font-size:11px;color:#7f97b0}
+  .ph-d{font-size:11px;color:var(--cyn);margin-top:5px;font-family:ui-monospace,monospace}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;color:var(--sub);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);font-size:11.5px}
+  td{padding:8px 10px;border-bottom:1px solid rgba(30,53,80,.5);font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  code{background:#0f1c2c;padding:1px 6px;border-radius:4px;font-size:12px;color:var(--cyn)}
+  .ck{font-family:ui-monospace,monospace;font-size:12px}
+  .ck.pass{color:var(--grn)} .ck.fail{color:var(--red)} .ck.warn{color:var(--amb)} .ck.skip{color:var(--sub)}
+  .ev{color:#7f97b0;font-size:11.5px;margin:2px 0 0}
+  footer{color:#5d7590;font-size:11.5px;margin-top:30px;border-top:1px solid var(--line);padding-top:14px;
+    font-family:ui-monospace,monospace;white-space:pre-wrap}
+</style></head><body><div class="wrap">
+  <header>
+    <div>
+      <h1>AgentWorkShop — Integrated Pipeline Report</h1>
+      <div class="meta">run 20260914150526-h5w · profile integrated · seed 42 · 5 lines / modbus-tcp/opcua/mqtt/http/modbus-rtu protocols</div>
+      <div class="meta">platform http://127.0.0.1:3001 · simulator http://127.0.0.1:4010 · harness 05e6bba6 · git d6c824d</div>
+      <div class="meta">started 2026-09-14T15:10:51.406Z · node v24.19.0 · win32 x64</div>
+    </div>
+    <div class="verdict ok">ALL CHECKS PASS · pass 53 / warn 2 / fail 0</div>
+  </header>
+  <div class="kpis">
+    <div class="kpi good">
+      <div class="kv">4<span class="ku"></span></div>
+      <div class="kl">Provisionable lines</div>
+      <div class="kn">+1 satellite DAQ · modbus-tcp/opcua/mqtt/http/modbus-rtu</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">58<span class="ku"></span></div>
+      <div class="kl">DAQ samples total</div>
+      <div class="kn">5/5 nodes sampling</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">100.0<span class="ku">%</span></div>
+      <div class="kl">Governance interception (pooled)</div>
+      <div class="kn">F5 attacks</div>
+    </div>
+    <div class="kpi ">
+      <div class="kv">41.642<span class="ku">ms</span></div>
+      <div class="kl">Write p50 (all protocols)</div>
+      <div class="kn">incl. real protocol transactions</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">97.0<span class="ku">%</span></div>
+      <div class="kl">Closed-loop J/J*</div>
+      <div class="kn">n=3 seeds · worst 96.8% · J*=89.894</div>
+    </div>
+    <div class="kpi ">
+      <div class="kv">4<span class="ku"></span></div>
+      <div class="kl">Tool-level loops</div>
+      <div class="kn">dcw→daq→judge ×3 convergence</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">fired+restored<span class="ku"></span></div>
+      <div class="kl">System backstop</div>
+      <div class="kn">window breach → auto-rollback in 130.176s (env)</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">film-line<span class="ku"></span></div>
+      <div class="kl">Scenario portability</div>
+      <div class="kn">2nd scenario: 3 lines + 2 sat · F5 9/9 · 0 code changes</div>
+    </div>
+    <div class="kpi warn">
+      <div class="kv">off<span class="ku"></span></div>
+      <div class="kl">LLM agent loop</div>
+      <div class="kn">--agent omp enables</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">53/55<span class="ku"></span></div>
+      <div class="kl">Checks</div>
+      <div class="kn">warn 2 · fail 0</div>
+    </div></div>
+  <div class="card"><h3>Pipeline phases</h3><div class="phases">
+    <div class="ph pass">
+      <div class="ph-id">P0·preflight</div>
+      <div class="ph-t">Bootstrap simulator &amp; platform</div>
+      <div class="ph-m">already up (reused)</div>
+      <div class="ph-d">0.07s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P1·plant-model</div>
+      <div class="ph-t">plant model preset + offline optimum W*</div>
+      <div class="ph-m"></div>
+      <div class="ph-d">2.78s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P2·provision</div>
+      <div class="ph-t">multi-protocol multi-line provisioning（≤5 ）</div>
+      <div class="ph-m">5/5 devices ready · 4  lines</div>
+      <div class="ph-d">2.93s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P3·integration</div>
+      <div class="ph-t">multi-protocol DAQ + governed write/read + F5 interception</div>
+      <div class="ph-m">5/5 Linesampling</div>
+      <div class="ph-d">14.43s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P4·tool-loop</div>
+      <div class="ph-t">数采→数控→判定 工具级闭环（harness=opencode，不经 LLM）</div>
+      <div class="ph-m">4  loops</div>
+      <div class="ph-d">18.40s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P4b·rollback-records</div>
+      <div class="ph-t">Rollback &amp; optimization records (node rollback · verdict/execution separation · param ledger)</div>
+      <div class="ph-m">rollback &amp; ledger passed</div>
+      <div class="ph-d">0.88s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P4c·hitl</div>
+      <div class="ph-t">HITL 审批闭环（挂起→面板可见→批准→真实写生效）</div>
+      <div class="ph-m">HITL loop passed</div>
+      <div class="ph-d">1.28s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P4d·audit-surfaces</div>
+      <div class="ph-t">治理只读面（参数账本·审计·运维日志·报警）</div>
+      <div class="ph-m">10 锚 / 200 审计</div>
+      <div class="ph-d">0.04s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P4e·recipe-lifecycle</div>
+      <div class="ph-t">配方管理全生命周期（版本·已知良好·回退·基准恢复·一键下发）</div>
+      <div class="ph-m">2/2 Line配方全链通过</div>
+      <div class="ph-d">0.30s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P6·closedloop</div>
+      <div class="ph-t">闭环优化参数 benchmark（3 seed · 写路径=governed · ≤8 迭代/seed）</div>
+      <div class="ph-m">J/J* ∈ [0.968, 0.972]</div>
+      <div class="ph-d">116s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P7·frames</div>
+      <div class="ph-t">多形态数采：向量轮廓与图像帧落库</div>
+      <div class="ph-m">vector 5 / image 5</div>
+      <div class="ph-d">9.07s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P8·portability</div>
+      <div class="ph-t">Cross-scenario portability (re-commission on a second plant preset, config-only)</div>
+      <div class="ph-m">film-line: 3 lines + 2 satellite · F5 9/9 · false blocks 0 · 0 code changes</div>
+      <div class="ph-d">18.71s</div>
+    </div>
+    <div class="ph pass">
+      <div class="ph-id">P8b·backstop</div>
+      <div class="ph-t">System backstop drill (PV frozen out of window → system-judged bounded rollback)</div>
+      <div class="ph-m">fired in 130.176s · restored true</div>
+      <div class="ph-d">137s</div>
+    </div>
+    <div class="ph warn">
+      <div class="ph-id">P9·subsystems</div>
+      <div class="ph-t">Platform subsystems (team dispatch · team memory idempotency · harness registry)</div>
+      <div class="ph-m">team COMPLETED · mem ✔ · engines 14(12 avail)</div>
+      <div class="ph-d">3.25s</div>
+    </div></div></div>
+  <div class="grid2"><div class="card"><h3>Write p50 (ms, per line/protocol)</h3>
+    <svg viewBox="0 0 560 154" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="320.00000000000006" height="26" rx="4" fill="#41c8f4" opacity="0.85"/>
+      <text x="460.00000000000006" y="23" class="bv">94.08ms</text>
+      <text x="0" y="59" class="bl">L2 opcua</text>
+      <rect x="132" y="42" width="66.36124958811213" height="26" rx="4" fill="#41c8f4" opacity="0.85"/>
+      <text x="206.36124958811212" y="59" class="bv">19.51ms</text>
+      <text x="0" y="95" class="bl">L3 mqtt</text>
+      <rect x="132" y="78" width="65.84763868663572" height="26" rx="4" fill="#41c8f4" opacity="0.85"/>
+      <text x="205.84763868663572" y="95" class="bv">19.36ms</text>
+      <text x="0" y="131" class="bl">L4 http</text>
+      <rect x="132" y="114" width="114.35155560752135" height="26" rx="4" fill="#41c8f4" opacity="0.85"/>
+      <text x="254.35155560752133" y="131" class="bv">33.62ms</text></svg></div><div class="card"><h3>DAQ sample points (real driver)</h3>
+    <svg viewBox="0 0 560 190" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="149.33333333333334" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="289.33333333333337" y="23" class="bv">7.00</text>
+      <text x="0" y="59" class="bl">L2 opcua</text>
+      <rect x="132" y="42" width="234.66666666666666" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="374.66666666666663" y="59" class="bv">11.00</text>
+      <text x="0" y="95" class="bl">L3 mqtt</text>
+      <rect x="132" y="78" width="256" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="396" y="95" class="bv">12.00</text>
+      <text x="0" y="131" class="bl">L4 http</text>
+      <rect x="132" y="114" width="277.3333333333333" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="417.3333333333333" y="131" class="bv">13.00</text>
+      <text x="0" y="167" class="bl">L5 modbus-rtu</text>
+      <rect x="132" y="150" width="320" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="460" y="167" class="bv">15.00</text></svg></div><div class="card"><h3>Governance F5 interception (%)</h3>
+    <svg viewBox="0 0 560 154" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="368" height="26" rx="4" fill="#e6b23c" opacity="0.85"/>
+      <text x="508" y="23" class="bv">100%</text>
+      <text x="0" y="59" class="bl">L2 opcua</text>
+      <rect x="132" y="42" width="368" height="26" rx="4" fill="#e6b23c" opacity="0.85"/>
+      <text x="508" y="59" class="bv">100%</text>
+      <text x="0" y="95" class="bl">L3 mqtt</text>
+      <rect x="132" y="78" width="368" height="26" rx="4" fill="#e6b23c" opacity="0.85"/>
+      <text x="508" y="95" class="bv">100%</text>
+      <text x="0" y="131" class="bl">L4 http</text>
+      <rect x="132" y="114" width="368" height="26" rx="4" fill="#e6b23c" opacity="0.85"/>
+      <text x="508" y="131" class="bv">100%</text></svg></div><div class="card"><h3>Agent loop convergence (s)</h3>
+    <svg viewBox="0 0 560 154" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="320.00000000000006" height="26" rx="4" fill="#a78bfa" opacity="0.85"/>
+      <text x="460.00000000000006" y="23" class="bv">5.08s</text>
+      <text x="0" y="59" class="bl">L2 opcua</text>
+      <rect x="132" y="42" width="275.63421828908554" height="26" rx="4" fill="#a78bfa" opacity="0.85"/>
+      <text x="415.63421828908554" y="59" class="bv">4.38s</text>
+      <text x="0" y="95" class="bl">L3 mqtt</text>
+      <rect x="132" y="78" width="274.12389380530976" height="26" rx="4" fill="#a78bfa" opacity="0.85"/>
+      <text x="414.12389380530976" y="95" class="bv">4.36s</text>
+      <text x="0" y="131" class="bl">L4 http</text>
+      <rect x="132" y="114" width="274.87905604719765" height="26" rx="4" fill="#a78bfa" opacity="0.85"/>
+      <text x="414.87905604719765" y="131" class="bv">4.37s</text></svg></div><div class="card"><h3>Closed-loop J (per seed): start → end vs offline optimum J*=89.894</h3>
+    <svg viewBox="0 0 560 262" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">S42 start</text>
+      <rect x="132" y="6" width="261.3541663355889" height="26" rx="4" fill="#8ba3bd" opacity="0.85"/>
+      <text x="401.3541663355889" y="23" class="bv">71.50</text>
+      <text x="0" y="59" class="bl">S42 end</text>
+      <rect x="132" y="42" width="317.89488572254936" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="457.89488572254936" y="59" class="bv">86.97</text>
+      <text x="0" y="95" class="bl">S43 start</text>
+      <rect x="132" y="78" width="243.93031157331328" height="26" rx="4" fill="#8ba3bd" opacity="0.85"/>
+      <text x="383.93031157331325" y="95" class="bv">66.74</text>
+      <text x="0" y="131" class="bl">S43 end</text>
+      <rect x="132" y="114" width="318.2823261682807" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="458.2823261682807" y="131" class="bv">87.08</text>
+      <text x="0" y="167" class="bl">S44 start</text>
+      <rect x="132" y="150" width="244.7015373662313" height="26" rx="4" fill="#8ba3bd" opacity="0.85"/>
+      <text x="384.70153736623126" y="167" class="bv">66.95</text>
+      <text x="0" y="203" class="bl">S44 end</text>
+      <rect x="132" y="186" width="319.331339450591" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="459.331339450591" y="203" class="bv">87.37</text>
+      <text x="0" y="239" class="bl">J* (offline optimum)</text>
+      <rect x="132" y="222" width="328.57142857142856" height="26" rx="4" fill="#a78bfa" opacity="0.85"/>
+      <text x="468.57142857142856" y="239" class="bv">89.89</text></svg></div><div class="card"><h3>Closed-loop attainment J/J* (%)</h3>
+    <svg viewBox="0 0 560 118" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">seed 42</text>
+      <rect x="132" y="6" width="356.224" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="496.224" y="23" class="bv">96.80%</text>
+      <text x="0" y="59" class="bl">seed 43</text>
+      <rect x="132" y="42" width="356.59200000000004" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="496.59200000000004" y="59" class="bv">96.90%</text>
+      <text x="0" y="95" class="bl">seed 44</text>
+      <rect x="132" y="78" width="357.69599999999997" height="26" rx="4" fill="#35e0a0" opacity="0.85"/>
+      <text x="497.69599999999997" y="95" class="bv">97.20%</text></svg></div><div class="card"><h3>Closed-loop iterations (count)</h3>
+    <svg viewBox="0 0 560 118" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">seed 42</text>
+      <rect x="132" y="6" width="320.00000000000006" height="26" rx="4" fill="#41c8f4" opacity="0.85"/>
+      <text x="460.00000000000006" y="23" class="bv">2.00</text>
+      <text x="0" y="59" class="bl">seed 43</text>
+      <rect x="132" y="42" width="320.00000000000006" height="26" rx="4" fill="#41c8f4" opacity="0.85"/>
+      <text x="460.00000000000006" y="59" class="bv">2.00</text>
+      <text x="0" y="95" class="bl">seed 44</text>
+      <rect x="132" y="78" width="320.00000000000006" height="26" rx="4" fill="#41c8f4" opacity="0.85"/>
+      <text x="460.00000000000006" y="95" class="bv">2.00</text></svg></div></div>
+  <div class="card"><h3>Per-line detail</h3>
+    <table><thead><tr>
+      <th>#</th><th>Protocol</th><th>Sim device</th><th>DAQ samples</th><th>Write p50 (ms)</th>
+      <th>Readback dev.</th><th>F5 block</th><th>Loop iters</th><th>Converge (s)</th><th>Agent</th>
+    </tr></thead><tbody>
+      <tr>
+        <td>1</td><td><code>modbus-tcp</code></td><td>挤出主机PLC(Modbus TCP)</td>
+        <td>7.00</td><td>94.08</td><td>0.04</td>
+        <td>6/6</td>
+        <td>3.00</td><td>5.08</td><td>—</td>
+      </tr><tr>
+        <td>2</td><td><code>opcua</code></td><td>熔体泵送单元(OPC UA)</td>
+        <td>11.00</td><td>19.51</td><td>0.00</td>
+        <td>6/6</td>
+        <td>3.00</td><td>4.38</td><td>—</td>
+      </tr><tr>
+        <td>3</td><td><code>mqtt</code></td><td>在线测厚仪(MQTT)</td>
+        <td>12.00</td><td>19.36</td><td>—</td>
+        <td>6/6</td>
+        <td>3.00</td><td>4.36</td><td>—</td>
+      </tr><tr>
+        <td>4</td><td><code>http</code></td><td>CCD检测站(HTTP)</td>
+        <td>13.00</td><td>33.62</td><td>—</td>
+        <td>6/6</td>
+        <td>3.00</td><td>4.37</td><td>—</td>
+      </tr><tr>
+        <td>5</td><td><code>modbus-rtu</code></td><td>晶点计数从站(Modbus RTU)</td>
+        <td>15.00</td><td>—</td><td>—</td>
+        <td>—</td>
+        <td>—</td><td>—</td><td>—</td>
+      </tr>
+    </tbody></table>
+  </div>
+  <div class="card"><h3>Check results</h3>
+    <div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P0] platform-reachable · platform reachable &amp; authenticated</div>
+      <div class="ev">平台 http://127.0.0.1:3001</div><div class="ev">鉴权 OK (login)</div><div class="ev">simulator http://127.0.0.1:4010：already up (reused)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P1] preset-applied · 预设 cast-film-physics 已应用</div>
+      <div class="ev">devices 5 </div><div class="ev">协议 modbus-tcp, modbus-rtu, opcua, mqtt, http</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P1] offline-optimum · offline optimum W* (ground truth) available</div>
+      <div class="ev">W* = {&quot;zoneTemp&quot;:212.5,&quot;screw&quot;:55,&quot;lineSpeed&quot;:40,&quot;meltTemp&quot;:212.5,&quot;pressure&quot;:6.961,&quot;thickness&quot;:49.18,&quot;defect&quot;:0.055,&quot;score&quot;:89.894,&quot;computedAt&quot;:&quot;2026-09-14T15:05:28.877Z&quot;}</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P2] gateway · gateway controller start (idempotent)</div>
+      <div class="ev">POST /api/workshop/daq/controller {action:start}</div><div class="ev">采样仍受「活动Line批」门控，故每台有 SP 的devices自成一可开跑Line</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P2] line-1-modbus-tcp · Line1 [modbus-tcp] 供给</div>
+      <div class="ev">line=ln-982d7ac5 daq=dn-ceb137fd dcw=dw-537123a3 recipe=rc-a7d5f4eb</div><div class="ev">DAQ driver test ✔ 信号「熔体温度」：连接成功,读取 40001 = 31.329999923706055</div><div class="ev">SP 中心 200 窗口 [191.6, 208.4]</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P2] line-2-opcua · Line2 [opcua] 供给</div>
+      <div class="ev">line=ln-70c0b4df daq=dn-1b941917 dcw=dw-ca42de92 recipe=rc-1be9f945</div><div class="ev">DAQ driver test ✔ 信号「MeltPressure」：会话建立成功,读取 ns=2;s=AW.P = 6.137</div><div class="ev">SP 中心 150 窗口 [141, 159]</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P2] line-3-mqtt · Line3 [mqtt] 供给</div>
+      <div class="ev">line=ln-13056c81 daq=dn-66bf1d74 dcw=dw-86e1f0f6 recipe=rc-4ab37b04</div><div class="ev">DAQ driver test ✔ 信号「thick」：Broker 连接成功,收到 aw/sim/thick = 19.1</div><div class="ev">SP 中心 95 窗口 [89, 101]</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P2] line-4-http · Line4 [http] 供给</div>
+      <div class="ev">line=ln-1401b3a3 daq=dn-53ae12f1 dcw=dw-36f0e1e7 recipe=rc-1e21588e</div><div class="ev">DAQ driver test ✔ 信号「defect」：接口可达,取值 = 100</div><div class="ev">SP 中心 1 窗口 [0.91, 1.09]</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P2] line-5-modbus-rtu · Line5 [modbus-rtu] 供给（satellite DAQ）</div>
+      <div class="ev">line=ln-1401b3a3 daq=dn-0028a654 dcw=✘ recipe=rc-1e21588e ↪hosted by line4</div><div class="ev">DAQ driver test ✔ 信号「晶点计数」：网关连接成功,读取 40001 = 5</div><div class="ev">（该devices无可用 DCW 导出，作为satellite DAQ随宿主批采样）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P3] line-1-io · Line1 [modbus-tcp] integration check</div>
+      <div class="ev">✔ DAQ samples stored 7  points (modbus-tcp real driver）</div><div class="ev">✔ 约6写 p50=94.079ms p95=776.742ms，readback deviation 0.04</div><div class="ev">✔ Governance F5: 6/6 rejected (modbus-tcp 真实链路），legal write受理</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P3] line-2-io · Line2 [opcua] integration check</div>
+      <div class="ev">✔ DAQ samples stored 11  points (opcua real driver）</div><div class="ev">✔ 约6写 p50=19.51ms p95=24.367ms，readback deviation 0</div><div class="ev">✔ Governance F5: 6/6 rejected (opcua 真实链路），legal write受理</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P3] line-3-io · Line3 [mqtt] integration check</div>
+      <div class="ev">✔ DAQ samples stored 12  points (mqtt real driver）</div><div class="ev">✔ 约6写 p50=19.359ms p95=19.797ms，readback deviation null</div><div class="ev">✔ Governance F5: 6/6 rejected (mqtt 真实链路），legal write受理</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P3] line-4-io · Line4 [http] integration check</div>
+      <div class="ev">✔ DAQ samples stored 13  points (http real driver）</div><div class="ev">✔ 约6写 p50=33.619ms p95=41.223ms，readback deviation null</div><div class="ev">✔ Governance F5: 6/6 rejected (http 真实链路），legal write受理</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P3] line-5-io · Line5 [modbus-rtu] integration check</div>
+      <div class="ev">✔ DAQ samples stored 15  points (modbus-rtu real driver）</div><div class="ev">no SP write point; write/governance sub-checks skipped</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4] tool-loop-setup · 闭环夹具（channel+agent）</div>
+      <div class="ev">channel=5899e4bc-22fa-4730-963d-febb4d286200</div><div class="ev">agent=8b8ef2bc-652c-46ed-8365-c4561154fa46</div><div class="ev">harness=opencode</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4] tool-bridge · opencode 的 host 工具直调面可用</div>
+      <div class="ev">探测 my_industrial_nodes → 你尚未绑定任何工业节点。请在数字孪生界面的 Agent 详情面板中绑定数控/数采节点后再调用工业工具。</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4] line-1-loop · Line1 [modbus-tcp] Agent 闭环收敛（3/3 轮）</div>
+      <div class="ev">iter1: SP→194.96 ✔ · 回读 195 ✔ · daq ✔ · judge ✔</div><div class="ev">iter2: SP→197.48 ✔ · 回读 197.5 ✔ · daq ✔ · judge ✔</div><div class="ev">iter3: SP→200 ✔ · 回读 200 ✔ · daq ✔ · judge ✔</div><div class="ev">向窗口中心收敛 ✔ · 耗时 5.085s</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4] line-2-loop · Line2 [opcua] Agent 闭环收敛（3/3 轮）</div>
+      <div class="ev">iter1: SP→144.6 ✔ · 回读 145 ✔ · daq ✔ · judge ✔</div><div class="ev">iter2: SP→147.3 ✔ · 回读 147 ✔ · daq ✔ · judge ✔</div><div class="ev">iter3: SP→150 ✔ · 回读 150 ✔ · daq ✔ · judge ✔</div><div class="ev">向窗口中心收敛 ✔ · 耗时 4.38s</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4] line-3-loop · Line3 [mqtt] Agent 闭环收敛（3/3 轮）</div>
+      <div class="ev">iter1: SP→91.4 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</div><div class="ev">iter2: SP→93.2 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</div><div class="ev">iter3: SP→95 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</div><div class="ev">向窗口中心收敛 ✔ · 耗时 4.356s</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4] line-4-loop · Line4 [http] Agent 闭环收敛（3/3 轮）</div>
+      <div class="ev">iter1: SP→0.946 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</div><div class="ev">iter2: SP→0.973 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</div><div class="ev">iter3: SP→1 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</div><div class="ev">向窗口中心收敛 ✔ · 耗时 4.368s</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4] plant-response · 工艺模型响应（SP→plant truth 随动）</div>
+      <div class="ev">真值样本 6 → 76</div><div class="ev">plant state: {&quot;enabled&quot;:true,&quot;running&quot;:true,&quot;phase&quot;:&quot;steady&quot;,&quot;disturbances&quot;:{&quot;heaterDecay&quot;:1,&quot;feedDriftPerMin&quot;:0.15},&quot;seed&quot;:42,&quot;timeScale&quot;:6,&quot;elapsedS&quot;:228,&quot;defect&quot;:4.439}</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4b] line-1-optrecord · Line1 优化记录生命周期</div>
+      <div class="ev">current 200 → record A writes 203.36 (up)，记录 B writes 196.64 (down); opposite directions to dodge the rollback cooldown</div><div class="ev">✔ (keep path) record opt-68770a85 verdict keep → 判定已入册:记录 opt-68770a85 → keep(bench: 回读一致，判定 keep)。已定档为已验证经验(配方已标记 last</div><div class="ev">✔ (rollback path) record opt-581f7752 verdict rollback (recorded only; PLC still 196.60000610351562)</div><div class="ev">✔ rollback executed (status 200) → readback 203.39999389648438 (expected record B from=203.36)</div><div class="ev">✔ 优化记录查询面可见本节点记录 6  (judged=5）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck warn">▲ [P4b] line-1-rbjudge · Line1 撤销记录 opt-2bb0f1a1 判定关闭</div>
+      <div class="ev">judge keep → 记录 opt-2bb0f1a1 不是你发起的优化(发起者:用户),Agent 仅可判定自己的记录;他人记录请请用户在界面判定。</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4b] line-1-rollback · Line1 node-level single-step rollback (undo stack)</div>
+      <div class="ev">✔ write 205.04 effective (readback 205, before 203.39999389648438)</div><div class="ev">✔ journal rollback 受理（status 200，记录 opt-2bb0f1a1）</div><div class="ev">✔ readback after rollback 203.39999389648438 (expected back to 203.39999389648438, tolerance 0.75)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4b] param-ledger · 参数台账（三值对照 + 在册历史）</div>
+      <div class="ev">✔ 参数台账可用（字段：nodeId, nodeName, current, recipeTarget, lastGood, journal, records）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4c] line-2-hitl · Line2 HITL 审批闭环</div>
+      <div class="ev">✔ 下发在人工确认模式下**挂起**，审批面板出现待审项 ap-ba313578（detail: L2-DCW-opcua ip16kb3l(烘箱温度设定)设定 148.2rpm,配方窗口 141~159rpm）</div><div class="ev">✔ verdict approved (status 200) → pending write **unblocked**: 下发成功:L2-DCW-opcua ip16kb3l(烘箱温度设定)设定 148.2rpm → PLC 原始值 148.2;回读 148.2rpm一致。当前活动配方「Integra</div><div class="ev">✔ post-approval PLC effect: readback 148 (expected 148.2)</div><div class="ev">审批裁决时延 6 ms（挂起→批准，含轮询周期）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4d] audit-surfaces · 治理只读面</div>
+      <div class="ev">✔ 参数变更账本 journal：本产线 10  anchors (source coverage  rollback/manual/agent/recipe）</div><div class="ev">✔ audit: 200 entries</div><div class="ev">✔ ops-logs: 200 entries</div><div class="ev">✔ 报警记录：全局 155 （含历史）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4e] line-1-recipe · Line1 [modbus-tcp] recipe lifecycle</div>
+      <div class="ev">(1) initial versions 1, current param value 200</div><div class="ev">✔ (2) versions after edit 2 (+1), param value 201.68 (expected 201.68)</div><div class="ev">✔ (3) 标记已知良好批次 runId=rr-eca170e0 → lastGood=rr-eca170e0</div><div class="ev">✔ (4) versions after revert-to-v1 3 (+1, non-destructive), param value 200 (expected back to 200)</div><div class="ev">✔ (5) baseline restore rollback-good → applied 1 params (status 200)</div><div class="ev">✔ (6) 一键下发 apply → 新批次 rr-243a061a (status 200)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P4e] line-2-recipe · Line2 [opcua] recipe lifecycle</div>
+      <div class="ev">(1) initial versions 1, current param value 150</div><div class="ev">✔ (2) versions after edit 2 (+1), param value 151.8 (expected 151.8)</div><div class="ev">✔ (3) 标记已知良好批次 runId=rr-2f85cabf → lastGood=rr-2f85cabf</div><div class="ev">✔ (4) versions after revert-to-v1 3 (+1, non-destructive), param value 150 (expected back to 150)</div><div class="ev">✔ (5) baseline restore rollback-good → applied 1 params (status 200)</div><div class="ev">✔ (6) 一键下发 apply → 新批次 rr-6924da57 (status 200)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P6] twin-nodes · cast-film twin node provisioning（执行器 + 传感器）</div>
+      <div class="ev">✔ actuator nodes 6/6：zone1-sp, zone2-sp, zone3-sp, screw-sp, linespeed-sp, diegap-sp</div><div class="ev">✔ sensor nodes 5/5：melt-temp, melt-pressure, film-thickness, defect-rate, gels-count</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P6] w-star · 离线最优 W*（ground truth）</div>
+      <div class="ev">W* = {&quot;zoneTemp&quot;:212.5,&quot;screw&quot;:55,&quot;lineSpeed&quot;:40,&quot;meltTemp&quot;:212.5,&quot;pressure&quot;:6.961,&quot;thickness&quot;:49.18,&quot;defect&quot;:0.055,&quot;score&quot;:89.894,&quot;computedAt&quot;:&quot;2026-09-14T15:05:28.877Z&quot;}</div><div class="ev">起始工况 {&quot;zone&quot;:200,&quot;screw&quot;:150,&quot;lineSpeed&quot;:95,&quot;dieGap&quot;:1}（J 显著低于 W*）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P6] seed-42 · seed=42 闭环优化（J/J*=0.968）</div>
+      <div class="ev">预热 6.046s（熔体温度 203.475℃，达工艺窗 [195,225]）</div><div class="ev">iter0 起点：h=54.87μm defect=0.300% P=18.40MPa T=205.2℃ N=150 v=95.0 → J=71.50</div><div class="ev">iter1 下发 N=137 v=95 z=200 → h=49.33μm defect=0.483% P=16.67MPa T=202.2℃ → J=87.39 </div><div class="ev">iter2 下发 N=139 v=95 z=200 → h=50.27μm defect=0.717% P=16.83MPa T=201.4℃ → J=86.56 </div><div class="ev">✔ 连续两次评估满足收敛判据，第 3 轮前终止</div><div class="ev">收敛=true · 迭代=2 · 写=2 · rejected=0 · J0=71.504 → Jend=86.973 · J*=89.894 · 比值=0.968</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P6] seed-43 · seed=43 闭环优化（J/J*=0.969）</div>
+      <div class="ev">预热 0.004s（熔体温度 201.26℃，达工艺窗 [195,225]）</div><div class="ev">iter0 起点：h=55.73μm defect=0.300% P=18.67MPa T=207.6℃ N=150 v=95.0 → J=66.74</div><div class="ev">iter1 下发 N=135 v=95 z=200 → h=48.90μm defect=0.500% P=16.47MPa T=203.1℃ → J=87.45 </div><div class="ev">iter2 下发 N=138 v=95 z=200 → h=49.97μm defect=0.683% P=16.72MPa T=201.3℃ → J=86.71 </div><div class="ev">✔ 连续两次评估满足收敛判据，第 3 轮前终止</div><div class="ev">收敛=true · 迭代=2 · 写=2 · rejected=0 · J0=66.737 → Jend=87.079 · J*=89.894 · 比值=0.969</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P6] seed-44 · seed=44 闭环优化（J/J*=0.972）</div>
+      <div class="ev">预热 0.02s（熔体温度 201.18℃，达工艺窗 [195,225]）</div><div class="ev">iter0 起点：h=55.67μm defect=0.350% P=18.72MPa T=207.7℃ N=150 v=95.0 → J=66.95</div><div class="ev">iter1 下发 N=135 v=95 z=200 → h=49.37μm defect=0.400% P=16.50MPa T=203.7℃ → J=87.76 </div><div class="ev">iter2 下发 N=137 v=95 z=200 → h=49.50μm defect=0.617% P=16.67MPa T=201.5℃ → J=86.97 </div><div class="ev">✔ 连续两次评估满足收敛判据，第 3 轮前终止</div><div class="ev">收敛=true · 迭代=2 · 写=2 · rejected=0 · J0=66.948 → Jend=87.366 · J*=89.894 · 比值=0.972</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P6] closedloop-aggregate · 闭环优化聚合（n=3）</div>
+      <div class="ev">J/J*：min 0.968 · mean 0.97 · max 0.972（J* = 89.894）</div><div class="ev">J start均值 68.396 → end均值 87.139</div><div class="ev">平均迭代 2  · 总写 6 · 越界rejected 0 · 收敛 3/3 · 平均墙钟 36.194s/seed</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P7] frames · 多形态数采（向量/图像帧）</div>
+      <div class="ev">✔ 向量轮廓帧 5 （50.433,50.235,51.197,50.635,51.306,50.34,51.83,51.246,51.334,52.276,51.3,51.358,51.659,51.859,52.237,52.162,52.294,52.605,52.449,53.256,53.057,52.83,53.236,52.715,53.12,53.356,52.708,53.16,53.393,52.837,52.932,53.546,53.304,53.495,52.799,52.742,53.419,52.851,53.133,53.422,52.9,53.266,53.07,53.014,52.221,52.582,52.588,52.438,52.607,52.354,51.431,52.394,51.522,52.221,51.959,51.429,50.945,50.977,51.035,51.125,50.535,50.081,49.803,50.191 points）</div><div class="ev">✔ 图像帧 5 （96×32 image/png）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] scenario-switch · second plant scenario applied: film-line</div>
+      <div class="ev">devices 5 · protocols modbus-tcp, modbus-rtu, opcua, mqtt, http</div><div class="ev">信号域/动力学与第一场景（cast-film-physics）完全不同 —— 框架代码零改动</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] commission-1-modbus-tcp · scenario[film-line] line 1 [modbus-tcp] provisioned</div>
+      <div class="ev">line=ln-fe690ff6 daq=dn-59de1005 dcw=dw-73ad2d1b</div><div class="ev">SP window [164.4, 195.6]</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] commission-2-opcua · scenario[film-line] line 2 [opcua] provisioned</div>
+      <div class="ev">line=ln-d02f5429 daq=dn-2740cb27 dcw=dw-e6d3b26a</div><div class="ev">SP window [164.4, 195.6]</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] commission-3-mqtt · scenario[film-line] line 3 [mqtt] provisioned</div>
+      <div class="ev">line=ln-68ede94d daq=dn-cb3484a2 dcw=dw-5a612481</div><div class="ev">SP window [54, 66]</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] commission-4-modbus-rtu · scenario[film-line] line 4 [modbus-rtu] provisioned (satellite DAQ)</div>
+      <div class="ev">line=ln-68ede94d daq=dn-432993d7 dcw=✘</div><div class="ev">(no SP export → satellite DAQ)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] commission-5-http · scenario[film-line] line 5 [http] provisioned (satellite DAQ)</div>
+      <div class="ev">line=ln-68ede94d daq=dn-2883a4c7 dcw=✘</div><div class="ev">(no SP export → satellite DAQ)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] port-1-modbus-tcp · scenario[film-line] line 1 [modbus-tcp] integration</div>
+      <div class="ev">✔ DAQ samples 9 pts (modbus-tcp real driver)</div><div class="ev">✔ governed write 186.24 → HTTP 200</div><div class="ev">readback deviation 0.04</div><div class="ev">✔ F5 out-of-window 3/3 rejected · legal write accepted (0 false block)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] port-2-opcua · scenario[film-line] line 2 [opcua] integration</div>
+      <div class="ev">✔ DAQ samples 14 pts (opcua real driver)</div><div class="ev">✔ governed write 186.24 → HTTP 200</div><div class="ev">readback deviation 0</div><div class="ev">✔ F5 out-of-window 3/3 rejected · legal write accepted (0 false block)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] port-3-mqtt · scenario[film-line] line 3 [mqtt] integration</div>
+      <div class="ev">✔ DAQ samples 14 pts (mqtt real driver)</div><div class="ev">✔ governed write 62.4 → HTTP 200</div><div class="ev">✔ F5 out-of-window 3/3 rejected · legal write accepted (0 false block)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] port-4-modbus-rtu · scenario[film-line] line 4 [modbus-rtu] integration</div>
+      <div class="ev">✔ DAQ samples 14 pts (modbus-rtu real driver)</div><div class="ev">no SP write point; write/governance sub-checks skipped (satellite DAQ)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8] port-5-http · scenario[film-line] line 5 [http] integration</div>
+      <div class="ev">✔ DAQ samples 13 pts (http real driver)</div><div class="ev">no SP write point; write/governance sub-checks skipped (satellite DAQ)</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8b] cleanup · 遗留 open 记录清场（关闭 12 条）</div>
+      <div class="ev">records closed: 12</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8b] open-record · 优化记录 opt-595ba5c7 已开（基线 186.1999969482422 → 176.88，auto 策略）</div>
+      <div class="ev">下发成功:L1-DCW-modbus-tcp ip16kb3lp8(烘箱温度设定)设定 176.88℃ → PLC 原始值 176.88;回读 176.89999389648438℃一致。当前活动配方「Integrated工艺1 ip16kb3lp8」。写入并回读一致:176.8</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8b] freeze · DAQ temp-pv 已冻结至 150（窗外，窗 [164.4, 195.6]）</div>
+      <div class="ev">device=dev-78bd64ea signal=temp-pv</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8b] backstop-verdict · 系统兜底判定回退 + 自动恢复基线</div>
+      <div class="ev">判定 by=system verdict=rollback · 时延 130.176s（环境类，节拍决定）</div><div class="ev">PLC 值 186.1999969482422 → 期望基线 186.1999969482422（±0.75） ✔</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P8b] restore · 过程量解冻 + 第一场景恢复: cast-film-physics</div>
+      <div class="ev">rig left as found</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck warn">▲ [P9] team-dispatch · 团队调度（lead 派发 → worker 完成）</div>
+      <div class="ev">终态 COMPLETED · assignee=282d0696-548b-43c6-a0ec-b5ec1e2e581b 未观察到派发到 worker</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P9] team-memory · 团队记忆写入 + dedupKey 幂等</div>
+      <div class="ev">POST×2 status 200/200 → 列表中匹配 1 条（期望 1）</div>
+    </div><div style="margin-bottom:9px">
+      <div class="ck pass">✔ [P9] harness-registry · 引擎注册表枚举 + 可用性探测</div>
+      <div class="ev">注册 14 引擎（期望 ≥14） · 环境可用 12 · 覆盖 mock/RPC/SDK/CLI 族</div>
+    </div>
+  </div>
+  <div class="card"><h3>Closed-loop optimization benchmark (governed write path)</h3>
+    <div class="meta" style="margin-bottom:8px">J* (offline grid optimum) = 89.89 · attainment J/J*: min 96.80% / mean 97.00% / max 97.20% · mean iters 2.00 · total writes 6.00 · rejections 0.00 · converged 3.00/3.00</div>
+    <table><thead><tr><th>seed</th><th>warmup (s)</th><th>J start</th><th>J end</th><th>J/J*</th><th>iters</th><th>writes</th><th>rej.</th><th>conv.</th><th>wall (s)</th></tr></thead><tbody>
+      <tr>
+        <td>42</td><td>6.05</td><td>71.50</td><td><b>86.97</b></td>
+        <td>96.8%</td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>36.21</td>
+      </tr><tr>
+        <td>43</td><td>0.00</td><td>66.74</td><td><b>87.08</b></td>
+        <td>96.9%</td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>36.19</td>
+      </tr><tr>
+        <td>44</td><td>0.02</td><td>66.95</td><td><b>87.37</b></td>
+        <td>97.2%</td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>36.19</td>
+      </tr>
+    </tbody></table>
+  </div>
+  <div class="card"><h3>Metric registry (paper/audit citation)</h3>
+    <table><thead><tr><th>Section</th><th>Metric</th><th>Value</th><th>Unit</th><th>Note</th></tr></thead><tbody>
+    <tr><td>plant</td><td><code>W_star_objective</code></td><td>89.89</td><td></td><td>offline grid-search optimum (benchmark ground truth)</td></tr><tr><td>provision</td><td><code>lines_created</code></td><td>4.00</td><td></td><td>可开跑Line（另有 1 satellite DAQ）</td></tr><tr><td>provision</td><td><code>daq_nodes</code></td><td>5.00</td><td></td><td>real-protocol DAQ nodes</td></tr><tr><td>gov</td><td><code>intercept_modbus-tcp</code></td><td>1.00</td><td></td><td>governance interception rate</td></tr><tr><td>gov</td><td><code>intercept_opcua</code></td><td>1.00</td><td></td><td>governance interception rate</td></tr><tr><td>gov</td><td><code>intercept_mqtt</code></td><td>1.00</td><td></td><td>governance interception rate</td></tr><tr><td>gov</td><td><code>intercept_http</code></td><td>1.00</td><td></td><td>governance interception rate</td></tr><tr><td>provision</td><td><code>lines_sampling</code></td><td>5.00</td><td></td><td>real driver produced samples</td></tr><tr><td>gov</td><td><code>intercept_rate_all</code></td><td>1.00</td><td></td><td>全协议合并</td></tr><tr><td>loop</td><td><code>tool_loops_ok</code></td><td>4.00</td><td> lines</td><td>工具级闭环达成</td></tr><tr><td>gov</td><td><code>record_keep_rollback_ok</code></td><td>1.00</td><td></td><td>优化记录判定/执行分离</td></tr><tr><td>hitl</td><td><code>approval_latency_ms</code></td><td>6.00</td><td>ms</td><td>挂起→批准（含 800ms 轮询粒度）</td></tr><tr><td>audit</td><td><code>journal_anchors</code></td><td>10.00</td><td></td><td>本Line参数变更账本</td></tr><tr><td>audit</td><td><code>audit_entries</code></td><td>200</td><td></td><td>全局审计目</td></tr><tr><td>audit</td><td><code>ops_logs</code></td><td>200</td><td></td><td>全局运维日志</td></tr><tr><td>recipe</td><td><code>recipe_lifecycles_ok</code></td><td>2.00</td><td> lines</td><td>版本/回退/基准恢复/下发 全链通过</td></tr><tr><td>closedloop</td><td><code>J_over_Jstar_mean</code></td><td>0.97</td><td></td><td>n=3 seeds，写路径=governed</td></tr><tr><td>closedloop</td><td><code>J_over_Jstar_min</code></td><td>0.97</td><td></td><td>最差 seed（保守下界）</td></tr><tr><td>closedloop</td><td><code>J_end_mean</code></td><td>87.14</td><td></td><td>J* = 89.894</td></tr><tr><td>closedloop</td><td><code>cl_iters_mean</code></td><td>2.00</td><td></td><td>闭环收敛迭代数</td></tr><tr><td>closedloop</td><td><code>cl_writes_total</code></td><td>6.00</td><td></td><td>受治理的闭环写总数</td></tr><tr><td>closedloop</td><td><code>cl_rejected_total</code></td><td>0.00</td><td></td><td>越界被拒（治理拦截）</td></tr><tr><td>daq</td><td><code>vector_frames</code></td><td>5.00</td><td></td><td>厚度横向轮廓</td></tr><tr><td>daq</td><td><code>image_frames</code></td><td>5.00</td><td></td><td>CCD 表面图像</td></tr><tr><td>portability</td><td><code>scenario2_lines</code></td><td>3.00</td><td></td><td>second preset &quot;film-line&quot; (config-only)</td></tr><tr><td>portability</td><td><code>scenario2_intercept_rate</code></td><td>1.00</td><td></td><td>F5 out-of-window interception on second scenario</td></tr><tr><td>portability</td><td><code>scenario2_false_blocks</code></td><td>0.00</td><td></td><td>legal in-window writes blocked on second scenario</td></tr><tr><td>gov</td><td><code>backstop_fired</code></td><td>1.00</td><td></td><td>system-judged rollback on window breach</td></tr><tr><td>gov</td><td><code>backstop_restored</code></td><td>1.00</td><td></td><td>auto-restore to record baseline</td></tr><tr><td>gov</td><td><code>backstop_latency_s</code></td><td>130</td><td>s</td><td>freeze → verdict (environmental)</td></tr><tr><td>team</td><td><code>team_dispatch_ok</code></td><td>0.00</td><td></td><td>lead→worker dispatch closed loop</td></tr><tr><td>memory</td><td><code>team_memory_idempotent</code></td><td>1.00</td><td></td><td>dedupKey idempotent refresh</td></tr><tr><td>agent</td><td><code>harness_registry</code></td><td>14.00</td><td></td><td>environment-available 12</td></tr>
+    </tbody></table></div>
+  <footer>Reproduce: node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3
+Artifacts: run.json / metrics.csv / summary.json / dashboard.html (append-only, never overwritten)
+Judge-class metrics are bitwise-identical under a fixed seed; latency figures may vary with the environment.</footer>
+</div></body></html>

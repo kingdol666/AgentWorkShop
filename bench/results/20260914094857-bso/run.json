@@ -1,0 +1,525 @@
+{
+  "env": {
+    "runId": "20260914094857-bso",
+    "tier": "plc",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "startedAt": "2026-09-14T09:49:36.225Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "configHash": "61e1a1119d6f3ff2",
+    "harnessHash": "22bc43e3eb36d716",
+    "gitCommit": "d6c824d",
+    "harnessFiles": 13,
+    "reps": [
+      {
+        "rep": 1,
+        "pass": 6,
+        "fail": 0,
+        "skip": 0
+      }
+    ],
+    "total": {
+      "got": 22.6,
+      "w": 23,
+      "pass": 12,
+      "fail": 0,
+      "warn": 1,
+      "skip": 0,
+      "overall": 0.982608695652174
+    }
+  },
+  "dims": [
+    {
+      "id": "D1",
+      "name": "数据采集面",
+      "score": 0.9666666666666667,
+      "checks": 7
+    },
+    {
+      "id": "D2",
+      "name": "写控治理面",
+      "score": 1,
+      "checks": 7
+    },
+    {
+      "id": "D3",
+      "name": "智能体面",
+      "score": 1,
+      "checks": 1
+    },
+    {
+      "id": "D6",
+      "name": "互操作面",
+      "score": 0.9,
+      "checks": 2
+    },
+    {
+      "id": "D7",
+      "name": "审计归因面",
+      "score": 1,
+      "checks": 3
+    },
+    {
+      "id": "D8",
+      "name": "性能伸缩面",
+      "score": 1,
+      "checks": 2
+    },
+    {
+      "id": "D0",
+      "name": "论文-代码一致性",
+      "score": 1,
+      "checks": 1
+    }
+  ],
+  "results": [
+    {
+      "rep": 0,
+      "id": "s1-inventory",
+      "title": "能力清单核查（路由/引擎/工具/表/驱动）",
+      "tier": "static",
+      "dims": [
+        "D1",
+        "D3",
+        "D6"
+      ],
+      "weight": 2,
+      "requires": [],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "subchecks": 9,
+        "ok": 9,
+        "routes": 208,
+        "mcpTools": 25,
+        "engines": 14,
+        "tables": 22,
+        "tools": 10
+      },
+      "evidence": [
+        "✔ REST 路由文件 ≥ 200 — 实际 208",
+        "✔ MCP 工具 ≥ 25 — 实际 25",
+        "✔ Harness 引擎 = 14 — 找到 14/14",
+        "✔ SQLite 表 ≥ 20 — 实际 22",
+        "✔ FTS5 记忆索引 — agent_memories_fts",
+        "✔ 协议驱动 = 5 族 (modbus-tcp/rtu/opcua/mqtt/http) — 找到 modbus, rtu, opcua, mqtt, http",
+        "✔ 治理工具面 ≥ 10 — 10/10",
+        "✔ audit_log 14 列 schema — ops.repo.ts",
+        "✔ 审计 8 类事件枚举 — kind ∈ write/manual/alarm/…"
+      ],
+      "note": "全部能力组件在源码中核实"
+    },
+    {
+      "rep": 0,
+      "id": "s2-paper-consistency",
+      "title": "论文-代码常量一致性",
+      "tier": "static",
+      "dims": [
+        "D0",
+        "D2"
+      ],
+      "weight": 2,
+      "requires": [],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "anchors": 20,
+        "found": 20,
+        "missing": 0
+      },
+      "evidence": [
+        "✔ sweep 并发配额 64（server/services/workshop/daq/daq-controller.ts · 论文 §III-B2）",
+        "✔ sweep 周期 250ms（server/services/workshop/daq/daq-controller.ts · 论文 §III-B2）",
+        "✔ 回退重检周期 30s（server/services/workshop/dcw/recipe-rollback-manager.ts · 论文 §IV-D）",
+        "✔ 自动回退链上限 K=2（server/services/workshop/dcw/recipe-rollback-manager.ts · 论文 §IV-D / 不变式 I3）",
+        "✔ 越限判定阈值 B=3（server/services/workshop/dcw/recipe-rollback-manager.ts · 论文 §IV-D）",
+        "✔ 记忆 RRF k=60（server/services/workshop/runtime/memory.ts · 论文 §V-A）",
+        "✔ 记忆 MMR λ=0.7（server/services/workshop/runtime/memory.ts · 论文 §V-A）",
+        "✔ 记忆权重 0.5/0.3/0.2（server/services/workshop/runtime/memory.ts · 论文 §V-A 式(3)）",
+        "✔ 上下文压缩阈值 70%（app/config/schema.ts · 论文 §V-A）",
+        "✔ 记录过期接管 30min（app/config/schema.ts · 论文 §IV-B）",
+        "✔ WS 推送上限 60s（server/services/workshop/daq/daq-runtime.ts · 论文 §III-B1）",
+        "✔ 报警滞回 2% 量程（server/services/workshop/daq/daq-node.ts · 论文 §III-B3）",
+        "✔ 报警 warn 带 8% 量程（server/services/workshop/daq/daq-node.ts · 论文 §III-B3）",
+        "✔ 去抖 3 连续帧（server/services/workshop/daq/daq-node.ts · 论文 §III-B3）",
+        "✔ 写控账本条目类型（server/services/workshop/dcw/dcw-controller.ts · 论文 §IV-B 阶段5）",
+        "✔ 回读死区公式（server/services/workshop/dcw/dcw-runtime.ts · 论文 §IV 式(2)）",
+        "✔ AEP 协议版本 v1（shared/workshop-protocol.ts · 论文 §III-E）",
+        "✔ 调度空闲退避上限 8s（server/services/workshop/runtime/scheduler-loop.ts · 论文 §V-B）",
+        "✔ 数控网关扫描周期 500ms（server/services/workshop/dcw/dcw-controller.ts · 论文 §III）",
+        "✔ 停滞看门狗 300s（server/services/workshop/runtime/scheduler-loop.ts · 论文 §V-B）"
+      ],
+      "note": "论文全部常量锚点在源码中核实"
+    },
+    {
+      "rep": 0,
+      "id": "s3-governance-pipeline",
+      "title": "治理管线阶段顺序锚定",
+      "tier": "static",
+      "dims": [
+        "D2",
+        "D7"
+      ],
+      "weight": 2,
+      "requires": [],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "chainsOk": 2,
+        "chainTotal": 2
+      },
+      "evidence": [
+        "✔ write() 编排链顺序成立: beforeWrite(护栏) → param.min(软联锁) → rt.write(执行) → afterWrite(闭环入册) → dcw.write.(审计)",
+        "✔ executeWrite() 执行链顺序成立: inverseTransform(编码) → readback(回读) → DcwWriteHistoryEntry(账本)",
+        "✔ 回读死区 writeTolerance() 存在（论文式(2)）"
+      ],
+      "note": "治理管线六阶段结构与顺序核实（Algorithm 1 的源码对应物）"
+    },
+    {
+      "rep": 1,
+      "id": "api-0-preflight",
+      "title": "实例连通与鉴权",
+      "tier": "api",
+      "dims": [],
+      "weight": 0,
+      "requires": [],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "how": "login",
+        "role": "admin"
+      },
+      "evidence": [
+        "登录成功（login，role=admin）"
+      ],
+      "note": "实例 http://127.0.0.1:3001 可用"
+    },
+    {
+      "rep": 1,
+      "id": "api-1-fixture",
+      "title": "基准夹具（产线+配方窗+数采）",
+      "tier": "api",
+      "dims": [
+        "D1",
+        "D2"
+      ],
+      "weight": 2,
+      "requires": [
+        "server"
+      ],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "created": 8,
+        "steps": 8,
+        "lineId": "ln-1b344721",
+        "window": "175-205℃"
+      },
+      "evidence": [
+        "✔ 产线 — ok",
+        "✔ 产品 — ok",
+        "✔ 数控模板 — ok",
+        "✔ 数控节点 ×2 — dw-32c8ccd3/dw-1c99934a",
+        "✔ 配方（软联锁窗） — ok",
+        "✔ 数采节点 — ok",
+        "✔ 采集已启动 — gateway+node start",
+        "✔ 批次开跑（软联锁激活） — ok"
+      ],
+      "note": "夹具就绪，软联锁窗口已激活"
+    },
+    {
+      "rep": 1,
+      "id": "api-2-semantic-card",
+      "title": "语义卡字段与账本面",
+      "tier": "api",
+      "dims": [
+        "D2",
+        "D7"
+      ],
+      "weight": 1,
+      "requires": [
+        "server"
+      ],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "ok": 6,
+        "total": 6
+      },
+      "evidence": [
+        "✔ 数控节点可列出 — found",
+        "✔ 硬联锁量程字段 — min=120 max=260",
+        "✔ 显示精度字段 — decimals=1",
+        "✔ 产线归属（五维打标） — ln-1b344721",
+        "✔ 写控账本可查询 — anchors=2",
+        "✔ 数采节点可列出 — found"
+      ],
+      "note": "语义卡=Agent 的物理语义地基（论文 §III-D），缺失即治理失效"
+    },
+    {
+      "rep": 1,
+      "id": "api-3-interlock-f5",
+      "title": "F5 越界写攻击（联锁拦截率）",
+      "tier": "api",
+      "dims": [
+        "D2"
+      ],
+      "weight": 3,
+      "requires": [
+        "server"
+      ],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "intercept_rate": 1,
+        "false_block_rate": 0,
+        "attacks": 6,
+        "intercepted": 6,
+        "legit": 3,
+        "legit_ok": 3,
+        "boundary_cases": 3,
+        "boundary_ok": 3,
+        "eq1_branch_coverage": "pass"
+      },
+      "evidence": [
+        "拦截 below-global(v=107) → HTTP 400 VALIDATION_ERROR 设定值 107℃ 低于当前配方「Bench工艺 awb1619950」的工艺下限 175℃(节点全局量程 120~260",
+        "拦截 above-global(v=269) → HTTP 400 VALIDATION_ERROR 设定值 269℃ 超出当前配方「Bench工艺 awb1619950」的工艺上限 205℃(节点全局量程 120~260",
+        "拦截 above-window(v=219) → HTTP 400 VALIDATION_ERROR 设定值 219℃ 超出当前配方「Bench工艺 awb1619950」的工艺上限 205℃(节点全局量程 120~260",
+        "拦截 below-window(v=163) → HTTP 400 VALIDATION_ERROR 设定值 163℃ 低于当前配方「Bench工艺 awb1619950」的工艺下限 175℃(节点全局量程 120~260",
+        "拦截 extreme(v=1000000) → HTTP 400 VALIDATION_ERROR 设定值 1000000℃ 超出当前配方「Bench工艺 awb1619950」的工艺上限 205℃(节点全局量程 120",
+        "拦截 negative(v=-25) → HTTP 400 VALIDATION_ERROR 设定值 -25℃ 低于当前配方「Bench工艺 awb1619950」的工艺下限 175℃(节点全局量程 120~260",
+        "成功 in-window-low(v=180) → HTTP 200 ok",
+        "成功 in-window-mid(v=190) → HTTP 200 ok",
+        "成功 in-window-high(v=200) → HTTP 200 ok",
+        "符合 边界 edge-max-accept(v=205) 期望accept → HTTP 200",
+        "符合 边界 above-edge-reject(v=205.1) 期望reject → HTTP 400",
+        "符合 边界 below-edge-reject(v=174.9) 期望reject → HTTP 400",
+        "符合 无批次分支: 越全局 300 → HTTP 400（应拒）",
+        "符合 无批次分支: 窗外全局内 130 → HTTP 200（应受理,全局量程接管）"
+      ],
+      "note": "I1 动态成立 + 决策边界覆盖 + Eq.(1) 双分支覆盖"
+    },
+    {
+      "rep": 1,
+      "id": "api-4-attribution-readback",
+      "title": "回读闭环与写入归因",
+      "tier": "api",
+      "dims": [
+        "D2",
+        "D7"
+      ],
+      "weight": 3,
+      "requires": [
+        "server"
+      ],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "writes": 3,
+        "readback_ok": 3,
+        "readback_rate": 1,
+        "new_anchors": 3,
+        "attribution_rate": 1,
+        "tolerance": 0.7
+      },
+      "evidence": [
+        "✔ 写 v=182 回读(outcome)=182 → read=182 (τ=0.7)",
+        "✔ 写 v=191 回读(outcome)=191 → read=191 (τ=0.7)",
+        "✔ 写 v=197 回读(outcome)=197 → read=197 (τ=0.7)",
+        "账本新增锚点 3 条（四项判据齐全 3）"
+      ],
+      "note": "回读闭环与全链路归因成立（I2 + 可追溯性）"
+    },
+    {
+      "rep": 1,
+      "id": "api-5-daq-freshness",
+      "title": "数采新鲜度与查询时延",
+      "tier": "api",
+      "dims": [
+        "D1",
+        "D8"
+      ],
+      "weight": 1,
+      "requires": [
+        "server"
+      ],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "points": 17,
+        "latest_age_s": 17.9,
+        "samples_api_p50_ms": 20,
+        "samples_api_p95_ms": 21
+      },
+      "evidence": [
+        "✔ 时序数据点 17 个（最新距 now 17.9s）",
+        "samples API p50=20ms p95=21ms（20 次抽样）",
+        "注：API 侧抽样，非 daq_e2e_latency（后者由 E4 对账实验给出）"
+      ],
+      "note": "采集链路活性与查询面性能抽样"
+    },
+    {
+      "rep": 0,
+      "id": "plc-0-simulator",
+      "title": "PLC 模拟器就绪+薄膜产线预设",
+      "tier": "plc",
+      "dims": [
+        "D1"
+      ],
+      "weight": 1,
+      "requires": [],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "protocols": 5,
+        "sim": "http://127.0.0.1:4010"
+      },
+      "evidence": [
+        "五协议设备: modbus-tcp, modbus-rtu, opcua, mqtt, http"
+      ],
+      "note": "模拟器就绪(film-line 预设)"
+    },
+    {
+      "rep": 0,
+      "id": "plc-1-realpath",
+      "title": "五协议真实连通(导出配置→test-driver)",
+      "tier": "plc",
+      "dims": [
+        "D1",
+        "D6"
+      ],
+      "weight": 2,
+      "requires": [
+        "sim",
+        "server"
+      ],
+      "status": "warn",
+      "score": 0.8,
+      "metrics": {
+        "protocols_ok": 4,
+        "total": 5
+      },
+      "evidence": [
+        "✔ modbus-tcp 真实连通 ok (26ms)",
+        "✔ modbus-rtu 真实连通 ok (16ms)",
+        "✘ opcua 连通失败: OPC UA 连接失败: The connection may have been rejected by server",
+        "✔ mqtt 真实连通 ok (16ms)",
+        "✔ http 真实连通 ok (17ms)"
+      ],
+      "note": "部分协议未连通"
+    },
+    {
+      "rep": 0,
+      "id": "plc-2-closedloop",
+      "title": "真实采样+SP→PV 物理闭环+真实链路治理",
+      "tier": "plc",
+      "dims": [
+        "D1",
+        "D2",
+        "D8"
+      ],
+      "weight": 3,
+      "requires": [
+        "sim",
+        "server"
+      ],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "real_samples_first_window": 7,
+        "real_write_ok": true,
+        "real_write_latency_ms": 27,
+        "sp_readback": 182,
+        "f5_rejected": "5/5",
+        "legal_write_ok": true,
+        "pv_converge_s": 3,
+        "pv_final": 180.3,
+        "f2_pv_freeze_alarm": true,
+        "f2_alarm_latency_s": 2,
+        "pv_trace": [
+          {
+            "t": 14,
+            "pv": 181
+          },
+          {
+            "t": 13,
+            "pv": 179.9
+          },
+          {
+            "t": 12,
+            "pv": 180.3
+          },
+          {
+            "t": 9,
+            "pv": 181.1
+          },
+          {
+            "t": 8,
+            "pv": 181.4
+          },
+          {
+            "t": 7,
+            "pv": 181.4
+          },
+          {
+            "t": 5,
+            "pv": 182.1
+          },
+          {
+            "t": 3,
+            "pv": 182.3
+          },
+          {
+            "t": 2,
+            "pv": 182.8
+          },
+          {
+            "t": 1,
+            "pv": 182.5
+          },
+          {
+            "t": -1,
+            "pv": 183.5
+          }
+        ],
+        "daq_points_total": 11
+      },
+      "evidence": [
+        "✔ 真实 Modbus TCP 采样落库 7 点(~895ms 节拍)",
+        "✔ 真实 SP 写 182℃ → HTTP 200 (27ms, 含 Modbus 事务)",
+        "✔ 真实链路治理: 攻击 5/5 拒绝(200/400/150/188.1/175.9), 合法 180 受理",
+        "✔ SP→PV 物理闭环收敛 |PV-182|≤3℃ 用时 3s(一阶惯性)",
+        "治理写 185℃(回读验证通过, 寄存器接收) 但 PV 冻结于 150℃(窗外) ",
+        "✔ 独立监测层在 2s 内触发配方窗报警(纵深防御: 回读闭包不覆盖工艺响应)",
+        "闭环期间时序库持续采集: 累计 11 点"
+      ],
+      "note": "真实协议工况闭环: 写控→Modbus→物理引擎→数采回读→治理拦截→F2 假成功消融"
+    },
+    {
+      "rep": 0,
+      "id": "plc-4-fault",
+      "title": "断链-恢复演练",
+      "tier": "plc",
+      "dims": [
+        "D1"
+      ],
+      "weight": 1,
+      "requires": [
+        "sim",
+        "server"
+      ],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "offline_detected": true,
+        "reconnected": true
+      },
+      "evidence": [
+        "✔ 断链后主项目驱动失败被感知(test-driver ok=false)",
+        "✔ 模拟器重启后重连成功(test-driver ok=true)"
+      ],
+      "note": "断链演练: 故障被感知且可恢复(F3 微缩版, 真实 TCP)"
+    }
+  ]
+}

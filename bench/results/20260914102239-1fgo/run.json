@@ -1,0 +1,1218 @@
+{
+  "env": {
+    "runId": "20260914102239-1fgo",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "simBase": "http://127.0.0.1:4010",
+    "simDir": "D:\\codes\\ABO\\plc-node-simulator",
+    "lines": 5,
+    "ownLines": 4,
+    "satelliteDaq": 1,
+    "protocols": "modbus-tcp/opcua/mqtt/http/modbus-rtu",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-09-14T10:25:11.586Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "harnessHash": "8702db3d55d095ad",
+    "gitCommit": "d6c824d",
+    "harnessFiles": 8,
+    "closedloop": {
+      "writeMode": "governed",
+      "n": 3,
+      "ratioMin": 0.966,
+      "ratioMean": 0.969,
+      "ratioMax": 0.971,
+      "J0mean": 69.761,
+      "JendMean": 87.14,
+      "Jstar": 89.894,
+      "itersMean": 2,
+      "writesTotal": 6,
+      "rejectedTotal": 0,
+      "convergedN": 3,
+      "wallSMean": 36.234
+    },
+    "verdict": {
+      "pass": 35,
+      "warn": 0,
+      "fail": 0,
+      "ok": true
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3"
+  },
+  "phases": [
+    {
+      "id": "P0·preflight",
+      "phase": "P0",
+      "title": "Bootstrap simulator & platform",
+      "status": "pass",
+      "note": "already up (reused)",
+      "durationMs": 69
+    },
+    {
+      "id": "P1·plant-model",
+      "phase": "P1",
+      "title": "plant model preset + offline optimum W*",
+      "status": "pass",
+      "note": "",
+      "durationMs": 2808
+    },
+    {
+      "id": "P2·provision",
+      "phase": "P2",
+      "title": "multi-protocol multi-line provisioning（≤5 ）",
+      "status": "pass",
+      "note": "5/5 devices ready · 4  lines",
+      "durationMs": 3352
+    },
+    {
+      "id": "P3·integration",
+      "phase": "P3",
+      "title": "multi-protocol DAQ + governed write/read + F5 interception",
+      "status": "pass",
+      "note": "5/5 Linesampling",
+      "durationMs": 13801
+    },
+    {
+      "id": "P3b·recipe-lifecycle",
+      "phase": "P3b",
+      "title": "配方管理全生命周期（版本·已知良好·回退·基准恢复·一键下发）",
+      "status": "pass",
+      "note": "2/2 Line配方全链通过",
+      "durationMs": 583
+    },
+    {
+      "id": "P4·tool-loop",
+      "phase": "P4",
+      "title": "数采→数控→判定 工具级闭环（harness=opencode，不经 LLM）",
+      "status": "pass",
+      "note": "4  loops",
+      "durationMs": 5573
+    },
+    {
+      "id": "P4b·rollback-records",
+      "phase": "P4b",
+      "title": "回退与优化记录（节points回退·判定/执行分离·参数账本）",
+      "status": "pass",
+      "note": "rollback & ledger passed",
+      "durationMs": 606
+    },
+    {
+      "id": "P4c·hitl",
+      "phase": "P4c",
+      "title": "HITL 审批闭环（挂起→面板可见→批准→真实写生效）",
+      "status": "pass",
+      "note": "HITL loop passed",
+      "durationMs": 1829
+    },
+    {
+      "id": "P4d·audit-surfaces",
+      "phase": "P4d",
+      "title": "治理只读面（参数账本·审计·运维日志·报警）",
+      "status": "pass",
+      "note": "10 锚 / 200 审计",
+      "durationMs": 37
+    },
+    {
+      "id": "P6·closedloop",
+      "phase": "P6",
+      "title": "闭环优化参数 benchmark（3 seed · 写路径=governed · ≤8 迭代/seed）",
+      "status": "pass",
+      "note": "J/J* ∈ [0.966, 0.971]",
+      "durationMs": 113476
+    },
+    {
+      "id": "P7·frames",
+      "phase": "P7",
+      "title": "多形态数采：向量轮廓与图像帧落库",
+      "status": "pass",
+      "note": "vector 5 / image 5",
+      "durationMs": 9082
+    }
+  ],
+  "checks": [
+    {
+      "phase": "P0",
+      "id": "platform-reachable",
+      "title": "platform reachable & authenticated",
+      "status": "pass",
+      "evidence": [
+        "平台 http://127.0.0.1:3001",
+        "鉴权 OK (login)",
+        "simulator http://127.0.0.1:4010：already up (reused)"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "preset-applied",
+      "title": "预设 cast-film-physics 已应用",
+      "status": "pass",
+      "evidence": [
+        "devices 5 ",
+        "协议 modbus-tcp, modbus-rtu, opcua, mqtt, http"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "offline-optimum",
+      "title": "offline optimum W* (ground truth) available",
+      "status": "pass",
+      "evidence": [
+        "W* = {\"zoneTemp\":212.5,\"screw\":55,\"lineSpeed\":40,\"meltTemp\":212.5,\"pressure\":6.961,\"thickness\":49.18,\"defect\":0.055,\"score\":89.894,\"computedAt\":\"2026-09-14T10:22:42.797Z\"}"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "gateway",
+      "title": "gateway controller start (idempotent)",
+      "status": "pass",
+      "evidence": [
+        "POST /api/workshop/daq/controller {action:start}",
+        "采样仍受「活动Line批」门控，故每台有 SP 的devices自成一可开跑Line"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-1-modbus-tcp",
+      "title": "Line1 [modbus-tcp] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-7b8f8b40 daq=dn-82257cd7 dcw=dw-2065715f recipe=rc-678e6067",
+        "DAQ driver test ✔ 信号「熔体温度」：连接成功,读取 40001 = 31.329999923706055",
+        "SP 中心 200 窗口 [191.6, 208.4]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-2-opcua",
+      "title": "Line2 [opcua] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-6ef4c914 daq=dn-446fdfd9 dcw=dw-98477e31 recipe=rc-76d4870b",
+        "DAQ driver test ✔ 信号「MeltPressure」：会话建立成功,读取 ns=2;s=AW.P = 6.137",
+        "SP 中心 150 窗口 [141, 159]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-3-mqtt",
+      "title": "Line3 [mqtt] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-110c7344 daq=dn-0881c147 dcw=dw-47402745 recipe=rc-ec838dee",
+        "DAQ driver test ✔ 信号「thick」：Broker 连接成功,收到 aw/sim/thick = 19.44",
+        "SP 中心 95 窗口 [89, 101]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-4-http",
+      "title": "Line4 [http] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-1f07a26a daq=dn-a720c5d4 dcw=dw-552f21fc recipe=rc-4981a18d",
+        "DAQ driver test ✔ 信号「defect」：接口可达,取值 = 100",
+        "SP 中心 1 窗口 [0.91, 1.09]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-5-modbus-rtu",
+      "title": "Line5 [modbus-rtu] 供给（satellite DAQ）",
+      "status": "pass",
+      "evidence": [
+        "line=ln-1f07a26a daq=dn-d4287089 dcw=✘ recipe=rc-4981a18d ↪hosted by line4",
+        "DAQ driver test ✔ 信号「晶点计数」：网关连接成功,读取 40001 = 5",
+        "（该devices无可用 DCW 导出，作为satellite DAQ随宿主批采样）"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-1-io",
+      "title": "Line1 [modbus-tcp] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 8  points (modbus-tcp real driver）",
+        "✔ 约6写 p50=47.875ms p95=172.849ms，readback deviation 0.04",
+        "✔ Governance F5: 6/6 rejected (modbus-tcp 真实链路），legal write受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-2-io",
+      "title": "Line2 [opcua] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 11  points (opcua real driver）",
+        "✔ 约6写 p50=19.766ms p95=19.984ms，readback deviation 0",
+        "✔ Governance F5: 6/6 rejected (opcua 真实链路），legal write受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-3-io",
+      "title": "Line3 [mqtt] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 12  points (mqtt real driver）",
+        "✔ 约6写 p50=20.043ms p95=20.336ms，readback deviation null",
+        "✔ Governance F5: 6/6 rejected (mqtt 真实链路），legal write受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-4-io",
+      "title": "Line4 [http] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 13  points (http real driver）",
+        "✔ 约6写 p50=19.082ms p95=21.203ms，readback deviation null",
+        "✔ Governance F5: 6/6 rejected (http 真实链路），legal write受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-5-io",
+      "title": "Line5 [modbus-rtu] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 13  points (modbus-rtu real driver）",
+        "no SP write point; write/governance sub-checks skipped"
+      ]
+    },
+    {
+      "phase": "P3b",
+      "id": "line-1-recipe",
+      "title": "Line1 [modbus-tcp] recipe lifecycle",
+      "status": "pass",
+      "evidence": [
+        "(1) 初始版本数 1，当前参数值 200",
+        "✔ (2) 编辑后版本 2（+1），参数值 201.68（期望 201.68）",
+        "✔ (3) 标记已知良好批次 runId=rr-1fc4df76 → lastGood=rr-1fc4df76",
+        "✔ (4) 回退到 v1 后版本 3（+1，非破坏），参数值 200（期望回到 200）",
+        "✔ (5) 基准恢复 rollback-good → 下发 1 个参数（status 200）",
+        "✔ (6) 一键下发 apply → 新批次 rr-30c7c6b4（status 200）"
+      ]
+    },
+    {
+      "phase": "P3b",
+      "id": "line-2-recipe",
+      "title": "Line2 [opcua] recipe lifecycle",
+      "status": "pass",
+      "evidence": [
+        "(1) 初始版本数 1，当前参数值 150",
+        "✔ (2) 编辑后版本 2（+1），参数值 151.8（期望 151.8）",
+        "✔ (3) 标记已知良好批次 runId=rr-17bfeeba → lastGood=rr-17bfeeba",
+        "✔ (4) 回退到 v1 后版本 3（+1，非破坏），参数值 150（期望回到 150）",
+        "✔ (5) 基准恢复 rollback-good → 下发 1 个参数（status 200）",
+        "✔ (6) 一键下发 apply → 新批次 rr-242e4561（status 200）"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "tool-loop-setup",
+      "title": "闭环夹具（channel+agent）",
+      "status": "pass",
+      "evidence": [
+        "channel=e783f0d3-a7b2-46e4-9479-d806ac3f4f4a",
+        "agent=b37e1aba-48fb-4edb-8070-460227eef20b",
+        "harness=opencode"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "tool-bridge",
+      "title": "opencode 的 host 工具直调面可用",
+      "status": "pass",
+      "evidence": [
+        "探测 my_industrial_nodes → 你尚未绑定任何工业节点。请在数字孪生界面的 Agent 详情面板中绑定数控/数采节点后再调用工业工具。"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-1-loop",
+      "title": "Line1 [modbus-tcp] 工具闭环",
+      "status": "pass",
+      "evidence": [
+        "1) dcw_control ✔ → 优化记录 opt-ad6c2239 · 下发成功:L1-DCW-modbus-tcp ip16gnzx(烘箱温度设定)设定 195.8℃ → PLC 原始值 195.8;回读 19",
+        "2) daq_query ✔ · 数采数据查询结果(1 个节点):  ■ L1-DAQ-modbus-tcp ip16gnzx(熔体/箱体温度)单位 ℃,正常量程 0~400",
+        "3) dcw_judge ✔ · 判定已入册:记录 opt-ad6c2239 → keep(integrated pipeline:dcw_control 回读校验通过)。已定档为已验证经验(配",
+        "闭环三步耗时 1.333s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-2-loop",
+      "title": "Line2 [opcua] 工具闭环",
+      "status": "pass",
+      "evidence": [
+        "1) dcw_control ✔ → 优化记录 opt-27f2ea1a · 下发成功:L2-DCW-opcua ip16gnzx(烘箱温度设定)设定 145.5rpm → PLC 原始值 145.5;回读 145.5",
+        "2) daq_query ✔ · 数采数据查询结果(1 个节点):  ■ L2-DAQ-opcua ip16gnzx(熔体/箱体温度)单位 MPa,正常量程 0~45MPa,",
+        "3) dcw_judge ✔ · 判定已入册:记录 opt-27f2ea1a → keep(integrated pipeline:dcw_control 回读校验通过)。已定档为已验证经验(配",
+        "闭环三步耗时 1.298s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-3-loop",
+      "title": "Line3 [mqtt] 工具闭环",
+      "status": "pass",
+      "evidence": [
+        "1) dcw_control ✔ → 优化记录 opt-8bb9dfce · 下发成功:L3-DCW-mqtt ip16gnzx(烘箱温度设定)设定 92m/min → PLC 原始值 92;回读 不支持一致。当前活动",
+        "2) daq_query ✔ · 数采数据查询结果(1 个节点):  ■ L3-DAQ-mqtt ip16gnzx(熔体/箱体温度)单位 μm,正常量程 0~400μm,当前",
+        "3) dcw_judge ✔ · 判定已入册:记录 opt-8bb9dfce → keep(integrated pipeline:dcw_control 回读校验通过)。已定档为已验证经验(配",
+        "闭环三步耗时 1.32s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-4-loop",
+      "title": "Line4 [http] 工具闭环",
+      "status": "pass",
+      "evidence": [
+        "1) dcw_control ✔ → 优化记录 opt-eac4045b · 下发成功:L4-DCW-http ip16gnzx(烘箱温度设定)设定 0.955mm → PLC 原始值 0.955;回读 0.95mm一",
+        "2) daq_query ✔ · 数采数据查询结果(1 个节点):  ■ L4-DAQ-http ip16gnzx(熔体/箱体温度)单位 μm,正常量程 0~400μm,当前",
+        "3) dcw_judge ✔ · 判定已入册:记录 opt-eac4045b → keep(integrated pipeline:dcw_control 回读校验通过)。已定档为已验证经验(配",
+        "闭环三步耗时 1.293s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "plant-response",
+      "title": "工艺模型响应（SP→plant truth 随动）",
+      "status": "pass",
+      "evidence": [
+        "真值样本 6 → 52",
+        "plant state: {\"enabled\":true,\"running\":true,\"phase\":\"steady\",\"disturbances\":{\"heaterDecay\":1,\"feedDriftPerMin\":0.15},\"seed\":42,\"timeScale\":6,\"elapsedS\":156,\"defect\":13.138}"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "line-1-optrecord",
+      "title": "Line1 优化记录生命周期",
+      "status": "pass",
+      "evidence": [
+        "当前值 195.8000030517578 → 记录 A 写 199.16（上行）、记录 B 写 192.44（下行），方向相反以规避回退冷却",
+        "✔ (keep 路径) 记录 opt-7c13ca41 判定 keep → 判定已入册:记录 opt-7c13ca41 → keep(bench: 回读一致，判定 keep)。已定档为已验证经验(配方已标记 last",
+        "✔ (rollback 路径) 记录 opt-f7130d43 判定 rollback（仅入册，PLC 值仍 192.39999389648438）",
+        "✔ 执行回退（status 200）→ 回读 199.1999969482422（应回到记录 B 的 from=199.16）",
+        "✔ 优化记录查询面可见本节点记录 5 条（judged=4）"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "line-1-rollback",
+      "title": "Line1 节points级回退（撤销栈）",
+      "status": "pass",
+      "evidence": [
+        "✔ 写 205.04 生效（回读 205，写前 199.1999969482422）",
+        "✔ journal rollback 受理（status 200，记录 opt-21dcbfad）",
+        "✔ 回退后回读 199.1999969482422（应回到 199.1999969482422，容差 0.75）"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "param-ledger",
+      "title": "参数台账（三值对照 + 在册历史）",
+      "status": "pass",
+      "evidence": [
+        "✔ 参数台账可用（字段：nodeId, nodeName, current, recipeTarget, lastGood, journal, records）"
+      ]
+    },
+    {
+      "phase": "P4c",
+      "id": "line-1-hitl",
+      "title": "Line1 HITL 审批闭环",
+      "status": "pass",
+      "evidence": [
+        "✔ 下发在人工确认模式下**挂起**，审批面板出现待审项 ap-aca8c4ef（detail: L1-DCW-modbus-tcp ip16gnzx(烘箱温度设定)设定 198.32℃,配方窗口 191.6~208.4℃）",
+        "✔ 裁决 approved（status 200）→ 挂起的下发**解阻塞**：下发成功:L1-DCW-modbus-tcp ip16gnzx(烘箱温度设定)设定 198.32℃ → PLC 原始值 198.32;回读 198.3000030517578℃一致",
+        "✔ 批准后 PLC 实际生效：回读 198.3000030517578（期望 198.32）",
+        "审批裁决时延 7 ms（挂起→批准，含轮询周期）"
+      ]
+    },
+    {
+      "phase": "P4d",
+      "id": "audit-surfaces",
+      "title": "治理只读面",
+      "status": "pass",
+      "evidence": [
+        "✔ 参数变更账本 journal：本产线 10 条锚（source 覆盖 agent/rollback/manual/recipe）",
+        "✔ 审计 audit：全局 200 条",
+        "✔ 运维日志 ops-logs：全局 200 条",
+        "✔ 报警记录：全局 86 （含历史）"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "twin-nodes",
+      "title": "cast-film 孪生节points供给（执行器 + 传感器）",
+      "status": "pass",
+      "evidence": [
+        "✔ 执行器节点 6/6：zone1-sp, zone2-sp, zone3-sp, screw-sp, linespeed-sp, diegap-sp",
+        "✔ 传感器节点 5/5：melt-temp, melt-pressure, film-thickness, defect-rate, gels-count"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "w-star",
+      "title": "离线最优 W*（ground truth）",
+      "status": "pass",
+      "evidence": [
+        "W* = {\"zoneTemp\":212.5,\"screw\":55,\"lineSpeed\":40,\"meltTemp\":212.5,\"pressure\":6.961,\"thickness\":49.18,\"defect\":0.055,\"score\":89.894,\"computedAt\":\"2026-09-14T10:22:42.797Z\"}",
+        "起始工况 {\"zone\":200,\"screw\":150,\"lineSpeed\":95,\"dieGap\":1}（J 显著低于 W*）"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "seed-42",
+      "title": "seed=42 闭环优化（J/J*=0.966）",
+      "status": "pass",
+      "evidence": [
+        "预热 3.026s（熔体温度 196.5℃，达工艺窗 [195,225]）",
+        "iter0 起点：h=55.15μm defect=0.317% P=18.57MPa T=205.6℃ N=150 v=95.0 → J=69.89",
+        "iter1 下发 N=136 v=95 z=200 → h=49.70μm defect=0.517% P=16.53MPa T=202.6℃ → J=87.34 ",
+        "iter2 下发 N=137 v=95 z=200 → h=49.30μm defect=0.800% P=16.60MPa T=201.4℃ → J=86.40 ",
+        "✔ 连续两次评估满足收敛判据，第 3 轮前终止",
+        "收敛=true · 迭代=2 · 写=2 · rejected=0 · J0=69.894 → Jend=86.871 · J*=89.894 · 比值=0.966"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "seed-43",
+      "title": "seed=43 闭环优化（J/J*=0.97）",
+      "status": "pass",
+      "evidence": [
+        "预热 0.026s（熔体温度 201.24℃，达工艺窗 [195,225]）",
+        "iter0 起点：h=55.45μm defect=0.200% P=18.62MPa T=207.5℃ N=150 v=95.0 → J=68.61",
+        "iter1 下发 N=135 v=95 z=200 → h=49.43μm defect=0.500% P=16.45MPa T=203.0℃ → J=87.45 ",
+        "iter2 下发 N=137 v=95 z=200 → h=50.32μm defect=0.600% P=16.63MPa T=201.5℃ → J=87.03 ",
+        "✔ 连续两次评估满足收敛判据，第 3 轮前终止",
+        "收敛=true · 迭代=2 · 写=2 · rejected=0 · J0=68.608 → Jend=87.236 · J*=89.894 · 比值=0.97"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "seed-44",
+      "title": "seed=44 闭环优化（J/J*=0.971）",
+      "status": "pass",
+      "evidence": [
+        "预热 0.004s（熔体温度 201.34℃，达工艺窗 [195,225]）",
+        "iter0 起点：h=55.08μm defect=0.150% P=18.62MPa T=207.2℃ N=150 v=95.0 → J=70.78",
+        "iter1 下发 N=136 v=95 z=200 → h=48.95μm defect=0.450% P=16.60MPa T=203.4℃ → J=87.55 ",
+        "iter2 下发 N=139 v=95 z=200 → h=50.08μm defect=0.550% P=16.90MPa T=201.3℃ → J=87.08 ",
+        "✔ 连续两次评估满足收敛判据，第 3 轮前终止",
+        "收敛=true · 迭代=2 · 写=2 · rejected=0 · J0=70.781 → Jend=87.313 · J*=89.894 · 比值=0.971"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "closedloop-aggregate",
+      "title": "闭环优化聚合（n=3）",
+      "status": "pass",
+      "evidence": [
+        "J/J*：min 0.966 · mean 0.969 · max 0.971（J* = 89.894）",
+        "J start均值 69.761 → end均值 87.14",
+        "平均迭代 2  · 总写 6 · 越界rejected 0 · 收敛 3/3 · 平均墙钟 36.234s/seed"
+      ]
+    },
+    {
+      "phase": "P7",
+      "id": "frames",
+      "title": "多形态数采（向量/图像帧）",
+      "status": "pass",
+      "evidence": [
+        "✔ 向量轮廓帧 5 （46.767,46.825,47.654,47.163,48.085,47.87,48.759,48.197,48.809,47.864,49.254,48.673,48.731,49.599,48.648,48.678,48.938,49.103,49.435,49.339,49.439,49.708,49.537,50.274,50.062,49.823,50.181,49.666,50.023,50.221,49.586,49.988,50.182,49.636,49.701,50.254,50.002,50.157,49.48,49.403,50.013,49.457,49.696,49.942,49.429,49.747,49.539,49.462,48.698,49.01,48.991,48.826,48.959,48.698,47.814,48.684,47.848,48.471,48.203,47.686,47.21,47.214,47.241,47.298 points）",
+        "✔ 图像帧 5 （96×32 image/png）"
+      ]
+    }
+  ],
+  "lines": [
+    {
+      "index": 1,
+      "protocol": "modbus-tcp",
+      "simDeviceId": "dev-extruder-mbtcp",
+      "simDeviceName": "挤出主机PLC(Modbus TCP)",
+      "dcwSignal": "zone1-sp",
+      "daqSignal": "熔体温度",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "连接成功,读取 40001 = 31.329999923706055"
+      },
+      "exports": {
+        "daq": {
+          "host": "127.0.0.1",
+          "port": 16040,
+          "unitId": 1,
+          "register": 40001,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        },
+        "dcw": {
+          "host": "127.0.0.1",
+          "port": 16040,
+          "unitId": 1,
+          "register": 40021,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-7b8f8b40",
+        "product": "pd-4aff16f3",
+        "daq": "dn-82257cd7",
+        "dcw": "dw-2065715f",
+        "recipe": "rc-678e6067"
+      },
+      "window": {
+        "min": 191.6,
+        "max": 208.4
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 120,
+        "hi": 260,
+        "center": 200,
+        "decimals": 1
+      },
+      "started": true,
+      "daqSamples": 8,
+      "writeP50": 47.875,
+      "writeP95": 172.849,
+      "writeMean": 72.622,
+      "readbackDelta": 0.04,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "recipeLifecycle": {
+        "ok": true,
+        "steps": {
+          "v0": 1,
+          "v1": 2,
+          "v1val": 201.68,
+          "lastGoodRunId": "rr-1fc4df76",
+          "v2": 3,
+          "v2val": 200,
+          "rollbackGood": 1,
+          "appliedRunId": "rr-30c7c6b4"
+        }
+      },
+      "loopIterations": 1,
+      "recordId": "opt-ad6c2239",
+      "convergenceS": 1.333,
+      "recordLifecycle": true,
+      "nodeRollback": true,
+      "hitl": {
+        "ok": true,
+        "latencyMs": 7
+      }
+    },
+    {
+      "index": 2,
+      "protocol": "opcua",
+      "simDeviceId": "dev-extruder-opcua",
+      "simDeviceName": "熔体泵送单元(OPC UA)",
+      "dcwSignal": "screw-sp",
+      "daqSignal": "MeltPressure",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "会话建立成功,读取 ns=2;s=AW.P = 6.137"
+      },
+      "exports": {
+        "daq": {
+          "endpoint": "opc.tcp://127.0.0.1:5840",
+          "nodeId": "ns=2;s=AW.P"
+        },
+        "dcw": {
+          "endpoint": "opc.tcp://127.0.0.1:5840",
+          "nodeId": "ns=2;s=AW.N.Sp"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-6ef4c914",
+        "product": "pd-69f283b1",
+        "daq": "dn-446fdfd9",
+        "dcw": "dw-98477e31",
+        "recipe": "rc-76d4870b"
+      },
+      "window": {
+        "min": 141,
+        "max": 159
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 50,
+        "hi": 200,
+        "center": 150,
+        "decimals": 0
+      },
+      "started": true,
+      "daqSamples": 11,
+      "writeP50": 19.766,
+      "writeP95": 19.984,
+      "writeMean": 18.823,
+      "readbackDelta": 0,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "recipeLifecycle": {
+        "ok": true,
+        "steps": {
+          "v0": 1,
+          "v1": 2,
+          "v1val": 151.8,
+          "lastGoodRunId": "rr-17bfeeba",
+          "v2": 3,
+          "v2val": 150,
+          "rollbackGood": 1,
+          "appliedRunId": "rr-242e4561"
+        }
+      },
+      "loopIterations": 1,
+      "recordId": "opt-27f2ea1a",
+      "convergenceS": 1.298
+    },
+    {
+      "index": 3,
+      "protocol": "mqtt",
+      "simDeviceId": "dev-gauge-mqtt",
+      "simDeviceName": "在线测厚仪(MQTT)",
+      "dcwSignal": "linespeed-sp",
+      "daqSignal": "thick",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "Broker 连接成功,收到 aw/sim/thick = 19.44"
+      },
+      "exports": {
+        "daq": {
+          "host": "127.0.0.1",
+          "port": 18830,
+          "topic": "aw/sim/thick",
+          "jsonPath": "data.thick"
+        },
+        "dcw": {
+          "host": "127.0.0.1",
+          "port": 18830,
+          "topic": "aw/sim/lineSp/set",
+          "jsonKey": "setpoint"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-110c7344",
+        "product": "pd-42fecaf4",
+        "daq": "dn-0881c147",
+        "dcw": "dw-47402745",
+        "recipe": "rc-ec838dee"
+      },
+      "window": {
+        "min": 89,
+        "max": 101
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 20,
+        "hi": 120,
+        "center": 95,
+        "decimals": 1
+      },
+      "started": true,
+      "daqSamples": 12,
+      "writeP50": 20.043,
+      "writeP95": 20.336,
+      "writeMean": 19.075,
+      "readbackDelta": null,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "loopIterations": 1,
+      "recordId": "opt-8bb9dfce",
+      "convergenceS": 1.32
+    },
+    {
+      "index": 4,
+      "protocol": "http",
+      "simDeviceId": "dev-inspect-http",
+      "simDeviceName": "CCD检测站(HTTP)",
+      "dcwSignal": "diegap-sp",
+      "daqSignal": "defect",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "接口可达,取值 = 100"
+      },
+      "exports": {
+        "daq": {
+          "url": "http://127.0.0.1:4010/sim-http/dev-inspect-http/api/defect",
+          "jsonPath": "value"
+        },
+        "dcw": {
+          "url": "http://127.0.0.1:4010/sim-http/dev-inspect-http/api/control/diegap"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-1f07a26a",
+        "product": "pd-09b0c3d1",
+        "daq": "dn-a720c5d4",
+        "dcw": "dw-552f21fc",
+        "recipe": "rc-4981a18d"
+      },
+      "window": {
+        "min": 0.91,
+        "max": 1.09
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 0.5,
+        "hi": 2,
+        "center": 1,
+        "decimals": 2
+      },
+      "started": true,
+      "daqSamples": 13,
+      "writeP50": 19.082,
+      "writeP95": 21.203,
+      "writeMean": 18.598,
+      "readbackDelta": null,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "loopIterations": 1,
+      "recordId": "opt-eac4045b",
+      "convergenceS": 1.293
+    },
+    {
+      "index": 5,
+      "protocol": "modbus-rtu",
+      "simDeviceId": "dev-gels-rtu",
+      "simDeviceName": "晶点计数从站(Modbus RTU)",
+      "dcwSignal": null,
+      "daqSignal": "晶点计数",
+      "satellite": true,
+      "hostLineIndex": 4,
+      "driverTest": {
+        "ok": true,
+        "message": "网关连接成功,读取 40001 = 5"
+      },
+      "exports": {
+        "daq": {
+          "host": "127.0.0.1",
+          "port": 15041,
+          "unitId": 1,
+          "register": 40001,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-1f07a26a",
+        "product": "pd-09b0c3d1",
+        "recipe": "rc-4981a18d",
+        "daq": "dn-d4287089"
+      },
+      "window": null,
+      "errors": [],
+      "started": true,
+      "daqSamples": 13
+    }
+  ],
+  "kpis": [
+    {
+      "label": "Provisionable lines",
+      "value": 4,
+      "unit": "",
+      "note": "+1 satellite DAQ · modbus-tcp/opcua/mqtt/http/modbus-rtu",
+      "tone": "good"
+    },
+    {
+      "label": "DAQ samples total",
+      "value": 57,
+      "unit": "",
+      "note": "5/5 nodes sampling",
+      "tone": "good"
+    },
+    {
+      "label": "Governance interception (pooled)",
+      "value": "100.0",
+      "unit": "%",
+      "note": "F5 attacks",
+      "tone": "good"
+    },
+    {
+      "label": "Write p50 (all protocols)",
+      "value": 26.691,
+      "unit": "ms",
+      "note": "incl. real protocol transactions"
+    },
+    {
+      "label": "Closed-loop J/J*",
+      "value": "96.9",
+      "unit": "%",
+      "note": "n=3 seeds · worst 96.6% · J*=89.894",
+      "tone": "good"
+    },
+    {
+      "label": "Tool-level loops",
+      "value": 4,
+      "unit": "",
+      "note": "dcw→daq→judge"
+    },
+    {
+      "label": "LLM agent loop",
+      "value": "off",
+      "unit": "",
+      "note": "--agent omp enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Checks",
+      "value": "35/35",
+      "unit": "",
+      "note": "warn 0 · fail 0",
+      "tone": "good"
+    }
+  ],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "offline grid-search optimum (benchmark ground truth)"
+    },
+    {
+      "section": "provision",
+      "key": "lines_created",
+      "value": 4,
+      "unit": "",
+      "note": "可开跑Line（另有 1 satellite DAQ）"
+    },
+    {
+      "section": "provision",
+      "key": "daq_nodes",
+      "value": 5,
+      "unit": "",
+      "note": "real-protocol DAQ nodes"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_modbus-tcp",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_opcua",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_mqtt",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_http",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 5,
+      "unit": "",
+      "note": "real driver produced samples"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": 1,
+      "unit": "",
+      "note": "全协议合并"
+    },
+    {
+      "section": "recipe",
+      "key": "recipe_lifecycles_ok",
+      "value": 2,
+      "unit": " lines",
+      "note": "版本/回退/基准恢复/下发 全链通过"
+    },
+    {
+      "section": "loop",
+      "key": "tool_loops_ok",
+      "value": 4,
+      "unit": " lines",
+      "note": "工具级闭环达成"
+    },
+    {
+      "section": "gov",
+      "key": "record_keep_rollback_ok",
+      "value": 1,
+      "unit": "",
+      "note": "优化记录判定/执行分离"
+    },
+    {
+      "section": "hitl",
+      "key": "approval_latency_ms",
+      "value": 7,
+      "unit": "ms",
+      "note": "挂起→批准（含 800ms 轮询粒度）"
+    },
+    {
+      "section": "audit",
+      "key": "journal_anchors",
+      "value": 10,
+      "unit": "",
+      "note": "本Line参数变更账本"
+    },
+    {
+      "section": "audit",
+      "key": "audit_entries",
+      "value": 200,
+      "unit": "",
+      "note": "全局审计目"
+    },
+    {
+      "section": "audit",
+      "key": "ops_logs",
+      "value": 200,
+      "unit": "",
+      "note": "全局运维日志"
+    },
+    {
+      "section": "closedloop",
+      "key": "J_over_Jstar_mean",
+      "value": 0.969,
+      "unit": "",
+      "note": "n=3 seeds，写路径=governed"
+    },
+    {
+      "section": "closedloop",
+      "key": "J_over_Jstar_min",
+      "value": 0.966,
+      "unit": "",
+      "note": "最差 seed（保守下界）"
+    },
+    {
+      "section": "closedloop",
+      "key": "J_end_mean",
+      "value": 87.14,
+      "unit": "",
+      "note": "J* = 89.894"
+    },
+    {
+      "section": "closedloop",
+      "key": "cl_iters_mean",
+      "value": 2,
+      "unit": "",
+      "note": "闭环收敛迭代数"
+    },
+    {
+      "section": "closedloop",
+      "key": "cl_writes_total",
+      "value": 6,
+      "unit": "",
+      "note": "受治理的闭环写总数"
+    },
+    {
+      "section": "closedloop",
+      "key": "cl_rejected_total",
+      "value": 0,
+      "unit": "",
+      "note": "越界被拒（治理拦截）"
+    },
+    {
+      "section": "daq",
+      "key": "vector_frames",
+      "value": 5,
+      "unit": "",
+      "note": "厚度横向轮廓"
+    },
+    {
+      "section": "daq",
+      "key": "image_frames",
+      "value": 5,
+      "unit": "",
+      "note": "CCD 表面图像"
+    }
+  ],
+  "closedloop": {
+    "writeMode": "governed",
+    "agg": {
+      "n": 3,
+      "ratioMin": 0.966,
+      "ratioMean": 0.969,
+      "ratioMax": 0.971,
+      "J0mean": 69.761,
+      "JendMean": 87.14,
+      "Jstar": 89.894,
+      "itersMean": 2,
+      "writesTotal": 6,
+      "rejectedTotal": 0,
+      "convergedN": 3,
+      "wallSMean": 36.234
+    },
+    "seeds": [
+      {
+        "seed": 42,
+        "warmed": true,
+        "warmupS": 3.026,
+        "J0": 69.894,
+        "Jend": 86.871,
+        "Jstar": 89.894,
+        "ratio": 0.966,
+        "iters": 2,
+        "writes": 2,
+        "rejected": 0,
+        "converged": true,
+        "wallS": 36.228,
+        "traj": [
+          {
+            "iter": 0,
+            "thickness": 55.15,
+            "defect": 0.31666666666666665,
+            "pressure": 18.566666666666666,
+            "meltTemp": 205.63333333333335,
+            "screw": 150,
+            "lineSpeed": 95,
+            "J": 69.89375000000003
+          },
+          {
+            "iter": 1,
+            "thickness": 49.699999999999996,
+            "defect": 0.5166666666666666,
+            "pressure": 16.53333333333333,
+            "meltTemp": 202.58333333333334,
+            "screw": 136,
+            "lineSpeed": 95,
+            "J": 87.34041666666667
+          },
+          {
+            "iter": 2,
+            "thickness": 49.300000000000004,
+            "defect": 0.7999999999999999,
+            "pressure": 16.6,
+            "meltTemp": 201.39999999999998,
+            "screw": 137,
+            "lineSpeed": 95,
+            "J": 86.40166666666667
+          }
+        ]
+      },
+      {
+        "seed": 43,
+        "warmed": true,
+        "warmupS": 0.026,
+        "J0": 68.608,
+        "Jend": 87.236,
+        "Jstar": 89.894,
+        "ratio": 0.97,
+        "iters": 2,
+        "writes": 2,
+        "rejected": 0,
+        "converged": true,
+        "wallS": 36.239,
+        "traj": [
+          {
+            "iter": 0,
+            "thickness": 55.449999999999996,
+            "defect": 0.20000000000000004,
+            "pressure": 18.616666666666667,
+            "meltTemp": 207.51666666666665,
+            "screw": 150,
+            "lineSpeed": 95,
+            "J": 68.60833333333336
+          },
+          {
+            "iter": 1,
+            "thickness": 49.43333333333334,
+            "defect": 0.5000000000000001,
+            "pressure": 16.45,
+            "meltTemp": 203.04999999999998,
+            "screw": 135,
+            "lineSpeed": 95,
+            "J": 87.44583333333334
+          },
+          {
+            "iter": 2,
+            "thickness": 50.31666666666666,
+            "defect": 0.6,
+            "pressure": 16.633333333333333,
+            "meltTemp": 201.46666666666667,
+            "screw": 137,
+            "lineSpeed": 95,
+            "J": 87.02666666666667
+          }
+        ]
+      },
+      {
+        "seed": 44,
+        "warmed": true,
+        "warmupS": 0.004,
+        "J0": 70.781,
+        "Jend": 87.313,
+        "Jstar": 89.894,
+        "ratio": 0.971,
+        "iters": 2,
+        "writes": 2,
+        "rejected": 0,
+        "converged": true,
+        "wallS": 36.234,
+        "traj": [
+          {
+            "iter": 0,
+            "thickness": 55.083333333333336,
+            "defect": 0.15,
+            "pressure": 18.616666666666667,
+            "meltTemp": 207.23333333333335,
+            "screw": 150,
+            "lineSpeed": 95,
+            "J": 70.78125
+          },
+          {
+            "iter": 1,
+            "thickness": 48.949999999999996,
+            "defect": 0.45,
+            "pressure": 16.6,
+            "meltTemp": 203.36666666666667,
+            "screw": 136,
+            "lineSpeed": 95,
+            "J": 87.54875
+          },
+          {
+            "iter": 2,
+            "thickness": 50.08333333333334,
+            "defect": 0.5499999999999999,
+            "pressure": 16.899999999999995,
+            "meltTemp": 201.29999999999998,
+            "screw": 139,
+            "lineSpeed": 95,
+            "J": 87.07625
+          }
+        ]
+      }
+    ]
+  }
+}

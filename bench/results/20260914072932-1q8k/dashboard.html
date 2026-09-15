@@ -1,0 +1,140 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>AgentWorkShop · 集成流水线报告 20260914072932-1q8k</title>
+<style>
+  :root{--bg:#0b1220;--card:#111d2e;--card2:#152539;--line:#1e3550;--fg:#e8f1fa;--sub:#8ba3bd;
+        --grn:#35e0a0;--cyn:#41c8f4;--amb:#e6b23c;--red:#ff6b6b;--pur:#a78bfa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 "Segoe UI",system-ui,-apple-system,"Noto Sans SC",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 64px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:22px}
+  h1{font-size:21px;margin:0 0 6px}
+  h3{font-size:13px;margin:0 0 12px;color:var(--sub);font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+  .meta{color:var(--sub);font-size:12px;font-family:ui-monospace,Consolas,monospace}
+  .verdict{font-size:13px;font-weight:700;padding:9px 16px;border-radius:999px;letter-spacing:.5px}
+  .verdict.ok{background:rgba(53,224,160,.14);color:var(--grn);border:1px solid rgba(53,224,160,.4)}
+  .verdict.bad{background:rgba(255,107,107,.14);color:var(--red);border:1px solid rgba(255,107,107,.4)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:14px;margin-bottom:20px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .kpi .kv{font-size:26px;font-weight:800;color:var(--cyn);font-variant-numeric:tabular-nums}
+  .kpi.good .kv{color:var(--grn)} .kpi.warn .kv{color:var(--amb)} .kpi.bad .kv{color:var(--red)}
+  .ku{font-size:13px;color:var(--sub);margin-left:4px;font-weight:500}
+  .kl{color:var(--sub);font-size:12px;margin-top:6px}
+  .kn{color:#6f8aa6;font-size:11px;margin-top:3px;font-family:ui-monospace,monospace}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:880px){.grid2{grid-template-columns:1fr}}
+  svg .bl{fill:var(--sub);font-size:12px;font-family:ui-monospace,monospace}
+  svg .bv{fill:var(--fg);font-size:12px;font-family:ui-monospace,monospace}
+  .phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+  .ph{background:var(--card2);border-radius:10px;padding:13px;border-left:3px solid var(--sub)}
+  .ph.pass{border-left-color:var(--grn)} .ph.warn{border-left-color:var(--amb)}
+  .ph.fail{border-left-color:var(--red)} .ph.skip{border-left-color:#4a5f78;opacity:.7}
+  .ph-id{font-family:ui-monospace,monospace;font-size:11px;color:var(--sub)}
+  .ph-t{font-size:13px;font-weight:600;margin:3px 0}
+  .ph-m{font-size:11px;color:#7f97b0}
+  .ph-d{font-size:11px;color:var(--cyn);margin-top:5px;font-family:ui-monospace,monospace}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;color:var(--sub);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);font-size:11.5px}
+  td{padding:8px 10px;border-bottom:1px solid rgba(30,53,80,.5);font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  code{background:#0f1c2c;padding:1px 6px;border-radius:4px;font-size:12px;color:var(--cyn)}
+  .ck{font-family:ui-monospace,monospace;font-size:12px}
+  .ck.pass{color:var(--grn)} .ck.fail{color:var(--red)} .ck.warn{color:var(--amb)} .ck.skip{color:var(--sub)}
+  .ev{color:#7f97b0;font-size:11.5px;margin:2px 0 0}
+  footer{color:#5d7590;font-size:11.5px;margin-top:30px;border-top:1px solid var(--line);padding-top:14px;
+    font-family:ui-monospace,monospace;white-space:pre-wrap}
+</style></head><body><div class="wrap">
+  <header>
+    <div>
+      <h1>AgentWorkShop · 集成流水线报告</h1>
+      <div class="meta">run 20260914072932-1q8k · profile quick · seed 42 · 0 产线 /  协议</div>
+      <div class="meta">platform http://127.0.0.1:3001 · simulator http://127.0.0.1:4010 · harness e7359ff8 · git d6c824d</div>
+      <div class="meta">started 2026-09-14T07:29:32.044Z · node v22.22.2 · win32 x64</div>
+    </div>
+    <div class="verdict ok">ALL CHECKS PASS · pass 0 / warn 0 / fail 0</div>
+  </header>
+  <div class="kpis">
+    <div class="kpi good">
+      <div class="kv">0<span class="ku">条</span></div>
+      <div class="kl">集成产线</div>
+      
+    </div>
+    <div class="kpi good">
+      <div class="kv">0<span class="ku">点</span></div>
+      <div class="kl">数采采样合计</div>
+      <div class="kn">真实驱动落库</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">—<span class="ku">%</span></div>
+      <div class="kl">治理拦截率（合并）</div>
+      <div class="kn">F5 攻击</div>
+    </div>
+    <div class="kpi ">
+      <div class="kv"><span class="ku">ms</span></div>
+      <div class="kl">写时延 p50（全协议）</div>
+      <div class="kn">含真实协议事务</div>
+    </div>
+    <div class="kpi ">
+      <div class="kv">0<span class="ku">条</span></div>
+      <div class="kl">工具级闭环</div>
+      <div class="kn">dcw→daq→judge</div>
+    </div>
+    <div class="kpi warn">
+      <div class="kv">未启用<span class="ku"></span></div>
+      <div class="kl">LLM Agent 闭环</div>
+      <div class="kn">--agent omp 可启用</div>
+    </div>
+    <div class="kpi good">
+      <div class="kv">0/0<span class="ku"></span></div>
+      <div class="kl">检查结果</div>
+      <div class="kn">warn 0 · fail 0</div>
+    </div></div>
+  <div class="card"><h3>流水线阶段</h3><div class="phases">
+    <div class="ph fail">
+      <div class="ph-id">P0</div>
+      <div class="ph-t">preflight</div>
+      <div class="ph-m">fn is not a function</div>
+      <div class="ph-d">0.00s</div>
+    </div>
+    <div class="ph fail">
+      <div class="ph-id">P1</div>
+      <div class="ph-t">plant-model</div>
+      <div class="ph-m">fn is not a function</div>
+      <div class="ph-d">0.00s</div>
+    </div>
+    <div class="ph fail">
+      <div class="ph-id">P2</div>
+      <div class="ph-t">provision</div>
+      <div class="ph-m">fn is not a function</div>
+      <div class="ph-d">0.00s</div>
+    </div>
+    <div class="ph fail">
+      <div class="ph-id">P3</div>
+      <div class="ph-t">integration</div>
+      <div class="ph-m">fn is not a function</div>
+      <div class="ph-d">0.00s</div>
+    </div>
+    <div class="ph fail">
+      <div class="ph-id">P4</div>
+      <div class="ph-t">tool-loop</div>
+      <div class="ph-m">fn is not a function</div>
+      <div class="ph-d">0.00s</div>
+    </div></div></div>
+  
+  <div class="card"><h3>多产线明细</h3>
+    <table><thead><tr>
+      <th>#</th><th>协议</th><th>模拟器设备</th><th>DAQ 采样</th><th>写时延 p50 (ms)</th>
+      <th>回读偏差</th><th>F5 拦截</th><th>闭环轮次</th><th>收敛 (s)</th><th>Agent</th>
+    </tr></thead><tbody>
+      
+    </tbody></table>
+  </div>
+  <div class="card"><h3>检查明细</h3>
+    
+  </div>
+  
+  <footer>复现: node bench/pipeline.mjs --profile quick --seed 42 --lines 2
+产物: run.json / metrics.csv / summary.json / dashboard.html（永不覆盖）
+判定类指标在固定 seed 下应逐位一致；时延类允许环境性波动。</footer>
+</div></body></html>

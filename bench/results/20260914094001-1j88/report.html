@@ -1,0 +1,62 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>AW-IndustrialBench — Benchmark Report · 20260914094001-1j88</title><style>
+  :root{--bg:#0b1526;--panel:#101f35;--line:#1c3350;--tx:#dbe7f4;--sub:#8fb0d0;--grn:#35e0a0;--cyn:#41c8f4;--amb:#f4b941;--red:#f45c5c}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.6 "Segoe UI",system-ui,sans-serif;padding:28px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 2px}h1 .badge{color:var(--grn)}
+  .tagline{color:var(--sub);font-size:12px;margin-bottom:16px}.mono{font-family:Consolas,Menlo,monospace;font-size:12px}
+  .hero{display:flex;gap:18px;align-items:center;background:linear-gradient(135deg,#0f2138,#0c1a2e);border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin-bottom:14px}
+  .verdict{font-size:12px;font-weight:800;letter-spacing:2px;color:var(--grn);border:1px solid var(--grn);border-radius:20px;padding:3px 12px;display:inline-block;margin-bottom:8px}
+  .score-big{font-size:56px;font-weight:800;color:var(--grn);line-height:1}
+  .score-cap{color:var(--sub);font-size:12px;letter-spacing:2px}
+  .grade{font-size:30px;font-weight:800;color:var(--cyn);border:2px solid var(--cyn);border-radius:12px;padding:4px 14px;margin-left:auto}
+  .stats{display:flex;gap:16px;margin-left:26px}
+  .stat{text-align:center}.stat b{display:block;font-size:20px}.stat span{font-size:11px;color:var(--sub)}
+  .fingerprint{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px 18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 18px;margin-bottom:22px}
+  .fp{display:flex;justify-content:space-between;gap:10px;font-size:12px}.fp span{color:var(--sub)}.fp b{color:var(--tx);font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+  .dim-id{color:var(--cyn);font-weight:800;font-size:15px}.dim-name{color:var(--sub);font-size:11px;min-height:16px}
+  .dim-score{font-size:30px;font-weight:800;margin:4px 0}.dim-checks{color:var(--sub);font-size:11px;margin-top:6px}
+  .radar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;justify-content:center}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:22px}
+  th{background:#13253f;color:var(--sub);font-size:12px;text-align:left;padding:10px 12px;letter-spacing:1px}
+  td{border-top:1px solid var(--line);padding:10px 12px;vertical-align:top}
+  .row-fail{background:rgba(244,92,92,.07)}.row-warn{background:rgba(244,185,65,.05)}
+  .pill{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11px;font-weight:700}
+  .pill-static{background:#12325a;color:var(--cyn)}.pill-api{background:#0f3a2c;color:var(--grn)}.pill-full{background:#3a2a10;color:var(--amb)}.pill-plc{background:#2a1038;color:#c79bf2}
+  .st{font-weight:800;white-space:nowrap}
+  .sub{color:var(--sub);font-size:12px}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+  summary{cursor:pointer}ul{margin:8px 0 2px}li{margin:3px 0;color:#b9cde3}
+  .foot{color:var(--sub);font-size:12px;margin-top:18px}.foot code{color:var(--grn)}
+</style></head><body><div class="wrap">
+  <h1>AW-IndustrialBench <span class="badge">— Benchmark Report</span></h1>
+  <div class="tagline mono">Governed-autonomy evaluation of AgentWorkShop · deterministic, seeded, append-only results</div>
+  <div class="hero">
+    <div><div class="verdict">NOT EVALUATED</div><div class="score-big">0.0</div><div class="score-cap">OVERALL SCORE / 100</div></div>
+    <div class="grade">—</div>
+    <div class="stats" style="margin-left:0">
+      <div class="stat"><b style="color:var(--grn)">0</b><span>PASS</span></div>
+      <div class="stat"><b style="color:var(--amb)">0</b><span>WARN</span></div>
+      <div class="stat"><b style="color:var(--red)">0</b><span>FAIL</span></div>
+      <div class="stat"><b style="color:var(--sub)">1</b><span>SKIP</span></div>
+    </div>
+    <div class="radar" style="margin-left:auto"><div class="sub">not enough dimensions</div></div>
+  </div>
+  <div class="fingerprint"><div class="fp"><span>seed</span><b class="mono">42</b></div><div class="fp"><span>tier</span><b class="mono">plc</b></div><div class="fp"><span>target</span><b class="mono">http://127.0.0.1:3001</b></div><div class="fp"><span>config hash</span><b class="mono">4b40f3b026be5cb1</b></div><div class="fp"><span>harness hash</span><b class="mono">f50938f9 (13 files)</b></div><div class="fp"><span>commit</span><b class="mono">d6c824d</b></div><div class="fp"><span>node</span><b class="mono">v24.19.0</b></div><div class="fp"><span>platform</span><b class="mono">win32 x64</b></div><div class="fp"><span>completed</span><b class="mono">2026-09-14T09:40:01.212Z</b></div></div>
+  <div class="grid"></div>
+  <table><thead><tr><th style="width:22%">Check</th><th>Tier</th><th>Status</th><th>Score</th><th style="width:30%">Key metrics</th><th>Note</th></tr></thead><tbody>
+    <tr class="row-skip">
+      <td><b>plc-1-realpath</b><div class="sub">五协议真实连通(导出配置→test-driver)</div></td>
+      <td><span class="pill pill-plc">plc</span></td>
+      <td><span class="st" style="color:#5b7290">↓ SKIP</span></td>
+      <td>0</td>
+      <td class="mono">—</td>
+      <td class="sub">需要运行中的平台实例（api-0 preflight 未通过）——本层诚实跳过，不影响静态层结论</td>
+    </tr></tbody></table>
+  <h3 style="margin:0 0 10px">Evidence</h3>
+  <div class="sub">none</div>
+  <div class="foot">Reproduce: <code>node bench/run.mjs --tier plc --seed 42 --base http://127.0.0.1:3001</code><br>
+  Artifacts: <code>bench/results/20260914094001-1j88/</code> (run.json · report.md · report.html) — append-only, never overwritten; cite this run id as evidence. Judge-class metrics are bitwise-reproducible under the fixed seed; latency/freshness figures are environment-dependent and reported as measured. Compare any two runs with <code>node bench/compare.mjs --baseline 20260914-baseline/run-plc-fx0 --b 20260914094001-1j88</code>.</div>
+</div></body></html>
