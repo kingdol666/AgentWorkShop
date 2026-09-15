@@ -1,0 +1,32 @@
+% fig-lifecycle.tex — production-line management: line/product/recipe/run lifecycle
+\begin{tikzpicture}[scale=0.70, transform shape, font=\scriptsize,
+  st/.style={draw=awTeal!80!black, rounded corners=1.5pt, align=center, inner sep=2.2pt, minimum height=4.2mm, fill=awFill1, text=black},
+  rc/.style={draw=awAmber!85!black, rounded corners=1.5pt, align=center, inner sep=2.2pt, minimum height=4.2mm, fill=awAmber!14, text=black},
+  bs/.style={draw=awRed!75!black, rounded corners=1.5pt, align=center, inner sep=2.2pt, minimum height=4.2mm, fill=awFill2, text=black},
+  arr/.style={-{Stealth[length=1.1mm]}, thick, draw=awGrey!70!black},
+  lab/.style={font=\tiny, text=awGrey!60!black, align=left}
+]
+% object tree
+\node[st] (line) at (0.55,1.85) {Line};
+\node[st] (prod) at (2.10,1.85) {Product};
+\node[rc] (v1)   at (4.00,1.85) {Recipe v1};
+\node[rc] (v2)   at (5.95,1.85) {v2 (edit)};
+\node[rc] (v3)   at (8.00,1.85) {v3 (revert$\to$v1)\\ non-destructive};
+\draw[arr] (line) -- (prod);
+\draw[arr] (prod) -- node[above]{params $W_r(p)$} (v1);
+\draw[arr] (v1) -- node[above]{edit $=$ new version} (v2);
+\draw[arr] (v2) -- (v3);
+
+% run lifecycle
+\node[rc] (good) at (1.55,0.45) {mark known-good\\ (freeze baseline)};
+\node[st] (apply) at (4.75,0.45) {one-click apply\\ $\to$ new batch run};
+\node[st] (run)   at (7.90,0.45) {Active run: gates sampling\\ window substitution $C(n,r)$};
+\draw[arr] (v3.south) to[out=250,in=90] (good.north);
+\draw[arr] (good) -- node[above]{known-good rollback} (apply);
+\draw[arr] (apply) -- (run);
+\draw[arr] (v2.south) to[out=270,in=160] (apply.north west);
+
+% governance exit
+\node[bs] (esc) at (10.30,1.55) {breach $\ge$3: rollback\\ $K{<}2$ auto / else human};
+\draw[arr] (run.north east) to[out=45,in=200] (esc.west);
+\end{tikzpicture}

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AgentWorkShop operational walkthrough</title>
+<style>
+  /* Exact-size page for Chrome --print-to-pdf. 181 mm == IEEEtran \textwidth. */
+  @page { size: 181mm 120mm; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 181mm;
+    font-family: "Times New Roman", Times, serif;
+    color: #101418; background: #fff;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: "Consolas", "DejaVu Sans Mono", monospace; }
+
+  /* palette mirrors paper/tii/main.tex (awTeal / awBlue / awPurple / awAmber) */
+  .s1 { --c: #1F6F78; --f: #E8F1F2; }
+  .s2 { --c: #3D6FB5; --f: #EDF3FA; }
+  .s3 { --c: #6A4C93; --f: #F0ECF7; }
+  .s4 { --c: #C8871B; --f: #FBF3E6; }
+
+  .wrap { width: 181mm; padding: 2.2mm 3mm 2.2mm; display: flex; flex-direction: column; gap: 1.8mm; }
+
+  /* ── execution-logic strip ─────────────────────────────────────────── */
+  .strip { display: flex; align-items: stretch; gap: 0; }
+  .step {
+    flex: 1 1 0; display: flex; align-items: center; gap: 1.2mm;
+    border: 0.26mm solid var(--c); background: var(--f);
+    padding: 1mm 1.4mm; border-radius: 0.8mm; min-width: 0;
+  }
+  .step + .arrow { flex: 0 0 3.6mm; display: flex; align-items: center; justify-content: center;
+    color: #5F6B76; font-size: 2.8mm; line-height: 1; }
+  .num {
+    flex: 0 0 auto; width: 4mm; height: 4mm; border-radius: 50%;
+    background: var(--c); color: #fff; font-size: 2.35mm; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step .txt { display: flex; flex-direction: column; line-height: 1.18; min-width: 0; }
+  .step .nm { font-size: 2.6mm; font-weight: 700; color: #0d1114; white-space: nowrap; }
+  .step .api { font-size: 2.2mm; color: var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── 2x2 panel grid ────────────────────────────────────────────────── */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.8mm; align-items: stretch; }
+  .panel {
+    border: 0.26mm solid #C9CDD2; border-top: 1mm solid var(--c);
+    border-radius: 0.8mm; background: #fff; padding: 1.4mm 1.6mm;
+    display: flex; flex-direction: column; gap: 0.85mm;
+  }
+  .phead { display: flex; align-items: baseline; gap: 1.2mm; }
+  .pnum { font-size: 2.75mm; font-weight: 700; color: var(--c); line-height: 1; }
+  .ptitle { font-size: 2.72mm; font-weight: 700; color: #0d1114; line-height: 1.05; }
+  .psub { font-size: 2.2mm; color: #5F6B76; line-height: 1.15; }
+  .cols { font-size: 2.1mm; color: #6b747c; font-style: italic; line-height: 1.15; }
+  .shotbox { border: 0.2mm solid #DDE1E5; border-radius: 0.5mm; overflow: hidden; background: #fff; line-height: 0; }
+  .shotbox img { width: 100%; height: auto; display: block; }
+  .logic { font-size: 2.42mm; line-height: 1.26; color: #1b2126; }
+  .logic b { color: var(--c); }
+  .logic .k { font-family: "Consolas", "DejaVu Sans Mono", monospace; font-size: 2.3mm; color: #0d1114; }
+  .cap { display: flex; gap: 1mm; align-items: baseline; margin-top: auto; padding-top: 0.5mm; }
+  .chipc { flex: 0 0 auto; font-size: 2.1mm; color: #fff; background: var(--c); border-radius: 0.45mm; padding: 0.3mm 0.85mm; white-space: nowrap; }
+  .cap .t { font-size: 2.26mm; color: #333c44; line-height: 1.2; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- the four stages and their entry points, left to right -->
+  <div class="strip">
+    <div class="step s1"><div class="num">1</div>
+      <div class="txt"><span class="nm">Provision &amp; connect</span><span class="api mono">POST /daq &middot; test-driver</span></div></div>
+    <div class="arrow">&#9654;</div>
+    <div class="step s2"><div class="num">2</div>
+      <div class="txt"><span class="nm">Bind node &rarr; line / device</span><span class="api mono">PUT /daq/{id}/bindings</span></div></div>
+    <div class="arrow">&#9654;</div>
+    <div class="step s3"><div class="num">3</div>
+      <div class="txt"><span class="nm">Compose &amp; deploy team</span><span class="api mono">POST /teams/{id}/deploy</span></div></div>
+    <div class="arrow">&#9654;</div>
+    <div class="step s4"><div class="num">4</div>
+      <div class="txt"><span class="nm">Governed closed loop</span><span class="api mono">dcw_control &rarr; dcw_judge</span></div></div>
+  </div>
+
+  <div class="grid">
+
+    <div class="panel s1">
+      <div class="phead"><span class="pnum">1</span><span class="ptitle">Provision &amp; connect</span>
+        <span class="psub" style="margin-left:auto">one edge runtime per node</span></div>
+      <div class="cols">columns: sampling cadence &middot; WS push &middot; driver &middot; line</div>
+      <div class="shotbox"><img src="p1-driver.png" alt="DAQ console columns: per-node sampling cadence, WS push interval, protocol driver and line assignment, for a mock node and a real Modbus-TCP node"></div>
+      <div class="logic">Each device becomes one <b>node</b>: cadence, <b>driver</b> and line come from its export, not code---<span class="k">modbus-tcp</span> and replayed <span class="k">mock</span> nodes share one loop.</div>
+      <div class="cap"><span class="chipc">live</span><span class="t"><i>line 1</i>: 9 nodes, 4 protocol families, 1&nbsp;s and 5&nbsp;s cadences.</span></div>
+    </div>
+
+    <div class="panel s2">
+      <div class="phead"><span class="pnum">2</span><span class="ptitle">Bind the node to the plant</span>
+        <span class="psub" style="margin-left:auto">device + recipe window travel with the node</span></div>
+      <div class="shotbox"><img src="p2-binding.png" alt="Control-node table: setpoint dispatch, engineering range, keep-alive policy and bound device twin"></div>
+      <div class="logic">Binding gives a control node a <b>device twin</b> and a <b>recipe window</b>; both are node properties, so a deployment is re-specified by configuration.</div>
+      <div class="cap"><span class="chipc">bound</span><span class="t">150&ndash;200&nbsp;&deg;C window, 5&nbsp;s keep-alive, device <span class="k">dev-mtgnirdo-v70w4</span>.</span></div>
+    </div>
+
+    <div class="panel s3">
+      <div class="phead"><span class="pnum">3</span><span class="ptitle">Compose &amp; deploy the agent team</span>
+        <span class="psub" style="margin-left:auto">one lead, harness-backed workers</span></div>
+      <div class="shotbox"><img src="p3-team.png" alt="AgentTeam library: a team card with one lead and workers, each row carrying its role tag and harness"></div>
+      <div class="logic">A team is a reusable <b>role / harness</b> assignment---one <span class="k">lead</span> plus <span class="k">worker</span>s, each backed by one of 14 interchangeable engines---deployed into a channel.</div>
+      <div class="cap"><span class="chipc">ready</span><span class="t">lead + workers on harness <span class="k">omp</span>; a <span class="k">mock</span> team enables replay.</span></div>
+    </div>
+
+    <div class="panel s4">
+      <div class="phead"><span class="pnum">4</span><span class="ptitle">Governed closed loop</span>
+        <span class="psub" style="margin-left:auto">write &rarr; observe &rarr; judge &rarr; journal</span></div>
+      <div class="shotbox"><img src="p4-records.png" alt="Ledger optimization-record column: a kept record 183 to 178 judged keep(agent) and a superseded record 182 to 183 judged uncertain(system)"></div>
+      <div class="logic">A write through <span class="k">dcw_control</span> opens an <b>optimization record</b>; <span class="k">dcw_judge</span> resolves it to <span class="k">keep</span> or <span class="k">rollback</span> with a reason, beside the ledger's setpoint history.</div>
+      <div class="cap"><span class="chipc">judged</span><span class="t">kept: <i>183&nbsp;&rarr;&nbsp;178</i> <span class="k">keep(agent)</span>; the superseded record carries the system's own verdict.</span></div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

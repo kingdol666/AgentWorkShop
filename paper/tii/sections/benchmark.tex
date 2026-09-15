@@ -1,0 +1,31 @@
+\section{\bench{}: Benchmark and Experimental Protocol}
+\label{sec:bench}
+
+\subsection{Design Principles and Data Layers}
+\bench{} is built on three principles. \emph{Determinism}: a seeded PRNG (mulberry32) and a scenario-snapshot API make structural metrics (interception verdicts, judge-class checks, the deterministic setpoint path) point-wise reproducible; objective values computed from \emph{sampled} process variables remain timing-sensitive (Sec.~\ref{sec:repro}). An offline grid search exposes the optimum $W^{*}$ as the reference bound. \emph{Layered realism}: results are reported per data layer (Table~\ref{tab:layers}), never pooled, so claims carry their realism level explicitly. \emph{Executable protocol}: the released audit harness (\texttt{bench/run.mjs}; four tiers, seeded, results never overwritten) executes the artifact and invariant checks of Secs.~\ref{sec:static}--\ref{sec:dynamic} today; the campaign configurations for the E1--E9 families are declarative documents (E-numbers are campaign instantiations of the B groups; E8 = B4), and the campaign runner, metrics extractor, and statistics module that consume them are specified in the released plan (Sec.~\ref{sec:setup} states precisely which parts are running and which are in development).
+
+\begin{table}[!t]
+\centering
+\caption{Data-credibility layers; claims are labeled by the highest layer measured, and evidence is never pooled.}
+\label{tab:layers}
+\scriptsize
+\begin{tabular}{@{}lp{4.6cm}lc@{}}
+\toprule
+Layer & Description & Status \\
+\midrule
+L1 & Seeded simulation: two independently defined plant scenarios (strategy-signal film line; ODE cast-film twin), seeded noise, offline optimum $W^{*}$ & \textbf{measured} \\
+L2 & TEP \cite{downs1993tep} / SWaT \cite{goh2017swat} replay through real drivers & designed \\
+L3 & One physical OPC UA/Modbus device on the real stack; write--readback latency & designed \\
+L4 & Digital-twin case study: seeded closed-loop campaign on the cast-film line---deterministic controller over three seeds and an agent team over four runs (Secs.~\ref{sec:clbench}, \ref{sec:case}) & \textbf{measured} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tasks, Faults, Metrics, and Baselines}
+Five task families cover the supervisory workload, each with a machine-readable oracle evaluated against the database, readback values, and event streams---never against log strings: \emph{T1} closed-loop setpoint correction in-window; \emph{T2} out-of-window excursion; \emph{T3} multi-node joint adjustment under the step rule; \emph{T4} batch parameter recovery; \emph{T5} mid-run objective change and re-planning. Six fault families are defined for injection at the simulator control API: F1 step drift, F2 sensor freeze, F3 communication interruption (30\,s), F4 out-of-order injection, F5 out-of-window writes (adversarial proposals), F6 storage unavailability; F5 stresses governance (I1), F6 degraded-mode integrity.
+
+Metrics form three families. \emph{Safety} metrics require the governed pipeline: out-of-window write interception rate (denominator = seeded attacks), readback-failure capture rate, false-block rate (denominator = legal in-window writes attempted), MTTR after fault, spurious-rollback rate, HITL-blocked harmful-write share, and per-write attribution rate (target 100\,\%). \emph{Performance} metrics cover the \emph{automatic segment} (proposal acceptance to verified write), kept separate from HITL waiting time so human response time is never conflated with system latency. \emph{Cost/quality} metrics account task goal rate, tokens and LLM calls per completed task, approval wait time, human interventions per task, and long-horizon token area-under-curve.
+
+Eight baseline groups are defined. B1 ablates the pipeline's own mechanisms (bench-mode-only bypass switches). B2--B3 isolate the platform from its intelligence: general frameworks (AutoGen \cite{wu2023autogen}, LangGraph, CrewAI; ReAct) on the same MCP tool surface \cite{mcp2024}. B4 is a human-operator reference under the $\tau$-bench paradigm \cite{yao2024taubench}; B5 anchors against classical control with $W^{*}$ as reference; B6--B7 are the scheduling and memory arms of Sec.~III-C; B8 replicates tasks across real engines.
+
+\emph{Reproducibility protocol.} Two tiers are distinguished honestly. \emph{Released and running today}: the harness executes every check of Secs.~\ref{sec:static}--\ref{sec:dynamic} from a single entry point with fixed seeds; every run records its seed, harness source hash, and commit, appends to never-overwritten timestamped directories, and produces judge-class metrics identical across fixed-seed executions (latency varies with the environment and is reported as ranges). \emph{Specified, in development}: the campaign runner, the statistics module (Mann--Whitney $U$ with Holm correction, bootstrap 95\,\% CIs; unit of analysis = run), the fault injector, and the decision-log instrumentation persisting each LLM decision with its prompt hash, model version, and token usage. Real-LLM arms run temperature-0 with pinned model versions. The platform is released under PolyForm Noncommercial: academic reproduction is permitted; commercial reuse is a licensing boundary, not a reproducibility one.

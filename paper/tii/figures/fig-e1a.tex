@@ -1,0 +1,61 @@
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}
+% ---- panel (a): out-of-constraint interception with Wilson 95% CIs ----
+% Bars are lightly filled so the lower Wilson whisker stays visible inside a
+% 100 % bar; error bars use a thick near-black stroke with end caps, and the
+% interval endpoints print above each bar (never on the category axis).
+\begin{axis}[tii,
+  name=axA,
+  width=\columnwidth,height=2.6cm,
+  ymin=0,ymax=136,
+  ytick={0,50,100},
+  minor y tick num=1,
+  ylabel={Interception (\%)},
+  symbolic x coords={Full,No intlk.,No RB,Ungated},
+  xtick={Full,No intlk.,No RB,Ungated},
+  tick label style={font=\footnotesize},
+  ymajorgrids,grid style={awGrey!14},
+  enlarge x limits=0.18,
+  clip=false,
+  legend style={at={(0.5,1.03)},anchor=south,legend columns=2,inner sep=1.5pt,font=\footnotesize},
+  legend cell align={left}]
+\addplot[ybar,area legend,bar width=13pt,fill=awGreen!18,draw=awGreen!85!black,
+         error bars/y dir=both, error bars/y explicit,
+         error bars/error bar style={draw=black,thick},
+         error bars/error mark options={draw=black,thick}]
+  coordinates {(Full,100) += (0,0) -= (0,39) (No RB,100) += (0,0) -= (0,39)};
+\addlegendentry{interlock intact}
+\addplot[ybar,area legend,bar width=13pt,fill=awRed!14,draw=awRed!80!black,
+         postaction={pattern=north east lines,pattern color=awRed!60!black},
+         error bars/y dir=both, error bars/y explicit,
+         error bars/error bar style={draw=black,thick},
+         error bars/error mark options={draw=black,thick}]
+  coordinates {(No intlk.,66.7) += (0,23.6) -= (0,36.6) (Ungated,66.7) += (0,23.6) -= (0,36.6)};
+\addlegendentry{interlock bypassed}
+% one label per bar: point estimate then Wilson 95 % interval (whisker tops 100 / 90.3)
+\node[font=\scriptsize] at (axis cs:Full,110) {6/6 [61,100]};
+\node[font=\scriptsize] at (axis cs:No intlk.,98) {4/6 [30,90]};
+\node[font=\scriptsize] at (axis cs:No RB,110) {6/6 [61,100]};
+\node[font=\scriptsize] at (axis cs:Ungated,98) {4/6 [30,90]};
+\end{axis}
+% ---- panel (b): governed-write latency p50 bar with p50-p95 range whiskers ----
+\begin{axis}[tii,
+  at={(axA.south west)},anchor=north west,yshift=-15mm,
+  width=\columnwidth,height=2.6cm,
+  ymin=90,ymax=185,
+  ytick={100,125,150,175},
+  minor y tick num=1,
+  ylabel={Write latency (ms)},
+  symbolic x coords={Full,No intlk.,No RB,Ungated},
+  xtick={Full,No intlk.,No RB,Ungated},
+  tick label style={font=\footnotesize},
+  ymajorgrids,grid style={awGrey!14},
+  enlarge x limits=0.18]
+\addplot[ybar,bar width=13pt,fill=awBlue!22,draw=awBlue!70!black,
+         error bars/y dir=both, error bars/y explicit,
+         error bars/error bar style={draw=black,thick},
+         error bars/error mark options={draw=black,thick}]
+  coordinates {(Full,130.6) += (0,37.6) -= (0,20.3) (No intlk.,130.2) += (0,29.1) -= (0,5.3)
+               (No RB,127.0) += (0,30.5) -= (0,2.3) (Ungated,123.9) += (0,35.0) -= (0,13.4)};
+\end{axis}
+\end{tikzpicture}}

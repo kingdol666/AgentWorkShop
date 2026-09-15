@@ -1,0 +1,102 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- regular paper draft
+% Compile: latexmk -pdf main.tex   (TeX Live 2025, IEEEtran)
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{rotating}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+% ---------------------------------------------------------------------------
+% Figure palette.  Every hue is paired with a line style, a marker shape or a
+% direct label, so each figure stays readable in a monochrome reprint as well
+% as in the colour version, and all pairs remain distinguishable to the common
+% forms of colour-vision deficiency.
+% ---------------------------------------------------------------------------
+\definecolor{awTeal}{HTML}{1F6F78}   % measured process variable
+\definecolor{awRed}{HTML}{B3282D}    % setpoint / limit / failed configuration
+\definecolor{awBlue}{HTML}{3D6FB5}   % readback mechanism
+\definecolor{awGreen}{HTML}{2E7D32}  % full governed pipeline
+\definecolor{awAmber}{HTML}{C8871B}  % approval / decision stage
+\definecolor{awGrey}{HTML}{5F6B76}   % neutral reference
+\definecolor{awPurple}{HTML}{6A4C93} % fully ungated arm
+\definecolor{awFill1}{HTML}{E8F1F2}  % teal tint
+\definecolor{awFill2}{HTML}{FBEDED}  % red tint
+\definecolor{awFill3}{HTML}{EDF3FA}  % blue tint
+\definecolor{awFill4}{HTML}{EDF5EE}  % green tint
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds,patterns}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+% Origin/Prism-style scientific plot defaults (TII figure norms): boxed frame,
+% inward major+minor ticks, footnote-size labels with units, legends never on data.
+\pgfplotsset{
+  tii/.style={
+    axis lines=box,
+    tick align=inside,
+    major tick length=2.0mm,
+    minor tick length=1.1mm,
+    label style={font=\footnotesize},
+    tick label style={font=\scriptsize},
+    legend style={font=\scriptsize, draw=black!45, fill=white, fill opacity=0.92,
+                  text opacity=1, legend cell align=left, inner sep=2.5pt},
+  }
+}
+\usepackage{url}
+\usepackage{balance}
+
+\input{results-macros}
+
+\newcommand{\system}{\textsc{AgentWorkShop}}
+\newcommand{\bench}{\textsc{AW-IndustrialBench}}
+
+\begin{document}
+
+\title{AgentWorkShop: A Node-Native Integration Framework for LLM
+Multi-Agent Closed-Loop Control of Heterogeneous Industrial Production Lines}
+
+\author{First~Author,~Second~Author,~and~Third~Author% <-- TODO: fill real names
+\thanks{Manuscript received XXXX; revised XXXX. (Corresponding author: First Author.)}%
+\thanks{The authors are with XXXX, City, Country (e-mail: first.author@xxxx.edu).}% <-- TODO: affiliation
+}
+
+\markboth{IEEE Transactions on Industrial Informatics}{A Node-Native Integration Framework for LLM Multi-Agent Industrial Control}
+
+\maketitle
+
+\begin{abstract}
+Industrial LLM-agent deployments stop at the advisory boundary: published systems diagnose, generate PLC code, or recommend setpoints; to our knowledge, none integrates an agent team into a production line's own protocol, data, and semantic fabric. We present AgentWorkShop, a configuration-driven integration framework that embeds LLM multi-agent teams natively into the supervisory fabric of heterogeneous production lines: a multi-harness agent runtime (14 interchangeable engines) and an industrial runtime (five protocol drivers with per-node edge acquisition) execute as one process over one data domain. Commissioning is configuration, not code: one plant-scenario identifier re-instantiates the deployment on a second, independently defined line with zero platform code changes (33 seeded out-of-window/range writes intercepted across both scenarios, Wilson 95\,\% [89.6\,\%, 100\,\%]; zero false blocks). Every agent-issued write traverses one governed path---recipe-window interlock, mode-bound approval, readback-verified write, attributable journal---so the accepted-action language is constrained by construction, and the backstop's automatic rollback is exercised end-to-end on a live breach. All plants are seeded simulators. A governed closed-loop benchmark on a cast-film twin recovers 97.0--97.2\,\% of the offline grid optimum in two iterations and at most two governed writes per seed under a fixed non-learning controller; four released LLM-agent-team campaigns closed the same loop over real transports through the governed path with every write attributed, but reached only a median 76\,\% of that optimum---a measured division of labour, reported as such. All results come from one executable pipeline with machine-checkable reproduction against frozen baselines.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Agent integration framework, closed-loop control, digital twin, human-in-the-loop, industrial automation, large language models, multi-agent systems, protocol heterogeneity, node-native integration.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+% [teaser illustration placeholder disabled for submission; prompt preserved below]
+% % ── 概念总览插图占位（用户将以专业绘图模型生成后替换）──
+% \begin{figure*}[!t]
+% \centering
+% \fcolorbox{red}{red!4}{\parbox{0.965\textwidth}{\centering\vspace{7mm}\color{red}\textbf{[ILLUSTRATION TO BE GENERATED --- concept-overview figure placeholder]}\vspace{2mm}\\
+% \footnotesize generation prompt: ``Wide flat-vector conceptual illustration for the top of an IEEE journal paper, industrial control-room aesthetic, deep-navy background with green and cyan accents. Left: a small team of stylized AI-agent tiles with gear icons proposing setpoint changes; center: a vertical governance gate drawn as a shield-shaped checkpoint with three stacked filters labeled `interlock', `human approval', `readback'; right: a simplified PLC/plant with a film-casting line and live temperature curves; thin green arrows flow left-to-right through the gate; a red dashed return arrow labeled `bounded rollback' loops from the plant back to the gate; a human icon stands above the approval filter holding a checkmark. Minimal labels only: AGENTS -- GOVERNANCE -- PLANT.''~\vspace{5mm}}}
+% \caption{Governed autonomy at a glance: LLM agent proposals reach the plant only through the interlock--approval--readback gate, with bounded rollback and full attribution (illustration to be generated; the technical counterpart is Fig.~\ref{fig:arch}).}
+% \label{fig:teaser}
+% \end{figure*}
+
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/pipeline}
+\input{sections/benchmark}
+\input{sections/evaluation}
+\input{sections/discussion}
+
+\balance
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

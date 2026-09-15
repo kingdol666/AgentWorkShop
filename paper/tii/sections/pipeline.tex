@@ -1,0 +1,77 @@
+\section{The Governed Write-Control Pipeline}
+This section formalizes the single path by which an agent actuator request becomes a plant write. Throughout, a \emph{device} denotes one integrated piece of plant equipment and a \emph{node} $n$ one write-able parameter of such a device (a device may expose several nodes); $n$ carries a hard safety range $S(n) = [n^{\min}, n^{\max}]$ and a value transform $t_n$ (linear scale/offset with nonzero scale, or discrete mapping). An active \emph{recipe run} $r$ over the node's line prescribes a process window $W_r(p) = [p^{\min}, p^{\max}]$ for parameter $p$ of $n$.
+
+\subsection{Effective Constraint}
+Define the \emph{effective constraint}
+\begin{equation}
+C(n, r) =
+\begin{cases}
+S(n) \cap W_r(p), & \text{run $r$ active},\\[2pt]
+S(n), & \text{otherwise,}
+\end{cases}
+\label{eq:constraint}
+\end{equation}
+During an active batch the accepted set is the \emph{intersection} of the hard range and the recipe window, enforced by two independent mechanisms: a value inside $S(n)$ but outside $W_r(p)$ is rejected by the interlock (its error message cites the window as the binding constraint), while a value outside $S(n)$ is rejected by the driver's engineering-quantity validation, which applies in every state. Containment therefore does not depend on the design-time property $W_r(p) \subseteq S(n)$; authoring-time containment validation is a hardening item (Sec.~\ref{sec:limits}) that the intersection semantics absorbs at runtime. Both runtime branches of Eq.~\eqref{eq:constraint} are exercised dynamically in Sec.~\ref{sec:dynamic}.
+
+\subsection{Pipeline Stages}
+Algorithm~\ref{alg:write} specifies the pipeline. A write request $q = (n, v, \textit{src}, a)$ from source $\textit{src} \in \{\text{agent}, \text{manual}, \text{recipe}, \text{rollback}\}$ and actor $a$ passes an \emph{approval stage} at the tool boundary, then six ordered execution stages enforced by the single write entry---approval is a \emph{decision}; execution is a \emph{validated act}.
+
+\emph{Stage 0 (approval gate; manual bindings only).} For agent proposals on manually bound nodes, the tool layer routes the proposal to an approval request (deduplicated per node and record) and does not submit it further until a human decides; unapproved requests lapse with their record (30-min stale takeover), defaulting to non-execution. A binding is a persistent (agent, node) association whose mode---\emph{manual}, \emph{auto}, \emph{unbound}---selects the backstop's rollback policy (approve\_rollback / auto\_rollback / observe\_only). Approval is decoupled from execution: every stage below re-runs after the decision, so a recipe change during deliberation cannot be exploited through a stale approval. Auto-mode bindings skip Stage 0 but remain subject to the backstop (Sec.~IV-C); unbound bindings cannot write at all---the gate is a property of the binding model, not a prompt. Decisions carry actor identity and latency (Sec.~\ref{sec:govsurface}); the human-operator study E8 remains specified, and agents keep observing telemetry while pending.
+
+\emph{Stage 1 (availability gate).} If the node's gateway is paused or the node is disabled, the request is rejected---governance is unavailable exactly when actuation is unavailable; no bypass exists.
+
+\emph{Stage 2 (closed-loop guardrail).} Agent-sourced writes are serialized per optimization scope---one open record per agent; records idle beyond $T_{\text{stale}} = 30$\,min are superseded by the next writer. Within a rollback cooldown $T_{\text{cd}} = 300$\,s, a same-direction rewrite is rejected while a reverse-direction correction remains allowed, preventing oscillatory overwrites.
+
+\emph{Stage 3 (soft interlock).} The proposed value must satisfy $v \in C(n, r)$ (Eq.~\ref{eq:constraint}); violations are rejected before any driver interaction.
+
+\emph{Stage 4 (write with readback).} The value is encoded through $t_n$, sent by the driver, and read back; the readback is decoded and compared under tolerance
+\begin{equation}
+\tau(n) = \frac{1}{|t_n^{\text{scale}}|}\max\!\big(0.5 \cdot 10^{-d(n)},\; 0.005\,(n^{\max} - n^{\min})\big),
+\label{eq:tolerance}
+\end{equation}
+where $d(n)$ is the display precision: the larger of half a least-count digit and 0.5\,\% of span, scaled by calibration. A write is \texttt{ok} only if the decoded readback agrees within $\tau(n)$; if the driver cannot read back, the result is flagged degraded rather than silently confirmed.
+
+\emph{Stage 5 (journal anchor).} Every executed write appends a signed journal anchor $(id, line, n, prev, new, src, a, r, approval, record, t)$.
+
+\emph{Stage 6 (audit).} The audit plane receives a typed write event attributed to the actor's kind (agent writes carry the channel/member badge); identical node--value events within 10\,s are deduplicated.
+
+\begin{algorithm}[!t]
+\caption{Governed write path $\textsc{Write}(n, v, \textit{src}, a)$}
+\label{alg:write}
+\begin{algorithmic}[1]
+\Require node $n$, value $v$, source $\textit{src}$, actor $a$; active run $r$ if any
+\If{$\textit{src} = \text{agent}$ $\land$ binding$(n)$ = manual}
+  \State route to approval; \textbf{return} pending \Comment{Stage 0: resumes at line 4 post-approval; lapse $\Rightarrow$ never executed}
+\EndIf
+\If{binding$(n)$ = unbound} \State \Return reject(FORBIDDEN) \Comment{tool surface never dispatches it} \EndIf
+\If{gateway paused $\lor$ $\neg n.\text{enabled}$} \State \Return reject(CONFLICT) \EndIf
+\If{$\textit{src} = \text{agent}$}
+  \If{$\exists$ open record $r'$ of $a$ $\land$ $\text{age}(r') < T_{\text{stale}}$} \State \Return reject(CONFLICT)
+  \ElsIf{$\exists$ open record $r'$} \State $\textsc{Supersede}(r')$ \EndIf
+  \If{same-direction write within $T_{\text{cd}}$} \State \Return reject(CONFLICT) \EndIf
+\EndIf
+\State $W \gets C(n, r)$ \Comment{Eq.~\eqref{eq:constraint}}
+\If{$v \notin W$} \State \Return reject(soft interlock) \EndIf
+\State $(\textit{raw}, \textit{rb}) \gets \text{driver.write}(n, t_n^{-1}(v))$
+\State $v_{\text{rb}} \gets t_n(\textit{rb})$
+\State $\textit{ok} \gets |v_{\text{rb}} - v| \le \tau(n)$ \Comment{Eq.~\eqref{eq:tolerance}}
+\State $\textsc{JournalAppend}(n, v^{\text{prev}}, v, \textit{src}, a, r)$
+\State $\textsc{Audit}(\text{write}, n, v, a)$ \Comment{10\,s dedup}
+\State \Return $(\textit{ok}, v_{\text{rb}})$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{System Backstop and Bounded Autonomy}
+An optimization record opened by \texttt{dcw\_control} is re-evaluated every $T_{\text{re}} = 30$\,s once it is older than $T_{\text{win}} = 120$\,s, against a baseline window $T_{\text{bl}} = 600$\,s and the record parameter's active recipe window $W_r(p)$. With $b$ the number of out-of-window samples: if $b \ge B = 3$ and the binding policy is \emph{auto}, the system issues a rollback verdict and executes it only while the record's automatic-rollback chain is below $K = 2$; otherwise the verdict is recorded and escalated to a human. Rollback is \emph{non-destructive} at four granularities (record pre-set baseline, per-node last stable anchor, batch-start values, frozen known-good snapshot) and every rollback write traverses the same governed pipeline; a paused gateway defers recovery with actuation (fail-safe direction). Chain boundary I3 is per record chain, so a rolling per-node budget of automatic writes is stated as a limit (Sec.~\ref{sec:limits}).
+
+\subsection{Trust Boundary and Threats}
+The pipeline guarantees the \emph{sanctioned} path; no framework can constrain software that bypasses it. Because harness engines are privileged local processes---a compromised engine could write to the protocol stacks directly, the failure mode indirect prompt injection targets \cite{greshake2023injection}---the deployment model uses a three-stage availability (allow-list) probe (Sec.~III-C), a least-privilege service account, and IEC~62443 network segmentation \cite{iec62443} to keep the governed tool surface the only \emph{reachable} write path, trading 62443 zoning isolation for in-process enforceability within one zone. Inside the sanctioned path a prompt cannot \emph{enlarge} an agent's authority; it can only abuse an authority the operator already granted, which is what the approval gate and the chain limit bound. Governance is fail-safe under storage degradation (F6): acquisition continues and the audit plane reconciles on recovery.
+
+\subsection{Safety Invariants}
+The pipeline is designed to maintain three invariants, each mapped to an implementation anchor and to the platform's scripted acceptance suite, a dedicated subset of which exercises rejection paths:
+\begin{itemize}
+\item \textbf{I1 (containment).} Every executed agent write satisfies $v \in C(n, r)$ (Eq.~\eqref{eq:constraint}, both branches). \emph{Anchor:} single-entry write function. \emph{Evidence:} rejection-path acceptance tests; live-instance verification (Sec.~\ref{sec:dynamic}).
+\item \textbf{I2 (readback closure).} A write is reported \texttt{ok} only if the decoded readback lies within $\tau(n)$ or the result carries an explicit degraded flag. \emph{Anchor:} Eq.~\eqref{eq:tolerance} in the write executor. \emph{Evidence:} deadband and calibration tests; the no-readback ablation.
+\item \textbf{I3 (bounded autonomy).} Unattended corrective writes per record chain are at most $K = 2$; the third response and all manual-policy rollbacks require human confirmation; stale records are superseded, never accumulated. \emph{Anchor:} chain counter with escalation branch. \emph{Evidence:} rollback-manager acceptance tests; the backstop drill (Sec.~\ref{sec:govsurface}).
+\end{itemize}
+These invariants are stated over the pipeline, not over the LLM: whatever the agent proposes, the accepted-action language is constrained. This is the precise sense in which the system's autonomy is \emph{governed}.

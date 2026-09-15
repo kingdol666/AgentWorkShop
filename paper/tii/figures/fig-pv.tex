@@ -1,0 +1,30 @@
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[tii,
+  width=0.95\columnwidth,height=4.7cm,
+  xlabel={Time since scenario start (s)},ylabel={Process variable ({\textdegree}C)},
+  xmin=0,xmax=15.5,ymin=170,ymax=192,
+  minor tick num=1,
+  ymajorgrids,grid style={awGrey!14},
+  legend style={at={(0.5,-0.36)},anchor=north,legend columns=1},
+  legend cell align={left}]
+\addplot[fill=awBlue!12,draw=none,forget plot] coordinates {(0,176)(15.5,176)(15.5,188)(0,188)};
+\addplot[awBlue,densely dotted,thick,forget plot,domain=0:15.5] {176};
+\addplot[awBlue,densely dotted,thick,forget plot,domain=0:15.5] {188};
+\addplot[awRed!80!black,densely dashed,thick] {182};
+\addlegendimage{awRed!80!black,densely dashed,thick}
+\addlegendimage{line width=0.6pt, densely dashed, awRed!80!black}
+\addplot[awTeal,very thick,mark=*,mark size=1.15pt,
+         mark options={fill=awTeal,draw=awTeal}]
+  coordinates {(0,185.3) (1,184.8) (3,183.9) (4,183.1) (6,182.8) (7,182.3)
+               (8,182.0) (9,182.3) (10,182.2) (11,182.2) (14,182.8) (15,182.6)};
+\addlegendentry{PV (measured, Modbus TCP)}
+\addlegendentry{governed SP = 182\,$^\circ$C}
+\addlegendentry{write instant}
+\addlegendentry{recipe window 176--188\,$^\circ$C}
+\end{axis}
+\end{tikzpicture}
+\caption{Process-variable (PV) response to one governed setpoint (SP) write over real Modbus TCP, measured in one-second buckets. The shaded band is the active recipe monitoring window; the vertical mark is the write instant. The register readback of the same write closes within 0.04\,$^\circ$C (Table~\ref{tab:plc}).}
+\label{fig:pv}
+\end{figure}

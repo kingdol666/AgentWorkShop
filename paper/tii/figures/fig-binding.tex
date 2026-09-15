@@ -1,0 +1,53 @@
+% fig-binding.tex — one node, three bindings: commissioning, agent binding, twin rendering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[font=\tiny,
+  box/.style={draw=awGrey!70, rounded corners=1.5pt, align=center, inner sep=2.2pt, fill=white, minimum height=4.2mm},
+  ind/.style={box, draw=awTeal!80!black, fill=awFill1},
+  agent/.style={box, draw=awBlue!75!black, fill=awFill3},
+  gov/.style={box, draw=awAmber!85!black, fill=awAmber!16},
+  twin/.style={box, draw=awPurple!80!black, fill=awPurple!8},
+  lbl/.style={font=\tiny\bfseries, text=awGrey!55!black},
+  arr/.style={-{Stealth[length=1.1mm]}, thick, draw=awGrey!70!black},
+  arrP/.style={arr, draw=awPurple!75!black},
+  lane/.style={draw=awGrey!45, rounded corners=2pt, fill=awGrey!4, inner sep=3pt}
+]
+% lanes first (boxes paint over them)
+\node[lane, minimum width=8.05cm, minimum height=1.25cm] (l1) at (4.00,2.30) {};
+\node[lane, minimum width=8.05cm, minimum height=1.25cm] (l2) at (4.00,0.85) {};
+\node[lane, minimum width=8.05cm, minimum height=1.25cm] (l3) at (4.00,-0.60) {};
+\node[lbl, anchor=south west] at (l1.south west) {commissioning (config-only, per device)};
+\node[lbl, anchor=south west] at (l2.south west) {agent binding (who may act, how it is gated)};
+\node[lbl, anchor=south west] at (l3.south west) {rendering binding (what the twin shows, who drives it)};
+
+% lane 1: commissioning
+\node[ind, minimum width=17mm] (exp)    at (1.00,2.30) {Integration\\ export};
+\node[ind, minimum width=17mm] (test)   at (3.05,2.30) {Connection\\ test};
+\node[ind, minimum width=17mm] (create) at (5.05,2.30) {Create DAQ/DCW\\ nodes};
+\node[gov,  minimum width=19mm] (card)  at (7.05,2.30) {Semantic card\\ unit · ranges · window};
+\draw[arr] (exp) -- (test);
+\draw[arr] (test) -- (create);
+\draw[arr] (create) -- (card);
+
+% lane 2: agent binding
+\node[agent, minimum width=17mm] (ag)   at (1.00,0.85) {Agent /\\ team};
+\node[gov,   minimum width=17mm] (bind) at (3.05,0.85) {Node binding\\ manual/auto/unbound};
+\node[gov,   minimum width=17mm] (surf) at (5.05,0.85) {Tool surface\\ + approval policy};
+\node[gov,   minimum width=19mm] (wp)   at (7.05,0.85) {Governed write\\ path (Alg.~1)};
+\draw[arr] (ag) -- (bind);
+\draw[arr] (bind) -- (surf);
+\draw[arr] (surf) -- (wp);
+
+% lane 3: twin rendering binding
+\node[ind,  minimum width=17mm] (nd)  at (1.00,-0.60) {Live node\\ (telemetry)};
+\node[twin, minimum width=17mm] (dt)  at (3.05,-0.60) {DeviceTwin\\ modelRef · kind};
+\node[twin, minimum width=17mm] (ds)  at (5.05,-0.60) {desired / state\\ + controls};
+\node[twin, minimum width=19mm] (sc)  at (7.05,-0.60) {3D scene entity\\ WS live render};
+\draw[arr] (nd) -- (dt);
+\draw[arr] (dt) -- (ds);
+\draw[arr] (ds) -- (sc);
+
+% cross-lane relations (same node carried through the three bindings)
+\draw[arrP, dotted] (exp.south) ++(0,-0.05) -- (nd.north west);
+\draw[arrP] (surf.south) -- node[right]{desired} (ds.north);
+\draw[arrP] (wp.south east) to[out=300,in=30] (sc.north east);
+\end{tikzpicture}}
