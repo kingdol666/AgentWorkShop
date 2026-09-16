@@ -1,4 +1,0 @@
-phase,line,protocol,daq_samples,write_p50_ms,write_p95_ms,readback_delta,f5_rejected,f5_total,false_block,loop_iterations,convergence_s
-P3,1,modbus-tcp,7,32.821,63.186,0,6,6,0,,
-P3,2,modbus-rtu,0,,,,,,,,
-P4,1,modbus-tcp,,,,,,,,0,1.215

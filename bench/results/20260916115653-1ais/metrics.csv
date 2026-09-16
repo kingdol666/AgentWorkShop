@@ -1,3 +1,0 @@
-phase,line,protocol,recipe_versions,recipe_lastgood,recipe_applied_run
-P4e,1,modbus-tcp,,,
-P4e,2,opcua,,,

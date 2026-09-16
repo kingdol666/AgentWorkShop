@@ -19,6 +19,24 @@
 const BASE = process.env.AW_BASE ?? 'http://127.0.0.1:3001'
 const WS_BASE = BASE.replace(/^http/, 'ws')
 
+// 网络层瞬断（本机代理 churn 间歇占满回环临时端口 → fetch failed/EADDRINUSE）
+// 用退避重试吸收；HTTP 语义错误不重试。与 bench/lib 侧瞬断策略一致。
+const rawFetch = globalThis.fetch.bind(globalThis)
+globalThis.fetch = async (input, init = {}) => {
+  let lastErr
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    try {
+      return await rawFetch(input, { ...init, signal: init.signal ?? AbortSignal.timeout(30_000) })
+    }
+    catch (err) {
+      lastErr = err
+      if (init.signal?.aborted) throw err
+      if (attempt < 8) await new Promise(r => setTimeout(r, Math.min(800 * 2 ** (attempt - 1), 8000)))
+    }
+  }
+  throw lastErr
+}
+
 let failures = 0
 let passed = 0
 let step = 0
