@@ -54,20 +54,20 @@
 
 \begin{document}
 
-\title{AgentWorkShop: A Node-Native Integration Framework for LLM
-Multi-Agent Closed-Loop Control of Heterogeneous Industrial Production Lines}
+\title{AgentWorkShop: A Node-Native Integration Framework for LLM Multi-Agent
+Governed Closed-Loop Optimization of Heterogeneous Industrial Production Lines}
 
 \author{First~Author,~Second~Author,~and~Third~Author% <-- TODO: fill real names
 \thanks{Manuscript received XXXX; revised XXXX. (Corresponding author: First Author.)}%
 \thanks{The authors are with XXXX, City, Country (e-mail: first.author@xxxx.edu).}% <-- TODO: affiliation
 }
 
-\markboth{IEEE Transactions on Industrial Informatics}{A Node-Native Integration Framework for LLM Multi-Agent Industrial Control}
+\markboth{IEEE Transactions on Industrial Informatics}{A Node-Native Integration Framework for LLM Multi-Agent Governed Industrial Optimization}
 
 \maketitle
 
 \begin{abstract}
-Industrial LLM-agent deployments stop at the advisory boundary: published systems diagnose, generate PLC code, or recommend setpoints; none integrates an agent team into a production line's own protocol, data, and semantic fabric. We present AgentWorkShop, a configuration-driven integration framework that embeds LLM multi-agent teams natively into the supervisory fabric of heterogeneous production lines: a multi-harness agent runtime (14 interchangeable engines) and an industrial runtime (five protocol drivers with per-node edge acquisition) execute as one process over one data domain. Commissioning is configuration, not code: one plant-scenario identifier re-instantiates the deployment on a second, independently defined line with zero platform code changes; across both scenarios, 29 seeded out-of-window/range writes are intercepted (Wilson 95\,\% [88\,\%, 100\,\%]) with zero false blocks. Every agent-issued write traverses one governed path---recipe-window interlock, mode-bound approval, readback-verified write, attributable journal---so the accepted-action language is constrained by construction, and the backstop's automatic rollback is exercised end-to-end on a live breach. A governed closed-loop benchmark on a cast-film twin recovers 96.2--97.3\,\% of the offline grid optimum under a fixed controller (quoted run: 97.0--97.2\,\%, in two iterations with at most two governed writes per seed); four LLM-agent-team campaigns closed the same loop over real transports with every write attributed, but reached only a median 0.76 of that optimum---a measured shortfall that motivates the framework's propose/dispose design. All results come from one executable pipeline with machine-checkable reproduction against frozen baselines.
+Industrial LLM-agent deployments stop at the advisory boundary: published systems diagnose, generate PLC code, or recommend setpoints; none integrates an agent team into a production line's own protocol, data, and semantic fabric. We present AgentWorkShop, a configuration-driven integration framework that embeds LLM multi-agent teams natively into the supervisory fabric of heterogeneous production lines: a multi-harness agent runtime (14 interchangeable engines) and an industrial runtime (five protocol drivers with per-node edge acquisition) execute as one process over one data domain. Commissioning is configuration, not code: one plant-scenario identifier re-instantiates the deployment on a second, independently defined line with zero platform code changes; across both scenarios, all 29 seeded out-of-window/range writes are intercepted with zero false blocks. Every agent-issued write traverses one governed path---recipe-window interlock, mode-bound approval, readback-verified write, attributable journal---so the accepted-action language is constrained by construction, and the backstop's automatic rollback is exercised end-to-end on a live breach. A governed closed-loop benchmark on a cast-film twin recovers 96.2--97.3\,\% of the offline grid optimum under a fixed deterministic controller (no LLM in the loop; quoted run: 97.0--97.2\,\%, in two iterations with at most two governed writes per seed); four uncontrolled same-seed LLM-agent-team campaigns closed the same loop over real transports with every write attributed, but reached only 0.35--0.76 (median 0.76) of that optimum---a measured shortfall that motivates the framework's propose/dispose design. All results come from one executable pipeline with machine-checkable reproduction against frozen baselines; all measured layers are simulation-tier.
 \end{abstract}
 
 \begin{IEEEkeywords}
