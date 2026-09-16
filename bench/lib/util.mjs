@@ -42,14 +42,32 @@ export function makeApi(base) {
   return {
     get token() { return token },
     async raw(method, path, body) {
-      const res = await fetch(`${B}${path}`, {
-        method,
-        headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(15_000),
-      })
-      const json = await res.json().catch(() => null)
-      return { status: res.status, data: json?.data, code: json?.code, message: json?.message ?? '' }
+      // 网络层瞬断（dev server GC/备份序列化造成的秒级停顿 → ECONNRESET/timeout）
+      // 用退避重试吸收；HTTP 语义错误不重试。重试读取的仍是服务端真实状态，
+      // 且治理层对同值重写/同向冷却天然幂等，不会伪造结果。
+      let lastErr
+      for (let attempt = 1; attempt <= 8; attempt++) {
+        try {
+          const res = await fetch(`${B}${path}`, {
+            method,
+            headers: {
+              'content-type': 'application/json',
+              // keep-alive 复用连接：Windows 回环下逐请求新建连接会耗尽临时端口,
+              // 出站 connect 直接 EADDRINUSE（实测）。偶发的陈旧连接复位由下方
+              // 网络层重试兜底（重试在新连接上重发,读取的仍是服务端真实状态）。
+              ...(token ? { authorization: `Bearer ${token}` } : {}),
+            },
+            body: body === undefined ? undefined : JSON.stringify(body),
+            signal: AbortSignal.timeout(30_000),
+          })
+          const json = await res.json().catch(() => null)
+          return { status: res.status, data: json?.data, code: json?.code, message: json?.message ?? '' }
+        } catch (err) {
+          lastErr = err
+          if (attempt < 8) await new Promise(r => setTimeout(r, Math.min(800 * 2 ** (attempt - 1), 8000)))
+        }
+      }
+      throw lastErr
     },
     async login(email, password) {
       const setup = await this.raw('GET', '/api/users/setup-status')

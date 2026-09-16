@@ -24,14 +24,25 @@ export const SIM_DIR = process.env.SIM_DIR
 export const SIM_BASE = process.env.SIM_BASE ?? 'http://127.0.0.1:4010'
 
 export const simApi = async (method, path, body) => {
-  const res = await fetch(`${SIM_BASE}${path}`, {
-    method,
-    headers: { 'content-type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(20_000),
-  })
-  const json = await res.json().catch(() => null)
-  return { status: res.status, data: json?.data ?? json, message: json?.message ?? '' }
+  // 与 makeApi 同一套网络层韧性：瞬断(进程重启窗/积压拒连)退避重试，
+  // HTTP 状态错误照常返回给调用方判定。
+  let lastErr
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    try {
+      const res = await fetch(`${SIM_BASE}${path}`, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      })
+      const json = await res.json().catch(() => null)
+      return { status: res.status, data: json?.data ?? json, message: json?.message ?? '' }
+    } catch (err) {
+      lastErr = err
+      if (attempt < 8) await sleep(Math.min(800 * 2 ** (attempt - 1), 8000))
+    }
+  }
+  throw lastErr
 }
 
 export const simUp = async () => {
@@ -48,6 +59,11 @@ export const simUp = async () => {
 export async function ensureSimulator({ timeoutMs = 90_000, log = console.log } = {}) {
   if (await simUp()) return { started: false, dir: SIM_DIR, reason: 'already-up' }
   if (!existsSync(SIM_DIR)) return { started: false, dir: SIM_DIR, reason: `目录不存在: ${SIM_DIR}` }
+  // 依赖未安装时 npm run dev 必然秒死（tsx 缺失）——fail fast 给出可执行处置，
+  // 而不是空转 90s 后给一个无行动信息的 "未就绪"（实测踩过：子模块未 npm install）。
+  if (!existsSync(join(SIM_DIR, 'node_modules'))) {
+    return { started: false, dir: SIM_DIR, reason: `依赖未安装: ${SIM_DIR}/node_modules 不存在 → cd ${SIM_DIR} && npm install` }
+  }
 
   log(`  · 模拟器未在线 → 自动启动 (cwd=${SIM_DIR})`)
   const child = spawn('npm', ['run', 'dev'], {
@@ -63,7 +79,7 @@ export async function ensureSimulator({ timeoutMs = 90_000, log = console.log } 
     await sleep(1500)
     if (await simUp()) return { started: true, pid: child.pid, dir: SIM_DIR, reason: 'spawned' }
   }
-  return { started: false, pid: child.pid, dir: SIM_DIR, reason: `启动后 ${timeoutMs}ms 内未就绪` }
+  return { started: false, pid: child.pid, dir: SIM_DIR, reason: `启动后 ${timeoutMs}ms 内未就绪（检查 ${SIM_DIR}/npm 日志与依赖安装）` }
 }
 
 /** 应用命名预设（film-line / cast-film-physics），幂等 */

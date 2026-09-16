@@ -167,20 +167,20 @@ function barChart(values, ymax, unit, fname, title) {
 barChart('intercept_rates', 105, 'interception (%)', 'figure-e1a-interception.svg', 'Out-of-constraint interception by arm (6 attacks x 3 reps)')
 barChart('p50', Math.max(200, Math.ceil(Math.max(...ARMS.flatMap(a => agg[a].p50)) * 1.25 / 50) * 50), 'write latency p50 (ms)', 'figure-e1a-latency.svg', 'Governed write latency p50 by arm (automatic segment)')
 
-// ── MD + HTML 报告 ──
+// ── MD + HTML 报告（英文——对外交付物与论文同语言）──
 const md = [
-  `# E1a · 管线层四臂治理消融报告`,
+  `# E1a · Pipeline-Tier 4-Arm Governance Ablation Report`,
   ``,
   `> seed=${seed} · repeats=${repeats} · base=${base} · git=${gitCommit} · hash=${sha256(JSON.stringify({ seed, repeats, arms: ARMS }))}`,
-  `> 复现: \`node bench/e1-lite.mjs --base ${base} --seed ${seed} --repeats ${repeats}\``,
+  `> Reproduce: \`node bench/e1-lite.mjs --base ${base} --seed ${seed} --repeats ${repeats}\``,
   ``,
-  `| 臂 | 拦截率(逐轮) | 越窗执行 | 误拦 | 边界符合 | 写 p50 (ms) | 写 p95 (ms) |`,
+  `| Arm | Interception (per rep) | Window breaches executed | False blocks | Boundary ok | Write p50 (ms) | Write p95 (ms) |`,
   `|---|---|---|---|---|---|---|`,
   ...ARMS.map(a => { const g = agg[a]; return `| ${LABELS[a]} | ${g.intercept_rates.map(x => (x * 100).toFixed(1)).join(' / ')}% | ${g.window_breach_total} | ${g.false_block_total} | ${g.boundary_ok_total}/${repeats * 3} | ${g.p50.join('/')} | ${g.p95.join('/')} |` }),
   ``,
-  `**论文映射**: paper/tii §VII-E Table (tab:e1lite)。四臂消融表明: 拦截能力由软联锁提供(full/no-readback 6/6 vs no-interlock/ungated 4/6, 窗口类攻击执行并入账=归因≠预防); 硬量程结构性不可旁路(误拦恒 0); 消融臂间时延无显著差异(mock 内存回读, 协议层回读成本见 E6)。`,
+  `**Paper mapping**: paper/tii §VII-E Table (tab:e1lite). The 4-arm ablation shows: interception is provided by the soft batch-window interlock (full/no-readback 6/6 vs no-interlock/ungated 4/6 — the two window-class attacks execute and are journaled: *attribution ≠ prevention*); the hard engineering range is structurally unbypassable (false blocks 0 in every arm); write latency is statistically indistinguishable across arms (mock in-memory readback; protocol-layer readback cost measured in E6).`,
   ``,
-  `原始行数据: e1-lite.csv (${rows.filter(r => Array.isArray(r)).length} 行)`,
+  `Raw rows: e1-lite.csv (${rows.filter(r => Array.isArray(r)).length} rows)`,
 ].join('\n')
 writeFileSync(join(outDir, 'report.md'), md)
 
@@ -203,7 +203,7 @@ th{background:#eee}
 code{background:#eee;padding:1px 4px}
 </style></head><body>
 <h1>E1a — Pipeline-Tier Governance Ablation (4 arms)</h1>
-<div class="meta">seed=${seed} · repeats=${repeats} · git=${gitCommit} · ${env.startedAt} · 复现: <code>node bench/e1-lite.mjs --base ${base} --seed ${seed} --repeats ${repeats}</code></div>
+<div class="meta">seed=${seed} · repeats=${repeats} · git=${gitCommit} · ${env.startedAt} · Reproduce: <code>node bench/e1-lite.mjs --base ${base} --seed ${seed} --repeats ${repeats}</code></div>
 <div class="figures">
 <div>${readFileSync(join(outDir, 'figure-e1a-interception.svg'), 'utf8').replace('<svg ', '<svg width="430" ')}</div>
 <div>${readFileSync(join(outDir, 'figure-e1a-latency.svg'), 'utf8').replace('<svg ', '<svg width="430" ')}</div>

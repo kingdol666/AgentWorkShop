@@ -92,9 +92,17 @@ console.log(`platform=${base}  simulator=${SIM_BASE}\n`)
 await timed('P0', 'preflight', 'Bootstrap simulator & platform', async () => {
   let simNote = 'already up (reused)'
   if (!(await simUp())) {
-    if (!autostart) return { status: 'fail', note: `simulator ${SIM_BASE} 不可达且 --no-autostart；请先: cd ${SIM_DIR} && npm run dev` }
+    if (!autostart) {
+      add('P0', 'simulator-reachable', 'simulator reachable', 'fail',
+        [`simulator ${SIM_BASE} 不可达且 --no-autostart；请先: cd ${SIM_DIR} && npm run dev`])
+      return { status: 'fail', note: `simulator ${SIM_BASE} 不可达且 --no-autostart` }
+    }
     const r = await ensureSimulator()
-    if (!r.started && !(await simUp())) return { status: 'fail', note: `simulator自动启动failed: ${r.reason}` }
+    if (!r.started && !(await simUp())) {
+      add('P0', 'simulator-reachable', 'simulator reachable', 'fail',
+        [`simulator ${SIM_BASE} 自动启动失败: ${r.reason}`, `处置: cd ${SIM_DIR} && npm install && npm run dev`])
+      return { status: 'fail', note: `simulator自动启动failed: ${r.reason}` }
+    }
     simNote = `自动启动 pid=${r.pid}`
   }
   // 平台自举：执行卡承诺"单命令端到端"——平台不在运行时由流程分离拉起（detached+unref）
@@ -856,9 +864,12 @@ const fail = checks.filter(c => c.status === 'fail').length
 const warn = checks.filter(c => c.status === 'warn').length
 const pass = checks.filter(c => c.status === 'pass').length
 // 零检查 = 夹具/自举未跑到任何断言，绝不能判 PASS（假绿防护）；
+// 「全部 skip」同理——自举失败时每个阶段都会被诚实跳过，若只看 fail 数就会打出
+// 空心的 ✅ PASS（实测踩过：模拟器依赖缺失 → 全 skip → PASS(0/0/0)）。
 // 阶段级 fail（如 P0 抛错未落检查）同样必须判 FAIL——检查表通过 ≠ 阶段全部执行。
 const phaseFailN = phases.filter(p => p.status === 'fail').length
-const emptyRun = checks.length === 0
+const executedN = pass + warn + fail
+const emptyRun = checks.length === 0 || executedN === 0
 const reproCmd = `node bench/pipeline.mjs --profile ${profile} --seed ${seed}${maxLines !== 5 ? ` --lines ${maxLines}` : ''}${toolHarness !== 'opencode' ? ` --tool-harness ${toolHarness}` : ''}${clSeeds ? ` --cl-seeds ${clSeeds}` : ''}${clWriteMode !== 'governed' ? ` --cl-write ${clWriteMode}` : ''}${agentHarness ? ` --agent ${agentHarness}` : ''}`
 
 const env = {
@@ -993,7 +1004,7 @@ writeText(join(outDir, 'dashboard.html'), renderDashboard({
   ].filter(Boolean).join(''),
 }))
 
-console.log(`\n── 结果 ──  pass ${pass} · warn ${warn} · fail ${fail}  ${fail === 0 && !emptyRun ? '✅ PASS' : '❌ FAIL'}${emptyRun ? '（未产生任何检查，判定failed）' : ''}`)
+console.log(`\n── 结果 ──  pass ${pass} · warn ${warn} · fail ${fail} · skip ${checks.length - executedN}  ${fail === 0 && phaseFailN === 0 && !emptyRun ? '✅ PASS' : '❌ FAIL'}${emptyRun ? '（未产生任何有效检查——自举/夹具失败，全部阶段仅被跳过）' : ''}`)
 console.log(`产物: ${outDir}`)
 console.log(`  run.json / metrics.csv / summary.json / report.md / dashboard.html`)
 console.log(`复现: ${reproCmd}\n`)
