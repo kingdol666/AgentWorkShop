@@ -1,0 +1,122 @@
+\section{Core Mechanisms: From Node Connection to Closed-Loop Control}
+\label{sec:mech}
+This section details the six mechanisms that make up the framework, in the order an industrial deployment meets them: connecting and creating nodes (Sec.~\ref{sec:nodes}), assembling the agent team in a channel (Sec.~\ref{sec:channel}), executing node control through the governed write path (Sec.~\ref{sec:writepath}), operating the production line (Sec.~\ref{sec:lineops}), closing the agent control loop (Sec.~\ref{sec:loop}), and managing recipes with non-destructive rollback (Sec.~\ref{sec:recipe}). Section~\ref{sec:hitl} closes with the human control boundary that spans all six.
+
+\subsection{Node Connection and Creation}
+\label{sec:nodes}
+Five protocol drivers spanning four protocol families---Modbus TCP, Modbus RTU (over TCP), OPC UA \cite{iec62541}, MQTT, and HTTP/REST---sit behind a uniform, plugin-registerable driver interface; a mock driver supports deterministic testing. Connecting a device is a five-step configuration flow: \emph{export} the device's integration descriptor, from which the driver configuration is derived; \emph{test connectivity} against the real protocol stack; \emph{create the node}, choosing acquisition and control roles; \emph{provision the line, product, and recipe} objects the node joins; and \emph{bind the node to an agent or team} (Sec.~\ref{sec:hitl}). No scenario-specific code exists in this path, which is what makes cross-scenario recommissioning measurable (Sec.~\ref{sec:port}).
+
+A created node carries its physical semantics as a \emph{semantic card}: physical quantity, unit and display precision, \emph{hard interlock} range, \emph{soft interlock} recipe window, warn band, live value with freshness, and a rule limiting any single step to 2\,\% of span. Agents never see register addresses---the card is their only view of the plant, and it is also what the write path checks against (Sec.~\ref{sec:writepath}).
+
+Each acquisition node runs an \emph{edge runtime} owning its sampling schedule and in-flight mutual exclusion, with three decoupled intervals: acquisition (default 5\,s, floor 1\,s, hard clamp $[0.1, 60]$\,s; sub-tick intervals wait for the 250\,ms sweep), WebSocket publish (default 1\,s), and display/trend (default 5\,s). A 250\,ms gateway sweep samples nodes under a non-accumulating budget of 64 in-flight samples per tick; a \emph{rotating cursor} plus per-node \emph{due check} stops not-yet-due nodes from consuming budget first, so tail nodes are never starved.
+
+\subsection{Agent Channel: Team Assembly, Supervision, and Memory}
+\label{sec:channel}
+The collaboration unit is the \emph{channel}: a named room hosting one lead, its workers, the task tree, and the message history; teams deploy as a unit, and every industrial binding is scoped to its channel, so a lead-dispatched task and a worker's actuation share one authorization scope. Task trees carry seven states (\textsc{submitted}, \textsc{assigned}, \textsc{working}, \textsc{waiting} for blocked parents, \textsc{failed}, \textsc{cancelled}, \textsc{completed}).
+
+Each lead runs a supervision loop on a 1\,s tick with exponential idle backoff and event wake-up; each tick first assembles a state fingerprint (task tree, member queue depths, newest mailbox message) and skips the LLM call if unchanged---an idle plant costs no tokens unless a parent task is closeable. When consulted, the LLM owns goal judgment, completion, and escalation; mechanical decisions run every tick on a deterministic rule engine: FIFO dispatch to the worker with the shortest queue (ties broken by longest idle), reassignment of failed tasks while retries remain (limit 3), and a 300\,s stall watchdog treating tool activity as liveness. The rule engine is also the guaranteed fallback whenever the LLM abstains, errors, or returns nothing actionable.
+
+Agent intelligence is a replaceable component. Fourteen engines are registered with a capability matrix (mid-task steering, supervision, human-in-the-loop, among others): an in-process deterministic mock (used in Secs.~\ref{sec:dynamic}--\ref{sec:e1a}), a first-party RPC engine (omp), and vendor or open-source CLI/SDK agents (e.g., codex, claude, qwen). Capabilities are asserted per engine and verified by the static audit (Sec.~\ref{sec:static}); dispatch follows an allow-list probe that resolves each executable and validates its response (the security role of the same probe is discussed in Sec.~\ref{sec:hitl}).
+
+Agents accumulate typed memories (session, task, peer, team chronicle, reflection, semantic) in SQLite with FTS5 and an optional vector index. Retrieval fuses a lexical channel (FTS5, CJK-aware unigram segmentation) with a dense vector channel (sqlite-vec $k$-NN) by reciprocal-rank fusion \cite{cormack2009rrf} ($k{=}60$), scores candidates by $0.5\,\rho + 0.3\,\phi + 0.2\,\iota$ (normalized relevance, kind-aware recency with 3--14\,d half-lives, access-weighted importance), diversifies by maximal-marginal-relevance \cite{carbonell1998mmr} ($\lambda{=}0.7$), and injects three layers under a 500-token budget. Compaction triggers at 70\,\% of the context window and harvests summaries back into memory. Channels exchange messages only through a lead-gated cross-channel bus.
+
+\emph{Runtime extensions} enter through a hot-reloading, error-isolated plugin host: plugins contribute UI slots, per-plugin i18n, settings rendering, and shared services on a capability bus (\texttt{ctx.services}); they never gain a direct plant I/O path---plant access remains the drivers' monopoly (Sec.~\ref{sec:nodes}).
+
+\subsection{Node Control Execution: The Governed Write Path}
+\label{sec:writepath}
+This subsection formalizes the single path by which an agent actuator request becomes a plant write. A \emph{device} is one integrated piece of plant equipment; it appears as one or more \emph{nodes} (instrumented endpoints), and $n$ denotes a \emph{writable} node---one exposing a setpoint, the control image of physical quantity $p$. $n$ carries a hard safety range $S(n) = [n^{\min}, n^{\max}]$ and a value transform $t_n$, and an active \emph{recipe run} $r$ prescribes a process window $W_r(p)$ for $p$. The accepted set is therefore the \emph{effective constraint}
+\begin{equation}
+C(n, r) =
+\begin{cases}
+S(n) \cap W_r(p), & \text{run $r$ active},\\[2pt]
+S(n), & \text{otherwise.}
+\end{cases}
+\label{eq:constraint}
+\end{equation}
+Two independent mechanisms enforce containment: the interlock rejects a value inside $S(n)$ but outside $W_r(p)$, citing the window, while the driver's engineering-quantity validation rejects out-of-range values in every state. Containment thus never depends on authoring-time containment of $W_r(p) \subseteq S(n)$, and both branches of Eq.~\eqref{eq:constraint} are exercised dynamically in Sec.~\ref{sec:dynamic}.
+
+Algorithm~\ref{alg:write} specifies the pipeline: an \emph{approval stage} at the tool boundary, then six ordered execution stages behind the single write entry---approval is a \emph{decision}, execution a \emph{validated act}. The approval stage (stage~0, Sec.~\ref{sec:hitl}) routes every agent proposal on a manually bound node to a human request; the binding mode selects the posture: \emph{manual} gates as above, \emph{auto} skips the gate but stays subject to interlock and backstop, \emph{unbound} has no write path at all.
+\emph{(1) Availability gate.} A paused gateway or disabled node rejects the request: governance is unavailable exactly when actuation is unavailable.
+\emph{(2) Closed-loop guardrail.} Agent writes are serialized per optimization scope---one open record per agent, records idle beyond $T_{\text{stale}} = 30$\,min superseded by the next writer---and within a cooldown $T_{\text{cd}} = 300$\,s a same-direction rewrite is rejected while a reverse-direction correction stays allowed, so oscillatory overwrites are impossible.
+\emph{(3) Soft interlock.} $v \in C(n, r)$ is checked before any driver interaction.
+\emph{(4) Write with readback.} The value is encoded through $t_n$, sent, read back, decoded and compared under
+\begin{equation}
+\tau(n) = \frac{1}{|t_n^{\text{scale}}|}\max\!\big(0.5 \cdot 10^{-d(n)},\; 0.005\,(n^{\max} - n^{\min})\big),
+\label{eq:tolerance}
+\end{equation}
+the larger of half a least-count digit and 0.5\,\% of span in engineering units ($|t_n^{\text{scale}}|$: transform scale; $d(n)$: display precision). A write is \texttt{ok} only if the decoded readback agrees within $\tau(n)$; a driver that cannot read back yields an explicit \emph{degraded} flag, never a silent confirmation.
+\emph{(5)--(6) Journal and audit.} Every executed write appends a signed anchor $(id, line, n, prev, new, \textit{src}, a, r, \textit{approval}, \textit{record}, t)$, and the audit plane receives a typed event attributed to the actor's kind, deduplicated over 10\,s.
+
+\begin{algorithm}[!t]
+\caption{Governed write path $\textsc{Write}(n, v, \textit{src}, a)$}
+\label{alg:write}
+\begin{algorithmic}[1]
+\Require node $n$, value $v$, source $\textit{src}$, actor $a$; active run $r$ if any
+\If{$\textit{src} = \text{agent}$ $\land$ binding$(n)$ = manual}
+  \State route to approval; \textbf{return} pending \Comment{Stage 0; lapse $\Rightarrow$ never executed}
+\EndIf
+\If{binding$(n)$ = unbound} \State \Return reject(FORBIDDEN) \Comment{tool surface never dispatches it} \EndIf
+\If{gateway paused $\lor$ $\neg n.\text{enabled}$} \State \Return reject(CONFLICT) \EndIf
+\If{$\textit{src} = \text{agent}$}
+  \If{$\exists$ open record $r'$ of $a$ $\land$ $\text{age}(r') < T_{\text{stale}}$} \State \Return reject(CONFLICT)
+  \ElsIf{$\exists$ open record $r'$} \State $\textsc{Supersede}(r')$ \EndIf
+  \If{same-direction write within $T_{\text{cd}}$} \State \Return reject(CONFLICT) \EndIf
+\EndIf
+\State $W \gets C(n, r)$ \Comment{Eq.~\eqref{eq:constraint}}
+\If{$v \notin W$} \State \Return reject(soft interlock) \EndIf
+\State $(\textit{raw}, \textit{rb}) \gets \text{driver.write}(n, t_n^{-1}(v))$
+\State $v_{\text{rb}} \gets t_n(\textit{rb})$;\quad \textbf{if} readback unavailable \textbf{then} \textit{degraded} $\gets$ true
+\State \textbf{if} \textit{degraded} \textbf{then} $\textit{ok} \gets$ false \textbf{else} $\textit{ok} \gets |v_{\text{rb}} - v| \le \tau(n)$ \Comment{Eq.~\eqref{eq:tolerance}}
+  \State $\textsc{JournalAppend}(n, v^{\text{prev}}, v, \textit{src}, a, r, \dots)$ \Comment{executed writes only; approval and record fields elided}
+  \State $\textsc{Audit}(\text{write}, n, v, a)$ \Comment{10\,s dedup}
+  \State \Return $(\textit{ok}, v_{\text{rb}}, \textit{degraded})$
+\end{algorithmic}
+\end{algorithm}
+
+The pipeline maintains two invariants here, and the closed loop of Sec.~\ref{sec:loop} the third:
+\begin{itemize}
+\item \textbf{I1 (containment).} Every executed agent write satisfies $v \in C(n, r)$ (both branches). \emph{Anchor:} single-entry write function. \emph{Evidence:} rejection-path acceptance tests; live-instance verification (Sec.~\ref{sec:dynamic}).
+\item \textbf{I2 (readback closure).} A write is reported \texttt{ok} only if the decoded readback lies within $\tau(n)$ or carries an explicit degraded flag. \emph{Anchor:} Eq.~\eqref{eq:tolerance} in the write executor. \emph{Evidence:} deadband and calibration tests; the no-readback ablation.
+\end{itemize}
+
+\subsection{Production-Line Operations Management}
+\label{sec:lineops}
+The framework models a production line as a four-level object tree---line, product, recipe, \emph{run}---because every governance object hangs off it: the recipe window constrains writes jointly with the hard range while a run is active (Eq.~\eqref{eq:constraint}); acquisition samples only nodes on lines with an active batch, while PLC-side protection persists between batches per principle P2; and the backstop (Sec.~\ref{sec:loop}) scores open records against the active recipe window. An active run binds exactly one recipe version to one batch, giving every write a unique governance context---the window $W_r(p)$ of Eq.~\eqref{eq:constraint}.
+
+Operations monitoring rides the alarm chain: each node's state machine spans \texttt{ok}/\texttt{warn}/\texttt{alarm}/\texttt{offline} with an 8\,\% warn band, 2\,\% hysteresis, three-frame \texttt{ok}$\leftrightarrow$\texttt{warn} debounce, watermark-based out-of-order defense, and recipe-window violations as edge-triggered \texttt{alarm}; acknowledgment is a human step with escalation (default 15\,min). Time series persist to TimescaleDB (batched 500\,ms flushes, tiered retention), frames to MinIO with fallback to local disk, and platform state to SQLite (WAL, FTS5); every alarm, write, recipe change, and rollback row carries line, product, and recipe dimensions for the metric slices of Sec.~\ref{sec:eval}. Both log surfaces---the central audit log with typed actor attribution (user, agent, system) and the operations log---are queryable management views over the same journal substrate that anchors every write (Sec.~\ref{sec:writepath}).
+
+Rendering and commissioning share one surface: a \emph{device-twin registry} persists, per scene entity, the bound 3D asset, the agent in charge (a virtual operator avatar), and the command set, alongside the three device-shadow state planes \cite{ditto2024} (\emph{telemetry}, \emph{desired}, \emph{state}). A WebSocket bus broadcasts lifecycle events and every reading, so the scene renders live values without polling; scene edits write back to the node registry, so the scene doubles as a commissioning editor that never actuates---\emph{desired}-to-\emph{state} reconciliation traverses the governed write path (Sec.~\ref{sec:writepath}) when it does.
+
+\subsection{Agent Closed-Loop Control}
+\label{sec:loop}
+Fig.~\ref{fig:teamloop} shows the closed loop as the team experiences it: the AgentTeam at the center, surrounded by the four object families it operates on---tools, plugins, PLC nodes, and recipes---and the numbered AgentLoop that turns plant data into governed setpoint changes.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/fig3-agentteam-loop.pdf}
+\caption{AgentTeam-centric view of the closed loop. \textbf{Center:} the team's internal design---lead supervision with a rule-guaranteed fallback, $N$ harness-backed workers (14 interchangeable engines), a lead-gated cross-channel bus, and hybrid episodic--semantic memory. \textbf{Spokes:} the industrial tool surface (48 host tools, 23 of them industrial/automated-ML), the plugin host (runtime extensions without direct plant I/O), PLC nodes (five protocol drivers with per-node edge runtimes), and versioned recipes. \textbf{Numbered edges:} the AgentLoop---\emph{observe} (1, \texttt{daq\_query}) $\to$ \emph{propose} (2, \texttt{dcw\_control} opens an optimization record) $\to$ \emph{govern} (3, interlock--approval--readback, Sec.~\ref{sec:writepath}) $\to$ \emph{actuate} (4) $\to$ \emph{verify--judge} (5, \texttt{dcw\_judge} keeps or rolls back) $\to$ \emph{learn} (6, memory harvest); the dashed return edge is the bounded rollback ($K{=}2$).}
+\label{fig:teamloop}
+\end{figure*}
+
+The workflow of one loop iteration is explicit. \emph{Observe}: the bound agent queries fresh process values through \texttt{daq\_query}, grounded by the semantic card's unit, range, and freshness (Sec.~\ref{sec:nodes}). \emph{Propose}: it issues \texttt{dcw\_control} with a setpoint argument; a governed write (Sec.~\ref{sec:writepath}) opens an \emph{optimization record} that freezes the pre-write baseline---the parameter value preceding the record's first governed write, with the statistics of the preceding $T_{\text{bl}} = 600$\,s window---and the proposal is subject to the step rule (any single step $\le 2$\,\% of span). \emph{Govern}: stage checks and the approval gate apply exactly as on any write. \emph{Actuate}: the driver writes and reads back. \emph{Verify--judge}: a separate tool, \texttt{dcw\_judge}, inspects the record against fresh acquisition data and returns a \emph{keep}, \emph{rollback}, or \emph{uncertain} verdict---judgment is not execution: the verdict changes no PLC value, and only a separately invoked rollback actuates, itself traversing the full pipeline. \emph{Learn}: outcomes and harvests land in the team's memory (Sec.~\ref{sec:channel}), closing the informational loop.
+
+Two bounds make the loop safe to leave running. First, the guardrails of Sec.~\ref{sec:writepath}: one open record per agent, stale records superseded at $T_{\text{stale}} = 30$\,min, and the same-direction cooldown $T_{\text{cd}} = 300$\,s prevent oscillatory or accumulating writes. Second, the \emph{backstop}: an open record under an \emph{auto} binding is re-evaluated every $T_{\text{re}} = 30$\,s once older than $T_{\text{win}} = 120$\,s, judged against the active window $W_r(p)$ (falling back to $S(n)$, Eq.~\eqref{eq:constraint}) over every sample acquired since it opened. If the out-of-window count reaches $B = 3$, the system issues a rollback verdict and executes it only while the node's executed-rollback count is below $K = 2$; otherwise the verdict is recorded and escalated to a human. The rollback target defaults to that baseline (finer granularities---stable anchor, batch start, known-good---are operator-invoked, Sec.~\ref{sec:recipe}); every rollback write traverses this same pipeline, and a paused gateway defers the actuation: the fail-safe direction. Because the counter is per node and monotone, $K$ is a node-lifetime cap. This is the third invariant:
+\begin{itemize}
+\item \textbf{I3 (bounded autonomy).} Automatic rollbacks per node are at most $K = 2$ over the node's life; the third response and all manual-policy rollbacks require human confirmation, and stale records are superseded, never accumulated. \emph{Anchor:} the per-node rollback counter guarding the backstop. \emph{Evidence:} rollback-manager acceptance tests; the backstop drill executes one system-initiated rollback end-to-end, and the escalation-at-$K$ branch is exercised at acceptance-test level (Sec.~\ref{sec:govsurface}).
+\end{itemize}
+
+These bounds are stated over the pipeline, not over the LLM: whatever the agent proposes, the accepted-action language is constrained. This is the precise sense in which the system's autonomy is \emph{governed}.
+
+\subsection{Recipe Management and Rollback}
+\label{sec:recipe}
+The recipe lifecycle is versioned and non-destructive: editing a recipe \emph{creates} version $n{+}1$ rather than overwriting; an operator can freeze a \emph{known-good} baseline; \emph{known-good rollback} re-dispatches the frozen parameter set to the PLC; and one-click \emph{apply} starts a fresh batch under the chosen version. While a run is active, the bound version supplies the window $W_r(p)$ of Eq.~\eqref{eq:constraint}, so recipe management and write governance cannot drift apart. Rollback has four granularities---the record baseline (the backstop's default), a stable anchor, the batch start, and the known-good snapshot---all reached through the same governed write path, and all journaled with full attribution (Sec.~\ref{sec:writepath}). Off-window excursions therefore have exactly two bounded exits: automatic rollback while the executed-rollback count is below $K{=}2$ (Sec.~\ref{sec:loop}), then mandatory human escalation.
+
+\subsection{HITL: The Human Control Boundary}
+\label{sec:hitl}
+The human boundary is a property of the \emph{binding model}, not of a prompt. Binding a node to an agent selects one of three postures: \emph{manual}---every agent write is routed to a human approval request and is not submitted further until a human decides; \emph{auto}---writes proceed under interlock and backstop without the gate; \emph{unbound}---no write path exists at all (the tool surface never dispatches one). An engineer binds plant nodes to a single agent or a whole team; the binding injects the semantic card into the agents' context and derives their tool surface---no separate integration layer to build or maintain.
+
+The approval gate is engineered against the failure modes of human-in-the-loop supervision \cite{parasuraman2000model}. Requests are deduplicated per node and record; unapproved requests lapse with their record rather than queue indefinitely; and approval is \emph{decoupled from execution}---every pipeline stage re-runs after the decision, so a recipe change during deliberation cannot be exploited through a stale approval. Operators approve from the web console or the TUI workbench, which share the same approval queue; approval decisions land in the journal anchor of the resulting write (Sec.~\ref{sec:writepath}), so every human decision is attributable like every machine one.
+
+Three further separations bound what agents can do to each other and to the record: \emph{judgment is not execution} (Sec.~\ref{sec:loop}); \emph{lead-only tools} (team-level operations, cross-channel messaging) are restricted to lead agents with approval; and alarm \emph{acknowledgment} remains a human step with escalation (Sec.~\ref{sec:lineops}), as does the escalation-at-$K$ branch of the backstop.
+
+The gate governs the sanctioned path only, and the paper does not pretend otherwise. Harness engines are privileged local processes---a compromised engine could write to the protocol stacks directly, the failure mode \emph{that} indirect prompt injection targets \cite{greshake2023injection}---so the deployment model combines an availability allow-list probe (Sec.~\ref{sec:channel}), a least-privilege service account, and IEC~62443 zoning \cite{iec62443} to keep the governed surface the only \emph{reachable} write path, trading zoning isolation for in-process enforceability within one zone. Inside the sanctioned path a prompt cannot \emph{enlarge} an agent's authority; it can only abuse authority the operator already granted, which the approval gate and the chain limit bound. Governance is fail-safe under storage degradation (F6).
