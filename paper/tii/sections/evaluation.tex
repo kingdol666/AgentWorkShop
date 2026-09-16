@@ -117,11 +117,11 @@ Fig.~\ref{fig:clbench} reports the trajectories; $J_{\text{end}}$ is the mean of
   coordinates {(0,64.69) (1,87.86) (2,86.87)};
 \addlegendentry{seed 44}
 \addplot[awRed!80!black,only marks,mark=star,mark size=2.2pt,forget plot]
-  coordinates {(2,86.97) (2,86.92) (2,86.87)};
-\node[font=\scriptsize,anchor=south east,text=awRed!80!black,inner sep=1.5pt] at (axis cs:2.78,62.8) {settling $J$: 86.97/86.92/86.87};
+  coordinates {(2.12,86.97) (2.0,86.92) (1.88,86.87)};
+\node[font=\scriptsize,anchor=south east,text=awRed!80!black,inner sep=1.5pt] at (axis cs:2.78,62.8) {settling $J$ (stars): 86.97/86.92/86.87};
 \end{axis}
 \end{tikzpicture}
-\caption{Governed closed-loop optimization on the cast-film twin (three seeds, real transports, deterministic controller). $J$ is the objective of Eq.~(\ref{eq:objective}); all seeds converge in two iterations to 97.0--97.2\,\% of the offline grid optimum $W^{*}$ (dashed). The quoted ratios are the $J_{\text{end}}$ means of both evaluations over $W^{*}$.}
+\caption{Governed closed-loop optimization on the cast-film twin (three seeds, real transports, deterministic controller). $J$ is the objective of Eq.~(\ref{eq:objective}); all seeds converge in two iterations to 97.0--97.2\,\% of the offline grid optimum $W^{*}$ (dashed). Red stars mark the iteration-2 settling measurements (offset horizontally for visibility); the quoted ratios are the $J_{\text{end}}$ means of both evaluations over $W^{*}$.}
 \label{fig:clbench}
 \end{figure}
 
