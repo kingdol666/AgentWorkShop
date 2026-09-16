@@ -75,3 +75,21 @@
 - 第二轮残留 copy-edit(悬空 VI-A 引用×3、V-A 成本指针、Fig.1 caption、结论限定词、索引词)已在本轮全部落地并经 PDF 验证。
 - **编辑结论:五席全部 SATISFIED / CRITICALS-CLOSED,无新增 barrier。** 提交前用户侧遗留:作者块与 artifact DOI(相机就绪项)。
 - 篇幅:12 页(TII ≤14 合规)。评审强制新增内容(规范句+7 条文献)使篇幅较上轮 +1 页;若须压回 11 页,可裁 VI-A 部署治理段与 walkthrough 指针句(约 0.5 页),由作者定夺。
+
+---
+
+## B2 外部基线臂执行结论(2026-09-17)
+
+按 EIC 建议(实测一条外部基线臂,LangGraph/AutoGen 经同一 MCP 工具面)启动环境探测:
+
+- langgraph / langchain_core / autogen 均未安装(pip 26.1.2 / Python 3.12 可安装);
+- **阻断项:本机无任何 LLM provider 凭据**(env 无 GLM/OPENAI/DEEPSEEK/ANTHROPIC 等密钥;
+  平台 runtime-settings.json overrides 为空;config.yml embed_api_key 为空)。
+  旧 LLM campaign 的凭据随 0.7.38 清环境移除。外部框架无 LLM 后端即无法构成 B2 测量;
+  以脚本化"伪 LangGraph"替代将构成稻草人实验,违反协议诚实原则。
+
+处置:B2 列为环境恢复凭据后的首个遗留实验(与 L3 实测、跨种子 campaign 并列);
+投稿包按验证器回退路径准备:
+1. 主仓库已推送(525d302/6e50178/d2ec822 等 21 个提交上 GitHub),论文脚注 URL 可解析;
+2. CITATION.cff 入库(Zenodo/GitHub 可铸造 DOI);
+3. 作者块姓名/单位与 Zenodo 铸造为作者侧提交前动作。
