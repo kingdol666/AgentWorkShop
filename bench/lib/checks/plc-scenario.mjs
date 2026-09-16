@@ -11,14 +11,25 @@ const BASE = process.env.AW_BASE ?? 'http://127.0.0.1:3001'
 const T = 'plc'
 
 async function simApi(method, path, body) {
-  const res = await fetch(`${SIM}${path}`, {
-    method,
-    headers: { 'content-type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(15_000),
-  })
-  const json = await res.json().catch(() => null)
-  return { status: res.status, data: json?.data ?? json, message: json?.message ?? '' }
+  // 网络层瞬断（本机代理 churn 造成回环临时端口间歇耗尽 → fetch failed）用退避重试吸收；
+  // HTTP 语义错误不重试。与 lib/sim.mjs、lib/util.mjs 的瞬断策略一致。
+  let lastErr
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    try {
+      const res = await fetch(`${SIM}${path}`, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(15_000),
+      })
+      const json = await res.json().catch(() => null)
+      return { status: res.status, data: json?.data ?? json, message: json?.message ?? '' }
+    } catch (err) {
+      lastErr = err
+      if (attempt < 8) await sleep(Math.min(800 * 2 ** (attempt - 1), 8000))
+    }
+  }
+  throw lastErr
 }
 
 const meta0 = { id: 'plc-0-simulator', title: 'PLC 模拟器就绪+薄膜产线预设', tier: T, dims: ['D1'], weight: 1, requires: [] }
