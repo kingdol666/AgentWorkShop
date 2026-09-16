@@ -63,3 +63,15 @@
 
 ## 剩余页数约束
 正文保持 ≤11 页:新增引用与规范句(约 +30 行)以 V-B/V-D/VI 冗余压缩与 II 尾部收紧对冲。
+
+---
+
+## Round 2 Verification Outcome(re-review,2026-09-17)
+
+- **R1:** SATISFIED —— M1/M3/M4/M5/M6 = ADDRESSED;M2/M7 = PARTLY(遗留:token/cost 明细、55/55 枚举、release 计数、artifact URL——均为 camera-ready 项);数字全扫无新矛盾;建议上调推荐等级。
+- **R2:** SATISFIED —— M1–M5 与 6 项 minor 全部核销(标题改优化口径、无回读策略、振荡声明收回、ISA-88 收窄、containment 降级 + 62443-3-3/NIST 引用)。
+- **R3:** SATISFIED —— M1–M5 全部核销(审批卡诚实 scoping、失效模式→机制映射 + Bainbridge/Lee&See/Parasuraman&Manzey、lapse 如实、K=lifetime、16s 范围收窄)。
+- **DA:** CRITICALS-CLOSED —— C1/C2 均RESOLVED-BY-RETREAT 且全文一致;M1/M2/M3/M5/M6 RESOLVED-BY-RETREAT;M4 PARTLY(覆盖表已给,F6 措辞与 T3–T5 已补);消解的怀疑未被"误修"。
+- 第二轮残留 copy-edit(悬空 VI-A 引用×3、V-A 成本指针、Fig.1 caption、结论限定词、索引词)已在本轮全部落地并经 PDF 验证。
+- **编辑结论:五席全部 SATISFIED / CRITICALS-CLOSED,无新增 barrier。** 提交前用户侧遗留:作者块与 artifact DOI(相机就绪项)。
+- 篇幅:12 页(TII ≤14 合规)。评审强制新增内容(规范句+7 条文献)使篇幅较上轮 +1 页;若须压回 11 页,可裁 VI-A 部署治理段与 walkthrough 指针句(约 0.5 页),由作者定夺。
