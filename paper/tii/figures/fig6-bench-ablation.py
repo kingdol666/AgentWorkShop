@@ -1,22 +1,21 @@
 """Fig. 6 - governance ablation (E1a): interception vs. governed-write latency.
 
-Data sources (archived benchmark runs, read - never invented):
-  bench/results/20260914154903-e1lite/e1-lite.csv
-  bench/results/20260915172842-e1lite/e1-lite.csv
-      columns: arm, rep, case, kind, value, verdict, status, latency_ms
-      4 arms x 3 reps per run; 6 seeded attack cases per rep.
+Data source (archived benchmark aggregate, read - never invented):
+  bench/tools/fig4-data.json -- the same per-repetition aggregate the paper's
+  Fig. 4 uses (bench/tools/fig4_analyze.py over three released e1-lite runs,
+  20260914023820 / 20260914040054 / 20260914132601; 4 arms x 9 reps).
+  Per rep: intercepted / attacks / p50 / p95.
 
 Metric definitions replicate the harness exactly (bench/e1-lite.mjs lines
 84-101, recomputed in bench/tools/fig4_analyze.py):
   * latency population = every ACCEPTED governed write of {legit, timed};
     boundary probes are recorded but excluded;
-  * percentile = nearest-rank, no interpolation (p50 = lat[n//2],
-    p95 = lat[ceil(0.95 n)-1]);
+  * percentile = nearest-rank, no interpolation;
   * interception = seeded attack answered with status 400 (rejected).
 Panel (a): intercepted attack cases per arm out of 6 seeded attacks
-(deterministic across all 6 reps - asserted), Wilson 95% score intervals on
+(deterministic across all 9 reps - asserted), Wilson 95% score intervals on
 n = 6, z = 1.959964, printed as "k/6 [lo, hi]".
-Panel (b): point ranges - dot = mean of per-rep p50 over the 6 reps,
+Panel (b): point ranges - dot = mean of per-rep p50 over the 9 reps,
 whisker = min per-rep p50 to max per-rep p95 (never bars: a truncated bar
 axis would exaggerate differences).
 
@@ -24,7 +23,7 @@ Style: IEEE TII single column, 86 mm wide, 300 dpi, boxed axes with inward
 major+minor ticks, light horizontal grid only, grayscale-safe (hatch pattern
 plus colour), legend/annotations in empty regions only.
 """
-import csv
+import json
 import math
 from pathlib import Path
 
@@ -32,10 +31,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 REPO = Path(__file__).resolve().parents[3]
-RUNS = [
-    REPO / "bench" / "results" / "20260914154903-e1lite" / "e1-lite.csv",
-    REPO / "bench" / "results" / "20260915172842-e1lite" / "e1-lite.csv",
-]
+DATA = REPO / "bench" / "tools" / "fig4-data.json"
 OUT = Path(__file__).resolve().parent / "fig6-bench-ablation.png"
 
 ARMS = [
@@ -45,14 +41,6 @@ ARMS = [
     ("ungated", "Fully ungated"),
 ]
 Z = 1.959963985  # 95% two-sided normal quantile
-
-
-def nearest_rank(sorted_vals, q):
-    """Nearest-rank percentile, no interpolation (harness definition)."""
-    n = len(sorted_vals)
-    if q == 0.5:
-        return sorted_vals[n // 2]
-    return sorted_vals[min(n - 1, -(-int(n * 100 * q) // 100) - 1)]
 
 
 def wilson(k, n, z=Z):
@@ -69,40 +57,25 @@ def fmt_pct(v):
 
 
 # ---------------------------------------------------------------- load data
+raw = json.load(open(DATA, encoding="utf-8"))
 stats = {}
 for arm, label in ARMS:
-    per_rep = []          # (run, rep, p50, p95)
-    case_intercept = {}   # attack case -> [bool per rep] (rejected = status 400)
-    for path in RUNS:
-        rows = [r for r in csv.DictReader(open(path, encoding="utf-8"))
-                if r["arm"] == arm]
-        for rep in sorted({r["rep"] for r in rows}, key=int):
-            rr = [r for r in rows if r["rep"] == rep]
-            lat = sorted(float(r["latency_ms"]) for r in rr
-                         if r["case"] in ("legit", "timed")
-                         and r["status"] == "200")
-            per_rep.append((path.parent.name, rep,
-                            nearest_rank(lat, 0.5), nearest_rank(lat, 0.95)))
-            for r in rr:
-                if r["case"] == "attack":
-                    case_intercept.setdefault(r["kind"], []).append(
-                        r["status"] != "200")
-    # interception is deterministic per case: a case counts if rejected in
-    # every repetition of every run (asserted)
-    consistent = all(len(set(v)) == 1 for v in case_intercept.values())
-    assert consistent and len(case_intercept) == 6, (arm, case_intercept)
-    k = sum(1 for v in case_intercept.values() if all(v))
-    p50s = [r[2] for r in per_rep]
-    p95s = [r[3] for r in per_rep]
+    per_rep = raw[arm]["reps"]        # one entry per repetition (9 per arm)
+    p50s = [r["p50"] for r in per_rep]
+    p95s = [r["p95"] for r in per_rep]
+    ks = {r["intercepted"] for r in per_rep}
+    ns = {r["attacks"] for r in per_rep}
+    assert len(ks) == 1 and len(ns) == 1, (arm, ks, ns)  # deterministic judge class
+    k, n = ks.pop(), ns.pop()
     stats[arm] = {
-        "label": label, "k": k, "n": len(case_intercept),
+        "label": label, "k": k, "n": n,
         "reps": len(per_rep),
         "mean_p50": sum(p50s) / len(p50s),
         "min_p50": min(p50s), "max_p95": max(p95s),
-        "wilson": wilson(k, len(case_intercept)),
+        "wilson": wilson(k, n),
     }
     lo, hi = stats[arm]["wilson"]
-    print(f"{label:14s} {k}/{stats[arm]['n']}  Wilson95% [{100*lo:.1f}, {100*hi:.1f}]  "
+    print(f"{label:14s} {k}/{n}  Wilson95% [{100*lo:.1f}, {100*hi:.1f}]  "
           f"mean p50 = {stats[arm]['mean_p50']:.1f} ms  "
           f"reps = {len(per_rep)}  min-p50 = {stats[arm]['min_p50']:.1f}  "
           f"max-p95 = {stats[arm]['max_p95']:.1f}")
@@ -201,7 +174,7 @@ ax_b.set_xticklabels([s["label"] for _, s in stats.items()], fontsize=6)
 ax_b.set_xlim(-0.55, 3.55)
 ax_b.tick_params(which="both", pad=2)
 ax_b.text(0.012, 0.985,
-          "dot: mean per-rep p50 (6 reps)   whisker: min p50 \u2192 max p95",
+          "dot: mean per-rep p50 (9 reps)   whisker: min p50 \u2192 max p95",
           transform=ax_b.transAxes, fontsize=6, ha="left", va="top",
           color="0.25")
 ax_b.text(0.0, 1.06, "(b)", transform=ax_b.transAxes, fontsize=7,

@@ -17,6 +17,7 @@ import io, os, re, sys
 
 W, H = 1500, 558           # canvas; 1500 px -> 181 mm, so 1 px = 0.1207 mm
 MM_PER_PX = 181.0 / W
+BUS_Y = 64                 # entry-surface bus line: every entry enters one process
 
 FS_ENTRY, FS_ENTRY_SUB = 20, 18
 FS_ZONE = 22
@@ -173,9 +174,16 @@ def box(b, title, sub, stroke, fill, fs_t, fs_s, sw=1.5, rx=7, sub_color=None):
 # entry surfaces
 for (t, s), b in zip(ENTRY, row(5, 14, 14, 44)):
     box(b, t, s, C["grey"], C["grey_fill"], FS_ENTRY, FS_ENTRY_SUB, sw=1.4)
-    # every entry surface drops into the platform underneath it
+    # every entry surface drops onto the platform bus underneath it
     cx = b["x"] + b["w"] / 2
-    o.append(f'<line x1="{cx:.1f}" y1="{b["y"] + b["h"]:.1f}" x2="{cx:.1f}" y2="70" '
+    o.append(f'<line x1="{cx:.1f}" y1="{b["y"] + b["h"]:.1f}" x2="{cx:.1f}" y2="{BUS_Y}" '
+             f'stroke="{C["grey"]}" stroke-width="1.6"/>')
+# platform bus: all entry surfaces enter one process, which contains the three halves
+o.append(f'<line x1="{M}" y1="{BUS_Y}" x2="{W - M}" y2="{BUS_Y}" '
+         f'stroke="{C["grey"]}" stroke-width="1.6"/>')
+for z in zones:
+    cx = z["x"] + z["w"] / 2
+    o.append(f'<line x1="{cx:.1f}" y1="{BUS_Y}" x2="{cx:.1f}" y2="{z["y"]:.1f}" '
              f'stroke="{C["grey"]}" stroke-width="1.6"/>')
 # the three halves
 for (zt, stroke, fill, boxes), z in zip(ZONES, zones):
