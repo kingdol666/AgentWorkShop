@@ -1,0 +1,214 @@
+{
+  "runId": "20260916115653-1ais",
+  "env": {
+    "runId": "20260916115653-1ais",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3005",
+    "simBase": "http://127.0.0.1:4010",
+    "simDir": "D:\\codes\\ABO\\AgentWorkShop\\plc-node-simulator",
+    "lines": 5,
+    "ownLines": 4,
+    "satelliteDaq": 1,
+    "protocols": "modbus-tcp/opcua/mqtt/http/modbus-rtu",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-09-16T11:57:25.073Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "harnessHash": "61079925b2f3af0a",
+    "gitCommit": "2806e05",
+    "harnessFiles": 8,
+    "closedloop": null,
+    "portability": null,
+    "backstop": {
+      "fired": false,
+      "restored": false,
+      "latencyS": null,
+      "recordId": null,
+      "from": null,
+      "to": null
+    },
+    "verdict": {
+      "pass": 9,
+      "warn": 2,
+      "fail": 0,
+      "phaseFails": 8,
+      "ok": false
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3"
+  },
+  "verdict": {
+    "pass": 9,
+    "warn": 2,
+    "fail": 0,
+    "phaseFails": 8,
+    "ok": false
+  },
+  "kpis": [
+    {
+      "label": "Provisionable lines",
+      "value": 4,
+      "unit": "",
+      "note": "+1 satellite DAQ · modbus-tcp/opcua/mqtt/http/modbus-rtu",
+      "tone": "good"
+    },
+    {
+      "label": "DAQ samples total",
+      "value": 8,
+      "unit": "",
+      "note": "1/5 nodes sampling",
+      "tone": "good"
+    },
+    {
+      "label": "Governance interception (pooled)",
+      "value": "—",
+      "unit": "%",
+      "note": "F5 attacks",
+      "tone": "good"
+    },
+    {
+      "label": "Write p50 (all protocols)",
+      "value": null,
+      "unit": "ms",
+      "note": "incl. real protocol transactions"
+    },
+    {
+      "label": "Closed-loop J/J*",
+      "value": "off",
+      "unit": "",
+      "note": "--cl-seeds 3 enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Tool-level loops",
+      "value": 0,
+      "unit": "",
+      "note": "dcw→daq→judge ×3 convergence"
+    },
+    {
+      "label": "System backstop",
+      "value": "not fired",
+      "unit": "",
+      "note": "P8b drill requires scenario 2",
+      "tone": "warn"
+    },
+    {
+      "label": "Scenario portability",
+      "value": "off",
+      "unit": "",
+      "note": "P8 runs in integrated profile",
+      "tone": "warn"
+    },
+    {
+      "label": "LLM agent loop",
+      "value": "off",
+      "unit": "",
+      "note": "--agent omp enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Checks",
+      "value": "9/11",
+      "unit": "",
+      "note": "warn 2 · fail 0",
+      "tone": "good"
+    }
+  ],
+  "perLine": [
+    {
+      "index": 1,
+      "protocol": "modbus-tcp",
+      "simDevice": "dev-extruder-mbtcp",
+      "daqSamples": 8,
+      "f5": null,
+      "falseBlock": null,
+      "loopIterations": null,
+      "convergenceS": null,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    },
+    {
+      "index": 2,
+      "protocol": "opcua",
+      "simDevice": "dev-extruder-opcua",
+      "f5": null,
+      "falseBlock": null,
+      "loopIterations": null,
+      "convergenceS": null,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    },
+    {
+      "index": 3,
+      "protocol": "mqtt",
+      "simDevice": "dev-gauge-mqtt",
+      "f5": null,
+      "falseBlock": null,
+      "loopIterations": null,
+      "convergenceS": null,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    },
+    {
+      "index": 4,
+      "protocol": "http",
+      "simDevice": "dev-inspect-http",
+      "f5": null,
+      "falseBlock": null,
+      "loopIterations": null,
+      "convergenceS": null,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    },
+    {
+      "index": 5,
+      "protocol": "modbus-rtu",
+      "simDevice": "dev-gels-rtu",
+      "f5": null,
+      "falseBlock": null,
+      "loopIterations": null,
+      "convergenceS": null,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    }
+  ],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "offline grid-search optimum (benchmark ground truth)"
+    },
+    {
+      "section": "provision",
+      "key": "lines_created",
+      "value": 4,
+      "unit": "",
+      "note": "可开跑Line（另有 1 satellite DAQ）"
+    },
+    {
+      "section": "provision",
+      "key": "daq_nodes",
+      "value": 5,
+      "unit": "",
+      "note": "real-protocol DAQ nodes"
+    },
+    {
+      "section": "recipe",
+      "key": "recipe_lifecycles_ok",
+      "value": 0,
+      "unit": " lines",
+      "note": "版本/回退/基准恢复/下发 全链通过"
+    }
+  ],
+  "portability": null,
+  "closedloop": null
+}

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="230" viewBox="0 0 360 230" font-family="Georgia,serif" font-size="11">
+<text x="180" y="16" text-anchor="middle" fill="#222">Governed write latency p50 by arm (automatic segment)</text>
+<line x1="46" y1="196" x2="337" y2="196" stroke="#ddd"/>
+<text x="40" y="200" text-anchor="end" fill="#666">0</text>
+<line x1="46" y1="156" x2="337" y2="156" stroke="#ddd"/>
+<text x="40" y="160" text-anchor="end" fill="#666">50</text>
+<line x1="46" y1="116" x2="337" y2="116" stroke="#ddd"/>
+<text x="40" y="120" text-anchor="end" fill="#666">100</text>
+<line x1="46" y1="76" x2="337" y2="76" stroke="#ddd"/>
+<text x="40" y="80" text-anchor="end" fill="#666">150</text>
+<line x1="46" y1="36" x2="337" y2="36" stroke="#ddd"/>
+<text x="40" y="40" text-anchor="end" fill="#666">200</text>
+<rect x="46" y="98.61333333333333" width="52" height="97.38666666666667" fill="#2b7a3d" opacity="0.85"/>
+<text x="72" y="94.61333333333333" text-anchor="middle" fill="#222">122</text>
+<text x="72" y="210" text-anchor="middle" fill="#444">Full</text>
+<rect x="118" y="99.65333333333332" width="52" height="96.34666666666668" fill="#b5432e" opacity="0.85"/>
+<text x="144" y="95.65333333333332" text-anchor="middle" fill="#222">120</text>
+<text x="144" y="210" text-anchor="middle" fill="#444">No interlock</text>
+<rect x="190" y="97.44" width="52" height="98.56" fill="#3d6fb5" opacity="0.85"/>
+<text x="216" y="93.44" text-anchor="middle" fill="#222">123</text>
+<text x="216" y="210" text-anchor="middle" fill="#444">No readback</text>
+<rect x="262" y="97.62666666666668" width="52" height="98.37333333333332" fill="#8a5cb5" opacity="0.85"/>
+<text x="288" y="93.62666666666668" text-anchor="middle" fill="#222">123</text>
+<text x="288" y="210" text-anchor="middle" fill="#444">Ungated</text>
+<text x="40" y="42" text-anchor="end" fill="#666">write latency p50 (ms)</text>
+</svg>
