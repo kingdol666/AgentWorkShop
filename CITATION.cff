@@ -1,0 +1,32 @@
+# This CITATION.cff file was generated with the paper's submission metadata.
+# Zenodo/GitHub can ingest this file to mint a citable DOI.
+cff-version: 1.2.0
+title: "AgentWorkShop: A Node-Native Integration Framework for LLM Multi-Agent Governed Closed-Loop Optimization of Heterogeneous Industrial Production Lines"
+message: >-
+  If you use this software or benchmark in your work, please cite the
+  accompanying IEEE TII manuscript and this repository.
+type: software
+authors:
+  - alias: AgentWorkShop Authors
+    # TODO(submission): replace with the real author list (family-names,
+    # given-names, affiliation, email) matching the manuscript author block.
+version: 0.7.39
+date-released: "2026-09-17"
+license: PolyForm-Noncommercial-1.0.0
+repository-code: "https://github.com/kingdol666/AgentWorkShop"
+url: "https://github.com/kingdol666/AgentWorkShop"
+abstract: >-
+  AgentWorkShop is a configuration-driven integration framework that embeds
+  LLM multi-agent teams natively into the supervisory fabric of
+  protocol-heterogeneous production lines. A governed write path (recipe-window
+  interlock, mode-bound approval, readback-verified write, attributable
+  journal), a bounded-autonomy backstop, and the AW-IndustrialBench executable
+  benchmark together measure integration adaptability and the safety-overhead
+  trade-off of agent-issued actuator writes.
+keywords:
+  - industrial automation
+  - large language models
+  - multi-agent systems
+  - closed-loop optimization
+  - node-native integration
+  - human-in-the-loop
