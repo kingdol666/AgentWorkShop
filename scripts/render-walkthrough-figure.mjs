@@ -29,8 +29,8 @@ console.log('     ', info.split('\n').filter(l => /Page size|Pages/.test(l)).joi
 // ── (b) high-resolution PNG (overall + per-panel) ─────────────────────────
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] })
 const page = await browser.newPage()
-// 181 mm x 112 mm at 96 dpi/css == 684 x 423 css px
-await page.setViewport({ width: 684, height: 423, deviceScaleFactor: 8 })
+// 181 mm wide at 96 dpi/css == 684 css px; height is a minimum — fullPage grows to content
+await page.setViewport({ width: 684, height: 200, deviceScaleFactor: 8 })
 await page.goto(pdfUrl, { waitUntil: 'networkidle0' })
 await page.evaluate(() => document.fonts?.ready)
 await new Promise(r => setTimeout(r, 500))
@@ -39,7 +39,7 @@ const png = fs.statSync(path.join(DIR, 'fig-walkthrough.png'))
 console.log('PNG  :', path.join(DIR, 'fig-walkthrough.png'), `${(png.size / 1024).toFixed(0)} KB`)
 
 // medium-res variant for quick review
-await page.setViewport({ width: 684, height: 423, deviceScaleFactor: 2 })
+await page.setViewport({ width: 684, height: 200, deviceScaleFactor: 2 })
 await page.screenshot({ path: path.join(DIR, '_preview.png'), fullPage: true })
 console.log('PREV :', path.join(DIR, '_preview.png'))
 

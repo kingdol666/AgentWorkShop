@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fig. 1 — AgentWorkShop vs existing MAS industrial control</title>
+<style>
+  @page { size: 181mm 106.19mm; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #ffffff; }
+  svg { display: block; width: 181mm; height: 106.19mm; font-family: Arial, "Segoe UI", "Helvetica Neue", Helvetica, sans-serif; }
+</style>
+</head>
+<body>
+<svg width="1500" height="880" viewBox="0 0 1500 880" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrTeal" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1F6F78"/>
+    </marker>
+    <marker id="arrAmber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#C8871B"/>
+    </marker>
+    <marker id="arrGrey" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5F6B76"/>
+    </marker>
+    <marker id="arrGreen" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2E7D32"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1500" height="880" fill="#ffffff"/>
+
+  <!-- ================= seam between panels ================= -->
+  <line x1="28" y1="496" x2="1472" y2="496" stroke="#C9CFD4" stroke-width="2" stroke-dasharray="10 7"/>
+
+  <!-- ================= PANEL A : AgentWorkShop (top-left) ================= -->
+  <g>
+    <rect x="28" y="26" width="924" height="444" rx="14" fill="#E8F1F2" stroke="#1F6F78" stroke-width="2"/>
+    <text x="48" y="64" font-size="26" font-weight="bold" fill="#1F6F78">AgentWorkShop (this work)</text>
+    <rect x="640" y="40" width="292" height="32" rx="16" fill="#ffffff" stroke="#1F6F78" stroke-width="1.5"/>
+    <text x="786" y="61" font-size="18" fill="#1F6F78" text-anchor="middle">one process · one data domain</text>
+
+    <!-- agent team -->
+    <rect x="340" y="88" width="280" height="84" rx="10" fill="#ffffff" stroke="#1F6F78" stroke-width="2"/>
+    <text x="356" y="116" font-size="20" font-weight="bold" fill="#1F6F78">Agent team</text>
+    <text x="604" y="116" font-size="18" fill="#5F6B76" text-anchor="end">lead + workers</text>
+    <circle cx="430" cy="138" r="7.5" fill="#3D6FB5"/>
+    <rect x="419" y="149" width="22" height="13" rx="6" fill="#3D6FB5"/>
+    <circle cx="466" cy="140" r="6" fill="#1F6F78"/>
+    <rect x="457" y="150" width="18" height="11" rx="5" fill="#1F6F78"/>
+    <circle cx="498" cy="140" r="6" fill="#1F6F78"/>
+    <rect x="489" y="150" width="18" height="11" rx="5" fill="#1F6F78"/>
+    <circle cx="530" cy="140" r="6" fill="#1F6F78"/>
+    <rect x="521" y="150" width="18" height="11" rx="5" fill="#1F6F78"/>
+
+    <line x1="480" y1="174" x2="480" y2="185" stroke="#1F6F78" stroke-width="2.5" marker-end="url(#arrTeal)"/>
+
+    <!-- governed bridge gate -->
+    <rect x="462" y="190" width="36" height="116" rx="8" fill="#ffffff" stroke="#1F6F78" stroke-width="2.5"/>
+    <rect x="468" y="201.5" width="24" height="7" rx="3.5" fill="#1F6F78"/>
+    <rect x="468" y="220.5" width="24" height="7" rx="3.5" fill="#1F6F78"/>
+    <rect x="468" y="239.5" width="24" height="7" rx="3.5" fill="#1F6F78"/>
+    <rect x="468" y="258.5" width="24" height="7" rx="3.5" fill="#1F6F78"/>
+    <rect x="468" y="277.5" width="24" height="7" rx="3.5" fill="#1F6F78"/>
+    <text x="285" y="232" font-size="20" font-weight="bold" fill="#1F6F78" text-anchor="end">Governed bridge</text>
+    <line x1="291" y1="226" x2="456" y2="226" stroke="#1F6F78" stroke-width="1.5"/>
+    <!-- gate step labels -->
+    <line x1="498" y1="205" x2="506" y2="205" stroke="#5F6B76" stroke-width="1.5"/>
+    <line x1="498" y1="224" x2="506" y2="224" stroke="#5F6B76" stroke-width="1.5"/>
+    <line x1="498" y1="243" x2="506" y2="243" stroke="#5F6B76" stroke-width="1.5"/>
+    <line x1="498" y1="262" x2="506" y2="262" stroke="#5F6B76" stroke-width="1.5"/>
+    <line x1="498" y1="281" x2="506" y2="281" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="510" y="211" font-size="18" fill="#5F6B76">semantic cards</text>
+    <text x="510" y="230" font-size="18" fill="#5F6B76">interlock</text>
+    <text x="510" y="249" font-size="18" fill="#5F6B76">approval</text>
+    <text x="510" y="268" font-size="18" fill="#5F6B76">readback</text>
+    <text x="510" y="287" font-size="18" fill="#5F6B76">journal</text>
+
+    <line x1="480" y1="306" x2="480" y2="311" stroke="#1F6F78" stroke-width="2.5" marker-end="url(#arrTeal)"/>
+
+    <!-- bounded rollback label (under amber return line) -->
+    <text x="506" y="312" font-size="18" font-weight="bold" fill="#C8871B">bounded rollback</text>
+
+    <!-- protocol drivers -->
+    <rect x="283" y="318" width="154" height="42" rx="9" fill="#ffffff" stroke="#1F6F78" stroke-width="1.5"/>
+    <text x="360" y="344" font-size="18" fill="#1F6F78" text-anchor="middle">Modbus TCP/RTU</text>
+    <rect x="449" y="318" width="80" height="42" rx="9" fill="#ffffff" stroke="#1F6F78" stroke-width="1.5"/>
+    <text x="489" y="344" font-size="18" fill="#1F6F78" text-anchor="middle">OPC UA</text>
+    <rect x="541" y="318" width="62" height="42" rx="9" fill="#ffffff" stroke="#1F6F78" stroke-width="1.5"/>
+    <text x="572" y="344" font-size="18" fill="#1F6F78" text-anchor="middle">MQTT</text>
+    <rect x="615" y="318" width="58" height="42" rx="9" fill="#ffffff" stroke="#1F6F78" stroke-width="1.5"/>
+    <text x="644" y="344" font-size="18" fill="#1F6F78" text-anchor="middle">HTTP</text>
+
+    <line x1="480" y1="360" x2="480" y2="371" stroke="#1F6F78" stroke-width="2.5" marker-end="url(#arrTeal)"/>
+
+    <!-- plant nodes -->
+    <rect x="320" y="378" width="96" height="60" rx="8" fill="#ffffff" stroke="#1F6F78" stroke-width="2"/>
+    <text x="368" y="413" font-size="20" font-weight="bold" fill="#1F6F78" text-anchor="middle">PLC</text>
+    <rect x="432" y="378" width="96" height="60" rx="8" fill="#ffffff" stroke="#1F6F78" stroke-width="2"/>
+    <text x="480" y="413" font-size="20" font-weight="bold" fill="#1F6F78" text-anchor="middle">PLC</text>
+    <rect x="544" y="378" width="96" height="60" rx="8" fill="#ffffff" stroke="#1F6F78" stroke-width="2"/>
+    <text x="592" y="413" font-size="20" font-weight="bold" fill="#1F6F78" text-anchor="middle">I/O node</text>
+    <text x="480" y="458" font-size="18" font-weight="bold" fill="#1F6F78" text-anchor="middle">node-level binding</text>
+
+    <!-- governed write path rail (teal, down) -->
+    <polyline points="600,129 700,129 700,430 646,430" fill="none" stroke="#1F6F78" stroke-width="2.5" marker-end="url(#arrTeal)"/>
+    <text x="704" y="122" font-size="18" font-weight="bold" fill="#1F6F78">governed write path</text>
+
+    <!-- bounded rollback rail (amber, up) -->
+    <polyline points="630,376 630,366 684,366 684,294 502,294" fill="none" stroke="#C8871B" stroke-width="2.5" marker-end="url(#arrAmber)"/>
+
+    <!-- protocol drivers caption (above row, left) -->
+    <text x="283" y="310" font-size="18" fill="#5F6B76">protocol drivers</text>
+
+    <!-- attributed journal doc -->
+    <path d="M150,380 L178,380 L194,396 L194,438 L150,438 Z" fill="#ffffff" stroke="#1F6F78" stroke-width="1.5"/>
+    <path d="M178,380 L178,396 L194,396" fill="none" stroke="#1F6F78" stroke-width="1.5"/>
+    <line x1="157" y1="402" x2="187" y2="402" stroke="#8FA6A9" stroke-width="1.5"/>
+    <line x1="157" y1="412" x2="187" y2="412" stroke="#8FA6A9" stroke-width="1.5"/>
+    <line x1="157" y1="422" x2="187" y2="422" stroke="#8FA6A9" stroke-width="1.5"/>
+    <line x1="157" y1="432" x2="178" y2="432" stroke="#8FA6A9" stroke-width="1.5"/>
+    <polyline points="172,376 172,250 458,250" fill="none" stroke="#5F6B76" stroke-width="1.5" stroke-dasharray="2 4" stroke-linecap="round"/>
+    <text x="118" y="462" font-size="18" font-weight="bold" fill="#1F6F78">attributed journal</text>
+
+    <!-- digital-twin observer (watch only) -->
+    <rect x="740" y="378" width="196" height="80" rx="10" fill="#ffffff" stroke="#2E7D32" stroke-width="2" stroke-dasharray="7 4"/>
+    <ellipse cx="764" cy="400" rx="10" ry="6.5" fill="#ffffff" stroke="#2E7D32" stroke-width="2"/>
+    <circle cx="764" cy="400" r="2.5" fill="#2E7D32"/>
+    <text x="782" y="406" font-size="18" font-weight="bold" fill="#2E7D32">Digital-twin</text>
+    <text x="782" y="428" font-size="18" font-weight="bold" fill="#2E7D32">observer</text>
+    <text x="782" y="450" font-size="18" fill="#5F6B76">watch only</text>
+    <polyline points="628,440 628,448 734,448" fill="none" stroke="#2E7D32" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrGreen)"/>
+  </g>
+
+  <!-- ================= VS badge ================= -->
+  <circle cx="750" cy="496" r="34" fill="#ffffff" stroke="#5F6B76" stroke-width="3"/>
+  <text x="750" y="507" font-size="30" font-weight="bold" fill="#3A444D" text-anchor="middle">VS</text>
+
+  <!-- ================= advantage callouts on the boundary ================= -->
+  <g font-size="18">
+    <rect x="132" y="478" width="196" height="36" rx="18" fill="#ffffff" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="230" y="502" text-anchor="middle"><tspan fill="#5F6B76">advisory → </tspan><tspan fill="#1F6F78" font-weight="bold">actuation</tspan></text>
+    <rect x="379" y="478" width="252" height="36" rx="18" fill="#ffffff" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="505" y="502" text-anchor="middle"><tspan fill="#5F6B76">per-app glue → </tspan><tspan fill="#1F6F78" font-weight="bold">node-native</tspan></text>
+    <rect x="816" y="478" width="292" height="36" rx="18" fill="#ffffff" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="962" y="502" text-anchor="middle"><tspan fill="#5F6B76">untracked → </tspan><tspan fill="#1F6F78" font-weight="bold">attributed, bounded</tspan></text>
+    <rect x="1194" y="478" width="212" height="36" rx="18" fill="#ffffff" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="1300" y="502" text-anchor="middle"><tspan fill="#5F6B76">1 protocol → </tspan><tspan fill="#1F6F78" font-weight="bold">4 drivers</tspan></text>
+  </g>
+
+  <!-- ================= PANEL B : existing MAS (bottom-right) ================= -->
+  <g>
+    <rect x="548" y="522" width="924" height="332" rx="14" fill="#FBEDED" stroke="#5F6B76" stroke-width="2"/>
+    <text x="568" y="562" font-size="26" font-weight="bold" fill="#5F6B76">Existing MAS industrial control</text>
+    <rect x="1146" y="536" width="306" height="32" rx="16" fill="#ffffff" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="1299" y="557" font-size="18" fill="#5F6B76" text-anchor="middle">agent outside the control loop</text>
+
+    <!-- external agent -->
+    <rect x="568" y="592" width="200" height="84" rx="10" fill="#ffffff" stroke="#5F6B76" stroke-width="2"/>
+    <text x="668" y="622" font-size="20" font-weight="bold" fill="#5F6B76" text-anchor="middle">External agent</text>
+    <circle cx="668" cy="640" r="8" fill="#5F6B76"/>
+    <rect x="654" y="650" width="28" height="14" rx="7" fill="#5F6B76"/>
+
+    <!-- suggestion bubble -->
+    <rect x="796" y="588" width="320" height="80" rx="14" fill="#ffffff" stroke="#5F6B76" stroke-width="1.5"/>
+    <path d="M798,618 L776,630 L798,642 Z" fill="#ffffff" stroke="#5F6B76" stroke-width="1.5"/>
+    <rect x="795" y="617" width="5" height="26" fill="#ffffff"/>
+    <text x="956" y="620" font-size="20" font-weight="bold" fill="#3A444D" text-anchor="middle">suggestion</text>
+    <text x="956" y="648" font-size="18" fill="#5F6B76" text-anchor="middle">no record of proposals</text>
+
+    <!-- stops: human / generated code -->
+    <line x1="1116" y1="604" x2="1136" y2="604" stroke="#5F6B76" stroke-width="2" marker-end="url(#arrGrey)"/>
+    <line x1="1116" y1="656" x2="1136" y2="656" stroke="#5F6B76" stroke-width="2" marker-end="url(#arrGrey)"/>
+    <circle cx="1164" cy="600" r="9" fill="#5F6B76"/>
+    <rect x="1150" y="612" width="28" height="16" rx="7" fill="#5F6B76"/>
+    <text x="1190" y="624" font-size="18" fill="#5F6B76">operator</text>
+    <path d="M1146,640 L1170,640 L1184,654 L1184,686 L1146,686 Z" fill="#ffffff" stroke="#5F6B76" stroke-width="1.5"/>
+    <path d="M1170,640 L1170,654 L1184,654" fill="none" stroke="#5F6B76" stroke-width="1.5"/>
+    <line x1="1153" y1="662" x2="1178" y2="662" stroke="#9AA4AC" stroke-width="1.5"/>
+    <line x1="1153" y1="670" x2="1178" y2="670" stroke="#9AA4AC" stroke-width="1.5"/>
+    <line x1="1153" y1="678" x2="1170" y2="678" stroke="#9AA4AC" stroke-width="1.5"/>
+    <text x="1194" y="668" font-size="18" fill="#5F6B76">generated PLC code</text>
+
+    <!-- advisory boundary -->
+    <line x1="568" y1="716" x2="1452" y2="716" stroke="#B3282D" stroke-width="2" stroke-dasharray="9 6"/>
+    <circle cx="612" cy="716" r="13" fill="#ffffff" stroke="#B3282D" stroke-width="2.5"/>
+    <line x1="604" y1="708" x2="620" y2="724" stroke="#B3282D" stroke-width="2.5"/>
+    <line x1="620" y1="708" x2="604" y2="724" stroke="#B3282D" stroke-width="2.5"/>
+    <rect x="640" y="702" width="714" height="28" fill="#FBEDED"/>
+    <text x="648" y="723" font-size="18" font-weight="bold" fill="#B3282D">no governed write path</text>
+    <text x="868" y="723" font-size="18" fill="#5F6B76">advisory only — output stops at a human or a compiler</text>
+
+    <!-- plant loop (agent never reaches it) -->
+    <rect x="568" y="736" width="884" height="110" rx="10" fill="#ffffff" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="584" y="764" font-size="18" font-weight="bold" fill="#5F6B76">control loop runs locally</text>
+    <rect x="584" y="774" width="116" height="58" rx="8" fill="#F1F3F5" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="642" y="808" font-size="20" font-weight="bold" fill="#5F6B76" text-anchor="middle">PLC</text>
+    <rect x="830" y="774" width="140" height="58" rx="8" fill="#F1F3F5" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="900" y="808" font-size="20" font-weight="bold" fill="#5F6B76" text-anchor="middle">process</text>
+    <line x1="700" y1="790" x2="822" y2="790" stroke="#5F6B76" stroke-width="2" marker-end="url(#arrGrey)"/>
+    <line x1="830" y1="818" x2="708" y2="818" stroke="#5F6B76" stroke-width="2" marker-end="url(#arrGrey)"/>
+    <rect x="1050" y="788" width="100" height="36" rx="9" fill="#F1F3F5" stroke="#5F6B76" stroke-width="1.5"/>
+    <text x="1100" y="812" font-size="18" fill="#5F6B76" text-anchor="middle">OPC UA</text>
+    <text x="1166" y="802" font-size="18" fill="#5F6B76">per-application,</text>
+    <text x="1166" y="824" font-size="18" fill="#5F6B76">single-protocol integration</text>
+  </g>
+</svg>
+</body>
+</html>
