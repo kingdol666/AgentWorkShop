@@ -82,16 +82,17 @@
      判据: 退出码 0；s2 论文一致性 = 100%。s2 < 85% → 停止，先修论文/代码失真。
      产物: bench/results/<runId>/report.md + report.html + run.json
 
-  ② 一体化集成流水线（冷启动约 6–8 分钟，勿中断）——全功能主战役
+  ② 一体化集成流水线（冷启动约 8–11 分钟，勿中断）——全功能主战役
      NO_PROXY=127.0.0.1,localhost AW_BENCH_MODE=1 \
        node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3
-     判据: 退出码 0，且 stdout 末行「✅ PASS（pass 61 · fail 0 · 阶段 fail 0）」。
+     判据: 退出码 0，且 stdout 末行「✅ PASS（pass 71 · fail 0 · 阶段 fail 0）」。
        自举行应出现「模拟器未在线 → 自动启动」「平台未在线 → 分离启动 pid=...」。
      覆盖: 五协议多产线供给 → 数采/数控写+回读 → F5 拦截 → Agent 工具闭环 3 轮收敛 ×4 线 →
        **AgentTeam 优化任务（任务板下达目标→daq_query 时段读数→受治理下发→物理随动→达标收口）** →
        优化记录/回退/参数台账 → HITL 审批 → 治理只读面 → 配方生命周期 → cast-film 闭环寻优
        (3 seeds) → 向量/图像帧 → 跨场景可移植(film-line, 0 代码改动) → 系统兜底 drilling →
-       团队调度/团队记忆/引擎注册表。
+       **双拉产线 P10（biax 全线 9 设备五协议 49 信号:探测补建→多节点建线→AgentTeam ≥3 执行节点
+       闭环寻优厚度 25.0±0.7μm）** → 团队调度/团队记忆/引擎注册表。
      可选真引擎: 同命令加 `--agent omp`（或 opencode/codex/…）→ 两层智能证据：
        P5 规定步闭环（daq_query→dcw_control→观察→dcw_judge→交付哨兵→complete_task）；
        P5b **目标驱动闭环寻优**——cast-film 孪生线以起始工况开跑，任务只给输出目标值
@@ -136,9 +137,9 @@
   ③ 流水线层复现（可选，同命令再跑一次得第二个 runId）:
      NO_PROXY=127.0.0.1,localhost AW_BENCH_MODE=1 \
        node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3
-     对比两次 summary.json 的 verdict 必须同为 55/0/0；closedloop.agg 的 ratio 区间
-     必须都落在 [0.966,0.973]；portability.agg 五协议构成必须逐字段一致
-     （J0/Jend 采样值允许环境性浮动）。
+     对比两次 summary.json 的 verdict 必须同为 71/0/0；closedloop.agg 的 ratio 区间
+       必须都落在 [0.966,0.973]；portability.agg 五协议构成必须逐字段一致
+       （J0/Jend 采样值允许环境性浮动）。
 
 ────────────────────────────────────────────────────────────────
 第 5 步 · 全系统重启持久化演练（可选但推荐，约 2 分钟）
@@ -156,7 +157,7 @@
 ────────────────────────────────────────────────────────────────
   每次运行落在 bench/results/<runId>/（UTC 时间戳命名，永不覆盖）:
     run.mjs 层   → run.json / report.md / report.html / config-hash.txt
-    pipeline 层  → run.json / summary.json / report.md / dashboard.html / metrics.csv / agentteam-mission.log（--agent 时另有 agent-loop-<harness>.log）
+    pipeline 层  → run.json / summary.json / report.md / dashboard.html / metrics.csv / agentteam-mission.log / agentteam-biax.log（--agent 时另有 agent-loop-<harness>.log）
     e1-lite 层   → run.json / e1-lite.csv / report.md / report.html / figure-*.svg
     compare 层   → compare-*.md（写进 bench/results/ 根）
   交付物 = 各层的 report.md + report.html（或 dashboard.html）。
@@ -249,6 +250,7 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 | **P7 多形态数采** | 向量轮廓帧 + 图像帧落库 | 数采不只标量 |
 | **P8 跨场景可移植** | 切换第二个产线场景预设（如 film-line），用**同一套**委托/治理代码路径重跑 export→建线→数采→受治理写→F5 拦截→回读 | 框架主张「适配新产线=配置任务而非集成项目」的直接度量（0 代码改动） |
 | **P8b 系统兜底 drilling** | 在第二场景刚体上：清场 open 记录 → Agent(auto) 开优化记录 → manual 冻结 DAQ 于窗外 → 等系统兜底（观察窗 120s + 30s 节拍 + 越限 3 采样）自动判定 rollback 并恢复记录基线 → 解冻并恢复第一场景 | 论文 I3（有界自治）的**动态证据**：system 判定 + 值回基线；时延属环境类 |
+| **P10 双拉产线全节点** | biax(BOPET) 全线数字孪生 9 设备五协议 49 信号（30 SP + 19 PV 全带工艺描述）：① 以预设蓝图 dry-run 为工程清单，对现场做按 id/信号/端口的**差分探测——缺失补建、漂移修复、停机拉起，不整包重置**（与 cast-film 现场共存）→ 热态装载 biax 物理引擎；② 平台按真实 driverConfig 建一条全线产线（30 DCW + 19 DAQ，描述进 semantics→Agent 语义卡），配方 30 参数全窗纳管开跑；③ AgentTeam 任务板下达厚度目标 25.0±0.7μm → worker 在 ≥3 个执行节点（铸片速度/纵拉快辊/出口轨宽）上轮流受治理写 → 物理随动（运输滞后+一阶收敛）→ dcw_judge → 达标收口 | 「更接近真实双拉产线」的多节点闭环诉求直接测评；「PIPELINE 识别缺节点→自动补建」的工程化建线能力 |
 | **P9 平台子系统** | 团队调度（mock lead+2 worker 未指派任务→派发→完成）+ 团队记忆 dedupKey 幂等 + 引擎注册表枚举/可用性探测 | MAS 协作、记忆、多引擎资产的可复现基准 |
 
 ### ⚠️ 闭环优化的三个反直觉约束（实测踩过，务必遵守）
@@ -258,6 +260,12 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 2. **连续写要换方向**：回退护栏对「同向重写」有冷却，同向会返回 `isError` 而无记录。
 3. **manual 模式要并发发起**：`dcw_control` 在服务端 `await approvals.request()` **阻塞**等待裁决，
    因此必须「并发发起 invoke（不 await）→ 轮询审批面板 → 裁决 → 最后 await 回执」，顺序写会死锁到超时。
+4. **DAQ 样本点形状**：`GET /daq/:id/samples?bucketMs=` 桶化返回 `{at, avg, min, max, cnt}`（`ORDER BY at DESC`），
+   非桶化返回 `{at, value, state}`——读均值取 `avg ?? value`，取 `v` 之类字段恒 undefined →
+   「有数据却读到 null」的静默失败（P10 首跑实测踩过）。
+5. **biax 收敛别调太快**：双拉厚度三旋钮（铸速/快辊/轨宽）系数取保守值（0.5/0.35/0.3），
+   一轮全修正会 1~2 轮达标、多节点覆盖不足；且测厚仪在 TDO 出口下游 12m + 链速驻留，
+   写后 **≥12s 才允许判稳**（运输滞后），过早读数会把上一步的 PV 当成本步效果。
 
 ### 两条平台硬约束（流水线已内化，勿踩）
 
@@ -381,7 +389,7 @@ node bench/compare.mjs --selftest                        # 阴性对照：门槛
 - 每个检查产出 `score ∈ [0,1]` 与权重（F5 攻击/归因/论文一致性权重=3 或 2，抽样类=1）。
 - 维度分 = 该维度下检查加权平均；总体分 = 全部非 skip 检查加权平均；等级 A≥90 / B≥75 / C≥60。
 - **skip 不计分也不扣分**，单独列出原因——分数只反映"真实测到的东西"。
-- 流水线层阶段权重：P0=1 P1=1 P2=2 P3=3 P4=3 P4m=3 P4b=2 P4c=2 P4d=1 P4e=2 P6=3 P7=1 P8=3 P8b=3 P9=1；
+- 流水线层阶段权重：P0=1 P1=1 P2=2 P3=3 P4=3 P4m=3 P4b=2 P4c=2 P4d=1 P4e=2 P6=3 P7=1 P8=3 P8b=3 P10=3 P9=1；
   硬门禁：任一检查 fail 或任一阶段 fail → 总评直接 FAIL（分数只作参考）。
 - 维度映射：D0 论文-代码一致性 / D1 数采 / D2 写控治理 / D3 智能体 / D7 审计归因 / D8 性能（D4/D5/D6 由 §8 全量实验覆盖，静态+接口层不虚评）。
 

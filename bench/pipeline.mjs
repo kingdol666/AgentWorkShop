@@ -27,6 +27,7 @@ import { p50, p95, mean, rate, r3, toCsv, makeMetricBag } from './lib/metrics.mj
 import { renderDashboard, barChart } from './lib/dashboard.mjs'
 import { recipeLifecycle, nodeRollback, optimizationLifecycle, hitlApproval, paramLedger, auditSurfaces } from './lib/governance.mjs'
 import { provisionTwinLine, startTwinBatch, runClosedLoop, offlineOptimum, CASTFILM_ACTUATORS, START_POINT } from './lib/closedloop.mjs'
+import { ensureBiaxLine, provisionBiaxLine, waitBiaxSamples, runBiaxMission } from './lib/biax.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolve(HERE, '..')
@@ -52,7 +53,7 @@ const clWriteMode = arg('cl-write', 'governed') // governed(agent dcw_control) |
 const clMaxIters = Number(arg('cl-iters', 8))
 
 const HARNESS_FILES = ['pipeline.mjs', 'lib/util.mjs', 'lib/sim.mjs', 'lib/provision.mjs',
-  'lib/metrics.mjs', 'lib/dashboard.mjs', 'lib/governance.mjs', 'lib/closedloop.mjs']
+  'lib/metrics.mjs', 'lib/dashboard.mjs', 'lib/governance.mjs', 'lib/closedloop.mjs', 'lib/biax.mjs']
 const harnessHash = sha256(HARNESS_FILES.map(f => {
   try { return readFileSync(join(HERE, f), 'utf8') } catch { return `MISSING:${f}` }
 }).join('\n%%\n'))
@@ -1108,6 +1109,103 @@ await timed('P8b', 'backstop', 'System backstop drill (PV frozen out of window �
   }
 })
 
+// ═══════════════ P10 · 双拉产线全节点(探测补建 → 多节点建线 → AgentTeam 多节点闭环)═══════════════
+// 用户核心诉求的直接测评:一条**更接近真实双拉(BOPET)产线**的数字孪生 ——
+// 干燥上料→挤出铸片→计量泵→纵拉MDO→横拉TDO→测厚→电晕→收卷,9 设备五协议、
+// 30 个可写工艺 SP + 19 个采集 PV,全带工艺描述。
+// 三步:(a) PIPELINE 自己识别模拟器缺什么节点并补建(不整包重置,现场共存);
+//      (b) 平台按真实协议 driverConfig 建线,描述进 semantics(Agent 语义卡可见);
+//      (c) AgentTeam 任务板下达厚度目标 → 在 ≥3 个执行节点上受治理写 → 物理随动 → 达标收口。
+const biax = { ensured: null, line: null, mission: null }
+await timed('P10', 'biax-line', '双拉产线:节点探测补建 → 五协议多节点建线 → AgentTeam 多节点闭环', async () => {
+  if (!guestAgent) { add('P10', 'biax-ensure', '双拉产线全节点', 'skip', ['P4 夹具未就绪']); return { status: 'skip' } }
+  try {
+    // (a) 探测 → 补建 → 物理引擎热态装载
+    const ens = await ensureBiaxLine()
+    biax.ensured = ens
+    const v = ens.verified
+    const ensuredOk = v.devices === v.expectDevices && v.signals >= 45 && v.sp >= 28 && v.descMissing === 0
+      && Number.isFinite(Number(v.plant?.thickness))
+    add('P10', 'biax-ensure', `节点探测补建(${ens.report.created.length} 建缺失 / ${ens.report.repaired.length} 修复 / ${ens.report.untouched.length} 原样)`, ensuredOk ? 'pass' : 'fail',
+      [`devices ${v.devices}/${v.expectDevices} · signals ${v.signals}(SP ${v.sp} + PV ${v.pv}) · 协议 ${v.protocols.join('/')}`,
+        `描述缺失 ${v.descMissing} · 物理引擎 kind=${v.plant?.kind} thickness=${v.plant?.thickness?.toFixed?.(2) ?? v.plant?.thickness} μm`,
+        `缺失设备: ${ens.report.missing.join(', ') || '(无)'} · 漂移修复: ${ens.report.drifted.map(d => d.id).join(', ') || '(无)'}`])
+    bag.add('biax', 'devices', v.devices, '', '双拉产线设备节点(探测补建后)')
+    bag.add('biax', 'sp_signals', v.sp, '', '可写工艺 SP')
+    bag.add('biax', 'created_missing', ens.report.created.length, '', '本次补建的缺失设备数')
+
+    // (b) 平台建线:30 DCW + 14 DAQ(真实协议 driverConfig;描述→semantics)
+    const line = await provisionBiaxLine(api, { sfx })
+    biax.line = line
+    const dcwN = Object.keys(line.dcw ?? {}).length
+    const daqN = Object.keys(line.daq ?? {}).length
+    const drvOk = (line.driverTests ?? []).filter(t => t.ok).length
+    const provOk = line.ids?.started && dcwN >= 28 && daqN >= 12 && drvOk === (line.driverTests ?? []).length && (line.errors ?? []).length === 0
+    add('P10', 'biax-provision', `五协议多节点建线(DCW ${dcwN} + DAQ ${daqN},驱动实测 ${drvOk}/${line.driverTests?.length ?? 0})`, provOk ? 'pass' : provOk ? 'warn' : 'fail',
+      [`line=${line.ids?.lineId ?? '✘'} recipe=${line.ids?.recipeId ?? '—'} started=${line.ids?.started}`,
+        `driver tests: ${(line.driverTests ?? []).map(t => `${t.device.split('-')[1]}${t.ok ? '✔' : '✘'}`).join(' ')}`,
+        ...(line.errors ?? []).slice(0, 4)])
+    bag.add('biax', 'platform_dcw', dcwN, '', '平台双拉 DCW 节点数')
+    bag.add('biax', 'platform_daq', daqN, '', '平台双拉 DAQ 节点数')
+
+    // 采样就绪(测厚仪首采;活动批次门控下的真实协议采样)
+    const thickDaq = line.daq?.['biax-thickness']
+    const pts = thickDaq ? await waitBiaxSamples(api, thickDaq, 30_000) : 0
+    add('P10', 'biax-sampling', `测厚仪真实链路采样(${pts} 点)`, pts > 0 ? 'pass' : 'fail', [`daq=${thickDaq ?? '✘'} · samples=${pts}`])
+
+    // Agent 语义面:绑定全部节点 → my_industrial_nodes 必须带出工艺描述与节点量
+    if (thickDaq) {
+      for (const id of Object.values(line.dcw)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'dcw', mode: 'auto' }).catch(() => {})
+      for (const key of ['biax-thickness', 'biax-defect', 'melt-temp', 'winder-tension-pv', 'thickness-sigma']) {
+        const id = line.daq[key]
+        if (id) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'daq', mode: 'auto' }).catch(() => {})
+      }
+      const cards = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: guestAgent.instId, tool: 'my_industrial_nodes', args: {} })
+      const ct = String(cards.data?.result?.text ?? '')
+      const cardsOk = ct.includes('铸片辊速度') && ct.includes('横向拉伸比') && ct.includes('双拉薄膜产线')
+      add('P10', 'biax-agent-cards', 'Agent 语义卡含双拉工艺描述(semantics 贯通)', cardsOk ? 'pass' : 'warn',
+        [`语义卡长度 ${ct.length} · 关键词命中 ${['铸片辊速度', '横向拉伸比', '收卷张力'].filter(k => ct.includes(k)).join('/')}`, `sample: ${ct.slice(0, 160)}`])
+    }
+
+    // (c) AgentTeam 多节点闭环寻优
+    const simDevices = (await simNodes()).filter(n => n.id.startsWith('biax-'))
+    const m = await runBiaxMission(api, { instId: guestAgent.instId, line, simDevices, sfx })
+    biax.mission = m
+    add('P10', 'biax-mission-board', '任务板:双拉优化任务下达并由 lead 派发', m.boardOk ? 'pass' : 'warn',
+      [`parent task + lead child: ${m.boardOk ? '✔' : '未观察到'}`])
+    add('P10', 'biax-mission-multinode', `多节点受治理写(${m.distinctCount} 个执行节点 / ${m.writes} 写)`, m.distinctCount >= 3 && m.writes >= 3 ? 'pass' : m.writes > 0 ? 'warn' : 'fail',
+      [...(m.ev ?? []).slice(0, 8)])
+    add('P10', 'biax-mission-attained', `厚度目标达成(|PV−25.0|≤0.7μm,final=${m.thickness?.toFixed(2) ?? '?'})`, m.attained ? 'pass' : 'warn',
+      [`writes=${m.writes}/${6} · distinctKnobs=${m.distinctCount} · final=${m.thickness?.toFixed(2) ?? '?'}μm`, ...(m.ev ?? []).slice(-4)])
+    add('P10', 'biax-mission-journal', '参数账本 Agent 归因(铸速节点)', m.journalOk ? 'pass' : 'warn', [])
+    add('P10', 'biax-mission-closed', '任务收口(父任务 COMPLETED)', m.parentState === 'COMPLETED' ? 'pass' : 'warn',
+      [`terminal=${m.parentState || '(timeout)'}`])
+    bag.add('biax', 'mission_writes', m.writes, '', 'AgentTeam 双拉任务受治理写次数')
+    bag.add('biax', 'mission_distinct_knobs', m.distinctCount, '', '参与闭环的执行节点数')
+    bag.add('biax', 'mission_attained', m.attained ? 1 : 0, '', '厚度达标 25.0±0.7μm')
+    bag.add('biax', 'mission_final_thickness', m.thickness ?? -1, 'μm', '终态厚度')
+    csvRows.push({ phase: 'P10', biax_devices: v.devices, biax_dcw: dcwN, biax_daq: daqN, biax_writes: m.writes, biax_distinct: m.distinctCount, biax_final_um: m.thickness?.toFixed(2) ?? '', biax_attained: m.attained ? 1 : 0 })
+    // 过程日志
+    writeText(join(outDir, 'agentteam-biax.log'), [
+      `AW-IndustrialBench · P10 biax-line (双拉产线 AgentTeam 多节点闭环) — execution trace`,
+      `run: ${rid}`,
+      `ensure: created=[${ens.report.created.join(',')}] repaired=[${ens.report.repaired.join(',')}] untouched=${ens.report.untouched.length} → devices=${v.devices} signals=${v.signals}(SP ${v.sp}/PV ${v.pv}) descMissing=${v.descMissing}`,
+      `provision: line=${line.ids?.lineId} recipe=${line.ids?.recipeId} started=${line.ids?.started} dcw=${dcwN} daq=${daqN} driverTests=${drvOk}/${line.driverTests?.length ?? 0}`,
+      ``,
+      `== mission trace ==`,
+      ...(m.ev ?? []),
+    ].join('\n') + '\n')
+    const coreOk = ensuredOk && provOk && pts > 0 && m.distinctCount >= 3 && m.attained
+    return { status: coreOk ? 'pass' : 'warn', note: `nodes ${v.devices}/${v.expectDevices} · knobs ${m.distinctCount} · ${m.thickness?.toFixed(2) ?? '?'}μm${m.attained ? ' ✔' : ''}` }
+  }
+  finally {
+    // 收尾:停双拉线,恢复第一场景(与 P8b 同款「rig left as found」纪律)
+    try { if (biax.line?.ids?.lineId) await api.call('POST', `/api/workshop/dcw/lines/${biax.line.ids.lineId}/stop`, {}) } catch { /* 已停 */ }
+    try { await applyPreset(simPreset) } catch { /* 恢复失败不掩盖主判定 */ }
+    add('P10', 'biax-restore', `双拉线停止 + 第一场景恢复: ${simPreset}`, 'pass', ['rig left as found'])
+  }
+})
+
 // ═══════════════ P9 · 平台子系统（团队调度 · 团队记忆幂等 · 引擎注册表）═══════════════
 await timed('P9', 'subsystems', 'Platform subsystems (team dispatch · team memory idempotency · harness registry)', async () => {
   // (a) 团队调度：mock lead + 2 mock worker，未指派任务由 lead 规则引擎派发、worker 按剧本完成
@@ -1191,6 +1289,20 @@ const env = {
   harnessHash, gitCommit, harnessFiles: HARNESS_FILES.length,
   closedloop: cl.agg ? { writeMode: cl.writeMode, ...cl.agg } : null,
   portability: port.agg,
+  biax: biax.ensured
+    ? {
+        devices: biax.ensured.verified.devices,
+        signals: biax.ensured.verified.signals,
+        sp: biax.ensured.verified.sp,
+        created: biax.ensured.report.created.length,
+        platformDcw: Object.keys(biax.line?.dcw ?? {}).length,
+        platformDaq: Object.keys(biax.line?.daq ?? {}).length,
+        missionWrites: biax.mission?.writes ?? 0,
+        missionKnobs: biax.mission?.distinctCount ?? 0,
+        missionFinalUm: biax.mission?.thickness ?? null,
+        missionAttained: biax.mission?.attained ?? false,
+      }
+    : null,
   backstop: { fired: bs.fired, restored: bs.restored, latencyS: bs.latencyS, recordId: bs.recordId, from: bs.from, to: bs.to },
   verdict: { pass, warn, fail, phaseFails: phaseFailN, ok: fail === 0 && phaseFailN === 0 && !emptyRun }, reproCmd,
 }
@@ -1209,6 +1321,9 @@ const kpis = [
   port.agg
     ? { label: 'Scenario portability', value: port.agg.preset, unit: '', note: `2nd scenario: ${port.agg.ownLines} lines + ${port.agg.lines - port.agg.ownLines} sat · F5 ${port.agg.f5Rejected}/${port.agg.f5Total} · 0 code changes`, tone: port.agg.falseBlocks === 0 && port.agg.f5Rejected === port.agg.f5Total ? 'good' : 'warn' }
     : { label: 'Scenario portability', value: 'off', unit: '', note: 'P8 runs in integrated profile', tone: 'warn' },
+  biax.ensured
+    ? { label: 'Biax line (BOPET)', value: `${biax.ensured.verified.devices} dev / ${biax.ensured.verified.sp} SP`, unit: '', note: `AgentTeam ${biax.mission?.distinctCount ?? 0} knobs · ${biax.mission?.writes ?? 0} writes → ${biax.mission?.thickness?.toFixed(2) ?? '?'}μm${biax.mission?.attained ? ' ✔' : ''}`, tone: biax.mission?.attained && (biax.mission?.distinctCount ?? 0) >= 3 ? 'good' : 'warn' }
+    : { label: 'Biax line (BOPET)', value: 'off', unit: '', note: 'P10 requires P4 fixture', tone: 'warn' },
   agentHarness ? { label: 'LLM agent loop', value: lines.find(l => l.agentState)?.agentState ?? '—', unit: '', note: `${agentHarness}`, tone: lines.find(l => l.agentOracle) ? 'good' : 'bad' } : { label: 'LLM agent loop', value: 'off', unit: '', note: '--agent omp enables', tone: 'warn' },
   { label: 'Checks', value: `${pass}/${pass + warn + fail}`, unit: '', note: `warn ${warn} · fail ${fail}`, tone: fail ? 'bad' : 'good' },
 ]
