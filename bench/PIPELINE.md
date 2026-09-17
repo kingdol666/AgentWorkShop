@@ -92,6 +92,9 @@
        优化记录/回退/参数台账 → HITL 审批 → 治理只读面 → 配方生命周期 → cast-film 闭环寻优
        (3 seeds) → 向量/图像帧 → 跨场景可移植(film-line, 0 代码改动) → 系统兜底 drilling →
        团队调度/团队记忆/引擎注册表。
+     可选真引擎: 同命令加 `--agent omp`（或 opencode/codex/…）→ P5 以真实 LLM 跑闭环任务
+       （daq_query→dcw_control→观察→dcw_judge→交付哨兵→complete_task），完整执行轨迹
+       （逐条消息+任务历史）落 `bench/results/<runId>/agent-loop-<harness>.log`；
      产物: bench/results/<runId>/{run.json, summary.json, report.md, dashboard.html, metrics.csv}
 
   ③ 真实协议层（约 1–2 分钟）——能力评分面板（含 F2 冻结报警、断链恢复）
@@ -149,7 +152,7 @@
 ────────────────────────────────────────────────────────────────
   每次运行落在 bench/results/<runId>/（UTC 时间戳命名，永不覆盖）:
     run.mjs 层   → run.json / report.md / report.html / config-hash.txt
-    pipeline 层  → run.json / summary.json / report.md / dashboard.html / metrics.csv
+    pipeline 层  → run.json / summary.json / report.md / dashboard.html / metrics.csv / agentteam-mission.log（--agent 时另有 agent-loop-<harness>.log）
     e1-lite 层   → run.json / e1-lite.csv / report.md / report.html / figure-*.svg
     compare 层   → compare-*.md（写进 bench/results/ 根）
   交付物 = 各层的 report.md + report.html（或 dashboard.html）。

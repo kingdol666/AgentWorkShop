@@ -452,6 +452,22 @@ await timed('P4m', 'team-mission', 'AgentTeam 优化任务：目标下达 → �
   add('P4m', 'mission-closed', '任务收口（lead 派发→worker 剧本完成→父任务聚合）', parentState === 'COMPLETED' ? 'pass' : 'warn',
     [`terminalState=${parentState || '(timeout)'} · writes=${writes} · reached=${reached}`])
   csvRows.push({ phase: 'P4m', line: l.index, protocol: l.protocol, mission_writes: writes, mission_final_pv: pvFinal ?? '', mission_target: target, mission_attained: reached ? 1 : 0 })
+  // 过程日志：AgentTeam 优化任务全步骤（任务板/时段读数/治理写/判定/账本/达标）
+  {
+    const jnAll = (await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_journal', args: { node_id: l.ids.dcw, limit: 10 } }))
+    const M = []
+    M.push(`AW-IndustrialBench · P4m AgentTeam optimization mission — execution trace`)
+    M.push(`run: ${rid}  line: L${l.index} (${l.protocol})  dcw: ${l.ids.dcw}  daq: ${l.ids.daq}`)
+    M.push(`objective: SP → ${target} ±${tol}  (window [${l.window.min}, ${l.window.max}], ≤${maxWrites} governed writes)`)
+    M.push(`outcome: writes=${writes}  finalPV=${pvFinal}  attained=${reached}  board=${parentTask ? parentTask.slice(0, 8) : '—'} terminal=${parentState}`)
+    M.push(``)
+    M.push(`== step trace ==`)
+    M.push(`1. task board: goal filed, lead dispatched -> ${childOfLead?.id ?? '—'}`)
+    M.push(`2. time-range read (daq_query from/to/bucket): isError=${q.data?.result?.isError === true}`)
+    for (const e of ev) M.push(`3. ${e}`)
+    M.push(`4. journal tail: ${String(jnAll?.data?.result?.text ?? '').slice(0, 400)}`)
+    writeText(join(outDir, 'agentteam-mission.log'), M.join('\n') + '\n')
+  }
   const coreOk = qOk && writes > 0 && writes <= maxWrites && reached
   return { status: coreOk ? 'pass' : 'warn', note: `writes=${writes} PV=${pvFinal}/${target}` }
 })
@@ -587,13 +603,38 @@ if (agentHarness) {
       if (['COMPLETED', 'FAILED', 'CANCELED'].includes(state)) break
     }
     l.agentState = state || 'RUNNING'
-    const blob = JSON.stringify((await api.call('GET', `/api/workshop/channels/${channelId}/messages?limit=200`)).data ?? {})
-      + JSON.stringify((await api.call('GET', `/api/workshop/tasks/${taskId}`)).data ?? {})
+    const msgs = (await api.call('GET', `/api/workshop/channels/${channelId}/messages?limit=200`)).data ?? []
+    const taskDetail = (await api.call('GET', `/api/workshop/tasks/${taskId}`)).data ?? {}
+    const blob = JSON.stringify(msgs) + JSON.stringify(taskDetail)
     const hasMark = blob.includes('INTEGRATED-CLOSEDLOOP-OK')
     const wallS = r3((Date.now() - t0) / 1000)
     l.agentWallS = wallS; l.agentOracle = hasMark
+    // 过程日志：完整记录真实引擎的闭环执行轨迹（逐条消息 + 任务历史），落 run 目录供报告引用
+    const fmtParts = (parts) => (Array.isArray(parts) ? parts.map(p => p?.text ?? JSON.stringify(p ?? '')).filter(Boolean).join(' | ') : '')
+    const L = []
+    L.push(`AW-IndustrialBench · P5 real-LLM agent closed loop — execution trace`)
+    L.push(`run: ${rid}  harness: ${agentHarness}  provider: ${agentProvider}  model: ${agentModel}`)
+    L.push(`task: ${taskId}  line: L${l.index} (${l.protocol})  dcw: ${l.ids.dcw}  daq: ${l.ids.daq}  target SP: ${target}`)
+    L.push(`started: ${new Date(t0).toISOString()}  wall: ${wallS}s  final state: ${state}  oracle INTEGRATED-CLOSEDLOOP-OK: ${hasMark ? 'yes' : 'no'}`)
+    L.push(``)
+    L.push(`== task assignment ==`)
+    L.push(fmtParts(taskDetail?.parts ?? []) || JSON.stringify(taskDetail).slice(0, 400))
+    L.push(``)
+    L.push(`== channel transcript (chronological) ==`)
+    for (const m of (Array.isArray(msgs) ? msgs : [])) {
+      const ts = m?.at ?? m?.ts ?? m?.createdAt ?? ''
+      const who = m?.agentName ?? m?.fromLabel ?? m?.role ?? m?.sender ?? 'msg'
+      const body = fmtParts(m?.parts) || String(m?.text ?? JSON.stringify(m)).slice(0, 600)
+      L.push(`[${ts}] ${who}: ${body}`)
+    }
+    L.push(``)
+    L.push(`== task history ==`)
+    for (const h of (Array.isArray(taskDetail?.history) ? taskDetail.history : [])) {
+      L.push(`[${h?.at ?? h?.ts ?? ''}] ${h?.kind ?? h?.type ?? 'event'}: ${fmtParts(h?.parts) || JSON.stringify(h ?? '').slice(0, 400)}`)
+    }
+    writeText(resolve(outDir, `agent-loop-${agentHarness}.log`), L.join('\n') + '\n')
     add('P5', 'agent-loop', `真实 LLM Agent 闭环（${agentHarness}）`, state === 'COMPLETED' && hasMark ? 'pass' : state === 'COMPLETED' ? 'warn' : 'fail',
-      [`任务终态 ${state}（${wallS}s）`, `${hasMark ? '✔' : '✘'} 交付含 INTEGRATED-CLOSEDLOOP-OK`, `harness=${agentHarness} provider=${agentProvider} model=${agentModel}`])
+      [`任务终态 ${state}（${wallS}s）`, `${hasMark ? '✔' : '✘'} 交付含 INTEGRATED-CLOSEDLOOP-OK`, `harness=${agentHarness} provider=${agentProvider} model=${agentModel}`, `过程日志 → bench/results/${rid}/agent-loop-${agentHarness}.log（${msgs.length ?? 0} 条消息）`])
     bag.add('agent', 'agent_wall_s', wallS, 's', `${agentHarness}`)
     bag.add('agent', 'agent_oracle_pass', hasMark ? 1 : 0, '', '交付判据命中')
     csvRows.push({ phase: 'P5', line: l.index, protocol: l.protocol, agent_harness: agentHarness, agent_state: state, agent_wall_s: wallS, agent_oracle: hasMark })
