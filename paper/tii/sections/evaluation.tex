@@ -1,151 +1,165 @@
 \section{Benchmark Evaluation}
 \label{sec:eval}
-% STATUS: zero pending placeholders remain. Campaign cells (E1b/E7/E9) were
-% removed from the manuscript; their pre-registered designs live in the released
-% protocol (bench/PIPELINE.md, docs/experiments/06-review-actions-plan.md).
 
-\subsection{Benchmark Protocol and Data Layers}
+\subsection{Setup and Evidence Scope}
 \label{sec:protocol}
-\bench{} is governed by three principles. \emph{Determinism}: a seeded PRNG (mulberry32) and a scenario-snapshot API make structural metrics (interception verdicts, judge-class checks) point-wise reproducible; objective values over \emph{sampled} process variables remain timing-sensitive (Sec.~\ref{sec:repro}); the offline grid-search optimum $W^{*}$ is the reference bound. \emph{Layered realism}: results are reported per data layer (Table~\ref{tab:layers}), never pooled. \emph{Executable protocol}: one released audit harness (\texttt{bench/run.mjs}, \texttt{bench/pipeline.mjs}) executes every check of this section---nothing is asserted by hand.
+The evaluation asks whether the governed write path enforces its declared boundaries, whether integration and lifecycle operations execute through the simulator stacks, whether a fixed controller can close the acquisition--actuation loop, and whether an agent team---including a real-LLM member---can execute that loop as the operator. These are separate questions, not a single benchmark score. We distinguish source inspection, mock-driver probes, real protocol stacks connected to simulated plants, and historical LLM campaigns. None measures physical-device performance. Table~\ref{tab:layers} identifies the evidence units; checks nested inside an integrated run are not additional independent trials.
+
+The reference integrated archive, denoted $R$, is \texttt{20260914152838-fwg}: seed 42, commit \texttt{d6c824d}, harness hash prefix \texttt{204fc9ee}, Node v24.19.0 on Windows x64. It contains 55 passing checks, with no recorded warnings or failures. This is a within-run checklist result, not a replication count. An extended archive, $E$ = \texttt{20260917044223-17ho} (commit \texttt{f45b231}, same host, fresh fixture), adds an agent-team mission and a real-LLM loop to the integrated profile: 62 passing checks, no warnings or failures. Separate static and API records and the frozen PLC baseline support the other suites. The cast-film physics preset and the strategy-based film-line preset are simulated scenarios. TEP/SWaT replay, physical equipment, human-operator comparisons, and cross-engine effectiveness remain unmeasured.
 
 \begin{table}[!t]
 \centering
-\caption{Data-credibility layers; claims are labeled by the highest layer measured.}
+\caption{Evidence units and boundaries; denominators are not pooled.}
 \label{tab:layers}
 \scriptsize
-\begin{tabular}{@{}lp{4.6cm}lc@{}}
+\begin{tabular}{@{}p{0.24\columnwidth}p{0.67\columnwidth}@{}}
 \toprule
-Layer & Description & Status \\
+Suite & Archived result and scope \\
 \midrule
-L1 & Seeded simulation: two independently defined plant scenarios (strategy-signal film line; ODE cast-film twin), seeded noise, offline optimum $W^{*}$ & \textbf{measured} \\
-L2 & TEP \cite{downs1993tep} / SWaT \cite{goh2017swat} replay through real drivers & designed \\
-L3 & One physical OPC UA/Modbus device on the real stack; write--readback latency & designed \\
-L4 & Digital-twin case study: seeded closed-loop campaign on the cast-film line---deterministic controller over three seeds and an agent team over four runs (Secs.~\ref{sec:clbench}, \ref{sec:case}) & \textbf{measured} \\
+Static & 20/20 constant anchors; 2/2 ordering chains; source checks only \\
+Mock API & 6/6 attacks rejected; 0/3 legal writes blocked \\
+Integrated $R$ & 55 checks pass; four writable stacks and RTU acquisition \\
+Second scenario & 9/9 attacks rejected; 0/3 legal writes blocked \\
+Independent PLC & Five-stack connectivity; separate freeze/link drills \\
+Fixed controller & Three seeds in $R$; no LLM \\
+Agent-team mission & Task-board goal; time-range read; 1 write; attained \\
+Real-LLM loop & omp/glm-5.3-flash, Modbus TCP; sentinel task \\
+Ablation & Four mock arms; three repetitions per arm \\
+LLM campaigns & Four runs, same seed; compromised observation/score path \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The workload is phrased as five task families---\emph{T1} closed-loop setpoint correction in-window, \emph{T2} out-of-window excursion, \emph{T3} multi-node joint adjustment, \emph{T4} batch parameter recovery, \emph{T5} mid-run objective change---and six fault families injected at the simulator control API: F1 step drift, F2 sensor freeze, F3 communication interruption, F4 out-of-order injection, F5 out-of-window writes, F6 storage unavailability. F5 stresses containment (I1, Sec.~\ref{sec:writepath}); F2/F3 are exercised below. The measured baseline is \emph{B1}, the pipeline's own ablation via env-gated bench-mode-only bypass switches (Sec.~\ref{sec:e1a}); further baseline groups---general agent frameworks, human operators, classical control, cross-engine replication---are defined in \bench{}'s released protocol and are \emph{not} measured here.
+Safety denominators are attempted attacks or designated legal writes, not log entries. Latency describes automatic execution and is separated from scripted approval waiting. Repeated samples within a seed or fixture do not establish population-level independence. We report counts and observed ranges without significance, equivalence, or reliability claims. The protocol's task and fault families are a coverage vocabulary: measured out-of-window writes do not establish coverage of every task, sensor-staleness condition, storage outage, or escalation branch.
 
-Metrics form three families. \emph{Safety}: out-of-window write interception rate (denominator = seeded attacks), false-block rate (denominator = legal in-window writes attempted), and per-write attribution rate (target 100\,\%). \emph{Performance}: the \emph{automatic segment} (proposal acceptance to verified write), kept separate from human-approval waiting time so human response is never conflated with system latency. \emph{Cost/quality}: task goal rate, tokens and LLM calls per task, approval wait time, human interventions per task---declared here; measured cost reporting is deferred to the released campaign archive. Coverage as measured below: F5 and the I1/I2 probes are fully measured; F3 (link interruption) appears as a drill and an F2-class freeze is drilled as a \emph{process} freeze (F2 is defined as sensor freeze---the semantic card's freshness path remains untested); F1, F4, F6 and the escalation-at-$K$ branch are exercised only at acceptance-test level or unmeasured (Sec.~\ref{sec:limits}); T1/T2 are measured directly, T3--T5 remain protocol vocabulary. \emph{Reproducibility protocol}: every run records its seed, harness source hash, and commit, appends to never-overwritten timestamped directories, and is compared against frozen baselines by a gate that checks judge-class equality (Sec.~\ref{sec:repro}); released LLM arms pin model versions, and temperature-0 applies to campaign configurations. The plant simulator and the platform are booted by the pipeline itself; all measurements ran on one host (Ryzen~7 9700X, 31\,GB RAM, Windows), and one command reproduces the section: \texttt{node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3}.
-
-\subsection{Cross-Scenario Portability (Framework Claim)}
+\subsection{Integration and Governance Checks}
 \label{sec:port}
-The central framework claim---adapting the deployment to a new line is a configuration task, not an integration project---is measured directly by the pipeline's final stage. Everything is first provisioned on the \emph{cast-film physics} scenario (ODE plant model, six actuators, seven sensors, five protocol drivers, vector and image frames); the plant then switches to a second, independently defined scenario, \emph{film-line}: a coating-oven line with a disjoint signal domain and per-signal strategies rather than a physics engine. The identical five-step flow (export, connection test, node creation, line/product/recipe provisioning, agent binding) re-instantiates the deployment on both, over the real five-protocol transports of Sec.~\ref{sec:plc}'s simulator stack, because driver configurations derive from each device's export (P3; Sec.~\ref{sec:nodes}).
-
-Measured on the second scenario: five devices across all five protocol drivers are commissioned in one pass (the artifact is five derived driver configurations plus one scenario identifier); three writable-setpoint devices become governed lines (Modbus TCP, OPC UA, MQTT) and the two acquisition-only devices attach as satellites; all five nodes stream live data (8--12 one-second buckets in the quoted pair); governed writes are accepted with readback deviation $\le 0.04\,^\circ$C on Modbus TCP and OPC UA (exactly zero on OPC UA in the quoted run); and all nine seeded out-of-window attacks are rejected with zero false blocks (none of the 3 legal in-window writes blocked). The structural verdicts---100\,\% interception, 0\,\% false blocks---are identical across scenarios: per-line engineering moved into authoring the scenario definition, and the platform absorbed the difference unchanged. These nine attacks, pooled with the twenty five-protocol attacks of Sec.~\ref{sec:plc}, compose the abstract's 29/29; the six mock-tier attacks of Sec.~\ref{sec:dynamic} are a separate in-process pool. The same four commissioning surfaces are shown as an operator drives them in the released walkthrough artifact: node creation from the device export, twin and recipe-window binding, channel deployment, and the optimization record beside the setpoint ledger---no plant-specific code on any surface.
-
-\subsection{Static Audit and Dynamic Invariant Verification on a Live Instance (L1 Tier)}
 \label{sec:static}
-Before any dynamic campaign, the audit harness verifies the artifact at source level. Three checks run offline: a \emph{capability inventory} against the claims of Sec.~\ref{sec:arch}; a \emph{paper--code consistency} check that locates 20 quantitative constants cited in this paper (sweep quota 64, breach threshold 3, rollback-chain limit 2, RRF $k{=}60$, MMR $\lambda{=}0.7$, compaction 0.7, watchdog 300\,s, hysteresis 2\,\%, among others) at their implementation anchors; and a \emph{stage-ordering} check asserting that Algorithm~1's governed-write stages appear in the declared order at their source anchors. All pass: 20/20 anchors, 2/2 ordering chains---engineering discipline rather than validation evidence, since the harness audits the artifact of which it is part.
-
 \label{sec:dynamic}
-The rest of this subsection verifies behavior: L1-tier evidence (Table~\ref{tab:layers}), driving a pinned platform instance (v0.7.39, mock drivers) exclusively through its REST API with seeded randomness (mulberry32, seed 42). A benchmark line is created with global safety range $[120, 260]\,^\circ$C and a batch started with active recipe window $[175, 205]\,^\circ$C; the invariants of Sec.~\ref{sec:writepath} are then attacked and probed, including the decision boundaries and both branches of Eq.~\eqref{eq:constraint}.
-
-\emph{I1 (containment).} Six seeded gross out-of-constraint writes---global-range violations (107, 269), window violations while the batch is active (219, 163), and extreme/negative values ($10^6$, $-25$)---are all rejected with typed validation errors, while all three in-window control writes are accepted: 100\,\% interception at 0\,\% false blocks. Boundary probes at $\pm$one least-count behave as specified (205.0 accepted; 205.1, 174.9 rejected), and the rejection message cites the window as the binding constraint. With the batch stopped the window branch deactivates and the hard range alone governs: an out-of-range write (300) remains rejected while a within-range, out-of-window write (130) is accepted---the soft interlock is a batch-scoped constraint, not a constant.
-
-\emph{I2 (readback closure) and attribution.} All accepted writes return a driver readback within the tolerance of Eq.~\eqref{eq:tolerance} ($\tau = 0.7\,^\circ$C at one decimal digit and a 140$^\circ$C span) and produce journal anchors with source, actor, timestamp, and previous/new values---100\,\% attribution. Acquisition held the 1\,s cadence, and the samples API answered 20 probes at p50 6--22\,ms / p95 8--63\,ms.
-
-\emph{Reproducibility.} Every execution on a pinned harness (Secs.~\ref{sec:repro} and \ref{sec:e1a}) produced identical judge-class metrics---the same seeded attacks, rejections, boundary verdicts and ledger outcomes; only fixture identifiers and latency varied. \texttt{bench/compare.mjs} asserts judge-class equality between a fresh run's record and the archived baseline (\textsc{reproducible}; the gate rejects a tampered metric, validated by a self-test). The Wilson 95\,\% interval for 6/6 trials ([61\,\%, 100\,\%]) is the appropriate reading of any small-$n$ rate.
-
-\emph{Scope.} These checks exercise the accepted-action language at the API boundary with the LLM out of the loop---the invariants are defined over the pipeline, not over any engine (P4, Sec.~\ref{sec:writepath}).
-
-\subsection{Real-Protocol Plant Scenarios (Five-Protocol PLC Node Simulator)}
 \label{sec:plc}
-The API-tier checks of Secs.~\ref{sec:dynamic} and \ref{sec:e1a} use in-process mock drivers; this subsection re-runs the working-condition scenarios over \emph{real protocol stacks} against an independent five-protocol PLC node simulator (Modbus TCP/RTU slaves, OPC UA server, MQTT broker/publisher, HTTP endpoints, ODE plant model). Driver configurations derive at runtime from the simulator's integration-export API---no hand-written connection settings---and every candidate driver passes the connection test before a node is created.
+\label{sec:govsurface}
+Source inspection finds the 20 declared constant anchors and two stage-order chains; the capability inventory passes nine component checks. These confirm correspondence with implementation anchors, not runtime safety. The mock API suite separately exercises six semantic-card checks, rejects six attacks, accepts three designated legal writes, satisfies three boundary probes, and records three readback/attribution anchors. Acquisition freshness is sampled, not guaranteed by those counts.
 
-The pipeline provisions one production line per device that exposes a writable setpoint (4 lines: Modbus TCP, OPC UA, MQTT, HTTP) and attaches the acquisition-only device (a Modbus RTU gel counter---a defect-counting photoelectric sensor) as a \emph{satellite} node, because acquisition samples only nodes whose line has an active batch. All five nodes stream live data through their real transports (2--14 one-second buckets in the settle window, Table~\ref{tab:plc}). A governed setpoint write costs 19--112\,ms (p50) by protocol, the Modbus TCP transaction dominating (its p95 reflects the first write's connection setup); readback closes within $0.04\,^\circ$C on Modbus TCP and exactly on OPC UA, while the MQTT and HTTP control channels report no readback by design (publish-only / echo-only actuators)---a driver property the write path records rather than conceals. Five seeded attacks are rejected on \emph{every} writable protocol (5/5 each; 20/20 pooled, a set-coverage statement over the seeded suite rather than an independence-based rate) with zero false blocks on the four legal in-window writes, and the deterministic tool-level control loop (\texttt{daq\_query}$\to$\texttt{dcw\_control}$\to$\texttt{dcw\_judge}) converges on all four lines. A link-interruption drill (simulator service stopped and restarted) is detected and recovered, and a process-freeze injection shows defense in depth: the governed write still passes (readback verifies the register, not the process) while the independent recipe-window monitor catches the failure within 2\,s---the layer separation of Secs.~\ref{sec:dynamic} and \ref{sec:writepath}.
+In $R$, Modbus TCP, OPC UA, MQTT, and HTTP each support a governed writable line; Modbus RTU is an acquisition-only satellite. All five produce stored samples. Table~\ref{tab:plc} reports per-stack observations. The raw archive records six rejected attacks per writable line (24/24 across these four fixtures): four hard-range violations and two recipe-window-only violations. This corrects the earlier manuscript's unsupported 20/20 count. No designated legal write is blocked (0/4). MQTT and HTTP have no readback value here; acceptance must not be described as verified physical response. Four deterministic tool-level loops pass in this run.
 
 \begin{table}[!t]
 \centering
-\caption{Real-protocol scenarios over the five-protocol PLC node simulator (L1, seed 42). Four lines plus one acquisition-only satellite. Acq.\ pts: samples in the settle window. Write latency: p50/p95 over six in-window writes per line. ``n/a'': publish-only (MQTT) / echo-only (HTTP) actuators report no readback. F5: seeded out-of-window writes rejected, of 5 per protocol.}
+\caption{Integrated $R$: six timing writes per writable stack; DAQ sample counts and readback deviations, not physical-device tests.}
 \label{tab:plc}
-\footnotesize
-\setlength{\tabcolsep}{3.6pt}
-\begin{tabular}{@{}lcccc@{}}
+\scriptsize
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-Protocol & Acq.\ pts & Write p50/p95 (ms) & Readback & F5 \\
+Stack & DAQ & p50/p95 (ms) & $\Delta$ ($^\circ$C/rpm) & Reject \\
 \midrule
-Modbus TCP   & 2  & 111.5 / 141.6 & $0.04\,^\circ$C & 5/5 \\
-OPC UA       & 11 & 19.0 / 22.1   & exact & 5/5 \\
-MQTT         & 12 & 19.4 / 19.5   & n/a & 5/5 \\
-HTTP         & 12 & 32.8 / 33.2   & n/a & 5/5 \\
-Modbus RTU$^{\dagger}$ & 14 & -- & -- & -- \\
+Modbus TCP & 2 & 111.5/141.6 & 0.04 & 6/6 \\
+OPC UA & 11 & 19.0/22.1 & 0 & 6/6 \\
+MQTT & 12 & 19.4/19.5 & N/A & 6/6 \\
+HTTP & 12 & 32.8/33.2 & N/A & 6/6 \\
+Modbus RTU & 14 & N/A & N/A & N/A \\
 \bottomrule
-\multicolumn{5}{@{}p{8.2cm}@{}}{\scriptsize $^{\dagger}$acquisition-only satellite node (gel counter).}
 \end{tabular}
 \end{table}
 
-\subsection{Governance Surface: Recipe Lifecycle, Rollback, and Approval}
-\label{sec:govsurface}
-With the LLM out of the loop, each probe below ran end-to-end in one pipeline run against the governance stack's \emph{lifecycle objects}. \emph{Non-destructive history}: a revert \emph{creates} version~3 rather than overwriting. \emph{Judge--execute separation}: judging \texttt{rollback} changed no PLC value ($196.60\,^\circ$C throughout)---only the separately invoked rollback restored the origin value ($203.40\,^\circ$C); an agent's verdict is an intent record, not an actuation. \emph{Bounded autonomy in action (backstop drill)}: freezing the process variable out of window under an open auto-binding record triggers the backstop---the record is judged \texttt{rollback} \emph{by the system} and the PLC restored to the baseline ($186.2\pm0.75\,^\circ$C), cadence-bound at 120--130\,s across releases; chain limit $K{=}2$ remains an engineering cap (Sec.~\ref{sec:limits}). \emph{Default non-execution}: in manual mode an agent write blocks until the approval releases it (148.2\,rpm on OPC UA in the quoted run; poll-inclusive decision latency ranged 6--468\,ms across released runs); the journal holds ten anchors over four sources and both log surfaces return full 200-entry windows.
+Recommissioning the second preset provisions five devices without framework-code changes: three writable lines and two acquisition satellites. Its nine hard-range attacks (three per writable line) are rejected and three legal writes accepted. Unlike the first scenario, this probe set does not test recipe-window-only violations. This demonstrates configuration reuse for two supplied scenarios, not universal portability. The independent PLC baseline additionally records five-stack connectivity, a separate 5/5 attack rejection check with a legal write accepted, a process-freeze alarm after 2 s, and detection/recovery after simulator interruption. The freeze and interruption are individual drills, not fault tests repeated on all five protocols; process freeze is not a test of semantic-card sensor freshness.
 
-\emph{Platform subsystems}: vector and image frames from the profile and CCD channels are stored as first-class acquisition objects; a mock lead dispatches a child task that a worker completes (parent \textsc{completed}); duplicate team-memory writes under one deduplication key yield one entry; the registry enumerates 14 engines, with environment-available counts of 12--14 across releases (one run's probe glitched to zero and is excluded).
+Lifecycle probes retain distinct meanings. Two recipe sequences create a third version when reverting, preserve a known-good reference, restore a baseline, and apply a recipe. One judge--execute probe leaves the register at 196.60 after recording a rollback verdict; explicit execution subsequently restores approximately 203.40. A separate node rollback exercises the undo path. Manual binding suspends a write until scripted approval; the recorded 456 ms is polling-inclusive script latency, not human response time. Ten journal anchors and 200-entry audit/log query windows demonstrate accessible surfaces, not exhaustive attribution of unrelated history.
 
-\subsection{Closed-Loop Optimization Benchmark}
+One system backstop drill records a rollback verdict after 120.105 s and a readback near the 186.2 baseline. This supports one rollback, not escalation at $K=2$. The implementation counts retained rolled-back records per node, not per agent or over a lifetime. Post-write record creation is conditional on the write outcome, source, and deduplication; bookkeeping exceptions are caught rather than undoing an accepted write. The run also stores five vector and five image frames, completes a mock lead/worker dispatch, and returns one memory entry after two writes with the same deduplication key. The registry lists 14 engines, 12 environment-available; enumeration is not cross-engine execution evidence.
+
+\subsection{Deterministic Closed-Loop Benchmark}
 \label{sec:clbench}
-The closed-loop benchmark quantifies how much of the offline optimum a \emph{governed} loop recovers on the cast-film twin. The pipeline instantiates all six actuators (zones on Modbus TCP, screw on OPC UA, line speed on MQTT, die gap on HTTP), starts a batch off-optimum ($N{=}150$\,rpm, $v{=}95$\,m/min, zone $200\,^\circ$C), and runs a controller that reads through the acquisition path and writes through the governed path. The objective
+The fixed controller starts the cast-film twin at screw speed $N=150$ rpm, line speed $v=95$ m/min, and zone setpoint $200\,^\circ$C. It reads acquired process variables and submits governed writes; no LLM chooses the actions. Its objective is
 \begin{equation}
-J = 55\,J_\text{thick} + 25\,J_\text{quality} + 8\,J_\text{energy} + 7\,J_\text{throughput}\label{eq:objective}
+J = 55\,J_\text{thick} + 25\,J_\text{quality} + 8\,J_\text{energy} + 7\,J_\text{throughput}.
+\label{eq:objective}
 \end{equation}
-constrains melt temperature to $[195, 225]\,^\circ$C and pressure to $\le 22\,MPa$. The controller is model-light and fixed in advance: it inverts $h\propto N/v$ at constant line speed ($N\leftarrow N\cdot(50/h)$, $\pm$22\,rpm per step) and corrects the heater setpoint only when melt temperature leaves $[196,224]\,^\circ$C; it contains no LLM, so the benchmark isolates the \emph{governed loop} rather than a model. Convergence requires two consecutive evaluations with $h\in[48,52]\,\mu$m, defect $<2\,\%$, pressure $\le22$\,MPa.
+Melt temperature must remain in $[195,225]\,^\circ$C and pressure at most 22 MPa. The controller uses $N\leftarrow N(50/h)$ with a 22-rpm step limit, holding line speed fixed, and adjusts heating when temperature leaves $[196,224]\,^\circ$C. The stated convergence criterion is two consecutive evaluations with thickness $h\in[48,52]\,\mu$m, defect below 2\%, and pressure at most 22 MPa. All three reference trajectories satisfy this criterion directly; we do not infer it solely from the stored convergence flag.
 
-Fig.~\ref{fig:clbench} reports the trajectories; $J_{\text{end}}$ is the mean of the two consecutive in-band evaluations. From $J_0=64.7$--$70.2$ the loop reaches $J_{\text{end}}=87.2$--$87.4$ against $W^{*}=89.894$ (weights unnormalized, 0--95 scale; real-time physics; offline grid resolution 2.5\,$^\circ$C $\times$ 5\,rpm $\times$ 2.5\,m/min, die gap fixed at 1.0\,mm), i.e.\ 97.0--97.2\,\% of the optimum in the quoted run, converging in two iterations with at most two governed writes per seed, no rejected write and no constraint violation; mean wall time is 36\,s per seed. Thickness moves from 55.2--56.1\,$\mu$m (target $50\pm2\,\mu$m), defect settles at or below 0.64\,\%, pressure at 16.6--16.9\,MPa, melt temperature stays inside $[195,225]\,^\circ$C. Per-seed values in the quoted run ($J_0 \to J_{\text{end}}$, ratio): seed 42: 68.07$\to$87.26 (0.971); seed 43: 70.21$\to$87.16 (0.970); seed 44: 64.69$\to$87.37 (0.972). Across all completed releases of the same command and seed (three early-development and two interrupted runs excluded), per-seed $J/J^{*}$ spans 0.962--0.973 and run-level means 0.965--0.971; the residual spread reflects the sampled process variables from which $J$ is computed. The 3--4\,\% shortfall is a throughput/energy trade, not a control failure: the grid optimum sits at a low-throughput corner of the objective, while the loop holds the higher line speed it started from.
+Figure~\ref{fig:clbench} shows seeds 42--44. Their starting objectives are 68.071, 70.206, and 64.694. Defining $J_{\rm end}$ as the mean of the final two evaluations gives 87.262, 87.157, and 87.366, respectively. Relative to the archived finite-grid reference $W^*=89.894$, the rounded ratios are 0.971, 0.970, and 0.972. The reference is a grid-search result, not a proven global optimum or universal performance bound. These ratios describe this objective and simulator, not industrial optimality.
+
+Each seed uses two governed writes in $R$, with no rejected writes; mean elapsed time is 36.188 s per seed. Final thickness is 50.03, 49.73, and 50.58 $\mu$m. Measured temperatures and pressures satisfy the objective constraints. The two-write result is run-specific: later archive \texttt{18no} records four writes for seed 44. Timing-sensitive acquisition can change trajectories despite a deterministic policy. Three seeds therefore establish observed feasibility, not an iteration bound, controller superiority, or a general convergence theorem.
 
 \begin{figure}[!t]
 \centering
-\begin{tikzpicture}
-\begin{axis}[tii,
-  width=0.84\columnwidth,height=3.3cm,
-  xlabel={Closed-loop iteration},ylabel={Objective $J$},
-  xmin=-0.3,xmax=2.85,ymin=60,ymax=97,
-  ytick={60,65,...,95},
-  minor tick num=1,
-  xtick={0,1,2},
-  ymajorgrids,grid style={awGrey!14},
-  legend style={at={(0.5,1.02)},anchor=south,legend columns=3,inner sep=1.5pt,font=\scriptsize},
-  legend cell align={left}]
-\addplot[awGrey,densely dashed,thick,forget plot] {89.894};
-\node[font=\scriptsize,anchor=south west,text=awGrey!60!black] at (axis cs:-0.25,90.6) {$W^{*}=89.894$};
-\addplot[awGreen,very thick,mark=*,mark size=1.5pt,mark options={fill=awGreen}]
-  coordinates {(0,68.07) (1,87.55) (2,86.97)};
-\addlegendentry{seed 42}
-\addplot[awBlue,very thick,densely dashed,mark=square*,mark size=1.4pt,mark options={fill=awBlue}]
-  coordinates {(0,70.21) (1,87.39) (2,86.92)};
-\addlegendentry{seed 43}
-\addplot[awPurple,very thick,densely dotted,mark=triangle*,mark size=1.6pt,mark options={fill=awPurple}]
-  coordinates {(0,64.69) (1,87.86) (2,86.87)};
-\addlegendentry{seed 44}
-\addplot[awRed!80!black,only marks,mark=star,mark size=2.2pt,forget plot]
-  coordinates {(2.12,86.97) (2.0,86.92) (1.88,86.87)};
-\node[font=\scriptsize,anchor=south east,text=awRed!80!black,inner sep=1.5pt] at (axis cs:2.78,62.8) {settling $J$ (stars): 86.97/86.92/86.87};
-\end{axis}
-\end{tikzpicture}
-\caption{Governed closed-loop optimization on the cast-film twin (three seeds, real transports, deterministic controller). $J$ is the objective of Eq.~(\ref{eq:objective}); all seeds converge in two iterations to 97.0--97.2\,\% of the offline grid optimum $W^{*}$ (dashed). Red stars mark the iteration-2 settling measurements (offset horizontally for visibility); the quoted ratios are the $J_{\text{end}}$ means of both evaluations over $W^{*}$.}
+\includegraphics[width=\columnwidth]{figures/publication/fig5-closedloop.pdf}
+\caption{Fixed-controller trajectories in $R$ (three seeds). The dashed reference is $W^*=89.894$. Reported endpoint ratios use the mean of the last two evaluations, not the final plotted point alone.}
 \label{fig:clbench}
 \end{figure}
 
-\subsection{E1a: Pipeline-Tier Governance Ablation}
-\label{sec:e1a}
-Using the env-gated bench-mode bypass (production builds refuse the flag), we compare the full pipeline against the three ablation arms of B1---soft interlock bypassed (\texttt{no-interlock}), readback verification bypassed (\texttt{no-readback}), and fully ungated---on the live instance (mock drivers, seed 42, three repetitions per arm per released run, fresh fixture per repetition). The hard range is structurally enforced at the driver layer, so the ablation isolates exactly the two bypassable mechanisms. Fig.~\ref{fig:e1a} reports the result; values were identical across repetitions. Three findings: (i) bypassing the interlock collapses interception from 6/6 to 4/6 (identically in the no-interlock and ungated arms)---the window-class attacks execute while global-range attacks remain structurally rejected; (ii) the executed breaches are fully journaled (twelve out-of-window anchors per bypass arm per run: six breach writes plus six accepted edge probes): \emph{attribution is not prevention}; (iii) no arm adds latency resolvable at this tier (p50 110--141\,ms, p95 150--169\,ms across all arms; an equivalence claim from overlapping ranges, no test applied). Boundary behavior follows each arm's specification (9/9 probes; Wilson 95\,\% [70,100]\,\%), false blocks are 0/3 in every arm, and the no-readback arm matches Full on in-memory drivers (the mock readback echoes the command), which is why its verification value is exercised by the frozen-process injection above.
+\subsection{Agent-Team Mission and Real-LLM Loop}
+\label{sec:agentloop}
+Archive $E$ places an agent, rather than the fixed controller, in the operator seat. The \emph{team mission} files an optimization goal on a channel task board: bring the Modbus-TCP setpoint node to $204.704\pm0.75\,^\circ$C within its recipe window, using at most three governed writes, reading recent data first. The lead dispatches the task; a bound worker reads the five-minute acquisition window through an explicit time-range query (\texttt{daq\_query} with \texttt{from/to/bucket}---time-series semantics), computes a setpoint at 78\% of the window, and issues one governed write. The register readback matches, the optimization record opens and is judged \texttt{keep}, the parameter journal attributes the change to the agent, and the board state machine reaches \texttt{COMPLETED}: six mission checks, all passing (Table~\ref{tab:agentloop}). The mission's policy is deterministic, so this unit measures the team path, not model capability.
+
+The \emph{real-LLM loop} assigns the closed-loop task to an \texttt{omp}-harness agent (glm-5.3-flash) whose tool calls the model itself chooses under the platform's operating rules. Figure~\ref{fig:agenttrace} reconstructs the execution from the channel transcript. The first read identifies a startup ramp (44.7 to 199.3\,°C in 90\,s) rather than a fault; the model issues the governed write $197.48\,^\circ$C with an explicit hypothesis, the register returns 197.5\,°C, and an optimization record opens. A one-second-bucket re-query returns a stale window; the model switches to 15\,s buckets and a narrower interval, obtains the post-write series 199.41--200.10\,°C inside the recipe band, and judges the record \texttt{keep} citing those samples. The task terminates \texttt{COMPLETED} with the required sentinel in 132\,s, and every write crosses the same governed path and journal as the deterministic suites.
+
+Both units demonstrate execution capability through the team and tool surfaces; neither demonstrates autonomous optimization quality or cross-model generality. The loop's steps are structured and graded by an oracle sentinel, in a single run with one model version. Unlike the campaigns of Sec.~\ref{sec:case}, it runs on a fresh fixture with live alarm context and verified readback, which is why its judge step rests on usable observations.
 
 \begin{figure}[!t]
 \centering
-\input{figures/fig-e1a}
-\caption{E1a four-arm governance ablation (mock drivers, seed 42; nine repetitions per arm across three released runs, judge-class values identical). Top: interception per arm; error bars are Wilson 95\,\% intervals over the six seeded attacks, with endpoints printed---structural rather than statistical at $n{=}6$. Bottom: mean p50 write latency per arm as point ranges, not bars, so a truncated axis cannot exaggerate differences; whiskers span the minimum observed p50 to the maximum observed p95, and arm means are printed. Aggregates recomputed from the released per-repetition CSVs by \texttt{bench/tools/fig4\_analyze.py}.}
+\includegraphics[width=\columnwidth]{figures/publication/fig7-agenttrace.pdf}
+\caption{Real-LLM closed loop on a live Modbus-TCP node (omp/glm-5.3-flash, archive $E$): measured PV with the recipe window and setpoint step, annotated with the agent's actions reconstructed from its transcript. After the governed write (record opened, readback 197.5\,°C), a 1 s-bucket re-query returned a stale window; the agent switched to 15\,s buckets before judging the record \texttt{keep} on the post-write series.}
+\label{fig:agenttrace}
+\end{figure}
+
+\begin{table}[!t]
+\centering
+\caption{Agent-side closed-loop units in archive $E$; single-run capability tests, not optimization-quality comparisons.}
+\label{tab:agentloop}
+\scriptsize
+\begin{tabular}{@{}p{0.30\columnwidth}p{0.58\columnwidth}@{}}
+\toprule
+Unit & Outcome and governance evidence \\
+\midrule
+Team mission (deterministic policy) & Board goal dispatched; time-range read; 1 governed write, readback match; record judged \texttt{keep}; journal attribution; attained $204.704\pm0.75\,^\circ$C; 6/6 checks \\
+Real-LLM loop (omp/glm-5.3-flash) & \texttt{COMPLETED} + sentinel in 132\,s; adaptive re-query; judge \texttt{keep} citing post-write window 199.41--200.10\,°C \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Mock-Driver Governance Ablation}
+\label{sec:e1a}
+Figure~\ref{fig:e1a} uses only the complete frozen \texttt{20260914-baseline/}\allowbreak\texttt{run-e1lite-4arm} CSV and run record: seed 42, three fresh-fixture repetitions per arm. Only this complete three-repetition source set is used; two source runs of a historical nine-repetition aggregate are unavailable. Later runs are not substituted for them. The four arms retain both mechanisms, bypass the soft interlock, bypass readback, or bypass both; the ungated arm still retains the hard engineering range.
+
+Full and no-readback reject 6/6 attacks in each repetition. No-interlock and ungated reject 4/6: the two window-only attacks execute while hard-range attacks remain rejected. Every arm has 0/3 designated legal false blocks and 3/3 arm-specific boundary outcomes per repetition. Accepted boundary probes in bypass arms are expected behavior under that specification, not safety successes. Journaling an executed breach supplies attribution but does not prevent it.
+
+Each latency summary uses 23 successful writes (three designated legal plus twenty timed writes), excluding attacks and boundary probes. Across the three repetitions, p50 ranges are 125.4--140.9 ms (Full), 125.5--140.6 (no-interlock), 124.7--125.4 (no-readback), and 110.9--125.0 (ungated); p95 ranges are 158.2--158.9, 150.2--159.3, 156.4--156.7, and 155.5--156.4 ms. These descriptive ranges do not establish statistical equivalence. Mock readback echoes commands, so this ablation cannot quantify readback's value under device disagreement. Repeated seeded cases are not independent random attacks, and no binomial confidence interval is presented as deployment reliability.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{figures/publication/fig6-ablation.pdf}
+\caption{Complete frozen ablation subset: three repetitions per arm, mock drivers. Attack outcomes retain their six-case denominator; latency displays per-repetition p50/p95 from 23 successful writes. No nine-repetition aggregate or equivalence inference is used.}
 \label{fig:e1a}
 \end{figure}
 
-\subsection{Case Study: LLM-Agent Closed-Loop Optimization (L4)}
+\subsection{Historical LLM Campaigns and Observation Failure}
 \label{sec:case}
-The benchmark of Sec.~\ref{sec:clbench} isolates the governed loop under a fixed controller; this subsection reports the complementary result---the same plant and objective closed by an LLM agent team. Four campaigns are released (first-party \texttt{omp} engine driving glm-5.3-flash in a lead-supervised team; manual-mode bindings; physics accelerated $6\times$; seed 42; plant and objective as in Sec.~\ref{sec:clbench}). Their sampling settings predate the temperature-0/model-pinning discipline of \bench{}'s released protocol (harness defaults), one reason we report them as an existence proof rather than a controlled measurement. In each campaign the team opened an optimization record, probed the plant with \texttt{daq\_query}, and actuated through \texttt{dcw\_control} over real protocol transports; the write ledger records 7, 7, 15 and 10 governed writes respectively with per-write journal anchors, and approval decisions recorded by a scripted operator emulation---an autonomous-campaign configuration, not a production posture.
+Four archived campaigns use the \texttt{omp} engine with glm-5.3-flash, seed 42, $6\times$ simulation speed, and manual bindings released by scripted approvals. Sampling settings and model-version control are insufficient for a controlled comparison with the fixed controller. The records show 7, 7, 15, and 10 protocol writes in the order of Table~\ref{tab:llm-audit}; they demonstrate execution through the governance interface, not successful autonomous optimization.
 
-The outcome is unfavorable to the agent. The agent objective reached $J_{\text{agent}} = 67.7$, $31.2$, $68.3$, $68.5$ against $W^{*} = 89.894$---$0.75$, $0.35$, $0.76$, $0.76$ of the offline optimum, median $0.76$---and the thickness window $50\pm2\,\mu$m was \emph{not} reached: three campaigns settled at a $55.33\,\mu$m window mean and the fourth produced no in-window samples (its MQTT thickness channel also refused connection), while the melt-pressure node failed its connection test on OPC UA in all four. Per-campaign initial objective values and itemized failed checks are preserved in the released campaign archive; the 0.35 tail is partly infrastructure (the refused channel), not purely decision quality.
+\begin{table}[!t]
+\centering
+\caption{Historical LLM outputs ($h$ in $\mu$m), not comparable valid scores. Main-score status is N/A for every campaign. Truth values are single final samples, not convergence tests.}
+\label{tab:llm-audit}
+\scriptsize
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Campaign & Writes & DAQ $h$ & Truth $h$ & Old script $J$ \\
+\midrule
+cf17706 & 7 & 55.33 & 51.147 & 67.684 \\
+cf29791 & 7 & missing & 50.247 & 31.210 \\
+cf34050 & 15 & 55.33 & 48.715 & 68.252 \\
+cf91088 & 10 & 55.33 & 51.147 & 68.520 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-This is a measured negative with a design implication: an LLM team drove real protocol transports through the governed path with every write reconstructable, yet on this objective it does not match a two-step fixed controller ($0.76$ vs.\ $0.97$ of $W^{*}$)---the propose/dispose division of roles working as intended: the agent explores and proposes; the deterministic path converts proposals into converged actuation.
+Three DAQ thickness windows contain 87 samples each, all fixed at 55.33 $\mu$m; the fourth has no thickness window and an MQTT connection refusal. All four pressure-node connection tests fail. Yet the last simulator-truth thickness sample is in-window in every campaign. This observation disagreement prevents the DAQ failure from establishing physical non-convergence or LLM inferiority. Conversely, isolated truth endpoints do not prove two consecutive valid evaluations or justify retrospective replacement of the original scoring window. The fresh-fixture loop of Sec.~\ref{sec:agentloop} repairs the observation path on a live line; it does not rehabilitate these historical scores.
 
-\subsection{Reproducibility and Threats to Validity}
+The historical scoring script substitutes zero for missing thickness and fixes melt temperature at 210 rather than measuring it. The fixed-controller evaluator instead uses acquired temperature and leaves scores null when required observations are missing or constraints fail. Thus the old outputs in the table are audit artifacts, not valid comparable objective estimates; the missing-thickness main score is N/A, not a 0.35 ratio. We neither aggregate these ratios nor contrast their median with the deterministic result. All four inspector checks fail. The regular expression also captures the prompt's literal \texttt{CONVERGED} template, so a matched string is not independent convergence evidence.
+
+\subsection{Reproducibility and Limitations}
 \label{sec:repro}
-Re-running the whole pipeline twice with an identical harness (source hash \texttt{204fc9ee}; runs \texttt{20260914152838-fwg} and \texttt{20260914153400-ce0}), seed, and commit yields \emph{bit-identical} structural results: 55/55 pipeline checks pass in both runs; every seeded attack is rejected with zero false blocks on \emph{both} plant scenarios (9/9 on the second); all four per-line loops converge; the portability and backstop-drill outcomes are identical; and $W^{*}=89.894$. The one structural difference is benign: governed-write totals are 6 vs.\ 5 (seed 44 converged on its first write)---``at most two governed writes per seed'' still holds. What varies is what the abstraction predicts: governed-write latency is environment-dependent, and the closed-loop objective---computed from \emph{sampled} process variables---lands in $J/J^{*}\in[0.962,0.973]$ across the same campaign repetitions as Sec.~\ref{sec:clbench}.
+Archive provenance is necessary but insufficient for reproducibility. The putative replication partner \texttt{20260914153400-ce0} is unavailable, so bit-identical $R/R'$ replication cannot be established. Moreover, \texttt{compare.mjs} reads \texttt{results}, whereas integrated records store \texttt{checks}. Two such records can produce empty comparison maps and a \texttt{REPRODUCIBLE} verdict without checking their outcomes. This does not invalidate the 55 recorded checks in $R$, but it invalidates that comparator verdict as proof of integrated repeatability.
 
-\emph{Threats to validity}. \emph{Construct}: success oracles are database- and readback-defined, mitigating self-reported success bias. \emph{Internal}: the released protocol requires temperature-0 and pinned model versions, but the four reported campaigns predate that discipline (Sec.~\ref{sec:case})---one of their confounds; no nonparametric comparisons are reported, and the latency-equivalence claim in Sec.~\ref{sec:e1a} rests on overlapping ranges. \emph{External}: all measured layers are simulation-tier (two seeded plant scenarios, bounded by the ODE twin's fidelity per scenario); public-dataset replay (TEP, SWaT) is designed but unmeasured; the four LLM campaigns share one seed and carry no cross-seed variance estimate. Results are layer-labeled (Table~\ref{tab:layers}) and we claim no transfer beyond the measured layers (L1, L4) without per-layer evidence. \emph{Conclusion}: the closed-loop result uses a fixed, pre-declared controller and three plant seeds; the LLM campaign is a measured negative, not a headline.
+Other historical outcomes remain visible rather than being silently excluded. The API-only \texttt{co} record skips four PLC checks; \texttt{pds} records fetch failures in the closed-loop and interruption checks; integrated \texttt{18no} warns on the MQTT tool loop. Later \texttt{xac}, \texttt{15ns}, \texttt{51c}, and \texttt{vzo} contain passing checks within their respective scopes, not erasure of earlier failures. Static, mock, PLC, integrated, ablation, and LLM evidence therefore retain separate denominators.
+
+The archived command \texttt{node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3} identifies the integrated profile, not a one-command reproduction of this entire chapter. The companion evidence ledger records source locations, hashes, qualifications, and withdrawals; the figure-data JSON preserves the selected raw-source provenance. Fresh cold-boot executions of the released card (2026-09-17) reproduce the deterministic lanes: static 20/20 anchors, integrated profile 61/61 checks, PLC 13/13, the four-arm ablation pattern, and a 60-probe API survey; the PLC and ablation lanes compare \texttt{REPRODUCIBLE} against the frozen baseline with non-empty per-check tables, and archive $E$ reruns the same command with \texttt{--agent omp}. The integrated-record comparator gap noted above persists, so cross-run integrated replication still has no valid machine verdict. Simulation fidelity, shared-environment timing, small fixture sets, and the historical LLM observation failures limit interpretation. The evidence supports exercised governance and integration behavior, not physical safety certification, general fault tolerance, or comparative agent intelligence.

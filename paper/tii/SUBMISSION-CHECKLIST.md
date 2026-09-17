@@ -1,39 +1,32 @@
-# TII 投稿前必办清单(仅作者本人可完成的三件事 + 提交步骤)
+# TII manuscript handoff — 2026-09-17 revision
 
-> 稿件本体已就绪:`main.pdf`(12 页 ≤14)、0 未解析引用、五席盲审全 SATISFIED、
-> 仓库已推送(88c7f9a)、CITATION.cff 就位。以下三步完成后即可在 IEEE Scholar 提交。
+## Status and page policy
 
-## ① 作者块与经费(main.tex)
+This revision targets an **11-page complete working manuscript**, including six figures and references. Compilation and independent review results are recorded in `reviews/`; do not infer readiness from this checklist.
 
-- [ ] 第 60-62 行:`First~Author, Second Author...` → 真实作者列表
-      (姓名、单位、城市、国家、邮箱;通讯作者标注)
-- [ ] `Manuscript received XXXX; revised XXXX.` → 由 IEEE Scholar 提交后系统生成,可留待校样
-- [ ] 经费/致谢:`sections/discussion.tex` 之后 `\section*{Acknowledgments}` 内
-      `% TODO(submission): fill funding/acknowledgment text.` → 填项目基金号或删除该占位注释
-- [ ] CITATION.cff 的 authors.alias `AgentWorkShop Authors` → 同步真实作者
-- [ ] 重编译:`latexmk -pdf main.tex`(确认 0 undefined、页数不变)
+The IEEE Industrial Electronics Society TII page, checked on 2026-09-17, states that Regular Research Papers first submitted on/after 2025-01-01 have a strict **10-page initial-submission maximum**, and a **12-page accepted-final maximum**. An 11-page working draft is therefore **not initial-submission page-compliant**. No acceptance or reviewer endorsement is claimed.
 
-## ② Artifact DOI(Zenodo)
+Official source: https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics
 
-- [ ] 登录 https://zenodo.org → Account → GitHub → Connect,勾选
-      `kingdol666/AgentWorkShop` 仓库 → Create release 触发铸 DOI
-- [ ] (仓库已含 CITATION.cff,GitHub 侧也可生成 "Cite this repository")
-- [ ] 拿到 DOI 后替换 `sections/discussion.tex` 尾部:
-      `% TODO(submission): add the artifact DOI.` →
-      `Artifact DOI: \url{https://doi.org/10.5281/zenodo.XXXXXXX}`(放脚注)
-- [ ] 建议同时给 `plc-node-simulator` 子仓库打 tag 发布
+## Before an initial submission
 
-## ③ 提交 IEEE Scholar
+- [ ] Produce and independently verify a <=10-page initial-submission version, without shrinking IEEEtran body text or margins and without concealing limitations.
+- [ ] Resolve submission stage and double-blind requirements. The anonymous author block alone does not anonymize identifying repository links or supplementary artifacts.
+- [ ] Authors verify every reference and bibliographic field against its original source. This revision does not certify the entire bibliography.
+- [ ] Authors confirm authorship, ORCID, affiliations, funding, conflicts, disclosure, originality, and exclusive-submission declarations. None was invented by the editing agent.
+- [ ] Prepare an appropriately anonymized, frozen artifact and archival identifier. Do not claim a DOI exists before one is registered.
+- [ ] Decide whether to recover missing historical ablation data. Current replacement figure uses only the complete traceable baseline; do not silently restore the old nine-repetition claim.
+- [ ] Resolve or explicitly retain the documented integrated comparison-tool limitation. No benchmark code was changed and no new experiment run was performed in this editorial revision.
+- [ ] Treat LLM historical script scores as non-comparable outputs; do not turn missing observations into valid optimization scores.
+- [ ] Preserve actual source-dependent checks, asynchronous execution boundaries, unsigned attribution records, and prompt-only small-step guidance in the submitted paper.
+- [ ] Check all six vector PDFs at actual printed width and in grayscale; verify captions, order, embedded fonts, references and page count.
+- [ ] Rebuild from source and archive the exact manuscript, figure generator, data manifest, source hashes and build log.
 
-- [ ] https://ieee.atyponrex.com (TII 投稿入口) 创建稿件:Regular Paper
-- [ ] 上传 main.pdf + main.tex 源文件包(含 figures/、refs.bib、results-macros.tex)
-- [ ] Cover letter:见同目录 `cover-letter-draft.md`(填姓名日期后使用)
-- [ ] 建议推荐审稿人 3-5 名(工业信息物理/LLM-agent 方向)
-- [ ] 提交前最后跑一次 `latexmk -pdf main.tex` 确认 0 错误
+## Build and figure sources
 
-## 可选加分项(有条件即做)
+From `paper/tii`: `latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex`.
+The six authoritative new figure sources/exports are in `figures/publication/`. Older files outside this directory are retained as historical assets, not active publication sources.
 
-- [ ] 提供 GLM_API_KEY(环境变量)→ 补测 B2 外部基线臂(LangGraph/AutoGen 经同一 MCP
-      工具面跑 T1/T2),EIC 明言此实验会把推荐升至 enthusiastic accept
-- [ ] L3 物理设备实测(一个 OPC UA/Modbus 真设备的写-回读时延)
-- [ ] LLM campaign 跨种子复测(消除单种子方差质疑)
+## Editorial scope
+
+The present changes concern manuscript text, diagrams and evidence presentation only. Product implementation, benchmark code, archived raw results and simulator dynamics are not changed to match the paper. Missing evidence remains missing; additional experiments need separate authorization.

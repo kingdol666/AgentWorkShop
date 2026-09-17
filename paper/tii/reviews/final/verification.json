@@ -1,0 +1,277 @@
+{
+  "pages": 11,
+  "expected_pages": 11,
+  "figure_order": {
+    "fig:intro": {
+      "number": 1,
+      "page": 2
+    },
+    "fig:arch": {
+      "number": 2,
+      "page": 3
+    },
+    "fig:teamloop": {
+      "number": 3,
+      "page": 5
+    },
+    "fig:walkthrough": {
+      "number": 4,
+      "page": 7
+    },
+    "fig:clbench": {
+      "number": 5,
+      "page": 8
+    },
+    "fig:e1a": {
+      "number": 6,
+      "page": 9
+    }
+  },
+  "fonts": [
+    {
+      "name": "PPOIYR+NimbusRomNo9L-Regu",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "LREKMX+NimbusRomNo9L-MediItal",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "BILZKI+NimbusRomNo9L-Medi",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "OCPSTK+NimbusRomNo9L-ReguItal",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "AAAAAA+Calibri-Bold",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "BAAAAA+Calibri",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "AAAAAA+Calibri-Bold",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "BAAAAA+Calibri",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "FGSMTR+CMMI10",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "ABPNPU+CMMI7",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "DSXZDP+CMR10",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "VXCAXX+CMEX10",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "ZEKXBL+CMSY10",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "ULZEWH+MSBM10",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "KKHBHE+CMSY7",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "RAFNRP+CMMI5",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "SKGBXU+CMR7",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "AAAAAA+Calibri-Bold",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "BAAAAA+Calibri",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "BBZPFQ+NimbusMonL-Regu",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "AAAAAA+Calibri-Bold",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "BAAAAA+Calibri",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "CKVYNO+CMMI8",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "BHRVYJ+CMSY5",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "GUOWTK+CMSY6",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "GYXZKD+CMR8",
+      "type": "Type1",
+      "embedded": true
+    },
+    {
+      "name": "AAAAAA+Calibri-Bold",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "BAAAAA+Calibri",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "AAAAAA+Calibri-Bold",
+      "type": "Type0",
+      "embedded": true
+    },
+    {
+      "name": "BAAAAA+Calibri",
+      "type": "Type0",
+      "embedded": true
+    }
+  ],
+  "assets": [
+    {
+      "name": "fig1-intro",
+      "formats": {
+        ".html": true,
+        ".svg": true,
+        ".pdf": true,
+        ".png": true
+      },
+      "mm": [
+        181.02,
+        46.91
+      ],
+      "min_vector_text_pt": 8.0,
+      "sha256_pdf": "a9923dddde65a8088da1fa1d794c7727ddbba83dae34e78b4c3949fe4a67effd"
+    },
+    {
+      "name": "fig2-architecture",
+      "formats": {
+        ".html": true,
+        ".svg": true,
+        ".pdf": true,
+        ".png": true
+      },
+      "mm": [
+        181.02,
+        64.94
+      ],
+      "min_vector_text_pt": 8.0,
+      "sha256_pdf": "88a191d268ae0655cbef801b9a39c1e6c5263440a56b6f1be6f95071072fe89a"
+    },
+    {
+      "name": "fig3-channel-loop",
+      "formats": {
+        ".html": true,
+        ".svg": true,
+        ".pdf": true,
+        ".png": true
+      },
+      "mm": [
+        181.02,
+        78.99
+      ],
+      "min_vector_text_pt": 8.0,
+      "sha256_pdf": "9bb893548eb19e5ebe19d6c03a9f461a8df81ec6d6ba16e6478d86c883f0626c"
+    },
+    {
+      "name": "fig4-workflow",
+      "formats": {
+        ".html": true,
+        ".svg": true,
+        ".pdf": true,
+        ".png": true
+      },
+      "mm": [
+        181.02,
+        51.9
+      ],
+      "min_vector_text_pt": 8.0,
+      "sha256_pdf": "830b6155453cf5cb58ae7a2b16c8c634f5a18012bb77800024ad7472be596737"
+    },
+    {
+      "name": "fig5-closedloop",
+      "formats": {
+        ".html": true,
+        ".svg": true,
+        ".pdf": true,
+        ".png": true
+      },
+      "mm": [
+        87.88,
+        69.85
+      ],
+      "min_vector_text_pt": 8.0,
+      "sha256_pdf": "bd3a0337fe9f975e646b34afa8a8aa2f1ba4f741f0e22528ce6fab84a32b2a8e"
+    },
+    {
+      "name": "fig6-ablation",
+      "formats": {
+        ".html": true,
+        ".svg": true,
+        ".pdf": true,
+        ".png": true
+      },
+      "mm": [
+        87.88,
+        71.97
+      ],
+      "min_vector_text_pt": 8.0,
+      "sha256_pdf": "d93f7da8615f56dbf328e05d6c8abeff59919e72dd43f6d5f2c21b53909bd48b"
+    }
+  ],
+  "issues": [],
+  "pdf_sha256": "0ce538139337266e5cc8b18dc276496af67538acd280cf4a56e7c475da05f24c",
+  "scope": "Mechanical checks, not scientific validity or submission certification."
+}

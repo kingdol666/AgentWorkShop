@@ -1,0 +1,49 @@
+{
+  "figures": [
+    {
+      "name": "fig1-intro",
+      "width_mm": 181.0,
+      "height_mm": 47.0,
+      "min_label_pt": 8.007874015748031
+    },
+    {
+      "name": "fig2-architecture",
+      "width_mm": 181.0,
+      "height_mm": 65.0,
+      "min_label_pt": 8.007874015748031
+    },
+    {
+      "name": "fig3-channel-loop",
+      "width_mm": 181.0,
+      "height_mm": 79.0,
+      "min_label_pt": 8.007874015748031
+    },
+    {
+      "name": "fig4-workflow",
+      "width_mm": 181.0,
+      "height_mm": 52.0,
+      "min_label_pt": 8.007874015748031
+    },
+    {
+      "name": "fig5-closedloop",
+      "width_mm": 88.0,
+      "height_mm": 70.0,
+      "min_label_pt": 8.007874015748031
+    },
+    {
+      "name": "fig6-ablation",
+      "width_mm": 88.0,
+      "height_mm": 72.0,
+      "min_label_pt": 8.007874015748031
+    }
+  ],
+  "font": "Calibri, embedded subset (regular/bold)",
+  "data_sha256": "f47170a9363414e34ac929d24829d385ac145445ca9e4bee44a6926ce77f6883",
+  "screenshot_sources": [
+    "walkthrough/p1-addnode.png",
+    "walkthrough/p1-driver.png",
+    "walkthrough/p2-binding.png",
+    "walkthrough/p3-team.png",
+    "walkthrough/p4-records.png"
+  ]
+}

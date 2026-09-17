@@ -1,3 +1,5 @@
+> **Historical plan, superseded on 2026-09-17.** Do not treat the implementation guarantees or old benchmark counts below as current evidence. The active revision is described in `REVISION-SUMMARY.md`, `reviews/evidence-ledger-20260917.md`, and the six sources under `figures/publication/`.
+
 # TII 论文重构规划(2026-09-17)
 
 ## 目标

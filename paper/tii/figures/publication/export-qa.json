@@ -1,0 +1,104 @@
+[
+  {
+    "name": "fig1-intro",
+    "errors": [],
+    "outside": [],
+    "text_overlaps": [],
+    "text_count": 22,
+    "fonts": [
+      {
+        "family": "Publication",
+        "status": "loaded"
+      },
+      {
+        "family": "Publication",
+        "status": "loaded"
+      }
+    ]
+  },
+  {
+    "name": "fig2-architecture",
+    "errors": [],
+    "outside": [],
+    "text_overlaps": [],
+    "text_count": 32,
+    "fonts": [
+      {
+        "family": "Publication",
+        "status": "loaded"
+      },
+      {
+        "family": "Publication",
+        "status": "loaded"
+      }
+    ]
+  },
+  {
+    "name": "fig3-channel-loop",
+    "errors": [],
+    "outside": [],
+    "text_overlaps": [],
+    "text_count": 38,
+    "fonts": [
+      {
+        "family": "Publication",
+        "status": "loaded"
+      },
+      {
+        "family": "Publication",
+        "status": "loaded"
+      }
+    ]
+  },
+  {
+    "name": "fig4-workflow",
+    "errors": [],
+    "outside": [],
+    "text_overlaps": [],
+    "text_count": 12,
+    "fonts": [
+      {
+        "family": "Publication",
+        "status": "loaded"
+      },
+      {
+        "family": "Publication",
+        "status": "loaded"
+      }
+    ]
+  },
+  {
+    "name": "fig5-closedloop",
+    "errors": [],
+    "outside": [],
+    "text_overlaps": [],
+    "text_count": 16,
+    "fonts": [
+      {
+        "family": "Publication",
+        "status": "loaded"
+      },
+      {
+        "family": "Publication",
+        "status": "loaded"
+      }
+    ]
+  },
+  {
+    "name": "fig6-ablation",
+    "errors": [],
+    "outside": [],
+    "text_overlaps": [],
+    "text_count": 25,
+    "fonts": [
+      {
+        "family": "Publication",
+        "status": "loaded"
+      },
+      {
+        "family": "Publication",
+        "status": "loaded"
+      }
+    ]
+  }
+]

@@ -1,0 +1,716 @@
+{
+  "schema_version": 1,
+  "revision_date": "2026-09-17",
+  "provenance_note": "Archive-only extraction. No experiment reruns. Figure 6 supersedes historical nine-repetition figure with the complete frozen baseline: three repetitions per arm. No inference of latency equivalence.",
+  "sources": [
+    {
+      "path": "bench/results/20260914152838-fwg/run.json",
+      "sha256": "1ac8c155197734dbc1de94a483bfaebc5ac5f674ec1f698b15598b4feda8f9ee"
+    },
+    {
+      "path": "bench/baselines/20260914-baseline/run-e1lite-4arm/run.json",
+      "sha256": "5ea4967fc528466d77aebd525eb51b761229b229a45b553351179e46e3e677e9"
+    },
+    {
+      "path": "bench/baselines/20260914-baseline/run-e1lite-4arm/e1-lite.csv",
+      "sha256": "d6482ae6798612e40858fbc79071e9bfe947a54dc13e2c706f6d30361be18e48"
+    },
+    {
+      "path": "bench/e1-lite.mjs",
+      "sha256": "4d74092ce0441894d75d7c81f4b2d817322762edff36ac2fbd54b9f4dd46262e"
+    }
+  ],
+  "fig5": {
+    "source": "bench/results/20260914152838-fwg/run.json",
+    "reference": {
+      "symbol": "W*",
+      "value": 89.894,
+      "interpretation": "Archived offline finite-grid reference; not a global-optimality bound"
+    },
+    "J_end_definition": "Arithmetic mean of final two trajectory J evaluations (iterations 1 and 2); ratio = J_end / reference",
+    "seeds": [
+      {
+        "seed": 42,
+        "trajectory": [
+          {
+            "iter": 0,
+            "thickness": 55.56666666666666,
+            "defect": 0.16666666666666666,
+            "pressure": 18.583333333333336,
+            "meltTemp": 206.21666666666667,
+            "screw": 150,
+            "lineSpeed": 95,
+            "J": 68.07083333333335
+          },
+          {
+            "iter": 1,
+            "thickness": 48.79999999999999,
+            "defect": 0.4666666666666666,
+            "pressure": 16.400000000000002,
+            "meltTemp": 202.54999999999998,
+            "screw": 135,
+            "lineSpeed": 95,
+            "J": 87.55000000000001
+          },
+          {
+            "iter": 2,
+            "thickness": 50.03333333333333,
+            "defect": 0.6,
+            "pressure": 16.71666666666667,
+            "meltTemp": 201.29999999999998,
+            "screw": 138,
+            "lineSpeed": 95,
+            "J": 86.97333333333334
+          }
+        ],
+        "J0": 68.071,
+        "J_end": 87.26166666666668,
+        "J_end_archived": 87.262,
+        "ratio": 0.9707173634132054,
+        "ratio_archived": 0.971,
+        "writes": 2,
+        "converged": true
+      },
+      {
+        "seed": 43,
+        "trajectory": [
+          {
+            "iter": 0,
+            "thickness": 55.15,
+            "defect": 0.21666666666666667,
+            "pressure": 18.599999999999998,
+            "meltTemp": 207.04999999999998,
+            "screw": 150,
+            "lineSpeed": 95,
+            "J": 70.20625000000003
+          },
+          {
+            "iter": 1,
+            "thickness": 49.6,
+            "defect": 0.5,
+            "pressure": 16.599999999999998,
+            "meltTemp": 203.36666666666665,
+            "screw": 136,
+            "lineSpeed": 95,
+            "J": 87.3925
+          },
+          {
+            "iter": 2,
+            "thickness": 49.73333333333333,
+            "defect": 0.6333333333333333,
+            "pressure": 16.633333333333336,
+            "meltTemp": 201.61666666666667,
+            "screw": 137,
+            "lineSpeed": 95,
+            "J": 86.92250000000001
+          }
+        ],
+        "J0": 70.206,
+        "J_end": 87.1575,
+        "J_end_archived": 87.157,
+        "ratio": 0.9695585912296705,
+        "ratio_archived": 0.97,
+        "writes": 2,
+        "converged": true
+      },
+      {
+        "seed": 44,
+        "trajectory": [
+          {
+            "iter": 0,
+            "thickness": 56.133333333333326,
+            "defect": 0.25,
+            "pressure": 18.616666666666667,
+            "meltTemp": 207.83333333333334,
+            "screw": 150,
+            "lineSpeed": 95,
+            "J": 64.69375000000004
+          },
+          {
+            "iter": 1,
+            "thickness": 48.36666666666667,
+            "defect": 0.3833333333333333,
+            "pressure": 16.433333333333334,
+            "meltTemp": 204.16666666666666,
+            "screw": 134,
+            "lineSpeed": 95,
+            "J": 87.86375000000001
+          },
+          {
+            "iter": 2,
+            "thickness": 50.583333333333336,
+            "defect": 0.6166666666666667,
+            "pressure": 16.883333333333333,
+            "meltTemp": 203.03333333333333,
+            "screw": 139,
+            "lineSpeed": 95,
+            "J": 86.86791666666666
+          }
+        ],
+        "J0": 64.694,
+        "J_end": 87.36583333333334,
+        "J_end_archived": 87.366,
+        "ratio": 0.9718761355967399,
+        "ratio_archived": 0.972,
+        "writes": 2,
+        "converged": true
+      }
+    ]
+  },
+  "fig6": {
+    "source_csv": "bench/baselines/20260914-baseline/run-e1lite-4arm/e1-lite.csv",
+    "source_run": "bench/baselines/20260914-baseline/run-e1lite-4arm/run.json",
+    "seed": 42,
+    "repetitions_per_arm": 3,
+    "driver_tier": "mock",
+    "quantile_definition": "Successful legit plus timed writes; p50 sorted[floor(n/2)]; p95 sorted[min(n-1,ceil(0.95*n)-1)]. Neither attacks nor boundary probes included.",
+    "display_guidance": "Show three paired p50/p95 observations per arm; attack counts per repetition (6/6 or 4/6), not independent Bernoulli confidence intervals. Do not reuse nine-repetition aggregates or infer equivalence.",
+    "arms": [
+      {
+        "arm": "full",
+        "repetitions": [
+          {
+            "rep": 1,
+            "attack": {
+              "attempted": 6,
+              "rejected": 6,
+              "executed": 0
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 125.4,
+            "p95_ms": 158.9,
+            "latency_samples": [
+              94.5,
+              95.5,
+              109.3,
+              94.8,
+              134.8,
+              141.8,
+              125,
+              142,
+              111.5,
+              158.9,
+              125.1,
+              141.2,
+              155.5,
+              127.3,
+              158.9,
+              109.9,
+              94.2,
+              79.7,
+              150,
+              141.3,
+              94.1,
+              125.8,
+              125.4
+            ]
+          },
+          {
+            "rep": 2,
+            "attack": {
+              "attempted": 6,
+              "rejected": 6,
+              "executed": 0
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 140.9,
+            "p95_ms": 158.6,
+            "latency_samples": [
+              141.7,
+              158.6,
+              140.9,
+              110.2,
+              94.2,
+              156.9,
+              127,
+              109.5,
+              124.9,
+              141.1,
+              94.3,
+              171.9,
+              142.4,
+              79.2,
+              93.9,
+              126.3,
+              158,
+              155.4,
+              141.3,
+              111.2,
+              141,
+              125.4,
+              155.7
+            ]
+          },
+          {
+            "rep": 3,
+            "attack": {
+              "attempted": 6,
+              "rejected": 6,
+              "executed": 0
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 125.8,
+            "p95_ms": 158.2,
+            "latency_samples": [
+              111.7,
+              78.3,
+              128.8,
+              125.8,
+              158.2,
+              93.7,
+              141,
+              157.7,
+              156.8,
+              141.5,
+              94.3,
+              126.6,
+              159.4,
+              95.4,
+              95.4,
+              156.2,
+              109.2,
+              95,
+              110.5,
+              139.8,
+              156.2,
+              79.9,
+              99.1
+            ]
+          }
+        ]
+      },
+      {
+        "arm": "no-interlock",
+        "repetitions": [
+          {
+            "rep": 1,
+            "attack": {
+              "attempted": 6,
+              "rejected": 4,
+              "executed": 2
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 125.5,
+            "p95_ms": 158.2,
+            "latency_samples": [
+              140.4,
+              119.2,
+              142.5,
+              110.5,
+              165.6,
+              109.1,
+              141.8,
+              127.2,
+              158.2,
+              106.7,
+              125.5,
+              124.6,
+              94.4,
+              94.6,
+              150.8,
+              156.5,
+              109.2,
+              93.8,
+              157.1,
+              95.5,
+              119.4,
+              156.2,
+              142.5
+            ]
+          },
+          {
+            "rep": 2,
+            "attack": {
+              "attempted": 6,
+              "rejected": 4,
+              "executed": 2
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 140.6,
+            "p95_ms": 159.3,
+            "latency_samples": [
+              140.8,
+              171.6,
+              125.3,
+              156.2,
+              149.3,
+              95,
+              124.7,
+              109.8,
+              140.5,
+              156.4,
+              149.4,
+              125.6,
+              77.6,
+              140.7,
+              157.2,
+              134.4,
+              140.6,
+              156.8,
+              152,
+              125.5,
+              110.7,
+              125.3,
+              159.3
+            ]
+          },
+          {
+            "rep": 3,
+            "attack": {
+              "attempted": 6,
+              "rejected": 4,
+              "executed": 2
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 126.4,
+            "p95_ms": 150.2,
+            "latency_samples": [
+              94,
+              96,
+              134.5,
+              140.4,
+              141.6,
+              127.2,
+              125.6,
+              150.2,
+              140.8,
+              110,
+              158,
+              142.8,
+              96,
+              110.7,
+              110,
+              141.3,
+              118.6,
+              95.7,
+              126.4,
+              140.6,
+              143.9,
+              104.3,
+              109.8
+            ]
+          }
+        ]
+      },
+      {
+        "arm": "no-readback",
+        "repetitions": [
+          {
+            "rep": 1,
+            "attack": {
+              "attempted": 6,
+              "rejected": 6,
+              "executed": 0
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 125.4,
+            "p95_ms": 156.5,
+            "latency_samples": [
+              109.8,
+              127,
+              142.4,
+              134.8,
+              94.8,
+              142.5,
+              156.9,
+              89.6,
+              95,
+              95,
+              79.1,
+              110.3,
+              94,
+              141.7,
+              156.5,
+              125.6,
+              135.3,
+              125.6,
+              78.9,
+              125.4,
+              141.8,
+              125.2,
+              103.9
+            ]
+          },
+          {
+            "rep": 2,
+            "attack": {
+              "attempted": 6,
+              "rejected": 6,
+              "executed": 0
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 124.7,
+            "p95_ms": 156.4,
+            "latency_samples": [
+              109.4,
+              111.5,
+              110.7,
+              109.8,
+              110,
+              109.6,
+              156.3,
+              156.4,
+              124.7,
+              109,
+              142.6,
+              109.8,
+              158.6,
+              112.5,
+              142.1,
+              126,
+              125,
+              142.6,
+              127.5,
+              93.7,
+              141.7,
+              95,
+              142.3
+            ]
+          },
+          {
+            "rep": 3,
+            "attack": {
+              "attempted": 6,
+              "rejected": 6,
+              "executed": 0
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 125.1,
+            "p95_ms": 156.7,
+            "latency_samples": [
+              125.1,
+              124.9,
+              155.8,
+              110.1,
+              110.4,
+              79.3,
+              141.1,
+              94.4,
+              93.9,
+              126.9,
+              109.1,
+              125.1,
+              111.6,
+              142.8,
+              125.5,
+              156.7,
+              156.5,
+              156.1,
+              140.4,
+              114.5,
+              140.2,
+              158.3,
+              111.2
+            ]
+          }
+        ]
+      },
+      {
+        "arm": "ungated",
+        "repetitions": [
+          {
+            "rep": 1,
+            "attack": {
+              "attempted": 6,
+              "rejected": 4,
+              "executed": 2
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 112.4,
+            "p95_ms": 156.2,
+            "latency_samples": [
+              110,
+              124.2,
+              156.2,
+              127.4,
+              109.4,
+              125.2,
+              126.3,
+              109.3,
+              93.8,
+              93.7,
+              79.9,
+              140.4,
+              95.7,
+              95.5,
+              125.1,
+              126.5,
+              109.7,
+              140.2,
+              158.4,
+              140.9,
+              109.7,
+              112.4,
+              109.4
+            ]
+          },
+          {
+            "rep": 2,
+            "attack": {
+              "attempted": 6,
+              "rejected": 4,
+              "executed": 2
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 110.9,
+            "p95_ms": 155.5,
+            "latency_samples": [
+              111.4,
+              127,
+              125.5,
+              109.1,
+              125.1,
+              108.9,
+              109.6,
+              111.1,
+              110,
+              93.8,
+              141.7,
+              125.2,
+              141.5,
+              109.4,
+              155.5,
+              155.7,
+              93.9,
+              78.3,
+              110.9,
+              111.5,
+              110.9,
+              94.6,
+              93.9
+            ]
+          },
+          {
+            "rep": 3,
+            "attack": {
+              "attempted": 6,
+              "rejected": 4,
+              "executed": 2
+            },
+            "legal": {
+              "attempted": 3,
+              "false_blocks": 0
+            },
+            "boundary": {
+              "passed": 3,
+              "total": 3
+            },
+            "p50_ms": 125,
+            "p95_ms": 156.4,
+            "latency_samples": [
+              126.2,
+              140.5,
+              141.1,
+              108.4,
+              145.3,
+              110.4,
+              155.7,
+              110.3,
+              79.4,
+              94.3,
+              125,
+              109.7,
+              156.4,
+              140.4,
+              109.8,
+              124.9,
+              110.2,
+              93.2,
+              140.1,
+              78.7,
+              156.8,
+              127.8,
+              125.2
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "verification": {
+    "csv_rows": 384,
+    "arms": 4,
+    "repetitions_per_arm": 3,
+    "successful_latency_samples_per_repetition": 23,
+    "all_csv_percentiles_match_run_json": true,
+    "boundary_counts_derived_from_csv": true,
+    "no_experiments_rerun": true
+  }
+}

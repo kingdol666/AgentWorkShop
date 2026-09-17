@@ -54,38 +54,25 @@
 
 \begin{document}
 
-\title{AgentWorkShop: A Node-Native Integration Framework for LLM Multi-Agent
-Governed Closed-Loop Optimization of Heterogeneous Industrial Production Lines}
+\title{AgentWorkShop: Node-Native Integration of Multi-Agent Teams
+for Industrial Supervisory Control}
 
-\author{First~Author,~Second~Author,~and~Third~Author% <-- TODO: fill real names
-\thanks{Manuscript received XXXX; revised XXXX. (Corresponding author: First Author.)}%
-\thanks{The authors are with XXXX, City, Country (e-mail: first.author@xxxx.edu).}% <-- TODO: affiliation
-}
-
-\markboth{IEEE Transactions on Industrial Informatics}{A Node-Native Integration Framework for LLM Multi-Agent Governed Industrial Optimization}
+% Working manuscript: replace the anonymous author block only when the
+% submission stage and double-blind requirements permit author identification.
+\author{Anonymous Authors}
+\markboth{Working Manuscript --- IEEE Transactions on Industrial Informatics Format}{AgentWorkShop: Multi-Agent Industrial Supervisory Control}
 
 \maketitle
 
 \begin{abstract}
-Industrial LLM-agent deployments stop at the advisory boundary: published systems diagnose, generate PLC code, or recommend setpoints; none integrates an agent team into a production line's own protocol, data, and semantic fabric. We present AgentWorkShop, a configuration-driven integration framework that embeds LLM multi-agent teams natively into the supervisory fabric of heterogeneous production lines: a multi-harness agent runtime (14 interchangeable engines) and an industrial runtime (five protocol drivers with per-node edge acquisition) execute as one process over one data domain. Commissioning is configuration, not code: one plant-scenario identifier re-instantiates the deployment on a second, independently defined line with zero platform code changes; across both scenarios, all 29 seeded out-of-window/range writes are intercepted with zero false blocks. Every agent-issued write traverses one governed path---recipe-window interlock, mode-bound approval, readback-verified write, attributable journal---so the accepted-action language is constrained by construction, and the backstop's automatic rollback is exercised end-to-end on a live breach. A governed closed-loop benchmark on a cast-film twin recovers 96.2--97.3\,\% of the offline grid optimum under a fixed deterministic controller (no LLM in the loop; quoted run: 97.0--97.2\,\%, in two iterations with at most two governed writes per seed); four uncontrolled same-seed LLM-agent-team campaigns closed the same loop over real transports with every write attributed, but reached only 0.35--0.76 (median 0.76) of that optimum---a measured shortfall that motivates the framework's propose/dispose design. All results come from one executable pipeline with machine-checkable reproduction against frozen baselines; all measured layers are simulation-tier.
+Integrating language-model agents into industrial supervision requires more than a connection to an actuator: device semantics, team responsibilities, operating recipes, and execution records must remain associated throughout a control task. This paper presents AgentWorkShop, a configuration-driven framework that couples multi-agent orchestration with industrial acquisition and setpoint execution. Its core services share a logical node and production-run model; external agent engines and storage services remain separate deployment components. Explicit member-to-node bindings determine the tools available to an agent. Agent-issued setpoints pass through mode-dependent approval and execution checks, with readback where supported and attributable operation records. A separate monitor can request bounded compensation; neither an agent verdict nor register readback alone establishes process improvement. The implementation supports five protocol drivers and a registry of fourteen agent engines. Evaluation uses two software plant scenarios, real protocol transports, targeted lifecycle probes, an agent-team optimization mission, and a real-LLM closed-loop execution over Modbus TCP, plus a four-arm mock-driver ablation. The two scenarios reject 24/24 and 9/9 predefined out-of-constraint write attempts, respectively; these are suite-coverage results, not an estimated industrial failure rate. In the cited three-seed run, a fixed non-LLM controller reaches 97.0--97.2\,\% of an offline grid-search reference. An agent-team mission attains its setpoint objective through the task board and governed tools in one write, and an omp/glm-5.3-flash agent completes a read--write--verify--judge cycle on a live line with an evidence-cited verdict; both are single-run capability tests, not optimization-quality comparisons. Four exploratory LLM campaigns expose observation and scoring limitations and are reported separately rather than as a controlled comparison. The evidence supports reusable supervisory integration within the tested scenarios, while exposing the boundaries between authorization, execution, and process-level validation.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Agent integration framework, closed-loop optimization, digital twin, human-in-the-loop, industrial automation, large language models, multi-agent systems, node-native integration, protocol heterogeneity.
+Industrial informatics, multi-agent systems, supervisory control, human-in-the-loop, heterogeneous protocols, large language models.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
-
-% [teaser illustration placeholder disabled for submission; prompt preserved below]
-% % ── 概念总览插图占位（用户将以专业绘图模型生成后替换）──
-% \begin{figure*}[!t]
-% \centering
-% \fcolorbox{red}{red!4}{\parbox{0.965\textwidth}{\centering\vspace{7mm}\color{red}\textbf{[ILLUSTRATION TO BE GENERATED --- concept-overview figure placeholder]}\vspace{2mm}\\
-% \footnotesize generation prompt: ``Wide flat-vector conceptual illustration for the top of an IEEE journal paper, industrial control-room aesthetic, deep-navy background with green and cyan accents. Left: a small team of stylized AI-agent tiles with gear icons proposing setpoint changes; center: a vertical governance gate drawn as a shield-shaped checkpoint with three stacked filters labeled `interlock', `human approval', `readback'; right: a simplified PLC/plant with a film-casting line and live temperature curves; thin green arrows flow left-to-right through the gate; a red dashed return arrow labeled `bounded rollback' loops from the plant back to the gate; a human icon stands above the approval filter holding a checkmark. Minimal labels only: AGENTS -- GOVERNANCE -- PLANT.''~\vspace{5mm}}}
-% \caption{Governed autonomy at a glance: LLM agent proposals reach the plant only through the interlock--approval--readback gate, with bounded rollback and full attribution (illustration to be generated; the technical counterpart is Fig.~\ref{fig:arch}).}
-% \label{fig:teaser}
-% \end{figure*}
-
 
 \input{sections/introduction}
 \input{sections/related}
@@ -94,7 +81,8 @@ Agent integration framework, closed-loop optimization, digital twin, human-in-th
 \input{sections/evaluation}
 \input{sections/discussion}
 
-\balance
+% Balance the final reference page at a bibliography item boundary.
+\IEEEtriggeratref{22}
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
 
