@@ -1,0 +1,566 @@
+# AW-IndustrialBench · Consolidated Benchmark Report
+
+> **Overall: ALL LAYERS PASS** · seed 42 · git `831e06a` · AgentWorkShop v0.7.39
+> Generated 2026-09-17T09:23:47.504Z · platform http://127.0.0.1:3001 · simulator http://127.0.0.1:4010
+
+## 1. Results by layer
+
+| Layer | Run ID | Pass | Warn | Fail | Skip | Score | Verdict |
+|---|---|---|---|---|---|---|---|
+| Static audit (paper–code consistency) | `20260917092312-11rs` | 3 | 0 | 0 | 0 | 100.0 / 100 | **PASS** |
+| Integrated pipeline (15 phases, real nodes) | `20260917090711-rwk` | 63 | 0 | 0 | 0 | 100 / 100 | **PASS** |
+| Real-protocol layer (PLC simulator) | `20260917092044-p6g` | 13 | 0 | 0 | 0 | 100.0 / 100 | **PASS** |
+| E1a 4-arm governance ablation | `20260917092145-e1lite` | 4 | 0 | 0 | 0 | — | **PASS** |
+| Full-system API survey (api-live-e2e) | `console` | 60 | 0 | 0 | 0 | — | **PASS** |
+
+## 2. Real PLC node verification (plc-node-simulator, five protocols)
+
+| Check | Result | Evidence |
+|---|---|---|
+| plc-0-simulator — Simulator ready + film-line preset | PASS | five-protocol devices: modbus-tcp, modbus-rtu, opcua, mqtt, http |
+| plc-1-realpath — Five-protocol real connectivity (exported config → test-driver) | PASS | ✔ modbus-tcp live connect ok (31 ms) · ✔ modbus-rtu live connect ok (17 ms) · ✔ opcua live connect ok (17 ms) · ✔ mqtt live connect ok (13 ms) · ✔ http live connect ok (17 ms) |
+| plc-2-closedloop — Real sampling + SP→PV physical closed loop + governed write on the live link | PASS | ✔ real Modbus TCP sampling: 10 points (~895 ms cadence) · ✔ real SP write 182℃ → HTTP 200 (23 ms, incl. Modbus transaction) · ✔ governance on the live link: 5/5 attacks rejected (200/400/150/188.1/175.9), legal 180 accepted · ✔ SP→PV physical closed loop converged to |PV−182|≤3℃ in 24 s (first-order inertia) · governed write 185℃ (read-back verified, register accepted) while PV frozen at 150℃ (out of window)  · ✔ independent monitoring layer raised the recipe-window alarm within 2 s (defense-in-depth: read-back closure does not cover process response) · time-series DB kept sampling during the loop: 32 points total |
+| plc-4-fault — Link-fault & recovery drill (real TCP) | PASS | ✔ after the link break the driver failure was sensed by the main app (test-driver ok=false) · ✔ reconnected successfully after simulator restart (test-driver ok=true) |
+
+All traffic in this layer runs over the real protocol stacks of the PLC node simulator (Modbus TCP :16040, Modbus RTU, OPC UA, MQTT, HTTP). The governed write path (SP write → interlock → physical model → DAQ read-back → F5 interdiction → F2 frozen-alarm) is exercised on the live link, not on mocks.
+
+## 3. Closed-loop optimization on the cast-film twin (governed writes)
+
+Offline optimum W* = 89.894 · 3/3 seeds converged · 6 governed writes · 0 rejected · ratio J/J* ∈ [0.966, 0.971] (mean 0.969)
+
+- seed 42: J0 72.123 → Jend 86.87 · J/J* 0.966 · iters 2 · writes 2 · rejected 0
+- seed 43: J0 68.635 → Jend 87.288 · J/J* 0.971 · iters 2 · writes 2 · rejected 0
+- seed 44: J0 71.185 → Jend 87.079 · J/J* 0.969 · iters 2 · writes 2 · rejected 0
+
+## 3b. AgentTeam optimization mission (task board → time-range data → governed writes → target attained)
+
+A complete agent-team mission runs against a live line: the optimization goal is filed on the team task board and dispatched to the worker; the worker reads the recent acquisition window through its industrial tool surface (`daq_query` with `from/to/bucket` — time-series/Timescale semantics), computes the corrected setpoint, issues governed writes (`dcw_control`, each opening an auditable optimization record that is then judged), waits for the physical process to follow, verifies attainment against the target, and closes the task with a report artifact. The decision policy is deterministic (no LLM credentials required; the LLM variant is the optional P5), but every path it exercises — task board state machine, host tool bridge, governed write path, physical plant, parameter journal — is the production path.
+
+| Mission check | Result |
+|---|---|
+| Goal filed on the task board and dispatched to the worker | PASS |
+| Time-range data read via daq_query (from/to/bucket) | PASS |
+| Governed parameter writes, each with an opened and judged record | PASS |
+| Parameter journal shows Agent attribution for the writes | PASS |
+| Final process value within tolerance of the optimization target | PASS |
+| Task closed (lead dispatch → worker scripted completion → parent aggregation) | PASS |
+
+Mission outcome: target 204.704 · final PV 204.6999969482422 · governed writes 1 (≤3) · verdict **ATTAINED**
+
+## 3c. Real-LLM agent closed loops — execution traces
+
+### goal-driven loop (omp) — the model derives its own setpoint from a process objective
+
+````
+AW-IndustrialBench · P5b goal-driven closed-loop optimization — execution trace
+run: 20260917090711-rwk  harness: omp  provider: zhipu-coding-plan  model: glm-5.3-flash
+task: 009e4bd3-922a-4232-a643-c838a9f55c00  line: ln-663179b4 (cast-film twin)  screw-sp: dw-6269514d  thick DAQ: dn-f543d883
+target: thickness 52±0.8 um  maxWrites: 6  start point: {"zone":200,"screw":150,"lineSpeed":95,"dieGap":1}
+started: 2026-09-17T09:09:35.065Z  wall: 342.787s  final state: COMPLETED  oracle GOAL-OPT-OK: yes
+tool calls in transcript: dcw_control≈4/6  dcw_judge≈5  recipe_update: yes  final thickness(6-bucket mean): 52.3
+
+== task assignment ==
+
+
+== channel transcript (chronological) ==
+[2026-09-17T17:14:36.247+08:00] ROLE_AGENT: 任务「agentgoal-ip1635mx」进度 0% 已 301s 未变化,请确认是否仍在推进;若卡住请说明阻塞并请求协助
+[2026-09-17T17:09:35.081+08:00] ROLE_USER: 优化目标（标准工况寻优；流程照做，参数决策完全由你做）：
+把厚度过程量（数采节点 dn-f543d883，单位 μm）稳定优化到 52±0.8 μm。你只能调整螺速设定点（数控节点 dw-6269514d）。
+标准作业流程（一步一步执行，每步都基于真实数据）：
+1. 观测：daq_query 读当前厚度过程量与趋势；line_context 看产线/批次/配方上下文；dcw_journal 查历史设定与在册优化记录（避免重复试错）；
+2. 分析：对照当前螺速设定与过程量，推导下一步设定值（声明假设：预期方向与幅度）；
+3. 下发：dcw_control 写入（自动开优化记录）；等待 30~60 秒工艺响应；
+4. 复测：daq_query 观察过程量响应，未达目标则回到第 2 步继续迭代；
+5. 收口：每个由你发起的优化记录用 dcw_judge 依据数采证据落判定（keep/rollback）；
+6. 固化：达标后把最佳工艺参数（你的最终设定值）用 recipe_update 存入配方版本化保存，说明这是达标工艺；
+7. 交付：结论包含标记 GOAL-OPT-OK、你的最终设定值、达成过程量、迭代写次数、配方版本号，然后调用 complete_task。
+约束：dcw_control 最多 6 次；厚度安全范围与配方窗口以 my_industrial_nodes 返回为准，越界会被治理拦截。
+
+== task history (tool-call events, full optimization trail) ==
+[] event: # Default Scenario Brief
+
+(No user scenario is configured for this channel — the platform's general operating rules below apply. A channel owner can override this at any time by setting a custom scenario prompt.)
+
+General operating rules for all team members:
+
+1. Focus on the task objective. Deliver exactly what the task asks; keep outputs concise unless a specific format is requested.
+2. Plan before acting: for non-trivial work, decide the steps first, then execute them one by one.
+3. Report progress (`report_progress`) at meaningful milestones, and state uncertainties or blockers honestly — never fabricate results.
+4. Every deliverable ends with a brief conclusion (2-3 sentences) 
+[] event: 🔧 write(xd://search_memory)
+[] event: 记忆检索无命中(query="螺速 厚度 52μm 优化 判定", scope=auto)。可尝试更换关键词或放宽 scope。
+[] event: 🔧 write(xd://line_context)
+[] event: Validation failed for tool "write":
+  - content: content must be file content (was missing)
+
+Received arguments:
+{
+  "path": "xd://line_context"
+}
+[] event: 🔧 write(xd://line_context)
+[] event: 你控制的产线全景(1 条):
+
+■ 产线 CastFilm线 ip1635mxgl(ln-663179b4)· 状态:运行中
+  活动批次 rr-16387 · 产品「CastFilm产品 ip1635mxgl」(pd-58d6a29b) · 开跑 17:09:34 · 已打标 64 样本
+  我绑定的节点:数控 [ScrewSpeedSP ip1635mxgl];数采 [thick ip1635mxgl]
+  配方「CastFilm工艺 ip1635mxgl」(rc-b68c8b5c) v1 — closed-loop benchmark start point
+    · 加热区1SP ip1635mxgl = 200℃(窗口 195~225) | PLC 当前 200℃
+    · 加热区2SP ip1635mxgl = 200℃(窗口 195~225) | PLC 当前 200℃
+    · 加热区3SP ip1635mxgl = 200℃(窗口 195~225) | PLC 当前 200℃
+    · ScrewSpeedSP ip1635mxgl = 150rpm(窗口 50~200) | PLC 当前 150rpm [我负责]
+    · lineSpeedSP ip1635mxgl = 95m/min(窗口 20~120) | PLC 当前 95m/min
+    · dieGapSP ip1635mxgl = 1mm(窗口 0.5~2) | PLC 当前 1mm
+  已知良好批次:未标记;当前参数版本 v1
+
+说明:配方目标=开跑批次冻结的工艺窗口;PLC 当
+[] event: 🔧 write(xd://search_memory)
+[] event: 记忆检索无命中(query="厚度 螺速 调控", scope=auto)。可尝试更换关键词或放宽 scope。
+[] event: 🔧 read(xd://daq_query)
+[] event: 🔧 read(xd://dcw_control)
+[] event: # daq_query — DAQ Query
+
+从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。
+
+## Schema
+```ts
+type Args = {
+  /** 限定单个数采节点 id(缺省 = 全部绑定节点) */
+  node_id?: string;
+  /** 按产线过滤(数据归属产线) */
+  line_id?: string;
+  /** 按产品过滤(逐样本打标) */
+  product_id?: string;
+  /** 按配方/批次过滤(逐样本打标) */
+  recipe_id?: string;
+  /** 最近 N 分钟(缺省 30) */
+  last_minutes?: number;
+  /** 起始 epoch ms(与 to_ms 配合,优先于 last_minutes) */
+  from_ms?: number;
+  /** 结束 epoch ms */
+  to_ms?: number;
+  /** 时间间隔(降采样桶宽 ms):缺省 15000(15s);可调,下限 1000。不传即用缺省;系统配置变更后以新值为准 */
+  bucket_ms?: number;
+  /** 返回点数上限(缺省 500) */
+  limit?: number;
+};
+```
+Execute by writing JSON to xd://daq_query.
+[] event: # dcw_control — DCW Control
+
+对绑定的数控节点下发工艺设定值(真实物理量纲)。仅限你有权控制的节点;设定值会被安全量程与活动配方工艺窗口联锁校验,越窗直接拒绝。手动确认模式下需等待用户批准,用户备注会随结果返回。下发前先调用 my_industrial_nodes 理解节点物理含义。
+
+## Schema
+```ts
+type Args = {
+  /** 数控节点 id(见 my_industrial_nodes) */
+  node_id: string;
+  /** 目标设定值(真实物理量纲,如 ℃) */
+  value: number;
+  /** 本次调参假设(入优化记录档案):目标 + 预期效果 + 观察计划,如「提温 1℃ 预期张力上升 2%,5 分钟后复测」 */
+  hypothesis?: string;
+  /** 关联的优化任务 id(可选,入优化记录档案) */
+  task_id?: string;
+};
+```
+Execute by writing JSON to xd://dcw_control.
+[] event: 🔧 write(xd://my_industrial_nodes)
+[] event: #### ◆ ScrewSpeedSP ip1635mxgl [id=dw-6269514d]
+- 物理量: 烘箱温度设定,单位 rpm,精度 0 位小数
+- 工艺语义: cast-film 执行器 ScrewSpeedSP（rpm），真实 opcua 链路
+- 安全量程: [50, 200] rpm(硬联锁,越界即拒)
+- 活动配方「CastFilm工艺 ip1635mxgl」工艺窗口: [50, 200] rpm(软联锁,配方目标值 150rpm)
+- 当前设定: 150rpm,状态 ok,所属产线「CastFilm线 ip1635mxgl」
+- 操作守则: 单次调幅建议 ≤3rpm(量程 2%);下发后等待工艺响应再评估;目标值必须落在窗口内;驱动 opcua;自动模式,直接执行
+
+#### ◇ thick ip1635mxgl [id=dn-f543d883]
+- 物理量: 熔体/箱体温度,单位 μm,正常量程 [0, 400] μm
+- 采集语义: cast-film process quantity thick（μm），真实 mqtt 链路
+- 预警带: [32, 368] μm(出带=warn,越量程=alarm)
+- 实时值: 53.5μm( 1s 前更新),状态 ok,采样 1000ms,驱动 mqtt,所属产线「CastFilm线 ip1635mxgl」
+- 数据获取: daq_query(node_id='dn-f543d883');查询自动执行
+
+---
+通用规则:
+1. 一个 Agent 可绑定多个节点;先读本清单理解每个节点的物理意义与操作守则,再动
+[] event: 🔧 write(xd://daq_query)
+[] event: 数采数据查询结果(1 个节点):
+
+■ thick ip1635mxgl(熔体/箱体温度)单位 μm,正常量程 0~400μm,当前状态 ok,时间窗 2026-09-17T16:40 ~ 2026-09-17T17:10(降采样 15000ms)
+  样本 3 点 | 最新 53.6μm | 均值 53.642 | 最小 53.5 | 最大 53.82666666666667
+  最近序列: 17:10:00=avg 53.5; 17:09:45=avg 53.83; 17:09:30=avg 53.6
+  工况判读: 同产线数控设定: 加热区1SP ip1635mxgl=200℃;加热区2SP ip1635mxgl=200℃;加热区3SP ip1635mxgl=200℃;ScrewSpeedSP ip1635mxgl=150rpm;lineSpeedSP ip1635mxgl=95m/min;dieGapSP ip1635mxgl=1mm(判读时考虑设定↔实际量的耦合与滞后)
+
+数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。
+[] event: 🔧 write(xd://dcw_journal)
+[] event: 窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。
+[] event: Step 1 观测完成：厚度 ~53.5–53.8 μm（目标 52±0.8），偏高 ~1–1.8 μm；螺速 150 rpm，无历史调控记录。
+
+Step 2 分析：熔体挤出量∝螺速、厚度∝(挤出量/线速)，故降厚需**降螺速**。比例估算 150×(52.0/53.6)≈145.5 rpm，按守则单步≤3rpm，首步 150→147 rpm，预期厚度 53.6×147/150≈52.5 μm（落入 51.2~52.8 带）。
+
+Step 3 下发：
+[] event: 🔧 write(xd://dcw_control)
+[] event: 下发成功:ScrewSpeedSP ip1635mxgl(烘箱温度设定)设定 147rpm → PLC 原始值 147;回读 147rpm一致。当前活动配方「CastFilm工艺 ip1635mxgl」。写入并回读一致:147,回读 147(标定后物理值 147)
+[调控闭环] 优化记录 opt-c98fa26b 已开窗(观察数采后 dcw_judge 落判定);上一稳定锚:150rpm(可 dcw_rollback 回退);本节点为自动模式:越配方监控窗将触发系统自动回退
+[] event: 写入#1：147 rpm，回读一致，记录 opt-c98fa26b。等待工艺响应 45s 后复测：
+[] event: 🔧 bash(sleep 45 && echo waited)
+[] event: waited
+
+
+Wall time: 45.13 seconds
+[] event: 🔧 write(xd://daq_query)
+[] event: 数采数据查询结果(1 个节点):
+
+■ thick ip1635mxgl(熔体/箱体温度)单位 μm,正常量程 0~400μm,当前状态 ok,时间窗 2026-09-17T17:08 ~ 2026-09-17T17:11(降采样 5000ms)
+  样本 25 点 | 最新 52.9μm | 均值 53.057 | 最小 52.44000000000001 | 最大 54.150000000000006
+  最近序列: 17:10:25=avg 53.44; 17:10:20=avg 53; 17:10:15=avg 52.82; 17:10:10=avg 52.97; 17:10:05=avg 52.82; 17:10:00=avg 53.22; 17:09:55=avg 54.14; 17:09:50=avg 53.34; 17:09:45=avg 54; 17:09:40=avg 54.15; 17:09:35=avg 53.3; 17:09:30=avg 52.9
+  工况判读: 同产线数控设定: 加热区1SP ip1635mxgl=200℃;加热区2SP ip1635mxgl=200℃;加热区3SP ip1635mxgl=200℃;ScrewSpeedSP ip1635mxgl=147rpm;lineSpeedSP ip1635mxgl=95m/min;dieGapSP ip1635mxgl=1mm(判读时考虑设定↔实际量的耦合与滞后)
+
+数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。
+[] event: 响应良好：螺速 150→147 后厚度 53.6→~52.9 μm（均值 53.06），方向正确但仍在 51.2~52.8 带上沿附近。按闭环规范先给记录 opt-c98fa26b 落判定，再小步逼近：
+[] event: 🔧 write(xd://dcw_judge)
+[] event: Invalid args for xd://dcw_judge: Validation failed for tool "dcw_judge":
+  - reason: is required
+
+Received arguments:
+{
+  "record_id": "opt-c98fa26b",
+  "verdict": "keep",
+  "evidence": "150→147rpm后厚度由17:09窗的53.5~53.83μm降至17:10:00~17:10:25窗的52.82~53.44μm(最新52.9,均值53.06),方向正确、幅度符合线性预期;尚未完全入带(目标51.2~52.8),继续小步下调",
+  "assumption_result": "厚度∝螺速假设成立,150→147rpm实测-0.65μm左右(预期-1.07μm,略弱)"
+}
+
+# dcw_judge — DCW Judge
+
+对你发起的优化记录(调控 step)落判定。keep=已验证经验(配方可标 lastGood);rollback=判定应回退(判定入册后必须再调 dcw_rollback 执行,判定不自动改 PLC);uncertain=证据不足保持观察。判定必须引用数采证据(daq_query 窗口数据),禁止无证据判定。
+
+## Schema
+```ts
+type Args = {
+  /** 优化记录 id(dcw_control 下发成功后返回) */
+  record_id: string;
+  /** 判定结论:keep / rollback / uncertain */
+[] event: 🔧 write(xd://dcw_judge)
+[] event: 判定已入册:记录 opt-c98fa26b → keep(150→147rpm后厚度由17:09窗53.5~53.83μm降至17:10:00~17:10:25窗52.82~53.44μm(最新52.9,均值53.06),方向正确、幅度符合线性预期;尚未完全入带(目标51.2~52.8),继续小步下调。厚度∝螺速假设成立,实测约-0.65μm(预期-1.07μm,略弱))。已定档为已验证经验(配方已标记 lastGood)。
+[] event: 判定 keep 入册。写入#2：147→145 rpm（-2rpm），预期 52.95×145/147≈52.2 μm，贴近目标中心：
+[] event: 🔧 write(xd://dcw_control)
+[] event: 下发成功:ScrewSpeedSP ip1635mxgl(烘箱温度设定)设定 145rpm → PLC 原始值 145;回读 145rpm一致。当前活动配方「CastFilm工艺 ip1635mxgl」。写入并回读一致:145,回读 145(标定后物理值 145)
+[调控闭环] 优化记录 opt-39502eb0 已开窗(观察数采后 dcw_judge 落判定);上一稳定锚:147rpm(可 dcw_rollback 回退);本节点为自动模式:越配方监控窗将触发系统自动回退
+[] event: 🔧 bash(sleep 45 && echo waited)
+[] event: waited
+
+
+Wall time: 45.10 seconds
+[] event: 🔧 write(xd://daq_query)
+[] event: 数采数据查询结果(1 个节点):
+
+■ thick ip1635mxgl(熔体/箱体温度)单位 μm,正常量程 0~400μm,当前状态 ok,时间窗 2026-09-17T17:10 ~ 2026-09-17T17:13(降采样 5000ms)
+  样本 37 点 | 最新 52.5μm | 均值 52.62 | 最小 51.16 | 最大 54.525000000000006
+  最近序列: 17:11:00=avg 52.54; 17:10:55=avg 52.82; 17:10:50=avg 52.82; 17:10:45=avg 52.66; 17:10:40=avg 52.44; 17:10:35=avg 53.4; 17:10:30=avg 52.72; 17:10:25=avg 53.44; 17:10:20=avg 53; 17:10:15=avg 52.82; 17:10:10=avg 52.97; 17:10:05=avg 52.5
+  工况判读: 同产线数控设定: 加热区1SP ip1635mxgl=200℃;加热区2SP ip1635mxgl=200℃;加热区3SP ip1635mxgl=200℃;ScrewSpeedSP ip1635mxgl=145rpm;lineSpeedSP ip1635mxgl=95m/min;dieGapSP ip1635mxgl=1mm(判读时考虑设定↔实际量的耦合与滞后)
+
+数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。
+[] event: 厚度已降到 52.44~52.82 区间，最新 52.5 μm 入带。数据有 ~30s 滞后，145rpm 稳态需再确认。再等 60s 取纯稳态窗口：
+[] event: 🔧 bash(sleep 60 && echo waited)
+[] event: Backgrounded as job bg_3; result will be delivered automatically.
+[] event: 🔧 write(xd://daq_query)
+[] event: 数采数据查询结果(1 个节点):
+
+■ thick ip1635mxgl(熔体/箱体温度)单位 μm,正常量程 0~400μm,当前状态 ok,时间窗 2026-09-17T17:12 ~ 2026-09-17T17:14(降采样 5000ms)
+  样本 25 点 | 最新 52.1μm | 均值 52.005 | 最小 51.4 | 最大 52.44
+  最近序列: 17:13:25=avg 51.4; 17:13:20=avg 52.28; 17:13:15=avg 52.02; 17:13:10=avg 51.88; 17:13:05=avg 52.2; 17:13:00=avg 51.4; 17:12:55=avg 51.72; 17:12:50=avg 51.96; 17:12:45=avg 52.38; 17:12:40=avg 52.34; 17:12:35=avg 51.94; 17:12:30=avg 52.1
+  工况判读: 同产线数控设定: 加热区1SP ip1635mxgl=200℃;加热区2SP ip1635mxgl=200℃;加热区3SP ip1635mxgl=200℃;ScrewSpeedSP ip1635mxgl=145rpm;lineSpeedSP ip1635mxgl=95m/min;dieGapSP ip1635mxgl=1mm(判读时考虑设定↔实际量的耦合与滞后)
+
+数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。
+[] event: 145rpm 稳态确认：17:12:30~17:13:25 窗内厚度 51.4~52.44 μm，均值 52.005 μm，最新 52.1 μm —— 全部落在 51.2~52.8 带内，均值贴目标中心 52.0。达标。判定入册并固化配方：
+[] event: 🔧 write(xd://dcw_judge)
+[] event: 判定已入册:记录 opt-39502eb0 → keep(147→145rpm后厚度稳态窗17:12:30~17:13:25实测51.4~52.44μm,均值52.005μm,最新52.1μm,全部点入目标带51.2~52.8μm且均值贴中心52.0μm;假设(斜率≈0.33μm/rpm,预期52.2μm)与实测吻合,判定为达标已验证经验)。已定档为已验证经验(配方已标记 lastGood)。
+[] event: 🔧 write(xd://recipe_update)
+[] event: params 至少提供一条 {node_id, value}(value 必须为数字)。
+[] event: 🔧 write(xd://recipe_update)
+[] event: 已保存为 v2:「CastFilm工艺 ip1635mxgl」参数 ScrewSpeedSP ip1635mxgl 145→145;原因:厚度寻优达标工艺:螺速150→145rpm两步迭代后,厚度过程量稳态均值52.005μm(目标52±0.8),17:12~17:13窗全部样本入带,两次优化记录均判定keep;固化为批次达标配方参数。
+注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产,新参数从下次开跑/一键下发生效;要把新值写入运行中的 PLC,用 dcw_control 逐节点下发(走安全联锁)。回退用 recipe_rollback。
+[] event: 配方已固化为 v2。沉淀经验后交付：
+[] event: 🔧 write(xd://save_memory)
+[] event: 已沉淀到Channel 公共记忆(全员可检索): "CastFilm线ip1635mxgl螺速-厚度增益与达标参数"(dedupKey=agent:21d9b98e-8eb3-4348-ae70-24b6f2683969:castfilm-ip1635mxgl-screw-thickness-gain)
+
+````
+
+### prescribed-step loop (omp)
+
+````
+AW-IndustrialBench · P5 real-LLM agent closed loop — execution trace
+run: 20260917090711-rwk  harness: omp  provider: zhipu-coding-plan  model: glm-5.3-flash
+task: d38a1d89-45b9-4d3c-85f0-22d5cca009b3  line: L1 (modbus-tcp)  dcw: dw-d9ae92fb  daq: dn-fa9e0ace  target SP: 197.48
+started: 2026-09-17T09:07:58.243Z  wall: 96.219s  final state: COMPLETED  oracle INTEGRATED-CLOSEDLOOP-OK: yes
+
+== task assignment ==
+{"id":"d38a1d89-45b9-4d3c-85f0-22d5cca009b3","channelId":"3d51482f-2c4a-4d2f-ada8-63c845872b40","assigneeId":"f7bb8da6-d706-4aa8-ba64-69a23e430ffa","creatorId":"","title":"agentloop-ip1635mx","state":"COMPLETED","progress":100,"retryCount":0,"artifacts":[{"artifactId":"9ebf2abf-abed-48a0-8df6-d37d34dfae53","name":"input","parts":[{"text":"Line闭环调优任务（严格按步骤执行）：\n1. 调用 daq_query(node_id=\"dn-fa9e0ace
+
+== channel transcript (chronological) ==
+[2026-09-17T17:07:58.247+08:00] ROLE_USER: Line闭环调优任务（严格按步骤执行）：
+1. 调用 daq_query(node_id="dn-fa9e0ace") 读取当前过程量;
+2. 调用 dcw_control(node_id="dw-d9ae92fb", value=197.48, hypothesis="integrated pipeline闭环验证") 下发设定值;
+3. 等待 3 秒后再 daq_query(node_id="dn-fa9e0ace") 观察响应;
+4. 调用 dcw_judge 落判定 keep 并附一句证据;
+5. 交付中必须原样包含标记 INTEGRATED-CLOSEDLOOP-OK，然后调用 complete_task。
+
+== task history ==
+[] event: # Default Scenario Brief
+
+(No user scenario is configured for this channel — the platform's general operating rules below apply. A channel owner can override this at any time by setting a custom scenario prompt.)
+
+General operating rules for all team members:
+
+1. Focus on the task objective. Deliver exactly what the task asks; keep outputs concise unless a specific format is requested.
+2. Plan before acting: for non-trivial work, decide the steps first, then execute them one by one.
+3. Report progress (`report_progress`) at meaningful milestones, and state uncertainties or blockers honestly — never fabricate results.
+4. Every deliverable ends with a brief conclusion (2-3 sentences) stating the result and its value.
+5. Reuse existing work: check memory and prior deliverables before starting similar work again.
+
+## Your Profile (agent-specific)
+你是Line操作员：严格按步骤执行，完成后立即调用 complete_task。
+
+## 产线工况简报(实时;每次回合自动注入)
+### 产线「Integrated线1 ip1635mx」(id=ln-1f4a3640,光晕色 #b58cff)
+- 工况:**运行中**,批次 rr-b4f3c,产品「Integrated产品1 ip1635mx」× 配方「Integrated工艺1 ip1635mx」,已运行 1 分钟,已采集 26 打标样本
+- 配方工艺参数: L1-DCW-modbus-tcp ip1635mx=200℃ 窗口 191.6~208.4℃
+- 数采监控窗口(越限即报警): L1-DAQ-modbus-tcp ip1635mx ∈ [191.6, 208.4]℃
+- **当前报警**: L1-DAQ-modbus-tcp ip1635mx 实时 186.6℃ 处于报警态(越量程或越配方监控窗口),应优先判读(设定-响应滞后 vs 真实异常)并处置
+
+## 工业调控作业环(你的节点操作方法论,每回合生效)
+1. 观察:daq_query 获取绑定节点的真实时序数据(支持按产品/配方/时间窗过滤),结合返回的工况判读理解当前状态。
+2. 理解:my_industrial_nodes 读取节点语义卡 —— 物理量含义/单位/安全量程/活动配方工艺窗口/单次调幅步进,以及调控闭环状态(进行中的优化记录/上次良好值/最近判定)。
+3. 假设:调参前先声明假设(写入 dcw_control 的 hypothesis 参数)—— 目标值 + 预期效果 + 观察计划;目标必须落在「安全量程 ∩ 活动配方工艺窗口」内,优先小步幅(≤量程 2%)、单向逼近。
+4. 设定:dcw_control 下发(自动开优化记录);等待工艺响应(热惯性/传动惯量),勿连续大幅调整。
+5. 判定:daq_query 复测窗口数据后,dcw_judge 落判定 —— keep(已验证经验)/ rollback(判应回退)/ uncertain(证据不足)。未判定前再下发,旧记录会被标记 superseded;判定必须引用具体数值与时间窗证据。
+6. 回退/保持:判 rollback 后用 dcw_rollback(record_id) 执行回退(判定不自动改 PLC),回退后 daq_query 复测确认恢复;回退冷却期内禁止同向重写。收敛异常时分析根因或上报,而非盲目加码。
+7. 复盘:dcw_journal 查看该节点参数变更史与判定结论;keep 的记录是已验证经验,rollback 的记录写进结论修正下次假设 —— 禁止重复已失败的调参方向。
+8. 数值口径:工具返回的采集/设定值均为经标定钩子处理后的真实物理量纲;引用数值时带上单位与时间,便于人工复核。
+
+## 优化经验台账(你绑定节点的近期调控结论;避免重复已失败方向)
+- L1-DCW-modbus-tcp ip1635mx:近 9 次调控(keep 6/rollback 1),最近判定 keep(P4b: undo-stack 回退已验证,关闭本记录)
+
+## Team Roster — Channel 成员名册(同 Channel 信箱互通,按 id 直达)
+- id: fa49459b-3bce-4049-bb93-2d4c3730773d | lead-ip1635mx | role=lead | harness=mock
+- id: f7bb8da6-d706-4aa8-ba64-69a23e430ffa | agent-ip1635mx ← 你 | role=worker | harness=omp | 擅长: 你是Line操作员：严格按步骤执行，完成后立即调用 complete_task。
+协作通信规范:
+- 需要某位成员的产出 → send_message_to_agent(to_agent_id=对方id, message=自包含请求(背景+所需+期望格式), require_reply=true, priority=immediate)
+- 对方处理后回复会实时注入你的会话;若你正等待回复 → poll_messages(wait_seconds=90) 一次阻塞等待即可,不要反复空轮询
+- 回复他人 → send_message_to_agent(to_agent_id=发送者id, message=结果+对方所需内容, in_reply_to=原消息id)
+- 寻址:to_agent_id 接受 id 或名字(如 "李四");id 优先,名字同样精确直达。不确定谁擅长什么时,按"擅长"字段选择最合适的成员
+- 若发送报"目标成员未命中":错误信息里附有当前最新名册,请改用其中的 id 或名字立即重发一次(名册可能已更新)
+- 你的信箱按 FIFO 消费:空闲时下一项自动开始;任务积压情况可用 my_queue 查看
+
+## Workshop System Manual (how this platform works)
+
+- You run INSIDE AgentWorkShop, a multi-agent workshop. You are NOT talking to a human directly — a lead agent coordinates the team; humans observe via a live timeline and may inject messages or answer your `ask` dialogs at any time.
+- Task lifecycle: SUBMITTED → ASSIGNED → WORKING → (WAITING) → COMPLETED/FAILED/CANCELED. Use host tools (complete_task etc.) — never claim completion in prose only.
+- Anti-duplicate: before re-dispatching work, check Recent Team Mail and completed tasks' deliverables. The platform also REJECTS duplicate child-task titles on the same parent.
+
+### Communication & Your Mailbox (the collaboration medium)
+
+- Every message to you lands in YOUR mailbox, consumed strictly FIFO (oldest first). Task assignments arrive as mailbox messages too.
+- When you are idle, your next queued item starts AUTOMATICALLY — never busy-poll for tasks; check `my_queue` to see what is pending.
+- Real-time delivery: teammate messages (including replies with in_reply_to) land in your mailbox. If you are inside `poll_messages`, the waiting call returns them within milliseconds (already marked read, with inline reply instructions). If not polling, they start automatically as your next turn. Only urgent HUMAN messages may inject into your running session as `[实时消息 from X]` — handle those inline.
+- Waiting for someone's reply? ONE call: `poll_messages(wait_seconds=90)` blocks until it arrives. Do NOT loop empty polls.
+- The mail log is the team's shared record: write messages factually and self-contained (the lead reads the full log to judge progress).
+
+### Memory & Modes
+
+- Memory is LAYERED — each injection level has a different purpose:
+  - **Session brief (auto-injected, top of every turn)**: a one-glance recap of your recent completions and active team conventions. Maintained by the platform; never re-save it.
+  - **Relevance primer (auto-injected)**: hints retrieved for the CURRENT task — memories from sibling/parent tasks of the same goal are boosted to the top, so check them first before planning.
+  - **search_memory (on demand)**: full retrieval over your private memories AND channel-shared memories — including the team chronicle (团队编年史), past session compaction summaries (会话压缩摘要), and monthly reflections (作业反思). Search BEFORE starting work that might already have history.
+- save_memory: distill reusable conclusions only (scope=private for personal lessons; scope=shared for conventions the whole team benefits from). Do NOT save whole task logs — the platform auto-archives task outcomes, team results, and session compaction summaries for you.
+- Session compaction: when your context window fills up, the platform compacts the session AUTOMATICALLY between turns (never mid-execution) and stores the summary into your private memory — after a compaction, trust the injected brief/primer and search_memory for anything that feels forgotten.
+- Execution modes: goal (judge satisfaction before closing) / loop (recurring) / pipeline (ordered stages, stage N+1 receives stage N output).
+You are "agent-ip1635mx", a worker agent in a multi-agent team led by a lead coordinator (Channel: 3d51482f-2c4a-4d2f-ada8-63c845872b40).
+
+## Your Assignment
+
+Task ID: d38a1d89-45b9-4d3c-85f0-22d5cca009b3
+
+Line闭环调优任务（严格按步骤执行）：
+1. 调用 daq_query(node_id="dn-fa9e0ace") 读取当前过程量;
+2. 调用 dcw_control(node_id="dw-d9ae92fb", value=197.48, hypothesis="integrated pipeline闭环验证") 下发设定值;
+3. 等待 3 秒后再 daq_query(node_id="dn-fa9e0ace") 观察响应;
+4. 调用 dcw_judge 落判定 keep 并附一句证据;
+5. 交付中必须原样包含标记 INTEGRATED-CLOSEDLOOP-OK，然后调用 complete_task。
+
+## Working Workflow
+
+1. RECALL FIRST: the "相关记忆" block above is only an auto-recalled primer of hints. Before writing anything, call search_memory with focused queries about the task domain (past conclusions, team conventions, similar task outcomes — it searches both your private memory and the channel's shared memory). Reuse proven approaches instead of rediscovering them.
+2. SCOPE CHECK before executing: if the task is clearly OUTSIDE your capability or work scope (wrong recipient, unrelated domain, missing prerequisites you cannot obtain), call refuse_task(task_id, reason) immediately — it returns the task to the dispatcher with your reason; do not silently ignore it and do not attempt unrelated work.
+3. EXECUTE: use your native tools (read, write, edit, bash, grep, glob, etc.) to accomplish the task. Call report_progress whenever you make meaningful progress. If the task is ambiguous or blocked for long, ASK EARLY — send_message_to_agent to the lead (require_reply=true) instead of guessing or stalling.
+4. COLLABORATE: consult the Team Roster above to pick the right specialist by 擅长 (specialty), then send_message_to_agent with a self-contained request (context + what you need + expected format). Waiting for their reply? ONE call: poll_messages(wait_seconds=90) — the reply arrives as that call's result (marked read, with inline reply instructions); reply via send_message_to_agent and include the requested content. Only urgent HUMAN messages appear mid-task as "[实时消息 from ...]" — handle inline and reply the same way.
+5. DISTILL: whenever you discover a reusable insight — a working solution, a project convention, a pitfall to avoid — call save_memory IMMEDIATELY (don't wait for task end): scope="private" for personal notes, scope="shared" to publish to the channel's shared memory so teammates benefit. Title = short topic; content = the distilled conclusion. Same dedup_key overwrites instead of duplicating.
+6. DELIVER & CONTINUE: call complete_task when done, providing a summary and the deliverable of your work — NEVER declare completion in prose only; the tool result will tell you what remains in your queue. If it reports remaining items, proceed to the next one immediately (it arrives as a task assignment message; execute it with this same workflow). After delivery, your next queued task (if any) starts automatically — FIFO; if idle with an empty queue, stand by: new assignments and realtime messages will reach you on their own.
+7. ADDRESSING: when messaging teammates, to_agent_id accepts the roster id OR the teammate's name. If a send fails with "目标成员未命中", the error carries the CURRENT roster — retry immediately using one of those ids/names. Never give up after one addressing failure.
+
+Begin working on the task now.
+[] event: 🔧 write(xd://search_memory)
+[] event: 记忆检索无命中(query="Line1 closed-loop tuning dcw_control daq_query keep verification Integrated", scope=auto)。可尝试更换关键词或放宽 scope。
+[] event: 🔧 write(xd://my_industrial_nodes)
+[] event: #### ◆ L1-DCW-modbus-tcp ip1635mx [id=dw-d9ae92fb]
+- 物理量: 烘箱温度设定,单位 ℃,精度 1 位小数
+- 工艺语义: 模拟器设备「挤出主机PLC(Modbus TCP)」的 加热区1SP（真实 modbus-tcp 写控）
+- 安全量程: [120, 260] ℃(硬联锁,越界即拒)
+- 活动配方「Integrated工艺1 ip1635mx」工艺窗口: [191.6, 208.4] ℃(软联锁,配方目标值 200℃)
+- 当前设定: 200℃,状态 ok,所属产线「Integrated线1 ip1635mx」
+- 操作守则: 单次调幅建议 ≤2.8℃(量程 2%);下发后等待工艺响应再评估;目标值必须落在窗口内;驱动 modbus-tcp;自动模式,直接执行
+
+#### ◇ L1-DAQ-modbus-tcp ip1635mx [id=dn-fa9e0ace]
+- 物理量: 熔体/箱体温度,单位 ℃,正常量程 [0, 400] ℃
+- 采集语义: 模拟器设备「挤出主机PLC(Modbus TCP)」的 熔体温度（真实 modbus-tcp 链路）
+- 预警带: [32, 368] ℃(出带=warn,越量程=alarm)
+- 活动配方「Integrated工艺1 ip1635mx」监控窗口: [191.6, 208.4] ℃(实时值越限 → 节点标红 + 孪生告警)
+- 实时值: 198℃( 1s 前更新),状态 ok,采样 1000ms,驱动 modbus-tcp,所属产线「Integrated线1 ip1635mx」
+- 数据获取: daq_query(node_id='dn-fa9e0ace');查询自动执行
+
+调控闭环状态:
+- dw-d9ae92fb: 进行中优化 opt-47189da7: 208.1→200(setAt 17:07:57,policy=auto_rollback);上次良好值 200;最近判定 keep(user):P4b: undo-stack 回退已验证,关闭本记录
+
+---
+通用规则:
+1. 一个 Agent 可绑定多个节点;先读本清单理解每个节点的物理意义与操作守则,再动手。
+2. 数控下发 dcw_control(node_id, value):目标值必须落在「安全量程 ∩ 活动配方工艺窗口」;单次调幅建议按语义卡的步进指引。下发前/后用 dcw_read(node_id) 读 PLC 当前值取证复核(被动观测免审批)。
+3. 数据获取 daq_query(不传 node_id = 全部数采节点),支持按产线/产品/配方/时间检索;解读数据时结合语义卡的判读方法。
+4. 改动设定后等待工艺响应(热惯性/传动惯量)再评估,避免连续大幅调整。
+5. 调控闭环:每次下发自动开一条优化记录(open);观察数采后用 dcw_judge 落判定(keep/rollback/uncertain);
+   判 rollback 后用 dcw_rollback 执行回退;dcw_journal 可查节点参数变更史。未判定前再下发,旧记录会被标记 superseded。
+   若节点被他人的 open 记录阻塞(对方已消失),超时(30 分钟)后你可接管:dcw_judge 会带接管标记入册。
+6. 自查面:line_context 看你控制的产线/产品/配方全景(动手前必读,确认归属);
+   ops_log 查你负责产线的运维日志(谁/何时做了什么,来源区分 Agent/用户/系统;
+   参数 line_id/node_id/kind/actor_kind/minutes/limit/mine);recipe_log 查配方下发与回退事件;
+   recipe_versions 查配方参数版本史(谁改的/为什么/参数 diff)。
+7. 配方操控闭环(在线优化框架):验证过参数更优 → recipe_update 保存进配方(记录你的名字与原因,
+   生成新版本);发现优化有问题 → recipe_rollback 回退到稳定版本(version)或已知良好批次
+   (to_last_good=true);运行中 PLC 当前值用 dcw_control 下发,配方定义供后续批次生效。
+[] event: Nodes confirmed: `dn-fa9e0ace` (DAQ, melt temp, window [191.6, 208.4]℃, now ~198℃ ok) and `dw-d9ae92fb` (setpoint, current 200℃; target 197.48℃ is within window; step 2.52℃ ≤ 2.8℃ guideline). No prior memory on this domain. Executing step 1 — read process value:
+[] event: 🔧 write(xd://daq_query)
+[] event: 数采数据查询结果(1 个节点):
+
+■ L1-DAQ-modbus-tcp ip1635mx(熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 ok,时间窗 2026-09-17T16:38 ~ 2026-09-17T17:08(降采样 15000ms)
+  样本 6 点 | 最新 31.9℃ | 均值 143.828 | 最小 31.9 | 最大 197.99999999999997
+  最近序列: 17:08:15=avg 198; 17:08:00=avg 194.98; 17:07:45=avg 182.52; 17:07:30=avg 161.01; 17:07:15=avg 94.55; 17:07:00=avg 31.9
+  工况判读: 活动配方「Integrated工艺1 ip1635mx」监控窗口 [191.6, 208.4]:当前 31.9℃ **越限(该节点应已报警)** | 同产线数控设定: L1-DCW-modbus-tcp ip1635mx=200℃(判读时考虑设定↔实际量的耦合与滞后)
+
+数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。
+[] event: Step 1 done — baseline 198℃ @ 17:08:15 (in-window; earlier dip to 31.9℃ was batch ramp-up at 17:07:00). Step 2 — issue setpoint 197.48℃:
+[] event: 🔧 write(xd://dcw_control)
+[] event: 下发成功:L1-DCW-modbus-tcp ip1635mx(烘箱温度设定)设定 197.48℃ → PLC 原始值 197.48;回读 197.5℃一致。当前活动配方「Integrated工艺1 ip1635mx」。写入并回读一致:197.48 → raw 197.48,回读 197.5(标定后物理值 197.5)
+[调控闭环] 优化记录 opt-f938c3c0 已开窗(观察数采后 dcw_judge 落判定);上一稳定锚:200℃(可 dcw_rollback 回退);本节点为自动模式:越配方监控窗将触发系统自动回退
+[] event: 下发成功：设定值 197.48℃ → 回读 197.5℃，记录 `opt-f938c3c0` 已开启，锚点 200℃。步骤 3 — 等待 3 秒后重新查询：
+[] event: 🔧 bash(sleep 3)
+[] event: (no output)
+
+Wall time: 3.12 seconds
+[] event: 🔧 write(xd://daq_query)
+[] event: 数采数据查询结果(1 个节点):
+
+■ L1-DAQ-modbus-tcp ip1635mx(熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 ok,时间窗 2026-09-17T16:38 ~ 2026-09-17T17:08(降采样 15000ms)
+  样本 8 点 | 最新 31.9℃ | 均值 157.822 | 最小 31.9 | 最大 200.175
+  最近序列: 17:08:45=avg 200.18; 17:08:30=avg 199.43; 17:08:15=avg 198; 17:08:00=avg 194.98; 17:07:45=avg 182.52; 17:07:30=avg 161.01; 17:07:15=avg 94.55; 17:07:00=avg 31.9
+  工况判读: 活动配方「Integrated工艺1 ip1635mx」监控窗口 [191.6, 208.4]:当前 31.9℃ **越限(该节点应已报警)** | 同产线数控设定: L1-DCW-modbus-tcp ip1635mx=197.5℃(判读时考虑设定↔实际量的耦合与滞后)
+
+数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。
+[] event: 响应观察结果：17:08:30=199.43℃ → 17:08:45=200.18℃，全部处于窗口 [191.6, 208.4] 内，状态正常；设定值在 DCW 端显示为 197.5℃。（"31.9℃" 的数值是窗口内最早的采样值，而非当前实时值。）步骤 4 —— 记录判定结果。先检查工具 schema：
+[] event: 🔧 read(xd://dcw_judge)
+[] event: # dcw_judge — DCW Judge
+
+对你发起的优化记录(调控 step)落判定。keep=已验证经验(配方可标 lastGood);rollback=判定应回退(判定入册后必须再调 dcw_rollback 执行,判定不自动改 PLC);uncertain=证据不足保持观察。判定必须引用数采证据(daq_query 窗口数据),禁止无证据判定。
+
+## Schema
+```ts
+type Args = {
+  /** 优化记录 id(dcw_control 下发成功后返回) */
+  record_id: string;
+  /** 判定结论:keep / rollback / uncertain */
+  verdict: "keep" | "rollback" | "uncertain";
+  /** 判定理由(必须引用具体数值/时间窗证据) */
+  reason: string;
+};
+```
+Execute by writing JSON to xd://dcw_judge.
+[] event: 🔧 write(xd://dcw_judge)
+[] event: 判定已入册:记录 opt-f938c3c0 → keep(设定197.48℃写入并回读一致(197.5℃),下发后3秒内DAQ响应平稳:17:08:30=199.43℃→17:08:45=200.18℃,全程处于配方窗口[191.6,208.4]℃内且状态ok,无越限无振荡,integrated pipeline闭环验证通过。)。已定档为已验证经验(配方已标记 lastGood)。
+[] event: 判断 `opt-f938c3c0` → 保留（配方 lastGood 已标记）。步骤 5 — 交付。正在检查 complete_task 架构：
+[] event: 🔧 read(xd://complete_task)
+[] event: # complete_task — Complete Task
+
+Mark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done.
+
+## Schema
+```ts
+type Args = {
+  /** Summary of what was accomplished */
+  summary: string;
+  /** Final deliverable: code, analysis result, document content, etc. */
+  deliverable?: string;
+  /** Task ID to complete. If omitted, completes your current assigned task. */
+  task_id?: string;
+};
+```
+Execute by writing JSON to xd://complete_task.
+
+````
+
+## 4. Cross-scenario portability (film-line, zero code changes)
+
+Devices 5 · own lines 3/5 · sampling 5/5 · F5 interdicted 9/9 · false blocks 0 · **code changes 0**
+
+## 5. E1a · 4-arm governance ablation (attribution evidence)
+
+| Arm | Interception (per rep) | Window breaches executed | False blocks | Boundary | Write p50 (ms) |
+|---|---|---|---|---|---|
+| Full (interlock + readback + gate) | 6/6 / 6/6 / 6/6 | 0 | 0 | 9/9 | 126 / 124.7 / 125.8 |
+| No interlock | 4/6 / 4/6 / 4/6 | 6 | 0 | 9/9 | 124.9 / 119.6 / 112 |
+| No readback | 6/6 / 6/6 / 6/6 | 0 | 0 | 9/9 | 109.1 / 124.9 / 126.9 |
+| Ungated (no approval gate) | 4/6 / 4/6 / 4/6 | 6 | 0 | 9/9 | 124.8 / 112.4 / 125.8 |
+
+Reading: interception is provided by the batch-window interlock (Full and No-readback interdict all 6 attacks; removing the interlock lets the two window-class attacks execute and be journaled — attribution ≠ prevention). The hard range is structural: false blocks are 0 in every arm. Latency is statistically indistinguishable across arms.
+
+## 6. Reproducibility matrix (machine verdicts)
+
+| Comparison | Verdict |
+|---|---|
+| 20260914-baseline-run-e1lite-4arm vs 20260916150036-e1lite | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260916145922-xac | **REPRODUCIBLE** |
+| 20260914152838-fwg vs 20260916150300-15ns | **REPRODUCIBLE** |
+| 20260914-baseline-run-e1lite-4arm vs 20260916153350-e1lite | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260916153223-vzo | **REPRODUCIBLE** |
+| 20260914152838-fwg vs 20260916152242-51c | **REPRODUCIBLE** |
+| 20260916150300-15ns vs 20260916152242-51c | **REPRODUCIBLE** |
+| 20260914-baseline-run-e1lite-4arm vs 20260917033142-e1lite | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260917033030-wkk | **REPRODUCIBLE** |
+| 20260916152242-51c vs 20260917032459-u8o | **REPRODUCIBLE** |
+| 20260914-baseline-run-e1lite-4arm vs 20260917042424-e1lite | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260917042326-1fe4 | **REPRODUCIBLE** |
+| 20260917041225-1bjc vs 20260917041804-1ahw | **REPRODUCIBLE** |
+| 20260914-baseline-run-e1lite-4arm vs 20260917045202-e1lite | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260917045058-105w | **REPRODUCIBLE** |
+| 20260917041225-1bjc vs 20260917044223-17ho | **REPRODUCIBLE** |
+| 20260914-baseline-run-e1lite-4arm vs 20260917092145-e1lite | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260917092044-p6g | **REPRODUCIBLE** |
+| 20260917044223-17ho vs 20260917090711-rwk | **REPRODUCIBLE** |
+| Gate selftest (tampered intercept must be rejected) | **PASS** |
+
+Note: comparisons between two integrated-pipeline records are advisory only — the comparator reads run.mjs-style result tables, so integrated pairs can print REPRODUCIBLE over an empty per-check map (disclosed in the manuscript's reproducibility section). The load-bearing machine verdicts are the PLC-tier and ablation comparisons against the frozen baseline, whose per-check tables are non-empty.
+
+Judge-class metrics (interdiction/false-block rates, boundaries, attribution, SP read-back, static anchors, portability composition, ablation outcomes) must be **bit-identical** for a REPRODUCIBLE verdict; environment-class metrics (latencies, sample counts, wall time) are recorded but never gated. See `bench/compare.mjs` for the judge contract.
+
+## 7. Method & environment
+
+- Executed strictly per `bench/PIPELINE.md` §0 execution card: cold boot — the pipeline auto-started both the platform and the PLC simulator from a wiped data root (first-boot self-registration).
+- Determinism: all randomness from `--seed 42` (mulberry32); fixtures carry randomized tags; every run lands in `bench/results/<runId>` and is never overwritten.
+- Environment caveat: a local proxy client (Clash/mihomo) intermittently saturates the Windows ephemeral port range (~16k TIME_WAIT), causing transient loopback connect failures; the harness absorbs these with bounded exponential-backoff retries. Retries re-read true server state and cannot fabricate results.
+
+## 8. Reproduce
+
+```bash
+export NO_PROXY=127.0.0.1,localhost AW_BASE=http://127.0.0.1:3001 AW_BENCH_MODE=1
+node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3   # integrated main battle
+node bench/run.mjs --tier plc --seed 42                              # real-protocol layer
+node bench/e1-lite.mjs --seed 42 --repeats 3                         # 4-arm ablation
+node scripts/api-live-e2e.mjs                                        # full API survey
+```

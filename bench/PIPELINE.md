@@ -92,9 +92,13 @@
        优化记录/回退/参数台账 → HITL 审批 → 治理只读面 → 配方生命周期 → cast-film 闭环寻优
        (3 seeds) → 向量/图像帧 → 跨场景可移植(film-line, 0 代码改动) → 系统兜底 drilling →
        团队调度/团队记忆/引擎注册表。
-     可选真引擎: 同命令加 `--agent omp`（或 opencode/codex/…）→ P5 以真实 LLM 跑闭环任务
-       （daq_query→dcw_control→观察→dcw_judge→交付哨兵→complete_task），完整执行轨迹
-       （逐条消息+任务历史）落 `bench/results/<runId>/agent-loop-<harness>.log`；
+     可选真引擎: 同命令加 `--agent omp`（或 opencode/codex/…）→ 两层智能证据：
+       P5 规定步闭环（daq_query→dcw_control→观察→dcw_judge→交付哨兵→complete_task）；
+       P5b **目标驱动闭环寻优**——cast-film 孪生线以起始工况开跑，任务只给输出目标值
+       （厚度 52.0±0.8 μm）与写次数上限，Agent 按标准工况 SOP 逐步执行：
+       读数→分析→查历史→自定参数下发→复测→迭代，直到达标，再把最佳工艺用
+       recipe_update 版本化存入配方。两者完整执行轨迹分别落
+       `bench/results/<runId>/agent-loop-<harness>.log` 与 `agent-goal-loop-<harness>.log`；
      产物: bench/results/<runId>/{run.json, summary.json, report.md, dashboard.html, metrics.csv}
 
   ③ 真实协议层（约 1–2 分钟）——能力评分面板（含 F2 冻结报警、断链恢复）

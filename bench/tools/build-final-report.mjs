@@ -172,22 +172,27 @@ for (const x of missionChecks) md.push(`| ${MISSION_EN[x.id] ?? x.title} | ${x.s
 md.push(``)
 md.push(`Mission outcome: target ${missionTarget} · final PV ${missionPv} · governed writes ${Number.isFinite(missionWrites) ? missionWrites : '—'} (≤3) · verdict **${missionOk ? 'ATTAINED' : 'NOT ATTAINED'}**`)
 md.push(``)
-const traceFile = existsSync(pipeDir) ? (readdirSync(pipeDir).find((f) => /^agent-loop-.*\.log$/.test(f)) ?? null) : null
+const traceFiles = existsSync(pipeDir) ? readdirSync(pipeDir).filter((f) => /^agent-(goal-)?loop-.*\.log$/.test(f)).sort() : []
 const missionLog = existsSync(join(pipeDir, 'agentteam-mission.log')) ? readFileSync(join(pipeDir, 'agentteam-mission.log'), 'utf8') : ''
-if (traceFile) {
-  const raw = readFileSync(join(pipeDir, traceFile), 'utf8')
-  const lines = raw.split('\n')
-  const shown = lines.length > 400 ? [...lines.slice(0, 200), `… (${lines.length - 300} lines omitted, full trace in bench/results/${pipelineId}/${traceFile})`, ...lines.slice(-100)] : lines
-  md.push(`## 3c. Real-LLM agent closed loop — execution trace (${traceFile.replace('agent-loop-', '').replace('.log', '')})`)
+if (traceFiles.length) {
+  md.push(`## 3c. Real-LLM agent closed loops — execution traces`)
   md.push(``)
-  md.push('````')
-  md.push(...shown)
-  md.push('````')
-  md.push('')
+  for (const tf of traceFiles) {
+    const raw = readFileSync(join(pipeDir, tf), 'utf8')
+    const lines = raw.split('\n')
+    const shown = lines.length > 400 ? [...lines.slice(0, 200), `… (${lines.length - 300} lines omitted, full trace in bench/results/${pipelineId}/${tf})`, ...lines.slice(-100)] : lines
+    const label = tf.startsWith('agent-goal-loop-') ? `goal-driven loop (${tf.replace('agent-goal-loop-', '').replace('.log', '')}) — the model derives its own setpoint from a process objective` : `prescribed-step loop (${tf.replace('agent-loop-', '').replace('.log', '')})`
+    md.push(`### ${label}`)
+    md.push(``)
+    md.push('````')
+    md.push(...shown)
+    md.push('````')
+    md.push('')
+  }
 } else {
-  md.push(`## 3c. Real-LLM agent closed loop — execution trace`)
+  md.push(`## 3c. Real-LLM agent closed loops — execution traces`)
   md.push(``)
-  md.push(`_No real-LLM loop log in this run (P5 runs only with \`--agent <harness>\`). The deterministic AgentTeam mission trace is in \`agentteam-mission.log\`._`)
+  md.push(`_No real-LLM loop log in this run (P5/P5b run only with \`--agent <harness>\`). The deterministic AgentTeam mission trace is in \`agentteam-mission.log\`._`)
   md.push(``)
 }
 md.push(`## 4. Cross-scenario portability (film-line, zero code changes)`)
@@ -296,10 +301,10 @@ ${plcRowsHtml}</table>
 <section><h2>3b · AgentTeam optimization mission — task board → time-range data → governed writes → target</h2>
 <table><tr><th>Mission check</th><th>Result</th></tr>${missionChecks.map((x) => `<tr><td>${MISSION_EN[x.id] ?? esc(x.title)}</td><td>${chip(x.status === 'pass', x.status.toUpperCase())}</td></tr>`).join('')}</table>
 <div class="note">Goal filed on the team task board → dispatched to the worker → worker reads the acquisition window via <code>daq_query</code> (<code>from/to/bucket</code>, time-series semantics) → computes the corrected setpoint → governed writes each open an auditable optimization record (judged) → plant follows → final PV <b>${missionPv}</b> vs target <b>${missionTarget}</b> with ${Number.isFinite(missionWrites) ? missionWrites : '—'} governed writes (≤3) → task closed with a report artifact. Deterministic policy (no LLM credentials); the paths are the production paths. Verdict: <b>${missionOk ? 'ATTAINED' : 'NOT ATTAINED'}</b>.</div></section>
-<section><h2>3c · Real-LLM agent closed loop — execution trace</h2>
-${traceFile
-  ? `<pre style="max-height:480px;overflow:auto;background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;font-size:11px;line-height:1.45;">${esc(readFileSync(join(pipeDir, traceFile), 'utf8')).slice(0, 60000)}</pre><div class="note">Full trace: <code>bench/results/${pipelineId}/${traceFile}</code>. The agent was a real LLM harness (omp/opencode) driving the same governed tool surface over real protocol transports; the deterministic mission trace is in <code>agentteam-mission.log</code>.</div>`
-  : `<div class="note">No real-LLM loop log in this run (P5 runs only with <code>--agent &lt;harness&gt;</code>). The deterministic mission trace is in <code>agentteam-mission.log</code>.</div>`}</section>
+<section><h2>3c · Real-LLM agent closed loops — execution traces</h2>
+${traceFiles.length
+  ? traceFiles.map((tf) => `<div class="note"><b>${tf.startsWith('agent-goal-loop-') ? 'Goal-driven loop' : 'Prescribed-step loop'}</b> — full trace: <code>bench/results/${pipelineId}/${tf}</code></div><pre style="max-height:420px;overflow:auto;background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;font-size:11px;line-height:1.45;">${esc(readFileSync(join(pipeDir, tf), 'utf8')).slice(0, 60000)}</pre>`).join('')
+  : `<div class="note">No real-LLM loop log in this run (P5/P5b run only with <code>--agent &lt;harness&gt;</code>). The deterministic mission trace is in <code>agentteam-mission.log</code>.</div>`}<div class="note">The agent was a real LLM harness (omp/opencode) driving the same governed tool surface over real protocol transports; the deterministic mission trace is in <code>agentteam-mission.log</code>.</div></section>
 <section><h2>4 · Cross-scenario portability — film-line, zero code changes</h2>
 <div class="note">Devices ${port.devices ?? '—'} · own lines ${port.ownLines ?? '—'}/${port.lines ?? '—'} · sampling ${port.sampling ?? '—'} nodes · F5 interdicted <b>${port.f5Rejected ?? '—'}/${port.f5Total ?? '—'}</b> · false blocks ${port.falseBlocks ?? '—'} · <b>code changes ${port.codeChanges ?? '—'}</b>. The same delegation/governance code paths re-commission an unseen production scenario purely from configuration.</div></section>
 <section><h2>5 · E1a · 4-arm governance ablation</h2><table>

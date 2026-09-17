@@ -640,6 +640,112 @@ if (agentHarness) {
     csvRows.push({ phase: 'P5', line: l.index, protocol: l.protocol, agent_harness: agentHarness, agent_state: state, agent_wall_s: wallS, agent_oracle: hasMark })
     return { status: state === 'COMPLETED' && hasMark ? 'pass' : 'fail', note: `${state}` }
   })
+
+  // ═══ P5b · 目标驱动闭环寻优（决策层证据：任务只给输出目标值，SOP 规定流程，参数决策全由模型做）═══
+  await timed('P5b', 'agent-goal', `目标驱动闭环寻优（harness=${agentHarness}，模型迭代逼近目标值并保存最佳配方）`, async () => {
+    const nodes = await simNodes()
+    const twin = await provisionTwinLine(api, { simDevices: nodes, sfx: `${sfx}gl` })
+    if (!twin.ok) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', twin.ev); return { status: 'fail' } }
+    const batch = await startTwinBatch(api, { lineId: twin.lineId, productId: twin.productId, dcw: twin.dcw, sfx: `${sfx}gl` })
+    if (!batch.ok) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', batch.errors); return { status: 'fail' } }
+    const spNode = twin.dcw['screw-sp']
+    const pvNode = twin.daq['film-thickness']
+    if (!spNode || !pvNode) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', ['twin 缺少 screw-sp/film-thickness 节点', ...twin.ev]); return { status: 'fail' } }
+    const ch = await api.call('POST', '/api/workshop/channels', {
+      name: `agentgoal-${sfx}`, leadAgent: { name: `glead-${sfx}`, harness: 'mock', config: { delayMs: 40 } },
+    })
+    const channelId = ch.data?.channelId ?? ch.data?.channel?.id ?? ch.data?.id
+    const tpl = await api.call('POST', '/api/workshop/agents', {
+      name: `gagent-${sfx}`, harness: agentHarness,
+      config: { provider: agentProvider, model: agentModel, systemPromptPrefix: '你是产线优化工程师：严格按任务给的标准作业流程一步一步执行（读数→分析→查历史→决策→下发→复测），每一步都基于真实数据。参数决策完全由你做。' },
+    })
+    const joinG = await api.call('POST', `/api/workshop/channels/${channelId}/agents`, { agentId: tpl.data?.id, role: 'worker' })
+    const instId = joinG.data?.id ?? joinG.data?.agentId
+    if (!instId) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', ['Agent 入队failed']); return { status: 'fail' } }
+    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: spNode, kind: 'dcw', mode: 'auto' })
+    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: pvNode, kind: 'daq', mode: 'auto' })
+    const T_STAR = 52.0, TOL = 0.8 // 目标输出值：厚度 52.0±0.8 μm（起始工况明显偏离，方向由模型读数判断）
+    const maxW = 6
+    const t0 = Date.now()
+    const t = await api.call('POST', `/api/workshop/channels/${channelId}/tasks`, {
+      title: `agentgoal-${sfx}`, assigneeId: instId,
+      parts: [{ text: `优化目标（标准工况寻优；流程照做，参数决策完全由你做）：
+把厚度过程量（数采节点 ${pvNode}，单位 μm）稳定优化到 ${T_STAR}±${TOL} μm。你只能调整螺速设定点（数控节点 ${spNode}）。
+标准作业流程（一步一步执行，每步都基于真实数据）：
+1. 观测：daq_query 读当前厚度过程量与趋势；line_context 看产线/批次/配方上下文；dcw_journal 查历史设定与在册优化记录（避免重复试错）；
+2. 分析：对照当前螺速设定与过程量，推导下一步设定值（声明假设：预期方向与幅度）；
+3. 下发：dcw_control 写入（自动开优化记录）；等待 30~60 秒工艺响应；
+4. 复测：daq_query 观察过程量响应，未达目标则回到第 2 步继续迭代；
+5. 收口：每个由你发起的优化记录用 dcw_judge 依据数采证据落判定（keep/rollback）；
+6. 固化：达标后把最佳工艺参数（你的最终设定值）用 recipe_update 存入配方版本化保存，说明这是达标工艺；
+7. 交付：结论包含标记 GOAL-OPT-OK、你的最终设定值、达成过程量、迭代写次数、配方版本号，然后调用 complete_task。
+约束：dcw_control 最多 ${maxW} 次；厚度安全范围与配方窗口以 my_industrial_nodes 返回为准，越界会被治理拦截。` }],
+    })
+    const taskTitle = `agentgoal-${sfx}`
+    let taskId = t.data?.task?.id ?? t.data?.id
+    if (!taskId) {
+      const list = (await api.call('GET', `/api/workshop/channels/${channelId}/tasks`)).data ?? []
+      taskId = (Array.isArray(list) ? list : []).find(x => x.title === taskTitle)?.id
+    }
+    if (!taskId) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', ['任务下发failed', JSON.stringify(t.data ?? {}).slice(0, 140)]); return { status: 'fail' } }
+    let state = ''
+    const deadline = Date.now() + 25 * 60_000
+    while (Date.now() < deadline) {
+      await sleep(6000)
+      const me = await api.call('GET', `/api/workshop/tasks/${taskId}`)
+      state = me.data?.state ?? me.data?.task?.state ?? ''
+      if (['COMPLETED', 'FAILED', 'CANCELED'].includes(state)) break
+    }
+    const msgsG = (await api.call('GET', `/api/workshop/channels/${channelId}/messages?limit=200`)).data ?? []
+    const taskG = (await api.call('GET', `/api/workshop/tasks/${taskId}`)).data ?? {}
+    const blobG = JSON.stringify(msgsG) + JSON.stringify(taskG)
+    const hasMarkG = blobG.includes('GOAL-OPT-OK')
+    const writesG = (blobG.match(/xd:\/\/dcw_control/g) ?? []).length
+    const judgesG = (blobG.match(/xd:\/\/dcw_judge/g) ?? []).length
+    const recipeSavedG = /xd:\/\/recipe_update/.test(blobG)
+    // 终态过程量：厚度为代数式响应，最近 6 桶即代表变更后稳态（新→旧排序，取最新头部）
+    let pvFinal = null
+    try {
+      const s = await api.call('GET', `/api/workshop/daq/${pvNode}/samples?bucketMs=1000&limit=60`)
+      const pts = (s.data?.points ?? []).slice().sort((a, b) => Number(b.at ?? 0) - Number(a.at ?? 0)).slice(0, 6)
+      const vals = pts.map(p => Number(p.avg ?? p.value)).filter(Number.isFinite)
+      if (vals.length) pvFinal = r3(vals.reduce((a, b) => a + b, 0) / vals.length)
+    } catch { /* 未达标路径 */ }
+    const attained = pvFinal != null && Math.abs(pvFinal - T_STAR) <= TOL
+    const wallS = r3((Date.now() - t0) / 1000)
+    // 过程日志：目标、任务分配、逐条消息、任务历史（工具调用事件=每一步读数/分析/下发/判定，全程可观察）
+    const LG = []
+    LG.push(`AW-IndustrialBench · P5b goal-driven closed-loop optimization — execution trace`)
+    LG.push(`run: ${rid}  harness: ${agentHarness}  provider: ${agentProvider}  model: ${agentModel}`)
+    LG.push(`task: ${taskId}  line: ${twin.lineId} (cast-film twin)  screw-sp: ${spNode}  thick DAQ: ${pvNode}`)
+    LG.push(`target: thickness ${T_STAR}±${TOL} um  maxWrites: ${maxW}  start point: ${JSON.stringify(START_POINT)}`)
+    LG.push(`started: ${new Date(t0).toISOString()}  wall: ${wallS}s  final state: ${state}  oracle GOAL-OPT-OK: ${hasMarkG ? 'yes' : 'no'}`)
+    LG.push(`tool calls in transcript: dcw_control≈${writesG}/${maxW}  dcw_judge≈${judgesG}  recipe_update: ${recipeSavedG ? 'yes' : 'no'}  final thickness(6-bucket mean): ${pvFinal}`)
+    LG.push(``)
+    LG.push(`== task assignment ==`)
+    LG.push((Array.isArray(taskG?.parts) ? taskG.parts.map(p => p?.text ?? '').filter(Boolean).join(' | ') : '').slice(0, 900))
+    LG.push(``)
+    LG.push(`== channel transcript (chronological) ==`)
+    for (const m of (Array.isArray(msgsG) ? msgsG : [])) {
+      const ts = m?.at ?? m?.ts ?? m?.createdAt ?? ''
+      const who = m?.agentName ?? m?.fromLabel ?? m?.role ?? m?.sender ?? 'msg'
+      const body = (Array.isArray(m?.parts) ? m.parts.map(p => p?.text ?? '').filter(Boolean).join(' | ') : String(m?.text ?? JSON.stringify(m))).slice(0, 800)
+      LG.push(`[${ts}] ${who}: ${body}`)
+    }
+    LG.push(``)
+    LG.push(`== task history (tool-call events, full optimization trail) ==`)
+    for (const h of (Array.isArray(taskG?.history) ? taskG.history : [])) {
+      const body = (Array.isArray(h?.parts) ? h.parts.map(p => p?.text ?? '').filter(Boolean).join(' | ') : JSON.stringify(h ?? '')).slice(0, 700)
+      LG.push(`[${h?.at ?? h?.ts ?? ''}] ${h?.kind ?? h?.type ?? 'event'}: ${body}`)
+    }
+    writeText(resolve(outDir, `agent-goal-loop-${agentHarness}.log`), LG.join('\n') + '\n')
+    add('P5b', 'agent-goal', `目标驱动闭环寻优（${agentHarness}）`, state === 'COMPLETED' && hasMarkG && attained && writesG >= 1 && writesG <= maxW && recipeSavedG ? 'pass' : 'warn',
+      [`任务终态 ${state}（${wallS}s）`, `${hasMarkG ? '✔' : '✘'} GOAL-OPT-OK · 写≈${writesG}/${maxW} · judge≈${judgesG} · 配方保存${recipeSavedG ? '✔' : '✘'}`, `最终厚度 ${pvFinal} μm，目标 ${T_STAR}±${TOL} → ${attained ? '达标' : '未达标'}`, `过程日志 → agent-goal-loop-${agentHarness}.log`])
+    bag.add('agent', 'goal_wall_s', wallS, 's', `${agentHarness}`)
+    bag.add('agent', 'goal_attained', attained ? 1 : 0, '', '模型自定参数达成目标值')
+    csvRows.push({ phase: 'P5b', protocol: 'cast-film-twin', goal_state: state, goal_pv: pvFinal ?? '', goal_target: T_STAR, goal_writes: writesG, goal_recipe_saved: recipeSavedG, goal_oracle: hasMarkG })
+    return { status: state === 'COMPLETED' && hasMarkG && attained ? 'pass' : 'warn', note: `${state} pv=${pvFinal}` }
+  })
 }
 
 // ═══════════════ P6 · 闭环优化参数 benchmark（多 seed，cast-film 数字孪生）═══════════════
