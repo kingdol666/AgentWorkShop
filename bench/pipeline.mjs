@@ -700,9 +700,10 @@ if (agentHarness) {
     const taskG = (await api.call('GET', `/api/workshop/tasks/${taskId}`)).data ?? {}
     const blobG = JSON.stringify(msgsG) + JSON.stringify(taskG)
     const hasMarkG = blobG.includes('GOAL-OPT-OK')
-    const writesG = (blobG.match(/xd:\/\/dcw_control/g) ?? []).length
-    const judgesG = (blobG.match(/xd:\/\/dcw_judge/g) ?? []).length
-    const recipeSavedG = /xd:\/\/recipe_update/.test(blobG)
+    // 只统计真实调用事件(write)；工具文档注入的 read(xd://…) 不计入
+    const writesG = (blobG.match(/write\(xd:\/\/dcw_control\)/g) ?? []).length
+    const judgesG = (blobG.match(/write\(xd:\/\/dcw_judge\)/g) ?? []).length
+    const recipeSavedG = /write\(xd:\/\/recipe_update\)/.test(blobG)
     // 终态过程量：厚度为代数式响应，最近 6 桶即代表变更后稳态（新→旧排序，取最新头部）
     let pvFinal = null
     try {
@@ -739,6 +740,8 @@ if (agentHarness) {
       LG.push(`[${h?.at ?? h?.ts ?? ''}] ${h?.kind ?? h?.type ?? 'event'}: ${body}`)
     }
     writeText(resolve(outDir, `agent-goal-loop-${agentHarness}.log`), LG.join('\n') + '\n')
+    // 停跑寻优批次：恢复模拟器静默（证据已落库；残留采样会干扰后续 plc 层冻结演练，实测踩过）
+    await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {}).catch(() => {})
     add('P5b', 'agent-goal', `目标驱动闭环寻优（${agentHarness}）`, state === 'COMPLETED' && hasMarkG && attained && writesG >= 1 && writesG <= maxW && recipeSavedG ? 'pass' : 'warn',
       [`任务终态 ${state}（${wallS}s）`, `${hasMarkG ? '✔' : '✘'} GOAL-OPT-OK · 写≈${writesG}/${maxW} · judge≈${judgesG} · 配方保存${recipeSavedG ? '✔' : '✘'}`, `最终厚度 ${pvFinal} μm，目标 ${T_STAR}±${TOL} → ${attained ? '达标' : '未达标'}`, `过程日志 → agent-goal-loop-${agentHarness}.log`])
     bag.add('agent', 'goal_wall_s', wallS, 's', `${agentHarness}`)
@@ -861,6 +864,8 @@ if (clSeeds > 0) {
     bag.add('closedloop', 'cl_iters_mean', agg.itersMean, '', '闭环收敛迭代数')
     bag.add('closedloop', 'cl_writes_total', agg.writesTotal, '', '受治理的闭环写总数')
     bag.add('closedloop', 'cl_rejected_total', agg.rejectedTotal, '', '越界被拒（治理拦截）')
+    // 停跑孪生批次：恢复模拟器静默，避免残留采样负载干扰后续 plc 层的冻结报警演练（实测踩过）
+    await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {}).catch(() => {})
     return { status: cl.ok ? 'pass' : agg.ratioMin != null ? 'warn' : 'fail', note: `J/J* ∈ [${agg.ratioMin}, ${agg.ratioMax}]` }
   })
 }
