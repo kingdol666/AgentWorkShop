@@ -180,11 +180,18 @@ await timed('P3', 'integration', 'multi-protocol DAQ + governed write/read + F5 
   await sleep(7000) // 让 5  lines各自起稳采样
   for (const l of lines) {
     const ev = []
-    // (a) 数采
+    // (a) 数采——真实驱动首采受网关节拍/冷连接影响，给有界等待窗（P8 同款；0 点仍 warn，不降判据）
     let pts = []
     if (l.ids.daq) {
-      const s = await api.call('GET', `/api/workshop/daq/${l.ids.daq}/samples?bucketMs=1000&limit=60`)
-      pts = s.data?.points ?? []
+      const tW = Date.now()
+      for (;;) {
+        const s = await api.call('GET', `/api/workshop/daq/${l.ids.daq}/samples?bucketMs=1000&limit=60`)
+        pts = s.data?.points ?? []
+        if (pts.length > 0 || Date.now() - tW > 20_000) break
+        await sleep(2000)
+      }
+      const waitedMs = Date.now() - tW
+      if (pts.length && waitedMs > 7000) ev.push(`… DAQ 首采等待 ${r3(waitedMs / 1000)}s（网关冷启动节拍，如实记录）`)
     }
     l.daqSamples = pts.length
     ev.push(`${pts.length ? '✔' : '✘'} DAQ samples stored ${pts.length}  points (${l.protocol} real driver）`)
@@ -223,7 +230,10 @@ await timed('P3', 'integration', 'multi-protocol DAQ + governed write/read + F5 
     } else {
       ev.push('no SP write point; write/governance sub-checks skipped')
     }
-    add('P3', `line-${l.index}-io`, `Line${l.index} [${l.protocol}] integration check`, l.daqSamples > 0 ? 'pass' : 'warn', ev)
+    // 治理硬门：可写线上 F5 必须全拦截且合法写必受理——任何穿透/误拦 = fail（与 api-3 同哲学）
+    const govOk = l.f5Total == null || (l.f5Rejected === l.f5Total && l.falseBlock === 0)
+    add('P3', `line-${l.index}-io`, `Line${l.index} [${l.protocol}] integration check`,
+      !govOk ? 'fail' : l.daqSamples > 0 ? 'pass' : 'warn', ev)
     csvRows.push({ phase: 'P3', line: l.index, protocol: l.protocol, daq_samples: l.daqSamples,
       write_p50_ms: l.writeP50 ?? '', write_p95_ms: l.writeP95 ?? '', readback_delta: l.readbackDelta ?? '',
       f5_rejected: l.f5Rejected ?? '', f5_total: l.f5Total ?? '', false_block: l.falseBlock ?? '' })
@@ -685,9 +695,12 @@ await timed('P8', 'portability', 'Cross-scenario portability (re-commission on a
     } else {
       ev.push('no SP write point; write/governance sub-checks skipped (satellite DAQ)')
     }
-    const lineOk = l.daqSamples > 0 && (l.f5Total == null || (l.f5Rejected === l.f5Total && l.falseBlock === 0))
+    // 治理硬门与 P3 一致：穿透/误拦 = fail；仅采样缺失 = warn
+    const govOk8 = l.f5Total == null || (l.f5Rejected === l.f5Total && l.falseBlock === 0)
+    const lineOk = govOk8 && l.daqSamples > 0
     if (lineOk) okN++
-    add('P8', `port-${l.index}-${l.protocol}`, `scenario[${second}] line ${l.index} [${l.protocol}] integration`, lineOk ? 'pass' : 'warn', ev)
+    add('P8', `port-${l.index}-${l.protocol}`, `scenario[${second}] line ${l.index} [${l.protocol}] integration`,
+      !govOk8 ? 'fail' : lineOk ? 'pass' : 'warn', ev)
     csvRows.push({ phase: 'P8', line: l.index, protocol: l.protocol, preset: second, daq_samples: l.daqSamples,
       f5_rejected: l.f5Rejected ?? '', f5_total: l.f5Total ?? '', false_block: l.falseBlock ?? '', readback_delta: l.readbackDelta ?? '' })
   }
