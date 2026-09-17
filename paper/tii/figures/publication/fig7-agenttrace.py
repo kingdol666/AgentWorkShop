@@ -92,8 +92,8 @@ ax.annotate("(3) adaptive re-query\n(1 s→15 s bucket)", xy=(2.42, 200.6),
             xytext=(1.30, 205.6), fontsize=6.2,
             arrowprops=dict(arrowstyle="->", lw=0.55, color="#555555"),
             color="#333333")
-ax.annotate("(4) judge: keep\n(evidence-cited)", xy=(2.50, 199.6),
-            xytext=(2.36, 182), fontsize=6.2,
+ax.annotate("(4) judge: keep\n(evidence-cited)", xy=(2.50, 199.4),
+            xytext=(2.24, 176), fontsize=6.2,
             arrowprops=dict(arrowstyle="->", lw=0.55, color="#555555"),
             color="#333333")
 
