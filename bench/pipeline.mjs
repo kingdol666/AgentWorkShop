@@ -700,10 +700,19 @@ if (agentHarness) {
     const taskG = (await api.call('GET', `/api/workshop/tasks/${taskId}`)).data ?? {}
     const blobG = JSON.stringify(msgsG) + JSON.stringify(taskG)
     const hasMarkG = blobG.includes('GOAL-OPT-OK')
-    // 只统计真实调用事件(write)；工具文档注入的 read(xd://…) 不计入
-    const writesG = (blobG.match(/write\(xd:\/\/dcw_control\)/g) ?? []).length
-    const judgesG = (blobG.match(/write\(xd:\/\/dcw_judge\)/g) ?? []).length
-    const recipeSavedG = /write\(xd:\/\/recipe_update\)/.test(blobG)
+    // 真实调用计数（取两种渲染的最大值）：不同 harness/事件类型下，同一次调用可能渲染为
+    //   ① "write(xd://tool)" 事件标记，或 ② xdev 元数据 "tool":"…","mode":"execute"，
+    //   两者都 1:1 对应真实调用但极少同时出现——取 max 覆盖三种实测形态(rwk/v4w/14aw)。
+    //   工具文档注入为 read(xd://…) 形态，不匹配 write 前缀，不会误计。
+    const flatG = blobG.replace(/\\+/g, '')
+    const countCalls = (tool) => Math.max(
+      (flatG.match(new RegExp(`write\\(xd://${tool}\\)`, 'g')) ?? []).length,
+      (flatG.match(new RegExp(`"tool":\\s*"${tool}",\\s*"mode":\\s*"execute"`, 'g')) ?? []).length,
+      (flatG.match(new RegExp(`'tool':\\s*'${tool}',\\s*'mode':\\s*'execute'`, 'g')) ?? []).length,
+    )
+    const writesG = countCalls('dcw_control')
+    const judgesG = countCalls('dcw_judge')
+    const recipeSavedG = countCalls('recipe_update') > 0
     // 终态过程量：厚度为代数式响应，最近 6 桶即代表变更后稳态（新→旧排序，取最新头部）
     let pvFinal = null
     try {
