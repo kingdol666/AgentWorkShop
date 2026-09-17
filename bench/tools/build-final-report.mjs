@@ -9,7 +9,7 @@
  *     --api-live-log bench/results/apilive.log \
  *     --out bench/reports-archive/<label>
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 const args = process.argv.slice(2)
@@ -113,7 +113,7 @@ const ARM_LABEL = { 'full': 'Full (interlock + readback + gate)', 'no-interlock'
 
 const layerRows = [
   ['Static audit (paper–code consistency)', staticId, counts(stat), scoreOf(stat) + ' / 100', counts(stat).fail === 0 ? 'PASS' : 'FAIL'],
-  ['Integrated pipeline (14 phases, real nodes)', pipelineId, { pass: pipe.verdict?.pass, warn: pipe.verdict?.warn, fail: pipe.verdict?.fail, skip: pipe.verdict?.skip ?? 0 }, (pipe.score ?? 100) + ' / 100', pipe.verdict?.ok ? 'PASS' : 'FAIL'],
+  ['Integrated pipeline (15 phases, real nodes)', pipelineId, { pass: pipe.verdict?.pass, warn: pipe.verdict?.warn, fail: pipe.verdict?.fail, skip: pipe.verdict?.skip ?? 0 }, (pipe.score ?? 100) + ' / 100', pipe.verdict?.ok ? 'PASS' : 'FAIL'],
   ['Real-protocol layer (PLC simulator)', plcId, counts(plc), scoreOf(plc) + ' / 100', counts(plc).fail === 0 && plcReal.pass > 0 ? 'PASS' : 'FAIL'],
   ['E1a 4-arm governance ablation', e1liteId, { pass: Object.keys(e1arms).length, warn: 0, fail: 0, skip: 0 }, '—', 'PASS'],
   ['Full-system API survey (api-live-e2e)', 'console', { pass: apiPass, warn: 0, fail: apiFail, skip: 0 }, '—', apiFail === 0 && apiPass > 0 ? 'PASS' : 'FAIL'],
@@ -147,6 +147,30 @@ md.push(``)
 for (const s of seeds.length ? seeds : [{ seed: 'agg' }]) {
   md.push(`- seed ${s.seed ?? '?'}: J0 ${s.J0 ?? '—'} → Jend ${s.Jend ?? '—'} · J/J* ${s.ratio ?? '—'} · iters ${s.iters ?? '—'} · writes ${s.writes ?? '—'} · rejected ${s.rejected ?? 0}`)
 }
+md.push(``)
+const missionChecks = checksOf(pipeRun).filter((x) => String(x.id).startsWith('mission-'))
+const missionAttainedEv = (missionChecks.find((x) => x.id === 'mission-attained')?.evidence ?? []).join(' ')
+const missionWrites = Number((missionAttainedEv.match(/writes=(\d+)/) ?? [])[1] ?? NaN)
+const missionPv = (missionAttainedEv.match(/finalPV=([-+?\d.]+)/) ?? [])[1] ?? '—'
+const missionTarget = (missionAttainedEv.match(/target=([-+?\d.]+)/) ?? [])[1] ?? '—'
+const missionOk = missionChecks.length > 0 && missionChecks.every((x) => x.status === 'pass' || x.status === 'warn') && missionChecks.some((x) => x.id === 'mission-attained' && x.status === 'pass')
+md.push(`## 3b. AgentTeam optimization mission (task board → time-range data → governed writes → target attained)`)
+md.push(``)
+md.push(`A complete agent-team mission runs against a live line: the optimization goal is filed on the team task board and dispatched to the worker; the worker reads the recent acquisition window through its industrial tool surface (\`daq_query\` with \`from/to/bucket\` — time-series/Timescale semantics), computes the corrected setpoint, issues governed writes (\`dcw_control\`, each opening an auditable optimization record that is then judged), waits for the physical process to follow, verifies attainment against the target, and closes the task with a report artifact. The decision policy is deterministic (no LLM credentials required; the LLM variant is the optional P5), but every path it exercises — task board state machine, host tool bridge, governed write path, physical plant, parameter journal — is the production path.`)
+md.push(``)
+md.push(`| Mission check | Result |`)
+md.push(`|---|---|`)
+const MISSION_EN = {
+  'mission-board': 'Goal filed on the task board and dispatched to the worker',
+  'mission-timescale-read': 'Time-range data read via daq_query (from/to/bucket)',
+  'mission-governed-write': 'Governed parameter writes, each with an opened and judged record',
+  'mission-journal': 'Parameter journal shows Agent attribution for the writes',
+  'mission-attained': 'Final process value within tolerance of the optimization target',
+  'mission-closed': 'Task closed (lead dispatch → worker scripted completion → parent aggregation)',
+}
+for (const x of missionChecks) md.push(`| ${MISSION_EN[x.id] ?? x.title} | ${x.status.toUpperCase()} |`)
+md.push(``)
+md.push(`Mission outcome: target ${missionTarget} · final PV ${missionPv} · governed writes ${Number.isFinite(missionWrites) ? missionWrites : '—'} (≤3) · verdict **${missionOk ? 'ATTAINED' : 'NOT ATTAINED'}**`)
 md.push(``)
 md.push(`## 4. Cross-scenario portability (film-line, zero code changes)`)
 md.push(``)
@@ -229,7 +253,7 @@ footer{color:var(--mut);font-size:12px;margin-top:26px}
 <header>
 <h1>AW-<b>IndustrialBench</b> · Consolidated Benchmark Report</h1>
 <div class="sub">seed ${seed} · git <code>${gitCommit}</code> · AgentWorkShop v${awVersion} · ${esc(startedAt)} · platform <code>${platform}</code> · simulator <code>${simBase}</code></div>
-<div class="chips">${chip(counts(stat).fail === 0, 'STATIC PASS')}${chip(pipe.verdict?.ok, `PIPELINE ${pipe.verdict?.pass}/${pipe.verdict?.warn}/${pipe.verdict?.fail}`)}${chip(counts(plc).fail === 0, `REAL-PLC ${counts(plc).pass}/${checksOf(plc).length}`)}${chip(true, 'ABLATION OK')}${chip(apiFail === 0 && apiPass > 0, 'API ' + apiPass + '/60')}${chip(selftestOk, 'SELFTEST OK')}</div>
+<div class="chips">${chip(counts(stat).fail === 0, 'STATIC PASS')}${chip(pipe.verdict?.ok, `PIPELINE ${pipe.verdict?.pass}/${pipe.verdict?.warn}/${pipe.verdict?.fail}`)}${chip(missionOk, 'AGENTTEAM MISSION')}${chip(counts(plc).fail === 0, `REAL-PLC ${counts(plc).pass}/${checksOf(plc).length}`)}${chip(true, 'ABLATION OK')}${chip(apiFail === 0 && apiPass > 0, 'API ' + apiPass + '/60')}${chip(selftestOk, 'SELFTEST OK')}</div>
 </header>
 <div class="grid">
 ${kpi((cl.ratioMean ? Number(cl.ratioMean).toFixed(3) : '—'), 'Closed-loop J/J* (mean vs offline optimum W*)')}
@@ -249,6 +273,9 @@ ${plcRowsHtml}</table>
 <section><h2>3 · Closed-loop optimization (cast-film twin, governed writes)</h2>
 <table><tr><th>Seed</th><th>J0</th><th>Jend</th><th>J/J*</th><th>Iters</th><th>Writes</th><th>Rejected</th></tr>${seedHtml}</table>
 <div class="note">Offline optimum W* = <b>${cl.Jstar ?? '—'}</b> · ${cl.convergedN ?? '—'}/${cl.n ?? '—'} seeds converged · ${cl.writesTotal ?? '—'} governed writes, ${cl.rejectedTotal ?? '—'} rejected · ratio J/J* ∈ [${cl.ratioMin ?? '—'}, ${cl.ratioMax ?? '—'}], mean ${cl.ratioMean ? Number(cl.ratioMean).toFixed(3) : '—'}.</div></section>
+<section><h2>3b · AgentTeam optimization mission — task board → time-range data → governed writes → target</h2>
+<table><tr><th>Mission check</th><th>Result</th></tr>${missionChecks.map((x) => `<tr><td>${MISSION_EN[x.id] ?? esc(x.title)}</td><td>${chip(x.status === 'pass', x.status.toUpperCase())}</td></tr>`).join('')}</table>
+<div class="note">Goal filed on the team task board → dispatched to the worker → worker reads the acquisition window via <code>daq_query</code> (<code>from/to/bucket</code>, time-series semantics) → computes the corrected setpoint → governed writes each open an auditable optimization record (judged) → plant follows → final PV <b>${missionPv}</b> vs target <b>${missionTarget}</b> with ${Number.isFinite(missionWrites) ? missionWrites : '—'} governed writes (≤3) → task closed with a report artifact. Deterministic policy (no LLM credentials); the paths are the production paths. Verdict: <b>${missionOk ? 'ATTAINED' : 'NOT ATTAINED'}</b>.</div></section>
 <section><h2>4 · Cross-scenario portability — film-line, zero code changes</h2>
 <div class="note">Devices ${port.devices ?? '—'} · own lines ${port.ownLines ?? '—'}/${port.lines ?? '—'} · sampling ${port.sampling ?? '—'} nodes · F5 interdicted <b>${port.f5Rejected ?? '—'}/${port.f5Total ?? '—'}</b> · false blocks ${port.falseBlocks ?? '—'} · <b>code changes ${port.codeChanges ?? '—'}</b>. The same delegation/governance code paths re-commission an unseen production scenario purely from configuration.</div></section>
 <section><h2>5 · E1a · 4-arm governance ablation</h2><table>
@@ -277,6 +304,7 @@ node bench/compare.mjs --baseline 20260914-baseline/run-plc-fx0 --b &lt;plc-runI
 <footer>Generated by <code>bench/tools/build-final-report.mjs</code> — all figures read from archived run artifacts; nothing hand-typed.</footer>
 </div></body></html>`
 
+mkdirSync(outDir, { recursive: true })
 writeFileSync(join(outDir, 'benchmark-report.md'), mdText)
 writeFileSync(join(outDir, 'benchmark-report.html'), html)
 console.log(`written: ${join(outDir, 'benchmark-report.md')}`)

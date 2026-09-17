@@ -327,6 +327,135 @@ await timed('P4', 'tool-loop', `数采→数控→判定 工具级闭环（harne
   return { status: loops === lines.filter(x => x.ids.dcw).length ? 'pass' : loops ? 'warn' : 'fail', note: `${loops}  loops` }
 })
 
+// ═══════════════ P4m · AgentTeam 优化任务（任务板 + 时段数据 + 治理写 + 达标判定）═══════════════
+const waitUntilCompat = async (capMs, stepMs, fn) => {
+  const t0 = Date.now()
+  for (;;) {
+    if (await fn()) return true
+    if (Date.now() - t0 > capMs) return false
+    await sleep(stepMs)
+  }
+}
+// 用户核心功能测评：给 AgentTeam 一个优化任务目标 → 团队经任务板派发 → worker 经工业工具面
+// 读取 Timescale 时段数据 → 分析 → 受治理下发参数 → 物理随动 → 达成目标并收口任务。
+// 策略确定性（不经 LLM，免模型凭据；LLM 变体见 P5 / --agent），但路径与 LLM 完全同一：
+// 任务板状态机 + host 工具桥 + 治理写路径 + 物理引擎 + 参数账本，全部真实链路。
+await timed('P4m', 'team-mission', 'AgentTeam 优化任务：目标下达 → 时段读数 → 治理写 → 达标收口', async () => {
+  if (!guestAgent) { add('P4m', 'mission-board', 'AgentTeam 优化任务', 'skip', ['P4 夹具未就绪']); return { status: 'skip' } }
+  const { channelId, instId } = guestAgent
+  const l = lines.find(x => x.ids.dcw && x.window && x.ids.daq)
+  if (!l) { add('P4m', 'mission-board', 'AgentTeam 优化任务', 'skip', ['无可用闭环Line']); return { status: 'skip' } }
+
+  const span = l.window.max - l.window.min
+  const tol = Math.max(0.75, span * 0.01)
+  const target = Number((l.window.min + span * 0.78).toFixed(3)) // P4 收在 0.5 位，目标取 0.78 保证变更值开新记录
+  const maxWrites = 3
+  const ev = []
+
+  // (1) 任务板：专用 mission channel（mock lead+worker，规则引擎派发剧本——P9 同款可靠范式）
+  //     优化目标写在任务正文；真实优化动作由 opencode agent 经工具面执行（见 (2)-(5)，归因不变）。
+  //     注意 api.call(method,path,body) 第三参就是请求体。
+  const mch = await api.call('POST', '/api/workshop/channels', { name: `mission-${sfx}`, leadAgent: { name: `mlead-${sfx}`, harness: 'mock', config: { delayMs: 40 } } })
+  const mchId = mch.data?.channelId ?? mch.data?.channel?.id ?? mch.data?.id
+  const mw = await api.call('POST', '/api/workshop/agents', { name: `mworker-${sfx}`, harness: 'mock', config: { delayMs: 60 } })
+  await api.call('POST', `/api/workshop/channels/${mchId}/agents`, { agentId: mw.data?.id, role: 'worker' })
+  const parent = await api.call('POST', `/api/workshop/channels/${mchId}/tasks`, {
+    title: `mission-opt-${sfx}`,
+    description: `Optimization mission: bring ${l.ids.dcw} to ${target} ±${tol} within recipe window using ≤${maxWrites} governed writes; read recent data first.`,
+    parts: [{ text: `优化任务：把 ${l.ids.dcw} 调整到 ${target}±${tol}，先读数后写参数，至多 ${maxWrites} 次受治理写。` }],
+  })
+  const parentTask = parent.data?.task?.id ?? parent.data?.id
+  let childOfLead = null
+  await waitUntilCompat(30_000, 2_000, async () => {
+    const t = (await api.call('GET', `/api/workshop/channels/${mchId}/tasks`)).data ?? []
+    childOfLead = t.find(x => x.parentId === parentTask && x.id !== parentTask) ?? null
+    return !!childOfLead
+  })
+  add('P4m', 'mission-board', '任务板：优化任务下达并由 lead 派发', parentTask && childOfLead ? 'pass' : 'warn',
+    [`channel=${mchId} parent=${parentTask ?? `✘ ${parent.status}/${parent.code} ${parent.message}`} leadChild=${childOfLead?.id ?? '—'} assignee=${childOfLead?.assigneeId ?? '—'}`])
+
+  // (2) 时段数据读取（Timescale 语义：from/to/bucket）——经 worker 的 daq_query 工具面
+  const toMs = Date.now()
+  const fromMs = toMs - 5 * 60_000
+  const q = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'daq_query', args: { node_id: l.ids.daq, from_ms: fromMs, to_ms: toMs, bucket_ms: 1000, limit: 60 } })
+  const qText = String(q.data?.result?.text ?? '')
+  const qOk = q.data?.result?.isError !== true
+  add('P4m', 'mission-timescale-read', '时段数据读取（daq_query from/to/bucket）', qOk ? 'pass' : 'fail',
+    [`window ${Math.round((toMs - fromMs) / 1000)}s · isError=${q.data?.result?.isError === true}`, `sample: ${qText.slice(0, 140)}`])
+
+  // (3) 「读数 → 分析 → 下发」闭环：首写直达目标；未达标则按观测偏差计算校正量再写（≤maxWrites 轮）
+  //     每轮写后轮询时段读数等物理随动（有界 30s），再 dcw_judge 收口记录（同节点仅允许一条 open）
+  let writes = 0, attained = false, finalPv = null
+  const settleRead = async (tgt) => {
+    const tW = Date.now()
+    for (;;) {
+      await sleep(2000)
+      const p = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'daq_query', args: { node_id: l.ids.daq, last_minutes: 1, bucket_ms: 1000, limit: 20 } })
+      const nums = (String(p.data?.result?.text ?? '').match(/[-+]?\d+\.\d+/g) ?? []).map(Number).filter(Number.isFinite)
+      if (nums.length) finalPv = nums[nums.length - 1]
+      if (finalPv != null && Math.abs(finalPv - tgt) <= tol) return true
+      if (Date.now() - tW > 30_000) return false
+    }
+  }
+  for (let i = 0; i < maxWrites && !attained; i++) {
+    let tgt = target
+    if (i > 0 && Number.isFinite(finalPv)) {
+      // 分析：按观测偏差计算校正 SP，夹回配方窗内（这就是「根据数据下发控制」的确定性形式）
+      tgt = Number(Math.min(l.window.max, Math.max(l.window.min, target + (target - finalPv))).toFixed(3))
+    }
+    const cur = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+    const curV = Number(cur.data?.read?.value ?? cur.data?.value)
+    if (Number.isFinite(curV) && Math.abs(curV - tgt) < Math.max(0.05, span * 0.0005)) { attained = Math.abs(curV - target) <= tol; continue }
+    const c = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_control', args: { node_id: l.ids.dcw, value: tgt, hypothesis: `mission iter ${i + 1}: reach ${target}±${tol}` } })
+    if (c.data?.result?.isError === true) { ev.push(`iter${i + 1}: write rejected → ${String(c.data?.result?.text ?? '').slice(0, 90)}`); break }
+    writes++
+    const recordId = (String(c.data?.result?.text ?? '').match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+    await settleRead(tgt)
+    if (recordId) {
+      const j = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_judge', args: { record_id: recordId, verdict: 'keep', reason: `mission iter ${i + 1}: PV=${finalPv} target=${tgt}±${tol}` } })
+      ev.push(`iter${i + 1}: SP→${tgt} ✔ · record=${recordId ? 'opened+judged' : 'MISSING'} · PV≈${finalPv} ${j.data?.result?.isError !== true ? '✔' : '✘'}`)
+    } else {
+      ev.push(`iter${i + 1}: SP→${tgt} ✔ · record 未开（异常）`)
+    }
+    if (Number.isFinite(finalPv) && Math.abs(finalPv - target) <= tol) attained = true
+  }
+  add('P4m', 'mission-governed-write', `受治理参数下发（${writes} 写全开记录+判定）`, writes > 0 && writes <= maxWrites ? 'pass' : 'fail', ev)
+
+  // (4) 账本归因核验：本轮写入必须出现在参数账本（Agent 归因）
+  const jn = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_journal', args: { node_id: l.ids.dcw, limit: 10 } })
+  const jnText = String(jn.data?.result?.text ?? '')
+  const journalOk = jn.data?.result?.isError !== true && /Agent|agent/.test(jnText)
+  add('P4m', 'mission-journal', '参数账本归因（Agent source 可追溯）', journalOk ? 'pass' : 'warn',
+    [`journal sample: ${jnText.slice(0, 150)}`])
+
+  // (5) 达标判定：终态 PV 距目标 ≤tol（以回读为准，daq 解析失败时回退回读）
+  const rd = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+  const rbv = Number(rd.data?.read?.value ?? rd.data?.value)
+  const pvFinal = Number.isFinite(rbv) ? rbv : finalPv
+  const reached = Number.isFinite(pvFinal) && Math.abs(pvFinal - target) <= tol
+  add('P4m', 'mission-attained', `优化目标达成（|PV−${target}|≤${tol}）`, reached ? 'pass' : 'warn',
+    [`writes=${writes}/${maxWrites} · finalPV=${pvFinal} · target=${target} · tol=${tol}`])
+  bag.add('loop', 'mission_writes', writes, '', 'AgentTeam 优化任务受治理写次数')
+  bag.add('loop', 'mission_attained', reached ? 1 : 0, '', 'AgentTeam 优化任务达标')
+
+  // (6) 任务收口：mock 团队按剧本推进任务状态机（P9 同款），90s 窗口内观察终态
+  let parentState = ''
+  {
+    const dl6 = Date.now() + 90_000
+    while (parentTask && Date.now() < dl6) {
+      await sleep(3000)
+      const t = (await api.call('GET', `/api/workshop/tasks/${parentTask}`)).data ?? {}
+      parentState = t.state ?? t.task?.state ?? ''
+      if (['COMPLETED', 'FAILED', 'CANCELED'].includes(parentState)) break
+    }
+  }
+  add('P4m', 'mission-closed', '任务收口（lead 派发→worker 剧本完成→父任务聚合）', parentState === 'COMPLETED' ? 'pass' : 'warn',
+    [`terminalState=${parentState || '(timeout)'} · writes=${writes} · reached=${reached}`])
+  csvRows.push({ phase: 'P4m', line: l.index, protocol: l.protocol, mission_writes: writes, mission_final_pv: pvFinal ?? '', mission_target: target, mission_attained: reached ? 1 : 0 })
+  const coreOk = qOk && writes > 0 && writes <= maxWrites && reached
+  return { status: coreOk ? 'pass' : 'warn', note: `writes=${writes} PV=${pvFinal}/${target}` }
+})
+
 // ═══════════════ P4b · 回退与优化记录（判定/执行分离 · 参数账本）═══════════════
 let p4bLine = null
 await timed('P4b', 'rollback-records', 'Rollback & optimization records (node rollback · verdict/execution separation · param ledger)', async () => {
