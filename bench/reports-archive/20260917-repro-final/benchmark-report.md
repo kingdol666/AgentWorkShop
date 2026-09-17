@@ -1,13 +1,13 @@
 # AW-IndustrialBench · Consolidated Benchmark Report
 
 > **Overall: ALL LAYERS PASS** · seed 42 · git `736e87c` · AgentWorkShop v0.7.39
-> Generated 2026-09-17T11:55:40.146Z · platform http://127.0.0.1:3001 · simulator http://127.0.0.1:4010
+> Generated 2026-09-17T13:07:26.184Z · platform http://127.0.0.1:3001 · simulator http://127.0.0.1:4010
 
 ## 1. Results by layer
 
 | Layer | Run ID | Pass | Warn | Fail | Skip | Score | Verdict |
 |---|---|---|---|---|---|---|---|
-| Static audit (paper–code consistency) | `20260917111508-1h28` | 3 | 0 | 0 | 0 | 100.0 / 100 | **PASS** |
+| Static audit (paper–code consistency) | `20260917092312-11rs` | 3 | 0 | 0 | 0 | 100.0 / 100 | **PASS** |
 | Integrated pipeline (15 phases, real nodes) | `20260917113624-osk` | 63 | 0 | 0 | 0 | 100 / 100 | **PASS** |
 | Real-protocol layer (PLC simulator) | `20260917111228-ubo` | 13 | 0 | 0 | 0 | 100.0 / 100 | **PASS** |
 | E1a 4-arm governance ablation | `20260917111342-e1lite` | 4 | 0 | 0 | 0 | — | **PASS** |
@@ -49,6 +49,8 @@ Mission outcome: target 204.704 · final PV 204.6999969482422 · governed writes
 
 ## 3c. Real-LLM agent closed loops — execution traces
 
+![Goal-driven optimization trajectory](goal-trajectory.svg)
+
 ### goal-driven loop (omp) — the model derives its own setpoint from a process objective
 
 ````
@@ -77,11 +79,9 @@ tool calls in transcript: dcw_control≈3/6  dcw_judge≈3  recipe_update: yes  
 约束：dcw_control 最多 6 次；厚度安全范围与配方窗口以 my_industrial_nodes 返回为准，越界会被治理拦截。
 
 == task history (tool-call events, full optimization trail) ==
-[] event: # Default Scenario Brief
 
 (No user scenario is configured for this channel — the platform's general operating rules below apply. A channel owner can override this at any time by setting a custom scenario prompt.)
 
-General operating rules for all team members:
 
 1. Focus on the task objective. Deliver exactly what the task asks; keep outputs concise unless a specific format is requested.
 2. Plan before acting: for non-trivial work, decide the steps first, then execute them one by one.
@@ -97,26 +97,15 @@ General operating rules for all team members:
 
 Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Results may include: your task history, the TEAM CHRONICLE (团队编年史 = rolling log of everything the team finished), past SESSION COMPACTION SUMMARIES (会话压缩摘要 = conclusions from earlier context windows), monthly reflections (作业反思), and shared conventions. Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints/brief mention something you need details on. Pass a focused query describing what you want to remember.
 
-## Schema
-```ts
-type Args = {
   
 [] event: # my_industrial_nodes — My Industrial Nodes
 
 列出你绑定的全部数采/数控节点及其物理含义(参数含义/单位/安全量程/活动配方工艺窗口/控制模式)。在进行任何工业操作前必须先调用本工具理解节点语义与设定规则。
 
-## Schema
-```ts
-type Args = {};
-```
-Execute by writing JSON to xd://my_industrial_nodes.
 [] event: # daq_query — DAQ Query
 
 从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。
 
-## Schema
-```ts
-type Args = {
   /** 限定单个数采节点 id(缺省 = 全部绑定节点) */
   node_id?: string;
   /** 按产线过滤(数据归属产线) */
@@ -135,37 +124,22 @@ type Args = {
   bucket_ms?: number;
   /** 返回点数上限(缺省 500) */
   limit?: number;
-};
-```
-Execute by writing JSON to xd://daq_query.
 [] event: # line_context — Line Context
 
 查看你控制的产线/产品/配方全景:产线名与运行态、活动批次(产品、配方名/版本/逐参数目标 vs PLC 当前值)、你绑定的节点、已知良好批次。动手前必读,确认自己操控的是哪条产线、哪个产品、哪个配方。
 
-## Schema
-```ts
-type Args = {
   /** 限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线) */
   line_id?: string;
-};
-```
-Execute by writing JSON to xd://line_context.
 [] event: # dcw_journal — DCW Journal
 
 查询参数变更史与优化记录(在册审计):谁/何时/从多少到多少/判定结论/假设声明。优化前先读史可避免重复试错;回退定位也在此查。
 
-## Schema
-```ts
-type Args = {
   /** 限定数控节点 id(仅限自己绑定的节点) */
   node_id?: string;
   /** 按配方过滤优化记录 */
   recipe_id?: string;
   /** 返回条数上限(缺省 20,最大 100) */
   limit?: number;
-};
-```
-Execute by writing JSON to xd://dcw_journal.
 [] event: 工具文档已明确。现在并行执行：查记忆 + 节点语义 + 产线上下文 + 历史记录 + 当前数采数据。
 [] event: 🔧 write(xd://search_memory)
 [] event: 记忆检索无命中(query="CastFilm 厚度 螺速 寻优 52μm 优化经验", scope=auto)。可尝试更换关键词或放宽 scope。
@@ -229,9 +203,6 @@ Execute by writing JSON to xd://dcw_journal.
 
 对绑定的数控节点下发工艺设定值(真实物理量纲)。仅限你有权控制的节点;设定值会被安全量程与活动配方工艺窗口联锁校验,越窗直接拒绝。手动确认模式下需等待用户批准,用户备注会随结果返回。下发前先调用 my_industrial_nodes 理解节点物理含义。
 
-## Schema
-```ts
-type Args = {
   /** 数控节点 id(见 my_industrial_nodes) */
   node_id: string;
   /** 目标设定值(真实物理量纲,如 ℃) */
@@ -240,44 +211,26 @@ type Args = {
   hypothesis?: string;
   /** 关联的优化任务 id(可选,入优化记录档案) */
   task_id?: string;
-};
-```
-Execute by writing JSON to xd://dcw_control.
 [] event: # dcw_judge — DCW Judge
 
 对你发起的优化记录(调控 step)落判定。keep=已验证经验(配方可标 lastGood);rollback=判定应回退(判定入册后必须再调 dcw_rollback 执行,判定不自动改 PLC);uncertain=证据不足保持观察。判定必须引用数采证据(daq_query 窗口数据),禁止无证据判定。
 
-## Schema
-```ts
-type Args = {
   /** 优化记录 id(dcw_control 下发成功后返回) */
   record_id: string;
   /** 判定结论:keep / rollback / uncertain */
   verdict: "keep" | "rollback" | "uncertain";
   /** 判定理由(必须引用具体数值/时间窗证据) */
   reason: string;
-};
-```
-Execute by writing JSON to xd://dcw_judge.
 [] event: # dcw_read — DCW Read
 
 读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。
 
-## Schema
-```ts
-type Args = {
   /** 数控节点 id(见 my_industrial_nodes) */
   node_id: string;
-};
-```
-Execute by writing JSON to xd://dcw_read.
 [] event: # recipe_update — Recipe Update
 
 把验证过的最佳工艺参数保存进配方(部分合并,生成新版本并记录你的名字与原因)。只改配方定义,下一批次生效;不改运行中 PLC 当前值(用 dcw_control)。必须提供 reason(数采证据/判定结论)。
 
-## Schema
-```ts
-type Args = {
   /** 配方 id(必填) */
   recipe_id?: string;
   /** 要更新的参数列表(部分合并,只列要改的节点) */
@@ -295,9 +248,6 @@ type Args = {
   reason?: string;
   /** 关联任务 id(可选) */
   task_id?: string;
-};
-```
-Execute by writing JSON to xd://recipe_update.
 [] event: 文档齐备。**第 1 次下发**：150→147 rpm（-3 rpm，守则内最大步幅），假设：厚度 ∝ 螺速，-2% 螺速预期厚度下降 ~1.1 μm → ~52.6 μm。
 [] event: 🔧 write(xd://dcw_control)
 [] event: 下发成功:ScrewSpeedSP ip16f20dgl(烘箱温度设定)设定 147rpm → PLC 原始值 147;回读 147rpm一致。当前活动配方「CastFilm工艺 ip16f20dgl」。写入并回读一致:147,回读 147(标定后物理值 147)
@@ -392,16 +342,10 @@ Received arguments:
 
 Report your current task progress as a percentage (0-100). Call this whenever you make meaningful progress on your task.
 
-## Schema
-```ts
-type Args = {
   /** Progress percentage 0-100 */
   progress: number;
   /** Brief status message describing what you are doing */
   message?: string;
-};
-```
-Execute by writing JSON to xd://report_progress.
 [] event: 厚度寻优进行中: 已3次下发(150→147→144→145rpm), 144rpm实测稳定51.6μm偏低, +1rpm微调至145等待滞后补偿复测; 判定与配方固化待复测后执行
 [] event: 🔧 write(xd://report_progress)
 [] event: 进度已上报: 55% (厚度寻优进行中: 已3次下发(150→147→144→145rpm), 144rpm实测稳定51.6μm偏低, +1rpm微调至145等待滞后补偿复测; 判定与配方固化待复测后执行)
@@ -466,11 +410,9 @@ started: 2026-09-17T11:37:09.610Z  wall: 132.364s  final state: COMPLETED  oracl
 5. 交付中必须原样包含标记 INTEGRATED-CLOSEDLOOP-OK，然后调用 complete_task。
 
 == task history ==
-[] event: # Default Scenario Brief
 
 (No user scenario is configured for this channel — the platform's general operating rules below apply. A channel owner can override this at any time by setting a custom scenario prompt.)
 
-General operating rules for all team members:
 
 1. Focus on the task objective. Deliver exactly what the task asks; keep outputs concise unless a specific format is requested.
 2. Plan before acting: for non-trivial work, decide the steps first, then execute them one by one.
@@ -481,14 +423,12 @@ General operating rules for all team members:
 ## Your Profile (agent-specific)
 你是Line操作员：严格按步骤执行，完成后立即调用 complete_task。
 
-## 产线工况简报(实时;每次回合自动注入)
 ### 产线「Integrated线1 ip16f20d」(id=ln-73634c92,光晕色 #b58cff)
 - 工况:**运行中**,批次 rr-a9ce2,产品「Integrated产品1 ip16f20d」× 配方「Integrated工艺1 ip16f20d」,已运行 1 分钟,已采集 36 打标样本
 - 配方工艺参数: L1-DCW-modbus-tcp ip16f20d=200℃ 窗口 191.6~208.4℃
 - 数采监控窗口(越限即报警): L1-DAQ-modbus-tcp ip16f20d ∈ [191.6, 208.4]℃
 - **当前报警**: L1-DAQ-modbus-tcp ip16f20d 实时 191.5℃ 处于报警态(越量程或越配方监控窗口),应优先判读(设定-响应滞后 vs 真实异常)并处置
 
-## 工业调控作业环(你的节点操作方法论,每回合生效)
 1. 观察:daq_query 获取绑定节点的真实时序数据(支持按产品/配方/时间窗过滤),结合返回的工况判读理解当前状态。
 2. 理解:my_industrial_nodes 读取节点语义卡 —— 物理量含义/单位/安全量程/活动配方工艺窗口/单次调幅步进,以及调控闭环状态(进行中的优化记录/上次良好值/最近判定)。
 3. 假设:调参前先声明假设(写入 dcw_control 的 hypothesis 参数)—— 目标值 + 预期效果 + 观察计划;目标必须落在「安全量程 ∩ 活动配方工艺窗口」内,优先小步幅(≤量程 2%)、单向逼近。
@@ -498,13 +438,10 @@ General operating rules for all team members:
 7. 复盘:dcw_journal 查看该节点参数变更史与判定结论;keep 的记录是已验证经验,rollback 的记录写进结论修正下次假设 —— 禁止重复已失败的调参方向。
 8. 数值口径:工具返回的采集/设定值均为经标定钩子处理后的真实物理量纲;引用数值时带上单位与时间,便于人工复核。
 
-## 优化经验台账(你绑定节点的近期调控结论;避免重复已失败方向)
 - L1-DCW-modbus-tcp ip16f20d:近 9 次调控(keep 6/rollback 1),最近判定 keep(P4b: undo-stack 回退已验证,关闭本记录)
 
-## Team Roster — Channel 成员名册(同 Channel 信箱互通,按 id 直达)
 - id: 29362177-c70e-41d2-8664-623c5ef630ae | lead-ip16f20d | role=lead | harness=mock
 - id: 6937cdc6-5d59-4dd4-af79-3f7c91fae87c | agent-ip16f20d ← 你 | role=worker | harness=omp | 擅长: 你是Line操作员：严格按步骤执行，完成后立即调用 complete_task。
-协作通信规范:
 - 需要某位成员的产出 → send_message_to_agent(to_agent_id=对方id, message=自包含请求(背景+所需+期望格式), require_reply=true, priority=immediate)
 - 对方处理后回复会实时注入你的会话;若你正等待回复 → poll_messages(wait_seconds=90) 一次阻塞等待即可,不要反复空轮询
 - 回复他人 → send_message_to_agent(to_agent_id=发送者id, message=结果+对方所需内容, in_reply_to=原消息id)
@@ -512,13 +449,11 @@ General operating rules for all team members:
 - 若发送报"目标成员未命中":错误信息里附有当前最新名册,请改用其中的 id 或名字立即重发一次(名册可能已更新)
 - 你的信箱按 FIFO 消费:空闲时下一项自动开始;任务积压情况可用 my_queue 查看
 
-## Workshop System Manual (how this platform works)
 
 - You run INSIDE AgentWorkShop, a multi-agent workshop. You are NOT talking to a human directly — a lead agent coordinates the team; humans observe via a live timeline and may inject messages or answer your `ask` dialogs at any time.
 - Task lifecycle: SUBMITTED → ASSIGNED → WORKING → (WAITING) → COMPLETED/FAILED/CANCELED. Use host tools (complete_task etc.) — never claim completion in prose only.
 - Anti-duplicate: before re-dispatching work, check Recent Team Mail and completed tasks' deliverables. The platform also REJECTS duplicate child-task titles on the same parent.
 
-### Communication & Your Mailbox (the collaboration medium)
 
 - Every message to you lands in YOUR mailbox, consumed strictly FIFO (oldest first). Task assignments arrive as mailbox messages too.
 - When you are idle, your next queued item starts AUTOMATICALLY — never busy-poll for tasks; check `my_queue` to see what is pending.
@@ -526,7 +461,6 @@ General operating rules for all team members:
 - Waiting for someone's reply? ONE call: `poll_messages(wait_seconds=90)` blocks until it arrives. Do NOT loop empty polls.
 - The mail log is the team's shared record: write messages factually and self-contained (the lead reads the full log to judge progress).
 
-### Memory & Modes
 
 - Memory is LAYERED — each injection level has a different purpose:
   - **Session brief (auto-injected, top of every turn)**: a one-glance recap of your recent completions and active team conventions. Maintained by the platform; never re-save it.
@@ -537,7 +471,6 @@ General operating rules for all team members:
 - Execution modes: goal (judge satisfaction before closing) / loop (recurring) / pipeline (ordered stages, stage N+1 receives stage N output).
 You are "agent-ip16f20d", a worker agent in a multi-agent team led by a lead coordinator (Channel: a0192113-96a1-42e9-a294-20fb9689edaf).
 
-## Your Assignment
 
 Task ID: f0a1e106-6c77-4ad6-a4ef-40ae22fe52e3
 
@@ -548,14 +481,11 @@ Line闭环调优任务（严格按步骤执行）：
 4. 调用 dcw_judge 落判定 keep 并附一句证据;
 5. 交付中必须原样包含标记 INTEGRATED-CLOSEDLOOP-OK，然后调用 complete_task。
 
-## Working Workflow
 
 1. RECALL FIRST: the "相关记忆" block above is only an auto-recalled primer of hints. Before writing anything, call search_memory with focused queries about the task domain (past conclusions, team conventions, similar task outcomes — it searches both your private memory and the channel's shared memory). Reuse proven approaches instead of rediscovering them.
 2. SCOPE CHECK before executing: if the task is clearly OUTSIDE your capability or work scope (wrong recipient, unrelated domain, missing prerequisites you cannot obtain), call refuse_task(task_id, reason) immediately — it returns the task to the dispatcher with your reason; do not silently ignore it and do not attempt unrelated work.
 3. EXECUTE: use your native tools (read, write, edit, bash, grep, glob, etc.) to accomplish the task. Call report_progress whenever you make meaningful progress. If the task is ambiguous or blocked for long, ASK EARLY — send_message_to_agent to the lead (require_reply=true) instead of guessing or stalling.
-4. COLLABORATE: consult the Team Roster above to pick the right specialist by 擅长 (specialty), then send_message_to_agent with a self-contained request (context + what you need + expected format). Waiting for their reply? ONE call: poll_messages(wait_seconds=90) — the reply arrives as that call's result (marked read, with inline reply instructions); reply via send_message_to_agent and include the requested content. Only urgent HUMAN messages appear mid-task as "[实时消息 from ...]" — handle inline and reply the same way.
 5. DISTILL: whenever you discover a reusable insight — a working solution, a project convention, a pitfall to avoid — call save_memory IMMEDIATELY (don't wait for task end): scope="private" for personal notes, scope="shared" to publish to the channel's shared memory so teammates benefit. Title = short topic; content = the distilled conclusion. Same dedup_key overwrites instead of duplicating.
-6. DELIVER & CONTINUE: call complete_task when done, providing a summary and the deliverable of your work — NEVER declare completion in prose only; the tool result will tell you what remains in your queue. If it reports remaining items, proceed to the next one immediately (it arrives as a task assignment message; execute it with this same workflow). After delivery, your next queued task (if any) starts automatically — FIFO; if idle with an empty queue, stand by: new assignments and realtime messages will reach you on their own.
 7. ADDRESSING: when messaging teammates, to_agent_id accepts the roster id OR the teammate's name. If a send fails with "目标成员未命中", the error carries the CURRENT roster — retry immediately using one of those ids/names. Never give up after one addressing failure.
 
 Begin working on the task now.
@@ -568,9 +498,6 @@ Begin working on the task now.
 
 从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。
 
-## Schema
-```ts
-type Args = {
   /** 限定单个数采节点 id(缺省 = 全部绑定节点) */
   node_id?: string;
   /** 按产线过滤(数据归属产线) */
@@ -589,16 +516,10 @@ type Args = {
   bucket_ms?: number;
   /** 返回点数上限(缺省 500) */
   limit?: number;
-};
-```
-Execute by writing JSON to xd://daq_query.
 [] event: # dcw_control — DCW Control
 
 对绑定的数控节点下发工艺设定值(真实物理量纲)。仅限你有权控制的节点;设定值会被安全量程与活动配方工艺窗口联锁校验,越窗直接拒绝。手动确认模式下需等待用户批准,用户备注会随结果返回。下发前先调用 my_industrial_nodes 理解节点物理含义。
 
-## Schema
-```ts
-type Args = {
   /** 数控节点 id(见 my_industrial_nodes) */
   node_id: string;
   /** 目标设定值(真实物理量纲,如 ℃) */
@@ -607,41 +528,26 @@ type Args = {
   hypothesis?: string;
   /** 关联的优化任务 id(可选,入优化记录档案) */
   task_id?: string;
-};
-```
-Execute by writing JSON to xd://dcw_control.
 [] event: # dcw_judge — DCW Judge
 
 对你发起的优化记录(调控 step)落判定。keep=已验证经验(配方可标 lastGood);rollback=判定应回退(判定入册后必须再调 dcw_rollback 执行,判定不自动改 PLC);uncertain=证据不足保持观察。判定必须引用数采证据(daq_query 窗口数据),禁止无证据判定。
 
-## Schema
-```ts
-type Args = {
   /** 优化记录 id(dcw_control 下发成功后返回) */
   record_id: string;
   /** 判定结论:keep / rollback / uncertain */
   verdict: "keep" | "rollback" | "uncertain";
   /** 判定理由(必须引用具体数值/时间窗证据) */
   reason: string;
-};
-```
-Execute by writing JSON to xd://dcw_judge.
 [] event: # search_memory — Search Memory
 
 Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Results may include: your task history, the TEAM CHRONICLE (团队编年史 = rolling log of everything the team finished), past SESSION COMPACTION SUMMARIES (会话压缩摘要 = conclusions from earlier context windows), monthly reflections (作业反思), and shared conventions. Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints/brief mention something you need details on. Pass a focused query describing what you want to remember.
 
-## Schema
-```ts
-type Args = {
   /** What you want to recall, e.g. "数据库连接池配置结论" or "previous deployment checklist" */
   query: string;
   /** Which memory domain to search: "auto" = your private + channel shared (default), "private" = only your own, "shared" = only channel-wide shared memories */
   scope?: "auto" | "private" | "shared";
   /** Max results (default 5, max 20) */
   limit?: number;
-};
-```
-Execute by writing JSON to xd://search_memory.
 [] event: 先并行执行：检索相关记忆 + 步骤1 daq_query 读取当前过程量。
 [] event: 🔧 write(xd://search_memory)
 [] event: 记忆检索无命中(query="闭环调优 dcw_control 下发设定值 daq_query 复测 keep 判定 dn-65d74974 dw-77fd03b7 闭环验证经验", scope=auto)。可尝试更换关键词或放宽 scope。
@@ -692,32 +598,20 @@ Wall time: 3.22 seconds
 
 Mark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done.
 
-## Schema
-```ts
-type Args = {
   /** Summary of what was accomplished */
   summary: string;
   /** Final deliverable: code, analysis result, document content, etc. */
   deliverable?: string;
   /** Task ID to complete. If omitted, completes your current assigned task. */
   task_id?: string;
-};
-```
-Execute by writing JSON to xd://complete_task.
 [] event: # report_progress — Report Progress
 
 Report your current task progress as a percentage (0-100). Call this whenever you make meaningful progress on your task.
 
-## Schema
-```ts
-type Args = {
   /** Progress percentage 0-100 */
   progress: number;
   /** Brief status message describing what you are doing */
   message?: string;
-};
-```
-Execute by writing JSON to xd://report_progress.
 [] event: Line闭环调优5步全部完成:读取过程量→下发197.48℃→3秒后复测→keep判定入册,准备交付
 [] event: 🔧 write(xd://report_progress)
 [] event: 进度已上报: 100% (Line闭环调优5步全部完成:读取过程量→下发197.48℃→3秒后复测→keep判定入册,准备交付)
@@ -770,6 +664,11 @@ Reading: interception is provided by the batch-window interlock (Full and No-rea
 | 20260914-baseline-run-plc-fx0 vs 20260917111228-ubo | **REPRODUCIBLE** |
 | 20260914-baseline-run-e1lite-4arm vs 20260917111342-e1lite | **REPRODUCIBLE** |
 | 20260917101649-16pw vs 20260917113624-osk | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260917033030-wkk | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260917042326-1fe4 | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260917092044-p6g | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260917103102-13zs | **REPRODUCIBLE** |
+| 20260914-baseline-run-plc-fx0 vs 20260917111228-ubo | **REPRODUCIBLE** |
 | Gate selftest (tampered intercept must be rejected) | **PASS** |
 
 Note: comparisons between two integrated-pipeline records are advisory only — the comparator reads run.mjs-style result tables, so integrated pairs can print REPRODUCIBLE over an empty per-check map (disclosed in the manuscript's reproducibility section). The load-bearing machine verdicts are the PLC-tier and ablation comparisons against the frozen baseline, whose per-check tables are non-empty.

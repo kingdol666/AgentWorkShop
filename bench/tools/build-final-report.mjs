@@ -174,12 +174,49 @@ md.push(`Mission outcome: target ${missionTarget} · final PV ${missionPv} · go
 md.push(``)
 const traceFiles = existsSync(pipeDir) ? readdirSync(pipeDir).filter((f) => /^agent-(goal-)?loop-.*\.log$/.test(f)).sort() : []
 const missionLog = existsSync(join(pipeDir, 'agentteam-mission.log')) ? readFileSync(join(pipeDir, 'agentteam-mission.log'), 'utf8') : ''
+// 轨迹样板过滤（兼容已归档日志的行级清洗；新日志在源头已过滤）
+const BOILER = /## Schema|Execute by writing JSON to xd:|General operating rules|Workshop System Manual|Default Scenario Brief|协作通信规范|Your Assignment|Working Workflow|DELIVER & CONTINUE|Memory & Modes|Communication & Your Mailbox|Team Roster|工业调控作业环|优化经验台账|产线工况简报|^## [A-Za-z]+ — |^```ts$|^```$|^type Args|^ {2}\/\*\*|^\};|^Execute by/
+const cleanLines = (raw) => raw.split('\n').filter((l) => !BOILER.test(l.trim()))
+// 目标寻优轨迹 SVG：从 goal log 抽取数采序列/目标带/设定序列（数据全部来自存档轨迹）
+let goalSvg = ''
+const goalLogName = traceFiles.find((f) => f.startsWith('agent-goal-loop-'))
+if (goalLogName && existsSync(join(pipeDir, goalLogName))) {
+  const gl = readFileSync(join(pipeDir, goalLogName), 'utf8').replace(/\\+/g, '')
+  const tm = new Map()
+  for (const m of gl.matchAll(/最近序列:\s*(\d{2}:\d{2}:\d{2})=avg\s*(-?[0-9.]+)/g)) tm.set(m[1], Number(m[2]))
+  const pts = [...tm.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
+  const tg = gl.match(/target: thickness ([0-9.]+)±([0-9.]+)/) ?? []
+  const tstar = Number(tg[1] ?? 52); const tol = Number(tg[2] ?? 0.8)
+  const spSeq = [...gl.matchAll(/下发成功:ScrewSpeedSP[^\n]*?设定 (\d+)rpm/g)].map((m) => Number(m[1]))
+  if (pts.length > 3) {
+    const vals = pts.map((p) => p[1])
+    const lo = Math.min(...vals, tstar - tol) - 0.6; const hi = Math.max(...vals, tstar + tol) + 0.6
+    const W = 840; const H = 230; const L = 46; const R = 14; const T = 16; const B = 30
+    const x = (i) => L + (i * (W - L - R)) / (pts.length - 1)
+    const y = (v) => T + ((hi - v) * (H - T - B)) / (hi - lo)
+    const poly = pts.map((p, i) => `${x(i).toFixed(1)},${y(p[1]).toFixed(1)}`).join(' ')
+    const dots = pts.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p[1]).toFixed(1)}" r="2.2" fill="#1f77b4"/>`).join('')
+    goalSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="serif" font-size="11">`
+      + `<rect x="${L}" y="${y(tstar + tol).toFixed(1)}" width="${W - L - R}" height="${Math.max(2, (y(tstar - tol) - y(tstar + tol)).toFixed(1))}" fill="#9ed8a4" opacity="0.18"/>`
+      + `<line x1="${L}" y1="${y(tstar).toFixed(1)}" x2="${W - R}" y2="${y(tstar).toFixed(1)}" stroke="#2aa198" stroke-dasharray="4 3" stroke-width="1"/>`
+      + `<polyline points="${poly}" fill="none" stroke="#1f77b4" stroke-width="1.4"/>${dots}`
+      + `<text x="${L}" y="${(y(tstar + tol) - 4).toFixed(1)}" fill="#3a7a44">target band ${tstar - tol}–${tstar + tol} µm</text>`
+      + `<text x="${L}" y="${(y(tstar) - 4).toFixed(1)}" fill="#2aa198">target ${tstar} µm</text>`
+      + `<text x="${W - R}" y="${H - 8}" text-anchor="end" fill="#555">thickness (µm), chronological · SP: ${spSeq.length ? '150 → ' : ''}${spSeq.join(' → ')} rpm (${spSeq.length} governed writes)</text>`
+      + `<line x1="${L}" y1="${H - B + 8}" x2="${W - R}" y2="${H - B + 8}" stroke="#999" stroke-width="0.6"/></svg>`
+    writeFileSync(join(outDir, 'goal-trajectory.svg'), goalSvg)
+  }
+}
 if (traceFiles.length) {
   md.push(`## 3c. Real-LLM agent closed loops — execution traces`)
   md.push(``)
+  if (goalSvg) {
+    md.push(`![Goal-driven optimization trajectory](goal-trajectory.svg)`)
+    md.push(``)
+  }
   for (const tf of traceFiles) {
     const raw = readFileSync(join(pipeDir, tf), 'utf8')
-    const lines = raw.split('\n')
+    const lines = cleanLines(raw)
     const shown = lines.length > 400 ? [...lines.slice(0, 200), `… (${lines.length - 300} lines omitted, full trace in bench/results/${pipelineId}/${tf})`, ...lines.slice(-100)] : lines
     const label = tf.startsWith('agent-goal-loop-') ? `goal-driven loop (${tf.replace('agent-goal-loop-', '').replace('.log', '')}) — the model derives its own setpoint from a process objective` : `prescribed-step loop (${tf.replace('agent-loop-', '').replace('.log', '')})`
     md.push(`### ${label}`)
@@ -302,9 +339,10 @@ ${plcRowsHtml}</table>
 <table><tr><th>Mission check</th><th>Result</th></tr>${missionChecks.map((x) => `<tr><td>${MISSION_EN[x.id] ?? esc(x.title)}</td><td>${chip(x.status === 'pass', x.status.toUpperCase())}</td></tr>`).join('')}</table>
 <div class="note">Goal filed on the team task board → dispatched to the worker → worker reads the acquisition window via <code>daq_query</code> (<code>from/to/bucket</code>, time-series semantics) → computes the corrected setpoint → governed writes each open an auditable optimization record (judged) → plant follows → final PV <b>${missionPv}</b> vs target <b>${missionTarget}</b> with ${Number.isFinite(missionWrites) ? missionWrites : '—'} governed writes (≤3) → task closed with a report artifact. Deterministic policy (no LLM credentials); the paths are the production paths. Verdict: <b>${missionOk ? 'ATTAINED' : 'NOT ATTAINED'}</b>.</div></section>
 <section><h2>3c · Real-LLM agent closed loops — execution traces</h2>
+${goalSvg || ''}
 ${traceFiles.length
-  ? traceFiles.map((tf) => `<div class="note"><b>${tf.startsWith('agent-goal-loop-') ? 'Goal-driven loop' : 'Prescribed-step loop'}</b> — full trace: <code>bench/results/${pipelineId}/${tf}</code></div><pre style="max-height:420px;overflow:auto;background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;font-size:11px;line-height:1.45;">${esc(readFileSync(join(pipeDir, tf), 'utf8')).slice(0, 60000)}</pre>`).join('')
-  : `<div class="note">No real-LLM loop log in this run (P5/P5b run only with <code>--agent &lt;harness&gt;</code>). The deterministic mission trace is in <code>agentteam-mission.log</code>.</div>`}<div class="note">The agent was a real LLM harness (omp/opencode) driving the same governed tool surface over real protocol transports; the deterministic mission trace is in <code>agentteam-mission.log</code>.</div></section>
+  ? traceFiles.map((tf) => `<div class="note"><b>${tf.startsWith('agent-goal-loop-') ? 'Goal-driven loop' : 'Prescribed-step loop'}</b> — full trace: <code>bench/results/${pipelineId}/${tf}</code></div><pre style="max-height:420px;overflow:auto;background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;font-size:11px;line-height:1.45;">${esc(cleanLines(readFileSync(join(pipeDir, tf), 'utf8'))).slice(0, 60000)}</pre>`).join('')
+  : `<div class="note">No real-LLM loop log in this run (P5/P5b run only with <code>--agent &lt;harness&gt;</code>). The deterministic mission trace is in <code>agentteam-mission.log</code>.</div>`}<div class="note">The agent was a real LLM harness (omp/opencode) driving the same governed tool surface over real protocol transports. Boilerplate (tool-schema injections, platform manual) is filtered from these traces; the full raw trail is in the archived logs; the deterministic mission trace is in <code>agentteam-mission.log</code>.</div></section>
 <section><h2>4 · Cross-scenario portability — film-line, zero code changes</h2>
 <div class="note">Devices ${port.devices ?? '—'} · own lines ${port.ownLines ?? '—'}/${port.lines ?? '—'} · sampling ${port.sampling ?? '—'} nodes · F5 interdicted <b>${port.f5Rejected ?? '—'}/${port.f5Total ?? '—'}</b> · false blocks ${port.falseBlocks ?? '—'} · <b>code changes ${port.codeChanges ?? '—'}</b>. The same delegation/governance code paths re-commission an unseen production scenario purely from configuration.</div></section>
 <section><h2>5 · E1a · 4-arm governance ablation</h2><table>

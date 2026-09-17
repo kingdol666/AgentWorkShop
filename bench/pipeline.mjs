@@ -558,6 +558,8 @@ await timed('P4e', 'recipe-lifecycle', '配方管理全生命周期（版本·�
 // 若排在 P4 之前，P4b 的优化记录生命周期会被该锚的冷却拒绝（实测踩过）。
 
 // ═══════════════ P5 · 真实 LLM Agent 闭环（可选）═══════════════
+// 轨迹日志的样板过滤器：工具文档注入 / 平台手册 / 场景简报不进日志（决策动作才是可观察主体）
+const isBoilerplate = (t) => /## Schema|Execute by writing JSON to xd:|General operating rules for all team members|Workshop System Manual|Default Scenario Brief|协作通信规范:|Your Assignment|Working Workflow|DELIVER & CONTINUE|Memory & Modes|Communication & Your Mailbox|Team Roster|工业调控作业环|优化经验台账|产线工况简报/.test(t)
 if (agentHarness) {
   await timed('P5', 'agent-loop', `真实 LLM Agent 闭环（harness=${agentHarness}）`, async () => {
     const l = lines.find(x => x.ids.dcw && x.ids.daq)
@@ -625,12 +627,15 @@ if (agentHarness) {
       const ts = m?.at ?? m?.ts ?? m?.createdAt ?? ''
       const who = m?.agentName ?? m?.fromLabel ?? m?.role ?? m?.sender ?? 'msg'
       const body = fmtParts(m?.parts) || String(m?.text ?? JSON.stringify(m)).slice(0, 600)
+      if (isBoilerplate(body)) continue
       L.push(`[${ts}] ${who}: ${body}`)
     }
     L.push(``)
     L.push(`== task history ==`)
     for (const h of (Array.isArray(taskDetail?.history) ? taskDetail.history : [])) {
-      L.push(`[${h?.at ?? h?.ts ?? ''}] ${h?.kind ?? h?.type ?? 'event'}: ${fmtParts(h?.parts) || JSON.stringify(h ?? '').slice(0, 400)}`)
+      const body = fmtParts(h?.parts) || JSON.stringify(h ?? '').slice(0, 400)
+      if (isBoilerplate(body)) continue
+      L.push(`[${h?.at ?? h?.ts ?? ''}] ${h?.kind ?? h?.type ?? 'event'}: ${body}`)
     }
     writeText(resolve(outDir, `agent-loop-${agentHarness}.log`), L.join('\n') + '\n')
     add('P5', 'agent-loop', `真实 LLM Agent 闭环（${agentHarness}）`, state === 'COMPLETED' && hasMark ? 'pass' : state === 'COMPLETED' ? 'warn' : 'fail',
@@ -740,12 +745,14 @@ if (agentHarness) {
       const ts = m?.at ?? m?.ts ?? m?.createdAt ?? ''
       const who = m?.agentName ?? m?.fromLabel ?? m?.role ?? m?.sender ?? 'msg'
       const body = (Array.isArray(m?.parts) ? m.parts.map(p => p?.text ?? '').filter(Boolean).join(' | ') : String(m?.text ?? JSON.stringify(m))).slice(0, 800)
+      if (isBoilerplate(body)) continue
       LG.push(`[${ts}] ${who}: ${body}`)
     }
     LG.push(``)
     LG.push(`== task history (tool-call events, full optimization trail) ==`)
     for (const h of (Array.isArray(taskG?.history) ? taskG.history : [])) {
       const body = (Array.isArray(h?.parts) ? h.parts.map(p => p?.text ?? '').filter(Boolean).join(' | ') : JSON.stringify(h ?? '')).slice(0, 700)
+      if (isBoilerplate(body)) continue
       LG.push(`[${h?.at ?? h?.ts ?? ''}] ${h?.kind ?? h?.type ?? 'event'}: ${body}`)
     }
     writeText(resolve(outDir, `agent-goal-loop-${agentHarness}.log`), LG.join('\n') + '\n')
