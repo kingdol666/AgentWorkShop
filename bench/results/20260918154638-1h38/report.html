@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AW-IndustrialBench Report · 20260918154638-1h38</title>
+<style>
+  :root{
+    --paper:#fbfaf7; --ink:#212426; --dim:#6b6f72; --hair:#d9d5cb; --hair2:#e7e3da;
+    --ok:#0a7d54; --warn:#8a5a00; --bad:#a03030; --cyan:#1f6f8b; --panel:#f4f2ec;
+    --serif:"Source Serif 4","Noto Serif",Georgia,"Times New Roman",serif;
+    --sans:-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"Cascadia Mono","JetBrains Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.62 var(--sans);
+       text-wrap:pretty;-webkit-font-smoothing:antialiased}
+  .sheet{max-width:1060px;margin:0 auto;padding:44px 40px 64px}
+  a{color:var(--cyan);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--cyan) 35%,transparent)}
+
+  /* ── masthead ── */
+  .mast{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;
+        border-bottom:3px double var(--ink);padding-bottom:18px}
+  .brand{font:600 13px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+  .brand b{color:var(--ink)}
+  h1{font:600 34px/1.15 var(--serif);margin:10px 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--dim);font-size:13.5px}
+  .sub .mono{font-size:12.5px}
+  .stamp{flex:none;transform:rotate(-4deg);border:3px double var(--ink);outline:1px solid var(--ink);outline-offset:3px;
+         padding:10px 18px;text-align:center;font:700 20px/1.2 var(--sans);letter-spacing:.3em;text-transform:uppercase}
+  .stamp small{display:block;font:500 9.5px/1.6 var(--sans);letter-spacing:.18em;color:var(--dim)}
+  .stamp.ok{color:var(--ok);border-color:var(--ok);outline-color:var(--ok)}
+  .stamp.ok small{color:var(--ok)}
+  .stamp.bad{color:var(--bad);border-color:var(--bad);outline-color:var(--bad)}
+  .stamp.bad small{color:var(--bad)}
+
+  /* ── verdict strip ── */
+  .strip{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--hair);
+         border-top:none;background:var(--panel);margin-top:0}
+  .cell{padding:14px 18px;border-left:1px solid var(--hair)}
+  .cell:first-child{border-left:none}
+  .cell .cl{font:600 10.5px/1.4 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .cell .cv{font:600 26px/1.2 var(--serif);font-variant-numeric:tabular-nums}
+  .cell .cv small{font-size:14px;color:var(--dim);font-weight:400}
+  .gate{margin:14px 0 0;padding:10px 16px;border-left:3px solid var(--ok);background:var(--panel);
+        font-size:13.5px;color:var(--ink)}
+  .gate.bad{border-left-color:var(--bad)}
+
+  h2{font:600 21px/1.3 var(--serif);margin:44px 0 4px;letter-spacing:-.005em}
+  h2 .no{color:var(--dim);font-weight:400;margin-right:10px;font-variant-numeric:tabular-nums}
+  .lede{color:var(--dim);font-size:13.5px;margin:0 0 16px}
+
+  /* ── KPI grid ── */
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--hair);
+        border:1px solid var(--hair)}
+  .kpi{background:var(--paper);padding:12px 14px}
+  .kpi-v{font:600 21px/1.15 var(--serif);font-variant-numeric:tabular-nums}
+  .kpi-v span{font-size:12px;color:var(--dim);margin-left:3px;font-weight:400}
+  .kpi-l{font:600 11px/1.4 var(--sans);letter-spacing:.06em;text-transform:uppercase;margin-top:4px}
+  .kpi-n{font-size:11.5px;color:var(--dim);margin-top:2px}
+
+  /* ── tables ── */
+  table.grid{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+  table.grid th{font:600 10.5px/1.4 var(--sans);letter-spacing:.12em;text-transform:uppercase;
+                color:var(--dim);text-align:left;padding:8px 10px;border-bottom:2px solid var(--ink)}
+  table.grid td{padding:8px 10px;border-bottom:1px solid var(--hair2);vertical-align:top}
+  table.grid tr:last-child td{border-bottom:1px solid var(--hair)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  th.num{text-align:right}
+  .strong{font-weight:600}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)} .dim{color:var(--dim)}
+  .mono{font-family:var(--mono);font-size:.92em}
+  tr.row-bad td{background:color-mix(in srgb,var(--bad) 6%,transparent)}
+  tfoot td{border-bottom:none;border-top:2px solid var(--ink);font-weight:600}
+
+  /* ── charts ── */
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .chart{border:1px solid var(--hair);padding:14px 16px;background:#fff}
+  .chart h3{font:600 12px/1.4 var(--sans);letter-spacing:.08em;text-transform:uppercase;
+            margin:0 0 10px;color:var(--ink)}
+  .chart svg{width:100%;height:auto;display:block}
+  .chart .bl{font:11px var(--sans);fill:var(--ink)}
+  .chart .bv{font:11px var(--mono);fill:var(--dim)}
+
+  /* ── check details ── */
+  details{border:1px solid var(--hair);border-top:none}
+  details:first-of-type{border-top:1px solid var(--hair)}
+  summary{cursor:pointer;padding:11px 16px;font:600 13.5px/1.5 var(--sans);list-style:none;
+          display:flex;align-items:baseline;gap:10px;background:var(--paper)}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";margin-left:auto;color:var(--dim);font-weight:400}
+  details[open] summary::after{content:"–"}
+  details[open]{background:#fff}
+  .sum-n{margin-left:auto;font:400 12px var(--mono);color:var(--dim)}
+  summary .mono{color:var(--cyan)}
+  .chks{list-style:none;margin:0;padding:4px 16px 14px}
+  .chk{padding:7px 0;border-bottom:1px solid var(--hair2)}
+  .chk:last-child{border-bottom:none}
+  .mark{font-weight:700}
+  .chk-id{color:var(--dim)}
+  .ev{margin:6px 0 0;padding-left:26px;font:12px/1.55 var(--mono);color:var(--dim)}
+  .ev li{margin:2px 0;list-style:"–  "}
+
+  /* ── artifacts / fingerprint ── */
+  .fingerprint{border:1px solid var(--hair);background:var(--panel);padding:16px 18px;font-size:13px}
+  .fingerprint .row{display:flex;gap:14px;padding:3px 0}
+  .fingerprint .fk{flex:none;width:170px;font:600 10.5px/1.8 var(--sans);letter-spacing:.1em;
+                   text-transform:uppercase;color:var(--dim)}
+  .fingerprint .fv{font-family:var(--mono);font-size:12.5px;word-break:break-all}
+  .repro{margin-top:10px;padding:10px 14px;background:var(--ink);color:#f3f1ea;
+         font:12.5px/1.6 var(--mono);overflow-x:auto;white-space:pre}
+
+  .foot{margin-top:48px;border-top:3px double var(--ink);padding-top:12px;
+        display:flex;justify-content:space-between;gap:20px;color:var(--dim);font-size:12px}
+
+  @media (max-width:900px){
+    .kpis{grid-template-columns:repeat(3,1fr)}
+    .charts{grid-template-columns:1fr}
+    .strip{grid-template-columns:repeat(2,1fr)}
+    .cell{border-top:1px solid var(--hair)}
+  }
+  @media print{
+    body{font-size:11.5px}
+    .sheet{padding:0;max-width:none}
+    details{border-color:#bbb} .stamp{transform:rotate(-3deg)}
+    .charts{grid-template-columns:1fr 1fr}
+    .repro{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    h2{break-after:avoid} .chart,table.grid{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="mast">
+    <div>
+      <div class="brand"><b>AW-IndustrialBench</b> · Governed Industrial Agent Platform</div>
+      <h1>Integrated Pipeline Benchmark Report</h1>
+      <div class="sub">run <span class="mono">20260918154638-1h38</span> · seed <span class="mono">42</span> ·
+        preset <span class="mono">cast-film-physics</span> · http://127.0.0.1:3005 · started 2026-09-18 15:55:29</div>
+    </div>
+    <div class="stamp ok">PASS<small>score 100.0 · grade A</small></div>
+  </div>
+
+  <div class="strip">
+    <div class="cell"><div class="cl">Checks</div><div class="cv">75<small> / 75 pass</small></div></div>
+    <div class="cell"><div class="cl">Warnings</div><div class="cv">0</div></div>
+    <div class="cell"><div class="cl">Failures</div><div class="cv ok">0</div></div>
+    <div class="cell"><div class="cl">Skipped (honest)</div><div class="cv dim">0</div></div>
+  </div>
+  <div class="gate ">Hard gate: no failed checks, no failed phases. Every gate is green; skipped items are honest environmental skips and are excluded from scoring.</div>
+
+  <h2><span class="no">01</span>Key indicators</h2>
+  <p class="lede">Pooled results across all provisioned lines and protocols. Judge-class metrics are deterministic under a fixed seed.</p>
+  <div class="kpis">
+      <div class="kpi">
+        <div class="kpi-v">4<span></span></div>
+        <div class="kpi-l">Provisionable lines</div>
+        <div class="kpi-n">+1 satellite DAQ · modbus-tcp/opcua/mqtt/http/modbus-rtu</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">55<span></span></div>
+        <div class="kpi-l">DAQ samples total</div>
+        <div class="kpi-n">5/5 nodes sampling</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">100.0<span>%</span></div>
+        <div class="kpi-l">Governance interception (pooled)</div>
+        <div class="kpi-n">F5 attacks</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">30.462<span>ms</span></div>
+        <div class="kpi-l">Write p50 (all protocols)</div>
+        <div class="kpi-n">incl. real protocol transactions</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">96.9<span>%</span></div>
+        <div class="kpi-l">Closed-loop J/J*</div>
+        <div class="kpi-n">n=3 seeds · worst 96.7% · J*=89.894</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">4<span></span></div>
+        <div class="kpi-l">Tool-level loops</div>
+        <div class="kpi-n">dcw→daq→judge ×3 convergence</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">4/4<span></span></div>
+        <div class="kpi-l">Param-layer governance</div>
+        <div class="kpi-n">semantic surface · 4-layer write limits · agent param_control</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">fired+restored<span></span></div>
+        <div class="kpi-l">System backstop</div>
+        <div class="kpi-n">window breach → auto-rollback in 120.175s (env)</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">film-line<span></span></div>
+        <div class="kpi-l">Scenario portability</div>
+        <div class="kpi-n">2nd scenario: 3 lines + 2 sat · F5 9/9 · 0 code changes</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">9 dev / 30 SP<span></span></div>
+        <div class="kpi-l">Biax line (BOPET)</div>
+        <div class="kpi-n">AgentTeam 3 knobs · 4 writes → 25.40μm ✔</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">off<span></span></div>
+        <div class="kpi-l">LLM agent loop</div>
+        <div class="kpi-n">--agent omp enables</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-v">PASS<span></span></div>
+        <div class="kpi-l">Verdict</div>
+        <div class="kpi-n">75/75 checks · hard gate green</div>
+      </div></div>
+
+  <h2><span class="no">02</span>Phase scorecard</h2>
+  <p class="lede">Phase score = (pass + 0.5 × warn) / scored checks × 100; skips are excluded. Overall is the weighted mean; any failure trips the hard gate.</p>
+  <table class="grid">
+    <thead><tr><th>Phase</th><th>Title</th><th class="num">Pass</th><th class="num">Warn</th><th class="num">Fail</th><th class="num">Skip</th><th class="num">Score</th><th class="num">Weight</th></tr></thead>
+    <tbody>
+        <tr class="">
+          <td class="mono">P0</td><td>Bootstrap · simulator &amp; platform</td>
+          <td class="num ok">1</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">1</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P1</td><td>Plant model + offline optimum W*</td>
+          <td class="num ok">2</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">1</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P10</td><td>Biax (BOPET) full-line mission (probe → provision → multi-node AgentTeam closed loop)</td>
+          <td class="num ok">10</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">3</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P2</td><td>Multi-protocol line provisioning</td>
+          <td class="num ok">6</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">2</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P3</td><td>DAQ · governed write · F5 interlock</td>
+          <td class="num ok">5</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">3</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P4</td><td>Agent-tool closed loop (3-cycle convergence)</td>
+          <td class="num ok">7</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">3</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P4b</td><td>Rollback &amp; optimization records</td>
+          <td class="num ok">4</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">2</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P4c</td><td>HITL approval gate</td>
+          <td class="num ok">1</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">2</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P4d</td><td>Audit / ledger read surfaces</td>
+          <td class="num ok">1</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">1</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P4e</td><td>Recipe lifecycle</td>
+          <td class="num ok">2</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">2</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P4f</td><td>Process-parameter mapping layer (semantic surface · standard conversions · 4-layer write limits)</td>
+          <td class="num ok">4</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">3</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P4m</td><td>AgentTeam optimization mission (task board → governed writes → attainment)</td>
+          <td class="num ok">6</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">3</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P6</td><td>Closed-loop optimization benchmark (multi-seed)</td>
+          <td class="num ok">6</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">3</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P7</td><td>Multimodal acquisition (vector/image)</td>
+          <td class="num ok">1</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">1</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P8</td><td>Cross-scenario portability</td>
+          <td class="num ok">11</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">3</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P8b</td><td>System backstop drill (bounded autonomy)</td>
+          <td class="num ok">5</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">3</td>
+        </tr>
+        <tr class="">
+          <td class="mono">P9</td><td>Platform subsystems (team / memory / registry)</td>
+          <td class="num ok">3</td><td class="num warn">0</td>
+          <td class="num bad">0</td><td class="num dim">0</td>
+          <td class="num strong">100.0</td>
+          <td class="num dim">1</td>
+        </tr></tbody>
+    <tfoot><tr><td colspan="6">Overall (weighted)</td><td class="num strong">100.0</td><td class="num">37</td></tr></tfoot>
+  </table>
+
+  <h2><span class="no">03</span>Quantitative panels</h2>
+  <p class="lede">Real-protocol transactions and closed-loop optimization outcomes. Bars use tabular figures; unit scale is absolute unless noted.</p>
+  <div class="charts"><div class="card"><h3>Write p50 (ms, per line/protocol)</h3>
+    <svg viewBox="0 0 560 154" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="320.00000000000006" height="26" rx="4" fill="#1f6f8b" opacity="0.85"/>
+      <text x="460.00000000000006" y="23" class="bv">48.72ms</text>
+      <text x="0" y="59" class="bl">L2 opcua</text>
+      <rect x="132" y="42" width="137.1944661110883" height="26" rx="4" fill="#1f6f8b" opacity="0.85"/>
+      <text x="277.19446611108833" y="59" class="bv">20.89ms</text>
+      <text x="0" y="95" class="bl">L3 mqtt</text>
+      <rect x="132" y="78" width="127.93957058992571" height="26" rx="4" fill="#1f6f8b" opacity="0.85"/>
+      <text x="267.9395705899257" y="95" class="bv">19.48ms</text>
+      <text x="0" y="131" class="bl">L4 http</text>
+      <rect x="132" y="114" width="215.20752083418864" height="26" rx="4" fill="#1f6f8b" opacity="0.85"/>
+      <text x="355.20752083418864" y="131" class="bv">32.76ms</text></svg></div><div class="card"><h3>DAQ sample points (real driver)</h3>
+    <svg viewBox="0 0 560 190" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="137.14285714285717" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="277.14285714285717" y="23" class="bv">6.00</text>
+      <text x="0" y="59" class="bl">L2 opcua</text>
+      <rect x="132" y="42" width="228.57142857142858" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="368.57142857142856" y="59" class="bv">10.00</text>
+      <text x="0" y="95" class="bl">L3 mqtt</text>
+      <rect x="132" y="78" width="274.28571428571433" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="414.28571428571433" y="95" class="bv">12.00</text>
+      <text x="0" y="131" class="bl">L4 http</text>
+      <rect x="132" y="114" width="297.14285714285717" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="437.14285714285717" y="131" class="bv">13.00</text>
+      <text x="0" y="167" class="bl">L5 modbus-rtu</text>
+      <rect x="132" y="150" width="320.00000000000006" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="460.00000000000006" y="167" class="bv">14.00</text></svg></div><div class="card"><h3>Governance F5 interception (%)</h3>
+    <svg viewBox="0 0 560 154" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="368" height="26" rx="4" fill="#8a5a00" opacity="0.85"/>
+      <text x="508" y="23" class="bv">100%</text>
+      <text x="0" y="59" class="bl">L2 opcua</text>
+      <rect x="132" y="42" width="368" height="26" rx="4" fill="#8a5a00" opacity="0.85"/>
+      <text x="508" y="59" class="bv">100%</text>
+      <text x="0" y="95" class="bl">L3 mqtt</text>
+      <rect x="132" y="78" width="368" height="26" rx="4" fill="#8a5a00" opacity="0.85"/>
+      <text x="508" y="95" class="bv">100%</text>
+      <text x="0" y="131" class="bl">L4 http</text>
+      <rect x="132" y="114" width="368" height="26" rx="4" fill="#8a5a00" opacity="0.85"/>
+      <text x="508" y="131" class="bv">100%</text></svg></div><div class="card"><h3>Agent loop convergence (s)</h3>
+    <svg viewBox="0 0 560 154" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">L1 modbus-tcp</text>
+      <rect x="132" y="6" width="320.00000000000006" height="26" rx="4" fill="#b0553a" opacity="0.85"/>
+      <text x="460.00000000000006" y="23" class="bv">6.33s</text>
+      <text x="0" y="59" class="bl">L2 opcua</text>
+      <rect x="132" y="42" width="219.327545382794" height="26" rx="4" fill="#b0553a" opacity="0.85"/>
+      <text x="359.327545382794" y="59" class="bv">4.34s</text>
+      <text x="0" y="95" class="bl">L3 mqtt</text>
+      <rect x="132" y="78" width="218.5193370165746" height="26" rx="4" fill="#b0553a" opacity="0.85"/>
+      <text x="358.5193370165746" y="95" class="bv">4.33s</text>
+      <text x="0" y="131" class="bl">L4 http</text>
+      <rect x="132" y="114" width="219.1254932912392" height="26" rx="4" fill="#b0553a" opacity="0.85"/>
+      <text x="359.1254932912392" y="131" class="bv">4.34s</text></svg></div><div class="card"><h3>Closed-loop J (per seed): start → end vs offline optimum J*=89.894</h3>
+    <svg viewBox="0 0 560 262" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">S42 start</text>
+      <rect x="132" y="6" width="251.2514739582174" height="26" rx="4" fill="#9aa5ad" opacity="0.85"/>
+      <text x="391.2514739582174" y="23" class="bv">68.74</text>
+      <text x="0" y="59" class="bl">S42 end</text>
+      <rect x="132" y="42" width="317.8071633574781" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="457.8071633574781" y="59" class="bv">86.95</text>
+      <text x="0" y="95" class="bl">S43 start</text>
+      <rect x="132" y="78" width="251.0614088338964" height="26" rx="4" fill="#9aa5ad" opacity="0.85"/>
+      <text x="391.0614088338964" y="95" class="bv">68.69</text>
+      <text x="0" y="131" class="bl">S43 end</text>
+      <rect x="132" y="114" width="318.5747340518515" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="458.5747340518515" y="131" class="bv">87.16</text>
+      <text x="0" y="167" class="bl">S44 start</text>
+      <rect x="132" y="150" width="237.6654726678087" height="26" rx="4" fill="#9aa5ad" opacity="0.85"/>
+      <text x="377.6654726678087" y="167" class="bv">65.02</text>
+      <text x="0" y="203" class="bl">S44 end</text>
+      <rect x="132" y="186" width="318.28598126682533" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="458.28598126682533" y="203" class="bv">87.08</text>
+      <text x="0" y="239" class="bl">J* (offline optimum)</text>
+      <rect x="132" y="222" width="328.57142857142856" height="26" rx="4" fill="#b0553a" opacity="0.85"/>
+      <text x="468.57142857142856" y="239" class="bv">89.89</text></svg></div><div class="card"><h3>Closed-loop attainment J/J* (%)</h3>
+    <svg viewBox="0 0 560 118" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">seed 42</text>
+      <rect x="132" y="6" width="355.85600000000005" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="495.85600000000005" y="23" class="bv">96.70%</text>
+      <text x="0" y="59" class="bl">seed 43</text>
+      <rect x="132" y="42" width="356.96" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="496.96" y="59" class="bv">97.00%</text>
+      <text x="0" y="95" class="bl">seed 44</text>
+      <rect x="132" y="78" width="356.59200000000004" height="26" rx="4" fill="#0a7d54" opacity="0.85"/>
+      <text x="496.59200000000004" y="95" class="bv">96.90%</text></svg></div><div class="card"><h3>Closed-loop iterations (count)</h3>
+    <svg viewBox="0 0 560 118" width="100%" style="max-width:560px">
+      <text x="0" y="23" class="bl">seed 42</text>
+      <rect x="132" y="6" width="320.00000000000006" height="26" rx="4" fill="#1f6f8b" opacity="0.85"/>
+      <text x="460.00000000000006" y="23" class="bv">2.00</text>
+      <text x="0" y="59" class="bl">seed 43</text>
+      <rect x="132" y="42" width="320.00000000000006" height="26" rx="4" fill="#1f6f8b" opacity="0.85"/>
+      <text x="460.00000000000006" y="59" class="bv">2.00</text>
+      <text x="0" y="95" class="bl">seed 44</text>
+      <rect x="132" y="78" width="320.00000000000006" height="26" rx="4" fill="#1f6f8b" opacity="0.85"/>
+      <text x="460.00000000000006" y="95" class="bv">2.00</text></svg></div></div>
+
+  <h2><span class="no">04</span>Closed-loop optimization benchmark</h2>
+  <p class="lede">Multi-seed governed closed-loop seeking on the cast-film digital twin, scored against the offline optimum W*. Write path is the governed agent tool surface; every write is ledgered.</p>
+  
+      <h3>Closed-loop optimization · per-seed</h3>
+      <table class="grid">
+        <thead><tr><th>Seed</th><th class="num">J₀</th><th class="num">J<sub>end</sub></th><th class="num">J*</th><th class="num">J/J* %</th><th class="num">Iters</th><th class="num">Governed writes</th><th class="num">Rejected</th><th>Converged</th></tr></thead>
+        <tbody>
+        
+          <tr><td class="mono">42</td><td class="num">68.74</td><td class="num">86.95</td>
+          <td class="num">89.89</td><td class="num strong">96.7</td>
+          <td class="num">2</td><td class="num">2</td>
+          <td class="num">0</td>
+          <td class="ok">yes</td></tr>
+          <tr><td class="mono">43</td><td class="num">68.69</td><td class="num">87.16</td>
+          <td class="num">89.89</td><td class="num strong">97.0</td>
+          <td class="num">2</td><td class="num">2</td>
+          <td class="num">0</td>
+          <td class="ok">yes</td></tr>
+          <tr><td class="mono">44</td><td class="num">65.02</td><td class="num">87.08</td>
+          <td class="num">89.89</td><td class="num strong">96.9</td>
+          <td class="num">2</td><td class="num">2</td>
+          <td class="num">0</td>
+          <td class="ok">yes</td></tr>
+        </tbody>
+      </table>
+
+  <h2><span class="no">05</span>Check details</h2>
+  <p class="lede">Verbatim evidence per check, collapsed by default; failed phases are expanded. Evidence lines are quoted from the run without paraphrase.</p>
+  
+      <details >
+        <summary><span class="mono">P0</span> — Bootstrap · simulator &amp; platform
+          <span class="sum-n">1/1 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">platform-reachable</span> <span class="chk-t">platform reachable &amp; authenticated</span><ul class="ev"><li>平台 http://127.0.0.1:3005：already-up</li><li>鉴权 OK (login)</li><li>simulator http://127.0.0.1:4010：already up (reused)</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P1</span> — Plant model + offline optimum W*
+          <span class="sum-n">2/2 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">preset-applied</span> <span class="chk-t">预设 cast-film-physics 已应用</span><ul class="ev"><li>devices 5 </li><li>协议 modbus-tcp, modbus-rtu, opcua, mqtt, http</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">offline-optimum</span> <span class="chk-t">offline optimum W* (ground truth) available</span><ul class="ev"><li>W* = {&quot;zoneTemp&quot;:212.5,&quot;screw&quot;:55,&quot;lineSpeed&quot;:40,&quot;meltTemp&quot;:212.5,&quot;pressure&quot;:6.961,&quot;thickness&quot;:49.18,&quot;defect&quot;:0.055,&quot;score&quot;:89.894,&quot;computedAt&quot;:&quot;2026-09-18T15:46:41.161Z&quot;}</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P2</span> — Multi-protocol line provisioning
+          <span class="sum-n">6/6 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">gateway</span> <span class="chk-t">gateway controller start (idempotent)</span><ul class="ev"><li>POST /api/workshop/daq/controller {action:start}</li><li>采样仍受「活动Line批」门控，故每台有 SP 的devices自成一可开跑Line</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-1-modbus-tcp</span> <span class="chk-t">Line1 [modbus-tcp] 供给</span><ul class="ev"><li>line=ln-3fb5b295 daq=dn-84feb666 dcw=dw-754b2567 recipe=rc-99ce3c49</li><li>DAQ driver test ✔ 信号「熔体温度」：连接成功,读取 40001 = 31.329999923706055</li><li>SP 中心 200 窗口 [191.6, 208.4]</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-2-opcua</span> <span class="chk-t">Line2 [opcua] 供给</span><ul class="ev"><li>line=ln-e9f910e4 daq=dn-55a2d7a7 dcw=dw-2d56d640 recipe=rc-d2ddd3d5</li><li>DAQ driver test ✔ 信号「MeltPressure」：会话建立成功,读取 ns=2;s=AW.P = 6.137</li><li>SP 中心 150 窗口 [141, 159]</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-3-mqtt</span> <span class="chk-t">Line3 [mqtt] 供给</span><ul class="ev"><li>line=ln-0525ce03 daq=dn-3a49c64e dcw=dw-335d6289 recipe=rc-492de982</li><li>DAQ driver test ✔ 信号「thick」：Broker 连接成功,收到 aw/sim/thick = 19.1</li><li>SP 中心 95 窗口 [89, 101]</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-4-http</span> <span class="chk-t">Line4 [http] 供给</span><ul class="ev"><li>line=ln-4f1d5566 daq=dn-ff3e6ced dcw=dw-f32543b8 recipe=rc-342ca109</li><li>DAQ driver test ✔ 信号「defect」：接口可达,取值 = 99.983</li><li>SP 中心 1 窗口 [0.91, 1.09]</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-5-modbus-rtu</span> <span class="chk-t">Line5 [modbus-rtu] 供给（satellite DAQ）</span><ul class="ev"><li>line=ln-4f1d5566 daq=dn-a27b3fe2 dcw=✘ recipe=rc-342ca109 ↪hosted by line4</li><li>DAQ driver test ✔ 信号「晶点计数」：网关连接成功,读取 40001 = 4</li><li>（该devices无可用 DCW 导出，作为satellite DAQ随宿主批采样）</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P3</span> — DAQ · governed write · F5 interlock
+          <span class="sum-n">5/5 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-1-io</span> <span class="chk-t">Line1 [modbus-tcp] integration check</span><ul class="ev"><li>✔ DAQ samples stored 6  points (modbus-tcp real driver）</li><li>✔ 约6写 p50=48.718ms p95=95.612ms，readback deviation 0.04</li><li>✔ Governance F5: 6/6 rejected (modbus-tcp 真实链路），legal write受理</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-2-io</span> <span class="chk-t">Line2 [opcua] integration check</span><ul class="ev"><li>✔ DAQ samples stored 10  points (opcua real driver）</li><li>✔ 约6写 p50=20.887ms p95=38.122ms，readback deviation 0</li><li>✔ Governance F5: 6/6 rejected (opcua 真实链路），legal write受理</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-3-io</span> <span class="chk-t">Line3 [mqtt] integration check</span><ul class="ev"><li>✔ DAQ samples stored 12  points (mqtt real driver）</li><li>✔ 约6写 p50=19.478ms p95=20.719ms，readback deviation null</li><li>✔ Governance F5: 6/6 rejected (mqtt 真实链路），legal write受理</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-4-io</span> <span class="chk-t">Line4 [http] integration check</span><ul class="ev"><li>✔ DAQ samples stored 13  points (http real driver）</li><li>✔ 约6写 p50=32.764ms p95=33.578ms，readback deviation null</li><li>✔ Governance F5: 6/6 rejected (http 真实链路），legal write受理</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-5-io</span> <span class="chk-t">Line5 [modbus-rtu] integration check</span><ul class="ev"><li>✔ DAQ samples stored 14  points (modbus-rtu real driver）</li><li>no SP write point; write/governance sub-checks skipped</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P4</span> — Agent-tool closed loop (3-cycle convergence)
+          <span class="sum-n">7/7 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">tool-loop-setup</span> <span class="chk-t">闭环夹具（channel+agent）</span><ul class="ev"><li>channel=7a9fa105-6f0c-475c-b5b0-41cf794f908a</li><li>agent=07156399-05c9-4e36-aa32-08f4987b2b2f</li><li>harness=opencode</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">tool-bridge</span> <span class="chk-t">opencode 的 host 工具直调面可用</span><ul class="ev"><li>探测 my_industrial_nodes → 你尚未绑定任何工业节点。请在数字孪生界面的 Agent 详情面板中绑定数控/数采节点后再调用工业工具。</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-1-loop</span> <span class="chk-t">Line1 [modbus-tcp] Agent 闭环收敛（3/3 轮）</span><ul class="ev"><li>iter1: SP→194.96 ✔ · 回读 195 ✔ · daq ✔ · judge ✔</li><li>iter2: SP→197.48 ✔ · 回读 197.5 ✔ · daq ✔ · judge ✔</li><li>iter3: SP→200 ✔ · 回读 200 ✔ · daq ✔ · judge ✔</li><li>向窗口中心收敛 ✔ · 耗时 6.335s</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-2-loop</span> <span class="chk-t">Line2 [opcua] Agent 闭环收敛（3/3 轮）</span><ul class="ev"><li>iter1: SP→144.6 ✔ · 回读 145 ✔ · daq ✔ · judge ✔</li><li>iter2: SP→147.3 ✔ · 回读 147 ✔ · daq ✔ · judge ✔</li><li>iter3: SP→150 ✔ · 回读 150 ✔ · daq ✔ · judge ✔</li><li>向窗口中心收敛 ✔ · 耗时 4.342s</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-3-loop</span> <span class="chk-t">Line3 [mqtt] Agent 闭环收敛（3/3 轮）</span><ul class="ev"><li>iter1: SP→91.4 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</li><li>iter2: SP→93.2 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</li><li>iter3: SP→95 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</li><li>向窗口中心收敛 ✔ · 耗时 4.326s</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-4-loop</span> <span class="chk-t">Line4 [http] Agent 闭环收敛（3/3 轮）</span><ul class="ev"><li>iter1: SP→0.946 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</li><li>iter2: SP→0.973 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</li><li>iter3: SP→1 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔ · judge ✔</li><li>向窗口中心收敛 ✔ · 耗时 4.338s</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">plant-response</span> <span class="chk-t">工艺模型响应（SP→plant truth 随动）</span><ul class="ev"><li>真值样本 6 → 76</li><li>plant state: {&quot;enabled&quot;:true,&quot;running&quot;:true,&quot;kind&quot;:&quot;castfilm&quot;,&quot;phase&quot;:&quot;steady&quot;,&quot;disturbances&quot;:{&quot;heaterDecay&quot;:1,&quot;feedDriftPerMin&quot;:0.15},&quot;seed&quot;:42,&quot;timeScale&quot;:6,&quot;elapsedS&quot;:228,&quot;defect&quot;:4.44}</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P4b</span> — Rollback &amp; optimization records
+          <span class="sum-n">4/4 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-1-optrecord</span> <span class="chk-t">Line1 优化记录生命周期</span><ul class="ev"><li>current 204.6999969482422 → record A writes 208.06 (up)，记录 B writes 201.34 (down); opposite directions to dodge the rollback cooldown</li><li>✔ (keep path) record opt-db8811c4 verdict keep → 判定已入册:记录 opt-db8811c4 → keep(bench: 回读一致，判定 keep)。已定档为已验证经验(配方已标记 last</li><li>✔ (rollback path) record opt-e395690d verdict rollback (recorded only; PLC still 201.3000030517578)</li><li>✔ rollback executed (status 200) → readback 208.10000610351562 (expected record B from=208.06)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-1-rbjudge</span> <span class="chk-t">Line1 撤销记录 opt-83d7346f 判定关闭</span><ul class="ev"><li>REST judge keep → status 200</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-1-rollback</span> <span class="chk-t">Line1 node-level single-step rollback (undo stack)</span><ul class="ev"><li>✔ write 205.04 effective (readback 205, before 208.10000610351562)</li><li>✔ journal rollback 受理（status 200，记录 opt-83d7346f）</li><li>✔ readback after rollback 208.10000610351562 (expected back to 208.10000610351562, tolerance 0.75)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">param-ledger</span> <span class="chk-t">参数台账（三值对照 + 在册历史）</span><ul class="ev"><li>✔ 参数台账可用（字段：nodeId, nodeName, current, recipeTarget, lastGood, journal, records）</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P4c</span> — HITL approval gate
+          <span class="sum-n">1/1 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-2-hitl</span> <span class="chk-t">Line2 HITL 审批闭环</span><ul class="ev"><li>✔ 下发在人工确认模式下**挂起**，审批面板出现待审项 ap-fda27f6f（detail: L2-DCW-opcua ip16spej(烘箱温度设定)设定 148.2rpm,有效写入区间 141~159rpm(节点安全量程 ∩ 配方）</li><li>✔ verdict approved (status 200) → pending write **unblocked**: 下发成功:L2-DCW-opcua ip16spej(烘箱温度设定)设定 148.2rpm → PLC 原始值 148.2;回读 148.2rpm一致。当前活动配方「Integra</li><li>✔ post-approval PLC effect: readback 148 (expected 148.2)</li><li>审批裁决时延 433 ms（挂起→批准，含轮询周期）</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P4d</span> — Audit / ledger read surfaces
+          <span class="sum-n">1/1 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">audit-surfaces</span> <span class="chk-t">治理只读面</span><ul class="ev"><li>✔ 参数变更账本 journal：本产线 11  anchors (source coverage  rollback/manual/agent/recipe）</li><li>✔ audit: 200 entries</li><li>✔ ops-logs: 200 entries</li><li>✔ 报警记录：全局 199 （含历史）</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P4e</span> — Recipe lifecycle
+          <span class="sum-n">2/2 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-1-recipe</span> <span class="chk-t">Line1 [modbus-tcp] recipe lifecycle</span><ul class="ev"><li>(1) initial versions 1, current param value 200</li><li>✔ (2) versions after edit 2 (+1), param value 201.68 (expected 201.68)</li><li>✔ (3) 标记已知良好批次 runId=rr-8284e4d6 → lastGood=rr-8284e4d6</li><li>✔ (4) versions after revert-to-v1 3 (+1, non-destructive), param value 200 (expected back to 200)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">line-2-recipe</span> <span class="chk-t">Line2 [opcua] recipe lifecycle</span><ul class="ev"><li>(1) initial versions 1, current param value 150</li><li>✔ (2) versions after edit 2 (+1), param value 151.8 (expected 151.8)</li><li>✔ (3) 标记已知良好批次 runId=rr-b097d750 → lastGood=rr-b097d750</li><li>✔ (4) versions after revert-to-v1 3 (+1, non-destructive), param value 150 (expected back to 150)</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P4f</span> — Process-parameter mapping layer (semantic surface · standard conversions · 4-layer write limits)
+          <span class="sum-n">4/4 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">param-facade</span> <span class="chk-t">Line2 [opcua] 参数面自动生成且无寄存器泄漏</span><ul class="ev"><li>param=pp-28dab8a1 key=temp-sp unit=rpm</li><li>含 register/dataType/driverConfig? 无 ✔</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">param-limits</span> <span class="chk-t">Line2 基准限界 [143.7,156.3] + 产品限界 [146.22,153.78] 设定</span><ul class="ev"><li>有效交集(含配方窗) 141~159 → param 143.7~156.3 → product 146.22~153.78 · node 层 50~200（四层收窄：node ∩ param ∩ product ∩ recipe）</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">param-write-governed</span> <span class="chk-t">Line2 参数面写入联锁（交集内写入 · 越产品层拦截 · 越基准层拦截 · 参数读回）</span><ul class="ev"><li>148.866 → ✔ 写入+回读</li><li>155.04 → ✔ 产品层拦截</li><li>157.65 → ✔ 基准限界层拦截</li><li>param read → ✔ 148.866rpm</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">agent-param-tools</span> <span class="chk-t">Line2 Agent param_control/param_read（语义写 · 越产品层拒 · 参数读 · 未绑定拒）</span><ul class="ev"><li>param_control 151.323 → ✔ record=opt-268623f5</li><li>param_control 155.04 → ✔ 产品层拦截</li><li>param_read → ✔</li><li>unbound agent → ✔ 权限面拒绝</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P4m</span> — AgentTeam optimization mission (task board → governed writes → attainment)
+          <span class="sum-n">6/6 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">mission-board</span> <span class="chk-t">任务板：优化任务下达并由 lead 派发</span><ul class="ev"><li>channel=31aef497-6bd4-4297-a9fd-77b37db5d33d parent=98ade765-1cde-496a-a199-514fefeef592 leadChild=ce9bdf89-d809-42ab-83c3-9f845a96572d assignee=b33b7af7-1fb9-4a75-9bf2-76bc92c25c0d</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">mission-timescale-read</span> <span class="chk-t">时段数据读取（daq_query from/to/bucket）</span><ul class="ev"><li>window 300s · isError=false</li><li>sample: 数采数据查询结果(1 个节点):  ■ L1-DAQ-modbus-tcp ip16spej(熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 alarm,时间窗 2026-09-18T23:42 ~ 2026-09-18T23:47(降采样 1000ms)   样本 </li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">mission-governed-write</span> <span class="chk-t">受治理参数下发（1 写全开记录+判定）</span><ul class="ev"><li>iter1: SP→204.704 ✔ · record=opened+judged · PV≈204.7 ✔</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">mission-journal</span> <span class="chk-t">参数账本归因（Agent source 可追溯）</span><ul class="ev"><li>journal sample: 优化记录(4 条,含参数/判定/窗口): - opt-13ad3422 [judged-keep] L1-DCW-modbus-tcp ip16spej: 200 → 204.704,设定 23:47:17,判定 keep(agent:mission iter 1: PV=204.7 target=</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">mission-attained</span> <span class="chk-t">优化目标达成（|PV−204.704|≤0.75）</span><ul class="ev"><li>writes=1/3 · finalPV=204.6999969482422 · target=204.704 · tol=0.75</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">mission-closed</span> <span class="chk-t">任务收口（lead 派发→worker 剧本完成→父任务聚合）</span><ul class="ev"><li>terminalState=COMPLETED · writes=1 · reached=true</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P6</span> — Closed-loop optimization benchmark (multi-seed)
+          <span class="sum-n">6/6 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">twin-nodes</span> <span class="chk-t">cast-film twin node provisioning（执行器 + 传感器）</span><ul class="ev"><li>✔ actuator nodes 6/6：zone1-sp, zone2-sp, zone3-sp, screw-sp, linespeed-sp, diegap-sp</li><li>✔ sensor nodes 5/5：melt-temp, melt-pressure, film-thickness, defect-rate, gels-count</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">w-star</span> <span class="chk-t">离线最优 W*（ground truth）</span><ul class="ev"><li>W* = {&quot;zoneTemp&quot;:212.5,&quot;screw&quot;:55,&quot;lineSpeed&quot;:40,&quot;meltTemp&quot;:212.5,&quot;pressure&quot;:6.961,&quot;thickness&quot;:49.18,&quot;defect&quot;:0.055,&quot;score&quot;:89.894,&quot;computedAt&quot;:&quot;2026-09-18T15:46:41.161Z&quot;}</li><li>起始工况 {&quot;zone&quot;:200,&quot;screw&quot;:150,&quot;lineSpeed&quot;:95,&quot;dieGap&quot;:1}（J 显著低于 W*）</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">seed-42</span> <span class="chk-t">seed=42 闭环优化（J/J*=0.967）</span><ul class="ev"><li>预热 3.035s（熔体温度 203.267℃，达工艺窗 [195,225]）</li><li>iter0 起点：h=55.42μm defect=0.217% P=18.53MPa T=206.0℃ N=150 v=95.0 → J=68.74</li><li>iter1 下发 N=135 v=95 z=200 → h=48.98μm defect=0.533% P=16.43MPa T=202.9℃ → J=87.34 </li><li>iter2 下发 N=138 v=95 z=200 → h=49.63μm defect=0.733% P=16.75MPa T=201.2℃ → J=86.56 </li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">seed-43</span> <span class="chk-t">seed=43 闭环优化（J/J*=0.97）</span><ul class="ev"><li>预热 0.012s（熔体温度 201.16℃，达工艺窗 [195,225]）</li><li>iter0 起点：h=55.42μm defect=0.233% P=18.63MPa T=207.2℃ N=150 v=95.0 → J=68.69</li><li>iter1 下发 N=135 v=95 z=200 → h=49.57μm defect=0.500% P=16.52MPa T=202.8℃ → J=87.45 </li><li>iter2 下发 N=136 v=95 z=200 → h=49.17μm defect=0.667% P=16.45MPa T=201.4℃ → J=86.87 </li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">seed-44</span> <span class="chk-t">seed=44 闭环优化（J/J*=0.969）</span><ul class="ev"><li>预热 0.018s（熔体温度 201.2℃，达工艺窗 [195,225]）</li><li>iter0 起点：h=56.02μm defect=0.350% P=18.72MPa T=207.9℃ N=150 v=95.0 → J=65.02</li><li>iter1 下发 N=134 v=95 z=200 → h=48.47μm defect=0.517% P=16.33MPa T=203.6℃ → J=87.45 </li><li>iter2 下发 N=138 v=95 z=200 → h=50.37μm defect=0.683% P=16.75MPa T=201.8℃ → J=86.71 </li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">closedloop-aggregate</span> <span class="chk-t">闭环优化聚合（n=3）</span><ul class="ev"><li>J/J*：min 0.967 · mean 0.969 · max 0.97（J* = 89.894）</li><li>J start均值 67.484 → end均值 87.063</li><li>平均迭代 2  · 总写 6 · 越界rejected 0 · 收敛 3/3 · 平均墙钟 36.249s/seed</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P7</span> — Multimodal acquisition (vector/image)
+          <span class="sum-n">1/1 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">frames</span> <span class="chk-t">多形态数采（向量/图像帧）</span><ul class="ev"><li>✔ 向量轮廓帧 5 （47.026,46.841,47.738,47.213,47.839,46.938,48.328,47.783,47.865,48.743,47.834,47.888,48.168,48.355,48.707,48.637,48.76,49.05,48.905,49.658,49.472,49.26,49.639,49.153,49.531,49.751,49.146,49.568,49.785,49.267,49.356,49.928,49.702,4</li><li>✔ 图像帧 5 （96×32 image/png）</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P8</span> — Cross-scenario portability
+          <span class="sum-n">11/11 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">scenario-switch</span> <span class="chk-t">second plant scenario applied: film-line</span><ul class="ev"><li>devices 5 · protocols modbus-tcp, modbus-rtu, opcua, mqtt, http</li><li>信号域/动力学与第一场景（cast-film-physics）完全不同 —— 框架代码零改动</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">commission-1-modbus-tcp</span> <span class="chk-t">scenario[film-line] line 1 [modbus-tcp] provisioned</span><ul class="ev"><li>line=ln-858a5774 daq=dn-fbfba3f2 dcw=dw-6445a7fd</li><li>SP window [164.4, 195.6]</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">commission-2-opcua</span> <span class="chk-t">scenario[film-line] line 2 [opcua] provisioned</span><ul class="ev"><li>line=ln-9d196f03 daq=dn-b2b085d5 dcw=dw-43983107</li><li>SP window [164.4, 195.6]</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">commission-3-mqtt</span> <span class="chk-t">scenario[film-line] line 3 [mqtt] provisioned</span><ul class="ev"><li>line=ln-b8bb0e27 daq=dn-d5430921 dcw=dw-45abdc80</li><li>SP window [54, 66]</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">commission-4-modbus-rtu</span> <span class="chk-t">scenario[film-line] line 4 [modbus-rtu] provisioned (satellite DAQ)</span><ul class="ev"><li>line=ln-b8bb0e27 daq=dn-0bbff179 dcw=✘</li><li>(no SP export → satellite DAQ)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">commission-5-http</span> <span class="chk-t">scenario[film-line] line 5 [http] provisioned (satellite DAQ)</span><ul class="ev"><li>line=ln-b8bb0e27 daq=dn-62db58de dcw=✘</li><li>(no SP export → satellite DAQ)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">port-1-modbus-tcp</span> <span class="chk-t">scenario[film-line] line 1 [modbus-tcp] integration</span><ul class="ev"><li>✔ DAQ samples 7 pts (modbus-tcp real driver)</li><li>✔ governed write 186.24 → HTTP 200</li><li>readback deviation 0.04</li><li>✔ F5 out-of-window 3/3 rejected · legal write accepted (0 false block)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">port-2-opcua</span> <span class="chk-t">scenario[film-line] line 2 [opcua] integration</span><ul class="ev"><li>✔ DAQ samples 11 pts (opcua real driver)</li><li>✔ governed write 186.24 → HTTP 200</li><li>readback deviation 0</li><li>✔ F5 out-of-window 3/3 rejected · legal write accepted (0 false block)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">port-3-mqtt</span> <span class="chk-t">scenario[film-line] line 3 [mqtt] integration</span><ul class="ev"><li>✔ DAQ samples 11 pts (mqtt real driver)</li><li>✔ governed write 62.4 → HTTP 200</li><li>✔ F5 out-of-window 3/3 rejected · legal write accepted (0 false block)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">port-4-modbus-rtu</span> <span class="chk-t">scenario[film-line] line 4 [modbus-rtu] integration</span><ul class="ev"><li>✔ DAQ samples 11 pts (modbus-rtu real driver)</li><li>no SP write point; write/governance sub-checks skipped (satellite DAQ)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">port-5-http</span> <span class="chk-t">scenario[film-line] line 5 [http] integration</span><ul class="ev"><li>✔ DAQ samples 11 pts (http real driver)</li><li>no SP write point; write/governance sub-checks skipped (satellite DAQ)</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P8b</span> — System backstop drill (bounded autonomy)
+          <span class="sum-n">5/5 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">cleanup</span> <span class="chk-t">遗留 open 记录清场（关闭 1/1 条）</span><ul class="ev"><li>records closed: 1/1</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">open-record</span> <span class="chk-t">优化记录 opt-63336533 已开（基线 186.1999969482422 → 176.88，auto 策略）</span><ul class="ev"><li>下发成功:L1-DCW-modbus-tcp ip16spejp8(烘箱温度设定)设定 176.88℃ → PLC 原始值 176.88;回读 176.89999389648438℃一致。当前活动配方「Integrated工艺1 ip16spejp8」。写入并回读一致:176.8</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">freeze</span> <span class="chk-t">DAQ temp-pv 已冻结至 150（窗外，窗 [164.4, 195.6]）</span><ul class="ev"><li>device=dev-c986b5f9 signal=temp-pv</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">backstop-verdict</span> <span class="chk-t">系统兜底判定回退 + 自动恢复基线</span><ul class="ev"><li>判定 by=system verdict=rollback · 时延 120.175s（环境类，节拍决定）</li><li>PLC 值 186.1999969482422 → 期望基线 186.1999969482422（±0.75） ✔</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">restore</span> <span class="chk-t">过程量解冻 + 第一场景恢复: cast-film-physics</span><ul class="ev"><li>rig left as found</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P9</span> — Platform subsystems (team / memory / registry)
+          <span class="sum-n">3/3 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">team-dispatch</span> <span class="chk-t">团队调度（lead 派发 → worker 完成）</span><ul class="ev"><li>终态 COMPLETED · assignee=21b1e31d-2e83-4447-b523-95e730f1204b（lead 认领父任务） · 子任务派发给 worker: ✔</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">team-memory</span> <span class="chk-t">团队记忆写入 + dedupKey 幂等</span><ul class="ev"><li>POST×2 status 200/200 → 列表中匹配 1 条（期望 1）</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">harness-registry</span> <span class="chk-t">引擎注册表枚举 + 可用性探测</span><ul class="ev"><li>注册 14 引擎（期望 ≥14） · 环境可用 14 · 覆盖 mock/RPC/SDK/CLI 族</li></ul></li></ul>
+      </details>
+      <details >
+        <summary><span class="mono">P10</span> — Biax (BOPET) full-line mission (probe → provision → multi-node AgentTeam closed loop)
+          <span class="sum-n">10/10 pass</span></summary>
+        <ul class="chks"><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-ensure</span> <span class="chk-t">节点探测补建(9 建缺失 / 0 修复 / 0 原样)</span><ul class="ev"><li>devices 9/9 · signals 49(SP 30 + PV 19) · 协议 opcua/modbus-tcp/modbus-rtu/mqtt/http</li><li>描述缺失 0 · 物理引擎 kind=biax thickness=28.02 μm</li><li>缺失设备: biax-dryer-opcua, biax-extruder-mbtcp, biax-pump-rtu, biax-casting-mbtcp, biax-mdo-mbtcp, biax-tdo-opcua, biax-gauge-mqtt, biax-inspect-http, biax-winder-mbtcp · 漂移修复: (无)</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-provision</span> <span class="chk-t">五协议多节点建线(DCW 30 + DAQ 19,驱动实测 9/9)</span><ul class="ev"><li>line=ln-ca5a8bb2 recipe=rc-19d7963c started=true</li><li>driver tests: dryer✔ extruder✔ pump✔ casting✔ mdo✔ tdo✔ gauge✔ inspect✔ winder✔</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-sampling</span> <span class="chk-t">测厚仪真实链路采样(1 点)</span><ul class="ev"><li>daq=dn-27464b0e · samples=1</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-agent-cards</span> <span class="chk-t">Agent 语义卡含双拉工艺描述(semantics 贯通)</span><ul class="ev"><li>语义卡长度 22561 · 关键词命中 铸片辊速度/横向拉伸比/收卷张力</li><li>sample: #### ◆ L1-DCW-modbus-tcp ip16spej [id=dw-754b2567] - 物理量: 烘箱温度设定,单位 ℃,精度 1 位小数 - 工艺语义: 模拟器设备「挤出主机PLC(Modbus TCP)」的 加热区1SP（真实 modbus-tcp 写控） - 安全量程: [120, 260] ℃</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-mission-board</span> <span class="chk-t">任务板:双拉优化任务下达并由 lead 派发</span><ul class="ev"><li>parent task + lead child: ✔</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-mission-multinode</span> <span class="chk-t">多节点受治理写(3 个执行节点 / 4 写)</span><ul class="ev"><li>1. task board: channel=a85ff20e-cf36-4e2c-a4a4-11a9fd9645da parent=518b109a-9121-443a-9dc5-b81618b4a044 leadChild=1f1c7111-996c-48cc-b245-ef13fb4add68</li><li>2. daq_query(测厚仪, from/to/bucket): isError=false · tail=[3.5,1.6]</li><li>3. initial thickness=28.00 μm(目标 25±0.7)</li><li>iter1: cast-spd-sp 32→33.7 ✔ record=opt-9fe5e8… · thickness→26.66μm · judge=keep✔</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-mission-attained</span> <span class="chk-t">厚度目标达成(|PV−25.0|≤0.7μm,final=25.40)</span><ul class="ev"><li>writes=4/6 · distinctKnobs=3 · final=25.40μm</li><li>        meltTemp=291.4℃(安全窗 268~300)</li><li>4. journal(铸速节点)归因 Agent: ✔ · 优化记录(2 条,含参数/判定/窗口): - opt-c8ca5153 [judged-keep] 铸片辊速度SP·ip16spej: 33.7 → 34.3,设定 23:54:19,判定 keep(agent:biax mission i</li><li>5. outcome: writes=4 distinctKnobs=3 final=25.40μm attained=true</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-mission-journal</span> <span class="chk-t">参数账本 Agent 归因(铸速节点)</span></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-mission-closed</span> <span class="chk-t">任务收口(父任务 COMPLETED)</span><ul class="ev"><li>terminal=COMPLETED</li></ul></li><li class="chk"><span class="mark ok">✔</span> <span class="chk-id mono">biax-restore</span> <span class="chk-t">双拉线停止 + 第一场景恢复: cast-film-physics</span><ul class="ev"><li>rig left as found</li></ul></li></ul>
+      </details>
+
+  <h2><span class="no">06</span>Execution artifacts (Agent-team trajectory archive)</h2>
+  <p class="lede">Optimization missions and debug loops are archived verbatim beside this report — the AgentTeam decision trajectory is reproducible evidence, not a summary.</p>
+  <table class="grid">
+    <thead><tr><th>Artifact</th><th class="num">Size</th><th>Contents</th></tr></thead>
+    <tbody>
+          <tr><td class="mono">agentteam-mission.log</td>
+          <td class="num">1.0 KB</td>
+          <td class="dim">AgentTeam optimization mission — full task-board trajectory</td></tr>
+          <tr><td class="mono">agentteam-biax.log</td>
+          <td class="num">1.6 KB</td>
+          <td class="dim">AgentTeam biax multi-node mission — full trajectory</td></tr>
+          <tr><td class="mono">metrics.csv</td>
+          <td class="num">2.8 KB</td>
+          <td class="dim">Quantitative metrics registry (flat CSV)</td></tr>
+          <tr><td class="mono">run.json</td>
+          <td class="num">57.7 KB</td>
+          <td class="dim">Full machine-readable results (checks, phases, evidence, KPIs)</td></tr>
+          <tr><td class="mono">summary.json</td>
+          <td class="num">16.0 KB</td>
+          <td class="dim">Verdict + KPI + per-line summary (compare/aggregate input)</td></tr></tbody>
+  </table>
+
+  <h2><span class="no">07</span>Fingerprint &amp; reproduction</h2>
+  <div class="fingerprint">
+    <div class="row"><div class="fk">Harness hash</div><div class="fv">c1a4ecfa830fb43e (sha256 over 9 checker sources)</div></div>
+    <div class="row"><div class="fk">Git commit</div><div class="fv">48d09ac</div></div>
+    <div class="row"><div class="fk">Runtime</div><div class="fv">v24.19.0 · win32 x64</div></div>
+    <div class="row"><div class="fk">Platform / simulator</div><div class="fv">http://127.0.0.1:3005 · http://127.0.0.1:4010</div></div>
+    <div class="row"><div class="fk">Tool harness</div><div class="fv">opencode (deterministic, no LLM) · agent: (none)</div></div>
+    <div class="repro">node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3</div>
+  </div>
+
+  <div class="foot">
+    <div>AW-IndustrialBench · integrated pipeline · every number in this sheet is machine-produced from the archived run.json</div>
+    <div class="mono">20260918154638-1h38</div>
+  </div>
+</div>
+</body>
+</html>

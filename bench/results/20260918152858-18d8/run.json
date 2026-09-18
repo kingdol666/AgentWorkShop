@@ -1,0 +1,166 @@
+{
+  "env": {
+    "runId": "20260918152858-18d8",
+    "tier": "static",
+    "seed": 42,
+    "base": "http://127.0.0.1:3005",
+    "startedAt": "2026-09-18T15:28:58.183Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "configHash": "3214f90f5b9d795c",
+    "harnessHash": "6be5707ef065ac36",
+    "gitCommit": "48d09ac",
+    "harnessFiles": 13,
+    "total": {
+      "got": 6,
+      "w": 6,
+      "pass": 3,
+      "fail": 0,
+      "warn": 0,
+      "skip": 0,
+      "overall": 1
+    }
+  },
+  "dims": [
+    {
+      "id": "D1",
+      "name": "数据采集面",
+      "score": 1,
+      "checks": 1
+    },
+    {
+      "id": "D2",
+      "name": "写控治理面",
+      "score": 1,
+      "checks": 2
+    },
+    {
+      "id": "D3",
+      "name": "智能体面",
+      "score": 1,
+      "checks": 1
+    },
+    {
+      "id": "D6",
+      "name": "互操作面",
+      "score": 1,
+      "checks": 1
+    },
+    {
+      "id": "D7",
+      "name": "审计归因面",
+      "score": 1,
+      "checks": 1
+    },
+    {
+      "id": "D0",
+      "name": "论文-代码一致性",
+      "score": 1,
+      "checks": 1
+    }
+  ],
+  "results": [
+    {
+      "rep": 0,
+      "id": "s1-inventory",
+      "title": "能力清单核查（路由/引擎/工具/表/驱动）",
+      "tier": "static",
+      "dims": [
+        "D1",
+        "D3",
+        "D6"
+      ],
+      "weight": 2,
+      "requires": [],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "subchecks": 9,
+        "ok": 9,
+        "routes": 214,
+        "mcpTools": 25,
+        "engines": 14,
+        "tables": 22,
+        "tools": 10
+      },
+      "evidence": [
+        "✔ REST 路由文件 ≥ 200 — 实际 214",
+        "✔ MCP 工具 ≥ 25 — 实际 25",
+        "✔ Harness 引擎 = 14 — 找到 14/14",
+        "✔ SQLite 表 ≥ 20 — 实际 22",
+        "✔ FTS5 记忆索引 — agent_memories_fts",
+        "✔ 协议驱动 = 5 族 (modbus-tcp/rtu/opcua/mqtt/http) — 找到 modbus, rtu, opcua, mqtt, http",
+        "✔ 治理工具面 ≥ 10 — 10/10",
+        "✔ audit_log 14 列 schema — ops.repo.ts",
+        "✔ 审计 8 类事件枚举 — kind ∈ write/manual/alarm/…"
+      ],
+      "note": "全部能力组件在源码中核实"
+    },
+    {
+      "rep": 0,
+      "id": "s2-paper-consistency",
+      "title": "论文-代码常量一致性",
+      "tier": "static",
+      "dims": [
+        "D0",
+        "D2"
+      ],
+      "weight": 2,
+      "requires": [],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "anchors": 20,
+        "found": 20,
+        "missing": 0
+      },
+      "evidence": [
+        "✔ sweep 并发配额 64（server/services/workshop/daq/daq-controller.ts · 论文 §III-B2）",
+        "✔ sweep 周期 250ms（server/services/workshop/daq/daq-controller.ts · 论文 §III-B2）",
+        "✔ 回退重检周期 30s（server/services/workshop/dcw/recipe-rollback-manager.ts · 论文 §IV-D）",
+        "✔ 自动回退链上限 K=2（server/services/workshop/dcw/recipe-rollback-manager.ts · 论文 §IV-D / 不变式 I3）",
+        "✔ 越限判定阈值 B=3（server/services/workshop/dcw/recipe-rollback-manager.ts · 论文 §IV-D）",
+        "✔ 记忆 RRF k=60（server/services/workshop/runtime/memory.ts · 论文 §V-A）",
+        "✔ 记忆 MMR λ=0.7（server/services/workshop/runtime/memory.ts · 论文 §V-A）",
+        "✔ 记忆权重 0.5/0.3/0.2（server/services/workshop/runtime/memory.ts · 论文 §V-A 式(3)）",
+        "✔ 上下文压缩阈值 70%（app/config/schema.ts · 论文 §V-A）",
+        "✔ 记录过期接管 30min（app/config/schema.ts · 论文 §IV-B）",
+        "✔ WS 推送上限 60s（server/services/workshop/daq/daq-runtime.ts · 论文 §III-B1）",
+        "✔ 报警滞回 2% 量程（server/services/workshop/daq/daq-node.ts · 论文 §III-B3）",
+        "✔ 报警 warn 带 8% 量程（server/services/workshop/daq/daq-node.ts · 论文 §III-B3）",
+        "✔ 去抖 3 连续帧（server/services/workshop/daq/daq-node.ts · 论文 §III-B3）",
+        "✔ 写控账本条目类型（server/services/workshop/dcw/dcw-controller.ts · 论文 §IV-B 阶段5）",
+        "✔ 回读死区公式（server/services/workshop/dcw/dcw-runtime.ts · 论文 §IV 式(2)）",
+        "✔ AEP 协议版本 v1（shared/workshop-protocol.ts · 论文 §III-E）",
+        "✔ 调度空闲退避上限 8s（server/services/workshop/runtime/scheduler-loop.ts · 论文 §V-B）",
+        "✔ 数控网关扫描周期 500ms（server/services/workshop/dcw/dcw-controller.ts · 论文 §III）",
+        "✔ 停滞看门狗 300s（server/services/workshop/runtime/scheduler-loop.ts · 论文 §V-B）"
+      ],
+      "note": "论文全部常量锚点在源码中核实"
+    },
+    {
+      "rep": 0,
+      "id": "s3-governance-pipeline",
+      "title": "治理管线阶段顺序锚定",
+      "tier": "static",
+      "dims": [
+        "D2",
+        "D7"
+      ],
+      "weight": 2,
+      "requires": [],
+      "status": "pass",
+      "score": 1,
+      "metrics": {
+        "chainsOk": 2,
+        "chainTotal": 2
+      },
+      "evidence": [
+        "✔ write() 编排链顺序成立: beforeWrite(护栏) → assertWithinLimits(四层联锁) → rt.write(执行) → afterWrite(闭环入册) → dcw.write.(审计)",
+        "✔ executeWrite() 执行链顺序成立: inverseTransform(编码) → readback(回读) → DcwWriteHistoryEntry(账本)",
+        "✔ 回读死区 writeTolerance() 存在（论文式(2)）"
+      ],
+      "note": "治理管线六阶段结构与顺序核实（Algorithm 1 的源码对应物）"
+    }
+  ]
+}

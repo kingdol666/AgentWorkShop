@@ -96,6 +96,10 @@ export async function ensureBiaxLine() {
   // 物理引擎热态装载(绑定指向上面确保存在的节点;warm=true → 标称工况直起,免冷态预热)
   const pc = await simApi('PUT', '/api/plant/config', { plantModel: bp.plantModel, warm: true })
   if (pc.status >= 400) throw new Error(`biax 物理引擎装载失败: ${pc.message}`)
+  // 确定性根修:cast-film 预设的 feedDriftPerMin(0.15,gauss 随机游走)会被引擎继承,
+  // 运行时长越长越把 1 区温度随机走出高弹态窗口→破膜(P10 成败交替的根因)。
+  // 双拉基准窗口内显式清零随机漂移,保留标称倍率 heaterDecay=1。
+  await simApi('POST', '/api/plant/reset', { warm: true, disturbances: { heaterDecay: 1, feedDriftPerMin: 0 } })
   await sleep(1500) // 首拍覆写绑定信号
 
   // 终验:节点/信号/SP/描述齐备,plant 运行且厚度有限
@@ -293,18 +297,23 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
   out.thickness = thickness
   out.traj.push({ iter: 0, knob: null, node: null, from: null, to: null, record: null, thickness })
   ev.push(`3. initial thickness=${thickness != null ? thickness.toFixed(2) : '?'} μm(目标 ${THICKNESS_TARGET}±${THICKNESS_TOL})`)
-  // (2.5) 起跑工况复位门:双拉引擎经多轮任务跑热后状态可能漂移(实测 27.95μm 起步→断膜级
-  // 崩塌,配方基线恢复不可逆)。起跑读数越出健康带(|PV−目标|>3×tol)→ warm 复位到标称工况,
-  // 保证同 seed 确定性起点 —— 环境残留不属于被测治理面;健康带内零行为变化。
-  if (thickness == null || Math.abs(thickness - THICKNESS_TARGET) > THICKNESS_TOL * 3) {
-    const rs = await plantReset({ warm: true })
-    const resetOk = rs.status != null ? rs.status < 400 : true
-    ev.push(`2.5 plant reset(warm): 起跑读数 ${thickness != null ? thickness.toFixed(2) : '?'}μm 越出健康带(±${(THICKNESS_TOL * 3).toFixed(1)}) → 复位标称 ${resetOk ? '✔' : `✘ ${rs.message ?? ''}`}`)
-    await sleep(4000) // 引擎首拍覆写 + 厚度代数式响应起稳
-    thickness = await readPvMean(api, thickDaq)
+  // (2.5) 起跑健康门:post-provision 瞬态或残留扰动可能压破薄膜(读数 <10μm = 断膜量级)。
+  // 偏离目标(如蓝图稳态 28μm)是任务的合法起点,交给闭环写收敛;只有「断膜」才恢复:
+  // warm 复位(已零漂移)+ 配方重下,并等待 ≥运输滞后(读数回 >15μm 或 60s),至多 2 次。
+  let rebases = 0
+  while (thickness != null && thickness < 10 && rebases < 2) {
+    rebases++
+    const rs = await plantReset({ warm: true, disturbances: { heaterDecay: 1, feedDriftPerMin: 0 } })
+    ev.push(`2.5 断膜恢复#${rebases}: warm 复位(${rs.status != null && rs.status < 400 ? '✔' : `✘ ${rs.message ?? ''}`}) + 配方基线重下`)
+    await api.call('POST', `/api/workshop/dcw/recipes/${line.ids.recipe}/apply`, {}).catch(() => {})
+    for (let w = 0; w < 12; w++) { // 运输滞后 12m+:每 5s 一拍,至多 60s 等膜重新成形
+      await sleep(5000)
+      thickness = await readPvMean(api, thickDaq)
+      if (thickness != null && thickness >= 15) break
+    }
     out.thickness = thickness
-    out.traj.push({ iter: 0, knob: null, node: null, from: null, to: null, record: null, thickness, note: 'post-reset baseline' })
-    ev.push(`2.5 复位后基线: ${thickness != null ? thickness.toFixed(2) : '?'} μm`)
+    out.traj.push({ iter: 0, knob: null, node: null, from: null, to: null, record: null, thickness, note: `post-rebase#${rebases}` })
+    ev.push(`2.5 恢复后基线: ${thickness != null ? thickness.toFixed(2) : '?'} μm`)
   }
   for (let i = 0; i < maxRounds && !(thickness != null && Math.abs(thickness - THICKNESS_TARGET) <= THICKNESS_TOL); i++) {
     const knob = KNOBS[i % KNOBS.length]
