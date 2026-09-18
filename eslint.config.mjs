@@ -37,7 +37,7 @@ export default withNuxt(
   // 其运行结果已按冻结基线出 REPRODUCIBLE 判定——未用变量等卫生问题刻意不修,
   // 避免为过 lint 而改动已验证的证据代码(改一次就要全量重跑重验)。
   {
-    files: ['bench/**/*.{mjs,ts}', 'scripts/capture-walkthrough.mjs', 'scripts/render-walkthrough-figure.mjs'],
+    files: ['bench/**/*.{mjs,ts}', 'scripts/capture-walkthrough.mjs', 'scripts/render-walkthrough-figure.mjs', 'scripts/ui/e2e-interactive.mjs'],
     rules: {
       '@stylistic/max-statements-per-line': 'off',
       '@stylistic/arrow-parens': 'off',
