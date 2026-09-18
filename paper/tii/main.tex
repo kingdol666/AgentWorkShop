@@ -65,7 +65,26 @@ for Industrial Supervisory Control}
 \maketitle
 
 \begin{abstract}
-Integrating language-model agents into industrial supervision requires more than a connection to an actuator: device semantics, team responsibilities, operating recipes, and execution records must remain associated throughout a control task. This paper presents AgentWorkShop, a configuration-driven framework that couples multi-agent orchestration with industrial acquisition and setpoint execution. Its core services share a logical node and production-run model; external agent engines and storage services remain separate deployment components. Explicit member-to-node bindings determine the tools available to an agent. Agent-issued setpoints pass through mode-dependent approval and execution checks, with readback where supported and attributable operation records. A separate monitor can request bounded compensation; neither an agent verdict nor register readback alone establishes process improvement. The implementation supports five protocol drivers and a registry of fourteen agent engines. Evaluation uses two software plant scenarios, real protocol transports, targeted lifecycle probes, an agent-team optimization mission, and a real-LLM closed-loop execution over Modbus TCP, plus a four-arm mock-driver ablation. The two scenarios reject 24/24 and 9/9 predefined out-of-constraint write attempts, respectively; these are suite-coverage results, not an estimated industrial failure rate. In the cited three-seed run, a fixed non-LLM controller reaches 97.0--97.2\,\% of an offline grid-search reference. An agent-team mission attains its setpoint objective through the task board and governed tools in one write, a real-LLM agent executes a prescribed read--write--verify--judge cycle on a live line with adaptive re-observation and an evidence-cited verdict, and a goal-driven run has the model derive its own setpoints iteratively until a stated thickness target is met and persist the winning recipe; these are single-run capability tests, not optimization-quality comparisons. Four exploratory LLM campaigns expose observation and scoring limitations and are reported separately rather than as a controlled comparison. The evidence supports reusable supervisory integration within the tested scenarios, while exposing the boundaries between authorization, execution, and process-level validation.
+Bringing language-model agents into industrial supervisory control requires
+associating the semantics, authority, and history of each command across
+heterogeneous devices, multiple agents, and changing operating recipes. We
+present \system{}, a node-native framework in which explicit member-to-node
+bindings determine each agent's tools, source-dependent checks govern
+agent-issued writes, and attributable records with an independent backstop
+keep authorization, device execution, and process judgment distinguishable.
+The implementation covers five protocol drivers and registers fourteen agent
+engines as an inventory rather than evaluated controllers. Evidence comes from
+three simulated production scenarios over real software protocol transports,
+including a 49-signal biaxial-film line. The latest integrated run passes 75 of
+75 checks with no warnings or failures. Its four writable protocol fixtures
+reject 24 of 24 predefined out-of-constraint probes and block none of four
+designated legal writes; a second scenario rejects 9 of 9 hard-range probes
+without false blocks. A fixed non-LLM controller over three seeds reaches
+0.968--0.972 of an offline grid-search reference. A deployed AgentTeam mission
+then reduces biaxial-film thickness from 28.10 to 25.68\,$\mu$m, inside a
+$25.0\pm0.7\,\mu$m target, using three governed writes on three actuator
+families. These are suite-coverage and single-run capability results on
+simulated plants; they do not establish physical safety or LLM superiority.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -82,7 +101,7 @@ Industrial informatics, multi-agent systems, supervisory control, human-in-the-l
 \input{sections/discussion}
 
 % Balance the final reference page at a bibliography item boundary.
-\IEEEtriggeratref{21}
+% page balancing: adjust \IEEEtriggeratref if the last page needs itIEEEtriggeratref{24}
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
 

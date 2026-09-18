@@ -1,8 +1,15 @@
 // Iteration-2 补丁: 真正落盘 4 条文献+定位句(上轮因脚本中断未写入)。幂等。跑完即删。
 import { readFileSync, writeFileSync } from 'node:fs'
+
 const rd = p => readFileSync(p, 'utf8')
 const wr = (p, s) => writeFileSync(p, s)
-const rep = (s, a, b, tag) => { if (!s.includes(a)) { console.log('SKIP:', tag); return s } return s.replace(a, b) }
+const rep = (s, a, b, tag) => {
+  if (!s.includes(a)) {
+    console.log('SKIP:', tag)
+    return s
+  }
+  return s.replace(a, b)
+}
 const log = []
 
 // 1) refs.bib +4(IEC 62443 / CBF / shielding / Sheridan)
@@ -28,7 +35,7 @@ const log = []
 }
 
 @inproceedings{alshiekh2018shielding,
-  author    = {Alshiekh, Mohammed and Bloem, Roderick and Ehlers, R{\"u}diger and K{\"o}nighofer, Bettina and Niekum, Scott and Topcu, Ufuk},
+  author    = {Alshiekh, Mohammed and Bloem, Roderick and Ehlers, R{"u}diger and K{"o}nighofer, Bettina and Niekum, Scott and Topcu, Ufuk},
   title     = {Safe Reinforcement Learning via Shielding},
   booktitle = {Proc. AAAI Conference on Artificial Intelligence},
   year      = {2018}
@@ -50,15 +57,15 @@ const log = []
 {
   let s = rd('sections/related.tex')
   if (!s.includes('ames2017cbf')) {
-    s = rep(s, "Hard constraints on actuator values have their own enforcement literature---control barrier functions \\cite{ames2017cbf} and shielding for learned policies \\cite{alshiekh2018shielding} bound actions by construction; our interlock plays this role at the agent tool boundary, and safe Bayesian optimization \\cite{sui2015safe} is the optional upgrade of the proposal step. Approval semantics likewise have four decades of levels-of-automation theory behind them \\cite{sheridan1978}; E8 grounds its approval-gate metrics in that line.",
+    s = rep(s, 'Hard constraints on actuator values have their own enforcement literature---control barrier functions \\cite{ames2017cbf} and shielding for learned policies \\cite{alshiekh2018shielding} bound actions by construction; our interlock plays this role at the agent tool boundary, and safe Bayesian optimization \\cite{sui2015safe} is the optional upgrade of the proposal step. Approval semantics likewise have four decades of levels-of-automation theory behind them \\cite{sheridan1978}; E8 grounds its approval-gate metrics in that line.',
       'PLACEHOLDER-NEVER-MATCHES', 'related-already-there')
     // 上面的 rep 只用于幂等;真正插入:
-    s = rep(s, "Approval semantics likewise have four decades",
+    s = rep(s, 'Approval semantics likewise have four decades',
       'Approval semantics likewise have four decades', 'related-marker-check')
-    const anchor = "and safe Bayesian optimization \\cite{sui2015safe} is the optional upgrade of the proposal step. Approval semantics likewise"
+    const anchor = 'and safe Bayesian optimization \\cite{sui2015safe} is the optional upgrade of the proposal step. Approval semantics likewise'
     if (!s.includes(anchor)) {
-      const a2 = "and safe Bayesian optimization \\cite{sui2015safe} is the optional upgrade of the proposal step."
-      s = rep(s, a2, a2 + " Hard enforcement of actuator values has its own control-theoretic line---control barrier functions \\cite{ames2017cbf} and shielding of learned policies \\cite{alshiekh2018shielding} bound actions by construction; our interlock plays the equivalent role at the agent tool boundary. Approval semantics likewise rest on four decades of levels-of-automation research \\cite{sheridan1978}, which grounds the approval-gate metrics of Sec.~VI.", 'related-insert')
+      const a2 = 'and safe Bayesian optimization \\cite{sui2015safe} is the optional upgrade of the proposal step.'
+      s = rep(s, a2, a2 + ' Hard enforcement of actuator values has its own control-theoretic line---control barrier functions \\cite{ames2017cbf} and shielding of learned policies \\cite{alshiekh2018shielding} bound actions by construction; our interlock plays the equivalent role at the agent tool boundary. Approval semantics likewise rest on four decades of levels-of-automation research \\cite{sheridan1978}, which grounds the approval-gate metrics of Sec.~VI.', 'related-insert')
     }
     wr('sections/related.tex', s)
   }

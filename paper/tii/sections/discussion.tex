@@ -1,18 +1,52 @@
 \section{Discussion and Limitations}
 \label{sec:limits}
 \subsection{What the Integration Model Establishes}
-The useful unit of reuse is the association between a deployed member, a node capability, and a production run. It lets the same task use engineering quantities across different drivers while leaving execution and compensation attributable. The two-scenario tests support reconfiguration within the existing driver and scenario vocabulary; they do not measure the engineering effort to author a new scenario, validate its recipe windows, or integrate a new protocol. Likewise, fourteen registered engines describe an interface inventory, not fourteen independently evaluated controllers.
+The useful unit of reuse is the deployed member--node
+capability--production-run association: it lets one task use engineering
+quantities across drivers while execution and compensation stay attributable.
+The latest run provisions four writable protocol lines, one satellite, and a
+separate film-line scenario, and exposes a 49-signal biaxial-film line. These
+results support configuration reuse within the existing driver and scenario
+vocabulary; they do not measure the effort to author a scenario, validate its
+windows, or integrate a new protocol.
 
-Separating proposal, admission, and disposition prevents several misleading success criteria. A recorded \texttt{keep} is the agent's judgment, a matching readback is a driver-level observation, and sustained process convergence is a separate experimental outcome. The process-freeze drill demonstrates why these layers cannot be collapsed. The LLM case studies further show that observability and scoring must be checked before decision quality can be compared: neither a task-completion string nor a single simulator-truth sample repairs a missing process window.
+Separating proposal, admission, and disposition prevents several misleading success criteria: a recorded \texttt{keep} is the agent's judgment, a matching readback is a driver-level observation, and sustained process convergence is a separate experimental outcome. The LLM case studies further show that observability and scoring must be checked before decision quality is compared.
+
+The framework's mechanism density is also unevenly placed. The governed-write
+path concentrates range and recipe-window checks, ownership, cooldown, and
+readback. The latest deterministic run exercises these mechanisms cleanly. The
+historical real-LLM campaigns instead exposed observation and scoring failures:
+writes executed as designed, but some judgments used stale or constant windows.
+Observation-quality gating, including freshness service levels and rejection of
+stale or constant windows before judging, remains a framework-level extension.
 
 \subsection{Implementation and Evidence Boundaries}
-The current design does not make asynchronous device I/O atomic with concurrent recipe changes. Recipe application and hold heartbeats also have different checks from agent-tool calls, and multi-node recovery can partly fail. Journals carry attribution but provide no claimed cryptographic integrity or guaranteed durable-before-actuation commit. The small-step policy is guidance, not a hard limiter. Cross-agent in-window oscillations, shared-node contention over longer horizons, and availability during storage failure require further evaluation. Batch-gated acquisition also leaves a monitoring gap between runs. These limits constrain the claim to the described supervisory paths.
+Asynchronous device I/O is not atomic with concurrent recipe changes, and multi-node recovery can partly fail. Cross-agent in-window oscillations, shared-node contention over longer horizons, and availability during storage failure require further evaluation; batch-gated acquisition leaves a monitoring gap between runs.
 
-Approval reduces permitted automation but does not establish comprehensive endpoint security, protect against a privileged compromised harness, or validate the approved engineering intent. Least-privilege deployment and industrial network separation remain separate responsibilities \cite{iec62443,nist80082}; the implementation is not a certified safety instrumented function \cite{iec61511}. The present evidence includes no physical hardware campaign, operator workload study, cross-engine comparison, or statistical equivalence test. Missing historical raw files and the integrated comparison-tool defect limit reproduction claims as detailed in Sec.~\ref{sec:repro}. Repairing these evidence paths, aligning process observations with simulator truth, and evaluating concurrent configuration changes are prerequisites to stronger deployment claims, not results of this paper.
+Approval reduces permitted automation but does not establish endpoint security, protect against a privileged compromised harness, or validate approved engineering intent; least-privilege deployment and network separation remain separate responsibilities \cite{iec62443,nist80082}. Governed writes are defense-in-depth at the basic process control system layer, not a certified safety instrumented function: their safety argument presupposes independent regulatory limits and an independent protection layer in the IEC 61511 sense \cite{iec61511}, and the platform implements no detection or degraded-mode response when such layers are absent or bypassed---an integrator and operator responsibility. Manual-binding approval workload grows with the frequency of agent proposals, and approval fatigue is a documented risk \cite{parasuraman2000model,bainbridge1983ironies,parasuramanmanzey2010complacency}; policy granularity over roles, batch phases, and magnitudes is a design extension point, not a present capability. The present evidence includes no physical hardware campaign, operator workload study, cross-engine comparison, or statistical equivalence test; Sec.~\ref{sec:repro}'s archive and comparator boundaries bound replication claims. Repairing these evidence paths, aligning observations with simulator truth, and testing concurrent configuration changes are prerequisites to stronger claims.
+
+Deployment in a real plant carries prerequisites this paper does not discharge: authoring and validating semantic cards and recipe windows is operator-side engineering under management of change, and its effort is unmeasured. Placement is an integration decision: where the core and its stores sit across the IT/OT hierarchy, and how IEC 62443 zones and conduits are assigned, is the integrator's \cite{iec62443}. A deployment design must also answer the platform's failure modes---approval channel, alarm paths, open records after a core crash---and pin engine model versions where regulated industries require reproducible behavior. The single-host Windows capacity boundary is likewise untested.
 
 \section{Conclusion}
 \label{sec:conclusion}
-\system{} integrates multi-agent coordination with heterogeneous industrial supervision through explicit node capabilities and shared production context. The architecture explains how connection, team deployment, acquisition, source-dependent execution checks, recipe operations, and human decisions cooperate without treating them as one atomic control function. Existing simulation and protocol experiments demonstrate the tested integration paths; fixed-controller trajectories and exploratory LLM runs answer different questions and are reported separately. The framework provides an inspectable foundation for supervised industrial agent applications, while physical validation, stronger execution consistency, and controlled agent comparisons remain open. Platform and benchmark sources are distributed under the repository's stated license; the simulator is maintained separately.\footnote{Artifact repositories: \url{https://github.com/kingdol666/AgentWorkShop} and \url{https://github.com/kingdol666/plc-node-simulator}. A frozen anonymous artifact and archival identifier must be prepared for the applicable submission stage.}
+\system{} integrates multi-agent coordination with heterogeneous industrial
+supervision through explicit node capabilities and shared production context.
+The architecture explains how connection, team deployment, acquisition,
+source-dependent execution checks, recipe operations, and human decisions
+cooperate without becoming one atomic control function. The latest run
+provides three complementary results: four protocol fixtures reject all
+predefined out-of-constraint writes with no legal-write blocks; a fixed
+controller converges in all three seeds within 0.968--0.972 of the archived
+grid reference; and an AgentTeam mission uses three governed writes on three
+actuator families to bring biaxial-film thickness from 28.10 to
+25.68\,$\mu$m. These results demonstrate the tested integration and governance
+paths, not physical safety, model superiority, or general plant performance.
+Physical validation, stronger execution consistency, controlled agent
+comparisons, and observation-quality gating remain open. Platform and benchmark
+sources use the repository's license; the simulator is maintained separately.
+\footnote{Anonymized snapshots of the platform, benchmark card, and simulator
+accompany the submission; repository identifiers will be disclosed on
+acceptance.}
 
 \section*{Disclosure}
 AI-based assistants supported manuscript editing, code-assisted evidence checking, and figure preparation under author direction. The authors remain responsible for reviewing the claims, data, and final submission.

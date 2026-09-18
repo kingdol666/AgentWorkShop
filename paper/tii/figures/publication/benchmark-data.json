@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "revision_date": "2026-09-17",
-  "provenance_note": "Archive-only extraction. No experiment reruns. Figure 6 supersedes historical nine-repetition figure with the complete frozen baseline: three repetitions per arm. No inference of latency equivalence.",
+  "revision_date": "2026-09-18",
+  "provenance_note": "Archive-only extraction. No experiment reruns. Figure 6 supersedes historical nine-repetition figure with the complete frozen baseline: three repetitions per arm. No inference of latency equivalence. Figure 8 added 2026-09-18 from extended archive E (20260918013146-4ms).",
   "sources": [
     {
       "path": "bench/results/20260914152838-fwg/run.json",
@@ -712,5 +712,16 @@
     "all_csv_percentiles_match_run_json": true,
     "boundary_counts_derived_from_csv": true,
     "no_experiments_rerun": true
+  },
+  "fig8": {
+    "kind": "goal-driven agent optimization trajectory",
+    "archive": "bench/results/20260918013146-4ms",
+    "sources": [
+      "agent-goal-loop-omp.log (task 82ea1b9d; screw dw-377c3580; DAQ dn-a0209c1b; wall 1503.2 s; GOAL-OPT-OK yes; 6-bucket mean 51.917 um)",
+      "platform audit dcw.write.agent / dcw.write.rollback for dw-377c3580 (write instants and values)",
+      "platform samples API dn-a0209c1b 01:34:30-01:59:30 +08:00 (101 points, 15 s cadence)"
+    ],
+    "datafile": "figures/publication/goalloop-pv-20260918.json",
+    "script": "figures/publication/fig8-goalloop.py"
   }
 }
