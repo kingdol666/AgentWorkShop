@@ -108,6 +108,13 @@ interface SeriesSummary {
   cleanedRatio: number
 }
 interface LagEstimate { controlId: string, targetId: string, lagSteps: number, corr: number }
+/** 逐 run 画像(服务端 server/services/workshop/aml/stats.ts 导出;此处镜像其线格式) */
+interface RunProfile {
+  runId: string
+  steps: number
+  /** 目标节点逐 run 均值(漂移检测) */
+  targetMeans: Record<string, number>
+}
 interface AmlDatasetReport {
   builtAt: string
   nodeSummaries: SeriesSummary[]

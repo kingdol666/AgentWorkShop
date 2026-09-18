@@ -75,7 +75,9 @@ type PermissionVerdict
 export class ClaudeSdkAgentImpl extends BaseAgentImpl implements AgentInterface {
   private readonly config: ClaudeAgentConfig
 
-  private agentRole: 'lead' | 'worker' = 'worker'
+  // agentRole 由 BaseAgentImpl 持有(protected):子类再声明同名私有字段会以字段初始化器
+  // 覆盖基类 identity 装配的角色(lead 身份丢失)。此处仅收窄可见性声明,运行时代码不变。
+  protected override agentRole: 'lead' | 'worker' = 'worker'
   /** SDK 会话句柄(动态类型:依赖包可能未安装) */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private session: any = null
@@ -162,7 +164,7 @@ export class ClaudeSdkAgentImpl extends BaseAgentImpl implements AgentInterface 
   }
 
   /** HITL 应答:canUseTool 挂起的权限请求 → allow/deny(fail-closed) */
-  async respondHitl(kind: string, id: string, outcome: {
+  override async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
     comment?: string
@@ -544,7 +546,9 @@ export class ClaudeSdkAgentImpl extends BaseAgentImpl implements AgentInterface 
       agentId: this.selfAgentId,
       agentName: this.agentName,
       channelId: this.channelId,
-      pid: null,
+      // claude SDK 是进程内 harness(无子进程 pid):HitlRegisterInput.pid 缺省即"无终端路由"。
+      // 唯一的 pid 消费方 /api/workshop/hitl/respond 只在 omp-dialog 分支用 item.pid 且按真值判定,
+      // 故省略等价于原 pid:null(null 与 undefined 同为假值,协议 AepHitlItem.pid?: number 本不允许 null)。
       method: 'confirm',
       title: `claude 权限请求:${toolName}`,
       detail: JSON.stringify(input).slice(0, 500),

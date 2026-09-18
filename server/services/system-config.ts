@@ -44,8 +44,10 @@ export interface ConfigGroup {
   label: string
   labelKey?: string
   description: string
-  /** 排序权重(小在前);内置分组按 schema 声明顺序 ×10 */
-  order: number
+  /** 排序权重(小在前);内置分组按 schema 声明顺序 ×10。
+   *  可缺省:持久化条目与插件声明允许不写 order,由 shared/config/groups.mjs 的
+   *  mergeGroups 沿用内置声明顺序兜底(消费侧见 nextGroupOrder/updateGroup 均按可缺省处理)。 */
+  order?: number
   /** 前端默认折叠态(用户本地展开偏好优先) */
   collapsed: boolean
   collapsible: boolean
@@ -104,6 +106,23 @@ export interface ConfigEventPayload {
 }
 
 type Listener = (payload: ConfigEventPayload) => void
+
+/** runtimeConfig 的动态视图:PUBLIC_FIELDS(public.*)/ROOT_FIELDS(根字段)/daq.* 三处动态读写共用 */
+type RuntimeConfigView = Record<string, unknown> & { public: Record<string, unknown> }
+
+/** 从 catch 的 unknown 值取可读错误文本(与原先的 String(err?.message ?? err) 运行时完全等价) */
+function errorText(err: unknown): string {
+  return String((err as { message?: unknown } | null | undefined)?.message ?? err)
+}
+
+/** 以可写记录视图取 runtimeConfig.daq:缺失/非对象时就地落一个空对象(与原先的兜底赋值等价) */
+function daqView(rc: RuntimeConfigView): Record<string, unknown> {
+  const current = rc.daq
+  if (current && typeof current === 'object') return current as Record<string, unknown>
+  const created: Record<string, unknown> = {}
+  rc.daq = created
+  return created
+}
 
 declare global {
   var __systemConfig: SystemConfigService | undefined
@@ -169,7 +188,7 @@ export class SystemConfigService {
       }
     }
     catch (err) {
-      console.warn('[system-config] 遗留设置迁移失败(不阻断启动):', String(err?.message ?? err))
+      console.warn('[system-config] 遗留设置迁移失败(不阻断启动):', errorText(err))
     }
   }
 
@@ -217,7 +236,7 @@ export class SystemConfigService {
       saveGroups(toSave, this.groupsPath)
     }
     catch (err) {
-      console.warn('[system-config] 分组注册表落盘失败(本次仅内存生效):', String(err?.message ?? err))
+      console.warn('[system-config] 分组注册表落盘失败(本次仅内存生效):', errorText(err))
     }
   }
 
@@ -345,7 +364,8 @@ export class SystemConfigService {
 
   /** 从当前 runtimeConfig 读取某 key 的构建期基准值 */
   private readBase(key: string): unknown {
-    const rc = useRuntimeConfig() as Record<string, unknown>
+    const rc = useRuntimeConfig() as RuntimeConfigView
+    // 保留 ?.:public 缺失时按 undefined 处理(与改动前一致,不引入抛错路径)
     if (PUBLIC_FIELDS[key]) return rc.public?.[PUBLIC_FIELDS[key]]
     if (ROOT_FIELDS[key]) return rc[ROOT_FIELDS[key]]
     if (key.startsWith(DAQ_PREFIX)) return getPath(rc.daq, key.slice(DAQ_PREFIX.length))
@@ -357,7 +377,7 @@ export class SystemConfigService {
    *  视图以本服务内存 effective 为唯一实时源，前端经 SSE 消费；SSR 读取在下次启动后对齐。 */
   private applyToRuntime(key: string, value: unknown): void {
     try {
-      const rc = useRuntimeConfig() as Record<string, unknown>
+      const rc = useRuntimeConfig() as RuntimeConfigView
       if (PUBLIC_FIELDS[key]) {
         rc.public[PUBLIC_FIELDS[key]] = value
         return
@@ -367,8 +387,7 @@ export class SystemConfigService {
         return
       }
       if (key.startsWith(DAQ_PREFIX)) {
-        if (!rc.daq || typeof rc.daq !== 'object') rc.daq = {}
-        setPath(rc.daq, key.slice(DAQ_PREFIX.length), value)
+        setPath(daqView(rc), key.slice(DAQ_PREFIX.length), value)
       }
     }
     catch {
@@ -456,7 +475,7 @@ export class SystemConfigService {
       if (existsSync(this.root)) this.watcher.push(watch(this.root, { persistent: false }, handler))
     }
     catch (err) {
-      console.warn('[system-config] 文件监听不可用（外部写入将不热重载）:', String(err?.message ?? err))
+      console.warn('[system-config] 文件监听不可用（外部写入将不热重载）:', errorText(err))
     }
   }
 

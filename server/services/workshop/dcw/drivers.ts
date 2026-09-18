@@ -524,7 +524,10 @@ export const mqttDcwDriver: DcwWriteDriver = {
         // 失败/超时路径同样关闭连接(此前只在成功后 end,超时会泄漏 client +
         // broker session),已关闭的 client 重复 end 幂等安全
         await new Promise<void>((resolve) => {
-          client.end(false, {}, resolve)
+          // mqtt 的 DoneCallback 是 Node 风格 (error?: Error) => void;直接把 Promise 的 resolve
+          // 传进去会把 error 当成"完成值"兑现(错误被吞)。这里显式包一层,保持原语义:
+          // 回调一触发即完成,且与原来一样**不**因该 error 而 reject。
+          client.end(false, {}, () => resolve())
         })
       }
       return {
@@ -552,7 +555,7 @@ export const mqttDcwDriver: DcwWriteDriver = {
         })
         c.once('connect', () => resolve(c))
         c.once('error', err => reject(new Error(err.message)))
-      }).then(c => new Promise<void>(r => c.end(false, {}, r)))
+      }).then(c => new Promise<void>(r => c.end(false, {}, () => r())))
       return { ok: true, message: `Broker 连接成功(${String(driverConfig.host)}:${Number(driverConfig.port ?? 1883)});未执行发布,避免误触发真实设备动作` }
     }
     catch (err) {

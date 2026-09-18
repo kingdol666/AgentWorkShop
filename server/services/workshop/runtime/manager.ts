@@ -332,7 +332,12 @@ export class AgentChannelManager {
   /** agent 最近一次工具 invoke 时刻(调度器停滞看门狗的活性源;工具调用即健康推进) */
   private readonly lastToolInvokeAt = new Map<string, number>()
 
-  constructor(private deps: ManagerDeps) {
+  /** 依赖集(repos/implFactory/db)。
+   *  API 作业面(ws/agent-tools/a2a card/…)需要直接读 repo —— 原先只能靠
+   *  `(manager as unknown as { deps })` 断言绕过 private。这里改成 public readonly:
+   *  TS 的 private 是纯类型层(擦除后运行时无差异),readonly 保证不可重绑定,
+   *  既去掉断言又保持封装语义(依赖注入本身就是本类的构造契约)。 */
+  constructor(readonly deps: ManagerDeps) {
     // 记忆衰减清理定时器(失败只记日志,绝不抛出;unref 不阻进程退出;非法/非正 env 回退默认)
     this.memoryTimer = setInterval(() => {
       try {
@@ -2510,7 +2515,7 @@ export class AgentChannelManager {
    * 用途:校验「Agent ↔ 工业节点绑定」的主体 —— 运行时持绑定做鉴权的是**成员实例**,
    * 不是 Agent 模板;绑到模板 id 上会得到一条永远不生效的静默绑定(实测踩过)。
    */
-  findChannelAgentById(channelAgentId: string): { id: string, channelId: string, templateId: string } | undefined {
+  findChannelAgentById(channelAgentId: string): { id: string, channelId: string, templateId: string | null } | undefined {
     const row = this.deps.repos.channelAgents.findById(channelAgentId)
     return row ? { id: row.id, channelId: row.channelId, templateId: row.templateId } : undefined
   }
@@ -2640,6 +2645,8 @@ export class AgentChannelManager {
     name: string
     description: string
     leadName: string | null
+    /** 团队共享域知识量(实现体第 2661 行已产出;原声明漏写 → 与 AgentWorkspace.listOtherTeams 漂移) */
+    sharedMemories: number
     activeTasks: Array<{ id: string, title: string, state: string }>
     recentCompleted: Array<{ title: string }>
   }> {

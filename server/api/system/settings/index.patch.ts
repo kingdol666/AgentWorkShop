@@ -13,7 +13,7 @@ import { getSystemConfigService } from '../../../services/system-config'
 
 export default defineApiHandler(async (event) => {
   requireRole(event, ['admin'])
-  const body = (await readBody(event)) ?? {}
+  const body = (await readBody<Record<string, unknown>>(event)) ?? {}
   const overrides = body.override ?? body.overrides ?? body
   if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) {
     return { ok: false, message: '请求体应为 { "override": { key: value } }' }

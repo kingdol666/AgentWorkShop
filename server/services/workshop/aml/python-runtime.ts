@@ -362,7 +362,8 @@ export async function installUv(rt: AmlRuntime, onLog?: ProgressFn): Promise<{ o
     const hit = findUvInDir(rt.toolsDir)
     if (hit) {
       const v = await runCapture(hit, ['--version'], 15_000)
-      const version = (v.out || v.err).trim().split('\n')[0]
+      // 运行时 `''.split('\n')[0] === ''`,首行恒存在;?? '' 只是 noUncheckedIndexedAccess 下的写法
+      const version = (v.out || v.err).trim().split('\n')[0] ?? ''
       writeUvRecord(rt, { uvPath: hit, version, installedAt: new Date().toISOString(), installDir: rt.toolsDir, method: 'official-script' })
       resetProbeCache()
       emit(`安装成功:${version} @ ${hit}`)
@@ -390,7 +391,7 @@ export async function installUv(rt: AmlRuntime, onLog?: ProgressFn): Promise<{ o
         }
         catch { /* Windows 无 x 位 */ }
         const v = await runCapture(hit, ['--version'], 15_000)
-        const version = (v.out || v.err).trim().split('\n')[0]
+        const version = (v.out || v.err).trim().split('\n')[0] ?? ''
         writeUvRecord(rt, { uvPath: hit, version, installedAt: new Date().toISOString(), installDir: rt.toolsDir, method: 'pip-target' })
         resetProbeCache()
         emit(`安装成功:${version} @ ${hit}`)

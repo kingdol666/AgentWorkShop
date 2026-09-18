@@ -200,8 +200,17 @@ function mockImageSample(
 // Modbus TCP 真实驱动(modbus-serial;连接池按 host:port:unitId 复用)
 // ============================================================
 
+/**
+ * modbus-serial 客户端实例类型。
+ *
+ * 该包 index.d.ts 只写 `import { ModbusRTU } from "./ModbusRTU"` + `export default ModbusRTU`,
+ * **没有**具名 re-export(运行时 module.exports = 构造器,并自挂 module.exports.default = 自己),
+ * 因此 `import('modbus-serial').ModbusRTU` 在类型上并不存在 —— 从 default 导出取才与实际导出形态一致。
+ */
+type ModbusRtuClient = InstanceType<typeof import('modbus-serial').default>
+
 export interface ModbusConn {
-  client: import('modbus-serial').ModbusRTU
+  client: ModbusRtuClient
   lastUsed: number
   /** 连接级操作队列尾(采/控共用链路串行化:TCP 网关并发事务会协议错乱) */
   tail: Promise<unknown>
@@ -232,7 +241,7 @@ export function evictModbusConn(cfg: Record<string, unknown>, transport: ModbusT
  * 安全关闭:半开 socket(对端断电)时 modbus-serial close() 等待 FIN 永不返回,
  * 一律 500ms 超时保护(fire-and-forget 底层 close,调用方不阻塞)。
  */
-export async function closeModbusSafely(client: import('modbus-serial').ModbusRTU): Promise<void> {
+export async function closeModbusSafely(client: ModbusRtuClient): Promise<void> {
   await Promise.race([
     Promise.resolve()
       .then(() => client.close())
@@ -252,7 +261,7 @@ export function withModbusConn<R>(conn: ModbusConn, fn: () => Promise<R>): Promi
   const run = conn.tail.then(() => fn(), () => fn())
   let timer: NodeJS.Timeout | undefined
   let dead = false
-  const guarded = Promise.race([
+  const guarded: Promise<R> = Promise.race([
     run,
     new Promise<never>((_, rej) => {
       timer = setTimeout(() => {
@@ -264,7 +273,7 @@ export function withModbusConn<R>(conn: ModbusConn, fn: () => Promise<R>): Promi
         rej(new Error('Modbus 响应超时(3s)——连接可能半开,已作废重连'))
       }, 3000)
     }),
-  ] as Promise<R>)
+  ])
   void guarded.catch(() => { /* 超时分支先 reject,防 unhandled */ })
   conn.tail = guarded.then(
     () => {
@@ -298,7 +307,7 @@ export async function getModbusConn(cfg: Record<string, unknown>, transport: Mod
   }
   // CJS 互操作:require 形状可能是 { ModbusRTU } / default.ModbusRTU / 构造器本身
   const mod = reqNative('modbus-serial') as unknown as { ModbusRTU?: unknown, default?: { ModbusRTU?: unknown } | unknown }
-  const ModbusRTU = (mod.ModbusRTU ?? (mod.default as { ModbusRTU?: unknown } | undefined)?.ModbusRTU ?? mod) as new () => import('modbus-serial').ModbusRTU
+  const ModbusRTU = (mod.ModbusRTU ?? (mod.default as { ModbusRTU?: unknown } | undefined)?.ModbusRTU ?? mod) as new () => ModbusRtuClient
   const client = new ModbusRTU()
   client.setTimeout(3000)
   // tcp = Modbus TCP(MBAP 封装);rtu-tcp = RTU over TCP(串口网关透传,CRC16 帧,无 MBAP)
@@ -599,11 +608,12 @@ async function createOpcUaConn(cfg: Record<string, unknown>, key: string): Promi
   }
   const client = opcua.OPCUAClient.create(clientOpts as Parameters<typeof opcua.OPCUAClient.create>[0])
   await client.connect(String(cfg.endpoint))
-  // 显式标注:await 三元会把类型收窄成 `ClientSession | (Promise<ClientSession> & void)`，
-  // 导致 conn.session 赋值与 session.close() 两处既有类型错误
-  const session = (cfg.username
-    ? await client.createSession({ userName: String(cfg.username), password: String(cfg.password ?? '') })
-    : await client.createSession()) as import('node-opcua').ClientSession
+  // type 是 node-opcua 的 UserIdentityInfo 判别式(node-opcua-client createUserIdentityToken →
+  // coerceUserIdentityInfo:userName 存在时正是补成 UserTokenType.UserName 走同一分支),
+  // 显式写出既满足协议类型,也免去"字段漏写、等库回填"的隐式依赖;两个分支都返回 Promise<ClientSession>。
+  const session = cfg.username
+    ? await client.createSession({ type: opcua.UserTokenType.UserName, userName: String(cfg.username), password: String(cfg.password ?? '') })
+    : await client.createSession()
   const conn: OpcUaConn = { session, client, lastUsed: Date.now(), errors: 0 }
   // 竞态二次校验:建连期间若已有连接入池(并发首连的另一方完成),关闭本次新建并复用既有,
   // 避免 opcuaPool.set 覆盖导致 session/socket 永久泄漏。
@@ -1003,7 +1013,10 @@ export const httpDaqDriver: DaqDriver = {
           return { ok: true, message: `接口可达,vector 帧 ${(j.points as unknown[]).length} 点`, latencyMs: Date.now() - t0 }
         }
         if (typeof j.png === 'string' || typeof j.blob === 'string') {
-          return { ok: true, message: `接口可达,image 帧(base64, ${(j.png ?? j.blob as string).length} chars)`, latencyMs: Date.now() - t0 }
+          // 与生产分支同构:png/blob 至少一个是 base64 字符串(见上一行守卫)。
+          // b64 的取值表达式与原来逐字一致(断言运行时擦除),只是把 unknown 标注成 string 以取 .length
+          const b64 = (j.png as string | undefined) ?? (j.blob as string)
+          return { ok: true, message: `接口可达,image 帧(base64, ${b64.length} chars)`, latencyMs: Date.now() - t0 }
         }
         const v = extractNumeric(text, driverConfig.jsonPath ? String(driverConfig.jsonPath) : undefined)
         return { ok: true, message: `接口可达,取值 = ${v}`, sampleValue: v, latencyMs: Date.now() - t0 }

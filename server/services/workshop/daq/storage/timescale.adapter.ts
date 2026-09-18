@@ -239,7 +239,9 @@ export class TimescaleAdapter implements TsdbPort {
       at: tsToMs(r.ts),
       kind: String(r.kind) as 'vector' | 'image',
       points: String(r.kind) === 'vector' ? pointsFromMeta(r.meta) : undefined,
-      metrics: asObject(r.metrics),
+      // 与 sqlite.adapter 同法:metrics 列由本管线写入(下沉处理器产出 avg/max/brightness/zone_* 数值),
+      // asObject 只做 JSON 还原(Record<string, unknown>),按端口契约收窄到 Record<string, number>(断言运行时擦除)
+      metrics: asObject(r.metrics) as Record<string, number>,
       meta: asObject(r.meta),
       deviceBindingId: r.device_binding_id ?? null,
       lineId: r.line_id ?? null,

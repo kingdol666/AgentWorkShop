@@ -2,6 +2,7 @@
  * PATCH /api/workshop/daq/templates/:key —— 编辑自定义信号模板(内置模板拒绝)。
  * 成功后广播 daq.template.changed(op=updated)。
  */
+import { getRouterParam, readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDaqTemplateRegistry } from '@/server/services/workshop/daq/daq-templates'

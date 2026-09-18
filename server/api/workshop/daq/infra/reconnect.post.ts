@@ -3,7 +3,7 @@
  */
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
-import { daqInfraConfig, daqInfraStatus } from '@/server/services/workshop/daq/infra'
+import { daqInfraConfig, daqInfraStatus, type DaqInfraConfig } from '@/server/services/workshop/daq/infra'
 
 export default defineApiHandler(async (event) => {
   resolveUser(event)

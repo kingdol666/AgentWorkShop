@@ -532,6 +532,61 @@
   }
  },
  {
+  "name": "param_control",
+  "label": "Param Control",
+  "description": "按工艺参数下发设定值(推荐的参数语义寻址面;param=工艺参数 id 或 key)。参数 → PLC 执行点的映射由系统封装,你只面对真实物理量纲,不需要也不可见寄存器/数据类型等底层细节。设定值受四层限界联锁(节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口)逐层收窄,用户与 Agent 一体约束,越界直接拒绝。手动确认模式下需等待用户批准。下发前先调用 my_industrial_nodes 理解参数语义。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "param": {
+     "type": "string",
+     "description": "工艺参数 id(pp-*)或参数 key(产线内唯一,见 my_industrial_nodes / line_context)"
+    },
+    "value": {
+     "type": "number",
+     "description": "目标设定值(真实物理量纲,如 ℃)"
+    },
+    "line_id": {
+     "type": "string",
+     "description": "产线 id(可选;参数 key 跨产线同名时用于消歧)"
+    },
+    "hypothesis": {
+     "type": "string",
+     "description": "本次调参假设(入优化记录档案):目标 + 预期效果 + 观察计划"
+    },
+    "task_id": {
+     "type": "string",
+     "description": "关联的优化任务 id(可选,入优化记录档案)"
+    }
+   },
+   "required": [
+    "param",
+    "value"
+   ]
+  }
+ },
+ {
+  "name": "param_read",
+  "label": "Param Read",
+  "description": "按工艺参数读取 PLC 当前值(param=工艺参数 id 或 key),返回实时读数(物理量纲)与当前设定值对照,以及该参数当前的有效写入区间(分层限界)。用于下发前取证、下发后复核。读取是被动观测,不需要审批。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "param": {
+     "type": "string",
+     "description": "工艺参数 id(pp-*)或参数 key"
+    },
+    "line_id": {
+     "type": "string",
+     "description": "产线 id(可选;参数 key 跨产线同名时用于消歧)"
+    }
+   },
+   "required": [
+    "param"
+   ]
+  }
+ },
+ {
   "name": "daq_query",
   "label": "DAQ Query",
   "description": "从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。",

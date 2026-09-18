@@ -822,7 +822,7 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 0 6px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 15px;
   color: var(--ink-faint);
   border: 1px solid var(--line-strong);

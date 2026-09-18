@@ -224,13 +224,13 @@ const stateDot: Record<string, string> = {
               {{ group[0] }}({{ (group[1] as typeof assignedTasks.working).length }})
             </div>
             <div
-              v-for="t in group[1]"
-              :key="t.id"
+              v-for="task in group[1]"
+              :key="task.id"
               class="queue-task"
             >
-              <span class="state-chip aw-mono">{{ t.state }}</span>
-              <span class="qt-title">{{ t.title }}</span>
-              <span class="qt-meta">{{ t.progress }}%</span>
+              <span class="state-chip aw-mono">{{ task.state }}</span>
+              <span class="qt-title">{{ task.title }}</span>
+              <span class="qt-meta">{{ task.progress }}%</span>
             </div>
             <div
               v-if="(group[1] as typeof assignedTasks.working).length === 0"
@@ -384,7 +384,7 @@ const stateDot: Record<string, string> = {
 .state-chip {
   flex: none;
   padding: 1px 6px;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 15px;
   letter-spacing: 0.03em;
   color: var(--ink-soft);

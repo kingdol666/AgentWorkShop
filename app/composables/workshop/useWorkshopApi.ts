@@ -109,7 +109,7 @@ export function useWorkshopApi() {
       http.post<{ data: { channelId: string, leadAgentId?: string, workspace: string } }>('/workshop/channels', body),
     deleteChannel: (id: string) => http.delete<{ data: unknown }>(`/workshop/channels/${id}`),
     /** 修改 Channel 实例设置(场景 prompt / 工作目录热更新;成员运行时自动回收重装配) */
-    patchChannel: (id: string, body: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number }) =>
+    patchChannel: (id: string, body: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null }) =>
       http.request<{ data: ChannelDto }>({ method: 'PATCH', url: `/workshop/channels/${id}`, data: body }),
     // channel agents
     listChannelAgents: (id: string) => http.get<{ data: AgentInfoDto[] }>(`/workshop/channels/${id}/agents`),

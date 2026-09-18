@@ -1810,16 +1810,7 @@ function unbindDaq(daqId: string): void {
   })
 }
 
-/** 数采模板图标(设计稿 ICONS;SVG path 直嵌) */
-const DAQ_ICONS: Record<string, string> = {
-  thermo: '<path d="M10 4a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0V4Z"/><circle cx="12" cy="16.5" r="1.6"/>',
-  pressure: '<circle cx="12" cy="12" r="8"/><path d="m12 12 3.5-3.5"/><circle cx="12" cy="12" r="1.2"/>',
-  tension: '<circle cx="12" cy="10" r="4"/><path d="M4 18.5h16M8 18.5V14M16 18.5V14"/><path d="M2.5 10H8M16 10h5.5"/>',
-  encoder: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3"/>',
-  camera: '<rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 11 5-3v8l-5-3"/><circle cx="8" cy="12" r="2.5"/>',
-  gateway: '<rect x="8" y="11" width="8" height="10" rx="1.5"/><circle cx="12" cy="5.5" r="1.5"/><path d="M12 10V7M8.5 8.5a5 5 0 0 1 7 0M6 6a8.5 8.5 0 0 1 12 0"/>',
-}
-const daqIcon = (icon: string): string => DAQ_ICONS[icon] ?? DAQ_ICONS.gateway!
+/** 数采/智控模板图标:注入面收敛在 WorkshopDaqTemplateIcon(唯一 v-html 点) */
 
 /** 最近设备孪生(拖放自动绑定:数采落点 ±95 世界单位内最近的非数采设备) */
 function nearestDeviceTwin(x: number, z: number, maxDist: number): DeviceTwinView | null {
@@ -1853,7 +1844,12 @@ function toggleBindPop(key: 'daq' | 'dcw', e: MouseEvent): void {
   if (key === 'daq') bindPopOpen.value = !bindPopOpen.value
   else dcwBindPopOpen.value = !dcwBindPopOpen.value
 }
-interface RailBindChoice { id: string, name: string, tpl: DaqTemplate, devName: string | null, placed: boolean }
+/**
+ * 绑定候选行(数采/智控两个绑定弹层共用)。
+ * tpl 只声明弹层真正读取、且两套模板目录都有的字段:数采侧是 DaqTemplate,
+ * 智控侧是 dcw.templates 的同构投影 —— 后者本就没有 base/amp 等数采专有字段。
+ */
+interface RailBindChoice { id: string, name: string, tpl: { icon: string }, devName: string | null, placed: boolean }
 const daqBindChoices = computed<Record<string, RailBindChoice[]>>(() => {
   const devId = selected.value?.kind === 'device' ? selected.value.id : ''
   const map: Record<string, RailBindChoice[]> = {}
@@ -1955,12 +1951,12 @@ const boundDaqRows = computed(() => {
   const id = selected.value?.id
   if (!id) return []
   return daqOfDevice(id).map((daqId) => {
-    const t = sceneTwinById(daqId)
+    const twin = sceneTwinById(daqId)
     const st = daqSim.value.get(daqId)
-    const tpl = st?.tpl ?? daqTplById(t?.modelRef ?? '')
+    const tpl = st?.tpl ?? daqTplById(twin?.modelRef ?? '')
     return {
       daqId,
-      name: t?.name ?? daqId,
+      name: twin?.name ?? daqId,
       ch: tpl?.ch ?? t('townView.k1ef3cls168'),
       icon: tpl?.icon ?? 'gateway',
       value: st ? fmtDaq(st) : '--',
@@ -3117,10 +3113,9 @@ onBeforeUnmount(() => {
               >
                 <span class="daq-caret">▶</span>
                 <span class="daq-ico">
-                  <svg
+                  <WorkshopDaqTemplateIcon
                     class="daq-svg"
-                    viewBox="0 0 24 24"
-                    v-html="daqIcon(tpl.icon)"
+                    :icon="tpl.icon"
                   />
                 </span>
                 <div class="daq-meta">
@@ -3202,10 +3197,9 @@ onBeforeUnmount(() => {
               >
                 <span class="daq-caret">▶</span>
                 <span class="daq-ico">
-                  <svg
+                  <WorkshopDaqTemplateIcon
                     class="daq-svg"
-                    viewBox="0 0 24 24"
-                    v-html="daqIcon(tpl.icon)"
+                    :icon="tpl.icon"
                   />
                 </span>
                 <div class="daq-meta">
@@ -3903,16 +3897,16 @@ onBeforeUnmount(() => {
                 :class="{ expanded: trendExpanded }"
               >
                 <button
-                  v-for="t in trendChips"
-                  :key="t.id"
+                  v-for="chip in trendChips"
+                  :key="chip.id"
                   class="lg-chip"
-                  :class="{ off: !trendOn(t.id) }"
-                  @click="toggleTrend(t.id)"
+                  :class="{ off: !trendOn(chip.id) }"
+                  @click="toggleTrend(chip.id)"
                 >
                   <span
                     class="lg-dot"
-                    :style="{ background: trendColor(t.id) }"
-                  />{{ t.name }}
+                    :style="{ background: trendColor(chip.id) }"
+                  />{{ chip.name }}
                 </button>
                 <button
                   v-if="trendOverflow > 0"
@@ -4227,10 +4221,9 @@ onBeforeUnmount(() => {
                   class="bind-row"
                 >
                   <span class="bind-ico">
-                    <svg
+                    <WorkshopDaqTemplateIcon
                       class="bind-svg"
-                      viewBox="0 0 24 24"
-                      v-html="daqIcon(r.icon)"
+                      :icon="r.icon"
                     />
                   </span>
                   <span class="bind-meta">
@@ -4289,10 +4282,9 @@ onBeforeUnmount(() => {
                           :title="c.devName ? $t('townView.k2bindr0007', { p0: c.devName }) : $t('townView.k2bindr0008')"
                           @click="bindDaqChoice(c.id)"
                         >
-                          <svg
+                          <WorkshopDaqTemplateIcon
                             class="bind-svg"
-                            viewBox="0 0 24 24"
-                            v-html="daqIcon(c.tpl.icon)"
+                            :icon="c.tpl.icon"
                           />
                           <span>{{ c.name }}<i
                             v-if="c.devName"
@@ -4324,10 +4316,9 @@ onBeforeUnmount(() => {
                 >
                   <div class="dcw-top">
                     <span class="bind-ico">
-                      <svg
+                      <WorkshopDaqTemplateIcon
                         class="bind-svg"
-                        viewBox="0 0 24 24"
-                        v-html="daqIcon(r.icon)"
+                        :icon="r.icon"
                       />
                     </span>
                     <span class="dcw-id">
@@ -4415,10 +4406,9 @@ onBeforeUnmount(() => {
                           :title="c.devName ? $t('townView.k2bindr0007', { p0: c.devName }) : $t('townView.k2bindr0008')"
                           @click="bindDcwChoice(c.id)"
                         >
-                          <svg
+                          <WorkshopDaqTemplateIcon
                             class="bind-svg"
-                            viewBox="0 0 24 24"
-                            v-html="daqIcon(c.tpl.icon)"
+                            :icon="c.tpl.icon"
                           />
                           <span>{{ c.name }}<i
                             v-if="c.devName"
@@ -4985,19 +4975,19 @@ onBeforeUnmount(() => {
           </div>
           <div class="event-list">
             <div
-              v-for="(t, i) in [...ticker].reverse()"
-              :key="`${t.at}-${i}`"
+              v-for="(ev, i) in [...ticker].reverse()"
+              :key="`${ev.at}-${i}`"
               class="event-row"
             >
-              <span class="ev-time">{{ fmtTime(t.at) }}</span>
+              <span class="ev-time">{{ fmtTime(ev.at) }}</span>
               <span
                 class="ev-name"
-                :title="t.agentName"
-              >{{ t.agentName }}</span>
+                :title="ev.agentName"
+              >{{ ev.agentName }}</span>
               <span
                 class="ev-text"
-                :title="t.text"
-              >{{ t.text }}</span>
+                :title="ev.text"
+              >{{ ev.text }}</span>
             </div>
             <div
               v-if="!ticker.length"
@@ -5433,7 +5423,7 @@ onBeforeUnmount(() => {
 .daq-card.tpl:focus-visible { outline: 1px solid var(--hud-accent); outline-offset: 1px; }
 .daq-caret {
   flex: none;
-  font-size: 8px;
+  font-size: 10px;
   color: var(--hud-faint);
   transition: transform 0.15s var(--hud-ease);
 }
@@ -6433,7 +6423,7 @@ onBeforeUnmount(() => {
   background: #14213a;
   border-color: var(--hud-line-hi);
 }
-.rpg-kind { align-self: flex-start; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.14em; color: var(--hud-faint); }
+.rpg-kind { align-self: flex-start; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; color: var(--hud-faint); }
 .rpg-kind.k-artifact { color: var(--hud-accent); }
 .rpg-kind.k-error { color: var(--hud-danger); }
 .rpg-text { font-size: 13px; line-height: 1.6; color: var(--hud-text); word-break: break-word; text-wrap: pretty; }

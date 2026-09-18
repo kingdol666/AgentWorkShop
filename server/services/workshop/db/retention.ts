@@ -9,11 +9,16 @@
  * 覆盖链:config.yml < runtime-settings < env(AW_<键> 或历史别名)。时间列均为 TEXT ISO。
  * channel_events 与 daq_samples 已有各自保留机制,此处不重复覆盖。
  */
+import type { DatabaseSync } from 'node:sqlite'
 import { retentionSettings } from '../settings'
 
-type DatabaseSyncLike = {
-  prepare: (sql: string) => { run: (...args: unknown[]) => { changes: number | bigint } }
-}
+/**
+ * 库句柄契约 = node:sqlite DatabaseSync 的只读子集。
+ * 早先手写的鸭子类型把 run 声明为 `(...args: unknown[])`,与 StatementSync 的
+ * `...anonymousParameters: SQLInputValue[]` 反向不兼容(unknown 形参不接受 SQLInputValue),
+ * 于是**真实的 DatabaseSync 反而传不进来**。直接从权威类型取子集即消除该漂移(纯类型,运行时零变化)。
+ */
+type DatabaseSyncLike = Pick<DatabaseSync, 'prepare'>
 
 const DAY_MS = 86_400_000
 const BATCH = 5000

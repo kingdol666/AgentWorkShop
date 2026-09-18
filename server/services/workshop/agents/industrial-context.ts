@@ -13,6 +13,7 @@ import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { getActiveLineRun } from '../dcw/line-run'
 import { findDcwTemplate } from '../dcw/dcw-templates'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
+import type { DaqNode } from '../daq/daq-node'
 import { findDaqTemplate } from '../daq/daq-templates'
 import { getDeviceTwinRepo } from '../assets/device-twin.repo'
 import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
@@ -159,9 +160,11 @@ export function buildIndustrialContext(agentId: string): string {
     if (twinNames.size > 0) lines.push(`- 关联设备孪生: ${Array.from(twinNames).join(' | ')}`)
     // 当前报警透出(只报本 Agent 绑定的数采节点):越限即报警是工况里最需要
     // Agent 优先感知的事实 —— 不注入的话,Agent 只能靠 daq_query 事后发现
+    // 类型谓词(不收窄就无法在下游安全读 n.name/n.value/n.unit):
+    // `!!n && ...` 与原 `n && ...` 的真值判定完全一致,只补返回类型标注。
     const alarms = daqIds
       .map(id => getDaqNodeRepo().byId(id))
-      .filter(n => n && n.lineId === lineId && n.state === 'alarm')
+      .filter((n): n is DaqNode => !!n && n.lineId === lineId && n.state === 'alarm')
     if (alarms.length > 0) {
       lines.push(`- **当前报警**: ${alarms.map(n => `${n.name} 实时 ${n.value ?? '?'}${n.unit} 处于报警态(越量程或越配方监控窗口)`)},应优先判读(设定-响应滞后 vs 真实异常)并处置`)
     }

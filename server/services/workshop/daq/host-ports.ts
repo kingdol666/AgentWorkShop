@@ -20,10 +20,11 @@ export interface ActiveRunSnapshot {
 /** 遥测上报端口:绑定设备的值回写 + 孪生场景推送 + 绑定校验(中心实现 = device-twin.repo) */
 export interface DaqTelemetryPort {
   /**
-   * 遥测回写:telemetry 键值写入绑定设备的孪生,state 为同设备多节点汇聚的最严重态。
+   * 遥测回写:telemetry 键值写入绑定设备的孪生,state 为同设备多节点汇聚的最严重态
+   * (alarm > warn > ok,与 device-twin.repo.applyTelemetry 的 nodeState 同一个域)。
    * 目标设备不存在 → { ok:false }(调用方解绑自身,链路自愈);成功 → { ok:true, twinId }。
    */
-  applyTelemetry(deviceId: string, telemetry: Record<string, number | string | boolean>, state: string): { ok: boolean, twinId: string | null }
+  applyTelemetry(deviceId: string, telemetry: Record<string, number | string | boolean>, state: 'alarm' | 'warn' | 'ok'): { ok: boolean, twinId: string | null }
   /** 孪生场景载荷(WS device.updated 帧;设备已删 → null) */
   scenePayload(twinId: string): unknown | null
   /** 绑定目标存在性校验 */

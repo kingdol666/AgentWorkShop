@@ -18,6 +18,19 @@ import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { AppError } from '@/server/utils/errors'
 import { getWorkshopManager } from '@/server/plugins/workshop'
+import type { AgentChannelManager } from '@/server/services/workshop/runtime/manager'
+
+/**
+ * manager 依赖仓储视图。
+ * 公开面没有「按 id 取 channel 行(含 ownerUserId、不抛错)」的等价方法:
+ * getChannelForUser 对遗留公共 channel(owner NULL)判放行、对缺失行抛 404,
+ * 与本路由「非属主一律 403」的既有口径不同,故直接读 manager.deps.repos
+ * (AgentChannelManager 的 deps 已声明为 public readonly —— 见其构造函数;
+ *  原写法用 `as unknown as { deps }` 断言绕过 private,现已不需要)。
+ */
+function reposOf(manager: AgentChannelManager): AgentChannelManager['deps']['repos'] {
+  return manager.deps.repos
+}
 
 export default defineApiHandler(async (event) => {
   const agentToken = getHeader(event, 'x-aw-agent-token')
@@ -38,10 +51,11 @@ export default defineApiHandler(async (event) => {
     }
   }
   else if (user) {
-    const row = manager.deps.repos.channelAgents.findById(agentId)
+    const repos = reposOf(manager)
+    const row = repos.channelAgents.findById(agentId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `agent 不存在: ${agentId}`)
     if (user.role !== 'admin') {
-      const channel = manager.deps.repos.channels.findById(row.channelId)
+      const channel = repos.channels.findById(row.channelId)
       if (!channel || channel.ownerUserId !== user.id) {
         throw new AppError(403, 'SCOPE_VIOLATION', '该 agent 不属于当前用户,无权代为调用其工具')
       }

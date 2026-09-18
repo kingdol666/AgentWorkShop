@@ -872,16 +872,16 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
 
         <div class="tpl-chips">
           <span
-            v-for="t in dcw.templates"
-            :key="t.key"
+            v-for="tpl in dcw.templates"
+            :key="tpl.key"
             class="tpl-chip"
-            :title="`${t.code} · ${t.min}~${t.max} ${t.unit}${t.semantics ? ` · ${t.semantics}` : ''}`"
+            :title="`${tpl.code} · ${tpl.min}~${tpl.max} ${tpl.unit}${tpl.semantics ? ` · ${tpl.semantics}` : ''}`"
           >
-            {{ t.name }} <small class="mono">{{ t.min }}~{{ t.max }}{{ t.unit }}</small>
+            {{ tpl.name }} <small class="mono">{{ tpl.min }}~{{ tpl.max }}{{ tpl.unit }}</small>
             <em
               class="tpl-tag"
-              :class="{ builtin: t.builtin }"
-            >{{ t.builtin ? $t('dcwDetail.k3x23c141') : $t('dcwDetail.k3t616a142') }}</em>
+              :class="{ builtin: tpl.builtin }"
+            >{{ tpl.builtin ? $t('dcwDetail.k3x23c141') : $t('dcwDetail.k3t616a142') }}</em>
           </span>
         </div>
 
@@ -1042,11 +1042,11 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               class="inp"
             >
               <option
-                v-for="t in dcw.templates"
-                :key="t.key"
-                :value="t.key"
+                v-for="tpl in dcw.templates"
+                :key="tpl.key"
+                :value="tpl.key"
               >
-                {{ t.name }} · {{ t.ch }}({{ t.min }}~{{ t.max }} {{ t.unit }}){{ t.builtin ? '' : $t('dcwDetail.kr45rk9157') }}
+                {{ tpl.name }} · {{ tpl.ch }}({{ tpl.min }}~{{ tpl.max }} {{ tpl.unit }}){{ tpl.builtin ? '' : $t('dcwDetail.kr45rk9157') }}
               </option>
             </select>
           </label>

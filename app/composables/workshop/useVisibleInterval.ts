@@ -13,9 +13,9 @@ export function useVisibleInterval(
   const bgMs = opts.bgMs === undefined ? ms * 3 : opts.bgMs
   let timer: ReturnType<typeof setInterval> | null = null
 
-  function start(interval: number): void {
+  function start(interval: number | null): void {
     stop()
-    if (interval > 0) timer = setInterval(fn, interval)
+    if (interval !== null && interval > 0) timer = setInterval(fn, interval)
   }
   function stop(): void {
     if (timer) {

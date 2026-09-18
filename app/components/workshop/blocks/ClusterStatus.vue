@@ -89,7 +89,7 @@ const toggle = (): void => {
 .st-toggle:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .chev {
   flex: 0 0 auto;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 15px;
   color: var(--ink-faint);
   transition: transform 0.12s ease;
@@ -103,7 +103,7 @@ const toggle = (): void => {
 .st-count {
   flex: 0 0 auto;
   padding: 0 4px;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 13px;
   color: var(--ink-soft);
   background: color-mix(in srgb, var(--ink) 8%, transparent);

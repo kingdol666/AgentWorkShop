@@ -8,7 +8,7 @@ import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
 import { apiFetch } from './apiClient'
 import type { AepEnvelope } from '#shared/workshop-protocol'
-import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwRead, type AepDcwWritten, type DcwNodeView, type DcwParamLedger, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type OptimizationRecord, type OptimizationVerdict, type ProductInput, type ProductView, type RecipeInput, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwRead, type AepDcwWritten, type DcwNodeView, type DcwParamLedger, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type OptimizationRecord, type OptimizationVerdict, type ProductInput, type ProductView, type RecipeInput, type RecipeParam, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
 
 export type { DcwNodeView }
 

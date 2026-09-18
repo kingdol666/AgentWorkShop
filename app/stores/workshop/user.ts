@@ -176,7 +176,7 @@ export const useUserStore = defineStore('workshop.user', {
     // token 真源是 30 天 cookie;hydration 后从 cookie 回填,无 cookie 即回登出态
     pick: ['user'],
     afterHydrate: (ctx) => {
-      const store = ctx.store as { user?: { token?: string } | null, user?: CurrentUser | null, applyCookie?: () => void }
+      const store = ctx.store as { user?: CurrentUser | null, applyCookie?: () => void }
       if (!store.user) return
       try {
         const cookie = useCookie<string | null>('token')

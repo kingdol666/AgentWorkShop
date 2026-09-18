@@ -263,6 +263,75 @@ const filteredNodes = computed<DaqNodeLive[]>(() => daq.nodes.filter((n) => {
   return true
 }))
 
+/* ── 节点表窗口化渲染(virtual window) ────────────────────────────────────────
+ * 为什么必须做:节点表是**全量**渲染的,而每一行都带实时读数 + sparkline,
+ * 每次读数合批(500ms)都会点亮所有行。实测 498 个节点时:
+ *   · DOM 节点 13.5 万
+ *   · 主线程每秒 ≈3.8 万次 DOM 变更(其中 99.6% 来自这张表)
+ *   · 帧率掉到 24 FPS、92% 的帧超时、单帧最大间隔 361ms、长任务阻塞 936ms
+ * 也就是说"数据刷新太频繁导致卡顿"的根因不是刷新频率,而是**离屏行也在被补丁**。
+ *
+ * 做法:按页面滚动窗口只挂载可见行 + 上下各 OVERSCAN 行,用两条占位 <tr> 撑起
+ * 滚动高度。行的实际高度由 contain-intrinsic-size 固定为 42px(见样式),所以
+ * 窗口计算不需要测量 DOM。
+ *
+ * 为什么用**页面滚动**而不是容器滚动:这张表的滚动条是页面的(.table-card 只负责
+ * 横向),所以窗口要跟着 window.scrollY 走。
+ */
+const VS_ROW_H = 42
+const VS_OVERSCAN = 8
+const nodesTableRef = ref<HTMLTableElement | null>(null)
+const winStart = ref(0)
+const winEnd = ref(60)
+
+const visibleNodes = computed<DaqNodeLive[]>(() => {
+  const list = filteredNodes.value
+  const s = Math.min(winStart.value, Math.max(0, list.length - 1))
+  return list.slice(s, winEnd.value)
+})
+const padTopPx = computed(() => winStart.value * VS_ROW_H)
+const padBottomPx = computed(() => Math.max(0, (filteredNodes.value.length - winEnd.value) * VS_ROW_H))
+
+let winRaf = 0
+function updateNodeWindow(): void {
+  const el = nodesTableRef.value
+  if (!el) return
+  const total = filteredNodes.value.length
+  const vh = window.innerHeight || 800
+  // 表格顶部相对文档的坐标(表头 40px 也算进"还没到第一行")
+  const tableTop = el.getBoundingClientRect().top + window.scrollY + 40
+  const firstVisible = Math.floor((window.scrollY - tableTop) / VS_ROW_H)
+  const count = Math.ceil(vh / VS_ROW_H) + VS_OVERSCAN * 2
+  const s = Math.max(0, Math.min(firstVisible - VS_OVERSCAN, Math.max(0, total - 1)))
+  const e = Math.max(s, Math.min(total, s + count))
+  if (s !== winStart.value) winStart.value = s
+  if (e !== winEnd.value) winEnd.value = e
+}
+function scheduleNodeWindow(): void {
+  if (winRaf) return
+  winRaf = requestAnimationFrame(() => {
+    winRaf = 0
+    updateNodeWindow()
+  })
+}
+
+onMounted(() => {
+  updateNodeWindow()
+  window.addEventListener('scroll', scheduleNodeWindow, { passive: true })
+  window.addEventListener('resize', scheduleNodeWindow, { passive: true })
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', scheduleNodeWindow)
+  window.removeEventListener('resize', scheduleNodeWindow)
+  if (winRaf) cancelAnimationFrame(winRaf)
+})
+// 筛选/搜索改变行数后窗口必须重算(否则会停在旧的切片上,看起来"表空了")
+watch(() => filteredNodes.value.length, () => {
+  winStart.value = 0
+  winEnd.value = Math.min(filteredNodes.value.length, winEnd.value || 60)
+  scheduleNodeWindow()
+})
+
 // 设备名映射(device-twins 注册表;绑定筛选下拉展示用)
 const deviceTwins = useDeviceTwins()
 const nodeDevices = new Map<string, string>()
@@ -1187,7 +1256,7 @@ async function doReconnect(): Promise<void> {
                 class="opt-series"
               >
                 <div
-                  v-for="ch in optSeriesOf[r.id].channels"
+                  v-for="ch in (optSeriesOf[r.id]?.channels ?? [])"
                   :key="ch.nodeId"
                   class="opt-ch"
                 >
@@ -1201,7 +1270,7 @@ async function doReconnect(): Promise<void> {
                   <span class="mono">{{ ch.ch }} {{ fmtPoint(ch.points.at(-1)?.value ?? ch.points.at(-1)?.avg) }}{{ ch.unit }}</span>
                 </div>
                 <p
-                  v-if="optSeriesOf[r.id].channels.length === 0"
+                  v-if="(optSeriesOf[r.id]?.channels.length ?? 0) === 0"
                   class="opt-empty"
                 >
                   {{ $t('daq.k1opte002') }}
@@ -1472,7 +1541,10 @@ async function doReconnect(): Promise<void> {
             </div>
           </div>
         </div>
-        <table class="nodes-table">
+        <table
+          ref="nodesTableRef"
+          class="nodes-table"
+        >
           <thead>
             <tr>
               <th>{{ $t('daq.k45uio067') }}</th>
@@ -1496,11 +1568,33 @@ async function doReconnect(): Promise<void> {
             </tr>
           </thead>
           <tbody>
+            <!-- 上占位行:撑起"已滚过"的高度,让滚动条与真实全量列表一致 -->
+            <tr
+              v-if="padTopPx > 0"
+              class="vs-pad"
+              aria-hidden="true"
+            >
+              <td
+                :colspan="11"
+                :style="{ height: padTopPx + 'px' }"
+              />
+            </tr>
             <WorkshopDaqNodeRow
-              v-for="n in filteredNodes"
+              v-for="n in visibleNodes"
               :key="n.id"
               :n="n"
             />
+            <!-- 下占位行 -->
+            <tr
+              v-if="padBottomPx > 0"
+              class="vs-pad"
+              aria-hidden="true"
+            >
+              <td
+                :colspan="11"
+                :style="{ height: padBottomPx + 'px' }"
+              />
+            </tr>
             <tr v-if="daq.loaded && daq.nodes.length === 0">
               <td colspan="11">
                 <div
@@ -1668,6 +1762,9 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 }
 
 .table-card { overflow-x: auto; }
+/* 窗口化占位行:只提供高度,不参与绘制/命中,也不继承单元格内距与下边框
+   (否则占位行会自带一条分割线和一个 9px 内距,滚动高度算不准) */
+.vs-pad td { padding: 0 !important; border: 0 !important; }
 .nodes-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 /* 离屏行跳过布局/绘制(102 行长表;contain-intrinsic-size 给出占位高度防滚动条跳动) */
 .nodes-table tbody tr { content-visibility: auto; contain-intrinsic-size: auto 42px; }

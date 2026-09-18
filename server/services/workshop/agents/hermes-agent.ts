@@ -64,7 +64,9 @@ export interface HermesAgentConfig {
 export class HermesAgentImpl extends BaseAgentImpl implements AgentInterface {
   private readonly config: HermesAgentConfig
 
-  private agentRole: 'lead' | 'worker' = 'worker'
+  // agentRole 由 BaseAgentImpl 持有(protected);同名私有声明会遮蔽基类 identity 角色。
+  // 仅收窄可见性声明,运行时代码不变(ensureClient 仍按 ctx.role 同步)。
+  protected override agentRole: 'lead' | 'worker' = 'worker'
   private client: StdioJsonRpcClient | null = null
   private clientStarting: Promise<void> | null = null
   private sessionId: string | null = null
@@ -138,7 +140,7 @@ export class HermesAgentImpl extends BaseAgentImpl implements AgentInterface {
     return 'deferred'
   }
 
-  async respondHitl(kind: string, id: string, outcome: {
+  override async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
   }): Promise<void> {

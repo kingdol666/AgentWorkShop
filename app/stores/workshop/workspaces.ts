@@ -30,8 +30,21 @@ interface ServerWorkspace {
 }
 
 const ACTIVE_KEY = 'workshop.activeChannel'
+const ACTIVE_WS_KEY = 'workshop.activeWorkspace'
+
+/**
+ * localStorage 只在浏览器存在。这几个读写点都在 **store 的初始化路径**上
+ * (load() → saveActiveMap()),而 load() 完全可能被服务端调用 ——
+ * 少了守卫,一次 SSR 调用就会抛 "localStorage is not defined",
+ * 被 stability-guard 当成 fatal unhandledRejection **直接结束进程**
+ * (实测:生产实例在 /town 刷新后静默退出,日志只有一行 ReferenceError)。
+ *
+ * 约定与 app/stores/app.ts 一致:持久化层自己保证 SSR 安全,调用方不必先判断环境。
+ */
+const hasLocalStorage = (): boolean => typeof localStorage !== 'undefined'
 
 function loadActiveMap(): Record<string, string> {
+  if (!hasLocalStorage()) return {}
   try {
     return JSON.parse(localStorage.getItem(ACTIVE_KEY) ?? '{}') as Record<string, string>
   }
@@ -41,6 +54,7 @@ function loadActiveMap(): Record<string, string> {
 }
 
 function saveActiveMap(map: Record<string, string>): void {
+  if (!hasLocalStorage()) return
   localStorage.setItem(ACTIVE_KEY, JSON.stringify(map))
 }
 
@@ -51,12 +65,14 @@ export const useWorkspacesStore = defineStore('workshop.workspaces', {
   }),
   getters: {
     activeWorkspaceId(state): string | null {
-      return localStorage.getItem('workshop.activeWorkspace') ?? state.workspaces[0]?.id ?? null
+      if (!hasLocalStorage()) return state.workspaces[0]?.id ?? null
+      return localStorage.getItem(ACTIVE_WS_KEY) ?? state.workspaces[0]?.id ?? null
     },
   },
   actions: {
     setActiveWorkspaceId(id: string | null): void {
-      localStorage.setItem('workshop.activeWorkspace', id ?? '')
+      if (!hasLocalStorage()) return
+      localStorage.setItem(ACTIVE_WS_KEY, id ?? '')
     },
     /** 拉取服务端 workspace 列表(合并本地 activeChannelId) */
     async load(): Promise<void> {

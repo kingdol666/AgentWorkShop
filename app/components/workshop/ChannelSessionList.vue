@@ -188,6 +188,8 @@ const onLlmModelChange = (): void => {
 }
 const settingsSaving = ref(false)
 const fileSelectorOpen2 = ref(false)
+/** channel 设置弹窗预填的默认 LLM(llmJson 反序列化形状;与服务端 channelLlmSchema 对齐) */
+interface ChannelLlmDefaults { provider?: string, model?: string, effort?: string }
 const openSettings = (channelId: string): void => {
   const meta = channels.value.find(c => c.id === channelId)
   settingsChannelId.value = channelId
@@ -195,10 +197,10 @@ const openSettings = (channelId: string): void => {
   settingsForm.scenarioPrompt = meta?.scenarioPrompt ?? ''
   settingsForm.workspace = meta?.workspace ?? ''
   // 预填 channel 默认 LLM(llmJson 由列表接口透传)
-  let saved: { provider?: string, model?: string, effort?: string } | null = null
+  let saved: ChannelLlmDefaults | null = null
   try {
     const metaAny = meta as unknown as { llmJson?: string } | undefined
-    saved = metaAny?.llmJson ? JSON.parse(metaAny.llmJson) as typeof saved : null
+    saved = metaAny?.llmJson ? JSON.parse(metaAny.llmJson) as ChannelLlmDefaults : null
   }
   catch { saved = null }
   llmForm.enabled = !!saved?.model

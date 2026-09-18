@@ -18,7 +18,7 @@
  * 与 codex/dsh/opencode impl 全引擎一致。协议权威:omp://rpc.md。
  */
 import { createLogger } from '../logger'
-import { BaseAgentImpl } from './base-agent'
+import { BaseAgentImpl, type BaseAgentConfigView } from './base-agent'
 import { randomUUID } from 'node:crypto'
 import type {
   AgentEvent,
@@ -133,8 +133,8 @@ export class OmpRpcAgentImpl extends BaseAgentImpl implements AgentInterface {
     return 'omp'
   }
 
-  protected configRecord(): Record<string, unknown> {
-    return this.config as unknown as Record<string, unknown>
+  protected configRecord(): BaseAgentConfigView {
+    return this.config
   }
 
   /**
@@ -205,7 +205,9 @@ export class OmpRpcAgentImpl extends BaseAgentImpl implements AgentInterface {
   /** 当前回合产生的 assistant 文本(供诊断) */
   private turnText = ''
   /** agent 身份信息(factory 注入;无需等待 init()) */
-  private agentRole: 'lead' | 'worker' = 'worker'
+  // agentRole 由 BaseAgentImpl 持有(protected);同名私有声明会遮蔽基类 identity 角色。
+  // 仅收窄可见性声明,运行时代码不变(构造函数与 ensureClient 仍显式同步)。
+  protected override agentRole: 'lead' | 'worker' = 'worker'
 
   // ===== 上下文治理(70% 无中断压缩环)=====
   /** 压缩进行中(平台 gate 与 omp 原生压缩共用互斥位) */
@@ -421,7 +423,7 @@ export class OmpRpcAgentImpl extends BaseAgentImpl implements AgentInterface {
 
   // ===== 生命周期 =====
 
-  async init(input: { agent: AgentInfo, channelId: string }): Promise<void> {
+  override async init(input: { agent: AgentInfo, channelId: string }): Promise<void> {
     this.agentInfo = input.agent
     this.channelId = input.channelId
     this.agentName = input.agent.name
@@ -550,10 +552,13 @@ export class OmpRpcAgentImpl extends BaseAgentImpl implements AgentInterface {
 
   // ===== supervise() =====
 
-  /** supervise 单飞守卫:同一 client 不并发 LLM 回合(残留回合与下一 prompt 混流的根因) */
-  private supervising = false
+  /**
+   * supervise 单飞守卫:同一 client 不并发 LLM 回合(残留回合与下一 prompt 混流的根因)。
+   * 守卫位由 BaseAgentImpl 的 protected supervising 承载 —— 本类原先的私有重复声明与基类构成
+   * "两个私有声明"(TS2415),而 JS 只有一个实例字段,故删除后语义与运行时完全一致。
+   */
 
-  async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
+  override async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
     await this.ensureClient(ctx)
     if (!this.client) return []
     if (this.supervising) return [] // 上一轮 supervise 未收口:跳过本拍(节流即正确)
@@ -1109,7 +1114,8 @@ export class OmpRpcAgentImpl extends BaseAgentImpl implements AgentInterface {
       const client = new OmpRpcClient({
         command,
         mode: this.rpcMode,
-        args: [...(this.config.thinkingLevel ? ['--thinking', this.config.thinkingLevel] : [])],
+        // 重复键 args 的生效者是下一行(JS 对象字面量后写覆盖先写):保留生效语义,删除被覆盖项。
+        // (原 ['--thinking', level] 从未真正传给 omp —— 见报告"未修的缺陷"一节。)
         args: this.config.args,
         cwd: this.config.cwd ?? process.cwd(),
         // 进程退出 → 注册表标记(供运行时资源监控);pid=-1 表示无法取得,忽略

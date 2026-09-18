@@ -10,9 +10,9 @@
  */
 
 import { applyTransform } from '../../../../shared/daq-protocol'
-import { classifyCommError } from './drivers'
+import { classifyCommError, type DaqFrameSample } from './drivers'
 import type { DaqNode } from './daq-node'
-import type { DaqFrameSample, DaqSampleEnvelope } from './bus/queue-port'
+import type { DaqSampleEnvelope } from './bus/queue-port'
 
 /** 驱动故障广播节流(ms;每运行时独立计时) */
 const ERR_THROTTLE_MS = 30_000
@@ -94,7 +94,9 @@ export class DaqNodeRuntime {
     if (now < this.lastSampleAt + node.effectiveInterval(defs.intervalMs, defs.minIntervalMs)) return
     this.sampling = true
     try {
-      let v: number | DaqFrameSample | null = null
+      // 生产面可能返回三种形态:标量 / 驱动原生帧(DaqFrameSample)/ 生产侧已剥离 blob 的帧信封
+      // (与 DaqRuntimeHost.sample 的返回面一致 —— 后者不能丢,否则帧信封分支拿不到 kind/points)
+      let v: number | DaqFrameSample | { frame: NonNullable<DaqSampleEnvelope['frame']> } | null = null
       try {
         v = await this.host.sample(node, now)
       }

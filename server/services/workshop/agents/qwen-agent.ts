@@ -27,7 +27,7 @@ import type {
 } from './agent-interface'
 import type { AgentContextStats } from '../types/task'
 import { markHarnessProcessExit, registerHarnessProcess, bindHarnessProcess, killHarnessProcess } from './harness-process'
-import { peerPrompt, systemManual, toolArgsPreview, workerPrompt } from './prompt-builder'
+import { extractJsonArray, peerPrompt, supervisePrompt, systemManual, toolArgsPreview, workerPrompt } from './prompt-builder'
 import { getHitlRegistry } from './hitl-registry'
 import { harnessSettings } from '../settings'
 import { StdioJsonRpcClient, type JsonRpcRequestIncoming } from './adapters/stdio-jsonrpc'
@@ -111,7 +111,9 @@ export interface QwenAgentConfig {
 export class QwenAgentImpl extends BaseAgentImpl {
   private readonly config: QwenAgentConfig
 
-  private agentRole: 'lead' | 'worker' = 'worker'
+  // agentRole 由 BaseAgentImpl 持有(protected);同名私有声明会遮蔽基类 identity 角色。
+  // 仅收窄可见性声明,运行时代码不变。
+  protected override agentRole: 'lead' | 'worker' = 'worker'
   private client: StdioJsonRpcClient | null = null
   private clientStarting: Promise<void> | null = null
   private turnActive = false
@@ -177,7 +179,7 @@ export class QwenAgentImpl extends BaseAgentImpl {
   }
 
   /** HITL 应答:requestToolCallConfirmation → outcome allow/reject/cancel(fail-closed) */
-  async respondHitl(kind: string, id: string, outcome: {
+  override async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
   }): Promise<void> {
@@ -202,7 +204,7 @@ export class QwenAgentImpl extends BaseAgentImpl {
 
   // ===== run / supervise =====
 
-  async supervise(snapshot: import('./agent-interface').SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<import('./agent-interface').SupervisionDecision[]> {
+  override async supervise(snapshot: import('./agent-interface').SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<import('./agent-interface').SupervisionDecision[]> {
     await this.ensureClient(ctx)
     if (!this.client || !this.sessionStarted) return []
     if (this.supervising) return []
@@ -216,7 +218,10 @@ export class QwenAgentImpl extends BaseAgentImpl {
     })
     this.supervising = true
     try {
-      const events = await this.collectTurn(prompt, this.config.superviseTimeoutMs ?? 150_000, opts?.signal)
+      // 原为 this.collectTurn(...):该类唯一存在的整回合收集实现是 collectTurnEvents
+      // (与基类 supervise 调用的同名抽象成员同签名)。原调用在运行时抛 TypeError 并被
+      // 本方法的 catch 吞掉 → supervise 恒返回 [],详见报告。
+      const events = await this.collectTurnEvents(prompt, this.config.superviseTimeoutMs ?? 150_000, opts?.signal)
       let text = ''
       for (const e of events) {
         if (e.kind === 'artifact') {

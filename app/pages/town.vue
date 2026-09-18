@@ -21,14 +21,59 @@ const wsStore = useWorkspacesStore()
 const { subscribe, unsubscribe } = useWorkshopWs()
 
 // 认证 gate + workspace 加载
+//
+// ⚠️ 必须先确认"真的没有会话"再弹回工作台。只判 userStore.isLoggedIn 会与
+// session-restore 插件**竞态**:该插件是异步的(拿 cookie 里的 token 换用户信息),
+// 而 onMounted 同步就执行了 —— 结果刷新 /town 时已登录用户被误弹回 /workshop,
+// 整页 3D 根本加载不出来(实测:E2E 里 /town 在窄屏稳定超时,根因就在这里)。
+// 判据改成"token cookie 在不在":cookie 在 → 等服务端会话恢复;cookie 不在 → 立刻回去。
+const tokenCookie = useCookie<string | null>('token')
 const authReady = ref(false)
-onMounted(() => {
-  if (!userStore.isLoggedIn) {
-    navigateTo('/workshop')
+
+/**
+ * ⚠️ 加载必须**等会话恢复完成**再发。
+ *
+ * 这里踩过两次,值得写清楚:
+ *  1. 原来在 onMounted 里同步判 isLoggedIn —— session-restore 插件是异步的,
+ *     判定早于恢复 → 已登录用户被误弹回 /workshop(整页 3D 加载不出来)。
+ *     更糟的是它"看起来通过了":弹到 /workshop 后那边有顶栏,响应式属性照样被写上,
+ *     于是自动化验收把 /town 记成"通过",而用户看到的其实是工作台。
+ *  2. 改成只看 cookie 就放行也不行:此时 store 里还没有 token,wsStore.load() 的请求
+ *     不带 Authorization → 401 → 工作区列表为空 → 页面永远停在
+ *     「还没有挂载任何 Channel」的空态(实测 390/1440 都是这个结果)。
+ *
+ * 正确顺序:等 isLoggedIn 为真(会话恢复成功)再 load;只有连 cookie 都没有、
+ * 或者 token 被插件判废清掉时,才回工作台。
+ */
+// 与会话恢复的协作顺序,与 /workshop 总览页**完全一致**
+// (refresh → 再 load)。少一步 refresh 时,首次硬导航到 /town 会因为
+// 会话尚未落定而拿到空工作区列表,页面永远停在加载态(实测)。
+watch(() => userStore.isLoggedIn, async (ok) => {
+  if (!ok) {
+    authReady.value = false
     return
   }
-  authReady.value = true
-  void wsStore.load()
+  // immediate 会在 SSR 期间也跑一次;服务端既没有 localStorage(load 会写本地态),
+  // 也不需要加载用户工作区 —— store 侧已加守卫,这里再显式挡一道。
+  if (!import.meta.client) return
+  await userStore.refresh()
+  if (!userStore.isLoggedIn) return
+  try {
+    await wsStore.load()
+    authReady.value = true
+  }
+  catch {
+    // 客户端可重试;服务端静默(message 依赖 DOM)
+  }
+}, { immediate: true })
+
+onMounted(() => {
+  if (!userStore.isLoggedIn && !tokenCookie.value) navigateTo('/workshop')
+})
+
+// 会话恢复失败(token 已失效被插件清掉)时,才是真的未登录 —— 这时再回去
+watch(tokenCookie, (v) => {
+  if (!v && !userStore.isLoggedIn) navigateTo('/workshop')
 })
 
 // 收集所有已挂载 channel 的 id

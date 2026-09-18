@@ -19,6 +19,7 @@ import type { ChildProcess } from 'node:child_process'
 import { createLogger } from '../../logger'
 import type {
   AgentEvent,
+  AgentInterface,
   AgentRunContext,
   AgentRunRequest,
 } from '../agent-interface'
@@ -183,7 +184,7 @@ export class OneShotCliAgentImpl extends BaseAgentImpl implements AgentInterface
   }
 
   /** HITL:一次性 CLI 家族无程序化审批面(能力面如实声明 hitl:false) */
-  async respondHitl(): Promise<void> {
+  override async respondHitl(): Promise<void> {
     throw new Error(`${this.spec.harnessId} 无 HITL 应答面`)
   }
 

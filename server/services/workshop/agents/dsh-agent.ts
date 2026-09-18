@@ -26,7 +26,7 @@ import { peerPrompt, systemManual, toolArgsPreview, workerPrompt } from './promp
 import { getHitlRegistry } from './hitl-registry'
 import { harnessSettings } from '../settings'
 import { StdioJsonRpcClient, type JsonRpcRequestIncoming } from './adapters/stdio-jsonrpc'
-import { BaseAgentImpl } from './base-agent'
+import { BaseAgentImpl, type BaseAgentConfigView } from './base-agent'
 import { generateMcpBridgeEnv } from './harness-env'
 
 const log = createLogger('workshop.dsh')
@@ -106,7 +106,7 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
     return 'dsh'
   }
 
-  protected configRecord(): Record<string, unknown> {
+  protected configRecord(): BaseAgentConfigView {
     return this.config
   }
 
@@ -159,7 +159,7 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
   }
 
   /** HITL 应答:session/request_permission → allow/reject/cancelled(fail-closed) */
-  async respondHitl(kind: string, id: string, outcome: {
+  override async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
     value?: string

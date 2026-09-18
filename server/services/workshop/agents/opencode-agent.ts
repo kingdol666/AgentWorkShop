@@ -32,7 +32,7 @@ import { extractJsonArray, peerPrompt, supervisePrompt, systemManual, toolArgsPr
 import { getHitlRegistry } from './hitl-registry'
 import { harnessSettings } from '../settings'
 import { spawnLineProcess } from './adapters/line-spawn'
-import { BaseAgentImpl } from './base-agent'
+import { BaseAgentImpl, type BaseAgentConfigView } from './base-agent'
 import { resolveBridgePath, resolvePlatformBaseUrl } from './harness-env'
 
 const log = createLogger('workshop.opencode')
@@ -152,7 +152,7 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
     return 'opencode'
   }
 
-  protected configRecord(): Record<string, unknown> {
+  protected configRecord(): BaseAgentConfigView {
     return this.config
   }
 
@@ -222,7 +222,7 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
   }
 
   /** HITL 应答(codex/opencode/dsh 统一入口;本 impl 处理 opencode-permission) */
-  async respondHitl(kind: string, id: string, outcome: {
+  override async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
     value?: string
@@ -247,7 +247,9 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
         await this.api('POST', `/question/${encodeURIComponent(id)}/reply`, { answer: outcome.value ?? outcome.comment ?? '' })
       }
     }
-    if (pending.timer) clearTimeout(p.timer)
+    // 原为 clearTimeout(p.timer):p 在本作用域不存在(ReferenceError,且仅当计时器非空时触发),
+    // 该待办条目在此处就是 pending(与 dsh/codex/hermes 的同名分支写法一致)。
+    if (pending.timer) clearTimeout(pending.timer)
     this.pendingHitl.delete(id)
     getHitlRegistry().resolve(kind, id, cancelled ? 'cancelled' : 'answered')
   }
@@ -273,9 +275,9 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
     }
   }
 
-  private supervising = false
+  // supervising 由 BaseAgentImpl 持有(protected):同名私有声明会与基类形成"两个私有声明"(TS2415)。
 
-  async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
+  override async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
     // 引擎/会话不可用 → 本轮监督降级为空(调度器回退规则引擎);绝不让引擎故障
     // 以 unhandledRejection 形态逃逸(dev-stability-guard 会据此杀掉整个服务端)
     try {
@@ -296,16 +298,22 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
       memory: ctx.memory,
     })
     const timeoutMs = this.config.superviseTimeoutMs ?? 150_000
-    return await this.runTurn(prompt, undefined, {
-      timeoutMs,
-      signal: opts?.signal,
-      onDone: async () => {
-        this.supervising = false
-      },
-      beforeStart: () => {
-        this.supervising = true
-      },
-    }).then((events) => {
+    // runTurn 是 async generator(返回 AsyncGenerator,不是 Promise),必须以异步迭代消费完整个回合。
+    // (原实现写 .then(...)/.catch(...):运行时是 "then is not a function" 的 TypeError,supervise 整条路径实际不可用。)
+    try {
+      const events: AgentEvent[] = []
+      for await (const e of this.runTurn(prompt, undefined, {
+        timeoutMs,
+        signal: opts?.signal,
+        onDone: async () => {
+          this.supervising = false
+        },
+        beforeStart: () => {
+          this.supervising = true
+        },
+      })) {
+        events.push(e)
+      }
       // 从事件流提取最终文本 → JSON 决策兜底(工具直执行路径返回空)
       let text = ''
       for (const e of events) {
@@ -315,10 +323,21 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
       }
       const parsed = extractJsonArray(text)
       return parsed && parsed.length > 0 ? parsed as SupervisionDecision[] : []
-    }).catch(() => {
+    }
+    catch {
       this.supervising = false
       return []
-    })
+    }
+  }
+
+  /** supervise 用:收齐整个回合的事件(基类抽象成员;本类 supervise 自行消费并需 beforeStart/onDone 钩子) */
+  protected async collectTurnEvents(prompt: string, timeoutMs: number, signal?: AbortSignal): Promise<AgentEvent[]> {
+    const events: AgentEvent[] = []
+    for await (const e of this.runTurn(prompt, undefined, { timeoutMs, signal })) {
+      events.push(e)
+      if (e.kind === 'error') break
+    }
+    return events
   }
 
   protected async* workerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
@@ -800,10 +819,17 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
     }
     const createWith = async (extra: Record<string, unknown> | undefined): Promise<Record<string, unknown>> =>
       this.api('POST', '/session', { ...body, ...(extra ?? {}) })
-    const created = await (this.config.permission ?? DEFAULT_PERMISSION)
+    // 历史实现写作 `await (cond) ? a : b`:await 只作用于条件,整个三元表达式的结果是**未 await** 的
+    // Promise,故 created?.id 恒为 undefined → sessionId 恒为 String(undefined ?? '') === '' →
+    // 必然落到下面的 2.5s 重试循环(真正被使用的会话来自重试那次 createWith(undefined))。
+    // 此处逐字保留该运行时语义:同样的 await 让出一次微任务、同样的请求照发、首次结果同样丢弃。
+    // 直白的修法是给整个三元表达式加括号 await(会用上带 permission 的首次会话、省掉 2.5s 重试),
+    // 但那会改变 opencode 会话的权限策略与启动时序,故本次不改 —— 见报告"未修的缺陷"一节。
+    const firstAttempt = await (this.config.permission ?? DEFAULT_PERMISSION)
+    void (firstAttempt
       ? createWith({ permission: this.config.permission ?? DEFAULT_PERMISSION }).catch(() => createWith(undefined))
-      : createWith(undefined)
-    this.sessionId = String(created?.id ?? '')
+      : createWith(undefined))
+    this.sessionId = ''
     if (!this.sessionId) {
       // 瞬态失败(实例刚起/内部分配竞态/权限规则不兼容)→ 无附加字段重试,最多 3 次
       for (let i = 0; i < 3 && !this.sessionId; i++) {

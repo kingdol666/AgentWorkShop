@@ -72,7 +72,9 @@ export function inventory(): AmlInventory {
     kind: EntityIssue['kind'],
     rows: Array<{ id: string, path?: string }>,
     baseDir: string,
-    contract: string[],
+    // 非空契约列表:三个调用点都传字面量,且下面按"多选一"语义读 contract[0] 作展示路径,
+    // 用非空元组表达"至少一项"这一既有前提(纯类型,运行时零变化)
+    contract: readonly [string, ...string[]],
   ): number => {
     const ids = new Set(rows.map(r => r.id))
     for (const r of rows) {

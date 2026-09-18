@@ -137,6 +137,10 @@ export interface TaskEngine {
   queueViewOf(channelId: string, agentId: string): AgentTaskQueueView
   /** 批量队列视图(一次查询聚合全 channel;调度快照热路径) */
   queueViewsOf(channelId: string): Map<string, AgentTaskQueueView>
+  /** 批量队列视图 lite 版(元数据投影,免 artifacts/history 大列解析;调度快照热路径) */
+  queueViewsOfLite(channelId: string): Map<string, AgentTaskQueueView>
+  /** 任务列表 lite 版(元数据投影;调度决策/规则引擎仅消费 id/state/parent/进度/标题) */
+  listLite(channelId: string): WorkspaceTask[]
 }
 
 /**

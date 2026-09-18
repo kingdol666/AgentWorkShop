@@ -164,56 +164,56 @@ function doDcwWrite(r: DcwLiveRow): void {
       class="twin-list"
     >
       <button
-        v-for="t in twins.twins"
-        :key="t.id"
+        v-for="tw in twins.twins"
+        :key="tw.id"
         class="twin-card"
-        :class="{ daq: isDaq(t) }"
+        :class="{ daq: isDaq(tw) }"
         type="button"
-        @click="$emit('focus-device', t)"
+        @click="$emit('focus-device', tw)"
       >
         <div class="twin-row">
-          <span class="twin-model-tag">{{ modelTag(t.modelRef || t.name) }}</span>
+          <span class="twin-model-tag">{{ modelTag(tw.modelRef || tw.name) }}</span>
           <div class="twin-idbar">
-            <span class="twin-name">{{ t.name }}</span>
-            <span class="twin-code">{{ isDaq(t) ? 'DAQ' : devNo(t.id) }}</span>
+            <span class="twin-name">{{ tw.name }}</span>
+            <span class="twin-code">{{ isDaq(tw) ? 'DAQ' : devNo(tw.id) }}</span>
           </div>
           <button
             class="twin-del"
-            :class="{ armed: armedId === t.id }"
-            :disabled="busyId === t.id"
-            :title="armedId === t.id ? '再次点击确认删除该设备实例' : '删除该设备实例'"
-            @click.stop="removeTwin(t)"
+            :class="{ armed: armedId === tw.id }"
+            :disabled="busyId === tw.id"
+            :title="armedId === tw.id ? '再次点击确认删除该设备实例' : '删除该设备实例'"
+            @click.stop="removeTwin(tw)"
           >
-            {{ armedId === t.id ? $t('deviceTwinPanel.k44653007') : '✕' }}
+            {{ armedId === tw.id ? $t('deviceTwinPanel.k44653007') : '✕' }}
           </button>
           <span
             class="twin-state"
-            :class="`s-${t.state}`"
+            :class="`s-${tw.state}`"
           >
             <i
               class="twin-state-dot"
-              :style="{ background: stateColor[t.state] || 'var(--hud-dim)' }"
+              :style="{ background: stateColor[tw.state] || 'var(--hud-dim)' }"
             />
-            {{ stateLabel[t.state] || t.state }}
+            {{ stateLabel[tw.state] || tw.state }}
           </span>
         </div>
         <div
-          v-if="Object.keys(t.telemetry).length"
+          v-if="Object.keys(tw.telemetry).length"
           class="twin-tele"
         >
           <span
-            v-for="(v, k) in t.telemetry"
+            v-for="(v, k) in tw.telemetry"
             :key="k"
             class="tele-item"
           ><em>{{ k }}</em><b>{{ fmt(v) }}</b></span>
         </div>
         <!-- 实时数采(绿色;数采节点 = 自身通道,设备 = 绑定通道) -->
         <div
-          v-if="daqLive?.[t.id]?.length"
+          v-if="daqLive?.[tw.id]?.length"
           class="twin-daq"
         >
           <span
-            v-for="(d, i) in daqLive[t.id]"
+            v-for="(d, i) in daqLive[tw.id]"
             :key="`${d.ch}-${i}`"
             class="daq-item"
             :class="{ alarm: d.alarm }"
@@ -224,11 +224,11 @@ function doDcwWrite(r: DcwLiveRow): void {
         </div>
         <!-- 智控设定(绑定通道的当前 set 值展示 + 生效上下限 + 窗口内直写下发) -->
         <div
-          v-if="dcwLive?.[t.id]?.length"
+          v-if="dcwLive?.[tw.id]?.length"
           class="twin-dcw"
         >
           <div
-            v-for="r in dcwLive[t.id]"
+            v-for="r in dcwLive[tw.id]"
             :key="r.id"
             class="dcw-item"
           >
@@ -541,7 +541,7 @@ function doDcwWrite(r: DcwLiveRow): void {
 }
 .dcw-src {
   font-style: normal;
-  font-size: 8px;
+  font-size: 10px;
   padding: 0 3px;
   margin-left: 4px;
   color: var(--hud-amber, #f6c453);
@@ -571,7 +571,7 @@ function doDcwWrite(r: DcwLiveRow): void {
   font-size: 10px;
   color: var(--hud-dim);
 }
-.dcw-act em { font-style: normal; font-size: 8px; letter-spacing: 0.08em; color: var(--hud-faint); }
+.dcw-act em { font-style: normal; font-size: 10px; letter-spacing: 0.08em; color: var(--hud-faint); }
 .dcw-act b {
   font-size: 11.5px;
   font-weight: 700;
@@ -580,7 +580,7 @@ function doDcwWrite(r: DcwLiveRow): void {
   white-space: nowrap;
 }
 .dcw-act b i { font-style: normal; font-size: 10px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
-.dcw-act-at { font-style: normal; font-size: 8px; color: var(--hud-faint); }
+.dcw-act-at { font-style: normal; font-size: 10px; color: var(--hud-faint); }
 .dcw-win {
   font-family: var(--font-mono);
   font-size: 10px;

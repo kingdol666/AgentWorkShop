@@ -54,6 +54,10 @@ export function createChannelRepo(db: DatabaseSync) {
         name: input.name,
         description: input.description ?? '',
         scenarioPrompt: input.scenarioPrompt ?? '',
+        // INSERT 不含该列 → 落库取列默认(llm_json TEXT NOT NULL DEFAULT '',见 database.ts v11);
+        // 返回的内存行按同一事实补该列,使 create() 的返回值与随后 findById() 读到的行形状一致。
+        // 注意:insert.run(...) 的参数列表保持不变(多传一个参数会与 SQL 占位符数量不符)。
+        llmJson: '',
         leadAgentId: null,
         workspace: input.workspace ?? '',
         enabled: 1,

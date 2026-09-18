@@ -126,26 +126,26 @@ const stateDot: Record<string, string> = {
         tab="任务"
       >
         <div
-          v-for="t in rootTasks"
-          :key="t.id"
+          v-for="task in rootTasks"
+          :key="task.id"
           class="task aw-tile"
           role="button"
           tabindex="0"
-          @click="emit('openTask', t.id)"
-          @keydown.enter="emit('openTask', t.id)"
+          @click="emit('openTask', task.id)"
+          @keydown.enter="emit('openTask', task.id)"
         >
           <div class="task-head">
-            <span class="state-chip aw-mono">{{ t.state }}</span>
-            <span class="task-title">{{ t.title }}</span>
+            <span class="state-chip aw-mono">{{ task.state }}</span>
+            <span class="task-title">{{ task.title }}</span>
           </div>
           <div class="task-meta">
-            {{ t.id.slice(0, 8) }} · {{ t.progress }}%
-            <span v-if="childCount(t.id)">· {{ $t('inspectorPanel.k3mp44x003') }} {{ childCount(t.id) }}</span>
-            <span v-if="t.artifacts">· {{ $t('inspectorPanel.k3w9q9004') }} {{ t.artifacts }}</span>
+            {{ task.id.slice(0, 8) }} · {{ task.progress }}%
+            <span v-if="childCount(task.id)">· {{ $t('inspectorPanel.k3mp44x003') }} {{ childCount(task.id) }}</span>
+            <span v-if="task.artifacts">· {{ $t('inspectorPanel.k3w9q9004') }} {{ task.artifacts }}</span>
           </div>
           <a-progress
-            v-if="t.state === 'WORKING'"
-            :percent="t.progress"
+            v-if="task.state === 'WORKING'"
+            :percent="task.progress"
             size="small"
             :show-info="false"
           />

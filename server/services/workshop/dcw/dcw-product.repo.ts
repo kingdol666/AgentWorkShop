@@ -19,11 +19,41 @@ const DB_PATH = join(ensureDataDir(), 'dcw-products.json')
 function load(): ProductView[] {
   try {
     const parsed = loadJsonFile(DB_PATH, null)
-    return Array.isArray(parsed) ? parsed as ProductView[] : []
+    return Array.isArray(parsed) ? parsed.map(normRow) as ProductView[] : []
   }
   catch {
     return []
   }
+}
+
+/** 行规范化:paramLimits 键值容错(非有限数字的侧丢弃;min>max 整条丢弃) */
+function normRow(p: ProductView): ProductView {
+  const raw = p.paramLimits
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return p
+  const out: ProductView['paramLimits'] = {}
+  for (const [key, range] of Object.entries(raw)) {
+    if (!key || range == null || typeof range !== 'object') continue
+    const min = range.min == null ? undefined : Number(range.min)
+    const max = range.max == null ? undefined : Number(range.max)
+    const okMin = min == null || Number.isFinite(min)
+    const okMax = max == null || Number.isFinite(max)
+    if (!okMin || !okMax) continue
+    if (min != null && max != null && min > max) continue
+    const entry: { min?: number, max?: number } = {}
+    if (min != null) entry.min = min
+    if (max != null) entry.max = max
+    if (Object.keys(entry).length > 0) out[key] = entry
+  }
+  return { ...p, paramLimits: out }
+}
+
+/** 载荷规范化(创建/更新共用;键级有效性由控制器按产线工艺参数校验) */
+function normLimitsInput(v: unknown): Record<string, { min?: number, max?: number }> | undefined {
+  if (v == null) return undefined
+  if (typeof v !== 'object' || Array.isArray(v)) {
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'paramLimits 需为对象(键=工艺参数 key)')
+  }
+  return normRow({ paramLimits: v as ProductView['paramLimits'] } as ProductView).paramLimits
 }
 
 class DcwProductRepo {
@@ -47,6 +77,8 @@ class DcwProductRepo {
       description: String(input.description ?? '').trim(),
       createdAt: new Date().toISOString(),
     }
+    const limits = normLimitsInput(input.paramLimits)
+    if (limits) p.paramLimits = limits
     this.list.push(p)
     this.flush()
     return p
@@ -62,6 +94,11 @@ class DcwProductRepo {
     }
     if (patch.description !== undefined) p.description = String(patch.description).trim()
     if (patch.lineId !== undefined) p.lineId = String(patch.lineId)
+    if (patch.paramLimits !== undefined) {
+      const limits = normLimitsInput(patch.paramLimits)
+      if (limits && Object.keys(limits).length > 0) p.paramLimits = limits
+      else delete p.paramLimits
+    }
     this.flush()
     return p
   }

@@ -4,7 +4,7 @@
  * 服务端任何写入（UI / CLI / 文件监听）都会 push { type, changed, restartRequired, effective }。
  * 连接前先鉴权（无效 token 直接 401，不开流）。
  */
-import { createEventStream } from 'h3'
+import { createEventStream, defineEventHandler } from 'h3'
 import { resolveUser } from '../../workshop/caller'
 import { getSystemConfigService, type ConfigEventPayload } from '../../../services/system-config'
 

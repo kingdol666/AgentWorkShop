@@ -37,7 +37,14 @@ export default defineApiHandler(async (event) => {
     }
   }
   catch (err) {
-    if (err instanceof AppError && err.statusCode === 410) {
+    // ⚠️ 类型漂移记录:AppError 的权威定义只有 status(见 server/utils/errors.ts),没有 statusCode。
+    // 原判定读的是不存在的属性 ⇒ 运行时恒为 undefined,这段「实体丢失 → 200 + 元数据告警」兜底
+    // **从未命中**(实际行为:loadDatasetEntity 抛 AppError(410) → defineApiHandler 统一转 410 错误信封)。
+    // 依「不改变运行时行为」约束,这里只把该事实写实、判定结果保持不变;
+    // 若要启用本兜底(与上方文件注释「实体缺失时返回 410 + 元数据行」及前端 report: ... | null 一致),
+    // 把下面的 legacyStatusCode 换成 err.status 即可(一行)。
+    const legacyStatusCode = (err as { statusCode?: number } | undefined)?.statusCode
+    if (err instanceof AppError && legacyStatusCode === 410) {
       // 元数据仍在但实体丢了:仍然 200 返回元数据 + 明确的实体告警,便于 UI 展示与清理引导
       return { dataset: ds, report: null, manifest: null, spec: null, entity: { dir: null, arrays: [], sizeBytes: 0, healthy: false, specFromEntity: false, warning: err.message } }
     }

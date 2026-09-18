@@ -11,6 +11,11 @@ import { resolve } from 'node:path'
 import { resolveRunMode } from '@/shared/config/home.mjs'
 import { getSystemConfigService } from '../services/system-config'
 
+/** 错误消息提取(catch 变量为 unknown;与原先 `String(err?.message ?? err)` 逐字等价) */
+function errorMessage(err: unknown): string {
+  return String((err as { message?: unknown } | null | undefined)?.message ?? err)
+}
+
 export default function systemConfigPlugin(nitroApp: {
   hooks: { hook(name: string, fn: (...args: unknown[]) => void | Promise<void>): void }
 }): void {
@@ -28,7 +33,7 @@ export default function systemConfigPlugin(nitroApp: {
   }
   catch (err) {
     // 初始化失败不阻断服务（设置系统降级为只读构建配置）
-    console.warn('[system-config] 初始化失败(设置系统降级):', String(err?.message ?? err))
+    console.warn('[system-config] 初始化失败(设置系统降级):', errorMessage(err))
   }
 
   nitroApp.hooks.hook('close', () => {

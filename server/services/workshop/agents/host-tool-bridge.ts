@@ -21,7 +21,7 @@ import type { WorkspaceTask } from '../types/task'
 import type { RpcHostToolDefinition } from './adapters/omp-rpc-client'
 import { loadHostToolDefs } from '../prompts/loader'
 import { daqRuntimeSettings } from '../settings'
-import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions } from './industrial-tools'
+import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions } from './industrial-tools'
 import { listPluginTools, pluginOfTool } from './plugin-tools'
 import { getChannelPluginsRepo } from '../db/channel-plugins.repo'
 import { extractTaskMode } from '../runtime/execution-mode'
@@ -186,6 +186,10 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       return toolDcwControl(identity.agentId, args as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string })
     case 'dcw_read':
       return toolDcwRead(identity.agentId, args as { node_id?: string })
+    case 'param_control':
+      return toolParamControl(identity.agentId, args as { param?: string, value?: number | string, hypothesis?: string, task_id?: string, line_id?: string })
+    case 'param_read':
+      return toolParamRead(identity.agentId, args as { param?: string, line_id?: string })
     case 'daq_query':
       return toolDaqQuery(identity.agentId, args as Parameters<typeof toolDaqQuery>[1])
     case 'daq_frames':

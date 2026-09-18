@@ -106,6 +106,16 @@ export interface DaqPatchInput {
 
 type BroadcastFn = (type: string, payload: unknown) => void
 
+/** 有界 LRU 的最小泛型面:shared/lru.mjs 是 allowJs 推断出的**非泛型**类(JS 里没有 @template),
+ *  直接 `new LruMap<K, V>()` 无处安放类型参数。这里按实际使用面(get/set/delete/size)声明键值类型,
+ *  调用点即可拿到准确的读写类型;运行时仍是同一个 LruMap(纯类型声明,零运行时差异)。 */
+interface LruLike<K, V> {
+  readonly size: number
+  get(key: K): V | undefined
+  set(key: K, value: V): unknown
+  delete(key: K): unknown
+}
+
 /** TSDB 批量写窗口(ms):消费端攒批再落盘 */
 const TSDB_FLUSH_MS = 500
 /** TSDB 攒批缓冲上限(背压:满则丢最旧并计数,防慢库拖爆内存) */
@@ -416,7 +426,9 @@ class DaqController {
     // 指标阈值告警(模板 metrics 规则;alarm 硬限边沿 → 既有告警链路)
     this.evaluateMetricAlarms(node, tpl, metrics)
     if (!allowPublish) return
-    const payload: AepDaqFrame = {
+    // lineId 是 WS 逐产线扇出的依据(scene-events.payloadLineId 读的就是 payload.lineId,
+    // 与 AepDaqReading.lineId 同义);AepDaqFrame 协议类型漏了该字段 —— 见报告。
+    const payload: AepDaqFrame & { lineId: string | null } = {
       nodeId: node.id,
       templateRef: node.templateRef,
       kind: f.kind,
@@ -694,7 +706,7 @@ class DaqController {
 
   /** 同绑定 siblings 缓存(1s TTL):回写热路径不再逐样本全量 scan,O(N²)→O(N)/周期。
    *  用有界 LRU 而非「超 500 整体 clear()」——后者会造成周期性全量缓存穿透。 */
-  private siblingsCache = new LruMap<string, { at: number, list: DaqNode[] }>(500)
+  private siblingsCache: LruLike<string, { at: number, list: DaqNode[] }> = new LruMap(500)
 
   private siblingsOf(bindingId: string): DaqNode[] {
     const hit = this.siblingsCache.get(bindingId)
@@ -759,7 +771,10 @@ class DaqController {
     this.broadcast = fn
   }
 
-  controllerState(): AepDaqControllerState & { produced?: number, consumed?: number, dropped?: number, samplesStored?: number, tsdbDropped?: number } {
+  /** minIntervalMs / alarmsRaised / framesStored 都是本方法**实际返回**的字段,但 AepDaqControllerState
+   *  未收录(协议类型与实现漂移):minIntervalMs 被前端 useDaqStream 消费,alarmsRaised 被
+   *  server/api/metrics.ts 消费(framesStored 供管线指标展示)。这里按实现补齐返回面 —— 见报告。 */
+  controllerState(): AepDaqControllerState & { minIntervalMs: number, alarmsRaised: number, framesStored: number, produced?: number, consumed?: number, dropped?: number, samplesStored?: number, tsdbDropped?: number } {
     // 丢弃 = 队列层真实丢弃(inproc 拥塞/mqtt 断连)+ 消费侧乱序迟到帧(诚实可见)
     const queueLost = g_queueLost()
     // 单次遍历(hardening PERF-1):status 高频路径不再对全表多次 all()

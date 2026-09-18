@@ -23,7 +23,9 @@ export default defineApiHandler(async (event) => {
   // channel 列表按 owner 归并(每用户一次轻量查询;channel 行自带 ownerUserId)
   const out = users.map(u => ({
     ...u,
-    channels: manager.listChannelsForUser(u.id).map(c => ({ id: c.channelId, name: c.name, createdAt: c.createdAt })),
+    // ChannelRow 的 channel 主键列名是 id(SELECT 'id, name, ...');原写的 c.channelId 运行时恒 undefined,
+    // 与前端 UserRow.channels: Array<{ id, name, createdAt }>(app/pages/permissions/index.vue)不一致
+    channels: manager.listChannelsForUser(u.id).map(c => ({ id: c.id, name: c.name, createdAt: c.createdAt })),
     grants: grantsByUser.get(u.id) ?? [],
   }))
   return { lines, users: out }

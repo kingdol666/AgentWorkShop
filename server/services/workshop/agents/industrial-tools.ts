@@ -19,6 +19,9 @@ import { daqRuntimeSettings } from '../settings'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { findDaqTemplate } from '../daq/daq-templates'
 import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
+import { getDcwParamRepo } from '../dcw/param-map.repo'
+import { limitsBreakdownOf } from '../dcw/param-limits'
+import type { DcwParamView } from '../../../../shared/dcw-protocol'
 import { getOps, recordOps } from '../ops/ops'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { getDcwProductRepo } from '../dcw/dcw-product.repo'
@@ -75,7 +78,10 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
 ---
 通用规则:
 1. 一个 Agent 可绑定多个节点;先读本清单理解每个节点的物理意义与操作守则,再动手。
-2. 数控下发 dcw_control(node_id, value):目标值必须落在「安全量程 ∩ 活动配方工艺窗口」;单次调幅建议按语义卡的步进指引。下发前/后用 dcw_read(node_id) 读 PLC 当前值取证复核(被动观测免审批)。
+2. 数控下发优先用 param_control(param, value) 以**工艺参数**寻址(key 语义稳定,跨批次/换配方不变);
+   dcw_control(node_id, value) 为节点直接寻址的兼容面。设定值受四层限界联锁
+   (节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口)逐层收窄,
+   越界一律拒绝 —— 用户与 Agent 一体约束,无旁路。下发前/后用 param_read(param) 读 PLC 当前值取证复核(被动观测免审批)。
 3. 数据获取 daq_query(不传 node_id = 全部数采节点),支持按产线/产品/配方/时间检索;解读数据时结合语义卡的判读方法。
 4. 改动设定后等待工艺响应(热惯性/传动惯量)再评估,避免连续大幅调整。
 5. 调控闭环:每次下发自动开一条优化记录(open);观察数采后用 dcw_judge 落判定(keep/rollback/uncertain);
@@ -130,11 +136,8 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
     if (approvals.hasPendingFor(agentId, nodeId)) {
       return { text: `你对该节点已有一条待审批的下发指令,请等待用户处理后再发新指令(避免审批堆积)。`, isError: true }
     }
-    const run = node.lineId ? getActiveLineRun(node.lineId) : null
-    const recipe = run ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
-    const param = recipe?.params.find(p => p.nodeId === nodeId)
-    const detail = `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit}`
-      + (param && (param.min != null || param.max != null) ? `,配方窗口 ${param.min ?? '-∞'}~${param.max ?? '+∞'}${node.unit}` : `,安全量程 ${node.min}~${node.max}${node.unit}`)
+    const bd = limitsBreakdownOf(node)
+    const detail = `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})`
     const ap = await approvals.request(agentId, nodeId, 'dcw', detail)
     if (!ap.approved) {
       return { text: `指令未执行:用户${ap.comment.includes('超时') ? '未在时限内批准(超时)' : `拒绝了本次下发`}。用户备注:${ap.comment || '(无)'}` }
@@ -234,6 +237,161 @@ export async function toolDcwRead(agentId: string, args: { node_id?: string }): 
 /** 读/设定偏差对照容差(与服务端回读死区同口径) */
 function writeToleranceOf(node: { decimals: number, min: number, max: number }): number {
   return Math.max(0.5 * 10 ** -node.decimals, (node.max - node.min) * 0.005)
+}
+
+/** 工艺参数解析(param_control/param_read 共用):pp-id 优先,其次按 key;跨产线同名需 line_id 消歧 */
+function resolveParamRef(ref: string, lineId?: string): { ok: true, param: DcwParamView } | { ok: false, text: string, isError: true } {
+  const repo = getDcwParamRepo()
+  const trimmed = String(ref ?? '').trim()
+  if (!trimmed) {
+    return { ok: false, text: 'param 必填:工艺参数 id(pp-*)或参数 key(见 my_industrial_nodes)。', isError: true }
+  }
+  const row = trimmed.startsWith('pp-') ? repo.byId(trimmed) : undefined
+  if (row) {
+    const view = repo.viewOf(row)
+    if (!view) return { ok: false, text: `工艺参数 ${trimmed} 的执行节点已不存在(映射悬空)。`, isError: true }
+    if (lineId && view.lineId !== lineId) {
+      return { ok: false, text: `工艺参数 ${view.key} 不属于产线 ${lineId}(实际归属:${view.lineId || '未分配'})。`, isError: true }
+    }
+    return { ok: true, param: view }
+  }
+  const hits = repo.byKey(trimmed)
+    .map(r => repo.viewOf(r))
+    .filter((v): v is DcwParamView => v != null)
+  const scoped = lineId ? hits.filter(v => v.lineId === lineId) : hits
+  if (scoped.length === 1) return { ok: true, param: scoped[0]! }
+  if (scoped.length === 0) {
+    const catalog = repo.listViews().slice(0, 12).map(v => `${v.key}(${v.name})`).join('、')
+    return { ok: false, text: `未找到工艺参数「${trimmed}」${lineId ? `(产线 ${lineId})` : ''}。可用参数:${catalog || '无 —— 请先让用户创建写控节点生成参数面'}。`, isError: true }
+  }
+  return { ok: false, text: `工艺参数「${trimmed}」命中 ${scoped.length} 条同名映射,请附加 line_id 消歧或改用参数 id(${scoped.map(v => v.id).join(' / ')})。`, isError: true }
+}
+
+/** 参数面权限摘要(工具回包统一口径;不透出寄存器等 PLC 寻址细节) */
+function paramLimitsText(param: DcwParamView): string {
+  const node = getDcwController().byId(param.nodeId)
+  if (!node) return '执行节点已删除'
+  const bd = limitsBreakdownOf(node)
+  const layers = bd.layers.filter(l => l.min != null || l.max != null).map(l => l.label).join(' ∩ ')
+  return `有效写入区间 ${bd.effective.min}~${bd.effective.max}${param.unit}(约束层:${layers || '无'})`
+}
+
+/** 工具:param_control —— 按工艺参数下发设定值(推荐的参数语义寻址面)。
+ *  权限沿用节点绑定(参数 → 执行节点);限界联锁(参数基准 ∩ 产品 ∩ 配方 ∩ 节点安全量程)
+ *  在网关咽喉点统一生效。args.hypothesis 声明本次假设(入册),args.task_id 关联任务。 */
+export async function toolParamControl(agentId: string, args: {
+  param?: string
+  value?: number | string
+  hypothesis?: string
+  task_id?: string
+  line_id?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const resolved = resolveParamRef(String(args.param ?? ''), args.line_id ? String(args.line_id) : undefined)
+  if (!resolved.ok) return resolved
+  const param = resolved.param
+  const value = Number(args.value)
+  if (!Number.isFinite(value)) {
+    return { text: '设定值 value 必须为数字。', isError: true }
+  }
+  const repo = getAgentNodeBindingRepo()
+  const binding = repo.find(agentId, param.nodeId, 'dcw')
+  if (!binding) {
+    const mine = repo.byAgent(agentId).filter(b => b.kind === 'dcw')
+    return {
+      text: mine.length
+        ? `无权操作工艺参数「${param.key}」(执行节点 ${param.nodeId} 未绑定给你)。你有权控制的数控节点:${mine.map(b => b.nodeId).join(', ')}。`
+        : '你尚未绑定任何数控节点,无权下发控制指令。请在数字孪生界面绑定数控节点。',
+      isError: true,
+    }
+  }
+  const node = getDcwController().byId(param.nodeId)
+  if (!node) {
+    repo.removeAgentNode(agentId, param.nodeId, 'dcw')
+    return { text: `工艺参数「${param.key}」的执行节点已不存在(可能被删除),原绑定已自动清理。`, isError: true }
+  }
+  if (!node.enabled) {
+    return { text: `工艺参数「${param.key}」的执行节点「${node.name}」已停用(控制已暂停),无法下发。`, isError: true }
+  }
+  // 手动确认模式:与 dcw_control 同源审批面,备注回给 Agent
+  if (binding.mode === 'manual') {
+    const approvals = getToolApprovals()
+    if (approvals.hasPendingFor(agentId, param.nodeId)) {
+      return { text: '你对该执行节点已有一条待审批的下发指令,请等待用户处理后再发新指令(避免审批堆积)。', isError: true }
+    }
+    const detail = `工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit},${paramLimitsText(param)}`
+    const ap = await approvals.request(agentId, param.nodeId, 'dcw', detail)
+    if (!ap.approved) {
+      return { text: `指令未执行:用户${ap.comment.includes('超时') ? '未在时限内批准(超时)' : `拒绝了本次下发`}。用户备注:${ap.comment || '(无)'}` }
+    }
+    if (!repo.find(agentId, param.nodeId, 'dcw')) {
+      return { text: '指令未执行:审批通过时你的该节点绑定已被解除(权限在批准时失效)。', isError: true }
+    }
+  }
+  try {
+    const meta = {
+      source: 'agent' as const,
+      actor: agentId,
+      actorName: agentBadgeLabel(agentId),
+      taskId: args.task_id ? String(args.task_id) : undefined,
+      hypothesis: args.hypothesis ? String(args.hypothesis) : '',
+    }
+    const outcome = await getDcwController().writeParam(param.id, value, meta)
+    if (outcome.ok) {
+      const stable = getRecipeRollBackManager().journal({ nodeId: param.nodeId, limit: 10 }).find(a => a.prevValue != null && a.prevValue !== a.newValue)
+      const loopTxt = [
+        outcome.recordId ? `优化记录 ${outcome.recordId} 已开窗(观察数采后 dcw_judge 落判定)` : null,
+        stable ? `上一稳定锚:${stable.prevValue}${param.unit}(可 dcw_rollback 回退)` : null,
+      ].filter(Boolean).join(';')
+      return {
+        text: `下发成功:工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit} → 执行节点「${node.name}」;回读 ${outcome.readback != null ? `${outcome.readback}${param.unit}` : '不支持'}一致。${paramLimitsText(param)}。${outcome.message}${loopTxt ? `\n[调控闭环] ${loopTxt}` : ''}`,
+      }
+    }
+    return { text: `下发失败:${outcome.message}(工艺参数 ${param.key},执行节点「${node.name}」;${paramLimitsText(param)};当前设定值保持 ${node.value ?? '原值'}${param.unit} 未被改动)`, isError: true }
+  }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return { text: `下发被拒绝:${msg}(工艺参数 ${param.key};${paramLimitsText(param)})`, isError: true }
+  }
+}
+
+/** 工具:param_read —— 按工艺参数读取 PLC 当前值(被动观测免审批) */
+export async function toolParamRead(agentId: string, args: {
+  param?: string
+  line_id?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const resolved = resolveParamRef(String(args.param ?? ''), args.line_id ? String(args.line_id) : undefined)
+  if (!resolved.ok) return resolved
+  const param = resolved.param
+  const repo = getAgentNodeBindingRepo()
+  if (!repo.find(agentId, param.nodeId, 'dcw')) {
+    const mine = repo.byAgent(agentId).filter(b => b.kind === 'dcw')
+    return {
+      text: mine.length
+        ? `无权读取工艺参数「${param.key}」(执行节点 ${param.nodeId} 未绑定给你)。你有权读取的数控节点:${mine.map(b => b.nodeId).join(', ')}。`
+        : '你尚未绑定任何数控节点,无权读取控制通道数据。请在数字孪生界面绑定数控节点。',
+      isError: true,
+    }
+  }
+  const node = getDcwController().byId(param.nodeId)
+  if (!node) {
+    repo.removeAgentNode(agentId, param.nodeId, 'dcw')
+    return { text: `工艺参数「${param.key}」的执行节点已不存在(可能被删除),原绑定已自动清理。`, isError: true }
+  }
+  try {
+    const read = await getDcwController().readParam(param.id)
+    if (!read.ok && read.value == null && !node.readValue) {
+      return { text: `读取失败:${read.message}(执行节点「${node.name}」驱动 ${node.driver} 可能不支持读取;可改用 daq_query 查关联数采通道)`, isError: true }
+    }
+    const readTxt = read.value != null
+      ? `${Number(read.value.toFixed(param.decimals))}${param.unit} @ ${read.at.slice(11, 19)}`
+      : (node.readValue != null ? `${node.readValue}${param.unit}(最近一次)` : '无读数')
+    return {
+      text: `读取成功:工艺参数「${param.key}」(${param.name})\n  PLC 读数(ACT): ${readTxt}\n  当前设定(SET): ${node.value != null ? `${node.value}${param.unit}` : '从未下发'}\n  ${paramLimitsText(param)}`,
+    }
+  }
+  catch (err) {
+    return { text: `读取被拒绝:${err instanceof Error ? err.message : String(err)}(工艺参数 ${param.key})`, isError: true }
+  }
 }
 
 /**

@@ -619,25 +619,25 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
           </p>
           <div class="tpl-list">
             <div
-              v-for="t in dcw.templates"
-              :key="t.key"
+              v-for="tpl in dcw.templates"
+              :key="tpl.key"
               class="tpl-row"
-              :title="t.semantics ?? ''"
+              :title="tpl.semantics ?? ''"
             >
-              <b>{{ t.name }}</b>
-              <small class="mono dim">{{ t.code }} · {{ t.min }}~{{ t.max }} {{ t.unit }}</small>
+              <b>{{ tpl.name }}</b>
+              <small class="mono dim">{{ tpl.code }} · {{ tpl.min }}~{{ tpl.max }} {{ tpl.unit }}</small>
               <small
-                v-if="t.semantics"
+                v-if="tpl.semantics"
                 class="tpl-sem"
-              >{{ t.semantics.slice(0, 40) }}{{ t.semantics.length > 40 ? '…' : '' }}</small>
+              >{{ tpl.semantics.slice(0, 40) }}{{ tpl.semantics.length > 40 ? '…' : '' }}</small>
               <span
                 class="tpl-tag"
-                :class="{ builtin: t.builtin }"
-              >{{ t.builtin ? $t('dcw.k3x23c054') : $t('dcw.k3t616a058') }}</span>
+                :class="{ builtin: tpl.builtin }"
+              >{{ tpl.builtin ? $t('dcw.k3x23c054') : $t('dcw.k3t616a058') }}</span>
               <button
-                v-if="!t.builtin"
+                v-if="!tpl.builtin"
                 class="mini-btn danger"
-                @click="doRemoveTemplate(t.key)"
+                @click="doRemoveTemplate(tpl.key)"
               >
                 {{ $t('dcw.k3xakp026') }}
               </button>

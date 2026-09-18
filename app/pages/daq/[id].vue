@@ -7,7 +7,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
-import { useDaqStream, type DaqFrameLive } from '@/app/composables/workshop/useDaqStream'
+import { useDaqStream, type DaqFrameLive, type DaqTsdbPoint } from '@/app/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 import { daqKeyFromRef, DAQ_DRIVERS, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult } from '#shared/daq-protocol'
 
@@ -210,7 +210,8 @@ const availableDevices = computed(() =>
 )
 
 // ---------- 历史(时序库) ----------
-type ChartRow = { at: number, value?: number, avg?: number, min?: number, max?: number }
+/** 历史点 = 数采时序点(直接用 DaqTsdbPoint:手写副本漏了 state/cnt,模板取值即报错) */
+type ChartRow = DaqTsdbPoint
 const historyPoints = ref<ChartRow[]>([])
 const bucketMs = ref<number>(15000)
 const histLoading = ref(false)

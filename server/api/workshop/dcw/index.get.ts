@@ -25,6 +25,8 @@ export default defineApiHandler(async (event) => {
       ? ctrl.controllerState()
       : { running: ctrl.controllerState().running === true },
     nodes: filterByLine(user, ctrl.listViews(), n => n.lineId),
+    /** 工艺参数映射面(用户/Agent 的参数语义读写面;PLC 寻址细节不透出) */
+    params: visible ? ctrl.listParamViews().filter(p => inLine(p.lineId)) : ctrl.listParamViews(),
     templates: listDcwTemplates(),
     recipes: visible ? ctrl.listRecipes().filter(r => inLine(r.lineId)) : ctrl.listRecipes(),
     runs: visible ? ctrl.listRuns().filter(r => inLine(r.lineId)) : ctrl.listRuns(),

@@ -2,6 +2,7 @@
  * POST /api/workshop/daq/templates —— 新建自定义信号模板(登录用户)。
  * 成功后广播 daq.template.changed(op=added)收敛全部客户端。
  */
+import { readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDaqTemplateRegistry } from '@/server/services/workshop/daq/daq-templates'

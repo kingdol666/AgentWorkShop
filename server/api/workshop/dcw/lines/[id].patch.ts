@@ -1,7 +1,7 @@
 /**
  * PATCH /api/workshop/dcw/lines/:id —— 编辑产线(名称/光晕色/描述)。
  */
-import { readBody } from 'h3'
+import { getRouterParam, readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDcwController } from '@/server/services/workshop/dcw/dcw-controller'

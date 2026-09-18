@@ -13,10 +13,12 @@
  */
 import { watch } from 'vue'
 import { createClientContext, type ClientContext } from '@/sdk/client.mjs'
-import { usePluginPanels } from '@/app/composables/workshop/usePluginPanels'
-import type { TownBus } from '~/composables/workshop/useTownBus'
+import { usePluginPanels, type PluginPanelEntry } from '@/app/composables/workshop/usePluginPanels'
+import { useTownBus, type TownBus } from '~/composables/workshop/useTownBus'
 
 interface ManifestEntry { name: string, enabled?: boolean, hasClient?: boolean }
+/** vue-i18n 实例在 NuxtApp 上的最小面(只用到 mergeLocaleMessage + locale,故按鸭子类型声明确切形状) */
+interface I18nLike { mergeLocaleMessage?: (locale: string, messages: Record<string, unknown>) => void, locale?: unknown }
 interface I18nBundle { i18n?: Record<string, Record<string, Record<string, string>>> }
 
 export default defineNuxtPlugin(async (nuxtApp) => {
@@ -26,8 +28,8 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   const loaded = new Map<string, ClientContext>()
   const { unregisterPlugin } = usePluginPanels()
   const panels = usePluginPanels()
-  const i18n: { mergeLocaleMessage?: (locale: string, messages: Record<string, unknown>) => void, locale?: unknown } | null
-    = (nuxtApp.$i18n as never) ?? null
+  // NuxtApp.$i18n 的库类型与本文件用到的两个成员结构不同(mergeLocaleMessage 的参数更宽),故在边界处收敛成 I18nLike
+  const i18n = ((nuxtApp.$i18n ?? null) as unknown) as I18nLike | null
   let bus: TownBus | null = null
   try {
     bus = useTownBus()
@@ -102,10 +104,13 @@ export default defineNuxtPlugin(async (nuxtApp) => {
       }
       const ctx = createClientContext({
         name,
-        eventBridge: bridgeFactory(bus),
+        eventBridge: bridgeFactory,
         ui: {
           slots: ['plugins.page', 'settings.plugins', 'dashboard.widgets'],
-          registerPanel: entry => panels.registerPanel({ ...entry, plugin: name }),
+          // SDK 的 ClientPanelEntry.mount 声明为 void,宿主 PluginPanelEntry 则允许返回清理函数
+          // (宿主编排器按返回值回收面板)。这里只在边界处断言 mount 形状,entry 原样透传、不包一层:
+          // 插件真返回清理函数时仍会被回收,返回 void 时同样合法。
+          registerPanel: entry => panels.registerPanel({ ...entry, plugin: name, mount: entry.mount as PluginPanelEntry['mount'] }),
         },
         t: translatorFor(name),
         getLocale: () => {
@@ -168,7 +173,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   const localeRef = i18n?.locale as { value?: string } | undefined
   if (localeRef && typeof localeRef === 'object') {
     watch(localeRef, (loc) => {
-      for (const { ctx } of loaded.values()) {
+      for (const ctx of loaded.values()) {
         try {
           ctx?.hooks?.emit('i18n:changed', { locale: loc })
         }
@@ -185,7 +190,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
         path = useRoute().path ?? ''
       }
       catch { /* 路由上下文不可用时静默 */ }
-      for (const { ctx } of loaded.values()) {
+      for (const ctx of loaded.values()) {
         try {
           ctx?.hooks?.emit('page:change', { path })
         }

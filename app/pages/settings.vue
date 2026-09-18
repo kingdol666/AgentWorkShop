@@ -55,7 +55,8 @@ async function saveRuntime() {
       : { type: 'success', text: t('settings.runtime.savedLive') }
   }
   catch (e) {
-    runtimeNotice.value = { type: 'error', text: e?.response?.data?.message || e?.message || String(e) }
+    const err = e as { response?: { data?: { message?: string } }, message?: string }
+    runtimeNotice.value = { type: 'error', text: err?.response?.data?.message || err?.message || String(e) }
   }
   finally {
     savingRuntime.value = false
@@ -71,7 +72,8 @@ async function resetRuntimeKey(key: string) {
     runtimeNotice.value = { type: 'success', text: t('settings.runtime.keyReset', { key }) }
   }
   catch (e) {
-    runtimeNotice.value = { type: 'error', text: e?.response?.data?.message || e?.message || String(e) }
+    const err = e as { response?: { data?: { message?: string } }, message?: string }
+    runtimeNotice.value = { type: 'error', text: err?.response?.data?.message || err?.message || String(e) }
   }
 }
 
@@ -82,7 +84,8 @@ async function resetAllRuntime() {
     runtimeNotice.value = { type: 'success', text: t('settings.runtime.resetAllDone') }
   }
   catch (e) {
-    runtimeNotice.value = { type: 'error', text: e?.response?.data?.message || e?.message || String(e) }
+    const err = e as { response?: { data?: { message?: string } }, message?: string }
+    runtimeNotice.value = { type: 'error', text: err?.response?.data?.message || err?.message || String(e) }
   }
 }
 
@@ -699,7 +702,7 @@ const tabs = computed(() => [
                     :title="t('settings.groups.defaultCollapsed')"
                     @click="setGroupDefaultCollapsed(g)"
                   >
-                    <span :class="g.collapsed ? 'i-tabler-fold' : 'i-tabler-unfold'" />
+                    <span :class="g.collapsed ? 'i-tabler-chevrons-down' : 'i-tabler-chevrons-up'" />
                   </button>
                   <button
                     v-if="g.source === 'user'"
@@ -747,19 +750,19 @@ const tabs = computed(() => [
                   <div class="rt-ctrl">
                     <a-input-number
                       v-if="item.type === 'number'"
-                      v-model:value="draft[item.key]"
+                      v-model:value="(draft[item.key] as string | number | undefined)"
                       :min="item.min"
                       :max="item.max"
                       @change="markDirty(item.key)"
                     />
                     <a-switch
                       v-else-if="item.type === 'boolean'"
-                      v-model:checked="draft[item.key]"
+                      v-model:checked="(draft[item.key] as string | number | boolean | undefined)"
                       @change="markDirty(item.key)"
                     />
                     <a-select
                       v-else-if="item.type === 'select'"
-                      v-model:value="draft[item.key]"
+                      v-model:value="(draft[item.key] as string | number | undefined)"
                       style="width: 160px"
                       :options="(item.options ?? []).map(o => ({ label: o, value: o }))"
                       @change="markDirty(item.key)"
@@ -782,7 +785,7 @@ const tabs = computed(() => [
                     </span>
                     <a-input
                       v-else
-                      v-model:value="draft[item.key]"
+                      v-model:value="(draft[item.key] as string | number | undefined)"
                       style="width: 220px"
                       @change="markDirty(item.key)"
                     />

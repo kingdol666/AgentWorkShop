@@ -221,6 +221,37 @@ export default defineNuxtConfig({
     },
   },
 
+  vite: {
+    build: {
+      /**
+       * rolldown 的构建期检查开关。
+       *
+       * pluginTimings 会在"插件钩子占了构建时间大头"时打一条 WARN。本项目装了
+       * unocss / antd / i18n / unplugin-icons 等一堆构建期插件,这条 WARN 每次必现 ——
+       * 它是**构建自身的耗时画像**,不是代码质量问题,也无法通过改我们的代码消除
+       * (unocss 的 renderChunk 调用 93 次、占 ~19%,这是它的工作方式)。
+       *
+       * 只关这一项。其余 checks(命名空间当函数调用、配置冲突、无用的内置特性替代等)
+       * 都是**真的可能在抓 bug** 的检查,保持开启。
+       */
+      rolldownOptions: {
+        checks: { pluginTimings: false },
+      },
+      /**
+       * 客户端单块体积阈值。
+       *
+       * 默认的 500kB 对本项目不适用:three.js(数字孪生,~1.35MB)与
+       * echarts(~650kB)是重型第三方库的固有体积,而且都已经是**路由级动态导入**
+       * ——/town 才加载 three,只有真正进入孪生页的用户才付这份下载。
+       * 继续拆分的收益很小(它们本身就是单个不可再分的库)。
+       *
+       * 阈值提到 1500kB 的用意不是"把告警关掉",而是让这条告警重新变得**有意义**:
+       * 一旦某天我们自己的代码或某个新依赖把这个数字推过 1.5MB,它照样会报。
+       */
+      chunkSizeWarningLimit: 1500,
+    },
+  },
+
   typescript: {
     strict: true,
     typeCheck: false,

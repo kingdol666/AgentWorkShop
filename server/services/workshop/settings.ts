@@ -54,8 +54,10 @@ export function settingOf(key: string): unknown {
   return effective()[key]
 }
 
-/** 聚合组(前缀匹配;dotted 键 → 平铺键名,如 memory.primer_tokens → { primer_tokens }) */
-function section<G extends string>(group: string): G {
+/** 聚合组(前缀匹配;dotted 键 → 平铺键名,如 memory.primer_tokens → { primer_tokens })
+ *  G 是调用方声明的**设置组对象类型**(如 MemorySettings):本函数只负责按前缀聚合,
+ *  不校验形状,故约束为 object 而非 string —— 原约束 'string' 与全部调用点都不相容。 */
+function section<G extends object>(group: string): G {
   const out: Record<string, unknown> = {}
   const prefix = `${group}.`
   for (const [k, v] of Object.entries(effective())) {

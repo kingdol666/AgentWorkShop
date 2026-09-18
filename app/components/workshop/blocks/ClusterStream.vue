@@ -132,8 +132,8 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
     :class="{ settled: block.settled }"
     @click="onBodyClick"
   >
-    <!-- eslint-disable-next-line vue/no-v-html -- 内容经 escapeHtml 转义后仅注入受控标记 -->
     <div class="stream-text prose">
+      <!-- eslint-disable-next-line vue/no-v-html -- 内容经 escapeHtml 转义后仅注入受控标记 -->
       <span v-html="rendered" /><span
         v-if="showCursor"
         class="cursor"
@@ -197,7 +197,13 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
   padding-left: 20px;
   list-style: disc;
 }
-.prose :deep(ul) :deep(ul) {
+/* ⚠️ 一个选择器里只能出现**一次** :deep()。
+ * 写成 `.prose :deep(ul) :deep(ul)` 时,Vue 只把第一个转换掉(作用域属性挂到 .prose),
+ * 第二个会**原样留在产物 CSS 里** → lightningcss 报
+ * "'deep' is not recognized as a valid pseudo-class"(实测构建告警),
+ * 浏览器也认不得这条规则,嵌套列表样式其实是失效的。
+ * 正确写法是把后代关系放进 :deep() 内部。 */
+.prose :deep(ul ul) {
   margin: 2px 0 4px;
   list-style: circle;
 }

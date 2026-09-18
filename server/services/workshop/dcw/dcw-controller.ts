@@ -11,7 +11,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { applyTransform, inverseTransform, normalizeDataTransform, dcwKeyFromRef } from '../../../../shared/dcw-protocol'
-import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, DataTransform, LineInput, LineQueryOpts, LineQueryResult, LineRunState, LineView, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView, DcwWriteMeta } from '../../../../shared/dcw-protocol'
+import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, DcwParamView, DataTransform, LineInput, LineQueryOpts, LineQueryResult, LineRunState, LineView, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView, DcwWriteMeta } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { normalizeDcwDriverKind, resolveDcwDriver } from './drivers'
 import { findDcwTemplate } from './dcw-templates'
@@ -22,6 +22,9 @@ import { DcwNodeRuntime } from './dcw-runtime'
 import { getDcwRecipeRepo, type DcwWriteHistoryEntry } from './dcw-recipe.repo'
 import { getDcwProductRepo } from './dcw-product.repo'
 import { getDcwLineRepo } from './dcw-line.repo'
+import { getDcwParamRepo } from './param-map.repo'
+import { assertWithinLimits, limitsBreakdownOf } from './param-limits'
+import { deriveAccess } from './param-conversion'
 import { emitDcwWrite } from '@/server/services/workshop/plugins/host.mjs'
 import { clearActiveLineRun, getActiveLineRun, getAllActiveLineRuns, setActiveLineRun } from './line-run'
 import { getRecipeRollBackManager } from './recipe-rollback-manager'
@@ -353,6 +356,9 @@ class DcwController {
       semantics: input.semantics,
     })
     this.repo.insert(node)
+    // 工艺参数映射面:节点创建即自动生成同名映射(用户/Agent 的参数语义面;
+    // PLC 寻址细节仍封装在节点驱动配置内)。失败不阻断节点创建(可事后手工补建)。
+    getDcwParamRepo().ensureForNode(node)
     this.syncRuntimes()
     this.emitNodeChanged('added', node)
     return node
@@ -431,6 +437,8 @@ class DcwController {
     if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
     this.repo.remove(id)
     this.runtimes.delete(id)
+    // 级联清理:工艺参数映射面随执行节点删除(参数不存在悬空引用)
+    getDcwParamRepo().removeForNode(id)
     // 级联清理:该节点的 Agent 绑定移除,挂起中的手动审批按失效收敛
     void import('../agents/node-bindings.repo').then(({ getAgentNodeBindingRepo }) => {
       const repo = getAgentNodeBindingRepo()
@@ -537,26 +545,19 @@ class DcwController {
     }
     // 调控闭环护栏(F1/F8):Agent 互斥(open 记录他人持有)+ 回退冷却方向性
     getRecipeRollBackManager().beforeWrite(node, eng, meta)
-    // 写联锁按产线:仅当**本节点所属产线**在跑时,叠加该批次配方的工艺窗口
-    // D8 基准消融:仅 AW_BENCH_MODE=1 且 meta.benchArm='no-interlock' 时旁路软联锁;
-    // 硬量程校验(驱动层工程量安全校验)结构性不可旁路;生产模式(env 缺省)恒为 full 臂。
+    // 写入限界分层联锁(param-limits):节点安全量程(结构层,驱动内 validateEng 结构性兜底)
+    // ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口 —— 逐层收窄取交集,
+    // 手动 REST / Agent 工具 / 配方下发 / 回退四路共用本咽喉点,越界一律拒绝。
+    // D8 基准消融:仅 AW_BENCH_MODE=1 且 meta.benchArm='no-interlock'/'ungated' 时
+    // 旁路软联锁层(参数/产品/配方);结构层与硬量程校验结构性不可旁路;
+    // 生产模式(env 缺省)恒为 full 臂。
     const benchNoInterlock = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-interlock' || meta?.benchArm === 'ungated')
+    // 配方下发路径(recipeRunId != null)跳过配方窗口层:下发值已在配方保存时对自身窗口校验,
+    // 且中途应用新配方不应被旧批次配方窗口误伤;产品/参数基准层对配方下发照常约束。
+    assertWithinLimits(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: recipeRunId != null })
     // D8: no-readback / ungated 臂 → 容差置 MAX,回读差异不致败(假成功语义,供 I2 消融)
     const benchNoReadback = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-readback' || meta?.benchArm === 'ungated')
     const benchToleranceOverride = benchNoReadback ? Number.MAX_VALUE : undefined
-    const run = getActiveLineRun(node.lineId)
-    if (!benchNoInterlock && run && recipeRunId == null) {
-      const recipe = getDcwRecipeRepo().byId(run.recipeId)
-      const param = recipe?.params.find(p => p.nodeId === id)
-      if (param) {
-        if (param.min != null && eng < param.min) {
-          throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `设定值 ${eng}${node.unit} 低于当前配方「${run.recipeName}」的工艺下限 ${param.min}${node.unit}(节点全局量程 ${node.min}~${node.max} 不适用于本批次)`)
-        }
-        if (param.max != null && eng > param.max) {
-          throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `设定值 ${eng}${node.unit} 超出当前配方「${run.recipeName}」的工艺上限 ${param.max}${node.unit}(节点全局量程 ${node.min}~${node.max} 不适用于本批次)`)
-        }
-      }
-    }
     const prevValue = typeof node.value === 'number' ? node.value : null
     const outcome = await rt.write(eng, recipeRunId, benchToleranceOverride)
     // 调控闭环入册:仅成功写记锚/开记录(失败写不动账本 —— PLC 值未变更);
@@ -622,6 +623,90 @@ class DcwController {
     const node = this.repo.byId(id)
     if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
     return this.testDriver(node.driver, node.driverConfig)
+  }
+
+  // ---------- 工艺参数映射面(用户/Agent 的唯一语义读写面)----------
+
+  /**
+   * 创建工艺参数映射。两条路径:
+   *  - nodeId 绑定路径:映射指向既有执行节点;
+   *  - access 接入路径:设备连接 + 寄存器 + **标准转换模式**一键建映射 —— 系统
+   *    按转换模式展开驱动配置并自动创建执行节点(float32 直写 / int16·int32 线性
+   *    标定),配置期一次性选定,运行期双向换算全自动。
+   */
+  createParamMapping(input: DcwParamInput): DcwParamView {
+    const access = input.access
+    if (!access) {
+      const row = getDcwParamRepo().create(input)
+      return this.paramById(row.id)
+    }
+    if (input.nodeId) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'access 与 nodeId 互斥:access 路径由系统自动创建执行节点')
+    }
+    if (!input.templateRef) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'templateRef 必填:工艺参数需绑定语义模板(单位/量程/语义)')
+    }
+    const lineId = String(input.lineId ?? '')
+    if (lineId && !getDcwLineRepo().byId(lineId)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lineId}`)
+    const derived = deriveAccess(access)
+    // 执行节点:驱动配置由转换模式展开(单一事实源);标定工程量程即节点安全量程
+    const node = this.create({
+      templateRef: input.templateRef,
+      name: input.name,
+      driver: derived.driver,
+      driverConfig: derived.driverConfig,
+      min: derived.engMin,
+      max: derived.engMax,
+      lineId,
+    })
+    // this.create() 已自动生成参数面;覆盖语义面(key/名称/基准限界)并留存转换模式
+    const auto = getDcwParamRepo().byNode(node.id)
+    const row = getDcwParamRepo().update(auto!.id, {
+      key: input.key,
+      name: input.name,
+      min: input.min ?? null,
+      max: input.max ?? null,
+      conversion: access.conversion,
+    })
+    return this.paramById(row.id)
+  }
+
+  listParamViews(): DcwParamView[] {
+    return getDcwParamRepo().listViews()
+  }
+
+  paramById(id: string): DcwParamView {
+    const row = getDcwParamRepo().byId(id)
+    if (!row) throw new AppError(404, ErrorCodes.NOT_FOUND, `工艺参数不存在: ${id}`)
+    const view = getDcwParamRepo().viewOf(row)
+    if (!view) throw new AppError(404, ErrorCodes.NOT_FOUND, `工艺参数 ${id} 的执行节点已不存在(映射悬空)`)
+    return view
+  }
+
+  /** 参数寻址写命令:工程量直写,限界联锁在 write() 咽喉点统一生效 */
+  async writeParam(id: string, value: number, meta?: DcwWriteMeta, recipeRunId: string | null = null) {
+    const row = getDcwParamRepo().byId(id)
+    const node = row ? this.repo.byId(row.nodeId) : undefined
+    if (!row || !node) throw new AppError(404, ErrorCodes.NOT_FOUND, `工艺参数不存在(或执行节点已删除): ${id}`)
+    const outcome = await this.write(node.id, value, recipeRunId, meta)
+    return { ...outcome, param: getDcwParamRepo().viewOf(row) }
+  }
+
+  /** 参数寻址读命令(读执行节点 PLC 值,标定解码为物理量) */
+  async readParam(id: string) {
+    const row = getDcwParamRepo().byId(id)
+    const node = row ? this.repo.byId(row.nodeId) : undefined
+    if (!row || !node) throw new AppError(404, ErrorCodes.NOT_FOUND, `工艺参数不存在(或执行节点已删除): ${id}`)
+    const read = await this.readNow(node.id)
+    return { ...read, param: getDcwParamRepo().viewOf(row) }
+  }
+
+  /** 参数当前有效写入限界剖面(分层 + 交集;展示/工具回包共用) */
+  paramLimitsOf(id: string) {
+    const row = getDcwParamRepo().byId(id)
+    const node = row ? this.repo.byId(row.nodeId) : undefined
+    if (!row || !node) throw new AppError(404, ErrorCodes.NOT_FOUND, `工艺参数不存在(或执行节点已删除): ${id}`)
+    return limitsBreakdownOf(node)
   }
 
   // ---------- Recipe 配方 ----------
@@ -956,6 +1041,7 @@ class DcwController {
   createProduct(input: ProductInput): ProductView {
     const lineId = String(input.lineId ?? '')
     if (lineId && !getDcwLineRepo().byId(lineId)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lineId}`)
+    assertProductParamLimits(lineId, input.paramLimits)
     return getDcwProductRepo().create({ ...input, lineId })
   }
 
@@ -965,6 +1051,8 @@ class DcwController {
       if (!getDcwLineRepo().byId(lid)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lid}`)
     }
     const prev = getDcwProductRepo().byId(id)
+    const targetLine = String(patch.lineId ?? prev?.lineId ?? '')
+    assertProductParamLimits(targetLine, patch.paramLimits)
     const updated = getDcwProductRepo().update(id, patch)
     // 产品换线 → 旗下配方产线归属级联(开跑校验按 recipe.lineId)
     if (prev && prev.lineId !== updated.lineId) {
@@ -1037,6 +1125,39 @@ class DcwController {
 }
 
 // ---------- 单例(HMR 存活) ----------
+
+/**
+ * 产品级工艺参数限界校验:键必须命中该产品所属产线上的工艺参数映射
+ * (防静默失效的拼错键);区间须 min<=max 且为有限数字。产品未挂产线时限界无
+ * 寻址语境,拒绝非空限界。
+ */
+function assertProductParamLimits(lineId: string, paramLimits: ProductInput['paramLimits'] | undefined): void {
+  if (paramLimits == null) return
+  if (typeof paramLimits !== 'object' || Array.isArray(paramLimits)) {
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'paramLimits 需为对象(键=工艺参数 key,值={min?,max?})')
+  }
+  const entries = Object.entries(paramLimits)
+  if (entries.length === 0) return
+  if (!lineId) {
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '产品未挂载产线,不可设定工艺参数限界(限界按产线内的工艺参数寻址)')
+  }
+  const lineKeys = new Set(
+    getDcwParamRepo().listViews().filter(p => p.lineId === lineId).map(p => p.key),
+  )
+  for (const [key, range] of entries) {
+    if (!lineKeys.has(key)) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `产品限界的工艺参数键「${key}」在产线上不存在(可用的工艺参数:${[...lineKeys].join(', ') || '无 —— 先创建写控节点生成参数面'})`)
+    }
+    const min = range?.min == null ? null : Number(range.min)
+    const max = range?.max == null ? null : Number(range.max)
+    if ((range?.min != null && !Number.isFinite(min)) || (range?.max != null && !Number.isFinite(max))) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `产品限界「${key}」的上下限需为数字`)
+    }
+    if (min != null && max != null && min > max) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `产品限界「${key}」非法:min ${min} > max ${max}`)
+    }
+  }
+}
 
 const g = globalThis as typeof globalThis & { __dcwController?: DcwController }
 

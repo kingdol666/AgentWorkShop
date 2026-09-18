@@ -108,7 +108,9 @@ export class RecipeRollBackManager {
    * 返回 anchorId/recordId 供工具回包;内部异常不外抛(记账失败不影响写结果)。
    */
   afterWrite(
-    node: { id: string, name: string, lineId: string, templateRef: string },
+    // unit 参与入册摘要(下方 `node.unit ?? ''`);调用方传的是 DcwNode 实例(unit: string),
+    // 原先这里漏声明该字段,导致实现读到了参数类型之外的属性
+    node: { id: string, name: string, lineId: string, templateRef: string, unit?: string | null },
     eng: number,
     prevValue: number | null,
     meta: DcwWriteMeta & { rollbackOf?: string },
@@ -535,12 +537,16 @@ export class RecipeRollBackManager {
         values.push(v)
       }
       const win = recipe?.daqWindows?.find(w => w.nodeId === ch.daqNodeId)
-      let breaches = win && (win.min != null || win.max != null) ? 0 : -1
-      for (const v of values) {
-        if (breaches === -1)
-          break
-        if ((win.min != null && v < win.min) || (win.max != null && v > win.max))
-          breaches++
+      // 「有窗口且设了边界」才计越界:原实现用 breaches=-1 + 循环首拍 break 短路,
+      // 等价于整段跳过(循环体在 -1 时没有任何副作用)。把这条不变量显式上移,
+      // win 在循环内即可被收窄(不再需要断言/非空断言)。
+      const windowed = win != null && (win.min != null || win.max != null)
+      let breaches = windowed ? 0 : -1
+      if (win && windowed) {
+        for (const v of values) {
+          if ((win.min != null && v < win.min) || (win.max != null && v > win.max))
+            breaches++
+        }
       }
       ch.latest = values.length ? values[values.length - 1]! : null
       ch.avg = values.length ? Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)) : null

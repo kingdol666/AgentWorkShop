@@ -322,6 +322,135 @@ export interface AepDcwControllerState {
 // Product 产品 + Recipe 配方(产品-配方-批次三级隔离)
 // ============================================================
 
+// ============================================================
+// 工艺参数映射(Process Parameter Map)—— 参数语义面 ↔ PLC 执行点
+// ============================================================
+
+/** 工艺参数写入限界(单侧可空;缺省侧不约束) */
+export interface ParamLimitRange {
+  min?: number
+  max?: number
+}
+
+// ============================================================
+// 工艺参数 → PLC 标准转换模式(映射配置期一次性选定)
+// ============================================================
+
+/**
+ * 标准转换模式 —— 工程量 ↔ PLC 原始数据的双向换算规约。
+ * 配置映射时选定一次,运行期系统按此自动双向换算(下发 encode / 回读 decode),
+ * 用户与 Agent 全程只面对工程量纲,不接触寄存器数据格式。
+ */
+export interface ParamConversion {
+  /**
+   * float32       原始值=工程值,float32 寄存器直写(最常见)
+   * int16-scaled  线性标定到 int16(1 寄存器):eng∈[engMin,engMax] ↔ raw∈[rawMin,rawMax],
+   *               如 0.1 分辨率温度: eng 0~300 ↔ raw 0~3000
+   * int32-scaled  线性标定到 int32(2 寄存器),同上
+   */
+  mode: 'float32' | 'int16-scaled' | 'int32-scaled'
+  /** 字节序(缺省 big 大端 AB CD;wordSwap = 字交换) */
+  byteOrder?: 'big' | 'little' | 'wordSwap'
+  /** 线性标定工程量程(int16/int32-scaled 必填;float32 忽略) */
+  engMin?: number
+  engMax?: number
+  /** 线性标定原始值量程(int16/int32-scaled 必填) */
+  rawMin?: number
+  rawMax?: number
+}
+
+/**
+ * 映射接入规格(创建映射时一次性给定):设备连接 + 寄存器 + 标准转换模式。
+ * 系统据此自动生成执行节点(驱动配置由转换模式展开,用户不手工拼装)。
+ */
+export interface ParamAccessSpec {
+  /** 驱动类别(缺省 modbus-tcp) */
+  driver?: 'modbus-tcp' | 'modbus-rtu'
+  /** 设备地址(PLC/网关 IP) */
+  host: string
+  /** 端口(modbus-tcp 缺省 502;rtu 网关常见 502/8899/26) */
+  port?: number
+  /** 从站地址(缺省 1) */
+  unitId?: number
+  /** 写寄存器地址(4xxxx 保持寄存器;回读同址校验) */
+  register: number
+  /** 标准转换模式(必选) */
+  conversion: ParamConversion
+}
+
+/**
+ * 工艺参数映射视图 —— 用户/Agent 读写工艺参数的唯一语义面。
+ *
+ * 一条映射 = 一个工艺参数(key/单位/基准限界) → 一个写控制执行节点。
+ * PLC 寻址细节(寄存器地址/数据类型/字节序/工程量换算)全部封装在执行节点的
+ * 驱动配置内,参数面只暴露工程量纲 —— 用户与 Agent 永远不直接面对 PLC 寄存器。
+ */
+export interface DcwParamView {
+  id: string
+  /** 参数键(执行节点所属产线内唯一;产品限界与 Agent 语义寻址的稳定标识) */
+  key: string
+  name: string
+  /** 语义模板(分类/图标/Agent 工艺语义) */
+  templateRef: string
+  unit: string
+  decimals: number
+  /** 基准写入限界(常驻层,叠加于节点安全量程;null = 该侧不额外约束) */
+  min: number | null
+  max: number | null
+  /** PLC 执行节点(映射目标) */
+  nodeId: string
+  /** 执行节点所属产线(派生自节点;'' = 未分配) */
+  lineId: string
+  /** 驱动类别(仅类别;不含寄存器等寻址细节) */
+  driver: DcwDriverKind
+  enabled: boolean
+  /** 当前设定值 / PLC 读数(自执行节点投影) */
+  value: number | null
+  readValue: number | null
+  state: DcwNodeState
+  /** 标准转换模式摘要(配置期选定;展示/审计用,运行期换算以执行节点驱动配置为准) */
+  conversion?: ParamConversion
+  createdAt: string
+}
+
+/** 工艺参数映射创建/编辑载荷(nodeId 为映射目标;其余为参数语义面) */
+export interface DcwParamInput {
+  key?: string
+  name?: string
+  templateRef?: string
+  unit?: string
+  decimals?: number
+  min?: number | null
+  max?: number | null
+  nodeId?: string
+  /** 仅创建:给定接入规格时系统自动创建执行节点(连接+寄存器+标准转换模式一键建映射) */
+  access?: ParamAccessSpec
+  /** 仅创建(access 路径):新执行节点挂载的产线 */
+  lineId?: string
+  /** 标准转换模式摘要(记录配置期选定的换算规约;展示/审计用) */
+  conversion?: ParamConversion
+}
+
+/** 单层写入限界(来源标注;min/max null = 该侧不约束) */
+export interface ParamLimitLayer {
+  layer: 'node' | 'param' | 'product' | 'recipe'
+  /** 人话标签(如 产品「XX」限界) */
+  label: string
+  min: number | null
+  max: number | null
+}
+
+/** 有效写入限界(分层展示 + 交集;联锁拒绝信息/参数台账/前端展示共用) */
+export interface ParamLimitsBreakdown {
+  nodeId: string
+  paramId: string | null
+  paramKey: string | null
+  /** 生效中的限界层(按 node→param→product→recipe 顺序) */
+  layers: ParamLimitLayer[]
+  /** 各层交集(最紧有效限界;恒有 node 层兜底) */
+  effective: { min: number, max: number }
+}
+
 /** 产品(挂载产线;一个产品可有多个配方) */
 export interface ProductView {
   id: string
@@ -329,6 +458,9 @@ export interface ProductView {
   lineId: string
   name: string
   description: string
+  /** 产品级工艺参数写入限界(键=工艺参数 key;生产本产品期间生效,与其他层取交集;
+   *  用户/Agent/配方下发越界一律拒绝) */
+  paramLimits?: Record<string, ParamLimitRange>
   createdAt: string
 }
 
@@ -337,6 +469,8 @@ export interface ProductInput {
   description?: string
   /** 所属产线(产线隔离顶层归属) */
   lineId?: string
+  /** 产品级工艺参数写入限界(键=工艺参数 key;仅可收窄不可放宽其他层) */
+  paramLimits?: Record<string, ParamLimitRange>
 }
 
 /**

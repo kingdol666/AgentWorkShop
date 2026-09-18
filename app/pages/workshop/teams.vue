@@ -50,9 +50,9 @@ const loadHarnessAvail = async (): Promise<void> => {
 }
 if (import.meta.client) void loadHarnessAvail()
 const tplUnavailable = (tpl: AgentTemplateDto): boolean => harnessAvail.value[tpl.harness] === false
-const memberOptions = computed(() => templates.value.map((t) => {
-  const un = tplUnavailable(t)
-  return { value: t.id, label: un ? `${t.name}(${t.harness} · ${t('agents.notInstalled')})` : `${t.name}(${t.harness})`, disabled: un }
+const memberOptions = computed(() => templates.value.map((tpl) => {
+  const un = tplUnavailable(tpl)
+  return { value: tpl.id, label: un ? `${tpl.name}(${tpl.harness} · ${t('agents.notInstalled')})` : `${tpl.name}(${tpl.harness})`, disabled: un }
 }))
 
 // ===== 过滤 =====

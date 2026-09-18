@@ -43,11 +43,24 @@ export interface BaseAgentIdentity {
   channelId?: string
 }
 
+/**
+ * configRecord() 的视图类型:基类真正读取的公共配置键。
+ * 各 harness 的强类型配置(XxxAgentConfig)均以可选键声明这三项 → 子类直接 `return this.config` 即满足。
+ * 刻意不用 Record<string, unknown> 当返回类型:那会逼迫子类配置类型打开 index signature,
+ * 让子类内部配置键的拼写错误静默退化为 unknown(类型洞),而基类实际只用这三个键。
+ */
+export interface BaseAgentConfigView {
+  superviseTimeoutMs?: number
+  systemPromptPrefix?: string
+  scenarioPrompt?: string
+}
+
 export abstract class BaseAgentImpl implements AgentInterface {
   protected workspace: AgentRunContext['workspace'] | null = null
   protected readonly toolState: HostToolSessionState = createSessionState()
   protected readonly bridgeCtx: HostToolBridgeContext
-  protected roster: ReturnType<typeof createRosterCache>
+  /** 名册缓存:仅由 refreshIdentity() 装配(构造函数必经路径),故用明确赋值断言 */
+  protected roster!: ReturnType<typeof createRosterCache>
 
   protected selfAgentId = ''
   protected agentName = 'agent'
@@ -70,8 +83,8 @@ export abstract class BaseAgentImpl implements AgentInterface {
   /** 引擎标识(日志/登记;如 'dsh'/'pi') */
   protected abstract get harnessId(): string
 
-  /** 子类强类型配置的 Record 视图(基类只读公共键) */
-  protected abstract configRecord(): Record<string, unknown>
+  /** 子类强类型配置的公共键视图(基类只读;子类 `return this.config` 即可) */
+  protected abstract configRecord(): BaseAgentConfigView
 
   protected makeRoster(): ReturnType<typeof createRosterCache> {
     return createRosterCache({
@@ -141,7 +154,8 @@ export abstract class BaseAgentImpl implements AgentInterface {
 
   // ===== lead 调度回合(模板方法) =====
 
-  private supervising = false
+  /** supervise 互斥位(子类 supervise 实现与本字段共享同一实例字段,故为 protected;纯可见性修饰,无运行时差异) */
+  protected supervising = false
 
   async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
     if (this.supervising) return []

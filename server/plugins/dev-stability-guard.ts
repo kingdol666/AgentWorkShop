@@ -23,7 +23,9 @@ export default defineNitroPlugin(() => {
       console.error(`[stability-guard] fatal ${kind}, exiting:\n${describeReason(reason)}`)
       process.exit(1)
     }
-    counts[severity] += 1
+    // counts 的四个 key 装配时已全部初始化为 0,且 'fatal' 已在上面提前 return;
+    // `?? 0` 只是 noUncheckedIndexedAccess 下的写法,取值口径与 `+= 1` 完全一致
+    counts[severity] = (counts[severity] ?? 0) + 1
     const line = `[stability-guard] ${severity}(累计 ${counts[severity]},不退出): ${describeReason(reason).slice(0, 200).replace(/\n/g, ' ')}`
     // 外部设备不可达与引擎边界属"要有人知道"的信号 → error;其余瞬态噪声 → warn
     if (severity === 'upstream' || severity === 'engine') console.error(line)

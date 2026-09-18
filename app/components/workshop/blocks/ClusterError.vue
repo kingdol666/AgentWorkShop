@@ -63,7 +63,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   background: var(--tone-danger-bg);
   border-radius: var(--radius-chip);
 }
-.error-code { padding: 0 5px; font-size: 9px; background: color-mix(in srgb, var(--tone-danger-dot) 14%, transparent); border-radius: var(--radius-chip); }
+.error-code { padding: 0 5px; font-size: 10px; background: color-mix(in srgb, var(--tone-danger-dot) 14%, transparent); border-radius: var(--radius-chip); }
 .error-text { overflow-wrap: anywhere; word-break: break-word; }
 .more-btn {
   margin-top: 4px;

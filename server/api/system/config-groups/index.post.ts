@@ -26,7 +26,7 @@ function slugify(label: string): string {
 
 export default defineApiHandler(async (event) => {
   requireRole(event, ['admin'])
-  const body = (await readBody(event)) ?? {}
+  const body = (await readBody<Record<string, unknown>>(event)) ?? {}
   const id = String(body.id ?? '').trim() || slugify(String(body.label ?? ''))
   const group = getSystemConfigService().createGroup({ ...body, id })
   return { ok: true, group }

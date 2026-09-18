@@ -33,9 +33,22 @@ import {
 
 const log = createLogger('workshop.harness-terminal')
 
+/**
+ * 会话 meta:本 hub 只接纳已完成身份绑定的 harness 进程(attachTerminalTap 的入参全为非空字符串),
+ * 故内部用比协议层更窄的类型 —— TermSessionMeta 允许 null 是为了容忍"未绑定进程"的通用视图,
+ * 而此处消费方(hitl-registry.register 要求 agentId: string)不必被迫处理不存在的 null。
+ * 纯类型收窄:任何写入本字段的值本来就只有 attachTerminalTap 一处,且其中无 null。
+ */
+type BoundSessionMeta = Omit<TermSessionMeta, 'agentId' | 'channelId' | 'name' | 'role'> & {
+  agentId: string
+  channelId: string
+  name: string
+  role: 'lead' | 'worker'
+}
+
 /** 终端会话(一个 pid 一份;进程退出后保留缓冲供事后查看) */
 interface TerminalSession {
-  meta: TermSessionMeta
+  meta: BoundSessionMeta
   client: OmpRpcClient
   seq: number
   ring: TermFrame[]

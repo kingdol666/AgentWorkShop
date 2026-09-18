@@ -42,7 +42,6 @@ const spec: OneShotEngineSpec = {
     return args
   },
   promptDelivery: 'arg',
-  promptDelivery: 'arg',
   promptArgFlag: '-t',
   engineEnv: (config) => {
     const key = typeof config.apiKey === 'string' ? config.apiKey : ''

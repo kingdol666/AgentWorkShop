@@ -27,7 +27,7 @@ import { peerPrompt, systemManual, toolArgsPreview, workerPrompt } from './promp
 import { getHitlRegistry } from './hitl-registry'
 import { harnessSettings } from '../settings'
 import { StdioJsonRpcClient } from './adapters/stdio-jsonrpc'
-import { BaseAgentImpl } from './base-agent'
+import { BaseAgentImpl, type BaseAgentConfigView } from './base-agent'
 import { generateMcpBridgeEnv } from './harness-env'
 
 const log = createLogger('workshop.codex')
@@ -115,7 +115,7 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
     return 'codex'
   }
 
-  protected configRecord(): Record<string, unknown> {
+  protected configRecord(): BaseAgentConfigView {
     return this.config
   }
 
@@ -180,7 +180,7 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
   }
 
   /** HITL 应答:审批请求 → JSON-RPC 应答(decision) */
-  async respondHitl(kind: string, id: string, outcome: {
+  override async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
     value?: string

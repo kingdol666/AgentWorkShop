@@ -14,6 +14,7 @@ import VChart from 'vue-echarts'
 import { computed } from 'vue'
 import type { PropType } from 'vue'
 import type { EChartsOption } from 'echarts'
+import type { SetOptionOpts } from 'echarts/core'
 
 // 按需注册 ECharts 模块(必须在 <ClientOnly> 内使用:canvas 仅客户端可渲染)
 use([
@@ -61,7 +62,7 @@ const merged = computed<EChartsOption>(() => ({
  *    series 数量**减少**时(如筛选后趋势线变少),旧 series 必须被移除,否则会残留幽灵曲线;
  *  - `lazyUpdate: true` → 同一 tick 内多次 setOption 合并到下一帧渲染,避免重复绘制。
  */
-const updateOptions = { notMerge: false, replaceMerge: ['series'], lazyUpdate: true } as const
+const updateOptions: SetOptionOpts = { notMerge: false, replaceMerge: ['series'], lazyUpdate: true }
 </script>
 
 <template>

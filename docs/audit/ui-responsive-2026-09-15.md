@@ -156,3 +156,45 @@ could not resize shared memory segment /PostgreSQL.…: No space left on device
 这句话看起来像「磁盘满了」,实际是 **Docker 给容器的 /dev/shm 只有 64MB**,而 PostgreSQL 的并行查询
 会按需扩容共享内存段 —— 宿主机当时还剩 230GB。已在 `docker-compose.yml` 的 `daq-timescale`
 上显式声明 `shm_size: 512mb`(Postgres 官方镜像文档的建议做法),重建容器后错误消失。
+
+### 6.4 评审期间修掉的两个**真实功能缺陷**(它们伪装成“前端加载慢”)
+
+逐页看图的副产品:发现 /town 有时能出 3D、有时只出空态,而且生产实例会**静默退出**。查下去是两个真 bug:
+
+**缺陷 1 — 服务端读取 localStorage,直接把进程打挂(fatal)。**
+
+日志里只有一行:
+
+```
+[stability-guard] fatal unhandledRejection, exiting:
+ReferenceError: localStorage is not defined
+    at saveActiveMap (.../workspaces-BuydxM-3.mjs:30:2)
+    at Proxy.load (.../workspaces-BuydxM-3.mjs:64:4)
+```
+
+`app/stores/workshop/workspaces.ts` 的 `load()` → `saveActiveMap()` 直接写 `localStorage`,
+而这个 action 完全可能被服务端调用。项目里其它 store(`app/stores/app.ts`)是显式带 `import.meta.client`
+守卫的,这一个漏了。已按同一约定补齐:持久化层自己保证 SSR 安全,调用方不必先判断环境。
+
+**缺陷 2 — /town 的认证闸门与会话恢复竞态。**
+
+原实现在 `onMounted` 里同步判 `userStore.isLoggedIn`,而 session-restore 插件是异步的:
+刷新 /town 时已登录用户会被误弹回 /workshop。更麻烦的是它**看起来是通过的** ——
+弹到 /workshop 后那边的顶栏照样把 `data-vp-tier` 写上,自动化验收就把 /town 记成“通过”,
+而用户看到的其实是工作台。现改为与 /workshop 总览页**完全一致**的顺序:
+`watch(isLoggedIn) → await userStore.refresh() → await wsStore.load()`,并显式挡掉 SSR 分支。
+
+> 这两个缺陷都说明同一件事:**几何量测和截图都可能“通过”一个坏掉的页面**。
+> 前者因为跳转后的页面同样满足判据,后者因为空态本身不溢出、不失衡。
+> 逐页看图 + 追日志,才是这一轮真正的价值。
+
+### 6.5 本轮终验
+
+| 项目 | 结果 |
+|---|---|
+| 全站视口矩阵(7 视口 × 16 页面 × 明暗双主题 = 224 组合) | **224 通过 / 0 失败** |
+| 抽屉导航交互 | **10 通过 / 0 失败** |
+| eslint(app/server/shared/cli/sdk/i18n/scripts/ui) | 0 error(18 warning 为既有) |
+| README 结构自检(中英) | 全部通过 |
+| VitePress 构建 | 0 error |
+| 16 条路由 HTTP | 全部 200 |

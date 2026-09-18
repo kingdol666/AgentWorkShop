@@ -104,9 +104,12 @@ export function createAlarmEventRepo(db: DatabaseSync) {
 
   return {
     /** 按 id 取报警关联节点(产线权限判定用);不存在返回 undefined */
-    nodeIdById(id) {
+    nodeIdById(id: string): string | undefined {
       const r = db.prepare('SELECT node_id FROM alarm_events WHERE id = ?').get(id)
-      return r?.node_id
+      // node_id 列是 TEXT NOT NULL,写入侧恒为 string(见 database.ts 的 alarm_events 定义);
+      // 显式收窄后,调用方拿到的是 string|undefined,而不是 node:sqlite 的 SQLOutputValue 联合
+      const v = r?.node_id
+      return typeof v === 'string' ? v : undefined
     },
 
     /** 报警产生(同 node+metric 未确认报警幂等去重,防止高频越限刷表) */

@@ -20,7 +20,7 @@ interface ErrLike {
 }
 
 /** i18n 取不到时的内置回退(与 locales errors.* 保持一致,zh 优先项目) */
-const FALLBACK: Record<string, string> = {
+const FALLBACK = {
   http400: '请求参数有误,请检查后重试',
   http401: '登录已过期,请重新登录',
   http403: '权限不足:该操作需要管理员权限',

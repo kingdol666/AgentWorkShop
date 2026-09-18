@@ -48,11 +48,30 @@ export function defaultPluginGroupId(pluginName) {
 const ID_RE = /^[A-Za-z0-9_-]{1,48}$/
 
 /**
+ * 配置分组(与 server/services/system-config.ts 的 ConfigGroup 同形的数据形状)。
+ * order 可为空:持久化条目/插件声明未写 order 时由 mergeGroups 沿用内置声明顺序兜底,
+ * 故这里如实声明为可选(消费侧一律按「可能没有 order」处理)。
+ * @typedef {object} ConfigGroupDef
+ * @property {string} id
+ * @property {string} label
+ * @property {string} [labelKey]
+ * @property {string} description
+ * @property {number} [order]
+ * @property {boolean} collapsed
+ * @property {boolean} collapsible
+ * @property {string} icon
+ * @property {'builtin' | 'user' | 'plugin'} source
+ * @property {string} [plugin] source=plugin 时的插件名
+ */
+
+/**
  * 规范化分组定义。
  * order 只在「显式给出」或调用方提供 fallbackOrder(新建分组时)才落值 ——
  * 从磁盘读回的旧条目若没写 order,交给 mergeGroups 沿用内置声明顺序,
  * 否则会平白跳到列表末尾。
- * @returns {{ ok: true, group: object } | { ok: false, error: string }}
+ * @param {object} def 待规范化的分组定义(id/label/description/order/collapsed/collapsible/icon/labelKey)
+ * @param {{ source?: 'builtin' | 'user' | 'plugin', plugin?: string | null, fallbackOrder?: number }} [opts]
+ * @returns {{ ok: true, group: ConfigGroupDef } | { ok: false, error: string }}
  */
 export function normalizeGroup(def, { source = 'user', plugin = null, fallbackOrder } = {}) {
   const d = def ?? {}
@@ -101,6 +120,7 @@ export function saveGroups(groups, groupsPath) {
   return payload
 }
 
+/** @returns {ConfigGroupDef[]} 规范化后的持久化分组(非法条目直接丢弃) */
 export function readGroups(groupsPath) {
   if (!existsSync(groupsPath)) return []
   const out = []
@@ -141,6 +161,7 @@ export function builtinGroupOrder(descriptors = []) {
  * @param {Array} o.persisted        持久化分组(含管理员定制)
  * @param {Array} o.pluginGroups     本轮插件声明的分组
  * @param {Map<string,string>} [o.pluginLabelById] 插件名 → 展示名(用于自动生成组标题)
+ * @returns {ConfigGroupDef[]} 有序分组(已按 order、id 排序)
  */
 export function mergeGroups({ descriptors = [], persisted = [], pluginGroups = [], pluginLabelById = new Map() } = {}) {
   const out = new Map()

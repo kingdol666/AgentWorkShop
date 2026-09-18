@@ -25,6 +25,10 @@ const TOPIC_WILDCARD = `${TOPIC_ROOT}/+/sample`
 /** 断连离线缓冲上限(满丢最旧;补发帧按消费侧乱序防御自然去重) */
 const OFFLINE_CAP = 2000
 
+/** MQTT QoS 协议取值(0/1/2;shared/config/schema.json 的 daq.mqtt.qos 声明 min 0 / max 2)。
+ *  settings 面(settings.ts)把该配置读成 number,这里按协议收窄 —— 运行时原值透传,不做钳制/兜底。 */
+type MqttQos = 0 | 1 | 2
+
 export class MqttQueueAdapter implements DaqQueuePort {
   readonly backend = 'mqtt' as const
   private client: MqttClient | null = null
@@ -48,7 +52,7 @@ export class MqttQueueAdapter implements DaqQueuePort {
     const mod = requireMqtt('mqtt') as unknown as { connect: (url: string, opts?: Record<string, unknown>) => MqttClient }
     // 凭据/QoS/TLS 配置驱动(daq.mqtt.*;legacy DAQ_MQTT_* env 别名兼容,DAQ_MQTT_URL 整串覆盖仍最高优先)
     const mqttCfg = daqRuntimeSettings().mqtt
-    const qos = mqttCfg.qos
+    const qos = mqttCfg.qos as MqttQos
     const opts: Record<string, unknown> = {
       clientId: `aw-daq-${process.pid}-${Math.random().toString(36).slice(2, 6)}`,
       reconnectPeriod: 2000,
@@ -99,7 +103,7 @@ export class MqttQueueAdapter implements DaqQueuePort {
       return
     }
     this.published++
-    this.client.publish(TOPIC_SAMPLE(env.nodeId), JSON.stringify(env), { qos: daqRuntimeSettings().mqtt.qos })
+    this.client.publish(TOPIC_SAMPLE(env.nodeId), JSON.stringify(env), { qos: daqRuntimeSettings().mqtt.qos as MqttQos })
   }
 
   consume(fn: DaqConsumer): () => void {

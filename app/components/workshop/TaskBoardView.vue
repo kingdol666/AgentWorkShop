@@ -131,10 +131,10 @@ const onDrop = async (ev: DragEvent, col: Column) => {
 const acting = ref(new Set<string>())
 const applyMove = async (taskId: string, action: 'cancel' | 'retry'): Promise<void> => {
   if (acting.value.has(taskId)) return
-  const t = taskById(taskId)
-  if (!t) return
+  const task = taskById(taskId)
+  if (!task) return
   acting.value.add(taskId)
-  const prev = t.state
+  const prev = task.state
   // 乐观预移:cancel → CANCELED;retry → ASSIGNED
   const next = action === 'cancel' ? 'CANCELED' : 'ASSIGNED'
   const opt = new Map(optimistic.value)
@@ -165,22 +165,22 @@ const applyMove = async (taskId: string, action: 'cancel' | 'retry'): Promise<vo
 
 /** 状态胶囊菜单(动作 + 详情);fixed 定位并按视口收敛 */
 const menu = ref<{ task: TaskView, x: number, y: number } | null>(null)
-const openMenu = (ev: MouseEvent, t: TaskView) => {
+const openMenu = (ev: MouseEvent, task: TaskView) => {
   const x = Math.min(ev.clientX, Math.max(window.innerWidth - 156, 8))
   const y = Math.min(ev.clientY, Math.max(window.innerHeight - 160, 8))
-  menu.value = { task: t, x, y }
+  menu.value = { task, x, y }
 }
 const closeMenu = () => {
   menu.value = null
 }
 const menuActions = computed(() => {
-  const t = menu.value?.task
-  if (!t) return []
+  const task = menu.value?.task
+  if (!task) return []
   const acts: Array<{ key: 'cancel' | 'retry' | 'detail', label: string, danger?: boolean }> = []
-  if (['SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING', 'FAILED'].includes(t.state)) {
+  if (['SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING', 'FAILED'].includes(task.state)) {
     acts.push({ key: 'cancel', label: t('taskBoardView.k1bs0t9b016'), danger: true })
   }
-  if (['FAILED', 'CANCELED'].includes(t.state)) {
+  if (['FAILED', 'CANCELED'].includes(task.state)) {
     acts.push({ key: 'retry', label: t('taskBoardView.k1lclwk6017') })
   }
   acts.push({ key: 'detail', label: t('taskBoardView.k1dx9ysj018') })
@@ -260,39 +260,39 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
         </div>
         <div class="task-col-body">
           <div
-            v-for="t in col.items"
-            :key="t.id"
+            v-for="task in col.items"
+            :key="task.id"
             class="card task"
-            :class="{ dragging: dragId === t.id }"
+            :class="{ dragging: dragId === task.id }"
             draggable="true"
-            @dragstart="onDragStart($event, t, col.key)"
+            @dragstart="onDragStart($event, task, col.key)"
             @dragend="onDragEnd"
-            @click="emit('openTask', t.id)"
+            @click="emit('openTask', task.id)"
           >
             <div class="tk-chan">
-              <span>#{{ agentName(t.assigneeId) }}</span>
+              <span>#{{ agentName(task.assigneeId) }}</span>
               <span
-                v-if="childCount(t.id)"
+                v-if="childCount(task.id)"
                 class="tk-num"
-              >{{ $t('taskBoardView.k4b1x005') }} {{ childCount(t.id) }}</span>
+              >{{ $t('taskBoardView.k4b1x005') }} {{ childCount(task.id) }}</span>
               <span
-                v-if="t.artifacts"
+                v-if="task.artifacts"
                 class="tk-num"
-              ><span class="i-tabler-package" /> {{ t.artifacts }}</span>
+              ><span class="i-tabler-package" /> {{ task.artifacts }}</span>
             </div>
             <div class="tk-title">
-              {{ t.title }}
+              {{ task.title }}
             </div>
             <div
-              v-if="t.routeReason"
+              v-if="task.routeReason"
               class="tk-route"
-              :title="$t('taskBoardView.k8m7hm6020', { p0: t.routeReason })"
+              :title="$t('taskBoardView.k8m7hm6020', { p0: task.routeReason })"
             >
-              ↳ {{ t.routeReason }}
+              ↳ {{ task.routeReason }}
             </div>
             <a-progress
-              v-if="t.state === 'WORKING' && t.progress > 0"
-              :percent="t.progress"
+              v-if="task.state === 'WORKING' && task.progress > 0"
+              :percent="task.progress"
               size="small"
               :show-info="false"
             />
@@ -300,7 +300,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
               <button
                 type="button"
                 class="st-pill-btn"
-                @click.stop="openMenu($event, t)"
+                @click.stop="openMenu($event, task)"
               >
                 <span
                   class="st-pill"
@@ -340,19 +340,19 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
           <span class="sec-cnt">{{ col.items.length }}</span>
         </div>
         <div
-          v-for="t in col.items"
-          :key="t.id"
+          v-for="task in col.items"
+          :key="task.id"
           class="list-row"
-          @click="emit('openTask', t.id)"
+          @click="emit('openTask', task.id)"
         >
-          <span class="grow">{{ t.title }}</span>
-          <span class="lnum">#{{ agentName(t.assigneeId) }}</span>
-          <span class="meta">{{ t.id.slice(0, 8) }}</span>
+          <span class="grow">{{ task.title }}</span>
+          <span class="lnum">#{{ agentName(task.assigneeId) }}</span>
+          <span class="meta">{{ task.id.slice(0, 8) }}</span>
           <span
             class="st-pill"
             :style="{ color: col.dot, borderColor: col.dot }"
           >
-            {{ stateOf(t) }}
+            {{ stateOf(task) }}
           </span>
         </div>
       </template>

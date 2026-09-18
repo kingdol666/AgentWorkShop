@@ -15,7 +15,7 @@ import { getSystemConfigService } from '../../../services/system-config'
 export default defineApiHandler(async (event) => {
   requireRole(event, ['admin'])
   const id = String(event.context.params?.id ?? '').trim()
-  const body = (await readBody(event)) ?? {}
+  const body = (await readBody<Record<string, unknown>>(event)) ?? {}
   // id/source/plugin 是身份字段,不接受伪造
   const patch = { ...body }
   delete patch.id
