@@ -15,8 +15,9 @@ separate experimental outcome. The governed-write path concentrates range and
 recipe-window checks, ownership, cooldown, and readback. Observation-quality
 gating is a framework-level extension this paper does not deliver; until it
 exists, the historical LLM scores---whose writes executed as designed but whose
-judgments rested on stale or constant windows
-(Section~\ref{sec:repro})---cannot be compared with the deterministic ones.
+judgments were formed over scoring inputs and temporal windows that diverged
+from the plant's actual state (Section~\ref{sec:repro})---cannot be compared
+with the deterministic ones.
 
 \subsection{Implementation and Evidence Boundaries}
 Cross-agent in-window oscillations, shared-node
@@ -51,13 +52,13 @@ capacity boundary is likewise untested.
 supervision through explicit node capabilities and shared production context. The
 architecture keeps coordination and supervision cooperating without becoming one atomic control
 function. Reference archive $B$ provides three
-complementary results: four protocol fixtures reject all predefined
+complementary results: four writable stacks reject all predefined
 out-of-constraint writes with no legal-write blocks; a fixed controller reaches
 $J/J^*=0.963$--$0.972$ across three seeds; and a scripted team mission uses three
 governed writes across two protocols to bring biaxial-film thickness from 28.10 to
-25.68\,$\mu$m; seven of ten same-seed reruns attain the band, the reported run
-among them, and failed reruns end near zero thickness with mission checks alone
-downgraded to warnings. These results demonstrate the tested integration and governance
+25.68\,$\mu$m. Seven of ten same-seed reruns attain the band, the reported run
+among them; failed reruns end near zero thickness with no check failing and the mission
+checks downgraded to warnings, and the suite's hard gate does not flag them. These results demonstrate the tested integration and governance
 paths only. Physical validation, stronger execution consistency, controlled agent comparisons,
 and observation-quality gating remain open.
 

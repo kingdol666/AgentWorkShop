@@ -17,7 +17,7 @@ plugin host extends platform capabilities. These surfaces reuse platform objects
 but their exposed operations and permission checks differ, and an agent's industrial
 authority derives from its node bindings, not from channel access or
 protocol-endpoint availability. CLI engines and the platform's bundled
-oh-my-pi (OMP) agent harness execute in spawned processes, TimescaleDB and MinIO are external,
+OMP agent harness execute in spawned processes, TimescaleDB and MinIO are external,
 and connection establishment, queued protocol operations, and readback introduce
 asynchronous boundaries. Fast regulation and protection therefore remain with the
 plant controller and its safety equipment.
@@ -29,7 +29,7 @@ implementations to participate without changing a bound node's identity or the
 controller interface.
 
 On the plant side, acquisition nodes turn protocol readings into engineering
-quantities, control nodes translate engineering setpoints into device commands and
+quantities, control nodes (data-control-write, DCW) translate engineering setpoints into device commands and
 readback results, per-node runtimes manage timing and in-flight operations, and
 controller services supply gateway state, recipe context, and write bookkeeping.
 Nodes and devices have many-to-many configuration associations, but association is

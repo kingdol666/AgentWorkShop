@@ -2,9 +2,8 @@
 \label{sec:mech}
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.94\columnwidth]{figures/publication/fig3-channel-loop.pdf}
-\caption{The mechanisms in their organizational setting and closed loop. Numbered
-items are loop steps, not a one-to-one list of the subsections below; steps 1 and
+\includegraphics[width=0.72\columnwidth]{figures/publication/fig3-channel-loop.pdf}
+\caption{The mechanisms in their organizational setting and closed loop. Steps 1 and
 5 share the observation arrows. The channel coordinates agents that observe bound
 nodes, propose setpoints, and pass admission checks before write and readback.
 Step 6 is the agent's own verdict, the independent backstop is a second and
@@ -19,25 +18,9 @@ control execution (Section~\ref{sec:writepath}), production-line operations
 (Section~\ref{sec:lineops}), agent closed-loop control (Section~\ref{sec:loop}),
 recipe management and rollback (Section~\ref{sec:recipe}), and the
 process-parameter mapping layer (Section~\ref{sec:paramlayer}), plus the
-cross-cutting HITL boundary (Section~\ref{sec:hitl}). The evidence is not uniform:
-the out-of-constraint write probes exercise the hard-range and recipe-window checks
-directly, the lifecycle and mission checks exercise rollback and approval, and the
-ownership and cooldown checks are traversed by every governed agent write
-(Sections~\ref{sec:port}, \ref{sec:e1a}, and
-\ref{sec:agentloop}). The probes are fixed protocol cases, not model-generated
-adversarial inputs.
+cross-cutting HITL boundary (Section~\ref{sec:hitl}).
 
-\begin{figure*}[!tb]
-\centering
-\includegraphics[width=0.80\textwidth]{figures/publication/fig4-workflow.pdf}
-\caption{Operator-facing workflow using archived interface crops: node
-commissioning, device association, team deployment, and optimization-record
-inspection. Device association and agent capability binding are distinct
-operations, though the current interface does not enforce distinct operator roles
-for them. A displayed judgment records a disposition; it does not independently
-certify process improvement or physical recovery.}
-\label{fig:workflow}
-\end{figure*}
+
 
 \subsection{Node Connection and Creation}
 \label{sec:nodes}
@@ -51,7 +34,7 @@ different permission conditions, and an industrial-tool binding refers to a
 concrete channel-member instance, not a reusable template, so deploying a template
 elsewhere does not transfer the binding. That last property is a design consequence
 rather than a measured result; the archive exercises binding denial only on the
-parameter surface.
+parameter layer.
 
 The semantic card presents the node's physical quantity, unit, precision, range,
 current value, freshness, and available recipe context. Keeping a setpoint change
@@ -79,7 +62,7 @@ not an authorization mechanism or an
 executable safety specification. Industrial tools resolve the invoking member's
 bindings at request time, on the judge and rollback paths as well as the write path;
 the parameter-layer check \texttt{agent-param-tools} in Section~\ref{sec:port}
-exercises that denial, only for the parameter surface and with a scripted caller.
+exercises that denial, only for the parameter layer and with a scripted caller.
 
 \subsection{Node Control Execution}
 \label{sec:writepath}
@@ -242,12 +225,24 @@ restored metadata, individual compensation, and verified process recovery.
 
 \subsection{Process-Parameter Mapping Layer}
 \label{sec:paramlayer}
-A parameter object projects a control node onto process meaning: it carries a key, a
+A parameter-layer entry projects a control node onto process meaning: it carries a key, a
 unit, a baseline interval, a product interval and the active recipe window, and it
 exposes no register, data type or driver-configuration field. A write through this surface is bounded by the intersection of node range, baseline interval, product interval and recipe window, so an agent can
 reason about a process quantity without seeing a transport address. The layer is an
 interface over the control path of Section~\ref{sec:writepath} rather than a second
 gate: it narrows the permitted interval and then enters the same admission checks.
+
+\begin{figure*}[!tb]
+\centering
+\includegraphics[width=0.62\textwidth]{figures/publication/fig4-workflow.pdf}
+\caption{Operator-facing workflow using archived interface crops: node
+commissioning, device association, team deployment, and optimization-record
+inspection. Device association and agent capability binding are distinct
+operations, though the current interface does not enforce distinct operator roles
+for them. A displayed judgment records a disposition; it does not independently
+certify process improvement or physical recovery.}
+\label{fig:workflow}
+\end{figure*}
 
 \subsection{Human-in-the-Loop Control}
 \label{sec:hitl}

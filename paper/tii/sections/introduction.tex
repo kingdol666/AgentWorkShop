@@ -5,7 +5,7 @@ Consider a team asked to correct film thickness within pressure and temperature 
 
 \begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.80\textwidth]{figures/publication/fig1-intro.pdf}
+\includegraphics[width=0.72\textwidth]{figures/publication/fig1-intro.pdf}
 \caption{Integration problem and proposed organization. The left panel
 illustrates advisory or application-specific integration, not a universal
 limitation of prior systems. The right panel associates agent-team membership,
@@ -23,16 +23,12 @@ The contributions are threefold:
 \begin{enumerate}
 \item A \textbf{node-native integration model} connecting heterogeneous acquisition and control nodes, deployed agent teams, and versioned production runs through explicit capabilities and shared identifiers (Sec.~\ref{sec:arch}).
 \item An \textbf{implemented supervisory workflow} that separates team coordination, source-dependent write checks, agent-submitted judgments, physical compensation, and human decisions; its seven mechanisms and the cross-cutting human-in-the-loop (HITL) boundary are described with their actual scopes and exceptions (Sec.~\ref{sec:mech}).
-\item A \textbf{traceable, layered evaluation} organized around a reference archive (\texttt{20260918043504-bdo}), with ten
-same-seed sensitivity reruns. The run passes 75/75 checks with no
-warnings or failures, and its protocol fixtures reject all predefined
-out-of-constraint probes with no false blocks. Three
-fixed-controller seeds reach $J/J^*=0.963$--$0.972$ across the two conventions
-the archive uses, and a scripted team mission with the LLM path disabled
-reduces biaxial-film thickness from 28.10 to 25.68\,$\mu$m with three governed
-writes on two protocols; seven of ten same-seed reruns attain the band, and
-failed reruns end near zero thickness with mission checks alone downgraded to
-warnings (Sec.~\ref{sec:eval}).
+\item A \textbf{traceable, layered evaluation} on one reference archive (\texttt{20260918043504-bdo}) with ten
+same-seed sensitivity reruns (Sec.~\ref{sec:eval}). All 75 suite checks pass, and the protocol fixtures reject every predefined
+out-of-constraint probe while blocking none of the designated legal writes. A
+fixed non-LLM controller reaches $J/J^*=0.963$--$0.972$ of an offline reference over three seeds, and a scripted team mission brings a simulated film line from 28.10 to 25.68\,$\mu$m with three governed writes on two
+protocols; seven of the ten reruns attain the objective band. All evidence is
+simulation-tier and characterizes the platform paths, not agent quality.
 \end{enumerate}
 These contributions correspond to the evaluation's evidence layers
 (Sec.~\ref{sec:eval}, Table~\ref{tab:layers}): the integration model by the
