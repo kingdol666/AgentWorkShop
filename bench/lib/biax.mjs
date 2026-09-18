@@ -15,7 +15,7 @@
  *     dcw_control 受治理下发 → 物理随动 → dcw_judge 收口 → 达标判定 + 任务收口。
  */
 import { sleep } from './util.mjs'
-import { simApi, simNodes, simExport } from './sim.mjs'
+import { simApi, simNodes, simExport, plantReset } from './sim.mjs'
 
 const SCALAR_TEMPLATE_DAQ = 'daq-temp-tc'
 const SCALAR_TEMPLATE_DCW = 'dcw-temp-sp'
@@ -293,6 +293,19 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
   out.thickness = thickness
   out.traj.push({ iter: 0, knob: null, node: null, from: null, to: null, record: null, thickness })
   ev.push(`3. initial thickness=${thickness != null ? thickness.toFixed(2) : '?'} μm(目标 ${THICKNESS_TARGET}±${THICKNESS_TOL})`)
+  // (2.5) 起跑工况复位门:双拉引擎经多轮任务跑热后状态可能漂移(实测 27.95μm 起步→断膜级
+  // 崩塌,配方基线恢复不可逆)。起跑读数越出健康带(|PV−目标|>3×tol)→ warm 复位到标称工况,
+  // 保证同 seed 确定性起点 —— 环境残留不属于被测治理面;健康带内零行为变化。
+  if (thickness == null || Math.abs(thickness - THICKNESS_TARGET) > THICKNESS_TOL * 3) {
+    const rs = await plantReset({ warm: true })
+    const resetOk = rs.status != null ? rs.status < 400 : true
+    ev.push(`2.5 plant reset(warm): 起跑读数 ${thickness != null ? thickness.toFixed(2) : '?'}μm 越出健康带(±${(THICKNESS_TOL * 3).toFixed(1)}) → 复位标称 ${resetOk ? '✔' : `✘ ${rs.message ?? ''}`}`)
+    await sleep(4000) // 引擎首拍覆写 + 厚度代数式响应起稳
+    thickness = await readPvMean(api, thickDaq)
+    out.thickness = thickness
+    out.traj.push({ iter: 0, knob: null, node: null, from: null, to: null, record: null, thickness, note: 'post-reset baseline' })
+    ev.push(`2.5 复位后基线: ${thickness != null ? thickness.toFixed(2) : '?'} μm`)
+  }
   for (let i = 0; i < maxRounds && !(thickness != null && Math.abs(thickness - THICKNESS_TARGET) <= THICKNESS_TOL); i++) {
     const knob = KNOBS[i % KNOBS.length]
     const nodeId = line.dcw[knob.sig]
