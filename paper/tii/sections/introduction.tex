@@ -1,5 +1,5 @@
 \section{Introduction}
-\IEEEPARstart{L}{arge} language models (LLMs) are being explored for industrial diagnosis, engineering assistance, and control-program generation \cite{raza2025industrial,sabetta2025assistant,liu2026agents4plc,fakih2024llm4plc}. Recent systems also connect agents to simulated controllers or real machines \cite{vyas2026ftc,hofmann2025nlc}. For a production-line deployment, the engineering problem is therefore not whether an LLM can issue a command but how to preserve its meaning, authority, and history across heterogeneous equipment, multiple agents, and changing operating recipes.
+\IEEEPARstart{L}{arge} language models (LLMs) are being explored for industrial diagnosis, engineering assistance, and control-program generation \cite{raza2025industrial,sabetta2025assistant,liu2026agents4plc,fakih2024llm4plc}. Recent systems also connect agents to simulated controllers or real machines \cite{vyas2026ftc,hofmann2025nlc}. For a production-line deployment, the engineering problem is not whether an LLM can issue a command but how to preserve its meaning, authority, and history across heterogeneous equipment, multiple agents, and changing operating recipes.
 
 Consider a team asked to correct film thickness within pressure and temperature limits: one member may inspect telemetry, another propose a setpoint, and a lead coordinate the task. A protocol connection alone does not identify which member may change which node, which recipe applies to the current batch, whether a human must approve, or whether the subsequent observation measures the commanded register or the process response. Implementing these associations separately for each application duplicates configuration and makes failures hard to reconstruct; conversely, one shared interface does not by itself establish atomic execution, physical safety, or valid optimization. Fig.~\ref{fig:intro} contrasts this application-specific pattern with the binding and production context used here.
 
@@ -24,21 +24,18 @@ The contributions are threefold:
 \item A \textbf{node-native integration model} connecting heterogeneous acquisition and control nodes, deployed agent teams, and versioned production runs through explicit capabilities and shared identifiers (Sec.~\ref{sec:arch}).
 \item An \textbf{implemented supervisory workflow} that separates team coordination, source-dependent write checks, agent-submitted judgments, physical compensation, and human decisions; its seven mechanisms and the cross-cutting human-in-the-loop (HITL) boundary are described with their actual scopes and exceptions (Sec.~\ref{sec:mech}).
 \item A \textbf{traceable, layered evaluation} on one reference archive (\texttt{20260918043504-bdo}) with ten
-same-seed sensitivity reruns (Sec.~\ref{sec:eval}). All 75 suite checks pass, and the protocol fixtures reject every predefined
+reportable same-command reruns (of eleven archived; Sec.~\ref{sec:agentloop}). All 75 suite checks pass, and the writable stacks reject every predefined
 out-of-constraint probe while blocking none of the designated legal writes. A
 fixed non-LLM controller reaches $J/J^*=0.963$--$0.972$ of an offline reference over three seeds, and a scripted team mission brings a simulated film line from 28.10 to 25.68\,$\mu$m with three governed writes on two
-protocols; seven of the ten reruns attain the objective band. All evidence is
+protocols; seven of the ten reportable reruns attain the objective band (six
+of nine excluding the reference). All evidence is
 simulation-tier and characterizes the platform paths, not agent quality.
 \end{enumerate}
 These contributions correspond to the evaluation's evidence layers
-(Sec.~\ref{sec:eval}, Table~\ref{tab:layers}): the integration model by the
-``Plant model and provisioning'' and ``Protocol I/O and governed write'' layers,
-the mechanisms by the ``Records, approval, recipe, parameter layer,'' and the
-assembled workflow by the ``Closed-loop evaluation and scenario reuse'' and
-``AgentTeam missions'' layers. Each layer is
+(Sec.~\ref{sec:eval}, Table~\ref{tab:layers}), each layer
 reported separately rather than pooled into one score. The contribution is a
 systems contribution: the paper specifies an integration model, implements it end
 to end, and reports what that implementation does and does not guarantee. It
 proposes no new control law, learning method, or safety certification argument, and
-claims reusable supervisory integration within the tested settings, not certified
+claims configuration reuse within the existing driver and scenario vocabulary, not certified
 safety, general industrial autonomy, or LLM-controller superiority.

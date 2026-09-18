@@ -12,7 +12,7 @@ scripted team turn a production objective into governed actions that reach it?
 Source
 inspection, mock drivers, real protocol transports driving simulated plants, and
 historical LLM campaigns stay apart; nothing here comes from physical hardware or
-human operators, and no observed latency is an equivalence result. No headline
+human operators, and the latency figures do not transfer to physical transports. No headline
 claim in this paper rests on an LLM decision. The evidence is not uniform: the out-of-constraint write probes exercise the hard-range and recipe-window checks directly, the lifecycle and mission checks exercise rollback and approval, and the ownership and cooldown checks are traversed by every governed agent write (Sections~\ref{sec:port}, \ref{sec:e1a}, and \ref{sec:agentloop}). The probes are fixed protocol cases, not model-generated adversarial inputs.
 
 Except where an archive is named, the results in this section come from one reference archived run,
@@ -117,7 +117,9 @@ Modbus RTU over TCP & 14 & N/A & N/A & N/A \\
 \end{tabular}
 \end{table}
 
-The 24/24 count lives in phase P3 and the 9/9 scenario count in phase P8; the checks behind these numbers are the per-line integration checks \texttt{line-$n$-io} in phase P3 and \texttt{port-$n$-*} in phase P8. Each writable stack rejects four engineering-range and two recipe-window
+The 24/24 count lives in phase P3 (per-line integration checks
+\texttt{line-$n$-io}) and the 9/9 scenario count in phase P8 (checks
+\texttt{port-$n$-*}). Each writable stack rejects four engineering-range and two recipe-window
 violations, giving 24/24 rejections, and none of the four designated legal writes is blocked.
 The probes are node-high plus 15\,\% of span, node-low minus 15\,\%,
 $10^{6}$, $-50$, and the recipe window widened by 20\,\%, so the set shows rejection
@@ -144,7 +146,8 @@ atomic with a concurrent recipe change.
 A frozen four-arm ablation, archived separately (seed 42, three repetitions, commit \texttt{d6c824d}), shows what the write path contributes; its arms are full, no interlock, no readback, and ungated. The ablation runs
 on the mock driver tier against a single-node recipe window, and its three
 repetitions per arm are bit-identical, i.e., the ablation evidence is one
-deterministic run per arm. With the full path, all six attacks are rejected. With the batch-window interlock disabled, or with the path ungated, four are still rejected and the two recipe-window violations execute at the (mock) driver tier; disabling readback alone changes nothing. The engineering range is therefore structurally enforced and the batch-window check is the one that adds protection, while attribution records what happened without preventing it. The ablation archive carries boundary probes one tenth of a unit either side of the window edge: they are rejected where the window check is active, accepted where it is disabled, and no arm records a false block. The process-parameter layer passes 4/4 checks: out-of-product and out-of-baseline
+deterministic run per arm. The gate adds no measurable per-write cost (arm
+latencies within noise of the full arm). With the full path, all six attacks are rejected. With the batch-window interlock disabled, or with the path ungated, four are still rejected and the two recipe-window violations execute at the (mock) driver tier; disabling readback alone changes nothing. The engineering range is therefore structurally enforced and the batch-window check is the one that adds protection, while attribution records what happened without preventing it. The ablation archive carries boundary probes one tenth of a unit either side of the window edge: they are rejected where the window check is active, accepted where it is disabled, and no arm records a false block. The process-parameter layer passes 4/4 checks: out-of-product and out-of-baseline
 values are rejected at their respective layers, the parameter reads back, and an
 unbound agent is denied; agents thus receive a process-facing interface that does
 not disclose transport addresses (Section~\ref{sec:paramlayer}).
@@ -189,7 +192,8 @@ in every seed, at 86.921, 86.609, and 86.975, or 0.967, 0.963, and 0.968. The
 stopping rule requires two consecutive converged observations, and the first write
 already brought thickness inside the $50\pm2\,\mu$m plateau, so the second write
 follows from the rule and not from a further improvement: it raises defect rate from 0.38--0.53\,\% to 0.62--0.72\,\% and lowers the composite objective. We therefore
-quote $0.963$--$0.972$ across both conventions and do not describe the trajectory as
+quote $0.963$--$0.972$ across both conventions (per-seed: end-of-run
+$0.969/0.968/0.972$; last-evaluation $0.967/0.963/0.968$) and do not describe the trajectory as
 monotone. Final thicknesses are 49.883, 49.383, and 49.317\,$\mu$m.
 
 Decomposing $J$ at the final point shows the residual gap. Both reference and
@@ -248,7 +252,7 @@ that judgment is stored separately from execution and compensation, not that a j
 \begin{figure*}[!tb]
 \centering
 \includegraphics[width=0.62\textwidth]{figures/publication/fig11-agentteam-loop.pdf}
-\caption{Scripted AgentTeam mission in archive $B$, reconstructed from \texttt{agentteam-biax.log} and \texttt{run.json}. Top: the simulated BOPET line (nine devices, 30 setpoints, 19 acquisition nodes) with the three written actuators, the gauge that supplies thickness, and the objective filed against them. Middle: the channel carrying the objective, the four admission checks a governed write clears before a driver is invoked, and the three steps the run recorded (three of an allowed six writes). Bottom: measured thickness after each step against the $25.0\pm0.7\,mu$m objective; the final point clears the band edge by $0.02\,mu$m. Team members are scripted mock agents with a prespecified proportional rule and the LLM agent disabled, so the figure documents the governance and attribution path rather than optimization quality.}
+\caption{Scripted AgentTeam mission in archive $B$, reconstructed from \texttt{agentteam-biax.log} and \texttt{run.json}. Top: the simulated BOPET line (nine devices, 30 setpoints, 19 acquisition nodes) with the three written actuators, the gauge that supplies thickness, and the objective filed against them. Middle: the channel carrying the objective, the four admission checks a governed write clears before a driver is invoked, and the three steps the run recorded (three of an allowed six writes). Bottom: measured thickness after each step against the $25.0\pm0.7\,\mu$m objective; the final point clears the band edge by $0.02\,\mu$m. Team members are scripted mock agents with a prespecified proportional rule and the LLM agent disabled, so the figure documents the governance and attribution path rather than optimization quality.}
 \label{fig:agentteam}
 \end{figure*}
 
@@ -282,12 +286,11 @@ rather than by the plant. The drill shows one bounded recovery execution: it doe
 not exercise escalation at $K=2$, does not test detection of a slowly drifting
 excursion or of a gap between batches, and sets no worst-case recovery deadline.
 
-First, of the failures observed outside archive $B$, a harness-development
-development, a burst of writes across several protocols drove the simulated plant
+First, during harness development a burst of writes across several protocols drove the simulated plant
 into a collapsed state, with pump pressure, draw ratio, and thickness falling to
 their limits, while every platform-side write stayed readback-consistent. A readback
 therefore confirms that a driver delivered a value, not that the plant is in a sane
-state. Second, a film-break guard that reapplies the recipe baseline is present in the mission harness but is not represented in archive $B$, which never entered that branch. Three other archives entered it, one of them earlier on the same day at the same recorded commit, and in each case the re-application failed to restore thickness, leaving the plant at or below zero thickness ($0.04$, $-0.02$, $-0.02\,\mu$m against a $\sim$25\,$\mu$m band); one $-0.02\,\mu$m archive is the same-hash, same-seed sister of the nondeterminism example below. A fourth archive collapsed without entering the branch. The guard therefore aborts rather than recovers, and end states near or below zero thickness indicate that the plant model, not only the governance layer, bounds this result. In each of the three collapses the mission's own optimization records were superseded within about a minute of the write, so the independent backstop's 120-second eligibility window never opened; the guard's abort, not a backstop rollback, is what ended those runs. Third, the audit path fails open: bookkeeping errors are caught without reversing an executed write,
+state. Second, a film-break guard that reapplies the recipe baseline is present in the mission harness but is not represented in archive $B$, which never entered that branch. Three other archives entered it, one of them earlier on the same day at the same recorded commit, and in each case the re-application failed to restore thickness, leaving the plant near or below zero thickness (final values $0.02$, $-0.02$, $-0.02\,\mu$m against a $\sim$25\,$\mu$m band); one $-0.02\,\mu$m archive is the same-hash, same-seed sister of the nondeterminism example below. A fourth archive collapsed without entering the branch. The guard therefore aborts rather than recovers, and end states near or below zero thickness indicate that the plant model, not only the governance layer, bounds this result. In each of the three collapses the mission's own optimization records were superseded within about a minute of the write, so the independent backstop's 120-second eligibility window never opened; the guard's abort, not a backstop rollback, is what ended those runs. Third, the audit path fails open: bookkeeping errors are caught without reversing an executed write,
 so a physical change can occur without an attribution record, and the platform logs
 the error without blocking the write or retrying the record. Attribution is
 therefore a strong default, not a guarantee.
@@ -295,12 +298,12 @@ therefore a strong default, not a guarantee.
 The command
 (\texttt{node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3}),
 seed, commit, and a hash over the nine harness modules let another operator rerun
-the suite and compare judge-class outcomes against the same baseline. Five caveats remain. (1) The harness-hash covers working-tree modules and is sensitive to checkout line endings. (2) The plant simulator is a separately versioned dependency outside the fingerprint, so the exact harness and plant behind these numbers cannot be reconstructed from the archive alone. (3) The biaxial journal-attribution check passed with an empty evidence array, so the run bookkeeping is not uniformly clean. (4) The checks were written against this implementation. (5) The reference $J^{*}$ comes from the same simulator the controller optimises, so the gate is a development-time regression suite, not a benchmark with an external oracle. The last caveat concerns the mission layer. Its starting thickness is a simulator
+the suite and compare judge-class outcomes against the same baseline. Five caveats remain. (1) The harness-hash covers working-tree modules and is sensitive to checkout line endings. (2) The plant simulator is a separately versioned dependency outside the fingerprint, so the exact harness and plant behind these numbers cannot be reconstructed from the archive alone. (3) The biaxial journal-attribution check passed with an empty evidence array, so the run bookkeeping is not uniformly clean. (4) The checks were written against this implementation. (5) The reference $J^{*}$ comes from the same simulator the controller optimises, so the gate is a development-time regression suite, not a benchmark with an external oracle. The simulator snapshot submitted with the paper corresponds to the plant state described here. A final caveat concerns the mission layer. Its starting thickness is a simulator
 residue rather than a pinned initial condition. Later runs of the same command on
 the same host reached different outcomes: two archives sharing one harness hash
 and one seed, neither of them $B$, ended at $25.68\,\mu$m and at $-0.02\,\mu$m.
 In the second, both mission checks are recorded as warnings, no check failed, and
-the hard gate stayed green. The suite is therefore not deterministic at the mission layer, and the 75/75 gate describes archive $B$ rather than a property of the system. Verdicts and record states are deterministic within a run, protocol latencies are not, and the two should not be read as interchangeable. The evidence remains simulation-tier, and no
+the hard gate stayed green. The suite is therefore not deterministic at the mission layer, and the 75/75 gate describes archive $B$ rather than a property of the system. Whether this stems from harness-version drift or from runtime nondeterminism was not isolated; a rerun campaign against a pinned simulator revision is required to separate the two. Verdicts and record states are deterministic within a run, protocol latencies are not, and the two should not be read as interchangeable. The evidence remains simulation-tier, and no
 physical device, TEP or SWaT replay, human-operator workload study, or
 external-framework comparison was run.
 
