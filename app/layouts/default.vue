@@ -44,9 +44,25 @@ const site = useSiteConfig()
       >
         <span class="footer-title aw-serif-accent">{{ site.title }}</span>
         <span class="sep">/</span>
-        <span>v{{ site.version }}</span>
-        <span class="sep">/</span>
         <span>mode={{ site.mode }}</span>
+        <!-- 右下角:版本 + 开源地址 + 文档(弱化铭牌,hover 才现交互态) -->
+        <span class="footer-corner">
+          <span>v{{ site.version }}</span>
+          <span class="sep">·</span>
+          <a
+            class="footer-link"
+            href="https://github.com/kingdol666/AgentWorkShop"
+            target="_blank"
+            rel="noopener"
+          >GitHub</a>
+          <span class="sep">·</span>
+          <a
+            class="footer-link"
+            href="https://kingdol666.github.io/AgentWorkShop/"
+            target="_blank"
+            rel="noopener"
+          >Docs</a>
+        </span>
       </a-layout-footer>
     </a-layout>
 
@@ -91,6 +107,7 @@ const site = useSiteConfig()
 
 /* 页脚:mono 铭牌行(固定高度,供 harness 页计算视口高度);壳层玻璃收边 */
 .app-footer {
+  position: relative;
   background: var(--mat-chrome-bg);
   backdrop-filter: var(--vibrancy-chrome);
   border-top: 1px solid var(--glass-line);
@@ -113,5 +130,32 @@ const site = useSiteConfig()
 
 .footer-title {
   font-size: 13px;
+}
+
+/* 右下角铭牌:版本/开源地址/文档 —— 与中央铭牌同色系弱化,hover 才亮起,不抢视觉 */
+.footer-corner {
+  position: absolute;
+  right: 24px;
+  bottom: 0;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  height: 100%;
+  color: var(--ink-faint);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.footer-corner .footer-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.footer-corner .footer-link:hover {
+  color: inherit;
+  opacity: 0.85;
+  border-bottom-color: currentColor;
 }
 </style>
