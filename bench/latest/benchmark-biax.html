@@ -1,0 +1,213 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AW-IndustrialBench · 双拉产线全栈基准报告</title>
+<style>
+:root{--bg:#0a1220;--panel:#101b2e;--line:#1d2c44;--tx:#dbe6f5;--mut:#7d90ad;--g:#35e0a0;--c:#41c8f4;--a:#f4b641;--r:#ff5d73;--v:#a78bfa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 "Segoe UI",system-ui,-apple-system,"Microsoft YaHei",sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:34px 22px 70px}
+h1{font-size:25px;margin:0 0 6px}h1 b{color:var(--g)}
+.sub{color:var(--mut);font-size:13px}
+code{background:#0c1526;border:1px solid var(--line);padding:1px 6px;border-radius:4px;font:12.5px/1.5 Consolas,monospace;color:var(--c)}
+.chips{margin:16px 0 22px;display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.4px}
+.chip.ok{background:rgba(53,224,160,.12);color:var(--g);border:1px solid rgba(53,224,160,.4)}
+.chip.bad{background:rgba(255,93,115,.12);color:var(--r);border:1px solid rgba(255,93,115,.4)}
+.chip.warn{background:rgba(244,182,65,.12);color:var(--a);border:1px solid rgba(244,182,65,.4)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:11px;margin:0 0 26px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+.kv{font-size:23px;font-weight:700}.kv.g{color:var(--g)}.kv.c{color:var(--c)}.kv.a{color:var(--a)}.kv.v{color:var(--v)}
+.kl{color:var(--mut);font-size:12px;margin-top:3px;line-height:1.45}
+section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:0 0 20px}
+section h2{font-size:16.5px;margin:0 0 4px;color:var(--c);letter-spacing:.3px}
+section .lead{color:var(--mut);font-size:13px;margin:0 0 14px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{border-top:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12px;border-top:none;white-space:nowrap}
+td.mut,span.mut{color:var(--mut)}td.mono{font-family:Consolas,monospace;font-size:12px}
+.note{color:var(--mut);font-size:13px;margin-top:12px;line-height:1.65}
+pre{background:#0c1526;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow:auto;font:12.5px/1.6 Consolas,monospace;color:#b9d0ea}
+.flow{display:flex;gap:0;align-items:stretch;flex-wrap:wrap;margin:6px 0 4px}
+.fstep{flex:1 1 128px;min-width:128px;background:#0c1526;border:1px solid var(--line);border-radius:9px;padding:10px 11px;position:relative;margin:0 14px 10px 0}
+.fstep::after{content:'▶';position:absolute;right:-13px;top:42%;color:var(--mut);font-size:11px}
+.fstep:last-child::after{content:''}
+.fstep .ft{font-weight:700;font-size:13px;margin-bottom:4px}
+.fstep .fd{color:var(--mut);font-size:11.5px;white-space:pre-line;line-height:1.5}
+.fstep.b .ft{color:var(--v)}.fstep.o .ft{color:var(--c)}.fstep.a .ft{color:var(--g)}.fstep.p .ft{color:var(--a)}
+footer{color:var(--mut);font-size:12px;margin-top:24px}
+.tr{border-left:3px solid var(--line);padding:2px 0 2px 12px;margin:8px 0}
+</style></head><body><div class="wrap">
+<header>
+<h1>AW-<b>IndustrialBench</b> · 双拉产线全栈基准报告</h1>
+<div class="sub">seed 42 · git <code>904e6e0</code> · 2026-09-18T00:15:50.373Z · 平台 <code>http://127.0.0.1:3001</code> · 模拟器 <code>http://127.0.0.1:4010</code> · harness <code>5ee0c225</code></div>
+<div class="chips">
+<span class="chip ok">集成流水线 71/0/0</span>
+<span class="chip ok">静态层 PASS</span>
+<span class="chip ok">真实协议层 13/—</span>
+<span class="chip ok">四臂消融 PASS</span>
+<span class="chip ok">API 普查 60</span>
+<span class="chip ok">双拉达标 25.34μm</span>
+<span class="chip ok">3 执行节点协同</span>
+<span class="chip ok">门槛自检</span>
+</div>
+</header>
+
+<div class="grid">
+<div class="kpi"><div class="kv g">71/71</div><div class="kl">集成流水线检查全绿(16 阶段,0 fail)</div></div>
+<div class="kpi"><div class="kv c">0.970</div><div class="kl">cast-film 闭环 J/J* 均值(vs 离线最优 W*)</div></div>
+<div class="kpi"><div class="kv v">9台 · 49信号</div><div class="kl">双拉产线节点(30 写控 SP + 19 采集 PV)</div></div>
+<div class="kpi"><div class="kv g">25.34μm</div><div class="kl">AgentTeam 双拉闭环终态(目标 25.0±0.7)</div></div>
+<div class="kpi"><div class="kv v">3 节点 / 4 写</div><div class="kl">双拉优化作业执行路径(受治理)</div></div>
+<div class="kpi"><div class="kv c">100%</div><div class="kl">F5 越界写治理拦截(全层合并,误拦 0)</div></div>
+<div class="kpi"><div class="kv g">触发+恢复</div><div class="kl">系统兜底 drilling · 130.176s</div></div>
+<div class="kpi"><div class="kv c">9/9</div><div class="kl">第二场景可移植性 F5(0 代码改动)</div></div>
+</div>
+
+<section><h2>一 · 五层 benchmark 总览</h2>
+<p class="lead">按 bench/PIPELINE.md §0 执行卡完整执行;每层独立判据,任何一层 fail 即整体 FAIL。</p>
+<table>
+<tr><th>层</th><th>runId</th><th>Pass</th><th>Warn</th><th>Fail</th><th>判据要点</th><th>判定</th></tr>
+<tr><td>① 静态层 · 论文-代码一致性</td><td class="mono">20260918000615-xnw</td><td>3</td><td>0</td><td>0</td><td class="mut">s2 100% 为硬门槛</td><td><span class="chip ok">PASS</span></td></tr><tr><td>② 一体化集成流水线(16 阶段)</td><td class="mono">20260918000615-125g</td><td>71</td><td>0</td><td>0</td><td class="mut">71/0/0</td><td><span class="chip ok">PASS</span></td></tr><tr><td>③ 真实协议层(plc-node-simulator)</td><td class="mono">20260918001550-19yg</td><td>13</td><td>0</td><td>0</td><td class="mut">五协议真实栈 13 检查</td><td><span class="chip ok">PASS</span></td></tr><tr><td>④ E1a 四臂治理消融</td><td class="mono">20260918001651-e1lite</td><td>4</td><td>0</td><td>0</td><td class="mut">full/no-interlock/no-readback/ungated ×3 轮</td><td><span class="chip ok">PASS</span></td></tr><tr><td>⑤ 全系统 API 普查</td><td class="mono">console</td><td>60</td><td>0</td><td>0</td><td class="mut">★ ALL PASS (60)</td><td><span class="chip ok">PASS</span></td></tr>
+</table>
+<div class="note"><b>复现矩阵(与冻结基线逐位判定)</b></div><table><tr><th>对比</th><th>机器判定</th></tr><tr><td class="mono">REPRODUCIBLE</td><td><span class="chip ok">REPRODUCIBLE</span></td></tr><tr><td class="mono">REPRODUCIBLE</td><td><span class="chip ok">REPRODUCIBLE</span></td></tr><tr><td>门槛自检(篡改拦截率必须被拒)</td><td><span class="chip ok">PASS</span></td></tr></table>
+</section>
+
+<section><h2>二 · 集成流水线执行流程(16 阶段时间线)</h2>
+<p class="lead">阶段编排即「从自举到闭环寻优」的完整作业流程;横条=耗时,绿=全过 / 黄=含 warn / 红=含 fail。</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 450" style="width:100%;height:auto;font-family:Segoe UI,sans-serif"><text x="0" y="20" font-size="11.5" fill="#dbe6f5">P0 自举就绪</text>
+<rect x="180" y="10" width="2.0" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="188.0" y="20" font-size="10.5" fill="#7d90ad">0.1s · 1 检查</text><text x="0" y="46" font-size="11.5" fill="#dbe6f5">P1 工艺模型</text>
+<rect x="180" y="36" width="6.0" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="192.0" y="46" font-size="10.5" fill="#7d90ad">2.8s · 2 检查</text><text x="0" y="72" font-size="11.5" fill="#dbe6f5">P2 多产线供给</text>
+<rect x="180" y="62" width="5.9" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="191.9" y="72" font-size="10.5" fill="#7d90ad">2.8s · 6 检查</text><text x="0" y="98" font-size="11.5" fill="#dbe6f5">P3 集成与治理</text>
+<rect x="180" y="88" width="29.2" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="215.2" y="98" font-size="10.5" fill="#7d90ad">13.7s · 5 检查</text><text x="0" y="124" font-size="11.5" fill="#dbe6f5">P4 工具级闭环</text>
+<rect x="180" y="114" width="39.5" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="225.5" y="124" font-size="10.5" fill="#7d90ad">18.5s · 7 检查</text><text x="0" y="150" font-size="11.5" fill="#dbe6f5">P4m AgentTeam 任务</text>
+<rect x="180" y="140" width="11.2" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="197.2" y="150" font-size="10.5" fill="#7d90ad">5.3s · 6 检查</text><text x="0" y="176" font-size="11.5" fill="#dbe6f5">P4b 回退与记录</text>
+<rect x="180" y="166" width="2.0" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="188.0" y="176" font-size="10.5" fill="#7d90ad">0.5s · 4 检查</text><text x="0" y="202" font-size="11.5" fill="#dbe6f5">P4c HITL 审批</text>
+<rect x="180" y="192" width="3.6" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="189.6" y="202" font-size="10.5" fill="#7d90ad">1.7s · 1 检查</text><text x="0" y="228" font-size="11.5" fill="#dbe6f5">P4d 治理只读面</text>
+<rect x="180" y="218" width="2.0" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="188.0" y="228" font-size="10.5" fill="#7d90ad">0.1s · 1 检查</text><text x="0" y="254" font-size="11.5" fill="#dbe6f5">P4e 配方生命周期</text>
+<rect x="180" y="244" width="2.0" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="188.0" y="254" font-size="10.5" fill="#7d90ad">0.3s · 2 检查</text><text x="0" y="280" font-size="11.5" fill="#dbe6f5">P6 cast-film 寻优</text>
+<rect x="180" y="270" width="240.2" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="426.2" y="280" font-size="10.5" fill="#7d90ad">112.7s · 6 检查</text><text x="0" y="306" font-size="11.5" fill="#dbe6f5">P7 多形态数采</text>
+<rect x="180" y="296" width="19.3" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="205.3" y="306" font-size="10.5" fill="#7d90ad">9.1s · 1 检查</text><text x="0" y="332" font-size="11.5" fill="#dbe6f5">P8 跨场景可移植</text>
+<rect x="180" y="322" width="34.1" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="220.1" y="332" font-size="10.5" fill="#7d90ad">16.0s · 11 检查</text><text x="0" y="358" font-size="11.5" fill="#dbe6f5">P8b 系统兜底</text>
+<rect x="180" y="348" width="287.5" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="473.5" y="358" font-size="10.5" fill="#7d90ad">134.8s · 5 检查</text><text x="0" y="384" font-size="11.5" fill="#dbe6f5">P10 双拉产线全节点</text>
+<rect x="180" y="374" width="540.0" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="726.0" y="384" font-size="10.5" fill="#7d90ad">253.3s · 10 检查</text><text x="0" y="410" font-size="11.5" fill="#dbe6f5">P9 平台子系统</text>
+<rect x="180" y="400" width="6.9" height="13" rx="3" fill="#35e0a0" opacity="0.85"/>
+<text x="192.9" y="410" font-size="10.5" fill="#7d90ad">3.2s · 3 检查</text></svg>
+<table>
+<tr><th>阶段</th><th>内容</th><th>检查数</th><th>Pass/Warn/Fail</th><th>耗时</th></tr>
+<tr><td><b>P0</b> 自举就绪</td><td class="mut">platform reachable &amp; authenticated</td><td>1</td><td>1/0/0</td><td>0.1s</td></tr><tr><td><b>P1</b> 工艺模型</td><td class="mut">预设 cast-film-physics 已应用</td><td>2</td><td>2/0/0</td><td>2.8s</td></tr><tr><td><b>P2</b> 多产线供给</td><td class="mut">gateway controller start (idempotent)</td><td>6</td><td>6/0/0</td><td>2.8s</td></tr><tr><td><b>P3</b> 集成与治理</td><td class="mut">Line1 [modbus-tcp] integration check</td><td>5</td><td>5/0/0</td><td>13.7s</td></tr><tr><td><b>P4</b> 工具级闭环</td><td class="mut">闭环夹具（channel+agent）</td><td>7</td><td>7/0/0</td><td>18.5s</td></tr><tr><td><b>P4m</b> AgentTeam 任务</td><td class="mut">任务板：优化任务下达并由 lead 派发</td><td>6</td><td>6/0/0</td><td>5.3s</td></tr><tr><td><b>P4b</b> 回退与记录</td><td class="mut">Line1 优化记录生命周期</td><td>4</td><td>4/0/0</td><td>0.5s</td></tr><tr><td><b>P4c</b> HITL 审批</td><td class="mut">Line2 HITL 审批闭环</td><td>1</td><td>1/0/0</td><td>1.7s</td></tr><tr><td><b>P4d</b> 治理只读面</td><td class="mut">治理只读面</td><td>1</td><td>1/0/0</td><td>0.1s</td></tr><tr><td><b>P4e</b> 配方生命周期</td><td class="mut">Line1 [modbus-tcp] recipe lifecycle</td><td>2</td><td>2/0/0</td><td>0.3s</td></tr><tr><td><b>P6</b> cast-film 寻优</td><td class="mut">cast-film twin node provisioning（执行器 + 传感器）</td><td>6</td><td>6/0/0</td><td>112.7s</td></tr><tr><td><b>P7</b> 多形态数采</td><td class="mut">多形态数采（向量/图像帧）</td><td>1</td><td>1/0/0</td><td>9.1s</td></tr><tr><td><b>P8</b> 跨场景可移植</td><td class="mut">second plant scenario applied: film-line</td><td>11</td><td>11/0/0</td><td>16.0s</td></tr><tr><td><b>P8b</b> 系统兜底</td><td class="mut">遗留 open 记录清场（关闭 2/2 条）</td><td>5</td><td>5/0/0</td><td>134.8s</td></tr><tr><td><b>P10</b> 双拉产线全节点</td><td class="mut">节点探测补建(9 建缺失 / 0 修复 / 0 原样)</td><td>10</td><td>10/0/0</td><td>253.3s</td></tr><tr><td><b>P9</b> 平台子系统</td><td class="mut">团队调度（lead 派发 → worker 完成）</td><td>3</td><td>3/0/0</td><td>3.2s</td></tr>
+</table>
+<div class="note">P10(双拉产线全节点)为本报告专项,展开见下节;P5(真实 LLM 闭环)为可选层,本次未启(<code>--agent</code> 缺省),其确定性等价路径由 P4/P4m/P10 覆盖。</div>
+</section>
+
+<section><h2>三 · 双拉产线(BOPET)数字孪生专项 — P10</h2>
+<p class="lead">一条更接近真实双拉产线的全线孪生:干燥上料 → 挤出铸片 → 计量泵 → 纵拉 MDO → 横拉 TDO → 在线测厚 → 电晕/表面检测 → 收卷。9 设备五协议、49 信号(30 可写工艺 SP + 19 采集 PV),全部信号带工艺语义描述并贯通 Agent 语义卡。</p>
+
+<h2 style="font-size:14px;color:var(--tx)">3.1 节点清单(探测 → 补建 → 五协议接入)</h2>
+<div class="note" style="margin:2px 0 10px">执行方式:<b>蓝图差分探测</b>——以模拟器预设蓝图(dry-run)为工程清单,对现场按 id/信号/端口逐一比对:<b>缺失 → 按固定 id 补建</b>;漂移 → 修复;停机 → 拉起;<b>不整包重置</b>(与既有 cast-film 场景共存)。本次:补建 9 台,修复 0 台;平台侧按每设备真实 driverConfig 建成一条产线(<b>30 DCW + 19 DAQ</b>),9/9 驱动实测连通。</div>
+<table>
+<tr><th>设备</th><th>协议/端点</th><th>SP</th><th>PV</th><th>关键可写参数(全部带工艺语义)</th><th>关键采集量</th></tr>
+<tr><td><b>原料干燥上料单元</b><br><span class="mut mono" style="font-size:11px">biax-dryer-opcua</span></td><td>OPC UA<br><span class="mut mono" style="font-size:11px">:5841</span></td><td>3</td><td>2</td><td class="mut" style="font-size:12.5px">干燥温度SP / 露点SP / 喂料速率SP</td><td class="mut" style="font-size:12.5px">干燥塔温度 / 切片残水</td></tr><tr><td><b>挤出主机PLC</b><br><span class="mut mono" style="font-size:11px">biax-extruder-mbtcp</span></td><td>Modbus TCP<br><span class="mut mono" style="font-size:11px">:16042</span></td><td>6</td><td>2</td><td class="mut" style="font-size:12.5px">机筒温度区1~5SP / 螺杆转速SP</td><td class="mut" style="font-size:12.5px">熔体温度 / 泵前熔压</td></tr><tr><td><b>熔体计量泵站</b><br><span class="mut mono" style="font-size:11px">biax-pump-rtu</span></td><td>Modbus RTU<br><span class="mut mono" style="font-size:11px">:15042</span></td><td>1</td><td>1</td><td class="mut" style="font-size:12.5px">计量泵转速SP</td><td class="mut" style="font-size:12.5px">泵出口压力</td></tr><tr><td><b>模头铸片单元</b><br><span class="mut mono" style="font-size:11px">biax-casting-mbtcp</span></td><td>Modbus TCP<br><span class="mut mono" style="font-size:11px">:16044</span></td><td>4</td><td>1</td><td class="mut" style="font-size:12.5px">模唇温度SP / 急冷辊温度SP / 铸片辊速度SP / 静电吸附电压SP</td><td class="mut" style="font-size:12.5px">铸片辊面温度</td></tr><tr><td><b>纵向拉伸MDO单元</b><br><span class="mut mono" style="font-size:11px">biax-mdo-mbtcp</span></td><td>Modbus TCP<br><span class="mut mono" style="font-size:11px">:16046</span></td><td>6</td><td>2</td><td class="mut" style="font-size:12.5px">预热辊1~3温度SP / 慢辊线速度SP / 快辊线速度SP / 纵拉退火辊SP</td><td class="mut" style="font-size:12.5px">纵拉膜温 / 实际拉伸比</td></tr><tr><td><b>横向拉伸TDO烘箱</b><br><span class="mut mono" style="font-size:11px">biax-tdo-opcua</span></td><td>OPC UA<br><span class="mut mono" style="font-size:11px">:5842</span></td><td>5</td><td>3</td><td class="mut" style="font-size:12.5px">TDO预热/拉伸/定型段SP / 链夹速度SP / 出口轨宽SP</td><td class="mut" style="font-size:12.5px">烘箱膜温 / 实际拉伸比 / 轨道实测宽度</td></tr><tr><td><b>在线测厚仪</b><br><span class="mut mono" style="font-size:11px">biax-gauge-mqtt</span></td><td>MQTT<br><span class="mut mono" style="font-size:11px">:18830</span></td><td>0</td><td>2</td><td class="mut" style="font-size:12.5px">(无写点)</td><td class="mut" style="font-size:12.5px">biaxThick 平均厚度 / biaxSigma 横向σ</td></tr><tr><td><b>电晕处理与表面检测站</b><br><span class="mut mono" style="font-size:11px">biax-inspect-http</span></td><td>HTTP<br><span class="mut mono" style="font-size:11px">:4010</span></td><td>1</td><td>4</td><td class="mut" style="font-size:12.5px">coronaPower 电晕功率</td><td class="mut" style="font-size:12.5px">biaxProfile 轮廓(向量) / biaxDefect 缺陷率 / biaxHaze 雾度 / biaxDyne 达因</td></tr><tr><td><b>收卷单元</b><br><span class="mut mono" style="font-size:11px">biax-winder-mbtcp</span></td><td>Modbus TCP<br><span class="mut mono" style="font-size:11px">:16048</span></td><td>4</td><td>2</td><td class="mut" style="font-size:12.5px">收卷张力SP / 张力锥度SP / 接触辊压力SP / 卷取速度上限SP</td><td class="mut" style="font-size:12.5px">实际收卷张力 / 卷径</td></tr>
+</table>
+<div class="note">证据:<code>devices 9/9 · signals 49(SP 30 + PV 19) · 协议 opcua/modbus-tcp/modbus-rtu/mqtt/http</code><br><code>line=ln-093e0770 recipe=rc-a37ebd77 started=true</code><br>语义卡长度 22402 · 关键词命中 铸片辊速度/横向拉伸比/收卷张力 —— 语义卡含「铸片辊速度 / 横向拉伸比 / 双拉薄膜产线」关键词,即描述经 platform semantics 注入 Agent 上下文。</div>
+
+<h2 style="font-size:14px;color:var(--tx);margin-top:20px">3.2 AgentTeam 优化作业执行路径</h2>
+<div class="note" style="margin:2px 0 10px">任务板下达目标 → worker 经工业工具面自主执行;策略确定性(与真实 LLM 完全同一生产路径),每一步真实链路可审计:</div>
+<div class="flow">
+<div class="fstep b"><div class="ft">任务板下达目标</div><div class="fd">双拉产线厚度 25.0±0.7μm
+lead 派发 → worker 认领</div></div><div class="fstep o"><div class="ft">daq_query 时段读数</div><div class="fd">测厚仪 from/to/bucket
++ my_industrial_nodes 语义卡</div></div><div class="fstep t"><div class="ft">偏差分析与决策</div><div class="fd">err=(PV−目标)/PV
+在 3 执行节点间轮换旋钮</div></div><div class="fstep a"><div class="ft">dcw_control 治理下发</div><div class="fd">联锁/配方窗校验
+自动开优化记录</div></div><div class="fstep p"><div class="ft">物理随动等待</div><div class="fd">铸片→测厚运输滞后
+≥12s 判稳(有界 60s)</div></div><div class="fstep j"><div class="ft">dcw_judge 判定</div><div class="fd">keep 入台账(Agent 归因)
+未达标→换节点继续</div></div><div class="fstep d"><div class="ft">达标收口</div><div class="fd">|PV−25.0|≤0.7μm
+父任务 COMPLETED</div></div>
+</div>
+<table style="margin-top:8px">
+<tr><th>作业检查</th><th>判定</th><th>证据</th></tr>
+<tr><td><b>节点探测补建(9 建缺失 / 0 修复 / 0 原样)</b></td><td><span class="chip ok">PASS</span></td><td class="mut" style="font-size:12.5px">devices 9/9 · signals 49(SP 30 + PV 19) · 协议 opcua/modbus-tcp/modbus-rtu/mqtt/http · 描述缺失 0 · 物理引擎 kind=biax thickness=28.02 μm · 缺失设备: biax-dryer-opcua, biax-extruder-mbtcp, biax-pump-rtu, biax-casting-mbtcp, biax-mdo-mbtcp, biax-tdo-opcua, biax-gauge-mqtt, b</td></tr><tr><td><b>五协议多节点建线(DCW 30 + DAQ 19,驱动实测 9/9)</b></td><td><span class="chip ok">PASS</span></td><td class="mut" style="font-size:12.5px">line=ln-093e0770 recipe=rc-a37ebd77 started=true · driver tests: dryer✔ extruder✔ pump✔ casting✔ mdo✔ tdo✔ gauge✔ inspect✔ winder✔</td></tr><tr><td><b>测厚仪真实链路采样(3 点)</b></td><td><span class="chip ok">PASS</span></td><td class="mut" style="font-size:12.5px">daq=dn-5bc5a3c1 · samples=3</td></tr><tr><td><b>Agent 语义卡含双拉工艺描述(semantics 贯通)</b></td><td><span class="chip ok">PASS</span></td><td class="mut" style="font-size:12.5px">语义卡长度 22402 · 关键词命中 铸片辊速度/横向拉伸比/收卷张力 · sample: #### ◆ L1-DCW-modbus-tcp ip167d6l [id=dw-3da9ebb7]
+- 物理量: 烘箱温度设定,单位 ℃,精度 1 位小数
+- 工艺语义: 模拟器设备「挤出主机PLC(Modbus TCP)」的 加热区1SP（真实 modbus-tcp 写控）
+- 安全量程: [120, 260] ℃</td></tr><tr><td><b>任务板:双拉优化任务下达并由 lead 派发</b></td><td><span class="chip ok">PASS</span></td><td class="mut" style="font-size:12.5px">parent task + lead child: ✔</td></tr><tr><td><b>多节点受治理写(3 个执行节点 / 4 写)</b></td><td><span class="chip ok">PASS</span></td><td class="mut" style="font-size:12.5px">1. task board: channel=37ac49db-5ddd-4db7-a399-c305781db1a8 parent=9aaba230-424f-4b96-98da-40e61916c7c8 leadChild=5a0f254b-5211-4b23-82d6-41d3dac6549d · 2. daq_query(测厚仪, from/to/bucket): isError=false · tail=[28.1,3.5,1.6] · 3. initial thickness=28.03 μm(目标 2</td></tr><tr><td><b>厚度目标达成(|PV−25.0|≤0.7μm,final=25.34)</b></td><td><span class="chip ok">PASS</span></td><td class="mut" style="font-size:12.5px">writes=4/6 · distinctKnobs=3 · final=25.34μm ·         meltTemp=291.4℃(安全窗 268~300) · 4. journal(铸速节点)归因 Agent: ✔ · 优化记录(2 条,含参数/判定/窗口):
+- opt-6e7cf14b [judged-keep] 铸片辊速度SP·ip167d6l: 33.7 → 34.2,设定 08:14:40,判定 keep(agent:biax mission i · 5. outcome: writes=4 </td></tr><tr><td><b>参数账本 Agent 归因(铸速节点)</b></td><td><span class="chip ok">PASS</span></td><td class="mut" style="font-size:12.5px"></td></tr><tr><td><b>任务收口(父任务 COMPLETED)</b></td><td><span class="chip ok">PASS</span></td><td class="mut" style="font-size:12.5px">terminal=COMPLETED</td></tr>
+</table>
+
+<h2 style="font-size:14px;color:var(--tx);margin-top:20px">3.3 多节点闭环轨迹(28.1μm 次优起点 → 25.0±0.7μm 达标带)</h2>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 300" style="width:100%;height:auto;font-family:Segoe UI,sans-serif">
+<rect x="52" y="160.3" width="658" height="60.9" fill="#35e0a0" opacity="0.12"/>
+<line x1="52" y1="190.7" x2="710" y2="190.7" stroke="#35e0a0" stroke-dasharray="5 4" stroke-width="1"/>
+<text x="52" y="185.7" font-size="11" fill="#35e0a0">目标 25.0 ±0.7 μm(达标带)</text>
+<polyline points="52.0,58.8 216.5,122.9 381.0,145.5 545.5,156.8 710.0,176.0" fill="none" stroke="#41c8f4" stroke-width="1.8"/><circle cx="52.0" cy="58.8" r="3" fill="#7d90ad"/><circle cx="216.5" cy="122.9" r="3" fill="#35e0a0"/><circle cx="381.0" cy="145.5" r="3" fill="#41c8f4"/><circle cx="545.5" cy="156.8" r="3" fill="#a78bfa"/><circle cx="710.0" cy="176.0" r="3" fill="#35e0a0"/><line x1="216.5" y1="24" x2="216.5" y2="256" stroke="#35e0a0" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.55"/><text x="220.5" y="34.0" font-size="10" fill="#35e0a0">#1 铸片辊速度 32.0→33.7</text><line x1="381.0" y1="24" x2="381.0" y2="256" stroke="#41c8f4" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.55"/><text x="385.0" y="47.0" font-size="10" fill="#41c8f4">#2 纵拉快辊速度 118.0→120.4</text><line x1="545.5" y1="24" x2="545.5" y2="256" stroke="#a78bfa" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.55"/><text x="549.5" y="60.0" font-size="10" fill="#a78bfa">#3 TDO 出口轨宽 3000.0→3036.0</text><line x1="710.0" y1="24" x2="710.0" y2="256" stroke="#35e0a0" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.55"/><text x="714.0" y="34.0" font-size="10" fill="#35e0a0">#4 铸片辊速度 33.7→34.2</text><rect x="718.0" y="32.0" width="10" height="10" fill="#35e0a0"/><text x="734.0" y="41.0" font-size="11" fill="#dbe6f5">铸片辊速度</text><rect x="718.0" y="52.0" width="10" height="10" fill="#41c8f4"/><text x="734.0" y="61.0" font-size="11" fill="#dbe6f5">纵拉快辊速度</text><rect x="718.0" y="72.0" width="10" height="10" fill="#a78bfa"/><text x="734.0" y="81.0" font-size="11" fill="#dbe6f5">TDO 出口轨宽</text>
+<text x="52" y="290" font-size="11" fill="#7d90ad">步序 0=起始工况 → 每步=一次「读数→决策→受治理下发→物理随动→判定」闭环(虚线=写事件,色=执行节点)</text>
+<line x1="52" y1="256" x2="710" y2="256" stroke="#1d2c44"/></svg>
+<table>
+<tr><th>步序</th><th>动作</th><th>执行节点</th><th>设定值 from → to</th><th>优化记录</th><th>终态厚度</th><th>熔温(安全窗 268~300℃)</th></tr>
+<tr><td>0</td><td>起始工况读数(daq_query)</td><td><span class="mut">—</span></td><td class="mono">—</td><td class="mono mut">—</td><td><b>28.03μm</b></td><td>—</td></tr><tr><td>1</td><td>受治理下发 + 判定 keep</td><td><span style="color:#35e0a0">●</span> 铸片辊速度</td><td class="mono">32.0 → <b>33.7</b></td><td class="mono mut">opt-9bedbe33…</td><td><b>26.56μm</b></td><td>291.3℃</td></tr><tr><td>2</td><td>受治理下发 + 判定 keep</td><td><span style="color:#41c8f4">●</span> 纵拉快辊速度</td><td class="mono">118.0 → <b>120.4</b></td><td class="mono mut">opt-3af80082…</td><td><b>26.04μm</b></td><td>291.5℃</td></tr><tr><td>3</td><td>受治理下发 + 判定 keep</td><td><span style="color:#a78bfa">●</span> TDO 出口轨宽</td><td class="mono">3000.0 → <b>3036.0</b></td><td class="mono mut">opt-f26c5bae…</td><td><b>25.78μm</b></td><td>291.8℃</td></tr><tr><td>4</td><td>受治理下发 + 判定 keep</td><td><span style="color:#35e0a0">●</span> 铸片辊速度</td><td class="mono">33.7 → <b>34.2</b></td><td class="mono mut">opt-6e7cf14b…</td><td><b>25.34μm</b> <span style="color:var(--g)">✔ 达标带内</span></td><td>291.4℃</td></tr>
+</table>
+<div class="note">读数→决策→下发→随动→判定的每轮都自动开优化记录并入参数账本(Agent 归因);连续写换执行节点规避回退冷却;物理随动以「铸片→测厚」运输滞后 + 一阶收敛为准(≥12s 判稳)。账本抽查:<code></code></div>
+</section>
+
+<section><h2>四 · cast-film 挤出流延闭环寻优(P6)</h2>
+<p class="lead">孪生线 6 执行器 + 5 传感器,受治理写路径,3 个 seed 独立复位寻优;对照离线网格最优 W*。</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 208" style="width:100%;height:auto;font-family:Segoe UI,sans-serif">
+<text x="0" y="43" font-size="11" fill="#7d90ad">seed 42</text>
+<rect x="52" y="30" width="297.3" height="12" fill="#8ba3bd" opacity="0.8"/>
+<rect x="52" y="44" width="367.9" height="12" fill="#35e0a0"/>
+<text x="423.9" y="54" font-size="10.5" fill="#7d90ad">J0 70.4 → Jend 87.1 · J/J* 0.969</text><text x="0" y="89" font-size="11" fill="#7d90ad">seed 43</text>
+<rect x="52" y="76" width="289.9" height="12" fill="#8ba3bd" opacity="0.8"/>
+<rect x="52" y="90" width="368.1" height="12" fill="#35e0a0"/>
+<text x="424.1" y="100" font-size="10.5" fill="#7d90ad">J0 68.6 → Jend 87.2 · J/J* 0.970</text><text x="0" y="135" font-size="11" fill="#7d90ad">seed 44</text>
+<rect x="52" y="122" width="296.7" height="12" fill="#8ba3bd" opacity="0.8"/>
+<rect x="52" y="136" width="368.8" height="12" fill="#35e0a0"/>
+<text x="424.8" y="146" font-size="10.5" fill="#7d90ad">J0 70.2 → Jend 87.3 · J/J* 0.972</text>
+<line x1="431.6" y1="24" x2="431.6" y2="174" stroke="#a78bfa" stroke-dasharray="4 3"/><text x="437.6" y="178" font-size="11" fill="#a78bfa">离线最优 J*=89.894</text>
+</svg>
+<table>
+<tr><th>seed</th><th>J0(起始)</th><th>Jend(终态)</th><th>J/J*</th><th>迭代</th><th>受治理写</th><th>被拒</th></tr>
+<tr><td>42</td><td>70.4</td><td>87.1</td><td>0.969</td><td>—</td><td>—</td><td>0</td></tr><tr><td>43</td><td>68.6</td><td>87.2</td><td>0.970</td><td>—</td><td>—</td><td>0</td></tr><tr><td>44</td><td>70.2</td><td>87.3</td><td>0.972</td><td>—</td><td>—</td><td>0</td></tr>
+</table>
+<div class="note">W*=89.894 · 收敛 3/3 · ratio ∈ [0.969, 0.972] · 写路径=agent dcw_control(governed)。</div>
+</section>
+
+<section><h2>五 · 治理与写控安全(F5 · E1a · 系统兜底)</h2>
+<table>
+<tr><th>产线/协议</th><th>数采样本</th><th>写 p50/p95(ms)</th><th>回读偏差</th><th>F5 拦截</th><th>误拦</th></tr>
+<tr><td>L1 modbus-tcp</td><td>8</td><td class="mono">47.963/78.288</td><td>0.04</td><td>6/6</td><td>0</td></tr><tr><td>L2 opcua</td><td>11</td><td class="mono">19.706/23.547</td><td>0</td><td>6/6</td><td>0</td></tr><tr><td>L3 mqtt</td><td>12</td><td class="mono">19.609/23.748</td><td>—</td><td>6/6</td><td>0</td></tr><tr><td>L4 http</td><td>13</td><td class="mono">32.247/33.019</td><td>—</td><td>6/6</td><td>0</td></tr><tr><td>L5 modbus-rtu <span class="mut" style="font-size:11px">(卫星数采)</span></td><td>14</td><td class="mono">—</td><td>—</td><td>不适用</td><td>—</td></tr>
+</table>
+<div class="note">F5/写时延列仅对<b>有 SP 写点的可开跑产线</b>适用;卫星数采(如 L5 modbus-rtu,无写点)不适用,标「不适用」——非缺数。可写产线的越界攻击全部拦截、误拦 0。</div>
+<div class="note" style="margin-top:14px"><b>E1a 四臂消融(治理机制归因)</b></div>
+<table><tr><th>臂</th><th>拦截(逐轮)</th><th>越窗执行入账</th><th>误拦</th><th>写 p50(ms)</th></tr>
+<tr><td><b>完整治理</b></td><td>6/6 / 6/6 / 6/6</td><td>0</td><td>0</td><td class="mut">125 / 124.4 / 124.8</td></tr><tr><td><b>去联锁</b></td><td>4/6 / 4/6 / 4/6</td><td>6</td><td>0</td><td class="mut">125.4 / 124.9 / 124.1</td></tr><tr><td><b>去回读</b></td><td>6/6 / 6/6 / 6/6</td><td>0</td><td>0</td><td class="mut">125.8 / 110.7 / 115.6</td></tr><tr><td><b>去审批门</b></td><td>4/6 / 4/6 / 4/6</td><td>6</td><td>0</td><td class="mut">110 / 124.4 / 123.3</td></tr>
+</table>
+<div class="note">去联锁后越窗写被执行并入账(归因 ≠ 阻断的证据);四臂误拦恒 0。</div>
+<div class="note" style="margin-top:12px"><b>系统兜底 drilling(P8b)</b>:优化记录开着时把 PV 冻结到配方窗外 → 系统在 130.176s 内自动判定 rollback(opt-66ea7e…)并恢复基线 186.20→176.88——论文 I3「有界自治」的动态证据。</div>
+</section>
+
+<section><h2>六 · 跨场景可移植性(P8)</h2>
+<div class="note">切换第二产线场景(film-line),同一套委托/治理代码路径重跑建线→数采→受治理写→F5 拦截:设备 5 · 自成产线 3/5 · 采样 5 · F5 <b>9/9</b> · 误拦 0 · <b>代码改动 0</b>。</div></section>
+
+<section><h2>七 · 复现</h2>
+<pre>export NO_PROXY=127.0.0.1,localhost AW_BASE=http://127.0.0.1:3001 AW_BENCH_MODE=1
+node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3   # 集成主战役(含 P10 双拉)
+node bench/run.mjs --tier plc --seed 42                              # 真实协议层
+node bench/e1-lite.mjs --seed 42 --repeats 3                         # 四臂消融
+node scripts/api-live-e2e.mjs                                        # API 全功能普查
+node bench/tools/render-biax-report.mjs --pipeline 20260918000615-125g --static <id> --plc <id> --e1lite <id> --apilive &lt;log&gt;  # 本报告</pre>
+<div class="note">判定类指标(拦截/误拦/边界/归因/回读/构成)同 seed 逐位一致;时延与采样数为环境类,只记录不设门槛。产物:<code>bench/results/20260918000615-125g/</code>(run.json / summary.json / report.md / dashboard.html / metrics.csv / agentteam-mission.log / agentteam-biax.log)。</div>
+</section>
+
+<footer>Generated by <code>bench/tools/render-biax-report.mjs</code> · 全部数字读自存档运行产物,零手工填写 · runId <code>20260918000615-125g</code></footer>
+</div></body></html>

@@ -324,6 +324,27 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
     }
     thickness = h ?? thickness
     out.thickness = thickness
+    // 断膜卫兵:BOPET 目标 25μm,读数跌破 20% 目标 = 流量/拉伸已在植物侧塌落
+    //   (多协议写簇下的模拟器竞态,2026-09-18 P10 实测:泵压→0、速比→1、厚度→0±噪声;
+    //   平台侧全部写入均回读一致)。死基线上继续纠偏只会把旋钮推向下限——
+    //   先重下配方基线恢复一次,仍死则如实终止。
+    if (thickness != null && thickness < THICKNESS_TARGET * 0.2 && !out.rebased) {
+      out.rebased = true
+      ev.push(`iter${i + 1}: 检出断膜量级读数(${thickness.toFixed(2)}μm << 目标 ${THICKNESS_TARGET}μm)——暂停纠偏,重下配方基线恢复`)
+      const ra = await api.call('POST', `/api/workshop/dcw/recipes/${line.ids?.recipeId ?? ''}/apply`, {}).catch(() => null)
+      await sleep(15_000)
+      const hr = await readPvMean(api, thickDaq)
+      thickness = hr ?? thickness
+      out.thickness = thickness
+      out.traj.push({ iter: `${i + 1}.rebase`, knob: 'recipe-apply', node: line.ids?.recipeId ?? '', from: null, to: null, record: null, thickness })
+      ev.push(`iter${i + 1}.rebase: 配方一键下发 ${ra && ra.status === 200 ? '✔' : '✘'} · thickness→${thickness?.toFixed(2) ?? '?'}μm`)
+      if (thickness != null && Math.abs(thickness - THICKNESS_TARGET) <= THICKNESS_TOL) break
+      if (thickness == null || thickness < THICKNESS_TARGET * 0.2) {
+        ev.push(`iter${i + 1}: 基线恢复失败,如实终止(植物侧流量/拉伸异常,非治理写路径或任务数学缺陷)`)
+        break
+      }
+      continue
+    }
     let meltNow = null
     if (meltDaq) meltNow = await readPvMean(api, meltDaq, 4)
     out.traj.push({ iter: i + 1, knob: knob.sig, node: nodeId, from: cur, to: next, record: recordId, thickness, meltTemp: meltNow })

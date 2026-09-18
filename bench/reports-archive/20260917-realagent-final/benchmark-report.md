@@ -1,7 +1,7 @@
 # AW-IndustrialBench · Consolidated Benchmark Report
 
 > **Overall: ALL LAYERS PASS** · seed 42 · git `2b569a7` · AgentWorkShop v0.7.39
-> Generated 2026-09-17T04:54:16.834Z · platform http://127.0.0.1:3001 · simulator http://127.0.0.1:4010
+> Generated 2026-09-17T05:49:35.536Z · platform http://127.0.0.1:3001 · simulator http://127.0.0.1:4010
 
 ## 1. Results by layer
 
@@ -345,6 +345,8 @@ Reading: interception is provided by the batch-window interlock (Full and No-rea
 | 20260914-baseline-run-plc-fx0 vs 20260917045058-105w | **REPRODUCIBLE** |
 | 20260917041225-1bjc vs 20260917044223-17ho | **REPRODUCIBLE** |
 | Gate selftest (tampered intercept must be rejected) | **PASS** |
+
+Note: comparisons between two integrated-pipeline records are advisory only — the comparator reads run.mjs-style result tables, so integrated pairs can print REPRODUCIBLE over an empty per-check map (disclosed in the manuscript's reproducibility section). The load-bearing machine verdicts are the PLC-tier and ablation comparisons against the frozen baseline, whose per-check tables are non-empty.
 
 Judge-class metrics (interdiction/false-block rates, boundaries, attribution, SP read-back, static anchors, portability composition, ablation outcomes) must be **bit-identical** for a REPRODUCIBLE verdict; environment-class metrics (latencies, sample counts, wall time) are recorded but never gated. See `bench/compare.mjs` for the judge contract.
 

@@ -1,0 +1,27 @@
+{
+  "renderedAt": "2026-09-18T04:57:26.081Z",
+  "template": "bench/lib/report-template.mjs",
+  "runId": "20260918043504-bdo",
+  "artifacts": [
+    {
+      "name": "agentteam-mission.log",
+      "bytes": 1062
+    },
+    {
+      "name": "agentteam-biax.log",
+      "bytes": 1483
+    },
+    {
+      "name": "metrics.csv",
+      "bytes": 2824
+    },
+    {
+      "name": "run.json",
+      "bytes": 58675
+    },
+    {
+      "name": "summary.json",
+      "bytes": 15984
+    }
+  ]
+}
