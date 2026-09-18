@@ -74,8 +74,8 @@ stalled work; scheduler progress cannot resolve uncertainty about a plant respon
 which requires observations and an explicit judgment.
 Channel
 memory preserves experience and reusable knowledge for later retrieval, so a later
-worker recovers earlier rationale instead of inferring it from a current setpoint,
-but a retrieved memory is contextual evidence, not an authorization mechanism or an
+worker recovers earlier rationale, but a retrieved memory is contextual evidence,
+not an authorization mechanism or an
 executable safety specification. Industrial tools resolve the invoking member's
 bindings at request time, on the judge and rollback paths as well as the write path;
 the parameter-layer check \texttt{agent-param-tools} in Section~\ref{sec:port}
@@ -168,7 +168,7 @@ operation is a supervisory batch command, not a PLC emergency stop.
 Monitoring combines live values, node conditions, alarms, and events with
 historical measurements and frames, so a response can be inspected over time. The
 device-twin scene renders these states without
-issuing protocol commands, although Town operator web controls can submit API
+issuing protocol commands, although the operator web console can submit API
 writes. Neither the scene nor a stopped batch is a physical safety barrier; between
 batches the run gate limits acquisition while plant-side protection remains
 independent.
@@ -176,7 +176,8 @@ independent.
 \subsection{Agent Closed-Loop Control}
 \label{sec:loop}
 The feedback sequence is observation, hypothesis, intervention, judgment, and
-retention or recovery. The agent inspects bound-node context and acquisition
+retention or recovery. Fig.~\ref{fig:teamloop} shows the seven mechanisms in
+their closed-loop setting. The agent inspects bound-node context and acquisition
 history, states an expected effect, and proposes an engineering setpoint. After a
 successful value-changing write, the rollback manager creates an anchor and an
 optimization record holding the node, actor, hypothesis, parameter change, and
@@ -184,7 +185,7 @@ policy, with baseline statistics filled asynchronously from preceding observatio
 After a five-second same-target deduplication check, a subsequent successful write
 supersedes the node's open record; an unchanged-value write creates no replacement
 anchor or record, while a value-changing agent or rollback write starts a new
-observation record. Node-scoped bookkeeping, not one controlled experiment per
+observation record. Bookkeeping is node-scoped, not one controlled experiment per
 agent across the plant. Before an agent write, an open record belonging to another
 agent blocks entry unless superseded as stale, and a recent rollback prevents an
 agent from immediately moving in the same direction away from the restored value.
@@ -226,10 +227,11 @@ conflated. During dispatch, deleted or disabled nodes, and nodes no longer attac
 to the recipe's line, produce explicit unsuccessful outcomes while the remaining
 parameters continue, so partial application stays distinguishable from complete.
 The ordinary active-window check resolves the recipe through the active run's
-identifier rather than reading every frozen run field at once; application passes
+identifier rather than reading every frozen run field at once. Application passes
 its run identifier into controller writes, skips that window branch, and retains
-runtime range validation, so version history documents intent without establishing
-transactional consistency among definition, run metadata, and physical parameters.
+runtime range validation. Version history therefore documents intent without
+establishing transactional consistency among definition, run metadata, and
+physical parameters.
 
 Physical rollback selects a recorded baseline, anchor, batch-start, or known-good
 target and issues a new write the controller can reject, so a rollback verdict does

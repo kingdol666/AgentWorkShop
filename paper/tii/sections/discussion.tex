@@ -1,24 +1,22 @@
 \section{Discussion and Limitations}
 \label{sec:limits}
-\subsection{What the Integration Model Establishes}
+\subsection{What the Integration Model Establishes---and What It Does Not}
 The reusable unit here is the deployed member--node capability--production-run
 association. It lets one task work in engineering quantities across drivers while
 execution and compensation stay attributable, and it lets the biaxial mission move
-three line sections under one objective without plant-specific routing code. The
-archive supports configuration reuse inside the existing driver and scenario
-vocabulary; it does not measure the effort to author a scenario or integrate a
+three line sections under one objective without plant-specific routing code. It
+does not measure the effort to author a scenario or integrate a
 protocol the platform does not already speak.
 
 Proposal, admission, and disposition stay distinguishable: a recorded
 \texttt{keep} is the agent's judgment, a matching
 readback is a driver-level observation, and sustained process convergence is a
 separate experimental outcome. The governed-write path concentrates range and
-recipe-window checks, ownership, cooldown, and readback, while the real-LLM
-campaigns exposed observation and scoring failures, where writes executed as
-designed but some judgments rested on
-stale or constant windows. Observation-quality gating is a framework-level
-extension this paper does not deliver, and until it exists the historical LLM
-scores cannot be compared with the deterministic ones.
+recipe-window checks, ownership, cooldown, and readback. Observation-quality
+gating is a framework-level extension this paper does not deliver; until it
+exists, the historical LLM scores---whose writes executed as designed but whose
+judgments rested on stale or constant windows
+(Section~\ref{sec:repro})---cannot be compared with the deterministic ones.
 
 \subsection{Implementation and Evidence Boundaries}
 Cross-agent in-window oscillations, shared-node
@@ -36,7 +34,7 @@ grows with the frequency of agent proposals, and approval fatigue is a documente
 risk \cite{parasuraman2000model,bainbridge1983ironies}; policy granularity over
 roles, batch phases, and magnitudes is an extension point, not a present
 capability. None of these mechanisms is enforced outside the platform process, so
-they constrain only traffic that passes through it. At minimum, a deployment needs
+they constrain only traffic that passes through it; a deployment therefore needs
 independent setpoint limits and interlocks in the controller itself.
 
 Deployment in a real plant carries prerequisites this paper does not discharge.
@@ -57,7 +55,9 @@ complementary results: four protocol fixtures reject all predefined
 out-of-constraint writes with no legal-write blocks; a fixed controller reaches
 $J/J^*=0.963$--$0.972$ across three seeds; and a scripted team mission uses three
 governed writes across two protocols to bring biaxial-film thickness from 28.10 to
-25.68\,$\mu$m. These results demonstrate the tested integration and governance
+25.68\,$\mu$m; seven of ten same-seed reruns attain the band, the reported run
+among them, and failed reruns end near zero thickness with mission checks alone
+downgraded to warnings. These results demonstrate the tested integration and governance
 paths only. Physical validation, stronger execution consistency, controlled agent comparisons,
 and observation-quality gating remain open.
 
@@ -67,8 +67,7 @@ machine-readable: \texttt{run.json} holds every check with its evidence,
 \texttt{summary.json} the verdict and KPI set, \texttt{metrics.csv} the metric
 registry, and \texttt{agentteam-*.log} the mission traces. The figure scripts and
 the script that re-checks the quantitative claims against that archive are
-included. The source of Fig.~\ref{fig:agentteam} animates the same recorded process step by
-step, and the printed frame is its complete static state. Anonymized snapshots of
+included. Anonymized snapshots of
 the platform, benchmark card, and simulator accompany the submission; repository
 identifiers will be disclosed on acceptance. AI-based assistants supported
 manuscript editing, code-assisted evidence checking, and figure preparation under

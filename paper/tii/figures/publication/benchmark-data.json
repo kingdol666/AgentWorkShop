@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "revision_date": "2026-09-18",
-  "provenance_note": "Archive-only extraction. No experiment reruns. Figure 6 supersedes historical nine-repetition figure with the complete frozen baseline: three repetitions per arm. No inference of latency equivalence. Figure 8 added 2026-09-18 from extended archive E (20260918013146-4ms).",
+  "provenance_note": "Archive-only extraction. No experiment reruns. Figure 6 supersedes historical nine-repetition figure with the complete frozen baseline: three repetitions per arm. No inference of latency equivalence. Figure 8 added 2026-09-18 from extended archive E (20260918013146-4ms). fig5 derived from superseded archive 20260914152838-fwg; current paper numbers derive from archive 20260918043504-bdo (see fig9-latest-benchmark.py).",
   "sources": [
     {
       "path": "bench/results/20260914152838-fwg/run.json",
