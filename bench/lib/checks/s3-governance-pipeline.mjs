@@ -29,11 +29,12 @@ export default [{
     const evidence = []
     let chainsOk = 0
 
-    // 链 A：write() 编排排（write 定义之后）：可用门→护栏→软联锁→运行时写→闭环入册→审计
+    // 链 A：write() 编排排（write 定义之后）：可用门→护栏→分层联锁(assertWithinLimits,
+    //   泛化自旧配方软联锁:节点安全量程∩参数基准∩产品限界∩配方窗口,顺序不变)→运行时写→闭环入册→审计
     const writeDef = src.indexOf('async write(')
     if (writeDef > 0) {
-      const chainA = orderedIndexes(src, writeDef, ['beforeWrite', 'param.min', 'rt.write(', 'afterWrite', 'dcw.write.'])
-      if (chainA.ok) { chainsOk++; evidence.push(`✔ write() 编排链顺序成立: ${['beforeWrite(护栏)', 'param.min(软联锁)', 'rt.write(执行)', 'afterWrite(闭环入册)', 'dcw.write.(审计)'].join(' → ')}`) }
+      const chainA = orderedIndexes(src, writeDef, ['beforeWrite', 'assertWithinLimits', 'rt.write(', 'afterWrite', 'dcw.write.'])
+      if (chainA.ok) { chainsOk++; evidence.push(`✔ write() 编排链顺序成立: ${['beforeWrite(护栏)', 'assertWithinLimits(四层联锁)', 'rt.write(执行)', 'afterWrite(闭环入册)', 'dcw.write.(审计)'].join(' → ')}`) }
       else evidence.push(`✘ write() 编排链在「${chainA.missingAt}」处断开`)
     } else evidence.push('✘ 未定位到 write() 定义')
 

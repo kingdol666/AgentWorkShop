@@ -50,6 +50,10 @@ const JUDGE = {
 const TOLERATED = {
   'plc-2-closedloop:pv_final': 0.5,
 }
+// 增长合法型指标（键格式 checkId:key）：判定语义 = B ≥ A。能力清单类计数（路由/工具/表）
+// 随框架演进而**合法增长**（如工艺参数映射层新增 6 条 params 路由），缩水才是治理回归；
+// 这类键不再逐位判定，其余 s1 指标（子检查数/ok 数/引擎数）仍逐位。
+const GROWABLE = new Set(['s1-inventory:routes', 's1-inventory:mcpTools', 's1-inventory:tools', 's1-inventory:tables'])
 
 function resolveRun(ref) {
   const candidates = isAbsolute(ref)
@@ -87,7 +91,9 @@ function diffJudge(checkId, ma, mb) {
     const tolKey = `${checkId}:${k}`
     if (keys === null || (Array.isArray(keys) && keys.includes(k))) {
       let verdict = 'ok'
-      if (TOLERATED[tolKey] !== undefined) {
+      if (GROWABLE.has(tolKey)) {
+        verdict = (typeof va === 'number' && typeof vb === 'number' && vb >= va) || va === vb ? 'ok' : 'FAIL'
+      } else if (TOLERATED[tolKey] !== undefined) {
         const tol = TOLERATED[tolKey]
         if (typeof va === 'number' && typeof vb === 'number' && Math.abs(va - vb) <= tol) verdict = 'tol'
         else if (va !== vb) verdict = 'FAIL'

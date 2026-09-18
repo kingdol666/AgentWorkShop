@@ -10,13 +10,15 @@
  */
 
 const PHASE_WEIGHTS = {
-  P0: 1, P1: 1, P2: 2, P3: 3, P4: 3, P4b: 2, P4c: 2, P4d: 1, P4e: 2,
-  P6: 3, P7: 1, P8: 3, P8b: 3, P9: 1,
+  P0: 1, P1: 1, P2: 2, P3: 3, P4: 3, P4f: 3, P4m: 3, P4b: 2, P4c: 2, P4d: 1, P4e: 2,
+  P6: 3, P7: 1, P8: 3, P8b: 3, P10: 3, P9: 1,
 }
 const PHASE_TITLES = {
   P0: 'Bootstrap simulator & platform', P1: 'Plant model + offline optimum W*',
   P2: 'Multi-protocol line provisioning', P3: 'DAQ + governed write + F5 interlock',
-  P4: 'Agent-tool closed loop (3-cycle convergence)', P4b: 'Rollback & optimization records',
+  P4: 'Agent-tool closed loop (3-cycle convergence)',
+  P4f: 'Process-parameter mapping layer (semantic surface · standard conversions · 4-layer write limits)',
+  P4b: 'Rollback & optimization records',
   P4c: 'HITL approval gate', P4d: 'Audit / ledger read surfaces',
   P4e: 'Recipe lifecycle', P6: 'Closed-loop optimization benchmark (3 seeds)',
   P7: 'Multimodal acquisition (vector/image)', P8: 'Cross-scenario portability',

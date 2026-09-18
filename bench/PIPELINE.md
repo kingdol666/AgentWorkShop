@@ -85,9 +85,10 @@
   ② 一体化集成流水线（冷启动约 8–11 分钟，勿中断）——全功能主战役
      NO_PROXY=127.0.0.1,localhost AW_BENCH_MODE=1 \
        node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3
-     判据: 退出码 0，且 stdout 末行「✅ PASS（pass 71 · fail 0 · 阶段 fail 0）」。
+     判据: 退出码 0，且 stdout 末行「✅ PASS（pass 75 · fail 0 · 阶段 fail 0）」。
        自举行应出现「模拟器未在线 → 自动启动」「平台未在线 → 分离启动 pid=...」。
      覆盖: 五协议多产线供给 → 数采/数控写+回读 → F5 拦截 → Agent 工具闭环 3 轮收敛 ×4 线 →
+       **工艺参数映射层 P4f（参数语义面无寄存器泄漏 · 基准/产品/配方四层写入限界联锁 · Agent param_control/param_read）** →
        **AgentTeam 优化任务（任务板下达目标→daq_query 时段读数→受治理下发→物理随动→达标收口）** →
        优化记录/回退/参数台账 → HITL 审批 → 治理只读面 → 配方生命周期 → cast-film 闭环寻优
        (3 seeds) → 向量/图像帧 → 跨场景可移植(film-line, 0 代码改动) → 系统兜底 drilling →
@@ -137,7 +138,7 @@
   ③ 流水线层复现（可选，同命令再跑一次得第二个 runId）:
      NO_PROXY=127.0.0.1,localhost AW_BENCH_MODE=1 \
        node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3
-     对比两次 summary.json 的 verdict 必须同为 71/0/0；closedloop.agg 的 ratio 区间
+     对比两次 summary.json 的 verdict 必须同为 75/0/0；closedloop.agg 的 ratio 区间
        必须都落在 [0.966,0.973]；portability.agg 五协议构成必须逐字段一致
        （J0/Jend 采样值允许环境性浮动）。
 
@@ -157,7 +158,7 @@
 ────────────────────────────────────────────────────────────────
   每次运行落在 bench/results/<runId>/（UTC 时间戳命名，永不覆盖）:
     run.mjs 层   → run.json / report.md / report.html / config-hash.txt
-    pipeline 层  → run.json / summary.json / report.md / dashboard.html / metrics.csv / agentteam-mission.log / agentteam-biax.log（--agent 时另有 agent-loop-<harness>.log）
+    pipeline 层  → run.json / summary.json / report.md / report.html / dashboard.html / metrics.csv / render-manifest.json / agentteam-mission.log / agentteam-biax.log（--agent 时另有 agent-loop-<harness>.log；report.* 由 bench/lib/report-template.mjs 模板生成,可用 bench/tools/render-bench-report.mjs 重渲）
     e1-lite 层   → run.json / e1-lite.csv / report.md / report.html / figure-*.svg
     compare 层   → compare-*.md（写进 bench/results/ 根）
   交付物 = 各层的 report.md + report.html（或 dashboard.html）。
@@ -241,6 +242,7 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 | **P3 集成** | 真实驱动数采落库（20s 有界等待窗，防冷启动首采慢的假 warn）+ 数控写/回读时延 + F5 越界写治理拦截（**穿透/误拦 = 检查 fail**，非仅掉 KPI） | E1 动态核在**多协议**下复验 |
 | **P4 工具级闭环** | 用「有引擎」harness 直调 `daq_query → dcw_control → dcw_judge` **3 轮收敛**逼近窗口中心（每轮判定关记录——Agent 作用域同时只允许一条 open 记录；**不经 LLM**，确定性） | 见「平台硬约束」② |
 | **P4m AgentTeam 优化任务** | 任务板下达优化目标 → 派发 worker → 经工具面 `daq_query`(from/to/bucket 时段读数) 分析 → `dcw_control` 受治理下发(开记录) → 物理随动轮询 → `dcw_judge` 收口 → 账本归因核验 → 达标判定(\\|PV−目标\\|≤容差) → report/complete/父任务聚合。**策略确定性（免模型凭据）；LLM 变体=可选 P5** | 「给 AgentTeam 一个优化目标,团队读写节点达成它」这一核心功能的直接测评 |
+| **P4f 工艺参数映射层** | 用户/Agent 只按「工艺参数」读写工程量：参数面自动生成且无寄存器/dataType 泄漏 → 基准限界(常驻)+产品限界(活动批次)+配方窗口四层收窄联锁（越层 400 点名约束层）→ 参数写/读回 → Agent `param_control`(语义寻址/越层拒绝/未绑定拒绝/记录收口) | 「用户和 Agent 只管设工艺参数、边界逐层收窄」这一核心治理面的直接测评（**排程纪律:置于 P4e 后并取可回读协议的最后一条 own line,避开回退冷却**） |
 | **P4b 回退与优化记录** | 优化记录判定 keep/rollback + **判定与执行分离** + 节点级单步回退 + 参数台账 | Sec. V 的调控闭环 |
 | **P4c HITL 审批** | manual 绑定 → 下发**挂起** → 审批面板可见 → 裁决 → 解阻塞且 PLC 生效（换线执行，避开 P4b 回退冷却） | 审批门是论文核心机制 |
 | **P4d 治理只读面** | 参数账本 journal（按 source）+ 审计 + 运维日志 + 报警 | 可追溯性的直接证据 |
@@ -389,7 +391,7 @@ node bench/compare.mjs --selftest                        # 阴性对照：门槛
 - 每个检查产出 `score ∈ [0,1]` 与权重（F5 攻击/归因/论文一致性权重=3 或 2，抽样类=1）。
 - 维度分 = 该维度下检查加权平均；总体分 = 全部非 skip 检查加权平均；等级 A≥90 / B≥75 / C≥60。
 - **skip 不计分也不扣分**，单独列出原因——分数只反映"真实测到的东西"。
-- 流水线层阶段权重：P0=1 P1=1 P2=2 P3=3 P4=3 P4m=3 P4b=2 P4c=2 P4d=1 P4e=2 P6=3 P7=1 P8=3 P8b=3 P10=3 P9=1；
+- 流水线层阶段权重：P0=1 P1=1 P2=2 P3=3 P4=3 P4f=3 P4m=3 P4b=2 P4c=2 P4d=1 P4e=2 P6=3 P7=1 P8=3 P8b=3 P10=3 P9=1；
   硬门禁：任一检查 fail 或任一阶段 fail → 总评直接 FAIL（分数只作参考）。
 - 维度映射：D0 论文-代码一致性 / D1 数采 / D2 写控治理 / D3 智能体 / D7 审计归因 / D8 性能（D4/D5/D6 由 §8 全量实验覆盖，静态+接口层不虚评）。
 

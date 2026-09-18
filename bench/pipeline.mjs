@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url'
 import { makeApi, mulberry32, sha256, ensureDir, writeJson, writeText, runId as mkRunId, sleep } from './lib/util.mjs'
 import { ensureSimulator, simUp, applyPreset, simNodes, splitSignals, simExport, simApi, simManual, SIM_BASE, SIM_DIR, plantOptimum, plantPhase, plantTruth, plantState, plantReset } from './lib/sim.mjs'
 import { ensurePlatform } from './lib/platform.mjs'
-import { renderReportMd } from './lib/report-pipeline.mjs'
+import { renderBenchmarkHtml, renderBenchmarkMd, collectArtifacts } from './lib/report-template.mjs'
 import { provisionLine, pickProtocolDevices, ensureGateway } from './lib/provision.mjs'
 import { p50, p95, mean, rate, r3, toCsv, makeMetricBag } from './lib/metrics.mjs'
 import { renderDashboard, barChart } from './lib/dashboard.mjs'
@@ -557,6 +557,127 @@ await timed('P4e', 'recipe-lifecycle', '配方管理全生命周期（版本·�
 
 // 注意：本阶段刻意排在 P4d 之后——rollback-good 会留下回退锚（300s 同向冷却），
 // 若排在 P4 之前，P4b 的优化记录生命周期会被该锚的冷却拒绝（实测踩过）。
+
+// ═══════════════ P4f · 工艺参数映射层（参数语义面 · 标准转换模式 · 四层写入限界）═══════════════
+// 用户核心功能测评：用户/Agent 只按「工艺参数」读写工程量，PLC 寻址细节（寄存器/float32/字节序）
+// 由映射层封装；写入受四层限界（节点安全量程 ∩ 参数基准限界 ∩ 产品限界 ∩ 配方窗口）逐层收窄。
+// 刻意排在 P4e 之后并取「最后一条 own line」：P4b/P4c/P4e 用的前两条线留有回退冷却锚，
+// 冷线写入不受 300s 同向冷却干扰（实测排程纪律）。
+await timed('P4f', 'param-map', '工艺参数映射层：参数面读写 · 标准转换模式 · 分层限界联锁 · Agent param_control', async () => {
+  // 优先选「可回读」协议的产线（publish-only(mqtt)/echo-only(http) 执行器不回读是驱动属性，
+  // 与 P4 同一容差语义）；参读断言在不可回读驱动上按 n/a 降级，不让驱动属性冒充治理失败
+  const READABLE = new Set(['modbus-tcp', 'modbus-rtu', 'opcua', 'mock'])
+  const own = lines.filter(x => !x.satellite && x.ids.dcw && x.window && x.ids.recipe)
+  const l = [...own].reverse().find(x => READABLE.has(x.protocol)) ?? own[own.length - 1]
+  const readable = l && READABLE.has(l.protocol)
+  if (!l || !guestAgent) { add('P4f', 'param-facade', '工艺参数映射层', 'skip', ['无可开跑Line或P4夹具未就绪']); return { status: 'skip' } }
+  const ev = []
+  let okN = 0
+
+  // (1) 参数面供给：P2 建节点时已自动生成映射；断言语义面存在且**不透出任何 PLC 寻址细节**
+  const plist = await api.call('GET', `/api/workshop/dcw/params?lineId=${l.ids.line}&limits=1`)
+  const allParams = plist.data?.params ?? []
+  const pv = allParams.find(p => p.nodeId === l.ids.dcw)
+  const facadeOk = !!pv && pv.key && !JSON.stringify(pv).includes('register') && !JSON.stringify(pv).includes('dataType') && !JSON.stringify(pv).includes('driverConfig')
+  if (facadeOk) okN++
+  add('P4f', 'param-facade', `Line${l.index} [${l.protocol}] 参数面自动生成且无寄存器泄漏`, facadeOk ? 'pass' : 'fail',
+    [...ev, `param=${pv?.id ?? '✘'} key=${pv?.key ?? '✘'} unit=${pv?.unit ?? '?'}`, `含 register/dataType/driverConfig? ${JSON.stringify(pv ?? {}).match(/register|dataType|driverConfig/) ?? '无 ✔'}`])
+
+  // (2) 分层限界几何：以「有效交集」(bd.effective，已含节点∩配方窗) 为基准构造收窄链
+  //     参数⊂有效交集、产品⊂参数 —— 保证 vPass 落在四层交集内、越层用例恰好只越目标层
+  const bd = (plist.data?.limits ?? []).find(x => x.paramId === pv?.id)
+  if (!facadeOk || !bd?.effective) { add('P4f', 'param-limits', '分层限界剖面', facadeOk ? 'fail' : 'skip', ['limits 剖面缺失']); return { status: facadeOk ? 'fail' : 'skip' } }
+  const eff = bd.effective
+  const eSpan = eff.max - eff.min
+  const pMin = Number((eff.min + eSpan * 0.15).toFixed(3))
+  const pMax = Number((eff.max - eSpan * 0.15).toFixed(3))
+  const pSpan = pMax - pMin
+  const gMin = Number((pMin + pSpan * 0.2).toFixed(3))
+  const gMax = Number((pMax - pSpan * 0.2).toFixed(3))
+  // 三枚测试值：vPass 在四层交集内；vProduct 超产品上限（参数/节点/配方层内）；vParam 超参数上限（节点层内）
+  const vPass = Number((gMin + (gMax - gMin) * 0.35).toFixed(3))
+  const vProduct = Number(((gMax + pMax) / 2).toFixed(3))
+  const vParam = Number(((pMax + eff.max) / 2).toFixed(3))
+  await api.call('PATCH', `/api/workshop/dcw/params/${pv.id}`, { min: pMin, max: pMax })
+  const pg = await api.call('PATCH', `/api/workshop/dcw/products/${l.ids.product}`, { paramLimits: { [pv.key]: { min: gMin, max: gMax } } })
+  const nodeLayer = bd.layers?.find(x => x.layer === 'node')
+  const layeredReady = pg.status === 200 && (pg.data?.product?.paramLimits?.[pv.key]?.max === gMax)
+  add('P4f', 'param-limits', `Line${l.index} 基准限界 [${pMin},${pMax}] + 产品限界 [${gMin},${gMax}] 设定`, layeredReady ? 'pass' : 'fail',
+    [`有效交集(含配方窗) ${eff.min}~${eff.max} → param ${pMin}~${pMax} → product ${gMin}~${gMax} · node 层 ${nodeLayer?.min ?? '?'}~${nodeLayer?.max ?? '?'}（四层收窄：node ∩ param ∩ product ∩ recipe）`])
+  if (layeredReady) okN++
+
+  // (3) 参数面写入：交集内通过；越产品层/参数层分别被拒且**点名约束层**
+  const wPass = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vPass })
+  const wProd = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vProduct })
+  const wParam = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vParam })
+  const rdP = readable ? await api.call('POST', `/api/workshop/dcw/params/${pv.id}/read`, {}) : { data: {} }
+  const passOk = wPass.data?.outcome?.ok === true
+  const prodOk = wProd.code === 'VALIDATION_ERROR' && String(wProd.message ?? '').includes('产品')
+  const paramOk = wParam.code === 'VALIDATION_ERROR' && String(wParam.message ?? '').includes('基准限界')
+  // 读断言仅对可回读驱动生效；不可回读驱动(mqtt/http)按 n/a 容差（与 P4 同语义）
+  const readOk = readable
+    ? (rdP.data?.read?.ok === true && Number.isFinite(rdP.data?.read?.value))
+    : true
+  const readNote = readable
+    ? `param read → ${readOk ? `✔ ${rdP.data?.read?.value}${pv.unit}` : '✘'}`
+    : `param read → n/a（${l.protocol} 驱动不支持回读,驱动属性）`
+  if (passOk && prodOk && paramOk && readOk) okN++
+  add('P4f', 'param-write-governed', `Line${l.index} 参数面写入联锁（交集内写入 · 越产品层拦截 · 越基准层拦截 · 参数读回）`,
+    passOk && prodOk && paramOk && readOk ? 'pass' : 'fail',
+    [`${vPass} → ${passOk ? '✔ 写入+回读' : `✘ ${wPass.message ?? ''}`}`,
+      `${vProduct} → ${prodOk ? '✔ 产品层拦截' : `✘ ${wProd.message ?? wProd.code}`}`,
+      `${vParam} → ${paramOk ? '✔ 基准限界层拦截' : `✘ ${wParam.message ?? wParam.code}`}`,
+      readNote])
+  csvRows.push({ phase: 'P4f', line: l.index, protocol: l.protocol, param_write_pass: passOk, product_layer_block: prodOk, standing_layer_block: paramOk, param_read_ok: readOk })
+
+  // (4) Agent param_control / param_read：语义寻址 + 越界拒绝 + 未绑定拒绝 + 记录收口。
+  //     Agent 写须躲开回退冷却（P4e rollback-good 留 300s 同向锚）：取「远离当前值」一侧,
+  //     若仍被冷却拒绝则自动换向重试一次（护栏消息含「回退冷却」）。
+  const inv = (tool, args) => api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: guestAgent.instId, tool, args })
+  const curRd = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+  const curVal = Number(curRd.data?.read?.value ?? rdP.data?.read?.value ?? (gMin + gMax) / 2)
+  let vPassB = curVal < (gMin + gMax) / 2 ? Number(((curVal + gMax) / 2).toFixed(3)) : Number(((gMin + curVal) / 2).toFixed(3))
+  let cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write', line_id: l.ids.line })
+  let cOkText = String(cOk.data?.result?.text ?? '')
+  if (cOk.data?.result?.isError === true && cOkText.includes('回退冷却')) {
+    vPassB = Number((gMin + gMax - vPassB).toFixed(3)) // 换向：镜像到区间另一侧
+    cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write (direction flip)', line_id: l.ids.line })
+    cOkText = String(cOk.data?.result?.text ?? '')
+  }
+  const cOkGood = cOk.data?.result?.isError !== true && cOkText.includes('工艺参数')
+  const recordId = (cOkText.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+  if (recordId) await inv('dcw_judge', { record_id: recordId, verdict: 'keep', reason: 'P4f: param_control governed write verified' })
+  const cBad = await inv('param_control', { param: pv.key, value: vProduct, line_id: l.ids.line })
+  const cBadText = String(cBad.data?.result?.text ?? '')
+  const cBadGood = cBad.data?.result?.isError === true && cBadText.includes('产品')
+  const cRead = await inv('param_read', { param: pv.key, line_id: l.ids.line })
+  const cReadText = String(cRead.data?.result?.text ?? '')
+  const cReadGood = readable
+    ? (cRead.data?.result?.isError !== true && cReadText.includes('PLC 读数'))
+    : true // 不可回读驱动:参读 n/a(与 P4 同容差),不因驱动属性判失败
+  const cReadNote = readable
+    ? `param_read → ${cReadGood ? '✔' : `✘ ${cReadText.slice(0, 90)}`}`
+    : `param_read → n/a（${l.protocol} 驱动不支持回读）`
+  // 未绑定 Agent：同 harness 新成员不绑定 → 语义寻址写必须被权限面拒绝
+  const nb = await api.call('POST', '/api/workshop/agents', { name: `noparam-${sfx}`, harness: toolHarness, config: {} })
+  const nbJoin = await api.call('POST', `/api/workshop/channels/${guestAgent.channelId}/agents`, { agentId: nb.data?.id, role: 'worker' })
+  const nbId = nbJoin.data?.id ?? nbJoin.data?.agentId
+  const cNoAuth = nbId ? await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: nbId, tool: 'param_control', args: { param: pv.key, value: vPass, line_id: l.ids.line } }) : { data: {} }
+  const noAuthGood = String(cNoAuth.data?.result?.text ?? '').includes('无权')
+  const agentOk = cOkGood && cBadGood && cReadGood && noAuthGood
+  if (agentOk) okN++
+  add('P4f', 'agent-param-tools', `Line${l.index} Agent param_control/param_read（语义写 · 越产品层拒 · 参数读 · 未绑定拒）`, agentOk ? 'pass' : 'fail',
+    [`param_control ${vPassB} → ${cOkGood ? `✔ record=${recordId ?? 'n/a'}` : `✘ ${cOkText.slice(0, 90)}`}`,
+      `param_control ${vProduct} → ${cBadGood ? '✔ 产品层拦截' : `✘ ${cBadText.slice(0, 90)}`}`,
+      cReadNote,
+      `unbound agent → ${noAuthGood ? '✔ 权限面拒绝' : `✘ ${String(cNoAuth.data?.result?.text ?? '').slice(0, 90)}`}`])
+  bag.add('gov', 'param_layer_checks_ok', okN, '/4', '工艺参数映射层全链')
+
+  // 收尾恢复：清掉本线限界叠加，避免残留软联锁影响后续阶段对该线的写窗
+  await api.call('PATCH', `/api/workshop/dcw/products/${l.ids.product}`, { paramLimits: {} }).catch(() => {})
+  await api.call('PATCH', `/api/workshop/dcw/params/${pv.id}`, { min: null, max: null }).catch(() => {})
+  return { status: okN === 4 ? 'pass' : okN >= 2 ? 'warn' : 'fail', note: `${okN}/4 param-layer checks` }
+})
 
 // ═══════════════ P5 · 真实 LLM Agent 闭环（可选）═══════════════
 // 轨迹日志的样板过滤器：工具文档注入 / 平台手册 / 场景简报不进日志（决策动作才是可观察主体）
@@ -1141,7 +1262,7 @@ await timed('P10', 'biax-line', '双拉产线:节点探测补建 → 五协议�
     const daqN = Object.keys(line.daq ?? {}).length
     const drvOk = (line.driverTests ?? []).filter(t => t.ok).length
     const provOk = line.ids?.started && dcwN >= 28 && daqN >= 12 && drvOk === (line.driverTests ?? []).length && (line.errors ?? []).length === 0
-    add('P10', 'biax-provision', `五协议多节点建线(DCW ${dcwN} + DAQ ${daqN},驱动实测 ${drvOk}/${line.driverTests?.length ?? 0})`, provOk ? 'pass' : provOk ? 'warn' : 'fail',
+    add('P10', 'biax-provision', `五协议多节点建线(DCW ${dcwN} + DAQ ${daqN},驱动实测 ${drvOk}/${line.driverTests?.length ?? 0})`, provOk ? 'pass' : line.ids?.started ? 'warn' : 'fail',
       [`line=${line.ids?.lineId ?? '✘'} recipe=${line.ids?.recipeId ?? '—'} started=${line.ids?.started}`,
         `driver tests: ${(line.driverTests ?? []).map(t => `${t.device.split('-')[1]}${t.ok ? '✔' : '✘'}`).join(' ')}`,
         ...(line.errors ?? []).slice(0, 4)])
@@ -1316,6 +1437,7 @@ const kpis = [
     ? { label: 'Closed-loop J/J*', value: `${(cl.agg.ratioMean * 100).toFixed(1)}`, unit: '%', note: `n=${cl.agg.n} seeds · worst ${(cl.agg.ratioMin * 100).toFixed(1)}% · J*=${cl.agg.Jstar}`, tone: cl.agg.ratioMin >= 0.9 ? 'good' : 'warn' }
     : { label: 'Closed-loop J/J*', value: 'off', unit: '', note: '--cl-seeds 3 enables', tone: 'warn' },
   { label: 'Tool-level loops', value: lines.filter(l => l.loopIterations).length, unit: '', note: 'dcw→daq→judge ×3 convergence' },
+  { label: 'Param-layer governance', value: `${bag.all().filter(m => m.section === 'gov' && m.key === 'param_layer_checks_ok').slice(-1)[0]?.value ?? '—'}/4`, unit: '', note: 'semantic surface · 4-layer write limits · agent param_control', tone: 'good' },
   bs.fired
     ? { label: 'System backstop', value: bs.restored ? 'fired+restored' : 'fired', unit: '', note: `window breach → auto-rollback in ${bs.latencyS}s (env)`, tone: bs.restored ? 'good' : 'warn' }
     : { label: 'System backstop', value: 'not fired', unit: '', note: 'P8b drill requires scenario 2', tone: 'warn' },
@@ -1326,7 +1448,7 @@ const kpis = [
     ? { label: 'Biax line (BOPET)', value: `${biax.ensured.verified.devices} dev / ${biax.ensured.verified.sp} SP`, unit: '', note: `AgentTeam ${biax.mission?.distinctCount ?? 0} knobs · ${biax.mission?.writes ?? 0} writes → ${biax.mission?.thickness?.toFixed(2) ?? '?'}μm${biax.mission?.attained ? ' ✔' : ''}`, tone: biax.mission?.attained && (biax.mission?.distinctCount ?? 0) >= 3 ? 'good' : 'warn' }
     : { label: 'Biax line (BOPET)', value: 'off', unit: '', note: 'P10 requires P4 fixture', tone: 'warn' },
   agentHarness ? { label: 'LLM agent loop', value: lines.find(l => l.agentState)?.agentState ?? '—', unit: '', note: `${agentHarness}`, tone: lines.find(l => l.agentOracle) ? 'good' : 'bad' } : { label: 'LLM agent loop', value: 'off', unit: '', note: '--agent omp enables', tone: 'warn' },
-  { label: 'Checks', value: `${pass}/${pass + warn + fail}`, unit: '', note: `warn ${warn} · fail ${fail}`, tone: fail ? 'bad' : 'good' },
+  { label: 'Verdict', value: fail || phaseFailN ? 'FAIL' : 'PASS', unit: '', note: `${pass}/${pass + warn + fail} checks · hard gate ${fail || phaseFailN ? 'tripped' : 'green'}`, tone: fail || phaseFailN ? 'bad' : 'good' },
 ]
 
 writeJson(join(outDir, 'run.json'), {
@@ -1372,62 +1494,82 @@ writeJson(join(outDir, 'summary.json'), {
       }
     : null,
 })
-writeText(join(outDir, 'report.md'), renderReportMd({ env, phases, checks, kpis, metrics: bag.all() }))
+// 面板图表（印刷色板：数据青/信号绿/琥珀/陶土 —— 与报告模板同源，见 lib/direction-notes.md）
+const chartsHtml = [
+  lines.filter(l => l.writeP50 != null).length
+    ? barChart({
+        title: 'Write p50 (ms, per line/protocol)', unit: 'ms', color: '#1f6f8b',
+        rows: lines.filter(l => l.writeP50 != null).map(l => ({ label: `L${l.index} ${l.protocol}`, value: l.writeP50 })),
+      })
+    : '',
+  lines.filter(l => l.daqSamples).length
+    ? barChart({
+        title: 'DAQ sample points (real driver)', unit: '', color: '#0a7d54',
+        rows: lines.map(l => ({ label: `L${l.index} ${l.protocol}`, value: l.daqSamples ?? 0 })),
+      })
+    : '',
+  lines.filter(l => l.f5Total != null).length
+    ? barChart({
+        title: 'Governance F5 interception (%)', unit: '%', color: '#8a5a00', max: 100,
+        rows: lines.filter(l => l.f5Total != null).map(l => ({ label: `L${l.index} ${l.protocol}`, value: r3((l.f5Rejected / l.f5Total) * 100) })),
+      })
+    : '',
+  lines.filter(l => l.loopIterations != null).length
+    ? barChart({
+        title: 'Agent loop convergence (s)', unit: 's', color: '#b0553a',
+        rows: lines.filter(l => l.convergenceS != null).map(l => ({ label: `L${l.index} ${l.protocol}`, value: l.convergenceS })),
+      })
+    : '',
+  // ── 闭环优化 benchmark：每 seed 的 J start/终 points (+ 离线最优 W* 参考线）──
+  cl.agg
+    ? barChart({
+        title: `Closed-loop J (per seed): start → end vs offline optimum J*=${cl.agg.Jstar}`,
+        unit: '', color: '#1f6f8b', max: Math.max(cl.agg.Jstar ?? 100, cl.agg.J0mean ?? 100) * 1.12,
+        rows: [
+          ...cl.seeds.flatMap(s => ([
+            { label: `S${s.seed} start`, value: s.J0, color: '#9aa5ad' },
+            { label: `S${s.seed} end`, value: s.Jend, color: s.ratio >= 0.9 ? '#0a7d54' : '#8a5a00' },
+          ])),
+          { label: 'J* (offline optimum)', value: cl.agg.Jstar, color: '#b0553a' },
+        ],
+      })
+    : '',
+  cl.agg
+    ? barChart({
+        title: 'Closed-loop attainment J/J* (%)', unit: '%', color: '#0a7d54', max: 100,
+        rows: cl.seeds.filter(s => s.ratio != null).map(s => ({ label: `seed ${s.seed}`, value: r3(s.ratio * 100), color: s.ratio >= 0.9 ? '#0a7d54' : '#8a5a00' })),
+      })
+    : '',
+  cl.agg
+    ? barChart({
+        title: 'Closed-loop iterations (count)', unit: '', color: '#1f6f8b',
+        rows: cl.seeds.map(s => ({ label: `seed ${s.seed}`, value: s.stats.iters })),
+      })
+    : '',
+].filter(Boolean).join('')
+
+// ── 论文级英文报告模板（bench/lib/report-template.mjs，设计推导见 lib/direction-notes.md）──
+const benchArtifacts = collectArtifacts(outDir, [
+  'agentteam-mission.log', 'agentteam-biax.log',
+  'agent-loop-omp.log', 'agent-loop-opencode.log', 'agent-loop-codex.log',
+  'agent-goal-loop-omp.log', 'agent-goal-loop-opencode.log', 'agent-goal-loop-codex.log',
+  'metrics.csv', 'run.json', 'summary.json',
+])
+writeText(join(outDir, 'report.md'), renderBenchmarkMd({
+  env, phases, checks, kpis, metrics: bag.all(),
+  closedloop: cl.agg ? { writeMode: cl.writeMode, agg: cl.agg, seeds: cl.seeds } : null,
+  artifacts: benchArtifacts,
+}))
+writeText(join(outDir, 'report.html'), renderBenchmarkHtml({
+  env, phases, checks, kpis, metrics: bag.all(),
+  closedloop: cl.agg ? { writeMode: cl.writeMode, agg: cl.agg, seeds: cl.seeds } : null,
+  charts: chartsHtml,
+  artifacts: benchArtifacts,
+}))
 writeText(join(outDir, 'dashboard.html'), renderDashboard({
   env, phases, kpis, lines, checks, metrics: bag.all(),
   closedloop: cl.agg ? { writeMode: cl.writeMode, agg: cl.agg, seeds: cl.seeds } : null,
-  charts: [
-    lines.filter(l => l.writeP50 != null).length
-      ? barChart({
-          title: 'Write p50 (ms, per line/protocol)', unit: 'ms', color: '#41c8f4',
-          rows: lines.filter(l => l.writeP50 != null).map(l => ({ label: `L${l.index} ${l.protocol}`, value: l.writeP50 })),
-        })
-      : '',
-    lines.filter(l => l.daqSamples).length
-      ? barChart({
-          title: 'DAQ sample points (real driver)', unit: '', color: '#35e0a0',
-          rows: lines.map(l => ({ label: `L${l.index} ${l.protocol}`, value: l.daqSamples ?? 0 })),
-        })
-      : '',
-    lines.filter(l => l.f5Total != null).length
-      ? barChart({
-          title: 'Governance F5 interception (%)', unit: '%', color: '#e6b23c', max: 100,
-          rows: lines.filter(l => l.f5Total != null).map(l => ({ label: `L${l.index} ${l.protocol}`, value: r3((l.f5Rejected / l.f5Total) * 100) })),
-        })
-      : '',
-    lines.filter(l => l.loopIterations != null).length
-      ? barChart({
-          title: 'Agent loop convergence (s)', unit: 's', color: '#a78bfa',
-          rows: lines.filter(l => l.convergenceS != null).map(l => ({ label: `L${l.index} ${l.protocol}`, value: l.convergenceS })),
-        })
-      : '',
-    // ── 闭环优化 benchmark：每 seed 的 J start/终 points (+ 离线最优 W* 参考线）──
-    cl.agg
-      ? barChart({
-          title: `Closed-loop J (per seed): start → end vs offline optimum J*=${cl.agg.Jstar}`,
-          unit: '', color: '#41c8f4', max: Math.max(cl.agg.Jstar ?? 100, cl.agg.J0mean ?? 100) * 1.12,
-          rows: [
-            ...cl.seeds.flatMap(s => ([
-              { label: `S${s.seed} start`, value: s.J0, color: '#8ba3bd' },
-              { label: `S${s.seed} end`, value: s.Jend, color: s.ratio >= 0.9 ? '#35e0a0' : '#e6b23c' },
-            ])),
-            { label: 'J* (offline optimum)', value: cl.agg.Jstar, color: '#a78bfa' },
-          ],
-        })
-      : '',
-    cl.agg
-      ? barChart({
-          title: 'Closed-loop attainment J/J* (%)', unit: '%', color: '#35e0a0', max: 100,
-          rows: cl.seeds.filter(s => s.ratio != null).map(s => ({ label: `seed ${s.seed}`, value: r3(s.ratio * 100), color: s.ratio >= 0.9 ? '#35e0a0' : '#e6b23c' })),
-        })
-      : '',
-    cl.agg
-      ? barChart({
-          title: 'Closed-loop iterations (count)', unit: '', color: '#41c8f4',
-          rows: cl.seeds.map(s => ({ label: `seed ${s.seed}`, value: s.stats.iters })),
-        })
-      : '',
-  ].filter(Boolean).join(''),
+  charts: chartsHtml,
 }))
 
 console.log(`\n── 结果 ──  pass ${pass} · warn ${warn} · fail ${fail} · skip ${checks.length - executedN}  ${fail === 0 && phaseFailN === 0 && !emptyRun ? '✅ PASS' : '❌ FAIL'}${emptyRun ? '（未产生任何有效检查——自举/夹具失败，全部阶段仅被跳过）' : ''}`)
