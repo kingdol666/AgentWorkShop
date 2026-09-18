@@ -1301,6 +1301,7 @@ const env = {
         missionKnobs: biax.mission?.distinctCount ?? 0,
         missionFinalUm: biax.mission?.thickness ?? null,
         missionAttained: biax.mission?.attained ?? false,
+        missionTraj: biax.mission?.traj ?? [],
       }
     : null,
   backstop: { fired: bs.fired, restored: bs.restored, latencyS: bs.latencyS, recordId: bs.recordId, from: bs.from, to: bs.to },

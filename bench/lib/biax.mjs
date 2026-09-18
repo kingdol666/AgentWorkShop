@@ -255,7 +255,7 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
   const ev = []
   const thickDaq = line.daq['biax-thickness']
   const meltDaq = line.daq['melt-temp']
-  const out = { writes: 0, distinctNodes: new Set(), records: [], attained: false, thickness: null, parentState: '', boardOk: false, readOk: false, journalOk: false }
+  const out = { writes: 0, distinctNodes: new Set(), records: [], attained: false, thickness: null, parentState: '', boardOk: false, readOk: false, journalOk: false, traj: [] }
 
   // (1) 任务板:专用 mission channel(mock lead+worker 剧本派发——P4m 同款可靠范式)
   const mch = await api.call('POST', '/api/workshop/channels', { name: `biax-mission-${sfx}`, leadAgent: { name: `blead-${sfx}`, harness: 'mock', config: { delayMs: 40 } } })
@@ -291,6 +291,7 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
   for (const dev of simDevices) for (const s of dev.signals ?? []) if (isSp(s)) sigInfo.set(s.id, s)
   let thickness = await readPvMean(api, thickDaq)
   out.thickness = thickness
+  out.traj.push({ iter: 0, knob: null, node: null, from: null, to: null, record: null, thickness })
   ev.push(`3. initial thickness=${thickness != null ? thickness.toFixed(2) : '?'} μm(目标 ${THICKNESS_TARGET}±${THICKNESS_TOL})`)
   for (let i = 0; i < maxRounds && !(thickness != null && Math.abs(thickness - THICKNESS_TARGET) <= THICKNESS_TOL); i++) {
     const knob = KNOBS[i % KNOBS.length]
@@ -323,15 +324,15 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
     }
     thickness = h ?? thickness
     out.thickness = thickness
+    let meltNow = null
+    if (meltDaq) meltNow = await readPvMean(api, meltDaq, 4)
+    out.traj.push({ iter: i + 1, knob: knob.sig, node: nodeId, from: cur, to: next, record: recordId, thickness, meltTemp: meltNow })
     if (recordId) {
       const j = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_judge', args: { record_id: recordId, verdict: 'keep', reason: `biax mission iter ${i + 1}: PV=${thickness?.toFixed(2)}μm target=${THICKNESS_TARGET}±${THICKNESS_TOL}` } })
       ev.push(`iter${i + 1}: ${knob.sig} ${cur}→${next} ✔ record=${recordId.slice(0, 10)}… · thickness→${thickness?.toFixed(2)}μm · judge=${j.data?.result?.isError !== true ? 'keep✔' : '✘'}`)
     }
     else ev.push(`iter${i + 1}: ${knob.sig} ${cur}→${next} ✔ record 未开(异常)`)
-    if (meltDaq) {
-      const tm = await readPvMean(api, meltDaq, 4)
-      ev.push(`        meltTemp=${tm != null ? tm.toFixed(1) : '?'}℃(安全窗 268~300)`)
-    }
+    if (meltNow != null) ev.push(`        meltTemp=${meltNow.toFixed(1)}℃(安全窗 268~300)`)
   }
   out.attained = out.thickness != null && Math.abs(out.thickness - THICKNESS_TARGET) <= THICKNESS_TOL
 
