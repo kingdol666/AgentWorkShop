@@ -4,7 +4,7 @@
 \subsection{Evidence Design and the Reference Run}
 \label{sec:protocol}
 \label{sec:static}
-Four questions drive the evaluation. Can the platform commission heterogeneous
+Four questions drive the evaluation. Can the platform provision heterogeneous
 protocol stacks and acquire from them? Does the governed write path reject requests
 that break engineering or recipe constraints without blocking legal ones? Can a
 fixed controller close the acquisition--actuation loop on a process model? Can a
@@ -25,7 +25,10 @@ named by that hash. The run therefore measures platform, protocol, governance,
 controller, and team mechanisms: the agent-tool loops use the deterministic
 \texttt{opencode} engine, and the LLM agent option is off. Three plants are exercised: a
 cast-film physics model, a strategy-based film line, and a 49-signal
-biaxially oriented polyethylene terephthalate (BOPET) line.
+biaxially oriented polyethylene terephthalate (BOPET) line. The reference is
+designated rather than sampled: it is the archive this evaluation was written
+against, and its position in the eleven-archive family of
+Sec.~\ref{sec:agentloop} is reported there.
 
 \subsection{Suite-Wide Results}
 \label{sec:suite}
@@ -55,7 +58,7 @@ Plant model and provisioning & P0--P2 & 4 & 9/9 &
 denominator \\
 Protocol I/O and governed write & P3 & 3 & 5/5 &
 56 DAQ samples across 5/5 nodes; 24/24 probes rejected; 0/4 legal writes blocked;
-per-stack p50 mean 33.135\,ms \\
+per-stack p50 mean 33.135\,ms (six writes per stack) \\
 Tool-level closed loop & P4 & 3 & 7/7 &
 3 scripted setpoint iterations per line, each accepted and re-observed \\
 Records, approval, recipe, parameter layer & P4b--P4f & 10 & 12/12 &
@@ -137,17 +140,20 @@ existing vocabulary, not portability to an independent plant.
 
 A recorded rollback verdict leaves the register untouched until a separate rollback
 call passes through the write path; and manual mode suspends an agent request until
-the scripted approval releases it, measured at 16\,ms, which times the approval polling path rather than a human decision. The audit
+the scripted approval releases it, measured once at 16\,ms, timing the approval
+polling path rather than a human decision. The audit
 surface holds 11 parameter-change anchors and returns 200-entry audit and
 operations-log windows, so intent, approval, and execution are separately
 inspectable, though the journal is not a signed ledger and protocol I/O is not
 atomic with a concurrent recipe change.
 
-A frozen four-arm ablation, archived separately (seed 42, three repetitions, commit \texttt{d6c824d}), shows what the write path contributes; its arms are full, no interlock, no readback, and ungated. The ablation runs
+A frozen four-arm ablation, archived separately (\texttt{run-e1lite-4arm} in the
+frozen 20260914 baseline; seed 42, three repetitions, commit \texttt{d6c824d},
+an ancestor of the reference commit), shows what the write path contributes; its arms are full, no interlock, no readback, and ungated. The ablation runs
 on the mock driver tier against a single-node recipe window, and its three
 repetitions per arm produce identical verdicts (latencies and a few probe
 readings vary at sub-check resolution), i.e., the ablation evidence is one
-deterministic decision per arm. Per-write latency showed no detectable difference at the observed resolution. With the full path, all six attacks are rejected. With the batch-window interlock disabled, or with the path ungated, four are still rejected and the two recipe-window violations execute at the (mock) driver tier; disabling readback alone changes nothing. The engineering range is therefore structurally enforced and the batch-window check is the one that adds protection, while attribution records what happened without preventing it. The ablation archive carries boundary probes one tenth of a unit either side of the window edge: they are rejected where the window check is active, accepted where it is disabled, and no arm records a false block. The process-parameter layer passes 4/4 checks: out-of-product and out-of-baseline
+deterministic decision per arm. Per-write latency showed no detectable difference at the observed resolution. With the full path, all six probes are rejected. With the batch-window interlock disabled, or with the path ungated, four are still rejected and the two recipe-window violations execute at the (mock) driver tier; disabling readback alone changes nothing. The engineering range is therefore structurally enforced at the mock tier, and the batch-window check is the one that adds protection, while attribution records what happened without preventing it. The ablation archive carries boundary probes one tenth of a unit either side of the window edge: they are rejected where the window check is active, accepted where it is disabled, and no arm records a false block. The process-parameter layer passes 4/4 checks: out-of-product and out-of-baseline
 values are rejected at their respective layers, the parameter reads back, and an
 unbound agent is denied; agents thus receive a process-facing interface that does
 not disclose transport addresses (Sec.~\ref{sec:paramlayer}).
@@ -245,7 +251,9 @@ optimization record, and was followed by a gauge re-read after a settling wait;
 the archive stores no post-write readback value for these
 three writes, so we claim none. The verdicts are not an independent finding:
 the scripted caller issues \texttt{keep} unconditionally, so the records show
-that judgment is stored separately from execution and compensation, not that a judgment was earned. The journal query for the cast-speed node returned the record with an agent source (the parameter layer of Sec.~\ref{sec:port}); the mission check that asserts journal attribution is the one with an empty evidence array in Sec.~\ref{sec:repro}. Eleven archived runs of the reference command family share its seed; ten match its command line verbatim and one collapsed archive adds an LLM-agent flag. Seven report a final thickness inside the band (a small-$n$ observation, not a reliability estimate), three collapsed to near-zero thickness and reappear in the film-break account of Sec.~\ref{sec:repro}, and one registered zero governed writes with a hard multinode failure, so it reports no final thickness and is excluded from the ten with reportable endpoints. The reruns span several harness revisions; the strictly same-version comparison is the $25.68\,\mu$m and $-0.02\,\mu$m pair of Sec.~\ref{sec:repro}. The run reported here is one of the seven.
+that judgment is stored separately from execution and compensation, not that a judgment was earned. The journal query for the cast-speed node returned the record with an agent source (the parameter layer of Sec.~\ref{sec:port}); the mission check that asserts journal attribution is the one with an empty evidence array in Sec.~\ref{sec:repro}.
+
+Eleven archived runs of the reference command family share its seed; ten match its command line verbatim and one collapsed archive adds an LLM-agent flag. Seven report a final thickness inside the band (a small-$n$ observation, not a reliability estimate), three collapsed to near-zero thickness and reappear in the film-break account of Sec.~\ref{sec:repro}, and one registered zero governed writes with a hard multinode failure, so it reports no final thickness and is excluded from the ten with reportable endpoints. The reruns span several harness revisions; the strictly same-version comparison is the $25.68\,\mu$m and $-0.02\,\mu$m pair of Sec.~\ref{sec:repro}. The run reported here is one of the seven.
 
 \begin{figure*}[!tb]
 \centering
@@ -257,7 +265,9 @@ that judgment is stored separately from execution and compensation, not that a j
 The final thickness is 25.68\,$\mu$m, satisfying $|h-25.0|=0.68\leq0.7\,\mu$m by
 $0.02\,\mu$m on a short bucket mean (the mean of the last five one-second acquisition
 buckets), and the mission closes with 3 of its 6 allowed
-writes used. Melt temperature stays near $291.5\,^\circ$C inside its
+writes used. This margin is finer than the run-to-run variation of
+Sec.~\ref{sec:repro} and characterizes this run, not a robust property.
+Melt temperature stays near $291.5\,^\circ$C inside its
 268--300\,$^\circ$C process window, an observation rather than an enforcement
 result, since no disturbance tested that bound.
 
@@ -288,8 +298,7 @@ First, during harness development a burst of writes across several protocols dro
 into a collapsed state, with pump pressure, draw ratio, and thickness falling to
 their limits, while every platform-side write stayed readback-consistent. A readback
 therefore confirms that a driver delivered a value, not that the plant is in a sane
-state. Second, a film-break guard that reapplies the recipe baseline is present in the mission harness but is not represented in archive $B$, which never entered that branch. Three other archives entered it, one of them earlier on the same day at the same recorded commit, and in each case the re-application failed to restore thickness, leaving the plant near or below zero thickness (final values $0.02$, $-0.02$, $-0.02\,\mu$m against a $\sim$25\,$\mu$m band); one $-0.02\,\mu$m archive is the same-hash, same-seed sister of the nondeterminism example below. A fourth archive collapsed without entering the branch. The guard therefore aborts rather than recovers, and end states near or below zero thickness indicate that the plant model, not only the governance layer, bounds this result. In each of the three collapses the mission's own optimization records were superseded within about a minute of the write, so the independent backstop's 120-second eligibility window never opened; the guard's abort, not a backstop rollback, is what ended those runs. Third, the audit path fails open: bookkeeping errors are caught without reversing an executed write,
-so a physical change can occur without an attribution record, and the platform logs
+state. Second, a film-break guard that reapplies the recipe baseline is present in the mission harness but is not represented in archive $B$, which never entered that branch. Three archives of the Sec.~\ref{sec:agentloop} family entered it, one of them earlier on the same day at the same recorded commit, and in each case the re-application failed to restore thickness, leaving the plant near or below zero thickness (final values $0.02$, $-0.02$, $-0.02\,\mu$m against a $\sim$25\,$\mu$m band); one $-0.02\,\mu$m archive is the same-hash, same-seed sister of the nondeterminism example below. A fourth archive collapsed without entering the branch. The guard therefore aborts rather than recovers, and end states near or below zero thickness indicate that the plant model, not only the governance layer, bounds this result. In each of the three collapses the mission's own optimization records were superseded within about a minute of the write, so the independent backstop's 120-second eligibility window never opened; the guard's abort, not a backstop rollback, is what ended those runs. Third, the audit path fails open: bookkeeping errors are caught without reversing an executed write, so a physical change can occur without an attribution record, and the platform logs
 the error without blocking the write or retrying the record. Attribution is
 therefore a strong default, not a guarantee.
 

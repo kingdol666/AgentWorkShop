@@ -7,14 +7,16 @@ industrial knowledge-graph construction \cite{zhang2026comaikg} and diagnosis
 \cite{liu2024kgdiag}, PLC program generation and verification
 \cite{liu2026agents4plc,fakih2024llm4plc}, and digital-twin configuration
 \cite{xia2024llmsim}. Not all industrial agents are advisory: natural-language interfaces have controlled machines over OPC UA \cite{hofmann2025nlc}, LLM
-agents have been studied in simulated fault-tolerant control \cite{vyas2026ftc},
+agents have been studied in simulated fault-tolerant control and
+digital-twin-supported fault handling \cite{vyas2026ftc,gill2025llmdt},
 and InstructMPC uses language-derived context for disturbance prediction in
 model-predictive control \cite{wu2025instructmpc}. Closest to our setting,
 agent-based supervision has been studied for service-oriented industrial
 cyber-physical systems \cite{biskupovic2025supervision}, and LLM-based multi-agent
-systems coordinate shopfloor manufacturing tasks \cite{zhao2026shopfloor}; neither
-binds individual team members to specific nodes with source-dependent execution
-checks and line/product/recipe/run attribution.
+systems coordinate shopfloor manufacturing tasks \cite{zhao2026shopfloor}; the
+former assigns agents to services for monitoring and reconfiguration rather than
+granting member-instance write authority, and neither applies source-dependent
+execution checks or line/product/recipe/run attribution.
 
 \subsection{Orchestration, Industrial Models, and Execution Governance}
 AutoGen, LangGraph, and CrewAI organize agent tasks and tool use
@@ -29,7 +31,7 @@ master-recipe idea with grade and operating-point semantics on continuous lines;
 we do not implement the complete procedural
 models of either standard. The device-twin terminology presumes manufacturing
 digital twins whose assets carry structured semantic descriptions
-\cite{nee2019digital}, and the node semantic card is analogous to an Asset
+\cite{nee2019digital,iso23247}, and the node semantic card is analogous to an Asset
 Administration Shell submodel \cite{iec63278}; IIoT-gateway digital twins
 similarly wrap legacy equipment behind semantic abstraction \cite{gautam2025iiot},
 and what is added here is member-level write governance over that abstraction. A goal-driven unit's
@@ -59,6 +61,7 @@ process-monitoring research \cite{downs1993tep,goh2017swat}, but
 replay is not evidence of successful physical actuation, so we separate source
 checks, mock-driver probes, software-protocol integration, fixed-controller
 optimization, and exploratory LLM runs. The threat model of
-indirect prompt injection \cite{greshake2023injection}---a compromised agent writing
+indirect prompt injection \cite{greshake2023injection}, since formalized and
+benchmarked together with defenses \cite{liu2024pinjection}---a compromised agent writing
 through legitimate tools---is what the write-side checks are designed to contain,
 although our evaluation includes no adversarial LLM probes.
