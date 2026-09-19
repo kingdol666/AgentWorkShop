@@ -34,7 +34,7 @@ footer:
       </div>
       <div>
         <span class="k">WHY<i>凭什么值</i></span>
-        <span class="v">Real read/write on 5 protocols · interlock→approval→readback, audited · 14 engines, one contract</span>
+        <span class="v">Real read/write on 6 protocols (incl. serial plugin) · interlock→approval→readback, audited · 14 engines, one contract</span>
       </div>
     </div>
     <div class="hw-cta">
@@ -52,14 +52,14 @@ footer:
         <div class="hw-pulse"></div>
         <div class="hw-flow"></div>
         <div class="hw-node" style="--i:0"><span class="n">Field devices</span><span class="d">PLC / SENSORS</span></div>
-        <div class="hw-node" style="--i:1"><span class="n">Drivers ×5</span><span class="d">MODBUS TCP/RTU · OPC UA · MQTT · HTTP</span></div>
+        <div class="hw-node" style="--i:1"><span class="n">Drivers ×6</span><span class="d">MODBUS TCP/RTU · OPC UA · MQTT · HTTP · SERIAL (plugin)</span></div>
         <div class="hw-node" style="--i:2"><span class="n">Queue</span><span class="d">INPROC / MQTT · OFFLINE BUFFER</span></div>
         <div class="hw-node" style="--i:3"><span class="n">TSDB</span><span class="d">SQLITE / TIMESCALE</span></div>
         <div class="hw-node" style="--i:4"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ RESUME</span></div>
         <div class="hw-node hot" style="--i:5"><span class="n">Agent / Twin</span><span class="d">SAME EVENT STREAM</span></div>
       </div>
       <div class="hw-stats">
-        <div class="hw-stat"><span class="v">5</span><span class="k">field protocols</span></div>
+        <div class="hw-stat"><span class="v">6</span><span class="k">field protocols</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
         <div class="hw-stat"><span class="v">99</span><span class="k">runtime settings</span></div>
@@ -68,11 +68,11 @@ footer:
       </div>
       <p class="hw-stat-note">
         * Full closed-loop E2E on a real protocol stack (124 PASS / 0 FAIL, 2026-09-12, v0.7.36).
-        The rest are countable facts: 5 driver classes / 4 entry points (WS · MCP · A2A · REST) /
+        The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
         14 harnesses (<code>agents/registry.ts</code>) / 99 settings in 16 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.7.39</i></span>
+        <span>Version <i>v0.7.41</i></span>
         <span>License <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -285,7 +285,7 @@ footer:
     </div>
     <div class="hw-sec-rule"></div>
     <div class="hw-feats">
-      <div class="hw-f"><span class="tag">PROTOCOL</span><h3>Five-protocol DAQ &amp; control</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP, both directions — connection pools, classified errors, per-driver connection tests; plugins register new protocols.</p></div>
+      <div class="hw-f"><span class="tag">PROTOCOL</span><h3>Six-protocol DAQ &amp; control</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP in both directions + the built-in serial plugin (direct RS-232/485) — connection pools, classified errors, per-driver connection tests. Protocols are plugins: newly injected protocols appear in the frontend with zero form changes.</p></div>
       <div class="hw-f"><span class="tag">R/W</span><h3>Read-write control nodes</h3><p>Every control node reads its PLC value back through the same calibration path it writes with — SET vs ACT side by side, passive and never interlocked.</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>Human-approved writes</h3><p>Safe-range ∩ recipe-window interlock → approval → PLC write → readback → signed history; every decision audited.</p></div>
       <div class="hw-f"><span class="tag">RCT</span><h3>Recipe versioning</h3><p>Parameter changes versioned with attribution (source + operator + reason); roll back to any revision or last-good batch, non-destructively.</p></div>
@@ -323,7 +323,7 @@ footer:
         <span class="ico">S.3</span>
         <div class="bd">
           <h3>Industrial AI research &amp; teaching</h3>
-          <p>Five-protocol acquisition/write-control and multi-engine orchestration out of the box — an experiment bed with protocol-real verification.</p>
+          <p>Six-protocol acquisition/write-control (serial as a plugin) and multi-engine orchestration out of the box — an experiment bed with protocol-real verification.</p>
         </div>
       </div>
       <div class="hw-sc">
@@ -366,7 +366,7 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
   <section class="hw-final">
     <h2>Put an agent team on a real production line</h2>
     <p>
-      14 engines, 5 field protocols, 99 runtime settings and 124 re-runnable acceptance assertions are
+      14 engines, 6 field protocols, 99 runtime settings and 124 re-runnable acceptance assertions are
       already in the repository. Supervisory by design, second-level soft real-time;
       protocol-real, assertion-reproducible.
     </p>

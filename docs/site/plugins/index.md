@@ -29,7 +29,7 @@ aw plugin enable my-plugin          # 重新启用
 
 | 作用域 | 入口路径 | 说明 |
 |---|---|---|
-| `builtin` | `<包根>/server/plugins-builtin/<name>/index.mjs` | 随包发布;当前发行内置 `diag-bridge`、`rag-bridge` |
+| `builtin` | `<包根>/server/plugins-builtin/<name>/index.mjs` | 随包发布;当前发行内置 `diag-bridge`、`rag-bridge`、**`serial-bridge`(串口通信协议插件:读/写驱动 + 探针 API + 前端面板)** |
 | `project` | `<repo>/.AgentWorkShop/plugins/<name>/index.mjs` | 随检出分发,可 git 版本化 |
 | `user` | `$AW_HOME/plugins/<name>/index.mjs`(默认 `~/.AgentWorkShop/plugins`) | 用户级,跨项目 |
 

@@ -2581,3 +2581,63 @@
   font-size: 13px;
 }
 
+
+/* ============================================================
+   打磨层(v0.7.41)—— 克制的质感补笔,不改变既有版式
+   ============================================================ */
+
+/* 平滑滚动 + 锚点定位留出导航栏高度 */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 72px;
+}
+
+/* 品牌色选区(选中文本即品牌记忆) */
+::selection {
+  background: color-mix(in srgb, var(--aw-green) 26%, transparent);
+  color: var(--aw-text);
+}
+
+/* 键盘可达性:焦点环统一为品牌青,仅键盘触发时可见 */
+:focus-visible {
+  outline: 2px solid var(--aw-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 细滚动条(工业窄轨;WebKit + Firefox) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--aw-line-hi) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--aw-line-hi);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--aw-faint);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 内容表格:斑马纹 + 圆角外壳(与 vp-doc 既有 th/tr 规则叠加) */
+.vp-doc table {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.vp-doc tbody tr:nth-child(2n) td {
+  background: color-mix(in srgb, var(--aw-panel-2) 42%, transparent);
+}
+
+/* 图片(界面截图)统一细边框与圆角,贴合规格图纸的观感 */
+.vp-doc :not(.aw-console-body) > img {
+  border-radius: 10px;
+  border: 1px solid var(--aw-line);
+}

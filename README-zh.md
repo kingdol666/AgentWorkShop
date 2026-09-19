@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.39</b> · 14 个执行引擎 · 5 种现场协议 · 99 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.41</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件） · 99 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -146,7 +146,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 
 | 能力 | 为何重要 |
 |---|---|
-| **五协议现场总线** | Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST——数采**与**写控双驱动带连接池、分类错误文案与逐驱动连接测试；`mock` 覆盖演示/CI；插件可注册新协议。 |
+| **六协议现场总线** | Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST，外加**内置串口插件**（RS-232/485 直连：Modbus RTU + ASCII 行）——数采**与**写控双驱动带连接池、分类错误文案与逐驱动连接测试；`mock` 覆盖演示/CI；协议即插件：`ctx.daq.registerDriver` / `ctx.dcw.registerWriteDriver` 注入后，前端协议下拉与参数表单即插即现（带 ⌁ 徽标）。 |
 | **Agent 团队 × 工业作用域** | 把 Agent 绑定到数采/数控节点。Agent 看到的是语义卡（物理含义、单位、安全量程、配方窗口）——而不是裸寄存器。 |
 | **人工审批的写控** | 数控下发经过「**安全量程 ∩ 活动配方窗口**」联锁 → 可选 **HITL 审批** → PLC 写入 → **回读校验** → 带签名的写历史。 |
 | **数控读写通道** | 每个控制节点都能沿它写入时所用的同一套标定**读回 PLC 当前值**：周期读 + 按需读 + Agent 读取，SET 与 ACT 并排呈现——读是被动观测，永不被写联锁阻断。 |
@@ -162,7 +162,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **产线级权限** | 工业数据按**产线**三态门控（无权/仅查看/可操控），强制点在数据面——普通用户未授权前看不到任何产线数据。 |
 | **全操作审计日志** | 用户 / Agent / 系统 的每个动作都落进同一份可检索日志；操作者归属「Channel名/成员名」，与用户和系统天然区分。经 WS 实时推送。 |
 | **团队级插件开关** | 每个团队（Channel）持有**独立插件开关组**（`channel_plugins`）：被关闭插件的工具不注入该团队 Agent。插件本体经 `aw plugin` 与 `/plugins` 页热管理。 |
-| **插件扩展 API** | `plugins/<name>/` 下的一个自包含目录**同时增强两半**：`index.mjs`（服务端：钩子、路由、Agent 工具、数采驱动/处理器/模板、配置分组、KV、定时器）与 `client.mjs`（浏览器：注入具名插槽的面板、i18n、设置 UI）。三种作用域——`builtin`（随包发布）> `project`（检出）> `user`（`~/.AgentWorkShop`）——启停**与代码修改**均有约 1 秒热重载。完整契约见 [`docs/plugins.md`](./docs/plugins.md)。 |
+| **插件扩展 API** | `plugins/<name>/` 下的一个自包含目录**同时增强两半**：`index.mjs`（服务端：钩子、路由、Agent 工具、**数采读驱动/写控写驱动**/帧处理器/节点模板、配置分组、KV、定时器）与 `client.mjs`（浏览器：注入具名插槽的面板、i18n、设置 UI）。三种作用域——`builtin`（随包发布）> `project`（检出）> `user`（`~/.AgentWorkShop`）——启停**与代码修改**均有约 1 秒热重载；停用插件的驱动随热重载立即摘除。内置示例 **serial-bridge**（串口通信：读/写驱动 + 串口探针 API + 前端面板）。完整契约见 [`docs/plugins.md`](./docs/plugins.md)。 |
 | **AML —— 自动建模实验室** | 数据集构建 → 训练作业 → 排行榜 → 晋级门禁 → 模型引用，全部可在 `/aml` 页驱动，也可由 Agent 通过 10 个 `aml_*` 工具驱动。Python 运行时由 `uv` 引导至 `./aml` 资产根；产物与元数据都留在配置根下。 |
 | **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**99 个设置项、16 组**，代码零硬编码默认。 |
 | **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |
@@ -365,7 +365,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（最新文件胜出），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.39**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（最新文件胜出），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.41**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -453,7 +453,7 @@ export async function run(argv, ctx) {
 
 ### 数据采集（DAQ）
 
-- **五协议驱动**：Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST——连接池、分类错误文案、逐驱动连接测试；驱动注册表接受插件注册新协议。
+- **六协议驱动**：Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST，加 **serial-bridge 内置插件**（RS-232/485 直连：Modbus RTU 帧机 + ASCII 行协议，写侧带同址回读校验，附串口枚举/探针 API 与前端面板）——连接池、分类错误文案、逐驱动连接测试；驱动注册表接受插件注册任意新协议（自带 meta 自描述时前端表单零改动）。
 - **逐节点边缘运行时**：独立采样节拍、下发节拍、节点级在飞互斥——一个慢驱动绝不拖累邻居。采样与查询的默认值/下限由 `daq.sampling.*`、`daq.query.*` live 设置驱动。
 - **管线**：驱动 → 队列（进程内 / MQTT，断连离线缓冲）→ 消费泵乱序防御 → 三路分发：WS 实时直推（节拍门控）、TSDB 批量落库、设备孪生回写。
 - **鲁棒性**：TSDB 单 in-flight 写 + 有界重试，缓冲背压带丢弃计数，真实丢失指标随 `daq.controller` 帧暴露。

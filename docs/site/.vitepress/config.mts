@@ -20,7 +20,7 @@ const enNav = [
 const zhGuide = [
   { text: '快速开始', link: '/guide/getting-started' },
   { text: '配置系统', link: '/guide/configuration' },
-  { text: '五协议数采与数控', link: '/guide/daq-protocols' },
+  { text: '六协议数采与数控', link: '/guide/daq-protocols' },
   { text: '数控读写集成', link: '/guide/dcw-read-write' },
   { text: 'HITL 人机协同审批', link: '/guide/hitl' },
   { text: 'Recipe 版本管理', link: '/guide/recipe-versions' },
@@ -33,7 +33,7 @@ const zhGuide = [
 const enGuide = [
   { text: 'Getting started', link: '/en/guide/getting-started' },
   { text: 'Configuration', link: '/en/guide/configuration' },
-  { text: 'Five-protocol DAQ & control', link: '/en/guide/daq-protocols' },
+  { text: 'Six-protocol DAQ & control', link: '/en/guide/daq-protocols' },
   { text: 'Read-write DCW', link: '/en/guide/dcw-read-write' },
   { text: 'HITL approvals', link: '/en/guide/hitl' },
   { text: 'Recipe versioning', link: '/en/guide/recipe-versions' },

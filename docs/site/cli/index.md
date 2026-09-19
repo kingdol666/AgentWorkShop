@@ -60,7 +60,7 @@ pnpm tui             # 终端工作台
 ### 3. npx 快速使用（免全局安装）
 
 ```bash
-npx agentworkshop start            # 拉取并启动(可锁定版本: npx agentworkshop@0.7.38 start)
+npx agentworkshop start            # 拉取并启动(可锁定版本: npx agentworkshop@0.7.41 start)
 npx agentworkshop doctor           # 子命令照常可用
 npx -p agentworkshop aw doctor     # 需要 aw 这个名字时用 -p 指定包
 ```
@@ -76,7 +76,7 @@ npx -p agentworkshop aw doctor     # 需要 aw 这个名字时用 -p 指定包
 | 包管理器 | `pnpm@11.9.0`（`packageManager`，仅源码开发需要） |
 | 模块形态 | ESM（`type: module`） |
 | 许可证 | `PolyForm-Noncommercial-1.0.0` |
-| 当前版本 | `0.7.38`（`package.json`） |
+| 当前版本 | `0.7.41`（`package.json`） |
 
 ## 二、首次启动（Claude Code 式）
 
@@ -156,7 +156,7 @@ $ aw start
 
 - 优先级（CLI 与网页设置页、dev/prod 启动脚本共用同一引擎 `shared/config/engine.mjs`）：
   `config.yml 默认 < runtime-settings.json 运行时覆盖 < 环境变量 / CLI 显式参数`。
-- 设置描述符共 **99 项、16 组**（`aw config list` 即打印 99 行）：
+- 设置描述符共 **98 项、16 组**（`aw config list` 即打印 98 行）：
 
 | 组 | 项数 | 组 | 项数 | 组 | 项数 | 组 | 项数 |
 |---|---|---|---|---|---|---|---|

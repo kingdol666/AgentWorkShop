@@ -31,7 +31,7 @@ The plugin folder may also contain `i18n.json` (message bundles). **Plugin KV do
 
 | Scope | Entry path | Notes |
 |---|---|---|
-| `builtin` | `<packageRoot>/server/plugins-builtin/<name>/index.mjs` | shipped with the package; the current release ships `diag-bridge` and `rag-bridge` |
+| `builtin` | `<packageRoot>/server/plugins-builtin/<name>/index.mjs` | shipped with the package; the current release ships `diag-bridge`, `rag-bridge` and **`serial-bridge` (serial protocol plugin: read/write drivers + probe API + frontend panel)** |
 | `project` | `<repo>/.AgentWorkShop/plugins/<name>/index.mjs` | travels with the checkout, can be versioned in git |
 | `user` | `$AW_HOME/plugins/<name>/index.mjs` (default `~/.AgentWorkShop/plugins`) | user-level, shared across projects |
 

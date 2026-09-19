@@ -1,7 +1,9 @@
-# 五协议数采与数控
+# 六协议数采与数控
 
-AgentWorkShop 的数采(DAQ)与写控(DCW)驱动面覆盖五种现场协议,采集与下发同一套驱动注册表,
-连接池、故障分类诊断、逐驱动连接测试开箱即用。`mock` 驱动用于演示与 CI;插件可注册自定义协议。
+AgentWorkShop 的数采(DAQ)与写控(DCW)驱动面覆盖六种现场协议(5 内置 + 内置串口插件),
+采集与下发同一套驱动注册表,连接池、故障分类诊断、逐驱动连接测试开箱即用。
+`mock` 驱动用于演示与 CI;**协议即插件**——经 `ctx.daq.registerDriver` / `ctx.dcw.registerWriteDriver`
+注入的驱动会自动出现在前端协议下拉与动态参数表单(⌁ 徽标),前端零改动。
 
 ## 协议矩阵
 
@@ -12,6 +14,7 @@ AgentWorkShop 的数采(DAQ)与写控(DCW)驱动面覆盖五种现场协议,采�
 | OPC UA | ✅ 会话池,任意 NodeId,匿名/Sign | ✅ 写 Double 节点 + 回读 | `endpoint` `nodeId` |
 | MQTT | ✅ 订阅主题 + jsonPath 取值 | ✅ 发布 `{jsonKey: 值}` | `host` `port` `topic` `jsonPath` |
 | HTTP | ✅ GET + jsonPath | ✅ POST `{bodyKey: 值}` + 响应回读 | `url` `jsonPath` / `bodyKey` |
+| **串口 Serial(serial-bridge 插件)** | ✅ Modbus RTU(FC03/FC04)+ ASCII 行协议(数值/JSON + 保鲜窗) | ✅ Modbus RTU 写保持寄存器(FC06/FC16)+ 同址回读校验;ASCII 模板下行 | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`;[插件文档](/AgentWorkShop/plugins/guide#串口插件-serial-bridge) |
 
 ## 连通性测试
 

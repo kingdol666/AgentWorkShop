@@ -1,9 +1,11 @@
-# Five-protocol DAQ & control
+# Six-protocol DAQ & control
 
-The acquisition (DAQ) and write-control (DCW) driver surface covers five field protocols.
-Acquisition and dispatch share one driver registry with connection pools, classified error
-diagnostics and per-driver connection tests. The `mock` driver covers demos and CI; plugins
-can register additional protocols.
+The acquisition (DAQ) and write-control (DCW) driver surface covers six field protocols
+(5 built-in + the built-in serial plugin). Acquisition and dispatch share one driver registry
+with connection pools, classified error diagnostics and per-driver connection tests. The `mock`
+driver covers demos and CI. **Protocols are plugins** — drivers injected via
+`ctx.daq.registerDriver` / `ctx.dcw.registerWriteDriver` automatically appear in the frontend
+protocol dropdown and dynamic forms (⌁ badge) with zero frontend changes.
 
 ## Protocol matrix
 
@@ -14,6 +16,7 @@ can register additional protocols.
 | OPC UA | ✅ session pool, any NodeId, anonymous/signed | ✅ write Double node + readback | `endpoint` `nodeId` |
 | MQTT | ✅ subscribe topic + jsonPath | ✅ publish `{jsonKey: value}` | `host` `port` `topic` `jsonPath` |
 | HTTP | ✅ GET + jsonPath | ✅ POST `{bodyKey: value}` + response readback | `url` `jsonPath` / `bodyKey` |
+| **Serial (serial-bridge plugin)** | ✅ Modbus RTU (FC03/FC04) + ASCII line protocol (numeric/JSON + freshness window) | ✅ Modbus RTU write holding registers (FC06/FC16) + same-address readback; ASCII template dispatch | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`; [plugin docs](/AgentWorkShop/en/plugins/guide) |
 
 ## Connectivity tests
 

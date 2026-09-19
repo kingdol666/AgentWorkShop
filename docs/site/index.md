@@ -32,7 +32,7 @@ footer:
       </div>
       <div>
         <span class="k">凭什么值<i>WHY</i></span>
-        <span class="v">5 协议真机读写 · 联锁→审批→回读留痕 · 14 引擎一个契约</span>
+        <span class="v">6 协议真机读写(含串口插件) · 联锁→审批→回读留痕 · 14 引擎一个契约</span>
       </div>
     </div>
     <div class="hw-cta">
@@ -50,14 +50,14 @@ footer:
         <div class="hw-pulse"></div>
         <div class="hw-flow"></div>
         <div class="hw-node" style="--i:0"><span class="n">现场设备</span><span class="d">PLC / 传感器</span></div>
-        <div class="hw-node" style="--i:1"><span class="n">驱动 ×5</span><span class="d">MODBUS TCP/RTU · OPC UA · MQTT · HTTP</span></div>
+        <div class="hw-node" style="--i:1"><span class="n">驱动 ×6</span><span class="d">MODBUS TCP/RTU · OPC UA · MQTT · HTTP · SERIAL(串口插件)</span></div>
         <div class="hw-node" style="--i:2"><span class="n">队列</span><span class="d">INPROC / MQTT · 离线缓冲</span></div>
         <div class="hw-node" style="--i:3"><span class="n">时序库</span><span class="d">SQLITE / TIMESCALE</span></div>
         <div class="hw-node" style="--i:4"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ 续传</span></div>
         <div class="hw-node hot" style="--i:5"><span class="n">Agent / 孪生</span><span class="d">同一事件流</span></div>
       </div>
       <div class="hw-stats">
-        <div class="hw-stat"><span class="v">5</span><span class="k">现场协议</span></div>
+        <div class="hw-stat"><span class="v">6</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
         <div class="hw-stat"><span class="v">99</span><span class="k">运行时设置项</span></div>
@@ -66,11 +66,11 @@ footer:
       </div>
       <p class="hw-stat-note">
         * 全闭环 E2E 在真实协议栈上的跑批结果(124 PASS / 0 FAIL,2026-09-12,v0.7.36)。
-        其余是可数出来的静态事实:5 类驱动 / 4 个入口(WS · MCP · A2A · REST) /
+        其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件)/ 4 个入口(WS · MCP · A2A · REST) /
         14 个 harness(<code>agents/registry.ts</code>)/ 99 个设置项分 16 组(<code>aw config list</code>)/ 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.7.39</i></span>
+        <span>版本 <i>v0.7.41</i></span>
         <span>许可 <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -279,7 +279,7 @@ footer:
     </div>
     <div class="hw-sec-rule"></div>
     <div class="hw-feats">
-      <div class="hw-f"><span class="tag">PROTOCOL</span><h3>五协议数采与数控</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP 双向驱动——连接池、故障分类诊断、逐驱动连接测试;插件可注册新协议。</p></div>
+      <div class="hw-f"><span class="tag">PROTOCOL</span><h3>六协议数采与数控</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP 双向驱动 + 内置串口插件(RS-232/485 直连)——连接池、故障分类诊断、逐驱动连接测试;协议即插件,新协议注入后前端表单零改动。</p></div>
       <div class="hw-f"><span class="tag">R/W</span><h3>数控读写一体</h3><p>每个控制节点沿写链路同一套标定读回 PLC 当前值——SET 与 ACT 并排呈现,读为被动观测,免审批。</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>人机协同写控</h3><p>安全量程 ∩ 配方窗口联锁 → 人工审批 → PLC 写入 → 回读校验 → 签名写历史;裁决人留痕审计。</p></div>
       <div class="hw-f"><span class="tag">RCT</span><h3>Recipe 版本化治理</h3><p>参数按版本入史(来源+操作者+原因),一键回退任意版本或已知良好批次——非破坏,历史完整。</p></div>
@@ -317,7 +317,7 @@ footer:
         <span class="ico">S.3</span>
         <div class="bd">
           <h3>工业 AI 教学与科研</h3>
-          <p>五协议数采/写控、多引擎编排、真实模拟器栈开箱即用——论文与课程的实验床,协议真实验证。</p>
+          <p>六协议数采/写控(串口即插件)、多引擎编排、真实模拟器栈开箱即用——论文与课程的实验床,协议真实验证。</p>
         </div>
       </div>
       <div class="hw-sc">
