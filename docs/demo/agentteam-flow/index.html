@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgentTeam Closed-Loop Optimization — Demonstration Flow (IEEE TII style)</title>
+<style>
+  :root {
+    --ink: #16211d;
+    --ink-dim: #4c5a54;
+    --paper: #fdfdfc;
+    --line: #d8ddd9;
+    --accent: #1d8f66;
+    --accent-soft: #e7f3ee;
+    --code-bg: #f3f6f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Source Sans 3", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    padding: 40px 48px 64px;
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+  .kicker {
+    font-family: "IBM Plex Mono", Consolas, monospace;
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: 30px; font-weight: 650; letter-spacing: -0.01em;
+    margin: 6px 0 8px; color: var(--ink);
+  }
+  .subtitle { color: var(--ink-dim); font-size: 15.5px; max-width: 920px; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 18px 0 0;
+    font-family: "IBM Plex Mono", Consolas, monospace; font-size: 11.5px; color: var(--ink-dim);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 10px 0;
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  /* ── stage lane ── */
+  .stage { margin-top: 44px; }
+  .stage-head { display: flex; align-items: baseline; gap: 14px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; }
+  .stage-no {
+    font-family: "IBM Plex Mono", Consolas, monospace; font-size: 13px; font-weight: 700;
+    color: #fff; background: var(--ink); padding: 3px 10px; letter-spacing: 0.08em;
+  }
+  .stage-title { font-family: "Source Serif 4", Georgia, serif; font-size: 20px; font-weight: 650; }
+  .stage-sub { color: var(--ink-dim); font-size: 13px; margin-left: auto; font-family: "IBM Plex Mono", Consolas, monospace; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(430px, 1fr)); gap: 26px; margin-top: 18px; }
+  .step { border: 1px solid var(--line); background: #fff; display: flex; flex-direction: column; }
+  .shot {
+    height: 300px; overflow: hidden; border-bottom: 1px solid var(--line); position: relative; background: #0d1412;
+  }
+  .shot img { width: 100%; display: block; object-fit: cover; object-position: top left; }
+  .shot img.f-mid { object-position: center 45%; }
+  .shot img.f-nodes { object-position: center 58%; }
+  .shot.tall { height: 340px; }
+  .step-body { padding: 14px 16px 16px; }
+  .fig-no { font-family: "IBM Plex Mono", Consolas, monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; }
+  .step-title { font-family: "Source Serif 4", Georgia, serif; font-size: 17px; font-weight: 650; margin: 2px 0 8px; }
+  .step-text { font-size: 13.8px; color: var(--ink-dim); }
+  .step-text b { color: var(--ink); font-weight: 600; }
+  .step-text code, .facts code {
+    font-family: "IBM Plex Mono", Consolas, monospace; font-size: 12px; background: var(--code-bg);
+    border: 1px solid var(--line); padding: 0 4px; border-radius: 2px;
+  }
+
+  /* ── flow arrows between stages ── */
+  .flow-arrow { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 26px 0 -6px; }
+  .flow-arrow .shaft { flex: 1; height: 1px; background: var(--ink); position: relative; max-width: 180px; }
+  .flow-arrow .label {
+    font-family: "IBM Plex Mono", Consolas, monospace; font-size: 11px; color: var(--accent);
+    letter-spacing: 0.14em; text-transform: uppercase; border: 1px solid var(--accent);
+    padding: 4px 12px; background: var(--accent-soft);
+  }
+
+  /* ── data tables ── */
+  table.data { border-collapse: collapse; width: 100%; font-size: 13px; margin: 12px 0 6px; }
+  table.data th, table.data td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+  table.data th { background: var(--accent-soft); font-weight: 650; font-size: 12px; letter-spacing: 0.04em; }
+  table.data td.num { text-align: right; font-family: "IBM Plex Mono", Consolas, monospace; }
+
+  .facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px 28px;
+    border: 1px solid var(--line); background: #fff; padding: 18px 22px; margin-top: 20px; font-size: 13.6px;
+  }
+  .facts h3 { font-family: "Source Serif 4", Georgia, serif; font-size: 15px; margin-bottom: 4px; }
+  .verdict {
+    margin-top: 44px; border: 2px solid var(--ink); padding: 18px 22px;
+    display: flex; align-items: center; gap: 24px;
+  }
+  .verdict .stamp {
+    font-family: "IBM Plex Mono", Consolas, monospace; font-weight: 700; font-size: 22px; letter-spacing: 0.18em;
+    color: var(--accent); border: 2px solid var(--accent); padding: 8px 16px; transform: rotate(-4deg);
+  }
+  .verdict p { font-size: 14px; }
+
+  @media print {
+    body { padding: 0; max-width: none; }
+    .stage { break-inside: avoid; }
+    .step { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="kicker">IEEE Transactions on Industrial Informatics — demonstration flow</div>
+<h1>AgentTeam Closed-Loop Optimization on a Simulated Production Line</h1>
+<p class="subtitle">
+  End-to-end demonstration of the AgentWorkShop supervisory layer: five fieldbus PLCs (cast-film extrusion twin,
+  6 writable setpoints + 5 process quantities) are commissioned on the platform, an <b>AgentTeam</b> is assembled and
+  deployed, an optimization goal is dispatched from the team composer, and a governed closed loop drives film
+  thickness into the 50 ± 2 μm target window — every write interlocked, attributed and journalled.
+</p>
+<div class="meta">
+  <span>Platform <b>v0.7.42</b></span>
+  <span>Preset <b>cast-film-physics</b></span>
+  <span>Fieldbus <b>Modbus TCP · RTU · OPC UA · MQTT · HTTP</b></span>
+  <span>Seed <b>42</b></span>
+  <span>Result <b>thickness 49.77 μm ∈ [48, 52] · 3 governed writes · 0 rejected</b></span>
+</div>
+
+<!-- ═══════════ STAGE A ═══════════ -->
+<div class="stage">
+  <div class="stage-head">
+    <span class="stage-no">STAGE A</span>
+    <span class="stage-title">Node connection &amp; provisioning</span>
+    <span class="stage-sub">PLC simulator → protocol drivers → platform entities</span>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="shot tall"><img class="f-nodes" src="img/step01-daq-nodes.png" alt="DAQ console" /></div>
+      <div class="step-body">
+        <div class="fig-no">FIG. A-1</div>
+        <div class="step-title">Acquisition nodes come online</div>
+        <p class="step-text">
+          Five process quantities (<code>melt-temp</code>, <code>melt-pressure</code>, <code>film-thickness</code>,
+          <code>defect-rate</code>, <code>gels-count</code>) stream live from the PLC simulator through their native
+          drivers — Modbus TCP, Modbus RTU, OPC UA, MQTT and HTTP. Each row shows the live value, trend sparkline,
+          1 s sampling gate, line-run binding (<b>Running</b>) and product/recipe traceability tag.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="shot tall"><img class="f-mid" src="img/step02-dcw-lines.png" alt="Line Ops" /></div>
+      <div class="step-body">
+        <div class="fig-no">FIG. A-2</div>
+        <div class="step-title">Write-control setpoints per line</div>
+        <p class="step-text">
+          Line Ops lists the writable setpoints (three zone temperatures, screw speed, line speed, die gap) that the
+          AgentTeam may drive. Writes are only accepted while a <b>recipe-tagged batch is running</b>, and every value
+          is checked against the recipe window before it reaches the fieldbus.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="flow-arrow"><span class="shaft"></span><span class="label">nodes bound → team assembled</span><span class="shaft"></span></div>
+
+<!-- ═══════════ STAGE B ═══════════ -->
+<div class="stage">
+  <div class="stage-head">
+    <span class="stage-no">STAGE B</span>
+    <span class="stage-title">AgentTeam creation</span>
+    <span class="stage-sub">group → members (lead / worker) → channel deployment</span>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="shot"><img src="img/step03-team-create-modal.png" alt="New Group dialog" /></div>
+      <div class="step-body">
+        <div class="fig-no">FIG. B-1</div>
+        <div class="step-title">Assembling the team</div>
+        <p class="step-text">
+          A group <i>“Thickness Optimization Team”</i> is created from the AgentTeam Groups page. Groups are reusable
+          rosters: members are drawn from agent templates and carry a role — a <b>lead</b> that dispatches, and
+          <b>workers</b> that execute.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="shot"><img src="img/step04-team-card.png" alt="Team card" /></div>
+      <div class="step-body">
+        <div class="fig-no">FIG. B-2</div>
+        <div class="step-title">Team card &amp; one-click deployment</div>
+        <p class="step-text">
+          The created group card exposes visibility (private/public) and a one-click <b>Deploy to channel</b> action.
+          Deployment instantiates every member as an independent agent inside the target channel — the team becomes
+          operational without manual re-configuration.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="flow-arrow"><span class="shaft"></span><span class="label">team online → goal dispatched</span><span class="shaft"></span></div>
+
+<!-- ═══════════ STAGE C ═══════════ -->
+<div class="stage">
+  <div class="stage-head">
+    <span class="stage-no">STAGE C</span>
+    <span class="stage-title">Optimization goal setting &amp; dispatch</span>
+    <span class="stage-sub">composer → task board → lead assignment</span>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="shot"><img src="img/step05-goal-composer.png" alt="Goal composer" /></div>
+      <div class="step-body">
+        <div class="fig-no">FIG. C-1</div>
+        <div class="step-title">Declaring the optimization goal</div>
+        <p class="step-text">
+          In the channel console, the operator posts the goal in task/goal mode: <i>“optimize film thickness to
+          50 ± 2 μm … observe via <code>daq_query</code>, adjust the screw-speed setpoint with <code>dcw_control</code>
+          (max 3 governed writes), judge each record, close the task when the window holds.”</i> The composer chip
+          confirms the target (<code>@ opt-lead</code>) and that the task starts a turn immediately.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="shot"><img src="img/step06-goal-dispatched.png" alt="Task dispatched" /></div>
+      <div class="step-body">
+        <div class="fig-no">FIG. C-2</div>
+        <div class="step-title">Lead takes the assignment</div>
+        <p class="step-text">
+          On dispatch the lead acknowledges the parent task and the channel timeline begins recording team activity.
+          Node bindings made before dispatch are what make the goal actionable: <code>my_industrial_nodes</code>
+          exposes each bound node’s physical quantity, unit, safe range and the <b>active recipe window</b> to the agent.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="flow-arrow"><span class="shaft"></span><span class="label">observe → governed write → re-observe → judge</span><span class="shaft"></span></div>
+
+<!-- ═══════════ STAGE D ═══════════ -->
+<div class="stage">
+  <div class="stage-head">
+    <span class="stage-no">STAGE D</span>
+    <span class="stage-title">Closed-loop execution &amp; results</span>
+    <span class="stage-sub">3 iterations · every write interlocked &amp; journalled</span>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="shot"><img src="img/step07-execution-timeline.png" alt="Timeline" /></div>
+      <div class="step-body">
+        <div class="fig-no">FIG. D-1</div>
+        <div class="step-title">Team execution on the channel timeline</div>
+        <p class="step-text">
+          During execution the timeline streams the team’s events — task assignment, agent turns and tool activity —
+          while member badges flip to <b>busy</b>. Each tuning step follows the SOP:
+          <code>daq_query</code> → analyze → <code>dcw_control</code> → settle → re-observe.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="shot"><img src="img/step08-thickness-trend.png" alt="Thickness trend" /></div>
+      <div class="step-body">
+        <div class="fig-no">FIG. D-2</div>
+        <div class="step-title">Process quantity converges</div>
+        <p class="step-text">
+          The thickness node’s live value and TSDB history show the plant answering the setpoint moves:
+          film thickness settles at <b>49.77 μm</b> — 0.23 μm from the 50.0 μm target and well inside the ± 2 μm window.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="shot tall"><img class="f-mid" src="img/step09-journal-records.png" alt="Journal & records" /></div>
+      <div class="step-body">
+        <div class="fig-no">FIG. D-3</div>
+        <div class="step-title">Attribution: journal &amp; optimization records</div>
+        <p class="step-text">
+          Every governed write opens an <b>optimization record</b> (from → to, hypothesis, window) and appends to the
+          parameter <b>journal</b> with agent attribution — the audit trail a reviewer (or an operator) needs to trust
+          the autonomy.
+        </p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="shot" style="display:flex; align-items:center; justify-content:center; background:var(--accent-soft);">
+        <div style="text-align:center; padding:20px;">
+          <div style="font-family:'IBM Plex Mono',Consolas,monospace; font-size:12px; letter-spacing:0.18em; color:var(--ink-dim);">FINAL THICKNESS</div>
+          <div style="font-family:'Source Serif 4',Georgia,serif; font-size:58px; font-weight:700; color:var(--accent); line-height:1.1;">49.77<span style="font-size:22px;"> μm</span></div>
+          <div style="font-family:'IBM Plex Mono',Consolas,monospace; font-size:12.5px; color:var(--ink);">target 50 ± 2 μm — <b style="color:var(--accent);">ATTAINED</b></div>
+          <div style="margin-top:10px; font-family:'IBM Plex Mono',Consolas,monospace; font-size:12px; color:var(--ink-dim);">3 governed writes · 0 rejected · 3 judged keep</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <div class="fig-no">FIG. D-4</div>
+        <div class="step-title">Goal lifecycle closes</div>
+        <p class="step-text">
+          After the final <code>dcw_judge</code> verdict (keep) the loop closes: goal → governed writes →
+          attainment → judged records → versioned recipe. The board, journal and recipe version remain as the
+          durable audit trail of the autonomous optimization.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ RESULT SUMMARY ═══════════ -->
+<div class="stage">
+  <div class="stage-head">
+    <span class="stage-no">RESULT</span>
+    <span class="stage-title">Optimization outcome (this demonstration run)</span>
+    <span class="stage-sub">deterministic closed loop · seed 42</span>
+  </div>
+  <table class="data">
+    <tr>
+      <th>Metric</th><th>Value</th><th>Metric</th><th>Value</th><th>Metric</th><th>Value</th>
+    </tr>
+    <tr>
+      <td>Governed writes</td><td class="num">3</td>
+      <td>Rejected writes</td><td class="num">0</td>
+      <td>Optimization records (judged keep)</td><td class="num">3</td>
+    </tr>
+    <tr>
+      <td>Final thickness</td><td class="num">49.77 μm</td>
+      <td>Target window</td><td class="num">50 ± 2 μm</td>
+      <td>Attained</td><td class="num">yes</td>
+    </tr>
+    <tr>
+      <td>J (final)</td><td class="num">84.80</td>
+      <td>J* (offline optimum)</td><td class="num">89.89</td>
+      <td>Deviation injected (start)</td><td class="num">53.6 μm</td>
+    </tr>
+  </table>
+  <div class="facts">
+    <div>
+      <h3>What the PLC simulator is</h3>
+      A cast-film extrusion twin (deterministic, seeded physics engine): three zone-temperature setpoints, screw speed,
+      line speed and die gap act on first-order thermal dynamics and mass-conservation thickness — observed through
+      melt temperature, melt pressure, film thickness, defect rate and gels count.
+    </div>
+    <div>
+      <h3>How the team connects</h3>
+      The worker is <b>bound</b> to nodes; bindings surface semantic cards (quantity, unit, safe range, active recipe
+      window) through <code>my_industrial_nodes</code>, and open exactly two capabilities: <code>daq_query</code>
+      (read) and <code>dcw_control</code> (write, interlocked).
+    </div>
+    <div>
+      <h3>Why the writes are trustworthy</h3>
+      Each write is checked against the recipe window, holds a read-back verification, opens an optimization record,
+      is journalled with agent attribution, and is judged (keep / rollback) against acquisition evidence.
+    </div>
+    <div>
+      <h3>Reproducibility</h3>
+      <code>node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3</code> — the same closed loop runs in
+      the scored benchmark (75 checks, hard-gated); screenshot capture:
+      <code>scripts/_demo-agentteam-capture.mjs</code>.
+    </div>
+  </div>
+  <div class="verdict">
+    <span class="stamp">PASS</span>
+    <p>
+      <b>Verdict — closed loop attained.</b> Three governed writes, zero rejections, thickness held inside the target
+      window with full attribution (journal + records + recipe version). The demonstration mirrors the scored
+      benchmark flow and is reproducible from the fingerprinted command above.
+    </p>
+  </div>
+</div>
+
+</body>
+</html>
