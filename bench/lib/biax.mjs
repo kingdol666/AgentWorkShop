@@ -216,6 +216,7 @@ export async function provisionBiaxLine(api, { sfx }) {
     params: recipeParams, daqWindows,
   })
   const recipeId = recipe.data?.recipe?.id
+  if (!recipeId) errors.push('建配方失败: ' + JSON.stringify(recipe).slice(0, 200))
   const st = recipeId ? await api.call('POST', `/api/workshop/dcw/lines/${lineId}/start`, { recipeId }) : null
   rec.ids = { lineId, productId, recipeId, started: st?.status === 200 }
   rec.errors.push(...errors)

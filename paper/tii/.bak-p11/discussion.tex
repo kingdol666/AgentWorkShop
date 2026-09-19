@@ -1,0 +1,77 @@
+\section{Discussion and Limitations}
+\label{sec:limits}
+\subsection{What the Integration Model Establishes}
+The reusable unit here is the deployed member--node capability--production-run
+association. It lets one task work in engineering quantities across drivers while
+execution and compensation stay attributable, and it lets the biaxial mission move
+three line sections under one objective without plant-specific routing code. The
+archive supports configuration reuse inside the existing driver and scenario
+vocabulary; it does not measure the effort to author a scenario, validate its
+windows, or integrate a protocol the platform does not already speak.
+
+Separating proposal, admission, and disposition keeps several success criteria from
+collapsing into one: a recorded \texttt{keep} is the agent's judgment, a matching
+readback is a driver-level observation, and sustained process convergence is a
+separate experimental outcome. The mechanism density is unevenly placed: the
+governed-write path concentrates range and recipe-window checks, ownership,
+cooldown, and readback, while the real-LLM campaigns exposed observation and
+scoring failures, where writes executed as designed but some judgments rested on
+stale or constant windows. Observation-quality gating is a framework-level
+extension this paper does not deliver, and until it exists the historical LLM
+scores cannot be compared with the deterministic ones.
+
+\subsection{Implementation and Evidence Boundaries}
+Cross-agent in-window oscillations, shared-node
+contention over longer horizons, and availability during storage failure remain
+unevaluated. Approval reduces permitted automation without establishing endpoint security,
+protecting against a privileged compromised harness, or validating approved
+engineering intent; least-privilege deployment and network separation remain
+separate responsibilities \cite{iec62443,nist80082}. Governed writes are
+defense-in-depth at the basic process control system layer, not a certified safety
+instrumented function: their safety argument presupposes independent regulatory
+limits and a protection layer in the IEC 61511 sense \cite{iec61511}, and the
+platform implements no detection or degraded-mode response when such layers are
+absent, which is an integrator responsibility. Manual-binding approval workload
+grows with the frequency of agent proposals, and approval fatigue is a documented
+risk \cite{parasuraman2000model,bainbridge1983ironies}; policy granularity over
+roles, batch phases, and magnitudes is an extension point, not a present
+capability. None of the six mechanisms is enforced outside the platform process, so
+they constrain only traffic that passes through it. At minimum, a deployment needs
+independent setpoint limits and interlocks in the controller itself.
+
+Deployment in a real plant carries prerequisites this paper does not discharge.
+Placement
+across the IT/OT hierarchy and the assignment of IEC 62443 zones and conduits are
+integrator decisions \cite{iec62443}. A deployment design must also answer the
+platform's failure modes, including the approval channel, alarm paths, and open
+records left by a core crash, and must pin engine model versions where regulated
+industries require reproducible behavior. The single-host Windows capacity boundary
+is likewise untested.
+
+\section{Conclusion}
+\label{sec:conclusion}
+\system{} integrates multi-agent coordination with heterogeneous industrial
+supervision through explicit node capabilities and shared production context. The
+architecture keeps coordination and supervision cooperating without becoming one atomic control
+function. The latest run provides three
+complementary results: four protocol fixtures reject all predefined
+out-of-constraint writes with no legal-write blocks; a fixed controller reaches
+$J/J^*=0.963$--$0.972$ across three seeds; and a scripted team mission uses three
+governed writes across two protocols to bring biaxial-film thickness from 28.10 to
+25.68\,$\mu$m. These results demonstrate the tested integration and governance
+paths only. Physical validation, stronger execution consistency, controlled agent comparisons,
+and observation-quality gating remain open. Platform and benchmark sources use the
+repository's license; the simulator is maintained separately.
+
+\section*{Data Availability and Disclosure}
+The archive \texttt{20260918043504-bdo} used in Section~\ref{sec:eval} is
+machine-readable: \texttt{run.json} holds every check with its evidence,
+\texttt{summary.json} the verdict and KPI set, \texttt{metrics.csv} the metric
+registry, and \texttt{agentteam-*.log} the mission traces. The figure scripts and
+the script that re-checks the quantitative claims against that archive are
+included. The source of Fig.~\ref{fig:agentteam} animates the same recorded process step by
+step, and the printed frame is its complete static state. Anonymized snapshots of
+the platform, benchmark card, and simulator accompany the submission; repository
+identifiers will be disclosed on acceptance. AI-based assistants supported
+manuscript editing, code-assisted evidence checking, and figure preparation under
+author direction, and the authors remain responsible for the claims and data.

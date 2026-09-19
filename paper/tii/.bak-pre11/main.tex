@@ -1,0 +1,120 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- regular paper draft
+% Compile: latexmk -pdf main.tex   (TeX Live 2025, IEEEtran)
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{rotating}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+% ---------------------------------------------------------------------------
+% Figure palette.  Every hue is paired with a line style, a marker shape or a
+% direct label, so each figure stays readable in a monochrome reprint as well
+% as in the colour version, and all pairs remain distinguishable to the common
+% forms of colour-vision deficiency.
+% ---------------------------------------------------------------------------
+\definecolor{awTeal}{HTML}{1F6F78}   % measured process variable
+\definecolor{awRed}{HTML}{B3282D}    % setpoint / limit / failed configuration
+\definecolor{awBlue}{HTML}{3D6FB5}   % readback mechanism
+\definecolor{awGreen}{HTML}{2E7D32}  % full governed pipeline
+\definecolor{awAmber}{HTML}{C8871B}  % approval / decision stage
+\definecolor{awGrey}{HTML}{5F6B76}   % neutral reference
+\definecolor{awPurple}{HTML}{6A4C93} % fully ungated arm
+\definecolor{awFill1}{HTML}{E8F1F2}  % teal tint
+\definecolor{awFill2}{HTML}{FBEDED}  % red tint
+\definecolor{awFill3}{HTML}{EDF3FA}  % blue tint
+\definecolor{awFill4}{HTML}{EDF5EE}  % green tint
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds,patterns}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+% Origin/Prism-style scientific plot defaults (TII figure norms): boxed frame,
+% inward major+minor ticks, footnote-size labels with units, legends never on data.
+\pgfplotsset{
+  tii/.style={
+    axis lines=box,
+    tick align=inside,
+    major tick length=2.0mm,
+    minor tick length=1.1mm,
+    label style={font=\footnotesize},
+    tick label style={font=\scriptsize},
+    legend style={font=\scriptsize, draw=black!45, fill=white, fill opacity=0.92,
+                  text opacity=1, legend cell align=left, inner sep=2.5pt},
+  }
+}
+\usepackage{url}
+\usepackage{stfloats}
+
+% Float packing: the manuscript carries five double-column floats and two
+% single-column ones. The defaults leave large column gaps around them; these
+% limits let LaTeX fill the columns instead of deferring a float.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{6}
+\setcounter{dbltopnumber}{3}
+\renewcommand{\topfraction}{1.0}
+\renewcommand{\bottomfraction}{0.9}
+\renewcommand{\textfraction}{0.0}
+\renewcommand{\floatpagefraction}{0.85}
+\renewcommand{\dbltopfraction}{1.0}
+\renewcommand{\dblfloatpagefraction}{0.85}
+
+\input{results-macros}
+
+\newcommand{\system}{\textsc{AgentWorkShop}}
+\newcommand{\bench}{\textsc{AW-IndustrialBench}}
+
+\begin{document}
+
+\title{AgentWorkShop: Node-Native Binding and Governed Write Paths for Agent Teams in Industrial Supervision}
+
+% Working manuscript: replace the anonymous author block only when the
+% submission stage and double-blind requirements permit author identification.
+\author{Anonymous Authors}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Node-Native Binding and Governed Write Paths}
+
+\maketitle
+
+\begin{abstract}
+Bringing language-model agents into industrial supervisory control requires
+associating the semantics, authority, and history of each command across
+heterogeneous devices, multiple agents, and changing operating recipes. We
+present \system{}, a node-native framework in which explicit member-to-node
+bindings determine each agent's tools, source-dependent checks govern
+agent-issued writes, and attributable records with an independent backstop
+keep authorization, device execution, and process judgment distinguishable.
+The implementation covers five protocol drivers and registers fourteen agent
+engines as an inventory rather than evaluated controllers. Evidence comes from
+one archived run over three simulated production scenarios and real software
+protocol transports, including a 49-signal biaxial-film line. The run passes 75 of 75 checks with no warnings or failures, three of them carrying write sub-checks skipped because their nodes expose no writable setpoint. Its four writable protocol fixtures
+reject 24 of 24 predefined out-of-constraint probes and block none of four
+designated legal writes; a second scenario rejects 9 of 9 out-of-constraint probes without false blocks. A fixed non-LLM controller over three seeds reaches
+0.963--0.972 of an offline grid-search reference, depending on whether the end
+score or the final iterate is used. A scripted team mission, with the LLM path
+disabled, reduces biaxial-film thickness from 28.10 to 25.68\,$\mu$m, inside a
+$25.0\pm0.7\,\mu$m objective, using three governed writes on two protocols. These
+are suite-coverage and single-run capability results on simulated plants; they
+establish neither physical safety nor agent performance.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Industrial informatics, multi-agent systems, supervisory control, human-in-the-loop, heterogeneous protocols, large language models.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/mechanisms}
+\input{sections/evaluation}
+\input{sections/discussion}
+
+% Balance the final reference page at a bibliography item boundary.
+% page balancing: adjust \IEEEtriggeratref if the last page needs itIEEEtriggeratref{24}
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}
