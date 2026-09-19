@@ -32,8 +32,10 @@ export default defineApiHandler(async (event) => {
       dropped: state.dropped ?? 0,
       samplesStored: state.samplesStored ?? 0,
     },
-    // 驱动协议栈可用性(包缺失 → UI 显示"未安装")
+    // 驱动协议栈可用性(包缺失 → UI 显示"未安装";含插件驱动)
     driverAvailable: await ctrl.driverAvailability(),
+    // 驱动目录(内置 + 协议插件自描述合并;前端添加节点下拉/参数表单同源消费)
+    drivers: await ctrl.driverCatalog(),
     // 基础设施在线状态(降级 → 前端横幅 + 重连入口)
     infra: daqInfraStatus(),
     // 信号模板目录(内置 + 用户自定义;前端下拉/左轨/控制台同源消费)

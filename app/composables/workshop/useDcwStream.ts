@@ -8,7 +8,8 @@ import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
 import { apiFetch } from './apiClient'
 import type { AepEnvelope } from '#shared/workshop-protocol'
-import { DCW_TEMPLATES, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwRead, type AepDcwWritten, type DcwNodeView, type DcwParamLedger, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type OptimizationRecord, type OptimizationVerdict, type ProductInput, type ProductView, type RecipeInput, type RecipeParam, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
+import { DCW_TEMPLATES, DCW_DRIVERS, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwRead, type AepDcwWritten, type DcwNodeView, type DcwParamLedger, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type OptimizationRecord, type OptimizationVerdict, type ProductInput, type ProductView, type RecipeInput, type RecipeParam, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
+import type { DaqDriverCatalogEntry } from '#shared/daq-protocol'
 
 export type { DcwNodeView }
 
@@ -35,6 +36,8 @@ function createStore() {
   const lineStates = reactive<Record<string, LineRunState>>({})
   /** Agent 优化记录(调控闭环;dcw.optimization.changed 实时收敛) */
   const optimizations = reactive<OptimizationRecord[]>([])
+  /** 写驱动目录(REST `drivers` 权威:内置 + 协议插件自描述;首帧先用内置目录) */
+  const driverCatalog = reactive<DaqDriverCatalogEntry[]>(DCW_DRIVERS.map(d => ({ kind: d.kind, label: d.label, status: d.status, configFields: d.configFields })))
 
   function upsert(node: DcwNodeView): void {
     const i = nodes.findIndex(x => x.id === node.id)
@@ -112,12 +115,14 @@ function createStore() {
 
   async function load(): Promise<void> {
     try {
-      const data = await api<{ controller: AepDcwControllerState, nodes: DcwNodeView[], templates?: DcwTemplateDef[], recipes?: RecipeView[], runs?: RecipeRunView[], history?: DcwWriteHistoryEntry[], products?: ProductView[], lines?: LineView[], lineStates?: LineRunState[] }>('')
+      const data = await api<{ controller: AepDcwControllerState, nodes: DcwNodeView[], templates?: DcwTemplateDef[], drivers?: DaqDriverCatalogEntry[], recipes?: RecipeView[], runs?: RecipeRunView[], history?: DcwWriteHistoryEntry[], products?: ProductView[], lines?: LineView[], lineStates?: LineRunState[] }>('')
       nodes.splice(0, nodes.length, ...data.nodes)
       nodeIndex.clear()
       for (const n of nodes) nodeIndex.set(n.id, n)
       Object.assign(controller, data.controller)
       if (data.templates?.length) templates.splice(0, templates.length, ...data.templates.map(t => ({ ...t })))
+      // 写驱动目录 server 权威(含协议插件);server 未下发(旧版)时保留内置目录
+      if (data.drivers?.length) driverCatalog.splice(0, driverCatalog.length, ...data.drivers)
       recipes.splice(0, recipes.length, ...(data.recipes ?? []))
       runs.splice(0, runs.length, ...(data.runs ?? []))
       history.splice(0, history.length, ...(data.history ?? []))
@@ -144,6 +149,7 @@ function createStore() {
     lines,
     lineStates,
     optimizations,
+    driverCatalog,
     loaded: false,
     error: '',
     ensureWsFeed,

@@ -2,7 +2,7 @@
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { DCW_DRIVERS, type DcwParamLedger, type DcwTemplateIcon, type LineQueryResult, type RecipeRunData, type RecipeView } from '#shared/dcw-protocol'
-import type { DriverConfigField } from '#shared/daq-protocol'
+import type { DaqDriverCatalogEntry, DriverConfigField } from '#shared/daq-protocol'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
 import { useDaqStream } from '~/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '~/composables/workshop/useDeviceTwins'
@@ -191,7 +191,11 @@ const addTest = ref<{ ok: boolean, message: string } | null>(null)
 const addSaving = ref(false)
 const addError = ref('')
 
-const addDriverMeta = computed(() => DCW_DRIVERS.find(d => d.kind === addDriver.value))
+// 写驱动目录:server 权威(内置 + 协议插件自描述;REST 未返回时回落静态目录)
+const driverCatalog = computed<DaqDriverCatalogEntry[]>(() => dcw.driverCatalog.length
+  ? dcw.driverCatalog
+  : DCW_DRIVERS.map(d => ({ ...d })))
+const addDriverMeta = computed(() => driverCatalog.value.find(d => d.kind === addDriver.value))
 const addFields = computed<DriverConfigField[]>(() => addDriverMeta.value?.configFields ?? [])
 
 function resetAddCfg(): void {
@@ -1132,11 +1136,11 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                 class="inp"
               >
                 <option
-                  v-for="d in DCW_DRIVERS.filter(x => x.status !== 'builtin')"
+                  v-for="d in driverCatalog.filter(x => x.status !== 'builtin')"
                   :key="d.kind"
                   :value="d.kind"
                 >
-                  {{ d.label }}
+                  {{ d.label }}{{ d.plugin ? ' ⌁' : '' }}
                 </option>
               </select>
             </label>

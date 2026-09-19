@@ -27,7 +27,7 @@ import { daqRuntimeSettings } from '../settings'
 import { getSystemConfigService } from '../../system-config'
 import { daqKeyFromRef, normalizeDataTransform, normalizeSignalKind, DAQ_DRIVERS, type AepDaqControllerState, type AepDaqFrame, type AepDaqReading, type AepDaqNodeChange, type DaqDriverKind, type DaqNodeView, type DataTransform, type DriverTestResult } from '../../../../shared/daq-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
-import { normalizeDriverKind, resolveDaqDriver, probeDriverAvailability, listPluginDrivers, type DaqFrameSample } from './drivers'
+import { normalizeDriverKind, resolveDaqDriver, probeDriverAvailability, listPluginDrivers, driverCatalog, type DaqFrameSample } from './drivers'
 import { findDaqTemplate } from './daq-templates'
 import { DaqNode } from './daq-node'
 import { DaqNodeRuntime, type DaqRuntimeHost } from './daq-runtime'
@@ -1216,9 +1216,14 @@ class DaqController {
     return this.testDriver(node.driver, node.driverConfig)
   }
 
-  /** 驱动可用性(meta;包缺失 → planned 提示而非硬失败) */
+  /** 驱动可用性(meta;包缺失 → planned 提示而非硬失败;含插件驱动) */
   async driverAvailability(): Promise<Record<string, boolean>> {
     return probeDriverAvailability()
+  }
+
+  /** 驱动目录(内置 + 插件自描述合并;前端「添加节点」下拉/动态参数表单数据源) */
+  async driverCatalog(): Promise<ReturnType<typeof driverCatalog>> {
+    return driverCatalog()
   }
 
   // ---------- 存量迁移(device-twins kind=daq → DaqNode 幂等供给) ----------

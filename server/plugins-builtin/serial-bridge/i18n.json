@@ -1,0 +1,62 @@
+{
+  "zh-CN": {
+    "panel": {
+      "title": "串口通信(serial-bridge)",
+      "refresh": "刷新",
+      "available": "协议栈就绪(serialport)",
+      "unavailable": "serialport 未安装 —— npm i serialport 后重启服务即恢复",
+      "ports": "系统串口",
+      "noports": "未发现串口设备(插入 USB 转 485/232 后刷新)",
+      "path": "端口",
+      "manufacturer": "厂商",
+      "serialNumber": "序列号",
+      "probe": "连接探针",
+      "probe_hint": "按给定参数开串口读一次(不落库);通过后即可按同参数创建数采/写控节点",
+      "mode": "协议模式",
+      "baud": "波特率",
+      "unit": "从站",
+      "register": "寄存器",
+      "sendLine": "探测行(ASCII)",
+      "run_probe": "测试连接",
+      "probing": "测试中…",
+      "links": "打开的链路",
+      "nolinks": "暂无打开的串口链路(创建串口节点并开始采集后出现)",
+      "link": "链路",
+      "pending": "在途",
+      "errors": "错误",
+      "lastUsed": "最近使用",
+      "nodes": "串口数采节点",
+      "nonodes": "暂无串口数采节点(数采中心 → 添加节点 → 协议选「串口 Serial ⌁」)"
+    }
+  },
+  "en": {
+    "panel": {
+      "title": "Serial Communication (serial-bridge)",
+      "refresh": "Refresh",
+      "available": "Protocol stack ready (serialport)",
+      "unavailable": "serialport not installed — run npm i serialport and restart",
+      "ports": "System serial ports",
+      "noports": "No serial devices found (plug in a USB-RS485/232 adapter and refresh)",
+      "path": "Port",
+      "manufacturer": "Manufacturer",
+      "serialNumber": "Serial No.",
+      "probe": "Connection probe",
+      "probe_hint": "Opens the port and reads once (nothing persisted); once it passes, create DAQ/write nodes with the same parameters",
+      "mode": "Mode",
+      "baud": "Baud",
+      "unit": "Unit",
+      "register": "Register",
+      "sendLine": "Probe line (ASCII)",
+      "run_probe": "Test connection",
+      "probing": "Testing…",
+      "links": "Open links",
+      "nolinks": "No open serial links yet (appears once a serial node starts sampling)",
+      "link": "Link",
+      "pending": "Pending",
+      "errors": "Errors",
+      "lastUsed": "Last used",
+      "nodes": "Serial DAQ nodes",
+      "nonodes": "No serial DAQ nodes yet (DAQ console → Add node → pick \"Serial ⌁\")"
+    }
+  }
+}

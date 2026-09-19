@@ -17,7 +17,7 @@
 import { createLogger } from '../logger'
 import { createRequire } from 'node:module'
 import { encodePng } from './png-enc'
-import type { DaqDriverKind, DriverTestResult } from '../../../../shared/daq-protocol'
+import { DAQ_DRIVERS, type DaqDriverKind, type DriverTestResult } from '../../../../shared/daq-protocol'
 
 const log = createLogger('daq.drivers')
 
@@ -1075,14 +1075,62 @@ function pluginRegistry(): Map<string, DaqDriver> {
   return g_plugins.__daqPluginDrivers ??= new Map()
 }
 
+/**
+ * 插件驱动的自描述目录(前端「添加节点」下拉与动态参数表单的数据源)。
+ * 插件驱动在 DaqDriver 上携带可选 meta(label/status/configFields,与 DaqDriverMeta 同形、
+ * kind 放宽为 string);未带 meta 的插件驱动只在 meta.pluginDrivers 里以 kind 出现,
+ * 前端能感知存在但不出表单(如实降级,不猜测参数 schema)。
+ */
+export interface PluginDriverMeta {
+  kind: string
+  label: string
+  status: 'builtin' | 'real' | 'planned'
+  configFields?: import('../../../../shared/daq-protocol').DriverConfigField[]
+  /** true = 来自插件协议插件(前端展示「插件」徽标) */
+  plugin: true
+}
+
+const g_metas = globalThis as typeof globalThis & { __daqPluginDriverMetas?: Map<string, PluginDriverMeta> }
+function pluginMetaRegistry(): Map<string, PluginDriverMeta> {
+  return g_metas.__daqPluginDriverMetas ??= new Map()
+}
+
 /** 插件驱动注册(kind 与内置冲突时覆盖并告警;resolveDaqDriver 插件优先) */
 export function registerPluginDriver(driver: DaqDriver): void {
   if (driver.kind in REGISTRY) log.warn(`[daq-drivers] 插件驱动覆盖内置:「${driver.kind}」`)
   pluginRegistry().set(driver.kind, driver)
+  const meta = (driver as DaqDriver & { meta?: Omit<PluginDriverMeta, 'kind' | 'plugin'> }).meta
+  if (meta && typeof meta.label === 'string') {
+    pluginMetaRegistry().set(driver.kind, {
+      kind: driver.kind,
+      label: meta.label,
+      status: meta.status === 'builtin' || meta.status === 'planned' ? meta.status : 'real',
+      configFields: Array.isArray(meta.configFields) ? meta.configFields : [],
+      plugin: true,
+    })
+  }
+  else {
+    // 同名驱动重注册(热重载)可能这次不带 meta:旧 meta 一并清除,保持两边一致
+    pluginMetaRegistry().delete(driver.kind)
+  }
 }
 
 export function listPluginDrivers(): string[] {
   return [...pluginRegistry().keys()]
+}
+
+/**
+ * 清空插件驱动与自描述目录(插件宿主热重载前调用):停用/卸载的插件驱动随之失效,
+ * 只有本轮重新装载成功的插件驱动会再注册进来 —— 否则被停用的驱动会一直生效到进程重启。
+ */
+export function clearPluginDrivers(): void {
+  pluginRegistry().clear()
+  pluginMetaRegistry().clear()
+}
+
+/** 插件驱动自描述目录(驱动目录合并端点用;热重载随重注册刷新) */
+export function listPluginDriverMetas(): PluginDriverMeta[] {
+  return [...pluginMetaRegistry().values()]
 }
 
 export function normalizeDriverKind(kind: string): DaqDriverKind {
@@ -1095,16 +1143,43 @@ export function resolveDaqDriver(kind: DaqDriverKind): DaqDriver {
   return pluginRegistry().get(kind) ?? REGISTRY[kind] ?? mockDaqDriver
 }
 
-/** 驱动可用性探测(meta 报告:包缺失时 UI 显示"未安装"而非硬失败) */
+/** 驱动可用性探测(meta 报告:包缺失时 UI 显示"未安装"而非硬失败;含插件驱动) */
 export async function probeDriverAvailability(): Promise<Record<string, boolean>> {
   const out: Record<string, boolean> = {}
-  for (const [kind, drv] of Object.entries(REGISTRY)) {
+  const all: Array<[string, DaqDriver]> = [...Object.entries(REGISTRY), ...pluginRegistry()]
+  for (const [kind, drv] of all) {
     try {
       out[kind] = await drv.available()
     }
     catch {
       out[kind] = false
     }
+  }
+  return out
+}
+
+/**
+ * 驱动目录合并(内置 DAQ_DRIVERS + 插件自描述;同名插件条目覆盖内置并标记 plugin)。
+ * index.get.ts 以 `drivers` 下发,前端据此渲染「添加节点」下拉与动态参数表单。
+ */
+export async function driverCatalog(): Promise<Array<{
+  kind: string
+  label: string
+  status: 'builtin' | 'real' | 'planned'
+  configFields: import('../../../../shared/daq-protocol').DriverConfigField[]
+  plugin?: boolean
+}>> {
+  const out: Array<{ kind: string, label: string, status: 'builtin' | 'real' | 'planned', configFields: import('../../../../shared/daq-protocol').DriverConfigField[], plugin?: boolean }> = DAQ_DRIVERS.map(d => ({
+    kind: d.kind,
+    label: d.label,
+    status: d.status,
+    configFields: d.configFields,
+  }))
+  for (const m of listPluginDriverMetas()) {
+    const i = out.findIndex(d => d.kind === m.kind)
+    const entry = { kind: m.kind, label: m.label, status: m.status, configFields: m.configFields ?? [], plugin: true }
+    if (i >= 0) out[i] = entry
+    else out.push(entry)
   }
   return out
 }

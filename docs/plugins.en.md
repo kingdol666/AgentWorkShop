@@ -210,9 +210,40 @@ async setup(ctx) {
 | Events | `ctx.events.on(type, fn)` / `ctx.events.off(type, fn)` | scene-event sugar: subscribes to `event:<type>` internally (see §7) |
 | Paths | `ctx.paths.home / configRoot / dataDir`; `ctx.dataDir` | `ctx.dataDir` is this plugin's KV folder, `<configRoot>/data/plugins/<plugin>` |
 | DAQ | `ctx.daq.registerDriver / registerProcessor / registerTemplate / onFrame / onSample / query / nodes` | driver, sink-processor and node-template registration + time-series queries + node metadata snapshot |
+| Write control | `ctx.dcw.registerWriteDriver(driver)` | write-driver injection (symmetric to DAQ read drivers): contract `{ kind, available(), write(input), test(cfg), read?(input), meta? }`; disabled plugins lose their drivers on hot reload |
 | Tools | `ctx.omp.registerTool({ name, label?, description, parameters, roles?, handler })` | agent tool injection; `roles` accepts `'lead'` and `'worker'` only (see §10) |
 | Services | `ctx.services.names()` / `.get(name)` / `.provide(name, getter)` | runtime object surface: `get('daq' \| 'lines' \| 'channels' \| 'plugins')`; `provide` auto-prefixes `<plugin>.` |
 | Permissions | `ctx.permissions.lineMode / visibleLineIds / listGrants / setGrants` | line-grant queries and management |
+
+### Communication-protocol plugins (custom interface connections)
+
+`ctx.daq.registerDriver` / `ctx.dcw.registerWriteDriver` are the **protocol plug-in points**: serial
+links, other PLC protocols and private buses all inject here — the main pipelines (sampling loop /
+write gateway / frontend forms) need zero changes.
+
+```js
+ctx.daq.registerDriver({
+  kind: 'serial',                    // custom protocol kind (overriding a builtin logs a warning)
+  async available() { return true }, // protocol-stack probe (missing package → UI shows "not installed")
+  async sample({ driverConfig }) { return 25.3 },   // reading (scalar or v2 frame envelope)
+  async test(driverConfig) { return { ok: true, message: 'connected', sampleValue: 25.3 } },
+  meta: {                            // self-description (frontend "add node" dropdown + dynamic form)
+    label: 'Serial (RS-232/485)',
+    status: 'real',
+    configFields: [{ key: 'path', label: 'Port path', type: 'string', required: true, placeholder: 'COM3' }],
+  },
+})
+```
+
+Key points:
+- The driver catalog is served via the `drivers` field of `GET /api/workshop/daq` (read) and
+  `GET /api/workshop/dcw` (write); the DAQ/DCW pages render plugin protocols and their forms from it
+  (with a ⌁ badge). Drivers registered without `meta` only appear in availability;
+- Hot reload clears all plugin drivers first, then re-loads: **disabled/unloaded protocol drivers
+  take effect immediately upon removal** and never linger until restart;
+- Builtin example: `server/plugins-builtin/serial-bridge` (serial Modbus RTU + ASCII line protocol,
+  with read/write drivers, `health`/`ports`/`probe` APIs, a frontend panel and the `serial_ports`
+  agent tool) — use it as the template for new protocol plugins.
 
 ### Where KV lives
 
@@ -524,6 +555,7 @@ export default {
 - **A newly enabled browser plugin injects within 15 s** (instantly when the WS channel is up).
 - **`server:close` / `onDispose` depend on graceful shutdown signals**; a forced kill on Windows does not trigger them.
 - **`aw plugin list` only scans directories** — it reflects neither load failures nor runtime health.
+- **Protocol plugins share the host process with their native stacks**: serial-bridge's RTU framing is a self-contained implementation (single serialport native stack; modbus-serial is deliberately NOT used — its wrapper reproducibly crashed under dev mode). Known boundary: **inside the `aw dev` process, a serial transaction that ends in write → timeout → close can trigger a native V8 crash in `bindings-cpp`** (HandleScope fatal — not catchable in JS, regardless of which port is used); **production mode (`aw start`) is unaffected — the exact same sequence was verified live to return an honest timeout with the server healthy**, and open-only probes are also fine under dev. Connect real hardware during development with this in mind; for hardened deployments, run the serial gateway in its own process (see the plc-node-simulator child-process pattern).
 
 ## 13. Pre-release checklist
 

@@ -534,6 +534,24 @@ async function loadAllPlugins(host, { config, paths }) {
           return m.getDaqNodeRepo().snapshot()
         },
       }
+      // DCW 写驱动扩展面:与 daq.registerDriver 对称(排队桥 globalThis.__dcwPluginExt,
+      // dcw-controller 侧 plugin-bridge 接管回放)。写驱动契约见 server/services/workshop/dcw/drivers.ts。
+      const dcwExt = (globalThis.__dcwPluginExt ??= {
+        pendingDrivers: [],
+        registerWriteDriver(d) {
+          this.pendingDrivers.push(d)
+          this._drain?.()
+        },
+        drain(onDriver) {
+          this._drain = () => {
+            for (const d of this.pendingDrivers.splice(0)) onDriver(d)
+          }
+          this._drain()
+        },
+      })
+      ctx.dcw = {
+        registerWriteDriver: d => dcwExt.registerWriteDriver(d),
+      }
       // OMP 工具扩展面:插件注册自定义 host 工具 → omp 会话运行时热注入
       const ompExt = (globalThis.__ompPluginToolsBridge ??= {
         pending: [],
@@ -697,6 +715,18 @@ async function doReload(host) {
     }
   }
   const prevNames = [...host.plugins.keys()]
+  // 插件注册的协议驱动(数采读 + 写控)先清空:停用/卸载的插件驱动立即失效,
+  // 本轮装载成功的插件经 ctx.daq/ctx.dcw 重新注册(同名幂等)。
+  try {
+    const daqDrivers = await import('@/server/services/workshop/daq/drivers')
+    daqDrivers.clearPluginDrivers()
+  }
+  catch { /* daq 未装载(桥排队中):注册表为空,无需清 */ }
+  try {
+    const dcwDrivers = await import('@/server/services/workshop/dcw/drivers')
+    dcwDrivers.clearPluginWriteDrivers()
+  }
+  catch { /* dcw 未装载:同上 */ }
   // 工具注销延后:先装载新集、后清「本轮未再装载」的旧插件工具。
   // 原先在装载前就全部注销 → 重载窗口内(秒级~数十秒)所有插件工具"未知工具",
   // 期间到达的 Agent 工具调用(daq:sample 自动诊断/kb_store 等)被误拒

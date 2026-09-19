@@ -6,6 +6,7 @@ import { filterByLine, isPrivilegedRole, visibleLineIds } from '@/server/service
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { listDcwTemplates } from '@/server/services/workshop/dcw/dcw-templates'
+import { dcwDriverCatalog } from '@/server/services/workshop/dcw/drivers'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 
 export default defineApiHandler(async (event) => {
@@ -28,6 +29,8 @@ export default defineApiHandler(async (event) => {
     /** 工艺参数映射面(用户/Agent 的参数语义读写面;PLC 寻址细节不透出) */
     params: visible ? ctrl.listParamViews().filter(p => inLine(p.lineId)) : ctrl.listParamViews(),
     templates: listDcwTemplates(),
+    // 写驱动目录(内置 + 协议插件自描述合并;前端写控节点向导同源消费)
+    drivers: await dcwDriverCatalog(),
     recipes: visible ? ctrl.listRecipes().filter(r => inLine(r.lineId)) : ctrl.listRecipes(),
     runs: visible ? ctrl.listRuns().filter(r => inLine(r.lineId)) : ctrl.listRuns(),
     history: visible

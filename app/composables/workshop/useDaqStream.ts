@@ -10,7 +10,7 @@ import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
 import { apiFetch } from './apiClient'
 import type { AepEnvelope } from '#shared/workshop-protocol'
-import { DAQ_TEMPLATES, type AepDaqControllerState, type AepDaqFrame, type AepDaqReading, type AepDaqNodeChange, type AepDaqTemplateChange, type DaqNodeView, type DaqTemplateDef, type DaqTemplateInput } from '#shared/daq-protocol'
+import { DAQ_TEMPLATES, DAQ_DRIVERS, type AepDaqControllerState, type AepDaqFrame, type AepDaqReading, type AepDaqNodeChange, type AepDaqTemplateChange, type DaqDriverCatalogEntry, type DaqNodeView, type DaqTemplateDef, type DaqTemplateInput } from '#shared/daq-protocol'
 
 /** 历史缓冲长度(1s 默认周期 ≈ 最近 5 分钟趋势) */
 const HIST_CAP = 60
@@ -57,7 +57,8 @@ interface DaqControllerState {
 interface DaqBackendMeta {
   tsdb: string
   queue: string
-  drivers: Array<{ kind: string, label: string, status: 'builtin' | 'planned' | 'real' }>
+  /** 驱动目录(REST `drivers` 权威收敛:内置 + 协议插件自描述;首帧先用内置目录) */
+  drivers: DaqDriverCatalogEntry[]
   produced: number
   consumed: number
   dropped: number
@@ -110,7 +111,7 @@ const createStore = () => {
   const alarms = reactive<DaqAlarmRow[]>([]) // S5:未确认报警(轮询 + ack 后刷新)
   const controller = reactive<DaqControllerState>({ running: true, defaultIntervalMs: 1000, defaultPublishIntervalMs: 0, queryDisplayIntervalMs: 5000, nodesTotal: 0, nodesOnline: 0 })
   const meta = reactive<DaqBackendMeta>({
-    tsdb: '…', queue: '…', drivers: [], driverAvailable: {},
+    tsdb: '…', queue: '…', drivers: DAQ_DRIVERS.map(d => ({ kind: d.kind, label: d.label, status: d.status, configFields: d.configFields })), driverAvailable: {},
     infra: undefined,
     produced: 0, consumed: 0, dropped: 0, samplesStored: 0,
   })
@@ -266,7 +267,7 @@ const createStore = () => {
 
   async function load(): Promise<void> {
     try {
-      const data = await api<{ controller: DaqControllerState, nodes: DaqNodeView[], meta: DaqBackendMeta, driverAvailable?: Record<string, boolean>, infra?: DaqInfraState, templates?: DaqTemplateDef[] }>('')
+      const data = await api<{ controller: DaqControllerState, nodes: DaqNodeView[], meta: DaqBackendMeta, driverAvailable?: Record<string, boolean>, drivers?: DaqDriverCatalogEntry[], infra?: DaqInfraState, templates?: DaqTemplateDef[] }>('')
       // 快照合并:hist 是客户端读数流资产,轮询重载不得清零;
       // 已有节点就地 assign(保留对象身份 → Vue 只补丁变化字段,不触发整表数组级失效),hist 自然保留
       const prev = new Map(nodes.map(n => [n.id, n]))
@@ -291,6 +292,8 @@ const createStore = () => {
       Object.assign(controller, data.controller)
       Object.assign(meta, data.meta ?? {})
       meta.driverAvailable = data.driverAvailable ?? {}
+      // 驱动目录 server 权威(含协议插件);server 未下发(旧版)时保留内置目录
+      if (data.drivers?.length) meta.drivers = data.drivers
       meta.infra = data.infra
       if (data.templates?.length) applyTemplates(data.templates)
       store.loaded = true

@@ -207,9 +207,36 @@ async setup(ctx) {
 | 事件 | `ctx.events.on(type, fn)` / `ctx.events.off(type, fn)` | scene 实时事件糖:内部订阅 `event:<type>`(见 §7) |
 | 路径 | `ctx.paths.home / configRoot / dataDir`;`ctx.dataDir` | `ctx.dataDir` 即本插件 KV 目录 `<配置根>/data/plugins/<插件名>` |
 | 数采 | `ctx.daq.registerDriver / registerProcessor / registerTemplate / onFrame / onSample / query / nodes` | 驱动、下沉处理器、节点模板注册 + 时序查询 + 节点元数据快照 |
+| 写控 | `ctx.dcw.registerWriteDriver(driver)` | 写驱动注入(与数采读驱动对称):契约 `{ kind, available(), write(input), test(cfg), read?(input), meta? }`;热重载停用即失效 |
 | 工具 | `ctx.omp.registerTool({ name, label?, description, parameters, roles?, handler })` | Agent 工具注入;`roles` 仅 `'lead'` 与 `'worker'`(见 §10) |
 | 服务 | `ctx.services.names()` / `.get(name)` / `.provide(name, getter)` | 运行时对象面:`get('daq' \| 'lines' \| 'channels' \| 'plugins')`;`provide` 自动加 `<插件名>.` 前缀 |
 | 权限 | `ctx.permissions.lineMode / visibleLineIds / listGrants / setGrants` | 产线授权查询与管理 |
+
+### 通信协议插件(自定义接口连接方式)
+
+`ctx.daq.registerDriver` / `ctx.dcw.registerWriteDriver` 是**协议接入点**:串口、其他 PLC 协议、
+私有总线的连接实现都从这里注入,主链路(采样循环 / 写控网关 / 前端表单)零改动。
+
+```js
+ctx.daq.registerDriver({
+  kind: 'serial',                    // 自定义协议 kind(与内置冲突时插件覆盖并告警)
+  async available() { return true }, // 协议栈包探测(缺失时 UI 显示「未安装」)
+  async sample({ driverConfig }) { return 25.3 },   // 读数(标量或 v2 帧信封)
+  async test(driverConfig) { return { ok: true, message: '连接成功', sampleValue: 25.3 } },
+  meta: {                            // 自描述(前端「添加节点」下拉 + 动态参数表单)
+    label: '串口 Serial(RS-232/485)',
+    status: 'real',
+    configFields: [{ key: 'path', label: '串口路径', type: 'string', required: true, placeholder: 'COM3' }],
+  },
+})
+```
+
+要点:
+- 驱动目录经 `GET /api/workshop/daq`(读)与 `GET /api/workshop/dcw`(写)的 `drivers` 字段下发,
+  前端数采/写控页据此渲染插件协议与参数表单(带 ⌁ 徽标);不带 `meta` 的驱动只出现在可用性里;
+- 热重载先清空全部插件驱动再重装载:**停用/卸载的协议驱动立即失效**,不会残留到重启;
+- 内置示例:`server/plugins-builtin/serial-bridge`(串口 Modbus RTU + ASCII 行协议,含读/写驱动、
+  `health`/`ports`/`probe` API、前端面板与 `serial_ports` Agent 工具)——新协议插件建议以它为模板。
 
 ### KV 落在哪里
 
@@ -521,6 +548,7 @@ export default {
 - **浏览器新启用插件注入延迟 ≤15s**(WS 可用时即时)。
 - **`server:close` / `onDispose` 依赖优雅关闭信号**,Windows 强杀进程不触发。
 - **`aw plugin list` 只做目录扫描**,不反映装载失败与运行态健康。
+- **协议插件的原生栈与宿主同进程**:serial-bridge 的 RTU 帧机为自研实现(单 serialport 原生栈;弃用 modbus-serial —— 其包装层在 dev 模式实测触发 V8 原生崩溃)。已知边界:**`aw dev` 进程内,串口事务「写→超时→关闭」序列可能触发 bindings-cpp 的 V8 原生崩溃**(HandleScope fatal,JS 层不可捕获,与具体串口无关);**生产模式(`aw start`)不受影响 —— 已实测同一序列在生产下诚实返回超时且服务存活**,纯打开(ASCII 探针)在 dev 下同样正常。开发期连接真实硬件请知悉此风险;对稳定性要求极高的部署可把串口网关放进独立进程(参考 plc-node-simulator 的子进程模式)。
 
 ## 十三、发布前验证清单
 

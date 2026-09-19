@@ -9,7 +9,7 @@ import { useRoute } from 'vue-router'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useDaqStream, type DaqFrameLive, type DaqTsdbPoint } from '@/app/composables/workshop/useDaqStream'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
-import { daqKeyFromRef, DAQ_DRIVERS, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult } from '#shared/daq-protocol'
+import { daqKeyFromRef, DAQ_DRIVERS, type DaqDriverCatalogEntry, type DaqDriverKind, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult } from '#shared/daq-protocol'
 
 const { t } = useI18n()
 
@@ -129,9 +129,13 @@ watch(node, (n) => {
 }, { immediate: true })
 
 // 驱动连接参数编辑(真实协议:host/register/endpoint...;schema 驱动渲染)
+// 驱动目录:server 权威(内置 + 协议插件自描述;REST 未返回时回落静态目录)
+const driverCatalog = computed<DaqDriverCatalogEntry[]>(() => daq.meta.drivers.length
+  ? daq.meta.drivers
+  : DAQ_DRIVERS.map(d => ({ ...d })))
 const driverCfg = ref<Record<string, string | number>>({})
 const driverFields = computed<DriverConfigField[]>(() =>
-  DAQ_DRIVERS.find(d => d.kind === form.driver)?.configFields ?? [])
+  driverCatalog.value.find(d => d.kind === form.driver)?.configFields ?? [])
 watch(node, (n) => {
   if (n) driverCfg.value = { ...(n.driverConfig as Record<string, string | number>) }
 }, { immediate: true })
@@ -508,12 +512,12 @@ watch(effectiveRefreshMs, () => armHistTimer())
               class="input"
             >
               <option
-                v-for="d in DAQ_DRIVERS"
+                v-for="d in driverCatalog"
                 :key="d.kind"
                 :value="d.kind"
                 :disabled="d.status === 'planned'"
               >
-                {{ d.label }}{{ d.status === 'planned' ? $t('daqDetail.kz8zr9v035') : '' }}
+                {{ d.label }}{{ d.plugin ? ' ⌁' : '' }}{{ d.status === 'planned' ? $t('daqDetail.kz8zr9v035') : '' }}
               </option>
             </select>
           </label>
@@ -655,7 +659,7 @@ watch(effectiveRefreshMs, () => armHistTimer())
         <!-- 驱动连接参数(mock 空;真实协议 schema 动态表单 + 测试连接) -->
         <template v-if="driverFields.length">
           <h3 class="sec mt">
-            {{ $t('daqDetail.k1p9gioa033') }} {{ DAQ_DRIVERS.find(d => d.kind === form.driver)?.label }}
+            {{ $t('daqDetail.k1p9gioa033') }} {{ driverCatalog.find(d => d.kind === form.driver)?.label }}
           </h3>
           <div class="driver-grid">
             <label

@@ -9,7 +9,7 @@ import { message } from 'ant-design-vue'
 import { useDaqStream, type DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
-import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqNodeView, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
+import { DAQ_TEMPLATES, DAQ_DRIVERS, DAQ_TEMPLATE_ICONS, daqKeyFromRef, type DaqDriverCatalogEntry, type DaqNodeView, type DaqNodeState, type DriverConfigField, type DriverTestResult as DaqDriverTestResult, type DaqTemplateDef, type DaqTemplateIcon } from '#shared/daq-protocol'
 import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 import { useOpsLog } from '@/app/composables/workshop/useOpsLog'
 import { useVisibleInterval } from '@/app/composables/workshop/useVisibleInterval'
@@ -353,7 +353,10 @@ const addTest = ref<DaqDriverTestResult | null>(null)
 const addSaving = ref(false)
 const addError = ref('')
 
-const addDriverMeta = computed(() => DAQ_DRIVERS.find(d => d.kind === addDriver.value))
+// 驱动目录:server 权威(内置 + 协议插件自描述;REST 未返回时回落静态目录)
+const driverCatalog = computed<DaqDriverCatalogEntry[]>(() =>
+  daq.meta.drivers.length ? daq.meta.drivers : DAQ_DRIVERS.map(d => ({ ...d })))
+const addDriverMeta = computed(() => driverCatalog.value.find(d => d.kind === addDriver.value))
 const addFields = computed<DriverConfigField[]>(() => addDriverMeta.value?.configFields ?? [])
 const driverReady = (kind: string): boolean =>
   daq.meta.drivers.find(d => d.kind === kind)?.status !== 'planned' && (daq.meta.driverAvailable?.[kind] !== false)
@@ -841,11 +844,11 @@ async function doReconnect(): Promise<void> {
                 class="inp"
               >
                 <option
-                  v-for="d in DAQ_DRIVERS.filter(x => x.status !== 'planned')"
+                  v-for="d in driverCatalog.filter(x => x.status !== 'planned')"
                   :key="d.kind"
                   :value="d.kind"
                 >
-                  {{ d.label }}{{ driverReady(d.kind) ? '' : $t('daq.kjbqphp098') }}
+                  {{ d.label }}{{ d.plugin ? ' ⌁' : '' }}{{ driverReady(d.kind) ? '' : $t('daq.kjbqphp098') }}
                 </option>
               </select>
             </label>

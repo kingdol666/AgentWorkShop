@@ -11,9 +11,10 @@
 
 import { randomUUID } from 'node:crypto'
 import { applyTransform, inverseTransform, normalizeDataTransform, dcwKeyFromRef } from '../../../../shared/dcw-protocol'
-import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, DcwParamView, DataTransform, LineInput, LineQueryOpts, LineQueryResult, LineRunState, LineView, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView, DcwWriteMeta } from '../../../../shared/dcw-protocol'
+import type { AepDcwNodeChange, DcwDriverKind, DcwNodeView, DcwParamInput, DcwParamView, DataTransform, LineInput, LineQueryOpts, LineQueryResult, LineRunState, LineView, ProductInput, ProductView, RecipeInput, RecipeRunView, RecipeView, DcwWriteMeta } from '../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { normalizeDcwDriverKind, resolveDcwDriver } from './drivers'
+import { attachDcwPluginBridge } from './plugin-bridge'
 import { findDcwTemplate } from './dcw-templates'
 import { getDeviceTwinRepo } from '../assets/device-twin.repo'
 import { DcwNode } from './dcw-node'
@@ -33,6 +34,9 @@ import { daqRuntimeSettings } from '../settings'
 
 /** 运维日志写下发防噪:同节点同值 10s 内的心跳重下发不重复入册 */
 const opsWriteMemo = new Map<string, { eng: number, at: number }>()
+
+// 写驱动插件桥(模块装载即挂;插件宿主先到则注册项排队、此处接管回放)
+attachDcwPluginBridge()
 
 /** 周期读网关默认间隔(节点 readIntervalMs=null 时生效;真实 PLC 建议按链路承载调整) */
 const DEFAULT_READ_INTERVAL_MS = 5000

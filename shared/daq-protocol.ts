@@ -351,6 +351,21 @@ export const DAQ_DRIVERS: DaqDriverMeta[] = [
 export const daqDriverMeta = (kind: DaqDriverKind): DaqDriverMeta | undefined =>
   DAQ_DRIVERS.find(d => d.kind === kind)
 
+/**
+ * 驱动目录条目(GET /api/workshop/daq `drivers` 字段):内置 DAQ_DRIVERS 与
+ * 协议插件自描述(ctx.daq.registerDriver 携带的 meta)合并后的统一形态。
+ * kind 放宽为 string —— 插件可注册任意自定义协议 kind。
+ */
+export interface DaqDriverCatalogEntry {
+  kind: string
+  label: string
+  status: 'builtin' | 'real' | 'planned'
+  /** 连接参数表单 schema(前端动态渲染;插件驱动经 meta.configFields 自描述) */
+  configFields: DriverConfigField[]
+  /** true = 来自协议插件(前端展示「插件」徽标;热重载/停用随宿主收敛) */
+  plugin?: boolean
+}
+
 /** 连接测试结果(REST/前端向导共用) */
 export interface DriverTestResult {
   ok: boolean
