@@ -9,13 +9,15 @@ import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
 // packageRoot = 本包根。nitro 打包后 import.meta.url 位于 .output/server/chunks/ 内,
-// '..','..' 解析到 .output(不含源码);内置插件目录以「真实存在」为准逐级探测:
-// 包根(源码运行)→ .output 上一级(repo 部署,源码同树)→ cwd。
-const candidates = [
-  resolve(dirname(fileURLToPath(import.meta.url)), '..', '..'),
-  resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..'),
-  process.cwd(),
-]
+// 且 chunk 相对包根的层级随 nitro 版本变化(如 chunks/build/xxx.mjs 比源码布局深一层),
+// 固定 2/3 级上溯在**全局安装布局**(node_modules/agentworkshop/)下探测不到包根,
+// builtin 插件会全部失踪。改为从 chunk 目录逐级上溯(上限 8 级 ≫ 任何已知布局),
+// 以「server/plugins-builtin 真实存在」为命中判据;最后兜底 cwd(源码运行)。
+const candidates: string[] = []
+for (let dir = dirname(fileURLToPath(import.meta.url)), i = 0; i < 8; i++, dir = dirname(dir)) {
+  candidates.push(dir)
+}
+candidates.push(process.cwd())
 const packageRoot = candidates.find(r => existsSync(resolve(r, 'server', 'plugins-builtin'))) ?? process.cwd()
 
 export default defineNitroPlugin((nitroApp) => {
