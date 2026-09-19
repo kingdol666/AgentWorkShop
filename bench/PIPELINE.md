@@ -101,7 +101,13 @@
        读数→分析→查历史→自定参数下发→复测→迭代，直到达标，再把最佳工艺用
        recipe_update 版本化存入配方。两者完整执行轨迹分别落
        `bench/results/<runId>/agent-loop-<harness>.log` 与 `agent-goal-loop-<harness>.log`；
-     产物: bench/results/<runId>/{run.json, summary.json, report.md, dashboard.html, metrics.csv}
+     报告专章(本版新增,论文 exp 直接引用):
+       report.md 内含 **Simulated production line profile**(模拟产线画像:场景工艺叙事、
+       每台 PLC 的协议与端点、SP 可调控参数/PV 过程量全清单含单位/量程/精度/策略、
+       平台侧 DCW/DAQ 节点映射)与 **AgentTeam closed-loop tuning walkthrough**
+       (组队→绑定→目标下达→逐轮调优轨迹表 biax/P6→治理写与拒绝→收口)两章;
+       line-profile.json 为同一画像的机器可读版。
+     产物: bench/results/<runId>/{run.json, summary.json, report.md, dashboard.html, metrics.csv, line-profile.json}
 
   ③ 真实协议层（约 1–2 分钟）——能力评分面板（含 F2 冻结报警、断链恢复）
      node bench/run.mjs --tier plc --seed 42
@@ -158,7 +164,7 @@
 ────────────────────────────────────────────────────────────────
   每次运行落在 bench/results/<runId>/（UTC 时间戳命名，永不覆盖）:
     run.mjs 层   → run.json / report.md / report.html / config-hash.txt
-    pipeline 层  → run.json / summary.json / report.md / report.html / dashboard.html / metrics.csv / render-manifest.json / agentteam-mission.log / agentteam-biax.log（--agent 时另有 agent-loop-<harness>.log；report.* 由 bench/lib/report-template.mjs 模板生成,可用 bench/tools/render-bench-report.mjs 重渲）
+    pipeline 层  → run.json / summary.json / report.md / report.html / dashboard.html / metrics.csv / line-profile.json / render-manifest.json / agentteam-mission.log / agentteam-biax.log（--agent 时另有 agent-loop-<harness>.log；report.* 由 bench/lib/report-template.mjs 模板生成,可用 bench/tools/render-bench-report.mjs 重渲）
     e1-lite 层   → run.json / e1-lite.csv / report.md / report.html / figure-*.svg
     compare 层   → compare-*.md（写进 bench/results/ 根）
   交付物 = 各层的 report.md + report.html（或 dashboard.html）。

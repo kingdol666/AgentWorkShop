@@ -27,6 +27,7 @@ import { p50, p95, mean, rate, r3, toCsv, makeMetricBag } from './lib/metrics.mj
 import { renderDashboard, barChart } from './lib/dashboard.mjs'
 import { recipeLifecycle, nodeRollback, optimizationLifecycle, hitlApproval, paramLedger, auditSurfaces } from './lib/governance.mjs'
 import { provisionTwinLine, startTwinBatch, runClosedLoop, offlineOptimum, CASTFILM_ACTUATORS, START_POINT } from './lib/closedloop.mjs'
+import { collectLineProfile } from './lib/line-profile.mjs'
 import { ensureBiaxLine, provisionBiaxLine, waitBiaxSamples, runBiaxMission } from './lib/biax.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -1451,8 +1452,31 @@ const kpis = [
   { label: 'Verdict', value: fail || phaseFailN ? 'FAIL' : 'PASS', unit: '', note: `${pass}/${pass + warn + fail} checks · hard gate ${fail || phaseFailN ? 'tripped' : 'green'}`, tone: fail || phaseFailN ? 'bad' : 'good' },
 ]
 
+// ── 模拟产线画像 + AgentTeam 闭环调优全过程(报告专章,论文 exp 直接引用)──
+const lineProfile = await collectLineProfile({ preset: simPreset ?? env.preset, api }).catch((e) => ({ error: String(e?.message ?? e).slice(0, 160) }))
+writeText(join(outDir, 'line-profile.json'), JSON.stringify(lineProfile, null, 2))
+const agentteam = {
+  biax: {
+    traj: biax?.mission?.traj ?? [],
+    writes: biax?.mission?.writes ?? null,
+    distinctKnobs: biax?.mission?.distinctNodes?.size ?? null,
+    records: biax?.mission?.records?.length ?? null,
+    final: biax?.mission?.thickness != null ? Number((Math.abs(Number(biax.mission.thickness) - 25)).toFixed(2)) : null,
+  },
+  cl: {
+    seeds: (cl.seeds ?? []).map(s => ({
+      seed: s.seed,
+      traj: (s.traj ?? []).map(t => ({ iter: t.iter, thickness: t.thickness, defect: t.defect, pressure: t.pressure, meltTemp: t.meltTemp, screw: t.screw, lineSpeed: t.lineSpeed, zone: t.zone, J: t.J, wallS: t.wallS })),
+      stats: s.stats,
+      ratio: s.ratio,
+    })),
+  },
+}
+
 writeJson(join(outDir, 'run.json'), {
   env, phases, checks, lines, kpis, metrics: bag.all(),
+  lineProfile,
+  agentteam,
   closedloop: cl.agg
     ? {
         writeMode: cl.writeMode, agg: cl.agg,
@@ -1550,7 +1574,7 @@ const chartsHtml = [
 
 // ── 论文级英文报告模板（bench/lib/report-template.mjs，设计推导见 lib/direction-notes.md）──
 const benchArtifacts = collectArtifacts(outDir, [
-  'agentteam-mission.log', 'agentteam-biax.log',
+  'agentteam-mission.log', 'agentteam-biax.log', 'line-profile.json',
   'agent-loop-omp.log', 'agent-loop-opencode.log', 'agent-loop-codex.log',
   'agent-goal-loop-omp.log', 'agent-goal-loop-opencode.log', 'agent-goal-loop-codex.log',
   'metrics.csv', 'run.json', 'summary.json',
@@ -1558,13 +1582,13 @@ const benchArtifacts = collectArtifacts(outDir, [
 writeText(join(outDir, 'report.md'), renderBenchmarkMd({
   env, phases, checks, kpis, metrics: bag.all(),
   closedloop: cl.agg ? { writeMode: cl.writeMode, agg: cl.agg, seeds: cl.seeds } : null,
-  artifacts: benchArtifacts,
+  artifacts: benchArtifacts, lineProfile, agentteam,
 }))
 writeText(join(outDir, 'report.html'), renderBenchmarkHtml({
   env, phases, checks, kpis, metrics: bag.all(),
   closedloop: cl.agg ? { writeMode: cl.writeMode, agg: cl.agg, seeds: cl.seeds } : null,
   charts: chartsHtml,
-  artifacts: benchArtifacts,
+  artifacts: benchArtifacts, lineProfile, agentteam,
 }))
 writeText(join(outDir, 'dashboard.html'), renderDashboard({
   env, phases, kpis, lines, checks, metrics: bag.all(),

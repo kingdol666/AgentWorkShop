@@ -7,6 +7,7 @@
  * 自带 @media print 样式可直接作为论文附图输出。设计推导见同目录 direction-notes.md。
  */
 import { statSync } from 'node:fs'
+import { renderLineProfileMd, renderAgentTeamMd } from './line-profile.mjs'
 import { join } from 'node:path'
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
@@ -28,14 +29,15 @@ export function collectArtifacts(outDir, names) {
 const HUMANIZE = {
   'agentteam-mission.log': 'AgentTeam optimization mission — full task-board trajectory',
   'agentteam-biax.log': 'AgentTeam biax multi-node mission — full trajectory',
+  'line-profile.json': 'Simulated line profile — devices, protocols, endpoints, SP/PV signal inventory, AW node mapping',
   'metrics.csv': 'Quantitative metrics registry (flat CSV)',
-  'run.json': 'Full machine-readable results (checks, phases, evidence, KPIs)',
+  'run.json': 'Full machine-readable results (checks, phases, evidence, KPIs, line profile, agent-team traces)',
   'summary.json': 'Verdict + KPI + per-line summary (compare/aggregate input)',
 }
 
 // ─────────────────────────── HTML ───────────────────────────
 
-export function renderBenchmarkHtml({ env, phases, checks, kpis, metrics, closedloop, charts, artifacts }) {
+export function renderBenchmarkHtml({ env, phases, checks, kpis, metrics, closedloop, charts, artifacts, lineProfile, agentteam }) {
   const byPhase = new Map()
   for (const c of checks) if (!byPhase.has(c.phase)) byPhase.set(c.phase, [])
   for (const c of checks) byPhase.get(c.phase).push(c)
@@ -336,7 +338,7 @@ ${closedloop?.agg
 
 // ─────────────────────────── Markdown ───────────────────────────
 
-export function renderBenchmarkMd({ env, phases, checks, kpis, metrics, closedloop, artifacts }) {
+export function renderBenchmarkMd({ env, phases, checks, kpis, metrics, closedloop, artifacts, lineProfile, agentteam }) {
   const byPhase = new Map()
   for (const c of checks) {
     if (!byPhase.has(c.phase)) byPhase.set(c.phase, [])
@@ -401,6 +403,8 @@ export function renderBenchmarkMd({ env, phases, checks, kpis, metrics, closedlo
   L.push('|---|---:|---|')
   for (const k of kpis) L.push(`| ${k.label} | ${k.value}${k.unit ? ' ' + k.unit : ''} | ${k.note ?? ''} |`)
   L.push('')
+  // 模拟产线画像:场景/协议/节点/信号量程 + 平台侧节点映射(供论文 exp 与复现者引用)
+  for (const l of renderLineProfileMd(lineProfile)) L.push(l)
   L.push('## Phase scorecard (weighted)')
   L.push('')
   L.push('| Phase | Title | Pass | Warn | Fail | Skip | Score | Weight |')
@@ -418,6 +422,8 @@ export function renderBenchmarkMd({ env, phases, checks, kpis, metrics, closedlo
     }
     L.push('')
   }
+  // AgentTeam 闭环调优全过程:组队/绑定/目标/逐轮轨迹/治理事件
+  for (const l of renderAgentTeamMd(agentteam)) L.push(l)
   L.push('## Execution artifacts (Agent-team trajectory archive)')
   L.push('')
   L.push('| Artifact | Size | Contents |')
