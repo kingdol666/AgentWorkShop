@@ -1407,29 +1407,29 @@ const daq = useDaqStream()
 /** 智控流单例(写控制;与数采对称:模板目录/节点/场景/绑定) */
 const dcw = useDcwStream()
 /** 智控模板目录(server 权威;与 daqTemplates 同构投影) */
-const dcwTemplates = reactive(dcw.templates.map(t => ({
-  id: t.key,
-  name: t.name,
-  code: t.code,
-  ch: t.ch,
-  unit: t.unit,
-  min: t.min,
-  max: t.max,
-  decimals: t.decimals,
-  icon: t.icon,
+const dcwTemplates = reactive(dcw.templates.map(tpl => ({
+  id: tpl.key,
+  name: catalogTplName(t, tpl),
+  code: tpl.code,
+  ch: tpl.ch,
+  unit: tpl.unit,
+  min: tpl.min,
+  max: tpl.max,
+  decimals: tpl.decimals,
+  icon: tpl.icon,
 })))
 watch(() => dcw.templates, (list) => {
   if (!list?.length) return
-  dcwTemplates.splice(0, dcwTemplates.length, ...list.map(t => ({
-    id: t.key,
-    name: t.name,
-    code: t.code,
-    ch: t.ch,
-    unit: t.unit,
-    min: t.min,
-    max: t.max,
-    decimals: t.decimals,
-    icon: t.icon,
+  dcwTemplates.splice(0, dcwTemplates.length, ...list.map(tpl => ({
+    id: tpl.key,
+    name: catalogTplName(t, tpl),
+    code: tpl.code,
+    ch: tpl.ch,
+    unit: tpl.unit,
+    min: tpl.min,
+    max: tpl.max,
+    decimals: tpl.decimals,
+    icon: tpl.icon,
   })))
 }, { immediate: true, deep: true })
 /** 左轨树形目录:模板 = 可展开分组(不可拖拽),节点 = 可拖入场景的叶子。
@@ -1523,33 +1523,33 @@ interface DaqTemplate {
   /** 图标(设计稿 ICONS 键) */
   icon: string
 }
-const daqTemplates = reactive<DaqTemplate[]>(DAQ_TEMPLATES.map(t => ({
-  id: t.key,
-  name: t.name,
-  code: t.code,
-  ch: t.ch,
-  unit: t.unit,
-  base: t.base,
-  amp: t.amp,
-  min: t.min,
-  max: t.max,
-  decimals: t.decimals,
-  icon: t.icon,
+const daqTemplates = reactive<DaqTemplate[]>(DAQ_TEMPLATES.map(tpl => ({
+  id: tpl.key,
+  name: catalogTplName(t, tpl),
+  code: tpl.code,
+  ch: tpl.ch,
+  unit: tpl.unit,
+  base: tpl.base,
+  amp: tpl.amp,
+  min: tpl.min,
+  max: tpl.max,
+  decimals: tpl.decimals,
+  icon: tpl.icon,
 })))
 watch(() => daq.templates, (list) => {
   if (!list?.length) return
-  daqTemplates.splice(0, daqTemplates.length, ...list.map(t => ({
-    id: t.key,
-    name: t.name,
-    code: t.code,
-    ch: t.ch,
-    unit: t.unit,
-    base: t.base,
-    amp: t.amp,
-    min: t.min,
-    max: t.max,
-    decimals: t.decimals,
-    icon: t.icon,
+  daqTemplates.splice(0, daqTemplates.length, ...list.map(tpl => ({
+    id: tpl.key,
+    name: catalogTplName(t, tpl),
+    code: tpl.code,
+    ch: tpl.ch,
+    unit: tpl.unit,
+    base: tpl.base,
+    amp: tpl.amp,
+    min: tpl.min,
+    max: tpl.max,
+    decimals: tpl.decimals,
+    icon: tpl.icon,
   })))
 }, { immediate: true, deep: true })
 const daqTplById = (ref: string): DaqTemplate | undefined => {
@@ -2969,7 +2969,7 @@ onBeforeUnmount(() => {
         <button
           class="nav-action"
           :disabled="mode !== 'edit'"
-          :title="mode === 'edit' ? '把全部设备的位置/朝向/缩放写入数据库' : '运行模式只读'"
+          :title="mode === 'edit' ? $t('townView.saveLayoutTip') : $t('townView.readonlyTip')"
           @click="saveLayout"
         >
           {{ $t('townView.k1b3bk8t029') }}
@@ -3051,7 +3051,7 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="sheet-x"
-            aria-label="关闭"
+            :aria-label="$t('common.close')"
             @click="closeSheet"
           >
             ✕
@@ -3075,7 +3075,7 @@ onBeforeUnmount(() => {
             <button
               class="daq-ctl-btn"
               :class="{ on: daq.controller.running }"
-              :title="daq.controller.running ? '暂停全部采集:停止所有启用节点的采样(节点级启停独立)' : '恢复全部采集:仅启用节点恢复采集(手动停用的保持停用)'"
+              :title="daq.controller.running ? $t('townView.daqPauseTip') : $t('townView.daqResumeTip')"
               @click="daq.controllerAction(daq.controller.running ? 'pause' : 'resume')"
             >
               {{ daq.controller.running ? $t('townView.k3w3j8f140') : $t('townView.k3n93ed175') }}
@@ -3271,7 +3271,7 @@ onBeforeUnmount(() => {
               :class="{ active: ch.placed }"
               :draggable="!ch.placed && mode === 'edit'"
               :data-channel-id="ch.channelId"
-              :title="ch.placed ? '已在场景中,点击定位' : '拖拽到场景放置'"
+              :title="ch.placed ? $t('townView.chPlaced') : $t('townView.chDragHint')"
               @dragstart="ch.placed ? undefined : onChannelDragStart($event, ch.channelId)"
               @click="onDockCardClick(ch)"
             >
@@ -3388,13 +3388,13 @@ onBeforeUnmount(() => {
                 {{ $t('townView.kv72860036') }}
               </option>
               <option value="top">
-                俯视 · TOP
+                {{ $t('townView.viewTop') }}
               </option>
               <option value="front">
-                前视 · FRONT
+                {{ $t('townView.viewFront') }}
               </option>
               <option value="side">
-                侧视 · SIDE
+                {{ $t('townView.viewSide') }}
               </option>
             </select>
           </div>
@@ -3948,7 +3948,7 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="sheet-x"
-            aria-label="关闭"
+            :aria-label="$t('common.close')"
             @click="closeSheet"
           >
             ✕
@@ -4188,7 +4188,7 @@ onBeforeUnmount(() => {
                     class="obj-input"
                     :placeholder="$t('townView.k1k6vbaf015')"
                     :disabled="mode !== 'edit'"
-                    :title="mode === 'edit' ? '设备名称' : '运行模式只读'"
+                    :title="mode === 'edit' ? $t('townView.deviceName') : $t('townView.readonlyTip')"
                     @change="onObjNameCommit"
                     @keydown.enter="onObjNameCommit"
                   >
@@ -4206,7 +4206,7 @@ onBeforeUnmount(() => {
                       :key="m.id"
                       :value="m.id"
                     >
-                      {{ m.name }}
+                      {{ townModelName(t, m) }}
                     </option>
                   </select>
                 </div>
@@ -4432,7 +4432,7 @@ onBeforeUnmount(() => {
                 <!-- 变换模式(Blender G/R/S;仅编辑模式) -->
                 <template v-if="mode === 'edit'">
                   <div class="sect-hd">
-                    变换 · BLENDER
+                    {{ $t('townView.transformBlender') }}
                   </div>
                   <div class="xz-seg">
                     <button
@@ -4595,7 +4595,7 @@ onBeforeUnmount(() => {
                 v-if="!agentBindings.length"
                 class="ins-empty"
               >
-                未绑定工业节点 —— 绑定后 Agent 可用 dcw_control / daq_query 工具
+                {{ $t('townView.unboundTip') }}
               </div>
               <div
                 v-if="mode === 'edit'"

@@ -56,7 +56,7 @@ const doRegister = async (): Promise<void> => {
   authLoading.value = true
   try {
     const user = await userStore.register(authName.value, authEmail.value, authPassword.value)
-    message.success(needsSetup.value ? `管理员账号创建成功:${user.name} 已进入系统` : t('wsHome.k1mbatbh030', { p0: user.name }))
+    message.success(needsSetup.value ? t('wsHome.adminCreated', { p0: user.name }) : t('wsHome.k1mbatbh030', { p0: user.name }))
     needsSetup.value = false
     authName.value = ''
     authEmail.value = ''
@@ -145,7 +145,7 @@ const createLoading = ref(false)
 const create = async (): Promise<void> => {
   const name = createName.value.trim()
   if (!name) {
-    message.warning('Workspace 名称必填')
+    message.warning(t('wsHome.nameRequired'))
     return
   }
   createLoading.value = true
@@ -197,17 +197,17 @@ useHead({ title: () => t('titles.workshop') })
         <p class="aw-kicker">
           agentworkshop / sign in
         </p>
-        <h2>{{ needsSetup ? '创建管理员账号' : $t('wsHome.kr0vzqu008') }}</h2>
+        <h2>{{ needsSetup ? $t('wsHome.setupTitle') : $t('wsHome.kr0vzqu008') }}</h2>
         <p class="sub">
           {{ needsSetup
-            ? '系统尚无任何用户:首个注册的账号将成为管理员,创建后自动进入系统。'
-            : '全局用户系统统管身份;每个用户可管理多个 API Token,管理 API 需用户 token(Authorization: Bearer)。' }}
+            ? $t('wsHome.setupSub')
+            : $t('wsHome.normalSub') }}
         </p>
         <a-tabs v-model:active-key="authTab">
           <a-tab-pane
             v-if="!needsSetup"
             key="login"
-            tab="账号登录"
+            :tab="$t('wsHome.tabLogin')"
           >
             <a-space
               direction="vertical"
@@ -239,7 +239,7 @@ useHead({ title: () => t('titles.workshop') })
           </a-tab-pane>
           <a-tab-pane
             key="register"
-            :tab="needsSetup ? '注册管理员' : '注册新用户'"
+            :tab="needsSetup ? $t('wsHome.tabRegAdmin') : $t('wsHome.tabRegUser')"
           >
             <a-space
               direction="vertical"
@@ -265,7 +265,7 @@ useHead({ title: () => t('titles.workshop') })
                 :loading="authLoading"
                 @click="doRegister"
               >
-                {{ needsSetup ? '创建管理员并进入' : $t('wsHome.k1so6a0v011') }}
+                {{ needsSetup ? $t('wsHome.setupCta') : $t('wsHome.k1so6a0v011') }}
               </a-button>
               <p class="hint">
                 {{ $t('wsHome.k1r0a4u3012') }}
@@ -275,7 +275,7 @@ useHead({ title: () => t('titles.workshop') })
           <a-tab-pane
             v-if="!needsSetup"
             key="token"
-            tab="Token 登录"
+            :tab="$t('wsHome.tabToken')"
           >
             <a-space
               direction="vertical"
@@ -405,7 +405,7 @@ useHead({ title: () => t('titles.workshop') })
               </button>
               <button
                 class="aw-ghost im"
-                title="删除 Workspace"
+                :title="$t('wsHome.delWs')"
                 @click.stop="remove(ws.id)"
               >
                 <span class="i-tabler-trash im-shake" />
@@ -419,11 +419,11 @@ useHead({ title: () => t('titles.workshop') })
             @click="createOpen = true"
           >
             <span class="i-tabler-layout-2 ws-empty-ico" />
-            <span class="aw-empty-title">从一条产线、一个 Agent 开始</span>
-            <span class="aw-empty-sub">Workspace 是频道与任务的容器 —— 建立第一个工作区后,你的 Agent 团队即可上线作业。</span>
+            <span class="aw-empty-title">{{ $t('wsHome.emptyTitle') }}</span>
+            <span class="aw-empty-sub">{{ $t('wsHome.emptySub') }}</span>
             <span class="pill-btn ws-empty-cta">
               <span class="i-tabler-plus" />
-              新建第一个 Workspace
+              {{ $t('wsHome.emptyCta') }}
             </span>
           </button>
         </div>
@@ -433,8 +433,8 @@ useHead({ title: () => t('titles.workshop') })
         v-model:open="createOpen"
         :title="$t('wsHome.newWs')"
         :confirm-loading="createLoading"
-        ok-text="创建并进入"
-        cancel-text="取消"
+        :ok-text="$t('wsHome.createEnterOk')"
+        :cancel-text="$t('common.cancel')"
         @ok="create"
       >
         <a-input

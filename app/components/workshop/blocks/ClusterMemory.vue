@@ -39,7 +39,7 @@ const hasMore = computed(() => lines.value.length > MAX)
       class="more-btn"
       @click="expanded = !expanded"
     >
-      {{ expanded ? $t('clusterMemory.k40p82001') : `全部 ${lines.length} 条` }}
+      {{ expanded ? $t('clusterMemory.k40p82001') : $t('clusterMemory.showAll', { p0: lines.length }) }}
     </button>
   </div>
 </template>

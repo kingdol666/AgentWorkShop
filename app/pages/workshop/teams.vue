@@ -10,6 +10,9 @@ import { useUserStore } from '../../stores/workshop/user'
 
 const { t } = useI18n()
 
+/** 内置种子(编组/成员模板)按稳定 id 翻译;自建回退原名 */
+const seedLabel = (x: { id?: string, templateId?: string, name: string }): string => seedName(t, x)
+
 definePageMeta({ layout: 'default' })
 
 const api = useWorkshopApi()
@@ -178,7 +181,7 @@ const openDeploy = (team: TeamDto): void => {
 }
 const deploy = async (): Promise<void> => {
   if (!deployTeamRef.value || !deployChannelId.value) {
-    message.warning('选择目标 Channel')
+    message.warning(t('teams.selectChannel'))
     return
   }
   deploying.value = true
@@ -302,7 +305,7 @@ useHead({ title: () => t('titles.teams') })
           class="card"
         >
           <div class="card-head">
-            <span class="name">{{ team.name }}</span>
+            <span class="name">{{ seedLabel(team) }}</span>
             <a-tag
               :color="visTag(team).color"
               class="vis-tag"
@@ -317,7 +320,7 @@ useHead({ title: () => t('titles.teams') })
               v-if="!team.isBuiltin && canWrite(team)"
               :checked="team.visibility === 'public'"
               size="small"
-              :title="team.visibility === 'public' ? '点击转为私有' : '点击公开(全员可部署)'"
+              :title="team.visibility === 'public' ? $t('teams.toPrivate') : $t('teams.toPublic')"
               @change="(v: unknown) => toggleVisibility(team, v === true)"
             />
             <span class="owner">{{ team.ownerName ?? '-' }}</span>
@@ -326,7 +329,7 @@ useHead({ title: () => t('titles.teams') })
               <template #overlay>
                 <a-menu>
                   <a-menu-item @click="openDeploy(team)">
-                    部署到 Channel…
+                    {{ $t('teams.deployToChannel') }}
                   </a-menu-item>
                   <a-menu-item @click="openPlugins(team)">
                     {{ $t('teams.k1plugon047') }}
@@ -365,7 +368,7 @@ useHead({ title: () => t('titles.teams') })
               >
                 {{ m.role }}
               </a-tag>
-              <span class="member-name">{{ m.name }}</span>
+              <span class="member-name">{{ seedLabel(m) }}</span>
               <span class="member-harness">{{ m.harness }}</span>
               <span
                 v-if="canWrite(team)"
@@ -398,8 +401,8 @@ useHead({ title: () => t('titles.teams') })
     <a-modal
       v-model:open="createOpen"
       :title="$t('teams.k1efmuyx002')"
-      ok-text="创建"
-      cancel-text="取消"
+      :ok-text="$t('common.create')"
+      :cancel-text="$t('common.cancel')"
       @ok="create"
     >
       <a-form layout="vertical">
@@ -449,8 +452,8 @@ useHead({ title: () => t('titles.teams') })
     <a-modal
       v-model:open="addOpen"
       :title="$t('teams.k6ljhyv029', { p0: addTeam?.name ?? '' })"
-      ok-text="加入"
-      cancel-text="取消"
+      :ok-text="$t('teams.joinOk')"
+      :cancel-text="$t('common.cancel')"
       @ok="addMember"
     >
       <a-form layout="vertical">
@@ -477,12 +480,12 @@ useHead({ title: () => t('titles.teams') })
       v-model:open="deployOpen"
       :title="$t('teams.k1c0o6oe030', { p0: deployTeamRef?.name ?? '' })"
       :confirm-loading="deploying"
-      ok-text="部署"
-      cancel-text="取消"
+      :ok-text="$t('teams.deployOk')"
+      :cancel-text="$t('common.cancel')"
       @ok="deploy"
     >
       <a-form layout="vertical">
-        <a-form-item label="目标 Channel(须无 lead 冲突)">
+        <a-form-item :label="$t('teams.targetChannelLabel')">
           <a-select
             v-model:value="deployChannelId"
             :options="channels.map(c => ({ value: c.id, label: c.name }))"

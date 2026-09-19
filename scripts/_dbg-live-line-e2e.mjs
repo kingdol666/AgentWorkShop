@@ -1,4 +1,11 @@
 /**
+ * ⚠️ 已过时(deprecated):本脚本的协议端点端口(1502/15030/4840/1883)与现行
+ * plc-node-simulator 预设(film-line:16040/15041/…、broker 18830)不一致,直接运行会失败。
+ * 五协议工业闭环的现行维护门禁:
+ *   1) bench/pipeline.mjs --profile integrated(plc-scenario P 阶段,自举模拟器+平台)
+ *   2) scripts/e2e-plc-plugin-closedloop.mjs(插件/知识库/深度诊断闭环)
+ * 保留本文件仅作历史参照;如需恢复请先对齐端口与预设信号域。
+ *
  * 模拟真实产线全栈 E2E(生产实例 :3001,真实协议:Modbus TCP/RTU、MQTT、OPC UA、HTTP)
  *
  * S1 夹具:产线+产品+配方+5 数采节点(modbus-tcp/rtu/mqtt/opcua/http)+5 数控节点

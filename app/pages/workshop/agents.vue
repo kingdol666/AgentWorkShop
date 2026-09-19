@@ -10,6 +10,9 @@ import { useUserStore } from '../../stores/workshop/user'
 
 const { t: tt } = useI18n()
 
+/** 内置种子模板按稳定 id 翻译(服务端种子名是中文数据);自建/改名回退原名 */
+const tplName = (r: { id: string, name: string }): string => seedName(tt, r)
+
 definePageMeta({ layout: 'default' })
 
 const api = useWorkshopApi()
@@ -74,8 +77,8 @@ const harnessOptions = computed(() =>
   (harnesses.value.length > 0
     ? harnesses.value
     : [
-        { id: 'mock', label: 'mock(测试)', description: '', capabilities: { steer: true, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
-        { id: 'omp', label: 'omp(真实 LLM)', description: '', capabilities: { steer: true, supervise: true, hitl: true, terminal: true, contextStats: true, compact: true } },
+        { id: 'mock', label: tt('agents.hMock'), description: '', capabilities: { steer: true, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
+        { id: 'omp', label: tt('agents.hOmp'), description: '', capabilities: { steer: true, supervise: true, hitl: true, terminal: true, contextStats: true, compact: true } },
         { id: 'claude', label: 'claude', description: '', capabilities: { steer: false, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
       ] as HarnessMetaDto[]).map((h) => {
     const unavailable = h.available === false
@@ -127,7 +130,7 @@ const save = async (): Promise<void> => {
     config = JSON.parse(form.configJson || '{}')
   }
   catch {
-    message.error('config 不是合法 JSON')
+    message.error(tt('agents.badConfigJson'))
     return
   }
   // 前端兜底:引擎未安装禁止保存(与后端 assertHarnessUsable 同判据)
@@ -225,7 +228,7 @@ useHead({ title: () => tt('titles.agents') })
         <template #default="{ record }">
           <span class="tpl-name">
             <span class="i-tabler-user-square" />
-            {{ record.name }}
+            {{ tplName(record) }}
           </span>
         </template>
       </a-table-column>
@@ -268,7 +271,7 @@ useHead({ title: () => tt('titles.agents') })
             v-if="!record.isBuiltin && canWrite(record)"
             :checked="record.visibility === 'public'"
             size="small"
-            :title="record.visibility === 'public' ? '点击转为私有' : '点击公开(全员可读可用)'"
+            :title="record.visibility === 'public' ? $t('agents.toPrivate') : $t('agents.toPublic')"
             @change="(v: unknown) => toggleVisibility(record, v === true)"
           />
         </template>
@@ -312,7 +315,7 @@ useHead({ title: () => tt('titles.agents') })
               size="small"
               type="text"
               :disabled="!canWrite(record)"
-              :title="record.isBuiltin ? '内置模板不可修改' : !canWrite(record) ? '仅属主可修改' : '编辑'"
+              :title="record.isBuiltin ? $t('agents.builtinNoEdit') : !canWrite(record) ? $t('agents.ownerOnlyEdit') : $t('common.edit')"
               @click="openEdit(record)"
             >
               {{ $t('agents.k45eb0012') }}
@@ -327,7 +330,7 @@ useHead({ title: () => tt('titles.agents') })
                 type="text"
                 danger
                 :disabled="!canWrite(record)"
-                :title="record.isBuiltin ? '内置模板不可删除' : '删除'"
+                :title="record.isBuiltin ? $t('agents.builtinNoDelete') : $t('common.delete')"
               >
                 {{ $t('agents.k3xakp013') }}
               </a-button>
@@ -358,9 +361,9 @@ useHead({ title: () => tt('titles.agents') })
 
     <a-modal
       v-model:open="editOpen"
-      :title="editing ? '编辑模板' : '新建模板'"
-      ok-text="保存"
-      cancel-text="取消"
+      :title="editing ? $t('agents.editTpl') : $t('agents.newTpl')"
+      :ok-text="$t('common.save')"
+      :cancel-text="$t('common.cancel')"
       @ok="save"
     >
       <a-form layout="vertical">
@@ -424,7 +427,7 @@ useHead({ title: () => tt('titles.agents') })
             </a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="config(JSON;mock 可配 delayMs)">
+        <a-form-item :label="$t('agents.configLabel')">
           <a-textarea
             v-model:value="form.configJson"
             :rows="6"

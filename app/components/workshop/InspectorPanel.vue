@@ -67,7 +67,7 @@ const stateDot: Record<string, string> = {
     >
       <a-tab-pane
         key="members"
-        tab="成员"
+        :tab="$t('inspectorPanel.tabMembers')"
       >
         <div
           v-for="a in agents"
@@ -123,7 +123,7 @@ const stateDot: Record<string, string> = {
 
       <a-tab-pane
         key="tasks"
-        tab="任务"
+        :tab="$t('inspectorPanel.tabTasks')"
       >
         <div
           v-for="task in rootTasks"
@@ -160,14 +160,14 @@ const stateDot: Record<string, string> = {
 
       <a-tab-pane
         key="memory"
-        tab="记忆"
+        :tab="$t('inspectorPanel.tabMemory')"
       >
         <workshop-memory-panel :channel-id="channelId" />
       </a-tab-pane>
 
       <a-tab-pane
         key="stats"
-        tab="统计"
+        :tab="$t('inspectorPanel.tabStats')"
       >
         <workshop-stats-panel :channel-id="channelId" />
       </a-tab-pane>

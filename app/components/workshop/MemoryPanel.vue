@@ -159,7 +159,7 @@ const doWrite = async (): Promise<void> => {
         class="agent-select"
         :options="agents.map(a => ({ value: a.agentId, label: a.name }))"
       />
-      <a-tooltip :title="tokenResolved ? '成员 token 已自动装配' : '自动装配失败,可手动填入成员 token'">
+      <a-tooltip :title="tokenResolved ? $t('memoryPanel.tokenAuto') : $t('memoryPanel.tokenManual')">
         <span
           class="token-state"
           :data-ok="tokenResolved"
@@ -170,7 +170,7 @@ const doWrite = async (): Promise<void> => {
       v-if="!tokenResolved"
       v-model:value="manualToken"
       size="small"
-      placeholder="Bearer token(成员身份,兜底手填)"
+      :placeholder="$t('memoryPanel.tokenPh')"
       class="token"
     />
 
@@ -178,7 +178,7 @@ const doWrite = async (): Promise<void> => {
       <a-input-search
         v-model:value="searchText"
         size="small"
-        placeholder="混合检索记忆(FTS+向量,与 agent search_memory 同源)…"
+        :placeholder="$t('memoryPanel.searchPh')"
         :loading="searching"
         @search="doSearch"
       />
@@ -255,8 +255,8 @@ const doWrite = async (): Promise<void> => {
     <a-modal
       v-model:open="writeOpen"
       :title="$t('memoryPanel.k1bbee8p002')"
-      ok-text="写入"
-      cancel-text="取消"
+      :ok-text="$t('memoryPanel.writeOk')"
+      :cancel-text="$t('common.cancel')"
       @ok="doWrite"
     >
       <a-form layout="vertical">
@@ -287,7 +287,7 @@ const doWrite = async (): Promise<void> => {
             :step="0.1"
           />
         </a-form-item>
-        <a-form-item label="dedupKey(可选,幂等)">
+        <a-form-item :label="$t('memoryPanel.dedupLabel')">
           <a-input v-model:value="writeForm.dedupKey" />
         </a-form-item>
       </a-form>

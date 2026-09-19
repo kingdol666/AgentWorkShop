@@ -81,7 +81,7 @@ const mountSubmitting = ref(false)
 const fileSelectorOpen = ref(false)
 const createAndMount = async (): Promise<void> => {
   if (!mountForm.name.trim()) {
-    message.warning('Channel 名称必填')
+    message.warning(t('channelSessionList.nameRequired'))
     return
   }
   mountSubmitting.value = true
@@ -120,10 +120,18 @@ const mountFromTemplate = async (): Promise<void> => {
   templateMounting.value = true
   try {
     const res = await api.mountChannelTemplate(props.wsId, templateMountId.value)
-    const data = (res as unknown as { data?: { agentCount?: number } })?.data
+    const data = (res as unknown as { data?: { agentCount?: number, channelId?: string } })?.data
     message.success(t('channelSessionList.kai50qc042', { p0: data?.agentCount ?? 0 }))
     templateMountId.value = undefined
     void refreshChannels()
+    // 一步挂载端点只返回 channelId,不会走 wsStore.mountChannel 的本地清单维护 ——
+    // 必须在这里补上 workspace.channelIds 本地更新并选中新频道,
+    // 否则列表要等下一次全量 load 才出现新频道(实测踩坑:刚挂载的频道"消失")
+    if (data?.channelId) {
+      const ws = wsStore.workspaces.find(w => w.id === props.wsId)
+      if (ws && !ws.channelIds.includes(data.channelId)) ws.channelIds.push(data.channelId)
+      wsStore.setActiveChannel(props.wsId, data.channelId)
+    }
   }
   catch (e) {
     const err = e as { data?: { message?: string }, message?: string }
@@ -159,7 +167,7 @@ const llmModelOptions = computed(() =>
 )
 const llmEffortOptions = computed(() => {
   const m = llmProviders.value.find(p => p.id === llmForm.provider)?.models.find(x => x.id === llmForm.model)
-  return (m?.efforts ?? []).map(e => ({ value: e, label: e + (m?.defaultEffort === e ? '(默认)' : '') }))
+  return (m?.efforts ?? []).map(e => ({ value: e, label: e + (m?.defaultEffort === e ? t('channelSessionList.defaultSuffix') : '') }))
 })
 const loadLlmCatalog = async (harness: string): Promise<void> => {
   llmLoading.value = true
@@ -312,7 +320,7 @@ const saveAsTemplate = async (): Promise<void> => {
         <button
           class="head-op im"
           type="button"
-          title="Channel 模板中心"
+          :title="$t('channelSessionList.tplCenterTitle')"
           @click="navigateTo('/workshop/channel-templates')"
         >
           <span class="i-tabler-layout-grid-add im-pop" />
@@ -320,7 +328,7 @@ const saveAsTemplate = async (): Promise<void> => {
         <button
           class="head-op im"
           type="button"
-          title="新建 Channel"
+          :title="$t('channelSessionList.newChannelTitle')"
           @click="mountModal = true"
         >
           <span class="i-tabler-plus im-pop" />
@@ -365,7 +373,7 @@ const saveAsTemplate = async (): Promise<void> => {
           <button
             class="op im"
             type="button"
-            title="移出 workspace"
+            :title="$t('channelSessionList.unmountTitle')"
             :aria-label="$t('channelSessionList.k1yurooi036', { p0: ch.name })"
             @click.stop="unmount(ch.id)"
           >
@@ -399,12 +407,12 @@ const saveAsTemplate = async (): Promise<void> => {
       <a-select
         v-model:value="templateMountId"
         size="small"
-        :placeholder="'从 Channel 模板挂载'"
+        :placeholder="$t('channelSessionList.mountFromTpl')"
         class="select"
         :loading="templateMounting"
         :options="channelTemplates.map(t => ({
           value: t.id,
-          label: $t('channelSessionList.k1oes209038', { p0: t.isBuiltin ? '内置 · ' : t.visibility === 'public' ? '公开 · ' : '', p1: t.name, p2: (t.lead ? 1 : 0) + t.members.length }),
+          label: $t('channelSessionList.k1oes209038', { p0: t.isBuiltin ? $t('channelSessionList.pfxBuiltin') : t.visibility === 'public' ? $t('channelSessionList.pfxPublic') : '', p1: t.name, p2: (t.lead ? 1 : 0) + t.members.length }),
         }))"
         @change="mountFromTemplate"
       />
@@ -417,12 +425,12 @@ const saveAsTemplate = async (): Promise<void> => {
       v-model:open="mountModal"
       :title="$t('channelSessionList.k1qjyl6l002')"
       :confirm-loading="mountSubmitting"
-      ok-text="创建"
-      cancel-text="取消"
+      :ok-text="$t('common.create')"
+      :cancel-text="$t('common.cancel')"
       @ok="createAndMount"
     >
       <a-form layout="vertical">
-        <a-form-item label="Channel 名称">
+        <a-form-item :label="$t('channelSessionList.nameLabel')">
           <a-input v-model:value="mountForm.name" />
         </a-form-item>
         <a-form-item :label="$t('channelSessionList.k40gkk003')">
@@ -443,7 +451,7 @@ const saveAsTemplate = async (): Promise<void> => {
             <a-input
               v-model:value="mountForm.workspace"
               style="width: 70%"
-              placeholder="留空 = data/workspaces/<channelId>"
+              :placeholder="$t('channelSessionList.wsPh1')"
               allow-clear
               @press-enter="createAndMount"
             />
@@ -469,8 +477,8 @@ const saveAsTemplate = async (): Promise<void> => {
       v-model:open="settingsOpen"
       :title="$t('channelSessionList.k1pmemvt039', { p0: settingsForm.name })"
       :confirm-loading="settingsSaving"
-      ok-text="保存"
-      cancel-text="取消"
+      :ok-text="$t('common.save')"
+      :cancel-text="$t('common.cancel')"
       @ok="saveSettings"
     >
       <a-form layout="vertical">
@@ -497,7 +505,7 @@ const saveAsTemplate = async (): Promise<void> => {
             </a-button>
           </a-input-group>
         </a-form-item>
-        <a-form-item label="默认模型(可选;留空用各 Harness 默认)">
+        <a-form-item :label="$t('channelSessionList.llmDefaultLabel')">
           <a-space>
             <a-switch
               v-model:checked="llmForm.enabled"
@@ -514,7 +522,7 @@ const saveAsTemplate = async (): Promise<void> => {
             <a-select
               v-model:value="llmForm.provider"
               style="width: 170px"
-              :placeholder="llmLoading ? '目录加载中…' : 'provider'"
+              :placeholder="llmLoading ? $t('channelSessionList.catalogLoading') : 'provider'"
               :options="llmProviderOptions"
               :disabled="!llmForm.enabled || llmLoading"
               show-search
@@ -533,7 +541,7 @@ const saveAsTemplate = async (): Promise<void> => {
               v-if="llmEffortMode === 'levels'"
               v-model:value="llmForm.effort"
               style="width: 130px"
-              placeholder="effort(可选)"
+              :placeholder="$t('channelSessionList.effortPh')"
               :options="llmEffortOptions"
               :disabled="!llmForm.enabled || !llmForm.model"
               allow-clear
@@ -542,7 +550,7 @@ const saveAsTemplate = async (): Promise<void> => {
               v-else-if="llmEffortMode === 'freetext'"
               v-model:value="llmForm.effort"
               style="width: 130px"
-              placeholder="variant(可选)"
+              :placeholder="$t('channelSessionList.variantPh')"
               :disabled="!llmForm.enabled || !llmForm.model"
               allow-clear
             />
@@ -563,7 +571,7 @@ const saveAsTemplate = async (): Promise<void> => {
                 <span
                   v-if="p.builtin"
                   class="ws-hint"
-                >内置</span>
+                >{{ $t('channelSessionList.builtinTag') }}</span>
                 <span
                   v-if="p.description"
                   class="ws-hint ch-plugin-desc"
@@ -604,8 +612,8 @@ const saveAsTemplate = async (): Promise<void> => {
       v-model:open="saveTplOpen"
       :title="$t('channelSessionList.k6kpql010')"
       :confirm-loading="saveTplSubmitting"
-      ok-text="保存模板"
-      cancel-text="取消"
+      :ok-text="$t('channelSessionList.saveTplOk')"
+      :cancel-text="$t('common.cancel')"
       @ok="saveAsTemplate"
     >
       <a-form layout="vertical">

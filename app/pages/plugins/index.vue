@@ -9,6 +9,10 @@ import { message } from 'ant-design-vue'
 import { useUserStore } from '~/stores/workshop/user'
 
 const { t } = useI18n()
+
+/** 插件 manifest 描述按插件名翻译(服务端文件数据);未知插件回退原文 */
+const pluginDesc = (p: { name: string, description: string }): string =>
+  PLUGIN_DESC_KEYS[p.name] ? t(PLUGIN_DESC_KEYS[p.name]) : p.description
 const userStore = useUserStore()
 
 interface PluginRoute { method: string, path: string }
@@ -168,7 +172,7 @@ onMounted(load)
           />
         </div>
         <p class="card-desc">
-          {{ p.description || '—' }}
+          {{ pluginDesc(p) || '—' }}
         </p>
         <div class="card-tags">
           <span

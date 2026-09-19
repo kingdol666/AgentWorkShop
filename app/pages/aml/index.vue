@@ -304,6 +304,28 @@ const pythonText = computed(() => {
 const venvText = computed(() =>
   overview.value ? (overview.value.runtime.venvReady ? tt('aml.k1amlx007') : tt('aml.k1amlx008')) : '--')
 
+/** 服务端 blocker 是中文数据:已知固定文案映射 i18n,未知(动态 reason)原样透传 */
+const AML_BLOCKER_KEYS: Record<string, string> = {
+  '训练环境(./aml/.venv)尚未创建:请在「运行环境」面板点击「创建训练环境」': 'aml.blockerVenv',
+  'Python 解释器不可用': 'aml.blockerPython',
+}
+const blockerText = computed(() =>
+  (env.value?.preflight?.blockers ?? [])
+    .map(b => (AML_BLOCKER_KEYS[b] ? tt(AML_BLOCKER_KEYS[b]) : b))
+    .join(' / '))
+
+/** 数据根来源按 amlRootMode 翻译(amlRootSource 是服务端中文标签) */
+const AML_ROOT_SOURCE_KEYS: Record<string, string> = {
+  env: 'aml.rootSourceEnv',
+  repo: 'aml.rootSourceRepo',
+  home: 'aml.rootSourceHome',
+}
+const rootSourceLabel = computed(() => {
+  const mode = env.value?.amlRootMode ?? ''
+  const key = AML_ROOT_SOURCE_KEYS[mode]
+  return key ? tt(key) : (env.value?.amlRootSource ?? '')
+})
+
 // ---------- 1b. 运行环境(uv 检测 / 一键安装 / .venv 供给) ----------
 
 /** 完整环境状态(GET /env);比 overview.env 多出任务日志与目录明细 */
@@ -964,7 +986,7 @@ async function doPredict(): Promise<void> {
       >
         <span class="i-tabler-alert-triangle" />
         <span class="txt">
-          {{ $t('aml.k1amlx178') }}:<b class="mono">{{ env.preflight.blockers.join(' / ') }}</b>
+          {{ $t('aml.k1amlx178') }}:<b class="mono">{{ blockerText }}</b>
         </span>
       </div>
 
@@ -1059,7 +1081,7 @@ async function doPredict(): Promise<void> {
           <p class="ec-detail">
             {{ $t('aml.k1amlx174') }}:
             <b class="mono">{{ env.disk.usedMb }} / {{ env.disk.quotaMb }} MB</b>
-            <span class="dim"> · {{ env.amlRootSource }}</span>
+            <span class="dim"> · {{ rootSourceLabel }}</span>
           </p>
         </div>
 

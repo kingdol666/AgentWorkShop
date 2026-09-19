@@ -87,7 +87,7 @@ const copy = async (): Promise<void> => {
     <pre
       class="artifact-body"
       :class="{ json: isJson }"
-    >{{ shortText || '(空)' }}</pre>
+    >{{ shortText || $t('artifactCard.empty') }}</pre>
   </div>
 </template>
 

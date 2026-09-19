@@ -624,7 +624,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
               class="tpl-row"
               :title="tpl.semantics ?? ''"
             >
-              <b>{{ tpl.name }}</b>
+              <b>{{ catalogTplName(t, tpl) }}</b>
               <small class="mono dim">{{ tpl.code }} · {{ tpl.min }}~{{ tpl.max }} {{ tpl.unit }}</small>
               <small
                 v-if="tpl.semantics"
@@ -668,7 +668,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
               <input
                 v-model="tplForm.code"
                 class="inp"
-                placeholder="如 MOTOR · I"
+                :placeholder="$t('dcw.codePh')"
               >
             </label>
             <label class="f">
@@ -676,7 +676,7 @@ const builtinCount = computed(() => dcw.templates.filter(t => t.builtin).length)
               <input
                 v-model="tplForm.unit"
                 class="inp"
-                placeholder="如 A"
+                :placeholder="$t('dcw.unitPh')"
               >
             </label>
             <label class="f">

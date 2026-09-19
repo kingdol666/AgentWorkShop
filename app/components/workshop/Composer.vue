@@ -164,7 +164,7 @@ const send = async (): Promise<void> => {
       const maxIterations = loopMaxIterations.value
       if (taskMode.value === 'loop') {
         if (intervalSeconds === null || !Number.isFinite(intervalSeconds) || intervalSeconds < 1 || intervalSeconds > 86400) {
-          message.warning('loop 间隔需设置为 1 到 86400 秒')
+          message.warning(t('composer.loopIntervalRange'))
           return
         }
         if (maxIterations !== null && (!Number.isInteger(maxIterations) || maxIterations < 1 || maxIterations > 10000)) {
@@ -341,7 +341,7 @@ const placeholder = computed(() =>
           </span>
           <span
             class="chip-target"
-            :title="isDefaultLead ? '未 @ 指定:任务自动路由 lead 调度;@ 某成员可直发' : $t('composer.kl3604i033', { p0: targetName })"
+            :title="isDefaultLead ? $t('composer.defaultLeadTitle') : $t('composer.kl3604i033', { p0: targetName })"
           >→ {{ targetName ? `@${targetName}` : 'lead' }}{{ isDefaultLead ? $t('composer.k2z7yuw012') : $t('composer.k2z0fsx032') }}</span>
           <!-- HITL 送达语义提示 -->
           <span
@@ -373,7 +373,7 @@ const placeholder = computed(() =>
               aria-hidden="true"
             />{{ reachHint.text }}
           </span>
-          <span class="chip-hint">输入 @ 提及成员 · ⌘/Ctrl+Enter 发送</span>
+          <span class="chip-hint">{{ $t('composer.chipHint') }}</span>
         </template>
       </div>
 
@@ -435,7 +435,7 @@ const placeholder = computed(() =>
                 :max="86400"
                 :step="1"
                 :precision="0"
-                addon-after="秒"
+                :addon-after="$t('composer.seconds')"
                 class="loop-number"
               />
               <a-input-number
@@ -486,7 +486,7 @@ const placeholder = computed(() =>
             type="button"
             class="send-btn im"
             :disabled="sendLoading || !input.trim()"
-            title="发送(⌘/Ctrl+Enter)"
+            :title="$t('composer.sendTitle')"
             @click="send"
           >
             <span class="i-tabler-send im-nudge-up" />

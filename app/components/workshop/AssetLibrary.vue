@@ -48,7 +48,7 @@ const onDropFile = (e: DragEvent): void => {
 }
 const setUploadFile = (f: File | null): void => {
   if (f && !/\.(glb|gltf|obj|fbx)$/i.test(f.name)) {
-    uploadError.value = '仅支持 .glb/.gltf/.obj/.fbx 模型文件'
+    uploadError.value = t('assetLibrary.badModelFile')
     return
   }
   uploadFile.value = f
@@ -177,7 +177,7 @@ async function doRemove(id: string): Promise<void> {
         class="model-card"
         :data-model-id="m.id"
         draggable="true"
-        :title="m.hint || $t('assetLibrary.katn7lo015', { p0: m.name })"
+        :title="townModelHint(t, m) || $t('assetLibrary.katn7lo015', { p0: townModelName(t, m) })"
         @dragstart="onDragStart($event, m.id)"
       >
         <!-- GLB/GLTF:实时 3D 模型预览(真实几何形状);其余格式占位图标 -->
@@ -195,7 +195,7 @@ async function doRemove(id: string): Promise<void> {
             aria-hidden="true"
           />
         </span>
-        <span class="model-name">{{ m.name }}</span>
+        <span class="model-name">{{ townModelName(t, m) }}</span>
         <span class="model-badge">{{ $t('assetLibrary.k1n32zs0006') }}</span>
         <div class="card-actions">
           <button

@@ -29,7 +29,7 @@ const tpl = computed(() => {
   const key = node.value ? daqKeyFromRef(node.value.templateRef) : ''
   return daq.templates.find(t => t.key === key) ?? null
 })
-const stateLabel: Record<DaqNodeState, string> = { ok: t('daqDetail.k41k5c026'), warn: t('daqDetail.k49z8v027'), alarm: t('daqDetail.k3xmid028'), offline: t('daqDetail.k44c2n029') }
+const stateLabel = computed<Record<DaqNodeState, string>>(() => ({ ok: t('daqDetail.k41k5c026'), warn: t('daqDetail.k49z8v027'), alarm: t('daqDetail.k3xmid028'), offline: t('daqDetail.k44c2n029') }))
 const effectiveState = (): DaqNodeState => {
   const n = node.value
   if (!n) return 'offline'
@@ -219,13 +219,13 @@ type ChartRow = DaqTsdbPoint
 const historyPoints = ref<ChartRow[]>([])
 const bucketMs = ref<number>(15000)
 const histLoading = ref(false)
-const BUCKETS = [
-  { label: '1s 桶', ms: 1000 },
-  { label: '5s 桶', ms: 5000 },
-  { label: '15s 桶(默认)', ms: 15000 },
-  { label: '30s 桶', ms: 30000 },
-  { label: '1min 桶', ms: 60000 },
-]
+const BUCKETS = computed(() => [
+  { label: t('daqDetail.bucket1s'), ms: 1000 },
+  { label: t('daqDetail.bucket5s'), ms: 5000 },
+  { label: t('daqDetail.bucket15s'), ms: 15000 },
+  { label: t('daqDetail.bucket30s'), ms: 30000 },
+  { label: t('daqDetail.bucket60s'), ms: 60000 },
+])
 async function loadHistory(): Promise<void> {
   if (!nodeId.value) return
   histLoading.value = true
@@ -545,7 +545,7 @@ watch(effectiveRefreshMs, () => armHistTimer())
               type="button"
               class="toggle slim"
               :class="{ on: form.calKind === 'linear' }"
-              title="采集标定 decoder:物理值 = scale × PLC采集值 + offset"
+              :title="$t('daqDetail.calDecoderTip')"
               @click="form.calKind = form.calKind === 'linear' ? 'none' : 'linear'"
             >
               {{ form.calKind === 'linear' ? $t('daqDetail.k1eru4r1039') : $t('daqDetail.k3oktae047') }}
@@ -556,7 +556,7 @@ watch(effectiveRefreshMs, () => armHistTimer())
               step="0.1"
               class="input"
               :disabled="form.calKind !== 'linear'"
-              title="decode 斜率(≠0)"
+              :title="$t('daqDetail.calScaleTip')"
             >
             <input
               v-model.number="form.calOffset"
@@ -564,7 +564,7 @@ watch(effectiveRefreshMs, () => armHistTimer())
               step="0.1"
               class="input"
               :disabled="form.calKind !== 'linear'"
-              title="decode 截距"
+              :title="$t('daqDetail.calOffsetTip')"
             ><small>decoder</small>
           </label>
           <label class="field row">

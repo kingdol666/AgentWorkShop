@@ -182,7 +182,7 @@ const submitMember = async (): Promise<void> => {
     }
     catch (err) {
       const text = apiErrorMessage(err)
-      message.error(`模板克隆失败${text.includes('LEAD_EXISTS') ? '(已有 lead,不能再添加 lead)' : `: ${text}`}`)
+      message.error(t('agentLanesView.cloneFail', { p0: text.includes('LEAD_EXISTS') ? t('agentLanesView.leadExistsShort') : `: ${text}` }))
     }
     finally {
       memberSubmitting.value = false
@@ -203,7 +203,7 @@ const submitMember = async (): Promise<void> => {
   }
   catch (err) {
     const text = apiErrorMessage(err)
-    message.error(`编组部署失败${text.includes('LEAD_EXISTS') ? '(channel 已有 lead,编组内 lead 成员冲突;请先移除现有 lead 或选用无 lead 编组)' : `: ${text}`}`)
+    message.error(t('agentLanesView.deployFail', { p0: text.includes('LEAD_EXISTS') ? t('agentLanesView.leadExistsChannel') : `: ${text}` }))
   }
   finally {
     memberSubmitting.value = false
@@ -411,8 +411,8 @@ onBeforeUnmount(() => {
                 <span class="actions-divider" />
                 <a-popconfirm
                   :title="$t('agentLanesView.k1l029kf037', { p0: a.name })"
-                  ok-text="停止"
-                  cancel-text="取消"
+                  :ok-text="$t('common.stop')"
+                  :cancel-text="$t('common.cancel')"
                   @confirm="stopMember(a.agentId, a.name)"
                 >
                   <a-button
@@ -420,15 +420,15 @@ onBeforeUnmount(() => {
                     type="text"
                     class="lane-stop"
                     :loading="stopping === a.agentId"
-                    title="HITL 停止该 Agent 运行时"
+                    :title="$t('agentLanesView.hitlStopTitle')"
                   >
                     <span class="i-tabler-player-stop" />
                   </a-button>
                 </a-popconfirm>
                 <a-popconfirm
                   :title="$t('agentLanesView.kt3n27m038', { p0: a.name })"
-                  ok-text="移除"
-                  cancel-text="取消"
+                  :ok-text="$t('common.remove')"
+                  :cancel-text="$t('common.cancel')"
                   @confirm="removeMember(a.agentId, a.name)"
                 >
                   <a-button
@@ -468,8 +468,8 @@ onBeforeUnmount(() => {
       v-model:open="memberModalOpen"
       :title="$t('agentLanesView.k17kcn55004')"
       :confirm-loading="memberSubmitting"
-      ok-text="添加"
-      cancel-text="取消"
+      :ok-text="$t('common.add')"
+      :cancel-text="$t('common.cancel')"
       @ok="submitMember"
     >
       <a-radio-group
@@ -496,14 +496,14 @@ onBeforeUnmount(() => {
         <a-form-item :label="$t('agentLanesView.k3nufdm005')">
           <a-input
             v-model:value="memberForm.name"
-            placeholder="如 db-migrator / test-writer"
+            :placeholder="$t('agentLanesView.namePh')"
             @press-enter="submitMember"
           />
         </a-form-item>
         <a-form-item label="harness">
           <a-radio-group v-model:value="memberForm.harness">
             <a-radio value="omp">
-              omp(完整 LLM agent)
+              {{ $t('agentLanesView.ompFull') }}
             </a-radio>
             <a-radio value="mock">
               {{ $t('agentLanesView.kqg6783027') }}
@@ -538,11 +538,11 @@ onBeforeUnmount(() => {
         layout="vertical"
         class="member-form"
       >
-        <a-form-item label="选择 Agent 模板(克隆 name/harness/config 为独立实例)">
+        <a-form-item :label="$t('agentLanesView.tplCloneLabel')">
           <a-select
             v-model:value="selectedTemplateId"
             :placeholder="$t('agentLanesView.kung925009')"
-            :options="templates.map(t => ({ value: t.id, label: `${t.name}(${t.harness})${t.enabled === 0 ? ' · 已停用' : ''}` }))"
+            :options="templates.map(t => ({ value: t.id, label: `${t.name}(${t.harness})${t.enabled === 0 ? $t('agentLanesView.tplDisabled') : ''}` }))"
           />
         </a-form-item>
         <a-form-item :label="$t('agentLanesView.k1bl78fu010')">
@@ -577,7 +577,7 @@ onBeforeUnmount(() => {
           <a-select
             v-model:value="selectedTeamId"
             :placeholder="$t('agentLanesView.kur1otz014')"
-            :options="teams.map(t => ({ value: t.id, label: $t('agentLanesView.k1qcmxyu040', { p0: t.name, p1: t.memberCount, p2: t.hasLead ? ',含 lead' : '' }) }))"
+            :options="teams.map(t => ({ value: t.id, label: $t('agentLanesView.k1qcmxyu040', { p0: t.name, p1: t.memberCount, p2: t.hasLead ? $t('agentLanesView.withLead') : '' }) }))"
           />
         </a-form-item>
         <div class="mode-hint">
@@ -591,8 +591,8 @@ onBeforeUnmount(() => {
       v-model:open="editModalOpen"
       :title="$t('agentLanesView.k19j5rho041', { p0: editForm.name || '' })"
       :confirm-loading="editSubmitting"
-      ok-text="保存"
-      cancel-text="取消"
+      :ok-text="$t('common.save')"
+      :cancel-text="$t('common.cancel')"
       @ok="submitEditMember"
     >
       <a-form
@@ -602,7 +602,7 @@ onBeforeUnmount(() => {
         <a-form-item :label="$t('agentLanesView.k3nufdm005')">
           <a-input v-model:value="editForm.name" />
         </a-form-item>
-        <a-form-item label="角色 / harness">
+        <a-form-item :label="$t('agentLanesView.roleHarnessLabel')">
           <a-space>
             <a-tag :color="editForm.role === 'lead' ? 'purple' : 'blue'">
               {{ editForm.role }}
@@ -610,7 +610,7 @@ onBeforeUnmount(() => {
             <a-tag>{{ editForm.harness }}</a-tag>
           </a-space>
         </a-form-item>
-        <a-form-item label="场景系统提示词(systemPromptPrefix)">
+        <a-form-item :label="$t('agentLanesView.syspromptLabel')">
           <a-textarea
             v-model:value="editForm.systemPrompt"
             :rows="6"

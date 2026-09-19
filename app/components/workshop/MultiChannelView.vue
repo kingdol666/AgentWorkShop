@@ -56,8 +56,8 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
     case 'task.progress': return `${String(p.progress ?? '')}%`
     case 'agent.delta': return `…${String(p.delta ?? '').slice(-24)}`
     case 'agent.message': return `${String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 40)}`
-    case 'a2a.message': return `文本 ${String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 40)}`
-    case 'a2a.artifact': return `交付 ${String((p.artifact as { name?: string } | undefined)?.name ?? '')}`
+    case 'a2a.message': return t('multiChannelView.a2aMessage', { p0: String((p.parts as Array<{ text?: string }> | undefined)?.[0]?.text ?? '').slice(0, 40) })
+    case 'a2a.artifact': return t('multiChannelView.a2aArtifact', { p0: String((p.artifact as { name?: string } | undefined)?.name ?? '') })
     case 'memory.saved': return t('multiChannelView.kfvue7n009', { p0: String(p.title ?? '') })
     case 'agent.member': return t('multiChannelView.khq39oe010', { p0: String(p.op ?? ''), p1: String(p.name ?? '') })
     case 'agent.status': return `${String(p.state)}`

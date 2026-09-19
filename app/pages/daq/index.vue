@@ -433,7 +433,7 @@ async function doAddNode(): Promise<void> {
 /** 模板通道语义(server 目录为唯一事实源;模板已删除 → 显示 templateRef 原文降级) */
 function daqTemplateRefCh(templateRef: string): string {
   const tpl = daq.templates.find(t => t.key === daqKeyFromRef(templateRef))
-  return tpl ? `${tpl.name} · ${tpl.ch}` : templateRef || '-'
+  return tpl ? `${catalogTplName(tt, tpl)} · ${tpl.ch}` : templateRef || '-'
 }
 
 // ---------- 自定义信号模板管理(server 权威 CRUD;内置只读可复制) ----------
@@ -455,7 +455,7 @@ const customTpls = computed<DaqTemplateDef[]>(() => daq.templates.filter(t => !t
 const builtinTpls = computed<DaqTemplateDef[]>(() => daq.templates.filter(t => t.builtin))
 
 function fillTplForm(t: DaqTemplateDef, asCopy = false): void {
-  tplForm.name = asCopy ? tt('daq.k2hbo3c126', { p0: t.name }) : t.name
+  tplForm.name = asCopy ? tt('daq.k2hbo3c126', { p0: catalogTplName(tt, t) }) : catalogTplName(tt, t)
   tplForm.ch = t.ch
   tplForm.code = t.code
   tplForm.unit = t.unit
@@ -1003,7 +1003,7 @@ async function doReconnect(): Promise<void> {
             <input
               v-model="tplForm.unit"
               class="inp"
-              placeholder="如 %RH"
+              :placeholder="$t('daq.unitPh')"
             >
           </label>
           <label class="f">

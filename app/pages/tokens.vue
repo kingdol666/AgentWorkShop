@@ -326,7 +326,7 @@ useHead({ title: () => tt('titles.tokens') })
                   <code
                     class="tok-val"
                     :class="{ revealed: isRevealed(record.id) }"
-                    :title="isRevealed(record.id) ? '已显示明文,点击眼睛遮回' : '掩码预览'"
+                    :title="isRevealed(record.id) ? $t('tokens.maskBackTip') : $t('tokens.maskPreview')"
                   >{{ rowDisplay(record as TokenMeta) }}</code>
                   <a-button
                     v-if="record.hasPlain"
@@ -334,7 +334,7 @@ useHead({ title: () => tt('titles.tokens') })
                     size="small"
                     class="tok-op"
                     :loading="revealingId === record.id"
-                    :title="isRevealed(record.id) ? '遮回' : '查看明文'"
+                    :title="isRevealed(record.id) ? $t('tokens.maskBack') : $t('tokens.revealPlain')"
                     @click="toggleRowReveal(record as TokenMeta)"
                   >
                     <span :class="isRevealed(record.id) ? 'i-tabler-eye-off' : 'i-tabler-eye'" />
@@ -345,7 +345,7 @@ useHead({ title: () => tt('titles.tokens') })
                     size="small"
                     class="tok-op"
                     :class="{ ok: copyId === record.id }"
-                    :title="copyId === record.id ? '已复制' : '复制明文'"
+                    :title="copyId === record.id ? $t('tokens.copied') : $t('tokens.copyPlain')"
                     @click="copyRow(record as TokenMeta)"
                   >
                     <span :class="copyId === record.id ? 'i-tabler-check' : 'i-tabler-copy'" />
@@ -370,9 +370,9 @@ useHead({ title: () => tt('titles.tokens') })
                     {{ $t('tokens.k3vrpcs009') }}
                   </a-button>
                   <a-popconfirm
-                    :title="record.id === userStore.user?.tokenId ? '吊销当前会话 token 将退出登录' : '吊销后立即失效'"
-                    :ok-text="'吊销'"
-                    :cancel-text="'取消'"
+                    :title="record.id === userStore.user?.tokenId ? $t('tokens.revokeCurrentWarn') : $t('tokens.revokeWarn')"
+                    :ok-text="$t('common.revoke')"
+                    :cancel-text="$t('common.cancel')"
                     @confirm="doRevoke(record)"
                   >
                     <!-- 安静文本按钮:常态墨灰,悬停转红 —— 红色只留给真实确认瞬间,不再整行批发 -->
@@ -397,8 +397,8 @@ useHead({ title: () => tt('titles.tokens') })
         v-model:open="createOpen"
         :title="$t('chips.issueTitle')"
         :confirm-loading="createLoading"
-        ok-text="创建"
-        cancel-text="取消"
+        :ok-text="$t('common.create')"
+        :cancel-text="$t('common.cancel')"
         @ok="doCreate"
       >
         <a-input
@@ -411,7 +411,7 @@ useHead({ title: () => tt('titles.tokens') })
       <!-- 明文回显(仅创建时一次):默认掩码,眼睛切换,一键复制 -->
       <a-modal
         :open="createdRaw !== ''"
-        title="Token 已创建"
+        :title="$t('tokens.createdTitle')"
         :footer="null"
         :mask-closable="false"
         @cancel="dismissCreated"
@@ -425,7 +425,7 @@ useHead({ title: () => tt('titles.tokens') })
           <code class="raw">{{ revealed ? createdRaw : masked }}</code>
           <button
             class="raw-op"
-            :title="revealed ? '隐藏明文' : '显示明文'"
+            :title="revealed ? $t('tokens.hidePlain') : $t('tokens.showPlain')"
             @click="toggleReveal"
           >
             <span :class="revealed ? 'i-tabler-eye-off' : 'i-tabler-eye'" />
@@ -433,7 +433,7 @@ useHead({ title: () => tt('titles.tokens') })
           <button
             class="raw-op"
             :class="{ ok: copied }"
-            :title="copied ? '已复制' : '复制'"
+            :title="copied ? $t('tokens.copied') : $t('tokens.copy')"
             @click="copyCreated"
           >
             <span :class="copied ? 'i-tabler-check' : 'i-tabler-copy'" />
@@ -441,7 +441,7 @@ useHead({ title: () => tt('titles.tokens') })
         </div>
         <div class="once-meta">
           <span>{{ $t('tokens.k3p0p44027') }}{{ lastCreatedLabel || $t('tokens.kj3mklm028') }}</span>
-          <span>用法:Authorization: Bearer &lt;token&gt;</span>
+          <span>{{ $t('tokens.usage') }}</span>
         </div>
         <a-button
           type="primary"
@@ -455,10 +455,10 @@ useHead({ title: () => tt('titles.tokens') })
       <!-- 重命名 -->
       <a-modal
         v-model:open="renameOpen"
-        title="重命名 Token"
+        :title="$t('tokens.renameTitle')"
         :confirm-loading="renameLoading"
-        ok-text="保存"
-        cancel-text="取消"
+        :ok-text="$t('common.save')"
+        :cancel-text="$t('common.cancel')"
         @ok="doRename"
       >
         <a-input

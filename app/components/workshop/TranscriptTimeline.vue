@@ -233,7 +233,7 @@ const blockDayFlags = computed(() => {
       <span
         class="sync-chip"
         :data-state="syncing ? 'syncing' : conn.state"
-        :title="syncing ? '连接中断,重连后将自动对齐缺失事件' : $t('transcriptTimeline.kglov3b025', { p0: lastDataAgo || '无' })"
+        :title="syncing ? $t('transcriptTimeline.syncLag') : $t('transcriptTimeline.kglov3b025', { p0: lastDataAgo || $t('transcriptTimeline.none') })"
       >
         <span
           v-if="syncing"

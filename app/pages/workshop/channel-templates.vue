@@ -12,6 +12,12 @@ import { useUserStore } from '../../stores/workshop/user'
 
 const { t: tt } = useI18n()
 
+/** 内置 Channel 模板的描述/场景预览按稳定 id 翻译;自建回退原文 */
+const seedDesc = (t: { id: string, description: string }): string =>
+  SEED_EXTRA_KEYS[t.id]?.desc ? tt(SEED_EXTRA_KEYS[t.id]!.desc!) : t.description
+const seedScenario = (t: { id: string, scenarioPrompt: string }): string =>
+  SEED_EXTRA_KEYS[t.id]?.scenario ? tt(SEED_EXTRA_KEYS[t.id]!.scenario!) : t.scenarioPrompt
+
 definePageMeta({ layout: 'default' })
 
 const api = useWorkshopApi()
@@ -55,10 +61,11 @@ const visTag = (t: ChannelTemplateDto): { text: string, color: string, icon?: st
   return { text: tt('ctpl.k447jj023'), color: 'default' }
 }
 
-/** 成员预览名(引用模板 → 当前名;内联 → 快照名) */
+/** 成员预览名(引用模板 → 当前名,内置模板按稳定 id 翻译;内联 → 快照名) */
 const memberLabel = (m: ChannelTemplateMemberDto): string =>
   'templateId' in m
-    ? (agentTemplates.value.find(a => a.id === m.templateId)?.name ?? m.templateId.slice(0, 8))
+    ? seedName(tt, agentTemplates.value.find(a => a.id === m.templateId)
+    ?? { id: m.templateId, name: m.templateId.slice(0, 8) })
     : m.inline.name
 
 const createOpen = ref(false)
@@ -194,7 +201,7 @@ useHead({ title: () => tt('titles.ctpl') })
           class="card"
         >
           <div class="card-head">
-            <span class="name">{{ t.name }}</span>
+            <span class="name">{{ seedName(tt, t) }}</span>
             <a-tag
               :color="visTag(t).color"
               class="vis-tag"
@@ -208,8 +215,8 @@ useHead({ title: () => tt('titles.ctpl') })
               v-if="!t.isBuiltin && canWrite(t)"
               :checked="t.visibility === 'public'"
               size="small"
-              checked-children="公开"
-              un-checked-children="私有"
+              :checked-children="$t('ctpl.visPublic')"
+              :un-checked-children="$t('ctpl.visPrivate')"
               @change="(v: unknown) => toggleVisibility(t, v === true)"
             />
             <span class="owner">{{ t.ownerName ?? '-' }}</span>
@@ -218,7 +225,7 @@ useHead({ title: () => tt('titles.ctpl') })
             v-if="t.description"
             class="desc"
           >
-            {{ t.description }}
+            {{ seedDesc(t) }}
           </p>
           <div class="member-line">
             <span class="i-tabler-users-group" />
@@ -242,7 +249,7 @@ useHead({ title: () => tt('titles.ctpl') })
             class="scenario"
             :title="t.scenarioPrompt"
           >
-            {{ t.scenarioPrompt.slice(0, 90) }}{{ t.scenarioPrompt.length > 90 ? '…' : '' }}
+            {{ seedScenario(t).slice(0, 90) }}{{ seedScenario(t).length > 90 ? '…' : '' }}
           </div>
           <div class="card-foot">
             <span
@@ -289,9 +296,9 @@ useHead({ title: () => tt('titles.ctpl') })
 
     <a-modal
       v-model:open="createOpen"
-      title="新建 Channel 模板"
-      ok-text="创建"
-      cancel-text="取消"
+      :title="$t('ctpl.newTplTitle')"
+      :ok-text="$t('common.create')"
+      :cancel-text="$t('common.cancel')"
       @ok="create"
     >
       <a-form layout="vertical">
@@ -301,7 +308,7 @@ useHead({ title: () => tt('titles.ctpl') })
         <a-form-item :label="$t('ctpl.k40gkk004')">
           <a-input v-model:value="createForm.description" />
         </a-form-item>
-        <a-form-item label="Lead 模板(实例化时克隆为 channel lead)">
+        <a-form-item :label="$t('ctpl.leadTplLabel')">
           <a-select
             v-model:value="createForm.leadId"
             allow-clear

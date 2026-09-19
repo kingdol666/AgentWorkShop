@@ -1,0 +1,10 @@
+{
+  "aml": [
+    ["blockerVenv", "训练环境(./aml/.venv)尚未创建:请在「运行环境」面板点击「创建训练环境」", "Training environment (./aml/.venv) not created yet: click \"Create training environment\" in the Runtime Environment panel"],
+    ["blockerPython", "Python 解释器不可用", "Python interpreter unavailable"],
+    ["rootSourceEnv", "环境变量 AW_AML_DIR 指定", "Set via the AW_AML_DIR environment variable"],
+    ["rootSourceRepo", "项目检出根(./aml)", "Project checkout root (./aml)"],
+    ["rootSourceHome", "用户配置根(~/.AgentWorkShop/aml)", "User config root (~/.AgentWorkShop/aml)"],
+    ["rootSourceCwd", "当前工作目录(./aml)", "Current working directory (./aml)"]
+  ]
+}

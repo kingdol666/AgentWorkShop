@@ -23,6 +23,29 @@ const login = async (email, password) => (await api('/api/users/login', { method
 // ---- admin 登录 + 总览 ----
 const adminTok = await login('admin@awshop.local', ADMIN_PASS)
 ok('admin 登录', Boolean(adminTok))
+// ---- 夹具自包含:确保两条产线且各带写控节点、线1 带数采节点(空实例可直接跑,幂等) ----
+{
+  let lr = await api('/api/workshop/dcw/lines', {}, adminTok)
+  let lines = lr.body?.data?.lines ?? lr.body?.data ?? []
+  while (lines.length < 2) {
+    await api('/api/workshop/dcw/lines', { method: 'POST', body: JSON.stringify({ name: `权限测试产线${lines.length + 1}` }) }, adminTok)
+    lr = await api('/api/workshop/dcw/lines', {}, adminTok)
+    lines = lr.body?.data?.lines ?? lr.body?.data ?? []
+  }
+  const fxLines = lines.slice(0, 2)
+  const dAll = await api('/api/workshop/dcw', {}, adminTok)
+  const dcwAll = dAll.body?.data?.nodes ?? []
+  for (const ln of fxLines) {
+    if (!dcwAll.some(n => n.lineId === ln.id)) {
+      await api('/api/workshop/dcw', { method: 'POST', body: JSON.stringify({ templateRef: 'dcw-temp-sp', name: '温度设定器', lineId: ln.id, driver: 'mock' }) }, adminTok)
+    }
+  }
+  const qAll = await api('/api/workshop/daq', {}, adminTok)
+  const daqAll = qAll.body?.data?.nodes ?? []
+  if (!daqAll.some(n => n.lineId === fxLines[0].id)) {
+    await api('/api/workshop/daq', { method: 'POST', body: JSON.stringify({ templateRef: 'daq-temp-tc', name: '温度传感器', lineId: fxLines[0].id, driver: 'mock' }) }, adminTok)
+  }
+}
 const ov = await api('/api/workshop/permissions', {}, adminTok)
 ok('admin 权限总览(lines+users)', ov.status === 200 && ov.body?.data?.lines?.length > 0 && ov.body?.data?.users?.length > 0, `lines=${ov.body?.data?.lines?.length} users=${ov.body?.data?.users?.length}`)
 const LINE1 = ov.body.data.lines[0]?.id

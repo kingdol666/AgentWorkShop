@@ -232,7 +232,7 @@ const onMenuAction = async (key: 'cancel' | 'retry' | 'detail') => {
         {{ synced ? $t('taskBoardView.k3vkhhj006') : $t('taskBoardView.k1f9c17l019') }} <span class="aw-serif-accent-italic">{{ $t('taskBoardView.k3wcox003') }}</span>
       </div>
       <div class="pe-sub">
-        {{ synced ? '在下方 Composer 提交首个任务(首行标题,支持 goal / loop / pipeline 模式)' : '任务快照对齐后自动呈现' }}
+        {{ synced ? $t('taskBoardView.emptySubNew') : $t('taskBoardView.emptySubSync') }}
       </div>
     </div>
 

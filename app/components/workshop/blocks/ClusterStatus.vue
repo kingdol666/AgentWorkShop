@@ -8,6 +8,8 @@
 import { computed, ref } from 'vue'
 import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
 
+const { t } = useI18n()
+
 const props = defineProps<{ block: EventBlock }>()
 
 interface StatusLine { seq: number, text: string }
@@ -22,10 +24,10 @@ const lines = computed<StatusLine[]>(() =>
 /** 折叠预览:最新事件首行(截 120 字符) */
 const preview = computed(() => {
   const last = lines.value[lines.value.length - 1]
-  if (!last) return '(空)'
+  if (!last) return t('clusterStatus.empty')
   const firstLine = last.text.split('\n').find(l => l.trim().length > 0) ?? ''
   const flat = firstLine.replace(/\s+/g, ' ').trim()
-  return flat.length > 120 ? `${flat.slice(0, 120)}…` : (flat || '(空)')
+  return flat.length > 120 ? `${flat.slice(0, 120)}…` : (flat || t('clusterStatus.empty'))
 })
 
 const expanded = ref(false)

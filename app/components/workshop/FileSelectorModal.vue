@@ -84,10 +84,10 @@ const cancel = (): void => emit('update:open', false)
 <template>
   <a-modal
     :open="open"
-    :title="title ?? '选择工作目录'"
+    :title="title ?? $t('fileSelectorModal.title')"
     :width="640"
-    ok-text="选择此目录"
-    cancel-text="取消"
+    :ok-text="$t('fileSelectorModal.pickHere')"
+    :cancel-text="$t('common.cancel')"
     :confirm-loading="loading"
     @ok="confirm"
     @cancel="cancel"
@@ -108,8 +108,8 @@ const cancel = (): void => emit('update:open', false)
         v-model:value="manualPath"
         size="small"
         class="manual"
-        placeholder="输入绝对路径跳转(如 D:\\projects\\my-app)"
-        enter-button="跳转"
+        :placeholder="$t('fileSelectorModal.pathPh')"
+        :enter-button="$t('fileSelectorModal.go')"
         @search="goManual"
       />
 

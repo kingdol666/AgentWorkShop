@@ -206,7 +206,7 @@ const quoteToComposer = (): void => {
         v-if="block.agentId && agentState"
         class="av-status"
         :class="agentState"
-        :title="agentState === 'busy' ? '运行中' : agentState === 'stopped' ? '已停止' : '空闲'"
+        :title="agentState === 'busy' ? $t('eventBlock.stBusy') : agentState === 'stopped' ? $t('eventBlock.stStopped') : $t('eventBlock.stIdle')"
       />
     </button>
 
@@ -251,7 +251,7 @@ const quoteToComposer = (): void => {
           <button
             type="button"
             class="eb-tool"
-            :title="copied ? '已复制' : '复制全文'"
+            :title="copied ? $t('eventBlock.copied') : $t('eventBlock.copyAll')"
             @click="copyAll"
           >
             <span :class="copied ? 'i-tabler-check' : 'i-tabler-copy'" />

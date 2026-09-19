@@ -181,7 +181,7 @@ function doDcwWrite(r: DcwLiveRow): void {
             class="twin-del"
             :class="{ armed: armedId === tw.id }"
             :disabled="busyId === tw.id"
-            :title="armedId === tw.id ? '再次点击确认删除该设备实例' : '删除该设备实例'"
+            :title="armedId === tw.id ? $t('deviceTwinPanel.armDelete') : $t('deviceTwinPanel.delDevice')"
             @click.stop="removeTwin(tw)"
           >
             {{ armedId === tw.id ? $t('deviceTwinPanel.k44653007') : '✕' }}
@@ -252,7 +252,7 @@ function doDcwWrite(r: DcwLiveRow): void {
               >{{ r.lastReadAt.slice(11, 19) }}</i>
             </div>
             <div class="dcw-win">
-              <span :title="r.src === 'recipe' ? '当前运行配方工艺窗口' : '节点全局量程'">{{ dcwWinText(r) }}</span>
+              <span :title="r.src === 'recipe' ? $t('deviceTwinPanel.winRecipe') : $t('deviceTwinPanel.winRange')">{{ dcwWinText(r) }}</span>
             </div>
             <div class="dcw-ctrl">
               <input

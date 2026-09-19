@@ -189,7 +189,7 @@ const stateDot: Record<string, string> = {
       >
         <a-tab-pane
           key="stream"
-          tab="独立输出流"
+          :tab="$t('agentInspectorDrawer.tabStream')"
         >
           <div class="stream">
             <div
@@ -216,7 +216,7 @@ const stateDot: Record<string, string> = {
             />
           </template>
           <div
-            v-for="group in [['执行中', assignedTasks.working], ['待执行', assignedTasks.queued], ['已完成', assignedTasks.done]]"
+            v-for="group in [[$t('agentInspectorDrawer.grpWorking'), assignedTasks.working], [$t('agentInspectorDrawer.grpQueued'), assignedTasks.queued], [$t('agentInspectorDrawer.grpDone'), assignedTasks.done]]"
             :key="group[0]"
             class="queue-group"
           >
@@ -243,7 +243,7 @@ const stateDot: Record<string, string> = {
 
         <a-tab-pane
           key="memory"
-          tab="记忆"
+          :tab="$t('agentInspectorDrawer.tabMemory')"
         >
           <workshop-memory-panel
             :channel-id="channelId"
@@ -261,15 +261,15 @@ const stateDot: Record<string, string> = {
           <a-switch
             :checked="(agent.enabled ?? 1) === 1"
             :loading="toggling"
-            checked-children="启用"
-            un-checked-children="停用"
+            :checked-children="$t('agentInspectorDrawer.swOn')"
+            :un-checked-children="$t('agentInspectorDrawer.swOff')"
             size="small"
             @change="toggleEnabled"
           />
           <a-popconfirm
             :title="$t('agentInspectorDrawer.k1ofh789002')"
-            ok-text="移除"
-            cancel-text="取消"
+            :ok-text="$t('agentInspectorDrawer.okRemove')"
+            :cancel-text="$t('common.cancel')"
             @confirm="removeMember"
           >
             <a-button
@@ -293,7 +293,7 @@ const stateDot: Record<string, string> = {
             <a-segmented
               v-model:value="priority"
               size="small"
-              :options="[{ value: 'immediate', label: '即时' }, { value: 'task', label: '排队' }]"
+              :options="[{ value: 'immediate', label: $t('agentInspectorDrawer.prioImmediate') }, { value: 'task', label: $t('agentInspectorDrawer.prioQueued') }]"
             />
             <a-checkbox v-model:checked="requireReply">
               {{ $t('agentInspectorDrawer.k1jxt8vh008') }}

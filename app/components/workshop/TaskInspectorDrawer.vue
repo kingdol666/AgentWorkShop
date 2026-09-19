@@ -128,7 +128,7 @@ const stateColor: Record<string, string> = {
     v-model:open="open"
     placement="right"
     :width="drawerWidth"
-    :title="detail?.title ?? taskView?.title ?? '任务详情'"
+    :title="detail?.title ?? taskView?.title ?? $t('taskInspectorDrawer.fallbackTitle')"
     class="aw-resizable-drawer"
   >
     <workshop-pane-splitter
@@ -181,7 +181,7 @@ const stateColor: Record<string, string> = {
           v-if="(taskView?.state ?? detail?.state) === 'FAILED' && failureReason"
           class="failure-reason"
         >
-          <span class="fr-label">失败原因</span>
+          <span class="fr-label">{{ $t('taskInspectorDrawer.failReason') }}</span>
           <span class="fr-text">{{ failureReason }}</span>
         </div>
 
@@ -210,7 +210,7 @@ const stateColor: Record<string, string> = {
         >
           <a-tab-pane
             key="timeline"
-            tab="状态时间线"
+            :tab="$t('taskInspectorDrawer.tabTimeline')"
           >
             <div
               v-if="timeline.length === 0"

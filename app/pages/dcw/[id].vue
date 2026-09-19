@@ -32,9 +32,9 @@ const nodeDeviceNames = (n: { deviceIds?: string[], deviceBindingId?: string | n
 const deviceName = (id: string | null): string =>
   id ? (deviceTwins.twins.find(t => t.id === id)?.name ?? id) : t('dcwDetail.k3own4q121')
 
-const stateLabel: Record<string, string> = {
-  idle: t('dcwDetail.k3zgkk122'), writing: t('dcwDetail.k3l3h80123'), ok: '已 ACK', error: t('dcwDetail.k40reu124'), offline: t('dcwDetail.k44c2n125'),
-}
+const stateLabel = computed<Record<string, string>>(() => ({
+  idle: t('dcwDetail.k3zgkk122'), writing: t('dcwDetail.k3l3h80123'), ok: t('dcwDetail.stAck'), error: t('dcwDetail.k40reu124'), offline: t('dcwDetail.k44c2n125'),
+}))
 
 function dcwTemplateRefCh(templateRef?: string): string {
   const ref = templateRef ?? ''
@@ -302,7 +302,7 @@ async function doCreateTemplate(): Promise<void> {
     })
     // 新模板即刻可选:添加控制节点向导自动选中它,下拉随 store 响应式更新
     addTemplate.value = tpl.key
-    tplOk.value = t('dcwDetail.ky4e1tr185', { p0: tpl.name })
+    tplOk.value = t('dcwDetail.ky4e1tr185', { p0: catalogTplName(t, tpl) })
     tplForm.name = ''
     tplForm.ch = ''
     tplForm.code = ''
@@ -830,7 +830,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           v-if="!ls.active"
           class="pill-btn"
           :disabled="lineBusy || !lineRecipeId"
-          :title="!lineRecipeId ? '开跑前必须先设定配方' : '下发配方参数并开始打标数据采集'"
+          :title="!lineRecipeId ? $t('dcwDetail.startNeedRecipe') : $t('dcwDetail.startTip')"
           @click="doLineStart"
         >
           {{ $t('dcwDetail.kfb8vml029') }}
@@ -881,7 +881,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             class="tpl-chip"
             :title="`${tpl.code} · ${tpl.min}~${tpl.max} ${tpl.unit}${tpl.semantics ? ` · ${tpl.semantics}` : ''}`"
           >
-            {{ tpl.name }} <small class="mono">{{ tpl.min }}~{{ tpl.max }}{{ tpl.unit }}</small>
+            {{ catalogTplName(t, tpl) }} <small class="mono">{{ tpl.min }}~{{ tpl.max }}{{ tpl.unit }}</small>
             <em
               class="tpl-tag"
               :class="{ builtin: tpl.builtin }"
@@ -914,7 +914,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             <input
               v-model="tplForm.code"
               class="inp"
-              placeholder="如 MOTOR · I"
+              :placeholder="$t('dcwDetail.codePh')"
             >
           </label>
           <label class="f">
@@ -922,7 +922,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             <input
               v-model="tplForm.unit"
               class="inp"
-              placeholder="如 A"
+              :placeholder="$t('dcwDetail.unitPh')"
             >
           </label>
           <label class="f">
@@ -1027,7 +1027,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
             :class="{ on: addScenario === 'mock' }"
             @click="addScenario = 'mock'"
           >
-            Mock 模拟 PLC
+            {{ $t('dcwDetail.mockPlc') }}
           </button>
           <button
             class="seg"
@@ -1050,7 +1050,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                 :key="tpl.key"
                 :value="tpl.key"
               >
-                {{ tpl.name }} · {{ tpl.ch }}({{ tpl.min }}~{{ tpl.max }} {{ tpl.unit }}){{ tpl.builtin ? '' : $t('dcwDetail.kr45rk9157') }}
+                {{ catalogTplName(t, tpl) }} · {{ tpl.ch }}({{ tpl.min }}~{{ tpl.max }} {{ tpl.unit }}){{ tpl.builtin ? '' : $t('dcwDetail.kr45rk9157') }}
               </option>
             </select>
           </label>
@@ -1100,7 +1100,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                 {{ $t('dcwDetail.kkzy0k049') }}
               </option>
               <option value="linear">
-                线性标定:PLC值 = (物理值 - offset) / scale
+                {{ $t('dcwDetail.linearCalOpt') }}
               </option>
             </select>
           </label>
@@ -1113,7 +1113,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                 step="0.1"
                 class="inp"
                 :disabled="addTransform.kind !== 'linear'"
-                title="decoder 斜率(≠0):物理值 = scale × PLC值 + offset;下发时自动取逆"
+                :title="$t('dcwDetail.calScaleTip')"
               >
               <input
                 v-model.number="addTransform.offset"
@@ -1121,7 +1121,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                 step="0.1"
                 class="inp"
                 :disabled="addTransform.kind !== 'linear'"
-                title="decoder 截距"
+                :title="$t('dcwDetail.calOffsetTip')"
               >
             </div>
           </label>
@@ -1271,7 +1271,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   class="ctrl-toggle"
                   :class="{ on: n.enabled }"
                   :disabled="togglingId === n.id"
-                  :title="n.enabled ? '暂停该节点控制:下发将被拒绝' : '开启该节点控制:恢复可下发'"
+                  :title="n.enabled ? $t('dcwDetail.pauseCtrlTip') : $t('dcwDetail.enableCtrlTip')"
                   @click="toggleControl(n.id, !n.enabled)"
                 >
                   <span class="ct-dot" />
@@ -1327,12 +1327,12 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                     :max="n.max"
                     :step="10 ** -n.decimals"
                     :disabled="!n.enabled"
-                    :title="!n.enabled ? '当前节点暂停:开启控制后方可设定' : ''"
+                    :title="!n.enabled ? $t('dcwDetail.pausedTip') : ''"
                   >
                   <button
                     class="mini-btn write-btn"
                     :disabled="!n.enabled || writingId === n.id || setInputs[n.id] == null || setInputs[n.id] === ''"
-                    :title="!n.enabled ? '当前节点暂停:开启控制后方可设定' : '下发设定值'"
+                    :title="!n.enabled ? $t('dcwDetail.pausedTip') : $t('dcwDetail.writeTip')"
                     @click="doWrite(n.id, Number(setInputs[n.id]))"
                   >
                     {{ writingId === n.id ? $t('dcwDetail.k3l3h80123') : $t('dcwDetail.k3w6td174') }}
@@ -1874,7 +1874,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
         <button
           class="mini-btn"
           :disabled="lineDaqNodes.length === 0"
-          :title="lineDaqNodes.length === 0 ? '本产线暂无数采节点' : ''"
+          :title="lineDaqNodes.length === 0 ? $t('dcwDetail.noDaqTip') : ''"
           @click="recipeForm.daqWindows.push({ nodeId: lineDaqNodes[0]?.id ?? '', min: '', max: '' })"
         >
           {{ $t('dcwDetail.kv1de1p105') }}
@@ -2178,7 +2178,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               >{{ h.ok ? 'ACK' : $t('dcwDetail.k3yit7139') }}</span>
             </td>
             <td class="dim">
-              {{ h.recipeRunId ? $t('dcwDetail.k6vgks7181', { p0: h.recipeRunId }) : '手动' }}
+              {{ h.recipeRunId ? $t('dcwDetail.k6vgks7181', { p0: h.recipeRunId }) : $t('dcwDetail.manualTag') }}
             </td>
           </tr>
         </tbody>

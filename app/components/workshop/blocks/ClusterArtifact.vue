@@ -30,7 +30,7 @@ const expanded = ref(props.block.dupStream)
         class="mini-btn"
         @click="expanded = !expanded"
       >
-        {{ expanded ? $t('clusterArtifact.k49les002') : '查看' }}
+        {{ expanded ? $t('clusterArtifact.k49les002') : $t('clusterArtifact.view') }}
       </button>
     </div>
     <template v-if="showBody || expanded">

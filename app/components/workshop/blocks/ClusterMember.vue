@@ -6,6 +6,8 @@ import { computed, ref } from 'vue'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
 
+const { t } = useI18n()
+
 const props = defineProps<{ block: EventBlock }>()
 const entities = useEntitiesStore()
 const cid = computed(() => props.block.events[0]?.channelId ?? '')
@@ -22,14 +24,14 @@ const lines = computed(() =>
       by: string
       reason?: string
     }
-    const who = p.by === 'user' ? '用户' : `lead ${entities.agentName(cid.value, p.by.replace(/^lead:/, ''))}`
+    const who = p.by === 'user' ? t('clusterMember.byUser') : `lead ${entities.agentName(cid.value, p.by.replace(/^lead:/, ''))}`
     const member = `${p.name}(${p.role}/${p.harness})`
     const verbs = {
-      added: `新增成员 ${member}`,
-      updated: p.enabled === 0 ? `禁用成员 ${member}` : `更新成员 ${member}`,
-      removed: `移除成员 ${member}`,
+      added: t('clusterMember.vAdded', { p0: member }),
+      updated: p.enabled === 0 ? t('clusterMember.vDisabled', { p0: member }) : t('clusterMember.vUpdated', { p0: member }),
+      removed: t('clusterMember.vRemoved', { p0: member }),
     } as const
-    return { seq: e.seq, text: `${who}${verbs[p.op]}${p.reason ? `,理由:${p.reason}` : ''}`, op: p.op }
+    return { seq: e.seq, text: `${who}${verbs[p.op]}${p.reason ? t('clusterMember.reason', { p0: p.reason }) : ''}`, op: p.op }
   }),
 )
 
@@ -55,7 +57,7 @@ const hasMore = computed(() => lines.value.length > MAX)
       class="more-btn"
       @click="expanded = !expanded"
     >
-      {{ expanded ? $t('clusterMember.k40p82001') : `全部 ${lines.length} 条` }}
+      {{ expanded ? $t('clusterMember.k40p82001') : $t('clusterMember.showAll', { p0: lines.length }) }}
     </button>
   </div>
 </template>

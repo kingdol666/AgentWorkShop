@@ -35,14 +35,14 @@ const commands = computed<Command[]>(() => {
   const list: Command[] = [
     { key: 'nav-home', label: t('commandPalette.kmxxk3u006'), hint: '/workshop', run: () => navigateTo('/workshop') },
     { key: 'nav-agents', label: t('commandPalette.k4s8e5q007'), hint: '/workshop/agents', run: () => navigateTo('/workshop/agents') },
-    { key: 'nav-teams', label: '前往:AgentTeam 编组库', hint: '/workshop/teams', run: () => navigateTo('/workshop/teams') },
+    { key: 'nav-teams', label: t('commandPalette.gotoTeams'), hint: '/workshop/teams', run: () => navigateTo('/workshop/teams') },
     { key: 'nav-channel-templates', label: t('commandPalette.k1ezz11x008'), hint: '/workshop/channel-templates', run: () => navigateTo('/workshop/channel-templates') },
     { key: 'view-timeline', label: t('commandPalette.k143z9bg009'), run: () => { emit('setView', 'timeline') } },
-    { key: 'view-lanes', label: '视图:Agent lanes', run: () => { emit('setView', 'lanes') } },
+    { key: 'view-lanes', label: t('commandPalette.viewLanes'), run: () => { emit('setView', 'lanes') } },
     { key: 'view-board', label: t('commandPalette.k13ztmim010'), run: () => { emit('setView', 'board') } },
     { key: 'view-split', label: t('commandPalette.k21cpnp011'), run: () => { emit('setView', 'split') } },
     { key: 'act-compose', label: t('commandPalette.k1tm54il012'), hint: '⌘I', run: () => { emit('compose') } },
-    { key: 'act-a2a', label: '动作:A2A RPC/SSE 调试器', run: () => { emit('openA2aDebug') } },
+    { key: 'act-a2a', label: t('commandPalette.actA2a'), run: () => { emit('openA2aDebug') } },
   ]
   // Channel 切换
   for (const id of wsStore.workspaces.find(w => w.id === props.wsId)?.channelIds ?? []) {

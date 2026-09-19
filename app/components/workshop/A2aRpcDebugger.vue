@@ -30,14 +30,14 @@ watch(agents, (list) => {
 
 type Method = 'tasks/send' | 'tasks/sendSubscribe' | 'tasks/get' | 'tasks/list' | 'message/send' | 'agent/getCard'
 const method = ref<Method>('tasks/list')
-const methodOptions: Array<{ value: Method, label: string, sse?: boolean }> = [
+const methodOptions = computed<Array<{ value: Method, label: string, sse?: boolean }>>(() => [
   { value: 'tasks/list', label: 'tasks/list' },
   { value: 'tasks/get', label: 'tasks/get' },
   { value: 'tasks/send', label: 'tasks/send' },
-  { value: 'tasks/sendSubscribe', label: 'tasks/sendSubscribe(SSE 流)', sse: true },
-  { value: 'message/send', label: 'message/send(需 token)' },
+  { value: 'tasks/sendSubscribe', label: t('a2aRpcDebugger.methodSse'), sse: true },
+  { value: 'message/send', label: t('a2aRpcDebugger.methodToken') },
   { value: 'agent/getCard', label: 'agent/getCard' },
-]
+])
 
 const paramsJson = ref('{}')
 const token = ref('')
@@ -106,7 +106,7 @@ const run = async (): Promise<void> => {
     params = JSON.parse(paramsJson.value || '{}')
   }
   catch {
-    message.error('params 不是合法 JSON')
+    message.error(t('a2aRpcDebugger.badParams'))
     return
   }
   running.value = true
@@ -144,7 +144,7 @@ const run = async (): Promise<void> => {
     v-model:open="open"
     placement="right"
     :width="drawerWidth"
-    title="A2A RPC / SSE 调试器"
+    :title="$t('a2aRpcDebugger.title')"
     class="aw-resizable-drawer"
   >
     <workshop-pane-splitter
@@ -171,7 +171,7 @@ const run = async (): Promise<void> => {
       <a-input-password
         v-model:value="token"
         size="small"
-        placeholder="Bearer token(message/send 需要;留空匿名)"
+        :placeholder="$t('a2aRpcDebugger.tokenPh')"
         class="token"
       />
       <div class="row">
@@ -197,7 +197,7 @@ const run = async (): Promise<void> => {
           {{ $t('a2aRpcDebugger.k405w8004') }}
         </a-button>
       </div>
-      <pre class="output">{{ output || '(输出;sendSubscribe 将逐条渲染 SSE 事件)' }}</pre>
+      <pre class="output">{{ output || $t('a2aRpcDebugger.outputEmpty') }}</pre>
     </div>
   </a-drawer>
 </template>

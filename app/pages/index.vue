@@ -55,6 +55,12 @@ const harnesses = ref<HarnessMetaDto[]>([])
  * 再写一遍只是把同一件事讲两遍 —— 实测 14 张卡里有 9 张是重复的。
  * 真正有信息量的只有:不可用状态、in-process、以及与标签不同的真实二进制名。
  */
+/** 已知引擎的服务端 label 前端译名(服务端 label 是中文数据,展示层按 id 映射) */
+const harnessLabel = (h: HarnessMetaDto): string => {
+  if (h.id === 'mock') return t('agents.hMock')
+  if (h.id === 'omp') return t('agents.hOmp')
+  return h.label
+}
 const harnessCmd = (h: HarnessMetaDto): string => {
   if (h.available === false) return t('home.harness.missing')
   if (h.inprocess) return 'in-process'
@@ -441,7 +447,7 @@ const fleetOverflow = computed(() => Math.max(lineCards.value.length - FLEET_CAP
           :title="h.available === false ? (h.error ?? '') : (h.resolvedPath ?? h.command ?? '')"
         >
           <span class="h-dot" />
-          <span class="h-name">{{ h.label }}</span>
+          <span class="h-name">{{ harnessLabel(h) }}</span>
           <span
             v-if="harnessCmd(h)"
             class="h-cmd mono"

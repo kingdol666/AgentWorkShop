@@ -619,7 +619,7 @@ watch(() => [props.pid, props.agentId], () => {
     retryCount = 0
     lastErrorMessage = ''
     livePid.value = null
-    writeBlock(`${C.dim}── 切换目标 · ${props.pid ? `PID ${props.pid}` : `agent ${props.agentId?.slice(0, 8)}…`} ──${C.reset}`)
+    writeBlock(`${C.dim}${t('ompTerminalPanel.switchTarget', { p0: props.pid ? `PID ${props.pid}` : `agent ${props.agentId?.slice(0, 8)}…` })}${C.reset}`)
     connect()
   })
 })

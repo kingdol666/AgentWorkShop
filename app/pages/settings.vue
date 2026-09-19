@@ -402,6 +402,8 @@ const localeOptions = computed(() =>
 const switchLocale = (value: unknown) => {
   if (value != null) {
     // 持久化 + 强刷:与 AppHeader 同策略(setup 期词条需重载整体切换)
+    // cookie 参与 SSR 首帧(locale-cookie.global.ts);localStorage 保留为插件回退
+    useCookie('aw.locale', { maxAge: 60 * 60 * 24 * 365 }).value = String(value)
     localStorage.setItem('aw.locale', String(value))
     setLocale(String(value) as 'zh-CN' | 'en')
     window.location.reload()

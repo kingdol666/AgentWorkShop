@@ -105,7 +105,7 @@ const viewOptions = computed(() => {
     { value: 'town', label: t('wsView.k1cz0pbw013') },
   ]
   // 窄屏「一次一区」:检查器不占侧栏,并入切换条(四区都由同一条承载)
-  return narrowUI.value ? [...base, { value: 'inspector', label: '检查器' }] : base
+  return narrowUI.value ? [...base, { value: 'inspector', label: t('wsView.inspector') }] : base
 })
 // 数字快捷键 1-5 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向)
 const onViewKey = (ev: KeyboardEvent): void => {
@@ -211,7 +211,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         @keydown="onViewKey"
       >
         <span class="topbar-mark i-tabler-box" />
-        <span class="ws-name">{{ workspace?.name ?? '未知 Workspace' }}</span>
+        <span class="ws-name">{{ workspace?.name ?? $t('wsView.unknownWs') }}</span>
         <span
           v-if="channelId"
           class="chan-chip"
@@ -235,7 +235,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
           v-if="narrowUI"
           class="pane-toggle im toggle-left-narrow"
           :class="{ off: !leftOpen }"
-          title="频道会话列表"
+          :title="$t('wsView.channelListTitle')"
           @click="leftOpen = !leftOpen"
         >
           <span class="i-tabler-list-details im-pop" />
@@ -258,7 +258,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         </button>
         <button
           class="pane-toggle im"
-          title="A2A RPC/SSE 调试器"
+          :title="$t('wsView.a2aTitle')"
           @click="a2aDebugOpen = true"
         >
           <span class="i-tabler-terminal-2 im-pop" />
@@ -377,7 +377,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
           v-else-if="!wsStore.loaded"
           class="pane-loading"
         >
-          正在加载 Workspace…
+          {{ $t('wsView.loadingWs') }}
         </div>
       </div>
     </div>
