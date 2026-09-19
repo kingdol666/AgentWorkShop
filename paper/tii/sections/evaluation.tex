@@ -157,7 +157,7 @@ not disclose transport addresses (Sec.~\ref{sec:paramlayer}).
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.66\columnwidth]{figures/publication/fig9-latest-benchmark.pdf}
+\includegraphics[width=0.62\columnwidth]{figures/publication/fig9-latest-benchmark.pdf}
 \caption{Archive $B$. (a) Governed write latency p50 and p95 for the four
 writable stacks (numeric values in Table~\ref{tab:plc}); Modbus TCP carries the longest tail. (b) Fixed-controller
 objective $J$ for seeds 42--44, sampled at the start and after each of two
@@ -257,7 +257,7 @@ with an empty evidence array in Sec.~\ref{sec:repro}.
 
 \begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.50\textwidth]{figures/gpt/agentteam-storyboard.png}
+\includegraphics[width=0.46\textwidth]{figures/gpt/agentteam-storyboard-tii.png}
 \caption{Storyboard of the scripted AgentTeam mission in archive $B$ (panels 1--6): the objective is filed on the task board, delegated through the channel, the gauge is read ($28.10\,\mu$m), three governed writes are issued on two protocols (cast-roll and MDO fast-roll over Modbus TCP, TDO rail over OPC UA), and the record is judged \texttt{keep} with the task closed at $25.68\,\mu$m inside the $25.0\pm0.7\,\mu$m band. Panel values are archive values; team members are scripted and the LLM agent stays disabled.}
 \label{fig:story}
 \end{figure*}
@@ -266,7 +266,7 @@ Eleven archived runs of the reference command family share its seed; ten match i
 
 \begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.50\textwidth]{figures/publication/fig11-agentteam-loop.pdf}
+\includegraphics[width=0.46\textwidth]{figures/publication/fig11-agentteam-loop.pdf}
 \caption{Scripted AgentTeam mission in archive $B$, reconstructed from \texttt{agentteam-biax.log} and \texttt{run.json}. Top: the simulated BOPET line (nine devices, 30 setpoints, 19 acquisition nodes) with the three written actuators, the gauge, and the objective. Middle: the channel carrying the objective, the four checks a governed write clears (the first three gate admission; the fourth is the driver's acceptance), and the three recorded steps (of an allowed six). Bottom: thickness after each step against the $25.0\pm0.7\,\mu$m objective; the final point clears the band edge by $0.02\,\mu$m. Team members are scripted mock agents with a prespecified proportional rule; the LLM agent stays disabled, so the figure documents the governance and attribution path rather than optimization quality.}
 \label{fig:agentteam}
 \end{figure*}
