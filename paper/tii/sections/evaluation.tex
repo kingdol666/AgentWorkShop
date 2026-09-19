@@ -34,8 +34,8 @@ Sec.~\ref{sec:agentloop} is reported there.
 Table~\ref{tab:layers} groups the suite's 17 phases into seven evidence layers,
 all 75 checks passing. The same run stores five vector and five
 image frames, completes a lead-to-worker dispatch, stores a duplicate memory
-refresh once, and enumerates 14 registered agent engines, an inventory result
-that says nothing about control quality across them. The gate's
+refresh once, and enumerates 14 agent engines, an inventory result silent on
+control quality across them. The gate's
 verdict semantics flag task-level failures as warnings only (Sec.~\ref{sec:repro}).
 
 \begin{table*}[!tb]
@@ -117,9 +117,7 @@ Modbus RTU over TCP & 14 & N/A & N/A & N/A \\
 \end{tabular}
 \end{table}
 
-The 24/24 count lives in phase P3 (per-line integration checks
-\texttt{line-$n$-io}) and the 9/9 scenario count in phase P8 (checks
-\texttt{port-$n$-*}). Each writable stack rejects four engineering-range and two recipe-window
+The 24/24 count lives in phase P3 and the 9/9 scenario count in phase P8. Each writable stack rejects four engineering-range and two recipe-window
 violations, and none of the four designated legal writes is blocked.
 The probes are node-high/low $\pm$15\,\% of span, $10^{6}$, $-50$, and the
 recipe window widened by 20\,\%, so the set shows rejection
@@ -192,19 +190,17 @@ independent reading for them, and the control law inverts the model's own
 relation $h\propto N/v$, so the plateau is structural. The suite's gate is
 $J/J^{*}\geq0.8$, so the reported value is not near a threshold.
 
-The three seeds start at $J_0=70.115$, 68.792, and 70.248;
-Fig.~\ref{fig:clbench}(b) plots each seed's objective against the archived
-reference. All six governed writes
-are accepted and the mean wall time is 36.193\,s per seed. The
-archive reports an end-of-run score $J_{\rm end}=87.105$, 87.027, and 87.366
-(the mean of the last two evaluations), giving
-$J_{\rm end}/J^{*}=0.969$, 0.968, and 0.972; the last measured evaluation is
-lower in every seed, at 86.921, 86.609, and 86.975, or 0.967, 0.963, and 0.968. The
-stopping rule requires two consecutive converged observations, and the first write
-already brought thickness inside the $50\pm2\,\mu$m plateau, so the second write
-follows from the rule and not from further improvement: it raises defect rate from 0.38--0.53\,\% to 0.62--0.72\,\% and lowers the composite objective. We therefore
-quote $0.963$--$0.972$ across both conventions and do not describe the trajectory as
-monotone. Final thicknesses are 49.883, 49.383, and 49.317\,$\mu$m.
+The three seeds start at $J_0=70.115$--$70.248$;
+Fig.~\ref{fig:clbench}(b) plots each trajectory against the archived reference,
+and all six governed writes are accepted with a mean wall time of 36.193\,s per
+seed. Across the archive's two scoring conventions---end-of-run (mean of the
+last two evaluations) and last measured evaluation---the seeds reach
+$0.963$--$0.972$ of $J^{*}$, per seed $0.969/0.968/0.972$ and
+$0.967/0.963/0.968$. The stopping rule's second write follows from two
+converged observations and the plateau already reached by the first write: it
+raises defect rate from 0.38--0.53\,\% to 0.62--0.72\,\% and lowers the
+composite objective, so we do not describe the trajectory as monotone. Final
+thicknesses are 49.883, 49.383, and 49.317\,$\mu$m.
 
 Decomposing $J$ at the final point shows the residual gap: both reference and
 seeds saturate the thickness term, and the seeds' deficit on defect quality,

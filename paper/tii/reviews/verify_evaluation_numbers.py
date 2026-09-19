@@ -280,7 +280,7 @@ check("backstop restored", backstop["restored"], True)
 check("backstop latency s", float(backstop["latencyS"]), 120.161, 5e-4)
 check("backstop record", backstop["recordId"], "opt-4d097133")
 in_tex("120.161", "backstop latency in tex")
-in_tex("14 registered", "registry claim in tex")
+in_tex("14 agent engines", "registry claim in tex")
 
 # Reporting hygiene the reviewers asked us to state explicitly.
 phase_ids = [row[0] for row in phase_rows]
