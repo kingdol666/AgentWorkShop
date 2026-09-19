@@ -98,7 +98,7 @@ footer:
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.00-B</span>
-      <span class="aw-console-title">LIVE DEMO · 实机演示 3'34"</span>
+      <span class="aw-console-title">LIVE DEMO · 实机演示 3'16" · 英文配音</span>
       <span class="aw-console-meta">RECORDED · NO CUTS</span>
     </figcaption>
     <div class="aw-console-body">

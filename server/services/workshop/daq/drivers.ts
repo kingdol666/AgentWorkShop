@@ -331,6 +331,17 @@ export async function getModbusConn(cfg: Record<string, unknown>, transport: Mod
   // 会以 unhandledRejection 打崩进程(stability-guard fatal)。池层已有 evict 自愈,这里只需静默。
   const sock = (client as unknown as { port?: { client?: { on?: (ev: string, cb: (e: Error) => void) => void } } }).port?.client
   sock?.on?.('error', () => {})
+  // write-after-end 防线:evict/close 与在飞事务竞态时,modbus-serial 仍可能对已 end/destroy 的
+  // socket 调 write —— 该错误的 emit 路径并不总走 'error' 事件(实测同步抛出打崩进程,
+  // ERR_STREAM_WRITE_AFTER_END)。在 socket 层直接拦截:已终结即丢弃写入,让上层超时兜底。
+  const sockWritable = sock as unknown as { writableEnded?: boolean, destroyed?: boolean, write?: (...a: unknown[]) => unknown } | null
+  if (sockWritable?.write) {
+    const rawWrite = sockWritable.write.bind(sock)
+    sockWritable.write = (...a: unknown[]) => {
+      if (sockWritable.writableEnded || sockWritable.destroyed) return false
+      return rawWrite(...a)
+    }
+  }
   const conn: ModbusConn = { client, lastUsed: Date.now(), tail: Promise.resolve(), pending: 0, errors: 0 }
   modbusPool.set(key, conn)
   return conn
