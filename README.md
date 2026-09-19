@@ -127,7 +127,7 @@ Recorded against a running instance: real DAQ history, real write control, real 
 
 <div align="center">
 
-### 🎬 Live demo (3 min 16 s, English voice-over & captions)
+### 🎬 Live demo (3 min 18 s, English voice-over & captions)
 
 <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-demo.mp4"><img src="docs/site/public/demo/poster.jpg" alt="AgentWorkShop live demo: DAQ console, governed write + read-back, serial protocol plugin, agent team execution, closed-loop trend and the 3D digital twin" width="86%" /></a>
 

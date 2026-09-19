@@ -101,7 +101,7 @@ footer:
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.00-B</span>
-      <span class="aw-console-title">LIVE DEMO · 3'16" · VOICE-OVER</span>
+      <span class="aw-console-title">LIVE DEMO · 3'18" · VOICE-OVER · VOICE-OVER</span>
       <span class="aw-console-meta">RECORDED · NO CUTS</span>
     </figcaption>
     <div class="aw-console-body">
