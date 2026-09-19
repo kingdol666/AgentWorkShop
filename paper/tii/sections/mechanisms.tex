@@ -27,7 +27,8 @@ A node separates the meaning of an industrial variable from its transport addres
 Commissioning binds device integration information to an acquisition or control
 configuration, tests connectivity, and supplies units, calibration, limits, and
 production-line membership. Drivers support Modbus TCP, Modbus RTU over TCP, OPC UA
-\cite{iec62541}, MQTT, HTTP/REST, plus a mock implementation for testing. Creation
+\cite{iec62541}, MQTT, HTTP/REST, plus a mock implementation for testing; the
+RTU driver exposes no writable setpoint in the reference scenarios. Creation
 is not authorization to operate: operator APIs and agent-facing paths carry
 different permission conditions, and an industrial-tool binding refers to a
 concrete channel-member instance, not a reusable template, so deploying a template
@@ -183,7 +184,7 @@ judgments leave it open; restoring a setpoint requires a separate rollback
 operation, and uncertainty must not be read as successful optimization.
 
 An independent backstop periodically evaluates eligible open records, waiting at
-least 120\,s by default and rechecking every 30\,s. Acquisition channels matching
+least 120\,s by default and rechecking every 30\,s. Acquisition streams matching
 the control node's primary-device alias are preferred, otherwise falling back to
 the line. Historical query results are compared with configured acquisition
 monitoring windows, and at least three accumulated breaches trigger a rollback
@@ -256,9 +257,9 @@ product interval, and the remaining time. An unbound member is rejected, and
 after approval the tool verifies that the binding still exists before the request
 enters the controller. Approval therefore permits a request to proceed; it reserves
 no device state and guarantees nothing about later checks. Tool approvals expire
-explicitly and resolve as denied when unanswered, so a silent expiry is
-indistinguishable from a rejection at the device and is not separately surfaced to
-the operator. Duplicate pending requests for the same agent and node are
+explicitly; an expired approval executes no write, and the expiry is recorded as a
+distinct state rather than an operator refusal, so the requester can tell an
+unanswered approval from a denied one. Duplicate pending requests for the same agent and node are
 suppressed, and removing a binding can cancel outstanding requests. This timed
 approval object differs from an optimization record awaiting human action: a
 recorded escalation does not mean that recovery has executed, and the case of $K=2$
@@ -270,4 +271,5 @@ device outcome, and observed process effect stay distinguishable. Those distinct
 are inspectable across the four operator surfaces of Fig.~\ref{fig:workflow}.
 Process-external engines also require deployment-level privilege and network
 restrictions, because tool bindings govern sanctioned tool calls, not arbitrary I/O
-by a compromised local process.
+by a compromised local process. Section~\ref{sec:eval} evaluates these
+mechanisms against the boundaries marked above.

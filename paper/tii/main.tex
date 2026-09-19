@@ -80,28 +80,28 @@
 \begin{abstract}
 Bringing language-model agents into industrial supervisory control requires
 associating the semantics, authority, and history of each command across
-heterogeneous devices, multiple agents, and changing recipes. We
+heterogeneous devices and multiple agents. We
 present \system{}, a node-native framework in which explicit member-to-node
 bindings determine each agent's tools, source-dependent checks govern
 agent-issued writes, and attributable records with an independent backstop
 keep authorization, device execution, and process judgment distinguishable.
-A scripted channel layer and a fixed controller drive the governed write path
-end to end; the language-model decision path stays disabled. Results come
-from one archived run over three simulated production scenarios with real
+A scripted channel layer and a fixed controller drive the governed write path;
+the LLM decision path stays disabled. Results come
+from one archived run over three simulated scenarios with real
 protocol transports, including a 49-signal biaxial-film line. The run passes
-75 of 75 checks; the paper bounds that number by what the gate does not see:
+75 of 75 checks, bounded by what the gate does not see:
 task-level failures surface as warnings, three checks carry skipped write
 sub-checks, and the suite is not deterministic at the mission layer. The
-writable stacks reject 24 of 24 predefined out-of-constraint probes and block
-none of four legal writes; a second rejects 9 of 9 without false
+writable stacks reject 24/24 predefined out-of-constraint probes and none
+of four legal writes; a second scenario rejects 9/9 without false
 blocks. A fixed non-LLM controller reaches 0.963--0.972 of an offline
-grid-search reference under both archived scoring conventions. A scripted
-team mission reduces biaxial-film thickness from 28.10 to 25.68\,$\mu$m,
-inside a $25.0\pm0.7\,\mu$m objective, in three governed writes on two
-protocols; seven of eleven archived same-command runs end in the band
-(small-$n$); the three collapsed reruns do not trip the hard gate. These
+grid-search reference. A scripted
+team mission brings biaxial-film thickness from 28.10 to 25.68\,$\mu$m
+(objective $25.0\pm0.7\,\mu$m) in three governed writes on two protocols;
+seven of the ten reportable same-command runs (of eleven archived) end in the
+band (small-$n$); none of the collapses trips the hard gate. These
 results characterize the governance path on simulated plants;
-physical validation and controlled agent comparisons remain future work.
+physical validation and controlled agent comparisons remain open.
 \end{abstract}
 
 \begin{IEEEkeywords}

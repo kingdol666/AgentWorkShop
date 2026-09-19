@@ -13,7 +13,9 @@ Source
 inspection, mock drivers, real protocol transports driving simulated plants, and
 historical LLM campaigns stay apart; nothing here comes from physical hardware or
 human operators, and the latency figures do not transfer to physical transports. No headline
-claim in this paper rests on an LLM decision. The evidence is not uniform: the out-of-constraint write probes exercise the hard-range and recipe-window checks directly, the lifecycle and mission checks exercise rollback and approval, and the ownership and cooldown checks are traversed by every governed agent write (Sections~\ref{sec:port}, \ref{sec:e1a}, and \ref{sec:agentloop}). The probes are fixed protocol cases, not model-generated adversarial inputs.
+claim in this paper rests on an LLM decision.
+
+The evidence is not uniform: the out-of-constraint write probes exercise the hard-range and recipe-window checks directly, the lifecycle and mission checks exercise rollback and approval, and the ownership and cooldown checks are traversed by every governed agent write (Sections~\ref{sec:port}, \ref{sec:e1a}, and \ref{sec:agentloop}). The probes are fixed protocol cases, not model-generated adversarial inputs.
 
 Except where an archive is named, the results in this section come from one reference archived run,
 $B=\texttt{20260918043504-bdo}$: seed 42, commit \texttt{7d4bfc0}, hash \texttt{00e7dc827f4a2cea} over the modules of the \bench{} evaluation harness, Node v24.19.0 on \resHost{} x64. It holds 75 checks that all
@@ -243,12 +245,12 @@ optimization record, and was followed by a gauge re-read after a settling wait;
 the archive stores no post-write readback value for these
 three writes, so we claim none. The verdicts are not an independent finding:
 the scripted caller issues \texttt{keep} unconditionally, so the records show
-that judgment is stored separately from execution and compensation, not that a judgment was earned. The journal query for the cast-speed node returned the record with an agent source (the parameter layer of Sec.~\ref{sec:port}); the mission check that asserts journal attribution is the one with an empty evidence array in Sec.~\ref{sec:repro}. Eleven archived runs of the reference command share its command line and seed: seven report a final thickness inside the band (a small-$n$ observation, not a reliability estimate), three collapsed to near-zero thickness and reappear in the film-break account of Sec.~\ref{sec:repro}, and one registered zero governed writes with a hard multinode failure, so it reports no final thickness and is excluded from the ten with reportable endpoints. The reruns span several harness revisions; the strictly same-version comparison is the $25.68\,\mu$m and $-0.02\,\mu$m pair of Sec.~\ref{sec:repro}. The run reported here is one of the seven.
+that judgment is stored separately from execution and compensation, not that a judgment was earned. The journal query for the cast-speed node returned the record with an agent source (the parameter layer of Sec.~\ref{sec:port}); the mission check that asserts journal attribution is the one with an empty evidence array in Sec.~\ref{sec:repro}. Eleven archived runs of the reference command family share its seed; ten match its command line verbatim and one collapsed archive adds an LLM-agent flag. Seven report a final thickness inside the band (a small-$n$ observation, not a reliability estimate), three collapsed to near-zero thickness and reappear in the film-break account of Sec.~\ref{sec:repro}, and one registered zero governed writes with a hard multinode failure, so it reports no final thickness and is excluded from the ten with reportable endpoints. The reruns span several harness revisions; the strictly same-version comparison is the $25.68\,\mu$m and $-0.02\,\mu$m pair of Sec.~\ref{sec:repro}. The run reported here is one of the seven.
 
 \begin{figure*}[!tb]
 \centering
 \includegraphics[width=0.78\textwidth]{figures/publication/fig11-agentteam-loop.pdf}
-\caption{Scripted AgentTeam mission in archive $B$, reconstructed from \texttt{agentteam-biax.log} and \texttt{run.json}. Top: the simulated BOPET line (nine devices, 30 setpoints, 19 acquisition nodes) with the three written actuators, the gauge that supplies thickness, and the objective filed against them. Middle: the channel carrying the objective, the four admission checks a governed write clears before a driver is invoked, and the three steps the run recorded (three of an allowed six writes). Bottom: measured thickness after each step against the $25.0\pm0.7\,\mu$m objective; the final point clears the band edge by $0.02\,\mu$m. Team members are scripted mock agents with a prespecified proportional rule; the LLM agent stays disabled, so the figure documents the governance and attribution path rather than optimization quality.}
+\caption{Scripted AgentTeam mission in archive $B$, reconstructed from \texttt{agentteam-biax.log} and \texttt{run.json}. Top: the simulated BOPET line (nine devices, 30 setpoints, 19 acquisition nodes) with the three written actuators, the gauge that supplies thickness, and the objective filed against them. Middle: the channel carrying the objective, the four checks a governed write clears (the first three gate admission; the fourth is the driver's acceptance), and the three steps the run recorded (three of an allowed six writes). Bottom: measured thickness after each step against the $25.0\pm0.7\,\mu$m objective; the final point clears the band edge by $0.02\,\mu$m. Team members are scripted mock agents with a prespecified proportional rule; the LLM agent stays disabled, so the figure documents the governance and attribution path rather than optimization quality.}
 \label{fig:agentteam}
 \end{figure*}
 
@@ -308,4 +310,5 @@ governed interface but different scoring inputs and temporal windows, the legacy
 script substituted missing observations, and the completion regex could match an
 instruction template, so their scores are not aggregated with the results above.
 Archive $B$ uses the scripted path so that model variability does not enter the
-mechanism claims.
+mechanism claims. Section~\ref{sec:limits} collects the limitations that these
+results carry.

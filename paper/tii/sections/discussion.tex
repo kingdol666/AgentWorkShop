@@ -1,6 +1,6 @@
 \section{Discussion and Limitations}
 \label{sec:limits}
-\subsection{What the Integration Model Establishes---and What It Does Not}
+\subsection{Established Properties and Their Boundaries}
 The reusable unit here is the deployed member--node capability--production-run
 association. It lets one task work in engineering quantities across drivers while
 execution and compensation stay attributable, and it lets the biaxial mission move
@@ -14,10 +14,10 @@ readback is a driver-level observation, and sustained process convergence is a
 separate experimental outcome. The governed-write path concentrates range and
 recipe-window checks, ownership, cooldown, and readback. Observation-quality
 gating is a framework-level extension this paper does not deliver; until it
-exists, the historical LLM scores---whose writes executed as designed but whose
-judgments were formed over scoring inputs and temporal windows that diverged
-from the plant's actual state (Sec.~\ref{sec:repro})---cannot be compared
-with the deterministic ones.
+exists, the historical LLM scores cannot be compared with the deterministic
+ones: their writes executed as designed, but their judgments were formed over
+scoring inputs and temporal windows that diverged
+from the plant's actual state (Sec.~\ref{sec:repro}).
 
 \subsection{Implementation and Evidence Boundaries}
 Cross-agent in-window oscillations, shared-node
@@ -31,8 +31,9 @@ instrumented function: their safety argument presupposes independent regulatory
 limits and a protection layer in the IEC 61511 sense \cite{iec61511}, and the
 platform implements no detection or degraded-mode response when such layers are
 absent, which is an integrator responsibility. Manual-binding approval workload
-grows with the frequency of agent proposals, and approval fatigue is a documented
-risk \cite{parasuraman2000model,bainbridge1983ironies}; policy granularity over
+grows with the frequency of agent proposals, and approval fatigue and
+over-reliance are documented risks
+\cite{parasuraman2000model,bainbridge1983ironies,leesee2004trust,parasuramanmanzey2010complacency}; policy granularity over
 roles, batch phases, and magnitudes is an extension point, not a present
 capability. None of these mechanisms is enforced outside the platform process, so
 they constrain only traffic that passes through it; a deployment therefore needs

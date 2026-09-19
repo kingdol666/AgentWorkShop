@@ -337,7 +337,7 @@ in_tex("A final caveat concerns the mission layer", "reproducibility disclosure 
 in_tex("two archives sharing one harness hash", "hash-collision disclosure in tex")
 in_tex("neither of them $B$", "archive pair named in tex")
 in_tex("both mission checks are recorded as warnings", "verdict taxonomy in tex")
-in_tex("seven report a final thickness inside the band", "mission attainment rate in tex")
+in_tex("Seven report a final thickness inside the band", "mission attainment rate in tex")
 
 # Scenario-2 probe set: wording and the missing recipe-window branch.
 in_tex("out-of-constraint probes, three node-range probes", "scenario-2 probe wording in tex")

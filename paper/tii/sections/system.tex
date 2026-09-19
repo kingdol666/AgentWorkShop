@@ -1,6 +1,6 @@
 \section{System Architecture}
 \label{sec:arch}
-\system{} integrates multi-agent reasoning with industrial supervision around a common representation of production assets and operating context. Its organizing object is the node: an acquisition or control endpoint with engineering semantics, device connections, line membership, and agent bindings. A channel organizes the agents that interpret these endpoints, controllers mediate plant interactions, and Fig.~\ref{fig:arch} locates these components and execution boundaries.
+\system{} integrates multi-agent reasoning with industrial supervision around a common representation of production assets and operating context. Its organizing object is the node: an acquisition or control endpoint with engineering semantics, device connections, line membership, and agent bindings. A channel organizes the agents that interpret these endpoints, controllers mediate plant interactions, and Fig.~\ref{fig:arch} locates these components and execution boundaries. The platform also carries subsystems outside this paper's scope, including an automated-modeling laboratory and a three-dimensional twin view; this paper describes the supervision path that the evaluation exercises.
 
 \begin{figure*}[!tb]
 \centering
@@ -8,7 +8,7 @@
 \caption{System architecture and execution boundaries. The co-resident platform
 process hosts the agent orchestrator, the binding-and-approval bridge, and the
 industrial supervisor; operator entry points sit above it, and external CLI
-engines (including the bundled OMP agent harness), persistent stores, and the
+engines (including the bundled OMP engine), persistent stores, and the
 plant boundary sit outside it. Shared identifiers support attribution across
 the logical data model; they do not make storage or physical actuation
 transactional.}
@@ -22,8 +22,8 @@ operator applications, MCP and A2A interfaces support external integration, and 
 plugin host extends platform capabilities. These surfaces reuse platform objects,
 but their exposed operations and permission checks differ, and an agent's industrial
 authority derives from its node bindings, not from channel access or
-protocol-endpoint availability. CLI engines and the platform's bundled
-OMP agent harness execute in spawned processes, TimescaleDB and MinIO are external,
+protocol-endpoint availability. CLI engines, including the platform's bundled
+OMP engine, execute in spawned processes, TimescaleDB and MinIO are external,
 and connection establishment, queued protocol operations, and readback introduce
 asynchronous boundaries. Fast regulation and protection therefore remain with the
 plant controller and its safety equipment.

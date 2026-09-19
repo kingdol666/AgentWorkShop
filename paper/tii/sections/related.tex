@@ -30,7 +30,9 @@ we do not implement the complete procedural
 models of either standard. The device-twin terminology presumes manufacturing
 digital twins whose assets carry structured semantic descriptions
 \cite{nee2019digital}, and the node semantic card is analogous to an Asset
-Administration Shell submodel \cite{iec63278}. A goal-driven unit's
+Administration Shell submodel \cite{iec63278}; IIoT-gateway digital twins
+similarly wrap legacy equipment behind semantic abstraction \cite{gautam2025iiot},
+and what is added here is member-level write governance over that abstraction. A goal-driven unit's
 observe--hypothesize--write--re-observe cycle likewise resembles autonomous chemical
 research with LLMs \cite{boiko2023autonomous}; our writes are governed industrial
 setpoints rather than self-directed experiment planning.
@@ -42,7 +44,7 @@ typically enforced as role- and application-level controls under IEC~62443-3-3
 member-instance-level binding, semantic linkage between a write and the verdict or
 optimization record that produced it, and attribution across engine boundaries. Hard action shielding
 and control-barrier methods enforce formally specified admissible actions
-\cite{alshiekh2018shielding}; the rollback manager and rule-based backstop are
+\cite{alshiekh2018shielding,ames2017cbf}; the rollback manager and rule-based backstop are
 engineering instances of run-time assurance and simplex-style architectures
 \cite{sha2001simplex}, and are narrower implementation-level checks rather than
 substitutes for certified plant protection. Human supervision also requires a clear
