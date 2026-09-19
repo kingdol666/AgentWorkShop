@@ -2,7 +2,7 @@
 \label{sec:mech}
 \begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.87\textwidth]{figures/publication/fig3-channel-loop.pdf}
+\includegraphics[width=0.78\textwidth]{figures/publication/fig3-channel-loop.pdf}
 \caption{The closed loop formed by the Section IV mechanisms. Numbered items are
 loop steps (steps 1 and 5 share the observation arrows), not the seven mechanism
 subsections of this section. The channel coordinates
@@ -204,19 +204,6 @@ reason about a process quantity without seeing a transport address. The layer is
 interface over the control path of Sec.~\ref{sec:writepath} rather than a second
 gate: it narrows the permitted interval, then enters the same admission checks.
 
-\begin{figure*}[!tb]
-\centering
-\includegraphics[width=0.66\textwidth]{figures/publication/fig4-workflow.pdf}
-\caption{Operator-facing workflow using archived interface crops: node
-commissioning (the button label is the interface's original Chinese,
-``add node''), device association, team deployment, and optimization-record
-inspection. Device association and agent capability
-binding are distinct operations, though the interface does not enforce distinct
-operator roles for them. A displayed judgment records a disposition; it does not
-independently certify process improvement or physical recovery.}
-\label{fig:workflow}
-\end{figure*}
-
 \subsection{Human-in-the-Loop Control}
 \label{sec:hitl}
 Human intervention attaches to concrete bindings and operations. \emph{Manual} mode
@@ -239,7 +226,8 @@ being reached while no operator is present is covered by neither path.
 Human decisions, agent proposals, and system recovery events provide complementary
 attribution, and that attribution is useful only while intent, authorization,
 device outcome, and observed process effect stay distinguishable. Those distinctions
-are inspectable across the four operator surfaces of Fig.~\ref{fig:workflow}.
+are inspectable across the platform's operator surfaces: node commissioning,
+device association, team deployment, and optimization-record inspection.
 Process-external engines also require deployment-level privilege and network
 restrictions, because tool bindings govern sanctioned tool calls, not arbitrary I/O
 by a compromised local process. Section~\ref{sec:eval} evaluates these

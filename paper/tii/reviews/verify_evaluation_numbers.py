@@ -334,7 +334,7 @@ in_tex("aborts rather than recovers", "guard behaviour in tex")
 # The mission layer is not reproducible across runs, and the failing run's
 # checks were warnings, not failures.
 in_tex("A final caveat concerns the mission layer", "reproducibility disclosure in tex")
-in_tex("two archives sharing one harness hash", "hash-collision disclosure in tex")
+in_tex("same-hash, same-seed archives, neither of them $B$", "hash-collision disclosure in tex")
 in_tex("neither of them $B$", "archive pair named in tex")
 in_tex("both mission checks are recorded as warnings", "verdict taxonomy in tex")
 in_tex("Seven report a final thickness inside the band", "mission attainment rate in tex")
