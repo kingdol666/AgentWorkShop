@@ -11,9 +11,10 @@ illustrates advisory or application-specific integration, not a universal
 limitation of prior systems. The right panel associates agent-team membership,
 explicit node capabilities, and execution feedback through shared production
 identifiers; DAQ and DCW abbreviate the acquisition and data-control-write
-node types introduced in Section~\ref{sec:arch}. Arrows
-distinguish information exchange from setpoint requests; PLC regulation
-remains outside the agent loop.}
+node types introduced in Section~\ref{sec:arch}. Solid arrows mark the governed
+path; dashed links in (a) mark per-application point-to-point integrations. PLC
+regulation remains outside the agent loop. The diagram is an AI-generated
+illustration.}
 \label{fig:intro}
 \end{figure*}
 
@@ -28,8 +29,7 @@ The contributions are threefold:
 \item A \textbf{traceable, layered evaluation} anchored on one reference archive detailed in Sec.~\ref{sec:protocol} and an eleven-archive rerun family sharing its seed (Sec.~\ref{sec:agentloop}). All 75 suite checks pass, and the writable stacks reject every predefined
 out-of-constraint probe while blocking none of the designated legal writes. A
 fixed non-LLM controller reaches $J/J^*=0.963$--$0.972$ of an offline reference over three seeds, and a scripted team mission brings a simulated film line from 28.10 to 25.68\,$\mu$m with three governed writes on two
-protocols; seven of the ten reportable runs attain the objective band (six
-of nine excluding the reference). All evidence is
+protocols; seven of the ten reportable runs attain the objective band. All evidence is
 simulation-tier and characterizes the platform paths, not agent quality.
 \end{enumerate}
 These contributions correspond to the evaluation's evidence layers

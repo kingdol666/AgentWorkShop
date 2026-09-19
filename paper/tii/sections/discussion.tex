@@ -3,7 +3,7 @@
 \subsection{Established Properties and Their Boundaries}
 The reusable unit here is the deployed member--node capability--production-run
 association: it lets one task work in engineering quantities across drivers while
-execution and compensation stay attributable, and let the biaxial mission move
+execution and compensation stay attributable, and lets the biaxial mission move
 three line sections under one objective without plant-specific routing code. It
 does not measure the effort to author a scenario or integrate a
 protocol the platform does not already speak.
@@ -43,9 +43,8 @@ over-reliance are documented risks
 roles, batch phases, and magnitudes is an extension point, not a present
 capability, and segregation of duties between device association and capability
 binding is not enforced by the current interface.
-None of these mechanisms is enforced outside the platform process, so
-they constrain only traffic that passes through it; a deployment therefore needs
-independent setpoint limits and interlocks in the controller itself.
+None of these mechanisms is enforced outside the platform process; a deployment
+therefore needs independent setpoint limits and interlocks in the controller itself.
 
 Deployment in a real plant carries prerequisites this paper does not discharge:
 placement across the IT/OT hierarchy and IEC 62443 zones-and-conduits assignment
@@ -67,7 +66,7 @@ complementary results: four writable stacks reject all predefined
 out-of-constraint writes with no legal-write blocks; a fixed controller reaches
 $J/J^*=0.963$--$0.972$ across three seeds; and a scripted team mission uses three
 governed writes across two protocols to bring biaxial-film thickness from 28.10 to
-25.68\,$\mu$m. Seven of the ten reportable reruns (of eleven
+25.68\,$\mu$m. Seven of the ten reportable runs (of eleven
 same-seed archives, including the reference) attain the band, the reported run
 among them; the failed reruns end near zero thickness with no check failing and the mission
 checks downgraded to warnings, and the suite's hard gate does not flag them. No
@@ -83,8 +82,10 @@ The archive \texttt{20260918043504-bdo} used in Sec.~\ref{sec:eval} is
 machine-readable---\texttt{run.json} (every check with evidence),
 \texttt{summary.json} (verdict, KPIs), \texttt{metrics.csv} (metric registry),
 \texttt{agentteam-*.log} (mission traces)---and ships with the figure scripts and
-the archive-consistency checker. Anonymized platform, benchmark-card, and
-simulator snapshots accompany the submission; repository
+the archive-consistency checker. Figs.~1 and~5 are AI-generated illustrations;
+all other figures are rendered from archived data. Anonymized platform,
+benchmark-card, and simulator snapshots
+accompany the submission; repository
 identifiers will be disclosed on acceptance. AI-based assistants supported
 manuscript editing, evidence checking, and figure preparation under
 author direction; the authors remain responsible for the claims and data.

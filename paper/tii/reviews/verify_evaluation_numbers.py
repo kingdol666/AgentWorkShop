@@ -173,6 +173,7 @@ for seed in closed["seeds"]:
     final = max(seed["traj"], key=lambda p: int(p["iter"]))
     check(f"seed {number} final thickness", float(final["thickness"]), thickness, 5e-4)
 in_tex("70.115", "seed-42 J0 in tex")
+in_tex("68.792", "seed-43 J0 in tex")
 in_tex("49.317", "seed-44 thickness in tex")
 
 # J is maximized, J is bounded by [0, 95], and the archive's J_end is a
@@ -337,7 +338,7 @@ in_tex("A final caveat concerns the mission layer", "reproducibility disclosure 
 in_tex("same-hash, same-seed archives, neither of them $B$", "hash-collision disclosure in tex")
 in_tex("neither of them $B$", "archive pair named in tex")
 in_tex("both mission checks are recorded as warnings", "verdict taxonomy in tex")
-in_tex("Seven report a final thickness inside the band", "mission attainment rate in tex")
+in_tex("seven report a final thickness inside the band", "mission attainment rate in tex")
 
 # Scenario-2 probe set: wording and the missing recipe-window branch.
 in_tex("nine out-of-constraint probes (three node-range probes per writable line)", "scenario-2 probe wording in tex")

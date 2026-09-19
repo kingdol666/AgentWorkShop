@@ -34,7 +34,9 @@ different permission conditions, and an industrial-tool binding refers to a
 concrete channel-member instance, not a reusable template, so deploying a template
 elsewhere does not transfer the binding---a design consequence rather than a
 measured result, with binding denial exercised in the archive only on the
-parameter layer.
+parameter layer. Bindings are granted and revoked by operators through the
+management console, and deleting a node or member cascades to its bindings, so
+the governance root is an operator action rather than an agent action.
 
 The semantic card presents the node's physical quantity, unit, precision, range,
 current value, freshness, and available recipe context. Keeping a setpoint change
@@ -102,8 +104,8 @@ any approval; a pause and node-disable gate; agent ownership and directional
 cooldown; the effective range and window of
 Eq.~\eqref{eq:constraint}; then node write exclusion, connection, write, and
 readback. Asynchronous connection and protocol queuing separate the checks from
-the device action, so no co-residency or
-node write exclusion supplies check--act atomicity against a changing recipe state.
+the device action, so neither co-residency nor node write exclusion supplies
+check--act atomicity against a changing recipe state.
 A successful write triggers journal anchors and, for relevant sources,
 optimization records; bookkeeping errors are caught without reversing the result,
 so attribution is traceability, not an atomic commitment across storage and the
@@ -156,7 +158,9 @@ closes the record and can mark a good state, whereas rollback and uncertain
 judgments leave it open; restoring a setpoint requires a separate rollback
 operation, and uncertainty must not be read as successful optimization.
 
-An independent backstop periodically evaluates eligible open records, waiting at
+An independent backstop---separate from the agent's own judgment path, so an
+unjudged excursion cannot stand indefinitely---periodically evaluates eligible
+open records, waiting at
 least 120\,s by default and rechecking every 30\,s. Acquisition streams matching
 the control node's primary-device alias are preferred, otherwise falling back to
 the line. Historical query results are compared with configured acquisition

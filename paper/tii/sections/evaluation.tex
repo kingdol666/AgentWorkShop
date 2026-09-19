@@ -135,8 +135,8 @@ existing vocabulary, not portability to an independent plant.
 
 A recorded rollback verdict leaves the register untouched until a separate rollback
 call passes through the write path; and manual mode suspends an agent request until
-the scripted approval releases it, measured once at 16\,ms, timing the approval
-polling path rather than a human decision. The audit
+the scripted approval releases it, measured once at 16\,ms against an
+800\,ms polling interval---the polling path, not a human decision. The audit
 surface holds 11 parameter-change anchors with 200-entry audit and
 operations-log windows, so intent, approval, and execution are separately
 inspectable, though the journal is not a signed ledger and protocol I/O is not
@@ -190,7 +190,7 @@ independent reading for them, and the control law inverts the model's own
 relation $h\propto N/v$, so the plateau is structural. The suite's gate is
 $J/J^{*}\geq0.8$, so the reported value is not near a threshold.
 
-The three seeds start at $J_0=70.115$--$70.248$;
+The three seeds start at $J_0=70.115$, 68.792, and 70.248;
 Fig.~\ref{fig:clbench}(b) plots each trajectory against the archived reference,
 and all six governed writes are accepted with a mean wall time of 36.193\,s per
 seed. Across the archive's two scoring conventions---end-of-run (mean of the
@@ -230,11 +230,13 @@ The second mission is the more demanding one. Fig.~\ref{fig:story} storyboards
 what the scripted team did; Fig.~\ref{fig:agentteam} maps the same mission onto
 the line, the admission gate, and the measured response. The BOPET preset is
 provisioned by the benchmark's own probe-and-provision step (nine devices, 30
-writable setpoints, 19 configured acquisition nodes, driver tests 9/9), so this
+writable setpoints, 19 configured acquisition nodes, all nine driver tests
+passing), so this
 layer measures provisioning and governance, not commissioning of an existing
 line. The scripted team files a $25.0\pm0.7\,\mu$m objective
 ($|h-25.0|\leq0.7\,\mu$m); the initial gauge reading through the real MQTT path
-is 28.10\,$\mu$m, outside the window. The three storyboard writes are separate
+is 28.10\,$\mu$m, outside the window (panel 3). The three storyboard writes
+(panels 4--5) are separate
 governed writes to three line sections (cast-roll speed
 $32\rightarrow33.8$\,m/min and MDO fast-roll $118\rightarrow120.5$\,m/min over
 Modbus TCP; TDO rail $3000\rightarrow3031$\,mm over OPC UA; records
@@ -253,12 +255,12 @@ with an empty evidence array in Sec.~\ref{sec:repro}.
 
 \begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.46\textwidth]{figures/gpt/agentteam-storyboard-tii.png}
-\caption{Storyboard of the scripted AgentTeam mission in archive $B$ (panels 1--6): the objective is filed on the task board, delegated through the channel, the gauge is read ($28.10\,\mu$m), three governed writes are issued on two protocols (cast-roll and MDO fast-roll over Modbus TCP, TDO rail over OPC UA), and the record is judged \texttt{keep} with the task closed at $25.68\,\mu$m inside the $25.0\pm0.7\,\mu$m band. Panel values are archive values; team members are scripted and the LLM agent stays disabled.}
+\includegraphics[width=0.44\textwidth]{figures/gpt/agentteam-storyboard-tii.png}
+\caption{Storyboard of the scripted AgentTeam mission in archive $B$ (panels 1--6): the objective is filed on the task board, delegated through the channel, the gauge is read ($28.10\,\mu$m), three governed writes are issued on two protocols (cast-roll and MDO fast-roll over Modbus TCP, TDO rail over OPC UA), and the record is judged \texttt{keep} with the task closed at $25.68\,\mu$m inside the $25.0\pm0.7\,\mu$m band; panel 5 groups the second and third writes, and \texttt{keep} is issued after each. Panel values are archive values; the storyboard is an AI-generated illustration. Team members are scripted and the LLM agent stays disabled.}
 \label{fig:story}
 \end{figure*}
 
-Eleven archived runs of the reference command family share its seed; ten match its command line verbatim and one collapsed archive adds an LLM-agent flag. Seven report a final thickness inside the band (a small-$n$ observation, not a reliability estimate), three collapsed to near-zero thickness and reappear in the film-break account of Sec.~\ref{sec:repro}, and one registered zero governed writes with a hard multinode failure and no final thickness, excluding it from the ten with reportable endpoints. The reruns span several harness revisions; the strictly same-version comparison is the $25.68\,\mu$m/$-0.02\,\mu$m pair of Sec.~\ref{sec:repro}. The run reported here is one of the seven.
+Eleven archived runs of the reference command family share its seed; ten match its command line verbatim, and one collapsed archive adds an LLM-agent flag. Of the ten with reportable endpoints, seven report a final thickness inside the band (a small-$n$ observation, not a reliability estimate) and three collapse to near-zero thickness, each with the hard gate green, reappearing in the film-break account of Sec.~\ref{sec:repro}; the eleventh registered zero governed writes with a hard multinode failure and no final thickness. The reruns span several harness revisions; the strictly same-version comparison is the $25.68\,\mu$m/$-0.02\,\mu$m pair of Sec.~\ref{sec:repro}. The run reported here is one of the seven.
 
 \begin{figure*}[!tb]
 \centering
