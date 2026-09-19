@@ -1,20 +1,23 @@
 \section{Core Mechanisms}
 \label{sec:mech}
-\begin{figure}[!t]
+\begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.72\columnwidth]{figures/publication/fig3-channel-loop.pdf}
-\caption{The mechanisms in their organizational setting and closed loop. Steps 1 and
-5 share the observation arrows. The channel coordinates agents that observe bound
+\includegraphics[width=\textwidth]{figures/publication/fig3-channel-loop.pdf}
+\caption{The closed loop formed by the Section IV mechanisms. Numbered items are
+loop steps (steps 1 and 5 share the observation arrows); the seven steps are
+not the seven mechanism subsections of this section. The channel coordinates
+agents that observe bound
 nodes, propose setpoints, and pass admission checks before write and readback.
 Step 6 is the agent's own verdict, the independent backstop is a second and
 separate judgment path, and step 7 is compensation that neither path performs.
 \texttt{dcw\_judge} records a verdict only: it neither computes the conclusion
 from telemetry nor executes any action.}
 \label{fig:teamloop}
-\end{figure}
+\end{figure*}
 Seven mechanisms carry the integration model
-(Sections~\ref{sec:nodes}--\ref{sec:paramlayer}), plus the
-cross-cutting HITL boundary (Section~\ref{sec:hitl}).
+(Secs.~\ref{sec:nodes}--\ref{sec:paramlayer}), plus the
+cross-cutting HITL boundary (Sec.~\ref{sec:hitl});
+Fig.~\ref{fig:teamloop} previews the closed loop they form.
 
 
 
@@ -57,7 +60,7 @@ worker recovers earlier rationale, but a retrieved memory is contextual evidence
 not an authorization mechanism or an
 executable safety specification. Industrial tools resolve the invoking member's
 bindings at request time, on the judge and rollback paths as well as the write path;
-the parameter-layer check \texttt{agent-param-tools} in Section~\ref{sec:port}
+the parameter-layer check \texttt{agent-param-tools} in Sec.~\ref{sec:port}
 exercises that denial, only for the parameter layer and with a scripted caller.
 
 \subsection{Node Control Execution}
@@ -155,8 +158,8 @@ independent.
 \subsection{Agent Closed-Loop Control}
 \label{sec:loop}
 The feedback sequence is observation, hypothesis, intervention, judgment, and
-retention or recovery. Fig.~\ref{fig:teamloop} shows the seven mechanisms in
-their closed-loop setting. The agent inspects bound-node context and acquisition
+retention or recovery. Fig.~\ref{fig:teamloop} shows this closed loop over the
+bound nodes of a line. The agent inspects bound-node context and acquisition
 history, states an expected effect, and proposes an engineering setpoint. After a
 successful value-changing write, the rollback manager creates an anchor and an
 optimization record holding the node, actor, hypothesis, parameter change, and
@@ -225,15 +228,17 @@ A parameter-layer entry projects a control node onto process meaning: it carries
 unit, a baseline interval, a product interval and the active recipe window, and it
 exposes no register, data type or driver-configuration field. A write through this surface is bounded by the intersection of node range, baseline interval, product interval and recipe window, so an agent can
 reason about a process quantity without seeing a transport address. The layer is an
-interface over the control path of Section~\ref{sec:writepath} rather than a second
+interface over the control path of Sec.~\ref{sec:writepath} rather than a second
 gate: it narrows the permitted interval and then enters the same admission checks.
 
 \begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.62\textwidth]{figures/publication/fig4-workflow.pdf}
+\includegraphics[width=0.80\textwidth]{figures/publication/fig4-workflow.pdf}
 \caption{Operator-facing workflow using archived interface crops: node
 commissioning, device association, team deployment, and optimization-record
-inspection. Device association and agent capability binding are distinct
+inspection (the commissioning button carries the interface's original
+Chinese label, meaning ``add node''). Device association and agent capability
+binding are distinct
 operations, though the current interface does not enforce distinct operator roles
 for them. A displayed judgment records a disposition; it does not independently
 certify process improvement or physical recovery.}

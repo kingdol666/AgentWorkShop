@@ -72,17 +72,17 @@ assert set(trajectories) == {42, 43, 44}
 MM = 1.0 / 25.4
 mpl.rcParams.update(
     {
-        "font.family": "serif",
-        "font.serif": ["Times New Roman", "STIXGeneral", "DejaVu Serif"],
-        "mathtext.fontset": "stix",
-        "font.size": 6,
-        "axes.labelsize": 7,
-        "xtick.labelsize": 6,
-        "ytick.labelsize": 6,
-        "legend.fontsize": 6,
-        "axes.linewidth": 0.6,
-        "lines.linewidth": 1.05,
-        "lines.markersize": 3.0,
+        "font.family": "sans-serif",
+        "font.sans-serif": ["DejaVu Sans"],
+        "mathtext.fontset": "dejavusans",
+        "font.size": 8.4,
+        "axes.labelsize": 9.5,
+        "xtick.labelsize": 8.4,
+        "ytick.labelsize": 8.4,
+        "legend.fontsize": 8.4,
+        "axes.linewidth": 0.7,
+        "lines.linewidth": 1.2,
+        "lines.markersize": 3.4,
         "xtick.direction": "in",
         "ytick.direction": "in",
         "xtick.top": True,
@@ -103,11 +103,11 @@ gs = fig.add_gridspec(
     2,
     1,
     height_ratios=[0.92, 1.25],
-    hspace=0.60,
-    left=0.19,
-    right=0.985,
-    top=0.965,
-    bottom=0.115,
+    hspace=0.62,
+    left=0.245,
+    right=0.965,
+    top=0.928,
+    bottom=0.125,
 )
 axa = fig.add_subplot(gs[0])
 axb = fig.add_subplot(gs[1])
@@ -129,17 +129,17 @@ axa.barh(
 axa.set_yticks(y)
 axa.set_yticklabels([item[0] for item in latency])
 axa.invert_yaxis()
-axa.set_xlim(0, 205)
+axa.set_xlim(0, 212)
 axa.set_xticks([0, 50, 100, 150, 200])
 axa.set_xlabel("Write latency (ms)")
 axa.grid(axis="x", color="0.88", linewidth=0.5)
 axa.set_axisbelow(True)
-axa.legend(loc="lower right", ncol=2, frameon=False, handlelength=1.4)
+axa.legend(loc="lower right", ncol=2, frameon=False, handlelength=1.4,
+           fontsize=7.4)
 axa.text(0.005, 1.045, "(a)", transform=axa.transAxes, fontweight="bold",
-         va="bottom", fontsize=6.5)
+         va="bottom", fontsize=8.5)
 for i, (_, p50_value, p95_value) in enumerate(latency):
-    axa.text(p50_value + 3.0, i - 0.17, f"{p50_value:g}", va="center", fontsize=5.6)
-    axa.text(p95_value + 3.0, i + 0.17, f"{p95_value:g}", va="center", fontsize=5.6)
+    pass  # exact per-stack values are carried by Table II in the manuscript
 
 seed_style = {
     42: ("o", "-", "#1F6F78"),
@@ -163,7 +163,7 @@ axb.axhline(
     float(closed["agg"]["Jstar"]),
     color="0.35",
     linewidth=0.85,
-    linestyle=(0, (4, 3)),
+    linestyle=(0, (1, 1.4)),
     label=r"$J^*=89.894$",
 )
 axb.set_xlim(-0.15, 2.15)
@@ -174,10 +174,11 @@ axb.set_xlabel("Closed-loop iteration")
 axb.set_ylabel(r"Objective $J$")
 axb.grid(axis="y", color="0.88", linewidth=0.5)
 axb.set_axisbelow(True)
-axb.legend(loc="lower right", ncol=2, frameon=False, handlelength=1.6,
-           columnspacing=1.0)
+axb.legend(loc="lower right", bbox_to_anchor=(1.0, -0.02), ncol=2,
+           frameon=False, handlelength=1.3, columnspacing=0.8,
+           fontsize=7.4)
 axb.text(0.005, 1.045, "(b)", transform=axb.transAxes, fontweight="bold",
-         va="bottom", fontsize=6.5)
+         va="bottom", fontsize=8.5)
 
 fig.savefig(OUT / "fig9-latest-benchmark.pdf", format="pdf")
 fig.savefig(OUT / "fig9-latest-benchmark.png", dpi=300)

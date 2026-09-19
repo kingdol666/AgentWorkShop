@@ -80,34 +80,32 @@
 \begin{abstract}
 Bringing language-model agents into industrial supervisory control requires
 associating the semantics, authority, and history of each command across
-heterogeneous devices, multiple agents, and changing operating recipes. We
+heterogeneous devices, multiple agents, and changing recipes. We
 present \system{}, a node-native framework in which explicit member-to-node
 bindings determine each agent's tools, source-dependent checks govern
 agent-issued writes, and attributable records with an independent backstop
-keep authorization, device execution, and process judgment distinguishable;
-this paper validates the governed write infrastructure end to end with
-scripted channel members on the mock engine and a fixed controller, keeping the LLM
-decision path disabled.
-The implementation covers five protocol drivers and registers fourteen agent
-engines as an inventory rather than evaluated controllers. Evidence comes from
-one archived run over three simulated production scenarios and real software
-protocol transports, including a 49-signal biaxial-film line. The run passes 75 of 75 checks with no warnings or failures. Its four writable stacks
-reject 24 of 24 predefined out-of-constraint probes and block none of four
-designated legal writes; a second scenario rejects 9 of 9 out-of-constraint probes without false blocks. A fixed non-LLM controller over three seeds reaches
-0.963--0.972 of an offline grid-search reference under the archive's two
-scoring conventions, under the controller's restricted action set. A scripted team mission reduces biaxial-film thickness from 28.10 to 25.68\,$\mu$m, inside a
-$25.0\pm0.7\,\mu$m objective, using three governed writes on two protocols;
-seven of the ten reportable runs among eleven archived same-command runs
-reach the band (small-$n$; the
-collapsed reruns are not flagged by the hard gate, the pass/fail gate over
-all 75 checks), and the remainder of the ten end near
-zero thickness with only the mission checks downgraded to warnings. These results characterize the implemented governance path end to end on
-simulated plants; physical validation and controlled agent comparisons remain
-future work.
+keep authorization, device execution, and process judgment distinguishable.
+A scripted channel layer and a fixed controller drive the governed write path
+end to end; the language-model decision path stays disabled. Results come
+from one archived run over three simulated production scenarios with real
+protocol transports, including a 49-signal biaxial-film line. The run passes
+75 of 75 checks; the paper bounds that number by what the gate does not see:
+task-level failures surface as warnings, three checks carry skipped write
+sub-checks, and the suite is not deterministic at the mission layer. The
+writable stacks reject 24 of 24 predefined out-of-constraint probes and block
+none of four legal writes; a second rejects 9 of 9 without false
+blocks. A fixed non-LLM controller reaches 0.963--0.972 of an offline
+grid-search reference under both archived scoring conventions. A scripted
+team mission reduces biaxial-film thickness from 28.10 to 25.68\,$\mu$m,
+inside a $25.0\pm0.7\,\mu$m objective, in three governed writes on two
+protocols; seven of eleven archived same-command runs end in the band
+(small-$n$); the three collapsed reruns do not trip the hard gate. These
+results characterize the governance path on simulated plants;
+physical validation and controlled agent comparisons remain future work.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Industrial informatics, multi-agent systems, supervisory control, human-in-the-loop, heterogeneous protocols, large language models.
+heterogeneous protocols, human-in-the-loop, industrial informatics, large language models, multi-agent systems, supervisory control.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -120,7 +118,7 @@ Industrial informatics, multi-agent systems, supervisory control, human-in-the-l
 \input{sections/discussion}
 
 % Balance the final reference page at a bibliography item boundary.
-% page balancing: adjust \IEEEtriggeratref if the last page needs it
+\IEEEtriggeratref{28}
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
 

@@ -5,7 +5,13 @@
 \begin{figure*}[!tb]
 \centering
 \includegraphics[width=0.76\textwidth]{figures/publication/fig2-architecture.pdf}
-\caption{System architecture and execution boundaries. The co-resident platform core connects agent channels, semantic nodes, industrial controllers, and operator services. CLI/OMP engines and storage services extend beyond that process. Shared identifiers support attribution across the logical data model; they do not make storage or physical actuation transactional.}
+\caption{System architecture and execution boundaries. The co-resident platform
+process hosts the agent orchestrator, the binding-and-approval bridge, and the
+industrial supervisor; operator entry points sit above it, and external CLI
+engines (including the bundled OMP agent harness), persistent stores, and the
+plant boundary sit outside it. Shared identifiers support attribution across
+the logical data model; they do not make storage or physical actuation
+transactional.}
 \label{fig:arch}
 \end{figure*}
 

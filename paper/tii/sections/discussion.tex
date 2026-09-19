@@ -16,7 +16,7 @@ recipe-window checks, ownership, cooldown, and readback. Observation-quality
 gating is a framework-level extension this paper does not deliver; until it
 exists, the historical LLM scores---whose writes executed as designed but whose
 judgments were formed over scoring inputs and temporal windows that diverged
-from the plant's actual state (Section~\ref{sec:repro})---cannot be compared
+from the plant's actual state (Sec.~\ref{sec:repro})---cannot be compared
 with the deterministic ones.
 
 \subsection{Implementation and Evidence Boundaries}
@@ -64,13 +64,13 @@ paths only. Physical validation, stronger execution consistency, controlled agen
 and observation-quality gating remain open.
 
 \section*{Data Availability and Disclosure}
-The archive \texttt{20260918043504-bdo} used in Section~\ref{sec:eval} is
+The archive \texttt{20260918043504-bdo} used in Sec.~\ref{sec:eval} is
 machine-readable: \texttt{run.json} holds every check with its evidence,
 \texttt{summary.json} the verdict and KPI set, \texttt{metrics.csv} the metric
-registry, and \texttt{agentteam-*.log} the mission traces. The figure scripts and
-the script that re-checks the quantitative claims against that archive are
-included. Anonymized snapshots of
-the platform, benchmark card, and simulator accompany the submission; repository
+registry, and \texttt{agentteam-*.log} the mission traces; the figure scripts
+and the script that re-checks the quantitative claims against that archive are
+included. Anonymized platform, benchmark-card, and simulator snapshots
+accompany the submission; repository
 identifiers will be disclosed on acceptance. AI-based assistants supported
-manuscript editing, code-assisted evidence checking, and figure preparation under
-author direction, and the authors remain responsible for the claims and data.
+manuscript editing, evidence checking, and figure preparation under
+author direction; the authors remain responsible for the claims and data.
