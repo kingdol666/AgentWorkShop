@@ -79,33 +79,33 @@
 
 \begin{abstract}
 Bringing language-model agents into industrial supervisory control requires
-associating the semantics, authority, and history of each command across
+associating each command's semantics, authority, and history across
 heterogeneous devices and multiple agents. We
 present \system{}, a node-native framework in which explicit member-to-node
 bindings determine each agent's tools, source-dependent checks govern
 agent-issued writes, and attributable records with an independent backstop
 keep authorization, device execution, and process judgment distinguishable.
 A scripted channel layer and a fixed controller drive the governed write path;
-the LLM decision path stays disabled. Results come
-from one archive over three simulated scenarios with real
-protocol transports, including a 49-signal biaxial-film line. The run passes
-75 of 75 checks; the paper also accounts what the gate does not see:
-task-level failures surface as warnings, three checks carry skipped write
-sub-checks, and the suite is not deterministic at the mission layer. The
-writable stacks reject 24/24 predefined gross out-of-constraint probes and none
-of four legal writes; a second scenario rejects 9/9 without false
-blocks. A fixed non-LLM controller reaches 0.963--0.972 of an offline
-grid-search reference. A scripted
-team mission brings biaxial-film thickness from 28.10 to 25.68\,$\mu$m
-(objective $25.0\pm0.7\,\mu$m) in three governed writes on two protocols;
-seven of the ten reportable runs (of eleven same-seed archives) end in the
-band (small-$n$); none of the collapses trips the hard gate. These
-results characterize the governance path on simulated plants;
-physical validation and controlled agent comparisons remain open.
+the LLM decision path stays disabled. Primary results come from one reference
+archive over three simulated scenarios with real protocol transports, including
+a 49-signal biaxial-film line; mission statistics add an eleven-archive
+same-seed rerun family. The reference archive passes 75 of 75 checks, and the
+paper reports what the gate does not see: in same-seed reruns, task-level
+failures surface only as warnings, three checks carry skipped write sub-checks,
+and the mission layer is not deterministic. The writable stacks reject 24/24
+gross out-of-constraint probes without blocking any of four legal writes; a
+second scenario rejects 9/9 without false blocks. A fixed non-LLM controller attains
+$J/J^{*}=0.963$--$0.972$ of an offline grid-search reference across three
+seeds. A scripted team mission brings biaxial-film thickness from 28.10 to
+25.68\,$\mu$m (objective $25.0\pm0.7\,\mu$m) in three governed writes on two
+protocols; seven of the ten reportable runs in the family end in the band
+(small-$n$), and none of the collapses trips the hard gate. The results
+characterize the governance path on simulated plants; physical validation and
+controlled agent comparisons remain open.
 \end{abstract}
 
 \begin{IEEEkeywords}
-heterogeneous protocols, human-in-the-loop, industrial informatics, large language models, multi-agent systems, supervisory control.
+access control, heterogeneous protocols, human-in-the-loop, industrial informatics, large language models, multi-agent systems, supervisory control.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
