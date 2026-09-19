@@ -46,7 +46,7 @@ def check(label: str, actual, expected, tol: float = 1e-9) -> None:
 def in_tex(fragment: str, label: str) -> None:
     global checked
     checked += 1
-    if fragment not in TEX:
+    if fragment not in " ".join(TEX.split()):
         failures.append(f"{label}: fragment not found in evaluation.tex -> {fragment!r}")
 
 
@@ -340,7 +340,7 @@ in_tex("both mission checks are recorded as warnings", "verdict taxonomy in tex"
 in_tex("Seven report a final thickness inside the band", "mission attainment rate in tex")
 
 # Scenario-2 probe set: wording and the missing recipe-window branch.
-in_tex("out-of-constraint probes, three node-range probes", "scenario-2 probe wording in tex")
+in_tex("nine out-of-constraint probes (three node-range probes per writable line)", "scenario-2 probe wording in tex")
 in_tex("exercises no recipe-window branch", "scenario-2 window gap in tex")
 
 # The governance ablation, archived separately from the 75 checks.

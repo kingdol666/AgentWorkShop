@@ -1,21 +1,7 @@
 \section{Introduction}
 \IEEEPARstart{L}{arge} language models (LLMs) are being explored for industrial diagnosis, engineering assistance, and control-program generation \cite{raza2025industrial,sabetta2025assistant,liu2026agents4plc,fakih2024llm4plc}. Recent systems also connect agents to simulated controllers or real machines \cite{vyas2026ftc,hofmann2025nlc}. For a production-line deployment, the engineering problem is not whether an LLM can issue a command but how to preserve its meaning, authority, and history across heterogeneous equipment, multiple agents, and changing operating recipes.
 
-Consider a team asked to correct film thickness within pressure and temperature limits: one member may inspect telemetry, another propose a setpoint, and a lead coordinate the task. A protocol connection alone does not identify which member may change which node, which recipe applies to the current batch, whether a human must approve, or whether the subsequent observation measures the commanded register or the process response. Implementing these associations separately for each application duplicates configuration and makes failures hard to reconstruct; conversely, one shared interface does not by itself establish atomic execution, physical safety, or valid optimization. Fig.~\ref{fig:intro} contrasts this application-specific pattern with the binding and production context used here.
-
-\begin{figure*}[!tb]
-\centering
-\includegraphics[width=0.72\textwidth]{figures/publication/fig1-intro.pdf}
-\caption{Integration problem and proposed organization. The left panel
-illustrates advisory or application-specific integration, not a universal
-limitation of prior systems. The right panel associates agent-team membership,
-explicit node capabilities, and execution feedback through shared production
-identifiers; DAQ and DCW abbreviate the acquisition and data-control-write
-node types introduced in Section~\ref{sec:arch}. Arrows
-distinguish information exchange from setpoint requests; PLC regulation
-remains outside the agent loop.}
-\label{fig:intro}
-\end{figure*}
+Consider a team correcting film thickness within pressure and temperature limits: one member inspects telemetry, another proposes a setpoint, and a lead coordinates the task. A protocol connection alone does not identify which member may change which node, which recipe applies to the current batch, whether a human must approve, or whether the subsequent observation measures the commanded register or the process response. Implementing these associations separately for each application duplicates configuration and makes failures hard to reconstruct; conversely, one shared interface does not by itself establish atomic execution, physical safety, or valid optimization. The framework below contrasts these two patterns: advisory, application-specific integration on one side, and explicit binding over shared production context on the other, with readback and attribution attached to every governed write.
 
 We present \system{}, a configurable framework for this supervisory integration problem: an industrial node combines its acquisition or setpoint interface with engineering semantics, and an explicit binding grants a deployed channel member access to that node; a line/product/recipe/run model supplies the production context shared by observations and actions. The platform core hosts agent orchestration and industrial supervision together, while engine subprocesses, optional external stores, and field endpoints retain their own boundaries. This organization reduces application-specific routing within the supported driver set without equating shared state with an end-to-end transaction.
 
@@ -34,9 +20,9 @@ simulation-tier and characterizes the platform paths, not agent quality.
 \end{enumerate}
 These contributions correspond to the evaluation's evidence layers
 (Sec.~\ref{sec:eval}, Table~\ref{tab:layers}), each layer
-reported separately rather than pooled into one score. The contribution is a
-systems contribution: the paper specifies an integration model, implements it end
-to end, and reports what that implementation does and does not guarantee. It
+reported separately rather than pooled into one score. The paper specifies an
+integration model, implements it end
+to end, and reports what that implementation does and does not guarantee; it
 proposes no new control law, learning method, or safety certification argument, and
 claims configuration reuse within the existing driver and scenario vocabulary, not certified
 safety, general industrial autonomy, or LLM-controller superiority.

@@ -9,7 +9,7 @@ industrial knowledge-graph construction \cite{zhang2026comaikg} and diagnosis
 \cite{xia2024llmsim}. Not all industrial agents are advisory: natural-language interfaces have controlled machines over OPC UA \cite{hofmann2025nlc}, LLM
 agents have been studied in simulated fault-tolerant control and
 digital-twin-supported fault handling \cite{vyas2026ftc,gill2025llmdt},
-and InstructMPC uses language-derived context for disturbance prediction in
+and InstructMPC injects language-derived context into
 model-predictive control \cite{wu2025instructmpc}. Closest to our setting,
 agent-based supervision has been studied for service-oriented industrial
 cyber-physical systems \cite{biskupovic2025supervision}, and LLM-based multi-agent
@@ -27,8 +27,7 @@ requires node semantics, driver behavior, and operating context. We use a
 line/product/recipe/run organization informed by ISA-95 and ISA-88
 \cite{isa95,isa88}: line and product correspond to level-3 production work units and
 product definitions, run to production-performance records, and recipe to the ISA-88
-master-recipe idea with grade and operating-point semantics on continuous lines;
-we do not implement the complete procedural
+master-recipe idea with grade and operating-point semantics; we do not implement the complete procedural
 models of either standard. The device-twin terminology presumes manufacturing
 digital twins whose assets carry structured semantic descriptions
 \cite{nee2019digital,iso23247}, and the node semantic card is analogous to an Asset
@@ -58,7 +57,7 @@ AgentBench and consequential tool-use benchmarks evaluate agent behavior and pol
 compliance \cite{liu2024agentbench,yao2024taubench}. Industrial datasets such as
 the Tennessee Eastman Process (TEP) and Secure Water Treatment (SWaT) support
 process-monitoring research \cite{downs1993tep,goh2017swat}, but
-replay is not evidence of successful physical actuation, so we separate source
+replay is not evidence of physical actuation, so we separate source
 checks, mock-driver probes, software-protocol integration, fixed-controller
 optimization, and exploratory LLM runs. The threat model of
 indirect prompt injection \cite{greshake2023injection}, since formalized and
