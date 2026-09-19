@@ -125,6 +125,16 @@ Recorded against a running instance: real DAQ history, real write control, real 
 > [!NOTE]
 > Every figure in this README is a recording or screenshot of a **running** instance — not a mockup. The numbers on screen come from seeded industrial data flowing through the same code paths the product ships.
 
+<div align="center">
+
+### 🎬 Live demo (3 min 34 s, English captions)
+
+<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-demo.mp4"><img src="docs/site/public/demo/poster.jpg" alt="AgentWorkShop live demo: DAQ console, governed write + read-back, serial protocol plugin, agent team execution, closed-loop trend and the 3D digital twin" width="86%" /></a>
+
+<sub><b>Click the cover to watch the full demo.</b> Real PLC simulator, real serial-port enumeration, real agent-team execution — no cuts, no fakes.<br/>Scenes: dashboard → live DAQ → governed write & read-back → serial protocol plugin → agent team execution → closed-loop trend → 3D digital twin.</sub>
+
+</div>
+
 ---
 
 ## Highlights

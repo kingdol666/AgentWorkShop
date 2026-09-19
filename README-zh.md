@@ -124,6 +124,16 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 
 > [!NOTE]
 > 本 README 中的每一张图都是**运行中实例**的录屏或截图，没有一张是效果图。
+
+<div align="center">
+
+### 🎬 实机演示(3 分 34 秒,英文解说字幕)
+
+<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-demo.mp4"><img src="docs/site/public/demo/poster.jpg" alt="AgentWorkShop 实机演示:数采中心、写控下发回读、串口插件、Agent 团队执行、闭环趋势与 3D 数字孪生" width="86%" /></a>
+
+<sub><b>点击封面观看完整演示。</b>真实 PLC 模拟器 + 真实串口枚举 + 真实 Agent 团队执行,全程无剪辑造假。<br/>场景:仪表盘 → 数采中心(实时) → 写控下发与回读 → 串口协议插件 → Agent 团队执行 → 闭环趋势 → 3D 数字孪生。</sub>
+
+</div>
 > 屏幕上的数字来自流经产品同一套代码路径的工业数据。
 
 ---

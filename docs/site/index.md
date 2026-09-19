@@ -97,6 +97,23 @@ footer:
 
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
+      <span class="aw-console-tag">FIG.00-B</span>
+      <span class="aw-console-title">LIVE DEMO · 实机演示 3'34"</span>
+      <span class="aw-console-meta">RECORDED · NO CUTS</span>
+    </figcaption>
+    <div class="aw-console-body">
+<video controls preload="metadata" :poster="'/AgentWorkShop/demo/poster.jpg'" :src="'/AgentWorkShop/demo/agentworkshop-demo.mp4'" style="display:block;width:100%;background:#000"></video>
+</div>
+    <p class="aw-console-cap">
+      <b>一段视频看完整个系统。</b>
+      仪表盘 → 数采中心(六协议实时) → 写控下发与回读(真实 Modbus PLC) → 串口协议插件(真实 COM 口探针) →
+      Agent 团队执行 → 闭环趋势(PV 跟随设定) → 3D 数字孪生环绕运镜。英文解说字幕,无剪辑无造假。
+    </p>
+  </figure>
+
+
+  <figure class="aw-console">
+    <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.01</span>
       <span class="aw-console-title">DIGITAL TWIN · 产线孪生总览</span>
       <span class="aw-console-meta">THREE.JS · 实时事件流</span>

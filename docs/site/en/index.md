@@ -100,6 +100,23 @@ footer:
 
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
+      <span class="aw-console-tag">FIG.00-B</span>
+      <span class="aw-console-title">LIVE DEMO · 3'34"</span>
+      <span class="aw-console-meta">RECORDED · NO CUTS</span>
+    </figcaption>
+    <div class="aw-console-body">
+<video controls preload="metadata" :poster="'/AgentWorkShop/demo/poster.jpg'" :src="'/AgentWorkShop/demo/agentworkshop-demo.mp4'" style="display:block;width:100%;background:#000"></video>
+</div>
+    <p class="aw-console-cap">
+      <b>Watch one video, see the whole system.</b>
+      Dashboard → live DAQ (six protocols) → governed write &amp; read-back (real Modbus PLC) → serial protocol plugin (real COM-port probe) →
+      agent team execution → closed-loop trend (PV tracks the setpoint) → 3D digital-twin orbit. English captions, no cuts, nothing faked.
+    </p>
+  </figure>
+
+
+  <figure class="aw-console">
+    <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.01</span>
       <span class="aw-console-title">DIGITAL TWIN · LINE OVERVIEW</span>
       <span class="aw-console-meta">THREE.JS · LIVE EVENT STREAM</span>
