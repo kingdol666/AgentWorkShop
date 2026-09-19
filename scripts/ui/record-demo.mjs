@@ -1,40 +1,37 @@
 /**
- * AgentWorkShop 实机演示录屏工具 v3 —— 英文界面 + 英文配音 + 分场景合成。
+ * AgentWorkShop 实机演示录屏工具 v4.1 —— 英文界面 + Edge 神经语音 + 章节化合成。
  *
  * 产出:docs/site/public/demo/agentworkshop-demo.mp4(1600×900@30,含配音)
  *      docs/site/public/demo/poster.jpg
  *
- * 架构(关键决策):录制期间 **Node 侧零 Runtime.evaluate** —— 整个场景脚本
- * (章节卡/字幕/动作/遮罩)作为单个异步函数在页面内自跑;Node 只负责
- * screencast 启停、定长 sleep 与孪生的鼠标运镜(Input.dispatch,轻量)。
- * 此前 v2 在重页面(/daq)上 screencast 帧洪泛挤占 CDP,RoundTrip evaluate
- * 被饿到 protocolTimeout —— 全部下推后该类超时不再存在。
+ * 架构:录制期间 Node 零 Runtime.evaluate(场景脚本整体下推页面内单函数自跑,
+ * Node 只负责 screencast 启停、定长 sleep 与孪生鼠标运镜)。场景级重试:
+ * 帧不足(渲染进程被重页面拖挂等)自动 reload 后重录一次。
  *
  * 用法:
- *   node scripts/ui/record-demo.mjs tts      # 生成英文配音(PowerShell SAPI)
- *   node scripts/ui/record-demo.mjs record   # 录制 + 配音对齐 + 合成
+ *   node scripts/ui/record-demo.mjs tts      # 生成英文配音(edge-tts,增量)
+ *   node scripts/ui/record-demo.mjs record   # 录制 + 配音对齐 + 合成(含 poster)
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { execSync, spawn } from 'node:child_process'
+import { execSync } from 'node:child_process'
 import puppeteer from 'puppeteer-core'
 
 const BASE = process.env.AW_BASE ?? 'http://127.0.0.1:3001'
 const CHROME = process.env.AW_CHROME ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const OUT_DIR = path.resolve('docs/site/public/demo')
 const WORK = path.resolve('.tmp-demo')
-const FRAME_DIR = path.join(WORK, 'frames')
-const NARR_DIR = path.join(WORK, 'narr')
 const EMAIL = 'admin@awshop.local'
 const PASSWORD = 'admin123'
-const VOICE = 'Microsoft Zira Desktop'
-const TTS_RATE = 1
-const PAD = 0.7
+const VOICE = 'en-US-AndrewNeural'
+const RATE = '-4%'
 const HEAD = 1.6
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+const sh = cmd => execSync(cmd, { stdio: ['ignore', 'ignore', 'pipe'] })
+const probeDur = f => Number(execSync(`ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "${f}"`).toString().trim())
 
-// ════ 解说词与场景规划 ══════════════════════════════════════════════════════
+// ════ 解说词与场景规划(单一事实源) ═════════════════════════════════════════
 const PLAN = [
   {
     id: 'title', chapter: null, url: 'card',
@@ -59,8 +56,9 @@ const PLAN = [
   {
     id: 'control', chapter: '03|GOVERNED CONTROL', url: '/dcw/ln-bcc8ea44',
     clips: [
-      { cap: 'Writing to a real PLC', sub: 'Recipe interlock → safety limits → Modbus write → read-back', say: 'Now writing to a real PLC. Every setpoint passes the recipe interlock and safety limits; the platform then writes the Modbus registers and reads the value back.' },
-      { cap: 'SET 150 °C — read-back agrees', sub: 'Signed audit history: who, when, why', say: 'One hundred and fifty degrees written. The read-back agrees, and the signed audit trail records who, when, and why.' },
+      { cap: 'Writing to a real PLC', sub: 'Recipe interlock → safety limits → field', say: 'Now writing to a real PLC. Every setpoint passes the recipe interlock and the safety limits before anything reaches the field.' },
+      { cap: 'SET 150 °C → Modbus → read-back', sub: 'Watch the write land, then read the register straight back', say: 'Watch the write land: the platform drives the Modbus holding registers, then reads the value straight back from the device.' },
+      { cap: 'Read-back agrees — audit signed', sub: 'Who · when · why — every entry signed', say: 'One hundred and fifty degrees, confirmed by read-back, with a signed entry in the audit trail: who, when, and why.' },
     ],
   },
   {
@@ -73,15 +71,16 @@ const PLAN = [
   {
     id: 'agents', chapter: '05|AGENT TEAMS', url: 'workshop',
     clips: [
-      { cap: 'The agent workshop', sub: 'A lead agent supervises workers over A2A messaging', say: 'The agent workshop. A lead agent supervises the workers; channels carry goals, memory, and human-in-the-loop approvals.' },
-      { cap: 'Dispatch a goal', sub: 'Lead decomposes → workers execute with tools → audit trail', say: 'Dispatch a goal. The lead decomposes it, workers execute with tools, and every message lands on the audit trail.' },
+      { cap: 'The melt-optimization crew', sub: 'A lead agent · trend analyst · setpoint writer', say: 'This is the agent workshop, and this crew owns melt temperature optimization: a lead agent, a trend analyst, and a setpoint writer, supervised over A to A.' },
+      { cap: 'Dispatch a goal', sub: 'Lead decomposes → workers execute with tools', say: 'Dispatch a goal. The lead decomposes it, workers stream progress as they execute with tools, and every message lands on the audit trail.' },
+      { cap: 'Execution, live', sub: '7-state task machine · artifacts · real-time events', say: 'Task state, artifacts, and messages update in real time. The same seven-state machine backs every engine — from the scripted mock to a real L L M.' },
     ],
   },
   {
     id: 'loop', chapter: '06|THE CLOSED LOOP', url: 'pvnode',
     clips: [
-      { cap: 'The closed loop', sub: 'PV follows the setpoint through the real control chain', say: 'The closed loop. The process value follows the setpoint through the real control chain — the same calibration reads back what was written.' },
-      { cap: 'Analyze → propose → approve → write → verify', sub: 'Every step attributable and reversible', say: 'Analyze, propose, approve, write, verify. Every optimization step is attributable — and reversible.' },
+      { cap: 'The closed loop', sub: 'Analyze → propose → approve → write → verify', say: 'The closed loop, end to end. Analyze the trend, propose a setpoint, take the human approval, write to the PLC, and verify — the process value follows.' },
+      { cap: 'PV tracks the setpoint', sub: 'SET and ACT — one calibration, both directions', say: 'The process value tracks the setpoint through the real control chain. The same calibration reads back what was written: S E T and A C T, side by side.' },
     ],
   },
   {
@@ -99,37 +98,33 @@ const PLAN = [
   },
 ]
 
-// ════ 阶段 1:TTS ════════════════════════════════════════════════════════════
+// ════ 阶段 1:TTS(edge-tts 神经语音,增量) ═════════════════════════════════
 async function ttsPhase() {
-  fs.mkdirSync(NARR_DIR, { recursive: true })
+  const narrDir = path.join(WORK, 'narr')
+  fs.mkdirSync(narrDir, { recursive: true })
   for (const scene of PLAN) {
     for (let k = 0; k < scene.clips.length; k++) {
       const id = `${scene.id}_${k}`
-      const wav = path.join(NARR_DIR, `${id}.wav`)
+      const mp3 = path.join(narrDir, `${id}.mp3`)
+      const wav = path.join(narrDir, `${id}.wav`)
       if (fs.existsSync(wav)) continue
-      const text = scene.clips[k].say.replace(/'/g, '\'\'')
-      const ps = `Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.SelectVoice('${VOICE}'); $s.Rate = ${TTS_RATE}; $s.SetOutputToWaveFile('${wav.replace(/\\/g, '\\\\')}'); $s.Speak('${text}'); $s.Dispose()`
-      await new Promise((resolve, reject) => {
-        spawn('powershell', ['-NoProfile', '-Command', ps], { stdio: 'ignore' }).on('exit', c => c === 0 ? resolve() : reject(new Error(`tts ${id} exit ${c}`)))
-      })
+      const text = scene.clips[k].say.replace(/"/g, '\\"')
+      sh(`edge-tts --voice ${VOICE} --rate=${RATE} --text "${text}" --write-media "${mp3}"`)
+      sh(`ffmpeg -y -v error -i "${mp3}" -af "loudnorm=I=-16:TP=-1.5" -ar 44100 -ac 2 "${wav}"`)
       console.log(`  tts ${id}`)
     }
   }
   const durations = {}
   for (const scene of PLAN) {
     for (let k = 0; k < scene.clips.length; k++) {
-      const id = `${scene.id}_${k}`
-      const wav = path.join(NARR_DIR, `${id}.wav`)
-      const norm = path.join(NARR_DIR, `${id}.n.wav`)
-      execSync(`ffmpeg -y -v error -i "${wav}" -af "loudnorm=I=-16:TP=-1.5" -ar 44100 -ac 2 "${norm}"`, { stdio: 'ignore' })
-      durations[id] = Number(execSync(`ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "${norm}"`).toString().trim())
+      durations[`${scene.id}_${k}`] = probeDur(path.join(narrDir, `${scene.id}_${k}.wav`))
     }
   }
-  fs.writeFileSync(path.join(NARR_DIR, 'durations.json'), JSON.stringify(durations, null, 2))
+  fs.writeFileSync(path.join(narrDir, 'durations.json'), JSON.stringify(durations, null, 2))
   console.log('✅ TTS 完成:', JSON.stringify(durations))
 }
 
-// ════ 页面内叠加层(序列化后每次导航注入) ════════════════════════════════════
+// ════ 页面内叠加层(序列化注入) ══════════════════════════════════════════════
 const OVERLAY_FN = () => {
   if (window.__demoInstalled) {
     window.__demoRebuild()
@@ -155,19 +150,26 @@ const OVERLAY_FN = () => {
       display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px; }
     #aw-demo-card .no { font: 700 15px/1 'Segoe UI', sans-serif; letter-spacing: 4px; color: #35e0a0; }
     #aw-demo-card .tt { font: 600 54px/1.2 Georgia, 'Times New Roman', serif; color: #eaf2ff; }
-    #aw-demo-card .rule { width: 120px; height: 2px; background: #2c4568; }
+    #aw-demo-card .rule { width: 120px; height: 2px; background: #2c4568; animation: awpulse 1.4s ease-in-out infinite; }
+    @keyframes awpulse { 0%, 100% { width: 120px; opacity: .55 } 50% { width: 168px; opacity: 1 } }
+    #aw-demo-steps { position: fixed; left: 50%; top: 34px; transform: translateX(-50%);
+      display: none; gap: 10px; z-index: 2147483000; pointer-events: none; }
+    #aw-demo-steps span { font: 600 13px/1 'Segoe UI', sans-serif; letter-spacing: 1px;
+      padding: 8px 14px; border-radius: 8px; color: #8fa0b5;
+      background: rgba(7,11,19,.8); border: 1px solid rgba(45,69,104,.6); transition: all .3s ease; }
+    #aw-demo-steps span.on { color: #06251a; background: #35e0a0; border-color: #35e0a0; }
     #aw-demo-beat { position: fixed; width: 2px; height: 2px; bottom: 0; left: 0;
       opacity: 0; animation: awbeat .5s steps(1) infinite; }
     @keyframes awbeat { 0% { opacity: 0 } 50% { opacity: .02 } 100% { opacity: 0 } }
   `
   document.head.append(css)
-  for (const id of ['aw-demo-cap', 'aw-demo-veil', 'aw-demo-card', 'aw-demo-beat']) {
+  for (const id of ['aw-demo-cap', 'aw-demo-veil', 'aw-demo-card', 'aw-demo-steps', 'aw-demo-beat']) {
     const el = document.createElement('div')
     el.id = id
     document.body.append(el)
   }
   window.__demoRebuild = () => {
-    for (const id of ['aw-demo-cap', 'aw-demo-veil', 'aw-demo-card', 'aw-demo-beat']) {
+    for (const id of ['aw-demo-cap', 'aw-demo-veil', 'aw-demo-card', 'aw-demo-steps', 'aw-demo-beat']) {
       let el = document.getElementById(id)
       if (!el || !el.isConnected) {
         el?.remove()
@@ -203,6 +205,16 @@ const OVERLAY_FN = () => {
     c.innerHTML = `<span class="no">${noTxt}</span><span class="tt">${rest.join('|')}</span><span class="rule"></span>`
     c.style.display = 'flex'
   }
+  window.__demoSteps = (names, active) => {
+    window.__demoRebuild()
+    const s = document.getElementById('aw-demo-steps')
+    if (!names) {
+      s.style.display = 'none'
+      return
+    }
+    s.style.display = 'flex'
+    s.innerHTML = names.map((n, i) => `<span class="${i <= active ? 'on' : ''}">${n}</span>`).join('')
+  }
   window.__demoScroll = async (toY, ms = 1000) => {
     const from = window.scrollY
     const t0 = performance.now()
@@ -220,16 +232,12 @@ const OVERLAY_FN = () => {
 }
 
 /**
- * 场景运行器(整体下推到页面内;录制期间 Node 零 evaluate)。
- * 时长全部由配音时长驱动:每条 clip 停留 d+PAD,章节卡 1.7s,首尾遮罩。
- * 返回实际耗时(秒)供 Node 侧 sleep 对齐。
+ * 场景运行器(页面内自跑;录制期间 Node 零 evaluate)。返回实际耗时(秒)。
  */
-const SCENE_RUNNER = async ({ clips, chapter, isTitle, actions, durs, pad }) => {
+const SCENE_RUNNER = async ({ clips, chapter, isTitle, actions, durs }) => {
   const t0 = Date.now()
-  const rebuild = () => window.__demoRebuild()
-  const cap = (m, s2) => window.__demoCap(m, s2)
   const sleep = ms => new Promise(r => setTimeout(r, ms))
-  const q = sel => document.querySelector(sel)
+  const cap = (m, s2) => window.__demoCap(m, s2)
   const qa = sel => [...document.querySelectorAll(sel)]
   const setVal = (inp, v) => {
     const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
@@ -239,40 +247,35 @@ const SCENE_RUNNER = async ({ clips, chapter, isTitle, actions, durs, pad }) => 
   }
   await window.__demoVeil(false)
   if (chapter) {
-    rebuild()
     window.__demoCard(chapter)
     await sleep(1700)
     window.__demoCard(null)
     await sleep(350)
   }
   if (isTitle) {
-    rebuild()
     window.__demoCard('★|AgentWorkShop')
   }
   for (let k = 0; k < clips.length; k++) {
     cap(clips[k].cap, clips[k].sub)
     const act = actions[k]
+    if (act === 'scrollcard') {
+      await window.__demoScroll(document.body.scrollHeight, 1400)
+      await sleep(800)
+    }
     if (act === 'scroll430') {
       await window.__demoScroll(430, 1100)
       await sleep(900)
     }
     if (act === 'scroll320') {
       await window.__demoScroll(320, 1200)
-      await sleep(1200)
+      await sleep(1100)
     }
     if (act === 'pause3400') await sleep(3400)
-    if (act === 'scrollcard') {
-      await window.__demoScroll(document.body.scrollHeight, 1400)
-      await sleep(900)
-    }
     if (act === 'write150') {
-      const cards = qa('*').filter(e => (e.textContent || '').includes('Coating Oven PLC') && (e.textContent || '').length < 500)
-      const card = cards[cards.length - 1]
-      card?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      await sleep(700)
-      const inp = [...(card?.querySelectorAll('input[type=number]') ?? [])].find(i => /^\d+~\d+$/.test((i.placeholder || '').replace(/\s/g, '')))
-        ?? qa('input[type=number]').find(i => /^\d+~\d+$/.test((i.placeholder || '').replace(/\s/g, '')))
+      const inp = qa('input[type=number]').find(i => /^\d+~\d+$/.test((i.placeholder || '').replace(/\s/g, '')))
       if (inp) {
+        inp.closest('tr, [class*="row"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        await sleep(700)
         setVal(inp, '150')
         await sleep(250)
         qa('button').find(b => b.textContent.trim() === '下发' || b.textContent.trim() === 'Dispatch')?.click()
@@ -281,8 +284,12 @@ const SCENE_RUNNER = async ({ clips, chapter, isTitle, actions, durs, pad }) => 
       qa('button').find(b => ['读取', 'Read'].includes(b.textContent.trim()))?.click()
       await sleep(3200)
     }
+    if (act === 'history') {
+      await window.__demoScroll(document.body.scrollHeight, 1400)
+      await sleep(1500)
+    }
     if (act === 'probe') {
-      const form = q('.aw-serial-form')
+      const form = document.querySelector('.aw-serial-form')
       if (form) {
         const inputs = [...form.querySelectorAll('input')]
         const nums = inputs.filter(i => i.type === 'number')
@@ -299,7 +306,7 @@ const SCENE_RUNNER = async ({ clips, chapter, isTitle, actions, durs, pad }) => 
       const any = qa('textarea')[0]
       if (any) {
         const st = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set
-        st.call(any, 'Demo run: report the current line status and latest samples')
+        st.call(any, 'Demo run: optimize the melt temperature setpoint')
         any.dispatchEvent(new Event('input', { bubbles: true }))
         any.focus()
       }
@@ -307,18 +314,30 @@ const SCENE_RUNNER = async ({ clips, chapter, isTitle, actions, durs, pad }) => 
       qa('button').find(b => /发送|Send/.test(b.title ?? ''))?.click()
       await sleep(8500)
     }
-    await sleep(Math.max(1200, ((durs[k] ?? 6) + (pad ?? 0.7)) * 1000))
+    if (act === 'stages') {
+      const names = ['ANALYZE', 'PROPOSE', 'APPROVE', 'WRITE', 'VERIFY']
+      window.__demoSteps(names, -1)
+      for (let i = 0; i < names.length; i++) {
+        window.__demoSteps(names, i)
+        await sleep(1550)
+      }
+      await sleep(400)
+      window.__demoSteps(null)
+    }
+    await sleep(Math.max(1200, ((durs[k] ?? 6) + 0.7) * 1000))
   }
   cap(null)
   await window.__demoVeil(true)
   await sleep(700)
   return (Date.now() - t0) / 1000
 }
-// ════ 阶段 2:录制 ════════════════════════════════════════════════════════════
+
+// ════ 阶段 2:录制(场景级重试) ══════════════════════════════════════════════
 async function recordPhase() {
-  const durations = JSON.parse(fs.readFileSync(path.join(NARR_DIR, 'durations.json'), 'utf8'))
-  fs.rmSync(FRAME_DIR, { recursive: true, force: true })
-  fs.mkdirSync(FRAME_DIR, { recursive: true })
+  const narrDir = path.join(WORK, 'narr')
+  const durations = JSON.parse(fs.readFileSync(path.join(narrDir, 'durations.json'), 'utf8'))
+  fs.rmSync(path.join(WORK, 'frames'), { recursive: true, force: true })
+  fs.mkdirSync(path.join(WORK, 'frames'), { recursive: true })
   const browser = await puppeteer.launch({
     executablePath: CHROME,
     headless: false,
@@ -349,170 +368,177 @@ async function recordPhase() {
 
   const sceneFiles = []
   for (const scene of PLAN) {
-    const durs = scene.clips.map((_, k) => durations[`${scene.id}_${k}`] ?? 6)
-    const narrTotal = durs.reduce((a, b) => a + b, 0) + PAD * scene.clips.length
-    console.log(`● 场景 ${scene.id}(解说 ${narrTotal.toFixed(1)}s)`)
+    let recorded = null
+    for (let attempt = 0; attempt < 2 && !recorded; attempt++) {
+      const durs = scene.clips.map((_, k) => durations[`${scene.id}_${k}`] ?? 6)
+      const narrTotal = durs.reduce((a, b) => a + b, 0) + 0.7 * scene.clips.length
+      console.log(`● 场景 ${scene.id}${attempt ? '(重试)' : ''}(解说 ${narrTotal.toFixed(1)}s)`)
 
-    // 导航(特殊路由:页面内 fetch 解析真实地址)
-    let navTo = scene.url.startsWith('/') ? BASE + scene.url : null
-    if (scene.url === 'workshop') {
-      const wsId = await page.evaluate(async (t) => {
-        const r = await fetch('/api/workshop/workspaces', { headers: { authorization: `Bearer ${t}` } }).then(x => x.json())
-        return r?.data?.[0]?.id ?? null
-      }, token)
-      navTo = wsId ? `${BASE}/workshop/w/${wsId}` : `${BASE}/workshop`
-    }
-    if (scene.url === 'pvnode') {
-      const nid = await page.evaluate(async (t) => {
-        const r = await fetch('/api/workshop/daq', { headers: { authorization: `Bearer ${t}` } }).then(x => x.json())
-        const nodes = r.data?.nodes ?? []
-        return (nodes.find(n => n.name.includes('Temp PV')) ?? nodes[0])?.id ?? null
-      }, token)
-      navTo = nid ? `${BASE}/daq/${nid}` : `${BASE}/daq`
-    }
-    if (scene.url === 'card') {
-      await page.goto('about:blank').catch(() => {})
-    }
-    else {
-      await page.goto(navTo, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {})
-    }
-    await sleep(800)
-    await page.evaluate(OVERLAY_FN)
-    await sleep(2200)
-
-    // 场景脚本下推:录制期间零 evaluate
-    const actions = {
-      telemetry: { 1: 'scroll430' },
-      loop: { 1: 'scroll320' },
-      control: { 0: 'scrollcard', 1: 'write150' },
-      plugins: { 1: 'probe' },
-      agents: { 1: 'sendtask' },
-      twin: { 0: 'pause3400' },
-    }
-    const payload = {
-      clips: scene.clips.map(c => ({ cap: c.cap, sub: c.sub })),
-      chapter: scene.chapter,
-      isTitle: scene.id === 'title',
-      actions: actions[scene.id] ?? {},
-      durs,
-      pad: PAD,
-    }
-    const sceneDir = path.join(FRAME_DIR, scene.id)
-    fs.mkdirSync(sceneDir, { recursive: true })
-    let frameNo = 0
-    let pending = 0
-    const stamps = []
-    const client = await page.createCDPSession()
-    client.on('Page.screencastFrame', async (ev) => {
-      const at = ev.metadata.timestamp ?? Date.now() / 1000
-      if (pending < 24) {
-        pending++
-        const f = path.join(sceneDir, `f${String(frameNo++).padStart(5, '0')}.jpg`)
-        stamps.push({ file: f, at })
-        fs.promises.writeFile(f, Buffer.from(ev.data, 'base64')).catch(() => {}).finally(() => pending--)
+      let navTo = scene.url.startsWith('/') ? BASE + scene.url : null
+      if (scene.url === 'workshop') {
+        const wsId = await page.evaluate(async (t) => {
+          const r = await fetch('/api/workshop/workspaces', { headers: { authorization: `Bearer ${t}` } }).then(x => x.json())
+          return r?.data?.[0]?.id ?? null
+        }, token)
+        navTo = wsId ? `${BASE}/workshop/w/${wsId}` : `${BASE}/workshop`
       }
-      await client.send('Page.screencastFrameAck', { sessionId: ev.sessionId }).catch(() => {})
-    })
+      if (scene.url === 'pvnode') {
+        const nid = await page.evaluate(async (t) => {
+          const r = await fetch('/api/workshop/daq', { headers: { authorization: `Bearer ${t}` } }).then(x => x.json())
+          const nodes = r.data?.nodes ?? []
+          return (nodes.find(n => n.name.includes('Temp PV')) ?? nodes[0])?.id ?? null
+        }, token)
+        navTo = nid ? `${BASE}/daq/${nid}` : `${BASE}/daq`
+      }
+      if (scene.url === 'card') {
+        await page.goto('about:blank').catch(() => {})
+      }
+      else {
+        await page.goto(navTo, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {})
+      }
+      await sleep(800)
+      await page.evaluate(OVERLAY_FN)
+      await sleep(2200)
 
-    // 先把 runner 发出去(不等待其完成;响应在场景结束时返回;录制期间零 evaluate)
-    const runnerPromise = page.evaluate(SCENE_RUNNER, payload).catch(err => console.warn('  runner:', String(err).slice(0, 80)))
-    await sleep(600)
-    await client.send('Page.startScreencast', { format: 'jpeg', quality: 74, maxWidth: 1600, maxHeight: 900, everyNthFrame: 3 })
-
-    // 孪生场景:Node 侧鼠标环绕运镜(Input.dispatch,轻量)
-    if (scene.id === 'twin') {
-      await sleep(4200)
-      const orbit = async (dx, steps = 24) => {
-        const box = await page.evaluate(() => {
-          const c = document.querySelector('canvas')
-          const r = c?.getBoundingClientRect()
-          return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null
-        })
-        if (!box) return
-        await page.mouse.move(box.x, box.y)
-        await page.mouse.down()
-        for (let i = 0; i < steps; i++) {
-          const k = (i + 1) / steps
-          const e = 1 - (1 - k) ** 2
-          await page.mouse.move(box.x + dx * e, box.y + Math.sin(k * Math.PI) * 30)
-          await sleep(46)
+      const actions = {
+        telemetry: { 1: 'scroll430' },
+        control: { 1: 'write150', 2: 'history' },
+        plugins: { 1: 'probe' },
+        agents: { 1: 'sendtask' },
+        loop: { 1: 'stages' },
+        twin: { 0: 'pause3400' },
+      }
+      const payload = {
+        clips: scene.clips.map(c => ({ cap: c.cap, sub: c.sub })),
+        chapter: scene.chapter,
+        isTitle: scene.id === 'title',
+        actions: actions[scene.id] ?? {},
+        durs,
+      }
+      const attemptSuffix = attempt ? `-r${attempt}` : ''
+      const sceneDir = path.join(WORK, 'frames', `${scene.id}${attemptSuffix}`)
+      fs.mkdirSync(sceneDir, { recursive: true })
+      let frameNo = 0
+      let pending = 0
+      const stamps = []
+      const client = await page.createCDPSession()
+      client.on('Page.screencastFrame', async (ev) => {
+        const at = ev.metadata.timestamp ?? Date.now() / 1000
+        if (pending < 24) {
+          pending++
+          const f = path.join(sceneDir, `f${String(frameNo++).padStart(5, '0')}.jpg`)
+          stamps.push({ file: f, at })
+          fs.promises.writeFile(f, Buffer.from(ev.data, 'base64')).catch(() => {}).finally(() => pending--)
         }
-        await page.mouse.up()
-      }
-      await orbit(300)
-      await sleep(600)
-      await orbit(-240)
-      await sleep(500)
-    }
-    // 等到 runner 收尾(遮罩已全黑)再停抓帧
-    await runnerPromise
-    await sleep(600)
-    await client.send('Page.stopScreencast').catch(() => {})
-    await sleep(300)
-    console.log(`  帧 ${stamps.length}`)
+        await client.send('Page.screencastFrameAck', { sessionId: ev.sessionId }).catch(() => {})
+      })
 
-    if (stamps.length >= 8) {
-      const lines = []
-      for (let i = 0; i < stamps.length; i++) {
-        const next = stamps[i + 1]?.at
-        const d = next ? Math.max(0.02, Math.min(3, next - stamps[i].at)) : 0.12
-        lines.push(`file '${stamps[i].file.replace(/\\/g, '/')}'`)
-        lines.push(`duration ${d.toFixed(3)}`)
+      // 场景脚本下推(不等待;录制期间零 evaluate)。超时/异常 → 由 attempt 重试兜底。
+      const runnerPromise = page.evaluate(SCENE_RUNNER, payload).catch(err => console.warn('  runner:', String(err).slice(0, 70)))
+      await sleep(600)
+      await client.send('Page.startScreencast', { format: 'jpeg', quality: 74, maxWidth: 1600, maxHeight: 900, everyNthFrame: 3 })
+
+      if (scene.id === 'twin') {
+        await sleep(4200)
+        const orbit = async (dx, steps = 24) => {
+          const box = await page.evaluate(() => {
+            const c = document.querySelector('canvas')
+            const r = c?.getBoundingClientRect()
+            return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null
+          })
+          if (!box) return
+          await page.mouse.move(box.x, box.y)
+          await page.mouse.down()
+          for (let i = 0; i < steps; i++) {
+            const k = (i + 1) / steps
+            const e = 1 - (1 - k) ** 2
+            await page.mouse.move(box.x + dx * e, box.y + Math.sin(k * Math.PI) * 30)
+            await sleep(46)
+          }
+          await page.mouse.up()
+        }
+        await orbit(300)
+        await sleep(600)
+        await orbit(-240)
+        await sleep(500)
       }
-      lines.push(`file '${stamps[stamps.length - 1].file.replace(/\\/g, '/')}'`)
-      const durFile = path.join(sceneDir, 'durations.txt')
-      fs.writeFileSync(durFile, lines.join('\n'))
-      const out = path.join(FRAME_DIR, `${scene.id}.mp4`)
-      execSync(`ffmpeg -y -v error -f concat -safe 0 -i "${durFile}" -vf "fps=30,format=yuv420p" -c:v libx264 -preset medium -crf 24 "${out}"`)
-      sceneFiles.push({ id: scene.id, video: out })
+
+      await runnerPromise.catch(() => {})
+      await sleep(600)
+      await client.send('Page.stopScreencast').catch(() => {})
+      await sleep(300)
+      console.log(`  帧 ${stamps.length}`)
+
+      if (stamps.length >= 8) {
+        const lines = []
+        for (let i = 0; i < stamps.length; i++) {
+          const next = stamps[i + 1]?.at
+          const d = next ? Math.max(0.02, Math.min(3, next - stamps[i].at)) : 0.12
+          lines.push(`file '${stamps[i].file.replace(/\\/g, '/')}'`)
+          lines.push(`duration ${d.toFixed(3)}`)
+        }
+        lines.push(`file '${stamps[stamps.length - 1].file.replace(/\\/g, '/')}'`)
+        const durFile = path.join(sceneDir, 'durations.txt')
+        fs.writeFileSync(durFile, lines.join('\n'))
+        const out = path.join(WORK, 'frames', `${scene.id}${attemptSuffix}.mp4`)
+        execSync(`ffmpeg -y -v error -f concat -safe 0 -i "${durFile}" -vf "fps=30,format=yuv420p" -c:v libx264 -preset medium -crf 24 "${out}"`)
+        recorded = { id: scene.id, video: out }
+      }
+      else {
+        console.warn(`  ⚠ ${scene.id} 帧不足(attempt=${attempt})`)
+        // 渲染器可能被拖挂:整页 reload 复位后再试
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {})
+        await sleep(2500)
+      }
+      await client.detach().catch(() => {})
     }
-    else {
-      console.warn(`  ⚠ ${scene.id} 帧不足,跳过`)
-    }
-    await client.detach().catch(() => {})
+    if (recorded) sceneFiles.push(recorded)
+    else console.warn(`  ✖ ${scene.id} 两次尝试均失败,跳过该场景`)
   }
 
-  // ── 配音对齐 + 混流 + 拼接 ──
+  // ── 配音对齐 + 混流(clip 边缘 afade)+ 拼接 + 封面 ──
   console.log('● 配音对齐与混流 …')
   const finalOut = path.join(OUT_DIR, 'agentworkshop-demo.mp4')
   const parts = []
   for (const scene of PLAN) {
     const sf = sceneFiles.find(x => x.id === scene.id)
     if (!sf) continue
-    const vdur = Number(execSync(`ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "${sf.video}"`).toString().trim())
+    const vdur = probeDur(sf.video)
     const inputs = []
     const filters = []
     const mixIns = []
     let t = HEAD
-    let inputIdx = 0
     scene.clips.forEach((c, k) => {
       const d = durations[`${scene.id}_${k}`] ?? 0
-      const narr = path.join(NARR_DIR, `${scene.id}_${k}.n.wav`)
+      const narr = path.join(narrDir, `${scene.id}_${k}.wav`)
       if (fs.existsSync(narr)) {
         inputs.push('-i', narr)
-        filters.push(`[${inputIdx}:a]adelay=${Math.round(t * 1000)}|${Math.round(t * 1000)}[a${k}]`)
+        const ms = Math.round(t * 1000)
+        filters.push(`[${k}:a]adelay=${ms}|${ms},afade=t=in:d=0.025,afade=t=out:st=${Math.max(0, d - 0.06).toFixed(3)}:d=0.06[a${k}]`)
         mixIns.push(`[a${k}]`)
-        inputIdx++
       }
-      t += d + PAD
+      t += d + 0.7
     })
-    const sceneWav = path.join(FRAME_DIR, `${scene.id}.wav`)
+    const sceneWav = path.join(WORK, 'frames', `${scene.id}.wav`)
     if (mixIns.length) {
       execSync(`ffmpeg -y -v error ${inputs.join(' ')} -filter_complex "${filters.join(';')};${mixIns.join('')}amix=inputs=${mixIns.length}:normalize=0,apad=whole_dur=${vdur.toFixed(3)}[out]" -map "[out]" -ar 44100 -ac 2 "${sceneWav}"`)
     }
     else {
       execSync(`ffmpeg -y -v error -f lavfi -i anullsrc=r=44100:cl=stereo -t ${vdur.toFixed(3)} "${sceneWav}"`)
     }
-    const av = path.join(FRAME_DIR, `${scene.id}.av.mp4`)
-    execSync(`ffmpeg -y -v error -i "${sf.video}" -i "${sceneWav}" -c:v copy -c:a aac -b:a 128k -shortest "${av}"`)
+    const av = path.join(WORK, 'frames', `${scene.id}.av.mp4`)
+    execSync(`ffmpeg -y -v error -i "${sf.video}" -i "${sceneWav}" -c:v copy -c:a aac -b:a 160k -shortest "${av}"`)
     parts.push(av)
   }
-  const listFile = path.join(FRAME_DIR, 'concat.txt')
+  const listFile = path.join(WORK, 'frames', 'concat.txt')
   fs.writeFileSync(listFile, parts.map(p2 => `file '${p2.replace(/\\/g, '/')}'`).join('\n'))
   execSync(`ffmpeg -y -v error -f concat -safe 0 -i "${listFile}" -c copy -movflags +faststart "${finalOut}"`)
+  const dur = probeDur(finalOut)
   const size = fs.statSync(finalOut).size
-  console.log(`✅ 完成:${finalOut.replace(process.cwd(), '.')}(${(size / 1e6).toFixed(1)} MB)`)
+  console.log(`✅ 完成:${finalOut.replace(process.cwd(), '.')}(${(size / 1e6).toFixed(1)} MB,${dur.toFixed(1)}s)`)
 
+  const posterAt = Math.min(dur - 2, dur * 0.86)
+  execSync(`ffmpeg -y -v error -ss ${posterAt.toFixed(1)} -i "${finalOut}" -frames:v 1 -q:v 3 "${path.join(OUT_DIR, 'poster.jpg')}"`)
   await browser.close()
 }
 

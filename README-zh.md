@@ -127,7 +127,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 
 <div align="center">
 
-### 🎬 实机演示(3 分 18 秒,英文配音 + 字幕)
+### 🎬 实机演示(4 分 11 秒,英文配音 + 字幕)
 
 <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-demo.mp4"><img src="docs/site/public/demo/poster.jpg" alt="AgentWorkShop 实机演示:数采中心、写控下发回读、串口插件、Agent 团队执行、闭环趋势与 3D 数字孪生" width="86%" /></a>
 
