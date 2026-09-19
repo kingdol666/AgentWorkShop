@@ -162,17 +162,17 @@ export function setup(ctx) {
         probing = true
         setBtn(t('probing'), true)
         try {
+          // ctx.fetch 会自动 JSON.stringify(body)——这里必须传对象(双重 stringify 会让服务端收到字符串)
           const r = await ctx.fetch('/api/plugins/serial-bridge/probe', {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
+            body: {
               path,
               mode: modeSel.value,
               baudRate: Number(baudInp.value) || 9600,
               unitId: Number(unitInp.value) || 1,
               register: regInp.value === '' ? undefined : Number(regInp.value),
               sendLine: modeSel.value === 'ascii-line' && lineInp.value ? lineInp.value : undefined,
-            }),
+            },
           })
           const body = r ?? {}
           const ok = body.ok === true
