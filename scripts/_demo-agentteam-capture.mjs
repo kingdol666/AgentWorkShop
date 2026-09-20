@@ -12,7 +12,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { ensureVisualUser, launch, openPage, gotoReady, sleep, BASE } from './ui/lib.mjs'
 
-const OUT = 'docs/demo/agentteam-flow/img'
+const OUT = process.env.DEMO_OUT ?? 'docs/demo/agentteam-flow/img'
+const DARK = process.env.DEMO_DARK !== '0'
 fs.mkdirSync(OUT, { recursive: true })
 const manifest = []
 const S = process.env.SIM_BASE ?? 'http://127.0.0.1:4010'
@@ -30,13 +31,13 @@ const call = async (method, p, body) => {
 }
 
 const browser = await launch({ width: 1440, height: 900 })
-const page = await openPage(browser, { token, dark: true, width: 1440, height: 900 })
+const page = await openPage(browser, { token, dark: DARK, width: 1440, height: 900 })
 // English UI: cookie(locale-cookie middleware → SSR English)+ localStorage(插件回退)
 await page.setCookie({ name: 'aw.locale', value: 'en', domain: '127.0.0.1', path: '/' })
 await page.evaluateOnNewDocument(() => {
   try {
     localStorage.setItem('aw.locale', 'en')
-    localStorage.setItem('app', JSON.stringify({ isDark: true, sidebarCollapsed: false, accent: null, themeTouched: true }))
+    localStorage.setItem('app', JSON.stringify({ isDark: DARK, sidebarCollapsed: false, accent: null, themeTouched: true }))
   }
   catch { /* ignore */ }
 })

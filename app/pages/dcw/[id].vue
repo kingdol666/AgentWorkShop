@@ -2468,7 +2468,6 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 .ctl-sel .inp { min-width: 150px; }
 /* 配方参数行:窄屏不再按 5 列硬分,否则数值列被压成竖排字 */
 .param-chip { overflow-wrap: anywhere; }
-.pill-btn.stop { background: var(--tone-danger-dot); border-color: var(--tone-danger-dot); }
 .product-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
 .prod-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 12px; font-size: 12px; cursor: pointer; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); }
 .prod-chip.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
