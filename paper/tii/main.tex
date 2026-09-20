@@ -3,63 +3,26 @@
 % Compile: latexmk -pdf main.tex   (TeX Live 2025, IEEEtran)
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
-\usepackage{rotating}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
 \usepackage{booktabs}
-\usepackage{multirow}
 \usepackage{xcolor}
-% ---------------------------------------------------------------------------
-% Figure palette.  Every hue is paired with a line style, a marker shape or a
-% direct label, so each figure stays readable in a monochrome reprint as well
-% as in the colour version, and all pairs remain distinguishable to the common
-% forms of colour-vision deficiency.
-% ---------------------------------------------------------------------------
-\definecolor{awTeal}{HTML}{1F6F78}   % measured process variable
-\definecolor{awRed}{HTML}{B3282D}    % setpoint / limit / failed configuration
-\definecolor{awBlue}{HTML}{3D6FB5}   % readback mechanism
-\definecolor{awGreen}{HTML}{2E7D32}  % full governed pipeline
-\definecolor{awAmber}{HTML}{C8871B}  % approval / decision stage
-\definecolor{awGrey}{HTML}{5F6B76}   % neutral reference
-\definecolor{awPurple}{HTML}{6A4C93} % fully ungated arm
-\definecolor{awFill1}{HTML}{E8F1F2}  % teal tint
-\definecolor{awFill2}{HTML}{FBEDED}  % red tint
-\definecolor{awFill3}{HTML}{EDF3FA}  % blue tint
-\definecolor{awFill4}{HTML}{EDF5EE}  % green tint
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,backgrounds,patterns}
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.18}
-% Origin/Prism-style scientific plot defaults (TII figure norms): boxed frame,
-% inward major+minor ticks, footnote-size labels with units, legends never on data.
-\pgfplotsset{
-  tii/.style={
-    axis lines=box,
-    tick align=inside,
-    major tick length=2.0mm,
-    minor tick length=1.1mm,
-    label style={font=\footnotesize},
-    tick label style={font=\scriptsize},
-    legend style={font=\scriptsize, draw=black!45, fill=white, fill opacity=0.92,
-                  text opacity=1, legend cell align=left, inner sep=2.5pt},
-  }
-}
-\usepackage{url}
 \usepackage{stfloats}
+\usepackage{placeins}
 
-% Float packing: the manuscript carries five double-column floats and two
-% single-column ones. The defaults leave large column gaps around them; these
-% limits let LaTeX fill the columns instead of deferring a float.
+% Float packing.  The manuscript carries five double-column figures and two
+% double-column tables.  Limits must be permissive
+% enough that a page is never left
+% with a half-empty column: with a strict \topfraction the page break lands after
+% a float and the following column starts late, which reads as an unintended blank.
 \setcounter{topnumber}{4}
 \setcounter{bottomnumber}{3}
 \setcounter{totalnumber}{6}
 \setcounter{dbltopnumber}{3}
-\renewcommand{\topfraction}{1.0}
-\renewcommand{\bottomfraction}{0.9}
-\renewcommand{\textfraction}{0.0}
-\renewcommand{\floatpagefraction}{0.85}
-\renewcommand{\dbltopfraction}{1.0}
-\renewcommand{\dblfloatpagefraction}{0.85}
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.75}
+\renewcommand{\textfraction}{0.04}
+\renewcommand{\floatpagefraction}{0.70}
+\renewcommand{\dbltopfraction}{0.92}
+\renewcommand{\dblfloatpagefraction}{0.70}
 
 \input{results-macros}
 
@@ -68,44 +31,41 @@
 
 \begin{document}
 
-\title{AgentWorkShop: Node-Native Binding and Governed Write Paths for Agent Teams in Industrial Supervision}
+\title{AgentWorkShop: Closed-Loop Recipe Optimization by Governed Agent Teams over Heterogeneous Industrial Protocols}
 
 % Working manuscript: replace the anonymous author block only when the
 % submission stage and double-blind requirements permit author identification.
 \author{Anonymous Authors}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Node-Native Binding and Governed Write Paths}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Closed-Loop Recipe Optimization by Governed Agent Teams}
 
 \maketitle
 
 \begin{abstract}
-Bringing language-model agents into industrial supervisory control requires
-associating each command's semantics, authority, and history across
-heterogeneous devices and multiple agents. We
-present \system{}, a node-native framework in which explicit member-to-node
-bindings determine each agent's tools, source-dependent checks govern
-agent-issued writes, and attributable records with an independent backstop
-keep authorization, device execution, and process judgment distinguishable.
-A scripted channel layer and a fixed controller drive the governed write path;
-the LLM decision path stays disabled. Primary results come from one reference
-archive over three simulated scenarios with real protocol transports, including
-a 49-signal biaxial-film line; mission statistics add an eleven-archive
-same-seed rerun family. The reference archive passes 75 of 75 checks, and the
-paper reports what the gate does not see: in same-seed reruns, task-level
-failures surface only as warnings, three checks carry skipped write sub-checks,
-and the mission layer is not deterministic. The writable stacks reject 24/24
-gross out-of-constraint probes without blocking any of four legal writes; a
-second scenario rejects 9/9 without false blocks. A fixed non-LLM controller attains
-$J/J^{*}=0.963$--$0.972$ of an offline grid-search reference across three
-seeds. A scripted team mission brings biaxial-film thickness from 28.10 to
-25.68\,$\mu$m (objective $25.0\pm0.7\,\mu$m) in three governed writes on two
-protocols; seven of the ten reportable runs in the family end in the band
-(small-$n$), and none of the collapses trips the hard gate. The results
-characterize the governance path on simulated plants; physical validation and
-controlled agent comparisons remain open.
+Industrial recipe optimization requires more than selecting a promising setpoint:
+an intervention must respect equipment limits, use the correct protocol, and remain
+traceable when its outcome is judged or reversed. AgentWorkShop links agent-team
+coordination to industrial supervision through member--node capabilities, shared
+production context, and a governed write path. Engineering limits, recipe windows,
+and approval requirements constrain execution; optimization records distinguish
+command acceptance, observed process response, agent judgment, and compensation.
+The evaluation uses real protocol transports with simulated plants and scripted
+teams, keeping language-model decisions outside the measured execution path.
+The integrated evaluation passes 75 checks, rejects 24 of 24 configured
+out-of-constraint probes across four writable stacks, and blocks none of four
+legal writes. A four-arm ablation attributes window-violation prevention to the
+recipe interlock: removing it admits six violations across three repetitions,
+whereas bypassing readback verification alone does not affect rejection. A fixed controller
+achieves 0.966--0.970 of a simulator-derived grid reference across three seeds.
+A recorded team mission reduces film thickness from 26.90 to 25.48\,$\mu$m through
+four governed writes on three parameters, meeting a $25.0\pm0.7\,\mu$m objective.
+The results support a common execution layer that separates authorization,
+device acceptance, and process success. Physical validation and controlled
+agent comparisons remain necessary before claiming field reliability or
+autonomous optimization superiority.
 \end{abstract}
 
 \begin{IEEEkeywords}
-access control, heterogeneous protocols, human-in-the-loop, industrial informatics, large language models, multi-agent systems, supervisory control.
+agent teams, closed-loop optimization, heterogeneous protocols, human-in-the-loop, industrial informatics, large language models, recipe optimization, supervisory control.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -114,9 +74,11 @@ access control, heterogeneous protocols, human-in-the-loop, industrial informati
 \input{sections/related}
 \input{sections/system}
 \input{sections/mechanisms}
+\FloatBarrier
 \input{sections/evaluation}
 \input{sections/discussion}
 
+% Use the unmodified IEEEtran bibliography layout.
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
 

@@ -1,91 +1,103 @@
 \section{Discussion and Limitations}
 \label{sec:limits}
-\subsection{Established Properties and Their Boundaries}
-The reusable unit here is the deployed member--node capability--production-run
-association: it lets one task work in engineering quantities across drivers while
-execution and compensation stay attributable, and lets the biaxial mission move
-three line sections under one objective without plant-specific routing code. It
-does not measure the effort to author a scenario or integrate a
-protocol the platform does not already speak.
+\subsection{What the Loop Delivers}
+Primary archive $B$ is the reference for the results in Sec.~\ref{sec:eval};
+earlier campaigns provide historical limitations, not the headline outcome.
+The evaluated paths connect engineering
+quantities, member-level authority, and production context to intervention and
+compensation records across implemented drivers. Their output is an executed
+setpoint and associated evidence within configured limits, not a validated
+safe operating interval.
 
-Proposal, admission, and disposition stay distinguishable: a recorded
-\texttt{keep} is the agent's judgment, a matching
-readback is a driver-level observation, and sustained process convergence is a
-separate experimental outcome. Observation-quality
-gating is a framework-level extension this paper does not deliver; until it
-exists, the historical LLM scores cannot be compared with the deterministic
-ones: their writes executed as designed, but their judgments were formed over
-scoring inputs and temporal windows that diverged
-from the plant's actual state (Sec.~\ref{sec:repro}).
+The distinction is operationally useful because the remedies differ. A binding
+or range rejection calls for revising authority or the proposal; a transport
+or readback failure calls for inspecting execution; an accepted write followed
+by an out-of-band process response calls for a new strategy or compensation.
+The interlock ablation and frozen-process drill exercise two of these
+distinctions: attribution does not prevent an inadmissible command, and
+matching a setpoint does not establish a responding process. The platform
+makes these stages inspectable without claiming that the agent's judgment is
+an independent quality oracle.
 
-\subsection{Implementation and Evidence Boundaries}
-Cross-agent in-window oscillations, shared-node
-contention over longer horizons, and availability during storage failure remain
-unevaluated. The collapse archives of Sec.~\ref{sec:agentloop} also expose a
-suppression mode: supersession within about a minute kept the backstop's
-120-second eligibility window from opening, so sustained rapid writes defer
-independent rollback indefinitely; a minimum record-dwell before supersession is
-a candidate mitigation. Approval reduces permitted automation without establishing endpoint security,
-protecting against a privileged compromised harness, or validating approved
-engineering intent; least-privilege deployment and network separation remain
-separate responsibilities \cite{iec62443,nist80082}. Governed writes are
-defense-in-depth at the basic process control system layer, not a certified safety
-instrumented function: their safety argument presupposes independent regulatory
-limits and a protection layer in the IEC 61511 sense \cite{iec61511}, and the
-platform implements no detection or degraded-mode response when such layers are
-absent, which is an integrator responsibility. Because the governed path rejects
-out-of-constraint writes, a protection-layer analysis must likewise not record it
-as an independent protection layer without the assessment IEC 61511 assigns to
-such layers. Manual-binding approval workload
-grows with the frequency of agent proposals, and approval fatigue and
-over-reliance are documented risks
-\cite{parasuraman2000model,bainbridge1983ironies,leesee2004trust,parasuramanmanzey2010complacency}; policy granularity over
-roles, batch phases, and magnitudes is an extension point, not a present
-capability, and segregation of duties between device association and capability
-binding is not enforced by the current interface.
-None of these mechanisms is enforced outside the platform process; a deployment
-therefore needs independent setpoint limits and interlocks in the controller itself.
+Proposal, admission, readback, and process judgment remain distinct.
+\texttt{keep} records a submitted verdict; readback checks device-level
+agreement; sustained convergence requires separate process evidence.
+Observation-quality gating is not enforced, so a judgment may use stale or
+unrepresentative telemetry. The deterministic controllers and scripted members
+test these execution paths, not LLM optimization quality. Neither successful
+writes nor a passing regression gate establishes reliable process control.
 
-Deployment in a real plant carries prerequisites this paper does not discharge:
-placement across the IT/OT hierarchy and IEC 62443 zones-and-conduits assignment
-are integrator decisions \cite{iec62443}. A deployment design must also
-answer the platform's failure modes, including the approval channel, alarm paths
-\cite{isa182,eemua191}, and open records left by a core crash, and must supply
-clock synchronization, off-host record preservation, and pinned engine versions
-where reproducible behavior is required. The single-host Windows capacity
-boundary is likewise untested, as is splitting the co-resident deployment across
-a 62443 zone boundary with the approval channel as the only conduit.
+\subsection{Reproducibility and Threats to Validity}
+\label{sec:repro}
+Commands, seeds, source fingerprints, and per-check evidence support reruns
+and archive comparisons, but deterministic decision policies do not make the
+whole experiment deterministic. Simulator initial state, asynchronous
+execution, and sampling windows can change outcomes. A harness fingerprint
+does not pin the separately versioned plant simulator, and working-tree hashes
+can depend on line endings. Exact reconstruction therefore requires the
+simulator version and reset state as well as the platform and harness sources.
+
+The checks were developed against this implementation, and the reference
+$J^{*}$ derives from the same simulator used by the controller. They form a
+regression suite rather than an external performance oracle. Historical
+warning-only mission outcomes show why an aggregate gate alone is
+insufficient, and the current archive also contains a journal check with an
+empty evidence array (Sec.~\ref{sec:repeatability}). Historical real-LLM
+campaigns used different scoring inputs and observation windows and remain
+exploratory, not comparable optimization evidence.
+
+The study is simulation-tier: no physical-device validation, TEP or SWaT
+replay, human-operator study, or external-framework comparison is reported.
+Readback-consistent writes can still accompany adverse process behavior, and
+bookkeeping can fail after actuation without reversing it. Device agreement,
+attribution, and process validity are thus separate properties.
+
+\subsection{Deployment Boundaries}
+Cross-agent oscillation within permitted ranges, long-horizon contention,
+storage-failure availability, and worst-case recovery time remain unevaluated.
+The backstop depends on data and policy; its wait and recheck cadence is not a
+recovery deadline. At its retained-history threshold $K=2$, escalation
+replaces automatic restoration and may leave a record unresolved without an
+operator.
+
+Bindings govern sanctioned tool calls, not arbitrary I/O by a privileged or
+compromised engine. Least privilege, endpoint security, and IT/OT network
+separation remain deployment responsibilities \cite{iec62443,nist80082}.
+Governed writes are not a certified safety instrumented function or an
+independent protection layer: controller limits, interlocks, and any required
+IEC~61511 protection must remain independent \cite{iec61511}. The platform
+neither detects nor compensates for their absence.
+
+Manual approval can introduce fatigue and over-reliance
+\cite{parasuraman2000model,bainbridge1983ironies,leesee2004trust,parasuramanmanzey2010complacency}.
+Role-, batch-phase-, and magnitude-specific policies and enforced segregation
+of duties remain extensions. Deployment also requires handling
+approval-channel and alarm-path failures \cite{eemua191}, records left open by
+crashes, synchronized clocks, and off-host evidence.
 
 \section{Conclusion}
 \label{sec:conclusion}
-\system{} integrates multi-agent coordination with heterogeneous industrial
-supervision through explicit node capabilities and shared production context,
-keeping coordination and supervision cooperating without becoming one atomic control
-function. Reference archive $B$ provides three
-complementary results: four writable stacks reject all predefined
-out-of-constraint writes with no legal-write blocks; a fixed controller reaches
-$J/J^*=0.963$--$0.972$ across three seeds; and a scripted team mission uses three
-governed writes across two protocols to bring biaxial-film thickness from 28.10 to
-25.68\,$\mu$m. Seven of the ten reportable runs (of eleven
-same-seed archives, including the reference) attain the band, the reported run
-among them; the failed reruns end near zero thickness with no check failing and the mission
-checks downgraded to warnings, and the suite's hard gate does not flag them. No
-LLM client has yet exercised the governed path under controlled evaluation; the
-historical campaigns of Sec.~\ref{sec:repro} remain exploratory. These results
-demonstrate the tested integration and governance paths only; physical validation,
-stronger execution consistency, controlled agent comparisons, observation-quality
-gating, and evaluation of the attribution records by downstream investigators
-remain open.
+\system{} connects deployed agent teams to industrial supervision through
+member--node capabilities, production context, and hypothesis-bearing
+intervention records. Source-dependent admission, submitted judgment, and
+separately executed compensation make the supervisory loop inspectable without
+making it atomic or safety-certified. Simulation-tier protocol checks,
+deterministic controllers, and scripted missions characterize implementation
+behavior, not LLM optimization or field reliability. Physical validation,
+stronger execution consistency, observation-quality gating, and controlled
+agent comparisons remain open.
 
 \section*{Data Availability and Disclosure}
-The archive \texttt{20260918043504-bdo} used in Sec.~\ref{sec:eval} is
-machine-readable---\texttt{run.json} (every check with evidence),
-\texttt{summary.json} (verdict, KPIs), \texttt{metrics.csv} (metric registry),
-\texttt{agentteam-*.log} (mission traces)---and ships with the figure scripts and
-the archive-consistency checker. Figs.~1 and~5 are AI-generated illustrations;
-all other figures are rendered from archived data. Anonymized platform,
-benchmark-card, and simulator snapshots
-accompany the submission; repository
-identifiers will be disclosed on acceptance. AI-based assistants supported
-manuscript editing, evidence checking, and figure preparation under
-author direction; the authors remain responsible for the claims and data.
+The integrated archives identified in Sec.~\ref{sec:eval} retain per-check
+results in \texttt{run.json}, verdicts in \texttt{summary.json}, metrics in
+\texttt{metrics.csv}, and \texttt{agentteam-*.log} traces. The ablation
+supplies \texttt{run.json} and \texttt{e1-lite.csv}; protocol and static
+suites supply \texttt{run.json} and reports. Figure scripts and
+archive-consistency checks accompany the project source. These records do not
+by themselves reconstruct the separately versioned simulator. Fig.~1 is an
+AI-generated illustration of two conceptual deployment patterns; Fig.~3 is a
+composite of crops from the deployed console; the remaining figures are
+programmatically rendered schematics or archive-derived plots. None presents
+an invented experimental trajectory. AI assistants supported
+manuscript editing, evidence checking, and figure preparation under author
+direction; the authors remain responsible for claims and data.

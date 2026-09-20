@@ -1,335 +1,310 @@
-\section{Integrated Evaluation}
+\section{Experimental Evaluation}
 \label{sec:eval}
+\subsection{Testbed, Scope, and Evaluation Flow}
+\label{sec:protocol}\label{sec:static}
+The experiments ask whether the platform (Q1) preserves write constraints
+across heterogeneous protocols, (Q2) separates prevention from readback and
+attribution, and (Q3) closes a team-level objective through traceable,
+multi-node interventions. We freeze the integrated archive
+$B=\texttt{20260920094610-to4}$ from the September 20, 2026 consolidated
+report, recording seed 42, commit \texttt{1585948}, harness hash
+\texttt{b203077a581aaba1} over nine benchmark-harness files, and Node v24.19.0
+on Windows x64. The command is \texttt{node bench/pipeline.mjs --profile
+integrated --seed 42 --cl-seeds 3}. Its immediately preceding same-version run
+is reported separately rather than selected for its endpoint, and the ablation
+and protocol/fault drill come from separate archives, not pooled with $B$.
+Numerical controller and mission
+observations use separate REST history queries that request one-second buckets
+and average up to six and five latest returned bucket means respectively; the
+archive preserves aggregates, not raw buckets.
 
-\subsection{Evidence Design and the Reference Run}
-\label{sec:protocol}
-\label{sec:static}
-Four questions drive the evaluation: can the platform provision heterogeneous
-protocol stacks and acquire from them; does the governed write path reject requests
-that break engineering or recipe constraints without blocking legal ones; can a
-fixed controller close the acquisition--actuation loop on a process model; and can a
-scripted team turn a production objective into governed actions that reach it?
-Source
-inspection, mock drivers, real protocol transports driving simulated plants, and
-historical LLM campaigns stay apart; nothing here comes from physical hardware or
-human operators, and the latency figures do not transfer to physical transports. No headline
-claim in this paper rests on an LLM decision.
+The testbed runs actual Modbus TCP, OPC UA, MQTT, HTTP, and Modbus
+RTU-over-TCP transports against simulated plants, including a cast-film
+physics model, a strategy-based film line, and a biaxially oriented
+polyethylene terephthalate (BOPET) line. The integrated tool harness is
+deterministic \texttt{opencode}; mission leads and workers are scripted
+mock-engine members, and LLM decisions are disabled. Thus, the experiments
+evaluate supervisory execution and its evidence trail, not learned
+optimization, physical production performance, or an advantage over another
+agent framework. The simulator-derived reference and author-defined probes
+are internal oracles, not independent industrial benchmarks.
 
-The evidence is not uniform: the out-of-constraint write probes exercise the hard-range and recipe-window checks directly, the lifecycle and mission checks exercise rollback and approval, and the ownership and cooldown checks are traversed by every governed agent write (Sections~\ref{sec:port}, \ref{sec:e1a}, and \ref{sec:agentloop}). The probes are fixed protocol cases, not model-generated adversarial inputs.
+Because the loop is the object under test, Fig.~\ref{fig:chanloop} states what
+an iteration consists of before any number is reported: which signals return
+from the plant, where admission is decided, which node executes a write over
+which transport, and what evidence survives the write. The measured results
+then attach to those stages in a fixed order --- coverage and protocol
+behavior (Sec.~\ref{sec:suite}), prevention versus readback
+(Sec.~\ref{sec:e1lite}), fixed-controller loop closure
+(Sec.~\ref{sec:clbench}), and the recorded team-level mission
+(Sec.~\ref{sec:agentloop}) --- so that a later claim can be traced back to the
+stage that produced it. Each subsection names its archive and states what the
+run does \emph{not} establish, so the section reads as a sequence of
+independent checks rather than one aggregate score.
 
-Except where an archive is named, the results in this section come from one reference archived run,
-$B=\texttt{20260918043504-bdo}$: seed 42, commit \texttt{7d4bfc0}, hash \texttt{00e7dc827f4a2cea} over the modules of the \bench{} evaluation harness, Node v24.19.0 on \resHost{} x64. All 75 checks pass, with no warnings and no
-failures; the objective, control law, and probe definitions are fixed properties
-of the harness source named by that hash, not archive contents. The
-run therefore measures platform, protocol, governance,
-controller, and team mechanisms: the agent-tool loops use the deterministic
-\texttt{opencode} engine, and the LLM agent option is off. Three plants are exercised: a
-cast-film physics model, a strategy-based film line, and a 49-signal
-biaxially oriented polyethylene terephthalate (BOPET) line. The reference is
-designated rather than sampled; its position in the eleven-archive family of
-Sec.~\ref{sec:agentloop} is reported there.
-
-\subsection{Suite-Wide Results}
-\label{sec:suite}
-Table~\ref{tab:layers} groups the suite's 17 phases into seven evidence layers,
-all 75 checks passing. The same run stores five vector and five
-image frames, completes a lead-to-worker dispatch, stores a duplicate memory
-refresh once, and enumerates 14 agent engines, an inventory result silent on
-control quality across them. The gate's
-verdict semantics flag task-level failures as warnings only (Sec.~\ref{sec:repro}).
-
-\begin{table*}[!tb]
+\begin{figure*}[!t]
 \centering
-\caption{Integrated evaluation results in archive $B$
-(\texttt{20260918043504-bdo}). Phases are the suite's own identifiers;
-``Checks'' counts pass/total within the layer. The seven layers partition all 17
-phases and all 75 checks exactly once.}
-\label{tab:layers}
-\scriptsize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}p{0.17\textwidth}p{0.11\textwidth}rp{0.55\textwidth}@{}}
-\toprule
-Evidence layer & Phases & Checks & Principal measured result \\
-\midrule
-Plant model and provisioning & P0--P2 & 9/9 &
-4 writable lines, 1 satellite DAQ; $J^{*}=89.894$ as comparison denominator \\
-Protocol I/O and governed write & P3 & 5/5 &
-56 DAQ samples over 5/5 nodes; 24/24 probes rejected; 0/4 legal writes blocked;
-p50 mean 33.135\,ms (six writes per stack) \\
-Tool-level closed loop & P4 & 7/7 &
-3 scripted setpoint iterations per line, each accepted and re-observed \\
-Records, approval, recipe, parameter & P4b--P4f & 12/12 &
-Verdict separable from compensation; approval in 16\,ms; two recipe lifecycles;
-4/4 parameter checks \\
-AgentTeam missions & P4m, P10 & 16/16 &
-One mission reaches $204.704\pm0.75\,^\circ$C in 1 write; the biaxial line
-reaches $25.68\,\mu$m from $28.10\,\mu$m in 3 writes on 2 protocols \\
-Closed-loop evaluation and scenario reuse & P6, P8, P8b & 22/22 &
-$J/J^{*}=0.963$--$0.972$ over three seeds; film-line 9/9 rejected, 0 false
-blocks; backstop restores baseline in 120.161\,s \\
-Multimodal acquisition and platform services & P7, P9 & 4/4 &
-5 vector and 5 image frames; dispatch \texttt{COMPLETED}; duplicate memory
-refresh stored once; 14 engines available \\
-\midrule
-\textbf{Total} & 17 & \textbf{75/75} &
-\textbf{0 warnings, 0 failures; hard gate green} \\
-\bottomrule
-\end{tabular}
-\end{table*}
+\includegraphics[width=0.88\textwidth]{figures/publication/fig3-channel-loop.png}
+\caption{The agent-team loop that the evaluation exercises, from the
+observation that starts an iteration to the compensation that can end one.
+The channel coordinates a lead and workers whose per-node bindings gate
+admission---bound scope, availability, approval policy, hard range plus the
+active recipe window---before a driver write with register readback where the
+protocol supports it. \texttt{dcw\_judge} records the agent's verdict but
+neither computes it nor actuates; compensation is a separate, rejectable
+write; the human authority and the auto backstop sit outside the channel.
+Numbered items are loop steps, not the subsections of Sec.~\ref{sec:mech};
+the plant is simulated.}
+\label{fig:chanloop}
+\end{figure*}
 
-Three properties bound the table's meaning: the 24/24 and 9/9 figures describe configured collision cases, not boundary
-discrimination; the governance layers
-exercise specific branches of the write path, not every fault, storage condition, or
-escalation route; and three checks carry write sub-checks skipped because their nodes expose no writable
-setpoint, which the pass/warn/fail verdict does not surface.
+\subsection{Integrated Coverage and Protocol Results}
+\label{sec:suite}\label{sec:port}\label{sec:dynamic}\label{sec:plc}\label{sec:govsurface}
+Archive $B$ reports 75 passes, zero warnings, and zero failures across 17
+phases. A pass is a check verdict, not an independent trial or a statistical
+confidence statement. The checks partition by function as 9 plant and
+provisioning, 5 protocol I/O and write governance, 7 three-cycle tool loops,
+12 records, approval, recipes, and parameters, 16 team objectives and the
+BOPET line, 22 controller, scenario reuse, and backstop, and 4 multimodal
+acquisition and services. Acquisition-only nodes have no write endpoint; three
+omitted write/governance sub-checks must not be counted as tested writes. The
+optional LLM phase is absent. A separate source audit
+(\texttt{20260920095700-1e3s}) passes three checks, including 20/20
+code-constant anchors, and the accompanying \texttt{\_r7-apilive.log} records
+60 API passes and two persistence-related skips despite the consolidated
+report's zero-skip summary; these overlapping layers are not summed as
+independent experiments.
 
-\subsection{Protocol Integration and Governed Writes}
-\label{sec:port}
-\label{sec:dynamic}
-\label{sec:plc}
-\label{sec:govsurface}
-The platform provisions Modbus TCP, OPC UA, MQTT, and HTTP as writable stacks and
-Modbus RTU over TCP as an acquisition-only satellite. Table~\ref{tab:plc} and
-Fig.~\ref{fig:clbench}(a) report write latency and readback; the OPC UA readback entry is a single sample rather than a general claim of exactness.
+Five acquisition nodes store 59 samples. Four writable stacks each reject six
+out-of-constraint probes, giving 24/24 rejections and zero false blocks on
+four legal writes; the checker counts HTTP error responses to configured
+hard-range and window probes, so it does not verify each physical non-effect
+or establish adversarial robustness. Reprovisioning the second film-line
+scenario requires no driver-code changes: its three writable lines reject 9/9
+probes without false blocks, alongside two acquisition-only satellites.
 
 \begin{table}[!t]
 \centering
-\caption{Protocol results in $B$. Write latency is p50/p95 over six timed writes
-of one value to one register per stack; with six samples the p95 is effectively
-the observed maximum, so these are observations, not tail estimates. Readback is
-a single post-write sample; ``DAQ'' counts stored DAQ samples; rejection counts
-six author-defined out-of-constraint probes per writable stack. RTU exposes no
-writable setpoint. $^{\dagger}$Two earlier OPC UA writes in the same archive
-deviated 0.3--0.4 at readback (the P4 line-2 loop).}
+\caption{Protocol measurements in $B$. Latency quantiles use six timed writes per stack: p50 is the fourth sorted value and p95 the maximum. Readback is one sampled deviation, not an accuracy bound. A dash means unmeasured or inapplicable.}
 \label{tab:plc}
-\scriptsize
-\setlength{\tabcolsep}{3.4pt}
-\begin{tabular}{@{}lrrrr@{}}
+\footnotesize
+\setlength{\tabcolsep}{2.9pt}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
-Stack & DAQ & p50/p95 (ms) & Readback & Reject \\
+Stack & Samples & p50/p95 (ms) & Readback \\
 \midrule
-Modbus TCP & 7 & 62.717/162.607 & $0.04\,^\circ$C & 6/6 \\
-OPC UA & 11 & 18.711/21.899 & exact$^{\dagger}$ & 6/6 \\
-MQTT & 11 & 18.837/19.140 & N/A & 6/6 \\
-HTTP & 13 & 32.273/32.972 & N/A & 6/6 \\
-Modbus RTU over TCP & 14 & N/A & N/A & N/A \\
+Modbus TCP & 9 & 49.232/101.164 & $0.04\,^\circ$C \\
+OPC UA & 11 & 19.437/22.110 & 0 rpm \\
+MQTT & 12 & 19.427/23.084 & --- \\
+HTTP & 13 & 32.941/33.546 & --- \\
+RTU over TCP & 14 & --- & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The 24/24 count lives in phase P3 and the 9/9 scenario count in phase P8. Each writable stack rejects four engineering-range and two recipe-window
-violations, and none of the four designated legal writes is blocked.
-The probes are node-high/low $\pm$15\,\% of span, $10^{6}$, $-50$, and the
-recipe window widened by 20\,\%, so the set shows rejection
-of gross violations and nothing about where the true limit lies. The readback
-column rests on one post-write sample per stack, and MQTT and HTTP return no
-measured value at all; for these stacks an accepted write is verified only at the
-transport level.
+Table~\ref{tab:plc} retains the per-protocol measurements instead of reducing
+integration quality to one score. The report's 30.259-ms aggregate is the
+arithmetic mean of the four protocol p50 values, not the median of pooled
+writes. MQTT and HTTP archive no measured register readback, so their
+transport acceptance must not be described as verified actuator state. The
+approval request-to-decision latency is 448\,ms with a scripted approver;
+human response time is not measured. The backstop rollback verdict is first
+observed at 130.205\,s, and baseline restoration is verified subsequently,
+after an additional 1.5-s wait and read; the reported interval is therefore
+verdict-observation latency, not measured restoration time or a hard recovery
+deadline.
 
-The same run provisions the film-line scenario with three writable lines and two
-satellite nodes: its nine out-of-constraint probes (three node-range probes per
-writable line) are all rejected and its three legal writes accepted, with no code
-change; that set exercises no recipe-window branch. Both scenarios come from the same
-simulator and five drivers, so this is configuration reuse within the
-existing vocabulary, not portability to an independent plant.
+\subsection{Ablating Prevention and Readback}
+\label{sec:e1lite}
+The separate four-arm archive \texttt{20260920094442-e1lite} uses seed 42 and
+three repetitions per arm. These are benchmark-only switches requiring
+\texttt{AW\_BENCH\_MODE=1}, not normal operator controls: the ablation
+bypasses soft-limit enforcement, readback-error enforcement, or both while
+retaining the engineering-range guard, and only the recipe soft layer is
+populated in this fixture. The report label ``No readback'' therefore means
+the tolerance is relaxed, not that readback I/O stops, and because the mock
+driver returns the submitted value without checking tolerance the switch is
+inert for mismatch detection here. The experiment isolates window rejection,
+not the effectiveness of readback verification. Table~\ref{tab:e1lite} shows
+all arms, including the executed violations: each repetition runs six
+out-of-constraint probes and evaluates three legal and three boundary cases
+separately, on new fixture objects from the same design. Arm-specific seeds
+vary numerical probes within the same case families, so these are not paired
+identical treatments or independent physical-plant trials. The arms keep the
+table order: 1~full, 2~no interlock, 3~no readback, and 4~both disabled.
 
-A recorded rollback verdict leaves the register untouched until a separate rollback
-call passes through the write path; and manual mode suspends an agent request until
-the scripted approval releases it, measured once at 16\,ms against an
-800\,ms polling interval---the polling path, not a human decision. The audit
-surface holds 11 parameter-change anchors with 200-entry audit and
-operations-log windows, so intent, approval, and execution are separately
-inspectable, though the journal is not a signed ledger and protocol I/O is not
-atomic with a concurrent recipe change.
-
-A frozen four-arm ablation, archived separately (\texttt{run-e1lite-4arm} in the
-frozen 20260914 baseline; seed 42, three repetitions, commit \texttt{d6c824d},
-an ancestor of the reference commit), shows what the write path contributes; its arms are full, no interlock, no readback, and ungated. The ablation runs
-on the mock driver tier against a single-node recipe window, and its three
-repetitions per arm produce identical verdicts (latencies and a few probe
-readings vary at sub-check resolution), i.e., the ablation evidence is one
-deterministic decision per arm. Per-write latency showed no detectable difference at the observed resolution. With the full path, all six probes are rejected. With the batch-window interlock disabled, or with the path ungated, four are still rejected and the two recipe-window violations execute at the (mock) driver tier; disabling readback alone changes nothing. The engineering range is therefore structurally enforced at the mock tier, and the batch-window check is the one that adds protection, while attribution records what happened without preventing it. The ablation archive carries boundary probes one tenth of a unit either side of the window edge: rejected where the window check is active, accepted where it is disabled, with no false block in any arm. The process-parameter layer passes 4/4 checks: out-of-product and out-of-baseline
-values are rejected at their respective layers, the parameter reads back, and an
-unbound agent is denied; agents thus receive a process-facing interface that does
-not disclose transport addresses (Sec.~\ref{sec:paramlayer}).
-
-\begin{figure}[!t]
+\begin{table}[!t]
 \centering
-\includegraphics[width=0.62\columnwidth]{figures/publication/fig9-latest-benchmark.pdf}
-\caption{Archive $B$. (a) Governed write latency p50 and p95 for the four
-writable stacks (numeric values in Table~\ref{tab:plc}); Modbus TCP carries the longest tail. (b) Fixed-controller
-objective $J$ for seeds 42--44, sampled at the start and after each of two
-governed writes, against the archived finite-grid reference $J^{*}=89.894$.
-$J$ is maximized. Each marker is one measured evaluation; the third lies below
-the second because the second write raises defect rate. The archived
-$J_{\rm end}$ (mean of the last two evaluations) is a separate statistic and is
-not plotted.}
-\label{fig:clbench}
-\end{figure}
+\caption{Four-arm governance ablation (three repetitions, 18 out-of-constraint probes per arm). ``Boundary'' counts decisions matching the arm-specific boundary oracle; ``breaches'' counts executed window violations. The engineering guard remains active in every arm.}
+\label{tab:e1lite}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Arm & Rejected & Breaches & False blocks & Boundary \\
+\midrule
+Full & 18/18 & 0 & 0 & 9/9 \\
+No interlock & 12/18 & 6 & 0 & 9/9 \\
+No readback & 18/18 & 0 & 0 & 9/9 \\
+Both disabled & 12/18 & 6 & 0 & 9/9 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsection{Fixed-Controller Closed-Loop Benchmark}
+Removing the interlock admits both window-class violations in each repetition,
+whereas bypassing readback verification does not change rejection
+(Table~\ref{tab:e1lite}). This supports a specific mechanistic claim: the
+window check prevents these violations; readback and journaling do not
+substitute for it. The fourth arm's ``Ungated'' label is not guard-free:
+engineering limits remain enforced. All nine legal writes
+per arm are accepted. Boundary agreement means the expected accept/reject
+decision, not universal acceptance: full and no-readback reject six of nine
+boundary cases, whereas the two interlock-disabled arms accept all nine.
+Per-repetition p50 ranges are 110.6--141.0, 114.8--127.2, 111.9--127.1, and
+124.8--139.9\,ms in table order; each quantile uses 23 successful writes
+(three legal and 20 timed), and arms run in fixed order. These descriptive
+ranges use mock in-memory readback, including in the verification-bypassed
+arms; they do not establish latency equivalence or the cost of removing
+physical readback I/O.
+
+A second drill tests the same distinction on the live link. The archive
+\texttt{20260920094335-1b5g}
+passes 13 checks (three source checks, six API checks, and four protocol
+checks); all five driver tests succeed. Its Modbus drill accepts a write in
+25\,ms, reads back a setpoint of 182, and observes the simulated process reach
+179.5 after 30\,s; five additional violations are rejected. After a
+frozen-process injection and subsequent write, the checker first observes a
+matching alarm at a rounded 2 s from its post-write timer, not 2 s from fault
+injection. A TCP disconnect/reconnect drill detects and recovers the
+connection. These narrowly exercised failures support the distinction between
+an accepted command and a responding process, not general fault tolerance.
+
+\subsection{Fixed-Controller Loop Closure}
 \label{sec:clbench}
-The controller in this layer contains no LLM. It starts the cast-film twin at screw
-speed $N=150$\,rpm, line speed $v=95$\,m/min, and zone setpoint $200\,^\circ$C, and
-\emph{maximizes} the objective
+To isolate the execution path from agent strategy, the cast-film controller
+starts at screw speed $N=150$\,rpm, line speed $v=95$\,m/min, and zone
+setpoint $200\,^\circ$C. It maximizes
 \begin{equation}
-J = 55\,J_\text{thick} + 25\,J_\text{quality} +
-8\,J_\text{energy} + 7\,J_\text{throughput},
+J=55J_{\rm thick}+25J_{\rm quality}+8J_{\rm energy}+7J_{\rm throughput},
 \label{eq:objective}
 \end{equation}
-subject to melt temperature in $[195,225]\,^\circ$C and pressure at most 22\,MPa.
-Each term is a normalized score in $[0,1]$, so $J\in[0,95]$: thickness quality
-saturates once $|h-50|\leq2\,\mu$m, and the other terms reward low defect rate, low
-screw speed, and high line speed. The controller updates $N\leftarrow N(50/h)$ under
-a 22-rpm step limit, holds line speed fixed, and corrects heating only when
-temperature leaves $[196,224]\,^\circ$C. The reference $J^{*}$ comes from the
-separately maintained simulator, not from the run. Two features of that scoring
-bound the ratio: the throughput and energy terms are evaluated from the issued
-setpoints rather than from measured values, because the twin returns no
-independent reading for them, and the control law inverts the model's own
-relation $h\propto N/v$, so the plateau is structural. The suite's gate is
-$J/J^{*}\geq0.8$, so the reported value is not near a threshold.
+subject to melt temperature in $[195,225]\,^\circ$C and pressure at most
+22\,MPa. For thickness $h$ in $\mu$m, defect percentage $d$ in percentage
+points, and commanded speeds $N$ and $v$ in rpm and m/min, respectively,
+\begin{equation}
+\begin{aligned}
+J_{\rm thick}&=\max\!\left\{0,1-\frac{\max\{|h-50|-2,0\}}{10}\right\},\\
+J_{\rm quality}&=1-\frac{\min\{d,8\}}{8},\\
+J_{\rm energy}&=1-\frac{N-50}{150},\qquad
+J_{\rm throughput}=\frac{v}{120}.
+\end{aligned}
+\label{eq:reward-components}
+\end{equation}
+On the configured nonnegative-defect and command domain, $J\in[0,95]$;
+infeasible states are unscored. The denominator is the stored, three-decimal
+reference score, not a rescore of its separately rounded output variables.
+The fixed rule updates $N\leftarrow N(50/h)$ with a 22-rpm step limit, holds
+line speed fixed, and corrects heating outside $[196,224]\,^\circ$C. The
+separately maintained simulator provides a finite-grid reference
+$J^*=89.894$, not a proven global optimum: its grid ties the three zone
+temperatures and varies temperature from 195 to 225\,$^\circ$C in
+2.5\,$^\circ$C steps, screw speed from 50 to 200\,rpm in 5-rpm steps, and line
+speed from 20 to 120\,m/min in 2.5-m/min steps, at a fixed 1.0-mm die gap.
+Unlike the online controller, the reference can vary line speed; the ratio
+therefore compares different action sets, not two equally equipped optimizers.
+Energy and throughput use issued setpoints rather than independent sensor
+measurements.
 
-The three seeds start at $J_0=70.115$, 68.792, and 70.248;
-Fig.~\ref{fig:clbench}(b) plots each trajectory against the archived reference,
-and all six governed writes are accepted with a mean wall time of 36.193\,s per
-seed. Across the archive's two scoring conventions---end-of-run (mean of the
-last two evaluations) and last measured evaluation---the seeds reach
-$0.963$--$0.972$ of $J^{*}$, per seed $0.969/0.968/0.972$ and
-$0.967/0.963/0.968$. The stopping rule's second write follows from two
-converged observations and the plateau already reached by the first write: it
-raises defect rate from 0.38--0.53\,\% to 0.62--0.72\,\% and lowers the
-composite objective, so we do not describe the trajectory as monotone. Final
-thicknesses are 49.883, 49.383, and 49.317\,$\mu$m.
+\begin{table}[!t]
+\centering
+\caption{Fixed-controller results in $B$. $J_{\rm end}$ is the mean of the two post-write evaluations, not the last observation. All seeds use two accepted writes and zero rejections.}
+\label{tab:controller}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rrrrr@{}}
+\toprule
+Seed & $J_0$ & $J_{\rm end}$ & $J_{\rm end}/J^*$ & Final $h$ ($\mu$m) \\
+\midrule
+42 & 70.167 & 86.845 & 0.966 & 49.200 \\
+43 & 68.608 & 87.236 & 0.970 & 49.683 \\
+44 & 65.740 & 87.080 & 0.969 & 50.100 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-Decomposing $J$ at the final point shows the residual gap: both reference and
-seeds saturate the thickness term, and the seeds' deficit on defect quality,
-screw-speed energy, and line throughput reflects the controller's restricted
-action set (it holds line speed at 95\,m/min while the reference reaches
-$h=49.18\,\mu$m at 40\,m/min and 55\,rpm), not a failure to reach thickness.
+The reported mean ratio is 0.968 and mean wall time is 36.178\,s per seed.
+Table~\ref{tab:controller} distinguishes the report's endpoint statistic from
+the actual observations: the second write lowers $J$ in every seed, so the
+trajectory is not monotone. Final thickness meets the reward band, and the
+residual gap to the reference lies in the quality, energy, and throughput
+terms rather than in thickness. Because the controller inverts the simulator's
+own $h\propto N/v$ relation, this experiment shows loop closure under a known
+model, not general search efficiency or learned control superiority.
 
-\subsection{Scripted Team Missions}
+\subsection{The Recorded AgentTeam Optimization Process}
 \label{sec:agentloop}
-Both missions are dispatched by \emph{scripted} channel members: the harness creates
-the lead and the worker on its mock engine and the benchmark script issues every
-tool call itself, so no language model decides a setpoint; the missions exercise the
-path an agent would use, not agent performance. The first asks whether an objective
-filed on the channel task board can travel through team delegation, a governed
-write, and back to a closed task: bring a Modbus-TCP temperature node to
-$204.704\pm0.75\,^\circ$C in at most three governed writes after reading recent
-data. The lead dispatches; one \texttt{dcw\_control} request after a five-minute
-\texttt{daq} read raises the setpoint from 200 to 204.704, the readback returns
-204.700, the record is judged \texttt{keep}, the write is journal-attributed, and
-the parent task reaches \texttt{COMPLETED} with all six mission checks passing.
-The $\pm0.75\,^\circ$C band is loose (a
-$204.0\,^\circ$C request would also pass); the mission shows
-the delegation--write--completion path closes, not that the band certifies
-precise targeting.
+The first mission links task delegation, a five-minute acquisition query, a
+governed temperature write from 200 to $204.704\,^\circ$C, a
+$204.700\,^\circ$C observation, an attributed \texttt{keep} record, and
+parent-task completion. All six checks pass; the $\pm0.75\,^\circ$C tolerance
+makes this a workflow-closure test rather than a precision-control result.
 
-The second mission is the more demanding one. Fig.~\ref{fig:story} storyboards
-what the scripted team did; Fig.~\ref{fig:agentteam} maps the same mission onto
-the line, the admission gate, and the measured response. The BOPET preset is
-provisioned by the benchmark's own probe-and-provision step (nine devices, 30
-writable setpoints, 19 configured acquisition nodes, all nine driver tests
-passing), so this
-layer measures provisioning and governance, not commissioning of an existing
-line. The scripted team files a $25.0\pm0.7\,\mu$m objective
-($|h-25.0|\leq0.7\,\mu$m); the initial gauge reading through the real MQTT path
-is 28.10\,$\mu$m, outside the window (panel 3). The three storyboard writes
-(panels 4--5) are separate
-governed writes to three line sections (cast-roll speed
-$32\rightarrow33.8$\,m/min and MDO fast-roll $118\rightarrow120.5$\,m/min over
-Modbus TCP; TDO rail $3000\rightarrow3031$\,mm over OPC UA; records
-\texttt{opt-86313140}, \texttt{opt-41929fe2}, \texttt{opt-8d2faadb}), taking
-thickness
-$28.10\rightarrow26.62\rightarrow25.90\rightarrow25.68\,\mu$m. Every write
-cleared the gate of Fig.~\ref{fig:agentteam} (checks
-\texttt{biax-mission-multinode} and \texttt{biax-mission-attained}) and was
-followed by a settling re-read; the archive stores no post-write readback value,
-so we claim none. The verdicts are not an independent finding: the scripted
-caller issues \texttt{keep} unconditionally, so the records show judgment stored
-separately from execution and compensation, not earned. The journal query for
-the cast-speed node returned an agent-source record (the parameter layer of
-Sec.~\ref{sec:port}); the mission check asserting journal attribution is the one
-with an empty evidence array in Sec.~\ref{sec:repro}.
+The BOPET mission extends that workflow to nine simulated devices with 30
+writable setpoints and 19 acquisition nodes, against a thickness objective of
+$25.0\pm0.7\,\mu$m. Figure~\ref{fig:agentteam} reconstructs the actual
+intervention sequence from $B$ rather than an illustrative optimization curve.
+Four of six allowed writes act on three distinct parameters: casting speed
+from 32 to 33.1\,m/min, fast-roll speed from 118 to 120.8\,m/min, outlet rail
+width from 3000 to 3050\,mm, then casting speed again to approximately
+33.7\,m/min. The archived thickness observations are 26.90, 26.82, 26.46,
+26.00, and 25.48\,$\mu$m, so the endpoint sits 0.48\,$\mu$m from the target
+and 0.22\,$\mu$m inside the permitted band.
 
 \begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.44\textwidth]{figures/gpt/agentteam-storyboard-tii.png}
-\caption{Storyboard of the scripted AgentTeam mission in archive $B$ (panels 1--6): the objective is filed on the task board, delegated through the channel, the gauge is read ($28.10\,\mu$m), three governed writes are issued on two protocols (cast-roll and MDO fast-roll over Modbus TCP, TDO rail over OPC UA), and the record is judged \texttt{keep} with the task closed at $25.68\,\mu$m inside the $25.0\pm0.7\,\mu$m band; panel 5 groups the second and third writes, and \texttt{keep} is issued after each. Panel values are archive values; the storyboard is an AI-generated illustration. Team members are scripted and the LLM agent stays disabled.}
-\label{fig:story}
-\end{figure*}
-
-Eleven archived runs of the reference command family share its seed; ten match its command line verbatim, and one collapsed archive adds an LLM-agent flag. Of the ten with reportable endpoints, seven report a final thickness inside the band (a small-$n$ observation, not a reliability estimate) and three collapse to near-zero thickness, each with the hard gate green, reappearing in the film-break account of Sec.~\ref{sec:repro}; the eleventh registered zero governed writes with a hard multinode failure and no final thickness. The reruns span several harness revisions; the strictly same-version comparison is the $25.68\,\mu$m/$-0.02\,\mu$m pair of Sec.~\ref{sec:repro}. The run reported here is one of the seven.
-
-\begin{figure*}[!tb]
-\centering
-\includegraphics[width=0.46\textwidth]{figures/publication/fig11-agentteam-loop.pdf}
-\caption{Scripted AgentTeam mission in archive $B$, reconstructed from \texttt{agentteam-biax.log} and \texttt{run.json}. Top: the simulated BOPET line (nine devices, 30 setpoints, 19 acquisition nodes) with the three written actuators, the gauge, and the objective. Middle: the channel carrying the objective, the four checks a governed write clears (the first three gate admission; the fourth is the driver's acceptance), and the three recorded steps (of an allowed six). Bottom: thickness after each step against the $25.0\pm0.7\,\mu$m objective; the final point clears the band edge by $0.02\,\mu$m. Team members are scripted mock agents with a prespecified proportional rule; the LLM agent stays disabled, so the figure documents the governance and attribution path rather than optimization quality.}
+\includegraphics[width=0.94\textwidth]{figures/tii-final/fig-agentteam-mission.pdf}
+\caption{Recorded scripted AgentTeam execution in $B$. \textbf{(a)}~The five
+archived thickness observations against the $25.0\pm0.7\,\mu$m objective;
+markers are returned-bucket means from queries that requested one-second
+aggregation, and raw buckets and timestamps are not retained, so no continuous
+trajectory is inferred. \textbf{(b)}~The four governed writes, each named by
+parameter, setpoint change, and transport. Every write opened an optimization
+record that received a logged \texttt{keep}, and the parent task reached
+\texttt{COMPLETED}. The plant is simulated and the policy is scripted, not an
+LLM-generated search.}
 \label{fig:agentteam}
 \end{figure*}
 
-The final thickness is 25.68\,$\mu$m, satisfying $|h-25.0|=0.68\leq0.7\,\mu$m by
-$0.02\,\mu$m on a short bucket mean (the mean of the last five one-second acquisition
-buckets), and the mission closes with 3 of its 6 allowed
-writes used. This margin is finer than the run-to-run variation of
-Sec.~\ref{sec:repro} and characterizes this run, not a robust property.
-Melt temperature stays near $291.5\,^\circ$C inside its
-268--300\,$^\circ$C process window, an observation rather than an enforcement
-result, since no disturbance tested that bound.
+Each accepted write creates a distinct optimization record, followed by a
+settling gauge observation and a scripted \texttt{keep} judgment. The policy
+uses relative-thickness-error gains of 0.5, 0.35, and 0.3 with fixed actuator
+rotation, so it does not discover the sequence. The mission logs no
+independent post-write register value for these actuators and the caller
+issues \texttt{keep} unconditionally, so the demonstrated contribution is
+scoped, attributable multi-node execution toward one objective rather than an
+independently validated judgment or an optimal recipe window.
+Melt-temperature observations remain between 291.1 and 291.525\,$^\circ$C,
+inside the configured 268--300\,$^\circ$C window; no disturbance tests that
+bound.
 
-The mission is a scripted policy, not a search: preset proportional gains
-($0.5$, $0.35$, $0.3$) on relative thickness error, actuators chosen by fixed
-rotation, gains deliberately low so convergence takes three to four rounds; the
-shrinking response ($1.48$, $0.72$, $0.22\,\mu$m) and the three-write length
-follow from that configuration, not from emergence. What it shows is operational:
-the binding model resolves a different node, range, unit, and recipe window per
-write, with the three writes kept separate yet attributed to one objective; it
-does not establish strategy quality, cross-model generality, or physical
-performance.
+\subsection{Repeatability and Limits of the Evidence}
+\label{sec:repeatability}
+The immediately preceding same-seed, same-hash archive
+$A=\texttt{20260920093330-md4}$ also passes 75/75 checks, rejects 24/24
+primary and 9/9 second-scenario probes, accepts six controller writes, and
+closes the BOPET mission with four writes on three parameters. Their final
+thicknesses nevertheless differ, at 25.64 versus 25.48\,$\mu$m, as do mean
+controller ratios (0.970 versus 0.968) and backstop verdict-observation
+latencies (130.182 versus 130.205\,s). These are two consecutive regression
+runs, not a reliability campaign. The comparator reports matching verdicts,
+but its controller counter rows contain null fields and its protocol arrays
+are empty, so we check the underlying run records rather than treat its
+``REPRODUCIBLE'' label as proof of full numerical agreement.
 
-\subsection{Reproducibility, Recovery, and Threats to Validity}
-\label{sec:e1a}
-\label{sec:repro}
-The backstop drill injects a process-variable breach rather than a drifting plant
-producing it, identifies an eligible open record, records a rollback judgment, and
-restores the recorded baseline in 120.161\,s in its single recorded
-execution---a latency set by the backstop's own wait-then-recheck cadence. The
-drill is one bounded execution: no escalation at $K=2$, no slowly drifting
-excursion or gap between batches, no worst-case recovery deadline.
-
-First, during harness development a burst of writes across several protocols drove the plant
-into a collapsed state---pump pressure, draw ratio, and thickness at their
-limits---while every platform-side write stayed readback-consistent: a readback
-therefore confirms that a driver delivered a value, not that the plant is in a sane
-state. Second, a film-break guard that reapplies the recipe baseline is present in the mission harness but not exercised in archive $B$. Three archives of the Sec.~\ref{sec:agentloop} family entered it---one earlier the same day at the same recorded commit---and each re-application failed to restore thickness, ending near or below zero ($0.02$, $-0.02$, $-0.02\,\mu$m against a $\sim$25\,$\mu$m band; one is the same-hash, same-seed sister of the nondeterminism below), and a fourth archive collapsed without entering the branch. The guard aborts rather than recovers: near-zero end states show that the plant model, not only the governance layer, bounds the result. Each collapse superseded the mission's records within about a minute, so the backstop's 120-second window never opened; the guard's abort ended those runs. Third, the audit path fails open: bookkeeping errors are caught without reversing an executed write, so a physical change can occur without an attribution record. Attribution is
-therefore a strong default, not a guarantee.
-
-The archived command, seed, commit, and a hash over the nine harness modules let
-another operator rerun the suite and compare judge-class outcomes against the
-same baseline. Five caveats remain. (1) The harness-hash covers working-tree
-modules and is sensitive to checkout line endings. (2) The plant simulator is a
-separately versioned dependency outside the fingerprint, so the exact plant
-behind these numbers cannot be reconstructed from the archive alone. (3) The
-biaxial journal-attribution check passed with an empty evidence array. (4) The
-checks were written against this implementation. (5) The reference $J^{*}$ comes
-from the same simulator the controller optimises, so the gate is a
-development-time regression suite, not a benchmark with an external oracle. The
-simulator snapshot submitted with the paper corresponds to the plant state
-described here. A final caveat concerns the mission layer: its starting
-thickness is a simulator residue, not a pinned initial condition. Two
-same-hash, same-seed archives, neither of them $B$, diverged to
-$25.68\,\mu$m and $-0.02\,\mu$m; in the second, both mission checks are recorded
-as warnings, no check failed, and the hard gate stayed green. The mission layer
-is therefore not deterministic, and the 75/75 gate describes archive $B$, not
-the system; drift versus runtime nondeterminism was not isolated, and a
-pinned-simulator rerun campaign is required. Verdicts and record states are
-deterministic within a run; protocol latencies are not. The evidence remains
-simulation-tier: no physical device, TEP or SWaT replay, human-operator
-workload study, or external-framework comparison was run.
-
-Historical real-LLM campaigns are exploratory only: same governed interface but
-different scoring inputs and temporal windows, a legacy script that substituted
-missing observations, and a completion regex that could match an instruction
-template---so their scores are not aggregated above. Archive $B$ uses the scripted
-path; Section~\ref{sec:limits} collects the resulting limitations.
+Earlier archives include process collapse despite a non-failing hard gate;
+those different-revision runs are not pooled with $A$ and $B$ or erased by
+their success. Initial simulator state, sampling timing, and shared-instance
+residue remain confounders, and the biax journal check has an empty evidence
+array although the mission log contains a casting-node journal excerpt. These
+limitations motivate pinned initial conditions, explicit missing-evidence
+failures, broader fault injection, and physical validation before deployment.

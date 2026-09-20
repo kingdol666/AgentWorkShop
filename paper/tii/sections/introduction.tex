@@ -1,42 +1,73 @@
 \section{Introduction}
-\IEEEPARstart{L}{arge} language models (LLMs) are being explored for industrial diagnosis, engineering assistance, and control-program generation \cite{raza2025industrial,sabetta2025assistant,liu2026agents4plc,fakih2024llm4plc}. Recent systems also connect agents to simulated controllers or real machines \cite{vyas2026ftc,hofmann2025nlc}. For a production-line deployment, the engineering problem is not whether an LLM can issue a command but how to preserve its meaning, authority, and history across heterogeneous equipment, multiple agents, and changing operating recipes.
+\IEEEPARstart{S}{upervisory} process adjustment seeks to keep product quality
+within its target band while production continues. On a film line, screw speed,
+line speed, and zone temperatures influence thickness; on a biaxially oriented
+line, draw ratio and stretch temperature couple several sections. Each
+adjustment must respect equipment limits and the active recipe window. The
+engineering problem is therefore not only choosing a setpoint, but linking its
+authority, operating context, and observed effect throughout an iterative
+search.
 
-Consider a team correcting film thickness within pressure and temperature limits: one member inspects telemetry, another proposes a setpoint, and a lead coordinates the task. A protocol connection alone does not identify which member may change which node, which recipe applies to the current batch, whether a human must approve, or whether the subsequent observation measures the commanded register or the process response. Implementing these associations separately for each application duplicates configuration and makes failures hard to reconstruct; conversely, one shared interface does not by itself establish atomic execution, physical safety, or valid optimization. Fig.~\ref{fig:intro} contrasts the two patterns: advisory, application-specific integration on one side, and explicit binding over shared production context on the other, with readback and attribution attached to every governed write.
+Language-model agents are being explored for industrial diagnosis, engineering
+assistance, and PLC program generation
+\cite{raza2025industrial,sabetta2025assistant,liu2026agents4plc,fakih2024llm4plc},
+including interaction with simulated controllers and machine demonstrators
+\cite{vyas2026ftc,hofmann2025nlc}. Such agents can propose and coordinate
+interventions, but protocol connectivity alone specifies neither which team
+member may write a parameter nor which limits and approval rules apply. A
+supervisory loop must also distinguish an authorized proposal, a completed
+write, and a beneficial process response.
+
+\system{} addresses this integration problem through explicit member--node
+bindings and shared line/product/recipe/run identifiers. Nodes expose
+engineering quantities rather than register addresses; bindings grant deployed
+members scoped tool authority; and hypothesis records link changes to
+subsequent observations and judgments. Fig.~\ref{fig:intro} contrasts this
+organization with application-specific integration. Shared context supports
+attribution but does not establish atomic execution, physical safety, or
+optimization success.
 
 \begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.56\textwidth,trim=0 150 0 30,clip]{figures/gpt/fig1-intro-tii.png}
-\caption{Integration problem and proposed organization. The left panel
-illustrates advisory or application-specific integration, not a universal
-limitation of prior systems. The right panel associates agent-team membership,
-explicit node capabilities, and execution feedback through shared production
-identifiers; DAQ and DCW abbreviate the acquisition and data-control-write
-node types introduced in Section~\ref{sec:arch}. Solid arrows mark the governed
-path; dashed links in (a) mark per-application point-to-point integrations. PLC
-regulation remains outside the agent loop. The diagram is an AI-generated
-illustration.}
+\includegraphics[width=0.86\textwidth]{figures/gpt/fig1-intro-tii.png}
+\caption{From application-specific integration to explicit supervisory binding. (a)~In advisory or
+application-specific integration, each agent reaches each device through its own
+integration, so driver, permission, and log handling are duplicated per application,
+and which member may move which parameter, under which recipe, is carried by the
+integration rather than by the platform. (b)~The proposed organization: agent-team
+membership, explicit node capabilities, and execution feedback meet at shared
+production identifiers, so one iteration of the recipe search is comparable with the
+next; PLC regulation stays outside the agent loop. DAQ and DCW abbreviate the
+acquisition and data-control-write node types of Sec.~\ref{sec:arch}. Both panels are
+conceptual deployment patterns, not measured comparisons of competing systems or
+universal limitations of prior systems.}
 \label{fig:intro}
 \end{figure*}
-
-We present \system{}, a configurable framework for this supervisory integration problem: an industrial node combines its acquisition or setpoint interface with engineering semantics, and an explicit binding grants a deployed channel member access to that node; a line/product/recipe/run model supplies the production context shared by observations and actions. The platform core hosts agent orchestration and industrial supervision together, while engine subprocesses, optional external stores, and field endpoints retain their own boundaries. This organization reduces application-specific routing within the supported driver set without equating shared state with an end-to-end transaction.
-
-The agent loop operates at supervisory, seconds-to-minutes timescales. Manual bindings require an approval decision; automatic bindings omit that wait but retain the applicable execution checks; write attribution and separately triggered compensation make a failed proposal, a failed write, and an unsuccessful adjustment inspectable as different events.
+The loop operates at seconds-to-minutes supervisory timescales; fast
+regulation and plant protection remain outside it. Manual bindings require
+approval, while automatic bindings retain the applicable execution checks
+without that wait. Judgment and compensation are separate operations,
+preserving the distinction between a rejected proposal, a driver-accepted
+write (readback-validated where supported), an ineffective adjustment, and an
+attempted restoration.
 
 The contributions are threefold:
 \begin{enumerate}
-\item A \textbf{node-native integration model} connecting heterogeneous acquisition and control nodes, deployed agent teams, and versioned production runs through explicit capabilities and shared identifiers (Sec.~\ref{sec:arch}).
-\item An \textbf{implemented supervisory workflow} that separates team coordination, source-dependent write checks, agent-submitted judgments, physical compensation, and human decisions; its seven mechanisms and the cross-cutting human-in-the-loop (HITL) boundary are described with their actual scopes and exceptions (Sec.~\ref{sec:mech}).
-\item A \textbf{traceable, layered evaluation} anchored on one reference archive detailed in Sec.~\ref{sec:protocol} and an eleven-archive rerun family sharing its seed (Sec.~\ref{sec:agentloop}). All 75 suite checks pass, and the writable stacks reject every predefined
-out-of-constraint probe while blocking none of the designated legal writes. A
-fixed non-LLM controller reaches $J/J^*=0.963$--$0.972$ of an offline reference over three seeds, and a scripted team mission brings a simulated film line from 28.10 to 25.68\,$\mu$m with three governed writes on two
-protocols; seven of the ten reportable runs attain the objective band. All evidence is
-simulation-tier and characterizes the platform paths, not agent quality.
+\item A \textbf{node-native supervisory model} connecting heterogeneous
+acquisition and control nodes, deployed team members, and production runs
+through explicit capabilities and shared identifiers. Recipe windows constrain
+the search; they are not inferred safe operating regions
+(Secs.~\ref{sec:arch} and \ref{sec:objective}).
+\item An \textbf{implemented governed loop} linking source-dependent admission,
+intervention records with optional hypotheses, agent-submitted judgments,
+separately executed compensation, and human approval, with explicit execution
+boundaries (Sec.~\ref{sec:mech}).
+\item A \textbf{layered, traceable evaluation} separating protocol checks,
+fixed-controller performance, and scripted team missions
+(Sec.~\ref{sec:eval}). The reported decision policies are deterministic and
+the plants simulated; these tests characterize platform paths, not LLM
+reasoning or controller superiority.
 \end{enumerate}
-These contributions correspond to the evaluation's evidence layers
-(Sec.~\ref{sec:eval}, Table~\ref{tab:layers}), each layer
-reported separately rather than pooled into one score. The paper specifies an
-integration model, implements it end
-to end, and reports what that implementation does and does not guarantee; it
-proposes no new control law, learning method, or safety certification argument, and
-claims configuration reuse within the existing driver and scenario vocabulary, not certified
-safety, general industrial autonomy, or LLM-controller superiority.
+The contribution is an execution and evidence framework for supervisory search,
+not a new control law, learning method, or safety certification. Configuration
+reuse is evaluated only within the implemented drivers and scenarios.

@@ -1,0 +1,18 @@
+{
+  "files": {
+    "main.tex": "682bc6f741c6eae8f146ea67a6e41fa6a2429ffacf7b8ba1f014fc6b895ab650",
+    "results-macros.tex": "de7ff06ff132b6af5fd714e82b04b1f357db179d69690822ac28c8b764245868",
+    "refs.bib": "deff6ef6ac57595b401e214e13d59835999ee8c498fe23e04e8d89c7a6f83103",
+    "sections/introduction.tex": "2dadad067d9d0051f12d62a31dd4443ca4101810973bd8215d084b7f99b8ec6d",
+    "sections/related.tex": "260f8d46eb1805ce5495ae02311ae22e8f623ad9046cfaa354423d1bdd92489d",
+    "sections/system.tex": "b950b6ad905a28b8a0f45983324e365d7c3e7fe5ad1c167e19cae74ce2180f8f",
+    "sections/mechanisms.tex": "2b37bb6e4016f3606b3586353f3d7038ad7c7a169ecaa1dea354806efdc10387",
+    "sections/evaluation.tex": "27e61b0073b84de22408e35720cf001dd7d85019645aa1ac22628e03a59e670d",
+    "sections/discussion.tex": "1978f6cd4c618305549e937542e98086e0254224ab2761fc0319eca99e5ea1f6",
+    "figures/publication/fig3-channel-loop.png": "8d97e2e4ff72bc6378dc4b875161fa320d26d60ead13079b950a318cf5525982",
+    "figures/publication/fig-agentteam-demo.png": "1e7f752c27ed44fb2a1ebd3cd20148de6c655252b04067586c54e751ba5469e9",
+    "figures/publication/fig2-architecture.pdf": "88a191d268ae0655cbef801b9a39c1e6c5263440a56b6f1be6f95071072fe89a",
+    "figures/gpt/fig1-intro-tii.png": "1e764a53639964a681452eb48e28ccc8e32123911d3dc602249322b50f2c4357"
+  },
+  "count": 13
+}

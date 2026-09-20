@@ -1,10 +1,15 @@
 \section{System Architecture}
 \label{sec:arch}
-\system{} integrates multi-agent reasoning with industrial supervision around a common representation of production assets and operating context. Its organizing object is the node: an acquisition or control endpoint with engineering semantics, device connections, line membership, and agent bindings. A channel organizes the agents that interpret these endpoints, controllers mediate plant interactions, and Fig.~\ref{fig:arch} locates these components and execution boundaries. The platform also carries subsystems outside this paper's scope, including an automated-modeling laboratory and a three-dimensional twin view; this paper describes the supervision path that the evaluation exercises.
+\system{} separates team coordination from plant interaction while linking
+both through industrial nodes and production context (Fig.~\ref{fig:arch}). A
+node is an acquisition or control endpoint with engineering semantics,
+connection settings, line membership, and agent bindings. Channels coordinate
+agents; controller services mediate node operations. The architecture covers
+the evaluated supervisory path.
 
-\begin{figure*}[!tb]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.56\textwidth]{figures/publication/fig2-architecture.pdf}
+\includegraphics[width=0.94\textwidth]{figures/publication/fig2-architecture.pdf}
 \caption{System architecture and execution boundaries. The co-resident platform
 process hosts the agent orchestrator, the binding-and-approval bridge, and the
 industrial supervisor; operator entry points sit above it, and external CLI
@@ -16,42 +21,48 @@ transactional.}
 \end{figure*}
 
 \subsection{A Shared Supervisory Core}
-The Node.js core hosts channel routing, task scheduling, industrial services,
-protocol adapters, and platform interfaces: REST and WebSocket endpoints serve
-operator applications, MCP and A2A interfaces support external integration, and a
-plugin host extends platform capabilities. These surfaces reuse platform objects,
-but their exposed operations and permission checks differ, and an agent's industrial
-authority derives from its node bindings, not from channel access or
-protocol-endpoint availability. CLI engines, including the platform's bundled
-OMP engine, execute in spawned processes, TimescaleDB and MinIO are external,
-and connection establishment, queued protocol operations, and readback introduce
-asynchronous boundaries. Fast regulation and protection therefore remain with the
-plant controller and its safety equipment.
+The Node.js core hosts team routing, industrial services, and protocol
+adapters. Operator and integration interfaces share objects but differ in
+permissions; agent-tool authority comes from node bindings, not channel access
+or endpoint availability. Engine subprocesses and persistent stores remain
+external to the core. Connections, protocol queues, and readback are
+asynchronous; fast regulation and protection remain with the plant controller
+and its safety equipment.
 
 \subsection{Reasoning, Plant Interaction, and Operational Context}
-On the reasoning side, a channel combines a lead, worker instances, a task tree,
-messages, and retrievable memory. Engine adapters allow different reasoning
-implementations to participate without changing a bound node's identity or the
-controller interface.
+A channel coordinates deployed agent instances, called members, through a
+lead, workers, a task tree, messages, and retrievable memory. An agent
+proposes actions; its engine is the runtime implementation that executes it.
+Engine adapters preserve node identity and the controller interface across
+runtime implementations; the benchmark harness scripts these interactions for
+evaluation.
 
-On the plant side, acquisition nodes turn protocol readings into engineering
-quantities, control nodes (data-control-write, DCW) translate engineering setpoints into device commands and
-readback results, per-node runtimes manage timing and in-flight operations, and
-controller services supply gateway state, recipe context, and write bookkeeping.
-Nodes and devices have many-to-many configuration associations, but association is
-distinct from execution routing: a control-node write invokes its configured driver
-and connection settings rather than iterating over its associated devices, so the
-interface follows process meaning without implying multi-device actuation by one
-write.
+Acquisition nodes (DAQ) convert protocol readings to engineering quantities;
+control nodes (data-control-write, DCW) translate setpoints into device
+commands and readback results. Per-node runtimes manage timing and in-flight
+operations; controller services supply gateway state, recipe context, and
+write bookkeeping. Many-to-many node--device associations describe
+configuration, not execution routing: each control write uses the node's
+configured driver and connection.
 
 \subsection{Logical Continuity Across a Production Run}
-Lines, products, recipes, and runs provide the context in which measurements and
-interventions become comparable. Their identifiers connect platform state, time
-series, image frames, operational events, and optimization records across
-heterogeneous stores: SQLite and file-backed repositories for platform state,
-TimescaleDB for measurements, MinIO for objects. These constitute one logical data
-model rather than one transaction domain.
+Lines, products, recipes, and runs organize production context. Acquired data
+carry active-context tags resolved at ingestion. Optimization records retain
+line, node, recipe, and actor references, but no run identifier; their
+baseline and response queries use node, line, and time rather than enforce
+run-isolated observations, so a baseline can overlap an earlier run. Platform
+state uses SQLite and file-backed repositories; configured measurement and
+object backends are TimescaleDB and MinIO, with SQLite and disk fallbacks.
+These links support attribution across stores, not a single transaction
+domain.
 
-Operators participate through approvals, line operations, and monitoring.
-Section~\ref{sec:mech} details these mechanisms and marks where their guarantees
-end.
+A BOPET thickness adjustment illustrates how the objects work together. The
+channel carries one production objective and delegates a task to a worker;
+the worker queries a thickness-acquisition node, then addresses casting
+speed, fast-roll speed, or rail width through its bound control nodes, each
+resolving its own protocol and engineering units while the line, recipe, and
+run identify the production context. An optimization record associates an
+executed change with its actor and later judgment, so the task can span
+protocols without treating a channel message as write authority or a
+task-board completion as a device acknowledgment; Sec.~\ref{sec:agentloop}
+follows this sequence in the recorded mission.
