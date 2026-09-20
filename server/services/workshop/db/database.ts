@@ -356,7 +356,47 @@ CREATE TABLE IF NOT EXISTS aml_models (
   note          TEXT NOT NULL DEFAULT '',
   created_at    TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_aml_models_lookup ON aml_models(product_id, recipe_id, purpose, stage);`
+CREATE INDEX IF NOT EXISTS idx_aml_models_lookup ON aml_models(product_id, recipe_id, purpose, stage);
+-- v16:定时任务(scheduled_tasks)—— 绑定 Channel 的周期任务编排。
+-- mode='interval' 按 interval_ms 固定间隔触发;mode='daily' 按 daily_time(HH:MM,本地时区)每日定点触发。
+-- state 为 runtime 视图状态:idle 待命 / waiting Channel 忙等手中任务收口 / running 触发在途 /
+-- disabled 已停用 / failed 连续失败熔断。next_run_at 持久化:重启后按此判定补跑(catch-up 一次)。
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+  id              TEXT PRIMARY KEY,
+  channel_id      TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  name            TEXT NOT NULL,                  -- 计划名(列表呈现)
+  title           TEXT NOT NULL,                  -- 到点提交给 Channel 的任务标题
+  description     TEXT NOT NULL DEFAULT '',       -- 到点提交的任务描述
+  mode            TEXT NOT NULL DEFAULT 'interval',  -- 'interval' | 'daily'
+  interval_ms     INTEGER NOT NULL DEFAULT 0,     -- interval 模式:触发间隔(毫秒;下限 60s)
+  daily_time      TEXT NOT NULL DEFAULT '',       -- daily 模式:每日触发时刻 'HH:MM'(本地时区)
+  enabled         INTEGER NOT NULL DEFAULT 1,
+  state           TEXT NOT NULL DEFAULT 'idle',   -- idle|waiting|running|disabled|failed
+  last_run_at     TEXT,
+  next_run_at     TEXT,
+  last_task_id    TEXT,
+  run_count       INTEGER NOT NULL DEFAULT 0,     -- 累计触发次数(成功+失败)
+  fail_count      INTEGER NOT NULL DEFAULT 0,     -- 累计失败次数
+  consecutive_failures INTEGER NOT NULL DEFAULT 0,  -- 当前连续失败计数(成功即清零)
+  max_consecutive_failures INTEGER NOT NULL DEFAULT 0,  -- 熔断阈值(0 = 不自动停用)
+  owner_user_id   TEXT,                           -- 创建者(全局用户系统 id)
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_channel ON scheduled_tasks(channel_id);
+CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_enabled ON scheduled_tasks(enabled, next_run_at);
+-- v16:定时任务运行历史(每次触发的留痕;保留策略由 repo 层按 schedule 裁剪至最近 50 条)
+CREATE TABLE IF NOT EXISTS scheduled_task_runs (
+  id            TEXT PRIMARY KEY,
+  schedule_id   TEXT NOT NULL REFERENCES scheduled_tasks(id) ON DELETE CASCADE,
+  trigger_kind  TEXT NOT NULL DEFAULT 'timer',    -- 'timer' | 'manual'
+  task_id       TEXT,                             -- 提交成功的 channel 任务 id(提交失败为 NULL)
+  state         TEXT NOT NULL DEFAULT 'RUNNING',  -- RUNNING|COMPLETED|FAILED
+  error         TEXT NOT NULL DEFAULT '',
+  started_at    TEXT NOT NULL,
+  ended_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_schedule ON scheduled_task_runs(schedule_id, started_at DESC);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 
@@ -724,6 +764,47 @@ export interface TaskRow {
   routeReason: string
   createdAt: string
   updatedAt: string
+}
+
+/** scheduled_tasks 表行(v16 定时任务) */
+export interface ScheduledTaskRow {
+  id: string
+  channelId: string
+  name: string
+  title: string
+  description: string
+  /** 'interval' 固定间隔 | 'daily' 每日定点 */
+  mode: string
+  intervalMs: number
+  /** 'HH:MM'(本地时区;daily 模式生效) */
+  dailyTime: string
+  enabled: number
+  /** idle|waiting|running|disabled|failed(runtime 视图状态) */
+  state: string
+  lastRunAt: string | null
+  nextRunAt: string | null
+  lastTaskId: string | null
+  runCount: number
+  failCount: number
+  consecutiveFailures: number
+  maxConsecutiveFailures: number
+  ownerUserId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** scheduled_task_runs 表行(v16 定时任务运行历史) */
+export interface ScheduledTaskRunRow {
+  id: string
+  scheduleId: string
+  /** 'timer' 周期触发 | 'manual' 手动立即执行 */
+  triggerKind: string
+  taskId: string | null
+  /** RUNNING|COMPLETED|FAILED */
+  state: string
+  error: string
+  startedAt: string
+  endedAt: string | null
 }
 
 /**

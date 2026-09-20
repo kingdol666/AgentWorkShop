@@ -30,7 +30,9 @@ import type { ChannelAgentRepo } from '../db/channel-agent.repo'
 import type { MessageRepo } from '../db/message.repo'
 import type { SubscriptionRepo } from '../db/subscription.repo'
 import type { TaskRepo, TaskPatch } from '../db/task.repo'
-import { parseJson, type AgentRow, type ChannelAgentRow, type ChannelRow, type ChannelTemplateRow, type MemoryRow, type MessageRow, type TaskRow, type TeamRow, type UserRow, type WorkspaceRow } from '../db/database'
+import type { ScheduledTaskRepo } from '../db/scheduled-task.repo'
+import { ScheduleRuntime, validatePlanAndComputeFirstRun, type FireResult } from './schedule-runtime'
+import { parseJson, type AgentRow, type ChannelAgentRow, type ChannelRow, type ChannelTemplateRow, type MemoryRow, type MessageRow, type ScheduledTaskRow, type ScheduledTaskRunRow, type TaskRow, type TeamRow, type UserRow, type WorkspaceRow } from '../db/database'
 import { Mailbox, rowToMessage } from './mailbox'
 import { AgentRuntime } from './agent-runtime'
 import type { ChannelBus, MemberChangeEvent, TaskEngine, TaskEventTask } from './agent-runtime'
@@ -68,6 +70,8 @@ export interface AllRepos {
   subscriptions: SubscriptionRepo
   tasks: TaskRepo
   memories: MemoryRepo
+  /** v16 定时任务(旧测试脚本构造的 repos 缺省该成员;相关路径已做守卫) */
+  schedules: ScheduledTaskRepo
 }
 
 /** Manager 依赖 */
@@ -317,6 +321,32 @@ export interface RuntimeMonitorSnapshot {
   }
 }
 
+/** 定时计划视图(附 channel 名与忙等实况;前端列表呈现) */
+export interface ScheduleView {
+  id: string
+  channelId: string
+  channelName: string
+  name: string
+  title: string
+  description: string
+  mode: 'interval' | 'daily'
+  intervalMs: number
+  dailyTime: string
+  enabled: number
+  /** idle|waiting|running|disabled|failed */
+  state: string
+  lastRunAt: string | null
+  nextRunAt: string | null
+  lastTaskId: string | null
+  runCount: number
+  failCount: number
+  consecutiveFailures: number
+  maxConsecutiveFailures: number
+  ownerUserId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export class AgentChannelManager {
   private channels = new Map<string, ChannelRuntime>()
   /** 键 = runtimeKey(channelId, 实例 id);每个实例一个独立运行时 */
@@ -331,6 +361,8 @@ export class AgentChannelManager {
   private readonly reflectCounts = new Map<string, number>()
   /** agent 最近一次工具 invoke 时刻(调度器停滞看门狗的活性源;工具调用即健康推进) */
   private readonly lastToolInvokeAt = new Map<string, number>()
+  /** v16 定时任务执行器(timer 唯一持有者;startScheduleRuntime 装配,shutdown 停止) */
+  private scheduleRuntime: ScheduleRuntime | null = null
 
   /** 依赖集(repos/implFactory/db)。
    *  API 作业面(ws/agent-tools/a2a card/…)需要直接读 repo —— 原先只能靠
@@ -998,6 +1030,8 @@ export class AgentChannelManager {
       clearInterval(this.memoryTimer)
       this.memoryTimer = null
     }
+    this.scheduleRuntime?.stop()
+    this.scheduleRuntime = null
     for (const cr of this.channels.values()) {
       cr.scheduler?.stop()
       cr.scheduler = null
@@ -1297,6 +1331,8 @@ export class AgentChannelManager {
     }
     // 记忆级联清理:成员私有行 + team 公共行(防残留行污染他 channel 的 FTS/team 检索域)
     this.deps.repos.memories.deleteByChannel(channelId)
+    // 定时任务级联清理(FK CASCADE 兜底;显式删除保证旧库无 FK 时也收敛)
+    this.deps.repos.schedules?.removeByChannel(channelId)
     // workspace 挂载级联:不清理会留下"幽灵频道"(左栏有条目、右栏永空)——
     // 这是 listWorkspaces 读路径兜底要解决的问题,现在在删除侧一次性收敛
     this.deps.repos.users.unmountChannelEverywhere(channelId)
@@ -2967,6 +3003,244 @@ export class AgentChannelManager {
     for (const { channelId, toAgentId } of this.deps.repos.messages.listPendingTargets()) {
       this.wakeAgent(channelId, toAgentId)
     }
+  }
+
+  // ===== 定时任务管理面(v16;元数据 CRUD 归 Manager,timer 周期归 ScheduleRuntime)=====
+
+  /** 组装计划视图(repo 行 + channel 名;channel 已删的计划不会出现——建表 FK CASCADE) */
+  private scheduleViewOf(row: ScheduledTaskRow): ScheduleView {
+    const channel = this.deps.repos.channels.findById(row.channelId)
+    return {
+      id: row.id,
+      channelId: row.channelId,
+      channelName: channel?.name ?? row.channelId.slice(0, 8),
+      name: row.name,
+      title: row.title,
+      description: row.description,
+      mode: row.mode as 'interval' | 'daily',
+      intervalMs: row.intervalMs,
+      dailyTime: row.dailyTime,
+      enabled: row.enabled,
+      state: row.state,
+      lastRunAt: row.lastRunAt,
+      nextRunAt: row.nextRunAt,
+      lastTaskId: row.lastTaskId,
+      runCount: row.runCount,
+      failCount: row.failCount,
+      consecutiveFailures: row.consecutiveFailures,
+      maxConsecutiveFailures: row.maxConsecutiveFailures,
+      ownerUserId: row.ownerUserId,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }
+  }
+
+  /** 计划的 channel 级权限校验(可读 = channel 可见;可写 = requireOwned;返回 channel 行) */
+  private scheduleChannelGuard(scheduleId: string, user: ActingUser): { channel: ChannelRow, row: ScheduledTaskRow } {
+    const row = this.deps.repos.schedules?.findById(scheduleId)
+    if (!row) throw new AppError(404, 'NOT_FOUND', `定时任务不存在: ${scheduleId}`)
+    const channel = this.deps.repos.channels.findById(row.channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `定时任务所属 channel 不存在: ${row.channelId}`)
+    // 可见性同 channel:本人 + 遗留公共;admin 全量
+    if (user.role !== 'admin') {
+      this.getChannelForUser(row.channelId, user.id)
+    }
+    return { channel, row }
+  }
+
+  /** 用户视角定时计划列表(本人 + 遗留公共 channel;admin 全量),附 channel 名 */
+  listSchedulesForUser(user: ActingUser): ScheduleView[] {
+    if (!this.deps.repos.schedules) return []
+    const rows = user.role === 'admin'
+      ? this.deps.repos.schedules.list()
+      : this.deps.repos.schedules.list().filter((row) => {
+          const channel = this.deps.repos.channels.findById(row.channelId)
+          return channel && (channel.ownerUserId === null || channel.ownerUserId === user.id)
+        })
+    return rows.map(row => this.scheduleViewOf(row))
+  }
+
+  /** 单个定时计划详情 */
+  getScheduleForUser(scheduleId: string, user: ActingUser): ScheduleView {
+    const { row } = this.scheduleChannelGuard(scheduleId, user)
+    return this.scheduleViewOf(row)
+  }
+
+  /** 定时计划运行历史(最近 limit 条;新→旧) */
+  listScheduleRunsForUser(scheduleId: string, user: ActingUser, limit = 50): ScheduledTaskRunRow[] {
+    this.scheduleChannelGuard(scheduleId, user)
+    return this.deps.repos.schedules.listRuns(scheduleId, limit)
+  }
+
+  /** 创建定时计划(参数校验 + 首次 next_run_at 计算;归属 = channel 属主) */
+  createSchedule(user: ActingUser, input: {
+    channelId: string
+    name: string
+    title: string
+    description?: string
+    mode: 'interval' | 'daily'
+    intervalMs?: number
+    dailyTime?: string
+    maxConsecutiveFailures?: number
+  }): ScheduleView {
+    if (!this.deps.repos.schedules) throw new AppError(503, 'WORKSHOP_NOT_READY', '定时任务仓储未装配')
+    const channel = this.getChannelForUser(input.channelId, user.id)
+    this.requireOwned(channel.ownerUserId, user.id, 'channel')
+    if (!input.name.trim()) throw new AppError(400, 'BAD_REQUEST', '计划名称不能为空')
+    if (!input.title.trim()) throw new AppError(400, 'BAD_REQUEST', '任务标题不能为空')
+    // 计划参数校验 + 首触发时刻(本地时区;validatePlan 抛 Error → 400 信封)
+    let plan: ReturnType<typeof validatePlanAndComputeFirstRun>
+    try {
+      plan = validatePlanAndComputeFirstRun(input, new Date())
+    }
+    catch (err) {
+      throw new AppError(400, 'BAD_REQUEST', err instanceof Error ? err.message : String(err))
+    }
+    const row = this.deps.repos.schedules.create({
+      channelId: input.channelId,
+      name: input.name.trim(),
+      title: input.title.trim(),
+      description: input.description ?? '',
+      mode: input.mode,
+      intervalMs: plan.intervalMs,
+      dailyTime: plan.dailyTime,
+      maxConsecutiveFailures: input.maxConsecutiveFailures ?? 0,
+      ownerUserId: user.id,
+      nextRunAt: plan.nextRunAt,
+    })
+    this.scheduleRuntime?.tickSoon()
+    return this.scheduleViewOf(row)
+  }
+
+  /** 更新定时计划(改参数即重算 next_run_at;停用/启用走状态机) */
+  updateSchedule(scheduleId: string, user: ActingUser, patch: {
+    name?: string
+    title?: string
+    description?: string
+    mode?: 'interval' | 'daily'
+    intervalMs?: number
+    dailyTime?: string
+    enabled?: number
+    maxConsecutiveFailures?: number
+  }): ScheduleView {
+    const { row } = this.scheduleChannelGuard(scheduleId, user)
+    this.requireOwned(row.ownerUserId, user.id, '定时任务')
+    const repo = this.deps.repos.schedules!
+    const planChanged = (patch.mode !== undefined && patch.mode !== row.mode)
+      || (patch.intervalMs !== undefined && patch.intervalMs !== row.intervalMs)
+      || (patch.dailyTime !== undefined && patch.dailyTime !== row.dailyTime)
+    let nextRunAt: string | null | undefined
+    if (planChanged) {
+      try {
+        const plan = validatePlanAndComputeFirstRun(
+          { mode: patch.mode ?? (row.mode as 'interval' | 'daily'), intervalMs: patch.intervalMs ?? row.intervalMs, dailyTime: patch.dailyTime ?? row.dailyTime },
+          new Date(),
+        )
+        nextRunAt = plan.nextRunAt
+      }
+      catch (err) {
+        throw new AppError(400, 'BAD_REQUEST', err instanceof Error ? err.message : String(err))
+      }
+    }
+    let state: string | undefined
+    let consecutiveFailures: number | undefined
+    if (patch.enabled === 0) {
+      state = 'disabled'
+    }
+    else if (patch.enabled === 1) {
+      // 启用 = 重新计时 + 清连续失败(熔断后的计划获得新窗口)
+      state = 'idle'
+      consecutiveFailures = 0
+      nextRunAt = validatePlanAndComputeFirstRun(
+        { mode: patch.mode ?? (row.mode as 'interval' | 'daily'), intervalMs: patch.intervalMs ?? row.intervalMs, dailyTime: patch.dailyTime ?? row.dailyTime },
+        new Date(),
+      ).nextRunAt
+    }
+    const updated = repo.update(scheduleId, {
+      ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+      ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
+      ...(patch.description !== undefined ? { description: patch.description } : {}),
+      ...(patch.mode !== undefined ? { mode: patch.mode } : {}),
+      ...(patch.intervalMs !== undefined ? { intervalMs: patch.intervalMs } : {}),
+      ...(patch.dailyTime !== undefined ? { dailyTime: patch.dailyTime } : {}),
+      ...(patch.maxConsecutiveFailures !== undefined ? { maxConsecutiveFailures: patch.maxConsecutiveFailures } : {}),
+      ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
+      ...(state !== undefined ? { state } : {}),
+      ...(consecutiveFailures !== undefined ? { consecutiveFailures } : {}),
+      ...(nextRunAt !== undefined ? { nextRunAt } : {}),
+    })
+    if (!updated) throw new AppError(404, 'NOT_FOUND', `定时任务不存在: ${scheduleId}`)
+    this.scheduleRuntime?.tickSoon()
+    return this.scheduleViewOf(updated)
+  }
+
+  /** 删除定时计划 */
+  removeSchedule(scheduleId: string, user: ActingUser): void {
+    const { row } = this.scheduleChannelGuard(scheduleId, user)
+    this.requireOwned(row.ownerUserId, user.id, '定时任务')
+    this.deps.repos.schedules.remove(scheduleId)
+  }
+
+  /**
+   * 手动立即执行(与 timer 触发同一条 fire 主路径,同样受忙等守卫约束):
+   * - Channel 忙 → 409 CHANNEL_BUSY(计划已置 waiting,收口后 timer 不会重放 manual;
+   *   需要用户再点一次或等周期触发)
+   * - 在途 → 409 SCHEDULE_RUNNING
+   * - 提交失败 → 502(run 已留 FAILED 痕)
+   */
+  async runScheduleNow(scheduleId: string, user: ActingUser): Promise<{ runId: string, taskId?: string }> {
+    const { row } = this.scheduleChannelGuard(scheduleId, user)
+    this.requireOwned(row.ownerUserId, user.id, '定时任务')
+    const runtime = this.scheduleRuntime
+    if (!runtime) throw new AppError(503, 'WORKSHOP_NOT_READY', '定时任务运行时未启动')
+    const fresh = this.deps.repos.schedules.findById(scheduleId)!
+    const result: FireResult = await runtime.fire(fresh, 'manual')
+    if (result.ok) return { runId: result.runId!, taskId: result.taskId }
+    if (result.reason === 'channel_busy') {
+      throw new AppError(409, 'CHANNEL_BUSY', 'Channel 正在处理任务,须等其全部收口后再执行定时任务(计划已标记等待中)')
+    }
+    if (result.reason === 'already_running') {
+      throw new AppError(409, 'SCHEDULE_RUNNING', '该定时任务上一轮仍在执行中')
+    }
+    if (result.reason === 'disabled') {
+      throw new AppError(409, 'SCHEDULE_DISABLED', '该定时任务已停用,请先启用')
+    }
+    throw new AppError(502, 'SCHEDULE_FIRE_FAILED', result.error ?? '定时任务触发失败')
+  }
+
+  /** Channel 是否有未收口任务(忙等守卫事实源;SUBMITTED/ASSIGNED/WORKING/WAITING 视为在途) */
+  channelHasActiveTasks(channelId: string): boolean {
+    return this.getTaskEngine().list(channelId).some(t => !TERMINAL_TASK_STATES[t.state])
+  }
+
+  /** 装配并启动定时任务运行时(幂等;plugin 在 restore 后调用) */
+  startScheduleRuntime(options?: { tickMs?: number }): void {
+    if (!this.deps.repos.schedules) return
+    if (this.scheduleRuntime) {
+      this.scheduleRuntime.stop()
+      this.scheduleRuntime = null
+    }
+    const envTick = Number(process.env.WORKSHOP_SCHEDULE_TICK_MS)
+    this.scheduleRuntime = new ScheduleRuntime({
+      repo: this.deps.repos.schedules,
+      // 与人类控制台提交同链路:懒装配/信箱/调度循环/HITL 全部复用;
+      // fromLabel 盖章使时间线一眼可辨「定时触发」
+      submitTask: async ({ channelId, title, description }) => {
+        const task = await this.submitChannelTask({ channelId, title, description, fromLabel: '定时任务' })
+        return { id: task.id }
+      },
+      channelHasActiveTasks: channelId => this.channelHasActiveTasks(channelId),
+      getTaskState: taskId => this.deps.repos.tasks.findById(taskId)?.state,
+      ...(options?.tickMs !== undefined ? { tickMs: options.tickMs } : {}),
+      ...(Number.isFinite(envTick) && envTick > 0 ? { tickMs: envTick } : {}),
+    })
+    this.scheduleRuntime.start()
+  }
+
+  /** 各 channel 启用的定时计划数(channels 列表批量附「定时」标志;一次 GROUP BY) */
+  channelScheduleFlags(): Map<string, number> {
+    if (!this.deps.repos.schedules) return new Map()
+    return this.deps.repos.schedules.countEnabledByChannelAll()
   }
 
   // ===== 内部辅助 =====

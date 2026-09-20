@@ -141,3 +141,44 @@ CREATE TRIGGER IF NOT EXISTS trg_agent_memories_au AFTER UPDATE ON agent_memorie
   INSERT INTO agent_memories_fts(title, content, agent_id, memory_rowid)
   VALUES (new.title_fts, new.content, new.agent_id, new.rowid);
 END;
+
+-- v16:定时任务(绑定 Channel 的周期任务编排;权威 DDL 在 database.ts SCHEMA_SQL)
+-- mode='interval' 固定间隔 / mode='daily' 每日定点(HH:MM 本地时区);
+-- state: idle|waiting|running|disabled|failed(runtime 视图状态)。
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+  id              TEXT PRIMARY KEY,
+  channel_id      TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  name            TEXT NOT NULL,
+  title           TEXT NOT NULL,
+  description     TEXT NOT NULL DEFAULT '',
+  mode            TEXT NOT NULL DEFAULT 'interval',
+  interval_ms     INTEGER NOT NULL DEFAULT 0,
+  daily_time      TEXT NOT NULL DEFAULT '',
+  enabled         INTEGER NOT NULL DEFAULT 1,
+  state           TEXT NOT NULL DEFAULT 'idle',
+  last_run_at     TEXT,
+  next_run_at     TEXT,
+  last_task_id    TEXT,
+  run_count       INTEGER NOT NULL DEFAULT 0,
+  fail_count      INTEGER NOT NULL DEFAULT 0,
+  consecutive_failures INTEGER NOT NULL DEFAULT 0,
+  max_consecutive_failures INTEGER NOT NULL DEFAULT 0,
+  owner_user_id   TEXT,
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_channel ON scheduled_tasks(channel_id);
+CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_enabled ON scheduled_tasks(enabled, next_run_at);
+
+-- v16:定时任务运行历史(每次触发留痕;repo 层按 schedule 裁剪至最近 50 条)
+CREATE TABLE IF NOT EXISTS scheduled_task_runs (
+  id            TEXT PRIMARY KEY,
+  schedule_id   TEXT NOT NULL REFERENCES scheduled_tasks(id) ON DELETE CASCADE,
+  trigger_kind  TEXT NOT NULL DEFAULT 'timer',   -- 'timer' | 'manual'
+  task_id       TEXT,
+  state         TEXT NOT NULL DEFAULT 'RUNNING', -- RUNNING|COMPLETED|FAILED
+  error         TEXT NOT NULL DEFAULT '',
+  started_at    TEXT NOT NULL,
+  ended_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_schedule ON scheduled_task_runs(schedule_id, started_at DESC);

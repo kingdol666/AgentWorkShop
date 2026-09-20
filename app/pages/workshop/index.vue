@@ -338,6 +338,13 @@ useHead({ title: () => t('titles.workshop') })
             <button
               type="button"
               class="lib-link"
+              @click="navigateTo('/workshop/schedules')"
+            >
+              {{ $t('titles.schedules') }}
+            </button>
+            <button
+              type="button"
+              class="lib-link"
               @click="navigateTo('/tokens')"
             >
               API Token

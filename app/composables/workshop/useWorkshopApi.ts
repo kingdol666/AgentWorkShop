@@ -17,6 +17,8 @@ export interface ChannelDto {
   enabled: number
   /** 归属用户(null = 遗留公共) */
   ownerUserId?: string | null
+  /** v16 定时标志:该 channel 启用的定时计划数(>0 前端显示「定时」标签) */
+  scheduledCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -138,6 +140,16 @@ export function useWorkshopApi() {
     // queue / runtime
     queueOverview: (id: string) => http.get<{ data: Array<{ agentId: string, name: string, state: string, currentTaskId: string | null, queuedCount: number, completedCount: number }> }>(`/workshop/channels/${id}/queue`),
     runtimeStatus: () => http.get<{ data: { wiredAgents: string[], activeChannels: string[] } }>('/workshop/runtime'),
+    // 定时任务(v16:绑定 Channel 的周期任务;interval 固定间隔 / daily 每日定点)
+    listSchedules: () => http.get<{ data: ScheduleDto[] }>('/workshop/schedules'),
+    createSchedule: (body: { channelId: string, name: string, title: string, description?: string, mode: 'interval' | 'daily', intervalMs?: number, dailyTime?: string, maxConsecutiveFailures?: number }) =>
+      http.post<{ data: ScheduleDto }>('/workshop/schedules', body),
+    updateSchedule: (id: string, body: { name?: string, title?: string, description?: string, mode?: 'interval' | 'daily', intervalMs?: number, dailyTime?: string, enabled?: 0 | 1, maxConsecutiveFailures?: number }) =>
+      http.request<{ data: ScheduleDto }>({ method: 'PATCH', url: `/workshop/schedules/${id}`, data: body }),
+    deleteSchedule: (id: string) => http.delete<{ data: unknown }>(`/workshop/schedules/${id}`),
+    /** 手动立即执行(与 timer 同路径;Channel 忙 → 409) */
+    runSchedule: (id: string) => http.post<{ data: { runId: string, taskId?: string } }>(`/workshop/schedules/${id}/run`, {}),
+    listScheduleRuns: (id: string, limit = 50) => http.get<{ data: ScheduleRunDto[] }>(`/workshop/schedules/${id}/runs`, { params: { limit } }),
     /** harness 注册表(引擎下拉/能力徽标;与 factory/manager 校验同源) */
     listHarnesses: () => http.get<{ data: { harnesses: HarnessMetaDto[] } }>('/workshop/harnesses'),
     /** harness 已配置的 LLM provider/model 目录(引擎官方目录面,5 分钟缓存) */
@@ -299,3 +311,45 @@ export interface ChannelTemplateDto {
 
 /** AepSnapshot 的轻量 REST 对齐(WS 未连时兜底刷新;实际从 WS channel.snapshot 取) */
 export type { AepSnapshot }
+
+/** 定时任务计划(v16;服务端 ScheduleView 投影) */
+export interface ScheduleDto {
+  id: string
+  channelId: string
+  channelName: string
+  name: string
+  title: string
+  description: string
+  /** 'interval' 固定间隔 | 'daily' 每日定点 */
+  mode: 'interval' | 'daily'
+  intervalMs: number
+  /** 'HH:MM'(daily;本地时区) */
+  dailyTime: string
+  enabled: number
+  /** idle 待命 | waiting 等 Channel 收口 | running 触发在途 | disabled 已停用 | failed 熔断 */
+  state: string
+  lastRunAt: string | null
+  nextRunAt: string | null
+  lastTaskId: string | null
+  runCount: number
+  failCount: number
+  consecutiveFailures: number
+  maxConsecutiveFailures: number
+  ownerUserId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** 定时任务运行历史行(v16) */
+export interface ScheduleRunDto {
+  id: string
+  scheduleId: string
+  /** 'timer' 周期触发 | 'manual' 手动执行 */
+  triggerKind: string
+  taskId: string | null
+  /** RUNNING | COMPLETED | FAILED */
+  state: string
+  error: string
+  startedAt: string
+  endedAt: string | null
+}

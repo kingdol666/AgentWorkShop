@@ -47,6 +47,8 @@ const mountedChannels = computed(() =>
       agents: entities.agents[id]?.length ?? 0,
       activeTasks: (entities.tasks[id] ?? []).filter(t => !['COMPLETED', 'CANCELED', 'FAILED'].includes(t.state)).length,
       workspace: meta?.workspace ?? '',
+      /** v16 定时标志:该 channel 启用的定时计划数(>0 显示「定时」标签) */
+      scheduled: meta?.scheduledCount ?? 0,
     })),
 )
 
@@ -361,6 +363,15 @@ const saveAsTemplate = async (): Promise<void> => {
             :class="{ live: ch.activeTasks > 0 }"
           />
           <span class="ch-name">{{ ch.name }}</span>
+          <!-- v16 定时标志:该 channel 绑定了启用的定时计划 -->
+          <span
+            v-if="ch.scheduled > 0"
+            class="sched-tag"
+            :title="$t('channelSessionList.schedTagTip', { p0: ch.scheduled })"
+          >
+            <span class="i-tabler-clock-bolt" />
+            <span class="sched-n">{{ ch.scheduled }}</span>
+          </span>
           <button
             class="op im"
             type="button"
@@ -756,6 +767,20 @@ const saveAsTemplate = async (): Promise<void> => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* v16 定时标签:hairline chip + 时钟图标(不与忙碌点/活跃任务语义混淆) */
+.sched-tag {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  align-items: center;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--accent, var(--ink-soft));
+  border: 1px solid color-mix(in srgb, var(--accent, var(--ink-soft)) 45%, transparent);
+  border-radius: var(--radius-chip);
+}
+.sched-n { font-family: var(--font-mono); font-size: 9.5px; }
 .op {
   display: inline-flex;
   flex: 0 0 auto;

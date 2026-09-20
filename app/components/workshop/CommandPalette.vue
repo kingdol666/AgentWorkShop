@@ -37,6 +37,7 @@ const commands = computed<Command[]>(() => {
     { key: 'nav-agents', label: t('commandPalette.k4s8e5q007'), hint: '/workshop/agents', run: () => navigateTo('/workshop/agents') },
     { key: 'nav-teams', label: t('commandPalette.gotoTeams'), hint: '/workshop/teams', run: () => navigateTo('/workshop/teams') },
     { key: 'nav-channel-templates', label: t('commandPalette.k1ezz11x008'), hint: '/workshop/channel-templates', run: () => navigateTo('/workshop/channel-templates') },
+    { key: 'nav-schedules', label: t('commandPalette.gotoSchedules'), hint: '/workshop/schedules', run: () => navigateTo('/workshop/schedules') },
     { key: 'view-timeline', label: t('commandPalette.k143z9bg009'), run: () => { emit('setView', 'timeline') } },
     { key: 'view-lanes', label: t('commandPalette.viewLanes'), run: () => { emit('setView', 'lanes') } },
     { key: 'view-board', label: t('commandPalette.k13ztmim010'), run: () => { emit('setView', 'board') } },

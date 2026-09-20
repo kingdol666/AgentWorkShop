@@ -29,6 +29,7 @@ import { createSubscriptionRepo } from '../services/workshop/db/subscription.rep
 import { createMemoryRepo } from '../services/workshop/db/memory.repo'
 import { createUserRepo } from '../services/workshop/db/user.repo'
 import { createChannelEventRepo } from '../services/workshop/db/channel-event.repo'
+import { createScheduledTaskRepo } from '../services/workshop/db/scheduled-task.repo'
 import { createApprovalHistoryRepo, createAlarmEventRepo, createAuditRepo, createApprovalRequestRepo } from '../services/workshop/db/ops.repo'
 import { bindOpsRepos } from '../services/workshop/ops/ops'
 import { configureHitlResolver } from '../services/workshop/agents/hitl-registry'
@@ -117,6 +118,8 @@ export default function workshopPlugin(nitroApp: {
     subscriptions: createSubscriptionRepo(db),
     tasks: createTaskRepo(db),
     memories: createMemoryRepo(db),
+    // v16 定时任务(scheduled_tasks / scheduled_task_runs)
+    schedules: createScheduledTaskRepo(db),
   }
   // S4/S5/R1/R3:合规三表仓储接线(审批历史/报警事件/审计日志/高危复核)
   bindOpsRepos({
@@ -152,6 +155,9 @@ export default function workshopPlugin(nitroApp: {
 
   // 懒加载恢复:仅激活有待办任务的 channel(装配 lead + 调度循环);其余纯持久化
   manager.restore()
+
+  // v16 定时任务运行时:唯一周期 timer,到期触发 → submitChannelTask 下发
+  manager.startScheduleRuntime()
 
   // 全时事件录制:为全部存量 channel 建立常驻流(事件 server 驱动落库,与 client 无关)
   void ensureAllEventRecorders(manager).catch(err => console.error('[workshop] 事件录制器初始化失败:', err))
