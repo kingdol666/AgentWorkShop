@@ -1,0 +1,103 @@
+\section{Discussion and Limitations}
+\label{sec:limits}
+\subsection{What the Loop Delivers}
+Primary archive $B$ is the reference for the results in Sec.~\ref{sec:eval};
+earlier campaigns provide historical limitations, not the headline outcome.
+The evaluated paths connect engineering
+quantities, member-level authority, and production context to intervention and
+compensation records across implemented drivers. Their output is an executed
+setpoint and associated evidence within configured limits, not a validated
+safe operating interval.
+
+The distinction is operationally useful because the remedies differ. A binding
+or range rejection calls for revising authority or the proposal; a transport
+or readback failure calls for inspecting execution; an accepted write followed
+by an out-of-band process response calls for a new strategy or compensation.
+The interlock ablation and frozen-process drill exercise two of these
+distinctions: attribution does not prevent an inadmissible command, and
+matching a setpoint does not establish a responding process. The platform
+makes these stages inspectable without claiming that the agent's judgment is
+an independent quality oracle.
+
+Proposal, admission, readback, and process judgment remain distinct.
+\texttt{keep} records a submitted verdict; readback checks device-level
+agreement; sustained convergence requires separate process evidence.
+Observation-quality gating is not enforced, so a judgment may use stale or
+unrepresentative telemetry. The deterministic controllers and scripted members
+test these execution paths, not LLM optimization quality. Neither successful
+writes nor a passing regression gate establishes reliable process control.
+
+\subsection{Reproducibility and Threats to Validity}
+\label{sec:repro}
+Commands, seeds, source fingerprints, and per-check evidence support reruns
+and archive comparisons, but deterministic decision policies do not make the
+whole experiment deterministic. Simulator initial state, asynchronous
+execution, and sampling windows can change outcomes. A harness fingerprint
+does not pin the separately versioned plant simulator, and working-tree hashes
+can depend on line endings. Exact reconstruction therefore requires the
+simulator version and reset state as well as the platform and harness sources.
+
+The checks were developed against this implementation, and the reference
+$J^{*}$ derives from the same simulator used by the controller. They form a
+regression suite rather than an external performance oracle. Historical
+warning-only mission outcomes show why an aggregate gate alone is
+insufficient, and the current archive also contains a journal check with an
+empty evidence array (Sec.~\ref{sec:repeatability}). Historical real-LLM
+campaigns used different scoring inputs and observation windows and remain
+exploratory, not comparable optimization evidence.
+
+The study is simulation-tier: no physical-device validation, TEP or SWaT
+replay, human-operator study, or external-framework comparison is reported.
+Readback-consistent writes can still accompany adverse process behavior, and
+bookkeeping can fail after actuation without reversing it. Device agreement,
+attribution, and process validity are thus separate properties.
+
+\subsection{Deployment Boundaries}
+Cross-agent oscillation within permitted ranges, long-horizon contention,
+storage-failure availability, and worst-case recovery time remain unevaluated.
+The backstop depends on data and policy; its wait and recheck cadence is not a
+recovery deadline. At its retained-history threshold $K=2$, escalation
+replaces automatic restoration and may leave a record unresolved without an
+operator.
+
+Bindings govern sanctioned tool calls, not arbitrary I/O by a privileged or
+compromised engine. Least privilege, endpoint security, and IT/OT network
+separation remain deployment responsibilities \cite{iec62443,nist80082}.
+Governed writes are not a certified safety instrumented function or an
+independent protection layer: controller limits, interlocks, and any required
+IEC~61511 protection must remain independent \cite{iec61511}. The platform
+neither detects nor compensates for their absence.
+
+Manual approval can introduce fatigue and over-reliance
+\cite{parasuraman2000model,bainbridge1983ironies,leesee2004trust,parasuramanmanzey2010complacency}.
+Role-, batch-phase-, and magnitude-specific policies and enforced segregation
+of duties remain extensions. Deployment also requires handling
+approval-channel and alarm-path failures \cite{eemua191}, records left open by
+crashes, synchronized clocks, and off-host evidence.
+
+\section{Conclusion}
+\label{sec:conclusion}
+\system{} connects deployed agent teams to industrial supervision through
+member--node capabilities, production context, and hypothesis-bearing
+intervention records. Source-dependent admission, submitted judgment, and
+separately executed compensation make the supervisory loop inspectable without
+making it atomic or safety-certified. Simulation-tier protocol checks,
+deterministic controllers, and scripted missions characterize implementation
+behavior, not LLM optimization or field reliability. Physical validation,
+stronger execution consistency, observation-quality gating, and controlled
+agent comparisons remain open.
+
+\section*{Data Availability and Disclosure}
+The integrated archives identified in Sec.~\ref{sec:eval} retain per-check
+results in \texttt{run.json}, verdicts in \texttt{summary.json}, metrics in
+\texttt{metrics.csv}, and \texttt{agentteam-*.log} traces. The ablation
+supplies \texttt{run.json} and \texttt{e1-lite.csv}; protocol and static
+suites supply \texttt{run.json} and reports. Figure scripts and
+archive-consistency checks accompany the project source. These records do not
+by themselves reconstruct the separately versioned simulator. Fig.~1 is an
+AI-generated illustration of two conceptual deployment patterns; Fig.~3 is a
+composite of crops from the deployed console; the remaining figures are
+programmatically rendered schematics or archive-derived plots. None presents
+an invented experimental trajectory. AI assistants supported
+manuscript editing, evidence checking, and figure preparation under author
+direction; the authors remain responsible for claims and data.

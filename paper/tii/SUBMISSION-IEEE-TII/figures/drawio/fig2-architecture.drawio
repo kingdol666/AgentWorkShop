@@ -1,0 +1,82 @@
+<mxfile host="app.diagrams.net" agent="AgentWorkShop-fig2" version="24.7.7">
+  <diagram name="System architecture" id="aws-fig2-arch-v1">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1448" pageHeight="520" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="entry-op" value="&lt;b&gt;&lt;font color=&quot;#58656F&quot; style=&quot;font-size:24px&quot;&gt;Operator UI / TUI + twin renderer&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;UI → API writes; renderer displays state&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#58656F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="8" y="8" width="464" height="78" as="geometry" />
+</mxCell>
+        <mxCell id="entry-rest" value="&lt;b&gt;&lt;font color=&quot;#58656F&quot; style=&quot;font-size:24px&quot;&gt;REST / WebSocket + A2A&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;shared authenticated entry points&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#58656F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="492" y="8" width="460" height="78" as="geometry" />
+</mxCell>
+        <mxCell id="entry-mcp" value="&lt;b&gt;&lt;font color=&quot;#58656F&quot; style=&quot;font-size:24px&quot;&gt;MCP interface&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;read-oriented subset; not all host tools&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#58656F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="972" y="8" width="468" height="78" as="geometry" />
+</mxCell>
+        <mxCell id="platform" value="&lt;b&gt;&lt;font color=&quot;#58656F&quot; style=&quot;font-size:24px&quot;&gt;PLATFORM PROCESS&lt;/font&gt;&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=2;absoluteArcSize=1;fillColor=#F3F6F8;strokeColor=#AAB5BC;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=18;spacingTop=4;" vertex="1" parent="1">
+  <mxGeometry x="8" y="114" width="1432" height="258" as="geometry" />
+</mxCell>
+        <mxCell id="orch" value="&lt;b&gt;&lt;font color=&quot;#285D8F&quot; style=&quot;font-size:24px&quot;&gt;Agent orchestrator&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;harness adapters · team channels&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;lead / workers · tasks · memory&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;host tools + scoped dispatch&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;shared node / team / run IDs&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#285D8F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="28" y="162" width="404" height="190" as="geometry" />
+</mxCell>
+        <mxCell id="bridge" value="&lt;b&gt;&lt;font color=&quot;#196C70&quot; style=&quot;font-size:24px&quot;&gt;Binding + approval bridge&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;node semantics · read/write scope&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;manual / auto policy · approvals&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;agent-write admission + readback&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;records · separate backstop&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#196C70;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="518" y="162" width="414" height="190" as="geometry" />
+</mxCell>
+        <mxCell id="sup" value="&lt;b&gt;&lt;font color=&quot;#196C70&quot; style=&quot;font-size:24px&quot;&gt;Industrial supervisor&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;DAQ runtimes + gateway sweep&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;DCW dispatch + protocol drivers&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;alarms · line / recipe / run state&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;device-twin state publication&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#196C70;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="1018" y="162" width="402" height="190" as="geometry" />
+</mxCell>
+        <mxCell id="cli" value="&lt;b&gt;&lt;font color=&quot;#285D8F&quot; style=&quot;font-size:24px&quot;&gt;External CLI engines&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;separate processes; containment external&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#285D8F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="8" y="416" width="408" height="72" as="geometry" />
+</mxCell>
+        <mxCell id="stores" value="&lt;b&gt;&lt;font color=&quot;#58656F&quot; style=&quot;font-size:24px&quot;&gt;Separate persistent stores&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;platform DB · time series · objects · audit&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#58656F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="480" y="416" width="484" height="72" as="geometry" />
+</mxCell>
+        <mxCell id="plant" value="&lt;b&gt;&lt;font color=&quot;#196C70&quot; style=&quot;font-size:24px&quot;&gt;Plant / protocol boundary&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;physical devices or seeded scenarios&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#196C70;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="1032" y="416" width="408" height="72" as="geometry" />
+</mxCell>
+        <mxCell id="e-op-in" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;entryX=0.162;entryY=0.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="entry-op" target="platform">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-rest-in" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;entryX=0.499;entryY=0.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="entry-rest" target="platform">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-mcp-in" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;entryX=0.837;entryY=0.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="entry-mcp" target="platform">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-intent" value="intent" style="edgeStyle=none;html=1;strokeColor=#285D8F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#285D8F;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.340;exitDx=0;exitDy=0;entryX=0.000;entryY=0.340;entryDx=0;entryDy=0;" edge="1" parent="1" source="orch" target="bridge">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-write" value="write" style="edgeStyle=none;html=1;strokeColor=#196C70;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#196C70;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.340;exitDx=0;exitDy=0;entryX=0.000;entryY=0.340;entryDx=0;entryDy=0;" edge="1" parent="1" source="bridge" target="sup">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-ret-sup" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=0.000;exitY=0.820;exitDx=0;exitDy=0;entryX=1.000;entryY=0.820;entryDx=0;entryDy=0;" edge="1" parent="1" source="sup" target="bridge">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-ret-bridge" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=0.000;exitY=0.820;exitDx=0;exitDy=0;entryX=1.000;entryY=0.820;entryDx=0;entryDy=0;" edge="1" parent="1" source="bridge" target="orch">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-orch-cli" value="" style="edgeStyle=none;html=1;strokeColor=#285D8F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#285D8F;labelBackgroundColor=#FFFFFF;exitX=0.450;exitY=1.000;exitDx=0;exitDy=0;entryX=0.490;entryY=0.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="orch" target="cli">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-cli-orch" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=0.560;exitY=0.000;exitDx=0;exitDy=0;entryX=0.160;entryY=1.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="cli" target="platform">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-stores" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;entryX=0.500;entryY=0.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="platform" target="stores">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-sup-plant" value="" style="edgeStyle=none;html=1;strokeColor=#196C70;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#196C70;labelBackgroundColor=#FFFFFF;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;entryX=0.460;entryY=0.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="sup" target="plant">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-plant-sup" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=0.540;exitY=0.000;exitDx=0;exitDy=0;entryX=0.870;entryY=1.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="plant" target="platform">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="t-logical" value="Logical IDs; not atomic storage" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Calibri;fontSize=22;fontColor=#58656F;" vertex="1" parent="1">
+  <mxGeometry x="690" y="386" width="300" height="28" as="geometry" />
+</mxCell>
+        <mxCell id="t-legend" value="Solid: request / control · Dashed: observation / record flow · PLC safety and hard real-time control remain external." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Calibri;fontSize=22;fontColor=#58656F;" vertex="1" parent="1">
+  <mxGeometry x="5.0" y="504" width="1338" height="28" as="geometry" />
+</mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

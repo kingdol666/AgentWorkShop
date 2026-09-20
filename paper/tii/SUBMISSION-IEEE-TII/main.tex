@@ -1,0 +1,85 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- regular paper draft
+% Compile: latexmk -pdf main.tex   (TeX Live 2025, IEEEtran)
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+
+% Float packing.  The manuscript carries five double-column figures and two
+% double-column tables.  Limits must be permissive
+% enough that a page is never left
+% with a half-empty column: with a strict \topfraction the page break lands after
+% a float and the following column starts late, which reads as an unintended blank.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{6}
+\setcounter{dbltopnumber}{3}
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.75}
+\renewcommand{\textfraction}{0.04}
+\renewcommand{\floatpagefraction}{0.70}
+\renewcommand{\dbltopfraction}{0.92}
+\renewcommand{\dblfloatpagefraction}{0.70}
+
+\input{results-macros}
+
+\newcommand{\system}{\textsc{AgentWorkShop}}
+\newcommand{\bench}{\textsc{AW-IndustrialBench}}
+
+\begin{document}
+
+\title{AgentWorkShop: Closed-Loop Recipe Optimization by Governed Agent Teams over Heterogeneous Industrial Protocols}
+
+% Working manuscript: replace the anonymous author block only when the
+% submission stage and double-blind requirements permit author identification.
+\author{Anonymous Authors}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Closed-Loop Recipe Optimization by Governed Agent Teams}
+
+\maketitle
+
+\begin{abstract}
+Industrial recipe optimization requires more than selecting a promising setpoint:
+an intervention must respect equipment limits, use the correct protocol, and remain
+traceable when its outcome is judged or reversed. AgentWorkShop links agent-team
+coordination to industrial supervision through member--node capabilities, shared
+production context, and a governed write path. Engineering limits, recipe windows,
+and approval requirements constrain execution; optimization records distinguish
+command acceptance, observed process response, agent judgment, and compensation.
+The evaluation uses real protocol transports with simulated plants and scripted
+teams, keeping language-model decisions outside the measured execution path.
+The integrated evaluation passes 75 checks, rejects 24 of 24 configured
+out-of-constraint probes across four writable stacks, and blocks none of four
+legal writes. A four-arm ablation attributes window-violation prevention to the
+recipe interlock: removing it admits six violations across three repetitions,
+whereas bypassing readback verification alone does not affect rejection. A fixed controller
+achieves 0.966--0.970 of a simulator-derived grid reference across three seeds.
+A recorded team mission reduces film thickness from 26.90 to 25.48\,$\mu$m through
+four governed writes on three parameters, meeting a $25.0\pm0.7\,\mu$m objective.
+The results support a common execution layer that separates authorization,
+device acceptance, and process success. Physical validation and controlled
+agent comparisons remain necessary before claiming field reliability or
+autonomous optimization superiority.
+\end{abstract}
+
+\begin{IEEEkeywords}
+agent teams, closed-loop optimization, heterogeneous protocols, human-in-the-loop, industrial informatics, large language models, recipe optimization, supervisory control.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/mechanisms}
+\FloatBarrier
+\input{sections/evaluation}
+\input{sections/discussion}
+
+% Use the unmodified IEEEtran bibliography layout.
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

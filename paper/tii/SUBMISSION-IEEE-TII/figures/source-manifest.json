@@ -1,0 +1,153 @@
+{
+  "figures": {
+    "fig-closedloop-control": {
+      "size_in": [
+        3.4,
+        5.05
+      ],
+      "raster_images_in_pdf": 0,
+      "embedded_fonts": true,
+      "fonts": [
+        "CZRBLR+STIXGeneral-Regular",
+        "FEUMDM+TimesNewRomanPS-ItalicMT",
+        "FHXFSG+TimesNewRomanPS-BoldMT",
+        "FHXFSG+TimesNewRomanPSMT",
+        "FTXWZA+STIXGeneral-Italic"
+      ],
+      "text_boxes": 63,
+      "overlap": null,
+      "spans_outside_canvas": 0
+    },
+    "fig-benchmark-results": {
+      "size_in": [
+        7.16,
+        4.35
+      ],
+      "raster_images_in_pdf": 0,
+      "embedded_fonts": true,
+      "fonts": [
+        "FHXFSG+TimesNewRomanPS-BoldMT",
+        "FHXFSG+TimesNewRomanPSMT"
+      ],
+      "text_boxes": 67,
+      "overlap": null,
+      "spans_outside_canvas": 0
+    },
+    "fig-controller-results": {
+      "size_in": [
+        7.16,
+        4.15
+      ],
+      "raster_images_in_pdf": 0,
+      "embedded_fonts": true,
+      "fonts": [
+        "CZRBLR+STIXGeneral-Regular",
+        "FHXFSG+TimesNewRomanPS-BoldMT",
+        "FHXFSG+TimesNewRomanPSMT",
+        "FTXWZA+STIXGeneral-Italic"
+      ],
+      "text_boxes": 79,
+      "overlap": null,
+      "spans_outside_canvas": 0
+    },
+    "fig-ablation": {
+      "size_in": [
+        7.16,
+        2.55
+      ],
+      "raster_images_in_pdf": 0,
+      "embedded_fonts": true,
+      "fonts": [
+        "FHXFSG+TimesNewRomanPS-BoldMT",
+        "FHXFSG+TimesNewRomanPSMT"
+      ],
+      "text_boxes": 50,
+      "overlap": null,
+      "spans_outside_canvas": 0
+    },
+    "fig-agentteam-mission": {
+      "size_in": [
+        7.16,
+        2.95
+      ],
+      "raster_images_in_pdf": 0,
+      "embedded_fonts": true,
+      "fonts": [
+        "CZRBLR+STIXGeneral-Regular",
+        "FHXFSG+TimesNewRomanPS-BoldMT",
+        "FHXFSG+TimesNewRomanPSMT",
+        "FTXWZA+STIXGeneral-Italic"
+      ],
+      "text_boxes": 49,
+      "overlap": null,
+      "spans_outside_canvas": 0
+    }
+  },
+  "figure_sizes_inches": {
+    "fig-closedloop-control": [
+      3.4,
+      5.05
+    ],
+    "fig-benchmark-results": [
+      7.16,
+      4.35
+    ],
+    "fig-controller-results": [
+      7.16,
+      4.15
+    ],
+    "fig-ablation": [
+      7.16,
+      2.55
+    ],
+    "fig-agentteam-mission": [
+      7.16,
+      2.95
+    ]
+  },
+  "python": "3.12.7 | packaged by Anaconda, Inc. | (main, Oct  4 2024, 13:17:27) [MSC v.1929 64 bit (AMD64)]",
+  "matplotlib": "3.10.1",
+  "numpy": "1.26.4",
+  "serif_candidates": [
+    "Times New Roman",
+    "Times",
+    "Nimbus Roman",
+    "DejaVu Serif"
+  ],
+  "source_hashes": {
+    "20260920094610-to4/agentteam-biax.log": "d38b1fc7e01689b6e99a460770104dbbd7175cfa8b4c45ba65256acd4d0eaf0a",
+    "20260920094610-to4/agentteam-mission.log": "e6332ec47698438d4bfe82fb8708caca544af4d9a968990c1a0ae9324be7707e",
+    "20260920094610-to4/line-profile.json": "8e3916468f59e4171f25224ec1682adfd31acf332f16791d3ecacda3c7c0b53d",
+    "20260920094610-to4/metrics.csv": "a14e83659fb16f2df639cdfceaeb6d15652883839d99047c1b8a33eab81b9f22",
+    "20260920094610-to4/report.md": "a1661e5314936cf8c5abd0fdbc0c697cd30d7289138fdc7674de603204af11ed",
+    "20260920094610-to4/run.json": "c522578672d83f63236ac651f379247236f025b6cab8e8db421cb6e117fc1926",
+    "20260920094610-to4/summary.json": "4e2ee67030e1541a346c45b3426778ff9276c0c935eb9dad5e6b12383fe79e63",
+    "20260920093330-md4/agentteam-biax.log": "04ae9e2e2d728232c5c12f192761d19f88cfa88049eb50c96329eafbe9262710",
+    "20260920093330-md4/agentteam-mission.log": "397a04ddd65e2bdfffa05485d90fa95f4cb5e3e20857cb0069c464a8d1cf53dd",
+    "20260920093330-md4/line-profile.json": "3ade53c37ba9a8e2e6a2264b0c4327ee5b76c5f9a24d8c09ecce631fb89472e5",
+    "20260920093330-md4/metrics.csv": "486d305b503eb8754a016f8ba28ec3b5ca27156702b7f606a1af66bf26f057d6",
+    "20260920093330-md4/report.md": "fbd3de57ae32ed9934e124339c41c7bb2e8a3802d4b5528416ee27f097f274fe",
+    "20260920093330-md4/run.json": "36ac1aec557e40746aaad286b816e49bcb42aa681ca7727dea05281d16a48f06",
+    "20260920093330-md4/summary.json": "5d015813f48b31deefe852865afd23c2e0f8036dc9b5eb034c59868e7db16342",
+    "20260920094442-e1lite/e1-lite.csv": "bece1d1274ffba2132d8f89332482c6b5bcb4fa2057eb71c27accc0f5de13fdb",
+    "20260920094442-e1lite/report.md": "d43394d068772d4fd54251636582d7eb2286ceff3a33d4f1b5b7bfdf591d0c1a",
+    "20260920094442-e1lite/run.json": "c7692e1d30535ae0ff03b6cfcee25ef969f92f386e5c231b0bef14b228db4050",
+    "20260920094335-1b5g/report.md": "c357bc540008157dbb02b2b08f054768cc018db805b97cec2e95203fa0e84145",
+    "20260920094335-1b5g/run.json": "951b147e5a1ecdb60a1f43f5c6265014ba9be1d5e711e99319b6e6c19d925cee",
+    "benchmark-report.md": "e1a385944f3a9ed7ea728bced36ab5dcd603c0e15b9a3c18d8f4438be40a5889"
+  },
+  "outputs": {
+    "_probe_halfcol.png": "6dcbce086c2c5df7847c158d7889a634fc7d809ce19908797e0fed999cac1ae2",
+    "fig-ablation.pdf": "6aaad9627e4a32c927930b085b25cce5faa997a5dd3571e4f654254bd324035c",
+    "fig-ablation.png": "0a5bee727d32427ed8f23d8965c9f0b134d0efdd0cd584f37f769f0a5e039b7d",
+    "fig-agentteam-mission.pdf": "57bd383b618071fc961ac23b485db33630b315c48d1f1ad0a439d2f6d847db90",
+    "fig-agentteam-mission.png": "0aef783c9f2cb22c03cb30d0e3c52bad5bb86adbc6e29672171f7017ceca0577",
+    "fig-benchmark-results.pdf": "e61742dfcac1b3c7d4bf43421052a50815c38d87000f547e3e6a58fa71600c85",
+    "fig-benchmark-results.png": "ae251f27ab81c5736bdc1df7794253b353c74b78222d9090a13ba1d1758a8b57",
+    "fig-closedloop-control.pdf": "047304361b76c7b28a3573cf622cb350f70a6aef74419be704a68e160d204c0a",
+    "fig-closedloop-control.png": "65023850bc801a5b7a890363635b9896db6288b435bcbf5b8d0155b1ac94302a",
+    "fig-controller-results.pdf": "ee1af744e4c17095e060ac912ad3a76da9309fc55430a0ca6bc3bb0756cf8a2a",
+    "fig-controller-results.png": "5edb6624107bd83f942fcd5e46d17400ab00ef183a251e2778e8fd873b6604e3"
+  },
+  "reproduce": "python paper/tii/figures/tii-final/make_tii_figures.py"
+}

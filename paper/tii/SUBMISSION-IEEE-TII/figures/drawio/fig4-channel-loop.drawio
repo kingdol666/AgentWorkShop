@@ -1,0 +1,99 @@
+<mxfile host="app.diagrams.net" agent="AgentWorkShop-fig4" version="24.7.7">
+  <diagram name="Channel loop" id="aws-fig4-chanloop-v1">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1448" pageHeight="632" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="human" value="&lt;b&gt;&lt;font color=&quot;#58656F&quot; style=&quot;font-size:24px&quot;&gt;Independent human&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;manual approval&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;pause / intervene · escalation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#58656F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="8" y="8" width="416" height="130" as="geometry" />
+</mxCell>
+        <mxCell id="admit" value="&lt;b&gt;&lt;font color=&quot;#196C70&quot; style=&quot;font-size:24px&quot;&gt;3  Agent-write admission → driver path&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;bound scope · availability · manual approval / auto policy&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;agent guardrails · hard range + active recipe window&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#196C70;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="500" y="8" width="932" height="130" as="geometry" />
+</mxCell>
+        <mxCell id="thickness" value="&lt;b&gt;&lt;font color=&quot;#196C70&quot; style=&quot;font-size:24px&quot;&gt;Thickness · DAQ · µm&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;bound read&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;process observation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#196C70;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="8" y="172" width="416" height="112" as="geometry" />
+</mxCell>
+        <mxCell id="pressure" value="&lt;b&gt;&lt;font color=&quot;#196C70&quot; style=&quot;font-size:24px&quot;&gt;Pressure · DAQ · MPa&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;bound read&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;process observation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#196C70;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="8" y="314" width="416" height="112" as="geometry" />
+</mxCell>
+        <mxCell id="channel" value="&lt;b&gt;&lt;font color=&quot;#285D8F&quot; style=&quot;font-size:24px&quot;&gt;CHANNEL&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;lead + workers · task tree&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;shared memory&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;explicit bindings per node&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;read / write scope&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;manual / auto write policy&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#F3F6F8;strokeColor=#285D8F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="500" y="200" width="440" height="226" as="geometry" />
+</mxCell>
+        <mxCell id="heater" value="&lt;b&gt;&lt;font color=&quot;#196C70&quot; style=&quot;font-size:24px&quot;&gt;Heater · DCW · °C&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;bound write&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;driver / register readback*&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#196C70;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="1028" y="172" width="404" height="112" as="geometry" />
+</mxCell>
+        <mxCell id="screw" value="&lt;b&gt;&lt;font color=&quot;#196C70&quot; style=&quot;font-size:24px&quot;&gt;Screw · DCW · rpm&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;bound write&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;driver / register readback*&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#196C70;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="1028" y="314" width="404" height="112" as="geometry" />
+</mxCell>
+        <mxCell id="backstop" value="&lt;b&gt;&lt;font color=&quot;#58656F&quot; style=&quot;font-size:24px&quot;&gt;Independent auto backstop&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;eligible records · bounded recovery&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;separate system evaluation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#58656F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="8" y="484" width="416" height="98" as="geometry" />
+</mxCell>
+        <mxCell id="verdict" value="&lt;b&gt;&lt;font color=&quot;#285D8F&quot; style=&quot;font-size:24px&quot;&gt;6  Agent submits verdict&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;dcw_judge records verdict only&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;does not compute or actuate&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#285D8F;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="500" y="484" width="440" height="98" as="geometry" />
+</mxCell>
+        <mxCell id="comp" value="&lt;b&gt;&lt;font color=&quot;#9B3B3B&quot; style=&quot;font-size:24px&quot;&gt;7  Separate compensation&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;authorized re-dispatch via checks&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#202B33&quot; style=&quot;font-size:22px&quot;&gt;not an effect of dcw_judge&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#9B3B3B;strokeWidth=2;fontFamily=Calibri;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;spacingRight=8;" vertex="1" parent="1">
+  <mxGeometry x="1028" y="484" width="404" height="98" as="geometry" />
+</mxCell>
+        <mxCell id="e-human-admit" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.477;exitDx=0;exitDy=0;entryX=0.000;entryY=0.477;entryDx=0;entryDy=0;" edge="1" parent="1" source="human" target="admit">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-thick-chan" value="" style="edgeStyle=none;html=1;strokeColor=#196C70;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#196C70;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.571;exitDx=0;exitDy=0;entryX=0.000;entryY=0.159;entryDx=0;entryDy=0;" edge="1" parent="1" source="thickness" target="channel">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-pres-chan" value="" style="edgeStyle=none;html=1;strokeColor=#196C70;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#196C70;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.571;exitDx=0;exitDy=0;entryX=0.000;entryY=0.788;entryDx=0;entryDy=0;" edge="1" parent="1" source="pressure" target="channel">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-propose" value="" style="edgeStyle=none;html=1;strokeColor=#285D8F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#285D8F;labelBackgroundColor=#FFFFFF;exitX=0.500;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="channel" target="admit">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-fb-heater" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=0.000;exitY=0.750;exitDx=0;exitDy=0;entryX=1.000;entryY=0.248;entryDx=0;entryDy=0;" edge="1" parent="1" source="heater" target="channel">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-fb-screw" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=0.000;exitY=0.660;exitDx=0;exitDy=0;entryX=1.000;entryY=0.832;entryDx=0;entryDy=0;" edge="1" parent="1" source="screw" target="channel">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-verdict" value="" style="edgeStyle=none;html=1;strokeColor=#285D8F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#285D8F;labelBackgroundColor=#FFFFFF;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;entryX=0.500;entryY=0.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="channel" target="verdict">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-pres-backstop" value="" style="edgeStyle=none;html=1;strokeColor=#58656F;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#58656F;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;entryX=0.500;entryY=0.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="pressure" target="backstop">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-verdict-comp" value="" style="edgeStyle=none;html=1;strokeColor=#9B3B3B;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#9B3B3B;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=1.000;exitY=0.449;exitDx=0;exitDy=0;entryX=0.000;entryY=0.449;entryDx=0;entryDy=0;" edge="1" parent="1" source="verdict" target="comp">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-backstop-comp" value="" style="edgeStyle=none;html=1;strokeColor=#9B3B3B;strokeWidth=2;endArrow=block;endSize=5;endFill=1;fontFamily=Calibri;fontSize=22;fontColor=#9B3B3B;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=4 3;exitX=0.500;exitY=1.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;" edge="1" parent="1" source="backstop" target="comp">
+  <mxGeometry relative="1" as="geometry" />
+</mxCell>
+        <mxCell id="e-write-rail" value="" style="edgeStyle=none;html=1;strokeColor=#196C70;strokeWidth=2;endArrow=block;endSize=5;endFill=1;" edge="1" parent="1">
+  <mxGeometry relative="1" as="geometry">
+    <mxPoint x="1416" y="138" as="sourcePoint" />
+    <mxPoint x="1436" y="224" as="targetPoint" />
+    <Array as="points"><mxPoint x="1416" y="154" /><mxPoint x="1444" y="154" /><mxPoint x="1444" y="224" /></Array>
+  </mxGeometry>
+</mxCell>
+        <mxCell id="e-write-screw" value="" style="edgeStyle=none;html=1;strokeColor=#196C70;strokeWidth=2;endArrow=block;endSize=5;endFill=1;" edge="1" parent="1">
+  <mxGeometry relative="1" as="geometry">
+    <mxPoint x="1444" y="366" as="sourcePoint" />
+    <mxPoint x="1436" y="366" as="targetPoint" />
+    <Array as="points"></Array>
+  </mxGeometry>
+</mxCell>
+        <mxCell id="t-observe" value="1 / 5 Observe" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Calibri;fontSize=22;fontColor=#196C70;" vertex="1" parent="1">
+  <mxGeometry x="440" y="153" width="148" height="28" as="geometry" />
+</mxCell>
+        <mxCell id="t-propose" value="2 Propose" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Calibri;fontSize=22;fontColor=#285D8F;" vertex="1" parent="1">
+  <mxGeometry x="742" y="161" width="102" height="28" as="geometry" />
+</mxCell>
+        <mxCell id="t-write" value="4 Write" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Calibri;fontSize=22;fontColor=#196C70;" vertex="1" parent="1">
+  <mxGeometry x="1186" y="149" width="80" height="28" as="geometry" />
+</mxCell>
+        <mxCell id="t-feedback" value="feedback*" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Calibri;fontSize=22;fontColor=#58656F;" vertex="1" parent="1">
+  <mxGeometry x="960" y="287" width="102" height="28" as="geometry" />
+</mxCell>
+        <mxCell id="t-footer" value="* Register readback if available; process observation is separate. Recipe / heartbeat checks are source-specific." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Calibri;fontSize=22;fontColor=#58656F;" vertex="1" parent="1">
+  <mxGeometry x="8" y="609" width="1292" height="28" as="geometry" />
+</mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

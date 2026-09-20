@@ -1,0 +1,63 @@
+\section{Related Work}
+\subsection{Industrial Agents and Closed-Loop Applications}
+Agent-based manufacturing control provides the foundation for linking team
+membership to industrial capabilities \cite{leitao2009agentbased}. Industrial
+LLM applications span knowledge-graph construction \cite{zhang2026comaikg} and
+diagnosis \cite{liu2024kgdiag}, PLC program generation and verification
+\cite{liu2026agents4plc,fakih2024llm4plc}, and digital-twin configuration
+\cite{xia2024llmsim}. Applications that issue control commands include
+natural-language machine control over OPC UA \cite{hofmann2025nlc} and LLM
+agents for simulated fault-tolerant control and twin-supported fault handling
+\cite{vyas2026ftc,gill2025llmdt}; these studies already validate corrective
+actions using process knowledge, deterministic checks, or twin simulation, so
+execution checks alone are not our novelty. InstructMPC injects
+language-derived context into model-predictive control
+\cite{wu2025instructmpc}. Closest to our setting, agent-based supervision has
+been studied for service-oriented industrial cyber-physical systems
+\cite{biskupovic2025supervision}, and LLM-based multi-agent systems coordinate
+shopfloor manufacturing tasks \cite{zhao2026shopfloor}; our emphasis is the
+explicit connection between deployed-member authority, source-dependent
+execution checks, and line/product/recipe/run attribution.
+
+\subsection{Orchestration, Industrial Models, and Execution Governance}
+AutoGen, LangGraph, and CrewAI organize agent tasks and tool use
+\cite{wu2023autogen,langgraph2024,crewai2024}, and Model Context Protocol
+(MCP) and Agent-to-Agent (A2A) standardize tool and inter-agent interfaces
+\cite{mcp2024,a2a2025}; industrial integration additionally requires node
+semantics, driver behavior, and operating context. Our line/product/recipe/run
+organization is informed by ISA-95 and ISA-88 \cite{isa95,isa88}: line and
+product correspond to level-3 production work units and product definitions,
+run to production-performance records, and recipe to the ISA-88 master-recipe
+idea with grade and operating-point semantics; we do not implement the
+complete procedural models of either standard. Semantic asset models and
+gateway digital twins abstract heterogeneous equipment
+\cite{iso23247,iec63278,gautam2025iiot}; our focus is write governance over
+that abstraction, not a new twin model.
+
+The ingredients of a governed write---node-scoped permission, range
+validation, approval, and an audit trail---have counterparts in mature
+DCS/SCADA/MES practice, typically enforced as role- and application-level
+controls under IEC~62443-3-3 \cite{iec62443-3-3}. LLM-mediated writes
+additionally require member-instance-level binding, semantic linkage between a
+write and the verdict or optimization record that produced it, and attribution
+across engine boundaries. Hard action shielding and control-barrier methods
+enforce formally specified admissible actions
+\cite{alshiekh2018shielding,ames2017cbf}; run-time assurance and
+simplex-style architectures likewise separate supervisory logic from protected
+execution \cite{sha2001simplex}. Our admission checks and rule-based backstop
+provide neither those formal guarantees nor certified plant protection. Human
+supervision also requires a clear division of responsibility, not merely an
+approval dialog \cite{parasuraman2000model,bainbridge1983ironies}.
+
+\subsection{Evaluation of Tools and Industrial Control}
+AgentBench and consequential tool-use benchmarks evaluate agent behavior and
+policy compliance \cite{liu2024agentbench,yao2024taubench}. Industrial
+datasets such as the Tennessee Eastman Process (TEP) and Secure Water
+Treatment (SWaT) support process-monitoring research
+\cite{downs1993tep,goh2017swat}, but replay is not evidence of physical
+actuation, so we separate source checks, mock-driver probes, software-protocol
+integration, fixed-controller optimization, and exploratory LLM runs. Indirect
+prompt injection \cite{greshake2023injection} and its benchmarked defenses
+\cite{liu2024pinjection} motivate checks on requests that compromised agents
+issue through legitimate tools; our evaluation includes no adversarial LLM
+probes.
