@@ -469,7 +469,19 @@ export default {
           let st = null
           if (base) {
             try {
-              st = (await jget(ctx, `${base}/api/diagnosis/status/${encodeURIComponent(id)}`, 8000)).data ?? null
+              // v2.1:走任务管理面 /tasks/:id——result.report_md_path 是绝对路径,
+              // 可直接交给 kb_agent 读取入库(旧 /status 的相对路径会让 kb_agent 找不到文件)
+              st = (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(id)}`, 8000)).data ?? null
+              if (st && st.result) {
+                st = {
+                  ...st,
+                  engineStatus: st.status,
+                  score: st.result.score ?? null,
+                  judge_verdict: st.result.verdict ?? null,
+                  report_path: st.result.report_md_path ?? st.report_path ?? null,
+                  error_message: st.result.error ?? st.error_message ?? null,
+                }
+              }
             }
             catch { /* 3210 不可达时回退 kv 元数据 */ }
           }
