@@ -8,8 +8,8 @@
  * 轮询 /api/nodes 就绪 → 应用预设 → 设备/信号/工艺模型操作。
  */
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { join, resolve, dirname } from 'node:path'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { join, relative, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sleep } from './util.mjs'
 
@@ -22,6 +22,79 @@ export const SIM_DIR = process.env.SIM_DIR
     ? join(REPO, 'plc-node-simulator')
     : resolve(REPO, '..', 'plc-node-simulator'))
 export const SIM_BASE = process.env.SIM_BASE ?? 'http://127.0.0.1:4010'
+// 模拟器专用端口：自举 spawn 时以 SIM_PORT 传给 tsx(index.ts 监听该端口)。
+// 基准惯例 SIM_BASE=:4011(专用实例)——4010 常是其他会话的共享 dev 模拟器,
+// 被外部 preset/重启会把 SP 清掉,曾致 P10 「每写必断膜」(2026-09-20 sr8 实测根因)。
+export const SIM_PORT = (() => {
+  try { return Number(new URL(SIM_BASE).port) || Number(process.env.SIM_PORT ?? 4010) }
+  catch { return Number(process.env.SIM_PORT ?? 4010) }
+})()
+// 专用实例(端口 ≠ 4010)用影子目录:源码拷贝 + node_modules junction + **私有 data/**。
+// 动机:模拟器的 truth.jsonl / config.json 固定写在 <sim>/data 下,共享 4010 实例的
+// preset 重置/真值轮转会 truncate 同一文件,readTruth 逐行 JSON.parse 一遇坏行即崩
+// → P4「真值样本 0」(2026-09-20 R2 实测)。影子目录让两个实例彻底不共文件。
+export const SIM_SHADOW = SIM_PORT !== 4010
+  ? process.env.SIM_SHADOW_DIR ?? resolve(REPO, '..', 'plc-node-simulator-bench')
+  : null
+
+/** 源码树(src/**)最新 mtime——影子副本过期判定 */
+function simSrcStamp(dir) {
+  let latest = 0
+  const walk = (d) => {
+    let entries
+    try { entries = readdirSync(d, { withFileTypes: true }) } catch { return }
+    for (const e of entries) {
+      const p = join(d, e.name)
+      if (e.isDirectory()) { if (e.name !== 'node_modules') walk(p) }
+      else { try { latest = Math.max(latest, statSync(p).mtimeMs) } catch {} }
+    }
+  }
+  walk(join(dir, 'src'))
+  return latest
+}
+
+/** 准备影子目录(幂等;源码 stamp 或端口变化即重拷),返回实际 spawn 用的目录。
+ *  拷贝后做**传输端口重映射**:预设里的 modbus/rtu/opcua 端口是硬编码(16040/15041/5840…),
+ *  与 4010 共享实例并行时会互相抢占端口(opcua 5840 被占 → 该协议全部读写落到别的进程,
+ *  2026-09-20 R2-R4「port-2-opcua 0 采样」根因)。偏移 = (SIM_PORT-4010)×1000:
+ *  5840→6840、16040→17040、15041→16041;MQTT broker(18830,外部 docker)不映射。 */
+function ensureShadowSim() {
+  if (!SIM_SHADOW) return SIM_DIR
+  const stampFile = join(SIM_SHADOW, '.bench-stamp')
+  const stamp = String(simSrcStamp(SIM_DIR)) + ':' + SIM_PORT
+  const fresh = existsSync(stampFile)
+    && existsSync(join(SIM_SHADOW, 'node_modules'))
+    && readFileSync(stampFile, 'utf8') === stamp
+  if (!fresh) {
+    const offset = (SIM_PORT - 4010) * 1000
+    mkdirSync(SIM_SHADOW, { recursive: true })
+    cpSync(SIM_DIR, SIM_SHADOW, {
+      recursive: true,
+      filter: (s) => {
+        if (s === SIM_DIR) return true
+        const top = relative(SIM_DIR, s).split(/[\\/]/)[0]
+        return top !== 'node_modules' && top !== '.git' && top !== 'data'
+      },
+    })
+    // 端口重映射:仅 shadow/src 下 .ts 文件;仅 58xx( opcua )与 15xxx/16xxx(modbus/rtu)段
+    const remap = (d) => {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const p = join(d, e.name)
+        if (e.isDirectory()) remap(p)
+        else if (e.name.endsWith('.ts')) {
+          const src = readFileSync(p, 'utf8')
+          const out = src.replace(/(port:\s*)(5[89]\d{2}|1[56]\d{3})\b/g, (_, a, n) => a + (Number(n) + offset))
+          if (out !== src) writeFileSync(p, out)
+        }
+      }
+    }
+    remap(join(SIM_SHADOW, 'src'))
+    try { symlinkSync(join(SIM_DIR, 'node_modules'), join(SIM_SHADOW, 'node_modules'), 'junction') }
+    catch { /* 已存在或平台不支持:首次拷贝失败会在 spawn 后就绪探测处显式失败 */ }
+    writeFileSync(stampFile, stamp)
+  }
+  return SIM_SHADOW
+}
 
 export const simApi = async (method, path, body) => {
   // 与 makeApi 同一套网络层韧性：瞬断(进程重启窗/积压拒连)退避重试，
@@ -65,11 +138,15 @@ export async function ensureSimulator({ timeoutMs = 90_000, log = console.log } 
     return { started: false, dir: SIM_DIR, reason: `依赖未安装: ${SIM_DIR}/node_modules 不存在 → cd ${SIM_DIR} && npm install` }
   }
 
-  log(`  · 模拟器未在线 → 自动启动 (cwd=${SIM_DIR})`)
-  const child = spawn('npm', ['run', 'dev'], {
-    cwd: SIM_DIR,
+  const cwd = ensureShadowSim()
+  log(`  · 模拟器未在线 → 自动启动 (cwd=${cwd}, port=${SIM_PORT}${cwd !== SIM_DIR ? ', 影子私有数据目录' : ''}, 无 watch 常驻)`)
+  // ⚠️ 严禁用 `npm run dev`(= tsx watch):watch 进程会因文件事件自动重启,
+  // 而预设装置只存内存不落盘 → 重启即丢整条产线 → 表现为「 biax 每写必断膜 /
+  // DAQ 0 采样 / 真值 0」(2026-09-20 R2-R5 全部假象的共同根因)。直跑 tsx 常驻。
+  const child = spawn('npx', ['tsx', 'src/server/index.ts'], {
+    cwd,
     shell: true,
-    env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' },
+    env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost', SIM_PORT: String(SIM_PORT) },
     stdio: 'ignore',
     detached: false,
   })
@@ -77,9 +154,20 @@ export async function ensureSimulator({ timeoutMs = 90_000, log = console.log } 
   const t0 = Date.now()
   while (Date.now() - t0 < timeoutMs) {
     await sleep(1500)
-    if (await simUp()) return { started: true, pid: child.pid, dir: SIM_DIR, reason: 'spawned' }
+    if (await simUp()) break
   }
-  return { started: false, pid: child.pid, dir: SIM_DIR, reason: `启动后 ${timeoutMs}ms 内未就绪（检查 ${SIM_DIR}/npm 日志与依赖安装）` }
+  if (!(await simUp())) {
+    return { started: false, pid: child.pid, dir: cwd, reason: `启动后 ${timeoutMs}ms 内未就绪（检查 ${SIM_DIR}/npm 日志与依赖安装）` }
+  }
+  // 空库冷启会播种 5 台默认演示设备(dev-*):其中默认 opcua 与 cast 预设的 opcua
+  // 同端口(重映射后同为 6840)→ 预设 opcua 服务端 EADDRINUSE 绑不上 → screw 写全落空
+  // (2026-09-20 R6「P6 不收敛/port-2 无采样」根因)。拉起后立即清场,产线由预设重建。
+  try {
+    const nodes = (await simApi('GET', '/api/nodes')).data ?? []
+    for (const n of nodes) await simApi('DELETE', `/api/nodes/${n.id}`)
+    log(`  · 冷启默认设备已清场(${nodes.length} 台) → 产线由预设从零重建`)
+  } catch { /* 清场失败不阻塞:预设 apply 仍会尽量覆盖 */ }
+  return { started: true, pid: child.pid, dir: cwd, reason: 'spawned' }
 }
 
 /** 应用命名预设（film-line / cast-film-physics），幂等 */

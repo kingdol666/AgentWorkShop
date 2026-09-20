@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AW-IndustrialBench — Consolidated Benchmark Report</title>
+<style>
+:root{--bg:#0a1220;--panel:#101b2e;--line:#1d2c44;--tx:#dbe6f5;--mut:#7d90ad;--g:#35e0a0;--c:#41c8f4;--a:#f4b641;--r:#ff5d73}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 "Segoe UI",system-ui,-apple-system,sans-serif}
+.wrap{max-width:1060px;margin:0 auto;padding:36px 24px 64px}
+header h1{font-size:26px;margin:0 0 6px;letter-spacing:.3px}header h1 b{color:var(--g)}
+.sub{color:var(--mut);font-size:13px}code{background:#0c1526;border:1px solid var(--line);padding:1px 6px;border-radius:4px;font:12.5px/1.5 Consolas,monospace;color:var(--c)}
+.chips{margin:18px 0 26px;display:flex;gap:10px;flex-wrap:wrap}
+.chip{display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.5px;white-space:nowrap}
+.chip.ok{background:rgba(53,224,160,.12);color:var(--g);border:1px solid rgba(53,224,160,.4)}
+.chip.bad{background:rgba(255,93,115,.12);color:var(--r);border:1px solid rgba(255,93,115,.4)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:12px;margin:0 0 30px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kv{font-size:24px;font-weight:700}.kv.g{color:var(--g)}.kv.c{color:var(--c)}.kv.a{color:var(--a)}
+.kl{color:var(--mut);font-size:12px;margin-top:2px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:0 0 20px}
+section h2{font-size:16px;margin:0 0 12px;color:var(--c);letter-spacing:.4px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{border-top:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;border-top:none}
+td.mut,span.mut{color:var(--mut)}td.mono{font-family:Consolas,monospace;font-size:12px}
+.note{color:var(--mut);font-size:13px;margin-top:12px}
+pre{background:#0c1526;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow:auto;font:12.5px/1.6 Consolas,monospace;color:#b9d0ea}
+footer{color:var(--mut);font-size:12px;margin-top:26px}
+</style></head><body><div class="wrap">
+<header>
+<h1>AW-<b>IndustrialBench</b> · Consolidated Benchmark Report</h1>
+<div class="sub">seed 42 · git <code>1585948</code> · AgentWorkShop v0.7.43 · 2026-09-20T09:55:13.561Z · platform <code>http://127.0.0.1:3005</code> · simulator <code>http://127.0.0.1:4011</code></div>
+<div class="chips"><span class="chip ok">STATIC PASS</span><span class="chip ok">PIPELINE 75/0/0</span><span class="chip ok">AGENTTEAM MISSION</span><span class="chip ok">BIAX 25.48µm</span><span class="chip ok">REAL-PLC 13/13</span><span class="chip ok">ABLATION OK</span><span class="chip ok">API 60/60</span><span class="chip ok">SELFTEST OK</span></div>
+</header>
+<div class="grid">
+<div class="kpi"><div class="kv g">0.968</div><div class="kl">Closed-loop J/J* (mean vs offline optimum W*)</div></div>
+<div class="kpi"><div class="kv c">100%</div><div class="kl">Governed-write interdiction (F5, pooled)</div></div>
+<div class="kpi"><div class="kv g">0</div><div class="kl">False blocks across all arms & tiers</div></div>
+<div class="kpi"><div class="kv c">0</div><div class="kl">Code changes for new production scenario</div></div>
+<div class="kpi"><div class="kv g">13/13</div><div class="kl">Checks green in the real-protocol tier (PLC simulator)</div></div>
+<div class="kpi"><div class="kv a">60</div><div class="kl">Full-system API checks passed</div></div>
+<div class="kpi"><div class="kv c">25.48</div><div class="kl">Biaxial thickness after mission, µm (target 25 ± 0.7)</div></div>
+</div>
+<section><h2>1 · Results by layer</h2><table>
+<tr><th>Layer</th><th>Run ID</th><th>Pass</th><th>Warn</th><th>Fail</th><th>Skip</th><th>Score</th><th>Verdict</th></tr>
+<tr><td>Static audit (paper–code consistency)</td><td><code>20260920095700-1e3s</code></td><td>3</td><td>0</td><td>0</td><td>0</td><td>100.0 / 100</td><td><span class="chip ok">PASS</span></td></tr><tr><td>Integrated pipeline (17 phases, real nodes)</td><td><code>20260920094610-to4</code></td><td>75</td><td>0</td><td>0</td><td>0</td><td>100 / 100</td><td><span class="chip ok">PASS</span></td></tr><tr><td>Real-protocol layer (PLC simulator)</td><td><code>20260920094335-1b5g</code></td><td>13</td><td>0</td><td>0</td><td>0</td><td>100.0 / 100</td><td><span class="chip ok">PASS</span></td></tr><tr><td>E1a 4-arm governance ablation</td><td><code>20260920094442-e1lite</code></td><td>4</td><td>0</td><td>0</td><td>0</td><td>—</td><td><span class="chip ok">PASS</span></td></tr><tr><td>Full-system API survey (api-live-e2e)</td><td><code>console</code></td><td>60</td><td>0</td><td>0</td><td>0</td><td>—</td><td><span class="chip ok">PASS</span></td></tr></table></section>
+<section><h2>2 · Real PLC node verification</h2><table>
+<tr><th>Check</th><th>Result</th><th>Evidence</th></tr>
+<tr><td><code>plc-0-simulator</code> Simulator ready + film-line preset</td><td><span class="chip ok">PASS</span></td><td class="mut">five-protocol devices: modbus-tcp, modbus-rtu, opcua, mqtt, http</td></tr><tr><td><code>plc-1-realpath</code> Five-protocol real connectivity (exported config → test-driver)</td><td><span class="chip ok">PASS</span></td><td class="mut">✔ modbus-tcp live connect ok (30 ms)<br>✔ modbus-rtu live connect ok (16 ms)<br>✔ opcua live connect ok (17 ms)<br>✔ mqtt live connect ok (16 ms)<br>✔ http live connect ok (17 ms)</td></tr><tr><td><code>plc-2-closedloop</code> Real sampling + SP→PV physical closed loop + governed write on the live link</td><td><span class="chip ok">PASS</span></td><td class="mut">✔ real Modbus TCP sampling: 9 points (~895 ms cadence)<br>✔ real SP write 182℃ → HTTP 200 (25 ms, incl. Modbus transaction)<br>✔ governance on the live link: 5/5 attacks rejected (200/400/150/188.1/175.9), legal 180 accepted<br>✔ SP→PV physical closed loop converged to |PV−182|≤3℃ in 30 s (first-order inertia)<br>governed write 185℃ (read-back verified, register accepted) while PV frozen at 150℃ (out of window) <br>✔ independent monitoring layer raised the recipe-window alarm within 2 s (defense-in-depth: read-back closure does not cover process response)<br>time-series DB kept sampling during the loop: 40 points total</td></tr><tr><td><code>plc-4-fault</code> Link-fault &amp; recovery drill (real TCP)</td><td><span class="chip ok">PASS</span></td><td class="mut">✔ after the link break the driver failure was sensed by the main app (test-driver ok=false)<br>✔ reconnected successfully after simulator restart (test-driver ok=true)</td></tr></table>
+<div class="note">All traffic runs over the simulator's real protocol stacks (Modbus TCP/RTU, OPC UA, MQTT, HTTP). The governed write path — SP write → interlock → physical model → DAQ read-back → F5 interdiction → F2 frozen-alarm — is exercised on the live link, not on mocks.</div></section>
+<section><h2>3 · Closed-loop optimization (cast-film twin, governed writes)</h2>
+<table><tr><th>Seed</th><th>J0</th><th>Jend</th><th>J/J*</th><th>Iters</th><th>Writes</th><th>Rejected</th></tr><tr><td>42</td><td>70.167</td><td>86.845</td><td>0.966</td><td>2</td><td>2</td><td>0</td></tr><tr><td>43</td><td>68.608</td><td>87.236</td><td>0.97</td><td>2</td><td>2</td><td>0</td></tr><tr><td>44</td><td>65.74</td><td>87.08</td><td>0.969</td><td>2</td><td>2</td><td>0</td></tr></table>
+<div class="note">Offline optimum W* = <b>89.894</b> · 3/3 seeds converged · 6 governed writes, 0 rejected · ratio J/J* ∈ [0.966, 0.97], mean 0.968.</div></section>
+<section><h2>3b · AgentTeam optimization mission — task board → time-range data → governed writes → target</h2>
+<table><tr><th>Mission check</th><th>Result</th></tr><tr><td>Goal filed on the task board and dispatched to the worker</td><td><span class="chip ok">PASS</span></td></tr><tr><td>Time-range data read via daq_query (from/to/bucket)</td><td><span class="chip ok">PASS</span></td></tr><tr><td>Governed parameter writes, each with an opened and judged record</td><td><span class="chip ok">PASS</span></td></tr><tr><td>Parameter journal shows Agent attribution for the writes</td><td><span class="chip ok">PASS</span></td></tr><tr><td>Final process value within tolerance of the optimization target</td><td><span class="chip ok">PASS</span></td></tr><tr><td>Task closed (lead dispatch → worker scripted completion → parent aggregation)</td><td><span class="chip ok">PASS</span></td></tr></table>
+<div class="note">Goal filed on the team task board → dispatched to the worker → worker reads the acquisition window via <code>daq_query</code> (<code>from/to/bucket</code>, time-series semantics) → computes the corrected setpoint → governed writes each open an auditable optimization record (judged) → plant follows → final PV <b>204.700</b> vs target <b>204.704</b> with 1 governed writes (≤3) → task closed with a report artifact. Deterministic policy (no LLM credentials); the paths are the production paths. Verdict: <b>ATTAINED</b>.</div></section>
+<section><h2>3c · Biaxial (BOPET) full-line mission — nine devices, five protocols</h2>
+<table><tr><th>Dimension</th><th>Value</th></tr>
+<tr><td>Line commissioning</td><td>differential probe-and-provision — 9 devices / 49 signals (30 SP + 19 PV with process semantics), one whole line from real driver configs</td></tr>
+<tr><td>AgentTeam objective</td><td>thickness 25.0 ± 0.7 µm, filed on the task board, dispatched to the worker</td></tr>
+<tr><td>Governed multi-node writes</td><td>4 writes across 3 actuation nodes (cast-roll speed / MDO fast-roll / TDO rail; Modbus TCP + OPC UA), each journaled with Agent attribution</td></tr>
+<tr><td>Outcome</td><td>final thickness <b>25.48 µm</b> · verdict <b>ATTAINED</b> · hard gate green</td></tr></table>
+<div class="note">Physics follows through transport delay and first-order lag; per-round trajectory and the full line profile are in the <code>Simulated production line profile</code> / <code>AgentTeam closed-loop tuning walkthrough</code> chapters of <code>bench/results/20260920094610-to4/report.md</code>; raw trail in <code>agentteam-biax.log</code>.</div></section>
+<section><h2>3d · Real-LLM agent closed loops — execution traces</h2>
+
+<div class="note">No real-LLM loop log in this run (P5/P5b run only with <code>--agent &lt;harness&gt;</code>). The deterministic mission trace is in <code>agentteam-mission.log</code>.</div><div class="note">The agent was a real LLM harness (omp/opencode) driving the same governed tool surface over real protocol transports. Boilerplate (tool-schema injections, platform manual) is filtered from these traces; the full raw trail is in the archived logs; the deterministic mission trace is in <code>agentteam-mission.log</code>.</div></section>
+<section><h2>4 · Cross-scenario portability — film-line, zero code changes</h2>
+<div class="note">Devices 5 · own lines 3/5 · sampling 5 nodes · F5 interdicted <b>9/9</b> · false blocks 0 · <b>code changes 0</b>. The same delegation/governance code paths re-commission an unseen production scenario purely from configuration.</div></section>
+<section><h2>5 · E1a · 4-arm governance ablation</h2><table>
+<tr><th>Arm</th><th>Interception (per rep)</th><th>Window breaches executed</th><th>False blocks</th><th>Write p50 (ms)</th></tr>
+<tr><td><b>Full (interlock + readback + gate)</b></td><td>6/6 / 6/6 / 6/6</td><td>0</td><td>0</td><td>140.7 / 110.6 / 141</td></tr><tr><td><b>No interlock</b></td><td>4/6 / 4/6 / 4/6</td><td>6</td><td>0</td><td>114.8 / 125.2 / 127.2</td></tr><tr><td><b>No readback</b></td><td>6/6 / 6/6 / 6/6</td><td>0</td><td>0</td><td>111.9 / 125.1 / 127.1</td></tr><tr><td><b>Ungated (no approval gate)</b></td><td>4/6 / 4/6 / 4/6</td><td>6</td><td>0</td><td>125.4 / 139.9 / 124.8</td></tr></table>
+<div class="note">Interception is provided by the batch-window interlock: Full and No-readback interdict all 6 attacks; removing the interlock lets the two window-class attacks execute and be journaled — <i>attribution ≠ prevention</i>. The hard range is structural (0 false blocks in every arm); latency is statistically indistinguishable across arms.</div></section>
+<section><h2>6 · Reproducibility matrix (machine verdicts)</h2>
+<h2 style="font-size:13px;color:var(--mut);margin-top:2px">6.1 · This execution</h2>
+<table><tr><th>Comparison</th><th>Verdict</th></tr>
+<tr><td class="mono">20260914-baseline-run-e1lite-4arm vs 20260920094442-e1lite</td><td><span class="chip ok">REPRODUCIBLE</span></td></tr><tr><td class="mono">20260914-baseline-run-plc-fx0 vs 20260920094335-1b5g</td><td><span class="chip ok">REPRODUCIBLE</span></td></tr><tr><td class="mono">pipeline: 20260920093330-md4 vs 20260920094610-to4</td><td><span class="chip ok">REPRODUCIBLE</span></td></tr><tr><td>Gate selftest — tampered interdiction rate must be rejected</td><td><span class="chip ok">PASS</span></td></tr></table>
+
+<h2 style="font-size:13px;color:var(--mut)">6.2 · Historical archive</h2>
+<div class="note">Layer comparisons against the frozen 20260914 baseline and cross-run pairs: <b>43/46 REPRODUCIBLE</b>. Exceptions below are disclosed with evidence-derived causes — none is a governance failure.</div>
+<table><tr><th>Historical comparison</th><th>Verdict</th><th>Evidence-derived cause</th></tr><tr><td class="mono">20260914-baseline-run-plc-fx0 vs 20260917100825-12ew</td><td><span class="chip bad">NOT REPRODUCIBLE</span></td><td class="mut">F2 freeze-alarm timing under heavy load (documented load jitter)</td></tr><tr><td class="mono">20260914-baseline-run-plc-fx0 vs 20260918044645-1930</td><td><span class="chip bad">NOT REPRODUCIBLE</span></td><td class="mut">F2 freeze-alarm timing under heavy load (documented load jitter)</td></tr><tr><td class="mono">20260914-baseline-run-plc-fx0 vs bench-results-20260918045044-xi8</td><td><span class="chip bad">NOT REPRODUCIBLE</span></td><td class="mut">F2 freeze-alarm timing under heavy load (documented load jitter)</td></tr></table>
+<div class="note">Comparator hygiene: <code>bench/compare.mjs</code> judges the layer tiers; applied to a pipeline <code>run.json</code> it yields an empty per-check table — 54 such vacuous files were excluded (disclosed in the manuscript). Pipeline pairs are judged only by <code>bench/tools/compare-pipeline.mjs</code>.</div>
+<div class="note">Judge-class metrics (interdiction / false-block rates, boundaries, attribution, SP read-back, static anchors, portability composition, ablation outcomes) must be <b>bit-identical</b> for a REPRODUCIBLE verdict; environment-class metrics (latencies, sample counts, wall time, biaxial write counts and final thickness) are recorded but never gated.</div></section>
+<section><h2>7 · Method & environment</h2>
+<div class="note">
+<ul style="margin:0;padding-left:18px">
+<li>Executed strictly per the <code>bench/PIPELINE.md</code> §0 execution card. Cold boot on an <b>isolated config root</b> (<code>AW_HOME</code>): the pipeline auto-started platform and PLC simulator; first-boot admin self-registration; resident instances on other ports were never touched (no single-instance contention).</li>
+<li>Determinism: all randomness from <code>--seed 42</code> (mulberry32); fixture tags randomized per run; every run lands in <code>bench/results/&lt;runId&gt;</code>, never overwritten.</li>
+<li>Environment caveat: a local proxy client intermittently saturates the Windows ephemeral port range (~16k TIME_WAIT), causing transient loopback connect failures; the harness absorbs these with bounded exponential-backoff retries that re-read true server state and cannot fabricate results.</li>
+</ul></div></section>
+<section><h2>8 · Reproduce</h2>
+<pre>export NO_PROXY=127.0.0.1,localhost AW_BASE=http://127.0.0.1:3005
+export AW_HOME="$PWD/../aw-bench-home" AW_MODE=home AW_BENCH_MODE=1 NUXT_SESSION_PASSWORD=aw-bench-isolated-2026
+node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3   # integrated main battle
+node bench/run.mjs --tier plc --seed 42                              # real-protocol layer
+node bench/e1-lite.mjs --seed 42 --repeats 3                         # 4-arm ablation
+node scripts/api-live-e2e.mjs                                        # full API survey
+node bench/compare.mjs --baseline 20260914-baseline/run-plc-fx0 --b &lt;plc-runId&gt;
+node bench/tools/compare-pipeline.mjs --a &lt;pipeline-runId-A&gt; --b &lt;pipeline-runId-B&gt;</pre></section>
+<footer>Generated by <code>bench/tools/build-final-report.mjs</code> — all figures read from archived run artifacts; nothing hand-typed.</footer>
+</div></body></html>

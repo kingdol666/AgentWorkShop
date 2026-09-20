@@ -93,7 +93,7 @@ export function renderDashboard({ env, phases, kpis, lines, charts, checks, metr
   code{background:#0f1c2c;padding:1px 6px;border-radius:4px;font-size:12px;color:var(--cyn)}
   .ck{font-family:ui-monospace,monospace;font-size:12px}
   .ck.pass{color:var(--grn)} .ck.fail{color:var(--red)} .ck.warn{color:var(--amb)} .ck.skip{color:var(--sub)}
-  .ev{color:#7f97b0;font-size:11.5px;margin:2px 0 0}
+  .ev{color:#7f97b0;font-size:11.5px;margin:2px 0 0;overflow-wrap:anywhere;word-break:break-all}
   footer{color:#5d7590;font-size:11.5px;margin-top:30px;border-top:1px solid var(--line);padding-top:14px;
     font-family:ui-monospace,monospace;white-space:pre-wrap}
 </style></head><body><div class="wrap">
@@ -125,7 +125,7 @@ export function renderDashboard({ env, phases, kpis, lines, charts, checks, metr
   <div class="card"><h3>Check results</h3>
     ${(checks ?? []).map(c => `<div style="margin-bottom:9px">
       <div class="ck ${c.status}">${c.status === 'pass' ? '✔' : c.status === 'warn' ? '▲' : c.status === 'skip' ? '↓' : '✘'} [${esc(c.phase)}] ${esc(c.id)} · ${esc(c.title)}</div>
-      ${(c.evidence ?? []).slice(0, 6).map(e => `<div class="ev">${esc(e)}</div>`).join('')}
+      ${(c.evidence ?? []).slice(0, 6).map(e => `<div class="ev">${esc(String(e).length > 320 ? String(e).slice(0, 320) + `… (+${String(e).length - 320} chars, full value in run.json)` : e)}</div>`).join('')}
     </div>`).join('')}
   </div>
   ${closedloop?.seeds?.length

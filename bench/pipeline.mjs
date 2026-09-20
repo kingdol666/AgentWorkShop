@@ -320,8 +320,16 @@ await timed('P4', 'tool-loop', `数采→数控→判定 工具级闭环（harne
     csvRows.push({ phase: 'P4', line: l.index, protocol: l.protocol, loop_iterations: l.loopIterations, convergence_s: l.convergenceS })
   }
   // 工艺响应核对：写 SP 后物理模型真值是否随动
-  const truthAfter = await plantTruth(200)
-  const nB = (truthBefore?.samples ?? []).length, nA = (truthAfter?.samples ?? []).length
+  // 冷模拟器暖机:真值流按 tick 落盘,给有界等待窗(≤45s),避免冷启动假 warn(2026-09-20 R2 实测)
+  let truthAfter = await plantTruth(200)
+  const nB = (truthBefore?.samples ?? []).length
+  let nA = (truthAfter?.samples ?? []).length
+  const tw0 = Date.now()
+  while (nA <= nB && Date.now() - tw0 < 45_000) {
+    await sleep(4000)
+    truthAfter = await plantTruth(200)
+    nA = (truthAfter?.samples ?? []).length
+  }
   const ps = await plantState()
   add('P4', 'plant-response', '工艺模型响应（SP→plant truth 随动）', nA > nB ? 'pass' : 'warn',
     [`真值样本 ${nB} → ${nA}`, `plant state: ${JSON.stringify(ps)?.slice(0, 180)}`])
@@ -1029,9 +1037,15 @@ await timed('P7', 'frames', '多形态数采：向量轮廓与图像帧落库', 
   }
   const vecId = await mk('thickness-profile', 'thickness-scan')
   const imgId = await mk('ccd-image', 'ccd-image')
-  await sleep(9000)
-  const vf = vecId ? (await api.call('GET', `/api/workshop/daq/${vecId}/frames?kind=vector&limit=5`)).data?.frames ?? [] : []
-  const imf = imgId ? (await api.call('GET', `/api/workshop/daq/${imgId}/frames?kind=image&limit=5`)).data?.frames ?? [] : []
+  // 冷节点暖机:帧采集有界轮询(≤30s),替代固定 9s 睡眠(冷启动首帧可能 >9s,2026-09-20 R2 实测)
+  let vf = [], imf = []
+  const tf0 = Date.now()
+  for (;;) {
+    await sleep(3000)
+    vf = vecId ? (await api.call('GET', `/api/workshop/daq/${vecId}/frames?kind=vector&limit=5`)).data?.frames ?? [] : []
+    imf = imgId ? (await api.call('GET', `/api/workshop/daq/${imgId}/frames?kind=image&limit=5`)).data?.frames ?? [] : []
+    if ((vf.length > 0 && imf.length > 0) || Date.now() - tf0 > 30_000) break
+  }
   add('P7', 'frames', '多形态数采（向量/图像帧）', vf.length && imf.length ? 'pass' : (vf.length || imf.length) ? 'warn' : 'fail', [
     `${vf.length ? '✔' : '✘'} 向量轮廓帧 ${vf.length} （${vf[0]?.points ?? 0} points）`,
     `${imf.length ? '✔' : '✘'} 图像帧 ${imf.length} （${imf[0]?.meta?.width ?? 0}×${imf[0]?.meta?.height ?? 0} ${imf[0]?.meta?.mime ?? ''}）`,
@@ -1079,7 +1093,7 @@ await timed('P8', 'portability', 'Cross-scenario portability (re-commission on a
         if ((s?.data?.points ?? []).length > 0) continue
         pending.push(l)
       }
-      if (pending.length === 0 || Date.now() - tR > 24_000) break
+      if (pending.length === 0 || Date.now() - tR > 90_000) break // 冷 opcua 服务端首启含自签证书生成,实测可达 ~60s
       await sleep(3000)
     }
   }

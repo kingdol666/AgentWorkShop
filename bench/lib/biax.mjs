@@ -253,6 +253,32 @@ async function readPvMean(api, nodeId, limit = 5) {
 }
 
 /**
+ * 断膜统一恢复(起跑健康门与使命中途卫兵共用,2026-09-20 稳定性根修):
+ * warm 复位(零随机漂移;引擎 warm 路径会把运输线预填稳态 h0,读数应在一个运输拍内回升)
+ * + 配方基线重下 + 每 5s 一拍等膜重成形(至多 60s,读数回 ≥15μm 即成功),至多 attempts 次。
+ * 返回恢复后的读数;次数用尽仍 <15μm 由调用方如实终止。
+ * 历史 bug 备忘:中途卫兵曾只做配方重下且仅等 15s(破膜后 h0≈0 填满运输线,15s 必读 0.00,
+ * 误判「恢复失败」),起跑门则误用 line.ids.recipe(undefined,静默 404)——已统一至此。
+ */
+async function recoverFilmBreak(api, line, thickDaq, ev, label, attempts = 2) {
+  for (let k = 1; k <= attempts; k++) {
+    const rs = await plantReset({ warm: true, disturbances: { heaterDecay: 1, feedDriftPerMin: 0 } })
+    const rid = line.ids?.recipeId ?? line.ids?.recipe
+    const ra = rid ? await api.call('POST', `/api/workshop/dcw/recipes/${rid}/apply`, {}).catch(() => null) : null
+    ev.push(`${label}#${k}: warm 复位(${rs.status != null && rs.status < 400 ? '✔' : `✘ ${rs.message ?? ''}`}) + 配方基线重下(${ra && ra.status === 200 ? '✔' : '✘'})`)
+    for (let w = 0; w < 12; w++) { // 运输滞后:每 5s 一拍,至多 60s 等膜重新成形
+      await sleep(5000)
+      const t = await readPvMean(api, thickDaq)
+      if (t != null && t >= 15) {
+        ev.push(`${label}#${k}: 基线回至 ${t.toFixed(2)}μm(${(w + 1) * 5}s)`)
+        return t
+      }
+    }
+  }
+  return await readPvMean(api, thickDaq)
+}
+
+/**
  * AgentTeam 优化任务:任务板下达厚度目标 → worker 经工具面在多个执行节点上受治理写 →
  * 物理随动 → 达标收口。返回全轨迹与判定原料。
  */
@@ -299,19 +325,12 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
   out.traj.push({ iter: 0, knob: null, node: null, from: null, to: null, record: null, thickness })
   ev.push(`3. initial thickness=${thickness != null ? thickness.toFixed(2) : '?'} μm(目标 ${THICKNESS_TARGET}±${THICKNESS_TOL})`)
   // (2.5) 起跑健康门:post-provision 瞬态或残留扰动可能压破薄膜(读数 <10μm = 断膜量级)。
-  // 偏离目标(如蓝图稳态 28μm)是任务的合法起点,交给闭环写收敛;只有「断膜」才恢复:
-  // warm 复位(已零漂移)+ 配方重下,并等待 ≥运输滞后(读数回 >15μm 或 60s),至多 2 次。
+  // 偏离目标(如蓝图稳态 28μm)是任务的合法起点,交给闭环写收敛;只有「断膜」才恢复
+  // (统一走 recoverFilmBreak:warm 复位+配方重下+等膜重成形,至多 2 次)。
   let rebases = 0
   while (thickness != null && thickness < 10 && rebases < 2) {
     rebases++
-    const rs = await plantReset({ warm: true, disturbances: { heaterDecay: 1, feedDriftPerMin: 0 } })
-    ev.push(`2.5 断膜恢复#${rebases}: warm 复位(${rs.status != null && rs.status < 400 ? '✔' : `✘ ${rs.message ?? ''}`}) + 配方基线重下`)
-    await api.call('POST', `/api/workshop/dcw/recipes/${line.ids.recipe}/apply`, {}).catch(() => {})
-    for (let w = 0; w < 12; w++) { // 运输滞后 12m+:每 5s 一拍,至多 60s 等膜重新成形
-      await sleep(5000)
-      thickness = await readPvMean(api, thickDaq)
-      if (thickness != null && thickness >= 15) break
-    }
+    thickness = await recoverFilmBreak(api, line, thickDaq, ev, '2.5 断膜恢复', 1)
     out.thickness = thickness
     out.traj.push({ iter: 0, knob: null, node: null, from: null, to: null, record: null, thickness, note: `post-rebase#${rebases}` })
     ev.push(`2.5 恢复后基线: ${thickness != null ? thickness.toFixed(2) : '?'} μm`)
@@ -324,8 +343,13 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
     if (thickness == null) { ev.push(`iter${i + 1}: 测厚读数缺失,跳过`); continue }
     const err = (thickness - THICKNESS_TARGET) / thickness // >0 = 偏厚
     const rd = await api.call('POST', `/api/workshop/dcw/${nodeId}/read`, {})
-    const cur = Number(rd.data?.read?.value ?? rd.data?.value)
-    if (!Number.isFinite(cur)) { ev.push(`iter${i + 1}: ${knob.sig} 当前值读取失败`); continue }
+    let cur = Number(rd.data?.read?.value ?? rd.data?.value)
+    if (!Number.isFinite(cur)) { // 瞬态读失败重试一次(网关节拍/回环抖动),避免无谓跳过旋钮
+      await sleep(1500)
+      const rd2 = await api.call('POST', `/api/workshop/dcw/${nodeId}/read`, {})
+      cur = Number(rd2.data?.read?.value ?? rd2.data?.value)
+    }
+    if (!Number.isFinite(cur)) { ev.push(`iter${i + 1}: ${knob.sig} 当前值读取失败(重试后)`); continue }
     const dec = sig.decimals ?? 2
     const next = Number(clamp(cur * (1 + err * knob.share), sig.min, sig.max).toFixed(dec))
     if (Math.abs(next - cur) < Math.max(10 ** -dec, (sig.max - sig.min) * 0.002)) { ev.push(`iter${i + 1}: ${knob.sig} 变更量过小(cur=${cur}),换下一旋钮`); continue }
@@ -350,17 +374,19 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
     // 断膜卫兵:BOPET 目标 25μm,读数跌破 20% 目标 = 流量/拉伸已在植物侧塌落
     //   (多协议写簇下的模拟器竞态,2026-09-18 P10 实测:泵压→0、速比→1、厚度→0±噪声;
     //   平台侧全部写入均回读一致)。死基线上继续纠偏只会把旋钮推向下限——
-    //   先重下配方基线恢复一次,仍死则如实终止。
-    if (thickness != null && thickness < THICKNESS_TARGET * 0.2 && !out.rebased) {
-      out.rebased = true
-      ev.push(`iter${i + 1}: 检出断膜量级读数(${thickness.toFixed(2)}μm << 目标 ${THICKNESS_TARGET}μm)——暂停纠偏,重下配方基线恢复`)
-      const ra = await api.call('POST', `/api/workshop/dcw/recipes/${line.ids?.recipeId ?? ''}/apply`, {}).catch(() => null)
-      await sleep(15_000)
-      const hr = await readPvMean(api, thickDaq)
-      thickness = hr ?? thickness
+    //   统一走 recoverFilmBreak(warm 复位+配方重下+等膜重成形,每次至多 2 拍×60s),
+    //   全使命至多 2 个恢复事件;额度用尽仍断膜则如实终止。
+    if (thickness != null && thickness < THICKNESS_TARGET * 0.2) {
+      if ((out.rebased ?? 0) >= 2) {
+        ev.push(`iter${i + 1}: 恢复额度用尽仍断膜(${thickness.toFixed(2)}μm),如实终止(植物侧流量/拉伸异常,非治理写路径或任务数学缺陷)`)
+        break
+      }
+      out.rebased = (out.rebased ?? 0) + 1
+      ev.push(`iter${i + 1}: 检出断膜量级读数(${thickness.toFixed(2)}μm << 目标 ${THICKNESS_TARGET}μm)——暂停纠偏,warm 复位+配方基线恢复`)
+      thickness = await recoverFilmBreak(api, line, thickDaq, ev, `iter${i + 1}.rebase`, 2)
       out.thickness = thickness
-      out.traj.push({ iter: `${i + 1}.rebase`, knob: 'recipe-apply', node: line.ids?.recipeId ?? '', from: null, to: null, record: null, thickness })
-      ev.push(`iter${i + 1}.rebase: 配方一键下发 ${ra && ra.status === 200 ? '✔' : '✘'} · thickness→${thickness?.toFixed(2) ?? '?'}μm`)
+      out.traj.push({ iter: `${i + 1}.rebase`, knob: 'warm-reset+recipe-apply', node: line.ids?.recipeId ?? '', from: null, to: null, record: null, thickness })
+      ev.push(`iter${i + 1}.rebase: 恢复后读数 ${thickness?.toFixed(2) ?? '?'}μm`)
       if (thickness != null && Math.abs(thickness - THICKNESS_TARGET) <= THICKNESS_TOL) break
       if (thickness == null || thickness < THICKNESS_TARGET * 0.2) {
         ev.push(`iter${i + 1}: 基线恢复失败,如实终止(植物侧流量/拉伸异常,非治理写路径或任务数学缺陷)`)

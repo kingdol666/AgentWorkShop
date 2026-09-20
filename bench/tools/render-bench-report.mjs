@@ -87,6 +87,9 @@ const ctx = {
   env, phases, checks, kpis, metrics,
   closedloop: closedloop?.agg ? { writeMode: closedloop.writeMode, agg: closedloop.agg, seeds: closedloop.seeds } : null,
   charts, artifacts,
+  // 产线画像与 AgentTeam 闭环专章数据(随 run.json 归档;缺失时模板按无数据渲染)
+  lineProfile: run.lineProfile ?? null,
+  agentteam: run.agentteam ?? null,
 }
 writeText(join(outDir, 'report.md'), renderBenchmarkMd(ctx))
 writeText(join(outDir, 'report.html'), renderBenchmarkHtml(ctx))
