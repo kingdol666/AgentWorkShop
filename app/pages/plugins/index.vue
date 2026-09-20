@@ -11,8 +11,10 @@ import { useUserStore } from '~/stores/workshop/user'
 const { t } = useI18n()
 
 /** 插件 manifest 描述按插件名翻译(服务端文件数据);未知插件回退原文 */
-const pluginDesc = (p: { name: string, description: string }): string =>
-  PLUGIN_DESC_KEYS[p.name] ? t(PLUGIN_DESC_KEYS[p.name]) : p.description
+const pluginDesc = (p: { name: string, description: string }): string => {
+  const key = PLUGIN_DESC_KEYS[p.name]
+  return key ? t(key) : p.description
+}
 const userStore = useUserStore()
 
 interface PluginRoute { method: string, path: string }

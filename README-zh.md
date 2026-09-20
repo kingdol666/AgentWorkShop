@@ -558,7 +558,7 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 |---|---|---|---|
 | `e2e-full-closedloop.mjs` | **124 PASS / 0 FAIL**（2026-09-12，v0.7.36） | 注册 → 登录 → 产线/产品/配方 → 数采采样 → Agent 绑定节点 → `daq_query` → `dcw_control` → HITL 审批 → PLC 写入 → 回读 → 配方回退 → 级联删除 → 数据根隔离 | `node scripts/e2e-full-closedloop.mjs http://127.0.0.1:3111` |
 | `e2e-aml.ts --real` | 0 失败（2026-09-11） | AML 数据集 → 作业提交 → 状态/日志 → 排行榜 → 晋级门禁，跑在真实 Python 运行时上 | `node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json scripts/e2e-aml.ts --real` |
-| 五协议真实产线 | 37/37（2026-09-12 干净环境复验） | 逐协议连通、数采入 Timescale、逐协议数控下发 + 回读、Agent 闭环、HITL 经真实 OPC UA 写入、配方 + 参数账本回退 | `node scripts/_dbg-live-line-e2e.mjs` |
+| 五协议真实产线 | 37/37（2026-09-12 干净环境复验） | 逐协议连通、数采入 Timescale、逐协议数控下发 + 回读、Agent 闭环、HITL 经真实 OPC UA 写入、配方 + 参数账本回退 | `node bench/pipeline.mjs --profile integrated`（五协议闭环已并入 bench 门禁，原 37 项脚本因模拟器端口演进退役） |
 | 生产 API 全链路 | 64/64（2026-09-12 干净环境复验） | 跨重启持久化、模板 CRUD、任务 assign/complete/cancel/loop/pipeline、A2A + mailbox、WS 广播、MCP 端点、级联删除 | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
 | 产线权限 / 审计负向 | 21/21 + 9/9 | 三态产线授权 + 人话 403、绑定主体校验、授权撤销收敛、无 token WS 零遥测 | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
 | 渲染回归 | 30/30 | 数采表完整性（行数与 API 动态对齐）、WS 驱动行更新、筛选、详情页、3D 小镇 + 模型库、7 页 smoke、零 pageerror | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |

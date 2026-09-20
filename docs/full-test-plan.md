@@ -74,7 +74,6 @@
 | `NO_PROXY='127.0.0.1,localhost' node scripts/_dbg-render-regression.mjs http://127.0.0.1:3001 admin@awshop.local admin123` | 关键页渲染回归 | 29 |
 | `AW_E2E_TOKEN=… NO_PROXY='127.0.0.1,localhost' node scripts/e2e-config-groups.mjs` | 配置分组系统 + 两桥接插件正确/错误 token·URL 实测 | 58 |
 | `E2E_USER=admin@awshop.local E2E_PASS=admin123 NO_PROXY='127.0.0.1,localhost' node scripts/_dbg-groups-ui-verify.mjs` | 设置页分组 UI（浏览器实测） | 16 |
-| `node scripts/_dbg-daq-rowstyle-verify.mjs` | 数采行样式 + 设置页三节拍 | 10+6 |
 | `node scripts/_dbg-daq-intervals-func.mjs` | 三节拍（采集/WS下发/趋势刷新）独立热生效 + 下限钳制 + 详情页按节拍实测重拉 | 13 |
 | `node scripts/_dbg-town-smoke.mjs` | 数字孪生画布/场景钩子/帧推进 | 5 |
 
@@ -87,7 +86,7 @@
 | 脚本 | 覆盖 | 基线 |
 |---|---|---|
 | `NO_PROXY='*' node scripts/_dbg-protocol-matrix.mjs` | 5 协议 DAQ 读取 + 4 路 DCW 读/写闭环（modbus-tcp SP→PV 真收敛） | 全绿 |
-| `NO_PROXY='127.0.0.1,localhost' node scripts/_dbg-live-line-e2e.mjs http://127.0.0.1:3001` | S1 夹具→S2 协议连通→S3 数采落库→S4 五路数控→S5 Agent 闭环(CLOSEDLOOP-OK)→S6 HITL 真实写入 | 37 |
+| `node bench/pipeline.mjs --profile integrated` | 五协议工业闭环现行门禁（原 37 项 live-line 脚本因模拟器端口演进退役，覆盖并入 bench P 阶段）：连通→数采落库→五路数控→Agent 闭环→HITL→配方/参数回退 | 75 |
 | `AW_E2E_TOKEN=… NO_PROXY='127.0.0.1,localhost' node scripts/e2e-plc-plugin-closedloop.mjs` | A 插件健康 / B 产线供给 / C 数采交叉核对 / D 真实诊断 / E 知识闭环 / F 参数逐键热生效 / G Channel 级开关 | 71 |
 | `AW_E2E_TOKEN=… NO_PROXY='127.0.0.1,localhost' node scripts/production-closed-loop-e2e.mjs` | 生产闭环增强：事件自动诊断(source=auto)→kb_search→dcw_control(HITL)→回写 | 23 |
 | `AW_E2E_TOKEN=… NO_PROXY='127.0.0.1,localhost' node scripts/three-system-e2e.mjs`（可选 `--full` 走 omp 真实诊断） | AW × 深度诊断 × rag-knowledge 三系统；插件启停热重载 | 52 |
@@ -135,7 +134,7 @@
 ## Phase 7 浏览器目视验收（Puppeteer 截图逐页过目）
 
 覆盖页：登录/仪表盘/产线管理/数采列表+详情（趋势图在动）/数控/数字孪生（帧推进+无黑屏）/设置（分组渲染+折叠+来源徽标）/插件/运维日志 /logs/AML/AgentTeam。
-工具：`scripts/ui-screenshot.mjs`、`scripts/_dbg-audit-all-pages.mjs`（全页 console error 扫描=0）。截图存 `.e2e-shots/` 逐张目视；破版/白屏/控制台报错即红项。
+工具：`scripts/ui-screenshot.mjs`、`scripts/ui/audit-layout.mjs`、`scripts/_sweep-button-contrast.mjs`（双主题全路由按钮对比度+空按钮扫描）。截图存 `.e2e-shots/` 逐张目视；破版/白屏/控制台报错即红项。
 
 ---
 
