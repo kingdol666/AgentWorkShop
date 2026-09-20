@@ -1,0 +1,77 @@
+[
+  {
+    "file": "step01-daq-nodes.png",
+    "title": "DAQ console — acquisition nodes bound to the simulated line, live PV streaming"
+  },
+  {
+    "file": "step02-dcw-lines.png",
+    "title": "Line Ops — write-control nodes (setpoints) per line"
+  },
+  {
+    "file": "step03-team-create-modal.png",
+    "title": "AgentTeam creation — New Group dialog"
+  },
+  {
+    "file": "step04-team-card.png",
+    "title": "AgentTeam created — group card with visibility and deploy controls"
+  },
+  {
+    "file": "step05-goal-composer.png",
+    "title": "Optimization goal & SOP — Composer in task mode, assigned to the executor"
+  },
+  {
+    "file": "step06-goal-dispatched.png",
+    "title": "Goal posted to the task board — routed to the assigned executor"
+  },
+  {
+    "file": "step07-execution-timeline.png",
+    "title": "Team execution — agent events and governed writes on the channel timeline"
+  },
+  {
+    "file": "step08-thickness-trend.png",
+    "title": "Process quantity trend — film thickness converging into the 50 ± 2 μm window"
+  },
+  {
+    "file": "step09-journal-records.png",
+    "title": "Parameter journal & optimization records — agent-attributed setpoint changes"
+  },
+  {
+    "file": "step10-task-board.png",
+    "title": "Task board — goal task lifecycle to COMPLETED"
+  },
+  {
+    "meta": {
+      "finalThickness": 49.1,
+      "targetWindow": "50±2 μm",
+      "traces": [
+        {
+          "iter": 1,
+          "hBefore": 52.98,
+          "screwTo": 142,
+          "writeOk": true,
+          "judged": true
+        },
+        {
+          "iter": 2,
+          "hBefore": 51.12,
+          "screwTo": 139,
+          "writeOk": true,
+          "judged": true
+        },
+        {
+          "iter": 3,
+          "hBefore": 49.85,
+          "screwTo": 139,
+          "writeOk": true,
+          "judged": false
+        },
+        {
+          "iter": "final",
+          "h": 50.77
+        }
+      ],
+      "taskState": "CANCELED",
+      "optimumJ": 89.894
+    }
+  }
+]

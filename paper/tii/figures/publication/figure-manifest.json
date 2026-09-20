@@ -35,6 +35,12 @@
       "width_mm": 88.0,
       "height_mm": 72.0,
       "min_label_pt": 8.007874015748031
+    },
+    {
+      "name": "fig-agentteam-demo",
+      "width_mm": 181.0,
+      "height_mm": 52.0,
+      "min_label_pt": 8.007874015748031
     }
   ],
   "font": "Calibri, embedded subset (regular/bold)",
@@ -44,6 +50,7 @@
     "walkthrough/p1-driver.png",
     "walkthrough/p2-binding.png",
     "walkthrough/p3-team.png",
-    "walkthrough/p4-records.png"
+    "walkthrough/p4-records.png",
+    "agentteam-demo/step01,step05,step09 (AgentTeam demonstration run, light console theme)"
   ]
 }
