@@ -3,28 +3,34 @@
  *
  * 把本地 rag-knowledge 服务(FastAPI 后端 + Nuxt web)集成为 AgentWorkShop 的
  * 团队知识库:启动即确保「aw-industrial」知识库存在,并向 agent 注入三个工具——
- * kb_search(全库检索)/ kb_store(经验沉淀)/ kb_index(文档入库)。
+ * kb_agent(知识库 Agent 对话)——检索/入库/经验全部由知识库内部 Agent 处理。
  * 另开放 /health、/search、/experience 三个插件 API 便于运维探查。
  * 服务不可达时工具返回 isError 文本(含原因与修复建议),绝不抛异常拖垮宿主。
  */
 const KB_NAME = 'aw-industrial'
-const CATEGORIES = ['best_practice', 'troubleshooting', 'lesson_learned', 'optimization', 'tip', 'workflow', 'decision']
-const SEVERITIES = ['critical', 'important', 'normal', 'tip'] // rag-knowledge ExperienceCreate.severity 枚举
 const DEFAULT_BASE = 'http://127.0.0.1:8770' // FastAPI 后端
 const DEFAULT_WEB = 'http://127.0.0.1:6789' // Nuxt web(文档写盘)
 
 export default {
   name: 'rag-bridge',
-  version: '1.1.0',
-  description: 'rag-knowledge 知识库桥接:工业知识检索/经验沉淀/文档入库三工具',
+  version: '2.1.0',
+  description: 'rag-knowledge 知识库桥接 v2.1:kb_agent 对话工具(功能解耦,sync/async 双模式)+ kb_agent_status 异步结果查询',
   auth: 'user', // 平台转发层按此声明统一校验(缺省 'none' 开放)
   client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
+  // 插件配置分组:插件调用平台 API 增加自己的设置分区(设置页独立成区、可折叠)。
+  // id 由宿主收敛进 plugin-rag-bridge* 命名空间,不会与其它插件/平台分组撞车;
+  // 插件卸载或停用时这两个分区随之消失,不残留空区块。
+  configGroups: [
+    { id: 'default', labelKey: 'plugin.rag-bridge.group.conn', label: 'rag-knowledge 连接', description: '后端与 Web 地址(保存即热生效)', order: 400 },
+    { id: 'auth', labelKey: 'plugin.rag-bridge.group.auth', label: 'rag-knowledge 鉴权', description: '服务端开启鉴权时所需 Token', order: 410, collapsed: true },
+  ],
   // 插件设置声明:key 强制编址 plugins.rag-bridge.<key>,进 SystemConfigService 后
-  // 前端设置页自动渲染(labelKey 解析 i18n.json 的 plugin.rag-bridge.settings.*)
+  // 前端设置页自动渲染(labelKey 解析 i18n.json 的 plugin.rag-bridge.settings.*);
+  // group 指向上面声明的分区 → 字段按分区隔离展示
   settings: [
-    { key: 'base_url', type: 'string', default: DEFAULT_BASE, labelKey: 'plugin.rag-bridge.settings.base_url', label: 'rag-knowledge 后端地址', description: 'FastAPI 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
-    { key: 'web_url', type: 'string', default: DEFAULT_WEB, labelKey: 'plugin.rag-bridge.settings.web_url', label: 'rag-knowledge Web 地址', description: 'Nuxt Web(文档写盘/目录);保存即热生效' },
-    { key: 'token', type: 'string', default: '', labelKey: 'plugin.rag-bridge.settings.token', label: 'rag-knowledge API Token', description: '服务端开启鉴权时的 MCP/API Token(Authorization: Bearer);空=匿名;保存即热生效' },
+    { key: 'base_url', type: 'string', default: DEFAULT_BASE, group: 'default', labelKey: 'plugin.rag-bridge.settings.base_url', label: 'rag-knowledge 后端地址', description: 'FastAPI 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
+    { key: 'web_url', type: 'string', default: DEFAULT_WEB, group: 'default', labelKey: 'plugin.rag-bridge.settings.web_url', label: 'rag-knowledge Web 地址', description: 'Nuxt Web(文档写盘/目录);保存即热生效' },
+    { key: 'token', type: 'string', default: '', group: 'auth', labelKey: 'plugin.rag-bridge.settings.token', label: 'rag-knowledge API Token', description: '服务端开启鉴权时的 MCP/API Token(Authorization: Bearer);空=匿名;保存即热生效' },
   ],
   async setup(ctx) {
     // ---- 运行态 ----
@@ -45,18 +51,24 @@ export default {
     if (ctx.kv.get('kb.web_url') == null) ctx.kv.set('kb.web_url', DEFAULT_WEB)
     ctx.kv.set('kb.name', KB_NAME)
 
-    // base_url 守卫:仅 http/https 且 host 必须是 127.0.0.1/localhost(不合法则禁用出站)
-    try {
-      const u = new URL(base())
-      if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !['127.0.0.1', 'localhost'].includes(u.hostname)) {
-        throw new Error(`base_url 必须是 http(s)://127.0.0.1|localhost,实际 ${base()}`)
+    // base_url 守卫:仅 http/https 且 host 必须是 127.0.0.1/localhost(不合法则禁用出站)。
+    // 每次配置变更都重算 —— 否则改错地址后旧判定会一直沿用,「独立配置即时生效」不成立。
+    const applyOutboundGuard = () => {
+      try {
+        const u = new URL(base())
+        if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !['127.0.0.1', 'localhost'].includes(u.hostname)) {
+          throw new Error(`base_url 必须是 http(s)://127.0.0.1|localhost,实际 ${base()}`)
+        }
+        state.outbound = true
       }
-      state.outbound = true
+      catch (err) {
+        state.outbound = false
+        ctx.logger.error(`出站调用已禁用:${err?.message ?? err}(修正 rag-bridge 的「后端地址」后即恢复)`)
+      }
     }
-    catch (err) {
-      state.outbound = false
-      ctx.logger.error(`出站调用已禁用:${err?.message ?? err}(修正 kv['kb.base_url'] 后重启生效)`)
-    }
+    applyOutboundGuard()
+    // 配置热更新(runtime-settings 变更)→ 立即重算出站开关与下次探活
+    ctx.config.onChange(() => applyOutboundGuard())
 
     // ---- ensureKB:幂等初始化(失败仅告警,不阻塞装载) ----
     try {
@@ -151,157 +163,92 @@ export default {
       return null
     }
 
-    // ================= 工具 ×3(omp host 工具,lead/worker 全员可用) =================
+    // ================= 工具 ×1(kb_agent —— 功能解耦的唯一入口) =================
+    // 外部系统不再拼装检索/入库步骤:一个对话工具把任务原话交给 rag-knowledge
+    // 的原生 Agent(claude SDK + QDCVR skill + kb-mcp),检索/入库/经验/图谱全部
+    // 由知识库内部 Agent 自主完成,直接返回最终结果。
 
     ctx.omp.registerTool({
-      name: 'kb_search',
-      label: '全库检索',
-      description: '检索工业知识库(诊断报告/经验教训/操作规范),作业前先查历史经验,避免重复踩坑。',
+      name: 'kb_agent',
+      label: '知识库Agent',
+      description: '与 rag-knowledge 知识库的原生 Agent 对话(知识库操作唯一入口,功能解耦)。把任务原话交给它:检索问答(知识库侧自动走 QDCVR 全流程,返回带引用的可信答案)、文档入库(给出标题与完整 markdown 正文)、经验沉淀、图谱关联等,全部由知识库内部 Agent 自主处理并返回最终结果。harness/permission 一般留空(默认 claude + 最高权限)。',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: '检索问题(自然语言,中英文均可)' },
-          kb_id: { type: 'string', description: '限定知识库 ID(缺省为 aw-industrial)' },
-          top_k: { type: 'number', description: '返回条数上限(默认 5,经 stage2 精筛)' },
+          prompt: { type: 'string', description: '给知识库 Agent 的完整任务原话。检索:要查的问题;入库:目标知识库名(缺省 aw-industrial)+文档标题+完整 markdown 正文;经验:标题/类别/问题/解决方案' },
+          mode: { type: 'string', enum: ['sync', 'async'], description: '执行方式(按场景自选):sync 同步等待知识库执行完并返回结果(检索问答用,需要立刻拿到答案);async 异步——立即返回 task_id,知识库在后台完成任务,完成后可用 kb_agent_status 查询该 task 的结果(入库/经验沉淀类用,无需等待)' },
+          harness: { type: 'string', description: '可选:知识库侧执行引擎(缺省 claude,一般无需填写)' },
+          permission: { type: 'string', description: '可选:权限模式(缺省 bypassPermissions 最高权限,一般无需填写)' },
         },
-        required: ['query'],
+        required: ['prompt'],
       },
       roles: ['lead', 'worker'],
       handler: async (args) => {
         if (!state.outbound) {
-          return { text: `知识库检索不可用:${outboundOff().error}。修复后重启服务。`, isError: true }
+          return { text: '知识库 Agent 不可用:' + outboundOff().error + '。修复后重启服务。', isError: true }
         }
-        const query = String(args.query ?? '').trim()
-        if (!query) return { text: 'query 必填(要查什么问题)。', isError: true }
-        const kb = String(args.kb_id ?? '').trim() || kbId() || undefined
-        const topK = Math.min(Math.max(Math.round(Number(args.top_k) || 5), 1), 20)
-        const r = await ragCall('POST', `${base()}/api/v1/search/two-stage`,
-          { query, kb_id: kb, stage2_top_k: topK }, { timeoutMs: 30000 })
-        if (!r.ok) {
-          return { text: `检索失败:${r.error}。请确认 rag 后端(${base()})已启动(rag-knowledge 目录 start.bat / ragctl),稍后重试。`, isError: true }
-        }
-        const results = Array.isArray(r.body?.stage2?.results) ? r.body.stage2.results : []
-        if (results.length === 0) {
-          return { text: `未检索到相关经验/文档(查询:「${query}」)。可尝试更换关键词,或确认资料是否已用 kb_index 入库。` }
-        }
-        const top = results.slice(0, 5)
-        const lines = top.map((h, i) => {
-          const score = Number(h?.score ?? 0).toFixed(4)
-          const path = String(h?.doc_path ?? '(无路径)')
-          const brief = String(h?.content ?? '').replace(/\s+/g, ' ').trim().slice(0, 160)
-          return `${i + 1}. [score=${score}] ${path}\n   ${brief}${String(h?.content ?? '').length > 160 ? '…' : ''}`
-        })
-        return { text: `检索到 ${results.length} 条(展示前 ${top.length} 条):\n${lines.join('\n')}` }
-      },
-    })
+        const prompt = String(args.prompt ?? '').trim()
+        if (!prompt) return { text: 'prompt 必填(把要做的任务完整描述给知识库 Agent)。', isError: true }
+        const mode = String(args.mode ?? '').trim().toLowerCase() === 'async' ? 'async' : 'sync'
+        const body = { prompt, timeout_ms: 540000, mode }
+        const harness = String(args.harness ?? '').trim()
+        if (harness) body.harness = harness
+        const permission = String(args.permission ?? '').trim()
+        if (permission) body.permission = permission
 
-    ctx.omp.registerTool({
-      name: 'kb_store',
-      label: '经验沉淀',
-      description: '把本次作业中值得复用的经验(最佳实践/踩坑教训/操作要点)写入知识库,供团队后续检索。',
-      parameters: {
-        type: 'object',
-        properties: {
-          title: { type: 'string', description: '经验标题(一句话概括)' },
-          category: { type: 'string', enum: CATEGORIES, description: '经验类别' },
-          problem: { type: 'string', description: '遇到的问题/场景' },
-          solution: { type: 'string', description: '解决方案/操作步骤' },
-          key_lessons: { type: 'array', items: { type: 'string' }, description: '关键教训(条目列表,可选)' },
-          tags: { type: 'array', items: { type: 'string' }, description: '标签(可选)' },
-          severity: { type: 'string', enum: SEVERITIES, description: '严重程度(critical/important/normal/tip,可选,缺省 normal)' },
-        },
-        required: ['title', 'category'],
-      },
-      roles: ['lead', 'worker'],
-      handler: async (args) => {
-        if (!state.outbound) {
-          return { text: `经验沉淀不可用:${outboundOff().error}。修复后重启服务。`, isError: true }
-        }
-        const title = String(args.title ?? '').trim()
-        if (!title) return { text: 'title 必填(经验标题)。', isError: true }
-        const category = String(args.category ?? '').trim()
-        if (!CATEGORIES.includes(category)) {
-          return { text: `category 必须是以下之一:${CATEGORIES.join('/')}`, isError: true }
-        }
-        const kb = await requireKbId()
-        if (!kb) {
-          return { text: `经验沉淀失败:知识库 ${KB_NAME} 不存在且自动建库失败(检查 web ${web()} 是否启动)。`, isError: true }
-        }
-        const body = {
-          title,
-          category,
-          problem: String(args.problem ?? ''),
-          solution: String(args.solution ?? ''),
-        }
-        const lessons = (Array.isArray(args.key_lessons) ? args.key_lessons : []).map(s => String(s).trim()).filter(Boolean)
-        if (lessons.length) body.key_lessons = lessons
-        const tags = (Array.isArray(args.tags) ? args.tags : []).map(s => String(s).trim()).filter(Boolean)
-        if (tags.length) body.tags = tags
-        const severity = String(args.severity ?? '').trim()
-        if (severity) {
-          // rag-knowledge ExperienceCreate.severity 是枚举,非法值会被 422 拒收——先在本侧校验
-          if (!SEVERITIES.includes(severity)) {
-            return { text: `severity 必须是以下之一:${SEVERITIES.join('/')}`, isError: true }
+        if (mode === 'async') {
+          // 异步:立即返回 task_id,知识库后台完成;结果稍后用 kb_agent_status 查询
+          const sub = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: 30000, retries: 0 })
+          if (!sub.ok) {
+            return { text: '知识库异步任务提交失败:' + String(sub.error ?? '').slice(0, 200) + '。请确认 rag-knowledge web(' + web() + ') 已启动后重试。', isError: true }
           }
-          body.severity = severity
+          const taskId = String(sub.body?.task_id ?? '')
+          if (!taskId) return { text: '知识库异步任务提交异常:响应缺少 task_id。', isError: true }
+          return { text: '已提交知识库异步任务(后台执行中,无需等待):\ntask_id=' + taskId + '\n任务完成后可调用 kb_agent_status(task_id) 获取该任务的执行结果。' }
         }
-        const r = await ragCall('POST', `${base()}/api/v1/experience/${kb}`, body, { timeoutMs: 30000 })
+
+        const r = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: 580000 })
         if (!r.ok) {
-          return { text: `经验沉淀失败:${r.error}。请确认 rag 后端(${base()})已启动后重试。`, isError: true }
+          return { text: '知识库 Agent 调用失败:' + String(r.error ?? '').slice(0, 200) + '。请确认 rag-knowledge web(' + web() + ') 已启动后重试。', isError: true }
         }
-        const expId = String(r.body?.experience?.id ?? '(未返回 id)')
-        ctx.kv.bump('store.count')
-        return { text: `经验已沉淀:${title}(id=${expId},category=${category},kb=${KB_NAME})。` }
+        const reply = String(r.body?.reply ?? '').trim()
+        return { text: reply || '(知识库 Agent 返回空回复)' }
       },
     })
 
     ctx.omp.registerTool({
-      name: 'kb_index',
-      label: '文档入库',
-      description: '把一份 markdown 文档写入知识库并建立向量/图谱索引,供 kb_search 日后检索。',
+      name: 'kb_agent_status',
+      label: '知识库任务状态',
+      description: '查询知识库异步任务的执行状态与结果(kb_agent 以 mode=async 提交后,用返回的 task_id 查询;任务完成后返回知识库 Agent 的完整结果)。',
       parameters: {
         type: 'object',
         properties: {
-          title: { type: 'string', description: '文档标题(同时作为文件名)' },
-          content: { type: 'string', description: '文档正文(markdown)' },
-          tags: { type: 'array', items: { type: 'string' }, description: '标签(可选)' },
+          task_id: { type: 'string', description: 'kb_agent 异步提交时返回的 task_id' },
         },
-        required: ['title', 'content'],
+        required: ['task_id'],
       },
       roles: ['lead', 'worker'],
       handler: async (args) => {
         if (!state.outbound) {
-          return { text: `文档入库不可用:${outboundOff().error}。修复后重启服务。`, isError: true }
+          return { text: '知识库 Agent 不可用:' + outboundOff().error + '。修复后重启服务。', isError: true }
         }
-        const title = String(args.title ?? '').trim()
-        const content = String(args.content ?? '')
-        if (!title) return { text: 'title 必填(文档标题)。', isError: true }
-        if (!content.trim()) return { text: 'content 必填(markdown 正文,不能为空)。', isError: true }
-        const kb = await requireKbId()
-        if (!kb) {
-          return { text: `文档入库失败:知识库 ${KB_NAME} 不存在且自动建库失败(检查 web ${web()} 是否启动)。`, isError: true }
-        }
-        const tags = (Array.isArray(args.tags) ? args.tags : []).map(s => String(s).trim()).filter(Boolean)
-        // 第 1 步:web 写盘(响应 {success,document:{path,...}})
-        const docName = safeFileName(title)
-        const w = await ragCall('POST', `${web()}/api/kb/documents/create`,
-          { kbId: kb, name: docName, content, description: title }, { timeoutMs: 30000 })
-        if (!w.ok) {
-          return { text: `文档入库卡在第 1 步(web 写盘 ${web()}/api/kb/documents/create):${w.error}。未产生索引,可直接重试。`, isError: true }
-        }
-        const docPath = String(w.body?.document?.path ?? '')
-        if (!docPath) {
-          return { text: '文档入库卡在第 1 步:写盘成功但响应缺少 document.path,无法继续索引。', isError: true }
-        }
-        // 第 2 步:backend 索引(content 直传,doc_path 用写盘返回路径)
-        const r = await ragCall('POST', `${base()}/api/v1/search/index-document`,
-          { kb_id: kb, doc_path: docPath, doc_name: docName, description: title, content, tags }, { timeoutMs: 60000 })
+        const taskId = String(args.task_id ?? '').trim()
+        if (!taskId) return { text: 'task_id 必填(kb_agent 异步提交时返回的 id)。', isError: true }
+        const r = await callJson('GET', web() + '/api/kb/agent/tasks/' + encodeURIComponent(taskId), null, { timeoutMs: 15000, retries: 0 })
         if (!r.ok) {
-          return { text: `文档入库卡在第 2 步(backend 索引 ${base()}/api/v1/search/index-document):${r.error}。文档已写盘(${docPath}),服务恢复后可重试入库(同名会生成新文件)。`, isError: true }
+          return { text: '任务查询失败:' + String(r.error ?? '') + '(不存在/已过期 2h/服务重启过,或任务从未提交)。', isError: true }
         }
-        const chunks = Number(r.body?.vector_index?.total_chunks ?? 0)
-        ctx.kv.bump('index.count')
-        return { text: `文档已入库:${docPath}(向量分块 ${chunks},kb=${KB_NAME}),可立即用 kb_search 检索。` }
+        const body = r.body || {}
+        const status = String(body.status ?? 'unknown')
+        if (status === 'running') {
+          return { text: '任务 ' + taskId + ' 仍在后台执行中(running)。稍后再次查询。' }
+        }
+        const result = body.result || {}
+        const reply = String(result.reply ?? result.partial_text ?? '').trim()
+        if (status === 'completed' && reply) {
+          return { text: '任务 ' + taskId + ' 已完成。知识库 Agent 结果:\n\n' + reply }
+        }
+        return { text: '任务 ' + taskId + ' 状态:' + status + '\n' + String(result.error ?? '').slice(0, 300) + (result.partial_text ? '\n[部分输出]\n' + String(result.partial_text).slice(0, 600) : '') }
       },
     })
 
@@ -334,8 +281,21 @@ export default {
         plugin: 'rag-bridge',
         outbound: state.outbound,
         auth: kbToken() ? 'bearer' : 'anonymous',
+        // token 配置与「实测是否被接受」分开呈现:401/403 = 明确被拒(运维一眼看出 token 配错),
+        // 网络不通/超时为 null(未知),2xx 或非鉴权类失败为 true(未被拒)。
+        // 实测打受保护 GET /api/v1/auth/me —— rag 后端 GET 只读端点公开(/health 匿名可过,
+        // 测不出 token 对错),/auth/me 无 token/错 token 均 401。
+        token: {
+          configured: Boolean(kbToken()),
+          accepted: await (async () => {
+            if (!state.outbound) return null
+            if (!kbToken()) return backend.ok ? true : null
+            const me = await callJson('GET', `${base()}/api/v1/auth/me`, null, { timeoutMs: 5000, retries: 0 })
+            return me.ok ? true : (me.status === 401 || me.status === 403 ? false : null)
+          })(),
+        },
         kb: { name: KB_NAME, id: kbId() || null },
-        backend: { url: base(), ok: backend.ok, ...(backend.ok ? { status: backend.body?.status ?? null } : { error: backend.error }) },
+        backend: { url: base(), ok: backend.ok, ...(backend.ok ? { status: backend.body?.status ?? null } : { status: backend.status ?? null, error: backend.error }) },
         web: { url: web(), ok: webR.ok, ...(webR.ok ? { knowledgeBases: webR.body?.count ?? null } : { error: webR.error }) },
         counters: { store: ctx.kv.get('store.count') ?? 0, index: ctx.kv.get('index.count') ?? 0 },
       }
@@ -379,13 +339,4 @@ export default {
 
 function trimSlash(s) {
   return s.replace(/\/+$/, '')
-}
-
-/** 标题 → 安全文件名(剔除路径非法字符;确保 .md 后缀) */
-function safeFileName(title) {
-  // eslint-disable-next-line no-control-regex -- 文件名净化:必须剔除控制字符
-  let name = String(title).replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-').replace(/\s+/g, ' ').trim().replace(/^[.\s]+|[.\s]+$/g, '')
-  if (!name) name = 'untitled'
-  if (name.length > 80) name = name.slice(0, 80).trim()
-  return name.toLowerCase().endsWith('.md') ? name : `${name}.md`
 }
