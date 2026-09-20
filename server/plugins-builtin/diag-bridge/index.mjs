@@ -43,13 +43,6 @@ function authHeadersOf(ctx) {
   return t ? { authorization: `Bearer ${t}` } : {}
 }
 
-/** rag-knowledge 出站鉴权(系统配置 plugins.rag-bridge.token 优先,kv kb.token;与 rag-bridge 同源。
- *  入库管线要打 web 6789 / api 8770,服务端开启鉴权时缺头会 401 → catalog 查不到库 → 跳过入库) */
-function kbHeadersOf(ctx) {
-  const t = String(ctx.config?.get?.('plugins.rag-bridge.token') || ctx.kv.get('kb.token') || '').trim()
-  return t ? { 'authorization': `Bearer ${t}`, 'x-kb-token': t } : {}
-}
-
 // ── 配置读取(系统配置优先,kv 兜底;前端全局设置→运行配置→插件组可改,保存即热生效) ──
 
 const harnessOf = ctx => String(ctx.config?.get?.('plugins.diag-bridge.harness') || ctx.kv.get('diag.harness') || 'omp')
@@ -232,7 +225,7 @@ async function snapshotCore(ctx, line, fromMs, toMs) {
 
 // ── 发起诊断(快照 → start → execute → kv 登记;异步,绝不等待) ────────────
 
-async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source }) {
+async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath }) {
   const base = baseOf(ctx)
   if (!base) return { ok: false, error: 'diag.base_url 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)。' }
   if (startingLines.has(line)) return { ok: false, error: `产线 ${line} 已有诊断正在启动,请稍后再试。` }
@@ -240,12 +233,17 @@ async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source
   if (existing) return { ok: false, error: `产线 ${line} 已有运行中的诊断(run_id=${existing.id}),请稍后用 diag_status 查询。` }
   startingLines.add(line)
   try {
-    const snap = await snapshotCore(ctx, line, fromMs, toMs)
-    if (!snap.ok) return { ok: false, error: snap.error }
+    let snap = { ok: true, csvPath: '', rows: 0, nodes: 0 }
+    if (!dataPath) {
+      snap = await snapshotCore(ctx, line, fromMs, toMs)
+      if (!snap.ok) return { ok: false, error: snap.error }
+    }
     const q = question || `${line} 产线该时窗数据深度根因诊断`
     const sceneName = scene || `${line}_diag`
-    const started = await jpost(ctx, `${base}/api/diagnosis/start`, {
-      dataPath: snap.csvPath,
+    // v2.1:统一走 IDD 任务管理面 /api/diagnosis/tasks——接收即返 task_id,
+    // 诊断在 IDD 后台线程执行(内部 start+execute),Channel 绝不等待。
+    const started = await jpost(ctx, `${base}/api/diagnosis/tasks`, {
+      dataPath: dataPath || snap.csvPath,
       sceneName,
       userQuestion: q,
       harness: harnessOf(ctx), // 缺省落 claude 引擎会因无 key 失败,必须显式(系统配置 plugins.diag-bridge.harness → kv → omp)
@@ -254,10 +252,9 @@ async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source
       maxTurns: maxTurnsOf(ctx), // 修复循环会加转数;150 不够走完全管线
       timeoutMinutes: maxMinutesOf(ctx),
     })
-    const runId = String(started.data?.runId ?? '')
+    const runId = String(started.data?.task_id ?? started.data?.runId ?? '')
     const name = String(started.data?.name ?? '')
-    if (!runId) return { ok: false, error: `start 响应缺少 data.runId: ${short(started)}` }
-    await jpost(ctx, `${base}/api/diagnosis/execute/${encodeURIComponent(runId)}`, {})
+    if (!runId) return { ok: false, error: `tasks 响应缺少 data.task_id: ${short(started)}` }
     ctx.kv.set(runKey(runId), {
       line, fromMs, toMs, question: q, scene: sceneName,
       status: 'running', createdAt: Date.now(), source, csvPath: snap.csvPath, name,
@@ -272,81 +269,13 @@ async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source
   }
 }
 
-// ── 入库管线(web 建文档 → backend 索引 → backend 经验;每步断言 success) ───
-
-async function ingestCompleted(ctx, runId, meta, st) {
-  try {
-    // kv 按插件命名空间隔离:rag-bridge 建的库不在本插件 kv 里,需自行从 catalog 幂等解析
-    const webBase = String(ctx.config?.get?.('plugins.rag-bridge.web_url') || ctx.kv.get('kb.web_url') || 'http://127.0.0.1:6789').replace(/\/+$/, '')
-    let kbId = String(ctx.kv.get('kb.id') || '').trim()
-    if (!kbId) {
-      const cat = await ctx.http.get(`${webBase}/api/kb/catalog`, { timeoutMs: 15000, headers: kbHeadersOf(ctx) })
-        .then(r => r.json()).catch(() => null)
-      const hit = (Array.isArray(cat?.knowledgeBases) ? cat.knowledgeBases : [])
-        .find(kb => kb?.name === 'aw-industrial')
-      if (hit?.kbId) {
-        ctx.kv.set('kb.id', String(hit.kbId))
-        kbId = String(hit.kbId)
-      }
-    }
-    if (!kbId) {
-      ctx.logger.warn(`诊断 ${runId} 已完成但找不到知识库 aw-industrial(rag-bridge 未初始化?),跳过入库`)
-      return
-    }
-    const base = baseOf(ctx)
-    const runName = String(st.name || meta.name || '')
-    if (!base || !runName) throw new Error(`缺少诊断服务 base 或 run name(${runName})`)
-
-    // 1) 报告全文。报告端点按「目录名」索引(时间戳_scene),而 status.name 是显示名
-    //    (scene_runId)——优先用 report_path 反推目录名,缺失时回退显示名。
-    const rp = String(st.report_path || meta.reportPath || '')
-    const repDir = rp.split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || runName
-    const rep = await jget(ctx, `${base}/api/files/workspace/report/${encodeURIComponent(repDir)}`, 10000)
-    const content = String(rep.data?.content ?? '')
-    if (!content) throw new Error('报告内容为空')
-
-    const apiBase = String(ctx.config?.get?.('plugins.rag-bridge.base_url') || ctx.kv.get('kb.base_url') || 'http://127.0.0.1:8770').replace(/\/+$/, '')
-
-    // 2) web 建文档(响应 {success, document:{path,…}},path 供索引用)
-    const doc = await jpost(ctx, `${webBase}/api/kb/documents/create`, { kbId, name: `${runName}.md`, content }, 15000, kbHeadersOf(ctx))
-    const docPath = String(doc.document?.path ?? '')
-    if (!docPath) throw new Error(`documents/create 响应缺少 document.path: ${short(doc)}`)
-
-    // 3) backend 向量/图谱索引
-    await jpost(ctx, `${apiBase}/api/v1/search/index-document`, {
-      kb_id: kbId,
-      doc_path: docPath,
-      content,
-      tags: [meta.line, '诊断', 'source:diag-bridge'].filter(Boolean),
-    }, 30000, kbHeadersOf(ctx))
-
-    // 4) backend 经验沉淀
-    const q = String(meta.question || '')
-    await jpost(ctx, `${apiBase}/api/v1/experience/${encodeURIComponent(kbId)}`, {
-      title: `诊断:${q ? q.slice(0, 50) : runName}`,
-      category: 'troubleshooting',
-      problem: q,
-      solution: content.slice(0, 800),
-      result: 'success',
-      tags: [meta.line, meta.scene].filter(Boolean),
-    }, 30000, kbHeadersOf(ctx))
-
-    ctx.kv.set(runKey(runId), { ...ctx.kv.get(runKey(runId)), stored: true, storedAt: Date.now() })
-    ctx.logger.info(`诊断 ${runId}(产线 ${meta.line})报告已入库: ${docPath}`)
-  }
-  catch (err) {
-    ctx.logger.warn(`诊断 ${runId} 入库失败(不重试): ${err?.message ?? err}`)
-  }
-}
-
-// ── 轮询器:15s 扫描 kv 中 running 的 run → 更新状态 → 完成则入库 ──────────
+// ── 轮询器:15s 扫描 kv 中 running 的 run → 更新状态 ──────────────────────
+// v2.1:入库不再由本插件自动执行(web documents/create 旧两步管线已移除)。
+// 完成后的协调契约:Channel 空闲时用 diag_status 查询 → 拿到 诊断总结+报告 md
+// 路径 → 由 Agent 调用 rag-bridge 的 kb_agent(mode=async) 把报告入库知识库。
 
 async function sweepOnce(ctx) {
-  // running:常规轮询;completed 未入库:30 分钟内重试入库(入库管线曾失败时自愈)
-  const running = kvRuns(ctx).filter(r =>
-    r.meta?.status === 'running'
-    || (r.meta?.status === 'completed' && r.meta?.stored !== true
-      && Date.now() - (r.meta?.completedAt ?? 0) < 120 * MIN))
+  const running = kvRuns(ctx).filter(r => r.meta?.status === 'running')
   if (!running.length) return
   const base = baseOf(ctx)
   if (!base) {
@@ -361,16 +290,13 @@ async function sweepOnce(ctx) {
         ctx.kv.set(runKey(id), {
           ...meta,
           status: 'completed',
-          completedAt: meta.completedAt ?? Date.now(), // 重试路径不续期,保证重试窗口会收敛
+          completedAt: meta.completedAt ?? Date.now(),
           name: st.name ?? meta.name,
           score: st.score ?? null,
           verdict: st.judge_verdict ?? null,
           reportPath: st.report_path ?? null,
         })
-        // 入库为独立异步管线,失败仅 warn,不影响轮询(未入库的下轮重试)
-        if (ctx.kv.get(runKey(id))?.stored !== true) {
-          ingestCompleted(ctx, id, ctx.kv.get(runKey(id)), st).catch(() => {})
-        }
+        ctx.logger.info(`诊断 ${id}(产线 ${meta.line})完成——待 Channel 空闲时 diag_status 查询,经 kb_agent 入库知识库`)
       }
       else if (status === 'failed' || status === 'stopped') {
         ctx.kv.set(runKey(id), {
@@ -396,8 +322,8 @@ async function sweepOnce(ctx) {
 
 export default {
   name: 'diag-bridge',
-  version: '1.1.0',
-  description: '深度诊断桥接:导出 DAQ 时序快照 CSV,发起 industrial-deep-diagnostic 深度诊断并跟踪状态,完成后报告自动入知识库。',
+  version: '2.1.0',
+  description: '深度诊断桥接 v2.1:异步任务式深度诊断(提交即返 task_id,Channel 免等待);完成后 diag_status 给出报告 md 路径,由 Agent 调 rag-bridge 的 kb_agent 入库知识库(插件协同)。',
   auth: 'user',
   client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
   // 插件配置分组(声明式):连接 / 执行 / 自动化 三个独立分区
@@ -473,11 +399,12 @@ export default {
     ctx.omp.registerTool({
       name: 'diag_run',
       label: '深度诊断',
-      description: '导出产线指定时窗的 DAQ 快照 CSV 并发起深度根因诊断(异步)。返回 runId 后需数分钟,请稍后用 diag_status 查询进度与结论。',
+      description: '导出产线指定时窗的 DAQ 快照 CSV 并发起深度根因诊断(异步任务,提交即返 task_id,无需等待)。Channel 可继续其他任务,空闲时用 diag_status 查询;完成后按其给出的指引调 kb_agent 入库知识库。',
       parameters: {
         type: 'object',
         properties: {
-          line: { type: 'string', description: '产线 id(必填)' },
+          line: { type: 'string', description: '产线 id(与 data_path 二选一)' },
+          data_path: { type: 'string', description: '可选:直接指定诊断数据 CSV 绝对路径(跳过 DAQ 快照导出,适合离线数据分析);给了 data_path 则 line 可填 any' },
           from_ms: { type: 'number', description: '窗口起点(epoch 毫秒;缺省 now-60min)' },
           to_ms: { type: 'number', description: '窗口终点(epoch 毫秒;缺省 now)' },
           question: { type: 'string', description: '诊断问题(缺省为该产线时窗数据深度根因诊断)' },
@@ -489,19 +416,23 @@ export default {
       handler: async (args) => {
         try {
           const line = String(args.line ?? '').trim()
-          if (!line) return { text: 'line 必填(产线 id)。', isError: true }
+          const dataPathDirect = String(args.data_path ?? '').trim()
+          if (!line && !dataPathDirect) return { text: 'line 与 data_path 至少给一个(产线 id 或诊断数据 CSV 绝对路径)。', isError: true }
           const toMs = Number(args.to_ms) > 0 ? Number(args.to_ms) : Date.now()
           const fromMs = Number(args.from_ms) > 0 ? Number(args.from_ms) : toMs - 60 * MIN
           if (fromMs >= toMs) return { text: 'from_ms 必须小于 to_ms。', isError: true }
           const r = await startDiagnosis(ctx, {
-            line, fromMs, toMs,
+            line: line || 'offline-data',
+            fromMs, toMs,
             question: args.question ? String(args.question) : '',
             scene: args.scene ? String(args.scene) : '',
             source: 'agent',
+            dataPath: dataPathDirect || '',
           })
           if (!r.ok) return { text: r.error, isError: true }
+          const via = dataPathDirect ? `离线数据 ${r.csvPath}` : `产线 ${line} 窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()} 快照 ${r.rows} 行 × ${r.nodes} 节点`
           return {
-            text: `已发起深度诊断 runId=${r.runId}(产线 ${line},窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()},快照 ${r.rows} 行 × ${r.nodes} 节点 → ${r.csvPath})。诊断需数分钟,稍后用 diag_status 查询(run_id=${r.runId});完成后报告自动入知识库。`,
+            text: `已发起深度诊断异步任务 task_id=${r.runId}(${via})。知识库 IDD 在后台执行,Channel 无需等待——可继续其他任务,空闲时用 diag_status(run_id=${r.runId}) 查询;完成后按 diag_status 给出的指引调用 kb_agent 把报告 md 入库知识库。`,
           }
         }
         catch (err) {
@@ -554,10 +485,14 @@ export default {
           if (meta?.fromMs && meta?.toMs) parts.push(`窗口=${new Date(meta.fromMs).toISOString()} ~ ${new Date(meta.toMs).toISOString()}`)
           if (meta?.question) parts.push(`问题=${meta.question}`)
           if (status === 'completed') {
+            const reportPath = st?.report_path ?? meta?.reportPath ?? '-'
             parts.push(`评分=${st?.score ?? meta?.score ?? '-'}`)
             parts.push(`结论=${st?.judge_verdict ?? meta?.verdict ?? '-'}`)
-            parts.push(`report_path=${st?.report_path ?? meta?.reportPath ?? '-'}`)
-            parts.push(`入库=${meta?.stored ? '是' : meta && st ? '否/进行中' : '?'}`)
+            parts.push(`report_md_path=${reportPath}`)
+            parts.push('')
+            parts.push('✅ 诊断完成,报告已就绪。入库知识库请调用 rag-bridge 的 kb_agent 工具:')
+            parts.push(`  mode=async, prompt=「请把这份深度诊断报告入库到 aw-industrial 知识库:读取文件 ${reportPath} 的全文内容并入库(写盘+索引),完成后报告 doc_path 与分块数。标签:诊断、深度诊断。」`)
+            parts.push('提交后频道无需等待,空闲时用 kb_agent_status(task_id) 查询入库结果。')
           }
           if (status === 'failed' || status === 'stopped') parts.push(`错误=${st?.error_message ?? meta?.error ?? '-'}`)
           if (!st) parts.push('(诊断服务不可达,以上为本地记录)')
