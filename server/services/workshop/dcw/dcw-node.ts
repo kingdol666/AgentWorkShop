@@ -36,6 +36,8 @@ interface DcwNodeOptions {
   semantics?: string
   /** 周期读间隔 ms(null = 走网关默认;0 = 关闭周期读,仅手动读取) */
   readIntervalMs?: number | null
+  /** 写入保持窗秒数(写成功后节点锁定该时长,防参数震荡;0 = 不锁;默认 30) */
+  writeLockSeconds?: number
   createdAt?: string
 }
 
@@ -65,6 +67,8 @@ export class DcwNode {
   lastReadError: string | null = null
   /** 周期读间隔 ms(null = 走网关默认;0 = 仅手动读取) */
   readIntervalMs: number | null = null
+  /** 写入保持窗秒数(写成功后锁定;防参数频繁修改震荡;0 = 不锁) */
+  writeLockSeconds = 30
   lastAckAt: string | null = null
   lastWriteAt: string | null = null
   state: DcwNodeState = 'idle'
@@ -97,6 +101,7 @@ export class DcwNode {
     this.lineId = o.lineId ?? ''
     this.semantics = o.semantics
     this.readIntervalMs = o.readIntervalMs ?? null
+    this.writeLockSeconds = Math.max(0, Math.min(3600, Math.round(o.writeLockSeconds ?? 30)))
     this.createdAt = o.createdAt ?? new Date().toISOString()
   }
 
@@ -149,6 +154,7 @@ export class DcwNode {
       enabled: this.enabled,
       holdIntervalMs: this.holdIntervalMs,
       readIntervalMs: this.readIntervalMs,
+      writeLockSeconds: this.writeLockSeconds,
       unit: this.unit,
       decimals: this.decimals,
       min: this.min,
@@ -193,6 +199,7 @@ export class DcwNode {
       lineId: row.lineId == null ? '' : String(row.lineId),
       semantics: row.semantics == null ? undefined : String(row.semantics),
       readIntervalMs: row.readIntervalMs == null ? null : Number(row.readIntervalMs),
+      writeLockSeconds: row.writeLockSeconds == null ? undefined : Number(row.writeLockSeconds),
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
     })
@@ -244,6 +251,7 @@ export class DcwNode {
       lastReadAt: this.lastReadAt,
       lastReadError: this.lastReadError,
       readIntervalMs: this.readIntervalMs,
+      writeLockSeconds: this.writeLockSeconds,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
       state: this.state,

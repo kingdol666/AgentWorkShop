@@ -20,5 +20,7 @@ export const ErrorCodes = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   NOT_FOUND: 'NOT_FOUND',
   CONFLICT: 'CONFLICT',
+  /** 写入保持窗:节点写成功后的防震荡锁定窗内收到新写(429) */
+  WRITE_FREQUENT: 'WRITE_FREQUENT',
   INTERNAL: 'INTERNAL_ERROR',
 } as const

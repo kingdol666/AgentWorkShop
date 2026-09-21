@@ -913,6 +913,8 @@ export default {
     srcSystem: '系统',
     k9r7d4e016: '周期读(ms)',
     k9r7d4e017: '缺省 5000ms;0 = 仅手动读取',
+    writeLockLabel: '写入保持(s)',
+    writeLockHint: '缺省 30s;0 = 不锁;写成功后锁定防震荡',
     k9r7d4e018: 'PLC 读数',
     k9r7d4e019: '暂无读数(周期读未开启或驱动不支持读取)',
     k9r7d4e020: '读取 PLC 当前值',

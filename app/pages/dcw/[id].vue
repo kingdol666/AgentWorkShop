@@ -183,6 +183,7 @@ const addDriver = ref<'mock' | 'modbus-tcp' | 'opcua'>('mock')
 const addName = ref('')
 const addHold = ref<number | null>(null)
 const addRead = ref<number | null>(null)
+const addWriteLock = ref<number>(30)
 const addCfg = ref<Record<string, string | number>>({})
 const addTransform = reactive({ kind: 'none' as 'none' | 'linear', scale: 1, offset: 0 })
 const addSemantics = ref('')
@@ -241,6 +242,7 @@ async function doAddNode(): Promise<void> {
       transform,
       holdIntervalMs: addHold.value,
       readIntervalMs: addRead.value,
+      writeLockSeconds: addWriteLock.value,
       lineId: lineId.value,
       semantics: addSemantics.value.trim() || undefined,
     })
@@ -1086,6 +1088,18 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               :placeholder="$t('dcwDetail.k9r7d4e017')"
             >
           </label>
+          <label class="f">
+            <span>{{ $t('dcwDetail.writeLockLabel') }}</span>
+            <input
+              v-model.number="addWriteLock"
+              type="number"
+              min="0"
+              max="3600"
+              step="1"
+              class="inp"
+              :placeholder="$t('dcwDetail.writeLockHint')"
+            >
+          </label>
         </div>
 
         <!-- 数据语义标定 encode(物理设定值 → PLC 设定值;mock/真实均可用) -->
@@ -1348,6 +1362,10 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
                   class="dim"
                   :title="$t('dcwDetail.k9r7d4e016')"
                 >· {{ n.readIntervalMs === 0 ? $t('dcwDetail.k9r7d4e022') : (n.readIntervalMs == null ? $t('dcwDetail.k9r7d4e023') : `${n.readIntervalMs}ms`) }}</small>
+                <small
+                  class="dim"
+                  :title="$t('dcwDetail.writeLockHint')"
+                >· {{ n.writeLockSeconds === 0 ? '0s' : `${n.writeLockSeconds}s` }}</small>
               </td>
               <td>{{ nodeDeviceNames(n) }}</td>
               <td class="right">

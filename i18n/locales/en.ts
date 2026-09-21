@@ -913,6 +913,8 @@ export default {
     srcSystem: 'System',
     k9r7d4e016: 'Poll read (ms)',
     k9r7d4e017: 'Default 5000ms; 0 = manual read only',
+    writeLockLabel: 'Write hold (s)',
+    writeLockHint: 'Default 30s; 0 = unlocked; locks after each write to prevent oscillation',
     k9r7d4e018: 'PLC reading',
     k9r7d4e019: 'No reading yet (poll read off or driver lacks read support)',
     k9r7d4e020: 'Read current PLC value',

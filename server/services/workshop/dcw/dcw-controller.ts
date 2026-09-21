@@ -73,6 +73,8 @@ export interface DcwCreateInput {
   lineId?: string
   /** 节点级工艺语义备注(覆盖模板) */
   semantics?: string
+  /** 写入保持窗秒数(写成功后锁定节点防震荡;0 = 不锁;默认 30) */
+  writeLockSeconds?: number
 }
 
 export interface DcwPatchInput {
@@ -93,6 +95,8 @@ export interface DcwPatchInput {
   posZ?: number
   lineId?: string
   semantics?: string
+  /** 写入保持窗秒数(0 = 不锁) */
+  writeLockSeconds?: number
 }
 
 /** 网关扫描周期(ms;保写心跳分辨率) */
@@ -108,6 +112,8 @@ class DcwController {
   running = true
   private writesTotal = 0
   private writesFailed = 0
+  /** 写入保持窗注册表(nodeId → lockUntil epoch ms;仅内存,重启即清) */
+  private writeLocks = new Map<string, number>()
 
   // ---------- 生命周期 ----------
 
@@ -358,6 +364,7 @@ class DcwController {
       posZ: input.posZ,
       lineId: input.lineId,
       semantics: input.semantics,
+      writeLockSeconds: input.writeLockSeconds,
     })
     this.repo.insert(node)
     // 工艺参数映射面:节点创建即自动生成同名映射(用户/Agent 的参数语义面;
@@ -430,6 +437,13 @@ class DcwController {
       node.lineId = lid
     }
     if (patch.semantics !== undefined) node.semantics = String(patch.semantics)
+    if (patch.writeLockSeconds !== undefined) {
+      const v = Number(patch.writeLockSeconds)
+      if (!Number.isFinite(v) || v < 0 || v > 3600) {
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `writeLockSeconds 必须为 0..3600 的整数秒(当前: ${String(patch.writeLockSeconds)})`)
+      }
+      node.writeLockSeconds = Math.round(v)
+    }
     if (rearm) this.runtimes.get(id)?.rearm()
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)
@@ -547,6 +561,31 @@ class DcwController {
     if (!node.enabled) {
       throw new AppError(409, ErrorCodes.CONFLICT, `当前节点暂停:「${node.name}」控制已暂停,仅开启控制的节点可被设定`)
     }
+    // 写入保持窗(防参数震荡):agent/manual 写成功一次即锁定节点 writeLockSeconds;
+    // 锁定期间的新写一律 429 快速拒绝(不排队 —— 排队写会在窗满后立刻落库,等同
+    // 为持续篡改保留通道)。rollback(安全恢复)/recipe(批量下发)不受保持窗约束;
+    // AW_BENCH_MODE=1 基准旁路(基准多轮连续写同节点,锁会破坏既有证据可复现性)。
+    const srcForLock = meta?.source ?? (recipeRunId ? 'recipe' : 'manual')
+    const benchBypass = process.env.AW_BENCH_MODE === '1'
+    const lockMs = Math.max(0, Math.round((node.writeLockSeconds ?? 30) * 1000))
+    const lockable = (srcForLock === 'agent' || srcForLock === 'manual') && lockMs > 0 && !benchBypass
+    if (lockable) {
+      const now = Date.now()
+      const until = this.writeLocks.get(id) ?? 0
+      // 过期条目顺手清掉,防注册表随节点删除/长时运行无限增长
+      if (this.writeLocks.size > 500) {
+        for (const [k, t] of this.writeLocks) {
+          if (t <= now) this.writeLocks.delete(k)
+        }
+      }
+      if (now < until) {
+        throw new AppError(
+          429,
+          ErrorCodes.WRITE_FREQUENT,
+          `当前写入频繁:「${node.name}」处于写入保持窗口(剩余 ${Math.ceil((until - now) / 1000)}s),请稍后再试`,
+        )
+      }
+    }
     // 调控闭环护栏(F1/F8):Agent 互斥(open 记录他人持有)+ 回退冷却方向性
     getRecipeRollBackManager().beforeWrite(node, eng, meta)
     // 写入限界分层联锁(param-limits):节点安全量程(结构层,驱动内 validateEng 结构性兜底)
@@ -567,6 +606,8 @@ class DcwController {
     // 调控闭环入册:仅成功写记锚/开记录(失败写不动账本 —— PLC 值未变更);
     // 窗口聚合异步回填(F2)
     if (outcome.ok !== false) {
+      // 写成功 → 锁定写入保持窗(agent/manual 路径;recipe/rollback 豁免)
+      if (lockable) this.writeLocks.set(id, Date.now() + lockMs)
       try {
         const rbInfo = getRecipeRollBackManager().afterWrite(
           node,
