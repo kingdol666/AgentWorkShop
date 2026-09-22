@@ -1,0 +1,32 @@
+# 注塑成型质量窗口寻优 · 闭环寻优报告(injection)
+
+- 终态:COMPLETED · PV 终值:31.83 g(目标带 32.5±0.35) ✘ 带外
+- 守卫约束:全部满足 
+- 收口设定:
+  - barrel-temp-1-sp = 240 ℃
+  - barrel-temp-2-sp = 246 ℃
+  - barrel-temp-3-sp = 252 ℃
+  - barrel-temp-4-sp = 258 ℃
+  - screw-speed-sp = 120 rpm
+  - mold-temp-sp = 40 ℃
+  - clamp-force-sp = 1600 kN
+  - inject-speed-sp = 85 mm/s
+  - hold-pressure-sp = 54.8 bar
+  - hold-time-sp = 8 s
+  - cool-water-sp = 24 ℃
+- 实测终值:
+  - melt-temp-pv = 246.6 ℃
+  - melt-pressure-pv = 50.5 bar
+  - mold-temp-pv = 40.6 ℃
+  - clamp-force-pv = 1597 kN
+  - inj-pressure-pv = 51.6 bar
+  - water-temp-pv = 23.9 ℃
+  - cool-flow-pv = 44.5 L/min
+  - part-weight = 31.83 g
+  - flash-rate = 0.029 %
+  - sink-mark = 1.472 %
+  - dim-dev = 0.007 mm
+  - cycle-time = 16.1 s
+  - wall-profile = null mm
+  - surface-image = null 灰度
+- 证据文件:injection-timeline.jsonl(对话全录) / injection-worker-stream.jsonl(worker 全帧) / injection-setpoints.jsonl(设定曲线) / injection-quality.jsonl(质量曲线)
