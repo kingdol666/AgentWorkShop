@@ -691,3 +691,31 @@ T1–T4 × N20）→ E2/E3/E4 → E5 检测 + TEP/SWaT 回放 → E6 HIL → E7 
   均支持 `?id=` / `{"id":...}` 指定引擎；`PUT /api/plant/config` 支持 `{"upsert":true}` 增量装载。
 - 复现/自测：`cd plc-node-simulator && npx tsx tests/scenario-models.test.ts`（31 断言：
   物理因果方向、稳态锚点、动态收敛、同 seed 逐位复现、W* 网格）。
+
+## 11. 质量目标驱动的多线并行闭环寻优(optloop,2026-09-22 起)
+
+**与 §10 确定性场景基准(bench/scenarios.mjs)的本质区别**:任务书只下达「质量目标带 + 守卫约束 + 定性工艺机理交底」,
+**不含任何设定值与量化增益**;每一拍的下一发参数由 omp 工艺工程师根据 daq_query 实测反馈 + 当前设定 + 工艺机理
+自主归因与量化决策(单步限幅防震荡),受治理下发后等物理响应复测,迭代到达标收口 —— 即真实产线工艺工程师的作业方式。
+
+### 执行卡
+
+```text
+环境块:与 §0 同一隔离环境块(3001 平台 + 4010 模拟器共存多场景)。
+命令:node bench/optloop.mjs --scenarios injection,wwtp,anneal --budget 60
+判据:退出码 0 = 每线 finalState=COMPLETED 且 PV 终值在目标带内且全部守卫满足。
+```
+
+- **多场景共存**:injection-line / wwtp-line / anneal-line 同一模拟器实例并存(互不清场);
+  预设应用后按标签幂等建线(复用或新建),全节点 /export 真实 driverConfig。
+- **每线一路 Channel**:omp 优化总工(lead,督办/验收/核对数据链)+ omp 工艺工程师(worker,
+  绑定本线全部写控(dcw,auto)与数采(daq,auto))。
+- **任务书模板(质量目标驱动)**:工况交底(预设 story)→ 质量目标带 → 守卫约束 → 定性工艺机理
+  → 作业纪律(每轮读数归因→机理决策→单步限幅写入→等物理响应→复测→连续两轮达标→judge)。
+  **禁止出现任何"写到 X"的设定值** —— 目标带之外的决策自由度全部留给 agent。
+- **全程录制(每线一路录制器,四路 jsonl)**:
+  - `<scen>-timeline.jsonl` Channel 对话全录(轮询增量去重);
+  - `<scen>-worker-stream.jsonl` omp worker 终端全帧流(terminal mirror 按 pid 挂载);
+  - `<scen>-setpoints.jsonl` 全部写控节点设定值曲线(按 lineId 轮询 value/state);
+  - `<scen>-quality.jsonl` 全部数采节点实测曲线(PV 质量目标 + 守卫量)。
+- **产物**:bench/results/<runId>-optloop/ 下 summary.json + 每线 REPORT 简报 + 四路 jsonl 曲线与对话。
