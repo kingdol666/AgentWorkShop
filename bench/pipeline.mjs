@@ -29,6 +29,8 @@ import { recipeLifecycle, nodeRollback, optimizationLifecycle, hitlApproval, par
 import { provisionTwinLine, startTwinBatch, runClosedLoop, offlineOptimum, CASTFILM_ACTUATORS, START_POINT } from './lib/closedloop.mjs'
 import { collectLineProfile } from './lib/line-profile.mjs'
 import { ensureBiaxLine, provisionBiaxLine, waitBiaxSamples, runBiaxMission } from './lib/biax.mjs'
+import { runScenarioBench, SCENARIOS, SCENARIO_IDS, biaxMissionToScenarioResult } from './lib/scenarios.mjs'
+import { writeScenarioReports } from './lib/scenario-report.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolve(HERE, '..')
@@ -54,7 +56,8 @@ const clWriteMode = arg('cl-write', 'governed') // governed(agent dcw_control) |
 const clMaxIters = Number(arg('cl-iters', 8))
 
 const HARNESS_FILES = ['pipeline.mjs', 'lib/util.mjs', 'lib/sim.mjs', 'lib/provision.mjs',
-  'lib/metrics.mjs', 'lib/dashboard.mjs', 'lib/governance.mjs', 'lib/closedloop.mjs', 'lib/biax.mjs']
+  'lib/metrics.mjs', 'lib/dashboard.mjs', 'lib/governance.mjs', 'lib/closedloop.mjs', 'lib/biax.mjs',
+  'lib/scenarios.mjs', 'lib/scenario-report.mjs']
 const harnessHash = sha256(HARNESS_FILES.map(f => {
   try { return readFileSync(join(HERE, f), 'utf8') } catch { return `MISSING:${f}` }
 }).join('\n%%\n'))
@@ -135,6 +138,32 @@ await timed('P1', 'plant-model', 'plant model preset + offline optimum W*', asyn
   const nodes = await applyPreset(simPreset)
   add('P1', 'preset-applied', `预设 ${simPreset} 已应用`, nodes.length ? 'pass' : 'fail',
     [`devices ${nodes.length} `, `协议 ${[...new Set(nodes.map(n => n.protocol))].join(', ')}`])
+  // 现场=蓝图默认值断言:整包预设应用后,每个信号的实际值必须等于蓝图初始值。
+  // 这是「产线从默认初始值起跑」的硬证据,也是残留工况/坏写的当场拦截器
+  // (2026-09-21 系列故障的共同表现就是起点值漂移)。
+  try {
+    const bp = (await simApi('GET', `/api/presets/${simPreset}`)).data ?? {}
+    const bpSig = new Map()
+    for (const n of (bp.nodes ?? [])) for (const s of (n.signals ?? [])) {
+      // 只核对「静态初始值」信号:引擎驱动的 PV(plantBinding)首拍即被活模型覆写,
+      // vector/image 信号的 value 是轮廓均值,都不在比对范围
+      if (s.plantBinding || (s.format && s.format !== 'scalar')) continue
+      const v = Number(s.strategy?.value)
+      if (Number.isFinite(v)) bpSig.set(`${n.id}/${s.id}`, v)
+    }
+    const cfgR = (await simApi('GET', '/api/config')).data ?? {}
+    const mism = []
+    let checked = 0
+    for (const n of (cfgR.nodes ?? [])) for (const s of (n.signals ?? [])) {
+      const key = `${n.id}/${s.id}`
+      if (!bpSig.has(key)) continue
+      checked++
+      const lv = Number(s.runtime?.value)
+      if (!Number.isFinite(lv) || Math.abs(lv - bpSig.get(key)) > 0.05) mism.push(`${key}=${lv}≠${bpSig.get(key)}`)
+    }
+    add('P1', 'field-defaults', `现场=蓝图默认值（${checked} 信号核对）`, mism.length ? 'fail' : (checked ? 'pass' : 'warn'),
+      mism.length ? mism.slice(0, 8) : [checked ? `全部信号初始值=蓝图默认值` : '蓝图无有限初始值信号,跳过核对'])
+  } catch (e) { add('P1', 'field-defaults', '现场=蓝图默认值（核对失败）', 'warn', [String(e?.message ?? e).slice(0, 120)]) }
   try { await plantPhase('steady') } catch { /* 无物理模型时忽略 */ }
   optimum = await plantOptimum()
   truthBefore = await plantTruth(200)
@@ -1341,6 +1370,53 @@ await timed('P10', 'biax-line', '双拉产线:节点探测补建 → 五协议�
     add('P10', 'biax-restore', `双拉线停止 + 第一场景恢复: ${simPreset}`, 'pass', ['rig left as found'])
   }
 })
+
+// ═══════════════ P11 · 多场景并行闭环(可选:--scenarios;默认关,不影响 75/0/0 基线契约)═══════════════
+// 三个新增默认场景(injection/wwtp/anneal)各建一线、各开一 Channel,三路并行闭环优化。
+// 场景目录与接入指导见 PIPELINE.md §10;独立入口 = bench/scenarios.mjs。
+if (has('scenarios')) {
+  await timed('P11', 'multi-scenario', `多场景并行闭环(${(arg('scenarios', '') || SCENARIO_IDS.join(',')).split(',').filter(Boolean).join(' / ')})`, async () => {
+    const listIds = (arg('scenarios', '') || process.env.AW_SCENARIOS || '').split(',').map(s => s.trim()).filter(s => SCENARIOS[s])
+    // BOPET(双拉)由 P10 独立执行并测毕;P11 只跑其余场景,报告阶段再并轨成一张四场景表,
+    // 避免对同一批 biax 设备重复建第二条平台产线。
+    const picked = (listIds.length ? listIds : SCENARIO_IDS).filter(id => id !== 'biax')
+    const bench = await runScenarioBench(api, {
+      scenarios: picked, toolHarness,
+      onLog: (m) => console.log(`    ${m}`),
+    })
+    if (biax.mission) {
+      const mission = biaxMissionToScenarioResult(biax.mission)
+      bench.results.push({
+        id: 'biax', zh: SCENARIOS.biax.zh, story: SCENARIOS.biax.story,
+        ev: mission.ev, errors: [],
+        mission,
+        wallS: null, line: { reused: true },
+      })
+      if (!mission.attained) bench.ok = false
+    }
+    let okN = 0
+    for (const r of bench.results) {
+      const m = r.mission ?? {}
+      const ok = !r.errors.length && m.attained
+      if (ok) okN++
+      add('P11', `scen-${r.id}`, `${r.zh}(writes=${m.writes ?? '—'}, wall=${r.wallS}s${r.line?.reused ? ', 线复用' : ''})`, ok ? 'pass' : r.errors.length ? 'fail' : 'warn',
+        [...(r.mission?.ev ?? []).slice(0, 8), ...(r.errors.length ? [`错误: ${r.errors.join(';')}`] : [])])
+      csvRows.push({ phase: 'P11', scenario: r.id, writes: m.writes ?? '', attained: m.attained ? 1 : 0, wall_s: r.wallS ?? '', line_reused: r.line?.reused ? 1 : 0 })
+      bag.add('scenario', `${r.id}_attained`, m.attained ? 1 : 0, '', r.zh)
+      bag.add('scenario', `${r.id}_writes`, m.writes ?? 0, '', r.zh)
+    }
+    // 报告落盘(标准 benchmark MD + HTML + JSON 轨迹)
+    writeScenarioReports(outDir, {
+      runId: rid, at: new Date().toISOString(), seed, base, simBase: SIM_BASE, toolHarness, gitCommit, harnessHash,
+      wallS: bench.wallS, scenarios: picked,
+      results: bench.results.map(r => ({ ...r, pv: SCENARIOS[r.id]?.pv })),
+      ok: bench.ok,
+    }, { writeText, writeJson })
+    add('P11', 'scen-report', '多场景 benchmark 报告(scenarios-benchmark.md/.html)', okN === bench.results.length ? 'pass' : 'warn',
+      [`bench/results/${rid}/scenarios-benchmark.md`, `并行 wall=${bench.wallS}s`])
+    return { status: okN === bench.results.length ? 'pass' : okN > 0 ? 'warn' : 'fail', note: `${okN}/${bench.results.length} 场景达标` }
+  })
+}
 
 // ═══════════════ P9 · 平台子系统（团队调度 · 团队记忆幂等 · 引擎注册表）═══════════════
 await timed('P9', 'subsystems', 'Platform subsystems (team dispatch · team memory idempotency · harness registry)', async () => {

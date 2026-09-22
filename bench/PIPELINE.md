@@ -38,7 +38,9 @@
                                                        # 旧布局（同级检出 ../plc-node-simulator）同样受支持
   环境变量（每个新 shell 都要重设，本机 7890 类代理会拦截 localhost）:
     export NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost
-  Windows Git Bash 注意: 杀进程用 taskkill //PID <pid> //F；
+  Windows Git Bash 注意: 杀进程用 taskkill //PID <pid> //T //F —— **必须带 //T 杀整棵进程树**:
+  模拟器是 npx→tsx→子进程 三层,只杀监听层会留下僵尸子进程继续持有内置 MQTT broker(18830 系)
+  并向同主题发布旧引擎数据,表现为「DAQ 读数冻结/振荡、尾部混入远古样本」(2026-09-21 实测根因)。
   不要用「& 后台作业」长挂服务——Agent 回合结束/作业被回收时服务会一起死（§1.6）。
 
 ────────────────────────────────────────────────────────────────
@@ -174,6 +176,23 @@
        消息历史 / WebSocket Hub / MCP initialize+tools/list / 级联删除。
      说明: 「持久化恢复」一节依赖上一轮遗留数据，无遗留时按项目语义诚实 SKIP
        （不算失败），跨重启持久化由第 6 步的重启演练单独验证。
+
+  ⑥ 多场景并行闭环基准（约 4–6 分钟）——三个新增默认工业场景同跑（2026-09 起）
+     （同一隔离环境块的 shell 里；模拟器多引擎并存 + 三产线三 Channel 并行闭环）
+     node bench/scenarios.mjs --seed 42
+     判据: 退出码 0，且三个场景全部「达标 ✔」：
+       · injection  克重入 32.5±0.35 g 且飞边 ≤0.4%、缩痕 ≤1.5%；
+       · wwtp       出水五参数全部达标 且 终态运行成本 ≤ 首个达标成本（真实降耗）；
+       · anneal     硬度入 95±6 HV 且抗拉 300±25 MPa 且 产能(线速) +≥5%。
+     产物: bench/results/<runId>/scenarios-benchmark.md + .html（标准 benchmark 报告）
+       + scenarios.json（机器可读全轨迹）+ scenarios-mission-<id>.log（逐轮过程）。
+     幂等性: 模拟器侧「探测→补建」式差分 ensure——已接入的场景零改动跳过；
+       平台侧产线按标签(AWB-SCEN:<id>)复用——已有健康产线不重复建线（节点参数漂移会
+       原位修复，如 decimals 对齐）。
+     起点语义: 默认 fresh——mission 开工前把 SP 复位到蓝图次优工况（只动信号值，不重连
+       不重建），保证优化轨迹可复现；`--no-fresh` 保留现场当前工况（续跑语义）。
+     集成流水线内跑: node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3 --scenarios
+       （等价于在 P10 之后追加 P11 阶段；不加 --scenarios 时基线契约保持 75/0/0 不变。）
 
 ────────────────────────────────────────────────────────────────
 第 4 步 · 复现验证（标准流程的收尾，必做）
@@ -351,7 +370,8 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 
 | 工具 | 常用参数 | 说明 |
 |---|---|---|
-| `bench/pipeline.mjs` | `--profile integrated\|quick` `--seed N` `--cl-seeds N` `--base URL` `--lines N` `--preset <名>` `--tool-harness <名>` `--agent <引擎> --provider <p> --model <m>` `--cl-write governed\|rest` `--cl-iters N` `--no-autostart` `--no-autostart-platform` | 一体化集成评测；`--agent` 跑真实 LLM 闭环（需模型凭据）；`--no-autostart*` 只复用在线服务 |
+| `bench/pipeline.mjs` | `--profile integrated\|quick` `--seed N` `--cl-seeds N` `--base URL` `--lines N` `--preset <名>` `--tool-harness <名>` `--agent <引擎> --provider <p> --model <m>` `--cl-write governed\|rest` `--cl-iters N` `--no-autostart` `--no-autostart-platform` `--scenarios [id,id]` | 一体化集成评测；`--agent` 跑真实 LLM 闭环（需模型凭据）；`--scenarios` 追加 P11 多场景并行闭环（默认关，保持 75/0/0 基线契约） |
+| `bench/scenarios.mjs` | `--seed N` `--base URL` `--scenarios injection,wwtp,anneal` `--tool-harness <名>` `--no-autostart` `--no-fresh` | 多场景并行闭环基准（独立入口；产出 scenarios-benchmark.md/.html + JSON 轨迹；场景目录见 §10） |
 | `bench/run.mjs` | `--tier static\|api\|plc\|full` `--seed N` `--base URL` `--repeats N` | 能力评分面板（report.md+report.html）；`full` = static + api×N 轮 |
 | `bench/e1-lite.mjs` | `--base URL` `--seed N` `--repeats N` | E1a 四臂消融（需平台带 `AW_BENCH_MODE=1`） |
 | `bench/compare.mjs` | `--baseline <label[/sub]> --b <runId>` `--a A --b B` `--selftest` | 复现判定 / 任意两次对比 / 阴性对照；不需要端口 |
@@ -382,6 +402,7 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 | **P8 跨场景可移植** | 切换第二个产线场景预设（film-line），用**同一套**委托/治理代码路径重跑 export→建线→数采→受治理写→F5 拦截→回读 | 框架主张「适配新产线=配置任务而非集成项目」的直接度量（0 代码改动） |
 | **P8b 系统兜底 drilling** | 在第二场景刚体上：清场 open 记录 → Agent(auto) 开优化记录 → manual 冻结 DAQ 于窗外 → 等系统兜底（观察窗 120s + 30s 节拍 + 越限 3 采样）自动判定 rollback 并恢复记录基线 → 解冻并恢复第一场景 | 论文 I3（有界自治）的**动态证据**：system 判定 + 值回基线 |
 | **P10 双拉产线全节点** | biax(BOPET) 全线数字孪生 9 设备五协议 49 信号（30 SP + 19 PV 全带工艺描述）：① 以预设蓝图 dry-run 为工程清单，对现场做按 id/信号/端口的**差分探测——缺失补建、漂移修复、停机拉起，不整包重置**（与 cast-film 现场共存）→ 热态装载 biax 物理引擎（清零随机漂移）；② 平台按真实 driverConfig 建一条全线产线（30 DCW + 19 DAQ，描述进 semantics→Agent 语义卡），配方 30 参数全窗纳管开跑；③ AgentTeam 任务板下达厚度目标 25.0±0.7μm → worker 在 ≥3 个执行节点（铸片速度/纵拉快辊/出口轨宽）上轮流受治理写 → 物理随动（运输滞后+一阶收敛）→ dcw_judge → 达标收口 | 「更接近真实双拉产线」的多节点闭环诉求直接测评；「PIPELINE 识别缺节点→自动补建」的工程化建线能力 |
+| **P11 多场景并行闭环**（可选 `--scenarios`） | 三个新增默认场景（injection/wwtp/anneal，目录见 §10）：模拟器差分 ensure（缺失补建/漂移修复，已接入则零改动跳过）→ 引擎增量装载（多引擎同实例并存）→ 每场景平台建线（真实 driverConfig，标签复用）→ 每场景一个 mission Channel + 工具执行器 → **三路 Promise.all 并行**闭环优化（读数→受治理下发→物理随动→判定收口）→ 全轨迹落盘 + 标准 benchmark MD/HTML 报告 | 「多个默认工业场景 → 分产线绑定节点 → 多 Channel 同时闭环优化 → 完整记录展示」的直接测评；接入幂等（重复执行不重复建线建节点） |
 | **P9 平台子系统** | 团队调度（mock lead+2 worker 未指派任务→派发→完成）+ 团队记忆 dedupKey 幂等 + 引擎注册表枚举/可用性探测 | MAS 协作、记忆、多引擎资产的可复现基准 |
 
 ### ⚠️ 闭环优化的反直觉约束（实测踩过，务必遵守）
@@ -541,3 +562,132 @@ T1–T4 × N20）→ E2/E3/E4 → E5 检测 + TEP/SWaT 回放 → E6 HIL → E7 
 | 服务在 Agent 回合结束后消失 | 服务被挂进了会被回收的后台作业——改用流水线自举或 `detached-start.mjs`（§1.6） |
 | 端口占用 | 与既有实例/探针冲突（避开 3000/3001/3002）；`AW_BASE`/`--base` 指向实际端口 |
 | compare 报 harnessHash NOTE | 源码在两次运行间有改动，合法；核对判定类指标是否仍逐位一致，一致即可放行 |
+
+---
+
+## 10. PLC 模拟器默认工业场景目录与接入指导（2026-09 起 6 个预设）
+
+> 模拟器（`plc-node-simulator/`，基准惯例专用实例 `$SIM_BASE=:4011`）内置 **6 个命名预设**。
+> **模拟器源码目录唯一权威 = 仓库内子模块 `AgentWorkShop/plc-node-simulator/`**（2026-09-21 起
+> `bench/lib/sim.mjs` 的 SIM_DIR 不再回退到同级旧布局检出；SIM_DIR 环境变量仅作 CI 显式覆盖）。
+> 其中 3 个为**多场景共存预设**（`injection-line` / `wwtp-line` / `anneal-line`）：
+> 应用/接入时**不整包替换现场**，只按设备 id 差分补建本场景节点、按场景 id 增量装载本场景
+> 物理引擎——多个场景（含 cast-film/biax）可在**同一模拟器实例上同时运行、同时闭环**。
+> 每台设备五协议其一；SP（可写工艺参数，DCW）与 PV（采集检测/性能量，DAQ）严格分离；
+> 全部信号带工艺 `description`（进平台 semantics → Agent 语义卡）。
+>
+> **场景-节点-协议总清单（SP=可写工艺参数→平台 DCW 节点；PV=采集检测量→平台 DAQ 节点）**：
+>
+> | 预设 key | 设备 | 协议面 | DCW(SP) | DAQ(PV) | 被控量 |
+> |---|---|---|---|---|---|
+> | `cast-film-physics` | 6 执行器 + 7 传感器 | 五协议（modbus-tcp / opcua / mqtt / http / modbus-rtu） | 6 | 7 | 薄膜厚度/缺陷 |
+> | `biax-line` | 9 台（dryer-opcua · extruder/ casting/mdo/winder-mbtcp · pump/cool-rtu · tdo-opcua · gauge-mqtt · inspect-http） | 五协议（端口 8841 / 16052-16056 / 15052-15056 / 5843-5845 / 18830） | 30 | 19 | 厚度 25.0±0.7μm |
+> | `injection-line` | 5 台（mbtcp/rtu/opcua/mqtt/http 各一） | 五协议 | 11 | 14 | 克重 32.5±0.35g |
+> | `wwtp-line` | 5 台（mbtcp/opcua/rtu/mqtt/http 各一） | 五协议 | 7 | 13 | 出水五参数+DO |
+> | `anneal-line` | 5 台（mbtcp/opcua/rtu/mqtt/http 各一） | 五协议 | 7 | 11 | 硬度 95±6HV |
+> | `film-line` | 5 台/线 | 五协议 | 按模板 | 按模板 | 模板演示 |
+>
+> 引擎侧保证（2026-09-21 修复后成立，流水线每轮依赖）：**每次整包预设应用（film-line /
+> cast-film-physics / biax-line）都会全停旧引擎并按新蓝图热态重建物理引擎**（`stopPlantModel()
+> → startPlantModel(warm=true)`），杜绝开机残留引擎以旧状态继续积分；多场景共存预设走
+> `upsert` 按 id 热态重建对应引擎。**每个场景 mission 开工前默认执行 fresh 复位**：SP 信号值
+> 复位到蓝图次优工况（只动信号值，不重连不重建；`--no-fresh` 才保留现场），保证优化轨迹可复现。
+>
+> **连接方式（通用三步，全部幂等）**：
+> 1. **看**：`GET $SIM_BASE/api/presets/<key>` 拉蓝图（dry-run，不动现场）——期望节点+信号+引擎配置；
+> 2. **查**：`GET $SIM_BASE/api/nodes` 对现场做按 id+信号集+协议端口的差分——缺失→`POST /api/nodes` 补建（固定 id）、漂移→`PATCH` 修复、停机→`POST /api/nodes/:id/start`；**已齐备 → 零改动跳过**；
+> 3. **接**：`PUT $SIM_BASE/api/plant/config {"plantModel":<蓝图.plantModel>,"upsert":true,"warm":true}` 增量装载引擎；
+>    平台侧每设备 `GET /api/nodes/:id/export` 取真实 driverConfig 建线（`bench/lib/scenarios.mjs`
+>    的 `ensureScenarioLine`/`provisionScenarioLine` 已把三步全部自动化，平台产线按标签
+>    `AWB-SCEN:<id>` 复用，不重复建线）。
+> 手动逐步接入时按上述顺序 curl 即可；**每次先看是否已接入，已接入就不重复连接**。
+
+### 10.1 injection-line · 注塑成型质量窗口寻优
+
+- **作业场景**：家用电器面板类制品（PP），单腔模注塑。规格：克重 **32.5±0.35 g**、
+  飞边 ≤0.4%、缩痕指数 ≤1.5%、关键尺寸偏差 ±0.05 mm。
+  起始工况（次优）：保压 45 bar 偏低 → 克重 ≈31.3 g 偏轻 + 缩痕 ≈2~3% 超标、飞边 ≈0。
+  **闭环目标**：把克重调回规格窗，同时守住飞边/缩痕上限（保压低了缩痕超、高了飞边出——
+  经典窗口问题）。物理机理：克重 = f(保压 +, 保压时间 +, 熔温 −)；飞边在保压 ≳80 bar
+  （低注射压力/冷模时更高）后急剧上升；熔体温度 = 机筒四区加权 + 螺杆剪切热（+0.11℃/rpm）。
+
+- **节点清单**（5 台，五协议各一；端口为 4010 基准位，影子实例自动 +1000 偏移）：
+
+| 设备 id | 设备描述 | 协议/端口 | SP（DCW 可写） | PV（DAQ 采集） |
+|---|---|---|---|---|
+| `inj-machine-mbtcp` | 注塑主机 PLC：机筒四区加热+螺杆塑化 | Modbus TCP 16052 (unit 1) | 机筒温度区 1-4 SP（40021/23/25/27，160~300℃）、螺杆转速 SP（40029，60~200rpm） | MeltTemp（40001，熔体温度）、MeltPress（40003，塑化背压 bar） |
+| `inj-mold-rtu` | 模温机与锁模单元：模温决定缩痕/飞边阈值 | Modbus RTU 15052 (unit 1) | 模具温度 SP（40021，20~95℃）、锁模力 SP（40023，800~2500kN） | MoldTempPV（40001）、ClampPV（40003） |
+| `inj-inject-opcua` | 注射/保压单元：克重第一控制组 | OPC UA 5843 (`PLC-Simulator-Injection`) | InjectSpeedSP（`ns=2;s=Inj.Inj.Speed.Sp`，30~130mm/s）、HoldPressSP（`Inj.Hold.P.Sp`，20~110bar）、HoldTimeSP（`Inj.Hold.T.Sp`，3~15s）——全部 writable | InjPressPV（`Inj.Inj.P.Pv`，注射压力 bar） |
+| `inj-cool-mqtt` | 冷却水单元：水温偏高顶高模温 | MQTT 18830（内置 broker） | CoolWaterSP（命令主题 `aw/inj/coolwater/set`，jsonKey `setpoint`，10~45℃） | WaterTempPV（`aw/inj/wtemp`，jsonPath `data.temp`）、CoolFlowPV（`aw/inj/flow`） |
+| `inj-inspect-http` | 制品质量检测站：克重/外观/轮廓 | HTTP（挂在 $SIM_BASE，`/sim-http/inj-inspect-http/*`） | （本场景写路径刻意不经 HTTP） | PartWeight（`/api/weight`，**被控量**）、FlashRate（`/api/flash`）、SinkMark（`/api/sink`）、DimDev（`/api/dim`）、CycleTime（`/api/cycle`）、WallProfile（`/api/profile`，48 点向量帧）、SurfaceImg（`/api/ccd`，图像帧） |
+
+- **闭环作业参数**（`bench/lib/scenarios.mjs` 内建策略）：主控 = 保压压力（近似增益 0.052 g/bar，
+  share 0.55）→ 保压时间（0.05 g/s）轮换；飞边 >0.4% 触发守卫退保压；≤8 轮，每轮写后等
+  物理随动（读数稳定或超时）；每写自动开优化记录 + judge 收口。
+- **验收**：克重入 32.5±0.35 g 且飞边 ≤0.4%、缩痕 ≤1.5%。
+
+### 10.2 wwtp-line · A2O 污水生化处理「达标降耗」
+
+- **作业场景**：城镇污水厂 A2O 工艺（曝气池 8000 m³）。排放硬约束：COD<50、氨氮<5、
+  总磷<0.5 mg/L、pH 6~9、浊度<10 NTU。起始工况（不达标运行）：风机 26Hz → DO 塌陷
+  （硝化受抑、氨氮超标）；NaOH 12 L/h、PAC 30 L/h 不足 → pH/TP 超标。
+  **闭环目标**（多目标，与薄膜「质量窗」形态不同）：先达标（DO 3.4±0.6 mg/L 带内且
+  COD/氨氮派生约束同时满足），再在达标约束内逐级「脱气退药」降低运行成本（成本 = 风机电耗 ∝ 频率^2.6 + 0.30×NaOH
+  + 0.45×PAC）。物理机理：DO = Csat − OUR/kLa(频率)；COD 去除 = ηmax(1−e^(−kC·DO))·MLSS^0.35；
+  氨氮 = 进水×e^(−kN(DO−0.8)+)（DO<0.8 崩溃）；PAC 朗缪尔饱和吸附（收益递减）；
+  pH = 6.1+0.041×NaOH−硝化碱耗。
+
+- **节点清单**：
+
+| 设备 id | 设备描述 | 协议/端口 | SP（DCW 可写） | PV（DAQ 采集） |
+|---|---|---|---|---|
+| `wwtp-blower-mbtcp` | 曝气风机站：DO 第一控制量、全厂最大电耗 | Modbus TCP 16054 | 风机频率 SP（40021，20~50Hz） | AirPress（40001，kPa）、DO（40003，mg/L，**核心过程量**） |
+| `wwtp-dosing-opcua` | 加药撬块：NaOH 中和 + PAC 除磷 | OPC UA 5844 (`PLC-Simulator-Wwtp-Dosing`) | NaohDoseSP（`Wwtp.Dose.Naoh.Sp`，0~120L/h）、PacDoseSP（`Wwtp.Dose.Pac.Sp`，0~90L/h） | NaohFlow / PacFlow（实测 L/h） |
+| `wwtp-return-rtu` | 回流与排泥单元：脱氮/泥浓/泥龄 | Modbus RTU 15054 | 内回流比 SP（40021，20~180%）、污泥回流比 SP（40023）、排泥量 SP（40025，50~400m³/d） | MLSS（40001，mg/L） |
+| `wwtp-influent-mqtt` | 进水泵房：扰动物遥测 | MQTT 18830 | 进水流量 SP（命令主题 `aw/wwtp/inflow/set`，400~1600m³/h） | CodIn（`aw/wwtp/codin`）、Nh3In（`aw/wwtp/nh3in`） |
+| `wwtp-effluent-http` | 出水水质检测站：排放达标关 | HTTP `/sim-http/wwtp-effluent-http/*` | （无） | CodOut（`/api/cod`）、Nh3Out（`/api/nh3`）、TpOut（`/api/tp`）、PhOut（`/api/ph`）、Turbidity（`/api/turbidity`）、DoProfile（`/api/doprofile`，7 池段向量帧） |
+
+- **闭环作业参数**：阶段 A 曝气调 DO（增益 ≈0.55 mg/L 每 Hz，≤4 轮）→ 阶段 B NaOH 调 pH
+  （≥6.5，≤3 轮）→ 阶段 C PAC 除磷（<0.5，≤3 轮）→ 阶段 D 达标降耗（风机 −1.5Hz/NaOH −4
+  逐级试退，复测五参数仍达标才保留，否则自动回退，≤2 处成功即止）。
+- **验收**：出水五参数全部达标 **且** 终态成本 ≤ 首个达标成本（真实降耗证据进报告）。
+
+### 10.3 anneal-line · 连续退火「质量窗内产能最大化」
+
+- **作业场景**：冷轧低碳钢带连续退火（DC04 类冲压板，加热段 90m）。质量规格：硬度
+  **95±6 HV**、抗拉 300±25 MPa、表面缺陷 ≤0.5%。起始工况（欠退火）：均热三区
+  (690/710/730)℃ 偏低 + 线速 140 m/min 偏快 → 再结晶热指数 SMP<0、硬度 ≈135 HV。
+  **闭环目标**：先把炉温调回再结晶窗，再在质量窗内逐级推高线速（产能 ∝ 线速），
+  硬度触边自动回退。物理机理：带温 = 0.95×炉温加权 − 0.16×(线速−120) + 0.25×(H2−10)；
+  SMP = (带温−680)×驻留(=90m/线速)；硬度 = 96+28×e^(−SMP/700)（欠退火指数软化）；
+  抗拉 = 295+0.42×(硬度−96)+0.10×(冷速−50)；表面缺陷 ← H2 不足/带温超窗。
+
+- **节点清单**：
+
+| 设备 id | 设备描述 | 协议/端口 | SP（DCW 可写） | PV（DAQ 采集） |
+|---|---|---|---|---|
+| `anneal-heating-mbtcp` | 加热段炉：均热三区（区权 0.25/0.35/0.40） | Modbus TCP 16056 | 均热区 1-3 炉温 SP（40021/23/25，600~850℃） | FurnaceTemp（40001）、StripTemp（40003，均热出口带温） |
+| `anneal-line-opcua` | 炉内传动：线速=产能与质量的枢纽 | OPC UA 5845 (`PLC-Simulator-Anneal-Drive`) | LineSpeedSP（`Anneal.Line.Speed.Sp`，60~220m/min） | ActSpeed（`Anneal.Line.Speed.Pv`） |
+| `anneal-cool-rtu` | 冷却与过时效段：缓冷析出/冷速 | Modbus RTU 15056 | 过时效温度 SP（40021，320~480℃）、冷却档位 SP（40023，20~100%） | OaTempPV（40001） |
+| `anneal-gas-mqtt` | 保护气单元：H2 传热/表面还原 | MQTT 18830 | H2RatioSP（命令主题 `aw/anneal/h2/set`，3~15%） | DewPoint（`aw/anneal/dew`）、H2Act（`aw/anneal/h2pv`） |
+| `anneal-inspect-http` | 成品质量检测站：质量窗关 | HTTP `/sim-http/anneal-inspect-http/*` | （无） | Hardness（`/api/hardness`，**被控量**）、Tensile（`/api/tensile`）、YieldStr（`/api/yield`）、GrainSize（`/api/grain`）、SurfaceDef（`/api/surface`）、Flatness（`/api/flatness`，48 点板形向量帧） |
+
+- **闭环作业参数**：阶段 A zone3/zone2 轮换乘法校正（err=(硬度−95)/95，share 0.5/0.35，
+  clamp 600~850℃，≤5 轮）→ 阶段 B 产能推进（线速 +12 逐级，硬度/抗拉/表面全窗内才保留，
+  触边自动回退，≤4 轮）。
+- **验收**：硬度入 95±6 HV 且抗拉 300±25 MPa 且表面 ≤0.5% 且线速提升 ≥5%。
+
+### 10.4 既有场景与多引擎共存语义
+
+| 预设 key | 场景 | 引擎 kind | 应用语义 |
+|---|---|---|---|
+| `film-line` | 全协议模板产线（对齐主项目 DAQ 模板语义） | 无 | **整包替换**（replaceAll，清引擎） |
+| `cast-film-physics` | 挤出流延薄膜（6 DCW+7 DAQ，闭环寻优） | `castfilm` | **整包替换**（replaceAll + 单引擎） |
+| `biax-line` | BOPET 双拉全线（9 设备 30 DCW+19 DAQ） | `biax` | 预设为整包；**bench 走蓝图差分 ensure**（`ensureBiaxLine`），与现场共存 |
+| `injection-line` / `wwtp-line` / `anneal-line` | §10.1-10.3 三场景 | `injection` / `wwtp` / `anneal` | **多场景共存**：差分补建 + `upsert` 引擎增量装载，现场其他场景零影响 |
+
+- 多引擎并存：`GET /api/plant/state` 返回 `engines[]`（每引擎 id/kind/phase/last）；真值流按
+  引擎分文件（`truth.jsonl` 主位 + `truth-<id>.jsonl`）；`/api/plant/{truth,optimum,phase,reset}`
+  均支持 `?id=` / `{"id":...}` 指定引擎；`PUT /api/plant/config` 支持 `{"upsert":true}` 增量装载。
+- 复现/自测：`cd plc-node-simulator && npx tsx tests/scenario-models.test.ts`（31 断言：
+  物理因果方向、稳态锚点、动态收敛、同 seed 逐位复现、W* 网格）。

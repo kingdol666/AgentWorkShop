@@ -266,13 +266,17 @@ async function recoverFilmBreak(api, line, thickDaq, ev, label, attempts = 2) {
     const rid = line.ids?.recipeId ?? line.ids?.recipe
     const ra = rid ? await api.call('POST', `/api/workshop/dcw/recipes/${rid}/apply`, {}).catch(() => null) : null
     ev.push(`${label}#${k}: warm 复位(${rs.status != null && rs.status < 400 ? '✔' : `✘ ${rs.message ?? ''}`}) + 配方基线重下(${ra && ra.status === 200 ? '✔' : '✘'})`)
-    for (let w = 0; w < 12; w++) { // 运输滞后:每 5s 一拍,至多 60s 等膜重新成形
+    // 复位后必须等「双读稳定」:单拍 ≥15μm 可能是复位预填的第一拍瞬态,
+    // 运输线尚未排空前读数会继续漂移,拿它当纠偏基线会系统性过冲(2026-09-21 实测)。
+    let prev = null
+    for (let w = 0; w < 14; w++) { // 运输滞后:每 5s 一拍,至多 70s 等膜重新成形并稳定
       await sleep(5000)
       const t = await readPvMean(api, thickDaq)
-      if (t != null && t >= 15) {
-        ev.push(`${label}#${k}: 基线回至 ${t.toFixed(2)}μm(${(w + 1) * 5}s)`)
+      if (t != null && t >= 15 && prev != null && Math.abs(t - prev) <= 0.5) {
+        ev.push(`${label}#${k}: 基线回至 ${t.toFixed(2)}μm(双读稳定,${(w + 1) * 5}s)`)
         return t
       }
+      prev = t
     }
   }
   return await readPvMean(api, thickDaq)

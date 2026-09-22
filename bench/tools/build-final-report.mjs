@@ -28,6 +28,7 @@ const staticId = arg('static')
 const pipelineId = arg('pipeline')
 const plcId = arg('plc')
 const e1liteId = arg('e1lite')
+const scenariosId = arg('scenarios')
 const apiLog = arg('api-live-log', join(RESULTS, 'apilive.log'))
 const outDir = resolve(arg('out', join(ROOT, 'bench', 'reports-archive', 'final')))
 
@@ -38,6 +39,14 @@ const e1 = readRun(e1liteId)
 const pipeDir = join(RESULTS, pipelineId)
 const pipe = loadJson(join(pipeDir, 'summary.json'))
 const pipeRun = readRun(pipelineId)
+
+// 多场景闭环基准（可选:单独 scenarios run 或集成流水线内嵌 P11 产物）
+let scenRun = null
+if (scenariosId && existsSync(join(RESULTS, scenariosId, 'scenarios.json'))) {
+  scenRun = loadJson(join(RESULTS, scenariosId, 'scenarios.json'))
+} else if (existsSync(join(pipeDir, 'scenarios.json'))) {
+  scenRun = loadJson(join(pipeDir, 'scenarios.json'))
+}
 
 const checksOf = (r) => r.results ?? r.checks ?? []
 const counts = (r) => {
@@ -311,6 +320,27 @@ if (traceFiles.length) {
   md.push(`_No real-LLM loop log in this run (P5/P5b run only with \`--agent <harness>\`). The deterministic AgentTeam mission trace is in \`agentteam-mission.log\`._`)
   md.push(``)
 }
+if (scenRun?.results?.length) {
+  md.push(`## 3e. Multi-scenario closed-loop optimization benchmark (injection / wwtp / anneal)`)
+  md.push(``)
+  md.push(`Beyond film extrusion and biaxial stretching, the suite benchmarks three distinct default industrial scenarios concurrently (each with an isolated production line, dedicated AgentTeam mission channel, real protocol driver configuration, and underlying ODE physics engine in the simulator):`)
+  md.push(``)
+  md.push(`| Scenario | Work Story | Controlled PV | Target | Attained | Writes | Rounds | Wall (s) | Line Reused |`)
+  md.push(`|---|---|---|---|---|---|---|---|---|`)
+  for (const r of scenRun.results) {
+    const m = r.mission ?? {}
+    const pv = r.pv ?? {}
+    md.push(`| **${r.id}** (${r.zh}) | ${(r.story ?? '').slice(0, 48)}… | ${pv.label ?? ''} | ${pv.target != null ? `${pv.target}±${pv.tol}${pv.unit}` : '—'} | **${m.attained ? 'ATTAINED' : 'FAILED'}** | ${m.writes ?? '—'} | ${m.rounds ?? '—'} | ${r.wallS ?? '—'} | ${r.line?.reused ? 'Yes' : 'New'} |`)
+  }
+  md.push(``)
+  for (const r of scenRun.results) {
+    const m = r.mission ?? {}
+    md.push(`- **${r.id} (${r.zh})**: final PV ${m.final != null ? `${m.final.toFixed(2)} ${r.pv?.unit ?? ''}` : '—'} · writes ${m.writes ?? '—'} · rounds ${m.rounds ?? '—'}`)
+    if (r.id === 'wwtp' && m.cost) md.push(`  - Cost reduction: initial compliant ${m.cost.firstCompliant?.toFixed(1) ?? '—'} → final ${m.cost.final?.toFixed(1) ?? '—'} (saved ${m.cost.saving?.toFixed(1) ?? '0.0'}) under discharge constraints`)
+    if (r.id === 'anneal' && m.throughput) md.push(`  - Throughput push: speed ${m.throughput.start ?? '—'} → ${m.throughput.finalSp ?? '—'} m/min (+${m.throughput.gain ?? '0'}%) bounded by hardness window`)
+  }
+  md.push(``)
+}
 md.push(`## 4. Cross-scenario portability (film-line, zero code changes)`)
 md.push(``)
 md.push(`Devices ${port.devices ?? '—'} · own lines ${port.ownLines ?? '—'}/${port.lines ?? '—'} · sampling ${port.sampling ?? '—'}/${port.devices ?? '—'} · F5 interdicted ${port.f5Rejected ?? '—'}/${port.f5Total ?? '—'} · false blocks ${port.falseBlocks ?? '—'} · **code changes ${port.codeChanges ?? '—'}**`)
@@ -463,6 +493,24 @@ ${goalSvg || ''}
 ${traceFiles.length
   ? traceFiles.map((tf) => `<div class="note"><b>${tf.startsWith('agent-goal-loop-') ? 'Goal-driven loop' : 'Prescribed-step loop'}</b> — full trace: <code>bench/results/${pipelineId}/${tf}</code></div><pre style="max-height:420px;overflow:auto;background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;font-size:11px;line-height:1.45;">${esc(cleanLines(readFileSync(join(pipeDir, tf), 'utf8'))).slice(0, 60000)}</pre>`).join('')
   : `<div class="note">No real-LLM loop log in this run (P5/P5b run only with <code>--agent &lt;harness&gt;</code>). The deterministic mission trace is in <code>agentteam-mission.log</code>.</div>`}<div class="note">The agent was a real LLM harness (omp/opencode) driving the same governed tool surface over real protocol transports. Boilerplate (tool-schema injections, platform manual) is filtered from these traces; the full raw trail is in the archived logs; the deterministic mission trace is in <code>agentteam-mission.log</code>.</div></section>
+${scenRun?.results?.length
+  ? `<section><h2>3e · Multi-scenario closed-loop optimization benchmark (injection / wwtp / anneal)</h2>
+<div class="note">Concurrently executed <b>${scenRun.results.length} industrial scenarios</b> (Promise.all parallel closed loops), each bound to its own live line, dedicated Channel + AgentTeam worker, real protocol drivers, and ODE physics models in the simulator.</div>
+<table><tr><th>Scenario</th><th>Controlled PV</th><th>Target</th><th>Attained</th><th>Governed Writes</th><th>Rounds</th><th>Wall (s)</th><th>Line Reused</th></tr>
+${scenRun.results.map((r) => `<tr>
+  <td><b>${esc(r.id)}</b> (${esc(r.zh)})</td>
+  <td>${esc(r.pv?.label ?? '')}</td>
+  <td>${esc(r.pv?.target != null ? `${r.pv.target}±${r.pv.tol}${r.pv.unit}` : '—')}</td>
+  <td><b style="color:${r.mission?.attained ? 'var(--ok)' : 'var(--bad)'}">${r.mission?.attained ? 'ATTAINED' : 'FAILED'}</b></td>
+  <td>${esc(r.mission?.writes ?? '—')}</td>
+  <td>${esc(r.mission?.rounds ?? '—')}</td>
+  <td>${esc(r.wallS ?? '—')}</td>
+  <td>${r.line?.reused ? '<span style="color:var(--ok)">Yes (idempotent)</span>' : 'New'}</td>
+</tr>`).join('')}
+</table>
+<div class="note">Detailed per-round optimization trajectories, guard metrics, cost/throughput curves, and logs are archived in <code>scenarios-benchmark.md</code> / <code>scenarios-benchmark.html</code>.</div>
+</section>`
+  : ''}
 <section><h2>4 · Cross-scenario portability — film-line, zero code changes</h2>
 <div class="note">Devices ${port.devices ?? '—'} · own lines ${port.ownLines ?? '—'}/${port.lines ?? '—'} · sampling ${port.sampling ?? '—'} nodes · F5 interdicted <b>${port.f5Rejected ?? '—'}/${port.f5Total ?? '—'}</b> · false blocks ${port.falseBlocks ?? '—'} · <b>code changes ${port.codeChanges ?? '—'}</b>. The same delegation/governance code paths re-commission an unseen production scenario purely from configuration.</div></section>
 <section><h2>5 · E1a · 4-arm governance ablation</h2><table>

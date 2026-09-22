@@ -1,0 +1,1985 @@
+{
+  "runId": "20260921035459-11oo",
+  "at": "2026-09-21T04:05:23.819Z",
+  "seed": 42,
+  "base": "http://127.0.0.1:3005",
+  "simBase": "http://127.0.0.1:4011",
+  "toolHarness": "opencode",
+  "gitCommit": "e692df1",
+  "harnessHash": "50fb2e0e936bd45e",
+  "wallS": 151.59,
+  "scenarios": [
+    "injection",
+    "wwtp",
+    "anneal"
+  ],
+  "results": [
+    {
+      "id": "injection",
+      "zh": "注塑成型质量窗口寻优",
+      "story": "家用电器面板(PP)注塑:规格克重 32.5±0.35 g、飞边 ≤0.4%、缩痕 ≤1.5%、尺寸偏差 ±0.05 mm。起始保压偏低 → 克重 ≈31.3 g 偏轻 + 缩痕超标;闭环把保压/保压时间/模温调回窗口,同时守住飞边上限。",
+      "ev": [
+        "起点复位:SP 已回到蓝图次优工况(fresh;接入与产线不受影响)"
+      ],
+      "errors": [],
+      "ensure": {
+        "missing": [
+          "inj-machine-mbtcp",
+          "inj-mold-rtu",
+          "inj-inject-opcua",
+          "inj-cool-mqtt",
+          "inj-inspect-http"
+        ],
+        "drifted": [],
+        "created": [
+          "inj-machine-mbtcp",
+          "inj-mold-rtu",
+          "inj-inject-opcua",
+          "inj-cool-mqtt",
+          "inj-inspect-http"
+        ],
+        "repaired": [],
+        "started": [],
+        "untouched": []
+      },
+      "verified": {
+        "devices": 5,
+        "expectDevices": 5,
+        "signals": 25,
+        "sp": 11,
+        "pv": 14,
+        "descMissing": 0,
+        "protocols": [
+          "modbus-tcp",
+          "modbus-rtu",
+          "opcua",
+          "mqtt",
+          "http"
+        ]
+      },
+      "blueprint": {
+        "nodes": [
+          {
+            "id": "inj-machine-mbtcp",
+            "name": "注塑主机PLC(Modbus TCP)",
+            "description": "注塑机主机:机筒四区加热 + 螺杆塑化传动。塑化段,决定熔体温度与计量精度。",
+            "protocol": "modbus-tcp",
+            "enabled": true,
+            "tickMs": 800,
+            "signals": [
+              {
+                "id": "barrel-temp-1-sp",
+                "name": "机筒温度区1SP",
+                "description": "进料段机筒温度(水冷进料口防架桥),四区最低",
+                "unit": "℃",
+                "min": 160,
+                "max": 300,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 240
+                }
+              },
+              {
+                "id": "barrel-temp-2-sp",
+                "name": "机筒温度区2SP",
+                "description": "压缩段机筒温度,物料开始熔融",
+                "unit": "℃",
+                "min": 160,
+                "max": 300,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 246
+                }
+              },
+              {
+                "id": "barrel-temp-3-sp",
+                "name": "机筒温度区3SP",
+                "description": "计量段中段机筒温度",
+                "unit": "℃",
+                "min": 160,
+                "max": 300,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 252
+                }
+              },
+              {
+                "id": "barrel-temp-4-sp",
+                "name": "机筒温度区4SP",
+                "description": "喷嘴段机筒温度,四区最高;与熔体温度强相关",
+                "unit": "℃",
+                "min": 160,
+                "max": 300,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 258
+                }
+              },
+              {
+                "id": "screw-speed-sp",
+                "name": "螺杆转速SP",
+                "description": "塑化螺杆转速(rpm);剪切热叠加进熔体温度(约 +0.11℃/rpm)",
+                "unit": "rpm",
+                "min": 60,
+                "max": 200,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 120
+                }
+              },
+              {
+                "id": "melt-temp-pv",
+                "name": "MeltTemp",
+                "description": "喷嘴前熔体实测温度(采集);工艺窗 235~262℃,超窗劣化飞边/缩痕",
+                "unit": "℃",
+                "min": 20,
+                "max": 320,
+                "decimals": 1,
+                "plantBinding": "meltTemp",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 25
+                }
+              },
+              {
+                "id": "melt-pressure-pv",
+                "name": "MeltPress",
+                "description": "塑化背压(采集,bar)",
+                "unit": "bar",
+                "min": 0,
+                "max": 160,
+                "decimals": 1,
+                "plantBinding": "meltPressure",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 50
+                }
+              }
+            ],
+            "config": {
+              "host": "0.0.0.0",
+              "port": 17052,
+              "unitId": 1,
+              "registerMaps": [
+                {
+                  "address": 40001,
+                  "area": "holding",
+                  "signalId": "melt-temp-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40003,
+                  "area": "holding",
+                  "signalId": "melt-pressure-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40021,
+                  "area": "holding",
+                  "signalId": "barrel-temp-1-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40023,
+                  "area": "holding",
+                  "signalId": "barrel-temp-2-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40025,
+                  "area": "holding",
+                  "signalId": "barrel-temp-3-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40027,
+                  "area": "holding",
+                  "signalId": "barrel-temp-4-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40029,
+                  "area": "holding",
+                  "signalId": "screw-speed-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                }
+              ]
+            }
+          },
+          {
+            "id": "inj-mold-rtu",
+            "name": "模温机与锁模单元(Modbus RTU)",
+            "description": "模温控制机 + 锁模单元。模具温度决定表面复制/缩痕/飞边阈值,锁模力是飞边的物理上限。",
+            "protocol": "modbus-rtu",
+            "enabled": true,
+            "tickMs": 1000,
+            "signals": [
+              {
+                "id": "mold-temp-sp",
+                "name": "模具温度SP",
+                "description": "模温机设定(℃);过低→缩痕/表面无光,过高→飞边与节拍变长",
+                "unit": "℃",
+                "min": 20,
+                "max": 95,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 40
+                }
+              },
+              {
+                "id": "clamp-force-sp",
+                "name": "锁模力SP",
+                "description": "锁模力设定(kN);保压+注射压力的飞边阈值由此决定",
+                "unit": "kN",
+                "min": 800,
+                "max": 2500,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 1600
+                }
+              },
+              {
+                "id": "mold-temp-pv",
+                "name": "MoldTempPV",
+                "description": "模具实测温度(采集)",
+                "unit": "℃",
+                "min": 10,
+                "max": 110,
+                "decimals": 1,
+                "plantBinding": "moldTemp",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 25
+                }
+              },
+              {
+                "id": "clamp-force-pv",
+                "name": "ClampPV",
+                "description": "锁模力实测(采集)",
+                "unit": "kN",
+                "min": 0,
+                "max": 2600,
+                "decimals": 0,
+                "plantBinding": "clampForce",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 1600
+                }
+              }
+            ],
+            "config": {
+              "host": "0.0.0.0",
+              "port": 16052,
+              "unitId": 1,
+              "registerMaps": [
+                {
+                  "address": 40001,
+                  "area": "holding",
+                  "signalId": "mold-temp-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40003,
+                  "area": "holding",
+                  "signalId": "clamp-force-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40021,
+                  "area": "holding",
+                  "signalId": "mold-temp-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40023,
+                  "area": "holding",
+                  "signalId": "clamp-force-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                }
+              ]
+            }
+          },
+          {
+            "id": "inj-inject-opcua",
+            "name": "注射/保压单元(OPC UA)",
+            "description": "注射与保压执行单元:注射速度、保压压力与保压时间是克重的第一控制组。",
+            "protocol": "opcua",
+            "enabled": true,
+            "tickMs": 1000,
+            "signals": [
+              {
+                "id": "inject-speed-sp",
+                "name": "InjectSpeedSP",
+                "description": "注射速度(mm/s);影响充模与注射压力,克重次要项",
+                "unit": "mm/s",
+                "min": 30,
+                "max": 130,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 85
+                }
+              },
+              {
+                "id": "hold-pressure-sp",
+                "name": "HoldPressSP",
+                "description": "保压压力(bar)——克重/缩痕/飞边的第一控制量;低了缩痕重、高了飞边出",
+                "unit": "bar",
+                "min": 20,
+                "max": 110,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 45
+                }
+              },
+              {
+                "id": "hold-time-sp",
+                "name": "HoldTimeSP",
+                "description": "保压时间(s);浇口冻结前持续补缩,与保压压力同向",
+                "unit": "s",
+                "min": 3,
+                "max": 15,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 6
+                }
+              },
+              {
+                "id": "inj-pressure-pv",
+                "name": "InjPressPV",
+                "description": "注射压力实测(采集,bar);超 95 bar 起飞边贡献",
+                "unit": "bar",
+                "min": 0,
+                "max": 180,
+                "decimals": 1,
+                "plantBinding": "injPressure",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 50
+                }
+              }
+            ],
+            "config": {
+              "host": "127.0.0.1",
+              "port": 6843,
+              "namespaceUri": "PLC-Simulator-Injection",
+              "opcVars": [
+                {
+                  "nodeId": "ns=2;s=Inj.Inj.Speed.Sp",
+                  "signalId": "inject-speed-sp",
+                  "dataType": "Double",
+                  "writable": true
+                },
+                {
+                  "nodeId": "ns=2;s=Inj.Hold.P.Sp",
+                  "signalId": "hold-pressure-sp",
+                  "dataType": "Double",
+                  "writable": true
+                },
+                {
+                  "nodeId": "ns=2;s=Inj.Hold.T.Sp",
+                  "signalId": "hold-time-sp",
+                  "dataType": "Double",
+                  "writable": true
+                },
+                {
+                  "nodeId": "ns=2;s=Inj.Inj.P.Pv",
+                  "signalId": "inj-pressure-pv",
+                  "dataType": "Double"
+                }
+              ]
+            }
+          },
+          {
+            "id": "inj-cool-mqtt",
+            "name": "冷却水单元(MQTT)",
+            "description": "模温机冷却水回路:水温设定经 MQTT 命令主题下发;水温偏高顶高模具实际温度。",
+            "protocol": "mqtt",
+            "enabled": true,
+            "tickMs": 2000,
+            "signals": [
+              {
+                "id": "water-temp-pv",
+                "name": "WaterTempPV",
+                "description": "冷却水实测温度(采集,℃)",
+                "unit": "℃",
+                "min": 5,
+                "max": 60,
+                "decimals": 1,
+                "plantBinding": "waterTemp",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 24
+                }
+              },
+              {
+                "id": "cool-flow-pv",
+                "name": "CoolFlowPV",
+                "description": "冷却水流量(采集,L/min)",
+                "unit": "L/min",
+                "min": 0,
+                "max": 80,
+                "decimals": 1,
+                "plantBinding": "coolFlow",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 42
+                }
+              },
+              {
+                "id": "cool-water-sp",
+                "name": "CoolWaterSP",
+                "description": "冷却水温设定(℃,MQTT 命令主题下发);>32℃ 开始顶高模具温度",
+                "unit": "℃",
+                "min": 10,
+                "max": 45,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 24
+                }
+              }
+            ],
+            "config": {
+              "brokerUrl": "mqtt://127.0.0.1:18830",
+              "topics": [
+                {
+                  "topic": "aw/inj/wtemp",
+                  "signalId": "water-temp-pv",
+                  "payloadTemplate": "{\"data\":{\"temp\":${value}}}",
+                  "qos": 0
+                },
+                {
+                  "topic": "aw/inj/flow",
+                  "signalId": "cool-flow-pv",
+                  "payloadTemplate": "{\"data\":{\"flow\":${value}}}",
+                  "qos": 0
+                }
+              ],
+              "commandTopic": "aw/inj/coolwater/set",
+              "commandSignalId": "cool-water-sp"
+            }
+          },
+          {
+            "id": "inj-inspect-http",
+            "name": "制品质量检测站(HTTP)",
+            "description": "在线称重与外观检测站:克重/飞边/缩痕/尺寸/节拍 + 壁厚轮廓与外观图像帧。",
+            "protocol": "http",
+            "enabled": true,
+            "tickMs": 1000,
+            "signals": [
+              {
+                "id": "part-weight",
+                "name": "PartWeight",
+                "description": "制品克重(采集,g)——闭环寻优的被控量,规格 32.5±0.35 g",
+                "unit": "g",
+                "min": 25,
+                "max": 40,
+                "decimals": 2,
+                "plantBinding": "partWeight",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 31
+                }
+              },
+              {
+                "id": "flash-rate",
+                "name": "FlashRate",
+                "description": "飞边率(采集,%);>0.4% 需退保压,模具损伤风险",
+                "unit": "%",
+                "min": 0,
+                "max": 5,
+                "decimals": 3,
+                "plantBinding": "flash",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 0.02
+                }
+              },
+              {
+                "id": "sink-mark",
+                "name": "SinkMark",
+                "description": "缩痕指数(采集,%);>1.5% 外观不良,保压不足信号",
+                "unit": "%",
+                "min": 0,
+                "max": 10,
+                "decimals": 3,
+                "plantBinding": "sink",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 3
+                }
+              },
+              {
+                "id": "dim-dev",
+                "name": "DimDev",
+                "description": "关键尺寸偏差(采集,mm);规格 ±0.05 mm",
+                "unit": "mm",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "plantBinding": "dimDev",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 0
+                }
+              },
+              {
+                "id": "cycle-time",
+                "name": "CycleTime",
+                "description": "生产节拍(采集,s/模)——质量与产能的权衡记录量",
+                "unit": "s",
+                "min": 5,
+                "max": 60,
+                "decimals": 1,
+                "plantBinding": "cycleTime",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 15
+                }
+              },
+              {
+                "id": "wall-profile",
+                "name": "WallProfile",
+                "description": "制品壁厚轮廓 48 点向量帧(采集,mm)",
+                "unit": "mm",
+                "min": 1,
+                "max": 5,
+                "decimals": 4,
+                "format": "vector",
+                "plantBinding": "profile",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 2.5
+                }
+              },
+              {
+                "id": "surface-image",
+                "name": "SurfaceImg",
+                "description": "制品外观灰度图像帧(采集;亮点 ∝ 飞边缺陷)",
+                "unit": "灰度",
+                "min": 0,
+                "max": 255,
+                "format": "image",
+                "plantBinding": "image",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 0
+                }
+              }
+            ],
+            "config": {
+              "paths": [
+                {
+                  "path": "/api/weight",
+                  "signalId": "part-weight",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/flash",
+                  "signalId": "flash-rate",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/sink",
+                  "signalId": "sink-mark",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/dim",
+                  "signalId": "dim-dev",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/cycle",
+                  "signalId": "cycle-time",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/profile",
+                  "signalId": "wall-profile",
+                  "responseTemplate": "{\"points\":${points},\"value\":${value}}"
+                },
+                {
+                  "path": "/api/ccd",
+                  "signalId": "surface-image"
+                }
+              ]
+            }
+          }
+        ],
+        "plantModel": {
+          "kind": "injection",
+          "id": "injection"
+        }
+      },
+      "line": {
+        "ids": {
+          "lineId": "ln-578787c4",
+          "productId": "pd-03931b15",
+          "recipeId": "rc-0844d785",
+          "started": false
+        },
+        "reused": true,
+        "name": "注塑成型质量窗口寻优 injection-ms16s89p",
+        "dcw": 11,
+        "daq": 14,
+        "driverTests": [],
+        "errors": []
+      },
+      "channel": {
+        "chId": "6a72faf2-8faf-422e-bdd0-4b5dbc43a57d",
+        "instId": "5acc774c-c07d-40d0-8ca5-380aae37b121",
+        "parentTask": "d0ae2255-019a-4c3a-a71c-9196ef87780f",
+        "terminal": "COMPLETED"
+      },
+      "mission": {
+        "attained": true,
+        "writes": 3,
+        "rounds": 4,
+        "traj": [
+          {
+            "iter": 0,
+            "phase": "baseline",
+            "knob": null,
+            "from": null,
+            "to": null,
+            "pv": 31.296
+          },
+          {
+            "iter": 1,
+            "phase": "converge",
+            "knob": "hold-pressure-sp",
+            "from": 45,
+            "to": 57.73,
+            "record": "opt-95afa076",
+            "judge": true,
+            "pv": 31.89333333333333
+          },
+          {
+            "iter": 2,
+            "phase": "converge",
+            "knob": "hold-time-sp",
+            "from": 6,
+            "to": 10.85,
+            "record": "opt-bf701ff0",
+            "judge": true,
+            "pv": 32.15
+          },
+          {
+            "iter": 3,
+            "phase": "converge",
+            "knob": "hold-pressure-sp",
+            "from": 57.7,
+            "to": 61.4,
+            "record": "opt-744a521f",
+            "judge": true,
+            "pv": 32.32333333333333
+          }
+        ],
+        "ev": [
+          "baseline 克重=31.30g(目标 32.5±0.35)",
+          "iter1: hold-pressure-sp 45→57.73 ✔ record=yes · 克重→31.89g",
+          "iter2: hold-time-sp 6→10.85 ✔ record=yes · 克重→32.15g",
+          "iter3: hold-pressure-sp 57.7→61.4 ✔ record=yes · 克重→32.32g",
+          "outcome: writes=3 final=32.32g attained=true guards={\"飞边率\":0.0078,\"缩痕指数\":0.9578}"
+        ],
+        "guardsFinal": {
+          "飞边率": 0.0078,
+          "缩痕指数": 0.9578
+        },
+        "final": 32.32333333333333
+      },
+      "wallS": 34.28,
+      "pv": {
+        "sig": "part-weight",
+        "target": 32.5,
+        "tol": 0.35,
+        "unit": "g",
+        "label": "制品克重"
+      }
+    },
+    {
+      "id": "wwtp",
+      "zh": "A2O 污水生化处理达标降耗",
+      "story": "城镇污水厂 A2O 工艺:排放硬约束 COD<50、氨氮<5、总磷<0.5 mg/L、pH 6~9、浊度<10 NTU。起始风机 26Hz/NaOH 12/PAC 30 → DO 塌陷+pH 超下限+TP 超标;闭环先达标(DO 3.2±0.6 带),再在达标约束内逐级「脱气退药」降低运行成本。",
+      "ev": [
+        "起点复位:SP 已回到蓝图次优工况(fresh;接入与产线不受影响)"
+      ],
+      "errors": [],
+      "ensure": {
+        "missing": [
+          "wwtp-blower-mbtcp",
+          "wwtp-dosing-opcua",
+          "wwtp-return-rtu",
+          "wwtp-influent-mqtt",
+          "wwtp-effluent-http"
+        ],
+        "drifted": [],
+        "created": [
+          "wwtp-blower-mbtcp",
+          "wwtp-dosing-opcua",
+          "wwtp-return-rtu",
+          "wwtp-influent-mqtt",
+          "wwtp-effluent-http"
+        ],
+        "repaired": [],
+        "started": [],
+        "untouched": []
+      },
+      "verified": {
+        "devices": 5,
+        "expectDevices": 5,
+        "signals": 20,
+        "sp": 7,
+        "pv": 13,
+        "descMissing": 0,
+        "protocols": [
+          "modbus-tcp",
+          "opcua",
+          "modbus-rtu",
+          "mqtt",
+          "http"
+        ]
+      },
+      "blueprint": {
+        "nodes": [
+          {
+            "id": "wwtp-blower-mbtcp",
+            "name": "曝气风机站(Modbus TCP)",
+            "description": "生化池曝气风机站:风机频率是溶解氧的第一控制量,也是全厂最大电耗源(≈^2.6 指数)。",
+            "protocol": "modbus-tcp",
+            "enabled": true,
+            "tickMs": 800,
+            "signals": [
+              {
+                "id": "blower-hz-sp",
+                "name": "风机频率SP",
+                "description": "曝气风机频率(Hz);DO=f(kLa·f^1.8),电耗∝f^2.6——达标与降耗的核心权衡",
+                "unit": "Hz",
+                "min": 20,
+                "max": 50,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 26
+                }
+              },
+              {
+                "id": "air-pressure-pv",
+                "name": "AirPress",
+                "description": "曝气总管风压(采集,kPa)",
+                "unit": "kPa",
+                "min": 20,
+                "max": 90,
+                "decimals": 1,
+                "plantBinding": "airPressure",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 52
+                }
+              },
+              {
+                "id": "do-pv",
+                "name": "DO",
+                "description": "好氧池溶解氧(采集,mg/L);硝化要求 ≥2.8,目标带 3.2±0.6",
+                "unit": "mg/L",
+                "min": 0,
+                "max": 10,
+                "decimals": 2,
+                "plantBinding": "do",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 1
+                }
+              }
+            ],
+            "config": {
+              "host": "0.0.0.0",
+              "port": 17054,
+              "unitId": 1,
+              "registerMaps": [
+                {
+                  "address": 40001,
+                  "area": "holding",
+                  "signalId": "air-pressure-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40003,
+                  "area": "holding",
+                  "signalId": "do-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40021,
+                  "area": "holding",
+                  "signalId": "blower-hz-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                }
+              ]
+            }
+          },
+          {
+            "id": "wwtp-dosing-opcua",
+            "name": "加药单元(OPC UA)",
+            "description": "加药撬块:NaOH 中和(硝化碱耗补偿)与 PAC 化学除磷;两泵频率即药耗成本。",
+            "protocol": "opcua",
+            "enabled": true,
+            "tickMs": 1000,
+            "signals": [
+              {
+                "id": "naoh-dose-sp",
+                "name": "NaohDoseSP",
+                "description": "NaOH 计量泵频率(L/h);pH=6.1+0.041×药量−硝化碱耗,6.5~7.5 为经济带",
+                "unit": "L/h",
+                "min": 0,
+                "max": 120,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 12
+                }
+              },
+              {
+                "id": "pac-dose-sp",
+                "name": "PacDoseSP",
+                "description": "PAC 投加泵频率(L/h);朗缪尔饱和吸附,收益递减,TP<0.5 的下限约 55~65",
+                "unit": "L/h",
+                "min": 0,
+                "max": 90,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 30
+                }
+              },
+              {
+                "id": "naoh-flow-pv",
+                "name": "NaohFlow",
+                "description": "NaOH 实际流量(采集,L/h)",
+                "unit": "L/h",
+                "min": 0,
+                "max": 130,
+                "decimals": 1,
+                "plantBinding": "naohFlow",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 12
+                }
+              },
+              {
+                "id": "pac-flow-pv",
+                "name": "PacFlow",
+                "description": "PAC 实际流量(采集,L/h)",
+                "unit": "L/h",
+                "min": 0,
+                "max": 100,
+                "decimals": 1,
+                "plantBinding": "pacFlow",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 30
+                }
+              }
+            ],
+            "config": {
+              "host": "127.0.0.1",
+              "port": 6844,
+              "namespaceUri": "PLC-Simulator-Wwtp-Dosing",
+              "opcVars": [
+                {
+                  "nodeId": "ns=2;s=Wwtp.Dose.Naoh.Sp",
+                  "signalId": "naoh-dose-sp",
+                  "dataType": "Double",
+                  "writable": true
+                },
+                {
+                  "nodeId": "ns=2;s=Wwtp.Dose.Pac.Sp",
+                  "signalId": "pac-dose-sp",
+                  "dataType": "Double",
+                  "writable": true
+                },
+                {
+                  "nodeId": "ns=2;s=Wwtp.Dose.Naoh.Pv",
+                  "signalId": "naoh-flow-pv",
+                  "dataType": "Double"
+                },
+                {
+                  "nodeId": "ns=2;s=Wwtp.Dose.Pac.Pv",
+                  "signalId": "pac-flow-pv",
+                  "dataType": "Double"
+                }
+              ]
+            }
+          },
+          {
+            "id": "wwtp-return-rtu",
+            "name": "回流与排泥单元(Modbus RTU)",
+            "description": "回流撬块:内回流(脱氮)/污泥回流(泥浓维持)/剩余污泥排放(MLSS 定态)。",
+            "protocol": "modbus-rtu",
+            "enabled": true,
+            "tickMs": 1000,
+            "signals": [
+              {
+                "id": "recycle-int-sp",
+                "name": "内回流比SP",
+                "description": "内回流比(%);>80 起改善脱氮(反硝化基质),过大增加能耗",
+                "unit": "%",
+                "min": 20,
+                "max": 180,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 90
+                }
+              },
+              {
+                "id": "recycle-sludge-sp",
+                "name": "污泥回流比SP",
+                "description": "污泥回流比(%);维持曝气池 MLSS",
+                "unit": "%",
+                "min": 30,
+                "max": 120,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 70
+                }
+              },
+              {
+                "id": "waste-sludge-sp",
+                "name": "排泥量SP",
+                "description": "剩余污泥排放量(m³/d);MLSS=4900−7.5×(排泥−120),泥龄的执行器",
+                "unit": "m³/d",
+                "min": 50,
+                "max": 400,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 150
+                }
+              },
+              {
+                "id": "mlss-pv",
+                "name": "MLSS",
+                "description": "曝气池污泥浓度(采集,mg/L);>6000 膨胀风险推高浊度",
+                "unit": "mg/L",
+                "min": 1000,
+                "max": 8000,
+                "decimals": 0,
+                "plantBinding": "mlss",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 4900
+                }
+              }
+            ],
+            "config": {
+              "host": "0.0.0.0",
+              "port": 16054,
+              "unitId": 1,
+              "registerMaps": [
+                {
+                  "address": 40001,
+                  "area": "holding",
+                  "signalId": "mlss-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40021,
+                  "area": "holding",
+                  "signalId": "recycle-int-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40023,
+                  "area": "holding",
+                  "signalId": "recycle-sludge-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40025,
+                  "area": "holding",
+                  "signalId": "waste-sludge-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                }
+              ]
+            }
+          },
+          {
+            "id": "wwtp-influent-mqtt",
+            "name": "进水泵房(MQTT)",
+            "description": "进水泵房:进水流量设定(MQTT 命令主题)+ 进水 COD/氨氮扰动物遥测。",
+            "protocol": "mqtt",
+            "enabled": true,
+            "tickMs": 2000,
+            "signals": [
+              {
+                "id": "cod-in-pv",
+                "name": "CodIn",
+                "description": "进水 COD(采集,mg/L);扰动物,漂移由 disturbances 驱动",
+                "unit": "mg/L",
+                "min": 100,
+                "max": 900,
+                "decimals": 0,
+                "plantBinding": "codIn",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 420
+                }
+              },
+              {
+                "id": "nh3-in-pv",
+                "name": "Nh3In",
+                "description": "进水氨氮(采集,mg/L)",
+                "unit": "mg/L",
+                "min": 10,
+                "max": 80,
+                "decimals": 1,
+                "plantBinding": "nh3In",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 35
+                }
+              },
+              {
+                "id": "influent-flow-sp",
+                "name": "InflowSP",
+                "description": "进水流量设定(m³/h,MQTT 命令主题下发);HRT 反比于流量",
+                "unit": "m³/h",
+                "min": 400,
+                "max": 1600,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 1000
+                }
+              }
+            ],
+            "config": {
+              "brokerUrl": "mqtt://127.0.0.1:18830",
+              "topics": [
+                {
+                  "topic": "aw/wwtp/codin",
+                  "signalId": "cod-in-pv",
+                  "payloadTemplate": "{\"data\":{\"cod\":${value}}}",
+                  "qos": 0
+                },
+                {
+                  "topic": "aw/wwtp/nh3in",
+                  "signalId": "nh3-in-pv",
+                  "payloadTemplate": "{\"data\":{\"nh3\":${value}}}",
+                  "qos": 0
+                }
+              ],
+              "commandTopic": "aw/wwtp/inflow/set",
+              "commandSignalId": "influent-flow-sp"
+            }
+          },
+          {
+            "id": "wwtp-effluent-http",
+            "name": "出水水质检测站(HTTP)",
+            "description": "出水在线水质仪:COD/氨氮/总磷/pH/浊度五参数 + 沿程 DO 轮廓向量帧。排放达标关。",
+            "protocol": "http",
+            "enabled": true,
+            "tickMs": 1000,
+            "signals": [
+              {
+                "id": "eff-cod",
+                "name": "CodOut",
+                "description": "出水 COD(采集,mg/L);排放限值 50",
+                "unit": "mg/L",
+                "min": 0,
+                "max": 300,
+                "decimals": 1,
+                "plantBinding": "codOut",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 100
+                }
+              },
+              {
+                "id": "eff-nh3",
+                "name": "Nh3Out",
+                "description": "出水氨氮(采集,mg/L);排放限值 5,DO<0.8 硝化崩溃",
+                "unit": "mg/L",
+                "min": 0,
+                "max": 60,
+                "decimals": 2,
+                "plantBinding": "nh3Out",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 30
+                }
+              },
+              {
+                "id": "eff-tp",
+                "name": "TpOut",
+                "description": "出水总磷(采集,mg/L);排放限值 0.5",
+                "unit": "mg/L",
+                "min": 0,
+                "max": 8,
+                "decimals": 3,
+                "plantBinding": "tpOut",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 1.5
+                }
+              },
+              {
+                "id": "eff-ph",
+                "name": "PhOut",
+                "description": "出水 pH(采集);排放限值 6~9",
+                "unit": "pH",
+                "min": 4,
+                "max": 11,
+                "decimals": 2,
+                "plantBinding": "ph",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 5.9
+                }
+              },
+              {
+                "id": "eff-turbidity",
+                "name": "Turbidity",
+                "description": "出水浊度(采集,NTU);限值 10,膨胀/低 DO 抬升",
+                "unit": "NTU",
+                "min": 0,
+                "max": 60,
+                "decimals": 2,
+                "plantBinding": "turbidity",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 3
+                }
+              },
+              {
+                "id": "do-profile",
+                "name": "DoProfile",
+                "description": "沿程 DO 轮廓 7 池段向量帧(采集,mg/L)",
+                "unit": "mg/L",
+                "min": 0,
+                "max": 10,
+                "decimals": 3,
+                "format": "vector",
+                "plantBinding": "doProfile",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 1
+                }
+              }
+            ],
+            "config": {
+              "paths": [
+                {
+                  "path": "/api/cod",
+                  "signalId": "eff-cod",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/nh3",
+                  "signalId": "eff-nh3",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/tp",
+                  "signalId": "eff-tp",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/ph",
+                  "signalId": "eff-ph",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/turbidity",
+                  "signalId": "eff-turbidity",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/doprofile",
+                  "signalId": "do-profile",
+                  "responseTemplate": "{\"points\":${points},\"value\":${value}}"
+                }
+              ]
+            }
+          }
+        ],
+        "plantModel": {
+          "kind": "wwtp",
+          "id": "wwtp"
+        }
+      },
+      "line": {
+        "ids": {
+          "lineId": "ln-56ddf10e",
+          "productId": "pd-861b6084",
+          "recipeId": "rc-9212a4eb",
+          "started": false
+        },
+        "reused": true,
+        "name": "A2O 污水生化处理达标降耗 wwtp-ms16s89p",
+        "dcw": 7,
+        "daq": 13,
+        "driverTests": [],
+        "errors": []
+      },
+      "channel": {
+        "chId": "51d2f317-e3dc-43da-b174-a1058eadfe49",
+        "instId": "40a0bb0f-b572-42ab-9052-0272c772a9ce",
+        "parentTask": "7a03c551-c171-4066-b3f3-688416064ea7",
+        "terminal": "COMPLETED"
+      },
+      "mission": {
+        "attained": true,
+        "writes": 14,
+        "rounds": 12,
+        "traj": [
+          {
+            "iter": 0,
+            "phase": "baseline",
+            "pv": 0.20800000000000002,
+            "guards": {
+              "出水COD": 360.02,
+              "出水氨氮": 34.474000000000004,
+              "出水总磷": 0.6714,
+              "出水pH": 6.583999999999999,
+              "出水浊度": 4.4079999999999995,
+              "DO": 0.20800000000000002
+            }
+          },
+          {
+            "iter": 1,
+            "phase": "blower",
+            "knob": "blower-hz-sp",
+            "from": 26,
+            "to": 30.06,
+            "record": "opt-87357fe8",
+            "judge": true,
+            "pv": 2.1933333333333334
+          },
+          {
+            "iter": 2,
+            "phase": "blower",
+            "knob": "blower-hz-sp",
+            "from": 30.100000381469727,
+            "to": 31.64,
+            "record": "opt-c2a7a793",
+            "judge": true,
+            "pv": 2.75
+          },
+          {
+            "iter": 3,
+            "phase": "blower",
+            "knob": "blower-hz-sp",
+            "from": 31.600000381469727,
+            "to": 32.43,
+            "record": "opt-6f22fa20",
+            "judge": true,
+            "pv": 3.0566666666666666
+          },
+          {
+            "iter": 4,
+            "phase": "blower",
+            "knob": "blower-hz-sp",
+            "from": 32.400001525878906,
+            "to": 33.2,
+            "record": "opt-8a4a86a9",
+            "judge": true,
+            "pv": 3.296666666666667
+          },
+          {
+            "iter": 5,
+            "phase": "ph",
+            "knob": "naoh-dose-sp",
+            "from": 12,
+            "to": 30.37,
+            "record": "opt-7a99a9df",
+            "judge": true,
+            "pv": 6.6433333333333335
+          },
+          {
+            "iter": 8,
+            "phase": "tp",
+            "knob": "pac-dose-sp",
+            "from": 30,
+            "to": 45,
+            "record": "opt-ff6b230f",
+            "judge": true,
+            "pv": 0.5503333333333335
+          },
+          {
+            "iter": 9,
+            "phase": "tp",
+            "knob": "pac-dose-sp",
+            "from": 45,
+            "to": 60,
+            "record": "opt-f04f8cdf",
+            "judge": true,
+            "pv": 0.45966666666666667
+          },
+          {
+            "iter": 10,
+            "phase": "tp",
+            "knob": "pac-dose-sp",
+            "from": 60,
+            "to": 75,
+            "record": "opt-9c373a17",
+            "judge": true,
+            "pv": 0.4083333333333334
+          }
+        ],
+        "ev": [
+          "baseline DO=0.21 COD=360 NH3=34.5 TP=0.67 pH=6.58 → 不达标",
+          "iter1(曝气): 风机 26→30.06 ✔",
+          "iter2(曝气): 风机 30.100000381469727→31.64 ✔",
+          "iter3(曝气): 风机 31.600000381469727→32.43 ✔",
+          "iter4(曝气): 风机 32.400001525878906→33.2 ✔",
+          "iter5(中和): NaOH 12→30.37 ✔",
+          "iter8(除磷): PAC 30→45 ✔",
+          "iter9(除磷): PAC 45→60 ✔",
+          "iter10(除磷): PAC 60→75 ✔",
+          "达标确认 ✔ 首个达标运行成本 ≈172.9(风机 33.20000076293945/NaOH 30/PAC 75)",
+          "iter11(降耗): 风机 33.20000076293945→32 复测非裕度达标(57/4.4) → 回退 ✔",
+          "iter11(降耗): NaOH 30→26 ✔ 带裕度复测达标,保留",
+          "iter12(降耗): 风机 33.20000076293945→32 复测非裕度达标(50/3.5) → 回退 ✔",
+          "iter12(降耗): NaOH 26→22 ✔ 带裕度复测达标,保留",
+          "outcome: writes=14 DO=3.26 compliant=true cost 172.9→170.5(省 2.4) attained=true"
+        ],
+        "guardsFinal": {
+          "出水COD": 47.96,
+          "出水氨氮": 3.284,
+          "出水总磷": 0.4154,
+          "出水pH": 6.334,
+          "出水浊度": 0.628,
+          "DO": 3.2560000000000002
+        },
+        "final": 3.2560000000000002,
+        "cost": {
+          "final": 170.4998827833881,
+          "firstCompliant": 172.8998827833881,
+          "saving": 2.4
+        }
+      },
+      "wallS": 148.58,
+      "pv": {
+        "sig": "do-pv",
+        "target": 3.4,
+        "tol": 0.6,
+        "unit": "mg/L",
+        "label": "好氧池溶解氧"
+      }
+    },
+    {
+      "id": "anneal",
+      "zh": "连续退火质量窗内产能最大化",
+      "story": "冷轧低碳钢带连续退火(DC04 类):硬度 95±6 HV、抗拉 300±25 MPa、表面缺陷 ≤0.5%。起始炉温偏低+线速偏快 → 欠退火(硬度 ≈135 HV);先把均热炉温调回再结晶窗,再在质量窗内逐级推高线速(产能),触边即回退。",
+      "ev": [
+        "起点复位:SP 已回到蓝图次优工况(fresh;接入与产线不受影响)"
+      ],
+      "errors": [],
+      "ensure": {
+        "missing": [
+          "anneal-heating-mbtcp",
+          "anneal-line-opcua",
+          "anneal-cool-rtu",
+          "anneal-gas-mqtt",
+          "anneal-inspect-http"
+        ],
+        "drifted": [],
+        "created": [
+          "anneal-heating-mbtcp",
+          "anneal-line-opcua",
+          "anneal-cool-rtu",
+          "anneal-gas-mqtt",
+          "anneal-inspect-http"
+        ],
+        "repaired": [],
+        "started": [],
+        "untouched": []
+      },
+      "verified": {
+        "devices": 5,
+        "expectDevices": 5,
+        "signals": 19,
+        "sp": 7,
+        "pv": 12,
+        "descMissing": 0,
+        "protocols": [
+          "modbus-tcp",
+          "opcua",
+          "modbus-rtu",
+          "mqtt",
+          "http"
+        ]
+      },
+      "blueprint": {
+        "nodes": [
+          {
+            "id": "anneal-heating-mbtcp",
+            "name": "加热段炉(Modbus TCP)",
+            "description": "连续退火加热段:均热三区辐射加热,区权 0.25/0.35/0.40;炉温决定再结晶退热指数。",
+            "protocol": "modbus-tcp",
+            "enabled": true,
+            "tickMs": 800,
+            "signals": [
+              {
+                "id": "zone1-sp",
+                "name": "均热区1炉温SP",
+                "description": "加热段入口区炉温(℃);低温预热区",
+                "unit": "℃",
+                "min": 600,
+                "max": 850,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 690
+                }
+              },
+              {
+                "id": "zone2-sp",
+                "name": "均热区2炉温SP",
+                "description": "加热段中段炉温(℃);再结晶主驱动之一",
+                "unit": "℃",
+                "min": 600,
+                "max": 850,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 710
+                }
+              },
+              {
+                "id": "zone3-sp",
+                "name": "均热区3炉温SP",
+                "description": "均热出口区炉温(℃);区权最大(0.40),带温第一驱动",
+                "unit": "℃",
+                "min": 600,
+                "max": 850,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 730
+                }
+              },
+              {
+                "id": "furnace-temp-pv",
+                "name": "FurnaceTemp",
+                "description": "炉温加权实测(采集,℃)",
+                "unit": "℃",
+                "min": 20,
+                "max": 900,
+                "decimals": 1,
+                "plantBinding": "furnaceTemp",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 25
+                }
+              },
+              {
+                "id": "strip-temp-pv",
+                "name": "StripTemp",
+                "description": "均热段出口带温(采集,℃);再结晶窗 ≈700~760",
+                "unit": "℃",
+                "min": 20,
+                "max": 900,
+                "decimals": 1,
+                "plantBinding": "stripTemp",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 25
+                }
+              }
+            ],
+            "config": {
+              "host": "0.0.0.0",
+              "port": 17056,
+              "unitId": 1,
+              "registerMaps": [
+                {
+                  "address": 40001,
+                  "area": "holding",
+                  "signalId": "furnace-temp-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40003,
+                  "area": "holding",
+                  "signalId": "strip-temp-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40021,
+                  "area": "holding",
+                  "signalId": "zone1-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40023,
+                  "area": "holding",
+                  "signalId": "zone2-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40025,
+                  "area": "holding",
+                  "signalId": "zone3-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                }
+              ]
+            }
+          },
+          {
+            "id": "anneal-line-opcua",
+            "name": "炉内传动与速度单元(OPC UA)",
+            "description": "炉段传动:线速度即产能(驻留时间=炉长/速度),也是带温与热指数的第二控制量。",
+            "protocol": "opcua",
+            "enabled": true,
+            "tickMs": 1000,
+            "signals": [
+              {
+                "id": "line-speed-sp",
+                "name": "LineSpeedSP",
+                "description": "带钢运行速度(m/min);快了驻留短→欠退火,是产能与质量的枢纽",
+                "unit": "m/min",
+                "min": 60,
+                "max": 220,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 140
+                }
+              },
+              {
+                "id": "act-speed-pv",
+                "name": "ActSpeed",
+                "description": "实际线速度(采集,m/min)",
+                "unit": "m/min",
+                "min": 0,
+                "max": 240,
+                "decimals": 1,
+                "plantBinding": "actSpeed",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 0
+                }
+              }
+            ],
+            "config": {
+              "host": "127.0.0.1",
+              "port": 6845,
+              "namespaceUri": "PLC-Simulator-Anneal-Drive",
+              "opcVars": [
+                {
+                  "nodeId": "ns=2;s=Anneal.Line.Speed.Sp",
+                  "signalId": "line-speed-sp",
+                  "dataType": "Double",
+                  "writable": true
+                },
+                {
+                  "nodeId": "ns=2;s=Anneal.Line.Speed.Pv",
+                  "signalId": "act-speed-pv",
+                  "dataType": "Double"
+                }
+              ]
+            }
+          },
+          {
+            "id": "anneal-cool-rtu",
+            "name": "冷却与过时效段(Modbus RTU)",
+            "description": "过时效段(缓冷析出)+ 冷却风机档位(冷速影响强度与时效行为)。",
+            "protocol": "modbus-rtu",
+            "enabled": true,
+            "tickMs": 1000,
+            "signals": [
+              {
+                "id": "oa-temp-sp",
+                "name": "过时效温度SP",
+                "description": "过时效段温度(℃);缓释固溶碳,影响时效与冲压性能",
+                "unit": "℃",
+                "min": 320,
+                "max": 480,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 400
+                }
+              },
+              {
+                "id": "cool-rate-sp",
+                "name": "冷却档位SP",
+                "description": "冷却风机档位(%);冷速快→强度略升",
+                "unit": "%",
+                "min": 20,
+                "max": 100,
+                "decimals": 0,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 50
+                }
+              },
+              {
+                "id": "oa-temp-pv",
+                "name": "OaTempPV",
+                "description": "过时段实测温度(采集,℃)",
+                "unit": "℃",
+                "min": 20,
+                "max": 520,
+                "decimals": 1,
+                "plantBinding": "oaTemp",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 25
+                }
+              }
+            ],
+            "config": {
+              "host": "0.0.0.0",
+              "port": 16056,
+              "unitId": 1,
+              "registerMaps": [
+                {
+                  "address": 40001,
+                  "area": "holding",
+                  "signalId": "oa-temp-pv",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40021,
+                  "area": "holding",
+                  "signalId": "oa-temp-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                },
+                {
+                  "address": 40023,
+                  "area": "holding",
+                  "signalId": "cool-rate-sp",
+                  "dataType": "float32",
+                  "byteOrder": "big"
+                }
+              ]
+            }
+          },
+          {
+            "id": "anneal-gas-mqtt",
+            "name": "保护气单元(MQTT)",
+            "description": "保护气(Hx-Nx)混合站:H2 含量影响传热与表面还原;露点是表面氧化的关健量。",
+            "protocol": "mqtt",
+            "enabled": true,
+            "tickMs": 2000,
+            "signals": [
+              {
+                "id": "dew-point-pv",
+                "name": "DewPoint",
+                "description": "炉内露点(采集,℃);>−30 氧化风险,表面缺陷抬升",
+                "unit": "℃",
+                "min": -70,
+                "max": 0,
+                "decimals": 1,
+                "plantBinding": "dewPoint",
+                "strategy": {
+                  "kind": "constant",
+                  "value": -40
+                }
+              },
+              {
+                "id": "h2-act-pv",
+                "name": "H2Act",
+                "description": "H2 实测含量(采集,%);<8 表面还原不足",
+                "unit": "%",
+                "min": 0,
+                "max": 20,
+                "decimals": 1,
+                "plantBinding": "h2Act",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 10
+                }
+              },
+              {
+                "id": "h2-ratio-sp",
+                "name": "H2RatioSP",
+                "description": "H2 混合比设定(%,MQTT 命令主题下发);+传热 +0.25℃/%",
+                "unit": "%",
+                "min": 3,
+                "max": 15,
+                "decimals": 1,
+                "strategy": {
+                  "kind": "manual",
+                  "value": 10
+                }
+              }
+            ],
+            "config": {
+              "brokerUrl": "mqtt://127.0.0.1:18830",
+              "topics": [
+                {
+                  "topic": "aw/anneal/dew",
+                  "signalId": "dew-point-pv",
+                  "payloadTemplate": "{\"data\":{\"dew\":${value}}}",
+                  "qos": 0
+                },
+                {
+                  "topic": "aw/anneal/h2pv",
+                  "signalId": "h2-act-pv",
+                  "payloadTemplate": "{\"data\":{\"h2\":${value}}}",
+                  "qos": 0
+                }
+              ],
+              "commandTopic": "aw/anneal/h2/set",
+              "commandSignalId": "h2-ratio-sp"
+            }
+          },
+          {
+            "id": "anneal-inspect-http",
+            "name": "成品质量检测站(HTTP)",
+            "description": "成品检验:硬度/抗拉/屈服/晶粒度/表面缺陷 + 板形轮廓向量帧。质量窗关。",
+            "protocol": "http",
+            "enabled": true,
+            "tickMs": 1000,
+            "signals": [
+              {
+                "id": "hardness",
+                "name": "Hardness",
+                "description": "维氏硬度(采集,HV)——闭环被控量,规格 95±6",
+                "unit": "HV",
+                "min": 60,
+                "max": 200,
+                "decimals": 1,
+                "plantBinding": "hardness",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 134
+                }
+              },
+              {
+                "id": "tensile",
+                "name": "Tensile",
+                "description": "抗拉强度(采集,MPa);规格 300±25",
+                "unit": "MPa",
+                "min": 200,
+                "max": 500,
+                "decimals": 1,
+                "plantBinding": "tensile",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 320
+                }
+              },
+              {
+                "id": "yield-str",
+                "name": "YieldStr",
+                "description": "屈服强度(采集,MPa)",
+                "unit": "MPa",
+                "min": 100,
+                "max": 400,
+                "decimals": 1,
+                "plantBinding": "yieldStr",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 170
+                }
+              },
+              {
+                "id": "grain-size",
+                "name": "GrainSize",
+                "description": "晶粒度(采集,μm);再结晶完成度指标",
+                "unit": "μm",
+                "min": 2,
+                "max": 30,
+                "decimals": 2,
+                "plantBinding": "grainSize",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 5
+                }
+              },
+              {
+                "id": "surface-defect",
+                "name": "SurfaceDef",
+                "description": "表面缺陷率(采集,%);≤0.5,H2 不足/带温超窗抬升",
+                "unit": "%",
+                "min": 0,
+                "max": 5,
+                "decimals": 3,
+                "plantBinding": "surfaceDef",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 0.15
+                }
+              },
+              {
+                "id": "flatness",
+                "name": "Flatness",
+                "description": "板形轮廓 48 点向量帧(采集,I-Unit;区温不均→边浪)",
+                "unit": "I",
+                "min": 0,
+                "max": 100,
+                "decimals": 2,
+                "format": "vector",
+                "plantBinding": "flatness",
+                "strategy": {
+                  "kind": "constant",
+                  "value": 5
+                }
+              }
+            ],
+            "config": {
+              "paths": [
+                {
+                  "path": "/api/hardness",
+                  "signalId": "hardness",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/tensile",
+                  "signalId": "tensile",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/yield",
+                  "signalId": "yield-str",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/grain",
+                  "signalId": "grain-size",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/surface",
+                  "signalId": "surface-defect",
+                  "responseTemplate": "{\"value\":${value}}"
+                },
+                {
+                  "path": "/api/flatness",
+                  "signalId": "flatness",
+                  "responseTemplate": "{\"points\":${points},\"value\":${value}}"
+                }
+              ]
+            }
+          }
+        ],
+        "plantModel": {
+          "kind": "anneal",
+          "id": "anneal"
+        }
+      },
+      "line": {
+        "ids": {
+          "lineId": "ln-27cf6584",
+          "productId": "pd-c9144a40",
+          "recipeId": "rc-1a7c9b43",
+          "started": false
+        },
+        "reused": true,
+        "name": "连续退火质量窗内产能最大化 anneal-ms16s89p",
+        "dcw": 7,
+        "daq": 12,
+        "driverTests": [],
+        "errors": []
+      },
+      "channel": {
+        "chId": "10e4dafb-ee89-498b-9d67-32089aa023b4",
+        "instId": "63a3a72a-97b4-46e7-a3e2-8f5b12b4926d",
+        "parentTask": "fce85697-21d0-4b81-9e25-17f69ce360b2",
+        "terminal": "COMPLETED"
+      },
+      "mission": {
+        "attained": true,
+        "writes": 3,
+        "rounds": 4,
+        "traj": [
+          {
+            "iter": 0,
+            "phase": "baseline",
+            "pv": 134.92
+          },
+          {
+            "iter": 1,
+            "phase": "converge",
+            "knob": "zone3-sp",
+            "from": 730,
+            "to": 850,
+            "record": null,
+            "judge": false,
+            "pv": 99.58000000000001
+          },
+          {
+            "iter": 6,
+            "phase": "throughput",
+            "knob": "line-speed-sp",
+            "from": 140,
+            "to": 152,
+            "record": null,
+            "judge": false,
+            "pv": 100.44
+          }
+        ],
+        "ev": [
+          "baseline 硬度=134.9HV 抗拉=310MPa 线速=140m/min → 窗外",
+          "iter1: zone3-sp 730→850 ✔",
+          "iter6(产能): 线速 140→152 ✔ 硬度 100.4HV 仍在窗内",
+          "iter7(产能): 线速 152→164 硬度 101.4HV 出窗 → 回退 ✔",
+          "产能推进: 线速 140→152(+8.57%),pushed=1",
+          "outcome: writes=3 final=101.0HV attained=true(窗内+产能≥5%)"
+        ],
+        "guardsFinal": {
+          "抗拉强度": 297.14,
+          "表面缺陷率": 0.1338
+        },
+        "final": 101,
+        "throughput": {
+          "start": 140.06,
+          "finalSp": 152,
+          "gain": 8.57
+        }
+      },
+      "wallS": 58.41,
+      "pv": {
+        "sig": "hardness",
+        "target": 95,
+        "tol": 6,
+        "unit": "HV",
+        "label": "维氏硬度"
+      }
+    }
+  ],
+  "ok": true
+}

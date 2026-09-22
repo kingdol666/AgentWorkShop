@@ -1,0 +1,172 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>多场景并行闭环基准 · 20260921030802-z1g</title><style>
+:root{--bg:#0c1220;--card:#121a2c;--line:#1f2b45;--fg:#dfe7f5;--dim:#8fa0bd;--ok:#35e0a0;--warn:#f4b350;--bad:#f4636c;--accent:#41c8f4}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.6 "Segoe UI",system-ui,sans-serif;padding:32px}
+.wrap{max-width:1180px;margin:0 auto}
+.stamp{display:inline-block;padding:8px 26px;border:2px solid var(--ok);color:var(--ok);font-size:26px;font-weight:800;letter-spacing:6px;border-radius:6px;transform:rotate(-2deg)}
+.stamp.fail{border-color:var(--bad);color:var(--bad)}
+h1{font-size:22px;margin:18px 0 6px}
+h2{font-size:17px;margin:28px 0 10px;border-left:4px solid var(--accent);padding-left:10px}
+h3{font-size:15px;margin:18px 0 8px;color:var(--accent)}
+.meta{color:var(--dim);font-size:12.5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card .k{color:var(--dim);font-size:12px}
+.card .v{font-size:22px;font-weight:700;margin-top:4px}
+.card .v.ok{color:var(--ok)}.card .v.bad{color:var(--bad)}
+table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{color:var(--dim);font-weight:600;white-space:nowrap}
+tr:hover td{background:#16203a}
+.ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}.dim{color:var(--dim)}
+code,pre{font-family:Consolas,Menlo,monospace;font-size:12.5px}
+pre{background:#0a101d;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto}
+.story{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;color:var(--dim)}
+.kv{margin:4px 0}
+.kv b{color:var(--fg)}
+@media print{body{background:#fff;color:#111}.card,pre,.story{background:#f5f5f5;border-color:#ddd}th,td{border-color:#ddd}.dim{color:#555}}
+</style></head><body><div class="wrap">
+<div class="stamp fail">FAIL</div>
+<h1>AW-IndustrialBench · 多场景并行闭环优化基准</h1>
+<div class="meta">run <code>20260921030802-z1g</code> · 2026-09-21T03:11:21.493Z · 并行 3 场景(Promise.all 同时闭环) · wall 198.7s<br>
+platform=<code>http://127.0.0.1:3005</code> · simulator=<code>http://127.0.0.1:4011</code> · toolHarness=opencode · seed=42 · git=e692df1 · harness=72c4f0727096b844</div>
+<div class="cards">
+    <div class="card">
+      <div class="k">injection · 注塑成型质量窗口寻优</div>
+      <div class="v ok">达标 ✔</div>
+      <div class="k">writes=0 · rounds=1 · 2.2s · 线(新建)</div>
+    </div>
+    <div class="card">
+      <div class="k">wwtp · A2O 污水生化处理达标降耗</div>
+      <div class="v bad">未达标 ✘</div>
+      <div class="k">writes=16 · rounds=8 · 195.65s · 线(新建)</div>
+    </div>
+    <div class="card">
+      <div class="k">anneal · 连续退火质量窗内产能最大化</div>
+      <div class="v ok">达标 ✔</div>
+      <div class="k">writes=5 · rounds=7 · 61.24s · 线(新建)</div>
+    </div></div>
+<h2>injection · 注塑成型质量窗口寻优</h2>
+    <div class="story">家用电器面板(PP)注塑:规格克重 32.5±0.35 g、飞边 ≤0.4%、缩痕 ≤1.5%、尺寸偏差 ±0.05 mm。起始保压偏低 → 克重 ≈31.3 g 偏轻 + 缩痕超标;闭环把保压/保压时间/模温调回窗口,同时守住飞边上限。</div>
+    <h3>接入(幂等)</h3>
+    <div class="kv">模拟器侧:<span class="dim">{&quot;missing&quot;:[],&quot;drifted&quot;:[],&quot;created&quot;:[],&quot;repaired&quot;:[],&quot;started&quot;:[],&quot;untouched&quot;:[&quot;inj-machine-mbtcp&quot;,&quot;inj-mold-rtu&quot;,&quot;inj-inject-opcua&quot;,&quot;inj-cool-mqtt&quot;,&quot;inj-inspect-http&quot;]}</span></div>
+    <div class="kv">终验:<span class="dim">{&quot;devices&quot;:5,&quot;expectDevices&quot;:5,&quot;signals&quot;:25,&quot;sp&quot;:11,&quot;pv&quot;:14,&quot;descMissing&quot;:0,&quot;protocols&quot;:[&quot;modbus-tcp&quot;,&quot;modbus-rtu&quot;,&quot;opcua&quot;,&quot;mqtt&quot;,&quot;http&quot;]}</span></div>
+    <div class="kv">平台侧:<b>新建产线</b> <span class="dim">注塑成型质量窗口寻优 injection-ms160n82 · line=ln-373309f1 · recipe=rc-118a418e · DCW=11 · DAQ=14</span></div>
+    <div class="kv">驱动实测:inj-machine-mbtcp <span class="ok">✔</span> · inj-mold-rtu <span class="ok">✔</span> · inj-inject-opcua <span class="ok">✔</span> · inj-cool-mqtt <span class="ok">✔</span> · inj-inspect-http <span class="ok">✔</span></div>
+    <div class="kv">Channel:<span class="dim">channel=210732fa-b6df-4f57-a328-561a7d3e6bf9 · toolAgent=4dbb0de6-b6d0-49b5-b539-14667b437f74 · task=6f57836c-d3f8-4a0f-96e7-7c7487134118 · 终态=COMPLETED</span></div>
+    <h3>闭环轨迹(writes=0 · rounds=1)</h3>
+    <table><thead><tr><th>轮</th><th>阶段</th><th>旋钮</th><th>写前→写后</th><th>PV(制品克重)</th><th>优化记录</th><th>判定</th></tr></thead><tbody><tr>
+    <td>0</td><td>baseline</td><td>—</td>
+    <td><span class="dim">—</span></td>
+    <td>32.20 g</td>
+    <td><span class="dim">—</span></td>
+    <td></td>
+  </tr></tbody></table>
+    <pre>baseline 克重=32.20g(目标 32.5±0.35)
+outcome: writes=0 final=32.20g attained=true guards={&quot;飞边率&quot;:0,&quot;缩痕指数&quot;:1.2}</pre>
+    <div class="kv">守卫终值:<b>飞边率</b>=0.00 · <b>缩痕指数</b>=1.20</div>
+    <div class="bad">⚠ 标签产线 ln-578787c4 节点/配方不齐(dcw=true daq=false recipe=true)→ 新建;标签产线 ln-578787c4 节点/配方不齐(dcw=true daq=false recipe=true)→ 新建</div>
+<h2>wwtp · A2O 污水生化处理达标降耗</h2>
+    <div class="story">城镇污水厂 A2O 工艺:排放硬约束 COD&lt;50、氨氮&lt;5、总磷&lt;0.5 mg/L、pH 6~9、浊度&lt;10 NTU。起始风机 26Hz/NaOH 12/PAC 30 → DO 塌陷+pH 超下限+TP 超标;闭环先达标(DO 3.2±0.6 带),再在达标约束内逐级「脱气退药」降低运行成本。</div>
+    <h3>接入(幂等)</h3>
+    <div class="kv">模拟器侧:<span class="dim">{&quot;missing&quot;:[],&quot;drifted&quot;:[],&quot;created&quot;:[],&quot;repaired&quot;:[],&quot;started&quot;:[],&quot;untouched&quot;:[&quot;wwtp-blower-mbtcp&quot;,&quot;wwtp-dosing-opcua&quot;,&quot;wwtp-return-rtu&quot;,&quot;wwtp-influent-mqtt&quot;,&quot;wwtp-effluent-http&quot;]}</span></div>
+    <div class="kv">终验:<span class="dim">{&quot;devices&quot;:5,&quot;expectDevices&quot;:5,&quot;signals&quot;:20,&quot;sp&quot;:7,&quot;pv&quot;:13,&quot;descMissing&quot;:0,&quot;protocols&quot;:[&quot;modbus-tcp&quot;,&quot;opcua&quot;,&quot;modbus-rtu&quot;,&quot;mqtt&quot;,&quot;http&quot;]}</span></div>
+    <div class="kv">平台侧:<b>新建产线</b> <span class="dim">A2O 污水生化处理达标降耗 wwtp-ms160n82 · line=ln-333a7187 · recipe=rc-2aeabdfa · DCW=7 · DAQ=13</span></div>
+    <div class="kv">驱动实测:wwtp-blower-mbtcp <span class="ok">✔</span> · wwtp-dosing-opcua <span class="ok">✔</span> · wwtp-return-rtu <span class="ok">✔</span> · wwtp-influent-mqtt <span class="ok">✔</span> · wwtp-effluent-http <span class="ok">✔</span></div>
+    <div class="kv">Channel:<span class="dim">channel=7f5af3a0-9168-443b-b728-47a5959e1197 · toolAgent=558aaa56-29a8-4460-8f93-084d6167ddfa · task=c354305c-7a70-42af-bafc-b31e9da02a9a · 终态=COMPLETED</span></div>
+    <h3>闭环轨迹(writes=16 · rounds=8)</h3>
+    <table><thead><tr><th>轮</th><th>阶段</th><th>旋钮</th><th>写前→写后</th><th>PV(好氧池溶解氧)</th><th>优化记录</th><th>判定</th></tr></thead><tbody><tr>
+    <td>0</td><td>baseline</td><td>—</td>
+    <td><span class="dim">—</span></td>
+    <td>1.43 mg/L</td>
+    <td><span class="dim">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td>1</td><td>blower</td><td>blower-hz-sp</td>
+    <td>31.200000762939453 → 33.7</td>
+    <td>3.47 mg/L</td>
+    <td><span class="ok">已开窗</span></td>
+    <td><span class="ok">keep ✔</span></td>
+  </tr></tbody></table>
+    <pre>baseline DO=1.43 COD=154 NH3=19.3 TP=0.40 pH=7.03 → 不达标
+iter1(曝气): 风机 31.200000762939453→33.7 ✔
+达标确认 ✔ 首个达标运行成本 ≈178.1(风机 33.70000076293945/NaOH 30/PAC 75)
+iter11(降耗): 风机 33.70000076293945→32.5 ✔ 复测仍达标
+iter11(降耗): NaOH 30→26 复测不达标 → 回退 ✔
+iter12(降耗): 风机 32.5→31.3 复测不达标 → 回退 ✔
+iter12(降耗): NaOH 30→26 复测不达标 → 回退 ✔
+iter13(降耗): 风机 32.5→31.3 复测不达标 → 回退 ✔
+iter13(降耗): NaOH 30→26 复测不达标 → 回退 ✔
+iter14(降耗): 风机 32.5→31.3 复测不达标 → 回退 ✔
+iter14(降耗): NaOH 30→26 复测不达标 → 回退 ✔
+outcome: writes=16 DO=3.06 compliant=false cost 178.1→165.9(省 12.17) attained=false</pre>
+    <div class="kv">成本曲线:首个达标 ≈<b>178.1</b> → 终态 ≈<b>165.9</b>(降 12.2,达标约束内退气退药)</div>
+<div class="kv">守卫终值:<b>出水COD</b>=53.48 · <b>出水氨氮</b>=3.96 · <b>出水总磷</b>=0.40 · <b>出水pH</b>=6.64 · <b>出水浊度</b>=0.60 · <b>DO</b>=3.06</div>
+    <div class="bad">⚠ 标签产线 ln-56ddf10e 节点/配方不齐(dcw=true daq=false recipe=true)→ 新建;标签产线 ln-56ddf10e 节点/配方不齐(dcw=true daq=false recipe=true)→ 新建</div>
+<h2>anneal · 连续退火质量窗内产能最大化</h2>
+    <div class="story">冷轧低碳钢带连续退火(DC04 类):硬度 95±6 HV、抗拉 300±25 MPa、表面缺陷 ≤0.5%。起始炉温偏低+线速偏快 → 欠退火(硬度 ≈135 HV);先把均热炉温调回再结晶窗,再在质量窗内逐级推高线速(产能),触边即回退。</div>
+    <h3>接入(幂等)</h3>
+    <div class="kv">模拟器侧:<span class="dim">{&quot;missing&quot;:[],&quot;drifted&quot;:[],&quot;created&quot;:[],&quot;repaired&quot;:[],&quot;started&quot;:[],&quot;untouched&quot;:[&quot;anneal-heating-mbtcp&quot;,&quot;anneal-line-opcua&quot;,&quot;anneal-cool-rtu&quot;,&quot;anneal-gas-mqtt&quot;,&quot;anneal-inspect-http&quot;]}</span></div>
+    <div class="kv">终验:<span class="dim">{&quot;devices&quot;:5,&quot;expectDevices&quot;:5,&quot;signals&quot;:19,&quot;sp&quot;:7,&quot;pv&quot;:12,&quot;descMissing&quot;:0,&quot;protocols&quot;:[&quot;modbus-tcp&quot;,&quot;opcua&quot;,&quot;modbus-rtu&quot;,&quot;mqtt&quot;,&quot;http&quot;]}</span></div>
+    <div class="kv">平台侧:<b>新建产线</b> <span class="dim">连续退火质量窗内产能最大化 anneal-ms160n82 · line=ln-29840af1 · recipe=rc-38251d30 · DCW=7 · DAQ=12</span></div>
+    <div class="kv">驱动实测:anneal-heating-mbtcp <span class="ok">✔</span> · anneal-line-opcua <span class="ok">✔</span> · anneal-cool-rtu <span class="ok">✔</span> · anneal-gas-mqtt <span class="ok">✔</span> · anneal-inspect-http <span class="ok">✔</span></div>
+    <div class="kv">Channel:<span class="dim">channel=eb3b850c-7484-46b5-a1df-94724a202c95 · toolAgent=5edfbcae-e568-4c74-8ceb-b0145f2e16ba · task=6956e1bd-1790-4cd1-9b39-f501f942c766 · 终态=COMPLETED</span></div>
+    <h3>闭环轨迹(writes=5 · rounds=7)</h3>
+    <table><thead><tr><th>轮</th><th>阶段</th><th>旋钮</th><th>写前→写后</th><th>PV(维氏硬度)</th><th>优化记录</th><th>判定</th></tr></thead><tbody><tr>
+    <td>0</td><td>baseline</td><td>—</td>
+    <td><span class="dim">—</span></td>
+    <td>115.30 HV</td>
+    <td><span class="dim">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td>2</td><td>converge</td><td>zone2-sp</td>
+    <td>710 → 795</td>
+    <td>97.58 HV</td>
+    <td><span class="ok">已开窗</span></td>
+    <td><span class="ok">keep ✔</span></td>
+  </tr><tr>
+    <td>6</td><td>throughput</td><td>line-speed-sp</td>
+    <td>152 → 164</td>
+    <td>97.40 HV</td>
+    <td><span class="ok">已开窗</span></td>
+    <td><span class="ok">keep ✔</span></td>
+  </tr><tr>
+    <td>7</td><td>throughput</td><td>line-speed-sp</td>
+    <td>164 → 176</td>
+    <td>97.90 HV</td>
+    <td><span class="ok">已开窗</span></td>
+    <td><span class="ok">keep ✔</span></td>
+  </tr><tr>
+    <td>8</td><td>throughput</td><td>line-speed-sp</td>
+    <td>176 → 188</td>
+    <td>97.96 HV</td>
+    <td><span class="ok">已开窗</span></td>
+    <td><span class="ok">keep ✔</span></td>
+  </tr><tr>
+    <td>9</td><td>throughput</td><td>line-speed-sp</td>
+    <td>188 → 200</td>
+    <td>99.16 HV</td>
+    <td><span class="ok">已开窗</span></td>
+    <td><span class="ok">keep ✔</span></td>
+  </tr></tbody></table>
+    <pre>baseline 硬度=115.3HV 抗拉=303MPa 线速=150m/min → 窗外
+iter1: zone3-sp 校正量过小(850)
+iter2: zone2-sp 710→795 ✔
+iter6(产能): 线速 152→164 ✔ 硬度 97.4HV 仍在窗内
+iter7(产能): 线速 164→176 ✔ 硬度 97.9HV 仍在窗内
+iter8(产能): 线速 176→188 ✔ 硬度 98.0HV 仍在窗内
+iter9(产能): 线速 188→200 ✔ 硬度 99.2HV 仍在窗内
+产能推进: 线速 152→200(+31.58%),pushed=4
+outcome: writes=5 final=99.2HV attained=true(窗内+产能≥5%)</pre>
+    <div class="kv">产能曲线:线速 <b>150</b> → <b>200</b> m/min(+31.6%,质量窗触边自动回退)</div>
+<div class="kv">守卫终值:<b>抗拉强度</b>=297.42 · <b>表面缺陷率</b>=0.14</div>
+    <div class="bad">⚠ 标签产线 ln-27cf6584 节点/配方不齐(dcw=true daq=false recipe=true)→ 新建;标签产线 ln-27cf6584 节点/配方不齐(dcw=true daq=false recipe=true)→ 新建</div>
+<h2>诚实边界</h2>
+<div class="kv dim">· 全部写经平台治理(dcw_control 开优化记录 + dcw_judge 判定);策略为确定性脚本,与 LLM 变体共用同一工具面/治理链路。</div>
+<div class="kv dim">· 物理数据由模拟器多引擎产出,同 seed 确定性;与真实产线存在仿真层级边界。</div>
+<div class="kv dim">· 平台产线复用优先:reused = 前次接入仍在,本次零重复建线(设计语义)。</div>
+<h2>复现</h2>
+<pre>NO_PROXY=127.0.0.1,localhost AW_BASE=http://127.0.0.1:3005 SIM_BASE=http://127.0.0.1:4011 node bench/scenarios.mjs --seed 42 --tool-harness opencode</pre>
+</div></body></html>
