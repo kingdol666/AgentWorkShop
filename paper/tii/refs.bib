@@ -1,5 +1,8 @@
-% refs.bib -- references for the TII draft. All entries verified against
-% public sources 2026-09; keep only verifiable fields (no invented pages).
+% refs.bib -- references for the TII draft.
+% September 2026 audit covered cited entries using primary metadata where reachable.
+% ISO 23247 and the historical ISA-95 edition remain unresolved; uncited entries
+% were not audited. Web access dates do not identify software/specification versions.
+% See .omc/research/tii-review-20260920/references-audit.md for scope and limitations.
 
 @article{nee2019digital,
   author  = {Tao, Fei and Zhang, He and Liu, An and Nee, A. Y. C.},
@@ -57,7 +60,9 @@
   title     = {Leveraging {LLM} Agents and Digital Twins for Fault Handling in Process Plants},
   booktitle = {Proc. IEEE ETFA},
   year      = {2025},
-  note      = {arXiv preprint arXiv:2505.02076}
+  note      = {arXiv preprint arXiv:2505.02076},
+  pages     = {1--8},
+  doi       = {10.1109/ETFA65518.2025.11205597}
 }
 
 @inproceedings{xia2024llmsim,
@@ -65,7 +70,9 @@
   title     = {{LLM} Experiments with Simulation: Large Language Model Multi-Agent System for Simulation Model Parametrization in Digital Twins},
   booktitle = {Proc. IEEE ETFA},
   year      = {2024},
-  note      = {arXiv preprint arXiv:2405.18092}
+  note      = {arXiv preprint arXiv:2405.18092},
+  pages     = {1--4},
+  doi       = {10.1109/ETFA61755.2024.10710900}
 }
 
 @article{gautam2025iiot,
@@ -74,6 +81,8 @@
   journal = {J. Manuf. Syst.},
   volume  = {80},
   year    = {2025},
+  pages   = {511--523},
+  doi     = {10.1016/j.jmsy.2025.03.022}
 }
 
 @article{liu2026embodied,
@@ -136,14 +145,16 @@
   title        = {{LangGraph}},
   author       = {{LangChain, Inc.}},
   howpublished = {[Online]. Available: \url{https://github.com/langchain-ai/langgraph}},
-  year         = {2024}
+  year         = {2024},
+  note         = {Accessed: Sep. 20, 2026}
 }
 
 @misc{crewai2024,
   title        = {{CrewAI}},
   author       = {{CrewAI, Inc.}},
   howpublished = {[Online]. Available: \url{https://github.com/crewAIInc/crewAI}},
-  year         = {2024}
+  year         = {2024},
+  note         = {Accessed: Sep. 20, 2026}
 }
 
 @inproceedings{liu2024agentbench,
@@ -229,7 +240,7 @@
 }
 
 @misc{iec61511,
-  title        = {{IEC} 61511: Functional Safety---Safety Instrumented Systems for the Process Industry Sector},
+  title        = {{IEC} 61511-1:2016: Functional Safety---Safety Instrumented Systems for the Process Industry Sector---Part 1: Framework, Definitions, System, Hardware and Application Programming Requirements},
   author       = {{International Electrotechnical Commission}},
   howpublished = {International Standard},
   year         = {2016}
@@ -246,14 +257,16 @@
   title        = {Model Context Protocol},
   author       = {{Anthropic}},
   howpublished = {[Online]. Available: \url{https://modelcontextprotocol.io}},
-  year         = {2024}
+  year         = {2024},
+  note         = {Accessed: Sep. 20, 2026}
 }
 
 @misc{a2a2025,
-  title        = {Agent2Agent ({A2A}) Protocol},
+  title        = {{Agent2Agent} ({A2A}) Protocol},
   author       = {{Linux Foundation}},
   howpublished = {[Online]. Available: \url{https://a2a-protocol.org}},
-  year         = {2025}
+  year         = {2025},
+  note         = {Accessed: Sep. 20, 2026}
 }
 
 @misc{iec62443,
@@ -315,14 +328,14 @@
 }
 @misc{iec63278,
   author = {{International Electrotechnical Commission}},
-  title = {{IEC} 63278 (series): Asset Administration Shell for Industrial Applications},
+  title = {{IEC} 63278-1:2023: Asset Administration Shell for Industrial Applications---Part 1: Asset Administration Shell Structure},
   howpublished = {International Standard},
   year = {2023}
 }
 
 @misc{isa88,
   author = {{International Society of Automation}},
-  title = {{ANSI/ISA-88.01:2010}---Batch Control Part 1: Models and Terminology (international equivalent {IEC} 61512-1)},
+  title = {{ISA-88.00.01-2010}---Batch Control---Part 1: Models and Terminology},
   howpublished = {Standard},
   year = {2010}
 }
@@ -335,11 +348,13 @@
   pages   = {286--297},
   year    = {2000}
 }
-@article{greshake2023injection,
+@inproceedings{greshake2023injection,
   author  = {Greshake, Kai and Abdelnabi, Sahar and Mishra, Shailesh and Endres, Christoph and Holz, Thorsten and Fritz, Mario},
   title   = {Not What You've Signed Up For: Compromising Real-World {LLM}-Integrated Applications with Indirect Prompt Injection},
-  journal = {arXiv preprint arXiv:2302.12173},
-  year    = {2023}
+  booktitle = {Proc.\ 16th ACM Workshop on Artificial Intelligence and Security},
+  year    = {2023},
+  pages     = {79--90},
+  doi       = {10.1145/3605764.3623985}
 }
 @article{hofmann2025nlc,
   author  = {Hofmann, Bernd and Piechulek, Niklas and Kreitlein, Sven and Franke, Joerg and Bruendl, Patrick},
@@ -389,7 +404,7 @@
 
 @misc{eemua191,
   author = {{Engineering Equipment and Materials Users Association}},
-  title = {EEMUA 191: Alarm Systems---A Guide to Design, Management and Procurement},
+  title = {{EEMUA} 191: Alarm Systems---A Guide to Design, Management and Procurement},
   howpublished = {Guide, Edition 3},
   year = {2013}
 }
@@ -454,13 +469,16 @@
   volume  = {69},
   year    = {2026},
   note    = {Art. no. 103888},
+  doi     = {10.1016/j.aei.2025.103888}
 }
 
-@article{wu2025instructmpc,
+@inproceedings{wu2025instructmpc,
   author  = {Wu, Ruixiang and Ai, Jiahao and Li, Tongxin},
-  title   = {{InstructMPC}: A Human-LLM-in-the-Loop Framework for Context-Aware Control},
-  journal = {arXiv preprint arXiv:2504.05946},
-  year    = {2025}
+  title   = {{InstructMPC}: A Human-{LLM}-in-the-Loop Framework for Context-Aware Control},
+  booktitle = {Proc.\ 2025 IEEE 64th Conference on Decision and Control (CDC)},
+  year    = {2025},
+  pages     = {172--179},
+  doi       = {10.1109/CDC57313.2025.11312156}
 }
 
 @article{yang2025lldt,
@@ -485,7 +503,8 @@
   volume  = {20},
   number  = {6},
   pages   = {8160--8169},
-  year    = {2024}
+  year    = {2024},
+  doi     = {10.1109/TII.2024.3366977}
 }
 
 @article{biskupovic2025supervision,
@@ -495,7 +514,8 @@
   volume  = {21},
   number  = {3},
   pages   = {2719--2728},
-  year    = {2025}
+  year    = {2025},
+  doi     = {10.1109/TII.2024.3514178}
 }
 
 @article{chen2026largemodels,
@@ -526,6 +546,9 @@
 @inproceedings{liu2024pinjection,
   author    = {Liu, Yupei and Jia, Yuqi and Geng, Runpeng and Jia, Jinyuan and Gong, Neil Zhenqiang},
   title     = {Formalizing and Benchmarking Prompt Injection Attacks and Defenses},
-  booktitle = {Proc.\ USENIX Security Symposium},
-  year      = {2024}
+  booktitle = {Proc.\ 33rd USENIX Security Symposium (USENIX Security 24)},
+  year      = {2024},
+  pages     = {1831--1847},
+  publisher = {USENIX Association},
+  url       = {https://www.usenix.org/conference/usenixsecurity24/presentation/liu-yupei}
 }

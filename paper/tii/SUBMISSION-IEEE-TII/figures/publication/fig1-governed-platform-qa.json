@@ -1,0 +1,38 @@
+{
+  "figure": "fig1-governed-platform",
+  "generator": "build_fig1_platform.py",
+  "concept": "gpt-image-2.5 storyboard (fig1-governed-platform-concept.png)",
+  "size_pt": [
+    513.12,
+    210.0
+  ],
+  "expected_pt": [
+    513.07,
+    209.76
+  ],
+  "embedded_fonts": [
+    "AAAAAA+TimesNewRomanPS-BoldMT",
+    "BAAAAA+TimesNewRomanPSMT",
+    "CAAAAA+TimesNewRomanPS-ItalicMT"
+  ],
+  "min_font_pt": 8.22,
+  "text_spans": 41,
+  "spans_outside_canvas": [],
+  "text_overlap_pairs": [],
+  "icons": [
+    "bot",
+    "clipboard-check",
+    "cpu",
+    "eye",
+    "factory",
+    "file-text",
+    "layers",
+    "monitor",
+    "network",
+    "puzzle",
+    "radio",
+    "terminal",
+    "users",
+    "wrench"
+  ]
+}

@@ -1,6 +1,12 @@
 """Publication figures for the IEEE TII submission.
 
-Origin-style conventions throughout:
+The command delegates to make_publication_figures.py for the current five
+manuscript figures. Figure 1 uses its scoped generator; only the frozen mission
+is rendered here. Architecture, Figure 3 and the walkthrough are preserved.
+Historical routines below remain reference-only and are never invoked by CLI.
+All CLI options (including read-only --verify-only) are forwarded.
+
+Origin-style conventions in the historical routines:
   * Times/serif text at journal sizes, boxed axes, inward major+minor ticks on all spines
   * no chart junk: no grid by default, no legend frames, no filled areas except hatched bands
   * every series is distinguishable by marker shape and line style, so the figures survive a
@@ -9,7 +15,7 @@ Origin-style conventions throughout:
     nothing is interpolated, smoothed, or invented
 
 Run from the repository root:
-    python paper/tii/figures/tii-final/make_tii_figures.py
+    python paper/tii/SUBMISSION-IEEE-TII/figures/make_tii_figures.py
 """
 
 from __future__ import annotations
@@ -18,6 +24,12 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+
+if __name__ == "__main__":
+    # Forward before loading historical archives; reproduction depends only on B.
+    from make_publication_figures import main
+
+    raise SystemExit(main())
 
 import matplotlib
 matplotlib.use("Agg")
@@ -31,8 +43,9 @@ try:
 except ImportError:  # pragma: no cover
     fitz = None
 
-OUT = Path(__file__).resolve().parent
-ROOT = OUT.parents[3]
+FIGURES = Path(__file__).resolve().parent
+OUT = FIGURES / "tii-final"
+ROOT = FIGURES.parents[3]
 
 ARCHIVE = "20260920094610-to4"
 ARCHIVE_A = "20260920093330-md4"
@@ -792,22 +805,9 @@ def manifest():
         "source_hashes": sources,
         "outputs": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                     for p in sorted(OUT.iterdir()) if p.suffix in {".pdf", ".png"}},
-        "reproduce": "python paper/tii/figures/tii-final/make_tii_figures.py",
+        "reproduce": "python paper/tii/SUBMISSION-IEEE-TII/figures/make_tii_figures.py",
     }
     (OUT / "source-manifest.json").write_text(json.dumps(man, indent=2) + "\n",
                                               encoding="utf-8")
     return man
 
-
-if __name__ == "__main__":
-    fig_control_loop()
-    fig_benchmark()
-    fig_controller()
-    fig_ablation()
-    fig_agentteam()
-    man = manifest()
-    print("PASS", ARCHIVE)
-    for name, info in sorted(QA.items()):
-        print(f"  {name}: {info['size_in'][0]}x{info['size_in'][1]} in, "
-              f"{info['text_boxes']} labelled spans, raster={info['raster_images_in_pdf']}, "
-              f"overlap={info['overlap']}, fonts={info['fonts']}")

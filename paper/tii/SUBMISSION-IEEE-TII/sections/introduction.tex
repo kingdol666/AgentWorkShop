@@ -1,73 +1,60 @@
 \section{Introduction}
-\IEEEPARstart{S}{upervisory} process adjustment seeks to keep product quality
-within its target band while production continues. On a film line, screw speed,
-line speed, and zone temperatures influence thickness; on a biaxially oriented
-line, draw ratio and stretch temperature couple several sections. Each
-adjustment must respect equipment limits and the active recipe window. The
-engineering problem is therefore not only choosing a setpoint, but linking its
-authority, operating context, and observed effect throughout an iterative
-search.
+\IEEEPARstart{I}{ndustrial} optimization often occurs above the regulatory
+control layer. Engineers adjust recipes, schedules, and setpoints to meet
+quality, throughput, energy, or discharge objectives while PLCs and local
+controllers retain fast regulation. The supervisory decision is only one part
+of the intervention. A usable execution path must also establish which deployed
+actor may change which parameter, which limits are active for the current
+product and run, whether the device accepted the command, and whether the
+process subsequently improved.
 
-Language-model agents are being explored for industrial diagnosis, engineering
-assistance, and PLC program generation
+These concerns recur across plants whose physics and objectives differ:
+injection molding couples part weight to pressure, time, and temperature;
+wastewater treatment (WWTP) balances effluent constraints against aeration and dosing cost; annealing trades material properties against line speed; and BOPET (biaxially oriented polyester) production coordinates multiple stretching sections. All of them need an
+auditable bridge from a team-level task to heterogeneous acquisition and
+control nodes.
+
+Large language model (LLM) agents are being studied for industrial diagnosis,
+engineering assistance, and PLC-program generation
 \cite{raza2025industrial,sabetta2025assistant,liu2026agents4plc,fakih2024llm4plc},
-including interaction with simulated controllers and machine demonstrators
-\cite{vyas2026ftc,hofmann2025nlc}. Such agents can propose and coordinate
-interventions, but protocol connectivity alone specifies neither which team
-member may write a parameter nor which limits and approval rules apply. A
-supervisory loop must also distinguish an authorized proposal, a completed
-write, and a beneficial process response.
+including simulated controller and machine interaction
+\cite{vyas2026ftc,hofmann2025nlc}. Yet orchestration frameworks and protocol connectivity do not by themselves answer who is authorized, which production limits apply, or how a write is linked to later evidence (Section~\ref{sec:related}). Moreover, a task state such as
+\texttt{COMPLETED} can coexist with a missed process objective.
 
-\system{} addresses this integration problem through explicit member--node
-bindings and shared line/product/recipe/run identifiers. Nodes expose
-engineering quantities rather than register addresses; bindings grant deployed
-members scoped tool authority; and hypothesis records link changes to
-subsequent observations and judgments. Fig.~\ref{fig:intro} contrasts this
-organization with application-specific integration. Shared context supports
-attribution but does not establish atomic execution, physical safety, or
-optimization success.
+\system{} addresses this execution gap through member--node bindings and shared
+line, product, recipe, and run context. Nodes expose engineering quantities
+rather than register addresses; bindings scope sanctioned tools; and
+intervention records retain the proposal, execution result, observation, and
+submitted judgment. Fig.~\ref{fig:intro} contrasts this organization with application-specific integration; fast regulation, certified protection, and the choice of optimization algorithm remain outside the framework.
 
-\begin{figure*}[!tb]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.86\textwidth]{figures/gpt/fig1-intro-tii.png}
-\caption{From application-specific integration to explicit supervisory binding. (a)~In advisory or
-application-specific integration, each agent reaches each device through its own
-integration, so driver, permission, and log handling are duplicated per application,
-and which member may move which parameter, under which recipe, is carried by the
-integration rather than by the platform. (b)~The proposed organization: agent-team
-membership, explicit node capabilities, and execution feedback meet at shared
-production identifiers, so one iteration of the recipe search is comparable with the
-next; PLC regulation stays outside the agent loop. DAQ and DCW abbreviate the
-acquisition and data-control-write node types of Sec.~\ref{sec:arch}. Both panels are
-conceptual deployment patterns, not measured comparisons of competing systems or
-universal limitations of prior systems.}
+\includegraphics[width=0.75\textwidth]{figures/publication/fig1-governed-binding.pdf}
+\caption{Conceptual supervisory integration: (a) application-specific links,
+duplicating drivers, permissions, and logging per application; (b) governed
+member--node binding in \system{}: requests pass recipe, approval, and range
+checks under shared production context, and intervention records return
+readback, observation, and verdict. Integration patterns are compared, not
+optimization performance; PLC regulation remains outside the agent-team loop.}
 \label{fig:intro}
 \end{figure*}
-The loop operates at seconds-to-minutes supervisory timescales; fast
-regulation and plant protection remain outside it. Manual bindings require
-approval, while automatic bindings retain the applicable execution checks
-without that wait. Judgment and compensation are separate operations,
-preserving the distinction between a rejected proposal, a driver-accepted
-write (readback-validated where supported), an ineffective adjustment, and an
-attempted restoration.
 
-The contributions are threefold:
+The paper makes four contributions:
 \begin{enumerate}
-\item A \textbf{node-native supervisory model} connecting heterogeneous
-acquisition and control nodes, deployed team members, and production runs
-through explicit capabilities and shared identifiers. Recipe windows constrain
-the search; they are not inferred safe operating regions
-(Secs.~\ref{sec:arch} and \ref{sec:objective}).
-\item An \textbf{implemented governed loop} linking source-dependent admission,
-intervention records with optional hypotheses, agent-submitted judgments,
-separately executed compensation, and human approval, with explicit execution
-boundaries (Sec.~\ref{sec:mech}).
-\item A \textbf{layered, traceable evaluation} separating protocol checks,
-fixed-controller performance, and scripted team missions
-(Sec.~\ref{sec:eval}). The reported decision policies are deterministic and
-the plants simulated; these tests characterize platform paths, not LLM
-reasoning or controller superiority.
+\item a \textbf{capability-based industrial execution architecture} that
+connects agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW) nodes, heterogeneous protocol drivers, and line--product--recipe--run context while keeping task membership
+distinct from physical-write authority;
+\item a \textbf{reusable integration boundary} consisting of self-describing
+node and driver contracts, production objects, plugin extension points, and a
+typed SDK. The evaluated reference adapter projects scenario blueprints into
+these common services, while process models and policies remain external;
+\item an \textbf{evidence-preserving governed intervention workflow} that
+separates admission, optional approval, actuation, readback, process
+observation, submitted judgment, compensation, and policy-driven backstop
+actions; and
+\item a \textbf{layered simulation-tier evaluation} spanning five protocol
+stacks, a mechanism ablation, a deterministic controller, two AgentTeam
+missions (one node and a nine-device line), and four process scenarios, with
+task state reported separately from process-objective attainment.
 \end{enumerate}
-The contribution is an execution and evidence framework for supervisory search,
-not a new control law, learning method, or safety certification. Configuration
-reuse is evaluated only within the implemented drivers and scenarios.
+The experiments use real software protocol stacks against author-implemented dynamic process simulators under deterministic scripted policies.

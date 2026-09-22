@@ -1,7 +1,69 @@
-% Revision evidence freeze: 2026-09-20. Do not mix archives.
-% Integrated B: bench/results/20260920094610-to4/run.json
-% Paired A: bench/results/20260920093330-md4/run.json
-% Ablation: bench/results/20260920094442-e1lite/run.json
-% Protocol/fault: bench/results/20260920094335-1b5g/run.json
-% Static: bench/results/20260920095700-1e3s/run.json
-\newcommand{\resHost}{an AMD Ryzen 7 9700X host with 31\,GB RAM running Windows}
+% Evidence snapshot: integrated run 20260921184204-10lc.
+% Artifacts: bench/results/20260921184204-10lc/{report.md,run.json,
+% scenarios-benchmark.md,scenarios.json,agentteam-mission.log,
+% agentteam-biax.log,metrics.csv,summary.json}. The four-arm ablation companion
+% remains bench/results/20260921181234-e1lite/run.json.
+\newcommand{\resEvidenceDate}{September~21, 2026 (19:08 UTC)}
+\newcommand{\resRun}{\texttt{20260921184204-10lc}}
+\newcommand{\resCommit}{\texttt{e692df1}}
+\newcommand{\resHarness}{\texttt{9f2756dce4a4cbb3}}
+\newcommand{\resSeed}{42}
+\newcommand{\resPhases}{20}
+\newcommand{\resChecksTotal}{83}
+\newcommand{\resChecksPass}{83}
+\newcommand{\resChecksWarn}{0}
+\newcommand{\resChecksFail}{0}
+\newcommand{\resTotalWall}{26\,min}
+\newcommand{\resDaqSamples}{55}
+\newcommand{\resWriteP}{29.954\,ms}
+\newcommand{\resTcpP}{47.8\,ms}
+\newcommand{\resOpcP}{19.8\,ms}
+\newcommand{\resMqttP}{19.3\,ms}
+\newcommand{\resHttpP}{32.9\,ms}
+\newcommand{\resAblationRun}{\texttt{20260921181234-e1lite}}
+\newcommand{\resFullIntercept}{18/18}
+\newcommand{\resNoInterlockIntercept}{12/18}
+\newcommand{\resNoReadbackIntercept}{18/18}
+\newcommand{\resUngatedIntercept}{12/18}
+\newcommand{\resBackstop}{130.2\,s}
+\newcommand{\resPortFfive}{9/9}
+\newcommand{\resPortCode}{0}
+\newcommand{\resParamChecks}{4/4}
+\newcommand{\resHitlLatency}{461\,ms}
+\newcommand{\resMissionFrom}{200}
+\newcommand{\resMissionTo}{204.704}
+\newcommand{\resMissionPv}{204.70}
+\newcommand{\resMissionTarget}{$204.704\pm0.75$}
+\newcommand{\resBiaxSp}{30}
+\newcommand{\resBiaxDaq}{19}
+\newcommand{\resBiaxWrites}{3}
+\newcommand{\resBiaxStart}{28.10}
+\newcommand{\resBiaxFinal}{25.66}
+\newcommand{\resBiaxTarget}{25.0}
+\newcommand{\resBiaxTol}{0.7}
+\newcommand{\resLlmWall}{156.3\,s}
+\newcommand{\resGoalWall}{637.3\,s}
+\newcommand{\resGoalFinal}{51.7}
+\newcommand{\resJstar}{89.894}
+\newcommand{\resJzero}{67.2}
+\newcommand{\resControllerMin}{0.965}
+\newcommand{\resControllerMean}{0.969}
+\newcommand{\resControllerMax}{0.972}
+\newcommand{\resInjStart}{31.25}
+\newcommand{\resInjFinal}{32.17}
+\newcommand{\resInjWrites}{2}
+\newcommand{\resInjWall}{26.48\,s}
+\newcommand{\resWwtpStart}{0.21}
+\newcommand{\resWwtpFinal}{3.50}
+\newcommand{\resWwtpWrites}{15}
+\newcommand{\resWwtpWall}{169.27\,s}
+\newcommand{\resWwtpCostStart}{181.5}
+\newcommand{\resWwtpCostFinal}{179.1}
+\newcommand{\resAnnealStart}{134.52}
+\newcommand{\resAnnealFinal}{100.08}
+\newcommand{\resAnnealWrites}{5}
+\newcommand{\resAnnealWall}{102.76\,s}
+\newcommand{\resAnnealSpeedFinal}{164}
+\newcommand{\resAnnealSpeedTried}{176}
+\newcommand{\resAnnealGain}{17.1\%}
+\newcommand{\resWriteLock}{30\,s}

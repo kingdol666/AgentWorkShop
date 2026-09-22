@@ -4,12 +4,12 @@
 both through industrial nodes and production context (Fig.~\ref{fig:arch}). A
 node is an acquisition or control endpoint with engineering semantics,
 connection settings, line membership, and agent bindings. Channels coordinate
-agents; controller services mediate node operations. The architecture covers
-the evaluated supervisory path.
+agents; controller services mediate node operations. This separates three responsibilities: deciding what to change, authorizing
+and executing the change, and recording what followed.
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.94\textwidth]{figures/publication/fig2-architecture.pdf}
+\includegraphics[width=\textwidth]{figures/publication/fig2-architecture.pdf}
 \caption{System architecture and execution boundaries. The co-resident platform
 process hosts the agent orchestrator, the binding-and-approval bridge, and the
 industrial supervisor; operator entry points sit above it, and external CLI
@@ -59,9 +59,9 @@ domain.
 A BOPET thickness adjustment illustrates how the objects work together. The
 channel carries one production objective and delegates a task to a worker;
 the worker queries a thickness-acquisition node, then addresses casting
-speed, fast-roll speed, or rail width through its bound control nodes, each
-resolving its own protocol and engineering units while the line, recipe, and
-run identify the production context. An optimization record associates an
+speed, fast-roll speed, or rail width through bound control nodes. Each node
+resolves its own protocol and engineering units, while the production
+objects identify the operating context. An optimization record associates an
 executed change with its actor and later judgment, so the task can span
 protocols without treating a channel message as write authority or a
 task-board completion as a device acknowledgment; Sec.~\ref{sec:agentloop}

@@ -1,32 +1,36 @@
 \section{Core Mechanisms}
 \label{sec:mech}
-The governed loop connects semantic setpoints, member-level execution
-authority, and intervention records with optional hypotheses to judgment and
-compensation; the operator console exposes the same objects for commissioning
-and audit (Fig.~\ref{fig:teamdemo}), and Sec.~\ref{sec:protocol} states the
-control structure that the evaluation exercises.
+A supervisory intervention passes through three decisions: whether the
+request may execute, what the device reports, and how the resulting process
+response should be judged. The platform represents these decisions separately
+so that neither a completed team task nor an accepted command stands in for
+process success. Fig.~\ref{fig:chanloop} summarizes this sequence; the operator console
+exposes its commissioning, approval, and audit objects.
 
 \subsection{Optimization Objective and Search Space}
 \label{sec:objective}
-The mechanisms exist to serve one task: move a product metric toward its
-target by choosing recipe parameters, and stop when further moves no longer
-help.
+The supervisory task is to adjust recipe parameters toward a product
+objective under configured operating constraints. The strategy chooses the
+next proposal and its stopping rule; the platform governs execution and
+retains the evidence needed to inspect each iteration.
 
-\emph{Decision variables.} The recipe parameters bound to the line's control
-nodes---for a cast-film line, screw speed, line speed, and zone temperatures.
+\emph{Decision variables.} The decision variables are recipe parameters bound to a line's control
+nodes, such as screw speed, line speed, and zone temperatures for cast film.
 A parameter is written in engineering units and resolved to a register only
 inside the controller (Sec.~\ref{sec:nodeexec}), so a proposal carries
 physical meaning rather than an address. A commissioned node defines the
 quantity, units, calibration, limits, and line membership; protocol
 differences remain inside its driver. Member--node bindings, not channel
 access or protocol connectivity, grant agent-tool authority; they name
-deployed member instances rather than templates, so redeployment does not
-transfer them.
+deployed member instances rather than templates. Newly instantiated members
+do not inherit existing bindings; the bindings themselves remain
+administratively mutable.
 
-\emph{Objective and feasible set.} The objective is the measured product
-metric, read back through the acquisition nodes of the same line: film
-thickness against its target band, defect rate, melt pressure, and the
-throughput and energy the operating point implies. Process effects require
+\emph{Objective and feasible set.} A strategy defines its product objective and process constraints using
+acquisition data and engineering quantities. The team mission targets a film
+thickness band; the fixed-controller experiment combines thickness, defects,
+and setpoint-based energy and throughput proxies, subject to temperature and
+pressure constraints (Sec.~\ref{sec:clbench}). Process effects require
 observations rather than write acknowledgments; freshness is exposed, but
 observation-quality gating is not enforced. The admissible setpoint interval
 is the intersection of the node's hard range, active recipe window, and
@@ -50,17 +54,18 @@ denial on the parameter layer (Sec.~\ref{sec:port}).
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.88\textwidth]{figures/publication/fig-agentteam-demo.png}
-\caption{The deployed AgentTeam workflow that exercises these mechanisms,
-shown as crops of the running console. \textbf{(1)}~Commissioned nodes stream
-live acquisition over their protocols. \textbf{(2)}~A group roster is deployed
-as a channel whose lead and worker carry the node bindings.
-\textbf{(3)}~The goal composer hands the lead a thickness objective, which
-the lead decomposes into acquisition, governed write, verdict, and completion
-steps. \textbf{(4)}~The parameter ledger records each governed write with its
-source and acknowledged value. The panels are interface records of the
-deployed workflow, not experimental measurements.}
-\label{fig:teamdemo}
+\includegraphics[width=\textwidth]{figures/publication/fig3-channel-loop.pdf}
+\caption{The governed supervisory loop for ordinary agent setpoint requests.
+The channel coordinates a lead and workers whose per-node bindings gate
+admission---bound scope, availability, approval policy, hard range plus the
+active recipe window---before a driver write with register readback where the
+protocol supports it. \texttt{dcw\_judge} records the agent's verdict but
+neither computes it nor actuates; compensation is a separate, rejectable
+write; the human authority and the auto backstop sit outside the channel.
+Numbered items are loop steps. The evaluated plant is simulated; recipe
+dispatch and hold-heartbeat routes have the distinct admission behavior
+described in Sec.~\ref{sec:writepath}.}
+\label{fig:chanloop}
 \end{figure*}
 
 \subsection{Node Control Execution and the Parameter Layer}
@@ -77,11 +82,18 @@ an admission rule. Acquisition runtimes track due times and in-flight samples
 under a rotating gateway sweep, providing supervisory rather than hard
 real-time sampling.
 
-For an ordinary agent setpoint request, controller admission intersects the
-node's engineering range with applicable parameter-baseline, active-product,
-and active-recipe limits. These checks depend on the entry route: recipe
-dispatch supplies a run identifier and omits the recipe-window layer; hold
-heartbeats bypass controller admission but share runtime write exclusion.
+For an ordinary agent setpoint request, the allowed value lies in
+\begin{equation}
+\mathcal{I}_n(t)=\mathcal{H}_n\cap\mathcal{B}_n
+                 \cap\mathcal{P}_n(t)\cap\mathcal{R}_n(t),
+\label{eq:admission}
+\end{equation}
+where $\mathcal{H}_n$ is the node engineering range and the other intervals
+are applicable parameter-baseline, active-product, and active-recipe limits.
+An absent optional limit adds no restriction. This notation describes the
+implemented interval checks, not a model of plant feasibility. Entry routes differ: recipe dispatch supplies a run identifier and omits
+the recipe-window layer, while hold heartbeats bypass controller admission
+but share runtime write exclusion.
 Agent-origin ownership and directional cooldown checks are not universal
 guards. Line start installs an active run before dispatching recipe
 parameters individually. Stop clears that context, prevents subsequent
@@ -104,7 +116,8 @@ Driver success is protocol-dependent: HTTP accepts a successful response
 without tolerance-checking an optional returned value, whereas MQTT
 publication supplies no readback. Only a validated readback supports setpoint
 agreement; neither that agreement nor request acceptance establishes process
-success.
+success. A failed readback can follow an already executed write; it does
+not establish that the device was left unchanged.
 
 Agent setpoint tools resolve bindings and obtain any required approval before
 controller admission, rechecking binding existence after approval. Admission
@@ -114,9 +127,7 @@ connection, write, and readback. REST, recipe, and recovery routes have
 distinct entry authorization. Asynchronous connection and protocol queues
 prevent check--act atomicity against recipe changes, and write bookkeeping
 can fail without reversing device execution, so attribution is not an atomic
-commitment across storage and the device. A stopped batch is not a physical
-safety barrier: the run gate limits acquisition, while plant-side protection
-remains independent.
+commitment across storage and the device.
 
 \subsection{Agent Closed-Loop Control}
 \label{sec:loop}
@@ -129,8 +140,8 @@ record with asynchronous baseline statistics; manual and recipe writes do
 not. The evidence associates a change with later observations; it is neither
 a causal experiment nor a guarantee that every accepted write was captured.
 
-The five-second same-target rule suppresses bookkeeping, not the physical
-command: the driver has already executed when the latest node anchor is
+\emph{Recording and coordination.} The five-second same-target rule
+suppresses bookkeeping, not the physical command: the driver has already executed when the latest node anchor is
 checked. Otherwise, the node's previous open record is closed before
 unchanged-value suppression; an unchanged command can therefore close a
 record without replacing it. Ownership is node-scoped: an agent-origin write
@@ -141,7 +152,7 @@ baseline lookback, a 300-s cooldown, and a 30-min stale-record interval. A
 missing prior value or a bookkeeping failure can leave recovery or
 attribution incomplete even when the driver accepted the request.
 
-The judgment tool records the agent's reading of that comparison; it does not
+\emph{Judgment.} The judgment tool records the agent's reading of that comparison; it does not
 establish process success. An invocation of \texttt{dcw\_judge} supplies a
 record identifier, verdict, and reason. A \emph{keep} closes the record; for
 non-takeover judgments it also attempts to mark the currently active run as
@@ -150,14 +161,15 @@ operating point. \emph{Rollback} and \emph{uncertain} leave the record open.
 Setpoint restoration requires a separate rollback operation, and the
 strategy, not this status alone, decides whether to stop.
 
-While the control gateway is running, its sweep schedules asynchronous checks
+\emph{Rule-based backstop.} While the control gateway is running, its sweep
+schedules asynchronous checks
 of open records whose stored policy is not observe-only, by default no
 earlier than 120 s after the record is set and no more often than every 30 s.
 The manager prefers acquisition streams sharing the control node's
 primary-device alias, falling back to the line. It queries from the record's
 set time to now and sums out-of-window returned points or bucket averages
-across channels; a total of at least $B=3$ triggers a rollback judgment.
-These need not be consecutive points, and $B$ counts neither evaluator
+across channels; a total of at least $b=3$ triggers a rollback judgment.
+These need not be consecutive points, and $b$ counts neither evaluator
 invocations nor raw sensor samples. Automatic recovery is attempted only
 while fewer than $K=2$ retained records for the node have status
 \texttt{rolled-back}; the count spans retained history, not the current run,
@@ -178,22 +190,29 @@ definition, run metadata, and physical parameters need not agree
 transactionally. Physical rollback issues a new, rejectable write to a
 recorded baseline or anchor-derived target; the run-related route uses the
 previous value of the last retained pre-start changed anchor, which need not
-be the actual setpoint at run start. Across nodes, compensation can partially
-succeed and cannot erase intermediate process states, so restored metadata,
-successful compensation, and verified process recovery remain distinct.
+be the actual setpoint at run start. The rollback operation closes an originally open record before dispatch,
+marks it \texttt{rolled-back} on success, and may open a new record for the
+compensating write. A failed restoration does not reopen the original for
+sweep-based retry. Across nodes, compensation can partially succeed and
+cannot erase intermediate process states; restoring metadata, restoring a
+setpoint, and recovering the process are distinct outcomes.
 
 \subsection{Human-in-the-Loop Control}
 \label{sec:hitl}
-Manual bindings add a timed approval wait to agent setpoint and rollback
-requests; auto bindings omit the wait but retain applicable execution checks.
-Reads and verdict recording do not require this approval. Setpoint requests
+Manual bindings add a timed approval wait to agent setpoint and physical
+rollback requests; auto bindings omit the wait but retain applicable execution checks.
+Reads, verdict recording, and bound-node recipe-window editing do not
+require this physical-write approval. Setpoint requests
 show the member, node, requested value, request-time effective interval, and
 remaining time; rollback requests describe the target record or anchor.
 Approval reserves neither limits nor device state: binding existence and
 controller admission are checked again before execution. Expiry prevents
 execution and is recorded separately from refusal; duplicate pending requests
 for the same agent and node are suppressed, and unbinding can cancel
-outstanding requests. Tool approval differs from an optimization record
+outstanding requests. The decision endpoint authenticates a user but does
+not enforce a line- or owner-scoped approver role. Existing optimization
+records retain their creation-time recovery policy; changing a binding to
+manual does not retroactively change that policy. Tool approval differs from an optimization record
 awaiting human action: escalation does not execute recovery, and neither path
 covers an absent operator when $K=2$ is reached. External engines still need
 deployment-level privilege and network restrictions: bindings govern

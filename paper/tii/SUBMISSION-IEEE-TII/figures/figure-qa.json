@@ -1,0 +1,204 @@
+{
+  "schema_version": 2,
+  "automated_checks": "pass",
+  "figures": {
+    "fig1-supervisory-binding": {
+      "size_in": [
+        7.16,
+        2.72
+      ],
+      "raster_images_in_pdf": 0,
+      "embedded_fonts": true,
+      "fonts": [
+        "FHXFSG+TimesNewRomanPS-BoldMT",
+        "FHXFSG+TimesNewRomanPSMT"
+      ],
+      "minimum_font_pt": 8.0,
+      "minimum_annotation_font_pt": 8.0,
+      "text_spans": 32,
+      "spans_outside_canvas": [],
+      "font_metric_overlap_pairs": [],
+      "font_metric_note": "Metric boxes are not glyph-ink bounds; visual review is separate.",
+      "canvas_tolerance_pt": 0.05,
+      "author_metadata": "",
+      "raster_policy": "Vector only."
+    },
+    "fig2-architecture": {
+      "size_in": [
+        7.1267,
+        2.5567
+      ],
+      "raster_images_in_pdf": 0,
+      "embedded_fonts": true,
+      "fonts": [
+        "AAAAAA+Calibri-Bold",
+        "BAAAAA+Calibri"
+      ],
+      "minimum_font_pt": 8.0025,
+      "minimum_annotation_font_pt": 8.0025,
+      "text_spans": 32,
+      "spans_outside_canvas": [],
+      "font_metric_overlap_pairs": [],
+      "font_metric_note": "Metric boxes are not glyph-ink bounds; visual review is separate.",
+      "canvas_tolerance_pt": 0.05,
+      "author_metadata": "",
+      "raster_policy": "Vector only."
+    },
+    "fig3-governed-supervisory-workflow": {
+      "size_in": [
+        7.16,
+        3.5
+      ],
+      "raster_images_in_pdf": 0,
+      "embedded_fonts": true,
+      "fonts": [
+        "FHXFSG+TimesNewRomanPS-BoldMT",
+        "FHXFSG+TimesNewRomanPSMT"
+      ],
+      "minimum_font_pt": 8.1,
+      "minimum_annotation_font_pt": 8.1,
+      "text_spans": 49,
+      "spans_outside_canvas": [],
+      "font_metric_overlap_pairs": [
+        [
+          "Task /",
+          "goal"
+        ],
+        [
+          "Semantic",
+          "write / driver"
+        ],
+        [
+          "Observe",
+          "process"
+        ],
+        [
+          "Reviewable",
+          "intervention"
+        ]
+      ],
+      "font_metric_note": "Metric boxes are not glyph-ink bounds; visual review is separate.",
+      "canvas_tolerance_pt": 0.05,
+      "author_metadata": "",
+      "raster_policy": "Vector only."
+    },
+    "fig-operational-walkthrough": {
+      "size_in": [
+        7.16,
+        3.4
+      ],
+      "raster_images_in_pdf": 4,
+      "embedded_fonts": true,
+      "fonts": [
+        "FHXFSG+TimesNewRomanPS-BoldMT",
+        "FHXFSG+TimesNewRomanPSMT"
+      ],
+      "minimum_font_pt": 8.0,
+      "minimum_annotation_font_pt": 8.0,
+      "text_spans": 12,
+      "spans_outside_canvas": [],
+      "font_metric_overlap_pairs": [],
+      "font_metric_note": "Metric boxes are not glyph-ink bounds; visual review is separate.",
+      "canvas_tolerance_pt": 0.05,
+      "author_metadata": "",
+      "raster_policy": "Authentic screenshot crops; 8 pt minimum applies to vector annotations, not source UI pixels."
+    },
+    "fig-agentteam-mission": {
+      "size_in": [
+        7.16,
+        2.95
+      ],
+      "raster_images_in_pdf": 0,
+      "embedded_fonts": true,
+      "fonts": [
+        "FHXFSG+TimesNewRomanPS-BoldMT",
+        "FHXFSG+TimesNewRomanPSMT"
+      ],
+      "minimum_font_pt": 8.0,
+      "minimum_annotation_font_pt": 8.0,
+      "text_spans": 39,
+      "spans_outside_canvas": [],
+      "font_metric_overlap_pairs": [],
+      "font_metric_note": "Metric boxes are not glyph-ink bounds; visual review is separate.",
+      "canvas_tolerance_pt": 0.05,
+      "author_metadata": "",
+      "raster_policy": "Vector only."
+    }
+  },
+  "current_manuscript_figures": [
+    "fig1-supervisory-binding",
+    "fig2-architecture",
+    "fig3-governed-supervisory-workflow",
+    "fig-operational-walkthrough",
+    "fig-agentteam-mission"
+  ],
+  "output_policy": {
+    "raster_allowed_only_for": [
+      "fig-operational-walkthrough"
+    ],
+    "minimum_annotation_font_pt": 8,
+    "embedded_fonts_required": true,
+    "screenshot_policy": "Original screenshot crop pixels are preserved; minimum font size applies only to added vector annotations."
+  },
+  "frozen_B_unchanged": true,
+  "source_immutability_checked": true,
+  "protected_asset_hashes": {
+    "drawio/fig2-architecture.drawio": "9cabeaf29e2f99d9cd90b3b1c645c78d3f8c400e5071d5082a0ed6545af638ef",
+    "drawio/fig3-governed-supervisory-workflow.drawio": "987324baefd4f05dbfb666c30b107e3026da7c5b0e824e3f2899825d8cac89aa",
+    "drawio/fig4-channel-loop.drawio": "98bf4e3e10433eae3e5c04b4c77c3c0129dac0b909fc3626b8662cee4d15ac31",
+    "gpt/fig1-intro-opt-raw.png": "706c1714ff6a265c69dbc5f3b7fd4b5557575a5360ec62dc4391db77f81cafe2",
+    "gpt/fig1-intro-tii.png": "2053cdad022a0a6674bd5380595c24b79a1ff3007a001a49422bbc3408bb5e6f",
+    "gpt/fig1-intro-v1-legacy.png": "1e764a53639964a681452eb48e28ccc8e32123911d3dc602249322b50f2c4357",
+    "publication/fig-agentteam-demo.png": "1e7f752c27ed44fb2a1ebd3cd20148de6c655252b04067586c54e751ba5469e9",
+    "publication/fig2-architecture.pdf": "f57e93bfa6bb54cc0909746eeb978298d5432ad30f92fd853a581e5776cc0267",
+    "publication/fig3-channel-loop-proof.png": "0966f07540d70daf606492f824608bc675fbad99d8fa71372a5f4d0fe2dc88d9",
+    "publication/fig3-channel-loop.pdf": "21fe18105a9286a754b4ab3332e624175052a72ff759b90bdf44e0bf2fa6d8fb",
+    "publication/fig3-channel-loop.png": "8d97e2e4ff72bc6378dc4b875161fa320d26d60ead13079b950a318cf5525982",
+    "publication/fig3-governed-supervisory-workflow.pdf": "9c1859a60493ec83b901585697d0aabe7ada2173a4017371f68458752c5504a8",
+    "publication/fig3-governed-supervisory-workflow.png": "99420d20c85a0d866d16da392df700653ddbcc1d368caa3eb2854009d2edf0c4",
+    "publication/fig3-governed-supervisory-workflow.svg": "78ced20b51ee07f5e341bf9dff1df94d4341bf97764d56d2231001343a2201c2",
+    "walkthrough/aw_working-source.png": "bd6665837c3d09f8431ba2df0031348fefba3a134c5550802e965eee9d56fea9",
+    "walkthrough/aw_working.png": "3548eed52b620509103f0a309e3009da6f5d70d46182f86b2fd50c1fda717739",
+    "walkthrough/fig-operational-walkthrough.pdf": "f96c08382e2168aee80d3b0e136a5882e8a20180fe2a94fdab5c18130b2e2574",
+    "walkthrough/fig-operational-walkthrough.png": "0ae2b9cb6c849e5691c13184bceb6dee38e096f19e2a550e7ac70d57130cd7c9",
+    "walkthrough/ui-crop-1.png": "f7032a9917ec5b8d742898447a23c3c5bbace9768de1695c277305e8c2ee73fc",
+    "walkthrough/ui-crop-2.png": "dac3c25134ef2e72b1170b81d54675e1e835381876e892879a12dd9d10353daa",
+    "walkthrough/ui-crop-3.png": "cad7d7040cbd490c9650146948d03b834165ead704d09659816ff1efe50fcf09",
+    "walkthrough/ui-crop-4.png": "281dfb795fc657b26506f8450850ac9c84bc3e70245817eaf79498ebca85e971"
+  },
+  "provenance": {
+    "fig3-governed-supervisory-workflow": {
+      "source_sha256": "987324baefd4f05dbfb666c30b107e3026da7c5b0e824e3f2899825d8cac89aa",
+      "output_sha256": "9c1859a60493ec83b901585697d0aabe7ada2173a4017371f68458752c5504a8",
+      "native_drawio_cells": 64,
+      "native_connectors": 11,
+      "icon_slots": 11,
+      "minimum_pdf_font_pt": 8.1,
+      "verification": "Owner export receipt hashes and current XML/PDF labels; no independent geometry rerender.",
+      "exporter_status": "External XML-derived pipeline; no checked-in export script."
+    },
+    "fig-operational-walkthrough": {
+      "source_sha256": "bd6665837c3d09f8431ba2df0031348fefba3a134c5550802e965eee9d56fea9",
+      "output_pdf_sha256": "f96c08382e2168aee80d3b0e136a5882e8a20180fe2a94fdab5c18130b2e2574",
+      "original_crop_pixels_verified": true,
+      "scope": "The supplied screenshot itself is the original crop source; no upstream screenshot is required."
+    },
+    "fig1-supervisory-binding": {
+      "generator_sha256": "f17ef36f73de83bdf789bb3495a62fd20a2d5ae5f5718c7406a78b73a13c704e",
+      "sha256": {
+        "pdf": "aeb6536e7778d0ca117e22a308dc838e0ca0d75fd829e09cd3a2cc3d2385a30b",
+        "svg": "e3f33e904b7a51dd57cdbd86210737cc7f6dc70f768f8b6dbad900cd10cdd0c1",
+        "png": "bb199a990a6939bf8af78bf42a91f3f8943c20418211b647cec4fd4eaf48b4f1",
+        "grayscale_png": "62dbe6c95c4e896fd4755ccc9accc399f8860cf0078ad11a3a000ec16956bb4b"
+      },
+      "context_snapshot_note": "Owner QA input_assets are historical editorial context, not current benchmark inputs."
+    }
+  },
+  "visual_inspection": "Owner-specific reviews remain in their hash-linked QA receipts. Aggregate checks are not independent visual approval.",
+  "learnings": [
+    "Keep the categorical mission index unconnected; no timestamps or raw buckets are archived.",
+    "Keep full archived floating-point values in plotted-data.json; round only figure labels.",
+    "Never regenerate Figures 1 or 3 from the retired aggregate layouts.",
+    "Walkthrough source UI pixels are genuine screenshot crops, not vector annotation text."
+  ]
+}

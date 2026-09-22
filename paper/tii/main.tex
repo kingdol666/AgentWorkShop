@@ -7,12 +7,11 @@
 \usepackage{xcolor}
 \usepackage{stfloats}
 \usepackage{placeins}
+\usepackage{cite}
+\usepackage{url}
+\urlstyle{same}
 
-% Float packing.  The manuscript carries five double-column figures and two
-% double-column tables.  Limits must be permissive
-% enough that a page is never left
-% with a half-empty column: with a strict \topfraction the page break lands after
-% a float and the following column starts late, which reads as an unintended blank.
+% Permit full-width figures without changing IEEEtran margins or body type.
 \setcounter{topnumber}{4}
 \setcounter{bottomnumber}{3}
 \setcounter{totalnumber}{6}
@@ -31,41 +30,42 @@
 
 \begin{document}
 
-\title{AgentWorkShop: Closed-Loop Recipe Optimization by Governed Agent Teams over Heterogeneous Industrial Protocols}
+\title{AgentWorkShop: Governed Agent-Team Execution for Industrial Recipe Optimization}
 
 % Working manuscript: replace the anonymous author block only when the
 % submission stage and double-blind requirements permit author identification.
 \author{Anonymous Authors}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Closed-Loop Recipe Optimization by Governed Agent Teams}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Governed Agent-Team Execution}
 
 \maketitle
 
 \begin{abstract}
-Industrial recipe optimization requires more than selecting a promising setpoint:
-an intervention must respect equipment limits, use the correct protocol, and remain
-traceable when its outcome is judged or reversed. AgentWorkShop links agent-team
-coordination to industrial supervision through member--node capabilities, shared
-production context, and a governed write path. Engineering limits, recipe windows,
-and approval requirements constrain execution; optimization records distinguish
-command acceptance, observed process response, agent judgment, and compensation.
-The evaluation uses real protocol transports with simulated plants and scripted
-teams, keeping language-model decisions outside the measured execution path.
-The integrated evaluation passes 75 checks, rejects 24 of 24 configured
-out-of-constraint probes across four writable stacks, and blocks none of four
-legal writes. A four-arm ablation attributes window-violation prevention to the
-recipe interlock: removing it admits six violations across three repetitions,
-whereas bypassing readback verification alone does not affect rejection. A fixed controller
-achieves 0.966--0.970 of a simulator-derived grid reference across three seeds.
-A recorded team mission reduces film thickness from 26.90 to 25.48\,$\mu$m through
-four governed writes on three parameters, meeting a $25.0\pm0.7\,\mu$m objective.
-The results support a common execution layer that separates authorization,
-device acceptance, and process success. Physical validation and controlled
-agent comparisons remain necessary before claiming field reliability or
-autonomous optimization superiority.
+Industrial recipe optimization couples process objectives with equipment limits,
+heterogeneous protocols, and the authority to change operating conditions.
+Connecting an agent to a device does not, by itself, preserve these constraints
+or distinguish a successful command from a successful intervention. This paper
+presents AgentWorkShop, a supervisory execution framework that connects deployed
+agent-team members to engineering-level acquisition and control nodes through
+explicit capabilities and production context. A governed write path combines
+applicable operating limits and approval requirements, while intervention
+records link accepted writes to observations, submitted judgments, and separate
+compensation actions. Evaluation uses real protocol transports connected to
+simulated plants, with deterministic controllers and scripted teams to isolate
+execution behavior from language-model reasoning. The integrated archive passes
+75 implementation checks, rejects all 24 configured out-of-constraint probes
+across four writable stacks, and accepts all four legal-write probes. A
+four-arm ablation attributes rejection of the tested recipe-window violations
+to the window check rather than readback verification. A recorded multi-node team
+mission reduces film thickness from 26.90 to 25.48\,$\mu$m with four governed
+writes on three parameters, reaching a $25.0\pm0.7\,\mu$m objective. These results
+show how a common execution layer can preserve the distinction between action
+authority, device acceptance, and process outcome. The evidence supports
+simulation-tier supervisory integration; physical reliability and comparative
+agent optimization remain to be evaluated.
 \end{abstract}
 
 \begin{IEEEkeywords}
-agent teams, closed-loop optimization, heterogeneous protocols, human-in-the-loop, industrial informatics, large language models, recipe optimization, supervisory control.
+Agent teams, industrial informatics, recipe optimization, supervisory control, write governance.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle

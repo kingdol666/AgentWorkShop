@@ -1,0 +1,45 @@
+{
+  "asset": "fig3-governed-supervisory-workflow",
+  "page_inches": [
+    7.16,
+    3.5
+  ],
+  "minimum_pdf_font_pt": 8.1,
+  "fonts": [
+    "TimesNewRomanPS-BoldMT",
+    "TimesNewRomanPSMT"
+  ],
+  "xml_native_cells": 64,
+  "native_connectors": 11,
+  "blank_icon_slot_inches": 0.167,
+  "pdf_raster_images": 0,
+  "layout_issues": [],
+  "render_source": "Saved Draw.io mxGraphModel geometry, labels, styles, native anchors and bends",
+  "visual_qa": "PASS: final PDF-derived color PNG inspected; no overlaps/clipping, pale colored panels, Times text, blank icon slots, visible feedback and dashed amber recovery routes.",
+  "files": [
+    {
+      "submission": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figures\\drawio\\fig3-governed-supervisory-workflow.drawio",
+      "parent": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\figures\\drawio\\fig3-governed-supervisory-workflow.drawio",
+      "sha256": "987324baefd4f05dbfb666c30b107e3026da7c5b0e824e3f2899825d8cac89aa",
+      "copies_identical": true
+    },
+    {
+      "submission": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figures\\publication\\fig3-governed-supervisory-workflow.pdf",
+      "parent": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\figures\\publication\\fig3-governed-supervisory-workflow.pdf",
+      "sha256": "9c1859a60493ec83b901585697d0aabe7ada2173a4017371f68458752c5504a8",
+      "copies_identical": true
+    },
+    {
+      "submission": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figures\\publication\\fig3-governed-supervisory-workflow.svg",
+      "parent": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\figures\\publication\\fig3-governed-supervisory-workflow.svg",
+      "sha256": "78ced20b51ee07f5e341bf9dff1df94d4341bf97764d56d2231001343a2201c2",
+      "copies_identical": true
+    },
+    {
+      "submission": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figures\\publication\\fig3-governed-supervisory-workflow.png",
+      "parent": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\figures\\publication\\fig3-governed-supervisory-workflow.png",
+      "sha256": "99420d20c85a0d866d16da392df700653ddbcc1d368caa3eb2854009d2edf0c4",
+      "copies_identical": true
+    }
+  ]
+}

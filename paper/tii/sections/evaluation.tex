@@ -1,22 +1,30 @@
 \section{Experimental Evaluation}
 \label{sec:eval}
-\subsection{Testbed, Scope, and Evaluation Flow}
+\subsection{Research Questions and Experimental Design}
 \label{sec:protocol}\label{sec:static}
-The experiments ask whether the platform (Q1) preserves write constraints
-across heterogeneous protocols, (Q2) separates prevention from readback and
-attribution, and (Q3) closes a team-level objective through traceable,
-multi-node interventions. We freeze the integrated archive
-$B=\texttt{20260920094610-to4}$ from the September 20, 2026 consolidated
-report, recording seed 42, commit \texttt{1585948}, harness hash
-\texttt{b203077a581aaba1} over nine benchmark-harness files, and Node v24.19.0
-on Windows x64. The command is \texttt{node bench/pipeline.mjs --profile
-integrated --seed 42 --cl-seeds 3}. Its immediately preceding same-version run
-is reported separately rather than selected for its endpoint, and the ablation
-and protocol/fault drill come from separate archives, not pooled with $B$.
-Numerical controller and mission
-observations use separate REST history queries that request one-second buckets
-and average up to six and five latest returned bucket means respectively; the
-archive preserves aggregates, not raw buckets.
+The evaluation addresses three questions: \textbf{Q1}, are configured write
+constraints enforced across heterogeneous protocols? \textbf{Q2}, what distinct
+roles do admission, readback, and process observations play? \textbf{Q3}, can
+scoped interventions close a team-level objective while retaining attributable
+execution records? These questions assess the execution framework, not the
+quality of an agent's reasoning policy.
+
+The primary integrated run is archive $B$
+(\texttt{20260920094610-to4}), retained with the September 20, 2026 report.
+It records seed 42, platform commit \texttt{1585948}, and fingerprint
+\texttt{b203077a581aaba1} over nine benchmark-harness files. The runtime is
+Node v24.19.0 on Windows x64. The invocation is
+\texttt{node bench/pipeline.mjs} with \texttt{--profile integrated},
+\texttt{--seed 42}, and \texttt{--cl-seeds 3}. The immediately preceding
+same-version archive $A$ is reported in Sec.~\ref{sec:repeatability}, including
+its different endpoint; neither run is selected for a favorable outcome.
+Ablation and protocol/fault results use separate archives and are not pooled
+with the integrated checks.
+The controller averages up to six latest returned history-point means. The
+BOPET mission averages up to five for thickness and four for melt temperature;
+these REST queries request one-second buckets. The first mission instead
+uses setpoint-register readback for its reported endpoint. The archive
+preserves the resulting aggregates, not raw buckets or their timestamps.
 
 The testbed runs actual Modbus TCP, OPC UA, MQTT, HTTP, and Modbus
 RTU-over-TCP transports against simulated plants, including a cast-film
@@ -29,36 +37,17 @@ optimization, physical production performance, or an advantage over another
 agent framework. The simulator-derived reference and author-defined probes
 are internal oracles, not independent industrial benchmarks.
 
-Because the loop is the object under test, Fig.~\ref{fig:chanloop} states what
-an iteration consists of before any number is reported: which signals return
-from the plant, where admission is decided, which node executes a write over
-which transport, and what evidence survives the write. The measured results
-then attach to those stages in a fixed order --- coverage and protocol
-behavior (Sec.~\ref{sec:suite}), prevention versus readback
-(Sec.~\ref{sec:e1lite}), fixed-controller loop closure
-(Sec.~\ref{sec:clbench}), and the recorded team-level mission
-(Sec.~\ref{sec:agentloop}) --- so that a later claim can be traced back to the
-stage that produced it. Each subsection names its archive and states what the
-run does \emph{not} establish, so the section reads as a sequence of
-independent checks rather than one aggregate score.
+Fig.~\ref{fig:chanloop} locates the measured stages within one supervisory
+iteration. We first test protocol coverage and admission (Q1), then distinguish
+window prevention from readback and process response (Q2), and finally examine
+fixed-controller and team-level loop closure (Q3). Each layer has its own
+unit of evidence: implementation checks, configured violation probes,
+controller seeds, or an intervention sequence. Their counts are not combined
+into a statistical success rate.
 
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=0.88\textwidth]{figures/publication/fig3-channel-loop.png}
-\caption{The agent-team loop that the evaluation exercises, from the
-observation that starts an iteration to the compensation that can end one.
-The channel coordinates a lead and workers whose per-node bindings gate
-admission---bound scope, availability, approval policy, hard range plus the
-active recipe window---before a driver write with register readback where the
-protocol supports it. \texttt{dcw\_judge} records the agent's verdict but
-neither computes it nor actuates; compensation is a separate, rejectable
-write; the human authority and the auto backstop sit outside the channel.
-Numbered items are loop steps, not the subsections of Sec.~\ref{sec:mech};
-the plant is simulated.}
-\label{fig:chanloop}
-\end{figure*}
 
-\subsection{Integrated Coverage and Protocol Results}
+
+\subsection{Q1: Constraint Enforcement Across Protocols}
 \label{sec:suite}\label{sec:port}\label{sec:dynamic}\label{sec:plc}\label{sec:govsurface}
 Archive $B$ reports 75 passes, zero warnings, and zero failures across 17
 phases. A pass is a check verdict, not an independent trial or a statistical
@@ -75,7 +64,8 @@ code-constant anchors, and the accompanying \texttt{\_r7-apilive.log} records
 report's zero-skip summary; these overlapping layers are not summed as
 independent experiments.
 
-Five acquisition nodes store 59 samples. Four writable stacks each reject six
+Queries to five acquisition nodes return 59 bucketed history points, not
+59 independently counted raw samples. Four writable stacks each reject six
 out-of-constraint probes, giving 24/24 rejections and zero false blocks on
 four legal writes; the checker counts HTTP error responses to configured
 hard-range and window probes, so it does not verify each physical non-effect
@@ -91,7 +81,7 @@ probes without false blocks, alongside two acquisition-only satellites.
 \setlength{\tabcolsep}{2.9pt}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
-Stack & Samples & p50/p95 (ms) & Readback \\
+Stack & History points & p50/p95 (ms) & Readback \\
 \midrule
 Modbus TCP & 9 & 49.232/101.164 & $0.04\,^\circ$C \\
 OPC UA & 11 & 19.437/22.110 & 0 rpm \\
@@ -114,10 +104,10 @@ after an additional 1.5-s wait and read; the reported interval is therefore
 verdict-observation latency, not measured restoration time or a hard recovery
 deadline.
 
-\subsection{Ablating Prevention and Readback}
+\subsection{Q2: Prevention, Readback, and Process Response}
 \label{sec:e1lite}
-The separate four-arm archive \texttt{20260920094442-e1lite} uses seed 42 and
-three repetitions per arm. These are benchmark-only switches requiring
+The four-arm ablation uses seed 42 and three repetitions per arm
+(archive \texttt{20260920094442-e1lite}). These are benchmark-only switches requiring
 \texttt{AW\_BENCH\_MODE=1}, not normal operator controls: the ablation
 bypasses soft-limit enforcement, readback-error enforcement, or both while
 retaining the engineering-range guard, and only the recipe soft layer is
@@ -130,60 +120,67 @@ all arms, including the executed violations: each repetition runs six
 out-of-constraint probes and evaluates three legal and three boundary cases
 separately, on new fixture objects from the same design. Arm-specific seeds
 vary numerical probes within the same case families, so these are not paired
-identical treatments or independent physical-plant trials. The arms keep the
-table order: 1~full, 2~no interlock, 3~no readback, and 4~both disabled.
+identical treatments or independent physical-plant trials. Table~\ref{tab:e1lite} names the switches by what they change;
+``relaxed readback'' means relaxed error enforcement, not omitted I/O.
 
 \begin{table}[!t]
 \centering
-\caption{Four-arm governance ablation (three repetitions, 18 out-of-constraint probes per arm). ``Boundary'' counts decisions matching the arm-specific boundary oracle; ``breaches'' counts executed window violations. The engineering guard remains active in every arm.}
+\caption{Four-arm governance ablation (three repetitions, 18 out-of-constraint probes per arm). ``Boundary'' counts decisions matching the arm-specific boundary oracle; ``breaches'' counts executed window violations among the attack probes only. Boundary cases are separate; the engineering guard remains active in every arm.}
 \label{tab:e1lite}
 \footnotesize
-\setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{2.4pt}
 \begin{tabular}{@{}lrrrr@{}}
 \toprule
 Arm & Rejected & Breaches & False blocks & Boundary \\
 \midrule
 Full & 18/18 & 0 & 0 & 9/9 \\
-No interlock & 12/18 & 6 & 0 & 9/9 \\
-No readback & 18/18 & 0 & 0 & 9/9 \\
-Both disabled & 12/18 & 6 & 0 & 9/9 \\
+No window check & 12/18 & 6 & 0 & 9/9 \\
+Relaxed readback & 18/18 & 0 & 0 & 9/9 \\
+Both changes & 12/18 & 6 & 0 & 9/9 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Removing the interlock admits both window-class violations in each repetition,
-whereas bypassing readback verification does not change rejection
+Removing the recipe-window check admits both window-class violations in each
+repetition, whereas relaxing readback-error enforcement does not change rejection
 (Table~\ref{tab:e1lite}). This supports a specific mechanistic claim: the
 window check prevents these violations; readback and journaling do not
 substitute for it. The fourth arm's ``Ungated'' label is not guard-free:
 engineering limits remain enforced. All nine legal writes
-per arm are accepted. Boundary agreement means the expected accept/reject
-decision, not universal acceptance: full and no-readback reject six of nine
-boundary cases, whereas the two interlock-disabled arms accept all nine.
+per arm are accepted. Boundary agreement uses an arm-specific oracle, not a common safety
+criterion: full and relaxed-readback arms reject six of nine boundary
+cases, whereas the two window-disabled arms accept all nine. Thus, each
+window-disabled arm also executes six out-of-window boundary cases in
+addition to its six attack-group breaches.
 Per-repetition p50 ranges are 110.6--141.0, 114.8--127.2, 111.9--127.1, and
 124.8--139.9\,ms in table order; each quantile uses 23 successful writes
 (three legal and 20 timed), and arms run in fixed order. These descriptive
 ranges use mock in-memory readback, including in the verification-bypassed
-arms; they do not establish latency equivalence or the cost of removing
-physical readback I/O.
+arms. The driver delay uses unseeded randomness, so the probe seed does
+not make these timings reproducible. They establish neither latency
+equivalence nor the cost of removing physical readback I/O.
 
-A second drill tests the same distinction on the live link. The archive
+A separate software-protocol drill tests why process observations are needed
+after a command is accepted. The archive
 \texttt{20260920094335-1b5g}
 passes 13 checks (three source checks, six API checks, and four protocol
-checks); all five driver tests succeed. Its Modbus drill accepts a write in
-25\,ms, reads back a setpoint of 182, and observes the simulated process reach
-179.5 after 30\,s; five additional violations are rejected. After a
+checks); all five driver tests succeed. Its Modbus drill accepts an initial $182\,^\circ$C write in 25\,ms and
+reads back 182. Five rejected probes and a further legal write to
+$180\,^\circ$C precede process polling. The first qualifying observation is
+$179.5\,^\circ$C at a rounded 30\,s from the start of polling, satisfying
+$|PV-182|\leq3\,^\circ$C. This sequence is a workflow check, not an isolated
+step-response measurement. After a
 frozen-process injection and subsequent write, the checker first observes a
 matching alarm at a rounded 2 s from its post-write timer, not 2 s from fault
 injection. A TCP disconnect/reconnect drill detects and recovers the
 connection. These narrowly exercised failures support the distinction between
 an accepted command and a responding process, not general fault tolerance.
 
-\subsection{Fixed-Controller Loop Closure}
+\subsection{Q3: Loop Closure With a Fixed Controller}
 \label{sec:clbench}
 To isolate the execution path from agent strategy, the cast-film controller
 starts at screw speed $N=150$\,rpm, line speed $v=95$\,m/min, and zone
-setpoint $200\,^\circ$C. It maximizes
+setpoint $200\,^\circ$C. The reward is
 \begin{equation}
 J=55J_{\rm thick}+25J_{\rm quality}+8J_{\rm energy}+7J_{\rm throughput},
 \label{eq:objective}
@@ -217,39 +214,45 @@ measurements.
 
 \begin{table}[!t]
 \centering
-\caption{Fixed-controller results in $B$. $J_{\rm end}$ is the mean of the two post-write evaluations, not the last observation. All seeds use two accepted writes and zero rejections.}
+\caption{Fixed-controller observations in $B$. $J_1$ and $J_2$ follow the first and second writes; $\bar{J}=(J_1+J_2)/2$ is computed before rounding. Each seed has two accepted controller writes and no rejections; initialization writes are excluded.}
 \label{tab:controller}
 \footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}rrrrr@{}}
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}rrrrrr@{}}
 \toprule
-Seed & $J_0$ & $J_{\rm end}$ & $J_{\rm end}/J^*$ & Final $h$ ($\mu$m) \\
+Seed & $J_0$ & $J_1$ & $J_2$ & $\bar{J}/J^*$ & Final $h$ ($\mu$m) \\
 \midrule
-42 & 70.167 & 86.845 & 0.966 & 49.200 \\
-43 & 68.608 & 87.236 & 0.970 & 49.683 \\
-44 & 65.740 & 87.080 & 0.969 & 50.100 \\
+42 & 70.167 & 87.288 & 86.402 & 0.966 & 49.200 \\
+43 & 68.608 & 87.446 & 87.027 & 0.970 & 49.683 \\
+44 & 65.740 & 87.447 & 86.713 & 0.969 & 50.100 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The reported mean ratio is 0.968 and mean wall time is 36.178\,s per seed.
-Table~\ref{tab:controller} distinguishes the report's endpoint statistic from
-the actual observations: the second write lowers $J$ in every seed, so the
-trajectory is not monotone. Final thickness meets the reward band, and the
+The archive calls its two-post-write mean $J_{\rm end}$; we denote it
+$\bar{J}$ to avoid confusing it with the final observation $J_2$.
+The mean $\bar{J}/J^*$ across seeds is 0.968 and mean wall time is
+36.178\,s per seed, including three 12-s waits but excluding reset,
+initialization, and warmup. Table~\ref{tab:controller} exposes both post-write
+observations: $J_2$ remains above $J_0$ but below $J_1$ in every seed, so
+improved thickness does not imply a monotonically improving composite score. Final thickness meets the reward band, and the
 residual gap to the reference lies in the quality, energy, and throughput
 terms rather than in thickness. Because the controller inverts the simulator's
 own $h\propto N/v$ relation, this experiment shows loop closure under a known
 model, not general search efficiency or learned control superiority.
 
-\subsection{The Recorded AgentTeam Optimization Process}
+\subsection{Q3: A Recorded Multi-Node Team Mission}
 \label{sec:agentloop}
 The first mission links task delegation, a five-minute acquisition query, a
 governed temperature write from 200 to $204.704\,^\circ$C, a
-$204.700\,^\circ$C observation, an attributed \texttt{keep} record, and
-parent-task completion. All six checks pass; the $\pm0.75\,^\circ$C tolerance
-makes this a workflow-closure test rather than a precision-control result.
+$204.700\,^\circ$C setpoint-register readback, an attributed \texttt{keep} record, and
+parent-task completion. All six workflow checks pass; the $\pm0.75\,^\circ$C tolerance
+makes this a workflow-closure test, not evidence of independent process
+temperature convergence. The harness issues the industrial-tool calls while
+mock lead/worker tasks exercise delegation and completion; task completion
+is not proven to be causally gated by objective attainment.
 
-The BOPET mission extends that workflow to nine simulated devices with 30
+The BOPET mission extends this workflow to nine simulated devices with 30
 writable setpoints and 19 acquisition nodes, against a thickness objective of
 $25.0\pm0.7\,\mu$m. Figure~\ref{fig:agentteam} reconstructs the actual
 intervention sequence from $B$ rather than an illustrative optimization curve.
@@ -257,12 +260,14 @@ Four of six allowed writes act on three distinct parameters: casting speed
 from 32 to 33.1\,m/min, fast-roll speed from 118 to 120.8\,m/min, outlet rail
 width from 3000 to 3050\,mm, then casting speed again to approximately
 33.7\,m/min. The archived thickness observations are 26.90, 26.82, 26.46,
-26.00, and 25.48\,$\mu$m, so the endpoint sits 0.48\,$\mu$m from the target
-and 0.22\,$\mu$m inside the permitted band.
+26.00, and 25.48\,$\mu$m, so absolute target error falls from 1.90 to 0.48\,$\mu$m
+and the final observation lies 0.22\,$\mu$m inside the permitted band.
+This is attainment at the recorded endpoint, not evidence of sustained
+convergence or disturbance rejection.
 
 \begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.94\textwidth]{figures/tii-final/fig-agentteam-mission.pdf}
+\includegraphics[width=\textwidth]{figures/tii-final/fig-agentteam-mission.pdf}
 \caption{Recorded scripted AgentTeam execution in $B$. \textbf{(a)}~The five
 archived thickness observations against the $25.0\pm0.7\,\mu$m objective;
 markers are returned-bucket means from queries that requested one-second
@@ -275,8 +280,11 @@ LLM-generated search.}
 \label{fig:agentteam}
 \end{figure*}
 
-Each accepted write creates a distinct optimization record, followed by a
-settling gauge observation and a scripted \texttt{keep} judgment. The policy
+In this mission, each accepted write creates a distinct optimization record,
+followed by a post-wait gauge observation and a scripted \texttt{keep}
+judgment. The polling exit rule compares the latest thickness with the
+pre-write value or exits after its time limit; it does not verify stationarity
+of successive observations. The policy
 uses relative-thickness-error gains of 0.5, 0.35, and 0.3 with fixed actuator
 rotation, so it does not discover the sequence. The mission logs no
 independent post-write register value for these actuators and the caller
@@ -290,11 +298,11 @@ bound.
 \subsection{Repeatability and Limits of the Evidence}
 \label{sec:repeatability}
 The immediately preceding same-seed, same-hash archive
-$A=\texttt{20260920093330-md4}$ also passes 75/75 checks, rejects 24/24
+$A$ (\texttt{20260920093330-md4}) also passes 75/75 checks, rejects 24/24
 primary and 9/9 second-scenario probes, accepts six controller writes, and
 closes the BOPET mission with four writes on three parameters. Their final
 thicknesses nevertheless differ, at 25.64 versus 25.48\,$\mu$m, as do mean
-controller ratios (0.970 versus 0.968) and backstop verdict-observation
+controller $\bar{J}/J^*$ ratios (0.970 versus 0.968) and backstop verdict-observation
 latencies (130.182 versus 130.205\,s). These are two consecutive regression
 runs, not a reliability campaign. The comparator reports matching verdicts,
 but its controller counter rows contain null fields and its protocol arrays

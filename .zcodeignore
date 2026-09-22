@@ -1,0 +1,148 @@
+# Nuxt dev/build outputs
+.nuxt
+.output
+.data
+.nitro
+cache
+dist
+docs/site/.vitepress/cache
+docs/site/.vitepress/dist
+
+# Dependencies
+node_modules
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env files (keep the example)
+.env
+.env.*
+!.env.example
+
+# Editor / IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+.cache
+.temp
+
+# 游戏渲染验证截图(脚本生成)
+.game-verify
+# 设计验证截图(脚本生成)
+.design-verify
+# GUI 走查截图(脚本生成)
+gui-test-screenshots/
+
+# 运行时数据库(data/ 为程序生成的 sqlite 文件)
+data/
+# 配置根 .AgentWorkShop:prompts 为版本化事实源,运行时产物不入库
+.AgentWorkShop/data/
+.AgentWorkShop/runtime-settings.json
+# 分组注册表(机器本地状态:管理员自建分组/折叠态;与 runtime-settings.json 同性质)
+.AgentWorkShop/config-groups.json
+.AgentWorkShop/.env
+.AgentWorkShop/logs/
+.AgentWorkShop/tui-auth.json
+.AgentWorkShop/backups/
+.AgentWorkShop/commands/
+
+# Mimosa 安全扫描历史(会话级)
+.mimosa/
+
+# 测试临时产物(workspace / sqlite 等)
+.tmp-*
+
+# SDD 工作流草稿(task briefs/reports/ledger/diffs,会话级 scratch)
+.superpowers/
+# 嵌套的第三方 MCP 仓库(独立 git 仓库,不属于本项目)
+claude-talk-to-figma-mcp/
+.npmrc
+
+# 运行时锁与临时产物(单实例互斥)
+.AgentWorkShop/.runtime/
+
+# 系统设置运行时覆盖(程序生成)
+runtime-settings.json
+.crushrc
+.gemini/
+
+# AML 资产根(项目内 ./aml):.venv 与模型工件体积大且与机器绑定。
+# 目录内的 .gitignore(构建/运行时自动生成)已忽略各子目录,这里兜底防误提交。
+aml/.venv/
+aml/tools/
+aml/runtime/
+aml/datasets/
+aml/jobs/
+aml/models/
+
+# 打包产物与本地探针(发布脚本生成;体积大,不入库)
+agentworkshop-*.tgz
+npm-codex.json
+# 端到端测试运行目录与截图(脚本生成)
+.aw-e2e-run/
+.AgentWorkShop-test/
+.e2e-shots/
+.e2e-plugin-ctx.json
+.e2e-plugin-ui-node.json
+
+# CLI harness 运行时配置快照(会话级;每台机器不同)
+.AgentWorkShop/harness-config/
+# 工具链会话 scratch(非项目产物)
+.omo/
+.zcode/
+# 会话级运行时/工具目录(非项目产物)
+.AgentWorkShop/data-backup-*/
+.AgentWorkShop/plugins-state.json
+.puppeteer-profile/
+.workbuddy/
+.omc/
+
+/paper/reference/
+data.pre-clean-*/
+.demo-home/
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+bower_components/
+jspm_packages/
+__pycache__/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）

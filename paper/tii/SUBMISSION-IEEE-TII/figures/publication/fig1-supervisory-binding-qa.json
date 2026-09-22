@@ -1,0 +1,57 @@
+{
+  "figure": "fig1-supervisory-binding",
+  "generator": "make_fig1.py",
+  "generator_sha256": "f17ef36f73de83bdf789bb3495a62fd20a2d5ae5f5718c7406a78b73a13c704e",
+  "preserved_reference_sha256": "2053cdad022a0a6674bd5380595c24b79a1ff3007a001a49422bbc3408bb5e6f",
+  "input_assets": {
+    "paper/tii/SUBMISSION-IEEE-TII/sections/introduction.tex": "d0fcae933f9571acb08ba15e466cb2cb1b3e2f2e0f0979c45f7dbb9b019f5b84",
+    "paper/tii/SUBMISSION-IEEE-TII/sections/mechanisms.tex": "52e452f6cc47da2a93948695f4261136ca12f13839d31cc69a3211d0583ebaa4",
+    "paper/tii/SUBMISSION-IEEE-TII/figures/make_publication_figures.py": "83a0e6085d8765f63cdb2d8f3d8c8b16d6c9f3243e81473a031a8c093af8b288",
+    "paper/tii/SUBMISSION-IEEE-TII/figures/gpt/fig1-intro-tii.png": "2053cdad022a0a6674bd5380595c24b79a1ff3007a001a49422bbc3408bb5e6f"
+  },
+  "outputs": {
+    "pdf": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figures\\publication\\fig1-supervisory-binding.pdf",
+    "svg": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figures\\publication\\fig1-supervisory-binding.svg",
+    "png": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figures\\publication\\fig1-supervisory-binding.png",
+    "grayscale_png": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figures\\publication\\fig1-supervisory-binding-grayscale.png"
+  },
+  "sha256": {
+    "pdf": "aeb6536e7778d0ca117e22a308dc838e0ca0d75fd829e09cd3a2cc3d2385a30b",
+    "svg": "e3f33e904b7a51dd57cdbd86210737cc7f6dc70f768f8b6dbad900cd10cdd0c1",
+    "png": "bb199a990a6939bf8af78bf42a91f3f8943c20418211b647cec4fd4eaf48b4f1",
+    "grayscale_png": "62dbe6c95c4e896fd4755ccc9accc399f8860cf0078ad11a3a000ec16956bb4b"
+  },
+  "qa": {
+    "size_in": [
+      7.16,
+      2.72
+    ],
+    "raster_images_in_pdf": 0,
+    "embedded_fonts": true,
+    "fonts": [
+      "FHXFSG+TimesNewRomanPS-BoldMT",
+      "FHXFSG+TimesNewRomanPSMT"
+    ],
+    "minimum_font_pt": 8.0,
+    "text_spans": 32,
+    "spans_outside_canvas": [],
+    "text_overlap_pairs": [],
+    "proof_dpi": 300
+  },
+  "provenance": "AI-assisted, programmatically constructed original vector artwork; no raster tracing or generated icon assets. Reference PNG preserved.",
+  "visual_inspection": {
+    "status": "inspected",
+    "date": "2026-09-21",
+    "method": "Viewed final PDF-derived color and grayscale proofs after the routed-connector refinement.",
+    "findings": "Original agent, equipment, team, bound-node, checklist, and record icons are clear. Forward requests pass through binding and checks; the orthogonal return passes through execution evidence to the channel. Shared context is inside the return loop without an authority arrow. No visible text/icon collisions, clipping, stock glyphs, gradients, raster traces, or AI sharpening artifacts.",
+    "reviewed_pdf_sha256": "aeb6536e7778d0ca117e22a308dc838e0ca0d75fd829e09cd3a2cc3d2385a30b",
+    "scope": "Local visual inspection; not independent reviewer approval."
+  },
+  "integration_note": "Scoped Figure 1 generator and assets only. Existing aggregate generators/manifests are intentionally untouched.",
+  "design_notes": [
+    "Original uniform-stroke line icons for agents, factory, tank, gauge, channel team, bound node stack, verification checklist, and execution record.",
+    "Muted blue/teal/gray palette with redundant shape, outline, and label cues for grayscale reading.",
+    "Forward request path passes through per-member binding and applicable range/recipe/approval checks. An orthogonal result/readback/record route returns to the channel.",
+    "Shared identifiers sit inside the feedback loop, separate from the authority path. Readback is qualified as protocol-dependent; the parent caption supplies the conceptual comparison caveat."
+  ]
+}

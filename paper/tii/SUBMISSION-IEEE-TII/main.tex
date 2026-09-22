@@ -1,28 +1,46 @@
 \documentclass[journal]{IEEEtran}
-% IEEE Transactions on Industrial Informatics -- regular paper draft
-% Compile: latexmk -pdf main.tex   (TeX Live 2025, IEEEtran)
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
 \usepackage{xcolor}
 \usepackage{stfloats}
 \usepackage{placeins}
+\usepackage{url}
+\urlstyle{same}
+% Hyperlinked cross-references and citations (Ctrl+click navigation).
+% natbib numeric mode keeps IEEE-style compressed citations; it must load
+% before hyperref, and replaces the cite package, which is incompatible
+% with hyperlinked citations.
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={AgentWorkShop: A Reusable Agent-Team Supervisory Framework for Multi-Scenario Industrial Optimization},
+  pdfauthor={Anonymous Authors},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={agent teams, industrial informatics, recipe optimization, supervisory control, write governance}}
 
-% Float packing.  The manuscript carries five double-column figures and two
-% double-column tables.  Limits must be permissive
-% enough that a page is never left
-% with a half-empty column: with a strict \topfraction the page break lands after
-% a float and the following column starts late, which reads as an unintended blank.
+% Float placement only; IEEEtran margins and body type remain unchanged.
 \setcounter{topnumber}{4}
 \setcounter{bottomnumber}{3}
-\setcounter{totalnumber}{6}
-\setcounter{dbltopnumber}{3}
-\renewcommand{\topfraction}{0.92}
-\renewcommand{\bottomfraction}{0.75}
-\renewcommand{\textfraction}{0.04}
-\renewcommand{\floatpagefraction}{0.70}
-\renewcommand{\dbltopfraction}{0.92}
-\renewcommand{\dblfloatpagefraction}{0.70}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{4}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
 
 \input{results-macros}
 
@@ -31,41 +49,40 @@
 
 \begin{document}
 
-\title{AgentWorkShop: Closed-Loop Recipe Optimization by Governed Agent Teams over Heterogeneous Industrial Protocols}
+\title{AgentWorkShop: A Reusable Agent-Team Supervisory Framework for Multi-Scenario Industrial Optimization}
 
-% Working manuscript: replace the anonymous author block only when the
-% submission stage and double-blind requirements permit author identification.
 \author{Anonymous Authors}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Closed-Loop Recipe Optimization by Governed Agent Teams}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: A Reusable Agent-Team Supervisory Framework}
 
 \maketitle
 
 \begin{abstract}
-Industrial recipe optimization requires more than selecting a promising setpoint:
-an intervention must respect equipment limits, use the correct protocol, and remain
-traceable when its outcome is judged or reversed. AgentWorkShop links agent-team
-coordination to industrial supervision through member--node capabilities, shared
-production context, and a governed write path. Engineering limits, recipe windows,
-and approval requirements constrain execution; optimization records distinguish
-command acceptance, observed process response, agent judgment, and compensation.
-The evaluation uses real protocol transports with simulated plants and scripted
-teams, keeping language-model decisions outside the measured execution path.
-The integrated evaluation passes 75 checks, rejects 24 of 24 configured
-out-of-constraint probes across four writable stacks, and blocks none of four
-legal writes. A four-arm ablation attributes window-violation prevention to the
-recipe interlock: removing it admits six violations across three repetitions,
-whereas bypassing readback verification alone does not affect rejection. A fixed controller
-achieves 0.966--0.970 of a simulator-derived grid reference across three seeds.
-A recorded team mission reduces film thickness from 26.90 to 25.48\,$\mu$m through
-four governed writes on three parameters, meeting a $25.0\pm0.7\,\mu$m objective.
-The results support a common execution layer that separates authorization,
-device acceptance, and process success. Physical validation and controlled
-agent comparisons remain necessary before claiming field reliability or
-autonomous optimization superiority.
+Industrial optimization applications are difficult to reuse because task
+orchestration, field-protocol integration, production context, execution
+authority, and intervention evidence are commonly implemented as
+application-specific logic. This paper presents AgentWorkShop, a reusable
+agent-team supervisory framework that connects deployed team identities to
+semantic data-acquisition and write-control nodes through explicit
+capabilities. The framework resolves line, product, recipe, and run context at
+execution time and records admission, approval, actuation, readback, process
+observation, submitted judgment, and compensation as distinguishable evidence
+states. Five protocol families, self-describing node contracts, versioned
+production objects, plugin driver interfaces, and a typed SDK provide common
+integration surfaces; scenario-specific models, objectives, guards, and control
+policies remain external inputs. Evaluation uses real protocol stacks connected
+to author-implemented dynamic simulators, with deterministic external policies
+invoking the governed tools; no language-model decision quality or optimization-algorithm superiority is claimed. In an integrated reference run, 83 of 83 checks pass: configured out-of-window probes are rejected on the
+writable lines; single-node and nine-device AgentTeam missions both close their
+governed loops; and all four scripted process missions attain their objective
+predicates. Task completion, device readback, and process attainment remain
+separately recorded, so their agreement in this run is evidence rather than a
+collapsed status. The results support an inspectable, simulation-tier
+architecture for reusable industrial supervisory execution, not a certified
+safety or autonomous-control function.
 \end{abstract}
 
 \begin{IEEEkeywords}
-agent teams, closed-loop optimization, heterogeneous protocols, human-in-the-loop, industrial informatics, large language models, recipe optimization, supervisory control.
+Agent teams, industrial informatics, recipe optimization, supervisory control, write governance.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -78,8 +95,13 @@ agent teams, closed-loop optimization, heterogeneous protocols, human-in-the-loo
 \input{sections/evaluation}
 \input{sections/discussion}
 
-% Use the unmodified IEEEtran bibliography layout.
 \bibliographystyle{IEEEtran}
+% natbib's redefined thebibliography drops IEEEtran's small reference type;
+% restore the IEEE 8pt reference size and the tight IEEE entry spacing.
+\begingroup
+\footnotesize
+\setlength{\bibsep}{2.5pt}
 \bibliography{refs}
+\endgroup
 
 \end{document}

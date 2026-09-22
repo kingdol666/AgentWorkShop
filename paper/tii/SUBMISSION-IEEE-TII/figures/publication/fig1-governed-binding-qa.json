@@ -1,0 +1,32 @@
+{
+  "figure": "fig1-governed-binding",
+  "generator": "build_fig1_governed_v3.py",
+  "pipeline": "authoring geometry -> XeLaTeX + TikZ -> vector PDF",
+  "size_pt": [
+    513.08,
+    221.1
+  ],
+  "size_mm": [
+    181.0,
+    78.0
+  ],
+  "ieee_textwidth_pt": 516.0,
+  "embedded_fonts": [
+    "BXWHJS+TimesNewRomanPS-ItalicMT",
+    "JHAFXZ+TimesNewRomanPSMT",
+    "NZLOTE+TimesNewRomanPS-BoldMT"
+  ],
+  "min_font_pt": 5.37,
+  "text_spans": 61,
+  "spans_outside_canvas": [
+    "* Readback is attempted only where the driver supports it\u037e fast PLC regulation and plant protection stay outside the agent-team l"
+  ],
+  "text_overlap_pairs": [
+    [
+      "readback \ua78fprocess observation \ua78fsubmitted judgment stay separate",
+      "verdict recorded"
+    ]
+  ],
+  "vector_drawings": 125,
+  "images_embedded": 0
+}

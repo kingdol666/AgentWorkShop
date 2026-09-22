@@ -1,0 +1,534 @@
+{
+  "source": {
+    "runId": "20260921184204-10lc",
+    "seed": 42,
+    "git": "e692df1",
+    "harnessHash": "9f2756dce4a4cbb3",
+    "integratedAt": null,
+    "scenarioAt": "2026-09-21T19:08:02.941Z",
+    "integratedFiles": [
+      "bench/results/20260921184204-10lc/report.html",
+      "bench/results/20260921184204-10lc/report.md",
+      "bench/results/20260921184204-10lc/run.json",
+      "bench/results/20260921184204-10lc/summary.json"
+    ],
+    "scenarioFiles": [
+      "bench/results/20260921184204-10lc/scenarios-benchmark.html",
+      "bench/results/20260921184204-10lc/scenarios.json"
+    ],
+    "companionLayers": {
+      "plc": null,
+      "e1lite": "20260921181234-e1lite"
+    }
+  },
+  "phaseProfile": [
+    {
+      "id": "P0",
+      "title": "Bootstrap simulator & platform",
+      "s": 80.49
+    },
+    {
+      "id": "P1",
+      "title": "plant model preset + offline optimum W*",
+      "s": 2.69
+    },
+    {
+      "id": "P2",
+      "title": "multi-protocol multi-line provisioning（≤5 ）",
+      "s": 5.01
+    },
+    {
+      "id": "P3",
+      "title": "multi-protocol DAQ + governed write/read + F5 interception",
+      "s": 13.72
+    },
+    {
+      "id": "P4",
+      "title": "数采→数控→判定 工具级闭环（harness=opencode，不经 LLM）",
+      "s": 17.62
+    },
+    {
+      "id": "P4m",
+      "title": "AgentTeam 优化任务：目标下达 → 时段读数 → 治理写 → 达标收口",
+      "s": 5.26
+    },
+    {
+      "id": "P4b",
+      "title": "Rollback & optimization records (node rollback · verdict/execution separation · param ledger)",
+      "s": 0.48
+    },
+    {
+      "id": "P4c",
+      "title": "HITL 审批闭环（挂起→面板可见→批准→真实写生效）",
+      "s": 1.73
+    },
+    {
+      "id": "P4d",
+      "title": "治理只读面（参数账本·审计·运维日志·报警）",
+      "s": 0.08
+    },
+    {
+      "id": "P4e",
+      "title": "配方管理全生命周期（版本·已知良好·回退·基准恢复·一键下发）",
+      "s": 0.32
+    },
+    {
+      "id": "P4f",
+      "title": "工艺参数映射层：参数面读写 · 标准转换模式 · 分层限界联锁 · Agent param_control",
+      "s": 0.27
+    },
+    {
+      "id": "P5",
+      "title": "真实 LLM Agent 闭环（harness=omp）",
+      "s": 156.39
+    },
+    {
+      "id": "P5b",
+      "title": "目标驱动闭环寻优（harness=omp，模型迭代逼近目标值并保存最佳配方）",
+      "s": 637.79
+    },
+    {
+      "id": "P6",
+      "title": "闭环优化参数 benchmark（3 seed · 写路径=governed · ≤8 迭代/seed）",
+      "s": 112.76
+    },
+    {
+      "id": "P7",
+      "title": "多形态数采：向量轮廓与图像帧落库",
+      "s": 3.08
+    },
+    {
+      "id": "P8",
+      "title": "Cross-scenario portability (re-commission on a second plant preset, config-only)",
+      "s": 18.61
+    },
+    {
+      "id": "P8b",
+      "title": "System backstop drill (PV frozen out of window → system-judged bounded rollback)",
+      "s": 134.69
+    },
+    {
+      "id": "P10",
+      "title": "双拉产线:节点探测补建 → 五协议多节点建线 → AgentTeam 多节点闭环",
+      "s": 195.33
+    },
+    {
+      "id": "P11",
+      "title": "多场景并行闭环(--agent)",
+      "s": 172.3
+    },
+    {
+      "id": "P9",
+      "title": "Platform subsystems (team dispatch · team memory idempotency · harness registry)",
+      "s": 3.18
+    }
+  ],
+  "totalWallMin": 26,
+  "integrated": {
+    "status": "PASS",
+    "score": 100,
+    "grade": "A",
+    "checks": {
+      "pass": 83,
+      "warn": 0,
+      "fail": 0,
+      "total": 83
+    },
+    "phases": {
+      "pass": 20,
+      "warn": 0,
+      "fail": 0,
+      "total": 20
+    },
+    "daqSamples": 55,
+    "writeP50Ms": 29.954,
+    "backstopS": 130.196,
+    "closedLoop": {
+      "n": 3,
+      "ratioMin": 0.965,
+      "ratioMean": 0.969,
+      "ratioMax": 0.972,
+      "J0mean": 67.215,
+      "JendMean": 87.097,
+      "Jstar": 89.894,
+      "itersMean": 2,
+      "writesTotal": 6,
+      "rejectedTotal": 0,
+      "convergedN": 3,
+      "wallSMean": 36.166,
+      "perSeed": [
+        {
+          "seed": 42,
+          "J0": 68.74,
+          "Jend": 86.792,
+          "ratio": 0.965,
+          "iters": 2,
+          "writes": 2,
+          "rejected": 0,
+          "converged": true,
+          "wallS": 36.181
+        },
+        {
+          "seed": 43,
+          "J0": 66.212,
+          "Jend": 87.158,
+          "ratio": 0.969,
+          "iters": 2,
+          "writes": 2,
+          "rejected": 0,
+          "converged": true,
+          "wallS": 36.168
+        },
+        {
+          "seed": 44,
+          "J0": 66.694,
+          "Jend": 87.341,
+          "ratio": 0.972,
+          "iters": 2,
+          "writes": 2,
+          "rejected": 0,
+          "converged": true,
+          "wallS": 36.148
+        }
+      ]
+    },
+    "scenarioSubreport": {
+      "status": "PASS",
+      "attained": 4,
+      "total": 4
+    }
+  },
+  "scenarios": [
+    {
+      "id": "injection",
+      "label": "Injection moulding",
+      "pv": "Part weight",
+      "unit": "g",
+      "target": 32.5,
+      "tol": 0.35,
+      "attained": true,
+      "writes": 2,
+      "rounds": 3,
+      "wallS": 26.48,
+      "final": 32.17,
+      "traj": [
+        {
+          "iter": 0,
+          "phase": "baseline",
+          "knob": null,
+          "from": null,
+          "to": null,
+          "pv": 31.252
+        },
+        {
+          "iter": 1,
+          "phase": "converge",
+          "knob": "hold-pressure-sp",
+          "from": 45,
+          "to": 58.2,
+          "record": "opt-aa41022a",
+          "judge": true,
+          "pv": 31.919999999999998
+        },
+        {
+          "iter": 2,
+          "phase": "converge",
+          "knob": "hold-time-sp",
+          "from": 6,
+          "to": 10.64,
+          "record": "opt-bd1116cd",
+          "judge": true,
+          "pv": 32.17
+        }
+      ],
+      "guardsFinal": {
+        "飞边率": 0.0184,
+        "缩痕指数": 0.9606
+      }
+    },
+    {
+      "id": "wwtp",
+      "label": "WWTP (A2O process)",
+      "pv": "Aerobic DO",
+      "unit": "mg/L",
+      "target": 3.4,
+      "tol": 0.6,
+      "attained": true,
+      "writes": 15,
+      "rounds": 13,
+      "wallS": 169.27,
+      "final": 3.504,
+      "traj": [
+        {
+          "iter": 0,
+          "phase": "baseline",
+          "pv": 0.21400000000000002,
+          "guards": {
+            "出水COD": 359.76000000000005,
+            "出水氨氮": 34.44199999999999,
+            "出水总磷": 0.6632,
+            "出水pH": 6.593999999999999,
+            "出水浊度": 4.446,
+            "DO": 0.21400000000000002
+          }
+        },
+        {
+          "iter": 1,
+          "phase": "blower",
+          "knob": "blower-hz-sp",
+          "from": 26,
+          "to": 30.05,
+          "record": "opt-6ad0afc9",
+          "judge": true,
+          "pv": 2.1533333333333333
+        },
+        {
+          "iter": 2,
+          "phase": "blower",
+          "knob": "blower-hz-sp",
+          "from": 30,
+          "to": 31.59,
+          "record": "opt-2c3ca660",
+          "judge": true,
+          "pv": 2.7433333333333336
+        },
+        {
+          "iter": 3,
+          "phase": "blower",
+          "knob": "blower-hz-sp",
+          "from": 31.600000381469727,
+          "to": 32.42,
+          "record": "opt-ef0d93a7",
+          "judge": true,
+          "pv": 3.0566666666666666
+        },
+        {
+          "iter": 4,
+          "phase": "blower",
+          "knob": "blower-hz-sp",
+          "from": 32.400001525878906,
+          "to": 33.2,
+          "record": "opt-d72d2e54",
+          "judge": true,
+          "pv": 3.1833333333333336
+        },
+        {
+          "iter": 5,
+          "phase": "blower",
+          "knob": "blower-hz-sp",
+          "from": 33.20000076293945,
+          "to": 34,
+          "record": "opt-aac91666",
+          "judge": true,
+          "pv": 3.516666666666667
+        },
+        {
+          "iter": 5,
+          "phase": "ph",
+          "knob": "naoh-dose-sp",
+          "from": 12,
+          "to": 30.85,
+          "record": "opt-f8f5fbbf",
+          "judge": true,
+          "pv": 6.693333333333334
+        },
+        {
+          "iter": 8,
+          "phase": "tp",
+          "knob": "pac-dose-sp",
+          "from": 30,
+          "to": 45,
+          "record": "opt-8c94c795",
+          "judge": true,
+          "pv": 0.535
+        },
+        {
+          "iter": 9,
+          "phase": "tp",
+          "knob": "pac-dose-sp",
+          "from": 45,
+          "to": 60,
+          "record": "opt-65dae0ee",
+          "judge": true,
+          "pv": 0.4696666666666667
+        },
+        {
+          "iter": 10,
+          "phase": "tp",
+          "knob": "pac-dose-sp",
+          "from": 60,
+          "to": 75,
+          "record": "opt-af6a3220",
+          "judge": true,
+          "pv": 0.421
+        }
+      ],
+      "guardsFinal": {
+        "出水COD": 42.22,
+        "出水氨氮": 2.6339999999999995,
+        "出水总磷": 0.418,
+        "出水pH": 6.376,
+        "出水浊度": 0.6559999999999999,
+        "DO": 3.504
+      },
+      "cost": {
+        "final": 179.11178371117242,
+        "firstCompliant": 181.51178371117243,
+        "saving": 2.4
+      }
+    },
+    {
+      "id": "anneal",
+      "label": "Continuous annealing",
+      "pv": "Vickers hardness",
+      "unit": "HV",
+      "target": 95,
+      "tol": 6,
+      "attained": true,
+      "writes": 5,
+      "rounds": 6,
+      "wallS": 102.76,
+      "final": 100.08000000000001,
+      "traj": [
+        {
+          "iter": 0,
+          "phase": "baseline",
+          "pv": 134.51999999999998
+        },
+        {
+          "iter": 1,
+          "phase": "converge",
+          "knob": "zone3-sp",
+          "from": 730,
+          "to": 850,
+          "record": null,
+          "judge": false,
+          "pv": 99.46000000000001
+        },
+        {
+          "iter": "trim1",
+          "phase": "margin",
+          "knob": "zone2-sp",
+          "from": 710,
+          "to": 722,
+          "record": "opt-82bfc5e7",
+          "judge": true,
+          "pv": 97.88
+        },
+        {
+          "iter": 6,
+          "phase": "throughput",
+          "knob": "line-speed-sp",
+          "from": 140,
+          "to": 152,
+          "record": "opt-86e29ac0",
+          "judge": true,
+          "pv": 99.24
+        },
+        {
+          "iter": 7,
+          "phase": "throughput",
+          "knob": "line-speed-sp",
+          "from": 152,
+          "to": 164,
+          "record": "opt-c6af19bd",
+          "judge": true,
+          "pv": 99.84
+        }
+      ],
+      "guardsFinal": {
+        "抗拉强度": 296.78000000000003,
+        "表面缺陷率": 0.1588
+      },
+      "throughput": {
+        "start": 140.06,
+        "finalSp": 164,
+        "gain": 17.14
+      }
+    },
+    {
+      "id": "biax",
+      "label": "BOPET biaxial line",
+      "pv": "Finished thickness",
+      "unit": "μm",
+      "target": 25,
+      "tol": 0.7,
+      "attained": true,
+      "writes": 3,
+      "rounds": 3,
+      "wallS": null,
+      "final": 25.659999999999997,
+      "traj": [
+        {
+          "iter": 0,
+          "phase": "baseline",
+          "knob": null,
+          "from": null,
+          "to": null,
+          "pv": 28.1,
+          "record": null
+        },
+        {
+          "iter": 1,
+          "phase": "converge",
+          "knob": "cast-spd-sp",
+          "from": 32,
+          "to": 33.8,
+          "pv": 26.5,
+          "record": "opt-cbdee859",
+          "judge": true
+        },
+        {
+          "iter": 2,
+          "phase": "converge",
+          "knob": "fast-roll-sp",
+          "from": 118,
+          "to": 120.3,
+          "pv": 26,
+          "record": "opt-9a056780",
+          "judge": true
+        },
+        {
+          "iter": 3,
+          "phase": "converge",
+          "knob": "rail-out-sp",
+          "from": 3000,
+          "to": 3035,
+          "pv": 25.659999999999997,
+          "record": "opt-3197b244",
+          "judge": true
+        }
+      ],
+      "guardsFinal": {},
+      "distinctKnobs": 3,
+      "taskTerminal": "COMPLETED"
+    }
+  ],
+  "archivedPlc": {
+    "runId": "20260921184204-10lc",
+    "pass": 5,
+    "fail": 0,
+    "note": "five protocol I/O checks inside the integrated run"
+  },
+  "ablation": {
+    "source": "bench/results/20260921181234-e1lite/run.json",
+    "intercepted": [
+      1,
+      0.6667,
+      1,
+      0.6667
+    ],
+    "breaches": [
+      0,
+      6,
+      0,
+      6
+    ],
+    "falseBlocks": [
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}
