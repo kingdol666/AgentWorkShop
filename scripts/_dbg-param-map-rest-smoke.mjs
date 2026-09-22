@@ -30,7 +30,7 @@ try {
   // ② 建线 + 建节点(mock)→ 自动参数面
   const line = (await j('/api/workshop/dcw/lines', 'POST', { name: `PP冒烟线-${Date.now().toString(36)}` })).data?.line
   check('创建产线', !!line?.id)
-  const node = (await j('/api/workshop/dcw', 'POST', { templateRef: 'dcw-pressure-sp', name: 'PP冒烟·熔体压力', driver: 'mock', driverConfig: { key: `pp-rest-${Date.now()}` }, readIntervalMs: 0, lineId: line.id })).data?.node
+  const node = (await j('/api/workshop/dcw', 'POST', { templateRef: 'dcw-pressure-sp', name: 'PP冒烟·熔体压力', driver: 'mock', driverConfig: { key: `pp-rest-${Date.now()}` }, readIntervalMs: 0, writeLockSeconds: 0, lineId: line.id })).data?.node
   check('创建执行节点(mock)', !!node?.id)
   const after = await j('/api/workshop/dcw/params')
   const pv = after.data.params.find(p => p.nodeId === node.id)

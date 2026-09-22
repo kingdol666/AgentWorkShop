@@ -18,8 +18,8 @@
  */
 import { DatabaseSync } from 'node:sqlite'
 
-const BASE = 'http://127.0.0.1:3000/api/workshop'
-const DB_PATH = 'data/workshop.sqlite'
+const BASE = (process.env.AW_RESUME_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop'
+const DB_PATH = process.env.AW_RESUME_DB ?? 'data/workshop.sqlite'
 const DELAY_MS = 6000
 
 let pass = 0
@@ -142,7 +142,8 @@ async function crash() {
 
   // 硬杀(taskkill /F 不走 graceful close,模拟崩溃断电)
   const { execSync } = await import('node:child_process')
-  const pid = execSync('netstat -ano | findstr :3000 | findstr LISTENING').toString().match(/(\d+)\s*$/)?.[1]
+  const killPort = new URL(BASE).port || '3000'
+  const pid = execSync(`netstat -ano | findstr :${killPort} | findstr LISTENING`).toString().match(/(\d+)\s*$/)?.[1]
   execSync(`taskkill /PID ${pid} /F`)
   console.log(`  服务器已硬杀(pid=${pid})`)
   await sleep(1200)
@@ -204,7 +205,8 @@ async function gap() {
 
   // 硬杀服务器
   const { execSync } = await import('node:child_process')
-  const pid = execSync('netstat -ano | findstr :3000 | findstr LISTENING').toString().match(/(\d+)\s*$/)?.[1]
+  const killPort2 = new URL(BASE).port || '3000'
+  const pid = execSync(`netstat -ano | findstr :${killPort2} | findstr LISTENING`).toString().match(/(\d+)\s*$/)?.[1]
   execSync(`taskkill /PID ${pid} /F`)
   await sleep(1200)
 

@@ -36,14 +36,20 @@ const tag = Math.random().toString(36).slice(2, 8)
 async function main() {
   // ===== 0. 用户注册 =====
   console.log('━━━ 0. 用户注册 ━━━')
-  const reg = await jpost('/api/workshop/users/register', { name: 'ffx-' + tag })
-  TOKEN = reg.data?.token
-  if (!TOKEN) fail('用户注册失败: ' + JSON.stringify(reg).slice(0, 120))
-  check('用户注册并取得 token', !!TOKEN)
+  // AW_E2E_TOKEN 提供时直接使用(共享实例上遗留注册只会拿到非 admin 用户,后续建线必 403)
+  if (TOKEN) {
+    check('使用 AW_E2E_TOKEN(共享实例跳过注册)', true)
+  } else {
+    const reg = await jpost('/api/workshop/users/register', { name: 'ffx-' + tag })
+    TOKEN = reg.data?.token
+    if (!TOKEN) fail('用户注册失败: ' + JSON.stringify(reg).slice(0, 120))
+    check('用户注册并取得 token', !!TOKEN)
+  }
 
   // ===== 1. 产线搭建:1 线 1 产品 2 数采 1 数控 + 配方 + 开跑 =====
   console.log('\n━━━ 1. 产线搭建与开跑 ━━━')
-  const line = (await jpost('/api/workshop/dcw/lines', { name: '全功能验证线-' + tag })).data.line
+  const line = (await jpost('/api/workshop/dcw/lines', { name: '全功能验证线-' + tag })).data?.line
+  if (!line?.id) fail('产线创建失败(权限不足或数据异常)')
   cleanup.push(['dcw-line', line.id])
   const prod = (await jpost('/api/workshop/dcw/products', { name: '全功能产品-' + tag, lineId: line.id })).data.product
   cleanup.push(['dcw-product', prod.id])
@@ -93,7 +99,7 @@ async function main() {
     name: '数据分析工程师-' + tag, harness: 'omp',
     config: {
       intro: '负责从数采时序库获取产线数据、分析趋势,并按分析结论对数控设定下发工艺优化',
-      systemPromptPrefix: '你是产线数据分析工程师。先用 my_industrial_nodes 查看你的授权节点,再用 daq_query 获取最近 5 分钟数据并给出均值。若温度均值与 182℃ 偏差超过 1℃,用 dcw_control 把温度设定调整为 182(你的温度设定节点是手动确认模式,发起后等待用户批准)。结论必须引用具体数值。',
+      systemPromptPrefix: '你是产线数据分析工程师。先用 my_industrial_nodes 查看你的授权节点,再用 daq_query 获取最近 5 分钟数据并给出均值。若温度均值与 178℃ 偏差超过 1℃,用 dcw_control 把温度设定调整为 178(你的温度设定节点是手动确认模式,发起后等待用户批准)。结论必须引用具体数值。',
     },
   })).data
   cleanup.push(['agent-tpl', tplWorker.id])
@@ -124,12 +130,14 @@ async function main() {
 
   // ===== 6. goal 任务派发:数据分析 → 判断偏差 → 下发修正 =====
   console.log('\n━━━ 6. goal 任务派发(真实 omp worker 执行)━━━')
-  const goal = `请分析产线当前运行状态:1) 用你的数采工具获取最近 5 分钟温度数据并给出均值;2) 判断温度均值与 182℃ 目标的偏差;3) 偏差超过 1℃ 时,用数控工具把温度设定调整为 182(手动确认模式,发起后等待批准)。完成后汇报数值结论。`
+  const goal = `请分析产线当前运行状态:1) 用你的数采工具获取最近 5 分钟温度数据并给出均值;2) 判断温度均值与 178℃ 目标的偏差;3) 偏差超过 1℃ 时,用数控工具把温度设定调整为 178(手动确认模式,发起后等待批准)。完成后汇报数值结论。`
   const task = (await jpost(`/api/workshop/channels/${ch.id}/tasks`, {
     title: '产线数据分析与工艺优化-' + tag,
     parts: [{ text: goal }],
     mode: 'goal',
-    modeConfig: { goalCriteria: '已产出含具体数值的数据分析结论,且温度设定值已调整为 182℃ 附近(或明确说明未需调整)' },
+    // 目标 178 必须真实触发一次「发起→批准→写穿」:当前值在联锁段已被写成 182,
+    // 目标不得取 182 附近(否则 Agent 正确判为无需调整,HITL 链路永远不触发)
+    modeConfig: { goalCriteria: '已产出含具体数值的数据分析结论,且温度设定值已调整为 178℃ 附近' },
   })).data
   const taskId = task?.task?.id ?? task?.id
   check('goal 任务已提交', !!taskId, `id=${taskId?.slice(0, 8)}`)
@@ -161,9 +169,9 @@ async function main() {
         console.log(`[t+${Math.round((Date.now() - t0) / 1000)}s] [HITL] 用户已批准`)
       }
     }
-    // 写副作用:温度设定被 Agent 更新为 182±3
+    // 写副作用:温度设定被 Agent 更新为 178±3(178 与联锁段写入的 182 距离 >3,不会误判)
     const dwNow = (await jget('/api/workshop/dcw')).data.nodes.find(n => n.id === dw.id)
-    if (dwNow?.value != null && Math.abs(dwNow.value - 182) <= 3 && dwNow.value !== 180) workerValueSeen = true
+    if (dwNow?.value != null && Math.abs(dwNow.value - 178) <= 3 && dwNow.value !== 180 && dwNow.value !== 182) workerValueSeen = true
     if (i % 10 === 0 && i > 0) {
       const mem = (await jget(`/api/workshop/channels/${ch.id}/queue`)).data
       const arr = Array.isArray(mem) ? mem : []
@@ -175,7 +183,7 @@ async function main() {
   check('lead 调度:主任务拆解并派发子任务', subTaskSeen)
   check('HITL:Agent 经工具发起数控下发,用户批准后执行', hitlSeen)
   const dwFinal = (await jget('/api/workshop/dcw')).data.nodes.find(n => n.id === dw.id)
-  check('写副作用:温度设定被 Agent 更新为 182 附近', workerValueSeen, `value=${dwFinal?.value}℃(目标 182)`)
+  check('写副作用:温度设定被 Agent 更新为 178 附近', workerValueSeen, `value=${dwFinal?.value}℃(目标 178)`)
   const parentState = (await jget(`/api/workshop/channels/${ch.id}/tasks`)).data
   const parent = (Array.isArray(parentState) ? parentState : parentState?.tasks ?? []).find(t => t.id === taskId)
   check('goal 任务最终完成', parent?.state === 'COMPLETED', `state=${parent?.state} sub=${subState}`)

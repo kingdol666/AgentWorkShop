@@ -30,11 +30,28 @@ const WAIT_MS = Number(arg('wait', 150_000))
 const INTERRUPT_MS = Number(arg('interrupt', 1500))
 
 let TOKEN = null
+const VERBOSE = process.env.WD_VERBOSE === '1'
 const api = async (method, path, { body } = {}) => {
   const headers = { 'content-type': 'application/json' }
   if (TOKEN) headers.authorization = `Bearer ${TOKEN}`
-  const res = await fetch(`${BASE}${path}`, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined })
-  return { status: res.status, ...(await res.json().catch(() => ({}))) }
+  const payload = body !== undefined ? JSON.stringify(body) : undefined
+  // 本机回环偶发代理 churn/慢响应:8 次退避重试吸收(与 api-live 同策略),避免套件死于瞬断
+  let lastErr
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    const t0 = Date.now()
+    try {
+      const res = await fetch(`${BASE}${path}`, { method, headers, body: payload, signal: AbortSignal.timeout(30_000) })
+      const json = await res.json().catch(() => ({}))
+      if (VERBOSE) console.log(`    [api ${method} ${path} ${res.status} ${Date.now() - t0}ms]`)
+      return { status: res.status, ...json }
+    }
+    catch (err) {
+      lastErr = err
+      if (VERBOSE) console.log(`    [api ${method} ${path} FAILED ${Date.now() - t0}ms ${err.message} (attempt ${attempt})]`)
+      if (attempt < 8) await new Promise(r => setTimeout(r, Math.min(800 * 2 ** (attempt - 1), 8000)))
+    }
+  }
+  throw lastErr
 }
 const data = r => r?.data ?? {}
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -43,6 +60,11 @@ let fail = 0
 const check = (n, ok, d = '') => { console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${n}${d ? `  — ${d}` : ''}`); ok ? pass++ : fail++ }
 
 TOKEN = data(await api('POST', '/api/users/login', { body: { email: 'plant@awshop.local', password: 'Plant!2026' } })).token
+if (!TOKEN) {
+  // 共享实例上固定账号可能不存在:现场注册(遗留注册,admin 位已在则得普通用户,套件自建夹具够用)
+  const reg = data(await api('POST', '/api/workshop/users/register', { body: { name: 'wd-e2e-' + Math.random().toString(36).slice(2, 8) } }))
+  TOKEN = reg.token
+}
 if (!TOKEN) { console.error('✖ 登录失败'); process.exitCode = 2; throw new Error('login') }
 
 const cfg = data(await api('GET', '/api/system/settings'))
