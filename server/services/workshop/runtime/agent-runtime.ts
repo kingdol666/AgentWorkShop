@@ -195,6 +195,8 @@ export class AgentRuntime {
       bus: ChannelBus
       workspace: AgentWorkspace
       memory?: AgentMemory
+      /** 平台代投(落时间线+广播):人类 requireReply 的回执 —— 人类无信箱,emitExternal 只广播不落库 */
+      platformReply?: (input: { text: string, inReplyTo: string, toLabel: string }) => void
     },
   ) {
     this.agentId = agent.id
@@ -281,7 +283,11 @@ export class AgentRuntime {
     // ② agent 间协作消息:信箱优先(turn 结束 peer 回合处理)
     const from = message.metadata?.['x-aw-from-agent']
     if (typeof from === 'string' && from.length > 0) return
-    // ③ 其余(人类紧急直发):原有 steer 注入路径
+    // ③ requireReply 不走 steer:同轮注入的回复文本归属当前回合,平台代投无法
+    //    关联到本消息(in_reply_to 断链,回执丢失实测)。改走信箱 peer 回合 ——
+    //    稍晚但归属正确、回执必有应答。
+    if (message.metadata?.['x-aw-require-reply'] === 'true') return
+    // ④ 其余(人类紧急直发):原有 steer 注入路径
     if (!this.deps.mailbox.claim(message.messageId)) return
     const text = message.parts
       .map((p) => {
@@ -368,7 +374,13 @@ export class AgentRuntime {
     this.deps.mailbox.close()
     // 状态广播:前端经 WS agent.status 实时反映 stopped
     this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'stopped', ...this.queueContext() })
-    await this.loopPromise
+    // 宽限等待消费循环退出,但**不无限等**:impl 若不响应 abort(如长 sleep 的
+    // mock/外部进程卡死),HTTP stop 请求会无限悬挂(实测 30s×8 全超时)。
+    // 超过宽限即放行 —— loop 自身的 finally 稍后自行收尾,dispose 照常执行。
+    await Promise.race([
+      this.loopPromise?.catch(() => { }),
+      new Promise(r => setTimeout(r, 10_000)),
+    ])
     // 清理 impl 持有的资源(omp 子进程等);容错:impl.dispose 可能不存在
     try {
       await this.impl.dispose?.()
@@ -582,14 +594,23 @@ export class AgentRuntime {
       const enrichedSource = { ...msg, metadata: { ...msg.metadata, 'x-aw-producing-agent': this.agentId } }
       // 回复文本收集(V9:omp 不产 message 事件,聚合三类源——message 事件 / status.message / 终态 artifact 'output')
       let replyText = ''
+      // 纯文本回合留底:模型以最终输出作答时只有 delta 事件,回执代投从这里取
+      let deltaText = ''
       const cap = (text: string): void => {
+        // peerPrompt 整段回显不是回复(status/message 事件会携带),以签名开头即忽略
+        if (text.startsWith('You are "')) return
         if (replyText.length < 400) replyText += text.slice(0, 400 - replyText.length)
       }
       try {
         for await (const event of this.impl.run(request, ctx)) {
           this.deps.bus.emit(event, enrichedSource)
-          // LLM 流式增量:只走事件流(AEP agent.delta),不进任务引擎/交付兜底管道
-          if (event.kind === 'delta') continue
+          // LLM 流式增量:只走事件流(AEP agent.delta),不进任务引擎/交付兜底管道;
+          // 但要单独留底 —— 纯文本回合(模型以最终输出作答,不调工具)的回执全靠它
+          if (event.kind === 'delta') {
+            const t = event.delta?.text ?? ''
+            if (deltaText.length < 8000 && t) deltaText += t
+            continue
+          }
           if (event.kind === 'error') sawRunError = true
           // 无原生工具面的 harness(codex/dsh 等)以 shell/文本方式作业:回合 error 收束
           // 但已有实质输出时,不落入 FAILED(交由回合结束后的交付兜底按最终输出隐式收口)——
@@ -599,7 +620,12 @@ export class AgentRuntime {
             if (cur && cur.state === 'WORKING') continue
           }
           if (taskId) await this.deps.taskEngine.applyEvent(taskId, event)
-          if (event.kind === 'message') cap(partsToText(event.message.parts))
+          if (event.kind === 'message') {
+            // 只聚合 assistant/agent 输出:user 角色是 prompt 回显,聚进去会把整段
+            // 提示词当成"回复"代投到时间线(实测回执变成 prompt 前缀)
+            if (event.message.role === 'user') deltaText = ''
+            else cap(partsToText(event.message.parts))
+          }
           else if (event.kind === 'status' && event.status.message) cap(partsToText(event.status.message.parts))
           else if (event.kind === 'artifact' && event.artifact.name === 'output') cap(partsToText(event.artifact.parts))
         }
@@ -613,22 +639,40 @@ export class AgentRuntime {
       // (回合只产 artifact 文本),请求方将收不到任何应答。平台把回合聚合文本代投回
       // 时间线(in_reply_to 关联 + x-aw-relayed 标记),保证"要求回复"必有确定应答;
       // 模型已自行回执时时间线会出现两条,属可接受的冗余(宁多勿丢)。
+      // 纯文本回合(replyText 空、只有 delta)同样代投 —— 否则模型按提示"以最终输出
+      // 作答"的回执被结构性丢弃(实测 omp lead 回执不落时间线)。
+      // delta 流优先(模型最终输出以增量到达,最贴近真实回复);replyText 兜底
+      let relayText = deltaText.trim() || replyText.trim()
+      // 内容级去污:部分引擎的事件流会把 prompt 原文(整段或前缀)混进文本事件,
+      // 角色字段拦不住 —— 含本次消息原文前缀时,切除取其后段(真正的回复在其后)
+      const promptEcho = partsToText(msg.parts).trim().slice(0, 80)
+      if (promptEcho && relayText.includes(promptEcho)) {
+        relayText = relayText.split(promptEcho).pop() ?? ''
+      }
+      relayText = relayText.trim().slice(0, 4000)
       if (msg.metadata?.['x-aw-require-reply'] === 'true'
         && typeof msg.metadata?.['x-aw-from-label'] === 'string'
-        && replyText.trim()) {
+        && relayText) {
+        const relayMeta = {
+          'x-aw-in-reply-to': msg.messageId,
+          'x-aw-to-label': String(msg.metadata['x-aw-from-label']),
+          'x-aw-relayed': 'true',
+        }
         this.emitExternal({
           kind: 'message',
           message: {
             messageId: randomUUID(),
             contextId: this.channelId,
             role: 'ROLE_AGENT',
-            parts: [{ text: replyText }],
-            metadata: {
-              'x-aw-in-reply-to': msg.messageId,
-              'x-aw-to-label': String(msg.metadata['x-aw-from-label']),
-              'x-aw-relayed': 'true',
-            },
+            parts: [{ text: relayText }],
+            metadata: relayMeta,
           },
+        })
+        // 落时间线:emitExternal 只广播不持久化,回执必须可回溯(时间线 API 可查)
+        this.deps.platformReply?.({
+          text: relayText,
+          inReplyTo: msg.messageId,
+          toLabel: String(msg.metadata['x-aw-from-label']),
         })
       }
       // 交付兜底(harness 回合结束 ≠ 任务完成):

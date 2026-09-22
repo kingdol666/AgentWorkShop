@@ -710,6 +710,26 @@ export class AgentChannelManager {
       bus,
       workspace,
       memory,
+      // 平台代投:人类 requireReply 的回执落时间线(人类无信箱,route 无人可投)
+      platformReply: ({ text, inReplyTo, toLabel }) => {
+        const message = buildMessage(m.channelId, 'ROLE_AGENT', [{ text }], {
+          'x-aw-from-agent': agent.id,
+          'x-aw-in-reply-to': inReplyTo,
+          'x-aw-to-label': toLabel,
+          'x-aw-relayed': 'true',
+        })
+        this.deps.repos.messages.create({
+          id: message.messageId,
+          channelId: m.channelId,
+          taskId: null,
+          fromAgentId: agent.id,
+          toAgentId: null,
+          role: message.role,
+          parts: message.parts,
+          metadata: message.metadata,
+        })
+        bus.notifyMessage(message)
+      },
     })
     cr.addAgent(runtime)
     this.agentIndex.set(runtimeKey(m.channelId, agent.id), runtime)

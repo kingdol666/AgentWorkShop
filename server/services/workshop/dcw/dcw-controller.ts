@@ -561,10 +561,24 @@ class DcwController {
     if (!node.enabled) {
       throw new AppError(409, ErrorCodes.CONFLICT, `当前节点暂停:「${node.name}」控制已暂停,仅开启控制的节点可被设定`)
     }
+    // 调控闭环护栏(F1/F8):Agent 互斥(open 记录他人持有)+ 回退冷却方向性
+    getRecipeRollBackManager().beforeWrite(node, eng, meta)
+    // 写入限界分层联锁(param-limits):节点安全量程(结构层,驱动内 validateEng 结构性兜底)
+    // ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口 —— 逐层收窄取交集,
+    // 手动 REST / Agent 工具 / 配方下发 / 回退四路共用本咽喉点,越界一律拒绝。
+    // D8 基准消融:仅 AW_BENCH_MODE=1 且 meta.benchArm='no-interlock'/'ungated' 时
+    // 旁路软联锁层(参数/产品/配方);结构层与硬量程校验结构性不可旁路;
+    // 生产模式(env 缺省)恒为 full 臂。
+    const benchNoInterlock = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-interlock' || meta?.benchArm === 'ungated')
+    // 配方下发路径(recipeRunId != null)跳过配方窗口层:下发值已在配方保存时对自身窗口校验,
+    // 且中途应用新配方不应被旧批次配方窗口误伤;产品/参数基准层对配方下发照常约束。
+    assertWithinLimits(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: recipeRunId != null })
     // 写入保持窗(防参数震荡):agent/manual 写成功一次即锁定节点 writeLockSeconds;
     // 锁定期间的新写一律 429 快速拒绝(不排队 —— 排队写会在窗满后立刻落库,等同
     // 为持续篡改保留通道)。rollback(安全恢复)/recipe(批量下发)不受保持窗约束;
     // AW_BENCH_MODE=1 基准旁路(基准多轮连续写同节点,锁会破坏既有证据可复现性)。
+    // 顺序在限界联锁之后:越量程/越窗是确定性非法(400),不得被暂时性限频(429)
+    // 抢答,否则客户端会对非法值做 30s 的无谓重试。
     const srcForLock = meta?.source ?? (recipeRunId ? 'recipe' : 'manual')
     const benchBypass = process.env.AW_BENCH_MODE === '1'
     const lockMs = Math.max(0, Math.round((node.writeLockSeconds ?? 30) * 1000))
@@ -586,18 +600,6 @@ class DcwController {
         )
       }
     }
-    // 调控闭环护栏(F1/F8):Agent 互斥(open 记录他人持有)+ 回退冷却方向性
-    getRecipeRollBackManager().beforeWrite(node, eng, meta)
-    // 写入限界分层联锁(param-limits):节点安全量程(结构层,驱动内 validateEng 结构性兜底)
-    // ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口 —— 逐层收窄取交集,
-    // 手动 REST / Agent 工具 / 配方下发 / 回退四路共用本咽喉点,越界一律拒绝。
-    // D8 基准消融:仅 AW_BENCH_MODE=1 且 meta.benchArm='no-interlock'/'ungated' 时
-    // 旁路软联锁层(参数/产品/配方);结构层与硬量程校验结构性不可旁路;
-    // 生产模式(env 缺省)恒为 full 臂。
-    const benchNoInterlock = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-interlock' || meta?.benchArm === 'ungated')
-    // 配方下发路径(recipeRunId != null)跳过配方窗口层:下发值已在配方保存时对自身窗口校验,
-    // 且中途应用新配方不应被旧批次配方窗口误伤;产品/参数基准层对配方下发照常约束。
-    assertWithinLimits(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: recipeRunId != null })
     // D8: no-readback / ungated 臂 → 容差置 MAX,回读差异不致败(假成功语义,供 I2 消融)
     const benchNoReadback = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-readback' || meta?.benchArm === 'ungated')
     const benchToleranceOverride = benchNoReadback ? Number.MAX_VALUE : undefined

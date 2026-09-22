@@ -11,6 +11,7 @@ import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
+import { assertNotMojibake } from '../../../../../utils/mojibake-guard'
 
 import { getWorkshopManager } from '../../../../../plugins/workshop'
 
@@ -34,6 +35,8 @@ export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(sendMessageSchema))
+  // 乱码护栏:成片 U+FFFD 会诱导模型"字节考古"式空转(实测 25min+),入口即拒
+  assertNotMojibake(body.text, { source: '消息文本' })
   const manager = getWorkshopManager()
   const channel = manager.getChannelForUser(channelId, user.id)
   manager.requireOwned(channel.ownerUserId, user.id, 'channel')

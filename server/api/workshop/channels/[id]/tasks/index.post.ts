@@ -9,6 +9,7 @@ import { resolveUser } from '../../../caller'
 import { getRouterParam, readValidatedBody } from 'h3'
 import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
+import { assertNotMojibake } from '../../../../../utils/mojibake-guard'
 import { getWorkshopManager } from '../../../../../plugins/workshop'
 import type { Part } from '../../../../../services/workshop/types/a2a'
 
@@ -63,6 +64,12 @@ export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(submitTaskSchema))
+  // 乱码护栏:任务标题/描述/正文直接进入 lead 与 worker 的模型上下文
+  assertNotMojibake(body.title, { source: '任务标题' })
+  if (body.description) assertNotMojibake(body.description, { source: '任务描述' })
+  for (const p of body.parts ?? []) {
+    if (typeof p.text === 'string') assertNotMojibake(p.text, { source: '任务正文' })
+  }
   const manager = getWorkshopManager()
   const channel = manager.getChannelForUser(channelId, user.id)
   manager.requireOwned(channel.ownerUserId, user.id, 'channel')

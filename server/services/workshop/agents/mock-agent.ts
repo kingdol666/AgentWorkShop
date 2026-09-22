@@ -31,8 +31,16 @@ const TERMINAL = new Set(['COMPLETED', 'FAILED', 'CANCELED'])
 /** 成员管理决策(spawn/update/remove;mock lead 经 teamOps 配置在首个 supervise tick 发出) */
 type MemberOp = Extract<SupervisionDecision, { kind: 'spawn_agent' | 'update_agent' | 'remove_agent' }>
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(r => setTimeout(r, ms))
+/** 可中断睡眠:abort 即提前返回(run 循环在每个 sleep 后检查 signal 退出) */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve()
+    const t = setTimeout(() => resolve(), ms)
+    signal?.addEventListener('abort', () => {
+      clearTimeout(t)
+      resolve()
+    }, { once: true })
+  })
 }
 
 export class MockAgentImpl implements AgentInterface {
@@ -317,7 +325,10 @@ export class MockAgentImpl implements AgentInterface {
     }
     yield { kind: 'status', status: { state: 'WORKING', timestamp: new Date().toISOString() } }
     for (const p of [25, 50, 75]) {
-      await sleep(this.delayMs)
+      await sleep(this.delayMs, ctx.signal)
+      // 中断即收束:stop 后事件流必须 promptly 结束,否则 runtime.stop() 的 loopPromise
+      // 等待会拖住 HTTP stop 请求(实测 mock delayMs=600s 时 stop 端点无限悬挂)
+      if (ctx.signal?.aborted) return
       await ctx.workspace.reportTask({ taskId, progress: p })
     }
     if (this.streamDemo) {

@@ -523,7 +523,9 @@ export class SchedulerLoop {
         // 全部子任务 COMPLETED 持续超过宽限窗(45s,lead 仍有充分判定机会)后由
         // 规则引擎兜底收口;taskEngine.complete 内建 goal-summary 合成,标志必然落盘。
         if (modeInfo.mode !== 'goal') continue
-        if (!allDone || (task.state !== 'WAITING' && task.state !== 'WORKING')) {
+        // SUBMITTED 同样纳入收口:lead 派出子任务但未显式开跑父任务时,
+        // SUBMITTED+有子任务是 dispatch/收口规则的死区,父任务会永久悬挂(实测海龟汤对局)
+        if (!allDone || (task.state !== 'WAITING' && task.state !== 'WORKING' && task.state !== 'SUBMITTED')) {
           this.goalAllDoneAt.delete(task.id)
           continue
         }
@@ -537,7 +539,7 @@ export class SchedulerLoop {
         }
         continue
       }
-      if (allDone && (task.state === 'WAITING' || task.state === 'WORKING')) {
+      if (allDone && (task.state === 'WAITING' || task.state === 'WORKING' || task.state === 'SUBMITTED')) {
         decisions.push({ kind: 'complete', taskId: task.id })
       }
       // 部分成功收口(防父任务永挂):全部子任务已终态,但存在失败/取消且至少一个
@@ -545,7 +547,7 @@ export class SchedulerLoop {
       // 以"已有成果"为完成条件收口父任务(lead 汇总已产出部分,缺的口子明确可见),
       // 否则父任务在子任务混合终态时永久卡死,lead 无从得知去补派。
       else if (
-        (task.state === 'WAITING' || task.state === 'WORKING')
+        (task.state === 'WAITING' || task.state === 'WORKING' || task.state === 'SUBMITTED')
         && children.every(c => TERMINAL_TASK_STATES[c.state] === true)
         && children.some(c => c.state === 'COMPLETED')
         && !children.every(c => c.state === 'COMPLETED')
@@ -561,7 +563,7 @@ export class SchedulerLoop {
     for (const task of tasks) {
       const children = childrenOf(task.id)
       if (children.length === 0) continue
-      if (task.state !== 'WAITING' && task.state !== 'WORKING') continue
+      if (task.state !== 'WAITING' && task.state !== 'WORKING' && task.state !== 'SUBMITTED') continue
       const allTerminal = children.every(c => TERMINAL_TASK_STATES[c.state] === true)
       const anyUnsuccessful = children.some(c => c.state !== 'COMPLETED')
       const hasRetryableFailure = children.some(c => c.state === 'FAILED' && c.retryCount < 3)

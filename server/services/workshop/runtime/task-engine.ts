@@ -20,10 +20,13 @@ import { extractTaskMode, isGoalSummaryArtifact, synthesizeGoalSummary } from '.
 const log = createLogger('workshop.task-engine')
 
 /** 状态机合法迁移表(§2.2);终态(COMPLETED/FAILED/CANCELED)不在表中 → 不可迁移
- *  例外:WAITING(父任务等待子任务合并)→ COMPLETED 属于正常闭环
- *  (触发条件=全部子任务终态;由 complete() 的 done-check 闸门兜底校验) */
+ *  例外:WAITING/SUBMITTED(父任务等待子任务合并)→ COMPLETED 属于正常闭环
+ *  (触发条件=全部子任务终态;由 complete() 的 done-check 闸门兜底校验)。
+ *  SUBMITTED → COMPLETED 修复 goal 父任务死锁:lead 派出子任务但从未显式开跑父任务时,
+ *  子任务全部终态后父任务在 SUBMITTED 上永久悬挂(调度器 dispatch 规则要求无子任务、
+ *  收口规则只认 WAITING/WORKING,三面都不接) */
 const TRANSITIONS: Record<TaskState, TaskState[]> = {
-  SUBMITTED: ['WORKING', 'ASSIGNED', 'CANCELED'],
+  SUBMITTED: ['WORKING', 'ASSIGNED', 'COMPLETED', 'CANCELED'],
   ASSIGNED: ['WORKING', 'CANCELED'],
   WORKING: ['WAITING', 'COMPLETED', 'FAILED', 'CANCELED'],
   WAITING: ['WORKING', 'COMPLETED', 'CANCELED'],
@@ -453,7 +456,7 @@ export class TaskEngine {
     const children = this.repos.tasks
       .listByChannel(task.channelId)
       .filter(t => t.parentId === task.id)
-    if (task.state === 'WAITING') {
+    if (task.state === 'WAITING' || task.state === 'SUBMITTED') {
       // 子任务合并闸门:存在未完成的子任务时拒绝完成(避免父与子状态矛盾)
       const pending = children.filter(t => t.state !== 'COMPLETED' && t.state !== 'CANCELED')
       if (pending.length > 0) {
