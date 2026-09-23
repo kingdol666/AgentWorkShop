@@ -2,247 +2,52 @@
 /**
  * API Token 管理页 —— 当前用户对自己 token 的 CRUD。
  * 身份源:全局用户系统(/api/users/tokens);未登录经由 auth-gate 引导回登录门。
+ *
+ * 页面只做编排:列表与行内明文在 pages/tokens/composables/*,创建/重命名/一次性明文回显
+ * 也各自收在同一个目录的组合式函数里;区块与弹窗在 components/tokens/*
+ * (页面私有子组件刻意不放 app/pages —— 该目录下任何 .vue 都会被当成路由)。
+ * ⚠️ 创建响应里的明文全应用只有一份(useTokenCreate 的 createdRaw),回显弹窗是纯呈现。
  */
-import { message } from 'ant-design-vue'
-import { useUserStore } from '../stores/workshop/user'
-import type { TokenMeta } from '../stores/workshop/user'
+import { useUserStore } from '@/app/stores/workshop/user'
+// 页面是 app/pages/tokens.vue(**文件**,不是目录),composable 放在同名的 app/pages/tokens/ 目录里,
+// 故相对路径要带一级 `tokens/`(写成 './composables/…' 会解析到 app/pages/composables,tsc 报 TS2307)
+import { useTokensList } from './tokens/composables/useTokensList'
+import { useTokenCreate } from './tokens/composables/useTokenCreate'
+import { useTokenRename } from './tokens/composables/useTokenRename'
+import { useTokenReveal } from './tokens/composables/useTokenReveal'
+import TokensAuthGate from '~/components/tokens/TokensAuthGate.vue'
+import TokensPageHead from '~/components/tokens/TokensPageHead.vue'
+import TokensTable from '~/components/tokens/TokensTable.vue'
+import TokenCreateModal from '~/components/tokens/TokenCreateModal.vue'
+import TokenOnceModal from '~/components/tokens/TokenOnceModal.vue'
+import TokenRenameModal from '~/components/tokens/TokenRenameModal.vue'
 
 const { t: tt } = useI18n()
 
 definePageMeta({ layout: 'default' })
 
 const userStore = useUserStore()
-const tokens = ref<TokenMeta[]>([])
-const loading = ref(false)
 
-// ===== 创建 =====
-const createOpen = ref(false)
-const createLabel = ref('')
-const createLoading = ref(false)
-const createdRaw = ref('')
-const lastCreatedLabel = ref('')
+// ===== 列表快照 + 行内明文(各自唯一持有,组件只读)=====
+const { tokens, loading, load, doRevoke } = useTokensList()
+const { revealedPlain, revealingId, copyId, toggleRowReveal, copyRow } = useTokenReveal()
 
-// ===== 重命名 =====
-const renameOpen = ref(false)
-const renameId = ref('')
-const renameLabel = ref('')
-const renameLoading = ref(false)
-
-const load = async (): Promise<void> => {
-  if (!userStore.isLoggedIn) return
-  loading.value = true
-  try {
-    tokens.value = await userStore.listTokens()
-  }
-  catch (e) {
-    message.error(e instanceof Error ? e.message : tt('tokens.k19jvk54013'))
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-watch(() => userStore.isLoggedIn, (ok) => {
-  if (ok) {
-    void load()
-  }
-  else {
-    tokens.value = []
-  }
-}, { immediate: true })
-
-const doCreate = async (): Promise<void> => {
-  createLoading.value = true
-  try {
-    const res = await userStore.createToken(createLabel.value)
-    createdRaw.value = res.token
-    lastCreatedLabel.value = createLabel.value
-    createOpen.value = false
-    createLabel.value = ''
-    await load()
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    createLoading.value = false
-  }
-}
-
-// openRename 定义见下(放宽为结构化类型以兼容 a-table 的 record)
-
-const doRename = async (): Promise<void> => {
-  if (!renameLabel.value.trim()) {
-    message.warning(tt('tokens.k169z26g014'))
-    return
-  }
-  renameLoading.value = true
-  try {
-    await userStore.renameToken(renameId.value, renameLabel.value)
-    renameOpen.value = false
-    await load()
-    message.success(tt('tokens.k3n9aij015'))
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    renameLoading.value = false
-  }
-}
-
-const doRevoke = (t: { id?: string }): void => {
-  const tokenId = t.id
-  if (!tokenId) return
-  const isCurrent = tokenId === userStore.user?.tokenId
-  void (async () => {
-    try {
-      await userStore.revokeToken(tokenId)
-      message.success(tt('tokens.k3n64kh016'))
-      if (isCurrent) return // revokeToken 已触发登出跳转
-      await load()
-    }
-    catch (e) {
-      message.error(apiErrorMessage(e))
-    }
-  })()
-}
-
-// ===== 新 token 明文回显:默认掩码,眼睛切换显示,一键复制 =====
-const revealed = ref(false)
-const copied = ref(false)
-const masked = computed(() => {
-  const raw = createdRaw.value
-  if (!raw) return ''
-  return `${raw.slice(0, 6)}${'•'.repeat(Math.max(12, raw.length - 10))}${raw.slice(-4)}`
-})
-const toggleReveal = (): void => {
-  revealed.value = !revealed.value
-}
-
-// ===== 通用剪贴板:API 优先,execCommand 兜底 =====
-const copyText = async (text: string): Promise<boolean> => {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  }
-  catch {
-    // 剪贴板 API 不可用(非安全上下文/权限拒绝)→ execCommand 兜底
-    try {
-      const ta = document.createElement('textarea')
-      ta.value = text
-      ta.style.position = 'fixed'
-      ta.style.opacity = '0'
-      document.body.appendChild(ta)
-      ta.select()
-      const ok = document.execCommand('copy')
-      document.body.removeChild(ta)
-      return ok
-    }
-    catch {
-      return false
-    }
-  }
-}
-
-const copyCreated = async (): Promise<void> => {
-  if (await copyText(createdRaw.value)) {
-    copied.value = true
-    setTimeout(() => {
-      copied.value = false
-    }, 1600)
-  }
-  else {
-    message.error(tt('tokens.kjtcn2h017'))
-  }
-}
-const dismissCreated = (): void => {
-  createdRaw.value = ''
-  revealed.value = false
-  copied.value = false
-}
-
-// ===== 列表行:掩码/眼睛切换/复制(明文经 reveal 接口按需获取,仅存内存,刷新即隐) =====
-const revealedPlain = ref<Record<string, string>>({})
-const revealingId = ref('')
-const copyId = ref('')
-
-const isRevealed = (id: string): boolean => id in revealedPlain.value
-
-const rowDisplay = (t: TokenMeta): string => {
-  if (isRevealed(t.id)) return revealedPlain.value[t.id]!
-  return t.preview ?? `ut-${'•'.repeat(14)}`
-}
-
-/** 眼睛切换:已明文 → 遮回;否则拉取存档明文(懒加载,不自动展开) */
-const toggleRowReveal = async (t: TokenMeta): Promise<void> => {
-  if (isRevealed(t.id)) {
-    Reflect.deleteProperty(revealedPlain.value, t.id)
-    return
-  }
-  if (!t.hasPlain) {
-    message.warning(tt('tokens.kkpgzo8018'))
-    return
-  }
-  revealingId.value = t.id
-  try {
-    const plain = await userStore.revealToken(t.id)
-    if (plain) revealedPlain.value[t.id] = plain
-  }
-  catch (e) {
-    message.error(e instanceof Error ? e.message : tt('tokens.k1gj9ls019'))
-  }
-  finally {
-    revealingId.value = ''
-  }
-}
-
-/** 行复制:优先用已展开明文,否则先静默拉取存档明文再复制(不改变显示状态) */
-const copyRow = async (t: TokenMeta): Promise<void> => {
-  const cached = revealedPlain.value[t.id]
-  let text: string | null = cached ?? null
-  if (!text) {
-    if (!t.hasPlain) {
-      message.warning(tt('tokens.kr5ovor020'))
-      return
-    }
-    revealingId.value = t.id
-    try {
-      text = await userStore.revealToken(t.id)
-    }
-    catch (e) {
-      message.error(e instanceof Error ? e.message : tt('tokens.kubtby5021'))
-      return
-    }
-    finally {
-      revealingId.value = ''
-    }
-  }
-  if (text && await copyText(text)) {
-    copyId.value = t.id
-    setTimeout(() => {
-      copyId.value = ''
-    }, 1600)
-  }
-  else {
-    message.error(tt('tokens.kgkfcr0022'))
-  }
-}
-
-const fmt = (s: string | null): string => (s ? s.replace('T', ' ').slice(0, 19) : '-')
-
-const openRename = (t: { id?: string, label?: string }): void => {
-  renameId.value = t.id ?? ''
-  renameLabel.value = t.label ?? ''
-  renameOpen.value = true
-}
-const columns = [
-  { title: tt('tokens.k41416002'), key: 'label', dataIndex: 'label' },
-  { title: 'Token', key: 'token', width: 360 },
-  { title: tt('tokens.k1bg95gk023'), key: 'createdAt', dataIndex: 'createdAt', width: 170 },
-  { title: tt('tokens.k1euotul024'), key: 'lastUsedAt', dataIndex: 'lastUsedAt', width: 200 },
-  { title: tt('tokens.k40aa6025'), key: 'action', width: 170 },
-]
+// ===== 创建(含一次性明文回显)/ 重命名:成功后各自重查同一份列表 =====
+const {
+  createOpen,
+  createLabel,
+  createLoading,
+  createdRaw,
+  lastCreatedLabel,
+  masked,
+  revealed,
+  copied,
+  doCreate,
+  toggleReveal,
+  copyCreated,
+  dismissCreated,
+} = useTokenCreate({ onCreated: load })
+const { renameOpen, renameLabel, renameLoading, openRename, doRename } = useTokenRename({ onRenamed: load })
 
 useHead({ title: () => tt('titles.tokens') })
 </script>
@@ -250,380 +55,57 @@ useHead({ title: () => tt('titles.tokens') })
 <template>
   <div class="page">
     <!-- 未登录:引导回 workshop 登录门 -->
-    <div
-      v-if="!userStore.isLoggedIn"
-      class="auth-gate"
-    >
-      <a-card class="auth-card">
-        <h2>{{ $t('tokens.k1k6z0r8003') }}</h2>
-        <p class="sub">
-          {{ $t('tokens.k1gjnree004') }}
-        </p>
-        <a-button
-          type="primary"
-          block
-          @click="navigateTo('/workshop')"
-        >
-          {{ $t('tokens.k1bhhheq005') }}
-        </a-button>
-      </a-card>
-    </div>
+    <TokensAuthGate v-if="!userStore.isLoggedIn" />
 
     <template v-else>
-      <div class="aw-page-head">
-        <div>
-          <p class="aw-kicker">
-            agentworkshop / api tokens
-          </p>
-          <h1>API Token</h1>
-          <p class="sub">
-            {{ userStore.user?.name }} · {{ $t('tokens.k1upppaw026') }}
-          </p>
-        </div>
-        <a-space class="head-actions">
-          <a-tag
-            v-if="userStore.user?.tokenId"
-            color="green"
-          >
-            {{ $t('tokens.khcxmsc006') }}
-          </a-tag>
-          <a-button
-            type="primary"
-            @click="createOpen = true"
-          >
-            <span class="i-tabler-plus" />
-            {{ $t('chips.issue') }}
-          </a-button>
-        </a-space>
-      </div>
+      <TokensPageHead
+        :user-name="userStore.user?.name"
+        :has-current-token="!!userStore.user?.tokenId"
+        @issue="createOpen = true"
+      />
 
-      <a-card
-        :bordered="false"
-        class="table-card"
-      >
-        <a-spin :spinning="loading">
-          <a-table
-            :columns="columns"
-            :data-source="tokens"
-            :pagination="false"
-            row-key="id"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'label'">
-                <a-space>
-                  <span class="i-tabler-key text-primary" />
-                  <span class="font-medium">{{ record.label || $t('tokens.kj3mklm028') }}</span>
-                  <a-tag
-                    v-if="record.id === userStore.user?.tokenId"
-                    color="green"
-                  >
-                    {{ $t('tokens.k1defr98007') }}
-                  </a-tag>
-                </a-space>
-              </template>
-              <template v-else-if="column.key === 'token'">
-                <div class="tok-cell">
-                  <code
-                    class="tok-val"
-                    :class="{ revealed: isRevealed(record.id) }"
-                    :title="isRevealed(record.id) ? $t('tokens.maskBackTip') : $t('tokens.maskPreview')"
-                  >{{ rowDisplay(record as TokenMeta) }}</code>
-                  <a-button
-                    v-if="record.hasPlain"
-                    type="text"
-                    size="small"
-                    class="tok-op"
-                    :loading="revealingId === record.id"
-                    :title="isRevealed(record.id) ? $t('tokens.maskBack') : $t('tokens.revealPlain')"
-                    @click="toggleRowReveal(record as TokenMeta)"
-                  >
-                    <span :class="isRevealed(record.id) ? 'i-tabler-eye-off' : 'i-tabler-eye'" />
-                  </a-button>
-                  <a-button
-                    v-if="record.hasPlain"
-                    type="text"
-                    size="small"
-                    class="tok-op"
-                    :class="{ ok: copyId === record.id }"
-                    :title="copyId === record.id ? $t('tokens.copied') : $t('tokens.copyPlain')"
-                    @click="copyRow(record as TokenMeta)"
-                  >
-                    <span :class="copyId === record.id ? 'i-tabler-check' : 'i-tabler-copy'" />
-                  </a-button>
-                <!-- 0.7.10 起 token 只存哈希:无明文是常态,不再打「旧版不可见」标签 -->
-                </div>
-              </template>
-              <template v-else-if="column.key === 'createdAt'">
-                {{ fmt(record.createdAt) }}
-              </template>
-              <template v-else-if="column.key === 'lastUsedAt'">
-                {{ fmt(record.lastUsedAt) }}
-              </template>
-              <template v-else-if="column.key === 'action'">
-                <a-space>
-                  <a-button
-                    type="link"
-                    size="small"
-                    @click="openRename(record)"
-                  >
-                    <span class="i-tabler-edit" />
-                    {{ $t('tokens.k3vrpcs009') }}
-                  </a-button>
-                  <a-popconfirm
-                    :title="record.id === userStore.user?.tokenId ? $t('tokens.revokeCurrentWarn') : $t('tokens.revokeWarn')"
-                    :ok-text="$t('common.revoke')"
-                    :cancel-text="$t('common.cancel')"
-                    @confirm="doRevoke(record)"
-                  >
-                    <!-- 安静文本按钮:常态墨灰,悬停转红 —— 红色只留给真实确认瞬间,不再整行批发 -->
-                    <a-button
-                      type="text"
-                      size="small"
-                      class="tok-revoke"
-                    >
-                      <span class="i-tabler-trash" />
-                      {{ $t('tokens.k3xmrz010') }}
-                    </a-button>
-                  </a-popconfirm>
-                </a-space>
-              </template>
-            </template>
-          </a-table>
-        </a-spin>
-      </a-card>
+      <TokensTable
+        :rows="tokens"
+        :loading="loading"
+        :current-token-id="userStore.user?.tokenId"
+        :revealed-plain="revealedPlain"
+        :revealing-id="revealingId"
+        :copy-id="copyId"
+        @rename="openRename"
+        @revoke="doRevoke"
+        @reveal="toggleRowReveal"
+        @copy="copyRow"
+      />
 
-      <!-- 创建 Token -->
-      <a-modal
+      <TokenCreateModal
         v-model:open="createOpen"
-        :title="$t('chips.issueTitle')"
-        :confirm-loading="createLoading"
-        :ok-text="$t('common.create')"
-        :cancel-text="$t('common.cancel')"
-        @ok="doCreate"
-      >
-        <a-input
-          v-model:value="createLabel"
-          :placeholder="$t('tokens.k1hlqknl001')"
-          @keydown.enter="doCreate"
-        />
-      </a-modal>
+        v-model:label="createLabel"
+        :loading="createLoading"
+        @submit="doCreate"
+      />
 
-      <!-- 明文回显(仅创建时一次):默认掩码,眼睛切换,一键复制 -->
-      <a-modal
+      <TokenOnceModal
         :open="createdRaw !== ''"
-        :title="$t('tokens.createdTitle')"
-        :footer="null"
-        :mask-closable="false"
-        @cancel="dismissCreated"
-        @after-close="dismissCreated"
-      >
-        <div class="once-banner">
-          <span class="i-tabler-circle-check" />
-          <span>{{ $t('tokens.k12149oy011') }}</span>
-        </div>
-        <div class="raw-row">
-          <code class="raw">{{ revealed ? createdRaw : masked }}</code>
-          <button
-            class="raw-op"
-            :title="revealed ? $t('tokens.hidePlain') : $t('tokens.showPlain')"
-            @click="toggleReveal"
-          >
-            <span :class="revealed ? 'i-tabler-eye-off' : 'i-tabler-eye'" />
-          </button>
-          <button
-            class="raw-op"
-            :class="{ ok: copied }"
-            :title="copied ? $t('tokens.copied') : $t('tokens.copy')"
-            @click="copyCreated"
-          >
-            <span :class="copied ? 'i-tabler-check' : 'i-tabler-copy'" />
-          </button>
-        </div>
-        <div class="once-meta">
-          <span>{{ $t('tokens.k3p0p44027') }}{{ lastCreatedLabel || $t('tokens.kj3mklm028') }}</span>
-          <span>{{ $t('tokens.usage') }}</span>
-        </div>
-        <a-button
-          type="primary"
-          block
-          @click="dismissCreated"
-        >
-          {{ $t('tokens.k1s5f5zd012') }}
-        </a-button>
-      </a-modal>
+        :raw="createdRaw"
+        :masked="masked"
+        :revealed="revealed"
+        :copied="copied"
+        :label="lastCreatedLabel"
+        @toggle="toggleReveal"
+        @copy="copyCreated"
+        @dismiss="dismissCreated"
+      />
 
-      <!-- 重命名 -->
-      <a-modal
+      <TokenRenameModal
         v-model:open="renameOpen"
-        :title="$t('tokens.renameTitle')"
-        :confirm-loading="renameLoading"
-        :ok-text="$t('common.save')"
-        :cancel-text="$t('common.cancel')"
-        @ok="doRename"
-      >
-        <a-input
-          v-model:value="renameLabel"
-          :placeholder="$t('tokens.k41416002')"
-          @keydown.enter="doRename"
-        />
-      </a-modal>
+        v-model:label="renameLabel"
+        :loading="renameLoading"
+        @submit="doRename"
+      />
     </template>
   </div>
 </template>
 
 <style scoped>
 .page { padding: 4px; }
-
-.auth-gate {
-  display: flex;
-  justify-content: center;
-  padding-top: 8vh;
-}
-
-.auth-card { width: 460px; max-width: 92vw; }
-.auth-card h2 { margin: 0 0 8px; font-family: var(--font-display); }
-.sub { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-faint); }
-.head-actions { padding-bottom: 4px; }
-.table-card { margin-bottom: 16px; }
-
-.once-banner {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--tone-warning-dot);
-  background: var(--tone-warning-bg);
-  border-radius: var(--radius-chip);
-}
-
-.raw-row {
-  display: flex;
-  gap: 6px;
-  align-items: stretch;
-}
-
-.raw {
-  flex: 1 1 auto;
-  padding: 10px 12px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  word-break: break-all;
-  user-select: all;
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-}
-
-.raw-op {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  font-size: 15px;
-  color: var(--ink-soft);
-  cursor: pointer;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-  transition: color var(--transition-fast), border-color var(--transition-fast);
-}
-
-.raw-op:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.raw-op.ok {
-  color: var(--tone-success-dot);
-  border-color: var(--tone-success-dot);
-}
-
-.once-meta {
-  display: flex;
-  gap: 14px;
-  justify-content: space-between;
-  margin: 10px 2px 14px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-faint);
-}
-
-/* ===== 列表行 token 单元格 ===== */
-.tok-cell {
-  display: flex;
-  gap: 2px;
-  align-items: center;
-  min-width: 0;
-}
-
-.tok-val {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  padding: 3px 8px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-}
-
-.tok-val.revealed {
-  color: var(--accent);
-  user-select: all;
-}
-
-.tok-op {
-  flex: 0 0 auto;
-  color: var(--ink-faint);
-}
-
-.tok-op:hover {
-  color: var(--accent);
-}
-
-.tok-op.ok {
-  color: var(--tone-success-dot);
-}
-
-.legacy-tag {
-  flex: 0 0 auto;
-  margin-left: 4px;
-  font-size: 10px;
-  line-height: 16px;
-}
-
-.text-primary { color: var(--accent); }
-
-/* ══ 窄屏(v9):页头操作占满行 / token 表格横向卷轴 + 首列可读 ═════════════ */
-@media (max-width: 900px) {
-  .head-actions { width: 100%; }
-  .head-actions :deep(.ant-btn) {
-    flex: 1 1 100%;
-    width: 100%;
-    min-height: 40px;
-  }
-
-  .page :deep(.ant-table-content) table { min-width: 880px; }
-
-  .page :deep(.ant-table-thead > tr > th:first-child),
-  .page :deep(.ant-table-tbody > tr > td:first-child) { min-width: 132px; }
-}
-
-@media (max-width: 640px) {
-  .sub { font-size: 11.5px; line-height: 1.5; }
-  .once-meta { flex-direction: column; gap: 4px; }
-  .page :deep(.ant-table) .ant-btn-sm { min-height: 32px; }
-  .tok-op { min-width: 32px; }
-  .raw-op { width: 44px; min-height: 44px; }
-}
 </style>

@@ -4,11 +4,27 @@
  * 事件经 useClusteredBlocks 增量聚类(turn block,内容智能去重),
  * 流式更新只命中变化的块组件;新帧到达保持吸底。
  * 历史窗口:默认最近 200 帧(loadHistory);顶部"加载更早"按 beforeSeq 向上翻页。
+ *
+ * 本层只做编排:数据流(store + composable)与子组件拼装,对外接口仍是
+ * props { channelId }(无 emits、无 defineExpose,与拆分前一致)。
+ *  - 呈现:workshop/transcript/(过滤条 / 翻页区 / 占位三态 / 块流),scoped 样式随各自标记;
+ *  - 逻辑:useTranscriptScroll(吸底+回底动画+ResizeObserver 补滚)、
+ *    useTranscriptEnterStage(新块进场)、useTranscriptHistory(加载更早+视口锚定),
+ *    副作用注册与清理都成对留在对应 composable 内。
  */
 import { useEventsStore, type EventFilter } from '@/app/stores/workshop/events'
 import { useClusteredBlocks } from '@/app/composables/workshop/useClusteredBlocks'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
 import { useCodeCopy } from '@/app/composables/useCodeCopy'
+import { useTranscriptEnterStage } from '@/app/composables/workshop/useTranscriptEnterStage'
+import { useTranscriptScroll } from '@/app/composables/workshop/useTranscriptScroll'
+import { useTranscriptHistory } from '@/app/composables/workshop/useTranscriptHistory'
+// 子组件显式导入(与 AgentLanesView / EventBlock 同款):目录前缀已表意,
+// 自动导入名会是 WorkshopTranscriptTranscriptXxx,显式命名更直白也不受命名推导影响
+import TranscriptBlockList from '@/app/components/workshop/transcript/TranscriptBlockList.vue'
+import TranscriptEarlierPager from '@/app/components/workshop/transcript/TranscriptEarlierPager.vue'
+import TranscriptEmptyState from '@/app/components/workshop/transcript/TranscriptEmptyState.vue'
+import TranscriptFilterBar from '@/app/components/workshop/transcript/TranscriptFilterBar.vue'
 
 const { t } = useI18n()
 
@@ -17,8 +33,6 @@ const events = useEventsStore()
 const { conn } = useWorkshopWs()
 // 代码块复制事件委托(文档级单例;时间线内所有 .code-copy 通用)
 useCodeCopy()
-const scroller = ref<HTMLElement | null>(null)
-const stickBottom = ref(true)
 
 /** 连接中骨架:WS 连接中且尚无块 → 按 block 行形态的 shimmer(open-tag skel 声部) */
 const connecting = computed(() =>
@@ -31,146 +45,18 @@ const filter = computed({
 
 const { blocks, totalEvents } = useClusteredBlocks(() => props.channelId)
 
-// ===== 向上翻页历史 =====
-const loadingEarlier = ref(false)
-const earlierExhausted = ref(false)
-/** 已加载事件数 vs 持久化总量 → 是否可能还有更早(粗判,点击时由 loadEarlier 探底) */
-const loadedCount = computed(() => events.ring(props.channelId).items.length)
-const maybeMore = computed(() => !earlierExhausted.value && loadedCount.value > 0)
-const loadEarlier = async (): Promise<void> => {
-  if (loadingEarlier.value || earlierExhausted.value) return
-  loadingEarlier.value = true
-  // 记住滚动位置:头部插入后保持视口锚定(不吸底跳变)
-  const el = scroller.value
-  const anchor = el ? { top: el.scrollTop, height: el.scrollHeight } : null
-  try {
-    const hasMore = await events.loadEarlier(props.channelId)
-    if (!hasMore) earlierExhausted.value = true
-    if (el && anchor) {
-      await nextTick()
-      el.scrollTop = el.scrollHeight - anchor.height + anchor.top
-    }
-  }
-  catch {
-    /* 历史拉取失败:保持按钮可重试,不打断时间线 */
-  }
-  finally {
-    loadingEarlier.value = false
-  }
-}
-
-const onScroll = (): void => {
-  const el = scroller.value
-  if (!el) return
-  stickBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 120
-}
-
-// ===== 回底动画(open-tag jump-bottom:800ms ease-out,动画期抑制按钮闪烁) =====
-const scrollingDown = ref(false)
-/** 结构化滚动容器(绕开 vue-tsc 双 lib.dom 的 Element 类型不兼容) */
-type ScrollBox = { scrollTop: number, scrollHeight: number, clientHeight: number }
-const animateScroll = (el: ScrollBox, ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      el.scrollTop = el.scrollHeight
-      resolve()
-      return
-    }
-    const from = el.scrollTop
-    const delta = el.scrollHeight - el.clientHeight - from
-    const t0 = performance.now()
-    const step = (t: number): void => {
-      const k = Math.min(1, (t - t0) / ms)
-      const eased = 1 - (1 - k) ** 3 // ease-out cubic
-      el.scrollTop = from + delta * eased
-      if (k < 1) requestAnimationFrame(step)
-      else resolve()
-    }
-    requestAnimationFrame(step)
-  })
-
-/** 跳回最新:滚底并恢复吸底(用户离开底部后新内容不再自动跟随) */
-const jumpToLatest = async (): Promise<void> => {
-  stickBottom.value = true
-  const el = scroller.value
-  if (!el) return
-  scrollingDown.value = true
-  try {
-    await animateScroll(el, 800)
-  }
-  finally {
-    scrollingDown.value = false
-  }
-}
-
 // ===== 新块进场编排(open-tag motion charter 移植) =====
-/**
- * 只有实时新到的尾部块做进场动画(60ms stagger,600ms burst 窗口,上限 8 条);
- * 整体重建(过滤切换/聚焦/历史回填——一次出现大量新 id)与组件首载直接显示,
- * 不动画不延迟。映射:blockId → 进场延迟 ms;-1 = 不动画。
- */
-type Stage = { enter: boolean, delay: number }
-const staged = ref(new Map<string, Stage>())
-let burstAt = 0
-let burstN = 0
-const mountedAt = Date.now()
-watch(blocks, (list, prev) => {
-  const prevIds = new Set((prev ?? []).map(b => b.id))
-  const fresh = list.filter(b => !prevIds.has(b.id))
-  const map = new Map<string, Stage>()
-  const wholesale = fresh.length === 0
-    || fresh.length > Math.max(8, Math.ceil(list.length * 0.4))
-    || Date.now() - mountedAt < 1500
-  if (!wholesale) {
-    const now = Date.now()
-    if (now - burstAt > 600) {
-      burstAt = now
-      burstN = 0
-    }
-  }
-  for (const b of list) {
-    const isFresh = !prevIds.has(b.id)
-    const delay = isFresh && !wholesale ? Math.min(burstN++, 7) * 60 : -1
-    map.set(b.id, { enter: delay >= 0, delay: Math.max(0, delay) })
-  }
-  staged.value = map
-}, { immediate: true })
+const { staged } = useTranscriptEnterStage(blocks)
 
-/** 吸底:新块出现 / seq 增长 / 块内容尺寸变化(可能高增)后滚到底 */
-const scrollToBottom = async (): Promise<void> => {
-  if (!stickBottom.value) return
-  await nextTick()
-  const el = scroller.value
-  if (el) el.scrollTop = el.scrollHeight
-}
-watch(() => blocks.value.length, () => {
-  void scrollToBottom()
-})
-watch(() => events.lastSeq(props.channelId), () => {
-  void scrollToBottom()
+// ===== 滚动容器:吸底 / 回底动画 / 内容高度增长补滚 =====
+const { scroller, columnEl, stickBottom, scrollingDown, onScroll, jumpToLatest } = useTranscriptScroll({
+  blockCount: () => blocks.value.length,
+  lastSeq: () => events.lastSeq(props.channelId),
 })
 
-// 内容高度增长吸底:同一流块 delta 打字机让块变高(块数与 seq 不变或合并帧不推 seq),
-// ResizeObserver 观测内容列高度变化补一次滚底 —— 长输出不再"卡"在中途。
-// (观察器以结构化类型声明:绕开 vue-tsc 双 lib.dom 下 Element 类型不兼容问题)
-const columnEl = ref<HTMLElement | null>(null)
-let contentObserver: { disconnect(): void } | null = null
-onMounted(() => {
-  const el = scroller.value
-  const column = columnEl.value
-  if (!el || !column || typeof ResizeObserver === 'undefined') return
-  const Observer = ResizeObserver as unknown as
-    new (cb: () => void) => { observe(target: unknown): void, disconnect(): void }
-  const observer = new Observer(() => {
-    if (stickBottom.value) el.scrollTop = el.scrollHeight
-  })
-  observer.observe(column)
-  contentObserver = observer
-})
-onBeforeUnmount(() => {
-  contentObserver?.disconnect()
-  contentObserver = null
-})
+// ===== 向上翻页历史 =====
+const { loadingEarlier, earlierExhausted, loadedCount, maybeMore, loadEarlier }
+  = useTranscriptHistory(() => props.channelId, scroller)
 
 /** 断线待对齐(诚实连接态:open-tag 规范——不假装在线,提示同步中) */
 const syncing = computed(() => conn.pendingReplay || conn.state === 'connecting')
@@ -189,63 +75,24 @@ const filterOptions: Array<{ value: EventFilter, label: string }> = [
   { value: 'team', label: t('transcriptTimeline.k3y5ja016') },
   { value: 'errors', label: t('transcriptTimeline.k49d2l017') },
 ]
-
-// ===== 日期分隔线(open-tag date-divider 移植):块 firstAt 跨日 → 插入 hairline 分隔 =====
-const startOfDay = (iso: string): number => {
-  const d = new Date(iso)
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-}
-const dayLabel = (iso: string): string => {
-  const d = new Date(iso)
-  const today = new Date()
-  const yesterday = new Date()
-  yesterday.setDate(today.getDate() - 1)
-  const sameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-  if (sameDay(d, today)) return t('transcriptTimeline.k3wcqg018')
-  if (sameDay(d, yesterday)) return t('transcriptTimeline.k40l1y019')
-  const y = d.getFullYear() !== today.getFullYear() ? t('transcriptTimeline.k2hda35028', { p0: d.getFullYear() }) : ''
-  return t('transcriptTimeline.kbs29zx029', { p0: y, p1: d.getMonth() + 1, p2: d.getDate() })
-}
-/** 每个块是否需要前置日界分隔(与上一块不同日,或首块) */
-const blockDayFlags = computed(() => {
-  const flags: Array<{ divider: string | null }> = []
-  let prevDay: number | null = null
-  for (const b of blocks.value) {
-    const day = startOfDay(b.firstAt)
-    flags.push({ divider: prevDay === null || day !== prevDay ? dayLabel(b.firstAt) : null })
-    prevDay = day
-  }
-  return flags
-})
+/**
+ * 当前档位标签(过滤空态文案用)。
+ * 与过滤条共用同一份 filterOptions:i18n key 只留在本处,避免两处标签漂移。
+ */
+const filterLabel = computed(() => filterOptions.find(o => o.value === filter.value)?.label ?? filter.value)
 </script>
 
 <template>
   <div class="transcript">
-    <div class="filter-bar">
-      <a-segmented
-        v-model:value="filter"
-        size="small"
-        :options="filterOptions"
-      />
-      <span class="count">{{ totalEvents }} {{ $t('transcriptTimeline.k1atjpx1005') }} {{ blocks.length }} {{ $t('transcriptTimeline.k4a9o007') }}</span>
-      <!-- 连接诚实态:断线待对齐 → 同步中脉搏;在线 → 最后数据时间(open-tag 规范) -->
-      <span
-        class="sync-chip"
-        :data-state="syncing ? 'syncing' : conn.state"
-        :title="syncing ? $t('transcriptTimeline.syncLag') : $t('transcriptTimeline.kglov3b025', { p0: lastDataAgo || $t('transcriptTimeline.none') })"
-      >
-        <span
-          v-if="syncing"
-          class="sync-pulse"
-        />
-        <span
-          v-else-if="conn.state === 'open'"
-          class="i-tabler-point-filled sync-dot"
-        />
-        {{ syncing ? $t('transcriptTimeline.k3lmtk3008') : conn.state === 'open' ? lastDataAgo || $t('transcriptTimeline.k3y2p8020') : $t('transcriptTimeline.k44c2n024') }}
-      </span>
-    </div>
+    <TranscriptFilterBar
+      v-model:filter="filter"
+      :options="filterOptions"
+      :total-events="totalEvents"
+      :block-count="blocks.length"
+      :syncing="syncing"
+      :conn-state="conn.state"
+      :last-data-ago="lastDataAgo"
+    />
     <div
       ref="scroller"
       class="scroller"
@@ -265,89 +112,25 @@ const blockDayFlags = computed(() => {
         ref="columnEl"
         class="column"
       >
-        <button
-          v-if="maybeMore"
-          class="earlier-btn"
-          :disabled="loadingEarlier"
-          @click="loadEarlier"
-        >
-          {{ loadingEarlier ? $t('transcriptTimeline.k1br0ij9009') : $t('transcriptTimeline.kywgd38021') }}
-        </button>
-        <div
-          v-if="earlierExhausted && loadedCount > 0"
-          class="earlier-done"
-        >
-          {{ $t('transcriptTimeline.k1kbaden003') }}
-        </div>
-        <!-- 连接中骨架:头像圆 + 双行占位,布局对齐最终块形态(免跳变) -->
-        <div
-          v-if="connecting"
-          class="skel-stack"
-        >
-          <div
-            v-for="n in 3"
-            :key="n"
-            class="skel-row"
-            :style="{ '--d': `${(n - 1) * 0.12}s` }"
-          >
-            <span class="aw-skel skel-ava" />
-            <div class="skel-lines">
-              <span class="aw-skel skel-line name" />
-              <span class="aw-skel skel-line w70" />
-              <span class="aw-skel skel-line w45" />
-            </div>
-          </div>
-        </div>
-        <div
-          v-else-if="blocks.length === 0 && totalEvents === 0"
-          class="empty"
-        >
-          <!-- 同步中 ≠ 空:诚实区分(快照未到时不断言"无事件") -->
-          <span
-            v-if="syncing || conn.state !== 'open'"
-            class="i-tabler-refresh empty-icon"
-          />
-          <span
-            v-else
-            class="i-tabler-message-dots empty-icon"
-          />
-          <p class="empty-title">
-            {{ syncing || conn.state !== 'open' ? $t('transcriptTimeline.klnne6o010') : $t('transcriptTimeline.k126izdm022') }}
-          </p>
-          <p class="empty-hint">
-            {{ syncing || conn.state !== 'open' ? $t('transcriptTimeline.k1iuqpxj011') : $t('transcriptTimeline.kuyjpmi023') }}
-          </p>
-        </div>
-        <!-- 过滤空态:有事件但当前过滤无匹配(区别于真空) -->
-        <div
-          v-else-if="blocks.length === 0"
-          class="empty filtered"
-        >
-          <span class="i-tabler-filter-off empty-icon" />
-          <p class="empty-title">
-            {{ $t('transcriptTimeline.ktuo1zg004') }}
-          </p>
-          <p class="empty-hint">
-            「{{ filterOptions.find(o => o.value === filter)?.label ?? filter }}」{{ $t('transcriptTimeline.kapxgq4006') }}
-          </p>
-        </div>
-        <template
-          v-for="(b, i) in blocks"
-          :key="b.id"
-        >
-          <div
-            v-if="blockDayFlags[i]?.divider"
-            class="date-divider"
-          >
-            <span class="date-divider-label">{{ blockDayFlags[i]!.divider }}</span>
-          </div>
-          <workshop-event-block
-            :block="b"
-            :turn-start="i > 0 && blocks[i - 1]!.agentId !== b.agentId"
-            :compact="i > 0 && blocks[i - 1]!.agentId === b.agentId"
-            :enter-stage="staged.get(b.id)"
-          />
-        </template>
+        <TranscriptEarlierPager
+          :visible="maybeMore"
+          :loading="loadingEarlier"
+          :exhausted="earlierExhausted"
+          :loaded-count="loadedCount"
+          @load="loadEarlier"
+        />
+        <TranscriptEmptyState
+          :connecting="connecting"
+          :block-count="blocks.length"
+          :total-events="totalEvents"
+          :syncing="syncing"
+          :conn-state="conn.state"
+          :filter-label="filterLabel"
+        />
+        <TranscriptBlockList
+          :blocks="blocks"
+          :staged="staged"
+        />
       </div>
     </div>
   </div>
@@ -360,55 +143,6 @@ const blockDayFlags = computed(() => {
   height: 100%;
   min-height: 0;
   background: var(--paper); /* 灰画布:消息气泡白卡在此浮出(Slack 声部) */
-}
-.filter-bar {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 6px 16px;
-  background: var(--paper-raised);
-  border-bottom: 1px solid var(--line);
-}
-.count {
-  font-size: 11px;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-faint);
-}
-/* 连接诚实态 chip:同步中琥珀脉搏 / 在线绿点+最后数据时间 / 离线灰 */
-.sync-chip {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
-  margin-left: auto;
-  padding: 1px 8px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-faint);
-  background: var(--paper-deep);
-  border-radius: var(--radius-pill);
-}
-.sync-chip[data-state='syncing'] {
-  color: var(--tone-warning-dot);
-}
-.sync-chip[data-state='open'] .sync-dot {
-  font-size: 7px;
-  color: var(--tone-success-dot);
-}
-.sync-pulse {
-  width: 6px;
-  height: 6px;
-  background: var(--tone-warning-dot);
-  border-radius: 50%;
-  animation: sync-breath 1.2s ease-in-out infinite;
-}
-@keyframes sync-breath {
-  0%, 100% { opacity: 0.35; transform: scale(0.85); }
-  50% { opacity: 1; transform: scale(1); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sync-pulse { animation: none; opacity: 0.8; }
 }
 .jump-latest {
   position: sticky;
@@ -451,119 +185,12 @@ const blockDayFlags = computed(() => {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-.earlier-btn {
-  display: block;
-  margin: 0 auto 10px;
-  padding: 4px 14px;
-  font-family: var(--font-body);
-  font-size: 11px;
-  color: var(--ink-faint);
-  cursor: pointer;
-  background: var(--paper-raised);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill);
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-.earlier-btn:hover:not(:disabled) {
-  color: var(--ink);
-  background: var(--paper-deep);
-}
-.earlier-btn:disabled { opacity: 0.5; cursor: default; }
-.earlier-done {
-  margin-bottom: 8px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  text-align: center;
-  color: var(--ink-faint);
-}
-/* 空态:编辑部式 serif 标题(pane-empty 声部) */
-.empty {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-  padding: 72px 16px;
-  text-align: center;
-}
-.empty-icon {
-  font-size: 28px;
-  color: var(--ink-faint);
-}
-.empty-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  color: var(--ink-soft);
-}
-.empty-hint {
-  margin: 0;
-  font-size: 12px;
-  color: var(--ink-faint);
-}
-
-/* 连接中骨架:对齐块行网格(26px 头像列 + 内容列),行间延迟入场 */
-.skel-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 26px 6px;
-}
-
-.skel-row {
-  display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
-  gap: 10px;
-  animation: aw-rise 0.4s cubic-bezier(0.22, 0.68, 0.36, 1) backwards;
-  animation-delay: var(--d, 0s);
-}
-
-.skel-ava {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-}
-
-.skel-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.skel-line {
-  height: 11px;
-}
-
-.skel-line.name { width: 120px; height: 13px; }
-.skel-line.w70 { width: 70%; }
-.skel-line.w45 { width: 45%; }
-
-@media (prefers-reduced-motion: reduce) {
-  .skel-row { animation: none; }
-}
 
 /* ── 窄屏(≤1023):阅读列收边 + 富文本/代码/终端块横向滚动而非顶破视口 ──
    消息体由 workshop-event-block(及其内部的 prose/code-block)渲染,
    这里用 :deep 给它们一条自己的卷轴:代码不折行(折行会毁掉缩进语义),
    改为在自己块内横扫;图片/画布一律不超列宽。 */
 @media (max-width: 1023.98px) {
-  .filter-bar {
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 6px 10px;
-  }
-
-  .filter-bar :deep(.ant-segmented) {
-    flex: 1 1 100%;
-  }
-
-  .count,
-  .sync-chip,
-  .earlier-done {
-    font-size: 11.5px;
-  }
-
   .column {
     padding: 8px 8px 22px;
   }
@@ -584,16 +211,11 @@ const blockDayFlags = computed(() => {
     height: auto;
   }
 
-  .empty-hint {
-    font-size: 13px;
-  }
-
-  .earlier-btn,
+  /* 原为 `.earlier-btn, .jump-latest` 一条 min-height 规则,拆组件后随各自标记落位:
+     `.earlier-btn` 的同一份声明在 transcript/TranscriptEarlierPager.vue —— 有意重复,
+     改一处同步所有副本。 */
   .jump-latest {
     min-height: 40px;
-  }
-
-  .jump-latest {
     padding: 8px 14px;
     font-size: 12px;
   }

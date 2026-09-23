@@ -3,179 +3,30 @@
  * Agent 模板库:用户级隔离的模板 CRUD + 实例去向(克隆到了哪些 channel)。
  * v10 可见性:private 仅本人;public 全员可读可用(仅属主可改删);内置(锁)任何人不可改删。
  * admin:全量视图(含他人私有),附创建者;可改删任意非内置模板。
+ *
+ * 本页只做编排:目录/筛选/徽标在 composables/useAgentTemplatesCatalog,
+ * harness 注册表与能力矩阵在 composables/useAgentHarnessOptions(派生数据唯一一份,
+ * 表格与弹窗都从这里拿),行级写操作在 composables/useAgentTemplateActions,
+ * 弹窗开关与 payload 在 composables/useAgentTemplateDialogState,
+ * 弹窗表单与提交在 useAgentTemplateForm(由弹窗组件调用,成功后再 emit 回来 reload)。
+ * 展示件:components/workshop/agents/**。
  */
-import { message } from 'ant-design-vue'
-import { useWorkshopApi, type AgentTemplateDto, type HarnessMetaDto } from '../../composables/workshop/useWorkshopApi'
-import { useUserStore } from '../../stores/workshop/user'
+import AgentTemplateEditModal from '@/app/components/workshop/agents/AgentTemplateEditModal.vue'
+import AgentTemplateTable from '@/app/components/workshop/agents/AgentTemplateTable.vue'
+import AgentTemplateToolbar from '@/app/components/workshop/agents/AgentTemplateToolbar.vue'
+import { useAgentHarnessOptions } from './composables/useAgentHarnessOptions'
+import { useAgentTemplateActions } from './composables/useAgentTemplateActions'
+import { useAgentTemplateDialogState } from './composables/useAgentTemplateDialogState'
+import { useAgentTemplatesCatalog } from './composables/useAgentTemplatesCatalog'
 
 const { t: tt } = useI18n()
 
-/** 内置种子模板按稳定 id 翻译(服务端种子名是中文数据);自建/改名回退原名 */
-const tplName = (r: { id: string, name: string }): string => seedName(tt, r)
-
 definePageMeta({ layout: 'default' })
 
-const api = useWorkshopApi()
-const userStore = useUserStore()
-const templates = ref<AgentTemplateDto[]>([])
-const loading = ref(false)
-const load = async (): Promise<void> => {
-  loading.value = true
-  try {
-    const res = await api.listTemplates()
-    templates.value = (res as unknown as { data?: AgentTemplateDto[] })?.data ?? []
-  }
-  finally {
-    loading.value = false
-  }
-}
-// SSR 安全:setup 期 $http(axios)无法在服务端发相对地址请求,拒绝会变成未处理
-// rejection 直杀渲染进程;页面数据一律客户端装载
-if (import.meta.client) void load()
-
-// ===== 过滤(全部/我的/公开/内置;admin 另有"他人私有") =====
-type Filter = 'all' | 'mine' | 'public' | 'builtin' | 'others'
-const filter = ref<Filter>('all')
-const filterOptions = computed(() => {
-  const opts: Array<{ value: Filter, label: string }> = [
-    { value: 'all', label: tt('chips.chipAll', { n: templates.value.length }) },
-    { value: 'mine', label: tt('chips.chipMine', { n: templates.value.filter(t => t.ownerUserId === userStore.user?.id).length }) },
-    { value: 'public', label: tt('chips.chipPublic', { n: templates.value.filter(t => t.visibility === 'public').length }) },
-    { value: 'builtin', label: tt('chips.chipBuiltin', { n: templates.value.filter(t => t.isBuiltin).length }) },
-  ]
-  if (userStore.isAdmin) {
-    opts.push({ value: 'others', label: tt('chips.chipOthers', { n: templates.value.filter(t => t.ownerUserId !== null && t.ownerUserId !== userStore.user?.id && t.visibility === 'private').length }) })
-  }
-  return opts
-})
-const shown = computed(() => {
-  const uid = userStore.user?.id
-  switch (filter.value) {
-    case 'mine': return templates.value.filter(t => t.ownerUserId === uid)
-    case 'public': return templates.value.filter(t => t.visibility === 'public')
-    case 'builtin': return templates.value.filter(t => t.isBuiltin)
-    case 'others': return templates.value.filter(t => t.ownerUserId !== null && t.ownerUserId !== uid && t.visibility === 'private')
-    default: return templates.value
-  }
-})
-
-// 写权限:属主或 admin;内置/他人公开模板只读
-const canWrite = (t: AgentTemplateDto): boolean =>
-  !t.isBuiltin && (t.ownerUserId === userStore.user?.id || userStore.isAdmin)
-
-const visTag = (t: AgentTemplateDto): { text: string, color: string, icon?: string } => {
-  if (t.isBuiltin) return { text: tt('agents.k3x23c017'), color: 'default', icon: 'i-tabler-lock' }
-  if (t.visibility === 'public') return { text: tt('agents.k3wv1t018'), color: 'green' }
-  return { text: tt('agents.k447jj019'), color: 'default' }
-}
-
-// ===== harness 选项(引擎注册表动态拉取,含环境可用性探测;失败回退静态表) =====
-const harnesses = ref<HarnessMetaDto[]>([])
-const harnessById = computed(() => new Map(harnesses.value.map(h => [h.id, h])))
-const isUnavailable = (id: string): boolean => harnessById.value.get(id)?.available === false
-const harnessOptions = computed(() =>
-  (harnesses.value.length > 0
-    ? harnesses.value
-    : [
-        { id: 'mock', label: tt('agents.hMock'), description: '', capabilities: { steer: true, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
-        { id: 'omp', label: tt('agents.hOmp'), description: '', capabilities: { steer: true, supervise: true, hitl: true, terminal: true, contextStats: true, compact: true } },
-        { id: 'claude', label: 'claude', description: '', capabilities: { steer: false, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
-      ] as HarnessMetaDto[]).map((h) => {
-    const unavailable = h.available === false
-    return { value: h.id, label: unavailable ? `${h.label}(${tt('agents.notInstalled')})` : h.label, disabled: unavailable }
-  }),
-)
-const capBadges = (id: string): string[] => {
-  const caps = harnesses.value.find(h => h.id === id)?.capabilities
-  if (!caps) return []
-  const out: string[] = []
-  if (caps.steer) out.push('steer')
-  if (caps.supervise) out.push('lead')
-  if (caps.hitl) out.push('HITL')
-  if (caps.compact) out.push('compact')
-  return out
-}
-const loadHarnesses = async (): Promise<void> => {
-  try {
-    const res = await api.listHarnesses()
-    const list = (res as unknown as { data?: { harnesses?: HarnessMetaDto[] } })?.data?.harnesses
-    if (Array.isArray(list) && list.length > 0) harnesses.value = list
-  }
-  catch { /* 回退静态表 */ }
-}
-if (import.meta.client) void loadHarnesses()
-
-const editOpen = ref(false)
-const editing = ref<AgentTemplateDto | null>(null)
-const form = reactive({ name: '', harness: 'mock', configJson: '{}', visibility: 'private' as 'private' | 'public' })
-const openCreate = (): void => {
-  editing.value = null
-  form.name = ''
-  form.harness = 'mock'
-  form.configJson = '{}'
-  form.visibility = 'private'
-  editOpen.value = true
-}
-const openEdit = (t: AgentTemplateDto): void => {
-  editing.value = t
-  form.name = t.name
-  form.harness = t.harness
-  form.configJson = JSON.stringify(t.config ?? {}, null, 2)
-  form.visibility = t.visibility
-  editOpen.value = true
-}
-const save = async (): Promise<void> => {
-  let config: Record<string, unknown> = {}
-  try {
-    config = JSON.parse(form.configJson || '{}')
-  }
-  catch {
-    message.error(tt('agents.badConfigJson'))
-    return
-  }
-  // 前端兜底:引擎未安装禁止保存(与后端 assertHarnessUsable 同判据)
-  if (isUnavailable(form.harness)) {
-    message.error(harnessById.value.get(form.harness)?.error ?? tt('agents.notInstalled'))
-    return
-  }
-  try {
-    if (editing.value) {
-      await api.updateTemplate(editing.value.id, { name: form.name, harness: form.harness, config, visibility: form.visibility })
-      message.success(tt('agents.k3n9aij020'))
-    }
-    else {
-      await api.createTemplate({ name: form.name, harness: form.harness, config, visibility: form.visibility })
-      message.success(tt('agents.k3n5hak021'))
-    }
-    editOpen.value = false
-    void load()
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-}
-const remove = async (t: AgentTemplateDto): Promise<void> => {
-  await api.deleteTemplate(t.id)
-  message.success(tt('agents.k3n5sd7022'))
-  void load()
-}
-
-const toggleEnabled = async (t: AgentTemplateDto): Promise<void> => {
-  await api.updateTemplate(t.id, { enabled: t.enabled === 1 ? 0 : 1 })
-  void load()
-}
-
-/** 一键切换可见性(属主/admin;行内 switch) */
-const toggleVisibility = async (t: AgentTemplateDto, pub: boolean): Promise<void> => {
-  try {
-    await api.updateTemplate(t.id, { visibility: pub ? 'public' : 'private' })
-    message.success(pub ? tt('agents.kxa6cxx023') : tt('agents.k1xxabaf024'))
-    void load()
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-}
+const { loading, load, tplName, filter, filterOptions, shown, canWrite, visTag, isAdmin } = useAgentTemplatesCatalog()
+const { harnesses, harnessMeta, isUnavailable, harnessOptions, capBadges } = useAgentHarnessOptions()
+const { remove, toggleEnabled, toggleVisibility } = useAgentTemplateActions({ reload: load })
+const { editOpen, editing, openCreate, openEdit } = useAgentTemplateDialogState()
 
 useHead({ title: () => tt('titles.agents') })
 </script>
@@ -202,283 +53,40 @@ useHead({ title: () => tt('titles.agents') })
       </a-space>
     </div>
 
-    <div class="toolbar">
-      <a-segmented
-        v-model:value="filter"
-        size="small"
-        :options="filterOptions"
-      />
-      <span
-        v-if="userStore.isAdmin"
-        class="admin-note"
-      ><span class="i-tabler-shield-check" /> {{ $t('agents.ka1gpdj011') }}</span>
-    </div>
+    <AgentTemplateToolbar
+      v-model:filter="filter"
+      :options="filterOptions"
+      :is-admin="isAdmin"
+    />
 
-    <a-table
+    <AgentTemplateTable
       :data-source="shown"
       :loading="loading"
-      row-key="id"
-      size="small"
-      :pagination="false"
-    >
-      <a-table-column
-        :title="$t('agents.k3xhia001')"
-        data-index="name"
-      >
-        <template #default="{ record }">
-          <span class="tpl-name">
-            <span class="i-tabler-user-square" />
-            {{ tplName(record) }}
-          </span>
-        </template>
-      </a-table-column>
-      <a-table-column
-        title="harness"
-        data-index="harness"
-        :width="120"
-      >
-        <template #default="{ record }">
-          <span
-            class="h-cell"
-            :class="{ off: isUnavailable(record.harness) }"
-            :title="isUnavailable(record.harness) ? (harnessById.get(record.harness)?.error ?? '') : (harnessById.get(record.harness)?.resolvedPath ?? '')"
-          >
-            <span class="h-dot" />{{ record.harness }}<span
-              v-if="isUnavailable(record.harness)"
-              class="h-miss"
-            >({{ tt('agents.notInstalled') }})</span>
-          </span>
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('agents.k3lrqn0002')"
-        :width="120"
-      >
-        <template #default="{ record }">
-          <a-tag
-            :color="visTag(record).color"
-            class="vis-tag"
-          >
-            <span
-              v-if="visTag(record).icon"
-              :class="visTag(record).icon"
-            />{{ visTag(record).text }}
-          </a-tag>
-          <!-- 开关**不带文字**:左边那枚 tag 已经在说"公开/私有"了。
-               两处同时显示同一个词,是同一列里把一条信息讲了两遍(实测桌面版每行都这样)。
-               开关只负责"可切换"这个动作,语义由 tag + title 承载。 -->
-          <a-switch
-            v-if="!record.isBuiltin && canWrite(record)"
-            :checked="record.visibility === 'public'"
-            size="small"
-            :title="record.visibility === 'public' ? $t('agents.toPrivate') : $t('agents.toPublic')"
-            @change="(v: unknown) => toggleVisibility(record, v === true)"
-          />
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('agents.k3l98u7003')"
-        :width="130"
-      >
-        <template #default="{ record }">
-          <span class="owner">{{ record.ownerName ?? record.ownerUserId?.slice(0, 8) ?? '-' }}</span>
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('agents.k3mr526004')"
-        :width="70"
-      >
-        <template #default="{ record }">
-          {{ record.instances.length }}
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('agents.k3xhfg005')"
-        :width="70"
-      >
-        <template #default="{ record }">
-          <a-switch
-            :checked="record.enabled === 1"
-            size="small"
-            :disabled="!canWrite(record)"
-            @change="toggleEnabled(record)"
-          />
-        </template>
-      </a-table-column>
-      <a-table-column
-        :title="$t('agents.k40aa6006')"
-        :width="130"
-      >
-        <template #default="{ record }">
-          <a-space size="small">
-            <a-button
-              size="small"
-              type="text"
-              :disabled="!canWrite(record)"
-              :title="record.isBuiltin ? $t('agents.builtinNoEdit') : !canWrite(record) ? $t('agents.ownerOnlyEdit') : $t('common.edit')"
-              @click="openEdit(record)"
-            >
-              {{ $t('agents.k45eb0012') }}
-            </a-button>
-            <a-popconfirm
-              :title="$t('agents.keetzvf007')"
-              :disabled="!canWrite(record)"
-              @confirm="remove(record)"
-            >
-              <a-button
-                size="small"
-                type="text"
-                danger
-                :disabled="!canWrite(record)"
-                :title="record.isBuiltin ? $t('agents.builtinNoDelete') : $t('common.delete')"
-              >
-                {{ $t('agents.k3xakp013') }}
-              </a-button>
-            </a-popconfirm>
-          </a-space>
-        </template>
-      </a-table-column>
-      <template #expandedRowRender="{ record }">
-        <div
-          v-for="inst in record.instances"
-          :key="inst.id"
-          class="inst"
-        >
-          <a-tag :color="inst.role === 'lead' ? 'gold' : 'blue'">
-            {{ inst.role }}
-          </a-tag>
-          <span class="inst-id">{{ inst.id.slice(0, 8) }}</span>
-          <span class="inst-ch">channel {{ inst.channelId.slice(0, 8) }}</span>
-        </div>
-        <div
-          v-if="record.instances.length === 0"
-          class="empty"
-        >
-          {{ $t('agents.k1d036zs014') }}
-        </div>
-      </template>
-    </a-table>
+      :tpl-name="tplName"
+      :can-write="canWrite"
+      :vis-tag="visTag"
+      :is-unavailable="isUnavailable"
+      :harness-meta="harnessMeta"
+      @edit="openEdit"
+      @remove="remove"
+      @toggle-enabled="toggleEnabled"
+      @toggle-visibility="toggleVisibility"
+    />
 
-    <a-modal
+    <AgentTemplateEditModal
       v-model:open="editOpen"
-      :title="editing ? $t('agents.editTpl') : $t('agents.newTpl')"
-      :ok-text="$t('common.save')"
-      :cancel-text="$t('common.cancel')"
-      @ok="save"
-    >
-      <a-form layout="vertical">
-        <a-form-item :label="$t('agents.k3xhia001')">
-          <a-input v-model:value="form.name" />
-        </a-form-item>
-        <a-form-item label="harness">
-          <a-select
-            v-model:value="form.harness"
-            :options="harnessOptions"
-          >
-            <template #option="{ value, label }">
-              <span
-                class="h-opt"
-                :class="{ off: isUnavailable(String(value)) }"
-              >
-                <span class="h-opt-dot" /> {{ label }}
-              </span>
-            </template>
-          </a-select>
-          <div
-            v-if="harnesses.length > 0"
-            class="harness-status"
-            :class="{ off: isUnavailable(form.harness) }"
-          >
-            <template v-if="isUnavailable(form.harness)">
-              <span class="i-tabler-plug-off" /> {{ harnessById.get(form.harness)?.error }}
-              <a
-                v-if="harnessById.get(form.harness)?.homepage"
-                class="h-install"
-                :href="harnessById.get(form.harness)?.homepage"
-                target="_blank"
-                rel="noopener"
-              >{{ tt('agents.installLink') }}</a>
-            </template>
-            <template v-else-if="harnessById.get(form.harness)?.inprocess">
-              <span class="i-tabler-plug-connected" /> {{ tt('agents.harnessInprocess') }}
-            </template>
-            <template v-else-if="harnessById.get(form.harness)?.resolvedPath">
-              <span class="i-tabler-plug-connected" /> <span class="mono">{{ harnessById.get(form.harness)?.resolvedPath }}</span>
-            </template>
-          </div>
-          <div
-            v-if="capBadges(form.harness).length"
-            class="harness-caps"
-          >
-            <span
-              v-for="b in capBadges(form.harness)"
-              :key="b"
-              class="harness-cap"
-            >{{ b }}</span>
-          </div>
-        </a-form-item>
-        <a-form-item :label="$t('agents.k3lrqn0002')">
-          <a-radio-group v-model:value="form.visibility">
-            <a-radio value="private">
-              {{ $t('agents.k17jfge3015') }}
-            </a-radio>
-            <a-radio value="public">
-              {{ $t('agents.k1tt5zyo016') }}
-            </a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item :label="$t('agents.configLabel')">
-          <a-textarea
-            v-model:value="form.configJson"
-            :rows="6"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+      :editing="editing"
+      :harnesses="harnesses"
+      :harness-options="harnessOptions"
+      :harness-meta="harnessMeta"
+      :is-unavailable="isUnavailable"
+      :cap-badges="capBadges"
+      @saved="load"
+    />
   </div>
 </template>
 
 <style scoped>
-.harness-caps { margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
-.harness-cap {
-  font-size: 11px;
-  line-height: 18px;
-  padding: 0 6px;
-  border: 1px solid var(--border, #2a3a4a);
-  border-radius: 3px;
-  opacity: 0.75;
-}
-.h-opt { display: inline-flex; align-items: center; gap: 7px; }
-.h-opt-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--tone-success-dot, #4a6b57); }
-.h-opt.off .h-opt-dot { background: var(--tone-danger-dot, #c25a4e); }
-.h-opt.off { opacity: 0.6; }
-.h-install { margin-left: 8px; color: var(--accent); text-decoration: none; }
-.h-install:hover { text-decoration: underline; }
-.harness-status {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-top: 6px;
-  font-size: 11px;
-  color: var(--ink-faint);
-}
-.harness-status.off { color: var(--danger, #c25a4e); }
-.h-cell {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-.h-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ok, #4a6b57);
-}
-.h-cell.off .h-dot { background: var(--danger, #c25a4e); }
-.h-cell.off { opacity: 0.75; }
-.h-miss { color: var(--danger, #c25a4e); font-family: var(--font-sans); font-size: 11px; }
 .page { padding: 4px; }
 .head {
   display: flex;
@@ -488,40 +96,10 @@ useHead({ title: () => tt('titles.agents') })
 }
 h2 { margin: 0 0 4px; }
 .sub { margin: 0; font-size: 12px; opacity: 0.55; }
-.toolbar {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.admin-note {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
-  font-size: 11px;
-  color: var(--ink-faint);
-}
-.tpl-name {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-}
-.vis-tag {
-  margin-right: 8px;
-}
-.owner { font-size: 12px; color: var(--ink-soft); }
-.inst {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 2px 0;
-  font-size: 12px;
-}
-.inst-id,
-.inst-ch { font-family: var(--font-mono); opacity: 0.6; }
-.empty { padding: 6px 0; font-size: 12px; opacity: 0.4; }
 
-/* ══ 窄屏(v9):页头纵向堆叠 / 筛选条换行 / 表格横向卷轴 + 首列可读 ═════════ */
+/* ══ 窄屏(v9):页头纵向堆叠 ═══════════════════════════════════════════════
+   同一条窄屏规则的另外两半随各自的标记走:筛选条换行在 AgentTemplateToolbar.vue,
+   表格横向卷轴 + 首列可读在 AgentTemplateTable.vue。 */
 @media (max-width: 900px) {
   .head {
     flex-direction: column;
@@ -542,71 +120,11 @@ h2 { margin: 0 0 4px; }
 
   .head :deep(.ant-space-item) { width: 100%; }
   .head :deep(.ant-btn) { width: 100%; min-height: 40px; }
-
-  .toolbar {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .toolbar :deep(.ant-segmented) {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-
-  .admin-note {
-    flex: 1 1 100%;
-    min-width: 0;
-    font-size: 11.5px;
-    line-height: 1.5;
-  }
-
-  /* 整表给出可读下限:横向卷轴交给全局 v5 的 .ant-table-content */
-  .page :deep(.ant-table-content) table { min-width: 828px; }
-
-  /* 有 expandedRowRender 时 antd 会把"展开图标列"放在第一列,而全局 v5 钉住的正是第一列。
-     auto 布局下没有显式宽度的列会吃掉全部余量 → 展开列白占 ~115px,真正的身份列还会被卷走。
-     这里把展开列收成 44px,并让身份列(模板名)紧随其后一起钉住:横扫时始终知道这一行是谁。 */
-  .page :deep(.ant-table colgroup col:first-child) { width: 44px; }
-
-  .page :deep(.ant-table-thead > tr > th:first-child),
-  .page :deep(.ant-table-tbody > tr > td:first-child) {
-    width: 44px;
-    min-width: 44px;
-    padding-right: 2px;
-    padding-left: 6px;
-  }
-
-  .page :deep(.ant-table-thead > tr > th:nth-child(2)),
-  .page :deep(.ant-table-tbody > tr > td:nth-child(2)) {
-    position: sticky;
-    left: 44px;
-    z-index: 2;
-    min-width: 132px;
-    background: var(--paper-raised);
-    box-shadow: 1px 0 0 var(--line);
-  }
-
-  .page :deep(.ant-table-thead > tr > th:nth-child(2)) { z-index: 3; }
 }
 
 @media (max-width: 640px) {
   .page { padding: 0; }
   .head h2 { font-size: 19px; }
   .sub { font-size: 11.5px; line-height: 1.5; }
-  .tpl-name { min-width: 120px; }
-  .page :deep(.ant-table) .ant-btn-sm { min-height: 34px; }
-}
-
-/* 触摸命中区:antd 小开关本体只有 28×16(手指点不中),视觉尺寸保持不变,
-   用伪元素把命中区外扩到 ~40×40 —— 与全局 v5 给展开图标做的事同一手法。
-   行内没有相邻可点元素(可见性列是 tag+switch,启用列只有 switch),不会误伤。 */
-@media (max-width: 900px) {
-  .page :deep(.ant-switch) { position: relative; }
-
-  .page :deep(.ant-switch)::after {
-    position: absolute;
-    inset: -12px -6px;
-    content: '';
-  }
 }
 </style>
