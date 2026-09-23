@@ -32,16 +32,28 @@ interface RespondRes {
   data?: { ok: boolean, kind: string, id: string }
 }
 
-/** 应答体(服务端 RespondBody 的客户端侧同构) */
+/**
+ * 应答体(服务端 `RespondBody` 的客户端侧同构)。
+ *
+ * 提问型(question)必须用 `answers[]` —— 服务端把它编码成引擎原生信封
+ * (`{"x-aw-hitl-answers":[{id,answer}]}`,见 hitl-registry 的 ANSWER_ENVELOPE)。
+ * **不要**把多问题手拼成 JSON 字符串塞进 `value`:服务端只按 `answers` 取结构化答案,
+ * 拼 JSON 会被当成"单答案文本",逐题解析结果全为空(实测:答案静默丢失但接口返回 ok)。
+ */
 export interface HitlAnswerPayload {
-  /** question 型:单答案 / 多问题时的 JSON 字符串(见 AppHeader.buildAnswerValue) */
-  value?: string
-  /** approval 型:true=放行,false=拒绝(二者必居其一,cancel 另有 cancelled) */
+  /** approval 型:true=放行,false=拒绝(与 cancelled 互斥) */
   confirmed?: boolean
   cancelled?: boolean
   /** 引擎原生选项(opencode permission:once|always|reject;hermes/dsh 选项名) */
   response?: string
   comment?: string
+  /**
+   * question 型答案(结构化;按问题 id 对齐)。
+   * 单问题也可走这里(服务端 `resolveAnswers` 支持"按 id 命中或按下标回退")。
+   */
+  answers?: Array<{ id?: string, answer: string }>
+  /** 纯文本答案(仅单问题/自由文本的兼容路径;多问题请用 answers) */
+  value?: string
 }
 
 /** 应答结果:ok=false 时 code 为服务端业务码(409 ALREADY_RESOLVED / 403 APPROVAL_FORBIDDEN) */

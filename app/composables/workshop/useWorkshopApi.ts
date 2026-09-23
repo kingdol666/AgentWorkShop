@@ -2,7 +2,7 @@
  * Workshop API 类型化封装(P0 面:channels/agents/tasks/messages/memories/queue/runtime)。
  * 统一走 $http(Bearer cookie 注入 + envelope 解包);错误由拦截器统一 toast。
  */
-import type { AepChannelChatSettings, AepChannelMember, AepChatMention, AepChatMessage, AepNotification, AepSnapshot } from '#shared/workshop-protocol'
+import type { AepSnapshot } from '#shared/workshop-protocol'
 
 export interface ChannelDto {
   id: string
@@ -161,64 +161,13 @@ export function useWorkshopApi() {
     /** HITL:重试 FAILED 任务(优先原 assignee,否则队列最短空闲 worker) */
     retryTask: (taskId: string) => http.post<{ data: TaskDto }>(`/workshop/tasks/${taskId}/retry`, {}),
     /** HITL:统一应答路由(omp-dialog/dcw-approval/codex-approval/opencode-permission/dsh-permission) */
-    respondHitl: (body: { kind: string, id: string, confirmed?: boolean, cancelled?: boolean, value?: string, response?: string, comment?: string }) =>
+    respondHitl: (body: { kind: string, id: string, confirmed?: boolean, cancelled?: boolean, value?: string, answers?: Array<{ id?: string, answer: string }>, response?: string, comment?: string }) =>
       http.post<{ data: { ok: boolean, kind: string, id: string } }>('/workshop/hitl/respond', body),
-    // ===== v17 群聊 / 成员 / 用户通知(主计划 §5)=====
-    /** 群聊历史(新→旧;before = 上一页最旧消息 id 作为游标) */
-    listChatMessages: (id: string, opts: { before?: string, limit?: number } = {}) =>
-      http.get<{ data: { channelId: string, messages: AepChatMessage[], nextCursor: string | null, permissions: ChatPermissionsDto | null } }>(
-        `/workshop/channels/${id}/chat/messages`,
-        { before: opts.before, limit: opts.limit ?? 50 },
-      ),
-    /**
-     * 群聊发言(唯一入站口)。mentions 只是意图提示:服务端会重新解析文本并逐个校验归属,
-     * 未命中归属的目标记入 unresolvedMentions(不投递、不报错)。
-     */
-    sendChatMessage: (id: string, body: { text: string, mentions?: AepChatMention[], replyToId?: string | null, clientMessageId?: string }) =>
-      http.post<{ data: ChatSendResultDto }>(`/workshop/channels/${id}/chat/messages`, body),
-    /** 打开群聊即把该频道内我的定向通知收敛为已读 */
-    markChatMessageRead: (id: string, messageId: string) =>
-      http.post<{ data: { ok: boolean, channelId: string, messageId: string, count: number } }>(
-        `/workshop/channels/${id}/chat/messages/${messageId}/read`,
-        {},
-      ),
-    /** 能力视图(非成员也可调用:canJoin 等公开信息;按钮可用性唯一事实源) */
-    getChatPermissions: (id: string) =>
-      http.get<{ data: { channelId: string, channel: AepChannelChatSettings | null, permissions: ChatPermissionsDto | null } }>(
-        `/workshop/channels/${id}/chat/permissions`,
-      ),
-    listChannelMembers: (id: string) =>
-      http.get<{ data: { channelId: string, members: AepChannelMember[], permissions: ChatPermissionsDto | null } }>(
-        `/workshop/channels/${id}/members`,
-      ),
-    joinChannel: (id: string) =>
-      http.post<{ data: { channelId: string, status: 'active' | 'pending', generation: number, permissions: ChatPermissionsDto | null } }>(
-        `/workshop/channels/${id}/members/join`,
-        {},
-      ),
-    leaveChannel: (id: string) =>
-      http.post<{ data: { ok: boolean, status: string } }>(`/workshop/channels/${id}/members/leave`, {}),
-    /** owner-only:移除成员(owner 自身不可移除,服务端 409 OWNER_CANNOT_REMOVE) */
-    removeChannelMember: (id: string, userId: string) =>
-      http.delete<{ data: { ok: boolean, status: string } }>(`/workshop/channels/${id}/members/${encodeURIComponent(userId)}`),
-    /** owner-only:批准 pending 成员 */
-    approveChannelMember: (id: string, userId: string) =>
-      http.post<{ data: { ok: boolean, member: { userId: string, role: string, status: string } } }>(
-        `/workshop/channels/${id}/members/${encodeURIComponent(userId)}/approve`,
-        {},
-      ),
-    /** 群聊设置(owner-only;version 乐观锁 → 409 VERSION_CONFLICT 需刷新后重试) */
-    patchChannelChatSettings: (id: string, body: { visibility?: 'private' | 'public', joinPolicy?: 'open' | 'owner_approve', approvalPolicy?: 'owner_only' | 'any_member', chatEnabled?: 0 | 1, version?: number }) =>
-      http.request<{ data: ChannelChatSettingsRowDto }>({ method: 'PATCH', url: `/workshop/channels/${id}`, data: body }),
-    /** 本人用户通知(事实源;cursor = `${createdAt}|${id}` 时返回其后升序通知) */
-    listNotifications: (opts: { limit?: number, unreadOnly?: boolean, cursor?: string } = {}) =>
-      http.get<{ data: NotificationPageDto }>('/workshop/notifications', {
-        limit: opts.limit ?? 50,
-        unreadOnly: opts.unreadOnly ? 1 : undefined,
-        cursor: opts.cursor,
-      }),
-    markNotificationsRead: (body: { id?: string, channelId?: string, all?: boolean }) =>
-      http.post<{ data: { ok: boolean, count: number, unreadCount: number } }>('/workshop/notifications/read', body),
+    // 说明:v17 群聊 / 成员 / 用户通知不在此声明客户端封装 —— 它们由
+    // `app/stores/workshop/{chat,notifications}.ts` 直接调用(那两个 store 才是唯一事实源与
+    // 幂等收敛点)。此前这里曾并列一套同名 axios 封装,零调用点且各自的 envelope 类型
+    // (interceptor 已解包 vs 取出 res.data)互相矛盾,属"同一批 URL 两条并存链路",
+    // 已删除以免后人误用。新增群聊端点请加到对应 store,不要再回到本文件。
     // agent 模板库(P1;v10 用户隔离:private 仅本人,public 全员可用,内置只读)
     listTemplates: () => http.get<{ data: AgentTemplateDto[] }>('/workshop/agents'),
     createTemplate: (body: { name: string, harness: string, config?: Record<string, unknown>, visibility?: 'private' | 'public' }) =>
@@ -368,52 +317,10 @@ export interface ChannelTemplateDto {
 /** AepSnapshot 的轻量 REST 对齐(WS 未连时兜底刷新;实际从 WS channel.snapshot 取) */
 export type { AepSnapshot }
 
-/** 调用者在某 Channel 的能力视图(manager.channelPermissionsOf;按钮可用性唯一事实源) */
-export interface ChatPermissionsDto {
-  isOwner: boolean
-  isMember: boolean
-  isAdmin: boolean
-  status: string | null
-  role: string | null
-  canJoin: boolean
-  canPost: boolean
-  canInvokeAgent: boolean
-  canApprove: boolean
-  canManage: boolean
-}
-
-/** 群聊发送响应(deliveries = 每个 @Agent 一条投递台账) */
-export interface ChatSendResultDto {
-  message: AepChatMessage
-  deliveries: Array<{ deliveryId: string, agentId: string, status: string }>
-  /** true = 同 clientMessageId 重复提交,服务端返回原消息且未重复投递 */
-  duplicates: boolean
-  /** 文本里的 @目标不属于本 Channel(未投递,仅提示) */
-  unresolvedMentions: string[]
-  /** 服务端权威解析出的 mention(含从文本补解析的) */
-  mentions: AepChatMention[]
-}
-
-/** PATCH /channels/:id 的返回(管理面 ChannelRow;群聊侧只消费下面几个字段) */
-export interface ChannelChatSettingsRowDto {
-  id: string
-  name: string
-  description?: string
-  visibility: AepChannelChatSettings['visibility']
-  joinPolicy: AepChannelChatSettings['joinPolicy']
-  approvalPolicy: AepChannelChatSettings['approvalPolicy']
-  chatEnabled: number
-  version: number
-  ownerUserId?: string | null
-}
-
-/** GET /notifications 分页响应 */
-export interface NotificationPageDto {
-  notifications: AepNotification[]
-  unreadCount: number
-  cursor: { createdAt: string, id: string } | null
-  nextCursor: { createdAt: string, id: string } | null
-}
+// 群聊/通知相关 DTO(ChatPermissionsDto / ChatSendResultDto / ChannelChatSettingsRowDto /
+// NotificationPageDto)原先声明在此,但其唯一消费者是 `stores/workshop/{chat,notifications}.ts`,
+// 该文件的同名封装已删除 —— 为避免"同一契约两处声明、改一处漏一处"的漂移,
+// 这些类型随封装一起移除;需要时请从 store 导入。
 
 /** 定时任务计划(v16;服务端 ScheduleView 投影) */
 export interface ScheduleDto {

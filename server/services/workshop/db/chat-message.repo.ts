@@ -60,6 +60,8 @@ export function createChatMessageRepo(db: DatabaseSync) {
   )
   const selectDeliveriesByMessage = db.prepare(`SELECT ${DELIVERY_COLS} FROM chat_deliveries WHERE chat_message_id = ? ORDER BY created_at ASC`)
   const selectDeliveryOne = db.prepare(`SELECT ${DELIVERY_COLS} FROM chat_deliveries WHERE chat_message_id = ? AND target_agent_id = ?`)
+  /** 按台账 id 取整行(发布投递状态事件用) */
+  const selectDeliveryById = db.prepare(`SELECT ${DELIVERY_COLS} FROM chat_deliveries WHERE id = ?`)
   const selectDeliveriesByAgent = db.prepare(`SELECT ${DELIVERY_COLS} FROM chat_deliveries WHERE channel_id = ? AND target_agent_id = ? ORDER BY created_at DESC LIMIT ?`)
   const countDeliveries = db.prepare(`SELECT COUNT(*) AS n FROM chat_deliveries WHERE channel_id = ?`)
 
@@ -109,12 +111,19 @@ export function createChatMessageRepo(db: DatabaseSync) {
       return selectRecent.all(channelId, limit) as unknown as ChatMessageRow[]
     },
 
-    /** 游标分页:取 beforeId 之前的 limit 条(新→旧);beforeId 缺省 = 最新 */
+    /**
+     * 游标分页:取 beforeId 之前的 limit 条(新→旧);beforeId 缺省 = 最新。
+     *
+     * **失效游标必须返回空页,而不是回落到最新页** —— 前者让客户端知道"到头了",
+     * 后者会让"点加载更早"的死循环永远刷同一页(实测:anchor 行被删除/游标跨频道时
+     * 旧实现 `return selectRecent(...)`,客户端于是无限重复拉最新 50 条)。
+     */
     listBefore(channelId: string, beforeId: string | undefined, limit = 50): ChatMessageRow[] {
       if (!beforeId) return selectRecent.all(channelId, limit) as unknown as ChatMessageRow[]
       const anchor = rowidOf.get(beforeId) as { rid: number } | undefined
       const target = selectMessageById.get(beforeId) as unknown as ChatMessageRow | undefined
-      if (!anchor || !target) return selectRecent.all(channelId, limit) as unknown as ChatMessageRow[]
+      // 行不存在,或行属于别的 channel(跨频道游标)→ 空页(而非最新页)
+      if (!anchor || !target || target.channelId !== channelId) return []
       return selectBefore.all(channelId, target.createdAt, anchor.rid, limit) as unknown as ChatMessageRow[]
     },
 
@@ -197,6 +206,11 @@ export function createChatMessageRepo(db: DatabaseSync) {
 
     findDelivery(chatMessageId: string, targetAgentId: string): ChatDeliveryRow | undefined {
       return (selectDeliveryOne.get(chatMessageId, targetAgentId) as unknown as ChatDeliveryRow | undefined) ?? undefined
+    },
+
+    /** 按投递台账 id 反查整行(发布 chat.delivery.status 用;免去管理层拼裸 SQL) */
+    findDeliveryById(id: string): ChatDeliveryRow | undefined {
+      return (selectDeliveryById.get(id) as unknown as ChatDeliveryRow | undefined) ?? undefined
     },
 
     /** 某 Agent 的最近投递(排障/E2E 取证) */

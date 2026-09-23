@@ -22,8 +22,11 @@ export interface NotificationCursor {
   id: string
 }
 
-/** 单页拉取上限(与服务端 max 200 对齐) */
+/** 单页拉取上限(服务端单页上限 200;取 50 减小首屏载荷,靠 backfill 循环排空) */
 const PAGE_LIMIT = 50
+
+/** backfill 最多排空页数(50×10 = 500 条;防服务端游标异常导致死循环) */
+const MAX_BACKFILL_PAGES = 10
 
 /** seenEventIds 上限(防长会话内存无限增长;淘汰最旧一半) */
 const SEEN_CAP = 2000
@@ -180,6 +183,11 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
   /**
    * 断线/重连补拉:以本端游标向**后**取,按 id/eventId 合并(幂等)。
    * 未加载过快照时退化为 loadSnapshot()。
+   *
+   * **必须循环排空**:服务端单页上限 200,而本端每页只取 PAGE_LIMIT;
+   * 原实现只抓一页就返回 —— 断线期间积压超过一页时,游标只推进一页,
+   * 其余通知要等**下一次**重连才可能补上(计划 §11.11「重连后通知不丢」)。
+   * 这里按"返回满页即有更多"排空,并设页数上限兜底(防服务端 bug 导致死循环)。
    */
   async function backfill(): Promise<number> {
     if (typeof window === 'undefined' || !useUserStore().token) return 0
@@ -187,19 +195,39 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
       await loadSnapshot()
       return 0
     }
+    let added = 0
     try {
-      const data = await fetchPage(cursor.value)
-      let added = 0
-      for (const n of data.notifications ?? []) {
-        if (upsertNotification(n)) added += 1
+      for (let page = 0; page < MAX_BACKFILL_PAGES; page += 1) {
+        const data = await fetchPage(cursor.value)
+        const list = data.notifications ?? []
+        for (const n of list) {
+          if (upsertNotification(n)) added += 1
+        }
+        if (data.nextCursor) cursor.value = data.nextCursor
+        unreadCount.value = data.unreadCount ?? unreadCount.value
+        // 不满一页 = 已到最新,收工;满页可能还有,继续拉
+        if (list.length < PAGE_LIMIT) return added
+        // 服务端没给新游标却又是满页 → 无法继续推进,退出防死循环
+        if (!data.nextCursor) return added
       }
-      if (data.nextCursor) cursor.value = data.nextCursor
-      // 服务端未给 nextCursor(本次为空)时不动游标;未读数以服务端为准
-      unreadCount.value = data.unreadCount ?? unreadCount.value
       return added
     }
     catch {
-      return 0
+      // 补拉失败不阻塞实时帧;游标保持在上次成功位置,下次重连/心跳再试
+      return added
+    }
+  }
+
+  /**
+   * WS 重连收尾帧(`notification.snapshot`)携带的服务端游标。
+   * 服务端按 200 条/页重放,超过一页时只靠帧是补不全的 —— 用它把游标推到
+   * 服务端最后重放的位置,再交给 `backfill()` 继续排空。
+   */
+  function applyReplayCursor(next: NotificationCursor | null | undefined): void {
+    if (!next) return
+    if (!cursor.value || next.createdAt > cursor.value.createdAt
+      || (next.createdAt === cursor.value.createdAt && next.id > cursor.value.id)) {
+      cursor.value = next
     }
   }
 
@@ -253,6 +281,7 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
     upsertNotification,
     loadSnapshot,
     backfill,
+    applyReplayCursor,
     markRead,
     clear,
   }

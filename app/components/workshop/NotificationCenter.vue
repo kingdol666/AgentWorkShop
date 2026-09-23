@@ -89,12 +89,19 @@ async function openNotification(n: AepNotification): Promise<void> {
   await navigateTo({ path: `/workshop/w/${ws.id}`, query: { view: 'chat' } })
 }
 
+/** 全部已读(重入闸:PATCH 是幂等的,但连点会打出多条请求与多条提示) */
+const markingAll = ref(false)
 async function markAll(): Promise<void> {
+  if (markingAll.value) return
+  markingAll.value = true
   try {
     await notifications.markRead({ all: true })
   }
   catch (e) {
     message.error(e instanceof Error ? e.message : '标记已读失败')
+  }
+  finally {
+    markingAll.value = false
   }
 }
 </script>

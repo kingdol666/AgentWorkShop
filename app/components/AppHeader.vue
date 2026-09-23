@@ -139,8 +139,10 @@ const questionsOf = (item: AepHitlItem): AepHitlQuestion[] => {
 
 /**
  * 统一应答入口(单点收敛 loading / 409 / 403 语义)。
- * 多问题时 `value` = JSON 对象字符串(键 = 引擎问题 id,缺 id 用下标)—— 服务端
- * 各 adapter 自行解析;单问题/自由文本时 `value` = 纯文本答案。
+ *
+ * 提问型一律走结构化 `answers[]`(按问题 id 对齐):服务端按 `answers` 取答案并编码成
+ * 引擎原生信封;此前把多问题手拼成 JSON 字符串塞进 `value` 是错的 —— 服务端只认
+ * `answers`,拼 JSON 会被当作"单答案文本",逐题结果全空(答案静默丢失、接口仍返回 ok)。
  */
 const answer = async (item: AepHitlItem, payload: HitlAnswerPayload): Promise<void> => {
   const out = await hitl.answer(item, payload)
@@ -155,22 +157,14 @@ const answer = async (item: AepHitlItem, payload: HitlAnswerPayload): Promise<vo
 
 const submitQuestion = async (item: AepHitlItem): Promise<void> => {
   const qs = questionsOf(item)
-  let value = ''
-  if (qs.length === 1) {
-    value = answerOf(item, qs[0]!)
-  }
-  else {
-    const obj: Record<string, string> = {}
-    qs.forEach((q, i) => {
-      obj[q.id || String(i)] = answerOf(item, q)
-    })
-    value = JSON.stringify(obj)
-  }
-  if (!value) {
-    message.warning('请先填写或选择答案')
+  // 逐题校验:任一题空白即拒绝提交 —— 服务端无法区分"用户留空"与"没问题",
+  // 空答案会以"已提交"落地,属静默数据丢失
+  const blank = qs.findIndex(q => !answerOf(item, q).trim())
+  if (blank >= 0) {
+    message.warning(`请先填写第 ${blank + 1} 题(${qs[blank]!.question || '未命名问题'})的答案`)
     return
   }
-  await answer(item, { value })
+  await answer(item, { answers: qs.map((q, i) => ({ id: q.id || String(i), answer: answerOf(item, q) })) })
 }
 const submitApproval = async (item: AepHitlItem, confirmed: boolean): Promise<void> => {
   await answer(item, { confirmed })

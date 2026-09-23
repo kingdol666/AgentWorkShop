@@ -65,9 +65,23 @@ function replyAnchorName(m: AepChatMessage): string {
   return anchor ? senderNameOf(anchor) : '更早的消息'
 }
 
-function deliveriesOf(m: AepChatMessage): AepChatDelivery[] {
-  return chat.deliveriesOf(props.channelId, m.id)
-}
+/**
+ * 投递台账按 messageId 建一次索引。
+ *
+ * 原先模板里 `deliveriesOf(m)` 被调用两次(v-if + v-for),而 store 的 `deliveriesOf`
+ * 每次都要 `Object.values(...).filter(...)` 全量扫描并新分配数组 —— 未做虚拟滚动,
+ * 500 条消息 × 2 次 ≈ 每帧上千次数组分配,滚动明显掉帧。这里一次 computed 收敛。
+ */
+const deliveriesByMessage = computed<Map<string, AepChatDelivery[]>>(() => {
+  const out = new Map<string, AepChatDelivery[]>()
+  for (const d of chat.deliveriesOfChannel(props.channelId)) {
+    const list = out.get(d.chatMessageId)
+    if (list) list.push(d)
+    else out.set(d.chatMessageId, [d])
+  }
+  return out
+})
+const deliveriesOf = (m: AepChatMessage): AepChatDelivery[] => deliveriesByMessage.value.get(m.id) ?? []
 
 const DELIVERY_META: Record<AepChatDelivery['status'], { label: string, tone: string }> = {
   pending: { label: '待投递', tone: 'pending' },

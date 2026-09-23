@@ -74,6 +74,7 @@ watch(settings, (s, prev) => {
 })
 
 async function onJoin(): Promise<void> {
+  if (busy.value) return
   busy.value = 'join'
   try {
     const status = await chat.join(props.channelId)
@@ -93,6 +94,7 @@ async function onJoin(): Promise<void> {
 }
 
 async function onLeave(): Promise<void> {
+  if (busy.value) return
   busy.value = 'leave'
   try {
     await chat.leave(props.channelId)
@@ -109,6 +111,7 @@ async function onLeave(): Promise<void> {
 }
 
 async function onApprove(m: AepChannelMember): Promise<void> {
+  if (busy.value) return
   busy.value = `approve:${m.userId}`
   try {
     await chat.approveMember(props.channelId, m.userId)
@@ -123,6 +126,7 @@ async function onApprove(m: AepChannelMember): Promise<void> {
 }
 
 async function onRemove(m: AepChannelMember): Promise<void> {
+  if (busy.value) return
   busy.value = `remove:${m.userId}`
   try {
     await chat.removeMember(props.channelId, m.userId)
@@ -142,7 +146,7 @@ async function onRemove(m: AepChannelMember): Promise<void> {
  */
 async function onSaveSettings(): Promise<void> {
   const d = draft.value
-  if (!d) return
+  if (!d || busy.value) return
   settingsError.value = ''
   busy.value = 'settings'
   try {

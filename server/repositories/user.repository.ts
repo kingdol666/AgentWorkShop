@@ -261,6 +261,19 @@ export const userRepository = {
     return rows.map(toUser)
   },
 
+  /**
+   * 按角色取用户 id(仅 id;HITL 通知扇出等"只关心身份集合"的场景)。
+   *
+   * 存在的理由:`list({page:1,pageSize:500})` 会被**分页截断** —— 第 501 个之后的 admin
+   * 会从集合里消失,导致其收不到 HITL 通知,而权限判定仍认为其可裁决(UI 与 API 不一致)。
+   * 这里按 role 直接 WHERE,不设上限,且只回 id(不构造完整 User 对象)。
+   */
+  listIdsByRole(role: string): string[] {
+    const d = getDb()
+    const rows = d.prepare('SELECT id FROM users WHERE role = ?').all(role) as Array<{ id: string }>
+    return rows.map(r => r.id)
+  },
+
   /** 全部产线授权(单查询;管理面按 userId 分组,替代逐用户 N+1) */
   allGrants(): Array<{ userId: string, lineId: string, mode: string, grantedBy: string | null, grantedAt: string }> {
     const d = getDb()

@@ -38,9 +38,13 @@ export function createOutboxRepo(db: DatabaseSync) {
   const selectPending = db.prepare(`SELECT ${COLS} FROM outbox_events WHERE status = 'pending' ORDER BY created_at ASC LIMIT ?`)
   const selectAll = db.prepare(`SELECT ${COLS} FROM outbox_events ORDER BY created_at ASC LIMIT ?`)
   const markPublished = db.prepare(`UPDATE outbox_events SET status = 'published', published_at = ?, attempts = attempts + 1, last_error = '' WHERE id = ?`)
+  /** 条件发布(幂等;不改动非 pending 行) */
+  const markPublishedIfPending = db.prepare(`UPDATE outbox_events SET status = 'published', published_at = ?, attempts = attempts + 1, last_error = '' WHERE id = ? AND status = 'pending'`)
   const markFailed = db.prepare(`UPDATE outbox_events SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE id = ?`)
   const reschedule = db.prepare(`UPDATE outbox_events SET status = 'pending', attempts = attempts + 1, last_error = ? WHERE id = ?`)
   const countByStatus = db.prepare(`SELECT status, COUNT(*) AS n FROM outbox_events GROUP BY status`)
+  /** 保留期清理:删除已发布且 published_at 早于给定时刻的行 */
+  const sweepPublishedStmt = db.prepare(`DELETE FROM outbox_events WHERE status = 'published' AND published_at IS NOT NULL AND published_at < ?`)
 
   return {
     /**
@@ -73,6 +77,17 @@ export function createOutboxRepo(db: DatabaseSync) {
       markPublished.run(new Date().toISOString(), id)
     },
 
+    /**
+     * 幂等收敛:pending → published(仅当仍为 pending)。
+     *
+     * 与 `markPublished` 的差别:这是**条件更新**,重复调用不会把 attempts 越加越大,
+     * 也不会覆盖已 failed 的行(发布阶段的"已成功"不应该抹掉失败留痕)。
+     * 返回是否真的发生了状态迁移 —— 调用方据此判断"本次发布是否首次成功"。
+     */
+    markPublishedIfPending(id: string): boolean {
+      return Number(markPublishedIfPending.run(new Date().toISOString(), id).changes ?? 0) > 0
+    },
+
     markFailed(id: string, error: string): void {
       markFailed.run(error.slice(0, 500), id)
     },
@@ -87,6 +102,16 @@ export function createOutboxRepo(db: DatabaseSync) {
       const out: Record<string, number> = { pending: 0, published: 0, failed: 0 }
       for (const r of rows) out[r.status] = Number(r.n)
       return out
+    },
+
+    /**
+     * 保留期清理:删除 `published_at < beforeIso` 的已发布行,返回清理行数。
+     *
+     * 每次群聊发言都会登记 outbox 行(chat.message + 每条投递),不清理则表随会话线性增长。
+     * **只删 published**:pending 是"尚未发布"的欠账,failed 是失败留痕,都不能回收。
+     */
+    sweepPublished(beforeIso: string): number {
+      return Number(sweepPublishedStmt.run(beforeIso).changes ?? 0)
     },
   }
 }

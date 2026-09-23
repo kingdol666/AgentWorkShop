@@ -297,6 +297,9 @@ const sendChat = async (text: string): Promise<void> => {
 const send = async (): Promise<void> => {
   const text = input.value.trim()
   if (!text) return
+  // 重入闸:按钮的 :disabled 拦不住 Enter/⌘+Enter(它们直接调 send()),
+  // 两次并发 POST 携带同一个 clientMessageId → 服务端去重不掉行,但用户会看到两条成功提示
+  if (sendLoading.value) return
   sendLoading.value = true
   try {
     if (mode.value === 'chat') {
@@ -726,7 +729,7 @@ const placeholder = computed(() => {
           <button
             type="button"
             class="send-btn im"
-            :disabled="sendLoading || !input.trim() || (mode === 'chat' && perms !== null && !canPost)"
+            :disabled="sendLoading || !input.trim() || (mode === 'chat' && !canPost)"
             :title="$t('composer.sendTitle')"
             @click="send"
           >

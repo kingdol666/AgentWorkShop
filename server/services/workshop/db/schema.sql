@@ -239,6 +239,10 @@ CREATE TABLE IF NOT EXISTS chat_deliveries (
 );
 CREATE INDEX IF NOT EXISTS idx_chat_deliveries_message ON chat_deliveries(chat_message_id);
 CREATE INDEX IF NOT EXISTS idx_chat_deliveries_agent ON chat_deliveries(target_agent_id, status);
+-- Agent 回复关联链热路径:按 mailboxMessageId 反查群聊来源
+CREATE INDEX IF NOT EXISTS idx_chat_deliveries_mailbox ON chat_deliveries(mailbox_message_id);
+-- 成员撤权:按 (channel, agent) 批量取消 pending 投递
+CREATE INDEX IF NOT EXISTS idx_chat_deliveries_channel_agent ON chat_deliveries(channel_id, target_agent_id, status);
 
 -- user_notifications:按 recipientUserId 定向的用户通知事实源(游标补发)。
 CREATE TABLE IF NOT EXISTS user_notifications (
@@ -259,6 +263,9 @@ CREATE TABLE IF NOT EXISTS user_notifications (
 );
 CREATE INDEX IF NOT EXISTS idx_user_notifications_recipient ON user_notifications(recipient_user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_notifications_unread ON user_notifications(recipient_user_id, read_at);
+-- 发布路径按 eventId 反查刚写入的通知;撤权时按 (channel, recipient) 清理
+CREATE INDEX IF NOT EXISTS idx_user_notifications_event ON user_notifications(event_id);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_channel ON user_notifications(channel_id, recipient_user_id);
 
 -- outbox_events:事务内待发布事件(消息落库与投递同事务;广播失败不回滚消息)。
 CREATE TABLE IF NOT EXISTS outbox_events (

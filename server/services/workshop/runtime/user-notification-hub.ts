@@ -16,6 +16,9 @@
  * 生命周期:`globalThis` 单例(HMR 跨模块实例存活,与 hitl-registry 同风格)。
  */
 import { emitPluginEvent } from '../plugins/host.mjs'
+import { createLogger } from '../logger'
+
+const log = createLogger('workshop.notification-hub')
 
 const AEP_VERSION = 1
 
@@ -33,7 +36,18 @@ interface HubState {
   /** 已推送事件幂等键:peer 最近 N 条 eventId(防重连后同帧双发) */
   seen: Map<WsPeer, string[]>
   /** 统计(可观测性:被隔离掉多少帧) */
-  stats: { published: number, delivered: number, isolated: number, skippedDuplicate: number }
+  stats: {
+    published: number
+    delivered: number
+    isolated: number
+    skippedDuplicate: number
+    /** 空 recipient 调用(调用方 bug,与"用户离线"区分计数) */
+    emptyRecipient: number
+    /** 帧序列化失败(payload 含循环引用/BigInt 等) */
+    serializeErrors: number
+    /** 插件事件桥抛错次数 */
+    pluginErrors: number
+  }
 }
 
 const g = globalThis as typeof globalThis & { __userNotificationHub?: HubState }
@@ -43,7 +57,7 @@ function state(): HubState {
     byUser: new Map(),
     peerUser: new Map(),
     seen: new Map(),
-    stats: { published: 0, delivered: 0, isolated: 0, skippedDuplicate: 0 },
+    stats: { published: 0, delivered: 0, isolated: 0, skippedDuplicate: 0, emptyRecipient: 0, serializeErrors: 0, pluginErrors: 0 },
   }
 }
 
@@ -96,23 +110,45 @@ export function userIdOfPeer(peer: WsPeer): string | null {
 export function publishToUser(recipientUserId: string, type: string, payload: unknown, opts: { eventId?: string } = {}): number {
   const s = state()
   s.stats.published += 1
-  // 插件宿主事件桥(宿主未装载时 no-op)
-  emitPluginEvent(type, payload)
-  const set = recipientUserId ? s.byUser.get(recipientUserId) : undefined
+  // 插件宿主事件桥(宿主未装载时 no-op);插件异常不得中断通知扇出
+  try {
+    emitPluginEvent(type, payload)
+  }
+  catch (err) {
+    s.stats.pluginErrors += 1
+    log.warn('[user-notification-hub] 插件事件桥异常(不影响通知扇出):', err)
+  }
+  // 空 recipient 是**调用方 bug**(不是"用户离线"):分开计数,避免排障时被误读为隔离正常行为
+  if (!recipientUserId) {
+    s.stats.emptyRecipient += 1
+    log.warn(`[user-notification-hub] publishToUser 收到空 recipientUserId(type=${type}),已丢弃`)
+    return 0
+  }
+  const set = s.byUser.get(recipientUserId)
   if (!set || set.size === 0) {
     s.stats.isolated += 1
     return 0
   }
-  const frame = JSON.stringify({
-    v: AEP_VERSION,
-    type,
-    // 用户级事件无 channel seq 语义:显式 seq=0,但**带 eventId 幂等键**,
-    // 与 broadcastPeerEvent 的本质区别是 recipient 隔离 + 可补发(表为事实源)。
-    seq: 0,
-    at: new Date().toISOString(),
-    channelId: (payload as { channelId?: string } | null)?.channelId ?? '',
-    payload,
-  })
+  // 帧序列化放在 try 内:`payload` 是 unknown,循环引用 / BigInt 会让 JSON.stringify 抛错。
+  // 原实现让该异常冒泡到 hitl-registry 的 emit 循环并被吞掉 —— 结果是**该事件剩余扇出全部静默丢失**。
+  let frame: string
+  try {
+    frame = JSON.stringify({
+      v: AEP_VERSION,
+      type,
+      // 用户级事件无 channel seq 语义:显式 seq=0,但**带 eventId 幂等键**,
+      // 与 broadcastPeerEvent 的本质区别是 recipient 隔离 + 可补发(表为事实源)。
+      seq: 0,
+      at: new Date().toISOString(),
+      channelId: (payload as { channelId?: string } | null)?.channelId ?? '',
+      payload,
+    })
+  }
+  catch (err) {
+    s.stats.serializeErrors += 1
+    log.error(`[user-notification-hub] 通知帧序列化失败(type=${type}, recipient=${recipientUserId.slice(0, 8)}),已丢弃该帧:`, err)
+    return 0
+  }
   let delivered = 0
   for (const peer of set) {
     if (opts.eventId) {
@@ -151,10 +187,6 @@ export function notificationHubStats(): HubState['stats'] & { boundUsers: number
 
 /** 测试用:重置 hub(仅测试脚本调用) */
 export function resetNotificationHub(): void {
-  g.__userNotificationHub = {
-    byUser: new Map(),
-    peerUser: new Map(),
-    seen: new Map(),
-    stats: { published: 0, delivered: 0, isolated: 0, skippedDuplicate: 0 },
-  }
+  g.__userNotificationHub = undefined
+  void state()
 }

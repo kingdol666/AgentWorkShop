@@ -116,9 +116,14 @@ export const useChatStore = defineStore('workshop.chat', () => {
   const settings = ref<Record<string, AepChannelChatSettings>>({})
   const deliveries = ref<Record<string, Record<string, AepChatDelivery>>>({})
   const permissions = ref<Record<string, ChatPermissions | null>>({})
-  /** 已拉过历史的频道(「加载更早」按钮据此判断是否已到底) */
+  /**
+   * 已成功拉过历史的频道集合。
+   *
+   * 注意:「还能不能继续往前拉」由 `hasMoreHistory` 决定,本集合只表示"至少拉过一次"
+   * (用于跳过重复的首屏加载)。两者语义不同,不要互相替代。
+   */
   const loadedChannels = ref<Set<string>>(new Set())
-  /** 每频道「还有更早历史」标志(loadEarlier 返回 false 后置 false) */
+  /** 每频道「还有更早历史」标志(loadHistory/loadEarlier 判定为空后置 false) */
   const hasMoreHistory = ref<Record<string, boolean>>({})
   const loadingHistory = ref<Record<string, boolean>>({})
   /** 回复目标(引用链;Composer 消费,发完即清) */
@@ -374,11 +379,22 @@ export const useChatStore = defineStore('workshop.chat', () => {
     replyTarget.value = null
   }
 
-  /** 某消息的投递台账(按 messageId 过滤;投递状态 chip 渲染用) */
-  function deliveriesOf(channelId: string, messageId: string): AepChatDelivery[] {
+  /**
+   * 某频道全部投递台账(扁平数组)。
+   *
+   * 渲染方需要"按消息分组",而按消息逐个 `deliveriesOf(channelId, messageId)` 会让
+   * 每条消息都全量扫一遍投递表(未虚拟滚动时是 O(消息数 × 投递数));
+   * 因此暴露这个"取一次、调用方自己建索引"的入口。
+   */
+  function deliveriesOfChannel(channelId: string): AepChatDelivery[] {
     const byChannel = deliveries.value[channelId]
     if (!byChannel) return []
-    return Object.values(byChannel).filter(d => d.chatMessageId === messageId)
+    return Object.values(byChannel)
+  }
+
+  /** 单条消息的投递台账(低频调用方用;高频渲染请用 deliveriesOfChannel 自建索引) */
+  function deliveriesOf(channelId: string, messageId: string): AepChatDelivery[] {
+    return deliveriesOfChannel(channelId).filter(d => d.chatMessageId === messageId)
   }
 
   function clear(channelId: string): void {
@@ -412,6 +428,7 @@ export const useChatStore = defineStore('workshop.chat', () => {
     setReplyTarget,
     clearReplyTarget,
     deliveriesOf,
+    deliveriesOfChannel,
     clear,
   }
 })

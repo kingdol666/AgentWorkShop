@@ -13,9 +13,10 @@
  *  - 私有 memory
  *  - 内部 mailbox / task payload(parts/metadata 原样)
  */
-import type { ChannelRow, ChannelMemberRow, ChatMessageRow, ChannelAgentRow } from '../db/database'
+import type { ChannelRow, ChannelMemberRow, ChatMessageRow, ChannelAgentRow, UserNotificationRow } from '../db/database'
 import { parseJson } from '../db/database'
 import type { ChatMention } from '../db/chat-message.repo'
+import type { AepNotification } from '../../../../shared/workshop-protocol'
 
 /** 群成员投影(人类成员;不含任何凭据) */
 export interface PublicChannelMemberDto {
@@ -109,6 +110,31 @@ export function projectChannelMember(row: ChannelMemberRow, displayName: string 
     status: row.status,
     joinedAt: row.joinedAt,
     leftAt: row.leftAt,
+  }
+}
+
+/**
+ * `user_notifications` 行 → AEP `notification.created` 载荷。
+ *
+ * 单一事实源:`manager.notifyUser()` 与 `manager.publishNotification()` 原先各写一份
+ * 逐字相同的 15 行字段映射,任一处漏改就会让"落库的通知"与"推送的通知"形状漂移
+ * (前端按 eventId 去重,字段漂移会导致同一通知渲染成两种样子)。这里收敛为一处。
+ */
+export function projectNotification(row: UserNotificationRow): AepNotification {
+  return {
+    id: row.id,
+    recipientUserId: row.recipientUserId,
+    channelId: row.channelId,
+    chatMessageId: row.chatMessageId,
+    hitlKind: row.hitlKind,
+    hitlId: row.hitlId,
+    eventId: row.eventId,
+    type: row.type as AepNotification['type'],
+    title: row.title,
+    body: row.body,
+    payload: parseJson<Record<string, unknown>>(row.payloadJson, {}),
+    createdAt: row.createdAt,
+    readAt: row.readAt,
   }
 }
 

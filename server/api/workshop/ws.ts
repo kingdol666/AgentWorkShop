@@ -24,7 +24,8 @@ import type { AgentEvent } from '../../services/workshop/agents/agent-interface'
 import type { A2AMessage } from '../../services/workshop/types/a2a'
 import type { AepEnvelope, AepNotification } from '../../../shared/workshop-protocol'
 import { parseJson } from '../../services/workshop/db/database'
-import { projectManagementSnapshotForMember } from '../../services/workshop/runtime/chat-projection'
+import { isTransactionOpen } from '../../services/workshop/db/transaction'
+import { projectManagementSnapshotForMember, projectNotification } from '../../services/workshop/runtime/chat-projection'
 import { registerScenePeer, setPeerVisibleLines, unregisterScenePeer } from '../../services/workshop/scene-events'
 import { visibleLineIds } from '../../services/workshop/permissions'
 import { subscribeHitlEvents } from '../../services/workshop/agents/hitl-registry'
@@ -226,6 +227,19 @@ function flushDbBuffer(manager: AgentChannelManager, stream: ChannelStream): voi
     stream.dbFlushTimer = null
   }
   if (stream.dbBuffer.length === 0) return
+  // 有未提交事务时不刷盘:同一连接上的 insertMany 会被**并入那个事务**,一旦它回滚,
+  // 这些事件就"已在 ring/已推给 peer、却从未落库"(内存与事实源分叉)。
+  // 推迟到事务结束后由定时器/sweep 刷出即可 —— 缓冲本就有界且失败会回队。
+  if (isTransactionOpen()) {
+    if (!stream.dbFlushTimer) {
+      stream.dbFlushTimer = setTimeout(() => {
+        stream.dbFlushTimer = null
+        if (hub.boundManager) flushDbBuffer(hub.boundManager, stream)
+      }, DB_FLUSH_MS)
+      stream.dbFlushTimer.unref?.()
+    }
+    return
+  }
   const buffered = stream.dbBuffer
   stream.dbBuffer = []
   try {
@@ -478,13 +492,20 @@ function bindHitlSubscription(manager: AgentChannelManager, stream: ChannelStrea
 }
 
 /**
- * 某个 Channel 的 HITL **可裁决**用户集(定向通知扇出用)。
+ * 某个 Channel 的 HITL **定向通知**受众集。
  *
- * 与 `manager.requireCanApprove` 同口径:
- *  - `owner_only` → 仅 owner + admin(普通成员**不**收到定向 HITL 提示);
+ * 口径:
+ *  - `owner_only` → owner + admin(普通成员**不**收到定向 HITL 提示);
  *  - `any_member` → owner ∪ active 成员 ∪ admin。
- * 读取当前 Channel 策略;策略收紧后自动收窄(收紧即时生效),
- * 而单条历史请求的"创建时资格 ∩ 当前资格"由持久化快照在决策服务里判定。
+ * 读取**当前** Channel 策略;策略收紧后自动收窄(收紧即时生效)。
+ *
+ * 与 `manager.requireCanApprove` 的关系(不要误读为等价):本方法决定"谁收到提示",
+ * 决策服务决定"谁能裁决"。单条历史请求的"创建时资格 ∩ 当前资格"由持久化策略快照判定,
+ * 因此**收到提示不等于能裁决**(决策服务仍会 403);反之 admin 在本方法里恒可见,
+ * 与其在决策服务里的全局裁决权一致。
+ *
+ * 注意:频道流(hitl.request 的 AEP 帧)对**所有**已鉴权订阅者可见 —— 那是审计/回放轨迹,
+ * 可操作性由 REST pending 快照(按可裁决性过滤)与决策服务把关。详见 P0 审计报告 §3。
  */
 function hitlAudience(manager: AgentChannelManager, channelId: string): Set<string> {
   const out = new Set<string>()
@@ -496,27 +517,39 @@ function hitlAudience(manager: AgentChannelManager, channelId: string): Set<stri
     try {
       for (const m of manager.groupChat.members.listActiveByChannel(channelId)) out.add(m.userId)
     }
-    catch { /* 群聊仓储不可用(旧脚手架):退化为 owner-only 可见 */ }
+    catch (err) {
+      // 成员查询失败会**静默缩小**通知受众 —— 必须留痕,否则表现为"某些成员收不到提示"而无人察觉
+      log.warn(`[workshop-ws] HITL 受众查询成员失败(channel=${channelId.slice(0, 8)}),退化为 owner+admin:`, err)
+    }
   }
-  // admin 需全局可见(最高管理权限,与 REST pending.get 口径一致)
   for (const id of adminUserIds()) out.add(id)
   return out
 }
 
-/** admin 用户 id 集合(60s 缓存;用户仓储不可用时返回空集,不放宽任何人的可见性) */
+/**
+ * admin 用户 id 集合(60s 缓存)。
+ *
+ * 修复两处真实缺陷:
+ *  1. 原实现用 `userRepository.list({page:1,pageSize:500})` —— **分页截断**会让第 501 个
+ *     之后的 admin 静默消失(收不到 HITL 通知,但仍可裁决 → UI 与 API 不一致)。
+ *     改用按 role 的定向查询,不设上限。
+ *  2. 原实现在失败时把**空集**写入缓存 60s 且不打日志 —— 一次瞬时故障会让全体 admin
+ *     静默收不到通知一分钟。现在失败不写缓存、记警告(下次事件即刻重试)。
+ *
+ * 只回 id 且集合极小(admin 数量级为个位数),故按事件调用可接受;缓存进一步摊薄。
+ */
 let adminIdsCache: { ids: string[], at: number } | null = null
 function adminUserIds(): string[] {
   if (adminIdsCache && Date.now() - adminIdsCache.at < 60_000) return adminIdsCache.ids
-  let ids: string[]
   try {
-    const res = userRepository.list({ page: 1, pageSize: 500 })
-    ids = (res?.items ?? []).filter(u => u.role === 'admin').map(u => u.id)
+    const ids = userRepository.listIdsByRole('admin')
+    adminIdsCache = { ids, at: Date.now() }
+    return ids
   }
-  catch {
-    ids = []
+  catch (err) {
+    log.warn('[workshop-ws] admin 名单查询失败(不缓存失败结果,本次仅 owner/成员可见):', err)
+    return []
   }
-  adminIdsCache = { ids, at: Date.now() }
-  return ids
 }
 
 /** 自愈:stream 已订阅的总线 ≠ 管理器当前总线(空闲卸载销毁/重建)或 manager 更替 → 重订 */
@@ -921,21 +954,9 @@ function handleNotificationUplink(
   }
   const rows = manager.listNotificationsAfter(userId, cursor, 200)
   for (const r of rows) {
-    const payload: AepNotification = {
-      id: r.id,
-      recipientUserId: r.recipientUserId,
-      channelId: r.channelId,
-      chatMessageId: r.chatMessageId,
-      hitlKind: r.hitlKind,
-      hitlId: r.hitlId,
-      eventId: r.eventId,
-      type: r.type as AepNotification['type'],
-      title: r.title,
-      body: r.body,
-      payload: parseJson<Record<string, unknown>>(r.payloadJson, {}),
-      createdAt: r.createdAt,
-      readAt: r.readAt,
-    }
+    // 与 REST 快照 / 定向推送共用同一投影:三处此前各写一份字段映射,
+    // 任一漏改都会让同一条通知在不同通道里形状不同(前端按 eventId 去重,形状漂移会渲染成两种样子)。
+    const payload: AepNotification = projectNotification(r)
     // 补发经 peer 直发(带 eventId 幂等键;客户端按 eventId 去重)
     try {
       peer.send(JSON.stringify({ v: AEP_VERSION, type: 'notification.created', seq: 0, at: new Date().toISOString(), channelId: r.channelId ?? '', payload }))

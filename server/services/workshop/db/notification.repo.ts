@@ -47,6 +47,11 @@ export function createNotificationRepo(db: DatabaseSync) {
        AND (created_at > ? OR (created_at = ? AND rowid > ?))
      ORDER BY created_at ASC, rowid ASC LIMIT ?`,
   )
+  const selectAnyByEvent = db.prepare(`SELECT ${COLS} FROM user_notifications WHERE event_id = ? LIMIT 1`)
+  /** 游标锚点丢失时的退化路径:严格大于该时刻(同毫秒的行无法再定位) */
+  const selectAfterCreatedAt = db.prepare(
+    `SELECT ${COLS} FROM user_notifications WHERE recipient_user_id = ? AND created_at > ? ORDER BY created_at ASC, rowid ASC LIMIT ?`,
+  )
   const rowidOf = db.prepare(`SELECT rowid AS rid FROM user_notifications WHERE id = ?`)
   const createdOf = db.prepare(`SELECT created_at AS createdAt FROM user_notifications WHERE id = ?`)
   const countUnread = db.prepare(`SELECT COUNT(*) AS n FROM user_notifications WHERE recipient_user_id = ? AND read_at IS NULL`)
@@ -54,6 +59,10 @@ export function createNotificationRepo(db: DatabaseSync) {
   const markAllReadStmt = db.prepare(`UPDATE user_notifications SET read_at = ? WHERE recipient_user_id = ? AND read_at IS NULL`)
   const markChannelReadStmt = db.prepare(`UPDATE user_notifications SET read_at = ? WHERE recipient_user_id = ? AND channel_id = ? AND read_at IS NULL`)
   const deleteForRecipientStmt = db.prepare(`DELETE FROM user_notifications WHERE recipient_user_id = ?`)
+  /** 撤权清理:只删该用户在**该频道**的通知(不波及其它频道) */
+  const deleteChannelForRecipientStmt = db.prepare(`DELETE FROM user_notifications WHERE recipient_user_id = ? AND channel_id = ?`)
+  /** 保留期清理:删除 created_at 早于给定时刻的**已读**通知(表按时间有界;未读永不清理) */
+  const sweepReadStmt = db.prepare(`DELETE FROM user_notifications WHERE read_at IS NOT NULL AND created_at < ?`)
 
   return {
     /**
@@ -92,6 +101,19 @@ export function createNotificationRepo(db: DatabaseSync) {
       return (selectByEvent.get(recipientUserId, eventId) as unknown as UserNotificationRow | undefined) ?? undefined
     },
 
+    /**
+     * 按 eventId 跨 recipient 取整行("刚写入的通知"发布用,调用方手上只有 eventId)。
+     *
+     * 前置约定:`eventId` 在实践中**全局唯一** —— 所有生成点都把聚合 id 与 recipient
+     * 编进键里(`mention:<chatMessageId>:<userId>` / `agent_reply:<chatMessageId>:<userId>` /
+     * `hitl_request:<hitlId>:<userId>` …)。表上的唯一约束是 `(recipient_user_id, event_id)`,
+     * 因此这里 `LIMIT 1` 是安全的;若将来引入可跨 recipient 复用的 eventId,
+     * 发布路径必须改为显式传 recipient(而不是依赖本方法)。
+     */
+    findAnyByEventId(eventId: string): UserNotificationRow | undefined {
+      return (selectAnyByEvent.get(eventId) as unknown as UserNotificationRow | undefined) ?? undefined
+    },
+
     listRecent(recipientUserId: string, limit = 50): UserNotificationRow[] {
       return selectRecent.all(recipientUserId, limit) as unknown as UserNotificationRow[]
     },
@@ -102,14 +124,22 @@ export function createNotificationRepo(db: DatabaseSync) {
 
     /**
      * 游标补发:取 cursor 之后的通知(升序)。
-     * cursor = { createdAt, id };缺省表示全量最近 limit 条(升序返回,便于前端顺序消费)。
-     * 用 (created_at, rowid) 复合游标:同毫秒批量写入也不会丢/重。
+     *
+     * cursor = { createdAt, id };`null` 表示"没有游标"→ 返回最近 limit 条(升序)。
+     * 复合游标 `(created_at, rowid)`:同毫秒批量写入也不丢不重。
+     *
+     * **游标行已不存在时**不能把 rowid 退化成 0 —— 那会返回所有 created_at 等于该时刻的行
+     * (重复投递)。此时改为严格的 `created_at > ?`,只可能漏掉"同一毫秒且排在原行之后"的行,
+     * 而那种行本就无法定位(锚点已删),属可接受退化。
      */
     listAfterCursor(recipientUserId: string, cursor: { createdAt: string, id: string } | null, limit = 200): UserNotificationRow[] {
       if (!cursor) {
         return (selectRecent.all(recipientUserId, limit) as unknown as UserNotificationRow[]).reverse()
       }
-      const rid = (rowidOf.get(cursor.id) as { rid: number } | undefined)?.rid ?? 0
+      const rid = (rowidOf.get(cursor.id) as { rid: number } | undefined)?.rid
+      if (rid === undefined) {
+        return selectAfterCreatedAt.all(recipientUserId, cursor.createdAt, limit) as unknown as UserNotificationRow[]
+      }
       return selectAfterCursor.all(recipientUserId, cursor.createdAt, cursor.createdAt, rid, limit) as unknown as UserNotificationRow[]
     },
 
@@ -137,16 +167,33 @@ export function createNotificationRepo(db: DatabaseSync) {
       return Number(markChannelReadStmt.run(new Date().toISOString(), recipientUserId, channelId).changes ?? 0)
     },
 
-    /** 成员被移除/退出:清理其通知(不再补拉,§13.7) */
-    deleteForRecipient(recipientUserId: string): number {
-      return Number(deleteForRecipientStmt.run(recipientUserId).changes ?? 0)
+    /**
+     * 成员被移除/退出:清理其通知,使其**不再补拉**(§13.7
+     * "removed 成员立即失去读、发言、审批、通知补拉权限")。
+     *
+     * 按 channel 限定:全量 `deleteForRecipient` 会连带抹掉该用户**其它频道**的通知,
+     * 而撤权只针对一个 Channel。`channelId` 为空时退化为全量清理(账号注销等场景)。
+     */
+    deleteForChannel(recipientUserId: string, channelId: string | null): number {
+      if (!channelId) {
+        return Number(deleteForRecipientStmt.run(recipientUserId).changes ?? 0)
+      }
+      return Number(deleteChannelForRecipientStmt.run(recipientUserId, channelId).changes ?? 0)
     },
 
-    /** 某频道的 HITL 通知(审批资格收紧后清理用) */
-    deleteForChannelAgent(recipientUserId: string, channelId: string, hitlId: string): number {
-      return Number(db.prepare(
-        `DELETE FROM user_notifications WHERE recipient_user_id = ? AND channel_id = ? AND hitl_id = ?`,
-      ).run(recipientUserId, channelId, hitlId).changes ?? 0)
+    /**
+     * 保留期清理:删除 `created_at < beforeIso` 的**已读**通知,返回清理行数。
+     *
+     * 按 `created_at`(而非 `read_at`)判龄:保留期的目的是让表**按时间有界**,
+     * 若按 read_at 判龄,"很久以前创建、刚刚才读"的行会再存活一整个窗口,
+     * 表的有界性取决于用户何时点开,不可预测。
+     *
+     * **未读行永不清理** —— 未读是"用户还没看到"的事实,删掉就是丢通知。
+     * 已读且过期的行可以回收:客户端游标只推进不回退,补发不需要远古已读行;
+     * 即使游标恰好指向被删行,`listAfterCursor` 也有"锚点缺失"的安全退化路径。
+     */
+    sweepRead(beforeIso: string): number {
+      return Number(sweepReadStmt.run(beforeIso).changes ?? 0)
     },
   }
 }
