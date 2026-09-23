@@ -38,7 +38,7 @@ const { getDcwLineRepo } = await import('../server/services/workshop/dcw/dcw-lin
 const { getDcwProductRepo } = await import('../server/services/workshop/dcw/dcw-product.repo')
 const { getDcwRecipeRepo } = await import('../server/services/workshop/dcw/dcw-recipe.repo')
 const { getAgentNodeBindingRepo } = await import('../server/services/workshop/agents/node-bindings.repo')
-const { toolParamControl, toolParamRead } = await import('../server/services/workshop/agents/industrial-tools')
+const { toolParamControl, toolParamRead } = await import('../server/services/workshop/agents/industrial')
 
 const ctrl = getDcwController()
 const paramRepo = getDcwParamRepo()
