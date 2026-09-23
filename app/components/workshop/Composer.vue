@@ -13,6 +13,8 @@
  *  - 引用/回复:时间线「回复」→ 顶部"回复 <sender>"chip → replyToId;
  *  - clientMessageId 每次发送生成,重试同一份内容时保持不变(服务端据此幂等),
  *    内容变了就换新 key(否则服务端会原样返回上一条旧消息)。
+ * 结构:菜单/回复 chip/状态行/工具行已拆到 workshop/composer/* 子组件,
+ * @提及状态机拆到 composables/workshop/useComposerMentions.ts —— 这里仍是唯一状态持有者。
  */
 import { message } from 'ant-design-vue'
 import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
@@ -20,7 +22,11 @@ import { useComposerBus } from '@/app/composables/workshop/useComposerBus'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useUserStore } from '@/app/stores/workshop/user'
 import { useChatStore, chatErrorCode, chatErrorMessage } from '@/app/stores/workshop/chat'
-import { agentHueColor } from '@/app/composables/workshop/useEventBlocks'
+import { useComposerMentions, type ComposerMode, type MentionCandidate } from '@/app/composables/workshop/useComposerMentions'
+import ComposerToolbar from '@/app/components/workshop/composer/ComposerToolbar.vue'
+import MentionMenu from '@/app/components/workshop/composer/MentionMenu.vue'
+import ReplyChip from '@/app/components/workshop/composer/ReplyChip.vue'
+import StatusChip from '@/app/components/workshop/composer/StatusChip.vue'
 import type { AepChatMention } from '#shared/workshop-protocol'
 
 const { t } = useI18n()
@@ -32,8 +38,6 @@ const entities = useEntitiesStore()
 const userStore = useUserStore()
 const chat = useChatStore()
 
-/** chat = 群聊(默认);task/message = 既有直发路径(owner 显式选择) */
-type ComposerMode = 'chat' | 'task' | 'message'
 const mode = ref<ComposerMode>('chat')
 /** 用户手动选过模式后不再自动切换(避免异步权限到达把界面从手里抢走) */
 const userPickedMode = ref(false)
@@ -61,6 +65,12 @@ watch(canPost, (ok) => {
   if (userPickedMode.value) return
   mode.value = ok ? 'chat' : 'task'
 }, { immediate: true })
+
+/** 工具行模式按钮:切换模式并锁定(不再被 canPost 自动改写) */
+const pickMode = (m: ComposerMode): void => {
+  mode.value = m
+  userPickedMode.value = true
+}
 
 // ===== 引用总线:块工具条「引用到输入框」→ 以 `> ` 前缀注入并聚焦 =====
 const { quoteText } = useComposerBus()
@@ -111,15 +121,6 @@ const resetTarget = (): void => {
 }
 
 // ===== @提及候选(Agent ∪ active 人类成员;键 = 稳定 ID,不是昵称) =====
-interface MentionCandidate {
-  key: string
-  type: 'agent' | 'user'
-  id: string
-  name: string
-  role: string
-  state?: 'idle' | 'busy' | 'stopped'
-}
-
 const mentionCandidates = computed<MentionCandidate[]>(() => {
   const out: MentionCandidate[] = []
   for (const a of workersAndLead.value) {
@@ -140,94 +141,16 @@ const mentionCandidates = computed<MentionCandidate[]>(() => {
   return out
 })
 
-// ===== @提及自动补全(任务/消息/群聊三模式通用) =====
-const mentionOpen = ref(false)
-const mentionQuery = ref('')
-const mentionHi = ref(0)
-/** 光标前未闭合的 "@词"(无空格断开才算进行中) */
-const detectMention = (): void => {
-  const el = document.activeElement as HTMLTextAreaElement | null
-  const text = el?.value ?? input.value
-  const caret = el?.selectionStart ?? text.length
-  const upto = text.slice(0, caret)
-  const m = /(^|\s)@([^\s@]*)$/.exec(upto)
-  if (!m) {
-    mentionOpen.value = false
-    return
-  }
-  mentionQuery.value = m[2] ?? ''
-  mentionOpen.value = mentionFiltered.value.length > 0
-  mentionHi.value = 0
-}
-const mentionFiltered = computed(() => {
-  const q = mentionQuery.value.toLowerCase()
-  return mentionCandidates.value.filter(c => !q || c.name.toLowerCase().includes(q)).slice(0, 8)
-})
-const pickMention = (idx: number): void => {
-  const c = mentionFiltered.value[idx]
-  if (!c) return
-  const el = document.activeElement as HTMLTextAreaElement | null
-  const text = el?.value ?? input.value
-  const caret = el?.selectionStart ?? text.length
-  const upto = text.slice(0, caret)
-  const m = /(^|\s)@([^\s@]*)$/.exec(upto)
-  const cut = m ? caret - (m[2]?.length ?? 0) : caret
-  const next = `${text.slice(0, cut)}${c.name} ${text.slice(caret)}`
-  input.value = next
-  // 仅直发模式改写目标;群聊模式**不设默认目标**(路由完全由文本里的 @ 决定)
-  if (c.type === 'agent' && mode.value !== 'chat') toAgentId.value = c.id
-  mentionOpen.value = false
-  nextTick(() => {
-    const pos = cut + c.name.length + 1
-    el?.setSelectionRange(pos, pos)
-    el?.focus()
-  })
-}
-const onMentionKeydown = (ev: KeyboardEvent): boolean => {
-  if (!mentionOpen.value) return false
-  if (ev.key === 'ArrowDown') {
-    ev.preventDefault()
-    mentionHi.value = Math.min(mentionHi.value + 1, mentionFiltered.value.length - 1)
-    return true
-  }
-  if (ev.key === 'ArrowUp') {
-    ev.preventDefault()
-    mentionHi.value = Math.max(mentionHi.value - 1, 0)
-    return true
-  }
-  if (ev.key === 'Enter' || ev.key === 'Tab') {
-    ev.preventDefault()
-    pickMention(mentionHi.value)
-    return true
-  }
-  if (ev.key === 'Escape') {
-    mentionOpen.value = false
-    return true
-  }
-  return false
-}
-
-const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-/**
- * 文本 → mentions(稳定 ID)。服务端会**重新解析**文本,这里只是意图提示:
- *  - 只认候选名单里的名字,最长名优先(@worker10 不会被 @worker1 抢先命中);
- *  - '@' 前必须是行首/空白,后必须是行尾/空白/标点,避免 @alice 命中 @alice2。
- */
-const parseMentions = (text: string): AepChatMention[] => {
-  const out: AepChatMention[] = []
-  const seen = new Set<string>()
-  const sorted = [...mentionCandidates.value].sort((a, b) => b.name.length - a.name.length)
-  for (const c of sorted) {
-    const re = new RegExp(`(^|[\\s(])@${escapeRegExp(c.name)}(?=$|[\\s,.。,:;!?)\\]])`, 'm')
-    if (!re.test(text)) continue
-    const key = `${c.type}:${c.id}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    out.push({ type: c.type, id: c.id, label: c.name })
-  }
-  return out
-}
+// @提及自动补全(状态机 + 候选过滤)见 useComposerMentions;此处只注入依赖
+const {
+  mentionOpen,
+  mentionHi,
+  mentionFiltered,
+  detectMention,
+  pickMention,
+  onMentionKeydown,
+  parseMentions,
+} = useComposerMentions({ input, mentionCandidates, mode, toAgentId })
 
 /** 当前文本将要触发的 Agent(0 = 纯群聊,无任何 Agent 执行) */
 const draftAgentMentions = computed(() => (mode.value === 'chat' ? parseMentions(input.value).filter(m => m.type === 'agent') : []))
@@ -471,133 +394,33 @@ const placeholder = computed(() => {
   <div class="composer">
     <div class="composer-box">
       <!-- @提及菜单(输入卡上方;候选 = Agent ∪ active 人类成员) -->
-      <div
+      <MentionMenu
         v-if="mentionOpen"
-        class="mention-menu"
-      >
-        <div class="mention-title">
-          {{ $t('composer.k1bxvc46004') }}
-        </div>
-        <button
-          v-for="(c, i) in mentionFiltered"
-          :key="c.key"
-          type="button"
-          class="mention-opt"
-          :class="{ sel: i === mentionHi }"
-          @mousedown.prevent="pickMention(i)"
-          @mouseenter="mentionHi = i"
-        >
-          <span
-            class="aw-avatar mention-ava"
-            :class="c.type === 'agent' ? 'is-agent' : 'is-user'"
-            :style="{ '--av': c.type === 'agent' ? agentHueColor(c.id) : 'var(--ink-faint)' }"
-          >{{ c.type === 'agent' ? 'A' : '人' }}</span>
-          <span class="mention-name">@{{ c.name }}</span>
-          <span class="mention-role">{{ c.role }}</span>
-          <span
-            v-if="c.type === 'agent'"
-            class="mention-state"
-            :class="c.state"
-            :title="c.state"
-          />
-        </button>
-      </div>
+        :candidates="mentionFiltered"
+        :highlighted="mentionHi"
+        @pick="pickMention"
+        @hover="mentionHi = $event"
+      />
 
       <!-- 回复目标 chip(引用链:replyToId) -->
-      <div
+      <ReplyChip
         v-if="replyTarget"
-        class="reply-chip"
-      >
-        <span class="i-tabler-arrow-back-up" />
-        <span class="reply-label">回复 <b>{{ replyTarget.senderName }}</b></span>
-        <span class="reply-excerpt">{{ replyTarget.excerpt }}</span>
-        <button
-          type="button"
-          class="reply-cancel"
-          title="取消回复"
-          @click="chat.clearReplyTarget()"
-        >
-          <span class="i-tabler-x" />
-        </button>
-      </div>
+        :sender-name="replyTarget.senderName"
+        :excerpt="replyTarget.excerpt"
+        @cancel="chat.clearReplyTarget()"
+      />
 
-      <div class="composer-status-chip">
-        <template v-if="mode === 'chat'">
-          <span class="chip-key">群聊</span>
-          <span
-            v-if="draftAgentMentions.length > 0"
-            class="reach-chip"
-            data-tone="info"
-            :title="'仅显式 @Agent 触发执行'"
-          >
-            <span
-              class="reach-dot"
-              aria-hidden="true"
-            />@{{ draftAgentMentions.map(m => m.label).join(' @') }} · 将触发 {{ draftAgentMentions.length }} 次 Agent 执行
-          </span>
-          <span
-            v-else
-            class="reach-chip"
-            data-tone="ok"
-            title="未 @Agent:消息只进群聊,不触发任何 Agent"
-          >
-            <span
-              class="reach-dot"
-              aria-hidden="true"
-            />仅群聊 · 0 次 Agent 执行
-          </span>
-          <span
-            v-if="draftUserMentions.length > 0"
-            class="chip-hint"
-          >@{{ draftUserMentions.map(m => m.label).join(' @') }} 将收到定向通知</span>
-          <span
-            v-else
-            class="chip-hint"
-          >输入 @ 提及成员 · Enter 发送</span>
-        </template>
-        <template v-else-if="mode === 'task'">
-          <span class="chip-key">{{ $t('composer.k3wcox005') }}</span>
-          <span>{{ taskMode }}</span>
-          <span v-if="taskMode === 'loop'">
-            {{ $t('composer.k49kr1011') }} {{ loopIntervalSeconds ?? '-' }}s
-          </span>
-          <span
-            class="chip-target"
-            :title="isDefaultLead ? $t('composer.defaultLeadTitle') : $t('composer.kl3604i033', { p0: targetName })"
-          >→ {{ targetName ? `@${targetName}` : 'lead' }}{{ isDefaultLead ? $t('composer.k2z7yuw012') : $t('composer.k2z0fsx032') }}</span>
-          <!-- HITL 送达语义提示 -->
-          <span
-            v-if="reachHint"
-            class="reach-chip"
-            :data-tone="reachHint.tone"
-            :title="reachHint.title"
-          >
-            <span
-              class="reach-dot"
-              aria-hidden="true"
-            />{{ reachHint.text }}
-          </span>
-          <span class="chip-hint">{{ $t('composer.k17u6q77006') }}</span>
-        </template>
-        <template v-else>
-          <span class="chip-key">{{ $t('composer.k41ykc007') }}</span>
-          <span v-if="targetName">@{{ targetName }}{{ isDefaultLead ? $t('composer.k2z7yuw012') : '' }}</span>
-          <span>{{ priority === 'immediate' ? $t('composer.k1bosqfv013') : $t('composer.k40g8m009') }}</span>
-          <!-- 可达性提示(open-tag reach hint):对方能否收到、将以何种方式送达 -->
-          <span
-            v-if="reachHint"
-            class="reach-chip"
-            :data-tone="reachHint.tone"
-            :title="reachHint.title"
-          >
-            <span
-              class="reach-dot"
-              aria-hidden="true"
-            />{{ reachHint.text }}
-          </span>
-          <span class="chip-hint">{{ $t('composer.chipHint') }}</span>
-        </template>
-      </div>
+      <StatusChip
+        :mode="mode"
+        :draft-agent-mentions="draftAgentMentions"
+        :draft-user-mentions="draftUserMentions"
+        :task-mode="taskMode"
+        :loop-interval-seconds="loopIntervalSeconds"
+        :target-name="targetName"
+        :is-default-lead="isDefaultLead"
+        :reach-hint="reachHint"
+        :priority="priority"
+      />
 
       <!-- 未开启群聊 / 未加入的诚实提示(不提供必然失败的按钮) -->
       <div
@@ -619,124 +442,23 @@ const placeholder = computed(() => {
         @blur="mentionOpen = false"
       />
 
-      <div class="composer-bar">
-        <div class="cb-left">
-          <div class="aw-seg">
-            <!-- 群聊入口只在真的能发言时提供(否则是死按钮) -->
-            <button
-              v-if="canPost || !perms"
-              type="button"
-              :class="{ on: mode === 'chat' }"
-              title="群聊:仅显式 @Agent 才触发执行"
-              @click="mode = 'chat'; userPickedMode = true"
-            >
-              群聊
-            </button>
-            <button
-              v-if="canManage || !perms || !canPost"
-              type="button"
-              :class="{ on: mode === 'task' }"
-              @click="mode = 'task'; userPickedMode = true"
-            >
-              {{ $t('composer.k3wcox005') }}
-            </button>
-            <button
-              v-if="canManage || !perms || !canPost"
-              type="button"
-              :class="{ on: mode === 'message' }"
-              @click="mode = 'message'; userPickedMode = true"
-            >
-              {{ $t('composer.k41ykc007') }}
-            </button>
-          </div>
-
-          <!-- HITL 目标选择(仅直发模式:群聊模式的路由由文本 @ 决定,没有"默认目标") -->
-          <a-select
-            v-if="mode !== 'chat'"
-            v-model:value="toAgentId"
-            size="small"
-            class="target"
-            :options="workersAndLead.map(a => ({ value: a.agentId, label: `@ ${a.name}${a.role === 'lead' ? ' · lead' : ''}` }))"
-          />
-
-          <template v-if="mode === 'task'">
-            <div class="aw-seg">
-              <button
-                v-for="m in ['goal', 'loop', 'pipeline'] as const"
-                :key="m"
-                type="button"
-                :class="{ on: taskMode === m }"
-                @click="taskMode = m"
-              >
-                {{ m }}
-              </button>
-            </div>
-            <template v-if="taskMode === 'loop'">
-              <a-input-number
-                v-model:value="loopIntervalModel"
-                size="small"
-                :min="1"
-                :max="86400"
-                :step="1"
-                :precision="0"
-                :addon-after="$t('composer.seconds')"
-                class="loop-number"
-              />
-              <a-input-number
-                v-model:value="loopMaxIterationsModel"
-                size="small"
-                :min="1"
-                :max="10000"
-                :step="1"
-                :precision="0"
-                :placeholder="$t('composer.k1b38y2b001')"
-                class="loop-number iterations"
-              />
-            </template>
-          </template>
-          <template v-else-if="mode === 'message'">
-            <div class="aw-seg">
-              <button
-                type="button"
-                :class="{ on: priority === 'immediate' }"
-                :title="$t('composer.k1jqqvhe002')"
-                @click="priority = 'immediate'"
-              >
-                {{ $t('composer.k3x9n2008') }}
-              </button>
-              <button
-                type="button"
-                :class="{ on: priority === 'task' }"
-                @click="priority = 'task'"
-              >
-                {{ $t('composer.k40g8m009') }}
-              </button>
-            </div>
-            <button
-              type="button"
-              class="chip-toggle"
-              :class="{ on: requireReply }"
-              :title="$t('composer.k195594v003')"
-              @click="requireReply = !requireReply"
-            >
-              <span class="i-tabler-mail-forward" />
-              {{ $t('composer.k3xv7u010') }}
-            </button>
-          </template>
-        </div>
-
-        <div class="cb-right">
-          <button
-            type="button"
-            class="send-btn im"
-            :disabled="sendLoading || !input.trim() || (mode === 'chat' && !canPost)"
-            :title="$t('composer.sendTitle')"
-            @click="send"
-          >
-            <span class="i-tabler-send im-nudge-up" />
-          </button>
-        </div>
-      </div>
+      <ComposerToolbar
+        v-model:mode="mode"
+        v-model:to-agent-id="toAgentId"
+        v-model:task-mode="taskMode"
+        v-model:loop-interval-model="loopIntervalModel"
+        v-model:loop-max-iterations-model="loopMaxIterationsModel"
+        v-model:priority="priority"
+        v-model:require-reply="requireReply"
+        :can-post="canPost"
+        :can-manage="canManage"
+        :perms="perms"
+        :workers-and-lead="workersAndLead"
+        :send-loading="sendLoading"
+        :input="input"
+        @pick="pickMode"
+        @send="send"
+      />
     </div>
   </div>
 </template>
@@ -768,34 +490,6 @@ const placeholder = computed(() => {
   box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--ink) 18%, transparent), 0 6px 22px rgb(12 10 9 / 5%);
 }
 
-/* 状态行:轻 chip 说明当前模式参数 */
-.composer-status-chip {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  width: max-content;
-  max-width: 100%;
-  margin: 0 0 4px 2px;
-  padding: 2px 8px;
-  font-size: 11.5px;
-  color: var(--ink-faint);
-  background: var(--paper-deep);
-  border-radius: var(--radius-chip);
-}
-.chip-key {
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-.chip-target {
-  font-weight: 600;
-  color: var(--ink);
-}
-.chip-hint {
-  margin-left: auto;
-  padding-left: 8px;
-  color: var(--ink-faint);
-}
-
 /* 群聊不可发言时的诚实提示(不渲染必然失败的发送) */
 .composer-block-hint {
   display: flex;
@@ -805,58 +499,6 @@ const placeholder = computed(() => {
   font-size: 11.5px;
   color: var(--tone-warning-dot);
 }
-
-/* 回复目标 chip(引用链) */
-.reply-chip {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin: 2px 0 4px;
-  padding: 3px 8px;
-  font-size: 11.5px;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border-left: 2px solid var(--ink-fainter);
-  border-radius: var(--radius-chip);
-}
-.reply-label b { color: var(--ink); }
-.reply-excerpt {
-  max-width: 46%;
-  overflow: hidden;
-  color: var(--ink-faint);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.reply-cancel {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 2px;
-  font-size: 12px;
-  color: var(--ink-faint);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-}
-.reply-cancel:hover { color: var(--ink); }
-
-/* 可达性提示 chip:ok 绿 / info 蓝 / warn 琥珀 —— 状态不只靠颜色(附文字) */
-.reach-chip {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
-  padding: 0 6px;
-  font-size: 10.5px;
-  border-radius: var(--radius-chip);
-}
-.reach-chip .reach-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.reach-chip[data-tone='ok'] { color: var(--tone-success-dot); background: color-mix(in srgb, var(--tone-success-dot) 10%, transparent); }
-.reach-chip[data-tone='info'] { color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 10%, transparent); }
-.reach-chip[data-tone='warn'] { color: var(--tone-warning-dot); background: color-mix(in srgb, var(--tone-warning-dot) 13%, transparent); }
 
 .composer-input {
   display: block;
@@ -876,147 +518,6 @@ const placeholder = computed(() => {
 }
 .composer-input::placeholder { color: var(--ink-faint); }
 
-.composer-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 30px;
-  margin-top: 6px;
-}
-.cb-left {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-.cb-right {
-  display: flex;
-  flex: none;
-  gap: 8px;
-  align-items: center;
-}
-
-/* 回执切换 chip */
-.chip-toggle {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
-  padding: 3px 10px;
-  font-family: var(--font-body);
-  font-size: 12px;
-  color: var(--ink-faint);
-  cursor: pointer;
-  background: var(--paper-raised);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill);
-  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
-}
-.chip-toggle:hover { color: var(--ink); }
-.chip-toggle.on {
-  font-weight: 600;
-  color: var(--ink);
-  background: var(--paper-deep);
-  border-color: var(--ink);
-}
-
-/* 发送:墨色药丸圆钮 */
-.send-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  font-size: 15px;
-  color: var(--on-accent);
-  cursor: pointer;
-  background: var(--accent);
-  border: 0;
-  border-radius: var(--radius-pill);
-  transition: background var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
-}
-.send-btn:hover:not(:disabled) { background: var(--accent-strong); }
-.send-btn:active:not(:disabled) { transform: scale(0.96); }
-.send-btn:disabled { opacity: 0.3; cursor: default; }
-
-.loop-number { width: 104px; }
-.loop-number.iterations { width: 104px; }
-.target { width: 138px; }
-
-/* @提及菜单(open-tag mention-menu) */
-.mention-menu {
-  position: absolute;
-  right: 12px;
-  bottom: 100%;
-  left: 12px;
-  z-index: 20;
-  max-height: 264px;
-  margin-bottom: 8px;
-  overflow: auto;
-  background: var(--paper-raised);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-float);
-}
-.mention-opt {
-  display: flex;
-  gap: 9px;
-  align-items: center;
-  width: 100%;
-  padding: 7px 12px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--ink-soft);
-  text-align: left;
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-}
-.mention-opt:hover,
-.mention-opt.sel { background: var(--paper-deep); }
-.mention-ava { width: 20px; height: 20px; font-size: 10px; }
-.mention-ava.is-user { color: var(--on-accent); background: var(--ink-faint); }
-.mention-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink);
-}
-.mention-role {
-  flex: none;
-  font-size: 10.5px;
-  color: var(--ink-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.mention-title {
-  padding: 5px 12px 4px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-/* 成员状态点:busy = 暖橙脉冲,idle = 静灰 */
-.mention-state {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  background: var(--ink-fainter);
-  border-radius: 50%;
-  opacity: 0.7;
-}
-
-.mention-state.busy {
-  background: var(--tone-live-dot);
-  opacity: 1;
-}
-
 /* ── 窄屏(≤1023):输入区是手持设备的"主操作面",键盘弹出时它必须还在 ──
    桌面工具栏是「一行左簇右钮」;390px 下这行会折成一列竖排字,
    所以窄屏改为「模式行 → 目标行 → 发送行」三段堆叠,发送占满一行且 ≥44px。 */
@@ -1029,87 +530,11 @@ const placeholder = computed(() => {
     padding: 8px 10px;
   }
 
-  /* 状态 chip:桌面宽度自适应内容,窄屏必须允许折行,否则顶破输入卡 */
-  .composer-status-chip {
-    width: auto;
-    flex-wrap: wrap;
-    row-gap: 2px;
-    font-size: 11.5px;
-    line-height: 1.45;
-  }
-
-  .chip-hint {
-    flex: 1 1 100%;
-    padding-left: 0;
-    margin-left: 0;
-  }
-
-  .reach-chip,
-  .mention-role,
-  .mention-title {
-    font-size: 11.5px;
-  }
-
   /* 16px 是 iOS 不缩放输入框的下限(小于它聚焦时整页被放大) */
   .composer-input {
     min-height: 42px;
     max-height: 30dvh;
     font-size: 16px;
-  }
-
-  .composer-bar {
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .cb-left {
-    flex: 1 1 100%;
-    row-gap: 8px;
-  }
-
-  .cb-right {
-    flex: 1 1 100%;
-  }
-
-  /* 主操作:整行墨色药丸(触摸目标 44px) */
-  .send-btn {
-    width: 100%;
-    height: 44px;
-    font-size: 18px;
-  }
-
-  .aw-seg button {
-    min-height: 40px;
-    padding: 0 12px;
-  }
-
-  .chip-toggle {
-    min-height: 40px;
-  }
-
-  .target {
-    flex: 1 1 130px;
-    width: auto;
-  }
-
-  .composer-bar :deep(.ant-select-selector) {
-    min-height: 40px;
-    align-items: center;
-  }
-
-  .loop-number,
-  .loop-number.iterations {
-    flex: 1 1 96px;
-    width: auto;
-  }
-
-  .composer-bar :deep(.ant-input-number) {
-    min-height: 40px;
-  }
-
-  .mention-opt {
-    min-height: 44px;
   }
 }
 </style>

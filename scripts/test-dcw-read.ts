@@ -130,7 +130,7 @@ console.log('\n--- 运行时周期读调度 ---')
 // ===== 5. Agent dcw_read 工具(鉴权 + 执行;隔离配置根) =====
 console.log('\n--- Agent dcw_read 工具 ---')
 {
-  const { toolDcwRead } = await import('../server/services/workshop/agents/industrial-tools')
+  const { toolDcwRead } = await import('../server/services/workshop/agents/industrial')
   const denied = await toolDcwRead('agent-x', { node_id: 'dw-none' })
   check('未绑定 agent 读取被拒', denied.isError === true && /未绑定|无权/.test(denied.text))
   const { getDcwController } = await import('../server/services/workshop/dcw/dcw-controller')

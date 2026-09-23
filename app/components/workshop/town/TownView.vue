@@ -16,7 +16,8 @@ import { useCharacterAssets } from '@/app/composables/workshop/useCharacterAsset
 import { useDeviceTwins, type DeviceTwinView } from '@/app/composables/workshop/useDeviceTwins'
 import { useSceneLayouts } from '@/app/composables/workshop/useSceneLayouts'
 import { useHttp } from '@/app/composables/useHttp'
-import { useResponsive } from '@/app/composables/useResponsive'
+import { useTownSheets } from '@/app/composables/workshop/town/useTownSheets'
+import { useTownPanelDrag } from '@/app/composables/workshop/town/useTownPanelDrag'
 import type { TownScene, TownEntityInput } from './TownScene'
 import type { TownScene3D, ChannelLayout, AgentRangeLayout } from './TownScene3D'
 // 频道身份色(与 3D 场景同源:同一 hashHue,UI 用 CSS 色)
@@ -29,6 +30,9 @@ import { DAQ_TEMPLATES } from '#shared/daq-protocol'
 import { useDaqStream, type DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
 import { useDcwStream, type DcwNodeView } from '@/app/composables/workshop/useDcwStream'
 import type { RecipeParam } from '#shared/dcw-protocol'
+// 子组件(模板分块,见 components/):顶部导航
+import TownTopNav from './components/TownTopNav.vue'
+import TownStatusBar from './components/TownStatusBar.vue'
 
 const { t } = useI18n()
 
@@ -54,33 +58,9 @@ const deviceTwins = useDeviceTwins()
 const sceneLayouts = useSceneLayouts()
 const http = useHttp()
 
-/* ── 窄屏形态:左右轨折成底部抽屉(sheet),底部坞折成可收起横条 ──
- * 断点判据只用 useResponsive(全站唯一出处),不自己监听 innerWidth;
- * DOM 结构不随档位增删(形态切换全部交给 CSS 媒体查询),
- * 避免 SSR/水合不一致。抽屉协议与 AppSidebar 一致:遮罩 + Esc 关闭。 */
-const { isDesktop } = useResponsive()
-/** 当前打开的抽屉:'left' | 'right' | null */
-const sheetOpen = ref<'left' | 'right' | null>(null)
-/** 窄屏底部坞是否展开(默认收起,舞台优先) */
-const dockOpen = ref(false)
-function toggleSheet(side: 'left' | 'right') {
-  sheetOpen.value = sheetOpen.value === side ? null : side
-}
-function closeSheet() {
-  sheetOpen.value = null
-}
-function onSheetKey(e: KeyboardEvent) {
-  if (e.key === 'Escape' && sheetOpen.value) closeSheet()
-}
-onMounted(() => window.addEventListener('keydown', onSheetKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onSheetKey))
-/** 回到桌面档必须清空抽屉状态,否则遮罩会滞留在屏幕上 */
-watch(isDesktop, (d) => {
-  if (d) {
-    sheetOpen.value = null
-    dockOpen.value = false
-  }
-})
+/* 窄屏抽屉 / 底部坞开合状态(自本文件抽出,细节见 composables/workshop/town/useTownSheets.ts;
+ * 抽屉 Esc 关闭与回桌面档复位副作用(原先的 onMounted/onBeforeUnmount/watch)已随实现一并迁入) */
+const { sheetOpen, dockOpen, toggleSheet, closeSheet } = useTownSheets()
 
 const hostRef = ref<HTMLDivElement | null>(null)
 /** 当前渲染器(TownScene / TownScene3D 之一) */
@@ -1058,74 +1038,9 @@ function onFocusDevice(t: { id: string, posX?: number, posZ?: number }): void {
  * 可拖动面板(对象属性卡/边界面板/员工会话台):
  * 抓取标题栏拖动,自由移动避免堆叠在底部;位置经 localStorage 记忆
  * ============================================================ */
-const panelPos = reactive<Record<string, { x: number, y: number }>>({})
-const PANEL_POS_KEY = 'aw-town-panel-pos'
-function restorePanelPos(): void {
-  if (typeof localStorage === 'undefined') return
-  try {
-    const saved = JSON.parse(localStorage.getItem(PANEL_POS_KEY) || '{}') as Record<string, { x: number, y: number }>
-    for (const k of Object.keys(saved)) {
-      if (saved[k] && Number.isFinite(saved[k].x)) panelPos[k] = saved[k]
-    }
-  }
-  catch { /* 损坏的存档忽略 */ }
-}
-function savePanelPos(): void {
-  try {
-    localStorage.setItem(PANEL_POS_KEY, JSON.stringify(panelPos))
-  }
-  catch { /* 隐私模式等忽略 */ }
-}
-let dragToken: { frame: HTMLElement, panel: HTMLElement, offX: number, offY: number } | null = null
-
-/** 抓取面板标题栏开始拖动(pointerdown) */
-function onPanelGripDown(e: PointerEvent, key: string): void {
-  const grip = e.currentTarget as HTMLElement
-  const panel = grip.closest<HTMLElement>('.drag-panel')
-  const frame = grip.closest<HTMLElement>('.town-frame')
-  if (!panel || !frame) return
-  e.preventDefault()
-  const rect = panel.getBoundingClientRect()
-  const fr = frame.getBoundingClientRect()
-  // 由「底部居中」布局切换为显式定位(之后完全随拖动)
-  panel.style.left = `${rect.left - fr.left}px`
-  panel.style.top = `${rect.top - fr.top}px`
-  panel.style.bottom = 'auto'
-  panel.style.transform = 'none'
-  panelPos[key] = { x: rect.left - fr.left, y: rect.top - fr.top }
-  dragToken = {
-    frame,
-    panel,
-    offX: e.clientX - rect.left,
-    offY: e.clientY - rect.top,
-  }
-  document.body.style.userSelect = 'none'
-  document.body.style.cursor = 'grabbing'
-  const onMove = (ev: PointerEvent): void => {
-    const tk = dragToken
-    if (!tk) return
-    const fr2 = tk.frame.getBoundingClientRect()
-    const x = ev.clientX - tk.offX - fr2.left
-    const y = ev.clientY - tk.offY - fr2.top
-    const pw = tk.panel.offsetWidth
-    const nx = Math.max(-pw + 90, Math.min(x, fr2.width - 30))
-    const ny = Math.max(4, Math.min(y, fr2.height - 34))
-    tk.panel.style.left = `${nx}px`
-    tk.panel.style.top = `${ny}px`
-    panelPos[key] = { x: nx, y: ny }
-  }
-  const onUp = (): void => {
-    dragToken = null
-    document.body.style.userSelect = ''
-    document.body.style.cursor = ''
-    window.removeEventListener('pointermove', onMove)
-    window.removeEventListener('pointerup', onUp)
-    savePanelPos()
-  }
-  window.addEventListener('pointermove', onMove)
-  window.addEventListener('pointerup', onUp)
-}
-restorePanelPos()
+/* 浮层面板拖拽 / 位置记忆(自本文件抽出,细节见 composables/workshop/town/useTownPanelDrag.ts;
+ * restorePanelPos 已随实现迁入该 composable 的 onMounted,模板只用 panelPos 与抓手事件) */
+const { panelPos, onPanelGripDown } = useTownPanelDrag()
 
 /* ============================================================
  * 小地图(设计稿 drawMinimap):全域固定比例导航图 + 相机锥/准星。
@@ -2903,135 +2818,18 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="town-view">
-    <!-- ================= 顶部导航 ================= -->
-    <header
-      class="topnav"
-      :class="{ 'sheet-on': sheetOpen }"
-    >
-      <div class="brand">
-        <svg
-          class="brand-glyph"
-          viewBox="0 0 32 32"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M16 2.5 27.5 9v14L16 29.5 4.5 23V9L16 2.5Z"
-            stroke="#35e0a0"
-            stroke-width="1.6"
-          />
-          <path
-            d="M16 8.2 22.5 12v8L16 23.8 9.5 20v-8L16 8.2Z"
-            stroke="#41c8f4"
-            stroke-width="1.3"
-            opacity=".85"
-          />
-          <circle
-            cx="16"
-            cy="16"
-            r="2.4"
-            fill="#35e0a0"
-          />
-          <circle
-            cx="25.5"
-            cy="7.5"
-            r="1.6"
-            fill="#41c8f4"
-          />
-        </svg>
-        <div>
-          <div class="brand-name">
-            DIGITAL <em>TWIN</em>
-          </div>
-          <div class="brand-sub">
-            AGENTWORKSHOP · {{ $t('townView.klyi8yg127') }}
-          </div>
-        </div>
-      </div>
-      <nav
-        class="nav-tabs"
-        :aria-label="$t('townView.k1c9jyta001')"
-      >
-        <div class="seg">
-          <button
-            :class="{ on: mode === 'browse' }"
-            @click="mode === 'edit' && toggleMode()"
-          >
-            {{ $t('townView.k48dwh027') }}
-          </button>
-          <button
-            :class="{ on: mode === 'edit' }"
-            @click="mode === 'browse' && toggleMode()"
-          >
-            {{ $t('townView.k45eb0028') }}
-          </button>
-        </div>
-        <button
-          class="nav-action"
-          :disabled="mode !== 'edit'"
-          :title="mode === 'edit' ? $t('townView.saveLayoutTip') : $t('townView.readonlyTip')"
-          @click="saveLayout"
-        >
-          {{ $t('townView.k1b3bk8t029') }}
-        </button>
-        <span
-          v-if="saveState && saveState.state !== 'idle'"
-          class="save-chip"
-          :class="`s-${saveState.state}`"
-        >{{ saveStateLabel }}</span>
-      </nav>
-      <div class="nav-right">
-        <span
-          class="nav-chip mono"
-          :class="{ 'nav-bell-warn': activeAlarmCount > 0 }"
-          :title="$t('townView.k1fsi3ir002')"
-        >◉ {{ activeAlarmCount }}</span>
-        <span class="nav-chip mono nav-fps">{{ fps }} FPS</span>
-        <div
-          class="avatar-chip nav-user"
-          :title="$t('townView.k1demf38003')"
-        >
-          <div class="avatar-fallback">
-            {{ (userStore.user?.name ?? 'OP').slice(0, 2).toUpperCase() }}
-          </div>
-          <span>{{ userStore.user?.name || $t('townView.k1pub99m139') }}</span>
-        </div>
-
-        <!-- 窄屏:左/右轨开合(≥1024 由 CSS 隐藏) -->
-        <button
-          type="button"
-          class="sheet-btn"
-          :class="{ on: sheetOpen === 'left' }"
-          aria-controls="town-rail-left"
-          :aria-expanded="sheetOpen === 'left' ? 'true' : 'false'"
-          :title="$t('townView.k1k75lzy030')"
-          @click="toggleSheet('left')"
-        >
-          <svg
-            class="sheet-ico"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          ><path d="M4 6h16M4 12h11M4 18h16" /></svg>
-          <span class="sheet-btn-t">{{ $t('townView.k1k75lzy030') }}</span>
-        </button>
-        <button
-          type="button"
-          class="sheet-btn"
-          :class="{ on: sheetOpen === 'right' }"
-          aria-controls="town-rail-right"
-          :aria-expanded="sheetOpen === 'right' ? 'true' : 'false'"
-          :title="$t('townView.k17dkhgd112')"
-          @click="toggleSheet('right')"
-        >
-          <svg
-            class="sheet-ico"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          ><path d="M20 6H4M20 12H9M20 18H4" /></svg>
-          <span class="sheet-btn-t">{{ $t('townView.k17dkhgd112') }}</span>
-        </button>
-      </div>
-    </header>
+    <TownTopNav
+      :mode="mode"
+      :fps="fps"
+      :active-alarm-count="activeAlarmCount"
+      :user-name="userStore.user?.name ?? 'OP'"
+      :save-state="saveState"
+      :save-state-label="saveStateLabel"
+      :sheet-open="sheetOpen"
+      @toggle-mode="toggleMode"
+      @save-layout="saveLayout"
+      @toggle-sheet="toggleSheet"
+    />
 
     <!-- ================= 三栏应用区 ================= -->
     <div class="app">
@@ -5069,23 +4867,14 @@ onBeforeUnmount(() => {
       </aside>
     </div>
 
-    <!-- ================= 状态栏 ================= -->
-    <footer class="statusbar">
-      <span>
-        <span
-          class="sb-dot"
-          :class="{ red: conn.state !== 'open' }"
-        />{{ $t('townView.k1i4g246123') }} <b>{{ conn.state === 'open' ? $t('townView.k41k5c154') : syncing ? $t('townView.k3lmtk3184') : $t('townView.k44c2n186') }}</b>
-      </span>
-      <span class="sb-stats">
-        {{ $t('townView.k4a0jt124') }} <b>{{ blockCount }}</b><i>·</i>{{ $t('townView.k3xdvm125') }} <b>{{ agentCount }}</b><i>·</i>{{ $t('townView.k47e16126') }} <b>{{ deviceCount }}</b>
-      </span>
-      <span class="sb-lat mono">
-        {{ fps }} FPS
-      </span>
-      <span class="copy">
-        © 2026 ABO · DIGITAL TWIN · {{ $t('townView.k1h5gxpf137') }}</span>
-    </footer>
+    <TownStatusBar
+      :conn-state="conn.state"
+      :syncing="syncing"
+      :block-count="blockCount"
+      :agent-count="agentCount"
+      :device-count="deviceCount"
+      :fps="fps"
+    />
 
     <!-- 窄屏抽屉遮罩:点击空白关闭(与 AppSidebar 同一套抽屉协议) -->
     <div
@@ -5107,166 +4896,9 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* ============================================================
- * DIGITAL TWIN · 控制室 UI(设计稿 1:1 架构)
- * topnav 50 / 三栏网格(250 · 1fr · 342) / dock / statusbar 30
- * ============================================================ */
-.town-view {
-  --hud-bg: #070b13;
-  --hud-panel: #0d1420;
-  --hud-panel-2: #111a2b;
-  --hud-panel-raised: #152034;
-  --hud-panel-hover: #16233a;
-  --hud-line: #1d2a42;
-  --hud-line-soft: #16202f;
-  --hud-line-hi: #2c4568;
-  --hud-input: #0a111d;
-  --hud-text: #e8eef8;
-  --hud-dim: #8fa0b5;
-  --hud-faint: #5f6e84;
-  --hud-accent: #35e0a0;
-  --hud-accent-dim: #1f9e6e;
-  --hud-cyan: #41c8f4;
-  --hud-amber: #f6c453;
-  --hud-ok: #35e0a0;
-  --hud-danger: #ff6b6b;
-  --hud-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
-  --hud-ease: cubic-bezier(0.22, 0.68, 0.36, 1);
-  --hud-r-sm: 8px;
-  --hud-r-md: 10px;
-  --hud-r-lg: 12px;
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--hud-bg);
-  color: var(--hud-text);
-  font-family: var(--font-body);
-  font-size: 13px;
-}
-
-/* ===== 顶部导航 ===== */
-.topnav {
-  height: 50px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 0 16px;
-  background: linear-gradient(180deg, #0c1320, #0a101b);
-  border-bottom: 1px solid var(--hud-line-soft);
-  position: relative;
-  z-index: 60;
-}
-/* 顶栏下缘呼吸光:制造深度,不做渐变横幅 */
-.topnav::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent 4%, rgba(53, 224, 160, 0.35) 50%, transparent 96%);
-  pointer-events: none;
-}
-.brand { display: flex; align-items: center; gap: 10px; min-width: 230px; }
-.brand-glyph { width: 26px; height: 26px; flex: none; }
-.brand-name { font-weight: 800; font-size: 14.5px; letter-spacing: 0.06em; }
-.brand-name em { font-style: normal; color: var(--hud-accent); }
-.brand-sub { font-size: 10px; color: var(--hud-faint); letter-spacing: 0.18em; margin-top: 2px; }
-.nav-tabs {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.nav-action {
-  background: transparent;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: var(--hud-r-sm);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--hud-text);
-  border: 1px solid #27395c;
-  transition: background 0.15s var(--hud-ease), border-color 0.15s var(--hud-ease);
-}
-.nav-action:hover { background: #14203a; border-color: #33507c; }
-.save-chip {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  padding: 3px 9px;
-  border-radius: 6px;
-  border: 1px solid var(--hud-line);
-  color: var(--hud-dim);
-  white-space: nowrap;
-}
-.save-chip.s-dirty { color: var(--hud-amber); border-color: rgba(246, 196, 83, 0.4); }
-.save-chip.s-saving { color: var(--hud-dim); }
-.save-chip.s-saved { color: var(--hud-accent); border-color: rgba(53, 224, 160, 0.4); }
-.save-chip.s-error { color: var(--hud-danger); border-color: rgba(255, 107, 107, 0.4); }
-.nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.nav-chip {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--hud-dim);
-  border: 1px solid var(--hud-line);
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-variant-numeric: tabular-nums;
-}
-.avatar-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px 4px 4px;
-  border-radius: 999px;
-  border: 1px solid var(--hud-line-soft);
-  background: #0e1626;
-}
-.avatar-chip span { font-size: 12px; color: var(--hud-text); }
-/* ── 孪生 HUD 字号地板(桌面档) ────────────────────────────────────────────
- * 孪生面板是"仪表铭牌",8.5–9px 的 mono 微字在 1440 下也被审计稳定判为不可读
- * (实测每页 ~400 个节点)。10px 起是这套密度还能承受的下限:观感几乎不变,
- * 但从"看得见"变成"读得了"。窄屏另有更严格的 11.5px 档(见下方媒体查询)。 */
-.town-view small {
-  font-size: 11px;
-}
-
-.avatar-fallback {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1f9e6e, #41c8f4);
-  display: grid;
-  place-items: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: #04120c;
-}
-.seg {
-  display: inline-flex;
-  background: #0a111d;
-  border: 1px solid var(--hud-line);
-  border-radius: var(--hud-r-sm);
-  padding: 2px;
-}
-.seg button {
-  padding: 4px 16px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  color: var(--hud-dim);
-  font-weight: 600;
-  transition: background 0.15s var(--hud-ease), color 0.15s var(--hud-ease);
-}
-.seg button.on {
-  background: var(--hud-accent);
-  color: #04120c;
-  box-shadow: 0 0 12px rgba(53, 224, 160, 0.35);
-}
+/* ===== 顶部导航 / 控制室设计令牌(--hud-*) ===== */
+/* 自本文件抽出的 .topnav 及其令牌定义见 components/TownTopNav.vue(设计令牌定义在根 .town-view 上,
+ * 经 CSS 自定义属性继承覆盖整个视图) */
 
 /* ===== 三栏应用区 ===== */
 .app {
@@ -7046,59 +6678,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   box-shadow: 0 0 14px rgba(255, 107, 107, 0.25);
 }
 
-/* ===== 状态栏 ===== */
-.statusbar {
-  height: 30px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 0 14px;
-  background: #0a101b;
-  border-top: 1px solid var(--hud-line-soft);
-  font-size: 11px;
-  color: var(--hud-dim);
-  position: relative;
-  z-index: 60;
-}
-.statusbar b { color: var(--hud-accent); font-weight: 600; }
-.statusbar .sb-stats {
-  display: inline-flex;
-  gap: 7px;
-  align-items: center;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-}
-.sb-stats b { color: var(--hud-text); font-weight: 600; }
-.sb-stats i { font-style: normal; color: var(--hud-line-hi); }
-.sb-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--hud-accent);
-  box-shadow: 0 0 6px var(--hud-accent);
-  display: inline-block;
-  margin-right: 6px;
-  vertical-align: 1px;
-}
-.sb-dot.red { background: var(--hud-danger); box-shadow: 0 0 6px var(--hud-danger); }
-.sb-dot:not(.red) { animation: sb-pulse 2.4s var(--hud-ease) infinite; }
-@keyframes sb-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sb-dot:not(.red) { animation: none; }
-}
-.sb-lat {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-.statusbar .copy { margin-left: auto; color: var(--hud-faint); font-family: var(--font-mono); font-size: 10px; }
+/* ===== 状态栏(已抽为 components/TownStatusBar.vue)===== */
 
 /* ===== 加载遮罩 ===== */
 .loading-mask {
@@ -7434,12 +7014,6 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
     .dcw-send, .dcw-err, .bind-select, .bind-add-btn, .daq-ctl-cycle, .daq-num, .daq-th-inputs,
     .approval-ttl, .approval-detail, .dcw-write input::placeholder
   ) { font-size: 11.5px; }
-  .town-view .statusbar .copy,
-  .town-view .dock .dock-count,
-  .town-view .dock .dock-mode,
-  .town-view .dock .ctl-sec,
-  .town-view .dock .ctl-val,
-  .town-view .dock .dock-toggle-hint { font-size: 11.5px; }
   .town-view .dock .ctl-val { font-size: 12.5px; }
   .town-view .dock-hd h3 { font-size: 13px; }
   .town-view .bind-val b { font-size: 12px; }
@@ -7453,7 +7027,6 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
     .daq-name, .scene-name, .al-txt, .ev-text, .chat-name, .co-val, .rpg-text, .daq-info-row,
     .daq-ctl-btn, .rail-empty, .rpg-note, .member-name, .bind-label, .dcw-cur
   ) { font-size: 13px; }
-  .town-view .statusbar { font-size: 12px; }
   .town-view .vd-name { font-size: 13px; }
 }
 

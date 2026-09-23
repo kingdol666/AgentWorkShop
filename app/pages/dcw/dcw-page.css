@@ -1,0 +1,344 @@
+/* 产线运营总览(/dcw)页面样式。
+ * 与 index.vue 拆分出的子组件同源:规则文本与原 <style scoped> 块逐字一致,
+ * 但改为全局作用域 —— scoped 的 data-v 归属会随模板搬家而改变命中范围,
+ * 全局层则保持「整套样式在 /dcw 页面模块加载时生效」这一原有语义不变。 */
+.page { display: flex; flex-direction: column; gap: 14px; }
+.badges { display: flex; gap: 8px; }
+/* 状态徽章 = 玻璃芯片:双主题令牌化,浅色不再发白发黄 */
+.badge {
+  padding: 3px 10px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  backdrop-filter: var(--frost-blur);
+}
+.warn-badge { color: var(--tone-warning-dot); background: var(--tone-warning-bg); border-color: color-mix(in srgb, var(--tone-warning-dot) 32%, transparent); }
+.tpl-btn { color: var(--tone-info-dot); background: var(--tone-info-bg); border-color: color-mix(in srgb, var(--tone-info-dot) 34%, transparent); cursor: pointer; }
+.tpl-btn:hover { border-color: color-mix(in srgb, var(--tone-info-dot) 60%, transparent); }
+
+/* 清单筛选条:状态分段 + 搜索(与页内控件同一语言) */
+.fleet-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.fleet-filter .aw-seg button {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.fleet-search {
+  width: 220px;
+  margin-left: auto;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel-sm);
+}
+.fleet-search:focus { outline: none; border-color: var(--tone-success-dot); box-shadow: 0 0 0 3px var(--accent-soft); }
+.line-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+/* 产线卡 = Aurora Glass 仪表砖:半透 surface + 深模糊 + 内缘折射;
+   运行卡在玻璃顶缘叠一线产线色洗染做「图」,待机卡收敛为磨砂做「底」 */
+.line-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px 16px;
+  text-align: left;
+  background: var(--surface-glass);
+  backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--glass-edge);
+  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .line-card:hover {
+    border-color: color-mix(in srgb, var(--lc, #3aa0ff) 55%, var(--line-strong));
+    transform: translateY(-2px);
+    box-shadow: var(--glass-edge), var(--shadow-float);
+  }
+}
+.line-card:not(.idle) {
+  border-color: color-mix(in srgb, var(--lc, #3aa0ff) 38%, var(--line-strong));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--lc, #3aa0ff) 9%, transparent), transparent 46%),
+    var(--surface-glass);
+}
+.line-card.idle {
+  background: var(--frost-bg);
+}
+.line-card.idle .lc-dot {
+  box-shadow: none;
+  opacity: 0.72;
+}
+.line-card.idle .lc-name {
+  color: var(--ink-faint);
+}
+.lc-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lc-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  background: var(--lc);
+  border-radius: 4px;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--lc) 70%, transparent);
+}
+/* 名称不再用 ellipsis 硬裁:窄屏改用换行,长名不消失(审计的 text-clipped 根因) */
+.lc-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14.5px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.lc-state {
+  margin-left: auto;
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+.lc-state.on { color: var(--tone-success-dot); }
+/* 头部图标钮:编辑/删除,悬停语义色染色 */
+.lc-act {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink-faint);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    opacity 0.15s ease,
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.line-card:hover .lc-act,
+.line-card:focus-within .lc-act { opacity: 1; }
+.lc-act:hover { color: var(--tone-info-dot); background: var(--tone-info-bg); }
+.lc-act.danger:hover { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+.lc-act:active { transform: scale(0.9); }
+.lc-run { font-size: 11.5px; color: var(--tone-info-dot); }
+.lc-run.dim { color: var(--ink-faint); }
+/* 无描述时的兜底提示进一步退后(77 张卡同文反复出现即是噪音;不压到 0.55 以下,保浅色可读) */
+.lc-run.dim.ph { opacity: 0.75; }
+.lc-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+.lc-stats b { color: var(--ink); font-weight: 600; }
+.lc-ctl { display: flex; gap: 8px; }
+.lc-ctl .inp {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 9px;
+  font-size: 11.5px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel-sm);
+}
+.lc-ctl .inp:focus { outline: none; border-color: var(--tone-success-dot); box-shadow: 0 0 0 3px var(--accent-soft); }
+.lc-ctl .pill-btn { flex: none; }
+.lc-manage {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--tone-info-dot);
+  text-decoration: none;
+}
+.lc-manage:hover { text-decoration: underline; }
+.new-card {
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  box-shadow: none;
+  backdrop-filter: none;
+  cursor: pointer;
+}
+.new-card:hover { color: var(--tone-success-dot); border-color: var(--tone-success-dot); transform: none; }
+.new-card small { font-weight: 400; font-size: 11.5px; color: var(--ink-faint); }
+
+.banner { padding: 8px 12px; font-size: 12px; border-radius: 10px; }
+.banner.bad { color: var(--tone-danger-dot); background: var(--tone-danger-bg); border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 30%, transparent); }
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
+}
+/* 弹窗入退场(occasional 频次;防跳变):遮罩淡入淡出,卡片 fade+上浮 8px 入场;
+ * modal 不锚定触发器,transform-origin 居中豁免;退场对称快出 */
+.modal-enter-active { transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+.modal-leave-active { transition: opacity 130ms ease; }
+.modal-enter-from,
+.modal-leave-to { opacity: 0; }
+.modal-enter-active .modal { transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+.modal-enter-from .modal { transform: translateY(8px) scale(0.96); }
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(440px, calc(100vw - 40px));
+  max-height: 82vh;
+  padding: 18px;
+  overflow: auto;
+  background: var(--surface-glass-strong);
+  backdrop-filter: var(--aurora-blur);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--glass-edge), var(--shadow-float);
+}
+.modal.wide { width: min(640px, calc(100vw - 40px)); }
+.m-title { display: flex; gap: 10px; align-items: baseline; font-size: 15px; color: var(--ink); }
+.m-title.danger-title { align-items: center; color: var(--tone-danger-dot); }
+.f { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--ink-faint); }
+.f em { color: var(--tone-danger-dot); font-style: normal; }
+.f .inp {
+  height: 30px;
+  padding: 0 9px;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel-sm);
+}
+.f .inp:focus { outline: none; border-color: var(--tone-success-dot); box-shadow: 0 0 0 3px var(--accent-soft); }
+.color-row { display: flex; gap: 7px; align-items: center; }
+.color-dot {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.color-dot.on { border-color: var(--ink); box-shadow: 0 0 10px currentColor; }
+.m-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.m-err { font-size: 11px; color: var(--tone-danger-dot); }
+.dim { color: var(--ink-faint); }
+.sec-label { font-size: 11.5px; font-weight: 700; color: var(--ink-faint); letter-spacing: 0.14em; }
+/* 删除确认:摘要行 + 级联勾选 */
+.del-summary { font-size: 12px; line-height: 1.6; color: var(--ink-soft); }
+.del-purge { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink); cursor: pointer; }
+.del-purge input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--tone-danger-dot);
+}
+.tpl-hint { font-size: 11px; }
+.tpl-list { display: flex; flex-direction: column; gap: 6px; }
+.tpl-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--frost-bg);
+  border: 1px solid var(--glass-line);
+  border-radius: 9px;
+}
+.tpl-row small { flex: 1; }
+.tpl-tag {
+  padding: 1px 8px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--tone-info-dot);
+  border: 1px solid color-mix(in srgb, var(--tone-info-dot) 40%, transparent);
+  border-radius: 5px;
+}
+.tpl-tag.builtin { color: var(--ink-faint); border-color: var(--line-strong); }
+.tpl-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tpl-sem { flex: 1; color: var(--ink-faint); }
+textarea.inp { height: auto; padding: 6px 9px; font-size: 11.5px; resize: vertical; }
+
+/* ══ 窄屏自适应层(≤900 手持/平板竖,≤640 单列)════════════════════════════
+   本页 375px 下的三类实测缺陷:可点元素 <40px(每张卡一个主操作)、
+   卡片微标签 10~10.5px、卡片头把长产线名硬裁成省略号。 */
+@media (max-width: 900px) {
+  /* 1. 触摸目标:手持命中区 ≥40px(与 main.css 的 coarse-pointer 地板同值,
+        但那层只认 pointer:coarse,窄视口下也必须成立) */
+  .line-card .pill-btn,
+  .fleet-filter .aw-seg button,
+  .badge.tpl-btn,
+  .m-actions .pill-btn,
+  .m-actions .mini-btn,
+  .tpl-row .mini-btn,
+  .lc-ctl .inp,
+  .fleet-search {
+    min-height: 40px;
+  }
+
+  /* 卡片头的编辑/删除原本只在 hover 才显形 —— 触屏没有 hover,等于功能消失 */
+  .lc-act {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+    opacity: 1;
+  }
+
+  .lc-ctl { flex-wrap: wrap; }
+  .lc-ctl .inp { flex: 1 1 150px; }
+  .lc-ctl .pill-btn { flex: 1 1 auto; }
+
+  /* 「产线管理 →」是 <a>:17px 行高在触屏上点不中,给它一条 40px 的整行命中区 */
+  .lc-manage {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
+
+  /* 弹窗内的可点色块/勾选同样抬到 40 命中 */
+  .color-row { flex-wrap: wrap; }
+  .color-dot { width: 40px; height: 40px; }
+  .del-purge input { width: 20px; height: 20px; }
+  .modal { width: min(440px, calc(100vw - 20px)); padding: 14px; }
+  .modal.wide { width: min(640px, calc(100vw - 20px)); }
+  .tpl-form { grid-template-columns: 1fr; }
+  .tpl-row { flex-wrap: wrap; }
+  .m-actions { flex-wrap: wrap; }
+  .m-actions > * { flex: 1 1 auto; }
+
+  /* 筛选条:分段可横扫,搜索占满整行 */
+  .fleet-filter { gap: 10px; }
+  .fleet-search { flex: 1 1 100%; width: 100%; margin-left: 0; }
+}
+
+/* 2. 窄屏产线网格:显式单列(不再依赖 auto-fill 的隐式收敛) */
+@media (max-width: 640px) {
+  .line-grid { grid-template-columns: 1fr; }
+  .line-card { padding: 12px; }
+}

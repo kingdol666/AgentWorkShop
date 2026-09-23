@@ -9,110 +9,32 @@
  */
 import { message } from 'ant-design-vue'
 import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
-import { useEntitiesStore } from '@/app/stores/workshop/entities'
-import { useWorkshopApi, type ChannelDto, type ChannelTemplateDto } from '@/app/composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type ChannelDto } from '@/app/composables/workshop/useWorkshopApi'
+import { useChannelList } from '@/app/composables/workshop/useChannelList'
+import MountChannelModal from '@/app/components/workshop/session-list/MountChannelModal.vue'
+import ChannelSettingsModal from '@/app/components/workshop/session-list/ChannelSettingsModal.vue'
+import SaveTemplateModal from '@/app/components/workshop/session-list/SaveTemplateModal.vue'
 
 const { t } = useI18n()
 
 const props = defineProps<{ wsId: string }>()
 const wsStore = useWorkspacesStore()
-const entities = useEntitiesStore()
 const api = useWorkshopApi()
 
-const workspace = computed(() => wsStore.workspaces.find(w => w.id === props.wsId))
-
-const channels = ref<ChannelDto[]>([])
-const channelTemplates = ref<ChannelTemplateDto[]>([])
-const refreshChannels = async (): Promise<void> => {
-  // SSR 守卫:axios 相对 baseURL 仅客户端有效(服务端拉取会 Invalid URL)
-  if (typeof window === 'undefined') return
-  const [ch, tpl] = await Promise.all([
-    api.listChannels(),
-    api.listChannelTemplates().catch(() => null),
-  ])
-  channels.value = (ch as unknown as { data?: ChannelDto[] })?.data ?? []
-  channelTemplates.value = (tpl as unknown as { data?: ChannelTemplateDto[] } | null)?.data ?? []
-}
-void refreshChannels()
-
-const mountedChannels = computed(() =>
-  (workspace.value?.channelIds ?? [])
-    .map(id => ({ id, meta: channels.value.find(c => c.id === id), entity: entities.channels[id] }))
-    .map(({ id, meta, entity }) => ({
-      id,
-      name: entity?.name ?? meta?.name ?? id.slice(0, 8),
-      /** 实体基线(WS 快照)是否已到达:未到时计数不可信,展示"同步中"而非误导性的 0 */
-      synced: entity !== undefined,
-      busy: entities.busyCount(id),
-      agents: entities.agents[id]?.length ?? 0,
-      activeTasks: (entities.tasks[id] ?? []).filter(t => !['COMPLETED', 'CANCELED', 'FAILED'].includes(t.state)).length,
-      workspace: meta?.workspace ?? '',
-      /** v16 定时标志:该 channel 启用的定时计划数(>0 显示「定时」标签) */
-      scheduled: meta?.scheduledCount ?? 0,
-    })),
-)
-
-const select = (channelId: string): void => {
-  wsStore.setActiveChannel(props.wsId, channelId)
-}
-
-/** 点击工作目录行:复制完整路径到剪贴板(有真实作用;title 提示全路径) */
-const copyWorkspace = async (path: string): Promise<void> => {
-  try {
-    await navigator.clipboard.writeText(path)
-    message.success(t('channelSessionList.kud74vg040', { p0: path }))
-  }
-  catch {
-    message.error(t('channelSessionList.krij3gg026'))
-  }
-}
-/** 路径显示 basename(E:\codes\AgentWorkShop → AgentWorkShop),全路径在 title/复制 */
-const baseName = (path: string): string => path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? path
-/** 默认目录(data/workspaces/<uuid>)的 basename 是 36 位裸 UUID,对用户零信息量 → 不展示该行 */
-const UUID_RE = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i
-const displayWorkspace = (path: string): string => {
-  const base = baseName(path)
-  return UUID_RE.test(base) ? '' : base
-}
+/** 列表数据与行级操作(workspace/channels/模板/选中/路径展示)统一由 composable 持有 */
+const {
+  workspace,
+  channels,
+  channelTemplates,
+  refreshChannels,
+  mountedChannels,
+  select,
+  copyWorkspace,
+  displayWorkspace,
+} = useChannelList(toRef(props, 'wsId'))
 
 // ===== 新建 Channel 并挂载(空团队) =====
 const mountModal = ref(false)
-const mountForm = reactive({ name: '', description: '', workspace: '', scenarioPrompt: '' })
-const mountSubmitting = ref(false)
-/** FileSelector 弹窗(选择服务器目录作为 workspace) */
-const fileSelectorOpen = ref(false)
-const createAndMount = async (): Promise<void> => {
-  if (!mountForm.name.trim()) {
-    message.warning(t('channelSessionList.nameRequired'))
-    return
-  }
-  mountSubmitting.value = true
-  try {
-    const res = await api.createChannel({
-      name: mountForm.name.trim(),
-      description: mountForm.description || undefined,
-      scenarioPrompt: mountForm.scenarioPrompt.trim() || undefined,
-      workspace: mountForm.workspace.trim() || undefined,
-    })
-    const created = (res as unknown as { data?: { channelId?: string } })?.data
-    const channelId = created?.channelId
-    if (!channelId) throw new Error(t('channelSessionList.k1bg6shc027'))
-    await wsStore.mountChannel(props.wsId, channelId)
-    mountModal.value = false
-    mountForm.name = ''
-    mountForm.description = ''
-    mountForm.workspace = ''
-    mountForm.scenarioPrompt = ''
-    void refreshChannels()
-    message.success(t('channelSessionList.kn89jvs028'))
-  }
-  catch (e) {
-    message.error(t('channelSessionList.k1x2th9e041', { p0: apiErrorMessage(e) }))
-  }
-  finally {
-    mountSubmitting.value = false
-  }
-}
 
 // ===== 从 Channel 模板挂载(实例化 + mount 一步) =====
 const templateMountId = ref<string | undefined>()
@@ -152,165 +74,20 @@ const unmount = (channelId: string): void => {
 // ===== Channel 实例设置(场景/工作目录热更新)+ 保存为模板 =====
 const settingsOpen = ref(false)
 const settingsChannelId = ref<string>('')
-const settingsForm = reactive({ name: '', scenarioPrompt: '', workspace: '' })
-
-// ===== Channel 级默认 LLM(harness → provider/model/effort;空 = 用引擎默认) =====
-interface CatalogProvider {
-  id: string
-  models: Array<{ id: string, efforts: string[], defaultEffort?: string }>
-}
-const llmForm = reactive({ harness: 'omp', provider: '', model: '', effort: '', enabled: false })
-const llmProviders = ref<CatalogProvider[]>([])
-const llmEffortMode = ref<'levels' | 'freetext' | 'unsupported'>('levels')
-const llmLoading = ref(false)
-const llmProviderOptions = computed(() => llmProviders.value.map(p => ({ value: p.id, label: p.id })))
-const llmModelOptions = computed(() =>
-  (llmProviders.value.find(p => p.id === llmForm.provider)?.models ?? []).map(m => ({ value: m.id, label: m.id })),
-)
-const llmEffortOptions = computed(() => {
-  const m = llmProviders.value.find(p => p.id === llmForm.provider)?.models.find(x => x.id === llmForm.model)
-  return (m?.efforts ?? []).map(e => ({ value: e, label: e + (m?.defaultEffort === e ? t('channelSessionList.defaultSuffix') : '') }))
-})
-const loadLlmCatalog = async (harness: string): Promise<void> => {
-  llmLoading.value = true
-  llmProviders.value = []
-  try {
-    const res = await api.listHarnessProviders(harness)
-    const cat = (res as unknown as { data?: { catalog?: { providers?: CatalogProvider[], effortMode?: 'levels' | 'freetext' | 'unsupported' } } })?.data?.catalog
-    llmProviders.value = cat?.providers ?? []
-    llmEffortMode.value = cat?.effortMode ?? 'unsupported'
-  }
-  catch { /* 目录拉取失败保留空表 */ }
-  finally { llmLoading.value = false }
-}
-const onLlmHarnessChange = async (): Promise<void> => {
-  llmForm.provider = ''
-  llmForm.model = ''
-  llmForm.effort = ''
-  await loadLlmCatalog(llmForm.harness)
-}
-const onLlmProviderChange = (): void => {
-  llmForm.model = ''
-  llmForm.effort = ''
-}
-const onLlmModelChange = (): void => {
-  llmForm.effort = ''
-}
-const settingsSaving = ref(false)
-const fileSelectorOpen2 = ref(false)
-/** channel 设置弹窗预填的默认 LLM(llmJson 反序列化形状;与服务端 channelLlmSchema 对齐) */
-interface ChannelLlmDefaults { provider?: string, model?: string, effort?: string }
+const settingsChannelMeta = ref<ChannelDto | undefined>()
 const openSettings = (channelId: string): void => {
   const meta = channels.value.find(c => c.id === channelId)
   settingsChannelId.value = channelId
-  settingsForm.name = meta?.name ?? ''
-  settingsForm.scenarioPrompt = meta?.scenarioPrompt ?? ''
-  settingsForm.workspace = meta?.workspace ?? ''
-  // 预填 channel 默认 LLM(llmJson 由列表接口透传)
-  let saved: ChannelLlmDefaults | null = null
-  try {
-    const metaAny = meta as unknown as { llmJson?: string } | undefined
-    saved = metaAny?.llmJson ? JSON.parse(metaAny.llmJson) as ChannelLlmDefaults : null
-  }
-  catch { saved = null }
-  llmForm.enabled = !!saved?.model
-  llmForm.harness = 'omp'
-  llmForm.provider = saved?.provider ?? ''
-  llmForm.model = saved?.model ?? ''
-  llmForm.effort = saved?.effort ?? ''
+  settingsChannelMeta.value = meta
   settingsOpen.value = true
-  if (llmForm.enabled) void loadLlmCatalog(llmForm.harness)
-  void loadChannelPlugins(channelId)
-}
-
-// ===== Channel 级插件开关(设置弹窗内嵌;切换即 PUT,该 channel 在跑 Agent 工具清单热刷新) =====
-interface ChannelPluginRow { name: string, description?: string, builtin?: boolean, enabled: boolean }
-const pluginRows = ref<ChannelPluginRow[]>([])
-const pluginSource = ref<'explicit' | 'default'>('default')
-const pluginSaving = ref<string | null>(null)
-const loadChannelPlugins = async (channelId: string): Promise<void> => {
-  try {
-    const res = await api.listChannelPlugins(channelId)
-    const data = res?.data ?? {}
-    pluginRows.value = data.plugins ?? []
-    pluginSource.value = data.source === 'explicit' ? 'explicit' : 'default'
-  }
-  catch { /* 插件视图不可得(未登录/网络)时留空,不阻塞设置弹窗 */ }
-}
-const toggleChannelPlugin = async (row: ChannelPluginRow, next: boolean): Promise<void> => {
-  if (pluginSaving.value) return
-  pluginSaving.value = row.name
-  try {
-    // 全量提交当前开关视图(仅翻转目标行),与 teams 页插件开关同语义
-    const payload = pluginRows.value.map(r => ({ name: r.name, enabled: r.name === row.name ? next : r.enabled }))
-    const res = await api.putChannelPlugins(settingsChannelId.value, { plugins: payload })
-    const data = res?.data ?? {}
-    pluginRows.value = data.plugins ?? payload.map(p => ({ ...p }))
-    pluginSource.value = data.source === 'explicit' ? 'explicit' : 'default'
-    message.success(t('channelSessionList.k1plugon044'))
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    pluginSaving.value = null
-  }
-}
-const saveSettings = async (): Promise<void> => {
-  settingsSaving.value = true
-  try {
-    await api.patchChannel(settingsChannelId.value, {
-      scenarioPrompt: settingsForm.scenarioPrompt,
-      workspace: settingsForm.workspace.trim() || undefined,
-      llm: llmForm.enabled && llmForm.model
-        ? { ...(llmForm.provider ? { provider: llmForm.provider } : {}), model: llmForm.model, ...(llmForm.effort ? { effort: llmForm.effort } : {}) }
-        : null,
-    })
-    message.success(t('channelSessionList.kvsxlu6031'))
-    settingsOpen.value = false
-    void refreshChannels()
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    settingsSaving.value = false
-  }
 }
 
 // 保存为模板(捕获当前 channel 的场景/目录/团队)
 const saveTplOpen = ref(false)
-const saveTplForm = reactive({ name: '', description: '', visibility: 'private' as 'private' | 'public' })
-const saveTplSubmitting = ref(false)
-const openSaveTemplate = (): void => {
-  saveTplForm.name = t('channelSessionList.k2hfym5043', { p0: settingsForm.name || 'channel' })
-  saveTplForm.description = ''
-  saveTplForm.visibility = 'private'
+const saveTplName = ref('')
+const onSaveTemplate = (name: string): void => {
+  saveTplName.value = name
   saveTplOpen.value = true
-}
-const saveAsTemplate = async (): Promise<void> => {
-  if (!saveTplForm.name.trim()) {
-    message.warning(t('channelSessionList.k1i0ji0y032'))
-    return
-  }
-  saveTplSubmitting.value = true
-  try {
-    await api.captureChannelTemplate({
-      channelId: settingsChannelId.value,
-      name: saveTplForm.name.trim(),
-      description: saveTplForm.description || undefined,
-      visibility: saveTplForm.visibility,
-    })
-    message.success(t('channelSessionList.kjpguxw033'))
-    saveTplOpen.value = false
-    void refreshChannels()
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    saveTplSubmitting.value = false
-  }
 }
 </script>
 
@@ -432,267 +209,30 @@ const saveAsTemplate = async (): Promise<void> => {
       </div>
     </div>
 
-    <a-modal
+    <mount-channel-modal
       v-model:open="mountModal"
-      :title="$t('channelSessionList.k1qjyl6l002')"
-      :confirm-loading="mountSubmitting"
-      :ok-text="$t('common.create')"
-      :cancel-text="$t('common.cancel')"
-      @ok="createAndMount"
-    >
-      <a-form layout="vertical">
-        <a-form-item :label="$t('channelSessionList.nameLabel')">
-          <a-input v-model:value="mountForm.name" />
-        </a-form-item>
-        <a-form-item :label="$t('channelSessionList.k40gkk003')">
-          <a-input v-model:value="mountForm.description" />
-        </a-form-item>
-        <a-form-item :label="$t('channelSessionList.k1wj4f38004')">
-          <a-textarea
-            v-model:value="mountForm.scenarioPrompt"
-            :rows="4"
-            :placeholder="$t('channelSessionList.k1098zie005')"
-          />
-          <template #extra>
-            <span class="ws-hint">{{ $t('channelSessionList.k1u3zsr5017') }}</span>
-          </template>
-        </a-form-item>
-        <a-form-item :label="$t('channelSessionList.kmgv4h5006')">
-          <a-input-group compact>
-            <a-input
-              v-model:value="mountForm.workspace"
-              style="width: 70%"
-              :placeholder="$t('channelSessionList.wsPh1')"
-              allow-clear
-              @press-enter="createAndMount"
-            />
-            <a-button
-              style="width: 30%"
-              @click="fileSelectorOpen = true"
-            >
-              {{ $t('channelSessionList.k3pz0ma018') }}
-            </a-button>
-          </a-input-group>
-          <template #extra>
-            <span class="ws-hint">{{ $t('channelSessionList.kucq30k019') }}</span>
-          </template>
-        </a-form-item>
-        <a-form-item>
-          <span class="ws-hint">{{ $t('channelSessionList.k1ful761020') }}</span>
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- Channel 实例设置:场景/工作目录热更新 + 保存为模板 -->
-    <a-modal
-      v-model:open="settingsOpen"
-      :title="$t('channelSessionList.k1pmemvt039', { p0: settingsForm.name })"
-      :confirm-loading="settingsSaving"
-      :ok-text="$t('common.save')"
-      :cancel-text="$t('common.cancel')"
-      @ok="saveSettings"
-    >
-      <a-form layout="vertical">
-        <a-form-item :label="$t('channelSessionList.k1i8q46x007')">
-          <a-textarea
-            v-model:value="settingsForm.scenarioPrompt"
-            :rows="4"
-            :placeholder="$t('channelSessionList.ku3ugac008')"
-          />
-        </a-form-item>
-        <a-form-item :label="$t('channelSessionList.k67dzev009')">
-          <a-input-group compact>
-            <a-input
-              v-model:value="settingsForm.workspace"
-              style="width: 70%"
-              placeholder="data/workspaces/<channelId>"
-              allow-clear
-            />
-            <a-button
-              style="width: 30%"
-              @click="fileSelectorOpen2 = true"
-            >
-              {{ $t('channelSessionList.k3pz0ma018') }}
-            </a-button>
-          </a-input-group>
-        </a-form-item>
-        <a-form-item :label="$t('channelSessionList.llmDefaultLabel')">
-          <a-space>
-            <a-switch
-              v-model:checked="llmForm.enabled"
-              size="small"
-              @change="(v: any) => { if (v) void loadLlmCatalog(llmForm.harness) }"
-            />
-            <a-select
-              v-model:value="llmForm.harness"
-              style="width: 130px"
-              :options="[{ value: 'omp', label: 'omp' }, { value: 'codex', label: 'codex' }, { value: 'opencode', label: 'opencode' }, { value: 'dsh', label: 'dsh' }]"
-              :disabled="!llmForm.enabled"
-              @change="onLlmHarnessChange"
-            />
-            <a-select
-              v-model:value="llmForm.provider"
-              style="width: 170px"
-              :placeholder="llmLoading ? $t('channelSessionList.catalogLoading') : 'provider'"
-              :options="llmProviderOptions"
-              :disabled="!llmForm.enabled || llmLoading"
-              show-search
-              @change="onLlmProviderChange"
-            />
-            <a-select
-              v-model:value="llmForm.model"
-              style="width: 210px"
-              placeholder="model"
-              :options="llmModelOptions"
-              :disabled="!llmForm.enabled || !llmForm.provider"
-              show-search
-              @change="onLlmModelChange"
-            />
-            <a-select
-              v-if="llmEffortMode === 'levels'"
-              v-model:value="llmForm.effort"
-              style="width: 130px"
-              :placeholder="$t('channelSessionList.effortPh')"
-              :options="llmEffortOptions"
-              :disabled="!llmForm.enabled || !llmForm.model"
-              allow-clear
-            />
-            <a-input
-              v-else-if="llmEffortMode === 'freetext'"
-              v-model:value="llmForm.effort"
-              style="width: 130px"
-              :placeholder="$t('channelSessionList.variantPh')"
-              :disabled="!llmForm.enabled || !llmForm.model"
-              allow-clear
-            />
-          </a-space>
-        </a-form-item>
-        <a-form-item :label="t('channelSessionList.k1pluglbl045')">
-          <div
-            v-if="pluginRows.length"
-            class="ch-plugin-list"
-          >
-            <div
-              v-for="p in pluginRows"
-              :key="p.name"
-              class="ch-plugin-row"
-            >
-              <div class="ch-plugin-main">
-                <span class="aw-mono">{{ p.name }}</span>
-                <span
-                  v-if="p.builtin"
-                  class="ws-hint"
-                >{{ $t('channelSessionList.builtinTag') }}</span>
-                <span
-                  v-if="p.description"
-                  class="ws-hint ch-plugin-desc"
-                >{{ p.description }}</span>
-              </div>
-              <a-switch
-                :checked="p.enabled"
-                size="small"
-                :loading="pluginSaving === p.name"
-                @change="(v: any) => toggleChannelPlugin(p, !!v)"
-              />
-            </div>
-            <span
-              v-if="pluginSource !== 'explicit'"
-              class="ws-hint"
-            >{{ t('channelSessionList.k1plugsrc046') }}</span>
-          </div>
-          <span
-            v-else
-            class="ws-hint"
-          >—</span>
-        </a-form-item>
-        <a-form-item>
-          <a-button
-            size="small"
-            @click="openSaveTemplate"
-          >
-            <span class="i-tabler-template" />
-            {{ $t('channelSessionList.k6kpql010') }}
-          </a-button>
-          <span class="ws-hint">{{ $t('channelSessionList.k1x6kznr021') }}</span>
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- 保存为模板 -->
-    <a-modal
-      v-model:open="saveTplOpen"
-      :title="$t('channelSessionList.k6kpql010')"
-      :confirm-loading="saveTplSubmitting"
-      :ok-text="$t('channelSessionList.saveTplOk')"
-      :cancel-text="$t('common.cancel')"
-      @ok="saveAsTemplate"
-    >
-      <a-form layout="vertical">
-        <a-form-item :label="$t('channelSessionList.k1f55q76011')">
-          <a-input v-model:value="saveTplForm.name" />
-        </a-form-item>
-        <a-form-item :label="$t('channelSessionList.k40gkk003')">
-          <a-input v-model:value="saveTplForm.description" />
-        </a-form-item>
-        <a-form-item :label="$t('channelSessionList.k3lrqn0012')">
-          <a-radio-group v-model:value="saveTplForm.visibility">
-            <a-radio value="private">
-              {{ $t('channelSessionList.k1otvrfv022') }}
-            </a-radio>
-            <a-radio value="public">
-              {{ $t('channelSessionList.k1cc399s023') }}
-            </a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item>
-          <span class="ws-hint">{{ $t('channelSessionList.kl9btf7024') }}</span>
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- FileSelector:服务器目录选择 -> 回填工作目录 -->
-    <workshop-file-selector-modal
-      v-model:open="fileSelectorOpen"
-      :title="$t('channelSessionList.kbdp56k013')"
-      :initial-path="mountForm.workspace || undefined"
-      @select="(p) => { mountForm.workspace = p }"
+      :ws-id="wsId"
+      @mounted="refreshChannels"
     />
-    <workshop-file-selector-modal
-      v-model:open="fileSelectorOpen2"
-      :title="$t('channelSessionList.kbdp56k013')"
-      :initial-path="settingsForm.workspace || undefined"
-      @select="(p) => { settingsForm.workspace = p }"
+
+    <channel-settings-modal
+      v-model:open="settingsOpen"
+      :channel-id="settingsChannelId"
+      :channel-meta="settingsChannelMeta"
+      @saved="refreshChannels"
+      @save-template="onSaveTemplate"
+    />
+
+    <save-template-modal
+      v-model:open="saveTplOpen"
+      :channel-id="settingsChannelId"
+      :channel-name="saveTplName"
+      @saved="refreshChannels"
     />
   </div>
 </template>
 
 <style scoped>
-.ch-plugin-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-}
-.ch-plugin-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 8px;
-  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
-  border-radius: 6px;
-}
-.ch-plugin-main {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-}
-.ch-plugin-desc {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .channel-list {
   display: flex;
   flex-direction: column;

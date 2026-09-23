@@ -1,0 +1,420 @@
+/* AML 页面(/aml)样式。
+ * 规则文本与原 index.vue 的 <style scoped> 块逐字一致;因为模板已拆到 components/*.vue,
+ * 每个 AML 子组件都以 <style scoped src="..."> 引用同一份文件 —— 与原来的 data-v 作用域
+ * 语义保持一致(样式只命中组件自己的元素),同时保留「单一事实来源」。 */
+.page { padding: 4px; }
+h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.015em; }
+.sub { margin: 0; font-size: 12.5px; opacity: 0.6; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.dim { opacity: 0.55; }
+.err { margin: 6px 0; font-size: 12.5px; color: var(--tone-danger-dot); }
+.pad { padding: 10px 12px; }
+
+.badges { display: flex; gap: 8px; }
+.badge {
+  padding: 3px 10px;
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+}
+.badge.bad { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 45%, transparent); }
+
+/* Python 不可用提示条(与 daq 基础设施横幅同语) */
+.infra-banner {
+  display: flex;
+  gap: 10px;
+  /* 顶端对齐,不是居中:文案换行成 3 行时,居中的图标会停在**第二行**行首,
+   * 看起来像一个走错位置的孤零零的三角(实测 /aml)。图标永远该跟第一行文字对齐。 */
+  align-items: flex-start;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  color: var(--tone-warning-dot);
+  background: var(--tone-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--tone-warning-dot) 40%, transparent);
+  /* 多行横幅用面板圆角:chip 圆角是给单行药丸的,套在三行块上会显得没画完 */
+  border-radius: var(--radius-panel-sm, 10px);
+}
+
+.infra-banner > span:first-child {
+  flex: none;
+  margin-top: 2px;
+}
+.infra-banner .txt { flex: 1 1 auto; font-size: 12.5px; line-height: 1.5; }
+
+/* ── 1. 概览条 ── */
+.ov-card { padding: 10px 18px; margin-bottom: 14px; }
+.ov-row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 12px; color: var(--ink-soft); }
+.ov-item { display: inline-flex; gap: 5px; align-items: center; }
+.ov-item b { color: var(--ink); font-weight: 700; }
+.ov-item.ok { color: var(--tone-success-dot); }
+.ov-item.bad { color: var(--tone-danger-dot); }
+.ov-item.accent b { color: var(--accent); }
+.ov-row .sep { opacity: 0.4; }
+.ov-row .reload { margin-left: auto; }
+
+/* ── 通用区块 ── */
+/* 区块不再整块横扫 —— 那会让区块标题跟着一起滚走,也顺手豁免了
+   内部元素的越界检测。滚动权下放给 .tbl-scroll(只裹表格本体)。 */
+.zone { padding: 12px 18px 14px; margin-bottom: 14px; }
+.zone-head { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.zone-head h2 { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
+.zone-head h2 .cnt { font-size: 11.5px; font-weight: 400; color: var(--ink-faint); }
+.zone-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ── 1b. 运行环境面板 ── */
+.env-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+.env-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface-sunken, color-mix(in srgb, var(--ink) 3%, transparent));
+  border: 1px solid var(--divider-hair);
+  border-radius: var(--radius-chip);
+}
+.env-card.ok { border-color: color-mix(in srgb, var(--tone-success-dot) 35%, transparent); }
+.env-card.bad { border-color: color-mix(in srgb, var(--tone-warning-dot) 40%, transparent); }
+.env-card .ec-head { display: flex; gap: 6px; align-items: center; font-size: 12.5px; }
+.env-card .ec-head .ec-state { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); }
+.env-card.ok .ec-head > span:first-child { color: var(--tone-success-dot); }
+.env-card.bad .ec-head > span:first-child { color: var(--tone-warning-dot); }
+.env-card .ec-detail { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--ink-soft); overflow-wrap: anywhere; }
+.env-card .ec-detail.dim { color: var(--ink-faint); }
+.env-card .ec-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 4px; }
+.env-card .ec-issues { max-height: 96px; margin: 0; padding: 0; overflow-y: auto; list-style: none; font-size: 11.5px; }
+.env-card .ec-issues li { display: flex; gap: 6px; align-items: center; padding: 1px 0; color: var(--ink-soft); }
+.env-card .ec-issues .tag {
+  flex: none;
+  padding: 0 5px;
+  font-size: 11.5px;
+  color: var(--tone-warning-dot);
+  background: var(--tone-warning-bg);
+  border-radius: 3px;
+}
+
+.env-task { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--divider-hair); }
+.env-task .et-head { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.env-task .et-head .dim { color: var(--ink-faint); font-weight: 400; }
+.env-task .et-log {
+  max-height: 220px;
+  padding: 8px 10px;
+  margin: 6px 0 0;
+  overflow: auto;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  background: var(--surface-sunken, color-mix(in srgb, var(--ink) 4%, transparent));
+  border-radius: var(--radius-chip);
+}
+.mini-btn.primary { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+@keyframes amlSpin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: amlSpin 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+}
+.note-edit { display: flex; gap: 6px; align-items: center; }
+.note-edit input {
+  min-width: 120px;
+  padding: 3px 6px;
+  font-size: 12px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+}
+.note-text { display: inline-flex; gap: 6px; align-items: center; }
+.note-text .edit-i { cursor: pointer; opacity: 0.5; }
+.note-text .edit-i:hover { opacity: 1; }
+.live-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--tone-success-dot);
+  border-radius: 50%;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--tone-success-dot) 60%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot { animation: amlPulse 1.8s ease-in-out infinite; }
+}
+@keyframes amlPulse {
+  50% { opacity: 0.4; }
+}
+
+/* 表:信息密度优先,行可展开 */
+.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tbl th, .tbl td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--divider-hair); }
+.tbl th {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--line-strong);
+}
+.tbl .num { text-align: right; }
+.tbl .right { text-align: right; }
+.tbl .acts { white-space: nowrap; }
+.tbl .acts .mini-btn + .mini-btn { margin-left: 6px; }
+.row-main { cursor: pointer; }
+@media (prefers-reduced-motion: no-preference) {
+  .row-main:hover { background: var(--hover-tint); }
+}
+.row-main.open td { border-bottom-color: transparent; }
+.note-cell { max-width: 260px; }
+.note { display: inline-block; overflow: hidden; width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+.kind {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 11.5px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  color: var(--ink-faint);
+}
+.kind.agent { color: var(--tone-info-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 40%, transparent); }
+
+/* 展开详情:双栏(清洗报告 | 滞后+run) */
+.detail-row td { padding: 0 12px 12px; background: var(--frost-bg); }
+.det-grid { display: grid; grid-template-columns: minmax(340px, 3fr) minmax(280px, 2fr); gap: 10px 22px; }
+@media (max-width: 1100px) {
+  .det-grid { grid-template-columns: 1fr; }
+}
+.det-title { margin: 10px 0 6px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.det-title:first-child { margin-top: 10px; }
+.sub-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sub-tbl th, .sub-tbl td { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--divider-hair); }
+.sub-tbl th { font-size: 11.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); }
+.sub-tbl .num { text-align: right; }
+.role-chip { padding: 1px 6px; font-family: var(--font-mono); font-size: 11.5px; background: var(--paper-deep); border-radius: 5px; color: var(--ink-soft); }
+.run-line { margin: 4px 0; font-size: 11.5px; overflow-wrap: anywhere; }
+.run-line b { color: var(--ink); }
+/* 丢弃原因整行可见:窄屏不再 ellipsis 硬裁(审计的 text-clipped 来源之一) */
+.drop-line { margin: 2px 0; font-size: 11.5px; color: var(--tone-danger-dot); overflow-wrap: anywhere; }
+
+/* 作业状态 pill / 进度条 */
+.st-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-pill);
+}
+.st-pill.queued, .st-pill.provisioning { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); }
+.st-pill.training, .st-pill.evaluating, .st-pill.running { color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 12%, transparent); }
+.st-pill.done, .st-pill.gates_passed { color: var(--tone-success-dot); background: var(--tone-success-bg); }
+.st-pill.failed, .st-pill.timeout, .st-pill.gates_failed { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+.st-pill.cancelled, .st-pill.interrupted { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); }
+
+.prog-th { min-width: 140px; }
+.prog-cell { white-space: nowrap; }
+.prog {
+  display: inline-block;
+  width: 96px;
+  height: 6px;
+  overflow: hidden;
+  vertical-align: middle;
+  background: var(--paper-deep);
+  border-radius: 3px;
+}
+.prog i { display: block; height: 100%; background: var(--tone-info-dot); border-radius: 3px; transition: width 0.4s ease; }
+.prog i.done { background: var(--tone-success-dot); }
+.prog i.bad { background: var(--tone-danger-dot); }
+.prog-num { margin-left: 7px; font-size: 11.5px; color: var(--ink-soft); }
+
+/* 门禁 */
+.gate-id { font-weight: 700; }
+.gate-detail { display: block; margin-top: 3px; font-size: 11px; }
+.verdict { padding: 1px 7px; font-size: 11.5px; border-radius: 99px; }
+.verdict.pass { color: var(--tone-success-dot); background: var(--tone-success-bg); }
+.verdict.fail { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+.live-hint { margin-left: 8px; font-size: 11.5px; font-weight: 400; letter-spacing: 0; color: var(--tone-info-dot); text-transform: none; }
+.logs {
+  max-height: 260px;
+  margin: 0;
+  padding: 9px 11px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--divider-hair);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 排行榜最优行 */
+tr.best { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.best-tag {
+  margin-right: 6px;
+  padding: 1px 7px;
+  font-size: 11.5px;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: 99px;
+}
+
+/* 模型阶段徽标 */
+.stage-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-soft);
+}
+.stage-pill.shadow { color: var(--tone-info-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 45%, transparent); }
+.stage-pill.production { color: var(--tone-success-dot); background: var(--tone-success-bg); border-color: transparent; }
+.stage-pill.retired { opacity: 0.55; border-style: dashed; }
+
+/* ── 预测控制台 ── */
+.inp-sel {
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+}
+.pc-body { margin-top: 4px; }
+.io-grid { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 10px; font-size: 11.5px; color: var(--ink-soft); }
+.io-item b { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.pc-form { display: grid; grid-template-columns: minmax(300px, 3fr) minmax(220px, 2fr); gap: 12px 18px; }
+@media (max-width: 1100px) {
+  .pc-form { grid-template-columns: 1fr; }
+}
+.pc-field { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; font-size: 12px; color: var(--ink-soft); }
+.pc-side { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.pc-side .ghost-btn { align-self: flex-start; margin-top: 8px; }
+.pc-side .pill-btn { margin-top: auto; }
+.inp {
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+}
+.inp.area { resize: vertical; line-height: 1.5; }
+.inp:focus { outline: none; border-color: var(--accent); }
+.hint { margin: 8px 0 0; font-size: 11.5px; line-height: 1.6; }
+
+/* ── 新建数据集弹窗(工业风:纸面 + 发丝线,与 daq 向导同语) ── */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8vh 16px 16px;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+  backdrop-filter: blur(3px);
+}
+.modal {
+  width: min(760px, 100%);
+  max-height: 84vh;
+  padding: 18px 22px 16px;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+}
+.m-title { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+.f-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; margin-bottom: 10px; }
+@media (max-width: 720px) {
+  .f-grid { grid-template-columns: 1fr; }
+}
+.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-soft); }
+.f.wide { grid-column: 1 / -1; }
+.f em { margin-left: 2px; color: var(--tone-danger-dot); font-style: normal; }
+.sec-label { margin: 12px 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.node-rows { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.node-row { display: flex; gap: 8px; align-items: center; }
+.node-row .grow { flex: 1 1 auto; }
+.node-row .sel { flex: 0 0 220px; }
+.m-err { margin: 6px 0; font-size: 12.5px; color: var(--tone-danger-dot); }
+.m-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
+
+.empty { margin: 6px 0; padding: 18px 0; font-size: 12.5px; color: var(--ink-faint); text-align: center; }
+
+/* ══ 窄屏自适应层(≤900 手持/平板竖)═════════════════════════════════════
+   作业/实验/数据集/模型四张表在 355px 画布里被压成"每列 40px",
+   单元格文字会折成单字竖排 —— 保留列语义,给表一条可横扫的卷轴,
+   并把首列(身份列)钉在左缘,横扫时始终知道"这一行是谁"。 */
+.tbl-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 900px) {
+  .tbl-scroll {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  /* 列不再被压扁:按各自列数给一个诚实的最小宽度,超出即横扫 */
+  .tbl-datasets { min-width: 720px; }
+  .tbl-jobs { min-width: 860px; }
+  .tbl-exp { min-width: 700px; }
+  .tbl-models { min-width: 780px; }
+
+  .tbl th,
+  .tbl td { white-space: nowrap; }
+
+  /* 身份列钉在左缘(与 main.css 对 .ant-table 的处理同一套语言) */
+  .tbl thead > tr > th:first-child,
+  .tbl tbody > tr > td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--paper-raised);
+    box-shadow: 1px 0 0 var(--line);
+  }
+
+  .tbl thead > tr > th:first-child { z-index: 3; }
+
+  /* 展开详情行跨列,不能跟着首列 sticky */
+  .detail-row > td:first-child { position: static; box-shadow: none; background: var(--frost-bg); }
+
+  /* 触摸目标:手持命中区 ≥40px(main.css 只在 pointer:coarse 下兜底) */
+  .mini-btn,
+  .pill-btn,
+  .inp,
+  .inp-sel,
+  .note-edit input {
+    min-height: 40px;
+  }
+
+  .tbl .acts .mini-btn + .mini-btn { margin-left: 8px; }
+  .note-cell { max-width: 200px; }
+  .note-edit { flex-wrap: wrap; }
+  .zone { padding: 12px 12px 14px; }
+  .f-grid { grid-template-columns: 1fr; }
+  .det-grid { grid-template-columns: 1fr; }
+  .mx-actions,
+  .m-actions { flex-wrap: wrap; }
+  .modal { padding: 16px; }
+  .node-row { flex-wrap: wrap; }
+  .node-row .sel { flex: 1 1 100%; }
+  .modal-mask { padding: 4vh 10px 12px; }
+}
+
+@media (max-width: 640px) {
+  .zone-head { gap: 8px; }
+  .zone-head h2 { font-size: 14px; }
+  .zone-actions { flex-wrap: wrap; }
+  .ov-card { padding: 10px 12px; }
+}
