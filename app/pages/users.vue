@@ -5,6 +5,7 @@
  */
 import { message } from 'ant-design-vue'
 import { useUserStore } from '../stores/workshop/user'
+import { narrowFetch } from '../stores/workshop/narrow-fetch'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -28,7 +29,7 @@ const load = async (): Promise<void> => {
   if (!userStore.isAdmin) return
   loading.value = true
   try {
-    const res = await $fetch<ApiEnvelope<{ items: UserRecord[] }>>('/api/users', {
+    const res = await narrowFetch<ApiEnvelope<{ items: UserRecord[] }>>('/api/users', {
       headers: authHeaders.value,
       query: { pageSize: 100, keyword: keyword.value || undefined },
     })
@@ -66,7 +67,7 @@ function roleLabel(role: UserRecord['role']) {
 
 const changeRole = async (u: UserRecord, role: UserRecord['role']): Promise<void> => {
   try {
-    await $fetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
+    await narrowFetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
       method: 'PUT',
       headers: authHeaders.value,
       body: { role },
@@ -82,7 +83,7 @@ const changeRole = async (u: UserRecord, role: UserRecord['role']): Promise<void
 const toggleStatus = async (u: UserRecord): Promise<void> => {
   const status = u.status === 'active' ? 'disabled' : 'active'
   try {
-    await $fetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
+    await narrowFetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
       method: 'PUT',
       headers: authHeaders.value,
       body: { status },
@@ -97,7 +98,7 @@ const toggleStatus = async (u: UserRecord): Promise<void> => {
 
 const removeUser = async (u: UserRecord): Promise<void> => {
   try {
-    await $fetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
+    await narrowFetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
       method: 'DELETE',
       headers: authHeaders.value,
     })

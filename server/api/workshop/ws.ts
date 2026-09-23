@@ -22,11 +22,14 @@ import type { AgentRuntime, TaskEngine } from '../../services/workshop/runtime/a
 import { rowToMessage } from '../../services/workshop/runtime/mailbox'
 import type { AgentEvent } from '../../services/workshop/agents/agent-interface'
 import type { A2AMessage } from '../../services/workshop/types/a2a'
-import type { AepEnvelope } from '../../../shared/workshop-protocol'
+import type { AepEnvelope, AepNotification } from '../../../shared/workshop-protocol'
 import { parseJson } from '../../services/workshop/db/database'
-import { registerScenePeer, setPeerVisibleLines, unregisterScenePeer, broadcastPeerEvent } from '../../services/workshop/scene-events'
+import { projectManagementSnapshotForMember } from '../../services/workshop/runtime/chat-projection'
+import { registerScenePeer, setPeerVisibleLines, unregisterScenePeer } from '../../services/workshop/scene-events'
 import { visibleLineIds } from '../../services/workshop/permissions'
 import { subscribeHitlEvents } from '../../services/workshop/agents/hitl-registry'
+import { bindUserPeer, unbindUserPeer, publishToUser, userIdOfPeer } from '../../services/workshop/runtime/user-notification-hub'
+import { userRepository } from '../../repositories/user.repository'
 import { createLogger } from '../../services/workshop/logger'
 import { retentionSettings } from '../../services/workshop/settings'
 
@@ -436,17 +439,84 @@ function bindStreamSubscriptions(manager: AgentChannelManager, stream: ChannelSt
   stream.unsubs.push(manager.subscribeMemberEvents(channelId, (e) => {
     publish(manager, stream, 'agent.member', e, { agentId: e.agentId })
   }))
+  // v17 群聊事件(chat.message / chat.delivery.status / chat.member / chat.settings)。
+  // 走 channel 流:publish 计入 seq/环形缓冲/落库 → channel 历史与 WS 重连复用既有机制。
+  stream.unsubs.push(manager.subscribeChatEvents(channelId, (e) => {
+    const agentId = (e.payload as { senderType?: string, senderId?: string } | null)?.senderType === 'agent'
+      ? (e.payload as { senderId?: string }).senderId
+      : undefined
+    publish(manager, stream, e.type, e.payload, { agentId })
+  }))
 }
 
 /** HITL 待办事件挂接(建流时一次;closeStream 回收;与总线 rebind 解耦,见 ChannelStream.hitlUnsub)。
- *  双水路:频道流 publish(seq/环形缓冲/落库,时间线可回放)+ 全员直推
- *  (channelId='',WebUI 全局徽标/TUI 状态条不依赖 channel 订阅即达;快照恢复走 REST)。 */
+ *
+ *  v17 修正(P0 §13.2 —— 关闭审批旁路):
+ *  原实现经 `broadcastPeerEvent` 把 hitl.request/hitl.resolved 无条件推给**全部**在线 peer
+ *  (seq=0/channelId=''),配合前端"来者不拒"的 store,导致 A 的待办出现在 B 的徽标上 ——
+ *  既是通知泄漏,也让无权用户看到审批详情。
+ *
+ *  现在双水路:
+ *   ① 频道流 publish —— 订阅了该频道且通过成员鉴权的 peer 才收得到(seq/缓冲/落库/回放);
+ *   ② 用户定向 hub —— 仅推给「该 Channel 的 active 成员 ∪ owner ∪ admin」,
+ *      经 user-notification-hub 的 peer→userId 绑定做 recipient 隔离。
+ *  **不再**调用 broadcastPeerEvent。 */
 function bindHitlSubscription(manager: AgentChannelManager, stream: ChannelStream): void {
   stream.hitlUnsub?.()
   stream.hitlUnsub = subscribeHitlEvents(stream.channelId, (e) => {
+    // ① 频道流(seq/环形缓冲/落库/回放)—— 这是**审计与回放**轨迹,不是可操作通道。
+    //    审批动作本身另受两道闸门约束:REST pending 快照按可裁决性过滤、
+    //    respond 走决策服务(requireCanApprove + claimPending),所以频道成员"看得到轨迹"
+    //    不等于"能审批"。此处不下发敏感字段(载荷即 AepHitlItem 协议面,不含凭据)。
     publish(manager, stream, e.type, e.payload, { agentId: e.agentId })
-    broadcastPeerEvent(e.type, e.payload)
+    // ② 定向通知(用户级 hub):**按审批资格**扇出,而不是按频道成员资格 ——
+    //    owner_only 频道里普通成员不该收到"需要你处理"的定向提示。
+    for (const userId of hitlAudience(manager, stream.channelId)) {
+      publishToUser(userId, e.type, e.payload, { eventId: `${e.type}:${(e.payload as { kind?: string, id?: string }).kind}:${(e.payload as { id?: string }).id}` })
+    }
   })
+}
+
+/**
+ * 某个 Channel 的 HITL **可裁决**用户集(定向通知扇出用)。
+ *
+ * 与 `manager.requireCanApprove` 同口径:
+ *  - `owner_only` → 仅 owner + admin(普通成员**不**收到定向 HITL 提示);
+ *  - `any_member` → owner ∪ active 成员 ∪ admin。
+ * 读取当前 Channel 策略;策略收紧后自动收窄(收紧即时生效),
+ * 而单条历史请求的"创建时资格 ∩ 当前资格"由持久化快照在决策服务里判定。
+ */
+function hitlAudience(manager: AgentChannelManager, channelId: string): Set<string> {
+  const out = new Set<string>()
+  const internal = internalsOf(manager)
+  const channel = internal.deps.repos.channels.findById(channelId)
+  if (channel?.ownerUserId) out.add(channel.ownerUserId)
+  const policy = channel?.approvalPolicy ?? 'owner_only'
+  if (policy === 'any_member') {
+    try {
+      for (const m of manager.groupChat.members.listActiveByChannel(channelId)) out.add(m.userId)
+    }
+    catch { /* 群聊仓储不可用(旧脚手架):退化为 owner-only 可见 */ }
+  }
+  // admin 需全局可见(最高管理权限,与 REST pending.get 口径一致)
+  for (const id of adminUserIds()) out.add(id)
+  return out
+}
+
+/** admin 用户 id 集合(60s 缓存;用户仓储不可用时返回空集,不放宽任何人的可见性) */
+let adminIdsCache: { ids: string[], at: number } | null = null
+function adminUserIds(): string[] {
+  if (adminIdsCache && Date.now() - adminIdsCache.at < 60_000) return adminIdsCache.ids
+  let ids: string[]
+  try {
+    const res = userRepository.list({ page: 1, pageSize: 500 })
+    ids = (res?.items ?? []).filter(u => u.role === 'admin').map(u => u.id)
+  }
+  catch {
+    ids = []
+  }
+  adminIdsCache = { ids, at: Date.now() }
+  return ids
 }
 
 /** 自愈:stream 已订阅的总线 ≠ 管理器当前总线(空闲卸载销毁/重建)或 manager 更替 → 重订 */
@@ -584,7 +654,7 @@ export function ensureStream(manager: AgentChannelManager, channelId: string): C
 }
 
 /** 订阅:用户鉴权(channel 可见性)+ 快照对齐或 lastSeq 重放 */
-function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: string, lastSeq?: number, userToken?: string): void { // 用户隔离:管理 API 同口径(sub 帧 token 字段或连接 ?token=;本人 channel + 遗留公共只读观察)
+function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: string, lastSeq?: number, userToken?: string): void { // v17:群成员鉴权(requireChannelMember);管理面字段按 canManage 投影(§13.1)
   if (!userToken) {
     sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: 'WS 订阅需要用户 token(sub 帧携带 token 字段或连接 ?token= 查询参数)' } })
     return
@@ -594,8 +664,14 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
     sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: '用户 token 无效' } })
     return
   }
+  // v17:token 认证成功后绑定 peer→userId(用户级通知 hub 的 recipient 隔离基础)
+  bindUserPeer(peer, user.id)
+  let canManage: boolean
   try {
-    manager.getChannelForUser(channelId, user.id)
+    // 成员守卫:owner 或 active 群成员可订阅(群聊读取/发言/WS/HITL 可见性同口径);
+    // 管理能力另行判定,仅用于快照投影深度。
+    manager.requireChannelMember(channelId, user)
+    canManage = manager.channelPermissionsOf(channelId, user).canManage
   }
   catch (err) {
     const e = err as { code?: string, message?: string }
@@ -625,13 +701,18 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
   if (cursor === undefined || cursor >= stream.seq || cursor + 1 < oldest) {
     const snapshot = buildSnapshot(manager, channelId)
     if (snapshot) {
+      // v17 §13.1:非管理者只拿白名单投影(剔除 config/token/workspace/内部 mailbox/task payload);
+      // 同时附带群聊侧基线(成员/群聊历史/能力/通知游标),成员无需额外 REST 即可渲染群聊。
+      const payload = canManage
+        ? { ...snapshot, chat: safeChatSnapshot(manager, channelId, user), permissions: safePermissions(manager, channelId, user) }
+        : { ...projectManagementSnapshotForMember(snapshot), chat: safeChatSnapshot(manager, channelId, user), permissions: safePermissions(manager, channelId, user) }
       sendControl(peer, {
         v: AEP_VERSION,
         type: 'channel.snapshot',
         seq: stream.seq,
         at: new Date().toISOString(),
         channelId,
-        payload: snapshot,
+        payload,
       })
     }
   }
@@ -640,6 +721,26 @@ function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: st
     for (const { e } of stream.ring) {
       if (e.seq > cursor) sendFrame(stream, peer, JSON.stringify(e))
     }
+  }
+}
+
+/** 群聊快照(容错:群聊层不可用时返回 null,不阻断管理面快照) */
+function safeChatSnapshot(manager: AgentChannelManager, channelId: string, user: { id: string }): unknown {
+  try {
+    return manager.chatSnapshotOf(channelId, user)
+  }
+  catch {
+    return null
+  }
+}
+
+/** 能力视图(容错同上) */
+function safePermissions(manager: AgentChannelManager, channelId: string, user: { id: string, role?: string }): unknown {
+  try {
+    return manager.channelPermissionsOf(channelId, user)
+  }
+  catch {
+    return null
   }
 }
 
@@ -703,7 +804,12 @@ export default defineWebSocketHandler({
       const t = resolveQueryParam(peer, 'token')
       return t ? resolveUserByToken(t) : null
     })()
-    if (qpUser) attachScenePeer(peer, qpUser)
+    if (qpUser) {
+      attachScenePeer(peer, qpUser)
+      // v17:认证即绑定 peer→userId(用户级通知的 recipient 隔离基础;
+      // 仅凭 ?token= 连接的客户端无需再 sub 一个 channel 也能收定向通知)
+      bindUserPeer(peer, qpUser.id)
+    }
     // 兼容旧路径:?channelId= 连接即订阅(无 lastSeq → 快照对齐)
     const channelId = resolveChannelIdFromUrl(peer)
     if (!channelId) return // 纯上行 sub 模式(多 channel 复用一条连接)
@@ -747,17 +853,110 @@ export default defineWebSocketHandler({
       unsubscribePeer(peer, parsed.channelId)
       return
     }
+    // ===== v17 用户级通知上行(recipient 由服务端 peer 绑定决定,客户端不可指定 userId)=====
+    if (parsed.type === 'subNotifications' || parsed.type === 'unsubNotifications' || parsed.type === 'notification.read') {
+      let manager: AgentChannelManager
+      try {
+        manager = getWorkshopManager()
+      }
+      catch (error) {
+        sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'WORKSHOP_NOT_READY', message: error instanceof Error ? error.message : 'workshop 未初始化' } })
+        return
+      }
+      handleNotificationUplink(manager, peer, parsed)
+      return
+    }
     sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'UNSUPPORTED_UPLINK', message: `不支持的上行消息: ${String(parsed.type)}` } })
   },
 
   close(peer) {
     unsubscribePeer(peer)
     unregisterScenePeer(peer)
+    unbindUserPeer(peer)
   },
 
   error(peer, error) {
     console.error('[workshop-ws] connection error:', error)
     unsubscribePeer(peer)
     unregisterScenePeer(peer)
+    unbindUserPeer(peer)
   },
 })
+
+/**
+ * 用户级通知上行处理(subNotifications / unsubNotifications / notification.read)。
+ *
+ * 隔离前提:peer 的 userId **只**来自连接期 token 解析(subscribePeer 或 open 时绑定);
+ * 上行帧里即使带 userId 也一律忽略 —— 客户端不能订阅或标记他人的通知。
+ */
+function handleNotificationUplink(
+  manager: AgentChannelManager,
+  peer: WsPeer,
+  parsed: { type?: unknown, cursor?: unknown, id?: unknown, channelId?: unknown, all?: unknown },
+): void {
+  const userId = userIdOfPeer(peer)
+  if (!userId) {
+    sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'USER_UNAUTHORIZED', message: '通知订阅需要已认证的用户 token(连接 ?token= 或 sub 帧 token)' } })
+    return
+  }
+  const notifications = manager.groupChat.notifications
+  if (parsed.type === 'unsubNotifications') {
+    sendControl(peer, { v: AEP_VERSION, type: 'notification.unsubscribed', seq: 0, at: new Date().toISOString(), channelId: '', payload: { ok: true } })
+    return
+  }
+  if (parsed.type === 'notification.read') {
+    const result = manager.markNotificationsRead(userId, {
+      id: typeof parsed.id === 'string' ? parsed.id : undefined,
+      channelId: typeof parsed.channelId === 'string' ? parsed.channelId : undefined,
+      all: parsed.all === true,
+    })
+    sendControl(peer, { v: AEP_VERSION, type: 'notification.read.ack', seq: 0, at: new Date().toISOString(), channelId: '', payload: { ...result, unreadCount: notifications.unreadCount(userId) } })
+    return
+  }
+  // subNotifications:按游标补发(通知表是事实源;重连后不丢不重)
+  const rawCursor = parsed.cursor as { createdAt?: unknown, id?: unknown } | null | undefined
+  let cursor: { createdAt: string, id: string } | null = null
+  if (rawCursor && typeof rawCursor.createdAt === 'string' && typeof rawCursor.id === 'string') {
+    cursor = { createdAt: rawCursor.createdAt, id: rawCursor.id }
+  }
+  const rows = manager.listNotificationsAfter(userId, cursor, 200)
+  for (const r of rows) {
+    const payload: AepNotification = {
+      id: r.id,
+      recipientUserId: r.recipientUserId,
+      channelId: r.channelId,
+      chatMessageId: r.chatMessageId,
+      hitlKind: r.hitlKind,
+      hitlId: r.hitlId,
+      eventId: r.eventId,
+      type: r.type as AepNotification['type'],
+      title: r.title,
+      body: r.body,
+      payload: parseJson<Record<string, unknown>>(r.payloadJson, {}),
+      createdAt: r.createdAt,
+      readAt: r.readAt,
+    }
+    // 补发经 peer 直发(带 eventId 幂等键;客户端按 eventId 去重)
+    try {
+      peer.send(JSON.stringify({ v: AEP_VERSION, type: 'notification.created', seq: 0, at: new Date().toISOString(), channelId: r.channelId ?? '', payload }))
+    }
+    catch {
+      unbindUserPeer(peer)
+      return
+    }
+  }
+  sendControl(peer, {
+    v: AEP_VERSION,
+    type: 'notification.snapshot',
+    seq: 0,
+    at: new Date().toISOString(),
+    channelId: '',
+    payload: {
+      replayed: rows.length,
+      unreadCount: notifications.unreadCount(userId),
+      nextCursor: rows.length > 0
+        ? { createdAt: rows[rows.length - 1]!.createdAt, id: rows[rows.length - 1]!.id }
+        : cursor,
+    },
+  })
+}

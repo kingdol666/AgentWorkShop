@@ -4,6 +4,7 @@
  */
 import { defineStore } from 'pinia'
 import { useUserStore } from './user'
+import { narrowFetch } from './narrow-fetch'
 import { envelopeTier } from '@/app/composables/workshop/useEventBlocks'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 
@@ -329,7 +330,7 @@ export const useEventsStore = defineStore('workshop.events', {
       if (typeof window === 'undefined') return
       const ring = this.rings[channelId] ?? EMPTY_RING()
       try {
-        const res = await $fetch<EventsHistoryRes>(
+        const res = await narrowFetch<EventsHistoryRes>(
           `/api/workshop/channels/${channelId}/events`,
           { params: { limit, excludeTypes: HISTORY_EXCLUDE_TYPES.join(',') }, headers: { authorization: `Bearer ${useUserStore().token}` } },
         )
@@ -351,7 +352,7 @@ export const useEventsStore = defineStore('workshop.events', {
       const minSeq = ring.items.length > 0 ? (ring.items[0]?.seq ?? 0) : ring.lastSeq
       if (minSeq <= 1) return false
       try {
-        const res = await $fetch<EventsHistoryRes>(
+        const res = await narrowFetch<EventsHistoryRes>(
           `/api/workshop/channels/${channelId}/events`,
           { params: { limit, beforeSeq: Math.max(1, minSeq - 1), excludeTypes: HISTORY_EXCLUDE_TYPES.join(',') }, headers: { authorization: `Bearer ${useUserStore().token}` } },
         )
@@ -387,7 +388,7 @@ export const useEventsStore = defineStore('workshop.events', {
       }
       const ring = this.rings[channelId]!
       try {
-        const res = await $fetch<EventsHistoryRes>(
+        const res = await narrowFetch<EventsHistoryRes>(
           `/api/workshop/channels/${channelId}/events`,
           { params: { limit, agentId, excludeTypes: HISTORY_EXCLUDE_TYPES.join(',') }, headers: { authorization: `Bearer ${useUserStore().token}` } },
         )
@@ -417,7 +418,7 @@ export const useEventsStore = defineStore('workshop.events', {
       }
       if (minSeq <= 1) return false
       try {
-        const res = await $fetch<EventsHistoryRes>(
+        const res = await narrowFetch<EventsHistoryRes>(
           `/api/workshop/channels/${channelId}/events`,
           { params: { limit, agentId, beforeSeq: minSeq - 1, excludeTypes: HISTORY_EXCLUDE_TYPES.join(',') }, headers: { authorization: `Bearer ${useUserStore().token}` } },
         )

@@ -77,6 +77,13 @@ export interface ChannelBus {
   /** 团队成员增/改/删通知(lead 自主管理或用户 REST;AEP agent.member 事件源) */
   notifyMember(e: MemberChangeEvent): void
   onMemberEvent(fn: (e: MemberChangeEvent) => void): () => void
+  /**
+   * v17 群聊事件通知(chat.message / chat.delivery.status / chat.member / chat.settings)。
+   * 群聊事件**必须**走 channel 流(publish → seq/环形缓冲/落库/重放),
+   * 因此这里只做"投递到频道总线",不涉及用户定向 —— 用户定向通知走 user-notification-hub。
+   */
+  notifyChat?(e: { type: string, payload: unknown }): void
+  onChatEvent?(fn: (e: { type: string, payload: unknown }) => void): () => void
   /** 记忆写入通知(策展/主动沉淀;AEP memory.saved 事件源) */
   notifyMemory(e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }): void
   onMemoryEvent(fn: (e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }) => void): () => void
@@ -195,8 +202,26 @@ export class AgentRuntime {
       bus: ChannelBus
       workspace: AgentWorkspace
       memory?: AgentMemory
-      /** 平台代投(落时间线+广播):人类 requireReply 的回执 —— 人类无信箱,emitExternal 只广播不落库 */
-      platformReply?: (input: { text: string, inReplyTo: string, toLabel: string }) => void
+      /** 平台代投(落时间线+广播):人类 requireReply 的回执 —— 人类无信箱,emitExternal 只广播不落库。
+       *  v17:额外携带全链路关联 ID(sourceChatMessageId/requesterUserId/replyToId/deliveryId),
+       *  由 manager 的适配层写入群聊事实表(chat_messages)并自动 @提问者。 */
+      platformReply?: (input: {
+        text: string
+        inReplyTo: string
+        toLabel: string
+        /** Agent 身份(群聊回复的 senderId/senderName) */
+        agentId?: string
+        agentName?: string
+        channelId?: string
+        /** 源群聊消息 id(Agent 回复关联的唯一锚点) */
+        sourceChatMessageId?: string
+        /** 提问者稳定用户 id(服务端从入站 metadata 读取,不是"最近发言者") */
+        requesterUserId?: string
+        /** 回复目标消息 id(= sourceChatMessageId;显式传递便于契约自描述) */
+        replyToId?: string
+        /** 投递台账 id(闭环留痕) */
+        deliveryId?: string
+      }) => void
     },
   ) {
     this.agentId = agent.id
@@ -621,9 +646,11 @@ export class AgentRuntime {
           }
           if (taskId) await this.deps.taskEngine.applyEvent(taskId, event)
           if (event.kind === 'message') {
-            // 只聚合 assistant/agent 输出:user 角色是 prompt 回显,聚进去会把整段
-            // 提示词当成"回复"代投到时间线(实测回执变成 prompt 前缀)
-            if (event.message.role === 'user') deltaText = ''
+            // 只聚合 assistant/agent 输出:ROLE_USER 是 prompt 回显,聚进去会把整段
+            // 提示词当成"回复"代投到时间线(实测回执变成 prompt 前缀)。
+            // 注:原判定写的是小写 'user',与 A2AMessage.role 的 'ROLE_USER'|'ROLE_AGENT'
+            // 永不相交 → 该护栏从未生效(v17 类型收敛时修正)。
+            if (event.message.role === 'ROLE_USER') deltaText = ''
             else cap(partsToText(event.message.parts))
           }
           else if (event.kind === 'status' && event.status.message) cap(partsToText(event.status.message.parts))
@@ -644,10 +671,20 @@ export class AgentRuntime {
       // delta 流优先(模型最终输出以增量到达,最贴近真实回复);replyText 兜底
       let relayText = deltaText.trim() || replyText.trim()
       // 内容级去污:部分引擎的事件流会把 prompt 原文(整段或前缀)混进文本事件,
-      // 角色字段拦不住 —— 含本次消息原文前缀时,切除取其后段(真正的回复在其后)
+      // 角色字段拦不住 —— 此时文本**以 prompt 原文开头**,切除前言、保留其后的真正回复。
+      //
+      // 判据必须限定为「开头」(startsWith),不能是「包含就切到最后一处」(includes +
+      // split().pop())。原因(实测):Agent 的正当回复**可以引用问题原文**,例如
+      // mock 替身与不少真实模型的回执形如
+      //   `@bob 已处理「[群聊] bob 提问:@demo-worker 请报告A线温度」;source=xxxx`
+      // 用 includes 判据时,这条正当回复命中"引用了 prompt",于是被切到最后一个匹配之后,
+      // 正文只剩 `」;source=xxxx` —— 回复内容被自己的去污逻辑销毁(群聊里看到空回复)。
+      // 泄露的 prompt 一定出现在输出**最前面**,引用则出现在回复内容之中,故用前缀判定。
+      // 另:清洗后为空则保留原文,绝不把回复变成空串。
       const promptEcho = partsToText(msg.parts).trim().slice(0, 80)
-      if (promptEcho && relayText.includes(promptEcho)) {
-        relayText = relayText.split(promptEcho).pop() ?? ''
+      if (promptEcho && relayText.startsWith(promptEcho)) {
+        const remainder = relayText.slice(promptEcho.length).trim()
+        if (remainder) relayText = remainder
       }
       relayText = relayText.trim().slice(0, 4000)
       if (msg.metadata?.['x-aw-require-reply'] === 'true'
@@ -669,10 +706,23 @@ export class AgentRuntime {
           },
         })
         // 落时间线:emitExternal 只广播不持久化,回执必须可回溯(时间线 API 可查)
+        // v17:全链路关联 ID 原样回传(sourceChatMessageId/requesterUserId/replyToId),
+        // 由 platformReply 适配层写入群聊事实表并自动 @提问者 —— 绝不使用"最近发言者"推断。
         this.deps.platformReply?.({
           text: relayText,
           inReplyTo: msg.messageId,
           toLabel: String(msg.metadata['x-aw-from-label']),
+          agentId: this.agentId,
+          agentName: this.name,
+          channelId: this.channelId,
+          sourceChatMessageId: typeof msg.metadata['x-aw-source-chat-message-id'] === 'string'
+            ? msg.metadata['x-aw-source-chat-message-id']
+            : undefined,
+          requesterUserId: typeof msg.metadata['x-aw-requester-user-id'] === 'string'
+            ? msg.metadata['x-aw-requester-user-id']
+            : (typeof msg.metadata['x-aw-from-user-id'] === 'string' ? msg.metadata['x-aw-from-user-id'] : undefined),
+          replyToId: typeof msg.metadata['x-aw-reply-to'] === 'string' ? msg.metadata['x-aw-reply-to'] : undefined,
+          deliveryId: typeof msg.metadata['x-aw-delivery-id'] === 'string' ? msg.metadata['x-aw-delivery-id'] : undefined,
         })
       }
       // 交付兜底(harness 回合结束 ≠ 任务完成):

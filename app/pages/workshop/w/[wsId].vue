@@ -80,18 +80,19 @@ const stateColor = computed(() =>
 )
 const lastSeq = computed(() => (channelId.value ? conn.cursors[channelId.value] ?? 0 : 0))
 
-// 视图切换(P1 三视图 + P2 多通道同屏 + P5 RPG 小镇)
-// 深链:?view=lanes/board/split/town 直达指定视图(可分享/收藏)
+// 视图切换(P1 三视图 + P2 多通道同屏 + P5 RPG 小镇 + v17 人类群聊)
+// 深链:?view=chat/lanes/board/split/town 直达指定视图(可分享/收藏;通知跳转即用 view=chat)
 // inspector 只在窄屏出现(桌面它是右侧常驻栏),故不进深链白名单
-type CenterView = 'timeline' | 'lanes' | 'board' | 'split' | 'town' | 'inspector'
+type CenterView = 'timeline' | 'chat' | 'lanes' | 'board' | 'split' | 'town' | 'inspector'
 const VIEW_KEYS: Record<string, CenterView> = {
   1: 'timeline',
-  2: 'lanes',
-  3: 'board',
-  4: 'split',
-  5: 'town',
+  2: 'chat',
+  3: 'lanes',
+  4: 'board',
+  5: 'split',
+  6: 'town',
 }
-const VIEW_VALUES = new Set(['timeline', 'lanes', 'board', 'split', 'town'])
+const VIEW_VALUES = new Set(['timeline', 'chat', 'lanes', 'board', 'split', 'town'])
 const initView = route.query.view
 const view = ref<CenterView>(
   typeof initView === 'string' && VIEW_VALUES.has(initView) ? initView as CenterView : 'timeline',
@@ -99,6 +100,7 @@ const view = ref<CenterView>(
 const viewOptions = computed(() => {
   const base = [
     { value: 'timeline', label: t('wsView.k3otu32010') },
+    { value: 'chat', label: '群聊' },
     { value: 'lanes', label: 'Agent lanes' },
     { value: 'board', label: t('wsView.k3ko7a8011') },
     { value: 'split', label: t('wsView.k3xbmo012') },
@@ -107,7 +109,7 @@ const viewOptions = computed(() => {
   // 窄屏「一次一区」:检查器不占侧栏,并入切换条(四区都由同一条承载)
   return narrowUI.value ? [...base, { value: 'inspector', label: t('wsView.inspector') }] : base
 })
-// 数字快捷键 1-5 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向)
+// 数字快捷键 1-6 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向)
 const onViewKey = (ev: KeyboardEvent): void => {
   // 窄屏抽屉:Esc 收起(与全站侧栏抽屉一致)
   if (ev.key === 'Escape' && narrowUI.value && leftOpen.value) {
@@ -315,6 +317,11 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
             v-if="view === 'timeline'"
             :channel-id="channelId"
           />
+          <!-- v17 人类群聊时间线(chat.message 频道流;人类与 Agent 同场,投递台账可见) -->
+          <workshop-chat-timeline
+            v-else-if="view === 'chat'"
+            :channel-id="channelId"
+          />
           <workshop-agent-lanes-view
             v-else-if="view === 'lanes'"
             :channel-id="channelId"
@@ -366,18 +373,29 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         :class="{ empty: wsStore.loaded && !channelId }"
         :style="{ flexBasis: `${rightWidth}px` }"
       >
-        <workshop-inspector-panel
+        <div
           v-if="channelId"
-          :channel-id="channelId"
-          @open-agent="openAgent"
-          @open-task="openTask"
-        />
+          class="right-main"
+        >
+          <workshop-inspector-panel
+            :channel-id="channelId"
+            @open-agent="openAgent"
+            @open-task="openTask"
+          />
+        </div>
         <!-- 加载中/无频道的诚实降级态(workspace 列表未返回前不误判为"空") -->
         <div
           v-else-if="!wsStore.loaded"
           class="pane-loading"
         >
           {{ $t('wsView.loadingWs') }}
+        </div>
+        <!-- v17 群成员名册 + 加入/审批 + 群聊设置(权限由服务端能力视图驱动) -->
+        <div
+          v-if="channelId"
+          class="right-chat"
+        >
+          <workshop-chat-member-panel :channel-id="channelId" />
         </div>
       </div>
     </div>
@@ -558,10 +576,24 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
   max-width: 100%;
 }
 .right-pane {
+  display: flex; /* 上下两区:检查器(可滚动)+ 群成员面板(定高) */
   flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
   background: var(--paper);
+}
+.right-main {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* 群成员面板只占右栏下部一段:检查器(Agent/Task 详情)仍是主信息面 */
+.right-chat {
+  flex: 0 0 auto;
+  max-height: 46%;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
 }
 .right-pane.empty { opacity: 0.35; }
 /* workspace 列表加载中的诚实降级态(不算"空",不淡化整栏) */

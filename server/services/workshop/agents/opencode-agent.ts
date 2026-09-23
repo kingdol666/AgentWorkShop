@@ -27,9 +27,10 @@ import type {
   SupervisionSnapshot,
 } from './agent-interface'
 import type { AgentContextStats } from '../types/task'
+import type { AepHitlQuestion } from '../../../../shared/workshop-protocol'
 import { registerHarnessProcess, bindHarnessProcess, markHarnessProcessExit, killHarnessProcess, isProcessAlive } from './harness-process'
 import { extractJsonArray, peerPrompt, supervisePrompt, systemManual, toolArgsPreview, workerPrompt } from './prompt-builder'
-import { getHitlRegistry } from './hitl-registry'
+import { getHitlRegistry, decodeHitlAnswers, normalizeHitlQuestions } from './hitl-registry'
 import { harnessSettings } from '../settings'
 import { spawnLineProcess } from './adapters/line-spawn'
 import { BaseAgentImpl, type BaseAgentConfigView } from './base-agent'
@@ -105,6 +106,8 @@ interface PendingHitl {
   type: 'permission' | 'question'
   sessionId: string
   timer: ReturnType<typeof setTimeout> | null
+  /** question 型:全量问题(逐题 POST /question/{id}/reply);permission 型为空 */
+  questions: AepHitlQuestion[]
 }
 
 export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
@@ -221,7 +224,20 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
     }
   }
 
-  /** HITL 应答(codex/opencode/dsh 统一入口;本 impl 处理 opencode-permission) */
+  /**
+   * HITL 应答(codex/opencode/dsh 统一入口;本 impl 处理 opencode-permission)。
+   *
+   * 原生协议:
+   *  - permission.asked → `POST /session/:id/permissions/:permissionId {response: once|always|reject}`
+   *  - question.asked   → 每个问题一条 `POST /question/:questionId/reply {answer}`;
+   *                       取消 → `POST /question/:questionId/reject {}`
+   *
+   * 修复要点(§13.5):
+   *  - 旧映射 `response === 'always' || 'once' ? response : 'once'` 会把显式 **reject 降级为 once**
+   *    (静默放行),现已按白名单原样透传,未知枚举直接抛错;
+   *  - 旧实现只答第一题,现按 questions 全量逐题应答(fallback:用请求集 id);
+   *  - cancelled 优先于一切:取消绝不等价于同意。
+   */
   override async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
@@ -232,19 +248,52 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
     if (kind !== 'opencode-permission') return
     const pending = this.pendingHitl.get(id)
     if (!pending) throw new Error(`待办不存在或已处理: ${id}`)
-    // 应答映射:显式 response > confirmed/cancelled 布尔(缺省拒绝,fail-closed)
-    const cancelled = outcome.cancelled === true || (outcome.confirmed !== true && !outcome.response)
+    const response = typeof outcome.response === 'string' && outcome.response !== '' ? outcome.response : undefined
+    if (response && response !== 'once' && response !== 'always' && response !== 'reject') {
+      // 未知枚举不得回落为 once(allow);在传导层再兜一道,防决策服务被绕过
+      throw new Error(`未知 permission 应答枚举「${response}」:仅允许 once|always|reject`)
+    }
+    // fail-closed 双分支:
+    //  - permission:只有显式 confirmed=true / once / always 才放行;其余(含字段缺失)一律 reject
+    //    (与旧实现差别仅在"显式 reject 不再被降级为 once");
+    //  - question:答案是**内容**,但空答案同样不得当成有效回答 → 走 reject(取消语义)。
+    const explicitCancel = outcome.cancelled === true || response === 'reject'
+    const allow = outcome.confirmed === true || response === 'once' || response === 'always'
+    const cancelled = pending.type === 'permission'
+      ? explicitCancel || !allow
+      : explicitCancel || (outcome.value ?? outcome.comment ?? '').trim() === ''
     if (pending.type === 'permission') {
-      const response = cancelled ? 'reject' : (outcome.response === 'always' || outcome.response === 'once' ? outcome.response : 'once')
-      await this.api('POST', `/session/${pending.sessionId}/permissions/${encodeURIComponent(id)}`, { response })
+      // 显式 reject 原样透传;未给 response 时按 confirmed 布尔(缺省拒绝,fail-closed)
+      const native = cancelled ? 'reject' : (response === 'always' ? 'always' : 'once')
+      await this.api('POST', `/session/${pending.sessionId}/permissions/${encodeURIComponent(id)}`, { response: native })
     }
     else {
-      // question:取消走 reject 端点;回答携带 value
+      const questions = pending.questions
       if (cancelled) {
-        await this.api('POST', `/question/${encodeURIComponent(id)}/reject`, {})
+        // 取消:每个问题各发一次 reject(引擎按问题 id 收敛整组提问)
+        if (questions.length === 0) {
+          await this.api('POST', `/question/${encodeURIComponent(id)}/reject`, {})
+        }
+        else {
+          for (const q of questions) {
+            await this.api('POST', `/question/${encodeURIComponent(q.id || id)}/reject`, {})
+          }
+        }
       }
       else {
-        await this.api('POST', `/question/${encodeURIComponent(id)}/reply`, { answer: outcome.value ?? outcome.comment ?? '' })
+        // 逐题应答:信封解出结构化答案,按问题 id 对齐(缺省回落裸文本)
+        const answers = decodeHitlAnswers(outcome.value)
+        const fallback = outcome.value ?? outcome.comment ?? ''
+        if (questions.length === 0) {
+          await this.api('POST', `/question/${encodeURIComponent(id)}/reply`, { answer: fallback })
+        }
+        else {
+          for (const q of questions) {
+            const answer = answers?.find(a => a.id === q.id)?.answer
+              ?? (questions.length === 1 ? fallback : '')
+            await this.api('POST', `/question/${encodeURIComponent(q.id || id)}/reply`, { answer })
+          }
+        }
       }
     }
     // 原为 clearTimeout(p.timer):p 在本作用域不存在(ReferenceError,且仅当计时器非空时触发),
@@ -687,20 +736,58 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
     const v2res = Array.isArray(props.resources) ? props.resources.map(String).join(', ') : ''
     const detail = patterns || v2res
     const title = `opencode 权限请求:${permission}${detail ? `(${detail})` : ''}`
-    this.registerHitl(id, 'permission', sessionId, title, `引擎将执行 ${permission}${detail ? ` → ${detail}` : ''};批准放行一次,拒绝则引擎收到 reject。`)
+    this.registerHitl({
+      id,
+      type: 'permission',
+      requestType: 'approval',
+      sessionId,
+      title,
+      detail: `引擎将执行 ${permission}${detail ? ` → ${detail}` : ''};批准放行(once/always),拒绝(reject)则引擎收到 reject。`,
+      method: 'confirm',
+      // 审批的合法枚举(前端按此渲染按钮;未知值在 respondHitl 被拒)
+      options: ['once', 'always', 'reject'],
+      nativeRequestId: id,
+    })
   }
 
+  /**
+   * question.asked → question 型 HITL(全量问题,禁止只取第一题)。
+   * 逐题回传 `POST /question/{questionId}/reply`;取消走 `/reject`。
+   */
   private registerQuestionHitl(props: Record<string, unknown>): void {
     const id = String(props.id ?? '')
     if (!id || this.pendingHitl.has(id)) return
     const sessionId = String(props.sessionID ?? this.sessionId ?? '')
-    const questions = Array.isArray(props.questions) ? props.questions : []
-    const first = (questions[0] ?? {}) as Record<string, unknown>
-    const title = String(first.question ?? first.header ?? 'opencode 提问')
-    this.registerHitl(id, 'question', sessionId, title, String(first.question ?? ''), 'input')
+    const questions = normalizeHitlQuestions(props.questions)
+    const first = questions[0]
+    this.registerHitl({
+      id,
+      type: 'question',
+      requestType: 'question',
+      sessionId,
+      title: String(first?.question ?? first?.header ?? 'opencode 提问'),
+      detail: first?.question ?? '',
+      method: 'input',
+      // 旧 UI 只认 options:string[]:摊平首题选项;结构化答案按 questions 逐题回传
+      options: first?.options?.map(o => o.label),
+      nativeRequestId: id,
+      questions,
+    })
   }
 
-  private registerHitl(id: string, type: 'permission' | 'question', sessionId: string, title: string, detail: string, method: 'confirm' | 'input' = 'confirm'): void {
+  private registerHitl(input: {
+    id: string
+    type: 'permission' | 'question'
+    requestType: 'question' | 'approval'
+    sessionId: string
+    title: string
+    detail: string
+    method: 'confirm' | 'input'
+    options?: string[]
+    nativeRequestId?: string
+    questions?: AepHitlQuestion[]
+  }): void {
+    const { id } = input
     const registry = getHitlRegistry()
     registry.register({
       kind: 'opencode-permission',
@@ -709,11 +796,18 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
       agentName: this.agentName,
       channelId: this.channelId,
       pid: this.child?.pid,
-      method,
-      title,
-      detail,
+      method: input.method,
+      title: input.title,
+      detail: input.detail,
+      options: input.options,
       createdAt: new Date().toISOString(),
       expiresAt: null,
+      // v17:question/approval 分开建模 + 原生请求/会话标识(重启对账与能力矩阵)
+      requestType: input.requestType,
+      nativeRequestId: input.nativeRequestId ?? id,
+      sessionId: input.sessionId,
+      harness: 'opencode',
+      questions: input.questions,
     })
     // 无人应答超时(fail-closed:到时自动拒绝),0 = 无限等待
     const timeoutMs = harnessSettings().hitl_timeout_ms
@@ -723,7 +817,14 @@ export class OpenCodeAgentImpl extends BaseAgentImpl implements AgentInterface {
           registry.resolve('opencode-permission', id, 'expired')
         }, timeoutMs)
       : null
-    this.pendingHitl.set(id, { kind: 'opencode-permission', id, type, sessionId, timer })
+    this.pendingHitl.set(id, {
+      kind: 'opencode-permission',
+      id,
+      type: input.type,
+      sessionId: input.sessionId,
+      timer,
+      questions: input.questions ?? [],
+    })
   }
 
   // ===== opencode 服务进程与 HTTP 客户端 =====

@@ -518,6 +518,11 @@ export class HermesAgentImpl extends BaseAgentImpl implements AgentInterface {
       options: options.map(o => String(o.name ?? o.optionId ?? '')),
       createdAt: new Date().toISOString(),
       expiresAt: null,
+      // v17:审批语义 + 原生请求/会话标识(重启对账与能力矩阵)
+      requestType: 'approval',
+      nativeRequestId: String(req.id),
+      sessionId: this.sessionId ?? '',
+      harness: 'hermes',
     })
     const timeoutMs = harnessSettings().hitl_timeout_ms
     const timer = timeoutMs > 0

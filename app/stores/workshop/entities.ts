@@ -4,6 +4,7 @@
  */
 import { defineStore } from 'pinia'
 import { useUserStore } from './user'
+import { narrowFetch } from './narrow-fetch'
 import type { AepEnvelope, AepSnapshot } from '#shared/workshop-protocol'
 
 export interface AgentView {
@@ -292,7 +293,7 @@ export const useEntitiesStore = defineStore('workshop.entities', {
     refreshAgents(channelId: string): void {
       if (this.refreshingAgents[channelId]) return
       this.refreshingAgents[channelId] = true
-      $fetch<{ data?: Array<{ id: string, name: string, role: 'lead' | 'worker', harness: string, config?: Record<string, unknown> }> }>(
+      narrowFetch<{ data?: Array<{ id: string, name: string, role: 'lead' | 'worker', harness: string, config?: Record<string, unknown> }> }>(
         `/api/workshop/channels/${channelId}/agents`,
         { headers: { authorization: `Bearer ${useUserStore().token}` } },
       )
@@ -318,7 +319,7 @@ export const useEntitiesStore = defineStore('workshop.entities', {
     refreshTasks(channelId: string): void {
       if (this.refreshing[channelId]) return
       this.refreshing[channelId] = true
-      $fetch<{ data?: AepSnapshot['tasks'] }>(`/api/workshop/channels/${channelId}/tasks`, {
+      narrowFetch<{ data?: AepSnapshot['tasks'] }>(`/api/workshop/channels/${channelId}/tasks`, {
         headers: { authorization: `Bearer ${useUserStore().token}` },
       })
         .then((res) => {

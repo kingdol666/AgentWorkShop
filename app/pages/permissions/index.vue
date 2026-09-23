@@ -7,6 +7,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '~/stores/workshop/user'
+import { narrowFetch } from '~/stores/workshop/narrow-fetch'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -42,7 +43,7 @@ function authHeaders(): Record<string, string> {
 async function load() {
   loading.value = true
   try {
-    const d = await $fetch<{ code: number, data?: { lines: LineView[], users: UserRow[] } }>('/api/workshop/permissions', { headers: authHeaders() })
+    const d = await narrowFetch<{ code: number, data?: { lines: LineView[], users: UserRow[] } }>('/api/workshop/permissions', { headers: authHeaders() })
     if (d.code !== 0 || !d.data) throw new Error('load fail')
     lines.value = d.data.lines ?? []
     users.value = d.data.users ?? []
@@ -96,7 +97,7 @@ async function save() {
     const revoked = lines.value
       .filter(l => (draft[l.id] ?? 'none') === 'none' && current.value!.grants.some(g => g.lineId === l.id))
       .map(l => ({ lineId: l.id, mode: null }))
-    const d = await $fetch<{ code: number, data?: { grants: GrantRow[] } }>('/api/workshop/permissions', {
+    const d = await narrowFetch<{ code: number, data?: { grants: GrantRow[] } }>('/api/workshop/permissions', {
       method: 'PUT',
       headers: authHeaders(),
       body: { userId: current.value.id, grants: [...grants, ...revoked] },

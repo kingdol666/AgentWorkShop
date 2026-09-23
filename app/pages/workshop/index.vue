@@ -8,6 +8,7 @@ import { message } from 'ant-design-vue'
 import { useWorkspacesStore } from '../../stores/workshop/workspaces'
 import { useEntitiesStore } from '../../stores/workshop/entities'
 import { useUserStore } from '../../stores/workshop/user'
+import { narrowFetch } from '../../stores/workshop/narrow-fetch'
 import { useWorkshopWs } from '../../composables/workshop/useWorkshopWs'
 
 const { t } = useI18n()
@@ -31,7 +32,7 @@ const authLoading = ref(false)
 const needsSetup = ref(false)
 onMounted(async () => {
   try {
-    const res = await $fetch<{ code: number, data?: { needsSetup: boolean } }>('/api/users/setup-status')
+    const res = await narrowFetch<{ code: number, data?: { needsSetup: boolean } }>('/api/users/setup-status')
     if (res.code === 0 && res.data?.needsSetup) {
       needsSetup.value = true
       authTab.value = 'register'

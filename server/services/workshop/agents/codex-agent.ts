@@ -9,7 +9,10 @@
  *  - 事件映射:item/agentMessage/delta → delta;item/started → 🔧 status;
  *    turn/completed → artifact + done / error(codexErrorInfo 结构化)
  *  - HITL:item/commandExecution|fileChange/requestApproval(server→client 请求)
- *    → hitl-registry 登记 → respondHitl 应答(decision: accept/decline/cancel)
+ *    → hitl-registry 登记 → respondHitl 应答(decision: accept/decline/cancel);
+ *    tool/requestUserInput 同为 server→client 请求但载荷不同 → 登记为 question 型,
+ *    应答走 respondUserInput(`{answers:[{answer}]}`,取消为 respondError -32800),
+ *    **不得**复用审批的 `{decision}`(§13.5 必修复项)
  *  - steer:turn 运行中 → turn/steer;无 active turn → 'deferred'
  *  - 上下文治理:thread/tokenUsage/updated 被动跟踪;越阈值 → thread/compact/start
  *
@@ -21,10 +24,11 @@ import { join } from 'node:path'
 import { mkdirSync, writeFileSync, existsSync, readFileSync, copyFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import type { AgentEvent, AgentInterface, AgentInfo, AgentRunContext, AgentRunRequest } from './agent-interface'
+import type { AepHitlQuestion } from '../../../../shared/workshop-protocol'
 import type { AgentContextStats } from '../types/task'
 import { registerHarnessProcess, bindHarnessProcess, markHarnessProcessExit, killHarnessProcess } from './harness-process'
 import { peerPrompt, systemManual, toolArgsPreview, workerPrompt } from './prompt-builder'
-import { getHitlRegistry } from './hitl-registry'
+import { getHitlRegistry, decodeHitlAnswers, normalizeHitlQuestions } from './hitl-registry'
 import { harnessSettings } from '../settings'
 import { StdioJsonRpcClient } from './adapters/stdio-jsonrpc'
 import { BaseAgentImpl, type BaseAgentConfigView } from './base-agent'
@@ -98,8 +102,20 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
   private lastUsage: { input: number, at: number } | null = null
   private compacting = false
   private lastCompactAt = 0
-  /** 待应答审批(approval request id → JSON-RPC id) */
-  private pendingApprovals = new Map<string, { rpcId: string | number, timer: ReturnType<typeof setTimeout> | null }>()
+  /**
+   * 待应答 HITL(approval request id → JSON-RPC id)。
+   * v17:`type` 区分 approval 与 question —— 二者**原生应答载荷不同**
+   * (approval → `{decision: accept|decline|cancel}`;question → `{answers:[…]}`),
+   * 原先只有一张表且 respondHitl 恒发 `{decision}`,导致 tool/requestUserInput
+   * 的提问只能靠超时取消(§13.5 必修复项)。
+   */
+  private pendingApprovals = new Map<string, {
+    rpcId: string | number
+    timer: ReturnType<typeof setTimeout> | null
+    type: 'approval' | 'question'
+    /** question 型:全量问题(多问题按序回传 answers[]) */
+    questions: AepHitlQuestion[]
+  }>()
 
   constructor(config: Record<string, unknown> = {}) {
     super({
@@ -179,7 +195,13 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
     }
   }
 
-  /** HITL 应答:审批请求 → JSON-RPC 应答(decision) */
+  /**
+   * HITL 应答(hitl-decision 传导入口)。
+   * - question(requestUserInput)→ respondUserInput(`{answers:[…]}` / respondError 取消);
+   * - approval → JSON-RPC 应答 `{decision: accept|decline|cancel}`。
+   * 显式 `response` 枚举(accept|decline|cancel)优先于 confirmed 布尔;未知值由
+   * hitl-decision 在入口 400 拒绝,此处不再兜底"放行"。
+   */
   override async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
@@ -190,11 +212,22 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
     if (kind !== 'codex-approval') return
     const pending = this.pendingApprovals.get(id)
     if (!pending) throw new Error(`待办不存在或已处理: ${id}`)
+    // 提问型:必须走 answers 协议(此前落到 {decision} 分支 → 引擎无法解析提问答案)
+    if (pending.type === 'question') {
+      await this.respondUserInput(pending.rpcId, id, {
+        cancelled: outcome.cancelled === true,
+        value: outcome.value ?? outcome.comment,
+      })
+      return
+    }
     const client = this.client
     if (!client) throw new Error('codex 会话已关闭')
-    const decision = outcome.cancelled === true
+    // 显式枚举 > 布尔;cancel 优先于一切(取消绝不等价于同意)
+    const decision = outcome.cancelled === true || outcome.response === 'cancel'
       ? 'cancel'
-      : outcome.confirmed === true ? 'accept' : 'decline'
+      : outcome.response === 'accept' || outcome.response === 'decline'
+        ? outcome.response
+        : outcome.confirmed === true ? 'accept' : 'decline'
     client.respond(pending.rpcId, { decision })
     if (pending.timer) clearTimeout(pending.timer)
     this.pendingApprovals.delete(id)
@@ -531,6 +564,11 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
       detail: typeof p.reason === 'string' ? p.reason : undefined,
       createdAt: new Date().toISOString(),
       expiresAt: null,
+      // v17:question/approval 分开建模 + 原生请求/会话标识(重启对账与能力矩阵)
+      requestType: 'approval',
+      nativeRequestId: String(rpcId),
+      sessionId: this.threadId ?? '',
+      harness: 'codex',
     })
     const timeoutMs = harnessSettings().hitl_timeout_ms
     const timer = timeoutMs > 0
@@ -539,13 +577,18 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
           registry.resolve('codex-approval', id, 'expired')
         }, timeoutMs)
       : null
-    this.pendingApprovals.set(id, { rpcId, timer })
+    this.pendingApprovals.set(id, { rpcId, timer, type: 'approval', questions: [] })
   }
 
+  /**
+   * tool/requestUserInput → question 型 HITL。
+   * 全量 questions 原样承载(旧实现只取第一题,多问题直接丢);应答走 respondUserInput
+   * 的 `{answers:[…]}` 协议,**不得**复用审批的 `{decision}`。
+   */
   private registerUserInputHitl(rpcId: string | number, p: Record<string, unknown>): void {
     const id = `codex-input-${randomUUID().slice(0, 8)}`
-    const questions = Array.isArray(p.questions) ? p.questions : []
-    const first = (questions[0] ?? {}) as Record<string, unknown>
+    const questions = normalizeHitlQuestions(p.questions)
+    const first = questions[0]
     const registry = getHitlRegistry()
     registry.register({
       kind: 'codex-approval',
@@ -555,10 +598,17 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
       channelId: this.channelId,
       pid: this.client?.pid,
       method: 'input',
-      title: String(first.question ?? first.header ?? 'codex 提问'),
+      title: String(first?.question ?? first?.header ?? 'codex 提问'),
       detail: typeof p.reason === 'string' ? p.reason : undefined,
+      // 旧 UI 只认 options:string[]:把首题选项摊平(结构化答案仍按 questions 回传)
+      options: first?.options?.map(o => o.label),
       createdAt: new Date().toISOString(),
       expiresAt: null,
+      requestType: 'question',
+      nativeRequestId: String(rpcId),
+      sessionId: this.threadId ?? '',
+      harness: 'codex',
+      questions,
     })
     const timeoutMs = harnessSettings().hitl_timeout_ms
     const timer = timeoutMs > 0
@@ -566,10 +616,20 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
           void this.respondUserInput(rpcId, id, { cancelled: true }).catch(() => {})
         }, timeoutMs)
       : null
-    this.pendingApprovals.set(id, { rpcId, timer })
+    this.pendingApprovals.set(id, { rpcId, timer, type: 'question', questions })
   }
 
-  private async respondUserInput(rpcId: string | number, id: string, outcome: { cancelled?: boolean, value?: string }): Promise<void> {
+  /**
+   * 提问应答(codex app-server `tool/requestUserInput`):
+   * 成功 → `client.respond(rpcId, { answers: [{ answer }] })`(按问题顺序,多问题逐条);
+   * 取消 → `client.respondError(rpcId, -32800, '人工取消')`。
+   * 两条路径都**不是** `{decision}` —— 那是审批协议的载荷。
+   */
+  private async respondUserInput(
+    rpcId: string | number,
+    id: string,
+    outcome: { cancelled?: boolean, value?: string, answers?: Array<{ id?: string, answer: string }> },
+  ): Promise<void> {
     const pending = this.pendingApprovals.get(id)
     if (!pending) return
     const client = this.client
@@ -579,7 +639,19 @@ export class CodexAgentImpl extends BaseAgentImpl implements AgentInterface {
       getHitlRegistry().resolve('codex-approval', id, 'cancelled')
     }
     else {
-      client.respond(rpcId, { answers: [{ answer: outcome.value ?? '' }] })
+      // 按问题顺序对齐答案(结构化 answers 优先,单问题回落裸文本)
+      const structured = outcome.answers ?? []
+      const encoded = decodeHitlAnswers(outcome.value)
+      const answers = pending.questions.length > 0
+        ? pending.questions.map((q, i) => ({
+            answer: structured.find(a => a.id && a.id === q.id)?.answer
+              ?? structured[i]?.answer
+              ?? encoded?.find(a => a.id === q.id)?.answer
+              ?? encoded?.[i]?.answer
+              ?? (pending.questions.length === 1 ? (outcome.value ?? '') : ''),
+          }))
+        : [{ answer: outcome.value ?? '' }]
+      client.respond(rpcId, { answers })
       getHitlRegistry().resolve('codex-approval', id, 'answered')
     }
     if (pending.timer) clearTimeout(pending.timer)

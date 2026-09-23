@@ -39,6 +39,19 @@ interface ApiEnvelope<T = unknown> {
   data: T | null
 }
 
+/**
+ * 窄化的 `$fetch`。
+ *
+ * Nuxt 的 `$fetch` 带**全量路由类型推导**;在本 store 的深层 action 里对 `/api/users/*`
+ * 求值会触发 TS2589「Type instantiation is excessively deep」(v17 之前 `pnpm typecheck`
+ * 就一直红在这一处 —— 属既有未修复项)。这里把 `$fetch` 本身窄化成本地函数签名,
+ * 绕开该路由的泛型展开:**运行时是同一个函数,行为不变**,只是不再让 TS 展开整棵路由类型树。
+ *
+ * 用 `globalThis.$fetch` 取用:Nuxt 把 `$fetch` 挂在全局,这样无需依赖自动导入的类型。
+ */
+type NarrowFetch = <T>(url: string, opts?: Record<string, unknown>) => Promise<T>
+const http = (globalThis as unknown as { $fetch: NarrowFetch }).$fetch
+
 export const useUserStore = defineStore('workshop.user', {
   state: () => ({
     user: null as CurrentUser | null,
@@ -61,7 +74,7 @@ export const useUserStore = defineStore('workshop.user', {
     },
     /** 以 me 响应补全 tokenId（注册/登录签发的新 token 尚未绑定 id） */
     async _attachTokenId(token: string): Promise<void> {
-      const res = await $fetch<ApiEnvelope<Omit<CurrentUser, 'token'> & { tokenId: string }>>('/api/users/me', {
+      const res = await http<ApiEnvelope<Omit<CurrentUser, 'token'> & { tokenId: string }>>('/api/users/me', {
         headers: { authorization: `Bearer ${token}` },
       })
       if (res.code === 0 && res.data && this.user) {
@@ -69,7 +82,7 @@ export const useUserStore = defineStore('workshop.user', {
       }
     },
     async register(name: string, email: string, password: string): Promise<CurrentUser> {
-      const res = await $fetch<ApiEnvelope<AuthPayload>>('/api/users/register', {
+      const res = await http<ApiEnvelope<AuthPayload>>('/api/users/register', {
         method: 'POST',
         body: { name: name.trim(), email: email.trim(), password },
       })
@@ -80,7 +93,7 @@ export const useUserStore = defineStore('workshop.user', {
       return this.user
     },
     async login(email: string, password: string): Promise<CurrentUser> {
-      const res = await $fetch<ApiEnvelope<AuthPayload>>('/api/users/login', {
+      const res = await http<ApiEnvelope<AuthPayload>>('/api/users/login', {
         method: 'POST',
         body: { email: email.trim(), password },
       })
@@ -93,7 +106,7 @@ export const useUserStore = defineStore('workshop.user', {
     async loginWithToken(token: string): Promise<CurrentUser> {
       const trimmed = token.trim()
       if (!trimmed) throw new Error('token 不能为空')
-      const res = await $fetch<ApiEnvelope<Omit<CurrentUser, 'token'> & { tokenId: string }>>('/api/users/me', {
+      const res = await http<ApiEnvelope<Omit<CurrentUser, 'token'> & { tokenId: string }>>('/api/users/me', {
         headers: { authorization: `Bearer ${trimmed}` },
       })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? 'token 无效')
@@ -116,7 +129,7 @@ export const useUserStore = defineStore('workshop.user', {
       this.applyCookie()
       if (t) {
         try {
-          await $fetch('/api/users/logout', { method: 'POST', headers: { authorization: `Bearer ${t}` } })
+          await http('/api/users/logout', { method: 'POST', headers: { authorization: `Bearer ${t}` } })
         }
         catch {
           // 吊销失败不阻塞本地登出
@@ -129,12 +142,12 @@ export const useUserStore = defineStore('workshop.user', {
       return t ? { authorization: `Bearer ${t}` } : {}
     },
     async listTokens(): Promise<TokenMeta[]> {
-      const res = await $fetch<ApiEnvelope<TokenMeta[]>>('/api/users/tokens', { headers: this.authHeaders() })
+      const res = await http<ApiEnvelope<TokenMeta[]>>('/api/users/tokens', { headers: this.authHeaders() })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? '获取 token 列表失败')
       return res.data
     },
     async createToken(label: string): Promise<{ id: string, label: string, token: string }> {
-      const res = await $fetch<ApiEnvelope<{ id: string, label: string, token: string }>>('/api/users/tokens', {
+      const res = await http<ApiEnvelope<{ id: string, label: string, token: string }>>('/api/users/tokens', {
         method: 'POST',
         body: { label: label.trim() },
         headers: this.authHeaders(),
@@ -143,7 +156,7 @@ export const useUserStore = defineStore('workshop.user', {
       return res.data
     },
     async renameToken(id: string, label: string): Promise<TokenMeta> {
-      const res = await $fetch<ApiEnvelope<TokenMeta>>(`/api/users/tokens/${id}`, {
+      const res = await http<ApiEnvelope<TokenMeta>>(`/api/users/tokens/${id}`, {
         method: 'PATCH',
         body: { label: label.trim() },
         headers: this.authHeaders(),
@@ -153,14 +166,14 @@ export const useUserStore = defineStore('workshop.user', {
     },
     /** 查看存档明文（随时可查；404=非本人/不存在, 410=旧数据仅存哈希） */
     async revealToken(id: string): Promise<string | null> {
-      const res = await $fetch<ApiEnvelope<{ token: string | null }>>(`/api/users/tokens/${id}/token`, {
+      const res = await http<ApiEnvelope<{ token: string | null }>>(`/api/users/tokens/${id}/token`, {
         headers: this.authHeaders(),
       })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? '查看 token 失败')
       return res.data.token
     },
     async revokeToken(id: string): Promise<void> {
-      const res = await $fetch<ApiEnvelope<{ id: string }>>(`/api/users/tokens/${id}`, {
+      const res = await http<ApiEnvelope<{ id: string }>>(`/api/users/tokens/${id}`, {
         method: 'DELETE',
         headers: this.authHeaders(),
       })

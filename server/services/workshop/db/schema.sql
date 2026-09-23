@@ -182,3 +182,130 @@ CREATE TABLE IF NOT EXISTS scheduled_task_runs (
   ended_at      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_schedule ON scheduled_task_runs(schedule_id, started_at DESC);
+
+-- ============================================================================
+-- v17:人类群聊 / 成员权限 / 用户级通知 / 可靠投递 / HITL 持久化
+-- 权威 DDL 在 database.ts 的 SCHEMA_SQL(内联字符串);本文件为源码文档,两处必须同步。
+-- 约定:user_id 一律为「全局用户系统」的 id,不是本库遗留 users 表;跨库不加外键。
+-- ============================================================================
+
+-- channel_members:登录用户作为 Channel 群成员(owner 亦有一条 active 记录)。
+-- status: active | left | removed | pending(owner_approve 待批准)
+-- generation: 反复加入/退出时递增;旧审批资格不因重新加入而恢复。
+CREATE TABLE IF NOT EXISTS channel_members (
+  channel_id  TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL,
+  role        TEXT NOT NULL DEFAULT 'member',   -- owner | member
+  status      TEXT NOT NULL DEFAULT 'active',   -- active | left | removed | pending
+  generation  INTEGER NOT NULL DEFAULT 1,
+  joined_at   TEXT NOT NULL,
+  left_at     TEXT,
+  PRIMARY KEY (channel_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_channel_members_user ON channel_members(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_channel_members_channel ON channel_members(channel_id, status);
+
+-- chat_messages:群聊事实表(与 Agent mailbox 双轨,共享关联 ID)。
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id                     TEXT PRIMARY KEY,
+  channel_id             TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  sender_type            TEXT NOT NULL,          -- user | agent | system
+  sender_id              TEXT NOT NULL,
+  sender_name            TEXT NOT NULL DEFAULT '',
+  text                   TEXT NOT NULL,
+  mentions_json          TEXT NOT NULL DEFAULT '[]',
+  reply_to_id            TEXT,
+  requester_user_id      TEXT,
+  source_chat_message_id TEXT,
+  client_message_id      TEXT NOT NULL,
+  created_at             TEXT NOT NULL,
+  UNIQUE(channel_id, client_message_id)
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_channel ON chat_messages(channel_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_source ON chat_messages(source_chat_message_id);
+
+-- chat_deliveries:群聊 → Agent mailbox 投递台账(同消息同 Agent 唯一)。
+CREATE TABLE IF NOT EXISTS chat_deliveries (
+  id                  TEXT PRIMARY KEY,
+  chat_message_id     TEXT NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+  channel_id          TEXT NOT NULL,
+  target_agent_id     TEXT NOT NULL,
+  mailbox_message_id  TEXT,
+  status              TEXT NOT NULL DEFAULT 'pending', -- pending|delivered|consumed|failed|cancelled
+  error               TEXT NOT NULL DEFAULT '',
+  created_at          TEXT NOT NULL,
+  updated_at          TEXT NOT NULL,
+  UNIQUE(chat_message_id, target_agent_id)
+);
+CREATE INDEX IF NOT EXISTS idx_chat_deliveries_message ON chat_deliveries(chat_message_id);
+CREATE INDEX IF NOT EXISTS idx_chat_deliveries_agent ON chat_deliveries(target_agent_id, status);
+
+-- user_notifications:按 recipientUserId 定向的用户通知事实源(游标补发)。
+CREATE TABLE IF NOT EXISTS user_notifications (
+  id                 TEXT PRIMARY KEY,
+  recipient_user_id  TEXT NOT NULL,
+  channel_id         TEXT REFERENCES channels(id) ON DELETE CASCADE,
+  chat_message_id    TEXT,
+  hitl_kind          TEXT,
+  hitl_id            TEXT,
+  event_id           TEXT NOT NULL,
+  type               TEXT NOT NULL,             -- mention | agent_reply | hitl_request | hitl_resolved | member
+  title              TEXT NOT NULL DEFAULT '',
+  body               TEXT NOT NULL DEFAULT '',
+  payload_json       TEXT NOT NULL DEFAULT '{}',
+  created_at         TEXT NOT NULL,
+  read_at            TEXT,
+  UNIQUE(recipient_user_id, event_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_recipient ON user_notifications(recipient_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_unread ON user_notifications(recipient_user_id, read_at);
+
+-- outbox_events:事务内待发布事件(消息落库与投递同事务;广播失败不回滚消息)。
+CREATE TABLE IF NOT EXISTS outbox_events (
+  id              TEXT PRIMARY KEY,
+  aggregate_type  TEXT NOT NULL,
+  aggregate_id    TEXT NOT NULL,
+  event_type      TEXT NOT NULL,
+  payload_json    TEXT NOT NULL DEFAULT '{}',
+  status          TEXT NOT NULL DEFAULT 'pending', -- pending | published | failed
+  attempts        INTEGER NOT NULL DEFAULT 0,
+  last_error      TEXT NOT NULL DEFAULT '',
+  created_at      TEXT NOT NULL,
+  published_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox_events(status, created_at);
+
+-- hitl_requests:HITL 持久化事实源(registry 降级为缓存门面)。
+CREATE TABLE IF NOT EXISTS hitl_requests (
+  id                     TEXT PRIMARY KEY,
+  kind                   TEXT NOT NULL,
+  request_type           TEXT NOT NULL DEFAULT 'approval', -- question | approval
+  native_request_id      TEXT NOT NULL DEFAULT '',
+  channel_id             TEXT NOT NULL,
+  agent_id               TEXT NOT NULL,
+  agent_name             TEXT NOT NULL DEFAULT '',
+  session_id             TEXT NOT NULL DEFAULT '',
+  harness                TEXT NOT NULL DEFAULT '',
+  mode                   TEXT NOT NULL DEFAULT 'approval',
+  title                  TEXT NOT NULL DEFAULT '',
+  detail                 TEXT NOT NULL DEFAULT '',
+  options_json           TEXT NOT NULL DEFAULT '[]',
+  questions_json         TEXT NOT NULL DEFAULT '[]',
+  schema_json            TEXT NOT NULL DEFAULT '{}',
+  status                 TEXT NOT NULL DEFAULT 'pending',
+  policy                 TEXT NOT NULL DEFAULT 'owner_only',
+  policy_snapshot_json   TEXT NOT NULL DEFAULT '{}',
+  policy_version         INTEGER NOT NULL DEFAULT 0,
+  decision_id            TEXT,
+  responder_user_id      TEXT,
+  decision_json          TEXT NOT NULL DEFAULT '{}',
+  native_confirmed       INTEGER NOT NULL DEFAULT 0,
+  error                  TEXT NOT NULL DEFAULT '',
+  created_at             TEXT NOT NULL,
+  updated_at             TEXT NOT NULL,
+  resolved_at            TEXT,
+  expires_at             TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_hitl_requests_status ON hitl_requests(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_hitl_requests_channel ON hitl_requests(channel_id, status);
+CREATE INDEX IF NOT EXISTS idx_hitl_requests_agent ON hitl_requests(agent_id, status);

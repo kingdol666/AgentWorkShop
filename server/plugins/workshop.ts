@@ -30,9 +30,15 @@ import { createMemoryRepo } from '../services/workshop/db/memory.repo'
 import { createUserRepo } from '../services/workshop/db/user.repo'
 import { createChannelEventRepo } from '../services/workshop/db/channel-event.repo'
 import { createScheduledTaskRepo } from '../services/workshop/db/scheduled-task.repo'
+import { createChannelMemberRepo } from '../services/workshop/db/channel-member.repo'
+import { createChatMessageRepo } from '../services/workshop/db/chat-message.repo'
+import { createNotificationRepo } from '../services/workshop/db/notification.repo'
+import { createOutboxRepo } from '../services/workshop/db/outbox.repo'
+import { createHitlRequestRepo } from '../services/workshop/db/hitl-request.repo'
 import { createApprovalHistoryRepo, createAlarmEventRepo, createAuditRepo, createApprovalRequestRepo } from '../services/workshop/db/ops.repo'
 import { bindOpsRepos } from '../services/workshop/ops/ops'
 import { configureHitlResolver } from '../services/workshop/agents/hitl-registry'
+import { reconcileHitlOnStartup } from '../services/workshop/agents/hitl-decision'
 import { configureAgentBadgeResolver } from '../services/workshop/agents/agent-badge'
 import { ensureAllEventRecorders } from '../api/workshop/ws'
 import { createAgentImpl } from '../services/workshop/agents/factory'
@@ -120,6 +126,12 @@ export default function workshopPlugin(nitroApp: {
     memories: createMemoryRepo(db),
     // v16 定时任务(scheduled_tasks / scheduled_task_runs)
     schedules: createScheduledTaskRepo(db),
+    // v17 群聊层:成员 / 群聊事实表 / 用户通知 / outbox / HITL 持久化
+    channelMembers: createChannelMemberRepo(db),
+    chatMessages: createChatMessageRepo(db),
+    notifications: createNotificationRepo(db),
+    outbox: createOutboxRepo(db),
+    hitlRequests: createHitlRequestRepo(db),
   }
   // S4/S5/R1/R3:合规三表仓储接线(审批历史/报警事件/审计日志/高危复核)
   bindOpsRepos({
@@ -155,6 +167,18 @@ export default function workshopPlugin(nitroApp: {
 
   // 懒加载恢复:仅激活有待办任务的 channel(装配 lead + 调度循环);其余纯持久化
   manager.restore()
+
+  // v17 HITL 重启对账(§13.4):把**本进程启动前**的非终态 HITL 条目收敛为 failed,
+  // 绝不自动批准。决策服务首次触碰时也会幂等执行,这里显式调一次让语义更早确定
+  // (重启后立刻查 pending 就能看到确定状态,而不是等下一个人操作才收敛)。
+  // 静态 import:产物是 ESM,运行时没有 require(用 require 会在 .output 下抛 undefined)。
+  try {
+    const { failed } = reconcileHitlOnStartup()
+    if (failed > 0) console.log(`[workshop] HITL 重启对账:${failed} 条非终态待办已标记 failed(不自动批准)`)
+  }
+  catch (err) {
+    console.error('[workshop] HITL 重启对账失败(不影响启动):', err)
+  }
 
   // v16 定时任务运行时:唯一周期 timer,到期触发 → submitChannelTask 下发
   manager.startScheduleRuntime()

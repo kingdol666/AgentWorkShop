@@ -68,7 +68,8 @@ export default defineApiHandler(async (event) => {
   assertNotMojibake(body.title, { source: '任务标题' })
   if (body.description) assertNotMojibake(body.description, { source: '任务描述' })
   for (const p of body.parts ?? []) {
-    if (typeof p.text === 'string') assertNotMojibake(p.text, { source: '任务正文' })
+    // Part 是联合类型(文本 | 二进制);仅文本片段需要乱码护栏
+    if ('text' in p && typeof p.text === 'string') assertNotMojibake(p.text, { source: '任务正文' })
   }
   const manager = getWorkshopManager()
   const channel = manager.getChannelForUser(channelId, user.id)

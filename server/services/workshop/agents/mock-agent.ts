@@ -85,7 +85,44 @@ export class MockAgentImpl implements AgentInterface {
       yield* this.peerScript(request, ctx)
       return
     }
+    // v17 人类群聊请求:入站 metadata 盖有 x-aw-requester-user-id(群聊 @Agent)。
+    // 真实 harness 会把这条 prompt 交给模型并产出文本回复,平台再经 platformReply
+    // 写回群聊事实表并自动 @提问者;mock 作为确定性测试替身必须同构,
+    // 否则群聊「@Agent → 公开回复 → 定向通知」链路在无 LLM 环境下无法端到端验证。
+    if (!kind && !request.fromAgentId
+      && typeof request.message.metadata?.['x-aw-requester-user-id'] === 'string') {
+      yield* this.chatScript(request, ctx)
+      return
+    }
     // child-completed 及其它消息:no-op(父任务汇总由调度循环完成)
+  }
+
+  /**
+   * 人类群聊请求剧本:回一条面向提问者的公开回复。
+   *
+   * 回复文本刻意带上源群聊消息 id 与提问者显示名,使 E2E 能断言
+   * 「Agent 回复确实对应这一条提问、这一位提问者」,而不是靠时间接近猜测。
+   */
+  private async* chatScript(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+    const meta = request.message.metadata ?? {}
+    const fromLabel = String(meta['x-aw-from-label'] ?? '提问者')
+    const sourceId = String(meta['x-aw-source-chat-message-id'] ?? '')
+    const text = request.message.parts
+      .map(p => ('text' in p ? p.text : 'data' in p ? JSON.stringify(p.data) : ''))
+      .join('\n')
+    yield { kind: 'status', status: { state: 'WORKING', timestamp: new Date().toISOString() } }
+    await sleep(Math.min(this.delayMs, 50), ctx.signal)
+    if (ctx.signal?.aborted) return
+    yield {
+      kind: 'message',
+      message: {
+        messageId: `chat-reply-${randomUUID()}`,
+        contextId: ctx.channelId,
+        role: 'ROLE_AGENT',
+        parts: [{ text: `@${fromLabel} mock 群聊回复(${ctx.agentId}):已处理「${text.slice(0, 80)}」;source=${sourceId.slice(0, 8)}` }],
+      },
+    }
+    yield { kind: 'done' }
   }
 
   /** lead 调度决策:观察快照 → 返回决策(模式感知;goal/pipeline 专属剧本,loop/默认共用剧本) */

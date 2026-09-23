@@ -533,6 +533,10 @@ export class QwenAgentImpl extends BaseAgentImpl {
       options: ['allow', 'reject'],
       createdAt: new Date().toISOString(),
       expiresAt: null,
+      // v17:审批语义 + 原生请求标识(qwen 0.0.x 为单隐式会话,无 sessionId)
+      requestType: 'approval',
+      nativeRequestId: String(req.id),
+      harness: 'qwen',
     })
     const timeoutMs = harnessSettings().hitl_timeout_ms
     const timer = timeoutMs > 0

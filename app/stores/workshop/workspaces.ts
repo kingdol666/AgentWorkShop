@@ -6,10 +6,20 @@
 import { defineStore } from 'pinia'
 import { useUserStore } from './user'
 
-/** 用户态 $fetch:管理面 API 统一携带用户 token(envelope 解包为 unknown,调用侧窄化) */
+/**
+ * 用户态 $fetch:管理面 API 统一携带用户 token(envelope 解包为 unknown,调用侧窄化)。
+ *
+ * 窄化原因同 app/stores/workshop/user.ts:Nuxt 的 `$fetch` 带全量路由类型推导,
+ * 在这些深层 action 里求值会触发 TS2589「Type instantiation is excessively deep」
+ * (v17 之前 `pnpm typecheck` 就一直红在这一处 —— 既有未修复项)。
+ * 把 `$fetch` 窄化成本地函数签名绕开泛型展开,**运行时是同一个函数**。
+ */
+type NarrowFetch = <T>(url: string, init?: Record<string, unknown>) => Promise<T>
+const rawFetch = (globalThis as unknown as { $fetch: NarrowFetch }).$fetch
+
 async function authFetch<T = unknown>(url: string, init: Record<string, unknown> = {}): Promise<{ code: number | string, message?: string, data?: T }> {
   const token = useUserStore().token
-  const res = await $fetch<unknown>(url, {
+  const res = await rawFetch<unknown>(url, {
     ...init,
     headers: { authorization: `Bearer ${token}`, ...(init.headers as Record<string, string> | undefined) },
   })

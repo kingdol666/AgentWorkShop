@@ -267,6 +267,11 @@ export interface DcwNodeView {
   lastReadError: string | null
   /** 周期读间隔 ms(null = 走网关默认;0 = 关闭周期读,仅手动读取) */
   readIntervalMs: number | null
+  /**
+   * 保写周期秒数(节点级:每次写命令后在该窗口内维持设定值;0 = 不保写)。
+   * 与 `DcwNode.toView()` 同源;前端节点详情据此显示保写倒计时。
+   */
+  writeLockSeconds?: number
   /** 最近一次成功下发时刻 / 最近一次写尝试时刻 */
   lastAckAt: string | null
   lastWriteAt: string | null

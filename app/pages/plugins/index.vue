@@ -7,6 +7,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '~/stores/workshop/user'
+import { narrowFetch } from '~/stores/workshop/narrow-fetch'
 
 const { t } = useI18n()
 
@@ -47,7 +48,7 @@ function authHeaders(): Record<string, string> {
 async function load() {
   loading.value = true
   try {
-    const d = await $fetch<{ plugins: PluginInfo[], failures: Array<{ source: string, error: string }> }>('/api/workshop/plugins', { headers: authHeaders() })
+    const d = await narrowFetch<{ plugins: PluginInfo[], failures: Array<{ source: string, error: string }> }>('/api/workshop/plugins', { headers: authHeaders() })
     plugins.value = d.plugins ?? []
     failures.value = d.failures ?? []
   }
@@ -62,7 +63,7 @@ async function load() {
 async function toggle(p: PluginInfo) {
   busyName.value = p.name
   try {
-    const d = await $fetch<{ code: number, data?: { enabled: boolean } }>(`/api/workshop/plugins/${p.name}/${p.enabled ? 'disable' : 'enable'}`, { method: 'POST', headers: authHeaders() })
+    const d = await narrowFetch<{ code: number, data?: { enabled: boolean } }>(`/api/workshop/plugins/${p.name}/${p.enabled ? 'disable' : 'enable'}`, { method: 'POST', headers: authHeaders() })
     if (d.code !== 0 || !d.data) throw new Error(t('plugins.enableFail'))
     p.enabled = d.data.enabled
     message.success(`${p.name} · ${d.data.enabled ? t('plugins.enabled') : t('plugins.disabled')}`)

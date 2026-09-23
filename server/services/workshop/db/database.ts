@@ -396,7 +396,135 @@ CREATE TABLE IF NOT EXISTS scheduled_task_runs (
   started_at    TEXT NOT NULL,
   ended_at      TEXT
 );
-CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_schedule ON scheduled_task_runs(schedule_id, started_at DESC);`
+CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_schedule ON scheduled_task_runs(schedule_id, started_at DESC);
+-- v17:人类群聊 / 成员权限 / 用户级通知 / 可靠投递 / HITL 持久化。
+-- 约定:user_id 一律为「全局用户系统」的 id(server/repositories/user.repository),
+-- 不是本库遗留 users 表。跨库不加外键(见主计划迁移注记),仅建索引。
+
+-- v17.1 channel_members:登录用户作为 Channel 群成员(owner 亦有一条 active 记录)。
+-- status: active | left | removed | pending(owner_approve 待批准)
+-- generation: 同一用户反复加入/退出时递增;旧审批资格不因重新加入而恢复(§13.7)
+CREATE TABLE IF NOT EXISTS channel_members (
+  channel_id  TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL,
+  role        TEXT NOT NULL DEFAULT 'member',   -- owner | member
+  status      TEXT NOT NULL DEFAULT 'active',   -- active | left | removed | pending
+  generation  INTEGER NOT NULL DEFAULT 1,
+  joined_at   TEXT NOT NULL,
+  left_at     TEXT,
+  PRIMARY KEY (channel_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_channel_members_user ON channel_members(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_channel_members_channel ON channel_members(channel_id, status);
+
+-- v17.2 chat_messages:群聊事实表(与 Agent mailbox 双轨,共享关联 ID)。
+-- client_message_id 幂等键(同一 channel 内唯一);requester_user_id 为提问者稳定用户 id。
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id                    TEXT PRIMARY KEY,
+  channel_id            TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  sender_type           TEXT NOT NULL,          -- user | agent | system
+  sender_id             TEXT NOT NULL,
+  sender_name           TEXT NOT NULL DEFAULT '',
+  text                  TEXT NOT NULL,
+  mentions_json         TEXT NOT NULL DEFAULT '[]',
+  reply_to_id           TEXT,
+  requester_user_id     TEXT,
+  source_chat_message_id TEXT,
+  client_message_id     TEXT NOT NULL,
+  created_at            TEXT NOT NULL,
+  UNIQUE(channel_id, client_message_id)
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_channel ON chat_messages(channel_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_source ON chat_messages(source_chat_message_id);
+
+-- v17.3 chat_deliveries:群聊 → Agent mailbox 投递台账(同消息同 Agent 唯一)。
+CREATE TABLE IF NOT EXISTS chat_deliveries (
+  id                  TEXT PRIMARY KEY,
+  chat_message_id     TEXT NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+  channel_id          TEXT NOT NULL,
+  target_agent_id     TEXT NOT NULL,
+  mailbox_message_id  TEXT,
+  status              TEXT NOT NULL DEFAULT 'pending', -- pending|delivered|consumed|failed|cancelled
+  error               TEXT NOT NULL DEFAULT '',
+  created_at          TEXT NOT NULL,
+  updated_at          TEXT NOT NULL,
+  UNIQUE(chat_message_id, target_agent_id)
+);
+CREATE INDEX IF NOT EXISTS idx_chat_deliveries_message ON chat_deliveries(chat_message_id);
+CREATE INDEX IF NOT EXISTS idx_chat_deliveries_agent ON chat_deliveries(target_agent_id, status);
+
+-- v17.4 user_notifications:按 recipientUserId 定向的用户通知事实源(游标补发)。
+-- event_id 幂等键:同 (recipient, event) 只落一行。
+CREATE TABLE IF NOT EXISTS user_notifications (
+  id                 TEXT PRIMARY KEY,
+  recipient_user_id  TEXT NOT NULL,
+  channel_id         TEXT REFERENCES channels(id) ON DELETE CASCADE,
+  chat_message_id    TEXT,
+  hitl_kind          TEXT,
+  hitl_id            TEXT,
+  event_id           TEXT NOT NULL,
+  type               TEXT NOT NULL,             -- mention | agent_reply | hitl_request | hitl_resolved | member
+  title              TEXT NOT NULL DEFAULT '',
+  body               TEXT NOT NULL DEFAULT '',
+  payload_json       TEXT NOT NULL DEFAULT '{}',
+  created_at         TEXT NOT NULL,
+  read_at            TEXT,
+  UNIQUE(recipient_user_id, event_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_recipient ON user_notifications(recipient_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_unread ON user_notifications(recipient_user_id, read_at);
+
+-- v17.5 outbox_events:事务内待发布事件(消息落库与投递同事务;广播失败不回滚消息)。
+CREATE TABLE IF NOT EXISTS outbox_events (
+  id              TEXT PRIMARY KEY,
+  aggregate_type  TEXT NOT NULL,
+  aggregate_id    TEXT NOT NULL,
+  event_type      TEXT NOT NULL,
+  payload_json    TEXT NOT NULL DEFAULT '{}',
+  status          TEXT NOT NULL DEFAULT 'pending', -- pending | published | failed
+  attempts        INTEGER NOT NULL DEFAULT 0,
+  last_error      TEXT NOT NULL DEFAULT '',
+  created_at      TEXT NOT NULL,
+  published_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox_events(status, created_at);
+
+-- v17.6 hitl_requests:HITL 持久化事实源(registry 降级为缓存门面)。
+-- status: pending|resolving|answered|approved|rejected|cancelled|expired|failed|delivery_unknown|reconciling
+-- policy_snapshot_json:创建时策略快照(资格判定 = 创建时资格 ∩ 当前资格,§13.4)
+CREATE TABLE IF NOT EXISTS hitl_requests (
+  id                     TEXT PRIMARY KEY,
+  kind                   TEXT NOT NULL,          -- providerKind:omp-dialog|dcw-approval|codex-approval|...
+  request_type           TEXT NOT NULL DEFAULT 'approval', -- question | approval
+  native_request_id      TEXT NOT NULL DEFAULT '',
+  channel_id             TEXT NOT NULL,
+  agent_id               TEXT NOT NULL,
+  agent_name             TEXT NOT NULL DEFAULT '',
+  session_id             TEXT NOT NULL DEFAULT '',
+  harness                TEXT NOT NULL DEFAULT '',
+  mode                   TEXT NOT NULL DEFAULT 'approval',
+  title                  TEXT NOT NULL DEFAULT '',
+  detail                 TEXT NOT NULL DEFAULT '',
+  options_json           TEXT NOT NULL DEFAULT '[]',
+  questions_json         TEXT NOT NULL DEFAULT '[]',
+  schema_json            TEXT NOT NULL DEFAULT '{}',
+  status                 TEXT NOT NULL DEFAULT 'pending',
+  policy                 TEXT NOT NULL DEFAULT 'owner_only', -- owner_only | any_member
+  policy_snapshot_json   TEXT NOT NULL DEFAULT '{}',
+  policy_version         INTEGER NOT NULL DEFAULT 0,
+  decision_id            TEXT,
+  responder_user_id      TEXT,
+  decision_json          TEXT NOT NULL DEFAULT '{}',
+  native_confirmed       INTEGER NOT NULL DEFAULT 0,
+  error                  TEXT NOT NULL DEFAULT '',
+  created_at             TEXT NOT NULL,
+  updated_at             TEXT NOT NULL,
+  resolved_at            TEXT,
+  expires_at             TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_hitl_requests_status ON hitl_requests(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_hitl_requests_channel ON hitl_requests(channel_id, status);
+CREATE INDEX IF NOT EXISTS idx_hitl_requests_agent ON hitl_requests(agent_id, status);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 
@@ -593,8 +721,133 @@ export interface ChannelRow {
   enabled: number
   /** 归属用户(null = 遗留数据) */
   ownerUserId: string | null
+  /** v17 可见性:'private'(仅成员可见) | 'public'(登录用户可发现) */
+  visibility: string
+  /** v17 加入策略:'open'(直接加入) | 'owner_approve'(待 owner 批准) */
+  joinPolicy: string
+  /** v17 HITL 审批策略:'owner_only' | 'any_member' */
+  approvalPolicy: string
+  /** v17 群聊开关(0 = 未开启,群聊端点一律 409) */
+  chatEnabled: number
+  /** v17 乐观锁版本(每次设置变更 +1) */
+  version: number
   createdAt: string
   updatedAt: string
+}
+
+/** channel_members 表行(v17 群成员;user_id = 全局用户系统 id) */
+export interface ChannelMemberRow {
+  channelId: string
+  userId: string
+  /** 'owner' | 'member' */
+  role: string
+  /** 'active' | 'left' | 'removed' | 'pending' */
+  status: string
+  /** 加入代数(退出再加 → +1;旧审批资格不恢复) */
+  generation: number
+  joinedAt: string
+  leftAt: string | null
+}
+
+/** chat_messages 表行(v17 群聊事实表) */
+export interface ChatMessageRow {
+  id: string
+  channelId: string
+  /** 'user' | 'agent' | 'system' */
+  senderType: string
+  senderId: string
+  senderName: string
+  text: string
+  mentionsJson: string
+  replyToId: string | null
+  requesterUserId: string | null
+  sourceChatMessageId: string | null
+  clientMessageId: string
+  createdAt: string
+}
+
+/** chat_deliveries 表行(v17 群聊 → Agent mailbox 投递台账) */
+export interface ChatDeliveryRow {
+  id: string
+  chatMessageId: string
+  channelId: string
+  targetAgentId: string
+  mailboxMessageId: string | null
+  /** pending | delivered | consumed | failed | cancelled */
+  status: string
+  error: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** user_notifications 表行(v17 按 recipientUserId 定向的通知事实源) */
+export interface UserNotificationRow {
+  id: string
+  recipientUserId: string
+  channelId: string | null
+  chatMessageId: string | null
+  hitlKind: string | null
+  hitlId: string | null
+  eventId: string
+  /** mention | agent_reply | hitl_request | hitl_resolved | member */
+  type: string
+  title: string
+  body: string
+  payloadJson: string
+  createdAt: string
+  readAt: string | null
+}
+
+/** outbox_events 表行(v17 事务内待发布事件) */
+export interface OutboxEventRow {
+  id: string
+  aggregateType: string
+  aggregateId: string
+  eventType: string
+  payloadJson: string
+  /** pending | published | failed */
+  status: string
+  attempts: number
+  lastError: string
+  createdAt: string
+  publishedAt: string | null
+}
+
+/** hitl_requests 表行(v17 HITL 持久化事实源) */
+export interface HitlRequestRow {
+  id: string
+  /** providerKind:omp-dialog | dcw-approval | codex-approval | ... */
+  kind: string
+  /** question | approval(§8 分开建模) */
+  requestType: string
+  nativeRequestId: string
+  channelId: string
+  agentId: string
+  agentName: string
+  sessionId: string
+  harness: string
+  mode: string
+  title: string
+  detail: string
+  optionsJson: string
+  questionsJson: string
+  schemaJson: string
+  /** pending|resolving|answered|approved|rejected|cancelled|expired|failed|delivery_unknown|reconciling */
+  status: string
+  /** owner_only | any_member */
+  policy: string
+  policySnapshotJson: string
+  policyVersion: number
+  decisionId: string | null
+  responderUserId: string | null
+  decisionJson: string
+  /** 引擎原生确认成功 = 1(否则 0;§8 步骤 7) */
+  nativeConfirmed: number
+  error: string
+  createdAt: string
+  updatedAt: string
+  resolvedAt: string | null
+  expiresAt: string | null
 }
 
 /** users 表行(用户级隔离身份) */
@@ -854,7 +1107,50 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAddColumn(db, 'audit_log', 'summary', 'TEXT NOT NULL DEFAULT \'\'')
   migrateMissingForeignKeys(db)
   migrateDropOwnerFks(db)
+  migrateGroupChatV17(db)
   seedDefaultWorkshopData(db)
+}
+
+/**
+ * v17 迁移:群聊/成员/HITL 相关列与不变量回填。
+ *
+ * 规则(主计划 §3.1 / §13.7):
+ * - 既有 owner 非 NULL 的 Channel 一律 private + owner_approve + owner_only + chat_enabled=0,
+ *   即**默认不改变任何既有可见性/权限行为**。
+ * - owner 为 NULL 的遗留 Channel 同样保持 private + chat_enabled=0:不能被自动变成公开群聊;
+ *   必须由 admin 显式认领(写 owner_user_id)后再由 owner 开启群聊。
+ * - 每个 owner 非 NULL 的 Channel 必须恰好一条 active owner 成员记录(缺失则补写)。
+ */
+function migrateGroupChatV17(db: DatabaseSync): void {
+  migrateAddColumn(db, 'channels', 'visibility', 'TEXT NOT NULL DEFAULT \'private\'')
+  migrateAddColumn(db, 'channels', 'join_policy', 'TEXT NOT NULL DEFAULT \'owner_approve\'')
+  migrateAddColumn(db, 'channels', 'approval_policy', 'TEXT NOT NULL DEFAULT \'owner_only\'')
+  migrateAddColumn(db, 'channels', 'chat_enabled', 'INTEGER NOT NULL DEFAULT 0')
+  migrateAddColumn(db, 'channels', 'version', 'INTEGER NOT NULL DEFAULT 1')
+  // 规范化非法值(历史手改/测试数据):未知取值一律回落到最保守档,不放宽权限
+  db.exec(`UPDATE channels SET visibility = 'private' WHERE visibility NOT IN ('private', 'public')`)
+  db.exec(`UPDATE channels SET join_policy = 'owner_approve' WHERE join_policy NOT IN ('open', 'owner_approve')`)
+  db.exec(`UPDATE channels SET approval_policy = 'owner_only' WHERE approval_policy NOT IN ('owner_only', 'any_member')`)
+  db.exec('UPDATE channels SET chat_enabled = 0 WHERE chat_enabled NOT IN (0, 1)')
+  // owner 成员记录回填(幂等):owner 非 NULL 且尚无 owner 成员行时补一条 active
+  try {
+    db.exec(`INSERT OR IGNORE INTO channel_members (channel_id, user_id, role, status, generation, joined_at, left_at)
+             SELECT id, owner_user_id, 'owner', 'active', 1, created_at, NULL
+             FROM channels WHERE owner_user_id IS NOT NULL`)
+  }
+  catch {
+    // 表尚未建(极端半初始化库):下一次 init 会再次尝试
+  }
+  // 不变量收敛:owner 行存在但被标成非 active/非 owner 时纠正(保证「有且只有一条 active owner」)
+  try {
+    db.exec(`UPDATE channel_members SET role = 'owner', status = 'active', left_at = NULL
+             WHERE (channel_id, user_id) IN (
+               SELECT c.id, c.owner_user_id FROM channels c WHERE c.owner_user_id IS NOT NULL
+             )`)
+  }
+  catch {
+    // 同上:容错,不阻断启动
+  }
 }
 
 /** 通用加列迁移:列不存在时 ALTER TABLE ADD COLUMN(CREATE IF NOT EXISTS 不升级既有表) */

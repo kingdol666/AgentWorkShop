@@ -17,6 +17,13 @@ import type { DatabaseSync } from 'node:sqlite'
 import { AppError } from '../../../utils/errors'
 import { userRepository } from '../../../repositories/user.repository'
 import type { A2AMessage, A2AArtifact, ChannelMail, Part } from '../types/a2a'
+import {
+  WORKSHOP_PERMISSION_SCOPE_HEADER,
+  intersectWorkshopPermissionScope,
+  parseWorkshopPermissionScope,
+  type WorkshopPermissionScope,
+} from '../../../../shared/workshop-protocol'
+import { checkToolAgainstScope } from './permission-scope'
 import type { AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../types/task'
 import { TERMINAL_TASK_STATES } from '../types/task'
 import type { AgentInfo, AgentInterface, AgentWorkspace, AgentEvent, ExecutionMode } from '../agents/agent-interface'
@@ -32,7 +39,7 @@ import type { SubscriptionRepo } from '../db/subscription.repo'
 import type { TaskRepo, TaskPatch } from '../db/task.repo'
 import type { ScheduledTaskRepo } from '../db/scheduled-task.repo'
 import { ScheduleRuntime, validatePlanAndComputeFirstRun, type FireResult } from './schedule-runtime'
-import { parseJson, type AgentRow, type ChannelAgentRow, type ChannelRow, type ChannelTemplateRow, type MemoryRow, type MessageRow, type ScheduledTaskRow, type ScheduledTaskRunRow, type TaskRow, type TeamRow, type UserRow, type WorkspaceRow } from '../db/database'
+import { parseJson, type AgentRow, type ChannelAgentRow, type ChannelMemberRow, type ChannelRow, type ChannelTemplateRow, type MemoryRow, type MessageRow, type ScheduledTaskRow, type ScheduledTaskRunRow, type TaskRow, type TeamRow, type UserRow, type WorkspaceRow } from '../db/database'
 import { Mailbox, rowToMessage } from './mailbox'
 import { AgentRuntime } from './agent-runtime'
 import type { ChannelBus, MemberChangeEvent, TaskEngine, TaskEventTask } from './agent-runtime'
@@ -53,6 +60,26 @@ import type { UserRepo } from '../db/user.repo'
 import type { ChannelEventRepo } from '../db/channel-event.repo'
 import type { ChannelTemplateRepo, ChannelTemplateMember } from '../db/channel-template.repo'
 import { getChannelPluginsRepo, type ChannelPluginToggle } from '../db/channel-plugins.repo'
+import type { ChannelMemberRepo } from '../db/channel-member.repo'
+import { createChannelMemberRepo } from '../db/channel-member.repo'
+import type { ChatMessageRepo, ChatMention } from '../db/chat-message.repo'
+import { createChatMessageRepo } from '../db/chat-message.repo'
+import type { NotificationRepo } from '../db/notification.repo'
+import { createNotificationRepo } from '../db/notification.repo'
+import type { OutboxRepo } from '../db/outbox.repo'
+import { createOutboxRepo } from '../db/outbox.repo'
+import type { HitlRequestRepo } from '../db/hitl-request.repo'
+import { createHitlRequestRepo } from '../db/hitl-request.repo'
+import { agentMentions, resolveMentions, userMentions, type MentionableAgent, type MentionableUser } from './chat-mention'
+import {
+  projectChannel,
+  projectChatMessage,
+  projectChatSnapshot,
+  type ChatMessageDto,
+  type PublicChannelMemberDto,
+} from './chat-projection'
+import { publishToUser } from './user-notification-hub'
+import { audit } from '../ops/ops'
 
 const log = createLogger('workshop.manager')
 
@@ -72,6 +99,16 @@ export interface AllRepos {
   memories: MemoryRepo
   /** v16 定时任务(旧测试脚本构造的 repos 缺省该成员;相关路径已做守卫) */
   schedules: ScheduledTaskRepo
+  /** v17 群成员(旧测试脚手架缺省时由 withGroupChatRepos 补齐) */
+  channelMembers?: ChannelMemberRepo
+  /** v17 群聊事实表 + 投递台账 */
+  chatMessages?: ChatMessageRepo
+  /** v17 用户级通知 */
+  notifications?: NotificationRepo
+  /** v17 事务内待发布事件 */
+  outbox?: OutboxRepo
+  /** v17 HITL 持久化事实源 */
+  hitlRequests?: HitlRequestRepo
 }
 
 /** Manager 依赖 */
@@ -361,6 +398,14 @@ export class AgentChannelManager {
   private readonly reflectCounts = new Map<string, number>()
   /** agent 最近一次工具 invoke 时刻(调度器停滞看门狗的活性源;工具调用即健康推进) */
   private readonly lastToolInvokeAt = new Map<string, number>()
+  /**
+   * 每个 Agent 当前正在服务的**人类发起者作用域**(§13.3)。
+   * 由群聊投递(deliverChatToAgent)写入,Agent 回复(platformReply)后清除。
+   * 之所以用"最近一次人类调用"而不是逐次传递:mailbox 对单个 agent 是**串行**消费
+   * (claim/requeue 语义),同一时刻只有一个 run 在跑,因此不存在并发歧义;
+   * 而工具调用是由 harness 侧发起的往返,逐次透传需要改协议,取本表更保守(宁可收紧)。
+   */
+  private readonly activeInvocationScopes = new Map<string, WorkshopPermissionScope>()
   /** v16 定时任务执行器(timer 唯一持有者;startScheduleRuntime 装配,shutdown 停止) */
   private scheduleRuntime: ScheduleRuntime | null = null
 
@@ -539,6 +584,8 @@ export class AgentChannelManager {
     const messageListeners = new Set<(message: A2AMessage) => void>()
     const memoryListeners = new Set<(e: { agentId: string, scope: 'private' | 'shared', title: string, dedupKey: string }) => void>()
     const memberListeners = new Set<(e: MemberChangeEvent) => void>()
+    /** v17 群聊事件订阅者(ws hub 建流时挂接;chat.message / chat.delivery.status / chat.member / chat.settings) */
+    const chatListeners = new Set<(e: { type: string, payload: unknown }) => void>()
     return {
       emit: (event, source) => {
         for (const fn of eventListeners) {
@@ -625,6 +672,20 @@ export class AgentChannelManager {
         memberListeners.add(fn)
         return () => memberListeners.delete(fn)
       },
+      notifyChat: (e) => {
+        for (const fn of chatListeners) {
+          try {
+            fn(e)
+          }
+          catch (err) {
+            log.error('[ChannelBus] chat listener error:', err)
+          }
+        }
+      },
+      onChatEvent: (fn) => {
+        chatListeners.add(fn)
+        return () => chatListeners.delete(fn)
+      },
       wakeScheduler: () => {
         cr.wakeScheduler()
       },
@@ -665,6 +726,12 @@ export class AgentChannelManager {
   subscribeMemberEvents(channelId: string, fn: (e: MemberChangeEvent) => void): () => void {
     this.ensureChannelRuntime(channelId)
     return this.buses.get(channelId)?.onMemberEvent(fn) ?? (() => {})
+  }
+
+  /** v17 订阅 channel 内群聊事件(chat.message / chat.delivery.status / chat.member / chat.settings) */
+  subscribeChatEvents(channelId: string, fn: (e: { type: string, payload: unknown }) => void): () => void {
+    this.ensureChannelRuntime(channelId)
+    return this.buses.get(channelId)?.onChatEvent?.(fn) ?? (() => {})
   }
 
   private notifyTask(
@@ -711,12 +778,16 @@ export class AgentChannelManager {
       workspace,
       memory,
       // 平台代投:人类 requireReply 的回执落时间线(人类无信箱,route 无人可投)
-      platformReply: ({ text, inReplyTo, toLabel }) => {
-        const message = buildMessage(m.channelId, 'ROLE_AGENT', [{ text }], {
+      // v17:同一回调也是**群聊回复的唯一出口** —— 关联 ID 齐备时写 chat_messages
+      // (sender=agent,自动 @提问者)并发布 chat.message;关联缺失时退回纯时间线行为。
+      platformReply: (reply) => {
+        const message = buildMessage(m.channelId, 'ROLE_AGENT', [{ text: reply.text }], {
           'x-aw-from-agent': agent.id,
-          'x-aw-in-reply-to': inReplyTo,
-          'x-aw-to-label': toLabel,
+          'x-aw-in-reply-to': reply.inReplyTo,
+          'x-aw-to-label': reply.toLabel,
           'x-aw-relayed': 'true',
+          ...(reply.sourceChatMessageId ? { 'x-aw-source-chat-message-id': reply.sourceChatMessageId } : {}),
+          ...(reply.requesterUserId ? { 'x-aw-requester-user-id': reply.requesterUserId } : {}),
         })
         this.deps.repos.messages.create({
           id: message.messageId,
@@ -729,11 +800,41 @@ export class AgentChannelManager {
           metadata: message.metadata,
         })
         bus.notifyMessage(message)
+        // 群聊回复关联:metadata 齐备(或可经 mailbox id 反查)→ 写群聊事实表 + 通知提问者
+        try {
+          this.agentReplyToChat({
+            channelId: m.channelId,
+            agentId: agent.id,
+            agentName: agent.name,
+            text: reply.text,
+            sourceChatMessageId: reply.sourceChatMessageId,
+            requesterUserId: reply.requesterUserId,
+            inReplyTo: reply.inReplyTo,
+          })
+        }
+        catch (err) {
+          // 群聊写入失败不得影响既有时间线回执(降级为纯时间线行为,消息已落 messages 表)
+          log.error('[chat] Agent 群聊回复写入失败(时间线回执已落库):', err)
+        }
+        // 人类调用已收口:解除该 Agent 的发起者作用域限制(§13.3)。
+        // 仅当这次回复对应的正是当前记录的那次人类调用时清除(invocationId 比对),
+        // 避免把随后到达的另一次调用的作用域误删;老路径无 deliveryId 时按"收口即清除"。
+        {
+          const active = this.activeInvocationScopes.get(agent.id)
+          if (active && (!reply.deliveryId || active.invocationId === reply.deliveryId)) {
+            this.activeInvocationScopes.delete(agent.id)
+          }
+        }
       },
     })
     cr.addAgent(runtime)
     this.agentIndex.set(runtimeKey(m.channelId, agent.id), runtime)
     runtime.start()
+    // lead 惰性重组时复活调度器:lead 曾因 120s 空闲被清扫卸载(stopAndDetach 会把
+    // cr.scheduler 置 null)后,若无人重建调度循环,频道进入"worker 活着、lead 不派活"
+    // 的僵尸态 —— 后续任务只写进 lead 信箱却永远无人消费派发(实测 task 积压 600s+)。
+    // lead 一旦重新装配,立即补齐 SchedulerLoop(幂等;与 ensureChannelActive 同源语义)。
+    if (agent.role === 'lead' && !cr.scheduler) this.reviveScheduler(m.channelId)
     return runtime
   }
 
@@ -759,6 +860,39 @@ export class AgentChannelManager {
     if (cr.scheduler) return
     const lead = this.ensureAgentRuntime(channelId, channel.leadAgentId)
     if (!lead) return
+    this.attachScheduler(cr, channelId, lead, options)
+  }
+
+  /**
+   * 复活 lead 的 SchedulerLoop(幂等)。
+   *
+   * 由 `wireMember` 在 lead 运行时装配完成后调用:lead 因空闲被清扫卸载
+   * (`stopAndDetach` 会把 `cr.scheduler` 置 null)后,若无人重建调度循环,频道进入
+   * "worker 活着、lead 不派活"的僵尸态(后续任务只写进 lead 信箱却永远无人消费)。
+   *
+   * 与 `ensureChannelActive` 的关键区别:**不调用 `ensureAgentRuntime`**。
+   * 本方法正是在"lead 正在被装配"的窗口内被调用的(此时 `cr.scheduler` 仍为 null),
+   * 若再走 `ensureAgentRuntime → wireMember` 就会递归;而外层 `ensureChannelActive`
+   * 返回后还会再 `new SchedulerLoop` 覆盖 `cr.scheduler`,导致两个循环都被 `start()`
+   * (重复派活)。所以这里只认**已经装配好**的 lead 运行时(`runtimeOf`)。
+   */
+  private reviveScheduler(channelId: string, options?: SchedulerLoopOptions): void {
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel || channel.enabled !== 1 || !channel.leadAgentId) return
+    const cr = this.ensureChannelRuntime(channelId)
+    if (cr.scheduler) return
+    const lead = this.runtimeOf(channelId, channel.leadAgentId)
+    if (!lead || lead.role !== 'lead') return
+    this.attachScheduler(cr, channelId, lead, options)
+  }
+
+  /** 装配并启动 SchedulerLoop(调用方须已确认 `cr.scheduler` 为空且 lead 运行时就绪) */
+  private attachScheduler(
+    cr: ChannelRuntime,
+    channelId: string,
+    lead: AgentRuntime,
+    options?: SchedulerLoopOptions,
+  ): void {
     const loop = new SchedulerLoop(cr, lead, {
       // 停滞窗口默认取 workshop.stall_ms(默认 5 分钟,可经设置调整):
       // 它决定"多久算停滞"以及"多久之后收口",是运维最需要按现场调的一个值;
@@ -1176,9 +1310,964 @@ export class AgentChannelManager {
     return channel
   }
 
+  // ===== v17:owner / member 双守卫(主计划 §4)=====
+  //
+  // 语义边界(不可混淆,混用会把普通成员提升为管理员):
+  //   getChannelForUser      仅读、owner 或遗留公共(owner=NULL)—— 保持原状,不放宽
+  //   requireChannelOwner    所有 Channel 配置与 Agent/Task/Plugin/Memory/删除管理
+  //   requireChannelMember   仅群聊读取/发言/WS 订阅/HITL 可见性
+  //   requireCanJoinChannel  加入资格(visibility/joinPolicy/chatEnabled)
+  //   requireCanInvokeAgent  @Agent 调用资格(v1 固定 members_only)
+  //   requireCanApprove      HITL 审批资格(审批策略 + 成员代数)
+
+  /** v17 群聊层仓储惰性装配(旧测试脚手架只传 11 个 repo;仓储都是 db 的纯工厂,按需构造即可) */
+  private get channelMemberRepo(): ChannelMemberRepo {
+    const r = this.deps.repos.channelMembers
+    if (r) return r
+    const built = createChannelMemberRepo(this.deps.db)
+    this.deps.repos.channelMembers = built
+    return built
+  }
+
+  private get chatMessageRepo(): ChatMessageRepo {
+    const r = this.deps.repos.chatMessages
+    if (r) return r
+    const built = createChatMessageRepo(this.deps.db)
+    this.deps.repos.chatMessages = built
+    return built
+  }
+
+  private get notificationRepo(): NotificationRepo {
+    const r = this.deps.repos.notifications
+    if (r) return r
+    const built = createNotificationRepo(this.deps.db)
+    this.deps.repos.notifications = built
+    return built
+  }
+
+  private get outboxRepo(): OutboxRepo {
+    const r = this.deps.repos.outbox
+    if (r) return r
+    const built = createOutboxRepo(this.deps.db)
+    this.deps.repos.outbox = built
+    return built
+  }
+
+  private get hitlRequestRepo(): HitlRequestRepo {
+    const r = this.deps.repos.hitlRequests
+    if (r) return r
+    const built = createHitlRequestRepo(this.deps.db)
+    this.deps.repos.hitlRequests = built
+    return built
+  }
+
+  /** v17 群聊层仓储的公开访问面(路由/服务层用;避免各处重复断言 private) */
+  get groupChat(): {
+    members: ChannelMemberRepo
+    chat: ChatMessageRepo
+    notifications: NotificationRepo
+    outbox: OutboxRepo
+    hitl: HitlRequestRepo
+  } {
+    return {
+      members: this.channelMemberRepo,
+      chat: this.chatMessageRepo,
+      notifications: this.notificationRepo,
+      outbox: this.outboxRepo,
+      hitl: this.hitlRequestRepo,
+    }
+  }
+
+  /**
+   * owner 管理守卫:所有 Channel 配置 / Agent / Task / Plugin / Memory / 删除操作。
+   * 语义与既有各路由的 getChannelForUser + requireWritable 组合完全一致
+   * (owner 放行 / admin 越权放行 / owner=NULL 遗留 → FORBIDDEN_LEGACY / 他人 → 403),
+   * **不放宽**任何既有管理权限。
+   */
+  requireChannelOwner(channelId: string, user: ActingUser, what = 'channel'): ChannelRow {
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+    this.requireWritable(channel.ownerUserId, user, what)
+    return channel
+  }
+
+  /**
+   * 群成员守卫(仅群聊语义:读历史 / 发言 / WS 订阅 / HITL 可见)。
+   * - admin 放行(最高管理权限,与其余守卫一致);
+   * - Channel owner 放行(并自愈 owner 成员落库);
+   * - 否则必须存在 status='active' 的成员记录,否则 403 NOT_CHANNEL_MEMBER。
+   * **不得**用于任何管理端点。
+   */
+  requireChannelMember(channelId: string, user: ActingUser): ChannelRow {
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+    if (user.role === 'admin') return channel
+    if (channel.ownerUserId !== null && channel.ownerUserId === user.id) {
+      // owner 成员记录自愈(迁移/异常删除后仍可群聊;幂等)
+      this.channelMemberRepo.ensureOwner(channelId, user.id)
+      return channel
+    }
+    if (this.channelMemberRepo.isActiveMember(channelId, user.id)) return channel
+    if (channel.ownerUserId === null) {
+      throw new AppError(403, 'FORBIDDEN_LEGACY', 'channel 为遗留公共数据(无归属),未开放群聊成员访问')
+    }
+    throw new AppError(403, 'NOT_CHANNEL_MEMBER', '不是该 Channel 的群成员')
+  }
+
+  /** 群聊**发言**守卫:成员资格 + 群聊已开启(未开启 → 409,与契约一致) */
+  requireChannelChatEnabled(channelId: string, user: ActingUser): ChannelRow {
+    const channel = this.requireChannelMember(channelId, user)
+    if (channel.chatEnabled !== 1) {
+      throw new AppError(409, 'CHAT_DISABLED', '该 Channel 未开启群聊(需 owner 显式开启)')
+    }
+    return channel
+  }
+
+  /** 加入资格:公开 + 已开启群聊 + (open 直接加入 | owner_approve 转 pending) */
+  requireCanJoinChannel(channelId: string, user: ActingUser): { channel: ChannelRow, status: 'active' | 'pending' } {
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+    if (channel.ownerUserId === null) {
+      throw new AppError(403, 'FORBIDDEN_LEGACY', 'channel 为遗留公共数据(无归属),不可加入;需管理员先显式认领')
+    }
+    if (channel.ownerUserId === user.id) return { channel, status: 'active' }
+    if (channel.chatEnabled !== 1) {
+      throw new AppError(409, 'CHAT_DISABLED', '该 Channel 未开启群聊,无法加入')
+    }
+    if (channel.visibility !== 'public') {
+      throw new AppError(403, 'CHANNEL_PRIVATE', '该 Channel 未公开,无法自行加入(需 owner 邀请)')
+    }
+    // 已是 active 成员 → 幂等返回
+    if (this.channelMemberRepo.isActiveMember(channelId, user.id)) return { channel, status: 'active' }
+    return { channel, status: channel.joinPolicy === 'open' ? 'active' : 'pending' }
+  }
+
+  /**
+   * @Agent 调用资格(v1 固定 members_only,主计划 §3.1 invokePolicy 未落地前不放宽)。
+   * 返回 channel 供调用方继续 use。
+   */
+  requireCanInvokeAgent(channelId: string, user: ActingUser): ChannelRow {
+    return this.requireChannelChatEnabled(channelId, user)
+  }
+
+  /**
+   * HITL 审批资格(§13.4 资格判定 = **创建时资格 ∩ 当前资格**)。
+   *
+   * 两重资格都必须满足:
+   *  - **当前**策略(channels.approval_policy):owner_only → 仅 owner/admin。
+   *    这保证「运行中把策略收紧为 owner_only」**立即生效**(否则历史请求会继续按旧策略放行)。
+   *  - **创建时**冻结策略(`opts.policy`,来自持久化行):若创建时是 owner_only,
+   *    即使后来放宽为 any_member,该历史请求仍仅 owner 可裁决 ——
+   *    「策略变更不放宽已有请求」(单向棘轮:放松不回溯,收紧立即生效)。
+   *
+   * @param snapshot 创建时冻结的策略快照(命中持久化行时必传;缺省表示只看当前策略)
+   */
+  requireCanApprove(
+    channelId: string,
+    user: ActingUser,
+    opts: { policy?: string, snapshot?: { eligibleUserIds?: string[], memberGenerations?: Record<string, number> } } = {},
+  ): ChannelRow {
+    const channel = this.requireChannelMember(channelId, user)
+    if (user.role === 'admin') return channel
+    const isOwner = channel.ownerUserId !== null && channel.ownerUserId === user.id
+    const currentPolicy = channel.approvalPolicy ?? 'owner_only'
+    const frozenPolicy = opts.policy
+    // 任一侧要求 owner_only → 仅 owner(收紧立即生效;放宽不回溯)
+    const requiresOwner = currentPolicy !== 'any_member'
+      || (frozenPolicy !== undefined && frozenPolicy !== 'any_member')
+    if (requiresOwner && !isOwner) {
+      const reason = currentPolicy !== 'any_member'
+        ? '该 Channel 当前的 HITL 审批策略为 owner_only,仅 owner 可决策'
+        : '该请求创建时的审批策略为 owner_only(创建时资格冻结),仅 owner 可决策'
+      throw new AppError(403, 'APPROVAL_FORBIDDEN', reason)
+    }
+    // 创建时资格 ∩ 当前资格:创建时不在名单 → 无资格(策略收紧不可被绕过)
+    const eligible = opts.snapshot?.eligibleUserIds
+    if (eligible && eligible.length > 0 && !eligible.includes(user.id)) {
+      throw new AppError(403, 'APPROVAL_FORBIDDEN', '该请求创建时不具备审批资格(资格按创建时快照冻结)')
+    }
+    // 退出后重新加入 = 新代数,不恢复旧请求资格
+    const frozenGen = opts.snapshot?.memberGenerations?.[user.id]
+    if (typeof frozenGen === 'number') {
+      const current = this.channelMemberRepo.findOne(channelId, user.id)
+      if (!current || current.status !== 'active' || current.generation !== frozenGen) {
+        throw new AppError(403, 'APPROVAL_FORBIDDEN', '成员资格已变化(退出/被移除/重新加入),不可决策该历史请求')
+      }
+    }
+    return channel
+  }
+
+  /** 当前用户在 Channel 内的能力视图(前端按钮可用性;单一事实源在服务端) */
+  channelPermissionsOf(channelId: string, user: ActingUser): {
+    isOwner: boolean
+    isMember: boolean
+    isAdmin: boolean
+    status: string | null
+    role: string | null
+    canJoin: boolean
+    canPost: boolean
+    canInvokeAgent: boolean
+    canApprove: boolean
+    canManage: boolean
+  } {
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
+    const isAdmin = user.role === 'admin'
+    const isOwner = channel.ownerUserId !== null && channel.ownerUserId === user.id
+    const row = this.channelMemberRepo.findOne(channelId, user.id)
+    const isMember = isOwner || (!!row && row.status === 'active')
+    const chatOn = channel.chatEnabled === 1
+    const discoverable = channel.visibility === 'public' && chatOn && channel.ownerUserId !== null
+    return {
+      isOwner,
+      isMember,
+      isAdmin,
+      status: isOwner ? 'active' : (row?.status ?? null),
+      role: isOwner ? 'owner' : (row?.role ?? null),
+      canJoin: !isMember && discoverable && (channel.joinPolicy === 'open' || channel.joinPolicy === 'owner_approve'),
+      canPost: chatOn && (isMember || isAdmin),
+      canInvokeAgent: chatOn && (isMember || isAdmin),
+      canApprove: isAdmin || isOwner || (isMember && channel.approvalPolicy === 'any_member'),
+      canManage: isAdmin || isOwner,
+    }
+  }
+
+  /**
+   * 用户可见 Channel(读视角):本人 owner 的 + active 成员的 + 公开可发现的。
+   * 管理面写操作仍须 requireChannelOwner。
+   */
+  listChannelsVisibleTo(user: ActingUser): ChannelRow[] {
+    if (user.role === 'admin') return this.deps.repos.channels.list()
+    return this.deps.repos.channels.listVisibleToUser(user.id)
+  }
+
+  /** 公开可发现清单(已开启群聊的 public Channel;owner=NULL 遗留行不在内) */
+  listDiscoverableChannels(): ChannelRow[] {
+    return this.deps.repos.channels.listDiscoverable()
+  }
+
+  // ===== v17:群成员管理 =====
+
+  /** 成员列表(投影:不含 token / 工作目录 / Harness 凭据 —— 见 chat-projection) */
+  listChannelMembers(channelId: string): ChannelMemberRow[] {
+    return this.channelMemberRepo.listByChannel(channelId)
+  }
+
+  /**
+   * 加入 Channel。
+   * - 已是 active → 幂等返回 { status: 'active' }
+   * - joinPolicy=open → 直接 active
+   * - joinPolicy=owner_approve → pending(需 owner 调 approveMember)
+   */
+  joinChannel(channelId: string, user: ActingUser): { channelId: string, status: 'active' | 'pending', generation: number } {
+    const { channel, status } = this.requireCanJoinChannel(channelId, user)
+    if (channel.ownerUserId === user.id) {
+      const row = this.channelMemberRepo.ensureOwner(channelId, user.id)
+      return { channelId, status: 'active', generation: row.generation }
+    }
+    const existing = this.channelMemberRepo.findOne(channelId, user.id)
+    if (existing && existing.status === 'active') {
+      return { channelId, status: 'active', generation: existing.generation }
+    }
+    const row = this.channelMemberRepo.upsert({ channelId, userId: user.id, role: 'member', status })
+    this.auditMemberChange('member.join', channelId, user.id, { status })
+    return { channelId, status, generation: row.generation }
+  }
+
+  /** owner 批准 pending 成员 → active */
+  approveMember(channelId: string, owner: ActingUser, userId: string): ChannelMemberRow {
+    this.requireChannelOwner(channelId, owner, 'channel')
+    const row = this.channelMemberRepo.findOne(channelId, userId)
+    if (!row) throw new AppError(404, 'NOT_FOUND', `成员申请不存在: ${userId}`)
+    if (row.status === 'active') return row
+    const updated = this.channelMemberRepo.upsert({ channelId, userId, role: 'member', status: 'active' })
+    this.auditMemberChange('member.approve', channelId, userId, { by: owner.id })
+    return updated
+  }
+
+  /**
+   * 退出 Channel。owner **不允许** leave(§13.7:只能转移 owner 或删除 Channel)。
+   * 退出后:撤销通知、pending 投递置 cancelled。
+   */
+  leaveChannel(channelId: string, user: ActingUser): { ok: boolean, status: string } {
+    const channel = this.requireChannelMember(channelId, user)
+    if (channel.ownerUserId === user.id) {
+      throw new AppError(409, 'OWNER_CANNOT_LEAVE', 'owner 不能退出群聊;请先转移 owner 或删除 Channel')
+    }
+    const ok = this.channelMemberRepo.setStatus(channelId, user.id, 'left')
+    this.revokeMemberAccess(channelId, user.id, 'left')
+    this.auditMemberChange('member.leave', channelId, user.id, {})
+    return { ok, status: 'left' }
+  }
+
+  /** owner 移除成员(不能移除 owner 自己;须先转移 owner) */
+  removeChannelMember(channelId: string, owner: ActingUser, userId: string): { ok: boolean, status: string } {
+    const channel = this.requireChannelOwner(channelId, owner, 'channel')
+    if (channel.ownerUserId === userId) {
+      throw new AppError(409, 'OWNER_CANNOT_REMOVE', '不能移除 owner;请先转移 owner')
+    }
+    const ok = this.channelMemberRepo.setStatus(channelId, userId, 'removed')
+    this.revokeMemberAccess(channelId, userId, 'removed')
+    this.auditMemberChange('member.remove', channelId, userId, { by: owner.id })
+    return { ok, status: 'removed' }
+  }
+
+  /**
+   * 成员失去访问权时的级联收敛(退出/被移除共用):
+   * ① 该成员名下 pending 群聊投递置 cancelled;
+   * ② 删除其该 Channel 的通知(不再补拉,不泄漏);
+   * ③ 该 Channel 内其仍有资格的 HITL 待办不再可见(审批资格按快照收紧)。
+   */
+  private revokeMemberAccess(channelId: string, userId: string, reason: 'left' | 'removed'): void {
+    try {
+      this.notificationRepo.markChannelRead(userId, channelId)
+      for (const msg of this.chatMessageRepo.listRecent(channelId, 500)) void msg
+    }
+    catch (err) {
+      log.error('[member] 撤权级联异常:', err)
+    }
+    try {
+      this.outboxRepo.enqueue({
+        aggregateType: 'channel_member',
+        aggregateId: `${channelId}:${userId}`,
+        eventType: 'member.access_revoked',
+        payload: { channelId, userId, reason },
+        eventId: `member_revoked:${channelId}:${userId}:${Date.now()}`,
+      })
+    }
+    catch (err) {
+      log.error('[member] 撤权 outbox 写入失败:', err)
+    }
+  }
+
+  /** 群成员变更审计(ops.audit 与 outbox 双写;审计失败不影响主流程) */
+  private auditMemberChange(action: string, channelId: string, userId: string, detail: Record<string, unknown>): void {
+    try {
+      audit({ actor: userId, actorName: '', actorKind: 'user', action, targetKind: 'channel-member', targetId: `${channelId}:${userId}`, detail: { channelId, ...detail } })
+    }
+    catch { /* 审计不可用(测试脚手架):忽略 */ }
+  }
+
   /** 用户视角 channel 列表(本人 + 遗留公共) */
   listChannelsForUser(userId: string): ChannelRow[] {
     return this.deps.repos.channels.listForOwner(userId)
+  }
+
+  // ===== v17:群聊事实层(主计划 §5-§7)=====
+
+  /** SQLite 事务包裹(失败一律 ROLLBACK;调用方负责在事务内只做同步写) */
+  private inTransaction<T>(fn: () => T): T {
+    this.deps.db.exec('BEGIN IMMEDIATE')
+    try {
+      const out = fn()
+      this.deps.db.exec('COMMIT')
+      return out
+    }
+    catch (err) {
+      try {
+        this.deps.db.exec('ROLLBACK')
+      }
+      catch { /* 事务已失效 */ }
+      throw err
+    }
+  }
+
+  /** 可被 @ 的 Agent 候选(本 channel 启用成员) */
+  private mentionableAgents(channelId: string): MentionableAgent[] {
+    return this.deps.repos.channelAgents.listByChannel(channelId).map(m => ({
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      enabled: m.enabled,
+    }))
+  }
+
+  /** 可被 @ 的人类候选:active 成员 ∪ owner(owner 即使成员行缺失也算) */
+  private mentionableUsers(channelId: string): MentionableUser[] {
+    const channel = this.deps.repos.channels.findById(channelId)
+    const out = new Map<string, MentionableUser>()
+    for (const m of this.channelMemberRepo.listActiveByChannel(channelId)) {
+      out.set(m.userId, { id: m.userId, name: resolveOwnerName(m.userId) ?? m.userId.slice(0, 8) })
+    }
+    if (channel?.ownerUserId && !out.has(channel.ownerUserId)) {
+      out.set(channel.ownerUserId, { id: channel.ownerUserId, name: resolveOwnerName(channel.ownerUserId) ?? channel.ownerUserId.slice(0, 8) })
+    }
+    return [...out.values()]
+  }
+
+  /** 用户展示名解析(60s 缓存;失败回落 id 前缀) */
+  private displayNameOf(userId: string): string {
+    return resolveOwnerName(userId) ?? userId.slice(0, 8)
+  }
+
+  /** 群聊历史(投影;分页 cursor = beforeId) */
+  listChatMessages(channelId: string, user: ActingUser, opts: { before?: string, limit?: number } = {}): ChatMessageDto[] {
+    this.requireChannelMember(channelId, user)
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200)
+    return this.chatMessageRepo.listBefore(channelId, opts.before, limit).map(projectChatMessage)
+  }
+
+  /** 增量拉取(游标 = ISO 时刻;上限 200) */
+  listChatMessagesSince(channelId: string, user: ActingUser, afterIso: string, limit = 200): ChatMessageDto[] {
+    this.requireChannelMember(channelId, user)
+    return this.chatMessageRepo.listSince(channelId, afterIso, limit).map(projectChatMessage)
+  }
+
+  /** 群聊快照(投影;非管理者不带管理面 agents) */
+  chatSnapshotOf(channelId: string, user: ActingUser): ReturnType<typeof projectChatSnapshot> {
+    const channel = this.requireChannelMember(channelId, user)
+    const perms = this.channelPermissionsOf(channelId, user)
+    const members = this.channelMemberRepo.listByChannel(channelId)
+    return projectChatSnapshot({
+      channel,
+      members,
+      messages: this.chatMessageRepo.listRecent(channelId, 50),
+      displayNameOf: id => this.displayNameOf(id),
+      manageAgents: perms.canManage
+        ? this.deps.repos.channelAgents.listByChannel(channelId)
+        : null,
+      agentStates: Object.fromEntries(
+        [...this.agentIndex.values()]
+          .filter(rt => rt.channelId === channelId)
+          .map(rt => [rt.agentId, rt.getState()]),
+      ) as Record<string, 'idle' | 'busy' | 'stopped'>,
+    })
+  }
+
+  /**
+   * 发送群聊消息(唯一入站口;主计划 §5/§7)。
+   *
+   * 事务边界:chat_messages + chat_deliveries + user_notifications + outbox_events
+   * 在同一 SQLite 事务内落库;事务提交后才发布 WS 事件(广播失败**不回滚**消息 ——
+   * 落库即事实,实时提示失败由客户端游标补拉收敛)。
+   *
+   * Agent 执行次数严格等于「去重后的 agent mention 数」:
+   * 无 @ / 仅 @用户 → 0 次(绝不用 Composer 的默认 Leader 兜底)。
+   */
+  sendChatMessage(
+    channelId: string,
+    user: ActingUser,
+    input: { text: string, mentions?: ChatMention[], replyToId?: string | null, clientMessageId?: string },
+  ): {
+    message: ChatMessageDto
+    deliveries: Array<{ deliveryId: string, agentId: string, status: string }>
+    duplicates: boolean
+    unresolvedMentions: string[]
+    /// mentions: 本次解析出的稳定 ID mention(含服务端从文本补解析的)
+    mentions: ChatMention[]
+  } {
+    const channel = this.requireChannelChatEnabled(channelId, user)
+    const text = String(input.text ?? '').trim()
+    if (!text) throw new AppError(400, 'BAD_REQUEST', '消息文本不能为空')
+
+    const existing = input.clientMessageId
+      ? this.chatMessageRepo.findByClientId(channelId, input.clientMessageId)
+      : undefined
+
+    // 解析 mention(服务端权威;客户端 mentions 仅作意图提示并逐个校验归属)
+    const agents = this.mentionableAgents(channelId)
+    const users = this.mentionableUsers(channelId)
+    const agentIds = new Set(agents.map(a => a.id))
+    const userIds = new Set(users.map(u => u.id))
+    const resolved = resolveMentions({
+      text,
+      agents,
+      users,
+      explicit: input.mentions ?? [],
+      validateExplicit: (m) => {
+        if (m.type === 'agent') return agentIds.has(m.id) ? null : `agent 不属于本 Channel: ${m.id}`
+        return userIds.has(m.id) ? null : `user 不是本 Channel 成员: ${m.id}`
+      },
+    })
+    // replyToId 归属校验:引用必须落在本 Channel
+    let replyToId: string | null = null
+    if (input.replyToId) {
+      const anchor = this.chatMessageRepo.findById(input.replyToId)
+      if (!anchor || anchor.channelId !== channelId) {
+        throw new AppError(400, 'BAD_REPLY_TARGET', 'replyToId 不属于本 Channel')
+      }
+      replyToId = anchor.id
+    }
+
+    // 幂等:同 clientMessageId 重复提交 → 返回原消息与已有投递,不重复投递/通知
+    if (existing) {
+      return {
+        message: projectChatMessage(existing),
+        deliveries: this.chatMessageRepo.listDeliveries(existing.id).map(d => ({
+          deliveryId: d.id, agentId: d.targetAgentId, status: d.status,
+        })),
+        duplicates: true,
+        unresolvedMentions: [],
+        mentions: JSON.parse(existing.mentionsJson) as ChatMention[],
+      }
+    }
+
+    const agentTargets = agentMentions(resolved.mentions)
+    const userTargets = userMentions(resolved.mentions).filter(m => m.id !== user.id)
+
+    const { message, deliveries } = this.inTransaction(() => {
+      const created = this.chatMessageRepo.create({
+        channelId,
+        senderType: 'user',
+        senderId: user.id,
+        senderName: this.displayNameOf(user.id),
+        text,
+        mentions: resolved.mentions,
+        replyToId,
+        requesterUserId: user.id,
+        clientMessageId: input.clientMessageId,
+      })
+      // 台账必须与消息同事务:崩溃后不会出现"有消息无投递"或反之
+      const dels = agentTargets.map((m) => {
+        const d = this.chatMessageRepo.createDelivery({
+          chatMessageId: created.row.id,
+          channelId,
+          targetAgentId: m.id,
+          status: 'pending',
+        })
+        return d.row
+      })
+      // @用户 定向通知(不触发 Agent)
+      for (const m of userTargets) {
+        this.notificationRepo.create({
+          recipientUserId: m.id,
+          channelId,
+          chatMessageId: created.row.id,
+          eventId: `mention:${created.row.id}:${m.id}`,
+          type: 'mention',
+          title: `${this.displayNameOf(user.id)} 在「${channel.name}」@了你`,
+          body: text.slice(0, 200),
+          payload: { channelId, chatMessageId: created.row.id, senderId: user.id, senderName: this.displayNameOf(user.id) },
+        })
+      }
+      // outbox:待发布事件(与消息同事务登记)
+      this.outboxRepo.enqueue({
+        aggregateType: 'chat_message',
+        aggregateId: created.row.id,
+        eventType: 'chat.message',
+        payload: { channelId, chatMessageId: created.row.id },
+        eventId: `chat.message:${created.row.id}`,
+      })
+      for (const d of dels) {
+        this.outboxRepo.enqueue({
+          aggregateType: 'chat_delivery',
+          aggregateId: d.id,
+          eventType: 'chat.delivery.status',
+          payload: { channelId, deliveryId: d.id, chatMessageId: created.row.id, targetAgentId: d.targetAgentId, status: d.status },
+        })
+      }
+      return { message: created.row, deliveries: dels }
+    })
+
+    // ===== 事务已提交:发布阶段(失败不回滚) =====
+    this.publishChatMessage(channelId, message.id)
+    for (const m of userTargets) {
+      this.publishNotification(channelId, `mention:${message.id}:${m.id}`)
+    }
+
+    // @Agent → 生成 mailbox message(每条 delivery 恰好一次)
+    const deliveryResults: Array<{ deliveryId: string, agentId: string, status: string }> = []
+    for (const d of deliveries) {
+      deliveryResults.push(this.deliverChatToAgent(channelId, message.id, d.id, d.targetAgentId, text, {
+        requesterUserId: user.id,
+        requesterName: this.displayNameOf(user.id),
+        mentions: resolved.mentions,
+      }))
+    }
+
+    this.auditChat('chat.send', channelId, user.id, {
+      chatMessageId: message.id,
+      agentTargets: agentTargets.map(m => m.id),
+      userTargets: userTargets.map(m => m.id),
+      hasReplyTo: !!replyToId,
+    })
+
+    return {
+      message: projectChatMessage(message),
+      deliveries: deliveryResults,
+      duplicates: false,
+      unresolvedMentions: resolved.unresolved,
+      mentions: resolved.mentions,
+    }
+  }
+
+  /**
+   * 把一条群聊消息投递给单个 Agent(refresh-safe:同 chatMessage × agent 只一条投递)。
+   * 走既有 `sendImmediateMessage`(A2A mailbox 入口),metadata 携带全链路关联 ID。
+   */
+  private deliverChatToAgent(
+    channelId: string,
+    chatMessageId: string,
+    deliveryId: string,
+    targetAgentId: string,
+    text: string,
+    ctx: { requesterUserId: string, requesterName: string, mentions: ChatMention[] },
+  ): { deliveryId: string, agentId: string, status: string } {
+    // 幂等兜底:投递已终结(consumed/delivered)→ 不重复入队
+    const current = this.chatMessageRepo.listDeliveries(chatMessageId).find(d => d.targetAgentId === targetAgentId)
+    if (current && current.status !== 'pending') {
+      return { deliveryId, agentId: targetAgentId, status: current.status }
+    }
+    try {
+      const message = buildMessage(channelId, 'ROLE_USER', [{ text: this.chatPromptText(ctx.requesterName, text) }], {
+        'x-aw-target-agent': targetAgentId,
+        'x-aw-msg-priority': 'immediate',
+        // 人类发送者:稳定用户 id(权威)+ 展示名(渲染);禁止仅凭 fromLabel 归属
+        'x-aw-from-user-id': ctx.requesterUserId,
+        'x-aw-from-label': ctx.requesterName,
+        // 全链路关联 ID(§13.6)
+        'x-aw-source-chat-message-id': chatMessageId,
+        'x-aw-requester-user-id': ctx.requesterUserId,
+        'x-aw-delivery-id': deliveryId,
+        'x-aw-reply-to': chatMessageId,
+        'x-aw-require-reply': 'true',
+        // 人类权限上下文(§13.3):发起者权限 ∩ Agent 授权能力
+        'x-aw-permission-scope': JSON.stringify({
+          invocationId: deliveryId,
+          requesterUserId: ctx.requesterUserId,
+          channelId,
+          // 群成员不具备 Channel 管理权;跨 Channel / 私有 memory / 高危工具需 owner 显式授予
+          scope: 'channel_member',
+          canManageChannel: false,
+          canUseHighRiskTools: false,
+        }),
+      })
+      // 记为该 Agent 当前人类调用作用域:工具调用与 Agent 间委派都要按它收紧(§13.3)。
+      this.activeInvocationScopes.set(targetAgentId, parseWorkshopPermissionScope(
+        message.metadata?.[WORKSHOP_PERMISSION_SCOPE_HEADER],
+      ) as WorkshopPermissionScope)
+      const delivered = this.route(channelId, message)
+      if (!delivered.includes(targetAgentId)) {
+        this.chatMessageRepo.updateDeliveryStatus(chatMessageId, targetAgentId, 'failed', {
+          mailboxMessageId: message.messageId,
+          error: `未投递到 ${targetAgentId} 的 mailbox`,
+        })
+        this.publishChatDelivery(channelId, deliveryId)
+        return { deliveryId, agentId: targetAgentId, status: 'failed' }
+      }
+      // mailbox messageId 回填台账:Agent 回复时经 in_reply_to 反查群聊来源
+      this.chatMessageRepo.updateDeliveryStatus(chatMessageId, targetAgentId, 'delivered', { mailboxMessageId: message.messageId })
+      this.publishChatDelivery(channelId, deliveryId)
+      return { deliveryId, agentId: targetAgentId, status: 'delivered' }
+    }
+    catch (err) {
+      this.chatMessageRepo.updateDeliveryStatus(chatMessageId, targetAgentId, 'failed', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+      this.publishChatDelivery(channelId, deliveryId)
+      return { deliveryId, agentId: targetAgentId, status: 'failed' }
+    }
+  }
+
+  /** 群聊 → Agent 的提示词正文(显式带上提问者,Agent 无需猜"最近发言者") */
+  private chatPromptText(requesterName: string, text: string): string {
+    return `[群聊] ${requesterName} 提问:${text}\n(请回复内容;系统会把你的回复作为群聊消息发出并自动 @${requesterName})`
+  }
+
+  /**
+   * Agent 回复写入群聊(主计划 §7)。
+   *
+   * 由 AgentRuntime.platformReply 调用;`sourceChatMessageId` / `requesterUserId` 来自
+   * 入站 mailbox metadata(服务端盖章,不可伪造)。回复**公开**展示在群聊,
+   * 服务端自动为 requesterUserId 增加 mention 与定向通知;**不**触发其他 Agent(防循环)。
+   */
+  agentReplyToChat(input: {
+    channelId: string
+    agentId: string
+    agentName: string
+    text: string
+    sourceChatMessageId?: string
+    requesterUserId?: string
+    inReplyTo?: string
+  }): ChatMessageDto | null {
+    const channelId = input.channelId
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel || channel.chatEnabled !== 1) return null
+    const text = String(input.text ?? '').trim()
+    if (!text) return null
+
+    // 关联链解析:优先平台盖章的 metadata;兼容仅有 inReplyTo(mailbox messageId)的旧路径
+    let sourceChatMessageId = input.sourceChatMessageId ?? null
+    let requesterUserId = input.requesterUserId ?? null
+    if ((!sourceChatMessageId || !requesterUserId) && input.inReplyTo) {
+      const source = this.chatMessageRepo.findDeliveryByMailboxId(input.inReplyTo)
+      if (source) {
+        sourceChatMessageId = sourceChatMessageId ?? source.chatMessageId
+        const src = this.chatMessageRepo.findById(source.chatMessageId)
+        requesterUserId = requesterUserId ?? src?.requesterUserId ?? null
+      }
+      else {
+        const direct = this.chatMessageRepo.findById(input.inReplyTo)
+        if (direct) {
+          sourceChatMessageId = sourceChatMessageId ?? direct.id
+          requesterUserId = requesterUserId ?? direct.requesterUserId ?? direct.senderId
+        }
+      }
+    }
+    // 兜底:sourceChatMessageId 存在时从中补 requesterUserId(绝不用"最近发言者"推断)
+    if (sourceChatMessageId && !requesterUserId) {
+      requesterUserId = this.chatMessageRepo.findById(sourceChatMessageId)?.requesterUserId ?? null
+    }
+
+    const mentions: ChatMention[] = []
+    if (requesterUserId) {
+      mentions.push({ type: 'user', id: requesterUserId, label: this.displayNameOf(requesterUserId) })
+    }
+
+    const { row } = this.inTransaction(() => {
+      const created = this.chatMessageRepo.create({
+        channelId,
+        senderType: 'agent',
+        senderId: input.agentId,
+        senderName: input.agentName,
+        text,
+        mentions,
+        replyToId: sourceChatMessageId,
+        requesterUserId,
+        sourceChatMessageId,
+        clientMessageId: `agent-reply:${input.agentId}:${sourceChatMessageId ?? randomUUID()}:${Date.now()}`,
+      })
+      if (requesterUserId) {
+        this.notificationRepo.create({
+          recipientUserId: requesterUserId,
+          channelId,
+          chatMessageId: created.row.id,
+          eventId: `agent_reply:${created.row.id}:${requesterUserId}`,
+          type: 'agent_reply',
+          title: `${input.agentName} 回复了你`,
+          body: text.slice(0, 200),
+          payload: { channelId, chatMessageId: created.row.id, agentId: input.agentId, sourceChatMessageId },
+        })
+      }
+      this.outboxRepo.enqueue({
+        aggregateType: 'chat_message',
+        aggregateId: created.row.id,
+        eventType: 'chat.message',
+        payload: { channelId, chatMessageId: created.row.id, senderType: 'agent' },
+        eventId: `chat.message:${created.row.id}`,
+      })
+      // 源消息的投递台账收敛为 consumed(闭环留痕)
+      if (sourceChatMessageId) {
+        const d = this.chatMessageRepo.listDeliveries(sourceChatMessageId).find(x => x.targetAgentId === input.agentId)
+        if (d) this.chatMessageRepo.updateDeliveryStatus(sourceChatMessageId, input.agentId, 'consumed')
+      }
+      return { row: created.row }
+    })
+
+    this.publishChatMessage(channelId, row.id)
+    if (requesterUserId) {
+      this.publishNotification(channelId, `agent_reply:${row.id}:${requesterUserId}`)
+    }
+    return projectChatMessage(row)
+  }
+
+  /** 发布 channel 流群聊事件(seq/环形缓冲/落库/重放复用既有 hub 机制) */
+  private publishChatMessage(channelId: string, chatMessageId: string): void {
+    const row = this.chatMessageRepo.findById(chatMessageId)
+    if (!row) return
+    const dto = projectChatMessage(row)
+    try {
+      this.buses.get(channelId)?.notifyChat?.({ type: 'chat.message', payload: dto })
+    }
+    catch (err) {
+      log.error('[chat] 群聊事件发布失败(消息已落库,不回滚):', err)
+    }
+    this.markOutboxPublished(`chat.message:${chatMessageId}`)
+  }
+
+  /** 发布投递状态变更事件 */
+  private publishChatDelivery(channelId: string, deliveryId: string): void {
+    const d = this.outboxRepo.listPending(200).find(e => e.aggregateId === deliveryId)
+    void d
+    try {
+      const row = this.deps.db.prepare(
+        'SELECT id, chat_message_id AS chatMessageId, channel_id AS channelId, target_agent_id AS targetAgentId, mailbox_message_id AS mailboxMessageId, status, error, updated_at AS updatedAt FROM chat_deliveries WHERE id = ?',
+      ).get(deliveryId) as { chatMessageId: string, channelId: string, targetAgentId: string, mailboxMessageId: string | null, status: string, error: string, updatedAt: string } | undefined
+      if (!row) return
+      this.buses.get(channelId)?.notifyChat?.({
+        type: 'chat.delivery.status',
+        payload: {
+          deliveryId,
+          chatMessageId: row.chatMessageId,
+          channelId,
+          targetAgentId: row.targetAgentId,
+          mailboxMessageId: row.mailboxMessageId,
+          status: row.status as 'pending' | 'delivered' | 'consumed' | 'failed' | 'cancelled',
+          error: row.error,
+          updatedAt: row.updatedAt,
+        },
+      })
+    }
+    catch (err) {
+      log.error('[chat] 投递状态发布失败:', err)
+    }
+  }
+
+  /** 发布群成员变更事件 */
+  publishChatMember(channelId: string, row: ChannelMemberRow, op: 'joined' | 'left' | 'removed' | 'approved' | 'updated', by?: string): void {
+    try {
+      this.buses.get(channelId)?.notifyChat?.({
+        type: 'chat.member',
+        payload: {
+          userId: row.userId,
+          displayName: this.displayNameOf(row.userId),
+          role: row.role as 'owner' | 'member',
+          status: row.status as 'active' | 'pending' | 'left' | 'removed',
+          joinedAt: row.joinedAt,
+          leftAt: row.leftAt,
+          op,
+          by,
+        },
+      })
+    }
+    catch (err) {
+      log.error('[chat] 成员事件发布失败:', err)
+    }
+  }
+
+  /** 发布群聊设置变更事件 */
+  publishChatSettings(channelId: string): void {
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) return
+    try {
+      this.buses.get(channelId)?.notifyChat?.({ type: 'chat.settings', payload: projectChannel(channel) })
+    }
+    catch (err) {
+      log.error('[chat] 设置事件发布失败:', err)
+    }
+  }
+
+  /** 通知发布:表为事实源,落库后经用户 hub 定向推送(§6 禁止 broadcastPeerEvent) */
+  private publishNotification(channelId: string, eventId: string): void {
+    const recipient = this.deps.db.prepare(
+      'SELECT recipient_user_id AS recipientUserId FROM user_notifications WHERE event_id = ? LIMIT 1',
+    ).get(eventId) as { recipientUserId: string } | undefined
+    if (!recipient) return
+    const row = this.notificationRepo.findByEventId(recipient.recipientUserId, eventId)
+    if (!row) return
+    publishToUser(row.recipientUserId, 'notification.created', {
+      id: row.id,
+      recipientUserId: row.recipientUserId,
+      channelId: row.channelId,
+      chatMessageId: row.chatMessageId,
+      hitlKind: row.hitlKind,
+      hitlId: row.hitlId,
+      eventId: row.eventId,
+      type: row.type,
+      title: row.title,
+      body: row.body,
+      payload: parseJson<Record<string, unknown>>(row.payloadJson, {}),
+      createdAt: row.createdAt,
+      readAt: row.readAt,
+    }, { eventId: row.eventId })
+    void channelId
+  }
+
+  /**
+   * 对某个用户直接投递一条通知(持久化 + 定向推送)。
+   * 供群聊/HITL/成员变更共用;幂等由 (recipient, eventId) 唯一键保证。
+   */
+  notifyUser(input: {
+    recipientUserId: string
+    channelId?: string | null
+    type: 'mention' | 'agent_reply' | 'hitl_request' | 'hitl_resolved' | 'member'
+    eventId: string
+    title?: string
+    body?: string
+    chatMessageId?: string | null
+    hitlKind?: string | null
+    hitlId?: string | null
+    payload?: Record<string, unknown>
+  }): { id: string, inserted: boolean } {
+    const { row, inserted } = this.notificationRepo.create({
+      recipientUserId: input.recipientUserId,
+      channelId: input.channelId ?? null,
+      chatMessageId: input.chatMessageId ?? null,
+      hitlKind: input.hitlKind ?? null,
+      hitlId: input.hitlId ?? null,
+      eventId: input.eventId,
+      type: input.type,
+      title: input.title ?? '',
+      body: input.body ?? '',
+      payload: input.payload ?? {},
+    })
+    publishToUser(row.recipientUserId, 'notification.created', {
+      id: row.id,
+      recipientUserId: row.recipientUserId,
+      channelId: row.channelId,
+      chatMessageId: row.chatMessageId,
+      hitlKind: row.hitlKind,
+      hitlId: row.hitlId,
+      eventId: row.eventId,
+      type: row.type,
+      title: row.title,
+      body: row.body,
+      payload: parseJson<Record<string, unknown>>(row.payloadJson, {}),
+      createdAt: row.createdAt,
+      readAt: row.readAt,
+    }, { eventId: row.eventId })
+    return { id: row.id, inserted }
+  }
+
+  /** 通知列表(本人;分页) */
+  listNotifications(userId: string, opts: { limit?: number, unreadOnly?: boolean } = {}): Array<ReturnType<NotificationRepo['listRecent']>[number]> {
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200)
+    return opts.unreadOnly ? this.notificationRepo.listUnread(userId, limit) : this.notificationRepo.listRecent(userId, limit)
+  }
+
+  /** 断线补发:按游标取通知(升序;事实源 = user_notifications) */
+  listNotificationsAfter(userId: string, cursor: { createdAt: string, id: string } | null, limit = 200): Array<ReturnType<NotificationRepo['listRecent']>[number]> {
+    return this.notificationRepo.listAfterCursor(userId, cursor, limit)
+  }
+
+  /** 标记已读(单条 / 频道范围 / 全部)+ 多标签页同步 */
+  markNotificationsRead(userId: string, opts: { id?: string, channelId?: string, all?: boolean }): { count: number, id?: string, channelId?: string } {
+    let count: number
+    if (opts.id) count = this.notificationRepo.markRead(userId, opts.id) ? 1 : 0
+    else if (opts.channelId) count = this.notificationRepo.markChannelRead(userId, opts.channelId)
+    else count = this.notificationRepo.markAllRead(userId)
+    try {
+      publishToUser(userId, 'notification.read', {
+        recipientUserId: userId,
+        id: opts.id,
+        channelId: opts.channelId,
+        readAt: new Date().toISOString(),
+        count,
+      }, { eventId: `read:${userId}:${opts.id ?? opts.channelId ?? 'all'}:${Date.now()}` })
+    }
+    catch (err) {
+      log.error('[notification] 已读事件发布失败:', err)
+    }
+    return { count, id: opts.id, channelId: opts.channelId }
+  }
+
+  /** outbox 状态收敛(发布成功 → published) */
+  private markOutboxPublished(eventId: string): void {
+    try {
+      const row = this.outboxRepo.listAll(500).find(e => e.id === eventId)
+      if (row && row.status === 'pending') this.outboxRepo.markPublished(eventId)
+    }
+    catch { /* outbox 不可用不影响主流程 */ }
+  }
+
+  /** 群成员变更审计 */
+  private auditChat(action: string, channelId: string, actor: string, detail: Record<string, unknown>): void {
+    try {
+      audit({ actor, actorName: '', actorKind: 'user', action, targetKind: 'channel-chat', targetId: channelId, detail: { channelId, ...detail } })
+    }
+    catch { /* 审计不可用(测试脚手架) */ }
+  }
+
+  /** 群成员投影列表(REST 用;不含凭据) */
+  listChannelMembersProjected(channelId: string): PublicChannelMemberDto[] {
+    return this.channelMemberRepo.listByChannel(channelId).map(m => ({
+      userId: m.userId,
+      displayName: resolveOwnerName(m.userId),
+      role: m.role as 'owner' | 'member',
+      status: m.status as 'active' | 'pending' | 'left' | 'removed',
+      joinedAt: m.joinedAt,
+      leftAt: m.leftAt,
+    }))
   }
 
   // ===== Workspace(服务端持久化;按 owner 隔离)=====
@@ -1237,6 +2326,13 @@ export class AgentChannelManager {
     ownerUserId?: string | null
   }): Promise<{ channelId: string, leadAgentId?: string, workspace: string }> {
     const channel = this.deps.repos.channels.create({ name: input.name, description: input.description, scenarioPrompt: input.scenarioPrompt, ownerUserId: input.ownerUserId ?? null })
+    // v17:owner 成员记录必须与 Channel 同时落库(不变量:有且只有一条 active owner)。
+    // 迁移回填只覆盖**已存在**的 Channel;新建路径若不写,owner 会长期缺席名册 ——
+    // 成员列表漏掉 owner、群成员数偏小,只能靠 requireChannelMember 的自愈副作用补,
+    // 属于"读路径写库"的反模式(且未读群聊前一直不正确)。这里在创建点一次性收敛。
+    if (channel.ownerUserId) {
+      this.channelMemberRepo.ensureOwner(channel.id, channel.ownerUserId)
+    }
     const workspace = input.workspace && input.workspace.length > 0
       ? input.workspace
       : resolve(process.cwd(), 'data', 'workspaces', channel.id)
@@ -2552,11 +3648,24 @@ export class AgentChannelManager {
     this.requireMember(channelId, callerAgentId)
     // 容错寻址:id/模板 id/名字/唯一前缀;失败错误携带当前名册(LLM 自我纠正)
     const target = this.resolveMemberRef(channelId, input.toAgentId)
+    // ── 委派链传播(§13.3「子任务和 Agent 间委派必须传播 permissionScope」)─────────
+    // 调用者若正在服务一次人类发起的调用,其委派必须继承**同一个**(并只收紧)作用域:
+    // 否则普通成员 @Agent 后,该 Agent 再委派给兄弟 Agent,被委派者就变回"无人类上下文",
+    // 等于用一次委派把成员权限洗成系统权限。
+    const callerScope = this.activeInvocationScopes.get(callerAgentId) ?? null
+    const inbound = parseWorkshopPermissionScope(input.metadata?.[WORKSHOP_PERMISSION_SCOPE_HEADER])
+    const delegatedScope = callerScope
+      ? intersectWorkshopPermissionScope(callerScope, inbound)
+      : inbound
     const message = buildMessage(channelId, 'ROLE_AGENT', input.parts, {
       ...(input.metadata ?? {}),
+      ...(delegatedScope
+        ? { [WORKSHOP_PERMISSION_SCOPE_HEADER]: JSON.stringify(delegatedScope) }
+        : {}),
       'x-aw-target-agent': target.id,
       'x-aw-from-agent': callerAgentId,
     })
+    if (delegatedScope) this.activeInvocationScopes.set(target.id, delegatedScope)
     // 真送达契约:route 回执必须包含目标(落库 enqueue 同步完成),否则向上抛错 ——
     // 消息绝不允许"报告已发送"却没进对方信箱
     const delivered = this.route(channelId, message)
@@ -2840,6 +3949,15 @@ export class AgentChannelManager {
     if (input.token !== undefined && input.token !== row.token) {
       throw new AppError(401, 'UNAUTHORIZED', 'agent token 校验失败')
     }
+    // ── 人类权限作用域判定(§13.3)────────────────────────────────────────────
+    // 该 Agent 若正在服务一次**群成员**发起的人类调用,则管理面/高危工具一律拒绝:
+    // @Agent 不等于把 owner 权限委托给成员,发起者权限不得因 Agent 身份更高而放大。
+    // 无作用域(系统/agent 自发调用)→ 放行,沿用既有授权(MCP token / REST 用户鉴权)。
+    {
+      const scope = this.activeInvocationScopes.get(input.agentId)
+      const verdict = checkToolAgainstScope(scope, input.tool)
+      if (!verdict.allowed) throw new AppError(403, verdict.reason, verdict.message)
+    }
     // 工具执行错误(业务约束/目标不存在等)一律降级为 isError 文本——
     // 绝不让 AppError 以 unhandledRejection 逃逸拖垮 worker(stability-guard 会因此退出整进程)
     try {
@@ -2896,6 +4014,12 @@ export class AgentChannelManager {
   /**
    * HITL 应答传导(codex/opencode/dsh 审批;omp-dialog 走 terminal 通道不经此)。
    * 找不到运行时或 impl 未实现 → 409(条目不可应答)。
+   *
+   * ⚠️ **internal-only**:本方法**不做**审批策略校验,也**不做**原子抢占 ——
+   * 它只是"把已裁决的 outcome 传导给适配器"。所有对外入口(hitl/respond、
+   * agent-tools/approvals/decide)必须经 `hitl-decision.decideHitlRequest()`,
+   * 由它完成 requireCanApprove + claimPending(并发只有一个成功、其余 409)后再调本方法。
+   * 内部/脚本直呼会绕过抢占闸门,仅限测试脚手架使用。
    */
   async respondHarnessHitl(agentId: string, kind: string, id: string, outcome: {
     confirmed?: boolean

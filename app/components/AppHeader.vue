@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { message } from 'ant-design-vue'
 import type { MenuProps, SelectProps } from 'ant-design-vue'
-import type { AepHitlItem } from '#shared/workshop-protocol'
+import type { AepHitlItem, AepHitlQuestion } from '#shared/workshop-protocol'
 import { useUserStore } from '@/app/stores/workshop/user'
 import { useWsConnectionStore } from '@/app/stores/workshop/connection'
-import { useHitlStore } from '@/app/stores/workshop/hitl'
+import { useHitlStore, type HitlAnswerPayload } from '@/app/stores/workshop/hitl'
+import { useChatStore } from '@/app/stores/workshop/chat'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
-import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
 
 const { t, locale, locales, setLocale } = useI18n()
 const store = useAppStore()
@@ -15,9 +15,10 @@ const trail = useRouteTrailStore()
 const userStore = useUserStore()
 const { metaFor } = useRouteMeta()
 
-// ── HITL 全局待办(omp ask 对话框 + dcw 审批统一徽标;页头保底建连 ——
-//    hitl 全员直推帧只达已连 peer,不建连的页面收不到提醒;快照兜底刷新前待办) ──
+// ── HITL 全局待办(omp ask 对话框 + 各引擎原生提问/审批统一徽标;页头保底建连 ——
+//    用户定向帧只达已连 peer,不建连的页面收不到提醒;快照兜底刷新前待办) ──
 const hitl = useHitlStore()
+const chat = useChatStore()
 const wsSession = useWorkshopWs()
 const ensureHitlLive = () => {
   if (userStore.isLoggedIn) wsSession.ensureConnected()
@@ -29,7 +30,16 @@ watch(() => userStore.token, (t2) => {
   }
   else hitl.clear()
 }, { immediate: true })
-const HITL_ANSWERABLE = new Set(['codex-approval', 'opencode-permission', 'dsh-permission'])
+
+/**
+ * 可应答 kind 白名单(**与 server/api/workshop/hitl/respond.post.ts 的 RESPONDABLE_KINDS 一致**)。
+ * 旧实现只对 codex/opencode/dsh 三种渲染按钮,且把 omp-dialog 排除在外 ——
+ * omp 的 ask 对话框因此只能进终端面板回答,页头看不到任何入口。
+ */
+const HITL_KINDS: AepHitlItem['kind'][] = [
+  'omp-dialog', 'dcw-approval', 'codex-approval', 'opencode-permission',
+  'dsh-permission', 'claude-permission', 'qwen-permission', 'hermes-permission',
+]
 const hitlKindLabel = (kind: AepHitlItem['kind']) => {
   switch (kind) {
     case 'omp-dialog': return t('appHeader.hitlKindOmp')
@@ -37,28 +47,143 @@ const hitlKindLabel = (kind: AepHitlItem['kind']) => {
     case 'codex-approval': return t('appHeader.hitlKindCodex')
     case 'opencode-permission': return t('appHeader.hitlKindOpencode')
     case 'dsh-permission': return t('appHeader.hitlKindDsh')
+    case 'claude-permission': return 'claude 权限'
+    case 'qwen-permission': return 'qwen 权限'
+    case 'hermes-permission': return 'hermes 权限'
     default: return kind
   }
 }
 const hitlGo = (item: AepHitlItem) => {
   navigateTo({ path: '/monitor', query: { agentId: item.agentId, channelId: item.channelId } })
 }
-// 引擎审批(codex/opencode/dsh)页头内联应答:批准/拒绝直接回传引擎,无需进终端
-const hitlApi = useWorkshopApi()
-const hitlAnswering = ref<string | null>(null)
-const hitlAnswer = async (item: AepHitlItem, confirmed: boolean): Promise<void> => {
-  hitlAnswering.value = `${item.kind}:${item.id}`
-  try {
-    await hitlApi.respondHitl({ kind: item.kind, id: item.id, confirmed, cancelled: !confirmed })
-    await hitl.loadSnapshot()
+
+// ===== 权限:能否审批由服务端能力视图决定(owner_only 时非 owner 不给控件) =====
+// channelPermissionsOf 是唯一事实源;缺它的 channel 先拉一次(非成员也可调用)
+watch(() => hitl.items.map(i => i.channelId).join('|'), (key) => {
+  for (const cid of new Set(key.split('|').filter(Boolean))) {
+    if (!(cid in chat.permissions)) void chat.loadPermissions(cid)
   }
-  catch (e) {
-    message.error(apiErrorMessage(e))
+}, { immediate: true })
+const permsKnown = (item: AepHitlItem): boolean => item.channelId in chat.permissions
+/**
+ * 能否裁决:以服务端能力视图为准。
+ * 例外:遗留无主 Channel(owner=NULL)的能力视图恒为 canApprove=false,但服务端
+ * `hitl-decision.assertCanDecideHitlChannel` 对该类 Channel 保持旧口径
+ * (getChannelForUser:任意登录用户可裁决,§13.2 兼容语义)—— 前端不能把服务端允许的
+ * 操作藏起来,否则旧 Channel 的待办会变成"看得见、办不了"。
+ */
+const canAnswer = (item: AepHitlItem): boolean => {
+  const p = chat.permissions[item.channelId]
+  if (!p) return false
+  if (p.canApprove || p.isAdmin) return true
+  return chat.settings[item.channelId]?.legacy === true
+}
+
+// ===== 形态判定:requestType 优先(kind 推定兜底) =====
+/**
+ * 'question' = 答案是**内容**(自由文本/单选/多选/单选按钮组);
+ * 'approval' = 答案是**是否放行**。
+ * 现网各 adapter 尚未回填 requestType,故按 method 推定:select/input/editor 视为提问,
+ * confirm(或缺省)视为授权 —— 与 adapter 的注册习惯一致(见各 agent registerHitl)。
+ */
+const requestTypeOf = (item: AepHitlItem): 'question' | 'approval' => {
+  if (item.requestType) return item.requestType
+  if (item.questions && item.questions.length > 0) return 'question'
+  if (item.method === 'input' || item.method === 'editor' || item.method === 'select') return 'question'
+  return 'approval'
+}
+const isQuestion = (item: AepHitlItem): boolean => requestTypeOf(item) === 'question'
+/** opencode 权限支持引擎原生枚举(once/always/reject);其余引擎只认 confirmed 布尔 */
+const isNativeOptionApproval = (item: AepHitlItem): boolean =>
+  item.kind === 'opencode-permission' && (item.options?.length ?? 0) > 0
+
+// ===== 答案草稿(按 item + 问题 id 分槽;切条目互不串) =====
+const qSingle = ref<Record<string, string>>({})
+const qMulti = ref<Record<string, string[]>>({})
+const qFree = ref<Record<string, string>>({})
+const itemKey = (item: AepHitlItem): string => `${item.kind}:${item.id}`
+const slotOf = (item: AepHitlItem, qid: string): string => `${itemKey(item)}:${qid}`
+const isChosen = (item: AepHitlItem, q: AepHitlQuestion, label: string): boolean =>
+  q.multiSelect ? (qMulti.value[slotOf(item, q.id)] ?? []).includes(label) : qSingle.value[slotOf(item, q.id)] === label
+const chooseOption = (item: AepHitlItem, q: AepHitlQuestion, label: string): void => {
+  const slot = slotOf(item, q.id)
+  if (q.multiSelect) {
+    const cur = qMulti.value[slot] ?? []
+    qMulti.value = { ...qMulti.value, [slot]: cur.includes(label) ? cur.filter(x => x !== label) : [...cur, label] }
   }
-  finally {
-    hitlAnswering.value = null
+  else {
+    qSingle.value = { ...qSingle.value, [slot]: label }
   }
 }
+/** 单问题答案:选项(多选以中文顿号连接)+ 补充自由文本 */
+const answerOf = (item: AepHitlItem, q: AepHitlQuestion): string => {
+  const slot = slotOf(item, q.id)
+  const picked = q.multiSelect ? (qMulti.value[slot] ?? []) : [qSingle.value[slot] ?? ''].filter(Boolean)
+  const free = (qFree.value[slot] ?? '').trim()
+  return [...picked.filter(Boolean), free].filter(Boolean).join('、')
+}
+
+/** 无 questions 的提问型条目合成为单题(选项来自 item.options;无选项 = 自由文本) */
+const PLAIN_QID = '__plain'
+const questionsOf = (item: AepHitlItem): AepHitlQuestion[] => {
+  if (item.questions && item.questions.length > 0) return item.questions
+  const opts = item.options?.map(o => ({ label: o }))
+  return [{
+    id: PLAIN_QID,
+    question: item.message || item.detail || item.title,
+    options: opts,
+    multiSelect: false,
+    freeText: !(opts && opts.length > 0),
+  }]
+}
+
+/**
+ * 统一应答入口(单点收敛 loading / 409 / 403 语义)。
+ * 多问题时 `value` = JSON 对象字符串(键 = 引擎问题 id,缺 id 用下标)—— 服务端
+ * 各 adapter 自行解析;单问题/自由文本时 `value` = 纯文本答案。
+ */
+const answer = async (item: AepHitlItem, payload: HitlAnswerPayload): Promise<void> => {
+  const out = await hitl.answer(item, payload)
+  if (out.ok) {
+    message.success('已提交')
+    return
+  }
+  if (out.code === 'ALREADY_RESOLVED') message.warning('已被他人处理')
+  else if (out.code === 'APPROVAL_FORBIDDEN') message.warning(out.message || '无审批权限(该 Channel 策略不允许你决策)')
+  else message.error(out.message)
+}
+
+const submitQuestion = async (item: AepHitlItem): Promise<void> => {
+  const qs = questionsOf(item)
+  let value = ''
+  if (qs.length === 1) {
+    value = answerOf(item, qs[0]!)
+  }
+  else {
+    const obj: Record<string, string> = {}
+    qs.forEach((q, i) => {
+      obj[q.id || String(i)] = answerOf(item, q)
+    })
+    value = JSON.stringify(obj)
+  }
+  if (!value) {
+    message.warning('请先填写或选择答案')
+    return
+  }
+  await answer(item, { value })
+}
+const submitApproval = async (item: AepHitlItem, confirmed: boolean): Promise<void> => {
+  await answer(item, { confirmed })
+}
+const submitNativeOption = async (item: AepHitlItem, response: string): Promise<void> => {
+  await answer(item, { response })
+}
+const submitCancel = async (item: AepHitlItem): Promise<void> => {
+  await answer(item, { cancelled: true })
+}
+/** 审批策略人话(policy 由服务端冻结在条目上;缺省 = owner_only 语义) */
+const policyLabel = (item: AepHitlItem): string =>
+  item.policy === 'any_member' ? '任一成员可决策' : item.policy ? '仅 owner 可决策' : ''
 
 /* 语言选择器在窄屏显示"短名":完整语言名(简体中文=56px @14px)配上
  * antd 给箭头预留的 24px 内距,92px 的选择器只剩 46px 文本位 ——
@@ -285,7 +410,11 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 
     <!-- 右侧:功能集群 -->
     <div class="header-right">
-      <!-- HITL 待办铃标(有待办才出现;点击下拉 → 进入对应 agent 终端处理) -->
+      <!-- 用户通知铃(@ 提及 / Agent 回复 / 审批;user-scoped 定向推送,补拉走 DB 游标) -->
+      <ClientOnly>
+        <workshop-notification-center />
+      </ClientOnly>
+      <!-- HITL 待办铃标(有待办才出现;下拉内联应答,或点条目进入运行时监控) -->
       <ClientOnly>
         <a-dropdown
           v-if="hitl.count > 0"
@@ -303,40 +432,171 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
               <div class="hitl-menu-title">
                 {{ t('appHeader.hitlBadge') }} · {{ hitl.count }}
               </div>
-              <button
+              <div
                 v-for="item in hitl.items"
                 :key="`${item.kind}:${item.id}`"
                 class="hitl-item"
-                @click="hitlGo(item)"
               >
-                <span class="hitl-item-top">
-                  <span class="hitl-item-agent">{{ item.agentName }}</span>
-                  <span class="hitl-item-kind">{{ hitlKindLabel(item.kind) }}</span>
-                </span>
-                <span class="hitl-item-title">{{ item.title }}</span>
-                <span
-                  v-if="HITL_ANSWERABLE.has(item.kind)"
-                  class="hitl-item-actions"
-                  @click.stop
+                <!-- 头部:点击进运行时监控(定位 agent/channel);应答控件在下方独立区域 -->
+                <button
+                  type="button"
+                  class="hitl-item-head"
+                  @click="hitlGo(item)"
                 >
-                  <a-button
-                    size="small"
-                    type="primary"
-                    :loading="hitlAnswering === `${item.kind}:${item.id}`"
-                    @click="hitlAnswer(item, true)"
+                  <span class="hitl-item-top">
+                    <span class="hitl-item-agent">{{ item.agentName }}</span>
+                    <span class="hitl-item-kind">{{ hitlKindLabel(item.kind) }}</span>
+                    <span
+                      v-if="item.requestType || isQuestion(item)"
+                      class="hitl-item-reqtype"
+                      :data-type="requestTypeOf(item)"
+                    >{{ isQuestion(item) ? '提问' : '审批' }}</span>
+                  </span>
+                  <span class="hitl-item-title">{{ item.title }}</span>
+                  <span
+                    v-if="item.detail"
+                    class="hitl-item-detail"
+                  >{{ item.detail }}</span>
+                  <span
+                    v-if="item.message"
+                    class="hitl-item-detail"
+                  >{{ item.message }}</span>
+                  <span
+                    v-if="item.policy"
+                    class="hitl-item-policy"
                   >
-                    {{ t('appHeader.hitlApprove') }}
-                  </a-button>
-                  <a-button
-                    size="small"
-                    danger
-                    :disabled="hitlAnswering === `${item.kind}:${item.id}`"
-                    @click="hitlAnswer(item, false)"
-                  >
-                    {{ t('appHeader.hitlReject') }}
-                  </a-button>
-                </span>
-              </button>
+                    <span class="i-tabler-shield-lock" /> 策略:{{ policyLabel(item) }}
+                  </span>
+                </button>
+
+                <!-- 应答控件:仅具备审批资格的调用者可见(服务端策略 owner_only/any_member) -->
+                <div
+                  v-if="!HITL_KINDS.includes(item.kind)"
+                  class="hitl-answer-note"
+                >
+                  该类型待办需在对应引擎界面处理
+                </div>
+                <div
+                  v-else-if="!permsKnown(item)"
+                  class="hitl-answer-note"
+                >
+                  读取审批权限…
+                </div>
+                <div
+                  v-else-if="!canAnswer(item)"
+                  class="hitl-answer-note"
+                >
+                  无审批权限{{ item.policy ? `(${policyLabel(item)})` : '' }}
+                </div>
+                <div
+                  v-else
+                  class="hitl-answer"
+                >
+                  <!-- 提问型:有 questions 时逐题收集;否则单个自由文本/选项组 -->
+                  <template v-if="isQuestion(item)">
+                    <div
+                      v-for="(q, qi) in questionsOf(item)"
+                      :key="`${item.kind}:${item.id}:${q.id}:${qi}`"
+                      class="hitl-q"
+                    >
+                      <div
+                        v-if="item.questions && item.questions.length > 1"
+                        class="hitl-q-title"
+                      >
+                        {{ qi + 1 }}. {{ q.header || q.question }}
+                      </div>
+                      <div
+                        v-if="q.header && q.question"
+                        class="hitl-q-desc"
+                      >
+                        {{ q.question }}
+                      </div>
+                      <div
+                        v-if="q.options && q.options.length > 0"
+                        class="hitl-opts"
+                      >
+                        <button
+                          v-for="o in q.options"
+                          :key="o.label"
+                          type="button"
+                          class="hitl-opt"
+                          :class="{ on: isChosen(item, q, o.label) }"
+                          :title="o.description || o.label"
+                          @click="chooseOption(item, q, o.label)"
+                        >
+                          {{ o.label }}
+                        </button>
+                      </div>
+                      <a-textarea
+                        v-if="!(q.options && q.options.length > 0) || q.freeText"
+                        v-model:value="qFree[slotOf(item, q.id)]"
+                        :rows="2"
+                        :placeholder="q.options && q.options.length > 0 ? '补充说明(可选)' : '输入答案'"
+                      />
+                    </div>
+                    <div class="hitl-btns">
+                      <a-button
+                        size="small"
+                        type="primary"
+                        :loading="hitl.answering === `${item.kind}:${item.id}`"
+                        @click="submitQuestion(item)"
+                      >
+                        提交答案
+                      </a-button>
+                      <a-button
+                        size="small"
+                        :disabled="hitl.answering === `${item.kind}:${item.id}`"
+                        @click="submitCancel(item)"
+                      >
+                        取消请求
+                      </a-button>
+                    </div>
+                  </template>
+
+                  <!-- 授权型:批准/拒绝(引擎原生枚举的 kind 另给选项按钮) -->
+                  <template v-else>
+                    <div
+                      v-if="isNativeOptionApproval(item)"
+                      class="hitl-opts"
+                    >
+                      <button
+                        v-for="o in item.options"
+                        :key="o"
+                        type="button"
+                        class="hitl-opt"
+                        @click="submitNativeOption(item, o)"
+                      >
+                        {{ o }}
+                      </button>
+                    </div>
+                    <div class="hitl-btns">
+                      <a-button
+                        size="small"
+                        type="primary"
+                        :loading="hitl.answering === `${item.kind}:${item.id}`"
+                        @click="submitApproval(item, true)"
+                      >
+                        {{ t('appHeader.hitlApprove') }}
+                      </a-button>
+                      <a-button
+                        size="small"
+                        danger
+                        :disabled="hitl.answering === `${item.kind}:${item.id}`"
+                        @click="submitApproval(item, false)"
+                      >
+                        {{ t('appHeader.hitlReject') }}
+                      </a-button>
+                      <a-button
+                        size="small"
+                        :disabled="hitl.answering === `${item.kind}:${item.id}`"
+                        @click="submitCancel(item)"
+                      >
+                        取消
+                      </a-button>
+                    </div>
+                  </template>
+                </div>
+              </div>
             </div>
           </template>
         </a-dropdown>
@@ -882,9 +1142,11 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   border-radius: 8px;
 }
 .hitl-menu {
-  min-width: 260px;
-  max-width: 340px;
+  min-width: 300px;
+  max-width: 380px;
+  max-height: 70vh;
   padding: 6px;
+  overflow-y: auto;
   background: var(--paper, #fff);
   border: 1px solid var(--line);
   border-radius: var(--radius-panel-sm, 10px);
@@ -905,9 +1167,6 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   width: 100%;
   margin-top: 4px;
   padding: 8px 10px;
-  text-align: left;
-  cursor: pointer;
-  background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-panel-sm, 8px);
   transition: background var(--transition-fast), border-color var(--transition-fast);
@@ -915,6 +1174,19 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 .hitl-item:hover {
   background: var(--paper-deep);
   border-color: var(--line);
+}
+/* 头部是按钮(点击进运行时监控);应答控件在其下方独立成区,不触发跳转 */
+.hitl-item-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 0;
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
 }
 .hitl-item-top {
   display: flex;
@@ -933,17 +1205,91 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   letter-spacing: 0.1em;
   color: var(--tone-warning-dot, #d4a017);
 }
+.hitl-item-reqtype {
+  flex: none;
+  padding: 0 5px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+}
+.hitl-item-reqtype[data-type='question'] { color: var(--tone-info-dot, #3b82f6); border-color: color-mix(in srgb, var(--tone-info-dot, #3b82f6) 40%, transparent); }
 .hitl-item-title {
   overflow: hidden;
   font-size: 12px;
   color: var(--ink-soft);
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.hitl-item-actions {
+.hitl-item-detail {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  text-overflow: ellipsis;
+}
+.hitl-item-policy {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--ink-fainter);
+}
+.hitl-answer-note {
+  padding: 3px 0;
+  font-size: 10.5px;
+  color: var(--ink-fainter);
+}
+.hitl-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+}
+.hitl-q {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hitl-q-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.hitl-q-desc {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+.hitl-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.hitl-opt {
+  padding: 3px 9px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  background: var(--paper, #fff);
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: var(--radius-pill);
+  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+.hitl-opt:hover { color: var(--ink); border-color: var(--ink-fainter); }
+.hitl-opt.on {
+  font-weight: 600;
+  color: var(--on-accent, #fff);
+  background: var(--accent, #2f2a26);
+  border-color: var(--accent, #2f2a26);
+}
+.hitl-btns {
   display: flex;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

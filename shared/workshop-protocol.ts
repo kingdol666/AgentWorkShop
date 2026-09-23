@@ -125,6 +125,43 @@ export interface AepSceneLayout {
  */
 export type AepHitlKind = 'omp-dialog' | 'dcw-approval' | 'codex-approval' | 'opencode-permission' | 'dsh-permission' | 'claude-permission' | 'qwen-permission' | 'hermes-permission'
 
+/**
+ * HITL 语义分类(v17,主计划 §8):
+ * - 'question':引擎提问(自由文本 / 单选 / 多选),答案是**内容**;
+ * - 'approval' :引擎请求授权,答案是**是否放行**。
+ * 二者必须分开建模:拒绝/取消/超时**不得**被当作同意;自由文本也不得走 confirm 通道。
+ */
+export type AepHitlRequestType = 'question' | 'approval'
+
+/** 单个提问(codex `tool/requestUserInput` / opencode `question` 的多问题原样承载) */
+export interface AepHitlQuestion {
+  /** 引擎侧问题 id(结构化答案按此回传;缺省 = 下标) */
+  id: string
+  /** 短标题(引擎 header) */
+  header?: string
+  /** 问题正文 */
+  question: string
+  /** 可选项(单选/多选);无 = 自由文本 */
+  options?: Array<{ label: string, description?: string }>
+  /** 是否多选 */
+  multiSelect?: boolean
+  /** 允许自由文本补充 */
+  freeText?: boolean
+}
+
+/** HITL 持久化状态机(§13.4;与 AepHitlResolved.outcome 是三值投影) */
+export type AepHitlStatus
+  = 'pending'
+    | 'resolving'
+    | 'answered'
+    | 'approved'
+    | 'rejected'
+    | 'cancelled'
+    | 'expired'
+    | 'failed'
+    | 'delivery_unknown'
+    | 'reconciling'
+
 export interface AepHitlItem {
   kind: AepHitlKind
   /** omp:对话框 id;dcw:审批 id(ap-*);其余:引擎请求 id(应答路由用) */
@@ -145,6 +182,27 @@ export interface AepHitlItem {
   createdAt: string
   /** park 截止时刻(omp 对话框零订阅倒计时;null = 有订阅者,计时暂停) */
   expiresAt?: string | null
+  // ===== v17 增量(全部可选:旧消费者按原字段工作,不破坏兼容)=====
+  /** question(提问) | approval(授权);缺省按 kind 推定 */
+  requestType?: AepHitlRequestType
+  /** 引擎原生 requestId(与 id 区分:omp 用 id,codex/opencode 另有 rpcId) */
+  nativeRequestId?: string
+  /** 引擎会话 id(重启恢复对账用) */
+  sessionId?: string
+  /** harness 标识(mock/omp/codex/opencode/dsh/claude/qwen/hermes) */
+  harness?: string
+  /** 结构化多问题(question 型;单选/多选/自由文本) */
+  questions?: AepHitlQuestion[]
+  /** 结构化应答 schema(引擎原生;有则按此校验) */
+  schema?: Record<string, unknown>
+  /** 持久化状态机当前态(缺省 pending) */
+  status?: AepHitlStatus
+  /** 生效的审批策略(owner_only | any_member) */
+  policy?: string
+  /** 策略版本(创建时快照;策略收紧不放宽已有请求) */
+  approvalPolicyVersion?: number
+  /** 通道乐观锁版本(HITL 通知需要过滤到正确成员集) */
+  channelVersion?: number
 }
 
 /** hitl.resolved payload:待办落定(answered=已答复/cancelled=放弃或撤销/expired=超时) */
@@ -156,6 +214,133 @@ export interface AepHitlResolved {
   outcome: 'answered' | 'cancelled' | 'expired'
   /** 落定方(user id / system) */
   by?: string
+  /** v17:细粒度终态(answered 时的 approved/rejected,以及 failed/delivery_unknown) */
+  status?: AepHitlStatus
+  /** v17:引擎原生确认成功(§8 步骤 7:未确认不得标记 resolved) */
+  nativeConfirmed?: boolean
+}
+
+// ============================================================================
+// v17 群聊 / 用户通知(主计划 §5-§7)
+// ============================================================================
+
+/** 群聊 mention:稳定 ID(user id / agent instance id);禁止昵称匹配 */
+export interface AepChatMention {
+  type: 'user' | 'agent'
+  id: string
+  /** 展示名(服务端解析后回填;仅渲染用,不参与寻址) */
+  label?: string
+}
+
+/** 群聊消息(chat.message payload;与 Agent mailbox 双轨但共享关联 ID) */
+export interface AepChatMessage {
+  id: string
+  channelId: string
+  senderType: 'user' | 'agent' | 'system'
+  /** user: 全局用户 id;agent: channel_agents 实例 id;system: 'system' */
+  senderId: string
+  senderName: string
+  text: string
+  mentions: AepChatMention[]
+  /** 回复的消息 id(引用链) */
+  replyToId: string | null
+  /** 触发本次 Agent 执行的提问者用户 id(该消息为 Agent 回复时非空) */
+  requesterUserId: string | null
+  /** Agent 回复所对应的原始群聊消息 id */
+  sourceChatMessageId: string | null
+  /** 客户端幂等键 */
+  clientMessageId: string
+  createdAt: string
+}
+
+/** chat.delivery.status payload:群聊 → Agent mailbox 投递状态 */
+export interface AepChatDelivery {
+  deliveryId: string
+  chatMessageId: string
+  channelId: string
+  targetAgentId: string
+  mailboxMessageId: string | null
+  status: 'pending' | 'delivered' | 'consumed' | 'failed' | 'cancelled'
+  error?: string
+  updatedAt: string
+}
+
+/** user notification 类型(定向通知;必须按 recipientUserId 隔离) */
+export type AepNotificationType = 'mention' | 'agent_reply' | 'hitl_request' | 'hitl_resolved' | 'member'
+
+/** notification.created payload(user-scoped;eventId 为幂等键) */
+export interface AepNotification {
+  id: string
+  recipientUserId: string
+  channelId: string | null
+  chatMessageId: string | null
+  hitlKind: string | null
+  hitlId: string | null
+  eventId: string
+  type: AepNotificationType
+  title: string
+  body: string
+  payload: Record<string, unknown>
+  createdAt: string
+  readAt: string | null
+}
+
+/** notification.read payload(多标签页同步已读) */
+export interface AepNotificationRead {
+  recipientUserId: string
+  /** 单条已读时给出;批量已读时为空 */
+  id?: string
+  /** 批量已读的频道范围(为空 = 全部) */
+  channelId?: string
+  /** 已读时间 */
+  readAt: string
+  /** 本次影响的条数 */
+  count: number
+}
+
+/** 群成员投影(WS/REST 共用;不含 token / config / 工作目录) */
+export interface AepChannelMember {
+  userId: string
+  displayName: string | null
+  role: 'owner' | 'member'
+  status: 'active' | 'pending' | 'left' | 'removed'
+  joinedAt: string
+  leftAt: string | null
+}
+
+/** Channel 群聊设置投影 */
+export interface AepChannelChatSettings {
+  id: string
+  name: string
+  description: string
+  visibility: 'private' | 'public'
+  joinPolicy: 'open' | 'owner_approve'
+  approvalPolicy: 'owner_only' | 'any_member'
+  chatEnabled: number
+  version: number
+  legacy: boolean
+}
+
+/** channel.snapshot 的群聊侧基线(成员视图;管理面字段仅在 canManage 时附带) */
+export interface AepChatSnapshot {
+  channel: AepChannelChatSettings
+  members: AepChannelMember[]
+  chatMessages: AepChatMessage[]
+  canManage: boolean
+  agents?: Array<{ agentId: string, name: string, role: 'lead' | 'worker', harness: string, enabled: number, state: 'idle' | 'busy' | 'stopped' }>
+  /** 调用者自身能力(canPost/canInvokeAgent/canApprove;避免前端自行推断) */
+  permissions?: {
+    isOwner: boolean
+    isMember: boolean
+    isAdmin: boolean
+    canJoin: boolean
+    canPost: boolean
+    canInvokeAgent: boolean
+    canApprove: boolean
+    canManage: boolean
+  }
+  /** 通知补发游标(该用户在该频道的最新通知 id;无 = null) */
+  notificationCursor?: { createdAt: string, id: string } | null
 }
 
 export type AepEvent
@@ -177,6 +362,12 @@ export type AepEvent
     | { type: 'scene.layout.removed', payload: { channelId: string } }
     | { type: 'hitl.request', payload: AepHitlItem }
     | { type: 'hitl.resolved', payload: AepHitlResolved }
+    | { type: 'chat.message', payload: AepChatMessage }
+    | { type: 'chat.delivery.status', payload: AepChatDelivery }
+    | { type: 'chat.member', payload: AepChannelMember & { op: 'joined' | 'left' | 'removed' | 'approved' | 'updated', by?: string } }
+    | { type: 'chat.settings', payload: AepChannelChatSettings }
+    | { type: 'notification.created', payload: AepNotification }
+    | { type: 'notification.read', payload: AepNotificationRead }
     | { type: 'daq.reading', payload: AepDaqReading }
     | { type: 'daq.node.changed', payload: AepDaqNodeChange }
     | { type: 'daq.controller', payload: AepDaqControllerState }
@@ -224,19 +415,126 @@ export type AepUplink
   = | { type: 'ping' }
     | { type: 'sub', channelId: string, lastSeq?: number }
     | { type: 'unsub', channelId: string }
+    /** v17:订阅用户级通知(按 peer 认证身份绑定;携带游标补发;禁止客户端指定他人 userId) */
+    | { type: 'subNotifications', cursor?: { createdAt: string, id: string } | null }
+    | { type: 'unsubNotifications' }
+    | { type: 'notification.read', id?: string, channelId?: string, all?: boolean }
 
 /** 事件类型的展示分组(前端过滤条用) */
 export const AEP_GROUPS: Record<string, string[]> = {
   all: [],
   messages: ['agent.message', 'agent.status.message', 'a2a.message'],
+  chat: ['chat.message', 'chat.member', 'chat.settings', 'chat.delivery.status'],
   tools: ['agent.status.message'],
   tasks: ['task.status', 'task.progress', 'a2a.artifact'],
   team: ['agent.member'],
   devices: ['device.created', 'device.updated', 'device.deleted'],
   scene: ['scene.layout.saved', 'scene.layout.removed'],
   hitl: ['hitl.request', 'hitl.resolved'],
+  notifications: ['notification.created', 'notification.read'],
   daq: ['daq.reading', 'daq.node.changed', 'daq.controller', 'daq.template.changed', 'daq.alarm', 'daq.alarm.changed'],
   dcw: ['dcw.node.changed', 'dcw.written', 'dcw.controller', 'dcw.optimization.changed'],
   ops: ['ops.log'],
   errors: ['error'],
+}
+
+/**
+ * 群聊相关 AEP 事件类型(必须走 channel 流:seq/环形缓冲/落库/重放)。
+ * user-scoped 通知事件**不得**走 channel 流 —— 它们经用户通知 hub 定向直推,
+ * 且以 user_notifications 表为事实源按游标补发。
+ */
+export const AEP_CHANNEL_CHAT_EVENTS: readonly string[] = ['chat.message', 'chat.delivery.status', 'chat.member', 'chat.settings']
+
+/** 用户级通知事件(定向;禁止 broadcastPeerEvent 广播) */
+export const AEP_USER_SCOPED_EVENTS: readonly string[] = ['notification.created', 'notification.read']
+
+// ===== 人类发起者权限上下文(主计划 §13.3)=====
+//
+// `@Agent` **不等于**把 owner 的全部权限无条件委托给普通成员。每次由人类触发的
+// Agent 调用都必须携带「发起者权限 ∩ Agent 授权能力」,并在委派链上**只收紧不放大**。
+//
+// 该上下文经 mailbox 元数据头 `x-aw-permission-scope` 传递(与 §13.6 的关联 ID 同路),
+// 消费方有两处:
+//   1. Agent→Agent 委派(manager.sendA2A):父作用域 ∩ 子作用域后继续向下传;
+//   2. Agent 工具调用(manager.invokeHostTool):按作用域拒绝管理面/高危工具。
+//
+// 为什么把合同放在 shared:接口必须先冻结(§10「任何 Worker 不得在合约未冻结前自行
+// 发明字段名」),服务端/测试/前端读同一份定义。
+
+/** mailbox 元数据头名(与 §13.6 的 x-aw-* 关联 ID 同一命名族) */
+export const WORKSHOP_PERMISSION_SCOPE_HEADER = 'x-aw-permission-scope'
+
+/** 作用域档位:只允许三档,新增档位必须同时更新 intersect 的收紧规则 */
+export type WorkshopPermissionScopeLevel = 'system' | 'channel_owner' | 'channel_member'
+
+export interface WorkshopPermissionScope {
+  /** 本次人类调用的幂等标识(= deliveryId,§13.6 关联 ID 之一) */
+  invocationId: string
+  /** 发起该调用的登录用户(权威来源:服务端登录态,客户端不可伪造) */
+  requesterUserId: string
+  channelId: string
+  /** 档位:channel_member 为最低档,任何交集结果不得高于它 */
+  scope: WorkshopPermissionScopeLevel
+  /** 是否可执行 Channel/Agent/Task/Plugin 等管理面工具 */
+  canManageChannel: boolean
+  /** 是否可执行工业/高危写工具(dcw_control、param_control、aml_* 等) */
+  canUseHighRiskTools: boolean
+}
+
+/**
+ * 宽容解析:非法/缺字段一律返回 null(调用方按"无作用域"处理,即不额外限制也不放大)。
+ * 只会采纳三档已知档位;未知档位**降级**为最保守的 channel_member,不保留字符串。
+ */
+export function parseWorkshopPermissionScope(raw: unknown): WorkshopPermissionScope | null {
+  if (raw == null) return null
+  let value: unknown = raw
+  if (typeof raw === 'string') {
+    const text = raw.trim()
+    if (!text) return null
+    try {
+      value = JSON.parse(text)
+    }
+    catch {
+      return null
+    }
+  }
+  if (typeof value !== 'object') return null
+  const o = value as Record<string, unknown>
+  const channelId = typeof o.channelId === 'string' ? o.channelId : ''
+  if (!channelId) return null
+  const level = o.scope === 'system' || o.scope === 'channel_owner' ? o.scope : 'channel_member'
+  return {
+    invocationId: typeof o.invocationId === 'string' ? o.invocationId : '',
+    requesterUserId: typeof o.requesterUserId === 'string' ? o.requesterUserId : '',
+    channelId,
+    scope: level,
+    canManageChannel: o.canManageChannel === true && level !== 'channel_member',
+    canUseHighRiskTools: o.canUseHighRiskTools === true && level !== 'channel_member',
+  }
+}
+
+/**
+ * 作用域交集(§13.3「默认使用发起者权限 ∩ Agent 授权能力」)。
+ * 收紧规则(单调不放大):
+ *  - 档位取更低的一档(channel_member < channel_owner < system);
+ *  - 两个布尔能力都取**与**,任一为 false 则结果为 false;
+ *  - 归属字段(invocationId/requesterUserId/channelId)保留**发起者**的,
+ *    因为它们标识"这次调用是谁发起的",委派方无权改写。
+ * 跨 Channel 委派时 channelId 取发起者的 Channel(权限判定以发起者为边界)。
+ */
+export function intersectWorkshopPermissionScope(
+  parent: WorkshopPermissionScope,
+  child: WorkshopPermissionScope | null | undefined,
+): WorkshopPermissionScope {
+  if (!child) return parent
+  const rank: Record<WorkshopPermissionScopeLevel, number> = { channel_member: 0, channel_owner: 1, system: 2 }
+  const level = rank[child.scope] < rank[parent.scope] ? child.scope : parent.scope
+  return {
+    invocationId: parent.invocationId,
+    requesterUserId: parent.requesterUserId,
+    channelId: parent.channelId,
+    scope: level,
+    canManageChannel: parent.canManageChannel && child.canManageChannel,
+    canUseHighRiskTools: parent.canUseHighRiskTools && child.canUseHighRiskTools,
+  }
 }

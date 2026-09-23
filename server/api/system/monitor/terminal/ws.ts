@@ -9,6 +9,11 @@
  *
  * 鉴权:用户 token(?token= 查询参数,与管理 API 同口径)——终端可向
  * 真实 agent 会话注入输入(HITL),必须认证。
+ *
+ * v17(P0 §13.2):**不再只检查 token 有效**。终端是 Channel 级高权控制面
+ * (可读会话内容 / 注入 steer 输入 / 中止回合 / 应答 HITL 对话框),必须同时核对
+ * Channel 归属:仅 Channel owner 或 admin 可接入。遗留无归属 Channel(owner NULL)
+ * 仅 admin 可接入。越权一律 4403 关闭,且**不泄露**会话元信息。
  */
 import { defineWebSocketHandler } from 'h3'
 import { resolveUserByToken } from '../../../../services/user.service'
@@ -20,6 +25,9 @@ import {
   subscribeTerminal,
   terminalSessionSnapshot,
 } from '../../../../services/workshop/agents/harness-terminal'
+import { listHarnessProcesses } from '../../../../services/workshop/agents/harness-process'
+import { getWorkshopManager } from '../../../../plugins/workshop'
+import { AppError } from '../../../../utils/errors'
 import type { TerminalClientMessage, TerminalServerMessage } from '../../../../../shared/terminal-protocol'
 
 /** 最小 peer 接口(h3 2.x 未 re-export crossws 类型,duck typing;与 workshop ws.ts 同风格) */
@@ -52,7 +60,8 @@ export default defineWebSocketHandler({
 
     // 鉴权:?token= 用户 token(管理面同口径)
     const token = resolveQueryParam(ws, 'token')
-    if (!token || !resolveUserByToken(token)) {
+    const user = token ? resolveUserByToken(token) : null
+    if (!user) {
       fail(ws, 'USER_UNAUTHORIZED', '需要有效用户 token(?token= 查询参数)', 4401)
       return
     }
@@ -78,6 +87,47 @@ export default defineWebSocketHandler({
       fail(ws, 'BAD_PID', '缺少有效 pid 或 agentId 查询参数', 4400)
       return
     }
+
+    // v17 §13.2:Channel 级授权核对(在读取任何会话元信息之前)。
+    // 解析 pid → channelId:agentId 直连走成员表;pid 直连走 harness 进程注册表。
+    // 无法归属到 Channel 的孤儿进程 → 仅 admin 可接入(否则越权者只能靠 pid 猜)。
+    let channelId: string | null
+    let agentName: string
+    try {
+      const manager = getWorkshopManager()
+      if (agentId) {
+        const row = manager.findChannelAgentById(agentId)
+        channelId = row?.channelId ?? null
+        agentName = row ? (manager.getChannelAgent(agentId)?.name ?? '') : ''
+      }
+      else {
+        const entry = listHarnessProcesses().find(p => p.pid === pid)
+        channelId = entry?.channelId ?? null
+        agentName = entry?.name ?? ''
+      }
+    }
+    catch {
+      // workshop 未初始化:无法核对授权 → 拒绝(不降级为"仅 token 有效")
+      fail(ws, 'WORKSHOP_NOT_READY', 'workshop 未初始化,无法核对终端授权', 4503)
+      return
+    }
+
+    if (user.role !== 'admin') {
+      if (!channelId) {
+        fail(ws, 'FORBIDDEN_TERMINAL', '该终端会话未归属任何 Channel,仅管理员可接入', 4403)
+        return
+      }
+      try {
+        getWorkshopManager().requireChannelOwner(channelId, { id: user.id, role: user.role }, 'channel')
+      }
+      catch (err) {
+        const code = err instanceof AppError ? err.code : 'FORBIDDEN'
+        // 越权信息最小化:不回传 channel 名/agent 名,避免探测
+        fail(ws, code === 'FORBIDDEN_LEGACY' ? 'FORBIDDEN_LEGACY' : 'FORBIDDEN_TERMINAL', '终端仅 Channel owner 可接入', 4403)
+        return
+      }
+    }
+    void agentName
 
     const snap = terminalSessionSnapshot(pid)
     if (!snap) {

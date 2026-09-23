@@ -7,6 +7,7 @@
  */
 import { message } from 'ant-design-vue'
 import { useUserStore } from '../stores/workshop/user'
+import { narrowFetch } from '../stores/workshop/narrow-fetch'
 import OmpTerminalPanel from '../components/workshop/terminal/OmpTerminalPanel.vue'
 
 definePageMeta({ layout: 'default' })
@@ -80,7 +81,7 @@ const poll = async (): Promise<void> => {
   if (!userStore.token) return
   loading.value = true
   try {
-    const res = await $fetch<ApiEnvelope<MonitorSnapshot>>('/api/system/monitor', {
+    const res = await narrowFetch<ApiEnvelope<MonitorSnapshot>>('/api/system/monitor', {
       headers: { authorization: `Bearer ${userStore.token}` },
     })
     snapshot.value = res.data
@@ -127,7 +128,7 @@ const terminating = ref(false)
 const doTerminateAgent = async (a: AgentView): Promise<void> => {
   terminating.value = true
   try {
-    const res = await $fetch<ApiEnvelope<{ agentId: string, stopped: boolean }>>('/api/system/monitor/terminate', {
+    const res = await narrowFetch<ApiEnvelope<{ agentId: string, stopped: boolean }>>('/api/system/monitor/terminate', {
       method: 'POST',
       headers: { authorization: `Bearer ${userStore.token}` },
       body: { channelId: a.channelId, agentId: a.agentId },
@@ -146,7 +147,7 @@ const doTerminateAgent = async (a: AgentView): Promise<void> => {
 const doTerminatePid = async (p: ProcessView): Promise<void> => {
   terminating.value = true
   try {
-    const res = await $fetch<ApiEnvelope<{ pid: number, killed: boolean }>>('/api/system/monitor/terminate', {
+    const res = await narrowFetch<ApiEnvelope<{ pid: number, killed: boolean }>>('/api/system/monitor/terminate', {
       method: 'POST',
       headers: { authorization: `Bearer ${userStore.token}` },
       body: { pid: p.pid },

@@ -555,6 +555,11 @@ export class ClaudeSdkAgentImpl extends BaseAgentImpl implements AgentInterface 
       options: ['allow', 'reject'],
       createdAt: new Date().toISOString(),
       expiresAt: null,
+      // v17:审批语义 + 原生请求/会话标识(claude SDK 进程内会话;无子进程 pid)
+      requestType: 'approval',
+      nativeRequestId: id,
+      sessionId: this.sessionId ?? '',
+      harness: 'claude',
     })
     const timeoutMs = harnessSettings().hitl_timeout_ms
     return await new Promise<PermissionVerdict>((resolve) => {
