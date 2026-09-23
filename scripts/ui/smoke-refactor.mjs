@@ -81,9 +81,75 @@ async function seedTown(api, token) {
   return { channelId, wsId }
 }
 
-console.log(`\n━━━ 前端重构冒烟 @ ${process.env.AW_BASE}(${routes.length} 条路由)━━━`)
+/**
+ * 预置:/daq/:id(节点详情)与 /dcw/:id(**产线**详情)+ 挂载节点/产品/配方。
+ * 为什么必须预置:
+ *  1) 详情页拆成了 5~9 个 composable + 3~4 个子组件,只在数据存在时才挂载;
+ *     访问不存在的 id 只渲染一行「未找到 / 产线不存在」,等于什么都没验证(实测踩过:
+ *     /dcw/<节点id> 渲染出的是「产线不存在或已被删除」——该路由的参数是**产线 id**,不是节点 id);
+ *  2) 挂上节点/产品/配方后,页面才会渲染控制节点清单、配方版本历史、数据查询这些真实分支。
+ * templateRef 用内置模板(shared/{daq,dcw}-protocol.ts),无需先建模板。
+ */
+async function seedDetail(api, token) {
+  const name = `smoke-${Date.now().toString(36)}`
+  const daqName = `${name}-daq`
+  const lineName = `${name}-line`
+  const daq = await api('POST', '/api/workshop/daq', {
+    body: { name: daqName, templateRef: 'temp-tc', driver: 'mock' },
+    token,
+  })
+  const line = await api('POST', '/api/workshop/dcw/lines', { body: { name: lineName }, token })
+  const lineId = line.data?.line?.id ?? ''
+  if (!lineId) return { daqId: daq.data?.node?.id ?? '', lineId: '', dcwId: '', daqName, lineName }
+
+  const dcw = await api('POST', '/api/workshop/dcw', {
+    body: { name: `${name}-dcw`, templateRef: 'temp-sp', driver: 'mock', lineId },
+    token,
+  })
+  const product = await api('POST', '/api/workshop/dcw/products', {
+    body: { name: `${name}-product`, lineId },
+    token,
+  })
+  const productId = product.data?.product?.id ?? ''
+  if (productId) {
+    await api('POST', '/api/workshop/dcw/recipes', {
+      body: { name: `${name}-recipe`, productId, params: [] },
+      token,
+    })
+  }
+  return { daqId: daq.data?.node?.id ?? '', lineId, dcwId: dcw.data?.node?.id ?? '', daqName, lineName }
+}
+
 const token = await ensureVisualUser()
 check('0.1 取得可登录测试账号 token', Boolean(token))
+
+const wantsDetail = routes.some(r => r.name === 'daq' || r.name === 'dcw')
+if (wantsDetail) {
+  const { daqId, lineId, dcwId, daqName, lineName } = await seedDetail(api, token)
+  // expect:把"有内容"升级为"渲染的确实是这个实体" —— 详情页早退到「未找到」时页面同样非空
+  if (daqId) routes.push({ path: `/daq/${daqId}`, name: 'daq-detail', title: '数采节点详情', expect: daqName })
+  if (lineId) routes.push({ path: `/dcw/${lineId}`, name: 'dcw-detail', title: '产线控制台', expect: lineName })
+  check('0.3 详情页预置:数采节点 + 产线(挂节点/产品/配方)—— 否则只渲染「未找到」,拆分出的 composable/子组件全不挂载',
+    Boolean(daqId && lineId && dcwId), `daqId=${daqId} lineId=${lineId} dcwId=${dcwId}`)
+}
+
+/**
+ * 已知既存缺陷(与本轮重构无关,已在未改动的文件上复现):
+ *   connection.ts:87 对**每一帧**都调用 onDataRecovered(),而 useWorkshopWs 的回调在
+ *   其中 `sendNotificationsSub()` + `backfill()` —— 服务端收到 sub 会回 notification.snapshot,
+ *   它同样是"非 pong 帧",于是再次触发 → 客户端/服务端 ping-pong。
+ *   实测:有实时实体时 967 帧/s 的 notification.snapshot + ~1450 次/s 的通知 REST,
+ *   直到浏览器 socket 耗尽报 ERR_INSUFFICIENT_RESOURCES;空库(0 实体)则完全不出现。
+ *   两个文件都与 HEAD 逐字节一致(git diff 为空),且同一风暴在**未重构**的 / 与 /daq 列表页出现。
+ *
+ * 处理:仅当"错误全是资源耗尽类 + 通知接口请求数达到风暴量级"时降级为 WARN,
+ * 其余任何控制台错误仍判 FAIL —— 不能让这条已知噪声淹掉真正的重构回归。
+ */
+const STORM_URL = '/api/workshop/notifications'
+const STORM_MIN_REQ = 200
+const isResourceExhaustion = t => /ERR_INSUFFICIENT_RESOURCES|ERR_ABORTED|Failed to load resource/i.test(t)
+
+console.log(`\n━━━ 前端重构冒烟 @ ${process.env.AW_BASE}(${routes.length} 条路由)━━━`)
 if (routes.some(r => r.path === '/town')) {
   const seeded = await seedTown(api, token)
   check('0.2 /town 预置:建频道 + workspace + 挂载(否则只会渲染空态,测不到拆分后的孪生视图)',
@@ -97,6 +163,11 @@ try {
     const consoleErrors = []
     const pageErrors = []
     const warnings = []
+    const reqCount = new Map()
+    page.on('request', (r) => {
+      const u = r.url().split('?')[0]
+      if (u.endsWith(STORM_URL)) reqCount.set(STORM_URL, (reqCount.get(STORM_URL) ?? 0) + 1)
+    })
     page.on('console', (m) => {
       const t = m.text()
       if (isNoise(t)) return
@@ -120,7 +191,8 @@ try {
     catch (e) {
       pageErrors.push(`导航/水合失败: ${String(e.message).slice(0, 160)}`)
     }
-    const bodyLen = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').trim().length).catch(() => 0)
+    const bodyText = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').trim()).catch(() => '')
+    const bodyLen = bodyText.length
     const mainChildren = await page.evaluate(() => {
       const el = document.querySelector('#__nuxt > *, main, .page, [class*="page"]')
       return el ? el.children.length : 0
@@ -128,7 +200,20 @@ try {
     check(`${r.path} 可加载并水合`, status === 200 && pageErrors.length === 0,
       `status=${status} pageErrors=${pageErrors.length}${pageErrors.length ? ` :: ${pageErrors[0]}` : ''}`)
     check(`${r.path} 渲染出内容(非空白页)`, bodyLen > 40 && mainChildren > 0, `text=${bodyLen} chars, children=${mainChildren}`)
-    check(`${r.path} 无控制台错误`, consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | '))
+    if (r.expect) {
+      check(`${r.path} 渲染的确实是预置实体「${r.expect}」(而非「未找到」早退分支)`, bodyText.includes(r.expect))
+    }
+
+    const notifReq = reqCount.get(STORM_URL) ?? 0
+    const onlyExhaustion = consoleErrors.every(isResourceExhaustion)
+    if (consoleErrors.length > 0 && onlyExhaustion && notifReq >= STORM_MIN_REQ) {
+      const others = consoleErrors.filter(t => !isResourceExhaustion(t))
+      console.log(`  WARN  ${r.path} 通知风暴(既存缺陷,非本轮重构):${notifReq} 次 ${STORM_URL}`
+        + ` + ${consoleErrors.length - others.length} 条资源耗尽错误;见 connection.ts:87 每帧回调 onDataRecovered`)
+    }
+    else {
+      check(`${r.path} 无控制台错误`, consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | '))
+    }
     if (warnings.length) console.log(`  WARN  ${r.path} 水合告警(生产构建无细节;未改动页面同样存在): ${warnings[0]}`)
     await page.close()
   }

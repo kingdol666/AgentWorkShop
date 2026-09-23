@@ -6,8 +6,8 @@
  * 告警与 FPS 徽标 / 用户头像 / 窄屏左右轨抽屉开关。
  * 只读数据经 props 传入,交互经 emits 交回父组件(状态仍由父组件持有,不做本地副本)。
  *
- * 注:控制室设计令牌(--hud-*)随本组件一同迁入;令牌定义在根 .town-view 上,
- * 经 CSS 自定义属性继承覆盖整个视图,其余子组件照常消费。
+ * 注:控制室设计令牌(--hud-*)与根 .town-view 规则留在 TownView.vue(令牌必须定义在
+ * 真正带 TownView scope id 的根元素上,scoped 编译后才会命中);本组件只消费继承值。
  */
 defineProps<{
   mode: 'browse' | 'edit'
@@ -161,39 +161,6 @@ const emit = defineEmits<{
  * DIGITAL TWIN · 控制室 UI(设计稿 1:1 架构)
  * topnav 50 / 三栏网格(250 · 1fr · 342) / dock / statusbar 30
  * ============================================================ */
-.town-view {
-  --hud-bg: #070b13;
-  --hud-panel: #0d1420;
-  --hud-panel-2: #111a2b;
-  --hud-panel-raised: #152034;
-  --hud-panel-hover: #16233a;
-  --hud-line: #1d2a42;
-  --hud-line-soft: #16202f;
-  --hud-line-hi: #2c4568;
-  --hud-input: #0a111d;
-  --hud-text: #e8eef8;
-  --hud-dim: #8fa0b5;
-  --hud-faint: #5f6e84;
-  --hud-accent: #35e0a0;
-  --hud-accent-dim: #1f9e6e;
-  --hud-cyan: #41c8f4;
-  --hud-amber: #f6c453;
-  --hud-ok: #35e0a0;
-  --hud-danger: #ff6b6b;
-  --hud-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
-  --hud-ease: cubic-bezier(0.22, 0.68, 0.36, 1);
-  --hud-r-sm: 8px;
-  --hud-r-md: 10px;
-  --hud-r-lg: 12px;
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--hud-bg);
-  color: var(--hud-text);
-  font-family: var(--font-body);
-  font-size: 13px;
-}
 
 /* ===== 顶部导航 ===== */
 .topnav {
@@ -281,9 +248,6 @@ const emit = defineEmits<{
 /* ── 孪生 HUD 字号地板(桌面档) ────────────────────────────────────────────
  * 9px 徽标字在暗底上不可读;桌面档统一抬到 ≥10px,窄屏再抬一档(见媒体查询)。
  * 例外:仅纯装饰性小字保留 9px。 */
-.town-view small {
-  font-size: 10px;
-}
 .avatar-fallback {
   width: 24px;
   height: 24px;
@@ -333,10 +297,6 @@ const emit = defineEmits<{
 
 /* ── 窄屏:顶栏折两行(品牌 + 告警 + 抽屉开关 / 模式段) ── */
 @media (max-width: 1023px) {
-  /* 窄屏对比度地板:--hud-faint(#5f6e84)在深面板上只有 3.6:1,
-   * 窄屏(强光/手持)抬到 ≥7:1;桌面配色不动 */
-  .town-view { --hud-faint: #8b9bb0; }
-
   /* ── 顶栏:折两行(品牌 + 告警 + 抽屉开关 / 模式段) ── */
   .topnav {
     height: auto;

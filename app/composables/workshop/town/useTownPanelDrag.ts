@@ -37,7 +37,11 @@ export function useTownPanelDrag() {
   function onPanelGripDown(e: PointerEvent, key: string): void {
     const grip = e.currentTarget as HTMLElement
     const panel = grip.closest<HTMLElement>('.drag-panel')
-    const frame = grip.closest<HTMLElement>('.town-frame')
+    // 定位参照系 = 面板自身的包含块(浮层是 position:absolute,left/top 相对包含块解析;
+    // 当前唯一可拖面板在 .stage(position:relative)内)。原先写的 .town-frame 在全应用不存在,
+    // 使 closest 恒为 null、拖动整段失效;若改用 .town-view 视根作参照,首次抓取会因左轨宽度
+    // 产生约 250px 的跳位,故取 offsetParent(缺失时回退视根,保证仍可拖)。
+    const frame = (panel?.offsetParent as HTMLElement | null) ?? grip.closest<HTMLElement>('.town-view')
     if (!panel || !frame) return
     e.preventDefault()
     const rect = panel.getBoundingClientRect()

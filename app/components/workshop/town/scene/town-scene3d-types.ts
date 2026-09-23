@@ -74,6 +74,46 @@ export interface ScaledTarget {
   holder: THREE.Group
 }
 
+/** 场景内当前选中目标(kind:id;供缩放/旋转滑杆与选中高亮环) */
+export type SelectedTarget = { kind: 'agent' | 'device', id: string }
+
+/** 编辑模式正在拖曳的场景对象(设备 / 角色落点 / 频道整体 / 边界手柄 / Agent 活动范围) */
+export type PointerDragState
+  = | { kind: 'device', id: string }
+    | { kind: 'agent', id: string }
+    | { kind: 'channel', id: string, dx: number, dz: number }
+    | { kind: 'resize', id: string, handle: number }
+    | { kind: 'channelEdge', id: string, rx0: number, rz0: number, rd0: number }
+    | { kind: 'rangeDraw', id: string, x0: number, z0: number }
+    | { kind: 'agentRange', id: string, dx: number, dz: number }
+    | { kind: 'agentRangeResize', id: string, handle: number }
+    | null
+
+/** 边界缩放手柄(编辑模式选中频道时显示;拖拽手柄调整 radiusX/radiusZ) */
+export interface ChannelResizeHandle { mesh: THREE.Mesh, cid: string, handle: number }
+
+/** Agent 活动范围缩放手柄(编辑模式选中带范围角色时显示;拖拽调整该 Agent 范围大小) */
+export interface AgentRangeHandle { mesh: THREE.Mesh, agentId: string, handle: number }
+
+/** 一条已建成的数采→设备绑定链路(虚线 + 流动脉冲;curve 端点位移时重建) */
+export interface DaqLink {
+  daqId: string
+  deviceId: string
+  line: THREE.Line
+  pulse: THREE.Mesh
+  curve: THREE.QuadraticBezierCurve3
+  pt: number
+  ptSig: string
+}
+
+/** 数字孪生设备 API(由 TownView 注入 useDeviceTwins 适配器;拖 dev 模型进场景时创建设备) */
+export interface DeviceApi {
+  create(input: { name: string, modelRef?: string, kind?: string, controls?: string[], posX?: number, posZ?: number, scale?: number }): Promise<{ id: string }>
+  update(id: string, patch: DeviceTransformPatch): Promise<unknown>
+  remove?(id: string): Promise<unknown>
+  control(id: string, command: string, args?: Record<string, unknown>): Promise<unknown>
+}
+
 /** 与 2D TownEntityInput 同构的实体基线 */
 export interface TownEntityInput {
   channelId: string

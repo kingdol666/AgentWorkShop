@@ -15,29 +15,38 @@
 import * as Phaser from 'phaser'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { mapEnvelopeToIntent, type TownBubbleKind } from '#shared/town-protocol'
-import { parseActionFromEnvelope, stepToward, type ActionKind, type ActionContext } from '#shared/town-behavior'
-import { resolveAnimDef, type ModelAnimSpec } from '#shared/town-anim'
+import { parseActionFromEnvelope, type ActionContext } from '#shared/town-behavior'
+import type { ModelAnimSpec } from '#shared/town-anim'
 // 类型 / 世界常量 / 频道配色纯函数(自本文件抽出,细节定义见 town-scene-core.ts)
 import {
-  AGENT_SPEED, BUBBLE_STYLE, FIELD_Y, LEAD_SHEET, RING_RADIUS_X, RING_RADIUS_Y,
-  WAIT_MS, WALK_SPEED, WORKER_SHEETS, WORLD_CX, WORLD_CY, WORLD_H, WORLD_W,
+  FIELD_Y, LEAD_SHEET, RING_RADIUS_X, RING_RADIUS_Y,
+  WALK_SPEED, WORLD_CX, WORLD_CY, WORLD_H, WORLD_W,
   channelColorNum, channelRGBA,
   type AgentSprite, type TownBlockDef, type TownEntityInput, type TownEventMap,
 } from './scene/town-scene-core'
+// 表现 / 行为 / 气泡 / 角色 / 模型库模块(自本文件抽出;各模块只依赖宿主契约面,见各自文件头注释)
+import { createParallax, drawBlock, drawCore, emitResonance, updateParallax } from './scene/town-scene-visuals'
+import { runBehavior, startBehavior, stopAt } from './scene/town-scene-behavior'
+import { showBubble } from './scene/town-scene-bubbles'
+import { drawStatusRing, ensureAgentSprite, type AgentSpawnInput } from './scene/town-scene-agents'
+import { createAnimations, dropModelOnWorld, registerModelFromId, registerModelsFromList, type ModelRegistryEntry } from './scene/town-scene-models'
 
 export type { AgentSprite, TownBlockDef, TownEntityInput, TownEventMap } from './scene/town-scene-core'
 
 export class TownScene extends Phaser.Scene {
-  private blocks = new Map<string, TownBlockDef>()
-  private agents = new Map<string, AgentSprite>()
+  // ---- 宿主契约面:下列成员由 scene/town-scene-*.ts 模块经宿主接口读写(放宽可见性) ----
+  //      blocks / agents / flagBy / farLayer / midLayer / scrollFactorFar / scrollFactorMid /
+  //      dbgBubbles / dbgActivity / recentActivity / modelsById / animSpecs / worldYMax / emit / pushDecor
+  blocks = new Map<string, TownBlockDef>()
+  agents = new Map<string, AgentSprite>()
   /** 领地/装饰(game objects),resetAll 时销毁 */
   private blockDecor: Phaser.GameObjects.GameObject[] = []
   private mapBg!: Phaser.GameObjects.Image
   /** 视差背景层(远/中);scroll 因子控制不同步平移 */
-  private farLayer!: Phaser.GameObjects.Image
-  private midLayer!: Phaser.GameObjects.Image
-  private scrollFactorFar = 0.06
-  private scrollFactorMid = 0.14
+  farLayer!: Phaser.GameObjects.Image
+  midLayer!: Phaser.GameObjects.Image
+  scrollFactorFar = 0.06
+  scrollFactorMid = 0.14
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private keyW!: Phaser.Input.Keyboard.Key
   private keyA!: Phaser.Input.Keyboard.Key
@@ -46,18 +55,18 @@ export class TownScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite
   private facing: 'down' | 'left' | 'right' | 'up' = 'down'
   private dirty = true
-  private dbgBubbles: Array<{ text: string, at: number }> = []
-  private dbgActivity: { channelId: string, agentName: string, text: string } | null = null
+  dbgBubbles: Array<{ text: string, at: number }> = []
+  dbgActivity: { channelId: string, agentName: string, text: string } | null = null
   /** 最近活动队列(跑马灯,上限 6) */
-  private recentActivity: Array<{ channelId: string, agentName: string, text: string }> = []
-  private agentCount = 0
+  recentActivity: Array<{ channelId: string, agentName: string, text: string }> = []
+  agentCount = 0
   private blockCount = 0
 
   private frameCount = 0
   private fpsAccum = 0
   private readonly bus = new Phaser.Events.EventEmitter()
   /** 已注册的自定义模型(id → file),供拖拽换装/生成用 */
-  private modelsById = new Map<string, { id: string, file: string, name: string, spec?: ModelAnimSpec }>()
+  modelsById = new Map<string, ModelRegistryEntry>()
   /** 任务 ID → assignee 反查(由 Vue 注入;mock 任务投递缺 target-agent 时用) */
   resolveTaskAssignee: ((taskId: string) => string | null) | null = null
 
@@ -71,7 +80,7 @@ export class TownScene extends Phaser.Scene {
     return () => this.bus.off(event, fn)
   }
 
-  private emit<K extends keyof TownEventMap>(event: K, e: TownEventMap[K]): void {
+  emit<K extends keyof TownEventMap>(event: K, e: TownEventMap[K]): void {
     this.bus.emit(event, e)
   }
 
@@ -180,35 +189,6 @@ export class TownScene extends Phaser.Scene {
   private viewer!: Phaser.Physics.Arcade.Sprite
   private playerAura!: Phaser.GameObjects.Image
 
-  /**
-   * 视差背景:远山天空/城市剪影按相机 scroll 因子不同步平移,产生纵深。
-   * 层固定在相机上(scrollFactor=0),位置随 update 里相机 scroll 反推。
-   */
-  private createParallax(): void {
-    const cam = this.cameras.main
-    // 铺满视野(约 1100x700 @ zoom1),随 zoom 放大
-    this.farLayer = this.add.image(WORLD_W / 2, WORLD_H / 2, 'world-far')
-      .setScrollFactor(0).setDepth(-1200)
-    this.midLayer = this.add.image(WORLD_W / 2, WORLD_H / 2, 'world-middle')
-      .setScrollFactor(0).setDepth(-1150)
-    // 初始尺寸
-    void cam
-  }
-
-  /** 每帧按相机 scroll 让视差层产生缓慢位移(远层更慢) */
-  private updateParallax(): void {
-    const cam = this.cameras.main
-    // 以世界中心为锚:相机偏离中心越多,背景偏移越多(但远层偏移更少 → 相对慢速)
-    const dx = (cam.scrollX + cam.width / 2) - WORLD_CX
-    const dy = (cam.scrollY + cam.height / 2) - WORLD_CY
-    const f = cam.zoom
-    this.farLayer.setPosition(cam.width / 2 - dx * this.scrollFactorFar / f, cam.height / 2 - dy * this.scrollFactorFar / f)
-    this.midLayer.setPosition(cam.width / 2 - dx * this.scrollFactorMid / f, cam.height / 2 - dy * this.scrollFactorMid / f)
-    // 随缩放放大背景(与视野同比例)
-    this.farLayer.setScale(Math.max(0.6, 0.6 / f))
-    this.midLayer.setScale(Math.max(0.72, 0.72 / f))
-  }
-
   /** 依据实体基线建领地与角色(围绕世界中心的环形大道布点) */
   buildBlocks(): void {
     const seeds = this._seed ?? []
@@ -244,397 +224,7 @@ export class TownScene extends Phaser.Scene {
     this.emit('agentCount', this.agentCount)
   }
 
-  /** 建一片频道共鸣领地(环形能场 + 柔光 + 频道名牌;无白色方块) */
-  private drawBlock(def: TownBlockDef): void {
-    const { centerX: cx, centerY: cy, radius: r, colorNum } = def
-    // 地面柔光(大面积低透明,暗示能场)
-    const field = this.add.image(cx, cy, 'wu-aura')
-      .setScale(r / 56).setTint(colorNum).setAlpha(0.30).setDepth(-20)
-    // 环形能场边界(呼吸)
-    const ring = this.add.image(cx, cy, 'wu-ring')
-      .setScale(r / 128).setTint(colorNum).setAlpha(0.55).setDepth(-19)
-    this.tweens.add({
-      targets: ring,
-      alpha: { from: 0.35, to: 0.6 },
-      scale: { from: (r / 128) * 0.96, to: (r / 128) * 1.04 },
-      yoyo: true,
-      repeat: -1,
-      duration: 2400,
-      ease: 'sine.inout',
-    })
-    // 频道名牌(顶部) —— 由 drawLandmark 挂在塔顶
-    const stroke = this.add.graphics().setDepth(-18)
-    stroke.lineStyle(1.2, colorNum, 0.4)
-    stroke.strokeCircle(cx, cy, r)
-    // 地面柔软阴影(建筑/领地投影,低透明)
-    const shadow = this.add.image(cx, cy + 22, 'wu-aura')
-      .setScale(r / 52).setTint(0x0a1410).setAlpha(0.22).setDepth(-17)
-    this.blockDecor.push(field, ring, stroke, shadow)
-
-    this.drawLandmark(def)
-  }
-
-  /**
-   * 街区地标建筑(2.5D 挤出:顶面 + 侧壁,侧壁随朝向变暗 → 有体积)。
-   * 用 wu-ring 作底座 + wu-aura 作顶面辉光,叠加成一座低模塔;无真实 tile 也能有"人工建筑"体积感。
-   */
-  private drawLandmark(def: TownBlockDef): void {
-    const { centerX: cx, centerY: cy, radius: r, colorNum } = def
-    const baseY = cy - r * 0.55
-    // 底座(地面投影)
-    const base = this.add.ellipse(cx, baseY, r * 0.5, r * 0.2, colorNum, 0.55).setDepth(-16)
-    // 塔身(侧壁,深色→体积,受夕阳侧光:右亮左暗)
-    const body = this.add.rectangle(cx, baseY - 42, r * 0.34, 88, colorNum, 0.85).setDepth(baseY - 20).setOrigin(0.5, 1)
-    body.setStrokeStyle(1.5, colorNum, 0.6)
-    // 顶面(略亮,承接天光)
-    const top = this.add.ellipse(cx, baseY - 84, r * 0.4, r * 0.16, 0xffffff, 0.28).setDepth(baseY - 20)
-    top.setStrokeStyle(1.5, colorNum, 0.6)
-    // 顶面光柱(呼吸)
-    const beam = this.add.image(cx, baseY - 120, 'wu-aura')
-      .setScale(0.9).setTint(0xfff0cf).setAlpha(0.5).setDepth(baseY - 20)
-    this.tweens.add({ targets: beam, alpha: { from: 0.3, to: 0.6 }, scale: { from: 0.7, to: 1.05 }, yoyo: true, repeat: -1, duration: 1800, ease: 'sine.inout' })
-    // 频道名牌(挂在塔顶)
-    const plaque = this.add.text(cx, baseY - 128, def.name, {
-      fontFamily: 'Geist, PingFang SC, sans-serif',
-      fontSize: '13px',
-      fontStyle: '600',
-      color: '#fff',
-      padding: { x: 10, y: 4 },
-      backgroundColor: 'rgba(18,20,30,0.6)',
-    }).setOrigin(0.5).setDepth(baseY - 19)
-    // 色盲徽记:频道用几何形状区分(不单靠色相),置于名牌上方
-    const emblem = this.drawEmblem(cx, baseY - 148, colorNum, def.channelId)
-    this.blockDecor.push(base, body, top, beam, plaque, emblem)
-  }
-
-  /** 频道几何徽记(色盲友好:形状+色双通道);形状由 channelId 哈希稳定决定 */
-  private drawEmblem(cx: number, cy: number, colorNum: number, channelId: string): Phaser.GameObjects.Graphics {
-    const g = this.add.graphics().setDepth(cy + 1000)
-    const s = 9
-    g.lineStyle(2, colorNum, 0.95)
-    g.fillStyle(colorNum, 0.35)
-    const shape = Math.abs(channelId.split('').reduce((h, c) => h * 31 + c.charCodeAt(0), 0)) % 5
-    if (shape === 0) g.strokeCircle(cx, cy, s) // 圆
-    else if (shape === 1) { // 三角
-      g.beginPath()
-      g.moveTo(cx, cy - s)
-      g.lineTo(cx + s, cy + s)
-      g.lineTo(cx - s, cy + s)
-      g.closePath()
-      g.strokePath()
-    }
-    else if (shape === 2) { // 方块
-      g.strokeRect(cx - s, cy - s, s * 2, s * 2)
-    }
-    else if (shape === 3) { // 菱形
-      g.beginPath()
-      g.moveTo(cx, cy - s)
-      g.lineTo(cx + s, cy)
-      g.lineTo(cx, cy + s)
-      g.lineTo(cx - s, cy)
-      g.closePath()
-      g.strokePath()
-    }
-    else { // 五边
-      g.beginPath()
-      for (let i = 0; i < 5; i++) {
-        const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5
-        const px = cx + Math.cos(a) * s
-        const py = cy + Math.sin(a) * s
-        if (i === 0) g.moveTo(px, py)
-        else g.lineTo(px, py)
-      }
-      g.closePath()
-      g.strokePath()
-    }
-    return g
-  }
-
-  /**
-   * 世界中心「共鸣核心塔」(= workspace 本体):高耸能量柱,随全局活动呼吸。
-   * 街区沿大道环绕它分布,一眼可辨世界中心。
-   */
-  private drawCore(): void {
-    const cx = WORLD_CX
-    const cy = WORLD_CY
-    // 塔基能量场(大面积)
-    const field = this.add.image(cx, cy, 'wu-aura').setScale(6).setTint(0x4da3ff).setAlpha(0.28).setDepth(-20)
-    // 塔身(多层收窄的能量柱)
-    const body = this.add.rectangle(cx, cy - 90, 120, 300, 0x57d29a, 0.7).setOrigin(0.5, 1).setDepth(cy - 22)
-    body.setStrokeStyle(2, 0xd8fff2, 0.6)
-    const body2 = this.add.rectangle(cx, cy - 220, 70, 180, 0xc4f4e8, 0.75).setOrigin(0.5, 1).setDepth(cy - 21)
-    // 顶部光球(呼吸)
-    const orb = this.add.image(cx, cy - 320, 'wu-aura').setScale(1.4).setTint(0xeafff8).setAlpha(0.9).setDepth(cy - 20)
-    this.tweens.add({ targets: orb, alpha: { from: 0.7, to: 1 }, scale: { from: 1.2, to: 1.6 }, yoyo: true, repeat: -1, duration: 1600, ease: 'sine.inout' })
-    // 塔名
-    const label = this.add.text(cx, cy - 360, '共鸣核心', {
-      fontFamily: 'Geist, PingFang SC, sans-serif',
-      fontSize: '14px',
-      fontStyle: '600',
-      color: '#fff',
-      padding: { x: 12, y: 5 },
-      backgroundColor: 'rgba(18,20,30,0.6)',
-    }).setOrigin(0.5).setDepth(cy - 19)
-    this.blockDecor.push(field, body, body2, orb, label)
-  }
-
-  /** 确保某 agent 的 sprite 存在(不存在则建);返回是否新建 */
-  private ensureAgentSprite(
-    a: { channelId: string, agentId: string, name: string, role: 'lead' | 'worker', state: 'idle' | 'busy' | 'stopped', currentTaskProgress?: number | null, modelRef?: string | null },
-    cx?: number,
-    cy?: number,
-  ): boolean {
-    const key = a.agentId
-    if (this.agents.has(key)) {
-      this.agents.get(key)!.state = a.state
-      return false
-    }
-    const def = this.blocks.get(a.channelId)
-    const colorNum = def?.colorNum ?? channelColorNum(a.channelId)
-    const builtinSheet = a.role === 'lead' ? LEAD_SHEET : WORKER_SHEETS[Math.abs(a.agentId.split('').reduce((h, c) => h * 31 + c.charCodeAt(0), 0)) % WORKER_SHEETS.length]!
-    // 模型绑定:若该角色绑定了自定义模型且纹理已注册,则用之;否则回退内置员工模型
-    const sheet = a.modelRef && this.textures.exists(a.modelRef) ? a.modelRef : builtinSheet
-    const bx = def?.centerX ?? cx ?? 400
-    const by = def?.centerY ?? cy ?? 300
-    // 领地成员沿中线横向排布:首个(lead)居中,其余左右展开
-    const inBlock = [...this.agents.values()].filter(s => s.channelId === a.channelId).length
-    const colSlot = Math.floor(inBlock / 2)
-    const x = bx + (inBlock === 0 ? 0 : (inBlock % 2 === 0 ? -1 : 1) * (colSlot > 0 ? colSlot * 54 : 54))
-    const y = by + 12 + Math.floor(inBlock / 2) * 16
-
-    const sprite = this.physics.add.sprite(x, y, sheet, 0)
-    const sbody = sprite.body as Phaser.Physics.Arcade.Body
-    sbody.setSize(18, 18)
-    sbody.setOffset(15, 66)
-    sprite.setCollideWorldBounds(true)
-    sprite.setDepth(y)
-    sprite.anims.play(`wu-bob-${sheet}`, true)
-
-    // 共鸣灵光:同频道同色(频道共鸣色 tint),居中于角色身体,形成"周身散发同色光"的环绕感
-    const aura = this.add.image(x, y, 'wu-aura')
-      .setTint(colorNum).setAlpha(0.42).setDepth(y - 10).setScale(1.5)
-    this.tweens.add({ targets: aura, alpha: { from: 0.30, to: 0.56 }, scale: { from: 1.35, to: 1.65 }, yoyo: true, repeat: -1, duration: 2200, ease: 'sine.inout' })
-
-    // 头顶:状态环 + 名字 + 进度(名字牌用频道共鸣色)
-    const statusRing = this.add.graphics().setDepth(y + 200)
-    const nameLabel = this.add.text(x, y - 30, a.name, {
-      fontFamily: 'Geist, PingFang SC, sans-serif',
-      fontSize: '10.5px',
-      fontStyle: '600',
-      color: '#ffffff',
-      padding: { x: 6, y: 2 },
-    }).setOrigin(0.5, 1).setDepth(y + 200)
-    nameLabel.setStyle({ backgroundColor: `rgba(18,20,30,0.62)`, color: '#fff' })
-    const progressLabel = this.add.text(x, y - 44, '', {
-      fontFamily: 'Geist Mono, monospace',
-      fontSize: '9px',
-      color: '#4c8f63',
-      backgroundColor: 'rgba(255,255,255,0.85)',
-      padding: { x: 4, y: 1 },
-    }).setOrigin(0.5, 1).setDepth(y + 200)
-
-    this.agents.set(key, {
-      channelId: a.channelId,
-      agentId: a.agentId,
-      name: a.name,
-      role: a.role,
-      sprite,
-      aura,
-      statusRing,
-      nameLabel,
-      progressLabel,
-      bubble: null,
-      bubbleTimer: null,
-      state: a.state,
-      progress: a.currentTaskProgress ?? null,
-      dragging: false,
-      homeX: x,
-      homeY: y,
-      textureKey: sheet,
-      modelRef: a.modelRef ?? '',
-      behavior: {
-        mode: 'idle',
-        roamTarget: null,
-        targetId: null,
-        waitUntil: 0,
-        engaged: false,
-      },
-    })
-    // 所有角色都允许用户手动拖动到地图任意位置
-    this.enableDraggable(this.agents.get(key)!)
-    this.agentCount = this.agents.size
-    this.emit('agentCount', this.agentCount)
-    return true
-  }
-
-  /** 让全部角色可被用户拖动(手动定位到地图任意位置) */
-  private enableDraggable(asp: AgentSprite): void {
-    const sprite = asp.sprite
-    sprite.setInteractive({ draggable: true, useHandCursor: true })
-    sprite.on('dragstart', () => {
-      asp.dragging = true
-      // 拖动期间暂停自动行为与物理
-      ;(sprite.body as Phaser.Physics.Arcade.Body).setEnable(false)
-      asp.behavior.engaged = false
-      sprite.setDepth(this.worldYMax + 500)
-      sprite.setAlpha(0.96)
-      sprite.setScale(1.12)
-    })
-    sprite.on('drag', (_p: Phaser.Input.Pointer, dragX: number, dragY: number) => {
-      sprite.setPosition(dragX, dragY)
-      asp.aura.setPosition(dragX, dragY)
-      asp.nameLabel.setPosition(dragX, dragY - 30)
-      asp.progressLabel.setPosition(dragX, dragY - 44)
-      asp.statusRing.setPosition(dragX, dragY - 18)
-      asp.sprite.setDepth(dragY)
-      asp.aura.setDepth(dragY - 10)
-    })
-    sprite.on('dragend', () => {
-      asp.dragging = false
-      sprite.setScale(1)
-      sprite.setAlpha(1)
-      ;(sprite.body as Phaser.Physics.Arcade.Body).setEnable(true)
-      ;(sprite.body as Phaser.Physics.Arcade.Body).stop()
-      ;(sprite.body as Phaser.Physics.Arcade.Body).reset(sprite.x, sprite.y)
-      // 落点即新 home:行为结束后回归用户放置的位置
-      asp.homeX = sprite.x
-      asp.homeY = sprite.y
-      asp.behavior.mode = 'idle'
-      asp.behavior.roamTarget = null
-      asp.behavior.targetId = null
-      asp.behavior.engaged = false
-    })
-  }
-
-  private get worldYMax(): number { return WORLD_H }
-
-  // ================================================================
-  // 模型库 → 场景(拖拽加载 / 换装 / 落地生成)
-  // ================================================================
-
-  /** 批量注册模型库清单(由 Vue 从 useCharacterAssets 注入;幂等) */
-  registerModelsFromList(list: Array<{ id: string, file: string, name: string, spec?: ModelAnimSpec }>) {
-    for (const m of list) {
-      if (!this.modelsById.has(m.id)) {
-        this.modelsById.set(m.id, { id: m.id, file: m.file, name: m.name, spec: m.spec })
-      }
-      if (m.spec) this.animSpecs.set(m.id, m.spec)
-      // 注意:此处不得调用 ensureSheetAnims —— 场景尚未挂到 game,this.anims/this.textures 未初始化。
-      // 动画统一在 create()/createAnimations() 里建(那时 game 已挂载)。
-    }
-  }
-
-  /**
-   * 注册一个自定义模型(按 assetId 从模型库清单查 file);幂等。
-   * 记录元信息 + 帧布局,加载纹理动画。成功返回 true。
-   */
-  registerModelFromId(id: string, file: string, name: string, spec?: ModelAnimSpec): boolean {
-    if (!this.modelsById.has(id)) this.modelsById.set(id, { id, file, name, spec })
-    if (spec) this.animSpecs.set(id, spec)
-    if (this.textures.exists(id)) {
-      this.ensureSheetAnims(id)
-      return true
-    }
-    return false
-  }
-
-  /**
-   * HTML5 拖拽落下 → 落到某个角色上则「换装」该角色,否则在落点「生成一个居民」。
-   * assetId 由 AssetLibrary 的 dragstart 写入 dataTransfer。
-   */
-  dropModelOnWorld(worldX: number, worldY: number, assetId: string): { mode: 'rebind' | 'spawn', agentId?: string, textureKey: string, x: number, y: number } {
-    // 就近找落点 80px 内的角色
-    const near = this.nearestAgent(worldX, worldY, 80)
-    const model = this.modelsById.get(assetId)
-    const texKey = model?.id ?? assetId
-    // 若纹理未注册,先按模型库 file 加载(无则回退 assetId,可能为空 → 显示原纹理)
-    if (model && !this.textures.exists(texKey)) this.registerModelFromId(assetId, model.file, model.name)
-    if (near) {
-      // 换装:直接改该角色所用纹理 + 动画 key
-      this.swapTexture(near, texKey)
-      this.showBubble(near.channelId, near.agentId, 'info', `换装 → ${model?.name ?? assetId}`, 2200)
-      return { mode: 'rebind', agentId: near.agentId, textureKey: texKey, x: Math.round(near.sprite.x), y: Math.round(near.sprite.y) }
-    }
-    // 落点生成一个"居民"(可拖拽、可游走的装饰性角色;无实际 agent 绑定)
-    if (this.textures.exists(texKey)) {
-      this.spawnResident(worldX, worldY, texKey, model?.name ?? assetId)
-      return { mode: 'spawn', textureKey: texKey, x: Math.round(worldX), y: Math.round(worldY) }
-    }
-    return { mode: 'rebind', textureKey: texKey, x: Math.round(worldX), y: Math.round(worldY) }
-  }
-
-  /** 就近角色(落点 80px 内) */
-  private nearestAgent(x: number, y: number, maxDist: number): AgentSprite | undefined {
-    let best: AgentSprite | undefined
-    let bestD = maxDist
-    for (const a of this.agents.values()) {
-      const d = Math.hypot(a.sprite.x - x, a.sprite.y - y)
-      if (d < bestD) {
-        best = a
-        bestD = d
-      }
-    }
-    return best
-  }
-
-  /** 换装:改纹理 key + 重播动画 + 记录 modelRef */
-  private swapTexture(asp: AgentSprite, texKey: string): void {
-    if (!this.textures.exists(texKey)) return
-    asp.sprite.setTexture(texKey)
-    asp.sprite.anims.play(`wu-bob-${texKey}`, true)
-    asp.textureKey = texKey
-    // 仅当 texKey 是自定义模型 id 时记录;内置员工模型不回写(避免覆盖引导)
-    asp.modelRef = texKey
-  }
-
-  /** 在落点生成一个可拖拽居民(无 agent 绑定;纯装饰,游走于频道外) */
-  private spawnResident(x: number, y: number, texKey: string, name: string): void {
-    const sprite = this.physics.add.sprite(x, y, texKey, 0)
-    const sbody = sprite.body as Phaser.Physics.Arcade.Body
-    sbody.setSize(18, 18)
-    sbody.setOffset(15, 66)
-    sprite.setCollideWorldBounds(true)
-    sprite.setDepth(y)
-    sprite.anims.play(`wu-bob-${texKey}`, true)
-    const aura = this.add.image(x, y, 'wu-aura').setTint(0xffe9c4).setAlpha(0.35).setDepth(y - 10).setScale(1.2)
-    this.tweens.add({ targets: aura, alpha: { from: 0.25, to: 0.5 }, scale: { from: 1.05, to: 1.4 }, yoyo: true, repeat: -1, duration: 2400, ease: 'sine.inout' })
-    const label = this.add.text(x, y - 30, name, {
-      fontFamily: 'Geist, PingFang SC, sans-serif',
-      fontSize: '10px', fontStyle: '600', color: '#fff', padding: { x: 6, y: 2 },
-    }).setOrigin(0.5, 1).setDepth(y + 200).setStyle({ backgroundColor: 'rgba(18,20,30,0.62)' })
-    // 作为轻量"居民"注册进 agents,便于拖动/显示(标记为 decor 角色,不入 agentCount 统计语义)
-    const statusRing = this.add.graphics().setDepth(y + 200)
-    const progressLabel = this.add.text(x, y - 44, '', {
-      fontFamily: 'Geist Mono, monospace',
-      fontSize: '9px',
-      color: '#4c8f63',
-      backgroundColor: 'rgba(255,255,255,0.85)',
-      padding: { x: 4, y: 1 },
-    }).setOrigin(0.5, 1).setDepth(y + 200)
-    const decor: AgentSprite = {
-      channelId: '',
-      agentId: `resident-${Date.now().toString(36)}`,
-      name,
-      role: 'worker',
-      sprite,
-      aura,
-      statusRing,
-      nameLabel: label,
-      progressLabel,
-      bubble: null,
-      bubbleTimer: null,
-      state: 'idle',
-      progress: null,
-      dragging: false,
-      homeX: x,
-      homeY: y,
-      textureKey: texKey,
-      modelRef: texKey,
-      behavior: { mode: 'idle', roamTarget: null, targetId: null, waitUntil: 0, engaged: false },
-    }
-    this.agents.set(decor.agentId, decor)
-    this.enableDraggable(decor)
-  }
+  get worldYMax(): number { return WORLD_H }
 
   // ================================================================
   // 事件驱动入口(useTownBus 订阅转发)
@@ -674,342 +264,8 @@ export class TownScene extends Phaser.Scene {
     if (action) this.startBehavior(action)
   }
 
-  /**
-   * 事件 → 视觉共鸣(把目光吸过去,但不打断):
-   *  - 消息类 → 说话者身上扩散一圈共鸣波纹(speaking pulse)
-   *  - task.status(完成) → 频道领地冲出一道光柱 + 星星粒子
-   *  - error → 该频道一圈红色涟漪 + 频道旗变红
-   *  - task.status(其它/进行中) → 频道旗变黄(busy)
-   */
-  private emitResonance(e: AepEnvelope): void {
-    const def = this.blocks.get(e.channelId)
-    const asp = e.agentId ? this.agents.get(e.agentId) : undefined
-    const cx = asp?.sprite.x ?? def?.centerX
-    const cy = asp?.sprite.y ?? def?.centerY
-    if (cx === undefined || cy === undefined) return
-
-    if (e.type === 'agent.message' || e.type === 'agent.status.message' || e.type === 'a2a.message') {
-      this.pulseRing(cx, cy, asp?.aura.tintTopLeft ?? def?.colorNum ?? 0xffffff, 0x4da3ff)
-    }
-    else if (e.type === 'error') {
-      this.pulseRing(cx, cy, 0xff6b5c, 0xff6b5c)
-      this.setFlag(e.channelId, 'danger')
-    }
-    else if (e.type === 'task.status') {
-      const state = (e.payload as { state?: string }).state
-      if (state === 'completed') {
-        this.lightColumn(cx, cy, 0xd8fff2)
-      }
-      else if (state === 'working' || state === 'assigned') {
-        this.setFlag(e.channelId, 'busy')
-      }
-      else if (state === 'failed' || state === 'canceled') {
-        this.pulseRing(cx, cy, 0xff9e6b, 0xff9e6b)
-        this.setFlag(e.channelId, 'danger')
-      }
-      else if (state === 'waiting') {
-        this.setFlag(e.channelId, 'wait')
-      }
-    }
-  }
-
-  /** 一个扩散共鸣波纹(圆环放大并淡出) */
-  private pulseRing(x: number, y: number, color: number, _glow: number): void {
-    const ring = this.add.image(x, y, 'wu-ring').setTint(color).setAlpha(0.8).setDepth(y + 300).setScale(0.3)
-    this.tweens.add({
-      targets: ring,
-      scale: 2.2,
-      alpha: 0,
-      duration: 700,
-      ease: 'sine.out',
-      onComplete: () => ring.destroy(),
-    })
-  }
-
-  /** 高频光柱(交付/完成时从频道领地冲天) */
-  private lightColumn(x: number, y: number, color: number): void {
-    const beam = this.add.image(x, y - 40, 'wu-aura').setTint(color).setAlpha(0.9).setDepth(y + 320).setScale(0, 6)
-    this.tweens.add({
-      targets: beam,
-      scaleX: 1.1,
-      scaleY: 2.2,
-      alpha: 0,
-      duration: 900,
-      ease: 'power2.out',
-      onComplete: () => beam.destroy(),
-    })
-  }
-
-  /** 频道状态旗(地标塔顶变色;busy/wait/danger) */
-  private setFlag(channelId: string, state: 'busy' | 'wait' | 'danger'): void {
-    const def = this.blocks.get(channelId)
-    if (!def) return
-    const color = state === 'danger' ? 0xff6b5c : state === 'wait' ? 0xf5a742 : 0x57d29a
-    // 在塔顶光球处再放一个呼吸旗(轻量;若已存在则复用)
-    let flag = this.flagBy.get(channelId)
-    if (!flag) {
-      flag = this.add.circle(def.centerX, def.centerY - 150, 10, color, 0.9).setDepth(def.centerY - 10)
-      this.flagBy.set(channelId, flag)
-      this.blockDecor.push(flag)
-    }
-    flag.setFillStyle(color, 0.9)
-    this.tweens.add({ targets: flag, alpha: { from: 0.6, to: 1 }, yoyo: true, repeat: -1, duration: 800 })
-  }
-
   /** 频道旗(顶球)缓存 */
-  private flagBy = new Map<string, Phaser.GameObjects.Arc>()
-
-  // ================================================================
-  // 行为状态机(事件→决策→动作;标准 AI 控制游戏架构)
-  // ================================================================
-
-  /** 触发一次「跑去下发」行为:from 跑到 to 身边 */
-  private startBehavior(action: ActionContext): void {
-    const from = this.agents.get(action.fromId)
-    const to = this.agents.get(action.toId)
-    if (!from || !to) {
-      // 目标 agent 尚未出现在镇上(可能跨块懒装配中):忽略,等实体到达
-      return
-    }
-    // 用户正在拖动的角色不被打断
-    if (from.dragging) return
-    const b = from.behavior
-    b.mode = 'approach'
-    b.targetId = to.agentId
-    b.action = action
-    // 邀请接收方驻足配合(暂停其游走,双方才能对上话;不再互相追逐)
-    if (!to.dragging) {
-      to.behavior.engaged = true
-      to.behavior.roamTarget = null
-      ;(to.sprite.body as Phaser.Physics.Arcade.Body).stop()
-    }
-    if (from.sprite.body) (from.sprite.body as Phaser.Physics.Arcade.Body).stop()
-    this.emit('behavior', {
-      agentName: from.name,
-      action: this.behaviorActionLabel(action.kind),
-      targetName: to.name,
-    })
-  }
-
-  private behaviorActionLabel(kind: ActionKind): string {
-    return kind === 'task' ? '下发任务' : kind === 'reply' ? '回复' : '发送消息'
-  }
-
-  /**
-   * 行为状态机逐帧执行(由 update 调用)。
-   * 状态流转:approach(跑到下发对象)→ 到达 → 送达 → wait[需回复]/returnHome[否]→ roam。
-   */
-  private runBehavior(asp: AgentSprite, dt: number): void {
-    const b = asp.behavior
-
-    // ---------- roam:领地内来回移动(idle 时的默认行为;被邀请时驻足配合) ----------
-    if (b.mode === 'idle' || b.mode === 'roam') {
-      if (asp.behavior.engaged || asp.dragging) {
-        this.stopAt(asp)
-        return
-      }
-      b.mode = 'roam'
-      if (!b.roamTarget) {
-        const def = this.blocks.get(asp.channelId)
-        const range = def?.radius ? def.radius * 0.5 : 80
-        b.roamTarget = {
-          x: asp.homeX + (Math.random() * 2 - 1) * range,
-          y: asp.homeY + (Math.random() * 2 - 1) * range * 0.6,
-        }
-      }
-      const ok = this.driveToward(asp, b.roamTarget, AGENT_SPEED * 0.5, dt)
-      if (ok) b.roamTarget = null
-      return
-    }
-
-    // ---------- approach:跑向下发对象 ----------
-    if (b.mode === 'approach') {
-      const target = b.targetId ? this.agents.get(b.targetId) : undefined
-      if (!target) {
-        this.stopAt(asp)
-        b.mode = 'idle'
-        return
-      }
-      const pos = { x: target.sprite.x, y: target.sprite.y }
-      const arrived = this.driveToward(asp, pos, AGENT_SPEED, dt)
-      if (arrived) {
-        this.stopAt(asp)
-        this.behaviorDeliver(asp, target)
-        if (b.action?.requireReply) {
-          b.mode = 'wait'
-          b.waitUntil = this.time.now + WAIT_MS
-        }
-        else {
-          b.mode = 'returnHome'
-          this.releaseEngaged(asp)
-          b.targetId = null
-        }
-      }
-      return
-    }
-
-    // ---------- wait:在目标附近等待回复/执行结果 ----------
-    if (b.mode === 'wait') {
-      if (asp.dragging) {
-        this.stopAt(asp)
-        return
-      }
-      const target = b.targetId ? this.agents.get(b.targetId) : undefined
-      if (target && !target.dragging) {
-        const stand = { x: target.sprite.x + 28, y: target.sprite.y + 8 }
-        this.driveToward(asp, stand, AGENT_SPEED * 0.6, dt)
-      }
-      else this.stopAt(asp)
-      if (this.time.now >= b.waitUntil) {
-        b.mode = 'returnHome'
-        this.releaseEngaged(asp)
-      }
-      return
-    }
-
-    // ---------- returnHome:事毕回归出生位(用户拖动后为落点) ----------
-    if (b.mode === 'returnHome') {
-      if (asp.dragging) {
-        this.stopAt(asp)
-        return
-      }
-      const arrived = this.driveToward(asp, { x: asp.homeX, y: asp.homeY }, AGENT_SPEED * 0.7, dt)
-      if (arrived) {
-        this.stopAt(asp)
-        asp.sprite.setPosition(asp.homeX, asp.homeY)
-        b.mode = 'idle'
-        b.targetId = null
-        b.action = undefined
-      }
-      return
-    }
-  }
-
-  /** 释放被本角色邀请(engaged)的目标:让其恢复游走 */
-  private releaseEngaged(asp: AgentSprite): void {
-    const target = asp.behavior.targetId ? this.agents.get(asp.behavior.targetId) : undefined
-    if (target) target.behavior.engaged = false
-  }
-
-  /** 送达:在目标头上弹气泡(下发/通信内容) + 广播行为日志 */
-  private behaviorDeliver(asp: AgentSprite, target: AgentSprite): void {
-    const text = asp.behavior.action?.text ?? ''
-    if (text) {
-      this.showBubble(asp.channelId, target.agentId, 'info', text, 2600)
-    }
-    this.emit('behavior', {
-      agentName: asp.name,
-      action: this.behaviorActionLabel(asp.behavior.action?.kind ?? 'message'),
-      targetName: target.name,
-    })
-  }
-
-  /**
-   * 驱动角色朝目标移动一步(stepToward 计算方向 → velocity)。
-   * 返回是否已到达。速度随距离减速(近目标放缓,站位更自然)。
-   */
-  private driveToward(asp: AgentSprite, target: { x: number, y: number }, speed: number, dt: number): boolean {
-    const body = asp.sprite.body as Phaser.Physics.Arcade.Body
-    if (!body.enable) return false
-    const cur = { x: asp.sprite.x, y: asp.sprite.y }
-    const next = stepToward(cur, target, speed, dt)
-    asp.sprite.setFlipX(next.dir === 'left')
-    body.setVelocity((next.x - cur.x) / dt, (next.y - cur.y) / dt)
-    // 行走态(与静止 bob 区分)
-    this.playSheetAnim(asp.sprite, 'walk')
-    return next.arrived
-  }
-
-  /** 停止角色运动(velocity=0) */
-  private stopAt(asp: AgentSprite): void {
-    const body = asp.sprite.body as Phaser.Physics.Arcade.Body | null
-    body?.stop()
-    this.playSheetAnim(asp.sprite, 'idle')
-  }
-
-  /** 统一播放某纹理的 idle/walk/work 动画;未注册时回退悬停 bob */
-  private playSheetAnim(sprite: Phaser.GameObjects.Sprite, state: 'idle' | 'walk' | 'work'): void {
-    const key = `${sprite.texture.key}-${state}`
-    if (this.anims.exists(key)) {
-      if (sprite.anims.currentAnim?.key !== key) sprite.anims.play(key, true)
-    }
-    else {
-      const bobKey = `wu-bob-${sprite.texture.key}`
-      if (this.anims.exists(bobKey) && sprite.anims.currentAnim?.key !== bobKey) sprite.anims.play(bobKey, true)
-    }
-  }
-
-  // ================================================================
-  // 头顶气泡(每 agent 至多一个;SLACK 白卡样式)
-  // ================================================================
-
-  private showBubble(channelId: string, agentId: string | undefined, kind: TownBubbleKind, text: string, ttlMs: number): void {
-    const asp = agentId ? this.agents.get(agentId) : undefined
-    const anchor = asp?.sprite
-    // 无具体 agent 的气泡:挂到频道领地上方
-    const def = this.blocks.get(channelId)
-    const ax = anchor?.x ?? def?.centerX ?? 400
-    const ay = (anchor?.y ?? def?.centerY ?? 300) - 34
-    const style = BUBBLE_STYLE[kind] ?? BUBBLE_STYLE.info
-
-    const destroyPrev = (): void => {
-      if (asp?.bubble) {
-        asp.bubble.destroy()
-        asp.bubble = null
-        if (asp.bubbleTimer) {
-          asp.bubbleTimer.remove(false)
-          asp.bubbleTimer = null
-        }
-      }
-    }
-    destroyPrev()
-
-    const bg = this.add.rectangle(0, 0, 12, 12, style.bg, 0.94)
-    const label = this.add.text(0, 0, text, {
-      fontFamily: 'Geist, PingFang SC, sans-serif',
-      fontSize: '11px',
-      color: style.fg,
-      padding: { x: 9, y: 5 },
-      wordWrap: { width: 220 },
-      align: 'left',
-    })
-    const w = Math.min(240, label.width + 18)
-    const h = label.height + 10
-    bg.setSize(w, h)
-    const container = this.add.container(ax, ay, [bg, label])
-    container.setDepth(500)
-    container.setAlpha(0)
-    container.setScale(0.92)
-    this.tweens.add({ targets: container, alpha: 1, y: ay - 6, scale: 1, duration: 180, ease: 'back.out' })
-
-    this.dbgBubbles.push({ text, at: Date.now() })
-    this.dbgActivity = { channelId, agentName: asp?.name ?? def?.name ?? '系统', text }
-    this.recentActivity.push({ channelId, agentName: asp?.name ?? def?.name ?? '系统', text })
-    if (this.recentActivity.length > 6) this.recentActivity.splice(0, this.recentActivity.length - 6)
-    this.emit('lastActivity', this.dbgActivity)
-
-    if (asp) {
-      asp.bubble = container
-      asp.bubbleTimer = this.time.delayedCall(ttlMs, () => {
-        this.tweens.add({
-          targets: container,
-          alpha: 0,
-          y: container.y - 8,
-          duration: 220,
-          onComplete: () => {
-            container.destroy()
-            if (asp) asp.bubble = null
-          },
-        })
-        if (asp) asp.bubbleTimer = null
-      })
-    }
-    else {
-      this.time.delayedCall(ttlMs, () => {
-        this.tweens.add({ targets: container, alpha: 0, y: container.y - 8, duration: 220, onComplete: () => container.destroy() })
-      })
-    }
-  }
+  flagBy = new Map<string, Phaser.GameObjects.Arc>()
 
   /** channel.snapshot 后重建(清空旧树,由 Vue 重新 seedEntities + buildBlocks) */
   resetAll(): void {
@@ -1093,41 +349,8 @@ export class TownScene extends Phaser.Scene {
     return [...this.recentActivity]
   }
 
-  private createAnimations(): void {
-    const sheets = [...WORKER_SHEETS, LEAD_SHEET, 'knight', 'mage', 'bot']
-    for (const sheet of sheets) {
-      this.ensureSheetAnims(sheet)
-    }
-  }
-
-  /** 为某纹理 key 建 idle/walk/work 三态动画(幂等);内置与自定义模型统一接口 */
-  private ensureSheetAnims(key: string): void {
-    const def = resolveAnimDef(key, this.animSpecs.get(key))
-    for (const state of ['idle', 'walk', 'work'] as const) {
-      const a = def[state]
-      const animKey = a.key
-      if (!this.anims.exists(animKey)) {
-        this.anims.create({
-          key: animKey,
-          frames: this.anims.generateFrameNumbers(key, { start: a.start, end: a.end }),
-          frameRate: a.frameRate,
-          repeat: a.repeat,
-        })
-      }
-    }
-    // 兼容旧播放名 wu-bob-<key>(仍能播悬停)
-    if (!this.anims.exists(`wu-bob-${key}`)) {
-      this.anims.create({
-        key: `wu-bob-${key}`,
-        frames: this.anims.generateFrameNumbers(key, { start: 0, end: (this.animSpecs.get(key)?.frames ?? 4) - 1 }),
-        frameRate: 3,
-        repeat: -1,
-      })
-    }
-  }
-
   /** 已声明帧布局的动画规格(自定义模型经 registerModelFromId 注入) */
-  private animSpecs = new Map<string, ModelAnimSpec>()
+  animSpecs = new Map<string, ModelAnimSpec>()
 
   override update(_t: number, delta: number): void {
     // 玩家移动(漫游)
@@ -1202,19 +425,42 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  private drawStatusRing(asp: AgentSprite): void {
-    const g = asp.statusRing
-    g.clear()
-    // 状态点放在名字牌左侧边缘(不遮挡):y 轴与 nameLabel 底对齐
-    const labelW = asp.nameLabel.width
-    const x = asp.sprite.x - labelW / 2 - 5
-    const y = asp.sprite.y - 20
-    const color = asp.state === 'busy' ? 0xefb56a : asp.state === 'stopped' ? 0xc25a4e : 0x9ecb7a
-    g.fillStyle(color, 1)
-    g.fillCircle(x, y, 3)
-    if (asp.state === 'busy') {
-      g.lineStyle(1.5, 0xefb56a, 0.6)
-      g.strokeCircle(x, y, 6)
-    }
+  // ================================================================
+  // 抽出模块的薄委托(宿主契约面;实现见 scene/town-scene-*.ts)
+  // ================================================================
+
+  private createParallax(): void { createParallax(this) }
+  private updateParallax(): void { updateParallax(this) }
+  private drawCore(): void { drawCore(this) }
+  private drawBlock(def: TownBlockDef): void { drawBlock(this, def) }
+  private emitResonance(e: AepEnvelope): void { emitResonance(this, e) }
+  private startBehavior(action: ActionContext): void { startBehavior(this, action) }
+  private runBehavior(asp: AgentSprite, dt: number): void { runBehavior(this, asp, dt) }
+  private stopAt(asp: AgentSprite): void { stopAt(this, asp) }
+  private showBubble(channelId: string, agentId: string | undefined, kind: TownBubbleKind, text: string, ttlMs: number): void { showBubble(this, channelId, agentId, kind, text, ttlMs) }
+  private drawStatusRing(asp: AgentSprite): void { drawStatusRing(asp) }
+  private ensureAgentSprite(a: AgentSpawnInput, cx?: number, cy?: number): boolean { return ensureAgentSprite(this, a, cx, cy) }
+  private createAnimations(): void { createAnimations(this) }
+
+  /** 登记领地/装饰对象(resetAll 时统一销毁) */
+  pushDecor(...objs: Phaser.GameObjects.GameObject[]): void {
+    this.blockDecor.push(...objs)
+  }
+
+  // ---- 模型库公开 API 薄委托(实现 + 原文档注释见 scene/town-scene-models.ts) ----
+
+  /** 批量注册模型库清单(由 Vue 从 useCharacterAssets 注入;幂等) */
+  registerModelsFromList(list: Array<{ id: string, file: string, name: string, spec?: ModelAnimSpec }>): void {
+    registerModelsFromList(this, list)
+  }
+
+  /** 注册一个自定义模型(按 assetId 从模型库清单查 file);幂等;纹理已就绪返回 true */
+  registerModelFromId(id: string, file: string, name: string, spec?: ModelAnimSpec): boolean {
+    return registerModelFromId(this, id, file, name, spec)
+  }
+
+  /** HTML5 拖拽落下 → 落到某个角色上则「换装」该角色,否则在落点「生成一个居民」 */
+  dropModelOnWorld(worldX: number, worldY: number, assetId: string): { mode: 'rebind' | 'spawn', agentId?: string, textureKey: string, x: number, y: number } {
+    return dropModelOnWorld(this, worldX, worldY, assetId)
   }
 }
