@@ -19,11 +19,11 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman", "Times", "Nimbus Roman", "DejaVu Serif"],
     "mathtext.fontset": "stix",
-    "font.size": 8,
-    "axes.labelsize": 8,
+    "font.size": 10,
+    "axes.labelsize": 10,
     "axes.titlesize": 8.4,
-    "xtick.labelsize": 7,
-    "ytick.labelsize": 7,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
     "axes.linewidth": 0.7,
     "xtick.major.width": 0.7,
     "ytick.major.width": 0.7,
@@ -76,7 +76,7 @@ def style_ax(ax, grid_axis="y"):
 
 def panel_tag(ax, tag):
     ax.text(-0.14, 1.045, tag, transform=ax.transAxes, fontweight="bold",
-            fontsize=8.5, ha="left", va="bottom", color=INK)
+            fontsize=10.5, ha="left", va="bottom", color=INK)
 
 
 def target_band(ax, s):
@@ -98,7 +98,7 @@ def trajectory(ax, xs, ys, attained):
 def status(ax, attained, text=None):
     label = text or ("ATTAINED" if attained else "NOT ATTAINED")
     ax.text(0.98, 0.94, label, transform=ax.transAxes, ha="right", va="top",
-            fontsize=6.7, fontweight="bold", color=PASS if attained else FAIL,
+            fontsize=8.4, fontweight="bold", color=PASS if attained else FAIL,
             bbox=dict(facecolor="white", edgecolor="none", pad=0.8), zorder=8)
 
 
@@ -107,11 +107,11 @@ def write_triangles(ax, xs, y):
         ax.plot(x, y, marker="^", color=WARN, ms=3.4, clip_on=False, zorder=5)
 
 
-fig, axs = plt.subplots(2, 2, figsize=(7.16, 4.02), facecolor="white")
+fig, axs = plt.subplots(2, 2, figsize=(7.16, 4.45), facecolor="white")
 fig.subplots_adjust(left=0.082, right=0.985, bottom=0.118, top=0.928,
                     wspace=0.31, hspace=0.46)
 
-# (a) Injection moulding: part weight into 32.5 +/- 0.35 g band in 2 governed writes.
+# (a) Injection molding: part weight into 32.5 +/- 0.35 g band in 2 governed writes.
 s = BY["injection"]
 ax = axs[0, 0]
 target_band(ax, s)
@@ -121,20 +121,20 @@ trajectory(ax, xs, ys, s["attained"])
 for x, y in zip(xs, ys):
     if x == xs[-1]:
         ax.text(x - 0.06, y + 0.12, f"{y:.2f}", ha="right", va="bottom",
-                fontsize=6.2, color=INK)
+                fontsize=7.8, color=INK)
     else:
         ax.text(x, y - 0.13 if x else y + 0.12, f"{y:.2f}", ha="center",
-                va="top" if x else "bottom", fontsize=6.2, color=INK)
+                va="top" if x else "bottom", fontsize=7.8, color=INK)
 write_triangles(ax, xs[1:], 31.06)
 ax.text(0.97, 0.20, f"{s['writes']} governed writes", transform=ax.transAxes,
-        fontsize=6.4, color=SUB, ha="right",
+        fontsize=8.0, color=SUB, ha="right",
         bbox=dict(facecolor="white", edgecolor="none", pad=0.5))
 ax.set_xlim(-0.25, 2.35)
 ax.set_ylim(30.95, 32.95)
 ax.set_xticks(xs)
-ax.set_xlabel("Optimization round (0 = baseline)")
+ax.set_xlabel("Governed write index (0 = baseline)")
 ax.set_ylabel("Part weight (g)")
-ax.set_title("Injection moulding", pad=5)
+ax.set_title("Injection molding", pad=5)
 status(ax, s["attained"])
 style_ax(ax)
 panel_tag(ax, "(a)")
@@ -153,18 +153,18 @@ ax.plot(s["rounds"], s["final"], "o", color=PASS, mec=INK, mew=0.6, ms=5.0, zord
 for x, y in zip(xs, ys):
     if x == 0:
         ax.text(x + 0.12, y - 0.16, f"{y:.2f}", ha="left", va="top",
-                fontsize=6.0, color=INK)
+                fontsize=7.6, color=INK)
     else:
-        ax.text(x, y + 0.13, f"{y:.2f}", ha="center", fontsize=6.0, color=INK)
+        ax.text(x, y + 0.13, f"{y:.2f}", ha="center", fontsize=7.6, color=INK, zorder=7, bbox=dict(facecolor="white", edgecolor="none", pad=0.4))
 ax.text(s["rounds"] - 0.15, s["final"] + 0.13, f"{s['final']:.2f}", ha="right",
-        fontsize=6.2, color=PASS, fontweight="bold")
+        fontsize=7.8, color=PASS, fontweight="bold")
 ax.text(0.97, 0.08,
         f"{s['writes']} writes; compliant cost {s['cost']['firstCompliant']:.1f} -> {s['cost']['final']:.1f}",
-        transform=ax.transAxes, ha="right", fontsize=6.3, color=SUB)
+        transform=ax.transAxes, ha="right", fontsize=8.0, color=SUB)
 ax.set_xlim(-0.55, 13.6)
 ax.set_ylim(0, 4.55)
 ax.set_xticks([0, 2, 4, 6, 8, 10, 12])
-ax.set_xlabel("Optimization round (0 = baseline)")
+ax.set_xlabel("Round (0 = baseline)")
 ax.set_ylabel("Aerobic DO (mg/L)")
 ax.set_title("WWTP (A2O process)", pad=5)
 status(ax, s["attained"])
@@ -183,11 +183,11 @@ for x, p in zip(xs, s["traj"]):
     if p.get("phase") == "margin":
         ax.plot(x, p["pv"], marker="s", color=TRIM, ms=3.6, zorder=6)
 ax.text(0.55, 0.62, "margin trim\n(zone2 710 to 722 C)", transform=ax.transAxes,
-        fontsize=6.0, color=TRIM, ha="left", linespacing=1.2)
+        fontsize=7.6, color=TRIM, ha="left", linespacing=1.2)
 ax.text(0.03, 0.18, f"+{s['throughput']['gain']:.1f}% line speed\n(140 to {s['throughput']['finalSp']:.0f} m/min)",
-        transform=ax.transAxes, fontsize=6.1, color=PASS, ha="left", linespacing=1.25)
+        transform=ax.transAxes, fontsize=7.7, color=PASS, ha="left", linespacing=1.25)
 ax.text(0.97, 0.18, f"{s['writes']} governed writes", transform=ax.transAxes,
-        fontsize=6.3, color=SUB, ha="right")
+        fontsize=8.0, color=SUB, ha="right")
 ax.set_xticks(xs)
 ax.set_ylim(95, 140)
 ax.set_xlabel("Governed write index (0 = baseline)")
@@ -207,15 +207,15 @@ trajectory(ax, xs, ys, s["attained"])
 for x, y in zip(xs, ys):
     if x == xs[-1]:
         ax.text(x - 0.06, y + 0.5, f"{y:.2f}", ha="right", va="bottom",
-                fontsize=5.9, color=PASS, fontweight="bold", zorder=8,
+                fontsize=7.5, color=PASS, fontweight="bold", zorder=8,
                 bbox=dict(facecolor="white", edgecolor="none", pad=0.8))
     else:
         dy = 0.55 if x in (0, 1) else -0.72
         ax.text(x, y + dy, f"{y:.2f}", ha="center",
-                va="bottom" if dy > 0 else "top", fontsize=5.9, color=INK)
+                va="bottom" if dy > 0 else "top", fontsize=7.5, color=INK, zorder=7, bbox=dict(facecolor="white", edgecolor="none", pad=0.4))
 write_triangles(ax, xs[1:], 24.75)
 ax.text(0.03, 0.08, f"{s['writes']} writes / {s['distinctKnobs']} nodes",
-        transform=ax.transAxes, fontsize=6.3, color=SUB, ha="left")
+        transform=ax.transAxes, fontsize=8.0, color=SUB, ha="left")
 ax.set_xlim(-0.4, 3.4)
 ax.set_ylim(24.2, 29.2)
 ax.set_xticks(xs)
@@ -228,7 +228,7 @@ panel_tag(ax, "(d)")
 
 fig.text(0.5, 0.022,
          "Run 20260921184204-10lc: 4/4 objectives attained; triangles denote governed writes; squares denote margin trims.",
-         ha="center", va="bottom", fontsize=6.7, color=SUB)
+         ha="center", va="bottom", fontsize=8.4, color=SUB)
 fig.savefig(HERE / "fig-multiscenario-optimization.pdf", bbox_inches="tight", pad_inches=0.02)
 fig.savefig(HERE / "fig-multiscenario-optimization.png", dpi=400, bbox_inches="tight", pad_inches=0.02)
 plt.close(fig)

@@ -702,11 +702,12 @@ T1–T4 × N20）→ E2/E3/E4 → E5 检测 + TEP/SWaT 回放 → E6 HIL → E7 
 
 ```text
 环境块:与 §0 同一隔离环境块(3001 平台 + 4010 模拟器共存多场景)。
-命令:node bench/optloop.mjs --scenarios injection,wwtp,anneal --budget 60
+命令:node bench/optloop.mjs --scenarios injection,wwtp,anneal,biax --budget 75
 判据:退出码 0 = 每线 finalState=COMPLETED 且 PV 终值在目标带内且全部守卫满足。
 ```
 
-- **多场景共存**:injection-line / wwtp-line / anneal-line 同一模拟器实例并存(互不清场);
+- **多场景共存**:injection-line / wwtp-line / anneal-line / biax-line 同一模拟器实例并存(互不清场;
+  前三者 upsert 各自 id 引擎,biax 走 plantWhole 主位语义,`PUT /api/plant/config` 主位替换不动其他引擎);
   预设应用后按标签幂等建线(复用或新建),全节点 /export 真实 driverConfig。
 - **每线一路 Channel**:omp 优化总工(lead,督办/验收/核对数据链)+ omp 工艺工程师(worker,
   绑定本线全部写控(dcw,auto)与数采(daq,auto))。

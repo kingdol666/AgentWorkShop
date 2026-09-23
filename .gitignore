@@ -118,7 +118,5 @@ data.pre-clean-*/
 
 # 本地验证脚本的临时证据/运行目录(会话级;由 scripts/demo-*, scripts/proof-*, scripts/e2e-* 生成)
 .gw-*.txt
-.e2e-home-*/
-.e2e-dev-3457.log
-.e2e-start-3458.log
+.e2e-*
 .pnpm-store/

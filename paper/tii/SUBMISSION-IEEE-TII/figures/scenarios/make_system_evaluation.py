@@ -15,6 +15,7 @@ Data are frozen in scenario-fig-data.json (build-fig-data.mjs; assertions below
 fail loudly on stale input).
 """
 import json
+import re
 from pathlib import Path
 
 import matplotlib
@@ -106,7 +107,11 @@ fig.subplots_adjust(left=0.105, right=0.965, top=0.945, bottom=0.105,
 
 # (a) per-phase wall-time profile (real telemetry, log scale).
 ax = axs[0]
-ph = DATA["phaseProfile"]
+def _phase_key(pid: str):
+    import re as _re
+    m = _re.match(r"P(\d+)([a-z]?)$", pid)
+    return (int(m.group(1)), m.group(2)) if m else (99, "")
+ph = sorted(DATA["phaseProfile"], key=lambda p: _phase_key(p["id"]))
 names = [p["id"] for p in ph]
 vals = [max(p["s"], 0.05) for p in ph]
 y = range(len(ph))
@@ -116,16 +121,14 @@ ax.set_xlim(0.04, 2000)
 big = [(n, v) for n, v in zip(names, vals) if v >= 70]
 for n, v in big:
     i = names.index(n)
-    ax.text(v * 1.15, i, f"{v:.0f} s", va="center", fontsize=6.2, color=INK)
+    ax.text(v * 1.15, i, f"{int(v)} s", va="center", fontsize=6.2, color=INK)
 ax.set_yticks(list(y))
 ax.set_yticklabels(names)
 ax.invert_yaxis()
 ax.set_xticks([0.1, 1, 10, 100, 1000])
 ax.set_xticklabels(["0.1", "1", "10", "100", "1000"])
 ax.set_xlabel(f"Phase wall time (s, log scale) — total {DATA['totalWallMin']} min, 83/83 checks passed")
-ax.text(0.46, 0.02, "P5b: goal-driven LLM optimisation (omp, real engine)",
-        transform=ax.transAxes, ha="left", va="bottom", fontsize=6.0,
-        color=SUB)
+
 tii_ax(ax, "x")
 panel_tag(ax, "(a)")
 

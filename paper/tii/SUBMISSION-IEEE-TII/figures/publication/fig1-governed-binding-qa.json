@@ -1,32 +1,32 @@
 {
   "figure": "fig1-governed-binding",
-  "generator": "build_fig1_governed_v3.py",
-  "pipeline": "authoring geometry -> XeLaTeX + TikZ -> vector PDF",
+  "generator": "build_fig1_governed_v2.py",
   "size_pt": [
-    513.08,
-    221.1
+    513.12,
+    196.08
   ],
-  "size_mm": [
-    181.0,
-    78.0
+  "expected_pt": [
+    513.07,
+    195.59
   ],
-  "ieee_textwidth_pt": 516.0,
   "embedded_fonts": [
-    "BXWHJS+TimesNewRomanPS-ItalicMT",
-    "JHAFXZ+TimesNewRomanPSMT",
-    "NZLOTE+TimesNewRomanPS-BoldMT"
+    "AAAAAA+TimesNewRomanPS-BoldMT",
+    "BAAAAA+TimesNewRomanPSMT",
+    "CAAAAA+TimesNewRomanPS-ItalicMT"
   ],
-  "min_font_pt": 5.37,
-  "text_spans": 61,
-  "spans_outside_canvas": [
-    "* Readback is attempted only where the driver supports it\u037e fast PLC regulation and plant protection stay outside the agent-team l"
-  ],
-  "text_overlap_pairs": [
-    [
-      "readback \ua78fprocess observation \ua78fsubmitted judgment stay separate",
-      "verdict recorded"
-    ]
-  ],
-  "vector_drawings": 125,
-  "images_embedded": 0
+  "min_font_pt": 8.22,
+  "text_spans": 48,
+  "spans_outside_canvas": [],
+  "text_overlap_pairs": [],
+  "icons": [
+    "bot",
+    "clipboard-check",
+    "cpu",
+    "factory",
+    "file-text",
+    "gauge",
+    "network",
+    "users",
+    "wrench"
+  ]
 }

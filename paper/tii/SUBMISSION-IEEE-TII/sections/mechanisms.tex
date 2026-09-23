@@ -1,33 +1,30 @@
-% Declared here so both design-half figures pack consecutive page tops;
-% first references are in Sections IV-B and IV-C.
+% Fig.3 (runtime overview) is a double-column figure at the full text width;
+% Fig.4 (walkthrough composite) is a single-column figure at the column width.
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.61\textwidth]{figures/publication/AWS.drawio-print.jpg}
-\caption{Implemented supervisory workflow. A task carrying line, product,
-recipe, run, goal, and task identifiers enters an AgentTeam channel, which
-assigns lead/worker member identifiers and queries DAQ for a baseline and
-freshness. Governed execution then (i) resolves the member binding and admits the request against availability or approval, the hard range, and active limits;
-(ii) performs the semantic driver write and readback when supported; (iii)
-observes a DAQ response window; and (iv) records a non-actuating
-\texttt{dcw\_judge} verdict. If the goal is not reached and stable, the strategy
-may revise or stop. Compensation follows a separate route, and a stored-policy
-backstop may invoke source-specific route checks. The output is a reviewable
-intervention, not a guarantee of process success.}
+\includegraphics[width=\textwidth]{figures/publication/aws_fig3-flat.png}
+\caption{Implemented agent-team runtime. A natural-language goal enters the
+channel as a task; the lead agent decomposes and dispatches it, the analysis
+agent queries the knowledge base and DAQ logs to propose a setpoint, and the
+write agent executes the governed parameter write with SET-versus-ACT readback.
+The governance agent applies the safe-range-intersect-recipe interlock and
+optional human approval with signed history; retrieval spans the knowledge base
+and DAQ logs, and the runtime exposes WS/MCP/A2A/REST entry points. The verdict
+closes the loop; a reached goal is the outcome of this governed path, not a
+guarantee of process success.}
 \label{fig:chanloop}
 \end{figure*}
 
-% Original 2x2 walkthrough composite, placed single-column as requested.
-% -print.png is a LANCZOS downscale of aw_working-fig4-tall.png to print
-% resolution; UI pixels are unmodified.
+% Original 2x2 walkthrough composite at full column width; UI pixels authentic.
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{figures/walkthrough/aw_working-fig4-tall-print.jpg}
-\caption{The implemented path on the running operator surfaces: (1)~a device
-export becomes a semantic node with cadence, range, and driver; (2)~a binding
-attaches the node to a line, a device, and a recipe window; (3)~a channel
-deploys one lead and two workers; (4)~a governed closed loop opens an
-optimization record and stores a verdict. Running UI/API surfaces, not
-benchmark outcomes.}
+\caption{The implemented path on the running operator surfaces: (1)~provisioned
+nodes carry cadence, driver, and line assignment; (2)~a binding attaches the
+node to its bound device under the active process range and hold interval;
+(3)~a channel deploys one lead and two workers; (4)~a governed closed loop
+opens an optimization record and stores a verdict. Running UI/API surfaces,
+not benchmark outcomes.}
 \label{fig:walkthrough}
 \end{figure}
 
@@ -35,86 +32,106 @@ benchmark outcomes.}
 \label{sec:mech}
 A supervisory intervention must preserve distinctions that are often collapsed
 in an agent tool call: permission to propose, admission of a value, driver
-acceptance, readback, process response, a caller's verdict, and compensation. \system{} exposes these as separate, distinguishable evidence states (Figs.~\ref{fig:chanloop} and~\ref{fig:walkthrough}).
+acceptance, readback, process response, a caller's verdict, and compensation.
+\system{} exposes these as separate, distinguishable evidence states
+(Figs.~\ref{fig:chanloop} and~\ref{fig:walkthrough}).
 
 \subsection{Task, Observation, and Admission}
 \label{sec:objective}
-The strategy receives a task and goal in production context and decides what to propose and when to stop. The platform governs execution; decision variables are semantic node parameters---pressure, dosing rate, line speed, rail width---in engineering units. Authority belongs to deployed member--node bindings, not the channel, prompt, or task template.
+The strategy receives a task and goal in production context and decides what
+to propose and when to stop; the platform governs execution. Decision variables
+are semantic node parameters---pressure, dosing rate, line speed, rail
+width---in engineering units. Authority belongs to deployed member--node
+bindings, not the channel, prompt, or task template.
 
-Before a proposal, \texttt{daq\_query} obtains a baseline or response window and
-reports freshness. For an ordinary agent setpoint request on node $n$, the
+Before a proposal, \texttt{daq\_query} obtains a baseline or response window
+and reports freshness. For an ordinary agent setpoint request on node $n$, the
 implemented admission interval is
 \begin{equation}
 \mathcal{I}_n(t)=\mathcal{H}_n\cap\mathcal{B}_n
                  \cap\mathcal{P}_n(t)\cap\mathcal{R}_n(t),
 \label{eq:admission}
 \end{equation}
-where $\mathcal{H}_n$ is the hard engineering range and the remaining terms are
-applicable baseline, active-product, and active-recipe limits. Missing optional
-limits add no restriction. This intersection constrains submitted values; it is
-not a learned feasibility region or a physical safety certificate. Availability,
-binding state, and approval policy are checked separately.
+where $\mathcal{H}_n$ is the hard engineering range and the remaining terms
+the baseline, active-product, and active-recipe limits; missing optional
+limits add no restriction. The intersection constrains submitted values---it
+is not a learned feasibility region or a physical safety certificate---and
+availability, binding state, and approval policy are checked separately.
 
 \subsection{Semantic Write and Source-Specific Routes}
 \label{sec:nodeexec}
 \label{sec:writepath}
 \label{sec:paramlayer}
-A semantic card exposes quantity, unit, precision, range, current value,
-freshness, and recipe context. The controller resolves the member binding and
-active limits, then the driver serializes the command; readback is attempted
-only when supported and closes the command path, not the process-response path.
+A semantic card exposes quantity, unit, precision, range, value, freshness,
+and recipe context; the controller resolves the binding and limits, then the
+driver serializes the command. Readback, when supported, closes the command
+path, not the process-response path.
 
-After a successful agent or manual write, the node installs a configurable
-post-write hold window, \texttt{writeLockSeconds}, whose default is
-\resWriteLock: a further agent/manual request for the same node during that
-window receives HTTP 429 \texttt{WRITE\_FREQUENT}. The lock is installed only after the driver reports success; recipe-dispatch and rollback writes are exempt because they use separate operational routes, zero disables it, and \texttt{AW\_BENCH\_MODE=1} bypasses it for benchmark harnesses. The hold is per node and applies only to agent-origin requests: it guards a supervisory loop whose response window may be comparable to the sampling cadence, and it is not a rate limit on the plant.
+After a successful agent or manual write, the node installs a post-write hold
+window (\texttt{writeLockSeconds}, default \resWriteLock): a further
+agent/manual request during the window receives HTTP 429
+\texttt{WRITE\_FREQUENT}. The lock is installed only after driver success;
+recipe-dispatch and rollback writes are exempt, zero disables it, and
+\texttt{AW\_BENCH\_MODE=1} bypasses it for benchmark harnesses. The hold is
+per node and agent-origin only: it guards a loop whose response window may be
+comparable to the sampling cadence, not a rate limit on the plant.
 
-Guards vary by source, as shown in Fig.~\ref{fig:chanloop}: ordinary agent writes use the full binding and admission path; recipe dispatch supplies run context and applies its route-specific checks; hold heartbeats share runtime write exclusion but establish no member authority; line start installs active context before dispatching recipe parameters individually, and stop clears that context and closes retained open records. These multi-step operations are not atomic with device state.
+Guards vary by source:
+\begin{itemize}
+\item ordinary agent writes---the full binding and admission path;
+\item recipe dispatch---run context plus route-specific checks;
+\item hold heartbeats---periodic writes that keep an operational line hold
+  alive; they share runtime write exclusion but confer no member authority;
+\item line start---active context installed before recipe parameters dispatch
+  individually;
+\item line stop---context cleared and retained open records closed.
+\end{itemize}
+These multi-step operations are not atomic with device state.
 
-For a request $u_n$, the framework stores the attempted actor and context,
-executes the driver call, and stores write/readback status, so a driver error,
-missing readback, or bookkeeping failure remains visible rather than being
-recast as process success. Agent-origin ownership and cooldown checks reduce
-some conflicting updates but are not universal guards for manual, recipe, or
-system routes.
+
 
 \subsection{Observation, Judgment, and Compensation}
 \label{sec:agentloop}
-An accepted write opens an optimization record containing the prior and
-requested values, applicable limits, actor, and timestamps. The strategy then
-queries process observations over a response window.
-\texttt{dcw\_judge} records \texttt{keep}, \texttt{rollback}, or \texttt{uncertain} plus a reason; it performs no actuation and does not independently validate the evidence, so a scripted \texttt{keep} can coexist with a missed objective. The verdict is stored with the record it closes and with the response window that was actually queried, so a later reader can see what evidence was in front of the caller at the time, and a verdict is never rewritten in place: a compensation or a backstop action adds a new record instead of editing the previous one.
+An accepted write opens an optimization record with the prior and requested
+values, applicable limits, actor, and timestamps. \texttt{dcw\_judge} records
+keep, rollback, or uncertain plus a reason; it performs no actuation and does
+not independently validate the evidence, so a scripted keep can coexist with a
+missed objective. The verdict is stored with the record it closes and the
+response window actually queried, so a later reader sees the evidence in front
+of the caller; a verdict is never rewritten---compensation or a backstop
+action adds a new record.
 
-Compensation is a new, separately admitted write to a stored baseline or anchor-derived value; it may fail after the original command succeeded, and a multi-node sequence may only partially complete. Recipe rollback restores a definition, not physical PLC values. These separations keep command status, record status, and process recovery independently inspectable.
-Fig.~\ref{fig:walkthrough} shows the resulting observe--write--judge path end to end, from device export through binding, channel deployment, and the recorded verdict.
+Compensation is a new, separately admitted write that may fail or partially complete; recipe rollback restores a definition, not physical PLC values. These separations keep command status, record status, and process recovery independently inspectable, and Fig.~\ref{fig:walkthrough} shows the resulting observe--write--judge path from device export to the recorded verdict.
 
-A stored-policy backstop periodically evaluates open records: in the
-implemented default it waits at least 120\,s, checks no more often than every
-30\,s, and triggers after at least three returned points or bucket averages are
-outside the stored window; automatic recovery is attempted only while fewer than two retained records for the node are already marked rolled back. Asynchronous queries, retained-history counting, and later record changes mean this cadence is neither a deadline nor a formal run-time assurance bound.
+A stored-policy backstop evaluates open records: it waits at least 120\,s, checks at most every 30\,s, and triggers after three returned points or averages leave the window; recovery runs only while fewer than two retained records are already rolled back. The cadence is neither a deadline
+nor a formal run-time assurance bound.
 
 \subsection{Human Approval Boundary}
 \label{sec:hitl}
 Manual bindings insert a timed approval wait before an agent setpoint or
-physical compensation request; automatic bindings omit the wait but retain
-applicable checks. The pending request shows member, node, requested value,
-request-time interval, and expiry. Approval reserves neither the interval nor
-the device state, so binding and admission are checked again before execution.
-Expiry and refusal are recorded separately, and duplicate pending requests are
+compensation request; automatic bindings omit the wait but keep the checks.
+The pending request shows member, node, value, interval, and expiry; approval
+reserves neither interval nor device state, so binding and admission are
+re-checked at execution. Expiry and refusal are recorded; duplicates
 suppressed.
 
-The current decision endpoint authenticates a user but does not enforce a
-line-scoped approver role, and reads, verdict recording, and some configuration
-operations do not use physical-write approval. Thus this mechanism demonstrates
-workflow mediation, not segregation of duties or certified human supervision.
+The decision endpoint authenticates a user but does not enforce a line-scoped
+approver role, and reads, verdict recording, and some configuration changes do
+not use physical-write approval: this mechanism demonstrates workflow
+mediation, not segregation of duties or certified human supervision.
 
 \subsection{Design Rationale and Reuse Boundary}
 \label{sec:rationale}
 The strategy engine is replaceable rather than trusted as a control primitive;
-authorization, readback, task termination, and process attainment remain
-distinct. The stable plane retains bindings, semantic I/O, evidence, approval,
-compensation, and backstop handling, while a scenario supplies its blueprint,
-limits, objective, response window, and policy. This confines scenario-specific
-work without claiming physical portability.
+authorization, readback, task termination, and attainment remain distinct. The
+stable plane retains bindings, semantic I/O, evidence, approval, compensation,
+and backstop handling; a scenario supplies blueprint, limits, objective,
+response window, and policy---confining scenario-specific work without
+claiming physical portability.
 
-Two rules keep that boundary stable. First, scenario code may declare and configure but may not execute plant I/O: blueprints, signal maps, guards, and policies are data and strategy, while every write still passes through admission, driver dispatch, and evidence capture. Second, the platform never infers a process objective; attainment is computed by the scenario predicate, so the same records can be re-evaluated against a revised predicate without rewriting history.
+Two rules keep the boundary stable: scenario code may declare and configure
+but never executes plant I/O---blueprints, signal maps, guards, and policies
+are data and strategy, and every write still passes admission, driver
+dispatch, and evidence capture; and the platform never infers a process
+objective---attainment is computed by the scenario predicate, so records can
+be re-evaluated against a revised predicate without rewriting history.

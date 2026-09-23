@@ -62,23 +62,25 @@ orchestration, field-protocol integration, production context, execution
 authority, and intervention evidence are commonly implemented as
 application-specific logic. This paper presents AgentWorkShop, a reusable
 agent-team supervisory framework that connects deployed team identities to
-semantic data-acquisition and write-control nodes through explicit
-capabilities. The framework resolves line, product, recipe, and run context at
-execution time and records admission, approval, actuation, readback, process
+semantic data-acquisition (DAQ) and write-control (DCW) nodes through explicit
+capabilities, resolves line, product, recipe, and run context at execution
+time, and records admission, approval, actuation, readback, process
 observation, submitted judgment, and compensation as distinguishable evidence
 states. Five protocol families, self-describing node contracts, versioned
-production objects, plugin driver interfaces, and a typed SDK provide common
-integration surfaces; scenario-specific models, objectives, guards, and control
-policies remain external inputs. Evaluation uses real protocol stacks connected
-to author-implemented dynamic simulators, with deterministic external policies
-invoking the governed tools; no language-model decision quality or optimization-algorithm superiority is claimed. In an integrated reference run, 83 of 83 checks pass: configured out-of-window probes are rejected on the
-writable lines; single-node and nine-device AgentTeam missions both close their
-governed loops; and all four scripted process missions attain their objective
-predicates. Task completion, device readback, and process attainment remain
-separately recorded, so their agreement in this run is evidence rather than a
-collapsed status. The results support an inspectable, simulation-tier
-architecture for reusable industrial supervisory execution, not a certified
-safety or autonomous-control function.
+production objects, plugin driver interfaces, and a typed SDK form the common
+integration surface; scenario-specific models, objectives, guards, and control
+policies remain external inputs. A four-question evaluation on real protocol
+stacks---governance closure and attribution on five stacks with a four-arm
+ablation, agent-team missions on one node and a nine-device line, a
+deterministic closed loop against an offline optimum, and four concurrent
+process missions---is driven by deterministic external policies through the
+governed tools. In the reference run all 83 checks pass: every configured
+out-of-window probe is intercepted with no false block, both missions close
+their governed loops, and all four missions attain their objective predicates,
+while task completion, readback, and attainment remain separately recorded, so
+their agreement is evidence rather than a collapsed status. The results support
+an inspectable, simulation-tier architecture for reusable industrial
+supervisory execution, not a certified safety or autonomous-control function.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -100,7 +102,7 @@ Agent teams, industrial informatics, recipe optimization, supervisory control, w
 % restore the IEEE 8pt reference size and the tight IEEE entry spacing.
 \begingroup
 \footnotesize
-\setlength{\bibsep}{2.5pt}
+\setlength{\bibsep}{2pt}
 \bibliography{refs}
 \endgroup
 

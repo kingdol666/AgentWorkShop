@@ -8,17 +8,11 @@ hold and the governed closed loop reaches $J/J^{*}$ between \resControllerMin{} 
 still the caller's verdict, a completed task is still a workflow state, and a
 process predicate is still computed from subsequent observations.
 
-The separation supports diagnosis: a binding or range rejection calls for a
-permission change, a driver or readback failure for execution investigation, and
-an accepted write followed by an adverse response for revision or compensation.
-The two reverted blower steps in the wastewater mission show that the verdict,
-not the write count, identifies a rejected proposal.
+The separation supports diagnosis: a range rejection calls for a permission change, a driver or readback failure for execution investigation, and an accepted write followed by an adverse response for revision or compensation. The wastewater mission's two reverted blower steps show that the verdict, not the write count, identifies a rejected proposal.
 
 \subsection{Validity and Reproducibility}
 The snapshot fixes the run identifier, seed, commit, harness fingerprint, and raw
-artifacts. Initial state, asynchronous sampling, response windows, and simulator
-timing still affect deterministic policies; the controller optimum and the
-scenario predicates are internal oracles; and the ablation has three deterministic repetitions and therefore supports mechanism attribution, not statistical inference; and latencies are environment observations, not service-level bounds. Evidence remains simulation-tier, from author-implemented dynamic simulators rather than validated digital twins. No physical-device campaign, operator study, TEP/SWaT replay, or external-framework comparison is reported; the four process models broaden structural variety without showing transfer to actual equipment; and records lack run identifiers, so poorly bounded queries may mix production runs.
+artifacts. Initial state, asynchronous sampling, response windows, and simulator timing still affect deterministic policies; the controller optimum and the scenario predicates are internal oracles; the ablation has three deterministic repetitions and therefore supports mechanism attribution, not statistical inference; and latencies are environment observations, not service-level bounds. Evidence remains simulation-tier, from author-implemented dynamic simulators rather than validated digital twins. No physical-device campaign, operator study, TEP/SWaT replay, or external-framework comparison is reported; the four process models broaden structural variety without showing transfer to actual equipment; and records lack run identifiers, so poorly bounded queries may mix production runs.
 
 \subsection{Deployment Boundaries}
 Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
@@ -37,11 +31,11 @@ failure tests \cite{eemua191}.
 
 \section{Conclusion}
 \label{sec:conclusion}
-\system{} contributes a reusable supervisory execution architecture rather than a
-new process optimizer: a stable path linking agent-team identities, semantic
-industrial nodes, production context, governed writes, readback, observations,
+\system{} contributes a reusable supervisory execution architecture rather
+than a new process optimizer: a stable path linking agent-team identities,
+semantic nodes, production context, governed writes, readback, observations,
 verdicts, and compensation, exercised by a \resPhases-phase suite, two
-AgentTeam missions, a three-seed closed loop, and four process missions. In this run five protocol stacks execute through
+AgentTeam missions, a three-seed loop, and four process missions. In this run five protocol stacks execute through
 the common node abstraction, all configured full-governance probes are rejected,
 and all four mission predicates hold, while the records keep command acceptance,
 readback, submitted judgment, and task completion distinct from those predicates.

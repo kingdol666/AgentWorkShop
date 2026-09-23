@@ -14,7 +14,7 @@ scheduler, approval service, or persistence code.
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.75\textwidth]{figures/publication/fig2-architecture.pdf}
+\includegraphics[width=\textwidth]{figures/publication/fig2-architecture.pdf}
 \caption{System architecture and execution boundaries. The platform hosts team
 routing, binding and approval, industrial supervision, and records. Operator
 interfaces sit above it; agent engines, data stores, protocol endpoints, and
@@ -61,78 +61,104 @@ plant I/O & Optional plugin, external controller, or deployment adapter \\
 \subsection{Supervisory Core and Nodes}
 The Node.js core hosts channel routing, industrial services, and protocol
 adapters. A channel contains a lead, workers, tasks, messages, and retrievable
-memory; WebSocket, MCP, A2A, REST, CLI, and TUI entry points let a team be
-deployed by a UI, an external harness, or a programmatic client. Engine adapters
-preserve member and node identity across runtimes, and channel membership alone
-confers no write authority.
+memory, deployed through WebSocket, MCP, A2A, REST, CLI, or TUI entry points; engine adapters preserve
+member and node identity across runtimes, and channel membership alone confers
+no write authority.
 
 DAQ nodes convert device readings to engineering quantities; DCW nodes translate
 engineering setpoints into driver commands and, where supported, readback.
-Per-node runtimes manage timing and in-flight work, and gateway services supply
-connection state, active recipe context, and write bookkeeping. The built-in
-semantic surface covers Modbus TCP, Modbus RTU-over-TCP, OPC UA, MQTT, and
-HTTP/REST. The deployment connects to author-implemented dynamic process simulators through the same node and driver contracts a plant deployment would use; the simulators are deterministic per seed but are not validated digital twins. This is the first reuse boundary: a scenario
-declares signals, units, scaling, precision, and driver configuration, and the
-team loop remains unchanged. Fast regulation and independent protection stay
-in plant controllers.
+Per-node runtimes manage timing; gateway services supply
+connection state, recipe context, and write bookkeeping. The built-in semantic
+surface covers Modbus TCP, Modbus RTU-over-TCP, OPC UA, MQTT, and HTTP/REST.
+The deployment reaches author-implemented dynamic simulators through the same
+node and driver contracts a plant would use; they are deterministic per seed
+but not validated digital twins. First reuse boundary: a scenario declares
+signals, units, scaling, precision, and driver configuration, and the team loop
+is unchanged; fast regulation and independent protection stay in plant
+controllers.
 
-Driver contracts are deliberately narrow. A driver declares how a semantic
+Driver contracts are deliberately narrow: a driver declares how a semantic
 quantity maps to its transport payload, whether the endpoint is writable, and
-whether a readback is available; the controller, not the driver, resolves member
-authority and active limits. Connection, transport, and protocol errors are stored with the request instead of being folded into one success flag, so a timeout, a rejected frame, and a written-but-unconfirmed value remain distinguishable. Register addresses, data types, and byte order appear only here, keeping engineering quantities free of vendor-specific encoding at higher layers, so adding a fieldbus family leaves the team loop untouched.
+whether a readback is available; the controller resolves member authority and
+active limits. Connection, transport, and protocol errors are stored with the
+request instead of one success flag, so a timeout, a rejected frame, and a
+written-but-unconfirmed value remain distinguishable. Register addresses and
+byte order appear only here, so adding a fieldbus family leaves the loop
+untouched.
 
-Acquisition is deliberately supervisory rather than hard real-time. Each DAQ
-node runs its own cadence with due-time scheduling and in-flight tracking under
-a rotating sweep, so a slow endpoint delays only its own samples. Every reading
-carries a timestamp, a quality state, and a freshness age, and the response
-window later used by a verdict is a query over that history rather than a
-blocking read. This lets a proposal be judged against the process response rather than the command echo---and is why a bucket average can lag the device by one cadence.
+Acquisition is supervisory rather than hard real-time: each DAQ node runs its
+own cadence under a rotating sweep, so a slow endpoint delays only its own
+samples. Every reading carries a timestamp, quality state, and freshness age,
+and the response window used by a verdict is a query over that history, not a
+blocking read---which is why a bucket average can lag the device by one cadence.
 
 \subsection{Bindings, Context, and Reuse Boundaries}
 A member--node binding grants access to a sanctioned tool on a specific node and
-selects automatic or approval-mediated execution. Operator line permissions (none, read-only, and operate) authorize binding creation and mutation; runtime invocation is then authorized by the persisted member--node capability, not channel membership. Hard, baseline, product, and recipe intervals are resolved and re-checked at every request rather than cached: revoking a binding or switching the active recipe takes effect on the next request, without redeploying the team. The same request path serves an operator console, an external harness, and an agent engine, so authority does not depend on the client; only the evidence record differs, carrying the acting member and the proposal's origin.
+selects automatic or approval-mediated execution; line permissions (none,
+read-only, operate) authorize binding creation and mutation, and runtime
+invocation is authorized by the persisted capability, not channel membership.
+Intervals are re-checked every request rather than cached: revoking a binding
+or switching the recipe takes effect on the next request. The same path serves
+a console, a harness, and an agent engine---authority does not depend on the
+client; only the evidence record differs, carrying the acting member and
+proposal origin.
 
-Production objects are versioned rather than overwritten. A recipe is a versioned named definition, so a run is dispatched against a known-good version, reverted non-destructively, and later compared with the values actually applied; a governed intervention is read against the definition that was active when it was admitted, not against the configuration current at inspection time. The extension surface follows the same rule: a
-plugin may register server hooks, routes, agent tools, DAQ drivers, and browser
-panels, but only through sanctioned services rather than plant I/O of its own,
-so an added driver inherits admission, readback, and evidence capture.
+Production objects are versioned rather than overwritten: a recipe is a
+versioned named definition, dispatched against a known-good version, reverted
+non-destructively, and compared with the values actually applied; an
+intervention is read against the definition active when it was admitted.
+Plugins register hooks, routes, agent tools, drivers, and panels only through
+sanctioned services, so an added driver inherits admission, readback, and
+evidence capture.
 
-The second reuse boundary is exercised by a reference onboarding adapter built on the platform APIs: it reads a scenario blueprint, performs an idempotent ``ensure'' over the registered simulator endpoints, exports driver configurations, creates one semantic node per signal, and attaches a recipe; existing lines are reused by scenario label without rebuilding the team. The SDK exposes the same REST and typing surface to ordinary programs, and runtime settings are schema-described and hot-reloadable, so deployment policies and sampling cadences change without editing the mission loop.
+The second reuse boundary is a reference onboarding adapter
+(Section~\ref{sec:onboarding}); the SDK exposes the same surface to ordinary
+programs, and runtime settings are hot-reloadable.
 
-The stores share identifiers rather than a transaction domain: platform state uses SQLite and files; measurement and object backends use TimescaleDB and MinIO with local fallbacks. A device may therefore accept a write even if later bookkeeping fails, and records lack a run identifier, so time-range queries can cross run boundaries unless callers constrain them---boundaries disclosed rather than hidden.
+The stores share identifiers rather than a transaction domain: platform state
+uses SQLite and files, and measurement and object backends use TimescaleDB and
+MinIO with local fallbacks. A device may accept a write even if bookkeeping
+fails, and records lack a run identifier, so time-range queries can cross runs
+unless bounded---boundaries disclosed rather than hidden.
 
-For a BOPET thickness task, a worker queries the thickness node and proposes changes to casting speed, fast-roll speed, or rail width through bound DCW nodes; the same mission pattern serves injection molding, WWTP, and annealing with only blueprint, guards, and policy differing. Task completion remains distinct from device acknowledgment and target attainment.
+A BOPET worker proposes casting-speed, fast-roll, or rail-width changes through
+bound DCW nodes; the same mission pattern serves the other three scenarios with
+only blueprint, guards, and policy differing. Task completion remains distinct
+from device acknowledgment and target attainment.
 
 \subsection{Reference Scenario-Onboarding Contract}
-The reference integration follows a bounded onboarding contract rather than duplicating the supervisory application: the engineer declares a blueprint of device and signal identifiers, engineering units, writable/read-only roles, initial setpoints, and plant-model parameters. The platform performs a
-differential ``ensure'' pass---creating missing devices, repairing drifted
-signals, verifying ports and connectivity, and loading the scenario model
-without disturbing other registered lines---projects the blueprint into
-semantic DAQ/DCW nodes and a recipe, and tags the line so a later run can reuse
-it idempotently. A channel is then instantiated from the common team template
-with bindings to the required nodes, and a mission supplies the objective, guards, response windows, and policy; every observation, write, and judgment flows through the same governed services. The adapter demonstrates
-reuse of platform services, not configuration-only commissioning of arbitrary
-physical plants. The ensure pass is differential and idempotent, so a scenario
-can be re-applied after a partial failure, and the projection is non-destructive
-because each scenario is tagged and its nodes resolved through that tag.
+\label{sec:onboarding}
+The reference integration follows a bounded onboarding contract: the engineer
+declares a blueprint of devices, signals, units, roles, initial setpoints, and
+plant-model parameters; a differential ``ensure'' pass creates missing devices,
+repairs drift, verifies connectivity, and loads the model without disturbing
+other lines, projects the blueprint into semantic nodes and a recipe, and tags
+the line for idempotent reuse. A channel is instantiated from the common team
+template with bindings to the required nodes; a mission supplies the objective,
+guards, response windows, and policy, and every observation, write, and
+judgment flows through the same governed services. The adapter demonstrates
+reuse of platform services, not configuration-only commissioning of physical
+plants; the pass is idempotent and the projection non-destructive to other
+tagged lines.
 
 \subsection{Governed Optimization Task Lifecycle}
 \label{sec:tasklifecycle}
-A governed optimization task is a life cycle rather than a single tool call, and \system{} exposes each transition separately. The task enters a channel carrying goal, line, product, recipe, run, and task identifiers; a lead member claims it and dispatches the work to a worker holding member--node bindings on the relevant nodes. The worker then repeats one fixed
-job: read the controlled quantity over a bounded time window, propose a single
-setpoint inside the interval resolved for that request, invoke the governed
-write, wait for the process response, and record a verdict.
-Section~\ref{sec:procedure} shows this path in operation.
+A governed optimization task is a life cycle rather than a single tool call, and \system{} exposes each transition separately. The task enters a channel carrying goal, line, product, recipe, run, and task identifiers; a lead member claims it and dispatches the work to a worker holding member--node bindings on the relevant nodes. The worker repeats one fixed job: read the controlled quantity over a bounded window, propose a setpoint inside the resolved interval, invoke the governed write, wait for the response, and record a verdict. Section~\ref{sec:procedure} shows this path in operation.
 
-Every iteration leaves more than a written value. The time-range read returns samples, freshness, and the active window; the write opens an optimization record holding the prior and requested values, the admitting interval, the acting member, and timestamps; readback, where supported, closes the command path. The parameter journal attributes the change to its source; attainment is evaluated against the scenario predicate, and the task closes with a workflow terminal state (Section~\ref{sec:mech} gives the admission, readback, judgment, and compensation semantics).
+Every iteration leaves more than a written value: the write opens an
+optimization record with the prior and requested values, the admitting
+interval, the acting member, and timestamps; readback, where supported, closes
+the command path. The parameter journal attributes the change to its source;
+attainment is evaluated against the scenario predicate, and the task closes
+with a workflow terminal state (Section~\ref{sec:mech} gives the underlying
+semantics).
 
-This separation bounds what ``automatic optimization'' means here. The framework
-automates the execution of the loop---reading process state, admitting and
-applying candidate setpoints, waiting for a response, recording evidence, and
-accepting or compensating the intervention. It does not prescribe a search
-algorithm, choose the stopping rule, or claim that a language model
-autonomously selects the best action. A controller, a scripted policy, a
-conventional optimizer, or an agent engine may occupy the strategy slot, while
-authority, evidence, and closure remain platform responsibilities. A mission can
-therefore reach its workflow terminal state while missing the process objective,
-and the two are never merged into one status.
+This separation bounds what ``automatic optimization'' means: the framework
+automates the loop---reading state, admitting and applying setpoints, waiting
+for a response, recording evidence, accepting or compensating---and does not
+prescribe a search algorithm or claim that a language model autonomously
+selects the best action. A controller, a scripted policy, a conventional
+optimizer, or an agent engine may occupy the strategy slot; authority,
+evidence, and closure remain platform responsibilities. A mission can reach its
+terminal state while missing the process objective, and the two are never
+merged.

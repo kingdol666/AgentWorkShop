@@ -11,20 +11,20 @@ instantiate is the one shown in Fig.~\ref{fig:walkthrough}.
 
 \subsection{Testbed, Evidence Snapshot, and Scope}
 \label{sec:testbed}
-The snapshot is integrated run \resRun{} (seed \resSeed, commit \resCommit, harness \resHarness, completed \resEvidenceDate); raw reports and mission logs are archived under that run identifier, and the ablation companion is \resAblationRun. The simulators behind the five stacks are deterministic per seed but not validated digital twins. Deterministic scripted policies, not language models, call the governed tools under a deployed member identity; two live agent-engine turns serve as a slot-occupancy check only, and the four-scenario campaign runs one trajectory per scenario at the fixed seed-42 initial states. Physical-plant transfer, safety certification, and optimizer ranking remain out of scope.
+The snapshot is integrated run \resRun{} (seed \resSeed, commit \resCommit, harness \resHarness, completed \resEvidenceDate), archived with its raw reports and mission logs; the ablation companion is \resAblationRun. The simulators behind the five stacks are deterministic per seed but not validated digital twins. Deterministic scripted policies, not language models, call the governed tools under a deployed member identity. The standing single-node preset is a cast-film extrusion line; its objective $J$ aggregates five observed process quantities (larger is better) and the single-node mission tunes the die-head heater setpoint ($^{\circ}$C). Two live agent-engine turns serve as a slot-occupancy check; the campaign runs one trajectory per scenario at the fixed seed-42 initial states. Physical-plant transfer, safety certification, and optimizer ranking remain out of scope.
 
 \subsection{Test Procedure and System-Level Profile}
 \label{sec:procedure}
 The procedure is one \resPhases-phase integrated suite scoring
 \resChecksPass{}/\resChecksTotal{} checks with no warnings or failures, an
-author-defined regression summary. Each phase probes one claim: preset loading against an offline optimum $J^{*}=\resJstar$; provisioning, DAQ, governed writes, and out-of-window interception on five stacks; the observe--write--judge cycle; the AgentTeam missions; records, rollback, approval, audit, and alarms; recipe lifecycle and the parameter layer; the controller benchmark; the second preset; the backstop drill; and the four-scenario campaign.
+author-defined regression summary. Each phase probes one claim: preset loading against an offline optimum $J^{*}=\resJstar$; provisioning, DAQ, governed writes, and interception on five stacks; the observe--write--judge cycle and the AgentTeam missions; the record, recipe, approval, and parameter-layer drills; the controller benchmark, the second preset, the backstop drill, and the campaign.
 
-Fig.~\ref{fig:systemexec} reports two system-level metrics. Panel~(a) is each phase's wall time on a log scale---the end-to-end clock of all twenty phases, from preset provisioning through the four-scenario campaign---and it answers where the run's \resTotalWall{} actually goes. Three tiers appear. Deterministic governance steps---admission, binding checks, record writes, recipe lifecycle---complete in milliseconds to seconds: the platform's own cost per intervention is validation logic, not optimization work. The long tail belongs to the replaceable strategy slot and to stored observation cadences: the two live agent-engine turns take \resLlmWall{} and \resGoalWall, and the backstop drill spans \resBackstop{} at the stored evaluation cadence. This is the intended cost shape: the framework stays thin, and the expensive tiers are the ones a deployment would swap or re-time. Panel~(b) is the governed closed-loop objective $J$ after two writes, normalized by the simulator's offline optimum $J^{*}$; it measures how closely a permission-checked, journaled loop follows an oracle policy that sees the model. Three seeds land between \resControllerMin{} and \resControllerMax{} with no write rejected, previewing Q3.
+Fig.~\ref{fig:systemexec} reports two system-level metrics. Panel~(a) is each phase's wall time on a log scale, answering where the run's \resTotalWall{} actually go; three tiers appear. Deterministic governance steps---admission, binding checks, record writes, recipe lifecycle---complete in milliseconds to seconds, so the platform's cost per intervention is validation logic. The long tail sits in the replaceable strategy slot and the stored observation cadences: the live agent-engine turns (P5, P5b) take \resLlmWall{} and \resGoalWall, and the backstop drill (P8b) spans \resBackstopDrill, within which the system-judged rollback fires at \resBackstop{}---the framework stays thin, and the expensive tiers are the ones a deployment would swap. Panel~(b) is the quality tier: the governed closed-loop objective $J$ after two writes, normalized by the offline optimum $J^{*}$; all three seeds land within 3.5 percentage points of the oracle and within one point of one another (exact ratios in Section~\ref{sec:controller}).
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.68\columnwidth]{figures/scenarios/fig-system-evaluation.pdf}
-\caption{Run \resRun at system level. (a)~What each phase of the suite costs in clock time (log scale): provisioning, governance drills, missions, and the campaign; deterministic governance phases are short, while the two live agent-engine turns and the cadence-bound backstop drill dominate. (b)~Closed-loop objective $J$ after two governed writes as a fraction of the offline optimum $J^{*}$, per seed; no write is rejected, and the oracle gap is expected. Panel (a) is environment telemetry, not a service-level bound.}
+\includegraphics[width=\columnwidth]{figures/scenarios/fig-system-evaluation.pdf}
+\caption{Run \resRun at system level. (a)~What each phase of the suite costs in clock time (log scale). Bar codes are the harness phase identifiers: P0 bootstrap, P1 preset and offline optimum, P2--P3 provisioning and protocol drills, P4 and P4b--P4f governance and record drills, P4m the single-node mission, P5 and P5b the live agent-engine turns, P6 the controller benchmark, P7 multimodal acquisition, P8 second-preset commissioning, P8b the backstop drill, P9 platform subsystems, P10 the nine-device line, and P11 the four-scenario campaign. (b)~Quality tier: closed-loop objective $J$ after two governed writes as a fraction of the offline optimum $J^{*}$, per seed, with no write rejected. Panel (a) is environment telemetry, not a service-level bound.}
 \label{fig:systemexec}
 \end{figure}
 
@@ -33,21 +33,20 @@ Fig.~\ref{fig:systemexec} reports two system-level metrics. Panel~(a) is each ph
 On the five protocol lines the suite stores \resDaqSamples{} DAQ samples through
 real drivers, including a Modbus RTU-over-TCP satellite.
 Governed writes are accepted and read back on Modbus TCP, OPC~UA, MQTT, and HTTP
-with per-line medians of \resTcpP, \resOpcP, \resMqttP, and \resHttpP; the median over all governed writes pooled across the four lines is \resWriteP. The identical admission, record, and verdict code path serves every request regardless of stack, so the residual spread between the fastest and slowest line is attributable to the transports rather than to the governance logic. Each of the four writable lines rejects 6/6 configured out-of-window probes while accepting its legal write, so all 24 probes are intercepted and the interlock discriminates between violating and admissible requests rather than merely blocking.
+with per-line medians of \resTcpP, \resOpcP, \resMqttP, and \resHttpP; the median over all governed writes pooled across the four lines is \resWriteP. The identical admission, record, and verdict code path serves every request regardless of stack, so the residual spread between fastest and slowest line is attributable to the transports. Each of the four writable lines rejects 6/6 configured out-of-window probes while accepting its legal write, so all 24 probes are intercepted and the interlock discriminates between violating and admissible requests rather than merely blocking.
 
 Two drills then separate the truth paths that a single success flag would
 collapse. A frozen-measurement drill accepts a write and a consistent readback
 while the measurement stays out of window, and the backstop records a system-judged rollback \resBackstop{} later: readback closes the command path, the backstop closes the record, and neither is a settling time. A second preset with different signals and dynamics
 is commissioned by configuration alone: three writable lines and two satellite
 acquisition nodes are created with \resPortCode{} framework code changes, five
-nodes sample, and the writable lines reject \resPortFfive{} probes. Counting both presets, 33 configured probes are rejected across seven writable lines (four in the first preset, three in the second), so the reuse claim is exercised rather than asserted: the same admission code produced the same discrimination on signals it had never seen.
+nodes sample, and the writable lines reject \resPortFfive{} probes. Counting both presets, 33 configured probes are rejected across seven writable lines (four and three per preset)---the same admission code produced the same discrimination on signals it had never seen.
 
 The parameter layer passes \resParamChecks{} and makes the interval geometry of
 Section~\ref{sec:objective} observable: a semantic surface without register
 leakage, and a four-layer chain (node $[50,200]$, parameter $[143.7,156.3]$,
 product $[146.22,153.78]$, recipe $[141,159]$) narrowing to one admitted
-interval, with out-of-layer requests intercepted. Each layer contributes a bound, and a rejection is
-attributable to the layer that excludes the request. A manual binding instead suspends a request visibly and unblocks it on approval, after which the write takes effect at the device (automated-roundtrip latency \resHitlLatency): workflow mediation, not physics.
+interval, with out-of-layer requests intercepted. Each layer contributes a bound and each rejection is attributable to its excluding layer. A manual binding instead suspends a request visibly and unblocks it on approval, after which the write takes effect at the device (automated-roundtrip latency \resHitlLatency): workflow mediation, not physics.
 
 \begin{table}[!t]
 \centering
@@ -82,10 +81,7 @@ The workflow ran end to end on the cast-film line and then on a larger BOPET lin
 (Section~\ref{sec:tasklifecycle}). On the single-node mission one of three
 permitted writes sufficed: the setpoint moved from \resMissionFrom{} to
 \resMissionTo{}, the record was opened and judged, the observation settled at
-\resMissionPv{} against \resMissionTarget, the journal attributed the change to
-the agent identity, and the task closed \texttt{COMPLETED}. The mission demonstrates targeting discipline as much as closure: the strategy
-stopped after one write inside a budget of three because the first response
-already satisfied the predicate.
+\resMissionPv{} against \resMissionTarget, the journal attributed the change to the agent identity, and the task closed \texttt{COMPLETED}---stopping after one write inside a budget of three because the first response already satisfied the predicate.
 
 The BOPET mission is the multi-node case: nine devices across five protocol
 families, 49 signals, \resBiaxSp{} writable and \resBiaxDaq{} readable, all
@@ -96,14 +92,13 @@ $118\!\rightarrow\!120.3$, and rail width $3000\!\rightarrow\!3035$---brought it
 \resBiaxFinal\,$\mu$m, each opening a record, receiving \texttt{keep}, and leaving
 an agent-attributed journal entry, while melt temperature stayed near
 291\,$^{\circ}$C inside 268--300\,$^{\circ}$C and the parent task reached
-\texttt{COMPLETED}. In these two missions, scaling from one node to nine did not scale writes with node count---one write on the single-node line, three on the nine-device line---consistent with per-write rather than per-node admission, record, and verdict overhead.
+\texttt{COMPLETED}. In these two missions, the number of governed writes did not scale with node count (one write for one node; three for nine devices), and each write traverses the same admission, record, and verdict steps regardless of line size.
 
 The strategy slot is also usable by a live engine: a bounded agent turn reached
 \texttt{COMPLETED} in \resLlmWall, and a goal-driven turn took \resGoalWall{} to
 drive thickness to \resGoalFinal\,$\mu$m against a self-selected target of
 $52.0\pm0.8$\,$\mu$m across three writes and three verdicts, then saved the
-recipe. The two turns bracket the autonomy range the slot tolerates: the difference lies in deliberation and in the extra writes the goal-driven turn chooses, not in the evidence chain, which both share. This is slot occupancy through the common chain, not model
-quality.
+recipe. The two turns sample the autonomy range the slot tolerates: the difference lies in deliberation and in the extra writes the goal-driven turn chooses; the evidence chain is identical.
 
 \subsection{Q3: The Deterministic Closed Loop}
 \label{sec:controller}
@@ -111,7 +106,7 @@ Seeds 42--44 each issue two governed writes with no rejection, raising the cast-
 
 \subsection{Q4: Four Process Missions}
 \label{sec:scenarios}
-The campaign runs four lines concurrently, each ensured from a blueprint, projected to nodes, and given one channel (Table~\ref{tab:scenarios}); all four attain their archived predicates, evaluated from subsequent observations rather than from the task state. Fig.~\ref{fig:multiscenarioopt} archives how: in every panel the curve is the observed controlled variable, the hatched band its objective window, triangles the governed writes, and the filled terminal marker the archived observation that satisfied the predicate. Each mission iterates the same loop---read the window, write inside the admitted interval, observe the response, judge---so the four trajectories are four executions of one governed loop, not four bespoke pipelines.
+The campaign runs four lines concurrently, each ensured from a blueprint, projected to nodes, and given one channel (Table~\ref{tab:scenarios}); all four attain their archived predicates, evaluated from subsequent observations rather than from the task state. Fig.~\ref{fig:multiscenarioopt} archives how: the curve is the observed controlled variable, the hatched band its objective window, and the filled terminal marker the archived predicate-satisfying observation; writes are marked round by round in (a) and indexed per write in (c)--(d). Each mission iterates the same loop---read the window, write inside the admitted interval, observe the response, judge---so one governed loop produced all four trajectories.
 
 \begin{table}[!t]
 \centering
@@ -120,27 +115,27 @@ the BOPET clock was not separately retained.}
 \label{tab:scenarios}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.19\columnwidth}>{\raggedright\arraybackslash}p{0.41\columnwidth}rr@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.17\columnwidth}>{\raggedright\arraybackslash}p{0.34\columnwidth}rrr@{}}
 \toprule
-Mission & Controlled variable (window) & Start & Final \\
+Mission & Controlled variable (window) & Start & Final & Wall \\
 \midrule
-Injection & Part weight (g), $32.5\pm0.35$ & \resInjStart & \resInjFinal \\
-WWTP/A2O & Aerobic DO (mg/L), $3.4\pm0.6$ & \resWwtpStart & \resWwtpFinal \\
-Annealing & Hardness (HV), $95\pm6$ & \resAnnealStart & \resAnnealFinal \\
-BOPET & Thickness ($\mu$m), $\resBiaxTarget\pm\resBiaxTol$ & \resBiaxStart & \resBiaxFinal \\
+Injection & Part weight (g), $32.5\pm0.35$ & \resInjStart & \resInjFinal & \resInjWall \\
+WWTP (A2O) & Aerobic DO (mg/L), $3.4\pm0.6$ & \resWwtpStart & \resWwtpFinal & \resWwtpWall \\
+Annealing & Hardness (HV), $95\pm6$ & \resAnnealStart & \resAnnealFinal & \resAnnealWall \\
+BOPET & Thickness ($\mu$m), $\resBiaxTarget\pm\resBiaxTol$ & \resBiaxStart & \resBiaxFinal & n/r \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.53\textwidth]{figures/scenarios/fig-multiscenario-optimization.pdf}
+\includegraphics[width=0.78\textwidth]{figures/scenarios/fig-multiscenario-optimization.pdf}
 \caption{Archived trajectories of the four missions in run \resRun. Hatched
-bands are the objective windows and the dash-dotted line is the target. Filled
-terminal markers are archived observations satisfying the predicate; triangles
-mark governed writes and the square in (c) marks the zone-2 margin trim. All four
-terminal markers lie inside their objective window. Curves are simulator
-observations under scripted policies, not physical measurements.}
+bands are the objective windows, the dash-dotted line the target, and filled
+terminal markers the archived observations satisfying the predicate. Panel (a) marks governed-write rounds with triangles, (c)--(d) index points
+by governed write, and (b) tracks dissolved oxygen through the mission's stages---its round axis contains the 15 governed writes---with the write count and cost index annotated; the square in (c) marks the zone-2 margin trim. All four terminal markers lie inside
+their objective window. Curves are simulator observations under scripted
+policies, not physical measurements.}
 \label{fig:multiscenarioopt}
 \end{figure*}
 
@@ -152,12 +147,10 @@ write is nearly monotone, so the policy spends its budget and stops.
 
 Panel~(b): the wastewater mission is longest because it has two stages: aeration, caustic,
 and coagulant dose first bring dissolved oxygen from
-\resWwtpStart{} into $3.4\pm0.6$\,mg/L and satisfy the effluent guards on COD,
-ammonia, total phosphorus, pH, and turbidity; the policy then lowers blower frequency and caustic dose, reverting two blower steps that lose compliance margin and keeping two caustic reductions. Its \resWwtpWrites{} writes end at
+\resWwtpStart{} into $3.4\pm0.6$\,mg/L and satisfy the effluent guards on chemical oxygen demand (COD), ammonia, total phosphorus, pH, and turbidity; the policy then lowers blower frequency and caustic dose, reverting two blower steps that lose compliance margin and keeping two caustic reductions. Its \resWwtpWrites{} writes end at
 \resWwtpFinal\,mg/L in \resWwtpWall{} and cut the first compliant operating-cost
 index from \resWwtpCostStart{} to \resWwtpCostFinal---a simulator-internal figure,
-not a utility bill. The two reverted blower steps are the mission's most
-informative events: the writes were admissible and journaled, but the post-write observation lost compliance margin and the verdict stage caught it: rejection of a bad proposal lives in the evidence, not in the admission gate.
+not a utility bill. The two reverted blower steps are the most informative events: the writes were admissible and journaled, but the post-write observation lost compliance margin and the verdict stage caught it---rejection of a bad proposal lives in the evidence, not in the admission gate.
 
 Panel~(c): annealing starts far outside the hardness window (\resAnnealStart\,HV at
 140\,m/min): raising zone-3 temperature to 850\,$^{\circ}$C brings hardness to 99.46\,HV, one zone-2 trim (710 to 722\,$^{\circ}$C) and two line-speed steps (140 to 152, then \resAnnealSpeedFinal\,m/min) hold $95\pm6$\,HV while raising speed \resAnnealGain, and an attempt at
@@ -174,6 +167,4 @@ platform-side behavior is invariant---admission, driver I/O, records, verdicts,
 closure---while the write economy varies by a factor of more than seven
 (\resInjWrites{} for injection, \resWwtpWrites{} for wastewater, \resAnnealWrites{} for annealing, \resBiaxWrites{} for BOPET) and the mission clock by a factor of more than six (\resInjWall{} to \resWwtpWall{} over the three retained clocks; the BOPET clock was not retained). That variation is produced by construction by the scenario-specific slot: blueprint, guards, and policy.
 The three reversions (two blower steps in WWTP, one speed step in annealing)
-show the verdict layer doing real work; that all four terminal markers in Fig.~\ref{fig:multiscenarioopt} lie inside their bands is an observed outcome of this run, not a structural property---\texttt{COMPLETED} and predicate attainment remain separate records. Margins are narrow but on record: three terminals sit within 1\% of a band edge (0.02\,g, 0.04\,$\mu$m, 0.92\,HV to the nearest bound), and the compliant cost figure improves 1.3\%. The evidence is simulation-tier, supporting reusable
-supervisory execution and repeatability rather than field optimality or physical
-transfer.
+show the verdict layer doing real work; that all four terminal markers in Fig.~\ref{fig:multiscenarioopt} lie inside their bands is an observed outcome of this run, not a structural property---\texttt{COMPLETED} and predicate attainment remain separate records. Margins are narrow but on record: three terminals sit within 1\% of a band edge (0.02\,g, 0.04\,$\mu$m, 0.92\,HV to the nearest bound), and the compliant cost figure improves 1.3\%. 
