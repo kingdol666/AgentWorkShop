@@ -65,6 +65,21 @@ export function createTaskRepo(db: DatabaseSync) {
   )
   const selectById = db.prepare(`SELECT ${COLS} FROM tasks WHERE id = ?`)
   const selectByChannel = db.prepare(`SELECT ${COLS} FROM tasks WHERE channel_id = ? ORDER BY createdAt ASC, rowid ASC`)
+  // Supervisor 只需审核未结束父任务下已完成子任务的交付物；不要为此把整条
+  // task history_json/所有终态任务 artifacts_json 都加载进每一轮调度快照。
+  // 仅加载待监督 Lead root 的 input 与未结父任务的已完成子任务 artifacts；不取 history_json。
+  const selectActiveSupervisionArtifacts = db.prepare(
+    `SELECT task.id AS taskId, task.artifacts_json AS artifactsJson
+     FROM tasks task
+     LEFT JOIN tasks parent ON parent.id = task.parent_id AND parent.channel_id = task.channel_id
+     WHERE task.channel_id = ? AND (
+       (task.parent_id IS NULL AND task.assignee_id = ? AND task.state IN ('SUBMITTED', 'WORKING'))
+       OR (task.parent_id IS NOT NULL AND task.state = 'COMPLETED'
+         AND parent.state IN ('SUBMITTED', 'WORKING', 'WAITING'))
+     )
+     ORDER BY task.created_at ASC, task.rowid ASC
+     LIMIT ?`,
+  )
   const selectByAssignee = db.prepare(`SELECT ${COLS} FROM tasks WHERE assignee_id = ? ORDER BY createdAt ASC, rowid ASC`)
   const selectByChannelAssignee = db.prepare(
     `SELECT ${COLS} FROM tasks WHERE channel_id = ? AND assignee_id = ? ORDER BY createdAt ASC, rowid ASC`,
@@ -142,7 +157,10 @@ export function createTaskRepo(db: DatabaseSync) {
     listByChannel(channelId: string): TaskRow[] {
       return selectByChannel.all(channelId) as unknown as TaskRow[]
     },
-
+    /** 当前 Lead 的未完成 root 输入 + 待验收父任务下 worker 交付物；不读取任务过程 history。 */
+    listActiveSupervisionArtifacts(channelId: string, leadAgentId: string, limit = 40): Array<{ taskId: string, artifactsJson: string }> {
+      return selectActiveSupervisionArtifacts.all(channelId, leadAgentId, limit) as unknown as Array<{ taskId: string, artifactsJson: string }>
+    },
     listByAssignee(agentId: string): TaskRow[] {
       return selectByAssignee.all(agentId) as unknown as TaskRow[]
     },

@@ -330,13 +330,18 @@ export function supervisePrompt(opts: {
   }).join('\n')
 
   const tasks = snapshot.tasks.map((t) => {
-    const deliverable = t.state === 'COMPLETED' && t.artifacts.length > 0
-      ? ` — 交付:${t.artifacts.map(a => a.parts.map(p => 'text' in p ? p.text : '').join(' ').replace(/\s+/g, ' ').trim().slice(0, 200)).filter(Boolean).join(' / ').slice(0, 400) || '(空)'}`
+    // 新 root 的 input artifact 是用户真实请求正文；完成 child 的 artifacts 才是 worker 交付。
+    // 不把 worker 初始 input、其他任务历史或任意大二进制负载重复塞入 Lead 每轮 prompt。
+    const relevantArtifacts = t.artifacts.filter((artifact) => {
+      if (artifact.name === 'input') return !t.parentId && !['COMPLETED', 'FAILED', 'CANCELED'].includes(t.state)
+      return t.state === 'COMPLETED'
+    })
+    const deliverable = relevantArtifacts.length > 0
+      ? ` — 输入/交付:${relevantArtifacts.map(a => `${a.name}: ${a.parts.map(p => 'text' in p ? p.text : '').join(' ').replace(/\s+/g, ' ').trim()}`).filter(Boolean).join(' / ').slice(0, 2_400) || '(空)'}`
       : ''
     const artifacts = t.artifacts.length > 0 ? `, artifacts=${t.artifacts.length}` : ''
     return `  - ${t.id} [${t.state}] "${t.title}" (assignee=${t.assigneeId}, progress=${t.progress}%${artifacts})${deliverable}`
   }).join('\n')
-
   const pending = Object.entries(snapshot.pendingChildren)
     .map(([parentId, count]) => `  ${parentId}: ${count} pending`)
     .join('\n')
@@ -374,11 +379,12 @@ export function supervisePrompt(opts: {
     mail || '  (none)',
   )
 
+  // Lead 契约**始终**注入;模式指令是**附加**的执行纪律,不能顶替契约。
+  // 原先 `modeInfo ? 只注入模式 : 只注入契约` —— 于是 goal/loop/pipeline 任务下 Lead
+  // 拿不到"worker 完工只是提交、必须逐项验收、按计划顺序收口"这段,验收纪律在模式任务里凭空消失。
+  parts.push('', renderPrompt('lead-supervise'))
   if (modeInfo) {
     parts.push('', ...buildModeInstructions(modeInfo))
-  }
-  else {
-    parts.push('', renderPrompt('lead-supervise'))
   }
 
   return parts.join('\n')

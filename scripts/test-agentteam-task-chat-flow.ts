@@ -156,7 +156,7 @@ try {
   // 先经真实群聊路由懒装配 lead，再 ensureChannelActive；避免首次装配时重复创建 scheduler。
   const leadMember = channelAgents.find(agent => agent.id === leadAgentId)
   if (!leadMember) throw new Error('创建 channel 后找不到 lead 成员')
-  const leadProbe = manager.sendChatMessage(channelId, owner, {
+  manager.sendChatMessage(channelId, owner, {
     text: `@${leadMember.name} 初始化隔离集成测试运行时。`,
     mentions: [{ type: 'agent', id: leadMember.id, label: leadMember.name }],
     clientMessageId: 'agentteam-task-chat-flow-lead-bootstrap',
@@ -267,10 +267,10 @@ try {
         const delivery = sent.deliveries.find(item => item.agentId === targetWorker.id)
         check('worker WORKING 时通过 manager.sendChatMessage 发出 @ 提问',
           childAtSend?.state === 'WORKING'
-            && parentAtSend !== undefined
-            && !['COMPLETED', 'FAILED', 'CANCELED'].includes(parentAtSend.state)
-            && !!delivery
-            && delivery.status !== 'failed',
+          && parentAtSend !== undefined
+          && !['COMPLETED', 'FAILED', 'CANCELED'].includes(parentAtSend.state)
+          && !!delivery
+          && delivery.status !== 'failed',
           `parent=${parentAtSend?.state ?? 'missing'}, child=${childAtSend?.state ?? 'missing'}, worker=${targetWorker.name}`)
       }
       catch (error) {
@@ -279,7 +279,7 @@ try {
       }
 
       // 至少一个 worker 已交付，而另一个仍在执行时，parent 必须继续 WAITING。
-      const waitingAfterDelivery = await waitFor(listTasks, tasks => {
+      const waitingAfterDelivery = await waitFor(listTasks, (tasks) => {
         const children = tasks.filter(task => task.parentId === complexTask.id)
         const parent = tasks.find(task => task.id === complexTask.id)
         return parent?.state === 'WAITING'
@@ -291,8 +291,8 @@ try {
         const parent = waitingAfterDelivery.find(task => task.id === complexTask.id)
         check('worker 已完成部分交付后 parent 仍为 WAITING',
           parent?.state === 'WAITING'
-            && children.some(child => child.state === 'COMPLETED')
-            && children.some(child => child.state === 'WORKING'),
+          && children.some(child => child.state === 'COMPLETED')
+          && children.some(child => child.state === 'WORKING'),
           `completed=${children.filter(child => child.state === 'COMPLETED').length}, working=${children.filter(child => child.state === 'WORKING').length}`)
       }
       else {
@@ -375,8 +375,8 @@ try {
           check('chat_messages 收到对应 worker 回复', reply.senderId === targetWorkerId, `sender=${reply.senderId}`)
           check('worker 回复的 requesterUserId 与 replyToId 正确',
             reply.requesterUserId === owner.id
-              && reply.replyToId === chatMessageId
-              && reply.sourceChatMessageId === chatMessageId,
+            && reply.replyToId === chatMessageId
+            && reply.sourceChatMessageId === chatMessageId,
             `requester=${reply.requesterUserId}, replyTo=${reply.replyToId}, source=${reply.sourceChatMessageId}`)
         }
       }

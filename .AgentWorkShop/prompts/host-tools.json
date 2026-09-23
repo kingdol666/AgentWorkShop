@@ -46,6 +46,28 @@
   }
  },
  {
+  "name": "submit_task",
+  "label": "Submit Task",
+  "description": "(Lead only) Register an incoming HUMAN request as a tracked root task owned by you, so that you can decompose it, dispatch subtasks, review each worker deliverable, and close it with an ordered acceptance summary. Use it when a request reaches you OUTSIDE the task intake (typically a group-chat message) and genuinely needs tracked multi-step work. Do NOT use it for a request you can answer directly — just answer it. Idempotent: an identical non-terminal root task is returned instead of duplicated.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "title": {
+     "type": "string",
+     "description": "Short, verifiable title of the request (becomes the root task title)"
+    },
+    "description": {
+     "type": "string",
+     "description": "The full user request plus its constraints, in the user's own terms — this is what you will decompose and later verify each deliverable against"
+    }
+   },
+   "required": [
+    "title",
+    "description"
+   ]
+  }
+ },
+ {
   "name": "dispatch_task",
   "label": "Dispatch Task",
   "description": "(Lead only) Create a subtask under a submitted parent task and assign it to a worker. Always provide parent_task_id so the parent task tracks completion. Always state route_reason: why THIS agent (specialty fit / shortest queue / past success evidence from the member capability table) — it is kept on the task as an auditable routing decision.",

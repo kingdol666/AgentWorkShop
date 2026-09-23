@@ -141,6 +141,51 @@ export class TaskEngine {
     return this.repos.tasks.listByChannelMeta(channelId).map(rowToTaskLite)
   }
 
+  /**
+   * 调度监督快照：轻量任务元数据 + Lead root 的用户输入 + 未结父任务下已完成子任务的有界交付物。
+   * artifacts 是 Lead 验收的必要事实，history 不是；每个子任务最多 4KB 文本，
+   * 最多取 24 个交付，防止长跑 Channel 把整段历史/无限产物塞入每轮 Lead prompt。
+   * 超限仍可由 Lead 通过 get_task 读取单个任务完整交付物。
+   */
+  listForSupervision(channelId: string, leadAgentId: string): WorkspaceTask[] {
+    const rows = this.repos.tasks.listByChannelMeta(channelId)
+    const artifactsByTask = new Map<string, A2AArtifact[]>()
+    for (const row of this.repos.tasks.listActiveSupervisionArtifacts(channelId, leadAgentId, 40)) {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(row.artifactsJson)
+      }
+      catch {
+        parsed = []
+      }
+      if (!Array.isArray(parsed)) continue
+      let remaining = 4_000
+      const bounded = (parsed as A2AArtifact[]).slice(0, 8).map((artifact) => {
+        const parts = (Array.isArray(artifact.parts) ? artifact.parts : []).flatMap((part) => {
+          if ('text' in part) {
+            if (remaining <= 0) return []
+            const text = part.text.slice(0, remaining)
+            remaining -= text.length
+            return [{ ...part, text }]
+          }
+          // Non-text payloads can be arbitrarily large; expose only a bounded descriptor.
+          const descriptor = JSON.stringify(part)
+          if (remaining <= 0) return []
+          const text = descriptor.slice(0, Math.min(remaining, 512))
+          remaining -= text.length
+          return [{ text: `[non-text artifact omitted] ${text}` }]
+        })
+        return { ...artifact, parts }
+      })
+      artifactsByTask.set(row.taskId, bounded)
+    }
+
+    return rows.map((row) => {
+      const task = rowToTaskLite(row)
+      return { ...task, artifacts: artifactsByTask.get(task.id) ?? [] }
+    })
+  }
+
   queueViewOf(channelId: string, agentId: string): AgentTaskQueueView {
     // META 投影:本视图在每次 agent 状态广播/队列上下文/调度收口时触发,
     // 全历史整行取回(含 artifacts/history 大 JSON 解析)是最高频的重复解析 ——
@@ -448,7 +493,7 @@ export class TaskEngine {
   }
 
   /** 完成任务:WORKING → COMPLETED(终态)+ 进度置 100(广播由上层 ChannelBus 监听 onTaskEvent 承担);
-   *  WAITING → COMPLETED 仅子任务全部完成后允许(所有子任务 COMPLETED 或 CANCELED)。
+   *  WAITING → COMPLETED 仅在所有子任务有交付且 Lead 已提交验收总结时允许。
    *  goal 模式父任务收口保底:lead 未自带结构化「目标完成总结」时平台合成同构交付物
    *  (mock/omp/规则引擎三条完成路径共用此处,确保 goal 完成标志恒存在)。 */
   complete(taskId: string, artifacts?: A2AArtifact[]): WorkspaceTask {
@@ -456,15 +501,39 @@ export class TaskEngine {
     const children = this.repos.tasks
       .listByChannel(task.channelId)
       .filter(t => t.parentId === task.id)
-    if (task.state === 'WAITING' || task.state === 'SUBMITTED') {
-      // 子任务合并闸门:存在未完成的子任务时拒绝完成(避免父与子状态矛盾)
-      const pending = children.filter(t => t.state !== 'COMPLETED' && t.state !== 'CANCELED')
+    const allArtifacts = [...task.artifacts, ...(artifacts ?? [])]
+    const modeInfo = extractTaskMode(task)
+    const hasDeliverable = allArtifacts.some(a => a.name !== 'input'
+      && a.parts.some(p => 'text' in p ? p.text.trim().length > 0 : true))
+    if (children.length > 0) {
+      // 父任务不是“所有子任务终态”就可完成：worker 的 COMPLETED 只是交付，
+      // Leader 必须检查每个交付并提交自己的验收总结后，才可收口父任务。
+      const pending = children.filter(t => t.state !== 'COMPLETED')
       if (pending.length > 0) {
-        throw new AppError(400, 'INVALID_STATE', `父任务存在 ${pending.length} 个未完成子任务,不能直接完成(先取消/完成子任务)`)
+        throw new AppError(400, 'INVALID_STATE', `父任务仍有 ${pending.length} 个未通过验收的子任务(失败/取消也需 Lead 明确处理)`)
+      }
+      const missingDeliverables = children.filter((child) => {
+        const row = this.repos.tasks.findById(child.id)
+        if (!row) return true
+        const completed = rowToTask(row)
+        return !completed.artifacts.some(a => a.name !== 'input'
+          && a.parts.some(p => 'text' in p ? p.text.trim().length > 0 : true))
+      })
+      if (missingDeliverables.length > 0) {
+        throw new AppError(400, 'WORKER_DELIVERABLE_MISSING', `子任务缺少可验收交付物: ${missingDeliverables.map(c => c.title).join(', ')}`)
+      }
+      // goal 模式的显式 complete 决策本身是 Lead 的接受动作；若未附总结，
+      // 下方会合成 goal-summary。普通分解任务必须附 Lead 验收总结。
+      const hasLeadAcceptance = allArtifacts.some(a => a.name !== 'input'
+        && a.parts.some(p => 'text' in p ? p.text.trim().length > 0 : true))
+      if (!hasLeadAcceptance && modeInfo?.mode !== 'goal') {
+        throw new AppError(400, 'LEAD_ACCEPTANCE_REQUIRED', '父任务必须由 Lead 提交验收总结后才能完成')
       }
     }
+    else if (!hasDeliverable && modeInfo?.mode !== 'goal') {
+      throw new AppError(400, 'TASK_DELIVERABLE_REQUIRED', '任务完成前必须提交非空 deliverable/summary artifact')
+    }
     // goal 收口保底:已有总结(lead 自写/前置合成)则原样保留
-    const modeInfo = extractTaskMode(task)
     if (modeInfo?.mode === 'goal') {
       const hasSummary = [...task.artifacts, ...(artifacts ?? [])].some(isGoalSummaryArtifact)
       if (!hasSummary) {

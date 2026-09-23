@@ -148,6 +148,8 @@ export interface TaskEngine {
   queueViewsOfLite(channelId: string): Map<string, AgentTaskQueueView>
   /** 任务列表 lite 版(元数据投影;调度决策/规则引擎仅消费 id/state/parent/进度/标题) */
   listLite(channelId: string): WorkspaceTask[]
+  /** 调度监督快照(轻量元数据 + 有界已完成 worker 交付物)。 */
+  listForSupervision(channelId: string, leadAgentId: string): WorkspaceTask[]
 }
 
 /**

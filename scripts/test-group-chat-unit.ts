@@ -643,6 +643,12 @@ section('J. 人类权限上下文传播合同(§13.3)')
   const denyRisk = checkToolAgainstScope(mScope, 'dcw_control')
   check('判定:成员作用域拒绝高危写工具(dcw_control)',
     denyRisk.allowed === false && denyRisk.reason === 'HIGH_RISK_TOOL_DENIED')
+  check('判定:成员作用域拒绝配方写入(recipe_update)',
+    checkToolAgainstScope(mScope, 'recipe_update').allowed === false
+    && checkToolAgainstScope(mScope, 'recipe_update').reason === 'HIGH_RISK_TOOL_DENIED')
+  check('判定:成员作用域拒绝配方回退(recipe_rollback)',
+    checkToolAgainstScope(mScope, 'recipe_rollback').allowed === false
+    && checkToolAgainstScope(mScope, 'recipe_rollback').reason === 'HIGH_RISK_TOOL_DENIED')
   check('判定:只读工具放行(dcw_read)', checkToolAgainstScope(mScope, 'dcw_read').allowed === true)
   check('判定:owner 作用域放行管理面工具', checkToolAgainstScope(owner, 'dispatch_task').allowed === true)
   check('判定:无作用域(系统/agent 自发)沿用既有授权',

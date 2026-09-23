@@ -31,6 +31,7 @@ export const HOST_TOOLS: RpcHostToolDefinition[] = loadHostToolDefs()
 
 /** 仅 lead 可见的工具名(dispatch/调度/团队管理面 + AML 模型治理面;worker 注册时剔除,压缩工具上下文) */
 export const LEAD_ONLY_TOOL_NAMES = new Set([
+  'submit_task',
   'dispatch_task',
   'get_queue_overview',
   'read_channel_mail',
@@ -237,10 +238,10 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
         if (!taskId) return { text: '无任务 ID', isError: true }
         // 父任务保护:有未完成子任务时拒绝完成(lead 须等 worker 交付)
         const allTasks = await ws.listTasks()
-        const incompleteChildren = allTasks.filter(t => t.parentId === taskId && t.state !== 'COMPLETED' && t.state !== 'CANCELED')
+        const incompleteChildren = allTasks.filter(t => t.parentId === taskId && t.state !== 'COMPLETED')
         if (incompleteChildren.length > 0) {
           return {
-            text: `任务 ${taskId} 有 ${incompleteChildren.length} 个未完成子任务,不能完成父任务。请等待子任务完成。`,
+            text: `任务 ${taskId} 有 ${incompleteChildren.length} 个未通过验收的子任务(包含失败/取消)。请先解决或重新指派，再由 Lead 检查交付物并提交验收总结。`,
             isError: true,
           }
         }
@@ -286,6 +287,23 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
         }
         catch {
           return { text: `任务 ${taskId} 已完成(状态已同步为 COMPLETED)。` }
+        }
+      }
+
+      case 'submit_task': {
+        const title = String(args.title ?? '').trim()
+        const description = args.description as string | undefined
+        if (!title) return { text: 'submit_task 需要非空 title', isError: true }
+        // 幂等:同标题未终态根任务已存在时返回既有任务(lead 重复登记同一次请求不产生重复作业)
+        const existing = (await ws.listTasks()).find(t =>
+          !t.parentId && t.title === title
+          && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
+        if (existing) {
+          return { text: `根任务 ${existing.id} 已存在(标题「${existing.title}」,state=${existing.state}),未重复创建。请直接基于它 dispatch_task 分解,或对其 complete_task 收口。` }
+        }
+        const task = await ws.submitTask({ title, description })
+        return {
+          text: `根任务 ${task.id} 已登记(assignee=你,state=${task.state})。若需要专业分工:对每个子任务调用 dispatch_task(parent_task_id=${task.id}, assignee_id=..., title=..., description=含目标/上下文/交付格式/验收标准/边界);若你自己就能回答,直接 complete_task(task_id=${task.id}, summary=..., deliverable=...) 并把结论回给提问者。`,
         }
       }
 

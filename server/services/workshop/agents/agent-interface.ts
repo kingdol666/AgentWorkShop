@@ -40,6 +40,19 @@ export interface AgentRunRequest {
 export interface AgentWorkspace {
   /** 列出本 Channel 同事 */
   listAgents(): Promise<AgentInfo[]>
+  /**
+   * (仅 lead)把一次**人类请求**升级为可追踪的根任务,归属 Lead 自己。
+   *
+   * 为什么需要它:`dispatch_task` 强制要求 `parent_task_id`,因此从**群聊**收到的
+   * 专业请求原先无法被拆解 —— Lead 只能回一句话,或干等人类另去"任务"入口再提交一次。
+   * 有了本方法,Lead 可以把群聊里的一句需求登记成根任务,再按需 dispatch 子任务、
+   * 逐项验收、以有序总结 complete 根任务,最后把结论回给提问者。
+   *
+   * 语义:创建 SUBMITTED 根任务(assignee = 调用方 lead 自己,creator = lead),
+   * **不**向自己投递 assign 消息(lead 正在回合内,无需自我唤醒;后续由调度器按
+   * "lead 名下未规划根任务"触发 supervise 继续分解或直接作答)。
+   */
+  submitTask(input: { title: string, description?: string, parts?: Part[] }): Promise<WorkspaceTask>
   /** 任务分发(仅 lead;创建子任务并指派) */
   dispatchTask(input: { parentTaskId?: string, assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string }): Promise<WorkspaceTask>
   /** 查看同 Channel 任务列表(含同事) */

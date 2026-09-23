@@ -147,8 +147,12 @@ export class MockAgentImpl implements AgentInterface {
       else if (modeInfo?.mode === 'pipeline') {
         this.pipelineScript(task, snapshot, pool, now, decisions)
       }
+      else if (modeInfo?.mode === 'loop') {
+        // 显式 loop 每一轮仍由现有 worker 执行；循环重放由 LoopController 接管。
+        this.loopScript(task, snapshot, pool, now, decisions)
+      }
       else {
-        // loop 与无模式:分发 → 子任务全完成 → complete 父;loop 的循环重放由 LoopController 接管
+        // 普通作业按请求本身分流：简单项 Lead 直接给结果；复杂项才拆给 worker。
         this.defaultScript(task, snapshot, pool, now, decisions)
       }
     }
@@ -300,8 +304,79 @@ export class MockAgentImpl implements AgentInterface {
     }
   }
 
-  /** 默认剧本(loop 与无模式):分发 → 子任务全完成 → complete 父 */
+  /**
+   * 默认无模式任务：Lead 先按用户请求判断复杂度，简单任务直接交付；复杂任务拆分、
+   * 检查 worker 交付物并形成有序验收摘要。此逻辑只用于确定性 mock harness 测试。
+   */
   private defaultScript(
+    task: WorkspaceTask,
+    snapshot: SupervisionSnapshot,
+    pool: SupervisionSnapshot['members'],
+    now: number,
+    decisions: SupervisionDecision[],
+  ): void {
+    const children = snapshot.tasks.filter(t => t.parentId === task.id)
+    if ((task.state === 'SUBMITTED' || task.state === 'WORKING') && children.length === 0) {
+      if (!this.mockRequiresDelegation(task)) {
+        decisions.push({
+          kind: 'complete',
+          taskId: task.id,
+          artifacts: [{
+            artifactId: randomUUID(),
+            name: 'lead-direct-answer',
+            parts: [{ text: `Lead 直接处理简单任务：「${task.title}」。${task.description ?? ''}`.trim() }],
+          }],
+        })
+        return
+      }
+
+      const workerCount = Math.min(2, pool.length)
+      for (let index = 0; index < workerCount; index++) {
+        const worker = this.pickWorker(pool, now)
+        if (!worker) break
+        const title = workerCount > 1
+          ? `${task.title} — 子任务 ${index + 1}/${workerCount}`
+          : `${task.title} — worker 执行与交付`
+        const focus = workerCount > 1
+          ? (index === 0 ? '分析需求与形成第一部分结果' : '独立核对约束、验证第一部分并形成第二部分结果')
+          : '完成专业工作并产出可核对的交付物'
+        decisions.push({
+          kind: 'dispatch',
+          parentTaskId: task.id,
+          assigneeId: worker.agentId,
+          title,
+          description: [
+            `主任务：${task.title}`,
+            `主需求：${task.description ?? task.title}`,
+            `本子任务目标：${focus}`,
+            '输出：给出结论、依据及明确限制，写入 deliverable artifact。',
+            '验收标准：内容直接回应分配目标；结论与依据相互一致；不可完成项需说明原因。',
+          ].join('\n'),
+        })
+      }
+      return
+    }
+
+    if (children.length === 0 || children.some(c => c.state !== 'COMPLETED')) return
+
+    // 数组沿用数据库创建顺序，Lead 的验收与最终摘要按子任务顺序确定性生成。
+    const accepted = children.map((child, index) => {
+      const deliverables = child.artifacts
+        .filter(a => a.name !== 'input')
+        .flatMap(a => a.parts.map(p => 'text' in p ? p.text.trim() : JSON.stringify(p)))
+        .filter(Boolean)
+      return `验收 ${index + 1}/${children.length}｜${child.title}：${deliverables.join('；')}`
+    })
+    if (accepted.some(line => line.endsWith('：'))) return
+    decisions.push({
+      kind: 'complete',
+      taskId: task.id,
+      artifacts: [{ artifactId: randomUUID(), name: 'lead-acceptance-summary', parts: accepted.map(text => ({ text })) }],
+    })
+  }
+
+  /** loop 是用户显式指定的执行模式，不走普通请求复杂度判断。 */
+  private loopScript(
     task: WorkspaceTask,
     snapshot: SupervisionSnapshot,
     pool: SupervisionSnapshot['members'],
@@ -312,20 +387,21 @@ export class MockAgentImpl implements AgentInterface {
     if ((task.state === 'SUBMITTED' || task.state === 'WORKING') && children.length === 0) {
       const worker = this.pickWorker(pool, now)
       if (worker) {
-        decisions.push({
-          kind: 'dispatch',
-          parentTaskId: task.id,
-          assigneeId: worker.agentId,
-          title: task.title,
-          description: task.description,
-        })
+        decisions.push({ kind: 'dispatch', parentTaskId: task.id, assigneeId: worker.agentId, title: task.title, description: task.description })
       }
+      return
     }
-    if (children.length > 0
-      && (task.state === 'WAITING' || task.state === 'WORKING')
-      && children.every(c => c.state === 'COMPLETED')) {
+    if (children.length > 0 && children.every(c => c.state === 'COMPLETED')) {
       decisions.push({ kind: 'complete', taskId: task.id, artifacts: [this.summarize(task, children)] })
     }
+  }
+
+  private mockRequiresDelegation(task: WorkspaceTask): boolean {
+    const source = [task.title, task.description, ...task.artifacts.flatMap(a => a.parts.map(p => 'text' in p ? p.text : ''))].join('\n')
+    if (/\[mock:simple\]/i.test(source)) return false
+    if (/\[mock:complex\]/i.test(source)) return true
+    return /拆分|分解|并行|分别|多阶段|多部分|对比分析|综合分析|调研|实现|设计并验证|端到端|多个交付|独立核对|跨模块|complex|parallel|multi[- ]step|implement|design and verify/i.test(source)
+      || source.trim().length > 240
   }
 
   /** 汇总子任务成果为父任务 artifact(lead 交付物):展开各子任务 artifact 的 parts */

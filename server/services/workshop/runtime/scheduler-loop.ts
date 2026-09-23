@@ -58,6 +58,10 @@ export interface SchedulerLoopOptions {
 
 /** 空闲退避上限(指纹不变时 tick 间隔指数退避至此;事件 wake 立即恢复) */
 const IDLE_TICK_CAP_MS = 8000
+/** Failed/empty Lead decision retry backoff; never replaces a decision with blind fallback. */
+const LEAD_DECISION_RETRY_MS = 5000
+
+type SchedulerDecision = SupervisionDecision | { kind: 'recovery_complete', taskId: string }
 
 export class SchedulerLoop {
   private readonly tickMs: number
@@ -79,10 +83,6 @@ export class SchedulerLoop {
   /** busy 成员执行中任务的进度基线(与 lastProgress 分离:busy 不重置——
    *  独立检测"忙碌但进度长期不变"的停滞,喂给快照的 stalled 标记) */
   private readonly progressSeen = new Map<string, { progress: number, at: number }>()
-  /** goal 父任务「全部子任务 COMPLETED」首见时刻(宽限后规则引擎兜底收口) */
-  private readonly goalAllDoneAt = new Map<string, number>()
-  /** goal 收口宽限窗(ms):给 lead 充分判定机会,超时平台兜底完成 */
-  private readonly goalGraceMs = 45_000
   /** 成员空闲起始时间(最久空闲 worker 排序) */
   private readonly idleSince = new Map<string, number>()
   /** 当前活跃的执行模式(null = 默认无模式) */
@@ -192,10 +192,9 @@ export class SchedulerLoop {
     this.tick += 1
     const snapshot = this.collectSnapshot()
     // 状态 Map 生命周期修剪:终态/已删任务的条目随轮清理(长会话内存有界)。
-    // progressSeen 全程只增不减;notified/lastProgress/goalAllDoneAt/loopCompletedTaskIds
-    // 仅部分路径清理 —— 统一对当前任务集收敛,任务重入(FAILED→ASSIGNED)时自然重建。
+    // progressSeen 全程只增不减;notified/lastProgress/loopCompletedTaskIds 统一按任务集收敛。
     const liveIds = new Set(snapshot.tasks.map(t => t.id))
-    for (const map of [this.progressSeen, this.lastProgress, this.goalAllDoneAt]) {
+    for (const map of [this.progressSeen, this.lastProgress]) {
       for (const key of map.keys()) {
         if (!liveIds.has(key)) map.delete(key)
       }
@@ -236,12 +235,8 @@ export class SchedulerLoop {
   }
 
   /**
-   * supervise 智能节流(token 效率,纯指纹驱动):
-   *  - 信号指纹 = 任务状态集合 · 成员状态/队列 · 最新邮件 id,不含 progress 渐变
-   *    (worker 进度上报不值得唤醒 lead;状态翻转/新邮件才是需要行动的信号);
-   *  - 指纹无变化 → 跳过 LLM supervise,只跑规则引擎(停滞检测/兜底派发照常);
-   *  - 指纹变化 → 立即 supervise(mock 剧本的秒级状态机与 LLM 决策跟进都不被拖延);
-   *  - 首轮必跑。
+   * supervise 智能节流(token 效率,纯指纹驱动):任务/成员/邮件变化才请求 Lead；
+   * 规则引擎仅负责故障恢复，不承担常规派单或父任务验收。首轮必跑。
    */
   private superviseFingerprint(snapshot: SupervisionSnapshot): string {
     const tasks = snapshot.tasks
@@ -257,42 +252,48 @@ export class SchedulerLoop {
   }
 
   private shouldSupervise(snapshot: SupervisionSnapshot): boolean {
-    if (this.lead.supervise === null) return false // 无 LLM 决策能力,规则引擎自走
-    if (this.lastSuperviseAt === 0) return true // 首轮
-    // 收尾挂起例外:父任务 WAITING 且子任务全部终态(有完成交付)——指纹虽稳定,
-    // lead 也必须获得监督回合做目标判定收尾(否则作废尝试会永久阻塞 goal 闭环)。
-    // 30s 冷却:LLM 反复不收尾时不会每 tick 消耗回合
-    if (this.hasCloseableParent(snapshot)) {
+    if (this.lead.supervise === null) return false // no Lead decision capability: recovery only
+    if (this.lastSuperviseAt === 0) return true
+    const fingerprint = this.superviseFingerprint(snapshot)
+    if (fingerprint !== this.lastFingerprint) return true
+
+    // Retry incomplete acceptance periodically, including the WORKING parent state
+    // used after the final child completes.
+    if (this.hasReviewableParent(snapshot)) {
       if (Date.now() - this.lastCloseOutAt >= 30_000) {
         this.lastCloseOutAt = Date.now()
         return true
       }
       return false
     }
-    return this.superviseFingerprint(snapshot) !== this.lastFingerprint
+
+    // Failed/empty triage does not trigger blind dispatch. Retry the Lead after backoff.
+    const hasUnplannedLeadRoot = snapshot.tasks.some((task) => {
+      if (task.parentId || task.assigneeId !== this.lead.agentId) return false
+      if (task.state !== 'SUBMITTED' && task.state !== 'WORKING') return false
+      return !snapshot.tasks.some(child => child.parentId === task.id)
+    })
+    return hasUnplannedLeadRoot && Date.now() - this.lastSuperviseAt >= LEAD_DECISION_RETRY_MS
   }
 
   private lastCloseOutAt = 0
 
-  /** 存在"子任务全部终态且至少一个完成交付"的 WAITING 父任务(待 lead 判定收尾) */
-  private hasCloseableParent(snapshot: SupervisionSnapshot): boolean {
+  /** 存在子任务已全部终态但尚未由 Lead 明确验收的 WAITING 父任务 */
+  private hasReviewableParent(snapshot: SupervisionSnapshot): boolean {
     return snapshot.tasks.some((t) => {
-      if (t.state !== 'WAITING') return false
+      if ((t.state !== 'WAITING' && t.state !== 'WORKING') || t.assigneeId !== this.lead.agentId) return false
       const children = snapshot.tasks.filter(c => c.parentId === t.id)
       if (children.length === 0) return false
       return children.every(c => TERMINAL_TASK_STATES[c.state] === true)
-        && children.some(c => c.state === 'COMPLETED')
     })
   }
 
   /**
-   * 决策:lead.supervise 优先(真实 harness 的 LLM 调度);
-   * supervise 未实现/抛错 → 内置规则引擎;
-   * supervise 返回空但有可调度任务且无任何进展(如 LLM 拒绝/漏看)→ 规则引擎兜底补齐,
-   * 保证系统不因单轮 LLM 决策失败而停滞(harness 无关的安全网)。
-   * 节流:指纹无变化 → 跳过 LLM(本轮仅规则引擎)。
+   * Lead 决策唯一拥有正常任务分流、派单和验收权。规则引擎仅处理失败重试/停滞恢复；
+   * supervise 未实现/抛错/空决策时不能自动把任务派给 worker，也不能把父任务标记完成。
+   * 指纹无变化时跳过 LLM，但恢复性规则仍可运行。
    */
-  private async decide(snapshot: SupervisionSnapshot): Promise<SupervisionDecision[]> {
+  private async decide(snapshot: SupervisionSnapshot): Promise<SchedulerDecision[]> {
     try {
       if (!this.shouldSupervise(snapshot)) return this.ruleEngine(snapshot)
       this.lastSuperviseAt = Date.now()
@@ -300,14 +301,12 @@ export class SchedulerLoop {
       const decisions = await this.lead.supervise(snapshot)
       if (decisions === null) return this.ruleEngine(snapshot)
       if (decisions.length > 0) return decisions
-      // 空决策 + 规则引擎发现可行动作 → 兜底(LLM 优先,规则保底推进)
-      const fallback = this.ruleEngine(snapshot)
-      return fallback.length > 0
-        ? fallback
-        : decisions
+      // 空决策表示 Lead 本轮决定不采取行动；只允许非破坏性/故障恢复规则补充，
+      // 常规派单和父任务验收永不由兜底猜测。
+      return this.ruleEngine(snapshot)
     }
     catch (err) {
-      log.error(`[SchedulerLoop:${this.lead.agentId}] lead supervise 抛错,回退规则引擎:`, err)
+      log.error(`[SchedulerLoop:${this.lead.agentId}] lead supervise 抛错,仅运行故障恢复规则(不盲派/验收):`, err)
       return this.ruleEngine(snapshot)
     }
   }
@@ -317,7 +316,7 @@ export class SchedulerLoop {
     const now = Date.now()
     // lite 快照:元数据投影,免每 tick 对全部任务做 artifacts/history JSON 大列解析
     // (调度决策/规则引擎仅消费状态/进度/标题/描述;LLM 交付预览降级,状态信息仍完整)
-    const tasks = this.lead.taskEngine.listLite(this.channelRuntime.channelId)
+    const tasks = this.lead.taskEngine.listForSupervision(this.channelRuntime.channelId, this.lead.agentId)
     // 已装配成员的实时状态
     const wired = new Map(this.channelRuntime.getAgents().map(a => [a.agentId, a.getState()]))
     // channel 全部 enabled 成员(含未装配懒加载成员 → idle,lead 可据此 dispatch);
@@ -375,41 +374,16 @@ export class SchedulerLoop {
   }
 
   /** 内置规则引擎兜底(harness 无关) */
-  private ruleEngine(snapshot: SupervisionSnapshot): SupervisionDecision[] {
+  private ruleEngine(snapshot: SupervisionSnapshot): SchedulerDecision[] {
     const decisions: SupervisionDecision[] = []
     const { tasks, members, now } = snapshot
     this.refreshIdle(members, now)
-    // parent → children 一次构建(原每任务 some/filter 全量扫描,O(N²) → O(N))
-    const childrenByParent = new Map<string, typeof tasks>()
-    for (const t of tasks) {
-      if (!t.parentId) continue
-      const arr = childrenByParent.get(t.parentId)
-      if (arr) arr.push(t)
-      else childrenByParent.set(t.parentId, [t])
-    }
-    const childrenOf = (id: string): typeof tasks => childrenByParent.get(id) ?? []
     // 本轮可用空闲 worker 池:dispatch/reassign 消费后即从池中移除,
     // 保证一轮内不会把多个任务重复分给同一个"看似空闲"的 worker(其状态尚未翻 busy)。
     const pool = members.filter(m => m.role === 'worker' && m.state === 'idle')
 
     // 任务按 createdAt ASC 迭代(list 顺序)= 外部提交 FIFO:先提交先分解先分发。
     for (const task of tasks) {
-      // SUBMITTED or WORKING 且 assignee=lead 且无子任务 → dispatch 给最优空闲 worker
-      const hasChildren = childrenOf(task.id).length > 0
-      if ((task.state === 'SUBMITTED' || task.state === 'WORKING')
-        && task.assigneeId === this.lead.agentId
-        && !hasChildren) {
-        const worker = this.pickWorker(pool, now)
-        if (worker) {
-          decisions.push({
-            kind: 'dispatch',
-            parentTaskId: task.id,
-            assigneeId: worker.agentId,
-            title: task.title,
-            description: task.description,
-          })
-        }
-      }
       // FAILED 且 retryCount<3:优先换人重试;仅剩原 assignee 空闲(如单 worker channel)
       // → 由原 assignee 重试(reassign 到自己,走 FAILED→ASSIGNED 恢复);无人可用 → cancel(允许终结)
       if (task.state === 'FAILED') {
@@ -502,82 +476,22 @@ export class SchedulerLoop {
         // progress=90、产物齐全,却因没走收口动作被整单取消;换成真实 harness lead 时
         // 由 lead 的监督回合兜住,所以只在 mock/规则引擎这条路径上暴露)。
         // 现在按"有没有真干过活"分流:干过 → 收口(成果保留);没干过 → 仍然取消(防永挂)。
-        const didWork = task.progress > 0
-          || (task.artifacts ?? []).some(a => a.name !== 'input' && (a.parts ?? []).length > 0)
+        const didWork = (task.artifacts ?? []).some(a => a.name !== 'input'
+          && (a.parts ?? []).some(p => 'text' in p ? p.text.trim().length > 0 : true))
         decisions.push(didWork ? { kind: 'complete', taskId: task.id } : { kind: 'cancel', taskId: task.id })
       }
     }
 
-    // 子任务全完成且父任务(WAITING/WORKING)→ complete 父
-    for (const task of tasks) {
-      const children = childrenOf(task.id)
-      if (children.length === 0) continue
-      if (task.state === 'COMPLETED' || task.state === 'FAILED' || task.state === 'CANCELED') continue
-      const allDone = children.every(c => c.state === 'COMPLETED')
-      // goal/pipeline 父任务的完成判定属于 lead 模式剧本(goal 需满意度判定、
-      // pipeline 需全部阶段收敛),规则引擎不越权提前收口;loop 与无模式照旧兜底
-      const modeInfo = extractTaskMode(task)
-      if (modeInfo && (modeInfo.mode === 'goal' || modeInfo.mode === 'pipeline')) {
-        // goal 收口保活:lead 判定回合可能以纯文本收尾(未调用 complete_task),之后
-        // 状态不再变化 → 监督回合被指纹节流 → goal 永挂 WORKING 直至看门狗误取消。
-        // 全部子任务 COMPLETED 持续超过宽限窗(45s,lead 仍有充分判定机会)后由
-        // 规则引擎兜底收口;taskEngine.complete 内建 goal-summary 合成,标志必然落盘。
-        if (modeInfo.mode !== 'goal') continue
-        // SUBMITTED 同样纳入收口:lead 派出子任务但未显式开跑父任务时,
-        // SUBMITTED+有子任务是 dispatch/收口规则的死区,父任务会永久悬挂(实测海龟汤对局)
-        if (!allDone || (task.state !== 'WAITING' && task.state !== 'WORKING' && task.state !== 'SUBMITTED')) {
-          this.goalAllDoneAt.delete(task.id)
-          continue
-        }
-        const since = this.goalAllDoneAt.get(task.id)
-        if (since === undefined) {
-          this.goalAllDoneAt.set(task.id, now)
-        }
-        else if (now - since >= this.goalGraceMs) {
-          this.goalAllDoneAt.delete(task.id)
-          decisions.push({ kind: 'complete', taskId: task.id })
-        }
-        continue
-      }
-      if (allDone && (task.state === 'WAITING' || task.state === 'WORKING' || task.state === 'SUBMITTED')) {
-        decisions.push({ kind: 'complete', taskId: task.id })
-      }
-      // 部分成功收口(防父任务永挂):全部子任务已终态,但存在失败/取消且至少一个
-      // COMPLETED 交付 —— 父任务不应 CANCEL(有成果),也不应无限 WAITING。
-      // 以"已有成果"为完成条件收口父任务(lead 汇总已产出部分,缺的口子明确可见),
-      // 否则父任务在子任务混合终态时永久卡死,lead 无从得知去补派。
-      else if (
-        (task.state === 'WAITING' || task.state === 'WORKING' || task.state === 'SUBMITTED')
-        && children.every(c => TERMINAL_TASK_STATES[c.state] === true)
-        && children.some(c => c.state === 'COMPLETED')
-        && !children.every(c => c.state === 'COMPLETED')
-      ) {
-        decisions.push({ kind: 'complete', taskId: task.id })
-      }
-    }
-
-    // 父任务终结:子任务全部终态且存在不可重试的 FAILED/CANCELED
-    // → 父任务无法交付 → cancel 父任务(避免 WAITING 永挂;lead 可重新提交)。
-    // 已有 COMPLETED 交付的父任务不自动取消——作废尝试(FAILED/CANCELED)不阻塞,
-    // 收尾判定属于 lead(goal 模式按目标达成度而非子任务簿记收尾)
-    for (const task of tasks) {
-      const children = childrenOf(task.id)
-      if (children.length === 0) continue
-      if (task.state !== 'WAITING' && task.state !== 'WORKING' && task.state !== 'SUBMITTED') continue
-      const allTerminal = children.every(c => TERMINAL_TASK_STATES[c.state] === true)
-      const anyUnsuccessful = children.some(c => c.state !== 'COMPLETED')
-      const hasRetryableFailure = children.some(c => c.state === 'FAILED' && c.retryCount < 3)
-      const hasCompletedDeliverable = children.some(c => c.state === 'COMPLETED')
-      if (allTerminal && anyUnsuccessful && !hasRetryableFailure && !hasCompletedDeliverable) {
-        decisions.push({ kind: 'cancel', taskId: task.id })
-      }
-    }
+    // Parent tasks are never auto-accepted by the recovery engine. A COMPLETED child
+    // means only that its worker submitted a deliverable; the lead must inspect the
+    // bounded artifacts in the next supervision snapshot and explicitly complete,
+    // reassign, or dispatch a revision. The same rule applies to goal/pipeline parents.
 
     return decisions
   }
 
   /** 执行单条决策(身份=lead,经 TaskEngine 与 ChannelRuntime) */
-  private execute(decision: SupervisionDecision): void {
+  private execute(decision: SchedulerDecision): void {
     switch (decision.kind) {
       case 'dispatch': {
         if (!decision.parentTaskId) {

@@ -21,13 +21,15 @@ export const MANAGEMENT_TOOL_NAMES: ReadonlySet<string> = LEAD_ONLY_TOOL_NAMES
 /**
  * 高危写/控制工具。
  * 取值来自 host-tool-bridge 的 dispatch 分支(dcw_control/param_control/dcw_rollback/
- * aml_job_submit/aml_model_promote/aml_dataset_build)与工业工具族 —— 这些都是
- * "会让现场设备或数据发生变化"的动作,只读的 *_read/_query/_frames/_status 不在其中。
+ * aml_job_submit/aml_model_promote/aml_dataset_build)与工业工具族(包括配方写入/回退)
+ * —— 这些都是"会让现场设备或数据发生变化"的动作,只读的 *_read/_query/_frames/_status 不在其中。
  */
 export const HIGH_RISK_TOOL_NAMES: ReadonlySet<string> = new Set([
   'dcw_control',
   'dcw_rollback',
   'param_control',
+  'recipe_update',
+  'recipe_rollback',
   'aml_job_submit',
   'aml_job_cancel',
   'aml_dataset_build',

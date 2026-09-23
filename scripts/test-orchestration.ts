@@ -26,6 +26,7 @@ import { createMemoryRepo } from '../server/services/workshop/db/memory.repo'
 import { createChannelEventRepo } from '../server/services/workshop/db/channel-event.repo'
 import { createTeamRepo } from '../server/services/workshop/db/team.repo'
 import { createTeamMemberRepo } from '../server/services/workshop/db/team-member.repo'
+import { createUserRepo } from '../server/services/workshop/db/user.repo'
 import {
   createAgentChannelManager,
   type AgentChannelManager,
@@ -126,7 +127,7 @@ class SuperviseOnlyLead implements AgentInterface {
               kind: 'dispatch',
               parentTaskId: task.id,
               assigneeId: worker.agentId,
-              title: task.title,
+              title: `${task.title} — 子任务 ${decisions.filter(d => d.kind === 'dispatch' && d.parentTaskId === task.id).length + 1}`,
               description: task.description,
             })
           }
@@ -164,6 +165,7 @@ interface Harness {
 function setup(): Harness {
   const db = openWorkshopDb(':memory:')
   const repos: AllRepos = {
+    users: createUserRepo(db),
     channels: createChannelRepo(db),
     agents: createAgentRepo(db),
     channelAgents: createChannelAgentRepo(db),
@@ -356,7 +358,7 @@ async function testRealMockLeadFlow(h: Harness, loops: SchedulerLoop[], channels
   const main = await manager.submitChannelTask({
     channelId: team.channelId,
     title: '生产路径主任务',
-    description: '真实 mock lead 自动调度',
+    description: '[mock:complex] 真实 mock lead 自动调度并执行 worker 验收流程',
   })
 
   const done = await waitUntil(async () => {
@@ -389,6 +391,7 @@ async function main(): Promise<void> {
       db: db2,
       manager: createAgentChannelManager({
         repos: {
+          users: createUserRepo(db2),
           channels: createChannelRepo(db2),
           agents: createAgentRepo(db2),
           channelAgents: createChannelAgentRepo(db2),
@@ -407,6 +410,8 @@ async function main(): Promise<void> {
       repos: null as never,
     }
     await testRealMockLeadFlow(h2, loops, channels)
+    for (const loop of loops) loop.stop()
+    await h2.manager.shutdown()
     h2.db.close()
   }
   finally {

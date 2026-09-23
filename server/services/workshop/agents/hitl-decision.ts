@@ -19,8 +19,8 @@
  * 本模块在首次决策前惰性执行一次(幂等,globalThis 标记跨 HMR/多入口存活),
  * 只处理早于进程启动水位的条目,绝不误杀本进程内新建的 live 待办。
  *
- * 降级:无持久化层(旧测试脚手架在 :memory: 上不装群聊仓储)时回落旧口径守卫,
- * 行为与 v17 之前一致,不因引入决策服务而丢失可应答性。
+ * 降级:无持久化层(旧测试脚手架在 :memory: 上不装群聊仓储)时可使用内存待办,
+ * 但仍须校验当前 Channel 审批资格;缺少授权运行时或 Channel 信息时 fail-closed。
  */
 import { randomUUID } from 'node:crypto'
 import { AppError } from '@/server/utils/errors'
@@ -192,7 +192,7 @@ function visibleChannelIds(manager: HitlRuntimePort, user: HitlActingUser): Set<
  * 断言调用者可见且**可裁决**该 Channel 的 HITL。
  * - 可见性:listChannelsVisibleTo ∪ listChannelsForUser(遗留公共);admin 全量
  * - 审批资格:requireCanApprove(成员 + owner_only/any_member + 创建时资格快照 ∩ 当前资格)
- * - 遗留 owner=NULL Channel:保持旧口径(getChannelForUser),不放宽也不收紧既有语义
+ * - 遗留 owner=NULL Channel:决策不使用只读兼容的 getChannelForUser;无持久化快照时仅当前授权守卫可放行
  */
 export function assertCanDecideHitlChannel(
   channelId: string,
@@ -444,9 +444,12 @@ export async function decideHitlRequest(input: HitlDecisionInput): Promise<HitlD
   if (row) {
     assertCanDecideHitlChannel(channelId, user, { policy: row.policy, snapshot: snapshotOfRow(row) })
   }
-  else if (manager && channelId) {
-    // 降级路径(无持久化行):与 v17 之前完全一致的口径
-    manager.getChannelForUser(channelId, user.id)
+  else {
+    // 无持久化快照时只按当前审批资格裁决;旧 getChannelForUser 会对 owner=NULL 放行任意登录用户。
+    if (!manager || !channelId) {
+      throw new AppError(503, 'HITL_AUTH_UNAVAILABLE', '待办无持久化授权快照且当前 Channel 授权不可用,已拒绝决策')
+    }
+    assertCanDecideHitlChannel(channelId, user)
   }
 
   const decisionId = randomUUID()

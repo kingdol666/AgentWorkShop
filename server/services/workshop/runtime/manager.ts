@@ -1296,7 +1296,52 @@ export class AgentChannelManager {
       createTeamMember: input => this.createTeamMember(channelId, agent.id, input),
       updateTeamMember: (agentId, patch) => this.updateTeamMember(channelId, agent.id, agentId, patch),
       removeTeamMember: (agentId, reason) => this.removeTeamMember(channelId, agent.id, agentId, reason),
+      // 群聊/自由请求 → 可追踪根任务(仅 lead;见 AgentWorkspace.submitTask 注释)
+      submitTask: input => this.submitLeadRootTask(channelId, agent.id, input),
     }
+  }
+
+  /**
+   * Lead 把一次人类请求升级为**可追踪的根任务**(归属 Lead 自己)。
+   *
+   * 与 `submitChannelTask` 的差别(为什么不能复用):
+   *  - `submitChannelTask` 是**人类入口**:router 层已鉴权,且会向 assignee 投递 assign 消息、
+   *    做重复标题拦截;它的 assignee 缺省是 lead,但也可被显式指定为 worker(人类直发)。
+   *  - 本方法是**Agent 入口**:调用方必须是本 channel 的 lead,任务归属 lead 自己,
+   *    且**不投递 assign 消息** —— lead 此刻就在回合里,自我唤醒只会造成一次空转回合;
+   *    分解/作答由调度器随后按"lead 名下未规划根任务"触发 supervise 继续(见
+   *    SchedulerLoop.shouldSupervise 的 hasUnplannedLeadRoot)。
+   *
+   * 幂等:同标题未终态根任务已存在时直接返回既有任务(Lead 重试/重复思考不产生重复作业)。
+   */
+  private async submitLeadRootTask(
+    channelId: string,
+    callerAgentId: string,
+    input: { title: string, description?: string, parts?: Part[] },
+  ): Promise<WorkspaceTask> {
+    const caller = this.requireMember(channelId, callerAgentId)
+    if (caller.role !== 'lead') {
+      throw new AppError(403, 'ROLE_FORBIDDEN', '仅 lead 可将请求登记为根任务(submit_task)')
+    }
+    const title = String(input.title ?? '').trim()
+    if (!title) throw new AppError(400, 'BAD_REQUEST', 'submit_task 需要非空 title')
+    // 幂等:同标题未终态根任务(lead 可能在一轮里重复登记同一次请求)
+    const existing = this.getTaskEngine().list(channelId).find(t =>
+      !t.parentId
+      && t.title === title
+      && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
+    if (existing) return existing
+    const task = this.getTaskEngine().create({
+      channelId,
+      creatorId: callerAgentId,
+      assigneeId: callerAgentId,
+      title,
+      description: input.description,
+      parts: input.parts,
+    })
+    // 唤起调度:下一 tick 即按"lead 名下未规划根任务"请 lead 继续(分解或直接作答)
+    this.ensureChannelRuntime(channelId).wakeScheduler()
+    return task
   }
 
   // ===== 用户面(用户级隔离;管理 API 凭证 = 用户 token)=====
@@ -3419,7 +3464,29 @@ export class AgentChannelManager {
           .slice(0, 300) ?? ''
         throw new AppError(409, 'DUPLICATE_DISPATCH', `子任务 "${input.title}" 已完成并交付(任务 ${done.id})。已有成果:${preview || '(见任务详情)'}。直接引用该成果即可,不要重复派发相同工作。`)
       }
-      task = this.getTaskEngine().dispatch(parent, {
+      // 父任务接取:dispatch 的合法前置状态是 WORKING/WAITING。
+      //  - 人类任务入口提交的根任务初态 ASSIGNED,由运行时消费 assign 投递时接取 → WORKING;
+      //  - lead 经 submit_task 登记的根任务**不投递 assign**(自我唤醒只会空转),初态停在 SUBMITTED,
+      //    由调度器按"lead 名下未规划根任务"请 lead 继续。
+      // 于是 lead 在同一回合里 submit_task → dispatch_task 时父任务仍是 SUBMITTED,
+      // 旧实现会走到 TaskEngine.dispatch 的后半段才 transition(WAITING):
+      // 非法迁移 SUBMITTED → WAITING 抛出,而**子任务此时已落库**(dispatch 先建子后迁父),
+      // 留下"SUBMITTED 父任务下挂孤儿子任务"的脏状态,子任务也永远不会被验收。
+      // 与 SchedulerLoop.execute('dispatch') 的 SUBMITTED → WORKING 保持同一口径:
+      // 由 lead 先接取父任务,再分解。此处前置校验,后续 dispatch 不再可能抛迁移异常。
+      // 终态父任务先拒(任何副作用之前):COMPLETED/CANCELED 没有出边,FAILED 只能 → ASSIGNED,
+      // 三者都到不了 WAITING —— 若不先拒,dispatch 会先建子任务再抛迁移异常,同样留下孤儿。
+      if (parent.state === 'COMPLETED' || parent.state === 'CANCELED' || parent.state === 'FAILED') {
+        const why = parent.state === 'COMPLETED' ? '已完成' : parent.state === 'CANCELED' ? '已取消' : '已判失败'
+        throw new AppError(409, 'TASK_TERMINAL',
+          `父任务 ${parent.id.slice(0, 8)} ${why},无法再派发子任务(状态机无 WAITING 出边);`
+          + (parent.state === 'FAILED' ? '请先 reassign_task 重试,或另起根任务' : '请另起一个根任务'),
+        )
+      }
+      const dispatchParent = parent.state === 'SUBMITTED' || parent.state === 'ASSIGNED'
+        ? this.getTaskEngine().transition(parent.id, 'WORKING', callerAgentId)
+        : parent
+      task = this.getTaskEngine().dispatch(dispatchParent, {
         assigneeId: input.assigneeId,
         title: input.title,
         description: input.description,

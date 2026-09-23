@@ -247,7 +247,15 @@ function testComplete(): void {
   const { engine, lead, worker, channel } = setup()
   const t = engine.create({ channelId: channel.id, creatorId: lead.id, assigneeId: worker.id, title: '完成任务' })
   engine.transition(t.id, 'WORKING', worker.id)
-  const done = engine.complete(t.id)
+  let missingRejected = false
+  try {
+    engine.complete(t.id)
+  }
+  catch (error) {
+    missingRejected = (error as { code?: string }).code === 'TASK_DELIVERABLE_REQUIRED'
+  }
+  check('complete 无交付物被拒绝', missingRejected)
+  const done = engine.complete(t.id, [{ artifactId: 'complete-output', name: 'deliverable', parts: [{ text: 'complete output' }] }])
   check('complete 置 COMPLETED', done.state === 'COMPLETED', `state=${done.state}`)
   check('complete 进度 100', done.progress === 100, `progress=${done.progress}`)
 }
@@ -295,15 +303,29 @@ function testOnChildCompleted(): void {
 
   // 完成子任务 1(ASSIGNED → WORKING → COMPLETED)
   engine.transition(child1.id, 'WORKING', worker.id)
-  const done1 = engine.complete(child1.id)
+  const done1 = engine.complete(child1.id, [{ artifactId: 'child-1-output', name: 'deliverable', parts: [{ text: 'child one result' }] }])
   engine.onChildCompleted(done1)
   check('子任务 1 完成后父仍 WAITING', engine.get(parent.id)?.state === 'WAITING')
 
   // 完成子任务 2(最后一个)
   engine.transition(child2.id, 'WORKING', worker.id)
-  const done2 = engine.complete(child2.id)
+  const done2 = engine.complete(child2.id, [{ artifactId: 'child-2-output', name: 'deliverable', parts: [{ text: 'child two result' }] }])
   engine.onChildCompleted(done2)
   check('最后一个子任务完成后父恢复 WORKING', engine.get(parent.id)?.state === 'WORKING')
+  let rejectedWithoutLeadSummary = false
+  try {
+    engine.complete(parent.id)
+  }
+  catch (error) {
+    rejectedWithoutLeadSummary = (error as { code?: string }).code === 'LEAD_ACCEPTANCE_REQUIRED'
+  }
+  check('worker child 全完成仍必须由 Lead 提交验收总结', rejectedWithoutLeadSummary)
+  const acceptedParent = engine.complete(parent.id, [{
+    artifactId: 'lead-summary',
+    name: 'lead-acceptance-summary',
+    parts: [{ text: 'Lead 已按顺序核验子任务交付。' }],
+  }])
+  check('Lead 验收总结提交后父任务方可完成', acceptedParent.state === 'COMPLETED')
 
   // child-completed 消息:metadata 断言(x-aw-task-id=父 id,x-aw-child-task-id=子 id)
   const leadMsgs = pendingMessages(messages, channel.id, lead.id)
@@ -342,7 +364,7 @@ function testApplyEventErrorOnTerminal(): void {
   {
     const t = engine.create({ channelId: channel.id, creatorId: lead.id, assigneeId: worker.id, title: '完成后回合报错' })
     engine.transition(t.id, 'WORKING', worker.id)
-    engine.complete(t.id)
+    engine.complete(t.id, [{ artifactId: 'completed-output', name: 'deliverable', parts: [{ text: 'completed output' }] }])
     engine.applyEvent(t.id, { kind: 'error', error: { code: 'OMP_LLM_ERROR', message: 'late' } })
     check('COMPLETED 错误事件保持 COMPLETED', engine.get(t.id)?.state === 'COMPLETED', `state=${engine.get(t.id)?.state}`)
   }
@@ -400,7 +422,7 @@ function testSyncBroadcast(): void {
       }
     },
   })
-  engine2.complete(t.id)
+  engine2.complete(t.id, [{ artifactId: 'sync-output', name: 'deliverable', parts: [{ text: 'sync output' }] }])
   const completed = stateEvents[0]
   check('COMPLETED 状态广播时进度已为 100', completed?.state === 'COMPLETED' && completed?.progressAtBroadcast === 100,
     `progress=${completed?.progressAtBroadcast}`)
