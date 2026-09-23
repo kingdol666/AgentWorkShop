@@ -3,257 +3,39 @@
  * AgentTeam 编组库:用户级隔离的编组 CRUD + 成员管理 + 一键 deploy 到 Channel。
  * v10 可见性:private 仅本人;public 全员可读可用(仅属主可改删);内置(锁)不可变更。
  * admin:全量视图(含他人私有),附创建者;可改删任意非内置编组。
+ *
+ * 本页只做编排:目录/派生视图态在 composables/useTeamsCatalog,卡片即时写操作在
+ * composables/useTeamActions,四个弹窗的开关与 payload 在 composables/useTeamDialogState,
+ * 各弹窗自己的表单与提交在 useTeam*Dialog(由弹窗组件调用,成功后再 emit 回来 reload)。
+ * 展示件:components/workshop/teams/**。
  */
-import { message } from 'ant-design-vue'
-import { useWorkshopApi, type TeamDto, type AgentTemplateDto, type ChannelDto, type WorkshopPluginDto, type ChannelPluginStateDto } from '../../composables/workshop/useWorkshopApi'
-import { useUserStore } from '../../stores/workshop/user'
+import TeamAddMemberModal from '@/app/components/workshop/teams/TeamAddMemberModal.vue'
+import TeamCard from '@/app/components/workshop/teams/TeamCard.vue'
+import TeamCreateModal from '@/app/components/workshop/teams/TeamCreateModal.vue'
+import TeamDeployModal from '@/app/components/workshop/teams/TeamDeployModal.vue'
+import TeamPluginModal from '@/app/components/workshop/teams/TeamPluginModal.vue'
+import { useTeamActions } from './composables/useTeamActions'
+import { useTeamDialogState } from './composables/useTeamDialogState'
+import { useTeamsCatalog } from './composables/useTeamsCatalog'
 
 const { t } = useI18n()
 
-/** 内置种子(编组/成员模板)按稳定 id 翻译;自建回退原名 */
-const seedLabel = (x: { id?: string, templateId?: string, name: string }): string => seedName(t, x)
-
 definePageMeta({ layout: 'default' })
 
-const api = useWorkshopApi()
-const userStore = useUserStore()
-const teams = ref<TeamDto[]>([])
-const templates = ref<AgentTemplateDto[]>([])
-const channels = ref<ChannelDto[]>([])
-const loading = ref(false)
-
-const load = async (): Promise<void> => {
-  loading.value = true
-  try {
-    const [t, tpl, ch] = await Promise.all([api.listTeams(), api.listTemplates(), api.listChannels()])
-    teams.value = (t as unknown as { data?: TeamDto[] })?.data ?? []
-    templates.value = (tpl as unknown as { data?: AgentTemplateDto[] })?.data ?? []
-    channels.value = (ch as unknown as { data?: ChannelDto[] })?.data ?? []
-  }
-  finally {
-    loading.value = false
-  }
-}
-// SSR 安全:setup 期 $http(axios)无法在服务端发相对地址请求(同 agents 页注释)
-if (import.meta.client) void load()
-
-// ===== harness 可用性(成员选择禁用引擎未安装的模板;deploy 由后端 assert 兜底) =====
-const harnessAvail = ref<Record<string, boolean>>({})
-const loadHarnessAvail = async (): Promise<void> => {
-  try {
-    const res = await api.listHarnesses()
-    const list = (res as unknown as { data?: { harnesses?: Array<{ id: string, available?: boolean }> } })?.data?.harnesses
-    if (Array.isArray(list)) {
-      const m: Record<string, boolean> = {}
-      for (const h of list) m[h.id] = h.available !== false
-      harnessAvail.value = m
-    }
-  }
-  catch { /* 探测不可得时不限制选项(后端仍有强校验) */ }
-}
-if (import.meta.client) void loadHarnessAvail()
-const tplUnavailable = (tpl: AgentTemplateDto): boolean => harnessAvail.value[tpl.harness] === false
-const memberOptions = computed(() => templates.value.map((tpl) => {
-  const un = tplUnavailable(tpl)
-  return { value: tpl.id, label: un ? `${tpl.name}(${tpl.harness} · ${t('agents.notInstalled')})` : `${tpl.name}(${tpl.harness})`, disabled: un }
-}))
-
-// ===== 过滤 =====
-type Filter = 'all' | 'mine' | 'public' | 'builtin'
-const filter = ref<Filter>('all')
-const shown = computed(() => {
-  const uid = userStore.user?.id
-  switch (filter.value) {
-    case 'mine': return teams.value.filter(t => t.ownerUserId === uid)
-    case 'public': return teams.value.filter(t => t.visibility === 'public')
-    case 'builtin': return teams.value.filter(t => t.isBuiltin)
-    default: return teams.value
-  }
-})
-
-const canWrite = (team: TeamDto): boolean =>
-  !team.isBuiltin && (team.ownerUserId === userStore.user?.id || userStore.isAdmin)
-
-const visTag = (team: TeamDto): { text: string, color: string, icon?: string } => {
-  if (team.isBuiltin) return { text: t('teams.k3x23c018'), color: 'default', icon: 'i-tabler-lock' }
-  if (team.visibility === 'public') return { text: t('teams.k3wv1t019'), color: 'green' }
-  return { text: t('teams.k447jj020'), color: 'default' }
-}
-
-const createOpen = ref(false)
-const createForm = reactive({ name: '', description: '', visibility: 'private' as 'private' | 'public' })
-
-// ===== 插件(创建时勾选启用哪些;平台清单中 enabled 的插件,默认全选) =====
-const platformPlugins = ref<WorkshopPluginDto[]>([])
-const createPluginSel = ref<Record<string, boolean>>({})
-const loadPlatformPlugins = async (): Promise<void> => {
-  try {
-    const res = await api.listPlugins()
-    // 顶层 plugins key(非信封);兼容 {code,data} 信封;只取平台已启用的插件
-    const list = res?.plugins ?? (res as { data?: { plugins?: WorkshopPluginDto[] } })?.data?.plugins ?? []
-    const enabled = (Array.isArray(list) ? list : []).filter(p => p.enabled !== false)
-    platformPlugins.value = enabled
-    const sel: Record<string, boolean> = {}
-    for (const p of enabled) sel[p.name] = true
-    createPluginSel.value = sel
-  }
-  catch { /* 清单不可得时隐藏插件多选(创建仍可走默认) */ }
-}
-if (import.meta.client) void loadPlatformPlugins()
-
-/** checkbox-group 双向绑定(勾选集 ↔ plugins 开关视图) */
-const pluginChecked = computed({
-  get: () => Object.entries(createPluginSel.value).filter(([, v]) => v).map(([k]) => k),
-  set: (vals: Array<string>) => {
-    const next: Record<string, boolean> = {}
-    for (const p of platformPlugins.value) next[p.name] = vals.includes(p.name)
-    createPluginSel.value = next
-  },
-})
-
-const create = async (): Promise<void> => {
-  if (!createForm.name.trim()) {
-    message.warning(t('teams.k1bvcdo2021'))
-    return
-  }
-  // 勾选结果作为 plugins:[{name,enabled}] 附加(后端创建时写入该团队的插件开关)
-  const plugins = Object.entries(createPluginSel.value).map(([name, enabled]) => ({ name, enabled }))
-  await api.createTeam({ name: createForm.name.trim(), description: createForm.description || undefined, visibility: createForm.visibility, plugins })
-  message.success(t('teams.k3n5hak022'))
-  createOpen.value = false
-  createForm.name = ''
-  createForm.description = ''
-  createForm.visibility = 'private'
-  createPluginSel.value = Object.fromEntries(Object.entries(createPluginSel.value).map(([k]) => [k, true]))
-  void load()
-}
-
-/** 一键切换可见性(属主/admin) */
-const toggleVisibility = async (team: TeamDto, pub: boolean): Promise<void> => {
-  try {
-    await api.updateTeam(team.id, { visibility: pub ? 'public' : 'private' })
-    message.success(pub ? t('teams.k1globhp023') : t('teams.k1xxabaf024'))
-    void load()
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-}
-
-const addOpen = ref(false)
-const addTeam = ref<TeamDto | null>(null)
-const addTemplateId = ref<string>('')
-const addRole = ref<'lead' | 'worker'>('worker')
-const openAdd = (team: TeamDto): void => {
-  addTeam.value = team
-  addTemplateId.value = ''
-  addRole.value = 'worker'
-  addOpen.value = true
-}
-const addMember = async (): Promise<void> => {
-  if (!addTeam.value || !addTemplateId.value) {
-    message.warning(t('teams.k1kw4rtj025'))
-    return
-  }
-  try {
-    await api.addTeamMember(addTeam.value.id, { agentId: addTemplateId.value, role: addRole.value })
-    message.success(t('teams.k3n5hzw026'))
-    addOpen.value = false
-    void load()
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-}
-const removeMember = async (team: TeamDto, templateId: string): Promise<void> => {
-  await api.removeTeamMember(team.id, templateId)
-  void load()
-}
-
-const deployOpen = ref(false)
-const deployTeamRef = ref<TeamDto | null>(null)
-const deployChannelId = ref<string>('')
-const deploying = ref(false)
-const openDeploy = (team: TeamDto): void => {
-  deployTeamRef.value = team
-  deployChannelId.value = ''
-  deployOpen.value = true
-}
-const deploy = async (): Promise<void> => {
-  if (!deployTeamRef.value || !deployChannelId.value) {
-    message.warning(t('teams.selectChannel'))
-    return
-  }
-  deploying.value = true
-  try {
-    const res = await api.deployTeam(deployTeamRef.value.id, deployChannelId.value)
-    const agents = (res as unknown as { data?: { agents?: unknown[] } })?.data?.agents?.length ?? 0
-    message.success(t('teams.kh90glh031', { p0: agents }))
-    deployOpen.value = false
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    deploying.value = false
-  }
-}
-
-const removeTeam = async (team: TeamDto): Promise<void> => {
-  await api.deleteTeam(team.id)
-  message.success(t('teams.k1oxjrxx027'))
-  void load()
-}
-
-// ===== 团队级插件开关(GET → 展示各插件开关;切换即 PUT) =====
-const plugOpen = ref(false)
-const plugTeamRef = ref<TeamDto | null>(null)
-const plugRows = ref<ChannelPluginStateDto[]>([])
-const plugSource = ref<'explicit' | 'default'>('default')
-const plugLoading = ref(false)
-const plugSaving = ref<string | null>(null)
-const openPlugins = (team: TeamDto): void => {
-  plugTeamRef.value = team
-  plugRows.value = []
-  plugSource.value = 'default'
-  plugOpen.value = true
-  void loadTeamPlugins(team)
-}
-const loadTeamPlugins = async (team: TeamDto): Promise<void> => {
-  plugLoading.value = true
-  try {
-    const res = await api.listTeamPlugins(team.id)
-    const data = res?.data ?? {}
-    plugRows.value = data.plugins ?? []
-    plugSource.value = data.source === 'explicit' ? 'explicit' : 'default'
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    plugLoading.value = false
-  }
-}
-const toggleTeamPlugin = async (row: ChannelPluginStateDto, next: boolean): Promise<void> => {
-  if (!plugTeamRef.value || plugSaving.value) return
-  const teamId = plugTeamRef.value.id
-  plugSaving.value = row.name
-  try {
-    // PUT 全量提交当前开关视图(仅翻转目标行)
-    const payload = plugRows.value.map(r => ({ name: r.name, enabled: r.name === row.name ? next : r.enabled }))
-    const res = await api.putTeamPlugins(teamId, { plugins: payload })
-    const data = res?.data ?? {}
-    plugRows.value = data.plugins ?? payload.map(p => ({ ...p }))
-    plugSource.value = data.source === 'explicit' ? 'explicit' : 'default'
-    message.success(t('teams.k1plugon043'))
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    plugSaving.value = null
-  }
-}
+const { teams, channels, loading, load, memberOptions, filter, shown, canWrite, visTag, isAdmin } = useTeamsCatalog()
+const { toggleVisibility, removeMember, removeTeam } = useTeamActions({ reload: load })
+const {
+  createOpen,
+  addOpen,
+  addTeam,
+  openAdd,
+  deployOpen,
+  deployTeam,
+  openDeploy,
+  plugOpen,
+  plugTeam,
+  openPlugins,
+} = useTeamDialogState()
 
 useHead({ title: () => t('titles.teams') })
 </script>
@@ -292,101 +74,26 @@ useHead({ title: () => t('titles.teams') })
         ]"
       />
       <span
-        v-if="userStore.isAdmin"
+        v-if="isAdmin"
         class="admin-note"
       ><span class="i-tabler-shield-check" /> {{ $t('teams.k1bpgi8h010') }}</span>
     </div>
 
     <a-spin :spinning="loading">
       <div class="grid">
-        <div
+        <TeamCard
           v-for="team in shown"
           :key="team.id"
-          class="card"
-        >
-          <div class="card-head">
-            <span class="name">{{ seedLabel(team) }}</span>
-            <a-tag
-              :color="visTag(team).color"
-              class="vis-tag"
-            >
-              <span
-                v-if="visTag(team).icon"
-                :class="visTag(team).icon"
-              />{{ visTag(team).text }}
-            </a-tag>
-            <!-- 开关不带文字:左边那枚 tag 已经在说"公开/私有"了(与模板库同一条规则) -->
-            <a-switch
-              v-if="!team.isBuiltin && canWrite(team)"
-              :checked="team.visibility === 'public'"
-              size="small"
-              :title="team.visibility === 'public' ? $t('teams.toPrivate') : $t('teams.toPublic')"
-              @change="(v: unknown) => toggleVisibility(team, v === true)"
-            />
-            <span class="owner">{{ team.ownerName ?? '-' }}</span>
-            <a-dropdown v-if="canWrite(team)">
-              <span class="i-tabler-dots op" />
-              <template #overlay>
-                <a-menu>
-                  <a-menu-item @click="openDeploy(team)">
-                    {{ $t('teams.deployToChannel') }}
-                  </a-menu-item>
-                  <a-menu-item @click="openPlugins(team)">
-                    {{ $t('teams.k1plugon047') }}
-                  </a-menu-item>
-                  <a-menu-item
-                    danger
-                    @click="removeTeam(team)"
-                  >
-                    {{ $t('teams.k1bpojhf011') }}
-                  </a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
-            <!-- 用 outlined 而不是 text:text 按钮在卡片头上与旁边的 owner 文本
-                 长得一模一样,用户看不出这里是**唯一的主操作**(实测三张卡片都如此)。 -->
-            <a-button
-              v-else
-              class="deploy-btn"
-              size="small"
-              type="default"
-              :title="$t('teams.kxheuf1001')"
-              @click="openDeploy(team)"
-            >
-              {{ $t('teams.k48ja7012') }}
-            </a-button>
-          </div>
-          <div class="members">
-            <div
-              v-for="m in team.members"
-              :key="m.templateId"
-              class="member"
-            >
-              <a-tag
-                :color="m.role === 'lead' ? 'gold' : 'blue'"
-                class="role"
-              >
-                {{ m.role }}
-              </a-tag>
-              <span class="member-name">{{ seedLabel(m) }}</span>
-              <span class="member-harness">{{ m.harness }}</span>
-              <span
-                v-if="canWrite(team)"
-                class="i-tabler-x rm"
-                @click="removeMember(team, m.templateId)"
-              />
-            </div>
-            <a-button
-              v-if="canWrite(team)"
-              size="small"
-              type="dashed"
-              block
-              @click="openAdd(team)"
-            >
-              {{ $t('teams.krt2oib013') }}
-            </a-button>
-          </div>
-        </div>
+          :team="team"
+          :vis="visTag(team)"
+          :can-write="canWrite(team)"
+          @toggle-visibility="toggleVisibility"
+          @deploy="openDeploy"
+          @plugins="openPlugins"
+          @remove="removeTeam"
+          @add-member="openAdd"
+          @remove-member="removeMember"
+        />
         <div
           v-if="shown.length === 0"
           class="card placeholder"
@@ -398,148 +105,28 @@ useHead({ title: () => t('titles.teams') })
       </div>
     </a-spin>
 
-    <a-modal
+    <TeamCreateModal
       v-model:open="createOpen"
-      :title="$t('teams.k1efmuyx002')"
-      :ok-text="$t('common.create')"
-      :cancel-text="$t('common.cancel')"
-      @ok="create"
-    >
-      <a-form layout="vertical">
-        <a-form-item :label="$t('teams.k3xhia003')">
-          <a-input v-model:value="createForm.name" />
-        </a-form-item>
-        <a-form-item :label="$t('teams.k40gkk004')">
-          <a-input v-model:value="createForm.description" />
-        </a-form-item>
-        <a-form-item :label="$t('teams.k3lrqn0005')">
-          <a-radio-group v-model:value="createForm.visibility">
-            <a-radio value="private">
-              {{ $t('teams.k17jfge3015') }}
-            </a-radio>
-            <a-radio value="public">
-              {{ $t('teams.k1h2lq0o016') }}
-            </a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item
-          v-if="platformPlugins.length"
-          :label="$t('teams.k1plugon041')"
-        >
-          <a-checkbox-group
-            v-model:value="pluginChecked"
-            class="plug-create-group"
-          >
-            <a-checkbox
-              v-for="p in platformPlugins"
-              :key="p.name"
-              :value="p.name"
-            >
-              <span class="aw-mono">{{ p.name }}</span>
-              <span
-                v-if="p.builtin"
-                class="plug-builtin-tag"
-              >{{ $t('teams.k3x23c018') }}</span>
-            </a-checkbox>
-          </a-checkbox-group>
-          <div class="plug-hint">
-            {{ $t('teams.k1plugon042') }}
-          </div>
-        </a-form-item>
-      </a-form>
-    </a-modal>
+      @created="load"
+    />
 
-    <a-modal
+    <TeamAddMemberModal
       v-model:open="addOpen"
-      :title="$t('teams.k6ljhyv029', { p0: addTeam?.name ?? '' })"
-      :ok-text="$t('teams.joinOk')"
-      :cancel-text="$t('common.cancel')"
-      @ok="addMember"
-    >
-      <a-form layout="vertical">
-        <a-form-item :label="$t('teams.k41ds5006')">
-          <a-select
-            v-model:value="addTemplateId"
-            :options="memberOptions"
-          />
-        </a-form-item>
-        <a-form-item :label="$t('teams.k479op007')">
-          <a-radio-group v-model:value="addRole">
-            <a-radio value="worker">
-              worker
-            </a-radio>
-            <a-radio value="lead">
-              {{ $t('teams.keowzlv017') }}
-            </a-radio>
-          </a-radio-group>
-        </a-form-item>
-      </a-form>
-    </a-modal>
+      :team="addTeam"
+      :member-options="memberOptions"
+      @added="load"
+    />
 
-    <a-modal
+    <TeamDeployModal
       v-model:open="deployOpen"
-      :title="$t('teams.k1c0o6oe030', { p0: deployTeamRef?.name ?? '' })"
-      :confirm-loading="deploying"
-      :ok-text="$t('teams.deployOk')"
-      :cancel-text="$t('common.cancel')"
-      @ok="deploy"
-    >
-      <a-form layout="vertical">
-        <a-form-item :label="$t('teams.targetChannelLabel')">
-          <a-select
-            v-model:value="deployChannelId"
-            :options="channels.map(c => ({ value: c.id, label: c.name }))"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+      :team="deployTeam"
+      :channels="channels"
+    />
 
-    <a-modal
+    <TeamPluginModal
       v-model:open="plugOpen"
-      :title="$t('teams.k1plugon040', { p0: plugTeamRef?.name ?? '' })"
-      :footer="null"
-    >
-      <a-spin :spinning="plugLoading">
-        <p class="plug-source">
-          <template v-if="plugSource === 'explicit'">
-            {{ $t('teams.k1plugon045') }}
-          </template>
-          <template v-else>
-            {{ $t('teams.k1plugon044') }}
-          </template>
-        </p>
-        <div
-          v-for="row in plugRows"
-          :key="row.name"
-          class="plug-row"
-        >
-          <div class="plug-text">
-            <div class="plug-name">
-              <span class="aw-mono">{{ row.name }}</span>
-              <span
-                v-if="row.builtin"
-                class="plug-builtin-tag"
-              >{{ $t('teams.k3x23c018') }}</span>
-            </div>
-            <div class="plug-desc">
-              {{ row.description || '—' }}
-            </div>
-          </div>
-          <a-switch
-            :checked="row.enabled"
-            size="small"
-            :loading="plugSaving === row.name"
-            @change="(v: unknown) => toggleTeamPlugin(row, v === true)"
-          />
-        </div>
-        <div
-          v-if="plugRows.length === 0 && !plugLoading"
-          class="plug-hint"
-        >
-          {{ $t('teams.k1plugon046') }}
-        </div>
-      </a-spin>
-    </a-modal>
+      :team="plugTeam"
+    />
   </div>
 </template>
 
@@ -571,6 +158,8 @@ h2 { margin: 0 0 4px; }
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
 }
+/* 卡片本体的规则现在归 TeamCard.vue;这里只为同一网格里的占位卡留一份逐字拷贝 ——
+   有意重复(scoped 样式不能外移成公共 css),改卡片外观时两处要一起改。 */
 .card {
   display: flex;
   flex-direction: column;
@@ -582,49 +171,6 @@ h2 { margin: 0 0 4px; }
   transition: border-color var(--transition-fast);
 }
 .card:hover { border-color: var(--line-strong); }
-.card-head {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.name {
-  flex: 1 1 auto;
-  font-size: 15px;
-  font-weight: 600;
-}
-.vis-tag { margin-right: 2px; }
-.owner {
-  font-size: 11px;
-  color: var(--ink-faint);
-}
-.deploy-btn {
-  flex: none;
-  font-size: 11.5px;
-  border-color: var(--line-strong);
-}
-
-.op { cursor: pointer; opacity: 0.4; }
-.op:hover { opacity: 1; }
-.members {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.member {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  font-size: 12px;
-}
-.member-name { font-weight: 500; }
-.member-harness {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  opacity: 0.5;
-}
-.rm { cursor: pointer; opacity: 0.35; }
-.rm:hover { opacity: 1; }
 .card.placeholder {
   align-items: center;
   justify-content: center;
@@ -636,61 +182,8 @@ h2 { margin: 0 0 4px; }
 }
 .big { font-size: 28px; }
 
-/* ===== 插件开关(创建勾选 + 团队弹层) ===== */
-.plug-create-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.plug-builtin-tag {
-  margin-left: 6px;
-  padding: 0 6px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--ink-faint);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill, 999px);
-}
-.plug-hint {
-  margin-top: 6px;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--ink-faint);
-}
-.plug-source {
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: var(--ink-faint);
-}
-.plug-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-}
-.plug-row:last-of-type {
-  border-bottom: 0;
-}
-.plug-text {
-  min-width: 0;
-}
-.plug-name {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 500;
-}
-.plug-desc {
-  margin-top: 2px;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--ink-faint);
-}
-
-/* ══ 窄屏(v9):页头纵向堆叠 / 筛选条换行 / 卡片单列 ══════════════════════ */
+/* ══ 窄屏(v9):页头纵向堆叠 / 筛选条换行 / 卡片单列 ══════════════════════
+   卡片内部的换行规则在 TeamCard.vue(同一断点,逐字复制)。 */
 @media (max-width: 900px) {
   .head {
     flex-direction: column;
@@ -730,9 +223,6 @@ h2 { margin: 0 0 4px; }
   }
 
   .grid { grid-template-columns: 1fr; }
-  .card-head { flex-wrap: wrap; }
-  .member { flex-wrap: wrap; }
-  .member-harness { font-size: 11.5px; }
 }
 
 @media (max-width: 640px) {

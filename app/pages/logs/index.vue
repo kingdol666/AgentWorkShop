@@ -1,511 +1,81 @@
 <template>
   <div class="page">
     <!-- 页头(aw-page-head 规范:kicker + 大标题 + 描述)+ 手动记录入口 -->
-    <header class="aw-page-head">
-      <div>
-        <p class="aw-kicker">
-          agentworkshop / audit log
-        </p>
-        <h1>{{ $t('logs.title') }}</h1>
-        <p class="sub">
-          {{ $t('logs.sub') }}
-        </p>
-      </div>
-      <div class="head-actions">
-        <span
-          class="live-dot"
-          :title="$t('logs.liveHint')"
-        /><span class="live-txt mono">{{ $t('logs.live') }} {{ opsLog.recent.length }}</span>
-        <button
-          class="pill-btn"
-          @click="openManual"
-        >
-          <span class="i-tabler-plus" />
-          {{ $t('logs.manual') }}
-        </button>
-      </div>
-    </header>
+    <LogsPageHead
+      :recent-count="opsLog.recent.length"
+      @manual="openManual"
+    />
 
     <!-- 维度筛选:产线 → 产品 → Recipe 级联 + 来源/分类/关键词 -->
-    <section class="filter-card">
-      <label class="flt">
-        <span>{{ $t('logs.fLine') }}</span>
-        <select
-          v-model="q.lineId"
-          class="inp-sel"
-          @change="q.productId = ''; q.recipeId = ''"
-        >
-          <option value="">
-            {{ $t('logs.all') }}
-          </option>
-          <option
-            v-for="l in dcw.lines"
-            :key="l.id"
-            :value="l.id"
-          >
-            {{ l.name }}
-          </option>
-        </select>
-      </label>
-      <label class="flt">
-        <span>{{ $t('logs.fProduct') }}</span>
-        <select
-          v-model="q.productId"
-          class="inp-sel"
-          @change="q.recipeId = ''"
-        >
-          <option value="">
-            {{ $t('logs.all') }}
-          </option>
-          <option
-            v-for="p in productsOfLine"
-            :key="p.id"
-            :value="p.id"
-          >
-            {{ p.name }}
-          </option>
-        </select>
-      </label>
-      <label class="flt">
-        <span>Recipe</span>
-        <select
-          v-model="q.recipeId"
-          class="inp-sel"
-        >
-          <option value="">
-            {{ $t('logs.all') }}
-          </option>
-          <option
-            v-for="r in recipesOfScope"
-            :key="r.id"
-            :value="r.id"
-          >
-            {{ r.name }}
-          </option>
-        </select>
-      </label>
-      <label class="flt">
-        <span>{{ $t('logs.fSource') }}</span>
-        <select
-          v-model="q.actorKind"
-          class="inp-sel"
-        >
-          <option value="">
-            {{ $t('logs.all') }}
-          </option>
-          <option value="user">
-            {{ $t('logs.src.user') }}
-          </option>
-          <option value="agent">
-            Agent
-          </option>
-          <option value="system">
-            {{ $t('logs.src.system') }}
-          </option>
-        </select>
-      </label>
-      <label class="flt">
-        <span>{{ $t('logs.fKind') }}</span>
-        <select
-          v-model="q.kind"
-          class="inp-sel"
-        >
-          <option value="">
-            {{ $t('logs.all') }}
-          </option>
-          <option
-            v-for="k in KINDS"
-            :key="k"
-            :value="k"
-          >
-            {{ $t(`logs.kind.${k}`) }}
-          </option>
-        </select>
-      </label>
-      <label class="flt flt-grow">
-        <span>{{ $t('logs.fKeyword') }}</span>
-        <input
-          v-model="q.text"
-          class="inp-sel"
-          type="search"
-          :placeholder="$t('logs.fKeywordPh')"
-          @keydown.enter="doQuery"
-        >
-      </label>
-      <button
-        class="pill-btn"
-        :disabled="opsLog.loading.list"
-        @click="doQuery"
-      >
-        <span class="i-tabler-search" />
-        {{ $t('logs.query') }}
-      </button>
-      <button
-        v-if="hasFilter"
-        class="mini-btn"
-        @click="resetFilters"
-      >
-        {{ $t('logs.reset') }}
-      </button>
-    </section>
+    <LogsFilterCard
+      v-model:line-id="q.lineId"
+      v-model:product-id="q.productId"
+      v-model:recipe-id="q.recipeId"
+      v-model:actor-kind="q.actorKind"
+      v-model:kind="q.kind"
+      v-model:text="q.text"
+      :has-filter="hasFilter"
+      :loading="opsLog.loading.list"
+      @query="doQuery"
+      @reset="resetFilters"
+    />
 
     <!-- 结果表:时间/来源/操作者/分类/摘要/归属维度/详情 -->
-    <section class="table-card">
-      <p
-        v-if="opsLog.error.list"
-        class="err"
-      >
-        {{ opsLog.error.list }}
-      </p>
-      <table class="log-table">
-        <thead>
-          <tr>
-            <th class="th-time">
-              {{ $t('logs.thTime') }}
-            </th>
-            <th class="th-src">
-              {{ $t('logs.fSource') }}
-            </th>
-            <th>{{ $t('logs.thActor') }}</th>
-            <th class="th-kind">
-              {{ $t('logs.fKind') }}
-            </th>
-            <th>{{ $t('logs.thSummary') }}</th>
-            <th class="th-scope">
-              {{ $t('logs.thScope') }}
-            </th>
-            <th class="th-detail">
-              {{ $t('logs.thDetail') }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <template
-            v-for="row in opsLog.results"
-            :key="row.id"
-          >
-            <tr>
-              <td class="mono dim">
-                {{ fmtTime(row.at) }}
-              </td>
-              <td>
-                <span
-                  class="src-badge"
-                  :class="row.actorKind"
-                >{{ srcLabel(row.actorKind) }}</span>
-              </td>
-              <td class="actor">
-                {{ row.actorName || row.actor || '—' }}
-              </td>
-              <td>
-                <span
-                  class="kind-chip"
-                  :class="row.kind"
-                >{{ kindLabel(row.kind) }}</span>
-              </td>
-              <td class="summary">
-                {{ row.summary }}
-                <small class="mono dim action">{{ row.action }}</small>
-              </td>
-              <td class="scope">
-                <span
-                  v-if="lineName(row.lineId)"
-                  class="scope-chip"
-                  :title="$t('logs.fLine')"
-                >{{ lineName(row.lineId) }}</span>
-                <span
-                  v-if="productName(row.productId)"
-                  class="scope-chip"
-                  :title="$t('logs.fProduct')"
-                >{{ productName(row.productId) }}</span>
-                <span
-                  v-if="recipeName(row.recipeId)"
-                  class="scope-chip"
-                  :title="'Recipe'"
-                >{{ recipeName(row.recipeId) }}</span>
-                <span
-                  v-if="!row.lineId && !row.productId && !row.recipeId"
-                  class="dim"
-                >—</span>
-              </td>
-              <td class="detail-cell">
-                <button
-                  v-if="hasDetail(row)"
-                  class="mini-btn"
-                  @click="toggle(row)"
-                >
-                  {{ expandedId === row.id ? $t('logs.fold') : $t('logs.expand') }}
-                </button>
-                <span
-                  v-else
-                  class="dim"
-                >{{ $t('logs.noDetail') }}</span>
-              </td>
-            </tr>
-            <!-- 详情行内展开:紧贴事件行,点击即见(不再沉到表尾) -->
-            <tr
-              v-if="expandedId === row.id"
-              class="log-detail-row"
-            >
-              <td
-                colspan="7"
-                class="detail-td"
-              >
-                <pre class="detail-box mono">{{ pretty(row.detailJson) }}</pre>
-              </td>
-            </tr>
-          </template>
-          <tr class="log-empty-row">
-            <td
-              v-if="opsLog.results.length === 0"
-              colspan="7"
-              class="empty"
-            >
-              <template v-if="opsLog.loading.list">
-                {{ $t('logs.loading') }}
-              </template>
-              <template v-else>
-                {{ $t('logs.empty') }}
-              </template>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <LogsEventTable
+      :rows="opsLog.results"
+      :expanded-id="expandedId"
+      :loading="opsLog.loading.list"
+      :error="opsLog.error.list"
+      @toggle="toggleRow"
+    />
 
     <!-- 人工记录弹窗 -->
-    <Teleport to="body">
-      <div
-        v-if="manualOpen"
-        class="modal-mask"
-        @click.self="manualOpen = false"
-      >
-        <div class="modal">
-          <h3 class="m-title">
-            {{ $t('logs.manual') }}
-          </h3>
-          <label class="m-f">
-            <span>{{ $t('logs.mSummary') }} *</span>
-            <textarea
-              v-model="manual.summary"
-              rows="3"
-              :placeholder="$t('logs.mSummaryPh')"
-            />
-          </label>
-          <label class="m-f">
-            <span>{{ $t('logs.mDetail') }}</span>
-            <textarea
-              v-model="manual.detail"
-              rows="2"
-              :placeholder="$t('logs.mDetailPh')"
-            />
-          </label>
-          <div class="m-grid">
-            <label class="m-f">
-              <span>{{ $t('logs.fLine') }}</span>
-              <select
-                v-model="manual.lineId"
-                class="inp-sel"
-                @change="manual.productId = ''; manual.recipeId = ''"
-              >
-                <option value="">
-                  {{ $t('logs.all') }}
-                </option>
-                <option
-                  v-for="l in dcw.lines"
-                  :key="l.id"
-                  :value="l.id"
-                >
-                  {{ l.name }}
-                </option>
-              </select>
-            </label>
-            <label class="m-f">
-              <span>{{ $t('logs.fProduct') }}</span>
-              <select
-                v-model="manual.productId"
-                class="inp-sel"
-                @change="manual.recipeId = ''"
-              >
-                <option value="">
-                  {{ $t('logs.all') }}
-                </option>
-                <option
-                  v-for="p in productsOfLine"
-                  :key="p.id"
-                  :value="p.id"
-                >
-                  {{ p.name }}
-                </option>
-              </select>
-            </label>
-            <label class="m-f">
-              <span>Recipe</span>
-              <select
-                v-model="manual.recipeId"
-                class="inp-sel"
-              >
-                <option value="">
-                  {{ $t('logs.all') }}
-                </option>
-                <option
-                  v-for="r in recipesOfScope"
-                  :key="r.id"
-                  :value="r.id"
-                >
-                  {{ r.name }}
-                </option>
-              </select>
-            </label>
-          </div>
-          <p
-            v-if="opsLog.error.post"
-            class="err"
-          >
-            {{ opsLog.error.post }}
-          </p>
-          <div class="m-actions">
-            <button
-              class="ghost-btn"
-              @click="manualOpen = false"
-            >
-              {{ $t('common.cancel') }}
-            </button>
-            <button
-              class="pill-btn"
-              :disabled="opsLog.loading.posting || !manual.summary.trim()"
-              @click="submitManual"
-            >
-              {{ $t('logs.mSubmit') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <LogsManualModal
+      v-model:open="manualOpen"
+      :scope="manualScope"
+      :posting="opsLog.loading.posting"
+      :error="opsLog.error.post"
+      @submit="submitManual"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
+/**
+ * 审计日志页(audit_log 全操作统一记录) —— 单页三区:页头实况 / 维度筛选 / 结果表 + 人工记录弹窗。
+ *
+ * 数据权威在 server:GET /api/workshop/ops-logs 按维度查询(产线/产品/Recipe/来源/分类/关键词),
+ * POST 手动录入人工事件;WS ops.log 帧只提供实时轨计数(recent),历史完整查询走 REST。
+ *
+ * 页面只做编排:查询态与展开态在 composables/useLogsQuery,人工记录在 composables/useLogsManual,
+ * 级联口径在 composables/useLogsScope,展示格式化在 composables/useLogsFormat;
+ * 区块与弹窗在 components/logs/*(页面私有子组件刻意不放 app/pages —— 该目录下任何 .vue 都会被当成路由)。
+ */
+import { computed, onMounted } from 'vue'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useWorkshopWs } from '@/app/composables/workshop/useWorkshopWs'
-import { useOpsLog, type OpsLogRow } from '@/app/composables/workshop/useOpsLog'
-
-const tt = (k: string) => useNuxtApp().$i18n.t(k) as string
+import { useOpsLog } from '@/app/composables/workshop/useOpsLog'
+import { useLogsQuery } from './composables/useLogsQuery'
+import { useLogsManual, type LogsManualScope } from './composables/useLogsManual'
+import LogsPageHead from '~/components/logs/LogsPageHead.vue'
+import LogsFilterCard from '~/components/logs/LogsFilterCard.vue'
+import LogsEventTable from '~/components/logs/LogsEventTable.vue'
+import LogsManualModal from '~/components/logs/LogsManualModal.vue'
 
 const dcw = useDcwStream()
 const ws = useWorkshopWs()
 const opsLog = useOpsLog()
 
-const KINDS = ['write', 'manual', 'alarm', 'line', 'recipe', 'rollback', 'daq', 'system'] as const
+const { q, hasFilter, expandedId, doQuery, resetFilters, toggleRow } = useLogsQuery()
+// 提交成功 → 立即重查(人工事件与自动操作同一流水,新记录必须马上出现在结果表里)
+const { manualOpen, openManual, submitManual } = useLogsManual({ onPosted: doQuery })
 
-const q = reactive({ lineId: '', productId: '', recipeId: '', actorKind: '', kind: '', text: '' })
-/** 当前展开详情的行(audit_log 行 id;null = 全部收起) */
-const expandedId = ref<number | null>(null)
-const manualOpen = ref(false)
-const manual = reactive({ summary: '', detail: '', lineId: '', productId: '', recipeId: '' })
-
-const hasFilter = computed(() => !!(q.lineId || q.productId || q.recipeId || q.actorKind || q.kind || q.text.trim()))
-const productsOfLine = computed(() => dcw.products.filter(p => !q.lineId || p.lineId === q.lineId))
-const recipesOfScope = computed(() => dcw.recipes.filter(r =>
-  (!q.lineId || r.lineId === q.lineId) && (!q.productId || r.productId === q.productId)))
-
-function doQuery(): void {
-  void opsLog.fetchLogs({
-    lineId: q.lineId,
-    productId: q.productId,
-    recipeId: q.recipeId,
-    actorKind: q.actorKind,
-    kind: q.kind,
-    q: q.text.trim(),
-    limit: 300,
-  })
-  expandedId.value = null
-}
-
-function resetFilters(): void {
-  q.lineId = ''
-  q.productId = ''
-  q.recipeId = ''
-  q.actorKind = ''
-  q.kind = ''
-  q.text = ''
-  doQuery()
-}
-
-function openManual(): void {
-  manual.summary = ''
-  manual.detail = ''
-  manual.lineId = q.lineId
-  manual.productId = q.productId
-  manual.recipeId = q.recipeId
-  manualOpen.value = true
-}
-
-async function submitManual(): Promise<void> {
-  try {
-    const note = manual.detail.trim()
-    await opsLog.postManual({
-      summary: manual.summary.trim(),
-      lineId: manual.lineId,
-      productId: manual.productId,
-      recipeId: manual.recipeId,
-      ...(note ? { detail: { note } } : {}),
-    })
-    message.success(tt('logs.mOk'))
-    manualOpen.value = false
-    doQuery()
-  }
-  catch (err) {
-    message.error(apiErrorMessage(err))
-  }
-}
-
-/** 该行是否带结构化详情(空对象 = 无) */
-function hasDetail(row: OpsLogRow): boolean {
-  return !!row.detailJson && row.detailJson !== '{}'
-}
-
-function toggle(row: OpsLogRow): void {
-  expandedId.value = expandedId.value === row.id ? null : row.id
-}
-
-function pretty(json: string): string {
-  try {
-    return JSON.stringify(JSON.parse(json), null, 2)
-  }
-  catch {
-    return json
-  }
-}
-
-function fmtTime(at: string): string {
-  const d = new Date(at)
-  if (!Number.isFinite(d.getTime())) return at
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
-}
-
-function srcLabel(kind: string): string {
-  return kind === 'agent' ? 'Agent' : kind === 'user' ? tt('logs.src.user') : tt('logs.src.system')
-}
-
-function kindLabel(kind: string): string {
-  return kind ? tt(`logs.kind.${kind}`) : '—'
-}
-
-function lineName(id: string): string {
-  return dcw.lines.find(l => l.id === id)?.name ?? ''
-}
-
-function productName(id: string): string {
-  return dcw.products.find(p => p.id === id)?.name ?? ''
-}
-
-function recipeName(id: string): string {
-  return dcw.recipes.find(r => r.id === id)?.name ?? ''
-}
+/** 人工记录弹窗的归属口径:与筛选区共享同一份维度(草稿初值与级联选项同源) */
+const manualScope = computed<LogsManualScope>(() => ({
+  lineId: q.lineId,
+  productId: q.productId,
+  recipeId: q.recipeId,
+}))
 
 onMounted(() => {
   ws.ensureConnected()
@@ -521,245 +91,4 @@ export default { name: 'OpsLogsPage' }
 
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 12px; }
-.head-actions { display: flex; gap: 10px; align-items: center; padding-bottom: 4px; }
-.sub { margin: 8px 0 0; font-size: 13px; color: var(--ink-faint); }
-.live-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--tone-success-dot);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone-success-dot) 45%, transparent);
-  animation: livePulse 2s ease-out infinite;
-}
-@keyframes livePulse {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone-success-dot) 45%, transparent); }
-  70% { box-shadow: 0 0 0 8px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
-}
-.live-txt { font-size: 11.5px; color: var(--ink-faint); }
-
-.filter-card {
-  display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
-  padding: 10px 14px;
-  background: var(--surface-glass);
-  border: 1px solid var(--glass-line);
-  border-radius: 10px;
-  backdrop-filter: var(--aurora-blur) saturate(1.15);
-}
-/* 窄屏:6 个筛选维度从"一行一个"改成两列网格。
- * 单列时筛选区独占整整一屏,用户要滚过 6 个下拉才看到第一条日志(实测 390)。 */
-@media (max-width: 640px) {
-  .filter-card {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    align-items: end;
-  }
-
-  /* 关键词是"宽输入",跨两列;两个动作按钮也跨两列,各自成行 */
-  .filter-card .flt-grow,
-  .filter-card > button {
-    grid-column: 1 / -1;
-  }
-}
-
-.flt { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }
-.flt-grow { flex: 1 1 180px; }
-.inp-sel {
-  min-width: 0; padding: 6px 9px; font-size: 13px; color: var(--ink);
-  background: var(--frost-bg);
-  border: 1px solid var(--glass-line); border-radius: 7px; outline: none;
-}
-.inp-sel:focus { border-color: color-mix(in srgb, var(--tone-info-dot) 55%, transparent); }
-
-.table-card {
-  background: var(--surface-glass);
-  border: 1px solid var(--glass-line);
-  border-radius: 10px;
-  overflow: hidden;
-  backdrop-filter: var(--aurora-blur) saturate(1.15);
-}
-.err { margin: 0; padding: 8px 14px; font-size: 13px; color: var(--tone-danger-dot); }
-.log-table { width: 100%; font-size: 13px; border-collapse: collapse; }
-.log-table th {
-  position: sticky; top: 0; z-index: 1;
-  padding: 8px 10px; text-align: left; font-weight: 600; color: var(--ink-soft);
-  background: var(--frost-bg);
-  border-bottom: 1px solid var(--glass-line);
-}
-.log-table td {
-  max-width: 380px; padding: 7px 10px; color: var(--ink-soft);
-  border-bottom: 1px solid color-mix(in srgb, var(--glass-line) 55%, transparent);
-  vertical-align: top;
-}
-.th-time, .th-src, .th-kind { white-space: nowrap; }
-.th-detail { width: 72px; }
-.actor { white-space: nowrap; }
-.summary .action { display: block; font-size: 11.5px; color: var(--ink-faint); }
-.scope { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
-.scope-chip {
-  padding: 1px 7px; font-size: 11.5px; color: var(--ink-soft);
-  background: var(--frost-bg); border-radius: 99px; white-space: nowrap;
-}
-.detail-cell { white-space: nowrap; }
-.empty { padding: 22px 0 !important; color: var(--ink-faint); text-align: center; }
-/* 详情行内展开:紧贴事件行的整行 pre 面板 */
-.detail-td { padding: 0 !important; }
-.detail-box {
-  max-height: 260px; margin: 0; padding: 10px 14px; overflow: auto;
-  font-size: 12.5px; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word;
-  background: var(--paper-deep); border-top: 1px solid var(--glass-line);
-}
-.src-badge {
-  display: inline-block; padding: 1px 8px; font-size: 11.5px;
-  border: 1px solid var(--glass-line); border-radius: 99px; color: var(--ink-faint);
-}
-.src-badge.agent { color: var(--tone-info-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 40%, transparent); }
-.src-badge.user { color: var(--tone-success-dot); border-color: color-mix(in srgb, var(--tone-success-dot) 40%, transparent); }
-.kind-chip {
-  display: inline-block; padding: 1px 7px; font-size: 11.5px;
-  color: var(--ink-soft); background: var(--frost-bg); border-radius: 5px; white-space: nowrap;
-}
-.kind-chip.alarm { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
-.kind-chip.write { color: var(--tone-info-dot); }
-.kind-chip.rollback { color: var(--tone-warning-dot); }
-.kind-chip.manual { color: var(--tone-success-dot); }
-
-.m-title { margin: 0 0 10px; font-size: 15px; color: var(--ink); }
-.modal-mask {
-  position: fixed; inset: 0; z-index: 60;
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
-  background: color-mix(in srgb, var(--ink) 32%, transparent);
-  backdrop-filter: blur(3px);
-}
-.modal {
-  width: min(560px, 94vw);
-  padding: 16px 18px;
-  background: var(--surface-glass);
-  border: 1px solid var(--glass-line);
-  border-radius: 12px;
-  backdrop-filter: blur(calc(var(--aurora-blur) * 1.4)) saturate(1.2);
-}
-.m-f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }
-.m-f textarea, .m-f .inp-sel {
-  padding: 7px 9px; font-size: 13px; color: var(--ink);
-  background: var(--frost-bg); border: 1px solid var(--glass-line); border-radius: 7px; outline: none;
-  font-family: inherit; resize: vertical;
-}
-.m-f textarea:focus, .m-f .inp-sel:focus { border-color: color-mix(in srgb, var(--tone-info-dot) 55%, transparent); }
-.m-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-.m-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
-
-/* ══ 窄屏(≤899px):7 列表格在 375px 上被卡片裁掉四列(实测只剩"时间/来源/操作者"),
-   每行高达 154px,字号被压到 10px。窄屏不再横向拖动"账页",
-   而是把每行折成一张事件卡 —— 三段堆叠,一条日志一眼读完:
-     ① 时间戳 · 来源徽标 · 分类 chip · [展开]
-     ② 消息摘要(整行,可换行,13px)
-     ③ 操作者 + 归属维度(产线/产品/Recipe)
-   表格语义(thead)在窄屏隐藏,列身份由"位置 + chip 颜色"承担。 */
-@media (max-width: 899px) {
-  .log-table {
-    display: block;
-    font-size: 13px;
-  }
-
-  .log-table thead {
-    display: none;
-  }
-
-  .log-table tbody {
-    display: block;
-  }
-
-  .log-table tr {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 8px;
-    align-items: center;
-    padding: 10px 12px;
-    border-bottom: 1px solid color-mix(in srgb, var(--glass-line) 55%, transparent);
-  }
-
-  .log-table td {
-    display: block;
-    max-width: 100%;
-    padding: 0;
-    border-bottom: 0;
-  }
-
-  .log-table td.mono.dim {
-    order: 1;
-    font-size: 11.5px;
-  }
-
-  .log-table td:nth-child(2) { order: 2; }
-
-  .log-table td:nth-child(4) { order: 3; }
-
-  .log-table td.actor {
-    order: 4;
-    font-size: 11.5px;
-    color: var(--ink-faint);
-  }
-
-  .log-table td.detail-cell {
-    order: 5;
-    margin-left: auto;
-    white-space: normal;
-  }
-
-  .log-table td.summary {
-    order: 6;
-    flex: 1 1 100%;
-    font-size: 13px;
-    line-height: 1.5;
-  }
-
-  .log-table td.scope {
-    order: 7;
-    flex: 1 1 100%;
-    max-width: 100%;
-  }
-
-  /* 详情行 / 空态行不参与"事件卡"排布 */
-  .log-table tr.log-detail-row {
-    display: block;
-    padding: 0;
-  }
-
-  .log-table tr.log-detail-row td {
-    display: block;
-  }
-
-  .log-table tr.log-empty-row td,
-  .log-table td.empty {
-    flex: 1 1 100%;
-    width: 100%;
-    text-align: center;
-  }
-
-  /* 手指命中区:表格内的 mini-btn 原始高度只有 ~24px */
-  .log-table .mini-btn,
-  .filter-card .mini-btn,
-  .filter-card .pill-btn,
-  .head-actions .pill-btn,
-  .m-actions .pill-btn,
-  .m-actions .ghost-btn {
-    min-height: 40px;
-    padding: 8px 14px;
-  }
-
-  /* 筛选条:窄屏一项一行,不再两列互挤 */
-  .filter-card {
-    padding: 10px;
-    gap: 8px;
-  }
-
-  .flt,
-  .flt-grow,
-  .flt .inp-sel {
-    flex: 1 1 100%;
-    width: 100%;
-    min-width: 0;
-  }
-}
 </style>

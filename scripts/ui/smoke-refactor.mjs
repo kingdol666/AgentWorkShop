@@ -64,7 +64,7 @@ const isNoise = t => NOISE.some(re => re.test(t))
  */
 const HYDRATED = () => Boolean(document.querySelector('#__nuxt')?.__vue_app__)
 
-/** 预置:建频道 + 建 workspace + 挂载 → 让 /town 走**真实渲染分支**而不是空态 */
+/** 预置:建频道 + 建 workspace + 挂载 → 让 /town 与 /workshop/w/:wsId 走**真实渲染分支**而不是空态 */
 async function seedTown(api, token) {
   const name = `smoke-${Date.now().toString(36)}`
   const ch = await api('POST', '/api/workshop/channels', {
@@ -73,12 +73,13 @@ async function seedTown(api, token) {
   })
   const channelId = ch.data?.channelId
   if (!channelId) return null
-  const ws = await api('POST', '/api/workshop/workspaces', { body: { name: `${name}-ws` }, token })
+  const wsName = `${name}-ws`
+  const ws = await api('POST', '/api/workshop/workspaces', { body: { name: wsName }, token })
   const wsId = ws.data?.id ?? ws.data?.workspaceId
   if (wsId) {
     await api('POST', `/api/workshop/workspaces/${wsId}/channels/${channelId}`, { body: {}, token })
   }
-  return { channelId, wsId }
+  return { channelId, wsId, wsName }
 }
 
 /**
@@ -150,10 +151,20 @@ const STORM_MIN_REQ = 200
 const isResourceExhaustion = t => /ERR_INSUFFICIENT_RESOURCES|ERR_ABORTED|Failed to load resource/i.test(t)
 
 console.log(`\n━━━ 前端重构冒烟 @ ${process.env.AW_BASE}(${routes.length} 条路由)━━━`)
-if (routes.some(r => r.path === '/town')) {
+// /workshop/w/:wsId(单工作区控制台)需要一个**已挂载频道**的 workspace 才走真实分支,
+// 与 /town 同一份预置;id 只能运行时拿到,故路由在这里追加。
+if (routes.some(r => r.path === '/town' || r.name === 'ws-console')) {
   const seeded = await seedTown(api, token)
-  check('0.2 /town 预置:建频道 + workspace + 挂载(否则只会渲染空态,测不到拆分后的孪生视图)',
+  check('0.2 /town 与 /workshop/w/:wsId 预置:建频道 + workspace + 挂载(否则只会渲染空态,测不到拆分后的控制台/孪生视图)',
     Boolean(seeded?.channelId), JSON.stringify(seeded))
+  if (seeded?.wsId) {
+    routes.push({
+      path: `/workshop/w/${seeded.wsId}`,
+      name: 'ws-console',
+      title: '单工作区控制台',
+      expect: seeded.wsName,
+    })
+  }
 }
 
 const browser = await launch({ width: 1440, height: 900 })

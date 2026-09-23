@@ -1,202 +1,75 @@
 <script setup lang="ts">
 /**
- * Workspace 主控台(Zcode 风格 Harness):
+ * Workspace 主控台(Zcode 风格 Harness)页面壳 —— 只做编排:
  * 顶栏(WS 状态 + seq + 视图切换)+ 左栏 Channel 会话 + 中部三视图
  * (时间线 / Agent lanes / 任务板)+ 右侧 Inspector + 底部 Composer +
  * Agent/Task 双抽屉(执行详情)。
+ *
+ * 状态各归其主(页面私有 composable,见 ./composables/):
+ *  - useWorkspaceAuth    登录守卫 + workspace 服务端加载;
+ *  - useWorkspaceChannels wsId 路由作用域 / 聚焦 channel / 挂载 channel 的 WS 订阅
+ *                        (全页唯一注册点:挂载 workspace 全部 channel 的订阅);
+ *  - useWorkspaceShell   视口档位(窄屏形态)/ 侧栏折叠与宽度 / 中部视图切换与数字快捷键;
+ *  - useWorkspacePanels  Agent/Task 抽屉与 ⌘K、A2A 开关(+ provide 'aw:open-agent')。
+ *
+ * 视图区块在 components/workshop/console/ 下 —— **绝不放进 pages/**:Nuxt 会把
+ * pages 下任何 .vue 当路由。scoped 样式随标记进各组件自己的 <style scoped>
+ * (data-v 不跨组件;本次拆分 35 条选择器与原文一一对应,没有任何一条需要跨组件重复)。
+ *
  * 挂载 workspace 全部 channel 的 WS 订阅;聚焦 channel 驱动中部/右侧上下文。
  */
-import { useWorkspacesStore } from '../../../stores/workshop/workspaces'
-import { useEntitiesStore } from '../../../stores/workshop/entities'
-import { useWorkshopWs } from '../../../composables/workshop/useWorkshopWs'
-import { useUserStore } from '../../../stores/workshop/user'
-import { useStorage } from '@vueuse/core'
-import { useResponsive } from '../../../composables/useResponsive'
-
-const { t } = useI18n()
+import { useResponsive } from '@/app/composables/useResponsive'
+import ConsoleTopbar from '@/app/components/workshop/console/Topbar.vue'
+import ConsoleLeftPane from '@/app/components/workshop/console/LeftPane.vue'
+import ConsoleCenterPane from '@/app/components/workshop/console/CenterPane.vue'
+import ConsoleRightPane from '@/app/components/workshop/console/RightPane.vue'
+import ConsoleDock from '@/app/components/workshop/console/Dock.vue'
+// composable 放在 app/pages/workshop/composables/(与 teams.vue 共用同一目录):
+// 本页在 w/ 子目录下,故是 `../composables/…` 而不是 `./composables/…`
+import { useWorkspaceAuth } from '../composables/useWorkspaceAuth'
+import { useWorkspaceChannels } from '../composables/useWorkspaceChannels'
+import { useWorkspaceShell } from '../composables/useWorkspaceShell'
+import { useWorkspacePanels } from '../composables/useWorkspacePanels'
 
 definePageMeta({ layout: 'default' })
 
-const route = useRoute()
-const wsId = computed(() => String(route.params.wsId))
-const userStore = useUserStore()
-const wsStore = useWorkspacesStore()
-
-// 用户守卫 + workspace 服务端加载
-// SSR 阶段不判登录(会话恢复是客户端插件,服务端无登录态——同步踢回会把
-// 刷新/直达 URL 的已登录用户误弹回总览);客户端挂载后校验并按需加载
-const authReady = ref(false)
-onMounted(() => {
-  if (!userStore.isLoggedIn) {
-    navigateTo('/workshop')
-    return
-  }
-  authReady.value = true
-  if (!wsStore.loaded) wsStore.load().catch(() => {})
-})
-const entities = useEntitiesStore()
-const { subscribe, unsubscribe, conn } = useWorkshopWs()
-
-// 视口档位(唯一判据;SSR 期返回桌面档)——
-// 窄屏(≤1023)三栏仪表台只剩 ~460px 画布,必须换成「单通道示波器」形态
+// 视口档位(唯一判据;SSR 期返回桌面档)—— 注入 useWorkspaceShell,档位监听只此一份
 const { isDesktop } = useResponsive()
 
-const workspace = computed(() => wsStore.workspaces.find(w => w.id === wsId.value))
-// 聚焦 channel:activeChannelId 须在挂载清单内(陈旧持久化/竞态下回退首频道),
-// 避免订阅死频道 → 快照永不到达 → 右栏/时间线长时间"空数据"假象
-const channelId = computed(() => {
-  const ws = workspace.value
-  if (!ws) return undefined
-  const ids = ws.channelIds
-  const active = ws.activeChannelId
-  return active && ids.includes(active) ? active : ids[0]
-})
+// 用户守卫 + workspace 服务端加载(返回值当前只有 authReady 且无消费方,故不接收)
+useWorkspaceAuth()
 
-// 订阅生命周期:workspace 挂载的 channel 变化 → 增量 sub/unsub
-watch(
-  () => [wsId.value, workspace.value?.channelIds.join(',') ?? ''],
-  () => {
-    const mounted = new Set(workspace.value?.channelIds ?? [])
-    for (const id of mounted) subscribe(id)
-  },
-  { immediate: true },
-)
-watch(
-  () => workspace.value?.channelIds.join(',') ?? '',
-  (_next, prev) => {
-    if (prev === undefined) return
-    const mounted = new Set(workspace.value?.channelIds ?? [])
-    for (const prevId of prev.split(',').filter(Boolean)) {
-      if (!mounted.has(prevId)) unsubscribe(prevId)
-    }
-  },
-)
-onBeforeUnmount(() => {
-  for (const id of workspace.value?.channelIds ?? []) unsubscribe(id)
-})
+// 路由作用域 + 实时订阅(wsId 从 route.params 取,订阅在此链路注册一次)
+const { wsId, workspace, channelId, loaded, conn, stateColor, lastSeq } = useWorkspaceChannels()
 
-const stateColor = computed(() =>
-  conn.state === 'open' ? 'var(--tone-success-dot)' : conn.state === 'connecting' ? 'var(--tone-warning-dot)' : 'var(--tone-danger-dot)',
-)
-const lastSeq = computed(() => (channelId.value ? conn.cursors[channelId.value] ?? 0 : 0))
+// 外壳:窄屏形态 / 侧栏折叠与宽度 / 视图切换(依赖 isDesktop 与 channelId)
+const {
+  narrowUI,
+  leftOpen,
+  rightOpen,
+  leftWidth,
+  rightWidth,
+  resizeLeft,
+  resizeRight,
+  LEFT_W_DEFAULT,
+  RIGHT_W_DEFAULT,
+  view,
+  viewOptions,
+  onViewKey,
+} = useWorkspaceShell(isDesktop, channelId)
 
-// 视图切换(P1 三视图 + P2 多通道同屏 + P5 RPG 小镇 + v17 人类群聊)
-// 深链:?view=chat/lanes/board/split/town 直达指定视图(可分享/收藏;通知跳转即用 view=chat)
-// inspector 只在窄屏出现(桌面它是右侧常驻栏),故不进深链白名单
-type CenterView = 'timeline' | 'chat' | 'lanes' | 'board' | 'split' | 'town' | 'inspector'
-const VIEW_KEYS: Record<string, CenterView> = {
-  1: 'timeline',
-  2: 'chat',
-  3: 'lanes',
-  4: 'board',
-  5: 'split',
-  6: 'town',
-}
-const VIEW_VALUES = new Set(['timeline', 'chat', 'lanes', 'board', 'split', 'town'])
-const initView = route.query.view
-const view = ref<CenterView>(
-  typeof initView === 'string' && VIEW_VALUES.has(initView) ? initView as CenterView : 'timeline',
-)
-const viewOptions = computed(() => {
-  const base = [
-    { value: 'timeline', label: t('wsView.k3otu32010') },
-    { value: 'chat', label: '群聊' },
-    { value: 'lanes', label: 'Agent lanes' },
-    { value: 'board', label: t('wsView.k3ko7a8011') },
-    { value: 'split', label: t('wsView.k3xbmo012') },
-    { value: 'town', label: t('wsView.k1cz0pbw013') },
-  ]
-  // 窄屏「一次一区」:检查器不占侧栏,并入切换条(四区都由同一条承载)
-  return narrowUI.value ? [...base, { value: 'inspector', label: t('wsView.inspector') }] : base
-})
-// 数字快捷键 1-6 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向)
-const onViewKey = (ev: KeyboardEvent): void => {
-  // 窄屏抽屉:Esc 收起(与全站侧栏抽屉一致)
-  if (ev.key === 'Escape' && narrowUI.value && leftOpen.value) {
-    leftOpen.value = false
-    return
-  }
-  if (ev.metaKey || ev.ctrlKey || ev.altKey) return
-  const t = ev.target as HTMLElement | null
-  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
-  const next = VIEW_KEYS[ev.key]
-  if (!next || !channelId.value) return
-  ev.preventDefault()
-  view.value = next
-}
-onMounted(() => window.addEventListener('keydown', onViewKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onViewKey))
-
-// 侧栏折叠(现代 harness 布局:左会话栏 / 右检查器可按需收起)
-// 形态差异只在挂载后生效:SSR/首帧一律按桌面结构渲染,客户端接管后才翻档,
-// 否则服务端 5 项切换条 vs 客户端 6 项会触发水合告警
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
-const narrowUI = computed(() => mounted.value && !isDesktop.value)
-
-const leftOpen = ref(true)
-const rightOpen = ref(true)
-/** 窄屏:左右侧栏都不再占位(收成覆盖式抽屉 / 并入切换条) */
-const applyTier = (desktop: boolean): void => {
-  leftOpen.value = desktop
-  rightOpen.value = desktop
-  // 检查器只是窄屏的第 4 区:回桌面后它回到右栏,中部得有自己的区(否则中部空白)
-  if (desktop && view.value === 'inspector') view.value = 'timeline'
-}
-onMounted(() => {
-  if (!isDesktop.value) applyTier(false)
-})
-watch(isDesktop, d => applyTier(d))
-// 抽屉里选中频道后自动收起(窄屏少一次手动关闭)
-watch(channelId, (next, prev) => {
-  if (prev !== undefined && next !== prev && narrowUI.value) leftOpen.value = false
-})
-
-// 侧栏宽度拖拽调节(PaneSplitter;localStorage 持久化,双击复位到默认值)
-const LEFT_W_DEFAULT = 248
-const RIGHT_W_DEFAULT = 300
-const leftWidth = useStorage('aw.harness.leftW', LEFT_W_DEFAULT)
-const rightWidth = useStorage('aw.harness.rightW', RIGHT_W_DEFAULT)
-const resizeLeft = (d: number): void => {
-  leftWidth.value = Math.min(460, Math.max(220, leftWidth.value + d))
-}
-const resizeRight = (d: number): void => {
-  rightWidth.value = Math.min(560, Math.max(240, rightWidth.value - d))
-}
-// 初始化消毒:陈旧持久化值(超出合法范围/异常类型)夹取回默认邻域,防布局被历史脏数据撑坏
-resizeLeft(0)
-resizeRight(0)
-
-// 抽屉状态(P1)
-const agentDrawerOpen = ref(false)
-const agentDrawerId = ref<string | null>(null)
-const openAgent = (id: string): void => {
-  agentDrawerId.value = id
-  agentDrawerOpen.value = true
-}
-/** 活动条入口:跨 channel 的 busy 成员 → 先聚焦其 channel 再开抽屉 */
-const openAgentInChannel = (target: { channelId: string, agentId: string }): void => {
-  wsStore.setActiveChannel(wsId.value, target.channelId)
-  openAgent(target.agentId)
-}
-/** @提及 pill 点击入口(ClusterRoute/ClusterStream inject;时间线与 lanes 全树可用) */
-provide('aw:open-agent', openAgentInChannel)
-const taskDrawerOpen = ref(false)
-const taskDrawerId = ref<string | null>(null)
-const openTask = (id: string): void => {
-  taskDrawerId.value = id
-  taskDrawerOpen.value = true
-}
-
-// ⌘K 命令面板 + A2A 调试器(P2)
-const paletteOpen = ref(false)
-const a2aDebugOpen = ref(false)
-const composerBox = ref<HTMLElement | null>(null)
-const focusComposer = (): void => {
-  composerBox.value?.querySelector('textarea')?.focus()
-}
+// 覆盖层(抽屉 / ⌘K / A2A):活动条、中部画布、右栏三处入口在此汇聚成一份状态
+const {
+  agentDrawerOpen,
+  agentDrawerId,
+  taskDrawerOpen,
+  taskDrawerId,
+  paletteOpen,
+  a2aDebugOpen,
+  openAgent,
+  openAgentInChannel,
+  openTask,
+} = useWorkspacePanels(wsId)
 
 useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop` })
 </script>
@@ -205,84 +78,23 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
   <div class="harness">
     <!-- @提及悬停信息卡(文档级委托;时间线/lanes 全树生效) -->
     <workshop-mention-hover-card />
+
     <!-- 顶栏 -->
-    <div class="topbar">
-      <div
-        class="left"
-        tabindex="-1"
-        @keydown="onViewKey"
-      >
-        <span class="topbar-mark i-tabler-box" />
-        <span class="ws-name">{{ workspace?.name ?? $t('wsView.unknownWs') }}</span>
-        <span
-          v-if="channelId"
-          class="chan-chip"
-          :title="channelId"
-        >
-          <span class="chan-hash">#</span>{{ entities.channels[channelId]?.name ?? channelId.slice(0, 8) }}
-        </span>
-        <a-segmented
-          v-if="channelId"
-          v-model:value="view"
-          size="small"
-          :options="viewOptions"
-          class="view-switch"
-          :title="$t('wsView.kqwckjr001')"
-          @keydown="onViewKey"
-        />
-      </div>
-      <div class="right">
-        <!-- 窄屏:频道会话列表入口(覆盖式抽屉;该页一次只看一区) -->
-        <button
-          v-if="narrowUI"
-          class="pane-toggle im toggle-left-narrow"
-          :class="{ off: !leftOpen }"
-          :title="$t('wsView.channelListTitle')"
-          @click="leftOpen = !leftOpen"
-        >
-          <span class="i-tabler-list-details im-pop" />
-        </button>
-        <button
-          class="pane-toggle im toggle-left-desk"
-          :class="{ off: !leftOpen }"
-          :title="$t('wsView.k1tsy2e4002')"
-          @click="leftOpen = !leftOpen"
-        >
-          <span class="i-tabler-layout-sidebar-left-collapse im-pop" />
-        </button>
-        <button
-          class="pane-toggle im toggle-right-desk"
-          :class="{ off: !rightOpen }"
-          :title="$t('wsView.k1tx0ppf003')"
-          @click="rightOpen = !rightOpen"
-        >
-          <span class="i-tabler-layout-sidebar-right-collapse im-pop" />
-        </button>
-        <button
-          class="pane-toggle im"
-          :title="$t('wsView.a2aTitle')"
-          @click="a2aDebugOpen = true"
-        >
-          <span class="i-tabler-terminal-2 im-pop" />
-        </button>
-        <button
-          class="pane-toggle im"
-          :title="$t('wsView.k1cvg8sb004')"
-          @click="paletteOpen = true"
-        >
-          <span class="i-tabler-command im-pop" />
-        </button>
-        <span
-          class="dot"
-          :style="{ background: stateColor }"
-        />
-        <span
-          class="ws-state"
-          :data-state="conn.state"
-        >{{ conn.state }}</span>
-        <span class="seq">seq {{ lastSeq }}</span>
-      </div>
-    </div>
+    <ConsoleTopbar
+      v-model:view="view"
+      v-model:left-open="leftOpen"
+      v-model:right-open="rightOpen"
+      :ws-name="workspace?.name"
+      :channel-id="channelId"
+      :view-options="viewOptions"
+      :narrow="narrowUI"
+      :state-color="stateColor"
+      :conn-state="conn.state"
+      :last-seq="lastSeq"
+      @view-key="onViewKey"
+      @open-a2a="a2aDebugOpen = true"
+      @open-palette="paletteOpen = true"
+    />
 
     <!-- 主体三栏(左/右侧栏可折叠 + 拖拽调宽;分隔条 hairline 即面板边界) -->
     <div class="main">
@@ -292,147 +104,56 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         class="drawer-scrim"
         @click="leftOpen = false"
       />
-      <div
+      <ConsoleLeftPane
         v-if="leftOpen"
-        class="left-pane"
-        :style="{ flexBasis: narrowUI ? 'auto' : `${leftWidth}px` }"
-      >
-        <div class="left-scroll">
-          <workshop-channel-session-list :ws-id="wsId" />
-        </div>
-        <workshop-live-agent-bar
-          :ws-id="wsId"
-          @open-agent="openAgentInChannel"
-        />
-      </div>
+        :ws-id="wsId"
+        :left-width="leftWidth"
+        :narrow="narrowUI"
+        @open-agent="openAgentInChannel"
+      />
       <workshop-pane-splitter
         v-if="leftOpen && !narrowUI"
         :label="$t('wsView.k1fkfvra005')"
         @resize="resizeLeft"
         @reset="leftWidth = LEFT_W_DEFAULT"
       />
-      <div class="center-pane">
-        <template v-if="channelId">
-          <workshop-transcript-timeline
-            v-if="view === 'timeline'"
-            :channel-id="channelId"
-          />
-          <!-- v17 人类群聊时间线(chat.message 频道流;人类与 Agent 同场,投递台账可见) -->
-          <workshop-chat-timeline
-            v-else-if="view === 'chat'"
-            :channel-id="channelId"
-          />
-          <workshop-agent-lanes-view
-            v-else-if="view === 'lanes'"
-            :channel-id="channelId"
-          />
-          <workshop-task-board-view
-            v-else-if="view === 'board'"
-            :channel-id="channelId"
-            @open-task="openTask"
-          />
-          <workshop-multi-channel-view
-            v-else-if="view === 'split'"
-            :ws-id="wsId"
-            @open-task="openTask"
-          />
-          <workshop-town-view
-            v-else-if="view === 'town'"
-            :channel-id="channelId"
-          />
-          <!-- 窄屏第 4 区:检查器并入切换条(桌面仍是右侧常驻栏) -->
-          <workshop-inspector-panel
-            v-else-if="view === 'inspector' && narrowUI"
-            :channel-id="channelId"
-            @open-agent="openAgent"
-            @open-task="openTask"
-          />
-        </template>
-        <div
-          v-else
-          class="pane-empty"
-        >
-          <span class="pe-icon i-tabler-messages" />
-          <div class="pe-title">
-            {{ $t('wsView.klzbtyp007') }} <span class="aw-serif-accent-italic">Channel</span> {{ $t('wsView.k3zaj4008') }}
-          </div>
-          <div class="pe-sub">
-            {{ $t('wsView.k1us0cxy009') }}
-          </div>
-        </div>
-      </div>
+      <ConsoleCenterPane
+        :ws-id="wsId"
+        :channel-id="channelId"
+        :view="view"
+        :narrow="narrowUI"
+        @open-task="openTask"
+        @open-agent="openAgent"
+      />
       <workshop-pane-splitter
         v-if="rightOpen && !narrowUI"
         :label="$t('wsView.kwqb0st006')"
         @resize="resizeRight"
         @reset="rightWidth = RIGHT_W_DEFAULT"
       />
-      <div
+      <ConsoleRightPane
         v-if="rightOpen && !narrowUI"
-        class="right-pane"
-        :class="{ empty: wsStore.loaded && !channelId }"
-        :style="{ flexBasis: `${rightWidth}px` }"
-      >
-        <div
-          v-if="channelId"
-          class="right-main"
-        >
-          <workshop-inspector-panel
-            :channel-id="channelId"
-            @open-agent="openAgent"
-            @open-task="openTask"
-          />
-        </div>
-        <!-- 加载中/无频道的诚实降级态(workspace 列表未返回前不误判为"空") -->
-        <div
-          v-else-if="!wsStore.loaded"
-          class="pane-loading"
-        >
-          {{ $t('wsView.loadingWs') }}
-        </div>
-        <!-- v17 群成员名册 + 加入/审批 + 群聊设置(权限由服务端能力视图驱动) -->
-        <div
-          v-if="channelId"
-          class="right-chat"
-        >
-          <workshop-chat-member-panel :channel-id="channelId" />
-        </div>
-      </div>
+        :channel-id="channelId"
+        :right-width="rightWidth"
+        :loaded="loaded"
+        @open-agent="openAgent"
+        @open-task="openTask"
+      />
     </div>
 
-    <!-- Composer -->
-    <div
+    <!-- Composer + 抽屉 / ⌘K 面板(同一棵子树:聚焦与拖拽都依赖这层关系) -->
+    <ConsoleDock
       v-if="channelId"
-      ref="composerBox"
-      class="composer-pane"
-    >
-      <workshop-composer :channel-id="channelId" />
-
-      <!-- 抽屉 -->
-      <workshop-agent-inspector-drawer
-        v-model:open="agentDrawerOpen"
-        :channel-id="channelId ?? ''"
-        :agent-id="agentDrawerId"
-      />
-      <workshop-task-inspector-drawer
-        v-model:open="taskDrawerOpen"
-        :channel-id="channelId ?? ''"
-        :task-id="taskDrawerId"
-      />
-      <workshop-a2a-rpc-debugger
-        v-model:open="a2aDebugOpen"
-        :channel-id="channelId ?? ''"
-      />
-
-      <!-- ⌘K 命令面板 -->
-      <workshop-command-palette
-        v-model:open="paletteOpen"
-        :ws-id="wsId"
-        @set-view="view = $event"
-        @open-a2a-debug="a2aDebugOpen = true"
-        @compose="focusComposer"
-      />
-    </div>
+      v-model:view="view"
+      v-model:agent-open="agentDrawerOpen"
+      v-model:agent-id="agentDrawerId"
+      v-model:task-open="taskDrawerOpen"
+      v-model:task-id="taskDrawerId"
+      v-model:palette-open="paletteOpen"
+      v-model:a2a-open="a2aDebugOpen"
+      :ws-id="wsId"
+      :channel-id="channelId"
+    />
   </div>
 </template>
 
@@ -449,163 +170,11 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
   background: var(--paper-raised);
   box-shadow: var(--shadow-card);
 }
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
-  font-size: 13px;
-  background: var(--paper-raised);
-  border-bottom: 1px solid var(--line);
-}
-.left,
-.right {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-}
-.topbar-mark {
-  font-size: 15px;
-  color: var(--ink-faint);
-}
-.ws-name {
-  max-width: 260px;
-  overflow: hidden;
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 17px;
-  letter-spacing: -0.01em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* channel 胶囊:hairline chip + serif # */
-.chan-chip {
-  display: inline-flex;
-  gap: 3px;
-  align-items: center;
-  max-width: 200px;
-  padding: 1px 10px;
-  overflow: hidden;
-  font-size: 12px;
-  color: var(--ink-soft);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill);
-}
-.chan-hash {
-  font-family: var(--font-display);
-  color: var(--ink-faint);
-}
-.view-switch { margin-left: 8px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; }
-.ws-state {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 1px 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-}
-.ws-state[data-state='open'] { color: var(--tone-success-dot); border-color: color-mix(in srgb, var(--tone-success-dot) 45%, transparent); }
-.ws-state[data-state='connecting'] { color: var(--tone-warning-dot); border-color: color-mix(in srgb, var(--tone-warning-dot) 45%, transparent); }
-.ws-state[data-state='closed'] { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 45%, transparent); }
-.seq {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 10px;
-  color: var(--ink-faint);
-}
-
-/* 侧栏折叠开关:幽灵图标钮 */
-.pane-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  font-size: 14px;
-  color: var(--ink-soft);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-panel-sm);
-  transition: color var(--transition-fast), background var(--transition-fast), opacity var(--transition-fast);
-}
-.pane-toggle:hover {
-  color: var(--ink);
-  background: var(--paper-deep);
-}
-.pane-toggle.off {
-  opacity: 0.4;
-}
-.pane-toggle.off:hover {
-  opacity: 1;
-}
 .main {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
 }
-.left-pane {
-  display: flex;
-  flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-  background: var(--paper);
-}
-.left-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden auto;
-}
-.center-pane {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  max-width: 100%;
-  overflow: hidden;
-  background: var(--paper); /* 灰画布:消息气泡/白色面板在此浮出(Slack 式分层) */
-}
-.center-pane > * {
-  min-width: 0;
-  max-width: 100%;
-}
-.right-pane {
-  display: flex; /* 上下两区:检查器(可滚动)+ 群成员面板(定高) */
-  flex: 0 0 auto; /* 宽度由拖拽分隔条驱动(inline flexBasis) */
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-  background: var(--paper);
-}
-.right-main {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-/* 群成员面板只占右栏下部一段:检查器(Agent/Task 详情)仍是主信息面 */
-.right-chat {
-  flex: 0 0 auto;
-  max-height: 46%;
-  min-height: 0;
-  overflow: hidden;
-  border-top: 1px solid var(--line);
-}
-.right-pane.empty { opacity: 0.35; }
-/* workspace 列表加载中的诚实降级态(不算"空",不淡化整栏) */
-.pane-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-size: 12px;
-  color: var(--ink-faint);
-}
-.composer-pane { flex: 0 0 auto; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    窄屏形态 · 单通道示波器(≤1023px) —— 一次只看一路信号
@@ -620,6 +189,10 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
      · 拖拽分隔条在窄屏没有意义(没有第二栏可分配宽度)→ 隐藏;
      · 触摸目标 ≥40px、标签 ≥11.5px(手持 30cm 距离下 10px 只剩 6px 有效字号)。
 
+   本页只留「壳」这一份:整壳高度、定位上下文(.main)、遮罩、分隔条隐藏;
+   顶栏 / 左栏 / 右栏各自的窄屏规则随标记在对应子组件的 scoped 块里
+   (components/workshop/console/)。
+
    ⚠️ 断点数值与 main.css v5 / useResponsive.ts 一致(1024 = 三栏仪表台下限),
       此处不再引入新魔数。桌面(≥1024)样式完全不受影响。
    ══════════════════════════════════════════════════════════════════════════ */
@@ -629,63 +202,8 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
     height: calc(100dvh - var(--app-header-h, 56px) - var(--app-footer-h, 46px) - 8px);
   }
 
-  .topbar {
-    flex-wrap: wrap;
-    gap: 6px 8px;
-    padding: 8px 10px;
-  }
-
-  .topbar .left {
-    row-gap: 8px;
-  }
-
-  .ws-name {
-    max-width: 40vw;
-    font-size: 15px;
-  }
-
-  .chan-chip {
-    max-width: 34vw;
-    font-size: 12px;
-  }
-
-  /* 切换条独占一行:五个视图名不再挤掉工作区名(channel 名仍可见) */
-  .view-switch {
-    flex: 1 1 100%;
-    margin-left: 0;
-  }
-
-  .ws-state,
-  .seq {
-    font-size: 11.5px;
-  }
-
-  /* 触摸目标:26px 的幽灵图标钮在手持设备上点不中 */
-  .pane-toggle {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
-  }
-
-  .toggle-left-desk,
-  .toggle-right-desk {
-    display: none;
-  }
-
   .main {
     position: relative;
-  }
-
-  .left-pane {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 30;
-    width: min(86vw, 320px);
-    border-right: 1px solid var(--line);
-    box-shadow: var(--shadow-float);
-    animation: pane-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .drawer-scrim {
@@ -698,39 +216,6 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
   /* 窄屏没有第二栏可分宽度,拖拽条只会白占 9px */
   .pane-splitter {
     display: none;
-  }
-
-  .pane-loading {
-    font-size: 13px;
-  }
-}
-
-/* 窄屏专属入口在桌面不出现(响应式形态差异不用 JS 表达,避免水合抖动) */
-.toggle-left-narrow {
-  display: none;
-}
-
-@media (max-width: 1023.98px) {
-  .toggle-left-narrow {
-    display: inline-flex;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .left-pane {
-    animation: none;
-  }
-}
-
-@keyframes pane-in {
-  from {
-    opacity: 0.5;
-    transform: translateX(-16px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
   }
 }
 </style>
