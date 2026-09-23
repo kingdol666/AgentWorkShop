@@ -4,178 +4,46 @@
  * 监控已装配的 ChannelRuntime / AgentRuntime 与全部已启动的 harness 进程(含孤儿),
  * 支持终止进程(终止后对应 AgentRuntime 随之 stop/卸载),防止进程持续运行找不到归属造成资源浪费。
  * 数据源:GET /api/system/monitor(用户 token);终止:POST /api/system/monitor/terminate。
+ *
+ * 页面只做编排:轮询 / 5s 自动刷新 / 终止动作在 composables/useMonitorData(副作用只注册一次),
+ * 终端面板开关在 composables/useMonitorTerminal,快照与列的类型在 types.ts;
+ * 区块与三张表在 components/monitor/*(页面私有子组件刻意不放 app/pages ——
+ * 该目录下任何 .vue,含子目录里的,都会被 Nuxt 当成路由)。
  */
-import { message } from 'ant-design-vue'
-import { useUserStore } from '../stores/workshop/user'
-import { narrowFetch } from '../stores/workshop/narrow-fetch'
+import MonitorAgentTable from '../components/monitor/MonitorAgentTable.vue'
+import MonitorChannelTable from '../components/monitor/MonitorChannelTable.vue'
+import MonitorLoginGate from '../components/monitor/MonitorLoginGate.vue'
+import MonitorPageHead from '../components/monitor/MonitorPageHead.vue'
+import MonitorProcessTable from '../components/monitor/MonitorProcessTable.vue'
+import MonitorStatGrid from '../components/monitor/MonitorStatGrid.vue'
 import OmpTerminalPanel from '../components/workshop/terminal/OmpTerminalPanel.vue'
+import { useUserStore } from '../stores/workshop/user'
+import { useMonitorData } from './monitor/composables/useMonitorData'
+import { useMonitorTerminal } from './monitor/composables/useMonitorTerminal'
 
 definePageMeta({ layout: 'default' })
 
-/** 与 server/runtime/manager.ts RuntimeMonitorSnapshot 对齐 */
-interface ProcessInfo { pid: number, alive: boolean, command: string }
-interface ChannelView {
-  channelId: string
-  wiredAgentCount: number
-  memberCount: number
-  hasScheduler: boolean
-  leadAgentId: string | null
-  ownerUserId?: string | null
-  ownerName?: string | null
-}
-interface AgentView {
-  channelId: string
-  agentId: string
-  name: string
-  role: 'lead' | 'worker'
-  harness: string
-  state: 'idle' | 'busy' | 'stopped'
-  currentTaskId: string | null
-  queuedCount: number
-  completedCount: number
-  process: ProcessInfo | null
-  ownerUserId?: string | null
-  ownerName?: string | null
-}
-interface ProcessView {
-  pid: number
-  harness: string
-  command: string
-  args: string[]
-  agentId: string | null
-  channelId: string | null
-  name: string | null
-  role: 'lead' | 'worker' | null
-  startedAt: number
-  alive: boolean
-  exitCode: number | null
-  bound: boolean
-  /** 终端镜像可接入(harness-terminal tap 已挂载) */
-  terminal: boolean
-}
-interface MonitorSnapshot {
-  generatedAt: string
-  serverPid: number
-  uptimeMs: number
-  /** 视图范围:user = 本人资源 | admin = 全量(附归属标注) */
-  scope?: 'user' | 'admin'
-  ownerNames?: Record<string, string>
-  channels: ChannelView[]
-  agents: AgentView[]
-  processes: ProcessView[]
-  counts: { channels: number, agents: number, processes: number, aliveProcesses: number, orphanProcesses: number }
-}
-interface ApiEnvelope<T> { code: number | string, message: string, data: T | null }
-
-const { t } = useI18n()
 const route = useRoute()
 const userStore = useUserStore()
-const isAdmin = computed(() => userStore.isAdmin)
 
-const snapshot = ref<MonitorSnapshot | null>(null)
-const loading = ref(false)
-const autoRefresh = ref(true)
-const lastUpdated = ref('')
+const { terminalOpen, terminalPid, terminalSubtitle, openTerminal } = useMonitorTerminal()
 
-const poll = async (): Promise<void> => {
-  if (!userStore.token) return
-  loading.value = true
-  try {
-    const res = await narrowFetch<ApiEnvelope<MonitorSnapshot>>('/api/system/monitor', {
-      headers: { authorization: `Bearer ${userStore.token}` },
-    })
-    snapshot.value = res.data
-    lastUpdated.value = new Date().toLocaleTimeString()
-  }
-  catch (e) {
-    message.error(e instanceof Error ? e.message : t('monitor.loadFailed'))
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// 自动刷新(默认 5s;仅在已登录且有 token 时轮询)
-let timer: ReturnType<typeof setInterval> | null = null
-const applyTimer = (): void => {
-  if (timer) {
-    clearInterval(timer)
-    timer = null
-  }
-  if (autoRefresh.value && userStore.token) {
-    timer = setInterval(() => void poll(), 5000)
-  }
-}
-watch(autoRefresh, () => applyTimer())
-watch(() => userStore.token, () => {
-  if (userStore.token) void poll()
-  else snapshot.value = null
-  applyTimer()
-})
-
-onMounted(() => {
-  if (userStore.token) {
-    void poll().then(() => openFromQuery())
-  }
-  applyTimer()
-})
-onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
-})
-
-// ===== 终止动作 =====
-const terminating = ref(false)
-const doTerminateAgent = async (a: AgentView): Promise<void> => {
-  terminating.value = true
-  try {
-    const res = await narrowFetch<ApiEnvelope<{ agentId: string, stopped: boolean }>>('/api/system/monitor/terminate', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${userStore.token}` },
-      body: { channelId: a.channelId, agentId: a.agentId },
-    })
-    message.success(res.code === 0 ? `${a.name} ${t('monitor.terminated')}` : (res.message ?? t('monitor.failed')))
-    await poll()
-  }
-  catch (e) {
-    message.error(e instanceof Error ? e.message : t('monitor.failed'))
-  }
-  finally {
-    terminating.value = false
-  }
-}
-
-const doTerminatePid = async (p: ProcessView): Promise<void> => {
-  terminating.value = true
-  try {
-    const res = await narrowFetch<ApiEnvelope<{ pid: number, killed: boolean }>>('/api/system/monitor/terminate', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${userStore.token}` },
-      body: { pid: p.pid },
-    })
-    message.success(res.code === 0 ? `PID ${p.pid} ${t('monitor.terminated')}` : (res.message ?? t('monitor.failed')))
-    await poll()
-  }
-  catch (e) {
-    message.error(e instanceof Error ? e.message : t('monitor.failed'))
-  }
-  finally {
-    terminating.value = false
-  }
-}
-
-// ===== 终端(harness 原生 TUI 镜像 + HITL) =====
-const terminalOpen = ref(false)
-const terminalPid = ref<number | null>(null)
-const terminalSubtitle = ref('')
-const openTerminal = (pid: number, name: string | null, role: string | null): void => {
-  terminalPid.value = pid
-  terminalSubtitle.value = [name, role].filter(Boolean).join(' · ') || 'omp harness'
-  terminalOpen.value = true
-}
+// 快照是唯一副本:autoRefresh 的 5s 定时器、token 变化的重拉、卸载清理都在 composable 里
+// 成对注册(页面不再自行注册任何 setInterval/onUnmounted,避免多份订阅)
+const {
+  snapshot,
+  loading,
+  autoRefresh,
+  lastUpdated,
+  terminating,
+  poll,
+  doTerminateAgent,
+  doTerminatePid,
+} = useMonitorData({ onInitialPoll: openFromQuery })
 
 // HITL 徽标跳转定位:?agentId=&channelId= → 自动打开该 agent 的终端面板(omp 未
 // spawn 时无进程行,保持关闭;用后即清 query,刷新/再进不重复弹开)
-const openFromQuery = (): void => {
+function openFromQuery(): void {
   const agentId = route.query.agentId
   if (typeof agentId !== 'string' || !agentId) return
   const channelId = typeof route.query.channelId === 'string' ? route.query.channelId : ''
@@ -185,380 +53,55 @@ const openFromQuery = (): void => {
     void navigateTo({ path: '/monitor' }, { replace: true })
   }
 }
-
-// ===== 展示辅助 =====
-const shortId = (id: string | null | undefined): string => (id && id.length > 8 ? `${id.slice(0, 8)}…` : (id ?? '-'))
-const stateColor: Record<string, string> = { idle: 'success', busy: 'processing', stopped: 'error' }
-const stateText: Record<string, string> = {
-  idle: t('monitor.stateIdle'),
-  busy: t('monitor.stateBusy'),
-  stopped: t('monitor.stateStopped'),
-}
-const uptimeText = (ms: number): string => {
-  const s = Math.floor(ms / 1000)
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = s % 60
-  return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${sec}s` : `${sec}s`
-}
-const startedAtText = (ts: number): string => new Date(ts).toLocaleTimeString()
-
-// ===== 表格列 =====
-const ownerColumn = computed(() =>
-  isAdmin.value ? [{ title: t('monitor.k1dg9sr8001'), dataIndex: 'ownerName', key: 'ownerName', width: 110 }] : [])
-const channelColumns = computed(() => [
-  { title: t('monitor.chChannel'), dataIndex: 'channelId', key: 'channelId' },
-  { title: t('monitor.members'), dataIndex: 'memberCount', key: 'memberCount', width: 100 },
-  { title: t('monitor.wired'), dataIndex: 'wiredAgentCount', key: 'wiredAgentCount', width: 90 },
-  { title: t('monitor.scheduler'), dataIndex: 'hasScheduler', key: 'hasScheduler', width: 110 },
-  { title: t('monitor.lead'), dataIndex: 'leadAgentId', key: 'leadAgentId' },
-  ...ownerColumn.value,
-])
-const agentColumns = computed(() => [
-  { title: t('monitor.name'), dataIndex: 'name', key: 'name' },
-  { title: t('monitor.role'), dataIndex: 'role', key: 'role', width: 90 },
-  { title: t('monitor.harness'), dataIndex: 'harness', key: 'harness', width: 90 },
-  { title: t('monitor.state'), dataIndex: 'state', key: 'state', width: 110 },
-  { title: t('monitor.currentTask'), dataIndex: 'currentTaskId', key: 'currentTaskId' },
-  { title: t('monitor.queue'), dataIndex: 'queuedCount', key: 'queuedCount', width: 90 },
-  { title: 'PID', dataIndex: 'process', key: 'pid', width: 130 },
-  { title: t('monitor.channel'), dataIndex: 'channelId', key: 'channelId', width: 130 },
-  ...ownerColumn.value,
-  { title: t('monitor.actions'), key: 'actions', width: 190, fixed: 'right' as const },
-])
-const processColumns = computed(() => [
-  { title: 'PID', dataIndex: 'pid', key: 'pid', width: 100 },
-  { title: t('monitor.binding'), dataIndex: 'bound', key: 'bound', width: 100 },
-  { title: t('monitor.agent'), dataIndex: 'name', key: 'name' },
-  { title: t('monitor.role'), dataIndex: 'role', key: 'role', width: 90 },
-  { title: t('monitor.command'), dataIndex: 'command', key: 'command' },
-  { title: t('monitor.startedAt'), dataIndex: 'startedAt', key: 'startedAt', width: 110 },
-  { title: t('monitor.state'), dataIndex: 'alive', key: 'alive', width: 100 },
-  ...ownerColumn.value,
-  { title: t('monitor.actions'), key: 'actions', width: 170, fixed: 'right' as const },
-])
 </script>
 
 <template>
   <div class="monitor">
-    <div class="aw-page-head">
-      <div>
-        <p class="aw-kicker">
-          {{ t('menu.system') }} / runtime ledger
-        </p>
-        <h1>
-          {{ t('monitor.title') }}
-          <a-tag
-            :color="snapshot?.scope === 'admin' ? 'volcano' : 'blue'"
-            class="scope-tag"
-          >
-            <span :class="snapshot?.scope === 'admin' ? 'i-tabler-shield-check' : 'i-tabler-user'" />
-            {{ snapshot?.scope === 'admin' ? $t('monitor.k16zpmg9002') : $t('monitor.k1dzryry003') }}
-          </a-tag>
-        </h1>
-      </div>
-      <div class="head-right">
-        <a-switch
-          v-model:checked="autoRefresh"
-          size="small"
-        />
-        <span class="toggle-label">{{ t('monitor.autoRefresh') }}</span>
-        <a-button
-          size="small"
-          :loading="loading"
-          @click="poll"
-        >
-          <template #icon>
-            <span class="i-tabler-refresh" />
-          </template>
-          {{ t('monitor.refresh') }}
-        </a-button>
-      </div>
-    </div>
+    <!-- 页头:标题 + 视图范围徽标 + 自动刷新开关 / 手动刷新 -->
+    <MonitorPageHead
+      v-model:auto-refresh="autoRefresh"
+      :scope="snapshot?.scope"
+      :loading="loading"
+      @refresh="poll"
+    />
 
     <!-- 未登录门 -->
-    <a-card
-      v-if="!userStore.token"
-      class="aw-panel"
-    >
-      <a-result :title="t('monitor.needLogin')">
-        <template #extra>
-          <a-button
-            type="primary"
-            @click="navigateTo('/workshop')"
-          >
-            {{ t('monitor.goLogin') }}
-          </a-button>
-        </template>
-      </a-result>
-    </a-card>
+    <MonitorLoginGate v-if="!userStore.token" />
 
     <template v-else>
-      <!-- 概要统计(CSS grid:antd Grid 样式在部分构建下缺失,col 会退化 100% 宽) -->
-      <div class="stat-grid">
-        <a-card class="aw-panel stat">
-          <p class="stat-label">
-            {{ t('monitor.channels') }}
-          </p>
-          <p class="stat-value aw-mono">
-            {{ snapshot?.counts.channels ?? '–' }}
-          </p>
-        </a-card>
-        <a-card class="aw-panel stat">
-          <p class="stat-label">
-            {{ t('monitor.agents') }}
-          </p>
-          <p class="stat-value aw-mono">
-            {{ snapshot?.counts.agents ?? '–' }}
-          </p>
-        </a-card>
-        <a-card class="aw-panel stat">
-          <p class="stat-label">
-            {{ t('monitor.aliveProcesses') }}
-          </p>
-          <p class="stat-value aw-mono">
-            {{ snapshot?.counts.aliveProcesses ?? '–' }}
-            <span
-              v-if="(snapshot?.counts.orphanProcesses ?? 0) > 0"
-              class="orphan-badge"
-            >
-              +{{ snapshot?.counts.orphanProcesses }} {{ t('monitor.orphan') }}
-            </span>
-          </p>
-        </a-card>
-        <a-card class="aw-panel stat">
-          <p class="stat-label">
-            {{ t('monitor.server') }}
-          </p>
-          <p class="stat-value aw-mono small">
-            PID {{ snapshot?.serverPid ?? '–' }} · {{ snapshot ? uptimeText(snapshot.uptimeMs) : '' }}
-          </p>
-          <p class="stat-updated">
-            {{ lastUpdated }} · {{ t('monitor.updated') }} {{ snapshot?.generatedAt ?? '' }}
-          </p>
-        </a-card>
-      </div>
+      <!-- 概要统计 -->
+      <MonitorStatGrid
+        :counts="snapshot?.counts"
+        :server-pid="snapshot?.serverPid"
+        :uptime-ms="snapshot?.uptimeMs"
+        :generated-at="snapshot?.generatedAt"
+        :last-updated="lastUpdated"
+      />
 
       <!-- ChannelRuntime 表 -->
-      <a-card
-        class="aw-panel"
-        :title="t('monitor.channelRuntimes')"
-      >
-        <template #extra>
-          <span class="aw-mono count-extra">{{ snapshot?.channels.length ?? 0 }} wired</span>
-        </template>
-        <a-table
-          :columns="channelColumns"
-          :data-source="snapshot?.channels ?? []"
-          :pagination="false"
-          :loading="loading"
-          row-key="channelId"
-          size="small"
-          :scroll="{ x: 720 }"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'channelId'">
-              <span class="aw-mono">{{ shortId(record.channelId) }}</span>
-            </template>
-            <template v-else-if="column.key === 'hasScheduler'">
-              <a-tag
-                v-if="record.hasScheduler"
-                color="purple"
-              >
-                {{ t('monitor.scheduling') }}
-              </a-tag>
-              <a-tag v-else>
-                –
-              </a-tag>
-            </template>
-            <template v-else-if="column.key === 'leadAgentId'">
-              <span class="aw-mono">{{ shortId(record.leadAgentId) }}</span>
-            </template>
-          </template>
-        </a-table>
-      </a-card>
+      <MonitorChannelTable
+        :rows="snapshot?.channels ?? []"
+        :loading="loading"
+      />
 
       <!-- AgentRuntime 表 -->
-      <a-card
-        class="aw-panel"
-        :title="t('monitor.agentRuntimes')"
-      >
-        <template #extra>
-          <span class="aw-mono count-extra">{{ snapshot?.agents.length ?? 0 }} wired</span>
-        </template>
-        <a-table
-          :columns="agentColumns"
-          :data-source="snapshot?.agents ?? []"
-          :pagination="false"
-          :loading="loading"
-          row-key="agentId"
-          size="small"
-          :scroll="{ x: 980 }"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'role'">
-              <a-tag :color="record.role === 'lead' ? 'gold' : 'blue'">
-                {{ record.role }}
-              </a-tag>
-            </template>
-            <template v-else-if="column.key === 'harness'">
-              <a-tag>{{ record.harness }}</a-tag>
-            </template>
-            <template v-else-if="column.key === 'state'">
-              <a-tag :color="stateColor[record.state] ?? 'default'">
-                {{ stateText[record.state] ?? record.state }}
-              </a-tag>
-            </template>
-            <template v-else-if="column.key === 'currentTaskId'">
-              <span class="aw-mono">{{ shortId(record.currentTaskId) }}</span>
-            </template>
-            <template v-else-if="column.key === 'channelId'">
-              <span class="aw-mono">{{ shortId(record.channelId) }}</span>
-            </template>
-            <template v-else-if="column.key === 'pid'">
-              <span v-if="record.process">
-                <a-tag
-                  :color="record.process.alive ? 'success' : 'default'"
-                  class="aw-mono"
-                >
-                  PID {{ record.process.pid }}
-                </a-tag>
-              </span>
-              <span
-                v-else
-                class="aw-mono"
-              >in-proc</span>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <a-space :size="4">
-                <a-button
-                  v-if="record.process?.alive"
-                  size="small"
-                  type="primary"
-                  ghost
-                  :title="t('monitor.openTerminalHint')"
-                  @click="openTerminal(record.process.pid, record.name, record.role)"
-                >
-                  <template #icon>
-                    <span class="i-tabler-terminal-2" />
-                  </template>
-                  {{ t('monitor.openTerminal') }}
-                </a-button>
-                <a-popconfirm
-                  :title="`${t('monitor.terminateConfirm')}(${record.name})`"
-                  :ok-text="t('common.confirm')"
-                  :cancel-text="t('common.cancel')"
-                  @confirm="doTerminateAgent(record as AgentView)"
-                >
-                  <a-button
-                    size="small"
-                    danger
-                    :disabled="terminating"
-                  >
-                    <template #icon>
-                      <span class="i-tabler-square-x" />
-                    </template>
-                    {{ t('monitor.terminate') }}
-                  </a-button>
-                </a-popconfirm>
-              </a-space>
-            </template>
-          </template>
-        </a-table>
-      </a-card>
+      <MonitorAgentTable
+        :rows="snapshot?.agents ?? []"
+        :loading="loading"
+        :terminating="terminating"
+        @open-terminal="openTerminal"
+        @terminate="doTerminateAgent"
+      />
 
       <!-- harness 进程表 -->
-      <a-card
-        class="aw-panel"
-        :title="t('monitor.harnessProcesses')"
-      >
-        <template #extra>
-          <span class="aw-mono count-extra">
-            {{ snapshot?.processes.length ?? 0 }} spawned ·
-            {{ snapshot?.counts.orphanProcesses ?? 0 }} orphan
-          </span>
-        </template>
-        <a-table
-          :columns="processColumns"
-          :data-source="snapshot?.processes ?? []"
-          :pagination="false"
-          :loading="loading"
-          row-key="pid"
-          size="small"
-          :scroll="{ x: 900 }"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'pid'">
-              <span class="aw-mono">{{ record.pid }}</span>
-            </template>
-            <template v-else-if="column.key === 'bound'">
-              <a-tag
-                :color="record.bound ? 'success' : 'warning'"
-              >
-                {{ record.bound ? t('monitor.bound') : t('monitor.orphan') }}
-              </a-tag>
-            </template>
-            <template v-else-if="column.key === 'name'">
-              <span>{{ record.name ?? '–' }}</span>
-              <span
-                v-if="record.agentId"
-                class="aw-mono agent-sub"
-              >
-                {{ shortId(record.agentId) }}
-              </span>
-            </template>
-            <template v-else-if="column.key === 'role'">
-              <span v-if="record.role">{{ record.role }}</span>
-              <span v-else>–</span>
-            </template>
-            <template v-else-if="column.key === 'command'">
-              <span class="aw-mono small">{{ record.command }}</span>
-            </template>
-            <template v-else-if="column.key === 'startedAt'">
-              <span class="aw-mono small">{{ startedAtText(record.startedAt) }}</span>
-            </template>
-            <template v-else-if="column.key === 'alive'">
-              <a-tag :color="record.alive ? 'success' : 'error'">
-                {{ record.alive ? t('monitor.alive') : `${t('monitor.exited')} ${record.exitCode ?? ''}` }}
-              </a-tag>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <a-space :size="4">
-                <a-button
-                  v-if="record.terminal"
-                  size="small"
-                  type="primary"
-                  ghost
-                  :title="t('monitor.openTerminalHint')"
-                  @click="openTerminal(record.pid, record.name, record.role)"
-                >
-                  <template #icon>
-                    <span class="i-tabler-terminal-2" />
-                  </template>
-                  {{ t('monitor.openTerminal') }}
-                </a-button>
-                <a-popconfirm
-                  :title="t('monitor.terminatePidConfirm')"
-                  :ok-text="t('common.confirm')"
-                  :cancel-text="t('common.cancel')"
-                  @confirm="doTerminatePid(record as ProcessView)"
-                >
-                  <a-button
-                    size="small"
-                    danger
-                    :disabled="terminating || !record.alive"
-                  >
-                    <template #icon>
-                      <span class="i-tabler-square-x" />
-                    </template>
-                    {{ t('monitor.terminate') }}
-                  </a-button>
-                </a-popconfirm>
-              </a-space>
-            </template>
-          </template>
-        </a-table>
-      </a-card>
+      <MonitorProcessTable
+        :rows="snapshot?.processes ?? []"
+        :loading="loading"
+        :terminating="terminating"
+        :orphan-count="snapshot?.counts.orphanProcesses"
+        @open-terminal="openTerminal"
+        @terminate="doTerminatePid"
+      />
 
       <!-- harness 原生终端(omp rpc-ui 镜像 · 实时 TUI 渲染 + HITL 控制) -->
       <OmpTerminalPanel
@@ -575,140 +118,11 @@ const processColumns = computed(() => [
   padding: 4px;
 }
 
-.head-right {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-/* 前三张是"一个数"的量规;第四张「服务进程」内容是 PID + 时长 + ISO 快照时间,
- * 等宽 4 列时它只有 ~200px,文案折成三行(实测 1440)。给它两列 ——
- * 列宽按**内容长度**分,不是按卡片数量平均分。 */
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.stat-grid > :last-child {
-  grid-column: span 2;
-}
-
-@media (max-width: 1100px) {
-  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-/* 窄屏两列:前三张是"一个数"的量规(标签 + 大字),单列会让每张卡
- * 占掉 ~150px 高、四张卡吃掉整整一屏(实测)。第四张「服务进程」内容是长字符串,
- * 让它独自跨两列 —— 这是按**内容**分的列,不是按数量硬凑。 */
-@media (max-width: 640px) {
-  .stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .stat-grid > :last-child { grid-column: 1 / -1; }
-}
-
-.stat {
-  height: 100%;
-}
-
-.stat-label {
-  margin: 0 0 6px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.stat-value {
-  margin: 0;
-  font-size: 30px;
-  font-weight: 590;
-  line-height: 1.1;
-}
-
-.stat-value.small {
-  font-size: 17px;
-}
-
-/* 实测:opacity 0.6 会把 11px 的说明文字压到 4.5:1 之下,
-   改为直接使用 ink-faint(两套主题实测均 ≥5.4:1),不再靠透明度降级。 */
-.stat-updated {
-  margin: 6px 0 0;
-  font-size: 11.5px;
-  color: var(--ink-faint);
-  overflow-wrap: anywhere;
-}
-
-.orphan-badge {
-  margin-left: 6px;
-  padding: 1px 6px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--tone-warning-dot);
-  background: rgb(250 140 22 / 12%);
-  border-radius: var(--radius-chip);
-}
-
-.agent-sub {
-  display: block;
-  margin-top: 2px;
-  font-size: 11.5px;
-  color: var(--ink-faint);
-}
-
-.scope-tag {
-  margin-left: 10px;
-  font-size: 11.5px;
-  vertical-align: 3px;
-}
-
-/* 卡片右上角计数:tabular mono 数据(非眉题) */
-.count-extra {
-  font-size: 11.5px;
-  color: var(--ink-faint);
-}
-
-.toggle-label {
-  font-size: 12.5px;
-  color: var(--ink-soft);
-}
-
-.small {
-  font-size: 12.5px;
-}
-
+/* 三张表卡片各自是子组件的根元素(.aw-panel),但它们"相邻"这层关系只存在于本页模板
+   —— Vue 会把本页 scopeId 打在子组件根元素上,所以 agent / process 两张表之间的
+   16px 间距必须留在页面。概要卡之间的同名规则在 MonitorStatGrid 的 scoped 块里:
+   有意重复,改一处同步所有副本(样式随标记走,不抽公共 css)。 */
 .aw-panel + .aw-panel {
   margin-top: 16px;
-}
-
-/* ══ 窄屏(≤899px)═══════════════════════════════════════════════════════
-   概要卡在 ≤640 已是单列(见上方 .stat-grid);这里只处理行内文字的收边:
-   说明句长(时间 + 版本)在 375px 会顶到卡片右缘,允许它断行。 */
-/* 空表占位行:antd 会给固定列单元格加 position: sticky,而 scroll.x=980
-   让整行宽 980px —— 在 375px 视口里它就成了"视口外的固定元素"(实测
-   td.ant-table-cell 暂无数据 left=47 right=1027)。占位单元格没有固定列语义,
-   取消 sticky 即可(有数据时固定列行为不变)。 */
-.monitor :deep(.ant-table-placeholder > td) {
-  position: static !important;
-}
-
-@media (max-width: 899px) {
-  .stat-updated {
-    line-height: 1.5;
-  }
-
-  .head-right {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .toggle-label {
-    font-size: 13px;
-  }
 }
 </style>

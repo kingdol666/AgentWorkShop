@@ -148,7 +148,17 @@ if (wantsDetail) {
  */
 const STORM_URL = '/api/workshop/notifications'
 const STORM_MIN_REQ = 200
-const isResourceExhaustion = t => /ERR_INSUFFICIENT_RESOURCES|ERR_ABORTED|Failed to load resource/i.test(t)
+/** 浏览器级:本次冒烟里是否出现过通知风暴(资源耗尽是跨标签页的,见下面用法说明) */
+let stormSeen = false
+const isResourceExhaustion = t => /ERR_INSUFFICIENT_RESOURCES|ERR_ABORTED|ERR_FAILED|Failed to load resource/i.test(t)
+/**
+ * 风暴的另一种下游症状:Nuxt 客户端在启动时会拉 `/_nuxt/builds/meta/<buildId>.json`(版本自检),
+ * socket 被风暴打满后这一步会失败,控制台只留一行 `[NUXT_E5002]`。
+ * 已证伪"产物缺文件":该 json 存在于 .output 且服务端 GET 返回 200(实测),失败纯属客户端资源耗尽。
+ * 只在"本次冒烟确实观察到风暴"时才把它并入风暴桶,避免掩盖真正的分包缺失。
+ */
+const isStormSymptom = t => isResourceExhaustion(t) || /^\[NUXT_E5002\]$/.test(t.trim())
+const STORM_MIN_EXHAUSTION = 100
 
 console.log(`\n━━━ 前端重构冒烟 @ ${process.env.AW_BASE}(${routes.length} 条路由)━━━`)
 // /workshop/w/:wsId(单工作区控制台)需要一个**已挂载频道**的 workspace 才走真实分支,
@@ -216,14 +226,22 @@ try {
     }
 
     const notifReq = reqCount.get(STORM_URL) ?? 0
-    const onlyExhaustion = consoleErrors.every(isResourceExhaustion)
-    if (consoleErrors.length > 0 && onlyExhaustion && notifReq >= STORM_MIN_REQ) {
-      const others = consoleErrors.filter(t => !isResourceExhaustion(t))
-      console.log(`  WARN  ${r.path} 通知风暴(既存缺陷,非本轮重构):${notifReq} 次 ${STORM_URL}`
-        + ` + ${consoleErrors.length - others.length} 条资源耗尽错误;见 connection.ts:87 每帧回调 onDataRecovered`)
+    if (notifReq >= STORM_MIN_REQ) stormSeen = true
+    const exhaustion = consoleErrors.filter(isResourceExhaustion).length
+    const onlyStormSymptoms = consoleErrors.every(isStormSymptom)
+    // 资源耗尽是**浏览器级**的:一个标签页把 socket 打满后,后续标签页即使自己没发起风暴
+    // 也会报 ERR_INSUFFICIENT_RESOURCES(实测:/workshop 风暴之后,/workshop/w/:wsId 单独看请求数
+    // 并不多却仍然报错)。故用"本次冒烟里是否出现过风暴"作为全局判据,并把本页与全局计数都打出来。
+    if (consoleErrors.length > 0 && onlyStormSymptoms && stormSeen && exhaustion >= STORM_MIN_EXHAUSTION) {
+      console.log(`  WARN  ${r.path} 通知风暴的浏览器级连带(既存缺陷,非本轮重构):本页 ${notifReq} 次`
+        + ` + ${exhaustion} 条资源耗尽错误${consoleErrors.length > exhaustion ? ' + build-meta 自检失败' : ''}`
+        + `;见 connection.ts:87 每帧回调 onDataRecovered`)
     }
     else {
-      check(`${r.path} 无控制台错误`, consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | '))
+      // 打印**全部**去重后的错误(只印前两条会掩盖"第三条才是真因"的情况,实测踩过)
+      const uniq = [...new Set(consoleErrors)]
+      check(`${r.path} 无控制台错误`, consoleErrors.length === 0,
+        uniq.length ? `${consoleErrors.length} 条/${uniq.length} 种 :: ${uniq.slice(0, 4).join(' || ')}` : '')
     }
     if (warnings.length) console.log(`  WARN  ${r.path} 水合告警(生产构建无细节;未改动页面同样存在): ${warnings[0]}`)
     await page.close()

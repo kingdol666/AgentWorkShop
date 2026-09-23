@@ -170,7 +170,7 @@ const hasMore = computed(() => rows.value.length > MAX)
         <span class="chat-time aw-mono">{{ r.time }}</span>
       </div>
       <!-- 正文:markdown-lite + @提及 pill -->
-      <!-- eslint-disable vue/no-v-html -- 源文本先经 mdLite 的 escapeHtml(useEventBlocks.ts:526),仅追加受控标签与 @提及 pill -->
+      <!-- eslint-disable vue/no-v-html -- 源文本先经 mdLite 的 escapeHtml(见 composables/workshop/event-blocks/markdown.ts),仅追加受控标签与 @提及 pill -->
       <div
         v-if="r.text"
         class="chat-body prose"

@@ -3,186 +3,48 @@
  * Workspace 总览(用户级隔离):
  * - 未登录 → 注册/登录门(用户 token = 管理 API 凭证)
  * - 已登录 → workspace 卡片墙(服务端持久化;按用户隔离)+ 实时状态徽标
+ *
+ * 本页只做编排:登录门状态与动作在 ./composables/useWorkbenchAuth,workspace 加载 /
+ * channel 订阅 / 新建 / 删除 / 卡片摘要在 ./composables/useWorkbenchWorkspaces,
+ * 展示件在 components/workshop/workbench/**;样式随各自的标记进组件
+ * (scoped 编译成 .x[data-v-<scopeId>],不能外移成公共 css)。
+ *
+ * ⚠️ 两个 composable 都必须在**页面 setup 期**调用(各一次):useWorkshopWs 的心跳
+ * onMounted、needsSetup 的 onMounted 探测、channel 订阅的 watch 都注册在页面实例上。
+ * 把这些调用挪进子组件会让副作用跟随子组件的挂载时机注册,页面也不再持有订阅引用计数。
  */
-import { message } from 'ant-design-vue'
-import { useWorkspacesStore } from '../../stores/workshop/workspaces'
-import { useEntitiesStore } from '../../stores/workshop/entities'
-import { useUserStore } from '../../stores/workshop/user'
-import { narrowFetch } from '../../stores/workshop/narrow-fetch'
-import { useWorkshopWs } from '../../composables/workshop/useWorkshopWs'
+import AuthGate from '@/app/components/workshop/workbench/AuthGate.vue'
+import CreateWorkspaceModal from '@/app/components/workshop/workbench/CreateWorkspaceModal.vue'
+import WorkbenchHead from '@/app/components/workshop/workbench/WorkbenchHead.vue'
+import WorkspaceCard from '@/app/components/workshop/workbench/WorkspaceCard.vue'
+import WorkspaceEmpty from '@/app/components/workshop/workbench/WorkspaceEmpty.vue'
+import { useWorkbenchAuth } from './composables/useWorkbenchAuth'
+import { useWorkbenchWorkspaces } from './composables/useWorkbenchWorkspaces'
 
 const { t } = useI18n()
 
 definePageMeta({ layout: 'default' })
 
-const userStore = useUserStore()
-const wsStore = useWorkspacesStore()
-const entities = useEntitiesStore()
-const { subscribe } = useWorkshopWs()
+const {
+  userStore,
+  authTab,
+  authName,
+  authEmail,
+  authPassword,
+  authTokenInput,
+  authLoading,
+  needsSetup,
+  doRegister,
+  doLogin,
+  doLoginWithToken,
+  doLogout,
+} = useWorkbenchAuth()
+const { wsStore, ready, createOpen, createName, createLoading, create, remove, channelSummary } = useWorkbenchWorkspaces()
 
-// ===== 登录门（全局用户系统）=====
-const authTab = ref<'register' | 'login' | 'token'>('login')
-const authName = ref('')
-const authEmail = ref('')
-const authPassword = ref('')
-const authTokenInput = ref('')
-const authLoading = ref(false)
-
-// 首启初始化:系统尚无管理员 → 登录门切换为"注册管理员"模式(首个注册账号自动成为 admin)
-const needsSetup = ref(false)
-onMounted(async () => {
-  try {
-    const res = await narrowFetch<{ code: number, data?: { needsSetup: boolean } }>('/api/users/setup-status')
-    if (res.code === 0 && res.data?.needsSetup) {
-      needsSetup.value = true
-      authTab.value = 'register'
-    }
-  }
-  catch { /* 探测失败按常规登录门呈现 */ }
-})
-
-const doRegister = async (): Promise<void> => {
-  if (!authName.value.trim()) {
-    message.warning(t('wsHome.k1vnhyks019'))
-    return
-  }
-  if (!authEmail.value.trim()) {
-    message.warning(t('wsHome.k8ieqzj020'))
-    return
-  }
-  if (authPassword.value.length < 6) {
-    message.warning(t('wsHome.ksx73ra021'))
-    return
-  }
-  authLoading.value = true
-  try {
-    const user = await userStore.register(authName.value, authEmail.value, authPassword.value)
-    message.success(needsSetup.value ? t('wsHome.adminCreated', { p0: user.name }) : t('wsHome.k1mbatbh030', { p0: user.name }))
-    needsSetup.value = false
-    authName.value = ''
-    authEmail.value = ''
-    authPassword.value = ''
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    authLoading.value = false
-  }
+/** 卡片两个入口(摘要行 / 底部主按钮)共用同一跳转 */
+const openWorkspace = (id: string): void => {
+  navigateTo(`/workshop/w/${id}`)
 }
-const doLogin = async (): Promise<void> => {
-  if (!authEmail.value.trim()) {
-    message.warning(t('wsHome.k8ieqzj020'))
-    return
-  }
-  authLoading.value = true
-  try {
-    const user = await userStore.login(authEmail.value, authPassword.value)
-    message.success(t('wsHome.kwixbdl031', { p0: user.name }))
-    needsSetup.value = false
-    authPassword.value = ''
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    authLoading.value = false
-  }
-}
-const doLoginWithToken = async (): Promise<void> => {
-  authLoading.value = true
-  try {
-    const user = await userStore.loginWithToken(authTokenInput.value)
-    message.success(t('wsHome.kwixbdl031', { p0: user.name }))
-    needsSetup.value = false
-    authTokenInput.value = ''
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    authLoading.value = false
-  }
-}
-const doLogout = (): void => {
-  userStore.logout()
-  message.success(t('wsHome.k3ngm6p022'))
-}
-
-// ===== 登录后加载 workspace(服务端持久化)=====
-const ready = ref(false)
-watch(() => userStore.isLoggedIn, async (ok) => {
-  if (!ok) {
-    ready.value = false
-    return
-  }
-  await userStore.refresh()
-  if (!userStore.isLoggedIn) return
-  try {
-    await wsStore.load()
-    ready.value = true
-  }
-  catch (e) {
-    // SSR 安全:ant-design-vue message 依赖 DOM,服务端静默(客户端进入页面后可重试)
-    if (import.meta.client) message.error(e instanceof Error ? e.message : t('wsHome.k1br33vc023'))
-  }
-}, { immediate: true })
-
-// 已有 workspace 的 channel 订阅(总览页也保持事件流活跃,状态徽标实时)
-watch(
-  () => ready.value && wsStore.workspaces.map(w => w.channelIds.join(',')).join('|'),
-  () => {
-    if (!ready.value) return
-    for (const ws of wsStore.workspaces) {
-      for (const id of ws.channelIds) subscribe(id)
-    }
-  },
-  { immediate: true },
-)
-
-const createOpen = ref(false)
-const createName = ref('')
-const createLoading = ref(false)
-const create = async (): Promise<void> => {
-  const name = createName.value.trim()
-  if (!name) {
-    message.warning(t('wsHome.nameRequired'))
-    return
-  }
-  createLoading.value = true
-  try {
-    const ws = await wsStore.create(name)
-    createOpen.value = false
-    createName.value = ''
-    wsStore.setActiveWorkspaceId(ws.id)
-    navigateTo(`/workshop/w/${ws.id}`)
-  }
-  catch (e) {
-    message.error(apiErrorMessage(e))
-  }
-  finally {
-    createLoading.value = false
-  }
-}
-
-const remove = async (id: string): Promise<void> => {
-  await wsStore.remove(id)
-  message.success(t('wsHome.k3n5sd7024'))
-}
-
-const channelSummary = (channelIds: string[]) => channelIds.map((id) => {
-  const meta = entities.channels[id]
-  const agents = entities.agents[id] ?? []
-  return {
-    id,
-    name: meta?.name ?? id.slice(0, 8),
-    /** 实体基线(WS 快照)是否已到达:未到时计数不可信,展示"同步中"而非误导性的 0 */
-    synced: meta !== undefined,
-    agents: agents.length,
-    busy: agents.filter(a => a.state === 'busy').length,
-    activeTasks: (entities.tasks[id] ?? []).filter(t => !['COMPLETED', 'CANCELED', 'FAILED'].includes(t.state)).length,
-  }
-})
 
 useHead({ title: () => t('titles.workshop') })
 </script>
@@ -190,267 +52,52 @@ useHead({ title: () => t('titles.workshop') })
 <template>
   <div class="page">
     <!-- 登录门 -->
-    <div
+    <AuthGate
       v-if="!userStore.isLoggedIn"
-      class="auth-gate aw-orbs"
-    >
-      <a-card class="auth-card">
-        <p class="aw-kicker">
-          agentworkshop / sign in
-        </p>
-        <h2>{{ needsSetup ? $t('wsHome.setupTitle') : $t('wsHome.kr0vzqu008') }}</h2>
-        <p class="sub">
-          {{ needsSetup
-            ? $t('wsHome.setupSub')
-            : $t('wsHome.normalSub') }}
-        </p>
-        <a-tabs v-model:active-key="authTab">
-          <a-tab-pane
-            v-if="!needsSetup"
-            key="login"
-            :tab="$t('wsHome.tabLogin')"
-          >
-            <a-space
-              direction="vertical"
-              style="width: 100%"
-            >
-              <a-input
-                v-model:value="authEmail"
-                type="email"
-                :placeholder="$t('wsHome.k48h2c001')"
-                @keydown.enter="doLogin"
-              />
-              <a-input-password
-                v-model:value="authPassword"
-                :placeholder="$t('wsHome.k3yvgs002')"
-                @keydown.enter="doLogin"
-              />
-              <a-button
-                type="primary"
-                block
-                :loading="authLoading"
-                @click="doLogin"
-              >
-                {{ $t('wsHome.k43kol009') }}
-              </a-button>
-              <p class="hint">
-                {{ $t('wsHome.k17x74cj010') }}
-              </p>
-            </a-space>
-          </a-tab-pane>
-          <a-tab-pane
-            key="register"
-            :tab="needsSetup ? $t('wsHome.tabRegAdmin') : $t('wsHome.tabRegUser')"
-          >
-            <a-space
-              direction="vertical"
-              style="width: 100%"
-            >
-              <a-input
-                v-model:value="authName"
-                :placeholder="$t('wsHome.kwgbai9003')"
-              />
-              <a-input
-                v-model:value="authEmail"
-                type="email"
-                :placeholder="$t('wsHome.kizjkbo004')"
-              />
-              <a-input-password
-                v-model:value="authPassword"
-                :placeholder="$t('wsHome.kh3cqfn005')"
-                @keydown.enter="doRegister"
-              />
-              <a-button
-                type="primary"
-                block
-                :loading="authLoading"
-                @click="doRegister"
-              >
-                {{ needsSetup ? $t('wsHome.setupCta') : $t('wsHome.k1so6a0v011') }}
-              </a-button>
-              <p class="hint">
-                {{ $t('wsHome.k1r0a4u3012') }}
-              </p>
-            </a-space>
-          </a-tab-pane>
-          <a-tab-pane
-            v-if="!needsSetup"
-            key="token"
-            :tab="$t('wsHome.tabToken')"
-          >
-            <a-space
-              direction="vertical"
-              style="width: 100%"
-            >
-              <a-input-password
-                v-model:value="authTokenInput"
-                :placeholder="$t('wsHome.k15qunld006')"
-                @keydown.enter="doLoginWithToken"
-              />
-              <a-button
-                type="primary"
-                block
-                :loading="authLoading"
-                @click="doLoginWithToken"
-              >
-                {{ $t('wsHome.k43kol009') }}
-              </a-button>
-            </a-space>
-          </a-tab-pane>
-        </a-tabs>
-      </a-card>
-    </div>
+      v-model:active-tab="authTab"
+      v-model:name="authName"
+      v-model:email="authEmail"
+      v-model:password="authPassword"
+      v-model:token-input="authTokenInput"
+      :loading="authLoading"
+      :needs-setup="needsSetup"
+      @register="doRegister"
+      @login="doLogin"
+      @login-with-token="doLoginWithToken"
+    />
 
     <!-- 工作区(已登录) -->
     <template v-else>
-      <div class="aw-page-head">
-        <div>
-          <p class="aw-kicker">
-            workshop / overview
-          </p>
-          <h1>Workshop {{ $t('wsHome.k3n4m5c025') }}</h1>
-          <p class="sub">
-            {{ userStore.user?.name }} {{ $t('wsHome.ke16e53026') }}
-          </p>
-        </div>
-        <div class="head-acts">
-          <div class="lib-links">
-            <button
-              type="button"
-              class="lib-link"
-              @click="navigateTo('/workshop/agents')"
-            >
-              {{ $t('wsHome.k3pa5h4013') }}
-            </button>
-            <button
-              type="button"
-              class="lib-link"
-              @click="navigateTo('/workshop/teams')"
-            >
-              {{ $t('wsHome.k3svl8y014') }}
-            </button>
-            <button
-              type="button"
-              class="lib-link"
-              @click="navigateTo('/workshop/channel-templates')"
-            >
-              Channel {{ $t('wsHome.k41ds5027') }}
-            </button>
-            <button
-              type="button"
-              class="lib-link"
-              @click="navigateTo('/workshop/schedules')"
-            >
-              {{ $t('titles.schedules') }}
-            </button>
-            <button
-              type="button"
-              class="lib-link"
-              @click="navigateTo('/tokens')"
-            >
-              API Token
-            </button>
-            <button
-              type="button"
-              class="lib-link"
-              @click="doLogout"
-            >
-              {{ $t('wsHome.k484e7015') }}
-            </button>
-          </div>
-          <button
-            class="aw-pill im"
-            @click="createOpen = true"
-          >
-            <span class="i-tabler-plus im-pop" />
-            {{ $t('wsHome.newWs') }}
-          </button>
-        </div>
-      </div>
+      <WorkbenchHead
+        :user-name="userStore.user?.name"
+        @logout="doLogout"
+        @new-workspace="createOpen = true"
+      />
 
       <a-spin :spinning="!ready">
         <div class="grid">
-          <div
+          <WorkspaceCard
             v-for="ws in wsStore.workspaces"
             :key="ws.id"
-            class="card"
-          >
-            <div class="card-head">
-              <span class="card-mark"><span class="i-tabler-box" /></span>
-              <span class="name">{{ ws.name }}</span>
-            </div>
-            <div class="card-body">
-              <div
-                v-for="ch in channelSummary(ws.channelIds)"
-                :key="ch.id"
-                class="ch-row"
-                @click="navigateTo(`/workshop/w/${ws.id}`)"
-              >
-                <span
-                  class="dot"
-                  :class="{ live: ch.activeTasks > 0 }"
-                />
-                <span class="ch-name">{{ ch.name }}</span>
-                <span class="ch-meta">
-                  <template v-if="ch.synced">{{ ch.agents }} {{ $t('wsHome.k1ggoa45028') }} {{ ch.busy }} / {{ $t('wsHome.k3wcox029') }} {{ ch.activeTasks }}</template>
-                  <template v-else>{{ $t('wsHome.k1bst7s9016') }}</template>
-                </span>
-              </div>
-              <div
-                v-if="ws.channelIds.length === 0"
-                class="empty"
-              >
-                {{ $t('wsHome.k1ylgrbc017') }}
-              </div>
-            </div>
-            <div class="card-foot">
-              <button
-                class="aw-pill outline im"
-                @click="navigateTo(`/workshop/w/${ws.id}`)"
-              >
-                <span class="i-tabler-arrow-right im-pop" />
-                {{ $t('wsHome.kr1uwwi018') }}
-              </button>
-              <button
-                class="aw-ghost im"
-                :title="$t('wsHome.delWs')"
-                @click.stop="remove(ws.id)"
-              >
-                <span class="i-tabler-trash im-shake" />
-              </button>
-            </div>
-          </div>
+            :workspace="ws"
+            :channels="channelSummary(ws.channelIds)"
+            @open="openWorkspace"
+            @remove="remove"
+          />
 
-          <button
+          <WorkspaceEmpty
             v-if="wsStore.workspaces.length === 0 && ready"
-            class="ws-empty"
-            @click="createOpen = true"
-          >
-            <span class="i-tabler-layout-2 ws-empty-ico" />
-            <span class="aw-empty-title">{{ $t('wsHome.emptyTitle') }}</span>
-            <span class="aw-empty-sub">{{ $t('wsHome.emptySub') }}</span>
-            <span class="pill-btn ws-empty-cta">
-              <span class="i-tabler-plus" />
-              {{ $t('wsHome.emptyCta') }}
-            </span>
-          </button>
+            @create="createOpen = true"
+          />
         </div>
       </a-spin>
 
-      <a-modal
+      <CreateWorkspaceModal
         v-model:open="createOpen"
-        :title="$t('wsHome.newWs')"
-        :confirm-loading="createLoading"
-        :ok-text="$t('wsHome.createEnterOk')"
-        :cancel-text="$t('common.cancel')"
+        v-model:name="createName"
+        :loading="createLoading"
         @ok="create"
-      >
-        <a-input
-          v-model:value="createName"
-          :placeholder="$t('wsHome.ksmpk8l007')"
-          @keydown.enter="create"
-        />
-      </a-modal>
+      />
     </template>
   </div>
 </template>
@@ -458,219 +105,12 @@ useHead({ title: () => t('titles.workshop') })
 <style scoped>
 .page { padding: 4px; }
 
-.auth-gate {
-  display: flex;
-  justify-content: center;
-  padding-top: 8vh;
-}
-
-/* 登录卡:open-tag auth 声部(hairline-strong + 柔投影 + serif 标题) */
-.auth-card {
-  position: relative;
-  width: 420px;
-  max-width: 92vw;
-  padding: 26px 26px 18px;
-  border: 1px solid var(--line-strong) !important;
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-float);
-}
-
-.auth-card :deep(h2) {
-  margin: 0 0 6px;
-  font-family: var(--font-display);
-  font-size: 26px;
-}
-
-.sub { margin: 0 0 14px; font-size: 12.5px; color: var(--ink-faint); }
-.hint { margin: 8px 0 0; font-size: 11px; color: var(--ink-faint); }
-
-.head-acts {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-end;
-}
-
-/* 窄屏:页头已经纵向堆叠(见 main.css v5),这一组也必须改成"左对齐 + 按钮满行"。
- * 否则会出现"文字链居中、主按钮靠右"的错位 —— 两行不同对齐轴,读起来像两组东西(实测 /workshop)。 */
-@media (max-width: 900px) {
-  .head-acts {
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .lib-links {
-    justify-content: flex-start;
-    gap: 8px 16px;
-  }
-}
-
-/* 库链接行:安静文字链(降噪,主 CTA 只剩一个) */
-.lib-links { display: inline-flex; flex-wrap: wrap; gap: 2px 14px; justify-content: flex-end; }
-
-.lib-link {
-  padding: 2px 0;
-  font-family: var(--font-body);
-  font-size: 12.5px;
-  color: var(--ink-faint);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  transition: color var(--transition-fast);
-}
-
-.lib-link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
-
-/* 卡片头:软方块 mark + serif 名称 */
-.card-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 30px;
-  height: 30px;
-  font-size: 15px;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border-radius: var(--radius-panel-sm);
-}
-
-.card-head .name {
-  font-family: var(--font-display);
-  font-size: 17px;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-
-.card-foot {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: auto;
-}
-
+/* 卡片/空态/页头/登录门的规则都随各自的标记搬进了 components/workshop/workbench/*
+   (scoped 编译成 .x[data-v-<scopeId>],样式必须与拥有该元素的标记同址);
+   这里只剩页面自己的外壳类。 */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
-
-/* 工作台卡片:图纸面板 + 硬边投影,悬停时"浮起" */
-.card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-card);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-}
-
-.card:hover {
-  border-color: var(--line-strong);
-  transform: translateY(-1px);
-}
-
-.card.placeholder {
-  align-items: center;
-  justify-content: center;
-  min-height: 160px;
-  font-size: 13px;
-  opacity: 0.55;
-  cursor: pointer;
-  border-style: dashed;
-}
-
-/* 空态:整幅居中构图(跨全部网格列,代替左上角一张小幽灵卡) */
-.ws-empty {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  min-height: min(480px, calc(100vh - 320px));
-  padding: 40px 24px;
-  text-align: center;
-  cursor: pointer;
-  background: transparent;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-panel);
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-.ws-empty:hover {
-  background: var(--hover-tint);
-  border-color: var(--ink-fainter);
-}
-.ws-empty-ico { font-size: 34px; color: var(--ink-faint); }
-.aw-empty-title { font-size: 16px; font-weight: 600; color: var(--ink); }
-.aw-empty-sub { max-width: 420px; font-size: 12.5px; line-height: 1.7; color: var(--ink-faint); }
-.ws-empty-cta { margin-top: 6px; pointer-events: none; }
-
-.big { font-size: 28px; }
-
-.card-head {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 15px;
-}
-
-.card-head > :first-child { color: var(--accent-cobalt); }
-
-.name {
-  flex: 1 1 auto;
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 600;
-}
-
-.op { cursor: pointer; opacity: 0.4; }
-.op:hover { opacity: 1; }
-
-.card-body { flex: 1 1 auto; min-height: 40px; }
-
-.ch-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 5px 7px;
-  margin: 2px 0;
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: var(--radius-panel);
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-
-.ch-row:hover {
-  background: color-mix(in srgb, var(--accent-cobalt) 7%, transparent);
-  transform: translateX(2px);
-}
-
-.dot {
-  flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  background: var(--line-strong);
-  border-radius: 50%;
-}
-
-.dot.live { background: var(--accent-moss); box-shadow: 0 0 6px var(--accent-moss); }
-
-.ch-name { flex: 0 0 auto; font-weight: 600; }
-.ch-meta {
-  flex: 1 1 auto;
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  opacity: 0.5;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.empty { padding: 12px 6px; font-size: 12px; opacity: 0.4; }
 </style>
