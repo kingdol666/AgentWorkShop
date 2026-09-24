@@ -921,9 +921,9 @@ workshop.max_lead_created_workers = 8
 
 ```text
 server/services/workshop/runtime/task-engine/policy.ts       新增
-server/services/workshop/runtime/task-engine/02-create.ts   修改
-server/services/workshop/runtime/task-engine/03-transition.ts 修改
-server/services/workshop/runtime/task-engine/04-lifecycle.ts 修改
+server/services/workshop/runtime/task-engine/create.ts   修改
+server/services/workshop/runtime/task-engine/transition.ts 修改
+server/services/workshop/runtime/task-engine/lifecycle.ts 修改
 server/services/workshop/runtime/task-engine/helpers.ts     视需要修改
 server/services/workshop/runtime/task-engine/types.ts       视需要修改
 ```
@@ -931,23 +931,23 @@ server/services/workshop/runtime/task-engine/types.ts       视需要修改
 ### 14.2 Manager
 
 ```text
-server/services/workshop/runtime/manager/04-workspace.ts
-server/services/workshop/runtime/manager/11-lead-team.ts
-server/services/workshop/runtime/manager/14-tasks.ts
-server/services/workshop/runtime/manager/16-host-tools.ts
+server/services/workshop/runtime/manager/workspace.ts
+server/services/workshop/runtime/manager/lead-team.ts
+server/services/workshop/runtime/manager/tasks.ts
+server/services/workshop/runtime/manager/host-tools.ts
 ```
 
 ### 14.3 Runtime 与 Scheduler
 
 ```text
-server/services/workshop/runtime/agent-runtime/00-state.ts
-server/services/workshop/runtime/agent-runtime/02-supervise.ts
-server/services/workshop/runtime/agent-runtime/03-message.ts
+server/services/workshop/runtime/agent-runtime/state.ts
+server/services/workshop/runtime/agent-runtime/supervise.ts
+server/services/workshop/runtime/agent-runtime/message.ts
 server/services/workshop/runtime/agent-runtime/types.ts
-server/services/workshop/runtime/scheduler-loop/01-tick.ts
-server/services/workshop/runtime/scheduler-loop/02-snapshot.ts
-server/services/workshop/runtime/scheduler-loop/03-rules.ts
-server/services/workshop/runtime/scheduler-loop/04-execute.ts
+server/services/workshop/runtime/scheduler-loop/tick.ts
+server/services/workshop/runtime/scheduler-loop/snapshot.ts
+server/services/workshop/runtime/scheduler-loop/rules.ts
+server/services/workshop/runtime/scheduler-loop/execute.ts
 server/services/workshop/runtime/scheduler-loop/types.ts
 ```
 

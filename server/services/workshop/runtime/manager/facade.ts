@@ -2,7 +2,7 @@
  * AgentChannelManager —— 组合各分层后的最终门面(组合根)。
  * 公开 API 与拆分前完全一致:构造签名、方法集、工厂与单例函数都原样保留。
  */
-import { ManagerInternal } from './18-internal'
+import { ManagerInternal } from './internal'
 import type { ManagerDeps } from './types'
 
 export class AgentChannelManager extends ManagerInternal {}

@@ -5,14 +5,14 @@
  *   types.ts      依赖类型与 DTO
  *   helpers.ts    模块级纯工具/常量
  *   contracts.ts  跨层能力契约(5 个抽象方法)
- *   00-state.ts              状态字段与派生视图
- *   01-init.ts               构造 / 初始化 / 描述符索引重建
- *   02-groups.ts             配置分组 CRUD 与广播
- *   03-plugins.ts            插件描述符注入 / 旧键迁移 / 取值与运行时应用
- *   04-recompute.ts          有效值重算与磁盘重载
- *   05-snapshot.ts           文件监听 / 快照 / 路径访问器
- *   06-mutate.ts             写入 / 重置 / 重载 / 订阅与广播
- *   07-dispose.ts            销毁
+ *   state.ts      状态字段与派生视图
+ *   init.ts       构造 / 初始化 / 描述符索引重建
+ *   groups.ts     配置分组 CRUD 与广播
+ *   plugins.ts    插件描述符注入 / 旧键迁移 / 取值与运行时应用
+ *   recompute.ts  有效值重算与磁盘重载
+ *   snapshot.ts   文件监听 / 快照 / 路径访问器
+ *   mutate.ts     写入 / 重置 / 重载 / 订阅与广播
+ *   dispose.ts    销毁
  *   facade.ts     最终类 + 模块级尾码
  */
 export { SystemConfigService, getSystemConfigService, useSystemConfig } from './facade'

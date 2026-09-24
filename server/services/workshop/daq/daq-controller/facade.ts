@@ -2,12 +2,12 @@
  * DaqController —— 组合各分层后的最终类(可见性/继承/实现接口与拆分前一致)
  * + 原文件类体之后引用本类的模块级代码(单例/工厂/广播装配)。
  */
-import { DaqControllerLayer08 } from './08-driver-probe'
+import { DaqControllerDriverProbe } from './driver-probe'
 import { setQueueBackend } from './helpers'
 import type { BroadcastFn } from './types'
 import { getDaqQueue } from '../bus'
 
-class DaqController extends DaqControllerLayer08 {}
+class DaqController extends DaqControllerDriverProbe {}
 const g = globalThis as typeof globalThis & { __daqController?: DaqController, __daqQueueBackend?: string }
 export function getDaqController(): DaqController {
   g.__daqController ??= new DaqController()

@@ -2,6 +2,6 @@
  * AgentRuntime —— 组合各分层后的最终类(可见性/继承/实现接口与拆分前一致)
  * + 原文件类体之后引用本类的模块级代码(单例/工厂/广播装配)。
  */
-import { AgentRuntimeLayer03 } from './03-message'
+import { AgentRuntimeMessage } from './message'
 
-export class AgentRuntime extends AgentRuntimeLayer03 {}
+export class AgentRuntime extends AgentRuntimeMessage {}

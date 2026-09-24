@@ -5,6 +5,6 @@
  * 分层类要调 vectorizeMemory ⇒ 它放 helpers.ts(否则 层 → facade → 层 循环导入);
  * 维护函数只被定时器/REST 调用,留在 helpers 一并导出。
  */
-import { AgentMemoryLayer04 } from './04-score'
+import { AgentMemoryScore } from './score'
 
-export class AgentMemory extends AgentMemoryLayer04 {}
+export class AgentMemory extends AgentMemoryScore {}

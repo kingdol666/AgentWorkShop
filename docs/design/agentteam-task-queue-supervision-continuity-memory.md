@@ -727,7 +727,7 @@ pnpm build
 
 ### 13.2 完整性修复（审计发现的真实缺陷）
 
-1. **root 漏号**：`manager/14-tasks.ts` 在「人类直发 worker」时显式传 `rootQueueSeq: null`，被 `listRoots` 的 `root_queue_seq IS NOT NULL` 过滤 → `activeRootId` 变 null、FIFO 准入与调度器 activeRoot 守卫同时失效，而前端仍显示为 active。现在所有 root 一律发号（`task.repo.ts` 对 `null` 也补号）。
+1. **root 漏号**：`manager/tasks.ts` 在「人类直发 worker」时显式传 `rootQueueSeq: null`，被 `listRoots` 的 `root_queue_seq IS NOT NULL` 过滤 → `activeRootId` 变 null、FIFO 准入与调度器 activeRoot 守卫同时失效，而前端仍显示为 active。现在所有 root 一律发号（`task.repo.ts` 对 `null` 也补号）。
 2. **lead runtime 永不卸载**：`supervisionAttempt.state` 落定后停在 `DECISION_APPLIED`，而 `unloadAgent` 判据是 `state !== 'IDLE'` → §6.1 闸门永久为假。现在按 §4.1 状态机落定后回到 `IDLE`，审计信息保留在 `completedAt` / `lastDecisionKind` / `watchdogCount`，卸载判据改用 `hasActiveSupervisionAttempt()`。
 3. **artifact 不可见**：`applyEvent` 只在 progress 变化时广播，非 append 且未声明 `totalChunks` 的交付物既不更新进度也不广播 → 过程记忆永远看不到 artifact。现在 artifact 无条件广播（`progress` 仅在真变化时进入载荷，保持既有「变化才发进度帧」口径）。
 4. **canonical root summary 是死代码**：`recordTeamTaskTerminal` 全仓无调用者。现在在 root 终态分支接回，并把「结论」改为 `交付物摘要 → closeReason → routeReason` 优先级。
