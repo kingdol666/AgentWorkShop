@@ -72,6 +72,22 @@ async function invoke(agentId, tool, args, timeoutMs = 90000) {
   log('agent.tool', { agentId, tool, args, status: r.status, isError: result.isError === true, text: String(result.text ?? '').slice(0, 4000) })
   return result
 }
+
+/**
+ * 用**真实工具桥**收口子任务(等价于 agent 自己在回合里调 complete_task)。
+ *
+ * 为什么脚本要显式收口:本脚本用脚本侧直调工具完成"受治理写控/复测/判定",
+ * worker 自身的 harness 回合不再负责交付 —— 而 mock lead 的规则引擎只按**子任务终态**
+ * 收口父任务(不等消息)。缺这一步,父 goal 永远停在 WAITING,后续 FIFO 断言无法继续。
+ * 已是终态则跳过(幂等,避免与 agent 自己的收口竞争时报"已终态")。
+ */
+async function completeIfOpen(agentId, taskId, summary) {
+  const ts = await channelTasks(channelId)
+  const t = ts.find(x => x.id === taskId)
+  if (!t || ['COMPLETED', 'FAILED', 'CANCELED'].includes(t.state)) return t?.state ?? '(missing)'
+  const r = await invoke(agentId, 'complete_task', { task_id: taskId, summary })
+  return r.isError === true ? `error:${String(r.text).slice(0, 120)}` : 'COMPLETED'
+}
 function recordId(text) {
   return String(text).match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/)?.[1] ?? null
 }
@@ -115,18 +131,24 @@ log('dcw.guard.configured', { lineId, locks })
 if (locks.some(x => x.writeLockSeconds !== 60)) throw new Error('not all injection DCW nodes have 60s write lock')
 
 // Team templates: lead + read-only DAQ analyst + DCW-capable process optimizer.
+//
+// 工具桥硬口径:**只有实现了 dispatchHostTool 的 harness 才能经 /agent-tools/invoke
+// 调 host 工具**;mock(MockAgentImpl)不在其列 —— 桥会回「工具桥不支持该协作工具」,
+// 受治理写控/取数段直接失败。因此两个 worker 用真实 harness(默认 omp:既有凭据
+// 又有 host 工具直调面),lead 保持 mock 以保证 FIFO 调度确定性。
 const suffix = `real-${Date.now().toString(36)}`
+const TOOL_HARNESS = process.env.AW_E2E_TOOL_HARNESS ?? 'omp'
 const leadTpl = dataOf(await api('POST', '/api/workshop/agents', {
   name: `注塑闭环 Leader ${suffix}`, harness: 'mock',
   config: { delayMs: 500, goalRejectRounds: 0, systemPromptPrefix: scenarioPrompt },
 }))
 const analystTpl = dataOf(await api('POST', '/api/workshop/agents', {
-  name: `注塑数据分析 worker ${suffix}`, harness: 'mock',
-  config: { delayMs: 10000, systemPromptPrefix: `${scenarioPrompt}\n你是数据分析 worker：只读 DAQ，不得写 DCW；输出最近 5 分钟均值、极值、趋势和守卫判读。` },
+  name: `注塑数据分析 worker ${suffix}`, harness: TOOL_HARNESS,
+  config: { systemPromptPrefix: `${scenarioPrompt}\n你是数据分析 worker：只读 DAQ，不得写 DCW；输出最近 5 分钟均值、极值、趋势和守卫判读。` },
 }))
 const optimizerTpl = dataOf(await api('POST', '/api/workshop/agents', {
-  name: `注塑工艺优化 worker ${suffix}`, harness: 'mock',
-  config: { delayMs: 50000, systemPromptPrefix: `${scenarioPrompt}\n你是工艺优化 worker：只有在数据证据充分且与上次 DCW 写入间隔≥60s时，才允许单变量写入。` },
+  name: `注塑工艺优化 worker ${suffix}`, harness: TOOL_HARNESS,
+  config: { systemPromptPrefix: `${scenarioPrompt}\n你是工艺优化 worker：只有在数据证据充分且与上次 DCW 写入间隔≥60s时，才允许单变量写入。` },
 }))
 if (!leadTpl?.id || !analystTpl?.id || !optimizerTpl?.id) throw new Error('agent template creation failed')
 const team = dataOf(await api('POST', '/api/workshop/teams', { name: `注塑真实闭环 AgentTeam ${suffix}`, description: scenarioPrompt }))
@@ -201,7 +223,7 @@ const child1Assigned = await waitFor('goal1 child assigned to data analyst', asy
   const ts = await channelTasks(channelId)
   const c = childOf(ts, goal1Id)
   return c && c.state !== 'SUBMITTED' ? { childId: c.id, state: c.state, assigneeId: c.assigneeId } : null
-}, 60000)
+}, 120000)
 const queueWhileFirst = await channelTasks(channelId)
 log('fifo.observed', { activeRoot: queueWhileFirst.find(t => t.id === goal1Id)?.state, queuedRoot: queueWhileFirst.find(t => t.id === goal2Id)?.state, goal1Child: child1Assigned })
 if (queueWhileFirst.find(t => t.id === goal2Id)?.state !== 'SUBMITTED') throw new Error('FIFO evidence missing: goal2 was not queued while goal1 active')
@@ -212,12 +234,14 @@ const analystDaq = await invoke(analyst.id, 'daq_query', { node_id: partWeight.i
 const analystMessage = `GOAL-1 数据分析证据：制品克重节点 ${partWeight.id}；最近窗口原始工具输出：${String(analystDaq.text ?? '').slice(0, 1000)}。请据此把 GOAL-2 交给工艺优化 worker；保持飞边≤0.4%、缩痕≤1.5%、熔体温度 235~262℃。`
 await invoke(analyst.id, 'send_message_to_agent', { to_agent_id: lead.id, message: analystMessage, priority: 'immediate' })
 log('analyst.handoff', { from: analyst.id, to: lead.id, message: analystMessage })
+// 分析子任务收口(脚本侧直调工具链已取到证据;worker 回合由引擎自行结束)
+log('goal1.child.settled', { childId: child1Assigned.childId, state: await completeIfOpen(analyst.id, child1Assigned.childId, 'GOAL-1 基线分析:已用 daq_query 取证并把证据移交 Lead,结论含克重窗口判读与守卫值。') })
 
 await waitFor('goal1 completed', async () => {
   const ts = await channelTasks(channelId)
   const t = ts.find(t => t.id === goal1Id)
   return t && ['COMPLETED', 'FAILED', 'CANCELED'].includes(t.state) ? { id: t.id, state: t.state } : null
-}, 180000)
+}, 420000) // 真实 harness:omp 冷启动可达 2–3 分钟,再叠加 worker 回合与 lead 收口
 log('goal1.terminal', { goal1Id, tasks: await channelTasks(channelId) })
 
 // Move from analysis stage to control stage. FIFO root remains the same channel; only eligible worker changes.
@@ -276,6 +300,8 @@ await invoke(optimizer.id, 'dcw_judge', { record_id: rec1, verdict: 'keep', reas
 await invoke(optimizer.id, 'dcw_judge', { record_id: rec2, verdict: 'keep', reason: judgeReason2 })
 await invoke(optimizer.id, 'send_message_to_agent', { to_agent_id: lead.id, message: `GOAL-2 工艺优化完成：两次 DCW 写入分别为 hold-time ${holdTimeTarget}${liveHoldTime.unit}、hold-pressure ${holdPressureTarget}${liveHoldPressure.unit}；两次写入间隔 ${Math.round(actualGap / 1000)}s（要求≥60s）；已完成 DAQ 复测并对记录 ${rec1}、${rec2} 执行 dcw_judge=keep。`, priority: 'immediate' })
 log('control.closed_loop', { records: [rec1, rec2], actualGapMs: actualGap, requiredGapMs: 60000, post2: String(post2.text ?? '').slice(0, 1800), flash: String(guardFlash.text ?? '').slice(0, 1200), sink: String(guardSink.text ?? '').slice(0, 1200) })
+// 受治理写控子任务收口 → mock lead 按子任务终态收口 GOAL-2(第二 root)
+log('goal2.child.settled', { childId: child2Assigned.childId, state: await completeIfOpen(optimizer.id, child2Assigned.childId, `GOAL-2 受治理闭环:两次 DCW 写入(hold-time/hold-pressure,间隔 ${Math.round(actualGap / 1000)}s ≥60s),DAQ 复测与守卫复核通过,dcw_judge=keep(${rec1}/${rec2})。`) })
 
 const goal2Terminal = await waitFor('goal2 completed', async () => {
   const ts = await channelTasks(channelId)

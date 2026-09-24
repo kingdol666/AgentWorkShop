@@ -65,7 +65,11 @@ ok(Boolean(userToken), 'e2e 用户 token 就绪')
   const me = await api('GET', '/api/workshop/users/me', { token: userToken })
   const myId = env(me)?.id ?? ''
   ok(Boolean(myId), 'token 反查用户 id', myId)
-  const db = new DatabaseSync(join(resolve('.'), '.AgentWorkShop', 'data', 'users.sqlite'))
+  // 夹具库路径:默认仓库模式(.AgentWorkShop/data);隔离实例(AW_MODE=home)用
+  // AW_E2E_USERS_DB 指向该实例的 users.sqlite —— 否则夹具写进另一个库,
+  // 被测用户在该实例里既不是 admin 也没有产线授权(后续 DCW/HITL 段全 403)。
+  const usersDb = process.env.AW_E2E_USERS_DB ?? join(resolve('.'), '.AgentWorkShop', 'data', 'users.sqlite')
+  const db = new DatabaseSync(usersDb)
   db.exec('PRAGMA busy_timeout=4000')
   if (myId) {
     db.prepare(`INSERT OR REPLACE INTO user_line_grants (user_id, line_id, mode, granted_by, granted_at) VALUES (?, ?, 'operate', 'plc-e2e', ?)`)
@@ -73,7 +77,7 @@ ok(Boolean(userToken), 'e2e 用户 token 就绪')
     db.prepare('UPDATE users SET role = \'admin\' WHERE id = ?').run(myId)
   }
   db.close()
-  console.log(`  · 夹具:授产线 operate + admin(${myId})`)
+  console.log(`  · 夹具:授产线 operate + admin(${myId})@${usersDb}`)
 }
 
 // omp 执行器:必须挂在**本用户自有频道**下 —— HITL 待办按 channel 所有权过滤,
@@ -324,75 +328,98 @@ console.log('\n── D 闭环写控(熔温调控:SP 200 → 202)──')
 // ══ Stage E:知识闭环 ═══════════════════════════════════════════════
 console.log('\n── E 知识闭环(经验沉淀/检索 + 诊断自动入库)──')
 {
-  const marker = `PLC闭环实测${TAG}:SP 上调 2℃ 后熔体温度跟随收敛,判定 keep`
-  const store = await invoke(exec, 'kb_store', {
-    title: `plc-e2e 经验:${TAG} 熔温调控`,
-    category: 'optimization',
-    problem: '熔体温度偏低需要上调',
-    solution: marker,
-    tags: ['plc-e2e', '闭环'],
-  })
-  ok(resultText(store).includes('已沉淀'), 'kb_store 经验沉淀', resultText(store).slice(0, 80))
-  let hit = ''
-  for (let i = 0; i < 8 && !hit; i++) {
-    await sleep(4000)
-    const s = await invoke(exec, 'kb_search', { query: marker }, 60000)
-    if (!resultText(s).startsWith('未检索到')) hit = resultText(s)
-  }
-  ok(hit.length > 0, 'kb_search 命中刚沉淀经验', hit.split('\n')[1]?.slice(0, 90) ?? '')
+  // 两段都依赖**外部服务**,缺一即为"测试没准备好"而非产品缺陷 —— 按项目约定显式 SKIP
+  // (环境不具备宁可 skip 并写明原因,绝不伪造通过):
+  //  · rag :kb_agent 需要 rag-knowledge 的 **web**(kb agent chat,claude SDK);
+  //  · diag:需要工业深度诊断服务(:3210)。
+  const kbHealth = await raw('GET', `${KB}/api/v1/health`).catch(() => null)
+  const kbWebUrl = String(env(await api('GET', '/api/system/settings', { token: userToken }))?.effective?.['plugins.rag-bridge.web_url'] ?? '')
+  // 必须 **200** 才算可达:401/403 说明"服务在但没凭据",kb_agent 仍会失败,不能当就绪
+  const kbWebReachable = kbWebUrl ? await raw('GET', `${kbWebUrl}/api/health`).then(r => r.status === 200).catch(() => false) : false
+  const ragReady = kbHealth?.json?.status === 'healthy' && kbWebReachable
+  const diagHealth = await raw('GET', `${DIAG}/api/health`).catch(() => null)
+  const diagReady = diagHealth?.json?.status === 'ok'
 
-  // 诊断(mock 引擎,分钟级):先清线上在跑诊断(防收养长跑 omp),显式 mock,发起→completed→入库→检索
-  // 鉴权用持久化 API Token(idd_;会话 JWT 的密钥/会话态可能随服务重启失效)
-  const diagToken = env(await api('GET', '/api/system/settings', { token: userToken }))?.effective?.['plugins.diag-bridge.token'] ?? ''
-  const dreq = (path, method = 'GET') => raw(method, `${DIAG}${path}`, { token: diagToken, timeoutMs: 20000 })
-  {
-    const list = await dreq('/api/diagnosis/list')
-    const runs = list.json?.data ?? []
-    for (const r of runs.filter(x => x?.status === 'running')) {
-      await dreq(`/api/diagnosis/stop/${encodeURIComponent(r.runId ?? r.id)}`, 'POST').catch(() => {})
-    }
+  const marker = `PLC闭环实测${TAG}:SP 上调 2℃ 后熔体温度跟随收敛,判定 keep`
+  if (!ragReady) {
+    console.log(`  SKIP  rag 知识闭环(经验沉淀/检索)— 需要 rag-knowledge web(kb agent chat):KB health=${kbHealth?.json?.status ?? 'unreachable'} web=${kbWebUrl || '(未配置)'} reachable=${kbWebReachable}`)
   }
-  const adminSnap = await api('GET', '/api/system/settings', { token: userToken })
-  const prevHarness = env(adminSnap)?.effective?.['plugins.diag-bridge.harness'] ?? ''
-  await api('PATCH', '/api/system/settings', { token: userToken, body: { override: { 'plugins.diag-bridge.harness': 'mock' } } })
-  let runId = ''
-  let r = await invoke(exec, 'diag_run', { line: lineId ?? LINE, from_ms: Date.now() - 30 * 60_000, to_ms: Date.now(), question: `${LINE} PLC 闭环实测时窗诊断(plc-e2e)`, scene: 'plc_e2e' }, 120000)
-  runId = (resultText(r).match(/runId=([a-z0-9-]+)/i) ?? [])[1] ?? ''
-  if (!runId) {
-    const adopted = (resultText(r).match(/run_id=([a-z0-9-]+)/i) ?? [])[1] ?? ''
-    if (adopted) runId = adopted
-  }
-  ok(Boolean(runId), 'diag_run 发起(mock 引擎)', runId || resultText(r).slice(0, 100))
-  if (runId) {
-    let done = false
-    let last = ''
-    for (let i = 0; i < 30 && !done; i++) {
-      await sleep(15_000)
-      const s = await invoke(exec, 'diag_status', { run_id: runId }, 30000)
-      last = resultText(s)
-      if (/状态=completed/.test(last)) done = true
-      else if (/状态=(failed|stopped)/.test(last)) break
+  else {
+    // rag-bridge 的对外工具面是**单入口** kb_agent(旧 kb_store/kb_search/kb_index 已随
+    // "功能解耦"重构下线):入库用 async,检索用 sync 并等待最终回复。
+    const store = await invoke(exec, 'kb_agent', {
+      mode: 'async',
+      prompt: `请把下面这条经验沉淀进知识库(库名 aw-industrial,标题「plc-e2e 经验:${TAG} 熔温调控」):`
+        + `类别 optimization;问题「熔体温度偏低需要上调」;解决方案「${marker}」;标签 plc-e2e,闭环。`,
+    }, 120000)
+    ok(!/未知工具|不支持|不可用|失败|错误/.test(resultText(store)), 'kb_agent 经验沉淀(async 提交)', resultText(store).slice(0, 90))
+    let hit = ''
+    for (let i = 0; i < 8 && !hit; i++) {
+      await sleep(4000)
+      const s = await invoke(exec, 'kb_agent', { mode: 'sync', prompt: `检索:${marker}` }, 300000)
+      const text = resultText(s)
+      if (!text.startsWith('未检索到') && !/未知工具|不支持|不可用|失败|错误/.test(text)) hit = text
     }
-    ok(done, '诊断跑至 completed', (last.match(/评分=\S+/g) ?? []).join(' '))
-    if (done) {
-      let stored = false
-      for (let i = 0; i < 24 && !stored; i++) {
-        await sleep(10_000)
-        const runs = await api('GET', '/api/plugins/diag-bridge/runs', { token: userToken })
-        const mine = (runs.json?.runs ?? []).find(x => x.runId === runId)
-        if (mine?.stored === true) stored = true
+    ok(hit.length > 0, 'kb_agent 命中刚沉淀经验', hit.split('\n')[1]?.slice(0, 90) ?? '')
+  }
+
+  if (!diagReady) {
+    console.log(`  SKIP  诊断闭环(diag_run → completed → 自动入库 → 检索)— 诊断服务不可达:${DIAG}/api/health=${diagHealth?.json?.status ?? 'unreachable'}`)
+  }
+  else {
+    // 诊断(mock 引擎,分钟级):先清线上在跑诊断(防收养长跑 omp),显式 mock,发起→completed→入库→检索
+    // 鉴权用持久化 API Token(idd_;会话 JWT 的密钥/会话态可能随服务重启失效)
+    const diagToken = env(await api('GET', '/api/system/settings', { token: userToken }))?.effective?.['plugins.diag-bridge.token'] ?? ''
+    const dreq = (path, method = 'GET') => raw(method, `${DIAG}${path}`, { token: diagToken, timeoutMs: 20000 })
+    {
+      const list = await dreq('/api/diagnosis/list')
+      const runs = list.json?.data ?? []
+      for (const r of runs.filter(x => x?.status === 'running')) {
+        await dreq(`/api/diagnosis/stop/${encodeURIComponent(r.runId ?? r.id)}`, 'POST').catch(() => {})
       }
-      ok(stored, '诊断报告自动入库')
-      let kbHit = ''
-      for (let i = 0; i < 8 && !kbHit; i++) {
-        await sleep(5000)
-        const s = await invoke(exec, 'kb_search', { query: `plc_e2e ${runId.slice(0, 8)} 诊断报告` }, 60000)
-        if (!resultText(s).startsWith('未检索到')) kbHit = resultText(s)
-      }
-      ok(kbHit.length > 0, 'kb_search 命中诊断报告', kbHit.split('\n')[1]?.slice(0, 90) ?? '')
     }
+    const adminSnap = await api('GET', '/api/system/settings', { token: userToken })
+    const prevHarness = env(adminSnap)?.effective?.['plugins.diag-bridge.harness'] ?? ''
+    await api('PATCH', '/api/system/settings', { token: userToken, body: { override: { 'plugins.diag-bridge.harness': 'mock' } } })
+    let runId = ''
+    const r = await invoke(exec, 'diag_run', { line: lineId ?? LINE, from_ms: Date.now() - 30 * 60_000, to_ms: Date.now(), question: `${LINE} PLC 闭环实测时窗诊断(plc-e2e)`, scene: 'plc_e2e' }, 120000)
+    runId = (resultText(r).match(/runId=([a-z0-9-]+)/i) ?? [])[1] ?? ''
+    if (!runId) {
+      const adopted = (resultText(r).match(/run_id=([a-z0-9-]+)/i) ?? [])[1] ?? ''
+      if (adopted) runId = adopted
+    }
+    ok(Boolean(runId), 'diag_run 发起(mock 引擎)', runId || resultText(r).slice(0, 100))
+    if (runId) {
+      let done = false
+      let last = ''
+      for (let i = 0; i < 30 && !done; i++) {
+        await sleep(15_000)
+        const s = await invoke(exec, 'diag_status', { run_id: runId }, 30000)
+        last = resultText(s)
+        if (/状态=completed/.test(last)) done = true
+        else if (/状态=(failed|stopped)/.test(last)) break
+      }
+      ok(done, '诊断跑至 completed', (last.match(/评分=\S+/g) ?? []).join(' '))
+      if (done) {
+        let stored = false
+        for (let i = 0; i < 24 && !stored; i++) {
+          await sleep(10_000)
+          const runs = await api('GET', '/api/plugins/diag-bridge/runs', { token: userToken })
+          const mine = (runs.json?.runs ?? []).find(x => x.runId === runId)
+          if (mine?.stored === true) stored = true
+        }
+        ok(stored, '诊断报告自动入库')
+        let kbHit = ''
+        for (let i = 0; i < 8 && !kbHit; i++) {
+          await sleep(5000)
+          const s = await invoke(exec, 'kb_agent', { mode: 'sync', prompt: `检索:plc_e2e ${runId.slice(0, 8)} 诊断报告` }, 300000)
+          if (!resultText(s).startsWith('未检索到')) kbHit = resultText(s)
+        }
+        ok(kbHit.length > 0, 'kb_agent 命中诊断报告', kbHit.split('\n')[1]?.slice(0, 90) ?? '')
+      }
+    }
+    await api('PATCH', '/api/system/settings', { token: userToken, body: { override: { 'plugins.diag-bridge.harness': prevHarness } } })
   }
-  await api('PATCH', '/api/system/settings', { token: userToken, body: { override: { 'plugins.diag-bridge.harness': prevHarness } } })
 }
 
 // ══ Stage F:插件参数回归(逐键热生效→复原)══════════════════════════
@@ -483,16 +510,19 @@ console.log('\n── G Channel 级插件开关 ──')
     ok(off.status === 200, 'PUT 关闭 rag-bridge')
     const list1 = await api('GET', `/api/workshop/agent-tools/list?agentId=${member.id}`, { agent: member })
     const names1 = (list1?.json?.data?.tools ?? list1?.json?.tools ?? []).map(t => t?.name)
-    ok(!names1.includes('kb_search'), '关闭插件工具不注入')
+    // rag-bridge 的对外工具面已收敛为**单入口** `kb_agent`(+ kb_agent_status);
+    // kb_search/kb_store/kb_index 是旧工具名,已不存在 —— 断言必须跟着当前事实源走。
+    const RAG_TOOL = 'kb_agent'
+    ok(!names1.includes(RAG_TOOL), '关闭插件工具不注入')
     ok(names1.includes('diag_run'), '开启插件工具注入')
-    const denied = await invoke(member, 'kb_search', { query: 'x' }, 30000)
+    const denied = await invoke(member, RAG_TOOL, { prompt: 'x' }, 30000)
     ok(resultText(denied).includes('未启用插件'), 'dispatch 同源拒绝', resultText(denied).slice(0, 60))
     await api('PUT', `/api/workshop/channels/${channelId}/plugins`, { token: userToken, body: { plugins: [{ name: 'rag-bridge', enabled: true }, { name: 'diag-bridge', enabled: true }] } })
     let back = false
     for (let i = 0; i < 8 && !back; i++) {
       await sleep(1000)
       const list2 = await api('GET', `/api/workshop/agent-tools/list?agentId=${member.id}`, { agent: member })
-      if (((list2?.json?.data?.tools ?? list2?.json?.tools ?? []).map(t => t?.name)).includes('kb_search')) back = true
+      if (((list2?.json?.data?.tools ?? list2?.json?.tools ?? []).map(t => t?.name)).includes(RAG_TOOL)) back = true
     }
     ok(back, '重开后工具恢复')
   }
@@ -503,7 +533,8 @@ console.log('\n── H Harness 集成面 ──')
 {
   const list = await api('GET', `/api/workshop/agent-tools/list?agentId=${exec.id}`, { agent: exec })
   const names = (list?.json?.data?.tools ?? list?.json?.tools ?? []).map(t => t?.name)
-  for (const t of ['kb_search', 'kb_store', 'kb_index', 'diag_run', 'diag_status']) ok(names.includes(t), `omp 执行器工具清单含 ${t}`)
+  // rag 侧工具面已收敛为单入口 kb_agent(+kb_agent_status);diag 侧仍是 diag_run/diag_status
+  for (const t of ['kb_agent', 'kb_agent_status', 'diag_run', 'diag_status']) ok(names.includes(t), `omp 执行器工具清单含 ${t}`)
   for (const t of ['daq_query', 'dcw_control', 'dcw_judge', 'dcw_read', 'line_context']) ok(names.includes(t), `omp 执行器工业工具含 ${t}`)
   const ctxT = await invoke(exec, 'line_context', {}, 60000)
   ok(!resultText(ctxT).startsWith('工具') || resultText(ctxT).length > 0, 'line_context 可用(工业链路)', resultText(ctxT).slice(0, 60))

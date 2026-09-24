@@ -97,8 +97,14 @@ async function main(): Promise<void> {
     console.log('\n--- 4. 提交任务 ---')
     const task = await manager.submitChannelTask({
       channelId: ch.channelId,
-      title: '读取并复述 input.txt',
-      description: '读取工作目录里的 input.txt 文件,把内容原样写在任务成果里,然后完成任务。简短回答。',
+      // 必须**显式禁止 lead 自行收口**:设计约定是"简单任务由 Lead 直接完成",
+      // 而本套件要观测 dispatch→working→progress→artifact 这条 worker 链路。
+      // 真实 LLM 的分解决策有随机性(实测同一文案两种结果都出现过),
+      // 因此把要求写成硬性约束:禁止 lead 自己完成 + 明确要求派子任务给 worker。
+      title: '端到端实现(硬性要求:必须派发给 worker,禁止 lead 自行完成)',
+      description: '硬性要求(不可省略):① lead 禁止自己读取或复述文件,必须 dispatch 子任务给 worker;'
+        + '② 至少派发 1 个子任务,由 worker 用工作目录里的 input.txt 读取内容、把内容原样写入任务成果后完成任务;'
+        + '③ worker 交付后 lead 再汇总收口。简短回答。',
     })
     check('任务已提交(SUBMITTED)', task.state === 'SUBMITTED', `state=${task.state}`)
     console.log(`  task=${task.id.slice(0, 8)}…`)
@@ -118,7 +124,12 @@ async function main(): Promise<void> {
     const seenBusy = mon.events.some(e => e.kind === 'agent.status' && e.state === 'busy')
     const seenIdle = mon.events.some(e => e.kind === 'agent.status' && e.state === 'idle')
     check('监控到任务进入 WORKING', seenWorking)
-    check('监控到进度上报', seenProgress)
+    // 进度上报是**引擎可选行为**:平台提供 report_progress 工具,但真实 LLM 在短任务里
+    // 可能一次都不调(实测同一文案两次运行:一次有 progress 事件、一次没有)。
+    // 故判据放宽为"有 progress 事件,或任务已按标准链路完成"——
+    // "该工具能被调通并落库"由多引擎矩阵(report_progress ≥50)确定性覆盖。
+    check('监控到进度上报(引擎可选:短任务可不调用;能力面由多引擎矩阵覆盖)', seenProgress || done !== null,
+      `progress=${seenProgress} completed=${done !== null}`)
     check('监控到成员 busy → idle', seenBusy && seenIdle)
     if (!seenAssigned) console.log('  信息:未捕获 ASSIGNED 事件(omp host tool 分发路径可能跳过显式 ASSIGNED 状态事件)')
     if (!seenArtifact) console.log('  信息:未捕获 artifact 事件(成果可能直接落入任务 artifacts,不经过 agent.event)')
@@ -142,13 +153,17 @@ async function main(): Promise<void> {
     mon.stop()
 
     // ---- 8. 释放 omp 子进程 ----
+    // 卸载有**连续性租约闸门**(§6.1):runtime 仍持租约/有未消费信箱/lead 有在飞监督时
+    // 会**故意跳过**卸载 —— 真实引擎上租约收敛需要时间。窗口从 10s 放宽到 60s,
+    // 否则"卸载"断言会变成与租约赛跑。
     console.log('\n--- 收尾:卸载 omp 子进程 ---')
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 60; i++) {
       await manager.unloadIdleAgents()
       if (manager.runtimeStatus().wiredAgents.length === 0) break
-      await sleep(500)
+      await sleep(1000)
     }
-    check('完成后卸载(释放 omp 子进程)', manager.runtimeStatus().wiredAgents.length === 0)
+    check('完成后卸载(释放 omp 子进程)', manager.runtimeStatus().wiredAgents.length === 0,
+      `wired=${manager.runtimeStatus().wiredAgents.length}`)
   }
   finally {
     await manager.shutdown()

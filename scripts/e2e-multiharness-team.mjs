@@ -148,11 +148,21 @@ async function main() {
   console.log(`\n━━━ 多 Harness 团队协同 E2E @ ${BASE} (tag=${TAG}) ━━━`)
   await preflight()
 
-  const reg = await api('POST', '/api/users/register', {
-    body: { email: `team-${TAG}@test.local`, password: 'Passw0rd!123', name: `team-${TAG}` },
-  })
-  const token = reg.data?.token
-  if (!token) throw new Error(`注册失败: ${JSON.stringify(reg).slice(0, 200)}`)
+  // 账号:优先用环境给的 admin/editor token(AW_E2E_TOKEN)——
+  // 本套件要建产线/节点(requireRole admin/editor)。共享实例上"首个用户=admin"名额早已被占,
+  // 新注册用户是普通角色 → 建线 403 → line.id 读空崩在 Phase 1(与产品无关)。
+  let token = process.env.AW_E2E_TOKEN ?? ''
+  if (token) {
+    console.log('  [auth] 使用 AW_E2E_TOKEN(admin/editor)')
+  }
+  else {
+    const reg = await api('POST', '/api/users/register', {
+      body: { email: `team-${TAG}@test.local`, password: 'Passw0rd!123', name: `team-${TAG}` },
+    })
+    token = reg.data?.token
+    if (!token) throw new Error(`注册失败: ${JSON.stringify(reg).slice(0, 200)}`)
+    console.log('  [auth] 新注册用户(空实例首个用户=admin;共享实例请设 AW_E2E_TOKEN)')
+  }
   const auth = { token }
 
   // ═══ Phase 1:产线 + 全协议节点 ═══
@@ -203,18 +213,25 @@ async function main() {
   })).data
   const channelId = ch.channelId
   check('2.ch', 'Channel 创建(mock lead 调度)', Boolean(channelId))
+  // 入队返回的是**频道成员实例** id —— 绑定与派发都必须用它,不能用 Agent 模板 id:
+  // 服务端会明确回 AGENT_ID_NOT_MEMBER("agentId 是 Agent 模板而非频道成员实例,绑定不会生效,
+  // 请改用成员 id …")。旧写法用模板 id → 4 路绑定全失败 → HITL 审批与四路任务
+  // 因"未绑定"被闸门拦下,后续整段连锁失败(不是产品缺陷)。
+  const memberIds = {}
   for (const e of engines) {
     const r = await api('POST', `/api/workshop/channels/${channelId}/agents`, { body: { agentId: workers[e.key].id, role: 'worker' }, ...auth })
-    if (r.code !== 0) check(`2.${e.key}-join`, `${e.key} 入队`, false, r.message ?? '')
+    memberIds[e.key] = r.data?.id ?? r.data?.agent?.id
+    if (r.code !== 0 || !memberIds[e.key]) check(`2.${e.key}-join`, `${e.key} 入队`, false, r.message ?? '')
   }
   const members = (await api('GET', `/api/workshop/channels/${channelId}/agents`, auth)).data ?? []
   check('2.join', '四引擎 worker 全部入队(lead=mock + 4 引擎)', members.length >= 5, `members=${members.length}`)
 
-  const b1 = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: workers.omp.id, nodeId: nMqtt.id, kind: 'daq', mode: 'auto' }, ...auth })
-  const b2 = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: workers.codex.id, nodeId: nHttp.id, kind: 'daq', mode: 'auto' }, ...auth })
-  const b3 = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: workers.dsh.id, nodeId: nOcua.id, kind: 'dcw', mode: 'manual' }, ...auth })
-  const b4 = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: workers.opencode.id, nodeId: nPlc.id, kind: 'dcw', mode: 'manual' }, ...auth })
-  check('2.bind', '节点绑定(omp→mqtt / codex→http / dsh→opcua / opencode→plc)', b1.code === 0 && b2.code === 0 && b3.code === 0 && b4.code === 0)
+  const b1 = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: memberIds.omp, nodeId: nMqtt.id, kind: 'daq', mode: 'auto' }, ...auth })
+  const b2 = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: memberIds.codex, nodeId: nHttp.id, kind: 'daq', mode: 'auto' }, ...auth })
+  const b3 = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: memberIds.dsh, nodeId: nOcua.id, kind: 'dcw', mode: 'manual' }, ...auth })
+  const b4 = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: memberIds.opencode, nodeId: nPlc.id, kind: 'dcw', mode: 'manual' }, ...auth })
+  check('2.bind', '节点绑定(omp→mqtt / codex→http / dsh→opcua / opencode→plc)', b1.code === 0 && b2.code === 0 && b3.code === 0 && b4.code === 0,
+    `omp=${b1.code}/${b1.message ?? ''} codex=${b2.code}/${b2.message ?? ''} dsh=${b3.code}/${b3.message ?? ''} opencode=${b4.code}/${b4.message ?? ''}`)
 
   // ═══ Phase 3:四路任务并行下发 ═══
   const tasks = {}
@@ -223,10 +240,10 @@ async function main() {
     tasks[key] = t.data?.task?.id ?? t.data?.id
     return t
   }
-  await mkTask('T1-omp-read', workers.omp.id, `用 daq_query 读取「MQTT温度-${TAG}」最近 3 分钟数据,汇报均值即可,然后 complete_task。`)
-  await mkTask('T2-codex-read', workers.codex.id, `用 daq_query 读取「HTTP流量-${TAG}」最近 3 分钟数据,汇报均值即可,然后 complete_task。`)
-  await mkTask('T3-dsh-write', workers.dsh.id, `用 dcw_read 读取「OPCUA设定-${TAG}」当前值;再用 dcw_control 将其调到 171.5(若需审批,等待即可);完成后 dcw_read 复核并 complete_task。`)
-  await mkTask('T4-oc-write', workers.opencode.id, `用 dcw_read 读取「PLC设定-${TAG}」当前值;再用 dcw_control 将其调到 183(若需审批,等待即可);完成后 dcw_read 复核并 complete_task。`)
+  await mkTask('T1-omp-read', memberIds.omp, `用 daq_query 读取「MQTT温度-${TAG}」最近 3 分钟数据,汇报均值即可,然后 complete_task。`)
+  await mkTask('T2-codex-read', memberIds.codex, `用 daq_query 读取「HTTP流量-${TAG}」最近 3 分钟数据,汇报均值即可,然后 complete_task。`)
+  await mkTask('T3-dsh-write', memberIds.dsh, `用 dcw_read 读取「OPCUA设定-${TAG}」当前值;再用 dcw_control 将其调到 171.5(若需审批,等待即可);完成后 dcw_read 复核并 complete_task。`)
+  await mkTask('T4-oc-write', memberIds.opencode, `用 dcw_read 读取「PLC设定-${TAG}」当前值;再用 dcw_control 将其调到 183(若需审批,等待即可);完成后 dcw_read 复核并 complete_task。`)
   check('3.1', '四路任务下发(omp/codex 读数;dsh/opencode 数控)', Object.values(tasks).every(Boolean), JSON.stringify(tasks).slice(0, 120))
 
   // ═══ Phase 4:HITL 自动批准(dcw-approval;兼容各引擎权限帧) ═══

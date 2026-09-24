@@ -76,13 +76,25 @@ async function main() {
   const token = await login()
   ok('认证就绪', !!token)
 
-  // 建 channel(mock lead;mock 引擎任务停留 WORKING,收口用取消驱动)
+  // 建 channel(mock lead)+ **慢 worker**:
+  // 忙等守卫的"占道任务"必须真的长期在途。mock lead 会把简单任务在首个监督轮直接收口,
+  // 只有把任务显式声明为 complex 并派给 delayMs 很大的 worker,子任务才会稳定停在 WORKING
+  // (delayMs 加在 lead 上没用 —— lead 不执行任务)。
   const ch = await api('POST', '/api/workshop/channels', {
     token,
     body: { name: '定时E2E通道', leadAgent: { name: '定时lead', harness: 'mock' } },
   })
   ok('创建 channel + mock lead', ch.code === 0 && !!ch.data?.channelId, ch.message)
   const channelId = ch.data.channelId
+  const slowWorker = await api('POST', '/api/workshop/agents', {
+    token,
+    body: { name: '定时慢worker', harness: 'mock', config: { delayMs: 300_000 } },
+  })
+  const joined = await api('POST', `/api/workshop/channels/${channelId}/agents`, {
+    token,
+    body: { agentId: slowWorker.data?.id, role: 'worker' },
+  })
+  ok('加入慢 worker(delayMs=300s,占道任务长期在途)', joined.code === 0, joined.message)
 
   // channels 列表:标志字段恒在
   const chs0 = await api('GET', '/api/workshop/channels', { token })
@@ -104,7 +116,7 @@ async function main() {
   const now = new Date()
   const sInt = await api('POST', '/api/workshop/schedules', {
     token,
-    body: { channelId, name: 'E2E巡检', title: '定时巡检任务', description: 'E2E interval', mode: 'interval', intervalMs: 60_000, maxConsecutiveFailures: 3 },
+    body: { channelId, name: 'E2E巡检', title: '[mock:complex] 定时巡检任务', description: 'E2E interval:需分解派发给 worker 执行', mode: 'interval', intervalMs: 60_000, maxConsecutiveFailures: 3 },
   })
   ok('创建 interval 计划', sInt.code === 0 && sInt.data?.mode === 'interval', sInt.message)
   const nextMs = sInt.data?.nextRunAt ? new Date(sInt.data.nextRunAt).getTime() - now.getTime() : 0
@@ -123,16 +135,42 @@ async function main() {
     String(chs1.data.find(c => c.id === channelId)?.scheduledCount))
 
   // ===== 忙等守卫:channel 有未收口任务 =====
-  const busy = await api('POST', `/api/workshop/channels/${channelId}/tasks`, { token, body: { title: '占道任务' } })
-  ok('人工提交占道任务(停留 WORKING)', busy.code === 0 && busy.data?.state === 'SUBMITTED', busy.data?.state)
+  // `[mock:complex]` → lead 必分解派发给慢 worker,子任务停在 WORKING(占道成立)
+  const busy = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
+    token,
+    body: { title: '[mock:complex] 占道任务', description: '端到端实现占道:需分解派发给 worker 执行' },
+  })
+  ok('人工提交占道任务(未收口)', busy.code === 0 && busy.data?.state === 'SUBMITTED', busy.data?.state)
+  // 等子任务真正进入 WORKING(忙等守卫把 SUBMITTED/ASSIGNED/WORKING/WAITING 都算在途,
+  // 但派发本身是异步的 —— 先等一拍再断言,避免"提交瞬间就 run-now"的时序假象)
+  let inFlight = false
+  for (let i = 0; i < 20 && !inFlight; i++) {
+    await sleep(500)
+    const ts = await api('GET', `/api/workshop/channels/${channelId}/tasks`, { token })
+    inFlight = (ts.data ?? []).some(t => t.parentId && t.state === 'WORKING')
+  }
+  ok('占道子任务进入 WORKING(真实在途)', inFlight)
   const guard = await api('POST', `/api/workshop/schedules/${sInt.data.id}/run`, { token })
   ok('channel 忙 → run-now 409 CHANNEL_BUSY', guard.status === 409 && guard.code === 'CHANNEL_BUSY', `${guard.status}`)
   const waiting = await api('GET', `/api/workshop/schedules/${sInt.data.id}`, { token })
   ok('计划置 waiting', waiting.data?.state === 'waiting', waiting.data?.state)
   ok('忙等不触发、不计次', waiting.data?.runCount === 0)
 
-  // channel 收口(取消占道任务)→ run-now 成功
-  await api('POST', `/api/workshop/tasks/${busy.data.id}/cancel`, { token })
+  // channel 收口(取消占道任务**及其子任务**)→ run-now 成功。
+  // 只取消父任务不够:子任务仍在 WORKING,mock worker 的 delayMs=300s 会一直占着 channel。
+  const release = async () => {
+    const list = await api('GET', `/api/workshop/channels/${channelId}/tasks`, { token })
+    for (const t of (list.data ?? []).filter(x => !['COMPLETED', 'FAILED', 'CANCELED'].includes(x.state))) {
+      await api('POST', `/api/workshop/tasks/${t.id}/cancel`, { token })
+    }
+    for (let i = 0; i < 30; i++) {
+      await sleep(500)
+      const again = await api('GET', `/api/workshop/channels/${channelId}/tasks`, { token })
+      if ((again.data ?? []).every(x => ['COMPLETED', 'FAILED', 'CANCELED'].includes(x.state))) return true
+    }
+    return false
+  }
+  ok('取消占道任务及子任务 → channel 收口', await release())
   let freed = false
   for (let i = 0; i < 15 && !freed; i++) {
     await sleep(2000)
@@ -143,14 +181,15 @@ async function main() {
   ok('channel 收口后 run-now 成功', run.code === 0 && !!run.data?.taskId, run.message ?? JSON.stringify(run.data))
   const tasks = await api('GET', `/api/workshop/channels/${channelId}/tasks`, { token })
   const schedTask = (tasks.data ?? []).find(t => t.id === run.data?.taskId)
-  ok('定时任务已提交到 channel', !!schedTask && schedTask.title === '定时巡检任务', `state=${schedTask?.state}`)
-  const inFlight = await api('GET', `/api/workshop/schedules/${sInt.data.id}`, { token })
-  ok('计划翻 running', inFlight.data?.state === 'running', inFlight.data?.state)
+  ok('定时任务已提交到 channel', !!schedTask && schedTask.title === '[mock:complex] 定时巡检任务', `state=${schedTask?.state}`)
+  const runningState = await api('GET', `/api/workshop/schedules/${sInt.data.id}`, { token })
+  ok('计划翻 running', runningState.data?.state === 'running', runningState.data?.state)
   const reRun = await api('POST', `/api/workshop/schedules/${sInt.data.id}/run`, { token })
   ok('在途重复 run-now → 409', reRun.status === 409, `${reRun.status} ${reRun.code}`)
 
-  // ===== 对账收口:取消在途任务 → run FAILED + 计数 =====
-  await api('POST', `/api/workshop/tasks/${run.data.taskId}/cancel`, { token })
+  // ===== 对账收口:取消在途任务(**含其子任务**)→ run FAILED + 计数 =====
+  // 子任务必须一起取消:否则慢 worker 的子任务继续占着 channel,timer 到点会被忙等守卫拦下。
+  ok('取消在途定时任务及子任务 → channel 再次收口', await release())
   let settled = null
   for (let i = 0; i < 20 && !settled; i++) {
     await sleep(3000)
