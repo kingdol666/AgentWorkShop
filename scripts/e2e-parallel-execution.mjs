@@ -10,7 +10,7 @@
  *
  * 用法: node scripts/e2e-parallel-execution.mjs
  */
-const BASE = 'http://localhost:3000'
+const BASE = process.env.AW_BASE ?? 'http://localhost:3000'
 const DELAY_MS = 2000 // mock worker 每段进度间隔 → 单任务 ≈ 3×DELAY_MS
 const TASK_SECONDS = (DELAY_MS * 3) / 1000
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -63,13 +63,17 @@ async function main() {
   const chB = await mkCh('B')
   log(`双 channel 部署完成: A=${chA.channelId.slice(0, 8)}(${chA.members.length} 成员) B=${chB.channelId.slice(0, 8)}(${chB.members.length} 成员)`)
 
-  // 3. 每 channel 同时提交 2 个任务(共 4 个父任务 → 4 个子任务;每 channel 两个 worker 可并发)
+  // 3. 每 channel 同时提交 2 个任务(共 4 个父任务 → 每父任务 2 个子任务;每 channel 两个 worker 可并发)
+  //
+  // 标题/描述必须显式要求分解:平台既定行为是「简单任务 Lead 直接完成」,不分解就没有
+  // 子任务,也就无从观察 L1/L2 并行与 L3 墙钟。`[mock:complex]` 是 mock lead 的显式
+  // 委派开关,后半句是给真实 harness 的自然语言指令(两者都保留,脚本可跨 harness 复用)。
   const submits = []
   for (const ch of [chA, chB]) {
     for (const n of [1, 2]) {
       submits.push(post(`/api/workshop/channels/${ch.channelId}/tasks`, {
-        title: `${ch.label}-任务${n}`,
-        description: `固定场景:mock 剧本执行(${ch.label}-${n})`,
+        title: `[mock:complex] ${ch.label}-任务${n}`,
+        description: `固定场景:mock 剧本执行(${ch.label}-${n})。本任务必须分解为可并行的子任务,分别派发给两个 worker 并行执行,等待子任务全部完成后汇总收口。`,
       }, T).then(t => ({ ch, id: t.id })))
     }
   }
@@ -117,8 +121,18 @@ async function main() {
   const states = list => list.map(t => t.state)
   check('A 全部任务 COMPLETED', states(fullA).every(s => s === 'COMPLETED'), states(fullA).join(','))
   check('B 全部任务 COMPLETED', states(fullB).every(s => s === 'COMPLETED'), states(fullB).join(','))
-  check('A 产生 2 父 + 2 子任务', fullA.length === 4 && fullA.filter(t => t.parentId).length === 2, `${fullA.length} 个`)
-  check('B 产生 2 父 + 2 子任务', fullB.length === 4 && fullB.filter(t => t.parentId).length === 2, `${fullB.length} 个`)
+  // 子任务数由 lead 决定(mock 按空闲 worker 数派发 1..2 个/父任务),断言"每个父任务
+  // 至少 1 个子任务且总量 ≥ 父任务数"——不把派发个数当契约(旧断言写死 1 子/父)。
+  const shape = (list) => {
+    const parents = list.filter(t => !t.parentId)
+    const children = list.filter(t => t.parentId)
+    const everyParentHasChild = parents.every(p => children.some(c => c.parentId === p.id))
+    return { ok: parents.length === 2 && children.length >= parents.length && everyParentHasChild, detail: `${parents.length} 父 / ${children.length} 子` }
+  }
+  const sa = shape(fullA)
+  const sb = shape(fullB)
+  check('A 产生 2 父任务且各自派发子任务', sa.ok, sa.detail)
+  check('B 产生 2 父任务且各自派发子任务', sb.ok, sb.detail)
 
   // L1 跨 channel 并行
   const crossRounds = rounds.filter(r => r.a > 0 && r.b > 0)

@@ -119,17 +119,17 @@ async function main() {
   }
   check('1.1 TUI 启动就绪', await waitTui('TUI 已就绪', 30_000), g.entry.slice(-60))
 
-  // 1.2 [新交互] 启动频道选择器:↑↓ + Enter 选择预建频道;Esc 自动进第一个
+  // 1.2 [新交互] 启动频道选择器:↑↓ + Enter 选择预建频道。
+  // 全局包 0.7.41 与仓库源码已是**同一交互**(都有选择器),早先"全局包自动接入"
+  // 的断言是选择器之前的旧行为 —— 不驱动选择器时,输入会落进浮层,后续 /channels
+  // 也拿不到执行,正是本条与 2.1 一起失败的根因。
+  check('1.2 启动弹出频道选择器', await waitTui('选择要进入的频道', 20_000))
   if (USE_REPO) {
-    check('1.2 启动弹出频道选择器', await waitTui('选择要进入的频道', 20_000))
-    vt.emitInput('\x1b[B') // 下移一次,选中第二个(证明方向键导航)
+    vt.emitInput('\x1b[B') // 下移一次(方向键导航冒烟;预建频道仅一个,仍选中它)
     await sleep(200)
-    vt.emitInput('\r')
-    check('1.3 Enter 进入所选频道', await waitTui('已切换到频道「', 30_000))
   }
-  else {
-    check('1.2 (全局包)自动接入频道', await waitTui('已切换到频道「', 30_000))
-  }
+  vt.emitInput('\r')
+  check('1.3 Enter 进入所选频道', await waitTui('已切换到频道「', 30_000))
 
   // 2. Channel 操作:列表 + 创建(内联 omp lead)+ 自动切换
   await type('/channels')

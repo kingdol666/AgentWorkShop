@@ -24,6 +24,8 @@ const check = (name, ok, detail = '') => {
 const browser = await puppeteer.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   headless: 'new',
+  // 高负载机器上 CDP 默认 180s 会把 /aml 首帧水合期间的 evaluate 打断(慢 ≠ 失败)
+  protocolTimeout: 300_000,
   args: ['--no-sandbox', '--window-size=1600,1000'],
 })
 try {

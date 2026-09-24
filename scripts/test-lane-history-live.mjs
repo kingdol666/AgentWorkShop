@@ -55,18 +55,41 @@ const leadId = ch.data.leadAgentId
 
 try {
   await api('POST', `/api/workshop/channels/${channelId}/activate`, { token })
+  // 该 channel 只有一个 mock lead:补一个 worker 承接子任务,并由 lead 发一条真实 a2a
+  // 消息 —— 子任务 assign 走信箱(不产生 a2a.message 帧),事件类型覆盖需要真实发送。
+  const w = await api('POST', `/api/workshop/channels/${channelId}/agents`, {
+    token,
+    body: { name: 'lane-worker', harness: 'mock', config: { delayMs: 200 } },
+  })
+  const members = await api('GET', `/api/workshop/channels/${channelId}/agents`, { token })
+  const leadToken = (members.data ?? []).find(m => m.id === leadId)?.token
+  if (leadToken && w.data?.id) {
+    await api('POST', '/api/workshop/a2a/send', {
+      token: leadToken,
+      body: { toAgentId: w.data.id, parts: [{ text: 'lane 历史覆盖检查:请确认收到' }] },
+    })
+  }
   const task = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
     token,
     body: { title: `lane-history-${tag}`, description: '验证历史持久化与按 agent 加载', mode: 'goal', modeConfig: { goalCriteria: '全部完成' } },
   })
   check('提交 goal 任务', task.code === 0 && task.data?.state === 'SUBMITTED', `state=${task.data?.state}`)
-  // 任务执行到 WORKING 即已产生足够事件(录制器落库);不依赖终态(与历史加载验证正交)
-  const enough = await waitUntil('事件落库', async () => {
-    const e = await api('GET', `/api/workshop/channels/${channelId}/events?limit=500`, { token })
-    return (e.data?.items ?? []).length >= 4 ? e.data.items : null
-  })
-  check('事件已持久化(WORKING 阶段)', enough.length >= 4, `events=${enough.length}`)
-  const items = enough
+  // 等待「事件类型覆盖」成型而非只等条数:任务派发是异步的(lead 回合 → 子任务 assign
+  // 消息 → a2a.message 帧),只按条数 4 判断会在消息帧到达前就取样(实测竞态)。
+  const COVER = ['a2a.message', 'agent.status', 'task.status']
+  let enough = null
+  try {
+    enough = await waitUntil('事件落库(覆盖消息/状态/任务三类)', async () => {
+      const e = await api('GET', `/api/workshop/channels/${channelId}/events?limit=500`, { token })
+      const items = e.data?.items ?? []
+      return items.length >= 4 && COVER.every(t => items.some(x => x.type === t)) ? items : null
+    }, 30_000)
+  }
+  catch {
+    // 超时不直接崩:下方断言会以 FAIL 形式如实报告缺哪类帧
+  }
+  const items = enough ?? (await api('GET', `/api/workshop/channels/${channelId}/events?limit=500`, { token })).data?.items ?? []
+  check('事件已持久化(WORKING 阶段)', items.length >= 4, `events=${items.length}`)
 
   // ── 1. 全量历史(items 已在上方取到)──
   const shapeOk = items.every(e => e.v === 1 && typeof e.seq === 'number' && e.type && e.at && e.channelId === channelId)

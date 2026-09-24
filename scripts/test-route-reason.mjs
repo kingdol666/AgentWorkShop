@@ -48,7 +48,9 @@ async function main() {
     token,
   })
   const worker = await api('POST', `/api/workshop/channels/${channelId}/agents`, {
-    body: { name: 'worker', harness: 'mock', role: 'worker' },
+    // 慢 worker:lead 会把父任务分解给 worker,子任务在测试窗口内保持 WORKING,
+    // 父任务因此停在非终态 —— MCP 手工 dispatch 才有合法前置状态。
+    body: { name: 'worker', harness: 'mock', role: 'worker', config: { delayMs: 60_000 } },
     token,
   })
   const leadToken = lead.data?.token
@@ -56,8 +58,13 @@ async function main() {
   check('lead 实例 token 下发(MCP caller)', Boolean(leadToken) && Boolean(workerId))
 
   // ── 父任务 + MCP dispatch 带 route_reason ──
+  // lead 用长 delay:父任务在 MCP 手工派发前必须保持非终态 —— 简单任务会被 mock lead
+  // 在首个监督回合直接收口,那时再 dispatch 只会拿到 TASK_TERMINAL。
   const task = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
-    body: { title: 'route-parent', description: 'mock parent for route reason check' },
+    body: {
+      title: '[mock:complex] route-parent',
+      description: '父任务必须分解为子任务并派发给 worker 执行(本条同时是 route_reason 检查的前置)。',
+    },
     token,
   })
   const parentId = task.data?.id

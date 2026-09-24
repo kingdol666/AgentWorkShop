@@ -148,6 +148,13 @@ console.log('\n--- Agent dcw_read 工具 ---')
 }
 
 // 收尾
-rmSync(awHome, { recursive: true, force: true })
+// Windows 上 SQLite/WAL 句柄在进程内仍可能短暂持有 temp 目录 → rmSync 抛 EPERM。
+// 断言此时已全部通过,失败仅来自清理,不应把绿测报成红:加重试(force 不会自动重试)。
+try {
+  rmSync(awHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+}
+catch (err) {
+  console.log(`  (临时目录清理跳过:${err instanceof Error ? err.message.slice(0, 80) : String(err)})`)
+}
 console.log(failures === 0 ? '\nDCW-READ ALL PASS' : `\nDCW-READ FAILED(${failures})`)
 process.exit(failures === 0 ? 0 : 1)

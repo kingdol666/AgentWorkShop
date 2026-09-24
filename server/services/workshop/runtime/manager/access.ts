@@ -11,6 +11,7 @@ import type { HitlRequestRepo } from '../../db/hitl-request.repo'
 import type { NotificationRepo } from '../../db/notification.repo'
 import type { OutboxRepo } from '../../db/outbox.repo'
 import { AppError } from '../../../../utils/errors'
+import { userRepository } from '../../../../repositories/user.repository'
 import { audit } from '../../ops/ops'
 import { createChannelMemberRepo } from '../../db/channel-member.repo'
 import { createChatMessageRepo } from '../../db/chat-message.repo'
@@ -18,6 +19,23 @@ import { createHitlRequestRepo } from '../../db/hitl-request.repo'
 import { createNotificationRepo } from '../../db/notification.repo'
 import { createOutboxRepo } from '../../db/outbox.repo'
 import { log } from './helpers'
+
+/**
+ * 用户是否为**有效 admin**(全局用户表,status='active')。
+ *
+ * 不使用缓存:角色吊销必须立即生效(60s 缓存会让被降权的管理员继续读到他人 Channel)。
+ * 查询是 `users` 主键点查(预编译语句),开销可忽略;用户表不可用(测试脚手架)→ 视为非 admin,
+ * 即回落到最保守的 owner-only 语义。
+ */
+function isActiveAdmin(userId: string): boolean {
+  try {
+    const u = userRepository.findById(userId)
+    return u?.role === 'admin' && u.status === 'active'
+  }
+  catch {
+    return false
+  }
+}
 
 export abstract class ManagerAccess extends ManagerWorkspace {
   /** 注册用户(name 唯一 → 409;token 仅此一次返回) */
@@ -74,10 +92,19 @@ export abstract class ManagerAccess extends ManagerWorkspace {
     throw new AppError(403, 'SCOPE_VIOLATION', `${what} 不属于当前用户且未公开`)
   }
 
-  /** channel 读取(已认证用户可见本人 + 遗留公共;不存在 → 404) */
+  /**
+   * channel 读取(已认证用户可见本人 + 遗留公共;不存在 → 404)。
+   *
+   * v17 一致性修正:admin 与 `requireWritable` / `requireChannelMember` **同口径**
+   * (最高管理权限 → 越权放行)。此前本守卫对非本人 Channel 一律 403,而列表接口
+   * (`listChannelsVisibleTo`)对 admin 返回**全部** Channel、能力视图又报
+   * `canManage=true` —— 管理员"列表里看得到、点进去 403":前端按 canManage 渲染
+   * 管理面后加载详情必然失败,TUI 更会因未捕获的 403 直接崩屏。
+   * 非 admin 语义完全不变(owner 或遗留公共行)。
+   */
   getChannelForUser(channelId: string, userId: string): ChannelRow {
     const channel = this.requireChannelRow(channelId)
-    if (channel.ownerUserId !== null && channel.ownerUserId !== userId) {
+    if (channel.ownerUserId !== null && channel.ownerUserId !== userId && !isActiveAdmin(userId)) {
       throw new AppError(403, 'SCOPE_VIOLATION', 'channel 不属于当前用户')
     }
     return channel

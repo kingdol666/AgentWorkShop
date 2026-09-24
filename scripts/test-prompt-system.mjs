@@ -92,54 +92,80 @@ async function main() {
   check('3. 克隆实例携带模板 config(专长 prompt)', String(workerMeta?.config?.systemPromptPrefix ?? '').includes('markdown bullet points'))
 
   // ===== 4. 提交任务 + 终端观测注入 =====
+  // 必须显式要求分解:worker 只有在收到派发的子任务时才会起回合并打出 prompt 帧;
+  // 一步任务会被 lead 直接收口,worker 永不 spawn → 本测试的观测点为空。
   const task = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
     token,
     body: {
-      title: '撰写 v2.1 发布说明',
-      description: '基于以下变化撰写发布说明:新增深色主题、修复导出失败问题、性能提升约 30%。',
+      title: '[mock:complex] 撰写 v2.1 发布说明',
+      description: '基于以下变化撰写发布说明:新增深色主题、修复导出失败问题、性能提升约 30%。本任务必须分解并派发给 worker 执行,等待其交付后汇总收口。',
     },
   })
   const parentId = task.data.id
   check('4. 任务提交', task.code === 0)
 
   // 等 worker 进程 spawn,然后经终端镜像读取其回合并 prompt
-  const termWs = async () => {
+  // 终端镜像 WS:回合 prompt 是每条回合一次的 user 消息帧,原实现每 8s 只开 1.5s
+  // 窗口(≈19% 命中率)→ 必然偶发失败。改为**长连接 + 命中即返回**(WS 首帧重放环形
+  // 缓冲,窗口外已到达的帧同样可见)。
+  // 命中判据用 **'Scenario Brief'**(组合 prompt 首段)而非 'Your Assignment':镜像按
+  // TERM_FRAME_TEXT_PREVIEW_MAX=4000 截断,而 system-manual(3171B)之后的
+  // worker-workflow(含 'Your Assignment')必落在截断区外 —— 用它做判据永不命中。
+  // (实测:user 帧 len=4023,截断 4122 字,'Scenario Brief'@3 / 'Your Profile'@192 /
+  //  'Workshop System Manual'@1697 / 'complete_task'@2090 / 'Your Assignment'@-1)
+  const termWs = async (windowMs = 20_000) => {
     const t = await api('GET', `/api/workshop/channels/${channelId}/terminals`, { token })
     const worker = (t.data ?? []).find(x => x.agentId === workerId)
     if (!worker) return null
+    const wsBase = BASE.replace(/^http/, 'ws')
     return new Promise((resolve) => {
+      let settled = false
       const frames = []
-      const ws = new WebSocket(`ws://127.0.0.1:3101/api/system/monitor/terminal/ws?agentId=${workerId}&channelId=${channelId}&token=${token}`)
+      const finish = (value) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        try {
+          ws.close()
+        }
+        catch { /* 已关闭 */ }
+        resolve(value)
+      }
+      const ws = new WebSocket(`${wsBase}/api/system/monitor/terminal/ws?agentId=${workerId}&channelId=${channelId}&token=${token}`)
+      const timer = setTimeout(() => finish(null), windowMs)
       ws.onmessage = (ev) => {
         const m = JSON.parse(ev.data)
-        if (m.type === 'term.frames') frames.push(...m.frames)
+        if (m.type !== 'term.frames') return
+        frames.push(...m.frames)
+        const hit = m.frames.find(f => f.frame?.type === 'message_start' && f.frame?.role === 'user'
+          && String(f.frame?.text ?? '').includes('Scenario Brief'))
+        if (hit) finish(String(hit.frame.text))
       }
-      ws.onopen = () => setTimeout(() => {
-        ws.close()
-        resolve(frames)
-      }, 1500)
-      ws.onerror = () => resolve(null)
+      ws.onerror = () => finish(null)
     })
   }
+  // termWs 已改为「命中即返回 prompt 文本」,这里直接等它返回(总预算 300s)
   const promptFrames = await waitUntil('worker prompt 帧出现', async () => {
-    const frames = await termWs()
-    if (!frames) return null
-    const userMsg = frames.find(f => f.frame.type === 'message_start' && f.frame.role === 'user'
-      && String(f.frame.text ?? '').includes('Your Assignment'))
-    return userMsg ? String(userMsg.frame.text) : null
-  }, 300_000, 8000)
+    const hit = await termWs()
+    return hit ?? null
+  }, 300_000, 1_000)
 
   // ===== 五段式注入观测(直接证据) =====
+  check('4obs. 终端镜像观测到回合 user prompt 帧', promptFrames.length > 0, `镜像可见长度=${promptFrames.length}(截断上限 4000)`)
   check('4a. Scenario Brief 段注入(channel 场景)', promptFrames.includes('Scenario Brief') && promptFrames.includes('[REL-DONE]') && promptFrames.includes('不超过 100 字'))
   check('4b. Your Profile 段注入(模板专长)', promptFrames.includes('Your Profile') && promptFrames.includes('markdown bullet points'))
   check('4c. Workshop System Manual 段注入', promptFrames.includes('Workshop System Manual') && promptFrames.includes('complete_task'))
-  check('4d. 段序正确(场景 → 专长 → 手册 → 任务)', (() => {
+  // 段序:镜像只保留组合 prompt 的前 4000 字(system-manual 之后即被截断),因此对
+  // 截断区内可观测的段做严格序检查;'Your Assignment' 恰好可见时一并校验末段序。
+  // 任务段本身由 5a-5f 行为断言覆盖(交付内容必须同时满足场景规范与专长风格)。
+  const iAssign = promptFrames.indexOf('Your Assignment')
+  check('4d. 段序正确(场景 → 专长 → 手册 → [任务])', (() => {
     const iScenario = promptFrames.indexOf('Scenario Brief')
     const iProfile = promptFrames.indexOf('Your Profile')
     const iManual = promptFrames.indexOf('Workshop System Manual')
-    const iAssign = promptFrames.indexOf('Your Assignment')
-    return iScenario >= 0 && iScenario < iProfile && iProfile < iManual && iManual < iAssign
-  })())
+    const head = iScenario >= 0 && iScenario < iProfile && iProfile < iManual
+    return iAssign >= 0 ? head && iManual < iAssign : head
+  })(), `Your Assignment 可见=${iAssign >= 0}(超出镜像截断窗口属预期)`)
 
   // ===== 5. 交付验证 =====
   const final = await waitUntil('父任务终态', async () => {

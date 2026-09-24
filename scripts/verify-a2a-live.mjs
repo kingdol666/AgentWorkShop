@@ -109,8 +109,22 @@ async function main() {
   console.log('\n--- 4. tasks/cancel ---')
   const cancelTask = await req('POST', `/channels/${CH}/tasks`, { token, body: { title: '待取消任务', description: '将被取消' } })
   const CT = cancelTask.json?.data?.id
+  // 时序现实:mock lead 对一步任务会在首个监督回合直接收口,取消请求可能输掉这场竞态。
+  // 两种结局都必须正确 —— 在途 → CANCELED;已终态 → 终态护栏(409 TASK_TERMINAL,
+  // 绝不把 COMPLETED 静默改写为 CANCELED)。断言按实际到场状态分支。
+  const preCancel = await req('GET', `/tasks/${CT}`, { token })
+  const preState = preCancel.json?.data?.state ?? preCancel.json?.state
+  const wasOpen = !!preState && !['COMPLETED', 'FAILED', 'CANCELED'].includes(preState)
   const cancelR = await rpc(LEAD, { jsonrpc: '2.0', id: 10, method: 'tasks/cancel', params: { taskId: CT } })
-  check('tasks/cancel 生效 CANCELED', cancelR.json?.result?.status?.state === 'CANCELED', cancelR.json?.result?.status?.state ?? JSON.stringify(cancelR.json))
+  if (wasOpen) {
+    check('tasks/cancel 生效 CANCELED', cancelR.json?.result?.status?.state === 'CANCELED', cancelR.json?.result?.status?.state ?? JSON.stringify(cancelR.json))
+  }
+  else {
+    const errCode = cancelR.json?.error?.data?.appCode ?? cancelR.json?.error?.code
+    check('已终态任务的 tasks/cancel 被终态护栏拒绝(不改写 COMPLETED)',
+      errCode === 'TASK_TERMINAL' || errCode === 'INVALID_TRANSITION',
+      `preState=${preState} err=${JSON.stringify(cancelR.json?.error ?? cancelR.json?.result?.status?.state)}`)
+  }
 
   console.log(`\n━━━ 结果: PASS=${pass} FAIL=${fail} ━━━`)
   process.exit(fail === 0 ? 0 : 1)

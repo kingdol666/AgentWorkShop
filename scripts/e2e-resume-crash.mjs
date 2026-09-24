@@ -44,10 +44,19 @@ else {
     body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
   }).then(r => r.json()).catch(() => null)
 }
-const __userToken = __user?.data?.token
+let __userToken = __user?.data?.token
 if (!__userToken) {
   console.error('用户注册失败')
   process.exit(1)
+}
+
+/**
+ * 多阶段接续:crash/gap 阶段把 token 写进 `.resume-test.json`,后续 verify 阶段必须
+ * 沿用**同一用户**(重启后新注册的用户看不到上一阶段的 channel/任务 → 403,断言会
+ * 假失败)。此前只能靠人工导出 AW_RESUME_TOKEN;现在自动从标记文件接续。
+ */
+function resumeTokenFrom(mark) {
+  return mark?.token && typeof mark.token === 'string' ? mark.token : __userToken
 }
 
 async function req(method, path, body) {
@@ -85,7 +94,9 @@ async function makeSlowChannel(name) {
 }
 
 async function submitTask(channelId, title) {
-  const r = await req('POST', `/channels/${channelId}/tasks`, { title, description: `${title} — resume e2e` })
+  // `[mock:complex]` 显式声明"需分解派发":否则 mock lead 在首个监督轮就把简单任务
+  // 直接收口,根本没有 WORKING 窗口可观测(本套件三个场景都依赖这个窗口)。
+  const r = await req('POST', `/channels/${channelId}/tasks`, { title: `[mock:complex] ${title}`, description: `${title} — resume e2e:需分解派发给 worker 执行` })
   return r.json.data.id
 }
 
@@ -163,7 +174,8 @@ async function verify() {
   console.log('━━━ 场景 B:重启 → 断线重连自动恢复执行 ━━━')
   const { readFileSync, unlinkSync } = await import('node:fs')
   const mark = JSON.parse(readFileSync('.resume-test.json', 'utf8'))
-  console.log(`  恢复目标: task=${mark.taskId.slice(0, 8)}… (workerTask=${mark.workerTaskId.slice(0, 8)}…)`)
+  __userToken = resumeTokenFrom(mark)
+  console.log(`  恢复目标: task=${mark.taskId.slice(0, 8)}… (workerTask=${mark.workerTaskId.slice(0, 8)}…);沿用 crash 阶段用户 token`)
 
   // 重启后立即查 DB:消息应已重投(resetConsuming/redeliverAssign 落库)。
   // dev server 首次请求才懒编译路由,restore 在 HTTP 可达前已跑完 —— 慢 worker 可能
@@ -227,6 +239,7 @@ async function verifyGap() {
   console.log('━━━ 场景 C:重启 → restore 重投缺口 assign → 自动恢复 ━━━')
   const { readFileSync, unlinkSync } = await import('node:fs')
   const mark = JSON.parse(readFileSync('.resume-test.json', 'utf8'))
+  __userToken = resumeTokenFrom(mark)
 
   const pending = dbQuery(
     `SELECT COUNT(*) AS n FROM messages WHERE task_id = ? AND state IN ('pending','consuming','consumed') AND metadata_json LIKE '%"x-aw-task-kind":"assign"%'`,

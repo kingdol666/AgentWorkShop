@@ -14,6 +14,14 @@ export const BASE = process.env.AW_BASE ?? 'http://127.0.0.1:3021'
 export const CHROME = process.env.AW_CHROME
   ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 
+/**
+ * 渲染倍率:默认 2(视觉走查/截图取清晰像素)。
+ * 资源紧张的机器(或长链路交互 E2E:多页 + 整页截图)可 `AW_UI_SCALE=1` 降一档 ——
+ * 否则 Chromium 会以 `net::ERR_INSUFFICIENT_RESOURCES` 拒绝加载后续资源,
+ * 表现为"页面加载不出来",实际是渲染表面内存打满(与产品无关)。
+ */
+export const UI_SCALE = Number(process.env.AW_UI_SCALE ?? 2) || 2
+
 export const VISUAL_USER = {
   name: 'visual',
   email: 'visual@awshop.local',
@@ -107,6 +115,10 @@ export async function launch({ width = 1440, height = 900 } = {}) {
   return puppeteer.launch({
     executablePath: CHROME,
     headless: true,
+    // 重页面(echarts/three/phaser + 首帧 SSR 水合)在**负载较高的机器**上单次
+    // Runtime.evaluate 可能超过 CDP 默认 180s → ProtocolError 直接把断言打断。
+    // 这里放宽到 5 分钟:慢 ≠ 失败,断言本身仍各自带超时。
+    protocolTimeout: 300_000,
     args: [
       '--no-sandbox',
       '--disable-dev-shm-usage',
@@ -114,7 +126,7 @@ export async function launch({ width = 1440, height = 900 } = {}) {
       '--force-color-profile=srgb',
       '--font-render-hinting=none',
     ],
-    defaultViewport: { width, height, deviceScaleFactor: 2 },
+    defaultViewport: { width, height, deviceScaleFactor: UI_SCALE },
   })
 }
 
@@ -124,7 +136,7 @@ export async function launch({ width = 1440, height = 900 } = {}) {
  * 只写其一会导致首帧闪色 + antd cssinjs 不重注入(历史踩坑)。
  */
 export async function openPage(browser, {
-  token, dark = true, width = 1440, height = 900, deviceScaleFactor = 2, touch,
+  token, dark = true, width = 1440, height = 900, deviceScaleFactor = UI_SCALE, touch,
 } = {}) {
   const page = await browser.newPage()
   // 窄视口默认按**触摸设备**仿真:不这么做,Chromium 报告 pointer:fine →

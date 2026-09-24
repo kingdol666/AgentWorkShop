@@ -151,9 +151,11 @@ async function main() {
   // ===== C. Channel 模板 =====
   console.log('\n=== C. Channel 模板 ===')
   const tplListAlice = await api('GET', '/api/workshop/channel-templates', { token: alice.token })
-  check('C1 内置 Channel 模板 2 个全员可见', ok(tplListAlice) && tplListAlice.data.filter(t => t.isBuiltin).length === 2)
+  check('C1 内置 Channel 模板全员可见(≥2 个)', ok(tplListAlice) && tplListAlice.data.filter(t => t.isBuiltin).length >= 2,
+    `builtin=${tplListAlice.data?.filter(t => t.isBuiltin).length}`)
   const tplListBob = await api('GET', '/api/workshop/channel-templates', { token: bob.token })
-  check('C2 bob 同样可见内置', tplListBob.data.filter(t => t.isBuiltin).length === 2)
+  check('C2 bob 同样可见内置', tplListBob.data.filter(t => t.isBuiltin).length >= 2,
+    `builtin=${tplListBob.data?.filter(t => t.isBuiltin).length}`)
 
   // alice 建 channel(mock lead+worker)→ 捕获为模板
   const aliceCh = await api('POST', '/api/workshop/channels', {

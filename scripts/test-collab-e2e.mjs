@@ -46,21 +46,35 @@ async function main() {
   if (!token) throw new Error('注册失败')
 
   // mock channel(lead + worker)
+  // lead 用长 delay:父任务必须在手工 dispatch 前保持非终态 —— 简单任务会被 mock lead
+  // 直接收口,那时再 dispatch 只会拿到 TASK_TERMINAL 而不是预期的判重结果。
   const ch = await api('POST', '/api/workshop/channels', {
-    body: { name: `collab-${Date.now().toString(36)}`, leadAgent: { name: 'lead', harness: 'mock' } },
+    body: { name: `collab-${Date.now().toString(36)}`, leadAgent: { name: 'lead', harness: 'mock', config: { delayMs: 60_000 } } },
     token,
   })
   const channelId = ch.data.channelId
   const leadId = ch.data.leadAgentId
-  const w = await api('POST', `/api/workshop/channels/${channelId}/agents`, { body: { name: 'worker', harness: 'mock', role: 'worker' }, token })
+  const w = await api('POST', `/api/workshop/channels/${channelId}/agents`, {
+    // 慢 worker:lead 派出的子任务在判重断言期间保持 WORKING,父任务不会被提前收口。
+    // delayMs 是「每段进度」的间隔(mock 一回合 3 段),4s → 单任务 ≈12s:
+    // 既远大于 4 次 dispatch 的耗时(<1s),又能在 60s 等待预算内跑完 3 个子任务。
+    body: { name: 'worker', harness: 'mock', role: 'worker', config: { delayMs: 4_000 } },
+    token,
+  })
   const workerId = w.data.id
   const members = await api('GET', `/api/workshop/channels/${channelId}/agents`, { token })
   const leadToken = (members.data ?? []).find(m => m.id === leadId)?.token
   check('channel + lead/worker 就绪', !!leadToken && !!workerId)
 
   // 父任务
+  // 父任务必须**保持非终态**:简单任务会被 mock lead 在首个监督回合直接收口,
+  // 之后的手工 dispatch 只会拿到 TASK_TERMINAL,判重断言全部失去意义。
+  // 用长 delay 的 worker 让 lead 派出的子任务在测试窗口内保持 WORKING,父任务停在 WAITING。
   const parent = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
-    body: { title: 'collab-guard-parent', description: '守卫专项父任务' },
+    body: {
+      title: '[mock:complex] collab-guard-parent',
+      description: '守卫专项父任务:必须分解为子任务并派发给 worker 执行。',
+    },
     token,
   })
   const parentId = parent.data.id

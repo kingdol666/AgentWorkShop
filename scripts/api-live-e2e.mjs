@@ -126,7 +126,10 @@ async function main() {
   section('持久化恢复 — 重启前数据经 API 可见')
   const ch0 = await api('GET', '/api/workshop/channels')
   check('GET /channels 恢复 channel 列表', ch0.code === 0 && Array.isArray(ch0.data), `count=${ch0.data?.length}`)
-  const persisted = (ch0.data ?? []).filter(c => c.leadAgentId)
+  // 只认**本人可读**的历史 channel:GET /channels 还会返回"公开可发现/本人是成员"的
+  // 他人 Channel(带 permissions),直接取 persisted[0] 会拿到他人 channel →
+  // 详情 / tasks 必然 403 SCOPE_VIOLATION(非本人),把环境噪声算成产品失败。
+  const persisted = (ch0.data ?? []).filter(c => c.leadAgentId && c.permissions?.isOwner === true)
   // 该子检查依赖「上一轮遗留的 channel-with-lead」。首次运行/上轮已清理时按项目
   // 失败语义诚实 skip(bench/PIPELINE.md:环境不具备宁可 skip 并写明原因,绝不伪造通过),
   // 不计入 fail,也不得因缺前置数据而崩溃。
@@ -135,7 +138,7 @@ async function main() {
     check('恢复的 channel 带 lead 实例', true, `with-lead=${persisted.length}`)
   }
   else {
-    console.log('  SKIP  恢复的 channel 带 lead 实例 — 实例无历史 channel-with-lead(首次运行或上轮已清理);跨重启持久化由独立重启演练覆盖')
+    console.log('  SKIP  恢复的 channel 带 lead 实例 — 本用户无历史 channel-with-lead(新注册用户看不到他人 Channel);跨重启持久化由独立重启演练覆盖')
   }
 
   const rt0 = await api('GET', '/api/workshop/runtime')

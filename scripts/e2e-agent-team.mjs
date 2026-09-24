@@ -123,9 +123,11 @@ async function main() {
   check('部署不存在的 team → 404', deploy404.json.code === 'NOT_FOUND')
 
   console.log('━━━ 4. 通过 channel 提交任务 → 真实执行 ━━━')
+  // `[mock:complex]` 显式声明"需分解派发":否则 mock lead 在首个监督轮直接收口简单任务,
+  // 部署进来的 worker 根本不参与,下面的"子任务由 worker 完成"断言必然落空。
   const task = await req('POST', `/channels/${CH}/tasks`, {
-    title: 'team e2e task',
-    description: 'verify team-deployed channel executes tasks',
+    title: '[mock:complex] team e2e task',
+    description: 'verify team-deployed channel executes tasks:需分解并派发给 worker 执行',
   })
   const TASK = task.json.data?.id
   check('提交任务到 channel', task.json.code === 0 && !!TASK, `task=${TASK?.slice(0, 8)}…`)

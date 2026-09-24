@@ -16,7 +16,7 @@ import { createApi } from './lib/api.mjs'
 import { connectAep, connectTerm } from './lib/ws.mjs'
 import { createState, pushLog, withLog } from './lib/state.mjs'
 import { reduceEnvelope, reduceTermFrame } from './lib/reducers.mjs'
-import { openChannelPicker, openTargetPicker } from './lib/pickers.mjs'
+import { firstEnterableChannel, openChannelPicker, openTargetPicker } from './lib/pickers.mjs'
 import { dispatchCommand, slashCommandCompletions } from './commands/index.mjs'
 import { ChatLog } from './components/chat-log.mjs'
 import { StatusBar } from './components/status-bar.mjs'
@@ -124,8 +124,16 @@ export async function main(argv = process.argv.slice(2)) {
     },
     async refreshAgents() {
       if (!state.activeChannelId) return
-      const list = await api.listAgents(state.activeChannelId)
-      state.agents = list.map(a => ({ id: a.id, name: a.name, role: a.role, harness: a.harness, enabled: a.enabled }))
+      // 权限形状差异(非 owner 进入成员/公开 Channel 时 /agents 会 403)不能升级成
+      // 未捕获的异步错误 —— 那会让整个 TUI 屏面刷成错误行;失败只提示并保持可用。
+      try {
+        const list = await api.listAgents(state.activeChannelId)
+        state.agents = list.map(a => ({ id: a.id, name: a.name, role: a.role, harness: a.harness, enabled: a.enabled }))
+      }
+      catch (err) {
+        state.agents = []
+        push('warn', `成员列表不可读:${err.message}(该频道仅群聊可用)`)
+      }
       store.notify()
     },
     openMonitor(agent) {
@@ -255,15 +263,28 @@ export async function main(argv = process.argv.slice(2)) {
     },
     /** 交互式频道选择(启动/`/channel use` 无参) */
     pickChannel() {
+      // 切换失败(权限形状/网络)只提示,不升级为未捕获异步错误
+      const switchTo = async (id) => {
+        try {
+          await actions.switchChannel(id)
+        }
+        catch (err) {
+          push('error', `切换频道失败:${err.message}`)
+        }
+      }
       openChannelPicker(tui, state, {
         onSelect: async (id) => {
           tui.setFocus(editor)
-          await actions.switchChannel(id)
+          await switchTo(id)
         },
         onCancel: async () => {
           tui.setFocus(editor)
-          // Esc 兜底:未进入任何频道时自动进第一个
-          if (!state.activeChannelId && state.channels[0]) await actions.switchChannel(state.channels[0].id)
+          // Esc 兜底:未进入任何频道时自动进第一个**可进入**的频道
+          // (列表里可能只有"仅群聊"的他人频道 —— 落到那种频道管理面会 403)
+          if (!state.activeChannelId) {
+            const fallback = firstEnterableChannel(state.channels)
+            if (fallback) await switchTo(fallback.id)
+          }
         },
       })
     },

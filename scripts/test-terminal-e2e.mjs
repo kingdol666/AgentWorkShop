@@ -8,7 +8,7 @@
  *  A4. /api/system/monitor:mock agent process=null(in-proc),无 omp 进程行
  *
  * Phase B — omp 环境(简单任务全链路,rpc-ui HITL):
- *  B1. WS 鉴权负例(无 token → USER_UNAUTHORIZED;不存在 pid → NO_SESSION)
+ *  B1. WS 鉴权负例(无 token → USER_UNAUTHORIZED;不存在 pid → NO_SESSION / FORBIDDEN_TERMINAL)
  *  B2. omp lead channel + 任务 → 进程 spawn;monitor 进程行 terminal:true
  *  B3. terminals 端点返回该成员会话(agentId 寻址数据源)
  *  B4. WS agentId 连接:term.init(meta 归属)+ 帧流回放(会话事件)
@@ -82,8 +82,10 @@ const api = async (method, path, { body, token } = {}) => {
 }
 
 async function registerUser(label) {
+  // name 与 email 都带唯一后缀:固定名字在复用同一实例重跑时会 409 USER_EXISTS
+  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
   const user = await api('POST', '/api/users/register', {
-    body: { email: `${label}-${Date.now().toString(36)}@test.local`, password: 'Passw0rd!123', name: label },
+    body: { email: `${label}-${suffix}@test.local`, password: 'Passw0rd!123', name: `${label}-${suffix}` },
   })
   const token = user.data?.token
   if (!token) throw new Error(`用户注册失败: ${JSON.stringify(user).slice(0, 160)}`)
@@ -165,7 +167,11 @@ async function phaseOmp() {
   {
     const t = openTerminalWs(`pid=999999&token=${token}`)
     const closed = await t.waitClose()
-    check('B1 有效 token + 不存在 pid → NO_SESSION', closed && t.messages.some(m => m.type === 'term.error' && m.code === 'NO_SESSION'))
+    // v17 §13.2:授权核对先于会话存在性 —— 非 admin 对无法归属 Channel 的 pid 只能拿到 FORBIDDEN_TERMINAL(不泄露进程是否存在);
+    // 二者皆为"优雅拒绝",不建立会话。
+    check('B1 有效 token + 不存在 pid → NO_SESSION / FORBIDDEN_TERMINAL',
+      closed && t.messages.some(m => m.type === 'term.error' && (m.code === 'NO_SESSION' || m.code === 'FORBIDDEN_TERMINAL')),
+      t.messages.map(m => m.code ?? m.type).join(','))
   }
   {
     const t = openTerminalWs(`token=${token}`)

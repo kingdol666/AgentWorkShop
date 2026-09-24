@@ -86,7 +86,11 @@ async function main() {
   await c1.opened
   c1.ws.send(JSON.stringify({ type: 'sub', channelId: cid, token: T }))
   await sleep(600)
-  const task = await api('POST', `/channels/${cid}/tasks`, { title: 'evp 任务', description: '持久化验证' })
+  // 显式要求分解:简单任务会被 mock lead 直接收口,生命周期里不会出现 WAITING 帧
+  const task = await api('POST', `/channels/${cid}/tasks`, {
+    title: '[mock:complex] evp 任务',
+    description: '本任务必须分解为可并行的子任务并派发给 worker 执行,等待子任务完成后汇总收口。',
+  })
   await (async () => {
     const deadline = Date.now() + 25_000
     while (Date.now() < deadline) {
@@ -143,7 +147,11 @@ async function main() {
     }
     setTimeout(() => resolve(null), 4000)
   })
-  check('B WS 订阅 A 的 channel → error', wsCross?.payload?.code === 'SCOPE_VIOLATION', wsCross?.payload?.code)
+  // 非成员订阅必须被拒:实现以 NOT_CHANNEL_MEMBER 表达"不是成员"(旧版本用
+  // SCOPE_VIOLATION 表达同一拒绝)。二者都满足"拒绝且不泄露快照"的断言意图。
+  check('B WS 订阅 A 的 channel → error',
+    wsCross?.payload?.code === 'SCOPE_VIOLATION' || wsCross?.payload?.code === 'NOT_CHANNEL_MEMBER',
+    wsCross?.payload?.code)
 
   console.log('\n=== ⑤ beforeSeq 翻页 ===')
   const page1 = await api('GET', `/channels/${cid}/events?limit=5`)

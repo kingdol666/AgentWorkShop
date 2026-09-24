@@ -1,16 +1,18 @@
 /**
- * 记忆系统端到端验证 — 真实 AgentChannelManager(:memory: db)+ echo harness 全链:
+ * 记忆系统端到端验证 — 真实 AgentChannelManager(:memory: db)+ 生产 mock harness 全链:
  * ① channel + lead/2worker 装配,runtimes started
  * ② 任务完成 → lead/worker 各自记忆落库
  * ③ lead addTeamMemory('团队统一用 pnpm')
- * ④ 相关任务下发 → echo 捕获 worker request.memory 含任务1记忆 + 团队行
+ * ④ 相关任务下发 → 捕获 worker request.memory 含任务1记忆 + 团队行
  * ⑤ worker 间 peer 消息(require_reply)→ 双方 peer 记忆落库
  * ⑥ REST(h3 toWebHandler 挂真实路由 handler):GET memories / POST team(lead)/ POST agent / DELETE 全 2xx;非 lead 写 team → 403
  * ⑦ runMemoryMaintenanceNow() → 回拨老数据被清(团队行豁免)
  * ⑧ await manager.shutdown() → 干净退出
  * 向量链(hash embedder)已由 test-memory-vector.ts 覆盖;本 E2E 走纯 FTS 路径。
+ *
+ * 运行(Node 24 内建类型擦除 + TS 解析钩子;套件 import 了 Nuxt 虚拟模块 #imports 的链路):
+ *   node --experimental-transform-types --import ./scripts/_audit/ts-register-hook.mjs scripts/e2e-memory-system.ts
  */
-import { randomUUID } from 'node:crypto'
 import { createChannelEventRepo } from '../server/services/workshop/db/channel-event.repo'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -28,9 +30,10 @@ import { createTeamMemberRepo } from '../server/services/workshop/db/team-member
 import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createSubscriptionRepo } from '../server/services/workshop/db/subscription.repo'
 import { createAgentChannelManager } from '../server/services/workshop/runtime/manager'
+import { createAgentImpl } from '../server/services/workshop/agents/factory'
 
-import type { AgentInfo, AgentInterface, AgentRunContext, AgentRunRequest, AgentEvent } from '../server/services/workshop/agents/agent-interface'
-import type { A2AArtifact, Part } from '../server/services/workshop/types/a2a'
+import type { AgentInfo, AgentInterface, AgentRunContext, AgentRunRequest } from '../server/services/workshop/agents/agent-interface'
+import type { Part } from '../server/services/workshop/types/a2a'
 // 真实 REST 路由 handler(生产同源;经 globalThis.__workshopManager 接测试 manager)
 import teamMemGet from '../server/api/workshop/channels/[id]/memories/index.get'
 import teamMemPost from '../server/api/workshop/channels/[id]/memories/index.post'
@@ -59,65 +62,23 @@ function partsText(parts: Part[]): string {
   return parts.map(p => ('text' in p ? p.text : '')).filter(Boolean).join('\n')
 }
 
-// ═══════════ echo harness:捕获 request.memory + 驱动任务/peer 剧本 ═══════════
+// ═══════════ 生产 mock harness + 请求捕获 ═══════════
+//
+// 早先这里自带 echo 剧本(自造 harness 名 'echo' + 自定义 run 剧本)。两条都已失效:
+//  - harness 注册表收敛后 'echo' 不再是已知 harness(createAgent 直接 UNKNOWN_HARNESS);
+//  - "无 LLM 时的规则调度"(lead 分解/派发、子任务完工收口、失败重派、peer 回执)现在
+//    就在 **mock harness 实现本身**(mock-agent.ts),自造剧本反而绕过了它 → 任务永不闭环。
+// 因此改为**装配生产 mock**(与其他套件同一 implFactory),只在其外层包一层 run 捕获,
+// 供断言检查 request.memory(召回注入)与 peer 内容 —— 测的是真实行为,不是平行实现。
 
-/** worker echo:assign → 产 deliverable + completeTask;peer(require-reply)→ 回执(message 事件 + sendMessage) */
-class EchoWorkerImpl implements AgentInterface {
-  readonly captured: AgentRunRequest[] = []
-
-  async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
-    this.captured.push(request)
-    const kind = request.message.metadata?.['x-aw-task-kind']
-    if (kind === 'assign' && request.taskId) {
-      yield { kind: 'status', status: { state: 'WORKING', timestamp: new Date().toISOString() } }
-      const artifact: A2AArtifact = {
-        artifactId: randomUUID(),
-        name: 'deliverable',
-        parts: [{ text: `echo 完成(${ctx.agentId}):${partsText(request.message.parts).slice(0, 80)}` }],
-      }
-      yield { kind: 'artifact', artifact, lastChunk: true, totalChunks: 1 }
-      await ctx.workspace.completeTask(request.taskId, [artifact])
-      yield { kind: 'done', final: { taskId: request.taskId } }
-      return
-    }
-    const fromId = request.fromAgentId
-    if (!kind && fromId) {
-      if (request.message.metadata?.['x-aw-require-reply'] === 'true') {
-        const text = partsText(request.message.parts)
-        const reply = `echo 回复(${ctx.agentId}):已处理「${text.slice(0, 60)}」。执行结果:完成。本回复不需要再响应。`
-        yield { kind: 'message', message: { messageId: randomUUID(), contextId: ctx.channelId, role: 'ROLE_AGENT', parts: [{ text: reply }] } }
-        await ctx.workspace.sendMessage({
-          toAgentId: fromId,
-          parts: [{ text: reply }],
-          metadata: { 'x-aw-in-reply-to': request.message.messageId, 'x-aw-require-reply': 'false' },
-        })
-      }
-      yield { kind: 'done' }
-    }
-  }
+/** run 捕获:agentId → 收到的每个回合请求(按时间序) */
+const capturedByAgent = new Map<string, AgentRunRequest[]>()
+const recordRun = (agentId: string, request: AgentRunRequest): void => {
+  const list = capturedByAgent.get(agentId)
+  if (list) list.push(request)
+  else capturedByAgent.set(agentId, [request])
 }
-
-/** lead echo:child-completed → 汇总 summary + completeTask 父任务(终态后 runtime 自动沉淀 lead 记忆);调度走规则引擎兜底 */
-class EchoLeadImpl implements AgentInterface {
-  readonly captured: AgentRunRequest[] = []
-
-  async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
-    this.captured.push(request)
-    if (request.message.metadata?.['x-aw-task-kind'] === 'child-completed' && request.taskId) {
-      // 规则引擎兜底可能已先收口父任务(调度轮与 child-completed 投递并发)→ 幂等:仅非终态时汇总收口
-      const parent = await ctx.workspace.getTask(request.taskId)
-      if (parent && parent.state !== 'COMPLETED' && parent.state !== 'FAILED' && parent.state !== 'CANCELED') {
-        const summary: A2AArtifact = {
-          artifactId: randomUUID(),
-          name: 'summary',
-          parts: [{ text: `汇总:子任务完成(${partsText(request.message.parts).slice(0, 80)})` }],
-        }
-        await ctx.workspace.completeTask(request.taskId, [summary])
-      }
-      yield { kind: 'done' }
-    }
-  }
-}
+const runsOf = (agentId: string): AgentRunRequest[] => capturedByAgent.get(agentId) ?? []
 
 // ═══════════ 装配 ═══════════
 
@@ -128,7 +89,7 @@ const repos = {
   channelAgents: createChannelAgentRepo(db),
   messages: createMessageRepo(db),
   subscriptions: createSubscriptionRepo(db),
-  tasks: createTaskRepo(db),
+  tasks: createTaskRepo(db),
   memories: createMemoryRepo(db),
 
   channelEvents: createChannelEventRepo(db),
@@ -136,11 +97,23 @@ const repos = {
   teamMembers: createTeamMemberRepo(db),
 }
 
-const echoByAgent = new Map<string, EchoWorkerImpl | EchoLeadImpl>()
 const implFactory = (agent: AgentInfo): AgentInterface => {
-  const impl = agent.role === 'lead' ? new EchoLeadImpl() : new EchoWorkerImpl()
-  echoByAgent.set(agent.id, impl)
-  return impl
+  const impl = createAgentImpl(agent)
+  // 必须是 Proxy 而非手写对象字面量:AgentInterface 还有 supervise?(lead 调度决策的
+  // 唯一入口)、steer?、dispose? 等成员 —— 只转发 run 会让 lead 永远不做派发决策
+  // (任务停在 SUBMITTED),这是"包装即失能"的经典陷阱。
+  return new Proxy(impl, {
+    get(target, prop, receiver) {
+      if (prop === 'run') {
+        return (request: AgentRunRequest, ctx: AgentRunContext) => {
+          recordRun(agent.id, request)
+          return target.run(request, ctx)
+        }
+      }
+      const value = Reflect.get(target, prop, receiver) as unknown
+      return typeof value === 'function' ? (value as (...a: unknown[]) => unknown).bind(target) : value
+    },
+  })
 }
 // C1:env 向量 provider 接线验证(127.0.0.1:1 立即拒连 → 熔断 → 全链 FTS 降级不崩)
 const savedEmbedBase = process.env.AW_MEMORY_EMBED_BASE_URL
@@ -158,10 +131,10 @@ async function main(): Promise<void> {
   console.log('\n=== ① channel + agents 装配 ===')
   const ch = await manager.createChannel({ name: 'memory-e2e', workspace: tmpWorkspace })
   const channelId = ch.channelId
-  const leadTpl = await manager.createAgent({ name: 'lead', harness: 'echo' })
+  const leadTpl = await manager.createAgent({ name: 'lead', harness: 'mock' })
   const lead = await manager.addAgentToChannel({ channelId, agentId: leadTpl.id, role: 'lead' })
   const mkWorker = async (name: string) => {
-    const tpl = await manager.createAgent({ name, harness: 'echo' })
+    const tpl = await manager.createAgent({ name, harness: 'mock' })
     return manager.addAgentToChannel({ channelId, agentId: tpl.id, role: 'worker' })
   }
   const w1 = await mkWorker('w1')
@@ -204,30 +177,38 @@ async function main(): Promise<void> {
     content: '团队统一用 pnpm 管理依赖,禁止 npm/yarn',
     dedupKey: 'team:pnpm',
   })
-  check('团队记忆入列(__team__ 域)', teamList.length === 1 && teamList[0].agentId === TEAM_AGENT_ID && teamList[0].channelId === channelId)
+  // 团队域在任务终态还会沉淀 canonical summary / 编年史 / lead 决策行,因此**不能**断言
+  // "列表长度 === 1";判据是策展行本身落进 __team__ 哨兵域。
+  const curated = teamList.find(r => r.title === '团队工程规范')
+  check('团队记忆入列(__team__ 域)', curated !== undefined && curated.agentId === TEAM_AGENT_ID && curated.channelId === channelId,
+    `rows=${teamList.length}`)
 
   // ── ④ 相关任务 → worker request.memory 含任务1记忆 + 团队行 ──
+  // 任务文案必须命中 mock lead 的**分解判据**(否则简单任务由 lead 直接收口,worker 永不执行,
+  // 观测点为空):这里用"实现/端到端"触发分解。
   console.log('\n=== ④ 相关任务召回注入 ===')
-  await submit('统一登录交互规范', '把统一用 pnpm 的工程规范落实到登录页面交互')
+  await submit('统一登录交互规范', '把统一用 pnpm 的工程规范落实为登录页面交互的端到端实现')
   check('任务2(相关)闭环 COMPLETED', await waitDone('统一登录交互规范'))
-  const executorReq = [w1, w2]
-    .flatMap(w => (echoByAgent.get(w.id) as EchoWorkerImpl).captured)
-    .reverse()
-    .find(r => partsText(r.message.parts).includes('统一登录交互规范') && r.memory !== undefined)
+  const relatedRuns = [w1, w2]
+    .flatMap(w => runsOf(w.id))
+    .filter(r => partsText(r.message.parts).includes('统一登录交互规范'))
+  const executorReq = relatedRuns.filter(r => r.memory !== undefined).reverse()
+    .find(r => r.memory!.includes('登录页面') && r.memory!.includes('pnpm'))
   check('worker request.memory 含任务1记忆 + 团队行',
-    executorReq !== undefined && executorReq.memory!.includes('登录页面') && executorReq.memory!.includes('pnpm'),
-    executorReq?.memory?.slice(0, 100))
+    executorReq !== undefined,
+    executorReq ? executorReq.memory!.slice(0, 80).replace(/\n/g, ' ') : `related=${relatedRuns.length} mem=${relatedRuns.filter(r => r.memory !== undefined).length}`)
 
   // ── ④b env provider 接线:embed 全失败(拒连)→ 熔断 → FTS 降级不裸奔 ──
   console.log('\n=== ④b env provider 接线降级(C1)===')
-  await submit('登录错误提示规范', '登录错误提示统一红字展示并联动表单校验')
+  await submit('登录错误提示规范', '登录错误提示统一红字展示并联动表单校验的端到端实现')
   check('embedder 不可达不阻任务闭环', await waitDone('登录错误提示规范'))
-  const degradedReq = [w1, w2]
-    .flatMap(w => (echoByAgent.get(w.id) as EchoWorkerImpl).captured)
-    .reverse()
-    .find(r => partsText(r.message.parts).includes('登录错误提示规范') && r.memory !== undefined)
-  check('熔断后召回仍注入记忆(纯 FTS 降级)', degradedReq !== undefined && degradedReq.memory!.includes('登录'),
-    degradedReq?.memory?.slice(0, 80))
+  const degradedRuns = [w1, w2]
+    .flatMap(w => runsOf(w.id))
+    .filter(r => partsText(r.message.parts).includes('登录错误提示规范'))
+  const degradedReq = degradedRuns.filter(r => r.memory !== undefined).reverse()
+    .find(r => r.memory!.includes('登录'))
+  check('熔断后召回仍注入记忆(纯 FTS 降级)', degradedReq !== undefined,
+    degradedReq ? degradedReq.memory!.slice(0, 60).replace(/\n/g, ' ') : `related=${degradedRuns.length}`)
 
   // ── ⑤ worker 间 peer 消息(require_reply)→ 双方 peer 记忆落库 ──
   console.log('\n=== ⑤ peer 消息双向记忆 ===')
@@ -242,9 +223,9 @@ async function main(): Promise<void> {
   const w2Peer = rowsOf(w2.id).find(r => r.kind === 'episodic-peer')
   check('双方 peer 记忆落库', peerDone && w1Peer !== undefined && w2Peer !== undefined,
     `w1=${w1Peer?.title ?? '-'} w2=${w2Peer?.title ?? '-'}`)
-  check('peer 记忆含问答内容(回执文本进 content;存储侧已 CJK 切分,断言用未切分片段)',
-    w2Peer !== undefined && w2Peer.content.includes('echo') && w2Peer.content.includes('答'),
-    w2Peer?.content.slice(0, 60))
+  check('peer 记忆含问答内容(接收侧=提问原文、发送侧=回执;存储侧已 CJK 切分)',
+    w2Peer !== undefined && w1Peer !== undefined && w1Peer.content.includes('mock') && w2Peer.content.includes('登'),
+    `w1=${w1Peer?.content.slice(0, 40)} | w2=${w2Peer?.content.slice(0, 40)}`)
 
   // ── ⑥ REST 端点(h3 toWebHandler + 生产路由 handler) ──
   console.log('\n=== ⑥ REST 记忆端点 ===')

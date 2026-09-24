@@ -197,11 +197,18 @@ async function testImmediateMessage(): Promise<void> {
     })
     check('task 消息发送成功', !!msg2)
 
-    // 消息自动被 consumeLoop 消费;验证 DB 中有消息记录(consumed 状态)
+    // 消息自动被 consumeLoop 消费;验证 DB 中有消息记录(consumed 状态)。
+    // 消费是异步的(sendA2A → route → 信箱 → consumeLoop 起回合),必须等待而非
+    // 立即断言 —— 立即读会稳定读到 pending(旧写法是竞态断言)。
+    const consumed = await waitUntil(
+      () => repos.messages.listRecentByChannel(ch.channelId, 10)
+        .some(m => m.toAgentId === w1.id && m.state === 'consumed'),
+      10_000,
+    )
     const recentMsgs = repos.messages.listRecentByChannel(ch.channelId, 10)
     const w1Msgs = recentMsgs.filter(m => m.toAgentId === w1.id)
     check('w1 收到了消息(DB 记录)', w1Msgs.length >= 1, `消息数=${w1Msgs.length}`)
-    check('消息被自动消费(consumed)', w1Msgs.some(m => m.state === 'consumed'), `states=[${w1Msgs.map(m => m.state).join(',')}]`)
+    check('消息被自动消费(consumed)', consumed, `states=[${w1Msgs.map(m => m.state).join(',')}]`)
   }
   finally {
     await cleanup(manager, db)
@@ -224,7 +231,13 @@ async function testLeadDispatchCycle(): Promise<void> {
     attachScheduler(manager, ch.channelId)
 
     const engine = getEngine(manager)
-    const main = await manager.submitChannelTask({ channelId: ch.channelId, title: '主任务' })
+    // 必须显式要求分解:平台既定行为是「简单任务 Lead 直接完成」(§10 Real OMP 第 1 项),
+    // 一步就能做完的任务不会产生子任务 —— 断言不能依赖模型/剧本的一次性判断。
+    const main = await manager.submitChannelTask({
+      channelId: ch.channelId,
+      title: '主任务:需分解并派发给 worker 执行',
+      description: '本任务必须分解为可并行的子任务,先派发给 worker 执行,等待子任务全部完成后由 lead 汇总收口。不要自己直接完成。',
+    })
 
     await waitUntil(() => engine.get(main.id)?.state === 'COMPLETED', 10_000)
 

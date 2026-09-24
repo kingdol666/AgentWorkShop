@@ -133,6 +133,12 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     if (cr.scheduler) return
     const lead = this.ensureAgentRuntime(channelId, channel.leadAgentId)
     if (!lead) return
+    // 必须再查一次:`ensureAgentRuntime → wireMember` 在装配 lead 时会经
+    // `reviveScheduler` 挂上**第一个** SchedulerLoop;此处若不再判空就会挂上第二个,
+    // 把第一个变成无人持有的孤儿循环 —— 重复监督/重复派单,且 shutdown 只停
+    // cr.scheduler 指向的那个,孤儿循环会在 DB 关闭后继续 tick。
+    // (attachScheduler 内部也有同一判空,这里保留可读的显式守卫。)
+    if (cr.scheduler) return
     this.attachScheduler(cr, channelId, lead, options)
   }
 
@@ -159,7 +165,15 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     this.attachScheduler(cr, channelId, lead, options)
   }
 
-  /** 装配并启动 SchedulerLoop(调用方须已确认 `cr.scheduler` 为空且 lead 运行时就绪) */
+  /**
+   * 装配并启动 SchedulerLoop(**幂等**:调用方无需自行判空)。
+   *
+   * 幂等判空是安全底线而非冗余:同一 channel 的装配有两条路径 ——
+   * `ensureChannelActive` 与 `wireMember → reviveScheduler`。lead 首次装配时两条
+   * 路径会在同一窗口内先后到达,若不判空,后到的会把 cr.scheduler 覆盖成第二个循环,
+   * 前一个成为无人持有的孤儿:重复监督/重复派单,且 shutdown 停不掉它
+   * (DB 关闭后继续 tick,打出「statement has been finalized」)。
+   */
   protected attachScheduler(
     cr: ChannelRuntime,
     channelId: string,
@@ -167,10 +181,10 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     options?: SchedulerLoopOptions,
   ): void {
     // shutdown 之后不得再挂新调度器:shutdown 会停掉全部循环并置空 cr.scheduler,
-    // 但此窗口内仍可能有在途的懒装配(channelRuntime loader / 定时任务 / 在飞 rake)
-    // 经 wireMember → reviveScheduler 重新挂载 —— 新循环会在 DB 关闭后继续 tick,
-    // 打出「statement has been finalized」并持续持有已关闭的连接。
+    // 但此窗口内仍可能有在途的懒装配(channelRuntime loader / 定时任务 / 在飞投递)
+    // 经 wireMember → reviveScheduler 重新挂载。
     if (this.shutdownStarted) return
+    if (cr.scheduler) return
     const loop = new SchedulerLoop(cr, lead, {
       // 停滞窗口默认取 workshop.stall_ms(默认 5 分钟,可经设置调整):
       // 它决定"多久算停滞"以及"多久之后收口",是运维最需要按现场调的一个值;

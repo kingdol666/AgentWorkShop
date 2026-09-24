@@ -30,14 +30,33 @@ function pickerComponent(title, items, maxVisible, onSelect, onCancel) {
 }
 
 /**
+ * Channel 是否"可进入管理面"(owner 或 admin)。列表接口对成员/公开可发现 Channel
+ * 也会返回(带 permissions),但它们的管理面读取(agents/tasks/…)会 403 ——
+ * 选择器必须把这类频道排在后面并显式标注,不能当作等价选项。
+ */
+function canEnter(c) {
+  return c?.permissions?.isOwner === true || c?.permissions?.canManage === true
+}
+
+/** Esc 兜底目标:第一个可进入的 Channel;全不可进入时回落第一个(仅群聊仍可用) */
+export function firstEnterableChannel(channels) {
+  return channels.find(canEnter) ?? channels[0] ?? null
+}
+
+/**
  * 频道选择浮层。Enter 选择并切换;Esc 取消(fallback 频道由调用方决定)。
  * @returns handle { close }
  */
 export function openChannelPicker(tui, state, { onSelect, onCancel } = {}) {
-  const items = state.channels.map(c => ({
+  // 可进入的排在前面(稳定排序):避免方向键第一下就落到"仅群聊"频道
+  const ordered = [...state.channels].sort((a, b) => Number(canEnter(b)) - Number(canEnter(a)))
+  const items = ordered.map(c => ({
     value: c.id,
     label: c.name,
-    description: c.leadAgentId ? 'lead 已配置' : '无 lead(仅收发消息)',
+    description: [
+      c.leadAgentId ? 'lead 已配置' : '无 lead(仅收发消息)',
+      canEnter(c) ? '' : '仅群聊(无管理权限)',
+    ].filter(Boolean).join(' · '),
   }))
   const picker = pickerComponent('选择要进入的频道(↑↓ 移动 · Enter 进入 · Esc 取消)', items, Math.min(10, items.length),
     (item) => {

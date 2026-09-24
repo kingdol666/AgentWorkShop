@@ -52,6 +52,9 @@ async function main() {
   const worker = await api('POST', `/channels/${CH}/agents`, { token, body: { name: 'ws-worker', harness: 'mock', role: 'worker' } })
   const WORKER = worker.json?.data?.id
   check('lead/worker 实例创建', !!WORKER)
+  // agent token(发 a2a 消息用;任务派发走信箱不产生 a2a.message 帧,只有真实 a2a 发送才有)
+  const members = await api('GET', `/channels/${CH}/agents`, { token })
+  const LEAD_TOKEN = (members.json?.data ?? []).find(m => m.role === 'lead')?.token
 
   // 连接 WS + sub
   const ws = new WebSocket(WS)
@@ -77,12 +80,27 @@ async function main() {
   check('snapshot 信封合法(v/seq/at/channelId)', snapshot?.v === 1 && typeof snapshot.seq === 'number' && typeof snapshot.at === 'string')
 
   // 提交任务 → 事件流
-  const task = await api('POST', `/channels/${CH}/tasks`, { token, body: { title: 'ws-event-task', description: '触发事件流' } })
+  // 必须显式要求分解:平台既定行为是「简单任务 Lead 直接完成」(§10 Real OMP 第 1 项),
+  // 不派发子任务就不会有 task.progress(子任务进度)与 worker 间的 a2a.message 帧。
+  const task = await api('POST', `/channels/${CH}/tasks`, {
+    token,
+    body: {
+      title: '[mock:complex] ws-event-task',
+      description: '本任务必须分解为可并行的子任务并派发给 worker 执行,等待子任务完成后汇总收口。不要自己直接完成。',
+    },
+  })
   const TASK = task.json?.data?.id
   check('任务提交', !!TASK)
 
   const final = await waitTaskTerminal(TASK, token)
   check('任务 COMPLETED', final?.state === 'COMPLETED', final?.state ?? '')
+  // 真实 a2a 发送(子任务 assign 走信箱、不产生 a2a.message 帧)→ 覆盖该帧型
+  if (LEAD_TOKEN && WORKER) {
+    await api('POST', '/a2a/send', {
+      token: LEAD_TOKEN,
+      body: { toAgentId: WORKER, parts: [{ text: 'ws-events 覆盖检查:请确认收到' }] },
+    })
+  }
   await sleep(800) // 等尾部事件
 
   ws.send(JSON.stringify({ type: 'unsub', channelId: CH }))

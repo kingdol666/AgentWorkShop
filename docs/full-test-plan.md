@@ -4,6 +4,10 @@
 > 「按 docs/full-test-plan.md 执行 Phase 0–N」即可完成全功能测试。
 > 断言数为历史全绿基线（2026-09 上旬各轮验收），以脚本实际输出为准；括号内数字仅用于识别明显回退。
 > 最后核对：2026-09-12（脚本清单逐一经 `scripts/` 实存核对）。
+> **2026-09-24 全功能验收**见 `docs/audit/e2e-2026-09-24-full-coverage.md`（生产构建 + 真实引擎/
+> 协议/浏览器/崩溃重启，约 1100+ 断言；本轮修掉 5 处真实缺陷，受限项逐条归因）。
+> ⚠️ 下方各 Phase 的脚本清单仍停留在 2026-09-12 的版本，部分 `_dbg-*.mjs` 已随功能重构删除或改名；
+> 执行前先按 `scripts/` 实存核对（以验收报告里的可用脚本清单为准）。
 
 ---
 
@@ -15,6 +19,16 @@
 - 本机 7890 代理会拦截 localhost：所有对 127.0.0.1 的 curl/node 调用带 `NO_PROXY='127.0.0.1,localhost'`（或 `NO_PROXY='*'`）。
 - 探针避开 3000/3001 冲突：dev=3000、生产 `aw start`=3001、隔离实例=3021。
 - `.ts` 脚本必须 `npx tsx --tsconfig .nuxt/tsconfig.server.json`（先 build 过一次）。
+- **导入 Nuxt 虚拟模块（`#imports`）的 TS 套件**要走纯 node 路径（tsx 解析不了该虚拟模块）：
+  `node --experimental-transform-types --import ./scripts/_audit/ts-register-hook.mjs scripts/<suite>.ts`
+  —— 钩子把 `#imports` 映射到 `scripts/_audit/stubs/nuxt-imports.mjs`，配置取值与
+  `nuxt.config.ts` 的 runtimeConfig 同源。
+- **`pnpm typecheck` 走 `scripts/typecheck.mjs`**：Nuxt 4.5 会往生成的 tsconfig 里写一条
+  vue-router 4.6 已不再导出的 volar 插件，裸 `nuxt typecheck` 在加载 tsconfig 阶段即
+  `ERR_PACKAGE_PATH_NOT_EXPORTED` 崩溃（类型检查实际一次都没跑）。脚本头有完整说明。
+- **崩溃恢复三阶段**（硬杀 → 重启 → 验证）用
+  `node scripts/e2e-crash-cycle.mjs --port <port> --home <dir>` 一次跑完：
+  编排层自动拉起/重启隔离实例，再串 watch→crash→verify→gap→verify-gap 五个阶段。
 - 测试账号（勿改动）：admin@awshop.local / admin123（生产零种子 admin）；perf-runner@awshop.io（admin）；read-verify@awshop.io（plain）。老脚本默认 `E2E_USER ?? 'zhangwei@awshop.io'`，对生产须显式传 env。
 - 凭据纪律：脚本从 env / `/api/system/settings` 运行时读取，不写可用凭据字面量。
 - Bash 写源码/配置会被 Mimosa hook 拒绝 → 用 Write/Edit 工具；git add 源码路径同样被拒。

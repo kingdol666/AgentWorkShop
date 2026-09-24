@@ -16,7 +16,7 @@
  *
  * TS 语法本身由 Node 24 内建的类型擦除处理(strip-types),本钩子只解决"找得到文件"。
  */
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { dirname, resolve as pathResolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -31,12 +31,12 @@ const ALIASES = [
 
 const SUFFIXES = ['', '.ts', '.mts', '.js', '.mjs', '.cjs', '/index.ts', '/index.mts', '/index.js', '/index.mjs']
 
-/** 逐后缀试探,命中返回 file: URL,否则 null */
+/** 逐后缀试探(必须是**文件** —— 目录命中会让 Node 在 load 阶段 EISDIR),命中返回 file: URL */
 function probe(absBase) {
   for (const suffix of SUFFIXES) {
     const candidate = absBase + suffix
     try {
-      if (existsSync(candidate)) return pathToFileURL(candidate).href
+      if (existsSync(candidate) && statSync(candidate).isFile()) return pathToFileURL(candidate).href
     }
     catch { /* 非法路径字符等忽略 */ }
   }
@@ -47,7 +47,23 @@ function isPathLike(spec) {
   return spec.startsWith('.') || spec.startsWith('/') || /^[A-Za-z]:[\\/]/.test(spec)
 }
 
+/** 目录判定(不存在/不可读 → false) */
+function isDirectory(abs) {
+  try {
+    return statSync(abs).isDirectory()
+  }
+  catch {
+    return false
+  }
+}
+
 export async function resolve(specifier, context, nextResolve) {
+  // ⓪ Nuxt 虚拟模块 #imports → 测试桩(纯 node 无 Nuxt 运行时;
+  //    桩内 useRuntimeConfig 走共享配置引擎,与 nuxt.config runtimeConfig 同源)
+  if (specifier === '#imports' || specifier.startsWith('#imports/')) {
+    const stub = pathToFileURL(pathResolve(REPO, 'scripts/_audit/stubs/nuxt-imports.mjs')).href
+    return { url: stub, shortCircuit: true }
+  }
   // ① 别名:@/x → <repo>/x,#shared/x → <repo>/shared/x
   for (const [prefix, target] of ALIASES) {
     if (!specifier.startsWith(prefix)) continue
@@ -55,11 +71,14 @@ export async function resolve(specifier, context, nextResolve) {
     if (hit) return { url: hit, shortCircuit: true }
   }
   // ② 路径式且缺扩展名:先自己补
+  //    (目录形态同样要探 —— `import '../db/database'` 指向目录时 Node 直接抛
+  //     ERR_UNSUPPORTED_DIR_IMPORT,不会落到下面的兜底分支)
   if (isPathLike(specifier)) {
     const abs = specifier.startsWith('/') || /^[A-Za-z]:[\\/]/.test(specifier)
       ? specifier
       : pathResolve(context.parentURL ? dirname(fileURLToPath(context.parentURL)) : process.cwd(), specifier)
-    if (!existsSync(abs)) {
+    const needsProbe = !existsSync(abs) || isDirectory(abs)
+    if (needsProbe) {
       const hit = probe(abs)
       if (hit) return { url: hit, shortCircuit: true }
     }
@@ -68,7 +87,8 @@ export async function resolve(specifier, context, nextResolve) {
     return await nextResolve(specifier, context)
   }
   catch (err) {
-    if (err?.code !== 'ERR_MODULE_NOT_FOUND' || !isPathLike(specifier) || !context.parentURL) throw err
+    if (err?.code !== 'ERR_MODULE_NOT_FOUND' && err?.code !== 'ERR_UNSUPPORTED_DIR_IMPORT') throw err
+    if (!isPathLike(specifier) || !context.parentURL) throw err
     const hit = probe(pathResolve(dirname(fileURLToPath(context.parentURL)), specifier))
     if (hit) return { url: hit, shortCircuit: true }
     throw err

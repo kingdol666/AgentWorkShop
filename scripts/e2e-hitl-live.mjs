@@ -174,7 +174,10 @@ async function main() {
   const browser = await puppeteer.launch({
     executablePath: chromePath,
     headless: true,
-    args: ['--no-sandbox', '--disable-gpu', '--window-size=1440,900'],
+    // 负载较高的机器上单次 Runtime.callFunctionOn 可能超过 CDP 默认 180s → 直接把
+    // 浏览器阶段打断(实测 U1/U2 已通过后死在 U3)。慢 ≠ 失败,断言各自带超时。
+    protocolTimeout: 300_000,
+    args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--window-size=1440,900'],
     defaultViewport: { width: 1440, height: 900 },
   })
   const page = await browser.newPage()

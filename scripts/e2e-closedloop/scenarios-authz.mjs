@@ -50,11 +50,18 @@ export async function s8_agent_authz() {
   // 3) 绑定后 → 放行(先绑定,后面的 judge 断言需要一条 agent 发起的 open 记录)
   const bind = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: ctx.agent.id, nodeId: ctx.dcw.main?.id, kind: 'dcw', mode: 'auto' }, token: ctx.token })
   ok(bind.status === 200, '绑定 dcw 节点(auto)', JSON.stringify(bind.data ?? {}).slice(0, 80))
-  // 断言的是「绑定闸门放行」而不是「下发一定成功」:S7 刚做过用户回退(190→195),
-  // 同向重写会被回退冷却拦下 —— 那是**正确**的调控护栏,不该算绑定失败。
-  // 因此判据 = 错误信息里不含绑定类拒绝词(无权/未绑定)。
-  const boundControl = await invoke('dcw_control', { node_id: ctx.dcw.main?.id, value: 196, hypothesis: 'e2e 绑定放行验证' })
-  const bcText = String(boundControl.data?.result?.text ?? '')
+  // 断言的是「绑定闸门放行」而不是「下发一定成功」:S7 刚在同一节点做过用户回退,
+  // 同向重写会被**写入保持窗口**(安全护栏)拦下 —— 那是正确行为,不该算绑定失败。
+  // 但后面的 judge 断言需要一条本 agent 发起的 open 记录,因此窗口内小步重试
+  // (旧写法:一次被护栏拦下 → judge 期望必然落空,把正确护栏报成失败)。
+  let boundControl
+  let bcText = ''
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    boundControl = await invoke('dcw_control', { node_id: ctx.dcw.main?.id, value: 196, hypothesis: 'e2e 绑定放行验证' })
+    bcText = String(boundControl.data?.result?.text ?? '')
+    if (!/写入保持窗口/.test(bcText)) break
+    await new Promise(r => setTimeout(r, 10_000))
+  }
   ok(boundControl.data?.result?.isError !== true || !/无权|未绑定/.test(bcText),
     '已绑定 agent 的 dcw_control 通过绑定闸门', bcText.slice(0, 110))
 
