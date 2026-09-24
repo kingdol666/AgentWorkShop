@@ -6,6 +6,8 @@
  */
 import type { CenterView } from '@/app/pages/workshop/composables/useWorkspaceShell'
 
+type TaskTarget = { channelId: string, taskId: string }
+
 defineProps<{
   /** 路由作用域(多通道同屏视图按 workspace 取挂载清单) */
   wsId: string
@@ -17,7 +19,8 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'openTask' | 'openAgent', id: string): void
+  (e: 'openTask', target: TaskTarget): void
+  (e: 'openAgent', id: string): void
 }>()
 </script>
 
@@ -40,7 +43,7 @@ const emit = defineEmits<{
       <workshop-task-board-view
         v-else-if="view === 'board'"
         :channel-id="channelId"
-        @open-task="emit('openTask', $event)"
+        @open-task="emit('openTask', { channelId, taskId: $event })"
       />
       <workshop-multi-channel-view
         v-else-if="view === 'split'"
@@ -56,7 +59,7 @@ const emit = defineEmits<{
         v-else-if="view === 'inspector' && narrow"
         :channel-id="channelId"
         @open-agent="emit('openAgent', $event)"
-        @open-task="emit('openTask', $event)"
+        @open-task="emit('openTask', { channelId, taskId: $event })"
       />
     </template>
     <div

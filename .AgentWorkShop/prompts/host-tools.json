@@ -48,7 +48,7 @@
  {
   "name": "submit_task",
   "label": "Submit Task",
-  "description": "(Lead only) Register an incoming HUMAN request as a tracked root task owned by you, so that you can decompose it, dispatch subtasks, review each worker deliverable, and close it with an ordered acceptance summary. Use it when a request reaches you OUTSIDE the task intake (typically a group-chat message) and genuinely needs tracked multi-step work. Do NOT use it for a request you can answer directly — just answer it. Idempotent: an identical non-terminal root task is returned instead of duplicated.",
+  "description": "(Lead only) Register one tracked root task for a genuinely multi-step HUMAN request. A single source chat message has exactly one root, even if the title changes. Do not create a second root to polish or revise wording; reuse the existing root and close it with an ordered acceptance summary. If the request is simple, answer directly without submit_task.",
   "parameters": {
    "type": "object",
    "properties": {
@@ -70,7 +70,7 @@
  {
   "name": "dispatch_task",
   "label": "Dispatch Task",
-  "description": "(Lead only) Create a subtask under a submitted parent task and assign it to a worker. Always provide parent_task_id so the parent task tracks completion. Always state route_reason: why THIS agent (specialty fit / shortest queue / past success evidence from the member capability table) — it is kept on the task as an auditable routing decision.",
+  "description": "(Lead only) Create one bounded child under an existing parent and assign it to a worker. The platform enforces finite root budgets (total child attempts, active children, canceled children, and ordinary depth); changing the title does not reset them. Freeze the child ID/title/contract after dispatch. Prefer update_task, send_message_to_agent, or reassign_task over cancel-and-recreate. Always include parent_task_id, route_reason, and a self-contained objective/deliverable/acceptance/boundary brief.",
   "parameters": {
    "type": "object",
    "properties": {
@@ -304,7 +304,7 @@
  {
   "name": "cancel_task",
   "label": "Cancel Task",
-  "description": "Cancel a task and remove it from the assignee's queue (lead can cancel any; assignee can cancel own). Pending queued deliveries are revoked automatically.",
+  "description": "Cancel a task only when it is genuinely abandoned or blocked. Canceling a parent cascades to all non-terminal descendants and stops matching active runs; cancellation consumes the root budget. Do not cancel to rename/polish/revise a task. Prefer messaging, update_task, or reassign_task. Pending queued deliveries are revoked automatically.",
   "parameters": {
    "type": "object",
    "properties": {
@@ -390,7 +390,7 @@
  {
   "name": "create_team_agent",
   "label": "Create Team Agent",
-  "description": "(Lead only) Create a NEW worker agent and add it to your channel's team, on the fly. Use ONLY when all workers stay busy with a persistent backlog, or when a task clearly needs a specialist that doesn't exist yet — not for routine tasks the current team can handle. The new member starts idle, appears in list_team_agents immediately, and can receive dispatch_task assignments right away. Give it a clear name and a system_prompt describing its specialty.",
+  "description": "(Lead only) Create a NEW worker only when capability/load evidence shows existing members cannot handle the work. Reuse existing workers first. The platform enforces a per-Channel worker roster cap, including disabled members; do not retry with another name after TEAM_WORKER_LIMIT.",
   "parameters": {
    "type": "object",
    "properties": {

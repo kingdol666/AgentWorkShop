@@ -78,6 +78,10 @@ CREATE TABLE IF NOT EXISTS tasks (
   retry_count    INTEGER NOT NULL DEFAULT 0,  -- 重派次数(SchedulerLoop reassign 时 +1,>=3 停止重派)
   artifacts_json TEXT NOT NULL DEFAULT '[]',
   history_json   TEXT NOT NULL DEFAULT '[]',
+  source_chat_message_id  TEXT,
+  source_chat_delivery_id TEXT,
+  close_reason   TEXT,
+  deadline_at    TEXT,
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL
 );
@@ -87,6 +91,10 @@ CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
 CREATE INDEX IF NOT EXISTS idx_tasks_channel_assignee ON tasks(channel_id, assignee_id, state, created_at);
 -- 子任务聚合(dispatch 判重/complete 闸门/onChildCompleted 统计;childrenOf 热查询)
 CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id);
+-- 每条群聊请求最多创建一个 root task;后代任务不参与唯一约束。
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_root_source_chat_message
+  ON tasks(channel_id, source_chat_message_id)
+  WHERE parent_id IS NULL AND source_chat_message_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS teams (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,

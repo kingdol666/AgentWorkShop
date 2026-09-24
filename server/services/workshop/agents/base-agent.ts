@@ -136,13 +136,27 @@ export abstract class BaseAgentImpl implements AgentInterface {
   async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
     if (!this.workspace) this.workspace = ctx.workspace
     const kind = request.message.metadata?.['x-aw-task-kind']
-    if (kind === 'assign' && ctx.role === 'worker') {
-      yield* this.workerTurn(request, ctx)
-      return
+    const sourceChatMessageId = typeof request.message.metadata?.['x-aw-source-chat-message-id'] === 'string'
+      ? String(request.message.metadata['x-aw-source-chat-message-id'])
+      : null
+    const sourceChatDeliveryId = typeof request.message.metadata?.['x-aw-delivery-id'] === 'string'
+      ? String(request.message.metadata['x-aw-delivery-id'])
+      : null
+    this.toolState.sourceChatMessageId = sourceChatMessageId
+    this.toolState.sourceChatDeliveryId = sourceChatDeliveryId
+    try {
+      if (kind === 'assign' && ctx.role === 'worker') {
+        yield* this.workerTurn(request, ctx)
+        return
+      }
+      if (!kind && (request.fromAgentId || request.message.metadata?.['x-aw-from-label'])) {
+        yield* this.peerTurn(request, ctx)
+        return
+      }
     }
-    if (!kind && (request.fromAgentId || request.message.metadata?.['x-aw-from-label'])) {
-      yield* this.peerTurn(request, ctx)
-      return
+    finally {
+      this.toolState.sourceChatMessageId = null
+      this.toolState.sourceChatDeliveryId = null
     }
   }
 

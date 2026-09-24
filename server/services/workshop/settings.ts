@@ -111,6 +111,12 @@ export interface WorkshopSettings {
   idle_grace_ms: number
   /** 运行中任务的停滞判定窗口(ms):先催办一次,再过同样时长按有无产出收口 */
   stall_ms: number
+  max_descendants_per_root: number
+  max_active_descendants_per_root: number
+  max_canceled_descendants_per_root: number
+  max_task_depth: number
+  root_timeout_ms: number
+  max_lead_created_workers: number
 }
 export interface BackupSettings {
   disabled: boolean

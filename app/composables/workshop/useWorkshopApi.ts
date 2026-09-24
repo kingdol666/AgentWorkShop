@@ -71,8 +71,14 @@ export interface TaskDto {
   description?: string
   state: string
   progress: number
+  retryCount?: number
   /** 派发路由理由(lead 留痕的审计决策) */
   routeReason?: string
+  sourceChatMessageId?: string
+  sourceChatDeliveryId?: string
+  closeReason?: string
+  deadlineAt?: string
+  history?: Array<{ messageId?: string, parts?: Array<{ text?: string }> }>
   artifacts: Array<{ artifactId: string, name?: string, parts: Array<{ text?: string }> }>
   createdAt: string
   updatedAt: string

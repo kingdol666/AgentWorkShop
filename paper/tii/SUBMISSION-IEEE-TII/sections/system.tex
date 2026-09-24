@@ -3,13 +3,14 @@
 \system{} links team coordination to plant interaction through industrial nodes
 and production context (Fig.~\ref{fig:arch}). Channels coordinate deployed
 members and tasks; controller services mediate node operations; production
-objects identify the line, product, recipe, and run. This organization is a
-deliberate separation of concerns: a team plane decides what to investigate and
-propose, an integration plane presents devices as semantic nodes, a governance plane decides whether a specific request is admissible, an operations plane supplies production context and evidence, and an extensibility plane adds drivers and services through sanctioned registration points. Table~\ref{tab:capabilities}
-summarizes the resulting functional surface and, for each plane, what remains
-scenario-specific. The decomposition is what makes the framework reusable:
-scenario knowledge is concentrated in blueprints, signal maps, objective
-predicates, and driver configuration rather than spread through the team
+objects identify the line, product, recipe, and run. Five planes separate the
+concerns: a \emph{team} plane decides what to investigate and propose, an
+\emph{integration} plane presents devices as semantic nodes, a \emph{governance}
+plane decides whether a request is admissible, an \emph{operations} plane
+supplies production context and evidence, and an \emph{extensibility} plane
+admits drivers and services through sanctioned registration points. The
+decomposition is what makes the framework reusable: scenario knowledge sits in
+blueprints, signal maps, predicates, and driver configuration, not in team
 scheduler, approval service, or persistence code.
 
 \begin{figure*}[!t]
@@ -23,40 +24,17 @@ make storage and actuation transactional.}
 \label{fig:arch}
 \end{figure*}
 
-\begin{table*}[!t]
-\centering
-\caption{Functional surface of AgentWorkShop and its reuse boundary. Each row
-is implemented as a platform service, node abstraction, or extension contract;
-scenario integration changes the rightmost column while preserving the common
-execution path.}
-\label{tab:capabilities}
-\footnotesize
-\renewcommand{\arraystretch}{1.05}
-\begin{tabularx}{\textwidth}{@{}p{0.17\textwidth}p{0.29\textwidth}p{0.29\textwidth}X@{}}
-\toprule
-Plane & Core functions & Evidence or control boundary & Scenario-specific input \\
-\midrule
-Team coordination & Channels, lead/worker roles, state-tracked tasks, messages,
-retrievable memory, multi-engine adapters, WebSocket/MCP/A2A/REST/CLI/TUI
-entry points & Member identity and task state are distinct from physical-write
-authority & Team topology, goal, stopping rule \\
-Industrial integration & DAQ/DCW nodes, engineering units, calibration,
-precision, connection tests, read/write drivers, rotating acquisition runtime,
-digital-twin and live-stream hooks & Protocol acceptance, readback, freshness,
-connection and transport errors & Device blueprint, signal map, driver config \\
-Governance & Member--node bindings, line permissions, hard and contextual
-windows, approval mode, post-write hold, source-specific routes, compensation and backstop & Admission, approval, actuation, readback, observation, judgment, compensation, and rollback are separately recorded & Limits, recipe windows, approval policy \\
-Production operations & Line--product--recipe--run hierarchy, versioned recipes,
-run dispatch, alarms, sampled histories, optimization records, audit and
-operator surfaces & Production context is attached to requests and records;
-PLC protection remains independent & Production objects, objective and guards \\
-Extensibility & Hot-reloadable plugins, server/browser hooks, new DAQ drivers,
-agent tools, settings groups, i18n panels, typed SDK, schema-driven runtime
-configuration & Extension code uses sanctioned services instead of arbitrary
-plant I/O & Optional plugin, external controller, or deployment adapter \\
-\bottomrule
-\end{tabularx}
-\end{table*}
+Each plane draws its own boundary between platform guarantees and scenario
+inputs: team coordination owns member identity, task state, and a
+member-written episodic memory retrieved by hybrid search; industrial
+integration owns protocol acceptance, readback, freshness, and transport
+errors, its node stream feeding both the agent and a live digital-twin view;
+governance owns admission, approval, actuation, write readback, observation,
+verdict, compensation, and rollback; production operations attaches line,
+product, recipe, and run context while PLC protection stays independent; and
+extensibility admits plugins, drivers, agent tools, panels, and SDK clients
+through sanctioned services. In every plane the common execution path is
+unchanged: what a scenario supplies is data and strategy.
 
 \subsection{Supervisory Core and Nodes}
 The Node.js core hosts channel routing, industrial services, and protocol
@@ -69,96 +47,87 @@ DAQ nodes convert device readings to engineering quantities; DCW nodes translate
 engineering setpoints into driver commands and, where supported, readback.
 Per-node runtimes manage timing; gateway services supply
 connection state, recipe context, and write bookkeeping. The built-in semantic
-surface covers Modbus TCP, Modbus RTU-over-TCP, OPC UA, MQTT, and HTTP/REST.
+surface covers Modbus TCP, Modbus RTU-over-TCP, OPC UA, MQTT, and HTTP/REST as
+both client and server endpoints, plus S7 for acquisition only.
 The deployment reaches author-implemented dynamic simulators through the same
 node and driver contracts a plant would use; they are deterministic per seed
-but not validated digital twins. First reuse boundary: a scenario declares
-signals, units, scaling, precision, and driver configuration, and the team loop
-is unchanged; fast regulation and independent protection stay in plant
-controllers.
+but not validated digital twins. The first reuse boundary is declarative: a
+scenario declares signals, units, scaling, precision, and driver
+configuration, and the team loop is unchanged; fast regulation and independent
+protection stay in plant controllers.
 
 Driver contracts are deliberately narrow: a driver declares how a semantic
 quantity maps to its transport payload, whether the endpoint is writable, and
-whether a readback is available; the controller resolves member authority and
-active limits. Connection, transport, and protocol errors are stored with the
-request instead of one success flag, so a timeout, a rejected frame, and a
-written-but-unconfirmed value remain distinguishable. Register addresses and
-byte order appear only here, so adding a fieldbus family leaves the loop
-untouched.
+whether a readback is available, while the controller resolves member authority
+and active limits. Connection, transport, and protocol errors attach to the
+request rather than one success flag, and register addresses and byte order
+appear only here, so a new fieldbus family leaves the loop untouched.
 
 Acquisition is supervisory rather than hard real-time: each DAQ node runs its
 own cadence under a rotating sweep, so a slow endpoint delays only its own
-samples. Every reading carries a timestamp, quality state, and freshness age,
-and the response window used by a verdict is a query over that history, not a
-blocking read---which is why a bucket average can lag the device by one cadence.
+samples. The verdict stage queries the timestamped, quality-stamped history
+rather than issuing a blocking read, which is why a windowed average can lag
+the device by one cadence.
 
 \subsection{Bindings, Context, and Reuse Boundaries}
 A member--node binding grants access to a sanctioned tool on a specific node and
-selects automatic or approval-mediated execution; line permissions (none,
-read-only, operate) authorize binding creation and mutation, and runtime
+selects automatic or approval-mediated execution. Line permissions (none,
+read-only, operate) authorize binding creation and mutation; runtime
 invocation is authorized by the persisted capability, not channel membership.
-Intervals are re-checked every request rather than cached: revoking a binding
-or switching the recipe takes effect on the next request. The same path serves
-a console, a harness, and an agent engine---authority does not depend on the
-client; only the evidence record differs, carrying the acting member and
-proposal origin.
+Intervals are re-checked every request instead of cached, so revoking
+a binding or switching the recipe takes effect on the next request. The same path
+serves a console, a harness, and an agent engine, because authority does not
+depend on the client; only the evidence record differs.
 
-Production objects are versioned rather than overwritten: a recipe is a
-versioned named definition, dispatched against a known-good version, reverted
-non-destructively, and compared with the values actually applied; an
-intervention is read against the definition active when it was admitted.
-Plugins register hooks, routes, agent tools, drivers, and panels only through
-sanctioned services, so an added driver inherits admission, readback, and
-evidence capture.
+Production objects are versioned rather than overwritten: a recipe is dispatched
+against a known-good version, reverted non-destructively, and compared with the
+values actually applied, and an intervention is read against the definition
+that was active when it was admitted. Plugins register hooks, routes, agent tools, drivers,
+and panels only through sanctioned services, so an added driver inherits
+admission, readback, and evidence capture. A BOPET worker proposes casting-speed,
+fast-roll, or rail-width changes through bound DCW nodes, and the same mission
+pattern serves the other three scenarios with only blueprint, guards, and policy
+differing (Section~\ref{sec:scenarios}).
 
-The second reuse boundary is a reference onboarding adapter
+The second reuse boundary is a reference scenario-onboarding adapter
 (Section~\ref{sec:onboarding}); the SDK exposes the same surface to ordinary
-programs, and runtime settings are hot-reloadable.
-
-The stores share identifiers rather than a transaction domain: platform state
-uses SQLite and files, and measurement and object backends use TimescaleDB and
-MinIO with local fallbacks. A device may accept a write even if bookkeeping
-fails, and records lack a run identifier, so time-range queries can cross runs
-unless bounded---boundaries disclosed rather than hidden.
-
-A BOPET worker proposes casting-speed, fast-roll, or rail-width changes through
-bound DCW nodes; the same mission pattern serves the other three scenarios with
-only blueprint, guards, and policy differing. Task completion remains distinct
-from device acknowledgment and target attainment.
+programs, and runtime settings are hot-reloadable. The stores share identifiers
+rather than a transaction domain: platform state uses SQLite and files, and
+measurement and object backends use TimescaleDB and MinIO with local fallbacks.
+A device may accept a write even if bookkeeping fails, and records lack a run
+identifier, so time-range queries can cross runs unless bounded.
 
 \subsection{Reference Scenario-Onboarding Contract}
 \label{sec:onboarding}
 The reference integration follows a bounded onboarding contract: the engineer
-declares a blueprint of devices, signals, units, roles, initial setpoints, and
-plant-model parameters; a differential ``ensure'' pass creates missing devices,
-repairs drift, verifies connectivity, and loads the model without disturbing
-other lines, projects the blueprint into semantic nodes and a recipe, and tags
-the line for idempotent reuse. A channel is instantiated from the common team
-template with bindings to the required nodes; a mission supplies the objective,
-guards, response windows, and policy, and every observation, write, and
-judgment flows through the same governed services. The adapter demonstrates
-reuse of platform services, not configuration-only commissioning of physical
-plants; the pass is idempotent and the projection non-destructive to other
-tagged lines.
+declares a blueprint of devices, signals, units, roles, setpoints, and
+plant-model parameters; a differential ``ensure'' pass creates missing
+devices, repairs drift, verifies connectivity, loads the model without
+disturbing other lines, projects the blueprint into semantic nodes and a
+recipe, and tags the line for idempotent reuse; a channel is built from the
+common team template with the required bindings; and a mission supplies
+objective, guards, response windows, and policy. The adapter demonstrates reuse
+of platform services, not configuration-only commissioning of physical plants.
 
-\subsection{Governed Optimization Task Lifecycle}
+\subsection{Governed Optimization Task Life Cycle}
 \label{sec:tasklifecycle}
-A governed optimization task is a life cycle rather than a single tool call, and \system{} exposes each transition separately. The task enters a channel carrying goal, line, product, recipe, run, and task identifiers; a lead member claims it and dispatches the work to a worker holding member--node bindings on the relevant nodes. The worker repeats one fixed job: read the controlled quantity over a bounded window, propose a setpoint inside the resolved interval, invoke the governed write, wait for the response, and record a verdict. Section~\ref{sec:procedure} shows this path in operation.
+A governed optimization task is a life cycle rather than a single tool call, and
+\system{} exposes each transition separately. The task enters a channel carrying
+goal, line, product, recipe, run, and task identifiers; a lead member claims it
+and hands it to a worker holding member--node bindings on the relevant nodes.
+The worker then repeats one fixed job: read the controlled quantity over a
+bounded window, propose a setpoint inside the resolved interval, invoke the
+governed write, wait for the response, and record a verdict
+(Section~\ref{sec:procedure} instruments it).
 
-Every iteration leaves more than a written value: the write opens an
-optimization record with the prior and requested values, the admitting
+Each iteration therefore leaves more than a written value: the write opens an
+optimization record carrying prior and requested values, the admitting
 interval, the acting member, and timestamps; readback, where supported, closes
-the command path. The parameter journal attributes the change to its source;
-attainment is evaluated against the scenario predicate, and the task closes
-with a workflow terminal state (Section~\ref{sec:mech} gives the underlying
-semantics).
-
-This separation bounds what ``automatic optimization'' means: the framework
-automates the loop---reading state, admitting and applying setpoints, waiting
-for a response, recording evidence, accepting or compensating---and does not
-prescribe a search algorithm or claim that a language model autonomously
-selects the best action. A controller, a scripted policy, a conventional
-optimizer, or an agent engine may occupy the strategy slot; authority,
-evidence, and closure remain platform responsibilities. A mission can reach its
-terminal state while missing the process objective, and the two are never
-merged.
+the command path; the parameter journal attributes the change to its source; and
+attainment is computed against the scenario predicate while the task closes with
+a workflow terminal state. This bounds what ``automatic optimization'' means
+here: a
+controller, a scripted policy, a conventional optimizer, or an agent engine may
+occupy the strategy slot, while authority, evidence, and closure stay on the
+platform---and a mission may reach its terminal state while missing the process
+objective, because the two are never merged.

@@ -1,0 +1,467 @@
+{
+  "runId": "20260922162616-x78-optloop",
+  "at": "2026-09-22T17:26:20.581Z",
+  "budgetMin": 60,
+  "base": "http://127.0.0.1:3001",
+  "scenarios": [
+    "injection",
+    "wwtp",
+    "anneal"
+  ],
+  "lines": [
+    {
+      "scen": "injection",
+      "zh": "注塑成型质量窗口寻优",
+      "channel": "dc53b9b6-8831-4eae-b688-8c3e1d4ec1ea",
+      "taskId": "8da30a5c-572d-4790-8615-7fa64402f2ee",
+      "lineId": "ln-06b778a6",
+      "finalState": "COMPLETED",
+      "pvFinal": 32.29,
+      "pvTarget": "32.5±0.35",
+      "inBand": true,
+      "guardsOk": true,
+      "knobs": [
+        {
+          "sig": "barrel-temp-1-sp",
+          "value": 240,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "barrel-temp-2-sp",
+          "value": 246,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "barrel-temp-3-sp",
+          "value": 252,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "barrel-temp-4-sp",
+          "value": 258,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "screw-speed-sp",
+          "value": 120,
+          "unit": "rpm",
+          "state": "ok"
+        },
+        {
+          "sig": "mold-temp-sp",
+          "value": 40,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "clamp-force-sp",
+          "value": 1600,
+          "unit": "kN",
+          "state": "ok"
+        },
+        {
+          "sig": "inject-speed-sp",
+          "value": 85,
+          "unit": "mm/s",
+          "state": "ok"
+        },
+        {
+          "sig": "hold-pressure-sp",
+          "value": 67.8,
+          "unit": "bar",
+          "state": "ok"
+        },
+        {
+          "sig": "hold-time-sp",
+          "value": 8,
+          "unit": "s",
+          "state": "ok"
+        },
+        {
+          "sig": "cool-water-sp",
+          "value": 24,
+          "unit": "℃",
+          "state": "ok"
+        }
+      ],
+      "quality": [
+        {
+          "sig": "melt-temp-pv",
+          "value": 247.2,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "melt-pressure-pv",
+          "value": 52.5,
+          "unit": "bar",
+          "state": "ok"
+        },
+        {
+          "sig": "mold-temp-pv",
+          "value": 40,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "clamp-force-pv",
+          "value": 1601,
+          "unit": "kN",
+          "state": "ok"
+        },
+        {
+          "sig": "inj-pressure-pv",
+          "value": 51,
+          "unit": "bar",
+          "state": "ok"
+        },
+        {
+          "sig": "water-temp-pv",
+          "value": 23.8,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "cool-flow-pv",
+          "value": 43.6,
+          "unit": "L/min",
+          "state": "ok"
+        },
+        {
+          "sig": "part-weight",
+          "value": 32.29,
+          "unit": "g",
+          "state": "ok"
+        },
+        {
+          "sig": "flash-rate",
+          "value": 0,
+          "unit": "%",
+          "state": "warn"
+        },
+        {
+          "sig": "sink-mark",
+          "value": 1.204,
+          "unit": "%",
+          "state": "ok"
+        },
+        {
+          "sig": "dim-dev",
+          "value": -0.005,
+          "unit": "mm",
+          "state": "ok"
+        },
+        {
+          "sig": "cycle-time",
+          "value": 16.1,
+          "unit": "s",
+          "state": "ok"
+        },
+        {
+          "sig": "wall-profile",
+          "value": null,
+          "unit": "mm",
+          "state": "offline"
+        },
+        {
+          "sig": "surface-image",
+          "value": null,
+          "unit": "灰度",
+          "state": "offline"
+        }
+      ],
+      "recorder": {
+        "timelineRows": 9,
+        "wsFrames": 213,
+        "setpointSamples": 2343,
+        "qualitySamples": 2982,
+        "tappedPid": 38840
+      }
+    },
+    {
+      "scen": "wwtp",
+      "zh": "A2O 污水生化处理达标降耗",
+      "channel": "9ef1c835-e8bb-4357-9311-6755034cb0d9",
+      "taskId": "f767f226-5270-43c7-bb81-1cb86b15a5da",
+      "lineId": "ln-2317617a",
+      "finalState": "BUDGET_TIMEOUT",
+      "pvFinal": 2.19,
+      "pvTarget": "3.4±0.6",
+      "inBand": false,
+      "guardsOk": false,
+      "knobs": [
+        {
+          "sig": "blower-hz-sp",
+          "value": 34,
+          "unit": "Hz",
+          "state": "ok"
+        },
+        {
+          "sig": "naoh-dose-sp",
+          "value": 30,
+          "unit": "L/h",
+          "state": "ok"
+        },
+        {
+          "sig": "pac-dose-sp",
+          "value": 65,
+          "unit": "L/h",
+          "state": "ok"
+        },
+        {
+          "sig": "recycle-int-sp",
+          "value": 90,
+          "unit": "%",
+          "state": "ok"
+        },
+        {
+          "sig": "recycle-sludge-sp",
+          "value": 70,
+          "unit": "%",
+          "state": "ok"
+        },
+        {
+          "sig": "waste-sludge-sp",
+          "value": 150,
+          "unit": "m³/d",
+          "state": "ok"
+        },
+        {
+          "sig": "influent-flow-sp",
+          "value": 1000,
+          "unit": "m³/h",
+          "state": "ok"
+        }
+      ],
+      "quality": [
+        {
+          "sig": "air-pressure-pv",
+          "value": 54.9,
+          "unit": "kPa",
+          "state": "ok"
+        },
+        {
+          "sig": "do-pv",
+          "value": 2.19,
+          "unit": "mg/L",
+          "state": "alarm"
+        },
+        {
+          "sig": "naoh-flow-pv",
+          "value": 0,
+          "unit": "L/h",
+          "state": "warn"
+        },
+        {
+          "sig": "pac-flow-pv",
+          "value": 0,
+          "unit": "L/h",
+          "state": "warn"
+        },
+        {
+          "sig": "mlss-pv",
+          "value": 4728,
+          "unit": "mg/L",
+          "state": "ok"
+        },
+        {
+          "sig": "cod-in-pv",
+          "value": 425,
+          "unit": "mg/L",
+          "state": "ok"
+        },
+        {
+          "sig": "nh3-in-pv",
+          "value": 35.3,
+          "unit": "mg/L",
+          "state": "ok"
+        },
+        {
+          "sig": "eff-cod",
+          "value": 91.8,
+          "unit": "mg/L",
+          "state": "alarm"
+        },
+        {
+          "sig": "eff-nh3",
+          "value": 9.17,
+          "unit": "mg/L",
+          "state": "alarm"
+        },
+        {
+          "sig": "eff-tp",
+          "value": 0.665,
+          "unit": "mg/L",
+          "state": "alarm"
+        },
+        {
+          "sig": "eff-ph",
+          "value": 6.05,
+          "unit": "pH",
+          "state": "alarm"
+        },
+        {
+          "sig": "eff-turbidity",
+          "value": 0.46,
+          "unit": "NTU",
+          "state": "warn"
+        },
+        {
+          "sig": "do-profile",
+          "value": null,
+          "unit": "mg/L",
+          "state": "offline"
+        }
+      ],
+      "recorder": {
+        "timelineRows": 38,
+        "wsFrames": 734,
+        "setpointSamples": 3122,
+        "qualitySamples": 5798,
+        "tappedPid": 37480
+      }
+    },
+    {
+      "scen": "anneal",
+      "zh": "连续退火质量窗内产能最大化",
+      "channel": "851331b1-c575-4046-8359-b6c6319812fa",
+      "taskId": "dce7c078-0f37-4b34-9f53-77d8b39896ad",
+      "lineId": "ln-5eeba4a0",
+      "finalState": "BUDGET_TIMEOUT",
+      "pvFinal": 104.8,
+      "pvTarget": "95±6",
+      "inBand": false,
+      "guardsOk": true,
+      "knobs": [
+        {
+          "sig": "zone1-sp",
+          "value": 737,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "zone2-sp",
+          "value": 757,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "zone3-sp",
+          "value": 777,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "line-speed-sp",
+          "value": 145,
+          "unit": "m/min",
+          "state": "ok"
+        },
+        {
+          "sig": "oa-temp-sp",
+          "value": 400,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "cool-rate-sp",
+          "value": 50,
+          "unit": "%",
+          "state": "ok"
+        },
+        {
+          "sig": "h2-ratio-sp",
+          "value": 10,
+          "unit": "%",
+          "state": "ok"
+        }
+      ],
+      "quality": [
+        {
+          "sig": "furnace-temp-pv",
+          "value": 739.8,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "strip-temp-pv",
+          "value": 698.5,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "act-speed-pv",
+          "value": 140.8,
+          "unit": "m/min",
+          "state": "ok"
+        },
+        {
+          "sig": "oa-temp-pv",
+          "value": 400.5,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "dew-point-pv",
+          "value": -39.1,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "h2-act-pv",
+          "value": 10.1,
+          "unit": "%",
+          "state": "ok"
+        },
+        {
+          "sig": "hardness",
+          "value": 104.8,
+          "unit": "HV",
+          "state": "alarm"
+        },
+        {
+          "sig": "tensile",
+          "value": 298.6,
+          "unit": "MPa",
+          "state": "ok"
+        },
+        {
+          "sig": "yield-str",
+          "value": 154.8,
+          "unit": "MPa",
+          "state": "ok"
+        },
+        {
+          "sig": "grain-size",
+          "value": 5.19,
+          "unit": "μm",
+          "state": "ok"
+        },
+        {
+          "sig": "surface-defect",
+          "value": 0.168,
+          "unit": "%",
+          "state": "warn"
+        },
+        {
+          "sig": "flatness",
+          "value": null,
+          "unit": "I",
+          "state": "offline"
+        }
+      ],
+      "recorder": {
+        "timelineRows": 34,
+        "wsFrames": 314,
+        "setpointSamples": 3122,
+        "qualitySamples": 5352,
+        "tappedPid": 2012
+      }
+    }
+  ],
+  "ok": false
+}

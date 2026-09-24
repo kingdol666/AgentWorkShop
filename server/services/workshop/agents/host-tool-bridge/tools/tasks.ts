@@ -6,20 +6,27 @@
 import type { AgentWorkspace } from '../../agent-interface'
 import type { WorkspaceTask } from '../../../types/task'
 import { extractTaskMode } from '../../../runtime/execution-mode'
-import type { HostToolBridgeContext, HostToolResult } from '../types'
+import type { HostToolBridgeContext, HostToolResult, HostToolSessionState } from '../types'
 
-export async function handleSubmitTask(args: Record<string, unknown>, ws: AgentWorkspace): Promise<HostToolResult> {
+export async function handleSubmitTask(args: Record<string, unknown>, state: HostToolSessionState, ws: AgentWorkspace): Promise<HostToolResult> {
   const title = String(args.title ?? '').trim()
   const description = args.description as string | undefined
   if (!title) return { text: 'submit_task 需要非空 title', isError: true }
-  // 幂等:同标题未终态根任务已存在时返回既有任务(lead 重复登记同一次请求不产生重复作业)
-  const existing = (await ws.listTasks()).find(t =>
-    !t.parentId && t.title === title
+  const tasks = await ws.listTasks()
+  const existing = tasks.find(t =>
+    !t.parentId
+    && ((state.sourceChatMessageId && t.sourceChatMessageId === state.sourceChatMessageId)
+      || (!state.sourceChatMessageId && t.title === title))
     && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
   if (existing) {
-    return { text: `根任务 ${existing.id} 已存在(标题「${existing.title}」,state=${existing.state}),未重复创建。请直接基于它 dispatch_task 分解,或对其 complete_task 收口。` }
+    return { text: `根任务 ${existing.id} 已存在(标题「${existing.title}」,state=${existing.state}),未重复创建。请冻结并复用它，不要改标题创建第二个根任务。` }
   }
-  const task = await ws.submitTask({ title, description })
+  const task = await ws.submitTask({
+    title,
+    description,
+    sourceChatMessageId: state.sourceChatMessageId ?? undefined,
+    sourceChatDeliveryId: state.sourceChatDeliveryId ?? undefined,
+  })
   return {
     text: `根任务 ${task.id} 已登记(assignee=你,state=${task.state})。若需要专业分工:对每个子任务调用 dispatch_task(parent_task_id=${task.id}, assignee_id=..., title=..., description=含目标/上下文/交付格式/验收标准/边界);若你自己就能回答,直接 complete_task(task_id=${task.id}, summary=..., deliverable=...) 并把结论回给提问者。`,
   }

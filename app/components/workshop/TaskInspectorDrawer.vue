@@ -51,9 +51,48 @@ watch(() => [open.value, props.taskId], () => {
 const taskView = computed(() =>
   props.taskId ? entities.taskById(props.channelId, props.taskId) : undefined,
 )
+const allTasks = computed(() => entities.tasks[props.channelId] ?? [])
 const children = computed(() =>
-  props.taskId ? (entities.tasks[props.channelId] ?? []).filter(t => t.parentId === props.taskId) : [],
+  props.taskId ? allTasks.value.filter(t => t.parentId === props.taskId) : [],
 )
+const descendants = computed(() => {
+  if (!props.taskId) return []
+  const result = [] as typeof allTasks.value
+  const queue = [...children.value]
+  const seen = new Set(queue.map(t => t.id))
+  while (queue.length) {
+    const parent = queue.shift()!
+    result.push(parent)
+    for (const child of allTasks.value) {
+      if (child.parentId === parent.id && !seen.has(child.id)) {
+        seen.add(child.id)
+        queue.push(child)
+      }
+    }
+  }
+  return result
+})
+const currentTask = computed(() => detail.value ?? taskView.value)
+const activeChildren = computed(() => descendants.value.filter(c => !['COMPLETED', 'FAILED', 'CANCELED'].includes(c.state)))
+const canceledChildren = computed(() => descendants.value.filter(c => c.state === 'CANCELED'))
+const childHealth = computed(() => ({
+  total: descendants.value.length,
+  active: activeChildren.value.length,
+  canceled: canceledChildren.value.length,
+}))
+const deadlineLabel = computed(() => {
+  const value = currentTask.value?.deadlineAt
+  if (!value) return ''
+  const ts = new Date(value).getTime()
+  if (!Number.isFinite(ts)) return value
+  const delta = ts - Date.now()
+  if (delta <= 0) return '已超时'
+  const mins = Math.ceil(delta / 60_000)
+  return mins < 60 ? `剩余约 ${mins} 分钟` : `截止 ${formatLocalClock(value)}`
+})
+const cancelTitle = computed(() => childHealth.value.total > 0
+  ? `这会同时停止 ${childHealth.value.active} 个活动后代任务，已完成结果会保留。确定继续？`
+  : '确定取消这个任务吗？')
 
 /** AEP 状态时间线重放 */
 const timeline = computed(() => {
@@ -68,6 +107,7 @@ const cancel = async (): Promise<void> => {
   cancelling.value = true
   try {
     await api.cancelTask(props.taskId)
+    entities.refreshTasks(props.channelId)
     message.success(t('taskInspectorDrawer.k1xj595a013'))
     void load()
   }
@@ -162,7 +202,7 @@ const stateColor: Record<string, string> = {
             </a-button>
           </a-popconfirm>
           <a-popconfirm
-            :title="$t('taskInspectorDrawer.k1a7jqb9003')"
+            :title="cancelTitle"
             @confirm="cancel"
           >
             <a-button
@@ -183,6 +223,30 @@ const stateColor: Record<string, string> = {
         >
           <span class="fr-label">{{ $t('taskInspectorDrawer.failReason') }}</span>
           <span class="fr-text">{{ failureReason }}</span>
+        </div>
+
+        <div
+          v-if="deadlineLabel || detail?.closeReason || childHealth.total > 0"
+          class="guardrail-strip"
+        >
+          <span
+            v-if="deadlineLabel"
+            class="guardrail-chip deadline"
+          >
+            <span class="i-tabler-hourglass-high" /> {{ deadlineLabel }}
+          </span>
+          <span
+            v-if="detail?.closeReason"
+            class="guardrail-chip reason"
+          >
+            <span class="i-tabler-lock-square-rounded" /> {{ detail.closeReason }}
+          </span>
+          <span
+            v-if="childHealth.total > 0"
+            class="guardrail-chip tree"
+          >
+            <span class="i-tabler-git-branch" /> 后代 {{ childHealth.total }} · 活动 {{ childHealth.active }} · 已取消 {{ childHealth.canceled }}
+          </span>
         </div>
 
         <a-descriptions
@@ -309,6 +373,27 @@ const stateColor: Record<string, string> = {
 }
 .meta { font-size: 12px; font-family: var(--font-mono); opacity: 0.6; }
 .spacer { flex: 1 1 auto; }
+.guardrail-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.guardrail-chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+}
+.guardrail-chip.deadline { color: var(--tone-warning-dot); border-color: color-mix(in srgb, var(--tone-warning-dot) 40%, var(--line)); }
+.guardrail-chip.reason { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 40%, var(--line)); }
+.guardrail-chip.tree { color: var(--tone-info-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 35%, var(--line)); }
 .desc { margin-top: 8px; }
 /* 失败原因块(FAILED 任务:历史末条错误原文) */
 .failure-reason {

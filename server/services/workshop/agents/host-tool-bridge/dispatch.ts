@@ -69,7 +69,7 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       case 'complete_task':
         return await handleCompleteTask(args, state, ws)
       case 'submit_task':
-        return await handleSubmitTask(args, ws)
+        return await handleSubmitTask(args, state, ws)
       case 'dispatch_task':
         return await handleDispatchTask(args, ws)
       case 'send_message_to_agent':

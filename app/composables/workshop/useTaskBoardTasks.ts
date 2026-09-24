@@ -46,6 +46,9 @@ export function useTaskBoardTasks(channelId: Ref<string>) {
     optimistic.value = opt
     try {
       await (action === 'cancel' ? api.cancelTask(taskId) : api.retryTask(taskId))
+      // cancel 可能级联多个后代;命令响应只有 root,所以立即刷新整条 Channel 的事实源，
+      // 再等待 WS 事件收敛，避免 UI 留下仍显示 WORKING 的孤儿 child。
+      entities.refreshTasks(channelId.value)
       message.success(action === 'cancel' ? t('taskBoardView.k189y4q013') : t('taskBoardView.kv1l1j3014'))
     }
     catch (e) {

@@ -12,7 +12,7 @@ import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 const { t } = useI18n()
 
 const props = defineProps<{ wsId: string }>()
-const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()
+const emit = defineEmits<{ (e: 'openTask', target: { channelId: string, taskId: string }): void }>()
 
 // 每列宽度拖拽调节(PaneSplitter;按 channelId 持久化,双击复位默认宽)
 const COL_W_DEFAULT = 360
@@ -102,7 +102,7 @@ const summaryOf = (e: { type: string, at: string, agentId?: string, payload: unk
             :key="`${col.id}-${e.seq}`"
             class="mini-event"
             :class="{ clickable: e.type === 'task.status' }"
-            @click="e.type === 'task.status' && emit('openTask', (e.payload as { taskId: string }).taskId)"
+            @click="e.type === 'task.status' && emit('openTask', { channelId: col.id, taskId: (e.payload as { taskId: string }).taskId })"
           >
             <span class="me-time">{{ formatLocalClock(e.at) }}</span>
             <span class="me-agent">{{ e.agentId?.slice(0, 4) ?? 'sys' }}</span>

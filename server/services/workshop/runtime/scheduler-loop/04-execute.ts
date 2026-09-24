@@ -10,6 +10,7 @@ import { AppError } from '../../../../utils/errors'
 import { LoopController, extractTaskMode, isGoalSummaryArtifact } from '../execution-mode'
 import { log } from './helpers'
 import { randomUUID } from 'node:crypto'
+import { TERMINAL_TASK_STATES } from '../../types/task'
 
 export abstract class SchedulerLoopLayer04 extends SchedulerLoopLayer03 {
   /** 执行单条决策(身份=lead,经 TaskEngine 与 ChannelRuntime) */
@@ -28,7 +29,8 @@ export abstract class SchedulerLoopLayer04 extends SchedulerLoopLayer03 {
           break
         }
         const parent = this.lead.taskEngine.get(decision.parentTaskId)
-        if (!parent) throw new AppError(404, 'NOT_FOUND', `父任务不存在: ${decision.parentTaskId}`)
+        // 快照后的陈旧派发决策不得重新打开已收口/超时的父任务。
+        if (!parent || TERMINAL_TASK_STATES[parent.state] || parent.closeReason === 'ROOT_TIMEOUT') break
         // lead 自动接取:SUBMITTED → WORKING(§2.2 状态机,dispatch 需父任务处于 WORKING/WAITING)
         if (parent.state === 'SUBMITTED') {
           this.lead.taskEngine.transition(parent.id, 'WORKING', this.lead.agentId)
@@ -43,6 +45,8 @@ export abstract class SchedulerLoopLayer04 extends SchedulerLoopLayer03 {
         break
       }
       case 'reassign': {
+        const current = this.lead.taskEngine.get(decision.taskId)
+        if (!current || current.state === 'COMPLETED' || current.state === 'CANCELED' || current.closeReason === 'ROOT_TIMEOUT') break
         // HITL 竞态守卫:目标成员被移除/禁用时跳过重派(任务保持 FAILED,留待 lead/用户重试)
         // listChannelAgents 仅返回 enabled=1 成员,存在即可用
         const target = this.channelRuntime.listChannelAgents().find(a => a.agentId === decision.toAgentId)
@@ -56,20 +60,20 @@ export abstract class SchedulerLoopLayer04 extends SchedulerLoopLayer03 {
       }
       case 'cancel': {
         const task = this.lead.taskEngine.get(decision.taskId)
+        // 快照后的陈旧取消决策不得再次操作终态任务(包括已超时/已收口任务)。
+        if (!task || TERMINAL_TASK_STATES[task.state] || task.closeReason === 'ROOT_TIMEOUT') break
         this.lead.taskEngine.cancel(decision.taskId, this.lead.agentId)
         // lead 终态同步:经调度器判定取消同样不经 processMessage,重广播队列上下文
         this.lead.refreshStatus()
-        if (task) {
-          const assignee = this.channelRuntime.getAgents().find(a => a.agentId === task.assigneeId)
-          if (assignee && assignee.getState() === 'busy') assignee.abortCurrent()
-        }
+        const assignee = this.channelRuntime.getAgents().find(a => a.agentId === task.assigneeId)
+        assignee?.abortTask?.(task.id)
         break
       }
       case 'complete': {
         // 幂等守卫:LLM lead 可能对已终态任务重复 complete(快照滞后/重复决策)——
         // 静默跳过而非报错,避免调度噪音(正确性不受影响:终态即目标状态)
         const existing = this.lead.taskEngine.get(decision.taskId)
-        if (existing && ['COMPLETED', 'CANCELED', 'FAILED'].includes(existing.state)) {
+        if (!existing || TERMINAL_TASK_STATES[existing.state] || existing.closeReason === 'ROOT_TIMEOUT') {
           break
         }
         const completed = this.lead.taskEngine.complete(decision.taskId, decision.artifacts)
@@ -229,6 +233,7 @@ export abstract class SchedulerLoopLayer04 extends SchedulerLoopLayer03 {
         current.description ?? '',
         intervalMs,
         maxIterations,
+        modeInfo.config.maxDurationMs,
         this.onLoopResubmit,
       )
       this.loopController.onTaskCompleted()

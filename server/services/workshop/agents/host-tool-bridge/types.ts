@@ -18,6 +18,8 @@ export interface HostToolResult {
 /** 会话态(impl 持有,桥读写):当前执行任务 + 待回执上下文 */
 export interface HostToolSessionState {
   currentTaskId: string | null
+  sourceChatMessageId: string | null
+  sourceChatDeliveryId: string | null
   replyContext: { fromId: string, messageId: string } | null
 }
 

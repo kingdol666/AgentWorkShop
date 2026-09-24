@@ -3,7 +3,7 @@
  * 任务板(open-tag TaskBoard 交互移植,按 AgentWorkShop 权限模型收敛):
  *  - 看板/列表双视图(localStorage 持久化);看板 = 全高等宽泳道(surface-strong),
  *    列表 = 按状态分组的行式列表;
- *  - 卡片拖拽:拖到「异常/取消」列 = cancelTask(HITL 中断);FAILED/CANCELED 卡拖回
+ *  - 卡片拖拽:拖到「异常/取消」列 = cancelTask(HITL 中断);FAILED 卡拖回
  *    「待启动」列 = retryTask(重试派发);执行中/等待汇总/已完成由系统流转,不可手动移入;
  *  - 状态胶囊点击菜单:取消 / 重试 / 打开详情(与拖拽同一动作面);
  *  - 乐观更新:本地先改 state(FLIP 视觉即时),REST 失败回滚并以 WS 事件对齐。

@@ -5,7 +5,7 @@ import type { Part } from '../../types/a2a'
 import type { HostToolSessionState } from './types'
 
 export function createSessionState(): HostToolSessionState {
-  return { currentTaskId: null, replyContext: null }
+  return { currentTaskId: null, sourceChatMessageId: null, sourceChatDeliveryId: null, replyContext: null }
 }
 
 /** 从消息 parts 提取纯文本(多 harness 共用) */

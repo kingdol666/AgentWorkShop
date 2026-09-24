@@ -1,7 +1,7 @@
 /**
  * useTaskBoardMenu —— 状态胶囊菜单(动作 + 详情):fixed 定位并按视口收敛。
  *
- * 动作清单按当前任务态派生(cancel 收未终结态 / retry 收 FAILED、CANCELED / detail 恒有),
+ * 动作清单按当前任务态派生(cancel 收未终结态 / retry 收 FAILED / detail 恒有),
  * 与拖拽落列共用同一个动作面 applyMove —— 两条路径的状态语义必须一致。
  */
 import { computed, ref } from 'vue'
@@ -38,7 +38,7 @@ export function useTaskBoardMenu(options: {
     if (['SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING', 'FAILED'].includes(task.state)) {
       acts.push({ key: 'cancel', label: t('taskBoardView.k1bs0t9b016'), danger: true })
     }
-    if (['FAILED', 'CANCELED'].includes(task.state)) {
+    if (task.state === 'FAILED') {
       acts.push({ key: 'retry', label: t('taskBoardView.k1lclwk6017') })
     }
     acts.push({ key: 'detail', label: t('taskBoardView.k1dx9ysj018') })

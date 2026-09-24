@@ -36,8 +36,13 @@ export interface TaskView {
   progress: number
   assigneeId: string
   artifacts: number
+  retryCount?: number
   /** 派发路由理由(lead 审计决策) */
   routeReason?: string
+  sourceChatMessageId?: string
+  sourceChatDeliveryId?: string
+  closeReason?: string
+  deadlineAt?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -211,6 +216,9 @@ export const useEntitiesStore = defineStore('workshop.entities', {
             parentId?: string
             progress?: number
             routeReason?: string
+            closeReason?: string
+            deadlineAt?: string
+            retryCount?: number
             createdAt?: string
             artifacts?: number
           }
@@ -226,6 +234,9 @@ export const useEntitiesStore = defineStore('workshop.entities', {
               parentId: p.parentId ?? prev.parentId,
               progress: Math.max(prev.progress, p.progress ?? 0),
               routeReason: p.routeReason ?? prev.routeReason,
+              closeReason: p.closeReason ?? prev.closeReason,
+              deadlineAt: p.deadlineAt ?? prev.deadlineAt,
+              retryCount: p.retryCount ?? prev.retryCount,
               createdAt: p.createdAt ?? prev.createdAt,
               artifacts: Math.max(prev.artifacts, p.artifacts ?? 0),
             }
@@ -241,6 +252,9 @@ export const useEntitiesStore = defineStore('workshop.entities', {
             }
             if (p.parentId) fresh.parentId = p.parentId
             if (p.routeReason) fresh.routeReason = p.routeReason
+            if (p.closeReason) fresh.closeReason = p.closeReason
+            if (p.deadlineAt) fresh.deadlineAt = p.deadlineAt
+            if (p.retryCount != null) fresh.retryCount = p.retryCount
             if (p.createdAt) fresh.createdAt = p.createdAt
             list.push(fresh)
             // 旧服务端帧不含正文(title 缺失)→ 兜底节流 REST 补全(新帧已自足,此路径不再触发)
@@ -279,6 +293,13 @@ export const useEntitiesStore = defineStore('workshop.entities', {
         progress: t.progress,
         assigneeId: t.assigneeId,
         artifacts: t.artifacts.length,
+        routeReason: t.routeReason,
+        sourceChatMessageId: t.sourceChatMessageId,
+        sourceChatDeliveryId: t.sourceChatDeliveryId,
+        retryCount: (t as { retryCount?: number }).retryCount,
+        closeReason: (t as { closeReason?: string }).closeReason,
+        deadlineAt: (t as { deadlineAt?: string }).deadlineAt,
+        createdAt: t.createdAt,
         updatedAt: t.updatedAt,
       }
     },

@@ -38,6 +38,12 @@ export interface WorkspaceTask {
   history: A2AMessage[]
   /** 派发路由理由(koda RouteDecision 借鉴):lead 留痕"为什么派给他" */
   routeReason?: string
+  /** 群聊来源身份(仅根任务使用,用于跨标题幂等) */
+  sourceChatMessageId?: string
+  sourceChatDeliveryId?: string
+  /** 终态/关闭原因与持久化 deadline */
+  closeReason?: string
+  deadlineAt?: string
   createdAt: string
   updatedAt: string
 }

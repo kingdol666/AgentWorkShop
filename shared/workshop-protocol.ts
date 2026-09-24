@@ -12,7 +12,7 @@
 *  agent.message       A2AMessage(harness message 事件;LLM 产出气泡)
  *  agent.delta         { delta }(LLM 流式增量;text_delta 50ms 批量,前端打字机)
  *  agent.status.message{ text }(工具标记 🔧 / 中间状态文本)
- *  task.status         { taskId, state, assigneeId?, agentId? }
+ *  task.status         { taskId, state, assigneeId?, agentId?, closeReason?, deadlineAt?, retryCount? }
  *  task.progress       { taskId, progress, agentId? }
  *  a2a.artifact        { taskId?, artifact }(任务交付物/工件)
  *  a2a.message         A2AMessage(channel 内新消息投递:assign/peer/inject)
@@ -349,7 +349,7 @@ export type AepEvent
     | { type: 'agent.message', payload: A2AMessage }
     | { type: 'agent.delta', payload: { delta: string } }
     | { type: 'agent.status.message', payload: { text: string } }
-    | { type: 'task.status', payload: { taskId: string, state: string, assigneeId?: string, agentId?: string, title?: string, parentId?: string, progress?: number, routeReason?: string, createdAt?: string, artifacts?: number } }
+    | { type: 'task.status', payload: { taskId: string, state: string, assigneeId?: string, agentId?: string, title?: string, parentId?: string, progress?: number, routeReason?: string, closeReason?: string, deadlineAt?: string, retryCount?: number, createdAt?: string, artifacts?: number } }
     | { type: 'task.progress', payload: { taskId: string, progress: number, agentId?: string } }
     | { type: 'a2a.artifact', payload: { taskId?: string, artifact: A2AArtifact } }
     | { type: 'a2a.message', payload: A2AMessage }

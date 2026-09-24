@@ -6,7 +6,7 @@ import type * as sqliteVec from 'sqlite-vec'
 import { DatabaseSync } from 'node:sqlite'
 import { SCHEMA_SQL } from './schema'
 import { createRequire } from 'node:module'
-import { migrateAddColumn, migrateDropOwnerFks, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys } from './migrations'
+import { migrateAddColumn, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateDropOwnerFks, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys } from './migrations'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -33,6 +33,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   db.exec('PRAGMA synchronous = NORMAL;')
   db.exec('PRAGMA foreign_keys = ON;')
   db.exec(SCHEMA_SQL)
+  // Add guardrail metadata before any legacy tasks-table rebuild so values can be copied safely.
+  migrateAgentTeamTaskGuardrailColumns(db)
   migrateLegacySchema(db)
   migrateAddColumn(db, 'channels', 'scenario_prompt', 'TEXT NOT NULL DEFAULT \'\'')
   // v11:channel 级默认 LLM(四引擎统一注入面;成员 config 显式指定时优先)
@@ -52,6 +54,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAddColumn(db, 'audit_log', 'kind', 'TEXT NOT NULL DEFAULT \'\'')
   migrateAddColumn(db, 'audit_log', 'summary', 'TEXT NOT NULL DEFAULT \'\'')
   migrateMissingForeignKeys(db)
+  // Run after legacy task-table rebuilds so guardrail metadata and its index survive upgrades.
+  migrateAgentTeamTaskGuardrails(db)
   migrateDropOwnerFks(db)
   migrateGroupChatV17(db)
   seedDefaultWorkshopData(db)

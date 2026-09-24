@@ -7,22 +7,54 @@ industrial knowledge graphs \cite{zhang2026comaikg}, diagnosis
 \cite{liu2024kgdiag}, PLC generation and verification
 \cite{liu2026agents4plc,fakih2024llm4plc}, digital-twin configuration
 \cite{xia2024llmsim}, OPC UA machine control \cite{hofmann2025nlc}, and
-simulated fault handling \cite{vyas2026ftc,gill2025llmdt}; InstructMPC combines
-language-derived objectives with model-predictive control
-\cite{wu2025instructmpc}. These studies motivate agent-facing industrial tools; the shared execution layer that carries authority and evidence across scenarios, our focus here, is complementary rather than a new controller or reasoning method.
+simulated fault handling \cite{vyas2026ftc,gill2025llmdt}, while InstructMPC
+combines language-derived objectives with model-predictive control
+\cite{wu2025instructmpc}. These studies motivate agent-facing industrial tools;
+the shared execution layer carrying authority and evidence across
+scenarios---our focus---is complementary rather than a new
+controller or reasoning method.
 
 \subsection{Orchestration, Industrial Models, and Governance}
 AutoGen, LangGraph, and CrewAI coordinate tasks and tools
-\cite{wu2023autogen,langgraph2024,crewai2024}; the Model Context Protocol (MCP) and Agent-to-Agent (A2A) specifications standardize tool and inter-agent interfaces \cite{mcp2024,a2a2025}. Such frameworks coordinate reasoning and tool invocation, but the exposed tool is usually a function signature with no line, product, or recipe context and no record that separates admission from execution; industrial deployment additionally needs engineering semantics, driver behavior, and production context. ISA-88, ISA-95, ISO~23247, and IEC~63278 provide complementary models for recipes, operations, and digital twins \cite{isa88,isa95,iso23247,iec63278}: \system{}'s versioned recipes and run dispatch instantiate a reduced subset of this stack---master-recipe-style versions over a line--product--run resource model---without batch procedure models or full equipment hierarchy. IIoT and shop-floor agent architectures similarly emphasize contextualized integration \cite{gautam2025iiot}; the nearest neighbors \cite{biskupovic2025supervision,zhao2026shopfloor} target control decoupling and task decomposition, while \system{} ties each write to production-scoped authority and a stored evidence chain.
+\cite{wu2023autogen,langgraph2024,crewai2024}, and the Model Context Protocol
+(MCP) and Agent-to-Agent (A2A) specifications standardize tool and inter-agent
+interfaces \cite{mcp2024,a2a2025}. These frameworks coordinate reasoning and
+tool invocation, but the tool they expose is usually a bare function signature
+carrying no line, product, or recipe context, with no record separating
+admission from execution. ISA-88, ISA-95, ISO~23247, and IEC~63278 supply
+complementary models for recipes, operations, and digital twins
+\cite{isa88,isa95,iso23247,iec63278}, and \system{}'s versioned recipes and run
+dispatch instantiate a reduced subset of that stack: master-recipe-style
+versions over a line--product--run resource model, without batch procedure
+models or a full equipment hierarchy. The governed life cycle itself---bounded
+proposals, post-write holds, per-run journals---transposes the disciplines of
+run-to-run control \cite{moyne2000r2r} onto a supervisory write path; the
+increment here is interchangeable strategies over heterogeneous protocols with
+evidence that survives strategy replacement.
+Industrial Internet of Things (IIoT) and shop-floor agent architectures likewise emphasize contextualized
+integration \cite{gautam2025iiot}, and the nearest neighbors
+\cite{biskupovic2025supervision,zhao2026shopfloor} target control decoupling
+and task decomposition. A recent line instead enforces runtime guarantees on
+LLM agents---judge and guard agents, capability-based information flow,
+rule-based enforcement
+\cite{xiang2024guardagent,debenedetti2025camel,wang2025agentspec}; these gate
+software tool calls; none owns a physical write path with device readback and
+a write journal; and their policies could compile onto the enforcement
+substrate contributed here, whose differentiator is production-scoped
+authority and evidence.
 
 Permissions, range checks, approvals, and audit trails have DCS/SCADA/MES and
-IEC~62443 counterparts \cite{iec62443-3-3}. Formal shielding, control-barrier
-functions, and simplex run-time assurance offer stronger specified properties
-\cite{alshiekh2018shielding,ames2017cbf,sha2001simplex}. In contrast,
-\system{} implements source-dependent checks and a rule-based backstop but makes no formal protection guarantee; the backstop evaluated in Section~\ref{sec:protocol} is an alarm-style rule in the spirit of ISA-18.2 and EEMUA-191 \cite{isa182,eemua191}, not a run-time assurance bound. Formal methods aside, human oversight itself requires more than an approval dialog \cite{parasuraman2000model,bainbridge1983ironies}.
-
-\subsection{Evaluation Scope}
-AgentBench and consequential tool-use benchmarks assess agent behavior and
-policy compliance \cite{liu2024agentbench,yao2024taubench,xu2024company}; TEP and SWaT support
-process-monitoring research \cite{downs1993tep,goh2017swat}. Indirect prompt injection and its defenses \cite{greshake2023injection,liu2024pinjection} complete the adversarial
-picture; our evaluation instead separates source checks, protocol execution, mechanism ablation, controller trials, and scripted multi-scenario missions; adversarial prompting and comparisons with other agent frameworks are outside scope.
+IEC~62443 counterparts \cite{iec62443-3-3}, while formal shielding,
+control-barrier functions, and simplex run-time assurance offer stronger
+specified properties \cite{alshiekh2018shielding,ames2017cbf,sha2001simplex}.
+\system{} instead implements source-dependent checks and a rule-based backstop
+and makes no formal protection guarantee: the backstop
+(Section~\ref{sec:agentloop}) is a rule-based recovery action in the spirit of
+ISA-18.2 and EEMUA-191 \cite{isa182,eemua191} rather than a run-time assurance
+bound. Human oversight likewise requires more than an approval dialog
+\cite{parasuraman2000model,bainbridge1983ironies}. Agent benchmarks
+\cite{liu2024agentbench,yao2024taubench,xu2024company}, process-monitoring
+datasets \cite{downs1993tep,goh2017swat}, and prompt-injection studies
+\cite{greshake2023injection,liu2024pinjection} inform adjacent evaluations; ours
+separates source checks, protocol execution, mechanism ablation,
+controller trials, and multi-scenario missions.

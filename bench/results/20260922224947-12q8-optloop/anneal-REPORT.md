@@ -1,0 +1,26 @@
+# 连续退火质量窗内产能最大化 · 闭环寻优报告(anneal)
+
+- 终态:COMPLETED · PV 终值:97.7 HV(目标带 95±6) ✓ 带内
+- 守卫约束:全部满足 
+- 收口设定:
+  - zone1-sp = 761 ℃
+  - zone2-sp = 781 ℃
+  - zone3-sp = 801 ℃
+  - line-speed-sp = 164 m/min
+  - oa-temp-sp = 400 ℃
+  - cool-rate-sp = 50 %
+  - h2-ratio-sp = 10 %
+- 实测终值:
+  - furnace-temp-pv = 784.9 ℃
+  - strip-temp-pv = 739.4 ℃
+  - act-speed-pv = 164 m/min
+  - oa-temp-pv = 437.1 ℃
+  - dew-point-pv = -39.3 ℃
+  - h2-act-pv = 10 %
+  - hardness = 97.7 HV
+  - tensile = 297.3 MPa
+  - yield-str = 151 MPa
+  - grain-size = 5.05 μm
+  - surface-defect = 0.141 %
+  - flatness = null I
+- 证据文件:anneal-timeline.jsonl(对话全录) / anneal-worker-stream.jsonl(worker 全帧) / anneal-setpoints.jsonl(设定曲线) / anneal-quality.jsonl(质量曲线)

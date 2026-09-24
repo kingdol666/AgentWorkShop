@@ -7,6 +7,7 @@ import type { SupervisionSnapshot } from '../../agents/agent-interface'
 import { IDLE_TICK_CAP_MS, LEAD_DECISION_RETRY_MS, log } from './helpers'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { findModeTask } from '../execution-mode'
+import { isOrdinaryRoot } from '../task-engine/policy'
 
 export abstract class SchedulerLoopLayer01 extends SchedulerLoopLayer00 {
   protected async runRound(): Promise<void> {
@@ -36,6 +37,22 @@ export abstract class SchedulerLoopLayer01 extends SchedulerLoopLayer00 {
   protected async tickRound(): Promise<void> {
     this.tick += 1
     const snapshot = this.collectSnapshot()
+    // 普通根任务绝对 deadline 优先于 Lead supervise，防止旧决策在超时后继续派发。
+    const expiredRoots = snapshot.tasks.filter(task =>
+      isOrdinaryRoot(task)
+      && !TERMINAL_TASK_STATES[task.state]
+      && task.deadlineAt
+      && Date.parse(task.deadlineAt) <= Date.now())
+    if (expiredRoots.length > 0) {
+      for (const root of expiredRoots) {
+        const closed = this.lead.taskEngine.timeoutTree(root.id, this.lead.agentId)
+        for (const task of closed) {
+          this.channelRuntime.getAgents().find(a => a.agentId === task.assigneeId)?.abortTask?.(task.id)
+        }
+      }
+      this.lead.refreshStatus()
+      return
+    }
     // 状态 Map 生命周期修剪:终态/已删任务的条目随轮清理(长会话内存有界)。
     // progressSeen 全程只增不减;notified/lastProgress/loopCompletedTaskIds 统一按任务集收敛。
     const liveIds = new Set(snapshot.tasks.map(t => t.id))

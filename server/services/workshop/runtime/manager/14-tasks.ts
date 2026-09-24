@@ -15,6 +15,8 @@ import { buildMessage, rowToTask } from './helpers'
 import { encodeTaskMode, isGoalSummaryArtifact } from '../execution-mode'
 import { parseJson } from '../../db/database'
 import { randomUUID } from 'node:crypto'
+import { workshopSettings } from '../../settings'
+import { assertDispatchAllowed } from '../task-engine/policy'
 
 export abstract class ManagerTasks extends ManagerChannelTemplates {
   /**
@@ -61,9 +63,20 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     // 任务执行前强校验:收件引擎不可用直接 409(不留「已创建即失败」的幽灵任务)
     const assigneeRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, assigneeId)
     if (assigneeRow) assertHarnessUsable(assigneeRow.harness, parseJson<Record<string, unknown>>(assigneeRow.configJson, {}))
+    if (input.mode === 'loop') {
+      const cfg = input.modeConfig ?? {}
+      const finiteIterations = Number.isFinite(cfg.maxIterations) && Number(cfg.maxIterations) > 0
+      const finiteDuration = Number.isFinite(cfg.maxDurationMs) && Number(cfg.maxDurationMs) > 0
+      if (!finiteIterations && !finiteDuration) {
+        throw new AppError(400, 'LOOP_BUDGET_REQUIRED', 'loop 模式必须提供有限的 maxIterations 或 maxDurationMs')
+      }
+    }
     const description = input.mode
       ? encodeTaskMode(input.mode, input.modeConfig ?? {}, input.description ?? '')
       : input.description
+    const deadlineAt = input.mode
+      ? undefined
+      : new Date(Date.now() + Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))).toISOString()
     let task = this.getTaskEngine().create({
       channelId: input.channelId,
       creatorId: '',
@@ -71,6 +84,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       title: input.title,
       description,
       parts: input.parts,
+      deadlineAt,
     })
     // 直发 worker:补 ASSIGNED 迁移(与 dispatchTask 独立任务同构,worker 消费循环按 assign 起回合)
     if (assigneeId !== channel.leadAgentId) {
@@ -162,6 +176,8 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
           + (parent.state === 'FAILED' ? '请先 reassign_task 重试,或另起根任务' : '请另起一个根任务'),
         )
       }
+      // 预算必须在父任务状态副作用之前检查；超限不能留下 WORKING 父任务。
+      assertDispatchAllowed(this.deps.repos.tasks, parent)
       const dispatchParent = parent.state === 'SUBMITTED' || parent.state === 'ASSIGNED'
         ? this.getTaskEngine().transition(parent.id, 'WORKING', callerAgentId)
         : parent
@@ -343,10 +359,12 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     if (!isLead && !isCreator) {
       throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead/creator 可取消任务')
     }
-    const canceled = this.getTaskEngine().cancel(input.taskId, callerAgentId)
-    this.runtimeOf(channelId, canceled.assigneeId)?.abortCurrent()
-    this.wakeAgent(channelId, canceled.assigneeId)
-    return canceled
+    const canceledTasks = this.getTaskEngine().cancelTree(input.taskId, callerAgentId, isLead ? 'LEAD_CANCEL' : 'USER_CANCEL')
+    for (const canceled of canceledTasks) {
+      this.runtimeOf(channelId, canceled.assigneeId)?.abortTask(canceled.id)
+      this.wakeAgent(channelId, canceled.assigneeId)
+    }
+    return this.getTaskEngine().get(input.taskId)!
   }
 
   /**

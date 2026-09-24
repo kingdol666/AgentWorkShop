@@ -126,6 +126,12 @@ dcw:
 workshop:
   idle_sweep_ms: 30000    # 空闲 agent 扫描周期(WORKSHOP_IDLE_SWEEP_MS)
   idle_grace_ms: 120000   # 空闲卸载宽限(WORKSHOP_IDLE_GRACE_MS)
+  max_descendants_per_root: 6
+  max_active_descendants_per_root: 4
+  max_canceled_descendants_per_root: 3
+  max_task_depth: 1
+  root_timeout_ms: 900000
+  max_lead_created_workers: 8
 
 # 数据备份(env BACKUP_*)
 backup:

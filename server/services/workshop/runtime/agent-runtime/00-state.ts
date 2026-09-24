@@ -116,6 +116,14 @@ export abstract class AgentRuntimeLayer00 extends AgentRuntimeContracts {
     this.superviseController?.abort()
   }
 
+  /** 仅中止仍在执行指定任务的当前 run;不影响其它任务或 supervise 回合 */
+  abortTask(taskId: string): boolean {
+    if (this.currentTaskId !== taskId) return false
+    log.warn(`[AgentRuntime:${this.agentId}] abortTask 调用(task=${taskId},state=${this.state})`)
+    this.abortController?.abort()
+    return true
+  }
+
   emitExternal(event: AgentEvent, fromAgentId?: string): void {
     // 合成 source(monitor 依 metadata 归属 agent);平台侧产出与 harness 事件同流
     const source: A2AMessage = {

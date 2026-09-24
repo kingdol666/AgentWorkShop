@@ -21,8 +21,10 @@ import type { A2AArtifact } from '../types/a2a'
 export interface ModeConfig {
   /** loop: 循环间隔 ms(默认 60000;前端秒输入 ×1000,zod 下限 100) */
   intervalMs?: number
-  /** loop: 最大循环次数(默认 Infinity) */
+  /** loop: 最大循环次数(必须与 maxDurationMs 至少提供一个) */
   maxIterations?: number
+  /** loop: 最大运行时长(ms;与 maxIterations 至少提供一个) */
+  maxDurationMs?: number
   /** pipeline: 阶段定义 */
   stages?: PipelineStage[]
   /** goal: 满意度判断提示(注入 lead prompt) */
@@ -67,6 +69,8 @@ function parseModeConfig(desc: string, mode: ExecutionMode): ModeConfig {
     config.intervalMs = intervalMatch ? parseInt(intervalMatch[1]!, 10) : 60_000
     const maxMatch = desc.match(/max[:\s]+(\d+)/i)
     config.maxIterations = maxMatch ? parseInt(maxMatch[1]!, 10) : Number.POSITIVE_INFINITY
+    const durationMatch = desc.match(/duration[:\s]+(\d+)/i)
+    if (durationMatch) config.maxDurationMs = parseInt(durationMatch[1]!, 10)
   }
   if (mode === 'goal') {
     // goalCriteria 从 description 中 [criteria:...] 提取
@@ -97,6 +101,10 @@ export function encodeTaskMode(mode: ExecutionMode, config: ModeConfig, descript
       const maxIterations = Math.min(10_000, Math.max(1, Math.floor(config.maxIterations)))
       parts.push(`[max:${maxIterations}]`)
     }
+    if (config.maxDurationMs !== undefined && Number.isFinite(config.maxDurationMs)) {
+      const maxDurationMs = Math.min(86_400_000, Math.max(1_000, Math.floor(config.maxDurationMs)))
+      parts.push(`[duration:${maxDurationMs}]`)
+    }
   }
   if (mode === 'goal' && config.goalCriteria) {
     parts.push(`[criteria:${config.goalCriteria}]`)
@@ -122,13 +130,14 @@ export class LoopController {
     private readonly taskDescription: string,
     private readonly intervalMs: number,
     private readonly maxIterations: number,
+    private readonly maxDurationMs: number | undefined,
     private readonly onResubmit: (title: string, description: string) => void,
   ) {}
 
   /** 主任务完成时调用:启动下一轮倒计时 */
   onTaskCompleted(): void {
     this.iterations += 1
-    if (this.iterations >= this.maxIterations || !this.active) return
+    if (this.iterations >= this.maxIterations || !this.active || (this.maxDurationMs !== undefined && this.iterations > 0 && this.iterations * this.intervalMs >= this.maxDurationMs)) return
     this.timer = setTimeout(() => {
       if (!this.active) return
       this.onResubmit(this.taskTitle, this.taskDescription)

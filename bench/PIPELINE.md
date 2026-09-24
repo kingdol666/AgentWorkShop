@@ -1,24 +1,31 @@
 # AW-IndustrialBench · 可执行测试流水线（Pipeline）
 
-> **本文是执行合同**：任何 Agent / 人类**只读本文**，按 §0 执行卡的命令顺序逐条执行，即可对
-> AgentWorkShop 完成一次**真实跑通**的可复现能力评测，产出 **MD + HTML** 评分报告
+> **本文是执行合同**：任何 Agent / 人类按 §0 中已实现的步骤执行，可对 AgentWorkShop
+> 完成一次可复现的集成能力评测并产出 **MD + HTML** 报告；P12 目前仅为方案，不可执行
 > （`bench/results/<runId>/`，审稿人级跨层总报告见 §0 第 5 步）。
 > 规范背景见 `bench/README.md`（场景/任务/故障/指标定义），
 > 实验总策划见 `docs/experiments/01-test-and-benchmark-master-plan.md`。
 >
-> **被测故事线（评测即真实投产路径，14 个阶段按此展开）**：
-> 启动 PLC 节点模拟器（五协议从站 + 薄膜产线物理引擎）→ 平台连接节点（driverConfig
-> 实测导出）→ 产线/节点绑定（line+product+DAQ+DCW+recipe 建线，卫星数采挂靠）→
-> AgentTeam 创建与任务下达（任务板目标 → lead 派发 → worker 经工具面读写）→
-> 闭环优化与过程监控（受治理写 → 物理随动 → 判定 → 账本归因 → 达标收口；双拉产线
-> 全节点 9 设备 49 信号）→ 治理只读面与系统兜底。集成报告含**模拟产线画像**与
-> **AgentTeam 闭环调优 walkthrough** 两个展示专章（§0 第 3 步②）。
+> **现有集成流水线覆盖范围（P0–P11）**：隔离启动 AW 与 PLC 节点模拟器 → 场景/产线
+> provisioning 与驱动读写 → 确定性工具闭环、治理/回读/账本、可选 LLM goal-loop、多场景
+> 与双拉产线任务。验证对象是**生产型流程的数字孪生/PLC 模拟场景**，不是物理工厂投产，
+> 也不是安全认证。P4m/P10 的脚本化任务、P9 的 mock 调度及 P5b 单 worker 场景不能单独证明标准多 Agent team 的自主决策；
+> 可选 `--agent`/§11 optloop 更接近真实 Agent 作业，但当前仍缺逐动作、逐身份的完整系统侧审计。
 >
-> **四条铁律（先读）**
+> **新增目标验收故事线（P12，实验方案）**：专用 PLC 模拟场景与隔离平台 → 真实 Harness
+> 创建标准 AgentTeam → lead/worker 按职责绑定不同节点 → goal-mode 下达目标/lead 委派 →
+> worker 经受治理工具读数、分析、改参 → PLC 模拟物理引擎响应 → 独立观察器对账工具调用、
+> 治理账本、DCW/DAQ 与任务流 → lead 验收或回退 → 完整证据包与逐 Agent 可视化报告。
+> P12 当前是**验收协议设计，尚未由 `bench/pipeline.mjs` 自动编排**；P0–P11 PASS 不得表述为
+> 完整 AgentTeam 透明闭环 PASS。实施与验收合同见 §12。
+>
+> **核心原则（先读）**
 > 1. 一切结论必须来自**真实启动的服务与真实执行的命令**；任何一步不满足判据 → **停止并如实报告原因**，禁止伪造通过、禁止"平均一下还行"、禁止用脚本绕过本卡的检查点。
 > 2. 环境不具备时（实例不可达、端口被占、缺依赖）→ 按 §1 的失败语义**诚实 skip 并写明原因**，skip 不计分也不算失败；伪造通过 = 全部作废。
 > 3. 本卡所有命令都在**仓库根目录**执行；端口一旦选定，**所有后续命令都用同一个端口**（§1.2）。
 > 4. warn 不是 fail：流水线对"任务级失败"的既定语义是降级为 warn（§1.8）；单次 run 出现 warn 时按第 3 步②的重跑协议处置并如实写进报告，**禁止把 warn 改判成 pass**。
+> 5. PLC 是**模拟器/数字孪生工况**，一律称「生产型模拟场景」，不得写成实体产线已验证；优化期间 Agent 写入必须走受治理工具面，模拟器直写只用于隔离初始化/复位。
+> 6. Agent 自述、终端输出、低频曲线轮询不是完整审计。只有系统侧事件能按 actor/task/tool/node 与治理和过程结果交叉关联，才可声称逐 Agent 透明；缺源必须披露，不可推断补齐。
 
 ---
 
@@ -133,26 +140,12 @@
        同命令重跑一次：重跑得到 75/0/0 → 首轮照实记为 warn-run 并写入报告
        「限制」小节；重跑仍 warn → 如实报告并停止，不得第三次盲跑。
        任何其他阶段的 warn/fail → 按失败处理，停止并诊断。
-     覆盖（真实投产路径的 14 阶段）: 五协议多产线供给与节点绑定 → 数采/数控写+
-     回读 → F5 拦截 → Agent 工具闭环 3 轮收敛 ×4 线 → 工艺参数映射层 P4f →
-     AgentTeam 优化任务（任务板下达目标→daq_query 时段读数→受治理下发→物理
-     随动→达标收口）→ 优化记录/回退/参数台账 → HITL 审批 → 治理只读面 →
-     配方生命周期 → cast-film 闭环寻优(3 seeds) → 向量/图像帧 →
-     跨场景可移植(film-line, 0 代码改动) → 系统兜底 drilling →
-     双拉产线 P10（biax 全线 9 设备五协议 49 信号：探测补建→多节点建线→
-     AgentTeam ≥3 执行节点闭环寻优厚度 25.0±0.7μm）→ 团队调度/团队记忆/引擎注册表。
-     报告专章（论文 exp 与对外展示直接引用）:
-       report.md 内含 **Simulated production line profile**（模拟产线画像：场景工艺
-       叙事、每台 PLC 的协议与端点、SP 可调控参数/PV 过程量全清单含单位/量程/精度/
-       策略、平台侧 DCW/DAQ 节点映射）与 **AgentTeam closed-loop tuning
-       walkthrough**（组队→绑定→目标下达→逐轮调优轨迹表 biax/P6→治理写与拒绝→
-       收口）两章；line-profile.json 为同一画像的机器可读版。
-     可选真引擎: 同命令加 `--agent omp`（或 opencode/codex/…）→ 两层智能证据
-       （P5 规定步闭环 + P5b 目标驱动寻优；需模型凭据，轨迹落
-       agent-loop-<harness>.log 与 agent-goal-loop-<harness>.log）。
-     产物: bench/results/<runId>/{run.json, summary.json, report.md,
-       dashboard.html, metrics.csv, line-profile.json, agentteam-mission.log,
-       agentteam-biax.log}
+     覆盖（现有集成路径；不是完整自主团队证明）: 五协议供给/节点绑定 → 数采/数控写回读 → F5 拦截 → 确定性工具闭环 ×4 线 → 工艺参数映射 P4f → P4m 脚本驱动工具链 + mock 派发 → 治理/回退/HITL/账本 → P6 多 seed → P10 脚本化多节点孪生使命 → P9 mock 团队状态机。完整多 Agent goal-mode 自主优化与逐动作审计另由 P12 定义；当前没有 P12 runner。
+     报告专章: report.md 含模拟产线画像与 AgentTeam walkthrough；line-profile.json 是机器可读画像。
+     可选真引擎: `--agent omp`（或 opencode/codex/…）会运行 P5/P5b；P5b 是 mock lead + 单 LLM worker 的 goal-loop，并非标准多 worker 团队验收。日志转录/摘要不是逐调用系统事务审计，见 §12。
+     产物: bench/results/<runId>/{run.json, summary.json, report.md, dashboard.html,
+       metrics.csv, line-profile.json, agentteam-mission.log, agentteam-biax.log}；
+       这些不是 P12 的逐 Agent 全量事件包。
 
   ③ 真实协议层（约 1–2 分钟）——能力评分面板（含 F2 冻结报警、断链恢复）
      node bench/run.mjs --tier plc --seed 42
@@ -193,6 +186,12 @@
        不重建），保证优化轨迹可复现；`--no-fresh` 保留现场当前工况（续跑语义）。
      集成流水线内跑: node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3 --scenarios
        （等价于在 P10 之后追加 P11 阶段；不加 --scenarios 时基线契约保持 75/0/0 不变。）
+
+   ⑦ P12 AgentTeam 透明闭环（本次只写方案，不执行）
+      当前仓库尚无可运行的 P12 编排器/系统侧完整事件采集契约。仅阅读 §12 并确认
+      只读预检条件；不得把 P4m/P9 mock、脚本化 P10、optloop 四路轮询文件替代 P12，
+      也不得为验证本文而启动服务、模拟器、goal 任务或写入节点。后续实施完成并经审查后，
+      才能按 §12 的准入门启动；不满足时在任何优化写入前报告 NOT-QUALIFIED/NOT-RUN。
 
 ────────────────────────────────────────────────────────────────
 第 4 步 · 复现验证（标准流程的收尾，必做）
@@ -382,7 +381,7 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 
 ---
 
-## 3. 阶段编排（一体化流水线的 14 个阶段 = 真实投产路径）
+## 3. 阶段编排（现有集成路径 + P12 验收设计）
 
 | 阶段 | 内容（真实场景动作） | 为什么必须如此 |
 |---|---|---|
@@ -391,7 +390,7 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 | **P2 多产线供给（节点连接与绑定）** | 每协议一台设备：有 DCW 导出者自成产线（line+product+DAQ+DCW+recipe+开跑）；无 DCW 导出者作**卫星数采**挂靠主产线 | 真实投产的"建线与绑定"动作：节点接入、驱动实测、产线/产品/配方绑定 |
 | **P3 集成** | 真实驱动数采落库（20s 有界等待窗，防冷启动首采慢的假 warn）+ 数控写/回读时延 + F5 越界写治理拦截（**穿透/误拦 = 检查 fail**） | E1 动态核在**多协议**下复验 |
 | **P4 工具级闭环** | 用「有引擎」harness 直调 `daq_query → dcw_control → dcw_judge` **3 轮收敛**逼近窗口中心（每轮判定关记录；**不经 LLM**，确定性） | Agent 工具面的确定性核 |
-| **P4m AgentTeam 优化任务** | 任务板下达优化目标 → 派发 worker → 经工具面 `daq_query`(from/to/bucket 时段读数) 分析 → `dcw_control` 受治理下发(开记录) → 物理随动轮询 → `dcw_judge` 收口 → 账本归因核验 → 达标判定(\|PV−目标\|≤容差) → report/complete/父任务聚合 | 「给 AgentTeam 一个优化目标,团队读写节点达成它」核心功能的直接测评 |
+| **P4m 任务板/工具链冒烟（非自主团队证明）** | 创建 mock lead/worker 任务；pipeline 脚本直接调用 `daq_query → dcw_control → dcw_judge` 并按内置规则计算写值，验证任务状态、受治理 I/O 与物理反馈集成 | 冒烟/集成证据；不证明 worker 自主推理、实际发起每个调用或逐事件可审计 |
 | **P4f 工艺参数映射层** | 用户/Agent 只按「工艺参数」读写工程量：参数面自动生成且无寄存器/dataType 泄漏 → 基准限界(常驻)+产品限界(活动批次)+配方窗口四层收窄联锁（越层 400 点名约束层）→ 参数写/读回 → Agent `param_control`(语义寻址/越层拒绝/未绑定拒绝/记录收口) | 「用户和 Agent 只管设工艺参数、边界逐层收窄」核心治理面的直接测评 |
 | **P4b 回退与优化记录** | 优化记录判定 keep/rollback + **判定与执行分离** + 节点级单步回退 + 参数台账 | Sec. V 的调控闭环 |
 | **P4c HITL 审批** | manual 绑定 → 下发**挂起** → 审批面板可见 → 裁决 → 解阻塞且 PLC 生效（换线执行，避开 P4b 回退冷却） | 审批门是论文核心机制 |
@@ -401,9 +400,10 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 | **P7 多形态数采** | 向量轮廓帧 + 图像帧落库 | 数采不只标量 |
 | **P8 跨场景可移植** | 切换第二个产线场景预设（film-line），用**同一套**委托/治理代码路径重跑 export→建线→数采→受治理写→F5 拦截→回读 | 框架主张「适配新产线=配置任务而非集成项目」的直接度量（0 代码改动） |
 | **P8b 系统兜底 drilling** | 在第二场景刚体上：清场 open 记录 → Agent(auto) 开优化记录 → manual 冻结 DAQ 于窗外 → 等系统兜底（观察窗 120s + 30s 节拍 + 越限 3 采样）自动判定 rollback 并恢复记录基线 → 解冻并恢复第一场景 | 论文 I3（有界自治）的**动态证据**：system 判定 + 值回基线 |
-| **P10 双拉产线全节点** | biax(BOPET) 全线数字孪生 9 设备五协议 49 信号（30 SP + 19 PV 全带工艺描述）：① 以预设蓝图 dry-run 为工程清单，对现场做按 id/信号/端口的**差分探测——缺失补建、漂移修复、停机拉起，不整包重置**（与 cast-film 现场共存）→ 热态装载 biax 物理引擎（清零随机漂移）；② 平台按真实 driverConfig 建一条全线产线（30 DCW + 19 DAQ，描述进 semantics→Agent 语义卡），配方 30 参数全窗纳管开跑；③ AgentTeam 任务板下达厚度目标 25.0±0.7μm → worker 在 ≥3 个执行节点（铸片速度/纵拉快辊/出口轨宽）上轮流受治理写 → 物理随动（运输滞后+一阶收敛）→ dcw_judge → 达标收口 | 「更接近真实双拉产线」的多节点闭环诉求直接测评；「PIPELINE 识别缺节点→自动补建」的工程化建线能力 |
-| **P11 多场景并行闭环**（可选 `--scenarios`） | 三个新增默认场景（injection/wwtp/anneal，目录见 §10）：模拟器差分 ensure（缺失补建/漂移修复，已接入则零改动跳过）→ 引擎增量装载（多引擎同实例并存）→ 每场景平台建线（真实 driverConfig，标签复用）→ 每场景一个 mission Channel + 工具执行器 → **三路 Promise.all 并行**闭环优化（读数→受治理下发→物理随动→判定收口）→ 全轨迹落盘 + 标准 benchmark MD/HTML 报告 | 「多个默认工业场景 → 分产线绑定节点 → 多 Channel 同时闭环优化 → 完整记录展示」的直接测评；接入幂等（重复执行不重复建线建节点） |
-| **P9 平台子系统** | 团队调度（mock lead+2 worker 未指派任务→派发→完成）+ 团队记忆 dedupKey 幂等 + 引擎注册表枚举/可用性探测 | MAS 协作、记忆、多引擎资产的可复现基准 |
+| **P10 双拉产线全节点** | biax 全线数字孪生 9 设备/49 信号；差分补建、多节点产线与受治理闭环，任务和寻优策略由 benchmark 脚本执行 | 多节点模拟产线/治理/工艺模型集成；脚本轨迹不能证明各 worker 身份及自主决策 |
+| **P11 多场景并行闭环**（可选 `--scenarios`） | 多引擎/产线 mission channel 并行运行并产出轨迹；执行器由 benchmark 编排 | 场景可移植、并行稳定性与确定性工具链，不等同于任意 Harness 多角色自主团队 |
+| **P9 平台子系统** | mock lead+2 worker 调度/完成、团队记忆幂等、Harness 注册表 | MAS 状态机/资产冒烟，不属于生产型目标优化 |
+| **P12 AgentTeam 全链路透明闭环（新增验收设计，当前未自动化）** | 专用 PLC 模拟场景 + 隔离 AW → 真实 Harness lead 与至少 2 workers → 角色分离/节点绑定回读 → goal-mode/lead 委派/worker 自主工具作业 → governed write→仿真物理响应→judge/keep/rollback→lead 收口 → 独立对账 Channel、工具事务、治理账本、DCW/DAQ、模拟器状态 → 可复现实验包与逐 Agent swimlane | 唯一验收「谁在何任务下读了什么、为何改哪个参数、治理如何决定、PV 如何响应」的端到端门禁；先实现 §12 遥测/适配，不可由现有分数替代 |
 
 ### ⚠️ 闭环优化的反直觉约束（实测踩过，务必遵守）
 
@@ -490,6 +490,7 @@ static 跑 1 次 + api 层跑 N 轮（每轮独立夹具，tag 含轮次）：�
 | `report.md` | 同内容纯文本，直接贴 PR / 审计；集成跑另含产线画像与 AgentTeam 专章 |
 | `run.json` / `summary.json` | 机器可读全量结果（含每项 metrics 与 evidence），供后续聚合与论文表格生成 |
 | `line-profile.json` | 模拟产线画像的机器可读版（场景/协议/端点/SP-PV 全清单/节点映射） |
+| `bench/results/<runId>-agentteam/`（P12 目标产物） | 原始/规范化事件、manifest、场景/团队/绑定快照、任务树、治理/账本/DCW/DAQ/模拟器证据、覆盖与对账、SHA256SUMS、逐 Agent swimlane + 参数 delta + PV/guard 报告（§12.4）；当前尚无自动生成器 |
 | `bench/reports-archive/<label>-final/` | 跨层总报告（§0 第 5 步）：审稿人级英文 MD+HTML |
 
 ### 阶段 F · 复现验证
@@ -517,6 +518,7 @@ static 跑 1 次 + api 层跑 N 轮（每轮独立夹具，tag 含轮次）：�
 - 流水线层阶段权重：P0=1 P1=1 P2=2 P3=3 P4=3 P4f=3 P4m=3 P4b=2 P4c=2 P4d=1 P4e=2 P6=3 P7=1 P8=3 P8b=3 P10=3 P9=1；
   硬门禁：任一检查 fail 或任一阶段 fail → 总评直接 FAIL（分数只作参考）。
 - 维度映射：D0 论文-代码一致性 / D1 数采 / D2 写控治理 / D3 智能体 / D7 审计归因 / D8 性能（D4/D5/D6 由 §8 全量实验覆盖，静态+接口层不虚评）。
+- **P12 独立资格门**：不计入现有 75 项分数；仅 §12 全部硬门禁与证据完整性 100% 满足才记 P12=PASS。NOT-QUALIFIED/NOT-RUN 不得汇总为完整闭环 PASS；越权写、guard 破坏、写入归因丢失或关键审计缺失为 FAIL 并受控停止。
 
 ---
 
@@ -527,6 +529,7 @@ static 跑 1 次 + api 层跑 N 轮（每轮独立夹具，tag 含轮次）：�
 3. 夹具 tag 隔离（`awb<seed><ts>`），重复运行零冲突；teardown 只停不删，证据链留存；
 4. 平台版本 tag + Node 版本 + 时间戳写入 run.json；
 5. 复现 = 同命令重跑 + `bench/compare.mjs`（static/api/plc/e1a 层）或 `bench/tools/compare-pipeline.mjs`（流水线层）出机器判定：判定类指标必须逐位一致，时延类允许环境性波动、只报告不设门槛。
+6. P12 保存完整 manifest 与事件包（§12.4）；跨 Harness 复现要求场景、任务书、绑定/限制/成功判据一致，并登记 Harness/provider/model 版本。LLM 动作轨迹允许不同；比较安全不变式、证据覆盖、goal/guard 与治理结果。性能结论至少基于 3 次独立 fresh run。
 
 ---
 
@@ -714,9 +717,101 @@ T1–T4 × N20）→ E2/E3/E4 → E5 检测 + TEP/SWaT 回放 → E6 HIL → E7 
 - **任务书模板(质量目标驱动)**:工况交底(预设 story)→ 质量目标带 → 守卫约束 → 定性工艺机理
   → 作业纪律(每轮读数归因→机理决策→单步限幅写入→等物理响应→复测→连续两轮达标→judge)。
   **禁止出现任何"写到 X"的设定值** —— 目标带之外的决策自由度全部留给 agent。
-- **全程录制(每线一路录制器,四路 jsonl)**:
-  - `<scen>-timeline.jsonl` Channel 对话全录(轮询增量去重);
-  - `<scen>-worker-stream.jsonl` omp worker 终端全帧流(terminal mirror 按 pid 挂载);
-  - `<scen>-setpoints.jsonl` 全部写控节点设定值曲线(按 lineId 轮询 value/state);
-  - `<scen>-quality.jsonl` 全部数采节点实测曲线(PV 质量目标 + 守卫量)。
-- **产物**:bench/results/<runId>-optloop/ 下 summary.json + 每线 REPORT 简报 + 四路 jsonl 曲线与对话。
+- **现有观察记录（不是完整审计）**: Channel 约每 6s 轮询；`worker-stream` 当前选取首个带 PID 的 Agent terminal，不能保证匹配 worker；DCW/DAQ 曲线约每 8s 轮询，可能漏掉瞬时变化。它们不提供逐调用服务端 request/response、可靠 actor、治理决定和 ledger 关联，不能声称事件 100% 覆盖。
+- **产物**:`bench/results/<runId>-optloop/` 下 summary.json + 每线 REPORT 简报 + timeline/terminal/DCW/DAQ JSONL；该观察包与 P12 目标事件包不同。
+
+
+---
+
+## 12. P12 · AgentTeam 全链路透明闭环优化验收（方案；本轮不执行）
+
+### 12.1 现状与边界
+
+当前 PIPELINE 可验证 PLC **模拟器**启动/协议接入、平台节点映射、受治理写回读、仿真过程响应及确定性优化结果；另有 mock 团队调度和可选 LLM goal-loop。但尚不能证明「多 Agent 团队自主优化 + 每个成员每个动作均有不可遗漏的系统审计」：
+
+| 路径 | 可证明 | 不能替代的证据 |
+|---|---|---|
+| `pipeline.mjs` P4/P6/P10 | 真实工具/治理/模拟器集成与量化轨迹，策略由脚本决定 | Agent 自主选择工具/参数及 actor 身份 |
+| P4m/P9 | mock lead/worker 任务状态机 | 真实 Harness 多 worker goal 作业及逐调用归属 |
+| `pipeline.mjs --agent` P5/P5b | 可选 LLM；P5b 为 mock lead + 单 LLM worker、单执行器 goal-loop | 多 worker/多控制节点团队；摘要转录不等于原始事务账本 |
+| `bench/optloop.mjs` | 当前最接近真实 goal-mode 团队的原型：omp lead/worker、目标 prompt、模型决定动作 | 每场景仅一个 worker、Harness 固定；terminal PID 选择不保证是 worker，DCW/DAQ 8s 轮询会漏瞬态，缺系统级逐工具事务 |
+
+P12 所称「真实」只表示**实际启动 Agent Harness、AgentWorkShop、PLC 节点模拟器并通过平台工具作业**；被控对象始终是模拟产线，不是物理 PLC/实体工厂。报告必须标注 `PLC simulator / production-like scenario / not physical plant`。目前 P12 是合同，不是可执行脚本；任何缺少的系统遥测/身份能力须先实现并审查，不能用人工整理日志伪装自动完整采集。
+
+### 12.2 P12 实验执行协议（未来实现后才能运行）
+
+> 跨 Harness 的可复现含义是同一实验协议由各自适配器执行，不是任意 Harness 无需适配即可运行。每个 adapter 必须通过统一 conformance checks 并记录原生命令、版本和 AW 工具身份映射。本轮仅设计，不启动 AW/模拟器/团队/goal task，也不写任何节点。
+
+**阶段 A — 只读预检、锁定身份与环境**
+1. 按 §0 使用专用 `AW_HOME/AW_BASE/SIM_BASE` 和专用用户；不得连接常驻/生产实例或共享模拟器。记录 Git commit/dirty diff hash、Node/包锁摘要、AW 与 PLC simulator 版本、端口、PID、启动时间、harness/provider/model/adapter 版本；secret 仅记引用名，不写入证据。
+2. 真实启动或由隔离 runner 启动 PLC simulator；确认健康端点、进程归属、设备/协议端点清单和场景引擎状态。显式加载 `injection-line` preset 后再次读取回验；记下 seed、预热/扰动和复位方式。身份或场景不能确认则 `NOT-QUALIFIED`，不继续。
+3. 通过 simulator 导出及平台实际 `/export` 得到信号/driverConfig 清单，核对每个节点 ID、设备、protocol/address、工程名、unit、scale、当前值、状态/新鲜度；保存 line/product/recipe/run ID 与 DAQ 初始基线。禁止从文档臆造寄存器和量程。
+4. 确认本场景有目标质量 PV、guard PV 及至少两个可由不同 workers 独立拥有的 DCW 控制集合；若没有安全且互不重叠的控制分工，停止或另选场景，不虚构 worker 职责。
+
+**阶段 B — 建标准 AgentTeam、最小权限节点绑定**
+
+| 成员 | 职责 | 节点绑定要求 |
+|---|---|---|
+| Lead ×1（真实 Harness） | 目标解释、检查数据新鲜度、拆任务、委派、监工、独立验收与收口 | 质量/全部 guard DAQ、DCW 状态只读；不绑定任何 DCW 写权限 |
+| Worker A ×1+ | 工艺方向 A 的读数、假设、受控调参、复测和记录 | 相关 DAQ + 共享质量/guard DAQ 只读；仅 A 组 DCW 可写 |
+| Worker B ×1+ | 独立工艺方向 B 的读数、交叉复核、受控调参、复测和记录 | 相关 DAQ + 共享质量/guard DAQ 只读；仅 B 组 DCW 可写，写集合与 A 不重叠 |
+
+1. 使用实际支持的 Harness/平台入口创建具名 channel/team、一个真实 lead 和至少两个真实 worker（mock 不合格）；固定 Agent 实例 ID、角色、Harness/model 配置及父子关系。成员按职责分别绑定，不给 workers 全线写权限；绑定后从服务端读回并与矩阵逐项比对。
+2. 对强耦合变量，由 lead 安排串行或分批执行；禁止 worker 并发写同一旋钮/同一优化记录。任何绑定模式不能限制实际写权限或服务端不能区分 agent actor/token 时，停止在写入前，状态为 `NOT-QUALIFIED`。
+3. 在 goal 启动前启动独立旁路采集器并确认事件源水位、心跳、权限、落盘与磁盘空间；预先保存各源 cursor/offset。若服务器端拿不到 actor、task、tool 精确入参/结果、node、governance/ledger 关联，不得启动写入阶段。
+
+**阶段 C — 场景化 goal prompt 与真实任务**
+
+goal criteria 和任务 prompt 由实测场景画像生成，不写入任何预定 setpoint/建议答案。只允许替换方括号字段：
+
+```text
+你们操作的是【PLC 数字孪生/模拟器上的生产型注塑工况】，不是实体工厂。
+唯一目标：[质量 PV 名称] 在 [从场景规范读取的目标区间及单位] 连续 [N] 个新鲜、有效采样窗内达标，且同时满足所有硬约束：[逐条复制 guard PV/上下界/单位]。
+Lead：先验证 line/run、场景、节点绑定、读数新鲜度和权限；把调查/操纵职责委派给 Worker A 与 Worker B；监控所有子任务，独立读取最终结果，只有目标、guards、治理记录均有证据时才完成父任务。
+Worker A/B：只用分配给自己的 AgentWorkShop 工业工具/节点。每轮先读取相关 PV、共享质量/guard 和当前 SP，引用样本/事件时间；说明观测、机理假设、风险与下一步决策。严格遵守现场回读到的工程/产品/配方边界、单步限幅、冷却和响应等待时间。禁止写其他 worker 节点；禁止绕过 AW 工具调用 simulator 管理接口、数据库、HTTP、shell。
+每次受治理写后等待已测定的过程滞后，再读取 SP/PV/guards，使用判定工具按证据 keep 或 rollback。任何 guard 越界、数据过期/冲突、模拟器健康异常、越权/治理拒绝或审计源掉线时立即停止后续写入并报告。
+达到连续有效复测且全部 guards 满足后，由 Lead 汇总每个 worker 的观测、理由、工具调用、参数变化、拒绝/回退、judge 与终值，再 report/complete；未达标则明确报告未达标。不得仅凭聊天自述宣布成功。
+```
+
+通过 Harness 原生入口创建 `mode=goal` 父任务；保存 prompt/criteria 原文及 hash。验证 lead 是 owner，lead 在 task history 中创建并派发 worker 子任务。benchmark 只旁路观察，不替 Agent 推理、选值、发工具调用或补写报告。
+
+**阶段 D — 完整事件监控、事务对账与参数归因**
+
+1. 原始事件 append-only，不静默滤除拒绝、错误、重试、超时、审批挂起/裁决和取消。每个工具 attempt 有一条可关联记录；最低字段：
+   `run_id,event_id,source,source_seq,seq,ts_utc,monotonic_ns,trace_id,parent_event_id`；`actor_agent_id/role/harness`；`channel_id/task_id/parent_task_id/subtask_id/message_id`；`tool/tool_version/intent`；完整脱敏 request、binding/node/kind；`old_value/requested_value/accepted_value/readback_value/unit/range/step_limit`；状态、响应/错误、耗时、重试/审批；governance rule/decision/reason、optimization record/journal/audit IDs；前后 DAQ sample IDs、PV/guard 值/时间/质量/新鲜度；judge/keep/rollback 结果。
+2. 事实源必须至少包括 AW **服务端工具执行与身份事件 + 服务端绑定/授权读回 + 治理审计/参数账本**，关联 Channel/task history、DCW 变更历史、DAQ 原始样本、simulator 场景/健康事件。聊天和 terminal 是解释/辅助观察，不可作为调用事实的唯一来源。
+3. 优先事件式游标订阅。轮询仅可用于不能事件化的过程状态，并须证明最坏轮询间隔小于可观测变化持续时间，保留源时间戳与 watermark，并由账本逐项对账。任何 paging gap、序号缺口、截断、actor 不明、孤儿 DCW 变化/ledger、无法关联的调用，覆盖报告必须显式列出；关键来源缺失即 P12 FAIL。
+4. 对 task/message/tool attempt（按 actor/tool/result）、binding、写入、治理决策、ledger、judge、rollback 和 DAQ 窗口做双向计数/ID 对账。要求：每次工具尝试都有执行事实；每次有效 SP 改变唯一指向 actor/task/tool/治理结果；每个优化记录有前因后果；每个成功 goal 有独立 PV+guard 复测。保留 duplicate/unmatched/orphan 清单，禁止“清洗掉异常”。
+5. 统一 UTC 并记录 host/service clock skew；每源记录首末 cursor、watermark、缺失/重连计数。冻结原始包后计算 SHA-256；secret 可脱敏，但不得删 actor、node、数值 delta 和治理结果。
+
+**阶段 E — 收口、独立判定与安全复位**
+1. Lead 自主 report/complete 或报告未达标。benchmark 从独立数据面回读任务树、SP、PV、全部 guards、优化账本/judge 和 simulator batch 状态；聊天中的“完成”不作为 pass。绕过治理、越权、硬 guard 破坏立即停写并记 FAIL。
+2. 停止批次及采集器；按预先记录的模拟工况复位步骤恢复安全基准并回读。记录操作者/来源及复位前后值；确认无活动任务/worker、pending approval、未决记录、运行批次或残留采集器。无法确认安全复位时停止并升级人工。
+3. 证据不可覆盖。运行报告将“优化达标”与“监控完整”分别判定：轨迹完整但目标失败仍是优化 FAIL；目标达成但出现审计缺口也不能 P12 PASS。
+
+### 12.3 资格门与判据
+
+**PASS 必须同时满足：**
+- AW 与 PLC simulator 实例身份、启动、scenario/preset、protocol/device、line/product/recipe/run、起终节点映射均有证据；报告清晰说明是模拟场景。
+- 真实 Harness lead + ≥2 workers、goal-mode、lead→worker 委派、职责与节点绑定可从服务端回读；Lead 无 DCW 写集合，Worker 写集合互斥且最小权限。
+- 每一读/写工具 attempt、错误/拒绝、治理/审批、ledger/judge、参数变化均有 actor/task/tool/node/request/result 关联；与 SP/DAQ/模拟器状态双向对账零关键缺失。
+- 独立 PV 和全部 guard 满足 manifest 中的 success criteria，要求的 judge/keep/rollback 正确，lead 合规收口；过程安全没有越权/旁路。
+- 所有必需事件源覆盖率 100%，完整 raw event 包、manifest/hash 可用且报告能从 frozen evidence 重生成。
+
+**NOT-QUALIFIED/NOT-RUN：**写入前发现真实多成员 Harness、goal/dispatch、actor 级服务端归因、绑定隔离、治理/账本或完整事件源任一不支持。停止，不启动 goal 写入，不按普通 skip/pass 计。
+
+**FAIL：**目标未达标/lead 无证据完成、guard 越界、权限旁路、actor 身份错配、任何无法归因的 SP 改变、关键事件丢失/ledger 对账失败、越过停止条件仍继续写。安全停止并保留现场与证据。
+
+仅预先声明的非关键展示数据缺失、且上述所有执行事实完整时，才可报告带限制的结果；关键审计不能降级成 warn。
+
+### 12.4 跨 Harness 复现与证据包
+
+每次使用唯一 `bench/results/<runId>-agentteam/`，append-only，至少输出：
+
+- `manifest.json`：时间/seed/git+dirty hash、平台/模拟器版本与命令、端口/PID、依赖锁、scenario/config/driver hashes、line/product/recipe/run IDs、起终状态、Harness/adapter/provider/model/agent IDs 与参数、任务树、prompt hash、binding 矩阵、判据/限幅/扰动/停机复位规则；不写 token/secret。
+- `scenario.json`、`team.json`、`bindings.json`：服务端回读快照（执行前后）。
+- `events.raw.jsonl`、`events.normalized.jsonl`、`channel.jsonl`、`task-tree.json`、`tool-transactions.jsonl`、`governance-ledger.jsonl`、`dcw-history.jsonl`、`daq-samples.jsonl`、`simulator-state.jsonl`：保留原始来源、schema/version 和所有失败事件。
+- `coverage.json`、`reconciliation.json`、`checks.json`、`SHA256SUMS`：事件源水位/丢失、跨源对账、硬门禁、哈希。
+- `report.md` + `report.html`：首屏模拟器声明与 run verdict；Agent/team/任务树；逐 Agent swimlane（委派、消息、工具读写/拒绝、参数 old→new、治理/judge/rollback/完成）；SP/目标 PV/guard 同时间轴；各调用 request/result/延时/ledger IDs；结果与审计覆盖分开判定；限制、复现命令和 hash。
+
+复现包由独立 verifier 从 raw events 重算并重新生成报告。任意 Harness 必须先通过同一 conformance suite；比较配置、守卫/安全不变式、成功率、证据覆盖、迭代数与成本，并报告 Harness/model 差异。LLM 决策文本/逐轮轨迹允许变化，权限、目标与审计不变式不得变化。性能/成功率结论至少 3 个同配置 fresh runs。

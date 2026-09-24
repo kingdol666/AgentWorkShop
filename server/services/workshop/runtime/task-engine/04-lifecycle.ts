@@ -16,6 +16,10 @@ export abstract class TaskEngineLayer04 extends TaskEngineLayer03 {
    *  (mock/omp/规则引擎三条完成路径共用此处,确保 goal 完成标志恒存在)。 */
   complete(taskId: string, artifacts?: A2AArtifact[]): WorkspaceTask {
     const task = this.requireTask(taskId)
+    if (task.state === 'COMPLETED') return task
+    if (task.state === 'CANCELED' || task.state === 'FAILED') {
+      throw new AppError(409, 'TASK_TERMINAL', `任务 ${taskId.slice(0, 8)} 已处于终态 ${task.state},不能再完成`)
+    }
     const children = this.repos.tasks
       .listByChannel(task.channelId)
       .filter(t => t.parentId === task.id)
@@ -111,8 +115,13 @@ export abstract class TaskEngineLayer04 extends TaskEngineLayer03 {
   }
 
   /** 取消任务:CANCELED(终态)+ 作废队列中的过期投递(assignee 不再消费)+ 投递 cancel 通知 */
-  cancel(taskId: string, by: string): WorkspaceTask {
+  cancel(taskId: string, by: string, reason = 'LEAD_CANCEL'): WorkspaceTask {
     const task = this.requireTask(taskId)
+    if (task.state === 'CANCELED') return task
+    if (task.state === 'COMPLETED' || task.state === 'FAILED') {
+      throw new AppError(409, 'TASK_TERMINAL', `任务 ${taskId.slice(0, 8)} 已处于终态 ${task.state},不能取消`)
+    }
+    this.repos.tasks.update(taskId, { closeReason: reason })
     this.transition(taskId, 'CANCELED', by)
     // 队列中可能仍有该任务的 assign 投递:作废,避免 assignee 消费到已取消任务
     this.repos.messages.consumePendingByTask(taskId)
@@ -128,6 +137,51 @@ export abstract class TaskEngineLayer04 extends TaskEngineLayer03 {
     return this.requireTask(taskId)
   }
 
+  /** 普通根任务超时:活动后代取消,根任务以 FAILED 保留明确超时语义。 */
+  timeoutTree(taskId: string, by: string): WorkspaceTask[] {
+    const root = this.requireTask(taskId)
+    const children = this.cancelTreeChildren(root.id, root.channelId, by, 'ROOT_TIMEOUT')
+    const latest = this.get(root.id)
+    if (latest && latest.state !== 'COMPLETED' && latest.state !== 'FAILED' && latest.state !== 'CANCELED') {
+      this.repos.tasks.update(root.id, { closeReason: 'ROOT_TIMEOUT' })
+      if (latest.state === 'SUBMITTED' || latest.state === 'ASSIGNED' || latest.state === 'WAITING') {
+        this.transition(root.id, 'WORKING', by)
+      }
+      this.transition(root.id, 'FAILED', by)
+      children.push(this.requireTask(root.id))
+    }
+    return children
+  }
+
+  private cancelTreeChildren(rootId: string, channelId: string, by: string, reason: string): WorkspaceTask[] {
+    const ordered: string[] = []
+    const visit = (id: string): void => {
+      for (const child of this.repos.tasks.listChildrenMeta(channelId, id)) {
+        visit(child.id)
+        ordered.push(child.id)
+      }
+    }
+    visit(rootId)
+    const canceled: WorkspaceTask[] = []
+    for (const id of ordered) {
+      const current = this.get(id)
+      if (!current || current.state === 'COMPLETED' || current.state === 'FAILED' || current.state === 'CANCELED') continue
+      canceled.push(this.cancel(id, by, reason))
+    }
+    return canceled
+  }
+
+  /** 取消整棵任务树:后代优先,已终态结果保留。 */
+  cancelTree(taskId: string, by: string, reason = 'LEAD_CANCEL'): WorkspaceTask[] {
+    const root = this.requireTask(taskId)
+    const canceled = this.cancelTreeChildren(root.id, root.channelId, by, reason)
+    const current = this.get(root.id)
+    if (current && current.state !== 'COMPLETED' && current.state !== 'FAILED' && current.state !== 'CANCELED') {
+      canceled.push(this.cancel(root.id, by, reason))
+    }
+    return canceled
+  }
+
   /**
    * 子任务完成:向父 assignee 投递 child-completed 消息;
    * 最后一个未完成子任务完成时,父任务 WAITING → WORKING(lead 接续汇总)。
@@ -136,7 +190,7 @@ export abstract class TaskEngineLayer04 extends TaskEngineLayer03 {
     const parentId = child.parentId
     if (!parentId) return
     const parent = this.get(parentId)
-    if (!parent) return
+    if (!parent || parent.state === 'COMPLETED' || parent.state === 'FAILED' || parent.state === 'CANCELED') return
     this.deliverTaskMessage({
       channelId: child.channelId,
       taskId: parent.id,

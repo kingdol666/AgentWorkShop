@@ -2,48 +2,94 @@
 \label{sec:limits}
 \subsection{Industrial-Informatics Interpretation}
 The principal result is that one supervisory path carried four different jobs
-while keeping command closure, submitted judgment, task state, and process
-attainment as separate records. In run \resRun{} all four scenario predicates
-hold and the governed closed loop reaches $J/J^{*}$ between \resControllerMin{} and \resControllerMax{} (mean \resControllerMean). That agreement does not collapse the records: a \texttt{keep} is
-still the caller's verdict, a completed task is still a workflow state, and a
-process predicate is still computed from subsequent observations.
-
-The separation supports diagnosis: a range rejection calls for a permission change, a driver or readback failure for execution investigation, and an accepted write followed by an adverse response for revision or compensation. The wastewater mission's two reverted blower steps show that the verdict, not the write count, identifies a rejected proposal.
+while keeping command closure, the submitted verdict, task state, and process
+attainment as separate records. In run \resRun{}, all four scenario predicates
+hold, and the governed closed loop reaches $J/J^{*}$ between \resControllerMin{}
+and \resControllerMax{} (mean \resControllerMean): a range rejection points to
+a permission or window change, a driver or readback failure to an execution
+problem, and an accepted write followed by an adverse response to the need for
+revision or compensation---three distinctions a single success flag would
+merge.
 
 \subsection{Validity and Reproducibility}
 The snapshot fixes the run identifier, seed, commit, harness fingerprint, and raw
-artifacts. Initial state, asynchronous sampling, response windows, and simulator timing still affect deterministic policies; the controller optimum and the scenario predicates are internal oracles; the ablation has three deterministic repetitions and therefore supports mechanism attribution, not statistical inference; and latencies are environment observations, not service-level bounds. Evidence remains simulation-tier, from author-implemented dynamic simulators rather than validated digital twins. No physical-device campaign, operator study, TEP/SWaT replay, or external-framework comparison is reported; the four process models broaden structural variety without showing transfer to actual equipment; and records lack run identifiers, so poorly bounded queries may mix production runs.
+artifacts, so the reported counts can be re-derived rather than trusted. Four
+qualifications bound what they support. First, the evidence is simulation-tier:
+the simulators are deterministic per seed but are not validated digital twins,
+and no physical-device campaign, operator study, Tennessee Eastman Process
+(TEP)/Secure Water Treatment (SWaT) replay, or external-framework comparison
+is reported. Second, the controller optimum and the
+scenario predicates are internal oracles, and the ablation has three
+deterministic repetitions, so it supports mechanism attribution rather than
+statistical inference; latencies are environment observations, not service-level
+bounds. Third, initial state, asynchronous sampling, response windows, and
+simulator timing still influence deterministic policies. Fourth, several
+capabilities described in Section~\ref{sec:arch} are implemented but not
+exercised here, including memory retrieval quality, plugin hot-reload,
+alarm-chain timing, and engine interchange; the memory call made by the live
+turns returns no stored entry, so the
+memory layer is exercised rather than validated. The four process models
+broaden structural variety within those bounds but do not establish transfer to
+actual equipment.
+
+\subsection{Safety Positioning and Human Oversight}
+The objection that a language-model team should not ``take over'' production
+applies to a design \system{} does not propose: fast regulation, hardware
+interlocks, and safety functions remain in the PLC, and
+Section~\ref{sec:hitl} already bounds
+what an agent can change. What the framework adds is not a protection
+guarantee but a bounded blast radius: prompts, retrieved documents, and
+member-written memory are untrusted text rather than authority
+\cite{greshake2023injection,liu2024pinjection}, so a mistaken or manipulated
+proposer is confined to per-binding scope and journaled, attributable actions.
+Human oversight rests on the same states: binding scope, admission limits,
+readback, and the backstop operate whether or not a human approves, which
+bounds the damage of approval fatigue and automation bias
+\cite{bainbridge1983ironies,parasuraman2000model,leesee2004trust,parasuramanmanzey2010complacency}.
+Approval is a revocable per-binding policy, and because admission is re-checked
+at execution, a stale approval cannot carry an out-of-window value; a context
+change between approval and execution is caught by that re-admission rather
+than by re-consulting the approver. Oversight
+consumes the evidence record rather than an alarm stream.
 
 \subsection{Deployment Boundaries}
-Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
-post-write hold is a per-node anti-frequency guard rather than a stability proof,
-readback agreement need not imply process recovery, and multi-node compensation
-may partially succeed; within-range oscillation, storage failure, clock error,
-and worst-case recovery time remain unevaluated.
+Execution and recovery are non-atomic. Bookkeeping may fail after actuation, the
+post-write hold guards write frequency rather than stability, readback agreement
+need not imply process recovery, and multi-node compensation may partially
+succeed, while within-range oscillation, storage failure, clock error, and
+worst-case recovery time remain unevaluated.
 
-Bindings govern sanctioned tools, not arbitrary I/O from a privileged engine, so deployment requires least privilege, endpoint security, and IT/OT separation \cite{iec62443-3-3,nist80082}. Independent interlocks and any required IEC~61511 protection must remain: \system{} is neither a safety instrumented
-function nor a substitute for plant protection \cite{iec61511}. Approval can
-also introduce fatigue, automation bias, and over-reliance
-\cite{parasuraman2000model,bainbridge1983ironies,leesee2004trust,parasuramanmanzey2010complacency},
-and the present endpoint lacks line-scoped approver authorization; deployment
-would require fail-closed decisions, segregation of duties, and alarm-path
-failure tests \cite{eemua191}.
+For any production deployment, bindings govern sanctioned tools, not arbitrary
+I/O from a privileged engine, so least privilege, endpoint security, and IT/OT
+separation remain necessary \cite{iec62443-3-3,nist80082}, and independent
+hardware interlocks and any required IEC~61511 protection must stay in place: \system{}
+is neither a safety instrumented function nor a substitute for plant
+protection \cite{iec61511}. The approval wait already fails closed on expiry,
+but the endpoint still lacks line-scoped approver authorization, so a
+production deployment would additionally need segregation of duties and
+alarm-path failure tests \cite{eemua191}.
 
 \section{Conclusion}
 \label{sec:conclusion}
-\system{} contributes a reusable supervisory execution architecture rather
+\system{} contributes a governed supervisory execution architecture rather
 than a new process optimizer: a stable path linking agent-team identities,
 semantic nodes, production context, governed writes, readback, observations,
-verdicts, and compensation, exercised by a \resPhases-phase suite, two
-AgentTeam missions, a three-seed loop, and four process missions. In this run five protocol stacks execute through
-the common node abstraction, all configured full-governance probes are rejected,
-and all four mission predicates hold, while the records keep command acceptance,
-readback, submitted judgment, and task completion distinct from those predicates.
-Claims of rapid commissioning, optimization superiority, autonomous LLM
-control, physical-plant transfer, and safety assurance require additional
-evidence.
+verdicts, and compensation, exercised by a \resPhases-phase suite, agent-team
+missions, a three-seed loop, and four process missions. In the
+reference run all \resChecksTotal{} checks pass, every configured
+full-governance probe is rejected, and all four mission predicates hold, with
+command acceptance, readback, the submitted verdict, and task completion kept
+distinct from those predicates. Physical-plant
+deployment, human-operator studies, and external-framework comparison remain
+open; until they are reported, claims of optimization superiority, autonomous
+control, and safety assurance stay unsupported.
 
 \section*{Data Availability and Disclosure}
-Artifacts are archived under \texttt{bench/results/20260921184204-10lc} (four-arm ablation: \texttt{20260921181234-e1lite}); reproduction also needs the simulator source and reset state, and the snapshot lacks an immutable simulator-tree fingerprint, which the archival package must include. AI assistants
-supported editing and evidence checking under author direction; the authors
-remain responsible for all claims and data.
+\footnotesize
+Artifacts are archived in \path{bench/results/}: the main run in
+\path{bench/results/20260921184204-10lc}, the ablation companion in
+\path{bench/results/20260921181234-e1lite}. Reproduction also needs
+the simulator source and reset state, and the snapshot lacks an immutable
+simulator-tree fingerprint. AI assistants supported editing and evidence
+checking under author direction; the authors remain responsible for all claims
+and data.

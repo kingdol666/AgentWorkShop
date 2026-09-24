@@ -44,6 +44,20 @@ export function migrateAddColumn(db: DatabaseSync, table: string, column: string
   }
 }
 
+/** AgentTeam guardrail task metadata; additive and safe for existing task rows. */
+export function migrateAgentTeamTaskGuardrailColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'tasks', 'source_chat_message_id', 'TEXT')
+  migrateAddColumn(db, 'tasks', 'source_chat_delivery_id', 'TEXT')
+  migrateAddColumn(db, 'tasks', 'close_reason', 'TEXT')
+  migrateAddColumn(db, 'tasks', 'deadline_at', 'TEXT')
+}
+
+export function migrateAgentTeamTaskGuardrails(db: DatabaseSync): void {
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_root_source_chat_message
+    ON tasks(channel_id, source_chat_message_id)
+    WHERE parent_id IS NULL AND source_chat_message_id IS NOT NULL`)
+}
+
 /** 检测表上是否存在 指向某表的列级外键 */
 export function hasForeignKey(db: DatabaseSync, table: string, from: string, refTable: string): boolean {
   const rows = db.prepare(`PRAGMA foreign_key_list(${table})`).all() as Array<{ from: string, table: string }>
@@ -79,10 +93,14 @@ export function migrateMissingForeignKeys(db: DatabaseSync): void {
         artifacts_json TEXT NOT NULL DEFAULT '[]',
         history_json   TEXT NOT NULL DEFAULT '[]',
         route_reason   TEXT NOT NULL DEFAULT '',
+        source_chat_message_id  TEXT,
+        source_chat_delivery_id TEXT,
+        close_reason   TEXT,
+        deadline_at    TEXT,
         created_at     TEXT NOT NULL,
         updated_at     TEXT NOT NULL
       );
-      INSERT INTO tasks_new SELECT id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, route_reason, created_at, updated_at FROM tasks;
+      INSERT INTO tasks_new SELECT id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, route_reason, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, created_at, updated_at FROM tasks;
       DROP TABLE tasks;
       ALTER TABLE tasks_new RENAME TO tasks;
       -- 重建后索引必须与 SCHEMA_SQL 对齐:漏建则热查询退化为全表扫描(route_reason 列
@@ -265,10 +283,14 @@ export function migrateLegacySchema(db: DatabaseSync): void {
       retry_count    INTEGER NOT NULL DEFAULT 0,
       artifacts_json TEXT NOT NULL DEFAULT '[]',
       history_json   TEXT NOT NULL DEFAULT '[]',
+      source_chat_message_id  TEXT,
+      source_chat_delivery_id TEXT,
+      close_reason   TEXT,
+      deadline_at    TEXT,
       created_at     TEXT NOT NULL,
       updated_at     TEXT NOT NULL
     );
-    INSERT INTO tasks_new SELECT id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, created_at, updated_at FROM tasks;
+    INSERT INTO tasks_new SELECT id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, created_at, updated_at FROM tasks;
     DROP TABLE tasks;
     ALTER TABLE tasks_new RENAME TO tasks;
     CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);

@@ -5,7 +5,7 @@
  * 刻意不做成模块级全局,否则多通道同屏里的多个看板会互相串台。
  *
  *  - canDrop = 该卡能否移入该列:列有 moveAction 且目标态 ≠ 当前态;
- *    retry 列只收 FAILED/CANCELED,cancel 列收未终结态;
+ *    retry 列只收 FAILED,cancel 列收未终结态;
  *  - 拖拽只裁决「可不可以放」,真正执行仍走 applyMove(与状态胶囊菜单同一动作面);
  *  - colClasses 给出列样式态:可放 = 蓝调高亮;不可放 = 压暗;拖出来源列 = 微降透明。
  */
@@ -29,7 +29,7 @@ export function useTaskBoardDrag(options: {
     const t = taskById(taskId)
     if (!t) return false
     if (col.states.includes(t.state)) return false
-    if (col.moveAction === 'retry') return ['FAILED', 'CANCELED'].includes(t.state)
+    if (col.moveAction === 'retry') return t.state === 'FAILED'
     return ['SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING', 'FAILED'].includes(t.state)
   }
 

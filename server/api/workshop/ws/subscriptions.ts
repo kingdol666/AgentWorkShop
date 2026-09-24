@@ -29,6 +29,9 @@ export function bindStreamSubscriptions(manager: AgentChannelManager, stream: Ch
         parentId: task?.parentId,
         progress: task?.progress,
         routeReason: task?.routeReason,
+        closeReason: task?.closeReason,
+        deadlineAt: task?.deadlineAt,
+        retryCount: task?.retryCount,
         createdAt: task?.createdAt,
         artifacts: task?.artifacts?.length,
       }, { taskId: e.taskId, agentId: e.agentId ?? assigneeId })

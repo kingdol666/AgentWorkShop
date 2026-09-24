@@ -8,6 +8,7 @@ import type { Part } from '../../types/a2a'
 import type { WorkspaceTask } from '../../types/task'
 import type { AgentMemory } from '../memory'
 import { AppError } from '../../../../utils/errors'
+import { workshopSettings } from '../../settings'
 
 export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
   /** Agent 自主作业能力面(绑定本实例身份与 channel,委托 manager 作业方法) */
@@ -76,7 +77,7 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
   protected async submitLeadRootTask(
     channelId: string,
     callerAgentId: string,
-    input: { title: string, description?: string, parts?: Part[] },
+    input: { title: string, description?: string, parts?: Part[], sourceChatMessageId?: string, sourceChatDeliveryId?: string },
   ): Promise<WorkspaceTask> {
     const caller = this.requireMember(channelId, callerAgentId)
     if (caller.role !== 'lead') {
@@ -84,12 +85,21 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
     }
     const title = String(input.title ?? '').trim()
     if (!title) throw new AppError(400, 'BAD_REQUEST', 'submit_task 需要非空 title')
-    // 幂等:同标题未终态根任务(lead 可能在一轮里重复登记同一次请求)
-    const existing = this.getTaskEngine().list(channelId).find(t =>
-      !t.parentId
+    const roots = this.getTaskEngine().list(channelId).filter(t => !t.parentId)
+    // 持久化来源身份是强幂等键:同一条群聊消息即使 Lead 改标题也只能有一个 root。
+    const existingBySource = input.sourceChatMessageId
+      ? roots.find(t => t.sourceChatMessageId === input.sourceChatMessageId)
+      : undefined
+    if (existingBySource) return existingBySource
+    // 无来源 ID 的旧入口保留标题兜底,但只拦截在途任务。
+    const existing = roots.find(t =>
+      !input.sourceChatMessageId
       && t.title === title
       && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
     if (existing) return existing
+    const deadlineAt = /^\[mode:(goal|loop|pipeline)\]/.test(input.description ?? '')
+      ? undefined
+      : new Date(Date.now() + Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))).toISOString()
     const task = this.getTaskEngine().create({
       channelId,
       creatorId: callerAgentId,
@@ -97,6 +107,9 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
       title,
       description: input.description,
       parts: input.parts,
+      sourceChatMessageId: input.sourceChatMessageId,
+      sourceChatDeliveryId: input.sourceChatDeliveryId,
+      deadlineAt,
     })
     // 唤起调度:下一 tick 即按"lead 名下未规划根任务"请 lead 继续(分解或直接作答)
     this.ensureChannelRuntime(channelId).wakeScheduler()

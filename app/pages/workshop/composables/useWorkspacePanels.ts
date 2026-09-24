@@ -11,6 +11,8 @@ import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
  * `aw:open-agent` 的 provide 也在这里:它必须由页面(编排层)注入,时间线/lanes
  * 全树(inject)才能解析到同一个开启函数。
  */
+export interface WorkspaceTaskTarget { channelId: string, taskId: string }
+
 export function useWorkspacePanels(wsId: ComputedRef<string>) {
   const wsStore = useWorkspacesStore()
 
@@ -30,8 +32,9 @@ export function useWorkspacePanels(wsId: ComputedRef<string>) {
   provide('aw:open-agent', openAgentInChannel)
   const taskDrawerOpen = ref(false)
   const taskDrawerId = ref<string | null>(null)
-  const openTask = (id: string): void => {
-    taskDrawerId.value = id
+  const openTask = (target: WorkspaceTaskTarget): void => {
+    wsStore.setActiveChannel(wsId.value, target.channelId)
+    taskDrawerId.value = target.taskId
     taskDrawerOpen.value = true
   }
 

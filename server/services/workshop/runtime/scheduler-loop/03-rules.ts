@@ -21,6 +21,8 @@ export abstract class SchedulerLoopLayer03 extends SchedulerLoopLayer02 {
       // FAILED 且 retryCount<3:优先换人重试;仅剩原 assignee 空闲(如单 worker channel)
       // → 由原 assignee 重试(reassign 到自己,走 FAILED→ASSIGNED 恢复);无人可用 → cancel(允许终结)
       if (task.state === 'FAILED') {
+        // ROOT_TIMEOUT 已是超时收口结果,不能被恢复规则重新派发。
+        if (task.closeReason === 'ROOT_TIMEOUT') continue
         if (task.retryCount < 3) {
           const other = this.pickWorker(pool, now, task.assigneeId)
           if (other) {

@@ -7,6 +7,7 @@ import type { Part } from '../../types/a2a'
 import type { WorkspaceTask } from '../../types/task'
 import { AppError } from '../../../../utils/errors'
 import { rowToTask } from './helpers'
+import { assertDispatchAllowed } from './policy'
 
 export abstract class TaskEngineLayer02 extends TaskEngineLayer01 {
   /** 创建任务(落库);若 parentId 存在且父任务 WORKING 则父转 WAITING */
@@ -18,6 +19,10 @@ export abstract class TaskEngineLayer02 extends TaskEngineLayer01 {
     description?: string
     parentId?: string
     parts?: Part[]
+    sourceChatMessageId?: string
+    sourceChatDeliveryId?: string
+    closeReason?: string
+    deadlineAt?: string
   }): WorkspaceTask {
     const row = this.repos.tasks.create({
       channelId: input.channelId,
@@ -29,6 +34,10 @@ export abstract class TaskEngineLayer02 extends TaskEngineLayer01 {
       state: 'SUBMITTED',
       artifacts: this.initialArtifacts(input.parts),
       history: [],
+      sourceChatMessageId: input.sourceChatMessageId ?? null,
+      sourceChatDeliveryId: input.sourceChatDeliveryId ?? null,
+      closeReason: input.closeReason ?? '',
+      deadlineAt: input.deadlineAt ?? null,
     })
     if (input.parentId) {
       const parent = this.repos.tasks.findById(input.parentId)
@@ -46,6 +55,8 @@ export abstract class TaskEngineLayer02 extends TaskEngineLayer01 {
     parent: WorkspaceTask,
     input: { assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string },
   ): WorkspaceTask {
+    // TaskEngine 是所有派发入口的最终预算闸门；Manager/host tool 的提示不能替代它。
+    assertDispatchAllowed(this.repos.tasks, parent)
     // 判重下沉(单一入口守卫:REST / LLM 工具 / 调度器直通统一遵守):
     // 同父同标题在途子任务 → 409,快照滞后引发的重复派发在此收口(省 token 不重跑)。
     // 子任务直查(listChildrenMeta;idx_tasks_parent 支撑),免全 channel 扫描。

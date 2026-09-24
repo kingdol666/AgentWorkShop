@@ -8,6 +8,7 @@ import { AppError } from '../../../../utils/errors'
 import { KNOWN_HARNESSES, rowToTask } from './helpers'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { assertHarnessUsable } from '../../agents/harness-availability'
+import { workshopSettings } from '../../settings'
 
 export abstract class ManagerLeadTeam extends ManagerAdminAgents {
   /** lead 在本 channel 新建团队成员(worker):按需落模板(owner=channel 属主)并克隆为独立实例 */
@@ -21,6 +22,13 @@ export abstract class ManagerLeadTeam extends ManagerAdminAgents {
     const channel = this.requireChannelRow(channelId)
     const name = input.name.trim()
     if (!name) throw new AppError(400, 'BAD_REQUEST', '成员名不能为空')
+    const workerCount = this.deps.repos.channelAgents.listByChannel(channelId)
+      .filter(m => m.role === 'worker').length
+    const workerLimit = Math.max(1, Number(workshopSettings().max_lead_created_workers ?? 8))
+    if (workerCount >= workerLimit) {
+      throw new AppError(409, 'TEAM_WORKER_LIMIT',
+        `Channel worker 名册已达到上限 ${workerCount}/${workerLimit}(禁用成员也计数)。请复用现有成员或先由用户调整名册。`)
+    }
     let templateId = input.templateId
     if (templateId) {
       if (!this.deps.repos.agents.findById(templateId)) {

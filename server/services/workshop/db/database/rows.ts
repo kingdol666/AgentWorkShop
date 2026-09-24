@@ -311,6 +311,10 @@ export interface TaskRow {
   artifactsJson: string
   historyJson: string
   routeReason: string
+  sourceChatMessageId: string | null
+  sourceChatDeliveryId: string | null
+  closeReason: string | null
+  deadlineAt: string | null
   createdAt: string
   updatedAt: string
 }

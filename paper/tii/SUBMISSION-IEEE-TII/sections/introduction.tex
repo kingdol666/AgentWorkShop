@@ -1,18 +1,24 @@
 \section{Introduction}
-\IEEEPARstart{I}{ndustrial} optimization often occurs above the regulatory
-control layer. Engineers adjust recipes, schedules, and setpoints to meet
-quality, throughput, energy, or discharge objectives while PLCs and local
-controllers retain fast regulation. The supervisory decision is only one part
-of the intervention. A usable execution path must also establish which deployed
-actor may change which parameter, which limits are active for the current
-product and run, whether the device accepted the command, and whether the
-process subsequently improved.
+\IEEEPARstart{I}{ndustrial} optimization occurs above the regulatory control
+layer: engineers adjust recipes, schedules, and setpoints to meet quality,
+throughput, energy, or discharge objectives while PLCs and local controllers
+retain fast regulation. The supervisory decision, however, is only one part of
+the intervention: a usable execution path must also establish who may change
+which parameter, which limits are active, whether the device accepted the
+command, and whether the process improved. Because these concerns are normally
+embedded in
+application code, they are rebuilt for every new process, protocol, or agent
+framework, and the rebuild is where duplicated drivers, ad-hoc permission
+checks, and logs that cannot be tied back to a decision accumulate.
 
-These concerns recur across plants whose physics and objectives differ:
-injection molding couples part weight to pressure, time, and temperature;
-wastewater treatment (WWTP) balances effluent constraints against aeration and dosing cost; annealing trades material properties against line speed; and BOPET (biaxially oriented polyester) production coordinates multiple stretching sections. All of them need an
-auditable bridge from a team-level task to heterogeneous acquisition and
-control nodes.
+These concerns recur across plants whose physics and objectives differ---
+injection molding coupling part weight to pressure, time, and temperature;
+wastewater treatment (WWTP) balancing effluent constraints against aeration and
+dosing cost; annealing trading material properties against line speed; and
+BOPET (biaxially oriented polyethylene terephthalate) coordinating casting and
+stretching sections.
+All need an auditable bridge from a team-level task to heterogeneous acquisition
+and control nodes.
 
 Large language model (LLM) agents are being studied for industrial diagnosis,
 engineering assistance, and PLC-program generation
@@ -25,35 +31,43 @@ including simulated controller and machine interaction
 line, product, recipe, and run context. Nodes expose engineering quantities
 rather than register addresses; bindings scope sanctioned tools; and
 intervention records retain the proposal, execution result, observation, and
-submitted judgment. Fig.~\ref{fig:intro} contrasts this organization with application-specific integration; fast regulation, certified protection, and the choice of optimization algorithm remain outside the framework.
+verdict. Fig.~\ref{fig:intro} contrasts this organization with application-specific integration; fast regulation, certified protection, and the choice of optimization algorithm remain outside the framework.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{resources/fig1-governed-binding-v2.pdf}
-\caption{Conceptual supervisory integration: (a) application-specific links,
+\caption{Conceptual supervisory integration: (a) application-specific links
 duplicating drivers, permissions, and logging per application; (b) governed
-member--node binding in \system{}: requests pass recipe, approval, and range
-checks under shared production context, and intervention records return
-readback, observation, and verdict. Integration patterns are compared, not
-optimization performance; PLC regulation remains outside the agent-team loop.}
+member--node binding in \system{}, where requests pass recipe, approval, and
+range checks and intervention records return readback, observation, and
+verdict. Patterns are compared, not optimization performance; PLC regulation
+remains outside the agent-team loop.}
 \label{fig:intro}
 \end{figure*}
 
 The paper makes four contributions:
 \begin{enumerate}
-\item a \textbf{capability-based industrial execution architecture} that
-connects agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW) nodes, heterogeneous protocol drivers, and line--product--recipe--run context while keeping task membership
-distinct from physical-write authority;
-\item a \textbf{reusable integration boundary} consisting of self-describing
-node and driver contracts, production objects, plugin extension points, and a
-typed SDK. The evaluated reference adapter projects scenario blueprints into
-these common services, while process models and policies remain external;
-\item an \textbf{evidence-preserving governed intervention workflow} that
-separates admission, optional approval, actuation, readback, process
-observation, submitted judgment, compensation, and policy-driven backstop
-actions; and
-\item a \textbf{layered simulation-tier evaluation} spanning five protocol
-stacks, a mechanism ablation, a deterministic controller, two AgentTeam
-missions (one node and a nine-device line), and four process scenarios, with task state and objective attainment reported separately.
+\item a \textbf{capability-based industrial execution architecture} connecting
+agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW)
+nodes, heterogeneous protocol drivers, and line--product--recipe--run context,
+with task membership distinct from physical-write authority;
+\item a \textbf{reusable integration boundary} of self-describing node and
+driver contracts across five protocol families, versioned production objects,
+plugin extension points, and a typed software development kit (SDK), into which
+the evaluated reference
+adapter projects scenario blueprints while process models and policies remain
+external;
+\item an \textbf{evidence-preserving governed intervention workflow}
+separating admission, optional approval, actuation, readback, observation,
+the caller's verdict, compensation, and backstop actions, so a completed task
+never stands in for a verified process outcome; and
+\item a \textbf{layered evaluation} exercising one governed path through a
+mechanism ablation, a deterministic controller, agent-team missions, and
+concurrent process missions, with task state and objective attainment reported
+separately throughout.
 \end{enumerate}
-The experiments use real software protocol stacks against author-implemented dynamic process simulators under deterministic scripted policies.
+Scope is stated once here and revisited in Section~\ref{sec:limits}: real
+software protocol stacks execute against author-implemented dynamic simulators,
+scripted policies drive the governed tools for repeatability, and fast
+regulation, certified protection, physical-plant transfer, and optimizer
+ranking are outside the claims made here.

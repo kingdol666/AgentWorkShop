@@ -52,7 +52,7 @@ export interface AgentWorkspace {
    * **不**向自己投递 assign 消息(lead 正在回合内,无需自我唤醒;后续由调度器按
    * "lead 名下未规划根任务"触发 supervise 继续分解或直接作答)。
    */
-  submitTask(input: { title: string, description?: string, parts?: Part[] }): Promise<WorkspaceTask>
+  submitTask(input: { title: string, description?: string, parts?: Part[], sourceChatMessageId?: string, sourceChatDeliveryId?: string }): Promise<WorkspaceTask>
   /** 任务分发(仅 lead;创建子任务并指派) */
   dispatchTask(input: { parentTaskId?: string, assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string }): Promise<WorkspaceTask>
   /** 查看同 Channel 任务列表(含同事) */

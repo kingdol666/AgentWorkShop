@@ -12,6 +12,9 @@ export interface TaskEventTask {
   assigneeId?: string
   progress?: number | null
   routeReason?: string
+  closeReason?: string
+  deadlineAt?: string
+  retryCount?: number
   createdAt: string
   artifacts?: unknown[]
 }
@@ -94,6 +97,10 @@ export interface TaskEngine {
     description?: string
     parentId?: string
     parts?: Part[]
+    sourceChatMessageId?: string
+    sourceChatDeliveryId?: string
+    closeReason?: string
+    deadlineAt?: string
   }): WorkspaceTask
   dispatch(
     parent: WorkspaceTask,
@@ -107,7 +114,9 @@ export interface TaskEngine {
   reassign(taskId: string, toAgentId: string): WorkspaceTask
   /** 修改待执行任务(title/description)+ 刷新 assignee 队列投递 */
   updateTask(taskId: string, patch: { title?: string, description?: string }, by: string): WorkspaceTask
-  cancel(taskId: string, by: string): WorkspaceTask
+  cancel(taskId: string, by: string, reason?: string): WorkspaceTask
+  cancelTree(taskId: string, by: string, reason?: string): WorkspaceTask[]
+  timeoutTree(taskId: string, by: string): WorkspaceTask[]
   onChildCompleted(child: WorkspaceTask): void
   /** 断线重连重投:非终态任务无 pending assign 时向 assignee 重发(restore 用) */
   redeliverAssign(taskId: string): WorkspaceTask
@@ -138,6 +147,8 @@ export interface AgentRuntimeLike {
   /** 本 agent 的任务队列视图(待执行 FIFO / 执行中 / 已完成) */
   getQueueView(): AgentTaskQueueView
   abortCurrent(): void
+  /** 仅中止仍在执行指定任务的当前 run;不影响其它任务或 supervise 回合 */
+  abortTask?(taskId: string): boolean
   wakeMailbox(): void
   stop(): Promise<void>
   /** 平台侧合成事件出口(如 SchedulerLoop 汇总成果);转发 ChannelBus.emit 走统一事件流 */

@@ -42,6 +42,10 @@ export function rowToTask(row: TaskRow): WorkspaceTask {
     artifacts: parseJson<A2AArtifact[]>(row.artifactsJson, []),
     history: parseJson<A2AMessage[]>(row.historyJson, []),
     routeReason: row.routeReason || undefined,
+    sourceChatMessageId: row.sourceChatMessageId || undefined,
+    sourceChatDeliveryId: row.sourceChatDeliveryId || undefined,
+    closeReason: row.closeReason || undefined,
+    deadlineAt: row.deadlineAt || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -63,6 +67,10 @@ export function rowToTaskLite(row: TaskMetaRow): WorkspaceTask {
     artifacts: [],
     history: [],
     routeReason: row.routeReason || undefined,
+    sourceChatMessageId: row.sourceChatMessageId || undefined,
+    sourceChatDeliveryId: row.sourceChatDeliveryId || undefined,
+    closeReason: row.closeReason || undefined,
+    deadlineAt: row.deadlineAt || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }

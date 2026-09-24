@@ -1,0 +1,56 @@
+# 双拉(BOPET)薄膜产线多节点闭环 · 闭环寻优报告(biax)
+
+- 终态:COMPLETED · PV 终值:25.02 μm(目标带 25±0.7) ✓ 带内
+- 守卫约束:全部满足 
+- 收口设定:
+  - dry-temp-sp = 172 ℃
+  - dew-point-sp = -40 ℃
+  - feed-rate-sp = 650 kg/h
+  - zone1-sp = 272 ℃
+  - zone2-sp = 278 ℃
+  - zone3-sp = 284 ℃
+  - zone4-sp = 288 ℃
+  - zone5-sp = 292 ℃
+  - screw-sp = 58 rpm
+  - pump-sp = 32 rpm
+  - die-lip-sp = 285 ℃
+  - chill-temp-sp = 28 ℃
+  - cast-spd-sp = 35.8 m/min
+  - pinning-sp = 7 kV
+  - mdo-preheat1-sp = 95 ℃
+  - mdo-preheat2-sp = 100 ℃
+  - mdo-preheat3-sp = 105 ℃
+  - slow-roll-sp = 42 m/min
+  - fast-roll-sp = 118 m/min
+  - mdo-anneal-sp = 135 ℃
+  - tdo-preheat-sp = 110 ℃
+  - tdo-stretch-sp = 118 ℃
+  - tdo-anneal-sp = 215 ℃
+  - chain-sp = 130 m/min
+  - rail-out-sp = 3000 mm
+  - corona-sp = 3.5 kW
+  - winder-tension-sp = 88 N
+  - taper-sp = 28 %
+  - contact-press-sp = 1.6 bar
+  - winder-speed-sp = 160 m/min
+- 实测终值:
+  - dry-temp-pv = 172 ℃
+  - moisture-pv = 4.5 ppm
+  - melt-temp = 290.8 ℃
+  - melt-pressure = 12.64 MPa
+  - pump-outlet = 17.35 MPa
+  - cast-temp-pv = 31.6 ℃
+  - mdo-film-temp = 104.8 ℃
+  - mdo-ratio-pv = 2.81 
+  - tdo-temp-pv = 155.2 ℃
+  - td-ratio-pv = 3.25 
+  - rail-width-pv = 3000 mm
+  - biax-thickness = 25.02 μm
+  - thickness-sigma = 0.202 μm
+  - biax-profile = null μm
+  - biax-defect = 0.176 %
+  - biax-haze = 0.54 %
+  - dyne-level = 42 dyn/cm
+  - winder-tension-pv = 65.7 N
+  - roll-diameter = 1.049 m
+- 证据文件:biax-timeline.jsonl(对话全录) / biax-worker-stream.jsonl(worker 全帧) / biax-setpoints.jsonl(设定曲线) / biax-quality.jsonl(质量曲线)

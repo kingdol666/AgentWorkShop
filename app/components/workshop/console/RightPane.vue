@@ -4,6 +4,8 @@
  * workspace 列表未返回前显示「加载中」的诚实降级态(未加载 ≠ 空,不淡化整栏);
  * 已加载但无频道时整栏淡化,表示这一栏当前确实没有内容。
  */
+type TaskTarget = { channelId: string, taskId: string }
+
 defineProps<{
   /** 聚焦 channel;undefined = 无挂载频道 */
   channelId?: string
@@ -13,7 +15,8 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'openAgent' | 'openTask', id: string): void
+  (e: 'openAgent', id: string): void
+  (e: 'openTask', target: TaskTarget): void
 }>()
 </script>
 
@@ -30,7 +33,7 @@ const emit = defineEmits<{
       <workshop-inspector-panel
         :channel-id="channelId"
         @open-agent="emit('openAgent', $event)"
-        @open-task="emit('openTask', $event)"
+        @open-task="emit('openTask', { channelId, taskId: $event })"
       />
     </div>
     <!-- 加载中/无频道的诚实降级态(workspace 列表未返回前不误判为"空") -->

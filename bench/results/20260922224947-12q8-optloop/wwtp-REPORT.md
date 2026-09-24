@@ -1,0 +1,27 @@
+# A2O 污水生化处理达标降耗 · 闭环寻优报告(wwtp)
+
+- 终态:CANCELED · PV 终值:3.34 mg/L(目标带 3.4±0.6) ✓ 带内
+- 守卫约束:存在违反(见 summary.json) 
+- 收口设定:
+  - blower-hz-sp = 33 Hz
+  - naoh-dose-sp = 27 L/h
+  - pac-dose-sp = 58 L/h
+  - recycle-int-sp = 90 %
+  - recycle-sludge-sp = 70 %
+  - waste-sludge-sp = 150 m³/d
+  - influent-flow-sp = 1000 m³/h
+- 实测终值:
+  - air-pressure-pv = 55.1 kPa
+  - do-pv = 3.34 mg/L
+  - naoh-flow-pv = 0 L/h
+  - pac-flow-pv = 0 L/h
+  - mlss-pv = 87 mg/L
+  - cod-in-pv = 421 mg/L
+  - nh3-in-pv = 34.7 mg/L
+  - eff-cod = 48.7 mg/L
+  - eff-nh3 = 3.3 mg/L
+  - eff-tp = 0.502 mg/L
+  - eff-ph = 6.5 pH
+  - eff-turbidity = 0.74 NTU
+  - do-profile = null mg/L
+- 证据文件:wwtp-timeline.jsonl(对话全录) / wwtp-worker-stream.jsonl(worker 全帧) / wwtp-setpoints.jsonl(设定曲线) / wwtp-quality.jsonl(质量曲线)

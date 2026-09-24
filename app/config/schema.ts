@@ -109,6 +109,12 @@ export const appConfigSchema = z.object({
   workshop: z.object({
     idle_sweep_ms: z.number().min(5000).max(600000).default(30_000),
     idle_grace_ms: z.number().min(10000).max(3600000).default(120_000),
+    max_descendants_per_root: z.number().min(1).max(100).default(6),
+    max_active_descendants_per_root: z.number().min(1).max(100).default(4),
+    max_canceled_descendants_per_root: z.number().min(1).max(100).default(3),
+    max_task_depth: z.number().min(0).max(10).default(1),
+    root_timeout_ms: z.number().min(1000).max(86400000).default(900_000),
+    max_lead_created_workers: z.number().min(1).max(100).default(8),
   }).default({}),
   backup: z.object({
     disabled: z.boolean().default(false),

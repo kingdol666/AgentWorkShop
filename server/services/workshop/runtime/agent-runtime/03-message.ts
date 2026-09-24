@@ -13,9 +13,15 @@ import { randomUUID } from 'node:crypto'
 export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
   protected async processMessage(msg: A2AMessage): Promise<void> {
     const taskId = this.taskIdOf(msg)
-    // 过期任务投递检查:任务已终态(cancel/reassign 后残留的旧 assign)→ 跳过执行,
-    // 否则 worker 会对着已取消任务的旧投递真的跑一轮 harness。
-    if (msg.metadata?.['x-aw-task-kind'] === 'assign' && taskId) {
+    const taskKind = msg.metadata?.['x-aw-task-kind']
+    // cancel 只是控制消息:它负责让已在运行的回合收口,本身不得再启动一次 worker turn。
+    if (taskKind === 'cancel') {
+      this.deps.mailbox.markConsumed(msg.messageId)
+      return
+    }
+    // 过期任务投递检查:任务已终态(cancel/reassign 后残留的旧 assign/child-completed)→ 跳过执行,
+    // 否则 worker/lead 会对着已终态任务的旧投递真的再跑一轮 harness。
+    if ((taskKind === 'assign' || taskKind === 'child-completed') && taskId) {
       const task = this.deps.taskEngine.get(taskId)
       if (!task || TERMINAL_TASK_STATES[task.state]) {
         this.deps.mailbox.markConsumed(msg.messageId)
@@ -176,63 +182,76 @@ export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
       //    最终文本作为交付物;否则这类引擎的所有任务都会「工作做完了却停滞被回收」。
       //  - 两者皆无(LLM 空转)→ FAILED 交给调度器 retry/reassign。
       // 仅 worker 的 assign 执行消息生效:lead 由 supervise 协调;WAITING 父任务不属此列。
-      if (taskId && this.role === 'worker' && msg.metadata?.['x-aw-task-kind'] === 'assign') {
+      if (taskId && this.role === 'worker' && taskKind === 'assign') {
         const after = this.deps.taskEngine.get(taskId)
         if (after && after.assigneeId === this.agentId && after.state === 'WORKING') {
           const deliverable = after.artifacts.find(a => a.name !== 'input' && a.parts.some(p => ('text' in p ? p.text.trim().length : 1) > 0))
           const fallbackText = deliverable ? '' : replyText.trim()
           if (deliverable || fallbackText) {
-            if (!deliverable) {
-              // 回合最终文本 → 平台代录交付物(与 complete_task 的 deliverable 同构)
-              await this.deps.taskEngine.applyEvent(taskId, {
-                kind: 'artifact',
-                artifact: {
-                  artifactId: randomUUID(),
-                  name: 'deliverable',
-                  parts: [{ text: fallbackText.slice(0, 20_000) }],
-                },
-                lastChunk: true,
-                totalChunks: 1,
-              })
-            }
-            const completed = await this.deps.taskEngine.complete(taskId)
-            this.emitExternal({
-              kind: 'status',
-              status: {
-                state: 'COMPLETED',
-                message: {
-                  messageId: randomUUID(),
-                  contextId: this.channelId,
-                  role: 'ROLE_AGENT',
-                  parts: [{ text: `任务 ${taskId} 回合已产出交付物但未调用完成工具,平台隐式收口为 COMPLETED${deliverable ? '' : '(交付物取自回合最终输出)'}` }],
-                },
-                timestamp: new Date().toISOString(),
-              },
-            })
-            // 子任务隐式完成 → 通知父任务(lead 汇总/WAITING→WORKING 接续):
-            // 与 manager.completeTask 的显式收口同构,否则父任务 WAITING 永挂
-            // (无 child-completed 事件、父任务不翻转,lead 无感知)。
-            if (completed.parentId) {
-              this.deps.taskEngine.onChildCompleted(completed)
-              const parent = this.deps.taskEngine.get(completed.parentId)
-              if (parent) this.deps.bus.wakeScheduler()
+            // 取消/超时可能在 harness 收尾期间先把任务推进到终态;终态任务不得隐式完成。
+            const current = this.deps.taskEngine.get(taskId)
+            if (current && current.assigneeId === this.agentId && current.state === 'WORKING') {
+              if (!deliverable) {
+                // 回合最终文本 → 平台代录交付物(与 complete_task 的 deliverable 同构)
+                this.deps.taskEngine.applyEvent(taskId, {
+                  kind: 'artifact',
+                  artifact: {
+                    artifactId: randomUUID(),
+                    name: 'deliverable',
+                    parts: [{ text: fallbackText.slice(0, 20_000) }],
+                  },
+                  lastChunk: true,
+                  totalChunks: 1,
+                })
+              }
+              const latest = this.deps.taskEngine.get(taskId)
+              if (latest && latest.assigneeId === this.agentId && latest.state === 'WORKING') {
+                const completed = this.deps.taskEngine.complete(taskId)
+                this.emitExternal({
+                  kind: 'status',
+                  status: {
+                    state: 'COMPLETED',
+                    message: {
+                      messageId: randomUUID(),
+                      contextId: this.channelId,
+                      role: 'ROLE_AGENT',
+                      parts: [{ text: `任务 ${taskId} 回合已产出交付物但未调用完成工具,平台隐式收口为 COMPLETED${deliverable ? '' : '(交付物取自回合最终输出)'}` }],
+                    },
+                    timestamp: new Date().toISOString(),
+                  },
+                })
+                // 子任务隐式完成 → 通知父任务(lead 汇总/WAITING→WORKING 接续):
+                // 与 manager.completeTask 的显式收口同构,否则父任务 WAITING 永挂
+                // (无 child-completed 事件、父任务不翻转,lead 无感知)。
+                if (completed.parentId) {
+                  const parent = this.deps.taskEngine.get(completed.parentId)
+                  if (parent && !TERMINAL_TASK_STATES[parent.state]) {
+                    this.deps.taskEngine.onChildCompleted(completed)
+                    const updatedParent = this.deps.taskEngine.get(completed.parentId)
+                    if (updatedParent && !TERMINAL_TASK_STATES[updatedParent.state]) this.deps.bus.wakeScheduler()
+                  }
+                }
+              }
             }
           }
           else {
-            await this.deps.taskEngine.transition(taskId, 'FAILED', this.agentId)
-            this.emitExternal({
-              kind: 'status',
-              status: {
-                state: 'FAILED',
-                message: {
-                  messageId: randomUUID(),
-                  contextId: this.channelId,
-                  role: 'ROLE_AGENT',
-                  parts: [{ text: `任务 ${taskId} 执行结束但无交付(harness 回合结束未产出),标记 FAILED 待重试` }],
+            const current = this.deps.taskEngine.get(taskId)
+            if (current && current.assigneeId === this.agentId && current.state === 'WORKING') {
+              this.deps.taskEngine.transition(taskId, 'FAILED', this.agentId)
+              this.emitExternal({
+                kind: 'status',
+                status: {
+                  state: 'FAILED',
+                  message: {
+                    messageId: randomUUID(),
+                    contextId: this.channelId,
+                    role: 'ROLE_AGENT',
+                    parts: [{ text: `任务 ${taskId} 执行结束但无交付(harness 回合结束未产出),标记 FAILED 待重试` }],
+                  },
+                  timestamp: new Date().toISOString(),
                 },
-                timestamp: new Date().toISOString(),
-              },
-            })
+              })
+            }
           }
         }
       }

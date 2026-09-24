@@ -7,7 +7,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { TaskRow } from './database'
 
 const COLS
-  = 'id, channel_id AS channelId, parent_id AS parentId, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, artifacts_json AS artifactsJson, history_json AS historyJson, route_reason AS routeReason, created_at AS createdAt, updated_at AS updatedAt'
+  = 'id, channel_id AS channelId, parent_id AS parentId, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, artifacts_json AS artifactsJson, history_json AS historyJson, route_reason AS routeReason, source_chat_message_id AS sourceChatMessageId, source_chat_delivery_id AS sourceChatDeliveryId, close_reason AS closeReason, deadline_at AS deadlineAt, created_at AS createdAt, updated_at AS updatedAt'
 
 const NON_TERMINAL_STATES = `'SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING'`
 
@@ -24,6 +24,10 @@ export interface TaskCreateInput {
   artifacts?: unknown[]
   history?: unknown[]
   routeReason?: string | null
+  sourceChatMessageId?: string | null
+  sourceChatDeliveryId?: string | null
+  closeReason?: string | null
+  deadlineAt?: string | null
 }
 
 export interface TaskPatch {
@@ -37,6 +41,10 @@ export interface TaskPatch {
   retryCount?: number
   artifacts?: unknown[]
   history?: unknown[]
+  sourceChatMessageId?: string | null
+  sourceChatDeliveryId?: string | null
+  closeReason?: string | null
+  deadlineAt?: string | null
 }
 
 /** 任务元数据行(META_COLS 投影;不含 artifactsJson/historyJson 两个 JSON 大列) */
@@ -52,6 +60,10 @@ export interface TaskMetaRow {
   progress: number
   retryCount: number
   routeReason: string
+  sourceChatMessageId: string | null
+  sourceChatDeliveryId: string | null
+  closeReason: string | null
+  deadlineAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -60,8 +72,8 @@ export type TaskRepo = ReturnType<typeof createTaskRepo>
 
 export function createTaskRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO tasks (id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, route_reason, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, route_reason, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectById = db.prepare(`SELECT ${COLS} FROM tasks WHERE id = ?`)
   const selectByChannel = db.prepare(`SELECT ${COLS} FROM tasks WHERE channel_id = ? ORDER BY createdAt ASC, rowid ASC`)
@@ -91,12 +103,12 @@ export function createTaskRepo(db: DatabaseSync) {
   // 免每 tick 对全部任务做全量 JSON.parse(历史最多 200 条消息,频道任务多时解析成本线性放大)。
   // 调度/队列视图只需 id/state/parent/assignee/progress/title/description/retry/createdAt。
   const META_COLS
-    = 'id, channel_id AS channelId, parent_id AS parentId, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, route_reason AS routeReason, created_at AS createdAt, updated_at AS updatedAt'
+    = 'id, channel_id AS channelId, parent_id AS parentId, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, route_reason AS routeReason, source_chat_message_id AS sourceChatMessageId, source_chat_delivery_id AS sourceChatDeliveryId, close_reason AS closeReason, deadline_at AS deadlineAt, created_at AS createdAt, updated_at AS updatedAt'
   const selectByChannelMeta = db.prepare(`SELECT ${META_COLS} FROM tasks WHERE channel_id = ? ORDER BY createdAt ASC, rowid ASC`)
   const selectByChannelAssigneeMeta = db.prepare(`SELECT ${META_COLS} FROM tasks WHERE channel_id = ? AND assignee_id = ? ORDER BY createdAt ASC, rowid ASC`)
   const selectChildrenMeta = db.prepare(`SELECT ${META_COLS} FROM tasks WHERE channel_id = ? AND parent_id = ? ORDER BY createdAt ASC, rowid ASC`)
   const updateStmt = db.prepare(
-    `UPDATE tasks SET parent_id = ?, assignee_id = ?, creator_id = ?, title = ?, description = ?, state = ?, progress = ?, retry_count = ?, artifacts_json = ?, history_json = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE tasks SET parent_id = ?, assignee_id = ?, creator_id = ?, title = ?, description = ?, state = ?, progress = ?, retry_count = ?, artifacts_json = ?, history_json = ?, source_chat_message_id = ?, source_chat_delivery_id = ?, close_reason = ?, deadline_at = ?, updated_at = ? WHERE id = ?`,
   )
 
   return {
@@ -117,11 +129,15 @@ export function createTaskRepo(db: DatabaseSync) {
         artifactsJson: JSON.stringify(input.artifacts ?? []),
         historyJson: JSON.stringify(input.history ?? []),
         routeReason: input.routeReason ?? '',
+        sourceChatMessageId: input.sourceChatMessageId ?? null,
+        sourceChatDeliveryId: input.sourceChatDeliveryId ?? null,
+        closeReason: input.closeReason ?? null,
+        deadlineAt: input.deadlineAt ?? null,
         createdAt: now,
         updatedAt: now,
       }
       insert.run(
-        row.id, row.channelId, row.parentId, row.assigneeId, row.creatorId, row.title, row.description, row.state, row.progress, row.retryCount, row.artifactsJson, row.historyJson, row.routeReason, row.createdAt, row.updatedAt,
+        row.id, row.channelId, row.parentId, row.assigneeId, row.creatorId, row.title, row.description, row.state, row.progress, row.retryCount, row.artifactsJson, row.historyJson, row.routeReason, row.sourceChatMessageId, row.sourceChatDeliveryId, row.closeReason, row.deadlineAt, row.createdAt, row.updatedAt,
       )
       return row
     },
@@ -142,10 +158,14 @@ export function createTaskRepo(db: DatabaseSync) {
         retryCount: patch.retryCount ?? current.retryCount,
         artifactsJson: patch.artifacts !== undefined ? JSON.stringify(patch.artifacts) : current.artifactsJson,
         historyJson: patch.history !== undefined ? JSON.stringify(patch.history) : current.historyJson,
+        sourceChatMessageId: patch.sourceChatMessageId !== undefined ? patch.sourceChatMessageId : current.sourceChatMessageId,
+        sourceChatDeliveryId: patch.sourceChatDeliveryId !== undefined ? patch.sourceChatDeliveryId : current.sourceChatDeliveryId,
+        closeReason: patch.closeReason !== undefined ? patch.closeReason : current.closeReason,
+        deadlineAt: patch.deadlineAt !== undefined ? patch.deadlineAt : current.deadlineAt,
         updatedAt: new Date().toISOString(),
       }
       updateStmt.run(
-        next.parentId, next.assigneeId, next.creatorId, next.title, next.description, next.state, next.progress, next.retryCount, next.artifactsJson, next.historyJson, next.updatedAt, id,
+        next.parentId, next.assigneeId, next.creatorId, next.title, next.description, next.state, next.progress, next.retryCount, next.artifactsJson, next.historyJson, next.sourceChatMessageId, next.sourceChatDeliveryId, next.closeReason, next.deadlineAt, next.updatedAt, id,
       )
       return next
     },
