@@ -12,6 +12,7 @@ import {
   createEnvEmbeddingProvider,
   createHashEmbeddingProvider,
 } from '../server/services/workshop/runtime/embedding-provider'
+import { invalidateRuntimeSettingsCache } from '../server/services/workshop/settings'
 
 let failures = 0
 function check(name: string, ok: boolean, detail = ''): void {
@@ -41,10 +42,19 @@ const savedKey = process.env.AW_MEMORY_EMBED_API_KEY
 delete process.env.AW_MEMORY_EMBED_BASE_URL
 delete process.env.AW_MEMORY_EMBED_MODEL
 delete process.env.AW_MEMORY_EMBED_API_KEY
+// settings 读取链进程内缓存 3s(settings.ts 的 TTL 缓存 / system-config 快照)。
+// 本测试直接改 process.env,必须显式失效缓存 —— 否则上一步的"未配置"快照会在
+// 3 秒内继续生效,provider 返回 null 而不是新配置的实例(实测:flaky 崩溃)。
+invalidateRuntimeSettingsCache()
 check('env 未配置返回 null(纯 FTS 降级)', createEnvEmbeddingProvider() === null)
 process.env.AW_MEMORY_EMBED_BASE_URL = 'http://127.0.0.1:1' // 立即拒绝,零等待
 process.env.AW_MEMORY_EMBED_MODEL = 'test-model'
+invalidateRuntimeSettingsCache()
 const breaker = createEnvEmbeddingProvider()!
+if (!breaker) {
+  console.log('  FAIL  env provider 未按配置构建(settings 缓存未失效?)')
+  failures += 1
+}
 for (let i = 0; i < 3; i++) await breaker.embed(['x']).catch(() => {})
 const cooled = await breaker.embed(['x']).then(() => false, (e: Error) => e.message.includes('冷却'))
 check('连续 3 次失败进入冷却熔断', cooled)
