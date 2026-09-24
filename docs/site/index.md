@@ -2,7 +2,7 @@
 layout: home
 
 footer:
-  message: 依据 PolyForm Noncommercial 1.0.0 开源 · 未经许可不得商用
+  message: 依据 PolyForm Noncommercial 1.0.0 发布 · 源码可得，未经许可不得商用
   copyright: Copyright © 2026 kingdol (kingdol666)
 ---
 
@@ -60,17 +60,18 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">99</span><span class="k">运行时设置项</span></div>
-        <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">验收断言</span></div>
+        <div class="hw-stat"><span class="v">111</span><span class="k">运行时设置项</span></div>
+        <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">验收断言</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
       <p class="hw-stat-note">
-        * 全闭环 E2E 在真实协议栈上的跑批结果(124 PASS / 0 FAIL,2026-09-12,v0.7.36)。
-        其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件)/ 4 个入口(WS · MCP · A2A · REST) /
-        14 个 harness(<code>agents/registry.ts</code>)/ 99 个设置项分 16 组(<code>aw config list</code>)/ 7 态任务机。
+        * 全覆盖验收波次矩阵:约 1100+ 条真实断言全部通过(2026-09-24,v0.7.45 生产构建,
+        报告见 <code>docs/audit/e2e-2026-09-24-full-coverage.md</code>)。
+        其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
+        14 个 harness(<code>agents/registry.ts</code>) / 111 个设置项分 16 组(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.7.41</i></span>
+        <span>版本 <i>v0.7.45</i></span>
         <span>许可 <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -90,15 +91,15 @@ footer:
       <span class="hw-sec-en">INTERFACE</span>
     </div>
     <div class="hw-sec-rule"></div>
-    <p class="hw-lead">
-      下面每一屏都录自正在运行的实例,不是渲染稿。三屏共用同一条事件总线——
-      数采通道写进去的样本,同时是孪生画面的输入、趋势曲线上的点、以及 Agent 读到的那一行。
-    </p>
+      <p class="hw-lead">
+        下面每一屏都录自正在运行的实例,不是渲染稿。三屏共用同一条事件总线——
+        数采通道写进去的样本,同时是孪生画面的输入、趋势曲线上的点,以及 Agent 读到的那一行。
+      </p>
 
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.00-B</span>
-      <span class="aw-console-title">LIVE DEMO · 实机演示 4'11" · 英文配音 · 英文配音</span>
+      <span class="aw-console-title">LIVE DEMO · 实机演示 4'11" · 英文配音 · 英文字幕</span>
       <span class="aw-console-meta">RECORDED · NO CUTS</span>
     </figcaption>
     <div class="aw-console-body">
@@ -136,17 +137,17 @@ footer:
     <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.02</span>
       <span class="aw-console-title">DAQ CONSOLE · 数采中心</span>
-      <span class="aw-console-meta">51 节点 · WS 下发</span>
+      <span class="aw-console-meta">51 节点 · WS 直推</span>
     </figcaption>
     <div class="aw-console-body">
 
-![数采中心 —— 量规统计带、逐节点台账、采样周期与 WS 下发状态](/daq.png)
+![数采中心 —— 量规统计带、逐节点台账、采样周期与 WS 直推状态](/daq.png)
 
 </div>
     <p class="aw-console-cap">
       <b>端到端的采集链路。</b>
       量规统计带(节点 / 发布 / 消费 / 丢失 / 入库)之下是逐节点台账:实时值、采样周期、
-      WS 下发状态、驱动类型,以及控制节点沿写链路同一套标定读回的 SET / ACT。
+      WS 直推状态与驱动类型;控制节点还会沿写链路同一套标定读回 SET / ACT。
     </p>
   </figure>
 
@@ -268,17 +269,17 @@ footer:
       <div class="hw-p">
         <span class="no">03</span>
         <h3>诚实可观测</h3>
-        <p>丢弃计数、丢失指标、管线水位全部真实暴露;运维日志三源归属到「Channel/成员」。<code>window.__townStats</code> 连渲染指标也不说谎。</p>
+        <p>丢弃计数、丢失指标、管线水位全部真实暴露;审计日志三源归属到「Channel/成员」。<code>window.__townStats</code> 连渲染指标也不说谎。</p>
       </div>
       <div class="hw-p">
         <span class="no">04</span>
         <h3>配置驱动</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——99 个设置项(32 live / 67 restart),代码零硬编码默认。</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——111 个设置项(32 live / 79 restart),代码零硬编码默认。</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
         <h3>协议真实验证</h3>
-        <p>E2E 跑在真实 Modbus/OPC UA/MQTT/HTTP 栈上:真写 PLC、真回读、真审批——不是 mock 自证。当前 head 上 124 项验收断言全过(v0.7.20 历史基线 156 项)。</p>
+        <p>E2E 跑在真实 Modbus/OPC UA/MQTT/HTTP 栈上:真写 PLC、真回读、真审批——不是 mock 自证。2026-09-24 生产构建全覆盖验收约 1100+ 条真实断言全过(闭环 98/0 · 协议矩阵 46/0;v0.7.20 历史基线 156 项)。</p>
       </div>
       <div class="hw-p">
         <span class="no">06</span>
@@ -297,14 +298,17 @@ footer:
     <div class="hw-sec-rule"></div>
     <div class="hw-feats">
       <div class="hw-f"><span class="tag">PROTOCOL</span><h3>六协议数采与数控</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP 双向驱动 + 内置串口插件(RS-232/485 直连)——连接池、故障分类诊断、逐驱动连接测试;协议即插件,新协议注入后前端表单零改动。</p></div>
-      <div class="hw-f"><span class="tag">R/W</span><h3>数控读写一体</h3><p>每个控制节点沿写链路同一套标定读回 PLC 当前值——SET 与 ACT 并排呈现,读为被动观测,免审批。</p></div>
+      <div class="hw-f"><span class="tag">R/W</span><h3>数控读写一体</h3><p>每个控制节点沿写链路同一套标定读回 PLC 当前值——SET 与 ACT 并排呈现,读为被动观测,不经过写联锁。</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>人机协同写控</h3><p>安全量程 ∩ 配方窗口联锁 → 人工审批 → PLC 写入 → 回读校验 → 签名写历史;裁决人留痕审计。</p></div>
-      <div class="hw-f"><span class="tag">RCT</span><h3>Recipe 版本化治理</h3><p>参数按版本入史(来源+操作者+原因),一键回退任意版本或已知良好批次——非破坏,历史完整。</p></div>
+      <div class="hw-f"><span class="tag">RCT</span><h3>Recipe 版本化治理</h3><p>参数按版本入史(来源+操作者+原因),一键回退任意版本或最近一次良好批次——非破坏,历史完整。</p></div>
       <div class="hw-f"><span class="tag">HRN</span><h3>多引擎 Agent 团队</h3><p>十四个引擎一个契约(进程内 / 常驻会话 / 无头 CLI 三类),每频道可选 harness → provider → model;可用性探测 + 执行前强校验。</p></div>
       <div class="hw-f"><span class="tag">TEAM</span><h3>团队级插件开关</h3><p>每 Channel 独立插件开关组——被关闭插件的工具不注入该团队;插件本体热管理。</p></div>
       <div class="hw-f"><span class="tag">PERM</span><h3>产线级权限</h3><p>三态授权在数据面强制,无权产线信息不离开服务端;Agent 绑定校验产线授权。</p></div>
-      <div class="hw-f"><span class="tag">OPS</span><h3>全操作运维日志</h3><p>用户/Agent/系统三源归属「Channel/成员」,按产线/Recipe/来源检索,WS 实时推送。</p></div>
+      <div class="hw-f"><span class="tag">OPS</span><h3>全操作审计日志</h3><p>用户/Agent/系统三源归属「Channel/成员」,按产线/Recipe/来源检索,WS 实时推送。</p></div>
       <div class="hw-f"><span class="tag">MEM</span><h3>持久记忆</h3><p>私有 + 共享双域,FTS5 CJK 切分,可选向量混合检索;团队编年史与空闲反思持续沉淀。</p></div>
+      <div class="hw-f"><span class="tag">CHAT</span><h3>Channel 群聊作业</h3><p>成员请求升级为可追踪作业而非一条会丢的消息;原生 HITL(omp ask → 审批 → 回执),成员权限与通知一等公民。</p></div>
+      <div class="hw-f"><span class="tag">SCHED</span><h3>定时任务</h3><p>interval / daily 双模式挂任意 Channel 任务——逐次运行历史、忙等守卫、连续失败熔断,巡线无人值守。</p></div>
+      <div class="hw-f"><span class="tag">QOS</span><h3>根任务队列与租约</h3><p>FIFO 根队列带可见排队位次;派发代 + 执行租约围栏丢弃迟到事件;监督看门狗区分卡死与慢。</p></div>
     </div>
   </section>
 
@@ -312,7 +316,7 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">05</span>
       <h2 class="hw-sec-title">应用前景</h2>
-      <span class="hw-sec-en">WHERE IT FITS</span>
+      <span class="hw-sec-en">APPLICATIONS</span>
     </div>
     <div class="hw-sec-rule"></div>
     <div class="hw-scenes">
@@ -347,7 +351,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">定位</span>
-      <p>AgentWorkShop 是监督层(SCADA 邻接),运行在秒级软实时。它不是硬实时控制器:任何 &lt;10ms 的关键回路(联锁/安全/伺服)必须留在 PLC 内——此处写入的设定值是建议值,产线侧逻辑可以否决。</p>
+      <p>AgentWorkShop 是监督层(SCADA 同位),运行在秒级软实时。它不是硬实时控制器:任何 &lt;10 ms 的关键回路(联锁/安全/伺服)必须留在 PLC 内——此处写入的设定值是建议值,产线侧逻辑可以否决。</p>
     </div>
   </section>
 
@@ -377,13 +381,13 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
   <section class="hw-final">
     <h2>把 Agent 接到真实产线上</h2>
     <p>
-      14 个执行引擎、5 种现场协议、99 个运行时设置项和 124 项可复跑的验收断言都已经在仓库里。
-      监督层,秒级软实时;协议真实,断言可复查。
+      14 个执行引擎、6 种现场协议、111 个运行时设置项和 1100+ 条可复跑的验收断言都已经在仓库里。
+      监督层,秒级软实时;协议真实,断言可复跑。
     </p>
     <div class="hw-cta">
       <a class="hw-btn primary" href="/AgentWorkShop/guide/getting-started">快速开始 <span class="arr">→</span></a>
       <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">在 GitHub 上查看 <span class="arr">↗</span></a>
-      <a class="hw-btn quiet" href="/AgentWorkShop/guide/license">开源协议 <span class="arr">→</span></a>
+      <a class="hw-btn quiet" href="/AgentWorkShop/guide/license">许可协议 <span class="arr">→</span></a>
     </div>
   </section>
 

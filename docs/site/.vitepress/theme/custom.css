@@ -530,6 +530,13 @@
   width: 100%;
 }
 
+/* 图体内的 <p> 来自 markdown 图像段落,会被 .vp-doc p 的 76ch 阅读宽钳住
+   (窄栏图 566px 不触发,整宽图只渲染 ~765px,右侧留白)。这里显式放开并贴边。 */
+.aw-console-body p {
+  max-width: none;
+  margin: 0;
+}
+
 .aw-statusbar {
   display: flex;
   flex-wrap: wrap;

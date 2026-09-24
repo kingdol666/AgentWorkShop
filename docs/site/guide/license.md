@@ -1,8 +1,8 @@
 ---
-title: 开源协议
+title: 许可协议
 ---
 
-# 开源协议
+# 许可协议
 
 AgentWorkShop 依据 **PolyForm Noncommercial 1.0.0** 发布 ——
 一种「源码可得(source-available)」许可:源码公开可读、可学习、可修改、可再分发,

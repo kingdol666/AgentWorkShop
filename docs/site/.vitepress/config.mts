@@ -6,7 +6,7 @@ const zhNav = [
   { text: 'SDK', link: '/sdk/' },
   { text: '插件', link: '/plugins/' },
   { text: 'CLI', link: '/cli/' },
-  { text: '开源协议', link: '/guide/license' },
+  { text: '许可协议', link: '/guide/license' },
   { text: 'GitHub', link: 'https://github.com/kingdol666/AgentWorkShop' },
 ]
 const enNav = [
@@ -28,7 +28,7 @@ const zhGuide = [
   { text: 'AML 自动建模', link: '/guide/aml' },
   { text: '产线级权限', link: '/guide/line-permissions' },
   { text: '第一次 Agent × 产线会话', link: '/guide/first-session' },
-  { text: '开源协议', link: '/guide/license' },
+  { text: '许可协议', link: '/guide/license' },
 ]
 const enGuide = [
   { text: 'Getting started', link: '/en/guide/getting-started' },
@@ -104,6 +104,10 @@ export default defineConfig({
         docFooter: { prev: '上一页', next: '下一页' },
         lastUpdated: { text: '最后更新' },
         returnToTopLabel: '回到顶部',
+        footer: {
+          message: '依据 <a href="/AgentWorkShop/guide/license" style="color:inherit">PolyForm Noncommercial 1.0.0</a> 发布 · 源码可得，未经许可不得商用',
+          copyright: 'Copyright © 2026 kingdol (kingdol666)',
+        },
       },
     },
     en: {
@@ -123,6 +127,10 @@ export default defineConfig({
         docFooter: { prev: 'Previous', next: 'Next' },
         lastUpdated: { text: 'Last updated' },
         returnToTopLabel: 'Back to top',
+        footer: {
+          message: 'Licensed under the <a href="/AgentWorkShop/en/guide/license" style="color:inherit">PolyForm Noncommercial 1.0.0</a> · Source-available, noncommercial',
+          copyright: 'Copyright © 2026 kingdol (kingdol666)',
+        },
       },
     },
   },
@@ -130,9 +138,5 @@ export default defineConfig({
     siteTitle: 'AgentWorkShop',
     logo: '/favicon.svg',
     socialLinks: [{ icon: 'github', link: 'https://github.com/kingdol666/AgentWorkShop' }],
-    footer: {
-      message: '依据 PolyForm Noncommercial 1.0.0 开源 · Source-available, noncommercial',
-      copyright: 'Copyright © 2026 kingdol (kingdol666)',
-    },
   },
 })

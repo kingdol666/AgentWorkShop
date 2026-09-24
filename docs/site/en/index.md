@@ -2,7 +2,7 @@
 layout: home
 
 footer:
-  message: Licensed under PolyForm Noncommercial 1.0.0 · Source-available, noncommercial
+  message: Licensed under the PolyForm Noncommercial 1.0.0 · Source-available, noncommercial
   copyright: Copyright © 2026 kingdol (kingdol666)
 ---
 
@@ -21,7 +21,7 @@ footer:
     <p class="hw-sub">
       A configuration-driven industrial agent runtime: agent teams read real telemetry and write
       setpoints through human approval — every event streaming live into a 3D twin.
-      Protocol-real, and assertion-reproducible.
+      Protocol-real, assertion-reproducible.
     </p>
     <div class="hw-trio">
       <div>
@@ -30,7 +30,7 @@ footer:
       </div>
       <div>
         <span class="k">FOR WHOM<i>给谁用</i></span>
-        <span class="v">Line engineers · process &amp; ops · industrial AI research &amp; teaching · platform builders</span>
+        <span class="v">Line engineers · process &amp; ops · industrial AI research &amp; teaching · platform extension</span>
       </div>
       <div>
         <span class="k">WHY<i>凭什么值</i></span>
@@ -62,17 +62,18 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">field protocols</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
-        <div class="hw-stat"><span class="v">99</span><span class="k">runtime settings</span></div>
-        <div class="hw-stat"><span class="v">124<i>*</i></span><span class="k">acceptance checks</span></div>
+        <div class="hw-stat"><span class="v">111</span><span class="k">runtime settings</span></div>
+        <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">acceptance assertions</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
       </div>
       <p class="hw-stat-note">
-        * Full closed-loop E2E on a real protocol stack (124 PASS / 0 FAIL, 2026-09-12, v0.7.36).
+        * Full-coverage acceptance wave matrix: ~1100+ real assertions, all passing (2026-09-24, v0.7.45 production
+        build; report at <code>docs/audit/e2e-2026-09-24-full-coverage.md</code>).
         The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
-        14 harnesses (<code>agents/registry.ts</code>) / 99 settings in 16 groups (<code>aw config list</code>) / 7 task states.
+        14 harnesses (<code>agents/registry.ts</code>) / 111 settings in 16 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.7.41</i></span>
+        <span>Version <i>v0.7.45</i></span>
         <span>License <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -101,7 +102,7 @@ footer:
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.00-B</span>
-      <span class="aw-console-title">LIVE DEMO · 4'11" · VOICE-OVER · VOICE-OVER</span>
+      <span class="aw-console-title">LIVE DEMO · 4'11" · VOICE-OVER · CAPTIONS</span>
       <span class="aw-console-meta">RECORDED · NO CUTS</span>
     </figcaption>
     <div class="aw-console-body">
@@ -159,7 +160,7 @@ footer:
     <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.03</span>
       <span class="aw-console-title">LINE OPERATIONS · LINE OPS</span>
-      <span class="aw-console-meta">LINES · PRODUCTS · RECIPES</span>
+      <span class="aw-console-meta">LINES · PRODUCTS · RECIPES · BATCHES</span>
     </figcaption>
     <div class="aw-console-body">
 
@@ -264,27 +265,27 @@ footer:
       <div class="hw-p">
         <span class="no">01</span>
         <h3>Server-authoritative</h3>
-        <p>The UI renders facts; it is not their source. Nodes, tasks and grants live server-side — as many DAQ points as the server holds, that is exactly what the screen shows.</p>
+        <p>The UI renders facts; it is not their source. Nodes, tasks and grants live server-side — the screen shows exactly as many DAQ points as the server holds.</p>
       </div>
       <div class="hw-p">
         <span class="no">02</span>
         <h3>Enforced in the data plane</h3>
-        <p>Line permissions (none / read-only / operate) are enforced in the data plane: unauthorized line data never leaves the server, rather than being hidden by the frontend.</p>
+        <p>Line permissions (none / read-only / operate) are enforced in the data plane: unauthorized line data never leaves the server — it is not merely hidden by the frontend.</p>
       </div>
       <div class="hw-p">
         <span class="no">03</span>
         <h3>Honest observability</h3>
-        <p>Drop counters, loss metrics and pipeline watermarks are exposed as they are; the ops log attributes every action to "Channel/Member". Even <code>window.__townStats</code> refuses to lie about rendering.</p>
+        <p>Drop counters, loss metrics and pipeline watermarks are exposed as they are; the audit log attributes every action to "Channel/Member". Even <code>window.__townStats</code> refuses to lie about rendering.</p>
       </div>
       <div class="hw-p">
         <span class="no">04</span>
         <h3>Config-driven</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 99 settings across 16 groups (32 live / 67 restart), zero hardcoded defaults.</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 111 settings across 16 groups (32 live / 79 restart), zero hardcoded defaults.</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
         <h3>Protocol-real verification</h3>
-        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. 124 acceptance assertions pass at current head (156 was the v0.7.20 baseline).</p>
+        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. The 2026-09-24 production-build wave matrix passed ~1100+ real assertions (closed loop 98/0 · protocol matrix 46/0; the v0.7.20 baseline was 156 assertions).</p>
       </div>
       <div class="hw-p">
         <span class="no">06</span>
@@ -305,12 +306,15 @@ footer:
       <div class="hw-f"><span class="tag">PROTOCOL</span><h3>Six-protocol DAQ &amp; control</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP in both directions + the built-in serial plugin (direct RS-232/485) — connection pools, classified errors, per-driver connection tests. Protocols are plugins: newly injected protocols appear in the frontend with zero form changes.</p></div>
       <div class="hw-f"><span class="tag">R/W</span><h3>Read-write control nodes</h3><p>Every control node reads its PLC value back through the same calibration path it writes with — SET vs ACT side by side, passive and never interlocked.</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>Human-approved writes</h3><p>Safe-range ∩ recipe-window interlock → approval → PLC write → readback → signed history; every decision audited.</p></div>
-      <div class="hw-f"><span class="tag">RCT</span><h3>Recipe versioning</h3><p>Parameter changes versioned with attribution (source + operator + reason); roll back to any revision or last-good batch, non-destructively.</p></div>
+      <div class="hw-f"><span class="tag">RCT</span><h3>Recipe versioning &amp; governance</h3><p>Parameter changes versioned with attribution (source + operator + reason); roll back to any revision or last-good batch, non-destructively.</p></div>
       <div class="hw-f"><span class="tag">HRN</span><h3>Multi-harness teams</h3><p>Fourteen engines behind one contract, in three transport classes (in-process / persistent session / headless CLI); each channel picks harness → provider → model, with availability probing and dispatch-time checks.</p></div>
       <div class="hw-f"><span class="tag">TEAM</span><h3>Team-scoped plugins</h3><p>Each channel keeps its own plugin switch set — a disabled plugin's tools never enter that team; plugins themselves are hot-managed.</p></div>
       <div class="hw-f"><span class="tag">PERM</span><h3>Line-level permissions</h3><p>Three-state grants enforced in the data plane; agent bindings validate line grants too.</p></div>
       <div class="hw-f"><span class="tag">OPS</span><h3>Full-operation audit log</h3><p>User / agent / system actions attributed to "Channel/Member", queryable by line, recipe, source and kind — streamed live.</p></div>
       <div class="hw-f"><span class="tag">MEM</span><h3>Persistent memory</h3><p>Private + shared domains, FTS5 with CJK segmentation, optional vector hybrid recall; team chronicle and idle reflections accrue.</p></div>
+      <div class="hw-f"><span class="tag">CHAT</span><h3>Channel group chat</h3><p>A member's request becomes a trackable job, not a lost message; native HITL (omp ask → approval → receipt), member permissions and notifications first-class.</p></div>
+      <div class="hw-f"><span class="tag">SCHED</span><h3>Scheduled tasks</h3><p>Attach any channel task to an interval or daily schedule — per-run history, busy-guard, consecutive-failure circuit breaker. Line patrol runs unattended.</p></div>
+      <div class="hw-f"><span class="tag">QOS</span><h3>Root queue &amp; leases</h3><p>FIFO root queue with visible queue positions; assignment generation + execution-lease fencing drops stale worker events; the supervision watchdog tells stuck from slow.</p></div>
     </div>
   </section>
 
@@ -340,14 +344,14 @@ footer:
         <span class="ico">S.3</span>
         <div class="bd">
           <h3>Industrial AI research &amp; teaching</h3>
-          <p>Six-protocol acquisition/write-control (serial as a plugin) and multi-engine orchestration out of the box — an experiment bed with protocol-real verification.</p>
+          <p>Six-protocol acquisition/write-control (serial as a plugin), multi-engine orchestration and a real simulator stack out of the box — a testbed for papers and courses, with protocol-real verification.</p>
         </div>
       </div>
       <div class="hw-sc">
         <span class="ico">S.4</span>
         <div class="bd">
-          <h3>Platform &amp; ecosystem</h3>
-          <p>Typed REST SDK plus plugins that register drivers, processors and agent tools; four entry points open the platform to external systems.</p>
+          <h3>Platform extension</h3>
+          <p>Typed REST SDK plus plugins that register drivers, processors and agent tools; four entry points open the platform to external systems and agents.</p>
         </div>
       </div>
     </div>
@@ -383,7 +387,7 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
   <section class="hw-final">
     <h2>Put an agent team on a real production line</h2>
     <p>
-      14 engines, 6 field protocols, 99 runtime settings and 124 re-runnable acceptance assertions are
+      14 engines, 6 field protocols, 111 runtime settings and 1100+ re-runnable acceptance assertions are
       already in the repository. Supervisory by design, second-level soft real-time;
       protocol-real, assertion-reproducible.
     </p>

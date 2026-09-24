@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.42</b> · 14 agent engines · 6 field protocols · 99 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.7.45</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) · 111 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -74,10 +74,12 @@
 **AT A GLANCE**
 
 Supervisory layer, second-level soft real-time<br/>
-14 harness engines · 4 entry points<br/>
+14 engines · 4 entry points<br/>
 6 field protocols (5 built-in + serial plugin, read + write)<br/>
-7-state task machine · FTS5 + vector memory<br/>
-Hot-reloadable plugins · SDK · CLI · TUI
+7-state task machine · root queue + lease fencing<br/>
+Group chat jobs · scheduled tasks · HITL<br/>
+FTS5 + vector memory · hot-reloadable plugins<br/>
+SDK · CLI · TUI · ~1100+ acceptance assertions
 
 </td>
 </tr>
@@ -148,19 +150,23 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Harness-agnostic** | One `AgentInterface`, **14 engines** in three transport classes: **in-process** — `mock` (no LLM), `claude` (Claude Agent SDK, resident session, same-turn steer); **persistent session over a protocol** — `omp` (RPC subprocess), `codex` (app-server JSON-RPC), `dsh` / `qwen` / `hermes` (ACP), `opencode` (serve + HTTP/SSE); **headless CLI with a structured event stream** — `gemini` (stream-json), `copilot` (JSONL), `cursor` (stream-json), `crush` (non-interactive run), `goose` (stream-json), `pi` (`-p --mode json`). The platform never knows which one runs. |
 | **Per-channel LLM selection** | Each channel picks a **harness → provider → model (+effort)** triple from the harness's live catalog (e.g. `zhipu-coding-plan/glm-5.3-flash` on omp). Members inherit it unless they override — mixing harnesses in one team is a first-class setup, not a workaround. |
 | **Harness availability check** | `GET /api/workshop/harnesses` probes each engine's CLI on PATH. The UI disables not-installed engines, and dispatch is hard-checked at every entry point. |
-| **Stall-safe supervision** | Task reclaim distinguishes *stuck* from *slow*: the watchdog treats agent tool invocations as a liveness signal, so healthy long-running industrial work survives while genuinely stalled tasks surface to the lead. |
-| **Persistent memory** | Private + channel-shared domains; FTS5 with CJK segmentation, optional vector hybrid recall, token-budgeted injection; team chronicle and idle reflections keep accumulating. |
+| **Stall-safe supervision & task governance** | Submitted goals enter a **FIFO root queue** with visible queue positions. A **supervision watchdog** distinguishes *stuck* from *slow* — agent tool invocations count as liveness, so healthy long-running industrial work survives while genuinely stalled tasks surface to the lead. Every assignment carries a **generation + execution lease**, so events from a superseded worker are dropped by admission, not reconciled by hope. |
+| **Harness continuity** | Engines declare a continuity mode (`persistent` / `per_turn`); persistent sessions are reused across turns under a read-only continuity lease (pid / session / reuse count / last restart reason), and a server restart restores what can be restored instead of silently re-forking. |
+| **Channel group chat & native HITL** | The channel timeline is a real group chat: a member's request becomes a **trackable job** (not a lost message), and engines with a native ask surface (e.g. `omp`) route HITL questions through the platform — approve once, the engine continues with the receipt. Member permissions and notifications are first-class. |
+| **Scheduled tasks** | Any channel task can run on a **schedule** — fixed `interval` (60 s floor) or `daily` at a set time — managed from `/workshop/schedules` or the REST API, with per-run history, busy-guard (no overlapping runs of the same schedule) and channel-scoped visibility. |
+| **Persistent memory & channel process memory** | Private + channel-shared domains; FTS5 with CJK segmentation, optional vector hybrid recall, token-budgeted injection. On top sit **process memories**: deterministic root/child/lead event contracts, a canonical root summary, and a durable outbox (dead-letter + compensation worker) so the story of a goal survives restarts. |
 | **Four entry points** | One manager behind every door: **WS** (AEP v1 event stream with seq-resume), **MCP** (~25 in-process tools), **A2A** (JSON-RPC 2.0 + AgentCard), **REST**. |
 
 #### Industrial stack
 
 | Capability | Why it matters |
 |---|---|
-| **Six field protocols** | Modbus TCP, Modbus RTU-over-TCP (serial gateway), OPC UA, MQTT and HTTP/REST, plus a **built-in serial plugin** (direct RS-232/485: Modbus RTU + ASCII line) — acquisition **and** write-control drivers with connection pools, classified error messages and per-driver connection tests. `mock` covers demos/CI. Protocols are plugins: `ctx.daq.registerDriver` / `ctx.dcw.registerWriteDriver` inject straight into the frontend protocol dropdown and dynamic forms (⌁ badge), zero frontend changes. |
+| **Six field protocols** | Modbus TCP, Modbus RTU-over-TCP (serial gateway), OPC UA, MQTT and HTTP/REST, plus a **built-in serial plugin** (direct RS-232/485: Modbus RTU + ASCII line) — acquisition **and** write-control drivers with connection pools, classified error messages and per-driver connection tests. `mock` covers demos/CI. Protocols are plugins: `ctx.daq.registerDriver` / `ctx.dcw.registerWriteDriver` inject straight into the frontend protocol dropdown and dynamic forms (⌁ badge) — when a protocol ships self-describing metadata, the frontend forms render with zero changes. |
 | **Agent teams, industrial scope** | Agents bind to DAQ/DCW nodes and see semantic cards — physical meaning, units, safe range, recipe window — never raw registers. |
 | **Human-approved write control** | DCW writes flow through **safe-range ∩ recipe-window** interlock → optional **HITL approval** → PLC write → **readback verification** → signed write history. |
 | **Read-write DCW channels** | Every control node also **reads its PLC value back** through the same calibration path it writes with: periodic + on-demand + agent reads surface **SET vs ACT** side by side — passive observation, never blocked by write interlocks. |
 | **Recipe versioning & governance** | Parameter changes are versioned with attribution (user/agent/system + operator + reason). Roll back to any revision or the last-good batch — non-destructively. Stale-node params are skipped and clearly marked. |
+| **Semantic parameter mapping & tuning loop** | Agents reason in engineering semantics: `param_control(param, value)` addresses a **process parameter** (stable across batches and recipe swaps) instead of a raw node, and `param_read` reads back the PLC value for evidence. Every write is narrowed by a **four-layer bound** — node safe range ∩ parameter baseline bounds ∩ active product bounds ∩ active recipe window — and each adjustment opens a tuning record that `dcw_judge` must close (keep / rollback / uncertain), with `dcw_rollback` executing the undo. |
 | **Line operations** | Lines → products → recipes → batch runs. Recipe windows gate acquisition and interlock writes; every sample is tagged `product/recipe/run` for per-batch isolation. |
 | **Multi-modal DAQ frame pipeline** | Multi-point profiles (thickness/scanner) and CCD image frames flow through template sink pipelines: vectors & metadata into Timescale (`daq_frames`), pixels into object storage (MinIO, auto disk fallback); derived-metric thresholds ride the existing alarm chain. |
 | **Agent self-audit tools** | `line_context`, `ops_log`, `recipe_log`, `recipe_versions`, `dcw_journal` — agents see exactly which line/product/recipe they control, who did what, and how every value changed. |
@@ -174,7 +180,8 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Team-scoped plugin switches** | Each team (channel) keeps an **independent plugin switch set** (`channel_plugins`): a disabled plugin's tools are not injected into that team's agents. Plugins themselves are hot-managed via `aw plugin` and the `/plugins` page. |
 | **Plugin extension API** | A self-contained directory under `plugins/<name>/` enhances **both halves at once**: `index.mjs` (server: hooks, routes, agent tools, **DAQ read drivers / DCW write drivers**, frame processors, node templates, config groups, KV, timers) and `client.mjs` (browser: panels injected into named slots, i18n, settings UI). Three scopes — `builtin` (shipped) > `project` (checkout) > `user` (`~/.AgentWorkShop`) — with ~1 s hot reload on enable/disable **and on code edits**; a disabled plugin's drivers are removed on hot reload immediately. Built-in example: **serial-bridge** (serial communication: read/write drivers, serial probe API, frontend panel). Full contract in [`docs/plugins.md`](./docs/plugins.md). |
 | **AML — auto-modeling lab** | Dataset build → training job → leaderboard → promotion gates → model reference, all driven from `/aml` or by agents through 10 `aml_*` tools. Python runtime bootstrapped with `uv` into an `./aml` asset root; artifacts and metadata stay under the config root. |
-| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **99 settings across 16 groups**, no hardcoded defaults in code. |
+| **Runtime observability** | `GET /api/system/monitor` exposes the agent-team internals as numbers: root queue depth, watchdog interventions, harness session reuse, pending memory outbox — each guarded by a documented rollback switch, so new machinery can be turned off without a redeploy. |
+| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **111 settings across 16 groups** (32 live / 79 restart), no hardcoded defaults in code. |
 | **Configurable cadences** | Sampling and query defaults/floors are **live settings** (`daq.sampling.*`, `daq.query.*`): hot-reloaded, clamped on node create/patch, and agent tool descriptions always carry the current values. |
 
 #### Digital twin
@@ -242,7 +249,7 @@ page headers stack, dense tables become scrollable ledgers with a pinned identit
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="Runtime monitor" width="100%" /><br/><sub><b>Runtime monitor.</b> Every wired channel, member count, dependency cycle and owner.</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 99 keys across 16 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 111 keys across 16 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="Plugins" width="100%" /><br/><sub><b>Plugins.</b> Three scopes, hot reload on edit, per-team switches.</sub></td>
 </tr>
 </table>
@@ -267,7 +274,7 @@ flowchart TB
             TE["TaskEngine — 7-state machine"]
             AR["AgentRuntime × N"]
             MEM["AgentMemory — FTS5 + vector"]
-            BUS["ChannelBus — per-channel seq + ring"]
+            BUS["Event bus (ManagerBus) — per-channel seq + ring"]
         end
         subgraph IND["Industrial"]
             DAQ["DAQ gateway — per-node edge runtimes"]
@@ -321,7 +328,7 @@ agent ──binds to──▶ node (daq: auto / dcw: manual)
 node -v   # ≥ 23.4.0  (needs built-in node:sqlite)
 ```
 
-> Real-agent harnesses require their CLI on PATH — `omp`, `codex`, `dsh`, `opencode`, `gemini`, `qwen`, `copilot`, `cursor`, `crush`, `goose`, `pi` or `hermes` (any subset; each channel can mix harnesses). `mock` and `claude` (SDK) run in-process and need no PATH CLI. The dashboard "execution engines" panel shows per-engine readiness with a green/grey dot; uninstalled engines link to their official install page. Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts via Docker when reachable (`docker compose up -d`).
+> Real-agent harnesses require their CLI on PATH — `omp`, `codex`, `dsh`, `opencode`, `gemini`, `qwen`, `copilot`, `cursor`, `crush`, `goose`, `pi` or `hermes` (any subset; each channel can mix harnesses). `mock` and `claude` (SDK) run in-process and need no PATH CLI. The dashboard "execution engines" panel shows per-engine readiness with a green/grey dot; entries for uninstalled engines link to their official install pages. Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts via Docker when reachable (`docker compose up -d`).
 
 ### Option A — install from npm (recommended)
 
@@ -365,7 +372,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.42** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.45** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
@@ -457,7 +464,7 @@ export async function run(argv, ctx) {
 - **Per-node edge runtimes**: independent sampling cadence, publish cadence, in-flight mutex per node — one slow driver never blocks its neighbors. Sampling and query defaults/floors are driven by the live `daq.sampling.*` / `daq.query.*` settings.
 - **Pipeline**: driver → queue (in-process or MQTT, offline buffer on disconnect) → consumer with out-of-order defense → three-way fan-out: WS live push (gated), TSDB batch write, device-twin writeback.
 - **Robustness**: TSDB single-in-flight writes with bounded retries, buffer backpressure with drop counters, real loss metrics exposed on `daq.controller` frames.
-- **Alarms**: recipe-scoped monitoring windows with **2 % hysteresis + 3-tick debounce**; alarm/offline transitions are instant (safety first).
+- **Alarms**: recipe-scoped monitoring windows with **2% hysteresis + 3-tick debounce**; alarm/offline transitions are instant (safety first).
 
 ### Write control (DCW)
 
@@ -523,14 +530,32 @@ Prefix the task description (or pick in the composer UI):
 | Mode | Semantics | Config |
 |---|---|---|
 | `goal` | lead decomposes → workers deliver → **lead judges satisfaction**; unmet → more subtasks; met → parent completes. | `goalCriteria` |
-| `loop` | replay the same task on a fixed interval. | `intervalMs` (default 60 000), `maxIterations` (default ∞) |
+| `loop` | replay the same task on a fixed interval. | `intervalMs` (default 60000), `maxIterations` (default ∞) |
 | `pipeline` | ordered stages; stage N+1 consumes stage N's output. | `stages: [{name, description, assigneeId?}]` |
+
+### Scheduled tasks
+
+Any task can also be attached to a **schedule** so a channel keeps working when nobody is watching:
+
+| Aspect | Behavior |
+|---|---|
+| Modes | `interval` — fixed cadence (`intervalMs`, 60 s floor) · `daily` — once per day at `HH:MM` local time |
+| Management | `/workshop/schedules` page, or `POST/PATCH /api/workshop/schedules` |
+| Guard rails | busy-guard (a fire is deferred while the channel still has active tasks), per-run history with status, and a **consecutive-failure circuit breaker** (`maxConsecutiveFailures`) that auto-disables a misbehaving schedule |
+| Typical use | nightly line patrol (`daq_query` + report to memory), periodic drift check with auto-judge, daily KPI digest |
+
+```bash
+# create a schedule: patrol the line every 30 minutes
+curl -X POST http://localhost:3000/api/workshop/schedules \
+  -H 'authorization: Bearer <token>' -H 'content-type: application/json' \
+  -d '{"channelId":"<id>","name":"line-patrol","title":"Line patrol","description":"Read all DAQ nodes on line 1 and post a drift summary to channel memory.","mode":"interval","intervalMs":1800000}'
+```
 
 ### The four entry points
 
 | Entry | Endpoint | Audience |
 |---|---|---|
-| **WS** | `/api/workshop/ws?channelId=…` | Dashboards / UI — AEP v1 envelopes, per-channel monotonic `seq`, 5 000-event ring, `lastSeq` resume, snapshot fallback. |
+| **WS** | `/api/workshop/ws?channelId=…` | Dashboards / UI — AEP v1 envelopes, per-channel monotonic `seq`, 5000-event ring, `lastSeq` resume, snapshot fallback. |
 | **MCP** | in-process server, ~25 tools | Agents (omp host tools) — management + job-face tools, channel-scoped. |
 | **A2A** | `POST /api/workshop/a2a/:agentId/rpc` | External agents — JSON-RPC 2.0, `AgentCard` at `/card`, `tasks/sendSubscribe` SSE. |
 | **REST** | `/api/workshop/**` | Humans / scripts — full management face. |
@@ -547,25 +572,28 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 ## Verified end-to-end
 
-Every claim above is backed by a suite you can re-run. The closed-loop suite drives a
+Every claim above is backed by a suite you can re-run. The acceptance suites drive a
 **production instance over real simulated plant protocols** (Modbus TCP/RTU, OPC UA, MQTT,
-HTTP + an MQTT/Timescale pipeline) with a real LLM agent, and asserts on the database,
-the event stream and the HTTP API — not on mocks.
+HTTP + an MQTT/Timescale pipeline) with real engine CLIs, and assert on the database,
+the event stream and the HTTP API — not on mocks. The full 2026-09-24 wave matrix
+(~1100+ real assertions, v0.7.45 production build, isolated `AW_HOME`, real browser)
+is archived in [`docs/audit/e2e-2026-09-24-full-coverage.md`](./docs/audit/e2e-2026-09-24-full-coverage.md).
 
 | Suite | Latest result | What it covers | Reproduce |
 |---|---|---|---|
-| `e2e-full-closedloop.mjs` | **124 PASS / 0 FAIL** (2026-09-12, v0.7.36) | registration → login → line/product/recipe → DAQ sampling → agent bound to nodes → `daq_query` → `dcw_control` → HITL approval → PLC write → readback → recipe rollback → cascade delete → data-root isolation | `node scripts/e2e-full-closedloop.mjs http://127.0.0.1:3111` |
-| `e2e-aml.ts --real` | 0 failures (2026-09-11) | AML datasets → job submit → status/logs → leaderboard → promotion gates, against the real Python runtime | `node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json scripts/e2e-aml.ts --real` |
-| Five-protocol live line | 37/37 (re-verified 2026-09-12 on a clean instance) | driver connectivity, sampling into Timescale, DCW dispatch + readback per protocol, agent closed loop, HITL over a real OPC UA write, recipe + param-ledger rollback | `node bench/pipeline.mjs --profile integrated` (the five-protocol closed loop is now part of the bench gate; the original 37-assertion script was retired as simulator ports evolved) |
-| Production API live | 64/64 (re-verified 2026-09-12 on a clean instance) | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
-| Line permissions / audit-negative | 21/21 + 9/9 | three-state line grants with human-readable 403s, binding-subject validation, revocation convergence, unauthenticated WS receives zero telemetry | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
-| Render regression | 30/30 | DAQ table integrity (row count aligned with the API), WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
-| Multi-harness parallel | 21 | omp closed loop · codex real register write · dsh real acquisition · opencode recipe write+rollback — four engines on one running line | `node scripts/e2e-multiharness-team.mjs` |
-| Offline unit/property suites | all green | AEP event index (`test-events-index`), LRU, data-root split (`test-data-root`), log flooding, rollback index, plugin hardening, memory month query, CLI exit codes (`test-cli-exit`), SDK surface (`test-sdk-surface`) | `node scripts/test-<name>.mjs` |
+| `e2e-full-closedloop.mjs` | **98 / 0** (2026-09-24, v0.7.45 production build) | 11 stages: registration → line/product/recipe modeling → DAQ sampling → frame pipeline → DCW write + readback → rollback ledger → agent-node authorization → bridge privilege boundaries → plugins → data-root isolation | `node scripts/e2e-full-closedloop.mjs <base>` |
+| Protocol matrix, real protocols | **46 / 0** (2026-09-24) | MQTT · Modbus TCP · Modbus RTU · OPC UA · HTTP — acquisition, governed write + readback, recipe-window interlock and a real agent closed loop per protocol | `node scripts/_dbg-protocol-matrix.mjs` |
+| Production API live | 60 / 0 (2026-09-24) | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
+| AgentTeam chat + native HITL | 112 passed / 0 failed / 1 blocked (2026-09-24, real `omp`) | group-chat request → trackable job; `omp` native ask → HITL approval → engine resumes with the receipt | `node scripts/e2e-agentteam-chat.mjs --phase=all` |
+| Industrial bench — integrated | **83 / 83 checks, hard gate green** (2026-09-21) | five-protocol five-line bench: connectivity, sampling into Timescale, governed writes, governance, agent closed loop, semantic parameter layer | `node bench/pipeline.mjs --profile integrated` |
+| Multi-scenario closed loop | 4 scenarios · closed loops reached (2026-09-21) | injection-molding weight-window tuning · A²/O wastewater compliance with energy minimum · continuous-annealing quality window vs throughput · BOPET line mission | `node bench/scenarios.mjs --scenarios injection,wwtp,anneal` |
+| Line permissions / audit-negative | 21 / 21 + 9 / 9 (2026-09-12) | three-state line grants with human-readable 403s, binding-subject validation, revocation convergence, unauthenticated WS receives zero telemetry | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
+| Render regression | 30 / 30 (2026-09-12) | DAQ table integrity (row count aligned with the API), WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
+| AML auto-modeling | 25 / 0 (2026-09-24, deterministic trainer) | dataset build → cross-recipe refusal → job submit → gates → promotion guards → prediction guards → audit; `--real` adds the uv/torch runtime | `node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json scripts/e2e-aml.ts` |
+| Offline unit/property suites | all green | AEP event index (`test-events-index`), LRU, data-root split (`test-data-root`), log flooding, rollback index, plugin hardening, task lease fencing (`test-task-lease-fencing`), CLI exit codes (`test-cli-exit`), SDK surface (`test-sdk-surface`) | `node scripts/test-<name>.mjs` (TS suites via tsx) |
 
-The five-protocol and API-live rows are the historical **v0.7.20** acceptance baseline —
-*156 assertions, 0 failures*, full report in [`docs/audit/e2e-2026-09-07.md`](./docs/audit/e2e-2026-09-07.md).
-The closed-loop and AML rows are the current-head runs. Perf probing:
+The historical **v0.7.20** acceptance baseline — *156 assertions, 0 failures* — is archived in
+[`docs/audit/e2e-2026-09-07.md`](./docs/audit/e2e-2026-09-07.md). Perf probing:
 `scripts/_dbg-render-perf.mjs`.
 
 ---
@@ -577,7 +605,7 @@ AgentWorkShop/
 ├── bin/ · cli/                 # aw CLI — command registry · built-in commands · config engine
 ├── app/                        # Nuxt 4 frontend (srcDir)
 │   ├── pages/                  # / · /workshop · /workshop/agents · /workshop/teams
-│   │                           # /workshop/channel-templates · /workshop/w/:id
+│   │                           # /workshop/channel-templates · /workshop/schedules · /workshop/w/:id
 │   │                           # /town · /daq · /daq/:id · /dcw · /dcw/:id
 │   │                           # /aml · /monitor · /logs · /permissions
 │   │                           # /plugins · /users · /tokens · /settings
@@ -591,12 +619,12 @@ AgentWorkShop/
 │   │   ├── daq/ dcw/ aml/      # edge runtimes · drivers · bus · storage · modeling lab
 │   │   └── db/                 # repos over node:sqlite
 │   ├── mcp/                    # MCP server (25 tools)
-│   ├── plugins-builtin/        # plugins shipped with the package (diag-bridge · rag-bridge)
+│   ├── plugins-builtin/        # plugins shipped with the package (diag-bridge · rag-bridge · serial-bridge)
 │   └── plugins/                # runtime assembly (singletons)
 ├── sdk/                        # agentworkshop/sdk — plugin context, hook bus, REST client, browser SDK
 ├── tui/                        # terminal workbench (aw tui)
 ├── shared/
-│   └── config/                 # schema.json (99 setting descriptors) + engine (merge/validate/persist) + path resolver
+│   └── config/                 # schema.json (111 setting descriptors) + engine (merge/validate/persist) + path resolver
 ├── config.yml                  # factory defaults (read at build/start; version comes from package.json)
 ├── .AgentWorkShop/             # config root in a checkout — prompts (versioned) + runtime overrides · data · logs · commands (git-ignored)
 ├── data/                       # legacy pre-migration location (auto-migrated into the config root)
@@ -653,9 +681,9 @@ building, so those files are the single source of truth for the single-page guid
 | 3D digital-twin town · line operations UI · dashboards | Shipped |
 | Full-feature live E2E (agent reads/writes a real line, 23 checks) | Shipped |
 | Runtime configuration system: settings persistence · hot reload · settings UI | Shipped |
-| `aw` CLI: config · run · init · register · doctor | Shipped |
+| `aw` CLI: config · start/dev · init · register · doctor | Shipped |
 | Multi-harness registry: omp · codex · dsh · opencode subprocess engines | Shipped |
-| Five field protocols: Modbus RTU-over-TCP · MQTT · HTTP (acquisition + write control) | Shipped |
+| Six field protocols: Modbus TCP · Modbus RTU-over-TCP · OPC UA · MQTT · HTTP + the built-in serial-bridge plugin (acquisition + write control) | Shipped |
 | Harness availability probing + dispatch-time engine checks (UI disable + 409) | Shipped |
 | Recipe versioning with attribution + non-destructive rollback (UI + agent tools) | Shipped |
 | Agent self-audit: line_context / ops_log / recipe_log / recipe_versions / dcw_journal | Shipped |
@@ -672,6 +700,15 @@ building, so those files are the single source of truth for the single-page guid
 | Realtime pipeline optimizations: DAQ frame indexing O(n²)→O(n), incremental per-agent event index, chart in-place updates, size-aware JSON persistence | Shipped |
 | AML auto-modeling lab: dataset build · job orchestration (uv-managed Python) · leaderboard · promotion gates · 10 agent tools | Shipped |
 | Claude Agent SDK adapter — resident sessions with same-turn steer and `canUseTool` HITL | Shipped |
+| Semantic parameter mapping: `param_control`/`param_read` by process parameter, four-layer write bound, tuning loop (`dcw_judge`/`dcw_rollback`) | Shipped |
+| Channel group chat: requests become trackable jobs; native HITL (`omp` ask → approval → receipt) | Shipped |
+| Scheduled tasks: `interval` / `daily`, per-run history, busy-guard + consecutive-failure circuit breaker | Shipped |
+| Root task queue (FIFO, visible queue positions) + assignment generation & execution-lease fencing | Shipped |
+| Supervision watchdog + harness continuity (`persistent`/`per_turn`, session-reuse lease with restart reasons) | Shipped |
+| Channel process memory: deterministic event contracts, canonical root summary, durable outbox + compensation worker | Shipped |
+| Runtime observability: `GET /api/system/monitor` team metrics, each with a documented rollback switch | Shipped |
+| Industrial bench: integrated profile (83 checks, hard gate) + multi-scenario closed loops (injection / wwtp / anneal / BOPET) + quality-target optloop | Shipped |
+| Full-coverage acceptance wave matrix on a production build (~1100+ real assertions, 2026-09-24) | Shipped |
 | Production hardening: TLS, MQTT auth, OPC UA sign+encrypt defaults, structured audit log | Planned |
 | Edge deployment shape: standalone edge-agent + central broker | Planned |
 | Alarm outbound delivery (email/webhook) + ack workflow | Planned |
@@ -720,7 +757,7 @@ node scripts/check-docs-sync.mjs          # docs/site pages stay in sync with do
 ```
 
 3. **Keep commits conventional** — `commitlint` runs on `commit-msg` (`feat:`, `fix:`, `docs:`, `refactor:`, `perf:`, `test:`, `chore:`), and `lint-staged` fixes staged JS/TS/Vue on commit.
-4. **Add a test for behaviour you change.** The repo leans on live E2E scripts under `scripts/` rather than mocks — a new industrial path should be provable against a running instance.
+4. **Add a test for behavior you change.** The repo leans on live E2E scripts under `scripts/` rather than mocks — a new industrial path should be provable against a running instance.
 
 > [!TIP]
 > `aw doctor` checks your environment end to end (Node version, config root, port availability, SQLite, optional Docker services) before you file a bug — it answers most "it does not start" reports immediately.
@@ -737,7 +774,13 @@ AgentWorkShop drives real equipment when you point it at real equipment: review 
 
 **If this project is useful to you, a ⭐ helps other people find it.**
 
-[![Star History Chart](https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date)](https://star-history.com/#kingdol666/AgentWorkShop&Date)
+<a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" width="80%" />
+  </picture>
+</a>
 
 <br />
 
