@@ -19,6 +19,7 @@ import type { OutboxRepo } from '../../db/outbox.repo'
 import type { ScheduledTaskRepo } from '../../db/scheduled-task.repo'
 import type { SubscriptionRepo } from '../../db/subscription.repo'
 import type { TaskEngine } from '../agent-runtime'
+import type { HarnessContinuityView, SupervisionAttemptView } from '../../types/task'
 import type { TaskRepo } from '../../db/task.repo'
 import type { TeamMemberRepo } from '../../db/team-member.repo'
 import type { TeamRepo } from '../../db/team.repo'
@@ -154,6 +155,12 @@ export interface RuntimeAgentView {
   completedCount: number
   /** harness 进程(进程内 harness 为 null) */
   process: { pid: number, alive: boolean, command: string } | null
+  /** 监督尝试状态(§2.3;watchdog/最后决策的可观测面) */
+  supervision?: SupervisionAttemptView
+  /** Harness 连续性租约(§2.4;continuity mode / pid / session / reuse / 重启原因) */
+  continuity?: HarnessContinuityView
+  /** 本 channel 的根任务队列深度(§11 root_queue_depth) */
+  rootQueueDepth?: number
   /** 归属用户(admin 全量视图附带;普通用户视图为自身) */
   ownerUserId?: string | null
   ownerName?: string | null
@@ -193,6 +200,21 @@ export interface RuntimeMonitorSnapshot {
     processes: number
     aliveProcesses: number
     orphanProcesses: number
+  }
+  /** §11 AgentTeam 观测指标(缺省 = 旧调用方/测试脚手架未提供) */
+  agentTeam?: {
+    rootQueueDepth: number
+    queuedRoots: number
+    activeRoots: number
+    maxRootWaitMs: number
+    supervisionWatchdogCount: number
+    supervisionAttemptAgeMs: number
+    harnessReuseCount: number
+    harnessRestartCountByReason: Record<string, number>
+    activeExecutionLeases: number
+    memoryOutboxPending: number
+    memoryOutboxFailed: number
+    memoryOutboxPublished: number
   }
 }
 

@@ -18,6 +18,8 @@ export abstract class AgentRuntimeContracts {
   protected abstract consumeLoop(): Promise<void>
   protected abstract maybePostSettle(): void
   protected abstract processMessage(msg: A2AMessage): Promise<void>
-  protected abstract queueContext(): Pick<AgentStatusView, 'currentTaskId' | 'currentTaskTitle' | 'currentTaskProgress' | 'queuedCount' | 'completedCount'> & { context?: AgentContextStats | null }
+  /** 状态重广播(由 lifecycle 层实现;supervise/任务突变后同步前端实体) */
+  abstract refreshStatus(): void
+  protected abstract queueContext(): Pick<AgentStatusView, 'currentTaskId' | 'currentTaskTitle' | 'currentTaskProgress' | 'queuedCount' | 'completedCount' | 'supervision' | 'continuity'> & { context?: AgentContextStats | null }
   protected abstract superviseController: AbortController | null
 }

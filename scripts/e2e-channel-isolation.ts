@@ -181,7 +181,11 @@ async function main(): Promise<void> {
     // ---- S1 任务下发 + workspace 隔离(两 channel 并行)----
     console.log('\n━━━ S1. 任务下发 + workspace 隔离 ━━━')
     const taskDesc = (marker: string) =>
-      `Read the file shared.txt in your working directory and report its EXACT full content (it starts with "marker:"). Then call complete_task with the file content as the deliverable. Expected prefix: "marker:${marker}" — but report what you actually read.`
+      `Read the file shared.txt in your working directory and report its EXACT full content (it starts with "marker:"). Then call complete_task with the file content as the deliverable. Expected prefix: "marker:${marker}" — but report what you actually read. `
+      // 真实 omp Lead 对"一步就能做完"的任务会直接收口(设计行为:简单任务 Lead 直接完成),
+      // 而本场景要验证的是**worker 侧 cwd 隔离**与任务下发链路 → 显式要求委派,
+      // 避免断言随模型的一次性判断飘动。
+      + `Discipline: this is a two-step task — first dispatch the file read to one of your workers via dispatch_task (assign it to a worker, not to yourself), wait until that child task is COMPLETED, verify its deliverable, then complete this root task with the verified content.`
     const taskA = await manager.submitChannelTask({ channelId: teamA.channelId, title: '读取共享文件', description: taskDesc(teamA.marker) })
     const taskB = await manager.submitChannelTask({ channelId: teamB.channelId, title: '读取共享文件', description: taskDesc(teamB.marker) })
 

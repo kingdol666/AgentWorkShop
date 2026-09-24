@@ -139,7 +139,7 @@ export abstract class OpenCodeAgentImplLayer02 extends OpenCodeAgentImplLayer01 
 
   // supervising 由 BaseAgentImpl 持有(protected):同名私有声明会与基类形成"两个私有声明"(TS2415)。
 
-  override async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
+  override async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: import('../agent-interface').SupervisionOptions): Promise<SupervisionDecision[]> {
     // 引擎/会话不可用 → 本轮监督降级为空(调度器回退规则引擎);绝不让引擎故障
     // 以 unhandledRejection 形态逃逸(dev-stability-guard 会据此杀掉整个服务端)
     try {
@@ -159,7 +159,7 @@ export abstract class OpenCodeAgentImplLayer02 extends OpenCodeAgentImplLayer01 
       manual: systemManual(),
       memory: ctx.memory,
     })
-    const timeoutMs = this.config.superviseTimeoutMs ?? 150_000
+    const timeoutMs = this.getSupervisionPolicy().hardTimeoutMs
     // runTurn 是 async generator(返回 AsyncGenerator,不是 Promise),必须以异步迭代消费完整个回合。
     // (原实现写 .then(...)/.catch(...):运行时是 "then is not a function" 的 TypeError,supervise 整条路径实际不可用。)
     try {

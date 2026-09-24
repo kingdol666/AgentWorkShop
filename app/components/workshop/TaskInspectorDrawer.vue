@@ -37,8 +37,17 @@ const load = async (): Promise<void> => {
   if (!props.taskId) return
   loading.value = true
   try {
-    const res = await api.getTask(props.taskId)
-    detail.value = (res as unknown as { data?: TaskDto }).data ?? null
+    // §8:详情请求携带 channelId(后端强校验,防切频道后把旧 taskId 的详情串到新频道)
+    const res = await api.getTask(props.taskId, props.channelId)
+    const next = (res as unknown as { data?: TaskDto }).data ?? null
+    detail.value = next && (next as { channelId?: string }).channelId
+      && (next as { channelId?: string }).channelId !== props.channelId
+      ? null
+      : next
+  }
+  catch {
+    // 跨频道残留 taskId → 404:清空详情,避免渲染上一频道的任务
+    detail.value = null
   }
   finally {
     loading.value = false

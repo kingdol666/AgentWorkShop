@@ -44,8 +44,16 @@ export abstract class ManagerHostTools extends ManagerA2A {
         if (!query) return { text: '缺少 query', isError: true }
         const rows = ws.searchOtherTeamsMemory({ query, limit: Number(args.limit ?? 5) })
         if (rows.length === 0) return { text: `其他团队的共享记忆中没有命中「${query}」的内容。` }
-        const text = rows.map(r =>
-          `- [${r.channelName}] 「${r.title}」(${r.createdAt.slice(0, 10)}): ${r.content}`).join('\n')
+        const text = rows.map((r) => {
+          const provenance = [
+            `[${r.channelName}]`,
+            r.createdAt.slice(0, 10),
+            r.visibility ?? 'cross-channel',
+            r.taskId ? `task=${r.taskId.slice(0, 8)}` : '',
+            r.rootId ? `root=${r.rootId.slice(0, 8)}` : '',
+          ].filter(Boolean).join(' · ')
+          return `- ${provenance} 「${r.title}」: ${r.content}`
+        }).join('\n')
         return { text: `其他团队共享记忆命中 ${rows.length} 条:\n${text}` }
       }
       case 'send_cross_channel_message': {

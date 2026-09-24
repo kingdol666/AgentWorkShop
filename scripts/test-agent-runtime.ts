@@ -112,8 +112,12 @@ function makeFakeEngine() {
       if (t) t.state = state
       return t ?? mkTask('', '', '')
     },
-    applyEvent(taskId: string, event: AgentEvent): void {
+    applyEvent(taskId: string, event: AgentEvent, _fence?: { generation?: number | null, leaseId?: string | null }): void {
       applied.push({ taskId, event })
+    },
+    /** §5.1 执行代次栅栏:本替身不模拟租约,恒放行(真实栅栏语义见 test-task-lease-fencing) */
+    assertAssignmentFence(_taskId: string, _fence?: { generation?: number | null, leaseId?: string | null }): boolean {
+      return true
     },
     list(): WorkspaceTask[] {
       return [...tasks.values()]

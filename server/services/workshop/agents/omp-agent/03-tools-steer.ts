@@ -3,7 +3,7 @@
  * (分层 4/6,承 OmpRpcAgentImplLayer02;方法体与原文件逐行一致)
  */
 import { OmpRpcAgentImplLayer02 } from './02-lifecycle'
-import type { AgentEvent, AgentRunContext, AgentRunRequest, SupervisionDecision, SupervisionSnapshot } from '../agent-interface'
+import type { AgentEvent, AgentRunContext, AgentRunRequest, SupervisionDecision, SupervisionSnapshot, SupervisionOptions } from '../agent-interface'
 import type { HostToolCallRequest } from '../adapters/omp-rpc-client'
 import { extractJsonArray, parseSteerBanner, peerPrompt, supervisePrompt, systemManual, workerPrompt } from '../prompt-builder'
 import { log } from './helpers'
@@ -74,7 +74,7 @@ export abstract class OmpRpcAgentImplLayer03 extends OmpRpcAgentImplLayer02 {
    * "两个私有声明"(TS2415),而 JS 只有一个实例字段,故删除后语义与运行时完全一致。
    */
 
-  override async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
+  override async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: SupervisionOptions): Promise<SupervisionDecision[]> {
     await this.ensureClient(ctx)
     if (!this.client) return []
     if (this.supervising) return [] // 上一轮 supervise 未收口:跳过本拍(节流即正确)
@@ -90,11 +90,9 @@ export abstract class OmpRpcAgentImplLayer03 extends OmpRpcAgentImplLayer02 {
       manual: this.systemManual(),
       memory: ctx.memory,
     })
-    // 150s 上界:supervise 持 lead.execLock 期间信箱消费停顿(更久会拖垮 worker 回执处理);
-    // supervise 是一次真实 LLM 回合:omp 冷启动(插件/MCP 加载 30~90s)+ 慢 provider
-    // 单步可能 >60s,过紧会把正常回合掐成 "Interrupted by user"。默认 150s,
-    // 仅拦真僵死(更紧的预算由调用方 config.superviseTimeoutMs 显式传入);真 abort 已实现。
-    const timeoutMs = this.config.superviseTimeoutMs ?? 150_000
+    // watchdog 只做观察和同 session 提示；hard timeout 仅作为最终回合安全边界。
+    const policy = this.getSupervisionPolicy()
+    const hardTimeoutMs = policy.hardTimeoutMs
 
     return new Promise<SupervisionDecision[]>((resolve) => {
       let assistantText = ''
@@ -104,22 +102,24 @@ export abstract class OmpRpcAgentImplLayer03 extends OmpRpcAgentImplLayer02 {
         if (resolved) return
         resolved = true
         this.supervising = false
+        this.turnActive = false
+        this.streaming = false
         unsub()
-        clearTimeout(timer)
+        if (hardTimer) clearTimeout(hardTimer)
         signalUnsub?.()
         resolve(decisions)
       }
 
-      const abortTurn = (): void => {
-        // 超时/外部取消:真正中止 omp 当前回合 —— 只 resolve 不 abort 会让残留回合
-        // 与下一个 prompt 在同一 client 混流(决策错位 + token 空烧)
-        log.warn(`[OmpRpcAgent:${this.selfAgentId}] supervise 超时(${timeoutMs}ms)→ abort 当前调度回合`)
+      const abortTurn = (reason: string): void => {
+        // 只有显式取消、Runtime stop 或 hard timeout 才 abort；watchdog 本身不 abort。
+        log.warn(`[OmpRpcAgent:${this.selfAgentId}] supervise ${reason} → abort 当前调度回合`)
         void this.client?.send({ type: 'abort' }).catch(() => {})
         finish([])
       }
 
       const unsub = this.client!.onEvent((event) => {
         if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
+          this.streaming = true
           assistantText += event.assistantMessageEvent.delta ?? ''
         }
         if (event.type === 'agent_end' && event.isTerminal !== false) {
@@ -138,7 +138,7 @@ export abstract class OmpRpcAgentImplLayer03 extends OmpRpcAgentImplLayer02 {
         }
       })
 
-      const timer = setTimeout(abortTurn, timeoutMs)
+      const hardTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => abortTurn(`hard timeout(${hardTimeoutMs}ms)`), hardTimeoutMs)
 
       // 外部取消(调度器 cancel 路径)传导:abort 当前 LLM 回合并立即收口
       let signalUnsub: (() => void) | undefined
@@ -148,12 +148,14 @@ export abstract class OmpRpcAgentImplLayer03 extends OmpRpcAgentImplLayer02 {
           resolve([])
           return
         }
-        const onAbort = (): void => abortTurn()
+        const onAbort = (): void => abortTurn('external cancel')
         opts.signal.addEventListener('abort', onAbort, { once: true })
         signalUnsub = () => opts.signal?.removeEventListener('abort', onAbort)
       }
 
       this.supervising = true
+      this.turnActive = true
+      this.streaming = false
       this.client!.send({ type: 'prompt', message: prompt }).catch(() => finish([]))
     })
   }
@@ -415,6 +417,7 @@ export abstract class OmpRpcAgentImplLayer03 extends OmpRpcAgentImplLayer02 {
       // 复用同一僵死 stdio 每次空转 60s;必须杀掉并置空,下回合 ensureClient
       // 全新重生(host tools/模型/终端 tap 随重建)。
       log.warn(`[OmpRpcAgent:${this.selfAgentId}] prompt 失败 → 回收可疑僵死进程 pid=${client.pid}`)
+      this.harnessRestartReason = 'PROMPT_FAIL'
       this.killProcess()
       this.client = null
       this.hostToolsRegistered = false
@@ -436,6 +439,7 @@ export abstract class OmpRpcAgentImplLayer03 extends OmpRpcAgentImplLayer02 {
           if (remaining <= 0) {
             client.send({ type: 'abort' }).catch(() => {})
             // 子进程大概率已僵死:击杀并清引用,下回合 ensureClient 全新重生
+            this.harnessRestartReason = 'TURN_STALLED'
             this.killProcess()
             this.client = null
             this.hostToolsRegistered = false

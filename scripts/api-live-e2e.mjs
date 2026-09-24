@@ -255,8 +255,14 @@ async function main() {
 
   // dispatch 状态机:提交新父任务 → 等 lead 自动派发第 1 个子任务(父转 WAITING)
   // → API 手工 dispatch 第 2 个子任务(WAITING 父上允许) → 全部完成后父汇总
+  //
+  // 必须显式要求委派:平台的既定行为是「简单任务 Lead 直接完成」(见设计文档 §10 Real OMP 第 1 项),
+  // 一步就能做完的父任务不会被派发子任务 —— 断言不能依赖模型的一次性判断。
   const ptask = await api('POST', `/api/workshop/channels/${ids.channel}/tasks`, {
-    body: { title: `parent-${tag}`, description: '父任务聚合验证' },
+    body: {
+      title: `parent-${tag}`,
+      description: '父任务聚合验证:本任务必须分解为可并行的子任务,先派发给 worker 执行,等待子任务全部完成后由 lead 汇总收口。不要自己直接完成。',
+    },
   })
   check('提交父任务(用于 dispatch)', ptask.code === 0 && ptask.data?.id)
   ids.parentTask = ptask.data.id
@@ -267,7 +273,8 @@ async function main() {
     const kids = (children.data ?? []).filter(x => x.parentId === ids.parentTask)
     return kids.length > 0 && t.data?.state === 'WAITING' ? kids : null
   }, 15_000)
-  check('lead 自动派发子任务', autoChild.length === 1, `autoChild=${autoChild[0]?.id?.slice(0, 8)}`)
+  // mock/真实 lead 可能一次派发多个子任务(空闲 worker 数决定),断言只要求"至少一个自动子任务"
+  check('lead 自动派发子任务', autoChild.length >= 1, `autoChild=${autoChild.length}(${autoChild[0]?.id?.slice(0, 8)})`)
 
   const subtask = await api('POST', `/api/workshop/tasks/${ids.parentTask}/dispatch`, {
     token: ids.leadToken,
@@ -316,10 +323,25 @@ async function main() {
     body: { title: `cancel-me-${tag}`, description: '将被取消' },
   })
   check('提交待取消任务', ctask.code === 0)
+  // 时序现实:mock lead 对一步任务会在首个监督回合直接收口(设计行为),取消请求可能
+  // 输掉这场竞态。两种结局都必须正确 —— 仍在途 → CANCELED;已终态 → 终态护栏拒绝
+  // (绝不能把 COMPLETED 静默改写为 CANCELED)。断言按实际到场状态分支。
+  const preCancel = await api('GET', `/api/workshop/tasks/${ctask.data.id}`)
+  const wasOpen = !!preCancel.data && !['COMPLETED', 'FAILED', 'CANCELED'].includes(preCancel.data.state)
   const cancel = await api('POST', `/api/workshop/tasks/${ctask.data.id}/cancel`)
-  check('POST /tasks/:id/cancel → CANCELED', cancel.code === 0 && cancel.data?.state === 'CANCELED', `state=${cancel.data?.state}`)
   const cancelAgain = await api('POST', `/api/workshop/tasks/${ctask.data.id}/cancel`)
-  check('终态重复 cancel → 400', cancelAgain.status === 400 || cancelAgain.code === 'INVALID_TRANSITION')
+  if (wasOpen) {
+    check('POST /tasks/:id/cancel → CANCELED', cancel.code === 0 && cancel.data?.state === 'CANCELED', `state=${cancel.data?.state}`)
+    // 已 CANCELED 的任务重复取消 = 幂等成功(与 TaskEngine.cancel 的既有语义一致)
+    check('重复 cancel 幂等(仍 CANCELED)', cancelAgain.code === 0 && cancelAgain.data?.state === 'CANCELED', `state=${cancelAgain.data?.state}`)
+  }
+  else {
+    check('已终态任务的 cancel 被终态护栏拒绝(不改写 COMPLETED)',
+      cancel.status === 409 && cancel.code === 'TASK_TERMINAL',
+      `status=${cancel.status} code=${cancel.code} state=${cancel.data?.state}`)
+    check('重复 cancel 仍被拒绝', cancelAgain.status === 409 && cancelAgain.code === 'TASK_TERMINAL',
+      `status=${cancelAgain.status} code=${cancelAgain.code}`)
+  }
 
   // ═══════════ 7. loop 模式(限次) ═══════════
   section('TASK loop 模式(LoopController 限次重放)')

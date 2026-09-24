@@ -704,3 +704,83 @@ pnpm build
 - real OMP E2E；
 
 共同作为完成证据。
+
+---
+
+## 13. 实施状态（第二轮补齐，2026-09-24）
+
+第一轮已落地 §0–§4（根任务幂等、FIFO 队列、非破坏 watchdog、Lead wait/guide/reassign/cancel 决策、root deadline）。
+第二轮按本文档逐条复核后补齐以下缺口：
+
+### 13.1 数据模型与执行租约（§2.1 / §5）
+
+| 项 | 落点 |
+| --- | --- |
+| `assignment_generation` / `execution_lease_id` / `execution_lease_agent_id` / `execution_lease_started_at` / `execution_lease_revoked_at` | `db/database/schema.ts`、`db/schema.sql`、`db/database/migrations.ts`（`migrateAgentTeamExecutionLeaseColumns`，含两次 tasks 重建的列清单对齐） |
+| 新分配/重分配换发 generation + lease | `runtime/task-engine/lease.ts`（`issueLeaseFields` / `fenceMatches` / `fenceFromMetadata`） |
+| 事件携带栅栏 | `deliverTaskMessage` 写 `x-aw-assignment-generation` / `x-aw-execution-lease-id` |
+| 迟到事件丢弃 | `TaskEngine.applyEvent(taskId, event, fence)` + `AgentRuntime.processMessage` 的投递准入 |
+| 运行中 reassign（§5.2 六步） | `TaskEngine.reassignRunning`；调度器 `case 'reassign'` 与 `manager.reassignTask` 对 WORKING/WAITING 走该路径并对旧 worker 执行 task-local abort |
+| 终态撤销租约 | `TaskEngine.transition` 写 `execution_lease_revoked_at` |
+
+兼容性：历史任务无 lease 时栅栏一律放行（`fenceMatches` 的 `!task.executionLeaseId` 分支），升级瞬间不会丢弃在途 worker 事件。
+
+### 13.2 完整性修复（审计发现的真实缺陷）
+
+1. **root 漏号**：`manager/14-tasks.ts` 在「人类直发 worker」时显式传 `rootQueueSeq: null`，被 `listRoots` 的 `root_queue_seq IS NOT NULL` 过滤 → `activeRootId` 变 null、FIFO 准入与调度器 activeRoot 守卫同时失效，而前端仍显示为 active。现在所有 root 一律发号（`task.repo.ts` 对 `null` 也补号）。
+2. **lead runtime 永不卸载**：`supervisionAttempt.state` 落定后停在 `DECISION_APPLIED`，而 `unloadAgent` 判据是 `state !== 'IDLE'` → §6.1 闸门永久为假。现在按 §4.1 状态机落定后回到 `IDLE`，审计信息保留在 `completedAt` / `lastDecisionKind` / `watchdogCount`，卸载判据改用 `hasActiveSupervisionAttempt()`。
+3. **artifact 不可见**：`applyEvent` 只在 progress 变化时广播，非 append 且未声明 `totalChunks` 的交付物既不更新进度也不广播 → 过程记忆永远看不到 artifact。现在 artifact 无条件广播（`progress` 仅在真变化时进入载荷，保持既有「变化才发进度帧」口径）。
+4. **canonical root summary 是死代码**：`recordTeamTaskTerminal` 全仓无调用者。现在在 root 终态分支接回，并把「结论」改为 `交付物摘要 → closeReason → routeReason` 优先级。
+5. **§7.1 事件契约缺失**：19 个事件被压成 8 个中文状态标签，且子任务的 `SUBMITTED` 被错标成「根任务进入队列」。现在 `canonicalEventType` 按 `nodeRole` + 事件语义派生出文档逐字事件名（含 `root.queued` 判定与 `child.artifact`），payload 增加 `rootId/nodeRole/eventType/artifact/nextStep/at`。
+6. **§7.2 节流口径**：milestone 编入节流键导致「同一事件类型 30s 内最多一次」失效（10%→90% 会写 8 行）。现在节流键只含事件类型，milestone 只进 dedupKey；节流表加了容量裁剪。
+7. **§7.2 长度口径**：`CONTENT_STORE_LIMIT=800` 截断施加在 CJK 切分**之后**（≈267 汉字）。现在先按原文截到 1200 字再切分。
+8. **§7.3 outbox 失败不可见**：`markFailed` / `reschedule` 全仓无调用者，失败只打日志且重试节奏跟着 6h 的 `memory.maintenance_ms`。现在失败写 `last_error` + `attempts`，超阈值转 `failed` 死信；新增 30s 独立补偿 worker（`runOutboxCompensation`）、`sweepFailed` 死信保留期清理，并把 `outbox.counts()` 接进监控快照。
+9. **§7.4 NULL owner 越权**：`otherSameOwnerChannels` 原判据「任一 NULL owner 即放行」使遗留无主 channel 可被任意 Lead 读取。现在要求双方 owner 非空且相等。
+10. **§7.4 DTO 缺字段**：同 channel 与跨 Channel 记忆 DTO 补齐 `channelId/taskId/rootId/visibility/createdAt`，工具输出同步渲染来源。
+
+### 13.3 Harness 连续性与观测（§6 / §11）
+
+| 项 | 落点 |
+| --- | --- |
+| `continuityMode: persistent / per_turn` | `agents/registry.ts`；6 个一次性 CLI（gemini/copilot/cursor/crush/goose/pi）标 `per_turn`，omp/opencode/codex/dsh/claude/qwen/hermes/mock 标 `persistent`，`harnessMetas()` 一并导出 |
+| 连续性租约（§2.4 只读 DTO） | `AgentRuntime.getContinuity()`：leaseId / continuityMode / pid / sessionId / reuseCount / activeTaskIds / lastUsedAt / idleGraceUntil / lastRestartReason / restartCount / harnessRestartCounts |
+| `lastRestartReason` | OMP 四处 client 重建点写 `PROCESS_EXIT` / `PROMPT_FAIL` / `TURN_STALLED`（`takeHarnessRestartReason()` 消费一次）；RPC 断裂由运行时失败归因 |
+| `SERVER_RESTART`（§6.4） | `restore()` 对仍在恢复的 channel 调 `markServerRestart()`，并先跑一次 outbox 补偿（不再等 6h 周期） |
+| §11 观测指标 | `manager.collectAgentTeamMetrics()`：root_queue_depth / root_wait_ms / supervision_watchdog_count / supervision_attempt_age_ms / harness_reuse_count / harness_restart_count_by_reason / active_execution_leases / memory_outbox_pending / memory_outbox_failed，全部挂在 `GET /api/system/monitor` 的 `agentTeam` 上 |
+
+### 13.4 前端与 WS（§8）
+
+- `channel.snapshot.rootQueue` 与新增 `root.queue` 帧（§3.4-3，root 状态变化即广播）落 store；`activeRootId` / 排队位次 / completed 计数全部来自后端权威投影，前端不再自行推导。
+- `agent.status` 的 `supervision` / `continuity` 以前端 reducer 丢失的缺陷修复；泳道列头新增 watchdog、Lead 最后决策、continuity/pid/reuse/last-restart 徽标。
+- `MemoryPanel` 增加时间轴元信息（时间 / 可见性 / root / task 来源标识）。
+- `GET /api/workshop/tasks/:id` 支持 `channelId` 强校验，抽屉请求携带 channelId，切频道后残留 taskId 返回 404 而不是串详情。
+
+### 13.5 回滚开关（§11）
+
+`workshop.root_queue_enabled` / `workshop.supervise_watchdog_only` / `workshop.harness_continuity_enabled` / `workshop.channel_memory_digest_enabled`
+（`shared/config/schema.json` + `app/config/schema.ts` + `server/services/workshop/settings.ts` 三处一致）。
+三项只关闭**新行为**，不关闭 `(channel_id, source_chat_message_id)` 唯一索引与任务终态设防——那两条是正确性底线。
+另新增 `workshop.supervise_watchdog_ms`（默认 90s）与 `workshop.supervise_hard_timeout_ms`（默认 900s，仅作监督回合硬安全边界）。
+
+### 13.6 验证证据
+
+```powershell
+pnpm exec tsc -p .nuxt/tsconfig.server.json --noEmit --pretty false   # 通过
+pnpm typecheck                                                        # 通过
+pnpm exec eslint <changed-files>                                      # 通过
+pnpm build                                                            # 通过
+tsx --tsconfig .nuxt/tsconfig.server.json scripts/test-task-lease-fencing.ts   # ALL PASS
+tsx --tsconfig .nuxt/tsconfig.server.json scripts/test-supervision-watchdog.ts # ALL PASS
+tsx --tsconfig .nuxt/tsconfig.server.json scripts/test-agentteam-guardrails.ts # ALL PASS
+tsx --tsconfig .nuxt/tsconfig.server.json scripts/test-task-engine.ts          # ALL PASS
+tsx --tsconfig .nuxt/tsconfig.server.json scripts/test-agent-runtime.ts        # ALL PASS
+tsx --tsconfig .nuxt/tsconfig.server.json scripts/test-scheduler-loop.ts       # ALL PASS
+tsx --tsconfig .nuxt/tsconfig.server.json scripts/test-workshop-db.ts          # ALL PASS
+```
+
+新增确定性测试 `scripts/test-task-lease-fencing.ts` 覆盖 §2.1 root 发号、§5.1 创建/终态租约、
+§5.2 运行中重分配与旧 worker 迟到事件丢弃、assign 投递栅栏、同目标幂等、非运行中拒绝。
+
+未完成（明确保留）：真实 OMP 双 worker E2E（§10 Real OMP 一节）需要真实引擎与模型凭证，
+不在本轮 deterministic 验证范围内；`session resume` 仍未持久化（§6.4 只做到如实记录 `SERVER_RESTART`）。
+

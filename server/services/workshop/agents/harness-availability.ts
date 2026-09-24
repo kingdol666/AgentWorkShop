@@ -59,7 +59,7 @@ function probeExecutable(command: string): string | null {
     return isPlainFile(command) ? command : null
   }
   if (process.platform === 'win32') return resolveOnPath(command)
-  for (const dir of (process.env.PATH ?? '').split(':').filter(Boolean)) {
+  for (const dir of (process.env.PATH ?? process.env.Path ?? '').split(':').filter(Boolean)) {
     const full = join(dir, command)
     if (isExecutableFile(full)) return full
   }

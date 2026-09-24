@@ -39,7 +39,13 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
       // 记忆按需抓取/主动沉淀(成员校验 + 委托本实例 AgentMemory;shared 写入即 Channel 公共域)
       recallMemory: async (input) => {
         this.requireMember(channelId, agent.id)
-        return memory.recallRows(input.query, { scope: input.scope, limit: input.limit })
+        const rows = await memory.recallRows(input.query, { scope: input.scope, limit: input.limit })
+        // §7.4:rootId 由 manager 补齐(记忆层不查任务表)
+        return rows.map((r) => {
+          if (!r.taskId) return r
+          const task = this.getTaskEngine().get(r.taskId)
+          return { ...r, rootId: task ? (task.parentId ?? task.id) : r.taskId }
+        })
       },
       saveMemory: async (input) => {
         this.requireMember(channelId, agent.id)
@@ -85,21 +91,34 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
     }
     const title = String(input.title ?? '').trim()
     if (!title) throw new AppError(400, 'BAD_REQUEST', 'submit_task 需要非空 title')
-    const roots = this.getTaskEngine().list(channelId).filter(t => !t.parentId)
-    // 持久化来源身份是强幂等键:同一条群聊消息即使 Lead 改标题也只能有一个 root。
-    const existingBySource = input.sourceChatMessageId
-      ? roots.find(t => t.sourceChatMessageId === input.sourceChatMessageId)
-      : undefined
-    if (existingBySource) return existingBySource
-    // 无来源 ID 的旧入口保留标题兜底,但只拦截在途任务。
-    const existing = roots.find(t =>
-      !input.sourceChatMessageId
-      && t.title === title
-      && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
-    if (existing) return existing
     const deadlineAt = /^\[mode:(goal|loop|pipeline)\]/.test(input.description ?? '')
       ? undefined
       : new Date(Date.now() + Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))).toISOString()
+
+    // sourceChatMessageId 是 canonical root identity。createOrGetRoot 在 repo 层以
+    // partial unique index 做最终并发闸门；即使 Lead 改标题或重复 submit，仍返回原 root。
+    if (input.sourceChatMessageId) {
+      const result = this.getTaskEngine().createOrGetRoot({
+        channelId,
+        creatorId: callerAgentId,
+        assigneeId: callerAgentId,
+        title,
+        description: input.description,
+        parts: input.parts,
+        sourceChatMessageId: input.sourceChatMessageId,
+        sourceChatDeliveryId: input.sourceChatDeliveryId,
+        deadlineAt,
+      })
+      this.ensureChannelRuntime(channelId).wakeScheduler()
+      return result.task
+    }
+
+    // 兼容无来源 ID 的历史入口：仅拦截同标题在途 root。新的 chat 入口不应缺失 source ID。
+    const existing = this.getTaskEngine().list(channelId).find(t =>
+      !t.parentId
+      && t.title === title
+      && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
+    if (existing) return existing
     const task = this.getTaskEngine().create({
       channelId,
       creatorId: callerAgentId,
@@ -107,11 +126,8 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
       title,
       description: input.description,
       parts: input.parts,
-      sourceChatMessageId: input.sourceChatMessageId,
-      sourceChatDeliveryId: input.sourceChatDeliveryId,
       deadlineAt,
     })
-    // 唤起调度:下一 tick 即按"lead 名下未规划根任务"请 lead 继续(分解或直接作答)
     this.ensureChannelRuntime(channelId).wakeScheduler()
     return task
   }

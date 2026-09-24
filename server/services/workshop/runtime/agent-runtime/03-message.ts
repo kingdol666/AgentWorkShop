@@ -8,12 +8,18 @@ import type { AgentContextStats, AgentStatusView } from '../../types/task'
 import type { AgentRunContext, AgentRunRequest } from '../../agents/agent-interface'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { log, partsToText } from './helpers'
+import { fenceFromMetadata } from '../task-engine/lease'
+import type { ExecutionFence } from '../task-engine/lease'
 import { randomUUID } from 'node:crypto'
 
 export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
   protected async processMessage(msg: A2AMessage): Promise<void> {
     const taskId = this.taskIdOf(msg)
     const taskKind = msg.metadata?.['x-aw-task-kind']
+    // §5.1 执行代次栅栏:任务消息携带 assignment generation + execution lease。
+    // 运行中 reassign 之后,旧 worker 信箱里残留/被重投的 assign 与它会话中继续吐出的
+    // 事件都带旧代次 —— 一律丢弃,绝不覆盖新执行结果。
+    const fence = fenceFromMetadata(msg.metadata)
     // cancel 只是控制消息:它负责让已在运行的回合收口,本身不得再启动一次 worker turn。
     if (taskKind === 'cancel') {
       this.deps.mailbox.markConsumed(msg.messageId)
@@ -24,6 +30,11 @@ export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
     if ((taskKind === 'assign' || taskKind === 'child-completed') && taskId) {
       const task = this.deps.taskEngine.get(taskId)
       if (!task || TERMINAL_TASK_STATES[task.state]) {
+        this.deps.mailbox.markConsumed(msg.messageId)
+        return
+      }
+      if (!this.assignmentFenceOk(taskId, fence)) {
+        log.warn(`[AgentRuntime:${this.agentId}] 丢弃过期任务投递(旧执行代次):task=${taskId.slice(0, 8)} kind=${taskKind}`)
         this.deps.mailbox.markConsumed(msg.messageId)
         return
       }
@@ -46,6 +57,9 @@ export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
       }
       // 每次 run 新建 AbortController;abort 后事件流终止
       this.abortController = new AbortController()
+      // §2.4/§6.2:worker 回合与 Lead supervise 共用同一 harness 进程/会话 ——
+      // 回合起点观测租约(复用计数 / 重建归因)。
+      this.noteHarnessUse()
       // 记忆召回(异常不阻塞):查询=消息原文(title 首词天然显著)+ 任务关联加权
       let memoryBlock: string | undefined
       try {
@@ -93,7 +107,7 @@ export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
             const cur = this.deps.taskEngine.get(taskId)
             if (cur && cur.state === 'WORKING') continue
           }
-          if (taskId) await this.deps.taskEngine.applyEvent(taskId, event)
+          if (taskId) await this.deps.taskEngine.applyEvent(taskId, event, fence)
           if (event.kind === 'message') {
             // 只聚合 assistant/agent 输出:ROLE_USER 是 prompt 回显,聚进去会把整段
             // 提示词当成"回复"代投到时间线(实测回执变成 prompt 前缀)。
@@ -109,6 +123,8 @@ export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
       catch (err) {
         // run 生成器抛错(如 omp 子进程 spawn 失败):按回合失败走重投,不外抛断循环
         sawRunError = true
+        // Harness 重建归因(§6.2):下回合若换了 client/进程,原因取自此处
+        this.pendingHarnessFailure = 'RPC_BROKEN'
         log.error(`[AgentRuntime:${this.agentId}] 回合异常:`, err)
       }
       // 人类 requireReply 的平台兜底回执:实测部分引擎/模型不遵从 send_message_to_agent
@@ -182,7 +198,8 @@ export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
       //    最终文本作为交付物;否则这类引擎的所有任务都会「工作做完了却停滞被回收」。
       //  - 两者皆无(LLM 空转)→ FAILED 交给调度器 retry/reassign。
       // 仅 worker 的 assign 执行消息生效:lead 由 supervise 协调;WAITING 父任务不属此列。
-      if (taskId && this.role === 'worker' && taskKind === 'assign') {
+      if (taskId && this.role === 'worker' && taskKind === 'assign'
+        && this.assignmentFenceOk(taskId, fence)) {
         const after = this.deps.taskEngine.get(taskId)
         if (after && after.assigneeId === this.agentId && after.state === 'WORKING') {
           const deliverable = after.artifacts.find(a => a.name !== 'input' && a.parts.some(p => ('text' in p ? p.text.trim().length : 1) > 0))
@@ -202,7 +219,7 @@ export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
                   },
                   lastChunk: true,
                   totalChunks: 1,
-                })
+                }, fence)
               }
               const latest = this.deps.taskEngine.get(taskId)
               if (latest && latest.assigneeId === this.agentId && latest.state === 'WORKING') {
@@ -313,8 +330,21 @@ export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
     }
   }
 
-  /** 状态通知的队列上下文(实时:当前任务/待执行数/已完成数/harness 上下文用量) */
-  protected queueContext(): Pick<AgentStatusView, 'currentTaskId' | 'currentTaskTitle' | 'currentTaskProgress' | 'queuedCount' | 'completedCount'> & { context?: AgentContextStats | null } {
+  /**
+   * §5.1 执行代次栅栏校验(带能力探测)。
+   *
+   * 生产装配下 `deps.taskEngine` 恒为 TaskEngine(必带 assertAssignmentFence);
+   * 但测试替身/极简构造点可能只实现 run 路径所需的最小子集 —— 缺方法时按
+   * 「无栅栏能力」放行,而不是在消费循环里抛 TypeError 把整条消息链打断。
+   */
+  protected assignmentFenceOk(taskId: string, fence?: ExecutionFence): boolean {
+    const engine = this.deps.taskEngine as { assertAssignmentFence?: (id: string, f?: ExecutionFence) => boolean }
+    if (typeof engine.assertAssignmentFence !== 'function') return true
+    return engine.assertAssignmentFence(taskId, fence)
+  }
+
+  /** 状态通知的队列上下文(实时:当前任务/待执行数/已完成数/harness 上下文用量/监督/连续性) */
+  protected queueContext(): Pick<AgentStatusView, 'currentTaskId' | 'currentTaskTitle' | 'currentTaskProgress' | 'queuedCount' | 'completedCount' | 'supervision' | 'continuity'> & { context?: AgentContextStats | null } {
     const status = this.getStatus()
     return {
       currentTaskId: status.currentTaskId,
@@ -323,6 +353,8 @@ export abstract class AgentRuntimeLayer03 extends AgentRuntimeLayer02 {
       queuedCount: status.queuedCount,
       completedCount: status.completedCount,
       context: status.context ?? null,
+      supervision: status.supervision,
+      continuity: status.continuity,
     }
   }
 

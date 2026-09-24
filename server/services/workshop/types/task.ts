@@ -22,6 +22,8 @@ export interface WorkspaceTask {
   channelId: string
   /** 子任务挂主任务(主理人分解) */
   parentId?: string
+  /** Channel root FIFO sequence; only root tasks carry it */
+  rootQueueSeq?: number
   /** 当前负责 Agent */
   assigneeId: string
   /** 创建者(lead / 用户) */
@@ -44,6 +46,13 @@ export interface WorkspaceTask {
   /** 终态/关闭原因与持久化 deadline */
   closeReason?: string
   deadlineAt?: string
+  /** 执行交接代次(§5.1;每次新分配/重分配 +1,用于拒绝旧 worker 迟到事件) */
+  assignmentGeneration?: number
+  /** 当前执行租约 id / 持有者 / 起止时间(§2.1) */
+  executionLeaseId?: string
+  executionLeaseAgentId?: string
+  executionLeaseStartedAt?: string
+  executionLeaseRevokedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -71,6 +80,21 @@ export interface AgentTaskQueueView {
   completed: WorkspaceTask[]
 }
 
+/**
+ * 根任务队列视图(§2.2)。后端统一派生 —— 前端不得自行推导 active root,
+ * 否则前后端会对「谁在跑」给出相反结论。
+ */
+export interface RootQueueView {
+  activeRootId: string | null
+  activeRoot: WorkspaceTask | null
+  /** 排队中的 roots(不含 active);`position` 从 2 起,1 恒为 active */
+  queuedRoots: Array<{ task: WorkspaceTask, position: number }>
+  /** 已终态 root 计数 */
+  completedRoots: number
+  activeRootCount: number
+  queuedRootCount: number
+}
+
 /** harness 上下文用量快照(omp harness 有;进程内 harness 无 → 字段缺省) */
 export interface AgentContextStats {
   /** 最近已知上下文 tokens(≈ prompt 规模) */
@@ -81,6 +105,58 @@ export interface AgentContextStats {
   percent: number | null
   /** harness 正在压缩会话 */
   compacting: boolean
+}
+
+export interface SupervisionAttemptView {
+  attemptId: string | null
+  /** 归属(§2.3 channel_id / lead_agent_id;前端展示与审计) */
+  channelId?: string
+  leadAgentId?: string
+  state: 'IDLE' | 'RUNNING' | 'WATCHDOG_SIGNALED' | 'WAITING_FOR_RESULT' | 'DECISION_APPLIED' | 'ABORT_REQUESTED' | 'ABORTED'
+  startedAt: string | null
+  watchdogAt: string | null
+  /** 监督回合落定时刻(§2.3 completed_at) */
+  completedAt?: string | null
+  /** 本轮决策依据的快照修订号(= 调度 tick;§2.3 snapshot_revision) */
+  snapshotRevision?: number | null
+  activeRootId: string | null
+  watchdogCount: number
+  /** 最近一次 watchdog/监督信号时刻(§2.3 last_signal_at) */
+  lastSignalAt?: string | null
+  /** 最近一次 Lead 决策类型 wait|guide|reassign|cancel|complete|…(§2.3/§8「Lead 最后决策」) */
+  lastDecisionKind?: string | null
+}
+
+/**
+ * Harness 连续性租约只读 DTO(§2.4)。
+ * 只暴露观测字段 —— 不含凭据、不含内部 prompt;`continuityMode` 来自 registry,
+ * 一次性 CLI 如实标 `per_turn`,平台不虚假承诺同进程复用。
+ */
+export interface HarnessContinuityView {
+  leaseId: string
+  agentId: string
+  channelId: string
+  harness: string
+  continuityMode: 'persistent' | 'per_turn'
+  /** harness 子进程 pid(进程内引擎为 null) */
+  pid: number | null
+  /** harness 会话/线程身份(§2.4 session_id / thread_id;未探测到为 null) */
+  sessionId: string | null
+  /** 本租约内进程/会话被复用的回合数(§11 harness_reuse_count) */
+  reuseCount: number
+  /** 当前仍持有的非终态任务(§6.1 卸载闸门依据) */
+  activeTaskIds: string[]
+  startedAt: string
+  lastUsedAt: string
+  /** 空闲宽限到期时刻(此刻之前即便 idle 也不卸载) */
+  idleGraceUntil: string | null
+  /** 最近一次 Harness 重建原因(§6.2 last_restart_reason) */
+  lastRestartReason: string | null
+  lastRestartAt: string | null
+  /** 本租约生命周期内重建次数 */
+  restartCount: number
+  /** 按原因聚合的重启计数(§11 harness_restart_count_by_reason) */
+  harnessRestartCounts: Record<string, number>
 }
 
 /** Agent 实时状态视图(状态管理机制:idle/busy/stopped + 队列上下文) */
@@ -102,4 +178,7 @@ export interface AgentStatusView {
   completedCount: number
   /** harness 上下文用量(omp 有;进程内 harness/未知时缺省) */
   context?: AgentContextStats
+  supervision?: SupervisionAttemptView
+  /** Harness 连续性租约(§2.4/§8;只读观测面) */
+  continuity?: HarnessContinuityView
 }

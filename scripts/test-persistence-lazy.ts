@@ -175,7 +175,13 @@ async function testRestoreWithPending(): Promise<void> {
     const wTpl = await manager1.createAgent({ name: 'w', harness: 'mock', config: { delayMs: 200 } })
     await manager1.addAgentToChannel({ channelId, agentId: wTpl.id, role: 'worker' })
     // 提交一个任务但不完成(不等它完成就关闭)
-    const task = await manager1.submitChannelTask({ channelId, title: '未完成任务' })
+    //
+    // 用 `[mock:complex]` 强制 mock lead 委派给 worker(mock-agent 的显式委派开关)。
+    // 简单任务会被 mock lead 在**首个监督回合**直接 complete(设计行为:§10 Real OMP
+    // 「简单任务 Lead 直接完成」),而监督回合与 lead 的 assign 回合之间存在微任务竞态 ——
+    // 于是「100ms 后仍未完成」在简单任务上是不稳定的断言(实测随调度器先/后 tick 摆动)。
+    // 委派路径至少要经过 一次 lead 回合 + worker 200ms 回合,100ms 内必然非终态。
+    const task = await manager1.submitChannelTask({ channelId, title: '未完成任务 [mock:complex]' })
     // 等它被 dispatch 进入工作状态
     await sleep(100)
     check('关闭前有未完成任务', getEngine(manager1).get(task.id)?.state !== 'COMPLETED')

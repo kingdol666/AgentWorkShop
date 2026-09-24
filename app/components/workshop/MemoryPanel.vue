@@ -61,7 +61,19 @@ const authHeaders = computed<Record<string, string>>(() => {
 
 const agents = computed(() => entities.agents[props.channelId] ?? [])
 
-const rows = ref<Array<{ id: string, title: string, content: string, kind: string, importance: number, agentId: string }>>([])
+const rows = ref<Array<{
+  id: string
+  title: string
+  content: string
+  kind: string
+  importance: number
+  agentId: string
+  /** §7.4/§8 来源定位:时间 / task / root / 可见性 */
+  createdAt?: string
+  taskId?: string | null
+  rootId?: string | null
+  visibility?: string
+}>>([])
 const loading = ref(false)
 
 const load = async (): Promise<void> => {
@@ -240,6 +252,25 @@ const doWrite = async (): Promise<void> => {
           <span class="row-importance">{{ r.importance.toFixed(2) }}</span>
           <span class="row-title">{{ r.title }}</span>
         </div>
+        <!-- §8 Channel 过程记忆时间轴:时间 + 来源(root/task)+ 可见性,不再只有标题 -->
+        <div class="row-meta">
+          <span
+            v-if="r.createdAt"
+            class="row-time"
+          >{{ r.createdAt.slice(0, 16).replace('T', ' ') }}</span>
+          <span
+            v-if="r.visibility"
+            class="row-vis"
+          >{{ r.visibility }}</span>
+          <span
+            v-if="r.rootId"
+            class="row-root"
+          >root {{ r.rootId.slice(0, 8) }}</span>
+          <span
+            v-if="r.taskId"
+            class="row-task"
+          >task {{ r.taskId.slice(0, 8) }}</span>
+        </div>
         <div class="row-content">
           {{ r.content.slice(0, 140) }}{{ r.content.length > 140 ? '…' : '' }}
         </div>
@@ -355,6 +386,16 @@ const doWrite = async (): Promise<void> => {
 .kind { margin-inline-end: 0; font-size: 10px; }
 .row-importance { font-family: var(--font-mono); font-size: 10px; opacity: 0.5; }
 .row-title { font-weight: 600; font-size: 12px; }
+/* §8 过程记忆时间轴元信息:时间/可见性/root/task(memory timeline 的来源标识) */
+.row-meta {
+  display: flex;
+  gap: 8px;
+  margin: 2px 0 1px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--ink-faint);
+}
+.row-vis { text-transform: uppercase; letter-spacing: 0.03em; }
 .row-content {
   font-size: 11px;
   opacity: 0.65;

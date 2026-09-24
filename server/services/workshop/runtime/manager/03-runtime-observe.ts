@@ -38,6 +38,8 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
     const agents: RuntimeAgentView[] = [...this.agentIndex.values()].map((rt) => {
       const status = rt.getStatus()
       const row = this.deps.repos.channelAgents.findByChannelAgent(rt.channelId, rt.agentId)
+      // §11 root_queue_depth:本 channel 未终态 root 数(队列深度)
+      const roots = this.getTaskEngine().rootQueue(rt.channelId)
       return {
         channelId: rt.channelId,
         agentId: rt.agentId,
@@ -49,6 +51,9 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
         queuedCount: status.queuedCount,
         completedCount: status.completedCount,
         process: rt.getProcessInfo(),
+        supervision: status.supervision,
+        continuity: status.continuity,
+        rootQueueDepth: (roots.activeRoot ? 1 : 0) + roots.queuedRoots.length,
       }
     })
     const channelOwner = new Map(channels.map(c => [c.channelId, c.ownerUserId ?? null]))
@@ -92,6 +97,85 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
         aliveProcesses: processes.filter(p => p.alive).length,
         orphanProcesses: processes.filter(p => p.alive && !p.bound).length,
       },
+      /** §11 AgentTeam 观测指标(全部来自事实源,不做第二份状态) */
+      agentTeam: this.collectAgentTeamMetrics(),
+    }
+  }
+
+  /**
+   * §11 观测指标快照。
+   * 全部为即时派生值:root 队列深度/等待时长来自 tasks 表,监督指标来自
+   * AgentRuntime 内存租约,outbox 指标来自 outbox_events 聚合。
+   */
+  collectAgentTeamMetrics(): {
+    rootQueueDepth: number
+    queuedRoots: number
+    activeRoots: number
+    maxRootWaitMs: number
+    supervisionWatchdogCount: number
+    supervisionAttemptAgeMs: number
+    harnessReuseCount: number
+    harnessRestartCountByReason: Record<string, number>
+    activeExecutionLeases: number
+    memoryOutboxPending: number
+    memoryOutboxFailed: number
+    memoryOutboxPublished: number
+  } {
+    const now = Date.now()
+    let rootQueueDepth = 0
+    let activeRoots = 0
+    let maxRootWaitMs = 0
+    const activeLeaseChannels = new Set<string>()
+    for (const cr of this.channels.values()) {
+      const roots = this.getTaskEngine().rootQueue(cr.channelId)
+      if (roots.activeRoot) {
+        activeRoots += 1
+        rootQueueDepth += 1
+        activeLeaseChannels.add(cr.channelId)
+      }
+      rootQueueDepth += roots.queuedRoots.length
+      for (const r of roots.queuedRoots) {
+        const waited = now - Date.parse(r.createdAt)
+        if (Number.isFinite(waited) && waited > maxRootWaitMs) maxRootWaitMs = waited
+      }
+    }
+    let supervisionWatchdogCount = 0
+    let supervisionAttemptAgeMs = 0
+    let harnessReuseCount = 0
+    const harnessRestartCountByReason: Record<string, number> = {}
+    let activeExecutionLeases = 0
+    for (const rt of this.agentIndex.values()) {
+      const sup = rt.getSupervisionStatus?.()
+      if (sup) {
+        supervisionWatchdogCount += sup.watchdogCount
+        const started = sup.state === 'RUNNING' || sup.state === 'WATCHDOG_SIGNALED' || sup.state === 'WAITING_FOR_RESULT'
+          ? Date.parse(sup.startedAt ?? '')
+          : Number.NaN
+        if (Number.isFinite(started)) supervisionAttemptAgeMs = Math.max(supervisionAttemptAgeMs, now - started)
+      }
+      const cont = rt.getContinuity?.()
+      if (cont) {
+        harnessReuseCount += cont.reuseCount
+        for (const [reason, n] of Object.entries(cont.harnessRestartCounts)) {
+          harnessRestartCountByReason[reason] = (harnessRestartCountByReason[reason] ?? 0) + n
+        }
+        activeExecutionLeases += cont.activeTaskIds.length
+      }
+    }
+    const outboxCounts = this.outboxCounts()
+    return {
+      rootQueueDepth,
+      queuedRoots: rootQueueDepth - activeRoots,
+      activeRoots,
+      maxRootWaitMs,
+      supervisionWatchdogCount,
+      supervisionAttemptAgeMs,
+      harnessReuseCount,
+      harnessRestartCountByReason,
+      activeExecutionLeases,
+      memoryOutboxPending: outboxCounts.pending ?? 0,
+      memoryOutboxFailed: outboxCounts.failed ?? 0,
+      memoryOutboxPublished: outboxCounts.published ?? 0,
     }
   }
 
@@ -151,6 +235,8 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
         aliveProcesses: processes.filter(p => p.alive).length,
         orphanProcesses: processes.filter(p => p.alive && !p.bound).length,
       },
+      // §11 观测指标:普通用户视角同样可见(全部为聚合计数,不含他人明细)
+      agentTeam: snap.agentTeam,
       scope: 'user',
     }
   }
@@ -187,6 +273,8 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
   }
 
   async shutdown(): Promise<void> {
+    // 先置停机标记:此后任何懒装配都不再挂新 SchedulerLoop(见 attachScheduler 注释)
+    this.shutdownStarted = true
     if (this.idleSweeperTimer) {
       clearInterval(this.idleSweeperTimer)
       this.idleSweeperTimer = null
@@ -195,12 +283,15 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
       clearInterval(this.memoryTimer)
       this.memoryTimer = null
     }
+    if (this.outboxTimer) {
+      clearInterval(this.outboxTimer)
+      this.outboxTimer = null
+    }
     this.scheduleRuntime?.stop()
     this.scheduleRuntime = null
-    for (const cr of this.channels.values()) {
-      cr.scheduler?.stop()
-      cr.scheduler = null
-    }
+    const schedulers = [...this.channels.values()].map(cr => cr.scheduler).filter((s): s is NonNullable<typeof s> => !!s)
+    await Promise.all(schedulers.map(s => s.stopAndWait()))
+    for (const cr of this.channels.values()) cr.scheduler = null
     await Promise.all([...this.agentIndex.values()].map(a => a.stop()))
     this.agentIndex.clear()
     this.channels.clear()

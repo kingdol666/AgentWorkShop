@@ -36,4 +36,9 @@ export interface MemorySnippet {
   /** 综合得分(0.5×相关性+0.3×时近性+0.2×重要性) */
   score: number
   source: 'private' | 'shared'
+  /** §7.4 来源定位:Channel / root / task / 可见性(缺省 = 旧调用方未提供) */
+  channelId?: string
+  taskId?: string | null
+  rootId?: string | null
+  visibility?: 'channel-shared' | 'private' | 'cross-channel'
 }

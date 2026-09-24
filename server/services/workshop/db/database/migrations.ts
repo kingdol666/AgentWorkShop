@@ -50,12 +50,46 @@ export function migrateAgentTeamTaskGuardrailColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'tasks', 'source_chat_delivery_id', 'TEXT')
   migrateAddColumn(db, 'tasks', 'close_reason', 'TEXT')
   migrateAddColumn(db, 'tasks', 'deadline_at', 'TEXT')
+  migrateAgentTeamTaskQueueColumns(db)
+  migrateAgentTeamExecutionLeaseColumns(db)
+}
+
+/**
+ * 执行交接栅栏列(§2.1/§5.1)。加列式迁移,对既有行安全:
+ * 历史行 generation=0 且无 lease —— assertAssignmentFence 对"无 lease"任务一律放行,
+ * 因此升级后不会把在途的旧 worker 事件误判为迟到。
+ */
+export function migrateAgentTeamExecutionLeaseColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'tasks', 'assignment_generation', 'INTEGER NOT NULL DEFAULT 0')
+  migrateAddColumn(db, 'tasks', 'execution_lease_id', 'TEXT')
+  migrateAddColumn(db, 'tasks', 'execution_lease_agent_id', 'TEXT')
+  migrateAddColumn(db, 'tasks', 'execution_lease_started_at', 'TEXT')
+  migrateAddColumn(db, 'tasks', 'execution_lease_revoked_at', 'TEXT')
+}
+
+/** AgentTeam root FIFO metadata; additive and safe for legacy task rows. */
+export function migrateAgentTeamTaskQueueColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'tasks', 'root_queue_seq', 'INTEGER')
+  // Deterministically backfill legacy roots; children remain NULL.
+  db.exec(`UPDATE tasks AS current SET root_queue_seq = (
+    SELECT COUNT(*) FROM tasks AS prior
+    WHERE prior.channel_id = current.channel_id
+      AND prior.parent_id IS NULL
+      AND (prior.created_at < current.created_at
+        OR (prior.created_at = current.created_at AND prior.rowid <= current.rowid))
+  ) WHERE current.parent_id IS NULL AND current.root_queue_seq IS NULL`)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_root_queue ON tasks(channel_id, parent_id, root_queue_seq, state);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_root_queue_seq
+    ON tasks(channel_id, root_queue_seq) WHERE parent_id IS NULL AND root_queue_seq IS NOT NULL`)
 }
 
 export function migrateAgentTeamTaskGuardrails(db: DatabaseSync): void {
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_root_source_chat_message
     ON tasks(channel_id, source_chat_message_id)
-    WHERE parent_id IS NULL AND source_chat_message_id IS NOT NULL`)
+    WHERE parent_id IS NULL AND source_chat_message_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_tasks_root_queue ON tasks(channel_id, parent_id, root_queue_seq, state);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_root_queue_seq
+      ON tasks(channel_id, root_queue_seq) WHERE parent_id IS NULL AND root_queue_seq IS NOT NULL`)
 }
 
 /** 检测表上是否存在 指向某表的列级外键 */
@@ -83,6 +117,7 @@ export function migrateMissingForeignKeys(db: DatabaseSync): void {
         id             TEXT PRIMARY KEY,
         channel_id     TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
         parent_id      TEXT,
+        root_queue_seq INTEGER,
         assignee_id    TEXT NOT NULL,
         creator_id     TEXT,
         title          TEXT NOT NULL,
@@ -97,10 +132,15 @@ export function migrateMissingForeignKeys(db: DatabaseSync): void {
         source_chat_delivery_id TEXT,
         close_reason   TEXT,
         deadline_at    TEXT,
+        assignment_generation      INTEGER NOT NULL DEFAULT 0,
+        execution_lease_id         TEXT,
+        execution_lease_agent_id   TEXT,
+        execution_lease_started_at TEXT,
+        execution_lease_revoked_at TEXT,
         created_at     TEXT NOT NULL,
         updated_at     TEXT NOT NULL
       );
-      INSERT INTO tasks_new SELECT id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, route_reason, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, created_at, updated_at FROM tasks;
+      INSERT INTO tasks_new SELECT id, channel_id, parent_id, root_queue_seq, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, route_reason, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, assignment_generation, execution_lease_id, execution_lease_agent_id, execution_lease_started_at, execution_lease_revoked_at, created_at, updated_at FROM tasks;
       DROP TABLE tasks;
       ALTER TABLE tasks_new RENAME TO tasks;
       -- 重建后索引必须与 SCHEMA_SQL 对齐:漏建则热查询退化为全表扫描(route_reason 列
@@ -108,7 +148,9 @@ export function migrateMissingForeignKeys(db: DatabaseSync): void {
       CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);
       CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
       CREATE INDEX IF NOT EXISTS idx_tasks_channel_assignee ON tasks(channel_id, assignee_id, state, created_at);
-      CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id);`)
+      CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id);
+      CREATE INDEX IF NOT EXISTS idx_tasks_root_queue ON tasks(channel_id, parent_id, root_queue_seq, state);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_root_queue_seq ON tasks(channel_id, root_queue_seq) WHERE parent_id IS NULL AND root_queue_seq IS NOT NULL;`)
     }
     if (needSubs) {
       db.exec(`DELETE FROM subscriptions
@@ -274,6 +316,7 @@ export function migrateLegacySchema(db: DatabaseSync): void {
       id             TEXT PRIMARY KEY,
       channel_id     TEXT NOT NULL,
       parent_id      TEXT,
+      root_queue_seq INTEGER,
       assignee_id    TEXT NOT NULL,
       creator_id     TEXT,
       title          TEXT NOT NULL,
@@ -287,14 +330,21 @@ export function migrateLegacySchema(db: DatabaseSync): void {
       source_chat_delivery_id TEXT,
       close_reason   TEXT,
       deadline_at    TEXT,
+      assignment_generation      INTEGER NOT NULL DEFAULT 0,
+      execution_lease_id         TEXT,
+      execution_lease_agent_id   TEXT,
+      execution_lease_started_at TEXT,
+      execution_lease_revoked_at TEXT,
       created_at     TEXT NOT NULL,
       updated_at     TEXT NOT NULL
     );
-    INSERT INTO tasks_new SELECT id, channel_id, parent_id, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, created_at, updated_at FROM tasks;
+    INSERT INTO tasks_new SELECT id, channel_id, parent_id, root_queue_seq, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, assignment_generation, execution_lease_id, execution_lease_agent_id, execution_lease_started_at, execution_lease_revoked_at, created_at, updated_at FROM tasks;
     DROP TABLE tasks;
     ALTER TABLE tasks_new RENAME TO tasks;
     CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);
-    CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);`)
+    CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
+    CREATE INDEX IF NOT EXISTS idx_tasks_root_queue ON tasks(channel_id, parent_id, root_queue_seq, state);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_root_queue_seq ON tasks(channel_id, root_queue_seq) WHERE parent_id IS NULL AND root_queue_seq IS NOT NULL;`)
 
     // 4. agents 重建为模板表(旧数据已迁到 channel_agents,模板表清空)
     db.exec(`CREATE TABLE agents_new (

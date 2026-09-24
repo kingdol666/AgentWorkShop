@@ -8,6 +8,10 @@ import type { WorkspaceTask } from '../../types/task'
 import { AppError } from '../../../../utils/errors'
 import { extractTaskMode, isGoalSummaryArtifact, synthesizeGoalSummary } from '../execution-mode'
 import { rowToTask } from './helpers'
+import type { ExecutionFence } from './lease'
+import { fenceMatches, issueLeaseFields } from './lease'
+import type { TaskPatch } from '../../db/task.repo'
+import type { TaskRow } from '../../db/database'
 
 export abstract class TaskEngineLayer04 extends TaskEngineLayer03 {
   /** 完成任务:WORKING → COMPLETED(终态)+ 进度置 100(广播由上层 ChannelBus 监听 onTaskEvent 承担);
@@ -81,37 +85,123 @@ export abstract class TaskEngineLayer04 extends TaskEngineLayer03 {
   /**
    * 重新指派(lead 对 worker 队列的"调配"):
    *  - SUBMITTED/ASSIGNED(排队中)→ 直接换 assignee(retryCount 不变;排队调配非重试)
-   *  - WORKING/WAITING → 拒绝(执行中的任务须先 cancel)
+   *  - FAILED(重试)→ ASSIGNED + retryCount+1
+   *  - WORKING/WAITING(运行中)→ 请用 reassignRunning(§5.2 需要 generation fencing 与
+   *    旧回合 task-local abort,不能只改一行 assignee)
    *  - COMPLETED/CANCELED → 拒绝(真终态)
    * 旧 assignee 队列中的 pending 投递一并作废,只向新 assignee 投递 assign。
+   * §5.1:每次重分配 generation+1 并换发新 lease,旧 worker 的迟到事件从此被丢弃。
    */
-  reassign(taskId: string, toAgentId: string): WorkspaceTask {
+  reassign(taskId: string, toAgentId: string, reason?: string): WorkspaceTask {
     const task = this.requireTask(taskId)
     if (task.state === 'COMPLETED' || task.state === 'CANCELED') {
       throw new AppError(400, 'INVALID_STATE', `终态任务不可重新指派(${task.state})`)
     }
     if (task.state === 'WORKING' || task.state === 'WAITING') {
-      throw new AppError(400, 'INVALID_STATE', `任务 ${task.state} 执行/等待中,须先取消再调配`)
+      throw new AppError(400, 'INVALID_STATE', `任务 ${task.state} 执行/等待中,请走运行中重分配(reassignRunning)`)
     }
     const isRetry = task.state === 'FAILED'
-    if (isRetry) this.transition(taskId, 'ASSIGNED', task.assigneeId)
-    const updated = this.repos.tasks.update(taskId, {
+    const previousAssigneeId = task.assigneeId
+    // 顺序:先落 assignee/lease,再迁移状态 —— transition 广播的是**迁移后**的整行视图,
+    // 旧实现先 transition 再 update,WS 帧里带着改派前的 assigneeId(前端显示漂移)。
+    const updated = this.takeLease(taskId, toAgentId, {
       assigneeId: toAgentId,
       retryCount: isRetry ? task.retryCount + 1 : task.retryCount,
     })
     if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
+    if (isRetry) this.transition(taskId, 'ASSIGNED', previousAssigneeId)
     // 旧 assignee 队列中的 assign 投递已过期:作废后仅向新 assignee 投递
     this.repos.messages.consumePendingByTask(taskId)
     this.deliverTaskMessage({
       channelId: task.channelId,
       taskId: task.id,
       fromAgentId: task.creatorId || null,
-      toAgentId: toAgentId,
+      toAgentId,
       title: task.title,
       description: task.description,
       kind: 'assign',
     })
-    return rowToTask(updated)
+    const view = this.requireTask(taskId)
+    // §7.1 lead.reassign:排队态改派旧实现只写 tasks 行、不经 transition → 过程记忆全丢。
+    // 这里补一次显式事件,携带旧/新 assignee 与原因,供 Channel 记忆如实落点。
+    this.hooks?.onTaskChange?.({
+      taskId,
+      channelId: task.channelId,
+      state: view.state,
+      agentId: toAgentId,
+      task: view,
+      reassignFrom: previousAssigneeId,
+      reason,
+    })
+    return view
+  }
+
+  /**
+   * 运行中重分配(§5.2)。六步全在此收口:
+   *   ① 原子撤销旧 lease ② generation+1 ③ 新 lease 归新 worker
+   *   ④ 旧 worker 的晚到事件全部被丢弃(lease 不再匹配)⑤ 新 worker 收到新 assign
+   *   ⑥ 调用方据 previousAssigneeId 对旧 worker 执行 task-local abort。
+   *
+   * 任务状态**不变**(状态机没有 WORKING → ASSIGNED 出边):执行权从旧 worker
+   * 转移到新 worker,由新 assign 投递触发新回合;旧回合被 abort 后其事件因 lease
+   * 不匹配而被丢弃,不会污染新执行。
+   */
+  reassignRunning(taskId: string, toAgentId: string, by: string, reason?: string): { task: WorkspaceTask, previousAssigneeId: string } {
+    const task = this.requireTask(taskId)
+    if (task.state !== 'WORKING' && task.state !== 'WAITING') {
+      throw new AppError(400, 'INVALID_STATE', `仅运行中任务可执行运行中重分配(当前 ${task.state})`)
+    }
+    if (task.assigneeId === toAgentId) {
+      // 幂等:同一目标重复决策不换 lease(否则新 worker 的合法事件会被自己的
+      // 第二次决策作废)。
+      return { task, previousAssigneeId: task.assigneeId }
+    }
+    const previousAssigneeId = task.assigneeId
+    // ①②③ 撤销旧 lease + generation+1 + 新 lease(单次 UPDATE 原子完成)
+    const updated = this.takeLease(taskId, toAgentId, { assigneeId: toAgentId })
+    if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
+    // 旧 assignee 队列中残留的 assign 投递作废(⑤ 只向新 assignee 投递)
+    this.repos.messages.consumePendingByTask(taskId)
+    this.deliverTaskMessage({
+      channelId: task.channelId,
+      taskId: task.id,
+      fromAgentId: by || null,
+      toAgentId,
+      title: task.title,
+      description: task.description,
+      kind: 'assign',
+    })
+    const view = rowToTask(updated)
+    this.hooks?.onTaskChange?.({
+      taskId,
+      channelId: task.channelId,
+      state: view.state,
+      agentId: toAgentId,
+      task: view,
+      reassignFrom: previousAssigneeId,
+      reason: reason ?? 'RUNNING_REASSIGN',
+    })
+    return { task: view, previousAssigneeId }
+  }
+
+  /**
+   * 事件栅栏校验(§5.1):事件是否属于任务当前执行代次。
+   * 无栅栏 / 任务无 lease → 放行(非 worker 任务事件与历史任务)。
+   */
+  assertAssignmentFence(taskId: string, fence?: ExecutionFence): boolean {
+    const row = this.repos.tasks.findById(taskId)
+    if (!row) return false
+    return fenceMatches(rowToTask(row), fence)
+  }
+
+  /** 撤销旧 lease 并换发新 lease(generation+1);同一次 UPDATE 落库,避免中间态可见 */
+  protected takeLease(taskId: string, toAgentId: string, patch: TaskPatch): TaskRow | undefined {
+    const current = this.repos.tasks.findById(taskId)
+    if (!current) return undefined
+    return this.repos.tasks.update(taskId, {
+      ...patch,
+      ...issueLeaseFields((current.assignmentGeneration ?? 0) + 1, toAgentId),
+    })
   }
 
   /** 取消任务:CANCELED(终态)+ 作废队列中的过期投递(assignee 不再消费)+ 投递 cancel 通知 */

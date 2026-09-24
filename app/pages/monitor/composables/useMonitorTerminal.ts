@@ -7,12 +7,22 @@
 export function useMonitorTerminal() {
   const terminalOpen = ref(false)
   const terminalPid = ref<number | null>(null)
+  const terminalAgentId = ref<string | null>(null)
+  const terminalChannelId = ref<string | null>(null)
   const terminalSubtitle = ref('')
-  const openTerminal = (pid: number, name: string | null, role: string | null): void => {
+  const openTerminal = (
+    pid: number | null,
+    name: string | null,
+    role: string | null,
+    agentId?: string | null,
+    channelId?: string | null,
+  ): void => {
     terminalPid.value = pid
+    terminalAgentId.value = agentId ?? null
+    terminalChannelId.value = channelId ?? null
     terminalSubtitle.value = [name, role].filter(Boolean).join(' · ') || 'omp harness'
     terminalOpen.value = true
   }
 
-  return { terminalOpen, terminalPid, terminalSubtitle, openTerminal }
+  return { terminalOpen, terminalPid, terminalAgentId, terminalChannelId, terminalSubtitle, openTerminal }
 }

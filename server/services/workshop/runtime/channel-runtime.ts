@@ -17,6 +17,7 @@ export interface SchedulerLoopLike {
   start(): void
   wake(): void
   stop(): void
+  stopAndWait(): Promise<void>
   setLoopResubmitCallback(fn: (title: string, description: string) => void): void
 }
 
@@ -47,6 +48,12 @@ export class ChannelRuntime {
       .listByChannel(this.channelId)
       .filter(m => m.enabled === 1)
       .map(m => ({ agentId: m.id, name: m.name, role: m.role as 'lead' | 'worker' }))
+  }
+
+  /** Live enablement check used immediately before executing a stale scheduler decision. */
+  isAgentEnabled(agentId: string): boolean {
+    const member = this.deps.channelAgents.findById(agentId)
+    return !!member && member.channelId === this.channelId && member.enabled === 1
   }
 
   setLoader(loader: AgentLoader): void {

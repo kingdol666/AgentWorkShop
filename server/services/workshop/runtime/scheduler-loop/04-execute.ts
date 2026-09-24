@@ -11,11 +11,42 @@ import { LoopController, extractTaskMode, isGoalSummaryArtifact } from '../execu
 import { log } from './helpers'
 import { randomUUID } from 'node:crypto'
 import { TERMINAL_TASK_STATES } from '../../types/task'
+import { rootQueueEnabled } from '../../settings'
 
 export abstract class SchedulerLoopLayer04 extends SchedulerLoopLayer03 {
   /** 执行单条决策(身份=lead,经 TaskEngine 与 ChannelRuntime) */
   protected execute(decision: SchedulerDecision): void {
     switch (decision.kind) {
+      case 'wait': {
+        // wait is an explicit, auditable Lead decision. It must not be treated as
+        // an empty/failed supervise turn and must not mutate the task.
+        log.info(`[SchedulerLoop:${this.lead.agentId}] Lead wait: ${decision.rootId ?? '-'} ${decision.reason ?? ''}`)
+        this.noteLeadDecision({ decision: 'wait', rootId: decision.rootId, reason: decision.reason })
+        break
+      }
+      case 'guide': {
+        const task = this.lead.taskEngine.get(decision.taskId)
+        if (!task || TERMINAL_TASK_STATES[task.state]) break
+        const target = this.channelRuntime.listChannelAgents().find(a => a.agentId === decision.toAgentId)
+        if (!target) break
+        const message: A2AMessage = {
+          messageId: randomUUID(),
+          contextId: this.channelRuntime.channelId,
+          role: 'ROLE_AGENT',
+          taskId: task.id,
+          parts: [{ text: decision.message }],
+          metadata: {
+            'x-aw-target-agent': decision.toAgentId,
+            'x-aw-from-agent': this.lead.agentId,
+            'x-aw-task-id': task.id,
+            'x-aw-task-kind': 'guide',
+          },
+        }
+        this.channelRuntime.route(message)
+        this.wakeAgent(decision.toAgentId)
+        this.noteLeadDecision({ decision: 'guide', taskId: task.id, toAgentId: decision.toAgentId, reason: decision.message.slice(0, 200) })
+        break
+      }
       case 'dispatch': {
         if (!decision.parentTaskId) {
           throw new AppError(400, 'INVALID_DECISION', 'dispatch 决策缺少 parentTaskId')
@@ -24,11 +55,17 @@ export abstract class SchedulerLoopLayer04 extends SchedulerLoopLayer03 {
         // (任务保持 SUBMITTED/WORKING,下一轮快照重新决策;避免派发给幽灵成员)
         // listChannelAgents 仅返回 enabled=1 成员,存在即可用
         const target = this.channelRuntime.listChannelAgents().find(a => a.agentId === decision.assigneeId)
-        if (!target) {
+        if (!target || !this.channelRuntime.isAgentEnabled(decision.assigneeId)) {
           log.warn(`[SchedulerLoop:${this.lead.agentId}] dispatch 目标成员已不存在/禁用,跳过: ${decision.assigneeId}`)
           break
         }
         const parent = this.lead.taskEngine.get(decision.parentTaskId)
+        // FIFO root admission: a stale Lead decision for a queued root is ignored
+        // silently. Do not turn a normal queue handoff into an execution error.
+        // §11 root_queue_enabled=false 时退回多根并发(不做队列准入)。
+        const root = parent?.parentId ? this.lead.taskEngine.get(parent.parentId) : parent
+        const activeRoot = rootQueueEnabled() ? this.lead.taskEngine.activeRootOf(this.channelRuntime.channelId) : null
+        if (activeRoot && root?.rootQueueSeq != null && root.id !== activeRoot.id) break
         // 快照后的陈旧派发决策不得重新打开已收口/超时的父任务。
         if (!parent || TERMINAL_TASK_STATES[parent.state] || parent.closeReason === 'ROOT_TIMEOUT') break
         // lead 自动接取:SUBMITTED → WORKING(§2.2 状态机,dispatch 需父任务处于 WORKING/WAITING)
@@ -54,19 +91,35 @@ export abstract class SchedulerLoopLayer04 extends SchedulerLoopLayer03 {
           log.warn(`[SchedulerLoop:${this.lead.agentId}] reassign 目标成员已不存在/禁用,跳过: ${decision.toAgentId}`)
           break
         }
-        this.lead.taskEngine.reassign(decision.taskId, decision.toAgentId)
+        if (current.state === 'WORKING' || current.state === 'WAITING') {
+          // §5.2 运行中重分配:撤销旧 lease + generation+1 + 新 assign,
+          // 再对旧 worker 执行 task-local abort(只中它这一条任务,不误杀其它任务)。
+          const { previousAssigneeId } = this.lead.taskEngine.reassignRunning(
+            decision.taskId,
+            decision.toAgentId,
+            this.lead.agentId,
+            decision.reason ?? 'LEAD_REASSIGN',
+          )
+          this.channelRuntime.getAgents().find(a => a.agentId === previousAssigneeId)?.abortTask?.(decision.taskId)
+          log.info(`[SchedulerLoop:${this.lead.agentId}] 运行中重分配 task=${decision.taskId.slice(0, 8)} ${previousAssigneeId.slice(0, 8)} → ${decision.toAgentId.slice(0, 8)}`)
+        }
+        else {
+          this.lead.taskEngine.reassign(decision.taskId, decision.toAgentId, decision.reason)
+        }
         this.wakeAgent(decision.toAgentId)
+        this.noteLeadDecision({ decision: 'reassign', taskId: decision.taskId, toAgentId: decision.toAgentId, reason: decision.reason })
         break
       }
       case 'cancel': {
         const task = this.lead.taskEngine.get(decision.taskId)
         // 快照后的陈旧取消决策不得再次操作终态任务(包括已超时/已收口任务)。
         if (!task || TERMINAL_TASK_STATES[task.state] || task.closeReason === 'ROOT_TIMEOUT') break
-        this.lead.taskEngine.cancel(decision.taskId, this.lead.agentId)
+        this.lead.taskEngine.cancel(decision.taskId, this.lead.agentId, decision.reason ?? 'LEAD_CANCEL')
         // lead 终态同步:经调度器判定取消同样不经 processMessage,重广播队列上下文
         this.lead.refreshStatus()
         const assignee = this.channelRuntime.getAgents().find(a => a.agentId === task.assigneeId)
         assignee?.abortTask?.(task.id)
+        this.noteLeadDecision({ decision: 'cancel', taskId: task.id, reason: decision.reason ?? 'LEAD_CANCEL' })
         break
       }
       case 'complete': {

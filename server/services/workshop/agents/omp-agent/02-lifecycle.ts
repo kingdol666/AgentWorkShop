@@ -30,6 +30,18 @@ export abstract class OmpRpcAgentImplLayer02 extends OmpRpcAgentImplLayer01 {
     void client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole, this.channelId) }).catch(() => {})
   }
 
+  /** harness 会话身份(§2.4;get_state 探测到才有;未探测到返回 null) */
+  getSessionId(): string | null {
+    return this.sessionId
+  }
+
+  /** 消费一次上次 Harness 重建原因(§6.2 lastRestartReason;取出即清空) */
+  takeHarnessRestartReason(): string | null {
+    const reason = this.harnessRestartReason
+    this.harnessRestartReason = null
+    return reason
+  }
+
   /** harness 进程资源信息(运行时资源监控;进程未 spawn/已回收 → null) */
   getProcessInfo(): { pid: number, alive: boolean, command: string } | null {
     const client = this.client

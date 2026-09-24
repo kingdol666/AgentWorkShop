@@ -26,7 +26,7 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const userStore = useUserStore()
 
-const { terminalOpen, terminalPid, terminalSubtitle, openTerminal } = useMonitorTerminal()
+const { terminalOpen, terminalPid, terminalAgentId, terminalChannelId, terminalSubtitle, openTerminal } = useMonitorTerminal()
 
 // 快照是唯一副本:autoRefresh 的 5s 定时器、token 变化的重拉、卸载清理都在 composable 里
 // 成对注册(页面不再自行注册任何 setInterval/onUnmounted,避免多份订阅)
@@ -48,11 +48,24 @@ function openFromQuery(): void {
   if (typeof agentId !== 'string' || !agentId) return
   const channelId = typeof route.query.channelId === 'string' ? route.query.channelId : ''
   const proc = snapshot.value?.processes.find(p => p.agentId === agentId && (!channelId || p.channelId === channelId))
-  if (proc?.pid) {
-    openTerminal(proc.pid, proc.name, proc.role)
-    void navigateTo({ path: '/monitor' }, { replace: true })
-  }
+  // Agent-deep links must work even before the process table observes a PID.
+  // OmpTerminalPanel can resolve/retry by agentId+channelId and will attach when
+  // the persistent harness becomes visible; requiring a PID made HITL clicks a no-op.
+  openTerminal(proc?.pid ?? null, proc?.name ?? agentId, proc?.role ?? 'agent', agentId, channelId || null)
+  void navigateTo({ path: '/monitor' }, { replace: true })
 }
+
+// HITL can be clicked while already on /monitor. In that case Nuxt updates only
+// the query and does not remount the page, so the initial-poll callback is not
+// invoked again. Re-poll then resolve the agent/process deep link.
+watch(
+  () => [route.query.agentId, route.query.channelId],
+  async ([agentId]) => {
+    if (typeof agentId !== 'string' || !agentId) return
+    await poll()
+    openFromQuery()
+  },
+)
 </script>
 
 <template>
@@ -107,6 +120,8 @@ function openFromQuery(): void {
       <OmpTerminalPanel
         v-model:open="terminalOpen"
         :pid="terminalPid"
+        :agent-id="terminalAgentId"
+        :channel-id="terminalChannelId"
         :subtitle="terminalSubtitle"
       />
     </template>

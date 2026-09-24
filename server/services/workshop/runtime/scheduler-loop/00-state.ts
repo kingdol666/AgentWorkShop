@@ -15,12 +15,15 @@ export abstract class SchedulerLoopLayer00 extends SchedulerLoopContracts {
   protected readonly stallMs: number
   protected readonly supervisionMail: ((limit: number) => ChannelMail[]) | null
   protected readonly toolActivityOf: ((agentId: string) => number | null) | null
+  /** Lead 决策留痕(§7.1 lead.*;manager 注入 → Channel shared memory) */
+  protected readonly onLeadDecision: SchedulerLoopOptions['onLeadDecision']
   /** supervise 节流:最小间隔与最近一次执行时刻/信号指纹(token 效率) */
   protected lastSuperviseAt = 0
   protected lastFingerprint = ''
   protected timer: NodeJS.Timeout | null = null
   protected started = false
   protected running = false
+  protected activeRound: Promise<void> | null = null
   protected pendingWake = false
   protected tick = 0
   /** 已催办一次的 WORKING 任务(再次停滞 → cancel) */
@@ -54,6 +57,17 @@ export abstract class SchedulerLoopLayer00 extends SchedulerLoopContracts {
     this.stallMs = options.stallMs ?? 300000
     this.supervisionMail = options.supervisionMail ?? null
     this.toolActivityOf = options.toolActivityOf ?? null
+    this.onLeadDecision = options.onLeadDecision
+  }
+
+  /** Lead 决策留痕(异常绝不阻断调度) */
+  protected noteLeadDecision(e: { decision: string, taskId?: string, toAgentId?: string, reason?: string, rootId?: string }): void {
+    try {
+      this.onLeadDecision?.({ channelId: this.channelRuntime.channelId, agentId: this.lead.agentId, ...e })
+    }
+    catch {
+      // 记忆写入失败不得影响调度主流程
+    }
   }
 
   /** 空闲退避:快照指纹连续不变的轮数(决定下次 tick 间隔) */
@@ -76,7 +90,17 @@ export abstract class SchedulerLoopLayer00 extends SchedulerLoopContracts {
       return
     }
     this.clearTimer()
-    void this.runRound()
+    this.launchRound()
+  }
+
+  /** Start exactly one tracked round; shutdown awaits this promise before DB/runtime teardown. */
+  protected launchRound(): void {
+    if (this.activeRound) return
+    const round = this.runRound()
+    this.activeRound = round
+    void round.finally(() => {
+      if (this.activeRound === round) this.activeRound = null
+    })
   }
 
   protected clearTimer(): void {
@@ -98,11 +122,23 @@ export abstract class SchedulerLoopLayer00 extends SchedulerLoopContracts {
   stop(): void {
     this.started = false
     this.clearTimer()
+    this.pendingWake = false
     if (this.loopController) {
       this.loopController.stop()
       this.loopController = null
     }
     this.loopCompletedTaskIds.clear()
+  }
+
+  /** Stop scheduling and await an already-running supervision round. */
+  async stopAndWait(): Promise<void> {
+    this.stop()
+    // A supervision round may be awaiting a persistent harness indefinitely.
+    // Shutdown is an explicit hard-stop boundary, so abort only the Lead runtime
+    // supervision/run before awaiting the tracked round; normal watchdog never does this.
+    this.lead.abortCurrent()
+    const active = this.activeRound
+    if (active) await active.catch(() => {})
   }
 
   /** 设置 loop 模式重新提交回调(manager 注入 submitChannelTask) */

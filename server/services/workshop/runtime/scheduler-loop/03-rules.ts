@@ -21,6 +21,9 @@ export abstract class SchedulerLoopLayer03 extends SchedulerLoopLayer02 {
       // FAILED 且 retryCount<3:优先换人重试;仅剩原 assignee 空闲(如单 worker channel)
       // → 由原 assignee 重试(reassign 到自己,走 FAILED→ASSIGNED 恢复);无人可用 → cancel(允许终结)
       if (task.state === 'FAILED') {
+        // Roots are Lead-owned orchestration records. A failed root is surfaced to Lead/user;
+        // never auto-assign a root to a worker as if it were a child execution.
+        if (!task.parentId) continue
         // ROOT_TIMEOUT 已是超时收口结果,不能被恢复规则重新派发。
         if (task.closeReason === 'ROOT_TIMEOUT') continue
         if (task.retryCount < 3) {

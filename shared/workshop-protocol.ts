@@ -33,9 +33,15 @@
  * scene.layout.* 走该频道频道流(仅订阅该频道的 peer 收到;小镇页订阅全部挂载频道 → 实时同步)。
  */
 import type { A2AArtifact, A2AMessage } from '../server/services/workshop/types/a2a'
-import type { WorkspaceTask } from '../server/services/workshop/types/task'
+import type { HarnessContinuityView, SupervisionAttemptView, WorkspaceTask } from '../server/services/workshop/types/task'
 import type { AepDaqControllerState, AepDaqNodeChange, AepDaqReading, AepDaqTemplateChange } from './daq-protocol'
 import type { AepDcwControllerState, AepDcwNodeChange, AepDcwWritten, AepDcwOptimizationChange } from './dcw-protocol'
+
+/**
+ * 观测 DTO 再导出:前端 store/组件需要的类型直接从协议入口取,
+ * 不必 import server 内部路径(app 侧只有 `#shared/*` 别名)。
+ */
+export type { AgentContextStats, HarnessContinuityView, SupervisionAttemptView, WorkspaceTask } from '../server/services/workshop/types/task'
 
 export const AEP_VERSION = 1
 
@@ -61,8 +67,13 @@ export interface AepSnapshot {
     currentTaskId?: string | null
     queued?: number
     completed?: number
+    supervision?: SupervisionAttemptView
+    /** Harness 连续性租约(§2.4/§8;只读观测面) */
+    continuity?: HarnessContinuityView
   }>
   tasks: WorkspaceTask[]
+  /** FIFO root coordination projection(§2.2 RootQueueView;后端统一派生,前端不得自行推导) */
+  rootQueue?: RootQueueView
   queue: Array<{
     agentId: string
     name: string
@@ -73,6 +84,18 @@ export interface AepSnapshot {
     completedCount: number
   }>
   messages: A2AMessage[]
+}
+
+/**
+ * 根任务队列只读投影(§2.2)。
+ * `queuedRoots[].position` 从 2 起(position 1 恒为 activeRoot),前端直接展示排队位次。
+ */
+export interface RootQueueView {
+  activeRootId: string | null
+  queuedRoots: Array<{ taskId: string, title: string, position: number, state: string, createdAt: string }>
+  completedRoots: number
+  activeRootCount: number
+  queuedRootCount: number
 }
 
 /** agent.member payload:团队成员增/改/删(lead 执行中自主管理或用户 REST 操作;扁平结构与 ChannelBus 事件透传一致) */
@@ -345,12 +368,13 @@ export interface AepChatSnapshot {
 
 export type AepEvent
   = | { type: 'channel.snapshot', payload: AepSnapshot }
-    | { type: 'agent.status', payload: { agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, queued?: number, completed?: number } }
+    | { type: 'agent.status', payload: { agentId: string, state: 'idle' | 'busy' | 'stopped', currentTaskId?: string | null, currentTaskTitle?: string | null, currentTaskProgress?: number | null, queued?: number, completed?: number, context?: unknown, supervision?: SupervisionAttemptView, continuity?: HarnessContinuityView } }
     | { type: 'agent.message', payload: A2AMessage }
     | { type: 'agent.delta', payload: { delta: string } }
     | { type: 'agent.status.message', payload: { text: string } }
-    | { type: 'task.status', payload: { taskId: string, state: string, assigneeId?: string, agentId?: string, title?: string, parentId?: string, progress?: number, routeReason?: string, closeReason?: string, deadlineAt?: string, retryCount?: number, createdAt?: string, artifacts?: number } }
+    | { type: 'task.status', payload: { taskId: string, state: string, assigneeId?: string, agentId?: string, title?: string, parentId?: string, rootQueueSeq?: number, progress?: number, routeReason?: string, closeReason?: string, deadlineAt?: string, retryCount?: number, createdAt?: string, artifacts?: number } }
     | { type: 'task.progress', payload: { taskId: string, progress: number, agentId?: string } }
+    | { type: 'root.queue', payload: RootQueueView }
     | { type: 'a2a.artifact', payload: { taskId?: string, artifact: A2AArtifact } }
     | { type: 'a2a.message', payload: A2AMessage }
     | { type: 'agent.member', payload: AepMemberEvent }
@@ -426,7 +450,7 @@ export const AEP_GROUPS: Record<string, string[]> = {
   messages: ['agent.message', 'agent.status.message', 'a2a.message'],
   chat: ['chat.message', 'chat.member', 'chat.settings', 'chat.delivery.status'],
   tools: ['agent.status.message'],
-  tasks: ['task.status', 'task.progress', 'a2a.artifact'],
+  tasks: ['task.status', 'task.progress', 'a2a.artifact', 'root.queue'],
   team: ['agent.member'],
   devices: ['device.created', 'device.updated', 'device.deleted'],
   scene: ['scene.layout.saved', 'scene.layout.removed'],

@@ -142,9 +142,11 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
   protected async unloadChannelAgents(channelId: string): Promise<void> {
     const cr = this.channels.get(channelId)
     if (cr) {
-      cr.scheduler?.stop()
+      const scheduler = cr.scheduler
+      if (scheduler) await scheduler.stopAndWait()
       cr.scheduler = null
-      for (const agent of [...cr.getAgents()]) {
+      const agents = [...cr.getAgents()]
+      for (const agent of agents) {
         await agent.stop()
         cr.detachAgent(agent.agentId)
         this.agentIndex.delete(runtimeKey(channelId, agent.agentId))
@@ -175,7 +177,8 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
   async removeChannel(channelId: string): Promise<void> {
     const cr = this.channels.get(channelId)
     if (cr) {
-      cr.scheduler?.stop()
+      const scheduler = cr.scheduler
+      if (scheduler) await scheduler.stopAndWait()
       cr.scheduler = null
       for (const agent of [...cr.getAgents()]) {
         await agent.stop()

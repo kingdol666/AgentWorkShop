@@ -24,6 +24,7 @@ export abstract class OmpRpcAgentImplLayer05 extends OmpRpcAgentImplLayer04 {
     if (!this.client || !this.client.alive) {
       // 旧客户端已退出(exit 事件/OS 存活校准 reconcile 触发)——必须丢弃并重生,
       // 否则后续回合会一直对着死 stdio 报 PROMPT_FAILED 烧重试配额
+      if (this.client) this.harnessRestartReason = 'PROCESS_EXIT'
       this.client = null
       this.hostToolsRegistered = false
       const command = this.config.command ?? 'omp'

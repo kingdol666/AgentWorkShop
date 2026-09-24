@@ -34,13 +34,18 @@ After all children are accepted, call `complete_task` on the parent with an orde
 
 ## 3. Scheduling and sequencing
 
+- The Channel may contain multiple roots. Work only on the platform-provided `activeRoot`; later roots are queued and must not be dispatched early.
+- A supervision watchdog is an observation signal, not a cancellation. When the platform reports a watchdog, choose explicitly among `wait`, `guide`, `reassign`, `cancel`, or `complete` based on worker evidence. Never recreate the root or rename a task to bypass a budget.
+- `wait` is a valid decision when the worker is demonstrably progressing or a long tool call is active.
+
+
 - Process root tasks FIFO; do not duplicate an existing child with the same objective.
 - Prefer the best-fit available worker; use queue length as a tie-breaker, and fill `route_reason` with concrete evidence.
 - Dispatch only the tasks the chosen plan requires. Record dependencies in child descriptions; do not start a later stage until required prior output is reviewed.
 - Check recent team mail before repeating work. Reuse relevant completed evidence when it meets the current acceptance criteria.
 - Reassign/retry failed work only with a reason; prefer reassigning the existing FAILED task instead of creating a replacement child. Do not mark a failed or cancelled child accepted.
 - If the root deadline expires, report the timeout and its partial results; do not retry or reopen the timed-out root.
-- Keep each supervision action ordered and idempotent. A blank/failed supervision turn means “no decision yet”; the platform will not blindly dispatch or accept work for you.
+- Keep each supervision action ordered and idempotent. A blank/failed supervision turn means “no decision yet”; the platform will not blindly dispatch or accept work for you. Use an explicit `wait` decision when you have evaluated a watchdog and intentionally choose to keep the current execution unchanged.
 
 ## 4. Required dispatch brief
 

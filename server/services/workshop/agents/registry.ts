@@ -39,6 +39,15 @@ export interface HarnessCapabilities {
   compact: boolean
 }
 
+/**
+ * Harness 连续性能力(设计文档 §6.3)。
+ *  - `persistent`:同一 Runtime 内跨回合复用同一进程/会话(OMP RPC client、opencode serve、
+ *    codex app-server、进程内 SDK 会话…)。平台据此承诺「队列未空闲前不重启 Harness」。
+ *  - `per_turn`:一次性 CLI(每回合 spawn → 收口进程退出),**不承诺**进程级复用;
+ *    任务控制、队列与记忆语义完全一致,只是不做虚假承诺。
+ */
+export type HarnessContinuityMode = 'persistent' | 'per_turn'
+
 export interface HarnessDef {
   id: string
   label: string
@@ -46,6 +55,8 @@ export interface HarnessDef {
   /** 官网/安装入口(前端「未安装」态跳转用;空 = 无外部页面) */
   homepage: string
   capabilities: HarnessCapabilities
+  /** 连续性能力声明(§6.3;registry 是唯一事实源) */
+  continuityMode: HarnessContinuityMode
   create(config: Record<string, unknown>, agent: AgentInfo): AgentInterface
   /** 可用性探测面(harness-availability.ts 消费;缺省 = 进程内引擎,恒可用) */
   probe?: HarnessProbe
@@ -113,6 +124,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: '进程内模拟引擎:联调/测试,无 LLM 调用',
     homepage: '',
     capabilities: mockCaps,
+    continuityMode: 'persistent',
     probe: { inprocess: true },
     create: (config, agent) => new MockAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -122,6 +134,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'omp 子进程(RPC 模式),默认推荐引擎',
     homepage: 'https://github.com/acidsugarx/oh-my-pi',
     capabilities: ompCaps,
+    continuityMode: 'persistent',
     probe: { command: c => cmdFrom(c) || 'omp' },
     create: (config, agent) => new OmpRpcAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -131,6 +144,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'OpenCode 引擎(serve 进程 + HTTP/SSE),权限审批走 HITL',
     homepage: 'https://opencode.ai',
     capabilities: opencodeCaps,
+    continuityMode: 'persistent',
     probe: { command: c => cmdFrom(c) || harnessSettings().opencode_command },
     create: (config, agent) => new OpenCodeAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -140,6 +154,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'OpenAI Codex CLI(app-server JSON-RPC),命令审批走 HITL',
     homepage: 'https://github.com/openai/codex',
     capabilities: codexCaps,
+    continuityMode: 'persistent',
     probe: { command: c => cmdFrom(c) || harnessSettings().codex_command },
     create: (config, agent) => new CodexAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -149,6 +164,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'DeepSeek Harness(ACP 协议);无同轮 steer,审批走 HITL',
     homepage: 'https://github.com/deepseek-ai/DeepSeek-Harness',
     capabilities: dshCaps,
+    continuityMode: 'persistent',
     probe: { command: c => cmdFrom(c) || harnessSettings().dsh_command },
     create: (config, agent) => new DshAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -158,6 +174,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'Claude Agent SDK(进程内常驻会话),canUseTool 审批走 HITL,支持同轮 steer',
     homepage: 'https://code.claude.com',
     capabilities: claudeCaps,
+    continuityMode: 'persistent',
     probe: { inprocess: true },
     create: (config, agent) => new ClaudeSdkAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -167,6 +184,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'Google Gemini CLI(stream-json 无头);无同轮 steer/程序化审批,AW 工具走 MCP 白名单',
     homepage: 'https://github.com/google-gemini/gemini-cli',
     capabilities: geminiCaps,
+    continuityMode: 'per_turn',
     probe: { command: c => cmdFrom(c) || harnessSettings().gemini_command },
     create: (config, agent) => new GeminiAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -176,6 +194,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'GitHub Copilot CLI(JSONL 无头);--allow-tool 白名单制(默认仅 AW 桥)',
     homepage: 'https://docs.github.com/en/copilot/how-tos/copilot-cli',
     capabilities: copilotCaps,
+    continuityMode: 'per_turn',
     probe: { command: c => cmdFrom(c) || harnessSettings().copilot_command },
     create: (config, agent) => new CopilotAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -185,6 +204,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'Cursor CLI(stream-json 无头);默认无 --force(文件变更只提案)',
     homepage: 'https://cursor.com/cli',
     capabilities: cursorCaps,
+    continuityMode: 'per_turn',
     probe: { command: c => cmdFrom(c) || harnessSettings().cursor_command },
     create: (config, agent) => new CursorAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -194,6 +214,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'Charm Crush(run 非交互模式);provider 走 crushrc(智谱 openai-compat)',
     homepage: 'https://github.com/charmbracelet/crush',
     capabilities: crushCaps,
+    continuityMode: 'per_turn',
     probe: { command: c => cmdFrom(c) || harnessSettings().crush_command },
     create: (config, agent) => new CrushAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -203,6 +224,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'Block Goose(run stream-json 无头);per-agent 命名会话可 --resume',
     homepage: 'https://blockgoose.io',
     capabilities: gooseCaps,
+    continuityMode: 'per_turn',
     probe: { command: c => cmdFrom(c) || harnessSettings().goose_command },
     create: (config, agent) => new GooseAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -212,6 +234,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'Qwen Code(experimental-acp);工具确认走 HITL,OpenAI 兼容网关鉴权',
     homepage: 'https://github.com/QwenLM/qwen-code',
     capabilities: qwenCaps,
+    continuityMode: 'persistent',
     probe: { command: c => cmdFrom(c) || harnessSettings().qwen_command },
     create: (config, agent) => new QwenAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -221,6 +244,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'pi coding agent(-p --mode json);AW 工具经扩展注册,自定义 provider 走 models.json',
     homepage: 'https://github.com/badlogic/pi-mono',
     capabilities: piCaps,
+    continuityMode: 'per_turn',
     probe: { command: c => cmdFrom(c) || harnessSettings().pi_command },
     create: (config, agent) => new PiAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -230,6 +254,7 @@ export const HARNESS_REGISTRY: Record<string, HarnessDef> = {
     description: 'Hermes Agent(NousResearch,acp 模式);权限确认走 HITL,zai provider 接 GLM',
     homepage: 'https://github.com/NousResearch/hermes-agent',
     capabilities: hermesCaps,
+    continuityMode: 'persistent',
     probe: { command: c => cmdFrom(c) || harnessSettings().hermes_command },
     create: (config, agent) => new HermesAgentImpl({ ...config, agentId: agent.id, name: agent.name, role: agent.role, channelId: agent.channelId, token: agent.token }),
   },
@@ -244,8 +269,13 @@ export function isKnownHarness(harness: string): boolean {
 }
 
 /** registry 元信息(前端下拉/能力徽标;不含实现) */
-export function harnessMetas(): Array<{ id: string, label: string, description: string, capabilities: HarnessCapabilities, homepage: string }> {
-  return Object.values(HARNESS_REGISTRY).map(({ id, label, description, capabilities, homepage }) => ({ id, label, description, capabilities, homepage }))
+export function harnessMetas(): Array<{ id: string, label: string, description: string, capabilities: HarnessCapabilities, continuityMode: HarnessContinuityMode, homepage: string }> {
+  return Object.values(HARNESS_REGISTRY).map(({ id, label, description, capabilities, continuityMode, homepage }) => ({ id, label, description, capabilities, continuityMode, homepage }))
+}
+
+/** 某 harness 的连续性能力(§6.3;未知 harness 按 per_turn 最保守处理,不虚假承诺复用) */
+export function harnessContinuityMode(harness: string): HarnessContinuityMode {
+  return HARNESS_REGISTRY[harness]?.continuityMode ?? 'per_turn'
 }
 
 /** 按 harness 装配 AgentInterface(未知 harness 抛 UNKNOWN_HARNESS) */

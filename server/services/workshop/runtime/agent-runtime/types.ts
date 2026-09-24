@@ -2,13 +2,14 @@
  * AgentRuntime 的依赖类型与对外 DTO(原 server/services/workshop/runtime/agent-runtime.ts 顶部模块级类型声明)。纯类型。
  */
 import type { A2AArtifact, A2AMessage, Part } from '../../types/a2a'
-import type { AgentContextStats, AgentStatusView, AgentTaskQueueView, TaskState, WorkspaceTask } from '../../types/task'
+import type { AgentContextStats, AgentStatusView, AgentTaskQueueView, HarnessContinuityView, SupervisionAttemptView, TaskState, WorkspaceTask } from '../../types/task'
 import type { AgentEvent, AgentWorkspace } from '../../agents/agent-interface'
 
 export interface TaskEventTask {
   id: string
   title?: string
   parentId?: string
+  rootQueueSeq?: number
   assigneeId?: string
   progress?: number | null
   routeReason?: string
@@ -25,8 +26,8 @@ export interface ChannelBus {
   /** 订阅 AgentEvent 流(monitor/WS 消费);返回退订函数 */
   onEvent(fn: (event: AgentEvent, source: A2AMessage) => void): () => void
   /** 任务事件通知(状态迁移/进度变化;由 TaskEngine hooks 统一触发;task = 源头视图) */
-  notifyTask(e: { taskId: string, state?: TaskState, progress?: number, agentId?: string, task?: TaskEventTask }): void
-  onTaskEvent(fn: (e: { taskId: string, state?: TaskState, progress?: number, agentId?: string, task?: TaskEventTask }) => void): () => void
+  notifyTask(e: { taskId: string, state?: TaskState, progress?: number, agentId?: string, task?: TaskEventTask, artifactName?: string, reassignFrom?: string, reason?: string }): void
+  onTaskEvent(fn: (e: { taskId: string, state?: TaskState, progress?: number, agentId?: string, task?: TaskEventTask, artifactName?: string, reassignFrom?: string, reason?: string }) => void): () => void
   /**
    * 成员状态通知(idle/busy/stopped + 队列上下文;AgentRuntime 转换处触发,事件驱动无轮询)。
    * currentTaskId/currentTaskTitle/currentTaskProgress/queuedCount/completedCount
@@ -42,6 +43,9 @@ export interface ChannelBus {
     completedCount?: number
     /** harness 上下文用量(omp 有;进程内 harness 缺省) */
     context?: AgentContextStats | null
+    supervision?: SupervisionAttemptView
+    /** Harness 连续性租约(§2.4/§8) */
+    continuity?: HarnessContinuityView
   }): void
   onAgentStatus(fn: (e: {
     agentId: string
@@ -52,6 +56,8 @@ export interface ChannelBus {
     queuedCount?: number
     completedCount?: number
     context?: AgentContextStats | null
+    supervision?: SupervisionAttemptView
+    continuity?: HarnessContinuityView
   }) => void): () => void
   /** channel 内消息投递通知(route 汇流点触发;AEP a2a.message 事件源) */
   notifyMessage(message: A2AMessage): void
@@ -96,22 +102,40 @@ export interface TaskEngine {
     title: string
     description?: string
     parentId?: string
+    rootQueueSeq?: number | null
     parts?: Part[]
     sourceChatMessageId?: string
     sourceChatDeliveryId?: string
     closeReason?: string
     deadlineAt?: string
   }): WorkspaceTask
+  createOrGetRoot(input: {
+    channelId: string
+    creatorId: string
+    assigneeId: string
+    title: string
+    description?: string
+    parts?: Part[]
+    sourceChatMessageId: string
+    sourceChatDeliveryId?: string
+    deadlineAt?: string
+  }): { task: WorkspaceTask, created: boolean }
+  rootQueue(channelId: string): { activeRoot: WorkspaceTask | null, queuedRoots: WorkspaceTask[], completedRoots: WorkspaceTask[] }
+  activeRootOf(channelId: string): WorkspaceTask | null
   dispatch(
     parent: WorkspaceTask,
     input: { assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string },
   ): WorkspaceTask
   transition(taskId: string, state: TaskState, by: string): WorkspaceTask
-  applyEvent(taskId: string, event: AgentEvent): void
+  applyEvent(taskId: string, event: AgentEvent, fence?: { generation?: number | null, leaseId?: string | null }): void
+  /** §5.1 执行代次栅栏:事件是否属于任务当前 assignment(无栅栏/无 lease → 放行) */
+  assertAssignmentFence(taskId: string, fence?: { generation?: number | null, leaseId?: string | null }): boolean
   list(channelId: string): WorkspaceTask[]
   get(taskId: string): WorkspaceTask | undefined
   complete(taskId: string, artifacts?: A2AArtifact[]): WorkspaceTask
-  reassign(taskId: string, toAgentId: string): WorkspaceTask
+  reassign(taskId: string, toAgentId: string, reason?: string): WorkspaceTask
+  /** §5.2 运行中重分配(WORKING/WAITING;撤销旧 lease + generation+1 + 新 assign) */
+  reassignRunning(taskId: string, toAgentId: string, by: string, reason?: string): { task: WorkspaceTask, previousAssigneeId: string }
   /** 修改待执行任务(title/description)+ 刷新 assignee 队列投递 */
   updateTask(taskId: string, patch: { title?: string, description?: string }, by: string): WorkspaceTask
   cancel(taskId: string, by: string, reason?: string): WorkspaceTask
@@ -153,6 +177,8 @@ export interface AgentRuntimeLike {
   stop(): Promise<void>
   /** 平台侧合成事件出口(如 SchedulerLoop 汇总成果);转发 ChannelBus.emit 走统一事件流 */
   emitExternal(event: AgentEvent, fromAgentId?: string): void
+  /** 当前监督尝试状态(用于 watchdog/UI/审计) */
+  getSupervisionStatus?(): SupervisionAttemptView
   /** 实时消息注入:busy 时通过 impl.steer 注入 omp 会话;idle 时入 mailbox 队列 */
   injectSteer(message: A2AMessage): void
   /** Agent 能力面(调度器执行成员管理决策用;AgentRuntime 始终提供) */

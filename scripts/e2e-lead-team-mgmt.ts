@@ -28,7 +28,7 @@ import { createAgentChannelManager } from '../server/services/workshop/runtime/m
 import type { AgentChannelManager } from '../server/services/workshop/runtime/manager'
 import type { MemberChangeEvent } from '../server/services/workshop/runtime/agent-runtime'
 import { createAgentImpl } from '../server/services/workshop/agents/factory'
-import { hostToolsForRole } from '../server/services/workshop/agents/omp-agent'
+import { hostToolsForRole } from '../server/services/workshop/agents/host-tool-bridge'
 import { AppError } from '../server/utils/errors'
 
 let failures = 0

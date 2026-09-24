@@ -2,8 +2,9 @@
  * 事件发布(seq/环形缓冲/慢消费者断开)与快照构建
  * (由 server/api/workshop/ws.ts 按职责拆出;内容逐行原文搬运)
  */
-import type { AepEnvelope } from '../../../../shared/workshop-protocol'
+import type { AepEnvelope, RootQueueView } from '../../../../shared/workshop-protocol'
 import type { AgentChannelManager } from '../../../services/workshop/runtime/manager'
+import type { WorkspaceTask } from '../../../services/workshop/types/task'
 import type { ChannelStream } from './shared'
 import { AEP_VERSION, DB_BUFFER_CAP, RING_BYTES_CAP, RING_CAP, hub } from './shared'
 import { DB_FLUSH_MS, internalsOf, sendFrame } from './hub'
@@ -75,9 +76,12 @@ export function buildSnapshot(manager: AgentChannelManager, channelId: string): 
       currentTaskProgress: view.current?.progress != null ? view.current.progress : null,
       queued: view.queued.length,
       completed: view.completed.length,
+      supervision: rt?.getSupervisionStatus?.(),
+      continuity: rt?.getContinuity?.(),
     }
   })
   const tasks = internal.getTaskEngine().list(channelId)
+  const rootQueue = rootQueueViewOf(internal.getTaskEngine().rootQueue(channelId))
   const recentMessages = internal.deps.repos.messages.listRecentByChannel(channelId, 50).map(rowToMessage)
   // queue 总览 = agents 的队列上下文规范化(与 queueOverview 同口径,免异步)
   const queue = agents.map(a => ({
@@ -91,7 +95,28 @@ export function buildSnapshot(manager: AgentChannelManager, channelId: string): 
     queuedCount: a.queued ?? 0,
     completedCount: a.completed ?? 0,
   }))
-  return { channelId, channel, agents, tasks, queue, messages: recentMessages }
+  return { channelId, channel, agents, tasks, rootQueue, queue, messages: recentMessages }
+}
+
+/**
+ * 根任务队列 → 只读 AEP 投影(§2.2/§3.4)。
+ * 排队位次由后端派生(position 从 2 起):前端不再自行推导 active root,
+ * 避免前后端对「谁在跑」给出相反结论。
+ */
+export function rootQueueViewOf(queue: { activeRoot: WorkspaceTask | null, queuedRoots: WorkspaceTask[], completedRoots: WorkspaceTask[] }): RootQueueView {
+  return {
+    activeRootId: queue.activeRoot?.id ?? null,
+    queuedRoots: queue.queuedRoots.map((t, i) => ({
+      taskId: t.id,
+      title: t.title,
+      position: i + 2,
+      state: t.state,
+      createdAt: t.createdAt,
+    })),
+    completedRoots: queue.completedRoots.length,
+    activeRootCount: queue.activeRoot ? 1 : 0,
+    queuedRootCount: queue.queuedRoots.length,
+  }
 }
 
 /** AgentEvent 五变体 → AEP 事件 */

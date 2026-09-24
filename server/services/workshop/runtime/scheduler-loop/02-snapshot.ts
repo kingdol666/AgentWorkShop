@@ -83,9 +83,12 @@ export abstract class SchedulerLoopLayer02 extends SchedulerLoopLayer01 {
       if (TERMINAL_TASK_STATES[task.state]) continue
       pendingChildren[task.parentId] = (pendingChildren[task.parentId] ?? 0) + 1
     }
+    const roots = this.lead.taskEngine.rootQueue(this.channelRuntime.channelId)
     return {
       tick: this.tick,
       now,
+      activeRootId: roots.activeRoot?.id ?? null,
+      queuedRootIds: roots.queuedRoots.map(t => t.id),
       tasks,
       members,
       pendingChildren,

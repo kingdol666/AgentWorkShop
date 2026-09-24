@@ -98,7 +98,10 @@ export interface AgentWorkspace {
     activeTasks: Array<{ id: string, title: string, state: string }>
     recentCompleted: Array<{ title: string }>
   }>
-  /** (全员)跨团队共享记忆检索:其他 channel 的 __team__ 公共域,只读,带团队归属。同步返回,同 listOtherTeams */
+  /**
+   * 跨 Channel 共享记忆检索(**仅 Leader**;其他 Channel 的 __team__ 公共域,只读)。
+   * §7.4:DTO 必须自描述来源 Channel / root / task / 时间 / 可见性。
+   */
   searchOtherTeamsMemory(input: { query: string, limit?: number }): Array<{
     channelId: string
     channelName: string
@@ -106,6 +109,9 @@ export interface AgentWorkspace {
     content: string
     importance: number
     createdAt: string
+    taskId?: string | null
+    rootId?: string | null
+    visibility?: 'channel-shared' | 'private' | 'cross-channel'
   }>
   /**
    * 拒绝指派给自己的任务(能力/范畴不匹配):任务置 FAILED(调度器改派他人),
@@ -133,6 +139,11 @@ export interface AgentWorkspace {
     createdAt: string
     score: number
     source: 'private' | 'shared'
+    /** §7.4 来源定位:Channel / root / task / 可见性 */
+    channelId?: string
+    taskId?: string | null
+    rootId?: string | null
+    visibility?: 'channel-shared' | 'private' | 'cross-channel'
   }>>
   /**
    * 记忆主动沉淀(save_memory 工具桥):Agent 作业中总结的可复用经验/结论。
@@ -193,6 +204,9 @@ export interface SupervisionSnapshot {
   now: number
   /** 全 channel 任务摘要 */
   tasks: WorkspaceTask[]
+  /** FIFO 根任务协调：只有 activeRoot 可被 Lead 规划，queued roots 只读 */
+  activeRootId?: string | null
+  queuedRootIds?: string[]
   /** 成员状态(含队列上下文与实时进度,供 lead 做最优调配与停滞识别) */
   members: {
     agentId: string
@@ -222,11 +236,19 @@ export interface SupervisionSnapshot {
   mail?: ChannelMail[]
 }
 
+export interface SupervisionOptions {
+  signal?: AbortSignal
+  /** Watchdog threshold reached; must be observational and must not abort the turn. */
+  onWatchdog?: (at: number) => void
+}
+
 /** 调度决策:lead 对快照的回应(空数组 = 本轮无动作) */
 export type SupervisionDecision
   = | { kind: 'dispatch', parentTaskId?: string, assigneeId: string, title: string, description?: string, parts?: Part[] }
-    | { kind: 'reassign', taskId: string, toAgentId: string }
-    | { kind: 'cancel', taskId: string }
+    | { kind: 'wait', rootId?: string, reason?: string }
+    | { kind: 'guide', taskId: string, toAgentId: string, message: string }
+    | { kind: 'reassign', taskId: string, toAgentId: string, reason?: string }
+    | { kind: 'cancel', taskId: string, reason?: string }
     | { kind: 'complete', taskId: string, artifacts?: A2AArtifact[] }
     | { kind: 'notify', toAgentId: string, parts: Part[] }
     | { kind: 'spawn_agent', name: string, harness?: string, config?: Record<string, unknown>, templateId?: string, reason?: string }
@@ -243,7 +265,9 @@ export interface AgentInterface {
   /** 标准流式返回:输入一次,产出统一事件流 */
   run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent>
   /** lead 调度决策(可选,仅 role='lead' 时被 SchedulerLoop 调用) */
-  supervise?(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]>
+  supervise?(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: SupervisionOptions): Promise<SupervisionDecision[]>
+  /** Supervision watchdog/hard-stop policy; watchdog never implies task cancel. */
+  getSupervisionPolicy?(): { watchdogMs: number, hardTimeoutMs: number }
   /**
    * 实时消息注入:将文本注入正在运行的 omp 会话。
    * 返回送达模式:'steer' = 已注入流式会话(同轮可见,可安全标记消费);
@@ -253,6 +277,17 @@ export interface AgentInterface {
   steer?(text: string): Promise<'steer' | 'deferred'>
   init?(config: { agent: AgentInfo, channelId: string }): Promise<void>
   dispose?(): Promise<void>
+  /**
+   * 可选:harness 会话身份(设计文档 §2.4 `session_id / thread_id`)。
+   * 无会话概念的引擎(一次性 CLI)返回 null —— 平台据此如实展示连续性能力。
+   */
+  getSessionId?(): string | null
+  /**
+   * 可选:消费一次「上次 Harness 重建原因」(§6.2 lastRestartReason)。
+   * harness 在重建 client/进程时记录原因(PROMPT_FAIL / RPC_BROKEN / PROCESS_EXIT /
+   * TURN_STALLED / SERVER_RESTART),运行时取出后清空,用于连续性审计与共享记忆。
+   */
+  takeHarnessRestartReason?(): string | null
   /**
    * 可选:harness 进程资源信息(运行时资源监控用)。
    * 进程内 harness(mock/claude)无外部进程 → 不实现返回 null。

@@ -78,8 +78,17 @@ export async function handleSearchOtherTeamsMemory(args: Record<string, unknown>
   if (!query) return { text: '缺少 query', isError: true }
   const rows = await ws.searchOtherTeamsMemory({ query, limit: Number(args.limit ?? 5) })
   if (rows.length === 0) return { text: `其他团队的共享记忆中没有命中「${query}」的内容。` }
-  const text = rows.map(r =>
-    `- [${r.channelName}] 「${r.title}」(${r.createdAt.slice(0, 10)}): ${r.content}`).join('\n')
+  const text = rows.map((r) => {
+    // §7.4:来源 Channel + root/task + 时间 + 可见性必须一起呈现,便于 Lead 判断可信来源
+    const provenance = [
+      `[${r.channelName}]`,
+      r.createdAt.slice(0, 10),
+      r.visibility ?? 'cross-channel',
+      r.taskId ? `task=${r.taskId.slice(0, 8)}` : '',
+      r.rootId ? `root=${r.rootId.slice(0, 8)}` : '',
+    ].filter(Boolean).join(' · ')
+    return `- ${provenance} 「${r.title}」: ${r.content}`
+  }).join('\n')
   return { text: `其他团队共享记忆命中 ${rows.length} 条:\n${text}` }
 }
 

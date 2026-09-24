@@ -12,15 +12,6 @@ export async function handleSubmitTask(args: Record<string, unknown>, state: Hos
   const title = String(args.title ?? '').trim()
   const description = args.description as string | undefined
   if (!title) return { text: 'submit_task 需要非空 title', isError: true }
-  const tasks = await ws.listTasks()
-  const existing = tasks.find(t =>
-    !t.parentId
-    && ((state.sourceChatMessageId && t.sourceChatMessageId === state.sourceChatMessageId)
-      || (!state.sourceChatMessageId && t.title === title))
-    && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
-  if (existing) {
-    return { text: `根任务 ${existing.id} 已存在(标题「${existing.title}」,state=${existing.state}),未重复创建。请冻结并复用它，不要改标题创建第二个根任务。` }
-  }
   const task = await ws.submitTask({
     title,
     description,

@@ -66,6 +66,7 @@ export interface TaskDto {
   id: string
   channelId: string
   parentId?: string
+  rootQueueSeq?: number
   assigneeId: string
   title: string
   description?: string
@@ -94,6 +95,11 @@ export interface MemoryRowDto {
   importance: number
   accessCount: number
   createdAt: string
+  /** §7.4/§8:来源任务与 root(channel memory timeline 展示所需) */
+  taskId?: string | null
+  rootId?: string | null
+  visibility?: 'channel-shared' | 'private' | 'cross-channel'
+  lastAccessedAt?: string | null
 }
 
 export interface MemorySnippetDto {
@@ -105,6 +111,11 @@ export interface MemorySnippetDto {
   createdAt: string
   score: number
   source: 'private' | 'shared'
+  /** §7.4 来源定位:Channel / root / task / 可见性 */
+  channelId?: string
+  taskId?: string | null
+  rootId?: string | null
+  visibility?: 'channel-shared' | 'private' | 'cross-channel'
 }
 
 export function useWorkshopApi() {
@@ -162,7 +173,9 @@ export function useWorkshopApi() {
     listHarnessProviders: (harness: string) =>
       http.get<{ data: { catalog: { providers: Array<{ id: string, models: Array<{ id: string, efforts: string[], defaultEffort?: string }> }>, effortMode: 'levels' | 'freetext' | 'unsupported', note?: string } } }>(`/workshop/harnesses/${harness}/providers`),
     // tasks detail / lifecycle(P1 抽屉)
-    getTask: (taskId: string) => http.get<{ data: TaskDto }>(`/workshop/tasks/${taskId}`),
+    /** §8:任务详情必须带 channelId —— 后端据此拒绝跨 Channel 串详情 */
+    getTask: (taskId: string, channelId?: string) =>
+      http.get<{ data: TaskDto }>(`/workshop/tasks/${taskId}`, channelId ? { params: { channelId } } : undefined),
     cancelTask: (taskId: string) => http.post<{ data: TaskDto }>(`/workshop/tasks/${taskId}/cancel`, {}),
     /** HITL:重试 FAILED 任务(优先原 assignee,否则队列最短空闲 worker) */
     retryTask: (taskId: string) => http.post<{ data: TaskDto }>(`/workshop/tasks/${taskId}/retry`, {}),

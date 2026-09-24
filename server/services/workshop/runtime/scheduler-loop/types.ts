@@ -31,6 +31,19 @@ export interface SchedulerLoopOptions {
   /** agent 最近一次工具调用时刻(manager 注入;停滞看门狗的活性信号:
    *  真实 LLM 长工具链不更新 progress 数字,健康工作不能被两轮 stallMs 误回收) */
   toolActivityOf?: (agentId: string) => number | null
+  /**
+   * Lead 决策留痕回调(§7.1 lead.wait/guide/reassign/cancel)。
+   * manager 注入后把决策写入 Channel shared memory;未注入 = 不留痕(测试脚手架)。
+   */
+  onLeadDecision?: (e: {
+    channelId: string
+    agentId: string
+    decision: string
+    taskId?: string
+    toAgentId?: string
+    reason?: string
+    rootId?: string
+  }) => void
 }
 
 /** 空闲退避上限(指纹不变时 tick 间隔指数退避至此;事件 wake 立即恢复) */

@@ -45,6 +45,8 @@ export function createOutboxRepo(db: DatabaseSync) {
   const countByStatus = db.prepare(`SELECT status, COUNT(*) AS n FROM outbox_events GROUP BY status`)
   /** 保留期清理:删除已发布且 published_at 早于给定时刻的行 */
   const sweepPublishedStmt = db.prepare(`DELETE FROM outbox_events WHERE status = 'published' AND published_at IS NOT NULL AND published_at < ?`)
+  /** 死信保留期清理:failed 行超过保留期后回收(否则毒事件永久占表,§11 需要容量有界) */
+  const sweepFailedStmt = db.prepare(`DELETE FROM outbox_events WHERE status = 'failed' AND created_at < ?`)
 
   return {
     /**
@@ -112,6 +114,14 @@ export function createOutboxRepo(db: DatabaseSync) {
      */
     sweepPublished(beforeIso: string): number {
       return Number(sweepPublishedStmt.run(beforeIso).changes ?? 0)
+    },
+
+    /**
+     * 死信保留期清理:删除 `created_at < beforeIso` 的 failed 行,返回清理行数。
+     * pending(**尚未发布**的欠账)永不回收 —— 那是必须收敛的事实源。
+     */
+    sweepFailed(beforeIso: string): number {
+      return Number(sweepFailedStmt.run(beforeIso).changes ?? 0)
     },
   }
 }

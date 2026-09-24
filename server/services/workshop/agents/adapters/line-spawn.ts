@@ -37,10 +37,10 @@ export function resolveOnPath(command: string): string | null {
     }
   }
   const hasDir = command.includes('/') || command.includes('\\') || /^[A-Za-z]:/.test(command)
-  const exts = (process.env.PATHEXT?.split(';').filter(Boolean) ?? ['.EXE', '.CMD', '.BAT', '.COM']).map(e => e.toLowerCase())
+  const exts = ((process.env.PATHEXT ?? process.env.PathExt)?.split(';').filter(Boolean) ?? ['.EXE', '.CMD', '.BAT', '.COM']).map(e => e.toLowerCase())
   const bases = hasDir
     ? [command]
-    : (process.env.PATH ?? '').split(';').filter(Boolean).map(dir => join(dir, command))
+    : (process.env.PATH ?? process.env.Path ?? '').split(';').filter(Boolean).map(dir => join(dir, command))
   // PATHEXT 顺序(.exe → .cmd → …)优先;裸名兜底(npm sh 脚本,win 上不可执行,仅最后回退)
   for (const base of bases) {
     for (const ext of exts) {

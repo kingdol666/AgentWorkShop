@@ -62,8 +62,21 @@ try {
 catch {
   check('相同 sourceChatMessageId 由数据库唯一约束阻止第二根任务', true)
 }
+const sameSource = engine.createOrGetRoot({ channelId: channel.id, creatorId: lead.id, assigneeId: lead.id, title: '改标题后重试', sourceChatMessageId: 'chat-001' })
+check('同 source terminal/在途均返回 canonical root', sameSource.task.id === root.id && sameSource.created === false)
+const secondRoot = engine.createOrGetRoot({ channelId: channel.id, creatorId: lead.id, assigneeId: lead.id, title: '同标题但新消息', sourceChatMessageId: 'chat-002' })
+check('不同 source 可创建第二个 queued root', secondRoot.created && secondRoot.task.id !== root.id && engine.rootQueue(channel.id).queuedRoots.some(t => t.id === secondRoot.task.id))
+try {
+  engine.dispatch(secondRoot.task, { assigneeId: worker.id, title: '不应提前派发' })
+  check('queued root 禁止提前 dispatch', false)
+}
+catch (err) {
+  check('queued root 禁止提前 dispatch', err instanceof AppError && (err as AppError).code === 'ROOT_QUEUED')
+}
 
-const parent = engine.create({ channelId: channel.id, creatorId: lead.id, assigneeId: lead.id, title: '取消级联' })
+// 后续生命周期测试使用新 Channel，避免受到 FIFO root admission 的影响。
+const channel2 = channels.create({ name: 'guardrails-lifecycle' })
+const parent = engine.create({ channelId: channel2.id, creatorId: lead.id, assigneeId: lead.id, title: '取消级联' })
 engine.transition(parent.id, 'WORKING', lead.id)
 const child = engine.dispatch(parent, { assigneeId: worker.id, title: '活动子任务' })
 try {
@@ -84,7 +97,8 @@ catch (err) {
   check('取消后的迟到完成被拒绝', err instanceof AppError && (err as AppError).code === 'TASK_TERMINAL')
 }
 
-const timeoutRoot = engine.create({ channelId: channel.id, creatorId: lead.id, assigneeId: lead.id, title: '超时根任务' })
+const channel3 = channels.create({ name: 'guardrails-timeout' })
+const timeoutRoot = engine.create({ channelId: channel3.id, creatorId: lead.id, assigneeId: lead.id, title: '超时根任务' })
 engine.transition(timeoutRoot.id, 'WORKING', lead.id)
 const timeoutChild = engine.dispatch(timeoutRoot, { assigneeId: worker.id, title: '超时子任务' })
 const timeoutClosed = engine.timeoutTree(timeoutRoot.id, lead.id)

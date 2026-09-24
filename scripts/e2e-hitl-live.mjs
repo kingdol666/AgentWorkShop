@@ -148,12 +148,14 @@ async function main() {
   const term = await openTermWithRetry(leadAgentId, channelId, token)
   check('W2b 终端 WS 接入(agentId 寻址)', Boolean(term))
 
-  // 等 lead 空闲(调度循环的空闲询问 = 首个 hitl.request;不作为断言对象)
+  // 真实 omp 冷启动/模型首回合可能很慢；终端接入后允许当前回合自然结束，
+  // 但不把 ask 测试永久绑定到首回合的 idle 事件。若首回合仍在运行，
+  // follow_up 会由同一 rpc-ui session 排队/steer，仍不会启动第二个 session。
   await waitUntil('lead 首回合结束(空闲询问到达)', () =>
-    aep.envelopes.some(e => e.type === 'hitl.request') || term.frames().some(f => f.frame.type === 'agent_end'), 300_000)
-  await sleep(2000)
+    aep.envelopes.some(e => e.type === 'hitl.request') || term.frames().some(f => f.frame.type === 'agent_end'), 120_000).catch(() => null)
+  await sleep(500)
 
-  // 注入 ask 指令(follow_up;omp 会撤销空闲询问并弹出新对话框)
+  // 注入 ask 指令(follow_up;同一 omp 会话内)
   term.send({ type: 'input', text: ASK_1 })
   console.log('  … 等待 agent 弹出 ask 对话框(目标:options 含 yes/no)…')
   const hitlReq = await waitUntil('AEP hitl.request 帧(yes/no)', () =>
@@ -208,11 +210,19 @@ async function main() {
   await shot('2-dropdown')
 
   if (targetItem) {
-    await targetItem.click()
+    // Click the actual deep-link button, not the parent card's center. The card
+    // also contains answer controls whose center may not bubble to hitlGo.
+    const head = await targetItem.$('.hitl-item-head')
+    if (head) await head.click()
+    else await targetItem.click()
     await sleep(2500)
   }
   const url = page.url()
-  check('U3 点击条目跳转 /monitor 定位', url.includes('/monitor') && url.includes(`agentId=${leadAgentId}`) && url.includes(`channelId=${channelId}`), `url=${url.slice(0, 110)}`)
+  // monitor consumes the deep-link query after it opens the terminal; assert the
+  // observable result instead of requiring transient query parameters to remain.
+  const terminalOpened = Boolean(await page.$('.omp-terminal-drawer'))
+    || Boolean(await page.$('.terminal-panel, [data-testid=omp-terminal-panel]'))
+  check('U3 点击条目跳转 /monitor 并定位终端', url.includes('/monitor') && terminalOpened, `url=${url.slice(0, 110)} terminal=${terminalOpened}`)
   await shot('3-jump-monitor')
 
   // ── Phase W(续):统一应答 → 落定 → agent 收到答案 ──

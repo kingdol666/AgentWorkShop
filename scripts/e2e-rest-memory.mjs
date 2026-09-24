@@ -109,12 +109,16 @@ async function main() {
     const r = await api('GET', `/channels/${channelId}/agents/${agentId}/memories`, { token })
     return Array.isArray(r.data) ? r.data : []
   }
+  // worker 的 episodic-task 行标题是**子任务标题**(mock lead 派发时为
+  // `${父标题} — 子任务 N/M`),不是父任务标题 —— 断言按前缀匹配,避免把
+  // 派发标题格式当契约。
+  const child1TitlePrefix = '实现支付网关对接'
   const w1mem = await waitUntil(async () => {
     const rows = await memOf(child1.assigneeId, lead.token)
-    return rows.find(r => r.kind === 'episodic-task' && r.title === '实现支付网关对接') ? rows : null
+    return rows.find(r => r.kind === 'episodic-task' && r.title.startsWith(child1TitlePrefix)) ? rows : null
   }, 10_000)
   const executorId = child1.assigneeId
-  const execRow = w1mem?.find(r => r.kind === 'episodic-task' && r.title === '实现支付网关对接')
+  const execRow = w1mem?.find(r => r.kind === 'episodic-task' && r.title.startsWith(child1TitlePrefix))
   check('执行 worker 记忆自动沉淀(episodic-task)', !!execRow, execRow?.title)
   check('记忆含执行成果(mock 成果 summary)', !!execRow && execRow.content.includes('mock 成果'), execRow?.content.slice(0, 50))
 
@@ -133,7 +137,12 @@ async function main() {
   check('search 返回原文 content + score', sAuto.data.every(s => s.content.length > 0 && typeof s.score === 'number'))
 
   const sSharedEmpty = await search(executorId, lead.token, { query: '规范', scope: 'shared' })
-  check('shared 域初始为空(无公共记忆)', sSharedEmpty.code === 0 && sSharedEmpty.data.length === 0)
+  // §7 变更:Channel 共享域现在承载**过程记忆**(root.*/child.* 事件摘要 + canonical
+  // summary + 监督/watchdog/Harness 重启),因此"shared 初始为空"不再成立。
+  // 断言意图保留为:此时共享域尚未有**人工策展**的 semantic 行(下一步才写)。
+  check('shared 域尚无人工策展记忆(过程摘要除外)',
+    sSharedEmpty.code === 0 && sSharedEmpty.data.every(s => s.kind !== 'semantic'),
+    JSON.stringify(sSharedEmpty.data?.map(s => `${s.source}:${s.kind}`).slice(0, 6)))
 
   const s401 = await fetch(`${BASE}/api/workshop/channels/${channelId}/agents/${executorId}/memories/search`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: 'x' }),
@@ -208,17 +217,23 @@ async function main() {
   check('任务2(相关)闭环', !!done2)
 
   const tasks2 = (await api('GET', `/channels/${channelId}/tasks`)).data
-  const child2 = tasks2.find(t => t.title === '支付网关重试机制' && t.parentId)
-  const memRowsAfter = await waitUntil(async () => {
-    const rows = await memOf(child2.assigneeId, lead.token)
-    return rows.some(r => r.title === '支付网关重试机制') ? rows : null
-  }, 10_000)
+  // mock lead 对**简单任务**会直接收口(不派发子任务;§10「简单任务 Lead 直接完成」),
+  // 因此执行者可能是 root 自己;断言按"实际执行者"取,不假定必有子任务。
+  const root2 = tasks2.find(t => t.title === '支付网关重试机制' && !t.parentId)
+  const child2 = tasks2.find(t => t.parentId && t.title.startsWith('支付网关重试机制'))
+  const executor2Id = child2?.assigneeId ?? root2?.assigneeId
+  const memRowsAfter = executor2Id
+    ? await waitUntil(async () => {
+        const rows = await memOf(executor2Id, lead.token)
+        return rows.some(r => r.kind === 'episodic-task' && r.title.startsWith('支付网关重试机制')) ? rows : null
+      }, 10_000)
+    : null
   check('任务2 执行记忆增量沉淀', !!memRowsAfter, memRowsAfter?.map(r => r.title).join(','))
 
-  const sAfter = await search(child2.assigneeId, lead.token, { query: '支付网关 重试', scope: 'auto', limit: 10 })
+  const sAfter = await search(executor2Id ?? executorId, lead.token, { query: '支付网关 重试', scope: 'auto', limit: 10 })
   check('检索命中新旧任务记忆(自动感知积累)', sAfter.code === 0
-  && sAfter.data.some(s => s.title === '支付网关重试机制')
-  && sAfter.data.some(s => s.title === '实现支付网关对接' || s.title === '支付网关接入规范'),
+  && sAfter.data.some(s => s.title.startsWith('支付网关重试机制'))
+  && sAfter.data.some(s => s.title.startsWith('实现支付网关对接') || s.title === '支付网关接入规范'),
   JSON.stringify(sAfter.data?.map(s => `${s.source}:${s.title}`)))
 
   // ── ⑧ 维护 / 隔离 / 清理 ──

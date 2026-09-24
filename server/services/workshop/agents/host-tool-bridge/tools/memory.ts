@@ -11,9 +11,20 @@ export async function handleSearchMemory(args: Record<string, unknown>, ws: Agen
   if (snippets.length === 0) {
     return { text: `记忆检索无命中(query="${query}", scope=${scope})。可尝试更换关键词或放宽 scope。` }
   }
-  const lines = snippets.map(s =>
-    `  [${s.source}·${s.kind}·score=${s.score}] ${s.title}\n    ${s.content}`,
-  )
+  const lines = snippets.map((s) => {
+    // §7.4:每条记忆标注来源 Channel / task / root / 可见性,便于判断可信来源
+    const provenance = [
+      s.source,
+      s.kind,
+      `score=${s.score}`,
+      s.visibility ?? '',
+      s.channelId ? `channel=${s.channelId.slice(0, 8)}` : '',
+      s.taskId ? `task=${s.taskId.slice(0, 8)}` : '',
+      s.rootId ? `root=${s.rootId.slice(0, 8)}` : '',
+      s.createdAt ? s.createdAt.slice(0, 16).replace('T', ' ') : '',
+    ].filter(Boolean).join(' · ')
+    return `  [${provenance}] ${s.title}\n    ${s.content}`
+  })
   return { text: `记忆检索结果(${snippets.length} 条, scope=${scope}):\n${lines.join('\n')}` }
 }
 

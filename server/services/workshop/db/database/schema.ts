@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id             TEXT PRIMARY KEY,
   channel_id     TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
   parent_id      TEXT,
+  root_queue_seq INTEGER,              -- root FIFO sequence; NULL for children
   assignee_id    TEXT NOT NULL,               -- 实例身份 id(不再 FK 到 agents)
   creator_id     TEXT,
   title          TEXT NOT NULL,
@@ -82,6 +83,14 @@ CREATE TABLE IF NOT EXISTS tasks (
   source_chat_delivery_id TEXT,
   close_reason   TEXT,
   deadline_at    TEXT,
+  -- 执行交接栅栏(§2.1/§5.1):每次新分配/重分配 generation+1 并换新 lease;
+  -- worker 的 message/artifact/progress/complete/failed 事件携带 generation+lease,
+  -- 与当前值不符的迟到事件被丢弃,避免旧 worker 覆盖重分配后的新执行结果。
+  assignment_generation      INTEGER NOT NULL DEFAULT 0,
+  execution_lease_id         TEXT,
+  execution_lease_agent_id   TEXT,
+  execution_lease_started_at TEXT,
+  execution_lease_revoked_at TEXT,
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL
 );
@@ -91,10 +100,6 @@ CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id, state);
 CREATE INDEX IF NOT EXISTS idx_tasks_channel_assignee ON tasks(channel_id, assignee_id, state, created_at);
 -- 子任务聚合(dispatch 判重/complete 闸门/onChildCompleted 统计;childrenOf 热查询)
 CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id);
--- 每条群聊请求最多创建一个 root task;后代任务不参与唯一约束。
-CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_root_source_chat_message
-  ON tasks(channel_id, source_chat_message_id)
-  WHERE parent_id IS NULL AND source_chat_message_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS teams (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,

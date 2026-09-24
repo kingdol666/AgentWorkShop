@@ -7,6 +7,9 @@ import type { AgentEvent } from '../../agents/agent-interface'
 import type { TaskState, WorkspaceTask } from '../../types/task'
 import { AppError } from '../../../../utils/errors'
 import { TASK_HISTORY_CAP, TRANSITIONS, log, rowToTask } from './helpers'
+import { TERMINAL_TASK_STATES } from '../../types/task'
+import type { ExecutionFence } from './lease'
+import { fenceMatches } from './lease'
 
 export abstract class TaskEngineLayer03 extends TaskEngineLayer02 {
   /** 状态机校验迁移;非法迁移抛 AppError('INVALID_TRANSITION', 400);成功后广播任务事件 */
@@ -29,7 +32,11 @@ export abstract class TaskEngineLayer03 extends TaskEngineLayer02 {
         log.warn(`[TaskEngine] 单 WORKING 不变量被突破:assignee=${row.assigneeId.slice(0, 8)} 已有 WORKING 任务 ${clash.id.slice(0, 8)},又迁移 ${taskId.slice(0, 8)} → WORKING(by=${by.slice(0, 8)})`)
       }
     }
-    const updated = this.repos.tasks.update(taskId, { state })
+    const updated = this.repos.tasks.update(taskId, TERMINAL_TASK_STATES[state]
+      // 终态即结束执行:撤销租约(§2.1/§11 active_execution_leases),旧 worker 的
+      // 任何后续事件都会因 generation/lease 不再匹配而被丢弃。
+      ? { state, executionLeaseRevokedAt: new Date().toISOString() }
+      : { state })
     if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
     void by // 操作者预留(历史/审计);当前行模型无独立字段,暂不持久化
     const view = rowToTask(updated)
@@ -38,8 +45,14 @@ export abstract class TaskEngineLayer03 extends TaskEngineLayer02 {
   }
 
   /** 应用 Agent 事件:artifact(分块 append/进度折算)、status(追加 history)、error(FAILED)、done(无) */
-  applyEvent(taskId: string, event: AgentEvent): void {
+  applyEvent(taskId: string, event: AgentEvent, fence?: ExecutionFence): void {
     const task = this.requireTask(taskId)
+    // §5.1 执行代次栅栏:携带 generation/lease 的事件必须与任务当前 assignment 一致,
+    // 否则是「旧 worker 的迟到事件」——在运行中 reassign 之后绝不允许它写入新执行的结果。
+    if (!fenceMatches(task, fence)) {
+      log.warn(`[TaskEngine] 丢弃迟到事件:task=${taskId.slice(0, 8)} kind=${event.kind} fence=${fence?.leaseId?.slice(0, 8) ?? '-'} current=${task.executionLeaseId?.slice(0, 8) ?? '-'}`)
+      return
+    }
     // 终态设防(数据状态驱动不变量):COMPLETED/FAILED/CANCELED 是封闭终态,
     // 迟到事件(cancel→abort 后队列里已映射的 delta/artifact 仍会吐尽)不得
     // 再写入 —— 否则 CANCELED 任务长出"新交付物",状态数据被污染
@@ -75,11 +88,21 @@ export abstract class TaskEngineLayer03 extends TaskEngineLayer02 {
           artifacts.push(artifact)
         }
         const updatedRow = this.repos.tasks.update(taskId, { artifacts, progress })
-        // 进度变化主动广播(applyEvent 不经 transition,落库进度须实时同步前端
-        // task.progress;与 report_progress 的 notifyTask 同口径)
-        if (progress !== task.progress) {
-          this.hooks?.onTaskChange?.({ taskId, channelId: task.channelId, progress, agentId: task.assigneeId, task: updatedRow ? rowToTask(updatedRow) : undefined })
-        }
+        // §7.1 child.artifact:交付物事件必须无条件可见 —— 旧实现只在 progress 变化时
+        // 广播,于是「非 append 且未声明 totalChunks」的交付物既不更新进度也不广播,
+        // 过程记忆里永远看不到 artifact。
+        // 但 **progress 只在真的变化时才放进载荷**:否则同值进度帧会重复下发
+        // (task.progress 与前端实体进度对齐依赖"变化才广播"的既有口径)。
+        const progressChanged = progress !== task.progress
+        this.hooks?.onTaskChange?.({
+          taskId,
+          channelId: task.channelId,
+          ...(progressChanged ? { progress } : {}),
+          agentId: task.assigneeId,
+          artifactName: artifact.name,
+          artifactId: artifact.artifactId,
+          task: updatedRow ? rowToTask(updatedRow) : undefined,
+        })
         break
       }
       case 'status': {

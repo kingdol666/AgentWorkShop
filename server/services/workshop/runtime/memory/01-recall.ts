@@ -194,15 +194,23 @@ export abstract class AgentMemoryLayer01 extends AgentMemoryLayer00 {
     const limit = Math.min(Math.max(opts.limit ?? 5, 1), 20)
     const scored = (await this.rank(query, scope, { relatedTaskIds: opts.relatedTaskIds })).slice(0, limit)
     for (const s of scored) this.repo.touch(s.row.id)
-    return scored.map(s => ({
-      id: s.row.id,
-      kind: s.row.kind,
-      title: s.row.title,
-      content: unsegmentCJK(s.row.content).slice(0, 500),
-      importance: s.row.importance,
-      createdAt: s.row.createdAt,
-      score: Math.round(s.score * 1000) / 1000,
-      source: s.row.agentId === TEAM_AGENT_ID ? 'shared' : 'private',
-    }))
+    return scored.map((s) => {
+      const shared = s.row.agentId === TEAM_AGENT_ID
+      return {
+        id: s.row.id,
+        kind: s.row.kind,
+        title: s.row.title,
+        content: unsegmentCJK(s.row.content).slice(0, 500),
+        importance: s.row.importance,
+        createdAt: s.row.createdAt,
+        score: Math.round(s.score * 1000) / 1000,
+        source: shared ? 'shared' as const : 'private' as const,
+        // §7.4 DTO 必带:来源 Channel / task / 可见性。
+        // rootId 由上层(manager 持有 TaskEngine)补齐 —— 记忆层不查任务表。
+        channelId: s.row.channelId,
+        taskId: s.row.taskId ?? null,
+        visibility: shared ? 'channel-shared' as const : 'private' as const,
+      }
+    })
   }
 }

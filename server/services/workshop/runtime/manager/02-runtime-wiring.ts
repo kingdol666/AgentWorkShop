@@ -12,7 +12,7 @@ import type { ChannelRuntime } from '../channel-runtime'
 import { Mailbox } from '../mailbox'
 import { SchedulerLoop } from '../scheduler-loop'
 import { buildMessage, instanceToAgentInfo, log, parseChannelLlm, rowToChannelMail, runtimeKey } from './helpers'
-import { workshopSettings } from '../../settings'
+import { harnessContinuityEnabled, workshopSettings } from '../../settings'
 
 export abstract class ManagerRuntimeWiring extends ManagerBus {
   /** 按实例装配 AgentRuntime(每个实例一个独立运行时) */
@@ -95,6 +95,10 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
           }
         }
       },
+      // 监督信号(§7.1 supervise.watchdog)与 Harness 重建(§7.1 harness.restarted)
+      // 必须落 Channel 共享记忆 —— watchdog 只在内存态可见等于"零观测"。
+      onSupervisionSignal: e => this.recordSupervisionSignal(e),
+      onHarnessRestart: e => this.recordHarnessRestartEvent(e),
     })
     cr.addAgent(runtime)
     this.agentIndex.set(runtimeKey(m.channelId, agent.id), runtime)
@@ -162,6 +166,11 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     lead: AgentRuntime,
     options?: SchedulerLoopOptions,
   ): void {
+    // shutdown 之后不得再挂新调度器:shutdown 会停掉全部循环并置空 cr.scheduler,
+    // 但此窗口内仍可能有在途的懒装配(channelRuntime loader / 定时任务 / 在飞 rake)
+    // 经 wireMember → reviveScheduler 重新挂载 —— 新循环会在 DB 关闭后继续 tick,
+    // 打出「statement has been finalized」并持续持有已关闭的连接。
+    if (this.shutdownStarted) return
     const loop = new SchedulerLoop(cr, lead, {
       // 停滞窗口默认取 workshop.stall_ms(默认 5 分钟,可经设置调整):
       // 它决定"多久算停滞"以及"多久之后收口",是运维最需要按现场调的一个值;
@@ -174,6 +183,8 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       supervisionMail: limit => this.deps.repos.messages
         .listRecentByChannel(channelId, limit)
         .map(rowToChannelMail),
+      // Lead 决策留痕(§7.1 lead.wait/guide/reassign/cancel → Channel shared memory)
+      onLeadDecision: e => this.recordLeadDecision(channelId, e),
     })
     loop.setLoopResubmitCallback((title, description) => {
       this.submitChannelTask({ channelId, title, description }).catch((err) => {
@@ -193,9 +204,10 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const runtime = this.agentIndex.get(key)
     if (!runtime) return
     const cr = this.channels.get(channelId)
-    if (runtime.role === 'lead' && cr) {
-      cr.scheduler?.stop()
-      cr.scheduler = null
+    const scheduler = runtime.role === 'lead' ? cr?.scheduler : null
+    if (scheduler) {
+      await scheduler.stopAndWait()
+      cr!.scheduler = null
     }
     // 先摘除再停机:runtime.stop() 会关闭 mailbox,若成员仍在 route 视野内,
     // 停机窗口内到达的消息会被 closed mailbox 静默吞掉但 delivered 照常上报
@@ -215,10 +227,21 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     if (!runtime) return
     if (runtime.getState() !== 'idle') return
     if (this.deps.repos.messages.listPendingByChannelAgent(channelId, agentId).length > 0) return
-    if (runtime.role === 'lead') {
+    // §6.1 Runtime 卸载闸门(五条件)。§11 harness_continuity_enabled=false 时退回
+    // 旧行为(只看 runtime idle),仅用于异常回滚 —— 默认必须走完整闸门。
+    if (harnessContinuityEnabled()) {
       const tasks = this.getTaskEngine().list(runtime.channelId)
-      const hasActive = tasks.some(t => t.state !== 'COMPLETED' && t.state !== 'CANCELED' && t.state !== 'FAILED')
-      if (hasActive) return
+      const hasAssignedWork = tasks.some(t =>
+        t.assigneeId === agentId
+        && t.state !== 'COMPLETED'
+        && t.state !== 'CANCELED'
+        && t.state !== 'FAILED')
+      // Worker runtimes can transiently report idle between harness turns while
+      // their task is still WORKING/WAITING. Never unload a continuity lease in
+      // that window; this is role-independent and prevents session churn.
+      if (hasAssignedWork) return
+      // 在飞的监督尝试同样持有 Harness 租约(§4.1 IDLE 之外的态都在飞)。
+      if (runtime.role === 'lead' && runtime.hasActiveSupervisionAttempt?.()) return
     }
     await this.stopAndDetach(channelId, agentId)
   }

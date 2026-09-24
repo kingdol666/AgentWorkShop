@@ -20,11 +20,14 @@ export abstract class SchedulerLoopLayer01 extends SchedulerLoopLayer00 {
     }
     finally {
       this.running = false
+      // Release the tracked promise before a pending wake starts the next round.
+      // Otherwise launchRound sees the just-finished promise and drops the wake.
+      this.activeRound = null
       if (this.started) {
         if (this.pendingWake) {
           // 事件驱动:执行期间有新信号 → 立即下一轮(节奏不退避)
           this.pendingWake = false
-          void this.runRound()
+          this.launchRound()
         }
         else {
           // 定时驱动:空闲退避(指纹不变 → 间隔翻倍至 8s 上限;有事件 wake() 即刻打断)
@@ -132,6 +135,7 @@ export abstract class SchedulerLoopLayer01 extends SchedulerLoopLayer00 {
     // Failed/empty triage does not trigger blind dispatch. Retry the Lead after backoff.
     const hasUnplannedLeadRoot = snapshot.tasks.some((task) => {
       if (task.parentId || task.assigneeId !== this.lead.agentId) return false
+      if (snapshot.activeRootId && task.id !== snapshot.activeRootId) return false
       if (task.state !== 'SUBMITTED' && task.state !== 'WORKING') return false
       return !snapshot.tasks.some(child => child.parentId === task.id)
     })
@@ -144,6 +148,7 @@ export abstract class SchedulerLoopLayer01 extends SchedulerLoopLayer00 {
   protected hasReviewableParent(snapshot: SupervisionSnapshot): boolean {
     return snapshot.tasks.some((t) => {
       if ((t.state !== 'WAITING' && t.state !== 'WORKING') || t.assigneeId !== this.lead.agentId) return false
+      if (snapshot.activeRootId && t.id !== snapshot.activeRootId) return false
       const children = snapshot.tasks.filter(c => c.parentId === t.id)
       if (children.length === 0) return false
       return children.every(c => TERMINAL_TASK_STATES[c.state] === true)

@@ -18,6 +18,12 @@ export abstract class OmpRpcAgentImplLayer01 extends OmpRpcAgentImplLayer00 {
   /** 模型上下文窗口(get_state/get_session_stats 探测;null = 未知,percent 不可算) */
   protected contextWindow: number | null = null
   protected sessionId: string | null = null
+  /**
+   * 上次 Harness 重建原因(§6.2 last_restart_reason)。
+   * 四处 client 重建点分别写入 PROMPT_FAIL / RPC_BROKEN / TURN_STALLED / PROCESS_EXIT,
+   * 由 AgentRuntime 经 takeHarnessRestartReason() 消费一次(写入连续性租约与共享记忆)。
+   */
+  protected harnessRestartReason: string | null = null
   /** harvest 双路去重(compact 响应与 compaction_end 事件可能双达) */
   protected lastHarvestKey = ''
   protected lastHarvestAt = 0

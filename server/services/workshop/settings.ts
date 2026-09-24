@@ -111,12 +111,24 @@ export interface WorkshopSettings {
   idle_grace_ms: number
   /** 运行中任务的停滞判定窗口(ms):先催办一次,再过同样时长按有无产出收口 */
   stall_ms: number
+  /** supervise 观察阈值(ms):只记录 watchdog 信号,不 abort / 不取消 / 不重启 Harness */
+  supervise_watchdog_ms: number
+  /** supervise 最终安全边界(ms):超过才 abort 当前监督回合 */
+  supervise_hard_timeout_ms: number
   max_descendants_per_root: number
   max_active_descendants_per_root: number
   max_canceled_descendants_per_root: number
   max_task_depth: number
   root_timeout_ms: number
   max_lead_created_workers: number
+  /** §11 回滚开关:根任务 FIFO 队列 */
+  root_queue_enabled: boolean
+  /** §11 回滚开关:watchdog 只观察(关闭 = 回退为 watchdog 即中止回合) */
+  supervise_watchdog_only: boolean
+  /** §11 回滚开关:Harness 连续性(任务未空闲前不卸载进程/会话) */
+  harness_continuity_enabled: boolean
+  /** §11 回滚开关:Channel 过程记忆摘要写入 */
+  channel_memory_digest_enabled: boolean
 }
 export interface BackupSettings {
   disabled: boolean
@@ -175,6 +187,20 @@ export const ompSettings = (): OmpSettings => section<OmpSettings>('omp')
 export const harnessSettings = (): HarnessSettings => section<HarnessSettings>('harness')
 export const dcwSettings = (): DcwSettings => section<DcwSettings>('dcw')
 export const workshopSettings = (): WorkshopSettings => section<WorkshopSettings>('workshop')
+
+/**
+ * §11 回滚开关读取(缺键 = 描述符默认 = 开启)。
+ * 三个开关都只关闭「新行为」,不关闭数据库 source 唯一索引与任务终态设防 ——
+ * 那两条是正确性底线,任何配置都不得绕过。
+ */
+function workshopFlag(key: keyof WorkshopSettings, dflt: boolean): boolean {
+  const v = workshopSettings()[key]
+  return typeof v === 'boolean' ? v : dflt
+}
+export const rootQueueEnabled = (): boolean => workshopFlag('root_queue_enabled', true)
+export const superviseWatchdogOnly = (): boolean => workshopFlag('supervise_watchdog_only', true)
+export const harnessContinuityEnabled = (): boolean => workshopFlag('harness_continuity_enabled', true)
+export const channelMemoryDigestEnabled = (): boolean => workshopFlag('channel_memory_digest_enabled', true)
 export const backupSettings = (): BackupSettings => section<BackupSettings>('backup')
 export const retentionSettings = (): RetentionSettings => section<RetentionSettings>('retention')
 export const logSettings = (): LogSettings => section<LogSettings>('log')

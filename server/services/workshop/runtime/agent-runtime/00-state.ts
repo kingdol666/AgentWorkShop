@@ -6,11 +6,13 @@ import { AgentRuntimeContracts } from './contracts'
 import type { A2AMessage } from '../../types/a2a'
 import type { AgentEvent, AgentInfo, AgentInterface, AgentWorkspace } from '../../agents/agent-interface'
 import type { AgentMemory } from '../memory'
-import type { AgentStatusView, AgentTaskQueueView } from '../../types/task'
+import type { AgentStatusView, AgentTaskQueueView, HarnessContinuityView, SupervisionAttemptView } from '../../types/task'
+import { TERMINAL_TASK_STATES } from '../../types/task'
 import type { ChannelBus, TaskEngine } from './types'
 import type { Mailbox } from '../mailbox'
 import { log } from './helpers'
 import { randomUUID } from 'node:crypto'
+import { harnessContinuityMode } from '../../agents/registry'
 
 export abstract class AgentRuntimeLayer00 extends AgentRuntimeContracts {
   readonly agentId: string
@@ -29,6 +31,39 @@ export abstract class AgentRuntimeLayer00 extends AgentRuntimeContracts {
   protected abortController: AbortController | null = null
   protected loopPromise: Promise<void> | null = null
   protected started = false
+  protected supervisionAttempt: SupervisionAttemptView = {
+    attemptId: null, state: 'IDLE', startedAt: null, watchdogAt: null, activeRootId: null, watchdogCount: 0,
+    completedAt: null, snapshotRevision: null, lastSignalAt: null, lastDecisionKind: null,
+  }
+
+  /**
+   * Harness 连续性租约(§2.4)。Runtime 层持有,对前端以只读 DTO 暴露。
+   *  - persistent harness:进程/会话跨回合复用 → reuseCount 递增;
+   *  - per_turn harness:每回合新进程,如实标记但不假装复用;
+   *  - 任何进程/会话身份变化都记录 lastRestartReason(§6.2)。
+   */
+  protected readonly continuity: HarnessContinuityView & { everUsed: boolean } = {
+    leaseId: randomUUID(),
+    agentId: '',
+    channelId: '',
+    harness: '',
+    continuityMode: 'per_turn',
+    pid: null,
+    sessionId: null,
+    reuseCount: 0,
+    activeTaskIds: [],
+    startedAt: new Date().toISOString(),
+    lastUsedAt: new Date().toISOString(),
+    idleGraceUntil: null,
+    lastRestartReason: null,
+    lastRestartAt: null,
+    restartCount: 0,
+    harnessRestartCounts: {},
+    everUsed: false,
+  }
+
+  /** 上一次回合结束时留下的失败原因(用于给 Harness 重建归因) */
+  protected pendingHarnessFailure: string | null = null
 
   constructor(
     agent: AgentInfo,
@@ -59,6 +94,28 @@ export abstract class AgentRuntimeLayer00 extends AgentRuntimeContracts {
         /** 投递台账 id(闭环留痕) */
         deliveryId?: string
       }) => void
+      /**
+       * 监督信号回调(§7.1 supervise.watchdog):watchdog 触发时把结构化信号交给
+       * manager 落 Channel 共享记忆。平台侧回调,不改变 watchdog 的非破坏语义。
+       */
+      onSupervisionSignal?: (e: {
+        agentId: string
+        channelId: string
+        attemptId: string | null
+        kind: 'watchdog'
+        activeRootId: string | null
+        snapshotRevision: number | null
+        watchdogCount: number
+        at: string
+      }) => void
+      /** Harness 重建回调(§7.1 harness.restarted):记录 lastRestartReason 后同步落共享记忆 */
+      onHarnessRestart?: (e: {
+        agentId: string
+        channelId: string
+        harness: string
+        reason: string
+        at: string
+      }) => void
     },
   ) {
     super()
@@ -66,6 +123,10 @@ export abstract class AgentRuntimeLayer00 extends AgentRuntimeContracts {
     this.role = agent.role
     this.channelId = agent.channelId
     this.name = agent.name
+    this.continuity.agentId = agent.id
+    this.continuity.channelId = agent.channelId
+    this.continuity.harness = agent.harness
+    this.continuity.continuityMode = harnessContinuityMode(agent.harness)
     // 工作区即时可用:impl 的 workspace 原本在首个 run() 才注入,此前 REST 直调
     // host 工具(agent-tools/invoke)会拿到 null →「workspace 未就绪」。
     // 装配期即绑定(与 run() 注入的是同一对象,语义等价)。
@@ -100,6 +161,85 @@ export abstract class AgentRuntimeLayer00 extends AgentRuntimeContracts {
       queuedCount: queue.queued.length,
       completedCount: queue.completed.length,
       ...(context ? { context } : {}),
+      supervision: this.supervisionAttempt,
+      continuity: this.getContinuity(),
+    }
+  }
+
+  getSupervisionStatus(): SupervisionAttemptView { return { ...this.supervisionAttempt } }
+
+  /**
+   * §6.1 是否存在**在飞**的监督尝试。
+   * 注意与 state 的区别:attempt 落定后 state 回到 IDLE(审计信息保留在
+   * lastDecisionKind/completedAt),DECISION_APPLIED/ABORTED 只是瞬时态。
+   */
+  hasActiveSupervisionAttempt(): boolean {
+    const s = this.supervisionAttempt.state
+    return s !== 'IDLE' && s !== 'DECISION_APPLIED' && s !== 'ABORTED'
+  }
+
+  /** Harness 连续性租约只读视图(§2.4;每次读取刷新活跃任务集,保证闸门判据是最新的) */
+  getContinuity(): HarnessContinuityView {
+    const { everUsed: _everUsed, ...view } = this.continuity
+    return { ...view, activeTaskIds: this.nonTerminalTaskIds() }
+  }
+
+  /**
+   * Harness 连续性租约的回合观测(每次 run/supervise 起点调用)。
+   *  - pid 未变 → reuseCount+1(进程/会话被真实复用);
+   *  - pid 变化/从无到有(且此前用过)→ 记录一次重建原因;
+   *  - sessionId 由 harness 提供时同步(§2.4 session identity)。
+   */
+  protected noteHarnessUse(): void {
+    const info = this.impl.getProcessInfo?.() ?? null
+    const pid = info?.pid ?? null
+    const prevPid = this.continuity.pid
+    const now = new Date().toISOString()
+    if (pid !== null && prevPid !== null && pid !== prevPid) {
+      this.recordHarnessRestart(this.impl.takeHarnessRestartReason?.() ?? this.pendingHarnessFailure ?? 'PROCESS_EXIT', now)
+    }
+    else if (pid !== null && prevPid === null && this.continuity.everUsed) {
+      this.recordHarnessRestart(this.impl.takeHarnessRestartReason?.() ?? this.pendingHarnessFailure ?? 'PROCESS_EXIT', now)
+    }
+    else if (pid !== null && pid === prevPid) {
+      this.continuity.reuseCount += 1
+    }
+    this.continuity.everUsed = true
+    this.continuity.pid = pid
+    this.continuity.sessionId = this.impl.getSessionId?.() ?? this.continuity.sessionId
+    this.continuity.lastUsedAt = now
+    this.pendingHarnessFailure = null
+  }
+
+  /** 记录一次 Harness 重建(§6.2 lastRestartReason / §11 harness_restart_count_by_reason) */
+  protected recordHarnessRestart(reason: string, at = new Date().toISOString()): void {
+    this.continuity.lastRestartReason = reason
+    this.continuity.lastRestartAt = at
+    this.continuity.restartCount += 1
+    this.continuity.harnessRestartCounts[reason] = (this.continuity.harnessRestartCounts[reason] ?? 0) + 1
+    this.continuity.reuseCount = 0
+    log.warn(`[AgentRuntime:${this.agentId}] Harness 重建(${reason})lease=${this.continuity.leaseId.slice(0, 8)}`)
+    this.deps.onHarnessRestart?.({ agentId: this.agentId, channelId: this.channelId, harness: this.continuity.harness, reason, at })
+  }
+
+  /**
+   * 服务重启恢复标记(§6.4):进程重启后必须新建 Harness —— 主动记一次 SERVER_RESTART,
+   * 让前端与共享记忆如实反映"旧子进程已不可用",而不是假装仍在复用。
+   */
+  markServerRestart(): void {
+    this.recordHarnessRestart('SERVER_RESTART')
+    this.refreshStatus()
+  }
+
+  /** 本项目记录的非终态任务 id(§6.1 卸载闸门依据) */
+  protected nonTerminalTaskIds(): string[] {
+    try {
+      return this.deps.taskEngine.list(this.channelId)
+        .filter(t => t.assigneeId === this.agentId && !TERMINAL_TASK_STATES[t.state])
+        .map(t => t.id)
+    }
+    catch {
+      return []
     }
   }
 

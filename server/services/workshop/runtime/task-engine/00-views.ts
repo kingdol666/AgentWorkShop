@@ -4,7 +4,7 @@
  */
 import { TaskEngineContracts } from './contracts'
 import type { A2AArtifact } from '../../types/a2a'
-import type { AgentTaskQueueView, TaskState, WorkspaceTask } from '../../types/task'
+import type { AgentTaskQueueView, RootQueueView, TaskState, WorkspaceTask } from '../../types/task'
 import type { MessageRepo } from '../../db/message.repo'
 import type { TaskRepo } from '../../db/task.repo'
 import { rowToTask, rowToTaskLite } from './helpers'
@@ -21,13 +21,45 @@ export abstract class TaskEngineLayer00 extends TaskEngineContracts {
        * 任务变更广播(状态迁移带 state;进度变化带 progress;终态迁移经 transition
        * 统一触发)。状态/进度的实时同步唯一出口 —— 前端/WS/monitor 据此对齐实体。
        */
-      onTaskChange?(e: { taskId: string, channelId: string, state?: TaskState, progress?: number, agentId?: string, task?: WorkspaceTask }): void
+      onTaskChange?(e: { taskId: string, channelId: string, state?: TaskState, progress?: number, agentId?: string, task?: WorkspaceTask, artifactName?: string, artifactId?: string, reassignFrom?: string, reason?: string }): void
     },
   ) {
     super()
   }
 
   /** 单 agent 任务队列视图(queued FIFO / current / completed;派生只读投影,无第二份状态) */
+  /**
+   * FIFO 根任务队列视图(§2.2 RootQueueView)。
+   *
+   * 后端统一派生,前端不自行推导(前后端对 active root 的判断必须同源):
+   *  - `activeRoot`:最早的非终态 root(状态非 COMPLETED/FAILED/CANCELED,root_queue_seq ASC,id 稳定次级序);
+   *  - `queuedRoots`:其余非终态 root,`position` 从 2 起(1 = active);
+   *  - `completedRoots`:终态 root **计数**(§2.2 口径)。
+   */
+  rootQueueView(channelId: string): RootQueueView {
+    const queue = this.rootQueue(channelId)
+    return {
+      activeRootId: queue.activeRoot?.id ?? null,
+      activeRoot: queue.activeRoot,
+      queuedRoots: queue.queuedRoots.map((task, i) => ({ task, position: i + 2 })),
+      completedRoots: queue.completedRoots.length,
+      activeRootCount: queue.activeRoot ? 1 : 0,
+      queuedRootCount: queue.queuedRoots.length,
+    }
+  }
+
+  /** FIFO root queue: only the oldest non-terminal root is active. */
+  rootQueue(channelId: string): { activeRoot: WorkspaceTask | null, queuedRoots: WorkspaceTask[], completedRoots: WorkspaceTask[] } {
+    const roots = this.repos.tasks.listRoots(channelId).map(rowToTask)
+    const terminal = (t: WorkspaceTask) => t.state === 'COMPLETED' || t.state === 'FAILED' || t.state === 'CANCELED'
+    const open = roots.filter(t => !terminal(t))
+    return { activeRoot: open[0] ?? null, queuedRoots: open.slice(1), completedRoots: roots.filter(terminal) }
+  }
+
+  activeRootOf(channelId: string): WorkspaceTask | null {
+    return this.rootQueue(channelId).activeRoot
+  }
+
   /** 批量队列视图:一次 list(channel) 聚合全部成员(调度快照热路径,消除 O(M) 次查询) */
   queueViewsOf(channelId: string): Map<string, AgentTaskQueueView> {
     const rows = this.repos.tasks.listByChannel(channelId)

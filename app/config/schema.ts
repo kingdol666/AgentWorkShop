@@ -115,6 +115,13 @@ export const appConfigSchema = z.object({
     max_task_depth: z.number().min(0).max(10).default(1),
     root_timeout_ms: z.number().min(1000).max(86400000).default(900_000),
     max_lead_created_workers: z.number().min(1).max(100).default(8),
+    stall_ms: z.number().min(10000).max(7200000).default(300_000),
+    supervise_watchdog_ms: z.number().min(1000).max(3600000).default(90_000),
+    supervise_hard_timeout_ms: z.number().min(5000).max(7200000).default(900_000),
+    root_queue_enabled: z.boolean().default(true),
+    supervise_watchdog_only: z.boolean().default(true),
+    harness_continuity_enabled: z.boolean().default(true),
+    channel_memory_digest_enabled: z.boolean().default(true),
   }).default({}),
   backup: z.object({
     disabled: z.boolean().default(false),

@@ -9,16 +9,28 @@ import type { FireResult } from '../schedule-runtime'
 import { AppError } from '../../../../utils/errors'
 import { ScheduleRuntime, validatePlanAndComputeFirstRun } from '../schedule-runtime'
 import { TERMINAL_TASK_STATES } from '../../types/task'
+import { log } from './helpers'
 
 export abstract class ManagerSchedules extends ManagerHostTools {
   async restore(): Promise<void> {
     this.deps.repos.messages.resetConsuming()
+    // §6.4 服务重启:先跑一次 outbox 补偿,把重启窗口内滞留的 pending 记忆/群聊事件
+    // 立即收敛(否则要等一个 memory.maintenance_ms 周期 —— 默认 6 小时)。
+    try {
+      this.runGroupChatMaintenance()
+    }
+    catch (err) {
+      log.error('[restore] outbox 补偿失败(不阻断恢复):', err)
+    }
     const nonTerminal = this.deps.repos.tasks.listNonTerminal()
     const activeChannelIds = new Set(nonTerminal.map(t => t.channelId))
     for (const channelId of activeChannelIds) {
       const channel = this.deps.repos.channels.findById(channelId)
       if (!channel || channel.enabled !== 1) continue
       this.ensureChannelActive(channelId)
+      // §6.4:跨进程重启后旧子进程必然不可用 —— 对仍在恢复的 channel,如实记录
+      // SERVER_RESTART,而不是让前端以为 Harness 会话仍在复用。
+      this.runtimeOf(channelId, channel.leadAgentId ?? '')?.markServerRestart?.()
     }
     // 断线重连:ASSIGNED/WORKING 的叶子任务(无子任务)若无 pending assign 投递
     // (消息已被消费但任务未完成——进程内 run 抛错、或崩溃落在消费后),

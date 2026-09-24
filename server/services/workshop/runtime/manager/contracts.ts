@@ -145,6 +145,9 @@ export abstract class ManagerContracts {
     content: string
     importance: number
     createdAt: string
+    taskId?: string | null
+    rootId?: string | null
+    visibility?: 'channel-shared' | 'private' | 'cross-channel'
   }>
   abstract refuseTask(
     channelId: string,

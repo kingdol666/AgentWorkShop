@@ -21,6 +21,7 @@ import { useTaskBoardMenu } from '@/app/composables/workshop/useTaskBoardMenu'
 import TaskBoardColumn from '@/app/components/workshop/task-board/Column.vue'
 import TaskBoardList from '@/app/components/workshop/task-board/List.vue'
 import TaskBoardStatusMenu from '@/app/components/workshop/task-board/StatusMenu.vue'
+import { useEntitiesStore } from '@/app/stores/workshop/entities'
 
 const props = defineProps<{ channelId: string }>()
 const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()
@@ -28,6 +29,7 @@ const emit = defineEmits<{ (e: 'openTask', taskId: string): void }>()
 const channelId = toRef(props, 'channelId')
 
 const { synced, mergedTasks, taskById, applyMove } = useTaskBoardTasks(channelId)
+const entities = useEntitiesStore()
 const { columns, agentName, childCount, stateOf } = useTaskBoardColumns(channelId, mergedTasks)
 const { dragId, onDragStart, onDragLeave, onDragOverCol, onDragEnd, colClasses, onDrop }
   = useTaskBoardDrag({ taskById, applyMove })
@@ -35,6 +37,29 @@ const { menu, openMenu, closeMenu, menuActions, onMenuAction } = useTaskBoardMen
   applyMove,
   openTask: (taskId: string): void => { emit('openTask', taskId) },
 })
+
+const rootQueue = computed(() => mergedTasks.value
+  .filter(t => !t.parentId && !['COMPLETED', 'FAILED', 'CANCELED'].includes(t.state))
+  .sort((a, b) => (a.rootQueueSeq ?? Number.MAX_SAFE_INTEGER) - (b.rootQueueSeq ?? Number.MAX_SAFE_INTEGER)))
+/**
+ * §2.2/§8:active root 与排队位次以后端权威投影为准(rootQueues store)。
+ * 本地派生的 rootQueue 只在后端投影尚未到达时兜底 —— 前后端对「谁在跑」必须同源。
+ */
+const authoritativeQueue = computed(() => entities.rootQueue(props.channelId))
+const activeRootId = computed(() => authoritativeQueue.value.activeRootId ?? rootQueue.value[0]?.id ?? null)
+const activeRoot = computed(() => mergedTasks.value.find(t => t.id === activeRootId.value) ?? null)
+const queuedRoots = computed(() => {
+  const queue = authoritativeQueue.value
+  if (queue.queuedRoots.length > 0) {
+    return queue.queuedRoots
+      .map(r => ({ position: r.position, task: mergedTasks.value.find(t => t.id === r.taskId) }))
+      .filter((x): x is { position: number, task: NonNullable<typeof x.task> } => !!x.task)
+  }
+  return rootQueue.value.slice(1).map((task, i) => ({ position: i + 2, task }))
+})
+/** 已完成根任务数(§2.2 completedRoots;无投影时本地兜底) */
+const completedRootCount = computed(() => authoritativeQueue.value.completedRoots
+  || mergedTasks.value.filter(t => !t.parentId && ['COMPLETED', 'FAILED', 'CANCELED'].includes(t.state)).length)
 
 // ===== 视图切换(看板/列表,持久化) =====
 const layout = ref<'board' | 'list'>(
@@ -67,6 +92,25 @@ const setLayout = (l: 'board' | 'list') => {
         </button>
       </div>
       <span class="count">{{ mergedTasks.length }} {{ $t('taskBoardView.k168w1ze004') }}</span>
+      <span
+        v-if="activeRoot"
+        class="root-pill active"
+      >
+        Active root · {{ activeRoot.title }}
+      </span>
+      <span
+        v-if="queuedRoots.length"
+        class="root-pill queued"
+      >
+        {{ queuedRoots.length }} queued root{{ queuedRoots.length === 1 ? '' : 's' }}
+        <span class="root-pos">#{{ queuedRoots.map(r => r.position).join(', #') }}</span>
+      </span>
+      <span
+        v-if="completedRootCount > 0"
+        class="root-pill done"
+      >
+        {{ completedRootCount }} done
+      </span>
     </div>
 
     <!-- 空态(快照未到 → 同步中,不误判为空) -->
@@ -161,6 +205,21 @@ const setLayout = (l: 'board' | 'list') => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.root-pill {
+  max-width: min(42vw, 360px);
+  padding: 4px 8px;
+  overflow: hidden;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.root-pill.active { color: var(--ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.root-pill.queued { color: var(--ink-faint); background: var(--surface-strong); }
+.root-pill.done { color: var(--ink-faint); background: transparent; }
+.root-pos { margin-left: 4px; font-weight: 500; opacity: 0.75; }
 
 /* 看板:全高等宽泳道(surface-strong 软底,白卡浮于其上);泳道本体样式在 task-board/Column.vue */
 .board {

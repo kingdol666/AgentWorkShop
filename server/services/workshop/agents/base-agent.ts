@@ -25,6 +25,7 @@ import type {
   AgentRunContext,
   AgentRunRequest,
   SupervisionDecision,
+  SupervisionOptions,
   SupervisionSnapshot,
 } from './agent-interface'
 import { createSessionState, dispatchHostTool, type HostToolBridgeContext, type HostToolSessionState } from './host-tool-bridge'
@@ -51,6 +52,8 @@ export interface BaseAgentIdentity {
  */
 export interface BaseAgentConfigView {
   superviseTimeoutMs?: number
+  superviseWatchdogMs?: number
+  superviseHardTimeoutMs?: number
   systemPromptPrefix?: string
   scenarioPrompt?: string
 }
@@ -171,7 +174,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
   /** supervise 互斥位(子类 supervise 实现与本字段共享同一实例字段,故为 protected;纯可见性修饰,无运行时差异) */
   protected supervising = false
 
-  async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: { signal?: AbortSignal }): Promise<SupervisionDecision[]> {
+  async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: SupervisionOptions): Promise<SupervisionDecision[]> {
     if (this.supervising) return []
     if (!this.workspace) this.workspace = ctx.workspace
     const prompt = supervisePrompt({
@@ -184,7 +187,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     })
     this.supervising = true
     try {
-      const events = await this.collectTurnEvents(prompt, this.superviseTimeoutMs(), opts?.signal)
+      const events = await this.collectTurnEvents(prompt, this.getSupervisionPolicy().hardTimeoutMs, opts?.signal)
       let text = ''
       for (const e of events) {
         if (e.kind === 'artifact') {
@@ -200,6 +203,17 @@ export abstract class BaseAgentImpl implements AgentInterface {
     finally {
       this.supervising = false
     }
+  }
+
+  getSupervisionPolicy(): { watchdogMs: number, hardTimeoutMs: number } {
+    const configured = Number(this.configRecord().superviseTimeoutMs)
+    const watchdog = Number(this.configRecord().superviseWatchdogMs)
+    const watchdogMs = Number.isFinite(watchdog) && watchdog > 0
+      ? watchdog
+      : (Number.isFinite(configured) && configured > 0 ? configured : 90_000)
+    const hard = Number(this.configRecord().superviseHardTimeoutMs)
+    const hardTimeoutMs = Number.isFinite(hard) && hard > 0 ? hard : Math.max(300_000, watchdogMs * 4)
+    return { watchdogMs, hardTimeoutMs }
   }
 
   protected superviseTimeoutMs(): number {

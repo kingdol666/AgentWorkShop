@@ -9,6 +9,7 @@ import { AppError } from '../../../../utils/errors'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { randomUUID } from 'node:crypto'
 import { rowToTask } from './helpers'
+import { fenceToMetadata } from './lease'
 
 export abstract class TaskEngineLayer01 extends TaskEngineLayer00 {
   /**
@@ -92,6 +93,10 @@ export abstract class TaskEngineLayer01 extends TaskEngineLayer00 {
       'x-aw-task-id': input.taskId,
     }
     if (input.childTaskId) metadata['x-aw-child-task-id'] = input.childTaskId
+    // §5.1:任务消息携带 generation/lease,worker 回合原样回传;运行时据此丢弃
+    // 重新分配之后到达的旧 worker 事件( fencing)。
+    const task = this.repos.tasks.findById(input.taskId)
+    if (task) Object.assign(metadata, fenceToMetadata(rowToTask(task)))
     this.repos.messages.create({
       channelId: input.channelId,
       taskId: input.taskId,

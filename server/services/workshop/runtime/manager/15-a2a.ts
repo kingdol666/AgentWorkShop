@@ -214,9 +214,8 @@ export abstract class ManagerA2A extends ManagerTasks {
   }
 
   /**
-   * 跨团队共享记忆检索(lead/worker 皆可,只读):其他 channel 的 __team__ 公共域。
-   * 全员可见——worker 由此知道别的团队做过什么;发现相关经验/结论可直接复用,
-   * 无需跨 channel 发信;查无所得而有协作必要时,再由 lead 发起跨 channel 通信。
+   * 跨 Channel 共享记忆检索(**仅 Leader**,只读):其他 channel 的 __team__ 公共域。
+   * §7.4 访问策略:其他 Channel 只允许 Leader 查询,且**仍受同一 owner/组织范围限制**。
    */
   recallOtherTeamsMemory(channelId: string, agentId: string, input: { query: string, limit?: number }): Array<{
     channelId: string
@@ -225,8 +224,16 @@ export abstract class ManagerA2A extends ManagerTasks {
     content: string
     importance: number
     createdAt: string
+    /** §7.4 DTO 必带来源定位:root/task/可见性 */
+    taskId: string | null
+    rootId: string | null
+    visibility: MemoryVisibility
   }> {
     this.requireMember(channelId, agentId)
+    const sender = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+    if (!sender || sender.role !== 'lead') {
+      throw new AppError(403, 'ROLE_FORBIDDEN', '跨 Channel 共享记忆仅限 Leader 查询')
+    }
     const q = input.query.trim()
     if (!q) return []
     const others = this.otherSameOwnerChannels(channelId)
@@ -246,15 +253,31 @@ export abstract class ManagerA2A extends ManagerTasks {
       content: unsegmentCJK(r.content).slice(0, 400),
       importance: r.importance,
       createdAt: r.createdAt,
+      taskId: r.taskId ?? null,
+      rootId: r.taskId ? (this.deps.repos.tasks.findById(r.taskId)?.parentId ?? r.taskId) : null,
+      visibility: 'cross-channel' as MemoryVisibility,
     }))
   }
 
-  /** 同主且启用的其他 channel 列表(跨团队可见性的作用域) */
+  /**
+   * 同主且启用的其他 channel 列表(跨团队可见性的作用域)。
+   *
+   * §7.4 修复:旧判据 `self.owner == null || c.owner == null || c.owner === self.owner`
+   * 中**任一 NULL owner 即放行** —— 遗留无主 channel(owner NULL)因此能被任意
+   * channel 的 Lead 读到,越出「同一 owner/组织」范围。现在收紧为:
+   * 双方 owner 都必须非空且相等;无主(遗留/公共)channel 不参与跨团队检索。
+   */
   protected otherSameOwnerChannels(channelId: string): ChannelRow[] {
     const self = this.deps.repos.channels.findById(channelId)
+    const owner = self?.ownerUserId ?? null
+    if (!owner) return []
     return this.deps.repos.channels.list().filter(c =>
       c.id !== channelId
       && c.enabled === 1
-      && (self?.ownerUserId == null || c.ownerUserId == null || c.ownerUserId === self.ownerUserId))
+      && c.ownerUserId != null
+      && c.ownerUserId === owner)
   }
 }
+
+/** 记忆可见性标注(§7.4;DTO 必须自描述来源域) */
+export type MemoryVisibility = 'channel-shared' | 'private' | 'cross-channel'

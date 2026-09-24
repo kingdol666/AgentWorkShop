@@ -8,7 +8,7 @@ import type { TerminalSessionDto } from '@/app/composables/workshop/useWorkshopA
 import { laneHue, laneInitial, TERM_DOT, termBadge } from '@/app/composables/workshop/useChannelTerminals'
 import type { AgentView } from '@/app/stores/workshop/entities'
 
-defineProps<{
+const props = defineProps<{
   agent: AgentView
   terminal: TerminalSessionDto | undefined
   stopping: string | null
@@ -21,6 +21,48 @@ const emit = defineEmits<{
   'stop': [agentId: string, name: string]
   'remove': [agentId: string, name: string]
 }>()
+
+const agent = computed(() => props.agent)
+
+/**
+ * §8 监督/watchdog 徽标:
+ *  - `watchdog N`:监督回合已触发 watchdog(观察信号,不是取消);
+ *  - `决策 <kind>`:Lead 最后决策(wait/guide/reassign/cancel/complete)。
+ * 试图从 state='IDLE' 但 lastDecisionKind 仍存在推断"已落定"的历史决策。
+ */
+const supervisionBadge = computed(() => {
+  const s = agent.value?.supervision
+  if (!s) return null
+  const live = s.state === 'RUNNING' || s.state === 'WATCHDOG_SIGNALED' || s.state === 'WAITING_FOR_RESULT'
+  if (s.watchdogCount > 0 || s.state === 'WATCHDOG_SIGNALED') {
+    return { kind: 'watchdog' as const, text: `watchdog ${s.watchdogCount}`, title: `监督观察阈值已触发(${s.watchdogAt ?? '-'});这是观察信号,不是取消` }
+  }
+  if (live) return { kind: 'running' as const, text: 'supervising', title: `监督回合进行中(attempt=${s.attemptId?.slice(0, 8) ?? '-'},tick=${s.snapshotRevision ?? '-'})` }
+  if (s.lastDecisionKind) return { kind: 'decision' as const, text: `决策 ${s.lastDecisionKind}`, title: `Lead 最后决策:${s.lastDecisionKind}(${s.completedAt ?? '-'})` }
+  return null
+})
+
+/**
+ * §8 Harness 连续性徽标:
+ *  - persistent harness 显示复用回合数与 pid/session;
+ *  - 发生过重建时显示 last restart reason(§6.2)。
+ */
+const continuityBadge = computed(() => {
+  const c = agent.value?.continuity
+  if (!c) return null
+  const parts: string[] = [c.continuityMode === 'persistent' ? 'persistent' : 'per_turn']
+  if (c.pid) parts.push(`pid ${c.pid}`)
+  if (c.reuseCount > 0) parts.push(`reuse ${c.reuseCount}`)
+  const title = [
+    `continuity=${c.continuityMode}`,
+    c.pid ? `pid=${c.pid}` : 'pid=-',
+    c.sessionId ? `session=${c.sessionId}` : 'session=-',
+    `reuse=${c.reuseCount}`,
+    c.lastRestartReason ? `last restart=${c.lastRestartReason}${c.lastRestartAt ? ` @${c.lastRestartAt}` : ''}` : 'last restart=-',
+    `restarts=${c.restartCount}`,
+  ].join(' · ')
+  return { text: parts.join(' · '), restart: c.lastRestartReason, title, error: !!c.lastRestartReason }
+})
 </script>
 
 <template>
@@ -61,6 +103,24 @@ const emit = defineEmits<{
           :style="{ background: TERM_DOT[termBadge(terminal)!.color] ?? 'var(--tone-neutral-dot)' }"
         />
         {{ termBadge(terminal)!.text }}
+      </span>
+      <!-- §8:Harness 连续性(continuity mode / pid / reuse / last restart reason) -->
+      <span
+        v-if="continuityBadge"
+        class="cont-badge"
+        :class="{ restart: continuityBadge.error }"
+        :title="continuityBadge.title"
+      >
+        {{ continuityBadge.text }}
+      </span>
+      <!-- §8:监督 watchdog / Lead 最后决策 -->
+      <span
+        v-if="supervisionBadge"
+        class="sup-badge"
+        :class="supervisionBadge.kind"
+        :title="supervisionBadge.title"
+      >
+        {{ supervisionBadge.text }}
       </span>
     </div>
     <!-- 第二行:状态摘要 + 操作簇(常驻可见;hairline 分隔破坏性操作) -->
@@ -254,6 +314,28 @@ const emit = defineEmits<{
   height: 5px;
   border-radius: 50%;
 }
+/* §8 连续性/监督徽标(与终端徽标同构;restart/watchdog 用警示色提示但不打断) */
+.cont-badge,
+.sup-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  max-width: 140px;
+  padding: 0 6px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 15px;
+  color: var(--ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+}
+.cont-badge.restart { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 40%, transparent); }
+.sup-badge.watchdog { color: var(--tone-warn-dot, var(--tone-info-dot)); border-color: color-mix(in srgb, var(--tone-info-dot) 40%, transparent); }
+.sup-badge.decision { color: var(--ink-soft); }
+.sup-badge.running { color: var(--tone-live-dot); border-color: color-mix(in srgb, var(--tone-live-dot) 40%, transparent); }
 .head-sub {
   display: flex;
   gap: 8px;

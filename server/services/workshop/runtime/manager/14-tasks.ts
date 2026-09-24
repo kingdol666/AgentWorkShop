@@ -46,15 +46,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       throw new AppError(403, 'CHANNEL_DISABLED', `channel ${input.channelId} 已禁用`)
     }
     this.ensureChannelActive(input.channelId)
-    // 入口幂等(数据状态驱动):同 channel 同标题且**非终态**的任务已存在 → 409。
-    // 挡住 HITL 双击/客户端重试造成的重复执行;前一轮已 COMPLETED 的 loop 重放
-    // (LoopController → 本方法)不受影响 —— 终态不参与判定
-    const duplicate = this.getTaskEngine().list(input.channelId).find(t =>
-      t.title === input.title
-      && t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED')
-    if (duplicate) {
-      throw new AppError(409, 'TASK_DUPLICATE', `同标题任务已在途:「${input.title}」(${duplicate.id.slice(0, 8)},${duplicate.state}),请等待其完成或取消后再提交`)
-    }
+    // 标题是展示字段不是身份：不同请求允许同标题并排入队；chat 重投由来源消息键幂等。
     // HITL 直发目标校验 + 容错寻址(id/名字/唯一前缀;人类输入名字即可直发)
     let assigneeId = channel.leadAgentId
     if (input.assigneeId && input.assigneeId !== channel.leadAgentId) {
@@ -84,12 +76,28 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       title: input.title,
       description,
       parts: input.parts,
+      // 一切 parentId 为空的任务都是 root,必须拿到 FIFO 序号(§2.1 UNIQUE(channel_id, root_queue_seq)):
+      // 旧实现在「人类直发 worker」时显式传 null,导致该 root 被 rootQueue 的
+      // `root_queue_seq IS NOT NULL` 过滤掉 —— activeRootId 变 null,FIFO 准入闸门
+      // 与调度器 activeRoot 守卫同时失效,而前端仍把它当 active 显示。
+      rootQueueSeq: undefined,
       deadlineAt,
     })
     // 直发 worker:补 ASSIGNED 迁移(与 dispatchTask 独立任务同构,worker 消费循环按 assign 起回合)
     if (assigneeId !== channel.leadAgentId) {
       task = this.getTaskEngine().transition(task.id, 'ASSIGNED', 'system')
     }
+    // Lead-owned root tasks are scheduler inputs, not assign messages. Routing an
+    // `x-aw-task-kind=assign` message to the Lead immediately wakes its AgentRuntime
+    // and transitions the root to WORKING before FIFO admission can run; when two
+    // roots are submitted together, the later root then appears to execute in
+    // parallel with the active root. Keep the user payload in the task's input
+    // artifact and let SchedulerLoop admit the root in root_queue_seq order.
+    if (assigneeId === channel.leadAgentId) {
+      this.ensureChannelRuntime(input.channelId).wakeScheduler()
+      return task
+    }
+
     const messageMetadata: Record<string, unknown> = {
       'x-aw-task-kind': 'assign',
       'x-aw-task-id': task.id,
@@ -103,7 +111,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       this.getTaskEngine().transition(task.id, 'CANCELED', 'system')
       throw new AppError(502, 'DELIVERY_FAILED', `任务指派未能投递到 ${assigneeId.slice(0, 8)} 的信箱,请重试`)
     }
-    if (assigneeId !== channel.leadAgentId) this.wakeAgent(input.channelId, assigneeId)
+    this.wakeAgent(input.channelId, assigneeId)
     this.ensureChannelRuntime(input.channelId).wakeScheduler()
     return task
   }
@@ -359,6 +367,12 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     if (!isLead && !isCreator) {
       throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead/creator 可取消任务')
     }
+    // 终态护栏(诚实回执):对**已完成/已失败**的任务取消必须明确失败,而不是静默返回
+    // 原任务 —— 调用方(前端/HITL/Agent 工具)会据此以为"取消成功了",而任务其实早已收口。
+    // 已 CANCELED 的任务重复取消仍按幂等成功处理(与 TaskEngine.cancel 的既有语义一致)。
+    if (task.state === 'COMPLETED' || task.state === 'FAILED') {
+      throw new AppError(409, 'TASK_TERMINAL', `任务 ${input.taskId.slice(0, 8)} 已处于终态 ${task.state},不能取消`)
+    }
     const canceledTasks = this.getTaskEngine().cancelTree(input.taskId, callerAgentId, isLead ? 'LEAD_CANCEL' : 'USER_CANCEL')
     for (const canceled of canceledTasks) {
       this.runtimeOf(channelId, canceled.assigneeId)?.abortTask(canceled.id)
@@ -472,7 +486,12 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     return updated
   }
 
-  /** 重新指派(lead 的"调配":待执行/失败任务迁移到其他 worker)+ 唤醒新 assignee */
+  /**
+   * 重新指派(lead 的"调配")+ 唤醒新 assignee。
+   * §5.2:运行中(WORKING/WAITING)任务允许显式重分配 —— 撤销旧 lease、generation+1、
+   * 新 worker 收新 assign,并对旧 worker 执行 task-local abort(只影响该任务)。
+   * 待执行/失败任务走原路径(reassign)。
+   */
   async reassignTask(
     channelId: string,
     callerAgentId: string,
@@ -485,7 +504,14 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可调配任务')
     }
     const target = this.resolveMemberRef(channelId, toAgentId)
-    const updated = this.getTaskEngine().reassign(taskId, target.id)
+    const current = this.getTaskEngine().get(taskId)
+    if (current && (current.state === 'WORKING' || current.state === 'WAITING')) {
+      const { task, previousAssigneeId } = this.getTaskEngine().reassignRunning(taskId, target.id, callerAgentId, 'LEAD_REASSIGN')
+      this.runtimeOf(channelId, previousAssigneeId)?.abortTask?.(taskId)
+      this.wakeAgent(channelId, target.id)
+      return task
+    }
+    const updated = this.getTaskEngine().reassign(taskId, target.id, 'LEAD_REASSIGN')
     this.wakeAgent(channelId, target.id)
     return updated
   }

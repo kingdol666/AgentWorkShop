@@ -7,7 +7,7 @@ import type { ChannelStream } from './shared'
 import { hitlAudience } from './audience'
 import { internalsOf } from './hub'
 import { mapAgentEvent } from './event-mapping'
-import { publish } from './publish'
+import { publish, rootQueueViewOf } from './publish'
 import { publishToUser } from '../../../services/workshop/runtime/user-notification-hub'
 import { subscribeHitlEvents } from '../../../services/workshop/agents/hitl-registry'
 
@@ -27,6 +27,7 @@ export function bindStreamSubscriptions(manager: AgentChannelManager, stream: Ch
         agentId: e.agentId,
         title: task?.title,
         parentId: task?.parentId,
+        rootQueueSeq: task?.rootQueueSeq,
         progress: task?.progress,
         routeReason: task?.routeReason,
         closeReason: task?.closeReason,
@@ -38,6 +39,17 @@ export function bindStreamSubscriptions(manager: AgentChannelManager, stream: Ch
     }
     if (e.progress !== undefined) {
       publish(manager, stream, 'task.progress', { taskId: e.taskId, progress: e.progress, agentId: e.agentId }, { taskId: e.taskId })
+    }
+    // §3.4-3 广播 root queue 变化:root 进入/离开队列(含终态晋升下一 root)必须
+    // 让前端拿到权威排队视图,而不是自己按数组顺序猜 active root。
+    if (e.state !== undefined) {
+      const engine = internalsOf(manager).getTaskEngine()
+      const task = engine.get(e.taskId)
+      const isRootEvent = task ? !task.parentId : false
+      const terminal = e.state === 'COMPLETED' || e.state === 'FAILED' || e.state === 'CANCELED'
+      if (isRootEvent || terminal) {
+        publish(manager, stream, 'root.queue', rootQueueViewOf(engine.rootQueue(channelId)))
+      }
     }
   }))
   // 成员状态(idle/busy/stopped + 队列上下文):总线载荷为 queuedCount/completedCount,
@@ -51,6 +63,8 @@ export function bindStreamSubscriptions(manager: AgentChannelManager, stream: Ch
     queued: e.queuedCount ?? 0,
     completed: e.completedCount ?? 0,
     context: e.context ?? null,
+    supervision: e.supervision ?? null,
+    continuity: e.continuity ?? null,
   }, { agentId: e.agentId })))
   // harness 事件流(message/artifact/status.message/error)
   stream.unsubs.push(manager.subscribeChannelEvents(channelId, (event, source) => mapAgentEvent(manager, stream, event, source)))
