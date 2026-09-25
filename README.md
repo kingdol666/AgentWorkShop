@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.45</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) · 111 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.7.46</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) · 111 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -180,6 +180,7 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Team-scoped plugin switches** | Each team (channel) keeps an **independent plugin switch set** (`channel_plugins`): a disabled plugin's tools are not injected into that team's agents. Plugins themselves are hot-managed via `aw plugin` and the `/plugins` page. |
 | **Plugin extension API** | A self-contained directory under `plugins/<name>/` enhances **both halves at once**: `index.mjs` (server: hooks, routes, agent tools, **DAQ read drivers / DCW write drivers**, frame processors, node templates, config groups, KV, timers) and `client.mjs` (browser: panels injected into named slots, i18n, settings UI). Three scopes — `builtin` (shipped) > `project` (checkout) > `user` (`~/.AgentWorkShop`) — with ~1 s hot reload on enable/disable **and on code edits**; a disabled plugin's drivers are removed on hot reload immediately. Built-in example: **serial-bridge** (serial communication: read/write drivers, serial probe API, frontend panel). Full contract in [`docs/plugins.md`](./docs/plugins.md). |
 | **AML — auto-modeling lab** | Dataset build → training job → leaderboard → promotion gates → model reference, all driven from `/aml` or by agents through 10 `aml_*` tools. Python runtime bootstrapped with `uv` into an `./aml` asset root; artifacts and metadata stay under the config root. |
+| **AML hybrid twin × MPC** | Grey-box physics core + bounded PyTorch residual, `TwinSnapshot` / `VirtualTrial` / `RecommendationCertificate` with UQ/OOD screening and all-trajectory gates; the `hybrid_twin` channel profile injects 6 extra tools (`twin_*`, `mpc_optimize`). Trials stay virtual (`candidateExecuted=false`) and writes are recommendation-only until a certificate is certified. |
 | **Runtime observability** | `GET /api/system/monitor` exposes the agent-team internals as numbers: root queue depth, watchdog interventions, harness session reuse, pending memory outbox — each guarded by a documented rollback switch, so new machinery can be turned off without a redeploy. |
 | **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **111 settings across 16 groups** (32 live / 79 restart), no hardcoded defaults in code. |
 | **Configurable cadences** | Sampling and query defaults/floors are **live settings** (`daq.sampling.*`, `daq.query.*`): hot-reloaded, clamped on node create/patch, and agent tool descriptions always carry the current values. |
@@ -372,7 +373,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.45** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.46** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
@@ -465,6 +466,7 @@ export async function run(argv, ctx) {
 - **Pipeline**: driver → queue (in-process or MQTT, offline buffer on disconnect) → consumer with out-of-order defense → three-way fan-out: WS live push (gated), TSDB batch write, device-twin writeback.
 - **Robustness**: TSDB single-in-flight writes with bounded retries, buffer backpressure with drop counters, real loss metrics exposed on `daq.controller` frames.
 - **Alarms**: recipe-scoped monitoring windows with **2% hysteresis + 3-tick debounce**; alarm/offline transitions are instant (safety first).
+- **Querying is batch-scoped by default**: `daq_query` resolves the node's **active run** and filters by that batch's `run_id` + `recipe_id`, so an agent reading evidence always sees *the recipe currently running* — never a mix of the previous batch. The effective scope (`run=<id> 配方「name」(recipe_id)`) is printed in the result header and restated per node at the end, and the same ids can be fed straight back into `daq_query` or `aml_dataset_build`; pass `scope: 'all'` (or an explicit `recipe_id` / `run_id` / `product_id`) for cross-recipe comparison and history review. Lines that are not running stay unfiltered, so historical data remains queryable.
 
 ### Write control (DCW)
 
@@ -483,6 +485,7 @@ The modeling half of the loop: `/aml` builds **datasets** out of tagged telemetr
 - Agents do the same work through 10 tools (`aml_dataset_build`, `aml_job_submit`, `aml_job_status`, `aml_leaderboard`, `aml_model_promote`, …) — submit a goal and let the team train and report.
 - The Python runtime bootstraps itself with `uv` into an `./aml` asset root inside the config root; dataset/artifact/metadata paths, disk quota, job timeout, concurrency and retention are all **settings** (16 in the `aml` group), not constants.
 - Governance defaults are conservative: cross-recipe datasets are refused unless explicitly allowed, and every job is attributed.
+- **Hybrid twin × MPC core**: AML also owns the *hybrid twin* plane — `SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` / `ObjectiveProfile` / `VirtualTrial` / `RecommendationCertificate` on top of a grey-box physics core with a bounded PyTorch residual, UQ/OOD screening and all-trajectory hard-constraint gates. Channels opt in through the `hybrid_twin` profile, which injects six extra agent tools (`twin_scene_read`, `twin_snapshot_create`, `twin_trial_run`, `mpc_optimize`, `twin_gate_evaluate`, `twin_calibration_request`); a trial is *virtual* by design (`candidateExecuted=false`) and a recommendation is only certified when gates and benefit pass. Server-side strategies are `safe_small_step` (insufficient data) and `precise_search` (model cleared gates). Plan + acceptance record: [`docs/aml-hybrid-twin-mpc-integration-plan.md`](./docs/aml-hybrid-twin-mpc-integration-plan.md), [`docs/aml-hybrid-twin-implementation-acceptance.md`](./docs/aml-hybrid-twin-implementation-acceptance.md).
 
 ---
 
@@ -575,16 +578,27 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 Every claim above is backed by a suite you can re-run. The acceptance suites drive a
 **production instance over real simulated plant protocols** (Modbus TCP/RTU, OPC UA, MQTT,
 HTTP + an MQTT/Timescale pipeline) with real engine CLIs, and assert on the database,
-the event stream and the HTTP API — not on mocks. The full 2026-09-24 wave matrix
-(~1100+ real assertions, v0.7.45 production build, isolated `AW_HOME`, real browser)
-is archived in [`docs/audit/e2e-2026-09-24-full-coverage.md`](./docs/audit/e2e-2026-09-24-full-coverage.md).
+the event stream and the HTTP API — not on mocks. Two 2026-09-24 waves are archived:
+the baseline matrix (~1100+ real assertions, v0.7.45 production build, isolated `AW_HOME`,
+real browser) in [`docs/audit/e2e-2026-09-24-full-coverage.md`](./docs/audit/e2e-2026-09-24-full-coverage.md),
+and the follow-up feature wave (real **PLC node simulator** + injection-molding AgentTeam
+closed loop, FIFO multi-goal, scheduled tasks, collaboration, ~1400+ assertions in total)
+in [`docs/audit/e2e-2026-09-24-all-features.md`](./docs/audit/e2e-2026-09-24-all-features.md).
 
 | Suite | Latest result | What it covers | Reproduce |
 |---|---|---|---|
+| `real-injection-closed-loop.mjs` | **2 goals COMPLETED / 0 failed** (2026-09-24, real PLC simulator + real `omp` team) | injection line provisioned from the simulator (11 DCW + 14 DAQ nodes) → real AgentTeam lead/analyst/optimizer → governed writes with a **65.8 s gap ≥ 60 s policy** → DAQ re-measurement → `qualityOk`, verdict `keep` | `AW_BASE=<base> SIM_BASE=http://127.0.0.1:4010 AW_TOKEN=<token> node scripts/real-injection-closed-loop.mjs` |
+| `_run-real-injection-fifo-goals.mjs` | exit 0 (2026-09-24) | **FIFO root queue with multi-task serialization**: goal 2 dispatched only after goal 1 closed, role gate flip, two governed writes 65.04 s apart, two judged records, 4-anchor ledger | `AW_BASE=<base> SIM_BASE=… AW_TOKEN=<token> node scripts/_run-real-injection-fifo-goals.mjs` |
+| `e2e-plc-plugin-closedloop.mjs` | core stages A–D all green (2026-09-24) | PLC simulator supply over Modbus 16040 → DAQ cross-check (AW sample 197 vs simulator register 197.37) → HITL closed-loop write to 3 zones (registers 40021/40023/40025 = 210, verified write-through) → `dcw_judge` keep; plugin stages E–H need the external diagnosis service and are reported as SKIP | `AW_BASE=<base> KB_BASE=http://127.0.0.1:8771 AW_E2E_USERS_DB=<home>/data/users.sqlite node scripts/e2e-plc-plugin-closedloop.mjs` |
+| `_dbg-schedule-e2e.mjs` | **35 / 0** (2026-09-24) | scheduled tasks: plan CRUD + validation, `next_run_at`, `scheduledCount`, busy guard **409 CHANNEL_BUSY**, in-flight duplicate **409 SCHEDULE_RUNNING**, cancel reconciliation (run FAILED + failure counters), **timer auto-fire** (`trigger_kind=timer`), disable/enable state machine, 404 after delete | `SCHED_E2E_BASE=<base> node scripts/_dbg-schedule-e2e.mjs` |
+| `e2e-crash-cycle.mjs` | **5 / 5 phases** (2026-09-24) | watch → hard kill → persistence check → restart → redelivery → auto-resume → consumption-gap replay, each phase in its own process | `node scripts/e2e-crash-cycle.mjs --port 3300 --home .e2e-home-full` |
 | `e2e-full-closedloop.mjs` | **98 / 0** (2026-09-24, v0.7.45 production build) | 11 stages: registration → line/product/recipe modeling → DAQ sampling → frame pipeline → DCW write + readback → rollback ledger → agent-node authorization → bridge privilege boundaries → plugins → data-root isolation | `node scripts/e2e-full-closedloop.mjs <base>` |
 | Protocol matrix, real protocols | **46 / 0** (2026-09-24) | MQTT · Modbus TCP · Modbus RTU · OPC UA · HTTP — acquisition, governed write + readback, recipe-window interlock and a real agent closed loop per protocol | `node scripts/_dbg-protocol-matrix.mjs` |
 | Production API live | 60 / 0 (2026-09-24) | persistence across restart, template CRUD, task assign/complete/cancel/loop/pipeline, A2A + mailbox, WS broadcast, MCP endpoint, cascade delete | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
 | AgentTeam chat + native HITL | 112 passed / 0 failed / 1 blocked (2026-09-24, real `omp`) | group-chat request → trackable job; `omp` native ask → HITL approval → engine resumes with the receipt | `node scripts/e2e-agentteam-chat.mjs --phase=all` |
+| Terminal mirror + prompt composition | **26 / 0** and **16 / 0** (2026-09-24, real `omp`) | terminal mirror frames, `input`/`abort`/`ui_response` injection, native `ask` round-trip; five-section prompt assembly (scenario → profile → memory → manual → assignment) observed on the wire | `node scripts/test-terminal-e2e.mjs` · `node scripts/test-prompt-system.mjs` |
+| Real-engine collaboration | task-flow real **PASS**, `e2e-omp-workspace` **13 / 13**, group-chat real **PASS**, multi-user HIL **PASS** (2026-09-24) | real `omp` lead + workers: decomposition, dispatch, progress, artifacts, workspace-scoped file reads, unload; multi-user HITL visibility; multi-harness team 14/18 (omp + dsh green) | `npx tsx scripts/e2e-agentteam-task-flow-real.ts` · `npx tsx scripts/e2e-omp-workspace.ts` |
+| Front-end acceptance | responsive gate **16 / 16** routes, nav drawer **10 / 10** (2026-09-24, real Chromium) | every product page incl. the 3D town renders at the gate thresholds; drawer interaction, scroll lock, route change, zero page errors | `node scripts/ui/verify-responsive.mjs --routes all` · `node scripts/ui/verify-nav.mjs` |
 | Industrial bench — integrated | **83 / 83 checks, hard gate green** (2026-09-21) | five-protocol five-line bench: connectivity, sampling into Timescale, governed writes, governance, agent closed loop, semantic parameter layer | `node bench/pipeline.mjs --profile integrated` |
 | Multi-scenario closed loop | 4 scenarios · closed loops reached (2026-09-21) | injection-molding weight-window tuning · A²/O wastewater compliance with energy minimum · continuous-annealing quality window vs throughput · BOPET line mission | `node bench/scenarios.mjs --scenarios injection,wwtp,anneal` |
 | Line permissions / audit-negative | 21 / 21 + 9 / 9 (2026-09-12) | three-state line grants with human-readable 403s, binding-subject validation, revocation convergence, unauthenticated WS receives zero telemetry | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
@@ -651,12 +665,22 @@ pnpm dev          # dev server (port from effective config)
 pnpm cli …        # the CLI in-repo: pnpm cli config list
 pnpm tui          # terminal workbench against a running instance
 pnpm build && pnpm start
-pnpm typecheck
+pnpm typecheck                            # wrapper: prepare → strip the stale volar entry → vue-tsc -b
 pnpm lint
 pnpm test:api-live                        # API suite against a running server
 node scripts/e2e-full-closedloop.mjs      # full closed loop (server must be running)
+node scripts/e2e-crash-cycle.mjs          # crash → restart → redelivery, manages its own instance
 node scripts/test-sdk-surface.mjs         # SDK export-surface guard
 ```
+
+> Two test-runner notes worth knowing before you debug a red suite: (1) `pnpm typecheck`
+> runs [`scripts/typecheck.mjs`](./scripts/typecheck.mjs) rather than bare `nuxt typecheck`,
+> because Nuxt 4.5 still writes the `vue-router/volar/sfc-route-blocks` compiler plugin into
+> the generated tsconfig while vue-router 4.6 no longer exports it — bare vue-tsc dies while
+> loading the config, so the check never actually ran; (2) TypeScript suites that import real
+> route handlers (e.g. `scripts/e2e-memory-system.ts`) need the pure-node path
+> `node --experimental-transform-types --import ./scripts/_audit/ts-register-hook.mjs <suite>.ts`,
+> which maps the Nuxt `#imports` virtual module onto a shared-config stub.
 
 The docs site lives in `docs/site/` (VitePress) and is deployed to GitHub Pages by
 [`.github/workflows/deploy-docs.yml`](./.github/workflows/deploy-docs.yml):

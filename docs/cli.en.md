@@ -62,7 +62,7 @@ pnpm tui             # the terminal workbench
 ### 3. Quick use via npx (no global install)
 
 ```bash
-npx agentworkshop start            # fetch and start (pin a version with: npx agentworkshop@0.7.41 start)
+npx agentworkshop start            # fetch and start (pin a version with: npx agentworkshop@0.7.46 start)
 npx agentworkshop doctor           # subcommands work as usual
 npx -p agentworkshop aw doctor     # use -p when you want the name aw
 ```
@@ -79,7 +79,7 @@ npx -p agentworkshop aw doctor     # use -p when you want the name aw
 | Package manager | `pnpm@11.9.0` (`packageManager`, needed only for source development) |
 | Module format | ESM (`type: module`) |
 | License | `PolyForm-Noncommercial-1.0.0` |
-| Current version | `0.7.41` (`package.json`) |
+| Current version | `0.7.46` (`package.json`) |
 
 ## 2. First start (the Claude Code experience)
 
@@ -167,7 +167,7 @@ are never overwritten:
 - Precedence (the CLI, the web settings page and the dev/prod launch scripts all share one engine,
   `shared/config/engine.mjs`):
   `config.yml defaults < runtime-settings.json runtime overrides < environment variables / explicit CLI flags`.
-- There are **99 setting descriptors across 16 groups** (`aw config list` prints exactly 99 rows):
+- There are **111 setting descriptors across 16 groups** (`aw config list` prints exactly 111 rows):
 
 | Group | Count | Group | Count | Group | Count | Group | Count |
 |---|---|---|---|---|---|---|---|
@@ -176,7 +176,7 @@ are never overwritten:
 | `omp` | 4 | `harness` | 12 | `dcw` | 4 | `workshop` | 2 |
 | `backup` | 3 | `retention` | 5 | `log` | 1 | `aml` | 16 |
 
-  32 of them are `live` (effective as soon as they are saved) and 66 are `restart` (effective after
+  32 of them are `live` (effective as soon as they are saved) and 79 are `restart` (effective after
   restarting the corresponding mode); `aw config list` marks every row with `live` or `restart`.
 - Environment-variable mapping: `AW_<KEY uppercased, dots turned into underscores>`
   (for example `AW_SERVER_DEV_PORT`), plus the legacy `aliases` a descriptor declares explicitly
@@ -256,7 +256,7 @@ the CLI's `--json`.
 aw config set server.prod.port 8080     # change the production port (effective after restart)
 aw config set theme.primaryColor '#41c8f4'
 aw config get server.dev.port           # value + source
-aw config list                          # 99 settings (16 groups) + source + when they apply
+aw config list                          # 111 settings (16 groups) + source + when they apply
 aw config validate                      # validate config.yml and the runtime overrides
 aw start --port 3002                    # CLI flags win; the output marks 端口来源: CLI
 aw doctor                               # health check: Node/pnpm/AW Home/Docker/MQTT/ports/secrets/build

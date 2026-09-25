@@ -106,9 +106,31 @@ is always refused).
 | `aml_model_promote` | request a stage promotion (lead-only; goes through human approval) |
 | `aml_model_reference` | query the shadow reference of a production model (tuning what-if; proposed parameters via `controls`) |
 
-These 10 are **host tools** defined in `.AgentWorkShop/prompts/host-tools.json` (48 entries
+These 10 are **host tools** defined in `.AgentWorkShop/prompts/host-tools.json` (57 entries
 on the host tool surface); they are a different surface from MCP
 (`server/mcp/workshop-server.ts`, 25 in-process tools).
+
+## Hybrid twin × MPC (channel profile `hybrid_twin`)
+
+AML also owns the **hybrid twin** plane: a grey-box physics core with a bounded PyTorch
+residual, plus the `SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` /
+`ObjectiveProfile` / `VirtualTrial` / `RecommendationCertificate` contracts. A channel opts
+in through its profile (`legacy` by default, `hybrid_twin` to enable), which injects six
+extra tools:
+
+| Tool | Purpose |
+|---|---|
+| `twin_scene_read` | read the scene contract (devices / signals / constraints / objectives) |
+| `twin_snapshot_create` | create a TwinSnapshot (freshness enforced; stale → `SNAPSHOT_STALE`) |
+| `twin_trial_run` | run a virtual trial: all-trajectory hard constraints reject unsafe candidates, `candidateExecuted=false` |
+| `mpc_optimize` | MPC optimisation (server-side strategies `safe_small_step` / `precise_search`) |
+| `twin_gate_evaluate` | gate + benefit evaluation; only a pass issues a RecommendationCertificate |
+| `twin_calibration_request` | continuous-calibration registration (duplicates deduped inside the cooldown) |
+
+Recommendation-only by default: insufficient data → `safe_small_step`; model cleared gates →
+`precise_search`; no real DCW write happens until a certificate is certified. Plan and
+acceptance record: `docs/aml-hybrid-twin-mpc-integration-plan.md`,
+`docs/aml-hybrid-twin-implementation-acceptance.md`.
 
 The built-in team **`team-aml-shadow`** ("AML shadow modeling team") packs 1 lead (chief
 data scientist) + 3 workers (data engineer / training engineer / evaluation engineer) with

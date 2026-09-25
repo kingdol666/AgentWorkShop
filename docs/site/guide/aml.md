@@ -97,8 +97,28 @@ CLI 例:`aw config set aml.gates.nrmse 0.12`、`aw config get aml.job.maxConcurr
 | `aml_model_promote` | 发起阶段晋升(lead 专属;内部走人工审批) |
 | `aml_model_reference` | 查询生产模型的影子参考(调参 what-if,拟议参数经 `controls` 传入) |
 
-这 10 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 48 条),
+这 10 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 57 条),
 与 MCP 面(`server/mcp/workshop-server.ts`,25 个进程内工具)是两套不同的表面。
+
+## 混合孪生 × MPC(channel profile `hybrid_twin`)
+
+AML 还承载**混合孪生**平面:灰箱物理主干 + 有界 PyTorch 残差,外挂
+`SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` / `ObjectiveProfile` /
+`VirtualTrial` / `RecommendationCertificate` 六类契约。Channel 通过 profile 显式启用
+(`legacy` 默认 / `hybrid_twin` 启用),启用后按 profile 注入 6 个专属工具:
+
+| 工具 | 作用 |
+|---|---|
+| `twin_scene_read` | 读取场景契约(设备/信号/约束/目标) |
+| `twin_snapshot_create` | 生成 TwinSnapshot(含新鲜度;过期 → `SNAPSHOT_STALE`) |
+| `twin_trial_run` | 跑虚拟试验:全轨迹硬约束拒绝不安全候选,`candidateExecuted=false` |
+| `mpc_optimize` | MPC 寻优(服务端策略 `safe_small_step` / `precise_search`) |
+| `twin_gate_evaluate` | 门禁与收益评估;通过才签发 RecommendationCertificate |
+| `twin_calibration_request` | 持续校准登记(重复请求在 cooldown 内去重拒绝) |
+
+默认即**推荐模式**:数据不足 → `safe_small_step`;模型过门禁 → `precise_search`;
+证书未签发前不产生真实 DCW 写入。计划与验收记录见
+`docs/aml-hybrid-twin-mpc-integration-plan.md`、`docs/aml-hybrid-twin-implementation-acceptance.md`。
 
 内置团队 **`team-aml-shadow`**(「AML 影子建模团队」):1 名 lead(首席数据科学家)+ 3 名
 worker(数据工程师 / 训练工程师 / 评测工程师),默认 harness `omp`;从团队创建实例时先加成员。

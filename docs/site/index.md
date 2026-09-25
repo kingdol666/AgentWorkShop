@@ -61,17 +61,19 @@ footer:
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
         <div class="hw-stat"><span class="v">111</span><span class="k">运行时设置项</span></div>
-        <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">验收断言</span></div>
+        <div class="hw-stat"><span class="v">1400+<i>*</i></span><span class="k">验收断言</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
       <p class="hw-stat-note">
-        * 全覆盖验收波次矩阵:约 1100+ 条真实断言全部通过(2026-09-24,v0.7.45 生产构建,
-        报告见 <code>docs/audit/e2e-2026-09-24-full-coverage.md</code>)。
+        * 全覆盖验收波次矩阵:约 1400+ 条真实断言全部通过(2026-09-24,生产构建 + 真实 PLC 模拟产线/
+        协议/浏览器/崩溃重启,隔离 <code>AW_HOME</code>;报告见
+        <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
+        <code>docs/audit/e2e-2026-09-24-all-features.md</code>)。
         其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
         14 个 harness(<code>agents/registry.ts</code>) / 111 个设置项分 16 组(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.7.45</i></span>
+        <span>版本 <i>v0.7.46</i></span>
         <span>许可 <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -301,6 +303,8 @@ footer:
       <div class="hw-f"><span class="tag">R/W</span><h3>数控读写一体</h3><p>每个控制节点沿写链路同一套标定读回 PLC 当前值——SET 与 ACT 并排呈现,读为被动观测,不经过写联锁。</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>人机协同写控</h3><p>安全量程 ∩ 配方窗口联锁 → 人工审批 → PLC 写入 → 回读校验 → 签名写历史;裁决人留痕审计。</p></div>
       <div class="hw-f"><span class="tag">RCT</span><h3>Recipe 版本化治理</h3><p>参数按版本入史(来源+操作者+原因),一键回退任意版本或最近一次良好批次——非破坏,历史完整。</p></div>
+      <div class="hw-f"><span class="tag">BATCH</span><h3>取数默认按当前批次</h3><p><code>daq_query</code> 自动解析活动批次,按 <code>run_id</code> + <code>recipe_id</code> 过滤——换配方后 Agent 取到的永远是当前运行配方的样本,表头回显口径;跨配方复盘传 <code>scope:'all'</code>。</p></div>
+      <div class="hw-f"><span class="tag">TWIN</span><h3>混合孪生 × MPC</h3><p>灰箱物理主干 + 有界 PyTorch 残差;TwinSnapshot / VirtualTrial / RecommendationCertificate 配 UQ/OOD 与全轨迹门禁,<code>hybrid_twin</code> profile 注入 6 个 twin/mpc 工具,默认只推荐不落写。</p></div>
       <div class="hw-f"><span class="tag">HRN</span><h3>多引擎 Agent 团队</h3><p>十四个引擎一个契约(进程内 / 常驻会话 / 无头 CLI 三类),每频道可选 harness → provider → model;可用性探测 + 执行前强校验。</p></div>
       <div class="hw-f"><span class="tag">TEAM</span><h3>团队级插件开关</h3><p>每 Channel 独立插件开关组——被关闭插件的工具不注入该团队;插件本体热管理。</p></div>
       <div class="hw-f"><span class="tag">PERM</span><h3>产线级权限</h3><p>三态授权在数据面强制,无权产线信息不离开服务端;Agent 绑定校验产线授权。</p></div>

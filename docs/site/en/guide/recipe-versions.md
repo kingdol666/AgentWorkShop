@@ -57,3 +57,11 @@ Agent: line_context (confirm ownership and current values)
   → dcw_judge keep (evidence sufficient) → recipe_update (persist as vN)
 on failure: recipe_rollback (to_last_good or version) → new version, PLC untouched
 ```
+
+**Evidence is batch-scoped by default**: `daq_query` resolves the node's active run and
+filters by that batch's `run_id` + `recipe_id`, so after a recipe switch an agent always
+reads *the recipe currently running* and never a mix of the previous batch. The header prints
+`run=<id> recipe "name" (recipe_id)` and the effective scope is restated per node at the end.
+For cross-recipe comparison or history review pass `scope: 'all'`, or give an explicit
+`recipe_id` / `run_id` / `product_id`; a line that is not running stays unfiltered, so
+historical samples remain queryable.

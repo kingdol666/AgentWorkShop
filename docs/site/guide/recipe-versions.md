@@ -51,3 +51,9 @@ Agent: line_context(确认归属与当前值)
   → dcw_judge keep(证据充分)→ recipe_update 固化为 vN
 翻车:recipe_rollback(to_last_good 或 version)→ 新版本,PLC 不受影响
 ```
+
+**取证据默认只取当前批次**:`daq_query` 会自动解析节点所属产线的活动批次,按该批次的
+`run_id` + `recipe_id` 过滤,因此换配方后取到的永远是**当前运行配方**的样本(不会把上一轮的
+数据混进本轮判定);结果表头会打印 `run=<id> 配方「名」(recipe_id)`,文末逐节点重申生效口径。
+需要跨配方对比或复盘历史时显式传 `scope: 'all'`,或直接给 `recipe_id` / `run_id` / `product_id`;
+产线未开跑则不做过滤,历史样本照常可查。

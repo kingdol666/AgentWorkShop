@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.45</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件） · 111 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.46</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件） · 111 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -179,6 +179,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **团队级插件开关** | 每个团队（Channel）持有**独立插件开关组**（`channel_plugins`）：被关闭插件的工具不注入该团队 Agent。插件本体经 `aw plugin` 与 `/plugins` 页热管理。 |
 | **插件扩展 API** | `plugins/<name>/` 下的一个自包含目录**同时增强两半**：`index.mjs`（服务端：钩子、路由、Agent 工具、**数采读驱动 / DCW 写驱动**/帧处理器/节点模板、配置分组、KV、定时器）与 `client.mjs`（浏览器：注入具名插槽的面板、i18n、设置 UI）。三种作用域——`builtin`（随包发布）> `project`（检出）> `user`（`~/.AgentWorkShop`）——启停**与代码修改**均有约 1 秒热重载；停用插件的驱动随热重载立即摘除。内置示例 **serial-bridge**（串口通信：读/写驱动 + 串口探针 API + 前端面板）。完整契约见 [`docs/plugins.md`](./docs/plugins.md)。 |
 | **AML —— 自动建模实验室** | 数据集构建 → 训练作业 → 排行榜 → 晋级门禁 → 模型引用，全部可在 `/aml` 页驱动，也可由 Agent 通过 10 个 `aml_*` 工具驱动。Python 运行时由 `uv` 引导至 `./aml` 资产根；产物与元数据都留在配置根下。 |
+| **AML 混合孪生 × MPC** | 灰箱物理主干 + 有界 PyTorch 残差；`TwinSnapshot` / `VirtualTrial` / `RecommendationCertificate` 配 UQ/OOD 筛查与全轨迹门禁；`hybrid_twin` profile 会额外注入 6 个工具（`twin_*`、`mpc_optimize`）。试验按设计保持虚拟（`candidateExecuted=false`），证书签发前只做推荐、不落真实写入。 |
 | **运行时可观测** | `GET /api/system/monitor` 把 Agent 团队内部暴露成数字：根队列深度、看门狗介入次数、Harness 会话复用、记忆 outbox 积压——每项都有对应的文档化回退开关，新机制可以不重新部署就关掉。 |
 | **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**111 个设置项、16 组**（32 live / 79 restart），代码零硬编码默认。 |
 | **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |
@@ -381,7 +382,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.45**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.46**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -474,6 +475,7 @@ export async function run(argv, ctx) {
 - **管线**：驱动 → 队列（进程内 / MQTT，断连离线缓冲）→ 消费端乱序防御 → 三路分发：WS 实时直推（节拍门控）、TSDB 批量落库、设备孪生回写。
 - **鲁棒性**：TSDB 单 in-flight 写 + 有界重试，缓冲背压带丢弃计数，真实丢失指标随 `daq.controller` 帧暴露。
 - **告警**：配方级监控窗口，**2% 滞回 + 3 拍去抖**；alarm/offline 切换即时生效（安全优先）。
+- **查询默认按批次作用域**：`daq_query` 自动解析节点所属产线的**活动批次**，按该批次的 `run_id` + `recipe_id` 过滤——Agent 取证据时看到的永远是**当前正在跑的配方**，不会把上一轮配方的样本混进本轮判读。生效口径（`run=<id> 配方「名」(recipe_id)`）打印在结果表头，并在文末逐节点重申；这两个 id 可直接回传给 `daq_query` 或 `aml_dataset_build`。需要跨配方对比/历史复盘时传 `scope: 'all'`（或显式给 `recipe_id` / `run_id` / `product_id`）；产线未开跑则不做过滤，历史数据照常可查。
 
 ### 写控制（DCW）
 
@@ -492,6 +494,7 @@ export async function run(argv, ctx) {
 - Agent 通过 10 个工具做同样的事（`aml_dataset_build`、`aml_job_submit`、`aml_job_status`、`aml_leaderboard`、`aml_model_promote`……）——提交一个目标，让团队去训练并汇报。
 - Python 运行时由 `uv` 自行引导进配置根内的 `./aml` 资产根；数据集/产物/元数据路径、磁盘配额、作业超时、并发与保留策略全部是**设置项**（`aml` 组共 16 项），而不是常量。
 - 治理默认保守：跨配方数据集除非显式允许否则拒绝，每个作业都有归属。
+- **混合孪生 × MPC 内核**：AML 同时承载**混合孪生**平面——`SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` / `ObjectiveProfile` / `VirtualTrial` / `RecommendationCertificate`，底座是带**有界 PyTorch 残差**的灰箱物理主干，外加 UQ/OOD 筛查与全轨迹硬约束门禁。频道通过 `hybrid_twin` profile 显式启用，启用后会注入 6 个专属工具（`twin_scene_read`、`twin_snapshot_create`、`twin_trial_run`、`mpc_optimize`、`twin_gate_evaluate`、`twin_calibration_request`）；试验按设计就是**虚拟**的（`candidateExecuted=false`），只有门禁与收益同时通过才签发推荐证书。服务端策略两档：`safe_small_step`(数据不足) 与 `precise_search`(模型过门禁)。计划与验收记录见 [`docs/aml-hybrid-twin-mpc-integration-plan.md`](./docs/aml-hybrid-twin-mpc-integration-plan.md)、[`docs/aml-hybrid-twin-implementation-acceptance.md`](./docs/aml-hybrid-twin-implementation-acceptance.md)。
 
 ---
 
@@ -576,14 +579,22 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 ## 端到端验证
 
-上面每一条论断，背后都有一个可复跑的套件。验收套件在**生产实例上、跑真实模拟产线协议**（Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线），配真实引擎 CLI，断言落在数据库、事件流与 HTTP API 上——而不是 mock。2026-09-24 的全覆盖波次矩阵（约 **1100+ 条真实断言**，v0.7.45 生产构建、隔离 `AW_HOME`、真实浏览器）已归档于 [`docs/audit/e2e-2026-09-24-full-coverage.md`](./docs/audit/e2e-2026-09-24-full-coverage.md)。
+上面每一条论断，背后都有一个可复跑的套件。验收套件在**生产实例上、跑真实模拟产线协议**（Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线），配真实引擎 CLI，断言落在数据库、事件流与 HTTP API 上——而不是 mock。2026-09-24 的两轮波次已归档：基础矩阵（约 **1100+ 条真实断言**，v0.7.45 生产构建、隔离 `AW_HOME`、真实浏览器）见 [`docs/audit/e2e-2026-09-24-full-coverage.md`](./docs/audit/e2e-2026-09-24-full-coverage.md)；补充功能波次（真实 **PLC 节点模拟器** + 注塑 AgentTeam 闭环、FIFO 多任务、定时任务、协作，合计约 **1400+ 条断言**）见 [`docs/audit/e2e-2026-09-24-all-features.md`](./docs/audit/e2e-2026-09-24-all-features.md)。
 
 | 套件 | 最新结果 | 覆盖 | 复现 |
 |---|---|---|---|
+| `real-injection-closed-loop.mjs` | **双 goal 全部 COMPLETED / 0 失败**（2026-09-24，真实 PLC 模拟器 + 真实 `omp` 团队） | 从模拟器供给注塑产线（11 个数控 + 14 个数采节点）→ 真实 AgentTeam(lead/分析/优化) → 受治理写入且**间隔 65.8s ≥ 60s 策略** → 数采复测 → `qualityOk`、判定 `keep` | `AW_BASE=<base> SIM_BASE=http://127.0.0.1:4010 AW_TOKEN=<token> node scripts/real-injection-closed-loop.mjs` |
+| `_run-real-injection-fifo-goals.mjs` | exit 0（2026-09-24） | **FIFO 根队列多任务串行**：GOAL-2 仅在 GOAL-1 收口后派发；角色门控切换；两次受治理写入间隔 65.04s；两条记录均判定；账本 4 条锚 | `AW_BASE=<base> SIM_BASE=… AW_TOKEN=<token> node scripts/_run-real-injection-fifo-goals.mjs` |
+| `e2e-plc-plugin-closedloop.mjs` | 核心 Stage A–D 全绿（2026-09-24） | PLC 模拟器 Modbus 16040 真实供给 → 数采交叉核对（AW 采样 197 vs 模拟器寄存器 197.37）→ HITL 闭环写 3 区（寄存器 40021/40023/40025 = 210，真实写穿）→ `dcw_judge` keep；插件段 E–H 需外部诊断服务，按约定显式 SKIP | `AW_BASE=<base> KB_BASE=http://127.0.0.1:8771 AW_E2E_USERS_DB=<home>/data/users.sqlite node scripts/e2e-plc-plugin-closedloop.mjs` |
+| `_dbg-schedule-e2e.mjs` | **35 / 0**（2026-09-24） | 定时任务：计划 CRUD + 参数校验、`next_run_at`、`scheduledCount`、忙等守卫 **409 CHANNEL_BUSY**、在途重复 **409 SCHEDULE_RUNNING**、取消对账（run FAILED + 失败计数）、**timer 到点自动触发**（`trigger_kind=timer`）、停用/启用状态机、删除后 404 | `SCHED_E2E_BASE=<base> node scripts/_dbg-schedule-e2e.mjs` |
+| `e2e-crash-cycle.mjs` | **5 / 5 阶段**（2026-09-24） | 常规执行 → 硬杀 → 持久化断言 → 重启 → 重投 → 自动恢复 → 消费缺口重投；每阶段独立进程 | `node scripts/e2e-crash-cycle.mjs --port 3300 --home .e2e-home-full` |
 | `e2e-full-closedloop.mjs` | **98 / 0**（2026-09-24，v0.7.45 生产构建） | 11 阶段：注册 → 产线/产品/配方建模 → 数采采样 → 帧管线 → 数控写入 + 回读 → 回退账本 → Agent 节点鉴权 → 桥越权边界 → 插件 → 数据根隔离 | `node scripts/e2e-full-closedloop.mjs <base>` |
 | 全协议矩阵（真实协议） | **46 / 0**（2026-09-24） | MQTT · Modbus TCP · Modbus RTU · OPC UA · HTTP——逐协议数采、受控下发 + 回读、配方窗联锁与真实 Agent 闭环 | `node scripts/_dbg-protocol-matrix.mjs` |
 | 生产 API 全链路 | 60 / 0（2026-09-24） | 跨重启持久化、模板 CRUD、任务 assign/complete/cancel/loop/pipeline、A2A + mailbox、WS 广播、MCP 端点、级联删除 | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
 | AgentTeam 群聊 + 原生 HITL | 112 通过 / 0 失败 / 1 阻塞（2026-09-24，真实 `omp`） | 群聊请求 → 可追踪作业；`omp` 原生 ask → HITL 审批 → 引擎带回执继续 | `node scripts/e2e-agentteam-chat.mjs --phase=all` |
+| 终端镜像 + 提示词组合 | **26 / 0** 与 **16 / 0**（2026-09-24，真实 `omp`） | 终端镜像帧、`input`/`abort`/`ui_response` 注入、原生 `ask` 往返；五段式 prompt 组合（场景 → 专长 → 记忆 → 手册 → 任务）在线上可观测 | `node scripts/test-terminal-e2e.mjs` · `node scripts/test-prompt-system.mjs` |
+| 真引擎协作 | 任务流真跑 **PASS**、`e2e-omp-workspace` **13 / 13**、群聊全真 **PASS**、多用户 HIL **PASS**（2026-09-24） | 真实 `omp` lead + worker：分解/派发/进度/成果/workspace 文件读取与卸载；多用户 HITL 可见性；多引擎团队 14/18（omp 与 dsh 全绿） | `npx tsx scripts/e2e-agentteam-task-flow-real.ts` · `npx tsx scripts/e2e-omp-workspace.ts` |
+| 前端验收 | 响应式门禁 **16 / 16** 页、抽屉交互 **10 / 10**（2026-09-24，真实 Chromium） | 全部产品页（含 3D 小镇）在门禁阈值下渲染通过；抽屉开合、滚动锁、路由跳转、零 pageerror | `node scripts/ui/verify-responsive.mjs --routes all` · `node scripts/ui/verify-nav.mjs` |
 | 工业基准——integrated | **83 / 83 检查，硬门禁绿**（2026-09-21） | 五协议五产线基准：连通性、采样入 Timescale、受控下发、治理、Agent 闭环、工艺参数语义层 | `node bench/pipeline.mjs --profile integrated` |
 | 多场景闭环 | 4 场景 · 闭环达标（2026-09-21） | 注塑克重窗口寻优 · A²/O 污水排放达标 + 能耗最小化 · 连续退火质量窗与产能权衡 · BOPET 产线任务 | `node bench/scenarios.mjs --scenarios injection,wwtp,anneal` |
 | 产线权限 / 审计负向 | 21 / 21 + 9 / 9（2026-09-12） | 三态产线授权 + 人类可读 403、绑定主体校验、授权撤销收敛、无 token WS 零遥测 | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
@@ -648,12 +659,20 @@ pnpm dev          # 开发服务（端口取自有效配置）
 pnpm cli …        # 仓库内使用 CLI：pnpm cli config list
 pnpm tui          # 终端工作台（连运行中的实例）
 pnpm build && pnpm start
-pnpm typecheck
+pnpm typecheck                            # 包装脚本：prepare → 剔除失效 volar 条目 → vue-tsc -b
 pnpm lint
 pnpm test:api-live                        # 针对运行中服务的 API 套件
 node scripts/e2e-full-closedloop.mjs      # 全链路闭环（需服务端运行中）
+node scripts/e2e-crash-cycle.mjs          # 硬杀 → 重启 → 重投（自带隔离实例管理）
 node scripts/test-sdk-surface.mjs         # SDK 导出面守卫
 ```
+
+> 排障前先知道两条测试运行约定：（1）`pnpm typecheck` 走 [`scripts/typecheck.mjs`](./scripts/typecheck.mjs)，
+> 而不是裸 `nuxt typecheck`——Nuxt 4.5 仍会把 `vue-router/volar/sfc-route-blocks` 编译插件写进生成的
+> tsconfig，而 vue-router 4.6 已不再导出该子路径，裸 vue-tsc 在加载配置阶段就崩，类型检查其实一次都没跑；
+> （2）导入**真实路由 handler** 的 TS 套件（如 `scripts/e2e-memory-system.ts`）要走纯 node 路径
+> `node --experimental-transform-types --import ./scripts/_audit/ts-register-hook.mjs <suite>.ts`，
+> 该钩子把 Nuxt 的 `#imports` 虚拟模块映射到共享配置桩。
 
 文档站位于 `docs/site/`（VitePress），由 [`.github/workflows/deploy-docs.yml`](./.github/workflows/deploy-docs.yml) 部署到 GitHub Pages：
 

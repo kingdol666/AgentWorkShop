@@ -74,6 +74,16 @@ canonical one-step:输入 `history [batch, H, nAll]`(归一化)→ 输出 `y_nex
 - **Agent**:内置团队「AML 影子建模团队」(`team-aml-shadow`,部署前先加成员)或任意成员直接调用工具族 `aml_node_catalog / aml_dataset_build / aml_dataset_stats / aml_job_submit / aml_job_status / aml_job_logs / aml_job_cancel / aml_leaderboard / aml_model_promote(lead 专属)/ aml_model_reference`(见 `.AgentWorkShop/prompts/host-tools.json`);调参 what-if 经 `aml_model_reference` 的 `controls` 参数传入拟议参数值。
 - **REST**:`/api/workshop/aml/{env,entities,datasets,jobs,experiments,models}`(见各路由文件头注释)。
 
+## 混合孪生 × MPC(Core Hybrid Twin)
+
+除「数据集 → 训练 → 门禁 → 注册表」这条数据链,AML 还承载**混合孪生**平面:灰箱物理主干(以注塑为例的低阶模型)+ **有界 PyTorch 残差**训练协议,外挂六类契约 ——
+`SceneContract`(场景:设备/信号/约束/目标)、`PhysicsModelManifest`(物理主干清单)、`TwinSnapshot`(带新鲜度的工况快照)、`ObjectiveProfile`(目标与权重)、`VirtualTrial`(虚拟试验)、`RecommendationCertificate`(推荐证书)。
+
+- **启用方式**:Channel 的 profile(`legacy` 默认 / `hybrid_twin`),在 Channel 模板与实例上选择;启用后按 profile 注入 6 个专属工具:`twin_scene_read` / `twin_snapshot_create` / `twin_trial_run` / `mpc_optimize` / `twin_gate_evaluate` / `twin_calibration_request`。
+- **安全语义**:试验**永远是虚拟的**(`candidateExecuted=false`);不安全候选被全轨迹硬约束直接拒绝;快照过期 → `SNAPSHOT_STALE`;只有门禁与收益同时通过才签发推荐证书,证书未签发前**不产生真实 DCW 写入**(recommendation-only)。
+- **服务端策略**:数据不足 → `safe_small_step`;模型过门禁 → `precise_search`;持续校准请求按去重 + cooldown 登记。
+- **工件与记录**:SQLite Hybrid Twin 元数据表 + 本地 `aml/twins/` 工件;计划与验收见 `docs/aml-hybrid-twin-mpc-integration-plan.md`、`docs/aml-hybrid-twin-implementation-acceptance.md`(首个场景 = PLC 模拟器 `injection-line`)。
+
 ## Python 运行时
 
 首次训练自动探测 uv 与 Python,并在 `./aml/.venv` 供给锁定依赖(`aml/python/requirements.txt`;仅此阶段联网,可配 `aml.python.indexUrl` 镜像)。

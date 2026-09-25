@@ -60,7 +60,7 @@ pnpm tui             # 终端工作台
 ### 3. npx 快速使用（免全局安装）
 
 ```bash
-npx agentworkshop start            # 拉取并启动(可锁定版本: npx agentworkshop@0.7.41 start)
+npx agentworkshop start            # 拉取并启动(可锁定版本: npx agentworkshop@0.7.46 start)
 npx agentworkshop doctor           # 子命令照常可用
 npx -p agentworkshop aw doctor     # 需要 aw 这个名字时用 -p 指定包
 ```
@@ -76,7 +76,7 @@ npx -p agentworkshop aw doctor     # 需要 aw 这个名字时用 -p 指定包
 | 包管理器 | `pnpm@11.9.0`（`packageManager`，仅源码开发需要） |
 | 模块形态 | ESM（`type: module`） |
 | 许可证 | `PolyForm-Noncommercial-1.0.0` |
-| 当前版本 | `0.7.41`（`package.json`） |
+| 当前版本 | `0.7.46`（`package.json`） |
 
 ## 二、首次启动（Claude Code 式）
 
@@ -156,7 +156,7 @@ $ aw start
 
 - 优先级（CLI 与网页设置页、dev/prod 启动脚本共用同一引擎 `shared/config/engine.mjs`）：
   `config.yml 默认 < runtime-settings.json 运行时覆盖 < 环境变量 / CLI 显式参数`。
-- 设置描述符共 **98 项、16 组**（`aw config list` 即打印 98 行）：
+- 设置描述符共 **111 项、16 组**（`aw config list` 即打印 111 行）：
 
 | 组 | 项数 | 组 | 项数 | 组 | 项数 | 组 | 项数 |
 |---|---|---|---|---|---|---|---|
@@ -165,7 +165,7 @@ $ aw start
 | `omp` | 4 | `harness` | 12 | `dcw` | 4 | `workshop` | 2 |
 | `backup` | 3 | `retention` | 5 | `log` | 1 | `aml` | 16 |
 
-  其中 `live`（保存即生效）32 项、`restart`（重启对应模式后生效）66 项，
+  其中 `live`（保存即生效）32 项、`restart`（重启对应模式后生效）79 项，
   `aw config list` 每行末尾会标注 `live` 或 `restart`。
 - 环境变量映射：`AW_<KEY 大写、点转下划线>`（如 `AW_SERVER_DEV_PORT`），
   另加描述符显式声明的历史 `aliases`（优先级：`AW_<KEY>` 高于 `aliases` 声明顺序）。
@@ -241,7 +241,7 @@ $ aw start
 aw config set server.prod.port 8080     # 改生产端口(重启生效)
 aw config set theme.primaryColor '#41c8f4'
 aw config get server.dev.port           # 值 + 来源
-aw config list                          # 99 个设置项(16 组) + 来源 + 生效方式
+aw config list                          # 111 个设置项(16 组) + 来源 + 生效方式
 aw config validate                      # 校验 config.yml 与运行时覆盖合法性
 aw start --port 3002                    # CLI 参数最高优先(输出标注 端口来源: CLI)
 aw doctor                               # 体检:Node/pnpm/AW Home/Docker/MQTT/端口/密钥/产物

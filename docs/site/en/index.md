@@ -63,17 +63,19 @@ footer:
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
         <div class="hw-stat"><span class="v">111</span><span class="k">runtime settings</span></div>
-        <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">acceptance assertions</span></div>
+        <div class="hw-stat"><span class="v">1400+<i>*</i></span><span class="k">acceptance assertions</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
       </div>
       <p class="hw-stat-note">
-        * Full-coverage acceptance wave matrix: ~1100+ real assertions, all passing (2026-09-24, v0.7.45 production
-        build; report at <code>docs/audit/e2e-2026-09-24-full-coverage.md</code>).
+        * Full-coverage acceptance wave matrix: ~1400+ real assertions, all passing (2026-09-24, production build with a
+        real PLC simulator / real field protocols / real browser / crash-and-restart; isolated <code>AW_HOME</code>;
+        reports at <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> and
+        <code>docs/audit/e2e-2026-09-24-all-features.md</code>).
         The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
         14 harnesses (<code>agents/registry.ts</code>) / 111 settings in 16 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.7.45</i></span>
+        <span>Version <i>v0.7.46</i></span>
         <span>License <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -307,6 +309,8 @@ footer:
       <div class="hw-f"><span class="tag">R/W</span><h3>Read-write control nodes</h3><p>Every control node reads its PLC value back through the same calibration path it writes with — SET vs ACT side by side, passive and never interlocked.</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>Human-approved writes</h3><p>Safe-range ∩ recipe-window interlock → approval → PLC write → readback → signed history; every decision audited.</p></div>
       <div class="hw-f"><span class="tag">RCT</span><h3>Recipe versioning &amp; governance</h3><p>Parameter changes versioned with attribution (source + operator + reason); roll back to any revision or last-good batch, non-destructively.</p></div>
+      <div class="hw-f"><span class="tag">BATCH</span><h3>Evidence scoped to the running batch</h3><p><code>daq_query</code> resolves the active run and filters by <code>run_id</code> + <code>recipe_id</code> — after a recipe switch an agent only ever reads the recipe currently running, with the scope echoed in the header; <code>scope:'all'</code> widens it for cross-recipe review.</p></div>
+      <div class="hw-f"><span class="tag">TWIN</span><h3>Hybrid twin × MPC</h3><p>Grey-box physics core + bounded PyTorch residual; TwinSnapshot / VirtualTrial / RecommendationCertificate with UQ/OOD screening and all-trajectory gates; the <code>hybrid_twin</code> profile injects six twin/mpc tools and stays recommendation-only by default.</p></div>
       <div class="hw-f"><span class="tag">HRN</span><h3>Multi-harness teams</h3><p>Fourteen engines behind one contract, in three transport classes (in-process / persistent session / headless CLI); each channel picks harness → provider → model, with availability probing and dispatch-time checks.</p></div>
       <div class="hw-f"><span class="tag">TEAM</span><h3>Team-scoped plugins</h3><p>Each channel keeps its own plugin switch set — a disabled plugin's tools never enter that team; plugins themselves are hot-managed.</p></div>
       <div class="hw-f"><span class="tag">PERM</span><h3>Line-level permissions</h3><p>Three-state grants enforced in the data plane; agent bindings validate line grants too.</p></div>
