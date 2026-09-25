@@ -146,6 +146,13 @@ acceptance record: `docs/aml-hybrid-twin-mpc-integration-plan.md`,
    `physicsPassed`), and `mpc_optimize` then upgrades its server-side strategy from
    `safe_small_step` to `precise_search` — the step where a **trained AML model actually enters the
    twin loop**, still without writing DCW directly.
+4. Hard-constraint evaluation is **fail-closed**: every `constraints[].id` must map to a trajectory
+   observation or guard (`weight` / `flash_rate` / `sink_rate` / `melt_temperature` /
+   `cavity_pressure` / `pressure` / `temperature`). Unmapped ids and empty trajectories are judged
+   **not passed**, with a `cannot be mapped to an observation/guard` detail. v0.7.47 and earlier
+   skipped such ids and reported "whole trajectory passed", which handed callers a false constraint
+   verdict when `scene_json` carried a wrong id (caught by a real Agent team: a predicted 30.3 g
+   weight below the window floor was still reported as passing).
 
 The built-in team **`team-aml-shadow`** ("AML shadow modeling team") packs 1 lead (chief
 data scientist) + 3 workers (data engineer / training engineer / evaluation engineer) with

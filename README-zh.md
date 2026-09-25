@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.47</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件） · 111 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.48</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件） · 111 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -382,7 +382,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.47**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.48**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -595,11 +595,11 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 | 终端镜像 + 提示词组合 | **26 / 0** 与 **16 / 0**（2026-09-24，真实 `omp`） | 终端镜像帧、`input`/`abort`/`ui_response` 注入、原生 `ask` 往返；五段式 prompt 组合（场景 → 专长 → 记忆 → 手册 → 任务）在线上可观测 | `node scripts/test-terminal-e2e.mjs` · `node scripts/test-prompt-system.mjs` |
 | 真引擎协作 | 任务流真跑 **PASS**、`e2e-omp-workspace` **13 / 13**、群聊全真 **PASS**、多用户 HIL **PASS**（2026-09-24） | 真实 `omp` lead + worker：分解/派发/进度/成果/workspace 文件读取与卸载；多用户 HITL 可见性；多引擎团队 14/18（omp 与 dsh 全绿） | `npx tsx scripts/e2e-agentteam-task-flow-real.ts` · `npx tsx scripts/e2e-omp-workspace.ts` |
 | 前端验收 | 响应式门禁 **16 / 16** 页、抽屉交互 **10 / 10**（2026-09-24，真实 Chromium） | 全部产品页（含 3D 小镇）在门禁阈值下渲染通过；抽屉开合、滚动锁、路由跳转、零 pageerror | `node scripts/ui/verify-responsive.mjs --routes all` · `node scripts/ui/verify-nav.mjs` |
-| `_aw0746-stage12.mjs` | **10 / 0**（2026-09-25,全局安装的 **v0.7.47 打包系统**） | 健康门(version=0.7.47)→ 管理员登录/角色面 → 创建 Channel(真实 `omp` lead)→ 开群聊 → **真实 omp 群聊回复** → 系统监控可见 omp 子进程 | `AW_BASE=<base> node scripts/_aw0746-stage12.mjs` |
-| `_aw0746-stage34.mjs` | **11 / 0**（2026-09-25,v0.7.47 打包系统 + PLC 模拟器） | 模拟器建线（11 数控 + 14 数采）→ 产品/配方三元组 → 开跑后**样本逐条带 recipe_id/run_id** → `daq_query` **默认只取当前活动批次**（`scope=all` 可放开，实测 1 vs 4）→ 实例化 Hybrid Twin 模板（lead + 3 worker,注入孪生 6 件套 / 总 57 工具） | `AW_BASE=<base> node scripts/_aw0746-stage34.mjs` |
+| `_aw0746-stage12.mjs` | **10 / 0**（2026-09-25,全局安装的 **v0.7.48 打包系统**） | 健康门(version=0.7.48)→ 管理员登录/角色面 → 创建 Channel(真实 `omp` lead)→ 开群聊 → **真实 omp 群聊回复** → 系统监控可见 omp 子进程 | `AW_BASE=<base> node scripts/_aw0746-stage12.mjs` |
+| `_aw0746-stage34.mjs` | **11 / 0**（2026-09-25,v0.7.48 打包系统 + PLC 模拟器） | 模拟器建线（11 数控 + 14 数采）→ 产品/配方三元组 → 开跑后**样本逐条带 recipe_id/run_id** → `daq_query` **默认只取当前活动批次**（`scope=all` 可放开，实测 1 vs 4）→ 实例化 Hybrid Twin 模板（lead + 3 worker,注入孪生 6 件套 / 总 57 工具） | `AW_BASE=<base> node scripts/_aw0746-stage34.mjs` |
 | `_aw0746-stage6b-train-sweep.mjs` | 门禁**全绿**（2026-09-25,v0.7.46 打包系统,真实 torch 训练） | 1 s 拍格数据集（**1724 行 / 10 批次**）→ 内联 code 作业真实训练 → G1 单步 **0.0992**（≤0.10）/ G2 滚动 0.1092（≤0.25）/ G3 泛化 14.6%（≤20%）/ G4 行数与批次 → 模型注册并**晋升 production** | `AW_BASE=<base> AW_DATASET_ID=<ds> node scripts/_aw0746-stage6b-train-sweep.mjs` |
-| `_aw0746-stage7-twin.mjs` | **17 / 0**（2026-09-25,v0.7.47 打包系统,真实 DAQ + 真实模型） | 真实样本 → TwinSnapshot `fresh=true` → 65 组真实 VirtualTrial（12 条安全候选,`candidateExecuted=false`）→ 12 项推荐门禁 **write_eligible** → 门禁结论回写模型 `twinEligibility` → `mpc_optimize` 升档 **precise_search** → 全程 **0 DCW 写入** | `AW_BASE=<base> AW_REQUIRE_MODEL=1 node scripts/_aw0746-stage7-twin.mjs` |
-| `_aw0746-stage6c-jobsmoke.mjs` | **5 / 0**（2026-09-25,v0.7.47 打包系统） | AML 作业链路：内联 `code` 被接受（不再要求 `workspace/train.py`）→ 作业到终态 → 训练日志/ONNX 痕迹 → 实验与逐项门禁落库 | `AW_BASE=<base> node scripts/_aw0746-stage6c-jobsmoke.mjs` |
+| `_aw0746-stage7-twin.mjs` | **17 / 0**（2026-09-25,v0.7.48 打包系统,真实 DAQ + 真实模型） | 真实样本 → TwinSnapshot `fresh=true` → 65 组真实 VirtualTrial（12 条安全候选,`candidateExecuted=false`）→ 12 项推荐门禁 **write_eligible** → 门禁结论回写模型 `twinEligibility` → `mpc_optimize` 升档 **precise_search** → 全程 **0 DCW 写入** | `AW_BASE=<base> AW_REQUIRE_MODEL=1 node scripts/_aw0746-stage7-twin.mjs` |
+| `_aw0746-stage6c-jobsmoke.mjs` | **5 / 0**（2026-09-25,v0.7.48 打包系统） | AML 作业链路：内联 `code` 被接受（不再要求 `workspace/train.py`）→ 作业到终态 → 训练日志/ONNX 痕迹 → 实验与逐项门禁落库 | `AW_BASE=<base> node scripts/_aw0746-stage6c-jobsmoke.mjs` |
 | 工业基准——integrated | **83 / 83 检查，硬门禁绿**（2026-09-21） | 五协议五产线基准：连通性、采样入 Timescale、受控下发、治理、Agent 闭环、工艺参数语义层 | `node bench/pipeline.mjs --profile integrated` |
 | 多场景闭环 | 4 场景 · 闭环达标（2026-09-21） | 注塑克重窗口寻优 · A²/O 污水排放达标 + 能耗最小化 · 连续退火质量窗与产能权衡 · BOPET 产线任务 | `node bench/scenarios.mjs --scenarios injection,wwtp,anneal` |
 | 产线权限 / 审计负向 | 21 / 21 + 9 / 9（2026-09-12） | 三态产线授权 + 人类可读 403、绑定主体校验、授权撤销收敛、无 token WS 零遥测 | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |

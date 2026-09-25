@@ -131,6 +131,11 @@ AML 还承载**混合孪生**平面:灰箱物理主干 + 有界 PyTorch 残差,�
    `twinEligibility`(`gatePassed` / `recommendationEligible` / `uqPassed` / `oodPassed` / `physicsPassed`);
    `mpc_optimize` 据此把服务端策略从 `safe_small_step` 升档到 `precise_search`——
    也就是「训练出的 AML 模型真正进入孪生闭环」的那一步,但仍不直接写 DCW。
+4. 硬约束评估是**失败关闭**:`constraints[].id` 必须能映射到轨迹观测量/守卫量
+   (`weight` / `flash_rate` / `sink_rate` / `melt_temperature` / `cavity_pressure` / `pressure` / `temperature`),
+   映射不到的 id 与空轨迹一律判为**不通过**并给出 `无法映射到观测量/守卫量` 明细。
+   v0.7.47 及更早对此类 id 直接跳过并返回「全轨迹通过」,会让 `scene_json` 里写错 id 的调用方
+   拿到假的约束通过结论(被真实 Agent 团队抓出:预测克重 30.3 g 低于窗口下界仍报通过)。
 
 内置团队 **`team-aml-shadow`**(「AML 影子建模团队」):1 名 lead(首席数据科学家)+ 3 名
 worker(数据工程师 / 训练工程师 / 评测工程师),默认 harness `omp`;从团队创建实例时先加成员。

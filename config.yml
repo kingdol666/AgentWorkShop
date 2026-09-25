@@ -12,7 +12,7 @@
 app:
   name: AgentWorkShop
   title: AgentWorkShop
-  version: 0.7.47
+  version: 0.7.48
   description: 基于 Nuxt 4 的配置驱动运行范式
 
 # 运行模式（dev/prod 实际由启动命令决定，此处仅作运行时展示）
