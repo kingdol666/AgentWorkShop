@@ -210,7 +210,57 @@ async setup(ctx) {
 | 写控 | `ctx.dcw.registerWriteDriver(driver)` | 写驱动注入(与数采读驱动对称):契约 `{ kind, available(), write(input), test(cfg), read?(input), meta? }`;热重载停用即失效 |
 | 工具 | `ctx.omp.registerTool({ name, label?, description, parameters, roles?, handler })` | Agent 工具注入;`roles` 仅 `'lead'` 与 `'worker'`(见 §10) |
 | 服务 | `ctx.services.names()` / `.get(name)` / `.provide(name, getter)` | 运行时对象面:`get('daq' \| 'lines' \| 'channels' \| 'plugins')`;`provide` 自动加 `<插件名>.` 前缀 |
+| 孪生 | `ctx.twin.registerPhysicsProvider / registerScenePack / registerObjectiveProfile / registerTrainingAdapter / registerSolverAdapter`;`listProviders / getProviderHealth / resolveProvider / validateProvider / retireProvider / isRegistryAvailable` | 混合孪生 **Provider Registry** 桥:注册可热替换的工业场景物理主干 / 场景包 / 求解器(见下节) |
 | 权限 | `ctx.permissions.lineMode / visibleLineIds / listGrants / setGrants` | 产线授权查询与管理 |
+
+### 混合孪生 Provider 插件(`ctx.twin`)
+
+`ctx.twin` 是**混合孪生 Provider Registry** 的插件面:把工业场景的物理主干、场景包与求解器注册进来。
+`twin_scene_read` / `twin_snapshot_create` / `twin_trial_run` / `mpc_optimize` 按 `SceneContract.physicsProfileId`
+解析 Provider(解析不到时回退系统自带 `twin-injection-default`),因此**换场景不需要改工具与频道**。
+
+| 注册面 | 载荷 | 说明 |
+|---|---|---|
+| `registerPhysicsProvider(provider)` | `PhysicsProviderManifest` + `initialize` / `step` / `simulate` / `evaluateConstraints`,可选 `validateScene` / `calibrate` / `designSafeExperiment` / `estimateUncertainty` / `exportArtifacts` / `health` | 物理主干(灰箱 / 白箱 / ROM 均可);`apiVersion` 必须为 `twin-provider.v1` |
+| `registerScenePack(pack)` | `{ sceneKind, sceneSchemaVersion, compile?, discover?, constraints?, objectives?, datasetSchema?, metadata? }` | 场景包:把现场节点与配方编译成 `SceneContract` |
+| `registerObjectiveProfile(profile)` | 目标与权重 | MPC 目标面 |
+| `registerTrainingAdapter(adapter)` / `registerSolverAdapter(adapter)` | 训练 / 求解适配器 | 外部求解器(ONNX / ROM / 第三方求解器) |
+| `listProviders(filter?)` · `getProviderHealth(id, version?)` · `resolveProvider(id, version?)` · `validateProvider(id, version?)` · `retireProvider(id, version?)` · `isRegistryAvailable()` | — | 查询、健康、解析、校验与退役 |
+
+**清单要点**:`providerId` / `version` / `apiVersion` / `sceneKinds[]` / `backend`
+(`typescript` | `pytorch` | `python` | `onnx` | `rom` | `external-solver`)/ 四类变量表
+(`stateVariables` / `controlVariables` / `disturbanceVariables` / `observationVariables?`)/
+`parameterPriors` / `capabilities`(`onlineStep` / `rollout` / `calibration` / `uncertainty` / `externalSolver` / `mpc`)/
+`artifactContract`。
+
+**代际热替换**:生命周期 `DISCOVERED → VALIDATED → REGISTERED → READY → DRAINING → RETIRED`(失败为 `FAILED`)。
+热重载按 **generation** 装载新代并排空旧代:试验与 MPC 通过租约持有旧代,排空期间**在飞工作不被作废**;
+`retireProvider` 等引用归零后才真正下线。
+
+**最小示例**(系统自带注塑 Provider 走的就是这套外部契约,见 `server/plugins-builtin/twin-injection-default/index.mjs`):
+
+```js
+export default {
+  name: 'my-injection-provider',
+  version: '1.0.0',
+  auth: 'none',
+  async setup(ctx) {
+    const core = await ctx.services.get('twinCore')
+    const provider = core.createInjectionProvider() // 换成你自己的物理主干
+    ctx.twin.registerPhysicsProvider(provider)
+    ctx.twin.registerScenePack({
+      sceneKind: 'injection',
+      sceneSchemaVersion: '1.0.0',
+      compile: () => core.defaultInjectionScene('my-injection-provider'),
+    })
+    ctx.logger.info(`已注册 ${provider.manifest.physicsModelId}@${provider.manifest.version}`)
+  },
+}
+```
+
+**装在哪里**:与其它插件同址(见 §1 三作用域)——`~/.AgentWorkShop/plugins/<插件名>/`(user)、
+`<repo>/.AgentWorkShop/plugins/<插件名>/`(project)、`server/plugins-builtin/<插件名>/`(随包分发)。
+停用或热重载会重新装载 / 排空对应 generation,**无需重启服务**。
 
 ### 通信协议插件(自定义接口连接方式)
 

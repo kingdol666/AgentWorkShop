@@ -154,6 +154,12 @@ acceptance record: `docs/aml-hybrid-twin-mpc-integration-plan.md`,
    verdict when `scene_json` carried a wrong id (caught by a real Agent team: a predicted 30.3 g
    weight below the window floor was still reported as passing).
 
+**Scenes are no longer hard-wired into the tools**: physics cores / scene packs / objectives / solvers can be
+registered by a plugin through `ctx.twin` into the **Twin Provider Registry**, and the twin tools resolve them via
+`SceneContract.physicsProfileId` (falling back to the bundled `twin-injection-default`). A hot reload stages a new
+generation and drains the old one while in-flight trials and MPC hold leases, so running work is never invalidated.
+Field tables, lifecycle and a minimal example: [plugin development guide → hybrid-twin provider plugins](/en/plugins/guide).
+
 The built-in team **`team-aml-shadow`** ("AML shadow modeling team") packs 1 lead (chief
 data scientist) + 3 workers (data engineer / training engineer / evaluation engineer) with
 `omp` as the default harness; add members when creating an instance from the team. The team

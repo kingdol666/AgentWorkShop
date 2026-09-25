@@ -665,6 +665,48 @@ of the settings page renders them automatically, PATCH validation uses the same 
 saving takes effect immediately. Read values with the full key:
 `ctx.config.get('plugins.my-plugin.base_url')`.
 
+### 4.10 `ctx.twin` — hybrid-twin Provider Registry bridge
+
+`ctx.twin` registers an industrial scene's **physics core / scene pack / objectives / training and solver
+adapters** into the hybrid-twin Provider Registry. The agent's twin tools (`twin_scene_read` /
+`twin_snapshot_create` / `twin_trial_run` / `mpc_optimize`) resolve your provider through
+`SceneContract.physicsProfileId`, falling back to the bundled `twin-injection-default`.
+**Swapping scenes needs no tool or channel change.**
+
+| Member | Notes |
+|---|---|
+| `registerPhysicsProvider(provider)` | register a physics core: manifest (`providerId` / `version` / `apiVersion: 'twin-provider.v1'` / `sceneKinds` / `backend` / the four variable tables / `parameterPriors` / `capabilities` / `artifactContract`) plus `initialize` / `step` / `simulate` / `evaluateConstraints`, optional `validateScene` / `calibrate` / `designSafeExperiment` / `estimateUncertainty` / `exportArtifacts` / `health` |
+| `registerScenePack(pack)` | `{ sceneKind, sceneSchemaVersion, compile?, discover?, constraints?, objectives?, datasetSchema? }` — compiles field nodes and recipe into a `SceneContract` |
+| `registerObjectiveProfile(profile)` | MPC objectives and weights |
+| `registerTrainingAdapter(adapter)` / `registerSolverAdapter(adapter)` | training / external-solver adapters (ONNX, ROM, third-party solvers) |
+| `listProviders(filter?)` / `getProviderHealth(id, version?)` | listing and health checks; health feeds the "may be used" decision |
+| `resolveProvider(id, version?)` / `validateProvider(id, version?)` | resolve the active generation / validate without registering (pre-flight self-check) |
+| `retireProvider(id, version?)` | explicit retirement; only unloads after references reach zero |
+| `isRegistryAvailable()` | whether the bridge is ready (while it is not, registration calls are queued, so startup order cannot lose registrations) |
+
+**Lifecycle and generations**: `DISCOVERED → VALIDATED → REGISTERED → READY → DRAINING → RETIRED`
+(`FAILED` when validation rejects). A hot reload stages the new **generation** and drains the old one:
+in-flight trials / MPC hold a lease and are never invalidated during a drain, and `unregisterPlugin`
+means "drain + retire", so a disabled plugin loses its provider.
+
+```js
+export default {
+  name: 'my-twin-provider',
+  version: '1.0.0',
+  auth: 'none',
+  async setup(ctx) {
+    if (!ctx.twin.isRegistryAvailable()) return        // registrations queue while the bridge is down
+    ctx.twin.registerPhysicsProvider(myProvider)       // see docs/plugins.md, "Hybrid-twin provider plugins"
+    ctx.twin.registerScenePack(myScenePack)
+    const ok = await ctx.twin.validateProvider('my-provider', '1.0.0')
+    ctx.logger.info(`provider check: ${JSON.stringify(ok)}`)
+  },
+}
+```
+
+Full field tables, generational hot-swap semantics and a runnable example live in
+`docs/plugins.md`, section "Hybrid-twin provider plugins".
+
 ---
 
 ## 5. Lifecycle events

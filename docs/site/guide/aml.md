@@ -137,6 +137,11 @@ AML 还承载**混合孪生**平面:灰箱物理主干 + 有界 PyTorch 残差,�
    v0.7.47 及更早对此类 id 直接跳过并返回「全轨迹通过」,会让 `scene_json` 里写错 id 的调用方
    拿到假的约束通过结论(被真实 Agent 团队抓出:预测克重 30.3 g 低于窗口下界仍报通过)。
 
+**场景不再写死在工具里**:物理主干 / 场景包 / 目标 / 求解器都可以由插件通过 `ctx.twin` 注册进
+**Twin Provider Registry**,孪生工具按 `SceneContract.physicsProfileId` 解析(解析不到回退内置
+`twin-injection-default`)。热重载按 generation 装载新代、排空旧代,在飞试验与 MPC 持租约不被作废。
+清单字段、生命周期与最小示例见 [插件开发指南 → 混合孪生 Provider 插件](/plugins/guide)。
+
 内置团队 **`team-aml-shadow`**(「AML 影子建模团队」):1 名 lead(首席数据科学家)+ 3 名
 worker(数据工程师 / 训练工程师 / 评测工程师),默认 harness `omp`;从团队创建实例时先加成员。
 团队作业手册见 `.AgentWorkShop/prompts/aml-playbook.md`。

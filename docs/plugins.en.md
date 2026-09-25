@@ -213,7 +213,61 @@ async setup(ctx) {
 | Write control | `ctx.dcw.registerWriteDriver(driver)` | write-driver injection (symmetric to DAQ read drivers): contract `{ kind, available(), write(input), test(cfg), read?(input), meta? }`; disabled plugins lose their drivers on hot reload |
 | Tools | `ctx.omp.registerTool({ name, label?, description, parameters, roles?, handler })` | agent tool injection; `roles` accepts `'lead'` and `'worker'` only (see §10) |
 | Services | `ctx.services.names()` / `.get(name)` / `.provide(name, getter)` | runtime object surface: `get('daq' \| 'lines' \| 'channels' \| 'plugins')`; `provide` auto-prefixes `<plugin>.` |
+| Twin | `ctx.twin.registerPhysicsProvider / registerScenePack / registerObjectiveProfile / registerTrainingAdapter / registerSolverAdapter`; `listProviders / getProviderHealth / resolveProvider / validateProvider / retireProvider / isRegistryAvailable` | hybrid-twin **Provider Registry** bridge: register hot-swappable industrial physics cores / scene packs / solvers (next section) |
 | Permissions | `ctx.permissions.lineMode / visibleLineIds / listGrants / setGrants` | line-grant queries and management |
+
+### Hybrid-twin provider plugins (`ctx.twin`)
+
+`ctx.twin` is the plugin surface of the **hybrid-twin Provider Registry**: register an industrial scene's
+physics core, scene pack and solvers. `twin_scene_read` / `twin_snapshot_create` / `twin_trial_run` /
+`mpc_optimize` resolve the provider through `SceneContract.physicsProfileId` (falling back to the bundled
+`twin-injection-default`), so **swapping scenes needs no tool or channel change**.
+
+| Registration surface | Payload | Notes |
+|---|---|---|
+| `registerPhysicsProvider(provider)` | `PhysicsProviderManifest` + `initialize` / `step` / `simulate` / `evaluateConstraints`, optional `validateScene` / `calibrate` / `designSafeExperiment` / `estimateUncertainty` / `exportArtifacts` / `health` | the physics core (grey-box / white-box / ROM); `apiVersion` must be `twin-provider.v1` |
+| `registerScenePack(pack)` | `{ sceneKind, sceneSchemaVersion, compile?, discover?, constraints?, objectives?, datasetSchema?, metadata? }` | scene pack: compiles field nodes + recipe into a `SceneContract` |
+| `registerObjectiveProfile(profile)` | objectives and weights | the MPC objective surface |
+| `registerTrainingAdapter(adapter)` / `registerSolverAdapter(adapter)` | training / solver adapters | external solvers (ONNX / ROM / third-party) |
+| `listProviders(filter?)` · `getProviderHealth(id, version?)` · `resolveProvider(id, version?)` · `validateProvider(id, version?)` · `retireProvider(id, version?)` · `isRegistryAvailable()` | — | query, health, resolve, validate and retire |
+
+**Manifest essentials**: `providerId` / `version` / `apiVersion` / `sceneKinds[]` / `backend`
+(`typescript` | `pytorch` | `python` | `onnx` | `rom` | `external-solver`) / the four variable tables
+(`stateVariables` / `controlVariables` / `disturbanceVariables` / `observationVariables?`) /
+`parameterPriors` / `capabilities` (`onlineStep` / `rollout` / `calibration` / `uncertainty` / `externalSolver` / `mpc`) /
+`artifactContract`.
+
+**Generational hot swap**: the lifecycle is `DISCOVERED → VALIDATED → REGISTERED → READY → DRAINING → RETIRED`
+(`FAILED` on rejection). A hot reload stages the new **generation** and drains the old one: trials and MPC hold a
+lease on the old generation, so **in-flight work is never invalidated**, and `retireProvider` only unloads after
+references reach zero.
+
+**Minimal example** (the bundled injection provider uses this very contract, see
+`server/plugins-builtin/twin-injection-default/index.mjs`):
+
+```js
+export default {
+  name: 'my-injection-provider',
+  version: '1.0.0',
+  auth: 'none',
+  async setup(ctx) {
+    const core = await ctx.services.get('twinCore')
+    const provider = core.createInjectionProvider() // swap in your own physics core
+    ctx.twin.registerPhysicsProvider(provider)
+    ctx.twin.registerScenePack({
+      sceneKind: 'injection',
+      sceneSchemaVersion: '1.0.0',
+      compile: () => core.defaultInjectionScene('my-injection-provider'),
+    })
+    ctx.logger.info(`registered ${provider.manifest.physicsModelId}@${provider.manifest.version}`)
+  },
+}
+```
+
+**Where it lives**: the same plugin scopes as any other plugin (see §1) —
+`~/.AgentWorkShop/plugins/<plugin>/` (user), `<repo>/.AgentWorkShop/plugins/<plugin>/` (project),
+`server/plugins-builtin/<plugin>/` (shipped with the package). Disabling or hot-reloading a plugin
+re-stages or drains its generation **without a server restart**.
 
 ### Communication-protocol plugins (custom interface connections)
 

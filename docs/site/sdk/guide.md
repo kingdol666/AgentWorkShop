@@ -622,6 +622,45 @@ export default {
 声明成功后并入平台设置服务:设置页「插件」分区自动渲染、PATCH 校验同源、保存即热生效。
 读值时用完整键:`ctx.config.get('plugins.my-plugin.base_url')`。
 
+### 4.10 `ctx.twin` — 混合孪生 Provider Registry 桥
+
+`ctx.twin` 把工业场景的**物理主干 / 场景包 / 目标 / 训练与求解适配器**注册进混合孪生 Provider Registry,
+Agent 的孪生工具(`twin_scene_read` / `twin_snapshot_create` / `twin_trial_run` / `mpc_optimize`)按
+`SceneContract.physicsProfileId` 解析到你的 Provider;解析不到时回退系统自带的 `twin-injection-default`。
+**换场景不需要改工具与频道。**
+
+| 成员 | 说明 |
+|---|---|
+| `registerPhysicsProvider(provider)` | 注册物理主干:清单(`providerId` / `version` / `apiVersion: 'twin-provider.v1'` / `sceneKinds` / `backend` / 四类变量表 / `parameterPriors` / `capabilities` / `artifactContract`)+ `initialize` / `step` / `simulate` / `evaluateConstraints`,可选 `validateScene` / `calibrate` / `designSafeExperiment` / `estimateUncertainty` / `exportArtifacts` / `health` |
+| `registerScenePack(pack)` | `{ sceneKind, sceneSchemaVersion, compile?, discover?, constraints?, objectives?, datasetSchema? }` —— 把现场节点与配方编译成 `SceneContract` |
+| `registerObjectiveProfile(profile)` | MPC 目标与权重 |
+| `registerTrainingAdapter(adapter)` / `registerSolverAdapter(adapter)` | 训练 / 外部求解器适配器(ONNX、ROM、第三方求解器) |
+| `listProviders(filter?)` / `getProviderHealth(id, version?)` | 列出与健康检查;健康状态参与"能否使用"判定 |
+| `resolveProvider(id, version?)` / `validateProvider(id, version?)` | 解析当前有效代 / 只校验不注册(接入前自检) |
+| `retireProvider(id, version?)` | 显式退役;等引用归零才真正下线 |
+| `isRegistryAvailable()` | 桥是否就绪(桥未就绪时注册调用会排队,启动顺序变化不会丢注册) |
+
+**生命周期与代际**:`DISCOVERED → VALIDATED → REGISTERED → READY → DRAINING → RETIRED`(校验失败 → `FAILED`)。
+热重载按 **generation** 装载新代并排空旧代:在飞试验 / MPC 持租约,排空期间不被作废;
+`unregisterPlugin` 语义等价于"排空 + 退役",停用插件即失去其 Provider。
+
+```js
+export default {
+  name: 'my-twin-provider',
+  version: '1.0.0',
+  auth: 'none',
+  async setup(ctx) {
+    if (!ctx.twin.isRegistryAvailable()) return        // 桥未就绪时注册会排队,这里只做自检
+    ctx.twin.registerPhysicsProvider(myProvider)       // 见 docs/plugins.md「混合孪生 Provider 插件」
+    ctx.twin.registerScenePack(myScenePack)
+    const ok = await ctx.twin.validateProvider('my-provider', '1.0.0')
+    ctx.logger.info(`provider 校验:${JSON.stringify(ok)}`)
+  },
+}
+```
+
+完整字段表、代际热替换语义与可运行示例见 `docs/plugins.md`「混合孪生 Provider 插件」一节。
+
 ---
 
 ## 5. 生命周期事件
