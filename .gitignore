@@ -120,3 +120,9 @@ data.pre-clean-*/
 .gw-*.txt
 .e2e-*
 .pnpm-store/
+
+# 0.7.4x 发版实测的隔离实例目录(aw start --home,含 AML venv/数据集/模型工件)
+.aw0746-home/
+
+__pycache__/
+
