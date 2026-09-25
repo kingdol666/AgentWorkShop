@@ -94,14 +94,29 @@ export class InjectionGreyboxProvider implements PhysicsModelProvider {
   }
 
   evaluateConstraints(scene: SceneContract, trajectory: PhysicsTrajectory): Array<{ id: string, passed: boolean, detail: string, firstViolationStep?: number }> {
+    // 失败关闭(fail-closed):约束 id 必须能映射到轨迹观测量/守卫量。
+    // 旧行为对映射不到的 id 直接跳过并返回「全轨迹通过」(value == null 分支),
+    // 于是 scene_json 里写成 part_weight / 质量窗口 这类 id 时,硬约束门禁形同虚设
+    // —— 实测被真实 Agent 团队两次抓出:预测 weight 30.3 g 明显低于窗口下界仍报通过。
+    const known = [...new Set([
+      ...Object.keys(trajectory.steps.at(-1)?.observations ?? {}),
+      ...Object.keys(trajectory.steps.at(-1)?.guards ?? {}),
+    ])]
+    if (trajectory.steps.length === 0) {
+      return scene.constraints.map(constraint => ({ id: constraint.id, passed: false, detail: '空轨迹:未执行任何校验' }))
+    }
     return scene.constraints.map((constraint) => {
+      let unmapped = true
       for (let i = 0; i < trajectory.steps.length; i++) {
         const obs = trajectory.steps[i]?.observations ?? {}
         const value = obs[constraint.id] ?? trajectory.steps[i]?.guards[constraint.id]
-        if (constraint.kind === 'hard_range' && value != null && ((constraint.min != null && value < constraint.min) || (constraint.max != null && value > constraint.max))) {
+        if (value == null) continue
+        unmapped = false
+        if (constraint.kind === 'hard_range' && ((constraint.min != null && value < constraint.min) || (constraint.max != null && value > constraint.max))) {
           return { id: constraint.id, passed: false, detail: `${constraint.id}=${value} 越过 ${constraint.min ?? '-∞'}~${constraint.max ?? '∞'}`, firstViolationStep: i }
         }
       }
+      if (unmapped) return { id: constraint.id, passed: false, detail: `约束 ${constraint.id} 无法映射到观测量/守卫量(可用:${known.join(', ') || '无'}),按失败关闭处理` }
       return { id: constraint.id, passed: true, detail: '全轨迹通过' }
     })
   }
