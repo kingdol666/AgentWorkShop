@@ -41,12 +41,23 @@ export function daqTargetsOf(agentId: string, nodeIdArg: unknown, lineIdArg: unk
   return { targets, daqBindings }
 }
 
-/** 工具:daq_query —— 数采数据检索(产线/产品/配方/时间/节点;结果带物理语义) */
+/**
+ * 工具:daq_query —— 数采数据检索(产线/产品/配方/批次/时间/节点;结果带物理语义)
+ *
+ * **默认作用域 = 当前活动批次**:调用方未显式给 `product_id`/`recipe_id`/`run_id`,
+ * 且该节点所属产线有活动批次(LineRun)时,自动按活动 `recipe_id` 过滤,并在结果头
+ * 打印 `批次 run/配方`。理由:样本在入库时逐条打标当轮配方,不默认识别"当前跑什么",
+ * Agent 很容易把上一轮配方的样本混进本轮判读(实测:不传过滤 10 点/均值 246.99,
+ * 只取当前配方 3 点/均值 247.99,差异足以改变 keep/rollback 结论)。
+ * 需要跨配方对比或历史复盘时显式传 `scope: 'all'`(或直接给 product_id/recipe_id/run_id)。
+ */
 export async function toolDaqQuery(agentId: string, args: {
   node_id?: string
   line_id?: string
   product_id?: string
   recipe_id?: string
+  run_id?: string
+  scope?: string
   last_minutes?: number | string
   from_ms?: number | string
   to_ms?: number | string
@@ -67,23 +78,46 @@ export async function toolDaqQuery(agentId: string, args: {
     ? Math.max(qCfg.minBucketMs, Math.min(3_600_000, Math.round(rawBucket)))
     : qCfg.defaultBucketMs
   const limit = Math.min(Number(args.limit) || 500, 2000)
+
+  // 显式过滤优先级:recipe_id / run_id / product_id(任一给出即完全按调用方口径)
+  const explicitProduct = args.product_id ? String(args.product_id) : ''
+  const explicitRecipe = args.recipe_id ? String(args.recipe_id) : ''
+  const explicitRun = args.run_id ? String(args.run_id) : ''
+  const explicitScoped = Boolean(explicitProduct || explicitRecipe || explicitRun)
+  /** scope=all:显式要求不过滤(跨配方/历史复盘),仅在无显式 id 时生效 */
+  const wantAll = !explicitScoped && String(args.scope ?? '').trim().toLowerCase() === 'all'
+
   const { getTsdb, tsdbReady } = await import('../../daq/storage')
   await tsdbReady
   const tsdb = getTsdb()
 
   const sections: string[] = []
+  /** 实际生效的过滤口径(逐节点累计,用于文末 provenance 与表头) */
+  const applied: Array<{ nodeId: string, lineId: string, runId?: string, recipeId?: string, source: 'explicit' | 'active-run' | 'none' }> = []
   for (const nodeId of targets) {
     const node = getDaqNodeRepo().byId(nodeId)
     if (!node) continue
     const tpl = findDaqTemplate(node.templateKey)
     const ch = tpl?.ch ?? node.templateKey
+    // 默认口径:该节点所属产线的**活动批次**(未开跑 → 不过滤,保持原有语义)
+    const nodeLine = node.lineId || ''
+    const activeRun = !explicitScoped && !wantAll && nodeLine ? getActiveLineRun(nodeLine) : null
+    const scopeRun = explicitScoped
+      ? { runId: explicitRun || undefined, recipeId: explicitRecipe || undefined, productId: explicitProduct || undefined, source: 'explicit' as const }
+      : activeRun
+        ? { runId: activeRun.runId, recipeId: activeRun.recipeId, productId: activeRun.productId, source: 'active-run' as const }
+        : { runId: undefined, recipeId: undefined, productId: undefined, source: 'none' as const }
+    applied.push({ nodeId, lineId: nodeLine, runId: scopeRun.runId, recipeId: scopeRun.recipeId, source: scopeRun.source })
     try {
       let points: Array<{ at: number, value?: number, avg?: number, min?: number, max?: number, cnt?: number }>
-      if (args.product_id || args.recipe_id) {
+      // 是否有可用的打标过滤:显式 id、或活动批次(配方/批次 id 齐备)
+      const useTagged = Boolean(scopeRun.recipeId || scopeRun.runId || scopeRun.productId)
+      if (useTagged) {
         const series = await tsdb.queryTagged({
-          lineId: node.lineId || undefined,
-          productId: args.product_id ? String(args.product_id) : undefined,
-          recipeId: args.recipe_id ? String(args.recipe_id) : undefined,
+          lineId: nodeLine || undefined,
+          productId: scopeRun.productId,
+          recipeId: scopeRun.recipeId,
+          runId: scopeRun.runId,
           nodeIds: [nodeId],
           fromMs,
           toMs,
@@ -95,7 +129,14 @@ export async function toolDaqQuery(agentId: string, args: {
       else {
         points = await tsdb.query(nodeId, { fromMs, toMs, bucketMs, limit })
       }
-      const head = `■ ${node.name}(${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}${bucketMs ? `(降采样 ${bucketMs}ms)` : ''}`
+      const scopeTag = scopeRun.source === 'explicit'
+        ? `批次过滤(显式)${scopeRun.runId ? ` run=${scopeRun.runId}` : ''}${scopeRun.recipeId ? ` 配方=${scopeRun.recipeId}` : ''}${scopeRun.productId ? ` 产品=${scopeRun.productId}` : ''}`
+        : scopeRun.source === 'active-run'
+          ? `当前活动批次 run=${scopeRun.runId ?? ''} 配方「${(scopeRun.recipeId && getDcwController().listRecipes().find(r => r.id === scopeRun.recipeId)?.name) || scopeRun.recipeId}」(${scopeRun.recipeId})(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)`
+          : wantAll
+            ? '全量窗口(scope=all,不做配方过滤)'
+            : '未过滤(该产线当前未开跑 → 无活动批次可限定)'
+      const head = `■ ${node.name}(${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}${bucketMs ? `(降采样 ${bucketMs}ms)` : ''}\n  ${scopeTag}`
       // 工况判读容器(具体判读在 values 计算后追加)
       const readout: string[] = []
       if (points.length === 0) {
@@ -129,9 +170,25 @@ export async function toolDaqQuery(agentId: string, args: {
       sections.push(`■ ${node.name}:查询失败 ${err instanceof Error ? err.message : String(err)}`)
     }
   }
-  const prov = (args.product_id || args.recipe_id || lineFilter)
-    ? `\n(过滤条件:${lineFilter ? ` 产线 ${lineFilter}` : ''}${args.product_id ? ` 产品 ${args.product_id}` : ''}${args.recipe_id ? ` 配方 ${args.recipe_id}` : ''}${(args.product_id || args.recipe_id) ? ' —— 产品/配方过滤基于活动批次窗口内逐样本打标' : ''})`
-    : ''
+  // 文末口径声明:逐节点列出**实际生效**的过滤来源(显式 / 活动批次 / 未过滤),
+  // 便于审计"这条结论用的是哪个批次的数据",也避免"以为默认过滤了其实没有"。
+  const scopedNodes = applied.filter(a => a.source !== 'none')
+  const unscoped = applied.filter(a => a.source === 'none')
+  const provLines: string[] = []
+  if (lineFilter) provLines.push(`产线 ${lineFilter}`)
+  if (explicitProduct) provLines.push(`产品 ${explicitProduct}`)
+  if (explicitRecipe) provLines.push(`配方 ${explicitRecipe}`)
+  if (explicitRun) provLines.push(`批次 ${explicitRun}`)
+  if (explicitScoped) provLines.push('—— 显式过滤值优先,逐样本打标精确切批')
+  else if (wantAll) provLines.push('—— scope=all:不做配方过滤,窗口内跨配方样本全部返回')
+  else if (scopedNodes.length > 0) {
+    const ids = [...new Set(scopedNodes.map(a => `${a.recipeId ?? '-'}${a.runId ? `@${a.runId}` : ''}`))]
+    provLines.push(`—— 默认作用域:仅当前活动批次 ${ids.join(', ')}(逐样本打标;跨配方对比请传 scope=all)`)
+  }
+  if (unscoped.length > 0) {
+    provLines.push(`—— 未过滤节点(所在产线未开跑,无活动批次可限定):${unscoped.map(a => a.nodeId).join(', ')}`)
+  }
+  const prov = provLines.length > 0 ? `\n(过滤条件:${provLines.join(' ')})` : ''
   return { text: `数采数据查询结果(${targets.length} 个节点):\n\n${sections.join('\n\n')}${prov}\n\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。` }
 }
 /** 工具:daq_frames —— 多形态帧检索(v2:测厚/扫描仪多点轮廓与 CCD 图像元数据)。
