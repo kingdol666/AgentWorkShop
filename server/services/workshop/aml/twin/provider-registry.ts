@@ -1,4 +1,4 @@
-import { sha256, type PhysicsModelManifest, type ObjectiveProfile } from './contracts'
+import { sha256 } from './contracts'
 import { checkProviderHealth as probeProviderHealth, normalizeProviderHealth, providerHealthAllowsUse } from './provider-health'
 import { TWIN_PROVIDER_API_VERSION } from './provider-contracts'
 import type {
@@ -8,7 +8,6 @@ import type {
   PhysicsProviderManifest,
   ProviderHealth,
   ProviderLifecycleState,
-  ProviderManifestAccessor,
   ProviderValidationResult,
   ScenePack,
   SolverAdapter,
@@ -92,28 +91,48 @@ interface StagedContribution {
   solverAdapters: Array<{ adapter: SolverAdapter, manifest: SolverAdapterManifest, key: string }>
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' }
-function text(value: unknown, fallback = ''): string { return typeof value === 'string' && value.trim() ? value.trim() : fallback }
-function number(value: unknown): number | undefined { return Number.isFinite(Number(value)) ? Number(value) : undefined }
-function key(id: string, version: string): string { return `${id}@${version}` }
-function generationKey(pluginName: string, generation: number): string { return `${pluginName}\u0000${generation}` }
-function readAccessor(value: unknown): unknown { return typeof value === 'function' ? (value as () => unknown)() : value }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object'
+}
+function text(value: unknown, fallback = ''): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+function number(value: unknown): number | undefined {
+  return Number.isFinite(Number(value)) ? Number(value) : undefined
+}
+function key(id: string, version: string): string {
+  return `${id}@${version}`
+}
+function generationKey(pluginName: string, generation: number): string {
+  return `${pluginName}\u0000${generation}`
+}
+function readAccessor(value: unknown): unknown {
+  return typeof value === 'function' ? (value as () => unknown)() : value
+}
 
 function variables(value: unknown, fallback: unknown[] = []): VariableSpec[] {
   const result: Array<VariableSpec | null> = []
   for (const raw of (Array.isArray(value) ? value : fallback)) {
-    if (typeof raw === 'string') { result.push({ id: raw }); continue }
-    if (!isRecord(raw)) { result.push(null); continue }
+    if (typeof raw === 'string') {
+      result.push({ id: raw })
+      continue
+    }
+    if (!isRecord(raw)) {
+      result.push(null)
+      continue
+    }
     const id = text(raw.id ?? raw.name)
-    result.push(id ? {
-      id,
-      unit: typeof raw.unit === 'string' ? raw.unit : undefined,
-      role: typeof raw.role === 'string' ? raw.role : undefined,
-      physicalMeaning: typeof raw.physicalMeaning === 'string' ? raw.physicalMeaning : undefined,
-      min: number(raw.min), max: number(raw.max), maxStep: number(raw.maxStep),
-      samplingPeriodMs: number(raw.samplingPeriodMs),
-      metadata: isRecord(raw.metadata) ? raw.metadata : undefined,
-    } : null)
+    result.push(id
+      ? {
+          id,
+          unit: typeof raw.unit === 'string' ? raw.unit : undefined,
+          role: typeof raw.role === 'string' ? raw.role : undefined,
+          physicalMeaning: typeof raw.physicalMeaning === 'string' ? raw.physicalMeaning : undefined,
+          min: number(raw.min), max: number(raw.max), maxStep: number(raw.maxStep),
+          samplingPeriodMs: number(raw.samplingPeriodMs),
+          metadata: isRecord(raw.metadata) ? raw.metadata : undefined,
+        }
+      : null)
   }
   return result.filter((value): value is VariableSpec => value !== null)
 }
@@ -123,7 +142,8 @@ function priors(value: unknown, parameters: unknown): ParameterPriorMap {
   const result: ParameterPriorMap = {}
   for (const [id, raw] of Object.entries(source)) {
     if (!isRecord(raw)) continue
-    const min = number(raw.min); const max = number(raw.max)
+    const min = number(raw.min)
+    const max = number(raw.max)
     if (min == null || max == null || min > max) continue
     result[id] = { min, max, unit: typeof raw.unit === 'string' ? raw.unit : undefined, distribution: typeof raw.distribution === 'string' ? raw.distribution : undefined, metadata: isRecord(raw.metadata) ? raw.metadata : undefined }
   }
@@ -133,7 +153,8 @@ function priors(value: unknown, parameters: unknown): ParameterPriorMap {
 function backend(value: unknown): PhysicsProviderManifest['backend'] {
   const valueText = String(value ?? 'typescript')
   return ['typescript', 'python', 'onnx', 'rom', 'external-solver', 'pytorch'].includes(valueText)
-    ? valueText as PhysicsProviderManifest['backend'] : 'external-solver'
+    ? valueText as PhysicsProviderManifest['backend']
+    : 'external-solver'
 }
 
 function capabilities(provider: TwinPhysicsProvider, raw: Record<string, unknown>): PhysicsProviderManifest['capabilities'] {
@@ -194,12 +215,14 @@ export function normalizeProviderManifest(provider: TwinPhysicsProvider): Physic
 
 export function providerHashOf(providerOrManifest: TwinPhysicsProvider | PhysicsProviderManifest): string {
   const value = isRecord(providerOrManifest) && 'providerId' in providerOrManifest
-    ? providerOrManifest as PhysicsProviderManifest : normalizeProviderManifest(providerOrManifest as TwinPhysicsProvider)
+    ? providerOrManifest as PhysicsProviderManifest
+    : normalizeProviderManifest(providerOrManifest as TwinPhysicsProvider)
   return sha256(value)
 }
 
 export function validateProviderDefinition(provider: TwinPhysicsProvider): ProviderValidationResult {
-  const errors: string[] = []; const warnings: string[] = []
+  const errors: string[] = []
+  const warnings: string[] = []
   try {
     const manifest = normalizeProviderManifest(provider)
     for (const method of ['initialize', 'step', 'simulate', 'evaluateConstraints'] as const) {
@@ -225,17 +248,20 @@ function solverManifest(adapter: SolverAdapter): SolverAdapterManifest {
   const version = text(raw.version, '0.0.0')
   if (!adapterId) throw new TwinProviderRegistryError('SOLVER_ADAPTER_ID_MISSING', 'Solver adapter manifest.adapterId is required')
   if (typeof adapter.solve !== 'function') throw new TwinProviderRegistryError('SOLVER_ADAPTER_INVALID', `Solver adapter ${adapterId}@${version} must expose solve()`)
-  return { adapterId, version, backend: typeof raw.backend === 'string' ? raw.backend : undefined, capabilities: isRecord(raw.capabilities) ? {
-    synchronous: raw.capabilities.synchronous === true,
-    asynchronous: raw.capabilities.asynchronous !== false,
-    cancellation: raw.capabilities.cancellation === true,
-    artifacts: raw.capabilities.artifacts === true,
-  } : undefined, metadata: isRecord(raw.metadata) ? raw.metadata : undefined }
+  return { adapterId, version, backend: typeof raw.backend === 'string' ? raw.backend : undefined, capabilities: isRecord(raw.capabilities)
+    ? {
+        synchronous: raw.capabilities.synchronous === true,
+        asynchronous: raw.capabilities.asynchronous !== false,
+        cancellation: raw.capabilities.cancellation === true,
+        artifacts: raw.capabilities.artifacts === true,
+      }
+    : undefined, metadata: isRecord(raw.metadata) ? raw.metadata : undefined }
 }
 
 function stageContribution(contribution: TwinPluginContribution): StagedContribution {
   const providers = [...(contribution.providers ?? []), ...(contribution.physicsProviders ?? [])]
-  const stagedProviders: StagedProvider[] = []; const providerKeys = new Set<string>()
+  const stagedProviders: StagedProvider[] = []
+  const providerKeys = new Set<string>()
   for (const provider of providers) {
     const checked = validateProviderDefinition(provider)
     if (!checked.valid || !checked.manifest || !checked.providerHash) throw new TwinProviderRegistryError('PROVIDER_INVALID', checked.errors.join('; ') || 'Provider definition is invalid')
@@ -247,7 +273,8 @@ function stageContribution(contribution: TwinPluginContribution): StagedContribu
       stagedProviders.push({ provider, manifest: checked.manifest, providerHash: checked.providerHash, key: providerKey })
     }
   }
-  const scenePacks: StagedContribution['scenePacks'] = []; const sceneKeys = new Set<string>()
+  const scenePacks: StagedContribution['scenePacks'] = []
+  const sceneKeys = new Set<string>()
   for (const pack of contribution.scenePacks ?? []) {
     if (!isRecord(pack) || !text(pack.sceneKind) || !text(pack.sceneSchemaVersion)) throw new TwinProviderRegistryError('SCENE_PACK_INVALID', 'ScenePack requires sceneKind and sceneSchemaVersion')
     const packValue = pack as unknown as Record<string, unknown>
@@ -259,12 +286,20 @@ function stageContribution(contribution: TwinPluginContribution): StagedContribu
       if (value != null && typeof value !== 'function' && !Array.isArray(value) && !isRecord(value)) throw new TwinProviderRegistryError('SCENE_PACK_INVALID', `ScenePack ${pack.sceneKind}.${field} has an unsupported shape`)
     }
     const sceneKey = `${pack.sceneKind}@${pack.sceneSchemaVersion}`
-    if (!sceneKeys.has(sceneKey)) { sceneKeys.add(sceneKey); scenePacks.push({ pack, key: sceneKey }) }
+    if (!sceneKeys.has(sceneKey)) {
+      sceneKeys.add(sceneKey)
+      scenePacks.push({ pack, key: sceneKey })
+    }
   }
-  const solverAdapters: StagedContribution['solverAdapters'] = []; const solverKeys = new Set<string>()
+  const solverAdapters: StagedContribution['solverAdapters'] = []
+  const solverKeys = new Set<string>()
   for (const adapter of contribution.solverAdapters ?? []) {
-    const manifest = solverManifest(adapter); const solverKey = key(manifest.adapterId, manifest.version)
-    if (!solverKeys.has(solverKey)) { solverKeys.add(solverKey); solverAdapters.push({ adapter, manifest, key: solverKey }) }
+    const manifest = solverManifest(adapter)
+    const solverKey = key(manifest.adapterId, manifest.version)
+    if (!solverKeys.has(solverKey)) {
+      solverKeys.add(solverKey)
+      solverAdapters.push({ adapter, manifest, key: solverKey })
+    }
   }
   return { providers: stagedProviders, scenePacks, solverAdapters }
 }
@@ -316,11 +351,16 @@ export class TwinProviderRegistry {
   }
 
   unregisterTwinPluginContribution(pluginName: string, generation?: number): TwinProviderUnregistrationResult {
-    const plugin = text(pluginName); if (!plugin) throw new TwinProviderRegistryError('PLUGIN_NAME_MISSING', 'pluginName is required')
+    const plugin = text(pluginName)
+    if (!plugin) throw new TwinProviderRegistryError('PLUGIN_NAME_MISSING', 'pluginName is required')
     const records = [...this.generations.values()].filter(record => record.pluginName === plugin && (generation == null || record.generation === generation)).sort((a, b) => a.generation - b.generation)
-    const drainedGenerations: number[] = []; const retiredGenerations: number[] = []
+    const drainedGenerations: number[] = []
+    const retiredGenerations: number[] = []
     for (const record of records) {
-      if (record.state !== 'RETIRED') { this.markGenerationDraining(record); drainedGenerations.push(record.generation) }
+      if (record.state !== 'RETIRED') {
+        this.markGenerationDraining(record)
+        drainedGenerations.push(record.generation)
+      }
       if (record.state === 'RETIRED') retiredGenerations.push(record.generation)
     }
     return { ok: true, pluginName: plugin, generation, drainedGenerations, retiredGenerations }
@@ -445,7 +485,8 @@ export class TwinProviderRegistry {
     const record = this.findProviderRecords(providerId, version, { generation, allowDraining: true, includeFailed: true })[0]
     if (!record) throw new TwinProviderRegistryError('PROVIDER_NOT_FOUND', `Provider ${providerId}${version ? `@${version}` : ''} is not registered`)
     if (record.state !== 'RETIRED') {
-      record.state = record.inFlight > 0 ? 'DRAINING' : 'RETIRED'; record.drainingAt ??= new Date().toISOString()
+      record.state = record.inFlight > 0 ? 'DRAINING' : 'RETIRED'
+      record.drainingAt ??= new Date().toISOString()
       if (record.state === 'RETIRED') record.retiredAt = new Date().toISOString()
       this.updateGenerationState(this.generationOf(record))
     }
@@ -456,7 +497,8 @@ export class TwinProviderRegistry {
     const record = this.findProviderRecords(providerId, version, { generation, allowDraining: true, includeFailed: true })[0]
     if (!record) throw new TwinProviderRegistryError('PROVIDER_NOT_FOUND', `Provider ${providerId}@${version} is not registered`)
     if (record.state !== 'RETIRED') {
-      record.state = record.inFlight > 0 ? 'DRAINING' : 'RETIRED'; record.drainingAt ??= new Date().toISOString()
+      record.state = record.inFlight > 0 ? 'DRAINING' : 'RETIRED'
+      record.drainingAt ??= new Date().toISOString()
       if (record.state === 'RETIRED') record.retiredAt = new Date().toISOString()
       this.updateGenerationState(this.generationOf(record))
     }
@@ -465,7 +507,11 @@ export class TwinProviderRegistry {
 
   retire(providerId: string, version: string, generation?: number): TwinProviderRetireResult { return this.retireProvider(providerId, version, generation) }
 
-  clear(): void { this.generations.clear(); this.nextGenerationByPlugin.clear(); this.leaseSequence = 0 }
+  clear(): void {
+    this.generations.clear()
+    this.nextGenerationByPlugin.clear()
+    this.leaseSequence = 0
+  }
 
   private assertProviderKeyAvailable(providerKey: string, pluginName: string, generation: number): void {
     for (const record of this.generations.values()) {
@@ -487,8 +533,12 @@ export class TwinProviderRegistry {
       get released() { return released },
       release: () => {
         if (released) return
-        released = true; record.inFlight = Math.max(0, record.inFlight - 1)
-        if (record.state === 'DRAINING' && record.inFlight === 0) { record.state = 'RETIRED'; record.retiredAt = new Date().toISOString() }
+        released = true
+        record.inFlight = Math.max(0, record.inFlight - 1)
+        if (record.state === 'DRAINING' && record.inFlight === 0) {
+          record.state = 'RETIRED'
+          record.retiredAt = new Date().toISOString()
+        }
         this.updateGenerationState(this.generationOf(record))
       },
     }
@@ -537,7 +587,8 @@ export class TwinProviderRegistry {
     record.drainingAt ??= new Date().toISOString()
     for (const provider of record.providers.values()) {
       if (provider.state === 'READY' || provider.state === 'REGISTERED' || provider.state === 'VALIDATED') {
-        provider.state = provider.inFlight > 0 ? 'DRAINING' : 'RETIRED'; provider.drainingAt ??= record.drainingAt
+        provider.state = provider.inFlight > 0 ? 'DRAINING' : 'RETIRED'
+        provider.drainingAt ??= record.drainingAt
         if (provider.state === 'RETIRED') provider.retiredAt = new Date().toISOString()
       }
     }
@@ -547,32 +598,71 @@ export class TwinProviderRegistry {
   private updateGenerationState(record: GenerationRecord): void {
     const providers = [...record.providers.values()]
     if (providers.length) {
-      if (providers.every(provider => provider.state === 'RETIRED')) { record.state = 'RETIRED'; record.retiredAt ??= new Date().toISOString(); return }
-      if (providers.some(provider => provider.state === 'DRAINING')) { record.state = 'DRAINING'; return }
-      if (providers.every(provider => provider.state === 'FAILED')) { record.state = 'FAILED'; return }
-      record.state = 'READY'; return
+      if (providers.every(provider => provider.state === 'RETIRED')) {
+        record.state = 'RETIRED'
+        record.retiredAt ??= new Date().toISOString()
+        return
+      }
+      if (providers.some(provider => provider.state === 'DRAINING')) {
+        record.state = 'DRAINING'
+        return
+      }
+      if (providers.every(provider => provider.state === 'FAILED')) {
+        record.state = 'FAILED'
+        return
+      }
+      record.state = 'READY'
+      return
     }
-    if (record.state === 'DRAINING') { record.state = 'RETIRED'; record.retiredAt ??= new Date().toISOString() }
+    if (record.state === 'DRAINING') {
+      record.state = 'RETIRED'
+      record.retiredAt ??= new Date().toISOString()
+    }
   }
 
-  private generationState(record: GenerationRecord): ProviderLifecycleState { this.updateGenerationState(record); return record.state }
+  private generationState(record: GenerationRecord): ProviderLifecycleState {
+    this.updateGenerationState(record)
+    return record.state
+  }
 }
 
 const twinProviderRegistry = new TwinProviderRegistry()
 
-export function getTwinProviderRegistry(): TwinProviderRegistry { return twinProviderRegistry }
-export function registerTwinPluginContribution(pluginName: string, contribution: TwinPluginContribution, generation?: number): TwinProviderRegistrationResult { return twinProviderRegistry.registerTwinPluginContribution(pluginName, contribution, generation) }
-export function unregisterTwinPluginContribution(pluginName: string, generation?: number): TwinProviderUnregistrationResult { return twinProviderRegistry.unregisterTwinPluginContribution(pluginName, generation) }
-export function listTwinProviders(filter: TwinProviderFilter = {}): TwinProviderSummary[] { return twinProviderRegistry.listProviders(filter) }
-export function resolveTwinProvider(providerId: string, versionOrOptions?: string | ResolveProviderOptions, maybeOptions?: ResolveProviderOptions): TwinProviderLease | undefined { return twinProviderRegistry.resolveProvider(providerId, versionOrOptions, maybeOptions) }
-export function acquireTwinProvider(providerId: string, versionOrOptions?: string | ResolveProviderOptions, maybeOptions?: ResolveProviderOptions): TwinProviderLease | undefined { return twinProviderRegistry.acquireProvider(providerId, versionOrOptions, maybeOptions) }
-export function reloadTwinProviderGeneration(pluginName: string, contribution: TwinPluginContribution, generation?: number): TwinProviderRegistrationResult { return twinProviderRegistry.reloadGeneration(pluginName, contribution, generation) }
-export function drainTwinProviderGeneration(pluginName: string, generation: number): TwinProviderDrainResult { return twinProviderRegistry.drainGeneration(pluginName, generation) }
-export function retireTwinProvider(providerId: string, version: string, generation?: number): TwinProviderRetireResult { return twinProviderRegistry.retireProvider(providerId, version, generation) }
-export function registerTwinPhysicsProvider(provider: TwinPhysicsProvider, source: TwinRegistrationSource = 'core', generation?: number): TwinProviderRegistrationResult { return twinProviderRegistry.registerPhysicsProvider(provider, source, generation) }
-export function registerTwinScenePack(pack: ScenePack, source: TwinRegistrationSource = 'core', generation?: number): TwinProviderRegistrationResult { return twinProviderRegistry.registerScenePack(pack, source, generation) }
-export function registerTwinSolverAdapter(adapter: SolverAdapter, source: TwinRegistrationSource = 'core', generation?: number): TwinProviderRegistrationResult { return twinProviderRegistry.registerSolverAdapter(adapter, source, generation) }
+export function getTwinProviderRegistry(): TwinProviderRegistry {
+  return twinProviderRegistry
+}
+export function registerTwinPluginContribution(pluginName: string, contribution: TwinPluginContribution, generation?: number): TwinProviderRegistrationResult {
+  return twinProviderRegistry.registerTwinPluginContribution(pluginName, contribution, generation)
+}
+export function unregisterTwinPluginContribution(pluginName: string, generation?: number): TwinProviderUnregistrationResult {
+  return twinProviderRegistry.unregisterTwinPluginContribution(pluginName, generation)
+}
+export function listTwinProviders(filter: TwinProviderFilter = {}): TwinProviderSummary[] {
+  return twinProviderRegistry.listProviders(filter)
+}
+export function resolveTwinProvider(providerId: string, versionOrOptions?: string | ResolveProviderOptions, maybeOptions?: ResolveProviderOptions): TwinProviderLease | undefined {
+  return twinProviderRegistry.resolveProvider(providerId, versionOrOptions, maybeOptions)
+}
+export function acquireTwinProvider(providerId: string, versionOrOptions?: string | ResolveProviderOptions, maybeOptions?: ResolveProviderOptions): TwinProviderLease | undefined {
+  return twinProviderRegistry.acquireProvider(providerId, versionOrOptions, maybeOptions)
+}
+export function reloadTwinProviderGeneration(pluginName: string, contribution: TwinPluginContribution, generation?: number): TwinProviderRegistrationResult {
+  return twinProviderRegistry.reloadGeneration(pluginName, contribution, generation)
+}
+export function drainTwinProviderGeneration(pluginName: string, generation: number): TwinProviderDrainResult {
+  return twinProviderRegistry.drainGeneration(pluginName, generation)
+}
+export function retireTwinProvider(providerId: string, version: string, generation?: number): TwinProviderRetireResult {
+  return twinProviderRegistry.retireProvider(providerId, version, generation)
+}
+export function registerTwinPhysicsProvider(provider: TwinPhysicsProvider, source: TwinRegistrationSource = 'core', generation?: number): TwinProviderRegistrationResult {
+  return twinProviderRegistry.registerPhysicsProvider(provider, source, generation)
+}
+export function registerTwinScenePack(pack: ScenePack, source: TwinRegistrationSource = 'core', generation?: number): TwinProviderRegistrationResult {
+  return twinProviderRegistry.registerScenePack(pack, source, generation)
+}
+export function registerTwinSolverAdapter(adapter: SolverAdapter, source: TwinRegistrationSource = 'core', generation?: number): TwinProviderRegistrationResult {
+  return twinProviderRegistry.registerSolverAdapter(adapter, source, generation)
+}
 
 export type { LegacyPhysicsProvider, UniversalPhysicsProvider }
-
-

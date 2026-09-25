@@ -77,6 +77,7 @@
     "docs:build": "cd docs/site && npx vitepress build",
     "test:plugin-lifecycle": "node scripts/test-plugin-lifecycle.mjs",
     "test:sdk-surface": "node scripts/test-sdk-surface.mjs",
+    "test:twin-provider": "tsx --test tests/aml-twin-provider-registry.test.ts",
     "prepare": "husky",
     "test:api-live": "node scripts/api-live-e2e.mjs",
     "ui:seed": "node scripts/ui/seed-demo.mjs",

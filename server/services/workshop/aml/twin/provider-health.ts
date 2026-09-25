@@ -2,7 +2,9 @@ import type { ProviderHealth, ProviderHealthStatus, TwinPhysicsProvider } from '
 
 export interface ProviderHealthOptions { timeoutMs?: number, now?: () => number }
 
-function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object'
+}
 function status(value: unknown): ProviderHealthStatus {
   const raw = String(value ?? 'unknown').toLowerCase()
   if (raw === 'healthy' || raw === 'degraded' || raw === 'unhealthy' || raw === 'unknown') return raw
@@ -29,7 +31,16 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Provider health check timed out')), timeoutMs)
-    promise.then(value => { clearTimeout(timer); resolve(value) }, error => { clearTimeout(timer); reject(error) })
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
   })
 }
 
@@ -50,5 +61,9 @@ export async function checkProviderHealth(provider: TwinPhysicsProvider, options
   }
 }
 
-export function providerHealthAllowsUse(health: ProviderHealth): boolean { return health.status !== 'unhealthy' }
-export function providerHealthIsHealthy(health: ProviderHealth): boolean { return health.status === 'healthy' }
+export function providerHealthAllowsUse(health: ProviderHealth): boolean {
+  return health.status !== 'unhealthy'
+}
+export function providerHealthIsHealthy(health: ProviderHealth): boolean {
+  return health.status === 'healthy'
+}

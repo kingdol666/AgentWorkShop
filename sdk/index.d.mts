@@ -157,12 +157,12 @@ export interface PluginHostExtensions {
 }
 
 /** Twin Registry 全局桥使用的注册类别(注册在 Registry 未加载时会排队)。 */
-export type TwinRegistrationKind =
-  | 'registerPhysicsProvider'
-  | 'registerScenePack'
-  | 'registerObjectiveProfile'
-  | 'registerTrainingAdapter'
-  | 'registerSolverAdapter'
+export type TwinRegistrationKind
+  = | 'registerPhysicsProvider'
+    | 'registerScenePack'
+    | 'registerObjectiveProfile'
+    | 'registerTrainingAdapter'
+    | 'registerSolverAdapter'
 
 /** SDK 自动附带的插件来源信息,服务端 Registry 用于 lineage / hot-reload 清理。 */
 export interface TwinRegistrationSource {
@@ -273,8 +273,8 @@ export interface TwinRegistryBridge {
   invoke?(method: string, ...args: any[]): TwinRegistryResult<any>
   dispatch?(method: string, ...args: any[]): TwinRegistryResult<any>
   registry?: Record<string, any> | null
-  unregisterPlugin?(source: TwinRegistrationSource | string): number | void
-  removePlugin?(source: TwinRegistrationSource | string): number | void
+  unregisterPlugin?(source: TwinRegistrationSource | string): number | undefined
+  removePlugin?(source: TwinRegistrationSource | string): number | undefined
   [key: string]: any
 }
 
