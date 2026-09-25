@@ -221,12 +221,18 @@ export abstract class ManagerState extends ManagerContracts {
     }
   }
 
+  /**
+   * 按需装配频道(lead 运行时 + SchedulerLoop,幂等)。实现位于装配层
+   * `ManagerRuntimeWiring.ensureChannelActive`;基类只声明,调用点在任务事件钩子里。
+   */
+  protected abstract ensureChannelActive(channelId: string): void
+
   protected getTaskEngine(): TaskEngine {
     if (!this.taskEngine) {
       const factory = this.deps.taskEngineFactory ?? (r => new TaskEngineImpl(r, {
         onTaskChange: (e) => {
-          // 全字段转发(含 progress):TaskEngine 内部进度变化(applyEvent 分块折算 /
-          // complete 置 100)须经总线 → WS task.progress 实时同步,否则前端实体进度滞后
+        // 全字段转发(含 progress):TaskEngine 内部进度变化(applyEvent 分块折算 /
+        // complete 置 100)须经总线 → WS task.progress 实时同步,否则前端实体进度滞后
           this.buses.get(e.channelId)?.notifyTask({
             taskId: e.taskId,
             state: e.state,
@@ -237,8 +243,19 @@ export abstract class ManagerState extends ManagerContracts {
             reassignFrom: e.reassignFrom,
             reason: e.reason,
           })
-          // 事件驱动调度:任务状态变化即唤醒该频道调度循环(空闲退避即刻恢复快节奏)
-          this.channels.get(e.channelId)?.scheduler?.wake()
+          // 事件驱动调度:任务状态变化即唤醒该频道调度循环(空闲退避即刻恢复快节奏)。
+          //
+          // ⚠️ 只 wake 不够:lead 运行时因空闲被清扫卸载后 `cr.scheduler` 会被置空
+          // (见 runtime-wiring.attachScheduler 注释),此后新建的根任务只落库,
+          // `scheduler?.wake()` 变成空操作 —— 任务永久停在 SUBMITTED,直到
+          // ROOT_TIMEOUT(~18 分钟)被判 FAILED(实测复现:mock Channel 第一条根任务
+          // COMPLETED,后续两条一直 SUBMITTED;omp Channel 同样如此)。
+          // `reviveScheduler` 只在"lead 正在被装配"的窗口里被调用,没有别的事件会重建
+          // 调度循环,所以这里补上**重新挂载**的分支:没有 scheduler 就按需装配 lead +
+          // 调度循环(ensureChannelActive 幂等;频道停用/无 lead 时内部直接返回)。
+          const cr = this.channels.get(e.channelId)
+          if (cr?.scheduler) cr.scheduler.wake()
+          else if (e.state === 'SUBMITTED' || e.state === 'ASSIGNED') ((this as unknown) as { ensureChannelActive: (channelId: string) => void }).ensureChannelActive(e.channelId)
         },
       }))
       this.taskEngine = factory({ tasks: this.deps.repos.tasks, messages: this.deps.repos.messages })
