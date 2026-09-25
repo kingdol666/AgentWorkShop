@@ -16,6 +16,7 @@ import { join } from 'node:path'
 import { Client } from 'pg'
 
 const BASE = process.env.AW_BASE ?? 'http://127.0.0.1:3001'
+const SIM_BASE = process.env.SIM_BASE ?? 'http://127.0.0.1:4010'
 const HOME = process.env.AW_HOME ?? `${process.cwd()}/.aw0746-home`
 const ADMIN = { email: process.env.AW_ADMIN_EMAIL ?? 'admin@awshop.local', password: process.env.AW_ADMIN_PASSWORD ?? 'Awshop@123!' }
 const REQUIRE_MODEL = process.env.AW_REQUIRE_MODEL === '1'
@@ -127,11 +128,24 @@ const latestOf = async (nodeId) => {
   const r = await pg.query('SELECT ts, value FROM daq_samples WHERE node_id = $1 ORDER BY ts DESC LIMIT 1', [nodeId])
   return r.rows[0] ? { at: new Date(r.rows[0].ts).getTime(), value: Number(r.rows[0].value) } : null
 }
+void latestOf
 const required = [...scene.observations, ...scene.states].map(x => x.nodeId)
+// 状态估计取**近 60s 中位**(holding 相位代表值),而不是"最后一条样本":
+// 平台内置估计器是 raw-last-observation-v1,注塑压力 PV 在循环各相位间摆动,
+// 最后一条样本可能落在低压相位 → 物理内核预测克重跌到 31 g 硬约束下界以下,
+// 65 组候选全被拒(实测 0 vs 12 条安全候选,纯属采样相位抖动)。
+const medianOf = async (nodeId, windowMs = 60_000) => {
+  const r = await pg.query('SELECT ts, value FROM daq_samples WHERE node_id = $1 AND ts > now() - ($2 || \' milliseconds\')::interval ORDER BY ts DESC LIMIT 40', [nodeId, String(windowMs)])
+  if (!r.rows.length) return null
+  const vals = r.rows.map(x => Number(x.value)).filter(Number.isFinite).sort((a, b) => a - b)
+  const mid = vals[Math.floor(vals.length / 2)]
+  const at = new Date(r.rows[0].ts).getTime()
+  return { at, value: mid, n: vals.length, latest: Number(r.rows[0].value) }
+}
 const samples = []
 const observed = {}
 for (const nodeId of required) {
-  const p = await latestOf(nodeId)
+  const p = await medianOf(nodeId)
   if (p) {
     samples.push({ nodeId, at: p.at, value: p.value, sequence: `daq:${nodeId}:${p.at}` })
     observed[nodeId] = p.value
@@ -139,7 +153,7 @@ for (const nodeId of required) {
 }
 await pg.end()
 const newest = Math.max(...samples.map(s => s.at))
-check('取到真实 DAQ 样本(场景所需节点全覆盖)', samples.length === required.length, `samples=${samples.length}/${required.length} 最新=${new Date(newest).toISOString().slice(11, 19)} 距今=${Math.round((Date.now() - newest) / 1000)}s`)
+check('取到真实 DAQ 样本(场景所需节点全覆盖)', samples.length === required.length, `samples=${samples.length}/${required.length} 最新=${new Date(newest).toISOString().slice(11, 19)} 距今=${Math.round((Date.now() - newest) / 1000)}s(取近 60s 中位)`)
 
 const states = Object.fromEntries(scene.states.map(s => [s.id, observed[s.nodeId]]))
 // 受控量基线必须取**开跑后**再读一次的真实值:开跑瞬间 DCW 回读还停在压力 PV(实测 ~52 bar),
@@ -147,16 +161,32 @@ const states = Object.fromEntries(scene.states.map(s => [s.id, observed[s.nodeId
 const dcwFresh = (await j('GET', '/api/workshop/dcw', undefined, token)).data
 const dcwNodesFresh = (dcwFresh.nodes ?? []).filter(n => n.lineId === line.id)
 const writesBefore = Number(dcwFresh.controller?.writesTotal ?? 0)
+// 受控量基线 = **现场配方的真实设定值**:
+//  · AW 侧 DCW 的 value 是平台上次下发的陈旧值(hold-pressure-sp=45,被场景下限夹到 50),
+//    拿它当基线时物理内核预测克重 ~30.9 g,低于场景硬约束 31 g → 65 组候选全被拒(实测复现);
+//  · 现场真值是 PLC 模拟器里的 HoldPressSP=67.8 / HoldTimeSP=8(开跑后回读也可能是它),
+//    熔体温度设定应映射到**料筒温度 SP**(barrel-temp-3-sp=252),不是模温 SP(40℃)。
+let simSp = {}
+try {
+  const r = await fetch(`${SIM_BASE}/api/nodes`, { signal: AbortSignal.timeout(5000) })
+  const body = await r.json()
+  for (const node of body.data ?? []) for (const s of node.signals ?? []) if (s?.id) simSp[s.id] = s.value
+}
+catch { simSp = {} }
 const FRESH = {
   hold_pressure: find(dcwNodesFresh, /hold-pressure/),
   hold_time: find(dcwNodesFresh, /hold-time/),
-  melt_temperature_setpoint: find(dcwNodesFresh, /mold-temp/),
+  melt_temperature_setpoint: find(dcwNodesFresh, /barrel-temp-3/) ?? find(dcwNodesFresh, /mold-temp/),
 }
+const SIM_SIGNAL = { hold_pressure: 'hold-pressure-sp', hold_time: 'hold-time-sp', melt_temperature_setpoint: 'barrel-temp-3-sp' }
 const controls = Object.fromEntries(scene.controls.map((c) => {
-  const raw = Number(FRESH[c.id]?.readValue ?? FRESH[c.id]?.value ?? (c.id === 'hold_pressure' ? 65 : c.id === 'hold_time' ? 8 : 247))
+  const plant = Number(simSp[SIM_SIGNAL[c.id]])
+  const raw = Number.isFinite(plant) && plant > 0
+    ? plant
+    : Number(FRESH[c.id]?.readValue ?? FRESH[c.id]?.value ?? (c.id === 'hold_pressure' ? 65 : c.id === 'hold_time' ? 8 : 247))
   return [c.id, clamp(raw, c.min ?? -Infinity, c.max ?? Infinity)]
 }))
-console.log(`  · 受控量基线:${JSON.stringify(controls)}(hold-pressure-sp 命令值=${FRESH.hold_pressure?.value} 回读=${FRESH.hold_pressure?.readValue})`)
+console.log(`  · 受控量基线(现场配方):${JSON.stringify(controls)} [simSP=${JSON.stringify(SIM_SIGNAL)} → ${Object.values(SIM_SIGNAL).map(k => `${k}=${simSp[k]}`).join(' ')}]`)
 const snapArgs = { scene_json: scene, channel_id: twin.id, phase: 'holding', controls, states, samples, freshness_max_ms: 300_000 }
 const snapRes = await invoke('twin_snapshot_create', snapArgs)
 const snapText = String(snapRes.text ?? '')
@@ -203,19 +233,23 @@ check('VirtualTrial 真实执行且候选未执行(candidateExecuted=false)', tr
 check('VirtualTrial 记录推荐证书/约束结论', Boolean(anyTrial?.provenance?.trialHash) && Array.isArray(anyTrial?.constraintResults), `constraints=${anyTrial?.constraintResults?.length} improvement=${anyTrial?.baselineComparison?.improvement?.toFixed?.(4)}`)
 
 // ── 5. 数据集/模型真实指标 → 12 项推荐门禁 ──
-const datasets = ((await j('GET', '/api/workshop/aml/datasets', undefined, token)).data?.datasets ?? []).filter(d => d.lineId === line.id)
-const dsRow = datasets.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0]
+// 必须锚定**生产模型自己的数据集**:频道内的 Agent 也会自建数据集,
+// 取"最新数据集"会读到它们的草稿指标(实测读到 rows=833 / oneStep=1.0 的作业)。
+const allDatasets = ((await j('GET', '/api/workshop/aml/datasets', undefined, token)).data?.datasets ?? []).filter(d => d.lineId === line.id)
+const models = ((await j('GET', '/api/workshop/aml/models', undefined, token)).data?.models ?? [])
+const model = models.find(m => m.stage === 'production') ?? models.find(m => m.stage === 'shadow') ?? models[0]
+const dsRow = allDatasets.find(d => d.id === model?.datasetId) ?? allDatasets.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0]
 const runs = JSON.parse(dsRow?.runIdsJson || '[]').length
 const rows = Number(dsRow?.rowCount ?? 0)
 const exps = ((await j('GET', `/api/workshop/aml/experiments?datasetId=${dsRow.id}`, undefined, token)).data?.experiments ?? [])
-const metrics = JSON.parse(exps[0]?.metricsJson || '{}')
+// 精确匹配该模型的实验(列表按创建升序返回,取 [0] 会读到旧档指标)
+const exp = exps.find(e => e.id === model?.experimentId) ?? exps.find(e => e.jobId === model?.jobId) ?? exps.at(-1)
+const metrics = JSON.parse(exp?.metricsJson || '{}')
 const oneStep = Number(metrics.oneStepTest?.nrmse ?? 1)
 const rollout = Number(metrics.rolloutTest?.nrmse ?? 1)
 const valN = Number(metrics.oneStepVal?.nrmse ?? oneStep)
 const gap = valN > 0 ? Math.abs(oneStep - valN) / valN : 1
-const models = ((await j('GET', '/api/workshop/aml/models', undefined, token)).data?.models ?? [])
-const model = models.find(m => m.datasetId === dsRow.id && m.stage === 'production') ?? models.find(m => m.stage === 'production') ?? models[0]
-check('真实数据集 + 真实训练指标可解析(非伪造)', rows >= 500 && runs >= 3 && Number.isFinite(oneStep) && oneStep < 1, `dataset=${dsRow?.id} rows=${rows} runs=${runs} oneStep=${oneStep.toFixed(4)} rollout=${rollout.toFixed(4)} gap=${(gap * 100).toFixed(2)}%`)
+check('真实数据集 + 真实训练指标可解析(非伪造)', rows >= 500 && runs >= 3 && Number.isFinite(oneStep) && oneStep < 1, `model=${model?.id}@${model?.stage} dataset=${dsRow?.id} rows=${rows} runs=${runs} oneStep=${oneStep.toFixed(4)} rollout=${rollout.toFixed(4)} gap=${(gap * 100).toFixed(2)}%`)
 
 const gateArgs = {
   rows,
