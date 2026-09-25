@@ -22,6 +22,14 @@ export interface SubmitJobInput {
   budget?: { maxExperiments?: number }
   /** 内联训练代码(REST 一次性提交;Agent 经 aml_job_submit 的 code 参数提交) */
   code?: string
+  /** Hybrid Twin lineage context; kept in immutable budget_json for legacy schema compatibility. */
+  sceneId?: string
+  sceneVersion?: string
+  objectiveId?: string
+  jobKind?: 'supervised' | 'physics_calibration' | 'hybrid_residual' | 'uncertainty_calibration'
+  physicsManifest?: Record<string, unknown>
+  twinSnapshot?: Record<string, unknown>
+  objectiveProfile?: Record<string, unknown>
   /** 发起者;byKind 决定审计归属(actorKind) */
   agent?: { id: string, channelId?: string, taskId?: string }
   byKind?: 'user' | 'agent'
@@ -70,6 +78,13 @@ export function submitJob(input: SubmitJobInput): AmlJobRow {
       parentExperimentId: input.parentExperimentId ?? null,
       inlineCode: input.code ?? null,
       byKind,
+      sceneId: input.sceneId ?? null,
+      sceneVersion: input.sceneVersion ?? null,
+      objectiveId: input.objectiveId ?? null,
+      jobKind: input.jobKind ?? 'supervised',
+      physicsManifest: input.physicsManifest ?? null,
+      twinSnapshot: input.twinSnapshot ?? null,
+      objectiveProfile: input.objectiveProfile ?? null,
     },
     metricsJson: null,
     gatesJson: null,

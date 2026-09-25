@@ -7,6 +7,7 @@ import { loadHostToolDefs } from '../../prompts/loader'
 import { daqRuntimeSettings } from '../../settings'
 import { listPluginTools, pluginOfTool } from '../plugin-tools'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
+import { isHybridTwinChannel } from '../../aml/twin/channel-profile'
 
 /** host tool 定义(外置 .AgentWorkShop/prompts/host-tools.json;加载器缓存) */
 export const HOST_TOOLS: RpcHostToolDefinition[] = loadHostToolDefs()
@@ -23,6 +24,11 @@ export const LEAD_ONLY_TOOL_NAMES = new Set([
   'update_team_agent',
   'remove_team_agent',
   'aml_model_promote',
+])
+
+/** Hybrid Twin 工具只对显式 profile=hybrid_twin 的 Channel 注入。 */
+export const HYBRID_TWIN_TOOL_NAMES = new Set([
+  'twin_scene_read', 'twin_snapshot_create', 'twin_trial_run', 'mpc_optimize', 'twin_gate_evaluate',
 ])
 
 /** 占位符动态注入:工具描述里的运行时配置值(每次装配实时计算,配置热重载后 Agent 拿到新值) */
@@ -54,7 +60,9 @@ export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string): R
   const base = role === 'lead'
     ? HOST_TOOLS
     : HOST_TOOLS.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
-  const out = [...base]
+  const hybrid = channelId ? isHybridTwinChannel(channelId) : false
+  const scoped = hybrid ? base : base.filter(t => !HYBRID_TWIN_TOOL_NAMES.has(t.name))
+  const out = [...scoped]
   // 团队级插件开关:显式配置过的 channel 按行过滤;未配置(无行)= 全启用,向后兼容
   const channelOff = channelId
     ? getChannelPluginsRepo().explicitFor(channelId)

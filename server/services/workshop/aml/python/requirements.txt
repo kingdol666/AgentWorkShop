@@ -5,3 +5,5 @@ torch>=2.2
 onnx>=1.15
 onnxscript>=0.1
 onnxruntime>=1.18
+
+scipy==1.14.1

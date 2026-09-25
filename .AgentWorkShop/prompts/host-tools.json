@@ -1178,6 +1178,40 @@
     "parent_experiment_id": {
      "type": "string",
      "description": "父实验 id(谱系对照:本次是在哪个实验基础上改的)"
+    },
+    "scene_id": {
+     "type": "string",
+     "description": "Hybrid Twin 场景 id（可选；写入作业谱系）"
+    },
+    "scene_version": {
+     "type": "string",
+     "description": "Hybrid Twin 场景版本"
+    },
+    "objective_id": {
+     "type": "string",
+     "description": "ObjectiveProfile id"
+    },
+    "job_kind": {
+     "type": "string",
+     "enum": [
+      "supervised",
+      "physics_calibration",
+      "hybrid_residual",
+      "uncertainty_calibration"
+     ],
+     "description": "训练阶段；legacy 留空"
+    },
+    "physics_manifest": {
+     "type": "object",
+     "description": "物理模型 manifest 快照"
+    },
+    "twin_snapshot": {
+     "type": "object",
+     "description": "训练所依据的 TwinSnapshot"
+    },
+    "objective_profile": {
+     "type": "object",
+     "description": "优化目标契约"
     }
    },
    "required": [
@@ -1318,6 +1352,201 @@
      "description": "滚动预测步数(≤ 模型 horizon;缺省 = 全 horizon)"
     }
    }
+  }
+ },
+ {
+  "name": "twin_scene_read",
+  "label": "Twin Scene Read",
+  "description": "读取绑定场景的机器可验证 SceneContract 与控制策略；仅返回场景/节点语义，不执行任何控制。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_id": {
+     "type": "string",
+     "description": "场景 id，缺省使用当前注塑 MVP 场景"
+    }
+   }
+  }
+ },
+ {
+  "name": "twin_snapshot_create",
+  "label": "Twin Snapshot Create",
+  "description": "根据 DAQ 样本创建带 freshness/watermark/hash 的不可变 TwinSnapshot；缺失或过期数据会被拒绝，禁止 Agent 伪造执行状态。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_json": {
+     "type": "object",
+     "description": "SceneContract JSON（可选）"
+    },
+    "channel_id": {
+     "type": "string"
+    },
+    "phase": {
+     "type": "string"
+    },
+    "controls": {
+     "type": "object"
+    },
+    "states": {
+     "type": "object"
+    },
+    "disturbances": {
+     "type": "object"
+    },
+    "samples": {
+     "type": "array",
+     "description": "[{nodeId,at,value,sequence}]"
+    },
+    "now_ms": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "samples",
+    "controls"
+   ]
+  }
+ },
+ {
+  "name": "twin_trial_run",
+  "label": "Twin Virtual Trial",
+  "description": "在隔离物理模型副本中注入候选控制轨迹，输出全轨迹约束、UQ/OOD 与收益；candidateExecuted=false，不触碰 PLC/DCW。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_json": {
+     "type": "object"
+    },
+    "snapshot_json": {
+     "type": "object"
+    },
+    "model_id": {
+     "type": "string"
+    },
+    "baseline_controls": {
+     "type": "object"
+    },
+    "candidate_controls": {
+     "type": "array"
+    },
+    "objective": {
+     "type": "object"
+    },
+    "uncertainty": {
+     "type": "object"
+    }
+   },
+   "required": [
+    "snapshot_json",
+    "candidate_controls"
+   ]
+  }
+ },
+ {
+  "name": "mpc_optimize",
+  "label": "MPC Recommendation Only",
+  "description": "先检查模型门禁；未通过时只生成 safe_small_step 小步参数试探，门禁通过后才允许更精确的候选搜索；始终 recommendation-only。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_json": {
+     "type": "object"
+    },
+    "baseline_controls": {
+     "type": "object"
+    },
+    "model_ready": {
+     "type": "boolean"
+    },
+    "horizon_steps": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "baseline_controls"
+   ]
+  }
+ },
+ {
+  "name": "twin_gate_evaluate",
+  "label": "Twin Gate Evaluate",
+  "description": "评估 AML 数据门、物理门、UQ/OOD、VirtualTrial 候选数量和硬约束；零候选/零分母自动拒绝。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "rows": {
+     "type": "number"
+    },
+    "runs": {
+     "type": "number"
+    },
+    "one_step_nrmse": {
+     "type": "number"
+    },
+    "rollout_nrmse": {
+     "type": "number"
+    },
+    "val_test_gap": {
+     "type": "number"
+    },
+    "calibration_rows": {
+     "type": "number"
+    },
+    "coverage": {
+     "type": "number"
+    },
+    "physics_failure_rate": {
+     "type": "number"
+    },
+    "candidate_trials": {
+     "type": "array"
+    }
+   },
+   "required": [
+    "rows",
+    "runs",
+    "candidate_trials"
+   ]
+  }
+ },
+ {
+  "name": "twin_calibration_request",
+  "label": "Twin Calibration Request",
+  "description": "按新 DAQ run/rows、漂移或误差阈值登记一次去重的自动校准候选；只进入 AgentTeam 校准队列，不覆盖 production，不写 DCW。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_id": {
+     "type": "string"
+    },
+    "line_id": {
+     "type": "string"
+    },
+    "recipe_id": {
+     "type": "string"
+    },
+    "new_runs": {
+     "type": "number"
+    },
+    "new_rows": {
+     "type": "number"
+    },
+    "drift_score": {
+     "type": "number"
+    },
+    "error_score": {
+     "type": "number"
+    },
+    "reason": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "line_id",
+    "new_runs",
+    "new_rows"
+   ]
   }
  }
 ]

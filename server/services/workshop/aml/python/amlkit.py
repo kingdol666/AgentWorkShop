@@ -118,3 +118,68 @@ def export_torch_onnx(model, manifest, path=None):
             opset_version=17,
         )
     return p
+
+
+def _load_json_from_job(name):
+    """读取作业目录下的受控 Twin 工件，不允许越界。"""
+    p = Path(_safe_job_path(name))
+    if not p.exists():
+        return {}
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def load_physics_manifest(job_or_path=None):
+    """加载 physics_manifest.json；缺失时返回空 manifest，保持 legacy AML 兼容。"""
+    if job_or_path:
+        p = Path(str(job_or_path))
+        if p.is_dir():
+            candidate = p / "physics_manifest.json"
+            if candidate.exists():
+                return json.loads(candidate.read_text(encoding="utf-8"))
+    return _load_json_from_job("physics_manifest.json")
+
+
+def load_twin_snapshot(job_or_path=None):
+    if job_or_path:
+        p = Path(str(job_or_path))
+        if p.is_dir():
+            candidate = p / "twin_snapshot.json"
+            if candidate.exists():
+                return json.loads(candidate.read_text(encoding="utf-8"))
+    return _load_json_from_job("twin_snapshot.json")
+
+
+def load_objective_profile(job_or_path=None):
+    if job_or_path:
+        p = Path(str(job_or_path))
+        if p.is_dir():
+            candidate = p / "objective_profile.json"
+            if candidate.exists():
+                return json.loads(candidate.read_text(encoding="utf-8"))
+    return _load_json_from_job("objective_profile.json")
+
+
+def report_physics_metrics(metrics):
+    return save_metrics({"physics": dict(metrics)})
+
+
+def report_uncertainty(metrics):
+    return save_metrics({"uncertainty": dict(metrics)})
+
+
+def export_hybrid_model(physics_model, residual_model, manifest, physics_parameters=None):
+    """导出物理参数、残差 state_dict 和 ONNX（residual_model 需符合 one-step 输入契约）。"""
+    import torch
+    artifact_dir = Path(_artifacts_dir())
+    if physics_parameters is not None:
+        (artifact_dir / "physics_parameters.json").write_text(json.dumps(physics_parameters, ensure_ascii=False, indent=2), encoding="utf-8")
+    if residual_model is not None:
+        torch.save({"state_dict": residual_model.state_dict()}, artifact_dir / "model.pt")
+        export_torch_onnx(residual_model, manifest)
+    if physics_model is not None:
+        try:
+            torch.save({"state_dict": physics_model.state_dict()}, artifact_dir / "physics_model.pt")
+        except AttributeError:
+            (artifact_dir / "physics_model.json").write_text(json.dumps(physics_model, ensure_ascii=False, indent=2), encoding="utf-8")
+    (artifact_dir / "hybrid_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    return str(artifact_dir)

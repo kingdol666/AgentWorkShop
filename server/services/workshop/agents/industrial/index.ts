@@ -20,3 +20,5 @@ export { toolDcwJudge, toolDcwRollback, toolDcwJournal } from './dcw-judge-tools
 export { toolOpsLog, toolRecipeLog, toolLineContext, toolRecipeVersions, toolRecipeUpdate, toolRecipeRollback } from './ops-tools'
 export { toolAmlNodeCatalog, toolAmlDatasetBuild, toolAmlDatasetStats } from './aml-dataset-tools'
 export { toolAmlJobSubmit, toolAmlJobStatus, toolAmlJobLogs, toolAmlJobCancel, toolAmlLeaderboard, toolAmlModelPromote, toolAmlModelReference } from './aml-job-tools'
+
+export { toolTwinSceneRead, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinCalibrationRequest } from './twin-tools'

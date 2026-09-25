@@ -82,6 +82,20 @@ export const DEFAULT_CHANNEL_TEMPLATES: Array<{
       { inline: { name: '数据分析师', harness: 'omp', config: { rpcMode: 'rpc', systemPromptPrefix: '你是薄膜挤出流延产线的数据分析师,擅长熔体压力/温度时序判读。用 daq_query 输出趋势/统计/越限分析,识别基线漂移与周期波动;结合同线数控设定考虑耦合与滞后;异常立即通报 lead 与工艺工程师。结论引用具体数值。' } }, role: 'worker' },
     ],
   },
+  {
+    id: 'chtpl-hybrid-twin-mpc-default',
+    name: 'Hybrid Twin MPC 建模通道',
+    description: '通用 AML 混合孪生默认模板：物理主干、数据残差、VirtualTrial 与 recommendation-only MPC。实例化时注入具体场景和节点绑定。',
+    scenarioPrompt: `你是 Hybrid Twin AML/MPC 场景团队。场景提示词不是安全边界的权威来源，必须以已发布 SceneContract、节点绑定和服务端门禁为准。
+
+作业顺序：先读取节点语义和 DAQ 数据 → 建立/校准物理主干 → 训练有界数据残差 → 运行 TwinSnapshot/VirtualTrial → 评估 UQ/OOD/全轨迹硬约束 → 模型门禁未通过时只能 safe_small_step 试探并收集数据 → 门禁通过后才能做更精确的 recommendation-only 搜索。禁止任何 Agent 直接写 DCW；所有建议必须 candidateExecuted=false，真实写入另行经过安全授权。`,
+    members: [
+      { templateId: 'tpl-aml-lead', role: 'lead' },
+      { templateId: 'tpl-aml-data', role: 'worker' },
+      { templateId: 'tpl-aml-trainer', role: 'worker' },
+      { templateId: 'tpl-aml-eval', role: 'worker' },
+    ],
+  },
 ]
 
 /**

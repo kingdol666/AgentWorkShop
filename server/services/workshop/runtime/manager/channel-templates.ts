@@ -9,6 +9,8 @@ import type { ChannelTemplateRow } from '../../db/database'
 import { AppError } from '../../../../utils/errors'
 import { KNOWN_HARNESSES } from './helpers'
 import { parseJson } from '../../db/database'
+import { setHybridChannelProfile } from '../../aml/twin/channel-profile'
+import { defaultInjectionScene } from '../../aml/twin/physics-runtime'
 
 export abstract class ManagerChannelTemplates extends ManagerTeams {
   /** 可见性感知 Channel 模板列表:普通用户 = 本人 + public(含内置);admin = 全量 */
@@ -99,7 +101,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
    * 场景/工作目录照搬;lead 内联创建;成员逐个克隆(引用模板时校验操作者可读)。
    * 返回 createChannel 同构结果 + 成员实例数。
    */
-  async instantiateChannelTemplate(templateId: string, user: ActingUser, nameOverride?: string): Promise<{ channelId: string, workspace: string, agentCount: number, leadAgentId?: string }> {
+  async instantiateChannelTemplate(templateId: string, user: ActingUser, nameOverride?: string, options?: { scene?: Record<string, unknown>, promptVariables?: Record<string, unknown>, objective?: Record<string, unknown>, toolProfile?: string, controlPolicy?: 'recommendation_only' | 'hitl_governed' | 'bounded_auto' }): Promise<{ channelId: string, workspace: string, agentCount: number, leadAgentId?: string, agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> }> {
     const tpl = this.deps.repos.channelTemplates.findById(templateId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
     this.requireTemplateReadable(tpl, user, 'Channel 模板')
@@ -115,22 +117,31 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
       ownerUserId: user.id,
     })
     const members = parseJson<ChannelTemplateMember[]>(tpl.membersJson, [])
+    const agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> = []
+    if (created.leadAgentId) agents.push({ id: created.leadAgentId, name: lead?.name ?? 'lead', role: 'lead' })
     let agentCount = lead ? 1 : 0
     for (const m of members) {
       if ('templateId' in m) {
         const tplRow = this.deps.repos.agents.findById(m.templateId)
         if (!tplRow) throw new AppError(404, 'NOT_FOUND', `成员 Agent 模板不存在: ${m.templateId}`)
         this.requireTemplateReadable(tplRow, user, '成员 Agent 模板')
-        await this.addAgentToChannel({ channelId: created.channelId, agentId: m.templateId, role: m.role, by: 'template' })
+        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: m.templateId, role: m.role, by: 'template' })
+        agents.push({ id: inst.id, templateId: inst.templateId, name: inst.name, role: inst.role })
       }
       else {
         this.assertHarness(m.inline.harness)
         const inlineTpl = await this.createAgent({ name: m.inline.name, harness: m.inline.harness, config: m.inline.config, ownerUserId: user.id })
-        await this.addAgentToChannel({ channelId: created.channelId, agentId: inlineTpl.id, role: m.role, by: 'template' })
+        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: inlineTpl.id, role: m.role, by: 'template' })
+        agents.push({ id: inst.id, templateId: inst.templateId, name: inst.name, role: inst.role })
       }
       agentCount += 1
     }
-    return { channelId: created.channelId, workspace: created.workspace, agentCount, leadAgentId: created.leadAgentId }
+    const hybrid = options?.toolProfile === 'hybrid_twin' || tpl.id === 'chtpl-hybrid-twin-mpc-default'
+    if (hybrid) {
+      const scene = options?.scene ?? (defaultInjectionScene('channel-template') as unknown as Record<string, unknown>)
+      await Promise.resolve(setHybridChannelProfile({ channelId: created.channelId, profile: 'hybrid_twin', capability: { twin: true, amlTraining: true, trial: true, mpcRecommendation: true }, sceneId: String(scene.sceneId ?? 'injection-hold-control'), sceneVersion: String(scene.sceneVersion ?? '1.0.0'), sceneContract: scene, objective: options?.objective ?? {}, controlPolicy: options?.controlPolicy ?? 'recommendation_only', createdBy: user.id }))
+    }
+    return { channelId: created.channelId, workspace: created.workspace, agentCount, leadAgentId: created.leadAgentId, agents }
   }
 
   protected assertHarness(harness: string | undefined): void {

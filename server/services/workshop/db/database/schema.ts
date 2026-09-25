@@ -528,6 +528,122 @@ CREATE TABLE IF NOT EXISTS hitl_requests (
 );
 CREATE INDEX IF NOT EXISTS idx_hitl_requests_status ON hitl_requests(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_hitl_requests_channel ON hitl_requests(channel_id, status);
+CREATE INDEX IF NOT EXISTS idx_hitl_requests_agent ON hitl_requests(agent_id, status);
+
+-- v18: AML Hybrid Twin 核心元数据（additive；legacy AML 表保持不变）
+CREATE TABLE IF NOT EXISTS aml_channel_profiles (
+  channel_id TEXT PRIMARY KEY REFERENCES channels(id) ON DELETE CASCADE,
+  profile TEXT NOT NULL DEFAULT 'legacy', -- legacy | hybrid_twin
+  capability_json TEXT NOT NULL DEFAULT '{}',
+  scene_id TEXT,
+  scene_version TEXT,
+  scene_contract_json TEXT NOT NULL DEFAULT '{}',
+  objective_json TEXT NOT NULL DEFAULT '{}',
+  control_policy TEXT NOT NULL DEFAULT 'recommendation_only',
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_aml_channel_profiles_scene ON aml_channel_profiles(scene_id, scene_version);
+
+CREATE TABLE IF NOT EXISTS twin_scenes (
+  scene_id TEXT NOT NULL,
+  scene_version TEXT NOT NULL,
+  schema_version INTEGER NOT NULL DEFAULT 1,
+  contract_json TEXT NOT NULL,
+  contract_hash TEXT NOT NULL,
+  line_id TEXT NOT NULL,
+  product_id TEXT NOT NULL DEFAULT '',
+  recipe_id TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'draft',
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(scene_id, scene_version)
+);
+CREATE INDEX IF NOT EXISTS idx_twin_scenes_line ON twin_scenes(line_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS twin_snapshots (
+  id TEXT PRIMARY KEY,
+  scene_id TEXT NOT NULL,
+  scene_version TEXT NOT NULL,
+  line_id TEXT NOT NULL,
+  product_id TEXT NOT NULL DEFAULT '',
+  recipe_id TEXT NOT NULL DEFAULT '',
+  phase TEXT NOT NULL DEFAULT '',
+  snapshot_hash TEXT NOT NULL UNIQUE,
+  watermark_ms INTEGER NOT NULL DEFAULT 0,
+  freshness_json TEXT NOT NULL DEFAULT '{}',
+  payload_json TEXT NOT NULL,
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(scene_id, scene_version) REFERENCES twin_scenes(scene_id, scene_version)
+);
+CREATE INDEX IF NOT EXISTS idx_twin_snapshots_scene ON twin_snapshots(scene_id, line_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS twin_models (
+  id TEXT PRIMARY KEY,
+  scene_id TEXT NOT NULL,
+  scene_version TEXT NOT NULL,
+  model_kind TEXT NOT NULL DEFAULT 'hybrid_twin',
+  physics_model_id TEXT,
+  residual_model_id TEXT,
+  dataset_id TEXT,
+  status TEXT NOT NULL DEFAULT 'candidate',
+  capability_json TEXT NOT NULL DEFAULT '{}',
+  eligibility_json TEXT NOT NULL DEFAULT '{}',
+  metrics_json TEXT NOT NULL DEFAULT '{}',
+  provenance_json TEXT NOT NULL DEFAULT '{}',
+  artifact_path TEXT NOT NULL DEFAULT '',
+  model_hash TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  promoted_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_twin_models_lookup ON twin_models(scene_id, scene_version, status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS twin_trials (
+  id TEXT PRIMARY KEY,
+  snapshot_id TEXT NOT NULL REFERENCES twin_snapshots(id),
+  twin_model_id TEXT,
+  objective_id TEXT NOT NULL,
+  candidate_executed INTEGER NOT NULL DEFAULT 0 CHECK(candidate_executed=0),
+  status TEXT NOT NULL DEFAULT 'completed',
+  result_json TEXT NOT NULL,
+  result_hash TEXT NOT NULL,
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_twin_trials_snapshot ON twin_trials(snapshot_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS twin_recommendations (
+  id TEXT PRIMARY KEY,
+  trial_id TEXT NOT NULL REFERENCES twin_trials(id),
+  certificate_hash TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'issued',
+  certificate_json TEXT NOT NULL,
+  expires_at TEXT,
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS twin_update_runs (
+  id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL UNIQUE,
+  dedup_key TEXT NOT NULL,
+  scene_id TEXT NOT NULL,
+  line_id TEXT NOT NULL,
+  recipe_id TEXT NOT NULL DEFAULT '',
+  state TEXT NOT NULL DEFAULT 'queued',
+  cooldown_until TEXT,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  error TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  started_at TEXT,
+  ended_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_twin_update_active_dedup ON twin_update_runs(dedup_key) WHERE state IN ('queued','running','cooldown');
+
 CREATE INDEX IF NOT EXISTS idx_hitl_requests_agent ON hitl_requests(agent_id, status);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====

@@ -12,6 +12,11 @@ import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../../../plugins
 
 const instantiateSchema = z.object({
   name: z.string().min(1).optional(),
+  scene: z.record(z.unknown()).optional(),
+  promptVariables: z.record(z.unknown()).optional(),
+  objective: z.record(z.unknown()).optional(),
+  toolProfile: z.string().optional(),
+  controlPolicy: z.enum(['recommendation_only', 'hitl_governed', 'bounded_auto']).optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -19,7 +24,7 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(instantiateSchema))
   const manager = getWorkshopManager()
-  const result = await manager.instantiateChannelTemplate(templateId, user, body.name)
+  const result = await manager.instantiateChannelTemplate(templateId, user, body.name, { scene: body.scene, promptVariables: body.promptVariables, objective: body.objective, toolProfile: body.toolProfile, controlPolicy: body.controlPolicy })
   // 模板含 lead 时直接启动调度循环(可提交任务)
   if (result.leadAgentId) {
     ensureLeadSchedulerLoop(manager, result.channelId)

@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-09-25T03:04:13.198779+00:00",
+  "backend": "pytorch",
+  "physicsFirst": true,
+  "rows": 512,
+  "lossInitial": 0.018708299845457077,
+  "lossFinal": 0.0007293505477719009,
+  "lossDecreased": true,
+  "residualBound": 0.15,
+  "maxAbsResidual": 0.006531256251037121,
+  "residualBoundRespected": true,
+  "rmse": 0.027006518095731735,
+  "recommendationOnly": true,
+  "dcwWrites": 0
+}

@@ -1,0 +1,55 @@
+{
+  "acceptanceId": "aml-hybrid-twin-2026-09-25T03:04:10.670Z",
+  "generatedAt": "2026-09-25T03:04:10.670Z",
+  "noRealDcwWrites": true,
+  "scene": {
+    "sceneId": "injection-hold-control",
+    "version": "1.0.0",
+    "lineId": "line-injection-01"
+  },
+  "snapshot": {
+    "id": "snap-mugdn2r4-twpqac",
+    "fresh": true,
+    "completeness": 1,
+    "hash": "7b5398bdf717db1f49a7323c9d3078bc2a7000f7197156282f27673286b5248c"
+  },
+  "undertrained": {
+    "passed": false,
+    "mode": "safe_small_step",
+    "rejectCodes": [
+      "G0_ROWS",
+      "G0_RUNS",
+      "G1_SINGLE_STEP",
+      "G2_ROLLOUT",
+      "G3_GENERALIZATION",
+      "G4_CALIBRATION_ROWS",
+      "G4_COVERAGE",
+      "G5_PHYSICS_FAILURE",
+      "G6_CANDIDATE_COUNT",
+      "G6_TRIAL_COUNT"
+    ]
+  },
+  "trained": {
+    "passed": true,
+    "mode": "precise_search",
+    "rejectCodes": []
+  },
+  "recommendation": {
+    "issued": true,
+    "certificateHash": "0793611f05ee56de4eea2c713219604ef37dceeddaebe82ba6363e75c41858bf",
+    "candidateExecuted": false
+  },
+  "unsafeTrial": {
+    "hardConstraintsPassed": false,
+    "rejectCodes": [
+      "weight",
+      "flash_rate"
+    ]
+  },
+  "staleSnapshotRejected": true,
+  "tuningPolicy": {
+    "whenModelNotReady": "safe_small_step",
+    "whenModelGatesPass": "precise_search",
+    "writeMode": "recommendation_only"
+  }
+}
