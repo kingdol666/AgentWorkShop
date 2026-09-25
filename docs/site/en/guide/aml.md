@@ -106,7 +106,7 @@ is always refused).
 | `aml_model_promote` | request a stage promotion (lead-only; goes through human approval) |
 | `aml_model_reference` | query the shadow reference of a production model (tuning what-if; proposed parameters via `controls`) |
 
-These 10 are **host tools** defined in `.AgentWorkShop/prompts/host-tools.json` (57 entries
+These 10 are **host tools** defined in `.AgentWorkShop/prompts/host-tools.json` (63 entries
 on the host tool surface); they are a different surface from MCP
 (`server/mcp/workshop-server.ts`, 25 in-process tools).
 
@@ -120,12 +120,22 @@ extra tools:
 
 | Tool | Purpose |
 |---|---|
+| `twin_provider_catalog` | read registered providers / scene packs / solver adapters with generation and health (read-only) |
+| `twin_scene_discover` | read the Agent's **bound DAQ/DCW nodes** and infer control/state/disturbance/target/guard semantics with evidence and confidence |
+| `twin_scene_compile` | build a **SceneContract draft** from bound nodes and the scene prompt (draft by default; user confirmation precedes go-live) |
+| `twin_scene_freeze` | **freeze** the scene contract after user confirmation (a given `scene_id`/`version` can never be overwritten; changes require a new version) |
+| `twin_physics_spec_validate` | validate a declarative physics model's **whitelisted AST / variable and parameter references / units / bounds / stability / monotonicity**; no arbitrary code execution |
+| `twin_physics_spec_compile` | compile a frozen scene's **PhysicsSpec into an isolated Generic Declarative Provider candidate** and save the artifact (no production registration, no PLC write) |
 | `twin_scene_read` | read the scene contract (devices / signals / constraints / objectives) |
 | `twin_snapshot_create` | create a TwinSnapshot (freshness enforced; stale → `SNAPSHOT_STALE`) |
 | `twin_trial_run` | run a virtual trial: all-trajectory hard constraints reject unsafe candidates, `candidateExecuted=false` |
 | `mpc_optimize` | MPC optimisation (server-side strategies `safe_small_step` / `precise_search`) |
 | `twin_gate_evaluate` | gate + benefit evaluation; only a pass issues a RecommendationCertificate |
 | `twin_calibration_request` | continuous-calibration registration (duplicates deduped inside the cooldown) |
+
+> Note: the injected twin tools are **gated by profile** (a `legacy` channel gets none of them). The table above is the
+> full twin surface of a `hybrid_twin` channel; the declarative physics model (PhysicsSpec) protocol and validator are
+> specified in `docs/aml-agent-auto-twin-builder-plan.md` §4.3/§6.
 
 Recommendation-only by default: insufficient data → `safe_small_step`; model cleared gates →
 `precise_search`; no real DCW write happens until a certificate is certified. Plan and

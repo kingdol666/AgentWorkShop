@@ -97,7 +97,7 @@ CLI 例:`aw config set aml.gates.nrmse 0.12`、`aw config get aml.job.maxConcurr
 | `aml_model_promote` | 发起阶段晋升(lead 专属;内部走人工审批) |
 | `aml_model_reference` | 查询生产模型的影子参考(调参 what-if,拟议参数经 `controls` 传入) |
 
-这 10 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 57 条),
+这 10 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 63 条),
 与 MCP 面(`server/mcp/workshop-server.ts`,25 个进程内工具)是两套不同的表面。
 
 ## 混合孪生 × MPC(channel profile `hybrid_twin`)
@@ -109,12 +109,21 @@ AML 还承载**混合孪生**平面:灰箱物理主干 + 有界 PyTorch 残差,�
 
 | 工具 | 作用 |
 |---|---|
+| `twin_provider_catalog` | 读取已注册的 Provider / ScenePack / SolverAdapter 及其 generation 与 health(只读) |
+| `twin_scene_discover` | 读当前 Agent **已绑定的 DAQ/DCW 节点**,推断 control/state/disturbance/target/guard 语义并给出证据与置信度 |
+| `twin_scene_compile` | 依绑定节点与场景提示词生成 **SceneContract Draft**(默认 draft,上线前须用户确认) |
+| `twin_scene_freeze` | 用户确认后**冻结**场景契约(同一 `scene_id`/`version` 不可覆盖,变更须新建版本) |
+| `twin_physics_spec_validate` | 校验声明式物理模型的**白名单 AST / 变量参数引用 / 单位 / 边界 / 稳定性 / 单调性**,禁止任意代码执行 |
+| `twin_physics_spec_compile` | 把已冻结场景的 **PhysicsSpec 编译为隔离的 Generic Declarative Provider 候选**并保存 artifact(不注册 production、不写 PLC) |
 | `twin_scene_read` | 读取场景契约(设备/信号/约束/目标) |
 | `twin_snapshot_create` | 生成 TwinSnapshot(含新鲜度;过期 → `SNAPSHOT_STALE`) |
 | `twin_trial_run` | 跑虚拟试验:全轨迹硬约束拒绝不安全候选,`candidateExecuted=false` |
 | `mpc_optimize` | MPC 寻优(服务端策略 `safe_small_step` / `precise_search`) |
 | `twin_gate_evaluate` | 门禁与收益评估;通过才签发 RecommendationCertificate |
 | `twin_calibration_request` | 持续校准登记(重复请求在 cooldown 内去重拒绝) |
+
+> 说明:Profile 注入的孪生工具**按 profile 门控**(`legacy` 频道不注入)。上表是 `hybrid_twin` 频道的完整孪生面;
+> 「声明式物理模型(PhysicsSpec)」的协议与校验见 `docs/aml-agent-auto-twin-builder-plan.md` §4.3/§6。
 
 默认即**推荐模式**:数据不足 → `safe_small_step`;模型过门禁 → `precise_search`;
 证书未签发前不产生真实 DCW 写入。计划与验收记录见
