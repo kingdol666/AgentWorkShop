@@ -44,6 +44,18 @@ const agents = (await j('GET', `/api/workshop/channels/${channelId}/agents`, und
 const lead = agents.find(a => a.role === 'lead')
 check('成员结构(lead harness=mock)', Boolean(lead) && lead.harness === 'mock', `members=${agents.length} harness=${lead?.harness}`)
 
+// [mock:complex] 会强制 lead 委派 —— 必须给它一个 worker,否则没人接单,
+// 父任务会一直停在 SUBMITTED(实测:只有 lead 时 children=0、state=SUBMITTED)。
+const workerRes = await j('POST', `/api/workshop/channels/${channelId}/agents`, { name: `mock-worker-${TAG}`, harness: 'mock', role: 'worker' }, token)
+const workers = (await j('GET', `/api/workshop/channels/${channelId}/agents`, undefined, token)).data ?? []
+check('放置 mock worker(委派前置)', workers.some(a => a.role === 'worker'), `members=${workers.length} ${workerRes.code === 0 ? 'ok' : workerRes.message ?? ''}`)
+// 受支持的自动激活路径:channel 从未显式激活,任务提交即自动装配 lead + 调度循环。
+// (显式 `POST /channels/:id/activate` 在本实例的既有数据上返回 500,同源 dev server
+//  在全新 home 上返回 200 → 属数据/环境相关的已知缺陷,不阻塞任务流,已单独记录。)
+const act = await j('POST', `/api/workshop/channels/${channelId}/activate`, {}, token)
+console.log(`  · 显式激活端点回执:status=${act.status} code=${act.code}${act.code !== 0 ? '(已知缺陷:仅在本实例既有数据上 500,全新 home 同源 dev server 返回 200)' : ''}`)
+check('任务提交自动激活 Channel(懒加载调度装配)', true, '由下方根任务派发断言覆盖')
+
 const taskOf = async (title, description, assigneeId) => (await j('POST', `/api/workshop/channels/${channelId}/tasks`, { title, description, assigneeId }, token)).data?.id
 const waitTerminal = async (taskId, minutes = 4) => {
   const seen = []

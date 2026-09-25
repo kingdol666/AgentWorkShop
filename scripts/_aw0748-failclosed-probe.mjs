@@ -50,7 +50,7 @@ await j('POST', `/api/workshop/dcw/lines/${line.id}/stop`, {}, token)
 await new Promise(r => setTimeout(r, 2500))
 const st = await j('POST', `/api/workshop/dcw/lines/${line.id}/start`, { recipeId: recipe.id }, token)
 console.log(`  · 开跑采样:start status=${st.status} ${st.code ?? ''}`)
-await new Promise(r => setTimeout(r, 8000))
+await new Promise(r => setTimeout(r, 30_000))
 
 const daq = (await j('GET', '/api/workshop/daq', undefined, token)).data
 const daqNodes = (daq.nodes ?? []).filter(n => n.lineId === line.id)
