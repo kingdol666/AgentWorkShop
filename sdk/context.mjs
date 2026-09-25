@@ -1,3 +1,4 @@
+/* eslint-disable @stylistic/max-statements-per-line */
 // ============================================================
 // AgentWorkShop SDK — 服务端插件上下文工厂（宿主调用;插件经 setup(ctx) 获得）
 // ------------------------------------------------------------
@@ -15,6 +16,7 @@
 //   平台    ctx.api     平台 REST 客户端(lines/daq/dcw/twins/teams…) [SDK]
 //   网络    ctx.http    { get, post } 带超时 fetch(仅 http/https)    [SDK]
 //   事件    ctx.events  { on(type,fn), off }  scene 实时事件          [SDK]
+//   孪生    ctx.twin   Twin Provider Registry 桥(注册/查询/健康)      [SDK]
 //   路径    ctx.paths   { home, configRoot, dataDir }                [SDK]
 // ============================================================
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
@@ -23,6 +25,236 @@ import { HookBus } from './hooks.mjs'
 import { createPlatformClient } from './api.mjs'
 
 export const SDK_VERSION = '0.3.0'
+
+/**
+ * Twin Registry 的全局桥名称。
+ *
+ * 与 daq/dcw/omp 插件桥一样,SDK 先创建一个只负责排队的桥;服务端
+ * Registry 随后接管同一个对象并 drain pending entries。保留两个历史候选
+ * 名称的读取兼容,方便 Registry 模块先于插件宿主加载。
+ */
+export const TWIN_BRIDGE_KEY = '__twinPluginExt'
+const TWIN_BRIDGE_KEYS = Object.freeze([
+  TWIN_BRIDGE_KEY,
+  '__awTwinRegistryBridge',
+  '__twinRegistryBridge',
+])
+
+const TWIN_REGISTRATION_KINDS = new Set([
+  'registerPhysicsProvider',
+  'registerScenePack',
+  'registerObjectiveProfile',
+  'registerTrainingAdapter',
+  'registerSolverAdapter',
+])
+
+/**
+ * 查询面没有 Registry 时抛出的可识别错误。
+ * 注册面不会因为 Registry 尚未加载而抛错,而是进入全局桥 pending 队列。
+ */
+export class TwinRegistryUnavailableError extends Error {
+  constructor(operation = 'operation') {
+    super(`[sdk] Twin Registry unavailable for ${operation}; registration calls are queued until the server bridge attaches`)
+    this.name = 'TwinRegistryUnavailableError'
+    this.code = 'TWIN_REGISTRY_UNAVAILABLE'
+    this.operation = operation
+  }
+}
+
+function isTwinRegistryUnavailable(err) {
+  return err?.code === 'TWIN_REGISTRY_UNAVAILABLE' || err?.name === 'TwinRegistryUnavailableError'
+}
+
+function twinRegistrationReceipt(kind, source) {
+  return {
+    status: 'queued',
+    queued: true,
+    kind,
+    plugin: source?.plugin ?? source?.name ?? '',
+    source,
+  }
+}
+
+/**
+ * 调用 Registry 实例上的注册方法。
+ * Registry 既可以暴露与 SDK 同名的方法,也可以只暴露统一 register(kind,...)
+ * 方法;两种形态都由桥接层承认,避免 SDK 绑定 Registry 的内部类名。
+ */
+function dispatchTwinRegistration(target, kind, payload, source) {
+  if (!target || target === globalThis) throw new TwinRegistryUnavailableError(kind)
+  const explicit = target[kind]
+  if (typeof explicit === 'function') return explicit.call(target, payload, source)
+  if (typeof target.register === 'function') return target.register(kind, payload, source)
+  if (typeof target.registerEntry === 'function') return target.registerEntry({ kind, payload, source })
+  throw new TwinRegistryUnavailableError(kind)
+}
+
+/**
+ * 桥的默认实现。它本身不实现 Registry 语义,只提供：
+ *   - pending: 插件宿主早于服务端 Registry 时的注册队列;
+ *   - drain(onEntry): Registry 接管时回放,之后注册即时转发;
+ *   - attach(registry): 便捷接管方法(服务端也可以直接改写桥方法);
+ *   - call(method,...args): 查询面统一调用口。
+ *
+ * 这段实现故意放在 SDK 而不是 plugin host 中,这样旧插件无需 host 版本升级
+ * 就能安全地获得 ctx.twin;没有 Registry 时也不会影响插件 setup 成功。
+ */
+function createTwinRegistryBridge() {
+  const bridge = {
+    pending: [],
+    registry: null,
+    _drain: null,
+
+    register(kind, payload, source) {
+      if (!TWIN_REGISTRATION_KINDS.has(String(kind))) {
+        throw new Error(`[sdk] unknown Twin registration kind: ${String(kind)}`)
+      }
+      if (this.registry) return dispatchTwinRegistration(this.registry, kind, payload, source)
+      this.pending.push({ kind, payload, source })
+      this._drain?.()
+      return twinRegistrationReceipt(kind, source)
+    },
+
+    registerEntry(entry) {
+      return this.register(entry?.kind, entry?.payload, entry?.source)
+    },
+
+    /** Registry 调用此方法接管桥;加载顺序与插件宿主无关。 */
+    drain(onEntry) {
+      if (typeof onEntry !== 'function') throw new TypeError('[sdk] Twin bridge drain requires a function')
+      this._drain = () => {
+        const entries = this.pending.splice(0)
+        for (const entry of entries) onEntry(entry)
+      }
+      this._drain()
+    },
+
+    /** 便捷接管 API;等价于 registry 模块自行设置 drain + 查询方法。 */
+    attach(registry) {
+      if (!registry || (typeof registry !== 'object' && typeof registry !== 'function')) {
+        throw new TypeError('[sdk] Twin bridge attach requires a Registry object')
+      }
+      this.registry = registry
+      this.drain(entry => dispatchTwinRegistration(registry, entry.kind, entry.payload, entry.source))
+      return this
+    },
+
+    bind(registry) {
+      return this.attach(registry)
+    },
+
+    call(method, ...args) {
+      if (this.registry && typeof this.registry[method] === 'function') {
+        return this.registry[method](...args)
+      }
+      throw new TwinRegistryUnavailableError(method)
+    },
+
+    invoke(method, ...args) {
+      return this.call(method, ...args)
+    },
+
+    /** 未接管前清理某个插件遗留在队列中的注册,避免热重载产生幽灵项。 */
+    unregisterPlugin(sourceOrName) {
+      const plugin = typeof sourceOrName === 'string'
+        ? sourceOrName
+        : sourceOrName?.plugin ?? sourceOrName?.pluginName ?? sourceOrName?.name
+      if (!plugin) return 0
+      if (this.registry) {
+        const remove = this.registry.unregisterPlugin ?? this.registry.removePlugin
+        if (typeof remove === 'function') return remove.call(this.registry, sourceOrName)
+      }
+      let removed = 0
+      this.pending = this.pending.filter((entry) => {
+        const owner = entry?.source?.plugin ?? entry?.source?.pluginName ?? entry?.source?.name
+        if (owner === plugin) {
+          removed += 1
+          return false
+        }
+        return true
+      })
+      return removed
+    },
+  }
+  return bridge
+}
+
+/**
+ * 取得全局 Twin 桥。允许 Registry 模块先行放置自己的桥,也允许 SDK 先建
+ * 默认排队桥;不要在这里 import 服务端 Registry,否则插件 SDK 会产生循环依赖。
+ */
+export function getTwinRegistryBridge(preferred) {
+  if (preferred && (typeof preferred === 'object' || typeof preferred === 'function')) return preferred
+
+  const g = globalThis
+  for (const key of TWIN_BRIDGE_KEYS) {
+    const existing = g[key]
+    if (!existing || (typeof existing !== 'object' && typeof existing !== 'function')) continue
+    // 统一暴露 canonical key,但不覆盖 Registry 已放置的对象。
+    if (!g[TWIN_BRIDGE_KEY]) {
+      try { g[TWIN_BRIDGE_KEY] = existing }
+      catch { /* non-writable global is still usable through its original alias */ }
+    }
+    return existing
+  }
+
+  const bridge = createTwinRegistryBridge()
+  try { g[TWIN_BRIDGE_KEY] = bridge }
+  catch { /* 极端沙箱下 globalThis 只读;调用方仍会拿到本地桥对象 */ }
+  return bridge
+}
+
+function enqueueTwinRegistration(bridge, kind, payload, source) {
+  const entry = { kind, payload, source }
+  if (typeof bridge?.enqueue === 'function') {
+    return bridge.enqueue(kind, payload, source)
+  }
+  if (typeof bridge?.queue === 'function') {
+    return bridge.queue(kind, payload, source)
+  }
+  if (Array.isArray(bridge?.pending)) {
+    bridge.pending.push(entry)
+    bridge._drain?.()
+    return twinRegistrationReceipt(kind, source)
+  }
+  throw new TwinRegistryUnavailableError(kind)
+}
+
+function invokeTwinRegistration(bridge, kind, payload, source) {
+  if (typeof bridge?.[kind] === 'function') return bridge[kind](payload, source)
+  if (typeof bridge?.register === 'function') return bridge.register(kind, payload, source)
+  if (typeof bridge?.registerEntry === 'function') return bridge.registerEntry({ kind, payload, source })
+  return enqueueTwinRegistration(bridge, kind, payload, source)
+}
+
+/** 查询面兼容 direct method / call / invoke / dispatch / registry 五种桥接形态。 */
+function invokeTwinQuery(bridge, method, args) {
+  if (typeof bridge?.[method] === 'function') return bridge[method](...args)
+  if (typeof bridge?.call === 'function') return bridge.call(method, ...args)
+  if (typeof bridge?.invoke === 'function') return bridge.invoke(method, ...args)
+  if (typeof bridge?.dispatch === 'function') return bridge.dispatch(method, ...args)
+  if (bridge?.registry && typeof bridge.registry[method] === 'function') {
+    return bridge.registry[method](...args)
+  }
+  throw new TwinRegistryUnavailableError(method)
+}
+
+function maybeQueueAfterUnavailable(bridge, kind, payload, source, invoke) {
+  try {
+    const result = invoke()
+    if (result && typeof result.then === 'function') {
+      return result.catch((err) => {
+        if (!isTwinRegistryUnavailable(err)) throw err
+        return enqueueTwinRegistration(bridge, kind, payload, source)
+      })
+    }
+    return result
+  }
+  catch (err) {
+    if (!isTwinRegistryUnavailable(err)) throw err
+    return enqueueTwinRegistration(bridge, kind, payload, source)
+  }
+}
 
 /** 允许的对外请求协议守卫(拒绝 file:/data: 等;宿主/插件同守此规则) */
 function safeUrl(raw, timeoutMs = 8000) {
@@ -60,6 +292,78 @@ export function createPluginContext(opts) {
     if (hostOnDispose) hostOnDispose(fn)
     else disposables.push(fn)
     return fn
+  }
+
+  // ---- Twin Registry 桥 -------------------------------------------------
+  // 这里只保存插件身份,不 import 服务端 Registry。插件宿主与 Registry 的
+  // 加载顺序可以任意:SDK 先到则注册入队,Registry 先到则直接转发。
+  const twinBridge = getTwinRegistryBridge(opts.twinBridge)
+  const twinSource = {
+    plugin: String(name),
+    pluginName: String(name),
+    name: String(name),
+    scope,
+    dir: resolve(dir),
+    version: opts.pluginVersion ?? opts.version,
+    sdkVersion: SDK_VERSION,
+  }
+  let twinCleanupRegistered = false
+  const registerTwin = (kind, payload) => {
+    if (!twinCleanupRegistered) {
+      twinCleanupRegistered = true
+      onDispose(() => {
+        try {
+          if (typeof twinBridge.unregisterPlugin === 'function') {
+            twinBridge.unregisterPlugin(twinSource)
+          }
+          else if (typeof twinBridge.removePlugin === 'function') {
+            twinBridge.removePlugin(twinSource)
+          }
+          else if (Array.isArray(twinBridge.pending)) {
+            // 外部 Registry 若只实现 drain 而没有卸载 API,至少清除尚未
+            // 回放的当前插件项;已接管的项由 Registry 自己负责生命周期。
+            const plugin = twinSource.plugin
+            twinBridge.pending = twinBridge.pending.filter((entry) => {
+              const owner = entry?.source?.plugin ?? entry?.source?.pluginName ?? entry?.source?.name
+              return owner !== plugin
+            })
+          }
+        }
+        catch (err) {
+          logger.warn(`[${name}] Twin Registry 清理失败:`, err?.message ?? err)
+        }
+      })
+    }
+    return maybeQueueAfterUnavailable(
+      twinBridge,
+      kind,
+      payload,
+      twinSource,
+      () => invokeTwinRegistration(twinBridge, kind, payload, twinSource),
+    )
+  }
+  const twin = {
+    registerPhysicsProvider: provider => registerTwin('registerPhysicsProvider', provider),
+    registerScenePack: pack => registerTwin('registerScenePack', pack),
+    registerObjectiveProfile: profile => registerTwin('registerObjectiveProfile', profile),
+    registerTrainingAdapter: adapter => registerTwin('registerTrainingAdapter', adapter),
+    registerSolverAdapter: adapter => registerTwin('registerSolverAdapter', adapter),
+    listProviders: filter => invokeTwinQuery(twinBridge, 'listProviders', [filter]),
+    getProviderHealth: (providerId, version) => invokeTwinQuery(twinBridge, 'getProviderHealth', [providerId, version]),
+    resolveProvider: (providerId, version) => invokeTwinQuery(twinBridge, 'resolveProvider', [providerId, version]),
+    validateProvider: (providerId, version) => invokeTwinQuery(twinBridge, 'validateProvider', [providerId, version]),
+    retireProvider: (providerId, version) => invokeTwinQuery(twinBridge, 'retireProvider', [providerId, version]),
+    /** 只读诊断信息,便于插件决定是否把可选功能降级。 */
+    isRegistryAvailable: () => {
+      try {
+        invokeTwinQuery(twinBridge, 'listProviders', [])
+        return true
+      }
+      catch (err) {
+        if (isTwinRegistryUnavailable(err)) return false
+        throw err
+      }
+    },
   }
 
   // ---- 定时器:自动登记回收,杜绝插件定时器泄漏 ----
@@ -202,6 +506,7 @@ export function createPluginContext(opts) {
       on: (type, fn) => hooks.on(type === '*' ? '*' : `event:${type}`, fn),
       off: (type, fn) => hooks.off(type === '*' ? '*' : `event:${type}`, fn),
     },
+    twin,
   }
   return ctx
 }

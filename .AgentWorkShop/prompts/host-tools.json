@@ -1355,6 +1355,17 @@
   }
  },
  {
+  "name": "twin_provider_catalog",
+  "label": "Twin Provider Catalog",
+  "description": "读取当前已注册的场景 Provider、ScenePack、SolverAdapter 及 generation/health 元数据；只读，不执行控制。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_kind": { "type": "string", "description": "可选场景类型过滤" }
+   }
+  }
+ },
+ {
   "name": "twin_scene_read",
   "label": "Twin Scene Read",
   "description": "读取绑定场景的机器可验证 SceneContract 与控制策略；仅返回场景/节点语义，不执行任何控制。",

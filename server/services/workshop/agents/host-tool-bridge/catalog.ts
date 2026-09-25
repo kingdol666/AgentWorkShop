@@ -28,7 +28,7 @@ export const LEAD_ONLY_TOOL_NAMES = new Set([
 
 /** Hybrid Twin 工具只对显式 profile=hybrid_twin 的 Channel 注入。 */
 export const HYBRID_TWIN_TOOL_NAMES = new Set([
-  'twin_scene_read', 'twin_snapshot_create', 'twin_trial_run', 'mpc_optimize', 'twin_gate_evaluate',
+  'twin_provider_catalog', 'twin_scene_read', 'twin_snapshot_create', 'twin_trial_run', 'mpc_optimize', 'twin_gate_evaluate',
 ])
 
 /** 占位符动态注入:工具描述里的运行时配置值(每次装配实时计算,配置热重载后 Agent 拿到新值) */

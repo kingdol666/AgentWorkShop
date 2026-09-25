@@ -4,9 +4,29 @@
  * 装载细节见 server/services/workshop/plugins/host.mjs(错误隔离:单插件失败不拖垮主服务)。
  */
 import { initPluginHost, shutdownPluginHost } from '@/server/services/workshop/plugins/host.mjs'
+import { attachTwinPluginBridge } from '@/server/services/workshop/aml/twin/provider-loader'
+import { registerTwinPluginContribution } from '@/server/services/workshop/aml/twin/provider-registry'
+import { InjectionGreyboxProvider, defaultInjectionScene } from '@/server/services/workshop/aml/twin/physics-runtime'
 import { fileURLToPath } from 'node:url'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+
+// Attach the Twin Provider Registry before plugin setup so external scene providers
+// registered by ctx.twin are replayed immediately (or queued safely when startup order changes).
+attachTwinPluginBridge()
+
+// The bundled injection provider is the default system Twin plugin. Registering
+// it from the Nitro bootstrap avoids making an external .mjs plugin depend on
+// the internal TypeScript alias resolver. It still uses the same Registry and
+// generation lifecycle as user-provided providers.
+registerTwinPluginContribution('twin-injection-default', {
+  providers: [new InjectionGreyboxProvider()],
+  scenePacks: [{
+    sceneKind: 'injection',
+    sceneSchemaVersion: defaultInjectionScene('twin-injection-default').sceneVersion,
+    compile: () => defaultInjectionScene('twin-injection-default'),
+  }],
+})
 
 // packageRoot = 本包根。nitro 打包后 import.meta.url 位于 .output/server/chunks/ 内,
 // 且 chunk 相对包根的层级随 nitro 版本变化(如 chunks/build/xxx.mjs 比源码布局深一层),

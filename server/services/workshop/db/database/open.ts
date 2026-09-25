@@ -6,7 +6,7 @@ import type * as sqliteVec from 'sqlite-vec'
 import { DatabaseSync } from 'node:sqlite'
 import { SCHEMA_SQL } from './schema'
 import { createRequire } from 'node:module'
-import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateDropOwnerFks, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys } from './migrations'
+import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateDropOwnerFks, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns } from './migrations'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -61,6 +61,7 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAgentTeamTaskGuardrails(db)
   migrateDropOwnerFks(db)
   migrateGroupChatV17(db)
+  migrateAmlTwinProviderColumns(db)
   seedDefaultWorkshopData(db)
 }
 

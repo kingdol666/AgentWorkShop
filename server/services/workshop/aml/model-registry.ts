@@ -32,7 +32,29 @@ export function registerModelFromJob(jobId: string, gates: GateReport, metricsJs
     params?: Record<string, unknown>
     changeNote?: string
     parentExperimentId?: string | null
+    sceneId?: string
+    sceneVersion?: string
+    providerId?: string
+    providerVersion?: string
+    providerHash?: string
+    providerGeneration?: number
   }
+  let lineageMetrics = metricsJson
+  try {
+    const parsed = JSON.parse(metricsJson || '{}') as Record<string, unknown>
+    if (budget.providerId || budget.providerVersion || budget.providerHash) {
+      parsed.twinProvider = {
+        providerId: budget.providerId ?? null,
+        providerVersion: budget.providerVersion ?? null,
+        providerHash: budget.providerHash ?? null,
+        providerGeneration: budget.providerGeneration ?? null,
+        sceneId: budget.sceneId ?? null,
+        sceneVersion: budget.sceneVersion ?? null,
+      }
+      lineageMetrics = JSON.stringify(parsed)
+    }
+  }
+  catch { /* retain platform metrics if lineage merge cannot parse */ }
   const expId = `exp-${jobId.slice(4)}`
   const existing = rt.repo.experiment.get(expId)
   if (!existing) {
@@ -42,14 +64,14 @@ export function registerModelFromJob(jobId: string, gates: GateReport, metricsJs
       datasetId: job.datasetId,
       parentExperimentId: budget.parentExperimentId ?? null,
       changeNote: budget.changeNote ?? '',
-      configJson: JSON.stringify({ purpose: job.purpose, params: budget.params ?? {}, agentId: job.agentId }),
+      configJson: JSON.stringify({ purpose: job.purpose, params: budget.params ?? {}, agentId: job.agentId, providerId: budget.providerId ?? null, providerVersion: budget.providerVersion ?? null, providerHash: budget.providerHash ?? null, providerGeneration: budget.providerGeneration ?? null }),
       seed: budget.seed ?? null,
       createdAt: now,
     })
   }
   rt.repo.experiment.setResult(
     expId,
-    metricsJson,
+    lineageMetrics,
     JSON.stringify(gates),
     gates.passed ? 'gates_passed' : 'gates_failed',
   )
@@ -79,7 +101,7 @@ export function registerModelFromJob(jobId: string, gates: GateReport, metricsJs
     recipeId: dataset.recipeId,
     purpose: job.purpose,
     ioSpecJson: JSON.stringify(ioSpec),
-    metricsJson,
+    metricsJson: lineageMetrics,
     path: modelDir,
     createdBy: job.agentId || 'aml',
     note: gatesSummary(gates),

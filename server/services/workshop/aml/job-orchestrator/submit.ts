@@ -30,6 +30,10 @@ export interface SubmitJobInput {
   physicsManifest?: Record<string, unknown>
   twinSnapshot?: Record<string, unknown>
   objectiveProfile?: Record<string, unknown>
+  providerId?: string
+  providerVersion?: string
+  providerHash?: string
+  providerGeneration?: number
   /** 发起者;byKind 决定审计归属(actorKind) */
   agent?: { id: string, channelId?: string, taskId?: string }
   byKind?: 'user' | 'agent'
@@ -85,6 +89,10 @@ export function submitJob(input: SubmitJobInput): AmlJobRow {
       physicsManifest: input.physicsManifest ?? null,
       twinSnapshot: input.twinSnapshot ?? null,
       objectiveProfile: input.objectiveProfile ?? null,
+      providerId: input.providerId ?? null,
+      providerVersion: input.providerVersion ?? null,
+      providerHash: input.providerHash ?? null,
+      providerGeneration: input.providerGeneration ?? null,
     },
     metricsJson: null,
     gatesJson: null,

@@ -6,7 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { agentBadgeLabel } from '../agent-badge'
 import { getAmlRuntime } from '../../aml/runtime'
-import { defaultInjectionScene, InjectionGreyboxProvider, smallStepCandidates } from '../../aml/twin/physics-runtime'
+import { defaultInjectionScene, InjectionGreyboxProvider, smallStepCandidates, type PhysicsModelProvider } from '../../aml/twin/physics-runtime'
 import { createTwinSnapshot } from '../../aml/twin/snapshot-service'
 import { evaluateHybridGates, DEFAULT_ACCEPTANCE_PROFILE } from '../../aml/twin/acceptance'
 import { issueRecommendationCertificate, runVirtualTrial } from '../../aml/twin/trial-service'
@@ -17,6 +17,7 @@ import type { HostToolResult } from '../host-tool-bridge/types'
 import { recordOps } from '../../ops/ops'
 import { createTwinRepo } from '../../aml/twin/repo'
 import { requestCalibration, DEFAULT_TWIN_CALIBRATION_POLICY } from '../../aml/twin/calibration-scheduler'
+import { getTwinProviderRegistry } from '../../aml/twin/provider-registry'
 
 function ok(text: string): HostToolResult {
   return { text }
@@ -47,12 +48,41 @@ async function persistTwinArtifact(kind: string, id: string, payload: unknown): 
   return path
 }
 
+function providerForScene(scene: SceneContract): { provider: PhysicsModelProvider, release: () => void, providerId: string, providerVersion: string } {
+  const registry = getTwinProviderRegistry()
+  const requested = String(scene.physicsProfileId || 'injection-greybox-v1')
+  const lease = registry.resolveProvider(requested, { allowDraining: true }) ?? registry.resolveProvider('twin-injection-default', { allowDraining: true })
+  if (lease) {
+    return { provider: lease.provider, release: lease.release, providerId: lease.manifest.providerId, providerVersion: lease.manifest.version }
+  }
+  // Transitional compatibility: a legacy installation may not have loaded the
+  // default plugin yet. Keep the existing built-in model available, but expose
+  // it through the same provider-shaped return so tools need no scene branch.
+  const fallback = new InjectionGreyboxProvider()
+  return { provider: fallback, release: () => {}, providerId: fallback.manifest.physicsModelId, providerVersion: fallback.manifest.version }
+}
+
+export async function toolTwinProviderCatalog(_agentId: string, args: Record<string, unknown> = {}): Promise<HostToolResult> {
+  try {
+    const registry = getTwinProviderRegistry()
+    const filter = typeof args.scene_kind === 'string' && args.scene_kind.trim() ? { sceneKind: args.scene_kind.trim() } : {}
+    return ok(JSON.stringify({ apiVersion: 'twin-provider.v1', providers: registry.listProviders(filter), scenePacks: registry.listScenePacks(), solverAdapters: registry.listSolverAdapters() }, null, 2))
+  }
+  catch (err) {
+    return fail(`Twin Provider 目录读取失败:${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
 export async function toolTwinSceneRead(_agentId: string, args: Record<string, unknown>): Promise<HostToolResult> {
   const defaultScene = defaultInjectionScene('twin-scene-tool')
   const supplied = jsonArg<Record<string, unknown>>(args, 'scene_json')
-  const scene = supplied ? parseSceneContract(supplied) : defaultScene
+  let scene = supplied ? parseSceneContract(supplied) : defaultScene
   const sceneId = String(args.scene_id ?? scene.sceneId)
-  if (sceneId !== scene.sceneId) return fail(`场景契约未提供: scene_id=${sceneId}；请通过 scene_json 注册该场景，或先注册 PhysicsModelProvider。`)
+  if (!supplied && sceneId !== scene.sceneId) {
+    const pack = getTwinProviderRegistry().listScenePacks().find(item => item.sceneKind === sceneId)
+    if (pack?.compile) scene = parseSceneContract(await pack.compile({ userPrompt: String(args.user_prompt ?? ''), nodeCatalog: [], lineContext: {} }))
+  }
+  if (sceneId !== scene.sceneId) return fail(`场景契约未提供: scene_id=${sceneId}；请先调用 twin_provider_catalog，或通过 scene_json 注入场景契约。`)
   return ok(`场景契约 ${scene.sceneId}@${scene.sceneVersion}\n${JSON.stringify(scene, null, 2)}\n\n控制策略：recommendation-only；模型门禁未通过时只能 safe_small_step，禁止直接 DCW。\n快照前置：scene 的 observations/states 必须带 nodeId，且与 Agent 已绑定的真实 DAQ 节点一致；内置默认场景不带 nodeId，直接调用只会在 TwinSnapshot 里得到 fresh=false 并在 VirtualTrial 抛 SNAPSHOT_STALE —— 请用 scene_json 注入带 nodeId 的场景契约。`)
 }
 
@@ -132,7 +162,8 @@ export async function toolTwinTrialRun(agentId: string, args: Record<string, unk
       return fail('snapshot_json 不是 TwinSnapshot 工件:缺少 snapshotId/dataQuality。请先调用 twin_snapshot_create,并把其 artifact 文件的 JSON 原文整段回传(不要传工具结果文本或截断片段)。')
     }
     if (!snap.snapshotHash) return fail('snapshot_json 缺少 snapshotHash(快照被篡改或截断),拒绝执行 VirtualTrial。')
-    const provider = new InjectionGreyboxProvider()
+    const providerRef = providerForScene(scene)
+    const provider = providerRef.provider
     const baseline = jsonArg<Record<string, number>>(args, 'baseline_controls', {}) ?? {}
     const candidate = jsonArg<Array<Record<string, number>>>(args, 'candidate_controls', []) ?? []
     const objective = jsonArg<Record<string, unknown>>(args, 'objective', {
@@ -141,9 +172,13 @@ export async function toolTwinTrialRun(agentId: string, args: Record<string, unk
     const trial = runVirtualTrial({ scene, snapshot, modelId: String(args.model_id ?? 'physics-only-injection-v1'), modelHash: sha256(provider.manifest), objective, baselineControls: baseline, candidateControls: candidate, provider, uncertainty: jsonArg(args, 'uncertainty') as never, createdBy: agentId })
     const certificate = issueRecommendationCertificate(trial, agentId, sha256(provider.manifest), sha256(objective))
     const twinRepo = createTwinRepo(getAmlRuntime().db)
+    // Trial is also a valid first entry point for external ScenePacks. Persist
+    // the immutable SceneContract before the FK-backed trial row.
+    twinRepo.upsertScene(scene, agentId)
     twinRepo.insertTrial(trial, String(args.model_id ?? 'physics-only-injection-v1'))
     if (certificate) twinRepo.insertRecommendation(certificate, agentId)
     const path = await persistTwinArtifact('trials', trial.trialId, { trial, certificate })
+    providerRef.release()
     return ok(`VirtualTrial 已完成(candidateExecuted=false)\n  trial_id: ${trial.trialId}\n  constraints_passed: ${trial.constraintResults.every(c => c.passed)}\n  uq_ood_accepted: ${trial.outOfDistribution.accepted}\n  improvement: ${trial.baselineComparison.improvement}\n  recommendation_id: ${certificate?.recommendationId ?? '(未签发：门禁未通过或无收益)'}\n  artifact: ${path}\n  控制路径: recommendation-only，未调用 DCW。`)
   }
   catch (err) {
@@ -168,7 +203,8 @@ export async function toolMpcOptimize(agentId: string, args: Record<string, unkn
         modelReady = false
       }
     }
-    const provider = new InjectionGreyboxProvider()
+    const providerRef = providerForScene(scene)
+    const provider = providerRef.provider
     const candidates = smallStepCandidates(scene, baseline)
     const mode = modelReady ? 'precise_search' : 'safe_small_step'
     const selected = modelReady ? candidates : candidates.slice(0, Math.min(3, candidates.length))
@@ -178,11 +214,12 @@ export async function toolMpcOptimize(agentId: string, args: Record<string, unkn
       const constraints = provider.evaluateConstraints(scene, trajectory)
       const last = trajectory.steps.at(-1)?.observations ?? {}
       const cost = ((last.weight ?? 0) - 32.5) ** 2 + (last.flash_rate ?? 0) ** 2 + (last.sink_rate ?? 0) ** 2
-      return { candidate, cost, constraintsPassed: constraints.every(c => c.passed), constraints }
+      return { candidate, cost, constraintsPassed: constraints.every((c: { passed: boolean }) => c.passed), constraints }
     }).filter(x => x.constraintsPassed).sort((a, b) => a.cost - b.cost)
     const best = results[0]
     const report = { modelId: modelId || null, mode, modelReady, candidatesEvaluated: selected.length, bestCandidate: best?.candidate ?? null, bestCost: best?.cost ?? null, recommendationOnly: true, preciseSearchAllowed: modelReady && results.length > 0 }
     const path = await persistTwinArtifact('mpc', `run-${Date.now().toString(36)}`, report)
+    providerRef.release()
     return ok(`MPC recommendation-only 试验完成\n${JSON.stringify(report, null, 2)}\nartifact: ${path}\n${modelReady ? '模型门禁已通过，可进行更精确的候选搜索，但仍不能直接写 DCW。' : '模型门禁未通过，仅执行 safe_small_step 小步试探；先收集 DAQ 数据，不执行精确搜索。'}`)
   }
   catch (err) {

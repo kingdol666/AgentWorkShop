@@ -9,7 +9,7 @@
  * 该族**不依赖 workspace**,由 dispatch 在 workspace 门控之前分流(保持原分发顺序)。
  */
 import type { HostToolResult } from '../types'
-import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions, toolTwinSceneRead, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinCalibrationRequest } from '../../industrial'
+import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions, toolTwinProviderCatalog, toolTwinSceneRead, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinCalibrationRequest } from '../../industrial'
 
 type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>) => Promise<HostToolResult>
 
@@ -26,6 +26,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['aml_leaderboard', (agentId, args) => toolAmlLeaderboard(agentId, args as Parameters<typeof toolAmlLeaderboard>[1])],
   ['aml_model_promote', (agentId, args) => toolAmlModelPromote(agentId, args as Parameters<typeof toolAmlModelPromote>[1])],
   ['aml_model_reference', (agentId, args) => toolAmlModelReference(agentId, args as Parameters<typeof toolAmlModelReference>[1])],
+  ['twin_provider_catalog', (agentId, args) => toolTwinProviderCatalog(agentId, args)],
   ['twin_scene_read', (agentId, args) => toolTwinSceneRead(agentId, args)],
   ['twin_snapshot_create', (agentId, args) => toolTwinSnapshotCreate(agentId, args)],
   ['twin_trial_run', (agentId, args) => toolTwinTrialRun(agentId, args)],

@@ -540,6 +540,11 @@ CREATE TABLE IF NOT EXISTS aml_channel_profiles (
   scene_contract_json TEXT NOT NULL DEFAULT '{}',
   objective_json TEXT NOT NULL DEFAULT '{}',
   control_policy TEXT NOT NULL DEFAULT 'recommendation_only',
+  provider_id TEXT,
+  provider_version TEXT,
+  provider_hash TEXT,
+  scene_pack_id TEXT,
+  provider_generation INTEGER,
   created_by TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

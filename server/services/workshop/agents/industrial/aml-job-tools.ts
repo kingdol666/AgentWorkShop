@@ -33,6 +33,10 @@ export async function toolAmlJobSubmit(agentId: string, args: {
   physics_manifest?: Record<string, unknown>
   twin_snapshot?: Record<string, unknown>
   objective_profile?: Record<string, unknown>
+  provider_id?: string
+  provider_version?: string
+  provider_hash?: string
+  provider_generation?: number | string
 }): Promise<{ text: string, isError?: boolean }> {
   const datasetId = String(args.dataset_id ?? '').trim()
   const code = typeof args.code === 'string' ? args.code : ''
@@ -61,6 +65,10 @@ export async function toolAmlJobSubmit(agentId: string, args: {
       physicsManifest: args.physics_manifest,
       twinSnapshot: args.twin_snapshot,
       objectiveProfile: args.objective_profile,
+      providerId: String(args.provider_id ?? '').trim() || undefined,
+      providerVersion: String(args.provider_version ?? '').trim() || undefined,
+      providerHash: String(args.provider_hash ?? '').trim() || undefined,
+      providerGeneration: Number.isInteger(Number(args.provider_generation)) ? Number(args.provider_generation) : undefined,
       agent: { id: agentId },
     })
     const st = await runtimeStatus()

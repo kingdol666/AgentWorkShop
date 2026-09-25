@@ -21,4 +21,4 @@ export { toolOpsLog, toolRecipeLog, toolLineContext, toolRecipeVersions, toolRec
 export { toolAmlNodeCatalog, toolAmlDatasetBuild, toolAmlDatasetStats } from './aml-dataset-tools'
 export { toolAmlJobSubmit, toolAmlJobStatus, toolAmlJobLogs, toolAmlJobCancel, toolAmlLeaderboard, toolAmlModelPromote, toolAmlModelReference } from './aml-job-tools'
 
-export { toolTwinSceneRead, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinCalibrationRequest } from './twin-tools'
+export { toolTwinProviderCatalog, toolTwinSceneRead, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinCalibrationRequest } from './twin-tools'

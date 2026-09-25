@@ -60,6 +60,10 @@ export async function startJob(row: AmlJobRow): Promise<void> {
     sceneVersion: budget.sceneVersion ?? null,
     objectiveId: budget.objectiveId ?? null,
     jobKind: budget.jobKind ?? 'supervised',
+    providerId: budget.providerId ?? null,
+    providerVersion: budget.providerVersion ?? null,
+    providerHash: budget.providerHash ?? null,
+    providerGeneration: budget.providerGeneration ?? null,
   }, null, 2))
   // Hybrid Twin lineage is immutable job input. Persist these sidecars in the
   // isolated workspace so amlkit.load_* can consume them without trusting REST

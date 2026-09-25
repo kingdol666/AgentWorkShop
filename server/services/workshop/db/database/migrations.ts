@@ -365,3 +365,12 @@ export function migrateLegacySchema(db: DatabaseSync): void {
 }
 
 /** 解析 JSON 列;解析失败返回 fallback(默认值) */
+
+/** AML Twin provider lineage on Channel profiles; additive and safe for legacy rows. */
+export function migrateAmlTwinProviderColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'aml_channel_profiles', 'provider_id', 'TEXT')
+  migrateAddColumn(db, 'aml_channel_profiles', 'provider_version', 'TEXT')
+  migrateAddColumn(db, 'aml_channel_profiles', 'provider_hash', 'TEXT')
+  migrateAddColumn(db, 'aml_channel_profiles', 'scene_pack_id', 'TEXT')
+  migrateAddColumn(db, 'aml_channel_profiles', 'provider_generation', 'INTEGER')
+}

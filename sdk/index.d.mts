@@ -3,6 +3,16 @@
 // 不存在 sdk/hooks.d.mts,故不得 import type from './hooks.mjs'(悬空引用)。
 
 export declare const SDK_VERSION: string
+/** Twin SDK 的 canonical global bridge key(服务端 Registry 与插件宿主共享)。 */
+export declare const TWIN_BRIDGE_KEY: '__twinPluginExt'
+
+/** ctx.twin 查询面不可用时的可识别错误;注册面会先进入 pending 队列。 */
+export declare class TwinRegistryUnavailableError extends Error {
+  readonly name: 'TwinRegistryUnavailableError'
+  readonly code: 'TWIN_REGISTRY_UNAVAILABLE'
+  readonly operation: string
+  constructor(operation?: string)
+}
 
 /** 生命周期钩子总线:异步串行、错误隔离、'*' 通配、连续失败自动熔断 */
 export declare class HookBus {
@@ -146,6 +156,143 @@ export interface PluginHostExtensions {
   }
 }
 
+/** Twin Registry 全局桥使用的注册类别(注册在 Registry 未加载时会排队)。 */
+export type TwinRegistrationKind =
+  | 'registerPhysicsProvider'
+  | 'registerScenePack'
+  | 'registerObjectiveProfile'
+  | 'registerTrainingAdapter'
+  | 'registerSolverAdapter'
+
+/** SDK 自动附带的插件来源信息,服务端 Registry 用于 lineage / hot-reload 清理。 */
+export interface TwinRegistrationSource {
+  plugin: string
+  pluginName?: string
+  /** 与 plugin 相同的兼容别名(旧桥实现可能读取 name) */
+  name?: string
+  scope?: 'builtin' | 'project' | 'user' | string
+  dir?: string
+  version?: string
+  sdkVersion?: string
+  [key: string]: unknown
+}
+
+/** 注册项在 Registry 尚未接管时的 pending 形态。 */
+export interface TwinPendingRegistration {
+  kind: TwinRegistrationKind
+  payload: unknown
+  source: TwinRegistrationSource
+}
+
+/** 注册未立即交给 Registry 时返回的确认对象。 */
+export interface TwinRegistrationReceipt {
+  status: 'queued'
+  queued: true
+  kind: TwinRegistrationKind
+  plugin: string
+  source: TwinRegistrationSource
+}
+
+/** Provider 查询过滤条件由服务端 Registry 解释,SDK 保持向前兼容。 */
+export interface TwinProviderFilter {
+  providerId?: string
+  version?: string
+  sceneKind?: string
+  scenePackId?: string
+  status?: string
+  capability?: string
+  [key: string]: unknown
+}
+
+/** Provider 健康结果由服务端返回;保留扩展字段以兼容后续 health contract。 */
+export interface TwinProviderHealth {
+  providerId?: string
+  version?: string
+  status?: string
+  healthy?: boolean
+  [key: string]: unknown
+}
+
+/**
+ * SDK 不冻结 Provider/Scene/Objective 的业务字段,只给常见能力提供可选提示。
+ * 详细 contract 由服务端 Registry 校验,这样旧插件和未来 schema 可以共存。
+ */
+export interface TwinPhysicsProvider {
+  manifest?: (...args: any[]) => any
+  validateScene?: (...args: any[]) => any
+  initialize?: (...args: any[]) => any
+  step?: (...args: any[]) => any
+  simulate?: (...args: any[]) => any
+  calibrate?: (...args: any[]) => any
+  health?: (...args: any[]) => any
+  [key: string]: unknown
+}
+
+export interface TwinScenePack {
+  sceneKind?: string
+  sceneSchemaVersion?: string
+  discover?: (...args: any[]) => any
+  compile?: (...args: any[]) => any
+  [key: string]: unknown
+}
+
+export interface TwinObjectiveProfile {
+  id?: string
+  version?: string
+  [key: string]: unknown
+}
+
+export interface TwinSolverAdapter {
+  id?: string
+  version?: string
+  inputSchema?: unknown
+  outputSchema?: unknown
+  run?: (...args: any[]) => any
+  cancel?: (...args: any[]) => any
+  health?: (...args: any[]) => any
+  [key: string]: unknown
+}
+
+/** Registry 调用可能是同步或异步;具体结果由服务端 contract 决定。 */
+export type TwinRegistryResult<T = any> = T | Promise<T>
+
+/**
+ * 全局桥契约(服务端 Registry 可直接实现,也可只实现其中的兼容形态)。
+ * 插件作者通常不需要直接使用它;该接口主要用于 Registry / 集成测试。
+ */
+export interface TwinRegistryBridge {
+  pending?: TwinPendingRegistration[]
+  register?(kind: TwinRegistrationKind, payload: unknown, source: TwinRegistrationSource): TwinRegistryResult<any>
+  registerEntry?(entry: TwinPendingRegistration): TwinRegistryResult<any>
+  enqueue?(kind: TwinRegistrationKind, payload: unknown, source: TwinRegistrationSource): TwinRegistryResult<any>
+  queue?(kind: TwinRegistrationKind, payload: unknown, source: TwinRegistrationSource): TwinRegistryResult<any>
+  drain?(onEntry: (entry: TwinPendingRegistration) => any): void
+  attach?(registry: unknown): TwinRegistryBridge
+  bind?(registry: unknown): TwinRegistryBridge
+  call?(method: string, ...args: any[]): TwinRegistryResult<any>
+  invoke?(method: string, ...args: any[]): TwinRegistryResult<any>
+  dispatch?(method: string, ...args: any[]): TwinRegistryResult<any>
+  registry?: Record<string, any> | null
+  unregisterPlugin?(source: TwinRegistrationSource | string): number | void
+  removePlugin?(source: TwinRegistrationSource | string): number | void
+  [key: string]: any
+}
+
+/** ctx.twin:插件向服务端 Twin Provider Registry 暴露的稳定 SDK 面。 */
+export interface TwinPluginApi {
+  registerPhysicsProvider(provider: TwinPhysicsProvider | unknown): TwinRegistryResult<any>
+  registerScenePack(pack: TwinScenePack | unknown): TwinRegistryResult<any>
+  registerObjectiveProfile(profile: TwinObjectiveProfile | unknown): TwinRegistryResult<any>
+  registerTrainingAdapter(adapter: unknown): TwinRegistryResult<any>
+  registerSolverAdapter(adapter: TwinSolverAdapter | unknown): TwinRegistryResult<any>
+  listProviders(filter?: TwinProviderFilter): TwinRegistryResult<any[]>
+  getProviderHealth(providerId: string, version?: string): TwinRegistryResult<TwinProviderHealth | any>
+  resolveProvider(providerId: string, version?: string): TwinRegistryResult<any>
+  validateProvider(providerId: string, version?: string): TwinRegistryResult<any>
+  retireProvider(providerId: string, version?: string): TwinRegistryResult<any>
+  isRegistryAvailable(): boolean
+}
+
 export interface PluginContext extends PluginHostExtensions {
   name: string
   /** 插件来源作用域(host.mjs discoverPluginDirs:builtin / project / user) */
@@ -188,6 +335,7 @@ export interface PluginContext extends PluginHostExtensions {
   api: PlatformClient
   http: PluginHttp
   events: { on(type: string, fn: (payload: any) => any): () => void, off(type: string, fn: (payload: any) => any): void }
+  twin: TwinPluginApi
 }
 
 export interface PluginRouteDef {
@@ -216,6 +364,7 @@ export interface PluginDef {
 export declare function definePlugin(def: PluginDef): PluginDef
 
 export declare function createPluginContext(opts: Record<string, any>): PluginContext
+export declare function getTwinRegistryBridge(preferred?: unknown): TwinRegistryBridge
 export declare function createRouteTable(): {
   register(name: string, method: string, path: string, handler: (event: any) => any): boolean
   resolve(name: string, method: string, path: string): ((event: any) => any) | null
