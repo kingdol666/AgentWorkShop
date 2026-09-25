@@ -82,6 +82,7 @@ canonical one-step:输入 `history [batch, H, nAll]`(归一化)→ 输出 `y_nex
 - **启用方式**:Channel 的 profile(`legacy` 默认 / `hybrid_twin`),在 Channel 模板与实例上选择;启用后按 profile 注入 6 个专属工具:`twin_scene_read` / `twin_snapshot_create` / `twin_trial_run` / `mpc_optimize` / `twin_gate_evaluate` / `twin_calibration_request`。
 - **安全语义**:试验**永远是虚拟的**(`candidateExecuted=false`);不安全候选被全轨迹硬约束直接拒绝;快照过期 → `SNAPSHOT_STALE`;只有门禁与收益同时通过才签发推荐证书,证书未签发前**不产生真实 DCW 写入**(recommendation-only)。
 - **服务端策略**:数据不足 → `safe_small_step`;模型过门禁 → `precise_search`;持续校准请求按去重 + cooldown 登记。
+- **闭环连线**(v0.7.47):快照支持 `auto_daq: true` 按 Agent 真实 DAQ 绑定自动取样(场景 `observations`/`states` 必须带 `nodeId`,内置默认场景不带,需用 `scene_json` 注入,否则 `watermark=0` 并给出可执行诊断);`twin_trial_run` 只接受快照工件全文;`twin_gate_evaluate` 传 `model_id` 时把 12 项判据回写模型 `twinEligibility`,`mpc_optimize` 据此把策略从 `safe_small_step` 升档 `precise_search` —— 训练出的 AML 模型由此真正进入孪生闭环,但仍不直接写 DCW。
 - **工件与记录**:SQLite Hybrid Twin 元数据表 + 本地 `aml/twins/` 工件;计划与验收见 `docs/aml-hybrid-twin-mpc-integration-plan.md`、`docs/aml-hybrid-twin-implementation-acceptance.md`(首个场景 = PLC 模拟器 `injection-line`)。
 
 ## Python 运行时

@@ -132,6 +132,21 @@ Recommendation-only by default: insufficient data → `safe_small_step`; model c
 acceptance record: `docs/aml-hybrid-twin-mpc-integration-plan.md`,
 `docs/aml-hybrid-twin-implementation-acceptance.md`.
 
+**Closed-loop wiring** (v0.7.47):
+
+1. `twin_snapshot_create` accepts `auto_daq: true` and samples every node through the Agent's
+   **real DAQ bindings**; the scene contract's `observations` / `states` must carry `nodeId` —
+   the built-in default scene does not, so inject it via `scene_json`. Otherwise the watermark
+   stays 0 (`watermark=0`) and the tool now returns an actionable diagnostic instead of a bare `fresh=false`.
+2. `twin_trial_run` only accepts the full snapshot artifact produced by `twin_snapshot_create`
+   (missing `snapshotId` / `dataQuality` / `snapshotHash` is rejected outright) and always reports
+   `candidateExecuted=false`.
+3. When `twin_gate_evaluate` receives `model_id`, it writes the 12-check verdict back into that
+   model's `twinEligibility` (`gatePassed` / `recommendationEligible` / `uqPassed` / `oodPassed` /
+   `physicsPassed`), and `mpc_optimize` then upgrades its server-side strategy from
+   `safe_small_step` to `precise_search` — the step where a **trained AML model actually enters the
+   twin loop**, still without writing DCW directly.
+
 The built-in team **`team-aml-shadow`** ("AML shadow modeling team") packs 1 lead (chief
 data scientist) + 3 workers (data engineer / training engineer / evaluation engineer) with
 `omp` as the default harness; add members when creating an instance from the team. The team

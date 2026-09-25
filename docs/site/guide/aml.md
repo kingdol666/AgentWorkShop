@@ -120,6 +120,18 @@ AML 还承载**混合孪生**平面:灰箱物理主干 + 有界 PyTorch 残差,�
 证书未签发前不产生真实 DCW 写入。计划与验收记录见
 `docs/aml-hybrid-twin-mpc-integration-plan.md`、`docs/aml-hybrid-twin-implementation-acceptance.md`。
 
+**闭环连线**(v0.7.47):
+
+1. `twin_snapshot_create` 可 `auto_daq: true` 按 Agent 的**真实 DAQ 绑定**逐节点取样;
+   场景契约的 `observations` / `states` 必须带 `nodeId` —— 内置默认场景不带,请用
+   `scene_json` 注入,否则水位为 0(`watermark=0`),工具会直接给出可执行诊断而不是只回 `fresh=false`。
+2. `twin_trial_run` 只接受 `twin_snapshot_create` 产出的快照工件全文(缺 `snapshotId` /
+   `dataQuality` / `snapshotHash` 直接拒绝),执行结果永远是 `candidateExecuted=false`。
+3. `twin_gate_evaluate` 传入 `model_id` 时,会把 12 项判据结论回写成该模型的
+   `twinEligibility`(`gatePassed` / `recommendationEligible` / `uqPassed` / `oodPassed` / `physicsPassed`);
+   `mpc_optimize` 据此把服务端策略从 `safe_small_step` 升档到 `precise_search`——
+   也就是「训练出的 AML 模型真正进入孪生闭环」的那一步,但仍不直接写 DCW。
+
 内置团队 **`team-aml-shadow`**(「AML 影子建模团队」):1 名 lead(首席数据科学家)+ 3 名
 worker(数据工程师 / 训练工程师 / 评测工程师),默认 harness `omp`;从团队创建实例时先加成员。
 团队作业手册见 `.AgentWorkShop/prompts/aml-playbook.md`。
