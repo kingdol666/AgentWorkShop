@@ -48,14 +48,30 @@ export async function startJob(row: AmlJobRow): Promise<void> {
     }
   }
 
+  const budget = safeParse(row.budget) as Record<string, unknown>
   writeFileSync(join(jobDir, 'job.json'), JSON.stringify({
     jobId: row.id,
     datasetPath: dataset.path,
     workspaceDir: workspace,
-    params: safeParse(row.budget).params ?? {},
-    seed: safeParse(row.budget).seed ?? 42,
+    params: budget.params ?? {},
+    seed: budget.seed ?? 42,
     trainFile,
+    sceneId: budget.sceneId ?? null,
+    sceneVersion: budget.sceneVersion ?? null,
+    objectiveId: budget.objectiveId ?? null,
+    jobKind: budget.jobKind ?? 'supervised',
   }, null, 2))
+  // Hybrid Twin lineage is immutable job input. Persist these sidecars in the
+  // isolated workspace so amlkit.load_* can consume them without trusting REST
+  // callers or reaching into the live database during training.
+  for (const [name, key] of [
+    ['physics_manifest.json', 'physicsManifest'],
+    ['twin_snapshot.json', 'twinSnapshot'],
+    ['objective_profile.json', 'objectiveProfile'],
+  ] as const) {
+    const value = budget[key]
+    if (value && typeof value === 'object') writeFileSync(join(workspace, name), JSON.stringify(value, null, 2))
+  }
   const run: RunningJob = {
     row,
     jobDir,

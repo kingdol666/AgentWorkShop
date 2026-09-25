@@ -10,7 +10,9 @@ import { defaultInjectionScene, InjectionGreyboxProvider, smallStepCandidates } 
 import { createTwinSnapshot } from '../../aml/twin/snapshot-service'
 import { evaluateHybridGates, DEFAULT_ACCEPTANCE_PROFILE } from '../../aml/twin/acceptance'
 import { issueRecommendationCertificate, runVirtualTrial } from '../../aml/twin/trial-service'
-import { sha256 } from '../../aml/twin/contracts'
+import { parseSceneContract, sha256, type SceneContract } from '../../aml/twin/contracts'
+import { getDaqController } from '../../daq/daq-controller'
+import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import type { HostToolResult } from '../host-tool-bridge/types'
 import { recordOps } from '../../ops/ops'
 import { createTwinRepo } from '../../aml/twin/repo'
@@ -46,17 +48,46 @@ async function persistTwinArtifact(kind: string, id: string, payload: unknown): 
 }
 
 export async function toolTwinSceneRead(_agentId: string, args: Record<string, unknown>): Promise<HostToolResult> {
-  const scene = defaultInjectionScene('twin-scene-tool')
+  const defaultScene = defaultInjectionScene('twin-scene-tool')
+  const supplied = jsonArg<Record<string, unknown>>(args, 'scene_json')
+  const scene = supplied ? parseSceneContract(supplied) : defaultScene
   const sceneId = String(args.scene_id ?? scene.sceneId)
-  if (sceneId !== scene.sceneId) return fail(`当前 MVP 仅内置可执行场景 ${scene.sceneId}；未知 scene_id=${sceneId} 请先注册 PhysicsModelProvider。`)
-  return ok(`场景契约 ${scene.sceneId}@${scene.sceneVersion}\n${JSON.stringify(scene, null, 2)}\n\n控制策略：recommendation-only；模型门禁未通过时只能 safe_small_step，禁止直接 DCW。`)
+  if (sceneId !== scene.sceneId) return fail(`场景契约未提供: scene_id=${sceneId}；请通过 scene_json 注册该场景，或先注册 PhysicsModelProvider。`)
+  return ok(`场景契约 ${scene.sceneId}@${scene.sceneVersion}\n${JSON.stringify(scene, null, 2)}\n\n控制策略：recommendation-only；模型门禁未通过时只能 safe_small_step，禁止直接 DCW。\n快照前置：scene 的 observations/states 必须带 nodeId，且与 Agent 已绑定的真实 DAQ 节点一致；内置默认场景不带 nodeId，直接调用只会在 TwinSnapshot 里得到 fresh=false 并在 VirtualTrial 抛 SNAPSHOT_STALE —— 请用 scene_json 注入带 nodeId 的场景契约。`)
+}
+
+async function autoDaqSamples(agentId: string, scene: SceneContract, nowMs: number, freshnessMaxMs: number): Promise<Array<{ nodeId: string, at: number, value: number, sequence?: string }>> {
+  const required = [...scene.observations, ...scene.states]
+    .map(item => item.nodeId)
+    .filter((nodeId): nodeId is string => Boolean(nodeId))
+  const daqBindings = new Set(getAgentNodeBindingRepo().byAgent(agentId).filter(binding => binding.kind === 'daq').map(binding => binding.nodeId))
+  const missingBindings = required.filter(nodeId => !daqBindings.has(nodeId))
+  if (missingBindings.length > 0) throw new Error(`AUTO_DAQ_UNBOUND:${missingBindings.join(',')}`)
+  const samples: Array<{ nodeId: string, at: number, value: number, sequence?: string }> = []
+  for (const nodeId of required) {
+    const points = await getDaqController().samples(nodeId, { fromMs: nowMs - freshnessMaxMs, toMs: nowMs, bucketMs: 1000, limit: 64 }) as Array<{ at?: number, value?: number, avg?: number }>
+    const latest = points
+      .map(point => ({ at: Number(point.at), value: Number(point.value ?? point.avg) }))
+      .filter(point => Number.isFinite(point.at) && Number.isFinite(point.value))
+      .sort((a, b) => a.at - b.at)
+      .at(-1)
+    if (!latest) throw new Error(`AUTO_DAQ_SAMPLE_MISSING:${nodeId}`)
+    samples.push({ nodeId, at: latest.at, value: latest.value, sequence: `daq:${nodeId}:${latest.at}` })
+  }
+  return samples
 }
 
 export async function toolTwinSnapshotCreate(agentId: string, args: Record<string, unknown>): Promise<HostToolResult> {
   try {
-    const scene = (jsonArg(args, 'scene_json') ?? defaultInjectionScene('twin-snapshot-tool')) as ReturnType<typeof defaultInjectionScene>
+    const scene = parseSceneContract(jsonArg(args, 'scene_json') ?? defaultInjectionScene('twin-snapshot-tool'))
     const twinRepo = createTwinRepo(getAmlRuntime().db)
     twinRepo.upsertScene(scene, agentId)
+    const nowMs = Number(args.now_ms) || Date.now()
+    const freshnessMaxMs = Number(args.freshness_max_ms) || 60_000
+    const suppliedSamples = jsonArg<Array<{ nodeId: string, at: number, value: number, sequence?: string }>>(args, 'samples', []) ?? []
+    const samples = args.auto_daq === true || suppliedSamples.length === 0
+      ? await autoDaqSamples(agentId, scene, nowMs, freshnessMaxMs)
+      : suppliedSamples
     const snapshot = createTwinSnapshot({
       scene,
       channelId: String(args.channel_id ?? ''),
@@ -65,14 +96,24 @@ export async function toolTwinSnapshotCreate(agentId: string, args: Record<strin
       controls: jsonArg<Record<string, number>>(args, 'controls', {}) ?? {},
       states: jsonArg<Record<string, number>>(args, 'states', {}) ?? {},
       disturbances: jsonArg<Record<string, number>>(args, 'disturbances', {}) ?? {},
-      samples: jsonArg<Array<{ nodeId: string, at: number, value: number, sequence?: string }>>(args, 'samples', []) ?? [],
-      nowMs: Number(args.now_ms) || Date.now(),
-      freshnessMaxMs: Number(args.freshness_max_ms) || 60_000,
+      samples,
+      nowMs,
+      freshnessMaxMs,
     })
     twinRepo.insertSnapshot(snapshot)
     const path = await persistTwinArtifact('snapshots', snapshot.snapshotId, snapshot)
     recordOps({ actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent', action: 'aml.twin.snapshot_create', kind: 'aml' as 'system', summary: `创建 TwinSnapshot ${snapshot.snapshotId}`, targetKind: 'aml_twin_snapshot', targetId: snapshot.snapshotId, lineId: scene.lineId, productId: scene.productId, recipeId: scene.recipeId })
-    return ok(`TwinSnapshot 已创建\n  snapshot_id: ${snapshot.snapshotId}\n  hash: ${snapshot.snapshotHash}\n  fresh: ${snapshot.dataQuality.fresh}\n  completeness: ${snapshot.dataQuality.completeness}\n  artifact: ${path}`)
+    const quality = snapshot.dataQuality
+    // 全部必需节点都没有样本(watermark=0)时不是"数据不新鲜",而是场景映射/绑定配置错了:
+    // 旧行为只回 fresh=false,调用方要到 VirtualTrial 才看到 SNAPSHOT_STALE(实测踩过)。
+    const requiredCount = [...scene.observations, ...scene.states].filter(v => v.nodeId).length
+    if (snapshot.daqWatermark <= 0) {
+      const missing = requiredCount === 0
+        ? '场景 observations/states 没有任何 nodeId(内置默认场景即如此)'
+        : `以下节点没有可用样本: ${quality.staleNodeIds.join(', ')}`
+      return fail(`TwinSnapshot 创建失败:无可用 DAQ 样本(watermark=0)。${missing}。请用 scene_json 把场景观测/状态映射到已绑定的真实 DAQ 节点,并确认产线在跑。\n  snapshot_id: ${snapshot.snapshotId}\n  artifact: ${path}`)
+    }
+    return ok(`TwinSnapshot 已创建\n  source: ${args.auto_daq === true || suppliedSamples.length === 0 ? 'bound DAQ' : 'caller samples (legacy/test)'}\n  snapshot_id: ${snapshot.snapshotId}\n  hash: ${snapshot.snapshotHash}\n  fresh: ${quality.fresh}\n  completeness: ${quality.completeness}\n  stale_nodes: ${quality.staleNodeIds.length ? quality.staleNodeIds.join(', ') : '(none)'}\n  artifact: ${path}`)
   }
   catch (err) {
     return fail(`TwinSnapshot 创建失败:${err instanceof Error ? err.message : String(err)}`)
@@ -84,6 +125,13 @@ export async function toolTwinTrialRun(agentId: string, args: Record<string, unk
     const scene = (jsonArg(args, 'scene_json') ?? defaultInjectionScene('twin-trial-tool')) as ReturnType<typeof defaultInjectionScene>
     const snapshot = jsonArg<Record<string, unknown>>(args, 'snapshot_json') as never
     if (!snapshot) return fail('snapshot_json 必填；必须使用当前 DAQ 生成的 TwinSnapshot，禁止 Agent 伪造执行状态。')
+    // 形状校验:传半截 JSON / 工具结果信封 / 纯字符串时旧行为是原生 TypeError
+    // (Cannot read properties of undefined (reading 'fresh')),调用方看不出该怎么修。
+    const snap = snapshot as { dataQuality?: { fresh?: boolean }, snapshotHash?: string, snapshotId?: string }
+    if (!snap.dataQuality || typeof snap.dataQuality.fresh !== 'boolean' || !snap.snapshotId) {
+      return fail('snapshot_json 不是 TwinSnapshot 工件:缺少 snapshotId/dataQuality。请先调用 twin_snapshot_create,并把其 artifact 文件的 JSON 原文整段回传(不要传工具结果文本或截断片段)。')
+    }
+    if (!snap.snapshotHash) return fail('snapshot_json 缺少 snapshotHash(快照被篡改或截断),拒绝执行 VirtualTrial。')
     const provider = new InjectionGreyboxProvider()
     const baseline = jsonArg<Record<string, number>>(args, 'baseline_controls', {}) ?? {}
     const candidate = jsonArg<Array<Record<string, number>>>(args, 'candidate_controls', []) ?? []
@@ -147,7 +195,34 @@ export async function toolTwinGateEvaluate(_agentId: string, args: Record<string
     const result = evaluateHybridGates({
       rows: Number(args.rows ?? 0), runs: Number(args.runs ?? 0), oneStepTestNrmse: Number(args.one_step_nrmse ?? 1), rolloutTestNrmse: Number(args.rollout_nrmse ?? 1), valTestGap: Number(args.val_test_gap ?? 1), calibrationRows: Number(args.calibration_rows ?? 0), calibrationCoverage: Number(args.coverage ?? 0), candidateTrials: jsonArg(args, 'candidate_trials', []) as never, physicsSolverFailureRate: Number(args.physics_failure_rate ?? 1),
     }, DEFAULT_ACCEPTANCE_PROFILE)
-    return ok(JSON.stringify(result, null, 2))
+    const modelId = String(args.model_id ?? '').trim()
+    let modelUpdate = ''
+    if (modelId) {
+      const rt = getAmlRuntime()
+      const model = rt.repo.model.get(modelId)
+      if (model) {
+        let metrics: Record<string, unknown> = {}
+        try {
+          metrics = JSON.parse(model.metricsJson || '{}') as Record<string, unknown>
+        }
+        catch {
+          metrics = {}
+        }
+        const twinEligibility = {
+          gatePassed: result.passed,
+          recommendationEligible: result.passed,
+          uqPassed: result.checks.filter(c => c.id === 'G7_UQ_OOD').every(c => c.passed),
+          oodPassed: result.checks.filter(c => c.id === 'G7_UQ_OOD').every(c => c.passed),
+          physicsPassed: result.checks.filter(c => c.id === 'G5_PHYSICS').every(c => c.passed),
+          evaluatedAt: new Date().toISOString(),
+        }
+        metrics.twinEligibility = twinEligibility
+        rt.db.prepare('UPDATE aml_models SET metrics_json = ? WHERE id = ?').run(JSON.stringify(metrics), modelId)
+        modelUpdate = `\nmodel_id: ${modelId}\nmodel_twin_eligibility: ${JSON.stringify(twinEligibility)}`
+      }
+      else modelUpdate = `\nmodel_id: ${modelId}\nmodel_twin_eligibility: MODEL_NOT_FOUND`
+    }
+    return ok(JSON.stringify({ ...result, modelUpdate }, null, 2))
   }
   catch (err) {
     return fail(`Twin Gate 评估失败:${err instanceof Error ? err.message : String(err)}`)
