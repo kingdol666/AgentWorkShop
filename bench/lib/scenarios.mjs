@@ -933,6 +933,8 @@ export async function runScenario(api, scen, ctx) {
 
 /** 三场景并行闭环基准(核心入口) */
 export async function runScenarioBench(api, { scenarios = SCENARIO_IDS, sfx, toolHarness = 'opencode', fresh = true, onLog = () => {} } = {}) {
+  // sfx 兜底:调用方漏传时避免线名渲染成 `${id}-undefined`(pipeline P11 已显式传)
+  sfx = sfx || `sc${Date.now().toString(36).slice(-6)}`
   const t0 = Date.now()
   const list = scenarios.map(id => SCENARIOS[id]).filter(Boolean)
   onLog?.(`并行启动 ${list.length} 个场景闭环:${list.map(s => s.id).join(', ')}${fresh ? '(fresh 起点复位)' : ''}`)

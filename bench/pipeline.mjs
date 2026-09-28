@@ -1407,7 +1407,7 @@ if (runScenarios) {
     // 避免对同一批 biax 设备重复建第二条平台产线。
     const picked = (listIds.length ? listIds : SCENARIO_IDS).filter(id => id !== 'biax')
     const bench = await runScenarioBench(api, {
-      scenarios: picked, toolHarness,
+      scenarios: picked, toolHarness, sfx,
       onLog: (m) => console.log(`    ${m}`),
     })
     if (biax.mission) {
@@ -1416,7 +1416,14 @@ if (runScenarios) {
         id: 'biax', zh: SCENARIOS.biax.zh, story: SCENARIOS.biax.story,
         ev: mission.ev, errors: [],
         mission,
-        wallS: null, line: { reused: true },
+        wallS: null,
+        line: {
+          reused: true,
+          name: biax.line?.lineName ?? '',
+          ids: { lineId: biax.line?.ids?.lineId ?? '', recipeId: biax.line?.ids?.recipeId ?? '' },
+          dcw: Object.keys(biax.line?.dcw ?? {}).length,
+          daq: Object.keys(biax.line?.daq ?? {}).length,
+        },
       })
       if (!mission.attained) bench.ok = false
     }

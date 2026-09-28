@@ -37,7 +37,15 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
   let settingsPath = null
   let paths = { home: homeDir, configRoot: join(cwd, '.AgentWorkShop'), dataDir: join(cwd, '.AgentWorkShop', 'data') }
   try {
-    const homeMod = await import(pathToUrl(join(cwd, 'shared', 'config', 'home.mjs')))
+    // home.mjs 探测根:cwd 优先;cwd 漂移(计划任务/服务方式启动,schtasks 默认 System32、
+    // 或 cwd=AW_HOME)时 shared/ 不在 cwd 下 → 回退 packageRoot(aw-plugins.ts 已按 chunk
+    // 逐级上溯算好)/ AW_PACKAGE_ROOT(启动器注入)。否则这里 throw 进 catch →
+    // config=null 且 paths 落到 join(cwd,'.AgentWorkShop') 嵌套错根,插件 ctx.config
+    // 终身为空(PATCH/重启都救不回,插件命名空间设置键全部不可见)。
+    const engineBases = [cwd, packageRoot, process.env.AW_PACKAGE_ROOT].filter(Boolean)
+    const base = engineBases.find(r => existsSync(join(r, 'shared', 'config', 'home.mjs')))
+    if (!base) throw new Error(`shared/config/home.mjs 不在任何候选根(${engineBases.join(' | ')})`)
+    const homeMod = await import(pathToUrl(join(base, 'shared', 'config', 'home.mjs')))
     const rm = homeMod.resolveRunMode({ cwd, packageRoot, env: process.env })
     const engineRoot = rm.mode === 'repo' ? rm.root : (packageRoot ?? rm.root)
     if (engineRoot && existsSync(join(engineRoot, 'shared', 'config', 'engine.mjs'))) {

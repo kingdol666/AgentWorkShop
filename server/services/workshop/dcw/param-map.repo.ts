@@ -237,6 +237,9 @@ class DcwParamRepo {
   }
 
   listViews(): DcwParamView[] {
+    // 惰性回填:ensureForNode 只在节点创建时触发,早于参数面功能问世的节点/复用产线
+    // 永远缺行(现场表现为 param_read 只见新线参数)。视图入口幂等补齐(已存在的直接返回)。
+    for (const n of getDcwNodeRepo().all()) this.ensureForNode(n)
     const nodeRepo = getDcwNodeRepo()
     const views = new Map(nodeRepo.all().map(n => [n.id, n.toView()]))
     return this.list

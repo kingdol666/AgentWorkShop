@@ -142,10 +142,11 @@ const DAQ_WINDOWS = {
 export async function provisionBiaxLine(api, { sfx }) {
   const devices = (await simNodes()).filter(n => n.id.startsWith('biax-') && n.enabled)
   const errors = []
-  const rec = { devices: [], dcw: {}, daq: {}, driverTests: [], errors }
+  const rec = { devices: [], dcw: {}, daq: {}, driverTests: [], errors, lineName: '' }
 
   const line = await api.call('POST', '/api/workshop/dcw/lines', { name: `双拉薄膜产线 biax-${sfx}`, description: 'BOPET 双向拉伸全线数字孪生:干燥→挤出铸片→MDO 纵拉→TDO 横拉→测厚→电晕→收卷' })
   const lineId = line.data?.line?.id
+  rec.lineName = line.data?.line?.name ?? ''
   if (!lineId) { rec.errors.push(`建线失败: ${line.message}`); return rec }
   const product = await api.call('POST', '/api/workshop/dcw/products', { lineId, name: `BOPET-25μm biax-${sfx}` })
   const productId = product.data?.product?.id
