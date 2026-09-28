@@ -1,0 +1,109 @@
+{
+  "rid": "kb-team-omp-20260928061356",
+  "base": "http://127.0.0.1:3456",
+  "scenarios": [
+    {
+      "scenario": "injection",
+      "zh": "注塑成型质量窗口寻优",
+      "checks": {
+        "rootTaskClosed": false,
+        "workerDelegated": true,
+        "governedWriteHappened": true,
+        "pvInBand": true,
+        "kbExperience": false
+      },
+      "errors": [
+        "根任务超时(30min)未收口"
+      ],
+      "line": {
+        "lineId": "ln-b0413f88",
+        "recipeId": "rc-8c8d99da",
+        "started": false,
+        "reused": true
+      },
+      "channel": {
+        "channelId": "7892f10d-66b4-4fa8-a9ee-acd344338a72",
+        "leadId": "9e9d0930-4be0-4234-ab5b-4ca0cda03649",
+        "leadHarness": "omp"
+      },
+      "leadBindings": {
+        "pvNode": "dn-d381ab21",
+        "knobNodes": [
+          "dw-54c53f9c",
+          "dw-447087a6"
+        ]
+      },
+      "rootTaskId": "5ad36ff2-3abe-4666-9f64-d73fab9159ab",
+      "dcAfter": [
+        {
+          "id": "dw-2164c087",
+          "name": "scen-injection:dcw:barrel-temp-1-sp",
+          "value": 240,
+          "lastWriteAt": "2026-09-28T13:58:18.889+08:00"
+        },
+        {
+          "id": "dw-d43ef08c",
+          "name": "scen-injection:dcw:barrel-temp-2-sp",
+          "value": 246,
+          "lastWriteAt": "2026-09-28T13:58:18.917+08:00"
+        },
+        {
+          "id": "dw-224690d5",
+          "name": "scen-injection:dcw:barrel-temp-3-sp",
+          "value": 252,
+          "lastWriteAt": "2026-09-28T13:58:18.948+08:00"
+        },
+        {
+          "id": "dw-50aae5f9",
+          "name": "scen-injection:dcw:barrel-temp-4-sp",
+          "value": 258,
+          "lastWriteAt": "2026-09-28T13:58:18.979+08:00"
+        },
+        {
+          "id": "dw-72848b84",
+          "name": "scen-injection:dcw:screw-speed-sp",
+          "value": 120,
+          "lastWriteAt": "2026-09-28T13:58:19.010+08:00"
+        },
+        {
+          "id": "dw-e4d25694",
+          "name": "scen-injection:dcw:mold-temp-sp",
+          "value": 40,
+          "lastWriteAt": "2026-09-28T13:58:19.041+08:00"
+        },
+        {
+          "id": "dw-1dcb3582",
+          "name": "scen-injection:dcw:clamp-force-sp",
+          "value": 1600,
+          "lastWriteAt": "2026-09-28T13:58:19.045+08:00"
+        },
+        {
+          "id": "dw-28706689",
+          "name": "scen-injection:dcw:inject-speed-sp",
+          "value": 85,
+          "lastWriteAt": "2026-09-28T13:58:19.048+08:00"
+        },
+        {
+          "id": "dw-54c53f9c",
+          "name": "scen-injection:dcw:hold-pressure-sp",
+          "value": 63,
+          "lastWriteAt": "2026-09-28T14:41:56.289+08:00"
+        },
+        {
+          "id": "dw-447087a6",
+          "name": "scen-injection:dcw:hold-time-sp",
+          "value": 8.4,
+          "lastWriteAt": "2026-09-28T14:42:59.535+08:00"
+        },
+        {
+          "id": "dw-38fc4711",
+          "name": "scen-injection:dcw:cool-water-sp",
+          "value": 24,
+          "lastWriteAt": "2026-09-28T13:58:19.068+08:00"
+        }
+      ],
+      "pvMean": 32.28600000000001,
+      "ok": false
+    }
+  ]
+}

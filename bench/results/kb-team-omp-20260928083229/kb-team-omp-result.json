@@ -1,0 +1,91 @@
+{
+  "rid": "kb-team-omp-20260928083229",
+  "base": "http://127.0.0.1:3456",
+  "scenarios": [
+    {
+      "scenario": "anneal",
+      "zh": "连续退火质量窗内产能最大化",
+      "checks": {
+        "rootTaskClosed": false,
+        "workerDelegated": true,
+        "governedWriteHappened": true,
+        "pvInBand": false,
+        "kbToolUsed": false,
+        "grantToolUsed": true,
+        "kbExperience": false
+      },
+      "errors": [
+        "根任务终态=FAILED"
+      ],
+      "line": {
+        "lineId": "ln-46c908ec",
+        "recipeId": "rc-fa83888e",
+        "started": true,
+        "reused": false
+      },
+      "channel": {
+        "channelId": "63c40384-4652-4fce-97b4-5d72f54514e3",
+        "leadId": "0c1ea968-0021-49dd-9722-92c1217b1a38",
+        "leadHarness": "omp"
+      },
+      "leadBindings": {
+        "pvNode": "dn-2cdd7430",
+        "knobNodes": [
+          "dw-0f4576e2",
+          "dw-4cf2d8bb"
+        ]
+      },
+      "rootTaskId": "59e9371d-a469-4617-a957-04a471ce8120",
+      "dcAfter": [
+        {
+          "id": "dw-b057ff9a",
+          "name": "scen-anneal:dcw:zone1-sp",
+          "value": 690,
+          "lastWriteAt": "2026-09-28T16:32:31.739+08:00"
+        },
+        {
+          "id": "dw-4cf2d8bb",
+          "name": "scen-anneal:dcw:zone2-sp",
+          "value": 710,
+          "lastWriteAt": "2026-09-28T16:32:31.753+08:00"
+        },
+        {
+          "id": "dw-0f4576e2",
+          "name": "scen-anneal:dcw:zone3-sp",
+          "value": 730,
+          "lastWriteAt": "2026-09-28T16:32:31.809+08:00"
+        },
+        {
+          "id": "dw-7357d87c",
+          "name": "scen-anneal:dcw:line-speed-sp",
+          "value": 140,
+          "lastWriteAt": "2026-09-28T16:32:31.841+08:00"
+        },
+        {
+          "id": "dw-78d63357",
+          "name": "scen-anneal:dcw:oa-temp-sp",
+          "value": 400,
+          "lastWriteAt": "2026-09-28T16:32:31.847+08:00"
+        },
+        {
+          "id": "dw-cf596142",
+          "name": "scen-anneal:dcw:cool-rate-sp",
+          "value": 50,
+          "lastWriteAt": "2026-09-28T16:32:31.850+08:00"
+        },
+        {
+          "id": "dw-684d9b24",
+          "name": "scen-anneal:dcw:h2-ratio-sp",
+          "value": 10,
+          "lastWriteAt": "2026-09-28T16:32:31.852+08:00"
+        }
+      ],
+      "pvMean": 134.8,
+      "toolEvidence": {
+        "kbAgent": 0,
+        "grant": 0
+      },
+      "ok": false
+    }
+  ]
+}
