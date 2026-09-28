@@ -28,5 +28,10 @@
   "k1xxabaf027": "已转为私有",
   "k1oxfuqj028": "已删除模板",
   "k1f54iqd029": "模板中心",
-  "kefkfnl030": "已实例化:{p0}(成员 {p1} 个),到工作区挂载使用"
+  "kefkfnl030": "已实例化:{p0}(成员 {p1} 个),到工作区挂载使用",
+  "kbInstTitle": "实例化 {p0}",
+  "kbOption": "知识库集成(rag-bridge)",
+  "kbHint": "开启后本频道加载知识库插件:优化前先检索场景数据分析与物理机理,收口后由 lead 把经验沉淀入知识库;lead 还可用 team_grant_nodes 把自己绑定的节点授权给 worker。",
+  "kbOn": "开启",
+  "kbOff": "关闭"
 }

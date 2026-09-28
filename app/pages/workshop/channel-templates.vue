@@ -128,12 +128,28 @@ const toggleVisibility = async (t: ChannelTemplateDto, pub: boolean): Promise<vo
   }
 }
 
-/** 实例化(不挂载;工作区内挂载走会话栏) */
+/** 实例化(不挂载;工作区内挂载走会话栏):KB-capable 模板先弹确认,可启停知识库集成 */
 const instantiating = ref<string | null>(null)
-const instantiate = async (t: ChannelTemplateDto): Promise<void> => {
+const instOpen = ref(false)
+const instTarget = ref<ChannelTemplateDto | null>(null)
+const instKb = ref(true)
+const openInstantiate = (t: ChannelTemplateDto): void => {
+  instTarget.value = t
+  instKb.value = true
+  if (!t.knowledgeBaseCapable) {
+    void confirmInstantiate()
+    return
+  }
+  instOpen.value = true
+}
+const confirmInstantiate = async (): Promise<void> => {
+  const t = instTarget.value
+  if (!t) return
   instantiating.value = t.id
+  instOpen.value = false
   try {
-    const res = await api.instantiateChannelTemplate(t.id)
+    const options = t.knowledgeBaseCapable ? { enableKnowledgeBase: instKb.value } : undefined
+    const res = await api.instantiateChannelTemplate(t.id, undefined, options)
     const data = (res as unknown as { data?: { channelId: string, agentCount: number } })?.data
     message.success(tt('ctpl.kefkfnl030', { p0: t.name, p1: data?.agentCount ?? 0 }))
   }
@@ -277,7 +293,7 @@ useHead({ title: () => tt('titles.ctpl') })
               ghost
               :loading="instantiating === t.id"
               :title="$t('ctpl.knjomku002')"
-              @click="instantiate(t)"
+              @click="openInstantiate(t)"
             >
               {{ $t('ctpl.k3mr1fo017') }}
             </a-button>
@@ -348,11 +364,34 @@ useHead({ title: () => tt('titles.ctpl') })
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <a-modal
+      v-model:open="instOpen"
+      :title="tt('ctpl.kbInstTitle', { p0: instTarget?.name ?? '' })"
+      :ok-text="$t('ctpl.k3mr1fo017')"
+      :cancel-text="$t('common.cancel')"
+      :confirm-loading="instantiating === instTarget?.id"
+      @ok="confirmInstantiate"
+    >
+      <a-form layout="vertical">
+        <a-form-item :label="$t('ctpl.kbOption')">
+          <a-switch
+            v-model:checked="instKb"
+            :checked-children="$t('ctpl.kbOn')"
+            :un-checked-children="$t('ctpl.kbOff')"
+          />
+        </a-form-item>
+        <p class="kb-hint">
+          {{ $t('ctpl.kbHint') }}
+        </p>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <style scoped>
 .page { padding: 4px; }
+.kb-hint { margin: 0; font-size: 12px; opacity: 0.6; line-height: 1.6; }
 .head {
   display: flex;
   align-items: center;

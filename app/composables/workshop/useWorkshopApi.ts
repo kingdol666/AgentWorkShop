@@ -213,8 +213,8 @@ export function useWorkshopApi() {
     updateChannelTemplate: (id: string, body: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, visibility?: 'private' | 'public' }) =>
       http.request<{ data: ChannelTemplateDto }>({ method: 'PATCH', url: `/workshop/channel-templates/${id}`, data: body }),
     deleteChannelTemplate: (id: string) => http.delete<{ data: unknown }>(`/workshop/channel-templates/${id}`),
-    instantiateChannelTemplate: (id: string, name?: string) =>
-      http.post<{ data: { channelId: string, workspace: string, agentCount: number, leadAgentId?: string } }>(`/workshop/channel-templates/${id}/instantiate`, { name }),
+    instantiateChannelTemplate: (id: string, name?: string, options?: { enableKnowledgeBase?: boolean }) =>
+      http.post<{ data: { channelId: string, workspace: string, agentCount: number, leadAgentId?: string } }>(`/workshop/channel-templates/${id}/instantiate`, { name, ...options }),
     /** 从 Channel 模板实例化并挂载到 workspace(替代"挂载已有 Channel") */
     mountChannelTemplate: (wsId: string, tplId: string, name?: string) =>
       http.post<{ data: { channelId: string, workspace: string, agentCount: number, leadAgentId?: string } }>(`/workshop/workspaces/${wsId}/channel-templates/${tplId}`, { name }),
@@ -329,6 +329,8 @@ export interface ChannelTemplateDto {
   isBuiltin: boolean
   ownerUserId: string | null
   ownerName?: string | null
+  /** 模板支持「知识库集成」选项(实例化时可启停 rag-bridge 插件) */
+  knowledgeBaseCapable?: boolean
   createdAt: string
   updatedAt: string
 }
