@@ -11,6 +11,19 @@ import { KNOWN_HARNESSES } from './helpers'
 import { parseJson } from '../../db/database'
 import { setHybridChannelProfile } from '../../aml/twin/channel-profile'
 import { defaultInjectionScene } from '../../aml/twin/physics-runtime'
+import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
+
+/** 携带「知识库集成」选项的模板:实例化时可显式启停 rag-bridge(开 → 注入 KB 作业段提示词) */
+export const KNOWLEDGE_BASE_TEMPLATE_IDS = new Set(['chtpl-aml-optimization-default', 'chtpl-generic-optimize-default'])
+
+/** 知识库集成开启时追加到频道场景提示词的作业段(教 lead 先检索后沉淀) */
+export const KNOWLEDGE_BASE_PROMPT_SECTION = `
+
+## 知识库集成(已启用 rag-bridge)
+本频道接入了 rag-knowledge 知识库,优化作业遵循「先检索、后行动、再沉淀」:
+1. 优化启动前,lead 先用 kb_agent(mode=sync) 检索知识库中与本场景相关的**数据分析结论**与**物理机理知识**(检索词带上产线/产品/关键物理量,如「注塑 保压 克重 波动」「烘箱温度 膜厚 滞后」);把检索所得的机理关系、历史阈值与经验教训作为探索方向、步长与安全边界的依据;
+2. 优化过程中,若对某个现象拿不准,先查知识库再动手;worker 也可各自检索,但入库/沉淀由 lead 统一收口;
+3. 优化闭环收口后(目标达标或 judge 判定 keep),lead 用 kb_agent(mode=async) 把本次经验沉淀入知识库:标题、类别(工艺经验/数据分析/故障案例)、问题、解决方案、关键数据(带单位的参数调整↔响应变化)。异步提交后无需等待,可继续汇报。`
 
 export abstract class ManagerChannelTemplates extends ManagerTeams {
   /** 可见性感知 Channel 模板列表:普通用户 = 本人 + public(含内置);admin = 全量 */
@@ -101,21 +114,31 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
    * 场景/工作目录照搬;lead 内联创建;成员逐个克隆(引用模板时校验操作者可读)。
    * 返回 createChannel 同构结果 + 成员实例数。
    */
-  async instantiateChannelTemplate(templateId: string, user: ActingUser, nameOverride?: string, options?: { scene?: Record<string, unknown>, promptVariables?: Record<string, unknown>, objective?: Record<string, unknown>, toolProfile?: string, controlPolicy?: 'recommendation_only' | 'hitl_governed' | 'bounded_auto', providerId?: string, providerVersion?: string, providerHash?: string, scenePackId?: string, optimizationMode?: 'exploration' | 'aml', boundModelId?: string }): Promise<{ channelId: string, workspace: string, agentCount: number, leadAgentId?: string, agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> }> {
+  async instantiateChannelTemplate(templateId: string, user: ActingUser, nameOverride?: string, options?: { scene?: Record<string, unknown>, promptVariables?: Record<string, unknown>, objective?: Record<string, unknown>, toolProfile?: string, controlPolicy?: 'recommendation_only' | 'hitl_governed' | 'bounded_auto', providerId?: string, providerVersion?: string, providerHash?: string, scenePackId?: string, optimizationMode?: 'exploration' | 'aml', boundModelId?: string, enableKnowledgeBase?: boolean }): Promise<{ channelId: string, workspace: string, agentCount: number, leadAgentId?: string, agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> }> {
     const tpl = this.deps.repos.channelTemplates.findById(templateId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
     this.requireTemplateReadable(tpl, user, 'Channel 模板')
     const lead = tpl.leadJson
       ? parseJson<{ name: string, harness: string, config?: Record<string, unknown> } | null>(tpl.leadJson, null)
       : null
+    // 知识库集成:显式 true → 启用 rag-bridge 并在场景提示词追加 KB 作业段;
+    // 显式 false → 显式停用(频道内 kb_* 工具不注入);缺省 → 不写开关行(平台默认)。
+    const kb = options?.enableKnowledgeBase
+    const kbOn = kb === true
+    const scenarioPrompt = kbOn && KNOWLEDGE_BASE_TEMPLATE_IDS.has(tpl.id)
+      ? (tpl.scenarioPrompt ?? '') + KNOWLEDGE_BASE_PROMPT_SECTION
+      : tpl.scenarioPrompt
     const created = await this.createChannel({
       name: (nameOverride && nameOverride.trim()) || tpl.name,
       description: tpl.description,
-      scenarioPrompt: tpl.scenarioPrompt,
+      scenarioPrompt,
       workspace: tpl.workspace || undefined,
       leadAgent: lead ? { name: lead.name, harness: lead.harness, config: lead.config } : undefined,
       ownerUserId: user.id,
     })
+    if (kb !== undefined) {
+      getChannelPluginsRepo().setMany(created.channelId, [{ name: 'rag-bridge', enabled: kbOn }])
+    }
     const members = parseJson<ChannelTemplateMember[]>(tpl.membersJson, [])
     const agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> = []
     if (created.leadAgentId) agents.push({ id: created.leadAgentId, name: lead?.name ?? 'lead', role: 'lead' })
@@ -189,6 +212,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
       visibility: row.ownerUserId === null ? 'public' : row.visibility,
       isBuiltin: row.ownerUserId === null,
       ownerUserId: row.ownerUserId ?? null,
+      knowledgeBaseCapable: KNOWLEDGE_BASE_TEMPLATE_IDS.has(row.id),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }

@@ -118,6 +118,26 @@ export const DEFAULT_CHANNEL_TEMPLATES: Array<{
       { inline: { name: '优化执行器', harness: 'omp', config: { rpcMode: 'rpc', systemPromptPrefix: '你是工艺参数优化执行器:按 goal 与节点物理意义规划探索方向与步长;用 optimization_explore 真实下发激励并读回目标响应;绑定模型后用 twin_trial_run 验证候选、twin_bayes_optimize 收敛寻优;所有写入遵守治理审批。结论必须引用带单位的数据。' } }, role: 'worker' },
     ],
   },
+  {
+    id: 'chtpl-generic-optimize-default',
+    name: '通用闭环优化频道(标准)',
+    description: '标准 goal 驱动闭环优化团队,适配任意已建模产线(注塑/污水/退火/流延/双拉等):lead 编排(可选知识库检索与经验沉淀,支持把 lead 已绑定节点授权给 worker),工艺工程师治理下发,数据分析师证据判读。实例化时可开知识库集成(enableKnowledgeBase)。',
+    scenarioPrompt: `## 通用闭环优化作业(标准流程)
+你是产线闭环优化团队,围绕用户 goal 对**任意已接入产线**做「取证 → 寻优 → 治理下发 → 复测收口」的闭环优化。开工前先用 my_industrial_nodes 与 line_context 弄清本频道持有的节点授权、产线/产品/配方与安全量程,不假设场景。
+
+## 团队分工
+- 生产主管(lead):把 goal 拆解为「数据分析」与「参数调整」子任务并派发(worker 缺节点权限时,用 team_grant_nodes 把 lead 已绑定的节点授予对应 worker,或在 dispatch_task 里带 grant_node_ids 随任务授予;只授予自己绑定的节点);复核成员结论(必须带数据证据)→ 汇总收口;对拿不准的现象先查知识库(若已启用)。
+- 工艺工程师(worker):持有数控节点授权 —— daq_query 取证 → 判定设定-响应关系 → 在「安全量程 ∩ 配方窗口 ∩ 单步限幅」内用 dcw_control/param_control 小步幅下发(单变量);manual 模式节点先说明理由等用户批准;调整后等工艺惯性响应再复测;把「调整↔响应」证据回报 lead。
+- 数据分析师(worker):持有数采节点授权 —— daq_query 时序取证(按批次/时间窗过滤),输出趋势/均值/越限统计与工况判读;异常第一时间通报 lead 与工艺工程师。
+
+## 作业纪律
+数据先行 → 窗口内小步幅(单次 ≤ 量程 2%)→ 单变量调整 → 复测闭环 → 结论必附带单位与时间窗的数据证据;不得操作未授权节点;治理审批与硬约束(步长限幅/写入间隔)被拒时按指引降步重试,不绕行。`,
+    members: [
+      { inline: { name: '生产主管', harness: 'omp', config: { rpcMode: 'rpc', role: 'lead', systemPromptPrefix: '你是通用闭环优化团队的生产主管(lead):把用户 goal 拆解为「数据分析」「参数调整」子任务并用 dispatch_task 派发(可带 grant_node_ids 随任务把你自己已绑定的节点授权给 worker,或用 team_grant_nodes 执行中授予;只能授予自己绑定的节点);复核成员结论(必须带数据证据)后 complete 收口;若知识库已启用,开工前先用 kb_agent(mode=sync) 检索场景相关数据分析与物理机理,收口后用 kb_agent(mode=async) 沉淀本次经验(标题/类别/问题/解决方案/关键数据)。' } }, role: 'lead' },
+      { inline: { name: '工艺工程师', harness: 'omp', config: { rpcMode: 'rpc', systemPromptPrefix: '你是通用闭环优化团队的工艺工程师,按节点物理意义做治理参数下发:my_industrial_nodes 确认授权 → daq_query 取证 → dcw_control/param_control 在「安全量程 ∩ 配方窗口 ∩ 单步限幅」内小步幅下发(单变量)→ 等待工艺惯性后 daq_query 复测。你的节点授权可能由 lead 在派发时或执行中授予(权限变化以 my_industrial_nodes 实时查询为准)。manual 模式节点下发前说明理由等批准。结论一律引用带单位与时间窗的数据。' } }, role: 'worker' },
+      { inline: { name: '数据分析师', harness: 'omp', config: { rpcMode: 'rpc', systemPromptPrefix: '你是通用闭环优化团队的数据分析师,擅长时序取证与工况判读:用 daq_query 获取授权数采节点数据(按批次/时间窗),输出趋势/均值/极值/越限统计,结合数控设定考虑设定-响应滞后;发现越限或异常趋势立即用 send_message_to_agent 通报 lead 与工艺工程师。结论一律引用具体数值。' } }, role: 'worker' },
+    ],
+  },
 ]
 
 /**

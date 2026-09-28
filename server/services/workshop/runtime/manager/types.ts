@@ -122,6 +122,8 @@ export interface ChannelTemplateDetail {
   visibility: string
   isBuiltin: boolean
   ownerUserId: string | null
+  /** 模板支持「知识库集成」选项(实例化可传 enableKnowledgeBase 启停 rag-bridge) */
+  knowledgeBaseCapable?: boolean
   createdAt: string
   updatedAt: string
 }

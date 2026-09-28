@@ -19,6 +19,7 @@ import type { HostToolBridgeContext, HostToolCall, HostToolResult } from './type
 import { INDUSTRIAL_TOOL_NAMES, dispatchIndustrialTool } from './tools/industrial'
 import { handleCompleteTask, handleReportProgress } from './tools/progress'
 import { handleCancelTask, handleDispatchTask, handleGetMyTaskQueue, handleGetTaskDetails, handleListChannelTasks, handleReassignTask, handleRefuseTask, handleSubmitTask, handleUpdateTask } from './tools/tasks'
+import { handleGrantNodes, handleRevokeNodes } from './tools/team-delegation'
 import { handleBroadcastMessage, handleListOtherTeams, handlePollMessages, handleReadChannelMail, handleSearchOtherTeamsMemory, handleSendCrossChannelMessage, handleSendMessageToAgent } from './tools/messaging'
 import { handleSaveMemory, handleSearchMemory } from './tools/memory'
 import { handleCreateTeamAgent, handleGetQueueOverview, handleListTeamAgents, handleRemoveTeamAgent, handleUpdateTeamAgent } from './tools/team'
@@ -121,7 +122,11 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       case 'submit_task':
         return await handleSubmitTask(args, state, ws)
       case 'dispatch_task':
-        return await handleDispatchTask(args, ws)
+        return await handleDispatchTask(args, ws, identity)
+      case 'team_grant_nodes':
+        return await handleGrantNodes(identity, args, ws)
+      case 'team_revoke_nodes':
+        return await handleRevokeNodes(identity, args, ws)
       case 'send_message_to_agent':
         return await handleSendMessageToAgent(args, state, ws)
       case 'send_cross_channel_message':

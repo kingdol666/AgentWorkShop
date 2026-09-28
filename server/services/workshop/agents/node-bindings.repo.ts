@@ -38,6 +38,10 @@ export interface AgentNodeBinding {
   kind: AgentNodeBindingKind
   mode: AgentNodeBindingMode
   tuning?: AgentNodeBindingTuning
+  /** 委派来源:lead 经 team_grant_nodes / dispatch_task(grant_node_ids) 授予时 = lead 成员实例 id */
+  grantedByAgentId?: string
+  /** 委派时间(ISO;仅委派产生的绑定携带) */
+  grantedAt?: string
   createdAt: string
 }
 
@@ -83,7 +87,7 @@ export class AgentNodeBindingRepo {
     return this.list.find(b => b.agentId === agentId && b.nodeId === nodeId && b.kind === kind)
   }
 
-  bind(agentId: string, nodeId: string, kind: AgentNodeBindingKind, mode: AgentNodeBindingMode, tuning?: AgentNodeBindingTuning): AgentNodeBinding {
+  bind(agentId: string, nodeId: string, kind: AgentNodeBindingKind, mode: AgentNodeBindingMode, tuning?: AgentNodeBindingTuning, provenance?: { grantedByAgentId?: string }): AgentNodeBinding {
     if (!agentId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'agentId 必填')
     if (!nodeId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'nodeId 必填')
     if (kind !== 'dcw' && kind !== 'daq') throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `未知节点类型: ${kind}`)
@@ -92,6 +96,10 @@ export class AgentNodeBindingRepo {
     if (prev) {
       prev.mode = mode
       if (tuning !== undefined) prev.tuning = normalizeTuning(tuning)
+      if (provenance?.grantedByAgentId) {
+        prev.grantedByAgentId = provenance.grantedByAgentId
+        prev.grantedAt = new Date().toISOString()
+      }
       this.flush()
       return prev
     }
@@ -102,6 +110,7 @@ export class AgentNodeBindingRepo {
       kind,
       mode,
       ...(tuning ? { tuning: normalizeTuning(tuning) } : {}),
+      ...(provenance?.grantedByAgentId ? { grantedByAgentId: provenance.grantedByAgentId, grantedAt: new Date().toISOString() } : {}),
       createdAt: new Date().toISOString(),
     }
     this.list.push(binding)

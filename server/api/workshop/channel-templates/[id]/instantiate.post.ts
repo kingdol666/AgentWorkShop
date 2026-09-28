@@ -23,6 +23,7 @@ const instantiateSchema = z.object({
   scenePackId: z.string().min(1).optional(),
   optimizationMode: z.enum(['exploration', 'aml']).optional(),
   boundModelId: z.string().min(1).optional(),
+  enableKnowledgeBase: z.boolean().optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -30,7 +31,7 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(instantiateSchema))
   const manager = getWorkshopManager()
-  const result = await manager.instantiateChannelTemplate(templateId, user, body.name, { scene: body.scene, promptVariables: body.promptVariables, objective: body.objective, toolProfile: body.toolProfile, controlPolicy: body.controlPolicy, providerId: body.providerId, providerVersion: body.providerVersion, providerHash: body.providerHash, scenePackId: body.scenePackId, optimizationMode: body.optimizationMode, boundModelId: body.boundModelId })
+  const result = await manager.instantiateChannelTemplate(templateId, user, body.name, { scene: body.scene, promptVariables: body.promptVariables, objective: body.objective, toolProfile: body.toolProfile, controlPolicy: body.controlPolicy, providerId: body.providerId, providerVersion: body.providerVersion, providerHash: body.providerHash, scenePackId: body.scenePackId, optimizationMode: body.optimizationMode, boundModelId: body.boundModelId, enableKnowledgeBase: body.enableKnowledgeBase })
   // 模板含 lead 时直接启动调度循环(可提交任务)
   if (result.leadAgentId) {
     ensureLeadSchedulerLoop(manager, result.channelId)

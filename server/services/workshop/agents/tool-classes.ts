@@ -16,6 +16,8 @@ export const LEAD_ONLY_TOOL_NAMES = new Set([
   'update_team_agent',
   'remove_team_agent',
   'aml_model_promote',
+  'team_grant_nodes',
+  'team_revoke_nodes',
 ])
 
 /** Hybrid Twin 的直接写入工具:权限面(permission-scope)与目录注入面(host-tool-bridge/catalog)fail-closed 同源于本集合;dispatch 分发层的同款守卫为并行在飞改动,待其收敛后接入(勿在此重复第三份清单)。 */

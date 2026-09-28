@@ -23,12 +23,25 @@ export async function handleSubmitTask(args: Record<string, unknown>, state: Hos
   }
 }
 
-export async function handleDispatchTask(args: Record<string, unknown>, ws: AgentWorkspace): Promise<HostToolResult> {
+export async function handleDispatchTask(args: Record<string, unknown>, ws: AgentWorkspace, identity?: HostToolBridgeContext['identity']): Promise<HostToolResult> {
   const assigneeId = args.assignee_id as string
   const title = args.title as string
   const description = args.description as string | undefined
   const parentTaskId = args.parent_task_id as string | undefined
   const routeReason = args.route_reason as string | undefined
+  // 派发时随任务授予节点权限(lead 专属;grant_node_ids ⊆ lead 自身绑定面,fail-closed):
+  // 任一节点不满足则整单拒绝,任务不创建 —— 避免 worker 拿到任务却没有节点权限的半途态。
+  let grantNote = ''
+  const rawGrant = args.grant_node_ids ?? args.grantNodeIds
+  if (rawGrant != null && identity) {
+    const { grantNodesForDispatch } = await import('./team-delegation')
+    const grantNodeIds = (Array.isArray(rawGrant) ? rawGrant : String(rawGrant).split(',')).map(x => String(x ?? '').trim()).filter(Boolean)
+    if (!grantNodeIds.length) return { text: 'grant_node_ids 为空:要么不传,要么给出至少一个节点 id。', isError: true }
+    const grantMode = args.grant_mode === 'manual' || args.grant_mode === 'auto' ? (args.grant_mode as 'auto' | 'manual') : undefined
+    const grant = await grantNodesForDispatch(identity, assigneeId, grantNodeIds, grantMode, ws)
+    if (!grant.ok) return { text: `未派发:${grant.text}\n请先用 team_grant_nodes 确认你持有这些节点,或修正 node id 后重试。`, isError: true }
+    grantNote = `\n${grant.text}`
+  }
   // 重复派发守卫(真实场景实测:lead 模型可能对同一目标重复派发,引发协调风暴):
   // 同父任务下已存在同标题非终态子任务 → 不再创建,直接指路既有任务
   const dup = await ws.listTasks()
@@ -42,7 +55,7 @@ export async function handleDispatchTask(args: Record<string, unknown>, ws: Agen
     }
   }
   const task = await ws.dispatchTask({ assigneeId, title, description, parentTaskId, routeReason })
-  return { text: `子任务 ${task.id} 已创建并指派 → ${assigneeId}(父任务 ${parentTaskId ?? '无'},标题: ${title}${routeReason ? `,路由理由: ${routeReason}` : ''})` }
+  return { text: `子任务 ${task.id} 已创建并指派 → ${assigneeId}(父任务 ${parentTaskId ?? '无'},标题: ${title}${routeReason ? `,路由理由: ${routeReason}` : ''})${grantNote}` }
 }
 
 export async function handleRefuseTask(args: Record<string, unknown>, ws: AgentWorkspace): Promise<HostToolResult> {

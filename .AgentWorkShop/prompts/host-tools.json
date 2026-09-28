@@ -93,6 +93,21 @@
     "parent_task_id": {
      "type": "string",
      "description": "The ID of the submitted parent task this subtask belongs to (from the task list)"
+    },
+    "grant_node_ids": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "可选(Lead only):随本任务把节点授权授予 assignee —— 数组元素为节点 id,每个节点必须是 lead 自己已绑定的节点(daq/dcw 均可);任一节点不在 lead 绑定面则整单失败、任务不创建。用于派发时一并下发 DAQ/DCW 权限,worker 无需再等手动绑定。"
+    },
+    "grant_mode": {
+     "type": "string",
+     "enum": [
+      "auto",
+      "manual"
+     ],
+     "description": "可选:随任务授予的绑定模式;缺省随 lead 自己的绑定模式(manual=每次写入需用户批准)"
     }
    },
    "required": [
@@ -1949,6 +1964,64 @@
    },
    "required": [
     "plan_id"
+   ]
+  }
+ },
+ {
+  "name": "team_grant_nodes",
+  "label": "Grant Nodes",
+  "description": "(Lead only) Grant industrial node permissions (DAQ read / DCW control) to a worker in this channel. HARD RULE: every node must already be bound to YOU (the lead) — you cannot grant permissions beyond your own bindings. Grants are all-or-nothing: if any node is not in your binding surface, the whole request is rejected and nothing is granted. Use this before dispatching (so the worker can act immediately) or mid-execution when scope expands. The worker sees granted nodes via my_industrial_nodes. To grant together with a task, prefer dispatch_task(grant_node_ids=[...]).",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "agent_id": {
+     "type": "string",
+     "description": "Worker member instance id in this channel"
+    },
+    "node_ids": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Node ids to grant (DAQ and/or DCW nodes; must all be bound to you, the lead)"
+    },
+    "mode": {
+     "type": "string",
+     "enum": [
+      "auto",
+      "manual"
+     ],
+     "description": "Optional binding mode for the granted nodes; default = the mode of YOUR own binding for that node (manual = every write needs user approval)"
+    }
+   },
+   "required": [
+    "agent_id",
+    "node_ids"
+   ]
+  }
+ },
+ {
+  "name": "team_revoke_nodes",
+  "label": "Revoke Nodes",
+  "description": "(Lead only) Take back node permissions previously granted to a worker in this channel. You can revoke bindings you granted, or bindings for nodes you hold yourself; other bindings are reported as not revoked. Use when a task closes or scope narrows.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "agent_id": {
+     "type": "string",
+     "description": "Worker member instance id in this channel"
+    },
+    "node_ids": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Node ids to revoke from this worker"
+    }
+   },
+   "required": [
+    "agent_id",
+    "node_ids"
    ]
   }
  }
