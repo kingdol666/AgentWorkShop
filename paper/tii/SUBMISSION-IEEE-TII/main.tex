@@ -59,30 +59,29 @@
 \begin{abstract}
 Supervisory optimization above the regulatory control layer---tuning recipes,
 schedules, and setpoints against quality, throughput, energy, or discharge
-targets---is repeated in every plant, and so is the integration work around it.
-Each deployment re-establishes which actor may change which parameter,
+targets---is repeated in every plant; so is the integration work around it,
+because each deployment re-establishes which actor may change which parameter,
 which limits apply to the current product and run, whether the device accepted
 the command, and whether the process improved. This paper presents
 AgentWorkShop, a governed supervisory execution layer that turns those repeated
-concerns into one path for agent teams. Team identities connect to semantic
-data-acquisition (DAQ) and write-control (DCW) nodes through explicit
-capabilities; line, product,
-recipe, and run context is resolved at execution time; and admission, approval,
-actuation, readback, observation, verdict, and compensation are
-recorded as separate evidence states instead of one success flag. Five protocol
+concerns into one path for agent teams: each intervention is one governed
+transaction, with admission, approval, actuation, readback, observation,
+verdict, and compensation recorded as separate evidence states instead of one
+success flag. Team identities connect to semantic data-acquisition (DAQ) and
+write-control (DCW) nodes through explicit capabilities; line, product,
+recipe, and run context is resolved at execution time; and six protocol
 families, self-describing node and driver contracts, versioned production
 objects, plugin extension points, and a typed software development kit (SDK)
-form the integration surface,
-while process models, objectives, guards, and control policies remain external
-inputs. The evaluation exercises this single governed path through four questions:
-protocol closure and governance attribution, agent-team missions on a single node
-and on a multi-node line, a deterministic closed loop measured against an offline
-optimum, and concurrent process missions. The governed path intercepts every
-configured out-of-window probe without blocking an admissible write, both
-missions close their governed loops, and the process missions reach their
-archived predicates, while task completion, readback, and attainment stay
-separately recorded. The results support an inspectable, simulation-tier
-architecture for industrial supervisory execution.
+form the integration surface, while process models, objectives, guards, and
+control policies remain external inputs. The evaluation exercises this single
+governed path through protocol closure and governance attribution, scripted-policy
+agent-team missions, a deterministic closed loop against an offline optimum, and
+concurrent process missions: the governed path intercepts every configured
+out-of-window probe without blocking an admissible write, both missions close
+their governed loops, and the process missions reach their archived
+predicates, while task completion, readback, and attainment stay separately
+recorded. The results support an inspectable, simulation-tier architecture for
+industrial supervisory execution.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -104,7 +103,7 @@ Agent teams, industrial informatics, recipe optimization, write governance.
 % restore the IEEE 8pt reference size and the tight IEEE entry spacing.
 \begingroup
 \footnotesize
-\setlength{\bibsep}{1pt}
+\setlength{\bibsep}{0pt}
 \bibliography{resources/refs}
 \endgroup
 

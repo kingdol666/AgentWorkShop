@@ -28,18 +28,24 @@ including simulated controller and machine interaction
 \texttt{COMPLETED} can coexist with a missed process objective.
 
 \system{} addresses this execution gap through member--node bindings and shared
-line, product, recipe, and run context. Nodes expose engineering quantities
-rather than register addresses; bindings scope sanctioned tools; and
-intervention records retain the proposal, execution result, observation, and
-verdict. Fig.~\ref{fig:intro} contrasts this organization with application-specific integration; fast regulation, certified protection, and the choice of optimization algorithm remain outside the framework.
+line, product, recipe, and run context. The response is organizational rather
+than algorithmic: each intervention is treated as one governed
+transaction---a member proposes a value, admission intersects the hard,
+baseline, product, and recipe limits, approval, dispatch, readback,
+observation, and the caller's verdict follow, and compensation can reverse the
+change---each step left as its own evidence record, so a completed task never
+stands in for a verified process outcome. Nodes expose engineering quantities
+rather than register addresses; bindings scope sanctioned tools.
+Fig.~\ref{fig:intro} contrasts this organization with application-specific integration; fast regulation, certified protection, and the choice of optimization algorithm remain outside the framework.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{resources/fig1-governed-binding-v2.pdf}
-\caption{Conceptual supervisory integration: (a) application-specific links
-duplicating drivers, permissions, and logging per application; (b) governed
+\caption{Conceptual supervisory integration: (a) application-specific
+integration duplicating drivers, permissions, and logging per application;
+(b) governed
 member--node binding in \system{}, where requests pass recipe, approval, and
-range checks and intervention records return readback, observation, and
+range checks and intervention records return outcome, observation, and
 verdict. Patterns are compared, not optimization performance; PLC regulation
 remains outside the agent-team loop.}
 \label{fig:intro}
@@ -49,10 +55,13 @@ The paper makes four contributions:
 \begin{enumerate}
 \item a \textbf{capability-based industrial execution architecture} connecting
 agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW)
-nodes, heterogeneous protocol drivers, and line--product--recipe--run context,
-with task membership distinct from physical-write authority;
+nodes, heterogeneous protocol drivers, and line--product--recipe--run context
+(run context gates dispatch; evidence records are time-windowed,
+Section~\ref{sec:arch}), with task membership distinct from physical-write
+authority;
 \item a \textbf{reusable integration boundary} of self-describing node and
-driver contracts across five protocol families, versioned production objects,
+driver contracts across six protocol families (five exercised in the
+evaluation), versioned production objects,
 plugin extension points, and a typed software development kit (SDK), into which
 the evaluated reference
 adapter projects scenario blueprints while process models and policies remain
@@ -61,13 +70,17 @@ external;
 separating admission, optional approval, actuation, readback, observation,
 the caller's verdict, compensation, and backstop actions, so a completed task
 never stands in for a verified process outcome; and
-\item a \textbf{layered evaluation} exercising one governed path through a
-mechanism ablation, a deterministic controller, agent-team missions, and
-concurrent process missions, with task state and objective attainment reported
-separately throughout.
+\item a \textbf{layered evaluation} exercising one governed path through
+protocol closure with mechanism ablation, agent-team missions, a deterministic
+controller loop, and concurrent process missions, with task state and objective
+attainment reported separately throughout.
 \end{enumerate}
 Scope is stated once here and revisited in Section~\ref{sec:limits}: real
 software protocol stacks execute against author-implemented dynamic simulators,
-scripted policies drive the governed tools for repeatability, and fast
+scripted policies drive the governed tools for repeatability with two live
+engine turns reported separately, and fast
 regulation, certified protection, physical-plant transfer, and optimizer
-ranking are outside the claims made here.
+ranking are outside the claims made here. The remainder of the paper covers
+related work, the architecture, the governed intervention mechanisms, the
+evaluation, and discussion with limitations
+(Sections~\ref{sec:related}--\ref{sec:limits}).

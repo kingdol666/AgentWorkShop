@@ -8,53 +8,56 @@ and governance attribution (Q1), the AgentTeam workflow (the lead--worker team
 runtime of Fig.~\ref{fig:runtime}) on one node and on a
 multi-node line (Q2), the deterministic cast-film loop (Q3), and attainment for
 four process missions (Q4), each instantiating the path of
-Fig.~\ref{fig:walkthrough}.
+Fig.~\ref{fig:walkthrough}. Q1--Q4 map onto the contributions just
+listed---Q1 exercises the integration boundary and attributes the governance
+mechanism, while Q2--Q4 occupy the strategy slot from scripted policies to
+concurrent missions.
 
 \subsection{Testbed, Evidence Snapshot, and Scope}
 \label{sec:testbed}
 The snapshot is integrated run \resRun{} (seed \resSeed, commit \resCommit,
 harness \resHarness, completed \resEvidenceDate), archived with raw reports and
-mission logs; the ablation companion is \resAblationRun. Scripted external
-policies, rather than language models, call the
-governed tools under a deployed member identity, so results are repeatable.
-Two live agent-engine turns check that the same slot accepts an engine; their
-archived execution-trace headers record the harness (omp), the provider, and
-the model (glm-5.3-flash). The
+mission logs; ablation companion \resAblationRun. Scripted external
+policies call the
+governed tools under a deployed member identity; two live agent-engine turns
+check that the same slot accepts an engine
+(archived trace headers record the harness, provider, and model:
+omp, glm-5.3-flash). The
 standing single-node preset is a cast-film extrusion line tuned through the
-die-head heater setpoint, with objective $J$ aggregating five observed
-quantities (larger is better); each scenario contributes one trajectory from
+die-head heater setpoint (objective $J$ is the blueprint's weighted score over
+thickness conformance, defect rate, energy, and throughput under
+melt-temperature and pressure constraints---larger is better); each scenario
+contributes one trajectory from
 its seed-42 initial state.
 
 \subsection{Test Procedure and System-Level Profile}
 \label{sec:procedure}
-The procedure is a \resPhases-phase integrated suite that scores
+The procedure is a \resPhases-phase integrated suite scoring
 \resChecksPass{}/\resChecksTotal{} checks with no warnings or failures---an
-author-defined regression summary, not an external certification. Each phase
-probes one claim, from preset loading against the offline optimum
-($J^{*}=\resJstar$) and per-protocol interception, through the record,
-recipe, approval, and parameter-layer drills and the controller benchmark, to
-the second preset, the backstop drill, and the concurrent campaign
-(Section~\ref{sec:scenarios}).
+author-defined regression summary, not an external certification---probing one
+claim per phase, from preset loading against the offline optimum
+($J^{*}=\resJstar$) and per-protocol interception through the record, recipe,
+approval, and parameter-layer drills to the controller benchmark, second
+preset, backstop drill, and campaign (Section~\ref{sec:scenarios}).
 
 Figure~\ref{fig:systemexec} reports where the time goes: Panel~(a) shows each
-phase's wall time (log scale), and three tiers appear. Deterministic governance
-steps---admission, binding checks, record writes, recipe lifecycle---complete in
-milliseconds to seconds, so the platform's per-intervention cost is validation
-logic; the long tail sits in the replaceable strategy slot and the observation
-cadences: the live agent-engine turns (P5, P5b) take \resLlmWall{} and
-\resGoalWall, and the backstop drill (P8b) spans \resBackstopDrill, within
-which the system-judged rollback fires at \resBackstop. The framework stays
-thin, and the expensive tiers are exactly the ones a deployment would swap.
-Panel~(b) is the quality tier: the closed-loop objective after two writes,
-normalized by $J^{*}$; all three seeds land within 3.5 percentage points of the
-oracle and within one point of one another (Section~\ref{sec:controller}).
+phase's wall time (log scale). Deterministic governance steps---admission,
+binding checks, record writes, recipe lifecycle---complete in milliseconds to
+seconds, so the platform's per-intervention cost is validation logic; the long
+tail sits in the replaceable strategy slot (the live engine turns take
+\resLlmWall{} and \resGoalWall) and the observation cadences (the backstop
+drill spans \resBackstopDrill, firing at \resBackstop). Panel~(b) is the
+transparency tier: the closed-loop objective after two writes, normalized by
+$J^{*}$; all three seeds land within 3.5 percentage points of the oracle
+(Section~\ref{sec:controller}).
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{resources/fig-system-evaluation.pdf}
 \caption{Run \resRun at system level. (a)~Phase wall time (log scale); bar
 labels are harness phase identifiers. (b)~Closed-loop objective $J$ after two
-governed writes as a fraction of $J^{*}$, per seed, with no write rejected.
+governed writes as a fraction of $J^{*}$, per seed, with no write rejected;
+the annotated mean is 96.9\%.
 Panel (a) is environment telemetry,
 not a service-level bound.}
 \label{fig:systemexec}
@@ -64,9 +67,11 @@ not a service-level bound.}
 \label{sec:protocol}
 On the five protocol lines the suite stores \resDaqSamples{} DAQ samples through
 real drivers, including a Modbus RTU-over-TCP satellite; governed writes are
-accepted and read back on Modbus TCP, OPC~UA, MQTT, and HTTP with per-line
-medians of \resTcpP, \resOpcP, \resMqttP, and \resHttpP, pooling to
-\resWriteP. Because one admission, record, and verdict path
+accepted and read back on Modbus TCP, OPC~UA, MQTT, and HTTP (per-line medians
+\resTcpP, \resOpcP, \resMqttP, and \resHttpP). Four of the five lines are
+writable---the Modbus RTU-over-TCP satellite is acquisition-only in this
+deployment. Because one
+admission, record, and verdict path
 serves every request, the residual spread is consistent with transport
 differences. Each writable line rejects 6/6 configured
 out-of-window probes while accepting its legal write, so all 24 probes are
@@ -82,14 +87,14 @@ measurement stays out of window, and the backstop records a system-judged
 rollback \resBackstop{} later---readback closes the command path, the backstop
 closes the record, and neither is a settling time. A second preset with
 different signals and dynamics is then commissioned by configuration
-alone---three writable lines and two satellite nodes with
-zero framework code changes. Across both presets 33 configured probes
-are rejected on seven writable lines, the same admission code discriminating on
-signals it had never seen.
+alone (zero framework code changes); across both presets, 33 configured probes
+are rejected on seven writable lines---six per line on the first, three per
+line on the second---the same admission code discriminating on
+signal maps it had not previously exercised.
 
 The parameter layer passes \resParamChecks{} checks and makes the interval
-geometry of Section~\ref{sec:objective} observable: a semantic surface without
-register leakage, and a four-layer chain (node $[50,200]$\,rpm, parameter
+geometry of Section~\ref{sec:objective} observable: a four-layer chain (node
+$[50,200]$\,rpm, parameter
 $[143.7,156.3]$\,rpm, product $[146.22,153.78]$\,rpm, recipe
 $[141,159]$\,rpm) narrowing to one admitted interval, each rejection
 attributable to its excluding layer. A manual binding instead suspends a
@@ -115,7 +120,7 @@ Both relaxed & \resUngatedIntercept & 6 & 0 \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:ablation} attributes the rejection rather than assuming it, on a pipeline-tier companion fixture kept separate from the five protocol lines; counts are identical across the three deterministic repetitions, and the per-request latencies archived for every arm are indistinguishable at the archived resolution---the validation logic adds no measurable overhead on this fixture. Full governance and the no-readback arm reject 18/18 probes, whereas removing the window interlock, alone or with the readback check, lets the six window-class probes execute and be journaled. Two readings follow. First, prevention is the
+Table~\ref{tab:ablation} attributes the rejection rather than assuming it, on a standalone admission-pipeline fixture kept outside the scenario simulators; counts are identical across the three deterministic repetitions, and the per-request latencies archived for every arm overlap at this resolution---we claim only that no overhead is visible on this fixture. Full governance and the no-readback arm reject 18/18 probes, whereas removing the window interlock, alone or with the readback check, lets the six window-class probes execute and be journaled. Two readings follow. First, prevention is the
 window interlock's job: the readback check contributes nothing to interception---it
 closes the command path after execution---yet is retained because it makes a
 written-but-unconfirmed command visible. Second, attribution
@@ -128,13 +133,13 @@ its removable part; no arm records a false block.
 \label{sec:agentteam}
 The workflow ran end to end on the cast-film line and then on a larger BOPET line
 (Section~\ref{sec:tasklifecycle}); a scripted policy rather than a language model
-issued the writes in both missions; the two live engine turns follow at the
-end of this subsection. On the single-node mission one write sufficed: the
+issued the writes in both missions (the two live engine turns follow at the
+end of this subsection). On the single-node mission one write sufficed: the
 die-head heater setpoint moved from \resMissionFrom{} to
-\resMissionTo{}\,$^{\circ}$C, the observation
+\resMissionTo{}\,$^{\circ}$C and the observation
 settled at \resMissionPv{}\,$^{\circ}$C against
-\resMissionTarget\,$^{\circ}$C, the journal attributed the change to
-the agent identity, and the task closed \texttt{COMPLETED}.
+\resMissionTarget\,$^{\circ}$C, the journal attributing the change to the
+agent identity, the task closing \texttt{COMPLETED}.
 
 The BOPET mission is the multi-node case: nine devices and 49 signals
 (\resBiaxSp{} writable, \resBiaxDaq{} readable), all created by the
@@ -146,23 +151,22 @@ $118\!\rightarrow\!120.3$\,m/min, and rail width $3000\!\rightarrow\!3035$\,mm--
 \resBiaxFinal\,$\mu$m. Each write opened a record, received \texttt{keep}, and
 left an agent-attributed journal entry, while melt temperature stayed near
 291\,$^{\circ}$C and the parent task reached \texttt{COMPLETED}. In both
-missions the governed-write count did not scale with node count: each write
-traversed the same admission, record, and verdict steps regardless of line
-size.
+missions the governed-write count matched the number of accepted setpoint
+changes---by construction, since each write traverses the same admission,
+record, and verdict steps regardless of line size.
 
-Two live engine turns show that the strategy slot also accepts a language model.
 In the bounded turn the agent read the node's semantic card, sampled a baseline
 through \texttt{daq\_query}, wrote $197.48\,^{\circ}$C, waited,
 resampled, and closed the record with \texttt{keep}, finishing in
 \resLlmWall{} and storing one lesson: the acquisition-limit flag can lag the
-live value. The goal-driven turn took \resGoalWall. It queried the journal
-and its own memory, found neither, and measured 53.79\,$\mu$m at 150\,rpm
-against a self-selected target of $52.0\pm0.8$\,$\mu$m; the governed path, not
-a predicate, is what constrains this turn. From mass conservation
-($h\propto N/v$: thickness to screw speed over line speed) it inferred that
+live value. The goal-driven turn took \resGoalWall: it queried the journal
+and its own memory, found neither, measured 53.79\,$\mu$m at 150\,rpm
+against a self-selected target of $52.0\pm0.8$\,$\mu$m (the governed path, not
+a predicate, constrains this turn), inferred from mass conservation
+($h\propto N/v$) that
 screw speed should fall by about 5\,rpm, applied the change in steps, judged
 each write on measured evidence, refined its gain estimate from 0.22 to
-0.36\,$\mu$m per rpm, and settled thickness at \resGoalFinal\,$\mu$m. It also
+0.36\,$\mu$m per rpm, and settled thickness at \resGoalFinal\,$\mu$m; it also
 saved the recipe---authorship attributed and audit-logged, activation
 role-gated.
 
@@ -187,25 +191,25 @@ as a performance delta.
 \label{sec:scenarios}
 The campaign runs four lines concurrently, each provisioned from a blueprint
 by the \emph{ensure} pass and given one channel; all four attain their archived
-predicates, evaluated from subsequent observations rather than from the task
+predicates, evaluated from subsequent observations, not the task
 state. The controlled quantity moved from
 \resInjStart{} to \resInjFinal\,g, \resWwtpStart{} to \resWwtpFinal\,mg/L,
-\resAnnealStart{} to \resAnnealFinal\,HV, and \resBiaxStart{} to \resBiaxFinal\,$\mu$m,
-with mission clocks of \resInjWall, \resWwtpWall, and \resAnnealWall (the BOPET
-clock was not retained).
+\resAnnealStart{} to \resAnnealFinal\,HV, and \resBiaxStart{} to \resBiaxFinal\,$\mu$m;
+mission clocks (\resInjWall, \resWwtpWall, \resAnnealWall; the BOPET clock was
+not retained) are simulator wall time under accelerated dynamics, not physical
+durations.
 Figure~\ref{fig:multiscenarioopt} archives the trajectories: the curve is the
 observed controlled variable, the hatched band its window, and the filled
-terminal marker the predicate-satisfying observation. Each mission iterates
-the same loop---read the window, write inside the admitted interval, observe
-the response, judge---so one governed loop produces all four trajectories.
-
+terminal marker the predicate-satisfying observation; each mission iterates
+the same loop---read, write inside the admitted interval, observe, judge---so
+one governed loop produces all four trajectories.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.78\textwidth]{resources/fig-multiscenario-optimization.pdf}
 \caption{Archived trajectories of the four missions in run \resRun. Hatched
-bands are the objective windows, the dash-dotted line the target, and filled
-terminal markers the archived observations satisfying the predicate. Panel (a)
+bands are objective windows, the dash-dotted line the target, filled terminal
+markers the predicate-satisfying observations. Panel (a)
 marks governed-write rounds with triangles, Panels (c) and (d) index points by
 governed write, and Panel (b) tracks dissolved oxygen through the mission's
 stages (its round axis includes the 15 governed writes) with write count and
@@ -227,11 +231,12 @@ Aeration, caustic, and coagulant dosing bring dissolved oxygen from
 COD, ammonia, total phosphorus, pH, and turbidity; the policy then lowers blower
 frequency and caustic dose, ending after \resWwtpWrites{} writes at
 \resWwtpFinal\,mg/L in \resWwtpWall{} with the simulator-internal
-compliance-cost index (Fig.~\ref{fig:multiscenarioopt}b) down from
+compliance-cost index (Fig.~\ref{fig:multiscenarioopt}b), the scenario's
+operating-cost proxy, down from
 \resWwtpCostStart{} to \resWwtpCostFinal. Two blower
-steps are the most informative events in the campaign: both writes were
+steps are the most informative events: both writes were
 admissible and journaled, the post-write observation lost compliance margin, and
-the verdict stage reverted them---so rejection of a bad proposal lives in the
+the verdict stage reverted them---rejection of a bad proposal lives in the
 evidence, not in the admission gate.
 
 Panel~(c): annealing starts far outside the hardness window (\resAnnealStart\,HV
@@ -239,11 +244,13 @@ at 140\,m/min). Raising zone-3 temperature to 850\,$^{\circ}$C brings hardness t
 99.46\,HV; one zone-2 trim and two line-speed steps then hold $95\pm6$\,HV while
 raising line speed by \resAnnealGain, and a further attempt at
 \resAnnealSpeedTried\,m/min is reverted for leaving the margin. All
-\resAnnealWrites{} governed writes are marked on the panel's baseline-indexed
-axis. The guard here
-is multi-objective---hardness and throughput must hold together---and the
-predicate holds in \resAnnealWall{} only because the margin-violating speed was
-undone, on record.
+\resAnnealWrites{} governed writes are journaled; the panel's baseline-indexed
+axis plots the states they produced---the fifth (the reverted
+\resAnnealSpeedTried\,m/min attempt) returned the process to the prior state,
+so it shares that position and is distinguished only in the journal. The guard
+is multi-objective---hardness and throughput must hold
+together---and the predicate holds in \resAnnealWall{} only because the
+margin-violating speed was undone, on record.
 
 Panel~(d): BOPET is the nine-device mission of Section~\ref{sec:agentteam}
 executed under the campaign harness, moving thickness from \resBiaxStart{} to
@@ -253,15 +260,15 @@ objective would still be visible.
 
 \subsection{Cross-Scenario Reading}
 \label{sec:synthesis}
-Read together, the four missions bound what the framework contributes.
-Platform-side behavior is invariant---admission, driver I/O, records,
-verdicts, closure---while the write economy varies by more than a factor of
-seven (\resInjWrites, \resWwtpWrites, \resAnnealWrites, and \resBiaxWrites{}
-writes across the four lines) and the mission clock by more than a factor of
-six (\resInjWall{} to \resWwtpWall{} over the three retained clocks). Both
-ranges are produced by construction in the scenario-specific slot: blueprint,
-guards, and policy.
-The three reversions (two blower steps in WWTP, one speed step in annealing)
-show caller-side verdicts doing real work with the platform preserving the
-distinction; that all four terminal markers lie inside their bands is an
-observed outcome of this run, not a structural property. Margins are narrow but on record: three terminals sit within 1\% of a band edge (0.02\,g, 0.04\,$\mu$m, 0.92\,HV to the nearest bound), and the compliance-cost index ends 1.3\% lower. 
+Read together, the four missions bound what the framework contributes:
+platform-side behavior is invariant while the write economy---the
+governed-write count each scripted policy needs---varies by more
+than a factor of seven (2, 15, 5, and 3 writes) and the mission clock by more
+than six (26.48\,s to 169.27\,s over the three retained clocks), both produced
+by construction in the scenario-specific slot. The three reversions (two
+blower steps, one speed step) show caller-side verdicts doing real work; that
+all four terminal markers lie inside their bands is an observed outcome, not a
+structural property. Margins are narrow but on record: 32.17\,g sits 0.02\,g
+above 32.15\,g, 100.08\,HV 0.92\,HV below 101\,HV, and
+25.66\,$\mu$m 0.04\,$\mu$m below 25.7\,$\mu$m; the compliance-cost index
+ends 1.3\% lower.

@@ -17,10 +17,10 @@ scheduler, approval service, or persistence code.
 \centering
 \includegraphics[width=\textwidth]{resources/fig2-architecture.pdf}
 \caption{System architecture and execution boundaries. The platform hosts team
-routing, binding and approval, industrial supervision, and records. Operator
-interfaces sit above it; agent engines, data stores, protocol endpoints, and
-the plant remain separate. Shared identifiers provide attribution but do not
-make storage and actuation transactional.}
+routing, binding and approval, industrial supervision, and records; operator
+interfaces sit above it, and agent engines, data stores, protocol endpoints,
+and the plant remain separate. Shared identifiers provide attribution but do
+not make storage and actuation transactional.}
 \label{fig:arch}
 \end{figure*}
 
@@ -34,7 +34,11 @@ verdict, compensation, and rollback; production operations attaches line,
 product, recipe, and run context while PLC protection stays independent; and
 extensibility admits plugins, drivers, agent tools, panels, and SDK clients
 through sanctioned services. In every plane the common execution path is
-unchanged: what a scenario supplies is data and strategy.
+unchanged: what a scenario supplies is data and strategy. Fig.~\ref{fig:arch}
+draws these planes as services: the agent orchestrator is the team plane, the
+binding-and-approval bridge the governance plane, and the industrial
+supervisor the integration plane, and the operations and extensibility planes
+the persistent stores and sanctioned registration services around them.
 
 \subsection{Supervisory Core and Nodes}
 The Node.js core hosts channel routing, industrial services, and protocol
@@ -47,11 +51,12 @@ DAQ nodes convert device readings to engineering quantities; DCW nodes translate
 engineering setpoints into driver commands and, where supported, readback.
 Per-node runtimes manage timing; gateway services supply
 connection state, recipe context, and write bookkeeping. The built-in semantic
-surface covers Modbus TCP, Modbus RTU-over-TCP, OPC UA, MQTT, and HTTP/REST as
-both client and server endpoints, plus S7 for acquisition only.
+surface spans six protocol families---Modbus TCP, Modbus RTU-over-TCP, OPC UA,
+MQTT, HTTP/REST (client and server), and acquisition-only S7; the evaluation
+instantiates five of them as lines (Section~\ref{sec:protocol}).
 The deployment reaches author-implemented dynamic simulators through the same
-node and driver contracts a plant would use; they are deterministic per seed
-but not validated digital twins. The first reuse boundary is declarative: a
+node and driver contracts a plant would use; they are deterministic per seed,
+not validated digital twins. The first reuse boundary is declarative: a
 scenario declares signals, units, scaling, precision, and driver
 configuration, and the team loop is unchanged; fast regulation and independent
 protection stay in plant controllers.
@@ -92,8 +97,7 @@ differing (Section~\ref{sec:scenarios}).
 The second reuse boundary is a reference scenario-onboarding adapter
 (Section~\ref{sec:onboarding}); the SDK exposes the same surface to ordinary
 programs, and runtime settings are hot-reloadable. The stores share identifiers
-rather than a transaction domain: platform state uses SQLite and files, and
-measurement and object backends use TimescaleDB and MinIO with local fallbacks.
+rather than a transaction domain.
 A device may accept a write even if bookkeeping fails, and records lack a run
 identifier, so time-range queries can cross runs unless bounded.
 
@@ -125,9 +129,9 @@ optimization record carrying prior and requested values, the admitting
 interval, the acting member, and timestamps; readback, where supported, closes
 the command path; the parameter journal attributes the change to its source; and
 attainment is computed against the scenario predicate while the task closes with
-a workflow terminal state. This bounds what ``automatic optimization'' means
-here: a
+a workflow terminal state; the per-intervention view of the same life cycle
+follows in Section~\ref{sec:mech}. This bounds what ``automatic optimization''
+means here: a
 controller, a scripted policy, a conventional optimizer, or an agent engine may
 occupy the strategy slot, while authority, evidence, and closure stay on the
-platform---and a mission may reach its terminal state while missing the process
-objective, because the two are never merged.
+platform.
