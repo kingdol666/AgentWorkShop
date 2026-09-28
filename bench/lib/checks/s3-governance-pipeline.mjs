@@ -25,23 +25,48 @@ function orderedIndexes(src, startAt, markers) {
 export default [{
   meta,
   async run(ctx) {
-    const src = readFileSync(join(ctx.REPO, 'server', 'services', 'workshop', 'dcw', 'dcw-controller.ts'), 'utf8')
+    // 2026-09 起 dcw-controller 已按职责拆分为目录(write.ts 编排序 / actuation.ts 执行排 /
+    // write-audit.ts 单点审计);旧单文件布局仍兼容。
+    const writeCandidates = [
+      join(ctx.REPO, 'server', 'services', 'workshop', 'dcw', 'dcw-controller.ts'),
+      join(ctx.REPO, 'server', 'services', 'workshop', 'dcw', 'dcw-controller', 'write.ts'),
+    ]
+    const actuationCandidates = [
+      join(ctx.REPO, 'server', 'services', 'workshop', 'dcw', 'dcw-controller.ts'),
+      join(ctx.REPO, 'server', 'services', 'workshop', 'dcw', 'dcw-controller', 'actuation.ts'),
+    ]
+    const auditCandidates = [
+      join(ctx.REPO, 'server', 'services', 'workshop', 'dcw', 'dcw-controller.ts'),
+      join(ctx.REPO, 'server', 'services', 'workshop', 'dcw', 'dcw-controller', 'write-audit.ts'),
+    ]
+    const firstExisting = (cands) => cands.find(p => { try { readFileSync(p, 'utf8'); return true } catch { return false } })
+    const writePath = firstExisting(writeCandidates)
+    const actuationPath = firstExisting(actuationCandidates)
+    const auditPath = firstExisting(auditCandidates)
+    if (!writePath || !actuationPath || !auditPath) throw new Error(`DCW write source not found: ${[writePath, actuationPath, auditPath].filter(Boolean).join(', ')}`)
+    const src = readFileSync(writePath, 'utf8')
+    const actSrc = readFileSync(actuationPath, 'utf8')
+    const auditSrc = readFileSync(auditPath, 'utf8')
     const evidence = []
     let chainsOk = 0
 
     // 链 A：write() 编排排（write 定义之后）：可用门→护栏→分层联锁(assertWithinLimits,
-    //   泛化自旧配方软联锁:节点安全量程∩参数基准∩产品限界∩配方窗口,顺序不变)→运行时写→闭环入册→审计
+    //   泛化自旧配方软联锁:节点安全量程∩参数基准∩产品限界∩配方窗口,顺序不变)→运行时写→闭环入册;
+    //   审计单点(dcw.write.)自拆分后落 write-audit.ts,单独核序
     const writeDef = src.indexOf('async write(')
     if (writeDef > 0) {
-      const chainA = orderedIndexes(src, writeDef, ['beforeWrite', 'assertWithinLimits', 'rt.write(', 'afterWrite', 'dcw.write.'])
-      if (chainA.ok) { chainsOk++; evidence.push(`✔ write() 编排链顺序成立: ${['beforeWrite(护栏)', 'assertWithinLimits(四层联锁)', 'rt.write(执行)', 'afterWrite(闭环入册)', 'dcw.write.(审计)'].join(' → ')}`) }
+      const chainA = orderedIndexes(src, writeDef, ['beforeWrite', 'assertWithinLimits', 'rt.write(', 'afterWrite'])
+      if (chainA.ok) { chainsOk++; evidence.push(`✔ write() 编排链顺序成立: ${['beforeWrite(护栏)', 'assertWithinLimits(四层联锁)', 'rt.write(执行)', 'afterWrite(闭环入册)'].join(' → ')}`) }
       else evidence.push(`✘ write() 编排链在「${chainA.missingAt}」处断开`)
+      const auditDef = auditSrc.indexOf('dcw.write.')
+      if (auditDef > 0) { chainsOk++; evidence.push('✔ 审计单点 dcw.write. 存在（write-audit 单点入册,论文 §IV 阶段5）') }
+      else evidence.push('✘ 未定位到审计埋点 dcw.write.')
     } else evidence.push('✘ 未定位到 write() 定义')
 
     // 链 B：executeWrite() 执行排（定义之后）
-    const execDef = src.indexOf('executeWrite(')
+    const execDef = actSrc.indexOf('executeWrite(')
     if (execDef > 0) {
-      const chainB = orderedIndexes(src, execDef, ['inverseTransform', 'readback', 'DcwWriteHistoryEntry'])
+      const chainB = orderedIndexes(actSrc, execDef, ['inverseTransform', 'readback', 'DcwWriteHistoryEntry'])
       if (chainB.ok) { chainsOk++; evidence.push(`✔ executeWrite() 执行链顺序成立: ${['inverseTransform(编码)', 'readback(回读)', 'DcwWriteHistoryEntry(账本)'].join(' → ')}`) }
       else evidence.push(`✘ executeWrite() 执行链在「${chainB.missingAt}」处断开`)
     } else evidence.push('✘ 未定位到 executeWrite()')
@@ -50,9 +75,9 @@ export default [{
     const rt = readFileSync(join(ctx.REPO, 'server', 'services', 'workshop', 'dcw', 'dcw-runtime.ts'), 'utf8')
     if (/writeTolerance/.test(rt)) evidence.push('✔ 回读死区 writeTolerance() 存在（论文式(2)）')
 
-    const score = chainsOk / 2
+    const score = chainsOk / 3
     return result(meta.id, meta, score === 1 ? 'pass' : score > 0 ? 'warn' : 'fail', score,
-      { chainsOk, chainTotal: 2 },
+      { chainsOk, chainTotal: 3 },
       evidence, score === 1 ? '治理管线六阶段结构与顺序核实（Algorithm 1 的源码对应物）' : '管线结构不完整，论文 §IV 声称受影响')
   },
 }]

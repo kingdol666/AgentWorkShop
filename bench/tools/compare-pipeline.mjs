@@ -119,6 +119,18 @@ env('write p50 集合', (A.summary?.perLine ?? []).map(l => l.writeP50), (B.summ
 env('daq samples 集合', (A.summary?.perLine ?? []).map(l => l.daqSamples), (B.summary?.perLine ?? []).map(l => l.daqSamples))
 env('closedloop J0/Jend', (A.closedloop?.seeds ?? []).map(s => [s.J0, s.Jend]), (B.closedloop?.seeds ?? []).map(s => [s.J0, s.Jend]))
 
+// 9) P13/P14(extended)判定类:投用链/能力面的布尔与构成;ID、指标数值、写数、PV 属环境类
+const amlJ = (run) => run.env?.aml
+  ? { adopted: run.env.aml.adopted === true, hasModel: Boolean(run.env.aml.modelId), hasDataset: Boolean(run.env.aml.datasetId), failClosed: run.env.aml.failClosed === true }
+  : null
+judge('aml 投用链判定布尔(adopted/工件存在)', amlJ(A), amlJ(B))
+env('aml 指标/写数/PV 均值', [A.env?.aml?.g1, A.env?.aml?.g2, A.env?.aml?.wrote, A.env?.aml?.pvMean], [B.env?.aml?.g1, B.env?.aml?.g2, B.env?.aml?.wrote, B.env?.aml?.pvMean])
+const surfJ = (run) => run.env?.surfaces
+  ? { mcpToolsGte30: (run.env.surfaces.mcpTools ?? 0) >= 30, switchGate: run.env.surfaces.switchGate === true }
+  : null
+judge('p14 能力面判定布尔(MCP 面宽/开关门控)', surfJ(A), surfJ(B))
+env('mcp tools 数', A.env?.surfaces?.mcpTools, B.env?.surfaces?.mcpTools)
+
 L.push('')
 L.push(`## 结论: **${fails === 0 ? 'REPRODUCIBLE' : 'NOT REPRODUCIBLE'}** (判定类失败 ${fails} · 环境类报告 ${envN} 项)`)
 L.splice(0, 1, headline[0].replace('{FAILS}', String(fails)).replace('{ENV}', String(envN)))

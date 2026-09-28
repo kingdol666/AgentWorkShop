@@ -39,14 +39,29 @@ export default [{
     const found = engines.filter(e => new RegExp(`['"\`]${e}['"\`]`).test(regSrc))
     add('Harness 引擎 = 14', found.length === engines.length, `找到 ${found.length}/14${found.length < engines.length ? `（缺 ${engines.filter(e => !found.includes(e)).join(',')}）` : ''}`)
 
-    // 4. SQLite 表（论文声称 22 + FTS5）
-    const dbSrc = readFileSync(join(R, 'server', 'services', 'workshop', 'db', 'database.ts'), 'utf8')
+    // 4. SQLite 表（论文声称 22 + FTS5）:数据库 schema 已按职责拆分,
+    // 兼容旧路径并使用当前 schema.ts,避免架构拆分造成静态误报。
+    const dbCandidates = [
+      join(R, 'server', 'services', 'workshop', 'db', 'database.ts'),
+      join(R, 'server', 'services', 'workshop', 'db', 'database', 'schema.ts'),
+    ]
+    const dbPath = dbCandidates.find(p => { try { statSync(p); return true } catch { return false } })
+    if (!dbPath) throw new Error(`database schema not found: ${dbCandidates.join(', ')}`)
+    const dbSrc = readFileSync(dbPath, 'utf8')
     const tables = new Set((dbSrc.match(/CREATE TABLE IF NOT EXISTS\s+(\w+)/g) ?? []).map(s => s.replace(/CREATE TABLE IF NOT EXISTS\s+/, '')))
     add('SQLite 表 ≥ 20', tables.size >= 20, `实际 ${tables.size}`)
-    add('FTS5 记忆索引', /fts5/i.test(dbSrc), 'agent_memories_fts')
+    add('FTS5 记忆索引', /fts5/i.test(dbSrc), dbPath)
 
     // 5. 协议驱动（论文声称 5 族：Modbus TCP / Modbus RTU / OPC UA / MQTT / HTTP）
-    const drvSrc = readFileSync(join(R, 'server', 'services', 'workshop', 'daq', 'drivers.ts'), 'utf8').toLowerCase()
+    // 驱动面已按目录拆分(drivers/{index,http,mock}.ts)——候选路径兼容旧单文件布局,
+    // 避免架构拆分造成静态误报。
+    const drvCandidates = [
+      join(R, 'server', 'services', 'workshop', 'daq', 'drivers.ts'),
+      join(R, 'server', 'services', 'workshop', 'daq', 'drivers', 'index.ts'),
+    ]
+    const drvPath = drvCandidates.find(p => { try { statSync(p); return true } catch { return false } })
+    if (!drvPath) throw new Error(`drivers module not found: ${drvCandidates.join(', ')}`)
+    const drvSrc = readFileSync(drvPath, 'utf8').toLowerCase()
     const drivers = ['modbus', 'rtu', 'opcua', 'mqtt', 'http'].filter(k => drvSrc.includes(k))
     add('协议驱动 = 5 族 (modbus-tcp/rtu/opcua/mqtt/http)', drivers.length === 5, `找到 ${drivers.join(', ')}`)
 

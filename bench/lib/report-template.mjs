@@ -98,7 +98,7 @@ export function renderBenchmarkHtml({ env, phases, checks, kpis, metrics, closed
     const items = list.map((c) => {
       const mark = c.status === 'pass' ? '✔' : c.status === 'warn' ? '▲' : c.status === 'skip' ? '↓' : '✘'
       const tone = c.status === 'pass' ? 'ok' : c.status === 'warn' ? 'warn' : c.status === 'skip' ? 'dim' : 'bad'
-      const ev = (c.evidence ?? []).filter(Boolean).slice(0, 4).map((e) => `<li>${esc(String(e).replace(/\n/g, ' ').slice(0, 240))}</li>`).join('')
+      const ev = (Array.isArray(c.evidence) ? c.evidence : c.evidence != null ? [String(c.evidence)] : []).filter(Boolean).slice(0, 4).map((e) => `<li>${esc(String(e).replace(/\n/g, ' ').slice(0, 240))}</li>`).join('')
       return `<li class="chk"><span class="mark ${tone}">${mark}</span> <span class="chk-id mono">${esc(c.id)}</span> <span class="chk-t">${esc(c.title)}</span>${ev ? `<ul class="ev">${ev}</ul>` : ''}</li>`
     }).join('')
     return `

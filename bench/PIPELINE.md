@@ -6,9 +6,18 @@
 > 规范背景见 `bench/README.md`（场景/任务/故障/指标定义），
 > 实验总策划见 `docs/experiments/01-test-and-benchmark-master-plan.md`。
 >
-> **现有集成流水线覆盖范围（P0–P11）**：隔离启动 AW 与 PLC 节点模拟器 → 场景/产线
+> **现有集成流水线覆盖范围（P0–P11 + 可选 P13/P14）**：隔离启动 AW 与 PLC 节点模拟器 → 场景/产线
 > provisioning 与驱动读写 → 确定性工具闭环、治理/回读/账本、可选 LLM goal-loop、多场景
-> 与双拉产线任务。验证对象是**生产型流程的数字孪生/PLC 模拟场景**，不是物理工厂投产，
+> 与双拉产线任务。2026-09-28 起新增两个可选阶段，覆盖平台新增能力：
+> **P13 · AML 混合建模与投用闭环**（孪生建线+SP 回读 → castfilm 场景编译/冻结 → 治理合规
+> 激励批次 → 数据集 → hybrid_residual 真实训练 → 平台门禁 → 快照/背书试验 → castfilm 档场景
+> 门禁 → shadow/production 两段 HITL → MPC 未传 model_id 自动投用 → 单步限内写回 → PV 复测，
+> 全过程落 `aml-transparency.jsonl`）与 **P14 · 平台新增能力面**（MCP stdio 自动发现/工具面/
+> 系统设置开关门控、two-mode 优化通道模板、配方描述元字段、产线操作透明化数据面
+> ops-logs/优化记录/参数台账、孪生 Provider SDK）。
+> `--profile extended` 一键打开 P11+P13+P14（默认 integrated 保持 **77/0/0 基线契约**不变(P0 新增 daq-sampling-ready 就绪检查)，
+> extended 契约 = **111 项 0 fail 0 warn**，以当轮 verdict 行为准）。
+> 验证对象是**生产型流程的数字孪生/PLC 模拟场景**，不是物理工厂投产，
 > 也不是安全认证。P4m/P10 的脚本化任务、P9 的 mock 调度及 P5b 单 worker 场景不能单独证明标准多 Agent team 的自主决策；
 > 可选 `--agent`/§11 optloop 更接近真实 Agent 作业，但当前仍缺逐动作、逐身份的完整系统侧审计。
 >
@@ -131,13 +140,13 @@
   ② 一体化集成流水线（隔离冷启约 8–11 分钟，勿中断）——全功能主战役
      （隔离环境块已 export 的同一 shell 里）
      node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3
-     判据: 退出码 0，且 stdout 末行「✅ PASS（pass 75 · warn 0 · fail 0）」。
+     判据: 退出码 0，且 stdout 末行「✅ PASS（pass 77 · warn 0 · fail 0）」。
        自举行应出现「模拟器未在线 → 自动启动」与
        「平台未在线 → 分离启动 pid=... 隔离配置根 ...」。
-     ⚠️ 重跑协议（对 warn 的既定处置）: 若末行为「pass 73 · warn 2 · fail 0」且
+     ⚠️ 重跑协议（对 warn 的既定处置）: 若末行为「pass 74 · warn 2 · fail 0」且
        warn 全部落在 P10 双拉使命（biax-mission-*），这是已知的双拉物理层残余
        非确定性（断膜级读数触发守卫后如实终止，§1.8）——不算 FAIL，但必须
-       同命令重跑一次：重跑得到 75/0/0 → 首轮照实记为 warn-run 并写入报告
+       同命令重跑一次：重跑得到 77/0/0 → 首轮照实记为 warn-run 并写入报告
        「限制」小节；重跑仍 warn → 如实报告并停止，不得第三次盲跑。
        任何其他阶段的 warn/fail → 按失败处理，停止并诊断。
      覆盖（现有集成路径；不是完整自主团队证明）: 五协议供给/节点绑定 → 数采/数控写回读 → F5 拦截 → 确定性工具闭环 ×4 线 → 工艺参数映射 P4f → P4m 脚本驱动工具链 + mock 派发 → 治理/回退/HITL/账本 → P6 多 seed → P10 脚本化多节点孪生使命 → P9 mock 团队状态机。完整多 Agent goal-mode 自主优化与逐动作审计另由 P12 定义；当前没有 P12 runner。
@@ -185,9 +194,33 @@
      起点语义: 默认 fresh——mission 开工前把 SP 复位到蓝图次优工况（只动信号值，不重连
        不重建），保证优化轨迹可复现；`--no-fresh` 保留现场当前工况（续跑语义）。
      集成流水线内跑: node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3 --scenarios
-       （等价于在 P10 之后追加 P11 阶段；不加 --scenarios 时基线契约保持 75/0/0 不变。）
+       （等价于在 P10 之后追加 P11 阶段；不加 --scenarios 时基线契约保持 77/0/0 不变。）
 
-   ⑦ P12 AgentTeam 透明闭环（本次只写方案，不执行）
+   ⑦ P13/P14 平台新增能力（2026-09-28 起已自动化；可单独开关，也可与 P11 一并由 extended profile 打开）
+     一键全量（隔离环境块同一 shell 里；≈40–50 分钟，含 AML 训练与场景并行闭环）:
+     node bench/pipeline.mjs --profile extended --seed 42 --cl-seeds 3
+       # 等价于 --scenarios --aml --surfaces 全开;判据:退出码 0,末行 verdict 为
+       # 「✅ PASS（pass 111 · warn 0 · fail 0）」（warn 重跑协议同②,仅 P10 双拉使命 warn 可重跑一次）
+     单独开关:
+     node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3 --aml        # 只加 P13
+     node bench/pipeline.mjs --profile integrated --seed 42 --aml --surfaces --scenarios  # 等价 extended
+     P13 判据（全部 pass 才算过,任一 fail → 停）:
+       · aml-dataset ≥3 runs(对齐 castfilm G0_RUNS)且 manifest 落 <AW_HOME>/aml/datasets;
+       · aml-train-gates: 状态 done 且平台门禁 G1≤0.9/G2≤0.99;castfilm 档场景门禁 G1≤0.60/G2≤0.80;
+       · aml-hitl-shadow/production: 审批待办可见并批准,晋升完成;
+       · aml-auto-adopt: MPC 未传 model_id → rolloutModel==新模型 且 rolloutModelBacked=true;
+       · aml-governed-write: 推荐值经单步限写回 ≥1 笔（治理拒=单步限保护,如实记录）;
+       · aml-pv-recheck: 写回后膜厚 PV 有有效读数。
+       透明化产物: bench/results/<runId>/aml-transparency.jsonl(逐步 actor/action/detail/artifacts)。
+     P14 判据: MCP stdio 自动发现+tools/list≥30+aw_status 通过;系统设置开关 关→拒/开→放行;
+       two-mode 通道模板实例化+aml_node_catalog 工具面;配方 description 读回一致;
+       ops-logs/优化记录/参数台账三数据面可达;孪生 Provider 注册表非空。
+     ⚠️ P13 依赖执行卡第 2 步的隔离环境块（AW_HOME 必须导出——运行时目录断言与 AML
+       训练产物落位都以它为前提）;P13 预期额外耗时 ≈20–25 分钟(3 批次×240s 激励+至多 2 次训练)。
+       场景门禁档位由 sceneId 前缀 `castfilm` 解析(噪声底校准档 G1≤0.60/G2≤0.80,
+       justification 见 server/services/workshop/aml/twin/acceptance.ts)——场景命名不可改。
+
+   ⑧ P12 AgentTeam 透明闭环（验收设计，仍非自动化脚本）
       当前仓库尚无可运行的 P12 编排器/系统侧完整事件采集契约。仅阅读 §12 并确认
       只读预检条件；不得把 P4m/P9 mock、脚本化 P10、optloop 四路轮询文件替代 P12，
       也不得为验证本文而启动服务、模拟器、goal 任务或写入节点。后续实施完成并经审查后，
@@ -208,19 +241,25 @@
      node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3
      然后用流水线专用判定器（不要用 compare.mjs——它对 pipeline run.json 空转）:
      node bench/tools/compare-pipeline.mjs --a <首个 runId> --b <第二个 runId>
-     判据: 退出码 0（REPRODUCIBLE，判定类 0 失败）。两次 verdict 同为 75/0/0；
+     判据: 退出码 0（REPRODUCIBLE，判定类 0 失败）。两次 verdict 同为 77/0/0；
        closedloop.agg 的 ratio 区间必须都落在 [0.966,0.973]；portability.agg
        五协议构成必须逐字段一致（J0/Jend 采样值与 biax 写数允许环境性浮动）。
        若首跑是 warn-run（§第 3 步②重跑协议），判定器会把两次差异如实列为判定类
        失败——此时以「干净跑 vs 干净跑」为准重比，并在报告中保留 warn-run 的
        差异明细作为非确定性披露。
+     extended 复现（跑过第 3 步⑦时）: 同命令再跑一次 extended， compare-pipeline 判据同上,
+       两次 verdict 同为 111/0/0。P13 判定类 = 各环节 pass/fail 布尔、模型/数据集/场景 ID
+       构成、门禁档位与自动投用布尔；训练指标数值本身、PV 均值、写次与 wall time 属
+       环境类（训练有合法的非确定性——种子固定下同机重训应逐位一致，跨机允许微差）。
 
 ────────────────────────────────────────────────────────────────
 第 5 步 · 报告产出（审稿人级 MD + HTML，必做）
 ────────────────────────────────────────────────────────────────
   ① 各层单机报告已自动落盘（无需手工生成）:
      集成流水线 → bench/results/<runId>/report.md + dashboard.html
-       （含模拟产线画像 + AgentTeam 闭环调优 walkthrough 两专章）
+       （含模拟产线画像 + AgentTeam 闭环调优 walkthrough 两专章；
+         跑过 P13 时另有 aml-transparency.jsonl 透明化时间线,跑过 P11 时
+         scenarios-benchmark.md/.html 多场景标准报告并轨）
      plc / static → bench/results/<runId>/report.md + report.html
      e1a        → bench/results/<runId>/report.md + report.html + figure-*.svg
      需要重渲时: node bench/tools/render-bench-report.mjs <runDir|runId>
@@ -232,8 +271,8 @@
        --out bench/reports-archive/<UTC日期>-<标签>-final
      产物: report.md + report.html（零手敲数字，全部读自各层 run.json/summary.json）。
   ③ 报告质量清单（对照审稿人/期刊的期待，逐项自查后才算交付）:
-     □ 钢印 verdict 与硬门禁结论（75/0/0、13/13、消融判据、REPRODUCIBLE 判定）
-     □ 七证据层表：17 阶段 → 7 层 → 75 检查的完整映射与主结果
+     □ 钢印 verdict 与硬门禁结论（77/0/0 或 extended 111/0/0、13/13、消融判据、REPRODUCIBLE 判定）
+     □ 七证据层表：19 阶段(P0–P11+P13/P14) → 7 层 → 77(integrated)/111(extended) 检查的完整映射与主结果
      □ 产线画像：场景工艺叙事、五协议端点、SP/PV 全清单（单位/量程/精度/策略）
      □ 闭环优化质量：J/J* 三种子、离线最优 W* 为分母、迭代/写次数/拒绝数
      □ AgentTeam 使命轨迹：组队→绑定→目标下达→逐轮调优→治理写→达标收口
@@ -369,7 +408,7 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 
 | 工具 | 常用参数 | 说明 |
 |---|---|---|
-| `bench/pipeline.mjs` | `--profile integrated\|quick` `--seed N` `--cl-seeds N` `--base URL` `--lines N` `--preset <名>` `--tool-harness <名>` `--agent <引擎> --provider <p> --model <m>` `--cl-write governed\|rest` `--cl-iters N` `--no-autostart` `--no-autostart-platform` `--scenarios [id,id]` | 一体化集成评测；`--agent` 跑真实 LLM 闭环（需模型凭据）；`--scenarios` 追加 P11 多场景并行闭环（默认关，保持 75/0/0 基线契约） |
+| `bench/pipeline.mjs` | `--profile integrated\|quick\|extended` `--seed N` `--cl-seeds N` `--base URL` `--lines N` `--preset <名>` `--tool-harness <名>` `--agent <引擎> --provider <p> --model <m>` `--cl-write governed\|rest` `--cl-iters N` `--no-autostart` `--no-autostart-platform` `--scenarios [id,id]` `--aml` `--surfaces` | 一体化集成评测；`--agent` 跑真实 LLM 闭环（需模型凭据）；`--scenarios` 追加 P11 多场景并行闭环；`--aml` 追加 P13 AML 投用链；`--surfaces` 追加 P14 平台新能力面；`--profile extended` = 三者全开（默认 integrated 保持 77/0/0 基线契约） |
 | `bench/scenarios.mjs` | `--seed N` `--base URL` `--scenarios injection,wwtp,anneal` `--tool-harness <名>` `--no-autostart` `--no-fresh` | 多场景并行闭环基准（独立入口；产出 scenarios-benchmark.md/.html + JSON 轨迹；场景目录见 §10） |
 | `bench/run.mjs` | `--tier static\|api\|plc\|full` `--seed N` `--base URL` `--repeats N` | 能力评分面板（report.md+report.html）；`full` = static + api×N 轮 |
 | `bench/e1-lite.mjs` | `--base URL` `--seed N` `--repeats N` | E1a 四臂消融（需平台带 `AW_BENCH_MODE=1`） |
@@ -401,7 +440,9 @@ Agent 工具的后台作业在回合结束/被回收时会连子进程一起终�
 | **P8 跨场景可移植** | 切换第二个产线场景预设（film-line），用**同一套**委托/治理代码路径重跑 export→建线→数采→受治理写→F5 拦截→回读 | 框架主张「适配新产线=配置任务而非集成项目」的直接度量（0 代码改动） |
 | **P8b 系统兜底 drilling** | 在第二场景刚体上：清场 open 记录 → Agent(auto) 开优化记录 → manual 冻结 DAQ 于窗外 → 等系统兜底（观察窗 120s + 30s 节拍 + 越限 3 采样）自动判定 rollback 并恢复记录基线 → 解冻并恢复第一场景 | 论文 I3（有界自治）的**动态证据**：system 判定 + 值回基线 |
 | **P10 双拉产线全节点** | biax 全线数字孪生 9 设备/49 信号；差分补建、多节点产线与受治理闭环，任务和寻优策略由 benchmark 脚本执行 | 多节点模拟产线/治理/工艺模型集成；脚本轨迹不能证明各 worker 身份及自主决策 |
-| **P11 多场景并行闭环**（可选 `--scenarios`） | 多引擎/产线 mission channel 并行运行并产出轨迹；执行器由 benchmark 编排 | 场景可移植、并行稳定性与确定性工具链，不等同于任意 Harness 多角色自主团队 |
+| **P11 多场景并行闭环**（可选 `--scenarios`；extended 默认开） | 多引擎/产线 mission channel 并行运行并产出轨迹（injection/wwtp/anneal + P10 的 biax 并轨四场景表）；执行器由 benchmark 编排 | 场景可移植、并行稳定性与确定性工具链，不等同于任意 Harness 多角色自主团队 |
+| **P13 AML 混合建模与投用闭环**（可选 `--aml`；extended 默认开） | cast-film 孪生建线+6 SP 回读 DAQ → castfilm 前缀场景编译/冻结+骨架 PhysicsSpec → 3×240s 治理合规激励批次（温区单步限 2.8℃ 内爬坡）→ 数据集(≥4 runs,落运行时目录) → hybrid_residual 真实训练+平台门禁(G1≤0.9/G2≤0.99,seed 重试≤2) → 快照+12 组模型背书试验 → castfilm 档场景门禁(0.60/0.80) → shadow/production 两段 HITL 晋升 → MPC 未传 model_id 自动投用 → 推荐值单步限内写回 → PV 复测;全程落 aml-transparency.jsonl | 覆盖 2026-09 新增 AML 面:数据集/训练器/双门禁/模型工件运行时目录落位/HITL 晋升/自动投用——「模型从数据到产线」唯一端到端确定性证据 |
+| **P14 平台新增能力面**（可选 `--surfaces`；extended 默认开） | MCP stdio 子进程自动发现端口+initialize+tools/list≥30+aw_status 真调用 → 系统设置 mcp.enabled 关/开门控实测 → two-mode 优化通道模板实例化+aml_node_catalog 工具面 → 配方 description 元字段创建/读回 → ops-logs+优化记录+参数台账三透明化数据面 → 孪生 Provider SDK 注册表 | 覆盖 MCP/双模式通道/配方元字段/操作透明化/Provider SDK 五个 2026-09 后新增平台能力,此前无任何 bench 覆盖 |
 | **P9 平台子系统** | mock lead+2 worker 调度/完成、团队记忆幂等、Harness 注册表 | MAS 状态机/资产冒烟，不属于生产型目标优化 |
 | **P12 AgentTeam 全链路透明闭环（新增验收设计，当前未自动化）** | 专用 PLC 模拟场景 + 隔离 AW → 真实 Harness lead 与至少 2 workers → 角色分离/节点绑定回读 → goal-mode/lead 委派/worker 自主工具作业 → governed write→仿真物理响应→judge/keep/rollback→lead 收口 → 独立对账 Channel、工具事务、治理账本、DCW/DAQ、模拟器状态 → 可复现实验包与逐 Agent swimlane | 唯一验收「谁在何任务下读了什么、为何改哪个参数、治理如何决定、PV 如何响应」的端到端门禁；先实现 §12 遥测/适配，不可由现有分数替代 |
 
@@ -515,7 +556,7 @@ static 跑 1 次 + api 层跑 N 轮（每轮独立夹具，tag 含轮次）：�
 - 每个检查产出 `score ∈ [0,1]` 与权重（F5 攻击/归因/论文一致性权重=3 或 2，抽样类=1）。
 - 维度分 = 该维度下检查加权平均；总体分 = 全部非 skip 检查加权平均；等级 A≥90 / B≥75 / C≥60。
 - **skip 不计分也不扣分**，单独列出原因——分数只反映"真实测到的东西"。
-- 流水线层阶段权重：P0=1 P1=1 P2=2 P3=3 P4=3 P4f=3 P4m=3 P4b=2 P4c=2 P4d=1 P4e=2 P6=3 P7=1 P8=3 P8b=3 P10=3 P9=1；
+- 流水线层阶段权重：P0=1 P1=1 P2=2 P3=3 P4=3 P4f=3 P4m=3 P4b=2 P4c=2 P4d=1 P4e=2 P6=3 P7=1 P8=3 P8b=3 P10=3 P9=1 P11=3 P13=3 P14=2；
   硬门禁：任一检查 fail 或任一阶段 fail → 总评直接 FAIL（分数只作参考）。
 - 维度映射：D0 论文-代码一致性 / D1 数采 / D2 写控治理 / D3 智能体 / D7 审计归因 / D8 性能（D4/D5/D6 由 §8 全量实验覆盖，静态+接口层不虚评）。
 - **P12 独立资格门**：不计入现有 75 项分数；仅 §12 全部硬门禁与证据完整性 100% 满足才记 P12=PASS。NOT-QUALIFIED/NOT-RUN 不得汇总为完整闭环 PASS；越权写、guard 破坏、写入归因丢失或关键审计缺失为 FAIL 并受控停止。

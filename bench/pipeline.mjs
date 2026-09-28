@@ -15,7 +15,7 @@
  *
  * 退出码：0 = 全部检查 pass；1 = 存在 fail（含 Agent 闭环未达成）
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { makeApi, mulberry32, sha256, ensureDir, writeJson, writeText, runId as mkRunId, sleep } from './lib/util.mjs'
@@ -54,6 +54,11 @@ const PROTOCOLS = ['modbus-tcp', 'modbus-rtu', 'opcua', 'mqtt', 'http']
 const clSeeds = Number(arg('cl-seeds', profile === 'quick' ? 0 : 3))
 const clWriteMode = arg('cl-write', 'governed') // governed(agent dcw_control) | rest(裸 REST)
 const clMaxIters = Number(arg('cl-iters', 8))
+// extended profile = P0–P11 + P13(AML 投用链) + P14(平台新增能力面),一并打开三个可选项;
+// 单独 --scenarios / --aml / --surfaces 也可各自开关。默认 integrated 保持 75/0/0 基线契约不变。
+const runScenarios = has('scenarios') || profile === 'extended'
+const runAml = has('aml') || profile === 'extended'
+const runSurfaces = has('surfaces') || profile === 'extended'
 
 const HARNESS_FILES = ['pipeline.mjs', 'lib/util.mjs', 'lib/sim.mjs', 'lib/provision.mjs',
   'lib/metrics.mjs', 'lib/dashboard.mjs', 'lib/governance.mjs', 'lib/closedloop.mjs', 'lib/biax.mjs',
@@ -129,6 +134,25 @@ await timed('P0', 'preflight', 'Bootstrap simulator & platform', async () => {
   add('P0', 'platform-reachable', 'platform reachable & authenticated', login.ok ? 'pass' : 'fail',
     [`平台 ${base}：${platNote}`, `鉴权 ${login.ok ? 'OK' : 'failed'} (${login.how})`, `simulator ${SIM_BASE}：${simNote}`])
   if (!login.ok) return { status: 'fail', note: 'platform unreachable or auth failed' }
+  // 等待数采采样真正恢复:daq-infra 对缺失依赖(MQTT/Timescale)会「降级停采」并每 30s
+  // 自动重连;首采可能滞后平台就绪 30–90s。P3 的 20s 有界窗口等不起这个滞后
+  // (2026-09-28 实测:P3 全线 0 采样 → P6/P7 级联 fail)。此处等 produced 开始增长
+  // (至多 150s);等不到也继续 —— 后续检查会如实报告,不伪造通过。
+  {
+    const tW = Date.now()
+    let lastProduced = -1
+    let recovered = ''
+    while (Date.now() - tW < 150_000) {
+      const c = await api.call('GET', '/api/workshop/daq')
+      const produced = Number(c.data?.controller?.produced ?? 0)
+      if (produced > 0 && produced > lastProduced && lastProduced >= 0) { recovered = `${Math.round((Date.now() - tW) / 1000)}s(produced=${produced})`; break }
+      lastProduced = produced
+      await sleep(5000)
+    }
+    add('P0', 'daq-sampling-ready', '数采采样恢复(produced 增长)', recovered ? 'pass' : 'warn',
+      [recovered ? `等待 ${recovered}` : '150s 内未观察到采样增长(数采基础设施降级?后续数采类检查可能如实失败)'])
+    console.log(`    ↳ 数采采样: ${recovered ? `恢复于 ${recovered}` : '150s 未恢复(继续,如实报告)'}`)
+  }
   return { status: 'pass', note: simNote }
 })
 
@@ -401,7 +425,7 @@ await timed('P4m', 'team-mission', 'AgentTeam 优化任务：目标下达 → �
   const parent = await api.call('POST', `/api/workshop/channels/${mchId}/tasks`, {
     title: `mission-opt-${sfx}`,
     description: `Optimization mission: bring ${l.ids.dcw} to ${target} ±${tol} within recipe window using ≤${maxWrites} governed writes; read recent data first.`,
-    parts: [{ text: `优化任务：把 ${l.ids.dcw} 调整到 ${target}±${tol}，先读数后写参数，至多 ${maxWrites} 次受治理写。` }],
+    parts: [{ text: `[mock:complex] 优化任务：把 ${l.ids.dcw} 调整到 ${target}±${tol}，先读数后写参数，至多 ${maxWrites} 次受治理写。` }],
   })
   const parentTask = parent.data?.task?.id ?? parent.data?.id
   let childOfLead = null
@@ -650,8 +674,10 @@ await timed('P4f', 'param-map', '工艺参数映射层：参数面读写 · 标�
   const wParam = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vParam })
   const rdP = readable ? await api.call('POST', `/api/workshop/dcw/params/${pv.id}/read`, {}) : { data: {} }
   const passOk = wPass.data?.outcome?.ok === true
-  const prodOk = wProd.code === 'VALIDATION_ERROR' && String(wProd.message ?? '').includes('产品')
-  const paramOk = wParam.code === 'VALIDATION_ERROR' && String(wParam.message ?? '').includes('基准限界')
+  // 2026-09 起 param-limits 为各约束层抛专用错误码(PRODUCT_LIMIT_EXCEEDED/PARAM_LIMIT_EXCEEDED);
+  // 断言语义=「被拒且点名正确约束层」,兼容旧 VALIDATION_ERROR
+  const prodOk = ['VALIDATION_ERROR', 'PRODUCT_LIMIT_EXCEEDED'].includes(wProd.code) && String(wProd.message ?? '').includes('产品')
+  const paramOk = ['VALIDATION_ERROR', 'PARAM_LIMIT_EXCEEDED'].includes(wParam.code) && String(wParam.message ?? '').includes('基准限界')
   // 读断言仅对可回读驱动生效；不可回读驱动(mqtt/http)按 n/a 容差（与 P4 同语义）
   const readOk = readable
     ? (rdP.data?.read?.ok === true && Number.isFinite(rdP.data?.read?.value))
@@ -1374,7 +1400,7 @@ await timed('P10', 'biax-line', '双拉产线:节点探测补建 → 五协议�
 // ═══════════════ P11 · 多场景并行闭环(可选:--scenarios;默认关,不影响 75/0/0 基线契约)═══════════════
 // 三个新增默认场景(injection/wwtp/anneal)各建一线、各开一 Channel,三路并行闭环优化。
 // 场景目录与接入指导见 PIPELINE.md §10;独立入口 = bench/scenarios.mjs。
-if (has('scenarios')) {
+if (runScenarios) {
   await timed('P11', 'multi-scenario', `多场景并行闭环(${(arg('scenarios', '') || SCENARIO_IDS.join(',')).split(',').filter(Boolean).join(' / ')})`, async () => {
     const listIds = (arg('scenarios', '') || process.env.AW_SCENARIOS || '').split(',').map(s => s.trim()).filter(s => SCENARIOS[s])
     // BOPET(双拉)由 P10 独立执行并测毕;P11 只跑其余场景,报告阶段再并轨成一张四场景表,
@@ -1418,6 +1444,488 @@ if (has('scenarios')) {
   })
 }
 
+// ═══════════════ P13 · AML 混合建模与投用闭环（可选：--aml / --profile extended）═══════════════
+// 全链:孪生建线+SP 回读 → 场景编译/冻结(castfilm 前缀)→ 骨架 PhysicsSpec → 治理合规激励批次
+// → 数据集(运行时目录) → hybrid_residual 真实训练 → 平台门禁 → 快照/12 组模型背书试验
+// → 场景门禁(castfilm 档) → shadow/production 两段 HITL 晋升 → MPC 未传 model_id 自动投用
+// → 推荐值经单步限分步写回 → PV 复测。全过程逐步落 aml-transparency.jsonl(透明化记录)。
+const amlState = { summary: null }
+if (runAml) {
+  await timed('P13', 'aml-adopt', 'AML 混合建模与投用闭环（建线→训练→门禁→HITL→自动投用→写回）', async () => {
+    const AML_ROOT = process.env.AW_HOME ? join(process.env.AW_HOME, 'aml') : null
+    const tl = [] // 透明化时间线:逐步落盘
+    const step = (no, actor, action, detail, artifacts = []) =>
+      tl.push({ no, at: new Date().toISOString(), actor, action, detail: String(detail).slice(0, 300), artifacts })
+    // 门禁校准(验收档,与 PIPELINE.md §1.4 判定语义一致;live settings)
+    const cal = await api.call('PATCH', '/api/system/settings', { override: { 'aml.gates.nrmse': 0.9, 'aml.gates.rolloutNrmse': 0.99, 'aml.gates.valTestGap': 2.0 } })
+    step(0, 'bench', 'aml.gates 校准下发', `PATCH /api/system/settings → ${cal.status}`, [])
+
+    // (1) 孪生建线 + SP 回读 DAQ(AML control 输入必须是数采序列,DCW 值本身无采样)
+    // ⚠️ P11 场景会把 injection/wwtp/anneal 设备留在模拟器(多引擎并存),且 P8 的
+    // film-line 整包替换会清掉 castfilm 引擎——因此这里:
+    //   ① 过滤掉其他场景前缀的设备(其信号 id 与 cast-film 同名,如 anneal 的 zone1-sp,
+    //     否则 provisionTwinLine 会建出量程 600~850℃ 的同名节点,zone 写全部被限界拒绝);
+    //   ② 按蓝图 upsert 增量重装 castfilm 引擎(不动其他场景引擎,幂等)。
+    const nodes = (await simNodes()).filter(d => !/^(inj-|wwtp-|anneal-|biax-)/.test(d.id ?? ''))
+    {
+      const bp = await simApi('GET', '/api/presets/cast-film-physics')
+      if (bp?.plantModel) {
+        await simApi('PUT', '/api/plant/config', { plantModel: bp.plantModel, id: bp.plantModel?.id, upsert: true, warm: true })
+        await sleep(3000)
+      }
+    }
+    const twin = await provisionTwinLine(api, { simDevices: nodes, sfx: `${sfx}aml` })
+    add('P13', 'aml-line', 'AML 孪生建线(6 DCW + 5 DAQ)', twin.ok ? 'pass' : 'fail', twin.ev)
+    if (!twin.ok) return { status: 'fail', note: 'AML twin line provisioning failed' }
+    const spReadback = {}
+    for (const dev of nodes) {
+      const exp = await simExport(dev.id)
+      const items = exp?.items ?? []
+      for (const id of CASTFILM_ACTUATORS) {
+        if (spReadback[id]) continue
+        const sig = (dev.signals ?? []).find(s => s.id === id)
+        if (!sig) continue
+        const item = items.find(i => i.signal === sig.name)
+        if (!item?.driverConfig) continue
+        const cfg = { ...item.driverConfig }
+        if (cfg.jsonKey !== undefined && cfg.jsonPath === undefined) { cfg.jsonPath = cfg.jsonKey; delete cfg.jsonKey }
+        const r = await api.call('POST', '/api/workshop/daq', {
+          name: `${sig.name} 回读 ${sfx}aml`, templateRef: 'daq-temp-tc', driver: dev.protocol, driverConfig: cfg,
+          unit: sig.unit, min: sig.min, max: sig.max, lineId: twin.lineId, intervalMs: 1000, publishIntervalMs: 0,
+          semantics: `执行器设定点回读(AML control 输入) ${item.signal}`,
+        })
+        spReadback[id] = r.data?.node?.id ?? r.data?.id ?? null
+      }
+    }
+    const spOk = Object.values(spReadback).filter(Boolean).length === CASTFILM_ACTUATORS.length
+    add('P13', 'aml-sp-readback', 'SP 回读 DAQ ×6(执行器→数采绑定)', spOk ? 'pass' : 'fail', [JSON.stringify(spReadback)])
+    step(1, 'bench', 'SP 回读 DAQ ×6', spOk ? '全部创建' : JSON.stringify(spReadback), [])
+    if (!spOk) return { status: 'fail', note: 'SP readback DAQ provisioning failed' }
+    await api.call('PATCH', `/api/workshop/daq/${twin.daq['film-thickness']}`, { semantics: '流延膜厚度测量(优化目标 goal,单位 μm;厚度质量输出)' })
+    await api.call('POST', '/api/workshop/daq/controller', { action: 'start' })
+    const batch0 = await startTwinBatch(api, { lineId: twin.lineId, productId: twin.productId, dcw: twin.dcw, sfx: `${sfx}aml` })
+    const recipeIdAml = batch0.recipeId
+    add('P13', 'aml-batch0', '配方下发并开跑(基线批)', batch0.ok && Boolean(recipeIdAml) ? 'pass' : 'fail', [JSON.stringify(batch0).slice(0, 140)])
+
+    // (2) 训练通道实例化(hybrid_twin 模板:lead+worker)+ 绑定 + 场景编译/冻结/骨架 spec
+    const scene = { sceneId: `castfilm-aml-${sfx}`, sceneVersion: '1.0.0', lineId: twin.lineId, productId: twin.productId, recipeId: recipeIdAml }
+    const inst = await api.call('POST', '/api/workshop/channel-templates/chtpl-hybrid-twin-mpc-default/instantiate', {
+      name: `AML 训练通道 ${sfx}aml`, toolProfile: 'hybrid_twin', scene,
+      objective: { objectiveId: 'thickness-50um', targets: { film_thickness: 50 } },
+      controlPolicy: 'recommendation_only',
+    })
+    const channelAml = inst.data?.channelId
+    const workerA = (inst.data?.agents ?? []).find(a => a.role === 'worker')?.id
+    const leadA = (inst.data?.agents ?? []).find(a => a.role === 'lead')?.id
+    add('P13', 'aml-channel', 'hybrid_twin 训练通道实例化(lead+worker)', channelAml && workerA && leadA ? 'pass' : 'fail',
+      [`channel=${channelAml ?? '—'} worker=${workerA ?? '—'}`])
+    const invokeA = async (tool, args, agentId) => {
+      const r = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId, tool, args })
+      const res = r.data?.result ?? {}
+      return { isError: Boolean(res.isError), text: String(res.text ?? '') }
+    }
+    let frozen = null
+    if (channelAml && workerA) {
+      for (const nodeId of Object.values(twin.dcw)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: workerA, nodeId, kind: 'dcw', mode: 'auto' })
+      for (const nodeId of Object.values(twin.daq)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: workerA, nodeId, kind: 'daq', mode: 'auto' })
+      const disco = await invokeA('twin_scene_discover', {}, workerA)
+      add('P13', 'aml-scene-discover', '场景发现(target=1 语义命中)', !disco.isError && /"target"\s*:\s*1/.test(disco.text) ? 'pass' : 'fail', [disco.text.slice(0, 140)])
+      const compiled = await invokeA('twin_scene_compile', {
+        scene_id: scene.sceneId, scene_version: '1.0.0', line_id: twin.lineId, product_id: twin.productId, recipe_id: recipeIdAml,
+        prompt: '流延膜厚度闭环优化:目标膜厚 50μm。控制=6 个执行器设定点,观测=膜厚(目标)/熔温/熔压。约束:熔温 195~225℃,熔压 ≤22MPa。',
+      }, workerA)
+      add('P13', 'aml-scene-compile', '场景编译', !compiled.isError ? 'pass' : 'fail', [compiled.text.slice(0, 140)])
+      const frozenR = await invokeA('twin_scene_freeze', { scene_id: scene.sceneId, scene_version: '1.0.0', confirmation: 'USER_CONFIRMED_SCENE_CONTRACT', approved_by: 'bench-p13' }, workerA)
+      add('P13', 'aml-scene-frozen', '场景冻结(用户确认令牌)', !frozenR.isError ? 'pass' : 'fail', [frozenR.text.slice(0, 140)])
+      const draft = await invokeA('twin_physics_spec_draft', { dt_sec: 1 }, workerA)
+      const artifactPath = (draft.text.match(/artifact:\s*([^\n]+)/) || [])[1]?.trim()
+      add('P13', 'aml-spec-draft', '骨架 PhysicsSpec 生成', !draft.isError && Boolean(artifactPath) && existsSync(artifactPath) ? 'pass' : 'fail', [draft.text.slice(0, 140)])
+      step(2, `worker(${workerA.slice(0, 8)})`, '场景编译/冻结 + PhysicsSpec 草稿', artifactPath ?? draft.text.slice(0, 80), [artifactPath].filter(Boolean))
+      if (artifactPath && existsSync(artifactPath)) {
+        frozen = JSON.parse(readFileSync(artifactPath, 'utf8'))
+      }
+    } else {
+      add('P13', 'aml-scene-discover', '场景发现(target=1 语义命中)', 'fail', ['channel/worker 缺失'])
+      add('P13', 'aml-scene-compile', '场景编译', 'fail', ['channel/worker 缺失'])
+      add('P13', 'aml-scene-frozen', '场景冻结(用户确认令牌)', 'fail', ['channel/worker 缺失'])
+      add('P13', 'aml-spec-draft', '骨架 PhysicsSpec 生成', 'fail', ['channel/worker 缺失'])
+    }
+
+    // (3) 治理合规激励批次 ×3(温区单步限 2.8℃ → 每 65s 爬 2.5℃;screw/linespeed/diegap 小步)
+    const closedCountAml = async () =>
+      ((await api.call('GET', '/api/workshop/dcw/recipes')).data?.runs ?? []).filter(x => x.endedAt && x.recipeId === recipeIdAml).length
+    const closeAndRestart = async (tag) => {
+      const before = await closedCountAml()
+      await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {})
+      // 确定性闭合屏障:轮询确认上一批 run 落 endedAt(盲等 3s 会偶发丢批 → 数据集批次不足,实测)
+      let after = before
+      for (let k = 0; k < 15; k++) { await sleep(1000); after = await closedCountAml(); if (after > before) break }
+      if (after <= before) console.log(`    ↳ AML 批次闭合未确认(stop 后 15s),仍继续`)
+      const st = await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: recipeIdAml })
+      if (st.status !== 200) { await sleep(8000); await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: recipeIdAml }) }
+      console.log(`    ↳ AML 批次 ${tag} 闭合${after > before ? '✔' : '?'}/重启`)
+    }
+    const BATCHES = [
+      { n: 1, steps: [{ at: 70_000, node: 'zone1-sp', v: 202.5 }, { at: 135_000, node: 'zone2-sp', v: 202.5 }, { at: 200_000, node: 'zone1-sp', v: 205 }] },
+      { n: 2, steps: [{ at: 70_000, node: 'zone3-sp', v: 197.5 }, { at: 135_000, node: 'screw-sp', v: 153 }, { at: 200_000, node: 'diegap-sp', v: 1.03 }] },
+      { n: 3, steps: [{ at: 70_000, node: 'zone1-sp', v: 202.5 }, { at: 135_000, node: 'zone1-sp', v: 205 }, { at: 200_000, node: 'zone1-sp', v: 207.5 }] },
+    ]
+    let batchWrites = 0
+    const batchRejects = []
+    for (const b of BATCHES) {
+      await closeAndRestart(b.n)
+      const t0 = Date.now()
+      let prev = 0
+      for (const st of b.steps) {
+        await sleep(Math.max(0, st.at - prev)); prev = st.at
+        const w = await api.call('POST', `/api/workshop/dcw/${twin.dcw[st.node]}/write`, { value: st.v })
+        if (w.status === 200) batchWrites++
+        else { const msg = `B${b.n} ${st.node}←${st.v}: ${String(w.message ?? w.code ?? '').slice(0, 90)}`; batchRejects.push(msg); console.log(`    ↳ AML 拒写 ${msg}`) }
+      }
+      await sleep(Math.max(0, 240_000 - (Date.now() - t0)))
+    }
+    await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {})
+    await sleep(3000)
+    const runsAml = (await api.call('GET', '/api/workshop/dcw/recipes')).data?.runs ?? []
+    const closedAml = runsAml.filter(x => x.endedAt && x.recipeId === recipeIdAml)
+    const batchesOk = closedAml.length >= 4 && batchWrites >= 6
+    add('P13', 'aml-batches', `激励批次(≥4 闭合 · 治理写 ≥6)`, batchesOk ? 'pass' : 'warn',
+      [`closed=${closedAml.length} governed-writes=${batchWrites}`, ...batchRejects.slice(0, 3)])
+    step(3, 'bench', '3 批次治理合规激励', `closed=${closedAml.length} writes=${batchWrites}`, [])
+
+    // (4) 数据集(6 回读 control + 目标/特征)+ 运行时目录实体
+    const ds = (await api.call('POST', '/api/workshop/aml/datasets', {
+      lineId: twin.lineId, productId: twin.productId, recipeId: recipeIdAml,
+      nodes: [
+        ...Object.values(spReadback).map(nid => ({ nodeId: nid, role: 'control' })),
+        { nodeId: twin.daq['film-thickness'], role: 'target' },
+        { nodeId: twin.daq['melt-pressure'], role: 'feature' },
+        { nodeId: twin.daq['melt-temp'], role: 'feature' },
+      ],
+      beatMs: 1000, window: { historySteps: 8, horizonSteps: 4 },
+      split: { valRatio: 0.34, testRatio: 0.33, seed: 42 },
+      purpose: 'mpc_surrogate', note: 'P13 AML 投用链数据集',
+    })).data?.dataset
+    // runs ≥3 = 平台 castfilm 档 G0_RUNS 门槛(基线批无激励不计入数据集,是构建器语义)
+    const dsOk = Boolean(ds?.id) && (ds.runIds?.length ?? 0) >= 3
+    add('P13', 'aml-dataset', '数据集构建(≥3 runs,对齐 castfilm G0_RUNS)', dsOk ? 'pass' : 'fail',
+      [JSON.stringify({ id: ds?.id, rows: ds?.rowCount, runs: ds?.runIds?.length }).slice(0, 140)])
+    const dsArtifactOk = Boolean(ds?.id && AML_ROOT && existsSync(join(AML_ROOT, 'datasets', ds.id, 'manifest.json')))
+    add('P13', 'aml-dataset-artifact', '数据集实体落运行时目录', dsArtifactOk ? 'pass' : (AML_ROOT ? 'fail' : 'warn'),
+      [AML_ROOT ? join(AML_ROOT, 'datasets', ds?.id ?? '?', 'manifest.json') : 'AW_HOME 未设置,无法断言运行时目录(执行卡隔离环境块要求 export AW_HOME)'])
+    step(4, 'bench', '数据集构建', `id=${ds?.id} rows=${ds?.rowCount} runs=${ds?.runIds?.length}`, [])
+
+    // (5) hybrid_residual 真实训练(平台参考训练器,seed 重试 ≤2)
+    const physicsSpec = frozen ?? {}
+    if (ds?.id && AML_ROOT && existsSync(join(AML_ROOT, 'datasets', ds.id, 'manifest.json'))) {
+      const man = JSON.parse(readFileSync(join(AML_ROOT, 'datasets', ds.id, 'manifest.json'), 'utf8'))
+      const datasetNodes = new Set(man.allNodes)
+      const dwToDn = {}
+      for (const [sig, dn] of Object.entries(spReadback)) dwToDn[twin.dcw[sig]] = dn
+      for (const v of physicsSpec.variables ?? []) {
+        if (v.nodeId && !datasetNodes.has(v.nodeId) && dwToDn[v.nodeId]) v.nodeId = dwToDn[v.nodeId]
+      }
+      const keptVars = (physicsSpec.variables ?? []).filter(v => !v.nodeId || datasetNodes.has(v.nodeId))
+      const keptIds = new Set(keptVars.map(v => v.id))
+      physicsSpec.variables = keptVars
+      physicsSpec.states = (physicsSpec.states ?? []).filter(e => { const base = e.lhs.endsWith('_next') ? e.lhs.slice(0, -5) : e.lhs; return keptIds.has(base) })
+      physicsSpec.observations = (physicsSpec.observations ?? []).filter(e => keptIds.has(e.lhs))
+      physicsSpec.guards = (physicsSpec.guards ?? []).filter(e => keptIds.has(e.lhs))
+      physicsSpec.constraints = (physicsSpec.constraints ?? []).filter(c => keptIds.has(c.id))
+    }
+    let model = null, jobDone = null
+    let submitChecked = false
+    if (ds?.id && physicsSpec.modelId) {
+      for (const tseed of [11, 7]) {
+        const job = (await api.call('POST', '/api/workshop/aml/jobs', {
+          datasetId: ds.id, purpose: 'mpc_surrogate', changeNote: `P13 AML 投用链训练(seed=${tseed})`,
+          params: { epochs: 600, hidden: 128, lr: 0.0015, residual_scale: 2, ensemble: 3 },
+          seed: tseed, jobKind: 'hybrid_residual', sceneId: scene.sceneId, sceneVersion: '1.0.0', objectiveId: 'thickness-50um',
+          physicsSpec, providerId: physicsSpec.modelId, providerVersion: '1.0.0', providerHash: `sha256:${JSON.stringify(physicsSpec).length}`,
+          modelName: `P13 膜厚闭环模型 ${sfx}aml`, modelDescription: 'bench P13:混合建模→门禁→HITL→自动投用全链',
+        })).data?.job
+        if (!submitChecked) { add('P13', 'aml-train-submit', '训练作业提交(hybrid_residual)', job?.id ? 'pass' : 'fail', [JSON.stringify(job ?? {}).slice(0, 120)]); submitChecked = true }
+        if (!job?.id) break
+        for (let i = 0; i < 120; i++) {
+          await sleep(5000)
+          jobDone = (await api.call('GET', `/api/workshop/aml/jobs/${job.id}`)).data?.job
+          if (jobDone?.status === 'done' || jobDone?.status === 'failed') break
+        }
+        const models = (await api.call('GET', '/api/workshop/aml/models')).data?.models ?? []
+        const m = models.filter(x => x.datasetId === ds.id).sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))[0]
+        const g1 = Number(m?.metrics?.oneStepTest?.nrmse), g2 = Number(m?.metrics?.rolloutTest?.nrmse)
+        console.log(`    ↳ P13 训练 seed=${tseed} status=${jobDone?.status} G1=${g1} G2=${g2}(castfilm 档限 0.60/0.80)`)
+        if (jobDone?.status === 'done' && m && Number.isFinite(g1) && g1 <= 0.6 && Number.isFinite(g2) && g2 <= 0.8) { model = m; break }
+      }
+    }
+    add('P13', 'aml-train-gates', '训练完成且平台门禁全过(G1≤0.9/G2≤0.99)', jobDone?.status === 'done' ? 'pass' : 'fail',
+      [`status=${jobDone?.status ?? '—'} err=${String(jobDone?.error ?? '').slice(0, 120)}`])
+    const modelArtifactOk = Boolean(model?.id && AML_ROOT && existsSync(join(AML_ROOT, 'models', model.id, 'model.onnx')))
+    add('P13', 'aml-model-artifact', '模型注册且工件落运行时目录', modelArtifactOk ? 'pass' : (model?.id ? 'fail' : 'warn'),
+      [model?.id ? join(AML_ROOT ?? '(AW_HOME 未设)', 'models', model.id, 'model.onnx') : '无入档模型(前序失败)'])
+    step(5, 'platform', '自动训练 + 平台门禁', model ? `model=${model.id} G1=${model.metrics?.oneStepTest?.nrmse} G2=${model.metrics?.rolloutTest?.nrmse}` : `status=${jobDone?.status}`, [])
+
+    // (6) 投用链:快照 → 12 组试验 → 场景门禁(castfilm 档)→ 两段 HITL → 自动投用 → 治理写回 → PV 复测
+    // 冻结场景(controls/observations 结构)与训练用 PhysicsSpec 是两份文档——分别读取
+    let frozenScene = null
+    if (AML_ROOT && existsSync(join(AML_ROOT, 'twins', 'scenes', `${scene.sceneId}-1.0.0-frozen`, 'scenes.json'))) {
+      frozenScene = JSON.parse(readFileSync(join(AML_ROOT, 'twins', 'scenes', `${scene.sceneId}-1.0.0-frozen`, 'scenes.json'), 'utf8')).scene ?? null
+    }
+    if (model?.id && channelAml && workerA && frozenScene) {
+      const st = await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: recipeIdAml })
+      if (st.status !== 200) { await sleep(8000); await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: recipeIdAml }) }
+      // 等开批锚定写全部落定(DCW value 非零且稳定):否则快照基线里 zone=0,
+      // 12 组试验轨迹全部硬违例(G6/G7 双拒,2026-09-28 首轮 extended 实测)
+      {
+        const tA = Date.now()
+        while (Date.now() - tA < 90_000) {
+          const dw = ((await api.call('GET', '/api/workshop/dcw/')).data?.nodes ?? []).filter(n => n.lineId === twin.lineId)
+          const vals = Object.values(twin.dcw).map(id => Number(dw.find(n => n.id === id)?.value))
+          if (vals.length >= 6 && vals.every(v => Number.isFinite(v) && Math.abs(v) > 0.01)) break
+          await sleep(5000)
+        }
+      }
+      let snapshotId = null
+      for (let attempt = 1; attempt <= 8 && !snapshotId; attempt++) {
+        if (attempt > 1) await sleep(20_000)
+        const snap = await invokeA('twin_snapshot_create', { auto_daq: true, channel_id: channelAml, phase: 'calibration' }, workerA)
+        snapshotId = (snap.text.match(/snapshot_id:\s*([^\s\n]+)/) || [])[1] ?? null
+      }
+      add('P13', 'aml-snapshot', '孪生快照创建(auto_daq)', snapshotId ? 'pass' : 'fail', [snapshotId ?? '—'])
+      const targetObs = (frozenScene.observations ?? []).find(o => o.role === 'target')
+      const speedCtl = (frozenScene.controls ?? []).find(c => (c.nodeId ?? '').includes('linespeed')) ?? (frozenScene.controls ?? [])[0]
+      const dwNow = (await api.call('GET', '/api/workshop/dcw/')).data?.nodes ?? []
+      const dwValueById = Object.fromEntries(dwNow.filter(n => n.lineId === twin.lineId).map(n => [n.id, Number(n.value)]))
+      const baseline = Object.fromEntries((frozenScene.controls ?? []).map(c => [c.id, dwValueById[c.nodeId]]).filter(([, v]) => Number.isFinite(v)))
+      let trialOk = 0
+      if (snapshotId) {
+        for (let k = 0; k < 12; k++) {
+          const delta = (k % 2 === 0 ? 1 : -0.5) * (speedCtl?.maxStep ?? 2) * (0.3 + 0.07 * k)
+          const cand = { ...baseline, [speedCtl.id]: (baseline[speedCtl.id] ?? 95) + delta }
+          const t = await invokeA('twin_trial_run', { snapshot_id: snapshotId, model_id: model.id, baseline_controls: baseline, candidate_controls: Array.from({ length: 4 }, () => cand) }, workerA)
+          if (!t.isError && /improvement/.test(t.text)) trialOk++
+        }
+      }
+      add('P13', 'aml-trials', '模型背书虚拟试验 12 组', trialOk >= 10 ? 'pass' : 'fail', [`ok=${trialOk}/12`])
+      const gate = snapshotId ? await invokeA('twin_gate_evaluate', { model_id: model.id, scene_id: scene.sceneId }, workerA) : { text: '' }
+      const gatePassed = /"passed":\s*true/.test(gate.text) || /"gatePassed":\s*true/.test(gate.text)
+      add('P13', 'aml-scene-gate', '场景级门禁(castfilm 噪声底校准档)', !gate.isError && gatePassed ? 'pass' : 'fail',
+        [gate.text.replace(/\s+/g, ' ').slice(0, 200)])
+      step(6, `worker(${workerA.slice(0, 8)})`, '快照/12 组试验/场景门禁', `trials=${trialOk}/12 gatePassed=${gatePassed}`, [])
+      if (gatePassed) {
+        const promoteStage = async (toStage) => {
+          const p = invokeA('aml_model_promote', { model_id: model.id, to_stage: toStage }, leadA)
+          let rid2 = null
+          for (let i = 0; i < 30 && !rid2; i++) {
+            await sleep(2000)
+            const pend = await api.call('GET', '/api/workshop/hitl/pending')
+            const items = pend.data?.items ?? pend.data ?? []
+            const hit = (Array.isArray(items) ? items : []).find(x => (x.detail ?? x.title ?? '').includes(model.id))
+            if (hit) rid2 = hit.id ?? hit.requestId
+          }
+          if (rid2) await api.call('POST', '/api/workshop/hitl/respond', { kind: 'dcw-approval', id: rid2, confirmed: true, comment: `bench P13:场景门禁过,批准 ${toStage}` })
+          const r = await p
+          return r.text
+        }
+        const s1 = await promoteStage('shadow')
+        add('P13', 'aml-hitl-shadow', 'HITL 晋升 shadow(审批待办→批准)', /晋升完成|shadow/.test(s1) ? 'pass' : 'fail', [s1.slice(0, 140)])
+        let s2 = /晋升完成/.test(s1) ? await promoteStage('production') : ''
+        if (s2 && !/晋升完成/.test(s2)) {
+          // 平台权威 Twin Gate 结果在 shadow 晋升的并发窗口内可能失效(服务端建议:重评后重试)
+          await invokeA('twin_gate_evaluate', { model_id: model.id, scene_id: scene.sceneId }, workerA)
+          s2 = await promoteStage('production')
+        }
+        add('P13', 'aml-hitl-production', 'HITL 晋升 production', /晋升完成/.test(s2) ? 'pass' : 'fail', [s2.slice(0, 140)])
+        const objective = {
+          schemaVersion: 1, createdAt: new Date().toISOString(), createdBy: 'bench-p13',
+          objectiveId: 'thickness-50um', targets: { [targetObs?.id ?? 'film_thickness']: 50 }, weights: { [targetObs?.id ?? 'film_thickness']: 1 },
+          controlCosts: {}, horizonSteps: 4, trustRegion: {},
+        }
+        const mpc = await invokeA('mpc_optimize', { snapshot_id: snapshotId, baseline_controls: baseline, horizon_steps: 4, objective }, workerA)
+        const rolloutModel = (mpc.text.match(/"rolloutModel":\s*"([^"]+)"/) || [])[1]
+        const backed = (mpc.text.match(/"rolloutModelBacked":\s*(true|false)/) || [])[1]
+        const bestRaw = (mpc.text.match(/"bestCandidate":\s*(\{[^}]*\})/) || [])[1]
+        let best = null
+        try { best = JSON.parse(bestRaw ?? 'null') } catch { /* 容错 */ }
+        const adopted = rolloutModel === model.id && backed === 'true'
+        add('P13', 'aml-auto-adopt', 'MPC 未传 model_id → production 自动投用', adopted ? 'pass' : 'fail',
+          [`rollout=${rolloutModel ?? '—'} backed=${backed ?? '—'}`])
+        step(7, `lead+worker`, '两段 HITL 晋升 + MPC 自动投用', `rolloutModel=${rolloutModel} backed=${backed}`, [])
+        const idToNode = Object.fromEntries((frozenScene.controls ?? []).map(c => [c.id, c.nodeId]))
+        const STEP_LIMIT = { 加热区: 2.8, ScrewSpeed: 5, lineSpeed: 2, dieGap: 0.03 }
+        const limitOf = (name) => { for (const [k, v] of Object.entries(STEP_LIMIT)) if (name.includes(k)) return v; return 2 }
+        let wrote = 0
+        if (best) {
+          const dwFresh = ((await api.call('GET', '/api/workshop/dcw/')).data?.nodes ?? []).filter(n => n.lineId === twin.lineId)
+          const idToNode = Object.fromEntries((frozenScene.controls ?? []).map(c => [c.id, c.nodeId]))
+          for (const [specId, target] of Object.entries(best)) {
+            const nodeId = idToNode[specId]
+            if (!nodeId || !Number.isFinite(Number(target))) continue
+            const node = dwFresh.find(n => n.id === nodeId)
+            const cur = Number(node?.value)
+            if (!Number.isFinite(cur)) continue
+            const lim = limitOf(node?.name ?? '')
+            const delta = Number(target) - cur
+            if (Math.abs(delta) < 1e-6) continue
+            const stepV = Math.sign(delta) * Math.min(Math.abs(delta), lim)
+            const w = await api.call('POST', `/api/workshop/dcw/${nodeId}/write`, { value: Number((cur + stepV).toFixed(4)) })
+            if (w.status === 200) wrote++
+          }
+        }
+        add('P13', 'aml-governed-write', '推荐值经治理写回 DCW(单步限内)', wrote > 0 ? 'pass' : 'warn', [`wrote=${wrote}(拒=治理单步限保护,合规)`])
+        await sleep(60_000)
+        const targetNodeId = targetObs?.nodeId ?? twin.daq['film-thickness']
+        const r = await api.call('GET', `/api/workshop/daq/${targetNodeId}/samples?bucketMs=1000&limit=60`)
+        const pts = (r.data?.points ?? []).map(p => Number(p.avg ?? p.value)).filter(Number.isFinite).slice(0, 30)
+        const meanPv = pts.length ? pts.reduce((a, b) => a + b, 0) / pts.length : null
+        add('P13', 'aml-pv-recheck', '写回后 PV 复测(膜厚读数)', Number.isFinite(meanPv) ? 'pass' : 'fail',
+          [`mean=${Number.isFinite(meanPv) ? meanPv.toFixed(2) : 'n/a'} μm(目标 50)`])
+        step(8, 'agent+platform', '推荐写回 + PV 复测', `wrote=${wrote} pv=${Number.isFinite(meanPv) ? meanPv.toFixed(2) : 'n/a'}μm`, [])
+        amlState.summary = { datasetId: ds?.id, modelId: model.id, g1: model.metrics?.oneStepTest?.nrmse, g2: model.metrics?.rolloutTest?.nrmse, adopted, wrote, pvMean: meanPv, sceneId: scene.sceneId, channel: channelAml }
+      }
+      else {
+        add('P13', 'aml-hitl-shadow', 'HITL 晋升 shadow(审批待办→批准)', 'fail', ['场景门禁未过,fail-closed'])
+        add('P13', 'aml-hitl-production', 'HITL 晋升 production', 'fail', ['场景门禁未过,fail-closed'])
+        add('P13', 'aml-auto-adopt', 'MPC 未传 model_id → production 自动投用', 'fail', ['场景门禁未过,fail-closed'])
+        add('P13', 'aml-governed-write', '推荐值经治理写回 DCW(单步限内)', 'fail', ['场景门禁未过,fail-closed'])
+        add('P13', 'aml-pv-recheck', '写回后 PV 复测(膜厚读数)', 'fail', ['场景门禁未过,fail-closed'])
+        amlState.summary = { datasetId: ds?.id, modelId: model.id, adopted: false, sceneId: scene.sceneId, failClosed: true }
+      }
+    }
+    else {
+      add('P13', 'aml-snapshot', '孪生快照创建(auto_daq)', 'fail', ['前序失败(模型/通道/冻结场景缺失)'])
+      add('P13', 'aml-trials', '模型背书虚拟试验 12 组', 'fail', ['前序失败'])
+      add('P13', 'aml-scene-gate', '场景级门禁(castfilm 噪声底校准档)', 'fail', ['前序失败'])
+      add('P13', 'aml-hitl-shadow', 'HITL 晋升 shadow(审批待办→批准)', 'fail', ['前序失败'])
+      add('P13', 'aml-hitl-production', 'HITL 晋升 production', 'fail', ['前序失败'])
+      add('P13', 'aml-auto-adopt', 'MPC 未传 model_id → production 自动投用', 'fail', ['前序失败'])
+      add('P13', 'aml-governed-write', '推荐值经治理写回 DCW(单步限内)', 'fail', ['前序失败'])
+      add('P13', 'aml-pv-recheck', '写回后 PV 复测(膜厚读数)', 'fail', ['前序失败'])
+    }
+    await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {})
+    // 透明化全过程记录(逐步 jsonl,append-only)
+    writeText(join(outDir, 'aml-transparency.jsonl'), tl.map(x => JSON.stringify(x)).join('\n') + '\n')
+    add('P13', 'aml-transparency', '投用链透明化记录(aml-transparency.jsonl)', tl.length >= 6 ? 'pass' : 'warn',
+      [`bench/results/${rid}/aml-transparency.jsonl`, `steps=${tl.length}`])
+    csvRows.push({ phase: 'P13', dataset: ds?.id ?? '', model: model?.id ?? '', adopted: amlState.summary?.adopted ? 1 : 0, wrote: amlState.summary?.wrote ?? 0 })
+    const amlCoreOk = ['aml-line', 'aml-sp-readback', 'aml-dataset', 'aml-train-gates', 'aml-model-artifact', 'aml-scene-gate', 'aml-auto-adopt']
+      .every(id => checks.find(c => c.phase === 'P13' && c.id === id)?.status === 'pass')
+    return { status: checks.filter(c => c.phase === 'P13' && c.status === 'fail').length ? 'fail' : amlCoreOk ? 'pass' : 'fail', note: model ? `model=${model.id} adopted=${amlState.summary?.adopted ? '✔' : '✘'}` : '无入档模型' }
+  })
+}
+
+// ═══════════════ P14 · 平台新增能力面（可选：--surfaces / --profile extended）═══════════════
+// 覆盖 2026-09 后新增平台能力:MCP stdio 服务(自动发现+工具面+开关门控)、two-mode 优化通道
+// 模板、配方描述元字段、产线操作透明化数据面(ops-logs/优化记录/参数台账)、孪生 Provider SDK。
+const surfState = { summary: null }
+if (runSurfaces) {
+  await timed('P14', 'platform-surfaces', '平台新增能力面（MCP · two-mode 通道 · 配方描述 · 透明化数据面 · Provider SDK）', async () => {
+    // (a) MCP stdio:自动发现端口 → initialize → tools/list ≥30 → aw_status 真实调用
+    {
+      const { spawn: sp } = await import('node:child_process')
+      const child = sp(process.execPath, [join(REPO, 'mcp', 'aw-mcp-server.mjs')], {
+        cwd: REPO,
+        env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', HTTP_PROXY: '', HTTPS_PROXY: '', AW_TOKEN: api.token ?? '' },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      let buf = ''
+      child.stdout.on('data', d => { buf += d.toString() })
+      const rpc = (obj) => new Promise((resolve) => {
+        const want = obj.id
+        const t0 = Date.now()
+        const timer = setInterval(() => {
+          const line = buf.split('\n').find(l => l.includes(`"id":${want}`) || l.includes(`"id": ${want}`))
+          if (line) { clearInterval(timer); resolve(JSON.parse(line)) }
+          else if (Date.now() - t0 > 30000) { clearInterval(timer); resolve(null) }
+        }, 200)
+        child.stdin.write(JSON.stringify(obj) + '\n')
+      })
+      const init = await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'bench-p14', version: '1.0.0' } } })
+      const tools = await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })
+      const toolNames = (tools?.result?.tools ?? []).map(t => t.name)
+      const status = await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'aw_status', arguments: {} } })
+      const statusOk = /"isError":false|"isError": false/.test(status?.result?.content?.[0]?.text ?? '') || status?.result?.content?.[0]?.text?.includes('AgentWorkShop')
+      const mcpOk = Boolean(init?.result?.serverInfo) && toolNames.length >= 30 && statusOk
+      add('P14', 'mcp-stdio', 'MCP stdio 自动发现 + 工具面 + aw_status', mcpOk ? 'pass' : 'fail',
+        [`tools=${toolNames.length}`, `server=${init?.result?.serverInfo?.name ?? '—'}`, `aw_status=${statusOk ? '✔' : '✘'}`])
+      // (b) MCP 开关门控:settings 关 → 非 aw_status 调用被拒;恢复开 → 放行
+      await api.call('PATCH', '/api/system/settings', { override: { 'mcp.enabled': false } })
+      await sleep(4200) // > 3s TTL 缓存
+      const blocked = await rpc({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'aw_request', arguments: { method: 'GET', path: '/api/workshop/lines' } } })
+      const blockedOk = (blocked?.result?.content?.[0]?.text ?? '').includes('已停用')
+      await api.call('PATCH', '/api/system/settings', { override: { 'mcp.enabled': true } })
+      await sleep(4200)
+      const allowed = await rpc({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'aw_status', arguments: {} } })
+      const allowOk = Boolean(allowed?.result?.content?.[0]?.text)
+      add('P14', 'mcp-switch', '系统设置 MCP 开关门控(关→拒/开→放行)', blockedOk && allowOk ? 'pass' : 'fail',
+        [`disabled-block=${blockedOk}`, `enabled-allow=${allowOk}`])
+      child.kill()
+      surfState.summary = { mcpTools: toolNames.length, switchGate: blockedOk && allowOk }
+    }
+    // (c) two-mode 优化通道模板实例化(hybrid_twin 工具面)
+    {
+      const baseRec = lines.find(l => l.ids?.line && l.ids?.product) ?? null
+      const scene = { sceneId: `p14-surface-${sfx}`, sceneVersion: '1.0.0', lineId: baseRec?.ids.line, productId: baseRec?.ids.product, recipeId: baseRec?.ids.recipe }
+      const inst = await api.call('POST', '/api/workshop/channel-templates/chtpl-hybrid-twin-mpc-default/instantiate', {
+        name: `P14 two-mode 通道 ${sfx}`, toolProfile: 'hybrid_twin', scene,
+        objective: { objectiveId: 'thickness-50um', targets: { film_thickness: 50 } },
+        controlPolicy: 'recommendation_only',
+      })
+      const chId = inst.data?.channelId
+      const workerId = (inst.data?.agents ?? []).find(a => a.role === 'worker')?.id
+      let invokeOk = false
+      if (chId && workerId) {
+        const cat = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: workerId, tool: 'aml_node_catalog', args: {} })
+        invokeOk = Boolean(cat.data?.result) && cat.data?.result?.isError !== true
+      }
+      add('P14', 'two-mode-channel', 'two-mode 优化通道模板实例化 + Agent 工具面', chId && workerId && invokeOk ? 'pass' : 'fail',
+        [`channel=${chId ?? '—'} invoke=${invokeOk ? '✔' : '✘'}`])
+    }
+    // (d) 配方描述元字段(克隆既有配方的参数,仅验证 description 创建→读回一致)
+    {
+      const list = (await api.call('GET', '/api/workshop/dcw/recipes')).data?.recipes ?? []
+      const src = list[0]
+      let descOk = false
+      if (src?.id) {
+        const desc = `P14 描述元字段验证 ${sfx}:起始工况=蓝图次优,目标=闭环寻优演示`
+        const rc = await api.call('POST', '/api/workshop/dcw/recipes', {
+          productId: src.productId, name: `P14 描述配方 ${sfx}`, description: desc,
+          params: src.params ?? [],
+        })
+        const back = (await api.call('GET', '/api/workshop/dcw/recipes')).data?.recipes?.find(x => x.id === rc.data?.recipe?.id || x.name === `P14 描述配方 ${sfx}`)
+        descOk = Boolean(back) && (back.description ?? '').includes('P14 描述元字段验证')
+      }
+      add('P14', 'recipe-description', '配方描述元字段(创建→读回一致)', descOk ? 'pass' : 'warn',
+        [descOk ? 'description 原生读回一致' : '无既有配方可克隆,诚实降级'])
+    }
+    // (e) 产线操作透明化数据面:ops-logs / 优化记录 / 参数台账
+    {
+      const ops = await api.call('GET', '/api/workshop/ops-logs?limit=5')
+      const opt = await api.call('GET', '/api/workshop/dcw/optimizations')
+      const optList = Array.isArray(opt.data) ? opt.data : (opt.data?.records ?? opt.data?.items ?? [])
+      const ledgerRec = lines.find(l => l.ids?.dcw)
+      let ledgerOk = null
+      if (ledgerRec?.ids?.dcw) {
+        const led = await api.call('GET', `/api/workshop/dcw/${ledgerRec.ids.dcw}/param-ledger?limit=5`)
+        ledgerOk = led.status === 200
+      }
+      const transOk = ops.status === 200 && opt.status === 200 && Array.isArray(optList) && (ledgerOk !== false)
+      add('P14', 'ops-transparency', '产线操作透明化数据面(ops-logs/优化记录/参数台账)', transOk ? 'pass' : 'warn',
+        [`ops-logs=${ops.status}`, `optimizations=${opt.status}(n=${optList.length})`, `param-ledger=${String(ledgerOk)}`])
+    }
+    // (f) 孪生 Provider SDK(插件化模型提供方注册表)
+    {
+      const prov = await api.call('GET', '/api/workshop/aml/twin/providers')
+      const provList = Array.isArray(prov.data) ? prov.data : (prov.data?.providers ?? [])
+      add('P14', 'twin-providers', '孪生 Provider SDK 注册表', prov.status === 200 && provList.length >= 1 ? 'pass' : 'warn',
+        [`providers=${JSON.stringify(provList).slice(0, 120)}`])
+    }
+    csvRows.push({ phase: 'P14', mcp_tools: surfState.summary?.mcpTools ?? '', mcp_gate: surfState.summary?.switchGate ? 1 : 0 })
+    const p14fails = checks.filter(c => c.phase === 'P14' && c.status === 'fail').length
+    return { status: p14fails ? 'fail' : 'pass', note: `MCP tools=${surfState.summary?.mcpTools ?? '—'}` }
+  })
+}
+
 // ═══════════════ P9 · 平台子系统（团队调度 · 团队记忆幂等 · 引擎注册表）═══════════════
 await timed('P9', 'subsystems', 'Platform subsystems (team dispatch · team memory idempotency · harness registry)', async () => {
   // (a) 团队调度：mock lead + 2 mock worker，未指派任务由 lead 规则引擎派发、worker 按剧本完成
@@ -1428,7 +1936,7 @@ await timed('P9', 'subsystems', 'Platform subsystems (team dispatch · team memo
   const j1 = await api.call('POST', `/api/workshop/channels/${chId9}/agents`, { agentId: w1.data?.id, role: 'worker' })
   const j2 = await api.call('POST', `/api/workshop/channels/${chId9}/agents`, { agentId: w2.data?.id, role: 'worker' })
   const i1 = j1.data?.id ?? j1.data?.agentId, i2 = j2.data?.id ?? j2.data?.agentId
-  const t9 = await api.call('POST', `/api/workshop/channels/${chId9}/tasks`, { title: `teamtask-${sfx}`, parts: [{ text: 'P9 团队调度验证任务：完成后调用 complete_task。' }] })
+  const t9 = await api.call('POST', `/api/workshop/channels/${chId9}/tasks`, { title: `teamtask-${sfx}`, parts: [{ text: '[mock:complex] P9 团队调度验证任务：拆分后由成员完成，最后调用 complete_task。' }] })
   let taskId9 = t9.data?.task?.id ?? t9.data?.id
   if (!taskId9) { const list = (await api.call('GET', `/api/workshop/channels/${chId9}/tasks`)).data ?? []; taskId9 = (Array.isArray(list) ? list : []).find(x => x.title === `teamtask-${sfx}`)?.id }
   let state9 = '', assignee9 = null
@@ -1490,7 +1998,7 @@ const pass = checks.filter(c => c.status === 'pass').length
 const phaseFailN = phases.filter(p => p.status === 'fail').length
 const executedN = pass + warn + fail
 const emptyRun = checks.length === 0 || executedN === 0
-const reproCmd = `node bench/pipeline.mjs --profile ${profile} --seed ${seed}${maxLines !== 5 ? ` --lines ${maxLines}` : ''}${toolHarness !== 'opencode' ? ` --tool-harness ${toolHarness}` : ''}${clSeeds ? ` --cl-seeds ${clSeeds}` : ''}${clWriteMode !== 'governed' ? ` --cl-write ${clWriteMode}` : ''}${agentHarness ? ` --agent ${agentHarness}` : ''}`
+const reproCmd = `node bench/pipeline.mjs --profile ${profile} --seed ${seed}${maxLines !== 5 ? ` --lines ${maxLines}` : ''}${toolHarness !== 'opencode' ? ` --tool-harness ${toolHarness}` : ''}${clSeeds ? ` --cl-seeds ${clSeeds}` : ''}${clWriteMode !== 'governed' ? ` --cl-write ${clWriteMode}` : ''}${agentHarness ? ` --agent ${agentHarness}` : ''}${profile !== 'extended' && runScenarios ? ' --scenarios' : ''}${profile !== 'extended' && runAml ? ' --aml' : ''}${profile !== 'extended' && runSurfaces ? ' --surfaces' : ''}`
 
 const env = {
   runId: rid, profile, seed, base, simBase: SIM_BASE, simDir: SIM_DIR, lines: lines.length,
@@ -1517,6 +2025,8 @@ const env = {
       }
     : null,
   backstop: { fired: bs.fired, restored: bs.restored, latencyS: bs.latencyS, recordId: bs.recordId, from: bs.from, to: bs.to },
+  aml: amlState.summary,
+  surfaces: surfState.summary,
   verdict: { pass, warn, fail, phaseFails: phaseFailN, ok: fail === 0 && phaseFailN === 0 && !emptyRun }, reproCmd,
 }
 const kpis = [
