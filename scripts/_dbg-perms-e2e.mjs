@@ -87,9 +87,19 @@ const w2 = dcwNodes.find(n => n.lineId === LINE2) ?? dcwNodes.find(n => n.lineId
 ok('两线均有可见写控节点', Boolean(w1 && w2), `${w1?.id} / ${w2?.id}`)
 
 // ---- 写控校验 ----
+// 写值取「当前值 + 1% 量程」并对齐步长限位:共享实例的既有节点可能带 stepLimit
+// (实测:演示·OPC UA TempController 值 130/步长 5.2,硬写 170 → 409 STEP_LIMIT_EXCEEDED,
+// 掩盖了被测的权限语义)。权限断言只关心放行/拒绝,与具体值无关。
+const stepSafeValue = (n) => {
+  const cur = Number(n.value ?? 170)
+  const span = Math.abs(Number(n.max ?? 260) - Number(n.min ?? 0)) || 200
+  const min = n.min != null ? Number(n.min) : -Infinity
+  const max = n.max != null ? Number(n.max) : Infinity
+  return Math.min(max, Math.max(min, cur + span * 0.01))
+}
 const wr1 = await api(`/api/workshop/dcw/${w1.id}/write`, { method: 'POST', body: JSON.stringify({ value: 170 }) }, plainTok)
 ok('readonly 产线写控被拒(403 人话)', wr1.status === 403 && /仅查看/.test(wr1.body?.message ?? ''), wr1.body?.message)
-const wr2 = await api(`/api/workshop/dcw/${w2.id}/write`, { method: 'POST', body: JSON.stringify({ value: 170 }) }, plainTok)
+const wr2 = await api(`/api/workshop/dcw/${w2.id}/write`, { method: 'POST', body: JSON.stringify({ value: stepSafeValue(w2) }) }, plainTok)
 ok('operate 产线写控放行', wr2.status === 200 && wr2.body?.data?.outcome != null, `ack=${JSON.stringify(wr2.body?.data?.outcome)?.slice(0, 60)}`)
 
 // ---- 绑定校验(daq 需 readonly+,dcw 需 operate) ----

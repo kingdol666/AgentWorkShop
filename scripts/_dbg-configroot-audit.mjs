@@ -69,9 +69,11 @@ const bootSrc = read(join(REPO, 'server', 'plugins', 'system-config.ts'))
 ok('system-config 启动插件走 resolveRunMode(与启动器同源)', /resolveRunMode/.test(bootSrc))
 ok('启动插件不再写死 <cwd>/data/runtime-settings.json', !/runtime-settings\.json`\)/.test(bootSrc))
 
-const scSrc = read(join(REPO, 'server', 'services', 'system-config.ts'))
+// system-config 已拆为目录(services/system-config/*.ts),断言面取全目录拼接
+const scDir = join(REPO, 'server', 'services', 'system-config')
+const scSrc = fsMod.readdirSync(scDir).filter(f => f.endsWith('.ts')).map(f => read(join(scDir, f))).join('\n')
 const stSrc = read(join(REPO, 'server', 'services', 'workshop', 'settings.ts'))
-const hostSrc = read(join(REPO, 'server', 'services', 'workshop', 'plugins', 'host.mjs'))
+const hostSrc = read(join(REPO, 'server', 'services', 'workshop', 'plugins', 'host', 'init.mjs'))
 ok('SystemConfigService 走 resolveRunMode(与启动器同源)', /resolveRunMode/.test(scSrc))
 ok('settings 服务走 resolveRunMode', /resolveRunMode/.test(stSrc))
 ok('插件宿主走 resolveRunMode(插件目录/状态文件同根)', /resolveRunMode/.test(hostSrc))

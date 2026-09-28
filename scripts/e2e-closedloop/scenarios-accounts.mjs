@@ -139,6 +139,7 @@ export async function s2_model() {
     unit: '℃',
     min: 150,
     max: 220,
+    stepLimit: 10,
     lineId: ctx.line?.id,
     holdIntervalMs: 0,
   })
@@ -149,6 +150,7 @@ export async function s2_model() {
     unit: '℃',
     min: 150,
     max: 220,
+    stepLimit: 10,
     lineId: ctx.line?.id,
     holdIntervalMs: 0,
   })

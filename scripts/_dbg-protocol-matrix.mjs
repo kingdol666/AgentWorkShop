@@ -231,7 +231,9 @@ async function main() {
     const t = await api('POST', '/api/workshop/dcw/test-driver', { body: { driver: d.driver, driverConfig: d.cfg }, token })
     check(`2.${d.id}-test`, `DCW ${d.driver} 连接测试`, t.data?.test?.ok === true, JSON.stringify(t.data?.test ?? t.message ?? {}).slice(0, 120))
     const created = await api('POST', '/api/workshop/dcw', {
-      body: { templateRef: 'dcw-temp-sp', name: d.name, driver: d.driver, driverConfig: d.cfg, lineId: line.id }, token,
+      // stepLimit 显式放宽:模板默认 1℃(经 ensureForNode 继承到参数映射)会把
+      // 矩阵的跨档写入(172.5/182,Δ≥2)409 拒掉 —— 矩阵语义是协议链路验证,非步长卡控。
+      body: { templateRef: 'dcw-temp-sp', name: d.name, driver: d.driver, driverConfig: d.cfg, lineId: line.id, stepLimit: 10 }, token,
     })
     dcwNodes[d.id] = created.data?.node
     check(`2.${d.id}-create`, `DCW ${d.driver} 节点创建`, Boolean(dcwNodes[d.id]?.id), created.message ?? '')

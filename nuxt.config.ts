@@ -85,6 +85,7 @@ export default defineNuxtConfig({
     },
     // R3:高危管理操作双人复核闸门(config.yml -> security.approvalGate;NUXT_APPROVAL_GATE 可覆盖)
     approvalGate: config.security.approvalGate,
+    timeZone: config.time?.timeZone ?? 'Asia/Shanghai',
     // 数采基础设施(config.yml -> daq;服务端启动插件消费)
     daq: config.daq,
     public: {
@@ -101,6 +102,7 @@ export default defineNuxtConfig({
       devPort: config.server.dev.port,
       prodPort: config.server.prod.port,
       defaultLocale: config.i18n.defaultLocale,
+      timeZone: config.time?.timeZone ?? 'Asia/Shanghai',
     },
   },
 

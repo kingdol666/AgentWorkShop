@@ -19,7 +19,7 @@ const samples = [
 const snapshot = createTwinSnapshot({ scene, channelId: 'acceptance-channel', createdBy: 'acceptance', phase: 'holding', controls: baselineControls, states: { melt_temperature: 247, cavity_pressure: 65, fill_fraction: 1 }, disturbances: { material_batch_factor: 1 }, samples, nowMs: now })
 
 const candidates = smallStepCandidates(scene, baselineControls).map(c => Array.from({ length: 4 }, () => c))
-const trials = candidates.map((trajectory, i) => runVirtualTrial({
+const trials = await Promise.all(candidates.map((trajectory, i) => runVirtualTrial({
   scene,
   snapshot,
   modelId: 'twin-injection-acceptance-v1',
@@ -31,13 +31,13 @@ const trials = candidates.map((trajectory, i) => runVirtualTrial({
   uncertainty: { predictions: [{ weight: 32.5, flash_rate: 0.1, sink_rate: 0.1 }, { weight: 32.5, flash_rate: 0.1, sink_rate: 0.1 }, { weight: 32.5, flash_rate: 0.1, sink_rate: 0.1 }], coverage: 0.96, inputDistance: 1.2, calibrationFresh: true },
   createdBy: `acceptance-worker-${i}`,
   nowMs: now,
-}))
+})))
 
 const undertrained = evaluateHybridGates({ rows: 220, runs: 1, oneStepTestNrmse: 0.18, rolloutTestNrmse: 0.40, valTestGap: 0.35, calibrationRows: 80, calibrationCoverage: 0.72, candidateTrials: trials.slice(0, 3), physicsSolverFailureRate: 0.01 })
 const trained = evaluateHybridGates({ rows: 900, runs: 6, oneStepTestNrmse: 0.06, rolloutTestNrmse: 0.14, valTestGap: 0.08, calibrationRows: 420, calibrationCoverage: 0.96, candidateTrials: [...trials, ...trials, ...trials].slice(0, 12), physicsSolverFailureRate: 0 })
 const preciseTrial = trials.find(t => t.baselineComparison.improvement > 0 && t.constraintResults.every(c => c.passed) && t.outOfDistribution.accepted)
 const certificate = preciseTrial ? issueRecommendationCertificate(preciseTrial, 'acceptance', sha256(provider.manifest), sha256({ objectiveId: 'weight-quality' }), now) : null
-const unsafeTrial = runVirtualTrial({
+const unsafeTrial = await runVirtualTrial({
   scene,
   snapshot,
   modelId: 'twin-injection-acceptance-v1',

@@ -3,7 +3,7 @@
  * (由 scripts/e2e-full-closedloop.mjs 按职责拆出;内容逐行原文搬运)
  */
 import { TAG, ctx } from './state.mjs'
-import { api, ok, raw, section, waitUntil } from './lib.mjs'
+import { api, ok, raw, section, sleep, waitUntil } from './lib.mjs'
 
 // ════════════════════════════════════════════════════════════════
 // S8 Agent 鉴权矩阵(P0-D 回归)
@@ -52,15 +52,18 @@ export async function s8_agent_authz() {
   ok(bind.status === 200, '绑定 dcw 节点(auto)', JSON.stringify(bind.data ?? {}).slice(0, 80))
   // 断言的是「绑定闸门放行」而不是「下发一定成功」:S7 刚在同一节点做过用户回退,
   // 同向重写会被**写入保持窗口**(安全护栏)拦下 —— 那是正确行为,不该算绑定失败。
-  // 但后面的 judge 断言需要一条本 agent 发起的 open 记录,因此窗口内小步重试
-  // (旧写法:一次被护栏拦下 → judge 期望必然落空,把正确护栏报成失败)。
+  // v0.7.50 起在线写另有 60s 最小间隔卡控(429 WRITE_INTERVAL_NOT_ELAPSED),同属
+  // 正确护栏。但后面的 judge 断言需要一条本 agent 发起的 open 记录,因此窗口内按
+  // 提示的剩余秒数等待后重试(旧写法:一次被护栏拦下 → judge 期望必然落空,
+  // 把正确护栏报成失败)。
   let boundControl
   let bcText = ''
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     boundControl = await invoke('dcw_control', { node_id: ctx.dcw.main?.id, value: 196, hypothesis: 'e2e 绑定放行验证' })
     bcText = String(boundControl.data?.result?.text ?? '')
-    if (!/写入保持窗口/.test(bcText)) break
-    await new Promise(r => setTimeout(r, 10_000))
+    if (!/写入保持窗口/.test(bcText) && !/两次在线写入间隔/.test(bcText)) break
+    const need = Number(/当前还需 (\d+)s/.exec(bcText)?.[1] ?? 5)
+    await new Promise(r => setTimeout(r, Math.min(70, Math.max(2, need + 1)) * 1000))
   }
   ok(boundControl.data?.result?.isError !== true || !/无权|未绑定/.test(bcText),
     '已绑定 agent 的 dcw_control 通过绑定闸门', bcText.slice(0, 110))
@@ -115,6 +118,9 @@ export async function s8_agent_authz() {
 
   // 8) manual 模式 → 挂起审批(dcw_control)
   await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: ctx.agent.id, nodeId: ctx.dcw.two?.id, kind: 'dcw', mode: 'manual' }, token: ctx.token })
+  // v0.7.50 治理卡控:在线写(agent)有 60s 最小间隔 —— 配方开跑刚逐参数写过节二,
+  // 先等冷却窗走完再发起 HITL 下发,否则批准后的执行会被 429 快速拒绝。
+  await sleep(61_000)
   const hitlPromise = invoke('dcw_control', { node_id: ctx.dcw.two?.id, value: 189 }, { timeoutMs: 120_000 }).catch(e => ({ data: { result: { isError: true, text: `invoke err ${e.message}` } } }))
   const pending = await waitUntil('manual 挂起审批', async () => {
     const r = await api('GET', '/api/workshop/agent-tools/approvals', { token: ctx.token })

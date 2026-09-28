@@ -3,7 +3,7 @@
  * (由 scripts/e2e-full-closedloop.mjs 按职责拆出;内容逐行原文搬运)
  */
 import { TAG, ctx } from './state.mjs'
-import { api, ok, section, waitUntil } from './lib.mjs'
+import { api, ok, section, sleep, waitUntil } from './lib.mjs'
 
 // ════════════════════════════════════════════════════════════════
 // S4 数采闭环
@@ -156,6 +156,9 @@ export async function s5_frames() {
 // ════════════════════════════════════════════════════════════════
 export async function s6_dcw() {
   section('S6 数控闭环(下发→回读→记账→锚点→回退)')
+  // v0.7.50 治理卡控:在线写(manual/agent)有 60s 最小间隔。开跑产线时配方刚逐参数
+  // 写过本节点,这里等冷却窗走完,否则第一笔下发就被 429 快速拒绝。
+  await sleep(61_000)
   const w = await api('POST', `/api/workshop/dcw/${ctx.dcw.main?.id}/write`, { body: { value: 195 }, token: ctx.token })
   const outcome = w.data?.outcome ?? w.data
   ok(outcome?.ok === true, '下发 195℃ 成功', `readback=${outcome?.readback ?? '?'}`)
