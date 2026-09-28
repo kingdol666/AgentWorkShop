@@ -130,6 +130,9 @@ const filterProductId = defineModel<string>('filterProductId', { required: true 
             :title="paramStatus(p.nodeId, r.lineId)?.label ?? ''"
           >
             {{ paramNodeName(p.nodeId) }} = {{ p.value }}<span
+              v-if="p.stepLimit != null"
+              class="chip-step-tag"
+            >Δ≤{{ p.stepLimit }}</span><span
               v-if="paramStatus(p.nodeId, r.lineId)"
               class="chip-stale-tag"
             >{{ paramStatus(p.nodeId, r.lineId)!.label }}</span>
@@ -333,6 +336,7 @@ const filterProductId = defineModel<string>('filterProductId', { required: true 
 
 /* 失效配方参数:灰化 + 徽标 */
 .param-chip.stale { color: var(--ink-faint); background: color-mix(in srgb, var(--ink) 5%, transparent); border-color: var(--divider-hair); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink-faint) 60%, transparent); }
+.chip-step-tag { margin-left: 5px; padding: 0 5px; font-size: 10px; color: var(--tone-warning-dot); background: color-mix(in srgb, var(--tone-warning-dot) 8%, transparent); border: 1px solid color-mix(in srgb, var(--tone-warning-dot) 30%, transparent); border-radius: var(--radius-chip); }
 .chip-stale-tag { margin-left: 5px; padding: 0 5px; font-size: 11.5px; font-style: normal; color: var(--tone-danger-dot); background: color-mix(in srgb, var(--tone-danger-dot) 8%, transparent); border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 30%, transparent); border-radius: var(--radius-chip); text-decoration: none; }
 
 @media (prefers-reduced-motion: no-preference) {

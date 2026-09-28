@@ -12,7 +12,7 @@
  *
  * 排序:createdAt 升序 + 插入序稳定(同毫秒消息保持先到先排)。
  */
-import { defineStore } from 'pinia'
+import { nowLocalIso } from '@/app/composables/workshop/useLocalTime'
 import { ref } from 'vue'
 import type {
   AepChannelChatSettings,
@@ -307,7 +307,7 @@ export const useChatStore = defineStore('workshop.chat', () => {
         targetAgentId: d.agentId,
         mailboxMessageId: null,
         status: d.status as AepChatDelivery['status'],
-        updatedAt: new Date().toISOString(),
+        updatedAt: nowLocalIso(),
       })
     }
     return data

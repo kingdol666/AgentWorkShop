@@ -10,7 +10,7 @@
  *    幂等只能落在本 store 的 eventId 集合上;
  *  - 重连/刷新后按游标向**后**补拉,与直播帧按 id 合并,不丢不重。
  */
-import { defineStore } from 'pinia'
+import { nowLocalIso } from '@/app/composables/workshop/useLocalTime'
 import { ref } from 'vue'
 import type { AepEnvelope, AepNotification, AepNotificationRead } from '#shared/workshop-protocol'
 import { useUserStore } from './user'
@@ -138,7 +138,7 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
 
   /** 已读帧(多标签页同步):按单条 / 频道范围 / 全部收敛 */
   function applyRead(p: AepNotificationRead): void {
-    const at = p.readAt || new Date().toISOString()
+    const at = p.readAt || nowLocalIso()
     for (const n of items.value) {
       if (n.readAt) continue
       if (p.id && n.id !== p.id) continue
@@ -243,7 +243,7 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
       },
     )
     if (res.code !== 0 || !res.data) throw new Error(res.message ?? '标记已读失败')
-    const at = new Date().toISOString()
+    const at = nowLocalIso()
     for (const n of items.value) {
       if (n.readAt) continue
       if (opts.id && n.id !== opts.id) continue

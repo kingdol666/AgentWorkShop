@@ -7,6 +7,7 @@ import type { DcwNodeView, ProductView } from '#shared/dcw-protocol'
 import type { DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
 import type { DcwRecipeForm } from '../../pages/dcw/composables/useDcwRecipes'
 import type { StaleRef } from '../../pages/dcw/composables/useDcwDetailScope'
+import { emptyRecipeDaqWindowRow, emptyRecipeParamRow } from '~/utils/dcw-recipe-form'
 
 defineProps<{
   lineProducts: ProductView[]
@@ -129,6 +130,17 @@ const recipeForm = defineModel<DcwRecipeForm>('form', { required: true })
             :placeholder="$t('dcwDetail.kzoh5pr017')"
           >
         </label>
+        <label class="f">
+          <span>Recipe 单步上限 Δ≤</span>
+          <input
+            v-model.number="p.stepLimit"
+            type="number"
+            min="0"
+            class="inp"
+            step="any"
+            placeholder="跟随节点默认"
+          >
+        </label>
         <button
           class="mini-btn danger param-del"
           @click="recipeForm.params.splice(i, 1)"
@@ -138,7 +150,7 @@ const recipeForm = defineModel<DcwRecipeForm>('form', { required: true })
       </div>
       <button
         class="mini-btn"
-        @click="recipeForm.params.push({ nodeId: lineNodes[0]?.id ?? '', value: '', min: '', max: '' })"
+        @click="recipeForm.params.push(emptyRecipeParamRow(lineNodes[0]?.id ?? ''))"
       >
         {{ $t('dcwDetail.k1broh7h100') }}
       </button>
@@ -194,7 +206,7 @@ const recipeForm = defineModel<DcwRecipeForm>('form', { required: true })
         class="mini-btn"
         :disabled="lineDaqNodes.length === 0"
         :title="lineDaqNodes.length === 0 ? $t('dcwDetail.noDaqTip') : ''"
-        @click="recipeForm.daqWindows.push({ nodeId: lineDaqNodes[0]?.id ?? '', min: '', max: '' })"
+        @click="recipeForm.daqWindows.push(emptyRecipeDaqWindowRow(lineDaqNodes[0]?.id ?? ''))"
       >
         {{ $t('dcwDetail.kv1de1p105') }}
       </button>
@@ -247,7 +259,7 @@ const recipeForm = defineModel<DcwRecipeForm>('form', { required: true })
 
 .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 
-.param-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
+.param-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
 .param-row .f { flex: 1; }
 .param-del { margin-bottom: 2px; }
 .f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }

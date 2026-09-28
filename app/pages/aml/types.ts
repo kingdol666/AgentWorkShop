@@ -158,6 +158,12 @@ export interface AmlModelRow {
   ioSpec: IoSpec | null
   metrics: PlatformMetrics | null
   note: string
+  /** 人读标识:产线·配方·优化目标(注册时派生/提交时 model_name 前缀) */
+  label?: string
+  /** 建模意图描述 */
+  description?: string
+  lineId?: string
+  objectiveId?: string
   createdAt: string
 }
 export interface PredictResult {

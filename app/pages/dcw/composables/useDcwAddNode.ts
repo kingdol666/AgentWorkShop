@@ -22,7 +22,8 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
   const addName = ref('')
   const addHold = ref<number | null>(null)
   const addRead = ref<number | null>(null)
-  const addWriteLock = ref<number>(30)
+  const addWriteLock = ref<number>(60)
+  const addStepLimit = ref<number | null>(null)
   const addCfg = ref<Record<string, string | number>>({})
   const addTransform = reactive({ kind: 'none' as 'none' | 'linear', scale: 1, offset: 0 })
   const addSemantics = ref('')
@@ -82,6 +83,7 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
         holdIntervalMs: addHold.value,
         readIntervalMs: addRead.value,
         writeLockSeconds: addWriteLock.value,
+        ...(addStepLimit.value != null ? { stepLimit: addStepLimit.value } : {}),
         lineId: lineId.value,
         semantics: addSemantics.value.trim() || undefined,
       })
@@ -106,6 +108,7 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
     addHold,
     addRead,
     addWriteLock,
+    addStepLimit,
     addCfg,
     addTransform,
     addSemantics,

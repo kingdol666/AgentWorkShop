@@ -7,6 +7,7 @@
  */
 import { ref } from 'vue'
 import { useTownBus } from './useTownBus'
+import { nowLocalIso } from './useLocalTime'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 
 /** aml.job 帧 payload(server/services/workshop/aml/job-orchestrator broadcastSceneEvent) */
@@ -68,7 +69,7 @@ function createStore() {
       progress: p.progress,
       purpose: p.purpose ?? prev?.purpose,
       note: p.note,
-      at: new Date().toISOString(),
+      at: nowLocalIso(),
     })
     jobs.value = next
   }

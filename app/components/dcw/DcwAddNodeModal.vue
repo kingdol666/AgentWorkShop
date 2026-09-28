@@ -29,6 +29,7 @@ const addName = defineModel<string>('name', { required: true })
 const addHold = defineModel<number | null>('hold', { required: true })
 const addRead = defineModel<number | null>('read', { required: true })
 const addWriteLock = defineModel<number>('writeLock', { required: true })
+const addStepLimit = defineModel<number | null>('stepLimit', { required: true })
 const addCfg = defineModel<Record<string, string | number>>('cfg', { required: true })
 const addTransform = defineModel<{ kind: 'none' | 'linear', scale: number, offset: number }>('transform', { required: true })
 const addSemantics = defineModel<string>('semantics', { required: true })
@@ -121,6 +122,18 @@ const addSemantics = defineModel<string>('semantics', { required: true })
             class="inp"
             :placeholder="$t('dcwDetail.writeLockHint')"
           >
+        </label>
+        <label class="f">
+          <span>探索阶段单步上限 <em>(工程量)</em></span>
+          <input
+            v-model.number="addStepLimit"
+            type="number"
+            min="0"
+            step="any"
+            class="inp"
+            placeholder="留空：按节点量程 2% 默认值"
+          >
+          <small class="field-hint">Agent 每次写入的最大变化量；无有限值时探索写入会被拒绝。</small>
         </label>
       </div>
 
@@ -290,6 +303,7 @@ const addSemantics = defineModel<string>('semantics', { required: true })
 .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 .driver-form { grid-template-columns: repeat(3, 1fr); }
 
+.field-hint { font-size: 10px; color: var(--ink-faint); line-height: 1.35; }
 .f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }
 .f em { margin-left: 3px; font-style: normal; }
 .hint { font-size: 11.5px; color: var(--ink-faint); }

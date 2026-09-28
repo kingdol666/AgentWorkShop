@@ -6,6 +6,7 @@
 import type { ProductView, RecipeView, LineQueryResult } from '#shared/dcw-protocol'
 import type { DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
 import type { DcwQueryForm } from '../../pages/dcw/composables/useDcwQuery'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
 defineProps<{
   lineProducts: ProductView[]
@@ -177,7 +178,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
               {{ fmtPoint(c.points[c.points.length - 1]) }}
             </td>
             <td class="mono dim">
-              {{ new Date(c.points[0]?.at ?? 0).toLocaleTimeString() }} ~ {{ new Date(c.points[c.points.length - 1]?.at ?? 0).toLocaleTimeString() }}
+              {{ formatLocalClock(new Date(c.points[0]?.at ?? 0).toISOString(), false) }} ~ {{ formatLocalClock(new Date(c.points[c.points.length - 1]?.at ?? 0).toISOString(), false) }}
             </td>
           </tr>
         </tbody>

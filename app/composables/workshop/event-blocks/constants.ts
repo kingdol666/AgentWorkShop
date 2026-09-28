@@ -3,8 +3,8 @@
  */
 import type { BlockKind } from './types'
 
-/** 工具元数据:native = omp 原生作业工具;host = harness 协作工具(任务/通信/记忆/团队) */
-export const TOOL_META: Record<string, { icon: string, kind: 'native' | 'host' }> = {
+/** 工具元数据:native = omp 原生作业工具;host = harness 协作工具(任务/通信/记忆/团队);industrial = 产线工业工具(写控/数采/配方/优化/AML/孪生, amber 强调) */
+export const TOOL_META: Record<string, { icon: string, kind: 'native' | 'host' | 'industrial' }> = {
   read: { icon: 'i-tabler-file-search', kind: 'native' },
   write: { icon: 'i-tabler-pencil', kind: 'native' },
   edit: { icon: 'i-tabler-edit', kind: 'native' },
@@ -30,6 +30,52 @@ export const TOOL_META: Record<string, { icon: string, kind: 'native' | 'host' }
   create_team_agent: { icon: 'i-tabler-user-plus', kind: 'host' },
   update_team_agent: { icon: 'i-tabler-user-cog', kind: 'host' },
   remove_team_agent: { icon: 'i-tabler-user-minus', kind: 'host' },
+  // ── 产线工业工具面(.AgentWorkShop/prompts/host-tools.json,45 项)——amber 强调 ──
+  my_industrial_nodes: { icon: 'i-tabler-affiliate', kind: 'industrial' },
+  dcw_control: { icon: 'i-tabler-writing-sign', kind: 'industrial' },
+  dcw_read: { icon: 'i-tabler-eye-cog', kind: 'industrial' },
+  param_control: { icon: 'i-tabler-adjustments-horizontal', kind: 'industrial' },
+  param_read: { icon: 'i-tabler-gauge', kind: 'industrial' },
+  daq_query: { icon: 'i-tabler-wave-sine', kind: 'industrial' },
+  daq_frames: { icon: 'i-tabler-stack', kind: 'industrial' },
+  dcw_judge: { icon: 'i-tabler-gavel', kind: 'industrial' },
+  dcw_rollback: { icon: 'i-tabler-arrow-back-up', kind: 'industrial' },
+  dcw_journal: { icon: 'i-tabler-book-2', kind: 'industrial' },
+  ops_log: { icon: 'i-tabler-history', kind: 'industrial' },
+  recipe_log: { icon: 'i-tabler-clipboard-list', kind: 'industrial' },
+  line_context: { icon: 'i-tabler-clipboard-text', kind: 'industrial' },
+  recipe_versions: { icon: 'i-tabler-history-toggle', kind: 'industrial' },
+  recipe_update: { icon: 'i-tabler-file-pencil', kind: 'industrial' },
+  recipe_rollback: { icon: 'i-tabler-rotate-clockwise', kind: 'industrial' },
+  optimization_explore: { icon: 'i-tabler-trending-down', kind: 'industrial' },
+  aml_node_catalog: { icon: 'i-tabler-list-numbers', kind: 'industrial' },
+  aml_dataset_build: { icon: 'i-tabler-database-export', kind: 'industrial' },
+  aml_dataset_stats: { icon: 'i-tabler-calculator', kind: 'industrial' },
+  aml_job_submit: { icon: 'i-tabler-send', kind: 'industrial' },
+  aml_job_status: { icon: 'i-tabler-loader-quarter', kind: 'industrial' },
+  aml_job_logs: { icon: 'i-tabler-file-text', kind: 'industrial' },
+  aml_job_cancel: { icon: 'i-tabler-circle-x', kind: 'industrial' },
+  aml_leaderboard: { icon: 'i-tabler-trophy', kind: 'industrial' },
+  aml_model_find: { icon: 'i-tabler-search', kind: 'industrial' },
+  aml_model_promote: { icon: 'i-tabler-arrow-up-circle', kind: 'industrial' },
+  aml_model_reference: { icon: 'i-tabler-book', kind: 'industrial' },
+  aml_training_plan_list: { icon: 'i-tabler-list-check', kind: 'industrial' },
+  aml_training_plan_create: { icon: 'i-tabler-file-plus', kind: 'industrial' },
+  aml_training_plan_train: { icon: 'i-tabler-player-play', kind: 'industrial' },
+  twin_provider_catalog: { icon: 'i-tabler-box-multiple', kind: 'industrial' },
+  twin_scene_discover: { icon: 'i-tabler-compass', kind: 'industrial' },
+  twin_scene_compile: { icon: 'i-tabler-building-factory', kind: 'industrial' },
+  twin_scene_freeze: { icon: 'i-tabler-snowflake', kind: 'industrial' },
+  twin_physics_spec_draft: { icon: 'i-tabler-pencil-minus', kind: 'industrial' },
+  twin_physics_spec_validate: { icon: 'i-tabler-checkup-list', kind: 'industrial' },
+  twin_physics_spec_compile: { icon: 'i-tabler-binary-tree', kind: 'industrial' },
+  twin_scene_read: { icon: 'i-tabler-book-2', kind: 'industrial' },
+  twin_snapshot_create: { icon: 'i-tabler-camera', kind: 'industrial' },
+  twin_trial_run: { icon: 'i-tabler-flask', kind: 'industrial' },
+  mpc_optimize: { icon: 'i-tabler-target-arrow', kind: 'industrial' },
+  twin_gate_evaluate: { icon: 'i-tabler-shield-check', kind: 'industrial' },
+  twin_calibration_request: { icon: 'i-tabler-scale', kind: 'industrial' },
+  twin_bayes_optimize: { icon: 'i-tabler-chart-dots', kind: 'industrial' },
 }
 
 /** 类别展示元数据(壳层统一渲染头部) */

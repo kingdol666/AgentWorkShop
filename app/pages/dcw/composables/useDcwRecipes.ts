@@ -5,14 +5,15 @@ import type { useDcwLineRun } from './useDcwLineRun'
 import type { useDcwProducts } from './useDcwProducts'
 import type { useDcwWrites } from './useDcwWrites'
 import type { RecipeRunData, RecipeView } from '#shared/dcw-protocol'
+import { emptyRecipeParamRow, type DcwRecipeDaqWindowRow, type DcwRecipeParamRow } from '~/utils/dcw-recipe-form'
 
 /** 配方编辑表单(页面唯一副本,经 v-model 下发弹窗) */
 export interface DcwRecipeForm {
   productId: string
   name: string
   description: string
-  params: Array<{ nodeId: string, value: number | '', min: number | '', max: number | '' }>
-  daqWindows: Array<{ nodeId: string, min: number | '', max: number | '' }>
+  params: Array<DcwRecipeParamRow>
+  daqWindows: Array<DcwRecipeDaqWindowRow>
 }
 
 /** 配方版本历史行(整体修改变更记录:来源/操作者/原因/参数 diff) */
@@ -102,8 +103,8 @@ export function useDcwRecipes(
     productId: '',
     name: '',
     description: '',
-    params: [] as Array<{ nodeId: string, value: number | '', min: number | '', max: number | '' }>,
-    daqWindows: [] as Array<{ nodeId: string, min: number | '', max: number | '' }>,
+    params: [] as DcwRecipeParamRow[],
+    daqWindows: [] as DcwRecipeDaqWindowRow[],
   })
   const applyResult = ref<{ runId: string, ok: number, total: number } | null>(null)
   const runDataView = ref<{ runId: string, data: RecipeRunData } | null>(null)
@@ -115,7 +116,7 @@ export function useDcwRecipes(
     recipeForm.productId = filterProductId.value || lineProductId.value || lineProducts.value[0]?.id || ''
     recipeForm.name = ''
     recipeForm.description = ''
-    recipeForm.params = [{ nodeId: lineNodes.value[0]?.id ?? '', value: '', min: '', max: '' }]
+    recipeForm.params = [emptyRecipeParamRow(lineNodes.value[0]?.id ?? '')]
     recipeForm.daqWindows = []
     recipeOpen.value = true
   }
@@ -138,6 +139,7 @@ export function useDcwRecipes(
       value: p.value,
       min: p.min ?? '',
       max: p.max ?? '',
+      stepLimit: p.stepLimit ?? '',
     }))
     recipeForm.daqWindows = (r.daqWindows ?? []).map(w => ({
       nodeId: w.nodeId,
@@ -162,6 +164,7 @@ export function useDcwRecipes(
             value: Number(p.value),
             ...(p.min !== '' && Number.isFinite(Number(p.min)) ? { min: Number(p.min) } : {}),
             ...(p.max !== '' && Number.isFinite(Number(p.max)) ? { max: Number(p.max) } : {}),
+            ...(p.stepLimit !== '' && Number.isFinite(Number(p.stepLimit)) ? { stepLimit: Number(p.stepLimit) } : {}),
           })),
         daqWindows: recipeForm.daqWindows
           .filter(w => w.nodeId && (w.min !== '' || w.max !== ''))

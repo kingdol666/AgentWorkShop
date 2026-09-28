@@ -5,6 +5,8 @@
  * 三个表格 + 概要卡各调各的,拿到的仍是同一套口径,不存在第二份数据。
  */
 
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
+
 /** 短 id / 状态色 / 运行时长 / 进程启动时刻(无 i18n 依赖,纯格式化) */
 export function useMonitorFormat() {
   const shortId = (id: string | null | undefined): string => (id && id.length > 8 ? `${id.slice(0, 8)}…` : (id ?? '-'))
@@ -15,7 +17,7 @@ export function useMonitorFormat() {
     const sec = s % 60
     return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${sec}s` : `${sec}s`
   }
-  const startedAtText = (ts: number): string => new Date(ts).toLocaleTimeString()
+  const startedAtText = (ts: number): string => formatLocalClock(new Date(ts).toISOString())
 
   return { shortId, uptimeText, startedAtText }
 }

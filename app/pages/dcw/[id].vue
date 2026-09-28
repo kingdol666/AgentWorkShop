@@ -30,13 +30,13 @@ const addNode = useDcwAddNode(scope)
 const tplCtl = useDcwDetailTemplates(addNode)
 
 const { dcw, line, lineId, ls, lineNodes, lineProducts, lineRecipesAll, lineRuns, lineHistory, unassignedNodes, unassignedProducts, stateLabel, dcwTemplateRefCh, nodeMin, nodeMax, lineDaqNodes, daqNodeCh, adoptNode, adoptProduct, productName, paramStatus, paramNodeName, daqWindowStatus, nodeDeviceNames } = scope
-const { setInputs, writingId, writeError, writeOk, readingId, togglingId, doWrite, doRead, toggleControl } = writes
+const { setInputs, writingId, writeError, writeOk, readingId, togglingId, stepPatchingId, doWrite, doRead, toggleControl, patchStepLimit } = writes
 const { ledgerNodeId, ledger, loadLedger, rollbackLedgerNode } = ledgerCtl
 const { lineProductId, lineRecipeId, lineBusy, lineMsg, lineErr, lineRecipes, doLineStart, doLineStop } = lineRun
 const { filterProductId, visibleRecipes, productOpen, productSaving, productError, productForm, doCreateProduct } = products
 const { verOpen, verRecipe, verRows, verLoading, verMsg, doRevert, recipeOpen, recipeEditing, recipeSaving, recipeError, recipeStaleNote, recipeForm, applyResult, runDataView, runDataLoading, openRecipeCreate, openRecipeEdit, openRecipeHistory, saveRecipe, doApplyRecipe, doViewRun } = recipes
 const { query, queryBusy, queryError, queryResult, doQuery, daqParamKeys } = queryCtl
-const { addOpen, addScenario, addTemplate, addDriver, addName, addHold, addRead, addWriteLock, addCfg, addTransform, addSemantics, addTesting, addTest, addSaving, addError, addFields, driverCatalog, doTestConnection, doAddNode } = addNode
+const { addOpen, addScenario, addTemplate, addDriver, addName, addHold, addRead, addWriteLock, addStepLimit, addCfg, addTransform, addSemantics, addTesting, addTest, addSaving, addError, addFields, driverCatalog, doTestConnection, doAddNode } = addNode
 const { tplOpen, tplSaving, tplError, tplOk, tplForm, tplIcons, builtinCount, customCount, openTplModal, doCreateTemplate } = tplCtl
 </script>
 
@@ -135,6 +135,7 @@ const { tplOpen, tplSaving, tplError, tplOk, tplForm, tplIcons, builtinCount, cu
       v-model:hold="addHold"
       v-model:read="addRead"
       v-model:write-lock="addWriteLock"
+      v-model:step-limit="addStepLimit"
       v-model:cfg="addCfg"
       v-model:transform="addTransform"
       v-model:semantics="addSemantics"
@@ -157,6 +158,7 @@ const { tplOpen, tplSaving, tplError, tplOk, tplForm, tplIcons, builtinCount, cu
       :toggling-id="togglingId"
       :reading-id="readingId"
       :writing-id="writingId"
+      :step-patching-id="stepPatchingId"
       :loaded="dcw.loaded"
       :error="dcw.error"
       :dcw-template-ref-ch="dcwTemplateRefCh"
@@ -164,6 +166,7 @@ const { tplOpen, tplSaving, tplError, tplOk, tplForm, tplIcons, builtinCount, cu
       @toggle="toggleControl"
       @read="doRead"
       @write="doWrite"
+      @patch-step-limit="patchStepLimit"
       @remove="dcw.removeNode"
     />
 

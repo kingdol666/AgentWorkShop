@@ -54,6 +54,25 @@ export function useDcwWrites() {
     }
   }
 
+  // ---------- 探索阶段单步上限(节点默认) ----------
+  const stepPatchingId = ref('')
+  async function patchStepLimit(nodeId: string, value: number | null): Promise<void> {
+    stepPatchingId.value = nodeId
+    writeError.value = ''
+    try {
+      await dcw.patchNode(nodeId, { stepLimit: value })
+      const n = dcw.nodeById(nodeId)
+      if (n) n.stepLimit = value
+      writeOk.value = `已保存「${n?.name ?? nodeId}」的探索单步上限${value == null ? '：未配置（探索写入将被拒绝）' : `：Δ≤${value}${n?.unit ?? ''}`}。`
+    }
+    catch (err) {
+      writeError.value = apiErrorMessage(err)
+    }
+    finally {
+      stepPatchingId.value = ''
+    }
+  }
+
   // ---------- 逐节点 控制开启/暂停 ----------
   const togglingId = ref('')
   /** 开启/暂停单个节点的控制:暂停后服务端拒绝一切下发(409 当前节点暂停),本地即时收敛状态 */
@@ -77,5 +96,5 @@ export function useDcwWrites() {
     }
   }
 
-  return { setInputs, writingId, writeError, writeOk, doWrite, readingId, doRead, togglingId, toggleControl }
+  return { setInputs, writingId, writeError, writeOk, doWrite, readingId, doRead, togglingId, toggleControl, stepPatchingId, patchStepLimit }
 }

@@ -48,9 +48,10 @@ const hasMore = computed(() => toolLines.value.length > MAX)
         :title="t.args"
       >{{ t.args }}</span>
       <span
-        v-if="t.meta.kind === 'host'"
+        v-if="t.meta.kind !== 'native'"
         class="tool-kind"
-      >harness</span>
+        :class="t.meta.kind"
+      >{{ t.meta.kind === 'industrial' ? '工业' : 'harness' }}</span>
     </div>
     <button
       v-if="hasMore"
@@ -124,6 +125,18 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   color: var(--ink);
 }
 .tool-line.host .tool-icon { opacity: 1; }
+/* 产线工业工具:琥珀强调(与 /operations 时间线 write 轨同族),写控一眼可辨 */
+.tool-line.industrial .tool-node {
+  border-color: #c98922;
+  background: color-mix(in srgb, #c98922 22%, var(--paper-raised));
+}
+.tool-line.industrial .tool-icon,
+.tool-line.industrial .tool-name {
+  font-weight: 700;
+  color: #c98922;
+}
+.tool-line.industrial .tool-icon { opacity: 1; }
+.tool-line.industrial .tool-args { color: color-mix(in srgb, #c98922 62%, var(--ink-soft)); opacity: 1; }
 .tool-kind {
   flex: 0 0 auto;
   align-self: center;
@@ -135,6 +148,11 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   background: transparent;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
+}
+.tool-kind.industrial {
+  color: #c98922;
+  border-color: color-mix(in srgb, #c98922 55%, var(--line));
+  background: color-mix(in srgb, #c98922 10%, transparent);
 }
 .tool-line:hover .tool-args { opacity: 1; }
 .more-btn {

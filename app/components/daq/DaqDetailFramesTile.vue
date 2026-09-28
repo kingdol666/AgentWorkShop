@@ -5,6 +5,7 @@
  * VEC_W/VEC_H 与折线点串同源,直接从 useDaqDetailFrames 取常量,避免第二份尺寸口径。
  */
 import { ref } from 'vue'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 import type { DaqFrameLive } from '@/app/composables/workshop/useDaqStream'
 import { VEC_H, VEC_W } from '../../pages/daq/composables/useDaqDetailFrames'
 
@@ -19,7 +20,7 @@ const emit = defineEmits<{ reload: [] }>()
 /* 图像大图查看(点击缩略图;contentUrl 同源 cookie 鉴权直出) */
 const fullFrame = ref<DaqFrameLive | null>(null)
 
-const timeOf = (at: number): string => new Date(at).toLocaleTimeString('zh-CN', { hour12: false })
+const timeOf = (at: number): string => formatLocalClock(new Date(at).toISOString())
 const metricsBrief = (f: DaqFrameLive): string =>
   Object.entries(f.metrics ?? {}).slice(0, 3).map(([k, v]) => `${k}=${v}`).join(' ')
 </script>

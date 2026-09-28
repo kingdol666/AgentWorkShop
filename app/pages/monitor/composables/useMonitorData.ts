@@ -10,6 +10,7 @@ import { message } from 'ant-design-vue'
 import type { AgentView, ApiEnvelope, MonitorSnapshot, ProcessView } from '../types'
 import { narrowFetch } from '../../../stores/workshop/narrow-fetch'
 import { useUserStore } from '../../../stores/workshop/user'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
 export interface MonitorDataHooks {
   /** 首次拉取完成后的回调(?agentId=&channelId= 深链自动开终端;只有 onMounted 那次拉取会触发) */
@@ -33,7 +34,7 @@ export function useMonitorData(hooks: MonitorDataHooks = {}) {
         headers: { authorization: `Bearer ${userStore.token}` },
       })
       snapshot.value = res.data
-      lastUpdated.value = new Date().toLocaleTimeString()
+      lastUpdated.value = formatLocalClock(new Date().toISOString())
     }
     catch (e) {
       message.error(e instanceof Error ? e.message : t('monitor.loadFailed'))

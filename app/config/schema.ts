@@ -35,6 +35,9 @@ export const appConfigSchema = z.object({
       name: z.string(),
     })),
   }),
+  time: z.object({
+    timeZone: z.string().min(1).default('Asia/Shanghai'),
+  }).default({ timeZone: 'Asia/Shanghai' }),
   theme: z.object({
     primaryColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, '须为合法十六进制颜色，如 #1677ff'),
     mode: z.enum(['light', 'dark']).default('light'),

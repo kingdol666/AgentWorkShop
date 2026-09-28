@@ -52,6 +52,7 @@ const { fmtTime, fmtNum, shortId } = useAmlFormat()
         <thead>
           <tr>
             <th>{{ $t('aml.k1amlx125') }}</th>
+            <th>{{ $t('aml.k1amlx204') }}</th>
             <th>{{ $t('aml.k1amlx021') }}</th>
             <th>{{ $t('aml.k1amlx022') }}</th>
             <th>{{ $t('aml.k1amlx078') }}</th>
@@ -72,6 +73,12 @@ const { fmtTime, fmtNum, shortId } = useAmlFormat()
           >
             <td class="mono">
               {{ shortId(m.id) }}
+            </td>
+            <td
+              class="label-cell"
+              :title="m.description || m.label"
+            >
+              <span class="label-text">{{ m.label || '--' }}</span>
             </td>
             <td class="mono dim">
               {{ shortId(m.productId) }}

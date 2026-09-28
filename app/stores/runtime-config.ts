@@ -14,7 +14,7 @@ import { useHttp } from '~/composables/useHttp'
 
 export interface SettingsDescriptor {
   key: string
-  type: 'string' | 'number' | 'boolean' | 'color' | 'select'
+  type: 'string' | 'number' | 'boolean' | 'color' | 'select' | 'timezone'
   group: string
   label: string
   labelKey?: string

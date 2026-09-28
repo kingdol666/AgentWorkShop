@@ -9,6 +9,15 @@ const { t } = useI18n()
 const rcStore = useRuntimeConfigStore()
 const { draft, markDirty, resetRuntimeKey } = useRuntimeConfigDraftContext()
 const { itemLabel, sourceClass } = useSettingsGroupsContext()
+const timezoneData = ref<{ timeZone?: string, supportedTimeZones?: string[] }>({})
+const timezoneOptions = computed(() => (timezoneData.value.supportedTimeZones ?? ['Asia/Shanghai', 'UTC', 'America/Los_Angeles', 'Europe/London']).map((zone: string) => ({ label: zone, value: zone })))
+if (import.meta.client) {
+  void fetch('/api/system/timezone')
+    .then(response => response.ok ? response.json() as Promise<{ timeZone?: string, supportedTimeZones?: string[] }> : {})
+    .then((data) => {
+      timezoneData.value = data
+    })
+}
 </script>
 
 <template>
@@ -40,6 +49,15 @@ const { itemLabel, sourceClass } = useSettingsGroupsContext()
       <a-switch
         v-else-if="item.type === 'boolean'"
         v-model:checked="(draft[item.key] as string | number | boolean | undefined)"
+        @change="markDirty(item.key)"
+      />
+      <a-select
+        v-else-if="item.type === 'timezone'"
+        v-model:value="(draft[item.key] as string | undefined)"
+        show-search
+        option-filter-prop="label"
+        style="width: 260px"
+        :options="timezoneOptions"
         @change="markDirty(item.key)"
       />
       <a-select

@@ -19,7 +19,8 @@ import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useNotificationsStore } from '@/app/stores/workshop/notifications'
 import { agentHueColor, mdLiteMentions, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
-import type { AepChatDelivery, AepChatMessage } from '#shared/workshop-protocol'
+import type { AepChatDelivery, AepChatMessage, AepEnvelope } from '#shared/workshop-protocol'
+import { classifyOperation, type OperationMeta } from '@/app/composables/workshop/operation-events'
 
 const props = defineProps<{ channelId: string }>()
 
@@ -57,6 +58,10 @@ function avatarText(m: AepChatMessage): string {
 
 function renderText(m: AepChatMessage): string {
   return mdLiteMentions(m.text, mentionMembers.value)
+}
+
+function operationOf(m: AepChatMessage): OperationMeta | null {
+  return classifyOperation({ v: 1, type: 'agent.message', seq: 0, at: m.createdAt, channelId: props.channelId, agentId: m.senderType === 'agent' ? m.senderId : undefined, payload: { parts: [{ text: m.text }] } as unknown as AepEnvelope['payload'] })
 }
 
 /** 引用锚点的发送者名(锚点不在已加载窗口内 → 显示"更早的消息") */
@@ -222,7 +227,9 @@ watch(() => props.channelId, async () => {
         v-for="m in messages"
         :key="m.id"
         class="ct-row"
-        :class="m.senderType"
+        :class="[m.senderType, operationOf(m) ? `op-${operationOf(m)!.kind}` : '']"
+        :data-operation="operationOf(m)?.kind"
+        :data-operation-severity="operationOf(m)?.severity"
       >
         <span
           class="aw-avatar ct-ava"
@@ -264,6 +271,15 @@ watch(() => props.channelId, async () => {
           >
             <span class="i-tabler-corner-down-right" />
             回复 <b>{{ replyAnchorName(m) }}</b>
+          </div>
+
+          <div
+            v-if="operationOf(m)"
+            class="ct-operation-badge"
+            :class="operationOf(m)!.kind"
+          >
+            <span :class="operationOf(m)!.icon" />
+            {{ operationOf(m)!.label }}
           </div>
 
           <!-- eslint-disable vue/no-v-html -- mdLite 先 escapeHtml 再注入受控标记,与既有时间线同源 -->
@@ -487,6 +503,17 @@ watch(() => props.channelId, async () => {
 }
 .ct-replyto b { color: var(--ink-soft); }
 
+.ct-operation-badge { display: inline-flex; gap: 5px; align-items: center; margin: 3px 0 4px; padding: 3px 7px; font: 10px var(--font-mono); border-radius: var(--radius-chip); }
+.ct-operation-badge.dcw { color: #a56d17; background: color-mix(in srgb, #c98922 11%, transparent); }
+.ct-operation-badge.daq { color: #148681; background: color-mix(in srgb, #159f9a 10%, transparent); }
+.ct-operation-badge.aml { color: #7657ad; background: color-mix(in srgb, #7657ad 10%, transparent); }
+.ct-operation-badge.twin { color: #3978b8; background: color-mix(in srgb, #3978b8 10%, transparent); }
+.ct-operation-badge.safety { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+.ct-row[data-operation='dcw'] { background: color-mix(in srgb, #c98922 4%, transparent); }
+.ct-row[data-operation='daq'] { background: color-mix(in srgb, #159f9a 3%, transparent); }
+.ct-row[data-operation='aml'] { background: color-mix(in srgb, #7657ad 3%, transparent); }
+.ct-row[data-operation='twin'] { background: color-mix(in srgb, #3978b8 3%, transparent); }
+.ct-row[data-operation='safety'] { background: color-mix(in srgb, var(--tone-danger-dot) 5%, transparent); }
 .ct-text {
   margin-top: 2px;
   font-size: 13.5px;

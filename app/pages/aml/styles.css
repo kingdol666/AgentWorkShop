@@ -166,6 +166,8 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
 }
 .row-main.open td { border-bottom-color: transparent; }
 .note-cell { max-width: 260px; }
+.label-cell { max-width: 220px; }
+.label-cell .label-text { display: inline-block; overflow: hidden; width: 100%; text-overflow: ellipsis; white-space: nowrap; }
 .note { display: inline-block; overflow: hidden; width: 100%; text-overflow: ellipsis; white-space: nowrap; }
 .kind {
   margin-left: 6px;

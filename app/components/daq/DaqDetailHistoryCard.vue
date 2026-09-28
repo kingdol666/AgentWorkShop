@@ -5,6 +5,7 @@
  * 绘制指令与重挂定时器的唯一所有者仍是那个 composable。
  */
 import type { DaqTsdbPoint } from '@/app/composables/workshop/useDaqStream'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
 defineProps<{
   tsdb: string
@@ -78,7 +79,7 @@ const canvasEl = defineModel<HTMLCanvasElement | null>('canvasEl', { required: t
           v-for="(p, i) in historyPoints.filter(r => r.value != null).slice(-12).reverse()"
           :key="i"
         >
-          <td>{{ new Date(p.at).toLocaleTimeString('zh-CN', { hour12: false }) }}</td>
+          <td>{{ formatLocalClock(new Date(p.at).toISOString()) }}</td>
           <td>{{ p.value!.toFixed(decimals ?? 2) }}</td>
           <td>{{ p.state }}</td>
         </tr>

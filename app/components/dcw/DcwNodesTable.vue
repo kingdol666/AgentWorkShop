@@ -4,6 +4,7 @@
  * 在飞 id 与写输入框内容由页面持有(经 v-model 就地读写),动作一律回抛页面。
  */
 import type { DcwNodeView } from '#shared/dcw-protocol'
+import { reactive } from 'vue'
 
 defineProps<{
   lineNodes: DcwNodeView[]
@@ -11,6 +12,7 @@ defineProps<{
   togglingId: string
   readingId: string
   writingId: string
+  stepPatchingId: string
   loaded: boolean
   error: string
   dcwTemplateRefCh: (templateRef?: string) => string
@@ -18,14 +20,23 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  toggle: [nodeId: string, enabled: boolean]
-  read: [nodeId: string]
-  write: [nodeId: string, value: number]
-  remove: [nodeId: string]
+  'toggle': [nodeId: string, enabled: boolean]
+  'read': [nodeId: string]
+  'write': [nodeId: string, value: number]
+  'patch-step-limit': [nodeId: string, value: number | null]
+  'remove': [nodeId: string]
 }>()
 
 /** 直写输入框逐节点暂存(与页面 useDcwWrites 的 setInputs 同一个对象) */
 const setInputs = defineModel<Record<string, number | ''>>('setInputs', { required: true })
+const stepDrafts = reactive<Record<string, number | '' | null>>({})
+function stepDraft(n: DcwNodeView): number | '' | null {
+  return stepDrafts[n.id] ?? n.stepLimit
+}
+function saveStep(n: DcwNodeView): void {
+  const value = stepDrafts[n.id] === undefined ? n.stepLimit : stepDrafts[n.id]
+  emit('patch-step-limit', n.id, value === '' || value == null ? null : Number(value))
+}
 </script>
 
 <template>
@@ -43,6 +54,7 @@ const setInputs = defineModel<Record<string, number | ''>>('setInputs', { requir
             <th>{{ $t('dcwDetail.k1dexou6058') }}</th>
             <th>{{ $t('dcwDetail.k1b1nnaa059') }}</th>
             <th>{{ $t('dcwDetail.k1i8rtqt060') }}</th>
+            <th>探索步长</th>
             <th class="right">
               {{ $t('dcwDetail.k40aa6061') }}
             </th>
@@ -147,6 +159,28 @@ const setInputs = defineModel<Record<string, number | ''>>('setInputs', { requir
               >· {{ n.writeLockSeconds === 0 ? '0s' : `${n.writeLockSeconds}s` }}</small>
             </td>
             <td>{{ nodeDeviceNames(n) }}</td>
+            <td>
+              <div class="step-limit-cell">
+                <input
+                  :value="stepDraft(n) ?? ''"
+                  type="number"
+                  min="0"
+                  step="any"
+                  class="inp step-inp mono"
+                  placeholder="2% default"
+                  title="在线控制单步最大变化量；留空将关闭探索写入"
+                  @input="stepDrafts[n.id] = ($event.target as HTMLInputElement).value === '' ? '' : Number(($event.target as HTMLInputElement).value)"
+                >
+                <button
+                  class="mini-btn step-btn"
+                  :disabled="stepPatchingId === n.id"
+                  @click="saveStep(n)"
+                >
+                  {{ stepPatchingId === n.id ? '…' : '保存' }}
+                </button>
+              </div>
+              <small class="dim">当前 Δ≤{{ n.stepLimit ?? '未配置' }} {{ n.unit }}</small>
+            </td>
             <td class="right">
               <button
                 class="mini-btn danger"
@@ -157,7 +191,7 @@ const setInputs = defineModel<Record<string, number | ''>>('setInputs', { requir
             </td>
           </tr>
           <tr v-if="loaded && lineNodes.length === 0">
-            <td colspan="9">
+            <td colspan="10">
               <div
                 class="pane-empty"
                 style="min-height: 120px;"
@@ -214,6 +248,9 @@ const setInputs = defineModel<Record<string, number | ''>>('setInputs', { requir
 .write-row { display: flex; gap: 6px; align-items: center; }
 .write-inp { width: 92px; padding: 4px 8px; }
 .write-btn { padding: 5px 12px; }
+.step-limit-cell { display: flex; gap: 5px; align-items: center; }
+.step-inp { width: 78px; padding: 4px 6px; }
+.step-btn { padding: 4px 7px; }
 .mini-btn { margin-right: 4px; }
 .mini-btn.danger { color: var(--tone-danger-dot); }
 .mini-btn:hover { border-color: var(--accent); color: var(--accent); }

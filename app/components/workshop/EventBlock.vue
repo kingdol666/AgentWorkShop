@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { classifyOperation } from '@/app/composables/workshop/operation-events'
 /**
  * 事件聚合块 — open-tag 聊天行声部(.msg 网格:头像列 + 内容列):
  *  - 头部:26px 头像 + 名字 + 类别小标 + 计数/时间;正文落在内容列(块体组件复用);
@@ -53,6 +54,7 @@ const KIND_COMPONENT: Record<string, Component> = {
   other: ClusterOther,
 }
 const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
+const operation = computed(() => classifyOperation(props.block.events[props.block.events.length - 1]!))
 </script>
 
 <template>
@@ -67,6 +69,8 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
     :data-seq="firstSeq"
     :data-events="block.events.length"
     :data-folded="block.folded"
+    :data-operation="operation?.kind"
+    :data-operation-severity="operation?.severity"
   >
     <EventBlockAvatar :block="block" />
 
@@ -211,4 +215,10 @@ const body = computed(() => KIND_COMPONENT[props.block.kind] ?? ClusterOther)
   padding-left: 2px !important;
   margin-top: 1px;
 }
+.event-block[data-operation='dcw'] { background: color-mix(in srgb, #c98922 9%, transparent); box-shadow: inset 3px 0 0 #c98922; border-radius: 5px; }
+.event-block[data-operation='daq'] { background: color-mix(in srgb, #159f9a 7%, transparent); box-shadow: inset 3px 0 0 #159f9a; border-radius: 5px; }
+.event-block[data-operation='aml'] { background: color-mix(in srgb, #7657ad 7%, transparent); box-shadow: inset 3px 0 0 #7657ad; border-radius: 5px; }
+.event-block[data-operation='twin'] { background: color-mix(in srgb, #3978b8 7%, transparent); box-shadow: inset 3px 0 0 #3978b8; border-radius: 5px; }
+.event-block[data-operation='safety'] { background: color-mix(in srgb, #c34d4d 10%, transparent); box-shadow: inset 3px 0 0 #c34d4d; border-radius: 5px; }
+.event-block[data-operation-severity='critical'] :deep(.eb-head) { color: var(--tone-danger-dot); }
 </style>

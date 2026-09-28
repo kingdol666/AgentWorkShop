@@ -4,6 +4,8 @@
  * workspace 列表未返回前显示「加载中」的诚实降级态(未加载 ≠ 空,不淡化整栏);
  * 已加载但无频道时整栏淡化,表示这一栏当前确实没有内容。
  */
+import LineOperationsPanel from './LineOperationsPanel.vue'
+
 type TaskTarget = { channelId: string, taskId: string }
 
 defineProps<{
@@ -26,6 +28,10 @@ const emit = defineEmits<{
     :class="{ empty: loaded && !channelId }"
     :style="{ flexBasis: `${rightWidth}px` }"
   >
+    <LineOperationsPanel
+      v-if="channelId"
+      :channel-id="channelId"
+    />
     <div
       v-if="channelId"
       class="right-main"
