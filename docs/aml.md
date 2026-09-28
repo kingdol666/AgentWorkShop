@@ -27,10 +27,9 @@
 | 预测服务 | `aml/predictor.ts` | onnxruntime-node 懒加载(可选依赖)+ session LRU(4);one-step 闭环滚动与评估器同口径 |
 | GC | `aml/retention.ts` | 无引用数据集 30 天 / retired 工件 90 天 / 失败作业目录 7 天;磁盘配额 `aml.job.diskQuotaMb` |
 
-## 资产根布局(`./aml`)
+## 资产根布局(`<配置根>/aml`)
 
-AML 的全部产物收敛在**项目根下的 `./aml`**(与配置根 `.AgentWorkShop` 分离 —— 这里是可移植资产,
-不是运行时状态),整体可拷贝、可删除重建:
+AML 的全部产物收敛在**配置根内的 `aml/` 子目录**(源码检出 = `.AgentWorkShop/aml`,全局安装 = `~/.AgentWorkShop/aml`)——资产与运行时状态同根,`aw update`、更换检出都不会丢模型与 venv;`AW_AML_DIR` 环境变量可整根重定向。下文的 `./aml` 均指当前生效的资产根,整体可拷贝、可删除重建:
 
 ```
 aml/
@@ -38,15 +37,14 @@ aml/
   datasets/<id>/    spec.json 取数规格 · manifest.json 列定义 · report.json 质量报告 · arrays/*.f32
   jobs/<id>/        job.json 提交契约 · workspace/(train.py+amlkit.py) · run.log · artifacts/
   models/<id>/      model.onnx + io_spec.json(输入输出契约,不可变)
+  twins/            混合孪生工件(冻结场景 / 编译 PhysicsSpec / 试验与证书)
   runtime/          uv.json(一键安装记录)/ env.json
   tools/            平台自动安装的 uv 二进制(免管理员、不改系统 PATH)
-  README.md         目录自述   .gitignore  忽略运行时资产
 ```
 
-根解析优先级(源码 `shared/config/home.mjs` 的 `resolveAmlRoot`,五级):
-`AW_AML_DIR` 环境变量(显式覆盖)> 检出根 `./aml`(cwd 向上找到 `config.yml` + `nuxt.config.ts`)
-> `<awHome>/aml`(`AW_MODE=home`;`AW_HOME` 可重定向,不是写死 `~/.AgentWorkShop`)
-> cwd 向上真实存在的 `.AgentWorkShop/aml`(不越过 `$HOME`)> `<cwd>/aml` 兜底。
+根解析优先级(源码 `shared/config/home.mjs` 的 `resolveAmlRoot`,三级):
+`AW_AML_DIR` 环境变量(显式覆盖)> 检出内配置根 `.AgentWorkShop/aml`(`AW_MODE=home` 时跳过)
+> `<awHome>/aml`(`AW_HOME` 可重定向,不写死 `~/.AgentWorkShop`)。
 `GET /api/workshop/aml/env` 返回实际生效路径与来源,UI「运行环境」面板直接展示。
 
 ## 元数据 CRUD
@@ -71,7 +69,7 @@ canonical one-step:输入 `history [batch, H, nAll]`(归一化)→ 输出 `y_nex
 ## 使用
 
 - **UI**:侧导航「建模」(`/aml`):运行环境(uv/venv/对账)/ 数据集 / 作业 / 排行榜 / 注册表 / 预测控制台。
-- **Agent**:内置团队「AML 影子建模团队」(`team-aml-shadow`,部署前先加成员)或任意成员直接调用工具族 `aml_node_catalog / aml_dataset_build / aml_dataset_stats / aml_job_submit / aml_job_status / aml_job_logs / aml_job_cancel / aml_leaderboard / aml_model_promote(lead 专属)/ aml_model_reference`(见 `.AgentWorkShop/prompts/host-tools.json`);调参 what-if 经 `aml_model_reference` 的 `controls` 参数传入拟议参数值。
+- **Agent**:内置团队「AML 影子建模团队」(`team-aml-shadow`,部署前先加成员)或任意成员直接调用工具族 `aml_node_catalog / aml_dataset_build / aml_dataset_stats / aml_job_submit / aml_job_status / aml_job_logs / aml_job_cancel / aml_leaderboard / aml_model_find / aml_model_promote(lead 专属)/ aml_model_reference / aml_training_plan_list / aml_training_plan_create / aml_training_plan_train`(见 `.AgentWorkShop/prompts/host-tools.json`,宿主工具面共 70 条);调参 what-if 经 `aml_model_reference` 的 `controls` 参数传入拟议参数值。模型带人读身份:`label`(产线 · 配方 · 目标)+ `description` + `line_id`/`objective_id`,`aml_model_find` 按场景语义选型。
 - **REST**:`/api/workshop/aml/{env,entities,datasets,jobs,experiments,models}`(见各路由文件头注释)。
 
 ## 混合孪生 × MPC(Core Hybrid Twin)
@@ -79,12 +77,15 @@ canonical one-step:输入 `history [batch, H, nAll]`(归一化)→ 输出 `y_nex
 除「数据集 → 训练 → 门禁 → 注册表」这条数据链,AML 还承载**混合孪生**平面:灰箱物理主干(以注塑为例的低阶模型)+ **有界 PyTorch 残差**训练协议,外挂六类契约 ——
 `SceneContract`(场景:设备/信号/约束/目标)、`PhysicsModelManifest`(物理主干清单)、`TwinSnapshot`(带新鲜度的工况快照)、`ObjectiveProfile`(目标与权重)、`VirtualTrial`(虚拟试验)、`RecommendationCertificate`(推荐证书)。
 
-- **启用方式**:Channel 的 profile(`legacy` 默认 / `hybrid_twin`),在 Channel 模板与实例上选择;启用后按 profile 注入 6 个专属工具:`twin_scene_read` / `twin_snapshot_create` / `twin_trial_run` / `mpc_optimize` / `twin_gate_evaluate` / `twin_calibration_request`。
+- **启用方式**:Channel 的 profile(`legacy` 默认 / `hybrid_twin`),在 Channel 模板与实例上选择;启用后按 profile 注入 12 个专属工具:`twin_provider_catalog` / `twin_scene_discover` / `twin_scene_compile` / `twin_scene_freeze` / `twin_physics_spec_draft` / `twin_physics_spec_validate` / `twin_physics_spec_compile` / `twin_scene_read` / `twin_snapshot_create` / `twin_trial_run` / `mpc_optimize` / `twin_gate_evaluate`;`twin_calibration_request` 为通用工具(双 profile 可见)。此外还有一对**互斥的双模式模板**:`chtpl-aml-training-default`(训练面:数据集/作业/场景编译/物理 spec/建模任务,无产线写入、无 MPC)与 `chtpl-aml-optimization-default`(优化面:快照/试验/门禁/MPC/贝叶斯寻优 `twin_bayes_optimize`/治理微写 `optimization_explore`);优化频道实例化时选 `optimizationMode: 'exploration'`(治理小步,无需模型)或 `'aml'`(必须带 `boundModelId`,过门禁模型先绑定)。
+- **任意场景建模闭环**(v0.7.50):绑定节点 → `twin_scene_discover`(语义推断+证据)→ `twin_scene_compile` 生成 SceneContract draft → 用户确认后 `twin_scene_freeze` 冻结 → `twin_physics_spec_draft` 按场景自动生成**骨架 PhysicsSpec**(每个状态=一阶惯性弛豫方程,τ/增益为带先验盒的可校准参数;观测=persistence 恒等基线)→ 按真实工况润色方程 → `twin_physics_spec_validate/compile` → `aml_job_submit { job_kind: 'hybrid_residual' }`(**可不带 code**,平台使用内置参考训练器)。参考训练器执行 plan §5.3 的 A→B→D 协议:**stage A** 物理参数校准(确定性有界坐标下降,τ/offset/gain 按数据拟合,误差对比写入 `physics.calibrationErrorBefore/After`)→ **stage B** 3 成员有界残差集成 → **stage D** conformal q90 覆盖率(写 `uncertainty.coverage`)。校准后 θ 回写 `hybrid_manifest.json` 内嵌 spec,评估/预测/试验三侧同源。
+- **训练模型驱动孪生**(v0.7.50):`twin_trial_run` / `mpc_optimize` 传 `model_id` 时 rollout 由该训练注册的 hybrid 模型驱动(校准后物理主干 + 残差集成 ONNX,`ModelBackedHybridProvider`),UQ coverage/成员分歧来自训练工件而非 Agent 自报;模型数据集与场景的 line/product/recipe 不一致直接拒绝(`TWIN_MODEL_SCENE_MISMATCH`,配方隔离)。
+- **持续校准 worker**(v0.7.50):`twin_calibration_request` 登记的信号(`twin_update_runs`)由 60s 定时 worker 自动消费——解析冻结场景 + 最新编译 PhysicsSpec + 该配方最新数据集 → 自动提交 `hybrid_residual` 重训**候选**;作业结论经 `concludeJob` 钩子回写 run 终态。只产 candidate,晋升仍走 HITL + Twin Gate。`AML_TWIN_WORKER_DISABLED=1` 可整体关闭。
 - **安全语义**:试验**永远是虚拟的**(`candidateExecuted=false`);不安全候选被全轨迹硬约束直接拒绝;快照过期 → `SNAPSHOT_STALE`;只有门禁与收益同时通过才签发推荐证书,证书未签发前**不产生真实 DCW 写入**(recommendation-only)。
-- **硬约束失败关闭**(v0.7.48):`constraints[].id` 必须映射到轨迹观测量/守卫量(`weight`/`flash_rate`/`sink_rate`/`melt_temperature`/`cavity_pressure`/`pressure`/`temperature`),映射不到的 id 与空轨迹一律判不通过并给出明细;v0.7.47 及更早会跳过并返回「全轨迹通过」,造成假通过。
-- **服务端策略**:数据不足 → `safe_small_step`;模型过门禁 → `precise_search`;持续校准请求按去重 + cooldown 登记。
+- **硬约束失败关闭**(v0.7.48):`constraints[].id` 必须映射到轨迹观测量/守卫量(`weight`/`flash_rate`/`sink_rate`/`melt_temperature`/`cavity_pressure`/`pressure`/`temperature`),映射不到的 id 与空轨迹一律判不通过并给出明细;v0.7.47 及更早会跳过并返回「全轨迹通过」,造成假通过。model-backed rollout 会把场景约束 id 经 nodeId 映射到 spec 变量 id 再评估,结果回译为场景 id。
+- **服务端策略**:数据不足 → `safe_small_step`;模型过门禁 → `precise_search`;持续校准请求按去重 + cooldown 登记并由 worker 消费。
 - **闭环连线**(v0.7.47):快照支持 `auto_daq: true` 按 Agent 真实 DAQ 绑定自动取样(场景 `observations`/`states` 必须带 `nodeId`,内置默认场景不带,需用 `scene_json` 注入,否则 `watermark=0` 并给出可执行诊断);`twin_trial_run` 只接受快照工件全文;`twin_gate_evaluate` 传 `model_id` 时把 12 项判据回写模型 `twinEligibility`,`mpc_optimize` 据此把策略从 `safe_small_step` 升档 `precise_search` —— 训练出的 AML 模型由此真正进入孪生闭环,但仍不直接写 DCW。
-- **工件与记录**:SQLite Hybrid Twin 元数据表 + 本地 `aml/twins/` 工件;计划与验收见 `docs/aml-hybrid-twin-mpc-integration-plan.md`、`docs/aml-hybrid-twin-implementation-acceptance.md`(首个场景 = PLC 模拟器 `injection-line`)。
+- **工件与记录**:SQLite Hybrid Twin 元数据表 + 本地 `aml/twins/` 工件;计划与验收见 `docs/aml-hybrid-twin-mpc-integration-plan.md`、`docs/aml-hybrid-twin-implementation-acceptance.md`(首个场景 = PLC 模拟器 `injection-line`)。端到端验收:`npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-aml-hybrid-e2e.ts`(真实 venv 训练 → 注册 → 门禁 → 模型驱动 trial → 影子预测 → 配方隔离,22 项断言)。
 
 ## Python 运行时
 

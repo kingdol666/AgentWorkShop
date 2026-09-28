@@ -62,7 +62,7 @@ pnpm tui             # the terminal workbench
 ### 3. Quick use via npx (no global install)
 
 ```bash
-npx agentworkshop start            # fetch and start (pin a version with: npx agentworkshop@0.7.49 start)
+npx agentworkshop start            # fetch and start (pin a version with: npx agentworkshop@0.7.50 start)
 npx agentworkshop doctor           # subcommands work as usual
 npx -p agentworkshop aw doctor     # use -p when you want the name aw
 ```
@@ -79,7 +79,7 @@ npx -p agentworkshop aw doctor     # use -p when you want the name aw
 | Package manager | `pnpm@11.9.0` (`packageManager`, needed only for source development) |
 | Module format | ESM (`type: module`) |
 | License | `PolyForm-Noncommercial-1.0.0` |
-| Current version | `0.7.49` (`package.json`) |
+| Current version | `0.7.50` (`package.json`) |
 
 ## 2. First start (the Claude Code experience)
 
@@ -167,16 +167,17 @@ are never overwritten:
 - Precedence (the CLI, the web settings page and the dev/prod launch scripts all share one engine,
   `shared/config/engine.mjs`):
   `config.yml defaults < runtime-settings.json runtime overrides < environment variables / explicit CLI flags`.
-- There are **111 setting descriptors across 16 groups** (`aw config list` prints exactly 111 rows):
+- There are **113 setting descriptors across 18 groups** (`aw config list` prints exactly 113 rows):
 
 | Group | Count | Group | Count | Group | Count | Group | Count |
 |---|---|---|---|---|---|---|---|
 | `server` | 3 | `app` | 2 | `api` | 4 | `theme` | 2 |
-| `i18n` | 1 | `security` | 2 | `daq` | 27 | `memory` | 10 |
-| `omp` | 4 | `harness` | 12 | `dcw` | 4 | `workshop` | 2 |
-| `backup` | 3 | `retention` | 5 | `log` | 1 | `aml` | 16 |
+| `i18n` | 1 | `time` | 1 | `security` | 2 | `daq` | 27 |
+| `memory` | 10 | `omp` | 4 | `harness` | 12 | `dcw` | 4 |
+| `workshop` | 15 | `backup` | 3 | `retention` | 5 | `log` | 1 |
+| `aml` | 16 | `mcp` | 1 | | | | |
 
-  32 of them are `live` (effective as soon as they are saved) and 79 are `restart` (effective after
+  34 of them are `live` (effective as soon as they are saved) and 79 are `restart` (effective after
   restarting the corresponding mode); `aw config list` marks every row with `live` or `restart`.
 - Environment-variable mapping: `AW_<KEY uppercased, dots turned into underscores>`
   (for example `AW_SERVER_DEV_PORT`), plus the legacy `aliases` a descriptor declares explicitly
@@ -189,7 +190,7 @@ are never overwritten:
 
 ## 4. Command reference
 
-There are **14** built-in commands (`cli/commands/*.mjs`, one command per file):
+There are **15** built-in commands (`cli/commands/*.mjs`, one command per file):
 
 | Command | Aliases | Flags | Purpose |
 |---|---|---|---|
@@ -199,6 +200,7 @@ There are **14** built-in commands (`cli/commands/*.mjs`, one command per file):
 | `aw stop` | — | `--home` | terminate a running instance through the single-instance lock (`--home` forces the home config root as the target) |
 | `aw config` | `cfg`, `c` | subcommands `list`(`ls`) / `get` / `set` / `unset` / `reset`(`--yes`/`-y`/`--force`) / `validate`(`check`) | read / write / validate runtime configuration |
 | `aw plugin` | `plugins`, `plug` | subcommands `list`(`ls`) / `create`(`new`/`add`) / `enable` / `disable`; `create` also takes `--global`/`-g`, `--project`, `--force`/`-f` | plugin management (three scopes: list / scaffold / enable-disable, hot reload) |
+| `aw mcp` | `mcps` | `--doctor` `--print-config` `--base <url>` `--port <n>` | industrial MCP stdio server (38 tools; auto-discovers the running instance; gated by the `mcp.enabled` runtime setting, overridable via the `AW_MCP_ENABLED` env var) |
 | `aw home` | `hw` | — | inspect / initialise the config root (idempotent) |
 | `aw init` | `create`, `new` | `--force` `--no-install` `--silent` | scaffold a new project checkout |
 | `aw register` | `reg`, `install-cmd` | `--name <n>` `--global`/`-g` `--force`/`-f` | register a command module (local file / directory / URL / npm package) |
@@ -256,7 +258,7 @@ the CLI's `--json`.
 aw config set server.prod.port 8080     # change the production port (effective after restart)
 aw config set theme.primaryColor '#41c8f4'
 aw config get server.dev.port           # value + source
-aw config list                          # 111 settings (16 groups) + source + when they apply
+aw config list                          # 113 settings (18 groups) + source + when they apply
 aw config validate                      # validate config.yml and the runtime overrides
 aw start --port 3002                    # CLI flags win; the output marks 端口来源: CLI
 aw doctor                               # health check: Node/pnpm/AW Home/Docker/MQTT/ports/secrets/build
@@ -311,8 +313,8 @@ The host discovers plugins **first scan wins**, so same-name priority is
 
 - **TUI terminal workbench**: `aw tui` (channel / member management, task dispatch, live monitoring,
   HITL answering); manuals in `docs/tui.md` and `tui/README.md`.
-- **AML automated modelling**: the `/aml` page (16 settings in the `aml` group), 26 route modules
-  under `server/api/workshop/aml/**`, 10 `aml_*` agent tools, and the built-in `team-aml-shadow` team;
+- **AML automated modelling**: the `/aml` page (16 settings in the `aml` group), 32 route modules
+  under `server/api/workshop/aml/**`, 14 `aml_*` agent tools, and the built-in `team-aml-shadow` team;
   the manual is `docs/aml.md`.
 
 ## 5. The command registry (extension mechanism)

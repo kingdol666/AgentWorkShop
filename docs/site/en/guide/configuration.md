@@ -23,7 +23,7 @@ Inside the root: `runtime-settings.json`, `data/` (SQLite / JSON repos / backups
 ## CLI
 
 ```bash
-aw config list                       # 111 settings (16 groups): 32 live / 79 restart · effective value + source + effect
+aw config list                       # 113 settings (18 groups): 34 live / 79 restart · effective value + source + effect
 aw config get server.prod.port       # single key (value + source)
 aw config set server.prod.port 8080  # schema-validated, atomic write
 aw config set theme.primaryColor '#41c8f4'
@@ -34,7 +34,7 @@ aw config validate                   # validate config.yml and the overrides
 
 ## Effect (live vs restart)
 
-There are **111 descriptors** in total, split by effect into **32 `live`** and
+There are **113 descriptors** in total, split by effect into **34 `live`** and
 **79 `restart`** keys:
 
 - `live` keys take effect **as soon as they are saved** (theme, title, timeouts, DAQ

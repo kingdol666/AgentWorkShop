@@ -12,7 +12,7 @@
 app:
   name: AgentWorkShop
   title: AgentWorkShop
-  version: 0.7.49
+  version: 0.7.50
   description: 基于 Nuxt 4 的配置驱动运行范式
 
 # 运行模式（dev/prod 实际由启动命令决定，此处仅作运行时展示）
@@ -43,6 +43,10 @@ i18n:
       name: 简体中文
     - code: en
       name: English
+
+# 系统时间：人读日志/聊天/审计/调度的统一 IANA 时区；默认上海。DAQ 原始时间轴仍为绝对时间。
+time:
+  timeZone: Asia/Shanghai
 
 # 主题
 theme:

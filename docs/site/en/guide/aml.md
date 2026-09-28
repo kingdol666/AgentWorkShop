@@ -6,7 +6,8 @@ pull data → clean → train → platform evaluation → gate iteration → HIT
 reference.
 
 ```
-pull data (isolated triple) → clean → write code & train → authoritative evaluation → gate iteration → HITL promotion → shadow reference
+pull data (isolated triple) → clean → write code & train → authoritative evaluation
+  → gate iteration → HITL promotion → shadow reference
 ```
 
 Before tuning parameters, a control agent queries the production model through
@@ -19,16 +20,15 @@ ADRs) lives in the repository at
 ## Asset root
 
 AML artifacts (dataset arrays, job workspaces, ONNX artifacts, the uv virtual environment)
-are **portable assets**, kept separate from the `.AgentWorkShop` runtime-state directory —
-the whole `./aml` tree can be copied, deleted and rebuilt:
+converge under the **`aml/` subdirectory inside the config root** — assets share the root
+with runtime state, so `aw update` or switching checkouts never loses models or the venv;
+the whole tree can be copied, deleted and rebuilt:
 
 | Order | Condition | Asset root |
 |---|---|---|
 | ① | `AW_AML_DIR` is set | that directory (explicit override, highest priority) |
-| ② | running inside a checkout (`AW_MODE` is not `home` and cwd finds `config.yml` + `nuxt.config.ts` upwards) | `<checkout>/aml` |
-| ③ | `AW_MODE=home` (global install / home explicitly forced) | `<awHome>/aml` — `AW_HOME` redirects it, it is **not** hard-coded to `~/.AgentWorkShop` |
-| ④ | not a checkout, but a real `.AgentWorkShop/` directory exists upwards from cwd (`findLocalConfigRoot`, never past `$HOME`) | `<that project .AgentWorkShop>/aml` |
-| ⑤ | fallback for any other directory | `<cwd>/aml` |
+| ② | running inside a checkout (`AW_MODE` is not `home`) | `<checkout config root>/.AgentWorkShop/aml` |
+| ③ | anything else (home mode / global install) | `<awHome>/aml` — `AW_HOME` redirects it, it is **not** hard-coded to `~/.AgentWorkShop` |
 
 Directory skeleton:
 
@@ -38,6 +38,7 @@ aml/
   datasets/<id>/    spec.json fetch spec · manifest.json column defs · report.json quality report · arrays/*.f32
   jobs/<id>/        job.json submission contract · workspace/(train.py+amlkit.py) · run.log · artifacts/
   models/<id>/      model.onnx + io_spec.json (I/O contract, immutable)
+  twins/            hybrid-twin artifacts (frozen scenes / compiled PhysicsSpec / trials & certificates)
   runtime/          uv.json (one-click install record) / env.json
   tools/            uv binary installed by the platform (no admin, no system PATH changes)
 ```
@@ -91,32 +92,38 @@ promotion needs `operate`. Deletion is reference-protected (a dataset referenced
 experiment or model, a production-stage model, a running job, or a job that produced a model
 is always refused).
 
-## Agent tools (10)
+## Agent tools (14)
 
 | Tool | Purpose |
 |---|---|
 | `aml_node_catalog` | inventory of modelable assets (node semantics × last-24h data volume) |
 | `aml_dataset_build` | build a dataset snapshot (isolated triple + cleaning + beatMs alignment + windowing) |
 | `aml_dataset_stats` | dataset statistics report (control→target lag cross-correlation / correlation / per-run profile) |
-| `aml_job_submit` | submit a training job (train.py code may be inlined) |
+| `aml_job_submit` | submit a training job (train.py code may be inlined; a `hybrid_residual` job can omit code and use the built-in reference trainer) |
 | `aml_job_status` | job status snapshot |
 | `aml_job_logs` | job logs (troubleshooting) |
 | `aml_job_cancel` | cancel a job |
 | `aml_leaderboard` | leaderboard (lineage + gate details + primary metrics) |
+| `aml_model_find` | pick a model by scene semantics (line / objective / keyword filters over the registry) |
 | `aml_model_promote` | request a stage promotion (lead-only; goes through human approval) |
 | `aml_model_reference` | query the shadow reference of a production model (tuning what-if; proposed parameters via `controls`) |
+| `aml_training_plan_list` | list modeling plans (auto policies retrain as new data lands) |
+| `aml_training_plan_create` | create a modeling plan (scene + recipe + objective + auto policy) |
+| `aml_training_plan_train` | trigger one training run of a modeling plan immediately |
 
-These 10 are **host tools** defined in `.AgentWorkShop/prompts/host-tools.json` (63 entries
+These 14 are **host tools** defined in `.AgentWorkShop/prompts/host-tools.json` (70 entries
 on the host tool surface); they are a different surface from MCP
 (`server/mcp/workshop-server.ts`, 25 in-process tools).
+Models carry a human-readable identity: `label` (line · recipe · objective), `description`
+and `line_id`/`objective_id`.
 
 ## Hybrid twin × MPC (channel profile `hybrid_twin`)
 
 AML also owns the **hybrid twin** plane: a grey-box physics core with a bounded PyTorch
 residual, plus the `SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` /
 `ObjectiveProfile` / `VirtualTrial` / `RecommendationCertificate` contracts. A channel opts
-in through its profile (`legacy` by default, `hybrid_twin` to enable), which injects six
-extra tools:
+in through its profile (`legacy` by default, `hybrid_twin` to enable), which injects twelve
+profile tools (`twin_calibration_request` is a general tool, visible to both profiles):
 
 | Tool | Purpose |
 |---|---|
@@ -124,6 +131,7 @@ extra tools:
 | `twin_scene_discover` | read the Agent's **bound DAQ/DCW nodes** and infer control/state/disturbance/target/guard semantics with evidence and confidence |
 | `twin_scene_compile` | build a **SceneContract draft** from bound nodes and the scene prompt (draft by default; user confirmation precedes go-live) |
 | `twin_scene_freeze` | **freeze** the scene contract after user confirmation (a given `scene_id`/`version` can never be overwritten; changes require a new version) |
+| `twin_physics_spec_draft` | draft a **skeleton PhysicsSpec** from the frozen scene (one first-order relaxation equation per state; τ/gain as calibratable prior-boxed parameters) |
 | `twin_physics_spec_validate` | validate a declarative physics model's **whitelisted AST / variable and parameter references / units / bounds / stability / monotonicity**; no arbitrary code execution |
 | `twin_physics_spec_compile` | compile a frozen scene's **PhysicsSpec into an isolated Generic Declarative Provider candidate** and save the artifact (no production registration, no PLC write) |
 | `twin_scene_read` | read the scene contract (devices / signals / constraints / objectives) |
@@ -169,6 +177,43 @@ registered by a plugin through `ctx.twin` into the **Twin Provider Registry**, a
 `SceneContract.physicsProfileId` (falling back to the bundled `twin-injection-default`). A hot reload stages a new
 generation and drains the old one while in-flight trials and MPC hold leases, so running work is never invalidated.
 Field tables, lifecycle and a minimal example: [plugin development guide → hybrid-twin provider plugins](/en/plugins/guide).
+
+### Any-scene modeling loop (v0.7.50)
+
+The loop is no longer tied to a bundled scene — any line with bound nodes can walk
+"model → gate → deploy":
+
+1. `twin_scene_discover` infers semantics with evidence → `twin_scene_compile` drafts the
+   SceneContract → you confirm → `twin_scene_freeze` freezes it (immutable versions);
+2. `twin_physics_spec_draft` proposes a skeleton PhysicsSpec → you refine the equations against
+   real operating data → `twin_physics_spec_validate` / `twin_physics_spec_compile`
+   (whitelisted AST, no arbitrary code);
+3. `aml_job_submit { job_kind: 'hybrid_residual' }` needs **no code**: the built-in reference
+   trainer runs the A→B→D protocol — physics parameter calibration (stage A) → a 3-member
+   bounded residual ensemble (stage B) → conformal q90 coverage (stage D); the calibrated θ is
+   written back into the embedded spec and shared by evaluation, prediction and trials;
+4. `twin_trial_run` / `mpc_optimize` with a `model_id` drive the rollout from the trained
+   hybrid model (`ModelBackedHybridProvider`), with UQ coverage and member disagreement coming
+   from training artifacts; a dataset whose line/product/recipe mismatches the scene is
+   rejected (`TWIN_MODEL_SCENE_MISMATCH`, recipe isolation);
+5. signals registered via `twin_calibration_request` are consumed by the **60 s continuous
+   calibration worker**, which submits retraining *candidates* automatically; promotion still
+   goes through HITL + Twin Gate (`AML_TWIN_WORKER_DISABLED=1` turns the worker off).
+
+### Two-mode optimization channel templates (v0.7.50)
+
+Two built-in templates split "training" and "optimizing" into **mutually exclusive channels** —
+training while optimizing is impossible by construction:
+
+| Template | Tool face | Can do |
+|---|---|---|
+| `chtpl-aml-training-default` | modeling face (22 tools): datasets / jobs / scene compile / physics specs / training plans | train and evaluate; **no plant writes, no MPC** |
+| `chtpl-aml-optimization-default` | acting face (6 tools): snapshot / trial / gate / MPC / `twin_bayes_optimize` / `optimization_explore` | search and fine-tune; **no training-family tools** |
+
+At instantiate time the optimization channel picks its `optimizationMode`: **exploration**
+(governed micro-writes, each setpoint paired with its response read-back in the
+`optimization_explorations` ledger; no model required) or **aml** (`boundModelId` required —
+a gate-cleared model must be bound before the acting face unlocks).
 
 The built-in team **`team-aml-shadow`** ("AML shadow modeling team") packs 1 lead (chief
 data scientist) + 3 workers (data engineer / training engineer / evaluation engineer) with

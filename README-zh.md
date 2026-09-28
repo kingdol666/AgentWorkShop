@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.49</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件） · 111 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.50</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件） · 113 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -79,7 +79,7 @@
 7 状态任务机 · 根任务队列 + 执行租约<br/>
 群聊作业 · 定时任务 · HITL 审批<br/>
 FTS5 + 向量记忆 · 插件热重载<br/>
-SDK · CLI · TUI · 约 1100+ 条验收断言
+SDK · CLI · TUI · 外部 MCP · 约 1100+ 条验收断言
 
 </td>
 </tr>
@@ -96,7 +96,7 @@ SDK · CLI · TUI · 约 1100+ 条验收断言
 | **上手指南** | [指南](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) | `docs/site/guide/` | 安装 → 首次运行 → 第一次「Agent × 产线」会话、配置系统、数采协议、数控读写、HITL、配方版本、多 Harness 团队、产线权限、AML |
 | **插件开发** | [插件指南](https://kingdol666.github.io/AgentWorkShop/plugins/) | [`docs/plugins.md`](./docs/plugins.md) | 完整扩展契约：三种作用域、`index.mjs` 清单、`ctx` 服务端/浏览器能力面、`settings`/`groups` 声明、生命周期事件、i18n、面板、团队级开关、一个真实案例 |
 | **SDK** | [SDK 指南](https://kingdol666.github.io/AgentWorkShop/sdk/) | [`docs/sdk.md`](./docs/sdk.md) | `agentworkshop/sdk` 作为编程客户端（带信封处理的平台 REST 客户端）与插件扩展基座；TypeScript 类型；浏览器端 SDK |
-| **CLI** | [CLI 手册](https://kingdol666.github.io/AgentWorkShop/cli/) | [`docs/cli.md`](./docs/cli.md) | 全部 14 个 `aw` 指令、全局选项、退出码、双模式路径模型、指令注册系统、维护者发布指引 |
+| **CLI** | [CLI 手册](https://kingdol666.github.io/AgentWorkShop/cli/) | [`docs/cli.md`](./docs/cli.md) | 全部 15 个 `aw` 指令、全局选项、退出码、双模式路径模型、指令注册系统、维护者发布指引 |
 | **AML** | [AML 指南](https://kingdol666.github.io/AgentWorkShop/guide/aml) | [`docs/aml.md`](./docs/aml.md) | 自动建模实验室：数据集构建、作业编排、模型注册表、晋级门禁、Agent 工具 |
 | **TUI** | — | [`docs/tui.md`](./docs/tui.md) · [`tui/README.md`](./tui/README.md) | 终端工作台：频道、Agent、任务、实时监控、HITL 应答 |
 | **多 Harness 架构** | — | [`docs/multi-harness-architecture.md`](./docs/multi-harness-architecture.md) | 引擎分类、归一化会话契约、供应商/模型目录、失败模式 |
@@ -178,10 +178,14 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **全操作审计日志** | 用户 / Agent / 系统 的每个动作都落进同一份可检索日志；操作者归属「Channel名/成员名」，与用户和系统天然区分。经 WS 实时推送。 |
 | **团队级插件开关** | 每个团队（Channel）持有**独立插件开关组**（`channel_plugins`）：被关闭插件的工具不注入该团队 Agent。插件本体经 `aw plugin` 与 `/plugins` 页热管理。 |
 | **插件扩展 API** | `plugins/<name>/` 下的一个自包含目录**同时增强两半**：`index.mjs`（服务端：钩子、路由、Agent 工具、**数采读驱动 / DCW 写驱动**/帧处理器/节点模板、配置分组、KV、定时器）与 `client.mjs`（浏览器：注入具名插槽的面板、i18n、设置 UI）。三种作用域——`builtin`（随包发布）> `project`（检出）> `user`（`~/.AgentWorkShop`）——启停**与代码修改**均有约 1 秒热重载；停用插件的驱动随热重载立即摘除。内置示例 **serial-bridge**（串口通信：读/写驱动 + 串口探针 API + 前端面板）。完整契约见 [`docs/plugins.md`](./docs/plugins.md)。 |
-| **AML —— 自动建模实验室** | 数据集构建 → 训练作业 → 排行榜 → 晋级门禁 → 模型引用，全部可在 `/aml` 页驱动，也可由 Agent 通过 10 个 `aml_*` 工具驱动。Python 运行时由 `uv` 引导至 `./aml` 资产根；产物与元数据都留在配置根下。 |
-| **AML 混合孪生 × MPC** | 灰箱物理主干 + 有界 PyTorch 残差；`TwinSnapshot` / `VirtualTrial` / `RecommendationCertificate` 配 UQ/OOD 筛查与全轨迹门禁；`hybrid_twin` profile 会额外注入 6 个工具（`twin_*`、`mpc_optimize`）。试验按设计保持虚拟（`candidateExecuted=false`），证书签发前只做推荐、不落真实写入。 |
+| **AML —— 自动建模实验室** | 数据集构建 → 训练作业 → 排行榜 → 晋级门禁 → 模型引用，全部可在 `/aml` 页驱动，也可由 Agent 通过 **14 个 `aml_*` 工具**驱动。Python 运行时由 `uv` 引导至配置根内的 `aml/` 资产根；产物与元数据都留在配置根下。模型带人读身份——label（产线 · 配方 · 目标）、description 与产线/目标 id——可用 `aml_model_find` 按场景选型。 |
+| **AML 混合孪生 × MPC** | 灰箱物理主干 + 有界 PyTorch 残差；`TwinSnapshot` / `VirtualTrial` / `RecommendationCertificate` 配 UQ/OOD 筛查与全轨迹门禁；`hybrid_twin` profile 会额外注入 **12 个 profile 工具**（场景发现/编译/冻结、物理 spec 起草/校验/编译、快照、试验、MPC、门禁、Provider 目录）与通用工具 `twin_calibration_request`。试验按设计保持虚拟（`candidateExecuted=false`），证书签发前只做推荐、不落真实写入。 |
+| **双模式优化闭环** | 专属频道模板把闭环**结构性拆开**：*aml-training* 频道拿建模面（数据集、作业、场景编译、物理 spec、建模任务——无产线写入、无 MPC），*aml-optimization* 频道拿执行面（快照、试验、门禁、MPC、贝叶斯寻优 `twin_bayes_optimize`、受治理微写 `optimization_explore`）——边训边优在结构上不可能。**探索**模式走治理链写入并做响应回读配对（每笔写入落 `optimization_explorations` 台账）；**生产**模式要求绑定过门禁的模型（`aml` 模式，实例化时给 `boundModelId`）。 |
 | **运行时可观测** | `GET /api/system/monitor` 把 Agent 团队内部暴露成数字：根队列深度、看门狗介入次数、Harness 会话复用、记忆 outbox 积压——每项都有对应的文档化回退开关，新机制可以不重新部署就关掉。 |
-| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**111 个设置项、16 组**（32 live / 79 restart），代码零硬编码默认。 |
+| **产线操作单页（`/operations`）** | 一页看全对产线的每一次触碰：实时操作流水（REST 快照 + WS 推流）把写控、数采、建模、配方、回退、报警、产线、人工、系统动作归入**九类分类**，写控行渲染结构化 **前值 → 后值 diff 徽章**（失败标红），并直接从事件流推断**闭环阶段**（监视 → 探索·小步 → 推荐搜索 → 影子验证 → 生产）。同一数据面也供工作台控制台的「产线作业」面板使用。 |
+| **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（38 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。 |
+| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**113 个设置项、18 组**（34 live / 79 restart），代码零硬编码默认。 |
+| **可配置系统时区** | 一个 `time.timeZone` 设置项（IANA 时区，live 热生效）统一驱动人读时间——日志、聊天、审计、Agent 记录与定时任务；机器时间轴（数采样本、`timestamptz`）仍保存绝对时间。 |
 | **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |
 
 #### 数字孪生
@@ -258,7 +262,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="运行时监控" width="100%" /><br/><sub><b>运行时监控。</b>每条已接线频道、成员数、依赖环与归属用户。</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>16 组 111 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>18 组 113 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="插件管理" width="100%" /><br/><sub><b>插件管理。</b>三种作用域、改代码即热重载、按团队开关。</sub></td>
 </tr>
 </table>
@@ -382,7 +386,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.49**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.50**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -431,6 +435,7 @@ aw config set daq.query.minBucketMs 500             # 查询下限（samples/产
 | `aw stop` | 依单实例锁终止运行中的 aw 服务实例 |
 | `aw config list · get · set · unset · reset` | 读写运行时设置（schema 校验 + 原子写盘） |
 | `aw plugin list · create · enable · disable` | 跨三种作用域管理插件：查看、脚手架（默认 project 作用域；`--global` 为 user 作用域）、启停（写状态文件，运行中的服务约 1 秒热重载） |
+| `aw mcp` | 工业 MCP stdio 服务（38 个工具，覆盖平台 REST：产线、配方、DCW 写入、参数映射、数采、频道、团队、模型晋升、插件）——自动发现运行实例；`--doctor` 一次讲清发现/健康/鉴权，`--print-config` 直出可粘贴的 MCP 客户端配置 |
 | `aw home` | 查看/初始化配置根 `.AgentWorkShop` |
 | `aw init <dir>` | 脚手架一个可运行的新项目（含完整配置系统与 CLI） |
 | `aw register <路径\|URL\|npm:包名>` | 注册一条新指令——项目级或 `--global` 用户级 |
@@ -491,10 +496,13 @@ export async function run(argv, ctx) {
 
 这是闭环里的建模半边：`/aml` 用已打标的遥测构建**数据集**，把**训练作业**提交到 `uv` 托管的 Python 运行时，在**排行榜**上给各次运行排名，并且只有跨过配置的**门禁**（NRMSE、rollout NRMSE、验证/测试差距、最小行数与运行次数）才允许晋级。晋级后的模型按 id 引用，因此 MPC 或影子孪生控制器消费的是有版本号的产物，而不是含糊的「最新」。
 
-- Agent 通过 10 个工具做同样的事（`aml_dataset_build`、`aml_job_submit`、`aml_job_status`、`aml_leaderboard`、`aml_model_promote`……）——提交一个目标，让团队去训练并汇报。
+- Agent 通过 14 个工具做同样的事（`aml_dataset_build`、`aml_job_submit`、`aml_job_status`、`aml_leaderboard`、`aml_model_promote`、`aml_model_find`、`aml_training_plan_*`……）——提交一个目标，让团队去训练并汇报。
 - Python 运行时由 `uv` 自行引导进配置根内的 `./aml` 资产根；数据集/产物/元数据路径、磁盘配额、作业超时、并发与保留策略全部是**设置项**（`aml` 组共 16 项），而不是常量。
 - 治理默认保守：跨配方数据集除非显式允许否则拒绝，每个作业都有归属。
-- **混合孪生 × MPC 内核**：AML 同时承载**混合孪生**平面——`SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` / `ObjectiveProfile` / `VirtualTrial` / `RecommendationCertificate`，底座是带**有界 PyTorch 残差**的灰箱物理主干，外加 UQ/OOD 筛查与全轨迹硬约束门禁。频道通过 `hybrid_twin` profile 显式启用，启用后会注入 6 个专属工具（`twin_scene_read`、`twin_snapshot_create`、`twin_trial_run`、`mpc_optimize`、`twin_gate_evaluate`、`twin_calibration_request`）；试验按设计就是**虚拟**的（`candidateExecuted=false`），只有门禁与收益同时通过才签发推荐证书。服务端策略两档：`safe_small_step`(数据不足) 与 `precise_search`(模型过门禁)。计划与验收记录见 [`docs/aml-hybrid-twin-mpc-integration-plan.md`](./docs/aml-hybrid-twin-mpc-integration-plan.md)、[`docs/aml-hybrid-twin-implementation-acceptance.md`](./docs/aml-hybrid-twin-implementation-acceptance.md)。
+- **混合孪生 × MPC 内核**：AML 同时承载**混合孪生**平面——`SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` / `ObjectiveProfile` / `VirtualTrial` / `RecommendationCertificate`，底座是带**有界 PyTorch 残差**的灰箱物理主干，外加 UQ/OOD 筛查与全轨迹硬约束门禁。频道通过 `hybrid_twin` profile 显式启用，启用后会注入 12 个 profile 专属工具（`twin_provider_catalog`、`twin_scene_discover/compile/freeze`、`twin_physics_spec_draft/validate/compile`、`twin_scene_read`、`twin_snapshot_create`、`twin_trial_run`、`mpc_optimize`、`twin_gate_evaluate`）与通用工具 `twin_calibration_request`；试验按设计就是**虚拟**的（`candidateExecuted=false`），只有门禁与收益同时通过才签发推荐证书。服务端策略两档：`safe_small_step`(数据不足) 与 `precise_search`(模型过门禁)。计划与验收记录见 [`docs/aml-hybrid-twin-mpc-integration-plan.md`](./docs/aml-hybrid-twin-mpc-integration-plan.md)、[`docs/aml-hybrid-twin-implementation-acceptance.md`](./docs/aml-hybrid-twin-implementation-acceptance.md)。
+- **任意场景建模闭环**：闭环不绑定内置场景。绑定节点 → `twin_scene_discover` 带证据推断 control/state/disturbance/target/guard 语义 → `twin_scene_compile` 生成 `SceneContract` 草稿 → 您确认 → `twin_scene_freeze` 冻结（版本不可覆盖）→ `twin_physics_spec_draft` 起草骨架 PhysicsSpec（每个状态一条一阶弛豫方程，τ/增益为带先验盒的可校准参数）供您润色 → 校验/编译（白名单 AST，禁任意代码）→ `aml_job_submit { job_kind: 'hybrid_residual' }` **可不带代码**：内置参考训练器先做物理参数校准（stage A）、再拟合 3 成员有界残差集成（stage B）、最后报告 conformal q90 覆盖率（stage D）——校准后的 spec 回写，评估/预测/试验三侧同源。
+- **模型驱动孪生与持续校准**：`twin_trial_run` / `mpc_optimize` 可传 `model_id`——rollout 由训练出的 hybrid 模型驱动（校准后物理主干 + 残差集成 ONNX，`ModelBackedHybridProvider`），UQ 覆盖率与成员分歧来自训练工件；模型数据集与场景的产线/产品/配方不一致直接拒绝（`TWIN_MODEL_SCENE_MISMATCH`）。持续校准请求由 60s 定时 worker 消费，自动提交 `hybrid_residual` 重训**候选**；晋升仍走 HITL + Twin Gate（`AML_TWIN_WORKER_DISABLED=1` 可整体关闭）。
+- **双模式优化闭环**：随包附带两个频道模板——`chtpl-aml-training-default`（建模面：22 个工具，无产线写入、无 MPC）与 `chtpl-aml-optimization-default`（执行面：快照/试验/门禁/MPC/贝叶斯寻优，外加 `optimization_explore`——受治理微写，每笔设定值与响应回读配对落 `optimization_explorations` 台账）。两面按频道互斥注入；优化频道实例化时可选**探索**模式（治理小步，无需模型）或 **aml** 模式（必须给 `boundModelId`——过门禁的模型先绑定，执行面才解锁）。
 - **孪生 Provider 插件 SDK（热加载）**：工业场景的物理主干 / 场景包 / 目标 / 求解器经 `ctx.twin` 注册进 **Twin Provider Registry**（`registerPhysicsProvider` / `registerScenePack` / `registerObjectiveProfile` / `registerTrainingAdapter` / `registerSolverAdapter`，另有 `listProviders` / `getProviderHealth` / `resolveProvider` / `validateProvider` / `retireProvider` / `isRegistryAvailable`）。孪生工具按 `SceneContract.physicsProfileId` 解析 Provider（解析不到回退内置 `twin-injection-default`），**换场景不改工具与频道**；热重载按 **generation** 装载新代、排空旧代，试验与 MPC 持租约 ⇒ 在飞工作不被作废，`retireProvider` 等引用归零才下线。系统自带注塑 Provider 走的正是这套外部契约（`server/plugins-builtin/twin-injection-default/`），装法与其它插件同址、停用或热重载无需重启。清单字段与可运行示例见 [`docs/plugins.md`](./docs/plugins.md)「混合孪生 Provider 插件」，SDK 面见 [`docs/sdk.md`](./docs/sdk.md) §4.10。
 
 ---
@@ -623,7 +631,7 @@ AgentWorkShop/
 │   ├── pages/                  # / · /workshop · /workshop/agents · /workshop/teams
 │   │                           # /workshop/channel-templates · /workshop/schedules · /workshop/w/:id
 │   │                           # /town · /daq · /daq/:id · /dcw · /dcw/:id
-│   │                           # /aml · /monitor · /logs · /permissions
+│   │                           # /aml · /operations · /monitor · /logs · /permissions
 │   │                           # /plugins · /users · /tokens · /settings
 │   ├── components/workshop/    # 时间线 · 泳道 · 任务板 · 记忆面板 · 3D 小镇
 │   └── stores/composables/     # Pinia + AEP 客户端
@@ -634,13 +642,14 @@ AgentWorkShop/
 │   │   ├── agents/             # AgentInterface：14 个引擎（+ 工业工具）
 │   │   ├── daq/ dcw/ aml/      # 边缘运行时 · 驱动 · 队列 · 存储 · 建模实验室
 │   │   └── db/                 # node:sqlite 仓储层
-│   ├── mcp/                    # MCP 服务（25 个工具）
-│   ├── plugins-builtin/        # 随包发布的插件（diag-bridge · rag-bridge · serial-bridge）
+│   ├── mcp/                    # MCP 服务（25 个工具，进程内 workshop 面）
+│   ├── plugins-builtin/        # 随包发布的插件（serial-bridge · rag-bridge · diag-bridge · twin-injection-default）
 │   └── plugins/                # 运行时装配（单例）
+├── mcp/                        # aw mcp —— 零依赖 stdio MCP 网关（38 个工具，实例自动发现）
 ├── sdk/                        # agentworkshop/sdk——插件上下文、钩子总线、REST 客户端、浏览器 SDK
 ├── tui/                        # 终端工作台（aw tui）
 ├── shared/
-│   └── config/                 # schema.json（111 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
+│   └── config/                 # schema.json（113 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
 ├── config.yml                  # 工厂默认值（构建/启动时读取；版本号来自 package.json）
 ├── .AgentWorkShop/             # 检出内的配置根——prompts（版本化）+ 运行时覆盖 · 数据 · 日志 · 指令（git 忽略）
 ├── data/                       # 迁移前的旧版位置（自动迁移进配置根）
@@ -720,7 +729,7 @@ cd docs/site && npx vitepress build      # 生产构建 → .vitepress/dist
 | 插件系统 v2：浏览器面板注入、插件级 settings/groups、插件 i18n、宿主运行时服务（`ctx.services`/`ctx.daq`/`ctx.omp`） | 已交付 |
 | Instrument Glass 材质层（v0.7.36）：三级半透明材质、通透感、高光边缘、弹簧动效、逐页路由转场 | 已交付 |
 | 实时管线优化：数采帧索引 O(n²)→O(n)、逐 Agent 增量事件索引、图表原地更新、按大小感知的 JSON 持久化 | 已交付 |
-| AML 自动建模实验室：数据集构建 · 作业编排（uv 托管 Python）· 排行榜 · 晋级门禁 · 10 个 Agent 工具 | 已交付 |
+| AML 自动建模实验室：数据集构建 · 作业编排（uv 托管 Python）· 排行榜 · 晋级门禁 · 14 个 Agent 工具 | 已交付 |
 | Claude Agent SDK 适配器——常驻会话、同轮 steer 与 `canUseTool` HITL | 已交付 |
 | 工艺参数语义映射：`param_control`/`param_read` 按工艺参数寻址、四层写入限界、调控闭环（`dcw_judge`/`dcw_rollback`） | 已交付 |
 | Channel 群聊：请求升级为可追踪作业；原生 HITL（`omp` ask → 审批 → 回执） | 已交付 |
@@ -731,6 +740,12 @@ cd docs/site && npx vitepress build      # 生产构建 → .vitepress/dist
 | 运行时可观测：`GET /api/system/monitor` 团队指标，每项带文档化回滚开关 | 已交付 |
 | 工业基准：integrated 档（83 项检查、硬门禁）+ 多场景闭环（注塑 / 污水 / 退火 / BOPET）+ 质量目标 optloop 寻优 | 已交付 |
 | 生产构建全覆盖验收波次矩阵（约 1100+ 条真实断言，2026-09-24） | 已交付 |
+| 孪生 Provider 插件 SDK：物理/场景/目标/训练/求解器 Provider 经 `ctx.twin` 热加载注册，按 generation 装载 + 租约排空，内置 Provider 走同一外部契约 | 已交付 |
+| 任意场景混合孪生建模闭环：场景发现 → 编译 → 冻结 → 物理 spec 起草/校验/编译 → 参考训练器作业（物理校准 + 残差集成 + conformal UQ）、模型驱动试验、持续校准 worker | 已交付 |
+| 双模式优化闭环：`aml-training` / `aml-optimization` 专属频道模板、互斥工具面、探索 ↔ 生产双模式、带回读配对的治理微写 | 已交付 |
+| 产线操作流水：`/operations` 单页 + 工作台控制台面板，九类操作时间线、结构化写控 diff、闭环阶段推断 | 已交付 |
+| 外部 MCP 网关：`aw mcp` stdio 服务（38 个工具）、实例自动发现、`mcp.enabled` 运行时门控 | 已交付 |
+| 可配置系统时区（`time.timeZone`，live 热生效）+ 配方参数级单步限幅 `stepLimit` + 配方 `description` 元字段 | 已交付 |
 | 生产硬化：TLS、MQTT 鉴权、OPC UA 签名+加密缺省、结构化审计日志 | 规划中 |
 | 边缘部署形态：独立 edge-agent + 中心 broker | 规划中 |
 | 报警外送（邮件/webhook）+ 确认工作流 | 规划中 |

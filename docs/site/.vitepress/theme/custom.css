@@ -1373,7 +1373,11 @@
   border-spacing: 0;
   border: 1px solid var(--aw-line);
   border-radius: 10px;
-  overflow: hidden;
+  /* 宽表兜底:整表块级化 + 横向滚动,窄屏/长说明列不再被圆角裁切 */
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  max-width: 100%;
 }
 
 .vp-doc th,
@@ -2636,7 +2640,7 @@ html {
 .vp-doc table {
   border-collapse: separate;
   border-spacing: 0;
-  overflow: hidden;
+  overflow-x: auto;
   border-radius: 10px;
 }
 .vp-doc tbody tr:nth-child(2n) td {

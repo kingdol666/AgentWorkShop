@@ -60,7 +60,7 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">111</span><span class="k">运行时设置项</span></div>
+        <div class="hw-stat"><span class="v">113</span><span class="k">运行时设置项</span></div>
         <div class="hw-stat"><span class="v">1400+<i>*</i></span><span class="k">验收断言</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
@@ -70,10 +70,10 @@ footer:
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>)。
         其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
-        14 个 harness(<code>agents/registry.ts</code>) / 111 个设置项分 16 组(<code>aw config list</code>) / 7 态任务机。
+        14 个 harness(<code>agents/registry.ts</code>) / 113 个设置项分 18 组(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.7.49</i></span>
+        <span>版本 <i>v0.7.50</i></span>
         <span>许可 <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -276,7 +276,7 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>配置驱动</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——111 个设置项(32 live / 79 restart),代码零硬编码默认。</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——113 个设置项(34 live / 79 restart),代码零硬编码默认。</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
@@ -385,7 +385,7 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
   <section class="hw-final">
     <h2>把 Agent 接到真实产线上</h2>
     <p>
-      14 个执行引擎、6 种现场协议、111 个运行时设置项和 1100+ 条可复跑的验收断言都已经在仓库里。
+      14 个执行引擎、6 种现场协议、113 个运行时设置项和 1100+ 条可复跑的验收断言都已经在仓库里。
       监督层,秒级软实时;协议真实,断言可复跑。
     </p>
     <div class="hw-cta">

@@ -62,7 +62,7 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">field protocols</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
-        <div class="hw-stat"><span class="v">111</span><span class="k">runtime settings</span></div>
+        <div class="hw-stat"><span class="v">113</span><span class="k">runtime settings</span></div>
         <div class="hw-stat"><span class="v">1400+<i>*</i></span><span class="k">acceptance assertions</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
       </div>
@@ -72,10 +72,10 @@ footer:
         reports at <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> and
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>).
         The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
-        14 harnesses (<code>agents/registry.ts</code>) / 111 settings in 16 groups (<code>aw config list</code>) / 7 task states.
+        14 harnesses (<code>agents/registry.ts</code>) / 113 settings in 18 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.7.49</i></span>
+        <span>Version <i>v0.7.50</i></span>
         <span>License <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -282,7 +282,7 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>Config-driven</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 111 settings across 16 groups (32 live / 79 restart), zero hardcoded defaults.</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 113 settings across 18 groups (34 live / 79 restart), zero hardcoded defaults.</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
@@ -391,7 +391,7 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
   <section class="hw-final">
     <h2>Put an agent team on a real production line</h2>
     <p>
-      14 engines, 6 field protocols, 111 runtime settings and 1100+ re-runnable acceptance assertions are
+      14 engines, 6 field protocols, 113 runtime settings and 1100+ re-runnable acceptance assertions are
       already in the repository. Supervisory by design, second-level soft real-time;
       protocol-real, assertion-reproducible.
     </p>

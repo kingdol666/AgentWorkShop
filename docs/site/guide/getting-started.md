@@ -69,7 +69,10 @@ npm install -g agentworkshop@latest    # 手动等效
 
 - [配置系统](/guide/configuration) —— 四层优先级与配置根
 - [第一次 Agent × 产线会话](/guide/first-session) —— 2 分钟跑通全链
-- [五协议数采与数控](/guide/daq-protocols) —— Modbus/OPC UA/MQTT/HTTP 驱动
+- [六协议数采与数控](/guide/daq-protocols) —— Modbus/OPC UA/MQTT/HTTP + 串口插件驱动
 - [Recipe 版本管理](/guide/recipe-versions) —— 归因历史与回退
+- [AML 自动建模](/guide/aml) —— 数据集 → 训练 → 门禁 → 晋级,混合孪生 × MPC
 - [SDK 指南](/sdk/) —— 用代码消费平台服务
 - [插件开发](/plugins/) —— 对前后端做插入增强
+
+> 部署后值得先看两处:侧导航「**产线操作**」(`/operations`)——所有对产线的触碰按九类分类的实时流水,写控行带前后值 diff 徽章;终端里 `aw mcp --doctor`——把平台暴露成 38 个工具的 MCP 服务,自动发现运行实例(受 `mcp.enabled` 设置门控)。

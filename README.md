@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.49</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) · 111 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.7.50</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) · 113 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -79,7 +79,7 @@ Supervisory layer, second-level soft real-time<br/>
 7-state task machine · root queue + lease fencing<br/>
 Group chat jobs · scheduled tasks · HITL<br/>
 FTS5 + vector memory · hot-reloadable plugins<br/>
-SDK · CLI · TUI · ~1100+ acceptance assertions
+SDK · CLI · TUI · external MCP · ~1100+ acceptance assertions
 
 </td>
 </tr>
@@ -96,7 +96,7 @@ Docs are bilingual — the [VitePress site](https://kingdol666.github.io/AgentWo
 | **Getting started** | [Guide](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) | `docs/site/guide/` | install → first run → first agent × line session, configuration, DAQ protocols, DCW read/write, HITL, recipe versioning, multi-harness teams, line permissions, AML |
 | **Plugin development** | [Plugin guide](https://kingdol666.github.io/AgentWorkShop/plugins/) | [`docs/plugins.md`](./docs/plugins.md) | the full extension contract: three scopes, `index.mjs` manifest, `ctx` server/browser surface, `settings`/`groups` declarations, lifecycle events, i18n, panels, team-scoped switches, a real example |
 | **SDK** | [SDK guide](https://kingdol666.github.io/AgentWorkShop/sdk/) | [`docs/sdk.md`](./docs/sdk.md) | `agentworkshop/sdk` as a programming client (platform REST client with envelope handling) and as the plugin extension base; TypeScript types; browser-side SDK |
-| **CLI** | [CLI manual](https://kingdol666.github.io/AgentWorkShop/cli/) | [`docs/cli.md`](./docs/cli.md) | all 14 `aw` commands, global options, exit codes, dual-mode path model, the command-registration system, maintainer publish guide |
+| **CLI** | [CLI manual](https://kingdol666.github.io/AgentWorkShop/cli/) | [`docs/cli.md`](./docs/cli.md) | all 15 `aw` commands, global options, exit codes, dual-mode path model, the command-registration system, maintainer publish guide |
 | **AML** | [AML guide](https://kingdol666.github.io/AgentWorkShop/guide/aml) | [`docs/aml.md`](./docs/aml.md) | auto-modeling lab: dataset build, job orchestration, model registry, promotion gates, agent tools |
 | **TUI** | — | [`docs/tui.md`](./docs/tui.md) · [`tui/README.md`](./tui/README.md) | terminal workbench: channels, agents, tasks, live monitor, HITL answering |
 | **Multi-harness architecture** | — | [`docs/multi-harness-architecture.md`](./docs/multi-harness-architecture.md) | engine taxonomy, normalized session contract, provider/model catalog, failure modes |
@@ -179,10 +179,14 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Full-operation audit log** | Every user / agent / system action lands in one queryable log; operators are attributed to "Channel/Member", distinct from users and the system. Streamed live over WS. |
 | **Team-scoped plugin switches** | Each team (channel) keeps an **independent plugin switch set** (`channel_plugins`): a disabled plugin's tools are not injected into that team's agents. Plugins themselves are hot-managed via `aw plugin` and the `/plugins` page. |
 | **Plugin extension API** | A self-contained directory under `plugins/<name>/` enhances **both halves at once**: `index.mjs` (server: hooks, routes, agent tools, **DAQ read drivers / DCW write drivers**, frame processors, node templates, config groups, KV, timers) and `client.mjs` (browser: panels injected into named slots, i18n, settings UI). Three scopes — `builtin` (shipped) > `project` (checkout) > `user` (`~/.AgentWorkShop`) — with ~1 s hot reload on enable/disable **and on code edits**; a disabled plugin's drivers are removed on hot reload immediately. Built-in example: **serial-bridge** (serial communication: read/write drivers, serial probe API, frontend panel). Full contract in [`docs/plugins.md`](./docs/plugins.md). |
-| **AML — auto-modeling lab** | Dataset build → training job → leaderboard → promotion gates → model reference, all driven from `/aml` or by agents through 10 `aml_*` tools. Python runtime bootstrapped with `uv` into an `./aml` asset root; artifacts and metadata stay under the config root. |
-| **AML hybrid twin × MPC** | Grey-box physics core + bounded PyTorch residual, `TwinSnapshot` / `VirtualTrial` / `RecommendationCertificate` with UQ/OOD screening and all-trajectory gates; the `hybrid_twin` channel profile injects 6 extra tools (`twin_*`, `mpc_optimize`). Trials stay virtual (`candidateExecuted=false`) and writes are recommendation-only until a certificate is certified. |
+| **AML — auto-modeling lab** | Dataset build → training job → leaderboard → promotion gates → model reference, all driven from `/aml` or by agents through **14 `aml_*` tools**. Python runtime bootstrapped with `uv` into an `aml/` asset root inside the config root; artifacts and metadata stay under the config root. Models carry a human-readable identity — label (line · recipe · objective), description and line/objective ids — selectable via `aml_model_find`. |
+| **AML hybrid twin × MPC** | Grey-box physics core + bounded PyTorch residual, `TwinSnapshot` / `VirtualTrial` / `RecommendationCertificate` with UQ/OOD screening and all-trajectory gates; the `hybrid_twin` channel profile injects **12 profile tools** (scene discovery/compile/freeze, physics-spec draft/validate/compile, snapshot, trial, MPC, gate, provider catalog) plus the general `twin_calibration_request`. Trials stay virtual (`candidateExecuted=false`) and writes are recommendation-only until a certificate is certified. |
+| **Two-mode optimization loop** | Dedicated channel templates split the loop **structurally**: an *aml-training* channel gets the modeling face (datasets, jobs, scene compile, physics specs, training plans — no plant writes, no MPC) and an *aml-optimization* channel gets the acting face (snapshots, trials, gate, MPC, Bayesian search `twin_bayes_optimize`, governed micro-writes `optimization_explore`) — training-while-optimizing is impossible by construction. **Exploration** mode writes through the governed chain with response read-back pairing (every write lands in an `optimization_explorations` ledger); **production** mode requires a bound model that cleared the twin gates (`aml` mode, `boundModelId` at instantiate time). |
 | **Runtime observability** | `GET /api/system/monitor` exposes the agent-team internals as numbers: root queue depth, watchdog interventions, harness session reuse, pending memory outbox — each guarded by a documented rollback switch, so new machinery can be turned off without a redeploy. |
-| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **111 settings across 16 groups** (32 live / 79 restart), no hardcoded defaults in code. |
+| **Line operations feed (`/operations`)** | One page for every touch on the plant: a live operation feed (REST snapshot + WS stream) classifies writes, DAQ, AML, recipe, rollback, alarm, line, manual and system actions into **nine categories**, renders structured **before → after diff badges** on write rows (failures marked red), and infers the **closed-loop phase** (monitor → exploration · small-step → recommendation search → shadow verification → production) straight from the event stream. The same feed powers a line-operations panel inside the workshop console. |
+| **External MCP gateway** | `aw mcp` starts a zero-dependency **stdio MCP server** (38 tools) that discovers a running instance automatically (env → lock file → config file) and exposes lines, recipes (incl. mark-good), governed DCW writes, semantic parameter mapping, DAQ queries, channels, team provisioning, model promotion, judge/rollback and plugin management to any MCP client — gated by the `mcp.enabled` runtime setting, with `--doctor` and `--print-config` helpers. |
+| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level, system timezone, MCP gate…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **113 settings across 18 groups** (34 live / 79 restart), no hardcoded defaults in code. |
+| **Configurable system timezone** | One `time.timeZone` setting (IANA id, live-applied) drives human-facing timestamps — logs, chat, audit, agent records and schedules — through a single formatter; machine timelines (DAQ samples, `timestamptz`) stay absolute. |
 | **Configurable cadences** | Sampling and query defaults/floors are **live settings** (`daq.sampling.*`, `daq.query.*`): hot-reloaded, clamped on node create/patch, and agent tool descriptions always carry the current values. |
 
 #### Digital twin
@@ -250,7 +254,7 @@ page headers stack, dense tables become scrollable ledgers with a pinned identit
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="Runtime monitor" width="100%" /><br/><sub><b>Runtime monitor.</b> Every wired channel, member count, dependency cycle and owner.</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 111 keys across 16 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 113 keys across 18 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="Plugins" width="100%" /><br/><sub><b>Plugins.</b> Three scopes, hot reload on edit, per-team switches.</sub></td>
 </tr>
 </table>
@@ -373,7 +377,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.49** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.50** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
@@ -422,6 +426,7 @@ Agent tool descriptions are re-rendered with the current values on every injecti
 | `aw stop` | Stop a running `aw` service instance via the single-instance lock |
 | `aw config list · get · set · unset · reset` | Read & write runtime settings (validated against the schema, atomic writes) |
 | `aw plugin list · create · enable · disable` | Manage plugins across all three scopes: inspect, scaffold (project scope; `--global` for user scope), enable/disable (state file, ~1 s hot reload on the running server) |
+| `aw mcp` | Industrial MCP stdio server (38 tools over the platform REST: lines, recipes, DCW writes, parameter mapping, DAQ, channels, teams, model promotion, plugins) — auto-discovers the running instance; `--doctor` diagnoses discovery/health/auth, `--print-config` emits a ready-to-paste MCP client config |
 | `aw home` | Inspect / initialize the config root `.AgentWorkShop` |
 | `aw init <dir>` | Scaffold a runnable project (full config system + CLI included) |
 | `aw register <path\|url\|npm:pkg>` | Register a new command — project-local or `--global` |
@@ -482,10 +487,13 @@ export async function run(argv, ctx) {
 
 The modeling half of the loop: `/aml` builds **datasets** out of tagged telemetry, submits **training jobs** to a `uv`-managed Python runtime, ranks runs on a **leaderboard**, and promotes a model only when it clears the configured **gates** (NRMSE, rollout NRMSE, validation/test gap, minimum rows and runs). Promoted models are referenced by id, so an MPC or shadow-twin controller can consume a versioned artifact instead of a vague "latest".
 
-- Agents do the same work through 10 tools (`aml_dataset_build`, `aml_job_submit`, `aml_job_status`, `aml_leaderboard`, `aml_model_promote`, …) — submit a goal and let the team train and report.
+- Agents do the same work through 14 tools (`aml_dataset_build`, `aml_job_submit`, `aml_job_status`, `aml_leaderboard`, `aml_model_promote`, `aml_model_find`, `aml_training_plan_*`, …) — submit a goal and let the team train and report.
 - The Python runtime bootstraps itself with `uv` into an `./aml` asset root inside the config root; dataset/artifact/metadata paths, disk quota, job timeout, concurrency and retention are all **settings** (16 in the `aml` group), not constants.
 - Governance defaults are conservative: cross-recipe datasets are refused unless explicitly allowed, and every job is attributed.
-- **Hybrid twin × MPC core**: AML also owns the *hybrid twin* plane — `SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` / `ObjectiveProfile` / `VirtualTrial` / `RecommendationCertificate` on top of a grey-box physics core with a bounded PyTorch residual, UQ/OOD screening and all-trajectory hard-constraint gates. Channels opt in through the `hybrid_twin` profile, which injects six extra agent tools (`twin_scene_read`, `twin_snapshot_create`, `twin_trial_run`, `mpc_optimize`, `twin_gate_evaluate`, `twin_calibration_request`); a trial is *virtual* by design (`candidateExecuted=false`) and a recommendation is only certified when gates and benefit pass. Server-side strategies are `safe_small_step` (insufficient data) and `precise_search` (model cleared gates). Plan + acceptance record: [`docs/aml-hybrid-twin-mpc-integration-plan.md`](./docs/aml-hybrid-twin-mpc-integration-plan.md), [`docs/aml-hybrid-twin-implementation-acceptance.md`](./docs/aml-hybrid-twin-implementation-acceptance.md).
+- **Hybrid twin × MPC core**: AML also owns the *hybrid twin* plane — `SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` / `ObjectiveProfile` / `VirtualTrial` / `RecommendationCertificate` on top of a grey-box physics core with a bounded PyTorch residual, UQ/OOD screening and all-trajectory hard-constraint gates. Channels opt in through the `hybrid_twin` profile, which injects twelve profile agent tools (`twin_provider_catalog`, `twin_scene_discover/compile/freeze`, `twin_physics_spec_draft/validate/compile`, `twin_scene_read`, `twin_snapshot_create`, `twin_trial_run`, `mpc_optimize`, `twin_gate_evaluate`) plus the general `twin_calibration_request`; a trial is *virtual* by design (`candidateExecuted=false`) and a recommendation is only certified when gates and benefit pass. Server-side strategies are `safe_small_step` (insufficient data) and `precise_search` (model cleared gates). Plan + acceptance record: [`docs/aml-hybrid-twin-mpc-integration-plan.md`](./docs/aml-hybrid-twin-mpc-integration-plan.md), [`docs/aml-hybrid-twin-implementation-acceptance.md`](./docs/aml-hybrid-twin-implementation-acceptance.md).
+- **Any-scene modeling loop**: the loop is not tied to a bundled scene. Bind nodes → `twin_scene_discover` infers control/state/disturbance/target/guard semantics with evidence → `twin_scene_compile` drafts a `SceneContract` → you confirm → `twin_scene_freeze` freezes it (immutable versions) → `twin_physics_spec_draft` proposes a skeleton PhysicsSpec (one first-order relaxation equation per state, τ/gain as calibratable prior-boxed parameters) that you refine → validate/compile (whitelisted AST, no arbitrary code) → `aml_job_submit { job_kind: 'hybrid_residual' }` runs without any code: the built-in reference trainer calibrates physics parameters (stage A), fits a 3-member bounded residual ensemble (stage B) and reports conformal q90 coverage (stage D) — the calibrated spec is written back and shared by evaluation, prediction and trials.
+- **Model-backed twin & continuous calibration**: `twin_trial_run` / `mpc_optimize` accept a `model_id` — the rollout is then driven by the trained hybrid model (calibrated physics + residual-ensemble ONNX, `ModelBackedHybridProvider`) with UQ coverage and member disagreement coming from training artifacts, and a dataset whose line/product/recipe doesn't match the scene is rejected (`TWIN_MODEL_SCENE_MISMATCH`). Calibration requests are consumed by a 60 s worker that re-submits `hybrid_residual` retraining *candidates* automatically; promotion still goes through HITL + Twin Gate (`AML_TWIN_WORKER_DISABLED=1` turns the worker off).
+- **Two-mode optimization loop**: `aw` ships two channel templates — `chtpl-aml-training-default` (modeling face: 22 tools, no plant writes, no MPC) and `chtpl-aml-optimization-default` (acting face: snapshot/trial/gate/MPC/Bayesian search plus `optimization_explore`, the governed micro-write that pairs every setpoint with its response read-back in an `optimization_explorations` ledger). The faces are mutually exclusive per channel; optimization channels instantiate either in **exploration** mode (governed small steps, no model required) or **aml** mode (`boundModelId` required — a gate-cleared model must be bound before the acting face unlocks).
 - **Twin provider plugin SDK (hot-loaded)**: an industrial scene's physics core / scene packs / objectives / solvers register through `ctx.twin` into the **Twin Provider Registry** (`registerPhysicsProvider` / `registerScenePack` / `registerObjectiveProfile` / `registerTrainingAdapter` / `registerSolverAdapter`, plus `listProviders` / `getProviderHealth` / `resolveProvider` / `validateProvider` / `retireProvider` / `isRegistryAvailable`). Twin tools resolve providers via `SceneContract.physicsProfileId` (falling back to the bundled `twin-injection-default`), so **swapping scenes changes neither tools nor channels**; a hot reload stages a new **generation** and drains the old one while trials and MPC hold leases, so in-flight work is never invalidated and `retireProvider` only unloads at zero references. The bundled injection provider ships through that same external contract (`server/plugins-builtin/twin-injection-default/`), and plugins live in the usual scopes with no restart for disable/reload. Field tables and a runnable example: [`docs/plugins.md`](./docs/plugins.md) → "Hybrid-twin provider plugins"; SDK surface: [`docs/sdk.md`](./docs/sdk.md) §4.10.
 
 ---
@@ -629,7 +637,7 @@ AgentWorkShop/
 │   ├── pages/                  # / · /workshop · /workshop/agents · /workshop/teams
 │   │                           # /workshop/channel-templates · /workshop/schedules · /workshop/w/:id
 │   │                           # /town · /daq · /daq/:id · /dcw · /dcw/:id
-│   │                           # /aml · /monitor · /logs · /permissions
+│   │                           # /aml · /operations · /monitor · /logs · /permissions
 │   │                           # /plugins · /users · /tokens · /settings
 │   ├── components/workshop/    # timeline · lanes · task board · memory panel · 3D town
 │   └── stores/composables/     # Pinia + AEP client
@@ -640,13 +648,14 @@ AgentWorkShop/
 │   │   ├── agents/             # AgentInterface: 14 engines (+ industrial tools)
 │   │   ├── daq/ dcw/ aml/      # edge runtimes · drivers · bus · storage · modeling lab
 │   │   └── db/                 # repos over node:sqlite
-│   ├── mcp/                    # MCP server (25 tools)
-│   ├── plugins-builtin/        # plugins shipped with the package (diag-bridge · rag-bridge · serial-bridge)
+│   ├── mcp/                    # MCP server (25 tools, in-process workshop face)
+│   ├── plugins-builtin/        # plugins shipped with the package (serial-bridge · rag-bridge · diag-bridge · twin-injection-default)
 │   └── plugins/                # runtime assembly (singletons)
+├── mcp/                        # aw mcp — zero-dependency stdio MCP gateway (38 tools, instance auto-discovery)
 ├── sdk/                        # agentworkshop/sdk — plugin context, hook bus, REST client, browser SDK
 ├── tui/                        # terminal workbench (aw tui)
 ├── shared/
-│   └── config/                 # schema.json (111 setting descriptors) + engine (merge/validate/persist) + path resolver
+│   └── config/                 # schema.json (113 setting descriptors) + engine (merge/validate/persist) + path resolver
 ├── config.yml                  # factory defaults (read at build/start; version comes from package.json)
 ├── .AgentWorkShop/             # config root in a checkout — prompts (versioned) + runtime overrides · data · logs · commands (git-ignored)
 ├── data/                       # legacy pre-migration location (auto-migrated into the config root)
@@ -741,6 +750,12 @@ building, so those files are the single source of truth for the single-page guid
 | Runtime observability: `GET /api/system/monitor` team metrics, each with a documented rollback switch | Shipped |
 | Industrial bench: integrated profile (83 checks, hard gate) + multi-scenario closed loops (injection / wwtp / anneal / BOPET) + quality-target optloop | Shipped |
 | Full-coverage acceptance wave matrix on a production build (~1100+ real assertions, 2026-09-24) | Shipped |
+| Twin provider plugin SDK: hot-loadable physics/scene/objective/training/solver providers via `ctx.twin`, generation-staged reload with lease draining, bundled provider shipped through the same external contract | Shipped |
+| Any-scene hybrid-twin modeling loop: scene discover → compile → freeze → physics-spec draft/validate/compile → reference-trainer job (physics calibration + residual ensemble + conformal UQ), model-backed trials, continuous-calibration worker | Shipped |
+| Two-mode optimization loop: dedicated `aml-training` / `aml-optimization` channel templates, mutually exclusive tool faces, exploration ↔ production modes with governed read-back-paired micro-writes | Shipped |
+| Line operations feed: `/operations` page + workshop-console panel, nine-category operation timeline, structured write diffs, closed-loop phase inference | Shipped |
+| External MCP gateway: `aw mcp` stdio server (38 tools), instance auto-discovery, `mcp.enabled` runtime gate | Shipped |
+| Configurable system timezone (`time.timeZone`, live) + recipe `stepLimit` per-parameter single-step bound + recipe `description` metadata | Shipped |
 | Production hardening: TLS, MQTT auth, OPC UA sign+encrypt defaults, structured audit log | Planned |
 | Edge deployment shape: standalone edge-agent + central broker | Planned |
 | Alarm outbound delivery (email/webhook) + ack workflow | Planned |

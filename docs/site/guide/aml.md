@@ -4,7 +4,8 @@
 自主完成「拉数 → 清洗 → 训练 → 平台评测 → 门禁迭代 → HITL 晋升 → 影子参考」全链路。
 
 ```
-拉数(隔离三元组) → 自动清洗 → 写代码训练 → 平台权威评测 → 门禁迭代 → HITL 晋升 → 影子模型参考
+拉数(隔离三元组) → 自动清洗 → 写代码训练 → 平台权威评测
+  → 门禁迭代 → HITL 晋升 → 影子模型参考
 ```
 
 调控 Agent 调参前经 `aml_model_reference` 查询生产模型,拿到「拟议参数 → 预测输出轨迹」的
@@ -13,16 +14,14 @@
 
 ## 资产根
 
-AML 的产物(数据集数组、作业工作区、ONNX 工件、uv 虚拟环境)是**可移植资产**,与运行时状态
-目录 `.AgentWorkShop` 分离,整个 `./aml` 可拷贝、可删除重建:
+AML 的产物(数据集数组、作业工作区、ONNX 工件、uv 虚拟环境)收敛在**配置根内的 `aml/` 子目录**——
+资产与运行时状态同根,`aw update`、更换检出都不会丢模型与 venv;整个目录可拷贝、可删除重建:
 
 | 优先级 | 条件 | 资产根 |
 |---|---|---|
 | ① | `AW_AML_DIR` 已设置 | 该目录(显式覆盖,优先级最高) |
-| ② | 检出内运行(`AW_MODE` 不为 `home`,且 cwd 向上找到 `config.yml` + `nuxt.config.ts`) | `<检出根>/aml` |
-| ③ | `AW_MODE=home`(全局安装 / 显式强制 home) | `<awHome>/aml`——`AW_HOME` 可重定向,**不是**写死 `~/.AgentWorkShop` |
-| ④ | 非检出目录,但 cwd 向上存在真实 `.AgentWorkShop/` 目录(`findLocalConfigRoot`,向上不越过 `$HOME`) | `<该项目 .AgentWorkShop>/aml` |
-| ⑤ | 其余任意目录兜底 | `<cwd>/aml` |
+| ② | 检出内运行(`AW_MODE` 不为 `home`) | `<检出配置根>/.AgentWorkShop/aml` |
+| ③ | 其余(home 模式 / 全局安装) | `<awHome>/aml`——`AW_HOME` 可重定向,**不是**写死 `~/.AgentWorkShop` |
 
 目录骨架:
 
@@ -32,6 +31,7 @@ aml/
   datasets/<id>/    spec.json 取数规格 · manifest.json 列定义 · report.json 质量报告 · arrays/*.f32
   jobs/<id>/        job.json 提交契约 · workspace/(train.py+amlkit.py) · run.log · artifacts/
   models/<id>/      model.onnx + io_spec.json(输入输出契约,不可变)
+  twins/            混合孪生工件(冻结场景 / 编译 PhysicsSpec / 试验与证书)
   runtime/          uv.json(一键安装记录)/ env.json
   tools/            平台自动安装的 uv 二进制(免管理员、不改系统 PATH)
 ```
@@ -82,30 +82,36 @@ CLI 例:`aw config set aml.gates.nrmse 0.12`、`aw config get aml.job.maxConcurr
 权限对齐产线 line grants:数据集读取与预测需 `readonly`,晋升需 `operate`;删除有引用保护
 (被实验或模型引用的数据集、production 阶段模型、运行中作业、已产出模型的作业一律拒绝删除)。
 
-## Agent 工具(10 个)
+## Agent 工具(14 个)
 
 | 工具 | 作用 |
 |---|---|
 | `aml_node_catalog` | 盘点可建模资产(节点语义 × 近 24h 数据量) |
 | `aml_dataset_build` | 构建数据集快照(隔离三元组 + 清洗 + beatMs 对齐 + 滑窗切分) |
 | `aml_dataset_stats` | 数据集统计报告(控制→目标滞后互相关 / 相关 / 逐 run 轮廓) |
-| `aml_job_submit` | 提交训练作业(可内联 train.py 代码) |
+| `aml_job_submit` | 提交训练作业(可内联 train.py 代码;`hybrid_residual` 作业可不带代码,走内置参考训练器) |
 | `aml_job_status` | 作业状态快照 |
 | `aml_job_logs` | 作业日志(排错) |
 | `aml_job_cancel` | 取消作业 |
 | `aml_leaderboard` | 排行榜(谱系 + 门禁明细 + 主指标) |
+| `aml_model_find` | 按场景语义选型(line/objective/关键词过滤注册表模型) |
 | `aml_model_promote` | 发起阶段晋升(lead 专属;内部走人工审批) |
 | `aml_model_reference` | 查询生产模型的影子参考(调参 what-if,拟议参数经 `controls` 传入) |
+| `aml_training_plan_list` | 列出建模任务(自动策略按新数据自动修正训练) |
+| `aml_training_plan_create` | 创建建模任务(场景 + 配方 + 目标 + 自动策略) |
+| `aml_training_plan_train` | 立即触发一次建模任务的训练 |
 
-这 10 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 63 条),
+这 14 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 70 条),
 与 MCP 面(`server/mcp/workshop-server.ts`,25 个进程内工具)是两套不同的表面。
+模型带人读身份:`label`(产线 · 配方 · 目标)+ `description` + `line_id`/`objective_id`。
 
 ## 混合孪生 × MPC(channel profile `hybrid_twin`)
 
 AML 还承载**混合孪生**平面:灰箱物理主干 + 有界 PyTorch 残差,外挂
 `SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` / `ObjectiveProfile` /
 `VirtualTrial` / `RecommendationCertificate` 六类契约。Channel 通过 profile 显式启用
-(`legacy` 默认 / `hybrid_twin` 启用),启用后按 profile 注入 6 个专属工具:
+(`legacy` 默认 / `hybrid_twin` 启用),启用后按 profile 注入 12 个专属工具
+(`twin_calibration_request` 为通用工具,双 profile 可见):
 
 | 工具 | 作用 |
 |---|---|
@@ -113,6 +119,7 @@ AML 还承载**混合孪生**平面:灰箱物理主干 + 有界 PyTorch 残差,�
 | `twin_scene_discover` | 读当前 Agent **已绑定的 DAQ/DCW 节点**,推断 control/state/disturbance/target/guard 语义并给出证据与置信度 |
 | `twin_scene_compile` | 依绑定节点与场景提示词生成 **SceneContract Draft**(默认 draft,上线前须用户确认) |
 | `twin_scene_freeze` | 用户确认后**冻结**场景契约(同一 `scene_id`/`version` 不可覆盖,变更须新建版本) |
+| `twin_physics_spec_draft` | 按冻结场景自动起草**骨架 PhysicsSpec**(每个状态一条一阶弛豫方程,τ/增益为带先验盒的可校准参数) |
 | `twin_physics_spec_validate` | 校验声明式物理模型的**白名单 AST / 变量参数引用 / 单位 / 边界 / 稳定性 / 单调性**,禁止任意代码执行 |
 | `twin_physics_spec_compile` | 把已冻结场景的 **PhysicsSpec 编译为隔离的 Generic Declarative Provider 候选**并保存 artifact(不注册 production、不写 PLC) |
 | `twin_scene_read` | 读取场景契约(设备/信号/约束/目标) |
@@ -150,6 +157,36 @@ AML 还承载**混合孪生**平面:灰箱物理主干 + 有界 PyTorch 残差,�
 **Twin Provider Registry**,孪生工具按 `SceneContract.physicsProfileId` 解析(解析不到回退内置
 `twin-injection-default`)。热重载按 generation 装载新代、排空旧代,在飞试验与 MPC 持租约不被作废。
 清单字段、生命周期与最小示例见 [插件开发指南 → 混合孪生 Provider 插件](/plugins/guide)。
+
+### 任意场景建模闭环(v0.7.50)
+
+闭环不再绑定内置场景,任何一条绑定过节点的产线都能走完「建模 → 门禁 → 投用」:
+
+1. `twin_scene_discover` 带证据推断语义 → `twin_scene_compile` 生成 SceneContract draft →
+   您确认 → `twin_scene_freeze` 冻结(版本不可覆盖);
+2. `twin_physics_spec_draft` 起草骨架 PhysicsSpec → 您按真实工况润色方程 →
+   `twin_physics_spec_validate` / `twin_physics_spec_compile`(白名单 AST,禁任意代码);
+3. `aml_job_submit { job_kind: 'hybrid_residual' }` **可不带代码**:内置参考训练器执行
+   A→B→D 协议 —— 物理参数校准(stage A)→ 3 成员有界残差集成(stage B)→
+   conformal q90 覆盖率(stage D);校准后的 θ 回写 manifest 内嵌 spec,评估/预测/试验三侧同源;
+4. `twin_trial_run` / `mpc_optimize` 传 `model_id` 即由训练出的 hybrid 模型驱动 rollout
+   (`ModelBackedHybridProvider`),UQ 覆盖率与成员分歧来自训练工件;模型数据集与场景的
+   line/product/recipe 不一致直接拒绝(`TWIN_MODEL_SCENE_MISMATCH`,配方隔离);
+5. `twin_calibration_request` 登记的信号由 **60s 持续校准 worker** 消费,自动提交重训
+   **候选**;只产 candidate,晋升仍走 HITL + Twin Gate(`AML_TWIN_WORKER_DISABLED=1` 可关闭)。
+
+### 双模式优化通道模板(v0.7.50)
+
+两个内置模板把「训练」与「优化」拆成**互斥的两个频道**,边训边优在结构上不可能:
+
+| 模板 | 工具面 | 能做什么 |
+|---|---|---|
+| `chtpl-aml-training-default` | 建模面(22 工具):数据集 / 作业 / 场景编译 / 物理 spec / 建模任务 | 训练与评估;**无产线写入、无 MPC** |
+| `chtpl-aml-optimization-default` | 执行面(6 工具):快照 / 试验 / 门禁 / MPC / `twin_bayes_optimize` / `optimization_explore` | 寻优与微调;**无训练族工具** |
+
+优化频道实例化时选 `optimizationMode`:**exploration**(治理小步微写,每笔写入与响应回读配对
+落 `optimization_explorations` 台账,无需模型)或 **aml**(`boundModelId` 必填——过门禁的模型
+先绑定,执行面才解锁)。
 
 内置团队 **`team-aml-shadow`**(「AML 影子建模团队」):1 名 lead(首席数据科学家)+ 3 名
 worker(数据工程师 / 训练工程师 / 评测工程师),默认 harness `omp`;从团队创建实例时先加成员。

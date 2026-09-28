@@ -75,7 +75,14 @@ freshest version.)
 
 - [Configuration](/en/guide/configuration) — four-layer precedence and the config root
 - [Your first agent × line session](/en/guide/first-session) — the full chain in 2 minutes
-- [Five-protocol DAQ & control](/en/guide/daq-protocols) — Modbus/OPC UA/MQTT/HTTP drivers
+- [Six-protocol DAQ & control](/en/guide/daq-protocols) — Modbus/OPC UA/MQTT/HTTP + the serial plugin
 - [Recipe versioning](/en/guide/recipe-versions) — attributed history and rollback
+- [AML auto-modeling](/en/guide/aml) — dataset → training → gates → promotion, hybrid twin × MPC
 - [SDK guide](/en/sdk/) — consume the platform from code
 - [Plugin development](/en/plugins/) — extend front and back
+
+> Two places worth a look right after deploying: the **Line operations** page in the sidebar
+> (`/operations`) — a live feed of every touch on the plant, classified into nine categories with
+> before → after diff badges on writes; and `aw mcp --doctor` in a terminal — the MCP server that
+> exposes the platform as 38 tools and auto-discovers the running instance (gated by the
+> `mcp.enabled` setting).
