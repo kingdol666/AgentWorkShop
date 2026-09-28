@@ -31,6 +31,8 @@ export interface RunningJob {
   logLines: string[]
   protocolBadLines: number
   killed: boolean
+  /** 最近一条 ##AML error 协议消息(评估器的人读失败原因走 stdout;stderr 尾常为空) */
+  lastProtocolError?: string
 }
 
 export interface OrchestratorState {

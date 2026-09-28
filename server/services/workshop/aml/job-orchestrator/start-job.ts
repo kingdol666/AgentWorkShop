@@ -140,8 +140,11 @@ export async function startJob(row: AmlJobRow): Promise<void> {
     const exit2 = await runPython(run, vpy, [evalScript, '--job', join(jobDir, 'job.json')], jobDir)
     if (run.killed) return
     if (exit2.code !== 0) {
-      rt.repo.job.fail(row.id, 'failed', `评估失败:${lastErrLine(exit2.errTail)}(永久错误不重试)`, new Date().toISOString())
-      experimentFail(run, `评估失败:${lastErrLine(exit2.errTail)}`)
+      // 失败原因优先取评估器的 ##AML error 协议消息(如「test 切分为空…」,人读可操作);
+      // stderr 尾兜底 —— 评估器把错误走 stdout 协议行时 errTail 常为空,只给 "exit" 无从排查。
+      const reason = run.lastProtocolError || lastErrLine(exit2.errTail)
+      rt.repo.job.fail(row.id, 'failed', `评估失败:${reason}(永久错误不重试)`, new Date().toISOString())
+      experimentFail(run, `评估失败:${reason}`)
       finishRun(run)
       return
     }

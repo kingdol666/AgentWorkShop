@@ -96,5 +96,6 @@ export function handleProtocolLine(run: RunningJob, rawLine: string): void {
   }
   else if (evt.type === 'error' && evt.message) {
     pushLog(run, `[error] ${evt.message}`)
+    run.lastProtocolError = String(evt.message).slice(0, 300) // 结题失败原因优先用它(见 start-job 评估段)
   }
 }

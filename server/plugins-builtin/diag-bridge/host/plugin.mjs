@@ -68,17 +68,24 @@ export default {
         if (Date.now() - last < AUTO_COOLDOWN_MS) return
         const now = Date.now()
         ctx.kv.set(`cooldown:${line}`, now) // 先占冷却,防同窗连发
-        startDiagnosis(ctx, {
-          line,
-          fromMs: now - 60 * MIN,
-          toMs: now,
-          question: `${line} 产线该时窗数据深度根因诊断(自动触发:节点 ${s.nodeId} 采样值 ${s.value} ${rule.op === 'lt' ? '<' : '>'} ${rule.value})`,
-          scene: `${line}_auto`,
-          source: 'auto',
-        }).then((r) => {
-          if (r.ok) ctx.logger.warn(`自动诊断已发起:产线 ${line} runId=${r.runId}(节点 ${s.nodeId}=${s.value} 越限)`)
-          else ctx.logger.warn(`自动诊断发起失败(产线 ${line}): ${r.error}`)
-        }).catch(() => {})
+        // 首拍竞态:开线后首个越限样本即刻触发,快照查询早于 tsdb 首次刷盘(TSDB_FLUSH_MS=500ms)
+        // → 时窗查空失败。空窗失败定向重试(≤3 次、间隔 5s,总窗 ≤20s);冷却不回滚,仍只此一次派发。
+        const question = `${line} 产线该时窗数据深度根因诊断(自动触发:节点 ${s.nodeId} 采样值 ${s.value} ${rule.op === 'lt' ? '<' : '>'} ${rule.value})`
+        const attempt = (n) => {
+          startDiagnosis(ctx, {
+            line,
+            fromMs: now - 60 * MIN,
+            toMs: now,
+            question,
+            scene: `${line}_auto`,
+            source: 'auto',
+          }).then((r) => {
+            if (r.ok) ctx.logger.warn(`自动诊断已发起:产线 ${line} runId=${r.runId}(节点 ${s.nodeId}=${s.value} 越限)`)
+            else if (n < 3 && String(r.error ?? '').includes('无数采样本')) setTimeout(() => attempt(n + 1), 5000)
+            else ctx.logger.warn(`自动诊断发起失败(产线 ${line}): ${r.error}`)
+          }).catch(() => {})
+        }
+        attempt(0)
       }
       catch { /* 钩子内绝不抛 */ }
     })

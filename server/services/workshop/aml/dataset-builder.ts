@@ -194,7 +194,9 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
       continue
     }
 
-    // 公共网格:[max(t0), min(t1)];逐节点最近邻对齐,网格点缺失计 NaN
+    // 公共网格:[max(t0), min(t1)];逐节点最近邻对齐,网格点缺失计 NaN。
+    // 全节点查空(如该 run 采样缺失/时序库丢数)时 g0/g1 保持 ±Infinity,
+    // 必须按丢弃处理 —— 否则 steps=Infinity 会把网格循环推到 RangeError(500)。
     let g0 = -Infinity
     let g1 = Infinity
     for (const n of order) {
@@ -206,7 +208,7 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
       g0 = Math.max(g0, first.at)
       g1 = Math.min(g1, last.at)
     }
-    const steps = g1 > g0 ? Math.floor((g1 - g0) / beat) + 1 : 0
+    const steps = Number.isFinite(g0) && Number.isFinite(g1) && g1 > g0 ? Math.floor((g1 - g0) / beat) + 1 : 0
     if (steps < spec.window.historySteps + spec.window.horizonSteps + 2) {
       runsDropped.push({ runId: run.id, reason: `有效网格 ${steps} 步不足一个窗口` })
       continue
