@@ -53,7 +53,41 @@ async function backupOne(src: string, target: string): Promise<void> {
   }
 }
 
-async function backupOnce(dataDir: string): Promise<void> {
+/** 数据目录内的 JSON 仓储/状态文件(kv、参数面、节点绑定、插件 kv 等)+ 上级配置根的 config.yml/runtime-settings.json */
+async function backupFlatFiles(dataDir: string, backupDir: string, stamp: string): Promise<void> {
+  const bundleDir = resolve(backupDir, `files-${stamp}`)
+  mkdirSync(bundleDir, { recursive: true })
+  const targets: Array<{ src: string, name: string }> = []
+  // dataDir 下所有 .json(逐文件拷贝,目录型子树由各自仓储自轮转,不整树递归)
+  try {
+    for (const f of readdirSync(dataDir, { withFileTypes: true })) {
+      if (f.isFile() && f.name.endsWith('.json')) targets.push({ src: resolve(dataDir, f.name), name: f.name })
+    }
+  }
+  catch { /* 数据目录不可读时跳过 JSON 面 */ }
+  // 配置根(config.yml + runtime-settings.json)——重建实例的"怎么做"半边
+  try {
+    const homeMod = await import('@/shared/config/home.mjs')
+    const rm = homeMod.resolveRunMode({ cwd: process.cwd(), env: process.env })
+    for (const cfg of ['config.yml', 'runtime-settings.json']) {
+      const p = resolve(rm.configRoot, cfg)
+      if (existsSync(p)) targets.push({ src: p, name: cfg })
+    }
+  }
+  catch { /* 模式解析失败只降级 JSON 面 */ }
+  for (const t of targets) {
+    try {
+      const tmp = resolve(bundleDir, `${t.name}.tmp`)
+      await copyFileAsync(t.src, tmp)
+      renameSync(tmp, resolve(bundleDir, t.name))
+    }
+    catch (err) {
+      console.error(`[backup] ${t.name} 快照失败:`, err instanceof Error ? err.message : err)
+    }
+  }
+}
+
+export async function backupOnce(dataDir: string): Promise<void> {
   const backupDir = resolve(dataDir, 'backups')
   mkdirSync(backupDir, { recursive: true })
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
@@ -69,6 +103,8 @@ async function backupOnce(dataDir: string): Promise<void> {
       console.error(`[backup] ${file} 快照失败:`, err instanceof Error ? err.message : err)
     }
   }
+  // JSON 仓储 + 配置面快照(三库之外的可重建性半边)
+  await backupFlatFiles(dataDir, backupDir, stamp)
   // 轮转:每库仅保留最近 backup.keep 份(按文件名内时间戳倒序;env BACKUP_KEEP 兼容)
   const keep = Math.max(1, backupSettings().keep)
   for (const file of DB_FILES) {
@@ -83,9 +119,28 @@ async function backupOnce(dataDir: string): Promise<void> {
       catch { /* 轮转失败不致命 */ }
     }
   }
+  // files-<stamp>/ 目录同 keep 轮转
+  const fileBundles = readdirSync(backupDir)
+    .filter(f => f.startsWith('files-') && !f.includes('.'))
+    .sort()
+    .reverse()
+  for (const stale of fileBundles.slice(keep)) {
+    try {
+      rmSync(resolve(backupDir, stale), { recursive: true })
+    }
+    catch { /* 轮转失败不致命 */ }
+  }
   console.log('[backup] 快照完成 →', backupDir)
   // R4:记录最近一次成功备份时间,供 /api/metrics 观测
   g.__awBackupLastAt = new Date().toISOString()
+  // 备份成败留痕(audit_log;动态导入避免插件装载期循环依赖)
+  void import('../services/workshop/ops/ops').then(({ recordOps }) => {
+    recordOps({
+      actor: 'system', actorName: 'backup', actorKind: 'system',
+      action: 'system.backup.run', kind: 'system',
+      summary: `数据库快照完成(${DB_FILES.length} 库 + JSON/配置)→ ${backupDir}`,
+    })
+  }).catch(() => {})
 }
 
 export default function backupPlugin() {

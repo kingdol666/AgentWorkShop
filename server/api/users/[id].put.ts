@@ -4,11 +4,18 @@ import { userService } from '../../services/user.service'
 import { defineApiHandler } from '../../utils/response'
 import { zValidator } from '../../utils/validate'
 import { requireAdmin } from '../workshop/caller'
+import { recordOps } from '../../services/workshop/ops/ops'
 
 /** PUT /api/users/:id —— 更新用户（部分字段） */
 export default defineApiHandler(async (event) => {
-  requireAdmin(event)
+  const admin = requireAdmin(event)
   const id = getRouterParam(event, 'id') ?? ''
   const body = await readValidatedBody(event, zValidator(userUpdateSchema)) as UserUpdate
-  return userService.update(id, body)
+  const user = userService.update(id, body)
+  recordOps({
+    actor: admin.id, actorName: admin.name, actorKind: 'user',
+    action: 'user.update', kind: 'system', targetKind: 'user', targetId: id,
+    summary: `更新用户 ${id}(字段:${Object.keys(body).join(', ')})`,
+  })
+  return user
 })

@@ -4,13 +4,14 @@
  * 返回 { logs: [...], count }。行结构 = audit_log 投影(id/actor/actorKind/kind/summary/detailJson…)。
  */
 import { getQuery } from 'h3'
-import { resolveUser } from '@/server/api/workshop/caller'
+import { requireRole } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getOps } from '../../../services/workshop/ops/ops'
 import { AppError } from '../../../utils/errors'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  // 全局审计台账含跨产线运维信息,收权到 admin/editor(普通用户走产线维度自己的记录)
+  requireRole(event)
   const repo = getOps()?.audit
   if (!repo)
     throw new AppError(503, 'UNAVAILABLE', '运维日志仓储未就绪')

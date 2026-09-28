@@ -10,13 +10,23 @@ import { readBody } from 'h3'
 import { defineApiHandler } from '../../../utils/response'
 import { requireRole } from '../../workshop/caller'
 import { getSystemConfigService } from '../../../services/system-config'
+import { recordOps } from '../../../services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
-  requireRole(event, ['admin'])
+  const user = requireRole(event, ['admin'])
   const body = (await readBody<Record<string, unknown>>(event)) ?? {}
   const overrides = body.override ?? body.overrides ?? body
   if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) {
     return { ok: false, message: '请求体应为 { "override": { key: value } }' }
   }
-  return { ok: true, ...getSystemConfigService().patch(overrides as Record<string, unknown>) }
+  const res = getSystemConfigService().patch(overrides as Record<string, unknown>)
+  // 高危管理面留痕:改了哪些键(值不落审计——可能含凭据),谁改的
+  if (res.changed?.length) {
+    recordOps({
+      actor: user.id, actorName: user.name, actorKind: 'user',
+      action: 'system.settings.update', kind: 'system',
+      summary: `运行时设置变更:${res.changed.join(', ')}`,
+    })
+  }
+  return { ok: true, ...res }
 })

@@ -296,6 +296,8 @@ export default {
       security: {
         hitlTimeoutMs: 'HITL 审批超时(ms)',
         approvalGate: '高危操作双人复核',
+        allowRegistration: '开放自助注册',
+        hstsEnabled: '下发 HSTS 头',
       },
       server: {
         host: '监听地址',

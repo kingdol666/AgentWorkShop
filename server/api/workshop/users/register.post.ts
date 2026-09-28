@@ -10,12 +10,19 @@ import { readValidatedBody } from 'h3'
 import { zValidator } from '../../../utils/validate'
 import { defineApiHandler } from '../../../utils/response'
 import { userService } from '../../../services/user.service'
+import { userRepository } from '../../../repositories/user.repository'
+import { settingOf } from '../../../services/workshop/settings'
+import { AppError } from '../../../utils/errors'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'name 必填').max(64, 'name 过长'),
 })
 
 export default defineApiHandler(async (event) => {
+  // 公网部署闸门:与 /api/users/register 同一开关(首 admin 未就位时不受限)
+  if (settingOf('security.allowRegistration') === false && userRepository.hasActiveAdmin()) {
+    throw new AppError(403, 'REGISTRATION_CLOSED', '自助注册已关闭(security.allowRegistration=false),请联系管理员开通账号')
+  }
   const body = await readValidatedBody(event, zValidator(schema))
   const name = body.name.trim()
   const email = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}@workshop.local`

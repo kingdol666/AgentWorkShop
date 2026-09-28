@@ -3,13 +3,14 @@
  * 生成新版本(非破坏;历史完整保留)。body: { version?: number, toLastGood?: boolean, reason: string }。
  */
 import { getRouterParam, readBody } from 'h3'
-import { resolveUser } from '@/server/api/workshop/caller'
+import { requireRole } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { AppError, ErrorCodes } from '@/server/utils/errors'
 
 export default defineApiHandler(async (event) => {
-  const user = resolveUser(event)
+  // 与 apply/rollback-good 同一角色门:配方回退是产线写操作,admin/editor 专属
+  const user = requireRole(event)
   const id = getRouterParam(event, 'id') ?? ''
   const body = await readBody<{ version?: number, toLastGood?: boolean, reason?: string }> (event) ?? {}
   if (!body.toLastGood && body.version == null) {

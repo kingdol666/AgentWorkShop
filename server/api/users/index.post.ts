@@ -4,10 +4,17 @@ import { userService } from '../../services/user.service'
 import { defineApiHandler } from '../../utils/response'
 import { zValidator } from '../../utils/validate'
 import { requireAdmin } from '../workshop/caller'
+import { recordOps } from '../../services/workshop/ops/ops'
 
 /** POST /api/users —— 创建用户 */
 export default defineApiHandler(async (event) => {
-  requireAdmin(event)
+  const admin = requireAdmin(event)
   const body = await readValidatedBody(event, zValidator(userCreateSchema)) as UserCreate
-  return userService.create(body)
+  const user = userService.create(body)
+  recordOps({
+    actor: admin.id, actorName: admin.name, actorKind: 'user',
+    action: 'user.create', kind: 'system', targetKind: 'user', targetId: user.id,
+    summary: `创建用户 ${user.name}(${user.role})`,
+  })
+  return user
 })

@@ -23,6 +23,12 @@ export default defineApiHandler(async (event) => {
     const n = Number(v)
     return v != null && v !== '' && Number.isFinite(n) ? n : undefined
   }
+  // 边界健壮性:超大有限数/负数会打穿下游(SQLite OFFSET/负 LIMIT 等)→ 500;在门口校验成 400
+  for (const [k, v] of [['from', num(q.from)], ['to', num(q.to)], ['bucketMs', num(q.bucketMs)], ['limit', num(q.limit)]] as const) {
+    if (v !== undefined && (!Number.isSafeInteger(v) || v < 0)) {
+      throw new AppError(400, 'VALIDATION_ERROR', `查询参数 ${k} 必须为非负安全整数`)
+    }
+  }
   const result = await getDcwController().lineQuery({
     lineId: q.lineId ? String(q.lineId) : undefined,
     productId: q.productId ? String(q.productId) : undefined,

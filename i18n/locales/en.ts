@@ -296,6 +296,8 @@ export default {
       security: {
         hitlTimeoutMs: 'HITL approval timeout (ms)',
         approvalGate: 'Dual approval for high-risk ops',
+        allowRegistration: 'Open self-service registration',
+        hstsEnabled: 'Send HSTS header',
       },
       server: {
         host: 'Listen address',

@@ -2,11 +2,13 @@
  * GET /api/metrics —— 运维指标端点(R4,production-readiness-plan)。
  *
  * text/plain 简易指标格式(键值行,Prometheus 可用 textfile/自定义采集器接入)。
- * 无鉴权:仅暴露聚合计数与时间戳,不含业务数据;内网部署语义。
+ * 鉴权:任意有效用户 token(Bearer)——聚合计数与时间戳不含业务数据,
+ * 但公网部署下不向匿名暴露运行面信息;采集器配 Token 头即可接入。
  * 只读 globalThis 单例(不主动实例化),服务未装配时输出 0 —— 首次抓取即合法。
  */
 import { defineEventHandler, setResponseHeader } from 'h3'
 import { getOps } from '../services/workshop/ops/ops'
+import { resolveUser } from './workshop/caller'
 
 interface MetricLine { name: string, help: string, value: number | string }
 
@@ -15,6 +17,7 @@ function fmt(lines: MetricLine[]): string {
 }
 
 export default defineEventHandler(async (event) => {
+  resolveUser(event)
   const g = globalThis as typeof globalThis & {
     __daqController?: { controllerState(): Record<string, number | boolean>, running?: boolean }
     __daqQueue?: { lost?: number }

@@ -139,7 +139,8 @@ function importLegacyWorkshopUsers(d: DatabaseSync): void {
     insertUser.run(row.id, row.name, email, hashPassword(randomPassword()), 'user', 'active', row.created_at ?? now())
     const hash = hashToken(row.token)
     if (!tokenExists.get(hash)) {
-      insertToken.run(randomUUID(), row.id, 'legacy', hash, row.token, row.created_at ?? now())
+      // 安全基线:token_plain 不落明文(哈希即可鉴权;明文列仅为旧库形状兼容,恒 NULL)
+      insertToken.run(randomUUID(), row.id, 'legacy', hash, null, row.created_at ?? now())
     }
   }
 }
@@ -241,17 +242,21 @@ function toUser(row: Record<string, unknown>): User {
 export const userRepository = {
   list({ page, pageSize, keyword }: UserListQuery): Paginated<User> {
     const d = getDb()
-    const kw = keyword?.toLowerCase() ?? ''
+    // 分页边界钳制:超大/非法分页参数在 SQL 外收口(OFFSET 1e20 会打穿 sqlite 抛 500)
+    const safePage = Number.isSafeInteger(page) && page >= 1 ? page : 1
+    const safeSize = Number.isSafeInteger(pageSize) && pageSize >= 1 ? Math.min(pageSize, 200) : 20
+    // LIKE 通配符转义:用户关键词里的 %/_ 按字面匹配,不放大匹配面(ESCAPE 子句配套)
+    const kw = keyword?.toLowerCase() ? keyword.toLowerCase().replace(/[\\%_]/g, ch => `\\${ch}`) : ''
     const where = kw
-      ? `WHERE LOWER(name) LIKE ? OR LOWER(email) LIKE ?`
+      ? `WHERE LOWER(name) LIKE ? ESCAPE '\\' OR LOWER(email) LIKE ? ESCAPE '\\'`
       : ''
     const params = kw ? [`%${kw}%`, `%${kw}%`] : []
     const total = (d.prepare(`SELECT COUNT(*) AS n FROM users ${where}`).get(...params) as { n: number }).n
     const rows = d.prepare(
       `SELECT id, name, email, role, status, created_at AS createdAt FROM users ${where}
        ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    ).all(...params, pageSize, (page - 1) * pageSize) as Array<Record<string, unknown>>
-    return { items: rows.map(toUser), total, page, pageSize }
+    ).all(...params, safeSize, (safePage - 1) * safeSize) as Array<Record<string, unknown>>
+    return { items: rows.map(toUser), total, page: safePage, pageSize: safeSize }
   },
 
   /** 全量用户(不分页;管理面授权矩阵用,避免分页截断) */

@@ -21,7 +21,8 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { createWorkshopMcpServer } from '../../mcp/workshop-server'
 import { getWorkshopManager } from '../../plugins/workshop'
 
-/** 会话注册表:sessionId → transport(stateful 会话状态保留) */
+/** 会话注册表:sessionId → transport(stateful 会话状态保留);上限防匿名刷爆内存 */
+const MAX_MCP_SESSIONS = 64
 const sessions = new Map<string, WebStandardStreamableHTTPServerTransport>()
 
 /** h3 event → web Request(跨 h3 1.x/2.x 兼容:不用版本互异的转换助手) */
@@ -65,6 +66,12 @@ export default defineEventHandler(async (event) => {
 
   // 新会话:预生成 sessionId,transport 在 initialize 时把它写入响应头
   if (!transport) {
+    if (sessions.size >= MAX_MCP_SESSIONS) {
+      return new Response(JSON.stringify({ error: 'TOO_MANY_SESSIONS', message: `MCP 会话数已达上限 ${MAX_MCP_SESSIONS}` }), {
+        status: 429,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
     const newSessionId = randomUUID()
     transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: () => newSessionId,

@@ -112,7 +112,8 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
           .optional(),
       },
     },
-    async (args) => {
+    async (args, extra) => {
+      requireCaller(manager, extra)
       const result = await manager.createChannel({
         name: args.name,
         description: args.description,
@@ -128,8 +129,11 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       description: '全部 channel',
       inputSchema: {},
     },
-    async () => {
-      return jsonResult(await manager.listChannels())
+    async (_args, extra) => {
+      const caller = requireCaller(manager, extra)
+      // 隔离:Agent 只能看到自己所在 channel(与 workshop.agent.list 同哲学)
+      const all = await manager.listChannels()
+      return jsonResult(all.filter(c => c.id === caller.channelId))
     },
   )
 
@@ -139,7 +143,9 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       description: '删除(级联)',
       inputSchema: { channelId: z.string() },
     },
-    async (args) => {
+    async (args, extra) => {
+      const caller = requireCaller(manager, extra)
+      if (args.channelId !== caller.channelId) throw new Error('FORBIDDEN: 只能删除自己所在 channel')
       await manager.removeChannel(args.channelId)
       return jsonResult({ ok: true })
     },
@@ -157,7 +163,8 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
         config: z.record(z.string(), z.unknown()).optional(),
       },
     },
-    async (args) => {
+    async (args, extra) => {
+      requireCaller(manager, extra)
       const result = await manager.createAgent({
         name: args.name,
         harness: args.harness,
@@ -177,7 +184,9 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
         role: z.enum(['lead', 'worker']),
       },
     },
-    async (args) => {
+    async (args, extra) => {
+      const caller = requireCaller(manager, extra)
+      if (args.channelId !== caller.channelId) throw new Error('FORBIDDEN: 只能向自己所在 channel 添加 Agent')
       const result = await manager.addAgentToChannel({
         channelId: args.channelId,
         agentId: args.agentId,
@@ -193,7 +202,8 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       description: '列出全部 Agent 模板(全局可复用)',
       inputSchema: {},
     },
-    async () => {
+    async (_args, extra) => {
+      requireCaller(manager, extra)
       return jsonResult(await manager.listAgents())
     },
   )
@@ -216,7 +226,8 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       description: '删除 Agent 模板(已克隆实例保留)',
       inputSchema: { agentId: z.string() },
     },
-    async (args) => {
+    async (args, extra) => {
+      requireCaller(manager, extra)
       await manager.removeAgent(args.agentId)
       return jsonResult({ ok: true })
     },
@@ -235,7 +246,9 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
         parts: z.array(partSchema).optional(),
       },
     },
-    async (args) => {
+    async (args, extra) => {
+      const caller = requireCaller(manager, extra)
+      if (args.channelId !== caller.channelId) throw new Error('FORBIDDEN: 只能向自己所在 channel 提交任务')
       const result = await manager.submitChannelTask({
         channelId: args.channelId,
         title: args.title,
@@ -441,7 +454,8 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       description: '列出数字孪生设备(含 telemetry/state/desired)。Agent 据此判断哪些设备可控、当前状态如何。',
       inputSchema: { workspaceId: z.string().optional() },
     },
-    async (args) => {
+    async (args, extra) => {
+      requireCaller(manager, extra)
       return jsonResult(getDeviceTwinRepo().listAll(args.workspaceId))
     },
   )
@@ -452,7 +466,8 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       description: '读取单个设备实时遥测 + 运行状态 + 可用指令集。数字人作业前先 read 感知设备当前情况。',
       inputSchema: { deviceId: z.string() },
     },
-    async (args) => {
+    async (args, extra) => {
+      requireCaller(manager, extra)
       const twin = getDeviceTwinRepo().findById(args.deviceId)
       if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
       return jsonResult(twin)
@@ -469,7 +484,11 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
         args: z.record(z.string(), z.unknown()).optional(),
       },
     },
-    async (args) => {
+    async (args, extra) => {
+      const caller = requireCaller(manager, extra)
+      const bound = getDeviceTwinRepo().findById(args.deviceId)
+      if (!bound) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
+      if (bound.boundAgentId && bound.boundAgentId !== caller.id) throw new Error('FORBIDDEN: 设备已被其他 Agent 绑定')
       const twin = getDeviceTwinRepo().applyControl(args.deviceId, args.command, args.args ?? {})
       if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
       return jsonResult(twin)
@@ -485,7 +504,11 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
         telemetry: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])),
       },
     },
-    async (args) => {
+    async (args, extra) => {
+      const caller = requireCaller(manager, extra)
+      const bound = getDeviceTwinRepo().findById(args.deviceId)
+      if (!bound) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
+      if (bound.boundAgentId && bound.boundAgentId !== caller.id) throw new Error('FORBIDDEN: 设备已被其他 Agent 绑定')
       const twin = getDeviceTwinRepo().applyTelemetry(args.deviceId, args.telemetry)
       if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
       return jsonResult({ state: twin.state, telemetry: twin.telemetry })

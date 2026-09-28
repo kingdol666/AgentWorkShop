@@ -246,7 +246,7 @@ function bearerTokenOf(event: H3Event): string | undefined {
   return match?.[1]?.trim()
 }
 
-/** 取消任务:优先 token 关联 agent;无 caller 时以任务所在 channel 的 lead 作为系统身份 */
+/** 取消任务:一律以 Bearer token 关联的 agent 身份(无 token 一律 401,不再以 lead 系统身份回退) */
 async function cancelTaskWithCaller(
   manager: AgentChannelManager,
   event: H3Event,
@@ -254,13 +254,23 @@ async function cancelTaskWithCaller(
 ): Promise<WorkspaceTask> {
   const token = bearerTokenOf(event)
   const caller = token ? manager.findByToken(token) : undefined
-  if (caller) return manager.cancelTask(caller.channelId, caller.id, { taskId })
-  const task = internalsOf(manager).getTaskEngine().get(taskId)
-  if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
-  const agents = await manager.listChannelAgents(task.channelId)
-  const lead = agents.find(a => a.role === 'lead')
-  if (!lead) throw new AppError(400, 'NO_LEAD_AGENT', `channel ${task.channelId} 无 lead,无法以系统身份取消`)
-  return manager.cancelTask(lead.channelId, lead.id, { taskId })
+  if (!caller) throw new AppError(401, 'UNAUTHORIZED', 'tasks/cancel 需要有效 Agent token(Authorization: Bearer)')
+  return manager.cancelTask(caller.channelId, caller.id, { taskId })
+}
+
+/**
+ * A2A 统一身份门:Bearer token 必须有效,且 URL agent 与 caller 同 channel
+ * (编排器以自己 token 调同 channel 其他 agent 的端点是合法流;跨 channel/匿名一律拒绝)。
+ * 返回 URL 指向的目标 agent(作用域身份)。
+ */
+function requireA2ACaller(manager: AgentChannelManager, event: H3Event, agentId: string): AgentInfo {
+  const token = bearerTokenOf(event)
+  const caller = token ? manager.findByToken(token) : undefined
+  if (!caller) throw new AppError(401, 'UNAUTHORIZED', 'A2A 调用需要有效 Agent token(Authorization: Bearer)')
+  const target = findAgent(manager, agentId)
+  if (!target) throw new AppError(404, 'NOT_FOUND', `Agent not found: ${agentId}`)
+  if (target.channelId !== caller.channelId) throw new AppError(403, 'FORBIDDEN', 'A2A 目标 agent 与 token 身份不在同一 channel')
+  return target
 }
 
 // ===== SSE(tasks/sendSubscribe) =====
@@ -342,35 +352,35 @@ async function dispatch(
 ): Promise<unknown> {
   switch (method) {
     case 'tasks/send': {
+      const agent = requireA2ACaller(manager, event, agentId)
       const p = parseParams(sendParamsSchema, params)
-      const agent = findAgent(manager, agentId) ?? fail(-32001, `Agent not found: ${agentId}`)
       const task = await submitTask(manager, agent, p)
       const final = await waitTerminal(manager, task.id)
       return ok(id, toA2ATask(final))
     }
     case 'tasks/sendSubscribe': {
+      const agent = requireA2ACaller(manager, event, agentId)
       const p = parseParams(sendParamsSchema, params)
-      const agent = findAgent(manager, agentId) ?? fail(-32001, `Agent not found: ${agentId}`)
       const stream = createEventStream(event)
       void runSubscribe(stream, manager, agent, p)
       // h3 EventStream 必须经 send() 激活(否则被当普通对象 JSON 序列化,SSE 从未生效)
       return stream.send()
     }
     case 'tasks/get': {
+      const agent = requireA2ACaller(manager, event, agentId)
       const p = parseParams(taskIdParamsSchema, params)
-      const agent = findAgent(manager, agentId) ?? fail(-32001, `Agent not found: ${agentId}`)
       const task = await manager.getTask(agent.channelId, agent.id, p.taskId)
       return ok(id, toA2ATask(task))
     }
     case 'tasks/list': {
+      const agent = requireA2ACaller(manager, event, agentId)
       parseParams(noopParamsSchema, params)
-      const agent = findAgent(manager, agentId) ?? fail(-32001, `Agent not found: ${agentId}`)
       const tasks = await manager.listTasks(agent.channelId, agent.id)
       return ok(id, tasks.map(toA2ATask))
     }
     case 'tasks/cancel': {
       const p = parseParams(taskIdParamsSchema, params)
-      if (!findAgent(manager, agentId)) fail(-32001, `Agent not found: ${agentId}`)
+      requireA2ACaller(manager, event, agentId)
       const canceled = await cancelTaskWithCaller(manager, event, p.taskId)
       return ok(id, toA2ATask(canceled))
     }

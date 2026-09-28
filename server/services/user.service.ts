@@ -23,6 +23,12 @@ export function resolveUserByToken(token: string): UserProfile | null {
 }
 
 export const userService = {
+  /**
+   * 登录防爆破:同 IP+邮箱在 15 分钟窗口内累计失败 ≥5 次 → 锁到窗口结束(429)。
+   * 内存态,重启即清;多实例部署由反代层限流补齐。计数表封顶 5000 条防内存滥用。
+   */
+  _loginFails: new Map<string, { count: number, firstAt: number }>(),
+
   // ===== 管理面（与既有契约一致）=====
 
   list(input: UserListInput) {
@@ -104,9 +110,25 @@ export const userService = {
   },
 
   /** 登录：密码校验通过后签发新 token（每次登录生成一个可独立吊销的会话 token） */
-  login(input: UserLogin): AuthResult {
+  login(input: UserLogin, opts: { ip?: string } = {}): AuthResult {
+    const FAIL_WINDOW_MS = 15 * 60_000
+    const LOCK_THRESHOLD = 5
+    const lockKey = `${opts.ip ?? 'local'}|${input.email.toLowerCase()}`
+    const fails = this._loginFails
+    if (fails.size > 5000) {
+      const oldest = fails.keys().next().value
+      if (oldest) fails.delete(oldest)
+    }
+    const rec = fails.get(lockKey)
+    // 已达阈值且窗口未过 → 锁定;偶发失败(1-4 次)不锁,窗口滑过即重置
+    if (rec && rec.count >= LOCK_THRESHOLD && Date.now() - rec.firstAt < FAIL_WINDOW_MS) {
+      const waitMin = Math.ceil((FAIL_WINDOW_MS - (Date.now() - rec.firstAt)) / 60_000)
+      throw new AppError(429, 'LOGIN_LOCKED', `失败次数过多,账号已临时锁定,请约 ${waitMin} 分钟后再试`)
+    }
     const { id, hash } = userRepository.getPasswordHash(input.email) ?? {}
     if (!id || !hash || !verifyPassword(input.password, hash)) {
+      if (!rec || Date.now() - rec.firstAt >= FAIL_WINDOW_MS) fails.set(lockKey, { count: 1, firstAt: Date.now() })
+      else rec.count += 1
       throw new AppError(401, 'UNAUTHORIZED', '邮箱或密码错误')
     }
     const user = userRepository.findById(id)
@@ -116,6 +138,7 @@ export const userService = {
     if (user.status !== 'active') {
       throw new AppError(403, 'FORBIDDEN', '账号已禁用')
     }
+    fails.delete(lockKey)
     const { raw } = userRepository.createToken(id, `session-${Date.now()}`)
     return { user: this.publicProfile(user), token: raw }
   },

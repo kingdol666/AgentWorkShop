@@ -1,8 +1,9 @@
 /**
  * /api/plugins/:name/** —— 插件自注册 API 的转发层(exact-match)。
  * 插件经 ctx.route(method, path, handler) 注册;handler(event) 返回值由 nitro 序列化。
- * 鉴权:插件在入口声明 auth:'user' | 'admin' | 'agent-or-user' 时由转发层统一校验
- *   (缺省 'none' 保持开放,兼容既有插件/浏览器面板)。
+ * 鉴权:插件在入口声明 auth:'user' | 'admin' | 'agent-or-user' | 'none' 时由转发层统一校验。
+ *   安全默认 = 'user'(default-deny):未声明的插件不再匿名暴露,须显式声明 'none' 才开放
+ *   (公网部署基线;确需匿名的只读面由插件作者显式声明并承担暴露责任)。
  * 错误隔离:插件 handler 抛错 → 结构化日志(带插件归属)+ 干净 500 信封,不裸传堆栈。
  */
 import { defineEventHandler, createError, readBody } from 'h3'
@@ -16,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const path = '/' + (event.context.params?.path ?? '').replace(/^\/+/, '')
   const rec = host.plugins.get(name)
   // 声明式鉴权门:在进入插件 handler 前统一校验(禁用插件的路由表已不含其路由,天然 404)
-  const authMode = String(rec?.auth ?? 'none')
+  const authMode = String(rec?.auth ?? 'user')
   if (authMode !== 'none') {
     try {
       if (authMode === 'admin') await requireAdmin(event)

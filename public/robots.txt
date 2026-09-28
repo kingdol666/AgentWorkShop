@@ -1,0 +1,3 @@
+# AgentWorkShop 是登录制工业平台,无公开内容,谢绝一切爬虫抓取
+User-agent: *
+Disallow: /

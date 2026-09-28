@@ -5,8 +5,17 @@
 import { defineApiHandler } from '../../../utils/response'
 import { requireRole } from '../../workshop/caller'
 import { getSystemConfigService } from '../../../services/system-config'
+import { recordOps } from '../../../services/workshop/ops/ops'
 
 export default defineApiHandler((event) => {
-  requireRole(event, ['admin'])
-  return { ok: true, ...getSystemConfigService().reset() }
+  const user = requireRole(event, ['admin'])
+  const res = getSystemConfigService().reset()
+  if (res.changed?.length) {
+    recordOps({
+      actor: user.id, actorName: user.name, actorKind: 'user',
+      action: 'system.settings.reset', kind: 'system',
+      summary: `清空运行时覆盖(${res.changed.length} 键回落 config.yml)`,
+    })
+  }
+  return { ok: true, ...res }
 })
