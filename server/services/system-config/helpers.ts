@@ -20,6 +20,7 @@ export const ROOT_FIELDS: Record<string, string> = {
   'api.pageSize': 'apiPageSize',
   'api.maxPageSize': 'apiMaxPageSize',
   'security.approvalGate': 'approvalGate',
+  'time.timeZone': 'timeZone',
 }
 export const DAQ_PREFIX = 'daq.'
 

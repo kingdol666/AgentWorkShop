@@ -139,6 +139,19 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     return updated!
   }
 
+  /** AML 解耦:读 Channel 的用户场景提示(prompt-composer 组装输入) */
+  channelScenarioPrompt(channelId: string): string {
+    return this.deps.repos.channels.findById(channelId)?.scenarioPrompt ?? ''
+  }
+
+  /** AML 解耦:twin-profile 变更(模式/绑定模型)后回收成员,重新装配注入新工况提示词 */
+  async recycleChannelForTwinProfile(channelId: string): Promise<void> {
+    const channel = this.deps.repos.channels.findById(channelId)
+    if (!channel) return
+    await this.unloadChannelAgents(channelId)
+    if (channel.leadAgentId) this.ensureChannelActive(channelId)
+  }
+
   protected async unloadChannelAgents(channelId: string): Promise<void> {
     const cr = this.channels.get(channelId)
     if (cr) {

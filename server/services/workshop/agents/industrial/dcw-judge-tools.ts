@@ -7,7 +7,7 @@ import { agentBadgeLabel } from '../agent-badge'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getRecipeRollBackManager } from '../../dcw/recipe-rollback-manager'
-import { getToolApprovals } from '../tool-approvals'
+import { requestManualApproval } from './manual-approval'
 
 /**
  * 写向工具的统一鉴权闸门(绑定必查)。
@@ -98,20 +98,16 @@ export async function toolDcwRollback(agentId: string, args: { record_id?: strin
     // 授权闸门(早先整段缺失 → 任意 agent 可回退任意节点)
     const auth = requireDcwBinding(agentId, targetNodeId, '回退')
     if ('error' in auth) return auth.error
-    // manual 模式:回退是真实 PLC 写入,与 dcw_control 同源推请用户批准
+    // manual 模式:回退是真实 PLC 写入,与 dcw_control/param_control 同源推请用户批准(manual-approval)
     if (auth.binding.mode === 'manual') {
       const node = getDcwController().byId(targetNodeId)
-      const approvals = getToolApprovals()
-      if (approvals.hasPendingFor(agentId, targetNodeId))
-        return { text: '你对该节点已有一条待审批指令,请等待用户处理后再发新的回退请求(避免审批堆积)。', isError: true }
-      const detail = `${node?.name ?? targetNodeId} 回退到${record ? `记录 ${recordId} 的 from 值` : '最近稳定锚'}${to ? `(${to})` : ''}`
-      const ap = await approvals.request(agentId, targetNodeId, 'dcw', detail)
-      if (!ap.approved) {
-        return { text: `回退未执行:用户${ap.comment.includes('超时') ? '未在时限内批准(超时)' : '拒绝了本次回退'}。用户备注:${ap.comment || '(无)'}` }
-      }
-      // 审批期间绑定可能已被解除:批准时二次校验(与 dcw_control 同口径)
-      if (!getAgentNodeBindingRepo().find(agentId, targetNodeId, 'dcw'))
-        return { text: '回退未执行:审批通过时你的该节点绑定已被解除(权限在批准时失效)。', isError: true }
+      const ap = await requestManualApproval({
+        agentId,
+        nodeId: targetNodeId,
+        action: '回退',
+        detail: `${node?.name ?? targetNodeId} 回退到${record ? `记录 ${recordId} 的 from 值` : '最近稳定锚'}${to ? `(${to})` : ''}`,
+      })
+      if (!ap.ok) return { text: ap.text, isError: ap.isError }
     }
     if (record) {
       const fresh = await rb.rollbackRecord(recordId, agentId, 'agent', undefined, { actorName: agentBadgeLabel(agentId) })

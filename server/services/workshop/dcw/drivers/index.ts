@@ -14,7 +14,8 @@
  *   http.ts                HTTP/REST 写驱动(POST JSON;2xx 视为受理)
  *   registry.ts            内置驱动注册表 + 插件写驱动注册 + 目录/归一解析
  */
-export { supportsDcwRead, engToRaw, rawToEng, encodeWords } from './shared'
+export { supportsDcwRead } from './registry'
+export { engToRaw, rawToEng, encodeWords } from './shared'
 export type { DcwWriteInput, DcwWriteResult, DcwWriteDriver, DcwReadInput, DcwReadResult } from './shared'
 export { mockDcwDriver } from './mock'
 export { modbusTcpDcwDriver } from './modbus'

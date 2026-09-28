@@ -5,13 +5,10 @@
 import { DcwControllerBindings } from './bindings'
 import type { DcwDriverKind, DcwWriteMeta } from '../../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
-import { assertWithinLimits } from '../param-limits'
-import { emitDcwWrite } from '@/server/services/workshop/plugins/host.mjs'
-import { getActiveLineRun } from '../line-run'
+import { assertWithinLimits, assertStepLimit } from '../param-limits'
 import { getRecipeRollBackManager } from '../recipe-rollback-manager'
 import { normalizeDcwDriverKind, resolveDcwDriver } from '../drivers'
-import { opsActorKindOf, opsWriteMemo } from './helpers'
-import { recordOps } from '../../ops/ops'
+import { recordDcwWriteOps } from './write-audit'
 
 export abstract class DcwControllerWrite extends DcwControllerBindings {
   /** 手动设定:用户提交工程量,网关校验/换算/下发/回读校验。
@@ -44,15 +41,32 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
     // 配方下发路径(recipeRunId != null)跳过配方窗口层:下发值已在配方保存时对自身窗口校验,
     // 且中途应用新配方不应被旧批次配方窗口误伤;产品/参数基准层对配方下发照常约束。
     assertWithinLimits(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: recipeRunId != null })
+    const srcForLock = meta?.source ?? (recipeRunId ? 'recipe' : 'manual')
+    const benchBypass = process.env.AW_BENCH_MODE === '1'
+    // 在线 Agent/人工控制都走安全小步与 60s 最小间隔:这是探索阶段的硬卡控，
+    // 不依赖提示词也不依赖前端，驱动调用前完成拒绝。recipe/rollback 仍由其
+    // 专用路径管理，避免启动批次时把整套配方误判为在线探索步。
+    if ((srcForLock === 'agent' || srcForLock === 'manual') && !benchBypass) {
+      const previous = typeof node.value === 'number'
+        ? node.value
+        : (typeof node.readValue === 'number' ? node.readValue : null)
+      assertStepLimit(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: false }, previous)
+      const previousAt = node.lastWriteAt ? Date.parse(node.lastWriteAt) : NaN
+      if (Number.isFinite(previousAt)) {
+        const elapsed = Date.now() - previousAt
+        if (elapsed < 60_000) {
+          throw new AppError(429, ErrorCodes.WRITE_INTERVAL_NOT_ELAPSED, `DCW 节点「${node.name}」两次在线写入间隔必须至少 60s，当前还需 ${Math.ceil((60_000 - elapsed) / 1000)}s`)
+        }
+      }
+    }
     // 写入保持窗(防参数震荡):agent/manual 写成功一次即锁定节点 writeLockSeconds;
     // 锁定期间的新写一律 429 快速拒绝(不排队 —— 排队写会在窗满后立刻落库,等同
     // 为持续篡改保留通道)。rollback(安全恢复)/recipe(批量下发)不受保持窗约束;
     // AW_BENCH_MODE=1 基准旁路(基准多轮连续写同节点,锁会破坏既有证据可复现性)。
     // 顺序在限界联锁之后:越量程/越窗是确定性非法(400),不得被暂时性限频(429)
     // 抢答,否则客户端会对非法值做 30s 的无谓重试。
-    const srcForLock = meta?.source ?? (recipeRunId ? 'recipe' : 'manual')
-    const benchBypass = process.env.AW_BENCH_MODE === '1'
-    const lockMs = Math.max(0, Math.round((node.writeLockSeconds ?? 30) * 1000))
+    const configuredLockMs = Math.max(0, Math.round((node.writeLockSeconds ?? 30) * 1000))
+    const lockMs = (srcForLock === 'agent' || srcForLock === 'manual') && !benchBypass ? Math.max(60_000, configuredLockMs) : configuredLockMs
     const lockable = (srcForLock === 'agent' || srcForLock === 'manual') && lockMs > 0 && !benchBypass
     if (lockable) {
       const now = Date.now()
@@ -97,33 +111,9 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
       catch (err) {
         console.error('[dcw] 调控闭环入册失败(不影响写结果):', err)
       }
-      // 运维日志:所有下发路径(manual/recipe/agent/rollback)单点入册 + 实时事件
+      // 运维日志 + 插件钩子:所有下发路径(manual/recipe/agent/rollback)单点入册(write-audit)
       try {
-        const src = meta?.source ?? (recipeRunId ? 'recipe' : 'manual')
-        const memo = opsWriteMemo.get(id)
-        const now = Date.now()
-        if (!memo || memo.eng !== eng || now - memo.at > 10_000) {
-          opsWriteMemo.set(id, { eng, at: now })
-          if (opsWriteMemo.size > 500)
-            opsWriteMemo.clear()
-          const runNow = getActiveLineRun(node.lineId)
-          recordOps({
-            actor: meta?.actor ?? 'user',
-            actorName: meta?.actorName ?? meta?.actor ?? 'user',
-            actorKind: opsActorKindOf(src),
-            action: `dcw.write.${src}`,
-            kind: 'write',
-            targetKind: 'dcw-node',
-            targetId: id,
-            summary: `下发设定「${node.name}」→ ${eng}${node.unit ?? ''}(${src === 'manual' ? '手动' : src === 'agent' ? 'Agent' : src === 'rollback' ? '回退恢复' : '配方'})`,
-            lineId: node.lineId ?? '',
-            productId: runNow?.productId ?? '',
-            recipeId: runNow?.recipeId ?? recipeRunId ?? '',
-            detail: { eng, prevValue, ok: outcome.ok, message: outcome.message, taskId: meta?.taskId ?? null },
-          })
-          // 插件钩子:写控 ACK 观察(与运维入册同点同去重节流)
-          emitDcwWrite({ nodeId: id, name: node.name, eng, prevValue, ok: outcome.ok, source: src, lineId: node.lineId ?? '', at: new Date().toISOString() })
-        }
+        recordDcwWriteOps({ id, node, eng, prevValue, outcome, src: srcForLock as DcwWriteMeta['source'], meta, recipeRunId })
       }
       catch {
         // 日志失败不影响写结果

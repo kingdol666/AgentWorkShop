@@ -12,11 +12,53 @@ import { join } from 'node:path'
 import { AppError } from '../../../utils/errors'
 import { recordOps } from '../ops/ops'
 import { broadcastSceneEvent } from '../scene-events'
+import { getDcwLineRepo } from '../dcw/dcw-line.repo'
+import { getDcwProductRepo } from '../dcw/dcw-product.repo'
+import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
 import { getAmlRuntime } from './runtime'
 import type { AmlModelRow, AmlModelStage } from './aml.repo'
 import type { GateReport } from './gates'
 
 export type { AmlModelRow, AmlModelStage }
+
+/** purpose 的人读目标词(优化目标未显式给 ObjectiveProfile 时的回退表达) */
+const PURPOSE_GOAL_LABEL: Record<string, string> = {
+  mpc_surrogate: 'MPC调参代理',
+  quality_predict: '质量预测',
+}
+
+/**
+ * 模型人读身份:label 必须让 Agent 与用户一眼看出 场景/产线·配方·优化目标。
+ * 提交作业时的 model_name 作前缀(自拟短名),谱系尾由平台强制派生,不因命名而丢失区分度。
+ */
+function deriveModelIdentity(job: { budget: Record<string, unknown>, purpose: string }, dataset: { lineId: string, productId: string, recipeId: string }, modelId: string): { label: string, description: string, lineId: string, objectiveId: string } {
+  const budget = job.budget as {
+    modelName?: string
+    modelDescription?: string
+    sceneId?: string | null
+    sceneVersion?: string | null
+    objectiveId?: string | null
+    jobKind?: string
+  }
+  const lineName = getDcwLineRepo().byId(dataset.lineId)?.name ?? dataset.lineId
+  const productName = getDcwProductRepo().byId(dataset.productId)?.name ?? dataset.productId
+  const recipeName = getDcwRecipeRepo().byId(dataset.recipeId)?.name ?? dataset.recipeId
+  const goalLabel = budget.objectiveId
+    ? `目标:${budget.objectiveId}`
+    : (PURPOSE_GOAL_LABEL[job.purpose] ?? job.purpose)
+  const sceneTag = budget.sceneId ? `${budget.sceneId}${budget.sceneVersion ? `@${budget.sceneVersion}` : ''}·` : ''
+  const lineageTail = `${productName}/${recipeName}·${goalLabel}`
+  const name = (budget.modelName ?? '').trim().slice(0, 80)
+  const label = name ? `${name}(${lineageTail}) #${modelId.slice(-6)}` : `${sceneTag}${lineageTail} #${modelId.slice(-6)}`
+  const description = (budget.modelDescription ?? '').trim().slice(0, 500) || [
+    `产线 ${lineName}(${dataset.lineId})`,
+    `产品 ${productName} · 配方 ${recipeName}`,
+    `优化目标 ${budget.objectiveId ?? goalLabel}(purpose=${job.purpose})`,
+    budget.sceneId ? `场景 ${sceneTag.replace(/·$/, '')}` : null,
+    budget.jobKind && budget.jobKind !== 'supervised' ? `训练阶段 ${budget.jobKind}` : null,
+  ].filter(Boolean).join(' | ')
+  return { label, description, lineId: dataset.lineId, objectiveId: budget.objectiveId ?? '' }
+}
 
 /** 作业终态时登记:门禁过 → candidate 模型;未过 → 仅实验行(gates_failed) */
 export function registerModelFromJob(jobId: string, gates: GateReport, metricsJson: string): { experimentId: string, modelId?: string } {
@@ -93,6 +135,7 @@ export function registerModelFromJob(jobId: string, gates: GateReport, metricsJs
     writeFileSync(join(modelDir, 'io_spec.json'), JSON.stringify(ioSpec, null, 2))
   }
   catch { /* 契约文件落盘失败不阻断注册(元数据行仍持有同一份) */ }
+  const identity = deriveModelIdentity(job, dataset, modelId)
   rt.repo.model.insert({
     id: modelId,
     experimentId: expId,
@@ -105,11 +148,15 @@ export function registerModelFromJob(jobId: string, gates: GateReport, metricsJs
     path: modelDir,
     createdBy: job.agentId || 'aml',
     note: gatesSummary(gates),
+    label: identity.label,
+    description: identity.description,
+    lineId: identity.lineId,
+    objectiveId: identity.objectiveId,
     createdAt: now,
   })
   recordOps({
     actor: job.agentId || 'aml', actorName: job.agentId || 'AML', actorKind: job.agentId ? 'agent' : 'system',
-    action: 'aml.model.register', kind: 'system', summary: `候选模型 ${modelId} 登记(门禁通过)`,
+    action: 'aml.model.register', kind: 'system', summary: `候选模型 ${modelId} 登记(门禁通过)「${identity.label}」`,
     targetKind: 'aml_model', targetId: modelId,
     lineId: dataset.lineId, productId: dataset.productId, recipeId: dataset.recipeId,
   })
@@ -159,9 +206,30 @@ export function transitionModel(modelId: string, toStage: Exclude<AmlModelStage,
   const model = rt.repo.model.get(modelId)
   if (!model) throw new AppError(404, 'AML_MODEL_MISSING', `模型 ${modelId} 不存在`)
   const now = new Date().toISOString()
+  const modelMetrics = (() => {
+    try {
+      return JSON.parse(model.metricsJson || '{}') as Record<string, unknown>
+    }
+    catch {
+      return {}
+    }
+  })()
+  const twinProvider = modelMetrics.twinProvider as Record<string, unknown> | undefined
+  const isHybridTwin = Boolean(twinProvider || modelMetrics.hybrid || modelMetrics.modelType === 'hybrid_physics_plus_residual' || modelMetrics.modelKind === 'hybrid_twin')
+  if (isHybridTwin && toStage === 'production' && model.stage === 'candidate') {
+    throw new AppError(409, 'AML_TWIN_SHADOW_REQUIRED', 'Hybrid Twin 模型禁止 candidate → production；必须先进入 shadow 并通过影子证据、UQ/OOD、SafetyCase 门禁')
+  }
+  if (isHybridTwin && toStage === 'production') {
+    const eligibility = modelMetrics.twinEligibility as Record<string, unknown> | undefined
+    if (eligibility?.recommendationEligible !== true || eligibility?.uqPassed !== true || eligibility?.oodPassed !== true || eligibility?.physicsPassed !== true) {
+      throw new AppError(409, 'AML_TWIN_GATE_REQUIRED', 'Hybrid Twin production 晋升必须读取平台权威 Twin Gate 全部通过结果')
+    }
+    const shadow = modelMetrics.shadowEvidence as Record<string, unknown> | undefined
+    if (shadow?.passed !== true) throw new AppError(409, 'AML_TWIN_SHADOW_EVIDENCE_REQUIRED', 'Hybrid Twin production 晋升缺少通过的 shadowEvidence')
+  }
   const allowed: Record<string, AmlModelStage[]> = {
     shadow: ['candidate'],
-    production: ['candidate', 'shadow'],
+    production: isHybridTwin ? ['shadow'] : ['candidate', 'shadow'],
     retired: ['candidate', 'shadow', 'production'],
   }
   const from = allowed[toStage]

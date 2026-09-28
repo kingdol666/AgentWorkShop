@@ -11,7 +11,9 @@
  *  - 工业工具族在 `getWorkspace()` 门控**之前**分流(只依赖 agentId)。
  */
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
-import { isHybridTwinChannel } from '../../aml/twin/channel-profile'
+import { getChannelTwinProfile, modelBackedToolPolicyFor, type AmlChannelProfileKind } from '../../aml/twin/channel-profile'
+import { AML_TRAINING_TOOL_NAMES, AML_MODEL_BACKED_TOOL_NAMES } from './catalog'
+import { twinWriteGuard } from '../../aml/twin/feature-flags'
 import { listPluginTools, pluginOfTool } from '../plugin-tools'
 import type { HostToolBridgeContext, HostToolCall, HostToolResult } from './types'
 import { INDUSTRIAL_TOOL_NAMES, dispatchIndustrialTool } from './tools/industrial'
@@ -52,14 +54,57 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
   }
   const args = req.arguments ?? {}
 
-  if ((req.toolName.startsWith('twin_') || req.toolName === 'mpc_optimize') && !isHybridTwinChannel(identity.channelId)) {
-    return { text: `Channel ${identity.channelId} 未启用 hybrid_twin profile，Twin/MPC 工具拒绝执行。`, isError: true }
+  // AML 解耦门控(fail-closed,与注入过滤同源;目录隐藏不是安全边界):
+  //  - legacy:全部 twin/explore 工具拒绝(原始行为);
+  //  - trial/mpc/bayes:仅 hybrid_twin,或 aml_optimization 的 aml 模式(已绑定模型);
+  //    探索模式给「探索阶段」明确指引而非裸报错;
+  //  - optimization_explore:仅工艺优化 Channel;
+  //  - 场景/spec/校准请求族:hybrid_twin + 训练 Channel;
+  //  - 训练族(aml_job/dataset 等):工艺优化 Channel 拒绝(边训边优被结构禁止)。
+  const twinKind: AmlChannelProfileKind = getChannelTwinProfile(identity.channelId).profile
+  const isTwinTool = req.toolName.startsWith('twin_') || ['mpc_optimize', 'optimization_explore'].includes(req.toolName)
+  if (isTwinTool) {
+    const isSceneFamily = /^twin_(scene|physics|provider|calibration)/.test(req.toolName)
+    if (req.toolName === 'optimization_explore') {
+      if (twinKind !== 'aml_optimization') {
+        return { text: `optimization_explore 仅适用于工艺优化 Channel(当前 profile=${twinKind})。`, isError: true }
+      }
+    }
+    else if (AML_MODEL_BACKED_TOOL_NAMES.has(req.toolName)) {
+      const policy = modelBackedToolPolicyFor(identity.channelId)
+      if (!policy.allowed) {
+        return {
+          text: policy.reason === 'EXPLORATION_MODE_NO_MODEL'
+            ? `当前为探索模式:Channel 尚未绑定 AML 模型,${req.toolName}(孪生验证/贝叶斯寻优)暂不可用。\n请继续用 optimization_explore 做真实激励探索并积累数据;待 AML 训练出合格模型并在 Channel 设置中绑定后,本工具自动启用。`
+            : `${req.toolName} 要求模型受控状态(hybrid_twin 或 aml_optimization 的 aml 模式;当前 ${twinKind}${policy.reason ? `/${policy.reason}` : ''})。`,
+          isError: true,
+        }
+      }
+    }
+    else if (isSceneFamily) {
+      if (twinKind !== 'hybrid_twin' && twinKind !== 'aml_training') {
+        return { text: `场景/物理 spec 工具仅对 hybrid_twin 或训练 Channel(aml_training)开放(当前 profile=${twinKind})。`, isError: true }
+      }
+    }
+    else if (twinKind === 'legacy') {
+      return { text: `Channel ${identity.channelId} 未启用 Twin profile，Twin/MPC 工具拒绝执行。`, isError: true }
+    }
+  }
+  if (AML_TRAINING_TOOL_NAMES.has(req.toolName) && twinKind === 'aml_optimization') {
+    return { text: `工艺优化 Channel 不承担建模与训练(职责解耦):${req.toolName} 仅限 AML 训练 Channel 使用。请在此专注 goal 探索与模型驱动寻优。`, isError: true }
+  }
+
+  // 所有真实写入口在统一分发层再做一次服务端 fail-closed 守卫；工具目录隐藏不是安全边界。
+  if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_update', 'recipe_rollback'].includes(req.toolName)) {
+    const profile = getChannelTwinProfile(identity.channelId)
+    const guard = twinWriteGuard(identity.channelId, profile)
+    if (!guard.allowed) return { text: `${guard.code}: ${guard.message}`, isError: true }
   }
 
   // 工业工具族不依赖 workspace(只按 agentId 查绑定与节点),先于 workspace 门控执行 ——
   // 否则 worker 首回合前的 REST/MCP 直调(my_industrial_nodes 等)会被误拒
   if (INDUSTRIAL_TOOL_NAMES.has(req.toolName)) {
-    return await dispatchIndustrialTool(identity.agentId, req.toolName, args)
+    return await dispatchIndustrialTool(identity.agentId, req.toolName, args, identity.channelId)
   }
 
   const ws = ctx.getWorkspace()
@@ -131,6 +176,7 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       case 'aml_job_logs':
       case 'aml_job_cancel':
       case 'aml_leaderboard':
+      case 'aml_model_find':
       case 'aml_model_promote':
       case 'aml_model_reference':
       case 'twin_scene_read':
@@ -154,7 +200,7 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       case 'recipe_versions':
       case 'recipe_update':
       case 'recipe_rollback':
-        return await dispatchIndustrialTool(identity.agentId, req.toolName, args)
+        return await dispatchIndustrialTool(identity.agentId, req.toolName, args, identity.channelId)
     }
     return { text: `未知工具: ${req.toolName}`, isError: true }
   }

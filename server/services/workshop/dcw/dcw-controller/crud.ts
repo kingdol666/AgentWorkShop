@@ -13,6 +13,14 @@ import { getDcwParamRepo } from '../param-map.repo'
 import { normalizeDcwDriverKind } from '../drivers'
 import { randomUUID } from 'node:crypto'
 
+function normalizeStepLimitInput(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined
+  if (value === null || value === '') return null
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `stepLimit 必须为正数或 null(当前: ${String(value)})`)
+  return n
+}
+
 export abstract class DcwControllerCrud extends DcwControllerControl {
   create(input: DcwCreateInput): DcwNode {
     this.ensureLoop()
@@ -45,6 +53,7 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
       lineId: input.lineId,
       semantics: input.semantics,
       writeLockSeconds: input.writeLockSeconds,
+      stepLimit: normalizeStepLimitInput(input.stepLimit),
     })
     this.repo.insert(node)
     // 工艺参数映射面:节点创建即自动生成同名映射(用户/Agent 的参数语义面;
@@ -124,6 +133,7 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
       }
       node.writeLockSeconds = Math.round(v)
     }
+    if (patch.stepLimit !== undefined) node.stepLimit = normalizeStepLimitInput(patch.stepLimit) ?? null
     if (rearm) this.runtimes.get(id)?.rearm()
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)

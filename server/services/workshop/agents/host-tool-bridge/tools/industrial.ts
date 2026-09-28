@@ -9,9 +9,9 @@
  * 该族**不依赖 workspace**,由 dispatch 在 workspace 门控之前分流(保持原分发顺序)。
  */
 import type { HostToolResult } from '../types'
-import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions, toolTwinProviderCatalog, toolTwinSceneRead, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinCalibrationRequest } from '../../industrial'
+import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest } from '../../industrial'
 
-type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>) => Promise<HostToolResult>
+type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string) => Promise<HostToolResult>
 
 /** 工具名 → 转发处理器(顺序与原 dispatch 首个 switch 的分支顺序一致) */
 const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
@@ -24,18 +24,30 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['aml_job_logs', (agentId, args) => toolAmlJobLogs(agentId, args as Parameters<typeof toolAmlJobLogs>[1])],
   ['aml_job_cancel', (agentId, args) => toolAmlJobCancel(agentId, args as Parameters<typeof toolAmlJobCancel>[1])],
   ['aml_leaderboard', (agentId, args) => toolAmlLeaderboard(agentId, args as Parameters<typeof toolAmlLeaderboard>[1])],
+  ['aml_model_find', (agentId, args) => toolAmlModelFind(agentId, args as Parameters<typeof toolAmlModelFind>[1])],
   ['aml_model_promote', (agentId, args) => toolAmlModelPromote(agentId, args as Parameters<typeof toolAmlModelPromote>[1])],
   ['aml_model_reference', (agentId, args) => toolAmlModelReference(agentId, args as Parameters<typeof toolAmlModelReference>[1])],
+  ['aml_training_plan_list', (agentId, args) => toolAmlTrainingPlanList(agentId, args)],
+  ['aml_training_plan_create', (agentId, args) => toolAmlTrainingPlanCreate(agentId, args as Parameters<typeof toolAmlTrainingPlanCreate>[1])],
+  ['aml_training_plan_train', (agentId, args) => toolAmlTrainingPlanTrain(agentId, args as Parameters<typeof toolAmlTrainingPlanTrain>[1])],
   ['twin_provider_catalog', (agentId, args) => toolTwinProviderCatalog(agentId, args)],
+  ['twin_scene_discover', (agentId, args) => toolTwinSceneDiscover(agentId, args)],
+  ['twin_scene_compile', (agentId, args) => toolTwinSceneCompile(agentId, args)],
+  ['twin_scene_freeze', (agentId, args) => toolTwinSceneFreeze(agentId, args)],
+  ['twin_physics_spec_draft', (agentId, args) => toolTwinPhysicsSpecDraft(agentId, args)],
+  ['twin_physics_spec_validate', (agentId, args) => toolTwinPhysicsSpecValidate(agentId, args)],
+  ['twin_physics_spec_compile', (agentId, args) => toolTwinPhysicsSpecCompile(agentId, args)],
   ['twin_scene_read', (agentId, args) => toolTwinSceneRead(agentId, args)],
   ['twin_snapshot_create', (agentId, args) => toolTwinSnapshotCreate(agentId, args)],
   ['twin_trial_run', (agentId, args) => toolTwinTrialRun(agentId, args)],
   ['mpc_optimize', (agentId, args) => toolMpcOptimize(agentId, args)],
   ['twin_gate_evaluate', (agentId, args) => toolTwinGateEvaluate(agentId, args)],
   ['twin_calibration_request', (agentId, args) => toolTwinCalibrationRequest(agentId, args)],
-  ['dcw_control', (agentId, args) => toolDcwControl(agentId, args as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string })],
+  ['optimization_explore', (agentId, args, channelId) => toolOptimizationExplore(agentId, args as Parameters<typeof toolOptimizationExplore>[1], channelId)],
+  ['twin_bayes_optimize', (agentId, args) => toolTwinBayesOptimize(agentId, args)],
+  ['dcw_control', (agentId, args, channelId) => toolDcwControl(agentId, args as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId)],
   ['dcw_read', (agentId, args) => toolDcwRead(agentId, args as { node_id?: string })],
-  ['param_control', (agentId, args) => toolParamControl(agentId, args as { param?: string, value?: number | string, hypothesis?: string, task_id?: string, line_id?: string })],
+  ['param_control', (agentId, args, channelId) => toolParamControl(agentId, args as { param?: string, value?: number | string, hypothesis?: string, task_id?: string, line_id?: string }, channelId)],
   ['param_read', (agentId, args) => toolParamRead(agentId, args as { param?: string, line_id?: string })],
   ['daq_query', (agentId, args) => toolDaqQuery(agentId, args as Parameters<typeof toolDaqQuery>[1])],
   ['daq_frames', (agentId, args) => toolDaqFrames(agentId, args as Parameters<typeof toolDaqFrames>[1])],
@@ -58,8 +70,8 @@ export const INDUSTRIAL_TOOL_NAMES: ReadonlySet<string> = new Set(INDUSTRIAL_HAN
  * 调用方先经 INDUSTRIAL_TOOL_NAMES 判断,故「未登记的工具名」不可达 —— 仍然显式拒绝,
  * 避免静默返回与未知工具混淆。
  */
-export function dispatchIndustrialTool(agentId: string, toolName: string, args: Record<string, unknown>): Promise<HostToolResult> {
+export function dispatchIndustrialTool(agentId: string, toolName: string, args: Record<string, unknown>, channelId?: string): Promise<HostToolResult> {
   const handler = INDUSTRIAL_HANDLERS.get(toolName)
   if (!handler) return Promise.reject(new Error(`未知工业工具: ${toolName}`))
-  return handler(agentId, args)
+  return handler(agentId, args, channelId)
 }

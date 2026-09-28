@@ -9,16 +9,18 @@ import { AppError } from '../../../utils/errors'
 import { createLogger } from '../logger'
 import { getAmlRuntime } from './runtime'
 import { parseIoSpec } from './model-registry'
+import { compileDeclarativeProvider } from './twin/declarative-provider'
+import { parsePhysicsSpec, type PhysicsSpec } from './twin/physics-spec'
 
 const log = createLogger('aml.predict')
 
 /** onnxruntime InferenceSession.run 返回按输出名键控的对象(非数组) */
-interface OrtSession {
+export interface OrtSession {
   run(feeds: Record<string, unknown>): Promise<Record<string, unknown>>
   inputNames: string[]
   outputNames: string[]
 }
-interface OrtModule {
+export interface OrtModule {
   InferenceSession: {
     create(path: string, opts?: { providers?: string[] }): Promise<{ run: (feeds: Record<string, unknown>) => Promise<Record<string, unknown>>, inputNames: string[], outputNames: string[] }>
   }
@@ -45,6 +47,15 @@ function loadOrt(): OrtModule | null {
 
 export function predictorAvailable(): boolean {
   return loadOrt() != null
+}
+
+/** 供孪生侧(model-backed provider)复用同一 ONNX 运行时与会话 LRU */
+export function ortRuntime(): OrtModule | null {
+  return loadOrt()
+}
+
+export async function onnxSessionFor(modelPath: string, modelId: string): Promise<OrtSession> {
+  return sessionFor(modelPath, modelId)
 }
 
 async function sessionFor(modelPath: string, modelId: string): Promise<OrtSession> {
@@ -82,6 +93,57 @@ export interface IoSpec {
   assumptions: string
 }
 
+interface HybridArtifactManifest { physicsSpec?: unknown, residualScale?: number, composition?: string, physicsSpecHash?: string }
+
+function hybridManifestOf(modelPath: string): HybridArtifactManifest | null {
+  const path = join(modelPath, 'hybrid_manifest.json')
+  if (!existsSync(path)) return null
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as HybridArtifactManifest
+  }
+  catch {
+    throw new AppError(409, 'AML_HYBRID_MANIFEST_INVALID', 'Hybrid 模型 hybrid_manifest.json 无法解析')
+  }
+}
+
+function hybridPhysicsNext(manifest: HybridArtifactManifest, io: IoSpec, historyNorm: number[][], controlsNorm: number[]): number[] {
+  if (!manifest.physicsSpec) throw new AppError(409, 'AML_HYBRID_PHYSICS_MISSING', 'Hybrid 模型缺少冻结 PhysicsSpec，拒绝把 residual 当完整预测')
+  const spec = parsePhysicsSpec(manifest.physicsSpec) as PhysicsSpec
+  const provider = compileDeclarativeProvider(spec)
+  const mx = io.norm.x.mean
+  const sx = io.norm.x.std
+  const mu = io.norm.u.mean
+  const su = io.norm.u.std
+  const last = historyNorm[historyNorm.length - 1] ?? []
+  const rawHistory = last.map((value, index) => value * (sx[index] ?? 1) + (mx[index] ?? 0))
+  const rawControls = controlsNorm.map((value, index) => value * (su[index] ?? 1) + (mu[index] ?? 0))
+  const byNode = new Map(io.allNodes.map((node, index) => [node, rawHistory[index] ?? 0]))
+  const specVar = (id: string) => spec.variables.find(variable => (variable.nodeId ?? variable.id) === id || variable.id === id)
+  const stateEstimate: Record<string, number> = {}
+  const controlValues: Record<string, number> = {}
+  const disturbances: Record<string, number> = {}
+  for (const variable of spec.variables) {
+    const node = variable.nodeId ?? variable.id
+    const value = byNode.get(node)
+    if (value == null) continue
+    if (variable.role === 'state') stateEstimate[variable.id] = value
+    if (variable.role === 'disturbance') disturbances[variable.id] = value
+  }
+  io.controlNodes.forEach((node, index) => {
+    const variable = specVar(node)
+    if (variable) controlValues[variable.id] = rawControls[index] ?? 0
+    controlValues[node] = rawControls[index] ?? 0
+  })
+  const step = provider.step({ state: provider.initialize({ stateEstimate, controlValues }), controls: controlValues, disturbances, dtSec: spec.solver.dtSec })
+  const physicsRaw = io.targetNodes.map((node) => {
+    const variable = specVar(node)
+    const value = step.observations[node] ?? (variable ? step.observations[variable.id] : undefined)
+    if (!Number.isFinite(value)) throw new AppError(409, 'AML_HYBRID_PHYSICS_OUTPUT_MISSING', `PhysicsSpec 未生成目标 ${node}`)
+    return Number(value)
+  })
+  return physicsRaw.map((value, index) => (value - (io.norm.y.mean[index] ?? 0)) / (io.norm.y.std[index] ?? 1))
+}
+
 export interface PredictRequest {
   /** 历史(原始物理量):[historySteps][nAllNodes],顺序 = io_spec.allNodes */
   history: number[][]
@@ -116,6 +178,7 @@ export async function predictWithModel(
     throw new AppError(410, 'AML_ARTIFACT_MISSING', `模型 ${modelId} 工件已被 GC 清理(artifacts_pruned),请用同配方数据重训`)
   }
   const io = parseIoSpec(row) as unknown as IoSpec
+  const hybrid = hybridManifestOf(row.path)
   if (io.modelInterface !== 'one_step') {
     throw new AppError(500, 'AML_IO_UNSUPPORTED', `未知模型接口 ${io.modelInterface}`)
   }
@@ -155,6 +218,14 @@ export async function predictWithModel(
   const forecast: number[][] = []
   for (let k = 0; k < steps; k++) {
     const input = hist.slice(hist.length - H).map(r => Float32Array.from(r))
+    if (hybrid) {
+      const modelLast = input[H - 1]
+      if (modelLast && ctrlIndex.length === (ctrlRows[k]?.length ?? 0)) {
+        ctrlIndex.forEach((position, index) => {
+          modelLast[position] = ctrlRows[k]?.[index] ?? modelLast[position] ?? 0
+        })
+      }
+    }
     const flat = new Float32Array(H * nAll)
     for (let i = 0; i < H; i++) {
       input[i]?.forEach((v, j) => {
@@ -167,7 +238,10 @@ export async function predictWithModel(
     if (!inpName) throw new AppError(503, 'AML_PREDICTOR_UNAVAILABLE', `模型 ${row.id} 的 ONNX session 无有效输入名`)
     const outName = sess.outputNames[0] ?? inpName
     const out = await sess.run({ [inpName]: new ort.Tensor('float32', flat, [1, H, nAll]) })
-    const yNext = Array.from((out[outName] as { data: ArrayLike<number> }).data) as number[] // [nTgt] 归一化
+    const residual = Array.from((out[outName] as { data: ArrayLike<number> }).data) as number[]
+    const yNext = hybrid
+      ? hybridPhysicsNext(hybrid, io, hist.slice(hist.length - H), ctrlRows[k] ?? lastCtrlNorm).map((value, index) => value + Math.max(-Math.abs(hybrid.residualScale ?? 0.25), Math.min(Math.abs(hybrid.residualScale ?? 0.25), residual[index] ?? 0)))
+      : residual
     // 组装下一行
     const rowNext = new Array<number>(nAll).fill(0)
     // feature 持最后观测;persistence
@@ -189,7 +263,7 @@ export async function predictWithModel(
     targetNodes: io.targetNodes,
     forecast,
     beatMs: io.beatMs,
-    assumptions: io.assumptions,
+    assumptions: hybrid ? `${io.assumptions}; hybrid=${hybrid.composition ?? 'y_phys + bounded_residual'}; physicsSpecHash=${hybrid.physicsSpecHash ?? 'unknown'}` : io.assumptions,
   }
 }
 

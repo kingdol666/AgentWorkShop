@@ -6,8 +6,6 @@ import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { attachDcwPluginBridge } from '../plugin-bridge'
 import { getDcwParamRepo } from '../param-map.repo'
 
-export const opsWriteMemo = new Map<string, { eng: number, at: number }>()
-
 // 写驱动插件桥(模块装载即挂;插件宿主先到则注册项排队、此处接管回放)
 attachDcwPluginBridge()
 
@@ -22,6 +20,12 @@ export function opsActorKindOf(source: string): 'user' | 'agent' | 'system' {
 }
 
 export const SWEEP_MS = 500
+
+// 基准模式显式留痕:AW_BENCH_MODE=1 豁免在线探索限频(单步上限/60s 间隔/写入保持窗),
+// 四层限界联锁不受影响(软层旁路还需每次写携带 meta.benchArm)。生产实例误配此 env 时启动即告警。
+if (process.env.AW_BENCH_MODE === '1') {
+  console.warn('[dcw] AW_BENCH_MODE=1:在线探索限频(单步上限/60s 间隔/写入保持窗)已整体豁免 —— 仅限基准/审计环境使用!')
+}
 
 /**
  * 产品级工艺参数限界校验:键必须命中该产品所属产线上的工艺参数映射

@@ -16,7 +16,6 @@ import { findDaqTemplate } from '../daq-templates'
 import { getDaqNodeRepo } from '../daq-node.repo'
 import { getDaqQueue } from '../bus'
 import { getObjectStore } from '../objectstore'
-import { getSystemConfigService } from '../../../system-config'
 import { log } from './helpers'
 import { normalizeSignalKind } from '../../../../../shared/daq-protocol'
 import { resolveDaqDriver } from '../drivers'
@@ -103,10 +102,14 @@ export abstract class DaqControllerState extends DaqControllerContracts {
   applyRuntimeSettings(): void {
     if (!this.settingsSynced) {
       this.settingsSynced = true
-      try {
-        this.settingsUnsub = getSystemConfigService().subscribe(() => this.applyRuntimeSettings())
-      }
-      catch { /* 设置系统不可用(单测) → 用字段默认值 */ }
+      // 惰性订阅:system-config 终点依赖 nitro 虚拟模块(#imports),静态导入会把
+      // 纯 node/tsx 回归上下文的可导入性一并绑架;订阅本就有"不可用→字段默认值"降级。
+      void import('../../../system-config')
+        .then(({ getSystemConfigService }) => {
+          this.settingsUnsub = getSystemConfigService().subscribe(() => this.applyRuntimeSettings())
+          this.applyRuntimeSettings()
+        })
+        .catch(() => { /* 设置系统不可用(单测/回归脚本) → 用字段默认值 */ })
     }
     const before = `${this.defaultIntervalMs}|${this.minIntervalMs}|${this.defaultPublishIntervalMs}|${this.minPublishIntervalMs}|${this.queryDisplayIntervalMs}|${this.minQueryDisplayIntervalMs}`
     try {

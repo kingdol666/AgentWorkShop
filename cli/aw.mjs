@@ -20,9 +20,10 @@ import { logger, color } from './core/logger.mjs'
 import { CliError, isUsageError } from './core/errors.mjs'
 import { packageRoot, packageVersion } from './core/meta.mjs'
 import { awHome } from '../shared/config/home.mjs'
-import { installLocalIso } from '../shared/local-time.mjs'
+import { setConfiguredTimeZone, installLocalIso, DEFAULT_TIME_ZONE } from '../shared/local-time.mjs'
 
-// 全 CLI 时间输出统一本地时区(先于任何命令逻辑)
+// CLI 极早日志先使用默认上海;createContext 加载 runtime override 后会同步设置
+setConfiguredTimeZone(DEFAULT_TIME_ZONE)
 installLocalIso()
 
 export { CliError }

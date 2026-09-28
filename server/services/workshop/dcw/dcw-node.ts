@@ -36,9 +36,18 @@ interface DcwNodeOptions {
   semantics?: string
   /** 周期读间隔 ms(null = 走网关默认;0 = 关闭周期读,仅手动读取) */
   readIntervalMs?: number | null
-  /** 写入保持窗秒数(写成功后节点锁定该时长,防参数震荡;0 = 不锁;默认 30) */
+  /** 写入保持窗秒数(写成功后节点锁定该时长,防参数震荡;0 = 不锁;默认 60) */
   writeLockSeconds?: number
+  /** 单次控制步长上限(工程量;undefined 采用量程 2% 默认值;null 显式关闭) */
+  stepLimit?: number | null
   createdAt?: string
+}
+
+function normalizeStepLimit(value: number | null): number | null {
+  if (value == null) return null
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return n
 }
 
 export class DcwNode {
@@ -69,6 +78,8 @@ export class DcwNode {
   readIntervalMs: number | null = null
   /** 写入保持窗秒数(写成功后锁定;防参数频繁修改震荡;0 = 不锁) */
   writeLockSeconds = 30
+  /** 单次控制步长上限(工程量);探索阶段必须有有限值 */
+  stepLimit: number | null
   lastAckAt: string | null = null
   lastWriteAt: string | null = null
   state: DcwNodeState = 'idle'
@@ -101,7 +112,9 @@ export class DcwNode {
     this.lineId = o.lineId ?? ''
     this.semantics = o.semantics
     this.readIntervalMs = o.readIntervalMs ?? null
-    this.writeLockSeconds = Math.max(0, Math.min(3600, Math.round(o.writeLockSeconds ?? 30)))
+    this.writeLockSeconds = Math.max(0, Math.min(3600, Math.round(o.writeLockSeconds ?? 60)))
+    const fallbackStep = Math.max(10 ** -this.decimals, (this.max - this.min) * 0.02)
+    this.stepLimit = o.stepLimit === undefined ? Number(fallbackStep.toFixed(this.decimals)) : normalizeStepLimit(o.stepLimit)
     this.createdAt = o.createdAt ?? new Date().toISOString()
   }
 
@@ -155,6 +168,7 @@ export class DcwNode {
       holdIntervalMs: this.holdIntervalMs,
       readIntervalMs: this.readIntervalMs,
       writeLockSeconds: this.writeLockSeconds,
+      stepLimit: this.stepLimit,
       unit: this.unit,
       decimals: this.decimals,
       min: this.min,
@@ -200,6 +214,7 @@ export class DcwNode {
       semantics: row.semantics == null ? undefined : String(row.semantics),
       readIntervalMs: row.readIntervalMs == null ? null : Number(row.readIntervalMs),
       writeLockSeconds: row.writeLockSeconds == null ? undefined : Number(row.writeLockSeconds),
+      stepLimit: row.stepLimit === undefined ? undefined : (row.stepLimit == null ? null : Number(row.stepLimit)),
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
     })
@@ -252,6 +267,7 @@ export class DcwNode {
       lastReadError: this.lastReadError,
       readIntervalMs: this.readIntervalMs,
       writeLockSeconds: this.writeLockSeconds,
+      stepLimit: this.stepLimit,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
       state: this.state,

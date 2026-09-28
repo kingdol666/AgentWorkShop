@@ -15,12 +15,14 @@ const instantiateSchema = z.object({
   scene: z.record(z.unknown()).optional(),
   promptVariables: z.record(z.unknown()).optional(),
   objective: z.record(z.unknown()).optional(),
-  toolProfile: z.string().optional(),
+  toolProfile: z.enum(['legacy', 'hybrid_twin', 'aml_training', 'aml_optimization']).optional(),
   controlPolicy: z.enum(['recommendation_only', 'hitl_governed', 'bounded_auto']).optional(),
   providerId: z.string().min(1).optional(),
   providerVersion: z.string().min(1).optional(),
   providerHash: z.string().min(1).optional(),
   scenePackId: z.string().min(1).optional(),
+  optimizationMode: z.enum(['exploration', 'aml']).optional(),
+  boundModelId: z.string().min(1).optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -28,7 +30,7 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(instantiateSchema))
   const manager = getWorkshopManager()
-  const result = await manager.instantiateChannelTemplate(templateId, user, body.name, { scene: body.scene, promptVariables: body.promptVariables, objective: body.objective, toolProfile: body.toolProfile, controlPolicy: body.controlPolicy, providerId: body.providerId, providerVersion: body.providerVersion, providerHash: body.providerHash, scenePackId: body.scenePackId })
+  const result = await manager.instantiateChannelTemplate(templateId, user, body.name, { scene: body.scene, promptVariables: body.promptVariables, objective: body.objective, toolProfile: body.toolProfile, controlPolicy: body.controlPolicy, providerId: body.providerId, providerVersion: body.providerVersion, providerHash: body.providerHash, scenePackId: body.scenePackId, optimizationMode: body.optimizationMode, boundModelId: body.boundModelId })
   // 模板含 lead 时直接启动调度循环(可提交任务)
   if (result.leadAgentId) {
     ensureLeadSchedulerLoop(manager, result.channelId)

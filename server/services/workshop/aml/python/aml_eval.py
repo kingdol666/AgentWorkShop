@@ -46,6 +46,21 @@ def main():
     horizon = manifest["shapes"]["u"][1]
 
     model_path = ARTIFACTS / "model.onnx"
+    hybrid_manifest_path = ARTIFACTS / "hybrid_manifest.json"
+    is_hybrid = job.get("jobKind") == "hybrid_residual" or hybrid_manifest_path.is_file()
+    physics_spec = amlkit.load_physics_spec() if is_hybrid else None
+    # hybrid_manifest.json 内嵌的 spec 是训练后含校准 θ 的权威版本(stage A 拟合值
+    # 回写);残差正是对着它训练的,评估必须用同一份,否则物理+残差口径错配。
+    if is_hybrid and hybrid_manifest_path.is_file():
+        try:
+            embedded = json.loads(hybrid_manifest_path.read_text(encoding="utf-8")).get("physicsSpec")
+            if isinstance(embedded, dict) and embedded.get("states") is not None:
+                physics_spec = embedded
+        except Exception:
+            pass
+    if is_hybrid and not physics_spec:
+        emit({"type": "error", "message": "Hybrid 作业缺少受控 physics_spec.json，拒绝把残差当完整模型评估"})
+        return 1
     if not model_path.is_file():
         emit({"type": "error", "message": "训练完成但未产出 artifacts/model.onnx(须调用 amlkit.export_torch_onnx 或自行按契约导出)"})
         return 1
@@ -54,10 +69,26 @@ def main():
 
     sess = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
     inp_name = sess.get_inputs()[0].name
+    control_positions = [manifest["allNodes"].index(node) for node in manifest.get("controlNodes", []) if node in manifest.get("allNodes", [])]
 
-    def predict_next(hist_norm):
-        out = sess.run(None, {inp_name: hist_norm.astype(np.float32)[None, ...]})[0]
-        return np.asarray(out[0], dtype=np.float64)  # [n_tgt] 归一化
+    def predict_next(hist_norm, control_norm=None):
+        model_hist = np.asarray(hist_norm, dtype=np.float32).copy()
+        if is_hybrid:
+            if control_norm is None:
+                raise RuntimeError("HYBRID_CONTROL_REQUIRED")
+            if len(control_positions) != len(control_norm):
+                raise RuntimeError("HYBRID_CONTROL_LAYOUT_MISMATCH")
+            model_hist[-1, control_positions] = np.asarray(control_norm, dtype=np.float32)
+        out = sess.run(None, {inp_name: model_hist[None, ...]})[0]
+        residual = np.asarray(out[0], dtype=np.float64)  # [n_tgt] 归一化残差或 legacy 完整预测
+        if not is_hybrid:
+            return residual
+        if control_norm is None:
+            raise RuntimeError("HYBRID_CONTROL_REQUIRED")
+        physics = np.asarray(amlkit.compute_physics_step(manifest, physics_spec, hist_norm, control_norm), dtype=np.float64)
+        if physics.shape != residual.shape or not np.isfinite(physics).all():
+            raise RuntimeError("HYBRID_PHYSICS_OUTPUT_INVALID")
+        return physics + residual
 
     def denorm_targets(y_norm):
         mean = np.array(manifest["norm"]["y"]["mean"], dtype=np.float64)
@@ -73,7 +104,7 @@ def main():
         preds = []
         truths = []
         for i in idx:
-            preds.append(predict_next(x[i]))
+            preds.append(predict_next(x[i], bundle.get("u", split_name)[i][0]))
             truths.append(y[i][0])
         preds = np.array(preds)
         truths = np.array(truths)
@@ -115,7 +146,7 @@ def main():
         for i in idx:
             hist = x[i].copy()  # [H, n_all] 归一化
             for k in range(horizon):
-                nxt = predict_next(hist[-h_steps:])
+                nxt = predict_next(hist[-h_steps:], u[i][k])
                 row = np.zeros(n_all, dtype=np.float64)
                 row[feat_positions] = hist[-1][feat_positions]
                 for cp, uv in zip(ctrl_positions, u[i][k]):
@@ -140,6 +171,8 @@ def main():
         return 1
 
     platform_metrics = {"platform": {
+        "modelType": "hybrid_physics_plus_residual" if is_hybrid else "legacy_supervised",
+        "hybrid": {"physicsFirst": True, "composition": "y_phys + bounded_residual"} if is_hybrid else None,
         "oneStepVal": ev_val,
         "oneStepTest": ev_test,
         "rolloutTest": ev_roll,

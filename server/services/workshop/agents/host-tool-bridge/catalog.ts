@@ -5,31 +5,43 @@
 import type { RpcHostToolDefinition } from '../adapters/omp-rpc-client'
 import { loadHostToolDefs } from '../../prompts/loader'
 import { daqRuntimeSettings } from '../../settings'
+import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, LEAD_ONLY_TOOL_NAMES } from '../tool-classes'
 import { listPluginTools, pluginOfTool } from '../plugin-tools'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
-import { isHybridTwinChannel } from '../../aml/twin/channel-profile'
+import { getChannelTwinProfile } from '../../aml/twin/channel-profile'
+import { amlTwinFeatureFlags } from '../../aml/twin/feature-flags'
 
 /** host tool 定义(外置 .AgentWorkShop/prompts/host-tools.json;加载器缓存) */
 export const HOST_TOOLS: RpcHostToolDefinition[] = loadHostToolDefs()
 
-/** 仅 lead 可见的工具名(dispatch/调度/团队管理面 + AML 模型治理面;worker 注册时剔除,压缩工具上下文) */
-export const LEAD_ONLY_TOOL_NAMES = new Set([
-  'submit_task',
-  'dispatch_task',
-  'get_queue_overview',
-  'read_channel_mail',
-  'reassign_task',
-  'update_task',
-  'create_team_agent',
-  'update_team_agent',
-  'remove_team_agent',
-  'aml_model_promote',
-])
+// 工具分类常量已上收零依赖叶子模块 agents/tool-classes(权限面/测试在 nitro 之外可用);此处 re-export 保持导入路径兼容
+export { LEAD_ONLY_TOOL_NAMES, HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES } from '../tool-classes'
 
 /** Hybrid Twin 工具只对显式 profile=hybrid_twin 的 Channel 注入。 */
 export const HYBRID_TWIN_TOOL_NAMES = new Set([
-  'twin_provider_catalog', 'twin_scene_read', 'twin_snapshot_create', 'twin_trial_run', 'mpc_optimize', 'twin_gate_evaluate',
+  'twin_provider_catalog', 'twin_scene_discover', 'twin_scene_compile', 'twin_scene_freeze', 'twin_physics_spec_draft', 'twin_physics_spec_validate', 'twin_physics_spec_compile', 'twin_scene_read', 'twin_snapshot_create', 'twin_trial_run', 'mpc_optimize', 'twin_gate_evaluate',
 ])
+
+/**
+ * AML 解耦(2026-09-26 计划 v3):训练 Channel 与工艺优化 Channel 工具面。
+ * 训练面=建模/训练/评估(数据集/作业/谱系/场景编译/物理 spec/建模任务);
+ * 优化面=探索/验证/寻优(快照/试验/门禁/MPC/贝叶斯/探索步)。
+ * 两面互斥注入:训练 Channel 无产线写与 MPC;优化 Channel 无训练族(边训边优被结构禁止)。
+ */
+export const AML_TRAINING_TOOL_NAMES = new Set([
+  'aml_node_catalog', 'aml_dataset_build', 'aml_dataset_stats', 'aml_job_submit', 'aml_job_status', 'aml_job_logs', 'aml_job_cancel', 'aml_leaderboard', 'aml_model_find', 'aml_model_reference', 'twin_provider_catalog', 'twin_scene_discover', 'twin_scene_compile', 'twin_scene_freeze', 'twin_physics_spec_draft', 'twin_physics_spec_validate', 'twin_physics_spec_compile', 'twin_scene_read', 'twin_calibration_request', 'aml_training_plan_list', 'aml_training_plan_create', 'aml_training_plan_train',
+])
+
+export const AML_OPTIMIZATION_TOOL_NAMES = new Set([
+  'twin_snapshot_create', 'twin_trial_run', 'mpc_optimize', 'twin_gate_evaluate', 'optimization_explore', 'twin_bayes_optimize',
+])
+
+/** 仅 aml 模式(已绑定模型)可执行的工具;探索模式下 dispatch 层 fail-closed 拒绝。 */
+export const AML_MODEL_BACKED_TOOL_NAMES = new Set([
+  'twin_trial_run', 'mpc_optimize', 'twin_bayes_optimize',
+])
+
+/** AML 治理/重负载动作之外,产线直接写工具的声明源已上收 agents/tool-classes(见文件头 re-export)。 */
 
 /** 占位符动态注入:工具描述里的运行时配置值(每次装配实时计算,配置热重载后 Agent 拿到新值) */
 function applyDescriptionPlaceholders(tools: RpcHostToolDefinition[]): RpcHostToolDefinition[] {
@@ -54,15 +66,35 @@ function applyDescriptionPlaceholders(tools: RpcHostToolDefinition[]): RpcHostTo
  * 按角色装配 host tools:lead = 全量;worker = 剔除 lead 专属(执行面 + 通信面 + 记忆面);
  * 尾部合并插件注册工具(roles 过滤,缺省双角色可用;channelId 给定且该团队有显式
  * 插件开关时,关闭的插件其工具不注入 —— 防不需要插件的 channel 上下文被污染)。
+ * AML 解耦:aml_training/aml_optimization Channel 按面注入(训练族与优化族互斥);
+ * hybrid_twin 保持全功能面;legacy 无 twin 工具。
  * 全 harness 共用:omp 经 set_host_tools 下发;其余引擎经 MCP 桥 tools/list 拉取。
  */
 export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string): RpcHostToolDefinition[] {
   const base = role === 'lead'
     ? HOST_TOOLS
     : HOST_TOOLS.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
-  const hybrid = channelId ? isHybridTwinChannel(channelId) : false
-  const scoped = hybrid ? base : base.filter(t => !HYBRID_TWIN_TOOL_NAMES.has(t.name))
-  const out = [...scoped]
+  const profile = channelId ? getChannelTwinProfile(channelId) : null
+  const kind = profile?.profile ?? 'legacy'
+  const flags = amlTwinFeatureFlags()
+  let scoped: RpcHostToolDefinition[]
+  if (kind === 'aml_training') {
+    // 训练面:剔除优化族(gate 保留 —— 模型晋升前需门禁评估);训练族显式补齐(host-tools.json 全量已含)
+    scoped = base.filter(t => !AML_OPTIMIZATION_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate')
+  }
+  else if (kind === 'aml_optimization') {
+    // 优化面:剔除训练族(gate 保留 —— 绑定校验需门禁);优化族显式补齐(含新工具)
+    scoped = base.filter(t => !AML_TRAINING_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate')
+  }
+  else {
+    const hybrid = channelId ? kind === 'hybrid_twin' : false
+    scoped = hybrid ? base : base.filter(t => !HYBRID_TWIN_TOOL_NAMES.has(t.name))
+  }
+  // 直写工具守卫:hybrid 沿用 bounded_auto 开关;工艺优化 Channel 一律不给 dcw 直写
+  // (真实写入统一走 optimization_explore 的治理链),训练 Channel 无写语义。
+  const writesBlocked = Boolean(profile?.profile === 'hybrid_twin' && (!flags.governedWriteEnabled || !flags.boundedAutoEnabled || profile.controlPolicy !== 'bounded_auto'))
+    || kind === 'aml_optimization' || kind === 'aml_training'
+  const out = writesBlocked ? scoped.filter(t => !HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(t.name)) : [...scoped]
   // 团队级插件开关:显式配置过的 channel 按行过滤;未配置(无行)= 全启用,向后兼容
   const channelOff = channelId
     ? getChannelPluginsRepo().explicitFor(channelId)

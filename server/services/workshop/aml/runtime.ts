@@ -1,7 +1,8 @@
 /**
  * AML 运行时装配:db + 数据根目录 + 仓储访问器(插件 workshop.ts 装配,REST/工具读取)。
  *
- * 数据落盘布局(<项目根>/aml/ —— 见 shared/config/home.mjs resolveAmlRoot):
+ * 数据落盘布局(<运行时目录>/aml/ —— 见 shared/config/home.mjs resolveAmlRoot;
+ * 运行时目录 = 项目 ./.AgentWorkShop 优先,~/.AgentWorkShop 兜底):
  *   .venv/             uv 创建的 Python 环境(固定位置,整体可删重建)
  *   datasets/<dsId>/   spec.json + manifest.json + report.json + arrays/*.f32
  *   jobs/<jobId>/      job.json + workspace/(train.py, amlkit.py) + run.log + artifacts/
@@ -22,7 +23,7 @@ import { createAmlRepo, type AmlRepo } from './aml.repo'
 
 export interface AmlRuntime {
   db: DatabaseSync
-  /** <项目根>/aml 绝对路径 */
+  /** <运行时目录>/aml 绝对路径 */
   root: string
   /** 数据根解析来源(env/repo/home/cwd;UI 显示与排障用) */
   rootMode: string
@@ -117,7 +118,7 @@ export function getAmlRuntime(): AmlRuntime {
 export function amlRootSourceLabel(mode: string): string {
   switch (mode) {
     case 'env': return '环境变量 AW_AML_DIR 指定'
-    case 'repo': return '项目检出根(./aml)'
+    case 'repo': return '项目运行时根(<项目>/.AgentWorkShop/aml)'
     case 'home': return '用户配置根(~/.AgentWorkShop/aml)'
     default: return '当前工作目录(./aml)'
   }

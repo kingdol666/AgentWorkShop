@@ -9,6 +9,7 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, existsSync } from '
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import YAML from 'js-yaml'
+import { isValidTimeZone } from '../local-time.mjs'
 
 export const SETTINGS_FILENAME = 'runtime-settings.json'
 
@@ -139,6 +140,10 @@ export function validateValue(desc, value) {
     }
     case 'select': {
       if (!desc.options?.includes(value)) errors.push(`须为 ${desc.options?.join(' / ')} 之一`)
+      break
+    }
+    case 'timezone': {
+      if (typeof value !== 'string' || !isValidTimeZone(value)) errors.push(`${desc.key} 须为有效的 IANA 时区，例如 Asia/Shanghai 或 America/Los_Angeles`)
       break
     }
     default:

@@ -4,7 +4,6 @@
  */
 import type { DcwDriverKind } from '../../../../../shared/dcw-protocol'
 import { createRequire } from 'node:module'
-import { resolveDcwDriver } from './registry'
 
 /**
  * DCW 写控制驱动 —— 工艺参数写命令的生产者抽象(与数采读驱动对称)。
@@ -14,6 +13,10 @@ import { resolveDcwDriver } from './registry'
  *   ② 原始值编码(数据类型 + 字节序)→ 写 PLC 寄存器/节点
  *   ③ 回读校验(同址读回 → 换算回工程量 → 死区容差比较)→ ACK
  * 连接层复用数采驱动池(同一 PLC 读写共用 TCP 连接/OPC UA 会话)。
+ *
+ * 注意:本模块不得 import ./registry —— 驱动实现都从 ./shared 取换算纯函数,
+ * 反向依赖会形成 registry→driver→shared→registry 环,entry=驱动文件时 TDZ 爆炸
+ * (读能力判定 supportsDcwRead 因此放在 registry.ts)。
  */
 
 export const reqNative = createRequire(import.meta.url)
@@ -61,11 +64,6 @@ export interface DcwReadResult {
   raw: number | null
 }
 
-/** 读能力判定(网关调度周期读前先收敛,不支持读的驱动不空转) */
-export function supportsDcwRead(kind: DcwDriverKind): boolean {
-  return resolveDcwDriver(kind).read != null
-}
-
 export const num = (v: unknown): number | undefined => {
   const n = Number(v)
   return v !== '' && v != null && Number.isFinite(n) ? n : undefined
@@ -96,6 +94,26 @@ export function rawToEng(raw: number, input: DcwWriteInput): number {
   const engMax = num(cfg.engMax) ?? input.domain.max
   if (rawMax === rawMin) return engMin
   return engMin + ((raw - rawMin) / (rawMax - rawMin)) * (engMax - engMin)
+}
+
+/**
+ * 同址回读判定与 ACK 拼装(写驱动共用出口):
+ * ① ok 判据 = 回读值有限 且 |回读-设定| ≤ 容差 —— 网关与调控闭环只看本布尔;
+ * ② 文案统一口径(一致 / 超容差含容差值),寄存器驱动经 rawNote 携带原始值标注。
+ * 非有限回读(如 OPC UA 返回非数值)一律按未确认处理,readback 归一为 null。
+ */
+export function readbackAck(
+  input: DcwWriteInput,
+  back: number | null,
+  opts: { raw: number | null, rawNote?: string },
+): DcwWriteResult {
+  const readback = typeof back === 'number' && Number.isFinite(back) ? back : null
+  const ok = readback != null && Math.abs(readback - input.eng) <= input.tolerance
+  const backTxt = readback != null ? String(Number(readback.toFixed(4))) : '非数值'
+  const message = ok
+    ? `写入并回读一致:${input.eng}${opts.rawNote ? ` → raw ${opts.rawNote}` : ''},回读 ${backTxt}`
+    : `回读偏差超容差:写 ${input.eng},回读 ${backTxt}(容差 ${input.tolerance})`
+  return { ok, message, raw: opts.raw, readback }
 }
 
 /** 原始值 → 寄存器字序(数据类型 + 字节序;与数采 decodeRegisters 互逆) */

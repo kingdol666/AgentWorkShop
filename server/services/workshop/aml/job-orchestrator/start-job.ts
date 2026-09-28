@@ -6,14 +6,17 @@ import type { AmlJobRow } from '../aml.repo'
 import type { RunningJob } from './shared'
 import { concludeJob, runStub } from './stages'
 import { ensureVenv, platformPythonDir } from '../python-runtime'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { experimentFail, failPermanentOrRetry, finishRun, lastErrLine, safeParse } from './failure'
 import { getAmlRuntime } from '../runtime'
 import { hashDatasetDir } from '../dataset-builder'
+import { createLogger } from '../../logger'
 import { join } from 'node:path'
 import { runPython } from './process'
 import { state } from './shared'
 import { wsStage } from './broadcast'
+
+const log = createLogger('aml.job')
 
 export async function startJob(row: AmlJobRow): Promise<void> {
   const rt = getAmlRuntime()
@@ -42,6 +45,18 @@ export async function startJob(row: AmlJobRow): Promise<void> {
       writeFileSync(join(workspace, 'train.py'), inline)
       trainFile = 'train.py'
     }
+    else if ((safeParse(row.budget).jobKind ?? 'supervised') === 'hybrid_residual') {
+      // hybrid_residual 模板回退:平台参考训练器(物理参数校准→有界残差集成→UQ 校准)。
+      // Agent 无需自带训练代码即可把冻结 PhysicsSpec + 数据集训练成 hybrid 模型。
+      const template = join(platformPythonDir(), 'train-hybrid-example.py')
+      if (!existsSync(template)) {
+        rt.repo.job.fail(row.id, 'failed', `hybrid_residual 模板缺失:${template}(平台安装不完整,永久错误)`, new Date().toISOString())
+        return
+      }
+      writeFileSync(join(workspace, 'train.py'), readFileSync(template, 'utf8'))
+      trainFile = 'train.py'
+      log.warn(`[aml-job] ${row.id} hybrid_residual 未携带 code,使用平台参考训练器`)
+    }
     else {
       rt.repo.job.fail(row.id, 'failed', 'workspace/train.py 不存在(Agent 用 aml_job_submit 携带 code 提交,或 REST 提交时带 code)', new Date().toISOString())
       return
@@ -65,16 +80,21 @@ export async function startJob(row: AmlJobRow): Promise<void> {
     providerHash: budget.providerHash ?? null,
     providerGeneration: budget.providerGeneration ?? null,
   }, null, 2))
-  // Hybrid Twin lineage is immutable job input. Persist these sidecars in the
-  // isolated workspace so amlkit.load_* can consume them without trusting REST
-  // callers or reaching into the live database during training.
+  // Hybrid Twin lineage is immutable job input. Persist these sidecars where
+  // amlkit.load_* actually reads them (AML_JOB_DIR root) so training/evaluation
+  // never trusts REST callers or reaches into the live database; the workspace
+  // copy is a provenance archive of the exact bytes the job was submitted with.
   for (const [name, key] of [
     ['physics_manifest.json', 'physicsManifest'],
+    ['physics_spec.json', 'physicsSpec'],
     ['twin_snapshot.json', 'twinSnapshot'],
     ['objective_profile.json', 'objectiveProfile'],
   ] as const) {
     const value = budget[key]
-    if (value && typeof value === 'object') writeFileSync(join(workspace, name), JSON.stringify(value, null, 2))
+    if (value && typeof value === 'object') {
+      writeFileSync(join(jobDir, name), JSON.stringify(value, null, 2))
+      writeFileSync(join(workspace, name), JSON.stringify(value, null, 2))
+    }
   }
   const run: RunningJob = {
     row,

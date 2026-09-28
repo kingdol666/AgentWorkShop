@@ -10,10 +10,11 @@ import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getRecipeRollBackManager } from '../../dcw/recipe-rollback-manager'
-import { getToolApprovals } from '../tool-approvals'
 import { limitsBreakdownOf } from '../../dcw/param-limits'
 import { nodeSemanticCards } from '../industrial-context'
 import { writeToleranceOf } from './param-tools'
+import { requestManualApproval } from './manual-approval'
+import { guardTwinWrite } from '../../aml/twin/write-guard'
 
 export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: string }> {
   const repo = getAgentNodeBindingRepo()
@@ -77,7 +78,9 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
 
 /** 工具:dcw_control —— 数控下发(鉴权 → 停线守卫 → 手动审批 → 安全联锁 → 回读语义结果)。
  *  调控闭环:下发自动开优化记录;args.hypothesis 声明本次假设(入册),args.task_id 关联任务。 */
-export async function toolDcwControl(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }): Promise<{ text: string, isError?: boolean }> {
+export async function toolDcwControl(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
+  const twinGuard = guardTwinWrite(agentId, channelId)
+  if (!twinGuard.allowed) return { text: `${twinGuard.code}: ${twinGuard.message}`, isError: true }
   const nodeId = String(args.node_id ?? '').trim()
   const value = Number(args.value)
   const repo = getAgentNodeBindingRepo()
@@ -107,23 +110,15 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
   // 停线守卫:产线未开跑时手动写允许(调试),但提示当前无配方窗口约束
   const tpl = findDcwTemplate(node.templateKey)
 
-  // 手动确认模式:挂起等待用户批准(备注会回给 Agent)
-  // 同 Agent 同节点的挂起审批去重:防止审批面板堆积(前一条未决,拒绝新的)
+  // 手动确认模式:与 param_control 同源审批面(manual-approval),备注会回给 Agent
   if (binding.mode === 'manual') {
-    const approvals = getToolApprovals()
-    if (approvals.hasPendingFor(agentId, nodeId)) {
-      return { text: `你对该节点已有一条待审批的下发指令,请等待用户处理后再发新指令(避免审批堆积)。`, isError: true }
-    }
     const bd = limitsBreakdownOf(node)
-    const detail = `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})`
-    const ap = await approvals.request(agentId, nodeId, 'dcw', detail)
-    if (!ap.approved) {
-      return { text: `指令未执行:用户${ap.comment.includes('超时') ? '未在时限内批准(超时)' : `拒绝了本次下发`}。用户备注:${ap.comment || '(无)'}` }
-    }
-    // 审批期间节点可能被解绑/删除(权限在批准时失效):二次校验
-    if (!repo.find(agentId, nodeId, 'dcw')) {
-      return { text: '指令未执行:审批通过时你的该节点绑定已被解除(权限在批准时失效)。', isError: true }
-    }
+    const ap = await requestManualApproval({
+      agentId,
+      nodeId,
+      detail: `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})`,
+    })
+    if (!ap.ok) return { text: ap.text, isError: ap.isError }
   }
 
   try {

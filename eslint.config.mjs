@@ -18,7 +18,9 @@ export default withNuxt(
   // 一次性审计/调试脚本:为 docs/full-test-plan.md 的验收基线提供可复现证据,
   // 短平快风格不入主链路,豁免 lint(仅忽略规则;文件本身仍在仓库内运行)
   {
-    ignores: ['.omc/**', '.zcode/**', '.crush/**', '.agent-teams/**', '.aw-ui-home/**', 'paper/**', 'scripts/_dbg-*.mjs', 'scripts/_dbg-*.ts'],
+    // .AgentWorkShop = 配置根(运行时数据,含 aml/.venv 的三方 site-packages);
+    // aml* = AML 资产根(.venv 同理)。这些目录里的 JS 是 vendored 产物,不属于待检源码。
+    ignores: ['.omc/**', '.zcode/**', '.crush/**', '.agent-teams/**', '.aw-ui-home/**', 'paper/**', 'scripts/_dbg-*.mjs', 'scripts/_dbg-*.ts', '.AgentWorkShop/**', 'aml/**', 'aml.pre-clean*/**', '.e2e-tmp/**', '.e2e-home*/**'],
   },
   // 审计取证脚本(scripts/_audit/**):为 docs/audit/*.md 的结论提供可复现证据,
   // 写成密集单行是刻意选择(单文件自包含、便于对照报告逐条运行),不是产品代码。
@@ -27,6 +29,15 @@ export default withNuxt(
     files: ['scripts/_audit/**/*.{mjs,ts}'],
     rules: {
       '@stylistic/max-statements-per-line': 'off',
+      '@stylistic/brace-style': 'off',
+      'no-empty': 'off',
+    },
+  },
+  {
+    files: ['scripts/live-aml-*.mjs', 'scripts/e2e-aml-decoupled.mjs'],
+    rules: {
+      '@stylistic/max-statements-per-line': 'off',
+      '@stylistic/arrow-parens': 'off',
       '@stylistic/brace-style': 'off',
       'no-empty': 'off',
     },

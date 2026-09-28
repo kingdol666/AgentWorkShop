@@ -79,6 +79,8 @@ export interface DcwNodeView {
    * 与 `DcwNode.toView()` 同源;前端节点详情据此显示保写倒计时。
    */
   writeLockSeconds?: number
+  /** 单次控制步长上限(工程量;null = 未配置,探索阶段拒绝无界写入) */
+  stepLimit: number | null
   /** 最近一次成功下发时刻 / 最近一次写尝试时刻 */
   lastAckAt: string | null
   lastWriteAt: string | null

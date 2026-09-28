@@ -28,8 +28,10 @@ export interface DcwCreateInput {
   lineId?: string
   /** 节点级工艺语义备注(覆盖模板) */
   semantics?: string
-  /** 写入保持窗秒数(写成功后锁定节点防震荡;0 = 不锁;默认 30) */
+  /** 写入保持窗秒数(写成功后锁定节点防震荡;0 = 不锁;默认 60) */
   writeLockSeconds?: number
+  /** 单次控制步长上限(工程量;探索阶段的安全护栏) */
+  stepLimit?: number | null
 }
 
 export interface DcwPatchInput {
@@ -52,6 +54,8 @@ export interface DcwPatchInput {
   semantics?: string
   /** 写入保持窗秒数(0 = 不锁) */
   writeLockSeconds?: number
+  /** 单次控制步长上限(工程量;null = 显式清除参数,回到安全默认) */
+  stepLimit?: number | null
 }
 
 /** 网关扫描周期(ms;保写心跳分辨率) */

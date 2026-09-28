@@ -5,6 +5,7 @@
 import type { DcwDriverKind } from '../../../../../shared/dcw-protocol'
 import type { DcwWriteDriver } from './shared'
 import { DCW_DRIVERS } from '../../../../../shared/dcw-protocol'
+import { createPluginDriverRegistry, type PluginDriverMetaLike } from '../../plugin-driver-registry'
 import { httpDcwDriver } from './http'
 import { mockDcwDriver } from './mock'
 import { modbusRtuDcwDriver } from './modbus-rtu'
@@ -27,58 +28,43 @@ export const REGISTRY: Record<DcwDriverKind, DcwWriteDriver> = {
 
 /**
  * 插件写驱动注册表(经 ctx.dcw.registerWriteDriver;与数采侧 registerPluginDriver 对称)。
- * globalThis 防 HMR 双实例;resolveDcwDriver 插件优先,热重载同名幂等覆盖。
- * 驱动可携带可选 meta(label/configFields)进写控驱动目录(dcwDriverCatalog)。
+ * resolveDcwDriver 插件优先,热重载同名幂等覆盖;驱动可携带可选 meta(label/configFields)
+ * 进写控驱动目录(dcwDriverCatalog)。装配语义(注册/覆盖告警/meta 维护/清空/目录合并)
+ * 由共享工厂提供。
  */
-export interface PluginWriteDriverMeta {
-  kind: string
-  label: string
-  status: 'builtin' | 'real' | 'planned'
-  configFields?: import('../../../../../shared/daq-protocol').DriverConfigField[]
-  plugin: true
-}
+export type PluginWriteDriverMeta = PluginDriverMetaLike
 
-export const g_plugins = globalThis as typeof globalThis & { __dcwPluginDrivers?: Map<string, DcwWriteDriver> }
+const plugins = createPluginDriverRegistry<DcwWriteDriver>({
+  builtinKinds: REGISTRY,
+  driversKey: '__dcwPluginDrivers',
+  metasKey: '__dcwPluginDriverMetas',
+  onOverrideBuiltin: kind => console.warn(`[dcw-drivers] 插件写驱动覆盖内置:「${kind}」`),
+})
+
 export function pluginRegistry(): Map<string, DcwWriteDriver> {
-  return g_plugins.__dcwPluginDrivers ??= new Map()
+  return plugins.pluginRegistry()
 }
 
-export const g_metas = globalThis as typeof globalThis & { __dcwPluginDriverMetas?: Map<string, PluginWriteDriverMeta> }
 export function pluginMetaRegistry(): Map<string, PluginWriteDriverMeta> {
-  return g_metas.__dcwPluginDriverMetas ??= new Map()
+  return plugins.pluginMetaRegistry()
 }
 
 export function registerPluginWriteDriver(driver: DcwWriteDriver): void {
-  if (driver.kind in REGISTRY) console.warn(`[dcw-drivers] 插件写驱动覆盖内置:「${driver.kind}」`)
-  pluginRegistry().set(driver.kind, driver)
-  const meta = (driver as DcwWriteDriver & { meta?: Omit<PluginWriteDriverMeta, 'kind' | 'plugin'> }).meta
-  if (meta && typeof meta.label === 'string') {
-    pluginMetaRegistry().set(driver.kind, {
-      kind: driver.kind,
-      label: meta.label,
-      status: meta.status === 'builtin' || meta.status === 'planned' ? meta.status : 'real',
-      configFields: Array.isArray(meta.configFields) ? meta.configFields : [],
-      plugin: true,
-    })
-  }
-  else {
-    pluginMetaRegistry().delete(driver.kind)
-  }
+  plugins.register(driver)
 }
 
 export function listPluginWriteDrivers(): string[] {
-  return [...pluginRegistry().keys()]
+  return plugins.listKeys()
 }
 
 /** 插件写驱动自描述目录(写控驱动目录合并端点用) */
 export function listPluginWriteDriverMetas(): PluginWriteDriverMeta[] {
-  return [...pluginMetaRegistry().values()]
+  return plugins.listMetas()
 }
 
 /** 清空插件写驱动与其自描述目录(插件宿主热重载前调用;与数采侧 clearPluginDrivers 对称) */
 export function clearPluginWriteDrivers(): void {
-  pluginRegistry().clear()
-  pluginMetaRegistry().clear()
+  plugins.clear()
 }
 
 /**
@@ -92,19 +78,7 @@ export async function dcwDriverCatalog(): Promise<Array<{
   configFields: import('../../../../../shared/daq-protocol').DriverConfigField[]
   plugin?: boolean
 }>> {
-  const out: Array<{ kind: string, label: string, status: 'builtin' | 'real' | 'planned', configFields: import('../../../../../shared/daq-protocol').DriverConfigField[], plugin?: boolean }> = DCW_DRIVERS.map(d => ({
-    kind: d.kind,
-    label: d.label,
-    status: d.status,
-    configFields: d.configFields,
-  }))
-  for (const m of listPluginWriteDriverMetas()) {
-    const i = out.findIndex(d => d.kind === m.kind)
-    const entry = { kind: m.kind, label: m.label, status: m.status, configFields: m.configFields ?? [], plugin: true }
-    if (i >= 0) out[i] = entry
-    else out.push(entry)
-  }
-  return out
+  return plugins.mergedCatalog(DCW_DRIVERS)
 }
 
 export function normalizeDcwDriverKind(kind: string): DcwDriverKind {
@@ -115,4 +89,10 @@ export function normalizeDcwDriverKind(kind: string): DcwDriverKind {
 
 export function resolveDcwDriver(kind: DcwDriverKind): DcwWriteDriver {
   return pluginRegistry().get(kind) ?? REGISTRY[kind] ?? mockDcwDriver
+}
+
+/** 读能力判定(网关调度周期读前先收敛,不支持读的驱动不空转)。
+ *  放在本模块而非 shared.ts:shared 是被驱动反向消费的纯函数层,依赖 registry 会成环。 */
+export function supportsDcwRead(kind: DcwDriverKind): boolean {
+  return resolveDcwDriver(kind).read != null
 }

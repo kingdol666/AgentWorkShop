@@ -17,6 +17,7 @@ import type { DaqNode } from '../daq/daq-node'
 import { findDaqTemplate } from '../daq/daq-templates'
 import { getDeviceTwinRepo } from '../assets/device-twin.repo'
 import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
+import { limitsBreakdownOf } from '../dcw/param-limits'
 
 /** 从属设备描述(名称/状态/实时遥测;数据驱动) */
 function describeTwin(bindId: string | null | undefined): string | null {
@@ -43,7 +44,8 @@ function dcwSemanticCard(nodeId: string, mode: string): string | null {
   const recipe = run ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
   const param = recipe?.params.find(p => p.nodeId === nodeId)
   const twinDesc = describeTwins(node).join(' | ') || null
-  const step = Math.max(10 ** -node.decimals, (node.max - node.min) * 0.02)
+  const stepProfile = limitsBreakdownOf(node)
+  const stepText = stepProfile.stepLimit == null ? '未配置(探索阶段禁止无界写入)' : `${Number(stepProfile.stepLimit.toFixed(node.decimals))}${node.unit}(来源:${stepProfile.stepLimitSource})`
 
   const lines = [
     `#### ◆ ${node.name} [id=${nodeId}]`,
@@ -59,7 +61,7 @@ function dcwSemanticCard(nodeId: string, mode: string): string | null {
   }
   lines.push(`- 当前设定: ${node.value != null ? `${node.value}${node.unit}` : '未下发'},状态 ${node.state},所属产线「${line?.name ?? '未分配'}」`)
   if (twinDesc) lines.push(`- 从属设备: ${twinDesc};你的写入经 PLC 下发后反映到该设备的物理行为`)
-  lines.push(`- 操作守则: 单次调幅建议 ≤${Number(step.toFixed(node.decimals))}${node.unit}(量程 2%);下发后等待工艺响应再评估;目标值必须落在窗口内;驱动 ${node.driver};${mode === 'manual' ? '**手动确认模式**,每次下发会请求用户批准,请在下发前说明理由' : '自动模式,直接执行'}`)
+  lines.push(`- 操作守则: 单次调幅硬上限 ≤${stepText};Agent 写入间隔至少 60s;下发后等待工艺响应再评估;目标值必须落在窗口内;驱动 ${node.driver};${mode === 'manual' ? '**手动确认模式**,每次下发会请求用户批准,请在下发前说明理由' : '自动模式,直接执行'}`)
   return lines.join('\n')
 }
 

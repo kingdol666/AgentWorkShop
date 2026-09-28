@@ -8,8 +8,9 @@ import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwParamRepo } from '../../dcw/param-map.repo'
 import { getRecipeRollBackManager } from '../../dcw/recipe-rollback-manager'
-import { getToolApprovals } from '../tool-approvals'
 import { limitsBreakdownOf } from '../../dcw/param-limits'
+import { guardTwinWrite } from '../../aml/twin/write-guard'
+import { requestManualApproval } from './manual-approval'
 
 /** 读/设定偏差对照容差(与服务端回读死区同口径) */
 export function writeToleranceOf(node: { decimals: number, min: number, max: number }): number {
@@ -50,7 +51,7 @@ export function paramLimitsText(param: DcwParamView): string {
   if (!node) return '执行节点已删除'
   const bd = limitsBreakdownOf(node)
   const layers = bd.layers.filter(l => l.min != null || l.max != null).map(l => l.label).join(' ∩ ')
-  return `有效写入区间 ${bd.effective.min}~${bd.effective.max}${param.unit}(约束层:${layers || '无'})`
+  return `有效写入区间 ${bd.effective.min}~${bd.effective.max}${param.unit}(约束层:${layers || '无'});单步上限=${bd.stepLimit == null ? '未配置' : `${bd.stepLimit}${param.unit}`}(${bd.stepLimitSource});Agent写入间隔≥60s`
 }
 
 /** 工具:param_control —— 按工艺参数下发设定值(推荐的参数语义寻址面)。
@@ -62,7 +63,9 @@ export async function toolParamControl(agentId: string, args: {
   hypothesis?: string
   task_id?: string
   line_id?: string
-}): Promise<{ text: string, isError?: boolean }> {
+}, channelId?: string): Promise<{ text: string, isError?: boolean }> {
+  const twinGuard = guardTwinWrite(agentId, channelId)
+  if (!twinGuard.allowed) return { text: `${twinGuard.code}: ${twinGuard.message}`, isError: true }
   const resolved = resolveParamRef(String(args.param ?? ''), args.line_id ? String(args.line_id) : undefined)
   if (!resolved.ok) return resolved
   const param = resolved.param
@@ -89,20 +92,14 @@ export async function toolParamControl(agentId: string, args: {
   if (!node.enabled) {
     return { text: `工艺参数「${param.key}」的执行节点「${node.name}」已停用(控制已暂停),无法下发。`, isError: true }
   }
-  // 手动确认模式:与 dcw_control 同源审批面,备注回给 Agent
+  // 手动确认模式:与 dcw_control 同源审批面(manual-approval),备注回给 Agent
   if (binding.mode === 'manual') {
-    const approvals = getToolApprovals()
-    if (approvals.hasPendingFor(agentId, param.nodeId)) {
-      return { text: '你对该执行节点已有一条待审批的下发指令,请等待用户处理后再发新指令(避免审批堆积)。', isError: true }
-    }
-    const detail = `工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit},${paramLimitsText(param)}`
-    const ap = await approvals.request(agentId, param.nodeId, 'dcw', detail)
-    if (!ap.approved) {
-      return { text: `指令未执行:用户${ap.comment.includes('超时') ? '未在时限内批准(超时)' : `拒绝了本次下发`}。用户备注:${ap.comment || '(无)'}` }
-    }
-    if (!repo.find(agentId, param.nodeId, 'dcw')) {
-      return { text: '指令未执行:审批通过时你的该节点绑定已被解除(权限在批准时失效)。', isError: true }
-    }
+    const ap = await requestManualApproval({
+      agentId,
+      nodeId: param.nodeId,
+      detail: `工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit},${paramLimitsText(param)}`,
+    })
+    if (!ap.ok) return { text: ap.text, isError: ap.isError }
   }
   try {
     const meta = {

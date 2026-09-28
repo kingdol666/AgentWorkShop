@@ -11,7 +11,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveRunMode } from '../shared/config/home.mjs'
-import { installLocalIso } from '../shared/local-time.mjs'
+import { setConfiguredTimeZone, installLocalIso, DEFAULT_TIME_ZONE } from '../shared/local-time.mjs'
 
 // 生产进程时间输出统一本地时区(先于 .env 预载与 worker 启动)
 installLocalIso()
@@ -59,6 +59,8 @@ const eff = loadEffective({
   env: { ...process.env, ...(argPort ? { PORT: argPort } : {}) },
   mode: 'prod',
 })
+setConfiguredTimeZone(String(eff.effective['time.timeZone'] ?? DEFAULT_TIME_ZONE))
+installLocalIso()
 
 const host = eff.effective['server.host'] ?? '0.0.0.0'
 const prodPort = eff.effective['server.prod.port'] ?? 3000

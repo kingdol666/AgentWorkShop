@@ -4,8 +4,8 @@
  */
 import type { DcwReadInput, DcwReadResult, DcwWriteDriver, DcwWriteInput, DcwWriteResult } from './shared'
 import { AppError } from '../../../../utils/errors'
-import { classifyCommError, closeModbusSafely, decodeRegisters, evictModbusConn, getModbusConn, modbusKey, registerOffset, withModbusConn } from '../../daq/drivers'
-import { encodeWords, engToRaw, rawToEng, reqNative } from './shared'
+import { classifyCommError, closeModbusSafely, decodeRegisters, evictModbusConn, getModbusConn, modbusKey, registerOffset, withModbusConn } from '../../daq/drivers/modbus-tcp'
+import { encodeWords, engToRaw, rawToEng, readbackAck, reqNative } from './shared'
 
 // ============================================================
 // Modbus 读原语(TCP/RTU 共用;读保持寄存器 → 解码 → 工程量映射)
@@ -68,16 +68,8 @@ export async function modbusWrite(input: DcwWriteInput): Promise<DcwWriteResult>
         : await conn.client.readInputRegisters(offset, words.length)
       const rawBack = decodeRegisters(rb.data as number[], dataType, byteOrder)
       const engBack = rawToEng(rawBack, input)
-      const ok = Math.abs(engBack - input.eng) <= input.tolerance
       conn.errors = 0
-      return {
-        ok,
-        message: ok
-          ? `写入并回读一致:${input.eng} → raw ${rounded},回读 ${Number(engBack.toFixed(4))}`
-          : `回读偏差超容差:写 ${input.eng},回读 ${Number(engBack.toFixed(4))}(容差 ${input.tolerance})`,
-        raw: rounded,
-        readback: engBack,
-      }
+      return readbackAck(input, engBack, { raw: rounded, rawNote: String(rounded) })
     }
     catch (err) {
       // 与数采对称的自愈:连续故障主动断开,下次操作重建连接

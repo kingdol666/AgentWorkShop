@@ -4,8 +4,9 @@
  */
 import type { DcwWriteDriver, DcwWriteInput, DcwWriteResult } from './shared'
 import { AppError } from '../../../../utils/errors'
-import { classifyCommError, evictOpcUaConn, getOpcUaConn } from '../../daq/drivers'
-import { reqNative } from './shared'
+import { classifyCommError } from '../../daq/drivers/modbus-tcp'
+import { evictOpcUaConn, getOpcUaConn } from '../../daq/drivers/opcua'
+import { readbackAck, reqNative } from './shared'
 
 // ============================================================
 // OPC UA 写驱动(写节点值 + 回读校验;会话池复用数采)
@@ -43,15 +44,7 @@ export async function opcuaWriteOnce(conn: { session: import('node-opcua').Clien
   }
   const dv = await conn.session.read({ nodeId: node, attributeId: opcua.AttributeIds.Value }) as unknown as { value?: { value?: number } }
   const back = typeof dv.value?.value === 'number' ? dv.value.value : Number(dv.value?.value)
-  const ok = Number.isFinite(back) && Math.abs(back - input.eng) <= input.tolerance
-  return {
-    ok,
-    message: ok
-      ? `写入并回读一致:${input.eng},回读 ${Number(back.toFixed(4))}`
-      : `回读偏差超容差:写 ${input.eng},回读 ${Number.isFinite(back) ? back.toFixed(4) : '非数值'}`,
-    raw: input.eng,
-    readback: Number.isFinite(back) ? back : null,
-  }
+  return readbackAck(input, back, { raw: input.eng })
 }
 
 export const opcUaDcwDriver: DcwWriteDriver = {

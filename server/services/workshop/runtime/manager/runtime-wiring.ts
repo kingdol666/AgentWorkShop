@@ -13,6 +13,7 @@ import { Mailbox } from '../mailbox'
 import { SchedulerLoop } from '../scheduler-loop'
 import { buildMessage, instanceToAgentInfo, log, parseChannelLlm, rowToChannelMail, runtimeKey } from './helpers'
 import { harnessContinuityEnabled, workshopSettings } from '../../settings'
+import { composeChannelSystemPrompt } from '../../aml/twin/prompt-composer'
 
 export abstract class ManagerRuntimeWiring extends ManagerBus {
   /** 按实例装配 AgentRuntime(每个实例一个独立运行时) */
@@ -29,6 +30,13 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const scenarioPrompt = this.deps.repos.channels.findById(m.channelId)?.scenarioPrompt ?? ''
     const configWithCtx: Record<string, unknown> = { ...agent.config }
     if (scenarioPrompt) configWithCtx.scenarioPrompt = scenarioPrompt
+    // AML 解耦:训练/工艺优化 Channel 的动态工况提示词(模式+goal+绑定节点调试元数据组装;
+    // 模式/绑定变更经 twin-profile PATCH 回收成员运行时生效,与 scenarioPrompt 同链路)。
+    try {
+      const composed = composeChannelSystemPrompt(m.channelId, agent.id, scenarioPrompt)
+      if (composed) configWithCtx.systemPromptPrefix = composed
+    }
+    catch { /* 非工业 Channel/组装依赖未就绪:不注入 */ }
     if (chWorkspace.length > 0) configWithCtx.cwd = chWorkspace
     // channel 级默认 LLM(v11):成员 config 未显式指定 model/provider 时按引擎注入;
     // effort 语义按引擎映射(omp thinkingLevel / opencode variant / codex effort / dsh 暂不支持)

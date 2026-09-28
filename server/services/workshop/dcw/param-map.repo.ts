@@ -36,6 +36,8 @@ interface DcwParamRow {
   /** 基准写入限界(null = 该侧不约束) */
   min: number | null
   max: number | null
+  /** 参数层单步变化上限(null = 跟随节点默认) */
+  stepLimit: number | null
   /** 映射目标:写控制执行节点 */
   nodeId: string
   /** 标准转换模式摘要(配置期选定;运行期换算以执行节点驱动配置为单一事实源) */
@@ -128,6 +130,7 @@ class DcwParamRepo {
       decimals: clampDecimals(input.decimals ?? node.decimals),
       min,
       max,
+      stepLimit: normalizeStepLimit(input.stepLimit),
       nodeId,
       createdAt: new Date().toISOString(),
     }
@@ -169,6 +172,7 @@ class DcwParamRepo {
       if (patch.conversion == null) delete row.conversion
       else row.conversion = patch.conversion
     }
+    if (patch.stepLimit !== undefined) row.stepLimit = normalizeStepLimit(patch.stepLimit)
     // nodeId 映射目标不可变:换绑请删建(避免账本/限界层悬空引用)
     this.flush()
     return row
@@ -211,6 +215,7 @@ class DcwParamRepo {
         decimals: node.decimals,
         min: null,
         max: null,
+        stepLimit: node.stepLimit,
         nodeId: node.id,
         createdAt: new Date().toISOString(),
       }
@@ -249,6 +254,7 @@ class DcwParamRepo {
       decimals: row.decimals,
       min: row.min,
       max: row.max,
+      stepLimit: row.stepLimit ?? node.stepLimit,
       nodeId: row.nodeId,
       lineId: node.lineId,
       driver: node.driver,
@@ -285,6 +291,13 @@ function normRange(min: unknown, max: unknown, label: string): { min: number | n
     throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `工艺参数「${label}」限界非法:min ${lo} > max ${hi}`)
   }
   return { min: lo, max: hi }
+}
+
+function normalizeStepLimit(value: unknown): number | null {
+  if (value == null || value === '') return null
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `stepLimit 必须为正数或 null(当前: ${String(value)})`)
+  return n
 }
 
 function clampDecimals(v: unknown): number {

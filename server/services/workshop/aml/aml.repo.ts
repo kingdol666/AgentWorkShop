@@ -82,6 +82,14 @@ export interface AmlModelRow {
   promotedBy: string | null
   promotedAt: string | null
   note: string
+  /** 人读标识:场景/产线·配方·优化目标(注册时派生,或提交作业时的 model_name) */
+  label: string
+  /** 建模意图描述(提交作业时的 model_description,缺省派生自谱系) */
+  description: string
+  /** 产线区分(注册时从数据集落定) */
+  lineId: string
+  /** 优化目标区分(ObjectiveProfile id;legacy 作业为空串,用 purpose 表达) */
+  objectiveId: string
   createdAt: string
 }
 
@@ -105,7 +113,8 @@ const MODEL_COLS = `id, experiment_id AS experimentId, dataset_id AS datasetId,
   product_id AS productId, recipe_id AS recipeId, purpose, stage,
   io_spec_json AS ioSpecJson, metrics_json AS metricsJson, path,
   artifacts_pruned AS artifactsPruned, created_by AS createdBy,
-  promoted_by AS promotedBy, promoted_at AS promotedAt, note, created_at AS createdAt`
+  promoted_by AS promotedBy, promoted_at AS promotedAt, note,
+  label, description, line_id AS lineId, objective_id AS objectiveId, created_at AS createdAt`
 
 function rowToDataset(r: Record<string, unknown>): AmlDatasetRow {
   return { ...(r as unknown as Omit<AmlDatasetRow, 'runIds'>), runIds: JSON.parse(String(r.runIdsJson || '[]')) }
@@ -158,8 +167,8 @@ export function createAmlRepo(db: DatabaseSync) {
   )
   const modelInsert = db.prepare(
     `INSERT INTO aml_models (id, experiment_id, dataset_id, product_id, recipe_id, purpose, stage,
-       io_spec_json, metrics_json, path, created_by, note, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'candidate', ?, ?, ?, ?, ?, ?)`,
+       io_spec_json, metrics_json, path, created_by, note, label, description, line_id, objective_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'candidate', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   /** 晋升/退役:SQL 层条件更新兜底并发竞态( WHERE stage 校验) */
   const modelStage = db.prepare(
@@ -328,16 +337,21 @@ export function createAmlRepo(db: DatabaseSync) {
         path: string
         createdBy: string
         note: string
+        label?: string
+        description?: string
+        lineId?: string
+        objectiveId?: string
         createdAt: string
       }): void {
         modelInsert.run(m.id, m.experimentId, m.datasetId, m.productId, m.recipeId, m.purpose,
-          m.ioSpecJson, m.metricsJson, m.path, m.createdBy, m.note, m.createdAt)
+          m.ioSpecJson, m.metricsJson, m.path, m.createdBy, m.note,
+          m.label ?? '', m.description ?? '', m.lineId ?? '', m.objectiveId ?? '', m.createdAt)
       },
       get(id: string): AmlModelRow | undefined {
         const r = db.prepare(`SELECT ${MODEL_COLS} FROM aml_models WHERE id = ?`).get(id)
         return r ? rowToModel(r as Record<string, unknown>) : undefined
       },
-      list(filter: { stage?: string, recipeId?: string, productId?: string, limit?: number } = {}): AmlModelRow[] {
+      list(filter: { stage?: string, recipeId?: string, productId?: string, lineId?: string, purpose?: string, objectiveId?: string, limit?: number } = {}): AmlModelRow[] {
         const where: string[] = []
         const args: SQLInputValue[] = []
         if (filter.stage) {
@@ -351,6 +365,18 @@ export function createAmlRepo(db: DatabaseSync) {
         if (filter.recipeId) {
           where.push('recipe_id = ?')
           args.push(filter.recipeId)
+        }
+        if (filter.lineId) {
+          where.push('line_id = ?')
+          args.push(filter.lineId)
+        }
+        if (filter.purpose) {
+          where.push('purpose = ?')
+          args.push(filter.purpose)
+        }
+        if (filter.objectiveId) {
+          where.push('objective_id = ?')
+          args.push(filter.objectiveId)
         }
         const sql = `SELECT ${MODEL_COLS} FROM aml_models ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
           ORDER BY created_at DESC LIMIT ?`

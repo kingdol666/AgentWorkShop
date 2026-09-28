@@ -351,6 +351,12 @@ CREATE TABLE IF NOT EXISTS aml_models (
   promoted_by   TEXT,
   promoted_at   TEXT,
   note          TEXT NOT NULL DEFAULT '',
+  -- 人读身份面:label = 场景/产线·配方·优化目标 可读标识;description = 建模意图描述;
+  -- line_id/objective_id = 结构化区分(产线/优化目标),配方区分复用 recipe_id。
+  label         TEXT NOT NULL DEFAULT '',
+  description   TEXT NOT NULL DEFAULT '',
+  line_id       TEXT NOT NULL DEFAULT '',
+  objective_id  TEXT NOT NULL DEFAULT '',
   created_at    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_aml_models_lookup ON aml_models(product_id, recipe_id, purpose, stage);
@@ -533,7 +539,7 @@ CREATE INDEX IF NOT EXISTS idx_hitl_requests_agent ON hitl_requests(agent_id, st
 -- v18: AML Hybrid Twin 核心元数据（additive；legacy AML 表保持不变）
 CREATE TABLE IF NOT EXISTS aml_channel_profiles (
   channel_id TEXT PRIMARY KEY REFERENCES channels(id) ON DELETE CASCADE,
-  profile TEXT NOT NULL DEFAULT 'legacy', -- legacy | hybrid_twin
+  profile TEXT NOT NULL DEFAULT 'legacy', -- legacy | hybrid_twin | aml_training | aml_optimization
   capability_json TEXT NOT NULL DEFAULT '{}',
   scene_id TEXT,
   scene_version TEXT,
@@ -545,11 +551,67 @@ CREATE TABLE IF NOT EXISTS aml_channel_profiles (
   provider_hash TEXT,
   scene_pack_id TEXT,
   provider_generation INTEGER,
+  bound_model_id TEXT,
+  bound_at TEXT,
+  optimization_mode TEXT, -- aml_optimization 子模式:exploration(真实写入探索,无 MPC) | aml(绑定模型,trial/bayes)
   created_by TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_aml_channel_profiles_scene ON aml_channel_profiles(scene_id, scene_version);
+
+-- v24: AML 解耦 · 工艺优化探索记录(优化 Channel 真实激励写入↔DAQ 响应配对;训练数据回流的事实源)
+CREATE TABLE IF NOT EXISTS optimization_explorations (
+  id TEXT PRIMARY KEY,
+  channel_id TEXT NOT NULL,
+  agent_id TEXT NOT NULL,
+  goal_json TEXT NOT NULL DEFAULT '{}',
+  control_node_id TEXT NOT NULL,
+  control_before REAL,
+  control_after REAL,
+  control_step REAL,
+  target_node_id TEXT NOT NULL,
+  target_before REAL,
+  target_after REAL,
+  direction TEXT,
+  hypothesis TEXT,
+  write_status TEXT NOT NULL DEFAULT 'ok', -- ok | rejected | failed
+  write_message TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_opt_explorations_channel ON optimization_explorations(channel_id, created_at DESC);
+
+-- v24: AML 解耦 · 建模任务(AML 界面/训练 Channel 创建;worker 自动检测新批次做修正训练)
+CREATE TABLE IF NOT EXISTS aml_training_plans (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  line_id TEXT NOT NULL,
+  product_id TEXT NOT NULL,
+  recipe_id TEXT NOT NULL,
+  scene_id TEXT,
+  scene_version TEXT,
+  objective_id TEXT,
+  purpose TEXT NOT NULL DEFAULT 'mpc_surrogate',
+  strategy TEXT NOT NULL DEFAULT 'auto', -- auto(新批次自动修正训练) | manual
+  dataset_spec_json TEXT NOT NULL,       -- AmlDatasetSpec(节点角色:control=DCW 输入,target=DAQ 输出)
+  training_spec_json TEXT,               -- 固化 PhysicsSpec(修正训练复用;创建时由训练流程固化)
+  model_name_prefix TEXT NOT NULL DEFAULT 'AML 自动训练模型',
+  params_json TEXT NOT NULL DEFAULT '{}',
+  seed INTEGER,
+  min_interval_sec INTEGER NOT NULL DEFAULT 3600,
+  last_run_count INTEGER NOT NULL DEFAULT 0,
+  last_job_id TEXT,
+  last_dataset_id TEXT,
+  last_model_id TEXT,
+  last_status TEXT NOT NULL DEFAULT 'idle', -- idle | training | done | failed
+  last_error TEXT,
+  last_trained_at TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_aml_training_plans_line ON aml_training_plans(line_id, recipe_id);
 
 CREATE TABLE IF NOT EXISTS twin_scenes (
   scene_id TEXT NOT NULL,

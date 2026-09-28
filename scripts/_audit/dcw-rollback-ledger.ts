@@ -148,6 +148,9 @@ console.log('\n=== E. flushNow(全量序列化)成本 ===')
   const t = ms(() => { for (let i = 0; i < iters; i++) repo.flushNow() }, iters)
   report(`flushNow(anchors=${CAP_ANCHORS} + records=${CAP_RECORDS} 含聚合)`, t, iters)
   const { statSync } = await import('node:fs')
-  const size = statSync(process.cwd() + '/server/data/dcw-rollback.json').size
+  const { join } = await import('node:path')
+  const { dataDirFor } = await import('../../shared/config/home.mjs')
+  // 落盘位置与 repo 同源解析(env AW_DATA_DIR 优先,cwd 兜底),勿再硬编码 cwd 路径
+  const size = statSync(join(dataDirFor(), 'dcw-rollback.json')).size
   console.log(`  落盘文件大小=${(size / 1024 / 1024).toFixed(2)} MB(每次 agent/rollback 写后同步全量重写)`)
 }

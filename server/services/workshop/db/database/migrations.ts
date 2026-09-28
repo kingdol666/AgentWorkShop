@@ -374,3 +374,34 @@ export function migrateAmlTwinProviderColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'aml_channel_profiles', 'scene_pack_id', 'TEXT')
   migrateAddColumn(db, 'aml_channel_profiles', 'provider_generation', 'INTEGER')
 }
+
+/**
+ * 模型人读身份面(场景/产线·配方·目标标识 + 描述 + 结构化区分);加列式迁移,既有行安全:
+ * 历史模型四列为空串,展示层按「空则回退派生」处理,不回填改史。
+ */
+export function migrateAmlModelIdentityColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'aml_models', 'label', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_models', 'description', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_models', 'line_id', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_models', 'objective_id', 'TEXT NOT NULL DEFAULT \'\'')
+  // 索引必须在列存在之后建:SCHEMA_SQL 对既有库(CREATE TABLE IF NOT EXISTS 跳过建表)
+  // 不保证新列已存在,放这里才能同时覆盖新库与升级库
+  db.exec('CREATE INDEX IF NOT EXISTS idx_aml_models_line ON aml_models(line_id, stage)')
+}
+
+/**
+ * AML 解耦:训练/工艺优化 Channel 拆分与模型绑定(2026-09-26 计划 v3)。
+ * bound_model_id/bound_at:优化 Channel 绑定的 AML 模型(谱系+门禁校验通过后写入);
+ * optimization_mode:工艺优化 Channel 子模式('exploration'|'aml')——探索模式对产线做
+ * 受治理真实激励写入、无 MPC;aml 模式启用孪生验证/贝叶斯寻优。历史行 NULL=未设置。
+ */
+export function migrateAmlChannelOptimizationColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'aml_channel_profiles', 'bound_model_id', 'TEXT')
+  migrateAddColumn(db, 'aml_channel_profiles', 'bound_at', 'TEXT')
+  migrateAddColumn(db, 'aml_channel_profiles', 'optimization_mode', 'TEXT')
+  // 探索记录表(幂等建表):优化 Channel 真实激励写入↔DAQ 响应配对,训练数据回流事实源。
+  // DDL 主体在 schema.ts SCHEMA_SQL(新库);此处仅覆盖升级库的幂等建表。
+  db.exec('CREATE TABLE IF NOT EXISTS optimization_explorations (id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, agent_id TEXT NOT NULL, goal_json TEXT NOT NULL DEFAULT (char(123)||char(125)), control_node_id TEXT NOT NULL, control_before REAL, control_after REAL, control_step REAL, target_node_id TEXT NOT NULL, target_before REAL, target_after REAL, direction TEXT, hypothesis TEXT, write_status TEXT NOT NULL DEFAULT (char(111)||char(107)), write_message TEXT, created_at TEXT NOT NULL)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_opt_explorations_channel ON optimization_explorations(channel_id, created_at DESC)')
+  // aml_training_plans 建表由 SCHEMA_SQL 的 CREATE TABLE IF NOT EXISTS 兜底(启动时全量幂等执行,新旧库同效)
+}

@@ -116,13 +116,19 @@ export class DcwNodeRuntime {
           })
       }
     }
-    // 周期读:被动观测,不依赖写过、不与写在飞互斥(仅同节点读串行)
+    // 周期读:被动观测,不依赖写过、不与写在飞互斥(仅同节点读串行)。
+    // reading 闸门全程持有:与 readNow() 双向互斥(周期读在飞时手动读 409,
+    // 手动读在飞时本拍跳过) —— 早先此处只查不置,闸门形同虚设。
     if (this.reading || !node.enabled) return
     const readInt = node.readIntervalMs ?? this.host.defaults().readIntervalMs
     if (!readInt || readInt <= 0) return
     if (now - this.lastReadTick < readInt) return
     this.lastReadTick = now
-    void this.host.executeRead(node).catch(() => {})
+    this.reading = true
+    void Promise.resolve()
+      .then(() => this.host.executeRead(node))
+      .catch(() => {})
+      .finally(() => { this.reading = false })
   }
 
   /** 手动读取(on-demand;REST/Agent 工具共用;与周期读同一在飞互斥) */

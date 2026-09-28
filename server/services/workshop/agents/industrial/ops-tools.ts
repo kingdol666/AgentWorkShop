@@ -11,6 +11,7 @@ import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { getOps } from '../../ops/ops'
+import { fanoutQuery, windowOf } from './audit-query'
 
 // ================================================================
 // 运维日志 / Recipe 变更史查询(Agent 自查面:负责产线 scoped)
@@ -72,17 +73,10 @@ export async function toolOpsLog(agentId: string, args: {
   const kind = String(args.kind ?? '').trim() || undefined
   const actorKind = String(args.actor_kind ?? '').trim() || undefined
   const mine = args.mine === true || args.mine === 'true'
-  const minutes = Number(args.minutes) || 1440
-  const limit = Math.min(Number(args.limit) || 20, 100)
-  const from = new Date(Date.now() - minutes * 60_000).toISOString()
+  const { minutes, limit, from } = windowOf(args)
 
   const lines = lineId ? [lineId] : scope.lineIds
-  const byId = new Map<string, Record<string, unknown>>()
-  for (const lid of lines) {
-    for (const r of audit.query({ lineId: lid, kind, actorKind, actor: mine ? agentId : undefined, from, limit }))
-      byId.set(String(r.id), r)
-  }
-  let rows = [...byId.values()]
+  let rows = fanoutQuery(audit, lines, lid => ({ lineId: lid, kind, actorKind, actor: mine ? agentId : undefined, from, limit }))
   if (nodeId) rows = rows.filter(r => r.targetId === nodeId)
   rows.sort((a, b) => String(b.at).localeCompare(String(a.at)))
   rows = rows.slice(0, limit)
@@ -114,19 +108,13 @@ export async function toolRecipeLog(agentId: string, args: {
   if (lineId && !scope.lineIds.includes(lineId))
     return { text: `无权查询产线 ${lineId} 的 Recipe 历史(你的负责产线:${scope.lineIds.join(', ') || '(无)'})。`, isError: true }
   const recipeId = String(args.recipe_id ?? '').trim() || undefined
-  const minutes = Number(args.minutes) || 1440
-  const limit = Math.min(Number(args.limit) || 20, 100)
-  const from = new Date(Date.now() - minutes * 60_000).toISOString()
+  const { minutes, limit, from } = windowOf(args)
 
   const lines = lineId ? [lineId] : scope.lineIds
-  const byId = new Map<string, Record<string, unknown>>()
-  for (const lid of lines) {
-    for (const kind of ['recipe', 'rollback']) {
-      for (const r of audit.query({ lineId: lid, kind, recipeId, from, limit }))
-        byId.set(String(r.id), r)
-    }
-  }
-  const rows = [...byId.values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, limit)
+  const rows = fanoutQuery(audit, lines, lid => [
+    { lineId: lid, kind: 'recipe', recipeId, from, limit },
+    { lineId: lid, kind: 'rollback', recipeId, from, limit },
+  ]).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, limit)
   if (rows.length === 0) return { text: `窗口(近 ${minutes} 分钟)内无配方下发/回退记录。可调大 minutes 或换 line_id。` }
 
   const body = rows.map((r) => {

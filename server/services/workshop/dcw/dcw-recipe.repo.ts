@@ -104,6 +104,11 @@ const normParams = (params: RecipeParam[] | undefined, lineId = ''): RecipeParam
       if (out.max != null && out.value > out.max) {
         throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${label} 设定值 ${out.value} 超出配方上限 ${out.max}`)
       }
+      if (p.stepLimit != null) {
+        const step = Number(p.stepLimit)
+        if (!Number.isFinite(step) || step <= 0) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数 ${label} 的 recipe stepLimit 必须为正数`)
+        out.stepLimit = step
+      }
       return out
     })
 

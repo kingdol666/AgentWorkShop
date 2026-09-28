@@ -10,6 +10,8 @@ import { getAmlRuntime } from '../runtime'
 import { recordOps } from '../../ops/ops'
 import { state } from './shared'
 import { wsJob } from './broadcast'
+import { createTwinRepo } from '../twin/repo'
+import { amlTwinFeatureFlags } from '../twin/feature-flags'
 
 export interface SubmitJobInput {
   datasetId: string
@@ -28,6 +30,7 @@ export interface SubmitJobInput {
   objectiveId?: string
   jobKind?: 'supervised' | 'physics_calibration' | 'hybrid_residual' | 'uncertainty_calibration'
   physicsManifest?: Record<string, unknown>
+  physicsSpec?: Record<string, unknown>
   twinSnapshot?: Record<string, unknown>
   objectiveProfile?: Record<string, unknown>
   providerId?: string
@@ -39,6 +42,10 @@ export interface SubmitJobInput {
   byKind?: 'user' | 'agent'
   /** 实验谱系:由重试等内部路径复用既有 experiment 行 */
   experimentId?: string
+  /** 模型人读标识(注册时作 label 前缀;缺省由平台按 谱系·配方·目标 派生) */
+  modelName?: string
+  /** 建模意图描述(注册时落模型 description;缺省派生自谱系) */
+  modelDescription?: string
 }
 
 export function submitJob(input: SubmitJobInput): AmlJobRow {
@@ -46,6 +53,23 @@ export function submitJob(input: SubmitJobInput): AmlJobRow {
   const s = amlSettings()
   const dataset = rt.repo.dataset.get(input.datasetId)
   if (!dataset) throw new AppError(404, 'AML_DATASET_MISSING', `数据集 ${input.datasetId} 不存在`)
+
+  // Hybrid Twin 作业必须绑定已冻结的 SceneContract。场景发现/编译可以由 Agent 自动完成，
+  // 但训练是不可逆的谱系写入，平台不能允许未确认 draft 进入校准或残差训练。
+  const jobKind = input.jobKind ?? 'supervised'
+  if (jobKind !== 'supervised' && !amlTwinFeatureFlags().trainingEnabled) throw new AppError(503, 'AML_TWIN_TRAINING_DISABLED', 'AML Twin 训练开关已关闭，拒绝提交物理校准/残差/UQ 作业')
+  if (jobKind !== 'supervised') {
+    if (!input.sceneId || !input.sceneVersion) throw new AppError(422, 'TWIN_SCENE_REQUIRED', 'Hybrid Twin 作业必须提供 sceneId 和 sceneVersion')
+    const scene = createTwinRepo(rt.db).getScene(input.sceneId, input.sceneVersion)
+    if (!scene) throw new AppError(404, 'TWIN_SCENE_MISSING', `SceneContract ${input.sceneId}@${input.sceneVersion} 不存在`)
+    if (scene.status !== 'frozen') throw new AppError(409, 'TWIN_SCENE_NOT_FROZEN', `SceneContract ${input.sceneId}@${input.sceneVersion} 尚未冻结，禁止进入 ${jobKind}`)
+    if (scene.lineId !== dataset.lineId || (scene.productId && scene.productId !== dataset.productId) || (scene.recipeId && scene.recipeId !== dataset.recipeId)) {
+      throw new AppError(409, 'TWIN_SCENE_DATASET_MISMATCH', 'SceneContract 与 AML 数据集的 line/product/recipe 谱系不一致')
+    }
+    if (jobKind === 'hybrid_residual' && (!input.providerId || !input.providerVersion || !input.providerHash)) {
+      throw new AppError(422, 'TWIN_PROVIDER_LINEAGE_REQUIRED', 'hybrid_residual 必须提供 providerId/providerVersion/providerHash')
+    }
+  }
 
   // 预算硬上限(ADR-3):单数据集实验数耗尽即拒绝,防 Agent 无限迭代
   const maxExperiments = input.budget?.maxExperiments ?? 12
@@ -85,14 +109,17 @@ export function submitJob(input: SubmitJobInput): AmlJobRow {
       sceneId: input.sceneId ?? null,
       sceneVersion: input.sceneVersion ?? null,
       objectiveId: input.objectiveId ?? null,
-      jobKind: input.jobKind ?? 'supervised',
+      jobKind,
       physicsManifest: input.physicsManifest ?? null,
+      physicsSpec: input.physicsSpec ?? null,
       twinSnapshot: input.twinSnapshot ?? null,
       objectiveProfile: input.objectiveProfile ?? null,
       providerId: input.providerId ?? null,
       providerVersion: input.providerVersion ?? null,
       providerHash: input.providerHash ?? null,
       providerGeneration: input.providerGeneration ?? null,
+      modelName: input.modelName?.trim().slice(0, 80) || null,
+      modelDescription: input.modelDescription?.trim().slice(0, 500) || null,
     },
     metricsJson: null,
     gatesJson: null,

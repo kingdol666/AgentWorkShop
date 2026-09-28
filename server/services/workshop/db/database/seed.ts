@@ -96,6 +96,28 @@ export const DEFAULT_CHANNEL_TEMPLATES: Array<{
       { templateId: 'tpl-aml-eval', role: 'worker' },
     ],
   },
+  {
+    id: 'chtpl-aml-training-default',
+    name: 'AML 模型训练通道(与优化解耦)',
+    description: '独立训练环境:数据集构建/物理骨架/平台自动训练/修正训练/门禁评估,训练结果进 AML 管理界面;无产线写权、无 MPC(与工艺优化通道解耦)。',
+    scenarioPrompt: `你是 AML 训练团队,在独立环境负责模型训练与测试,不承担产线控制。任务:按配方建数据集(IO 契约:control=DCW 设定点回读,target=目标 DAQ)→ 物理骨架 + hybrid_residual 平台训练 → 门禁评估 → 建模任务(aml_training_plan_*)登记,新批次(含工艺优化通道的探索数据)到达时自动修正训练。门禁全过的模型在 AML 界面申请绑定到工艺优化通道。`,
+    members: [
+      { templateId: 'tpl-aml-lead', role: 'lead' },
+      { templateId: 'tpl-aml-trainer', role: 'worker' },
+      { templateId: 'tpl-aml-eval', role: 'worker' },
+    ],
+  },
+  {
+    id: 'chtpl-aml-optimization-default',
+    name: '工艺优化通道(探索/AML 双模式)',
+    description: 'goal 驱动的工艺参数优化:探索模式(未绑定模型)对产线做受治理的真实激励探索并积累数据;AML 模式(绑定训练好的模型)做孪生验证与贝叶斯寻优,推荐经治理后写入。模式在 Channel 设置中切换。',
+    scenarioPrompt: `你是工艺优化团队,围绕 goal 对产线做参数寻优。未绑定模型时处于探索模式:用 optimization_explore 对真实产线做小步激励(尊重每步调试跨度与调试范围),积累「参数波动↔目标响应」数据;绑定 AML 模型后进入 AML 模式:孪生验证先行,贝叶斯寻优收敛,推荐经治理审批后写入并复测。`,
+    members: [
+      { templateId: 'tpl-aml-lead', role: 'lead' },
+      { templateId: 'tpl-aml-data', role: 'worker' },
+      { inline: { name: '优化执行器', harness: 'omp', config: { rpcMode: 'rpc', systemPromptPrefix: '你是工艺参数优化执行器:按 goal 与节点物理意义规划探索方向与步长;用 optimization_explore 真实下发激励并读回目标响应;绑定模型后用 twin_trial_run 验证候选、twin_bayes_optimize 收敛寻优;所有写入遵守治理审批。结论必须引用带单位的数据。' } }, role: 'worker' },
+    ],
+  },
 ]
 
 /**

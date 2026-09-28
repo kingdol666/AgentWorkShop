@@ -12,28 +12,26 @@
  *    这些工具的正常使用路径是 owner 显式授予(§13.3「跨 Channel、私有 memory、
  *    工业/高危工具需 owner 明确授予」)。
  */
-import { LEAD_ONLY_TOOL_NAMES } from '../agents/host-tool-bridge'
+import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, LEAD_ONLY_TOOL_NAMES } from '../agents/tool-classes'
 import type { WorkshopPermissionScope } from '../../../../shared/workshop-protocol'
 
 /** 管理面工具(Channel/Agent/Task/Plugin 的管理动作) */
 export const MANAGEMENT_TOOL_NAMES: ReadonlySet<string> = LEAD_ONLY_TOOL_NAMES
 
+/** AML 治理/重负载动作(训练作业与数据面、模型晋升;不在直接写声明源内,单独列举) */
+const AML_HIGH_RISK_TOOL_NAMES = ['aml_job_submit', 'aml_job_cancel', 'aml_dataset_build', 'aml_model_promote'] as const
+
 /**
  * 高危写/控制工具。
- * 取值来自 host-tool-bridge 的 dispatch 分支(dcw_control/param_control/dcw_rollback/
- * aml_job_submit/aml_model_promote/aml_dataset_build)与工业工具族(包括配方写入/回退)
- * —— 这些都是"会让现场设备或数据发生变化"的动作,只读的 *_read/_query/_frames/_status 不在其中。
+ * 直接写族(dcw_control/param_control/dcw_rollback/recipe_update/recipe_rollback)取自
+ * host-tool-bridge 的单一声明源 HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES —— dispatch 与
+ * twin 网关的 fail-closed 亦同源于该集合,三处不再各自维护清单;
+ * AML 治理动作(重负载作业/数据构建/模型晋升)为单独列举。
+ * 这些都是"会让现场设备或数据发生变化"的动作,只读的 *_read/_query/_frames/_status 不在其中。
  */
 export const HIGH_RISK_TOOL_NAMES: ReadonlySet<string> = new Set([
-  'dcw_control',
-  'dcw_rollback',
-  'param_control',
-  'recipe_update',
-  'recipe_rollback',
-  'aml_job_submit',
-  'aml_job_cancel',
-  'aml_dataset_build',
-  'aml_model_promote',
+  ...HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES,
+  ...AML_HIGH_RISK_TOOL_NAMES,
 ])
 
 export type ToolScopeVerdict

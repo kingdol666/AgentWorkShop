@@ -4,6 +4,7 @@
  */
 import { SystemConfigServicePlugins } from './plugins'
 import { readSettings, validateValue } from '@/shared/config/engine.mjs'
+import { setConfiguredTimeZone } from '@/shared/local-time.mjs'
 
 export abstract class SystemConfigServiceRecompute extends SystemConfigServicePlugins {
   /** 全部描述符重算 effective + sources（base = runtimeConfig 构建值）
@@ -29,6 +30,7 @@ export abstract class SystemConfigServiceRecompute extends SystemConfigServicePl
       }
       effective[desc.key] = value
       sources[desc.key] = source
+      if (desc.key === 'time.timeZone' && typeof value === 'string') setConfiguredTimeZone(value)
       if (applyLive || this.overrides[desc.key] !== undefined) this.applyToRuntime(desc.key, value)
     }
     this.effective = effective

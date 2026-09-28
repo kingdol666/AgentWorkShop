@@ -18,6 +18,7 @@
     { "key": "theme.mode", "type": "select", "group": "theme", "label": "显示模式", "labelKey": "settings.runtime.theme.mode", "description": "全局默认深浅色；用户本地切换偏好优先", "applies": "live", "default": "light", "options": ["light", "dark"] },
 
     { "key": "i18n.defaultLocale", "type": "select", "group": "i18n", "label": "默认语言", "labelKey": "settings.runtime.i18n.defaultLocale", "description": "未做本地选择时的界面语言", "applies": "live", "default": "zh-CN", "options": ["zh-CN", "en"] },
+    { "key": "time.timeZone", "type": "timezone", "group": "time", "label": "系统时区", "labelKey": "settings.runtime.time.timeZone", "description": "日志、聊天、审计、Agent 记录与定时任务使用的 IANA 时区；DAQ 原始时间轴仍保存绝对时间", "applies": "live", "default": "Asia/Shanghai" },
 
     { "key": "security.approvalGate", "type": "boolean", "group": "security", "label": "高危操作双人复核", "labelKey": "settings.runtime.security.approvalGate", "description": "R3：开启后写控/删除等高风险操作需另一位管理员批核", "applies": "live", "default": false },
     { "key": "security.hitl_timeout_ms", "type": "number", "group": "security", "label": "HITL 审批超时(ms)", "labelKey": "settings.runtime.security.hitlTimeoutMs", "description": "手动确认模式下发审批的等待超时(超时按拒绝收敛)", "applies": "restart", "default": 180000, "min": 1000, "max": 86400000, "aliases": ["HITL_TIMEOUT_MS"] },
@@ -128,6 +129,7 @@
     { "key": "aml.gates.rolloutNrmse", "type": "number", "group": "aml", "label": "门禁:多步滚动 NRMSE", "labelKey": "settings.runtime.aml.gateRolloutNrmse", "description": "mpc_surrogate 门禁 G2:horizon 步滚动预测测试集 NRMSE 上限(MPC 可用性关键指标)", "applies": "live", "default": 0.25, "min": 0.01, "max": 1 },
     { "key": "aml.gates.valTestGap", "type": "number", "group": "aml", "label": "门禁:泛化差", "labelKey": "settings.runtime.aml.gateValTestGap", "description": "门禁 G3:|test-val|/val 相对差上限(防过拟合验证集)", "applies": "live", "default": 0.2, "min": 0.01, "max": 2 },
     { "key": "aml.gates.minRows", "type": "number", "group": "aml", "label": "门禁:最少样本行", "labelKey": "settings.runtime.aml.gateMinRows", "description": "门禁 G4a:数据集滑窗样本行数下限", "applies": "live", "default": 500, "min": 50, "max": 1000000 },
-    { "key": "aml.gates.minRuns", "type": "number", "group": "aml", "label": "门禁:最少批次数", "labelKey": "settings.runtime.aml.gateMinRuns", "description": "门禁 G4b:数据集覆盖的批次(run)数下限", "applies": "live", "default": 3, "min": 1, "max": 1000 }
+    { "key": "aml.gates.minRuns", "type": "number", "group": "aml", "label": "门禁:最少批次数", "labelKey": "settings.runtime.aml.gateMinRuns", "description": "门禁 G4b:数据集覆盖的批次(run)数下限", "applies": "live", "default": 3, "min": 1, "max": 1000 },
+    { "key": "mcp.enabled", "type": "boolean", "group": "mcp", "label": "启动 MCP 集成", "labelKey": "settings.runtime.mcp.enabled", "description": "允许 aw 工业 MCP(mcp/aw-mcp-server.mjs)连接并操作本实例;停用后 MCP 工具调用将被拒绝(平台 REST 与频道内 agent 不受影响)。也可用环境变量 AW_MCP_ENABLED 覆盖。", "applies": "live", "default": false, "aliases": ["AW_MCP_ENABLED"] }
   ]
 }

@@ -17,6 +17,7 @@
  */
 import type { ScheduledTaskRow } from '../db/database'
 import type { ScheduledTaskRepo } from '../db/scheduled-task.repo'
+import { getConfiguredTimeZone, formatIsoInTimeZone } from '@/shared/local-time.mjs'
 
 /** 日志前缀收口(本模块不引 createLogger,保持可被 tsx 单测直跑) */
 const L = { p: '[workshop.schedule]' }
@@ -34,8 +35,30 @@ export function isValidDailyTime(v: string): boolean {
   return DAILY_TIME_RE.test(v)
 }
 
+function wallClockParts(date: Date, timeZone: string): { year: number, month: number, day: number, hour: number, minute: number } {
+  const values = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone, calendar: 'iso8601', numberingSystem: 'latn', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date).filter(p => p.type !== 'literal').map(p => [p.type, p.value]))
+  return { year: Number(values.year), month: Number(values.month), day: Number(values.day), hour: Number(values.hour), minute: Number(values.minute) }
+}
+
+/** 把配置时区中的本地墙上时间反解为绝对 epoch;通过前后偏移迭代处理 DST。 */
+function instantForWallClock(parts: { year: number, month: number, day: number, hour: number, minute: number }, timeZone: string, reference: Date): Date {
+  const wallAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0)
+  let guess = wallAsUtc
+  for (let i = 0; i < 3; i++) {
+    const actual = wallClockParts(new Date(guess), timeZone)
+    const actualAsUtc = Date.UTC(actual.year, actual.month - 1, actual.day, actual.hour, actual.minute, 0, 0)
+    guess += wallAsUtc - actualAsUtc
+  }
+  // 若 DST 跳过了该本地时刻,迭代结果可能落在过去;交给 next-day 逻辑避免重复触发。
+  return new Date(guess + reference.getSeconds() * 0)
+}
+
+export function configuredTimeZone(): string {
+  return getConfiguredTimeZone()
+}
+
 /**
- * 计算下一次触发时刻(纯函数;本地时区——项目全局 ISO 已本地化,Date 解析双向兼容)。
+ * 计算下一次触发时刻(配置 IANA 时区;interval 仍按绝对 elapsed ms)。
  * @returns ISO 字符串;参数非法返回 null(调用方按「无下次」处理)
  */
 export function computeNextRunAt(
@@ -43,20 +66,24 @@ export function computeNextRunAt(
   intervalMs: number,
   dailyTime: string,
   from: Date,
+  timeZone = getConfiguredTimeZone(),
 ): string | null {
   if (mode === 'interval') {
     if (!Number.isFinite(intervalMs) || intervalMs < SCHEDULE_MIN_INTERVAL_MS) return null
-    return new Date(from.getTime() + intervalMs).toISOString()
+    return formatIsoInTimeZone(new Date(from.getTime() + intervalMs), timeZone)
   }
   if (mode === 'daily') {
     const m = dailyTime.match(DAILY_TIME_RE)
     if (!m) return null
+    const current = wallClockParts(from, timeZone)
     const hh = Number(m[1])
     const mm = Number(m[2])
-    const next = new Date(from)
-    next.setHours(hh, mm, 0, 0)
-    if (next.getTime() <= from.getTime()) next.setDate(next.getDate() + 1)
-    return next.toISOString()
+    const candidate = instantForWallClock({ year: current.year, month: current.month, day: current.day, hour: hh, minute: mm }, timeZone, from)
+    if (candidate.getTime() <= from.getTime()) {
+      const nextWall = new Date(Date.UTC(current.year, current.month - 1, current.day + 1, hh, mm, 0, 0))
+      return formatIsoInTimeZone(instantForWallClock({ year: nextWall.getUTCFullYear(), month: nextWall.getUTCMonth() + 1, day: nextWall.getUTCDate(), hour: hh, minute: mm }, timeZone, from), timeZone)
+    }
+    return formatIsoInTimeZone(candidate, timeZone)
   }
   return null
 }

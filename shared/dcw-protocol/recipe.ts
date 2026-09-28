@@ -84,6 +84,8 @@ export interface DcwParamView {
   /** 基准写入限界(常驻层,叠加于节点安全量程;null = 该侧不额外约束) */
   min: number | null
   max: number | null
+  /** 参数层单步变化上限;null = 跟随节点默认 */
+  stepLimit: number | null
   /** PLC 执行节点(映射目标) */
   nodeId: string
   /** 执行节点所属产线(派生自节点;'' = 未分配) */
@@ -116,6 +118,8 @@ export interface DcwParamInput {
   lineId?: string
   /** 标准转换模式摘要(记录配置期选定的换算规约;展示/审计用) */
   conversion?: ParamConversion
+  /** 参数默认单步变化上限;null = 清除参数覆盖,回到节点默认 */
+  stepLimit?: number | null
 }
 
 /** 单层写入限界(来源标注;min/max null = 该侧不约束) */
@@ -136,6 +140,10 @@ export interface ParamLimitsBreakdown {
   layers: ParamLimitLayer[]
   /** 各层交集(最紧有效限界;恒有 node 层兜底) */
   effective: { min: number, max: number }
+  /** 单步变化限幅的来源链,最终取最小正值 */
+  stepLimit: number | null
+  stepLimitSource: 'recipe' | 'param' | 'node' | 'default' | 'none'
+  stepLimitLayers: Array<{ layer: 'recipe' | 'param' | 'node' | 'default', label: string, value: number | null }>
 }
 
 /** 产品(挂载产线;一个产品可有多个配方) */
@@ -185,6 +193,8 @@ export interface RecipeParam {
   min?: number
   /** 配方级工艺上限 */
   max?: number
+  /** 配方级单步变化上限(覆盖参数/节点默认,仅可收窄) */
+  stepLimit?: number
 }
 
 export interface RecipeView {

@@ -10,9 +10,10 @@ import http from 'node:http'
 import { createRequire } from 'node:module'
 import { appendFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { installLocalIso } from '../shared/local-time.mjs'
+import { setConfiguredTimeZone, installLocalIso, DEFAULT_TIME_ZONE } from '../shared/local-time.mjs'
 
-// 模拟器日志时间统一本地时区(覆盖 node-opcua 等库内部的 toISOString 输出)
+// 模拟器日志时间统一本地时区(配置由父进程 AW_TIME_TIMEZONE 或默认上海控制)
+setConfiguredTimeZone(process.env.AW_TIME_TIMEZONE ?? DEFAULT_TIME_ZONE)
 installLocalIso()
 
 const reqRoot = createRequire(import.meta.url)

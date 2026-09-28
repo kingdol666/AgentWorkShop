@@ -189,36 +189,31 @@ export function ensureDataDir(cwd = process.cwd(), env = process.env) {
 }
 
 /**
- * AML 平台数据根(<amlRoot>)：**项目目录下的 ./aml**，与配置根(.AgentWorkShop)分离。
+ * AML 平台数据根(<amlRoot>)：**运行时目录下的 <configRoot>/aml**,与数据/设置同根。
  *
- * 为什么单独一个根、而不是挂在 <configRoot>/data/aml 下：
- *  - AML 的产物是「可移植的资产」——数据集数组、训练作业工作区、ONNX 模型工件。
- *    这些需要能被 git/rsync/打包带走、被外部 Python 工具直接读取、被人在资源管理器里
- *    打开查看；埋在 .AgentWorkShop/data 里(那是运行时状态目录,常被 GC/清理)不合适。
- *  - uv 虚拟环境固定在 <amlRoot>/.venv,与数据集/模型同级,整个 ./aml 可以整体删除重建。
+ * 为什么收敛进配置根(用户规约):运行期产生的**所有**文件——数据、设置、数据集、
+ * 训练作业、ONNX 模型、uv 环境——都必须持久保存在同一个运行时目录里
+ * (项目 ./.AgentWorkShop 优先,~/.AgentWorkShop 兜底)。这样:
+ *  - 备份/搬迁/清数据只认一个目录;
+ *  - `aw update`(npm -g 更新包)只动应用载荷,配置根里的模型与 venv 原样保留,
+ *    更新后启动即可继续训练(venv 缺失时启动预热自动重建);
+ *  - 仍要外置(如挂大容量盘)时用 AW_AML_DIR 显式指定。
  *
  * 解析优先级：
  *   ① AW_AML_DIR 环境变量(显式覆盖;测试隔离与自定义部署用)
- *   ② repo 模式 → <检出根>/aml            (cwd 向上找 config.yml + nuxt.config.ts)
- *   ③ home 模式(全局安装) → <配置根>/aml  (~/.AgentWorkShop/aml)
- *   ④ 兜底 → <cwd>/aml
+ *   ② 项目运行时根:<cwd 向上找到的 ./.AgentWorkShop>/aml
+ *      (AW_MODE=home 时跳过)
+ *   ③ 兜底:~/.AgentWorkShop/aml(AW_HOME 可重定向)
  *
- * @returns {{ dir: string, mode: 'env'|'repo'|'home'|'cwd', projectRoot: string|null }}
+ * @returns {{ dir: string, mode: 'env'|'repo'|'home', projectRoot: string|null }}
  */
 export function resolveAmlRoot({ cwd = process.cwd(), env = process.env } = {}) {
   if (env.AW_AML_DIR && String(env.AW_AML_DIR).trim()) {
     return { dir: resolve(String(env.AW_AML_DIR).trim()), mode: 'env', projectRoot: null }
   }
-  if (env.AW_MODE !== 'home') {
-    const repoRoot = findRepoRoot(cwd)
-    if (repoRoot) return { dir: join(repoRoot, 'aml'), mode: 'repo', projectRoot: repoRoot }
-  }
-  const forceHome = env.AW_MODE === 'home'
-  if (forceHome) return { dir: join(awHome(env), 'aml'), mode: 'home', projectRoot: null }
-  // 非检出目录(既无 config.yml+nuxt.config.ts):配置根优先,最后才落 cwd
-  const localRoot = findLocalConfigRoot(cwd)
-  if (localRoot) return { dir: join(localRoot, 'aml'), mode: 'home', projectRoot: null }
-  return { dir: join(resolve(cwd), 'aml'), mode: 'cwd', projectRoot: null }
+  const local = env.AW_MODE === 'home' ? null : findLocalConfigRoot(cwd)
+  if (local) return { dir: join(local, 'aml'), mode: 'repo', projectRoot: dirname(local) }
+  return { dir: join(awHome(env), 'aml'), mode: 'home', projectRoot: null }
 }
 
 /** AML 数据根绝对路径(仅解析,不创建) */

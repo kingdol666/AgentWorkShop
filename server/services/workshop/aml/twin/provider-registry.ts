@@ -217,7 +217,10 @@ export function providerHashOf(providerOrManifest: TwinPhysicsProvider | Physics
   const value = isRecord(providerOrManifest) && 'providerId' in providerOrManifest
     ? providerOrManifest as PhysicsProviderManifest
     : normalizeProviderManifest(providerOrManifest as TwinPhysicsProvider)
-  return sha256(value)
+  // Runtime timestamps are provenance metadata, not executable provider identity.
+  // Excluding them keeps lineage stable across provider instances/restarts.
+  const { createdAt: _createdAt, ...stable } = value as unknown as Record<string, unknown>
+  return sha256(stable)
 }
 
 export function validateProviderDefinition(provider: TwinPhysicsProvider): ProviderValidationResult {

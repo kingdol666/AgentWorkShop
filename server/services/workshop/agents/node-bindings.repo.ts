@@ -19,12 +19,25 @@ const log = createLogger('workshop.node-bindings')
 export type AgentNodeBindingKind = 'dcw' | 'daq'
 export type AgentNodeBindingMode = 'auto' | 'manual'
 
+/** 绑定级调试元数据(工况提示词组装与探索步长来源;优先于节点自带元数据) */
+export interface AgentNodeBindingTuning {
+  /** 调试范围下界(缺省=节点 min) */
+  min?: number
+  /** 调试范围上界(缺省=节点 max) */
+  max?: number
+  /** 每步调试跨度(探索模式的激励步长;缺省=节点 maxStep) */
+  step?: number
+  /** 调试备注(物理意义补充/操作禁忌等,注入工况提示词) */
+  note?: string
+}
+
 export interface AgentNodeBinding {
   id: string
   agentId: string
   nodeId: string
   kind: AgentNodeBindingKind
   mode: AgentNodeBindingMode
+  tuning?: AgentNodeBindingTuning
   createdAt: string
 }
 
@@ -70,7 +83,7 @@ export class AgentNodeBindingRepo {
     return this.list.find(b => b.agentId === agentId && b.nodeId === nodeId && b.kind === kind)
   }
 
-  bind(agentId: string, nodeId: string, kind: AgentNodeBindingKind, mode: AgentNodeBindingMode): AgentNodeBinding {
+  bind(agentId: string, nodeId: string, kind: AgentNodeBindingKind, mode: AgentNodeBindingMode, tuning?: AgentNodeBindingTuning): AgentNodeBinding {
     if (!agentId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'agentId 必填')
     if (!nodeId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'nodeId 必填')
     if (kind !== 'dcw' && kind !== 'daq') throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `未知节点类型: ${kind}`)
@@ -78,6 +91,7 @@ export class AgentNodeBindingRepo {
     const prev = this.find(agentId, nodeId, kind)
     if (prev) {
       prev.mode = mode
+      if (tuning !== undefined) prev.tuning = normalizeTuning(tuning)
       this.flush()
       return prev
     }
@@ -87,11 +101,21 @@ export class AgentNodeBindingRepo {
       nodeId,
       kind,
       mode,
+      ...(tuning ? { tuning: normalizeTuning(tuning) } : {}),
       createdAt: new Date().toISOString(),
     }
     this.list.push(binding)
     this.flush()
     return binding
+  }
+
+  /** 更新绑定级调试元数据(工况提示词/探索步长;未设置的字段不覆盖) */
+  setTuning(id: string, tuning: AgentNodeBindingTuning): AgentNodeBinding {
+    const b = this.list.find(x => x.id === id)
+    if (!b) throw new AppError(404, ErrorCodes.NOT_FOUND, `绑定不存在: ${id}`)
+    b.tuning = { ...b.tuning, ...normalizeTuning(tuning) }
+    this.flush()
+    return b
   }
 
   setMode(id: string, mode: AgentNodeBindingMode): AgentNodeBinding {
@@ -157,6 +181,15 @@ export class AgentNodeBindingRepo {
 }
 
 const g = globalThis as typeof globalThis & { __agentNodeBindingRepo?: AgentNodeBindingRepo }
+
+function normalizeTuning(t: AgentNodeBindingTuning): AgentNodeBindingTuning {
+  const out: AgentNodeBindingTuning = {}
+  if (t.min != null && Number.isFinite(Number(t.min))) out.min = Number(t.min)
+  if (t.max != null && Number.isFinite(Number(t.max))) out.max = Number(t.max)
+  if (t.step != null && Number.isFinite(Number(t.step)) && Number(t.step) > 0) out.step = Number(t.step)
+  if (t.note != null && String(t.note).trim()) out.note = String(t.note).trim().slice(0, 500)
+  return out
+}
 
 export function getAgentNodeBindingRepo(): AgentNodeBindingRepo {
   g.__agentNodeBindingRepo ??= new AgentNodeBindingRepo()

@@ -52,6 +52,8 @@ import { AppError } from '../utils/errors'
 import { workshopSettings } from '../services/workshop/settings'
 import { configureAmlRuntime } from '../services/workshop/aml/runtime'
 import { recoverInterruptedJobs, shutdownOrchestrator } from '../services/workshop/aml/job-orchestrator'
+import { envStatus, startCreateVenv } from '../services/workshop/aml/env-manager'
+import { attachOmpPluginBridge } from '../services/workshop/agents/plugin-tools'
 import { startAmlRetentionTimer, stopAmlRetentionTimer } from '../services/workshop/aml/retention'
 
 declare global {
@@ -146,6 +148,25 @@ export default function workshopPlugin(nitroApp: {
   configureAmlRuntime(db, dataDir)
   recoverInterruptedJobs()
   startAmlRetentionTimer()
+
+  // 插件 omp 工具注册桥:启动即接管 pending 队列(此前首次 spawn omp agent 才挂桥,
+  // 全新实例未 spawn 前 kb_agent/diag_run 等插件工具会一直"未知工具")
+  attachOmpPluginBridge()
+
+  // AML 训练环境启动预热(用户规约:启动时检测 uv,有则在运行时目录 <configRoot>/aml/.venv
+  // 直接创建训练环境;异步执行不阻塞启动;失败只记日志,可在「运行环境」面板重试)
+  void (async () => {
+    try {
+      const st = await envStatus()
+      if (!st.venv.ready && (st.uv.ok || st.python.ok)) {
+        console.info(`[aml] 启动预热:${st.uv.ok ? `检测到 uv ${st.uv.version}(来源=${st.uv.source}),` : '未检测到 uv,回退 python -m venv,'}后台创建训练环境(${st.dirs.venv})...`)
+        startCreateVenv()
+      }
+    }
+    catch (err) {
+      console.warn('[aml] 启动预热失败(不阻塞启动):', err instanceof Error ? err.message : err)
+    }
+  })()
 
   // 创建 manager → 挂全局单例(后续 REST/A2A/WS 经 getWorkshopManager() 读取)
   const manager = createAgentChannelManager(deps)

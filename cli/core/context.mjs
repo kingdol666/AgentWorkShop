@@ -142,6 +142,11 @@ export async function createContext({ cwd = process.cwd(), explicitRoot, json = 
   // 配置引擎（懒加载,运行根优先）+ 有效配置 API
   const engine = await loadEngine(root ?? packageRoot, packageRoot)
   const config = createConfigApi(paths, { engine, env: process.env })
+  try {
+    const { setConfiguredTimeZone, DEFAULT_TIME_ZONE } = await import('../../shared/local-time.mjs')
+    setConfiguredTimeZone(String(config.load().effective['time.timeZone'] ?? DEFAULT_TIME_ZONE))
+  }
+  catch { /* 配置读取失败时保持默认时区,命令自身负责报告错误 */ }
 
   return {
     cwd,

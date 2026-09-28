@@ -126,7 +126,7 @@ export async function toolAmlNodeCatalog(agentId: string): Promise<{ text: strin
     )
   }
   return {
-    text: `你可用的 AML 建模节点(${cards.length} 个 daq 绑定):\n\n${cards.join('\n\n')}\n\n---\n建模路径:aml_dataset_build(选 control/target 节点组数据集)→ aml_job_submit(提交训练代码)→ aml_job_status / aml_job_logs 轮询 → aml_leaderboard 看实验谱系 → aml_model_promote(lead 专属,人工审批)→ aml_model_reference(调参前查影子参考)。\nrole 语义:control=可控输入(未来轨迹已知)/ target=预测目标(必选 ≥1)/ feature=仅历史特征。`,
+    text: `你可用的 AML 建模节点(${cards.length} 个 daq 绑定):\n\n${cards.join('\n\n')}\n\n---\n建模路径:aml_model_find(先查是否已有匹配 产线·配方·目标 的模型,可复用不重训)→ 无则 aml_dataset_build(选 control/target 节点组数据集)→ aml_job_submit(提交训练代码,带 model_name/model_description 打标)→ aml_job_status / aml_job_logs 轮询 → aml_leaderboard 看实验谱系 → aml_model_promote(lead 专属,人工审批)→ aml_model_reference(调参前查影子参考)。\n模型身份:每个模型 label 强制携带 产线·配方·优化目标;模型按 (产品, 配方, purpose) 隔离,不同 recipe 不可跨用。\nrole 语义:control=可控输入(未来轨迹已知)/ target=预测目标(必选 ≥1)/ feature=仅历史特征。`,
   }
 }
 

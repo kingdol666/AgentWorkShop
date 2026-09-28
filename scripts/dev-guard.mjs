@@ -29,8 +29,9 @@ const { existsSync, readFileSync } = await import('node:fs')
 const { dirname, resolve } = await import('node:path')
 const { fileURLToPath: u2f } = await import('node:url')
 
-// dev 进程时间输出统一本地时区(重入实例同样生效;nitro worker 由 00-local-time 插件覆盖)
-const { installLocalIso } = await import('../shared/local-time.mjs')
+// dev 进程先用默认上海时区安装补丁;加载有效配置后立即切换为系统设置。
+const { setConfiguredTimeZone, installLocalIso, DEFAULT_TIME_ZONE } = await import('../shared/local-time.mjs')
+setConfiguredTimeZone(DEFAULT_TIME_ZONE)
 installLocalIso()
 
 const root = resolve(dirname(u2f(import.meta.url)), '..')
@@ -57,6 +58,7 @@ const eff = loadEffective({
   env: process.env,
   mode: 'dev',
 })
+setConfiguredTimeZone(String(eff.effective['time.timeZone'] ?? DEFAULT_TIME_ZONE))
 
 // CLI 显式参数（pnpm dev -- --port 8080）优先，直接透传
 const rest = process.argv.slice(2) // ['dev', ...]

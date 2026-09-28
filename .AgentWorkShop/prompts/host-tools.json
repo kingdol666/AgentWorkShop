@@ -1153,7 +1153,7 @@
     },
     "code": {
      "type": "string",
-     "description": "train.py 全文(≤500KB,须 import amlkit 并导出 artifacts/model.onnx)"
+     "description": "train.py 全文(≤500KB,须 import amlkit 并导出 artifacts/model.onnx)。job_kind=hybrid_residual 时可省略:平台自动使用内置参考训练器(物理参数校准→有界残差集成→UQ 校准)"
     },
     "change_note": {
      "type": "string",
@@ -1201,6 +1201,10 @@
      ],
      "description": "训练阶段；legacy 留空"
     },
+    "physics_spec": {
+     "type": "object",
+     "description": "已冻结 SceneContract 对应的声明式 PhysicsSpec；平台会在隔离 workspace 写入 physics_spec.json"
+    },
     "physics_manifest": {
      "type": "object",
      "description": "物理模型 manifest 快照"
@@ -1212,6 +1216,14 @@
     "objective_profile": {
      "type": "object",
      "description": "优化目标契约"
+    },
+    "model_name": {
+     "type": "string",
+     "description": "模型人读标识(可选,≤80 字符):注册时作 label 前缀;平台会自动追加「产品/配方·优化目标」谱系尾,换配方或换目标的模型必须能从名字区分"
+    },
+    "model_description": {
+     "type": "string",
+     "description": "建模意图描述(可选,≤500 字符):写清本模型针对的场景/配方与优化目标;缺省由平台按谱系派生"
     }
    },
    "required": [
@@ -1291,6 +1303,50 @@
   }
  },
  {
+  "name": "aml_model_find",
+  "label": "AML Model Find",
+  "description": "模型发现与选型:按产线/产品/配方/purpose/优化目标/阶段过滤模型注册表,每个模型给出「label(产线·配方·优化目标标识)/阶段/G1+G2 指标/描述」,生产模型置顶,并按当前情况给出 选型指引:复用已有生产模型(aml_model_reference)→ 晋升候选(aml_model_promote,lead 专属)→ 新建模型(aml_dataset_build → aml_job_submit)。开始优化任务前先查:模型按 (产品, 配方, purpose) 隔离,不同 recipe 的模型不可跨用。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "line_id": {
+     "type": "string",
+     "description": "限定产线 id(须为你绑定节点所属产线;缺省 = 全部负责产线)"
+    },
+    "product_id": {
+     "type": "string",
+     "description": "限定产品 id"
+    },
+    "recipe_id": {
+     "type": "string",
+     "description": "限定配方 id(配方隔离:换配方必须换模型,选型前务必指定)"
+    },
+    "purpose": {
+     "type": "string",
+     "enum": [
+      "mpc_surrogate",
+      "quality_predict"
+     ],
+     "description": "限定建模目的"
+    },
+    "objective_id": {
+     "type": "string",
+     "description": "限定优化目标(ObjectiveProfile id;hybrid twin 模型携带)"
+    },
+    "stage": {
+     "type": "string",
+     "enum": [
+      "candidate",
+      "shadow",
+      "production",
+      "retired"
+     ],
+     "description": "限定阶段(缺省 = 全部,production 置顶)"
+    }
+   }
+  }
+ },
+ {
   "name": "aml_model_promote",
   "label": "AML Model Promote",
   "description": "(Lead only) 晋升模型阶段:to_stage=shadow(影子观测)或 production(生产生效)。必须经人工审批(HITL 挂起,用户批准/拒绝/超时);批准晋升 production 时同组旧生产模型自动退役。worker 无此工具;模型 id 从 aml_leaderboard 查。",
@@ -1361,8 +1417,163 @@
   "parameters": {
    "type": "object",
    "properties": {
-    "scene_kind": { "type": "string", "description": "可选场景类型过滤" }
+    "scene_kind": {
+     "type": "string",
+     "description": "可选场景类型过滤"
+    }
    }
+  }
+ },
+ {
+  "name": "twin_scene_discover",
+  "label": "Twin Scene Discover",
+  "description": "读取当前 Agent 已绑定的 DAQ/DCW 节点，推断 control/state/disturbance/target/guard 语义并返回证据与置信度；只读，不执行控制。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_kind": {
+     "type": "string",
+     "description": "可选场景类型"
+    }
+   }
+  }
+ },
+ {
+  "name": "twin_scene_compile",
+  "label": "Twin Scene Compile",
+  "description": "根据已绑定节点和场景提示词生成 SceneContract Draft；默认 draft，首次训练/上线前必须由用户确认后冻结。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_id": {
+     "type": "string"
+    },
+    "scene_version": {
+     "type": "string"
+    },
+    "line_id": {
+     "type": "string"
+    },
+    "product_id": {
+     "type": "string"
+    },
+    "recipe_id": {
+     "type": "string"
+    },
+    "prompt": {
+     "type": "string"
+    },
+    "physics_profile_id": {
+     "type": "string"
+    },
+    "objective_profile_ids": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "node_ids": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "scene_id",
+    "line_id"
+   ]
+  }
+ },
+ {
+  "name": "twin_scene_freeze",
+  "label": "Twin Scene Freeze",
+  "description": "在用户明确确认后冻结 SceneContract；冻结后同一 scene_id/version 的契约不可覆盖，变更必须新建版本。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_id": {
+     "type": "string"
+    },
+    "scene_version": {
+     "type": "string"
+    },
+    "expected_hash": {
+     "type": "string"
+    },
+    "approved_by": {
+     "type": "string"
+    },
+    "confirmation": {
+     "type": "string",
+     "description": "必须为 USER_CONFIRMED_SCENE_CONTRACT"
+    }
+   },
+   "required": [
+    "scene_id",
+    "scene_version",
+    "confirmation"
+   ]
+  }
+ },
+ {
+  "name": "twin_physics_spec_draft",
+  "label": "Twin PhysicsSpec Draft",
+  "description": "从场景(SceneContract,须含 nodeId 映射)自动生成骨架 PhysicsSpec:每个状态变量=一阶惯性弛豫方程(τ/控制增益为带先验盒的可校准参数),观测=持久性恒等基线,约束继承场景。这是任意工况建模的起点:生成后按真实物理润色方程 → twin_physics_spec_validate → twin_physics_spec_compile → aml_job_submit(job_kind=hybrid_residual,训练 stage A 会自动按数据拟合 τ/增益)。传 dt_sec 指定与数据集 beat 一致的步长(缺省 1s)。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_json": {
+     "type": "object",
+     "description": "SceneContract 全文(hybrid Channel 已绑定冻结场景时可省略)"
+    },
+    "dt_sec": {
+     "type": "number",
+     "description": "求解步长(秒;应与训练数据集 beatMs/1000 一致,缺省 1)"
+    }
+   }
+  }
+ },
+ {
+  "name": "twin_physics_spec_validate",
+  "label": "Twin PhysicsSpec Validate",
+  "description": "校验声明式物理模型的白名单 AST、变量/参数引用、单位、边界、稳定性和单调性；禁止任意代码执行。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "physics_spec": {
+     "type": "object"
+    },
+    "spec_json": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "physics_spec"
+   ]
+  }
+ },
+ {
+  "name": "twin_physics_spec_compile",
+  "label": "Twin PhysicsSpec Compile",
+  "description": "将已冻结场景的 PhysicsSpec 编译为隔离的 Generic Declarative Provider 候选并保存 artifact；不注册 production、不写 PLC。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "physics_spec": {
+     "type": "object"
+    },
+    "spec_json": {
+     "type": "string"
+    },
+    "scene_json": {
+     "type": "object"
+    }
+   },
+   "required": [
+    "physics_spec",
+    "scene_json"
+   ]
   }
  },
  {
@@ -1382,7 +1593,7 @@
  {
   "name": "twin_snapshot_create",
   "label": "Twin Snapshot Create",
-  "description": "根据 DAQ 样本创建带 freshness/watermark/hash 的不可变 TwinSnapshot；缺失或过期数据会被拒绝，禁止 Agent 伪造执行状态。",
+  "description": "根据服务端绑定的 DAQ 样本创建带 freshness/watermark/hash/binding epoch 的不可变 TwinSnapshot；Hybrid Twin 必须 auto_daq=true、冻结场景和 BindingSnapshot，禁止 Agent 伪造样本。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -1422,7 +1633,7 @@
  {
   "name": "twin_trial_run",
   "label": "Twin Virtual Trial",
-  "description": "在隔离物理模型副本中注入候选控制轨迹，输出全轨迹约束、UQ/OOD 与收益；candidateExecuted=false，不触碰 PLC/DCW。",
+  "description": "在隔离模型副本中注入候选控制轨迹，输出全轨迹约束、UQ/OOD 与收益；candidateExecuted=false，不触碰 PLC/DCW。传 model_id 时 rollout 由该训练注册的 hybrid 模型驱动(校准后物理主干+有界残差集成，UQ coverage 来自训练工件)，且模型谱系必须与场景 line/product/recipe 一致；不传则用场景物理 provider。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -1432,8 +1643,13 @@
     "snapshot_json": {
      "type": "object"
     },
+    "snapshot_id": {
+     "type": "string",
+     "description": "生产 VirtualTrial 使用已持久化 TwinSnapshot id；Hybrid Twin 必填"
+    },
     "model_id": {
-     "type": "string"
+     "type": "string",
+     "description": "驱动 rollout 的 AML 模型 id(须为 hybrid 模型且与场景同谱系；aml_model_find 可查)；缺省=场景物理 provider"
     },
     "baseline_controls": {
      "type": "object"
@@ -1457,12 +1673,16 @@
  {
   "name": "mpc_optimize",
   "label": "MPC Recommendation Only",
-  "description": "先检查模型门禁；未通过时只生成 safe_small_step 小步参数试探，门禁通过后才允许更精确的候选搜索；始终 recommendation-only。",
+  "description": "先检查冻结 SceneContract、绑定快照、模型门禁；未通过时只生成 safe_small_step 小步参数试探，门禁通过后才允许更精确的候选搜索；始终 recommendation-only。传 model_id 时候选评估由该训练注册的 hybrid 模型 rollout(残差修正+集成 UQ)；不传则用场景物理 provider。",
   "parameters": {
    "type": "object",
    "properties": {
     "scene_json": {
      "type": "object"
+    },
+    "snapshot_id": {
+     "type": "string",
+     "description": "生产 MPC 使用已持久化 TwinSnapshot id；Hybrid Twin 必填"
     },
     "baseline_controls": {
      "type": "object"
@@ -1557,6 +1777,178 @@
     "line_id",
     "new_runs",
     "new_rows"
+   ]
+  }
+ },
+ {
+  "name": "optimization_explore",
+  "label": "Optimization Explore Step",
+  "description": "工艺优化探索步(探索模式核心):按 goal 与指定方向/步长生成激励值,经数控下发治理链(绑定鉴权/HITL/写限界)真实写入产线,等待工艺响应后读回目标量均值,并把【写入值↔响应值】配对落库为探索记录(训练数据回流的事实源)。步长缺省取绑定 tuning.step 或场景调试跨度;方向 up/down 由你依据节点物理意义判断。多轮迭代以积累「参数波动↔目标响应」数据,供 AML 修正训练与后续模型寻优。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "control_node_id": {
+     "type": "string",
+     "description": "数控节点 id(缺省=第一个数控绑定)"
+    },
+    "target_node_id": {
+     "type": "string",
+     "description": "目标观测节点 id(缺省=第一个数采绑定)"
+    },
+    "direction": {
+     "type": "string",
+     "enum": [
+      "up",
+      "down"
+     ],
+     "description": "激励方向(依据节点物理意义与 goal 偏差判断)"
+    },
+    "step": {
+     "type": "number",
+     "description": "激励步长(缺省=绑定 tuning.step 或场景 maxStep)"
+    },
+    "settle_seconds": {
+     "type": "number",
+     "description": "写入后等待工艺响应的秒数(10~300,缺省 45)"
+    },
+    "hypothesis": {
+     "type": "string",
+     "description": "本次探索假设(入册追溯)"
+    }
+   }
+  }
+ },
+ {
+  "name": "twin_bayes_optimize",
+  "label": "Twin Bayesian Optimize",
+  "description": "AML 模式贝叶斯寻优(须已绑定通过门禁的 AML 模型):以绑定模型 rollout 为代理,围绕当前最优邻域多轮生成候选,UCB(μ-κ·σ)权衡利用与探索,产出收敛轨迹与最终受治理推荐(recommendation-only,写入须审批)。快照/绑定校验与 mpc_optimize 同源。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "scene_json": {
+     "type": "object"
+    },
+    "snapshot_id": {
+     "type": "string",
+     "description": "已持久化 TwinSnapshot id(必填,requireFresh)"
+    },
+    "baseline_controls": {
+     "type": "object"
+    },
+    "objective": {
+     "type": "object",
+     "description": "ObjectiveProfile(缺省=Channel goal)"
+    },
+    "rounds": {
+     "type": "number",
+     "description": "搜索轮数(1~10,缺省 4)"
+    },
+    "candidates_per_round": {
+     "type": "number",
+     "description": "每轮候选数(2~20,缺省 6)"
+    },
+    "kappa": {
+     "type": "number",
+     "description": "UCB 探索系数(缺省 1.96)"
+    },
+    "horizon_steps": {
+     "type": "number",
+     "description": "rollout 步数(缺省 4)"
+    }
+   },
+   "required": [
+    "snapshot_id",
+    "baseline_controls"
+   ]
+  }
+ },
+ {
+  "name": "aml_training_plan_list",
+  "label": "AML Training Plan List",
+  "description": "建模任务清单(解耦编排面):列出全部建模任务的谱系绑定/策略(auto=新批次自动修正训练)/状态/最新模型与 spec 固化情况。",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "name": "aml_training_plan_create",
+  "label": "AML Training Plan Create",
+  "description": "创建建模任务(绑定产线/产品/配方三元组 + 数据集 IO 契约:control=DCW 输入,target=DAQ 输出 + 固化训练 spec)。auto 策略的任务在新批次(含工艺优化 Channel 的探索数据)到达时由平台自动修正训练;模型入册后可在 AML 界面绑定到工艺优化 Channel。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "name": {
+     "type": "string"
+    },
+    "line_id": {
+     "type": "string"
+    },
+    "product_id": {
+     "type": "string"
+    },
+    "recipe_id": {
+     "type": "string"
+    },
+    "scene_id": {
+     "type": "string"
+    },
+    "scene_version": {
+     "type": "string"
+    },
+    "objective_id": {
+     "type": "string"
+    },
+    "strategy": {
+     "type": "string",
+     "enum": [
+      "auto",
+      "manual"
+     ]
+    },
+    "dataset_spec": {
+     "type": "object",
+     "description": "AmlDatasetSpec 完整契约"
+    },
+    "training_spec": {
+     "type": "object",
+     "description": "固化的 PhysicsSpec(含 modelId;来自 twin_physics_spec_draft/compile 流程)"
+    },
+    "model_name_prefix": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object"
+    },
+    "seed": {
+     "type": "number"
+    },
+    "min_interval_sec": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "line_id",
+    "product_id",
+    "recipe_id",
+    "dataset_spec"
+   ]
+  }
+ },
+ {
+  "name": "aml_training_plan_train",
+  "label": "AML Training Plan Train",
+  "description": "立即触发建模任务的修正训练:重建数据集(历史+新批次)→ 平台参考训练器 → 门禁 → 模型入册;plan 状态回写,AML 界面可渲染。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "plan_id": {
+     "type": "string",
+     "description": "建模任务 id"
+    }
+   },
+   "required": [
+    "plan_id"
    ]
   }
  }

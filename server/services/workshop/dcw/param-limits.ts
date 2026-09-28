@@ -99,13 +99,56 @@ export function intersectLayers(layers: ParamLimitLayer[]): { min: number, max: 
 export function limitsBreakdownOf(node: DcwNode, opts: LimitResolveOpts = {}): ParamLimitsBreakdown {
   const param = getDcwParamRepo().byNode(node.id)
   const layers = limitLayersOf(node, opts)
+  const step = stepLimitOf(node, opts)
   return {
     nodeId: node.id,
     paramId: param?.id ?? null,
     paramKey: param?.key ?? null,
     layers,
     effective: intersectLayers(layers),
+    stepLimit: step.value,
+    stepLimitSource: step.source,
+    stepLimitLayers: step.layers,
   }
+}
+
+export interface StepLimitProfile {
+  value: number | null
+  source: 'recipe' | 'param' | 'node' | 'default' | 'none'
+  layers: Array<{ layer: 'recipe' | 'param' | 'node' | 'default', label: string, value: number | null }>
+}
+
+/** 解析单步变化上限:配方覆盖 > 参数覆盖 > 节点默认;有效值取所有已配置层的最小值。 */
+export function stepLimitOf(node: DcwNode, opts: LimitResolveOpts = {}): StepLimitProfile {
+  const param = getDcwParamRepo().byNode(node.id)
+  const layers: StepLimitProfile['layers'] = [
+    { layer: 'node', label: '节点默认单步限制', value: finitePositive(node.stepLimit) },
+  ]
+  if (param?.stepLimit != null) layers.push({ layer: 'param', label: `参数「${param.key}」单步限制`, value: finitePositive(param.stepLimit) })
+  const run = getActiveLineRun(node.lineId)
+  const recipe = run ? getDcwRecipeRepo().byId(run.recipeId) : undefined
+  const recipeParam = recipe?.params.find(p => p.nodeId === node.id)
+  if (!opts.skipRecipe && recipeParam?.stepLimit != null) layers.push({ layer: 'recipe', label: `配方「${recipe?.name ?? run?.recipeId ?? ''}」单步限制`, value: finitePositive(recipeParam.stepLimit) })
+  const configured = layers.filter(x => x.value != null)
+  if (configured.length === 0) return { value: null, source: 'none', layers }
+  const effective = Math.min(...configured.map(x => x.value!))
+  const winner = [...configured].reverse().find(x => x.value === effective) ?? configured[0]!
+  return { value: effective, source: winner.layer, layers }
+}
+
+function finitePositive(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** 探索/未验证模型写入的单步卡控;previous=null 时首写必须使用有限绝对值。 */
+export function assertStepLimit(node: DcwNode, eng: number, opts: LimitResolveOpts = {}, previous: number | null = node.value): StepLimitProfile {
+  const profile = stepLimitOf(node, opts)
+  if (profile.value == null) throw new AppError(409, ErrorCodes.EXPLORATION_SAFE_STEP_REQUIRED, `节点「${node.name}」未配置有限 stepLimit，探索阶段拒绝无界写入；请在节点/工艺参数映射中配置每步最大变化量`)
+  if (previous != null && Math.abs(eng - previous) > profile.value + 1e-9) {
+    throw new AppError(409, ErrorCodes.STEP_LIMIT_EXCEEDED, `节点「${node.name}」本次变化 ${Math.abs(eng - previous)}${node.unit} 超过单步限制 ${profile.value}${node.unit}（来源:${profile.source}）`)
+  }
+  return profile
 }
 
 /**
@@ -123,12 +166,20 @@ export function assertWithinLimits(node: DcwNode, eng: number, opts: LimitResolv
   for (const l of layers) {
     if (l.min == null && l.max == null) continue
     if (l.min != null && eng < l.min) {
-      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `${violatedText(l, '低于下限', eng, unit, paramKey)}(当前有效写入区间 ${min}~${max}${unit};各层限界按安全规约取交集,越界写入已拒绝)`)
+      throw new AppError(400, errorCodeForLayer(l.layer), `${violatedText(l, '低于下限', eng, unit, paramKey)}(当前有效写入区间 ${min}~${max}${unit};各层限界按安全规约取交集,越界写入已拒绝)`)
     }
     if (l.max != null && eng > l.max) {
-      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `${violatedText(l, '超出上限', eng, unit, paramKey)}(当前有效写入区间 ${min}~${max}${unit};各层限界按安全规约取交集,越界写入已拒绝)`)
+      throw new AppError(400, errorCodeForLayer(l.layer), `${violatedText(l, '超出上限', eng, unit, paramKey)}(当前有效写入区间 ${min}~${max}${unit};各层限界按安全规约取交集,越界写入已拒绝)`)
     }
   }
+}
+
+function errorCodeForLayer(layer: ParamLimitLayer['layer']): string {
+  if (layer === 'node') return ErrorCodes.NODE_RANGE_EXCEEDED
+  if (layer === 'recipe') return ErrorCodes.RECIPE_LIMIT_EXCEEDED
+  if (layer === 'param') return ErrorCodes.PARAM_LIMIT_EXCEEDED
+  if (layer === 'product') return ErrorCodes.PRODUCT_LIMIT_EXCEEDED
+  return ErrorCodes.VALIDATION_ERROR
 }
 
 function violatedText(l: ParamLimitLayer, dir: string, eng: number, unit: string, paramKey: string | null): string {

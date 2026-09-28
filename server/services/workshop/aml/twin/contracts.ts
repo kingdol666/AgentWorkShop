@@ -25,6 +25,8 @@ export interface SceneContract {
   lineId: string
   productId?: string
   recipeId?: string
+  /** User-provided industrial scenario description; part of immutable scene provenance. */
+  scenarioPrompt?: string
   phases: string[]
   controls: SceneVariable[]
   states: SceneVariable[]
@@ -169,6 +171,7 @@ export const sceneContractSchema = z.object({
   lineId: z.string().min(1),
   productId: z.string().optional(),
   recipeId: z.string().optional(),
+  scenarioPrompt: z.string().max(20_000).optional(),
   phases: z.array(z.string().min(1)).min(1),
   controls: z.array(z.object({ id: z.string(), nodeId: z.string().optional(), role: z.literal('control'), physicalMeaning: z.string(), unit: z.string(), min: z.number().optional(), max: z.number().optional(), maxStep: z.number().positive().optional(), samplingPeriodMs: z.number().positive().optional(), phaseScope: z.array(z.string()).optional() })),
   states: z.array(z.any()),

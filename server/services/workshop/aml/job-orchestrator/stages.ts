@@ -57,12 +57,10 @@ export function concludeJob(run: RunningJob, artifactsDir: string): void {
   }
   let metrics: PlatformMetrics | undefined
   try {
-    // 存储形态:平台指标平铺顶层(消费方契约)+ 保留 agent 自报段;
-    // 兼容读取:平台评估器嵌套于 platform.* 时展平
+    // 存储形态:平台指标平铺顶层(消费方契约)+ 保留其余自报块(hybrid/physics/uncertainty
+    // 等 Twin Gate 消费)与嵌套 platform 原样 —— 两种读取形状同源,不丢块。
     const parsed = JSON.parse(readFileSync(join(artifactsDir, 'metrics.json'), 'utf8')) as { platform?: PlatformMetrics, agent?: unknown } & PlatformMetrics
-    metrics = parsed.platform
-      ? { ...parsed.platform, agent: parsed.agent }
-      : parsed
+    metrics = { ...parsed, ...(parsed.platform ?? {}) } as PlatformMetrics
   }
   catch { /* 缺 metrics → 门禁全挂 */ }
   const manifest = loadManifest(dataset)
@@ -75,12 +73,26 @@ export function concludeJob(run: RunningJob, artifactsDir: string): void {
     // 门禁未过=实验记录 gates_failed(非作业错误语义,但作业 fail 承载原因)
   }
   // 实验与模型登记(实验 id = job id 首跑对应;重试复用)
+  let registeredModelId: string | undefined
   try {
-    registerModelFromJob(run.row.id, gates, metricsJson)
+    registeredModelId = registerModelFromJob(run.row.id, gates, metricsJson).modelId
   }
   catch (err) {
     log.warn(`[aml-job] ${run.row.id} 模型登记失败:${err instanceof Error ? err.message : String(err)}`)
   }
+  // 建模任务收口:该作业若由 aml_training_plans 派生,回写 plan 终态与模型 id。
+  void import('../twin/training-plans')
+    .then(m => m.settleTrainingPlanByJob(run.row.id, gates.passed ? 'done' : 'failed', registeredModelId, gates.checks.filter(c => !c.pass).map(c => `${c.id} ${c.detail}`).join('; ')))
+    .catch(() => { /* plan 模块不可用不阻断作业收口 */ })
+  // 持续校准 worker 收口:该作业若由 twin_update_runs 派生,更新其终态(成功/失败)。
+  // 动态 import 规避 stages ↔ calibration-worker ↔ job-orchestrator 的循环装载。
+  void import('../twin/calibration-worker')
+    .then(m => m.markTwinUpdateRunFinished(
+      run.row.id,
+      gates.passed,
+      gates.checks.filter(c => !c.pass).map(c => `${c.id} ${c.detail}`).join('; '),
+    ))
+    .catch(() => { /* worker 不可用不阻断作业收口 */ })
   const datasetFresh = rt.repo.dataset.get(run.row.datasetId)
   const byKind = safeParse(run.row.budget).byKind
   const actorKind: 'user' | 'agent' | 'system' = byKind === 'user' || byKind === 'agent' ? byKind : run.row.agentId ? 'agent' : 'system'
