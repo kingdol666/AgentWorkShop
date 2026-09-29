@@ -3,5 +3,15 @@
   "kwsdot0001": "实时连接正常",
   "kwsdot0002": "实时同步中…",
   "kwsdot0003": "连接中…",
-  "kwsdot0004": "连接已断开"
+  "kwsdot0004": "连接已断开",
+  "hitlReqQuestion": "提问",
+  "hitlReqApproval": "审批",
+  "hitlPolicy": "策略:{p0}",
+  "hitlEngineNote": "该类型待办需在对应引擎界面处理",
+  "hitlPermsLoading": "读取审批权限…",
+  "hitlNoPerm": "无审批权限",
+  "hitlAnswerPlaceholder": "输入答案",
+  "hitlSupplementPlaceholder": "补充说明(可选)",
+  "hitlSubmitAnswer": "提交答案",
+  "hitlCancelRequest": "取消请求"
 }

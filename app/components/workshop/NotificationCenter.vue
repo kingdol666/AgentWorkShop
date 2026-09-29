@@ -20,6 +20,7 @@ import type { AepNotification, AepNotificationType } from '#shared/workshop-prot
 const notifications = useNotificationsStore()
 const wsStore = useWorkspacesStore()
 const { hostNotifications } = useWorkshopWs()
+const { t } = useI18n()
 
 const open = ref(false)
 const releaseHost = ref<(() => void) | null>(null)
@@ -48,13 +49,21 @@ watch(() => notifications.liveSeq, () => {
   })
 })
 
-const TYPE_META: Record<AepNotificationType, { label: string, icon: string, tone: string }> = {
-  mention: { label: '@ 提及', icon: 'i-tabler-at', tone: 'mention' },
-  agent_reply: { label: 'Agent 回复', icon: 'i-tabler-robot', tone: 'reply' },
-  hitl_request: { label: '待审批', icon: 'i-tabler-alert-triangle', tone: 'hitl' },
-  hitl_resolved: { label: '审批结果', icon: 'i-tabler-circle-check', tone: 'ok' },
-  member: { label: '成员变更', icon: 'i-tabler-user-plus', tone: 'info' },
+const TYPE_META: Record<AepNotificationType, { icon: string, tone: string }> = {
+  mention: { icon: 'i-tabler-at', tone: 'mention' },
+  agent_reply: { icon: 'i-tabler-robot', tone: 'reply' },
+  hitl_request: { icon: 'i-tabler-alert-triangle', tone: 'hitl' },
+  hitl_resolved: { icon: 'i-tabler-circle-check', tone: 'ok' },
+  member: { icon: 'i-tabler-user-plus', tone: 'info' },
 }
+
+const typeLabels = computed<Record<AepNotificationType, string>>(() => ({
+  mention: t('notifications.typeMention'),
+  agent_reply: t('notifications.typeAgentReply'),
+  hitl_request: t('notifications.typeHitlRequest'),
+  hitl_resolved: t('notifications.typeHitlResolved'),
+  member: t('notifications.typeMember'),
+}))
 
 const badge = computed(() => (notifications.unreadCount > 99 ? '99+' : String(notifications.unreadCount)))
 
@@ -98,7 +107,7 @@ async function markAll(): Promise<void> {
     await notifications.markRead({ all: true })
   }
   catch (e) {
-    message.error(e instanceof Error ? e.message : '标记已读失败')
+    message.error(e instanceof Error ? e.message : t('notifications.markReadFailed'))
   }
   finally {
     markingAll.value = false
@@ -115,7 +124,7 @@ async function markAll(): Promise<void> {
     <button
       class="icon-btn nc-bell"
       :class="{ unread: notifications.unreadCount > 0 }"
-      title="我的通知(@ 提及 / Agent 回复 / 审批)"
+      :title="$t('notifications.bellTitle')"
     >
       <span class="i-tabler-bell" />
       <span
@@ -126,15 +135,15 @@ async function markAll(): Promise<void> {
     <template #overlay>
       <div class="nc-menu">
         <div class="nc-menu-title">
-          <span>我的通知</span>
-          <span class="nc-unread">{{ notifications.unreadCount }} 未读</span>
+          <span>{{ $t('notifications.title') }}</span>
+          <span class="nc-unread">{{ $t('notifications.unreadCount', { p0: notifications.unreadCount }) }}</span>
           <button
             v-if="notifications.unreadCount > 0"
             type="button"
             class="nc-markall"
             @click.stop="markAll"
           >
-            全部已读
+            {{ $t('notifications.markAllRead') }}
           </button>
         </div>
         <div class="nc-list">
@@ -152,7 +161,7 @@ async function markAll(): Promise<void> {
             />
             <span class="nc-item-body">
               <span class="nc-item-top">
-                <span class="nc-item-type">{{ TYPE_META[n.type]?.label ?? n.type }}</span>
+                <span class="nc-item-type">{{ typeLabels[n.type] ?? n.type }}</span>
                 <span class="nc-item-time">{{ formatLocalClock(n.createdAt, false) }}</span>
               </span>
               <span class="nc-item-title">{{ n.title }}</span>
@@ -171,7 +180,7 @@ async function markAll(): Promise<void> {
             v-if="notifications.items.length === 0"
             class="nc-empty"
           >
-            暂无通知 —— 被 @ 、收到 Agent 回复或审批请求时会出现在这里
+            {{ $t('notifications.empty') }}
           </div>
         </div>
       </div>

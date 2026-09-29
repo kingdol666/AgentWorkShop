@@ -205,5 +205,15 @@
   "k9r7d4e020": "读取 PLC 当前值",
   "k9r7d4e021": "读取",
   "k9r7d4e022": "手动",
-  "k9r7d4e023": "默认 5s"
+  "k9r7d4e023": "默认 5s",
+  "stepLimitLabel": "探索阶段单步上限",
+  "stepLimitUnit": "工程量",
+  "stepLimitPlaceholder": "留空：按节点量程 2% 默认值",
+  "stepLimitHint": "Agent 每次写入的最大变化量；无有限值时探索写入会被拒绝。",
+  "thStepLimit": "探索步长",
+  "stepInputTitle": "在线控制单步最大变化量；留空将关闭探索写入",
+  "stepCurrent": "当前 Δ≤{p0}",
+  "stepUnset": "未配置",
+  "recipeStepLimitLabel": "Recipe 单步上限 Δ≤",
+  "recipeStepLimitPlaceholder": "跟随节点默认"
 }

@@ -124,16 +124,16 @@ const addSemantics = defineModel<string>('semantics', { required: true })
           >
         </label>
         <label class="f">
-          <span>探索阶段单步上限 <em>(工程量)</em></span>
+          <span>{{ $t('dcwDetail.stepLimitLabel') }} <em>({{ $t('dcwDetail.stepLimitUnit') }})</em></span>
           <input
             v-model.number="addStepLimit"
             type="number"
             min="0"
             step="any"
             class="inp"
-            placeholder="留空：按节点量程 2% 默认值"
+            :placeholder="$t('dcwDetail.stepLimitPlaceholder')"
           >
-          <small class="field-hint">Agent 每次写入的最大变化量；无有限值时探索写入会被拒绝。</small>
+          <small class="field-hint">{{ $t('dcwDetail.stepLimitHint') }}</small>
         </label>
       </div>
 

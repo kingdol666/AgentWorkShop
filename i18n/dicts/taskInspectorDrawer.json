@@ -15,5 +15,11 @@
   "ke7bh8u014": "已重新投递执行",
   "kkp77tf015": "交付物({p0})",
   "khnua62016": "子任务({p0})",
-  "kxj74io017": "原始内容({p0} parts)"
+  "kxj74io017": "原始内容({p0} parts)",
+  "timedOut": "已超时",
+  "remainingMinutes": "剩余约 {p0} 分钟",
+  "deadlineAt": "截止 {p0}",
+  "cancelWithChildren": "这会同时停止 {p0} 个活动后代任务，已完成结果会保留。确定继续？",
+  "cancelConfirm": "确定取消这个任务吗？",
+  "childrenStats": "后代 {p0} · 活动 {p1} · 已取消 {p2}"
 }

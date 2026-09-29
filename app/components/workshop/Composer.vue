@@ -210,11 +210,11 @@ const sendChat = async (text: string): Promise<void> => {
   chat.clearReplyTarget()
   if (res.unresolvedMentions?.length) {
     // 服务端逐目标校验归属:名单外的 @ 不会被投递,必须让人看见
-    message.warning(`未识别的 @: ${res.unresolvedMentions.join('、')}(不在本群成员内,未投递)`)
+    message.warning(t('chat.unresolvedMentions', { p0: res.unresolvedMentions.join('、') }))
   }
   const n = res.deliveries?.length ?? 0
-  if (n > 0) message.success(`已发到群聊 · ${n} 个 Agent 已收到投递`)
-  else message.success('已发到群聊(未 @Agent,无 Agent 执行)')
+  if (n > 0) message.success(t('chat.sentToChat', { p0: n }))
+  else message.success(t('chat.sentToChatNoAgent'))
 }
 
 const send = async (): Promise<void> => {
@@ -294,10 +294,10 @@ const send = async (): Promise<void> => {
   catch (e) {
     const code = chatErrorCode(e)
     if (mode.value === 'chat' && code === 'CHAT_DISABLED') {
-      message.warning('该 Channel 未开启群聊 —— 请 owner 在右侧成员面板开启后重试')
+      message.warning(t('chat.composerChatDisabled'))
     }
     else if (mode.value === 'chat' && (code === 'NOT_CHANNEL_MEMBER' || code === 'FORBIDDEN_LEGACY')) {
-      message.warning('你还不是该 Channel 的群成员 —— 请在右侧成员面板加入群聊')
+      message.warning(t('chat.composerNotMember'))
     }
     else {
       message.error(chatErrorMessage(e))
@@ -383,7 +383,7 @@ const reachHint = computed<Reach | null>(() => {
 })
 
 const placeholder = computed(() => {
-  if (mode.value === 'chat') return '发送到群聊…  @ 提及 Agent(触发执行)或成员(仅通知)'
+  if (mode.value === 'chat') return t('chat.composerPlaceholder')
   return mode.value === 'task'
     ? t('composer.k2h5jwc030')
     : t('composer.k15mwzt7031')
@@ -428,7 +428,7 @@ const placeholder = computed(() => {
         class="composer-block-hint"
       >
         <span class="i-tabler-lock" />
-        {{ isMember ? '该 Channel 未开启群聊(owner 可在右侧成员面板开启)' : '你还不是群成员 —— 请在右侧成员面板加入群聊后发言' }}
+        {{ isMember ? $t('chat.blockChatDisabled') : $t('chat.blockNotMember') }}
       </div>
 
       <textarea

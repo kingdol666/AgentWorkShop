@@ -111,7 +111,7 @@ is always refused).
 | `aml_training_plan_create` | create a modeling plan (scene + recipe + objective + auto policy) |
 | `aml_training_plan_train` | trigger one training run of a modeling plan immediately |
 
-These 14 are **host tools** defined in `.AgentWorkShop/prompts/host-tools.json` (70 entries
+These 14 are **host tools** defined in `.AgentWorkShop/prompts/host-tools.json` (74 entries
 on the host tool surface); they are a different surface from MCP
 (`server/mcp/workshop-server.ts`, 25 in-process tools).
 Models carry a human-readable identity: `label` (line · recipe · objective), `description`

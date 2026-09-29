@@ -95,13 +95,13 @@ const deadlineLabel = computed(() => {
   const ts = new Date(value).getTime()
   if (!Number.isFinite(ts)) return value
   const delta = ts - Date.now()
-  if (delta <= 0) return '已超时'
+  if (delta <= 0) return t('taskInspectorDrawer.timedOut')
   const mins = Math.ceil(delta / 60_000)
-  return mins < 60 ? `剩余约 ${mins} 分钟` : `截止 ${formatLocalClock(value)}`
+  return mins < 60 ? t('taskInspectorDrawer.remainingMinutes', { p0: mins }) : t('taskInspectorDrawer.deadlineAt', { p0: formatLocalClock(value) })
 })
 const cancelTitle = computed(() => childHealth.value.total > 0
-  ? `这会同时停止 ${childHealth.value.active} 个活动后代任务，已完成结果会保留。确定继续？`
-  : '确定取消这个任务吗？')
+  ? t('taskInspectorDrawer.cancelWithChildren', { p0: childHealth.value.active })
+  : t('taskInspectorDrawer.cancelConfirm'))
 
 /** AEP 状态时间线重放 */
 const timeline = computed(() => {
@@ -254,7 +254,7 @@ const stateColor: Record<string, string> = {
             v-if="childHealth.total > 0"
             class="guardrail-chip tree"
           >
-            <span class="i-tabler-git-branch" /> 后代 {{ childHealth.total }} · 活动 {{ childHealth.active }} · 已取消 {{ childHealth.canceled }}
+            <span class="i-tabler-git-branch" /> {{ $t('taskInspectorDrawer.childrenStats', { p0: childHealth.total, p1: childHealth.active, p2: childHealth.canceled }) }}
           </span>
         </div>
 

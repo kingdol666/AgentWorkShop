@@ -101,7 +101,7 @@ CLI 例:`aw config set aml.gates.nrmse 0.12`、`aw config get aml.job.maxConcurr
 | `aml_training_plan_create` | 创建建模任务(场景 + 配方 + 目标 + 自动策略) |
 | `aml_training_plan_train` | 立即触发一次建模任务的训练 |
 
-这 14 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 70 条),
+这 14 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 74 条),
 与 MCP 面(`server/mcp/workshop-server.ts`,25 个进程内工具)是两套不同的表面。
 模型带人读身份:`label`(产线 · 配方 · 目标)+ `description` + `line_id`/`objective_id`。
 

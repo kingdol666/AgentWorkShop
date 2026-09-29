@@ -10,6 +10,7 @@ const props = defineProps<{ channelId: string }>()
 const events = useEventsStore()
 const entities = useEntitiesStore()
 const filter = ref<'all' | OperationKind>('all')
+const { t } = useI18n()
 
 const allItems = computed<AepEnvelope[]>(() => events.ring(props.channelId).items)
 const operations = computed(() => allItems.value
@@ -34,7 +35,7 @@ const stats = computed(() => {
 })
 
 function agentName(e: AepEnvelope): string {
-  return e.agentId ? entities.agentName(props.channelId, e.agentId) || e.agentId.slice(0, 8) : '系统'
+  return e.agentId ? entities.agentName(props.channelId, e.agentId) || e.agentId.slice(0, 8) : t('lineOps.systemName')
 }
 function tone(meta: OperationMeta): string {
   return `${meta.kind} ${meta.severity}`
@@ -47,14 +48,14 @@ function phaseTone(): string {
 <template>
   <section
     class="line-ops-panel"
-    aria-label="产线作业面板"
+    :aria-label="$t('lineOps.panelAria')"
   >
     <header class="lop-head">
       <div>
         <div class="lop-kicker">
           <span class="lop-live" />LINE OPERATIONS
         </div>
-        <h3>产线作业</h3>
+        <h3>{{ $t('lineOps.title') }}</h3>
       </div>
       <span
         class="lop-phase"
@@ -64,40 +65,40 @@ function phaseTone(): string {
 
     <div class="lop-summary">
       <div class="lop-stat dcw">
-        <span>DCW</span><b>{{ stats.dcw }}</b><small>写控</small>
+        <span>DCW</span><b>{{ stats.dcw }}</b><small>{{ $t('lineOps.statDcw') }}</small>
       </div>
       <div class="lop-stat daq">
-        <span>DAQ</span><b>{{ stats.daq }}</b><small>采集</small>
+        <span>DAQ</span><b>{{ stats.daq }}</b><small>{{ $t('lineOps.statDaq') }}</small>
       </div>
       <div class="lop-stat aml">
-        <span>AML</span><b>{{ stats.aml }}</b><small>训练</small>
+        <span>AML</span><b>{{ stats.aml }}</b><small>{{ $t('lineOps.statAml') }}</small>
       </div>
       <div class="lop-stat safety">
-        <span>SAFE</span><b>{{ stats.blocked }}</b><small>拦截</small>
+        <span>SAFE</span><b>{{ stats.blocked }}</b><small>{{ $t('lineOps.statSafe') }}</small>
       </div>
     </div>
 
     <nav
       class="lop-filters"
-      aria-label="作业筛选"
+      :aria-label="$t('lineOps.filterAria')"
     >
       <button
         :class="{ on: filter === 'all' }"
         @click="filter = 'all'"
       >
-        全部
+        {{ $t('common.all') }}
       </button>
       <button
         :class="{ on: filter === 'dcw' }"
         @click="filter = 'dcw'"
       >
-        写控
+        {{ $t('lineOps.statDcw') }}
       </button>
       <button
         :class="{ on: filter === 'daq' }"
         @click="filter = 'daq'"
       >
-        取数
+        {{ $t('lineOps.filterDaq') }}
       </button>
       <button
         :class="{ on: filter === 'aml' }"
@@ -109,13 +110,13 @@ function phaseTone(): string {
         :class="{ on: filter === 'twin' }"
         @click="filter = 'twin'"
       >
-        孪生
+        {{ $t('lineOps.filterTwin') }}
       </button>
       <button
         :class="{ on: filter === 'safety' }"
         @click="filter = 'safety'"
       >
-        安全
+        {{ $t('lineOps.filterSafety') }}
       </button>
     </nav>
 
@@ -125,7 +126,7 @@ function phaseTone(): string {
         class="lop-empty"
       >
         <span class="i-tabler-activity-heartbeat" />
-        <span>等待产线作业事件</span>
+        <span>{{ $t('lineOps.empty') }}</span>
       </div>
       <article
         v-for="item in visible.slice(0, 24)"

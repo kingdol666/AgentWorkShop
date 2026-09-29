@@ -16,12 +16,12 @@ const emit = defineEmits<{
 <template>
   <div class="reply-chip">
     <span class="i-tabler-arrow-back-up" />
-    <span class="reply-label">回复 <b>{{ senderName }}</b></span>
+    <span class="reply-label">{{ $t('chat.reply') }} <b>{{ senderName }}</b></span>
     <span class="reply-excerpt">{{ excerpt }}</span>
     <button
       type="button"
       class="reply-cancel"
-      title="取消回复"
+      :title="$t('chat.cancelReply')"
       @click="emit('cancel')"
     >
       <span class="i-tabler-x" />

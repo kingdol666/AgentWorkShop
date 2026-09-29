@@ -83,7 +83,10 @@ function makeProj(lockPort?: number | null) {
   if (lockPort != null) {
     writeFileSync(join(proj, '.AgentWorkShop', '.runtime', 'aw.lock'), JSON.stringify({ pid: process.pid, port: lockPort, mode: 'prod:repo', startedAt: new Date().toISOString() }))
   }
-  writeFileSync(join(proj, 'config.yml'), 'server:\n  host: 0.0.0.0\n  dev:\n    port: 3000\n  prod:\n    port: 3001\n')
+  // 配置端口随机化:兜底候选绝不与宿主机真实实例(3000/3001 等)撞车,保证测试密闭
+  const cfgA = 30000 + ((process.pid % 15000) * 2)
+  const cfgB = cfgA + 1
+  writeFileSync(join(proj, 'config.yml'), `server:\n  host: 0.0.0.0\n  dev:\n    port: ${cfgA}\n  prod:\n    port: ${cfgB}\n`)
   return { root, proj, lockPath: join(proj, '.AgentWorkShop', '.runtime', 'aw.lock') }
 }
 

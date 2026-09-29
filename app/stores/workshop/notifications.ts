@@ -148,7 +148,7 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
     unreadCount.value = items.value.filter(n => !n.readAt).length
   }
 
-  /** 抓取一页通知(cursor 为空 = 最新一页) */
+  /** 已抓取一页通知(cursor 为空 = 最新一页) */
   async function fetchPage(c: NotificationCursor | null): Promise<{ notifications: AepNotification[], unreadCount: number, nextCursor: NotificationCursor | null }> {
     const token = useUserStore().token
     const query: Record<string, string> = { limit: String(PAGE_LIMIT) }
@@ -162,10 +162,35 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
     return res.data
   }
 
+  /**
+   * 拉取护栏(防紧循环):进行中请求去重 + **按尝试时刻**限速 2s(成败都算尝试)。
+   * 网络抖动/代理断连/429 时,重连补拉与快照可能被高频重复触发 —— 无护栏会把
+   * HTTP 限流配额(按 IP 计)吃满并自持(429→立即重试→再 429),殃及同源其他请求
+   * (实测 397 次/短窗 → 全站 429)。失败也推进节拍,保证窗口必然滚过、必然恢复。
+   */
+  let inflightFetch: Promise<void> | null = null
+  let lastAttemptAt = 0
+  const FETCH_MIN_GAP_MS = 2000
+  async function guardedFetch(fn: () => Promise<void>): Promise<void> {
+    if (inflightFetch) return inflightFetch
+    const wait = FETCH_MIN_GAP_MS - (Date.now() - lastAttemptAt)
+    if (wait > 0) await new Promise(r => setTimeout(r, wait))
+    lastAttemptAt = Date.now()
+    inflightFetch = (async () => {
+      try {
+        await fn()
+      }
+      finally {
+        inflightFetch = null
+      }
+    })()
+    return inflightFetch
+  }
+
   /** 首屏/刷新快照:替换式(以 DB 为准收敛 WS 期间的可能漂移) */
   async function loadSnapshot(): Promise<void> {
     if (typeof window === 'undefined' || !useUserStore().token) return
-    try {
+    await guardedFetch(async () => {
       const data = await fetchPage(null)
       items.value = [...(data.notifications ?? [])]
       for (const n of items.value) markSeen(n.eventId)
@@ -174,10 +199,9 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
       const newest = items.value[0]
       cursor.value = newest ? { createdAt: newest.createdAt, id: newest.id } : null
       loaded.value = true
-    }
-    catch {
+    }).catch(() => {
       // 快照失败不阻塞实时帧(下一帧照常入库)
-    }
+    })
   }
 
   /**
@@ -197,19 +221,21 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
     }
     let added = 0
     try {
-      for (let page = 0; page < MAX_BACKFILL_PAGES; page += 1) {
-        const data = await fetchPage(cursor.value)
-        const list = data.notifications ?? []
-        for (const n of list) {
-          if (upsertNotification(n)) added += 1
+      await guardedFetch(async () => {
+        for (let page = 0; page < MAX_BACKFILL_PAGES; page += 1) {
+          const data = await fetchPage(cursor.value)
+          const list = data.notifications ?? []
+          for (const n of list) {
+            if (upsertNotification(n)) added += 1
+          }
+          if (data.nextCursor) cursor.value = data.nextCursor
+          unreadCount.value = data.unreadCount ?? unreadCount.value
+          // 不满一页 = 已到最新,收工;满页可能还有,继续拉
+          if (list.length < PAGE_LIMIT) return
+          // 服务端没给新游标却又是满页 → 无法继续推进,退出防死循环
+          if (!data.nextCursor) return
         }
-        if (data.nextCursor) cursor.value = data.nextCursor
-        unreadCount.value = data.unreadCount ?? unreadCount.value
-        // 不满一页 = 已到最新,收工;满页可能还有,继续拉
-        if (list.length < PAGE_LIMIT) return added
-        // 服务端没给新游标却又是满页 → 无法继续推进,退出防死循环
-        if (!data.nextCursor) return added
-      }
+      })
       return added
     }
     catch {

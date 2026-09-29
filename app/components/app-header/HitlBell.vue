@@ -61,7 +61,7 @@ const {
                 v-if="item.requestType || isQuestion(item)"
                 class="hitl-item-reqtype"
                 :data-type="requestTypeOf(item)"
-              >{{ isQuestion(item) ? '提问' : '审批' }}</span>
+              >{{ isQuestion(item) ? t('appHeader.hitlReqQuestion') : t('appHeader.hitlReqApproval') }}</span>
             </span>
             <span class="hitl-item-title">{{ item.title }}</span>
             <span
@@ -76,7 +76,7 @@ const {
               v-if="item.policy"
               class="hitl-item-policy"
             >
-              <span class="i-tabler-shield-lock" /> 策略:{{ policyLabel(item) }}
+              <span class="i-tabler-shield-lock" /> {{ t('appHeader.hitlPolicy', { p0: policyLabel(item) }) }}
             </span>
           </button>
 
@@ -85,19 +85,19 @@ const {
             v-if="!HITL_KINDS.includes(item.kind)"
             class="hitl-answer-note"
           >
-            该类型待办需在对应引擎界面处理
+            {{ t('appHeader.hitlEngineNote') }}
           </div>
           <div
             v-else-if="!permsKnown(item)"
             class="hitl-answer-note"
           >
-            读取审批权限…
+            {{ t('appHeader.hitlPermsLoading') }}
           </div>
           <div
             v-else-if="!canAnswer(item)"
             class="hitl-answer-note"
           >
-            无审批权限{{ item.policy ? `(${policyLabel(item)})` : '' }}
+            {{ t('appHeader.hitlNoPerm') }}{{ item.policy ? `(${policyLabel(item)})` : '' }}
           </div>
           <div
             v-else
@@ -142,7 +142,7 @@ const {
                   v-if="!(q.options && q.options.length > 0) || q.freeText"
                   v-model:value="qFree[slotOf(item, q.id)]"
                   :rows="2"
-                  :placeholder="q.options && q.options.length > 0 ? '补充说明(可选)' : '输入答案'"
+                  :placeholder="q.options && q.options.length > 0 ? t('appHeader.hitlSupplementPlaceholder') : t('appHeader.hitlAnswerPlaceholder')"
                 />
               </div>
               <div class="hitl-btns">
@@ -152,14 +152,14 @@ const {
                   :loading="hitl.answering === `${item.kind}:${item.id}`"
                   @click="submitQuestion(item)"
                 >
-                  提交答案
+                  {{ t('appHeader.hitlSubmitAnswer') }}
                 </a-button>
                 <a-button
                   size="small"
                   :disabled="hitl.answering === `${item.kind}:${item.id}`"
                   @click="submitCancel(item)"
                 >
-                  取消请求
+                  {{ t('appHeader.hitlCancelRequest') }}
                 </a-button>
               </div>
             </template>
@@ -202,7 +202,7 @@ const {
                   :disabled="hitl.answering === `${item.kind}:${item.id}`"
                   @click="submitCancel(item)"
                 >
-                  取消
+                  {{ t('common.cancel') }}
                 </a-button>
               </div>
             </template>

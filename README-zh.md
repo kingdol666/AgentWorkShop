@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.52</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件） · 115 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.53</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件） · 115 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -165,6 +165,8 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **人工审批的写控** | 数控下发经过「**安全量程 ∩ 活动配方窗口**」联锁 → 可选 **HITL 审批** → PLC 写入 → **回读校验** → 带签名的写历史。 |
 | **数控读写通道** | 每个控制节点都能沿**写入时所用的同一条标定链路**读回 PLC 当前值：周期读 + 按需读 + Agent 读取，SET 与 ACT 并排呈现——读是被动观测，永不被写联锁阻断。 |
 | **Recipe 版本化治理** | 参数修改按版本入史（归因 用户/Agent/系统 + 操作者 + 原因）。可非破坏地回退到任意修订版或最近一次良好批次。失效节点参数跳过并明确标识。 |
+| **配方链路优化闭环** | Agent 像人类工艺员一样通过配方管理做优化：`recipe_trial` 把多参数候选**整批试验（不写版本）**→ 复测 → 有进步用 `recipe_update` 固化（同一配方 id，版本+1）→ 劣化触发**统一回退**（`recipe_rollback` 带 `dispatch:true` = 定义回退 + PLC 整批恢复）。单参数直调移出闭环；试验受四层限界与同线节拍卡控。 |
+| **频道绑定产线（只读授权）** | 频道可绑定一条产线：全员无需节点绑定即可读取该线的运维日志、配方历史与实时状态（工具回执标注「频道绑定，只读」），写操作仍需节点授权。产线简报自动注入成员提示词；换绑即时回收成员运行时。 |
 | **工艺参数语义映射与调控闭环** | Agent 用工程语义思考：`param_control(param, value)` 按**工艺参数**寻址（跨批次/换配方语义稳定），`param_read` 读回 PLC 当前值取证。每次写入被**四层限界**逐层收窄——节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口——且每次下发自动开一条调控记录，由 `dcw_judge` 落判定（keep / rollback / uncertain），`dcw_rollback` 执行回退。 |
 | **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现按批次隔离。 |
 | **多形态数采帧管线** | 多点轮廓（测厚仪/扫描仪）与 CCD 图像帧流经模板 sink 管线：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达时自动降级到本地磁盘）；派生指标阈值越限走既有告警链路。 |
@@ -386,7 +388,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.52**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.53**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -717,6 +719,8 @@ cd docs/site && npx vitepress build      # 生产构建 → .vitepress/dist
 | 六种现场协议：Modbus TCP · Modbus RTU-over-TCP · OPC UA · MQTT · HTTP + 内置 serial-bridge 串口插件（数采 + 数控双向） | 已交付 |
 | Harness 可用性探测 + 执行前引擎强校验（UI 禁选 + 409） | 已交付 |
 | Recipe 归因版本化 + 非破坏回退（界面 + Agent 工具） | 已交付 |
+| 配方链路优化闭环：recipe_trial 整批试验（不写版本）→ 进步才固化 → 统一回退（PLC 整批恢复） | 已交付 |
+| 频道绑定产线：全员只读日志/配方/状态 + 产线简报注入提示词 | 已交付 |
 | Agent 自查工具：line_context / ops_log / recipe_log / recipe_versions / dcw_journal | 已交付 |
 | 多 Harness 并行真实产线 live E2E（四引擎、一条产线） | 已交付 |
 | HITL 审批流经真实 OPC UA 写入验证 | 已交付 |

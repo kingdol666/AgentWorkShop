@@ -30,12 +30,36 @@ POST /api/workshop/dcw/recipes/:id/revert
 
 | Tool | Purpose | Authorization |
 |---|---|---|
-| `line_context` | panorama of my line/product/recipe (targets vs PLC values) | line of bound nodes |
+| `line_context` | panorama of my line/product/recipe (targets vs PLC values) | lines of bound nodes ∪ channel-bound line (read-only) |
 | `recipe_versions` | version history + param diffs (who/when/why) | same |
+| `recipe_trial` | **multi-parameter candidate batch trial**: dispatch all intended changes in one batch without writing a recipe version (hypothesis required; ≥5 min per-line cadence) | per-node dcw binding |
+| `recipe_apply` | batch-dispatch the current saved version — the formal dispatch after `recipe_update` | ≥1 bound node of the recipe |
 | `recipe_update` | save best parameters (partial merge, reason required, new version) | per-node dcw binding |
-| `recipe_rollback` | roll back to a version / lastGood (reason required) | same |
+| `recipe_rollback` | roll back to a version / lastGood; with `dispatch: true` = **unified rollback** (definition revert + batch re-dispatch of that version's params to the PLC) | same |
 
 For per-node value history use `dcw_journal`; for a single-node restore use `dcw_rollback`.
+
+## Recipe-chain closed loop (v0.7.53)
+
+Inside the optimization loop every parameter change flows through **recipe management** —
+mirroring how human process engineers work; modification (trial) and adoption (update) are
+separate steps:
+
+```
+multi-parameter candidates (knowledge + data evidence)
+  → recipe_trial batch trial (no version written; four-layer bounds still enforced; ≥5 min cadence)
+  → wait for process inertia → daq_query re-measure
+      progress / target met → recipe_update adopt (same recipe id, version +1) → recipe_apply formal dispatch
+      regression            → recipe_rollback { dispatch: true } unified rollback (definition revert + PLC batch restore)
+```
+
+- `dcw_control` / `param_control` single-parameter dispatch is disabled inside the
+  optimization loop (prevents single-knob oscillation; AML exploration small-step excitation
+  is the exception);
+- trials skip the 60s / single-step interlocks by design (recipe path) — anti-oscillation
+  comes from "batch + cadence + judge gating";
+- trials / applies / rejections are fully audited (`recipe.trial` / `recipe.apply` /
+  `dcw.write.rejected`).
 
 ## Stale-node guard
 
@@ -53,9 +77,10 @@ When a node referenced by a recipe is deleted, disabled or unbound:
 
 ```
 Agent: line_context (confirm ownership and current values)
-  → dcw_control (trial value) → daq_query (evidence)
-  → dcw_judge keep (evidence sufficient) → recipe_update (persist as vN)
-on failure: recipe_rollback (to_last_good or version) → new version, PLC untouched
+  → recipe_trial (multi-param batch trial, no version written) → daq_query (re-measure)
+  → progress: recipe_update (adopt as vN, same id) → recipe_apply (formal dispatch)
+  → regression: recipe_rollback (dispatch=true) unified rollback (definition revert + PLC batch restore)
+single-node emergency nudge (outside the recipe chain): dcw_control → dcw_judge → dcw_rollback
 ```
 
 **Evidence is batch-scoped by default**: `daq_query` resolves the node's active run and

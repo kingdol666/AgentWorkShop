@@ -1,0 +1,14 @@
+{
+  "panelAria": "产线作业面板",
+  "title": "产线作业",
+  "statDcw": "写控",
+  "statDaq": "采集",
+  "statAml": "训练",
+  "statSafe": "拦截",
+  "filterAria": "作业筛选",
+  "filterDaq": "取数",
+  "filterTwin": "孪生",
+  "filterSafety": "安全",
+  "empty": "等待产线作业事件",
+  "systemName": "系统"
+}

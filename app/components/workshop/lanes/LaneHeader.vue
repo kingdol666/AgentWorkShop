@@ -24,6 +24,8 @@ const emit = defineEmits<{
 
 const agent = computed(() => props.agent)
 
+const { t } = useI18n()
+
 /**
  * §8 监督/watchdog 徽标:
  *  - `watchdog N`:监督回合已触发 watchdog(观察信号,不是取消);
@@ -35,10 +37,10 @@ const supervisionBadge = computed(() => {
   if (!s) return null
   const live = s.state === 'RUNNING' || s.state === 'WATCHDOG_SIGNALED' || s.state === 'WAITING_FOR_RESULT'
   if (s.watchdogCount > 0 || s.state === 'WATCHDOG_SIGNALED') {
-    return { kind: 'watchdog' as const, text: `watchdog ${s.watchdogCount}`, title: `监督观察阈值已触发(${s.watchdogAt ?? '-'});这是观察信号,不是取消` }
+    return { kind: 'watchdog' as const, text: `watchdog ${s.watchdogCount}`, title: t('agentLanesView.supervisionWatchdogTitle', { p0: s.watchdogAt ?? '-' }) }
   }
-  if (live) return { kind: 'running' as const, text: 'supervising', title: `监督回合进行中(attempt=${s.attemptId?.slice(0, 8) ?? '-'},tick=${s.snapshotRevision ?? '-'})` }
-  if (s.lastDecisionKind) return { kind: 'decision' as const, text: `决策 ${s.lastDecisionKind}`, title: `Lead 最后决策:${s.lastDecisionKind}(${s.completedAt ?? '-'})` }
+  if (live) return { kind: 'running' as const, text: 'supervising', title: t('agentLanesView.supervisionRunningTitle', { p0: s.attemptId?.slice(0, 8) ?? '-', p1: s.snapshotRevision ?? '-' }) }
+  if (s.lastDecisionKind) return { kind: 'decision' as const, text: t('agentLanesView.supervisionDecisionText', { p0: s.lastDecisionKind }), title: t('agentLanesView.supervisionDecisionTitle', { p0: s.lastDecisionKind, p1: s.completedAt ?? '-' }) }
   return null
 })
 

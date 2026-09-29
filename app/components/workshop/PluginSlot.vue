@@ -57,7 +57,7 @@ async function renderPanels(): Promise<void> {
       mounted.set(key, { el, cleanup: typeof cleanup === 'function' ? cleanup : undefined })
     }
     catch (err) {
-      console.warn(`[plugin-slot] 面板渲染失败 ${key}:`, err)
+      console.warn(`[plugin-slot] panel render failed ${key}:`, err)
     }
   }
 }

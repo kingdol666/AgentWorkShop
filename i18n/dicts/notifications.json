@@ -1,0 +1,13 @@
+{
+  "bellTitle": "我的通知({'@'} 提及 / Agent 回复 / 审批)",
+  "title": "我的通知",
+  "unreadCount": "{p0} 未读",
+  "markAllRead": "全部已读",
+  "markReadFailed": "标记已读失败",
+  "empty": "暂无通知 —— 被 {'@'} 、收到 Agent 回复或审批请求时会出现在这里",
+  "typeMention": "{'@'} 提及",
+  "typeAgentReply": "Agent 回复",
+  "typeHitlRequest": "待审批",
+  "typeHitlResolved": "审批结果",
+  "typeMember": "成员变更"
+}

@@ -131,14 +131,14 @@ const recipeForm = defineModel<DcwRecipeForm>('form', { required: true })
           >
         </label>
         <label class="f">
-          <span>Recipe 单步上限 Δ≤</span>
+          <span>{{ $t('dcwDetail.recipeStepLimitLabel') }}</span>
           <input
             v-model.number="p.stepLimit"
             type="number"
             min="0"
             class="inp"
             step="any"
-            placeholder="跟随节点默认"
+            :placeholder="$t('dcwDetail.recipeStepLimitPlaceholder')"
           >
         </label>
         <button

@@ -22,37 +22,37 @@ defineProps<{
 <template>
   <div class="composer-status-chip">
     <template v-if="mode === 'chat'">
-      <span class="chip-key">群聊</span>
+      <span class="chip-key">{{ $t('chat.title') }}</span>
       <span
         v-if="draftAgentMentions.length > 0"
         class="reach-chip"
         data-tone="info"
-        :title="'仅显式 @Agent 触发执行'"
+        :title="$t('chat.reachAgentsTitle')"
       >
         <span
           class="reach-dot"
           aria-hidden="true"
-        />@{{ draftAgentMentions.map(m => m.label).join(' @') }} · 将触发 {{ draftAgentMentions.length }} 次 Agent 执行
+        />{{ $t('chat.reachAgentsText', { p0: draftAgentMentions.map(m => m.label).join(' @'), p1: draftAgentMentions.length }) }}
       </span>
       <span
         v-else
         class="reach-chip"
         data-tone="ok"
-        title="未 @Agent:消息只进群聊,不触发任何 Agent"
+        :title="$t('chat.reachNoAgentTitle')"
       >
         <span
           class="reach-dot"
           aria-hidden="true"
-        />仅群聊 · 0 次 Agent 执行
+        />{{ $t('chat.reachNoAgentText') }}
       </span>
       <span
         v-if="draftUserMentions.length > 0"
         class="chip-hint"
-      >@{{ draftUserMentions.map(m => m.label).join(' @') }} 将收到定向通知</span>
+      >@{{ draftUserMentions.map(m => m.label).join(' @') }}{{ $t('chat.notifyMembersSuffix') }}</span>
       <span
         v-else
         class="chip-hint"
-      >输入 @ 提及成员 · Enter 发送</span>
+      >{{ $t('chat.mentionHint') }}</span>
     </template>
     <template v-else-if="mode === 'task'">
       <span class="chip-key">{{ $t('composer.k3wcox005') }}</span>

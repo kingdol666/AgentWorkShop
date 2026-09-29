@@ -34,7 +34,7 @@ const emit = defineEmits<{
         class="aw-avatar mention-ava"
         :class="c.type === 'agent' ? 'is-agent' : 'is-user'"
         :style="{ '--av': c.type === 'agent' ? agentHueColor(c.id) : 'var(--ink-faint)' }"
-      >{{ c.type === 'agent' ? 'A' : '人' }}</span>
+      >{{ c.type === 'agent' ? 'A' : $t('chat.avatarHuman') }}</span>
       <span class="mention-name">@{{ c.name }}</span>
       <span class="mention-role">{{ c.role }}</span>
       <span

@@ -16,6 +16,7 @@ import type { AepChannelMember } from '#shared/workshop-protocol'
 
 const props = defineProps<{ channelId: string }>()
 
+const { t } = useI18n()
 const chat = useChatStore()
 
 const perms = computed<ChatPermissions | null>(() => chat.permissions[props.channelId] ?? null)
@@ -78,14 +79,14 @@ async function onJoin(): Promise<void> {
   busy.value = 'join'
   try {
     const status = await chat.join(props.channelId)
-    if (status === 'pending') message.info('已提交加入申请,等待 owner 批准')
-    else message.success('已加入群聊')
+    if (status === 'pending') message.info(t('chat.joinedPending'))
+    else message.success(t('chat.joinedOk'))
     await refresh()
   }
   catch (e) {
     const code = chatErrorCode(e)
-    if (code === 'CHAT_DISABLED') message.warning('该 Channel 未开启群聊')
-    else if (code === 'CHANNEL_PRIVATE') message.warning('该 Channel 未公开,需 owner 邀请')
+    if (code === 'CHAT_DISABLED') message.warning(t('chat.errChatDisabled'))
+    else if (code === 'CHANNEL_PRIVATE') message.warning(t('chat.errChannelPrivate'))
     else message.error(chatErrorMessage(e))
   }
   finally {
@@ -98,11 +99,11 @@ async function onLeave(): Promise<void> {
   busy.value = 'leave'
   try {
     await chat.leave(props.channelId)
-    message.success('已退出群聊')
+    message.success(t('chat.leftOk'))
     await refresh()
   }
   catch (e) {
-    if (chatErrorCode(e) === 'OWNER_CANNOT_LEAVE') message.warning('owner 不能退出群聊,请先转移 owner')
+    if (chatErrorCode(e) === 'OWNER_CANNOT_LEAVE') message.warning(t('chat.errOwnerCannotLeave'))
     else message.error(chatErrorMessage(e))
   }
   finally {
@@ -115,7 +116,7 @@ async function onApprove(m: AepChannelMember): Promise<void> {
   busy.value = `approve:${m.userId}`
   try {
     await chat.approveMember(props.channelId, m.userId)
-    message.success('已批准加入')
+    message.success(t('chat.approvedOk'))
   }
   catch (e) {
     message.error(chatErrorMessage(e))
@@ -130,7 +131,7 @@ async function onRemove(m: AepChannelMember): Promise<void> {
   busy.value = `remove:${m.userId}`
   try {
     await chat.removeMember(props.channelId, m.userId)
-    message.success('已移除成员')
+    message.success(t('chat.removedOk'))
   }
   catch (e) {
     message.error(chatErrorMessage(e))
@@ -156,12 +157,12 @@ async function onSaveSettings(): Promise<void> {
       approvalPolicy: d.approvalPolicy,
       chatEnabled: d.chatEnabled ? 1 : 0,
     })
-    message.success('群聊设置已保存')
+    message.success(t('chat.settingsSaved'))
     syncDraft()
   }
   catch (e) {
     if (chatErrorCode(e) === 'VERSION_CONFLICT') {
-      settingsError.value = 'Channel 设置已被他人修改,请刷新后重试'
+      settingsError.value = t('chat.settingsConflict')
     }
     else if (chatErrorCode(e) === 'CHAT_DISABLED') {
       settingsError.value = chatErrorMessage(e)
@@ -175,12 +176,12 @@ async function onSaveSettings(): Promise<void> {
   }
 }
 
-const statusLabel: Record<AepChannelMember['status'], string> = {
-  active: '在群',
-  pending: '待批准',
-  left: '已退出',
-  removed: '已移除',
-}
+const statusLabels = computed<Record<AepChannelMember['status'], string>>(() => ({
+  active: t('chat.statusActive'),
+  pending: t('chat.statusPending'),
+  left: t('chat.statusLeft'),
+  removed: t('chat.statusRemoved'),
+}))
 
 const avatarText = (m: AepChannelMember): string =>
   (m.displayName || m.userId.slice(0, 8)).trim().charAt(0).toUpperCase()
@@ -190,13 +191,13 @@ const avatarText = (m: AepChannelMember): string =>
   <div class="member-panel">
     <div class="mp-head">
       <span class="i-tabler-users-group mp-icon" />
-      <span class="mp-title">成员</span>
+      <span class="mp-title">{{ $t('chat.title') }}</span>
       <span class="mp-count">{{ members.filter(m => m.status === 'active').length }}</span>
       <span class="mp-spacer" />
       <button
         type="button"
         class="mp-refresh"
-        title="刷新成员与设置"
+        :title="$t('chat.refreshTitle')"
         @click="refresh().then(syncDraft)"
       >
         <span class="i-tabler-refresh" />
@@ -215,23 +216,23 @@ const avatarText = (m: AepChannelMember): string =>
             :loading="busy === 'join'"
             @click="onJoin"
           >
-            加入群聊
+            {{ $t('chat.join') }}
           </a-button>
           <div
             v-else
             class="mp-hint"
           >
-            {{ perms === null ? '未加入群聊 —— 需 owner 邀请或 Channel 未公开' : '该 Channel 未公开或未开启群聊 —— 需 owner 邀请' }}
+            {{ perms === null ? $t('chat.notMemberHint') : $t('chat.privateHint') }}
           </div>
         </template>
         <template v-else-if="myStatus === 'pending'">
           <div class="mp-hint pending">
-            <span class="i-tabler-hourglass" /> 加入申请待 owner 批准
+            <span class="i-tabler-hourglass" /> {{ $t('chat.pendingHint') }}
           </div>
         </template>
         <template v-else-if="!isOwner">
           <a-popconfirm
-            title="退出群聊后将立即失去读、发言、审批与通知补拉权限,确认退出?"
+            :title="$t('chat.leaveConfirm')"
             :ok-text="$t('common.confirm')"
             :cancel-text="$t('common.cancel')"
             @confirm="onLeave"
@@ -241,7 +242,7 @@ const avatarText = (m: AepChannelMember): string =>
               block
               :loading="busy === 'leave'"
             >
-              退出群聊
+              {{ $t('chat.leave') }}
             </a-button>
           </a-popconfirm>
         </template>
@@ -249,7 +250,7 @@ const avatarText = (m: AepChannelMember): string =>
           v-else
           class="mp-hint"
         >
-          <span class="i-tabler-crown" /> 你是 owner(不可退出,可转移 owner 或删除 Channel)
+          <span class="i-tabler-crown" /> {{ $t('chat.ownerHint') }}
         </div>
       </div>
 
@@ -274,7 +275,7 @@ const avatarText = (m: AepChannelMember): string =>
               <span
                 class="mp-status"
                 :data-status="m.status"
-              >{{ statusLabel[m.status] }}</span>
+              >{{ statusLabels[m.status] }}</span>
               <span class="mp-joined">{{ formatLocalClock(m.joinedAt, false) }}</span>
             </div>
           </div>
@@ -290,11 +291,11 @@ const avatarText = (m: AepChannelMember): string =>
               :loading="busy === `approve:${m.userId}`"
               @click="onApprove(m)"
             >
-              批准
+              {{ $t('chat.approve') }}
             </a-button>
             <a-popconfirm
               v-if="m.status === 'active' || m.status === 'pending'"
-              title="移除该成员后其立即失去群聊与审批权限,确认?"
+              :title="$t('chat.removeConfirm')"
               :ok-text="$t('common.remove')"
               :cancel-text="$t('common.cancel')"
               @confirm="onRemove(m)"
@@ -313,7 +314,7 @@ const avatarText = (m: AepChannelMember): string =>
           v-if="sortedMembers.length === 0"
           class="mp-hint"
         >
-          名册不可见(非成员)
+          {{ $t('chat.rosterHidden') }}
         </div>
       </div>
 
@@ -323,35 +324,35 @@ const avatarText = (m: AepChannelMember): string =>
         class="mp-settings"
       >
         <div class="mp-sec-title">
-          群聊设置
+          {{ $t('chat.settingsTitle') }}
           <span class="mp-ver">v{{ settings?.version ?? '-' }}</span>
         </div>
         <label class="mp-field">
-          <span>可见性</span>
+          <span>{{ $t('chat.visibilityLabel') }}</span>
           <a-select
             v-model:value="draft.visibility"
             size="small"
-            :options="[{ value: 'private', label: '私有(仅成员可见)' }, { value: 'public', label: '公开(登录用户可发现)' }]"
+            :options="[{ value: 'private', label: $t('chat.visibilityPrivate') }, { value: 'public', label: $t('chat.visibilityPublic') }]"
           />
         </label>
         <label class="mp-field">
-          <span>加入策略</span>
+          <span>{{ $t('chat.joinPolicyLabel') }}</span>
           <a-select
             v-model:value="draft.joinPolicy"
             size="small"
-            :options="[{ value: 'owner_approve', label: '需 owner 批准' }, { value: 'open', label: '开放加入' }]"
+            :options="[{ value: 'owner_approve', label: $t('chat.joinPolicyOwnerApprove') }, { value: 'open', label: $t('chat.joinPolicyOpen') }]"
           />
         </label>
         <label class="mp-field">
-          <span>审批策略</span>
+          <span>{{ $t('chat.approvalPolicyLabel') }}</span>
           <a-select
             v-model:value="draft.approvalPolicy"
             size="small"
-            :options="[{ value: 'owner_only', label: '仅 owner 可决策' }, { value: 'any_member', label: '任一成员可决策' }]"
+            :options="[{ value: 'owner_only', label: $t('chat.approvalOwnerOnly') }, { value: 'any_member', label: $t('chat.approvalAnyMember') }]"
           />
         </label>
         <label class="mp-field switch">
-          <span>开启群聊</span>
+          <span>{{ $t('chat.chatEnabledLabel') }}</span>
           <a-switch
             v-model:checked="draft.chatEnabled"
             size="small"
@@ -367,7 +368,7 @@ const avatarText = (m: AepChannelMember): string =>
             type="link"
             @click="refresh().then(syncDraft)"
           >
-            刷新
+            {{ $t('chat.refresh') }}
           </a-button>
         </div>
         <a-button
@@ -377,7 +378,7 @@ const avatarText = (m: AepChannelMember): string =>
           :loading="busy === 'settings'"
           @click="onSaveSettings"
         >
-          保存设置
+          {{ $t('chat.saveSettings') }}
         </a-button>
       </div>
     </div>

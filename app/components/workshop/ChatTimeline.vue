@@ -24,6 +24,7 @@ import { classifyOperation, type OperationMeta } from '@/app/composables/worksho
 
 const props = defineProps<{ channelId: string }>()
 
+const { t } = useI18n()
 const chat = useChatStore()
 const entities = useEntitiesStore()
 const notifications = useNotificationsStore()
@@ -53,7 +54,7 @@ function senderNameOf(m: AepChatMessage): string {
 
 function avatarText(m: AepChatMessage): string {
   if (m.senderType === 'agent') return senderNameOf(m).charAt(0).toUpperCase()
-  return '人'
+  return t('chat.avatarHuman')
 }
 
 function renderText(m: AepChatMessage): string {
@@ -67,7 +68,7 @@ function operationOf(m: AepChatMessage): OperationMeta | null {
 /** 引用锚点的发送者名(锚点不在已加载窗口内 → 显示"更早的消息") */
 function replyAnchorName(m: AepChatMessage): string {
   const anchor = m.replyToId ? byId.value.get(m.replyToId) : undefined
-  return anchor ? senderNameOf(anchor) : '更早的消息'
+  return anchor ? senderNameOf(anchor) : t('chat.earlierMessage')
 }
 
 /**
@@ -88,13 +89,21 @@ const deliveriesByMessage = computed<Map<string, AepChatDelivery[]>>(() => {
 })
 const deliveriesOf = (m: AepChatMessage): AepChatDelivery[] => deliveriesByMessage.value.get(m.id) ?? []
 
-const DELIVERY_META: Record<AepChatDelivery['status'], { label: string, tone: string }> = {
-  pending: { label: '待投递', tone: 'pending' },
-  delivered: { label: '已入信箱', tone: 'delivered' },
-  consumed: { label: '已被消费', tone: 'consumed' },
-  failed: { label: '投递失败', tone: 'failed' },
-  cancelled: { label: '已取消', tone: 'cancelled' },
+const DELIVERY_TONE: Record<AepChatDelivery['status'], string> = {
+  pending: 'pending',
+  delivered: 'delivered',
+  consumed: 'consumed',
+  failed: 'failed',
+  cancelled: 'cancelled',
 }
+
+const deliveryLabels = computed<Record<AepChatDelivery['status'], string>>(() => ({
+  pending: t('chat.deliveryPending'),
+  delivered: t('chat.deliveryDelivered'),
+  consumed: t('chat.deliveryConsumed'),
+  failed: t('chat.deliveryFailed'),
+  cancelled: t('chat.deliveryCancelled'),
+}))
 
 function setReply(m: AepChatMessage): void {
   chat.setReplyTarget({
@@ -181,19 +190,19 @@ watch(() => props.channelId, async () => {
   <div class="chat-timeline">
     <div class="ct-head">
       <span class="i-tabler-messages ct-icon" />
-      <span class="ct-title">群聊</span>
-      <span class="ct-count">{{ messages.length }} 条</span>
+      <span class="ct-title">{{ $t('chat.title') }}</span>
+      <span class="ct-count">{{ $t('chat.messageCount', { p0: messages.length }) }}</span>
       <span class="ct-spacer" />
       <span
         v-if="!atBottom"
         class="ct-jump"
         role="button"
         tabindex="0"
-        title="回到最新"
+        :title="$t('chat.backToLatest')"
         @click="scrollToBottom(); atBottom = true"
         @keydown.enter="scrollToBottom(); atBottom = true"
       >
-        <span class="i-tabler-arrow-down" /> 最新
+        <span class="i-tabler-arrow-down" /> {{ $t('chat.latest') }}
       </span>
     </div>
 
@@ -209,7 +218,7 @@ watch(() => props.channelId, async () => {
         :disabled="loading"
         @click="loadEarlier"
       >
-        {{ loading ? '加载中…' : '加载更早的消息' }}
+        {{ loading ? $t('chat.loading') : $t('chat.loadEarlier') }}
       </button>
 
       <div
@@ -217,9 +226,9 @@ watch(() => props.channelId, async () => {
         class="ct-empty"
       >
         <span class="i-tabler-message-2 ct-empty-icon" />
-        <div>还没有群聊消息</div>
+        <div>{{ $t('chat.emptyTitle') }}</div>
         <div class="ct-empty-sub">
-          直接发言只进群聊(0 次 Agent 执行);输入 @ 提及 Agent 才会触发执行,@ 成员只发定向通知。
+          {{ $t('chat.emptyHint') }}
         </div>
       </div>
 
@@ -252,16 +261,16 @@ watch(() => props.channelId, async () => {
                 v-else-if="m.senderType === 'agent'"
                 class="i-tabler-robot"
               />
-              {{ m.senderType === 'agent' ? (entities.agents[channelId]?.find(a => a.agentId === m.senderId)?.role ?? 'agent') : (m.senderType === 'user' ? '用户' : '系统') }}
+              {{ m.senderType === 'agent' ? (entities.agents[channelId]?.find(a => a.agentId === m.senderId)?.role ?? 'agent') : (m.senderType === 'user' ? $t('chat.roleUser') : $t('chat.roleSystem')) }}
             </span>
             <span class="ct-time">{{ formatLocalClock(m.createdAt, false) }}</span>
             <button
               type="button"
               class="ct-reply-btn"
-              title="引用这条消息回复"
+              :title="$t('chat.replyTitle')"
               @click="setReply(m)"
             >
-              <span class="i-tabler-arrow-back-up" /> 回复
+              <span class="i-tabler-arrow-back-up" /> {{ $t('chat.reply') }}
             </button>
           </div>
 
@@ -270,7 +279,7 @@ watch(() => props.channelId, async () => {
             class="ct-replyto"
           >
             <span class="i-tabler-corner-down-right" />
-            回复 <b>{{ replyAnchorName(m) }}</b>
+            {{ $t('chat.reply') }} <b>{{ replyAnchorName(m) }}</b>
           </div>
 
           <div
@@ -301,7 +310,7 @@ watch(() => props.channelId, async () => {
               class="ct-mention-chip"
               :class="mm.type"
               :data-agent-id="mm.type === 'agent' ? mm.id : undefined"
-              :title="mm.type === 'agent' ? '点击查看该 Agent' : '被 @ 的成员(不触发 Agent)'"
+              :title="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : $t('chat.mentionMemberTitle')"
               @click="mm.type === 'agent' && openAgent({ channelId, agentId: mm.id })"
             >
               <span :class="mm.type === 'agent' ? 'i-tabler-robot' : 'i-tabler-user'" />
@@ -318,10 +327,10 @@ watch(() => props.channelId, async () => {
               v-for="d in deliveriesOf(m)"
               :key="d.deliveryId"
               class="ct-delivery"
-              :data-tone="DELIVERY_META[d.status]?.tone ?? 'pending'"
+              :data-tone="DELIVERY_TONE[d.status] ?? 'pending'"
               :title="d.error || `deliveryId: ${d.deliveryId}`"
             >
-              <span class="cd-dot" />@{{ entities.agentName(channelId, d.targetAgentId) }} · {{ DELIVERY_META[d.status]?.label ?? d.status }}
+              <span class="cd-dot" />@{{ entities.agentName(channelId, d.targetAgentId) }} · {{ deliveryLabels[d.status] ?? d.status }}
             </span>
           </div>
 
@@ -331,9 +340,9 @@ watch(() => props.channelId, async () => {
             class="ct-source"
           >
             <span class="i-tabler-link" />
-            回答自 {{ m.sourceChatMessageId.slice(0, 8) }}
+            {{ $t('chat.answeredFrom', { p0: m.sourceChatMessageId.slice(0, 8) }) }}
             <template v-if="m.requesterUserId">
-              · 提问者 {{ m.requesterUserId.slice(0, 8) }}
+              {{ $t('chat.askedBy', { p0: m.requesterUserId.slice(0, 8) }) }}
             </template>
           </div>
         </div>

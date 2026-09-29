@@ -27,12 +27,30 @@ POST /api/workshop/dcw/recipes/:id/revert
 
 | 工具 | 作用 | 鉴权 |
 |---|---|---|
-| `line_context` | 我控制的产线/产品/配方全景(逐参数目标 vs PLC 当前值) | 绑定节点所属产线 |
+| `line_context` | 我控制的产线/产品/配方全景(逐参数目标 vs PLC 当前值) | 绑定节点所属产线 ∪ 频道绑定产线(只读) |
 | `recipe_versions` | 版本史 + 参数 diff(谁/何时/为什么) | 同上 |
+| `recipe_trial` | **多参数候选整批试验**:一次带上所有要改的参数整批下发,**不写配方版本**(hypothesis 必填;同线节拍 ≥5 分钟) | 逐节点 dcw 绑定 |
+| `recipe_apply` | 把当前已固化版本整批下发(改配方后的正式下发) | 持配方 ≥1 节点绑定 |
 | `recipe_update` | 保存最佳参数(部分合并,reason 必填,生成新版本) | 逐节点 dcw 绑定 |
-| `recipe_rollback` | 回退到指定版本 / lastGood(reason 必填) | 同上 |
+| `recipe_rollback` | 回退到指定版本 / lastGood;带 `dispatch:true` = **统一回退**(定义回退 + 该版参数整批重下发 PLC) | 同上 |
 
 节点级参数变更史用 `dcw_journal`(逐笔 锚/优化记录/判定),节点单步回退用 `dcw_rollback`。
+
+## 配方链路闭环(v0.7.53)
+
+闭环优化的参数变更**一律走配方管理**,与人类工艺员逻辑一致 —— 修改(试验)与固化(update)分离:
+
+```
+多参数候选(知识 + 数据依据)
+  → recipe_trial 整批试验(不写版本;四层限界照常;同线节拍 ≥5 分钟防震荡)
+  → 等工艺惯性 → daq_query 复测判读
+      有进步/达标 → recipe_update 固化(同一配方 id,版本 +1)→ recipe_apply 正式下发
+      无进步/劣化 → recipe_rollback { dispatch: true } 统一回退(定义回退 + PLC 整批恢复)
+```
+
+- 优化闭环内禁用 `dcw_control`/`param_control` 逐参数直调(防单参数震荡;AML 探索模式的小步激励除外);
+- trial 不受 60s/单步卡控(配方路径设计),防震荡由「整批 + 节拍 + 判读门控」承担;
+- trial/apply/回退全程审计入册(`recipe.trial` / `recipe.apply` / `dcw.write.rejected`),版本史可追溯。
 
 ## 失效节点守卫
 
@@ -47,9 +65,10 @@ POST /api/workshop/dcw/recipes/:id/revert
 
 ```
 Agent: line_context(确认归属与当前值)
-  → dcw_control 下发试验值 → daq_query 取数采证据
-  → dcw_judge keep(证据充分)→ recipe_update 固化为 vN
-翻车:recipe_rollback(to_last_good 或 version)→ 新版本,PLC 不受影响
+  → recipe_trial(多参数候选整批试验,不写版本)→ daq_query 复测
+  → 有进步:recipe_update 固化为 vN(同 id)→ recipe_apply 正式下发
+  → 劣化:recipe_rollback(dispatch=true)统一回退(定义回退 + PLC 整批恢复)
+单节点应急微调(配方链路之外):dcw_control → dcw_judge → dcw_rollback
 ```
 
 **取证据默认只取当前批次**:`daq_query` 会自动解析节点所属产线的活动批次,按该批次的

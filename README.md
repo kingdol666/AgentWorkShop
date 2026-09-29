@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.52</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) · 115 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.7.53</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) · 115 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -166,6 +166,8 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Human-approved write control** | DCW writes flow through **safe-range ∩ recipe-window** interlock → optional **HITL approval** → PLC write → **readback verification** → signed write history. |
 | **Read-write DCW channels** | Every control node also **reads its PLC value back** through the same calibration path it writes with: periodic + on-demand + agent reads surface **SET vs ACT** side by side — passive observation, never blocked by write interlocks. |
 | **Recipe versioning & governance** | Parameter changes are versioned with attribution (user/agent/system + operator + reason). Roll back to any revision or the last-good batch — non-destructively. Stale-node params are skipped and clearly marked. |
+| **Recipe-chain optimization loop** | Agents optimize through recipe management, the way human process engineers do: `recipe_trial` batch-dispatches multi-parameter candidates **without writing a version** → re-measure → progress adopts via `recipe_update` (same recipe id, version +1) → regression triggers a **unified rollback** (`recipe_rollback` with `dispatch: true` = definition revert + batch restore to the PLC). Single-knob direct dispatch is out of the loop; trials run under four-layer bounds and a per-line cadence. |
+| **Channel-bound lines (read-only grant)** | A channel can bind a line: every member reads that line's ops logs, recipe history and live status without any node binding (tool outputs are tagged "channel-bound, read-only"), while writes still require node authorization. The line brief is injected into member prompts; binding changes hot-recycle member runtimes. |
 | **Semantic parameter mapping & tuning loop** | Agents reason in engineering semantics: `param_control(param, value)` addresses a **process parameter** (stable across batches and recipe swaps) instead of a raw node, and `param_read` reads back the PLC value for evidence. Every write is narrowed by a **four-layer bound** — node safe range ∩ parameter baseline bounds ∩ active product bounds ∩ active recipe window — and each adjustment opens a tuning record that `dcw_judge` must close (keep / rollback / uncertain), with `dcw_rollback` executing the undo. |
 | **Line operations** | Lines → products → recipes → batch runs. Recipe windows gate acquisition and interlock writes; every sample is tagged `product/recipe/run` for per-batch isolation. |
 | **Multi-modal DAQ frame pipeline** | Multi-point profiles (thickness/scanner) and CCD image frames flow through template sink pipelines: vectors & metadata into Timescale (`daq_frames`), pixels into object storage (MinIO, auto disk fallback); derived-metric thresholds ride the existing alarm chain. |
@@ -377,7 +379,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.52** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.53** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
@@ -727,6 +729,10 @@ building, so those files are the single source of truth for the single-page guid
 | Six field protocols: Modbus TCP · Modbus RTU-over-TCP · OPC UA · MQTT · HTTP + the built-in serial-bridge plugin (acquisition + write control) | Shipped |
 | Harness availability probing + dispatch-time engine checks (UI disable + 409) | Shipped |
 | Recipe versioning with attribution + non-destructive rollback (UI + agent tools) | Shipped |
+| Recipe-chain optimization loop: recipe_trial batch trials (no version) → adopt on progress → unified rollback with PLC restore | Shipped |
+| Channel-bound lines: read-only log/recipe/status access for all members, line brief injected into prompts | Shipped |
+| Recipe-chain optimization loop: recipe_trial batch trials (no version) → adopt on progress → unified rollback with PLC restore | Shipped |
+| Channel-bound lines: read-only log/recipe/status access for all members, line brief injected into prompts | Shipped |
 | Agent self-audit: line_context / ops_log / recipe_log / recipe_versions / dcw_journal | Shipped |
 | Multi-harness parallel live E2E on a real protocol line (four engines, one line) | Shipped |
 | HITL approval flow verified over real OPC UA writes | Shipped |

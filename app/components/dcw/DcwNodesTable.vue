@@ -54,7 +54,7 @@ function saveStep(n: DcwNodeView): void {
             <th>{{ $t('dcwDetail.k1dexou6058') }}</th>
             <th>{{ $t('dcwDetail.k1b1nnaa059') }}</th>
             <th>{{ $t('dcwDetail.k1i8rtqt060') }}</th>
-            <th>探索步长</th>
+            <th>{{ $t('dcwDetail.thStepLimit') }}</th>
             <th class="right">
               {{ $t('dcwDetail.k40aa6061') }}
             </th>
@@ -168,7 +168,7 @@ function saveStep(n: DcwNodeView): void {
                   step="any"
                   class="inp step-inp mono"
                   placeholder="2% default"
-                  title="在线控制单步最大变化量；留空将关闭探索写入"
+                  :title="$t('dcwDetail.stepInputTitle')"
                   @input="stepDrafts[n.id] = ($event.target as HTMLInputElement).value === '' ? '' : Number(($event.target as HTMLInputElement).value)"
                 >
                 <button
@@ -176,10 +176,10 @@ function saveStep(n: DcwNodeView): void {
                   :disabled="stepPatchingId === n.id"
                   @click="saveStep(n)"
                 >
-                  {{ stepPatchingId === n.id ? '…' : '保存' }}
+                  {{ stepPatchingId === n.id ? '…' : $t('common.save') }}
                 </button>
               </div>
-              <small class="dim">当前 Δ≤{{ n.stepLimit ?? '未配置' }} {{ n.unit }}</small>
+              <small class="dim">{{ $t('dcwDetail.stepCurrent', { p0: n.stepLimit ?? $t('dcwDetail.stepUnset') }) }} {{ n.unit }}</small>
             </td>
             <td class="right">
               <button

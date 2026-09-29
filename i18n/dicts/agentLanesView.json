@@ -53,5 +53,9 @@
   "k1n3o03a052": "成员 {p0} 已移除",
   "k13dsp10053": "移除成员失败: {p0}",
   "kcpbv47054": "已中断成员 {p0} 的运行时",
-  "k139ec5j055": "中断失败: {p0}"
+  "k139ec5j055": "中断失败: {p0}",
+  "supervisionWatchdogTitle": "监督观察阈值已触发({p0});这是观察信号,不是取消",
+  "supervisionRunningTitle": "监督回合进行中(attempt={p0},tick={p1})",
+  "supervisionDecisionText": "决策 {p0}",
+  "supervisionDecisionTitle": "Lead 最后决策:{p0}({p1})"
 }

@@ -41,10 +41,10 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
           v-if="canPost || !perms"
           type="button"
           :class="{ on: mode === 'chat' }"
-          title="群聊:仅显式 @Agent 才触发执行"
+          :title="$t('chat.toolbarChatTitle')"
           @click="emit('pick', 'chat')"
         >
-          群聊
+          {{ $t('chat.title') }}
         </button>
         <button
           v-if="canManage || !perms || !canPost"

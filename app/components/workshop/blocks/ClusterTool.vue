@@ -51,7 +51,7 @@ const hasMore = computed(() => toolLines.value.length > MAX)
         v-if="t.meta.kind !== 'native'"
         class="tool-kind"
         :class="t.meta.kind"
-      >{{ t.meta.kind === 'industrial' ? '工业' : 'harness' }}</span>
+      >{{ t.meta.kind === 'industrial' ? $t('clusterTool.kindIndustrial') : 'harness' }}</span>
     </div>
     <button
       v-if="hasMore"
