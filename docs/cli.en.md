@@ -167,7 +167,7 @@ are never overwritten:
 - Precedence (the CLI, the web settings page and the dev/prod launch scripts all share one engine,
   `shared/config/engine.mjs`):
   `config.yml defaults < runtime-settings.json runtime overrides < environment variables / explicit CLI flags`.
-- There are **115 setting descriptors across 18 groups** (`aw config list` prints exactly 113 rows):
+- There are **116 setting descriptors across 18 groups** (`aw config list` prints exactly 113 rows):
 
 | Group | Count | Group | Count | Group | Count | Group | Count |
 |---|---|---|---|---|---|---|---|

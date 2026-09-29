@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.53</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) · 115 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.7.53</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) · 116 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -187,7 +187,7 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Runtime observability** | `GET /api/system/monitor` exposes the agent-team internals as numbers: root queue depth, watchdog interventions, harness session reuse, pending memory outbox — each guarded by a documented rollback switch, so new machinery can be turned off without a redeploy. |
 | **Line operations feed (`/operations`)** | One page for every touch on the plant: a live operation feed (REST snapshot + WS stream) classifies writes, DAQ, AML, recipe, rollback, alarm, line, manual and system actions into **nine categories**, renders structured **before → after diff badges** on write rows (failures marked red), and infers the **closed-loop phase** (monitor → exploration · small-step → recommendation search → shadow verification → production) straight from the event stream. The same feed powers a line-operations panel inside the workshop console. |
 | **External MCP gateway** | `aw mcp` starts a zero-dependency **stdio MCP server** (38 tools) that discovers a running instance automatically (env → lock file → config file) and exposes lines, recipes (incl. mark-good), governed DCW writes, semantic parameter mapping, DAQ queries, channels, team provisioning, model promotion, judge/rollback and plugin management to any MCP client — gated by the `mcp.enabled` runtime setting, with `--doctor` and `--print-config` helpers. |
-| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level, system timezone, MCP gate…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **115 settings across 18 groups** (36 live / 79 restart), no hardcoded defaults in code. |
+| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level, system timezone, MCP gate…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **116 settings across 18 groups** (37 live / 79 restart), no hardcoded defaults in code. |
 | **Configurable system timezone** | One `time.timeZone` setting (IANA id, live-applied) drives human-facing timestamps — logs, chat, audit, agent records and schedules — through a single formatter; machine timelines (DAQ samples, `timestamptz`) stay absolute. |
 | **Configurable cadences** | Sampling and query defaults/floors are **live settings** (`daq.sampling.*`, `daq.query.*`): hot-reloaded, clamped on node create/patch, and agent tool descriptions always carry the current values. |
 
@@ -256,7 +256,7 @@ page headers stack, dense tables become scrollable ledgers with a pinned identit
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="Runtime monitor" width="100%" /><br/><sub><b>Runtime monitor.</b> Every wired channel, member count, dependency cycle and owner.</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 115 keys across 18 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 116 keys across 18 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="Plugins" width="100%" /><br/><sub><b>Plugins.</b> Three scopes, hot reload on edit, per-team switches.</sub></td>
 </tr>
 </table>
@@ -657,7 +657,7 @@ AgentWorkShop/
 ├── sdk/                        # agentworkshop/sdk — plugin context, hook bus, REST client, browser SDK
 ├── tui/                        # terminal workbench (aw tui)
 ├── shared/
-│   └── config/                 # schema.json (115 setting descriptors) + engine (merge/validate/persist) + path resolver
+│   └── config/                 # schema.json (116 setting descriptors) + engine (merge/validate/persist) + path resolver
 ├── config.yml                  # factory defaults (read at build/start; version comes from package.json)
 ├── .AgentWorkShop/             # config root in a checkout — prompts (versioned) + runtime overrides · data · logs · commands (git-ignored)
 ├── data/                       # legacy pre-migration location (auto-migrated into the config root)
