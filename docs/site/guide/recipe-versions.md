@@ -50,7 +50,9 @@ POST /api/workshop/dcw/recipes/:id/revert
 
 - 优化闭环内禁用 `dcw_control`/`param_control` 逐参数直调(防单参数震荡;AML 探索模式的小步激励除外);
 - trial 不受 60s/单步卡控(配方路径设计),防震荡由「整批 + 节拍 + 判读门控」承担;
-- trial/apply/回退全程审计入册(`recipe.trial` / `recipe.apply` / `dcw.write.rejected`),版本史可追溯。
+- trial/apply/回退全程审计入册(`recipe.trial` / `recipe.apply` / `dcw.write.rejected`),版本史可追溯;
+- 开启 `security.recipeDispatchApproval` 后,trial/apply 的整批下发先经**人工裁决门**
+  (拒绝附指导逐字回流 Agent;详见 [HITL 人机协同审批](/guide/hitl))。
 
 ## 失效节点守卫
 

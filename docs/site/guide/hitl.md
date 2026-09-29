@@ -29,6 +29,24 @@ curl -X POST $API/api/workshop/agent-tools/approvals/$ID/decide \
 > 注意:Agent 侧的 `dcw_control` 调用在 manual 模式下会**挂起直到裁决**
 > (超时按 `security.hitl_timeout_ms`,默认 180000ms = 3 分钟,超时自动拒绝)——这是设计语义。
 
+## 配方下发裁决门(整批动作)
+
+节点级 `dcw_control` 之外,配方链路的**整批下发动作**有独立的审批门,由运行时设置
+`security.recipeDispatchApproval` 控制(默认关闭;开启后对所有频道生效):
+
+- 覆盖动作:`recipe_trial`(整批候选试验下发)与 `recipe_apply`(已固化版本正式下发);
+  `recipe_update`(仅改配方定义,不下发)与 `recipe_rollback`(回退收敛)不在此门内;
+- 挂起语义:提交后整批动作**挂起等待人工裁决**,待审批项会列出每个参数的
+  「节点 当前值 → 候选值」与假设声明;
+- 批准(可附言)→ 整批真实下发,附言随工具回执返回给 Agent;
+- 拒绝(可附指导)→ PLC 不动、配方版本不变,人工指导文本**逐字回流**工具回包,
+  Agent 按指导修订候选后重新提交 —— 即「改好配方交给人判断;不批准就按人说的改」;
+- 超时(`security.hitl_timeout_ms`,默认 180s)按拒绝收敛,不产生任何下发;
+- 审计:裁决入 `approval.approve` / `approval.reject`;下发本身入 `recipe.trial` /
+  `recipe.apply`(带配方 id 与 Agent 归因)。
+
+> 裁决 REST 与上方相同,但 `approved` 必须是**显式布尔值**(缺省不再等于批准)。
+
 ## 与调控闭环的关系
 
 HITL 审批只作用于「下发」这一步。下发成功后仍进入调控闭环

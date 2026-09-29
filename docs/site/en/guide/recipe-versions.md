@@ -59,7 +59,10 @@ multi-parameter candidates (knowledge + data evidence)
 - trials skip the 60s / single-step interlocks by design (recipe path) — anti-oscillation
   comes from "batch + cadence + judge gating";
 - trials / applies / rejections are fully audited (`recipe.trial` / `recipe.apply` /
-  `dcw.write.rejected`).
+  `dcw.write.rejected`);
+- with `security.recipeDispatchApproval` on, trial/apply batch dispatches first pass a
+  **human decision gate** (a rejection's guidance flows back to the agent verbatim; see
+  [HITL approvals](/en/guide/hitl)).
 
 ## Stale-node guard
 
