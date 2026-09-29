@@ -325,12 +325,18 @@ export async function toolRecipeUpdate(agentId: string, args: {
     })
     .map((p) => {
       const patch = list.find(x => String(x.node_id).trim() === p.nodeId)
-      if (!patch) return { nodeId: p.nodeId, templateRef: p.templateRef, value: p.value, min: p.min, max: p.max }
-      const out: { nodeId: string, templateRef?: string, value: number, min?: number, max?: number } = { nodeId: p.nodeId, templateRef: p.templateRef, value: Number(patch.value) }
+      // stepLimit 必须随行携带:丢了会被 normParams 视为"参数有变化"(同值也空转增版),
+      // 且配方层单步限幅被静默抹掉(退化为参数/节点层默认)——治理数据完整性
+      const out: { nodeId: string, templateRef?: string, value: number, min?: number, max?: number, stepLimit?: number } = {
+        nodeId: p.nodeId,
+        templateRef: p.templateRef,
+        value: patch ? Number(patch.value) : p.value,
+      }
       if (p.min != null) out.min = p.min
-      if (patch.min != null && Number.isFinite(Number(patch.min))) out.min = Number(patch.min)
+      if (patch?.min != null && Number.isFinite(Number(patch.min))) out.min = Number(patch.min)
       if (p.max != null) out.max = p.max
-      if (patch.max != null && Number.isFinite(Number(patch.max))) out.max = Number(patch.max)
+      if (patch?.max != null && Number.isFinite(Number(patch.max))) out.max = Number(patch.max)
+      if (p.stepLimit != null) out.stepLimit = p.stepLimit
       return out
     })
   const extra = list.filter(p => !recipe.params.some(x => x.nodeId === String(p.node_id).trim()))

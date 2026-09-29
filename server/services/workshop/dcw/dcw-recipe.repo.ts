@@ -277,7 +277,9 @@ class DcwRecipeRepo {
       fullDesc += `;已剔除失效参数(${names}:节点已删除或解绑)`
     }
     return this.update(id, {
-      params: usable.map(p => ({ nodeId: p.nodeId, templateRef: p.templateRef, value: p.value, min: p.min, max: p.max })),
+      // stepLimit 必须随快照回填:丢弃会让"回退后定义"与历史版本不再逐字段一致,
+      // 既抹掉配方层单步限幅,又让下一次同值 update/revert 误判为有变化而空转增版
+      params: usable.map(p => ({ nodeId: p.nodeId, templateRef: p.templateRef, value: p.value, min: p.min, max: p.max, stepLimit: p.stepLimit })),
     }, { ...meta, description: fullDesc })
   }
 
