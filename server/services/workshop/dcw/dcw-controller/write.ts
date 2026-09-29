@@ -9,6 +9,7 @@ import { assertWithinLimits, assertStepLimit } from '../param-limits'
 import { getRecipeRollBackManager } from '../recipe-rollback-manager'
 import { normalizeDcwDriverKind, resolveDcwDriver } from '../drivers'
 import { recordDcwWriteOps } from './write-audit'
+import { recordOps } from '../../ops/ops'
 
 export abstract class DcwControllerWrite extends DcwControllerBindings {
   /** 手动设定:用户提交工程量,网关校验/换算/下发/回读校验。
@@ -30,7 +31,25 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
       throw new AppError(409, ErrorCodes.CONFLICT, `当前节点暂停:「${node.name}」控制已暂停,仅开启控制的节点可被设定`)
     }
     // 调控闭环护栏(F1/F8):Agent 互斥(open 记录他人持有)+ 回退冷却方向性
-    getRecipeRollBackManager().beforeWrite(node, eng, meta)
+    // v18 拒绝留痕:治理咽喉点的每一次拒绝(量程/配方窗/步限/间隔/保持窗)入审计 ——
+    // 安全审计需要"谁在何时试图把参数写到哪、被哪条防线拦下";给调用方的反馈由错误消息承担。
+    const reject = (err: AppError): never => {
+      try {
+        recordOps({
+          actor: meta?.actor ?? 'system', actorName: meta?.actorName ?? '', actorKind: meta?.source === 'agent' ? 'agent' : (meta?.source === 'manual' ? 'user' : 'system'),
+          action: 'dcw.write.rejected', kind: 'write', targetKind: 'dcw', targetId: id, lineId: node.lineId,
+          summary: `设定 ${eng}${node.unit || ''} 被拒:${err.message}`,
+        })
+      }
+      catch { /* 审计失败不改变拒绝语义 */ }
+      throw err
+    }
+    try {
+      getRecipeRollBackManager().beforeWrite(node, eng, meta)
+    }
+    catch (err) {
+      reject(err instanceof AppError ? err : new AppError(409, ErrorCodes.CONFLICT, String(err instanceof Error ? err.message : err)))
+    }
     // 写入限界分层联锁(param-limits):节点安全量程(结构层,驱动内 validateEng 结构性兜底)
     // ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口 —— 逐层收窄取交集,
     // 手动 REST / Agent 工具 / 配方下发 / 回退四路共用本咽喉点,越界一律拒绝。
@@ -40,7 +59,12 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
     const benchNoInterlock = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-interlock' || meta?.benchArm === 'ungated')
     // 配方下发路径(recipeRunId != null)跳过配方窗口层:下发值已在配方保存时对自身窗口校验,
     // 且中途应用新配方不应被旧批次配方窗口误伤;产品/参数基准层对配方下发照常约束。
-    assertWithinLimits(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: recipeRunId != null })
+    try {
+      assertWithinLimits(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: recipeRunId != null })
+    }
+    catch (err) {
+      reject(err instanceof AppError ? err : new AppError(400, ErrorCodes.VALIDATION_ERROR, String(err instanceof Error ? err.message : err)))
+    }
     const srcForLock = meta?.source ?? (recipeRunId ? 'recipe' : 'manual')
     const benchBypass = process.env.AW_BENCH_MODE === '1'
     // 在线 Agent/人工控制都走安全小步与 60s 最小间隔:这是探索阶段的硬卡控，
@@ -50,12 +74,17 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
       const previous = typeof node.value === 'number'
         ? node.value
         : (typeof node.readValue === 'number' ? node.readValue : null)
-      assertStepLimit(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: false }, previous)
+      try {
+        assertStepLimit(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: false }, previous)
+      }
+      catch (err) {
+        reject(err instanceof AppError ? err : new AppError(409, ErrorCodes.STEP_LIMIT_EXCEEDED, String(err instanceof Error ? err.message : err)))
+      }
       const previousAt = node.lastWriteAt ? Date.parse(node.lastWriteAt) : NaN
       if (Number.isFinite(previousAt)) {
         const elapsed = Date.now() - previousAt
         if (elapsed < 60_000) {
-          throw new AppError(429, ErrorCodes.WRITE_INTERVAL_NOT_ELAPSED, `DCW 节点「${node.name}」两次在线写入间隔必须至少 60s，当前还需 ${Math.ceil((60_000 - elapsed) / 1000)}s`)
+          reject(new AppError(429, ErrorCodes.WRITE_INTERVAL_NOT_ELAPSED, `DCW 节点「${node.name}」两次在线写入间隔必须至少 60s，当前还需 ${Math.ceil((60_000 - elapsed) / 1000)}s`))
         }
       }
     }
@@ -78,11 +107,11 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
         }
       }
       if (now < until) {
-        throw new AppError(
+        reject(new AppError(
           429,
           ErrorCodes.WRITE_FREQUENT,
           `当前写入频繁:「${node.name}」处于写入保持窗口(剩余 ${Math.ceil((until - now) / 1000)}s),请稍后再试`,
-        )
+        ))
       }
     }
     // D8: no-readback / ungated 臂 → 容差置 MAX,回读差异不致败(假成功语义,供 I2 消融)

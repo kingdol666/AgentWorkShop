@@ -27,6 +27,8 @@ export interface ChannelRow {
   chatEnabled: number
   /** v17 乐观锁版本(每次设置变更 +1) */
   version: number
+  /** v18 绑定产线(空串=未绑定;只读扩权:成员可读该线日志/配方/历史/状态,写仍走节点授权) */
+  lineId: string
   createdAt: string
   updatedAt: string
 }

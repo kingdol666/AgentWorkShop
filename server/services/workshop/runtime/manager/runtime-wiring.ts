@@ -12,6 +12,7 @@ import type { ChannelRuntime } from '../channel-runtime'
 import { Mailbox } from '../mailbox'
 import { SchedulerLoop } from '../scheduler-loop'
 import { buildMessage, instanceToAgentInfo, log, parseChannelLlm, rowToChannelMail, runtimeKey } from './helpers'
+import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { harnessContinuityEnabled, workshopSettings } from '../../settings'
 import { composeChannelSystemPrompt } from '../../aml/twin/prompt-composer'
 
@@ -29,7 +30,22 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // 变更经 updateChannel 回收成员运行时,下次装配拿到新场景)
     const scenarioPrompt = this.deps.repos.channels.findById(m.channelId)?.scenarioPrompt ?? ''
     const configWithCtx: Record<string, unknown> = { ...agent.config }
-    if (scenarioPrompt) configWithCtx.scenarioPrompt = scenarioPrompt
+    // v18 频道绑定产线:注入产线简报(只读上下文;全员可 line_context 看实时全景,写仍需节点授权)
+    try {
+      const boundLineId = this.deps.repos.channels.findById(m.channelId)?.lineId ?? ''
+      const line = boundLineId ? getDcwLineRepo().byId(boundLineId) : undefined
+      if (line) {
+        const brief = `\n\n## 绑定产线(只读上下文)\n本频道已绑定产线「${line.name}」(${line.id})${line.description ? ` — ${line.description}` : ''}。全员可用 line_context 查看该产线实时全景(运行状态/活动批次/当前配方与参数窗口),ops_log / recipe_log / recipe_versions 查运维日志与配方历史(频道绑定 = 只读授权);参数下发等写操作仍需节点授权(lead 可用 team_grant_nodes/grant_node_ids 授予)。`
+        configWithCtx.scenarioPrompt = (scenarioPrompt ? `${scenarioPrompt}\n` : '') + brief
+      }
+      else if (scenarioPrompt) {
+        configWithCtx.scenarioPrompt = scenarioPrompt
+      }
+    }
+    catch {
+      // 产线仓储未就绪等异常:退回纯场景 prompt,不阻断装配
+      if (scenarioPrompt) configWithCtx.scenarioPrompt = scenarioPrompt
+    }
     // AML 解耦:训练/工艺优化 Channel 的动态工况提示词(模式+goal+绑定节点调试元数据组装;
     // 模式/绑定变更经 twin-profile PATCH 回收成员运行时生效,与 scenarioPrompt 同链路)。
     try {

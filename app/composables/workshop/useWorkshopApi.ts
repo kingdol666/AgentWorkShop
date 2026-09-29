@@ -19,6 +19,8 @@ export interface ChannelDto {
   ownerUserId?: string | null
   /** v16 定时标志:该 channel 启用的定时计划数(>0 前端显示「定时」标签) */
   scheduledCount?: number
+  /** v18 绑定产线(空/缺省=未绑定;只读扩权:成员可读该线日志/配方/历史/状态) */
+  lineId?: string
   createdAt: string
   updatedAt: string
 }
@@ -130,6 +132,11 @@ export function useWorkshopApi() {
     /** 修改 Channel 实例设置(场景 prompt / 工作目录热更新;成员运行时自动回收重装配) */
     patchChannel: (id: string, body: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null }) =>
       http.request<{ data: ChannelDto }>({ method: 'PATCH', url: `/workshop/channels/${id}`, data: body }),
+    /** v18 绑定/解绑产线(lineId=null = 解绑;只读扩权,成员运行时自动回收) */
+    bindChannelLine: (id: string, lineId: string | null) =>
+      http.request<{ data: { ok: boolean, lineId: string } }>({ method: 'PUT', url: `/workshop/channels/${id}/line`, data: { lineId } }),
+    /** 产线清单(绑线选择器数据源) */
+    listDcwLines: () => http.get<{ data: { lines: Array<{ id: string, name: string, state?: string }> } }>('/workshop/dcw/lines?limit=200'),
     // channel agents
     listChannelAgents: (id: string) => http.get<{ data: AgentInfoDto[] }>(`/workshop/channels/${id}/agents`),
     addChannelAgent: (id: string, body: { agentId?: string, name?: string, harness?: string, role?: 'lead' | 'worker', config?: Record<string, unknown> }) =>

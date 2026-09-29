@@ -10,6 +10,8 @@ export function migrateGroupChatV17(db: DatabaseSync): void {
   migrateAddColumn(db, 'channels', 'approval_policy', 'TEXT NOT NULL DEFAULT \'owner_only\'')
   migrateAddColumn(db, 'channels', 'chat_enabled', 'INTEGER NOT NULL DEFAULT 0')
   migrateAddColumn(db, 'channels', 'version', 'INTEGER NOT NULL DEFAULT 1')
+  // v18:Channel 绑定产线(空串=未绑定;只读扩权面,见 ops-tools agentOpsScope)
+  migrateAddColumn(db, 'channels', 'line_id', 'TEXT NOT NULL DEFAULT \'\'')
   // 规范化非法值(历史手改/测试数据):未知取值一律回落到最保守档,不放宽权限
   db.exec(`UPDATE channels SET visibility = 'private' WHERE visibility NOT IN ('private', 'public')`)
   db.exec(`UPDATE channels SET join_policy = 'owner_approve' WHERE join_policy NOT IN ('open', 'owner_approve')`)

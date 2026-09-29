@@ -6,7 +6,8 @@ import { ManagerNotifications } from './notifications'
 import type { ActingUser, AgentTemplateDetail } from './types'
 import type { AgentInfo } from '../../agents/agent-interface'
 import type { AgentRow, ChannelRow, WorkspaceRow } from '../../db/database'
-import { AppError } from '../../../../utils/errors'
+import { AppError, ErrorCodes } from '../../../../utils/errors'
+import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { mkdirSync } from 'node:fs'
 import { parseJson } from '../../db/database'
@@ -142,6 +143,31 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
   /** AML 解耦:读 Channel 的用户场景提示(prompt-composer 组装输入) */
   channelScenarioPrompt(channelId: string): string {
     return this.deps.repos.channels.findById(channelId)?.scenarioPrompt ?? ''
+  }
+
+  /** v18:绑定/解绑产线(lineId 空 = 解绑)。绑定变更回收成员运行时,下次装配注入产线简报。 */
+  async bindChannelLine(channelId: string, lineId: string | null): Promise<ChannelRow> {
+    const channel = this.requireChannelRow(channelId)
+    const next = String(lineId ?? '').trim()
+    if (next && next !== channel.lineId) {
+      // 产线存在性校验:避免绑到已删除/拼错的线 id(工具面按线过滤,悬空绑定毫无价值)
+      const line = getDcwLineRepo().byId(next)
+      if (!line) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${next}`)
+    }
+    if (next === channel.lineId) return channel
+    const updated = this.deps.repos.channels.setLine(channelId, next)!
+    // 与场景 prompt 变更同链路:回收成员运行时,下次装配注入新的产线简报
+    await this.unloadChannelAgents(channelId)
+    if (updated.leadAgentId) this.ensureChannelActive(channelId)
+    return updated
+  }
+
+  /** v18:Agent 实例 → 其频道绑定的产线 id(只读扩权依据;未绑/找不到 = null) */
+  channelLineBindingOf(agentId: string): string | null {
+    const m = this.deps.repos.channelAgents.findById(agentId)
+    if (!m) return null
+    const lineId = this.deps.repos.channels.findById(m.channelId)?.lineId ?? ''
+    return lineId || null
   }
 
   /** AML 解耦:twin-profile 变更(模式/绑定模型)后回收成员,重新装配注入新工况提示词 */

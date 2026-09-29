@@ -20,7 +20,26 @@ const emit = defineEmits<{
 const api = useWorkshopApi()
 
 // ===== Channel 实例设置(场景/工作目录热更新)+ 保存为模板 =====
-const settingsForm = reactive({ name: '', scenarioPrompt: '', workspace: '' })
+const settingsForm = reactive({ name: '', scenarioPrompt: '', workspace: '', lineId: '' })
+
+// ===== v18 绑定产线(只读扩权:成员可读该线日志/配方/历史/状态;写仍走节点授权) =====
+interface LineOption { id: string, name: string, state?: string }
+const lineOptions = ref<LineOption[]>([])
+const linesLoading = ref(false)
+const lineChanged = ref(false)
+const loadLines = async (): Promise<void> => {
+  linesLoading.value = true
+  try {
+    const res = await api.listDcwLines()
+    lineOptions.value = res?.data?.lines ?? []
+  }
+  catch { /* 产线清单不可得时留空,不阻塞设置弹窗 */ }
+  finally { linesLoading.value = false }
+}
+const onLineChange = (v: unknown): void => {
+  settingsForm.lineId = String(v ?? '')
+  lineChanged.value = true
+}
 
 // ===== Channel 级默认 LLM(harness → provider/model/effort;空 = 用引擎默认) =====
 interface CatalogProvider {
@@ -73,6 +92,9 @@ const openSettings = (): void => {
   settingsForm.name = meta?.name ?? ''
   settingsForm.scenarioPrompt = meta?.scenarioPrompt ?? ''
   settingsForm.workspace = meta?.workspace ?? ''
+  settingsForm.lineId = meta?.lineId ?? ''
+  lineChanged.value = false
+  void loadLines()
   // 预填 channel 默认 LLM(llmJson 由列表接口透传)
   let saved: ChannelLlmDefaults | null = null
   try {
@@ -136,6 +158,10 @@ const saveSettings = async (): Promise<void> => {
         ? { ...(llmForm.provider ? { provider: llmForm.provider } : {}), model: llmForm.model, ...(llmForm.effort ? { effort: llmForm.effort } : {}) }
         : null,
     })
+    // v18 绑线变更单独提交(只读扩权;成员运行时自动回收重装配)
+    if (lineChanged.value) {
+      await api.bindChannelLine(props.channelId, settingsForm.lineId || null)
+    }
     message.success(t('channelSessionList.kvsxlu6031'))
     open.value = false
     emit('saved')
@@ -165,6 +191,21 @@ const openSaveTemplate = (): void => {
     @ok="saveSettings"
   >
     <a-form layout="vertical">
+      <a-form-item :label="$t('channelSessionList.bindLineLabel')">
+        <a-select
+          :value="settingsForm.lineId || undefined"
+          :loading="linesLoading"
+          allow-clear
+          show-search
+          option-filter-prop="label"
+          :placeholder="$t('channelSessionList.bindLinePlaceholder')"
+          :options="lineOptions.map(l => ({ value: l.id, label: l.name }))"
+          @change="onLineChange"
+        />
+        <div class="bind-line-hint">
+          {{ $t('channelSessionList.bindLineHint') }}
+        </div>
+      </a-form-item>
       <a-form-item :label="$t('channelSessionList.k1i8q46x007')">
         <a-textarea
           v-model:value="settingsForm.scenarioPrompt"
@@ -326,4 +367,5 @@ const openSaveTemplate = (): void => {
   white-space: nowrap;
 }
 .ws-hint { font-size: 11px; color: var(--ink-faint); }
+.bind-line-hint { margin-top: 4px; font-size: 11px; color: var(--ink-faint); line-height: 1.5; }
 </style>

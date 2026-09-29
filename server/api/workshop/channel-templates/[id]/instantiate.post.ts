@@ -24,6 +24,8 @@ const instantiateSchema = z.object({
   optimizationMode: z.enum(['exploration', 'aml']).optional(),
   boundModelId: z.string().min(1).optional(),
   enableKnowledgeBase: z.boolean().optional(),
+  /** v18:实例化即绑定产线(只读扩权:成员可读该线日志/配方/历史/状态;写仍走节点授权) */
+  bindLineId: z.string().min(1).optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -35,6 +37,10 @@ export default defineApiHandler(async (event) => {
   // 模板含 lead 时直接启动调度循环(可提交任务)
   if (result.leadAgentId) {
     ensureLeadSchedulerLoop(manager, result.channelId)
+  }
+  // v18:实例化即绑定产线(新频道 owner = 实例化者;产线存在性在 bindChannelLine 内校验)
+  if (body.bindLineId) {
+    await manager.bindChannelLine(result.channelId, body.bindLineId)
   }
   // 常驻事件录制器(与 channels.post 同口径):确保无人 WS 订阅前事件也已持久化
   const { ensureStream } = await import('../../ws')

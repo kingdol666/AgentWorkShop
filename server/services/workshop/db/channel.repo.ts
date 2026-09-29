@@ -11,7 +11,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { ChannelRow } from './database'
 
 /** 查询列(蛇形列名 → 驼峰行字段) */
-const COLS = 'id, name, description, scenario_prompt AS scenarioPrompt, llm_json AS llmJson, lead_agent_id AS leadAgentId, workspace, enabled, owner_user_id AS ownerUserId, visibility, join_policy AS joinPolicy, approval_policy AS approvalPolicy, chat_enabled AS chatEnabled, version, created_at AS createdAt, updated_at AS updatedAt'
+const COLS = 'id, name, description, scenario_prompt AS scenarioPrompt, llm_json AS llmJson, lead_agent_id AS leadAgentId, workspace, enabled, owner_user_id AS ownerUserId, visibility, join_policy AS joinPolicy, approval_policy AS approvalPolicy, chat_enabled AS chatEnabled, version, line_id AS lineId, created_at AS createdAt, updated_at AS updatedAt'
 
 export interface ChannelCreateInput {
   name: string
@@ -99,6 +99,7 @@ export function createChannelRepo(db: DatabaseSync) {
         approvalPolicy: input.approvalPolicy ?? 'owner_only',
         chatEnabled: input.chatEnabled ?? 0,
         version: 1,
+        lineId: '',
         createdAt: now,
         updatedAt: now,
       }
@@ -188,6 +189,15 @@ export function createChannelRepo(db: DatabaseSync) {
 
     remove(id: string): void {
       removeStmt.run(id)
+    },
+
+    /** v18:绑定/解绑产线(lineId=''=解绑)。只读扩权面:成员可读该线日志/配方/历史/状态;写仍走节点授权。 */
+    setLine(id: string, lineId: string): ChannelRow | undefined {
+      const current = selectById.get(id) as unknown as ChannelRow | undefined
+      if (!current) return undefined
+      db.prepare('UPDATE channels SET line_id = ?, updated_at = ? WHERE id = ?')
+        .run(lineId, new Date().toISOString(), id)
+      return { ...current, lineId, updatedAt: new Date().toISOString() }
     },
   }
 }

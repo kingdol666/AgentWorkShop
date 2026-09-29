@@ -17,10 +17,26 @@ import { fanoutQuery, windowOf } from './audit-query'
 // 运维日志 / Recipe 变更史查询(Agent 自查面:负责产线 scoped)
 // ================================================================
 
-/** Agent 负责范围 = 绑定节点的全集(节点 id 集 + 这些节点所属产线集);无绑定 = 无范围 */
-export function agentOpsScope(agentId: string): { lineIds: string[], nodeIds: Set<string> } | null {
+/** v18:频道绑定产线(只读扩权)——经全局 manager 读;manager 未装配/未绑定 = null */
+function channelBoundLineId(agentId: string): string | null {
+  try {
+    const g = globalThis as typeof globalThis & {
+      __workshopManager?: { channelLineBindingOf(id: string): string | null }
+    }
+    return g.__workshopManager?.channelLineBindingOf(agentId) ?? null
+  }
+  catch {
+    return null
+  }
+}
+
+/** Agent 负责范围 = 绑定节点的全集(节点 id 集 + 这些节点所属产线集;写权限依据)
+ *  ∪ 频道绑定产线(boundLineIds;v18 只读扩权:日志/配方史/上下文可读,写仍走节点授权)。 */
+export function agentOpsScope(agentId: string): { lineIds: string[], nodeIds: Set<string>, boundLineIds: string[] } | null {
   const bindings = getAgentNodeBindingRepo().byAgent(agentId)
-  if (bindings.length === 0) return null
+  const boundLine = channelBoundLineId(agentId)
+  const boundLineIds = boundLine ? [boundLine] : []
+  if (bindings.length === 0 && boundLineIds.length === 0) return null
   const lineIds = new Set<string>()
   const nodeIds = new Set<string>()
   for (const b of bindings) {
@@ -31,7 +47,17 @@ export function agentOpsScope(agentId: string): { lineIds: string[], nodeIds: Se
     }
     catch { /* 节点刚被删等情况忽略 */ }
   }
-  return { lineIds: [...lineIds], nodeIds }
+  return { lineIds: [...lineIds], nodeIds, boundLineIds }
+}
+
+/** 读工具的可见产线全集 = 节点授权线 ∪ 频道绑定线(去重) */
+function readableLineIds(scope: { lineIds: string[], boundLineIds: string[] }): string[] {
+  return [...new Set([...scope.lineIds, ...scope.boundLineIds])]
+}
+
+/** 产线展示标注:仅频道绑定(非节点授权)的线标注只读来源 */
+function lineTag(lid: string, scope: { lineIds: string[], boundLineIds: string[] }): string {
+  return scope.lineIds.includes(lid) ? '' : '(频道绑定,只读)'
 }
 
 /** 配方参数的节点失效态(数据一致性展示/Agent 提示共用):null=正常 */
@@ -63,19 +89,20 @@ export async function toolOpsLog(agentId: string, args: {
   const audit = getOps()?.audit
   if (!audit) return { text: '审计仓储未装配(服务未就绪),请稍后重试。', isError: true }
   const scope = agentOpsScope(agentId)
-  if (!scope) return { text: '你尚未绑定任何工业节点,无日志可查(日志权限跟随节点绑定)。', isError: true }
+  if (!scope) return { text: '你尚未绑定任何工业节点,所在频道也未绑定产线,无日志可查(日志权限跟随节点绑定或频道绑线)。', isError: true }
   const nodeId = String(args.node_id ?? '').trim()
   const lineId = String(args.line_id ?? '').trim()
+  const readable = readableLineIds(scope)
   if (nodeId && !scope.nodeIds.has(nodeId))
     return { text: `无权查询节点 ${nodeId} 的日志(仅可查自己绑定的节点;用 my_industrial_nodes 查看绑定)。`, isError: true }
-  if (lineId && !scope.lineIds.includes(lineId))
-    return { text: `无权查询产线 ${lineId} 的日志(你的负责产线:${scope.lineIds.join(', ') || '(绑定节点均未分配产线)'})。`, isError: true }
+  if (lineId && !readable.includes(lineId))
+    return { text: `无权查询产线 ${lineId} 的日志(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
   const kind = String(args.kind ?? '').trim() || undefined
   const actorKind = String(args.actor_kind ?? '').trim() || undefined
   const mine = args.mine === true || args.mine === 'true'
   const { minutes, limit, from } = windowOf(args)
 
-  const lines = lineId ? [lineId] : scope.lineIds
+  const lines = lineId ? [lineId] : readable
   let rows = fanoutQuery(audit, lines, lid => ({ lineId: lid, kind, actorKind, actor: mine ? agentId : undefined, from, limit }))
   if (nodeId) rows = rows.filter(r => r.targetId === nodeId)
   rows.sort((a, b) => String(b.at).localeCompare(String(a.at)))
@@ -86,7 +113,7 @@ export async function toolOpsLog(agentId: string, args: {
     const src = OPS_ACTOR_LABEL[String(r.actorKind)] ?? String(r.actorKind)
     return `- [${fmtAuditAt(String(r.at))}] 来源=${src} 操作者=${String(r.actorName) || String(r.actor)} | ${String(r.action)} | ${String(r.summary)}`
   })
-  const scopeNote = lineId ? `产线 ${lineId}` : `负责产线 ${scope.lineIds.length} 条`
+  const scopeNote = lineId ? `产线 ${lineId}` : `可读产线 ${readable.length} 条`
   return {
     text: `运维日志(${scopeNote},近 ${minutes} 分钟,${rows.length} 条,新→旧):\n${body.join('\n')}\n\n说明:来源=Agent 的操作者格式为「Channel名/成员名」;需要节点级参数值变更史用 dcw_journal,配方下发/回退专门视图用 recipe_log。`,
   }
@@ -103,14 +130,15 @@ export async function toolRecipeLog(agentId: string, args: {
   const audit = getOps()?.audit
   if (!audit) return { text: '审计仓储未装配(服务未就绪),请稍后重试。', isError: true }
   const scope = agentOpsScope(agentId)
-  if (!scope) return { text: '你尚未绑定任何工业节点,无 Recipe 历史可查(权限跟随节点绑定)。', isError: true }
+  if (!scope) return { text: '你尚未绑定任何工业节点,所在频道也未绑定产线,无 Recipe 历史可查(权限跟随节点绑定或频道绑线)。', isError: true }
   const lineId = String(args.line_id ?? '').trim()
-  if (lineId && !scope.lineIds.includes(lineId))
-    return { text: `无权查询产线 ${lineId} 的 Recipe 历史(你的负责产线:${scope.lineIds.join(', ') || '(无)'})。`, isError: true }
+  const readable = readableLineIds(scope)
+  if (lineId && !readable.includes(lineId))
+    return { text: `无权查询产线 ${lineId} 的 Recipe 历史(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
   const recipeId = String(args.recipe_id ?? '').trim() || undefined
   const { minutes, limit, from } = windowOf(args)
 
-  const lines = lineId ? [lineId] : scope.lineIds
+  const lines = lineId ? [lineId] : readable
   const rows = fanoutQuery(audit, lines, lid => [
     { lineId: lid, kind: 'recipe', recipeId, from, limit },
     { lineId: lid, kind: 'rollback', recipeId, from, limit },
@@ -131,9 +159,8 @@ export async function toolRecipeLog(agentId: string, args: {
             : action
     return `- [${fmtAuditAt(String(r.at))}] ${tag} 来源=${src} 操作者=${String(r.actorName) || String(r.actor)} | ${String(r.summary)}${r.recipeId ? `(配方 ${String(r.recipeId).slice(0, 8)})` : ''}`
   })
-  return {
-    text: `Recipe 变更史(${lineId ? `产线 ${lineId}` : `负责产线 ${scope.lineIds.length} 条`},近 ${minutes} 分钟,${rows.length} 条,新→旧):\n${body.join('\n')}\n\n说明:配方下发=整批参数写命令;优化开窗=单次设定变更(含 Agent 假设);回退执行=已恢复基线值。节点级参数值逐笔历史用 dcw_journal(node_id)。`,
-  }
+  const text = `Recipe 变更史(${lineId ? `产线 ${lineId}` : `可读产线 ${readable.length} 条`},近 ${minutes} 分钟,${rows.length} 条,新→旧):\n${body.join('\n')}\n\n说明:配方下发=整批参数写命令;优化开窗=单次设定变更(含 Agent 假设);回退执行=已恢复基线值。节点级参数值逐笔历史用 dcw_journal(node_id)。`
+  return { text }
 }
 
 // ================================================================
@@ -145,11 +172,12 @@ export async function toolRecipeLog(agentId: string, args: {
  *  配方目标 vs PLC 当前值对照、lastGood 批次。 */
 export async function toolLineContext(agentId: string, args: { line_id?: string } = {}): Promise<{ text: string, isError?: boolean }> {
   const scope = agentOpsScope(agentId)
-  if (!scope) return { text: '你尚未绑定任何工业节点,暂无产线上下文(请先在数字孪生界面绑定节点)。' }
+  if (!scope) return { text: '你尚未绑定任何工业节点,所在频道也未绑定产线,暂无产线上下文(可在频道设置绑定产线获得只读上下文,或在数字孪生界面绑定节点)。' }
   const wanted = String(args.line_id ?? '').trim()
-  const lineIds = wanted ? [wanted] : scope.lineIds
-  if (wanted && !scope.lineIds.includes(wanted)) {
-    return { text: `产线 ${wanted} 不在你的负责范围(你绑定节点覆盖的产线:${scope.lineIds.join(', ') || '无'})。`, isError: true }
+  const readable = readableLineIds(scope)
+  const lineIds = wanted ? [wanted] : readable
+  if (wanted && !readable.includes(wanted)) {
+    return { text: `产线 ${wanted} 不在你的可读范围(节点授权与频道绑定覆盖:${readable.join(', ') || '无'})。`, isError: true }
   }
   if (lineIds.length === 0) return { text: '你绑定的节点均未分配产线(未挂线的节点没有产线/产品/配方上下文)。' }
 
@@ -159,7 +187,7 @@ export async function toolLineContext(agentId: string, args: { line_id?: string 
     const run = getActiveLineRun(lid)
     const recipe = run?.recipeId ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
     const parts: string[] = []
-    parts.push(`■ 产线 ${line?.name ?? lid}(${lid})· 状态:${run ? '运行中' : '待机/停线'}`)
+    parts.push(`■ 产线 ${line?.name ?? lid}(${lid})${lineTag(lid, scope)} · 状态:${run ? '运行中' : '待机/停线'}`)
     if (run) {
       parts.push(`  活动批次 ${run.runId.slice(0, 8)} · 产品「${run.productName}」(${run.productId}) · 开跑 ${run.startedAt.slice(11, 19)} · 已打标 ${run.taggedSamples} 样本`)
     }
@@ -210,7 +238,7 @@ export async function toolLineContext(agentId: string, args: { line_id?: string 
     sections.push(parts.join('\n'))
   }
   return {
-    text: `你控制的产线全景(${sections.length} 条):\n\n${sections.join('\n\n')}\n\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时读数。把验证过的最佳参数固化到配方用 recipe_update;回退配方到稳定版本用 recipe_rollback;逐节点参数变更史用 dcw_journal;配方版本史用 recipe_versions。`,
+    text: `你控制的产线全景(${sections.length} 条):\n\n${sections.join('\n\n')}\n\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时读数;(频道绑定,只读)= 该线来自频道绑定的只读授权,可看日志/配方/状态,参数下发仍需节点授权。把验证过的最佳参数固化到配方用 recipe_update;回退配方到稳定版本用 recipe_rollback;逐节点参数变更史用 dcw_journal;配方版本史用 recipe_versions。`,
   }
 }
 
@@ -221,9 +249,11 @@ export async function toolRecipeVersions(agentId: string, args: { recipe_id?: st
   if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方的 id)。', isError: true }
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  // 只读面:节点授权线 ∪ 频道绑定线均可看版本史(回退走 toolRecipeRollback 的写门)
   const scope = agentOpsScope(agentId)
-  if (!scope || !recipe.lineId || !scope.lineIds.includes(recipe.lineId)) {
-    return { text: `无权查看配方 ${recipeId} 的版本史(该配方不在你负责的产线上)。`, isError: true }
+  const readable = scope ? readableLineIds(scope) : []
+  if (!recipe.lineId || !readable.includes(recipe.lineId)) {
+    return { text: `无权查看配方 ${recipeId} 的版本史(该配方不在你可读的产线上)。`, isError: true }
   }
   const rows = getDcwController().recipeVersions(recipeId)
   const limit = Math.min(Number(args.limit) || 20, 50)
