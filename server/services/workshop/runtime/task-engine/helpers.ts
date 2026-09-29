@@ -18,7 +18,9 @@ export const log = createLogger('workshop.task-engine')
  *  收口规则只认 WAITING/WORKING,三面都不接) */
 export const TRANSITIONS: Record<TaskState, TaskState[]> = {
   SUBMITTED: ['WORKING', 'ASSIGNED', 'COMPLETED', 'CANCELED'],
-  ASSIGNED: ['WORKING', 'CANCELED'],
+  // ASSIGNED → COMPLETED:mock/rpc worker 无运行时消费 assign(任务永远停在 ASSIGNED),
+  // 交付即视同接取 —— 与 SUBMITTED/WAITING → COMPLETED 的 mock 闭环例外同一口径。
+  ASSIGNED: ['WORKING', 'COMPLETED', 'CANCELED'],
   WORKING: ['WAITING', 'COMPLETED', 'FAILED', 'CANCELED'],
   WAITING: ['WORKING', 'COMPLETED', 'CANCELED'],
   FAILED: ['ASSIGNED', 'CANCELED'],

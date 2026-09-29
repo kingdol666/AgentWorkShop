@@ -493,6 +493,14 @@ export async function toolRecipeApply(agentId: string, args: {
   try {
     const run = await getDcwController().applyRecipe(recipeId)
     const okN = run.results.filter(r => r.ok).length
+    // 逐参数标注:被跳过/失败的参数(节点停用/已删除/限界拒绝)必须透出给 Agent,
+    // 否则回包只见 N/N 成功数,无法定位哪些参数未生效(与 recipe_trial 的逐参数渲染同口径)。
+    const skipped = run.results.filter(r => !r.ok)
+      .map((r) => {
+        const node = r.nodeId ? getDcwController().byId(r.nodeId) : undefined
+        return `${node?.name ?? r.templateRef ?? r.nodeId ?? '?'}: ${String(r.message).slice(0, 80)}`
+      })
+    const skippedNote = skipped.length > 0 ? `\n未生效参数(${skipped.length}):\n  - ${skipped.join('\n  - ')}` : ''
     try {
       const { recordOps } = await import('../../ops/ops')
       recordOps({
@@ -503,7 +511,7 @@ export async function toolRecipeApply(agentId: string, args: {
     }
     catch { /* 审计失败不影响下发结果 */ }
     return {
-      text: `配方「${recipe.name}」v${recipe.version ?? 1} 已整批下发(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)})。用 daq_query 复测确认工艺响应。`,
+      text: `配方「${recipe.name}」v${recipe.version ?? 1} 已整批下发(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)})。${skippedNote}用 daq_query 复测确认工艺响应。`,
     }
   }
   catch (err) {
