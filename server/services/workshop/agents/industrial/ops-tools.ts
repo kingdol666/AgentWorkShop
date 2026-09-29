@@ -11,6 +11,7 @@ import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { getOps } from '../../ops/ops'
+import { settingOf } from '../../settings'
 import { fanoutQuery, windowOf } from './audit-query'
 
 // ================================================================
@@ -416,6 +417,20 @@ export async function toolRecipeRollback(agentId: string, args: {
   }
 }
 
+/**
+ * v19.5 HITL 下发裁决门:security.recipeDispatchApproval 开启时,配方下发动作
+ * 不直接执行 —— 挂起等待人工裁决(复用 ToolApprovalService,人类批/拒理由原样回流):
+ *   批准       → 按原逻辑执行下发,回执附人工附言;
+ *   拒绝(可附指导)→ 工具回包携带人工指导文本,Agent 按指导修订候选后重新提交 ——
+ *   即"改好配方交给人类判断是否下发;不下发则人告诉 Agent 怎么修"的真实作业语义。
+ * 超时(默认 180s,security.hitl_timeout_ms)自动按拒绝收敛。
+ */
+async function hitlDispatchGate(agentId: string, detail: string, title: string): Promise<{ approved: boolean, comment: string }> {
+  const { getToolApprovals } = await import('../tool-approvals')
+  const decision = await getToolApprovals().request(agentId, 'recipe-dispatch', 'dcw', detail, { title })
+  return { approved: decision.approved, comment: decision.comment }
+}
+
 /** 工具:recipe_trial —— 多参数候选整批试验下发(v19 配方链路核心)。
  *  候选值只覆盖列出节点(**必须是自己绑定的数控节点**);整批一次落产线,**不写配方版本** ——
  *  复测判读:有进步/达标 → recipe_update 固化(同 id 版本+1);劣化 → recipe_rollback(dispatch=true) 统一回退。
@@ -445,6 +460,26 @@ export async function toolRecipeTrial(agentId: string, args: {
     }
   }
   try {
+    // v19.5 HITL 门:开启人工审批时,整批试验前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
+    let hitlNote = ''
+    if (settingOf('security.recipeDispatchApproval') === true) {
+      const gate = await hitlDispatchGate(
+        agentId,
+        `配方试验候选(整批 ${list.length} 参数):${list.map((p) => {
+          const node = getDcwController().byId(p.nodeId)
+          const old = recipe.params.find(x => x.nodeId === p.nodeId)?.value
+          return `${node?.name ?? p.nodeId} ${old ?? '?'}→${p.value}${node?.unit ?? ''}`
+        }).join(';')} | 假设:${hypothesis} | 批准=整批下发试验(不写版本);拒绝可附指导`,
+        '配方试验(整批候选)下发审批',
+      )
+      if (!gate.approved) {
+        return {
+          text: `人工未批准本次试验下发。人工指导:${gate.comment || '(无附言,仅不同意候选)'}。请按人工指导修订候选参数(必要时先 recipe_update 调整基线),然后重新提交 recipe_trial。`,
+        }
+      }
+      // 人工附言随批准回执回流(Agent 与审计都能看到放行时人的原话)
+      if (gate.comment) hitlNote = `\n人工附言:${gate.comment}`
+    }
     const run = await getDcwController().applyRecipe(recipeId, { overrides: list, trial: true })
     const okN = run.results.filter(r => r.ok).length
     // 批次级留痕:试验动作入审计(逐参数写已有 write-audit;这里是"一次试验"粒度)
@@ -463,7 +498,7 @@ export async function toolRecipeTrial(agentId: string, args: {
       return `${node?.name ?? r.templateRef}→${r.value}${node?.unit ?? ''}${r.ok ? '' : ` 被拒${reason}`}`
     }).join(';')
     return {
-      text: `试验已整批下发(${okN}/${run.results.length} 成功,批次 ${run.id.slice(0, 8)}):${changed}。假设:${hypothesis}。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。`,
+      text: `试验已整批下发(${okN}/${run.results.length} 成功,批次 ${run.id.slice(0, 8)}):${changed}。假设:${hypothesis}。${hitlNote}注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。`,
     }
   }
   catch (err) {
@@ -491,6 +526,25 @@ export async function toolRecipeApply(agentId: string, args: {
     return { text: `无权下发配方 ${recipeId}(需持有该配方至少一个数控节点的授权;找 lead 用 team_grant_nodes 授予)。`, isError: true }
   }
   try {
+    // v19.5 HITL 门:开启人工审批时,正式下发前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
+    let hitlNote = ''
+    if (settingOf('security.recipeDispatchApproval') === true) {
+      const gate = await hitlDispatchGate(
+        agentId,
+        `配方正式下发:「${recipe.name}」v${recipe.version ?? 1} 全参数整批(${recipe.params.length} 项):${recipe.params.map((p) => {
+          const node = getDcwController().byId(p.nodeId)
+          return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}`
+        }).join(';')} | 批准=整批下发到 PLC;拒绝可附指导`,
+        '配方下发审批',
+      )
+      if (!gate.approved) {
+        return {
+          text: `人工未批准本次配方下发。人工指导:${gate.comment || '(无附言)'}。请按人工指导修订配方(recipe_update)后重新提交 recipe_apply。`,
+        }
+      }
+      // 人工附言随批准回执回流(与 recipe_trial 同口径)
+      if (gate.comment) hitlNote = `\n人工附言:${gate.comment}`
+    }
     const run = await getDcwController().applyRecipe(recipeId)
     const okN = run.results.filter(r => r.ok).length
     // 逐参数标注:被跳过/失败的参数(节点停用/已删除/限界拒绝)必须透出给 Agent,
@@ -511,7 +565,7 @@ export async function toolRecipeApply(agentId: string, args: {
     }
     catch { /* 审计失败不影响下发结果 */ }
     return {
-      text: `配方「${recipe.name}」v${recipe.version ?? 1} 已整批下发(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)})。${skippedNote}用 daq_query 复测确认工艺响应。`,
+      text: `配方「${recipe.name}」v${recipe.version ?? 1} 已整批下发(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)})。${skippedNote}${hitlNote}用 daq_query 复测确认工艺响应。`,
     }
   }
   catch (err) {

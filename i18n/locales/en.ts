@@ -300,6 +300,8 @@ export default {
         approvalGate: 'Dual approval for high-risk ops',
         allowRegistration: 'Open self-service registration',
         hstsEnabled: 'Send HSTS header',
+        recipeDispatchApproval: 'Human approval for recipe dispatch',
+        recipeDispatchApprovalDesc: 'When on, recipe_trial/recipe_apply suspend for a human decision before dispatch: approve = execute; deny (with guidance) = agent revises candidates and re-submits',
       },
       server: {
         host: 'Listen address',

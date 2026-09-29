@@ -300,6 +300,8 @@ export default {
         approvalGate: '高危操作双人复核',
         allowRegistration: '开放自助注册',
         hstsEnabled: '下发 HSTS 头',
+        recipeDispatchApproval: '配方下发人工审批',
+        recipeDispatchApprovalDesc: '开启后 recipe_trial/recipe_apply 下发前挂起等待人工裁决:批准=执行;拒绝可附指导,Agent 按指导修订后重新提交',
       },
       server: {
         host: '监听地址',
