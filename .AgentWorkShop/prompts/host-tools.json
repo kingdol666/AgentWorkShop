@@ -998,7 +998,7 @@
  {
   "name": "recipe_rollback",
   "label": "Recipe Rollback",
-  "description": "回退配方参数到稳定版本:指定历史版本(version)或已知良好批次冻结(to_last_good=true)。生成新版本(非破坏,历史保留);不改运行中 PLC。必须提供 reason。",
+  "description": "回退配方参数到稳定版本:指定历史版本(version)或已知良好批次冻结(to_last_good=true)。生成新版本(非破坏,历史保留);默认只回退定义不动 PLC —— 带 dispatch=true 则统一回退:定义回退+该版本参数整批重下发到 PLC(批次级恢复)。必须提供 reason。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -1017,6 +1017,10 @@
     "reason": {
      "type": "string",
      "description": "回退原因(必填)"
+    },
+    "dispatch": {
+     "type": "boolean",
+     "description": "true=统一回退:定义回退后把恢复参数整批重下发到 PLC(优化闭环劣化时用);缺省 false=仅回退配方定义"
     }
    }
   }
@@ -2022,6 +2026,71 @@
    "required": [
     "agent_id",
     "node_ids"
+   ]
+  }
+ },
+ {
+  "name": "recipe_trial",
+  "label": "Recipe Trial",
+  "description": "多参数候选整批试验下发(配方链路核心):候选值只覆盖列出节点(必须是自己绑定的数控节点),整批一次落产线,不写配方版本 —— 复测判读:有进步/达标用 recipe_update 固化;劣化用 recipe_rollback(dispatch=true)统一回退。受同线试验节拍卡控(默认≥5分钟);四层限界照常拦截。必须提供 hypothesis(试验依据)。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "recipe_id": {
+     "type": "string",
+     "description": "配方 id(必填;line_context 可看到当前配方)"
+    },
+    "params": {
+     "type": "array",
+     "description": "候选参数集(≥1条;一次把要改的参数都带上,整批下发防震荡)",
+     "items": {
+      "type": "object",
+      "properties": {
+       "node_id": {
+        "type": "string",
+        "description": "数控节点 id"
+       },
+       "value": {
+        "type": "number",
+        "description": "候选工程量值"
+       }
+      },
+      "required": [
+       "node_id",
+       "value"
+      ]
+     }
+    },
+    "hypothesis": {
+     "type": "string",
+     "description": "试验假设/依据(必填:知识库条目或数据分析结论)"
+    }
+   },
+   "required": [
+    "recipe_id",
+    "params",
+    "hypothesis"
+   ]
+  }
+ },
+ {
+  "name": "recipe_apply",
+  "label": "Recipe Apply",
+  "description": "把配方当前已固化参数整批下发到产线(改配方 recipe_update 之后用)。与 recipe_trial 的区别:apply 下发已固化版本(无候选覆盖),是「改配方→配方下发」链路的正式下发。需持有该配方至少一个数控节点授权。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "recipe_id": {
+     "type": "string",
+     "description": "配方 id(必填)"
+    },
+    "reason": {
+     "type": "string",
+     "description": "下发原因(建议提供,便于审计)"
+    }
+   },
+   "required": [
+    "recipe_id"
    ]
   }
  }

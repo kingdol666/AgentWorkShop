@@ -357,16 +357,19 @@ export async function toolRecipeUpdate(agentId: string, args: {
 }
 
 /** 工具:recipe_rollback —— 回退配方参数到稳定版本(指定历史版本或已知良好批次快照)。
- *  生成新版本(非破坏,历史保留);不改运行中 PLC 当前值。 */
+ *  生成新版本(非破坏,历史保留);不改运行中 PLC 当前值。
+ *  v19 dispatch=true = **统一回退**:定义回退 + 该版本参数整批重下发到 PLC(批次级恢复)。 */
 export async function toolRecipeRollback(agentId: string, args: {
   recipe_id?: string
   version?: number | string
   to_last_good?: boolean | string
+  dispatch?: boolean | string
   reason?: string
 }): Promise<{ text: string, isError?: boolean }> {
   const recipeId = String(args.recipe_id ?? '').trim()
   const reason = String(args.reason ?? '').trim()
   const toLastGood = args.to_last_good === true || args.to_last_good === 'true'
+  const dispatch = args.dispatch === true || args.dispatch === 'true'
   const version = Number(args.version)
   if (!recipeId) return { text: 'recipe_id 必填。', isError: true }
   if (!reason) return { text: 'reason 必填:回退必须说明原因(如优化翻车/越限),便于版本史追溯。', isError: true }
@@ -381,6 +384,20 @@ export async function toolRecipeRollback(agentId: string, args: {
     return { text: `不能回退到 v${version}(当前已是 v${recipe.version ?? 1};回退目标是更早的版本)。`, isError: true }
   }
   try {
+    if (dispatch) {
+      const { recipe: updated, run } = await getDcwController().rollbackRecipeAndDispatch(recipeId, {
+        version: toLastGood ? undefined : version,
+        toLastGood,
+        by: 'agent',
+        actorName: agentBadgeLabel(agentId),
+        actor: agentId,
+        description: reason,
+      })
+      const okN = run.results.filter(r => r.ok).length
+      return {
+        text: `统一回退完成:配方「${updated.name}」已生成 v${updated.version ?? 1},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`}),并已整批重下发到 PLC(${okN}/${run.results.length} 参数成功);原因:${reason}。\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。`,
+      }
+    }
     const updated = getDcwController().revertRecipe(recipeId, {
       version: toLastGood ? undefined : version,
       toLastGood,
@@ -391,10 +408,105 @@ export async function toolRecipeRollback(agentId: string, args: {
       description: reason,
     })
     return {
-      text: `回退完成:配方「${updated.name}」已生成 v${updated.version ?? 1},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`});原因:${reason}。\n运行中批次不受影响(仍按开跑冻结参数);新参数下次开跑生效。版本史用 recipe_versions 复核。`,
+      text: `回退完成:配方「${updated.name}」已生成 v${updated.version ?? 1},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`});原因:${reason}。\n注意:仅回退了配方定义,运行中 PLC 未变动;要把恢复参数写入产线(统一回退),用 recipe_rollback 并带 dispatch=true。版本史用 recipe_versions 复核。`,
     }
   }
   catch (err) {
     return { text: `回退失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+}
+
+/** 工具:recipe_trial —— 多参数候选整批试验下发(v19 配方链路核心)。
+ *  候选值只覆盖列出节点(**必须是自己绑定的数控节点**);整批一次落产线,**不写配方版本** ——
+ *  复测判读:有进步/达标 → recipe_update 固化(同 id 版本+1);劣化 → recipe_rollback(dispatch=true) 统一回退。
+ *  受同线试验节拍卡控(默认 ≥5 分钟,防连发震荡);四层限界(量程∩参数∩产品)照常拦截。 */
+export async function toolRecipeTrial(agentId: string, args: {
+  recipe_id?: string
+  params?: Array<{ node_id?: string, value?: number | string }>
+  hypothesis?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const recipeId = String(args.recipe_id ?? '').trim()
+  const hypothesis = String(args.hypothesis ?? '').trim()
+  if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方 id)。', isError: true }
+  if (!hypothesis) return { text: 'hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯。', isError: true }
+  const list = (args.params ?? []).filter(p => p && String(p.node_id ?? '').trim() && Number.isFinite(Number(p.value)))
+    .map(p => ({ nodeId: String(p.node_id).trim(), value: Number(p.value) }))
+  if (list.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字);试验的意义就是多参数一次整批改动。', isError: true }
+  const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+  if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  const repo = getAgentNodeBindingRepo()
+  for (const p of list) {
+    const node = getDcwController().byId(p.nodeId)
+    if (!node) return { text: `节点 ${p.nodeId} 已删除,不能纳入试验。`, isError: true }
+    if (node.lineId !== recipe.lineId) return { text: `节点「${node.name}」不在配方「${recipe.name}」所在产线,不可混入试验。`, isError: true }
+    if (!node.enabled) return { text: `节点「${node.name}」已停用,试验被拒。`, isError: true }
+    if (!repo.find(agentId, p.nodeId, 'dcw')) {
+      return { text: `无权试验节点「${node.name}」(仅可改自己绑定的数控节点;缺授权找 lead 用 team_grant_nodes 授予)。`, isError: true }
+    }
+  }
+  try {
+    const run = await getDcwController().applyRecipe(recipeId, { overrides: list, trial: true })
+    const okN = run.results.filter(r => r.ok).length
+    // 批次级留痕:试验动作入审计(逐参数写已有 write-audit;这里是"一次试验"粒度)
+    try {
+      const { recordOps } = await import('../../ops/ops')
+      recordOps({
+        actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
+        action: 'recipe.trial', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
+        summary: `配方试验整批下发(${okN}/${run.results.length} 成功,批次 ${run.id.slice(0, 8)}):${list.map(p => `${p.nodeId.slice(0, 8)}→${p.value}`).join(';')} | 假设:${hypothesis}`,
+      })
+    }
+    catch { /* 审计失败不影响试验结果 */ }
+    const changed = run.results.map((r) => {
+      const node = r.nodeId ? getDcwController().byId(r.nodeId) : undefined
+      const reason = r.ok ? '' : `(${String(r.message).slice(0, 60)})`
+      return `${node?.name ?? r.templateRef}→${r.value}${node?.unit ?? ''}${r.ok ? '' : ` 被拒${reason}`}`
+    }).join(';')
+    return {
+      text: `试验已整批下发(${okN}/${run.results.length} 成功,批次 ${run.id.slice(0, 8)}):${changed}。假设:${hypothesis}。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。`,
+    }
+  }
+  catch (err) {
+    return { text: `试验下发失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+}
+
+/** 工具:recipe_apply —— 把配方当前已固化参数整批下发到产线(改配方(recipe_update)之后用)。
+ *  与 recipe_trial 的区别:apply 下发的是**已固化版本**(无候选覆盖),用于"改配方 → 配方下发"链路的正式下发。 */
+export async function toolRecipeApply(agentId: string, args: {
+  recipe_id?: string
+  reason?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const recipeId = String(args.recipe_id ?? '').trim()
+  if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方 id)。', isError: true }
+  const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+  if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  const scope = agentOpsScope(agentId)
+  if (!scope || !recipe.lineId || !scope.lineIds.includes(recipe.lineId)) {
+    return { text: `无权下发配方 ${recipeId}(该配方不在你负责的产线上)。`, isError: true }
+  }
+  const boundInRecipe = getAgentNodeBindingRepo().byAgent(agentId)
+    .some(b => b.kind === 'dcw' && recipe.params.some(p => p.nodeId === b.nodeId))
+  if (!boundInRecipe) {
+    return { text: `无权下发配方 ${recipeId}(需持有该配方至少一个数控节点的授权;找 lead 用 team_grant_nodes 授予)。`, isError: true }
+  }
+  try {
+    const run = await getDcwController().applyRecipe(recipeId)
+    const okN = run.results.filter(r => r.ok).length
+    try {
+      const { recordOps } = await import('../../ops/ops')
+      recordOps({
+        actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
+        action: 'recipe.apply', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
+        summary: `Agent 整批下发配方 v${recipe.version ?? 1}(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)})${args.reason ? ` | 原因:${String(args.reason).trim()}` : ''}`,
+      })
+    }
+    catch { /* 审计失败不影响下发结果 */ }
+    return {
+      text: `配方「${recipe.name}」v${recipe.version ?? 1} 已整批下发(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)})。用 daq_query 复测确认工艺响应。`,
+    }
+  }
+  catch (err) {
+    return { text: `配方下发失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
   }
 }

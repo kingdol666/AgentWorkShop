@@ -9,7 +9,7 @@
  * 该族**不依赖 workspace**,由 dispatch 在 workspace 门控之前分流(保持原分发顺序)。
  */
 import type { HostToolResult } from '../types'
-import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeLog, toolRecipeRollback, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest } from '../../industrial'
+import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeApply, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest } from '../../industrial'
 
 type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string) => Promise<HostToolResult>
 
@@ -60,6 +60,8 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['recipe_versions', (agentId, args) => toolRecipeVersions(agentId, args as { recipe_id?: string, limit?: number | string })],
   ['recipe_update', (agentId, args) => toolRecipeUpdate(agentId, args as Parameters<typeof toolRecipeUpdate>[1])],
   ['recipe_rollback', (agentId, args) => toolRecipeRollback(agentId, args as Parameters<typeof toolRecipeRollback>[1])],
+  ['recipe_trial', (agentId, args) => toolRecipeTrial(agentId, args as Parameters<typeof toolRecipeTrial>[1])],
+  ['recipe_apply', (agentId, args) => toolRecipeApply(agentId, args as Parameters<typeof toolRecipeApply>[1])],
 ])
 
 /** 工业工具名集合(与 INDUSTRIAL_HANDLERS 同源;dispatch 据此在 workspace 门控前分流) */

@@ -96,7 +96,7 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
   }
 
   // 所有真实写入口在统一分发层再做一次服务端 fail-closed 守卫；工具目录隐藏不是安全边界。
-  if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_update', 'recipe_rollback'].includes(req.toolName)) {
+  if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply'].includes(req.toolName)) {
     const profile = getChannelTwinProfile(identity.channelId)
     const guard = twinWriteGuard(identity.channelId, profile)
     if (!guard.allowed) return { text: `${guard.code}: ${guard.message}`, isError: true }

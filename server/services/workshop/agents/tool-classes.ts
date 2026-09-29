@@ -27,4 +27,6 @@ export const HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES = new Set([
   'dcw_rollback',
   'recipe_update',
   'recipe_rollback',
+  'recipe_trial',
+  'recipe_apply',
 ])

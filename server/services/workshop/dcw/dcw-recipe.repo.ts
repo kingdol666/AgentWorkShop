@@ -353,7 +353,7 @@ class DcwRecipeRepo {
     }
   }
 
-  createRun(recipe: RecipeView): RecipeRunView {
+  createRun(recipe: RecipeView, paramsOverride?: RecipeView['params']): RecipeRunView {
     const run: RecipeRunView = {
       id: `rr-${randomUUID().slice(0, 8)}`,
       recipeId: recipe.id,
@@ -363,8 +363,9 @@ class DcwRecipeRepo {
       startedAt: new Date().toISOString(),
       endedAt: null,
       results: [],
-      // 参数冻结(调控闭环):配方事后修改不影响本批次的审计与回放
-      paramsSnapshot: recipe.params.map(p => ({ ...p })),
+      // 参数冻结(调控闭环):配方事后修改不影响本批次的审计与回放。
+      // v19 trial:候选覆盖集作为批次快照(批次实际按候选值生产,审计与回放以候选为准)。
+      paramsSnapshot: (paramsOverride ?? recipe.params).map(p => ({ ...p })),
     }
     this.runs.push(run)
     if (this.runs.length > RUNS_CAP) this.runs.splice(0, this.runs.length - RUNS_CAP)

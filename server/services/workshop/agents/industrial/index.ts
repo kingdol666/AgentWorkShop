@@ -17,7 +17,7 @@ export { toolMyIndustrialNodes, toolDcwControl, toolDcwRead } from './dcw-tools'
 export { toolParamControl, toolParamRead } from './param-tools'
 export { toolDaqQuery, toolDaqFrames } from './daq-tools'
 export { toolDcwJudge, toolDcwRollback, toolDcwJournal } from './dcw-judge-tools'
-export { toolOpsLog, toolRecipeLog, toolLineContext, toolRecipeVersions, toolRecipeUpdate, toolRecipeRollback } from './ops-tools'
+export { toolOpsLog, toolRecipeLog, toolLineContext, toolRecipeVersions, toolRecipeUpdate, toolRecipeRollback, toolRecipeTrial, toolRecipeApply } from './ops-tools'
 export { toolAmlNodeCatalog, toolAmlDatasetBuild, toolAmlDatasetStats } from './aml-dataset-tools'
 export { toolAmlJobSubmit, toolAmlJobStatus, toolAmlJobLogs, toolAmlJobCancel, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolAmlTrainingPlanCreate } from './aml-job-tools'
 

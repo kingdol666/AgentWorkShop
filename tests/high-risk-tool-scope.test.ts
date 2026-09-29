@@ -18,7 +18,9 @@ test('high-risk tool set keeps the full expected membership (conscious-change gu
       'dcw_control',
       'dcw_rollback',
       'param_control',
+      'recipe_apply',
       'recipe_rollback',
+      'recipe_trial',
       'recipe_update',
     ],
   )
