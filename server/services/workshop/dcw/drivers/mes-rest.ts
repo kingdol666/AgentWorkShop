@@ -324,7 +324,7 @@ async function mesRequest(
   const headers: Record<string, string> = { accept: 'application/json' }
   await applyDefaultHeaders(headers, cfg)
   for (const [k, v] of Object.entries(req.headers ?? {})) {
-    const interpolated = await interpolateHeaderValue(v, cfg)
+    const interpolated = await interpolateHeaderValue(v)
     if (interpolated !== null) headers[k] = interpolated
   }
   if (req.body !== undefined) headers['content-type'] = 'application/json'
