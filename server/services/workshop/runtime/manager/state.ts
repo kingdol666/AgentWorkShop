@@ -503,6 +503,17 @@ export abstract class ManagerState extends ManagerContracts {
 
   /** Harness 重建落共享记忆(§7.1 harness.restarted / §6.2 lastRestartReason) */
   protected recordHarnessRestartEvent(e: { agentId: string, channelId: string, harness: string, reason: string, at: string }): void {
+    // lead 的 harness 因进程死亡重建时,被外部中止的回合可能遗留未规划的 SUBMITTED 根
+    // (旧回合的 supervise 请求已消费、快照指纹不变 → 无事件再唤醒)。lead 重建即补一次
+    // 调度唤醒(幂等;无 scheduler 则按需重挂),不让根任务只能等 ROOT_TIMEOUT 判死。
+    try {
+      if (this.deps.repos.channels.findById(e.channelId)?.leadAgentId === e.agentId) {
+        const cr = this.channels.get(e.channelId)
+        if (cr?.scheduler) cr.scheduler.wake()
+        else this.ensureChannelActive(e.channelId)
+      }
+    }
+    catch { /* 恢复路径绝不阻断重建记账 */ }
     if (!channelMemoryDigestEnabled()) return
     const payload: Record<string, unknown> = {
       channelId: e.channelId,

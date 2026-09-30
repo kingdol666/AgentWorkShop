@@ -133,9 +133,13 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
     }
 
     // Failed/empty triage does not trigger blind dispatch. Retry the Lead after backoff.
+    // activeRootId 只排除「仍活跃」的根:它指向的根已终态(如 ROOT_TIMEOUT)时不得再排除
+    // 其他未规划根 —— 否则中止回合遗留的 SUBMITTED 根会因指纹不变而永无重试,直到新根超时。
+    const activeRoot = snapshot.activeRootId ? snapshot.tasks.find(t => t.id === snapshot.activeRootId) : null
+    const activeRootAlive = Boolean(activeRoot) && !TERMINAL_TASK_STATES[activeRoot!.state]
     const hasUnplannedLeadRoot = snapshot.tasks.some((task) => {
       if (task.parentId || task.assigneeId !== this.lead.agentId) return false
-      if (snapshot.activeRootId && task.id !== snapshot.activeRootId) return false
+      if (snapshot.activeRootId && activeRootAlive && task.id !== snapshot.activeRootId) return false
       if (task.state !== 'SUBMITTED' && task.state !== 'WORKING') return false
       return !snapshot.tasks.some(child => child.parentId === task.id)
     })

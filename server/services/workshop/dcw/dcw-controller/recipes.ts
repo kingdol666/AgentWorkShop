@@ -43,9 +43,9 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     return recipe
   }
 
-  /** 回退配方参数到历史版本/lastGood(生成新版本;非破坏) */
-  revertRecipe(id: string, target: { version?: number, toLastGood?: boolean }, meta: { by: 'user' | 'agent' | 'system', actorName: string, actor: string, description: string }) {
-    const recipe = getDcwRecipeRepo().revertToVersion(id, target, meta)
+  /** 回退配方参数到历史版本/lastGood(生成新版本;非破坏)。allowNoop:定义已在目标态时原样返回(统一回退的 PLC 恢复腿仍要执行) */
+  revertRecipe(id: string, target: { version?: number, toLastGood?: boolean }, meta: { by: 'user' | 'agent' | 'system', actorName: string, actor: string, description: string }, opts?: { allowNoop?: boolean }) {
+    const recipe = getDcwRecipeRepo().revertToVersion(id, target, meta, opts)
     try {
       recordOps({
         actor: meta.actor,
@@ -175,7 +175,8 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     actorName?: string
     actor?: string
     description?: string
-  }) {
+  }): Promise<{ recipe: RecipeView, run: RecipeRunView, definitionNoop?: boolean }> {
+    const versionBefore = getDcwRecipeRepo().byId(recipeId)?.version ?? 1
     const updated = this.revertRecipe(recipeId, {
       version: opts.toLastGood ? undefined : opts.version,
       toLastGood: opts.toLastGood === true,
@@ -184,9 +185,11 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       actorName: opts.actorName ?? 'Agent',
       actor: opts.actor ?? 'system',
       description: opts.description ?? '统一回退(定义回退+PLC 整批恢复)',
-    })
+    }, { allowNoop: true })
+    // 定义已在目标态(allowNoop)≠PLC 已在目标态:整批恢复照常执行
+    const definitionNoop = (updated.version ?? 1) === versionBefore
     const run = await this.applyRecipe(recipeId)
-    return { recipe: updated, run }
+    return { recipe: updated, run, definitionNoop }
   }
 
   // ---------- 产线(实体 CRUD;节点/产品/配方挂载其下实现隔离) ----------

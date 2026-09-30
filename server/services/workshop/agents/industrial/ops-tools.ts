@@ -392,7 +392,7 @@ export async function toolRecipeRollback(agentId: string, args: {
   }
   try {
     if (dispatch) {
-      const { recipe: updated, run } = await getDcwController().rollbackRecipeAndDispatch(recipeId, {
+      const { recipe: updated, run, definitionNoop } = await getDcwController().rollbackRecipeAndDispatch(recipeId, {
         version: toLastGood ? undefined : version,
         toLastGood,
         by: 'agent',
@@ -401,8 +401,11 @@ export async function toolRecipeRollback(agentId: string, args: {
         description: reason,
       })
       const okN = run.results.filter(r => r.ok).length
+      const defNote = definitionNoop
+        ? `定义已在目标版本 v${updated.version ?? 1}(未生成新版本)`
+        : `已生成 v${updated.version ?? 1}`
       return {
-        text: `统一回退完成:配方「${updated.name}」已生成 v${updated.version ?? 1},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`}),并已整批重下发到 PLC(${okN}/${run.results.length} 参数成功);原因:${reason}。\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。`,
+        text: `统一回退完成:配方「${updated.name}」${defNote},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`}),并已整批重下发到 PLC(${okN}/${run.results.length} 参数成功);原因:${reason}。\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。`,
       }
     }
     const updated = getDcwController().revertRecipe(recipeId, {

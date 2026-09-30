@@ -232,10 +232,13 @@ class DcwRecipeRepo {
   /**
    * 回退配方参数到指定历史版本(或已知良好批次快照),生成新版本(非破坏,历史完整保留)。
    * target: { version: N } = 回到 vN 的参数;{ toLastGood: true } = 回到 lastGood 批次的参数冻结。
+   * opts.allowNoop:目标参数与当前定义完全一致时不抛 409 而是原样返回 —— 统一回退
+   * (dispatch:true)路径必须放行:定义已在目标态≠PLC 已在目标态,整批恢复仍要执行;
+   * 仅定义回退(无 dispatch)保持 409(无可做之事,如实告知)。
    * 失效参数剪枝:目标快照里已删除/已改挂其他产线的节点参数先剔除(否则归一化整体失败),
    * 剔除动作如实记录进版本描述。
    */
-  revertToVersion(id: string, target: { version?: number, toLastGood?: boolean }, meta: RecipeUpdateMeta): RecipeView {
+  revertToVersion(id: string, target: { version?: number, toLastGood?: boolean }, meta: RecipeUpdateMeta, opts?: { allowNoop?: boolean }): RecipeView {
     const r = this.byId(id)
     if (!r) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${id}`)
     let snapshot: RecipeParam[]
@@ -260,6 +263,7 @@ class DcwRecipeRepo {
       desc = `回退到 v${v}(该版变更于 ${hit.at.slice(0, 19).replace('T', ' ')}${hit.actorName ? `,原操作者 ${hit.actorName}` : ''})`
     }
     if (JSON.stringify(snapshot) === JSON.stringify(r.params)) {
+      if (opts?.allowNoop) return r
       throw new AppError(409, ErrorCodes.CONFLICT, `目标版本参数与当前 v${r.version ?? 1} 完全一致,无需回退`)
     }
     // 失效参数剪枝:已删除节点、已解绑/已改挂其他产线的节点参数剔除(不自动收编,尊重显式解绑)
