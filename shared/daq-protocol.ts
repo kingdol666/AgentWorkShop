@@ -214,7 +214,8 @@ export type DaqDriverKind = 'mock' | 'modbus-tcp' | 'modbus-rtu' | 'opcua' | 'mq
 export interface DriverConfigField {
   key: string
   label: string
-  type: 'string' | 'number' | 'select'
+  /** text=多行 JSON 编辑(textarea;MES REST 映射等结构化配置) */
+  type: 'string' | 'number' | 'select' | 'text'
   required?: boolean
   default?: string | number
   placeholder?: string

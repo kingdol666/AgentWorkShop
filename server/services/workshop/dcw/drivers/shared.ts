@@ -47,6 +47,8 @@ export interface DcwWriteDriver {
   test(driverConfig: Record<string, unknown>): Promise<{ ok: boolean, message: string }>
   /** 读当前 PLC 值(可选原语;不支持读的驱动为 undefined,网关按 supportsRead 收敛) */
   read?(input: DcwReadInput): Promise<DcwReadResult>
+  /** 拉取历史序列(可选原语;声明式分页由驱动内实现,调用方只管 onRows 增量消费) */
+  fetchHistory?(input: DcwFetchHistoryInput): Promise<DcwFetchHistoryResult>
 }
 
 export interface DcwReadInput {
@@ -62,6 +64,34 @@ export interface DcwReadResult {
   eng: number | null
   /** 原始值(寄存器解码;非寄存器驱动与 eng 同源) */
   raw: number | null
+}
+
+// ============================================================
+// 历史拉取原语(可选;MES REST 等具备历史接口的驱动实现)
+// ============================================================
+
+/** 历史行(统一形态:ISO 8601 时间戳 + 工程值) */
+export interface DcwHistoryRow {
+  ts: string
+  value: number
+}
+
+export interface DcwFetchHistoryInput {
+  driverConfig: Record<string, unknown>
+  /** 起止时间(ISO 8601;含头含尾语义由映射/MES 决定,驱动原样透传) */
+  fromIso: string
+  toIso: string
+  /** 本次拉取行数硬顶(分页循环的终止条件之一) */
+  maxRows: number
+  /** 分批回调(每页一次;调用方增量消费/入库) */
+  onRows: (rows: DcwHistoryRow[]) => Promise<void> | void
+}
+
+export interface DcwFetchHistoryResult {
+  /** 实际回调行数 */
+  rows: number
+  /** true=nextCursor 自然耗尽取完;false=因 maxRows/maxPages 提前截断 */
+  complete: boolean
 }
 
 export const num = (v: unknown): number | undefined => {

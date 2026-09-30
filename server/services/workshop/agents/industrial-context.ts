@@ -9,6 +9,7 @@
 
 import { getAgentNodeBindingRepo } from './node-bindings.repo'
 import { getDcwController } from '../dcw/dcw-controller'
+import { getDcwNodeRepo } from '../dcw/dcw-node.repo'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { getActiveLineRun } from '../dcw/line-run'
 import { findDcwTemplate } from '../dcw/dcw-templates'
@@ -18,6 +19,7 @@ import { findDaqTemplate } from '../daq/daq-templates'
 import { getDeviceTwinRepo } from '../assets/device-twin.repo'
 import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
 import { limitsBreakdownOf } from '../dcw/param-limits'
+import { MES_REST_DRIVER_KIND, mesCatalogEntryOf } from '../mes/mes-controller'
 
 /** 从属设备描述(名称/状态/实时遥测;数据驱动) */
 function describeTwin(bindId: string | null | undefined): string | null {
@@ -170,6 +172,23 @@ export function buildIndustrialContext(agentId: string): string {
     if (alarms.length > 0) {
       lines.push(`- **当前报警**: ${alarms.map(n => `${n.name} 实时 ${n.value ?? '?'}${n.unit} 处于报警态(越量程或越配方监控窗口)`)},应优先判读(设定-响应滞后 vs 真实异常)并处置`)
     }
+    // MES REST 点位段:本产线 mes-rest 节点 ≤30 条全量简列(>30 给前 30 + 检索指引);
+    // 只列语义面(名称/单位/量程/能力/desc),取数走 mes_fetch(原文不进 prompt)
+    try {
+      const mesEntries = getDcwNodeRepo().all()
+        .filter(n => n.lineId === lineId && n.driver === MES_REST_DRIVER_KIND)
+        .map(mesCatalogEntryOf)
+      if (mesEntries.length > 0) {
+        const MES_BRIEF_MAX = 30
+        const capOf = (e: { readable: boolean, writable: boolean, historyable: boolean }): string =>
+          [e.readable ? '读' : null, e.writable ? '写' : null, e.historyable ? '史' : null].filter(Boolean).join('/') || '-'
+        const shown = mesEntries.slice(0, MES_BRIEF_MAX)
+          .map(e => `  ${e.name}|${e.unit || '-'}|${e.min}~${e.max}|${capOf(e)}|${e.desc.slice(0, 40)}`)
+        const rest = mesEntries.length - shown.length
+        lines.push(`- MES REST 点位(${mesEntries.length} 条,名称|单位|量程|读写/历史能力|描述):\n${shown.join('\n')}${rest > 0 ? `\n  (其余 ${rest} 条未列出,用 mes_catalog 检索)` : ''}`)
+      }
+    }
+    catch { /* MES 面未就绪(单测/降级)不阻断简报 */ }
     sections.push(lines.join('\n'))
   }
   if (sections.length === 0) return ''

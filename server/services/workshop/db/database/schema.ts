@@ -711,6 +711,38 @@ CREATE TABLE IF NOT EXISTS twin_update_runs (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_twin_update_active_dedup ON twin_update_runs(dedup_key) WHERE state IN ('queued','running','cooldown');
 
+-- v25: MES REST · CSV 数据集(Agent mes_fetch 异步取数的落盘事实源;铁律:MES 原文不进 prompt,工具面只回 stats+采样)
+CREATE TABLE IF NOT EXISTS mes_datasets (
+  id TEXT PRIMARY KEY,
+  line_id TEXT,
+  node_id TEXT,
+  node_name TEXT,
+  from_ts TEXT,
+  to_ts TEXT,
+  rows INTEGER DEFAULT 0,
+  sha256 TEXT,
+  file_path TEXT,
+  status TEXT DEFAULT 'ready',   -- running(取数中) | ready | failed
+  error TEXT,
+  created_by TEXT,
+  created_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_mes_datasets_line ON mes_datasets(line_id, created_at DESC);
+
+-- v25: MES REST · 取数作业(进程内异步执行的账本,绝不进调度循环;重启后遗留 running 由查询侧按 failed 呈现)
+CREATE TABLE IF NOT EXISTS mes_fetch_jobs (
+  id TEXT PRIMARY KEY,
+  dataset_id TEXT,
+  agent_id TEXT,
+  status TEXT DEFAULT 'running',  -- running | done | failed
+  rows INTEGER DEFAULT 0,
+  error TEXT,
+  created_at TEXT,
+  updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_mes_fetch_jobs_dataset ON mes_fetch_jobs(dataset_id);
+CREATE INDEX IF NOT EXISTS idx_mes_fetch_jobs_agent ON mes_fetch_jobs(agent_id, created_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_hitl_requests_agent ON hitl_requests(agent_id, status);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====

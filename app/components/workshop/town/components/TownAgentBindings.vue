@@ -9,11 +9,20 @@
 import type { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import type { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import type { AgentNodeBindingRow, ToolApprovalRow } from '@/app/composables/workshop/town/town-view-types'
+import { dcwDriverBadgeKey } from '@/app/utils/dcw-driver-badge'
 
 const agentBindKind = defineModel<'dcw' | 'daq'>('agentBindKind', { required: true })
 const agentBindNodeId = defineModel<string>('agentBindNodeId', { required: true })
 const agentBindMode = defineModel<'auto' | 'manual'>('agentBindMode', { required: true })
 const approvalComments = defineModel<Record<string, string>>('approvalComments', { required: true })
+
+const { t } = useI18n()
+
+/** 绑定节点选项的边缘层徽标后缀(mes-rest=「MES 边缘层」;mock/s7-stub=「无协议转换」;select option 纯文本尾注) */
+function bindBadgeSuffix(driver: string): string {
+  const key = dcwDriverBadgeKey(driver)
+  return key ? ` · ${t(key)}` : ''
+}
 
 defineProps<{
   mode: 'browse' | 'edit'
@@ -107,7 +116,7 @@ defineProps<{
           :key="n.id"
           :value="n.id"
         >
-          {{ n.name }}
+          {{ n.name }}{{ bindBadgeSuffix(n.driver) }}
         </option>
       </template>
       <template v-else>

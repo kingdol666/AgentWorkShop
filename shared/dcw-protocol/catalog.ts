@@ -80,7 +80,7 @@ export interface DcwTemplateInput {
 // 写控制驱动目录(与数采驱动同风格:能力自描述 + 动态参数表单)
 // ============================================================
 
-export type DcwDriverKind = 'mock' | 'modbus-tcp' | 'modbus-rtu' | 'opcua' | 'mqtt' | 'http'
+export type DcwDriverKind = 'mock' | 'modbus-tcp' | 'modbus-rtu' | 'opcua' | 'mqtt' | 'http' | 'mes-rest'
 
 /** 写换算元数据(工程量 ↔ 原始值线性映射;系统封装,用户配置一次) */
 export interface DcwScaleConfig {
@@ -198,6 +198,30 @@ export const DCW_DRIVERS: DcwDriverMeta[] = [
       { key: 'url', label: '写接口地址(URL)', type: 'string', required: true, placeholder: 'http://192.168.1.30/api/setpoint', hint: '接收设定值的 HTTP 接口(POST JSON)' },
       { key: 'bodyKey', label: 'JSON 键(可选)', type: 'string', placeholder: 'setpoint', hint: '留空 = {"value": 设定值};填写 = {"键": 设定值}' },
       { key: 'headersJSON', label: '请求头(可选)', type: 'string', placeholder: '{"Authorization":"Bearer xxx"}', hint: 'JSON 对象形式的 HTTP 头' },
+    ],
+  },
+  {
+    kind: 'mes-rest',
+    label: 'MES 集成(REST API 映射)',
+    status: 'real',
+    configFields: [
+      { key: 'baseUrl', label: 'MES 服务地址(baseUrl)', type: 'string', required: true, placeholder: 'https://mes.example.com', hint: '仅 http/https;内网地址需同时开启 allowPrivateHost' },
+      { key: 'authType', label: '认证方式(authType)', type: 'select', default: 'bearer', options: [
+        { value: 'bearer', label: 'Bearer(Authorization 头)' },
+        { value: 'header', label: '自定义头(authHeaderName)' },
+        { value: 'none', label: '无认证' },
+      ], hint: '凭据注入方式' },
+      { key: 'secretRef', label: '凭据引用(secretRef)', type: 'string', placeholder: 'line1-mes', hint: '凭据引用名;token 从 env AW_MES_<REF大写>_TOKEN 或运行时设置 mes.secret.<ref> 读取,不落明文' },
+      { key: 'authHeaderName', label: '自定义认证头名(可选)', type: 'string', placeholder: 'X-Api-Token', hint: 'authType=header 时的自定义头名' },
+      { key: 'requestTimeoutMs', label: '请求超时(ms)', type: 'number', default: 10000, hint: '单次 MES 请求超时,缺省 10s' },
+      { key: 'allowPrivateHost', label: '内网地址白名单', type: 'select', default: 'false', options: [
+        { value: 'false', label: '拒绝(默认,SSRF 防护)' },
+        { value: 'true', label: '允许(内网 MES 显式开启)' },
+      ], hint: '内网/环回地址显式白名单开关(生产 MES 通常在内网)' },
+      { key: 'desc', label: '节点语义描述(desc)', type: 'string', placeholder: '烘箱温度设定回写 MES 工单;异常时先查工单状态', hint: '节点语义描述(给 Agent 看):参数物理含义、异常时先查什么' },
+      { key: 'readMap', label: '当前值映射(readMap)', type: 'text', placeholder: '{"path":"/api/v1/params/{name}/current","query":{"name":"TEMP_SP"},"response":{"valuePath":"data.value","tsPath":"data.ts","tsFormat":"epoch_ms"}}', hint: '当前值映射 JSON:{method,path,query,headers,response:{valuePath,tsPath,tsFormat}}' },
+      { key: 'writeMap', label: '写映射(writeMap)', type: 'text', placeholder: '{"method":"POST","path":"/api/v1/params/{name}/setpoint","query":{"name":"TEMP_SP"},"bodyTemplate":{"value":"{{value}}"},"successOn":[200,201],"response":{"ackPath":"ack"}}', hint: '写映射 JSON(可选):{method,path,bodyTemplate,successOn,response:{ackPath}};bodyTemplate 里 {{value}} 为治理后工程值' },
+      { key: 'historyMap', label: '历史映射(historyMap)', type: 'text', placeholder: '{"path":"/api/v1/params/{name}/history","query":{"name":"TEMP_SP"},"response":{"rowsPath":"data.rows[*]","valuePath":"value","tsPath":"ts","nextCursorPath":"data.nextCursor"},"pageSize":500,"maxPages":40}', hint: '历史映射 JSON(可选):{method,path,query,response:{rowsPath,valuePath,tsPath,nextCursorPath},pageSize,maxPages}' },
     ],
   },
 ]

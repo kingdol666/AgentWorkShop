@@ -7,6 +7,7 @@ import type { DcwWriteDriver } from './shared'
 import { DCW_DRIVERS } from '../../../../../shared/dcw-protocol'
 import { createPluginDriverRegistry, type PluginDriverMetaLike } from '../../plugin-driver-registry'
 import { httpDcwDriver } from './http'
+import { mesRestDcwDriver } from './mes-rest'
 import { mockDcwDriver } from './mock'
 import { modbusRtuDcwDriver } from './modbus-rtu'
 import { modbusTcpDcwDriver } from './modbus'
@@ -24,6 +25,7 @@ export const REGISTRY: Record<DcwDriverKind, DcwWriteDriver> = {
   'opcua': opcUaDcwDriver,
   'mqtt': mqttDcwDriver,
   'http': httpDcwDriver,
+  'mes-rest': mesRestDcwDriver,
 }
 
 /**

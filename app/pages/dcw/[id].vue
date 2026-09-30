@@ -14,6 +14,7 @@ import { useDcwDetailScope } from './composables/useDcwDetailScope'
 import { useDcwDetailTemplates } from './composables/useDcwDetailTemplates'
 import { useDcwLedger } from './composables/useDcwLedger'
 import { useDcwLineRun } from './composables/useDcwLineRun'
+import { useDcwParamApprovals } from './composables/useDcwParamApprovals'
 import { useDcwProducts } from './composables/useDcwProducts'
 import { useDcwQuery } from './composables/useDcwQuery'
 import { useDcwRecipes } from './composables/useDcwRecipes'
@@ -28,6 +29,7 @@ const recipes = useDcwRecipes(scope, products, lineRun, writes)
 const queryCtl = useDcwQuery(scope)
 const addNode = useDcwAddNode(scope)
 const tplCtl = useDcwDetailTemplates(addNode)
+const approvals = useDcwParamApprovals(scope)
 
 const { dcw, line, lineId, ls, lineNodes, lineProducts, lineRecipesAll, lineRuns, lineHistory, unassignedNodes, unassignedProducts, stateLabel, dcwTemplateRefCh, nodeMin, nodeMax, lineDaqNodes, daqNodeCh, adoptNode, adoptProduct, productName, paramStatus, paramNodeName, daqWindowStatus, nodeDeviceNames } = scope
 const { setInputs, writingId, writeError, writeOk, readingId, togglingId, stepPatchingId, doWrite, doRead, toggleControl, patchStepLimit } = writes
@@ -36,8 +38,9 @@ const { lineProductId, lineRecipeId, lineBusy, lineMsg, lineErr, lineRecipes, do
 const { filterProductId, visibleRecipes, productOpen, productSaving, productError, productForm, doCreateProduct } = products
 const { verOpen, verRecipe, verRows, verLoading, verMsg, doRevert, recipeOpen, recipeEditing, recipeSaving, recipeError, recipeStaleNote, recipeForm, applyResult, runDataView, runDataLoading, openRecipeCreate, openRecipeEdit, openRecipeHistory, saveRecipe, doApplyRecipe, doViewRun } = recipes
 const { query, queryBusy, queryError, queryResult, doQuery, daqParamKeys } = queryCtl
-const { addOpen, addScenario, addTemplate, addDriver, addName, addHold, addRead, addWriteLock, addStepLimit, addCfg, addTransform, addSemantics, addTesting, addTest, addSaving, addError, addFields, driverCatalog, doTestConnection, doAddNode } = addNode
+const { addOpen, addScenario, addTemplate, addDriver, addName, addHold, addRead, addWriteLock, addStepLimit, addCfg, addTransform, addSemantics, addTesting, addTest, addMesTesting, addMesResult, addSaving, addError, addFields, driverCatalog, doTestConnection, doMesTestRead, doAddNode } = addNode
 const { tplOpen, tplSaving, tplError, tplOk, tplForm, tplIcons, builtinCount, customCount, openTplModal, doCreateTemplate } = tplCtl
+const { approvalItems, approvalComments, approvalDecidingId, approvalRemainingSec, approvalAgentName, approvalNodeName, decideApproval } = approvals
 </script>
 
 <template>
@@ -144,10 +147,25 @@ const { tplOpen, tplSaving, tplError, tplOk, tplForm, tplIcons, builtinCount, cu
       :add-fields="addFields"
       :add-testing="addTesting"
       :add-test="addTest"
+      :add-mes-testing="addMesTesting"
+      :add-mes-result="addMesResult"
       :add-saving="addSaving"
       :add-error="addError"
       @test="doTestConnection"
+      @mes-test="doMesTestRead"
       @submit="doAddNode"
+    />
+
+    <!-- HITL 下发参数审批(本产线节点的 Agent 写入待批;空态不渲染避免噪音) -->
+    <DcwParamApprovalCard
+      v-if="approvalItems.length"
+      v-model:comments="approvalComments"
+      :items="approvalItems"
+      :deciding-id="approvalDecidingId"
+      :remaining-sec="approvalRemainingSec"
+      :agent-name="approvalAgentName"
+      :node-name="approvalNodeName"
+      @decide="decideApproval"
     />
 
     <!-- 控制节点清单 -->

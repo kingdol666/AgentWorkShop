@@ -5,6 +5,7 @@
  */
 import type { DcwNodeView } from '#shared/dcw-protocol'
 import { reactive } from 'vue'
+import { dcwDriverBadgeKey } from '~/utils/dcw-driver-badge'
 
 defineProps<{
   lineNodes: DcwNodeView[]
@@ -26,6 +27,14 @@ const emit = defineEmits<{
   'patch-step-limit': [nodeId: string, value: number | null]
   'remove': [nodeId: string]
 }>()
+
+const { t } = useI18n()
+
+/** 边缘层徽标文案(mes-rest=「MES 边缘层」;mock/s7-stub=「无协议转换」;真实协议自明不加) */
+function drvBadge(driver: string): string {
+  const key = dcwDriverBadgeKey(driver)
+  return key ? t(key) : ''
+}
 
 /** 直写输入框逐节点暂存(与页面 useDcwWrites 的 setInputs 同一个对象) */
 const setInputs = defineModel<Record<string, number | ''>>('setInputs', { required: true })
@@ -69,6 +78,10 @@ function saveStep(n: DcwNodeView): void {
             <td>
               <span class="mono dim">{{ n.id.slice(0, 8) }}</span>
               <b>{{ n.name }}</b>
+              <span
+                v-if="drvBadge(n.driver)"
+                class="drv-badge"
+              >{{ drvBadge(n.driver) }}</span>
               <small class="mono ch">{{ dcwTemplateRefCh(n.templateRef) }}</small>
             </td>
             <td>
@@ -222,6 +235,8 @@ function saveStep(n: DcwNodeView): void {
 .nodes-table th { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); border-bottom: 1px solid var(--line-strong); }
 .nodes-table td b { margin-left: 8px; }
 .ch { display: block; margin-top: 2px; font-size: 11.5px; color: var(--ink-faint); }
+/* 边缘层徽标(仅 mes-rest/mock/s7-stub;极简单行小 pill,协议名自明者不加) */
+.drv-badge { display: inline-block; margin-left: 7px; padding: 1px 7px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.03em; color: var(--ink-faint); border: 1px solid var(--line-strong); border-radius: 4px; vertical-align: 1px; }
 .right { text-align: right; }
 .val { font-size: 13px; }
 .val small { margin-left: 3px; color: var(--ink-faint); }

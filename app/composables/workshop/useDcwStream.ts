@@ -221,6 +221,10 @@ function createStore() {
     testDriver: async (driver: string, driverConfig: Record<string, unknown>): Promise<{ ok: boolean, message: string }> => {
       return api<{ test: { ok: boolean, message: string } }>('/test-driver', { method: 'POST', body: JSON.stringify({ driver, driverConfig }) }).then(r => r.test)
     },
+    /** MES REST 驱动试读(边缘链路连通性;契约 {ok,eng,ts,latencyMs};404=后端端点未就绪,由调用方容错) */
+    mesTestRead: async (driverConfig: Record<string, unknown>): Promise<{ ok: boolean, eng?: number, ts?: string, latencyMs?: number }> => {
+      return api<{ ok: boolean, eng?: number, ts?: string, latencyMs?: number }>('/mes-test-read', { method: 'POST', body: JSON.stringify({ driverConfig }) })
+    },
     testNode: async (id: string): Promise<{ ok: boolean, message: string }> => {
       return api<{ test: { ok: boolean, message: string } }>(`/${id}/test`, { method: 'POST' }).then(r => r.test)
     },

@@ -8,6 +8,7 @@ import type { DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
 import type { DcwRecipeForm } from '../../pages/dcw/composables/useDcwRecipes'
 import type { StaleRef } from '../../pages/dcw/composables/useDcwDetailScope'
 import { emptyRecipeDaqWindowRow, emptyRecipeParamRow } from '~/utils/dcw-recipe-form'
+import { dcwDriverBadgeKey } from '~/utils/dcw-driver-badge'
 
 defineProps<{
   lineProducts: ProductView[]
@@ -29,6 +30,14 @@ const emit = defineEmits<{ submit: [], close: [] }>()
 
 const recipeOpen = defineModel<boolean>('open', { required: true })
 const recipeForm = defineModel<DcwRecipeForm>('form', { required: true })
+
+const { t } = useI18n()
+
+/** 参数绑定节点选项的边缘层徽标后缀(select option 纯文本,以「 · 徽标」尾注呈现) */
+function drvBadgeSuffix(driver: string): string {
+  const key = dcwDriverBadgeKey(driver)
+  return key ? ` · ${t(key)}` : ''
+}
 </script>
 
 <template>
@@ -93,7 +102,7 @@ const recipeForm = defineModel<DcwRecipeForm>('form', { required: true })
               :key="n.id"
               :value="n.id"
             >
-              {{ n.name }}({{ dcwTemplateRefCh(n.templateRef) }} · {{ n.min }}~{{ n.max }} {{ n.unit }})
+              {{ n.name }}{{ drvBadgeSuffix(n.driver) }}({{ dcwTemplateRefCh(n.templateRef) }} · {{ n.min }}~{{ n.max }} {{ n.unit }})
             </option>
           </select>
           <span

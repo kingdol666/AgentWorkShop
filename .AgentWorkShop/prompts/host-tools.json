@@ -1026,6 +1026,93 @@
   }
  },
  {
+  "name": "mes_catalog",
+  "label": "MES Catalog",
+  "description": "检索 MES REST 点位目录(driver=mes-rest 的数控点位)。每条含 id/名称/产线/单位/量程与能力位(读=当前值,写=设定值,史=可取历史)与点位描述。是 mes_fetch 取数与 mes_dataset_read 的寻址入口;支持按关键字(q,匹配名称与描述)与产线(line_id)过滤。只读目录,不触达设备。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "q": {
+     "type": "string",
+     "description": "关键字子串过滤(匹配点位名称与描述)"
+    },
+    "line_id": {
+     "type": "string",
+     "description": "限定产线 id"
+    },
+    "limit": {
+     "type": "number",
+     "description": "返回条数上限(缺省 20,最大 100)"
+    }
+   }
+  }
+ },
+ {
+  "name": "mes_fetch",
+  "label": "MES Fetch",
+  "description": "从 MES REST 点位取数(代码级护栏:仅限你绑定的数控点位;时间窗 ≤7 天;单次 ≤5000 行;每 60 秒最多 6 次)。三种模式:不传 from/to = 当前值快照直读;from/to 且 max_rows≤2000 = 同步返回统计摘要;max_rows>2000 = 异步落 CSV 数据集,返回 job_id/dataset_id —— 勿轮询,未完成先做别的,用 mes_datasets 查状态、mes_dataset_read 读内容。铁律:回包只含统计摘要与 ≤3 行采样,MES 行级原文不进对话,全量数据在数据集文件里。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "ids": {
+     "type": "array",
+     "items": { "type": "string" },
+     "description": "目标点位 id 数组(mes_catalog 输出的 id;须为你绑定的数控点位)"
+    },
+    "from": {
+     "type": "string",
+     "description": "窗口起点 ISO 时间(与 to 成对;都不传=当前值快照模式)"
+    },
+    "to": {
+     "type": "string",
+     "description": "窗口终点 ISO 时间(与 from 成对;窗口 ≤7 天)"
+    },
+    "max_rows": {
+     "type": "number",
+     "description": "行数上限(缺省 500,硬上限 5000;>2000 走异步数据集)"
+    }
+   },
+   "required": ["ids"]
+  }
+ },
+ {
+  "name": "mes_dataset_read",
+  "label": "MES Dataset Read",
+  "description": "读取 MES 取数数据集(mode=head=列名+总行数概览;mode=stats=count/min/max/mean/stddev/首末时间;mode=rows=offset 起每页 20 行分页)。仅创建者、该点位绑定者或该产线可读者可读;回包只带 ≤3 行采样,统计判读请用 mode=stats。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "dataset_id": {
+     "type": "string",
+     "description": "数据集 id(mes_fetch 异步回包或 mes_datasets 清单)"
+    },
+    "mode": {
+     "type": "string",
+     "description": "head(缺省)| stats | rows"
+    },
+    "offset": {
+     "type": "number",
+     "description": "rows 模式的起始行号(缺省 0)"
+    }
+   },
+   "required": ["dataset_id"]
+  }
+ },
+ {
+  "name": "mes_datasets",
+  "label": "MES Datasets",
+  "description": "列出你可读的 MES 数据集清单(新→旧;含 dataset_id/点位/时间窗/行数/状态)。用于找回 mes_fetch 异步作业的 dataset_id 与确认取数状态 —— 替代轮询,作业未完成时先做别的任务。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "limit": {
+     "type": "number",
+     "description": "返回条数上限(缺省 20,最大 100)"
+    }
+   }
+  }
+ },
+ {
   "name": "aml_node_catalog",
   "label": "AML Node Catalog",
   "description": "列出你可用的 AML 建模节点(全部 daq 绑定):节点 id/名称/物理语义/单位/量程/所属产线/近 24h 是否有批次打标数据。开始任何自动建模前先调用本工具选节点(control=可控输入/target=预测目标/feature=仅历史特征);无绑定会给出指引。",

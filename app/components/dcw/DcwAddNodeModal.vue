@@ -3,28 +3,32 @@
  * 添加控制节点向导 —— mock / 真实设备(协议参数 schema 动态表单 + 测试连接 + 数据语义标定)。
  * 向导各字段由页面 useDcwAddNode 独占持有,经 v-model 就地读写(与原模板写法一致);
  * 组件只负责呈现,测试/提交回抛页面。
+ * mes-rest 驱动额外提供「试读」(读链路验证,POST /dcw/mes-test-read;后端并行上线,404 容错)。
  */
+import { computed } from 'vue'
 import type { DcwTemplateDef } from '#shared/dcw-protocol'
 import type { DaqDriverCatalogEntry, DriverConfigField } from '#shared/daq-protocol'
 
-defineProps<{
+const props = defineProps<{
   templates: DcwTemplateDef[]
   driverCatalog: DaqDriverCatalogEntry[]
   addFields: DriverConfigField[]
   addTesting: boolean
   addTest: { ok: boolean, message: string } | null
+  addMesTesting: boolean
+  addMesResult: { ok: boolean, eng: number | null, ts: string | null, latencyMs: number | null, message: string } | null
   addSaving: boolean
   addError: string
 }>()
 
-const emit = defineEmits<{ test: [], submit: [] }>()
+const emit = defineEmits<{ 'test': [], 'mes-test': [], 'submit': [] }>()
 
 const { t } = useI18n()
 
 const addOpen = defineModel<boolean>('open', { required: true })
 const addScenario = defineModel<'mock' | 'real'>('scenario', { required: true })
 const addTemplate = defineModel<string>('template', { required: true })
-const addDriver = defineModel<'mock' | 'modbus-tcp' | 'opcua'>('driver', { required: true })
+const addDriver = defineModel<string>('driver', { required: true })
 const addName = defineModel<string>('name', { required: true })
 const addHold = defineModel<number | null>('hold', { required: true })
 const addRead = defineModel<number | null>('read', { required: true })
@@ -33,6 +37,23 @@ const addStepLimit = defineModel<number | null>('stepLimit', { required: true })
 const addCfg = defineModel<Record<string, string | number>>('cfg', { required: true })
 const addTransform = defineModel<{ kind: 'none' | 'linear', scale: number, offset: number }>('transform', { required: true })
 const addSemantics = defineModel<string>('semantics', { required: true })
+
+/** 映射表字段(type='text',如 readMap/writeMap/historyMap 的 JSON 多行输入 → textarea) */
+const isMapField = (f: DriverConfigField): boolean => f.type === 'text'
+
+/** 试读是否可用(仅 mes-rest 驱动展示) */
+const isMesRest = computed(() => addDriver.value === 'mes-rest')
+
+/** 试读内联结果文案:成功 = eng 值 + 耗时;失败 = 服务端/容错 message */
+const mesResultText = computed(() => {
+  const r = props.addMesResult
+  if (!r) return ''
+  if (r.ok) {
+    const eng = r.eng != null ? String(r.eng) : '--'
+    return `${eng}${r.latencyMs != null ? ` · ${r.latencyMs}ms` : ''}`
+  }
+  return r.message
+})
 </script>
 
 <template>
@@ -202,13 +223,21 @@ const addSemantics = defineModel<string>('semantics', { required: true })
             v-for="f in addFields"
             :key="f.key"
             class="f"
+            :class="{ 'map-field': isMapField(f) }"
           >
             <span>{{ f.label }}<em
               v-if="f.required"
               style="color: var(--tone-danger-dot); font-style: normal;"
             >*</em></span>
+            <textarea
+              v-if="isMapField(f)"
+              v-model="addCfg[f.key]"
+              class="inp cfg-map mono"
+              rows="6"
+              :placeholder="f.placeholder"
+            />
             <select
-              v-if="f.type === 'select'"
+              v-else-if="f.type === 'select'"
               v-model="addCfg[f.key]"
               class="inp"
             >
@@ -246,6 +275,24 @@ const addSemantics = defineModel<string>('semantics', { required: true })
             class="test-result"
             :class="addTest.ok ? 'good' : 'bad'"
           >{{ addTest.ok ? '✓' : '✗' }} {{ addTest.message }}</span>
+        </div>
+        <!-- mes-rest 读链路试读(独立于写链路「测试连接」;后端端点并行上线,404 显示未就绪) -->
+        <div
+          v-if="isMesRest"
+          class="test-row"
+        >
+          <button
+            class="mini-btn"
+            :disabled="addMesTesting"
+            @click="emit('mes-test')"
+          >
+            {{ addMesTesting ? $t('dcwDetail.mesTesting') : $t('dcwDetail.mesTestBtn') }}
+          </button>
+          <span
+            v-if="addMesResult"
+            class="test-result"
+            :class="addMesResult.ok ? 'good' : 'bad'"
+          >{{ addMesResult.ok ? '✓' : '✗' }} {{ mesResultText }}</span>
         </div>
       </template>
 
@@ -302,6 +349,9 @@ const addSemantics = defineModel<string>('semantics', { required: true })
 .seg.on { font-weight: 600; color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 .driver-form { grid-template-columns: repeat(3, 1fr); }
+/* 映射表字段(readMap/writeMap/historyMap 的 JSON 多行输入):整行铺满 + 等宽字体 */
+.driver-form .map-field { grid-column: 1 / -1; }
+.cfg-map { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; resize: vertical; }
 
 .field-hint { font-size: 10px; color: var(--ink-faint); line-height: 1.35; }
 .f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink-faint); }

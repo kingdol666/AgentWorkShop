@@ -1,5 +1,6 @@
 import { computed, reactive, ref } from 'vue'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
+import { ApiError } from '~/composables/workshop/apiClient'
 import type { useDcwDetailScope } from './useDcwDetailScope'
 import { DCW_DRIVERS } from '#shared/dcw-protocol'
 import type { DaqDriverCatalogEntry, DriverConfigField } from '#shared/daq-protocol'
@@ -18,7 +19,9 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
   const addOpen = ref(false)
   const addScenario = ref<'mock' | 'real'>('mock')
   const addTemplate = ref(dcw.templates[0]?.key ?? '')
-  const addDriver = ref<'mock' | 'modbus-tcp' | 'opcua'>('mock')
+  // 驱动 kind 由驱动目录(server 权威)自描述:mock/modbus-tcp/opcua/…/mes-rest,
+  // 放宽为 string 以容纳并行加入的 mes-rest 等新驱动
+  const addDriver = ref<string>('mock')
   const addName = ref('')
   const addHold = ref<number | null>(null)
   const addRead = ref<number | null>(null)
@@ -29,6 +32,9 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
   const addSemantics = ref('')
   const addTesting = ref(false)
   const addTest = ref<{ ok: boolean, message: string } | null>(null)
+  // MES REST 试读(mes-rest 驱动专属;与「测试连接」写链路并列的读链路验证)
+  const addMesTesting = ref(false)
+  const addMesResult = ref<{ ok: boolean, eng: number | null, ts: string | null, latencyMs: number | null, message: string } | null>(null)
   const addSaving = ref(false)
   const addError = ref('')
 
@@ -46,6 +52,7 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
     }
     addCfg.value = cfg
     addTest.value = null
+    addMesResult.value = null
   }
   void resetAddCfg()
 
@@ -60,6 +67,30 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
     }
     finally {
       addTesting.value = false
+    }
+  }
+
+  /** MES REST 试读:组装当前表单 driverConfig POST /dcw/mes-test-read,内联呈现 eng/耗时/服务端文案 */
+  async function doMesTestRead(): Promise<void> {
+    addMesTesting.value = true
+    addMesResult.value = null
+    try {
+      const r = await dcw.mesTestRead({ ...addCfg.value })
+      addMesResult.value = { ok: !!r.ok, eng: r.eng ?? null, ts: r.ts ?? null, latencyMs: r.latencyMs ?? null, message: '' }
+    }
+    catch (err) {
+      // 后端端点与前端并行开发:404 = mes-test-read 未上线,提示"服务端未就绪"而非报错崩坏
+      const notReady = err instanceof ApiError && err.status === 404
+      addMesResult.value = {
+        ok: false,
+        eng: null,
+        ts: null,
+        latencyMs: null,
+        message: notReady ? t('dcwDetail.mesNotReady') : apiErrorMessage(err),
+      }
+    }
+    finally {
+      addMesTesting.value = false
     }
   }
 
@@ -114,11 +145,14 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
     addSemantics,
     addTesting,
     addTest,
+    addMesTesting,
+    addMesResult,
     addSaving,
     addError,
     driverCatalog,
     addFields,
     doTestConnection,
+    doMesTestRead,
     doAddNode,
   }
 }

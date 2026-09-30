@@ -30,3 +30,13 @@ export const HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES = new Set([
   'recipe_trial',
   'recipe_apply',
 ])
+
+/** MES 数据集工具(只读面:点位目录/历史取数/数据集读取与清单)。
+ *  不落 HIGH_RISK、不写 PLC —— fetch 只写 CSV 数据集文件(护栏在 mes-controller 代码级:
+ *  绑线授权/窗口≤7天/行数≤5000/频次限流);权限面与目录注入面可同源引用本集合。 */
+export const MES_READ_TOOL_NAMES = new Set([
+  'mes_catalog',
+  'mes_fetch',
+  'mes_dataset_read',
+  'mes_datasets',
+])
