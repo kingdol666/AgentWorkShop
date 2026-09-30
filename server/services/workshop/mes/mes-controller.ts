@@ -161,17 +161,22 @@ export interface MesFetchArgs {
   max_rows?: number | string
 }
 
-export interface MesCatalogArgs { q?: string, line_id?: string, limit?: number | string }
+export interface MesCatalogArgs { q?: string, line_id?: string, limit?: number | string, /** 调用者可读产线集(绑线授权口径);提供时严格过滤(孤儿/越线点位不可见,空集=空目录 fail-closed) */ scope_line_ids?: string[] }
 
 export function createMesController(deps: Partial<MesControllerDeps> = {}) {
   const d: MesControllerDeps = { ...defaultDeps(), ...deps }
 
   // ---------- 目录 ----------
 
-  /** mes-rest 点位目录(q 对 name/desc 子串过滤;line_id 精确过滤;limit 缺省 20) */
+  /** mes-rest 点位目录(q 对 name/desc 子串过滤;line_id 精确过滤;limit 缺省 20;
+   *  scope_line_ids 提供时按调用者可读产线严格过滤——跨产线点位与孤儿(未分配)点位不可见) */
   async function catalog(args: MesCatalogArgs = {}): Promise<MesToolResult & { entries: MesCatalogEntry[], total: number }> {
     const all = await d.nodes()
     let mes = all.filter(n => n.driver === MES_REST_DRIVER_KIND).map(mesCatalogEntryOf)
+    if (Array.isArray(args.scope_line_ids)) {
+      const scope = new Set(args.scope_line_ids)
+      mes = mes.filter(e => e.lineId !== '' && scope.has(e.lineId))
+    }
     const total = mes.length
     const lineId = String(args.line_id ?? '').trim()
     if (lineId) mes = mes.filter(e => e.lineId === lineId)

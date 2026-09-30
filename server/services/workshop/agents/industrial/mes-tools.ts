@@ -39,11 +39,16 @@ function dsLine(ds: MesDatasetRow): string {
   return `- ${ds.id} | ${ds.nodeName || ds.nodeId} | ${win} | ${state}`
 }
 
-/** 工具:mes_catalog —— MES REST 点位目录(数据驱动;q 子串/产线过滤;只读,无授权门槛)。
- *  每条含 id/单位/量程/读写/历史能力位,是 mes_fetch 与 mes_dataset_read 的寻址入口。 */
-export async function toolMesCatalog(_agentId: string, args: { q?: string, line_id?: string, limit?: number | string } = {}): Promise<{ text: string, isError?: boolean }> {
+/** 工具:mes_catalog —— MES REST 点位目录(数据驱动;q 子串/产线过滤;按调用者可读产线严格过滤:
+ *  跨产线与孤儿(未分配)点位不可见;未绑线的 agent 得到空目录 —— 与 mes_fetch 的授权口径一致)。 */
+export async function toolMesCatalog(agentId: string, args: { q?: string, line_id?: string, limit?: number | string } = {}): Promise<{ text: string, isError?: boolean }> {
   try {
-    const r = await mesController().catalog(args)
+    const scope = agentOpsScope(agentId)
+    const scopeLineIds = scope ? [...scope.lineIds] : []
+    const r = await mesController().catalog({ ...args, scope_line_ids: scopeLineIds })
+    if (r.entries.length === 0 && scopeLineIds.length === 0) {
+      return { text: '你还没有可读的产线绑定,无可见 MES 点位。先完成产线绑定与节点绑定后再用 mes_catalog。' }
+    }
     return { text: r.text }
   }
   catch (err) {

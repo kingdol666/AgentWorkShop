@@ -404,8 +404,19 @@ export async function toolRecipeRollback(agentId: string, args: {
       const defNote = definitionNoop
         ? `定义已在目标版本 v${updated.version ?? 1}(未生成新版本)`
         : `已生成 v${updated.version ?? 1}`
+      // 整批重下发全部失败(典型:节点写入保持窗/节流未放行)→ 响亮失败:定义已回退但产线仍运行
+      // 旧参数,Agent 必须知道并稍后重发(再调本工具会再生成一个回退版本,或用 dcw_control 直发)。
+      if (run.results.length > 0 && okN === 0) {
+        return {
+          text: `回退部分失败:配方「${updated.name}」${defNote},但整批重下发 0/${run.results.length} 参数成功(节点写入保持窗/节流未放行)。产线仍在运行旧参数 —— 等待约 60s 后重新调用 recipe_rollback(dispatch=true,回退目标 v${updated.version ?? 1}),或用 dcw_control 逐节点直发;原因:${reason}。`,
+          isError: true,
+        }
+      }
+      const partialWarn = okN < run.results.length
+        ? `\n注意:整批重下发部分成功(${okN}/${run.results.length}),未落盘节点请用 dcw_control 复查。`
+        : ''
       return {
-        text: `统一回退完成:配方「${updated.name}」${defNote},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`}),并已整批重下发到 PLC(${okN}/${run.results.length} 参数成功);原因:${reason}。\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。`,
+        text: `统一回退完成:配方「${updated.name}」${defNote},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`}),并已整批重下发到 PLC(${okN}/${run.results.length} 参数成功);原因:${reason}。${partialWarn}\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。`,
       }
     }
     const updated = getDcwController().revertRecipe(recipeId, {
