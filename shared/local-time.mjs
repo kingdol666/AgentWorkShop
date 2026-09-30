@@ -7,15 +7,50 @@
 export const DEFAULT_TIME_ZONE = 'Asia/Shanghai'
 const TIME_ZONE_KEY = '__awConfiguredTimeZone'
 
+// Intl.DateTimeFormat 构造是最贵的 Intl 操作;热路径(每条日志/WS 帧/DB 行都带时间戳)
+// 必须按 timeZone 缓存 formatter、缓存时区校验结果,否则高频时间戳会把 CPU 打满。
+const partsFormatterCache = new Map()
+function partsFormatter(timeZone) {
+  let f = partsFormatterCache.get(timeZone)
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      calendar: 'iso8601',
+      numberingSystem: 'latn',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hourCycle: 'h23',
+    })
+    partsFormatterCache.set(timeZone, f)
+  }
+  return f
+}
+const offsetFormatterCache = new Map()
+function offsetFormatter(timeZone) {
+  let f = offsetFormatterCache.get(timeZone)
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'longOffset',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    })
+    offsetFormatterCache.set(timeZone, f)
+  }
+  return f
+}
+
 function configuredTimeZoneValue() {
   const g = globalThis
   return typeof g[TIME_ZONE_KEY] === 'string' ? g[TIME_ZONE_KEY] : DEFAULT_TIME_ZONE
 }
 
+const validTimeZoneCache = new Set()
 export function isValidTimeZone(value) {
   if (typeof value !== 'string' || !value.trim()) return false
+  if (validTimeZoneCache.has(value)) return true
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: value }).format()
+    validTimeZoneCache.add(value)
     return true
   }
   catch {
@@ -56,20 +91,9 @@ function pad(value, width) {
 function dateParts(date, timeZone) {
   const d = date instanceof Date ? date : new Date(date)
   if (Number.isNaN(d.getTime())) throw new RangeError('Invalid time value')
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    calendar: 'iso8601',
-    numberingSystem: 'latn',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(d)
+  const parts = partsFormatter(timeZone).formatToParts(d)
   const values = Object.fromEntries(parts.filter(p => p.type !== 'literal').map(p => [p.type, p.value]))
-  const offsetText = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    timeZoneName: 'longOffset',
-    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-  }).formatToParts(d).find(p => p.type === 'timeZoneName')?.value ?? 'GMT'
+  const offsetText = offsetFormatter(timeZone).formatToParts(d).find(p => p.type === 'timeZoneName')?.value ?? 'GMT'
   const match = offsetText.match(/^GMT([+-])(\d{2}):(\d{2})$/)
   const offsetMinutes = match
     ? (match[1] === '+' ? 1 : -1) * (Number(match[2]) * 60 + Number(match[3]))
