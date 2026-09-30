@@ -236,6 +236,43 @@ function applyAuth(headers: Record<string, string>, cfg: Record<string, unknown>
   else headers.authorization = `Bearer ${token}`
 }
 
+/** 头值插值:{{SECRET:REF}} → 凭据解析(env/runtime-settings);含未解析占位符 → null(整头省略,避免明文外泄) */
+async function interpolateHeaderValue(value: string): Promise<string | null> {
+  const placeholder = /\{\{SECRET:([^}]+)\}\}/g
+  if (!placeholder.test(value)) return value
+  placeholder.lastIndex = 0
+  let out = ''
+  let last = 0
+  for (const m of value.matchAll(placeholder)) {
+    out += value.slice(last, m.index)
+    const secret = await resolveMesSecret(m[1])
+    if (secret === null || secret === undefined || secret === '') return null
+    out += secret
+    last = m.index + m[0].length
+  }
+  out += value.slice(last)
+  return out
+}
+
+/** 节点级默认请求头(cfg.headers JSON)——随所有请求携带;映射级 headers 与认证头可覆盖 */
+async function applyDefaultHeaders(headers: Record<string, string>, cfg: Record<string, unknown>): Promise<void> {
+  const raw = String(cfg.headers ?? '').trim()
+  if (!raw) return
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  }
+  catch {
+    return
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return
+  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof v !== 'string' || !k.trim()) continue
+    const interpolated = await interpolateHeaderValue(v)
+    if (interpolated !== null) headers[k.trim()] = interpolated
+  }
+}
+
 // ============================================================
 // 令牌桶限速(同驱动实例;默认 5 req/s,桶容 = 速率 的短突发)
 // ============================================================
@@ -284,7 +321,12 @@ async function mesRequest(
   const path = req.path.startsWith('/') ? req.path : `/${req.path}`
   const url = new URL(origin + path)
   for (const [k, v] of Object.entries(req.query ?? {})) url.searchParams.set(k, v)
-  const headers: Record<string, string> = { accept: 'application/json', ...(req.headers ?? {}) }
+  const headers: Record<string, string> = { accept: 'application/json' }
+  await applyDefaultHeaders(headers, cfg)
+  for (const [k, v] of Object.entries(req.headers ?? {})) {
+    const interpolated = await interpolateHeaderValue(v, cfg)
+    if (interpolated !== null) headers[k] = interpolated
+  }
   if (req.body !== undefined) headers['content-type'] = 'application/json'
   applyAuth(headers, cfg, await resolveMesSecret(cfg.secretRef))
   const res = await fetch(url, {

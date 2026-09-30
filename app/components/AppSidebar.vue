@@ -52,7 +52,7 @@ const menuGroups = computed<MenuGroup[]>(() => [
     id: 'ops',
     label: t('menu.groups.ops'),
     items: [
-      { key: '/operations', icon: 'i-tabler-stream', label: t('menu.operations'), motion: 'im-pop' },
+      { key: '/operations', icon: 'i-tabler-broadcast', label: t('menu.operations'), motion: 'im-pop' },
       { key: '/monitor', icon: 'i-tabler-cpu', label: t('menu.monitor'), motion: 'im-pulse' },
       { key: '/logs', icon: 'i-tabler-list-details', label: t('menu.logs'), motion: 'im-pop' },
     ],

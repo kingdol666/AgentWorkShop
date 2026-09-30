@@ -29,6 +29,15 @@ before(async () => {
       if (url.pathname === '/current' || /^\/params\/[^/]+\/current$/.test(url.pathname)) {
         return reply(200, { data: { value: 42.5, ts: Date.now() } })
       }
+      // 受保护当前值:要求 x-unit(默认头/映射头覆盖);token=required 时另验 x-api-token(凭据插值)
+      if (url.pathname === '/secure-current') {
+        const unit = req.headers['x-unit'] ?? ''
+        if (!unit) return reply(400, { error: 'missing x-unit' })
+        if (url.searchParams.get('token') === 'required' && req.headers['x-api-token'] !== 'tok-123') {
+          return reply(401, { error: 'missing/invalid x-api-token' })
+        }
+        return reply(200, { data: { value: 77.7, unit, ts: Date.now() } })
+      }
       // 写:value ≤ 100 受理(201 + ack),超 MES 侧量程 → 400
       if (/^\/params\/[^/]+\/setpoint$/.test(url.pathname) && req.method === 'POST') {
         const body = JSON.parse(raw || '{}') as { value?: number }
@@ -153,4 +162,47 @@ test('mes-rest test: 试读 42.5 返回 ok 与耗时', async () => {
   const r = await mesRestDcwDriver.test(cfg({ readMap: READ_MAP }))
   assert.equal(r.ok, true)
   assert.match(r.message, /试读 42\.5 \(\d+ms\)/)
+})
+
+test('mes-rest headers: 节点级默认头(字面量+{{SECRET:}} 插值)随请求携带', async () => {
+  process.env.AW_MES_TESTTOKEN_TOKEN = 'tok-123' // secretRef=TestToken → env 注入,不落明文
+  try {
+    const SECURE_MAP = JSON.stringify({
+      path: '/secure-current?token=required',
+      response: { valuePath: 'data.value', tsPath: 'data.ts', tsFormat: 'epoch_ms' },
+    })
+    const r = await mesRestDcwDriver.read!({
+      domain: { min: 0, max: 100 },
+      driverConfig: cfg({
+        readMap: SECURE_MAP,
+        secretRef: 'TestToken',
+        authType: 'none',
+        headers: JSON.stringify({ 'X-Api-Token': '{{SECRET:TestToken}}', 'X-Unit': 'L01' }),
+      }),
+    })
+    assert.equal(r.ok, true)
+    assert.equal(r.eng, 77.7)
+  }
+  finally {
+    delete process.env.AW_MES_TESTTOKEN_TOKEN
+  }
+})
+
+test('mes-rest headers: 映射级覆盖节点默认;未解析占位符整头省略', async () => {
+  // 节点默认 X-Unit=DEFAULT(会被拒 400),映射级 X-Unit=L01(覆盖后 200) + 未解析 secret 头被省略
+  const SECURE_MAP = JSON.stringify({
+    path: '/secure-current',
+    headers: { 'X-Unit': 'L01', 'X-Doomed': '{{SECRET:NoSuchRef}}' },
+    response: { valuePath: 'data.value', tsPath: 'data.ts', tsFormat: 'epoch_ms' },
+  })
+  const r = await mesRestDcwDriver.read!({
+    domain: { min: 0, max: 100 },
+    driverConfig: cfg({
+      readMap: SECURE_MAP,
+      authType: 'none',
+      headers: JSON.stringify({ 'X-Unit': 'DEFAULT' }),
+    }),
+  })
+  assert.equal(r.ok, true)
+  assert.equal(r.eng, 77.7)
 })
