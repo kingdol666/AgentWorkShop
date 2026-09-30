@@ -669,7 +669,13 @@ await timed('P4f', 'param-map', '工艺参数映射层：参数面读写 · 标�
   if (layeredReady) okN++
 
   // (3) 参数面写入：交集内通过；越产品层/参数层分别被拒且**点名约束层**
-  const wPass = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vPass })
+  //     前置阶段(P4e recipe lifecycle 等)可能刚在该线写过 → 60s 在线写间隔未过。
+  //     这是联锁在正确工作:等锁清零后重试一次(护栏,最多 75s),不把调度竞态伪装成治理失败。
+  let wPass = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vPass })
+  if (wPass.data?.outcome?.ok !== true && /间隔必须至少\s*60s/.test(String(wPass.message ?? ''))) {
+    await sleep(61_000)
+    wPass = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vPass })
+  }
   const wProd = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vProduct })
   const wParam = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vParam })
   const rdP = readable ? await api.call('POST', `/api/workshop/dcw/params/${pv.id}/read`, {}) : { data: {} }
@@ -706,6 +712,12 @@ await timed('P4f', 'param-map', '工艺参数映射层：参数面读写 · 标�
   if (cOk.data?.result?.isError === true && cOkText.includes('回退冷却')) {
     vPassB = Number((gMin + gMax - vPassB).toFixed(3)) // 换向：镜像到区间另一侧
     cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write (direction flip)', line_id: l.ids.line })
+    cOkText = String(cOk.data?.result?.text ?? '')
+  }
+  if (cOk.data?.result?.isError === true && /间隔必须至少\s*60s/.test(cOkText)) {
+    // (3) 的 REST 通过写刚占用了该节点的 60s 在线写间隔 —— 等锁清零重试一次
+    await sleep(61_000)
+    cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write (after 60s lock)', line_id: l.ids.line })
     cOkText = String(cOk.data?.result?.text ?? '')
   }
   const cOkGood = cOk.data?.result?.isError !== true && cOkText.includes('工艺参数')
