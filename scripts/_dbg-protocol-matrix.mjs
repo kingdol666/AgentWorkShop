@@ -377,7 +377,14 @@ async function main() {
   check('6.3b', 'DCW OPC UA 回读=172.5±1', Number.isFinite(opc2) && Math.abs(opc2 - 172.5) <= 1, `read=${opc2}`)
 
   // 6.4 PLC Modbus 写(配方窗内)+ 真闭环 SP→PV 收敛
-  const wPlc = await api('POST', `/api/workshop/dcw/${plcSp.id}/write`, { body: { value: 182 }, token })
+  // 开跑下发配方参数也算一次在线写(60s 节流按节点计);撞锁时等待重试(治理按设计工作)
+  let wPlc = await api('POST', `/api/workshop/dcw/${plcSp.id}/write`, { body: { value: 182 }, token })
+  for (let i = 0; i < 70 && !(wPlc.code === 0 && wPlc.data?.outcome?.ok === true); i++) {
+    const m = String(wPlc.data?.message ?? wPlc.message ?? '').match((/还需 (\d+)s/))
+    if (!m || !/在线写入间隔/.test(String(wPlc.data?.message ?? wPlc.message ?? ''))) break
+    await sleep(Math.min(65, Number(m[1]) + 1) * 1000)
+    wPlc = await api('POST', `/api/workshop/dcw/${plcSp.id}/write`, { body: { value: 182 }, token })
+  }
   check("6.4a", "DCW Modbus 写 SP=182(配方窗内)", wPlc.code === 0 && wPlc.data?.outcome?.ok === true, JSON.stringify(wPlc.data ?? wPlc.message ?? {}).slice(0, 140))
   const wPlcBad = await api('POST', `/api/workshop/dcw/${plcSp.id}/write`, { body: { value: 195 }, token })
   check('6.4b', '配方窗联锁负例(195 越窗 → 400)', wPlcBad.status === 400, `status=${wPlcBad.status} msg=${String(wPlcBad.message ?? '').slice(0, 80)}`)
