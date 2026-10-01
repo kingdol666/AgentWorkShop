@@ -82,6 +82,14 @@ export async function toolExpCollect(agentId: string, args: {
         parts.push(`  平台动作 ${episodes.length} 条(已入账,待总结):`)
         for (const e of episodes) parts.push(`  ${episodeLine(e)}`)
       }
+      // 待总结作业队列:含历史入账的平台 episode 与"人工已确认转正"的推断 episode
+      // ——学习 Channel 的总结对象以本队列为准(本轮新增只在首轮出现,确认转正发生在轮间)
+      const workQueue = getExpStateRepo().listEpisodes({ lineId: lid, status: 'pending' })
+      const inferredReady = workQueue.filter(e => e.kind === 'inferred')
+      if (inferredReady.length > 0) {
+        parts.push(`  已确认的推断动作 ${inferredReady.length} 条(已入账,待总结):`)
+        for (const e of inferredReady) parts.push(`  ${episodeLine(e)} | 推断(人类已确认)`)
+      }
       parts.push(`  推断动作:本轮新增 ${confirmations.added} 条待确认,累计 ${confirmations.pending} 条 —— 推断动作待人类在产线页确认后才会进入总结。`)
       parts.push(`  ${registrySummary(lid)}`)
       sections.push(parts.join('\n'))

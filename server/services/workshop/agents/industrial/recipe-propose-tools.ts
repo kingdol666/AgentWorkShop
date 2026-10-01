@@ -128,11 +128,12 @@ export async function toolRecipePropose(agentId: string, args: {
     return { text: `参数校验失败,未提交审批:\n${problems.map(p => `- ${p}`).join('\n')}\n请补齐后重新提交(每参数必须带 basis 与 exp_ref)。`, isError: true }
   }
 
-  // ---------- ② 配方存在性与产线归属(权限 mirror toolRecipeApply:节点授权线 + 配方内至少一个授权节点) ----------
+  // ---------- ② 配方存在性与产线归属(权限 mirror toolRecipeApply:节点授权线 ∪ 频道绑线 + 配方内至少一个授权节点) ----------
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
   const scope = agentOpsScope(agentId)
-  if (!scope || !recipe.lineId || !scope.lineIds.includes(recipe.lineId)) {
+  const readableLineIds = scope ? [...new Set([...scope.lineIds, ...scope.boundLineIds])] : []
+  if (!scope || !recipe.lineId || !readableLineIds.includes(recipe.lineId)) {
     return { text: `无权提交配方 ${recipeId} 的整包方案(该配方不在你负责的产线上)。`, isError: true }
   }
   const boundInRecipe = getAgentNodeBindingRepo().byAgent(agentId)
