@@ -177,6 +177,11 @@ export abstract class BaseAgentImpl implements AgentInterface {
   async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: SupervisionOptions): Promise<SupervisionDecision[]> {
     if (this.supervising) return []
     if (!this.workspace) this.workspace = ctx.workspace
+    // 懒加载型 harness(如 codex)必须先确保会话进程存在:worker/peer 回合各自 ensure,
+    // supervise 是唯一不经 run() 的回合入口 —— 缺这一步,全新 lead 的每轮监督都会在
+    // streamTurn 处以"会话未就绪"瞬间失败,而异常被下方 catch 吞掉 → 根任务永远
+    // SUBMITTED 直到超时(实测 codex lead 复现)。能力探测:无 ensureClient 的实现跳过。
+    await (this as { ensureClient?: (c: AgentRunContext) => Promise<void> }).ensureClient?.(ctx)
     const prompt = supervisePrompt({
       snapshot,
       agentName: this.agentName,
@@ -197,7 +202,9 @@ export abstract class BaseAgentImpl implements AgentInterface {
       const parsed = extractJsonArray(text)
       return parsed && parsed.length > 0 ? parsed as SupervisionDecision[] : []
     }
-    catch {
+    catch (err) {
+      // 决策失败必须可见(此前静默返回 [],lead 永久失声而无任何痕迹);空决策语义不变
+      console.error(`[${this.agentName}/supervise] 决策回合失败(本轮按空决策处理):`, err instanceof Error ? err.message : err)
       return []
     }
     finally {

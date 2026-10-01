@@ -103,7 +103,16 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       'x-aw-task-id': task.id,
     }
     if (input.fromLabel) messageMetadata['x-aw-from-label'] = input.fromLabel
-    const message = buildMessage(input.channelId, 'ROLE_USER', input.parts ?? [], messageMetadata)
+    // 简报兜底:人类直派常只填 title/description(不带 parts)——assign 消息若只有空
+    // parts,worker 的回合提示词里任务正文为空,LLM worker 只能对着任务名瞎猜
+    // (实测 codex worker 完成任务却答"未提供任务目标")。
+    const brief = [input.title, input.description ?? ''].filter(Boolean).join('\n')
+    const message = buildMessage(
+      input.channelId,
+      'ROLE_USER',
+      [...(input.parts ?? []), ...(brief && !(input.parts ?? []).length ? [{ text: brief }] : [])],
+      messageMetadata,
+    )
     message.taskId = task.id
     const delivered = this.route(input.channelId, message)
     if (!delivered.includes(assigneeId)) {
@@ -208,7 +217,13 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
         parts: input.parts,
       })
       task = this.getTaskEngine().transition(task.id, 'ASSIGNED', callerAgentId)
-      const message = buildMessage(channelId, 'ROLE_USER', input.parts ?? [], {
+      // 简报兜底(与 submitChannelTask 直派同口径):lead 派发若只给 title/description
+      // 而无 parts,assign 消息正文为空,worker 回合失去任务简报。
+      const childBrief = [input.title, input.description ?? ''].filter(Boolean).join('\n')
+      const message = buildMessage(channelId, 'ROLE_USER', [
+        ...(input.parts ?? []),
+        ...(childBrief && !(input.parts ?? []).length ? [{ text: childBrief }] : []),
+      ], {
         'x-aw-task-kind': 'assign',
         'x-aw-task-id': task.id,
         'x-aw-from-agent': callerAgentId,
