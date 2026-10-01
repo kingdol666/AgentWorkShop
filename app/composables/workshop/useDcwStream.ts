@@ -225,6 +225,18 @@ function createStore() {
     mesTestRead: async (driverConfig: Record<string, unknown>): Promise<{ ok: boolean, eng?: number, ts?: string, latencyMs?: number }> => {
       return api<{ ok: boolean, eng?: number, ts?: string, latencyMs?: number }>('/mes-test-read', { method: 'POST', body: JSON.stringify({ driverConfig }) })
     },
+    /** MES 数据钩子试运行(小窗口实拉+dataHook 真实执行;契约见 mes-hook-test 端点) */
+    mesHookTest: async (driverConfig: Record<string, unknown>, param?: unknown): Promise<{
+      ok: boolean
+      format: string
+      rows: number
+      message?: string
+      sample?: unknown[]
+      requestOverrides?: Record<string, unknown> | null
+      hook?: { ok: boolean, summary?: string | null, context?: string | null, error?: string | null, artifacts?: Array<{ name: string, bytes: number, mime: string }> } | null
+    }> => {
+      return api('/mes-hook-test', { method: 'POST', body: JSON.stringify({ driverConfig, param }) })
+    },
     testNode: async (id: string): Promise<{ ok: boolean, message: string }> => {
       return api<{ test: { ok: boolean, message: string } }>(`/${id}/test`, { method: 'POST' }).then(r => r.test)
     },

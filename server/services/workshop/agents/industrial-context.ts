@@ -180,12 +180,14 @@ export function buildIndustrialContext(agentId: string): string {
         .map(mesCatalogEntryOf)
       if (mesEntries.length > 0) {
         const MES_BRIEF_MAX = 30
-        const capOf = (e: { readable: boolean, writable: boolean, historyable: boolean }): string =>
-          [e.readable ? '读' : null, e.writable ? '写' : null, e.historyable ? '史' : null].filter(Boolean).join('/') || '-'
+        const capOf = (e: { readable: boolean, writable: boolean, historyable: boolean, format: string, hooked: boolean }): string => {
+          const hist = e.historyable ? (e.format !== 'scalar' ? '史·' + e.format : '史') : null
+          return [e.readable ? '读' : null, e.writable ? '写' : null, hist, e.hooked ? '钩' : null].filter(Boolean).join('/') || '-'
+        }
         const shown = mesEntries.slice(0, MES_BRIEF_MAX)
           .map(e => `  ${e.name}|${e.unit || '-'}|${e.min}~${e.max}|${capOf(e)}|${e.desc.slice(0, 40)}`)
         const rest = mesEntries.length - shown.length
-        lines.push(`- MES REST 点位(${mesEntries.length} 条,名称|单位|量程|读写/历史能力|描述):\n${shown.join('\n')}${rest > 0 ? `\n  (其余 ${rest} 条未列出,用 mes_catalog 检索)` : ''}`)
+        lines.push(`- MES REST 点位(${mesEntries.length} 条,名称|单位|量程|读写与格式能力(史·vector=检测向量,史·image=图像帧,钩=取数后自动下沉处理)|描述):\n${shown.join('\n')}${rest > 0 ? `\n  (其余 ${rest} 条未列出,用 mes_catalog 检索)` : ''}`)
       }
     }
     catch { /* MES 面未就绪(单测/降级)不阻断简报 */ }

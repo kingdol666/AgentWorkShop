@@ -13,7 +13,7 @@
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import { AppError } from '../../../../utils/errors'
-import type { DcwFetchHistoryInput, DcwFetchHistoryResult, DcwHistoryRow, DcwReadInput, DcwReadResult, DcwWriteDriver, DcwWriteInput, DcwWriteResult } from './shared'
+import type { DcwFetchHistoryInput, DcwFetchHistoryResult, DcwHistoryFormat, DcwHistoryRow, DcwReadInput, DcwReadResult, DcwWriteDriver, DcwWriteInput, DcwWriteResult } from './shared'
 import { num, readbackAck } from './shared'
 
 // ============================================================
@@ -45,7 +45,20 @@ interface MesHistoryMap {
   path: string
   query: Record<string, string>
   headers: Record<string, string>
-  response: { rowsPath: string, valuePath: string, tsPath: string, nextCursorPath?: string }
+  response: {
+    rowsPath: string
+    /** scalar 行数值路径(format=scalar 时必填;其余格式可省) */
+    valuePath?: string
+    tsPath: string
+    /** 格式缺省 scalar;vector/image/table/event 见 DcwHistoryFormat */
+    format: DcwHistoryFormat
+    /** vector:每行向量数组路径 */
+    valuesPath?: string
+    /** image:每行 base64 路径与 MIME 路径 */
+    dataPath?: string
+    mimePath?: string
+    nextCursorPath?: string
+  }
   pageSize?: number
   maxPages: number
 }
@@ -129,6 +142,25 @@ function parseHistoryMap(cfg: Record<string, unknown>): MesHistoryMap | null {
   if (v === undefined) return null
   const rec = asRecord(v, 'historyMap')
   const resp = asRecord(rec.response, 'historyMap.response')
+  const formatRaw = optString(resp.format) ?? 'scalar'
+  const FORMATS: DcwHistoryFormat[] = ['scalar', 'vector', 'image', 'table', 'event']
+  if (!FORMATS.includes(formatRaw as DcwHistoryFormat)) {
+    throw new AppError(400, 'BAD_REQUEST', `historyMap.response.format 仅支持 ${FORMATS.join('/')}(当前 ${formatRaw})`)
+  }
+  const format = formatRaw as DcwHistoryFormat
+  const valuePath = optString(resp.valuePath)
+  const valuesPath = optString(resp.valuesPath)
+  const dataPath = optString(resp.dataPath)
+  // 载荷路径按格式校验:scalar 必须给 valuePath;vector 必须给 valuesPath;image 必须给 dataPath
+  if (format === 'scalar' && !valuePath) {
+    throw new AppError(400, 'BAD_REQUEST', 'historyMap.response.valuePath 必填(format=scalar)')
+  }
+  if (format === 'vector' && !valuesPath) {
+    throw new AppError(400, 'BAD_REQUEST', 'historyMap.response.valuesPath 必填(format=vector,每行向量数组路径,如 "profile")')
+  }
+  if (format === 'image' && !dataPath) {
+    throw new AppError(400, 'BAD_REQUEST', 'historyMap.response.dataPath 必填(format=image,每行图像 base64 路径,如 "data")')
+  }
   const pageSize = rec.pageSize === undefined ? undefined : Number(rec.pageSize)
   const maxPages = rec.maxPages === undefined ? 40 : Number(rec.maxPages)
   return {
@@ -138,8 +170,12 @@ function parseHistoryMap(cfg: Record<string, unknown>): MesHistoryMap | null {
     headers: stringRecord(rec.headers, 'historyMap.headers'),
     response: {
       rowsPath: reqString(resp, 'rowsPath', 'historyMap.response'),
-      valuePath: reqString(resp, 'valuePath', 'historyMap.response'),
+      valuePath,
       tsPath: reqString(resp, 'tsPath', 'historyMap.response'),
+      format,
+      valuesPath,
+      dataPath,
+      mimePath: optString(resp.mimePath),
       nextCursorPath: optString(resp.nextCursorPath),
     },
     pageSize: pageSize !== undefined && Number.isFinite(pageSize) && pageSize > 0 ? pageSize : undefined,
@@ -461,6 +497,16 @@ async function readOnce(cfg: Record<string, unknown>, map: MesReadMap): Promise<
 // 驱动本体
 // ============================================================
 
+/** 节点历史格式速查(目录/控制器展示与模式分流用;坏配置按 scalar 兜底不抛) */
+export function historyFormatOf(cfg: Record<string, unknown>): DcwHistoryFormat {
+  try {
+    return parseHistoryMap(cfg)?.response.format ?? 'scalar'
+  }
+  catch {
+    return 'scalar'
+  }
+}
+
 export const mesRestDcwDriver: DcwWriteDriver = {
   kind: 'mes-rest',
   async available() {
@@ -542,12 +588,47 @@ export const mesRestDcwDriver: DcwWriteDriver = {
       if (status < 200 || status >= 300) throw new AppError(502, 'MES_HTTP_ERROR', classifyHttpFail(status))
       const rawRows = extract(json, map.response.rowsPath)
       if (!Array.isArray(rawRows)) throw new AppError(502, 'MES_HTTP_ERROR', `historyMap.response.rowsPath(${map.response.rowsPath})未提取到数组`)
+      const fmt = map.response.format
       const batch: DcwHistoryRow[] = []
       for (const row of rawRows) {
         if (rows + batch.length >= input.maxRows) break
-        const value = toFinite(extract(row, map.response.valuePath))
         const ts = tsToIso(extract(row, map.response.tsPath))
-        if (value !== undefined && ts !== null) batch.push({ ts, value })
+        if (ts === null) continue
+        if (fmt === 'vector') {
+          // 检测向量行:valuesPath 提取数组,逐元素数值归一(非数值元素剔除)
+          const arr = extract(row, map.response.valuesPath ?? '')
+          if (!Array.isArray(arr) || arr.length === 0) continue
+          const values = arr.map(v => toFinite(v)).filter((x): x is number => x !== undefined)
+          if (values.length === 0) continue
+          batch.push({ ts, values })
+        }
+        else if (fmt === 'image') {
+          // 图像帧:base64 提取(空串跳过);MIME 缺省 image/png。
+          // 同时保留行元数据(去掉 base64 字段后的原始行:defects/width 等)到 record,
+          // 供钩子/统计读取 —— 图像的信息量不止像素,MES 检测算法的伴随字段常是诊断关键。
+          const data = extract(row, map.response.dataPath ?? '')
+          if (typeof data !== 'string' || data.trim() === '') continue
+          const mimeRaw = map.response.mimePath ? extract(row, map.response.mimePath) : undefined
+          const meta: Record<string, unknown> = {}
+          if (row !== null && typeof row === 'object') {
+            const dataKey = (map.response.dataPath ?? '').split('.').pop() ?? ''
+            for (const [k, v] of Object.entries(row as Record<string, unknown>)) {
+              if (k === dataKey || v === data) continue
+              if (typeof v === 'string' && v.length > 256) continue // 超长字符串不入 meta(防 base64 变体)
+              meta[k] = v
+            }
+          }
+          batch.push({ ts, data, mime: typeof mimeRaw === 'string' && mimeRaw.includes('/') ? mimeRaw : 'image/png', record: meta })
+        }
+        else if (fmt === 'table' || fmt === 'event') {
+          // 记录行:整行 JSON 保留(table=批次汇总/事件=离散事件;ts 仍归一 ISO 供对齐)
+          if (row === null || typeof row !== 'object') continue
+          batch.push({ ts, record: row })
+        }
+        else {
+          const value = toFinite(extract(row, map.response.valuePath ?? ''))
+          if (value !== undefined) batch.push({ ts, value })
+        }
       }
       if (batch.length > 0) await input.onRows(batch)
       rows += batch.length

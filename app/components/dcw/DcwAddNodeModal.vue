@@ -17,11 +17,13 @@ const props = defineProps<{
   addTest: { ok: boolean, message: string } | null
   addMesTesting: boolean
   addMesResult: { ok: boolean, eng: number | null, ts: string | null, latencyMs: number | null, message: string } | null
+  addMesHookTesting: boolean
+  addMesHookResult: { ok: boolean, format: string, rows: number, message: string, summary: string } | null
   addSaving: boolean
   addError: string
 }>()
 
-const emit = defineEmits<{ 'test': [], 'mes-test': [], 'submit': [] }>()
+const emit = defineEmits<{ 'test': [], 'mes-test': [], 'mes-hook-test': [], 'submit': [] }>()
 
 const { t } = useI18n()
 
@@ -53,6 +55,14 @@ const mesResultText = computed(() => {
     return `${eng}${r.latencyMs != null ? ` · ${r.latencyMs}ms` : ''}`
   }
   return r.message
+})
+
+/** 钩子试运行内联结果文案:格式+行数+hook 摘要/产物 */
+const mesHookResultText = computed(() => {
+  const r = props.addMesHookResult
+  if (!r) return ''
+  if (!r.ok) return r.message || r.summary
+  return `format=${r.format} rows=${r.rows} ${r.summary}`
 })
 </script>
 
@@ -293,6 +303,24 @@ const mesResultText = computed(() => {
             class="test-result"
             :class="addMesResult.ok ? 'good' : 'bad'"
           >{{ addMesResult.ok ? '✓' : '✗' }} {{ mesResultText }}</span>
+        </div>
+        <!-- mes-rest 数据钩子试运行(小窗口实拉 + dataHook 真实执行;产物落盘;404 容错) -->
+        <div
+          v-if="isMesRest"
+          class="test-row"
+        >
+          <button
+            class="mini-btn"
+            :disabled="addMesHookTesting"
+            @click="emit('mes-hook-test')"
+          >
+            {{ addMesHookTesting ? $t('dcwDetail.mesHookTesting') : $t('dcwDetail.mesHookTestBtn') }}
+          </button>
+          <span
+            v-if="addMesHookResult"
+            class="test-result"
+            :class="addMesHookResult.ok ? 'good' : 'bad'"
+          >{{ addMesHookResult.ok ? '✓' : '✗' }} {{ mesHookResultText }}</span>
         </div>
       </template>
 

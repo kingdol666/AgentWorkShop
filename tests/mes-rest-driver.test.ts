@@ -46,6 +46,28 @@ before(async () => {
         if (body.value > 100) return reply(400, { error: 'out of range', limit: 100 })
         return reply(201, { ack: true, applied: body.value })
       }
+      // 向量历史:profile 断面 3 帧(cursor 分页同标量机制)
+      if (url.pathname === '/vectors') {
+        const t = Date.now()
+        const prof = (k: number) => [50 + k, 50.5 + k, 51 + k]
+        return reply(200, { data: { rows: [{ ts: t, profile: prof(0) }, { ts: t + 2000, profile: prof(1) }, { ts: t + 4000, profile: prof(2) }], nextCursor: null } })
+      }
+      // 图像历史:2 帧 base64 帧(1x1 PNG 头占位字符串即可,驱动不解码)
+      if (url.pathname === '/frames') {
+        const t = Date.now()
+        return reply(200, { data: { frames: [
+          { ts: t, mime: 'image/png', data: Buffer.from('fake-png-a').toString('base64') },
+          { ts: t + 10_000, mime: 'image/png', data: Buffer.from('fake-png-b').toString('base64') },
+        ] } })
+      }
+      // 记录历史(表格):批次汇总 2 行
+      if (url.pathname === '/records') {
+        const t = Date.now()
+        return reply(200, { data: { rows: [
+          { ts: t, batch_id: 'B1', mean: 50.2, verdict: 'PASS' },
+          { ts: t + 900_000, batch_id: 'B2', mean: 51.4, verdict: 'FAIL' },
+        ] } })
+      }
       // 历史:cursor 分页(第 1 页 3 行 nextCursor='p2';第 2 页 2 行 nextCursor=null)
       if (url.pathname === '/history') {
         const t = Date.now()
@@ -205,4 +227,65 @@ test('mes-rest headers: 映射级覆盖节点默认;未解析占位符整头省�
   })
   assert.equal(r.ok, true)
   assert.equal(r.eng, 77.7)
+})
+
+// ── 格式全谱:vector / image / table 行提取(historyMap.response.format) ──
+
+test('mes-rest historyMap format=vector: valuesPath 提取向量行', async () => {
+  const dcfg = cfg({ historyMap: JSON.stringify({
+    path: '/vectors',
+    response: { rowsPath: 'data.rows[*]', tsPath: 'ts', format: 'vector', valuesPath: 'profile' },
+  }) })
+  const got: unknown[] = []
+  const r = await mesRestDcwDriver.fetchHistory!({ driverConfig: dcfg, fromIso: new Date().toISOString(), toIso: new Date().toISOString(), maxRows: 10, onRows: (b) => {
+    got.push(...b)
+  } })
+  assert.equal(r.rows, 3)
+  assert.equal(r.complete, true)
+  assert.deepEqual((got[0] as { values: number[] }).values, [50, 50.5, 51])
+  assert.equal((got[2] as { values: number[] }).values[2], 53)
+})
+
+test('mes-rest historyMap format=image: dataPath/mimePath 提取帧', async () => {
+  const dcfg = cfg({ historyMap: JSON.stringify({
+    path: '/frames',
+    response: { rowsPath: 'data.frames[*]', tsPath: 'ts', format: 'image', dataPath: 'data', mimePath: 'mime' },
+  }) })
+  const got: unknown[] = []
+  const r = await mesRestDcwDriver.fetchHistory!({ driverConfig: dcfg, fromIso: new Date().toISOString(), toIso: new Date().toISOString(), maxRows: 10, onRows: (b) => {
+    got.push(...b)
+  } })
+  assert.equal(r.rows, 2)
+  assert.equal((got[0] as { mime: string }).mime, 'image/png')
+  assert.equal(Buffer.from((got[1] as { data: string }).data, 'base64').toString(), 'fake-png-b')
+})
+
+test('mes-rest historyMap format=table: 整行记录保留', async () => {
+  const dcfg = cfg({ historyMap: JSON.stringify({
+    path: '/records',
+    response: { rowsPath: 'data.rows[*]', tsPath: 'ts', format: 'table' },
+  }) })
+  const got: unknown[] = []
+  const r = await mesRestDcwDriver.fetchHistory!({ driverConfig: dcfg, fromIso: new Date().toISOString(), toIso: new Date().toISOString(), maxRows: 10, onRows: (b) => {
+    got.push(...b)
+  } })
+  assert.equal(r.rows, 2)
+  assert.equal((got[0] as { record: { batch_id: string } }).record.batch_id, 'B1')
+})
+
+test('mes-rest historyMap: vector 缺 valuesPath / image 缺 dataPath → 配置期拒绝(test → ok=false)', async () => {
+  // test() 收敛一切错误为 {ok:false,message}(读是网关节拍原语,不抛)
+  const badVector = await mesRestDcwDriver.test(cfg({ historyMap: JSON.stringify({
+    path: '/vectors', response: { rowsPath: 'data.rows[*]', tsPath: 'ts', format: 'vector' },
+  }) }))
+  assert.equal(badVector.ok, false)
+  assert.match(badVector.message, /valuesPath/)
+  const badImage = await mesRestDcwDriver.test(cfg({ historyMap: JSON.stringify({
+    path: '/frames', response: { rowsPath: 'data.frames[*]', tsPath: 'ts', format: 'image' },
+  }) }))
+  assert.match(badImage.message, /dataPath/)
+  const badFormat = await mesRestDcwDriver.test(cfg({ historyMap: JSON.stringify({
+    path: '/x', response: { rowsPath: 'data.rows[*]', tsPath: 'ts', format: 'wav' },
+  }) }))
+  assert.match(badFormat.message, /format/)
 })

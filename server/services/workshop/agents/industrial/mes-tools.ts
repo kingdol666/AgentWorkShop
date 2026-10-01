@@ -57,9 +57,12 @@ export async function toolMesCatalog(agentId: string, args: { q?: string, line_i
 }
 
 /** 工具:mes_fetch —— MES 历史取数(护栏代码级:绑线授权/窗口≤7天/行数≤5000/每分钟≤6次)。
- *  三模式:无 from/to=当前值快照;小窗口内联统计;大请求异步落 CSV 数据集(回 job_id/dataset_id,
- *  勿轮询,用 mes_datasets 查状态)。回包只含统计摘要 + ≤3 行采样,MES 原文不进对话。 */
-export async function toolMesFetch(agentId: string, args: { ids?: unknown, from?: string, to?: string, max_rows?: number | string } = {}): Promise<{ text: string, isError?: boolean }> {
+ *  格式全谱:标量/向量(膜厚断面等)/图像帧(CCD,自动落盘)/表格/事件记录;按点位格式呈现统计与采样。
+ *  param 透传给节点已配置的 requestHook/dataHook(用户自写代码做请求构造与数据下沉处理,
+ *  处理摘要与产物清单随回包返回)。三模式:无 from/to=当前值快照;小窗口内联统计;
+ *  大请求异步落 CSV 数据集(回 job_id/dataset_id,勿轮询,用 mes_datasets 查状态)。
+ *  铁律:回包只含统计摘要与 ≤3 行采样,MES 行级原文不进对话。 */
+export async function toolMesFetch(agentId: string, args: { ids?: unknown, from?: string, to?: string, max_rows?: number | string, param?: unknown } = {}): Promise<{ text: string, isError?: boolean }> {
   try {
     const r = await mesController().fetch(agentId, args)
     return { text: r.text, isError: r.isError }

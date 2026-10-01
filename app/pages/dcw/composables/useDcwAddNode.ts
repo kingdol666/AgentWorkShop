@@ -35,6 +35,9 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
   // MES REST 试读(mes-rest 驱动专属;与「测试连接」写链路并列的读链路验证)
   const addMesTesting = ref(false)
   const addMesResult = ref<{ ok: boolean, eng: number | null, ts: string | null, latencyMs: number | null, message: string } | null>(null)
+  // MES 数据钩子试运行(小窗口实拉 + dataHook 真实执行;产物落盘)
+  const addMesHookTesting = ref(false)
+  const addMesHookResult = ref<{ ok: boolean, format: string, rows: number, message: string, summary: string } | null>(null)
   const addSaving = ref(false)
   const addError = ref('')
 
@@ -91,6 +94,29 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
     }
     finally {
       addMesTesting.value = false
+    }
+  }
+
+  /** MES 数据钩子试运行:POST /dcw/mes-hook-test(后端端点并行上线,404 容错) */
+  async function doMesHookTest(): Promise<void> {
+    addMesHookTesting.value = true
+    addMesHookResult.value = null
+    try {
+      const r = await dcw.mesHookTest({ ...addCfg.value })
+      const h = r.hook ?? null
+      const summary = h
+        ? (h.ok
+            ? `${h.summary ?? ''}${h.context ? ' | ' + h.context : ''}${(h.artifacts ?? []).length > 0 ? ' | 产物 ' + (h.artifacts ?? []).map(a => a.name).join(',') : ''}`
+            : `钩子失败: ${h.error ?? '?'} `)
+        : `${r.message ?? ''}`
+      addMesHookResult.value = { ok: r.ok && (!h || h.ok), format: r.format, rows: r.rows, message: r.message ?? '', summary }
+    }
+    catch (err) {
+      const notReady = err instanceof ApiError && err.status === 404
+      addMesHookResult.value = { ok: false, format: '-', rows: 0, message: notReady ? t('dcwDetail.mesHookNotReady') : apiErrorMessage(err), summary: '' }
+    }
+    finally {
+      addMesHookTesting.value = false
     }
   }
 
@@ -153,6 +179,9 @@ export function useDcwAddNode(scope: ReturnType<typeof useDcwDetailScope>) {
     addFields,
     doTestConnection,
     doMesTestRead,
+    addMesHookTesting,
+    addMesHookResult,
+    doMesHookTest,
     doAddNode,
   }
 }

@@ -1028,7 +1028,7 @@
  {
   "name": "mes_catalog",
   "label": "MES Catalog",
-  "description": "检索 MES REST 点位目录(driver=mes-rest 的数控点位)。每条含 id/名称/产线/单位/量程与能力位(读=当前值,写=设定值,史=可取历史)与点位描述。是 mes_fetch 取数与 mes_dataset_read 的寻址入口;支持按关键字(q,匹配名称与描述)与产线(line_id)过滤。只读目录,不触达设备。",
+  "description": "检索 MES REST 点位目录(driver=mes-rest 的数控点位)。每条含 id/名称/产线/单位/量程与能力位(读=当前值,写=设定值,史=可取历史;史·vector=每时间点一个检测向量如膜厚断面/双折射光谱,史·image=图像帧如 CCD 相机,史·table/史·event=表格/事件记录流,钩子=该点位已配置数据下沉处理)与点位描述。是 mes_fetch 取数的寻址入口;支持按关键字(q,匹配名称与描述)与产线(line_id)过滤。只读目录,不触达设备。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -1050,13 +1050,15 @@
  {
   "name": "mes_fetch",
   "label": "MES Fetch",
-  "description": "从 MES REST 点位取数(代码级护栏:仅限你绑定的数控点位;时间窗 ≤7 天;单次 ≤5000 行;每 60 秒最多 6 次)。三种模式:不传 from/to = 当前值快照直读;from/to 且 max_rows≤2000 = 同步返回统计摘要;max_rows>2000 = 异步落 CSV 数据集,返回 job_id/dataset_id —— 勿轮询,未完成先做别的,用 mes_datasets 查状态、mes_dataset_read 读内容。铁律:回包只含统计摘要与 ≤3 行采样,MES 行级原文不进对话,全量数据在数据集文件里。",
+  "description": "从 MES REST 点位取数(代码级护栏:仅限你绑定的数控点位;时间窗 ≤7 天;单次 ≤5000 行;每 60 秒最多 6 次)。格式自适应:标量点位回统计摘要;向量点位(每时间点一个检测向量,如膜厚断面 48 道)回按行均值的统计+维度+首中末采样;图像点位(如 CCD 帧)自动把帧落盘为文件、回包只给文件名与大小,图像 base64 永不进入对话;表格/事件点位回记录采样。若点位配置了数据钩子(dataHook),取数后会自动执行用户预设的下沉处理(绘图存档/存 CSV/统计),回包附处理摘要、处理说明与产物文件清单——直接引用它们,不要要求再给原文。param 对象会透传给钩子(如 {\"lane\": 12} 只看某车道)。三种模式:不传 from/to = 当前值快照直读;from/to 且 max_rows≤2000 = 同步内联;max_rows>2000 = 异步落 CSV 数据集(仅标量/向量;图像/表格/事件只支持内联),返回 job_id/dataset_id —— 勿轮询,用 mes_datasets 查状态、mes_dataset_read 读内容。",
   "parameters": {
    "type": "object",
    "properties": {
     "ids": {
      "type": "array",
-     "items": { "type": "string" },
+     "items": {
+      "type": "string"
+     },
      "description": "目标点位 id 数组(mes_catalog 输出的 id;须为你绑定的数控点位)"
     },
     "from": {
@@ -1070,9 +1072,15 @@
     "max_rows": {
      "type": "number",
      "description": "行数上限(缺省 500,硬上限 5000;>2000 走异步数据集)"
+    },
+    "param": {
+     "type": "object",
+     "description": "透传给点位数据钩子的参数对象(Agent 只传业务参数,如 {\"lane\":12,\"agg\":\"mean\"};请求构造与数据处理逻辑由点位配置决定);无钩子点位可省略"
     }
    },
-   "required": ["ids"]
+   "required": [
+    "ids"
+   ]
   }
  },
  {
@@ -1095,7 +1103,9 @@
      "description": "rows 模式的起始行号(缺省 0)"
     }
    },
-   "required": ["dataset_id"]
+   "required": [
+    "dataset_id"
+   ]
   }
  },
  {

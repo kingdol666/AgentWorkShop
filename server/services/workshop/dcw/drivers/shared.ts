@@ -70,11 +70,28 @@ export interface DcwReadResult {
 // 历史拉取原语(可选;MES REST 等具备历史接口的驱动实现)
 // ============================================================
 
-/** 历史行(统一形态:ISO 8601 时间戳 + 工程值) */
+/**
+ * 历史行(统一形态:ISO 8601 时间戳 + 按格式的载荷之一)。
+ * 格式全谱:scalar=每时间点一个数值;vector=每时间点一个向量(膜厚断面/双折射光谱等
+ * 检测算法输出);image=每时间点一帧图像(CCD 相机,base64);table/event=任意记录
+ * (批次汇总表/离散事件)。四种载荷互斥;标量历史行只填 value(向后兼容)。
+ */
 export interface DcwHistoryRow {
   ts: string
-  value: number
+  /** scalar:工程值 */
+  value?: number
+  /** vector:检测向量(断面/光谱;维度同点位恒定) */
+  values?: number[]
+  /** image:图像 base64(不带 data: 前缀) */
+  data?: string
+  /** image:MIME(缺省 image/png) */
+  mime?: string
+  /** table/event:原始记录(JSON 值) */
+  record?: unknown
 }
+
+/** 历史格式(声明在 historyMap.response.format;缺省 scalar) */
+export type DcwHistoryFormat = 'scalar' | 'vector' | 'image' | 'table' | 'event'
 
 export interface DcwFetchHistoryInput {
   driverConfig: Record<string, unknown>

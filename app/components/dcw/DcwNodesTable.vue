@@ -25,6 +25,7 @@ const emit = defineEmits<{
   'read': [nodeId: string]
   'write': [nodeId: string, value: number]
   'patch-step-limit': [nodeId: string, value: number | null]
+  'artifacts': [nodeId: string]
   'remove': [nodeId: string]
 }>()
 
@@ -195,6 +196,14 @@ function saveStep(n: DcwNodeView): void {
               <small class="dim">{{ $t('dcwDetail.stepCurrent', { p0: n.stepLimit ?? $t('dcwDetail.stepUnset') }) }} {{ n.unit }}</small>
             </td>
             <td class="right">
+              <button
+                v-if="n.driver === 'mes-rest'"
+                class="mini-btn"
+                :title="$t('dcwDetail.mesArtifactsTitle')"
+                @click="emit('artifacts', n.id)"
+              >
+                {{ $t('dcwDetail.mesArtifactsBtn') }}
+              </button>
               <button
                 class="mini-btn danger"
                 @click="emit('remove', n.id)"

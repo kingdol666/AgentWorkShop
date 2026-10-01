@@ -21,8 +21,15 @@ import { AppError, ErrorCodes } from '../../../utils/errors'
 // 驱动历史原语(本地结构化声明;不 import 驱动实现)
 // ============================================================
 
-/** 历史行(时间戳 ISO + 工程量数值) */
-export interface DcwHistoryRow { ts: string, value: number }
+/** 历史行(格式全谱:标量/向量/图像/记录;数据集 CSV 只消费 scalar 与 vector) */
+export interface DcwHistoryRow {
+  ts: string
+  value?: number
+  values?: number[]
+  data?: string
+  mime?: string
+  record?: unknown
+}
 
 export interface DcwFetchHistoryInput {
   driverConfig: Record<string, unknown>
@@ -53,6 +60,20 @@ export function csvEscapeField(v: string): string {
 export function csvLineOf(ts: string, value: number): string {
   const v = Number.isFinite(value) ? String(value) : ''
   return `${csvEscapeField(ts)},${v}`
+}
+
+/**
+ * 向量宽表一行:ts,v0..v{n-1}。维度以首行为准:短行补空(统计侧跳过),长行截断;
+ * 返回 null = 该行不落盘(非数值向量)。
+ */
+export function csvVectorLineOf(ts: string, values: number[], dim: number): string | null {
+  if (!Array.isArray(values) || values.length === 0 || dim < 1) return null
+  const cells = [csvEscapeField(ts)]
+  for (let i = 0; i < dim; i++) {
+    const v = i < values.length ? values[i] : undefined
+    cells.push(Number.isFinite(v) ? String(v) : '')
+  }
+  return cells.join(',')
 }
 
 /** RFC4180 行解析(支持引号内逗号/双引号转义;单行内不含裸换行) */
@@ -263,12 +284,21 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
     const hash = createHash('sha256')
     let rows = 0
     let fd: number | null = null
+    // 表头延迟决策:首行形态决定标量两列 / 向量宽表(维度以首行为准)
+    let headerWritten = false
+    let wide = false
+    let dim = 0
+    let dimDrift = 0
+    let skipped = 0
     try {
       if (typeof driver.fetchHistory !== 'function') {
         throw new Error('mes-rest 驱动未提供 fetchHistory 原语(驱动实现缺失或未注册)')
       }
       fd = openSync(filePath, 'w')
-      writeAll(fd, hash, 'ts,value\r\n')
+      const writeHeader = (line: string): void => {
+        writeAll(fd!, hash, `${line}\r\n`)
+        headerWritten = true
+      }
       const result = await driver.fetchHistory({
         driverConfig: (input.driverConfig ?? {}) as Record<string, unknown>,
         fromIso: String(input.fromIso ?? ''),
@@ -279,18 +309,50 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
           const lines: string[] = []
           for (const r of batch) {
             if (rows >= maxRows) break // 截断保护:即使驱动超发也不越上限
-            lines.push(csvLineOf(String(r?.ts ?? ''), Number(r?.value)))
+            if (Array.isArray(r?.values)) {
+              if (!headerWritten) {
+                dim = r.values.length
+                wide = true
+                writeHeader(`ts,${Array.from({ length: dim }, (_, i) => `v${i}`).join(',')}`)
+              }
+              if (!wide || dim < 1) {
+                skipped++
+                continue
+              }
+              if (r.values.length !== dim) dimDrift++
+              const line = csvVectorLineOf(String(r?.ts ?? ''), r.values, dim)
+              if (line === null) {
+                skipped++
+                continue
+              }
+              lines.push(line)
+              rows++
+              continue
+            }
+            // 标量行(或图像/记录行:数据集不落,跳过计数)
+            if (typeof r?.value !== 'number') {
+              skipped++
+              continue
+            }
+            if (!headerWritten) writeHeader('ts,value')
+            lines.push(csvLineOf(String(r?.ts ?? ''), r.value))
             rows++
           }
           if (lines.length > 0) writeAll(fd!, hash, `${lines.join('\r\n')}\r\n`)
         },
       })
+      if (!headerWritten) writeHeader('ts,value') // 空结果也要有表头(统计/读回一致性)
       if (fd != null) {
         closeSync(fd)
         fd = null
       }
       // 驱动自报不完整 → ready 但 error 留截断备注(数据仍可用);完整 → error 清空
-      const note = result && result.complete === false ? `truncated:驱动在 maxRows=${maxRows} 内未返回完整窗口` : ''
+      const notes = [
+        result && result.complete === false ? `truncated:驱动在 maxRows=${maxRows} 内未返回完整窗口` : '',
+        wide ? `vector 宽表(dim=${dim}${dimDrift > 0 ? `,维度漂移 ${dimDrift} 行` : ''})` : '',
+        skipped > 0 ? `skipped:${skipped} 行不落盘` : '',
+      ].filter(Boolean)
+      const note = notes.join('; ')
       finalizeDatasetReady.run(rows, hash.digest('hex'), note, datasetId)
       finalizeJobDone.run(rows, new Date().toISOString(), jobId)
     }

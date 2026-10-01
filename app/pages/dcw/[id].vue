@@ -44,7 +44,17 @@ const { lineProductId, lineRecipeId, lineBusy, lineMsg, lineErr, lineRecipes, do
 const { filterProductId, visibleRecipes, productOpen, productSaving, productError, productForm, doCreateProduct } = products
 const { verOpen, verRecipe, verRows, verLoading, verMsg, doRevert, recipeOpen, recipeEditing, recipeSaving, recipeError, recipeStaleNote, recipeForm, applyResult, runDataView, runDataLoading, openRecipeCreate, openRecipeEdit, openRecipeHistory, saveRecipe, doApplyRecipe, doViewRun } = recipes
 const { query, queryBusy, queryError, queryResult, doQuery, daqParamKeys } = queryCtl
-const { addOpen, addScenario, addTemplate, addDriver, addName, addHold, addRead, addWriteLock, addStepLimit, addCfg, addTransform, addSemantics, addTesting, addTest, addMesTesting, addMesResult, addSaving, addError, addFields, driverCatalog, doTestConnection, doMesTestRead, doAddNode } = addNode
+const { addOpen, addScenario, addTemplate, addDriver, addName, addHold, addRead, addWriteLock, addStepLimit, addCfg, addTransform, addSemantics, addTesting, addTest, addMesTesting, addMesResult, addMesHookTesting, addMesHookResult, addSaving, addError, addFields, driverCatalog, doTestConnection, doMesTestRead, doMesHookTest, doAddNode } = addNode
+
+// MES 产物弹窗状态(节点表「产物」入口)
+const mesArtifactsOpen = ref(false)
+const mesArtifactsNodeId = ref('')
+const mesArtifactsNodeName = ref('')
+function openMesArtifacts(nodeId: string): void {
+  mesArtifactsNodeId.value = nodeId
+  mesArtifactsNodeName.value = lineNodes.value.find(n => n.id === nodeId)?.name ?? nodeId
+  mesArtifactsOpen.value = true
+}
 const { tplOpen, tplSaving, tplError, tplOk, tplForm, tplIcons, builtinCount, customCount, openTplModal, doCreateTemplate } = tplCtl
 const { approvalItems, approvalComments, approvalDecidingId, approvalRemainingSec, approvalAgentName, approvalNodeName, decideApproval } = approvals
 const { items: expItems, decidingId: expDecidingId, decideError: expDecideError, decide: decideExp } = expConfirms
@@ -157,10 +167,13 @@ const { items: rdItems, comments: rdComments, decidingId: rdDecidingId, decideEr
       :add-test="addTest"
       :add-mes-testing="addMesTesting"
       :add-mes-result="addMesResult"
+      :add-mes-hook-testing="addMesHookTesting"
+      :add-mes-hook-result="addMesHookResult"
       :add-saving="addSaving"
       :add-error="addError"
       @test="doTestConnection"
       @mes-test="doMesTestRead"
+      @mes-hook-test="doMesHookTest"
       @submit="doAddNode"
     />
 
@@ -212,7 +225,15 @@ const { items: rdItems, comments: rdComments, decidingId: rdDecidingId, decideEr
       @read="doRead"
       @write="doWrite"
       @patch-step-limit="patchStepLimit"
+      @artifacts="openMesArtifacts"
       @remove="dcw.removeNode"
+    />
+
+    <!-- MES 点位产物浏览(hook 落盘的图/CSV/SVG;组件自取数) -->
+    <DcwMesArtifacts
+      v-model:open="mesArtifactsOpen"
+      :node-id="mesArtifactsNodeId"
+      :node-name="mesArtifactsNodeName"
     />
 
     <!-- 产品与配方管理 -->
