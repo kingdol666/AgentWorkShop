@@ -11,6 +11,7 @@ import { getAgentNodeBindingRepo } from './node-bindings.repo'
 import { getDcwController } from '../dcw/dcw-controller'
 import { getDcwNodeRepo } from '../dcw/dcw-node.repo'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
+import { getDcwProductRepo } from '../dcw/dcw-product.repo'
 import { getActiveLineRun } from '../dcw/line-run'
 import { findDcwTemplate } from '../dcw/dcw-templates'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
@@ -20,6 +21,7 @@ import { getDeviceTwinRepo } from '../assets/device-twin.repo'
 import { getRecipeRollBackManager } from '../dcw/recipe-rollback-manager'
 import { limitsBreakdownOf } from '../dcw/param-limits'
 import { MES_REST_DRIVER_KIND, mesCatalogEntryOf } from '../mes/mes-controller'
+import { getDcwParamRepo } from '../dcw/param-map.repo'
 
 /** 从属设备描述(名称/状态/实时遥测;数据驱动) */
 function describeTwin(bindId: string | null | undefined): string | null {
@@ -40,7 +42,13 @@ function dcwSemanticCard(nodeId: string, mode: string): string | null {
   const node = getDcwController().byId(nodeId)
   if (!node) return null
   const tpl = findDcwTemplate(node.templateKey)
-  const sem = (node.semantics ?? tpl?.semantics ?? '').trim()
+  const isMes = node.driver === MES_REST_DRIVER_KIND
+  // 语义三层合并:节点 semantics > 模板 semantics > mes-rest 的 driverConfig.desc;
+  // 全空时给结构化兜底行(诚实标注"待补",不装作有语义)
+  const nodeSem = (node.semantics ?? '').trim()
+  const tplSem = (tpl?.semantics ?? '').trim()
+  const mesDesc = isMes ? String((node.driverConfig as Record<string, unknown>)?.desc ?? '').trim() : ''
+  const sem = nodeSem || tplSem || mesDesc
   const line = node.lineId ? getDcwLineRepo().byId(node.lineId) : undefined
   const run = node.lineId ? getActiveLineRun(node.lineId) : null
   const recipe = run ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
@@ -48,12 +56,16 @@ function dcwSemanticCard(nodeId: string, mode: string): string | null {
   const twinDesc = describeTwins(node).join(' | ') || null
   const stepProfile = limitsBreakdownOf(node)
   const stepText = stepProfile.stepLimit == null ? '未配置(探索阶段禁止无界写入)' : `${Number(stepProfile.stepLimit.toFixed(node.decimals))}${node.unit}(来源:${stepProfile.stepLimitSource})`
+  const route = isMes
+    ? '写入经 MES 集成下发(REST API;多字段接口由 writeHook 只组装本节点声明的字段,writeCheckHook 二次校验回执)'
+    : `写入经驱动 ${node.driver} 下发 PLC(寄存器/换算封装在驱动配置内,你只面对工程量)`
 
   const lines = [
-    `#### ◆ ${node.name} [id=${nodeId}]`,
+    `#### ◆ ${node.name} [id=${nodeId}]${isMes ? '[MES 集成点位]' : ''}`,
     `- 物理量: ${tpl?.ch ?? node.templateKey},单位 ${node.unit},精度 ${node.decimals} 位小数`,
   ]
-  if (sem) lines.push(`- 工艺语义: ${sem}`)
+  if (sem) lines.push(`- 工艺语义: ${sem}${nodeSem ? '' : tplSem ? '(来自模板)' : '(来自 MES 点位描述)'}`)
+  else lines.push(`- 工艺语义: (待补)该节点未填写工艺语义 —— 物理量 ${tpl?.ch ?? node.templateKey};请让用户在模板/节点语义中补充物理机理与调参守则后再做大幅调整`)
   lines.push(`- 安全量程: [${node.min}, ${node.max}] ${node.unit}(硬联锁,越界即拒)`)
   if (param && (param.min != null || param.max != null)) {
     lines.push(`- 活动配方「${recipe!.name}」工艺窗口: [${param.min ?? '-∞'}, ${param.max ?? '+∞'}] ${node.unit}(软联锁,配方目标值 ${param.value}${node.unit ?? ''})`)
@@ -63,7 +75,8 @@ function dcwSemanticCard(nodeId: string, mode: string): string | null {
   }
   lines.push(`- 当前设定: ${node.value != null ? `${node.value}${node.unit}` : '未下发'},状态 ${node.state},所属产线「${line?.name ?? '未分配'}」`)
   if (twinDesc) lines.push(`- 从属设备: ${twinDesc};你的写入经 PLC 下发后反映到该设备的物理行为`)
-  lines.push(`- 操作守则: 单次调幅硬上限 ≤${stepText};Agent 写入间隔至少 60s;下发后等待工艺响应再评估;目标值必须落在窗口内;驱动 ${node.driver};${mode === 'manual' ? '**手动确认模式**,每次下发会请求用户批准,请在下发前说明理由' : '自动模式,直接执行'}`)
+  lines.push(`- 下发链路: ${route};参数写入与下发一律走你绑定的配方(recipe_update 保存版本 / recipe_apply 整批下发 / recipe_trial 候选试验),四层限界(量程∩参数∩产品∩配方)与单步上限在配方面照常生效`)
+  lines.push(`- 操作守则: 单次调幅硬上限 ≤${stepText};下发后等待工艺响应再评估;目标值必须落在窗口内;${mode === 'manual' ? '**手动确认模式**,每次下发会请求用户批准,请在下发前说明理由' : mode === 'recipe' ? '经配方绑定操作:绑定 manual 时逐动作人工批准,auto 直接执行(配方未在运行时不可操作)' : '自动模式,直接执行'}`)
   return lines.join('\n')
 }
 
@@ -85,6 +98,7 @@ function daqSemanticCard(nodeId: string, mode: string): string | null {
     `- 物理量: ${tpl?.ch ?? node.templateKey},单位 ${node.unit},正常量程 [${node.min}, ${node.max}] ${node.unit}`,
   ]
   if (sem) lines.push(`- 采集语义: ${sem}`)
+  else lines.push(`- 采集语义: (待补)该节点未填写采集语义 —— 物理量 ${tpl?.ch ?? node.templateKey};请让用户在模板/节点语义中补充测点含义与判读方法`)
   if (node.warnLow != null || node.warnHigh != null) {
     lines.push(`- 预警带: [${node.warnLow ?? '-∞'}, ${node.warnHigh ?? '+∞'}] ${node.unit}(出带=warn,越量程=alarm)`)
   }
@@ -95,30 +109,106 @@ function daqSemanticCard(nodeId: string, mode: string): string | null {
   return lines.join('\n')
 }
 
-/** 工具:my_industrial_nodes 的语义卡视图 */
+/** 工具:my_industrial_nodes 的语义卡视图(绑定节点 dcw/daq 全集 ∪ 绑定配方的参数节点) */
 export function nodeSemanticCards(agentId: string): { text: string, stale: number } {
   const repo = getAgentNodeBindingRepo()
   const bindings = repo.byAgent(agentId)
   const cards: string[] = []
   let stale = 0
+  const seen = new Set<string>()
   for (const b of bindings) {
-    const card = b.kind === 'dcw' ? dcwSemanticCard(b.nodeId, b.mode) : daqSemanticCard(b.nodeId, b.mode)
-    if (card) cards.push(card)
+    const card = b.kind === 'dcw' ? dcwSemanticCard(b.nodeId, b.mode) : b.kind === 'daq' ? daqSemanticCard(b.nodeId, b.mode) : null
+    if (card) {
+      cards.push(card)
+      seen.add(b.nodeId)
+    }
     else stale++
+  }
+  // 权限模型 v2:recipe 绑定的 Agent 也应看到配方参数节点的语义卡(否则"知道要改
+  // 配方却不知道参数是什么物理量");来源标注「经绑定配方」,模式按配方绑定呈现
+  const recipeBindings = bindings.filter(b => b.kind === 'recipe')
+  const allRecipes = getDcwController().listRecipes()
+  for (const rb of recipeBindings) {
+    const recipe = allRecipes.find(r => r.id === rb.nodeId)
+    if (!recipe) continue
+    for (const p of recipe.params) {
+      if (seen.has(p.nodeId)) continue
+      seen.add(p.nodeId)
+      const card = dcwSemanticCard(p.nodeId, 'recipe')
+      if (card) cards.push(`${card}\n(来源:绑定配方「${recipe.name}」的参数)`)
+      else stale++
+    }
   }
   return { text: cards.join('\n\n'), stale }
 }
 
-/** 产线工况简报(注入每次回合 prompt;只描述 Agent 绑定节点所在的产线) */
+/**
+ * 配方操作面段(v2 权限模型:让"绑定配方的 Agent"一眼看到怎么做)。
+ * 每个绑定配方:名称/描述/版本/运行状态/绑定模式(manual=逐动作 HITL;auto=免批)/
+ * 二级认证状态 + 参数对照表(参数 key|描述|执行节点|目标值|窗口)。
+ */
+export function recipeOperationFace(agentId: string): string {
+  const repo = getAgentNodeBindingRepo()
+  const bindings = repo.byAgent(agentId).filter(b => b.kind === 'recipe')
+  if (bindings.length === 0) return ''
+  const allRecipes = getDcwController().listRecipes()
+  const paramViews = new Map(getDcwParamRepoSafe().map(v => [v.nodeId, v]))
+  const sections: string[] = []
+  for (const b of bindings) {
+    const recipe = allRecipes.find(r => r.id === b.nodeId)
+    if (!recipe) continue
+    const run = getDcwController().listRuns().find(r => r.recipeId === recipe.id && !r.endedAt)
+    const access = recipe.access
+    const head = [
+      `#### ▣ 配方「${recipe.name}」[id=${recipe.id}] v${recipe.version ?? 1}`,
+      `- 运行状态: ${run ? `**执行中**(批次 ${run.id.slice(0, 8)},可操作)——参数写入/下发/试验/回退均已放行` : '**未运行**(运行门:未在执行的配方不可操作;请由用户开跑后再操作)'}`,
+      `- 绑定模式: ${b.mode === 'manual' ? '**manual** —— 你的每次参数写入/下发/试验/回退都会挂起等人工批准;reason 必填且要给出判断依据(数采/MES 证据),审批卡会向人类展示' : '**auto** —— 免人工批准直接执行,但仍受四层限界与运行门约束'}`,
+      `- 二级认证: ${access?.requireAuth ? `已开启(授权清单 ${access.authorizedAgentIds?.length ?? 0} 人;你在清单内才能操作)` : '未开启(绑定即可操作)'}`,
+      recipe.description ? `- 配方说明: ${recipe.description.slice(0, 160)}` : null,
+    ].filter(Boolean) as string[]
+    const rows = recipe.params.map((p) => {
+      const node = getDcwController().byId(p.nodeId)
+      const pv = paramViews.get(p.nodeId)
+      const desc = pv?.desc ?? node?.semantics ?? ''
+      const win = (p.min != null || p.max != null) ? `,窗口 ${p.min ?? '-∞'}~${p.max ?? '+∞'}${node?.unit ?? ''}` : ''
+      return `  - ${node?.name ?? p.nodeId}:目标 ${p.value}${node?.unit ?? ''}${win} | 参数键 ${pv?.key ?? '-'}${desc ? ` | ${desc.slice(0, 80)}` : ''}`
+    })
+    sections.push([...head, '- 参数对照(目标值/窗口/参数键/描述):', ...rows].join('\n'))
+  }
+  if (sections.length === 0) return ''
+  return `### 你绑定的配方(操作面;动作入口 recipe_update/recipe_apply/recipe_trial/recipe_rollback)\n${sections.join('\n\n')}`
+}
+
+/** 参数面视图(参数面未就绪时返回空,不阻断语义卡) */
+function getDcwParamRepoSafe(): Array<{ nodeId: string, key: string, desc?: string }> {
+  try {
+    return getDcwParamRepo().listViews()
+  }
+  catch {
+    return []
+  }
+}
+
+/** 产线工况简报(注入每次回合 prompt;只描述 Agent 绑定节点/绑定配方所在的产线) */
 export function buildIndustrialContext(agentId: string): string {
   const bindings = getAgentNodeBindingRepo().byAgent(agentId)
   const dcwIds = bindings.filter(b => b.kind === 'dcw').map(b => b.nodeId)
   const daqIds = bindings.filter(b => b.kind === 'daq').map(b => b.nodeId)
-  if (dcwIds.length === 0 && daqIds.length === 0) return ''
+  // recipe 绑定(v2 权限模型)也带来产线场景面 —— 否则只绑配方的 Agent 拿不到工况简报
+  const recipeLineIds = bindings.filter(b => b.kind === 'recipe').map((b) => {
+    try {
+      return getDcwController().listRecipes().find(r => r.id === b.nodeId)?.lineId ?? ''
+    }
+    catch {
+      return ''
+    }
+  })
+  if (dcwIds.length === 0 && daqIds.length === 0 && recipeLineIds.every(x => !x)) return ''
 
   const lineIds = [...new Set([
     ...dcwIds.map(id => getDcwController().byId(id)?.lineId ?? ''),
     ...daqIds.map(id => getDaqNodeRepo().byId(id)?.lineId ?? ''),
+    ...recipeLineIds,
   ])].filter(Boolean)
 
   const sections: string[] = []
@@ -127,10 +217,15 @@ export function buildIndustrialContext(agentId: string): string {
     if (!line) continue
     const run = getActiveLineRun(lineId)
     const lines: string[] = [`### 产线「${line.name}」(id=${lineId},光晕色 ${line.color})`]
+    // 场景描述(产线本体说明:工艺场景/规格/闭环目标 —— 用户在建线/编辑产线时填写,
+    // 是场景语义最丰富的一手描述;不注入则 Agent 对这条产线是干什么的毫无概念)
+    if (line.description?.trim()) lines.push(`- 场景说明: ${line.description.trim().slice(0, 260)}`)
     if (run) {
       const elapsedMin = Math.round((Date.now() - Date.parse(run.startedAt)) / 60_000)
       lines.push(`- 工况:**运行中**,批次 ${run.runId.slice(0, 8)},产品「${run.productName}」× 配方「${run.recipeName}」,已运行 ${elapsedMin} 分钟,已采集 ${run.taggedSamples} 打标样本`)
       const recipe = getDcwController().listRecipes().find(r => r.id === run.recipeId)
+      const product = recipe ? getDcwProductRepo().byId(recipe.productId) : undefined
+      if (product?.description?.trim()) lines.push(`- 产品说明(${product.name}): ${product.description.trim().slice(0, 160)}`)
       if (recipe) {
         const params = recipe.params
           .map((p) => {

@@ -17,6 +17,7 @@ import { ensureDataDir } from '@/shared/config/home.mjs'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { createLogger } from '../logger'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
+import { findDcwTemplate } from '../dcw/dcw-templates'
 import { getDcwNodeRepo } from './dcw-node.repo'
 import type { DcwNode } from './dcw-node'
 
@@ -40,9 +41,25 @@ interface DcwParamRow {
   stepLimit: number | null
   /** 映射目标:写控制执行节点 */
   nodeId: string
+  /** 参数描述(给 Agent/用户的"这个参数影响什么";缺省由模板语义派生一句) */
+  desc?: string
   /** 标准转换模式摘要(配置期选定;运行期换算以执行节点驱动配置为单一事实源) */
   conversion?: DcwParamView['conversion']
   createdAt: string
+}
+
+/** 参数缺省描述:模板语义首句 + 物理量(确保参数面永远带一句"这是什么") */
+function deriveParamDesc(node: { templateRef?: string, name: string }): string | undefined {
+  try {
+    const tpl = findDcwTemplate(node.templateRef ?? '')
+    const ch = tpl?.ch ?? ''
+    const sem = (tpl?.semantics ?? '').split(/[。;;\n]/)[0]?.trim() ?? ''
+    const head = [ch, sem].filter(Boolean).join(':')
+    return head ? `${head}(执行点:${node.name})` : undefined
+  }
+  catch {
+    return undefined
+  }
 }
 
 function load(): DcwParamRow[] {
@@ -132,6 +149,7 @@ class DcwParamRepo {
       max,
       stepLimit: normalizeStepLimit(input.stepLimit),
       nodeId,
+      desc: String(input.desc ?? '').trim() || deriveParamDesc(node),
       createdAt: new Date().toISOString(),
     }
     if (input.conversion) row.conversion = input.conversion
@@ -152,6 +170,7 @@ class DcwParamRepo {
       row.key = k
     }
     if (patch.name !== undefined) row.name = String(patch.name).trim() || row.key
+    if (patch.desc !== undefined) row.desc = String(patch.desc).trim() || undefined
     if (patch.templateRef !== undefined) {
       const t = String(patch.templateRef).trim()
       if (!t) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'templateRef 不可为空')
@@ -205,7 +224,14 @@ class DcwParamRepo {
   ensureForNode(node: DcwNode): DcwParamRow | undefined {
     try {
       const existing = this.byNode(node.id)
-      if (existing) return existing
+      if (existing) {
+        // 升级回填:desc 特性问世前的存量行缺描述 —— 视图入口幂等补齐(参数面永远带一句"这是什么")
+        if (!existing.desc) {
+          existing.desc = deriveParamDesc(node)
+          this.flush()
+        }
+        return existing
+      }
       const row: DcwParamRow = {
         id: `pp-${randomUUID().slice(0, 8)}`,
         key: this.uniqueKeyOnLine(node.templateKey, node.lineId),
@@ -217,6 +243,7 @@ class DcwParamRepo {
         max: null,
         stepLimit: node.stepLimit,
         nodeId: node.id,
+        desc: deriveParamDesc(node),
         createdAt: new Date().toISOString(),
       }
       this.list.push(row)
@@ -259,6 +286,7 @@ class DcwParamRepo {
       max: row.max,
       stepLimit: row.stepLimit ?? node.stepLimit,
       nodeId: row.nodeId,
+      desc: row.desc,
       lineId: node.lineId,
       driver: node.driver,
       enabled: node.enabled,

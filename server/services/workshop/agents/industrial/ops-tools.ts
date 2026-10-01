@@ -10,6 +10,7 @@ import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
+import { getDcwParamRepo } from '../../dcw/param-map.repo'
 import { getOps } from '../../ops/ops'
 import { settingOf } from '../../settings'
 import { fanoutQuery, windowOf } from './audit-query'
@@ -204,6 +205,8 @@ export async function toolLineContext(agentId: string, args: { line_id?: string 
     const recipe = run?.recipeId ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
     const parts: string[] = []
     parts.push(`■ 产线 ${line?.name ?? lid}(${lid})${lineTag(lid, scope)} · 状态:${run ? '运行中' : '待机/停线'}`)
+    // 场景描述(产线/产品的本体说明;不透出则 Agent 不知道这条线是干什么的)
+    if (line?.description?.trim()) parts.push(`  场景说明: ${line.description.trim().slice(0, 220)}`)
     if (run) {
       parts.push(`  活动批次 ${run.runId.slice(0, 8)} · 产品「${run.productName}」(${run.productId}) · 开跑 ${run.startedAt.slice(11, 19)} · 已打标 ${run.taggedSamples} 样本`)
     }
@@ -215,9 +218,18 @@ export async function toolLineContext(agentId: string, args: { line_id?: string 
       .filter(b => b.kind === 'daq')
       .map(b => getDaqNodeRepo().byId(b.nodeId))
       .filter(n => n?.lineId === lid)
+    const myRecipeIds = getAgentNodeBindingRepo().byAgent(agentId)
+      .filter(b => b.kind === 'recipe')
+      .map(b => b.nodeId)
+    const myRecipes = myRecipeIds
+      .map(id => getDcwController().listRecipes().find(r => r.id === id))
+      .filter((r): r is NonNullable<typeof r> => !!r && r.lineId === lid)
     parts.push(`  我绑定的节点:数控 [${myDcw.map(n => n!.name).join(', ') || '无'}];数采 [${myDaq.map(n => n!.name).join(', ') || '无'}]`)
+    if (myRecipes.length > 0) parts.push(`  我绑定的配方: [${myRecipes.map(r => `${r.name}(v${r.version ?? 1}${getDcwController().listRuns().some(x => x.recipeId === r.id && !x.endedAt) ? ',执行中' : ',未运行'})`).join('; ')}]`)
     if (recipe) {
       parts.push(`  配方「${recipe.name}」(${recipe.id}) v${recipe.version ?? 1}${recipe.description ? ` — ${recipe.description}` : ''}`)
+      const product = recipe.productId ? getDcwProductRepo().byId(recipe.productId) : undefined
+      if (product?.description?.trim()) parts.push(`  产品说明(${product.name}): ${product.description.trim().slice(0, 160)}`)
       for (const p of recipe.params) {
         const node = getDcwController().byId(p.nodeId)
         const mine = myDcw.some(n => n!.id === p.nodeId)
@@ -225,7 +237,8 @@ export async function toolLineContext(agentId: string, args: { line_id?: string 
         const staleTag = stale ? ` [${stale.label},参数不下发]` : ''
         const cur = node?.value != null ? node.value : '?'
         const win = p.min != null || p.max != null ? `(窗口 ${p.min ?? '-∞'}~${p.max ?? '+∞'})` : ''
-        parts.push(`    · ${node?.name ?? p.nodeId} = ${p.value}${node?.unit ?? ''}${win} | PLC 当前 ${cur}${node?.unit ?? ''}${mine ? ' [我负责]' : ''}${staleTag}`)
+        const pv = getDcwParamRepo().listViews().find(v => v.nodeId === p.nodeId)
+        parts.push(`    · ${node?.name ?? p.nodeId} = ${p.value}${node?.unit ?? ''}${win} | PLC 当前 ${cur}${node?.unit ?? ''}${mine ? ' [我负责]' : ''}${staleTag}${pv ? ` | 参数键 ${pv.key}` : ''}${pv?.desc ? ` | ${pv.desc.slice(0, 90)}` : ''}`)
       }
       const good = recipe.lastGoodRunId ? getDcwRecipeRepo().runById(recipe.lastGoodRunId) : undefined
       parts.push(`  已知良好批次:${good ? `${good.id.slice(0, 8)}(${good.startedAt.slice(0, 19).replace('T', ' ')})` : '未标记'};当前参数版本 v${recipe.version ?? 1}`)

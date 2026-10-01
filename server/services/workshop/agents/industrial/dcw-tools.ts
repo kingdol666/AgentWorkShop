@@ -11,7 +11,7 @@ import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getRecipeRollBackManager } from '../../dcw/recipe-rollback-manager'
 import { limitsBreakdownOf } from '../../dcw/param-limits'
-import { nodeSemanticCards } from '../industrial-context'
+import { nodeSemanticCards, recipeOperationFace } from '../industrial-context'
 import { writeToleranceOf } from './param-tools'
 import { requestManualApproval } from './manual-approval'
 import { guardTwinWrite } from '../../aml/twin/write-guard'
@@ -20,14 +20,16 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
   const repo = getAgentNodeBindingRepo()
   const bindings = repo.byAgent(agentId)
   if (bindings.length === 0) {
-    return { text: '你尚未绑定任何工业节点。请在数字孪生界面的 Agent 详情面板中绑定数控/数采节点后再调用工业工具。' }
+    return { text: '你尚未绑定任何工业对象。请让用户或 lead 为你绑定:数控/数采节点(kind=daq 观察)或配方(kind=recipe,参数写入与下发)。' }
   }
   const cards = nodeSemanticCards(agentId)
   if (cards.stale > 0) repo.removeAgentNodeStale(agentId, bindings.filter((b) => {
-    const has = b.kind === 'dcw' ? !!getDcwController().byId(b.nodeId) : !!getDaqNodeRepo().byId(b.nodeId)
+    const has = b.kind === 'dcw' ? !!getDcwController().byId(b.nodeId) : b.kind === 'daq' ? !!getDaqNodeRepo().byId(b.nodeId) : true
     return !has
   }).map(b => b.id))
-  if (!cards.text) return { text: '绑定的节点均已不存在(可能被删除),请重新绑定。' }
+  // 配方操作面(v2:绑定配方的 Agent 在此直接看到"怎么做" —— 运行状态/绑定模式/认证/参数对照)
+  const recipeFace = recipeOperationFace(agentId)
+  if (!cards.text && !recipeFace) return { text: '绑定的节点均已不存在(可能被删除),请重新绑定。' }
   const staleNote = cards.stale > 0
     ? `
 (另有 ${cards.stale} 条失效绑定已自动清理)`
@@ -52,19 +54,22 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
   }
   const insightBlock = insights.length > 0 ? `\n\n调控闭环状态:\n${insights.join('\n')}` : ''
   return {
-    text: `${cards.text}${staleNote}${insightBlock}
+    text: `${cards.text}${staleNote}${insightBlock}${recipeFace ? `\n\n${recipeFace}` : ''}
 
 ---
 通用规则:
-1. 一个 Agent 可绑定多个节点;先读本清单理解每个节点的物理意义与操作守则,再动手。
-2. 数控下发优先用 param_control(param, value) 以**工艺参数**寻址(key 语义稳定,跨批次/换配方不变);
-   dcw_control(node_id, value) 为节点直接寻址的兼容面。设定值受四层限界联锁
-   (节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口)逐层收窄,
-   越界一律拒绝 —— 用户与 Agent 一体约束,无旁路。下发前/后用 param_read(param) 读 PLC 当前值取证复核(被动观测免审批)。
-3. 数据获取 daq_query(不传 node_id = 全部数采节点),支持按产线/产品/配方/时间检索;解读数据时结合语义卡的判读方法。
+1. 一个 Agent 可绑定多个节点与多个配方;先读本清单理解每个节点/配方的物理意义、下发链路与操作守则,再动手。
+2. 参数写入与下发一律走你绑定的配方(权限模型 v2,直接写节点已禁用):
+   recipe_update(recipe_id, params[{node_id,value}], reason) 保存新版本 → recipe_apply(整批下发到运行中批次)
+   或 recipe_trial(候选整批试验,不写版本);劣化用 recipe_rollback(dispatch=true) 统一回退。
+   设定值受四层限界联锁(节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口)逐层收窄,
+   越界一律拒绝 —— 用户与 Agent 一体约束,无旁路;底层数控节点(PLC/MES)由配置层承接,你只面对工程量。
+   配方必须正在执行(运行门),未运行时任何操作被拒。
+3. 数据获取 daq_query(不传 node_id = 全部数采节点),支持按产线/产品/配方/时间检索;解读数据时结合语义卡的判读方法;
+   MES 数据用 mes_catalog / mes_fetch(检测向量/图像帧/表格/事件全格式;统计摘要回包,原文落盘)。
 4. 改动设定后等待工艺响应(热惯性/传动惯量)再评估,避免连续大幅调整。
 5. 调控闭环:每次下发自动开一条优化记录(open);观察数采后用 dcw_judge 落判定(keep/rollback/uncertain);
-   判 rollback 后用 dcw_rollback 执行回退;dcw_journal 可查节点参数变更史。未判定前再下发,旧记录会被标记 superseded。
+   判 rollback 后用 recipe_rollback(dispatch=true, reason) 统一回退;dcw_journal 可查节点参数变更史。未判定前再下发,旧记录会被标记 superseded。
    若节点被他人的 open 记录阻塞(对方已消失),超时(30 分钟)后你可接管:dcw_judge 会带接管标记入册。
 6. 自查面:line_context 看你控制的产线/产品/配方全景(动手前必读,确认归属);
    ops_log 查你负责产线的运维日志(谁/何时做了什么,来源区分 Agent/用户/系统;
@@ -72,7 +77,7 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
    recipe_versions 查配方参数版本史(谁改的/为什么/参数 diff)。
 7. 配方操控闭环(在线优化框架):验证过参数更优 → recipe_update 保存进配方(记录你的名字与原因,
    生成新版本);发现优化有问题 → recipe_rollback 回退到稳定版本(version)或已知良好批次
-   (to_last_good=true);运行中 PLC 当前值用 dcw_control 下发,配方定义供后续批次生效。`,
+   (to_last_good=true,dispatch=true 整批恢复运行中产线)。`,
   }
 }
 

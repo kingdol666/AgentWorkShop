@@ -88,6 +88,8 @@ export interface DcwParamView {
   stepLimit: number | null
   /** PLC 执行节点(映射目标) */
   nodeId: string
+  /** 参数描述("这个参数影响什么";缺省由模板语义派生,给 Agent/用户的本体说明) */
+  desc?: string
   /** 执行节点所属产线(派生自节点;'' = 未分配) */
   lineId: string
   /** 驱动类别(仅类别;不含寄存器等寻址细节) */
@@ -106,6 +108,7 @@ export interface DcwParamView {
 export interface DcwParamInput {
   key?: string
   name?: string
+  desc?: string
   templateRef?: string
   unit?: string
   decimals?: number

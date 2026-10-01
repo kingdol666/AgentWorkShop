@@ -515,7 +515,7 @@
  {
   "name": "my_industrial_nodes",
   "label": "My Industrial Nodes",
-  "description": "列出你绑定的全部数采/数控节点及其物理含义(参数含义/单位/安全量程/活动配方工艺窗口/控制模式)。在进行任何工业操作前必须先调用本工具理解节点语义与设定规则。",
+  "description": "列出你的全部工业绑定与语义卡 —— 数控节点(PLC/MES 集成点位)与数采节点逐张卡:物理量/单位/量程/精度、工艺语义(物理机理与调参守则)、安全量程与活动配方工艺窗口、当前设定值、下发链路(PLC 驱动或 MES writeHook 单字段)、单步上限与操作守则;以及你绑定的配方操作面(运行状态/绑定模式 manual=逐动作 HITL 或 auto=免批/二级认证状态/参数对照表含参数键与描述)。在进行任何工业操作前必须先调用本工具;绑定前提:节点需 daq/dcw(存量)绑定,配方需 recipe 绑定 —— 未绑定对象不出现在清单中。",
   "parameters": {
    "type": "object",
    "properties": {}
@@ -541,7 +541,7 @@
  {
   "name": "param_read",
   "label": "Param Read",
-  "description": "按工艺参数读取 PLC 当前值(param=工艺参数 id 或 key),返回实时读数(物理量纲)与当前设定值对照,以及该参数当前的有效写入区间(分层限界)。用于下发前取证、下发后复核。读取是被动观测,不需要审批。",
+  "description": "按工艺参数(key 语义键或 pp-id)读取执行节点当前值与分层限界明细(节点量程∩参数基准∩产品限界∩配方窗口,单步上限来源)。被动观测免审批;参数键目录(含每参数的描述)在回包中给出。参数写入已收敛到配方面(recipe_update/recipe_apply),本工具只读。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -833,7 +833,7 @@
  {
   "name": "line_context",
   "label": "Line Context",
-  "description": "查看你控制的产线/产品/配方全景:产线名与运行态、活动批次(产品、配方名/版本/逐参数目标 vs PLC 当前值)、你绑定的节点、已知良好批次。动手前必读,确认自己操控的是哪条产线、哪个产品、哪个配方。",
+  "description": "读取你控制的产线/产品/配方全景(动手前必读):产线场景说明、运行状态与活动批次、产品说明、活动配方(名称/版本/描述)逐参数目标值 vs PLC 当前值 vs 工艺窗口(附参数键与参数描述)、我绑定的节点与配方清单(含执行中/未运行标注)、已知良好批次;无活动批次时列出产线配方定义。可见性=节点授权线 ∪ 绑定配方所在线 ∪ 频道绑定线(只读);确认归属与现状后再用 recipe_* 工具操作。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -847,7 +847,7 @@
  {
   "name": "recipe_versions",
   "label": "Recipe Versions",
-  "description": "查看配方参数版本史(旧→新):每版的来源(user/agent/system)、操作者(用户名或 Channel名/成员名)、变更原因、参数 diff。回退定位与审计必查。",
+  "description": "查看指定配方的参数版本史(旧→新):每条含版本号、时间、来源(用户/Agent/系统)、操作者人话名、变更原因与参数 diff。用途:回退前确认目标版本内容、复盘谁改了什么为什么改。可见性=该配方所在产线可读即可(节点授权线 ∪ 绑定配方线 ∪ 频道绑定线);回退操作走 recipe_rollback(写门,manual 绑定需 HITL)。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -942,7 +942,7 @@
  {
   "name": "mes_catalog",
   "label": "MES Catalog",
-  "description": "检索 MES REST 点位目录(driver=mes-rest 的数控点位)。每条含 id/名称/产线/单位/量程与能力位(读=当前值,写=设定值,史=可取历史;史·vector=每时间点一个检测向量如膜厚断面/双折射光谱,史·image=图像帧如 CCD 相机,史·table/史·event=表格/事件记录流,钩子=该点位已配置数据下沉处理)与点位描述。是 mes_fetch 取数的寻址入口;支持按关键字(q,匹配名称与描述)与产线(line_id)过滤。只读目录,不触达设备。",
+  "description": "检索 MES REST 点位目录(driver=mes-rest 的数控点位)。每条含 id/名称/产线/单位/量程与能力位(读=当前值,写=设定值,史=可取历史;史·vector=每时间点一个检测向量如膜厚断面/双折射光谱,史·image=图像帧如 CCD 相机,史·table/史·event=表格/事件记录流,钩子=该点位已配置数据下沉处理)与点位描述。是 mes_fetch 取数的寻址入口;支持按关键字(q,匹配名称与描述)与产线(line_id)过滤。只读目录,不触达设备。可见性=你绑定的数控点位与你绑定配方内的参数点位(未绑定点位不可见,不触达设备)。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -1280,7 +1280,7 @@
  {
   "name": "aml_job_logs",
   "label": "AML Job Logs",
-  "description": "查看训练作业日志尾(平台 ##AML 协议行 + 训练输出)。失败定位/进度细节用这个。",
+  "description": "查看 AML 训练/评估作业的日志行(按 job_id;含加载/训练/门禁/导出各阶段输出)。用于失败归因(如数据不足/门禁未过)与进度确认;作业终态回执已自动送达信箱,本工具用于补看细节。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -1567,7 +1567,7 @@
  {
   "name": "twin_physics_spec_validate",
   "label": "Twin PhysicsSpec Validate",
-  "description": "校验声明式物理模型的白名单 AST、变量/参数引用、单位、边界、稳定性和单调性；禁止任意代码执行。",
+  "description": "校验孪生物理规格(PhysicsSpec)的结构与参数完整性:方程/常量/输入输出维度/量纲是否自洽。训练与评估前先校验,坏规格会在运行期才爆;校验回包给出逐项问题定位。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -1985,7 +1985,7 @@
  {
   "name": "team_grant_nodes",
   "label": "Grant Nodes",
-  "description": "(Lead only) Grant industrial node permissions (DAQ read / DCW control) to a worker in this channel. HARD RULE: every node must already be bound to YOU (the lead) — you cannot grant permissions beyond your own bindings. Grants are all-or-nothing: if any node is not in your binding surface, the whole request is rejected and nothing is granted. Use this before dispatching (so the worker can act immediately) or mid-execution when scope expands. The worker sees granted nodes via my_industrial_nodes. To grant together with a task, prefer dispatch_task(grant_node_ids=[...]).",
+  "description": "(Lead only) Grant industrial node permissions (DAQ read / DCW control) to a worker in this channel. HARD RULE: every node must already be bound to YOU (the lead) — you cannot grant permissions beyond your own bindings. Grants are all-or-nothing: if any node is not in your binding surface, the whole request is rejected and nothing is granted. Use this before dispatching (so the worker can act immediately) or mid-execution when scope expands. The worker sees granted nodes via my_industrial_nodes. To grant together with a task, prefer dispatch_task(grant_node_ids=[...]). 可委派对象:数采节点(观察)与配方(recipe;被授予者获得该配方的参数写入/下发能力,受运行门与 HITL 约束)。每个对象必须已绑定你自己(绑定即前提,权限不可超越授予者)。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -2043,7 +2043,7 @@
  {
   "name": "recipe_trial",
   "label": "Recipe Trial",
-  "description": "多参数候选整批试验下发(不写配方版本)。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 时挂 HITL(假设 hypothesis 必填,审批卡展示)。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
+  "description": "多参数候选整批试验下发(不写配方版本)。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 时挂 HITL 等人工批准 —— hypothesis 必填,即本次试验的理由与判断依据,审批卡会向人类展示。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
   "parameters": {
    "type": "object",
    "properties": {
