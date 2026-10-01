@@ -6,6 +6,8 @@ import { AgentRuntimeState } from './state'
 import type { AgentWorkspace } from '../../agents/agent-interface'
 import type { TaskEngine } from './types'
 import { log } from './helpers'
+import { getToolApprovals } from '../../agents/tool-approvals'
+import { sendHitlNote } from '../platform-notice'
 
 export abstract class AgentRuntimeLifecycle extends AgentRuntimeState {
   /** 启动消费循环 */
@@ -20,6 +22,22 @@ export abstract class AgentRuntimeLifecycle extends AgentRuntimeState {
   async stop(): Promise<void> {
     log.warn(`[AgentRuntime:${this.agentId}] runtime.stop() 调用(卸载/停用)`)
     this.state = 'stopped'
+    // 挂起审批先收敛再停:回合被中止后,等待中的审批单若不落定会变成悬空
+    // Promise——人类稍后的批准/拒绝无人接收,附言蒸发。收敛为拒绝(绝不自动批准)
+    // 并经平台通告补送说明,Agent 下次装配即可从信箱得知发生了什么。
+    try {
+      const settled = getToolApprovals().cancelAllForAgent(this.agentId, '回合已被中止(运行时停止),审批失效,指令未执行')
+      if (settled.length > 0) {
+        sendHitlNote({
+          agentId: this.agentId,
+          title: '运行时中止,挂起审批已收敛',
+          summary: `本次停止时有 ${settled.length} 条挂起审批随回合中止被收敛为拒绝(未执行、未自动批准):\n- ${settled.join('\n- ')}\n如仍需执行请重新发起,人类的新决议会随新审批单实时回流。`,
+        })
+      }
+    }
+    catch (err) {
+      log.error(`[AgentRuntime:${this.agentId}] 挂起审批收敛失败(继续停止):`, err)
+    }
     this.abortController?.abort()
     this.deps.mailbox.close()
     // 状态广播:前端经 WS agent.status 实时反映 stopped

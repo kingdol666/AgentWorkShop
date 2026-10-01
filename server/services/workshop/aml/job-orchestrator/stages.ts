@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { recordOps } from '../../ops/ops'
 import { registerModelFromJob } from '../model-registry'
 import { wsJob, wsStage } from './broadcast'
+import { sendToolResult } from '../../runtime/platform-notice'
 
 export function currentStatus(jobId: string): AmlJobRow['status'] {
   const row = getAmlRuntime().repo.job.get(jobId)
@@ -104,5 +105,31 @@ export function concludeJob(run: RunningJob, artifactsDir: string): void {
     lineId: datasetFresh?.lineId, productId: datasetFresh?.productId, recipeId: datasetFresh?.recipeId,
   })
   wsJob(rt.repo.job.get(run.row.id) ?? run.row, datasetFresh)
+  // 异步结果回执:作业发起 Agent(归因列 agentId/channelId/taskId)在完成时收到
+  // 一条信箱消息并即时唤醒——不再依赖 Agent 自觉轮询 aml_job_status。若 Agent 已
+  // 通过轮询先看到结果,deliver 的 claim 会拒绝重复补送(先到先得)。
+  try {
+    const failedChecks = gates.checks.filter(c => !c.pass).map(c => `${c.id} ${c.detail}`).join('; ')
+    const metricsLine = metrics?.oneStepTest?.nrmse != null
+      ? `oneStep nrmse=${Number(metrics.oneStepTest.nrmse).toFixed(4)}${metrics?.rolloutTest?.nrmse != null ? `, rollout nrmse=${Number(metrics.rolloutTest.nrmse).toFixed(4)}` : ''}`
+      : ''
+    sendToolResult({
+      tool: 'aml_job',
+      jobId: run.row.id,
+      agentId: run.row.agentId,
+      ...(run.row.channelId ? { channelId: run.row.channelId } : {}),
+      ...(run.row.taskId ? { taskId: run.row.taskId } : {}),
+      ok: gates.passed,
+      title: `训练作业 ${run.row.id}`,
+      summary: [
+        `门禁${gates.passed ? '全部通过,模型已登记可用' : '未通过'}。`,
+        metricsLine,
+        registeredModelId ? `model_id=${registeredModelId}` : '',
+        gates.passed ? '' : (failedChecks ? `未过项:${failedChecks}` : run.row.error ? `错误:${run.row.error.slice(0, 200)}` : ''),
+        '后续:aml_leaderboard 看谱系;aml_model_promote 晋级需 lead 审批。',
+      ].filter(Boolean).join(' '),
+    })
+  }
+  catch { /* 回执失败不影响作业收口 */ }
   finishRun(run)
 }

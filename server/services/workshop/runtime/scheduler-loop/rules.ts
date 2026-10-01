@@ -5,6 +5,7 @@
 import { SchedulerLoopSnapshot } from './snapshot'
 import type { SchedulerDecision } from './types'
 import type { SupervisionDecision, SupervisionSnapshot } from '../../agents/agent-interface'
+import { TERMINAL_TASK_STATES } from '../../types/task'
 
 export abstract class SchedulerLoopRules extends SchedulerLoopSnapshot {
   /** 内置规则引擎兜底(harness 无关) */
@@ -19,7 +20,8 @@ export abstract class SchedulerLoopRules extends SchedulerLoopSnapshot {
     // 任务按 createdAt ASC 迭代(list 顺序)= 外部提交 FIFO:先提交先分解先分发。
     for (const task of tasks) {
       // FAILED 且 retryCount<3:优先换人重试;仅剩原 assignee 空闲(如单 worker channel)
-      // → 由原 assignee 重试(reassign 到自己,走 FAILED→ASSIGNED 恢复);无人可用 → cancel(允许终结)
+      // → 由原 assignee 重试(reassign 到自己,走 FAILED→ASSIGNED 恢复);无人可用 → 保留 FAILED
+      // 留给父任务收口规则(直接 cancel FAILED 会撞终态 409——实测曾是每 tick 空转的死代码)。
       if (task.state === 'FAILED') {
         // Roots are Lead-owned orchestration records. A failed root is surfaced to Lead/user;
         // never auto-assign a root to a worker as if it were a child execution.
@@ -36,14 +38,29 @@ export abstract class SchedulerLoopRules extends SchedulerLoopSnapshot {
             if (same && same.agentId === task.assigneeId) {
               decisions.push({ kind: 'reassign', taskId: task.id, toAgentId: same.agentId })
             }
-            else {
-              decisions.push({ kind: 'cancel', taskId: task.id })
-            }
+            // 无人可用:保持 FAILED(子任务终态),由下方父任务收口规则整体坍缩,
+            // 防止 WAITING 父任务永挂(用户可对 FAILED 根任务显式重试)。
           }
         }
-        else {
-          decisions.push({ kind: 'cancel', taskId: task.id })
-        }
+        // retryCount≥3:重试预算耗尽,保持 FAILED,交父任务收口规则(不再空转 cancel)。
+      }
+    }
+
+    // WAITING 父任务收口:全部子任务已终态、无一 COMPLETED(全部重试耗尽/被取消)
+    // → 整树坍缩为 CANCELED。没有这条规则,"子任务 FAILED×3 + 父任务 WAITING"会
+    // 永久挂死(实测:规则引擎对 FAILED 子任务发的 cancel 决策撞 TaskEngine 终态
+    // 409 从未生效,父任务等不到任何终态迁移,调度器每个 tick 重复空转)。
+    // 有 COMPLETED 子任务(部分成果可收)或仍有非终态子任务时不在此收口 ——
+    // 交给 lead 的监督回合判定(接受部分成果/补发/改派)。
+    for (const task of tasks) {
+      if (task.state !== 'WAITING') continue
+      const children = tasks.filter(t => t.parentId === task.id)
+      if (children.length === 0 || children.some(c => !TERMINAL_TASK_STATES[c.state])) continue
+      const anyCompleted = children.some(c => c.state === 'COMPLETED')
+      const allExhausted = children.every(c => c.state === 'CANCELED'
+        || (c.state === 'FAILED' && (c.retryCount ?? 0) >= 3))
+      if (!anyCompleted && allExhausted) {
+        decisions.push({ kind: 'cancel', taskId: task.id, reason: 'CHILD_RETRIES_EXHAUSTED' })
       }
     }
 

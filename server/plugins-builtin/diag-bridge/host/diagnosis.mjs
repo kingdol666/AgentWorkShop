@@ -6,7 +6,7 @@ import { baseOf, harnessOf, jpost, maxMinutesOf, maxTurnsOf, runKey, runningOfLi
 import { snapshotCore } from './snapshot.mjs'
 import { startingLines } from './constants.mjs'
 
-export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath }) {
+export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath, agentId, channelId }) {
   const base = baseOf(ctx)
   if (!base) return { ok: false, error: 'diag.base_url 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)。' }
   if (startingLines.has(line)) return { ok: false, error: `产线 ${line} 已有诊断正在启动,请稍后再试。` }
@@ -39,6 +39,8 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
     ctx.kv.set(runKey(runId), {
       line, fromMs, toMs, question: q, scene: sceneName,
       status: 'running', createdAt: Date.now(), source, csvPath: snap.csvPath, name,
+      // 归因:发起 Agent 完成后的结果回执靠它寻址(平台通告面 deliver)
+      agentId: agentId || '', channelId: channelId || '',
     })
     return { ok: true, runId, name, csvPath: snap.csvPath, rows: snap.rows, nodes: snap.nodes }
   }

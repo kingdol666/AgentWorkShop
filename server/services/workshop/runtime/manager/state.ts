@@ -19,7 +19,10 @@ import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { TaskEngine as TaskEngineImpl } from '../task-engine'
 import { createEnvEmbeddingProvider } from '../embedding-provider'
-import { log } from './helpers'
+import { log, buildMessage } from './helpers'
+
+import { rowToMessage } from '../mailbox'
+import { platformNoticeKey, newPlatformNoticeId, setPlatformNoticeSink, type PlatformNotice, type PlatformNoticeSink } from '../platform-notice'
 import { memorySettings, retentionSettings, channelMemoryDigestEnabled } from '../../settings'
 import { parseJson } from '../../db/database'
 
@@ -103,6 +106,22 @@ export abstract class ManagerState extends ManagerContracts {
    * 该标记让 attachScheduler 在停机后拒绝挂载(生产无影响:停机后即进程退出)。
    */
   protected shutdownStarted = false
+  /** 平台通告已消费键(tool:jobId / hitl:…;先到先得去重 + 有界化) */
+  private readonly platformNoticeSeen = new Set<string>()
+  /** 平台通告去重表容量上限(完成即消费的短命键;超出裁最旧) */
+  private static readonly PLATFORM_NOTICE_SEEN_CAP = 2000
+  /** 接线后的 sink 实现(插件通告服务 deliverPlatformNotice/claimPlatformNotice 委托目标) */
+  private platformNoticeSinkImpl: PlatformNoticeSink | null = null
+
+  /** 插件通告面(ctx.services.get('notify').deliver):委托全局 sink 实现 */
+  deliverPlatformNotice(notice: PlatformNotice): boolean {
+    return this.platformNoticeSinkImpl?.deliver(notice) ?? false
+  }
+
+  /** 插件通告面(ctx.services.get('notify').claim):委托全局 sink 实现 */
+  claimPlatformNotice(tool: string, jobId: string): boolean {
+    return this.platformNoticeSinkImpl?.claim(tool, jobId) ?? false
+  }
 
   /** 依赖集(repos/implFactory/db)。
    *  API 作业面(ws/agent-tools/a2a card/…)需要直接读 repo —— 原先只能靠
@@ -111,6 +130,7 @@ export abstract class ManagerState extends ManagerContracts {
    *  既去掉断言又保持封装语义(依赖注入本身就是本类的构造契约)。 */
   constructor(readonly deps: ManagerDeps) {
     super()
+    this.wirePlatformNoticeSink()
     // 记忆衰减清理定时器(失败只记日志,绝不抛出;unref 不阻进程退出;非法/非正 env 回退默认)
     this.memoryTimer = setInterval(() => {
       try {
@@ -140,6 +160,91 @@ export abstract class ManagerState extends ManagerContracts {
       }
     }, OUTBOX_COMPENSATION_MS)
     this.outboxTimer.unref?.()
+  }
+
+  /**
+   * 平台通告面接线(platform-notice 全局 sink 的真实实现)。
+   *
+   * 投递 = 直接落 messages 表(pending):信箱关闭/Agent 未装配也不丢,下次装配
+   * 按 FIFO 消费;已装配的 Agent 即时 wakeMailbox(空闲则立即起回合处理回执)。
+   * 直接落库而非 mailbox.enqueue,是因为 stop() 后 mailbox.closed 会静默丢弃——
+   * 恰恰是"回合已死"的孤儿场景最需要这条补送。
+   * 去重:tool-result 按 tool:jobId 先到先得(status 工具轮询认领后不再补发);
+   * hitl-note 低频由调用方保证。时间线可见性与 route 的 onRouted 同构(notifyMessage)。
+   */
+  protected wirePlatformNoticeSink(): void {
+    const sink: PlatformNoticeSink = {
+      claim: (tool, jobId) => {
+        const key = `${tool}:${jobId}`
+        if (this.platformNoticeSeen.has(key)) return false
+        this.platformNoticeSeen.add(key)
+        this.prunePlatformNoticeSeen()
+        return true
+      },
+      deliver: (notice) => {
+        const key = platformNoticeKey(notice)
+        if (this.platformNoticeSeen.has(key)) return false
+        const channelId = notice.channelId
+          ?? this.deps.repos.channelAgents.findById(notice.agentId)?.channelId
+          ?? null
+        if (!channelId) {
+          // 成员已删除/无归属 channel:无处投递,标记已消费(成员行不会复活)
+          this.platformNoticeSeen.add(key)
+          this.prunePlatformNoticeSeen()
+          return false
+        }
+        const member = this.deps.repos.channelAgents.findByChannelAgent(channelId, notice.agentId)
+        if (!member || member.enabled !== 1) {
+          this.platformNoticeSeen.add(key)
+          this.prunePlatformNoticeSeen()
+          return false
+        }
+        const header = notice.kind === 'tool-result'
+          ? `[异步回执] ${notice.title}(tool=${notice.tool}, job=${notice.jobId}, 结果=${notice.ok ? '完成' : '失败'})`
+          : `[平台通告] ${notice.title}`
+        const message = buildMessage(channelId, 'ROLE_USER', [{ text: `${header}\n${notice.summary}` }], {
+          'x-aw-target-agent': notice.agentId,
+          'x-aw-from-label': '平台',
+          'x-aw-msg-kind': notice.kind,
+          ...(notice.kind === 'tool-result'
+            ? { 'x-aw-tool': notice.tool, 'x-aw-job-id': notice.jobId, ...(notice.taskId ? { 'x-aw-related-task': notice.taskId } : {}) }
+            : {}),
+        })
+        // 落库即投递:绕过 mailbox 的 closed 闸门(stop 后的孤儿补送必须能落),
+        // 消费循环重启后按 pending 认领;id 用独立前缀,与业务消息可区分
+        const row = this.deps.repos.messages.create({
+          id: newPlatformNoticeId(),
+          channelId,
+          taskId: null,
+          fromAgentId: null,
+          toAgentId: notice.agentId,
+          role: 'ROLE_USER',
+          parts: message.parts,
+          metadata: message.metadata,
+        })
+        this.platformNoticeSeen.add(key)
+        this.prunePlatformNoticeSeen()
+        // 时间线可见(与 route 成功后的 onRouted 同构);已装配的 Agent 即时唤醒
+        try {
+          this.buses.get(channelId)?.notifyMessage(rowToMessage(row))
+        }
+        catch { /* 广播失败不影响投递 */ }
+        const cr = this.channels.get(channelId)
+        cr?.getAgents().find(a => a.agentId === notice.agentId)?.wakeMailbox()
+        return true
+      },
+    }
+    this.platformNoticeSinkImpl = sink
+    setPlatformNoticeSink(sink)
+  }
+
+  /** 通告去重表有界化(长跑进程内存有界;裁最旧) */
+  private prunePlatformNoticeSeen(): void {
+    if (this.platformNoticeSeen.size <= ManagerState.PLATFORM_NOTICE_SEEN_CAP) return
+    for (const k of this.platformNoticeSeen) {
+      this.platformNoticeSeen.delete(k)
+      if (this.platformNoticeSeen.size <= ManagerState.PLATFORM_NOTICE_SEEN_CAP) break
+    }
   }
 
   /**

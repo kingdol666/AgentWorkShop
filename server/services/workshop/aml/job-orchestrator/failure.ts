@@ -9,6 +9,7 @@ import { getAmlRuntime } from '../runtime'
 import { join } from 'node:path'
 import { killHarnessProcess } from '../python-runtime'
 import { state } from './shared'
+import { sendToolResult } from '../../runtime/platform-notice'
 
 export function failPermanentOrRetry(run: RunningJob, msg: string, exitCode: number): void {
   const rt = getAmlRuntime()
@@ -52,6 +53,24 @@ export function finishRun(run: RunningJob): void {
   }
   catch { /* 日志落盘失败不阻断 */ }
   st.running.delete(run.row.id)
+  // 异步结果回执兜底:看门狗停摆/墙钟超时/进程死亡等不经 concludeJob 的终止路径,
+  // 发起 Agent 也要被告知(claim 先到先得——concludeJob 的富摘要回执先行时此处静默跳过)
+  try {
+    const fresh = getAmlRuntime().repo.job.get(run.row.id)
+    if (fresh && ['done', 'failed', 'cancelled'].includes(fresh.status)) {
+      sendToolResult({
+        tool: 'aml_job',
+        jobId: run.row.id,
+        agentId: fresh.agentId,
+        ...(fresh.channelId ? { channelId: fresh.channelId } : {}),
+        ...(fresh.taskId ? { taskId: fresh.taskId } : {}),
+        ok: fresh.status === 'done',
+        title: `训练作业 ${run.row.id}`,
+        summary: `作业以 ${fresh.status} 收口。${fresh.error ? `原因:${fresh.error.slice(0, 300)}` : '详情见 aml_job_status / aml_job_logs。'}`,
+      })
+    }
+  }
+  catch { /* 回执失败不影响作业收尾 */ }
 }
 
 export function pushLog(run: RunningJob, line: string): void {

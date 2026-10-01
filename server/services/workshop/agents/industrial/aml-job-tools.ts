@@ -14,6 +14,7 @@ import { createTrainingPlan, listTrainingPlans, runPlanTraining } from '../../am
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { getToolApprovals } from '../tool-approvals'
+import { claimToolResult } from '../../runtime/platform-notice'
 import { predictProduction, readIoSpecFor } from '../../aml/predictor'
 import { recordOps } from '../../ops/ops'
 import { transitionModel } from '../../aml/model-registry'
@@ -87,7 +88,7 @@ export async function toolAmlJobSubmit(agentId: string, args: {
         `  dataset: ${job.datasetId} | purpose=${job.purpose} | seed=${fmtAmlNum(Number(job.budget.seed ?? 42), 0)} | change_note: ${changeNote}`,
         args.model_name || args.model_description ? `  模型标识: name=${String(args.model_name ?? '(缺省派生)')} | description=${String(args.model_description ?? '(缺省派生)').slice(0, 80) || '(缺省派生)'}` : `  模型标识: 注册时自动派生「产线·配方·优化目标」label(可传 model_name/model_description 自拟)`,
         `  队列: 排队 ${st.queued} 个(含本作业)/ 在跑 ${st.running} 个 | python ${st.python.ok ? (st.python.version ?? 'ok') : `不可用(${st.python.reason ?? '?'};作业会失败,请联系用户修复环境)`}`,
-        `\n用 aml_job_status { job_id: "${job.id}" } 看状态/阶段/门禁,aml_job_logs { job_id: "${job.id}" } 看日志尾;训练完成后 aml_leaderboard 看谱系与门禁。`,
+        `用 aml_job_status { job_id: "${job.id}" } 看状态/阶段/门禁,aml_job_logs { job_id: "${job.id}" } 看日志尾。作业完成后平台会自动回执结果到你的信箱并唤醒你(无需持续轮询);期间可继续其他任务。`,
       ].join('\n'),
     }
   }
@@ -103,14 +104,19 @@ export async function toolAmlJobStatus(_agentId: string, args: { job_id?: string
   if (jobId) {
     const job = rt.repo.job.get(jobId)
     if (!job) return amlErr(`作业 ${jobId} 不存在(aml_job_status 不带参数可列出最近 10 个)。`)
-    return { text: `${amlJobCard(job)}\n\n轮询建议:training 阶段 30~60s 查一次;终态(done/failed)后看门禁与错误,失败原因可 in aml_job_logs 定位。` }
+    // 终态经轮询面亲自看到 → 认领结果所有权,取消平台的事后补送(先到先得,省一跳无谓回合)
+    if (['done', 'failed', 'cancelled'].includes(job.status)) claimToolResult('aml_job', jobId)
+    return { text: `${amlJobCard(job)}\n\n轮询建议:training 阶段 30~60s 查一次;终态(done/failed)后看门禁与错误,失败原因可 in aml_job_logs 定位。训练完成后平台也会自动回执到你的信箱,无需持续轮询。` }
   }
   const jobs = rt.repo.job.list({ limit: 10 })
   if (jobs.length === 0) {
     return { text: '尚无训练作业。路径:aml_node_catalog 确认节点 → aml_dataset_build 组数据集 → aml_job_submit 提交训练。' }
   }
+  for (const j of jobs) {
+    if (['done', 'failed', 'cancelled'].includes(j.status)) claimToolResult('aml_job', j.id)
+  }
   const rows = jobs.map(j => `- ${j.id} [${j.status}] ${j.stage || '-'} ${j.progress}% dataset=${j.datasetId}${j.error ? ` | 错误: ${j.error.slice(0, 100)}` : ''}`)
-  return { text: `最近 ${jobs.length} 个作业(新→旧):\n${rows.join('\n')}\n\n传 job_id 查看单作业详情(指标/门禁逐项/错误)。` }
+  return { text: `最近 ${jobs.length} 个作业(新→旧):\n${rows.join('\n')}\n\n传 job_id 查看单作业详情(指标/门禁逐项/错误)。训练完成后平台会自动回执到你的信箱。` }
 }
 
 /** 工具:aml_job_logs —— 作业日志尾随(平台 ##AML 协议行 + 训练输出) */

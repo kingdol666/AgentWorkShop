@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto'
 import { getOps } from '../ops/ops'
 import { securityHitlTimeoutMs } from '../settings'
 import { getHitlRegistry } from './hitl-registry'
+import { sendHitlNote } from '../runtime/platform-notice'
 
 export interface ToolApproval {
   id: string
@@ -88,6 +89,9 @@ class ToolApprovalService {
       createdAt: approval.createdAt,
       expiresAt: approval.expiresAt,
     })
+    // 出生即留痕:审批单落 approval_history(status=pending)。此前只在裁决/超时时落库,
+    // 重启后遗留的 pending 单在历史里"查无此单"——对账把 HITL 面标 failed,历史面却无迹可查。
+    this.remember(approval)
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         if (!this.pending.has(approval.id)) return
@@ -143,9 +147,37 @@ class ToolApprovalService {
       this.remember(entry.approval)
       getHitlRegistry().resolve('dcw-approval', id, 'cancelled')
       entry.resolve({ approved: false, comment: entry.approval.comment, id })
+      // 附言可能再也到不了 Agent(回合已死):平台通告补送,人机交互不因链路断裂丢话
+      sendHitlNote({
+        agentId,
+        title: '审批失效',
+        summary: `你在节点 ${entry.approval.nodeId} 的 ${entry.approval.kind.toUpperCase()} 审批(${id})因绑定解除被收敛为拒绝,指令未执行:${entry.approval.detail}`,
+      })
       n++
     }
     return n
+  }
+
+  /**
+   * 回合终止时收敛该 Agent 的全部挂起审批(运行时 stop / 成员移除前置):
+   * 按「拒绝(回合已中止,指令未执行)」落定,绝不自动批准;返回收敛摘要供
+   * 平台通告补送——等待工具结果的回合已死,人类稍后的决议必须换一条路送达。
+   */
+  cancelAllForAgent(agentId: string, reason: string): string[] {
+    const notes: string[] = []
+    for (const [id, entry] of [...this.pending.entries()]) {
+      if (entry.approval.agentId !== agentId) continue
+      clearTimeout(entry.timer)
+      this.pending.delete(id)
+      entry.approval.status = 'denied'
+      entry.approval.comment = reason
+      entry.approval.decidedAt = new Date().toISOString()
+      this.remember(entry.approval)
+      getHitlRegistry().resolve('dcw-approval', id, 'cancelled')
+      entry.resolve({ approved: false, comment: reason, id })
+      notes.push(`${entry.approval.kind.toUpperCase()} 审批 ${id}(${entry.approval.detail})已按拒绝收敛,指令未执行`)
+    }
+    return notes
   }
 
   /** 同一 Agent 同一节点的挂起审批去重:已有 pending 时拒绝新挂起(防审批面板堆积) */

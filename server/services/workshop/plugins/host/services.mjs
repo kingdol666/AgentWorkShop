@@ -51,6 +51,16 @@ export async function seedRuntimeServices() {
       agents: channelId => mgr.deps.repos.channelAgents.listByChannel(channelId),
     }
   })
+  // 平台通告面(插件 → Agent 异步结果回执):deliver 投递并唤醒,claim 轮询方认领。
+  // 未接线/测试脚手架下 manager 方法返回 false,插件侧降级为仅日志(行为同旧版)。
+  servicesExt.register('notify', async () => {
+    const m = await import('@/server/plugins/workshop')
+    const mgr = m.getWorkshopManager()
+    return {
+      deliver: notice => mgr.deliverPlatformNotice(notice),
+      claim: (tool, jobId) => mgr.claimPlatformNotice(tool, jobId),
+    }
+  })
   servicesExt.register('plugins', async () => pluginManifest())
 }
 

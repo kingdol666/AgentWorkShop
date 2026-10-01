@@ -108,7 +108,7 @@ export default {
         required: ['line'],
       },
       roles: ['lead', 'worker'],
-      handler: async (args) => {
+      handler: async (args, agent) => {
         try {
           const line = String(args.line ?? '').trim()
           const dataPathDirect = String(args.data_path ?? '').trim()
@@ -123,11 +123,14 @@ export default {
             scene: args.scene ? String(args.scene) : '',
             source: 'agent',
             dataPath: dataPathDirect || '',
+            // 归因(分发层注入的调用方上下文):诊断完成后平台据此把结果回执给发起 Agent
+            agentId: agent?.agentId ?? '',
+            channelId: agent?.channelId ?? '',
           })
           if (!r.ok) return { text: r.error, isError: true }
           const via = dataPathDirect ? `离线数据 ${r.csvPath}` : `产线 ${line} 窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()} 快照 ${r.rows} 行 × ${r.nodes} 节点`
           return {
-            text: `已发起深度诊断异步任务 task_id=${r.runId}(${via})。知识库 IDD 在后台执行,Channel 无需等待——可继续其他任务,空闲时用 diag_status(run_id=${r.runId}) 查询;完成后按 diag_status 给出的指引调用 kb_agent 把报告 md 入库知识库。`,
+            text: `已发起深度诊断异步任务 task_id=${r.runId}(${via})。知识库 IDD 在后台执行,Channel 无需等待——可继续其他任务;完成后平台会自动把结果回执到你的信箱并唤醒你(空闲时也可用 diag_status(run_id=${r.runId}) 主动查询)。`,
           }
         }
         catch (err) {
@@ -182,6 +185,11 @@ export default {
           }
           if (!st && !meta) return { text: `诊断 ${id} 不存在或诊断服务不可达。`, isError: true }
           const status = st?.engineStatus || st?.status || meta?.status || 'unknown'
+          // 终态经轮询面亲自看到 → 认领结果所有权,取消平台的事后补送(先到先得)
+          if (['completed', 'failed', 'stopped'].includes(status)) {
+            const notify = await ctx.services.get('notify').catch(() => null)
+            notify?.claim?.('diag_run', id)
+          }
           const parts = [
             `run_id=${id}`,
             `name=${st?.name ?? meta?.name ?? '?'}`,

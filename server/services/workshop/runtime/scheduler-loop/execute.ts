@@ -11,7 +11,7 @@ import { LoopController, extractTaskMode, isGoalSummaryArtifact } from '../execu
 import { log } from './helpers'
 import { randomUUID } from 'node:crypto'
 import { TERMINAL_TASK_STATES } from '../../types/task'
-import { rootQueueEnabled } from '../../settings'
+import { rootQueueEnabled, workshopSettings } from '../../settings'
 
 export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
   /** 执行单条决策(身份=lead,经 TaskEngine 与 ChannelRuntime) */
@@ -71,6 +71,14 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
         // lead 自动接取:SUBMITTED → WORKING(§2.2 状态机,dispatch 需父任务处于 WORKING/WAITING)
         if (parent.state === 'SUBMITTED') {
           this.lead.taskEngine.transition(parent.id, 'WORKING', this.lead.agentId)
+          // 排队根任务入场即刷新执行预算:deadline 语义是"执行预算"而非"提交后总时长",
+          // FIFO 等待不应倒扣 —— 否则前面的任务跑超时,后面从未运行的任务会被静默判死。
+          // 能力探测:极简 TaskEngine 替身可能缺方法,缺失时按旧语义跳过。
+          if (!parent.parentId) {
+            const engine = this.lead.taskEngine as { refreshDeadline?: (id: string, iso: string) => unknown }
+            const budgetMs = Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
+            engine.refreshDeadline?.(parent.id, new Date(Date.now() + budgetMs).toISOString())
+          }
         }
         this.lead.taskEngine.dispatch(parent, {
           assigneeId: decision.assigneeId,
@@ -112,7 +120,8 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
       }
       case 'cancel': {
         const task = this.lead.taskEngine.get(decision.taskId)
-        // 快照后的陈旧取消决策不得再次操作终态任务(包括已超时/已收口任务)。
+        // 陈旧取消决策守卫:终态任务(含 FAILED——重试耗尽子任务)不可取消,与 complete
+        // 的幂等守卫同构。曾因直接调 TaskEngine.cancel 撞终态 409 每 tick 抛异常空转。
         if (!task || TERMINAL_TASK_STATES[task.state] || task.closeReason === 'ROOT_TIMEOUT') break
         this.lead.taskEngine.cancel(decision.taskId, this.lead.agentId, decision.reason ?? 'LEAD_CANCEL')
         // lead 终态同步:经调度器判定取消同样不经 processMessage,重广播队列上下文
@@ -168,7 +177,8 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
         break
       }
       // 团队成员管理决策(lead 自主扩容/调参/裁撤;经 AgentWorkspace 与工具桥同源路径)。
-      // fire-and-forget:成员落库即刻对下一轮快照可见,dispatch 在后续 tick 自然衔接。
+      // 成员落库即刻对下一轮快照可见,dispatch 在后续 tick 自然衔接。
+      // 失败必须回告 lead:fire-and-forget 曾让 lead 以为扩容成功、向幽灵成员派任务。
       case 'spawn_agent': {
         const ws: AgentWorkspace = this.lead.workspace
         void ws.createTeamMember({
@@ -177,9 +187,10 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
           config: decision.config,
           templateId: decision.templateId,
           reason: decision.reason,
-        }).catch((err) => {
-          log.error(`[SchedulerLoop:${this.lead.agentId}] spawn_agent 决策执行失败:`, err)
-        })
+        }).then(
+          () => undefined,
+          err => this.memberOpFailed(`spawn_agent`, `新增成员「${decision.name}」失败`, err),
+        )
         break
       }
       case 'update_agent': {
@@ -189,19 +200,40 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
           config: decision.config,
           enabled: decision.enabled === undefined ? undefined : (decision.enabled ? 1 : 0),
           reason: decision.reason,
-        }).catch((err) => {
-          log.error(`[SchedulerLoop:${this.lead.agentId}] update_agent 决策执行失败:`, err)
-        })
+        }).then(
+          () => undefined,
+          err => this.memberOpFailed(`update_agent`, `调整成员 ${decision.agentId.slice(0, 8)} 失败`, err),
+        )
         break
       }
       case 'remove_agent': {
         const ws: AgentWorkspace = this.lead.workspace
-        void ws.removeTeamMember(decision.agentId, decision.reason).catch((err) => {
-          log.error(`[SchedulerLoop:${this.lead.agentId}] remove_agent 决策执行失败:`, err)
-        })
+        void ws.removeTeamMember(decision.agentId, decision.reason).then(
+          () => undefined,
+          err => this.memberOpFailed(`remove_agent`, `移除成员 ${decision.agentId.slice(0, 8)} 失败`, err),
+        )
         break
       }
     }
+  }
+
+  /** 成员管理决策失败回告 lead(信箱消息,下一轮 supervise 前可见;不再静默吞进日志) */
+  private memberOpFailed(op: string, what: string, err: unknown): void {
+    const detail = err instanceof Error ? err.message : String(err)
+    log.error(`[SchedulerLoop:${this.lead.agentId}] ${op} 决策执行失败:`, err)
+    try {
+      this.channelRuntime.route({
+        messageId: randomUUID(),
+        contextId: this.channelRuntime.channelId,
+        role: 'ROLE_AGENT',
+        parts: [{ text: `[成员管理失败] ${what}:${detail}。请勿向该成员派发任务;如仍需要请重试或改用现有成员。` }],
+        metadata: {
+          'x-aw-target-agent': this.lead.agentId,
+          'x-aw-from-agent': this.lead.agentId,
+        },
+      })
+    }
+    catch { /* 回告失败不阻断调度 */ }
   }
 
   protected wakeAgent(agentId: string): void {

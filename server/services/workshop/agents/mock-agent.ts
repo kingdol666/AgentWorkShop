@@ -113,6 +113,16 @@ export class MockAgentImpl implements AgentInterface {
     yield { kind: 'status', status: { state: 'WORKING', timestamp: new Date().toISOString() } }
     await sleep(Math.min(this.delayMs, 50), ctx.signal)
     if (ctx.signal?.aborted) return
+    // 点对点触发器([mock:peer:<agentId>]):群聊回合内向同 channel 成员发起
+    // require-reply 点对点消息 —— 端到端验证 agent↔agent 协作链路(确定性测试替身)
+    const peerTarget = (text.match(/\[mock:peer:([^\s\]]+)\]/) ?? [])[1]
+    if (peerTarget) {
+      await ctx.workspace.sendMessage({
+        toAgentId: peerTarget,
+        parts: [{ text: `[mock:peer] ${ctx.agentId} 请求核对协作数据` }],
+        metadata: { 'x-aw-require-reply': 'true' },
+      })
+    }
     yield {
       kind: 'message',
       message: {
@@ -437,12 +447,19 @@ export class MockAgentImpl implements AgentInterface {
       }
     }
     yield { kind: 'status', status: { state: 'WORKING', timestamp: new Date().toISOString() } }
+    // 失败注入([mock:fail]):首个进度上报后产出 error 事件——任务转 FAILED,
+    // 供调度器 reassign/重试/取消链路的确定性测试;不产出任何交付物。
+    const source = [request.message.parts.map(p => ('text' in p ? p.text : '')).join('\n')].join('\n')
     for (const p of [25, 50, 75]) {
       await sleep(this.delayMs, ctx.signal)
       // 中断即收束:stop 后事件流必须 promptly 结束,否则 runtime.stop() 的 loopPromise
       // 等待会拖住 HTTP stop 请求(实测 mock delayMs=600s 时 stop 端点无限悬挂)
       if (ctx.signal?.aborted) return
       await ctx.workspace.reportTask({ taskId, progress: p })
+      if (p === 25 && /\[mock:fail\]/i.test(source)) {
+        yield { kind: 'error', error: { code: 'MOCK_FAIL', message: `[mock:fail] 注入失败:${ctx.agentId} 无法处理该任务` } }
+        return
+      }
     }
     if (this.streamDemo) {
       // 分片流式增量(打字机链路演示;每片 40ms)

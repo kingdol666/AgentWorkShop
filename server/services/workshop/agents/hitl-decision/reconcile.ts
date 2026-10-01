@@ -4,6 +4,8 @@
  */
 import { log } from './shared'
 import { resolveHitlRuntime } from '../hitl-registry'
+import { sendHitlNote } from '../../runtime/platform-notice'
+import { getOps } from '../../ops/ops'
 
 // ============================================================================
 // 启动对账(重启不自动批准)
@@ -58,6 +60,54 @@ export function reconcileHitlOnStartup(opts: { force?: boolean, error?: string, 
       }
     }
     log.warn(`[hitl] 启动对账:${failed} 条非终态待办置 failed(绝不自动批准)`)
+    // 审批历史同步收敛:request 即落库的 pending 行(tool-approvals 出生留痕)随对账
+    // 一并置 failed——重启后"审批历史"与"HITL 待办面"口径一致, forensic 不留半态。
+    try {
+      const hist = getOps()?.approvalHistory
+      if (hist) {
+        const now = new Date().toISOString()
+        for (const row of hist.list(500)) {
+          if (row.status !== 'pending' || row.createdAt >= watermark) continue
+          hist.upsert({
+            id: row.id,
+            agentId: row.agentId,
+            nodeId: row.nodeId,
+            kind: row.kind,
+            detail: row.detail,
+            status: 'failed',
+            comment: error,
+            decidedAt: now,
+            createdAt: row.createdAt,
+            payloadJson: row.payloadJson ?? '',
+            choice: row.choice ?? null,
+          })
+        }
+      }
+    }
+    catch { /* 历史同步失败不影响对账主流程 */ }
+    // Agent 侧补送:受影响的审批等待方(其回合随上一进程消亡)必须知道"发生过审批、
+    // 未执行、未自动批准",否则人类面对过的决议对 Agent 而言凭空蒸发(人机断话)。
+    // 直接落 messages 表(此时 runtime 未装配也持久),Agent 下次装配即从信箱看到。
+    try {
+      const byAgent = new Map<string, { channelId?: string, titles: string[] }>()
+      for (const r of stale) {
+        if (!r.agentId) continue
+        const agg = byAgent.get(r.agentId) ?? { channelId: r.channelId || undefined, titles: [] }
+        agg.titles.push(`${r.kind}:${r.title || r.id}`)
+        byAgent.set(r.agentId, agg)
+      }
+      for (const [agentId, agg] of byAgent) {
+        sendHitlNote({
+          agentId,
+          ...(agg.channelId ? { channelId: agg.channelId } : {}),
+          title: '服务重启,挂起审批已失效',
+          summary: `服务重启对账:你有 ${agg.titles.length} 条挂起审批随上一进程失效(未执行、未自动批准):\n- ${agg.titles.join('\n- ')}\n如仍需执行请重新发起,新审批单会实时回流人类的决议与附言。`,
+        })
+      }
+    }
+    catch (err) {
+      log.warn(`[hitl] 启动对账补送失败(不影响对账结果): ${err instanceof Error ? err.message : err}`)
+    }
     return {
       failed,
       entries: stale.map(r => ({ kind: r.kind, id: r.id, status: r.status, channelId: r.channelId, nativeConfirmed: false })),

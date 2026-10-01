@@ -49,6 +49,17 @@ export abstract class TaskEngineUpdate extends TaskEngineViews {
   }
 
   /**
+   * 刷新执行预算(排队根任务入场时调用):deadline 语义 = 执行预算而非
+   * "提交后总时长",FIFO 等待不倒扣 —— 否则前序任务超时会连带把从未运行的
+   * 排队任务静默判死。仅仓库补丁,不改状态、不重投递。
+   */
+  refreshDeadline(taskId: string, deadlineAt: string): WorkspaceTask {
+    const task = this.requireTask(taskId)
+    const updated = this.repos.tasks.update(taskId, { deadlineAt })
+    return updated ? rowToTask(updated) : task
+  }
+
+  /**
    * 断线重连重投:非终态任务若无 pending assign 投递(消息已被消费但任务未完成,
    * 如崩溃/异常路径),作废残留投递后向 assignee 重发 assign,由消费方终态检查保证幂等。
    */
