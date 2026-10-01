@@ -1,9 +1,10 @@
 /**
  * POST /api/workshop/hitl/respond —— 统一 HITL 应答路由(WebUI/TUI 共用)。
  *
- * body: { kind, id, value?, answers?, confirmed?, cancelled?, response?, comment? }
+ * body: { kind, id, value?, answers?, confirmed?, cancelled?, response?, comment?, choice? }
  *  - omp-dialog          → respondTerminalUi(pid, …):extension_ui_response 直写 omp stdin
- *  - dcw-approval        → toolApprovals.decide(id, approved=confirmed===true, comment)(audit 留痕)
+ *  - dcw-approval        → toolApprovals.decide(id, approved=confirmed===true, comment[, choice])
+ *                          (结构化审批单先经 fail-closed 归一:无有效 choice 的批准按拒绝收敛;audit 留痕)
  *  - codex-approval      → impl.respondHitl:审批 JSON-RPC accept/decline/cancel;
  *                          提问 tool/requestUserInput → `{answers:[…]}`(与审批载荷不同)
  *  - opencode-permission → impl.respondHitl:POST permissions {once|always|reject} / question 逐题 reply|reject
@@ -40,6 +41,8 @@ interface RespondBody {
   /** 引擎原生选项(opencode permission:once|always|reject;未知枚举一律 400) */
   response?: string
   comment?: string
+  /** 多方案裁决序号(dcw-approval 结构化审批单:批准时选定的包下标;缺省由 fail-closed 归一收敛为拒绝) */
+  choice?: number
 }
 
 export default defineApiHandler(async (event) => {
@@ -58,6 +61,10 @@ export default defineApiHandler(async (event) => {
         .map(a => ({ id: a.id !== undefined ? String(a.id) : '', answer: String(a.answer ?? '') }))
     : undefined
 
+  // 多方案裁决序号:仅接受整数(结构化审批单的「批准此方案」;其余输入一律按未携带处理,
+  // 由 fail-closed 归一收敛为拒绝 —— 不做静默取整/默认包)
+  const choice = Number.isInteger(body.choice) ? (body.choice as number) : undefined
+
   const result = await decideHitlRequest({
     kind,
     id,
@@ -69,6 +76,7 @@ export default defineApiHandler(async (event) => {
       cancelled: body.cancelled === true,
       response: typeof body.response === 'string' ? body.response : undefined,
       comment: typeof body.comment === 'string' ? body.comment : undefined,
+      choice,
     },
   })
 

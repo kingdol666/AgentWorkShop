@@ -46,6 +46,16 @@ export function migrateAddColumn(db: DatabaseSync, table: string, column: string
   }
 }
 
+/**
+ * 产线 Co-Pilot P2:审批历史结构化载荷列(加列式迁移,既有行安全 —— 历史行
+ * payload_json 为 NULL、choice 为 NULL,读取层按「空则文本降级」处理,不回填改史)。
+ * payload_json = 整包方案审批单的方案集+预检结果;choice = 批准时选定的包下标。
+ */
+export function migrateApprovalPayloadColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'approval_history', 'payload_json', 'TEXT')
+  migrateAddColumn(db, 'approval_history', 'choice', 'INTEGER')
+}
+
 /** AgentTeam guardrail task metadata; additive and safe for existing task rows. */
 export function migrateAgentTeamTaskGuardrailColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'tasks', 'source_chat_message_id', 'TEXT')

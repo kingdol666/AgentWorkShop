@@ -25,3 +25,5 @@ export { toolAmlJobSubmit, toolAmlJobStatus, toolAmlJobLogs, toolAmlJobCancel, t
 
 export { toolOptimizationExplore } from './optimization-tools'
 export { toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinCalibrationRequest, toolTwinBayesOptimize } from './twin-tools'
+export { toolAmlActivity } from './aml-activity'
+export { toolRecipePropose } from './recipe-propose-tools'

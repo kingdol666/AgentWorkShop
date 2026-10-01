@@ -106,7 +106,13 @@ async function main() {
   db.close()
   check('复用已部署 Agent 实例', !!agentRow, agentRow?.name)
   const bind = await api('POST', '/api/workshop/agent-tools/bindings', { body: { agentId: agentRow.id, nodeId: dwNodeId, kind: 'dcw', mode: 'auto' } })
-  check('绑定数控节点(mode=auto)', bind?.code === 0, bind?.message ?? '')
+  check('绑定数控节点(首绑强制 manual)', bind?.code === 0, bind?.message ?? '')
+  // auto 治理:dcw 首绑固定 manual,冒烟要走免审直发须显式 confirm 切 auto(铁律:切换必须风险确认)
+  const bindId = bind?.data?.binding?.id ?? bind?.data?.id
+  if (bindId) {
+    const toAuto = await api('PATCH', `/api/workshop/agent-tools/bindings/${bindId}`, { body: { mode: 'auto', confirm: true } })
+    check('确认后切换 auto(带 confirm)', toAuto?.code === 0, toAuto?.message ?? '')
+  }
   const ctrl = await api('POST', '/api/workshop/agent-tools/invoke', {
     agentToken: agentRow.token,
     body: { agentId: agentRow.id, tool: 'dcw_control', args: { node_id: dwNodeId, value: 178, hypothesis: '冒烟:Agent 提升设定值验证数控链路' } },

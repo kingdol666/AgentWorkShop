@@ -8,8 +8,11 @@
  */
 import type { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import type { useDcwStream } from '@/app/composables/workshop/useDcwStream'
+import type { AutoModeConfirmState } from '@/app/composables/workshop/town/useTownAgentBindings'
 import type { AgentNodeBindingRow, ToolApprovalRow } from '@/app/composables/workshop/town/town-view-types'
 import { dcwDriverBadgeKey } from '@/app/utils/dcw-driver-badge'
+// 子组件(同目录,必须显式引入:Nuxt 自动引入按路径前缀命名,不产出裸组件名)
+import AutoModeConfirmModal from './AutoModeConfirmModal.vue'
 
 const agentBindKind = defineModel<'dcw' | 'daq'>('agentBindKind', { required: true })
 const agentBindNodeId = defineModel<string>('agentBindNodeId', { required: true })
@@ -30,7 +33,11 @@ defineProps<{
   pendingApprovals: ToolApprovalRow[]
   approvalRemainingSec: (ap: ToolApprovalRow) => number
   bindingNodeName: (b: AgentNodeBindingRow) => string
-  setBindingMode: (id: string, mode: 'auto' | 'manual') => void
+  /** 两段式模式切换:manual→auto 先弹风险确认(内部置 autoConfirmState),确认后才 PATCH */
+  requestBindingMode: (b: AgentNodeBindingRow, mode: 'auto' | 'manual') => void
+  autoConfirmState: AutoModeConfirmState
+  confirmAutoSwitch: () => void
+  cancelAutoSwitch: () => void
   unbindAgentNode: (id: string) => void
   bindAgentNode: () => void
   decideApproval: (id: string, approved: boolean) => void
@@ -62,7 +69,7 @@ defineProps<{
         style="margin-top: 3px;"
         :value="b.mode"
         :title="$t('townView.khqvwix019')"
-        @change="setBindingMode(b.id, ($event.target as HTMLSelectElement).value as 'auto' | 'manual')"
+        @change="requestBindingMode(b, ($event.target as HTMLSelectElement).value as 'auto' | 'manual')"
       >
         <option value="auto">
           {{ $t('townView.k1io1ylm095') }}
@@ -197,6 +204,15 @@ defineProps<{
       </div>
     </div>
   </template>
+
+  <!-- 切 auto 风险确认弹窗(本组件持有唯一 select 切换链;状态/回调经 props 注入) -->
+  <AutoModeConfirmModal
+    :open="autoConfirmState.open"
+    :node-names="autoConfirmState.nodeNames"
+    :fail="autoConfirmState.fail"
+    @confirm="confirmAutoSwitch"
+    @cancel="cancelAutoSwitch"
+  />
 </template>
 
 <style scoped>

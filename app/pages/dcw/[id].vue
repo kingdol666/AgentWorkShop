@@ -20,6 +20,7 @@ import { useDcwQuery } from './composables/useDcwQuery'
 import { useDcwRecipes } from './composables/useDcwRecipes'
 import { useDcwWrites } from './composables/useDcwWrites'
 import { useExpConfirmations } from './composables/useExpConfirmations'
+import { useRecipeDispatchApprovals } from './composables/useRecipeDispatchApprovals'
 
 const scope = useDcwDetailScope()
 const writes = useDcwWrites()
@@ -33,6 +34,8 @@ const tplCtl = useDcwDetailTemplates(addNode)
 const approvals = useDcwParamApprovals(scope)
 // 本地调整待确认队列(经验采集推断的非平台写入;只拉本产线)
 const expConfirms = useExpConfirmations({ lineId: () => scope.lineId.value })
+// 整包方案审批(recipe_propose 结构化审批单;nodeId 前缀 recipe-propose: 分流)
+const recipeDispatch = useRecipeDispatchApprovals()
 
 const { dcw, line, lineId, ls, lineNodes, lineProducts, lineRecipesAll, lineRuns, lineHistory, unassignedNodes, unassignedProducts, stateLabel, dcwTemplateRefCh, nodeMin, nodeMax, lineDaqNodes, daqNodeCh, adoptNode, adoptProduct, productName, paramStatus, paramNodeName, daqWindowStatus, nodeDeviceNames } = scope
 const { setInputs, writingId, writeError, writeOk, readingId, togglingId, stepPatchingId, doWrite, doRead, toggleControl, patchStepLimit } = writes
@@ -45,6 +48,7 @@ const { addOpen, addScenario, addTemplate, addDriver, addName, addHold, addRead,
 const { tplOpen, tplSaving, tplError, tplOk, tplForm, tplIcons, builtinCount, customCount, openTplModal, doCreateTemplate } = tplCtl
 const { approvalItems, approvalComments, approvalDecidingId, approvalRemainingSec, approvalAgentName, approvalNodeName, decideApproval } = approvals
 const { items: expItems, decidingId: expDecidingId, decideError: expDecideError, decide: decideExp } = expConfirms
+const { items: rdItems, comments: rdComments, decidingId: rdDecidingId, decideError: rdDecideError, decide: decideRecipeDispatch } = recipeDispatch
 </script>
 
 <template>
@@ -172,8 +176,18 @@ const { items: expItems, decidingId: expDecidingId, decideError: expDecideError,
       @decide="decideApproval"
     />
 
+    <!-- 整包方案审批(recipe_propose 多套候选结构化审批单;空态不渲染避免噪音) -->
+    <DcwRecipeDispatchApprovalCard
+      v-if="rdItems.length"
+      v-model:comments="rdComments"
+      :items="rdItems"
+      :deciding-id="rdDecidingId"
+      :decide-error="rdDecideError"
+      @decide="decideRecipeDispatch"
+    />
+
     <!-- 本地调整确认(经验采集推断的非平台写入待人工转正;空态不渲染避免噪音) -->
-    <ExpConfirmCard
+    <DcwExpConfirmCard
       v-if="expItems.length"
       :items="expItems"
       :deciding-id="expDecidingId"

@@ -1,8 +1,15 @@
 /**
  * POST /api/workshop/agent-tools/bindings —— 绑定 Agent ↔ 工业节点。
- * body: { agentId, nodeId, kind: 'dcw'|'daq', mode: 'auto'|'manual' }
+ * body: { agentId, nodeId, kind: 'dcw'|'daq', mode?: 'auto'|'manual' }
  * 产线权限:普通用户仅可绑定自己有权产线的节点——daq 绑定需「仅查看」及以上,
  * dcw(写控)绑定需「可操控」;admin/editor 不受限。
+ *
+ * auto 治理(产线 Co-Pilot P2,计划 §5.4 铁律 2):**dcw 绑定首绑强制 manual**——
+ * dcw 写控面挂着逐次人工审批闸,创建即 auto 等于免审上线(旧实现 body.mode 缺省
+ * 还是 'auto'),故 body.mode 对 dcw 一律忽略;显式传 auto 不静默吞掉,响应附
+ * modeForced + notice 提示(响应形状向后兼容,多余字段无害)。如需 auto,应在
+ * 绑定创建后走 PATCH 携 confirm:true 显式切换(见 [id].patch.ts)。
+ * daq 绑定仅授权 daq_query 读(工具面无写族、mode 无审批语义可摘),维持原样。
  */
 import { readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
@@ -50,6 +57,15 @@ export default defineApiHandler(async (event) => {
   if (mode === 'none' || (needOperate && mode !== 'operate')) {
     throw new AppError(403, 'LINE_FORBIDDEN', `无该产线权限:绑定${kind === 'daq' ? '数采' : '写控'}节点需对产线「${lineId}」拥有${needOperate ? '可操控' : '仅查看'}及以上权限`)
   }
-  const binding = getAgentNodeBindingRepo().bind(agentId, nodeId, kind, body.mode ?? 'auto')
+  // dcw 首绑强制 manual(铁律 2);daq 维持 body.mode ?? 'auto' 缺省
+  const bindingMode = kind === 'dcw' ? 'manual' : body.mode ?? 'auto'
+  const binding = getAgentNodeBindingRepo().bind(agentId, nodeId, kind, bindingMode)
+  if (kind === 'dcw' && body.mode === 'auto') {
+    return {
+      binding,
+      modeForced: 'manual',
+      notice: 'dcw(写控)绑定首绑强制 manual,body.mode=auto 已被忽略;如需 auto 请对该绑定 PATCH { mode: "auto", confirm: true } 显式确认切换',
+    }
+  }
   return { binding }
 })

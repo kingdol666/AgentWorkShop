@@ -59,12 +59,19 @@ export const OBSERVER_READ_TOOL_NAMES = new Set([
   'exp_collect',
 ])
 
-/** line-doctor 追加的 AML 只读查询面(P1 无优化执行族,亦无 aml_activity/recipe_propose —— P2 另行扩入本集合) */
+/**
+ * line-doctor 追加面(P2 生效):AML 只读查询族 + 结构化下发族。
+ * aml_activity = 优化循环活动自查(recipe_propose 提交前的硬闸自查,只读);
+ * recipe_propose = 整包方案审批提交(**不是直写**:批准与选定包由人类在审批卡裁决,
+ * 未携带有效 choice 的批准按拒绝收敛;执行走既有 applyRecipe 审批管线)。
+ */
 export const LINE_DOCTOR_AML_TOOL_NAMES = new Set([
   'aml_model_find',
   'aml_model_reference',
   'aml_leaderboard',
   'twin_gate_evaluate',
+  'aml_activity',
+  'recipe_propose',
 ])
 
 /** 观察面档位保留的协作面:消息/记忆/任务执行流(零产线写语义;lead 治理面照旧按角色剔除) */

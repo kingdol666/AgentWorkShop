@@ -51,6 +51,8 @@ export interface HitlDecisionPayload {
   /** 引擎原生选项枚举(opencode permission: once|always|reject 等) */
   response?: string
   comment?: string
+  /** 多方案裁决序号(dcw-approval 结构化审批单:批准时选定的包下标;缺省=未选择,由 fail-closed 归一收敛) */
+  choice?: number
 }
 
 export interface HitlDecisionInput {

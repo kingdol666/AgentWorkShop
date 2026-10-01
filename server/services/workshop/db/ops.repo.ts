@@ -19,16 +19,21 @@ export interface ApprovalHistoryRow {
   decidedName: string
   createdAt: string
   decidedAt: string | null
+  /** 结构化审批载荷 JSON(整包方案审批的方案集+预检结果;空串=无载荷,文本降级) */
+  payloadJson: string
+  /** 多方案裁决序号(批准时选定的包下标;null=非结构化审批单/未携带) */
+  choice: number | null
 }
 
 const APPROVAL_COLS = `id, agent_id AS agentId, node_id AS nodeId, kind, detail, status,
-  comment, decided_by AS decidedBy, decided_name AS decidedName, created_at AS createdAt, decided_at AS decidedAt`
+  comment, decided_by AS decidedBy, decided_name AS decidedName, created_at AS createdAt, decided_at AS decidedAt,
+  payload_json AS payloadJson, choice`
 
 export function createApprovalHistoryRepo(db: DatabaseSync) {
   const insertStmt = db.prepare(
     `INSERT OR REPLACE INTO approval_history
-       (id, agent_id, node_id, kind, detail, status, comment, decided_by, decided_name, created_at, decided_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, agent_id, node_id, kind, detail, status, comment, decided_by, decided_name, created_at, decided_at, payload_json, choice)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const listStmt = db.prepare(
     `SELECT ${APPROVAL_COLS} FROM approval_history ORDER BY created_at DESC LIMIT ?`,
@@ -47,10 +52,15 @@ export function createApprovalHistoryRepo(db: DatabaseSync) {
       decidedName?: string
       createdAt: string
       decidedAt?: string | null
+      /** 结构化审批载荷(JSON 序列化后落 payload_json 列;缺省空串) */
+      payloadJson?: string
+      /** 多方案裁决序号(缺省 NULL) */
+      choice?: number | null
     }): void {
       insertStmt.run(
         a.id, a.agentId, a.nodeId, a.kind, a.detail, a.status, a.comment,
         a.decidedBy ?? '', a.decidedName ?? '', a.createdAt, a.decidedAt ?? null,
+        a.payloadJson ?? '', typeof a.choice === 'number' && Number.isInteger(a.choice) ? a.choice : null,
       )
     },
     /** 审批历史(重启后仍可查;cap 由调用方给,默认沿用内存 HISTORY_CAP 的量级) */

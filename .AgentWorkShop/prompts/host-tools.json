@@ -2194,5 +2194,97 @@
     }
    }
   }
+ },
+ {
+  "name": "aml_activity",
+  "label": "AML Activity",
+  "description": "查询产线 AML 优化循环是否活动(只读自查):频道投用模型(production)/在跑优化作业/近 30 分钟优化事件三路信号。活动期间整包下发(recipe_propose)会被硬闸拒绝并降级为建议报告,提交方案前必须先查。纯只读,不写产线。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "line_id": {
+     "type": "string",
+     "description": "限定产线 id(缺省=全部可读产线:节点授权线 ∪ 频道绑线)"
+    }
+   }
+  }
+ },
+ {
+  "name": "recipe_propose",
+  "label": "Recipe Propose",
+  "description": "提交整包优化方案审批(诊断工程师下发面,1~3 套候选方案一次审批):逐参数必须带 basis(为什么这样调)与 exp_ref(经验/证据引用);服务端先按配方真实限界预检(越界参数剔除,全部失效打回),再挂一张结构化审批单,等待人类在产线页选定方案批准。AML 优化活动期被硬闸拒绝(降级为建议);同一配方已有在飞审批单时软提示等待。批准后整批下发并回执逐参数结果+runId;拒绝/超时人工意见逐字回流。审批与绑定模式无关,永远人工裁决,绝不直写。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "recipe_id": {
+     "type": "string",
+     "description": "配方 id(必填;line_context 可看到当前配方 id)"
+    },
+    "packages": {
+     "type": "array",
+     "description": "候选方案集(1~3 套;每套 { name, rationale?, params })",
+     "items": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string",
+        "description": "方案名(审批卡展示,必填)"
+       },
+       "rationale": {
+        "type": "string",
+        "description": "方案总体思路与预期效果(建议提供)"
+       },
+       "params": {
+        "type": "array",
+        "description": "参数组(每条 { node_id, to, basis, exp_ref };from 缺省=服务端自取当前值)",
+        "items": {
+         "type": "object",
+         "properties": {
+          "node_id": {
+           "type": "string",
+           "description": "数控节点 id(须为配方内节点)"
+          },
+          "from": {
+           "type": "number",
+           "description": "当前值(可缺省;缺省时服务端自取节点现值)"
+          },
+          "to": {
+           "type": "number",
+           "description": "目标值(必填,数字)"
+          },
+          "unit": {
+           "type": "string",
+           "description": "单位(缺省取节点单位)"
+          },
+          "basis": {
+           "type": "string",
+           "description": "依据:为什么这样调(必填;缺失该参数拒绝入包)"
+          },
+          "exp_ref": {
+           "type": "string",
+           "description": "经验/证据引用(知识库条目标题或数据证据;必填,缺失拒绝入包)"
+          }
+         },
+         "required": [
+          "node_id",
+          "to",
+          "basis",
+          "exp_ref"
+         ]
+        }
+       }
+      },
+      "required": [
+       "name",
+       "params"
+      ]
+     }
+    }
+   },
+   "required": [
+    "recipe_id",
+    "packages"
+   ]
+  }
  }
 ]

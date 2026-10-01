@@ -9,6 +9,7 @@
 import type { TownScene3D } from '../TownScene3D'
 import type { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import type { useDcwStream } from '@/app/composables/workshop/useDcwStream'
+import type { AutoModeConfirmState } from '@/app/composables/workshop/town/useTownAgentBindings'
 import type { AgentNodeBindingRow, ChatEntry, ToolApprovalRow, TownModelRow } from '@/app/composables/workshop/town/town-view-types'
 // 子组件(同目录,必须显式引入:Nuxt 自动引入按路径前缀命名,不产出裸组件名)
 import TownAgentBindings from './TownAgentBindings.vue'
@@ -49,7 +50,11 @@ defineProps<{
   pendingApprovals: ToolApprovalRow[]
   approvalRemainingSec: (ap: ToolApprovalRow) => number
   bindingNodeName: (b: AgentNodeBindingRow) => string
-  setBindingMode: (id: string, mode: 'auto' | 'manual') => void
+  /** 两段式模式切换:manual→auto 先弹风险确认,确认后才 PATCH(契约见 useTownAgentBindings) */
+  requestBindingMode: (b: AgentNodeBindingRow, mode: 'auto' | 'manual') => void
+  autoConfirmState: AutoModeConfirmState
+  confirmAutoSwitch: () => void
+  cancelAutoSwitch: () => void
   unbindAgentNode: (id: string) => void
   bindAgentNode: () => void
   decideApproval: (id: string, approved: boolean) => void
@@ -126,7 +131,10 @@ defineProps<{
     :daq="daq"
     :dcw="dcw"
     :binding-node-name="bindingNodeName"
-    :set-binding-mode="setBindingMode"
+    :request-binding-mode="requestBindingMode"
+    :auto-confirm-state="autoConfirmState"
+    :confirm-auto-switch="confirmAutoSwitch"
+    :cancel-auto-switch="cancelAutoSwitch"
     :unbind-agent-node="unbindAgentNode"
     :bind-agent-node="bindAgentNode"
     :decide-approval="decideApproval"

@@ -9,6 +9,7 @@ import type { useEntitiesStore } from '@/app/stores/workshop/entities'
 import type { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 import type { useDaqStream, DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
 import type { useDcwStream, DcwNodeView } from '@/app/composables/workshop/useDcwStream'
+import type { AutoModeConfirmState } from '@/app/composables/workshop/town/useTownAgentBindings'
 import type { TownScene3D } from '@/app/components/workshop/town/TownScene3D'
 import type {
   AgentNodeBindingRow, AlarmItem, CalloutRow, ChatEntry, DaqSimState, DaqTemplate,
@@ -194,7 +195,11 @@ export interface TownRightRailProps {
   pendingApprovals: ToolApprovalRow[]
   approvalRemainingSec: (ap: ToolApprovalRow) => number
   bindingNodeName: (b: AgentNodeBindingRow) => string
-  setBindingMode: (id: string, mode: 'auto' | 'manual') => void
+  /** 两段式模式切换:manual→auto 先弹风险确认,确认后才 PATCH(契约见 useTownAgentBindings) */
+  requestBindingMode: (b: AgentNodeBindingRow, mode: 'auto' | 'manual') => void
+  autoConfirmState: AutoModeConfirmState
+  confirmAutoSwitch: () => void
+  cancelAutoSwitch: () => void
   unbindAgentNode: (id: string) => void
   bindAgentNode: () => void
   decideApproval: (id: string, approved: boolean) => void

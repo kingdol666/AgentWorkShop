@@ -4,12 +4,50 @@
  */
 import { DcwControllerBindings } from './bindings'
 import type { DcwDriverKind, DcwWriteMeta } from '../../../../../shared/dcw-protocol'
+import type { DcwNode } from '../dcw-node'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { assertWithinLimits, assertStepLimit } from '../param-limits'
 import { getRecipeRollBackManager } from '../recipe-rollback-manager'
 import { normalizeDcwDriverKind, resolveDcwDriver } from '../drivers'
 import { recordDcwWriteOps } from './write-audit'
 import { recordOps } from '../../ops/ops'
+
+// ================================================================
+// 只读预检谓词(产线 Co-Pilot P2:recipe_propose 整包方案的预审批校验)
+// ================================================================
+
+/** 预检结果:ok=false 时 violations[0] 即 write() 咽喉点会抛出的同文错误(单点收敛,消息零漂移) */
+export interface RecipeParamPreflight {
+  ok: boolean
+  violations: string[]
+  /** 原始错误(assertWithinLimits 抛出的 AppError;预检方需要复刻拒绝语义时原样复抛) */
+  error?: AppError
+}
+
+/**
+ * 限界预检(只读,不写不下发不锁窗):对「节点+目标工程量」复跑 write() 咽喉点的
+ * assertWithinLimits 断言,把 throw 式拒绝归一为 { ok, violations } 结果。
+ * 选项镜像 write() 的真实语义:skipRecipe=true 即配方下发路径(量程∩参数基准∩产品三层,
+ * **不含**步长/60s 间隔/保持窗 —— recipe 执行路径本就不走这些,预检不得擅自收紧);
+ * 缺省 skipRecipe=false 即在线写路径(含活动配方工艺窗口)。
+ * 消费方:① write() 咽喉点(行为零变化: violations[0]/error 复刻原 throw);
+ *        ② recipe_propose 预检(越界参数在审批单生成前剔除,「批准必被拒包」不可达)。
+ */
+export function evaluateRecipeParamLimits(node: DcwNode, eng: number, opts?: { includeSoft?: boolean, skipRecipe?: boolean }): RecipeParamPreflight {
+  try {
+    assertWithinLimits(node, eng, { includeSoft: opts?.includeSoft !== false, skipRecipe: opts?.skipRecipe === true })
+    return { ok: true, violations: [] }
+  }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return {
+      ok: false,
+      violations: [msg],
+      // 复刻 write() 原分类:AppError 原样透传;非 AppError 按 400 归一(与原 catch 同口径)
+      error: err instanceof AppError ? err : new AppError(400, ErrorCodes.VALIDATION_ERROR, msg),
+    }
+  }
+}
 
 export abstract class DcwControllerWrite extends DcwControllerBindings {
   /** 手动设定:用户提交工程量,网关校验/换算/下发/回读校验。
@@ -59,11 +97,11 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
     const benchNoInterlock = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-interlock' || meta?.benchArm === 'ungated')
     // 配方下发路径(recipeRunId != null)跳过配方窗口层:下发值已在配方保存时对自身窗口校验,
     // 且中途应用新配方不应被旧批次配方窗口误伤;产品/参数基准层对配方下发照常约束。
-    try {
-      assertWithinLimits(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: recipeRunId != null })
-    }
-    catch (err) {
-      reject(err instanceof AppError ? err : new AppError(400, ErrorCodes.VALIDATION_ERROR, String(err instanceof Error ? err.message : err)))
+    // 预检谓词(evaluateRecipeParamLimits)与本咽喉点共用同一断言:结果 ok=false 时
+    // 复抛其捕获的原始错误 —— 拒绝语义/错误码/消息与原 inline throw 逐字节一致。
+    const limits = evaluateRecipeParamLimits(node, eng, { includeSoft: !benchNoInterlock, skipRecipe: recipeRunId != null })
+    if (!limits.ok) {
+      reject(limits.error ?? new AppError(400, ErrorCodes.VALIDATION_ERROR, limits.violations[0] ?? '写入限界校验失败'))
     }
     const srcForLock = meta?.source ?? (recipeRunId ? 'recipe' : 'manual')
     const benchBypass = process.env.AW_BENCH_MODE === '1'

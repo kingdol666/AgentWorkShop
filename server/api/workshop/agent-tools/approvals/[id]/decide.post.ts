@@ -15,14 +15,14 @@ import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { AppError } from '@/server/utils/errors'
 import { getWorkshopManager } from '@/server/plugins/workshop'
-import { getToolApprovals } from '@/server/services/workshop/agents/tool-approvals'
+import { getToolApprovals, normalizeRecipeProposeDecision } from '@/server/services/workshop/agents/tool-approvals'
 import { assertCanDecideHitlChannel, snapshotOfRow } from '@/server/services/workshop/agents/hitl-decision'
 import { audit } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const id = getRouterParam(event, 'id')!
-  const body = await readBody<{ approved?: unknown, comment?: string }>(event) ?? {}
+  const body = await readBody<{ approved?: unknown, comment?: string, choice?: unknown }>(event) ?? {}
 
   // ① 显式布尔:禁止"缺省即批准"
   if (typeof body.approved !== 'boolean') {
@@ -30,6 +30,9 @@ export default defineApiHandler(async (event) => {
   }
   const approved = body.approved
   const comment = String(body.comment ?? '')
+  // ④ 多方案裁决序号(产线 Co-Pilot P2):仅接受整数(结构化审批单「批准此方案」);
+  //    其余输入一律按未携带处理,由 fail-closed 归一收敛为拒绝(不做静默取整/默认包)
+  const choice = Number.isInteger(body.choice) ? (body.choice as number) : undefined
 
   const manager = getWorkshopManager()
   const acting = { id: user.id, name: user.name, role: user.role }
@@ -52,24 +55,36 @@ export default defineApiHandler(async (event) => {
     throw new AppError(403, 'SCOPE_VIOLATION', '无法确定审批归属的 Channel,仅管理员可处理')
   }
 
+  // 产线 Co-Pilot P2:结构化审批单(recipe-propose,payload.schemaVersion=1)先经 fail-closed
+  // 归一 —— 无有效 choice 的「批准」一律按拒绝收敛;legacy 审批单(无 payload)完全不干预。
+  // (pending 即上方归属判定用的同一条 listPending 查询)
+  const normalized = normalizeRecipeProposeDecision(pending, { approved, choice })
+
   let approval
   try {
-    approval = getToolApprovals().decide(id, approved, comment, user.id, user.name)
+    approval = getToolApprovals().decide(id, normalized.approved, comment, user.id, user.name, normalized.choice)
   }
   catch (err) {
     // ③ 非 pending(已被他人处理/超时/被取消)→ 409(不再 500)
     throw new AppError(409, 'ALREADY_RESOLVED', err instanceof Error ? err.message : String(err))
   }
 
-  // R1:HITL 裁决审计(闭环中的人为决策留痕)
+  // R1:HITL 裁决审计(闭环中的人为决策留痕;choice 与 fail-closed 收敛随行落审计)
   audit({
     actor: user.id,
     actorName: user.name,
     actorKind: 'user',
-    action: approved ? 'approval.approve' : 'approval.reject',
+    action: normalized.approved ? 'approval.approve' : 'approval.reject',
     targetKind: 'tool-approval',
     targetId: id,
-    detail: { comment, via: 'agent-tools/decide', agentId, channelId: manager.findChannelAgentById(agentId)?.channelId ?? '' },
+    detail: {
+      comment,
+      choice: normalized.choice,
+      ...(normalized.rejectedReason ? { failClosedReason: normalized.rejectedReason } : {}),
+      via: 'agent-tools/decide',
+      agentId,
+      channelId: manager.findChannelAgentById(agentId)?.channelId ?? '',
+    },
   })
   return { approval }
 })

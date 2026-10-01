@@ -6,7 +6,7 @@ import type { AepHitlQuestion } from '../../../../../shared/workshop-protocol'
 import type { HitlActingUser, HitlDecisionPayload } from './shared'
 import { AppError } from '@/server/utils/errors'
 import { encodeHitlAnswers, resolveHitlRuntime } from '../hitl-registry'
-import { getToolApprovals } from '../tool-approvals'
+import { getToolApprovals, normalizeRecipeProposeDecision } from '../tool-approvals'
 import { resolveAnswers } from './answers'
 import { respondTerminalUi } from '../harness-terminal'
 
@@ -59,13 +59,26 @@ export async function defaultDispatch(ctx: HitlNativeDispatchContext): Promise<u
     return { via: 'omp-terminal' }
   }
   if (ctx.kind === 'dcw-approval') {
-    // dcw 工具审批:与 hitl/respond 同语义(缺省视为拒绝,approved 必须显式 confirmed===true)
+    // dcw 工具审批:与 hitl/respond 同语义(缺省视为拒绝,approved 必须显式 confirmed===true)。
+    // 产线 Co-Pilot P2:结构化审批单(recipe-propose,payload.schemaVersion=1)先经 fail-closed
+    // 归一 —— 无有效 choice 的「批准」一律按拒绝收敛;legacy 审批单(无 payload)完全不干预。
+    const pending = getToolApprovals().listPending().find(a => a.id === ctx.id)
+    const normalized = normalizeRecipeProposeDecision(pending, {
+      approved: decision.confirmed === true,
+      choice: decision.choice,
+    })
+    if (decision.confirmed === true && !normalized.approved) {
+      // fail-closed 降级:把有效裁决回写进决策载荷,使 hitl 行终态/审计/落定通知
+      // 与实际裁决(拒绝)一致,不留「已批准但未执行」的假态
+      decision.confirmed = false
+    }
     const approval = getToolApprovals().decide(
       ctx.id,
-      decision.confirmed === true,
+      normalized.approved,
       String(decision.comment ?? ''),
       ctx.user.id,
       ctx.user.name ?? '',
+      normalized.choice,
     )
     return { via: 'tool-approvals', approval }
   }

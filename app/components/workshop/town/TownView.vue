@@ -142,7 +142,8 @@ const {
 } = useTownAgentChat({ selected, entities, scene3dRef })
 const {
   approvalRemainingSec, agentBindings, agentBindKind, agentBindNodeId, agentBindMode, pendingApprovals,
-  approvalComments, bindAgentNode, unbindAgentNode, setBindingMode, decideApproval, bindingNodeName,
+  approvalComments, bindAgentNode, unbindAgentNode, requestBindingMode, autoConfirmState,
+  confirmAutoSwitch, cancelAutoSwitch, decideApproval, bindingNodeName,
 } = useTownAgentBindings({ selected, daq, dcw })
 const { alarms, ALARM_STATES, raiseAlarm, activeAlarmCount, advanceAlarm, clearAlarms } = useTownAlarms()
 const {
@@ -395,7 +396,10 @@ const { ticker } = useTownHudTickers({ sceneRef, daq, drawTrend, drawBindSparks 
         :pending-approvals="pendingApprovals"
         :approval-remaining-sec="approvalRemainingSec"
         :binding-node-name="bindingNodeName"
-        :set-binding-mode="setBindingMode"
+        :request-binding-mode="requestBindingMode"
+        :auto-confirm-state="autoConfirmState"
+        :confirm-auto-switch="confirmAutoSwitch"
+        :cancel-auto-switch="cancelAutoSwitch"
         :unbind-agent-node="unbindAgentNode"
         :bind-agent-node="bindAgentNode"
         :decide-approval="decideApproval"

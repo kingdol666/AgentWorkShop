@@ -242,6 +242,11 @@ export function securityHitlTimeoutMs(): number {
   return Number(effective()['security.hitl_timeout_ms'] ?? 180_000)
 }
 
+/** 整包方案审批超时窗(security.recipe_dispatch_timeout_ms,默认 30min;超时按拒绝收敛;独立于单参数 HITL 超时) */
+export function securityRecipeDispatchTimeoutMs(): number {
+  return Number(effective()['security.recipe_dispatch_timeout_ms'] ?? 1_800_000)
+}
+
 export interface AmlSettings {
   python: { pythonBin: string, uvBin: string, indexUrl: string }
   job: { timeoutMs: number, maxConcurrent: number, diskQuotaMb: number, stallMs: number, logTailLines: number }

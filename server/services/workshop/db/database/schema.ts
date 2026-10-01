@@ -222,7 +222,11 @@ CREATE TABLE IF NOT EXISTS approval_history (
   decided_by   TEXT NOT NULL DEFAULT '',    -- 裁决人(用户 id;空 = 超时/系统收敛)
   decided_name TEXT NOT NULL DEFAULT '',    -- 裁决人名(呈现用)
   created_at   TEXT NOT NULL,
-  decided_at   TEXT
+  decided_at   TEXT,
+  -- 产线 Co-Pilot P2:结构化审批载荷(整包方案审批单的方案集+预检结果;空串=无载荷)
+  payload_json TEXT,
+  -- 多方案裁决序号(批准时选定的包下标;NULL=非结构化审批单/未携带)
+  choice       INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_approval_history_created ON approval_history(created_at DESC);
 -- v12:DAQ 报警事件 + ack 闭环(S5:报警持久化/确认/升级)
