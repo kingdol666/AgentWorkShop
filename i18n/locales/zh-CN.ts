@@ -1186,7 +1186,7 @@ export default {
     apTimeout: '后超时默认不同意',
     apApprove: '同意',
     apReject: '拒绝',
-    apCommentPh: '拒绝意见(逐字回流给 Agent)',
+    apCommentPh: '反馈意见(可选:同意=批复附言随回执;拒绝=逐字回流给 Agent)',
   },
   teams: {
     selectChannel: '选择目标 Channel',

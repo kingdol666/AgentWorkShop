@@ -1186,7 +1186,7 @@ export default {
     apTimeout: 'to timeout (defaults to reject)',
     apApprove: 'Approve',
     apReject: 'Reject',
-    apCommentPh: 'Rejection note (returned verbatim to the agent)',
+    apCommentPh: 'Feedback (optional: approve = note appended to the receipt; reject = returned verbatim to the agent)',
   },
   teams: {
     selectChannel: 'Select a target channel',

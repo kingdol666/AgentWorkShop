@@ -16,7 +16,7 @@ export async function requestManualApproval(args: {
   detail: string
   /** 动作口径(决定三处文案的动词):缺省 '下发'(参数面/节点面);回退面传 '回退' */
   action?: '下发' | '回退'
-}): Promise<{ ok: true } | { ok: false, text: string, isError?: boolean }> {
+}): Promise<{ ok: true, comment: string } | { ok: false, text: string, isError?: boolean }> {
   const action = args.action ?? '下发'
   const pendingText = action === '回退'
     ? '你对该节点已有一条待审批指令,请等待用户处理后再发新的回退请求(避免审批堆积)。'
@@ -41,5 +41,6 @@ export async function requestManualApproval(args: {
       isError: true,
     }
   }
-  return { ok: true }
+  // 批准附言随回执:人类可在批准时留反馈(缺省空),原样回流给 Agent
+  return { ok: true, comment: ap.comment ?? '' }
 }

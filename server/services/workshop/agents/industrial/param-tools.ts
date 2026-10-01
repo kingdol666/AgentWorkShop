@@ -92,14 +92,19 @@ export async function toolParamControl(agentId: string, args: {
   if (!node.enabled) {
     return { text: `工艺参数「${param.key}」的执行节点「${node.name}」已停用(控制已暂停),无法下发。`, isError: true }
   }
-  // 手动确认模式:与 dcw_control 同源审批面(manual-approval),备注回给 Agent
+  // 手动确认模式:与 dcw_control 同源审批面(manual-approval),备注回给 Agent。
+  // 调整依据(hypothesis)进审批详情 —— 人机交互透明化:人类在审批面板直接看到
+  // Agent 基于什么分析/判断要这样调;批准附言与拒绝意见均随回执回流。
+  let manualFeedback = ''
   if (binding.mode === 'manual') {
+    const rationale = args.hypothesis ? String(args.hypothesis).trim() : ''
     const ap = await requestManualApproval({
       agentId,
       nodeId: param.nodeId,
-      detail: `工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit},${paramLimitsText(param)}`,
+      detail: `工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit},${paramLimitsText(param)}${rationale ? `;调整依据:${rationale}` : ''}`,
     })
     if (!ap.ok) return { text: ap.text, isError: ap.isError }
+    manualFeedback = ap.comment ?? ''
   }
   try {
     const meta = {
@@ -117,7 +122,7 @@ export async function toolParamControl(agentId: string, args: {
         stable ? `上一稳定锚:${stable.prevValue}${param.unit}(可 dcw_rollback 回退)` : null,
       ].filter(Boolean).join(';')
       return {
-        text: `下发成功:工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit} → 执行节点「${node.name}」;回读 ${outcome.readback != null ? `${outcome.readback}${param.unit}` : '不支持'}一致。${paramLimitsText(param)}。${outcome.message}${loopTxt ? `\n[调控闭环] ${loopTxt}` : ''}`,
+        text: `下发成功:工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit} → 执行节点「${node.name}」;回读 ${outcome.readback != null ? `${outcome.readback}${param.unit}` : '不支持'}一致。${paramLimitsText(param)}。${outcome.message}${loopTxt ? `\n[调控闭环] ${loopTxt}` : ''}${manualFeedback ? `\n[人工反馈] ${manualFeedback}` : ''}`,
       }
     }
     return { text: `下发失败:${outcome.message}(工艺参数 ${param.key},执行节点「${node.name}」;${paramLimitsText(param)};当前设定值保持 ${node.value ?? '原值'}${param.unit} 未被改动)`, isError: true }
