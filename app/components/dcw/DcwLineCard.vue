@@ -13,6 +13,8 @@ defineProps<{
   /** 本产线可选配方(继承自产品;页内派生后下发) */
   recipes: RecipeView[]
   quickBusy: string
+  /** 本产线待确认的本地调整数(经验采集;0/未传不显示角标) */
+  pendingExp?: number
 }>()
 
 const emit = defineEmits<{
@@ -41,6 +43,11 @@ const pick = defineModel<string | undefined>('pick')
         class="lc-state"
         :class="{ on: state.active }"
       >{{ state.active ? $t('dcw.k1eox1el055') : $t('dcw.k149r6y7059') }}</span>
+      <span
+        v-if="pendingExp"
+        class="badge warn-badge"
+        :title="$t('expConfirm.badgeTip', { p0: pendingExp })"
+      >{{ pendingExp }}</span>
       <button
         class="lc-act"
         :title="$t('common.edit')"

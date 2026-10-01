@@ -2180,5 +2180,19 @@
     "recipe_id"
    ]
   }
+ },
+ {
+  "name": "exp_collect",
+  "label": "Exp Collect",
+  "description": "采集产线经验动作(经验工程师/产线医生共用):平台动作=平台有写入留痕的变更(锚账本增量,带来源归因/证据锚/人工裁决意见);推断动作=SET 变化且时间窗内平台无写入(疑似现场本地调整),只入待确认队列,人工确认后才进入经验总结。产出 episode 供总结入库;水位+哈希双剔重,重复调用幂等。纯只读,不写产线。",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "line_id": {
+     "type": "string",
+     "description": "限定产线 id(缺省=全部可读产线:节点授权线 ∪ 频道绑线)"
+    }
+   }
+  }
  }
 ]

@@ -19,6 +19,7 @@ import { useDcwProducts } from './composables/useDcwProducts'
 import { useDcwQuery } from './composables/useDcwQuery'
 import { useDcwRecipes } from './composables/useDcwRecipes'
 import { useDcwWrites } from './composables/useDcwWrites'
+import { useExpConfirmations } from './composables/useExpConfirmations'
 
 const scope = useDcwDetailScope()
 const writes = useDcwWrites()
@@ -30,6 +31,8 @@ const queryCtl = useDcwQuery(scope)
 const addNode = useDcwAddNode(scope)
 const tplCtl = useDcwDetailTemplates(addNode)
 const approvals = useDcwParamApprovals(scope)
+// 本地调整待确认队列(经验采集推断的非平台写入;只拉本产线)
+const expConfirms = useExpConfirmations({ lineId: () => scope.lineId.value })
 
 const { dcw, line, lineId, ls, lineNodes, lineProducts, lineRecipesAll, lineRuns, lineHistory, unassignedNodes, unassignedProducts, stateLabel, dcwTemplateRefCh, nodeMin, nodeMax, lineDaqNodes, daqNodeCh, adoptNode, adoptProduct, productName, paramStatus, paramNodeName, daqWindowStatus, nodeDeviceNames } = scope
 const { setInputs, writingId, writeError, writeOk, readingId, togglingId, stepPatchingId, doWrite, doRead, toggleControl, patchStepLimit } = writes
@@ -41,6 +44,7 @@ const { query, queryBusy, queryError, queryResult, doQuery, daqParamKeys } = que
 const { addOpen, addScenario, addTemplate, addDriver, addName, addHold, addRead, addWriteLock, addStepLimit, addCfg, addTransform, addSemantics, addTesting, addTest, addMesTesting, addMesResult, addSaving, addError, addFields, driverCatalog, doTestConnection, doMesTestRead, doAddNode } = addNode
 const { tplOpen, tplSaving, tplError, tplOk, tplForm, tplIcons, builtinCount, customCount, openTplModal, doCreateTemplate } = tplCtl
 const { approvalItems, approvalComments, approvalDecidingId, approvalRemainingSec, approvalAgentName, approvalNodeName, decideApproval } = approvals
+const { items: expItems, decidingId: expDecidingId, decideError: expDecideError, decide: decideExp } = expConfirms
 </script>
 
 <template>
@@ -166,6 +170,15 @@ const { approvalItems, approvalComments, approvalDecidingId, approvalRemainingSe
       :agent-name="approvalAgentName"
       :node-name="approvalNodeName"
       @decide="decideApproval"
+    />
+
+    <!-- 本地调整确认(经验采集推断的非平台写入待人工转正;空态不渲染避免噪音) -->
+    <ExpConfirmCard
+      v-if="expItems.length"
+      :items="expItems"
+      :deciding-id="expDecidingId"
+      :decide-error="expDecideError"
+      @decide="decideExp"
     />
 
     <!-- 控制节点清单 -->

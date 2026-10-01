@@ -15,7 +15,7 @@ const instantiateSchema = z.object({
   scene: z.record(z.unknown()).optional(),
   promptVariables: z.record(z.unknown()).optional(),
   objective: z.record(z.unknown()).optional(),
-  toolProfile: z.enum(['legacy', 'hybrid_twin', 'aml_training', 'aml_optimization']).optional(),
+  toolProfile: z.enum(['legacy', 'hybrid_twin', 'aml_training', 'aml_optimization', 'exp-miner', 'line-doctor']).optional(),
   controlPolicy: z.enum(['recommendation_only', 'hitl_governed', 'bounded_auto']).optional(),
   providerId: z.string().min(1).optional(),
   providerVersion: z.string().min(1).optional(),

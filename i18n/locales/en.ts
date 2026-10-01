@@ -1188,6 +1188,14 @@ export default {
     apReject: 'Reject',
     apCommentPh: 'Feedback (optional: approve = note appended to the receipt; reject = returned verbatim to the agent)',
   },
+  expConfirm: {
+    title: 'Local adjustment confirmations',
+    rule: 'Confirm = accept as a line-side local trim and feed it into experience mining; Ignore = skip',
+    confirm: 'Confirm',
+    ignore: 'Ignore',
+    badgeTip: '{p0} local adjustment(s) awaiting confirmation',
+    decideFail: 'Action failed, please retry',
+  },
   teams: {
     selectChannel: 'Select a target channel',
     toPrivate: 'Click to make private',

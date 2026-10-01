@@ -2,7 +2,8 @@ import type { DatabaseSync } from 'node:sqlite'
 import { AppError } from '../../../../utils/errors'
 import { getAmlRuntime } from '../../aml/runtime'
 
-export type AmlChannelProfileKind = 'legacy' | 'hybrid_twin' | 'aml_training' | 'aml_optimization'
+/** 档位含产线 Co-Pilot 观察面(exp-miner 经验工程师 / line-doctor 诊断工程师:零写只读档,工具面见 host-tool-bridge/catalog 白名单) */
+export type AmlChannelProfileKind = 'legacy' | 'hybrid_twin' | 'aml_training' | 'aml_optimization' | 'exp-miner' | 'line-doctor'
 export type OptimizationMode = 'exploration' | 'aml'
 
 export interface HybridChannelProfile {
@@ -45,7 +46,7 @@ export function getChannelTwinProfile(channelId: string): HybridChannelProfile {
   try {
     const row = repo(getAmlRuntime().db).get.get(channelId) as Record<string, unknown> | undefined
     if (!row) return { channelId, profile: 'legacy', capability: {}, controlPolicy: 'recommendation_only' }
-    const profile = (['legacy', 'hybrid_twin', 'aml_training', 'aml_optimization'] as const).includes(row.profile as never) ? row.profile as AmlChannelProfileKind : 'legacy'
+    const profile = (['legacy', 'hybrid_twin', 'aml_training', 'aml_optimization', 'exp-miner', 'line-doctor'] as const).includes(row.profile as never) ? row.profile as AmlChannelProfileKind : 'legacy'
     const mode = row.optimizationMode === 'aml' || row.optimizationMode === 'exploration' ? (row.optimizationMode as OptimizationMode) : undefined
     return { channelId, profile, capability: JSON.parse(String(row.capabilityJson ?? '{}')), sceneId: row.sceneId ? String(row.sceneId) : undefined, sceneVersion: row.sceneVersion ? String(row.sceneVersion) : undefined, sceneContract: JSON.parse(String(row.sceneContractJson ?? '{}')), objective: JSON.parse(String(row.objectiveJson ?? '{}')), controlPolicy: (['recommendation_only', 'hitl_governed', 'bounded_auto'] as const).includes(row.controlPolicy as never) ? row.controlPolicy as HybridChannelProfile['controlPolicy'] : 'recommendation_only', providerId: row.providerId ? String(row.providerId) : undefined, providerVersion: row.providerVersion ? String(row.providerVersion) : undefined, providerHash: row.providerHash ? String(row.providerHash) : undefined, scenePackId: row.scenePackId ? String(row.scenePackId) : undefined, providerGeneration: row.providerGeneration != null ? Number(row.providerGeneration) : undefined, boundModelId: row.boundModelId ? String(row.boundModelId) : undefined, boundAt: row.boundAt ? String(row.boundAt) : undefined, optimizationMode: mode }
   }

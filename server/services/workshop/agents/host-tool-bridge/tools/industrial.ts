@@ -10,6 +10,7 @@
  */
 import type { HostToolResult } from '../types'
 import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeApply, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest } from '../../industrial'
+import { toolExpCollect } from '../../industrial/exp-tools'
 
 type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string) => Promise<HostToolResult>
 
@@ -66,6 +67,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['mes_fetch', (agentId, args) => toolMesFetch(agentId, args as Parameters<typeof toolMesFetch>[1])],
   ['mes_dataset_read', (agentId, args) => toolMesDatasetRead(agentId, args as Parameters<typeof toolMesDatasetRead>[1])],
   ['mes_datasets', (agentId, args) => toolMesDatasets(agentId, args as Parameters<typeof toolMesDatasets>[1])],
+  ['exp_collect', (agentId, args) => toolExpCollect(agentId, args as { line_id?: string, lineId?: string })],
 ])
 
 /** 工业工具名集合(与 INDUSTRIAL_HANDLERS 同源;dispatch 据此在 workspace 门控前分流) */

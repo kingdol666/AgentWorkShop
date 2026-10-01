@@ -1188,6 +1188,14 @@ export default {
     apReject: '拒绝',
     apCommentPh: '反馈意见(可选:同意=批复附言随回执;拒绝=逐字回流给 Agent)',
   },
+  expConfirm: {
+    title: '本地调整确认',
+    rule: '确认=认可为产线侧本地调整,进入经验总结;忽略=不总结',
+    confirm: '确认',
+    ignore: '忽略',
+    badgeTip: '有 {p0} 条本地调整待确认',
+    decideFail: '操作失败,请重试',
+  },
   teams: {
     selectChannel: '选择目标 Channel',
     toPrivate: '点击转为私有',

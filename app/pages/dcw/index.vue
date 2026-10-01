@@ -14,6 +14,7 @@ import { useDcwCards } from './composables/useDcwCards'
 import { useDcwFilter } from './composables/useDcwFilter'
 import { useDcwLineMutations } from './composables/useDcwLineMutations'
 import { useDcwQuickActions } from './composables/useDcwQuickActions'
+import { useExpConfirmations } from './composables/useExpConfirmations'
 import './dcw-page.css'
 
 const { t } = useI18n()
@@ -33,6 +34,15 @@ const nextColor = computed(() => DCW_LINE_COLORS[dcw.lines.length % DCW_LINE_COL
 // ---------- 新建/编辑/删除与卡片快捷启停 ----------
 const { createOpen, createSaving, createError, openCreate, doCreateLine, editOpen, editSaving, editError, editTarget, openEdit, doEditLine, delOpen, delBusy, delErr, delPurge, delCard, openDelete, doDeleteLine } = useDcwLineMutations()
 const { quickBusy, quickErr, quickPick, quickStart, quickStop } = useDcwQuickActions(t)
+
+// ---------- 本地调整待确认角标(一次拉全量 pending,前端按产线分组计数;60s 节拍,避免逐行请求) ----------
+const { items: expPending } = useExpConfirmations({ intervalMs: 60_000 })
+const pendingExpByLine = computed<Record<string, number>>(() => {
+  const map: Record<string, number> = {}
+  for (const c of expPending.value)
+    map[c.lineId] = (map[c.lineId] ?? 0) + 1
+  return map
+})
 
 // ---------- 控制模板管理 ----------
 const tplOpen = ref(false)
@@ -113,6 +123,7 @@ const tplOpen = ref(false)
         :state="dcw.lineStateOf(c.line.id)"
         :recipes="recipesOf(c.line.id)"
         :quick-busy="quickBusy"
+        :pending-exp="pendingExpByLine[c.line.id] ?? 0"
         @edit="openEdit"
         @remove="openDelete"
         @start="quickStart"

@@ -12,6 +12,7 @@ import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getAgentNodeBindingRepo, type AgentNodeBindingTuning } from '@/server/services/workshop/agents/node-bindings.repo'
 import { requireBindingAccess } from '@/server/services/workshop/agents/binding-authz'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -24,5 +25,19 @@ export default defineApiHandler(async (event) => {
   if (body.tuning !== undefined) {
     return { binding: repo.setTuning(id, body.tuning) }
   }
-  return { binding: repo.setMode(id, body.mode ?? 'auto') }
+  const fromMode = binding.mode
+  const updated = repo.setMode(id, body.mode ?? 'auto')
+  // 模式切换留痕(产线 Co-Pilot P1:绑定 mode 切换此前无审计盲区;confirm 语义 P2 另行处理)
+  recordOps({
+    actor: user.id,
+    actorName: user.name,
+    actorKind: 'user',
+    action: 'binding.mode',
+    kind: 'system',
+    summary: `节点绑定控制模式切换 ${fromMode}→${updated.mode}`,
+    targetKind: 'agent_node_binding',
+    targetId: id,
+    detail: { nodeId: binding.nodeId, bindingKind: binding.kind, agentId: binding.agentId, fromMode, toMode: updated.mode },
+  })
+  return { binding: updated }
 })

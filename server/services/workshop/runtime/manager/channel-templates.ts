@@ -13,8 +13,8 @@ import { setHybridChannelProfile } from '../../aml/twin/channel-profile'
 import { defaultInjectionScene } from '../../aml/twin/physics-runtime'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 
-/** 携带「知识库集成」选项的模板:实例化时可显式启停 rag-bridge(开 → 注入 KB 作业段提示词) */
-export const KNOWLEDGE_BASE_TEMPLATE_IDS = new Set(['chtpl-aml-optimization-default', 'chtpl-generic-optimize-default'])
+/** 携带「知识库集成」选项的模板:实例化时可显式启停 rag-bridge(开 → 注入 KB 作业段提示词);产线 Co-Pilot 两观察面频道(经验/诊断)的经验与诊断沉淀均以 KB 为唯一持久层,必入本名单 */
+export const KNOWLEDGE_BASE_TEMPLATE_IDS = new Set(['chtpl-aml-optimization-default', 'chtpl-generic-optimize-default', 'chtpl-exp-miner-default', 'chtpl-line-doctor-default'])
 
 /** 知识库集成开启时追加到频道场景提示词的作业段(教全员:先检索、后行动、再沉淀;知识调优工程师为主消费者) */
 export const KNOWLEDGE_BASE_PROMPT_SECTION = `
@@ -189,6 +189,25 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
         optimizationMode: mode,
         boundModelId: options?.boundModelId,
         boundAt: options?.boundModelId ? new Date().toISOString() : undefined,
+        createdBy: user.id,
+      }))
+    }
+    // 产线 Co-Pilot 观察面模板(2026-10-01 计划 §5.2/§5.3):经验工程师 / 诊断工程师 —— 零写只读档位。
+    // 档位落频道 profile(工具面由 host-tool-bridge/catalog 按档位白名单装配,物理零写);
+    // controlPolicy 强制 recommendation_only(观察面只建议不下发,P2 引入下发族时再放开)。
+    const expMinerProfile = options?.toolProfile === 'exp-miner' || tpl.id === 'chtpl-exp-miner-default'
+    const lineDoctorProfile = options?.toolProfile === 'line-doctor' || tpl.id === 'chtpl-line-doctor-default'
+    if (expMinerProfile || lineDoctorProfile) {
+      await Promise.resolve(setHybridChannelProfile({
+        channelId: created.channelId,
+        profile: expMinerProfile ? 'exp-miner' : 'line-doctor',
+        capability: { observer: true, knowledgeBase: true, phase: expMinerProfile ? 'experience_mining' : 'diagnosis' },
+        objective: options?.objective ?? {},
+        controlPolicy: 'recommendation_only',
+        providerId: options?.providerId,
+        providerVersion: options?.providerVersion,
+        providerHash: options?.providerHash,
+        scenePackId: options?.scenePackId,
         createdBy: user.id,
       }))
     }

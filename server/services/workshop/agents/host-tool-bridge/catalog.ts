@@ -41,6 +41,69 @@ export const AML_MODEL_BACKED_TOOL_NAMES = new Set([
   'twin_trial_run', 'mpc_optimize', 'twin_bayes_optimize',
 ])
 
+/**
+ * 产线 Co-Pilot 观察面档位(2026-10-01 计划 §5.2/§5.3):
+ * exp-miner(经验工程师)/ line-doctor(诊断工程师)是**零写**只读档位 ——
+ * 核心工业工具按白名单注入(channel_plugins 只过滤插件挡不住核心族,白名单是核心族唯一的排除机制),
+ * 直接写族(agents/tool-classes 清单)在尾部 writesBlocked 再兜底过滤一道。
+ * kb_agent/diag_run/diag_status 等 KB/诊断工具走 rag-bridge/diag-bridge 插件面,照常按频道插件开关注入,不进本白名单。
+ */
+/** 只读观察读面(两档共用,全部只读;exp_collect 由经验采集底座注册,此处按名引用) */
+export const OBSERVER_READ_TOOL_NAMES = new Set([
+  'ops_log',
+  'recipe_log',
+  'recipe_versions',
+  'line_context',
+  'dcw_journal',
+  'daq_query',
+  'exp_collect',
+])
+
+/** line-doctor 追加的 AML 只读查询面(P1 无优化执行族,亦无 aml_activity/recipe_propose —— P2 另行扩入本集合) */
+export const LINE_DOCTOR_AML_TOOL_NAMES = new Set([
+  'aml_model_find',
+  'aml_model_reference',
+  'aml_leaderboard',
+  'twin_gate_evaluate',
+])
+
+/** 观察面档位保留的协作面:消息/记忆/任务执行流(零产线写语义;lead 治理面照旧按角色剔除) */
+export const OBSERVER_COLLAB_TOOL_NAMES = new Set([
+  'send_message_to_agent',
+  'broadcast_message',
+  'poll_messages',
+  'read_channel_mail',
+  'list_other_teams',
+  'save_memory',
+  'search_memory',
+  'search_other_teams_memory',
+  'send_cross_channel_message',
+  'submit_task',
+  'complete_task',
+  'report_progress',
+  'refuse_task',
+  'cancel_task',
+  'get_my_task_queue',
+  'get_task_details',
+  'list_channel_tasks',
+  'list_team_agents',
+])
+
+/** 观察面档位允许注入的核心工具全集(纯派生;单测断言「工具面零写」的单一事实源) */
+export function observerAllowedToolNames(kind: 'exp-miner' | 'line-doctor'): Set<string> {
+  return new Set([
+    ...OBSERVER_READ_TOOL_NAMES,
+    ...OBSERVER_COLLAB_TOOL_NAMES,
+    ...(kind === 'line-doctor' ? LINE_DOCTOR_AML_TOOL_NAMES : []),
+  ])
+}
+
+/** 观察面档位的核心工具装配(纯函数:按白名单过滤 base;单测对合成目录与真实 HOST_TOOLS 各断言一层) */
+export function scopedToolsForObserverProfile(kind: 'exp-miner' | 'line-doctor', base: RpcHostToolDefinition[]): RpcHostToolDefinition[] {
+  const allowed = observerAllowedToolNames(kind)
+  return base.filter(t => allowed.has(t.name))
+}
+
 /** AML 治理/重负载动作之外,产线直接写工具的声明源已上收 agents/tool-classes(见文件头 re-export)。 */
 
 /** 占位符动态注入:工具描述里的运行时配置值(每次装配实时计算,配置热重载后 Agent 拿到新值) */
@@ -67,6 +130,7 @@ function applyDescriptionPlaceholders(tools: RpcHostToolDefinition[]): RpcHostTo
  * 尾部合并插件注册工具(roles 过滤,缺省双角色可用;channelId 给定且该团队有显式
  * 插件开关时,关闭的插件其工具不注入 —— 防不需要插件的 channel 上下文被污染)。
  * AML 解耦:aml_training/aml_optimization Channel 按面注入(训练族与优化族互斥);
+ * 产线 Co-Pilot 观察面(exp-miner/line-doctor)按白名单注入,物理零写;
  * hybrid_twin 保持全功能面;legacy 无 twin 工具。
  * 全 harness 共用:omp 经 set_host_tools 下发;其余引擎经 MCP 桥 tools/list 拉取。
  */
@@ -86,14 +150,20 @@ export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string): R
     // 优化面:剔除训练族(gate 保留 —— 绑定校验需门禁);优化族显式补齐(含新工具)
     scoped = base.filter(t => !AML_TRAINING_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate')
   }
+  else if (kind === 'exp-miner' || kind === 'line-doctor') {
+    // 产线 Co-Pilot 观察面(经验工程师/诊断工程师):核心工具按白名单注入 —— 物理零写(白名单不含任何写族)
+    scoped = scopedToolsForObserverProfile(kind, base)
+  }
   else {
     const hybrid = channelId ? kind === 'hybrid_twin' : false
     scoped = hybrid ? base : base.filter(t => !HYBRID_TWIN_TOOL_NAMES.has(t.name))
   }
   // 直写工具守卫:hybrid 沿用 bounded_auto 开关;工艺优化 Channel 一律不给 dcw 直写
-  // (真实写入统一走 optimization_explore 的治理链),训练 Channel 无写语义。
+  // (真实写入统一走 optimization_explore 的治理链),训练 Channel 无写语义;
+  // 观察面档位(exp-miner/line-doctor)零写 —— 白名单已不含写族,此处再兜底一道(两处同源 tool-classes 清单)。
   const writesBlocked = Boolean(profile?.profile === 'hybrid_twin' && (!flags.governedWriteEnabled || !flags.boundedAutoEnabled || profile.controlPolicy !== 'bounded_auto'))
     || kind === 'aml_optimization' || kind === 'aml_training'
+    || kind === 'exp-miner' || kind === 'line-doctor'
   const out = writesBlocked ? scoped.filter(t => !HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(t.name)) : [...scoped]
   // 团队级插件开关:显式配置过的 channel 按行过滤;未配置(无行)= 全启用,向后兼容
   const channelOff = channelId

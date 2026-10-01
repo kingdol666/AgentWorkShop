@@ -41,6 +41,21 @@ function loadDb(): RollbackDb {
   return db
 }
 
+/**
+ * 纯过滤:指定产线在 sinceMs(epoch ms,含边界)之后的锚,时间正序(只读,不改入参)。
+ * 导出为模块级函数便于单测覆盖(不必构造 repo 单例触碰真实数据文件)。
+ */
+export function anchorsSince(all: DcwJournalAnchor[], lineId: string, sinceMs: number, limit = 5000): DcwJournalAnchor[] {
+  const out: DcwJournalAnchor[] = []
+  for (const a of all) {
+    if (a.lineId !== lineId) continue
+    if (Date.parse(a.at) < sinceMs) continue
+    out.push(a)
+    if (out.length >= limit) break
+  }
+  return out
+}
+
 export class RecipeRollBackRepo {
   private db: RollbackDb = loadDb()
   private flushTimer: NodeJS.Timeout | null = null
@@ -206,6 +221,17 @@ export class RecipeRollBackRepo {
         return a
     }
     return undefined
+  }
+
+  /**
+   * 指定产线在 sinceMs(epoch ms)之后的锚(时间正序,只读)。
+   * 经验采集(Co-Pilot)的水位增量入口:锚 id 是 UUID 非单调、cap 头部淘汰会使
+   * index 型水位漂移,故按 at 过滤(边界含等号,同 ms 锚不漏;调用方再以
+   * watermark.seenAnchorIds 剔重 —— 双保险见 exp-collector)。
+   * 纯过滤逻辑在 anchorsSince,单测可脱离单例直接覆盖。
+   */
+  listAnchorsSince(lineId: string, sinceMs: number, limit = 5000): DcwJournalAnchor[] {
+    return anchorsSince(this.db.anchors, lineId, sinceMs, limit)
   }
 
   // ---------- records(优化记录) ----------
